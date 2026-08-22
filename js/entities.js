@@ -464,7 +464,7 @@ class Lab extends Entity {
     if (this.t >= LAB_TIME) {
       this.t -= LAB_TIME;
       this.packs--;
-      G.techProg[tech]++;
+      G.techProg[tech] = (G.techProg[tech] || 0) + 1;
       uiDirty = true;
       if (G.techProg[tech] >= TECHS[tech].cost) {
         G.techDone[tech] = true;
