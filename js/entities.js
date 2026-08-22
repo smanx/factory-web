@@ -506,27 +506,60 @@ function approachAng(a, t, step) {
 class Inserter extends Entity {
   constructor(type, x, y) {
     super(type || 'inserter', x, y);
+    this.reach = 1;      // 触及距离（格），长臂子类改为 2
     this.holding = null;
     this.blocked = false;
     this.armAng = undefined;
-    this.spinDir = 1;
   }
-  ring(prefDir) {
-    const pref = Math.atan2(DY[prefDir], DX[prefDir]);
-    const out = [];
-    for (let dy = -1; dy <= 1; dy++)
-      for (let dx = -1; dx <= 1; dx++) {
-        if (!dx && !dy) continue;
-        out.push({ dx, dy, a: Math.atan2(dy, dx) });
-      }
-    out.sort((m, n) => Math.abs(angNorm(m.a - pref)) - Math.abs(angNorm(n.a - pref)));
-    return out;
+  // ===== 几何：严格单向，取格 = 箭头反方向，放格 = 箭头方向 =====
+  pickOffset() {
+    const d = (this.dir + 2) % 4;
+    return { dx: DX[d] * this.reach, dy: DY[d] * this.reach };
   }
-  reachList(prefDir) { return this.ring(prefDir); }
-  canAcceptHere(x, y, item) {
-    const t = entAt(x, y);
-    if (!t || t === this || t instanceof Inserter) return false;
-    if (t instanceof Belt) {
+  dropOffset() {
+    return { dx: DX[this.dir] * this.reach, dy: DY[this.dir] * this.reach };
+  }
+  pickAng() { const o = this.pickOffset(); return Math.atan2(o.dy, o.dx); }
+  dropAng() { const o = this.dropOffset(); return Math.atan2(o.dy, o.dx); }
+  entAtPick() {
+    const o = this.pickOffset();
+    const x = this.x + o.dx, y = this.y + o.dy;
+    if (!inBounds(x, y)) return null;
+    const e = entAt(x, y);
+    return (e && !(e instanceof Inserter)) ? e : null;
+  }
+  entAtDrop() {
+    const o = this.dropOffset();
+    const x = this.x + o.dx, y = this.y + o.dy;
+    if (!inBounds(x, y)) return null;
+    const e = entAt(x, y);
+    return (e && !(e instanceof Inserter)) ? e : null;
+  }
+  // ===== 取物 =====
+  peekSource(s) {
+    if (!s) return null;
+    if (s instanceof Belt) {
+      const z = s.grabZone();
+      return z ? z.item : null;
+    }
+    if (s.peekItem) return s.peekItem();
+    return null;
+  }
+  takeSource(s) {
+    if (s instanceof Belt) {
+      const z = s.grabZone();
+      if (!z) return null;
+      s.items.splice(s.items.indexOf(z), 1);
+      return z.item;
+    }
+    if (s.takeOutput) return s.takeOutput();
+    if (s.takeItem) return s.takeItem();
+    return null;
+  }
+  // ===== 放物 =====
+  canDropAt(t, item) {
+    if (!t) return false;
+    if (t instanceof Belt && !(t instanceof Splitter)) {
       let back = Infinity;
       for (const o of t.items) back = Math.min(back, o.pos);
       return back >= BELT_SPACING * 0.9;
@@ -552,88 +585,53 @@ class Inserter extends Entity {
         return false;
     }
   }
-  findMove() {
-    const srcs = this.reachList((this.dir + 2) % 4);
-    const dests = this.reachList(this.dir);
-    for (const n of srcs) {
-      const x = this.x + n.dx, y = this.y + n.dy;
-      if (!inBounds(x, y)) continue;
-      const s = entAt(x, y);
-      if (!s || s instanceof Inserter) continue;
-      let it = null;
-      if (s instanceof Belt) {
-        const z = s.grabZone();
-        if (!z) continue;
-        it = z.item;
-      } else if (s.peekItem) {
-        it = s.peekItem();
-      }
-      if (!it) continue;
-      let dstDX = -n.dx, dstDY = -n.dy;
-      let ok = this.canAcceptHere(x + dstDX, y + dstDY, it);
-      if (!ok) {
-        for (const d of dests) {
-          if (d.dx === n.dx && d.dy === n.dy) continue;
-          if (this.canAcceptHere(this.x + d.dx, this.y + d.dy, it)) { dstDX = d.dx; dstDY = d.dy; ok = true; break; }
-        }
-      }
-      if (!ok) continue;
-      return { item: it, sx: x, sy: y, dstDX, dstDY };
-    }
-    return null;
-  }
-  hasWork() { return !!this.findMove(); }
-  grab() {
-    const m = this.findMove();
-    if (!m) return null;
-    const s = entAt(m.sx, m.sy);
-    if (!s) return null;
-    if (s instanceof Belt) {
-      const z = s.grabZone();
-      if (!z) return null;
-      s.items.splice(s.items.indexOf(z), 1);
-    } else if (s.takeOutput) {
-      s.takeOutput();
-    } else {
-      s.takeItem();
-    }
-    this.srcX = m.sx; this.srcY = m.sy;
-    this.dstDX = m.dstDX; this.dstDY = m.dstDY;
-    this.armFrom = Math.atan2(m.sy - this.y, m.sx - this.x);
-    this.armTo = Math.atan2(m.dstDY, m.dstDX);
-    this.holding = m.item;
-    return m.item;
-  }
-  deliver() {
-    const tx = this.x + this.dstDX, ty = this.y + this.dstDY;
-    if (!inBounds(tx, ty)) return false;
-    const t = entAt(tx, ty);
-    if (!t || t === this || t instanceof Inserter) return false;
+  deliverAt(t) {
+    if (!t || !this.holding) return false;
     if (t instanceof Belt && !(t instanceof Splitter)) {
-      return t.acceptItem(this.holding, dirFromVec(this.dstDX, this.dstDY));
+      const o = this.dropOffset();
+      return t.acceptItem(this.holding, dirFromVec(o.dx, o.dy));
     }
     return t.giveItem(this.holding);
   }
+  // 干跑：现在是否有活干（供 UI/其他系统查询）
+  hasWork() {
+    const s = this.entAtPick();
+    const it = this.peekSource(s);
+    return !!(it && this.canDropAt(this.entAtDrop(), it));
+  }
   update(dt) {
-    window.__updCount = (window.__updCount || 0) + 1;
-    if (this.armAng === undefined) this.armAng = ((this.dir + 2) % 4) * Math.PI / 2;
-    const srcA = ((this.dir + 2) % 4) * Math.PI / 2;
-    const dstA = (this.dir % 4) * Math.PI / 2;
-    const ROT = Math.PI * 4.4;
-    const stepAng = ROT * dt;
-    let target, act;
-    if (this.holding) {
-      target = dstA;
-      act = () => { const ok = this.deliver(); this.blocked = !ok; if (ok) this.holding = null; };
-    } else {
-      const m = this.findMove();
-      if (!m) { this.rotating = false; this.__noWork = (this.__noWork || 0) + 1; return; }
-      target = srcA;
-      act = () => { const got = this.grab(); if (got) { this.holding = got; this.blocked = false; } };
+    if (this.armAng === undefined) this.armAng = this.pickAng();
+    const step = Math.PI * 4.4 * dt;
+    // 统一状态机：
+    //  空手 -> 转向取物格 -> 到达后原子地“预览+校验+取走”
+    //  持物 -> 转向放物格 -> 到达后尝试放入，失败则原地重试（绝不丢物、绝不换目标）
+    const holdingNow = !!this.holding;
+    const target = holdingNow ? this.dropAng() : this.pickAng();
+    const arrived = Math.abs(angNorm(target - this.armAng)) < 0.05;
+    if (!arrived) {
+      this.rotating = true;
+      this.armAng = approachAng(this.armAng, target, step);
+      if (Math.abs(angNorm(target - this.armAng)) < 0.05) this.armAng = target;
+      else return;
     }
-    this.rotating = true;
-    this.armAng = approachAng(this.armAng, target, Math.abs(stepAng));
-    if (Math.abs(angNorm(target - this.armAng)) < 0.05) act();
+    this.rotating = false;
+    this.armAng = target;
+    if (!holdingNow) {
+      // 到达取物位：一次性完成“看源、验目标、取走”，避免探测与执行之间的状态漂移
+      const s = this.entAtPick();
+      const it = this.peekSource(s);
+      this.blocked = false;
+      if (!it) return;                       // 源为空：停在取物位等待
+      if (!this.canDropAt(this.entAtDrop(), it)) return; // 目标暂不收：等待
+      const got = this.takeSource(s);
+      if (got) this.holding = got;
+    } else {
+      // 到达放物位：尝试放入；失败保持持物、标记堵塞，下帧继续重试
+      const t = this.entAtDrop();
+      const ok = this.deliverAt(t);
+      this.blocked = !ok;
+      if (ok) this.holding = null;
+    }
   }
   serialize() {
     const s = super.serialize();
@@ -842,14 +840,7 @@ class Underground extends Entity {
 class LongInserter extends Inserter {
   constructor(type, x, y) {
     super(type || 'long-inserter', x, y);
-  }
-  reachList(prefDir) {
-    const res = [];
-    for (let k = 0; k < 4; k++) {
-      const d = (prefDir + [0, 2, 1, 3][k]) % 4;
-      res.push({ dx: DX[d] * 2, dy: DY[d] * 2 });
-    }
-    return res;
+    this.reach = 2;   // 几何、行为与普通臂完全一致，只是触及第二格
   }
 }
 

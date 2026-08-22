@@ -375,9 +375,7 @@ function htmlMachine(e) {
     return '<div class="dim">地下带' + txt + '。R 旋转方向。</div>';
   }
   if (e instanceof Inserter)
-    return '<div class="dim">机械臂：自动从周围8格（含斜角）取货——优先背面；放到优先正面开始的空位。某边堵了自动换边。R 调整朝向偏好。</div>';
-  if (e instanceof Inserter)
-    return '<div class="dim">机械臂：周围8格自动取放（优先背面取、正面放）。长臂版抓取/放置覆盖正前与正后方第二格。</div>';
+    return '<div class="dim">机械臂：严格单向搬运。从臂体指向的一侧（灰色圆点）取货，放到地面箭头/亮色箭头的一侧（物流方向）。普通臂作用相邻格，长臂作用第二格。R 旋转。</div>';
   if (e instanceof Belt) return '<div class="dim">传送带：物品沿箭头方向流动。R 旋转方向。靠近后按 F 拿取带上物品。</div>';
   return '<div class="dim">无信息</div>';
 }

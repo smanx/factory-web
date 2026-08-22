@@ -430,6 +430,45 @@ function drawInserter(ctx, e, gx, gy, dir, alpha) {
   if (e.holding) drawItemDot(ctx, tipx, tipy, e.holding, 4);
   ctx.fillStyle = dirColorNotch(dir);
   notch(ctx, px, py, dir);
+  drawFlowMarks(ctx, e, cx, cy, dir);
+  ctx.globalAlpha = 1;
+}
+
+// 物流方向标识：亮色脉冲大箭头 = 出料侧（与陷口同侧）；灰色小点 = 进料侧。
+// 让“哪边进、哪边出”一眼可辨，不再依赖小陷口或臂体姿态去猜。
+function drawFlowMarks(ctx, e, cx, cy, dir) {
+  const reach = e.reach || 1;
+  const dOut = (reach - 0.5) * TILE - 3;   // 标记到臂心的距离（触及格边缘内侧）
+  const pulse = 0.55 + 0.45 * Math.sin((G.time || 0) * 6);
+  function chevron(sideDir, color, alpha, size) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(sideDir * Math.PI / 2);
+    ctx.globalAlpha = Math.max(0.15, Math.min(1, alpha));
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(dOut - size, -size);
+    ctx.lineTo(dOut + size * 0.7, 0);
+    ctx.lineTo(dOut - size, size);
+    ctx.stroke();
+    ctx.restore();
+  }
+  // 出口：物流方向，双箭头向外
+  const oc = dirColorNotch(dir);
+  chevron(dir, oc, pulse, 5);
+  chevron(dir, oc, pulse * 0.45, 8.5);
+  // 入口：取货方向，静态灰点
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(((dir + 2) % 4) * Math.PI / 2);
+  ctx.globalAlpha = 0.85;
+  ctx.fillStyle = '#9aa0aa';
+  ctx.beginPath();
+  ctx.arc(dOut, 0, 2.6, 0, 7);
+  ctx.fill();
+  ctx.restore();
   ctx.globalAlpha = 1;
 }
 
