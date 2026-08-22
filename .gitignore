@@ -1,0 +1,9 @@
+# 调试残留
+check*.py
+err.log
+out.log
+*.log
+
+# 系统文件
+Thumbs.db
+.DS_Store
