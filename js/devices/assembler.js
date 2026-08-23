@@ -157,11 +157,11 @@ function drawAssembler(ctx, e, gx, gy, dir, alpha) {
     ctx.fillText('无配方', px + s / 2, py + s / 2 + 30);
   }
   const fr = e.fluidRecipe ? e.fluidRecipe() : null;
-  if (fr) {
-    const pcx = px + s / 2, pcy = py + s / 2;
-    if (fr.fin.length) drawPort(ctx, pcx, pcy, (dir + 2) % 4, ITEMS[fr.fin[0]].color, false, 0, TILE);
-    if (fr.fout.length) drawPort(ctx, pcx, pcy, dir, ITEMS[fr.fout[0]].color, true, 0, TILE);
-  }
+  const pcx = px + s / 2, pcy = py + s / 2;
+  // 流体入口：背部恒有一口通用流体口（可按 R 旋转朝向），用于接管道向配方输送流体原料
+  if (fr && fr.fin.length) drawPort(ctx, pcx, pcy, (dir + 2) % 4, ITEMS[fr.fin[0]].color, false, 0, TILE);
+  else drawPort(ctx, pcx, pcy, (dir + 2) % 4, PORT_FLUID, false, 0, TILE);
+  if (fr && fr.fout.length) drawPort(ctx, pcx, pcy, dir, ITEMS[fr.fout[0]].color, true, 0, TILE);
   ctx.globalAlpha = 1;
 }
 
@@ -190,6 +190,7 @@ function assemblerPanelHtml(e) {
   }
   h += '</div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
+  h += '<div class="dim">选中后按 R 旋转朝向（流体入口在背部、固体产物经机械臂取走）；背部通用流体口可接管道，向含流体原料的配方自动供液。</div>';
   return h;
 }
 function assemblerPanelLive(e, api) {
@@ -230,3 +231,6 @@ DEVICE_STATUS['assembling-machine-mk2'] = assemblerStatusFn;
 const assemblerPanel = { html: assemblerPanelHtml, live: assemblerPanelLive, tip: assemblerTip };
 DEVICE_PANEL['assembling-machine'] = assemblerPanel;
 DEVICE_PANEL['assembling-machine-mk2'] = assemblerPanel;
+// 组装机 I/II 均可旋转朝向；旋转改变流体入口/出口所在侧（背部入口、前部出口）
+DEVICE_DIR_ROTATE['assembling-machine'] = true;
+DEVICE_DIR_ROTATE['assembling-machine-mk2'] = true;
