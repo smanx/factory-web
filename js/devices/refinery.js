@@ -232,37 +232,33 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
   // 布局：每个接口对齐到对应的格子（一格一接口）：背面(上方=北)2个输入口落在格1/格3，正面(下方=南)3个输出口落在格0/格2/格4（各留 1 格间隔）
   drawRotatablePorts(ctx, e, px, py, s, REFINERY_PORTS);
   const d = e.dir | 0;
-  // 接口用途标签默认隐藏，按一下 Alt 切换显示详情（对齐《异星工厂》核心交互）
+  // 接口图标默认隐藏，松开 Alt 切换显示详情：各口只画流体/气体图标，不再显示文字标签
   if (portLabelVisible()) {
-    drawPortLabel(ctx, px, py, s, (3 + d) % 4, '流体输入', '#7fd87f');
-    drawPortLabel(ctx, px, py, s, (1 + d) % 4, '流体输出', '#f0b072');
-    // 在各接口处画当前配方对应流体的图标（输入=该口所需流体，输出=该口产出的流体）
     const inSide = (3 + d) % 4, outSide = (1 + d) % 4;
+    // 输入口：沿边偏移 = 格号 - 中心格(2)
     for (const cell of REFINERY_INPUT_CELLS) {
       const f = refineryInputFluid(e, cell);
       if (!f) continue;
-      drawPortIcon(ctx, px, py, s, inSide, cell, f);
+      drawPortIcon(ctx, px, py, s, inSide, cell - 2, f);
     }
+    // 输出口：沿边偏移 = 格号 - 中心格(2)
     for (const cell of REFINERY_OUTPUT_CELLS) {
       const f = refineryOutputFluid(e, cell);
       if (!f) continue;
-      drawPortIcon(ctx, px, py, s, outSide, cell, f);
+      drawPortIcon(ctx, px, py, s, outSide, cell - 2, f);
     }
   }
   ctx.globalAlpha = 1;
 }
 
-// 在设备某边第 cell 格的外侧画该口流体的图标
-function drawPortIcon(ctx, px, py, s, side, cell, fluid) {
-  // 计算该口在边上的中心像素坐标
+// 在设备某边内侧（off=沿边偏移格数，中心为0）画该口流体的图标
+function drawPortIcon(ctx, px, py, s, side, off, fluid) {
   let cx, cy;
   const cxp = px + s / 2, cyp = py + s / 2;
-  // 沿边偏移：cell 相对中心
-  const off = cell - 2; // 5格宽：中心格=2
-  if (side === 3) { cx = cxp + off * TILE; cy = py - 14; }      // 北
-  else if (side === 1) { cx = cxp + off * TILE; cy = py + s + 14; } // 南
-  else if (side === 0) { cx = px + s + 14; cy = cyp + off * TILE; } // 东
-  else { cx = px - 14; cy = cyp + off * TILE; }                   // 西
+  if (side === 3) { cx = cxp + off * TILE; cy = py + 18; }          // 北（设备内部）
+  else if (side === 1) { cx = cxp + off * TILE; cy = py + s - 26; } // 南（设备内部，避开底部产物条）
+  else if (side === 0) { cx = px + s - 18; cy = cyp + off * TILE; } // 东（设备内部）
+  else { cx = px + 18; cy = cyp + off * TILE; }                     // 西（设备内部）
   drawItemDot(ctx, cx, cy, fluid, 7);
 }
 

@@ -194,28 +194,37 @@ const mixC = place(Pipe, 90, 39); // 空管邻接 mixA（含 water）
 run(60);
 check('fluid flows into empty neighbor pipe', (mixC.fluid['water'] || 0) > 0 && !(mixC.fluid['crude-oil'] > 0));
 
-// ---- 接口用途标签：默认隐藏，按一下 Alt 切换显示详情 -------------
+// ---- 接口流体图标：默认隐藏，松开 Alt 切换显示详情（不再显示文字标签，只显示流体/气体图标）-----
 G.keys = {};
 G.showDetails = false;
-const lblCalls = [];
-const realDrawPortLabel = drawPortLabel;
-drawPortLabel = function (ctx, px, py, s, side, text, color) { lblCalls.push(text); return realDrawPortLabel.apply(this, arguments); };
-const lblMockCtx = new Proxy({}, { get: (t, k) => (k in t ? t[k] : () => {}), set: () => true });
-const lblRef = new Refinery(undefined, 80, 60);
-lblRef.dir = 0;
-lblRef.setRecipe('basic-oil');
-const lblChem = new ChemicalPlant(undefined, 84, 60);
-lblChem.dir = 0;
-lblCalls.length = 0;
-drawRefinery(lblMockCtx, lblRef, 80, 60, 0, 1);
-drawChemicalPlant(lblMockCtx, lblChem, 84, 60, 0, 1);
-check('port labels hidden without Alt', lblCalls.length === 0);
-G.showDetails = true;   // 按一下 Alt 切换为显示详情
-lblCalls.length = 0;
-drawRefinery(lblMockCtx, lblRef, 80, 60, 0, 1);
-drawChemicalPlant(lblMockCtx, lblChem, 84, 60, 0, 1);
-check('port labels shown when details toggled on', lblCalls.indexOf('流体输入') >= 0 && lblCalls.indexOf('产物输出') >= 0);
-drawPortLabel = realDrawPortLabel;
+const iconCalls = [];
+const realDrawPortIcon = drawPortIcon;
+drawPortIcon = function (ctx, px, py, s, side, off, fluid) { iconCalls.push({ side, off, fluid }); return realDrawPortIcon.apply(this, arguments); };
+const iconMockCtx = new Proxy({}, { get: (t, k) => (k in t ? t[k] : () => {}), set: () => true });
+const iconRef = new Refinery(undefined, 80, 60);
+iconRef.dir = 0;
+iconRef.setRecipe('basic-oil');
+const iconChem = new ChemicalPlant(undefined, 84, 60);
+iconChem.dir = 0;
+iconCalls.length = 0;
+drawRefinery(iconMockCtx, iconRef, 80, 60, 0, 1);
+drawChemicalPlant(iconMockCtx, iconChem, 84, 60, 0, 1);
+check('fluid icons hidden without Alt', iconCalls.length === 0);
+G.showDetails = true;   // 松开 Alt 切换为显示详情
+iconCalls.length = 0;
+drawRefinery(iconMockCtx, iconRef, 80, 60, 0, 1);
+drawChemicalPlant(iconMockCtx, iconChem, 84, 60, 0, 1);
+// 炼油厂 basic-oil：输入=原油(crude-oil)，输出=重油/轻油/石油气
+const refFluids = iconCalls.filter(c => c.fluid && (c.side === 3 || c.side === 1));
+check('refinery shows crude-oil input icon when details on', refFluids.some(c => c.fluid === 'crude-oil' && c.side === 3));
+check('refinery shows fluid output icons when details on', refFluids.some(c => c.fluid === 'heavy-oil') && refFluids.some(c => c.fluid === 'light-oil') && refFluids.some(c => c.fluid === 'petroleum-gas'));
+// 化工厂：无配方时接口不画图标；选择配方后输入端也显示对应流体图标
+iconCalls.length = 0;
+iconChem.setRecipe('crack-light');
+drawChemicalPlant(iconMockCtx, iconChem, 84, 60, 0, 1);
+check('chem plant shows heavy-oil input icon after selecting recipe', iconCalls.some(c => c.fluid === 'heavy-oil' && c.side === 1));
+check('chem plant shows light-oil output icon after selecting recipe', iconCalls.some(c => c.fluid === 'light-oil' && c.side === 3));
+drawPortIcon = realDrawPortIcon;
 G.keys = {};
 G.showDetails = false;
 
