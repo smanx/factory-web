@@ -62,7 +62,8 @@ const ITEMS = {
   'iron-ore':   { name: '铁矿石', color: '#8fa0b8', mark: 'Fe', desc: '基础矿物，放入石炉冶炼成铁板' },
   'copper-ore': { name: '铜矿石', color: '#d0793f', mark: 'Cu', desc: '基础矿物，放入石炉冶炼成铜板' },
   'coal':       { name: '煤',     color: '#3a3a42', mark: 'C',  desc: '燃料，供采矿机与石炉燃烧' },
-  'stone':      { name: '石头',   color: '#b3a685', mark: 'St', desc: '合成石炉的材料' },
+  'stone':      { name: '石头',   color: '#b3a685', mark: 'St', desc: '合成石炉的材料，可在熔炉烧成石砖' },
+  'stone-brick': { name: '石砖',   color: '#b3a685', mark: 'Sb', desc: '由石头在熔炉烧制，可在组装机合成石墙' },
   'calcite':    { name: '方解石', color: '#e8e0d0', mark: 'Ca', desc: '矿物，用于炼油厂煤液化配方（太空时代）' },
   'iron-plate':   { name: '铁板',   color: '#ccd4de', mark: 'Fp', desc: '最常用的结构材料' },
   'copper-plate': { name: '铜板',   color: '#e0975f', mark: 'Cp', desc: '用于拉制铜线' },
@@ -132,7 +133,8 @@ const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone', 'calcite'];
 const SMELTS = [
   { id: 'iron-plate',   inp: 'iron-ore',   time: 1.6 },
   { id: 'copper-plate', inp: 'copper-ore', time: 1.6 },
-  { id: 'steel-plate',  inp: 'iron-plate', inCount: 2, time: 3.2 }
+  { id: 'steel-plate',  inp: 'iron-plate', inCount: 2, time: 3.2 },
+  { id: 'stone-brick',  inp: 'stone',      time: 1.6 }
 ];
 
 const RECIPES = {
@@ -181,7 +183,7 @@ const RECIPES = {
   'accumulator':      { time: 3,   inp: { 'iron-plate': 2, 'copper-plate': 2, 'green-circuit': 2 }, out: { 'accumulator': 1 } },
   'military-science': { time: 6,   inp: { 'magazine': 1, 'stone-wall': 1, 'piercing-rounds': 1 }, out: { 'military-science': 1 } },
   'gun-turret':       { time: 3,   inp: { 'iron-plate': 8, 'iron-gear': 4, 'copper-plate': 2 }, out: { 'gun-turret': 1 } },
-  'stone-wall':       { time: 0.5, inp: { 'stone': 2 }, out: { 'stone-wall': 1 } },
+  'stone-wall':       { time: 0.5, inp: { 'stone-brick': 2 }, out: { 'stone-wall': 1 } },
   'magazine':         { time: 0.5, inp: { 'iron-plate': 1 }, out: { 'magazine': 4 } },
   'piercing-rounds':  { time: 1,   inp: { 'magazine': 1, 'copper-plate': 1, 'steel-plate': 1 }, out: { 'piercing-rounds': 1 } },
   'plastic-bar':       { time: 2,   inp: { 'petroleum-gas': 1, 'coal': 1 },                       out: { 'plastic-bar': 1 } },
