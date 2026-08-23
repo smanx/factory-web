@@ -396,8 +396,71 @@ html, body {
   font-size: 12px;
   border-bottom: 1px solid rgba(255,255,255,.1);
 }
+
+/* 配方归属设备标签 */
+.rdev {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: normal;
+  color: #57e389;
+  border: 1px solid rgba(87,227,137,.35);
+  border-radius: 4px;
+  padding: 1px 5px;
+  vertical-align: middle;
+}
+.rdev-note {
+  color: #8fa0b5;
+  font-size: 11px;
+  white-space: nowrap;
+  align-self: center;
+}
+.recipe.chem { background: rgba(150,180,255,.06); }
+.ing.arrow { color: #8fa0b5; font-weight: bold; }
 .stat-row .chip { font-size: 12px; }
 .dim2 { color: #5f6b78; font-size: 11px; margin-left: 4px; }
+
+/* 物品速率页二级 tab：生产速率 / 消耗 */
+.stat-subtabs { display: flex; gap: 6px; margin-bottom: 8px; }
+.stat-subtab {
+  flex: 1;
+  padding: 6px 4px;
+  background: #20272f;
+  border: 1px solid #3a4657;
+  border-radius: 6px;
+  color: #cdd6df;
+  font-size: 13px;
+  cursor: pointer;
+}
+.stat-subtab:hover { background: #2c3644; }
+.stat-subtab.active {
+  background: #2c3a52;
+  border-color: #57e389;
+  color: #57e389;
+  font-weight: bold;
+}
+
+/* 设备面板二级 tab：消耗 / 生产 */
+.mach-tabs { display: flex; gap: 6px; margin: 8px 0; }
+.mach-tab {
+  flex: 1;
+  padding: 6px 4px;
+  background: #20272f;
+  border: 1px solid #3a4657;
+  border-radius: 6px;
+  color: #cdd6df;
+  font-size: 13px;
+  cursor: pointer;
+}
+.mach-tab:hover { background: #2c3644; }
+.mach-tab.active {
+  background: #2c3a52;
+  border-color: #ffd23c;
+  color: #ffd23c;
+  font-weight: bold;
+}
+.mach-rate { margin: 2px 0; font-size: 13px; }
+.mach-rate .chip { font-size: 12px; }
+.mach-rate b { min-width: 60px; display: inline-block; }
 
 .satbar {
   display: inline-block;

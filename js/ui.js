@@ -218,17 +218,19 @@ function htmlInventory() {
   const q = (G.invRecipeQ || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   h += '<input id="inv-recipe-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off" value="' + q + '">';
   h += '<div id="inv-recipes">';
+  // 组装机配方（含化工厂/炼油厂以外的普通配方）
   for (const rid in RECIPES) {
     if (isChemRecipe(rid)) continue;
     const rec = RECIPES[rid];
     const ok = canCraft(rid);
     const outId = Object.keys(rec.out)[0];
     const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
-      Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ')).toLowerCase();
+      Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') + ' ' + recipeDeviceName(rid)).toLowerCase();
     h += '<div class="recipe" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
     h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + ITEMS[outId].name + '|' + ITEMS[outId].desc + '" src="' + iconDataURL(outId) + '">';
     h += '<div class="rmain"><div class="rname">' + ITEMS[Object.keys(rec.out)[0]].name +
-      (rec.out[Object.keys(rec.out)[0]] > 1 ? ' ×' + rec.out[Object.keys(rec.out)[0]] : '') + '</div>';
+      (rec.out[Object.keys(rec.out)[0]] > 1 ? ' ×' + rec.out[Object.keys(rec.out)[0]] : '') +
+      '<span class="rdev">' + recipeDeviceName(rid) + '</span></div>';
     h += '<div class="ring">';
     for (const k in rec.inp) {
       const have = invCount(k);
@@ -238,6 +240,48 @@ function htmlInventory() {
     h += '</div></div>';
     h += '<button data-action="craft" data-id="' + rid + '" ' + (ok ? '' : 'disabled') + '>合成</button>';
     if (ok) h += '<button data-action="craft" data-mult="5" data-id="' + rid + '">×5</button>';
+    h += '</div>';
+  }
+  // 化工厂配方
+  for (const rid of CHEM_RECIPES) {
+    const rec = RECIPES[rid];
+    const outId = Object.keys(rec.out)[0];
+    const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
+      Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') + ' 化工厂').toLowerCase();
+    h += '<div class="recipe chem" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
+    h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + ITEMS[outId].name + '|' + ITEMS[outId].desc + '" src="' + iconDataURL(outId) + '">';
+    h += '<div class="rmain"><div class="rname">' + ITEMS[outId].name +
+      (rec.out[outId] > 1 ? ' ×' + rec.out[outId] : '') + '<span class="rdev">化工厂</span></div>';
+    h += '<div class="ring">';
+    for (const k in rec.inp) {
+      h += '<span class="ing" data-itemid="' + k + '" data-tip="' + ITEMS[k].name + '|' + ITEMS[k].desc + '">' +
+        '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + rec.inp[k] + '</span>';
+    }
+    h += '</div></div>';
+    h += '<span class="rdev-note">需化工厂</span>';
+    h += '</div>';
+  }
+  // 炼油厂配方
+  for (const rid of REFINERY_RECIPE_IDS) {
+    const rec = REFINERY_RECIPES[rid];
+    const outId = Object.keys(rec.out)[0];
+    const searchKey = (rec.name + ' ' + Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') +
+      ' ' + Object.keys(rec.out).map(k => ITEMS[k].name).join(' ') + ' 炼油厂').toLowerCase();
+    h += '<div class="recipe chem" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
+    h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + ITEMS[outId].name + '|' + ITEMS[outId].desc + '" src="' + iconDataURL(outId) + '">';
+    h += '<div class="rmain"><div class="rname">' + rec.name + '<span class="rdev">炼油厂</span></div>';
+    h += '<div class="ring">';
+    for (const k in rec.inp) {
+      h += '<span class="ing" data-itemid="' + k + '" data-tip="' + ITEMS[k].name + '|' + ITEMS[k].desc + '">' +
+        '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + rec.inp[k] + '</span>';
+    }
+    h += '<span class="ing arrow">→</span>';
+    for (const k in rec.out) {
+      h += '<span class="ing" data-itemid="' + k + '" data-tip="' + ITEMS[k].name + '|' + ITEMS[k].desc + '">' +
+        '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + rec.out[k] + '</span>';
+    }
+    h += '</div></div>';
+    h += '<span class="rdev-note">需炼油厂</span>';
     h += '</div>';
   }
   h += '</div>';
@@ -322,6 +366,31 @@ function barHtml(pct) {
   return '<div class="bar"><i style="width:' + pct + '%"></i></div>';
 }
 
+// 设备面板下方的“消耗 / 生产”二级 tab：按配方 time 折算每秒消耗/产出速率。
+// 展示的是该配方对应的输入消耗速率与输出生产速率（单位/秒），而非设备的产能。
+function machRateHtml(rec) {
+  if (!rec) return '';
+  const tab = G.machTab === 'cons' ? 'cons' : 'prod';
+  let h = '<div class="mach-tabs">';
+  h += '<button class="mach-tab' + (tab === 'cons' ? ' active' : '') + '" data-mach-tab="cons">消耗</button>';
+  h += '<button class="mach-tab' + (tab === 'prod' ? ' active' : '') + '" data-mach-tab="prod">生产</button>';
+  h += '</div>';
+  if (tab === 'cons') {
+    if (!Object.keys(rec.inp).length) h += '<div class="dim">该配方无需输入。</div>';
+    for (const k in rec.inp) {
+      const rate = rec.inp[k] / rec.time;
+      h += '<div class="mach-rate"><b style="color:#ff8a7a">−' + rate.toFixed(2) + '/秒</b>' + chip(k, rec.inp[k]) + '</div>';
+    }
+  } else {
+    for (const k in rec.out) {
+      const rate = rec.out[k] / rec.time;
+      h += '<div class="mach-rate"><b style="color:#8fe08f">+' + rate.toFixed(2) + '/秒</b>' + chip(k, rec.out[k]) + '</div>';
+    }
+  }
+  h += '<div class="dim">速率为按配方耗时折算的每秒输入/输出量，非设备产能。</div>';
+  return h;
+}
+
 function statusLine(txt) {
   return '<div class="status">' + txt + '</div>';
 }
@@ -349,6 +418,18 @@ function initPanelEvents() {
     const statTab = ev.target.closest('[data-stat-tab]');
     if (statTab) {
       G.statsTab = statTab.dataset.statTab;
+      renderPanel(false);
+      return;
+    }
+    const statItemTab = ev.target.closest('[data-stat-item-tab]');
+    if (statItemTab) {
+      G.statsItemTab = statItemTab.dataset.statItemTab;
+      renderPanel(false);
+      return;
+    }
+    const machTab = ev.target.closest('[data-mach-tab]');
+    if (machTab) {
+      G.machTab = machTab.dataset.machTab;
       renderPanel(false);
       return;
     }

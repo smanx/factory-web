@@ -310,6 +310,7 @@ function refineryPanelHtml(e) {
   }
   h += '</div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
+  h += machRateHtml(e.recipe ? REFINERY_RECIPES[e.recipe] : null);
   h += '<div class="dim">炼油厂吃电力，须先选配方。接口对齐格子：背面（上方）2个输入口分别在左数第2、4格，正面（下方）3个输出口分别在左数第1、3、5格（各口之间留 1 格间隔）。所需流体经背面输入口相邻管道自动吸入，流体产物自动经正面输出口排回管道；煤/方解石等固体原料机械臂可从任意方向抓取放入。按一下 Alt 可切换显示详情（中央配方 + 各接口流体图标）。</div>';
   return h;
 }

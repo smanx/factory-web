@@ -190,6 +190,7 @@ function assemblerPanelHtml(e) {
   }
   h += '</div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
+  h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null);
   h += '<div class="dim">选中后按 R 旋转朝向（流体入口在背部、固体产物经机械臂取走）；背部通用流体口可接管道，向含流体原料的配方自动供液。</div>';
   return h;
 }

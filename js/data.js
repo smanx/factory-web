@@ -207,6 +207,20 @@ const REFINERY_RECIPES = {
 const REFINERY_RECIPE_IDS = Object.keys(REFINERY_RECIPES);
 function isRefineryRecipe(id) { return REFINERY_RECIPES[id] !== undefined; }
 
+// ---- 配方归属设备 ----
+// 判断某配方适用于哪台设备：炼油厂 / 化工厂 / 组装机。
+const DEVICE_NAMES = {
+  'assembling-machine': '组装机',
+  'chemical-plant': '化工厂',
+  'refinery': '炼油厂'
+};
+function recipeDevice(id) {
+  if (isRefineryRecipe(id)) return 'refinery';
+  if (isChemRecipe(id)) return 'chemical-plant';
+  return 'assembling-machine';
+}
+function recipeDeviceName(id) { return DEVICE_NAMES[recipeDevice(id)] || ''; }
+
 const BUILD_DEFS = {
   'transport-belt':     { w: 1, h: 1, solid: false },
   'fast-transport-belt': { w: 1, h: 1, solid: false },
