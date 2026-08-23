@@ -31,10 +31,11 @@ jobs:
       - name: Run opencode
         uses: anomalyco/opencode/github@latest
         env:
-          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          OPENCODE_API_KEY: ${{ vars.OPENCODE_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENCODE_CONFIG_CONTENT: ${{ vars.OPENCODE_CONFIG }}
         with:
-          model: ${{ vars.MODEL || 'opencode/x-preview-f-free' }}
+          model: ${{ vars.OPENCODE_MODEL || 'opencode/x-preview-f-free' }}
           use_github_token: true
           prompt: |
             你收到了一个开发任务。请先阅读下方提供的上下文信息，自行判断任务类型并处理：
