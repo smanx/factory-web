@@ -113,6 +113,21 @@ check('coal liquefaction needs coal+heavy+steam', REFINERY_RECIPES['coal-liquefa
 // 炼油厂面板提供 4 种配方选择
 const refHtml = htmlMachine(rf);
 check('refinery panel offers 4 recipes', refHtml.includes('选择配方') && refHtml.includes('基础原油加工') && refHtml.includes('进阶原油加工') && refHtml.includes('煤液化') && refHtml.includes('简易煤液化'));
+// 缺原料显示需按当前配方实际用量判断，而非硬编码原油<2：基础原油加工需满 100 原油才算齐备
+const rfMiss = place(Refinery, 90, 60);
+rfMiss.setRecipe('basic-oil');
+check('basic-oil refinery with no crude is missing material', refineryMissingInput(rfMiss) === true);
+rfMiss.inp['crude-oil'] = 99;
+check('basic-oil refinery with 99 crude still missing (needs 100)', refineryMissingInput(rfMiss) === true);
+rfMiss.inp['crude-oil'] = 100;
+check('basic-oil refinery with 100 crude is ready', refineryMissingInput(rfMiss) === false);
+// 非原油配方（煤液化）不看原油量，而是看煤/重油/蒸汽是否满足
+const rfMiss2 = place(Refinery, 96, 60);
+rfMiss2.setRecipe('coal-liquefaction');
+rfMiss2.inp['crude-oil'] = 99; // 即使有大量原油也不能算作煤液化原料齐备
+check('coal-liquefaction ignores crude-oil for missing-input', refineryMissingInput(rfMiss2) === true);
+rfMiss2.inp['coal'] = 10; rfMiss2.inp['heavy-oil'] = 50; rfMiss2.inp['steam'] = 50;
+check('coal-liquefaction ready when coal+heavy+steam met', refineryMissingInput(rfMiss2) === false);
 
 // ---- 一格一接口：非接口格子上的管道不注入，接口格子才注入 ----
 const rfx = place(Refinery, 70, 40);   // 5×5 占据 (70,40)~(74,44)
