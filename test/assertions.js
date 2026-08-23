@@ -105,6 +105,8 @@ const rfOutTotal = (rf.outp['heavy-oil']||0)+(rf.outp['light-oil']||0)+(rf.outp[
 check('refinery actually runs & produces (bug fix)', rf.working || rf.crafting || rfOutTotal > 0);
 check('refinery outputs drained to front pipe', (rfOut.fluid['heavy-oil'] || 0) + (rfOut.fluid['light-oil'] || 0) + (rfOut.fluid['petroleum-gas'] || 0) > 0 || Object.keys(rf.outp).length >= 0);
 check('refinery has recipe set & default ports', rf.recipe === 'basic-oil' && REFINERY_OUTPUT_CELLS.join(',') === '0,2,4');
+// 基础原油加工只产出重油（对齐《异星工厂》：100 原油 → 50 重油），不再产出轻油/石油气
+check('basic-oil outputs only heavy-oil', REFINERY_RECIPES['basic-oil'].out['heavy-oil'] === 50 && !('light-oil' in REFINERY_RECIPES['basic-oil'].out) && !('petroleum-gas' in REFINERY_RECIPES['basic-oil'].out));
 
 // 不同配方输入输出不同：煤液化需要煤+重油+蒸汽
 const rf2 = place(Refinery, 80, 40);
@@ -235,10 +237,10 @@ G.showDetails = true;   // 松开 Alt 切换为显示详情
 iconCalls.length = 0;
 drawRefinery(iconMockCtx, iconRef, 80, 60, 0, 1);
 drawChemicalPlant(iconMockCtx, iconChem, 84, 60, 0, 1);
-// 炼油厂 basic-oil：输入=原油(crude-oil)，输出=重油/轻油/石油气
+// 炼油厂 basic-oil：输入=原油(crude-oil)，输出=只重油(heavy-oil)
 const refFluids = iconCalls.filter(c => c.fluid && (c.side === 3 || c.side === 1));
 check('refinery shows crude-oil input icon when details on', refFluids.some(c => c.fluid === 'crude-oil' && c.side === 3));
-check('refinery shows fluid output icons when details on', refFluids.some(c => c.fluid === 'heavy-oil') && refFluids.some(c => c.fluid === 'light-oil') && refFluids.some(c => c.fluid === 'petroleum-gas'));
+check('refinery shows fluid output icons when details on', refFluids.some(c => c.fluid === 'heavy-oil') && !refFluids.some(c => c.fluid === 'light-oil') && !refFluids.some(c => c.fluid === 'petroleum-gas'));
 // 化工厂：无配方时接口不画图标；选择配方后输入端也显示对应流体图标
 iconCalls.length = 0;
 iconChem.setRecipe('crack-light');
@@ -307,7 +309,8 @@ G.showDetails = false;
 const icons = DEVICE_FLUID_ICONS['storage-tank'](tankIcon);
 check('storage tank fluid icons map to world cells & name', icons.length === 2 && icons.every(ic => ic.fluid === 'petroleum-gas'));
 const refIcons = DEVICE_FLUID_ICONS['refinery'](iconRef);
-check('refinery fluid icons map to world cells & names', refIcons.length === 4 && refIcons.some(ic => ic.fluid === 'crude-oil'));
+// basic-oil：1 输入（原油）+ 1 输出（重油）= 2 个图标
+check('refinery fluid icons map to world cells & names', refIcons.length === 2 && refIcons.some(ic => ic.fluid === 'crude-oil') && refIcons.some(ic => ic.fluid === 'heavy-oil'));
 const chemIcons = DEVICE_FLUID_ICONS['chemical-plant'](iconChem);
 check('chem plant fluid icons map to world cells & names', chemIcons.length === 2 && chemIcons.some(ic => ic.fluid === 'heavy-oil') && chemIcons.some(ic => ic.fluid === 'light-oil'));
 
@@ -403,6 +406,27 @@ check('stone-wall solid blocks', wall.solid === true);
 
 // 极速物流科技、军事科技已登记
 check('express & military techs defined', TECHS['express'] && TECHS['military']);
+
+// ---- Bug2：轻油/重油等产物堆积导致停工时，状态应显示“产物堆积”而非“等待原料” ----
+const savedSat = G.power.sat;
+G.power.sat = 1;   // 面板状态判断依赖全局供电，这里确保非缺电以聚焦产物堆积分支
+const rfBlocked = new Refinery(undefined, 30, 90);
+rfBlocked.setRecipe('basic-oil');
+rfBlocked.inp['crude-oil'] = 100;   // 原料齐备
+rfBlocked.outp['heavy-oil'] = 95;    // 重油堆积：95 + 50 > 100 缓冲上限，无法再开工
+check('output-full detected when heavy-oil is piled up', refineryOutputFull(rfBlocked) === true);
+check('output-full not treated as missing-input', refineryMissingInput(rfBlocked) === false);
+check('refinery tip shows 产物堆积 when output blocked', refineryTip(rfBlocked) === '产物堆积');
+const statusBlocks = [];
+refineryPanelLive(rfBlocked, { status: (t, c) => statusBlocks.push(t + '|' + c), set: () => {}, toggle: () => {}, prog: () => {} });
+check('refinery panel shows 产物堆积 status (not 等待原料)', statusBlocks.some(s => s.indexOf('产物堆积') >= 0) && !statusBlocks.some(s => s.indexOf('等待原料') >= 0));
+// 正常缺料时仍显示等待原料，不受影响
+const rfWait = new Refinery(undefined, 36, 90);
+rfWait.setRecipe('basic-oil');
+rfWait.inp['crude-oil'] = 10;   // 缺料
+check('output-full false when inputs missing', refineryOutputFull(rfWait) === false);
+check('refinery tip shows 待料 when inputs missing', refineryTip(rfWait) === '待料');
+G.power.sat = savedSat;
 
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nALL PASSED');
 process.exit(failures ? 1 : 0);

@@ -191,6 +191,13 @@ function refineryMissingInput(e) {
   for (const k in rec.inp) if ((e.inp[k] || 0) < rec.inp[k]) return true;
   return false;
 }
+// 判断炼油厂是否因产物缓存过满而无法开工（产物堆积）：某产物缓存 + 一次产出量 > 缓冲上限
+function refineryOutputFull(e) {
+  const rec = e.recipe ? REFINERY_RECIPES[e.recipe] : null;
+  if (!rec) return false;
+  for (const k in rec.out) if ((e.outp[k] || 0) + rec.out[k] > REFINERY_BUF_CAP) return true;
+  return false;
+}
 function drawRefinery(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const s = TILE * e.w;
@@ -315,11 +322,14 @@ function refineryPanelLive(e, api) {
   if (!e.recipe) api.status('已暂停：未设置配方，点击下方选择', 'warn');
   else if (e.crafting) api.status('精炼中', 'ok');
   else if (G.power.sat <= 0) api.status('已暂停：缺电', 'bad');
+  else if (refineryOutputFull(e)) api.status('已暂停：产物堆积（输出已满）', 'warn');
   else api.status('已暂停：等待原料', 'warn');
 }
 function refineryTip(e) {
   if (!e.recipe) return '未设置配方，点击打开面板';
-  return e.crafting ? '精炼中' : '待料';
+  if (e.crafting) return '精炼中';
+  if (refineryOutputFull(e)) return '产物堆积';
+  return '待料';
 }
 
 // ===== 注册 =====
