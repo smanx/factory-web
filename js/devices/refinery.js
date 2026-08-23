@@ -15,8 +15,10 @@ class Refinery extends Entity {
     return s;
   }
   portInput() {
-    // 输入口位于背面（北 side 3，旋转后跟随）：从相邻管道吸入原油
-    for (const n of neighborsOnSide(this, sideVec(3, this.dir))) {
+    // 输入口位于背面（北 side 3，旋转后跟随）：只从背面的两个输入格子吸入原油
+    const inSide = (3 + (this.dir | 0)) % 4;   // 输入基准方向：北
+    for (const cell of REFINERY_INPUT_CELLS) {
+      const n = neighborOnSideCell(this, inSide, cell);
       if (!(n instanceof Pipe)) continue;
       if (!(n.fluid['crude-oil'] > 0)) continue;
       if ((this.inp['crude-oil'] || 0) < 50 && n.takeItemOf('crude-oil')) this.inp['crude-oil'] = (this.inp['crude-oil'] || 0) + 1;
@@ -39,11 +41,13 @@ class Refinery extends Entity {
     this.tryOutput();
   }
   tryOutput() {
-    // 输出口固定位于正面（南侧 side 1，旋转后跟随）；只从该侧排入管道/容器
+    // 输出口固定位于正面（南侧 side 1，旋转后跟随）；只从正面的三个输出格子排入管道/容器
+    const outSide = (1 + (this.dir | 0)) % 4;  // 输出基准方向：南
     for (const k of Object.keys(this.outp)) {
       if (!(this.outp[k] > 0)) continue;
-      for (const t of neighborsOnSide(this, sideVec(1, this.dir))) {
-        if (t === this) continue;
+      for (const cell of REFINERY_OUTPUT_CELLS) {
+        const t = neighborOnSideCell(this, outSide, cell);
+        if (!t || t === this) continue;
         if ((t instanceof Pipe || t instanceof Chest) && !(t instanceof Splitter) && t.giveItem(k)) {
           this.outp[k]--;
           if (this.outp[k] <= 0) delete this.outp[k];
@@ -51,6 +55,15 @@ class Refinery extends Entity {
         }
       }
     }
+  }
+  isFluidInlet(x, y) {
+    // 仅背面的输入格子可被管道直接注入原油
+    const inSide = (3 + (this.dir | 0)) % 4;
+    for (const cell of REFINERY_INPUT_CELLS) {
+      const p = neighborOnSideCell(this, inSide, cell);
+      if (p && p.x === x && p.y === y) return true;
+    }
+    return false;
   }
   giveItem(item) {
     if (item === 'crude-oil' && (this.inp['crude-oil'] || 0) < 50) { this.inp['crude-oil'] = (this.inp['crude-oil'] || 0) + 1; return true; }
@@ -89,6 +102,17 @@ class Refinery extends Entity {
 }
 
 // ===== 渲染 =====
+// 炼油厂流体接口：每个接口对齐一个格子（一格一接口）
+// 背面(北，旋转跟随)2个输入口落在沿边第1、3格；正面(南)3个输出口落在沿边第1、2、3格
+const REFINERY_INPUT_CELLS = [1, 3];     // 背面输入口所在格（沿边 0基）
+const REFINERY_OUTPUT_CELLS = [1, 2, 3]; // 正面输出口所在格（沿边 0基）
+const REFINERY_PORTS = [
+  { side: 3, color: PORT_INPUT, arrow: true, off: -1, cells: [1] },   // 北·输入格1
+  { side: 3, color: PORT_INPUT, arrow: true, off: 1, cells: [3] },    // 北·输入格3
+  { side: 1, color: PORT_OUTPUT, off: 1, cells: [1] },                // 南·输出格1
+  { side: 1, color: PORT_OUTPUT, off: 0, cells: [2] },                // 南·输出格2
+  { side: 1, color: PORT_OUTPUT, off: -1, cells: [3] }                // 南·输出格3
+];
 function drawRefinery(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const s = TILE * e.w;
@@ -125,15 +149,8 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
     ctx.fillText('缺原油', px + s / 2, py + s * 0.58);
   }
   // ===== 流体出入口标注（对齐《异星工厂》：入口绿、出口橙红，位置随旋转） =====
-  // 布局：背面(默认朝向上的上方=北)2个输入口；正面(下方=南)3个输出口(石油气/轻油/重油)并排、相邻间隔1格
-  const refPorts = [
-    { side: 3, color: PORT_INPUT, arrow: true, off: -0.5 },  // 背面·左输入
-    { side: 3, color: PORT_INPUT, arrow: true, off: 0.5 },   // 背面·右输入
-    { side: 1, color: PORT_OUTPUT, off: -1 },                 // 正面·左输出
-    { side: 1, color: PORT_OUTPUT, off: 0 },                  // 正面·中输出
-    { side: 1, color: PORT_OUTPUT, off: 1 }                   // 正面·右输出
-  ];
-  drawRotatablePorts(ctx, e, px, py, s, refPorts);
+  // 布局：每个接口对齐到对应的格子（一格一接口）：背面(上方=北)2个输入口落在格1/格3，正面(下方=南)3个输出口落在格1/格2/格3
+  drawRotatablePorts(ctx, e, px, py, s, REFINERY_PORTS);
   const d = e.dir | 0;
   drawPortLabel(ctx, px, py, s, (3 + d) % 4, '原油输入', '#7fd87f');
   drawPortLabel(ctx, px, py, s, (1 + d) % 4, '石油气/轻油/重油输出', '#f0b072');
@@ -149,7 +166,7 @@ function refineryPanelHtml(e) {
   h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
   h += barHtml(0);
   h += '<div class="status"></div>';
-  h += '<div class="dim">配方：原油×2 → 重油+轻油+石油气 各1（吃电力）。接口：背面（上方）2个输入口进原油，正面（下方）3个输出口并排出重油/轻油/石油气，相邻间隔1格；旋转只改朝向，接口相对位置固定。用管道把原油送进背面输入口，或机械臂直接喂入。</div>';
+  h += '<div class="dim">配方：原油×2 → 重油+轻油+石油气 各1（吃电力）。接口对齐格子：背面（上方）2个输入口分别在左数第2、4格，正面（下方）3个输出口分别在左数第2、3、4格，一格对应一个接口；旋转只改朝向，接口相对位置固定。用管道把原油送进背面输入口，或机械臂直接喂入。</div>';
   return h;
 }
 function refineryPanelLive(e, api) {

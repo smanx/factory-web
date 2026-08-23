@@ -20,7 +20,7 @@ check('power use defined', POWER_USE['chemical-plant'] > 0);
 // 化工厂接口：2输入口在底部(南)、2输出口在顶部(北)。塑料配方第1种流体为石油气，进左侧输入口
 const plant = place(ChemicalPlant, 10, 10);
 plant.setRecipe('plastic-bar');
-const gasPipe = place(Pipe, 11, 13); // 底部(南)左侧输入口
+const gasPipe = place(Pipe, 10, 13); // 底部(南)左侧输入口(格0)
 for (let i = 0; i < 30; i++) gasPipe.giveItem('petroleum-gas');
 const chest = place(Chest, 14, 11);
 for (let i = 0; i < 20; i++) chest.giveItem('coal');
@@ -38,10 +38,10 @@ check('manual take of plastic works', grabbed === 'plastic-bar');
 // ---- cracking: fluid output auto-drains to pipes (output at top/north) ----
 const p2 = place(ChemicalPlant, 20, 10);
 p2.setRecipe('crack-light');
-const hoPipe = place(Pipe, 21, 13); // 底部(南)左侧输入口
+const hoPipe = place(Pipe, 20, 13); // 底部(南)左侧输入口(格0)
 for (let i = 0; i < 40; i++) hoPipe.giveItem('heavy-oil');
 run(600);
-const loPipe = place(Pipe, 21, 9); // 顶部(北)输出口
+const loPipe = place(Pipe, 20, 9); // 顶部(北)输出口(格0)
 run(1800);
 check('cracking produced light oil', (p2.outp['light-oil'] || 0) + (loPipe.fluid['light-oil'] || 0) > 0);
 check('light oil drained into adjacent pipe or buffered', ((p2.outp['light-oil'] || 0) >= 0));
@@ -91,12 +91,25 @@ check('inventory offers chemical-plant buildable', invHtml.includes('化工厂')
 
 // ---- refinery: crude oil pulled from back(north) input pipe, outputs at front(south) ----
 const rf = place(Refinery, 60, 40); // 5×5 占据 (60,40)~(64,44)
-const rfIn = place(Pipe, 62, 39);   // 背面(北 side 3)输入口
+const rfIn = place(Pipe, 61, 39);   // 背面(北 side 3)输入口(格1)
 for (let i = 0; i < 50; i++) rfIn.giveItem('crude-oil');
 const rfOut = place(Pipe, 62, 45);  // 正面(南 side 1)输出口
 run(1500);
 check('refinery pulled crude oil from back input pipe', (rf.inp['crude-oil'] || 0) > 0 || rf.working || rf.outTotal() > 0);
 check('refinery outputs drained to front pipe', (rfOut.fluid['heavy-oil'] || 0) + (rfOut.fluid['light-oil'] || 0) + (rfOut.fluid['petroleum-gas'] || 0) > 0 || rf.outTotal() >= 0);
+
+// ---- 一格一接口：非接口格子上的管道不注入，接口格子才注入 ----
+const rfx = place(Refinery, 70, 40);   // 5×5 占据 (70,40)~(74,44)
+const rfBad = place(Pipe, 72, 39);     // 背面(北)第3格=沿边offset2，非输入格
+for (let i = 0; i < 30; i++) rfBad.giveItem('crude-oil');
+run(400);
+check('refinery ignores pipe on non-interface cell (一格一接口)', !(rfx.inp['crude-oil'] > 0) && !rfx.working);
+const cpBad = place(ChemicalPlant, 70, 50); // 3×3 占据 (70,72)~(70,50) 底部输入
+cpBad.setRecipe('crack-light');
+const cpBadPipe = place(Pipe, 71, 53); // 底部第2格=沿边offset1，非输入格
+for (let i = 0; i < 20; i++) cpBadPipe.giveItem('heavy-oil');
+run(400);
+check('chem plant ignores pipe on non-interface cell (一格一接口)', !(cpBad.inp['heavy-oil'] > 0));
 
 // ---- rotatable fluid ports follow entity dir & use distinct in/out colors ----
 const portCalls = [];

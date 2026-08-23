@@ -25,25 +25,26 @@ class ChemicalPlant extends Entity {
     const rec = this.recipe ? RECIPES[this.recipe] : null;
     if (!rec) return;
     // 接口布局（对齐《异星工厂》化工厂）：2个输入口在底部(南)、2个输出口在顶部(北)，固定成对
-    // 左右输入有讲究：配方第1种流体原料进左侧输入口，第2种进右侧输入口
+    // 每个接口对齐一个格子（一格一接口）：输入/输出口分别落在沿边第0、2格；左右输入有讲究：
+    // 配方第1种流体原料进左侧(格0)输入口，第2种进右侧(格2)输入口
     const fluidInps = Object.keys(rec.inp).filter(k => FLUIDS.indexOf(k) >= 0);
-    const inSide = sideVec(1, this.dir);   // 输入口基准：南
-    const outSide = sideVec(3, this.dir);  // 输出口基准：北
-    // 吸入：左侧输入口只收第1种流体，右侧输入口只收第2种流体
-    const pull = (half, fluidIdx) => {
+    const inSide = (1 + (this.dir | 0)) % 4;   // 输入口基准：南
+    const outSide = (3 + (this.dir | 0)) % 4;  // 输出口基准：北
+    // 吸入：左侧输入口(格0)只收第1种流体，右侧输入口(格2)只收第2种流体
+    const pull = (cell, fluidIdx) => {
       if (fluidIdx >= fluidInps.length) return;
       const k = fluidInps[fluidIdx];
       if (!this.needsFluid(k)) return;
-      for (const n of neighborsOnSide(this, inSide, half)) {
-        if (!(n instanceof Pipe)) continue;
-        if (!(n.fluid[k] > 0)) continue;
-        if ((this.inp[k] || 0) < 50 && n.takeItemOf(k)) this.inp[k] = (this.inp[k] || 0) + 1;
-      }
+      const n = neighborOnSideCell(this, inSide, cell);
+      if (!(n instanceof Pipe)) return;
+      if (!(n.fluid[k] > 0)) return;
+      if ((this.inp[k] || 0) < 50 && n.takeItemOf(k)) this.inp[k] = (this.inp[k] || 0) + 1;
     };
-    pull('L', 0); // 左侧输入口 ← 第1种流体
-    pull('R', 1); // 右侧输入口 ← 第2种流体
-    // 排出：流体产物仅从输出侧(北)排入管道
-    for (const n of neighborsOnSide(this, outSide)) {
+    pull(0, 0); // 左侧输入口(格0) ← 第1种流体
+    pull(2, 1); // 右侧输入口(格2) ← 第2种流体
+    // 排出：流体产物仅从输出侧(北)的两个输出格子排入管道
+    for (const cell of CHEM_OUTPUT_CELLS) {
+      const n = neighborOnSideCell(this, outSide, cell);
       if (!(n instanceof Pipe)) continue;
       for (const k of Object.keys(this.outp)) {
         if (!(this.outp[k] > 0) || FLUIDS.indexOf(k) < 0) continue;
@@ -53,6 +54,15 @@ class ChemicalPlant extends Entity {
         }
       }
     }
+  }
+  isFluidInlet(x, y) {
+    // 仅底部的两个输入格子可被管道直接注入流体
+    const inSide = (1 + (this.dir | 0)) % 4;
+    for (const cell of CHEM_INPUT_CELLS) {
+      const p = neighborOnSideCell(this, inSide, cell);
+      if (p && p.x === x && p.y === y) return true;
+    }
+    return false;
   }
   update(dt) {
     this.working = false;
@@ -122,6 +132,16 @@ class ChemicalPlant extends Entity {
 }
 
 // ===== 渲染 =====
+// 化工厂流体接口：每个接口对齐一个格子（一格一接口）
+// 底部(南，旋转跟随)2个输入口落在沿边第0、2格；顶部(北)2个输出口落在沿边第0、2格
+const CHEM_INPUT_CELLS = [0, 2];   // 底部输入口所在格（沿边 0基，左输入=格0，右输入=格2）
+const CHEM_OUTPUT_CELLS = [0, 2];  // 顶部输出口所在格（沿边 0基）
+const CHEM_PORTS = [
+  { side: 1, color: PORT_INPUT, arrow: true, off: 1, cells: [0] },    // 南·输入格0（左侧）
+  { side: 1, color: PORT_INPUT, arrow: true, off: -1, cells: [2] },   // 南·输入格2（右侧）
+  { side: 3, color: PORT_OUTPUT, off: -1, cells: [0] },               // 北·输出格0
+  { side: 3, color: PORT_OUTPUT, off: 1, cells: [2] }                 // 北·输出格2
+];
 function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const s = TILE * 3;
@@ -177,14 +197,9 @@ function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
   ctx.fillStyle = '#eef4e4';
   ctx.fillText('化工厂', px + 8, py + s - 10);
   // ===== 流体出入口标注（对齐《异星工厂》化工厂：2输入口在底部、2输出口在顶部，固定成对，位置随旋转） =====
-  // 左右输入有讲究：配方第1种流体原料进左侧输入口，第2种进右侧输入口
-  const chemPorts = [
-    { side: 1, color: PORT_INPUT, arrow: true, off: -0.5 },  // 底部·左侧输入口
-    { side: 1, color: PORT_INPUT, arrow: true, off: 0.5 },   // 底部·右侧输入口
-    { side: 3, color: PORT_OUTPUT, off: -0.5 },              // 顶部·左输出
-    { side: 3, color: PORT_OUTPUT, off: 0.5 }                // 顶部·右输出
-  ];
-  drawRotatablePorts(ctx, e, px, py, s, chemPorts);
+  // 每个接口对齐一个格子（一格一接口）：输入/输出口分别落在沿边第0、2格；左右输入有讲究：
+  // 配方第1种流体原料进左侧输入口，第2种进右侧输入口
+  drawRotatablePorts(ctx, e, px, py, s, CHEM_PORTS);
   const cd = e.dir | 0;
   drawPortLabel(ctx, px, py, s, (1 + cd) % 4, '输入(第1种→左/第2种→右)', '#7fd87f');
   drawPortLabel(ctx, px, py, s, (3 + cd) % 4, '产物输出', '#f0b072');
@@ -216,7 +231,7 @@ function chemicalPlantPanelHtml(e) {
   }
   h += '</div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
-  h += '<div class="dim">化工厂吃电力，专攻流体化学配方：塑料=石油气+煤；重油可逐级裂解成轻油、石油气。接口固定：底部2个输入口（第1种原料进左侧、第2种进右侧），顶部2个输出口，两两成对、位置随旋转不变。所需流体经底部输入口相邻管道自动吸入，流体产物自动经顶部输出口排回管道；煤/铁板等固体原料机械臂可从任意方向抓取放入。</div>';
+  h += '<div class="dim">化工厂吃电力，专攻流体化学配方：塑料=石油气+煤；重油可逐级裂解成轻油、石油气。接口对齐格子：底部2个输入口分别在左数第1、3格（第1种原料进左侧、第2种进右侧），顶部2个输出口分别在左数第1、3格，一格对应一个接口、位置随旋转不变。所需流体经底部输入口相邻管道自动吸入，流体产物自动经顶部输出口排回管道；煤/铁板等固体原料机械臂可从任意方向抓取放入。</div>';
   return h;
 }
 function chemicalPlantPanelLive(e, api) {

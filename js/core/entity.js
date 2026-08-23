@@ -62,6 +62,14 @@ function neighborsOnSide(e, side, half) {
   return res;
 }
 
+// 获取设备某条边(side，0东1南2西3北)上第 cell 个格子（沿边 0基偏移）相邻的实体
+function neighborOnSideCell(e, side, cell) {
+  if (side === 1) return entAt(e.x + cell, e.y + e.h);      // 南
+  if (side === 3) return entAt(e.x + cell, e.y - 1);        // 北
+  if (side === 0) return entAt(e.x + e.w, e.y + cell);      // 东
+  return entAt(e.x - 1, e.y + cell);                        // 西
+}
+
 // 遍历实体正交相邻格上的实体（去重，不含斜角）
 function forEachNeighborEnt(e, fn) {
   const seen = new Set();
