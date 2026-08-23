@@ -26,6 +26,42 @@ function removeEnt(e) {
 // ===== 流体端口方向表：管道/流体设备共用 =====
 const PIPE_DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
+// side(0东1南2西3北) 经 dir 旋转后的世界方向向量
+const SIDE_VEC = { 0: [1, 0], 1: [0, 1], 2: [-1, 0], 3: [0, -1] };
+function sideVec(side, dir) { return SIDE_VEC[(side + (dir | 0)) % 4]; }
+
+// 获取实体某一世界方向(side)整条边上的相邻实体（去重、不含自身）
+// half 可选 'L'/'R'：仅返回该边前半/后半（沿边方向），南/北边即世界左侧/右侧
+function neighborsOnSide(e, side, half) {
+  const res = new Set();
+  if (side === 1) {          // 南：y = e.y + e.h
+    for (let dx = 0; dx < e.w; dx++) {
+      if (half === 'L' && dx >= e.w / 2) continue;
+      if (half === 'R' && dx < e.w / 2) continue;
+      const t = entAt(e.x + dx, e.y + e.h); if (t && t !== e) res.add(t);
+    }
+  } else if (side === 3) {   // 北：y = e.y - 1
+    for (let dx = 0; dx < e.w; dx++) {
+      if (half === 'L' && dx >= e.w / 2) continue;
+      if (half === 'R' && dx < e.w / 2) continue;
+      const t = entAt(e.x + dx, e.y - 1); if (t && t !== e) res.add(t);
+    }
+  } else if (side === 0) {   // 东：x = e.x + e.w
+    for (let dy = 0; dy < e.h; dy++) {
+      if (half === 'L' && dy >= e.h / 2) continue;
+      if (half === 'R' && dy < e.h / 2) continue;
+      const t = entAt(e.x + e.w, e.y + dy); if (t && t !== e) res.add(t);
+    }
+  } else {                   // 西：x = e.x - 1
+    for (let dy = 0; dy < e.h; dy++) {
+      if (half === 'L' && dy >= e.h / 2) continue;
+      if (half === 'R' && dy < e.h / 2) continue;
+      const t = entAt(e.x - 1, e.y + dy); if (t && t !== e) res.add(t);
+    }
+  }
+  return res;
+}
+
 // 遍历实体正交相邻格上的实体（去重，不含斜角）
 function forEachNeighborEnt(e, fn) {
   const seen = new Set();
