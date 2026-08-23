@@ -133,12 +133,20 @@ class Inserter extends Entity {
       case 'pipe-to-ground':
       case 'pump':
         return FLUIDS.indexOf(item) >= 0 && t.total() < (t.maxDist ? PIPE_CAP : PIPE_CAP);
+      case 'void-pipe':
+        return FLUIDS.indexOf(item) >= 0;   // 虚空管道：接受任意流体后销毁
+      case 'creative-pipe':
+        return false;  // 创造管道：只产不收
       case 'refinery':
         return item === 'crude-oil' && (t.inp['crude-oil'] || 0) < 50;
       case 'storage-chest':
         return t.slots.length < 12 || t.slots.some(s => s && s.item === item && s.count < 50);
       case 'steel-chest':
         return t.slots.length < 24 || t.slots.some(s => s && s.item === item && s.count < 50);
+      case 'void-chest':
+        return true;   // 虚空箱：来者不拒，全部销毁
+      case 'creative-chest':
+        return false;  // 创造箱：只产不收
       case 'gun-turret':
         return (item === 'magazine' || item === 'piercing-rounds') && t.ammoCount(item) < 40;
       default:

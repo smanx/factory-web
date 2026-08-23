@@ -65,6 +65,7 @@ const srcFiles = [
   'devices/pipe-ground.js',
   'devices/pump-device.js',
   'devices/storage-tank.js',
+  'devices/creative.js',
   'devices/refinery.js',
   'devices/chemical-plant.js',
   'devices/power-renewable.js',
