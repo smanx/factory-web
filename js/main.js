@@ -31,7 +31,10 @@ const G = {
   settings: Object.assign({}, DEFAULT_SETTINGS),
   autoT: 0,
   power: { prod: 0, demand: 0, sat: 1 },
-  powerT: 0
+  powerT: 0,
+  enemies: [],
+  bullets: [],
+  spawnT: 0
 };
 
 let lastPlaceKey = '';
@@ -64,6 +67,7 @@ function newGame() {
   G.quickSel = null;
   G.power = { prod: 0, demand: 0, sat: 1 };
   G.powerT = 0;
+  G.enemies = []; G.bullets = []; G.spawnT = 0;
   const [sx, sy] = findSpawn(G.world);
   G.player = makePlayer(sx, sy);
   G.spawn = { x: sx, y: sy };
@@ -433,6 +437,12 @@ function loop(ts) {
       updateHeldMouse(dt);
       updateMining(dt);
       for (const e of G.ents) e.update(dt);
+      // 敌人/子弹系统（可在设置中开关战斗）
+      if (G.settings.combat) {
+        spawnEnemies(dt);
+        updateEnemies(dt);
+        updateBullets(dt);
+      }
       G.powerT += dt;
       if (G.powerT >= 0.25) { G.powerT = 0; updatePower(); }
       updateCamera(dt);

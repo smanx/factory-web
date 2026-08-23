@@ -96,7 +96,8 @@ function drawPipe(ctx, e, gx, gy, dir, alpha) {
     const nb = entAt(gx + dx, gy + dy);
     if (nb instanceof Pipe || nb instanceof Refinery || nb instanceof Pumpjack ||
         nb instanceof Boiler || nb instanceof Pump || nb instanceof SteamEngine ||
-        nb instanceof ChemicalPlant || nb instanceof Assembler || nb instanceof StorageTank) {
+        nb instanceof ChemicalPlant || nb instanceof Assembler || nb instanceof StorageTank ||
+        nb instanceof PipeToGround || nb instanceof FluidPump) {
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.lineTo(cx + dx * TILE / 2, cy + dy * TILE / 2);

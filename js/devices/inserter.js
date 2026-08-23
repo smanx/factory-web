@@ -102,6 +102,7 @@ class Inserter extends Entity {
     }
     switch (t.type) {
       case 'stone-furnace':
+      case 'steel-furnace':
         if (item === 'coal') return t.fuelCoal < 20;
         return SMELTS.some(r => r.inp === item) && (t.inp[item] || 0) < 25;
       case 'electric-furnace':
@@ -109,6 +110,7 @@ class Inserter extends Entity {
         return SMELTS.some(r => r.inp === item) && (t.inp[item] || 0) < 25;
       case 'assembling-machine':
       case 'assembling-machine-mk2':
+      case 'assembling-machine-3':
       case 'chemical-plant': {
         if (!t.recipe) return false;
         const rec = RECIPES[t.recipe];
@@ -128,11 +130,17 @@ class Inserter extends Entity {
       case 'underground':
         return t.items.length < UG_CAP;
       case 'pipe':
-        return FLUIDS.indexOf(item) >= 0 && t.total() < PIPE_CAP;
+      case 'pipe-to-ground':
+      case 'pump':
+        return FLUIDS.indexOf(item) >= 0 && t.total() < (t.maxDist ? PIPE_CAP : PIPE_CAP);
       case 'refinery':
         return item === 'crude-oil' && (t.inp['crude-oil'] || 0) < 50;
       case 'storage-chest':
         return t.slots.length < 12 || t.slots.some(s => s && s.item === item && s.count < 50);
+      case 'steel-chest':
+        return t.slots.length < 24 || t.slots.some(s => s && s.item === item && s.count < 50);
+      case 'gun-turret':
+        return (item === 'magazine' || item === 'piercing-rounds') && t.ammoCount(item) < 40;
       default:
         return false;
     }

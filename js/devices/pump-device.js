@@ -1,0 +1,159 @@
+'use strict';
+
+// ===== 流体泵：从背侧吸入流体、向前侧加压泵出（对齐《异星工厂》Pump，占地 1×1）=====
+// 单向输送、吞吐更高（每帧可推多单位），用于给管道网络提速或跨过障碍抽送。
+const PUMP_BUF_CAP = 40;
+const PUMP_FLOW_PER_TICK = 6;
+class FluidPump extends Entity {
+  constructor(type, x, y) {
+    super('pump', x, y);
+    this.fluid = {};
+  }
+  total() { let s = 0; for (const k in this.fluid) s += this.fluid[k]; return s; }
+  update(dt) {
+    const back = entAt(this.x - DX[this.dir], this.y - DY[this.dir]);
+    const front = entAt(this.x + DX[this.dir], this.y + DY[this.dir]);
+    // 吸入：从背侧管道
+    if (back instanceof Pipe && this.total() < PUMP_BUF_CAP) {
+      for (const k of Object.keys(back.fluid)) {
+        if (!(back.fluid[k] > 0)) continue;
+        if (this.total() >= PUMP_BUF_CAP) break;
+        if (!this.giveItem(k)) continue;
+        back.takeItemOf(k);
+      }
+    }
+    // 泵出：向前侧管道/储液罐/设备
+    if (this.total() > 0 && front) {
+      let n = PUMP_FLOW_PER_TICK;
+      for (const k of Object.keys(this.fluid)) {
+        if (!(this.fluid[k] > 0) || n <= 0) break;
+        if (front instanceof Pipe) {
+          while (n > 0 && this.fluid[k] > 0 && front.total() < PIPE_CAP && front.giveItem(k)) {
+            this.fluid[k]--; n--;
+          }
+        } else if (front instanceof StorageTank || front instanceof Boiler) {
+          while (n > 0 && this.fluid[k] > 0 && front.giveItem(k)) { this.fluid[k]--; n--; }
+        } else if (front instanceof Refinery || front instanceof ChemicalPlant ||
+                   (front instanceof Assembler && front.acceptsFluid(k))) {
+          if (front.isFluidInlet && !front.isFluidInlet(this.x, this.y)) break;
+          while (n > 0 && this.fluid[k] > 0 && front.giveItem(k)) { this.fluid[k]--; n--; }
+        }
+      }
+    }
+    for (const k of Object.keys(this.fluid)) if (!(this.fluid[k] > 0)) delete this.fluid[k];
+  }
+  giveItem(item) {
+    if (FLUIDS.indexOf(item) < 0) return false;
+    if (this.total() >= PUMP_BUF_CAP) return false;
+    for (const k in this.fluid) if (this.fluid[k] > 0 && k !== item) return false;
+    this.fluid[item] = (this.fluid[item] || 0) + 1;
+    return true;
+  }
+  peekItem() { for (const k in this.fluid) if (this.fluid[k] > 0) return k; return null; }
+  takeItem() { for (const k in this.fluid) if (this.fluid[k] > 0) return this.takeItemOf(k); return null; }
+  countOf(item) { return this.fluid[item] || 0; }
+  takeItemOf(item) {
+    if ((this.fluid[item] || 0) > 0) { this.fluid[item]--; if (this.fluid[item] <= 0) delete this.fluid[item]; return item; }
+    return null;
+  }
+  contents() {
+    const list = [[this.type, 1]];
+    for (const k in this.fluid) if (this.fluid[k] > 0) list.push([k, this.fluid[k]]);
+    return list;
+  }
+  takeAll() {
+    const rows = [];
+    for (const k of Object.keys(this.fluid)) { rows.push([k, this.fluid[k]]); delete this.fluid[k]; }
+    return rows;
+  }
+  serialize() { const s = super.serialize(); s.fluid = this.fluid; return s; }
+  static restore(s) { const p = super.restore(s); p.fluid = s.fluid || {}; return p; }
+}
+
+// ===== 渲染 =====
+function drawFluidPump(ctx, e, gx, gy, dir, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  const cx = px + TILE / 2, cy = py + TILE / 2;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#3d6a72';
+  rr(ctx, px + 3, py + 3, TILE - 6, TILE - 6, 6); ctx.fill();
+  ctx.strokeStyle = '#25454d';
+  ctx.lineWidth = 2;
+  rr(ctx, px + 3, py + 3, TILE - 6, TILE - 6, 6); ctx.stroke();
+  // 泵体圆盘
+  ctx.fillStyle = '#5aa0a8';
+  ctx.beginPath(); ctx.arc(cx, cy, 8.5, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#2f5a62';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // 旋转叶片
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(dir * Math.PI / 2 + (G.time * 3));
+  ctx.fillStyle = '#cfe8ec';
+  for (const a of [0, Math.PI / 3, Math.PI * 2 / 3]) {
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(Math.cos(a) * 7, Math.sin(a) * 7);
+    ctx.lineTo(Math.cos(a + 0.6) * 7, Math.sin(a + 0.6) * 7);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+  // 流体显示
+  const total = e.total ? e.total() : 0;
+  if (total > 0) {
+    const first = Object.keys(e.fluid).find(k => e.fluid[k] > 0);
+    if (first && ITEMS[first]) {
+      ctx.fillStyle = ITEMS[first].color;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 3.5, 0, 7);
+      ctx.fill();
+    }
+  }
+  ctx.fillStyle = dirColorNotch(dir);
+  notch(ctx, px, py, dir);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 9px system-ui';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('泵', cx, cy + 13);
+  ctx.globalAlpha = 1;
+}
+
+// ===== 面板 =====
+function fluidPumpPanelHtml(e) {
+  const agg = {};
+  for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
+  let h = row('流体', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
+  h += row('缓冲', e.total() + ' / ' + PUMP_BUF_CAP, 'cap');
+  if (Object.keys(agg).length) h += '<button data-action="takeout" id="btn-pump-takeout">取出全部 (' + e.total() + ')</button>';
+  h += '<div class="status"></div>';
+  h += '<div class="dim">流体泵：背侧（箭头反方向）吸入流体，向前侧（箭头方向）加压泵出，单向输送、吞吐更高，可为长管道提速。R 旋转方向。</div>';
+  return h;
+}
+function fluidPumpPanelLive(e, api) {
+  const agg = {};
+  for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
+  api.set('contents', Object.keys(agg).length ? countStr(agg) : dimSpan('空'));
+  api.set('cap', e.total() + ' / ' + PUMP_BUF_CAP);
+  api.toggle('#btn-pump-takeout', e.total() > 0, '取出全部 (' + e.total() + ')');
+  const back = entAt(e.x - DX[e.dir], e.y - DY[e.dir]);
+  const front = entAt(e.x + DX[e.dir], e.y + DY[e.dir]);
+  if (e.total() > 0 && front) api.status('泵送中：背侧→前侧', 'ok');
+  else if (back instanceof Pipe && back.total() > 0) api.status('待泵：背侧有流体可吸入', 'ok');
+  else api.status('待机：背侧无流体', 'ok');
+}
+function fluidPumpTip(e) {
+  const agg = {};
+  for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
+  return Object.keys(agg).length
+    ? ('泵送 ' + Object.keys(agg).map(k => ITEMS[k].name + '×' + agg[k]).join('、'))
+    : '背侧吸入·前侧泵出（R 旋转）';
+}
+
+// ===== 注册 =====
+ENT_CLASSES['pump'] = FluidPump;
+DEVICE_RENDER['pump'] = drawFluidPump;
+DEVICE_STATUS['pump'] = e => e.total() > 0 ? 'g' : 'r';
+DEVICE_PANEL['pump'] = { html: fluidPumpPanelHtml, live: fluidPumpPanelLive, tip: fluidPumpTip };
+DEVICE_DIR_ROTATE['pump'] = true;

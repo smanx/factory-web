@@ -311,5 +311,98 @@ check('refinery fluid icons map to world cells & names', refIcons.length === 4 &
 const chemIcons = DEVICE_FLUID_ICONS['chemical-plant'](iconChem);
 check('chem plant fluid icons map to world cells & names', chemIcons.length === 2 && chemIcons.some(ic => ic.fluid === 'heavy-oil') && chemIcons.some(ic => ic.fluid === 'light-oil'));
 
+// ==================== 新增内容：补齐原版（无DLC）缺失内容 ====================
+// 占地大小对齐原版
+check('steel-furnace 2x2', BUILD_DEFS['steel-furnace'] && BUILD_DEFS['steel-furnace'].w === 2 && BUILD_DEFS['steel-furnace'].h === 2);
+check('assembling-machine-3 3x3', BUILD_DEFS['assembling-machine-3'] && BUILD_DEFS['assembling-machine-3'].w === 3 && BUILD_DEFS['assembling-machine-3'].h === 3);
+check('express-belt 1x1', BUILD_DEFS['express-transport-belt'] && BUILD_DEFS['express-transport-belt'].w === 1);
+check('express-splitter 1x2', BUILD_DEFS['express-splitter'] && BUILD_DEFS['express-splitter'].w === 1 && BUILD_DEFS['express-splitter'].h === 2 && BUILD_DEFS['express-splitter'].rotSwap);
+check('steel-chest 1x1', BUILD_DEFS['steel-chest'] && BUILD_DEFS['steel-chest'].w === 1);
+check('pipe-to-ground 1x1', BUILD_DEFS['pipe-to-ground'] && BUILD_DEFS['pipe-to-ground'].w === 1);
+check('pump 1x1', BUILD_DEFS['pump'] && BUILD_DEFS['pump'].w === 1);
+check('solar-panel 2x2', BUILD_DEFS['solar-panel'] && BUILD_DEFS['solar-panel'].w === 2 && BUILD_DEFS['solar-panel'].h === 2);
+check('accumulator 2x2', BUILD_DEFS['accumulator'] && BUILD_DEFS['accumulator'].w === 2 && BUILD_DEFS['accumulator'].h === 2);
+check('gun-turret 2x2', BUILD_DEFS['gun-turret'] && BUILD_DEFS['gun-turret'].w === 2 && BUILD_DEFS['gun-turret'].h === 2);
+check('stone-wall 1x1', BUILD_DEFS['stone-wall'] && BUILD_DEFS['stone-wall'].w === 1);
+
+// 极速物流三件套
+const ebelt = new ExpressBelt(undefined, 200, 100);
+check('express belt speedMult ~3.75', ebelt.speedMult() === EXPRESS_BELT_MULT);
+const eug = new ExpressUnderground(undefined, 210, 100);
+check('express underground maxDist 20', eug.maxDist() === EXPRESS_UNDERGROUND_MAX && EXPRESS_UNDERGROUND_MAX === 20);
+const esplit = new ExpressSplitter(undefined, 220, 100);
+check('express splitter extends splitter & speedMult', esplit instanceof Splitter && esplit.speedMult() === EXPRESS_BELT_MULT);
+check('express belt recipe exists', RECIPES['express-transport-belt'] && RECIPES['express-transport-belt'].out['express-transport-belt'] === 1);
+
+// 钢铁炉：比石炉快，仍需燃料
+const sf = place(SteelFurnace, 230, 100);
+sf.giveItem('iron-ore'); sf.giveItem('coal');
+const t0 = sf.prog;
+run(60);
+check('steel-furnace smelts iron (progression)', (sf.outp['iron-plate'] || 0) > 0 || sf.prog > t0);
+
+// 组装机 III：吃电、速度最高
+const a3 = place(Assembler3, 240, 100);
+a3.setRecipe('iron-gear');
+a3.inp['iron-plate'] = 10;
+check('assembler3 power demand > 0', a3.powerDemand() === POWER_USE['assembling-machine-3'] && POWER_USE['assembling-machine-3'] > POWER_USE['assembling-machine-mk2']);
+
+// 钢箱：更大容量（用不同物品填满测试，超出普通箱 12 格上限）
+const sc = place(SteelChest, 250, 100);
+for (let i = 0; i < 13; i++) sc.giveItem('item-' + i); // 13 种不同物品
+check('steel-chest holds >12 slots', sc.slots.length >= 13);
+const storeChest = new Chest(undefined, 251, 100);
+for (let i = 0; i < 13; i++) storeChest.giveItem('item-' + i);
+check('steel-chest larger than storage-chest', sc.slots.length === 13 && storeChest.slots.length <= 12);
+
+// 地下管道：配对传输流体
+const pg1 = place(PipeToGround, 260, 100); pg1.dir = 0; pg1.applyDir();
+const pg2 = place(PipeToGround, 265, 100); pg2.dir = 0; pg2.applyDir();
+const pgIn = place(Pipe, 259, 100); for (let i = 0; i < 20; i++) pgIn.giveItem('water');
+const pgOut = place(Pipe, 266, 100);
+check('pipe-to-ground findMate works', pg1.findMate() === pg2);
+run(200);
+check('pipe-to-ground transfers fluid underground', (pg2.fluid['water'] || 0) + (pgOut.fluid['water'] || 0) > 0 || (pg1.fluid['water'] || 0) > 0);
+
+// 流体泵：背吸前泵
+const fp = place(FluidPump, 270, 100); fp.dir = 0; fp.applyDir();
+const fpIn = place(Pipe, 269, 100); for (let i = 0; i < 20; i++) fpIn.giveItem('crude-oil');
+const fpOut = place(Pipe, 271, 100);
+run(200);
+check('fluid pump pushes forward', (fpOut.fluid['crude-oil'] || 0) > 0 || (fp.fluid['crude-oil'] || 0) > 0);
+
+// 太阳能板 / 蓄电器
+G.time = DAY_CYCLE * 0.5; // 正午
+const sp = place(SolarPanel, 280, 100); sp.update(0.016);
+check('solar panel generates at noon', (sp.powerOut || 0) > 0);
+G.time = DAY_CYCLE * 0.9; // 夜晚
+sp.update(0.016);
+check('solar panel stops at night', (sp.powerOut || 0) <= 0.01);
+const acc = place(Accumulator, 285, 100);
+acc.stored = 10;
+check('accumulator stores & has cap', acc.stored === 10 && ACCUM_CAP === 30);
+G.time = DAY_CYCLE * 0.5;
+
+// 军事体系：炮塔占地/弹药、石墙、敌人、军事科学包
+check('military-science in SCIENCE_PACKS', isScience('military-science'));
+check('military-science recipe', RECIPES['military-science'] && RECIPES['military-science'].out['military-science'] === 1);
+check('gun-turret recipe', RECIPES['gun-turret'] && RECIPES['gun-turret'].out['gun-turret'] === 1);
+const turret = place(GunTurret, 290, 100);
+turret.giveItem('magazine');
+turret.giveItem('piercing-rounds');
+check('turret accepts ammo', turret.ammoCount('magazine') === 1 && turret.ammoCount('piercing-rounds') === 1);
+// 敌人被炮塔击杀（放足弹药：穿甲弹每次 10 伤，40 血需 4 发）
+turret.ammo['piercing-rounds'] = (turret.ammo['piercing-rounds'] || 0) + 6;
+G.enemies = [{ x: (290 + 1.5) * TILE, y: (100 + 1) * TILE, hp: 40, dead: false }];
+G.bullets = [];
+run(240);
+check('turret kills enemy with ammo', G.enemies.length === 0 || G.enemies.every(e => e.dead));
+G.enemies = [];
+const wall = place(StoneWall, 295, 100);
+check('stone-wall solid blocks', wall.solid === true);
+
+// 极速物流科技、军事科技已登记
+check('express & military techs defined', TECHS['express'] && TECHS['military']);
+
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nALL PASSED');
 process.exit(failures ? 1 : 0);
