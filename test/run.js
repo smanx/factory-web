@@ -74,6 +74,7 @@ const srcFiles = [
   'player.js',
   'ui.js',
   'render.js',
+  'stats.js',
   'main.js'
 ];
 let src = srcFiles.map(f => fs.readFileSync(path.join(__dirname, '..', 'js', f), 'utf8')).join('\n;\n');

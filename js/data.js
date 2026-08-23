@@ -266,8 +266,12 @@ const TECHS = {
   automation2:{ name: '自动化 II', cost: { 'blue-science': 40 }, desc: '组装机 II 速度额外 ×1.2' },
   express:    { name: '极速物流', cost: { 'military-science': 40 }, desc: '解锁极速传送带/地下带/分流器，物流终极档' },
   military:   { name: '军事工程', cost: { 'military-science': 30 }, desc: '解锁机枪炮塔、石墙、弹药（防御体系）' },
-  deep:       { name: '重工蓝图', cost: { 'blue-science': 50 }, desc: '蓝包终技：科研总进度获取 +20%' }
+  deep:       { name: '重工蓝图', cost: { 'blue-science': 50 }, desc: '蓝包终技：科研总进度获取 +20%' },
+  infinite:   { name: '无限科技', cost: {}, infinite: true, desc: '无限研究：消耗任意科学包，永不完成' }
 };
+
+// 判断是否为无限科技（永不完成、消耗任意科学包）
+function isInfiniteTech(tid) { return !!(TECHS[tid] && TECHS[tid].infinite); }
 
 const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: false, combat: false };
 const SETTINGS_KEY = 'factory-settings-v1';

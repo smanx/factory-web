@@ -136,6 +136,9 @@ function renderPanel(full) {
   } else if (G.panelMode === 'tech') {
     title.textContent = '科技研究';
     body.innerHTML = htmlTech();
+  } else if (G.panelMode === 'stats') {
+    title.textContent = '统计面板';
+    body.innerHTML = htmlStats();
   } else if (G.panelMode === 'set') {
     title.textContent = '设置';
     body.innerHTML = htmlSettings();
@@ -271,17 +274,29 @@ function htmlTech() {
     for (const pk in t.cost) costChips.push(ITEMS[pk].name + '×' + t.cost[pk]);
     h += '<div class="recipe tech ' + (done ? 'done' : '') + '">';
     h += '<div class="rmain"><div class="rname">' + t.name + '</div><div class="dim">' + t.desc + '</div>';
-    h += '<div class="bar"><i style="width:' + Math.min(100, prog / total * 100) + '%"></i></div>';
-    h += '<div class="dim">' + (done ? '已完成' :
-      prog + ' / ' + total + '（' + costChips.join(' + ') + '）') + '</div></div>';
-    if (!done) {
+    if (isInfiniteTech(tid)) {
+      // 无限科技：进度无限，永不完成，消耗任意科学包
+      h += '<div class="bar"><i style="width:100%"></i></div>';
+      h += '<div class="dim">' + (done ? '已完成' :
+        '无限研究 · 已消耗 ' + prog + ' 瓶 · 消耗任意科学包') + '</div>';
+    } else {
+      h += '<div class="bar"><i style="width:' + Math.min(100, prog / total * 100) + '%"></i></div>';
+      h += '<div class="dim">' + (done ? '已完成' :
+        prog + ' / ' + total + '（' + costChips.join(' + ') + '）') + '</div>';
+    }
+    if (!done && !isInfiniteTech(tid)) {
       h += (G.activeTech === tid)
         ? '<button data-action="tech-cancel">取消</button>'
+        : '<button data-action="tech" data-id="' + tid + '">研究</button>';
+    } else if (isInfiniteTech(tid)) {
+      // 无限科技始终可选（重复研究也继续，永不完成）
+      h += (G.activeTech === tid)
+        ? '<button data-action="tech-cancel">停止</button>'
         : '<button data-action="tech" data-id="' + tid + '">研究</button>';
     }
     h += '</div>';
   }
-  h += '<div class="hint">建造研究中心，放入科学包后选择课题；研究中心按配方顺序逐瓶消耗（红→绿→蓝→灰）。机械臂可自动喂包。绿色科学包=传送带+机械臂；蓝色科学包=塑料+电路板+铜板（需打通石油链）；军事科学包=弹药匣+石墙+穿甲弹（解锁极速物流与军事工程）。</div>';
+  h += '<div class="hint">建造研究中心，放入科学包后选择课题；研究中心按配方顺序逐瓶消耗（红→绿→蓝→灰）。机械臂可自动喂包。绿色科学包=传送带+机械臂；蓝色科学包=塑料+电路板+铜板（需打通石油链）；军事科学包=弹药匣+石墙+穿甲弹（解锁极速物流与军事工程）。「无限科技」为无限研究：只要中心里有任意科学包就会被持续消耗、永不完成。</div>';
   return h;
 }
 
@@ -331,6 +346,12 @@ function initPanelEvents() {
     applyInvRecipeFilter(G.invRecipeQ);
   });
   document.getElementById('panel-body').addEventListener('click', ev => {
+    const statTab = ev.target.closest('[data-stat-tab]');
+    if (statTab) {
+      G.statsTab = statTab.dataset.statTab;
+      renderPanel(false);
+      return;
+    }
     const hbSlot = ev.target.closest('[data-hbedit]');
     if (hbSlot) {
       const i = +hbSlot.dataset.hbedit;
@@ -483,6 +504,16 @@ function initTopButtons() {
     G.panelMode === 'inv' ? closePanel() : openPanel('inv'));
   document.getElementById('btn-tech').addEventListener('click', () =>
     G.panelMode === 'tech' ? closePanel() : openPanel('tech'));
+  document.getElementById('btn-stats').addEventListener('click', () =>
+    G.panelMode === 'stats' ? closePanel() : openPanel('stats'));
+  document.getElementById('btn-blue').addEventListener('click', () => {
+    closePanel();
+    toggleBlueprint('blue');
+  });
+  document.getElementById('btn-red').addEventListener('click', () => {
+    closePanel();
+    toggleBlueprint('red');
+  });
   document.getElementById('btn-set').addEventListener('click', () =>
     G.panelMode === 'set' ? closePanel() : openPanel('set'));
   document.getElementById('btn-save').addEventListener('click', saveGame);
@@ -642,6 +673,16 @@ function buildDebug() {
       buildDebug();
       panel.style.display = 'block';
       refreshHotbar();
+    }],
+    ['无限交互距离：' + (G.dbg.farReach ? '开' : '关'), () => {
+      G.dbg.farReach = !G.dbg.farReach;
+      if (G.dbg.farReach) {
+        toast('无限交互距离已开启：可对任意远的格子交互/建造');
+      } else {
+        toast('无限交互距离已关闭');
+      }
+      buildDebug();
+      panel.style.display = 'block';
     }],
     ['完成研究', () => {
       const t = G.activeTech;

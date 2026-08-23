@@ -357,3 +357,60 @@ html, body {
   cursor: pointer;
 }
 .setrow input[type=checkbox] { width: 15px; height: 15px; accent-color: #57e389; }
+
+/* ===== 统计面板 ===== */
+.stat-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.stat-tab {
+  flex: 1;
+  padding: 7px 4px;
+  background: #232c38;
+  border: 1px solid #46536a;
+  border-radius: 6px;
+  color: #cdd6df;
+  font-size: 13px;
+  cursor: pointer;
+}
+.stat-tab:hover { background: #3a4657; }
+.stat-tab.active {
+  background: #2c3a52;
+  border-color: #ffd23c;
+  color: #ffd23c;
+  font-weight: bold;
+}
+
+.stat-table { margin-bottom: 6px; }
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 2px;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+  font-size: 13px;
+}
+.stat-head {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 2px;
+  color: #7d8894;
+  font-size: 12px;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+}
+.stat-row .chip { font-size: 12px; }
+.dim2 { color: #5f6b78; font-size: 11px; margin-left: 4px; }
+
+.satbar {
+  display: inline-block;
+  width: 90px;
+  height: 8px;
+  background: #10151c;
+  border-radius: 4px;
+  overflow: hidden;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+.satbar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #57b95c, #8fe08f);
+}

@@ -10,9 +10,27 @@ class Lab extends Entity {
   }
   packCount(id) { return this.packs[id] || 0; }
   totalPacks() { let s = 0; for (const k in this.packs) s += this.packs[k]; return s; }
+  // 返回任意一种有库存的科学包（供无限科技“消耗任何包”使用）
+  peekAnyPack() {
+    for (const k of SCIENCE_PACKS) if (this.packCount(k) > 0) return k;
+    return null;
+  }
+  // 从任意一种有库存的科学包中消耗 n 个（不限种类）
+  consumeAnyPack(n) {
+    for (const k of SCIENCE_PACKS) {
+      const c = this.packCount(k);
+      if (c <= 0) continue;
+      const take = Math.min(n, c);
+      this.packs[k] -= take;
+      if (this.packs[k] <= 0) delete this.packs[k];
+      n -= take;
+      if (n <= 0) break;
+    }
+  }
   nextNeed() {
     const tech = G.activeTech;
     if (!tech || G.techDone[tech]) return null;
+    if (isInfiniteTech(tech)) return this.peekAnyPack();
     const list = techNeedList(tech);
     const done = G.techProg[tech] || 0;
     return done < list.length ? list[done] : null;
@@ -21,6 +39,20 @@ class Lab extends Entity {
     this.active = false;
     const tech = G.activeTech;
     if (!tech || G.techDone[tech]) { this.t = 0; return; }
+    // 无限科技：永不完成，持续消耗任意存在的科学包
+    if (isInfiniteTech(tech)) {
+      const any = this.peekAnyPack();
+      if (!any) { this.t = 0; return; }   // 没有任何科学包则暂停
+      this.active = true;
+      this.t += dt;
+      if (this.t >= LAB_TIME) {
+        this.t -= LAB_TIME;
+        this.consumeAnyPack(1);
+        G.techProg[tech] = (G.techProg[tech] || 0) + 1;   // 进度无限增长
+        uiDirty = true;
+      }
+      return;
+    }
     const list = techNeedList(tech);
     let done = G.techProg[tech] || 0;
     if (done >= list.length) {
@@ -149,13 +181,21 @@ function labPanelLive(e, api) {
   if (tech && !G.techDone[tech]) {
     const need = e.nextNeed();
     const doneN = G.techProg[tech] || 0;
-    api.set('techline', TECHS[tech].name + '（' + doneN + '/' + techCostTotal(tech) + '，下一瓶：' +
-      (need ? ITEMS[need].name : '—') + '）');
-    api.prog(doneN / techCostTotal(tech) * 100);
-    // 状态：研究中或暂停原因
-    if (need && e.packCount(need) <= 0) api.status('已暂停：缺少科学包「' + ITEMS[need].name + '」', 'warn');
-    else if (!need) api.status('已暂停：待按配方顺序放入科学包', 'warn');
-    else api.status('研究中：' + TECHS[tech].name, 'ok');
+    if (isInfiniteTech(tech)) {
+      // 无限科技：无上限进度，消耗任意存在的科学包
+      api.set('techline', TECHS[tech].name + '（已消耗 ' + doneN + ' 瓶，无限）');
+      api.prog(100);
+      if (e.totalPacks() > 0) api.status('研究中：消耗任意科学包 ' + TECHS[tech].name, 'ok');
+      else api.status('已暂停：缺少科学包（放入任意科学包即可）', 'warn');
+    } else {
+      api.set('techline', TECHS[tech].name + '（' + doneN + '/' + techCostTotal(tech) + '，下一瓶：' +
+        (need ? ITEMS[need].name : '—') + '）');
+      api.prog(doneN / techCostTotal(tech) * 100);
+      // 状态：研究中或暂停原因
+      if (need && e.packCount(need) <= 0) api.status('已暂停：缺少科学包「' + ITEMS[need].name + '」', 'warn');
+      else if (!need) api.status('已暂停：待按配方顺序放入科学包', 'warn');
+      else api.status('研究中：' + TECHS[tech].name, 'ok');
+    }
   } else {
     api.set('techline', dimSpan('未选择（T 打开研究面板）'));
     if (G.activeTech && G.techDone[G.activeTech]) api.status('已完成：' + TECHS[G.activeTech].name, 'ok');

@@ -428,5 +428,90 @@ check('output-full false when inputs missing', refineryOutputFull(rfWait) === fa
 check('refinery tip shows 待料 when inputs missing', refineryTip(rfWait) === '待料');
 G.power.sat = savedSat;
 
+// ==================== 新增：无限科技 / 统计面板 / 蓝图红图 / 无限交互距离 ====================
+// 无限科技：定义存在且标记为 infinite，永不完成、消耗任意科学包
+check('infinite tech defined & flagged', TECHS['infinite'] && isInfiniteTech('infinite') && TECHS['infinite'].infinite === true);
+check('infinite tech has empty cost', Object.keys(TECHS['infinite'].cost || {}).length === 0);
+
+// 无限科技实验室：放入任意科学包（不只红瓶）即被消耗，进度持续增长、永不完成
+const ilab = new Lab(undefined, 320, 100);
+ilab.giveItem('green-science');   // 放入一种非红科学包
+ilab.giveItem('blue-science');    // 再放另一种
+G.activeTech = 'infinite';
+G.techProg['infinite'] = 0;
+G.techDone['infinite'] = false;
+const before1 = ilab.packCount('green-science') + ilab.packCount('blue-science');
+// 手动推进若干帧（模拟研究中心运行）
+for (let i = 0; i < Math.ceil(LAB_TIME * 3 / (1 / 60)); i++) ilab.update(1 / 60);
+const after1 = ilab.packCount('green-science') + ilab.packCount('blue-science');
+check('infinite tech consumes any science pack', before1 > after1);
+check('infinite tech progress grows forever', (G.techProg['infinite'] || 0) > 0);
+check('infinite tech never completes', G.techDone['infinite'] !== true);
+// 无科学包时暂停（不报错、进度不再增长）
+ilab.takeAll();
+G.techProg['infinite'] = 0;
+for (let i = 0; i < 120; i++) ilab.update(1 / 60);
+check('infinite tech pauses with no packs', G.techProg['infinite'] === 0);
+G.activeTech = null;
+
+// 统计：trackProd 记录生成/消耗
+const beforeTotal = PROD.total['iron-plate'] || 0;
+invAdd('iron-plate', 10);
+check('trackProd records gain', (PROD.total['iron-plate'] || 0) === beforeTotal + 10 && (PROD.gained['iron-plate'] || 0) >= 10);
+invTake('iron-plate', 4);
+check('trackProd records loss', (PROD.lost['iron-plate'] || 0) >= 4 && (PROD.total['iron-plate'] || 0) === beforeTotal + 6);
+
+// 统计面板 HTML 生成
+G.panelMode = 'stats'; G.statsTab = 'items';
+const sItems = htmlStats();
+check('stats items tab renders', typeof sItems === 'string' && sItems.includes('物品生成与消耗速率'));
+G.statsTab = 'power';
+const sPower = htmlStats();
+check('stats power tab renders', typeof sPower === 'string' && sPower.includes('电网概览') && sPower.includes('供电饱和度'));
+G.statsTab = 'perf';
+const sPerf = htmlStats();
+check('stats perf tab renders', typeof sPerf === 'string' && sPerf.includes('帧率') && sPerf.includes('地形离屏缓存'));
+G.panelMode = null;
+
+// 无限交互距离：farReach 开启时 withinReach 恒为真
+G.player = { x: 0, y: 0 };
+const savedFar = G.dbg.farReach;
+G.dbg.farReach = true;
+check('farReach allows interaction anywhere', withinReach(99999, -88888) === true);
+G.dbg.farReach = false;
+check('farReach off still enforces reach', withinReach(99999, -88888) === false);
+G.dbg.farReach = savedFar;
+
+// 蓝图复制/粘贴：放入若干实体，框选复制后粘贴到新位置
+// （蓝图函数会调用 toast；测试环境下 document stub 无 toast 容器，临时静默 toast）
+const savedToastFn = toast;
+toast = () => {};
+const bpLab = place(Lab, 330, 100);
+const bpChest = place(Chest, 334, 100);
+bpChest.giveItem('iron-plate');
+G.blueMode = 'blue';
+G.blueStart = { tx: 330, ty: 100 };
+G.blueEnd = { tx: 334, ty: 102 };   // 覆盖 Lab(3×3) 中心与 Chest
+captureBlueprint();
+check('blueprint captured', G.blueprint && G.blueprint.ents.length >= 2 && G.blueMode === 'paste');
+// 粘贴到空白区域
+const beforePaste = G.ents.length;
+G.cursorTile = { tx: 350, ty: 100 };
+G.blueMode = 'paste';
+pasteBlueprint();
+const pastedLabs = G.ents.filter(e => e.type === 'lab' && e.x === 350 && e.y === 100);
+const pastedChest = G.ents.find(e => e.type === 'storage-chest' && e.x === 354 && e.y === 100);
+check('blueprint pasted lab', pastedLabs.length === 1);
+check('blueprint pasted chest with contents', !!pastedChest && (pastedChest.countOf('iron-plate') > 0));
+// 红图：框选删除整块
+G.blueMode = 'red';
+G.blueStart = { tx: 350, ty: 100 };
+G.blueEnd = { tx: 354, ty: 102 };
+applyRedBlueprint();
+check('red blueprint deletes block', !G.ents.some(e => e.type === 'lab' && e.x === 350 && e.y === 100) && !G.ents.some(e => e.type === 'storage-chest' && e.x === 354 && e.y === 100));
+G.blueMode = null;
+G.blueprint = null;
+toast = savedToastFn;
+
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nALL PASSED');
 process.exit(failures ? 1 : 0);
