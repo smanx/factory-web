@@ -19,7 +19,9 @@ class Pipe extends Entity {
         const t = entAt(this.x + dx, this.y + dy);
         if (!t || t === this) continue;
         if (t instanceof Pipe) {
-          if (t.total() < PIPE_CAP && this.fluid[k] > (t.fluid[k] || 0)) {
+          // 防止流体混合：仅当目标管为空或只含同种流体 k 时，才允许流动
+          const tOther = t.total() - (t.fluid[k] || 0);
+          if (tOther === 0 && t.total() < PIPE_CAP && this.fluid[k] > (t.fluid[k] || 0)) {
             this.fluid[k]--;
             t.fluid[k] = (t.fluid[k] || 0) + 1;
           }
@@ -37,6 +39,8 @@ class Pipe extends Entity {
   giveItem(item) {
     if (FLUIDS.indexOf(item) < 0) return false;
     if (this.total() >= PIPE_CAP) return false;
+    // 防止流体混合：管道中已有别的流体时，拒绝加入新流体
+    for (const k in this.fluid) if (this.fluid[k] > 0 && k !== item) return false;
     this.fluid[item] = (this.fluid[item] || 0) + 1;
     return true;
   }
