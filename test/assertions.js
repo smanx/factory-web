@@ -234,5 +234,67 @@ drawPortIcon = realDrawPortIcon;
 G.keys = {};
 G.showDetails = false;
 
+// ---- 储液罐：大容量缓冲、单一流体、东西两侧各一通用口 ----
+check('BUILD_DEFS has storage-tank 3x3', BUILD_DEFS['storage-tank'] && BUILD_DEFS['storage-tank'].w === 3 && BUILD_DEFS['storage-tank'].h === 3);
+check('ENT_CLASSES has storage-tank', ENT_CLASSES['storage-tank'] === StorageTank);
+check('storage tank recipe defined', RECIPES['storage-tank'] && RECIPES['storage-tank'].out['storage-tank'] === 1);
+// 管道把流体灌入储液罐
+const tank = place(StorageTank, 100, 80); // 3×3 占据 (100,80)~(102,82)
+const fillPipe = place(Pipe, 103, 81);    // 东侧(中间格)相邻
+for (let i = 0; i < 60; i++) fillPipe.giveItem('crude-oil');
+run(400);
+check('pipe pours crude-oil into storage tank', (tank.fluid['crude-oil'] || 0) > 0);
+check('storage tank stores single fluid & not mixed', tank.storedFluid() === 'crude-oil');
+// 储液罐只容单一流体：拒绝不同流体混入
+check('storage tank rejects different fluid (no mixing)', tank.giveItem('water') === false && tank.giveItem('crude-oil') === true);
+// 空罐可接收任一流体
+const tank2 = place(StorageTank, 100, 90);
+check('empty storage tank accepts any fluid', tank2.giveItem('steam') === true && tank2.storedFluid() === 'steam');
+for (let i = 0; i < 20; i++) tank2.giveItem('steam'); // 存足量
+check('storage tank buffers without losing fluid', tank2.total() === 21 && tank2.storedFluid() === 'steam');
+// 容量上限
+check('storage tank capacity is STORAGE_TANK_CAP', STORAGE_TANK_CAP === 2500 && tank.total() <= STORAGE_TANK_CAP);
+// 管道继续向未满的储液罐灌入、储液罐不回流（无震荡，缓冲保持）
+const inPipe = place(Pipe, 103, 91);
+for (let i = 0; i < 30; i++) inPipe.giveItem('steam');
+run(120);
+check('pipe pours more fluid into tank (buffer absorbs)', (tank2.fluid['steam'] || 0) >= 21 && (inPipe.fluid['steam'] || 0) >= 0);
+// 储液罐给下游设备供料：罐内原油直接喂给炼油厂输入口
+const tankRf = place(Refinery, 110, 80); // 5×5 占据 (110,80)~(114,84)
+const tankSrc = place(StorageTank, 110, 77); // 炼油厂北侧(输入口)上方，3×3 占据 (110,77)~(112,79)，不重叠
+for (let i = 0; i < 60; i++) tankSrc.giveItem('crude-oil');
+tankRf.setRecipe('basic-oil');
+run(800);
+check('storage tank feeds crude-oil to refinery input', (tankRf.inp['crude-oil'] || 0) > 0 || tankRf.working || Object.keys(tankRf.outp).length > 0);
+// serialize/restore
+const ts = tank.serialize();
+const tr = StorageTank.restore(JSON.parse(JSON.stringify(ts)));
+check('storage tank serialize/restore keeps fluid', JSON.stringify(tr.fluid) === JSON.stringify(tank.fluid));
+// 显示详情(Alt)时储液罐在东西两侧画当前流体图标
+G.showDetails = true;
+const realDrawPortIcon2 = drawPortIcon;
+drawPortIcon = function (ctx, px, py, s, side, off, fluid) { iconCalls.push({ side, off, fluid }); return realDrawPortIcon2.apply(this, arguments); };
+iconCalls.length = 0;
+const tankIcon = new StorageTank(undefined, 120, 80);
+tankIcon.dir = 0;
+tankIcon.giveItem('petroleum-gas');
+drawStorageTank(iconMockCtx, tankIcon, 120, 80, 0, 1);
+const tankIconSide = iconCalls.filter(c => c.fluid === 'petroleum-gas');
+check('storage tank shows fluid icons on both east/west ports when details on', tankIconSide.length === 2 && tankIconSide.every(c => c.side === 0 || c.side === 2));
+// 空罐不画图标
+iconCalls.length = 0;
+const tankEmpty = new StorageTank(undefined, 124, 80);
+drawStorageTank(iconMockCtx, tankEmpty, 124, 80, 0, 1);
+check('empty storage tank shows no fluid icon', iconCalls.filter(c => c.fluid).length === 0);
+drawPortIcon = realDrawPortIcon2;
+G.showDetails = false;
+// 流体图标悬停显示流体名：DEVICE_FLUID_ICONS 返回图标所在格与流体名
+const icons = DEVICE_FLUID_ICONS['storage-tank'](tankIcon);
+check('storage tank fluid icons map to world cells & name', icons.length === 2 && icons.every(ic => ic.fluid === 'petroleum-gas'));
+const refIcons = DEVICE_FLUID_ICONS['refinery'](iconRef);
+check('refinery fluid icons map to world cells & names', refIcons.length === 4 && refIcons.some(ic => ic.fluid === 'crude-oil'));
+const chemIcons = DEVICE_FLUID_ICONS['chemical-plant'](iconChem);
+check('chem plant fluid icons map to world cells & names', chemIcons.length === 2 && chemIcons.some(ic => ic.fluid === 'heavy-oil') && chemIcons.some(ic => ic.fluid === 'light-oil'));
+
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nALL PASSED');
 process.exit(failures ? 1 : 0);

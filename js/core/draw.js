@@ -136,6 +136,29 @@ function portLabelVisible() {
   return !!(G && G.showDetails);
 }
 
+// 计算设备某流体接口图标所在的世界格坐标（用于鼠标悬停显示流体名称）。
+// side 为 dir=0 时的基准方向（0东1南2西3北），cell 为沿边 0 基格号；方向随 dir 旋转。
+// 图标画在设备内部靠近该边、落在该接口所在格内，故格坐标即沿边该格的内部格。
+function fluidIconCell(e, side, cell) {
+  const sd = (side + (e.dir | 0)) % 4;
+  if (sd === 3) return [e.x + cell, e.y];
+  if (sd === 1) return [e.x + cell, e.y + e.h - 1];
+  if (sd === 0) return [e.x + e.w - 1, e.y + cell];
+  return [e.x, e.y + cell];
+}
+
+// 返回设备某条边(side，dir=0 基准方向，随 dir 旋转)上第 cell 个格子外侧相邻的“世界格坐标”。
+// 与 neighborOnSideCell 语义一致，但返回格子坐标（而非实体左上角），供储液罐等大实体判断是否命中设备流体口。
+function sideNeighborCell(e, side, cell) {
+  const sd = (side + (e.dir | 0)) % 4;
+  let bx, by;
+  if (sd === 3) { bx = e.x; by = e.y - 1; }        // 北
+  else if (sd === 1) { bx = e.x; by = e.y + e.h; } // 南
+  else if (sd === 0) { bx = e.x + e.w; by = e.y; } // 东
+  else { bx = e.x - 1; by = e.y; }                 // 西
+  return (sd === 1 || sd === 3) ? [bx + cell, by] : [bx, by + cell];
+}
+
 // 围绕中心画一个指向某方向的箭头标签（用于进出方向提示）
 function drawPortLabel(ctx, px, py, s, side, text, color) {
   ctx.save();

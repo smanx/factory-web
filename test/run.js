@@ -58,6 +58,7 @@ const srcFiles = [
   'devices/steam-engine.js',
   'devices/pump.js',
   'devices/pipe.js',
+  'devices/storage-tank.js',
   'devices/refinery.js',
   'devices/chemical-plant.js',
   'core/power.js',

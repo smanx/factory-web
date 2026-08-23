@@ -113,6 +113,10 @@ class Refinery extends Entity {
     }
     return false;
   }
+  // 所有流体输入口外侧相邻格的世界坐标（供储液罐等大实体缓冲供料时命中判断）
+  fluidInputCells() {
+    return REFINERY_INPUT_CELLS.map(cell => sideNeighborCell(this, 3, cell));
+  }
   giveItem(item) {
     if (!this.recipe) return false;
     const rec = REFINERY_RECIPES[this.recipe];
@@ -319,3 +323,16 @@ DEVICE_STATUS['refinery'] = e =>
 DEVICE_PANEL['refinery'] = { html: refineryPanelHtml, live: refineryPanelLive, tip: refineryTip };
 // 炼油厂四边均布流体口、本体对称，旋转仅记录朝向；选中/悬停后按 R 可直接旋转
 DEVICE_DIR_ROTATE['refinery'] = true;
+// 显示详情(Alt)时，各接口流体图标所在世界格 + 对应流体名（用于鼠标悬停显示流体名称）
+DEVICE_FLUID_ICONS['refinery'] = e => {
+  const icons = [];
+  for (const cell of REFINERY_INPUT_CELLS) {
+    const f = refineryInputFluid(e, cell);
+    if (f) icons.push({ x: fluidIconCell(e, 3, cell)[0], y: fluidIconCell(e, 3, cell)[1], fluid: f });
+  }
+  for (const cell of REFINERY_OUTPUT_CELLS) {
+    const f = refineryOutputFluid(e, cell);
+    if (f) icons.push({ x: fluidIconCell(e, 1, cell)[0], y: fluidIconCell(e, 1, cell)[1], fluid: f });
+  }
+  return icons;
+};
