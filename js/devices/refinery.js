@@ -115,11 +115,17 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('缺原油', px + s / 2, py + s * 0.58);
   }
-  // ===== 流体出入口标注：四边流体口 + 进出文字 =====
-  drawFluidPorts(ctx, e, px, py, s, {
-    inputs: '原油',
-    outputs: '重油·轻油·石油气'
-  });
+  // ===== 流体出入口标注（对齐《异星工厂》：入口绿、出口橙红，位置随旋转） =====
+  const refPorts = [
+    { side: 1, color: PORT_INPUT, arrow: true },   // 南：原油入口
+    { side: 2, color: PORT_OUTPUT },                // 西：重油出口
+    { side: 0, color: PORT_OUTPUT },                // 东：轻油出口
+    { side: 3, color: PORT_OUTPUT }                 // 北：石油气出口
+  ];
+  drawRotatablePorts(ctx, e, px, py, s, refPorts);
+  const d = e.dir | 0;
+  drawPortLabel(ctx, px, py, s, (1 + d) % 4, '原油↓', '#7fd87f');
+  drawPortLabel(ctx, px, py, s, (3 + d) % 4, '石油气↑', '#f0b072');
   ctx.globalAlpha = 1;
 }
 

@@ -159,11 +159,17 @@ function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   ctx.fillStyle = '#eef4e4';
   ctx.fillText('化工厂', px + 8, py + s - 10);
-  // ===== 流体出入口标注：四边流体口 + 进出文字（流体双向进出，固体产物用机械臂） =====
-  drawFluidPorts(ctx, e, px, py, s, {
-    inputs: '流体原料',
-    outputs: '流体产物'
-  });
+  // ===== 流体出入口标注（对齐《异星工厂》：入口绿、出口橙红，位置随旋转） =====
+  const chemPorts = [
+    { side: 1, color: PORT_INPUT, arrow: true },   // 南：流体原料入口
+    { side: 2, color: PORT_INPUT, arrow: true },   // 西：流体原料入口
+    { side: 3, color: PORT_OUTPUT },                // 北：流体产物出口
+    { side: 0, color: PORT_OUTPUT }                 // 东：流体产物出口
+  ];
+  drawRotatablePorts(ctx, e, px, py, s, chemPorts);
+  const cd = e.dir | 0;
+  drawPortLabel(ctx, px, py, s, (1 + cd) % 4, '原料↓', '#7fd87f');
+  drawPortLabel(ctx, px, py, s, (3 + cd) % 4, '产物↑', '#f0b072');
   ctx.globalAlpha = 1;
 }
 

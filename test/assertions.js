@@ -87,5 +87,60 @@ const invHtml = htmlInventory();
 check('inventory excludes chem recipes', invHtml.indexOf('"craft" data-id="crack-light"') < 0 && invHtml.indexOf('"craft" data-id="plastic-bar"') < 0);
 check('inventory offers chemical-plant buildable', invHtml.includes('化工厂'));
 
+// ---- rotatable fluid ports follow entity dir & use distinct in/out colors ----
+const portCalls = [];
+const mockCtx = new Proxy({}, {
+  get: (t, k) => (k in t ? t[k] : () => {}),
+  set: () => true
+});
+const realDrawPort = drawPort;
+drawPort = function (ctx, cx, cy, side, color, arrow, off, dist) {
+  portCalls.push({ side: side, color: color, arrow: !!arrow });
+  return realDrawPort.apply(this, arguments);
+};
+const refPortDefs = [
+  { side: 1, color: PORT_INPUT, arrow: true },  // 南：原油入口
+  { side: 2, color: PORT_OUTPUT },
+  { side: 0, color: PORT_OUTPUT },
+  { side: 3, color: PORT_OUTPUT }
+];
+const refRot = new Refinery(undefined, 30, 20);
+refRot.dir = 0;
+drawRotatablePorts(mockCtx, refRot, 30 * TILE, 20 * TILE, TILE * 5, refPortDefs);
+check('refinery dir=0: input on south with green color', portCalls.some(p => p.side === 1 && p.color === PORT_INPUT && p.arrow));
+check('refinery dir=0: outputs on north/east/west with orange color', portCalls.filter(p => p.side !== 1).every(p => p.color === PORT_OUTPUT));
+portCalls.length = 0;
+refRot.dir = 1; // 顺时针转 90°：原油入口从南转到西
+refRot.x = 30; refRot.y = 20;
+drawRotatablePorts(mockCtx, refRot, 30 * TILE, 20 * TILE, TILE * 5, refPortDefs);
+check('refinery rotated 90°: input moved south->west', portCalls.some(p => p.side === 2 && p.color === PORT_INPUT));
+portCalls.length = 0;
+refRot.dir = 3; // 逆时针 90°：原油入口从南转到东
+refRot.x = 30; refRot.y = 20;
+drawRotatablePorts(mockCtx, refRot, 30 * TILE, 20 * TILE, TILE * 5, refPortDefs);
+check('refinery rotated 270°: input moved south->east', portCalls.some(p => p.side === 0 && p.color === PORT_INPUT));
+const chemRot = new ChemicalPlant(undefined, 40, 20);
+const chemPortDefs = [
+  { side: 1, color: PORT_INPUT, arrow: true },
+  { side: 2, color: PORT_INPUT, arrow: true },
+  { side: 3, color: PORT_OUTPUT },
+  { side: 0, color: PORT_OUTPUT }
+];
+portCalls.length = 0;
+chemRot.dir = 0;
+drawRotatablePorts(mockCtx, chemRot, 40 * TILE, 20 * TILE, TILE * 3, chemPortDefs);
+check('chem plant dir=0: two green inputs south+west, two orange outputs north+east',
+  portCalls.filter(p => p.color === PORT_INPUT).length === 2 &&
+  portCalls.filter(p => p.color === PORT_OUTPUT).length === 2 &&
+  portCalls.some(p => p.side === 1 && p.color === PORT_INPUT) &&
+  portCalls.some(p => p.side === 2 && p.color === PORT_INPUT));
+portCalls.length = 0;
+chemRot.dir = 2; // 转 180°：输入从南/西转到北/东
+chemRot.x = 40; chemRot.y = 20;
+drawRotatablePorts(mockCtx, chemRot, 40 * TILE, 20 * TILE, TILE * 3, chemPortDefs);
+check('chem plant rotated 180°: inputs moved to north+east',
+  portCalls.some(p => p.side === 3 && p.color === PORT_INPUT) &&
+  portCalls.some(p => p.side === 0 && p.color === PORT_INPUT));
+
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nALL PASSED');
 process.exit(failures ? 1 : 0);

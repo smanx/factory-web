@@ -96,6 +96,9 @@ const PORT_WATER = '#3fa0e8';
 const PORT_STEAM = '#dfe8ee';
 // 油气通用流体口颜色（炼油厂 / 化工厂）
 const PORT_FLUID = '#c9a84a';
+// 流体进出口专用颜色：入口用绿色，出口用橙红
+const PORT_INPUT = '#5fd45f';
+const PORT_OUTPUT = '#e07b4a';
 // 在设备四周画流体接口凸缘并标注文字，指示可接管道的位置与进出方向
 function drawFluidPorts(ctx, e, px, py, s, { inputs, outputs }) {
   const cxp = px + s / 2, cyp = py + s / 2, half = s / 2;
@@ -114,4 +117,30 @@ function drawFluidPorts(ctx, e, px, py, s, { inputs, outputs }) {
   // 底部：输出标注
   if (outputs) label('出：' + outputs + ' ⬇', cxp, py + s - 30, '#ffd9a0');
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+}
+
+// 旋转流体设备：端口位置随 dir 一起旋转。
+// ports: [{ side, color, arrow }]，side 为 dir=0 时的基准方向（0东1南2西3北）；
+// 实际绘制方向 = (side + dir) % 4。
+function drawRotatablePorts(ctx, e, px, py, s, ports) {
+  const cxp = px + s / 2, cyp = py + s / 2, half = s / 2;
+  const dir = e.dir | 0;
+  for (const p of ports) {
+    const sd = (p.side + dir) % 4;
+    drawPort(ctx, cxp, cyp, sd, p.color, p.arrow, p.off, half);
+  }
+}
+
+// 围绕中心画一个指向某方向的箭头标签（用于进出方向提示）
+function drawPortLabel(ctx, px, py, s, side, text, color) {
+  ctx.save();
+  ctx.translate(px + s / 2, py + s / 2);
+  ctx.rotate(side * Math.PI / 2);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = 'bold 12px system-ui';
+  ctx.fillStyle = 'rgba(0,0,0,.55)';
+  ctx.fillText(text, 1, -s * 0.5 + 16);
+  ctx.fillStyle = color || '#ffe9c4';
+  ctx.fillText(text, 0, -s * 0.5 + 15);
+  ctx.restore();
 }
