@@ -21,15 +21,17 @@ const LAB_TIME = 4;
 const POWER_PER_ENGINE = 4;
 const POWER_USE = { 'electric-drill': 3, 'electric-furnace': 2, 'assembling-machine-mk2': 3, 'pumpjack': 2, 'refinery': 4 };
 
-// ===== 发电链（抽水机 → 水 → 锅炉烧蒸汽 → 蒸汽机发电）=====
-const WATER_CAP = 20;            // 锅炉/抽水机内部储水上限
-const BOILER_WATER_RATE = 1.2;   // 锅炉每秒耗水
+// ===== 发电链（抽水机 → 水 → 锅炉烧出蒸汽 → 蒸汽口送汽 → 蒸汽机发电）=====
+const WATER_CAP = 20;            // 锅炉/抽水机内部储水上限（兼作锅炉蒸汽缓冲上限）
+const BOILER_WATER_RATE = 1.2;   // 锅炉每秒耗水（1:1 转为蒸汽输出）
 const BOILER_HEAT_RATE = 30;     // 锅炉每秒升温（°C，耗煤+水时）
 const BOILER_COOL_RATE = 2;      // 锅炉每秒自然降温（°C）
-const BOILER_TEMP_MAX = 100;     // 温度达标线：蒸汽机满功率
+const BOILER_TEMP_MAX = 100;     // 温度达标线
 const PUMP_RATE = 6;             // 抽水机每秒产水
+const ENGINE_STEAM_RATE = 0.6;   // 蒸汽机满功率耗汽（单位/秒）：1 台锅炉可带 2 台蒸汽机
+const ENGINE_STEAM_CAP = 10;     // 蒸汽机内部储汽上限
 
-const FLUIDS = ['water', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas'];
+const FLUIDS = ['water', 'steam', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas'];
 const ORE_OIL = 4;                       // 原油矿床的 oreType 索引（不进手挖矿表）
 function oreItemId(ti) { return ti === ORE_OIL ? 'crude-oil' : ORES[ti]; }
 const PIPE_CAP = 40;
@@ -73,10 +75,11 @@ const ITEMS = {
   'splitter':          { name: '分流器', color: '#d98f3c', desc: '把一条带的货轮流分向前方和右侧；一边堵了自动走另一边' },
   'underground':       { name: '地下传送带', color: '#9a7fd6', desc: '同向摆两座（最远6格）自动配对：入口收货钻入地下，出口送回地面向前输出' },
   'steel-plate':       { name: '钢板',   color: '#c9ced6', mark: 'S', desc: '电炉炼铁板产出的高级建材' },
-  'boiler':            { name: '锅炉',   color: '#d0743a', desc: '烧煤+水把水温烧到 100°C 产生蒸汽，供邻接的蒸汽机发电，电力全图共享' },
-  'steam-engine':      { name: '蒸汽机', color: '#8fb8d0', desc: '紧邻锅炉即可取汽发电：锅炉温度越高功率越高，100°C 满功率并入全图电网' },
-  'offshore-pump':     { name: '抽水机', color: '#3f9fc0', mark: 'P', desc: '必须放在水面上，免电力无限抽水；产出朝箭头方向，正对锅炉可直接供水或接管道' },
-  'water':             { name: '水',     color: '#4a90d9', mark: 'H₂O', desc: '流体，由抽水机从水域抽取，经管道送入锅炉产生蒸汽' },
+  'boiler':            { name: '锅炉',   color: '#d0743a', desc: '烧煤+水产出蒸汽：背面蓝口=进水口（接抽水机/水管），正面白口=出汽口（接蒸汽机或蒸汽管道）；两台锅炉水口相对可串联通水。R 旋转朝向' },
+  'steam-engine':      { name: '蒸汽机', color: '#8fb8d0', desc: '背面进汽口取蒸汽发电，正面出汽口可首尾串接下一台或接蒸汽管道；供汽越足功率越高，满功率并入全图电网。R 旋转朝向' },
+  'offshore-pump':     { name: '抽水机', color: '#3f9fc0', mark: 'P', desc: '必须放在水面上，免电力无限抽水；产出朝箭头方向，正对锅炉进水口可直接供水，或接管道' },
+  'water':             { name: '水',     color: '#4a90d9', mark: 'H₂O', desc: '流体，由抽水机从水域抽取，经管道或进水口送入锅炉烧成蒸汽' },
+  'steam':             { name: '蒸汽',   color: '#c8d4dc', mark: '汽', desc: '流体，锅炉烧水所得；经锅炉出汽口或蒸汽管道送往蒸汽机发电' },
   'electric-drill':    { name: '电采矿机', color: '#4f7dd3', desc: '免燃料、吃电力开采，速度快于热能采矿机' },
   'electric-furnace':  { name: '电炉',   color: '#3fa87e', desc: '免燃料、吃电力冶炼，速度更高，可出钢板' },
   'assembling-machine-mk2': { name: '装配机 II', color: '#a05fd0', desc: '吃电力、速度更高的高级装配机' },
@@ -92,7 +95,7 @@ const ITEMS = {
   'light-oil':         { name: '轻油', color: '#8a5a22', mark: 'LO', desc: '炼油副产物，可继续加工成石油气' },
   'petroleum-gas':     { name: '石油气', color: '#c9a84a', mark: 'PG', desc: '炼油关键产物，制造塑料的原料' },
   'plastic-bar':       { name: '塑料板', color: '#cfe8a8', mark: 'Pl', desc: '石油化工产物，用于高级配方' },
-  'pipe':              { name: '管道', color: '#6a5f52', desc: '输送流体（原油/重轻油/石油气），相邻互连，容量 40' },
+  'pipe':              { name: '管道', color: '#6a5f52', desc: '输送流体（水/蒸汽/原油/重轻油/石油气），相邻互连，容量 40' },
   'pumpjack':          { name: '抽油机', color: '#3a6a66', desc: '吃电力开采原油矿床，产出原油（2×2）' },
   'refinery':          { name: '炼油厂', color: '#b06a3e', desc: '把原油炼成重油/轻油/石油气（3×3，吃电力，需管道/机械臂输送）' }
 };
@@ -298,6 +301,7 @@ function drawItemGlyph(x, id, cx, cy, s) {
       break;
     }
     case 'water':
+    case 'steam':
     case 'crude-oil':
     case 'heavy-oil':
     case 'light-oil':

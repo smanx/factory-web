@@ -194,17 +194,20 @@ function updateMachineLive() {
   if (e instanceof Boiler) {
     set('fuel', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : dim('无'));
     set('water', e.water >= 1 ? chip('water', Math.floor(e.water)) : dim('空'));
+    set('steam', e.steamBuf >= 1 ? chip('steam', Math.floor(e.steamBuf)) : dim('空'));
     set('temp', Math.round(e.temp) + ' / ' + BOILER_TEMP_MAX + ' °C');
     prog = e.temp / BOILER_TEMP_MAX * 100;
-    status = e.temp >= BOILER_TEMP_MAX ? '温度达标，蒸汽充足'
-      : e.burning ? '加热中（耗煤+水）'
-      : e.water < 1 ? '缺水：等待抽水机经管道或邻接供水'
+    status = e.steamBuf >= WATER_CAP - 0.01 ? '蒸汽憋满：等待蒸汽机/管道消耗'
+      : e.burning ? '产汽中（耗煤+水）'
+      : e.water < 1 ? '缺水：等待抽水机经管道或进水口供水'
       : (e.fuelCoal <= 0 && e.burnLeft <= 0) ? '无煤' : '待机';
   } else if (e instanceof SteamEngine) {
     set('power', e.on ? '+' + e.powerOut.toFixed(1) : dim('+0'));
-    set('temp', e.bestTemp > 0 ? Math.round(e.bestTemp) + '°C' : dim('—'));
+    set('steam', e.steamBuf >= 1 ? chip('steam', Math.floor(e.steamBuf)) : dim('空'));
     prog = (e.outMult || 0) * 100;
-    status = e.on ? '发电中：锅炉温度越高功率越高' : '未发电：需要旁边有锅炉烧到 ' + BOILER_TEMP_MAX + '°C';
+    status = e.on ? '发电中：供汽越足功率越高'
+      : e.steamBuf > 0 ? '蒸汽不足：功率随供汽量下降'
+      : '未发电：需经进汽口或蒸汽管道接入锅炉蒸汽';
   } else if (e instanceof Pump) {
     set('buf', e.buf >= 1 ? chip('water', Math.floor(e.buf)) : dim('空'));
     prog = e.working ? e.pulse * 100 : ((e.buf || 0) / WATER_CAP * 100);
@@ -391,19 +394,20 @@ function htmlMachine(e) {
     h += row('水', '<span class="dim"></span>', 'water');
     if (invCount('water') > 0)
       h += '<button data-action="feed" data-id="water">注入全部存水</button>';
+    h += row('蒸汽缓存', '<span class="dim"></span>', 'steam');
     h += row('温度', '', 'temp');
     h += barHtml(0);
     h += '<div class="status"></div>';
-    h += '<div class="dim">供电链：抽水机（放水面上）→ 管道或正对邻接 → 锅炉加煤烧到 ' + BOILER_TEMP_MAX + '°C → 蒸汽机贴着锅炉发电。缺水时锅炉会暂停加热，不浪费煤。</div>';
+    h += '<div class="dim">供电链：抽水机 → 管道 → 锅炉背面蓝口（进水口）；加煤烧出的蒸汽从正面白口（出汽口）送往蒸汽机。出汽口可与蒸汽机首尾直连，也可经蒸汽管道远送；两台锅炉水口相对可串联通水。R 旋转朝向。</div>';
     return h;
   }
   if (e instanceof SteamEngine) {
     let h = row('输出功率', '<span class="dim"></span>', 'power');
-    h += row('锅炉水温', '', 'temp');
+    h += row('蒸汽存量', '<span class="dim"></span>', 'steam');
     h += barHtml(0);
     h += '<div class="status"></div>';
-    h += '<div class="dim">紧邻锅炉（贴边任意格）即可取汽发电：水温达 ' + BOILER_TEMP_MAX + '°C 时满功率 +' + POWER_PER_ENGINE +
-      '，升温过程中按温度比例输出。电力并入全地图共享电网，无需电线。</div>';
+    h += '<div class="dim">需经背面进汽口获取蒸汽：与锅炉正面出汽口首尾直连，或接入蒸汽管道。正面出汽口可串接下一台蒸汽机继续送汽。满功率耗汽 ' + ENGINE_STEAM_RATE +
+      '/s（1 台锅炉约带 2 台），输出 +' + POWER_PER_ENGINE + ' 并入全图电网。</div>';
     return h;
   }
   if (e instanceof Pump) {
@@ -832,13 +836,14 @@ function mapTipAt(tx, ty) {
     } else if (e instanceof Inserter)
       extra = e.holding ? ('搬运 ' + ITEMS[e.holding].name + '，8格取放') : '待机：周围8格取放（优先背面取、正面放）';
     else if (e instanceof Boiler)
-      extra = e.temp >= BOILER_TEMP_MAX ? '温度达标·发电就绪'
-        : e.burning ? '加热中 ' + Math.round(e.temp) + '°C'
-        : e.water < 1 ? '缺水（需抽水机供水）'
+      extra = e.burning ? '产汽中 ' + Math.round(e.temp) + '°C（存汽' + Math.floor(e.steamBuf || 0) + '）'
+        : e.steamBuf >= WATER_CAP - 0.01 ? '蒸汽憋满·等待消耗'
+        : e.water < 1 ? '缺水（检查背面进水口/管道）'
         : (e.fuelCoal <= 0 && e.burnLeft <= 0) ? '无煤' : '待机';
     else if (e instanceof SteamEngine)
-      extra = e.on ? '发电中 +' + (e.powerOut || 0).toFixed(1) + '（水温' + Math.round(e.bestTemp || 0) + '°C）'
-        : '未发电（旁边放锅炉并烧到' + BOILER_TEMP_MAX + '°C）';
+      extra = e.on ? '发电中 +' + (e.powerOut || 0).toFixed(1) + '（存汽' + Math.floor(e.steamBuf || 0) + '）'
+        : (e.steamBuf > 0 ? '供汽不足，功率受限'
+        : '未接蒸汽：出汽口对准其进汽口或经管道送汽');
     else if (e instanceof Pump)
       extra = e.working ? '抽水中，产出朝' + ['东', '南', '西', '北'][e.dir]
         : ((e.buf || 0) >= 1 ? '缓存满，等待输出' : '待机');
@@ -941,7 +946,7 @@ function buildDebug() {
     ['+50齿轮', 'iron-gear', 50], ['+50电路', 'green-circuit', 50],
     ['+20科学包', 'science-pack', 20], ['+20绿包', 'green-science', 20],
     ['+20蓝包', 'blue-science', 20], ['+50塑料', 'plastic-bar', 50],
-    ['+50原油', 'crude-oil', 50], ['+50水', 'water', 50]
+    ['+50原油', 'crude-oil', 50], ['+50水', 'water', 50], ['+50蒸汽', 'steam', 50]
   ]) {
     const b = document.createElement('button');
     b.textContent = txt;

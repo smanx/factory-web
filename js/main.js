@@ -260,7 +260,8 @@ function rotateAction() {
       uiDirty = true;
       return;
     }
-    if ((e instanceof Belt || e instanceof Inserter || e instanceof Drill || e instanceof Underground || e instanceof Pump)) {
+    if ((e instanceof Belt || e instanceof Inserter || e instanceof Drill || e instanceof Underground || e instanceof Pump ||
+         e instanceof Boiler || e instanceof SteamEngine)) {
       e.dir = (e.dir + 1) % 4;
       if (e instanceof Drill) e.tryOutput();
       uiDirty = true;
