@@ -124,6 +124,22 @@ html, body {
 #panel-body::-webkit-scrollbar-track { background: transparent; }
 
 .sec { margin: 10px 0 6px; font-weight: bold; color: #ffd23c; }
+
+.inv-search {
+  width: 100%;
+  margin: 2px 0 8px;
+  padding: 6px 10px;
+  background: #10151c;
+  border: 1px solid #37424f;
+  border-radius: 6px;
+  color: #dfe6ee;
+  font-size: 13px;
+  outline: none;
+  user-select: text;
+}
+.inv-search::placeholder { color: #5f6b78; }
+.inv-search:focus { border-color: #ffd23c; box-shadow: 0 0 6px rgba(255, 210, 60, .25); }
+
 .dim { color: #7d8894; }
 .hint { margin-top: 12px; color: #7d8894; font-size: 12px; line-height: 1.5; }
 

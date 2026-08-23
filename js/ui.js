@@ -137,6 +137,7 @@ function openPanel(mode, ent) {
 function closePanel(hide = true) {
   G.panelMode = null;
   G.panelEnt = null;
+  G.invRecipeQ = '';
   if (hide) document.getElementById('panel').style.display = 'none';
 }
 
@@ -152,7 +153,13 @@ function renderPanel(full) {
   const st = full ? 0 : panelScrollTop();
   if (G.panelMode === 'inv') {
     title.textContent = '背包与手工制造';
+    const keepFocus = document.activeElement && document.activeElement.id === 'inv-recipe-search';
     body.innerHTML = htmlInventory();
+    applyInvRecipeFilter(G.invRecipeQ);
+    if (keepFocus) {
+      const inp = document.getElementById('inv-recipe-search');
+      if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+    }
   } else if (G.panelMode === 'tech') {
     title.textContent = '科技研究';
     body.innerHTML = htmlTech();
@@ -281,11 +288,16 @@ function htmlInventory() {
   }
   if (!any) h += '<span class="dim">空空如也，去地图上按住左键挖矿吧（铁矿/铜矿/煤/石头）</span>';
   h += '</div><div class="sec">配方</div>';
+  const q = (G.invRecipeQ || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  h += '<input id="inv-recipe-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off" value="' + q + '">';
+  h += '<div id="inv-recipes">';
   for (const rid in RECIPES) {
     const rec = RECIPES[rid];
     const ok = canCraft(rid);
-    h += '<div class="recipe">';
     const outId = Object.keys(rec.out)[0];
+    const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
+      Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ')).toLowerCase();
+    h += '<div class="recipe" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
     h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + ITEMS[outId].name + '|' + ITEMS[outId].desc + '" src="' + iconDataURL(outId) + '">';
     h += '<div class="rmain"><div class="rname">' + ITEMS[Object.keys(rec.out)[0]].name +
       (rec.out[Object.keys(rec.out)[0]] > 1 ? ' ×' + rec.out[Object.keys(rec.out)[0]] : '') + '</div>';
@@ -300,8 +312,27 @@ function htmlInventory() {
     if (ok) h += '<button data-action="craft" data-mult="5" data-id="' + rid + '">×5</button>';
     h += '</div>';
   }
+  h += '</div>';
+  h += '<div class="dim" id="inv-recipe-empty" style="display:none"></div>';
   h += '<div class="hint">提示：开局先挖 5 个石头合成石炉，再挖煤；点击炉子打开面板，把煤和矿石放进去就能炼铁板/铜板。钢板用铁板×2 合成（石炉/电炉炼制更快）。<br>建造：直接点击上方材料区里任何可建造的设备图标即可选中进入放置模式（优先占用空快捷栏槽位），不必依赖底部工具栏；R 旋转、Q 取消。</div>';
   return h;
+}
+
+function applyInvRecipeFilter(q) {
+  const body = document.getElementById('panel-body');
+  if (!body) return;
+  const ql = (q || '').trim().toLowerCase();
+  let shown = 0;
+  body.querySelectorAll('#inv-recipes .recipe').forEach(el => {
+    const hit = !ql || el.dataset.rsearch.includes(ql);
+    el.style.display = hit ? '' : 'none';
+    if (hit) shown++;
+  });
+  const emp = document.getElementById('inv-recipe-empty');
+  if (emp) {
+    emp.textContent = ql ? '没有匹配「' + q.trim() + '」的配方' : '没有匹配的配方';
+    emp.style.display = shown ? 'none' : '';
+  }
 }
 
 function htmlTech() {
@@ -515,6 +546,11 @@ function initPanelEvents() {
     rd.readAsText(f);
   });
   document.getElementById('panel-close').addEventListener('click', () => closePanel());
+  document.getElementById('panel-body').addEventListener('input', ev => {
+    if (ev.target.id !== 'inv-recipe-search') return;
+    G.invRecipeQ = ev.target.value;
+    applyInvRecipeFilter(G.invRecipeQ);
+  });
   document.getElementById('panel-body').addEventListener('click', ev => {
     const hbSlot = ev.target.closest('[data-hbedit]');
     if (hbSlot) {

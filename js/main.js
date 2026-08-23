@@ -25,6 +25,7 @@ const G = {
   dbg: { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1 },
   spawn: { x: 0, y: 0 },
   hbArm: null,
+  invRecipeQ: '',
   clipboard: null,
   settings: Object.assign({}, DEFAULT_SETTINGS),
   autoT: 0,
@@ -273,6 +274,11 @@ function bindInput() {
   window.addEventListener('keydown', ev => {
     const k = ev.key.toLowerCase();
     if (k === 'f5' || k === 'f12') return;
+    const t = ev.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
+      if (k === 'escape') { ev.target.blur(); ev.stopPropagation(); }
+      return;
+    }
     G.keys[k] = true;
     if (k >= '1' && k <= '9') selectSlot(+k - 1);
     else if (k === '0') selectSlot(9);
