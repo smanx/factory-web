@@ -124,15 +124,18 @@ function isLake(tx, ty) {
 
 function pickOreType(rng, dist) {
   const roll = rng();
+  // 方解石较稀有，全图少量分布
+  if (roll < 0.05) return ORES.indexOf('calcite');
+  const r2 = rng();
   if (dist > 70) {
-    if (roll < 0.32) return ORES.indexOf('iron-ore');
-    if (roll < 0.6) return ORES.indexOf('copper-ore');
-    if (roll < 0.8) return ORES.indexOf('coal');
+    if (r2 < 0.34) return ORES.indexOf('iron-ore');
+    if (r2 < 0.64) return ORES.indexOf('copper-ore');
+    if (r2 < 0.84) return ORES.indexOf('coal');
     return ORES.indexOf('stone');
   }
-  if (roll < 0.28) return ORES.indexOf('iron-ore');
-  if (roll < 0.52) return ORES.indexOf('copper-ore');
-  if (roll < 0.76) return ORES.indexOf('coal');
+  if (r2 < 0.3) return ORES.indexOf('iron-ore');
+  if (r2 < 0.55) return ORES.indexOf('copper-ore');
+  if (r2 < 0.8) return ORES.indexOf('coal');
   return ORES.indexOf('stone');
 }
 

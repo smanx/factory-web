@@ -32,7 +32,7 @@ const ENGINE_STEAM_RATE = 0.6;   // 蒸汽机满功率耗汽（单位/秒）：1
 const ENGINE_STEAM_CAP = 10;     // 蒸汽机内部储汽上限
 
 const FLUIDS = ['water', 'steam', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas'];
-const ORE_OIL = 4;                       // 原油矿床的 oreType 索引（不进手挖矿表）
+const ORE_OIL = 5;                       // 原油矿床的 oreType 索引（不进手挖矿表）
 function oreItemId(ti) { return ti === ORE_OIL ? 'crude-oil' : ORES[ti]; }
 const PIPE_CAP = 40;
 const PIPE_FLOW = 3;
@@ -58,6 +58,7 @@ const ITEMS = {
   'copper-ore': { name: '铜矿石', color: '#d0793f', mark: 'Cu', desc: '基础矿物，放入石炉冶炼成铜板' },
   'coal':       { name: '煤',     color: '#3a3a42', mark: 'C',  desc: '燃料，供采矿机与石炉燃烧' },
   'stone':      { name: '石头',   color: '#b3a685', mark: 'St', desc: '合成石炉的材料' },
+  'calcite':    { name: '方解石', color: '#e8e0d0', mark: 'Ca', desc: '矿物，用于炼油厂煤液化配方（太空时代）' },
   'iron-plate':   { name: '铁板',   color: '#ccd4de', mark: 'Fp', desc: '最常用的结构材料' },
   'copper-plate': { name: '铜板',   color: '#e0975f', mark: 'Cp', desc: '用于拉制铜线' },
   'iron-gear':    { name: '铁齿轮', color: '#aab5c2', mark: 'G',  desc: '机械核心零件' },
@@ -97,11 +98,11 @@ const ITEMS = {
   'plastic-bar':       { name: '塑料板', color: '#cfe8a8', mark: 'Pl', desc: '石油化工产物，须在化工厂用石油气+煤生产，用于高级配方' },
   'pipe':              { name: '管道', color: '#6a5f52', desc: '输送流体（水/蒸汽/原油/重轻油/石油气），相邻互连，容量 40' },
   'pumpjack':          { name: '抽油机', color: '#3a6a66', desc: '吃电力开采原油矿床，产出原油（3×3）' },
-  'refinery':          { name: '炼油厂', color: '#b06a3e', desc: '把原油炼成重油/轻油/石油气（5×5，吃电力）。背面2输入、正面3输出' },
+  'refinery':          { name: '炼油厂', color: '#b06a3e', desc: '把原油炼成重油/轻油/石油气，或煤液化（5×5，吃电力，需选配方）。背面2输入、正面3输出' },
   'chemical-plant':    { name: '化工厂', color: '#7d9464', desc: '流体化学加工厂：石油气+煤→塑料，重油/轻油裂解（3×3，吃电力）。底部2输入、顶部2输出，成对固定；固体原料机械臂任意方向放入' }
 };
 
-const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone'];
+const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone', 'calcite'];
 
 const SMELTS = [
   { id: 'iron-plate',   inp: 'iron-ore',   time: 1.6 },
@@ -150,6 +151,20 @@ const RECIPES = {
 const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas'];
 function isChemRecipe(id) { return CHEM_RECIPES.indexOf(id) >= 0; }
 function chemMult() { return (G.techDone.plastic ? 1.5 : 1) * ((G.dbg && G.dbg.asmMult) || 1); }
+
+// ===== 炼油厂配方（对齐《异星工厂》官方 Wiki：Oil refinery 共 4 种）=====
+// 基础原油加工：100 原油 → 45 重油 + 30 轻油 + 55 石油气（5s）
+// 进阶原油加工：100 原油 → 25 重油 + 45 轻油 + 55 石油气（5s）
+// 煤液化：10 煤 + 50 重油 + 50 蒸汽 → 90 重油 + 20 轻油 + 10 石油气（5s）
+// 简易煤液化（太空时代）：10 煤 + 25 方解石 → 25 重油 + 50 石油气（5s）
+const REFINERY_RECIPES = {
+  'basic-oil':      { name: '基础原油加工', time: 5, inp: { 'crude-oil': 100 },  out: { 'heavy-oil': 45, 'light-oil': 30, 'petroleum-gas': 55 } },
+  'advanced-oil':   { name: '进阶原油加工', time: 5, inp: { 'crude-oil': 100 },  out: { 'heavy-oil': 25, 'light-oil': 45, 'petroleum-gas': 55 } },
+  'coal-liquefaction': { name: '煤液化', time: 5, inp: { 'coal': 10, 'heavy-oil': 50, 'steam': 50 }, out: { 'heavy-oil': 90, 'light-oil': 20, 'petroleum-gas': 10 } },
+  'simple-coal':    { name: '简易煤液化', time: 5, inp: { 'coal': 10, 'calcite': 25 }, out: { 'heavy-oil': 25, 'petroleum-gas': 50 } }
+};
+const REFINERY_RECIPE_IDS = Object.keys(REFINERY_RECIPES);
+function isRefineryRecipe(id) { return REFINERY_RECIPES[id] !== undefined; }
 
 const BUILD_DEFS = {
   'transport-belt':     { w: 1, h: 1, solid: false },

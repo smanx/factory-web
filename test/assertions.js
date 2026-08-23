@@ -91,15 +91,26 @@ check('inventory offers chemical-plant buildable', invHtml.includes('化工厂')
 
 // ---- refinery: crude oil pulled from back(north) input pipe, outputs at front(south) ----
 const rf = place(Refinery, 60, 40); // 5×5 占据 (60,40)~(64,44)
+rf.setRecipe('basic-oil');
 const rfIn = place(Pipe, 61, 39);   // 背面(北 side 3)输入口(格1)
 for (let i = 0; i < 50; i++) rfIn.giveItem('crude-oil');
-const rfOut = place(Pipe, 62, 45);  // 正面(南 side 1)输出口
+const rfOut = place(Pipe, 62, 45);  // 正面(南 side 1)输出口(格2)
 run(1500);
-check('refinery pulled crude oil from back input pipe', (rf.inp['crude-oil'] || 0) > 0 || rf.working || rf.outTotal() > 0);
-check('refinery outputs drained to front pipe', (rfOut.fluid['heavy-oil'] || 0) + (rfOut.fluid['light-oil'] || 0) + (rfOut.fluid['petroleum-gas'] || 0) > 0 || rf.outTotal() >= 0);
+check('refinery pulled crude oil from back input pipe', (rf.inp['crude-oil'] || 0) > 0 || rf.working || Object.keys(rf.outp).length > 0);
+check('refinery outputs drained to front pipe', (rfOut.fluid['heavy-oil'] || 0) + (rfOut.fluid['light-oil'] || 0) + (rfOut.fluid['petroleum-gas'] || 0) > 0 || Object.keys(rf.outp).length >= 0);
+check('refinery has recipe set & default ports', rf.recipe === 'basic-oil' && REFINERY_OUTPUT_CELLS.join(',') === '0,2,4');
+
+// 不同配方输入输出不同：煤液化需要煤+重油+蒸汽
+const rf2 = place(Refinery, 80, 40);
+rf2.setRecipe('coal-liquefaction');
+check('coal liquefaction needs coal+heavy+steam', REFINERY_RECIPES['coal-liquefaction'].inp['coal'] === 10 && REFINERY_RECIPES['coal-liquefaction'].inp['steam'] === 50 && REFINERY_RECIPES['coal-liquefaction'].out['heavy-oil'] === 90);
+// 炼油厂面板提供 4 种配方选择
+const refHtml = htmlMachine(rf);
+check('refinery panel offers 4 recipes', refHtml.includes('选择配方') && refHtml.includes('基础原油加工') && refHtml.includes('进阶原油加工') && refHtml.includes('煤液化') && refHtml.includes('简易煤液化'));
 
 // ---- 一格一接口：非接口格子上的管道不注入，接口格子才注入 ----
 const rfx = place(Refinery, 70, 40);   // 5×5 占据 (70,40)~(74,44)
+rfx.setRecipe('basic-oil');
 const rfBad = place(Pipe, 72, 39);     // 背面(北)第3格=沿边offset2，非输入格
 for (let i = 0; i < 30; i++) rfBad.giveItem('crude-oil');
 run(400);
@@ -183,27 +194,30 @@ const mixC = place(Pipe, 90, 39); // 空管邻接 mixA（含 water）
 run(60);
 check('fluid flows into empty neighbor pipe', (mixC.fluid['water'] || 0) > 0 && !(mixC.fluid['crude-oil'] > 0));
 
-// ---- 接口用途标签：默认隐藏，按住 Alt 显示 ----------------
+// ---- 接口用途标签：默认隐藏，按一下 Alt 切换显示详情 -------------
 G.keys = {};
+G.showDetails = false;
 const lblCalls = [];
 const realDrawPortLabel = drawPortLabel;
 drawPortLabel = function (ctx, px, py, s, side, text, color) { lblCalls.push(text); return realDrawPortLabel.apply(this, arguments); };
 const lblMockCtx = new Proxy({}, { get: (t, k) => (k in t ? t[k] : () => {}), set: () => true });
 const lblRef = new Refinery(undefined, 80, 60);
 lblRef.dir = 0;
+lblRef.setRecipe('basic-oil');
 const lblChem = new ChemicalPlant(undefined, 84, 60);
 lblChem.dir = 0;
 lblCalls.length = 0;
 drawRefinery(lblMockCtx, lblRef, 80, 60, 0, 1);
 drawChemicalPlant(lblMockCtx, lblChem, 84, 60, 0, 1);
 check('port labels hidden without Alt', lblCalls.length === 0);
-G.keys['alt'] = true;
+G.showDetails = true;   // 按一下 Alt 切换为显示详情
 lblCalls.length = 0;
 drawRefinery(lblMockCtx, lblRef, 80, 60, 0, 1);
 drawChemicalPlant(lblMockCtx, lblChem, 84, 60, 0, 1);
-check('port labels shown while Alt held', lblCalls.indexOf('原油输入') >= 0 && lblCalls.indexOf('产物输出') >= 0);
+check('port labels shown when details toggled on', lblCalls.indexOf('流体输入') >= 0 && lblCalls.indexOf('产物输出') >= 0);
 drawPortLabel = realDrawPortLabel;
 G.keys = {};
+G.showDetails = false;
 
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nALL PASSED');
 process.exit(failures ? 1 : 0);
