@@ -19,7 +19,7 @@ const REACH_TILES = 5.5;
 const REACH_PX = REACH_TILES * TILE;
 const LAB_TIME = 4;
 const POWER_PER_ENGINE = 4;
-const POWER_USE = { 'electric-drill': 3, 'electric-furnace': 2, 'assembling-machine-mk2': 3, 'pumpjack': 2, 'refinery': 4 };
+const POWER_USE = { 'electric-drill': 3, 'electric-furnace': 2, 'assembling-machine-mk2': 3, 'pumpjack': 2, 'refinery': 4, 'chemical-plant': 4 };
 
 // ===== 发电链（抽水机 → 水 → 锅炉烧出蒸汽 → 蒸汽口送汽 → 蒸汽机发电）=====
 const WATER_CAP = 20;            // 锅炉/抽水机内部储水上限（兼作锅炉蒸汽缓冲上限）
@@ -94,10 +94,11 @@ const ITEMS = {
   'heavy-oil':         { name: '重油', color: '#5a3a1e', mark: 'HO', desc: '炼油副产物，常作为润滑油等原料' },
   'light-oil':         { name: '轻油', color: '#8a5a22', mark: 'LO', desc: '炼油副产物，可继续加工成石油气' },
   'petroleum-gas':     { name: '石油气', color: '#c9a84a', mark: 'PG', desc: '炼油关键产物，制造塑料的原料' },
-  'plastic-bar':       { name: '塑料板', color: '#cfe8a8', mark: 'Pl', desc: '石油化工产物，用于高级配方' },
+  'plastic-bar':       { name: '塑料板', color: '#cfe8a8', mark: 'Pl', desc: '石油化工产物，须在化工厂用石油气+煤生产，用于高级配方' },
   'pipe':              { name: '管道', color: '#6a5f52', desc: '输送流体（水/蒸汽/原油/重轻油/石油气），相邻互连，容量 40' },
   'pumpjack':          { name: '抽油机', color: '#3a6a66', desc: '吃电力开采原油矿床，产出原油（2×2）' },
-  'refinery':          { name: '炼油厂', color: '#b06a3e', desc: '把原油炼成重油/轻油/石油气（3×3，吃电力，需管道/机械臂输送）' }
+  'refinery':          { name: '炼油厂', color: '#b06a3e', desc: '把原油炼成重油/轻油/石油气（3×3，吃电力，需管道/机械臂输送）' },
+  'chemical-plant':    { name: '化工厂', color: '#7d9464', desc: '流体化学加工厂：石油气+煤→塑料，重油/轻油裂解（3×3，吃电力）；流体原料经相邻管道自动吸入，流体产物自动排回管道' }
 };
 
 const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone'];
@@ -140,10 +141,15 @@ const RECIPES = {
   'pipe':              { time: 0.5, inp: { 'iron-plate': 1 },                                     out: { 'pipe': 1 } },
   'pumpjack':          { time: 2.5, inp: { 'steel-plate': 4, 'iron-gear': 3, 'green-circuit': 2 }, out: { 'pumpjack': 1 } },
   'refinery':          { time: 3,   inp: { 'steel-plate': 8, 'pipe': 6, 'green-circuit': 5 },      out: { 'refinery': 1 } },
+  'chemical-plant':    { time: 4,   inp: { 'steel-plate': 10, 'iron-gear': 10, 'pipe': 10, 'green-circuit': 5 }, out: { 'chemical-plant': 1 } },
   'plastic-bar':       { time: 2,   inp: { 'petroleum-gas': 1, 'coal': 1 },                       out: { 'plastic-bar': 1 } },
   'crack-light':       { time: 3,   inp: { 'heavy-oil': 3 },                                      out: { 'light-oil': 2 } },
   'crack-gas':         { time: 3,   inp: { 'light-oil': 3 },                                      out: { 'petroleum-gas': 2 } }
 };
+
+const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas'];
+function isChemRecipe(id) { return CHEM_RECIPES.indexOf(id) >= 0; }
+function chemMult() { return (G.techDone.plastic ? 1.5 : 1) * ((G.dbg && G.dbg.asmMult) || 1); }
 
 const BUILD_DEFS = {
   'transport-belt':     { w: 1, h: 1, solid: false },
@@ -169,7 +175,8 @@ const BUILD_DEFS = {
   'assembling-machine-mk2': { w: 2, h: 2, solid: true },
   'pipe':               { w: 1, h: 1, solid: true },
   'pumpjack':           { w: 2, h: 2, solid: true },
-  'refinery':           { w: 3, h: 3, solid: true }
+  'refinery':           { w: 3, h: 3, solid: true },
+  'chemical-plant':     { w: 3, h: 3, solid: true }
 };
 
 const DEFAULT_HOTBAR = ['transport-belt', 'splitter', 'underground', 'inserter', 'long-inserter', 'burner-drill', 'stone-furnace', 'assembling-machine', 'storage-chest', 'lab'];
@@ -182,7 +189,7 @@ const TECHS = {
   logistics2: { name: '物流 II', cost: { 'green-science': 25 }, desc: '传送带速度额外 ×1.2（与物流学叠加）' },
   electric:   { name: '电力工程', cost: { 'green-science': 15 }, desc: '电炉 / 电采矿机速度 ×1.2' },
   oil:        { name: '石油冶金', cost: { 'green-science': 30 }, desc: '炼油厂 / 抽油机速度 ×1.5' },
-  plastic:    { name: '塑料合成', cost: { 'green-science': 20 }, desc: '装配机生产塑料耗时缩短 ✓（绿色科研的核心支付项）' },
+  plastic:    { name: '塑料合成', cost: { 'green-science': 20 }, desc: '化工厂生产塑料耗时缩短 ✓（绿色科研的核心支付项）' },
   automation2:{ name: '自动化 II', cost: { 'blue-science': 40 }, desc: '装配机 II 速度额外 ×1.2' },
   deep:       { name: '重工蓝图', cost: { 'blue-science': 50 }, desc: '蓝包终技：科研总进度获取 +20%' }
 };
