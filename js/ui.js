@@ -273,7 +273,7 @@ function htmlTech() {
     }
     h += '</div>';
   }
-  h += '<div class="hint">建造研究院，放入科学包后选择课题；研究院按配方顺序逐瓶消耗（红→绿→蓝）。机械臂可自动喂包。绿色科学包=传送带+机械臂；蓝色科学包=塑料+电路板+铜板（需打通石油链）。</div>';
+  h += '<div class="hint">建造研究中心，放入科学包后选择课题；研究中心按配方顺序逐瓶消耗（红→绿→蓝）。机械臂可自动喂包。绿色科学包=传送带+机械臂；蓝色科学包=塑料+电路板+铜板（需打通石油链）。</div>';
   return h;
 }
 
@@ -572,7 +572,7 @@ function buildDebug() {
   dbgSlider(body, '挖矿速度', 'mineMult', 0.25, 10, 0.25);
   dbgSlider(body, '传送带速度', 'beltMult', 0.25, 5, 0.25);
   dbgSlider(body, '采矿机速度', 'drillMult', 0.25, 5, 0.25);
-  dbgSlider(body, '装配机速度', 'asmMult', 0.25, 5, 0.25);
+  dbgSlider(body, '组装机速度', 'asmMult', 0.25, 5, 0.25);
 
   const sec1 = document.createElement('div');
   sec1.className = 'dsec';
