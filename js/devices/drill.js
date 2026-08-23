@@ -193,6 +193,10 @@ function drawDrill(ctx, e, gx, gy, dir, alpha) {
     ctx.fillStyle = '#ffd23c';
     ctx.fillRect(px + s - 14, py + 8, 5, 5);
   }
+  // 抽油机原油输出口：对齐正面居中的那一个格子（一格一接口），颜色用输出橙红、带箭头
+  if (pump) {
+    drawPort(ctx, px + s / 2, py + s / 2, dir, PORT_OUTPUT, true, 0, s / 2);
+  }
   ctx.globalAlpha = 1;
 }
 

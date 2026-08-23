@@ -23,9 +23,11 @@ class Pipe extends Entity {
             this.fluid[k]--;
             t.fluid[k] = (t.fluid[k] || 0) + 1;
           }
-        } else if (((t instanceof Refinery) || (t instanceof ChemicalPlant) ||
-                    (t instanceof Assembler && t.acceptsFluid(k))) && t.giveItem(k)) {
-          this.fluid[k]--;
+        } else if ((t instanceof Refinery) || (t instanceof ChemicalPlant) ||
+                    (t instanceof Assembler && t.acceptsFluid(k))) {
+          // 仅允许在设备的输入接口格子上注入（一格一接口），机械臂等非管道来源不受限
+          if (t.isFluidInlet && !t.isFluidInlet(this.x, this.y)) continue;
+          if (t.giveItem(k)) this.fluid[k]--;
         }
         // 锅炉/蒸汽机不在此直推：水量由锅炉两端水口平衡，蒸汽由蒸汽机端汽口自取
       }
