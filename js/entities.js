@@ -35,7 +35,9 @@ function entContents(e) {
   }
   if (e instanceof Boiler) {
     if (e.fuelCoal > 0) list.push(['coal', e.fuelCoal]);
+    if (e.water >= 1) list.push(['water', Math.floor(e.water)]);
   }
+  if (e instanceof Pump && e.buf >= 1) list.push(['water', Math.floor(e.buf)]);
   if (e instanceof Furnace) {
     if (e.fuelCoal > 0) list.push(['coal', e.fuelCoal]);
     for (const k in e.inp) list.push([k, e.inp[k]]);
@@ -582,28 +584,42 @@ class Boiler extends Entity {
     super('boiler', x, y);
     this.fuelCoal = 0;
     this.burnLeft = 0;
-    this.lit = false;
+    this.water = 0;      // 内部水箱
+    this.temp = 0;       // 水温 °C，达标 BOILER_TEMP_MAX 后蒸汽机满功率
+    this.burning = false; // 正在耗煤+水升温
+    this.lit = false;     // 炉火可见（有燃料在烧）
   }
   update(dt) {
-    if (this.burnLeft <= 0) {
-      if (this.fuelCoal > 0) { this.fuelCoal--; this.burnLeft += COAL_ENERGY; }
-      else { this.lit = false; return; }
+    this.burning = false;
+    this.temp = Math.max(0, this.temp - BOILER_COOL_RATE * dt);
+    if (this.temp >= BOILER_TEMP_MAX) { this.temp = BOILER_TEMP_MAX; this.lit = false; return; }
+    // 只有既有水又有煤才点火；缺水时绝不空烧
+    if (this.burnLeft <= 0 && this.water > 0 && this.fuelCoal > 0) {
+      this.fuelCoal--; this.burnLeft += COAL_ENERGY;
     }
+    if (this.burnLeft <= 0) { this.lit = false; return; }
     this.lit = true;
+    if (this.water <= 0) return; // 供水中断：暂停加热，炉内煤不消耗
+    this.burning = true;
     this.burnLeft -= dt;
+    this.water = Math.max(0, this.water - BOILER_WATER_RATE * dt);
+    this.temp = Math.min(BOILER_TEMP_MAX, this.temp + BOILER_HEAT_RATE * dt);
   }
   giveItem(item) {
     if (item === 'coal' && this.fuelCoal < 20) { this.fuelCoal++; return true; }
+    if (item === 'water' && this.water < WATER_CAP - 0.01) { this.water = Math.min(WATER_CAP, this.water + 1); return true; }
     return false;
   }
   serialize() {
     const s = super.serialize();
     s.fuelCoal = this.fuelCoal; s.burnLeft = this.burnLeft;
+    s.water = this.water; s.temp = this.temp;
     return s;
   }
   static restore(s) {
     const b = super.restore(s);
     b.fuelCoal = s.fuelCoal || 0; b.burnLeft = s.burnLeft || 0;
+    b.water = s.water || 0; b.temp = s.temp || 0;
     return b;
   }
 }
@@ -613,14 +629,28 @@ class SteamEngine extends Entity {
     super('steam-engine', x, y);
     this.spin = 0;
     this.on = false;
+    this.outMult = 0;   // 输出系数 = 锅炉温度 / 达标温度
+    this.powerOut = 0;  // 当前输出功率
+    this.bestTemp = 0;  // 邻接锅炉最高水温
+  }
+  // 扫描 2×2 机身周边一圈，收集所有邻接锅炉
+  adjBoilers() {
+    const res = [];
+    for (let dx = -1; dx <= this.w; dx++)
+      for (let dy = -1; dy <= this.h; dy++) {
+        if (dx >= 0 && dx < this.w && dy >= 0 && dy < this.h) continue;
+        const t = entAt(this.x + dx, this.y + dy);
+        if (t instanceof Boiler) res.push(t);
+      }
+    return res;
   }
   update(dt) {
-    this.on = false;
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      const t = entAt(this.x + dx, this.y + dy);
-      if (t instanceof Boiler && t.lit) { this.on = true; break; }
-    }
-    if (this.on) this.spin += dt * 8;
+    this.bestTemp = 0;
+    for (const b of this.adjBoilers()) if (b.temp > this.bestTemp) this.bestTemp = b.temp;
+    this.outMult = Math.max(0, Math.min(1, this.bestTemp / BOILER_TEMP_MAX));
+    this.powerOut = POWER_PER_ENGINE * this.outMult;
+    this.on = this.powerOut > 0.05;
+    if (this.on) this.spin += dt * 8 * (0.35 + 0.65 * this.outMult);
   }
 }
 
@@ -702,13 +732,14 @@ class AssemblerMK2 extends Assembler {
   }
 }
 
-// 全局共享电力模型：每 0.25s 复算。产出=运行中蒸汽机之和，需求=正在作业的用电机器之和，
-// sat = min(1, prod/demand)，各机器按 sat 比例降速；sat=0 全图"缺电"停摆。
+// 全局共享电力模型：每 0.25s 复算。产出=运行中蒸汽机之和（随锅炉温度线性 0~满功率），
+// 需求=正在作业的用电机器之和，sat = min(1, prod/demand)，
+// 各机器按 sat 比例降速；sat=0 全图"缺电"停摆。
 function updatePower() {
   let prod = 0, demand = 0;
   for (const e of G.ents) {
     if (e instanceof SteamEngine) {
-      if (e.on) prod += POWER_PER_ENGINE;
+      prod += e.powerOut || 0;
     } else if (e instanceof Pumpjack) {
       if (e.oreTile() && e.buf < 20) demand += POWER_USE['pumpjack'];
     } else if (e instanceof ElectricDrill) {
@@ -842,8 +873,11 @@ class Inserter extends Entity {
         return item === 'coal' && t.fuelCoal < 10;
       case 'electric-drill':
         return false;
+      case 'offshore-pump':
+        return false;
       case 'boiler':
-        return item === 'coal' && t.fuelCoal < 20;
+        if (item === 'coal') return t.fuelCoal < 20;
+        return item === 'water' && t.water < WATER_CAP - 0.01;
       case 'lab':
         return isScience(item) && (t.packs[item] || 0) < 40;
       case 'underground':
@@ -1178,7 +1212,7 @@ class Pipe extends Entity {
             this.fluid[k]--;
             t.fluid[k] = (t.fluid[k] || 0) + 1;
           }
-        } else if (t instanceof Refinery && t.giveItem(k)) {
+        } else if ((t instanceof Refinery || t instanceof Boiler) && t.giveItem(k)) {
           this.fluid[k]--;
         }
       }
@@ -1225,6 +1259,43 @@ class Pumpjack extends ElectricDrill {
     return null;
   }
   mineItem() { return 'crude-oil'; }
+}
+
+// ===== 抽水机：必须放在水面上，免电力无限取水 =====
+class Pump extends Entity {
+  constructor(type, x, y) {
+    super('offshore-pump', x, y);
+    this.buf = 0;
+    this.working = false;
+    this.pulse = 0;
+  }
+  update(dt) {
+    this.working = false;
+    const room = Math.max(0, WATER_CAP - this.buf);
+    const take = Math.min(room, PUMP_RATE * dt);
+    if (take > 0) { this.buf += take; this.working = true; }
+    if (this.working) this.pulse = (this.pulse + dt * 1.6) % 1;
+    this.tryOutput();
+  }
+  // 只朝箭头方向输出：正对锅炉直接供水，或送入管道
+  tryOutput() {
+    let guard = 0;
+    while (this.buf >= 1 && guard++ < 20) {
+      const t = entAt(this.x + DX[this.dir], this.y + DY[this.dir]);
+      if (!((t instanceof Pipe) || (t instanceof Boiler)) || !t.giveItem('water')) break;
+      this.buf--;
+    }
+  }
+  giveItem(item) {
+    if (item === 'water' && this.buf < WATER_CAP) { this.buf++; return true; }
+    return false;
+  }
+  peekItem() { return this.buf >= 1 ? 'water' : null; }
+  takeItem() { if (this.buf >= 1) { this.buf--; return 'water'; } return null; }
+  countOf(item) { return item === 'water' ? Math.floor(this.buf) : 0; }
+  takeItemOf(item) { if (item === 'water' && this.buf >= 1) { this.buf--; return 'water'; } return null; }
+  serialize() { const s = super.serialize(); s.buf = this.buf; return s; }
+  static restore(s) { const p = super.restore(s); p.buf = s.buf || 0; return p; }
 }
 
 class Refinery extends Entity {
@@ -1313,6 +1384,7 @@ const ENT_CLASSES = {
   'lab': Lab,
   'boiler': Boiler,
   'steam-engine': SteamEngine,
+  'offshore-pump': Pump,
   'electric-drill': ElectricDrill,
   'electric-furnace': ElectricFurnace,
   'pipe': Pipe,

@@ -21,7 +21,15 @@ const LAB_TIME = 4;
 const POWER_PER_ENGINE = 4;
 const POWER_USE = { 'electric-drill': 3, 'electric-furnace': 2, 'assembling-machine-mk2': 3, 'pumpjack': 2, 'refinery': 4 };
 
-const FLUIDS = ['crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas'];
+// ===== 发电链（抽水机 → 水 → 锅炉烧蒸汽 → 蒸汽机发电）=====
+const WATER_CAP = 20;            // 锅炉/抽水机内部储水上限
+const BOILER_WATER_RATE = 1.2;   // 锅炉每秒耗水
+const BOILER_HEAT_RATE = 30;     // 锅炉每秒升温（°C，耗煤+水时）
+const BOILER_COOL_RATE = 2;      // 锅炉每秒自然降温（°C）
+const BOILER_TEMP_MAX = 100;     // 温度达标线：蒸汽机满功率
+const PUMP_RATE = 6;             // 抽水机每秒产水
+
+const FLUIDS = ['water', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas'];
 const ORE_OIL = 4;                       // 原油矿床的 oreType 索引（不进手挖矿表）
 function oreItemId(ti) { return ti === ORE_OIL ? 'crude-oil' : ORES[ti]; }
 const PIPE_CAP = 40;
@@ -65,8 +73,10 @@ const ITEMS = {
   'splitter':          { name: '分流器', color: '#d98f3c', desc: '把一条带的货轮流分向前方和右侧；一边堵了自动走另一边' },
   'underground':       { name: '地下传送带', color: '#9a7fd6', desc: '同向摆两座（最远6格）自动配对：入口收货钻入地下，出口送回地面向前输出' },
   'steel-plate':       { name: '钢板',   color: '#c9ced6', mark: 'S', desc: '电炉炼铁板产出的高级建材' },
-  'boiler':            { name: '锅炉',   color: '#d0743a', desc: '烧煤产生蒸汽，供邻接的蒸汽机发电，电力全图共享' },
-  'steam-engine':      { name: '蒸汽机', color: '#8fb8d0', desc: '紧邻点亮的锅炉即可发电，产出并入全地图共享电网' },
+  'boiler':            { name: '锅炉',   color: '#d0743a', desc: '烧煤+水把水温烧到 100°C 产生蒸汽，供邻接的蒸汽机发电，电力全图共享' },
+  'steam-engine':      { name: '蒸汽机', color: '#8fb8d0', desc: '紧邻锅炉即可取汽发电：锅炉温度越高功率越高，100°C 满功率并入全图电网' },
+  'offshore-pump':     { name: '抽水机', color: '#3f9fc0', mark: 'P', desc: '必须放在水面上，免电力无限抽水；产出朝箭头方向，正对锅炉可直接供水或接管道' },
+  'water':             { name: '水',     color: '#4a90d9', mark: 'H₂O', desc: '流体，由抽水机从水域抽取，经管道送入锅炉产生蒸汽' },
   'electric-drill':    { name: '电采矿机', color: '#4f7dd3', desc: '免燃料、吃电力开采，速度快于热能采矿机' },
   'electric-furnace':  { name: '电炉',   color: '#3fa87e', desc: '免燃料、吃电力冶炼，速度更高，可出钢板' },
   'assembling-machine-mk2': { name: '装配机 II', color: '#a05fd0', desc: '吃电力、速度更高的高级装配机' },
@@ -113,6 +123,7 @@ const RECIPES = {
   'underground':        { time: 1.5, inp: { 'iron-plate': 6, 'iron-gear': 4 },                     out: { 'underground': 1 } },
   'boiler':             { time: 1.5, inp: { 'stone': 4, 'iron-plate': 2 },                         out: { 'boiler': 1 } },
   'steam-engine':       { time: 2,   inp: { 'iron-plate': 2, 'iron-gear': 2, 'green-circuit': 2 }, out: { 'steam-engine': 1 } },
+  'offshore-pump':      { time: 1,   inp: { 'iron-plate': 5, 'iron-gear': 2 },                     out: { 'offshore-pump': 1 } },
   'electric-drill':     { time: 2,   inp: { 'iron-plate': 8, 'iron-gear': 3 },                     out: { 'electric-drill': 1 } },
   'electric-furnace':   { time: 2.5, inp: { 'iron-plate': 6, 'steel-plate': 2, 'green-circuit': 2 }, out: { 'electric-furnace': 1 } },
   'assembling-machine-mk2': { time: 3, inp: { 'steel-plate': 6, 'iron-gear': 4, 'green-circuit': 6 }, out: { 'assembling-machine-mk2': 1 } },
@@ -149,6 +160,7 @@ const BUILD_DEFS = {
   'lab':                { w: 2, h: 2, solid: true },
   'boiler':             { w: 2, h: 2, solid: true },
   'steam-engine':       { w: 2, h: 2, solid: true },
+  'offshore-pump':      { w: 1, h: 1, solid: true },
   'electric-drill':     { w: 2, h: 2, solid: true },
   'electric-furnace':   { w: 2, h: 2, solid: true },
   'assembling-machine-mk2': { w: 2, h: 2, solid: true },
@@ -285,6 +297,7 @@ function drawItemGlyph(x, id, cx, cy, s) {
       x.fill();
       break;
     }
+    case 'water':
     case 'crude-oil':
     case 'heavy-oil':
     case 'light-oil':

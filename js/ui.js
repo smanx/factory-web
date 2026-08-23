@@ -193,8 +193,23 @@ function updateMachineLive() {
   let prog = 0, status = '';
   if (e instanceof Boiler) {
     set('fuel', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : dim('无'));
-    prog = Math.min(1, e.burnLeft / COAL_ENERGY) * 100;
-    status = e.lit ? '加热产蒸汽中' : '待料/无煤';
+    set('water', e.water >= 1 ? chip('water', Math.floor(e.water)) : dim('空'));
+    set('temp', Math.round(e.temp) + ' / ' + BOILER_TEMP_MAX + ' °C');
+    prog = e.temp / BOILER_TEMP_MAX * 100;
+    status = e.temp >= BOILER_TEMP_MAX ? '温度达标，蒸汽充足'
+      : e.burning ? '加热中（耗煤+水）'
+      : e.water < 1 ? '缺水：等待抽水机经管道或邻接供水'
+      : (e.fuelCoal <= 0 && e.burnLeft <= 0) ? '无煤' : '待机';
+  } else if (e instanceof SteamEngine) {
+    set('power', e.on ? '+' + e.powerOut.toFixed(1) : dim('+0'));
+    set('temp', e.bestTemp > 0 ? Math.round(e.bestTemp) + '°C' : dim('—'));
+    prog = (e.outMult || 0) * 100;
+    status = e.on ? '发电中：锅炉温度越高功率越高' : '未发电：需要旁边有锅炉烧到 ' + BOILER_TEMP_MAX + '°C';
+  } else if (e instanceof Pump) {
+    set('buf', e.buf >= 1 ? chip('water', Math.floor(e.buf)) : dim('空'));
+    prog = e.working ? e.pulse * 100 : ((e.buf || 0) / WATER_CAP * 100);
+    status = e.working ? '抽水中，产出朝' + ['东', '南', '西', '北'][e.dir]
+      : (e.buf >= 1 ? '缓存已满，等待输出' : '待机');
   } else if (e instanceof Furnace) {
     if (!(e instanceof ElectricFurnace)) set('fuel', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : dim('无'));
     set('input', Object.keys(e.inp).length ? countStr(e.inp) : dim('空'));
@@ -371,13 +386,31 @@ function htmlMachine(e) {
     let h = row('燃料', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : '<span class="dim">无</span>', 'fuel');
     if (invCount('coal') > 0)
       h += '<button data-action="fuel" data-id="coal">加入 5 煤 (' + invCount('coal') + ')</button>';
+    h += row('水', '<span class="dim"></span>', 'water');
+    if (invCount('water') > 0)
+      h += '<button data-action="feed" data-id="water">注入全部存水</button>';
+    h += row('温度', '', 'temp');
     h += barHtml(0);
     h += '<div class="status"></div>';
+    h += '<div class="dim">供电链：抽水机（放水面上）→ 管道或正对邻接 → 锅炉加煤烧到 ' + BOILER_TEMP_MAX + '°C → 蒸汽机贴着锅炉发电。缺水时锅炉会暂停加热，不浪费煤。</div>';
     return h;
   }
-  if (e instanceof SteamEngine)
-    return '<div class="dim">蒸汽机：紧邻点亮的锅炉即可发电，产出并入全地图共享的电力池（无需电线）。当前：' +
-      (e.on ? '发电中（+' + POWER_PER_ENGINE + '）' : '未发电，请把点亮的锅炉放到它旁边。') + '</div>';
+  if (e instanceof SteamEngine) {
+    let h = row('输出功率', '<span class="dim"></span>', 'power');
+    h += row('锅炉水温', '', 'temp');
+    h += barHtml(0);
+    h += '<div class="status"></div>';
+    h += '<div class="dim">紧邻锅炉（贴边任意格）即可取汽发电：水温达 ' + BOILER_TEMP_MAX + '°C 时满功率 +' + POWER_PER_ENGINE +
+      '，升温过程中按温度比例输出。电力并入全地图共享电网，无需电线。</div>';
+    return h;
+  }
+  if (e instanceof Pump) {
+    let h = row('储水', '<span class="dim"></span>', 'buf');
+    h += barHtml(0);
+    h += '<div class="status"></div>';
+    h += '<div class="dim">必须放在水面上，免电力无限抽水。产出朝箭头方向：正对锅炉可直接供水，或接入管道远送。选中后按 R 旋转方向。</div>';
+    return h;
+  }
   if (e instanceof Furnace) {
     const eFurn = e instanceof ElectricFurnace;
     let h = '';
@@ -773,9 +806,16 @@ function mapTipAt(tx, ty) {
     } else if (e instanceof Inserter)
       extra = e.holding ? ('搬运 ' + ITEMS[e.holding].name + '，8格取放') : '待机：周围8格取放（优先背面取、正面放）';
     else if (e instanceof Boiler)
-      extra = e.lit ? '加热产蒸汽中' : '待料（加煤点火）';
+      extra = e.temp >= BOILER_TEMP_MAX ? '温度达标·发电就绪'
+        : e.burning ? '加热中 ' + Math.round(e.temp) + '°C'
+        : e.water < 1 ? '缺水（需抽水机供水）'
+        : (e.fuelCoal <= 0 && e.burnLeft <= 0) ? '无煤' : '待机';
     else if (e instanceof SteamEngine)
-      extra = e.on ? '发电中：电力并入全图共享电网' : '未发电（旁边放点亮的锅炉）';
+      extra = e.on ? '发电中 +' + (e.powerOut || 0).toFixed(1) + '（水温' + Math.round(e.bestTemp || 0) + '°C）'
+        : '未发电（旁边放锅炉并烧到' + BOILER_TEMP_MAX + '°C）';
+    else if (e instanceof Pump)
+      extra = e.working ? '抽水中，产出朝' + ['东', '南', '西', '北'][e.dir]
+        : ((e.buf || 0) >= 1 ? '缓存满，等待输出' : '待机');
     else if (e instanceof Refinery)
       extra = e.working ? '精炼中' : ((e.inp['crude-oil'] || 0) < 2 ? '等待原油' : (G.power.sat <= 0 ? '缺电' : '待机'));
     else if (e instanceof Pipe) {
@@ -792,7 +832,7 @@ function mapTipAt(tx, ty) {
       extra = e.status || ('吃电开采中，产出朝' + ['东', '南', '西', '北'][e.dir]);
     return ITEMS[e.type].name + '|' + extra;
   }
-  if (getTerrain(tx, ty) === T_WATER) return '水域|无法通行、不可建造';
+  if (getTerrain(tx, ty) === T_WATER) return '水域|无法通行；可把抽水机放在这里取水';
   const ti = getOreType(tx, ty);
   if (ti >= 0 && getOreAmt(tx, ty) > 0) {
     if (ti === ORE_OIL) return '原油矿床|储量 ' + Math.floor(getOreAmt(tx, ty)) + '，建造抽油机开采（吃电力）';
@@ -875,7 +915,7 @@ function buildDebug() {
     ['+50齿轮', 'iron-gear', 50], ['+50电路', 'green-circuit', 50],
     ['+20科学包', 'science-pack', 20], ['+20绿包', 'green-science', 20],
     ['+20蓝包', 'blue-science', 20], ['+50塑料', 'plastic-bar', 50],
-    ['+50原油', 'crude-oil', 50]
+    ['+50原油', 'crude-oil', 50], ['+50水', 'water', 50]
   ]) {
     const b = document.createElement('button');
     b.textContent = txt;
