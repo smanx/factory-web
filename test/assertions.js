@@ -461,10 +461,22 @@ check('trackProd records gain', (PROD.total['iron-plate'] || 0) === beforeTotal 
 invTake('iron-plate', 4);
 check('trackProd records loss', (PROD.lost['iron-plate'] || 0) >= 4 && (PROD.total['iron-plate'] || 0) === beforeTotal + 6);
 
+// 配方归属设备
+check('recipeDevice maps chem to chemical-plant', recipeDevice('plastic-bar') === 'chemical-plant' && recipeDeviceName('plastic-bar') === '化工厂');
+check('recipeDevice maps refinery recipe to refinery', recipeDevice('basic-oil') === 'refinery' && recipeDeviceName('basic-oil') === '炼油厂');
+check('recipeDevice defaults to assembling-machine', recipeDevice('green-circuit') === 'assembling-machine');
+const mr = machRateHtml(RECIPES['green-circuit']);
+check('machRateHtml renders 消耗/生产 tabs', typeof mr === 'string' && mr.includes('data-mach-tab="cons"') && mr.includes('data-mach-tab="prod"'));
+
 // 统计面板 HTML 生成
 G.panelMode = 'stats'; G.statsTab = 'items';
+G.statsItemTab = 'prod';
 const sItems = htmlStats();
-check('stats items tab renders', typeof sItems === 'string' && sItems.includes('物品生成与消耗速率'));
+check('stats items tab renders', typeof sItems === 'string' && sItems.includes('生产速率') && sItems.includes('消耗') && sItems.includes('data-stat-item-tab'));
+G.statsItemTab = 'cons';
+const sItemsCons = htmlStats();
+check('stats items consumption subtab renders', typeof sItemsCons === 'string' && sItemsCons.includes('消耗速率'));
+G.statsItemTab = 'prod';
 G.statsTab = 'power';
 const sPower = htmlStats();
 check('stats power tab renders', typeof sPower === 'string' && sPower.includes('电网概览') && sPower.includes('供电饱和度'));

@@ -34,6 +34,8 @@ const G = {
   blueEnd: null,          // 框选终点瓦片
   blueSelecting: false,   // 正在拖拽框选
   statsTab: 'items',      // 统计面板当前页：items | power | perf
+  statsItemTab: 'prod',   // 统计面板-物品速率页：prod(生产速率) | cons(消耗)
+  machTab: 'prod',        // 设备面板-消耗/生产 tab：cons | prod
   settings: Object.assign({}, DEFAULT_SETTINGS),
   autoT: 0,
   power: { prod: 0, demand: 0, sat: 1 },

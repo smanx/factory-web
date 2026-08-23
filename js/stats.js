@@ -37,6 +37,20 @@ function prodNetRate(item) {
   return sum / PROD_WINDOW;
 }
 
+// 某物品最近 2 秒内的生成速率（单位/秒，仅计生成事件）。
+function prodGainRate(item) {
+  let sum = 0;
+  for (const ev of PROD.events) if (ev.item === item && ev.delta > 0) sum += ev.delta;
+  return sum / PROD_WINDOW;
+}
+
+// 某物品最近 2 秒内的消耗速率（单位/秒，取正值，仅计消耗事件）。
+function prodLossRate(item) {
+  let sum = 0;
+  for (const ev of PROD.events) if (ev.item === item && ev.delta < 0) sum += -ev.delta;
+  return sum / PROD_WINDOW;
+}
+
 // 所有有活动记录的物品 id（按名称排序）
 function prodActiveItems() {
   const ids = Object.keys(PROD.total || {});
@@ -102,31 +116,52 @@ function htmlStats() {
   return h;
 }
 
-// 物品速率页
+// 物品速率页：下方再分两个 tab——生产速率（物品被产出）与消耗（物品被消耗）。
+// 展示的是物品自身的产生/消耗速率，而非设备的产能。
 function htmlStatsItems() {
-  const items = prodActiveItems().sort((a, b) => (ITEMS[a].name < ITEMS[b].name ? -1 : 1));
-  let h = '<div class="sec">物品生成与消耗速率 <span class="dim">（最近 ' + PROD_WINDOW + ' 秒滑动平均）</span></div>';
+  const all = prodActiveItems().sort((a, b) => (ITEMS[a].name < ITEMS[b].name ? -1 : 1));
+  const tab = G.statsItemTab === 'cons' ? 'cons' : 'prod';
+  const isProd = tab === 'prod';
+
+  let h = '<div class="sec">物品速率 <span class="dim">（最近 ' + PROD_WINDOW + ' 秒滑动平均）</span></div>';
+  h += '<div class="stat-subtabs">';
+  h += '<button class="stat-subtab' + (isProd ? ' active' : '') + '" data-stat-item-tab="prod">生产速率</button>';
+  h += '<button class="stat-subtab' + (!isProd ? ' active' : '') + '" data-stat-item-tab="cons">消耗</button>';
+  h += '</div>';
+
+  // 只列出本 tab 有活动的物品
+  const items = all.filter(id =>
+    isProd ? ((PROD.gained[id] || 0) > 0) : ((PROD.lost[id] || 0) > 0));
+
   if (!items.length) {
-    h += '<div class="dim">暂无活动记录。挖矿、合成、建造/拆除等产生的物品增减会在此实时统计。</div>';
+    h += '<div class="dim">暂无' + (isProd ? '生产' : '消耗') + '活动记录。挖矿、合成、建造/拆除等产生的物品增减会在此实时统计。</div>';
     return h;
   }
-  h += '<div class="stat-table"><div class="stat-head"><span>物品</span><span>速率/秒</span><span>累计</span></div>';
-  for (const id of items) {
-    const rate = prodNetRate(id);
-    const gain = PROD.gained[id] || 0;
-    const lost = PROD.lost[id] || 0;
-    const net = (PROD.total[id] || 0);
-    const rateStr = (rate >= 0 ? '+' : '') + rate.toFixed(2);
-    const color = rate > 0 ? '#8fe08f' : rate < 0 ? '#ff8a7a' : '#cdd6df';
-    h += '<div class="stat-row">';
-    h += '<span>' + chip(id) + '</span>';
-    h += '<span style="color:' + color + ';font-weight:bold">' + rateStr + '</span>';
-    h += '<span class="dim">' + (net >= 0 ? '+' : '') + net.toFixed(0) +
-      '<span class="dim2">（产 ' + gain.toFixed(0) + ' / 耗 ' + lost.toFixed(0) + '）</span></span>';
+
+  if (isProd) {
+    h += '<div class="stat-table"><div class="stat-head"><span>物品</span><span>生产速率/秒</span><span>累计产出</span></div>';
+    for (const id of items) {
+      const rate = prodGainRate(id);
+      h += '<div class="stat-row">';
+      h += '<span>' + chip(id) + '</span>';
+      h += '<span style="color:#8fe08f;font-weight:bold">+' + rate.toFixed(2) + '</span>';
+      h += '<span class="dim">+' + (PROD.gained[id] || 0).toFixed(0) + '</span>';
+      h += '</div>';
+    }
+    h += '</div>';
+  } else {
+    h += '<div class="stat-table"><div class="stat-head"><span>物品</span><span>消耗速率/秒</span><span>累计消耗</span></div>';
+    for (const id of items) {
+      const rate = prodLossRate(id);
+      h += '<div class="stat-row">';
+      h += '<span>' + chip(id) + '</span>';
+      h += '<span style="color:#ff8a7a;font-weight:bold">−' + rate.toFixed(2) + '</span>';
+      h += '<span class="dim">−' + (PROD.lost[id] || 0).toFixed(0) + '</span>';
+      h += '</div>';
+    }
     h += '</div>';
   }
-  h += '</div>';
-  h += '<div class="dim">速率：每秒生成(+) / 消耗(−)。累计为最近游戏进行中的总增减，括号内为累计产出与消耗明细。</div>';
+  h += '<div class="dim">生产速率为物品被产出的速率，消耗速率为物品被消耗的速率（均按最近 2 秒滑动平均，非设备产能）。累计为最近游戏进行中的总量。</div>';
   return h;
 }
 
