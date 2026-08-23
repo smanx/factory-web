@@ -41,6 +41,8 @@ function render() {
   drawGhost(ctx);
   drawHoverAndMining(ctx);
   drawPlayer(ctx);
+  drawEnemies(ctx);
+  drawBullets(ctx);
   ctx.restore();
 }
 
@@ -228,6 +230,50 @@ function drawHoverAndMining(ctx) {
   ctx.beginPath();
   ctx.arc(p.x, p.y, REACH_PX, 0, 7);
   ctx.stroke();
+}
+
+function drawEnemies(ctx) {
+  if (!G.enemies) return;
+  for (const en of G.enemies) {
+    if (en.dead) continue;
+    const bob = Math.sin(G.time * 8 + en.x) * 1.2;
+    ctx.fillStyle = 'rgba(0,0,0,.25)';
+    ctx.beginPath();
+    ctx.ellipse(en.x, en.y + 10, 8, 3.5, 0, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = enemyColor(en.hp, 40);
+    ctx.strokeStyle = '#7c1a12';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(en.x, en.y + bob, 8, 0, 7);
+    ctx.fill();
+    ctx.stroke();
+    // 眼睛朝玩家
+    const a = Math.atan2(G.player.y - en.y, G.player.x - en.x);
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(en.x + Math.cos(a) * 3, en.y + bob + Math.sin(a) * 3, 2.5, 0, 7);
+    ctx.fill();
+    // 血条
+    const w = 16;
+    ctx.fillStyle = '#20242b';
+    ctx.fillRect(en.x - w / 2, en.y - 16, w, 3);
+    ctx.fillStyle = Math.max(0, Math.min(1, en.hp / 40)) > 0.5 ? '#57e389' : '#ff5b5b';
+    ctx.fillRect(en.x - w / 2, en.y - 16, w * Math.max(0, en.hp / 40), 3);
+  }
+}
+
+function drawBullets(ctx) {
+  if (!G.bullets) return;
+  for (const b of G.bullets) {
+    const t = b.t / b.life;
+    ctx.strokeStyle = 'rgba(255,220,120,' + (1 - t).toFixed(2) + ')';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(b.x, b.y);
+    ctx.lineTo(b.x + (b.tx - b.x) * t, b.y + (b.ty - b.y) * t);
+    ctx.stroke();
+  }
 }
 
 function drawPlayer(ctx) {

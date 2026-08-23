@@ -278,7 +278,7 @@ function htmlTech() {
     }
     h += '</div>';
   }
-  h += '<div class="hint">建造研究中心，放入科学包后选择课题；研究中心按配方顺序逐瓶消耗（红→绿→蓝）。机械臂可自动喂包。绿色科学包=传送带+机械臂；蓝色科学包=塑料+电路板+铜板（需打通石油链）。</div>';
+  h += '<div class="hint">建造研究中心，放入科学包后选择课题；研究中心按配方顺序逐瓶消耗（红→绿→蓝→灰）。机械臂可自动喂包。绿色科学包=传送带+机械臂；蓝色科学包=塑料+电路板+铜板（需打通石油链）；军事科学包=弹药匣+石墙+穿甲弹（解锁极速物流与军事工程）。</div>';
   return h;
 }
 
@@ -437,6 +437,7 @@ function htmlSettings() {
   let h = '<div class="sec">游戏设置</div>';
   h += '<label class="setrow"><input type="checkbox" data-set="infiniteOre"' + (G.settings.infiniteOre ? ' checked' : '') + '> 无限矿脉（矿藏永不枯竭）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="autoSave"' + (G.settings.autoSave ? ' checked' : '') + '> 自动保存（每60秒）</label>';
+  h += '<label class="setrow"><input type="checkbox" data-set="combat"' + (G.settings.combat ? ' checked' : '') + '> 战斗模式（敌人入侵，可用炮塔/石墙防御）</label>';
   h += '<div class="sec">存档管理</div>';
   h += '<button data-action="exp-save">导出存档到文件</button> ';
   h += '<button data-action="imp-save">从文件导入存档</button>';
@@ -602,7 +603,8 @@ function buildDebug() {
     ['+100煤', 'coal', 100], ['+100石头', 'stone', 100],
     ['+50齿轮', 'iron-gear', 50], ['+50电路', 'green-circuit', 50],
     ['+20科学包', 'science-pack', 20], ['+20绿包', 'green-science', 20],
-    ['+20蓝包', 'blue-science', 20], ['+50塑料', 'plastic-bar', 50],
+    ['+20蓝包', 'blue-science', 20], ['+20灰包', 'military-science', 20], ['+50塑料', 'plastic-bar', 50],
+    ['+50弹药', 'magazine', 50], ['+50穿甲弹', 'piercing-rounds', 50], ['+5铁箱', 'steel-chest', 5],
     ['+50原油', 'crude-oil', 50], ['+50水', 'water', 50], ['+50蒸汽', 'steam', 50]
   ]) {
     const b = document.createElement('button');
@@ -645,7 +647,12 @@ function buildDebug() {
       closePanel();
       toast('建筑已清空');
     }],
-    ['新地图', () => { newGame(); closePanel(); toast('新地图已生成'); }]
+    ['新地图', () => { newGame(); closePanel(); toast('新地图已生成'); }],
+    ['切换战斗', () => {
+      G.settings.combat = !G.settings.combat;
+      if (!G.settings.combat) { G.enemies = []; G.bullets = []; }
+      toast('战斗模式：' + (G.settings.combat ? '开启' : '关闭'));
+    }]
   ];
   for (const [txt, fn] of acts) {
     const b = document.createElement('button');

@@ -8,10 +8,12 @@ const DY = [0, 1, 0, -1];
 const BELT_SPEED = 1.25;
 const BELT_SPACING = 0.25;
 const FAST_BELT_MULT = 1.9;
+const EXPRESS_BELT_MULT = 3.75;
 const COAL_ENERGY = 12;
 const SELF_FUEL_MAX = 10;
 const UNDERGROUND_MAX = 6;
 const FAST_UNDERGROUND_MAX = 14;
+const EXPRESS_UNDERGROUND_MAX = 20;
 const UG_CAP = 8;
 const DRILL_TIME = 1.0;
 const HAND_MINE_TIME = 0.45;
@@ -19,7 +21,7 @@ const REACH_TILES = 5.5;
 const REACH_PX = REACH_TILES * TILE;
 const LAB_TIME = 4;
 const POWER_PER_ENGINE = 4;
-const POWER_USE = { 'electric-drill': 3, 'electric-furnace': 2, 'assembling-machine-mk2': 3, 'pumpjack': 2, 'refinery': 4, 'chemical-plant': 4 };
+const POWER_USE = { 'electric-drill': 3, 'electric-furnace': 2, 'assembling-machine-mk2': 3, 'assembling-machine-3': 5, 'pumpjack': 2, 'refinery': 4, 'chemical-plant': 4 };
 
 // ===== 发电链（抽水机 → 水 → 锅炉烧出蒸汽 → 蒸汽口送汽 → 蒸汽机发电）=====
 const WATER_CAP = 20;            // 锅炉/抽水机内部储水上限（兼作锅炉蒸汽缓冲上限）
@@ -39,10 +41,11 @@ const PIPE_FLOW = 3;
 // 储液罐（对齐《异星工厂》Storage Tank）：占地 3×3、容量大、只存单一流体，东西两侧各一个通用流体口
 const STORAGE_TANK_CAP = 2500;
 
-const SCIENCE_PACKS = ['science-pack', 'green-science', 'blue-science'];
+const SCIENCE_PACKS = ['science-pack', 'green-science', 'blue-science', 'military-science'];
 function isScience(item) { return SCIENCE_PACKS.indexOf(item) >= 0; }
 const FILTER_CHOICES = ['iron-plate', 'copper-plate', 'steel-plate', 'iron-gear', 'copper-cable', 'green-circuit',
-  'coal', 'stone', 'plastic-bar', 'science-pack', 'green-science', 'blue-science'].concat(FLUIDS);
+  'coal', 'stone', 'plastic-bar', 'science-pack', 'green-science', 'blue-science', 'military-science',
+  'magazine', 'piercing-rounds'].concat(FLUIDS);
 function techPacks(tid) { return (TECHS && TECHS[tid] && TECHS[tid].cost) || {}; }
 function techCostTotal(tid) {
   let s = 0;
@@ -88,9 +91,13 @@ const ITEMS = {
   'assembling-machine-mk2': { name: '组装机 II', color: '#a05fd0', desc: '吃电力、速度更高的高级组装机（3×3）' },
   'fast-transport-belt': { name: '快速传送带', color: '#f2c14e', desc: '速度约为普通带的 1.9 倍' },
   'fast-underground-belt': { name: '快速地下传送带', color: '#b98ee0', desc: '同向配对距离最远 14 格，速度是快带标准' },
+  'express-transport-belt': { name: '极速传送带', color: '#e05a4e', desc: '速度约为普通带的 3.75 倍，物流终极档' },
+  'express-underground-belt': { name: '极速地下传送带', color: '#e07a6a', desc: '同向配对距离最远 20 格，速度是极速带标准' },
+  'express-splitter': { name: '极速分流器', color: '#e06048', desc: '同分流器，但吞吐与极速带一致，可输送最快物流' },
   'priority-splitter': { name: '优先级分流器', color: '#e07b2e', desc: '同分流器，但可通过面板指定优先把货推向一侧；另一侧仅作为溢出通道' },
   'filter-inserter':   { name: '过滤机械臂', color: '#58b8e8', desc: '同机械臂，可在面板指定只抓取某种物品' },
   'stack-inserter':    { name: '堆叠机械臂', color: '#e8e059', desc: '同机械臂，但可一次性抓取多达 3 个同种物品' },
+  'steel-chest':       { name: '钢箱', color: '#9aa4b0', desc: '比储物箱容量更大的钢铁储物箱（24 格）' },
   'green-science':     { name: '绿色科学包', color: '#6fd06f', mark: 'GS', desc: '解锁二级科技（物流/石油等的钥匙）' },
   'blue-science':      { name: '蓝色科学包', color: '#4f9fe8', mark: 'BS', desc: '依赖石油与塑料的高级科研包' },
   'crude-oil':         { name: '原油', color: '#2a2418', mark: 'Oil', desc: '流体，用抽油机开采，经管道输送' },
@@ -99,8 +106,19 @@ const ITEMS = {
   'petroleum-gas':     { name: '石油气', color: '#c9a84a', mark: 'PG', desc: '炼油关键产物，制造塑料的原料' },
   'plastic-bar':       { name: '塑料板', color: '#cfe8a8', mark: 'Pl', desc: '石油化工产物，须在化工厂用石油气+煤生产，用于高级配方' },
   'pipe':              { name: '管道', color: '#6a5f52', desc: '输送流体（水/蒸汽/原油/重轻油/石油气），相邻互连，容量 40' },
+  'pipe-to-ground':    { name: '地下管道', color: '#8a7a6a', desc: '同向摆两座（最远 10 格）自动配对，从地下穿行流体，可跨过传送带/管道' },
+  'pump':              { name: '流体泵', color: '#5aa0a8', desc: '从背侧吸入流体、向前侧加压泵出，单向输送、提速吞吐（1×1）' },
   'storage-tank':      { name: '储液罐', color: '#7d95a8', desc: '大容量存储任意一种液体/气体（3×3，容量 ' + STORAGE_TANK_CAP + '）。东西两侧各一只通用流体口，可进可出；罐内只能容纳单一流体。相邻管道会自动把流体灌入罐内，罐也会向相邻炼油厂/化工厂等输入口供料，作为缓冲库容使用' },
   'pumpjack':          { name: '抽油机', color: '#3a6a66', desc: '吃电力开采原油矿床，产出原油（3×3）' },
+  'solar-panel':       { name: '太阳能板', color: '#3f6fc0', desc: '白天无燃料发电（2×2），并入全图电网' },
+  'accumulator':       { name: '蓄电器', color: '#c9a84a', desc: '储存电力，白天充电、夜间放电（2×2），平滑电网波动' },
+  'steel-furnace':     { name: '钢铁炉', color: '#8b95a3', desc: '烧煤冶炼，速度高于石炉（2×2）' },
+  'assembling-machine-3': { name: '组装机 III', color: '#7a58c8', desc: '吃电力、速度最高的组装机（3×3）' },
+  'military-science':  { name: '军事科学包', color: '#b0b0b0', mark: 'MS', desc: '解锁军事科技（炮塔/墙壁/弹药等）' },
+  'gun-turret':        { name: '机枪炮塔', color: '#5a5a66', desc: '自动攻击进入射程的敌人，需装入弹药（2×2）' },
+  'stone-wall':        { name: '石墙', color: '#8d8578', desc: '防御障碍，阻挡敌人与玩家通行（1×1）' },
+  'magazine':          { name: '弹药匣', color: '#b08a4a', desc: '机枪炮塔的标准弹药' },
+  'piercing-rounds':   { name: '穿甲弹', color: '#b05a4a', desc: '比普通弹药威力更高的穿甲弹药' },
   'refinery':          { name: '炼油厂', color: '#b06a3e', desc: '把原油炼成重油/轻油/石油气，或煤液化（5×5，吃电力，需选配方）。背面2输入、正面3输出' },
   'chemical-plant':    { name: '化工厂', color: '#7d9464', desc: '流体化学加工厂：石油气+煤→塑料，重油/轻油裂解（3×3，吃电力）。底部2输入、顶部2输出，成对固定；固体原料机械臂任意方向放入' }
 };
@@ -147,6 +165,21 @@ const RECIPES = {
   'refinery':          { time: 3,   inp: { 'steel-plate': 8, 'pipe': 6, 'green-circuit': 5 },      out: { 'refinery': 1 } },
   'chemical-plant':    { time: 4,   inp: { 'steel-plate': 10, 'iron-gear': 10, 'pipe': 10, 'green-circuit': 5 }, out: { 'chemical-plant': 1 } },
   'storage-tank':      { time: 2,   inp: { 'steel-plate': 4, 'iron-gear': 2, 'pipe': 4 }, out: { 'storage-tank': 1 } },
+  'express-transport-belt': { time: 0.5, inp: { 'fast-transport-belt': 1, 'iron-gear': 5 }, out: { 'express-transport-belt': 1 } },
+  'express-underground-belt': { time: 1, inp: { 'fast-underground-belt': 1, 'iron-gear': 10 }, out: { 'express-underground-belt': 1 } },
+  'express-splitter': { time: 1, inp: { 'fast-transport-belt': 4, 'iron-gear': 10 }, out: { 'express-splitter': 1 } },
+  'steel-chest':      { time: 1,   inp: { 'steel-plate': 8 }, out: { 'steel-chest': 1 } },
+  'steel-furnace':    { time: 2,   inp: { 'steel-plate': 8, 'stone': 6 }, out: { 'steel-furnace': 1 } },
+  'assembling-machine-3': { time: 3, inp: { 'assembling-machine-mk2': 1, 'steel-plate': 8, 'iron-gear': 6, 'green-circuit': 8 }, out: { 'assembling-machine-3': 1 } },
+  'pipe-to-ground':   { time: 1,   inp: { 'pipe': 10, 'iron-plate': 5 }, out: { 'pipe-to-ground': 1 } },
+  'pump':             { time: 1,   inp: { 'iron-plate': 4, 'steel-plate': 2, 'green-circuit': 1 }, out: { 'pump': 1 } },
+  'solar-panel':      { time: 5,   inp: { 'copper-plate': 5, 'steel-plate': 5, 'green-circuit': 5 }, out: { 'solar-panel': 1 } },
+  'accumulator':      { time: 3,   inp: { 'iron-plate': 2, 'copper-plate': 2, 'green-circuit': 2 }, out: { 'accumulator': 1 } },
+  'military-science': { time: 6,   inp: { 'magazine': 1, 'stone-wall': 1, 'piercing-rounds': 1 }, out: { 'military-science': 1 } },
+  'gun-turret':       { time: 3,   inp: { 'iron-plate': 8, 'iron-gear': 4, 'copper-plate': 2 }, out: { 'gun-turret': 1 } },
+  'stone-wall':       { time: 0.5, inp: { 'stone': 2 }, out: { 'stone-wall': 1 } },
+  'magazine':         { time: 0.5, inp: { 'iron-plate': 1 }, out: { 'magazine': 4 } },
+  'piercing-rounds':  { time: 1,   inp: { 'magazine': 1, 'copper-plate': 1, 'steel-plate': 1 }, out: { 'piercing-rounds': 1 } },
   'plastic-bar':       { time: 2,   inp: { 'petroleum-gas': 1, 'coal': 1 },                       out: { 'plastic-bar': 1 } },
   'crack-light':       { time: 3,   inp: { 'heavy-oil': 3 },                                      out: { 'light-oil': 2 } },
   'crack-gas':         { time: 3,   inp: { 'light-oil': 3 },                                      out: { 'petroleum-gas': 2 } }
@@ -173,18 +206,24 @@ function isRefineryRecipe(id) { return REFINERY_RECIPES[id] !== undefined; }
 const BUILD_DEFS = {
   'transport-belt':     { w: 1, h: 1, solid: false },
   'fast-transport-belt': { w: 1, h: 1, solid: false },
+  'express-transport-belt': { w: 1, h: 1, solid: false },
   'splitter':           { w: 1, h: 2, solid: false, rotSwap: true },
   'priority-splitter':  { w: 1, h: 2, solid: false, rotSwap: true },
+  'express-splitter':   { w: 1, h: 2, solid: false, rotSwap: true },
   'underground':        { w: 1, h: 1, solid: false },
   'fast-underground-belt': { w: 1, h: 1, solid: false },
+  'express-underground-belt': { w: 1, h: 1, solid: false },
   'inserter':           { w: 1, h: 1, solid: true },
   'long-inserter':      { w: 1, h: 1, solid: true },
   'filter-inserter':    { w: 1, h: 1, solid: true },
   'stack-inserter':     { w: 1, h: 1, solid: true },
   'burner-drill':       { w: 2, h: 2, solid: true },
   'stone-furnace':      { w: 2, h: 2, solid: true },
+  'steel-furnace':      { w: 2, h: 2, solid: true },
   'assembling-machine': { w: 3, h: 3, solid: true },
+  'assembling-machine-3': { w: 3, h: 3, solid: true },
   'storage-chest':      { w: 1, h: 1, solid: true },
+  'steel-chest':        { w: 1, h: 1, solid: true },
   'lab':                { w: 3, h: 3, solid: true },
   'boiler':             { w: 3, h: 2, solid: true },
   'steam-engine':       { w: 3, h: 5, solid: true },
@@ -193,6 +232,12 @@ const BUILD_DEFS = {
   'electric-furnace':   { w: 3, h: 3, solid: true },
   'assembling-machine-mk2': { w: 3, h: 3, solid: true },
   'pipe':               { w: 1, h: 1, solid: true },
+  'pipe-to-ground':     { w: 1, h: 1, solid: true },
+  'pump':               { w: 1, h: 1, solid: true },
+  'solar-panel':        { w: 2, h: 2, solid: true },
+  'accumulator':        { w: 2, h: 2, solid: true },
+  'gun-turret':         { w: 2, h: 2, solid: true },
+  'stone-wall':         { w: 1, h: 1, solid: true },
   'pumpjack':           { w: 3, h: 3, solid: true },
   'refinery':           { w: 5, h: 5, solid: true },
   'chemical-plant':     { w: 3, h: 3, solid: true },
@@ -211,10 +256,12 @@ const TECHS = {
   oil:        { name: '石油冶金', cost: { 'green-science': 30 }, desc: '炼油厂 / 抽油机速度 ×1.5' },
   plastic:    { name: '塑料合成', cost: { 'green-science': 20 }, desc: '化工厂生产塑料耗时缩短 ✓（绿色科研的核心支付项）' },
   automation2:{ name: '自动化 II', cost: { 'blue-science': 40 }, desc: '组装机 II 速度额外 ×1.2' },
+  express:    { name: '极速物流', cost: { 'military-science': 40 }, desc: '解锁极速传送带/地下带/分流器，物流终极档' },
+  military:   { name: '军事工程', cost: { 'military-science': 30 }, desc: '解锁机枪炮塔、石墙、弹药（防御体系）' },
   deep:       { name: '重工蓝图', cost: { 'blue-science': 50 }, desc: '蓝包终技：科研总进度获取 +20%' }
 };
 
-const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: false };
+const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: false, combat: true };
 const SETTINGS_KEY = 'factory-settings-v1';
 
 function drawItemGlyph(x, id, cx, cy, s) {
