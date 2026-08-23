@@ -23,7 +23,7 @@ const G = {
   mouseDown: false,
   canvasActive: false,
   time: 0,
-  dbg: { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1 },
+  dbg: { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1, infinite: false },
   spawn: { x: 0, y: 0 },
   hbArm: null,
   invRecipeQ: '',
@@ -185,7 +185,9 @@ function applySave(d) {
 function tryPlaceAt(tx, ty) {
   const type = selItem();
   if (!type) return;
-  if (invCount(type) < 1) {
+  const infinite = !!(G.dbg && G.dbg.infinite);
+  // 无限资源模式：建造不消耗原料，且可直接放置测试用创造/虚空箱与管道（无需背包里拥有）
+  if (!infinite && invCount(type) < 1) {
     toast('背包里没有' + ITEMS[type].name + '了');
     G.sel = -1;
     G.quickSel = null;
@@ -199,7 +201,7 @@ function tryPlaceAt(tx, ty) {
   e.dir = G.ghostDir;
   e.applyDir();
   addEnt(e);
-  invTake(type, 1);
+  if (!infinite) invTake(type, 1);
   refreshHotbar();
 }
 

@@ -71,13 +71,14 @@ function buildHotbar() {
 }
 
 function refreshHotbar() {
+  const infinite = !!(G.dbg && G.dbg.infinite);
   HOTBAR.forEach((id, i) => {
     const el = document.getElementById('hb-cnt-' + i);
     if (!el) return;
-    el.textContent = id ? invCount(id) : '';
+    el.textContent = id ? (infinite ? '∞' : invCount(id)) : '';
     const slot = document.getElementById('hotbar').children[i];
     slot.classList.toggle('active', G.sel === i);
-    slot.classList.toggle('empty', !!id && invCount(id) <= 0);
+    slot.classList.toggle('empty', !!id && !infinite && invCount(id) <= 0);
   });
 }
 
@@ -194,11 +195,13 @@ function htmlInventory() {
   }
   h += '</div><div class="dim">点一个槽位选中（黄框），再点击下面任意物品图标即可放入该槽位；再点一次同槽位清空。数字键 1-9/0 切换。</div>';
   h += '<div class="sec">建造设备（点击直接选中放置）</div><div class="recgrid">';
+  const infinite = !!(G.dbg && G.dbg.infinite);
   for (const bid of Object.keys(BUILD_DEFS)) {
     const n = invCount(bid);
-    h += '<button class="rcbtn"' + (n > 0 ? '' : ' disabled style="opacity:.45"') +
+    const canBuild = infinite || n > 0;
+    h += '<button class="rcbtn"' + (canBuild ? '' : ' disabled style="opacity:.45"') +
       ' data-itemid="' + bid + '" data-tip="' + ITEMS[bid].name + '|' + ITEMS[bid].desc + '">' +
-      '<img src="' + iconDataURL(bid) + '">' + ITEMS[bid].name + (n > 0 ? ' ×' + n : '') + '</button>';
+      '<img src="' + iconDataURL(bid) + '">' + ITEMS[bid].name + (n > 0 ? ' ×' + n : (infinite ? ' ∞' : '')) + '</button>';
   }
   h += '</div>';
   h += '<div class="sec">材料</div><div class="chips">';
@@ -628,6 +631,17 @@ function buildDebug() {
       buildDebug();
       panel.style.display = 'block';
       toast('所有速度已重置为 1x');
+    }],
+    ['无限资源：' + (G.dbg.infinite ? '开' : '关'), () => {
+      G.dbg.infinite = !G.dbg.infinite;
+      if (G.dbg.infinite) {
+        toast('无限资源模式已开启：建造不消耗原料，可直接建造测试箱（创造/虚空）与测试管道（创造/虚空）');
+      } else {
+        toast('无限资源模式已关闭');
+      }
+      buildDebug();
+      panel.style.display = 'block';
+      refreshHotbar();
     }],
     ['完成研究', () => {
       const t = G.activeTech;
