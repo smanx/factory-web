@@ -440,8 +440,11 @@ class Chest extends Entity {
   constructor(type, x, y) {
     super('storage-chest', x, y);
     this.slots = [];
+    this.limits = {};
   }
   giveItem(item) {
+    const cap = this.limits[item];
+    if (cap !== undefined && this.countOf(item) >= cap) return false;
     for (const s of this.slots)
       if (s && s.item === item && s.count < 50) { s.count++; return true; }
     if (this.slots.length >= 12) return false;
@@ -486,11 +489,14 @@ class Chest extends Entity {
   serialize() {
     const s = super.serialize();
     s.slots = this.slots.map(v => v ? [v.item, v.count] : null);
+    s.limits = this.limits;
     return s;
   }
   static restore(s) {
     const c = super.restore(s);
     c.slots = (s.slots || []).map(v => v ? { item: v[0], count: v[1] } : null);
+    c.limits = {};
+    for (const k in (s.limits || {})) if (s.limits[k] > 0) c.limits[k] = s.limits[k];
     return c;
   }
 }
