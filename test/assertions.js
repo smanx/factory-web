@@ -92,11 +92,17 @@ check('inventory offers chemical-plant buildable', invHtml.includes('化工厂')
 // ---- refinery: crude oil pulled from back(north) input pipe, outputs at front(south) ----
 const rf = place(Refinery, 60, 40); // 5×5 占据 (60,40)~(64,44)
 rf.setRecipe('basic-oil');
+// 基础原油加工一次需 100 原油（>单管容量 40），用一排输入管持续供油，验证能累计到足量并真正开工
 const rfIn = place(Pipe, 61, 39);   // 背面(北 side 3)输入口(格1)
-for (let i = 0; i < 50; i++) rfIn.giveItem('crude-oil');
+const rfIn2 = place(Pipe, 62, 39);
+const rfIn3 = place(Pipe, 63, 39);
+for (const p of [rfIn, rfIn2, rfIn3]) for (let i = 0; i < 40; i++) p.giveItem('crude-oil');
 const rfOut = place(Pipe, 62, 45);  // 正面(南 side 1)输出口(格2)
 run(1500);
 check('refinery pulled crude oil from back input pipe', (rf.inp['crude-oil'] || 0) > 0 || rf.working || Object.keys(rf.outp).length > 0);
+// 核心回归：吸入累计到 100 后必须真正开始加工并产出（防止吸入上限 < 配方需求导致永远“等待原料”）
+const rfOutTotal = (rf.outp['heavy-oil']||0)+(rf.outp['light-oil']||0)+(rf.outp['petroleum-gas']||0) + (rfOut.fluid['heavy-oil']||0)+(rfOut.fluid['light-oil']||0)+(rfOut.fluid['petroleum-gas']||0);
+check('refinery actually runs & produces (bug fix)', rf.working || rf.crafting || rfOutTotal > 0);
 check('refinery outputs drained to front pipe', (rfOut.fluid['heavy-oil'] || 0) + (rfOut.fluid['light-oil'] || 0) + (rfOut.fluid['petroleum-gas'] || 0) > 0 || Object.keys(rf.outp).length >= 0);
 check('refinery has recipe set & default ports', rf.recipe === 'basic-oil' && REFINERY_OUTPUT_CELLS.join(',') === '0,2,4');
 

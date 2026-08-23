@@ -3,6 +3,10 @@
 // ===== 炼油厂：多配方流体加工（基础/进阶原油加工、煤液化、简易煤液化）=====
 // 端口布局：背面(北)2个输入口、正面(南)3个输出口，各口之间留 1 格间隔
 // 每个接口对齐一个格子（一格一接口）：输入口落在沿边第1、3格；输出口落在沿边第0、2、4格
+// 原料缓冲上限：需能容纳任一配方的最大单种流体需求。基础/进阶原油加工一次需 100 原油，
+// 煤液化需重油/蒸汽各 50；产物单次产出最大为石油气 55。故缓冲上限取 100，
+// 确保能从管道持续吸入并累计到足量开始加工，且产物单次产出不因缓存过满而误停产
+const REFINERY_BUF_CAP = 100;
 class Refinery extends Entity {
   constructor(type, x, y) {
     super('refinery', x, y);
@@ -50,7 +54,7 @@ class Refinery extends Entity {
       const n = neighborOnSideCell(this, inSide, cell);
       if (!(n instanceof Pipe)) continue;
       if (!(n.fluid[k] > 0)) continue;
-      if ((this.inp[k] || 0) < 50 && n.takeItemOf(k)) this.inp[k] = (this.inp[k] || 0) + 1;
+      if ((this.inp[k] || 0) < REFINERY_BUF_CAP && n.takeItemOf(k)) this.inp[k] = (this.inp[k] || 0) + 1;
     }
   }
   // 将流体产物经正面(南)输出口排入相邻管道/容器
@@ -91,7 +95,7 @@ class Refinery extends Entity {
     // 检查原料是否齐备
     for (const k in rec.inp) if ((this.inp[k] || 0) < rec.inp[k]) { this.tryOutput(); return; }
     // 产物缓存是否过满（防止产物未排出时停产）
-    for (const k in rec.out) if ((this.outp[k] || 0) + rec.out[k] > 50) { this.tryOutput(); return; }
+    for (const k in rec.out) if ((this.outp[k] || 0) + rec.out[k] > REFINERY_BUF_CAP) { this.tryOutput(); return; }
     // 消耗原料，开始加工
     for (const k in rec.inp) {
       this.inp[k] -= rec.inp[k];
@@ -113,7 +117,7 @@ class Refinery extends Entity {
     if (!this.recipe) return false;
     const rec = REFINERY_RECIPES[this.recipe];
     if (!rec.inp[item]) return false;
-    if ((this.inp[item] || 0) >= 50) return false;
+    if ((this.inp[item] || 0) >= REFINERY_BUF_CAP) return false;
     this.inp[item] = (this.inp[item] || 0) + 1;
     return true;
   }
@@ -268,7 +272,7 @@ function refineryPanelHtml(e) {
   h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
   if (e.recipe)
     for (const k in REFINERY_RECIPES[e.recipe].inp) {
-      const n = Math.min(invCount(k), 50 - (e.inp[k] || 0));
+      const n = Math.min(invCount(k), REFINERY_BUF_CAP - (e.inp[k] || 0));
       if (n > 0) h += '<button data-action="feed" data-id="' + k + '">放入' +
         ITEMS[k].name + ' ×' + n + '</button>';
     }
