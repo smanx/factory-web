@@ -232,6 +232,13 @@ function updateMachineLive() {
     toggle('#btn-takeout', n > 0, '取回全部产物 (' + n + ')');
     prog = e.prog * 100;
     status = e.working ? '精炼中' : ((e.inp['crude-oil'] || 0) < 2 ? '等待原油' : (G.power.sat <= 0 ? '缺电' : '待机'));
+  } else if (e instanceof ChemicalPlant) {
+    set('input', Object.keys(e.inp).length ? countStr(e.inp) : dim('空'));
+    set('output', Object.keys(e.outp).length ? countStr(e.outp) : dim('空'));
+    const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
+    toggle('#btn-takeout', n > 0, '取回全部产物 (' + n + ')');
+    prog = e.working ? e.prog * 100 : 0;
+    status = e.working ? '化工反应中' : (e.cur ? (G.power.sat <= 0 ? '缺电' : '待机') : '等待原料');
   } else if (e instanceof Pipe) {
     const agg = {};
     for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
@@ -282,6 +289,7 @@ function htmlInventory() {
   if (!any) h += '<span class="dim">空空如也，去地图上按住左键挖矿吧（铁矿/铜矿/煤/石头）</span>';
   h += '</div><div class="sec">配方</div>';
   for (const rid in RECIPES) {
+    if (isChemRecipe(rid)) continue;   // 化工配方只能在化工厂生产
     const rec = RECIPES[rid];
     const ok = canCraft(rid);
     h += '<div class="recipe">';
@@ -383,6 +391,7 @@ function htmlMachine(e) {
     h += barHtml(0);
     h += '<div class="sec">选择配方</div><div class="recgrid">';
     for (const rid in RECIPES) {
+      if (isChemRecipe(rid)) continue;   // 化工配方只能在化工厂生产
       const outId = Object.keys(RECIPES[rid].out)[0];
       const selCls = e.recipe === rid ? 'sel' : '';
       h += '<button class="rcbtn ' + selCls + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-tip="' +
@@ -433,13 +442,30 @@ function htmlMachine(e) {
     h += '<div class="dim">配方：原油×2 → 重油+轻油+石油气 各1（吃电力）。用管道把原油送进厂区旁，或机械臂直接喂入。</div>';
     return h;
   }
+  if (e instanceof ChemicalPlant) {
+    const ins = [];
+    for (const rid of CHEM_RECIPES) for (const k in RECIPES[rid].inp) if (ins.indexOf(k) < 0) ins.push(k);
+    let h = row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
+    for (const k of ins) {
+      const n = Math.min(invCount(k), 50 - (e.inp[k] || 0));
+      if (n > 0) h += '<button data-action="feed" data-id="' + k + '">放入' + ITEMS[k].name + ' ×' + n + '</button>';
+    }
+    if (Object.keys(e.inp).length) h += '<button data-action="takein">取回全部输入</button>';
+    h += row('产物', Object.keys(e.outp).length ? countStr(e.outp) : '<span class="dim">空</span>', 'output');
+    h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
+    h += row('电力', G.power.sat > 0 ? '功率 ' + Math.round(G.power.sat * 100) + '%' : '<span class="dim">缺电</span>');
+    h += barHtml(0);
+    h += '<div class="status"></div>';
+    h += '<div class="dim">化工厂在可用化工配方间自动切换：石油气+煤→塑料板；重油→轻油；轻油→石油气。把管道贴着厂区铺设即可自动抽取原料（煤用机械臂放入），裂解产生的流体会自动排入相邻管道，塑料板等固体用机械臂取出。</div>';
+    return h;
+  }
   if (e instanceof Pipe) {
     const agg = {};
     for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
     let h = row('流体', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
     h += row('容量', '', 'cap');
     if (Object.keys(agg).length) h += '<button data-action="takeout" id="btn-pipe-takeout">取出全部 (' + e.total() + ')</button>';
-    h += '<div class="dim">管道与相邻管道自动互连均压，并把原油送入邻接炼油厂；机械臂可从管道抓取流体。</div>';
+    h += '<div class="dim">管道与相邻管道自动互连均压，并把流体送入邻接的炼油厂/化工厂/装配机；机械臂可从管道抓取流体。</div>';
     return h;
   }
   if (e instanceof Chest) {
@@ -742,6 +768,8 @@ function mapTipAt(tx, ty) {
       extra = e.on ? '发电中：电力并入全图共享电网' : '未发电（旁边放点亮的锅炉）';
     else if (e instanceof Refinery)
       extra = e.working ? '精炼中' : ((e.inp['crude-oil'] || 0) < 2 ? '等待原油' : (G.power.sat <= 0 ? '缺电' : '待机'));
+    else if (e instanceof ChemicalPlant)
+      extra = e.working ? '化工反应中' : (e.cur ? (G.power.sat <= 0 ? '缺电' : '待机') : '空置，需接入原料');
     else if (e instanceof Pipe) {
       const agg = {};
       for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
@@ -839,7 +867,8 @@ function buildDebug() {
     ['+50齿轮', 'iron-gear', 50], ['+50电路', 'green-circuit', 50],
     ['+20科学包', 'science-pack', 20], ['+20绿包', 'green-science', 20],
     ['+20蓝包', 'blue-science', 20], ['+50塑料', 'plastic-bar', 50],
-    ['+50原油', 'crude-oil', 50]
+    ['+50原油', 'crude-oil', 50], ['+50石油气', 'petroleum-gas', 50],
+    ['+50重油', 'heavy-oil', 50], ['+50轻油', 'light-oil', 50]
   ]) {
     const b = document.createElement('button');
     b.textContent = txt;

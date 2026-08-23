@@ -431,7 +431,8 @@ function drawPipe(ctx, e, gx, gy, dir, alpha) {
   ctx.lineWidth = 8;
   for (const [dx, dy] of PIPE_DIRS) {
     const nb = entAt(gx + dx, gy + dy);
-    if (nb instanceof Pipe || nb instanceof Refinery || nb instanceof Pumpjack) {
+    if (nb instanceof Pipe || nb instanceof Refinery || nb instanceof Pumpjack ||
+        nb instanceof ChemicalPlant || nb instanceof Assembler) {
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.lineTo(cx + dx * TILE / 2, cy + dy * TILE / 2);
@@ -489,6 +490,52 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
     ctx.font = 'bold 11px system-ui';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('缺原油', px + s / 2, py + s * 0.58);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  const s = TILE * 3;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#4f6f66';
+  rr(ctx, px + 3, py + 3, s - 6, s - 6, 10); ctx.fill();
+  ctx.strokeStyle = '#2c443c';
+  ctx.lineWidth = 3;
+  rr(ctx, px + 3, py + 3, s - 6, s - 6, 10); ctx.stroke();
+  // 顶部三根通气立管（化工厂的标志性外观）
+  ctx.fillStyle = '#39524a';
+  for (const fx of [0.14, 0.32, 0.5]) {
+    rr(ctx, px + s * fx, py + 9, 13, s * 0.2, 3); ctx.fill();
+  }
+  if (e.working) {
+    const fl = 0.5 + Math.sin(G.time * 9 + px) * 0.25;
+    ctx.fillStyle = 'rgba(120,230,180,' + (fl * 0.45).toFixed(2) + ')';
+    rr(ctx, px + 12, py + s * 0.42, s - 24, s * 0.24, 6); ctx.fill();
+  }
+  if (e.cur && e.prog > 0) {
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 12px system-ui';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(Math.floor(e.prog * 100) + '%', px + s / 2, py + s * 0.54);
+  }
+  // 产物条
+  let bx = px + 14;
+  for (const k of Object.keys(e.outp)) {
+    const n = e.outp[k];
+    ctx.fillStyle = '#20242b';
+    rr(ctx, bx, py + s - 18, 18, 7, 2); ctx.fill();
+    if (n > 0) {
+      ctx.fillStyle = ITEMS[k].color;
+      rr(ctx, bx, py + s - 18, 18 * Math.min(1, n / 16), 7, 2); ctx.fill();
+    }
+    bx += 24;
+  }
+  if (!e.cur) {
+    ctx.fillStyle = 'rgba(255,255,255,.55)';
+    ctx.font = 'bold 11px system-ui';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('缺原料', px + s / 2, py + s * 0.58);
   }
   ctx.globalAlpha = 1;
 }
@@ -858,6 +905,7 @@ function statusColor(e) {
     case 'steam-engine': return e.on ? 'g' : 'r';
     case 'pipe': return e.total() > 0 ? 'g' : 'r';
     case 'refinery': return e.working ? 'g' : ((e.inp['crude-oil'] || 0) >= 2 ? 'y' : 'r');
+    case 'chemical-plant': return e.working ? 'g' : (e.cur ? 'y' : 'r');
     case 'splitter':
     case 'priority-splitter': {
       if (!e.items.length) return 'r';
@@ -915,6 +963,7 @@ function drawEntity(ctx, e, gx, gy, dir, alpha) {
     case 'steam-engine': drawSteamEngine(ctx, e, gx, gy, dir, alpha); break;
     case 'pipe': drawPipe(ctx, e, gx, gy, dir, alpha); break;
     case 'refinery': drawRefinery(ctx, e, gx, gy, dir, alpha); break;
+    case 'chemical-plant': drawChemicalPlant(ctx, e, gx, gy, dir, alpha); break;
     case 'inserter':
     case 'long-inserter':
     case 'filter-inserter':

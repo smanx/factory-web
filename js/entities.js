@@ -41,14 +41,12 @@ function entContents(e) {
     for (const k in e.inp) list.push([k, e.inp[k]]);
     for (const k in e.outp) list.push([k, e.outp[k]]);
   }
-  if (e instanceof Assembler)
+  if (e instanceof Assembler || e instanceof Refinery || e instanceof ChemicalPlant)
     for (const k in e.inp) list.push([k, e.inp[k]]);
-  if (e instanceof Assembler || e instanceof Lab || e instanceof Refinery)
+  if (e instanceof Assembler || e instanceof Lab || e instanceof Refinery || e instanceof ChemicalPlant)
     for (const k in e.outp) list.push([k, e.outp[k]]);
   if (e instanceof Lab)
     for (const k in e.packs) if (e.packs[k] > 0) list.push([k, e.packs[k]]);
-  if (e instanceof Refinery)
-    for (const k in e.inp) list.push([k, e.inp[k]]);
   if (e instanceof Pipe)
     for (const k in e.fluid) if (e.fluid[k] > 0) list.push([k, e.fluid[k]]);
   if (e instanceof Chest) for (const s of e.slots) if (s) list.push([s.item, s.count]);
@@ -367,7 +365,30 @@ class Assembler extends Entity {
     this.prog = 0;
     this.spin = 0;
   }
+  // 流体产物自动推入外沿相邻管道/箱子；固体产物留给机械臂抓取
+  tryOutput() {
+    for (const k of Object.keys(this.outp)) {
+      if (!(this.outp[k] > 0) || FLUIDS.indexOf(k) < 0) continue;
+      if (pushFluidFromEntity(this, k)) {
+        this.outp[k]--;
+        if (this.outp[k] <= 0) delete this.outp[k];
+      }
+    }
+  }
+  // 从外沿相邻管道拉取当前配方所需的流体原料（机器主动拉取，只补足一批用量，避免回流）
+  pullInputs() {
+    if (!this.recipe) return;
+    const rec = RECIPES[this.recipe];
+    for (const k in rec.inp) {
+      if (FLUIDS.indexOf(k) < 0) continue;
+      if (this.outp[k] > 0) continue;
+      if ((this.inp[k] || 0) >= rec.inp[k]) continue;
+      if (pullFluidToEntity(this, k)) this.inp[k] = (this.inp[k] || 0) + 1;
+    }
+  }
   update(dt) {
+    this.tryOutput();
+    this.pullInputs();
     if (!this.recipe) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
@@ -678,6 +699,8 @@ class ElectricFurnace extends Furnace {
 class AssemblerMK2 extends Assembler {
   constructor(type, x, y) { super('assembling-machine-mk2', x, y); }
   update(dt) {
+    this.tryOutput();
+    this.pullInputs();
     if (!this.recipe) { this.crafting = false; return; }
     if (G.power.sat <= 0) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
@@ -715,6 +738,8 @@ function updatePower() {
       if (e.oreTile() && e.buf < 20) demand += POWER_USE['electric-drill'];
     } else if (e instanceof Refinery) {
       if ((e.inp['crude-oil'] || 0) >= 2) demand += POWER_USE['refinery'];
+    } else if (e instanceof ChemicalPlant) {
+      if (e.cur) demand += POWER_USE['chemical-plant'];
     } else if (e instanceof ElectricFurnace) {
       if (e.cur) demand += POWER_USE['electric-furnace'];
     } else if (e.type === 'assembling-machine-mk2') {
@@ -852,6 +877,10 @@ class Inserter extends Entity {
         return FLUIDS.indexOf(item) >= 0 && t.total() < PIPE_CAP;
       case 'refinery':
         return item === 'crude-oil' && (t.inp['crude-oil'] || 0) < 50;
+      case 'chemical-plant':
+        if (FLUIDS.indexOf(item) >= 0)
+          return CHEM_RECIPES.some(rid => !!RECIPES[rid].inp[item]) && (t.inp[item] || 0) < 50;
+        return item === 'coal' && (t.inp['coal'] || 0) < 50;
       case 'storage-chest':
         return t.slots.length < 12 || t.slots.some(s => s && s.item === item && s.count < 50);
       default:
@@ -1156,6 +1185,49 @@ class StackInserter extends Inserter {
 // ===== 石油链：管道 / 抽油机 / 炼油厂 =====
 const PIPE_DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
+// 流体进出建筑都走"外沿"：遍历占地每一格的四邻，跳过自身占用的格子。
+// 这样 3×3 建筑任意一侧贴管道都能收发，而不是只认左上角。
+function eachPerimeterTile(e, fn) {
+  for (let dy = 0; dy < e.h; dy++)
+    for (let dx = 0; dx < e.w; dx++)
+      for (const [ddx, ddy] of PIPE_DIRS) {
+        const tx = e.x + dx + ddx, ty = e.y + dy + ddy;
+        if (tx >= e.x && tx < e.x + e.w && ty >= e.y && ty < e.y + e.h) continue;
+        if (fn(e.x + dx, e.y + dy, tx, ty)) return true;
+      }
+  return false;
+}
+
+// 把 1 单位流体 k 从建筑排入外沿相邻的管道/箱子；成功返回 true。
+// 多个可接收目标之间轮转发（避免产物总灌进同一条管），玩家把输入/输出管道
+// 分列不同侧即可自然分流。
+function pushFluidFromEntity(e, k) {
+  const targets = [];
+  eachPerimeterTile(e, (sx, sy, tx, ty) => {
+    const t = entAt(tx, ty);
+    if (!t || t === e) return false;
+    const ok = t instanceof Pipe
+      ? t.total() < PIPE_CAP
+      : (t.slots ? (t.slots.length < 12 || t.slots.some(s => s && s.item === k && s.count < 50)) : false);
+    if (ok) { targets.push(t); }
+    return false;
+  });
+  if (!targets.length) return false;
+  const t = targets[(e._outRR = ((e._outRR || 0) + 1)) % targets.length];
+  return t.giveItem(k);
+}
+
+// 从外沿相邻的管道拉取 1 单位流体 k；成功返回 true
+function pullFluidToEntity(e, k) {
+  return eachPerimeterTile(e, (sx, sy, tx, ty) => {
+    const t = entAt(tx, ty);
+    if (!(t instanceof Pipe) || !(t.fluid[k] > 0)) return false;
+    t.fluid[k]--;
+    if (t.fluid[k] <= 0) delete t.fluid[k];
+    return true;
+  });
+}
+
 class Pipe extends Entity {
   constructor(type, x, y) {
     super('pipe', x, y);
@@ -1242,6 +1314,7 @@ class Refinery extends Entity {
   }
   update(dt) {
     this.working = false;
+    this.tryOutput();   // 无论是否在产，都持续把产物排入外沿相邻的管道/箱子
     if ((this.inp['crude-oil'] || 0) < 2) { this.prog = 0; return; }
     if (this.outTotal() >= 48) return;
     if (G.power.sat <= 0) return;
@@ -1253,19 +1326,13 @@ class Refinery extends Entity {
       if (this.inp['crude-oil'] <= 0) delete this.inp['crude-oil'];
       for (const k of ['heavy-oil', 'light-oil', 'petroleum-gas']) this.outp[k] = (this.outp[k] || 0) + 1;
     }
-    this.tryOutput();
   }
   tryOutput() {
     for (const k of Object.keys(this.outp)) {
       if (!(this.outp[k] > 0)) continue;
-      for (const [dx, dy] of PIPE_DIRS) {
-        const t = entAt(this.x + dx, this.y + dy);
-        if (!t || t === this) continue;
-        if ((t instanceof Pipe || t instanceof Chest) && !(t instanceof Splitter) && t.giveItem(k)) {
-          this.outp[k]--;
-          if (this.outp[k] <= 0) delete this.outp[k];
-          break;
-        }
+      if (pushFluidFromEntity(this, k)) {
+        this.outp[k]--;
+        if (this.outp[k] <= 0) delete this.outp[k];
       }
     }
   }
@@ -1298,6 +1365,118 @@ class Refinery extends Entity {
   }
 }
 
+// ===== 化工厂：塑料/裂解等化工配方（对应原版化学厂，3×3 吃电力） =====
+// 流体原料从外沿相邻管道自动抽取，煤用机械臂放入；流体产物自动排入相邻管道，
+// 塑料板等固体产物留在厂内等待机械臂取出。
+class ChemicalPlant extends Entity {
+  constructor(type, x, y) {
+    super('chemical-plant', x, y);
+    this.inp = {};   // { 'petroleum-gas'/'heavy-oil'/'light-oil'/'coal': n }
+    this.outp = {};
+    this.cur = null;
+    this.prog = 0;
+    this.working = false;
+  }
+  outTotal() {
+    let s = 0;
+    for (const k in this.outp) s += this.outp[k];
+    return s;
+  }
+  pickRecipe() {
+    for (const rid of CHEM_RECIPES) {
+      const r = RECIPES[rid];
+      let ok = true;
+      for (const k in r.inp) if ((this.inp[k] || 0) < r.inp[k]) { ok = false; break; }
+      if (!ok) continue;
+      for (const k in r.out) if ((this.outp[k] || 0) + r.out[k] > 50) { ok = false; break; }
+      if (ok) return r;
+    }
+    return null;
+  }
+  // 从外沿相邻管道拉取化工原料流体（机器主动拉取，避免管道把产物推回形成回流）：
+  // 仅当某配方的其余原料已备足、而该流体不足一批时才补货；自己正在产出的流体不回收。
+  pullFluids() {
+    for (const k of FLUIDS) {
+      if (this.outp[k] > 0) continue;
+      let want = 0;
+      for (const rid of CHEM_RECIPES) {
+        const r = RECIPES[rid];
+        if (!r.inp[k]) continue;
+        let othersOk = true;
+        for (const j in r.inp)
+          if (j !== k && (this.inp[j] || 0) < r.inp[j]) { othersOk = false; break; }
+        if (othersOk) want = Math.max(want, r.inp[k]);
+      }
+      while (want > 0 && (this.inp[k] || 0) < want && pullFluidToEntity(this, k)) {
+        this.inp[k] = (this.inp[k] || 0) + 1;
+      }
+    }
+  }
+  update(dt) {
+    this.working = false;
+    this.pullFluids();
+    const r = this.pickRecipe();
+    this.cur = r;
+    this.tryOutput();   // 无论是否在产，都持续把产物排入相邻管道
+    if (!r) { this.prog = 0; return; }
+    if (G.power.sat <= 0) return;
+    this.working = true;
+    this.prog += dt * chemMult() * (G.power.sat < 1 ? G.power.sat : 1) / r.time;
+    if (this.prog >= 1) {
+      this.prog -= 1;
+      for (const k in r.inp) {
+        this.inp[k] -= r.inp[k];
+        if (this.inp[k] <= 0) delete this.inp[k];
+      }
+      for (const k in r.out) this.outp[k] = (this.outp[k] || 0) + r.out[k];
+    }
+  }
+  tryOutput() {
+    // 流体产物排入外沿相邻管道/箱子；固体产物（塑料板）留在厂内等待机械臂
+    for (const k of Object.keys(this.outp)) {
+      if (!(this.outp[k] > 0) || FLUIDS.indexOf(k) < 0) continue;
+      if (pushFluidFromEntity(this, k)) {
+        this.outp[k]--;
+        if (this.outp[k] <= 0) delete this.outp[k];
+      }
+    }
+  }
+  giveItem(item) {
+    if (item === 'coal') {
+      if ((this.inp['coal'] || 0) < 50) { this.inp['coal'] = (this.inp['coal'] || 0) + 1; return true; }
+      return false;
+    }
+    if (FLUIDS.indexOf(item) < 0) return false;
+    if (!CHEM_RECIPES.some(rid => !!RECIPES[rid].inp[item])) return false;
+    if ((this.inp[item] || 0) >= 50) return false;
+    this.inp[item] = (this.inp[item] || 0) + 1;
+    return true;
+  }
+  peekItem() {
+    for (const k in this.outp) if (this.outp[k] > 0) return k;
+    return null;
+  }
+  takeItem() {
+    for (const k in this.outp) if (this.outp[k] > 0) return this.takeItemOf(k);
+    return null;
+  }
+  countOf(item) { return this.outp[item] || 0; }
+  takeItemOf(item) {
+    if ((this.outp[item] || 0) > 0) { this.outp[item]--; if (this.outp[item] <= 0) delete this.outp[item]; return item; }
+    return null;
+  }
+  serialize() {
+    const s = super.serialize();
+    s.inp = this.inp; s.outp = this.outp; s.prog = this.prog;
+    return s;
+  }
+  static restore(s) {
+    const c = super.restore(s);
+    c.inp = s.inp || {}; c.outp = s.outp || {}; c.prog = s.prog || 0;
+    return c;
+  }
+}
+
 const ENT_CLASSES = {
   'transport-belt': Belt,
   'fast-transport-belt': Belt,
@@ -1318,6 +1497,7 @@ const ENT_CLASSES = {
   'pipe': Pipe,
   'pumpjack': Pumpjack,
   'refinery': Refinery,
+  'chemical-plant': ChemicalPlant,
   'inserter': Inserter,
   'long-inserter': LongInserter,
   'filter-inserter': FilterInserter,
