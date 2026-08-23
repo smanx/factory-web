@@ -184,6 +184,13 @@ function refineryInputFluid(e, cell) {
   const idx = map[cell];
   return (idx !== undefined && idx < ins.length) ? ins[idx] : null;
 }
+// 判断炼油厂当前配方是否缺原料：任一输入（流体或固体）尚未累计到配方所需用量即视为缺原料
+function refineryMissingInput(e) {
+  const rec = e.recipe ? REFINERY_RECIPES[e.recipe] : null;
+  if (!rec) return false;
+  for (const k in rec.inp) if ((e.inp[k] || 0) < rec.inp[k]) return true;
+  return false;
+}
 function drawRefinery(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const s = TILE * e.w;
@@ -230,7 +237,7 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
     }
     bx += 24;
   }
-  if (!e.working && (!e.recipe || (e.inp['crude-oil'] || 0) < 2)) {
+  if (!e.working && (!e.recipe || refineryMissingInput(e))) {
     ctx.fillStyle = 'rgba(255,255,255,.55)';
     ctx.font = 'bold 11px system-ui';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
