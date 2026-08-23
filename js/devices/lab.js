@@ -134,6 +134,7 @@ function labPanelHtml(e) {
   }
   h += '<button data-action="takeout" id="btn-lab-takeout" style="display:none"></button>';
   h += barHtml(0);
+  h += '<div class="status"></div>';
   h += row('课题', '', 'techline');
   h += '<div class="dim">研究中心按所选科技的配方顺序逐瓶消耗科学包；缺哪种包会暂停并提示。机械臂可自动喂包。</div>';
   return h;
@@ -151,8 +152,14 @@ function labPanelLive(e, api) {
     api.set('techline', TECHS[tech].name + '（' + doneN + '/' + techCostTotal(tech) + '，下一瓶：' +
       (need ? ITEMS[need].name : '—') + '）');
     api.prog(doneN / techCostTotal(tech) * 100);
+    // 状态：研究中或暂停原因
+    if (need && e.packCount(need) <= 0) api.status('已暂停：缺少科学包「' + ITEMS[need].name + '」', 'warn');
+    else if (!need) api.status('已暂停：待按配方顺序放入科学包', 'warn');
+    else api.status('研究中：' + TECHS[tech].name, 'ok');
   } else {
     api.set('techline', dimSpan('未选择（T 打开研究面板）'));
+    if (G.activeTech && G.techDone[G.activeTech]) api.status('已完成：' + TECHS[G.activeTech].name, 'ok');
+    else api.status('已暂停：未选择研究课题（按 T 打开）', 'warn');
   }
 }
 function labTip(e) {

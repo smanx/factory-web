@@ -213,6 +213,8 @@ html, body {
 .bar i { display: block; height: 100%; background: linear-gradient(90deg, #57b95c, #8fe08f); transition: width .2s; }
 
 .status { color: #ffd23c; margin-top: 4px; }
+.status.ok { color: #57e389; }
+.status.bad { color: #ff5b5b; }
 
 .recgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 8px; }
 .rcbtn {

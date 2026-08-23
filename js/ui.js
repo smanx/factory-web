@@ -150,7 +150,7 @@ function updateMachineLive() {
   const e = G.panelEnt;
   if (!G.ents.includes(e)) { closePanel(); return; }
   const body = document.getElementById('panel-body');
-  let prog = 0, status = '';
+  let prog = 0, status = '', state = 'warn';
   const api = {
     set: (k, v) => {
       const el = body.querySelector('[data-live="' + k + '"]');
@@ -164,14 +164,19 @@ function updateMachineLive() {
       if (txt && el.textContent !== txt) el.textContent = txt;
     },
     prog: v => { prog = v; },
-    status: s => { status = s; }
+    // status(text, kind)：kind 取 'ok'(工作)/'warn'(暂停·需留意)/'bad'(故障)，用于区分颜色
+    status: (s, k) => { status = s; if (k) state = k; }
   };
   const panel = DEVICE_PANEL[e.type];
   if (panel && panel.live) panel.live(e, api);
   const bar = body.querySelector('.bar i');
   if (bar) bar.style.width = Math.max(0, Math.min(100, prog)) + '%';
   const stEl = body.querySelector('.status');
-  if (stEl && status && stEl.textContent !== status) stEl.textContent = status;
+  if (stEl && status) {
+    if (stEl.textContent !== status) stEl.textContent = status;
+    const wantCls = 'status ' + (state || 'warn');
+    if (stEl.className !== wantCls) stEl.className = wantCls;
+  }
 }
 
 function chip(id, n) {

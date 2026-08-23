@@ -179,6 +179,7 @@ function assemblerPanelHtml(e) {
   h += row('输出', Object.keys(e.outp).length ? countStr(e.outp) : '<span class="dim">空</span>', 'output');
   h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
   h += barHtml(0);
+  h += '<div class="status"></div>';
   h += '<div class="sec">选择配方</div><div class="recgrid">';
   for (const rid of Object.keys(RECIPES).filter(r => !isChemRecipe(r))) {
     const outId = Object.keys(RECIPES[rid].out)[0];
@@ -197,6 +198,21 @@ function assemblerPanelLive(e, api) {
   const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
   api.toggle('#btn-takeout', n > 0, '取回全部输出 (' + n + ')');
   api.prog(e.recipe && e.crafting ? e.prog / RECIPES[e.recipe].time * 100 : 0);
+  // 状态：工作中或暂停原因（异星工厂惯例：缺料/输出满/缺电）
+  if (!e.recipe) { api.status('未设置配方，点击下方选择', 'warn'); return; }
+  if (e.crafting) { api.status('生产中：' + ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name, 'ok'); return; }
+  const rec = RECIPES[e.recipe];
+  // 仅吃电的机型（组装机 II）在缺电时暂停；组装机 I 不吃电
+  const needsPower = typeof e.powerDemand === 'function' && e.powerDemand() > 0;
+  if (needsPower && G.power.sat <= 0) { api.status('已暂停：缺电', 'bad'); return; }
+  for (const k in rec.out)
+    if ((e.outp[k] || 0) + rec.out[k] > 50) { api.status('已暂停：输出已满（' + ITEMS[k].name + '）', 'warn'); return; }
+  const missing = Object.keys(rec.inp).filter(k => (e.inp[k] || 0) < rec.inp[k]);
+  if (missing.length) {
+    api.status('已暂停：缺少原料 ' + missing.map(k => ITEMS[k].name).join('、'), 'warn');
+    return;
+  }
+  api.status('已暂停：等待材料就绪', 'warn');
 }
 function assemblerTip(e) {
   return e.recipe ? ('生产 ' + ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name) : '未设置配方，点击打开面板';

@@ -137,9 +137,9 @@ function steamEnginePanelLive(e, api) {
   api.set('power', e.on ? '+' + e.powerOut.toFixed(1) : dimSpan('+0'));
   api.set('steam', e.steamBuf >= 1 ? chip('steam', Math.floor(e.steamBuf)) : dimSpan('空'));
   api.prog((e.outMult || 0) * 100);
-  api.status(e.on ? '发电中：供汽越足功率越高'
-    : e.steamBuf > 0 ? '蒸汽不足：功率随供汽量下降'
-    : '未发电：从任一端汽口接入锅炉蒸汽（直连出汽口或经管道）');
+  if (e.on) api.status('发电中：供汽越足功率越高', 'ok');
+  else if (e.steamBuf > 0) api.status('已暂停：蒸汽不足，功率随供汽量下降', 'warn');
+  else api.status('已暂停：未接蒸汽（从任一端汽口接入）', 'bad');
 }
 function steamEngineTip(e) {
   return e.on ? '发电中 +' + (e.powerOut || 0).toFixed(1) + '（存汽' + Math.floor(e.steamBuf || 0) + '）'

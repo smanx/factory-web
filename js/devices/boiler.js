@@ -178,10 +178,11 @@ function boilerPanelLive(e, api) {
   api.set('steam', e.steamBuf >= 1 ? chip('steam', Math.floor(e.steamBuf)) : dimSpan('空'));
   api.set('temp', Math.round(e.temp) + ' / ' + BOILER_TEMP_MAX + ' °C');
   api.prog(e.temp / BOILER_TEMP_MAX * 100);
-  api.status(e.steamBuf >= WATER_CAP - 0.01 ? '蒸汽憋满：等待蒸汽机/管道消耗'
-    : e.burning ? '产汽中（耗煤+水）'
-    : e.water < 1 ? '缺水：等待抽水机经管道或两端水口供水'
-    : (e.fuelCoal <= 0 && e.burnLeft <= 0) ? '无煤' : '待机');
+  if (e.steamBuf >= WATER_CAP - 0.01) api.status('已暂停：蒸汽憋满，等待蒸汽机/管道消耗', 'warn');
+  else if (e.burning) api.status('产汽中（耗煤+水）', 'ok');
+  else if (e.water < 1) api.status('已暂停：缺水（检查左右两端水口/管道供水）', 'bad');
+  else if (e.fuelCoal <= 0 && e.burnLeft <= 0) api.status('已暂停：无煤', 'bad');
+  else api.status('已暂停：待机', 'warn');
 }
 function boilerTip(e) {
   return e.burning ? '产汽中 ' + Math.round(e.temp) + '°C（存汽' + Math.floor(e.steamBuf || 0) + '）'

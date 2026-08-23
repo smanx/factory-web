@@ -100,8 +100,9 @@ function pumpPanelHtml(e) {
 function pumpPanelLive(e, api) {
   api.set('buf', e.buf >= 1 ? chip('water', Math.floor(e.buf)) : dimSpan('空'));
   api.prog(e.working ? e.pulse * 100 : ((e.buf || 0) / WATER_CAP * 100));
-  api.status(e.working ? '抽水中，产出朝' + ['东', '南', '西', '北'][e.dir]
-    : (e.buf >= 1 ? '缓存已满，等待输出' : '待机'));
+  if (e.working) api.status('抽水中，产出朝' + ['东', '南', '西', '北'][e.dir], 'ok');
+  else if (e.buf >= 1) api.status('已暂停：缓存已满，等待输出', 'warn');
+  else api.status('待机：等待抽水', 'ok');
 }
 function pumpTip(e) {
   return e.working ? '抽水中，产出朝' + ['东', '南', '西', '北'][e.dir]

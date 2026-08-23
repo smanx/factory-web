@@ -216,6 +216,7 @@ function splitterPanelHtml(e) {
   }
   h += '</span></div>';
   if (e.outPref >= 0) h += '<div class="dim">带黄色箭头的一侧为优先输出道；堵住时自动溢出到另一侧。</div>';
+  h += '<div class="status"></div>';
   return h;
 }
 
@@ -231,7 +232,13 @@ function splitterOnAction(act, btn) {
   }
   return false;
 }
-const splitterPanel = { html: splitterPanelHtml, onAction: splitterOnAction };
+function splitterPanelLive(e, api) {
+  if (!e.items.length) { api.status('空闲（无物品）', 'ok'); return; }
+  // 出口拥堵：任一物品到达输出端却无法送出（停住）
+  const stuck = e.items.some(o => o.pos >= 0.999);
+  api.status(stuck ? '已暂停：输出端拥堵，等待疏通' : '分选中：' + e.items.length + ' 件在途', stuck ? 'warn' : 'ok');
+}
+const splitterPanel = { html: splitterPanelHtml, onAction: splitterOnAction, live: splitterPanelLive };
 ENT_CLASSES['splitter'] = Splitter;
 ENT_CLASSES['priority-splitter'] = PrioritySplitter;
 DEVICE_RENDER['splitter'] = drawSplitter;

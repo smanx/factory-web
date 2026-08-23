@@ -196,10 +196,11 @@ function chemicalPlantPanelLive(e, api) {
   const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
   api.toggle('#btn-takeout', n > 0, '取回全部产物 (' + n + ')');
   api.prog(e.recipe && e.crafting ? e.prog / RECIPES[e.recipe].time * 100 : 0);
-  api.status(!e.recipe ? '未设置配方'
+  api.status(!e.recipe ? '已暂停：未设置配方，点击下方选择'
     : e.crafting ? '加工中（流体产物自动排入相邻管道）'
-    : G.power.sat <= 0 ? '缺电'
-    : '等待原料：所需流体经相邻管道自动吸入，固体用机械臂喂入');
+    : G.power.sat <= 0 ? '已暂停：缺电'
+    : '已暂停：等待原料（流体经管道自动吸入）',
+    !e.recipe || G.power.sat <= 0 ? 'warn' : (e.crafting ? 'ok' : 'warn'));
 }
 function chemicalPlantTip(e) {
   return e.crafting ? ('加工 ' + ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name)
