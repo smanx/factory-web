@@ -21,9 +21,14 @@ class Pipe extends Entity {
         if (t instanceof Pipe) {
           // 防止流体混合：仅当目标管为空或只含同种流体 k 时，才允许流动
           const tOther = t.total() - (t.fluid[k] || 0);
-          if (tOther === 0 && t.total() < PIPE_CAP && this.fluid[k] > (t.fluid[k] || 0)) {
-            this.fluid[k]--;
-            t.fluid[k] = (t.fluid[k] || 0) + 1;
+          const theirs = t.fluid[k] || 0;
+          if (tOther === 0 && t.total() < PIPE_CAP && this.fluid[k] > theirs) {
+            // 自动平衡：把两管之间的差量匀一半过去，让整条管网的流体快速趋平，
+            // 而不像原来每帧只推 1 单位（长距离管道远端要很久才见液）。
+            const diff = this.fluid[k] - theirs;
+            const move = Math.max(1, Math.ceil(diff / 2));
+            this.fluid[k] -= move;
+            t.fluid[k] = theirs + move;
           }
         } else if ((t instanceof Refinery) || (t instanceof ChemicalPlant) ||
                     (t instanceof Assembler && t.acceptsFluid(k))) {
