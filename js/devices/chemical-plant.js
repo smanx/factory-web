@@ -142,6 +142,26 @@ const CHEM_PORTS = [
   { side: 3, color: PORT_OUTPUT, off: -1, cells: [0] },               // 北·输出格0
   { side: 3, color: PORT_OUTPUT, off: 1, cells: [2] }                 // 北·输出格2
 ];
+// 当前配方下各输入口对应流体：用于“显示详情”时在接口处画图标
+// 化工厂 3×3，中心格=1；配方第1种流体进左侧(格0)，第2种进右侧(格2)
+function chemInputFluid(e, cell) {
+  const rec = e.recipe ? RECIPES[e.recipe] : null;
+  if (!rec) return null;
+  const ins = Object.keys(rec.inp).filter(k => FLUIDS.indexOf(k) >= 0);
+  const map = { 0: 0, 2: 1 };
+  const idx = map[cell];
+  return (idx !== undefined && idx < ins.length) ? ins[idx] : null;
+}
+// 当前配方下各输出口对应流体：用于“显示详情”时在接口处画图标
+// 左输出口(格0)←第1种流体产物；右输出口(格2)←第2种流体产物
+function chemOutputFluid(e, cell) {
+  const rec = e.recipe ? RECIPES[e.recipe] : null;
+  if (!rec) return null;
+  const outs = Object.keys(rec.out).filter(k => FLUIDS.indexOf(k) >= 0);
+  const map = { 0: 0, 2: 1 };
+  const idx = map[cell];
+  return (idx !== undefined && idx < outs.length) ? outs[idx] : null;
+}
 function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const s = TILE * 3;
@@ -201,10 +221,21 @@ function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
   // 配方第1种流体原料进左侧输入口，第2种进右侧输入口
   drawRotatablePorts(ctx, e, px, py, s, CHEM_PORTS);
   const cd = e.dir | 0;
-  // 接口用途标签默认隐藏，按住 Alt 键显示（对齐《异星工厂》核心交互）
+  // 接口图标默认隐藏，松开 Alt 切换显示详情：各口只画流体/气体图标，不再显示文字标签
   if (portLabelVisible()) {
-    drawPortLabel(ctx, px, py, s, (1 + cd) % 4, '输入(第1种→左/第2种→右)', '#7fd87f');
-    drawPortLabel(ctx, px, py, s, (3 + cd) % 4, '产物输出', '#f0b072');
+    const inSide = (1 + cd) % 4, outSide = (3 + cd) % 4;
+    // 输入口（底部）：沿边偏移 = 格号 - 中心格(1)
+    for (const cell of CHEM_INPUT_CELLS) {
+      const f = chemInputFluid(e, cell);
+      if (!f) continue;
+      drawPortIcon(ctx, px, py, s, inSide, cell - 1, f);
+    }
+    // 输出口（顶部）：沿边偏移 = 格号 - 中心格(1)
+    for (const cell of CHEM_OUTPUT_CELLS) {
+      const f = chemOutputFluid(e, cell);
+      if (!f) continue;
+      drawPortIcon(ctx, px, py, s, outSide, cell - 1, f);
+    }
   }
   ctx.globalAlpha = 1;
 }
