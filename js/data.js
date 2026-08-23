@@ -269,7 +269,7 @@ const TECHS = {
   deep:       { name: '重工蓝图', cost: { 'blue-science': 50 }, desc: '蓝包终技：科研总进度获取 +20%' }
 };
 
-const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: false, combat: true };
+const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: false, combat: false };
 const SETTINGS_KEY = 'factory-settings-v1';
 
 function drawItemGlyph(x, id, cx, cy, s) {
