@@ -47,11 +47,11 @@ function entContents(e) {
   }
   if (e instanceof Assembler)
     for (const k in e.inp) list.push([k, e.inp[k]]);
-  if (e instanceof Assembler || e instanceof Lab || e instanceof Refinery)
+  if (e instanceof Assembler || e instanceof Lab || e instanceof Refinery || e instanceof ChemicalPlant)
     for (const k in e.outp) list.push([k, e.outp[k]]);
   if (e instanceof Lab)
     for (const k in e.packs) if (e.packs[k] > 0) list.push([k, e.packs[k]]);
-  if (e instanceof Refinery)
+  if (e instanceof Refinery || e instanceof ChemicalPlant)
     for (const k in e.inp) list.push([k, e.inp[k]]);
   if (e instanceof Pipe)
     for (const k in e.fluid) if (e.fluid[k] > 0) list.push([k, e.fluid[k]]);
@@ -371,7 +371,36 @@ class Assembler extends Entity {
     this.prog = 0;
     this.spin = 0;
   }
+  fluidRecipe() {
+    const r = this.recipe ? RECIPES[this.recipe] : null;
+    if (!r) return null;
+    const fin = Object.keys(r.inp).filter(k => FLUIDS.indexOf(k) >= 0);
+    const fout = Object.keys(r.out).filter(k => FLUIDS.indexOf(k) >= 0);
+    return (fin.length || fout.length) ? { rec: r, fin, fout } : null;
+  }
+  acceptsFluid(k) {
+    const r = this.recipe ? RECIPES[this.recipe] : null;
+    return !!(r && r.inp[k]);
+  }
+  portFlow() {
+    const fr = this.fluidRecipe();
+    if (!fr) return;
+    forEachNeighborEnt(this, n => {
+      if (!(n instanceof Pipe)) return;
+      for (const k of fr.fin)
+        if ((this.inp[k] || 0) < 50 && (n.fluid[k] || 0) >= 1) {
+          n.takeItemOf(k);
+          this.inp[k] = (this.inp[k] || 0) + 1;
+        }
+      for (const k of fr.fout)
+        if ((this.outp[k] || 0) > 0 && n.total() < PIPE_CAP && n.giveItem(k)) {
+          this.outp[k]--;
+          if (this.outp[k] <= 0) delete this.outp[k];
+        }
+    });
+  }
   update(dt) {
+    this.portFlow();
     if (!this.recipe) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
@@ -776,6 +805,7 @@ class ElectricFurnace extends Furnace {
 class AssemblerMK2 extends Assembler {
   constructor(type, x, y) { super('assembling-machine-mk2', x, y); }
   update(dt) {
+    this.portFlow();
     if (!this.recipe) { this.crafting = false; return; }
     if (G.power.sat <= 0) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
@@ -814,6 +844,8 @@ function updatePower() {
       if (e.oreTile() && e.buf < 20) demand += POWER_USE['electric-drill'];
     } else if (e instanceof Refinery) {
       if ((e.inp['crude-oil'] || 0) >= 2) demand += POWER_USE['refinery'];
+    } else if (e instanceof ChemicalPlant) {
+      if (e.recipe) demand += POWER_USE['chemical-plant'];
     } else if (e instanceof ElectricFurnace) {
       if (e.cur) demand += POWER_USE['electric-furnace'];
     } else if (e.type === 'assembling-machine-mk2') {
@@ -932,7 +964,8 @@ class Inserter extends Entity {
         if (item === 'coal') return false;
         return SMELTS.some(r => r.inp === item) && (t.inp[item] || 0) < 25;
       case 'assembling-machine':
-      case 'assembling-machine-mk2': {
+      case 'assembling-machine-mk2':
+      case 'chemical-plant': {
         if (!t.recipe) return false;
         const rec = RECIPES[t.recipe];
         return !!rec.inp[item] && (t.inp[item] || 0) < 50;
@@ -1304,7 +1337,8 @@ class Pipe extends Entity {
             this.fluid[k]--;
             t.fluid[k] = (t.fluid[k] || 0) + 1;
           }
-        } else if ((t instanceof Refinery || t instanceof Boiler) && t.giveItem(k)) {
+        } else if (((t instanceof Refinery) || (t instanceof Boiler) || (t instanceof ChemicalPlant) ||
+                    (t instanceof Assembler && t.acceptsFluid(k))) && t.giveItem(k)) {
           this.fluid[k]--;
         } else if (k === 'steam' && t instanceof SteamEngine && t.giveItem('steam')) {
           this.fluid[k]--;
@@ -1463,6 +1497,102 @@ class Refinery extends Entity {
   }
 }
 
+class ChemicalPlant extends Entity {
+  constructor(type, x, y) {
+    super('chemical-plant', x, y);
+    this.recipe = null;
+    this.inp = {};
+    this.outp = {};
+    this.crafting = false;
+    this.prog = 0;
+    this.working = false;
+  }
+  setRecipe(id) {
+    if (this.recipe === id) return;
+    this.recipe = id;
+    this.inp = {}; this.outp = {};
+    this.crafting = false; this.prog = 0;
+  }
+  needsFluid(k) {
+    const r = this.recipe ? RECIPES[this.recipe] : null;
+    return !!(r && r.inp[k]);
+  }
+  portFlow() {
+    forEachNeighborEnt(this, n => {
+      if (!(n instanceof Pipe)) return;
+      for (const k of Object.keys(n.fluid)) {
+        if (!(n.fluid[k] > 0) || !this.needsFluid(k)) continue;
+        if ((this.inp[k] || 0) < 50 && n.takeItemOf(k)) this.inp[k] = (this.inp[k] || 0) + 1;
+      }
+      for (const k of Object.keys(this.outp)) {
+        if (!(this.outp[k] > 0) || FLUIDS.indexOf(k) < 0) continue;
+        if (n.total() < PIPE_CAP && n.giveItem(k)) {
+          this.outp[k]--;
+          if (this.outp[k] <= 0) delete this.outp[k];
+        }
+      }
+    });
+  }
+  update(dt) {
+    this.working = false;
+    const rec = this.recipe ? RECIPES[this.recipe] : null;
+    if (!rec) { this.prog = 0; return; }
+    this.portFlow();
+    if (this.crafting) {
+      if (G.power.sat <= 0) return;
+      this.working = true;
+      this.prog += dt * chemMult() * oilMult() * (G.power.sat < 1 ? G.power.sat : 1);
+      if (this.prog >= rec.time) {
+        for (const k in rec.out) this.outp[k] = (this.outp[k] || 0) + rec.out[k];
+        this.crafting = false;
+        this.prog = 0;
+      }
+      return;
+    }
+    for (const k in rec.inp) if ((this.inp[k] || 0) < rec.inp[k]) return;
+    for (const k in rec.out) if ((this.outp[k] || 0) + rec.out[k] > 50) { this.portFlow(); return; }
+    for (const k in rec.inp) {
+      this.inp[k] -= rec.inp[k];
+      if (this.inp[k] <= 0) delete this.inp[k];
+    }
+    this.crafting = true;
+    this.prog = 0;
+  }
+  giveItem(item) {
+    if (!this.recipe) return false;
+    const rec = RECIPES[this.recipe];
+    if (!rec.inp[item]) return false;
+    if ((this.inp[item] || 0) >= 50) return false;
+    this.inp[item] = (this.inp[item] || 0) + 1;
+    return true;
+  }
+  peekItem() {
+    for (const k in this.outp) if (this.outp[k] > 0) return k;
+    return null;
+  }
+  takeItem() {
+    for (const k in this.outp) if (this.outp[k] > 0) return this.takeItemOf(k);
+    return null;
+  }
+  countOf(item) { return this.outp[item] || 0; }
+  takeItemOf(item) {
+    if ((this.outp[item] || 0) > 0) { this.outp[item]--; if (this.outp[item] <= 0) delete this.outp[item]; return item; }
+    return null;
+  }
+  serialize() {
+    const s = super.serialize();
+    s.recipe = this.recipe; s.inp = this.inp; s.outp = this.outp;
+    s.crafting = this.crafting; s.prog = this.prog;
+    return s;
+  }
+  static restore(s) {
+    const c = super.restore(s);
+    c.recipe = s.recipe || null; c.inp = s.inp || {}; c.outp = s.outp || {};
+    c.crafting = !!s.crafting; c.prog = s.prog || 0;
+    return c;
+  }
+}
+
 const ENT_CLASSES = {
   'transport-belt': Belt,
   'fast-transport-belt': Belt,
@@ -1484,6 +1614,7 @@ const ENT_CLASSES = {
   'pipe': Pipe,
   'pumpjack': Pumpjack,
   'refinery': Refinery,
+  'chemical-plant': ChemicalPlant,
   'inserter': Inserter,
   'long-inserter': LongInserter,
   'filter-inserter': FilterInserter,
