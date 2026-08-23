@@ -173,7 +173,15 @@ function undergroundPanelHtml(e) {
   if (e.findMate()) txt = '【入口】货物钻入地下送往同向6格内出口。缓存 ' + e.items.length + '/' + UG_CAP + '，待发 ' + e.outItems.length;
   else if (e.findBackMate()) txt = '【出口】接收上游隧道来货并向前输出。待发 ' + e.outItems.length;
   else txt = '【未配对】同向6格内没有另一座（中间不能隔固体建筑）。仍可收货排队，配对后自动发车。缓存 ' + e.items.length + '/' + UG_CAP;
-  return '<div class="dim">地下带' + txt + '。R 旋转方向。</div>';
+  return '<div class="dim">地下带' + txt + '。R 旋转方向。</div><div class="status"></div>';
+}
+function undergroundPanelLive(e, api) {
+  const paired = !!e.findMate();
+  const n = e.items.length + e.outItems.length;
+  if (!paired) api.status('已暂停：未配对（同向 6 格内无另一座地下带）', 'warn');
+  else if (e.outItems.length >= UG_CAP || e.items.length >= UG_CAP) api.status('已暂停：缓存已满，等待输出', 'warn');
+  else if (n > 0) api.status('输送中：' + n + ' 件在途', 'ok');
+  else api.status('待机：已配对，等待货物', 'ok');
 }
 
 // ===== 注册 =====
@@ -191,7 +199,7 @@ DEVICE_RENDER['underground'] = drawUnderground;
 DEVICE_RENDER['fast-underground-belt'] = drawUnderground;
 DEVICE_STATUS['underground'] = undergroundStatusFn;
 DEVICE_STATUS['fast-underground-belt'] = undergroundStatusFn;
-DEVICE_PANEL['underground'] = { html: undergroundPanelHtml };
-DEVICE_PANEL['fast-underground-belt'] = { html: undergroundPanelHtml };
+DEVICE_PANEL['underground'] = { html: undergroundPanelHtml, live: undergroundPanelLive };
+DEVICE_PANEL['fast-underground-belt'] = { html: undergroundPanelHtml, live: undergroundPanelLive };
 DEVICE_DIR_ROTATE['underground'] = true;
 DEVICE_DIR_ROTATE['fast-underground-belt'] = true;

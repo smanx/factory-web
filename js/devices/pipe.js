@@ -114,6 +114,7 @@ function pipePanelHtml(e) {
   let h = row('流体', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
   h += row('容量', '', 'cap');
   if (Object.keys(agg).length) h += '<button data-action="takeout" id="btn-pipe-takeout">取出全部 (' + e.total() + ')</button>';
+  h += '<div class="status"></div>';
   h += '<div class="dim">管道与相邻管道自动互连均压，并把原油送入邻接炼油厂；机械臂可从管道抓取流体。</div>';
   return h;
 }
@@ -123,6 +124,9 @@ function pipePanelLive(e, api) {
   api.set('contents', Object.keys(agg).length ? countStr(agg) : dimSpan('空'));
   api.set('cap', e.total() + ' / ' + PIPE_CAP);
   api.toggle('#btn-pipe-takeout', e.total() > 0, '取出全部 (' + e.total() + ')');
+  if (e.total() >= PIPE_CAP) api.status('已暂停：管道已满，等待下游消耗', 'warn');
+  else if (e.total() > 0) api.status('输送中：' + Object.keys(agg).map(k => ITEMS[k].name + '×' + agg[k]).join('、'), 'ok');
+  else api.status('空管：等待流体进入', 'ok');
 }
 function pipeTip(e) {
   const agg = {};

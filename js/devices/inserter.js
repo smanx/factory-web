@@ -311,10 +311,10 @@ function drawFlowMarks(ctx, e, cx, cy, dir) {
 
 // ===== 面板 =====
 function inserterPanelHtml(e) {
-  return '<div class="dim">机械臂：严格单向搬运。从臂体指向的一侧（灰色圆点）取货，放到地面箭头/亮色箭头的一侧（物流方向）。普通臂作用相邻格，长臂作用第二格。R 旋转。</div>';
+  return '<div class="dim">机械臂：严格单向搬运。从臂体指向的一侧（灰色圆点）取货，放到地面箭头/亮色箭头的一侧（物流方向）。普通臂作用相邻格，长臂作用第二格。R 旋转。</div><div class="status"></div>';
 }
 function stackInserterPanelHtml(e) {
-  return '<div class="dim">堆叠机械臂：一次最多抓取 3 个同种物品再放下，装卸效率约为普通臂的 3 倍。R 旋转。</div>';
+  return '<div class="dim">堆叠机械臂：一次最多抓取 3 个同种物品再放下，装卸效率约为普通臂的 3 倍。R 旋转。</div><div class="status"></div>';
 }
 function filterInserterPanelHtml(e) {
   let h = '<div class="dim">过滤机械臂：只抓取选中的物品，其余一律不碰。当前：' +
@@ -326,6 +326,7 @@ function filterInserterPanelHtml(e) {
   }
   h += '</div>';
   if (e.filter) h += '<button data-action="flt-clear">清除过滤（恢复普通抓取）</button>';
+  h += '<div class="status"></div>';
   return h;
 }
 function filterInserterOnAction(act, btn) {
@@ -343,14 +344,32 @@ function filterInserterOnAction(act, btn) {
 function inserterTip(e) {
   return e.holding ? ('搬运 ' + ITEMS[e.holding].name + '，8格取放') : '待机：周围8格取放（优先背面取、正面放）';
 }
+// 面板实时状态：工作中或暂停原因
+function inserterPanelLive(e, api) {
+  if (e.holding) {
+    if (e.blocked) api.status('已暂停：放货格已满，卡住 ' + ITEMS[e.holding].name, 'warn');
+    else api.status('搬运中：' + ITEMS[e.holding].name, 'ok');
+    return;
+  }
+  if (e.rotating) { api.status('工作中：转向取货格', 'ok'); return; }
+  const s = e.entAtPick();
+  const it = e.peekSource(s);
+  if (!it) {
+    if (e.filter) api.status('已暂停：取货格没有「' + ITEMS[e.filter].name + '」', 'warn');
+    else api.status('已暂停：取货格无物品可取', 'warn');
+    return;
+  }
+  if (!e.canDropAt(e.entAtDrop(), it)) api.status('已暂停：放货格已满', 'warn');
+  else api.status('待机：等待取货格出现货物', 'ok');
+}
 
 // ===== 注册 =====
 function inserterStatusFn(e) {
   return e.holding ? (e.blocked ? 'y' : 'g') : (e.rotating ? 'g' : 'r');
 }
-const inserterPanel = { html: inserterPanelHtml, tip: inserterTip };
-const stackInserterPanel = { html: stackInserterPanelHtml, tip: inserterTip };
-const filterInserterPanel = { html: filterInserterPanelHtml, onAction: filterInserterOnAction, tip: inserterTip };
+const inserterPanel = { html: inserterPanelHtml, live: inserterPanelLive, tip: inserterTip };
+const stackInserterPanel = { html: stackInserterPanelHtml, live: inserterPanelLive, tip: inserterTip };
+const filterInserterPanel = { html: filterInserterPanelHtml, onAction: filterInserterOnAction, live: inserterPanelLive, tip: inserterTip };
 ENT_CLASSES['inserter'] = Inserter;
 ENT_CLASSES['long-inserter'] = LongInserter;
 ENT_CLASSES['filter-inserter'] = FilterInserter;

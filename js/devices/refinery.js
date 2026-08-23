@@ -136,7 +136,10 @@ function refineryPanelLive(e, api) {
   const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
   api.toggle('#btn-takeout', n > 0, '取回全部产物 (' + n + ')');
   api.prog(e.prog * 100);
-  api.status(e.working ? '精炼中' : ((e.inp['crude-oil'] || 0) < 2 ? '等待原油' : (G.power.sat <= 0 ? '缺电' : '待机')));
+  if (e.working) api.status('精炼中', 'ok');
+  else if ((e.inp['crude-oil'] || 0) < 2) api.status('已暂停：等待原油（需要 2 原油）', 'warn');
+  else if (G.power.sat <= 0) api.status('已暂停：缺电', 'bad');
+  else api.status('已暂停：待机', 'warn');
 }
 function refineryTip(e) {
   return e.working ? '精炼中' : ((e.inp['crude-oil'] || 0) < 2 ? '等待原油' : (G.power.sat <= 0 ? '缺电' : '待机'));

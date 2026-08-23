@@ -231,7 +231,10 @@ function drillPanelLive(e, api) {
   api.set('buffer', e.buf > 0 && e.bufItem ? chip(e.bufItem, e.buf) : dimSpan('空'));
   api.toggle('#btn-drill-takeout', e.buf > 0, '取回缓存 (' + e.buf + ')');
   api.prog(e.working ? e.prog / DRILL_TIME * 100 : 0);
-  api.status(e.status || ('开采中，产出朝' + ['东', '南', '西', '北'][e.dir]));
+  // 状态：工作中或暂停原因（无矿/缓存满/缺电/缺燃料）
+  if (e.status) api.status('已暂停：' + e.status, 'warn');
+  else if (!e.working) api.status('待机：产出朝' + ['东', '南', '西', '北'][e.dir], 'ok');
+  else api.status('开采中：产出朝' + ['东', '南', '西', '北'][e.dir], 'ok');
 }
 function drillTip(e) {
   return e.status || ('开采中，产出朝' + ['东', '南', '西', '北'][e.dir]);

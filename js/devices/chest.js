@@ -99,6 +99,7 @@ function chestPanelHtml(e) {
   const agg = {};
   for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
   let h = row('内容', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
+  h += '<div class="status"></div>';
   const ids = Object.keys(agg);
   for (const id in e.limits) if (!(id in agg)) ids.push(id);
   h += '<div class="sec">存量上限（每种物品）</div>';
@@ -121,8 +122,14 @@ function chestPanelLive(e, api) {
   const agg = {};
   let total = 0;
   for (const s of e.slots) if (s) { agg[s.item] = (agg[s.item] || 0) + s.count; total += s.count; }
+  const kinds = Object.keys(agg).length;
   api.set('contents', Object.keys(agg).length ? countStr(agg) : dimSpan('空'));
   api.toggle('#btn-chest-takeout', total > 0, '取出全部 (' + total + ')');
+  // 状态：达到上限的物品种类提示暂停收纳
+  const full = Object.keys(agg).filter(id => e.limits[id] !== undefined && agg[id] >= e.limits[id]);
+  if (full.length) api.status('已满：' + full.map(id => ITEMS[id].name).join('、') + ' 达到上限，暂停收纳', 'warn');
+  else if (total > 0) api.status('收纳中：' + kinds + ' 种，共 ' + total + ' 件', 'ok');
+  else api.status('空箱：等待存入物品', 'ok');
 }
 function chestTip(e) {
   let n = 0, k = 0;

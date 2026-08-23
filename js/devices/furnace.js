@@ -158,8 +158,15 @@ function furnacePanelLive(e, api) {
   const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
   api.toggle('#btn-takeout', n > 0, '取回全部输出 (' + n + ')');
   api.prog(e.prog * 100);
-  if (eFurn) api.status(e.lit ? '冶炼中' : (e.cur && G.power.sat <= 0 ? '缺电' : '待料（放入铁板/矿石）'));
-  else api.status(e.lit ? '冶炼中' : e.cur ? '等待燃料' : '待料（放入燃料和矿石）');
+  if (eFurn) {
+    if (e.lit) api.status('冶炼中', 'ok');
+    else if (e.cur && G.power.sat <= 0) api.status('已暂停：缺电', 'bad');
+    else api.status('已暂停：待料（放入矿石）', 'warn');
+  } else {
+    if (e.lit) api.status('冶炼中', 'ok');
+    else if (e.cur) api.status('已暂停：等待燃料（加入煤）', 'warn');
+    else api.status('已暂停：待料（放入燃料和矿石）', 'warn');
+  }
 }
 function furnaceTip(e) {
   return e.lit ? '冶炼中' : ((Object.keys(e.inp).length || e.fuelCoal > 0) ? '待料' : '空置，需放入燃料和矿石');

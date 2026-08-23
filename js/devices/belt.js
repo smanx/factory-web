@@ -203,7 +203,13 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
 
 // ===== 注册 =====
 function beltPanelHtml() {
-  return '<div class="dim">传送带：物品沿箭头方向流动。R 旋转方向。靠近后按 F 拿取带上物品。</div>';
+  return '<div class="dim">传送带：物品沿箭头方向流动。R 旋转方向。靠近后按 F 拿取带上物品。</div><div class="status"></div>';
+}
+function beltPanelLive(e, api) {
+  const agg = {};
+  for (const o of e.items) agg[o.item] = (agg[o.item] || 0) + 1;
+  if (e.items.length) api.status('输送中：' + Object.keys(agg).map(k => ITEMS[k].name + '×' + agg[k]).join('、'), 'ok');
+  else api.status('空闲（无物品）', 'ok');
 }
 function beltTip(e) {
   if (e.items.length) {
@@ -219,6 +225,6 @@ DEVICE_RENDER['transport-belt'] = drawBelt;
 DEVICE_RENDER['fast-transport-belt'] = drawBelt;
 DEVICE_STATUS['transport-belt'] = e => e.items.length ? 'g' : 'r';
 DEVICE_STATUS['fast-transport-belt'] = e => e.items.length ? 'g' : 'r';
-const beltPanel = { html: beltPanelHtml, tip: beltTip };
+const beltPanel = { html: beltPanelHtml, live: beltPanelLive, tip: beltTip };
 DEVICE_PANEL['transport-belt'] = beltPanel;
 DEVICE_PANEL['fast-transport-belt'] = beltPanel;
