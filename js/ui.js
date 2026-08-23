@@ -111,6 +111,7 @@ function refreshHotbar() {
 
 function selectSlot(i) {
   G.sel = (G.sel === i ? -1 : i);
+  G.quickSel = null;
   refreshHotbar();
   closePanel(false);
 }
@@ -183,14 +184,19 @@ function updateMachineLive() {
   };
   const dim = s => '<span class="dim">' + s + '</span>';
   let prog = 0, status = '';
-  if (e instanceof Furnace) {
+  if (e instanceof Boiler) {
     set('fuel', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : dim('无'));
+    prog = Math.min(1, e.burnLeft / COAL_ENERGY) * 100;
+    status = e.lit ? '加热产蒸汽中' : '待料/无煤';
+  } else if (e instanceof Furnace) {
+    if (!(e instanceof ElectricFurnace)) set('fuel', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : dim('无'));
     set('input', Object.keys(e.inp).length ? countStr(e.inp) : dim('空'));
     set('output', Object.keys(e.outp).length ? countStr(e.outp) : dim('空'));
     const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
     toggle('#btn-takeout', n > 0, '取回全部输出 (' + n + ')');
     prog = e.prog * 100;
-    status = e.lit ? '冶炼中' : e.cur ? '等待燃料' : '待料（放入燃料和矿石）';
+    if (e instanceof ElectricFurnace) status = e.lit ? '冶炼中' : (e.cur && G.power.sat <= 0 ? '缺电' : '待料（放入铁板/矿石）');
+    else status = e.lit ? '冶炼中' : e.cur ? '等待燃料' : '待料（放入燃料和矿石）';
   } else if (e instanceof Assembler) {
     set('input', Object.keys(e.inp).length ? countStr(e.inp) : dim('空'));
     set('output', Object.keys(e.outp).length ? countStr(e.outp) : dim('空'));
@@ -198,16 +204,41 @@ function updateMachineLive() {
     toggle('#btn-takeout', n > 0, '取回全部输出 (' + n + ')');
     prog = e.recipe && e.crafting ? e.prog / RECIPES[e.recipe].time * 100 : 0;
   } else if (e instanceof Drill) {
-    set('fuel', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : dim('无'));
+    if (!(e instanceof ElectricDrill)) set('fuel', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : dim('无'));
     set('buffer', e.buf > 0 && e.bufItem ? chip(e.bufItem, e.buf) : dim('空'));
     toggle('#btn-drill-takeout', e.buf > 0, '取回缓存 (' + e.buf + ')');
     prog = e.working ? e.prog / DRILL_TIME * 100 : 0;
     status = e.status || ('开采中，产出朝' + ['东', '南', '西', '北'][e.dir]);
   } else if (e instanceof Lab) {
-    set('packs', e.packs > 0 ? chip('science-pack', e.packs) : dim('无'));
-    toggle('#btn-lab-takeout', e.packs > 0, '取回科学包 (' + e.packs + ')');
-    set('techline', G.activeTech ? TECHS[G.activeTech].name : dim('未选择（T 打开研究面板）'));
-    prog = e.t / LAB_TIME * 100;
+    const parts = [];
+    let total = 0;
+    for (const pk of SCIENCE_PACKS) if (e.packCount(pk) > 0) { parts.push(chip(pk, e.packCount(pk))); total += e.packCount(pk); }
+    set('packs', parts.length ? parts.join('') : dim('无'));
+    toggle('#btn-lab-takeout', total > 0, '取回科学包 (' + total + ')');
+    const tech = G.activeTech;
+    if (tech && !G.techDone[tech]) {
+      const need = e.nextNeed();
+      const doneN = G.techProg[tech] || 0;
+      set('techline', TECHS[tech].name + '（' + doneN + '/' + techCostTotal(tech) + '，下一瓶：' +
+        (need ? ITEMS[need].name : '—') + '）');
+      prog = doneN / techCostTotal(tech) * 100;
+    } else {
+      set('techline', dim('未选择（T 打开研究面板）'));
+    }
+  } else if (e instanceof Refinery) {
+    set('input', (e.inp['crude-oil'] || 0) > 0 ? chip('crude-oil', e.inp['crude-oil']) : dim('空'));
+    set('output', Object.keys(e.outp).length ? countStr(e.outp) : dim('空'));
+    const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
+    toggle('#btn-takeout', n > 0, '取回全部产物 (' + n + ')');
+    prog = e.prog * 100;
+    status = e.working ? '精炼中' : ((e.inp['crude-oil'] || 0) < 2 ? '等待原油' : (G.power.sat <= 0 ? '缺电' : '待机'));
+  } else if (e instanceof Pipe) {
+    const agg = {};
+    for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
+    set('contents', Object.keys(agg).length ? countStr(agg) : dim('空'));
+    set('cap', e.total() + ' / ' + PIPE_CAP);
+    toggle('#btn-pipe-takeout', e.total() > 0, '取出全部 (' + e.total() + ')');
+    return;
   } else if (e instanceof Chest) {
     const agg = {};
     for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
@@ -234,6 +265,14 @@ function htmlInventory() {
       (id ? '<img src="' + iconDataURL(id) + '">' : '<span>空</span>') + '</div>';
   }
   h += '</div><div class="dim">点一个槽位选中（黄框），再点击下面任意物品图标即可放入该槽位；再点一次同槽位清空。数字键 1-9/0 切换。</div>';
+  h += '<div class="sec">建造设备（点击直接选中放置）</div><div class="recgrid">';
+  for (const bid of Object.keys(BUILD_DEFS)) {
+    const n = invCount(bid);
+    h += '<button class="rcbtn"' + (n > 0 ? '' : ' disabled style="opacity:.45"') +
+      ' data-itemid="' + bid + '" data-tip="' + ITEMS[bid].name + '|' + ITEMS[bid].desc + '">' +
+      '<img src="' + iconDataURL(bid) + '">' + ITEMS[bid].name + (n > 0 ? ' ×' + n : '') + '</button>';
+  }
+  h += '</div>';
   h += '<div class="sec">材料</div><div class="chips">';
   let any = false;
   for (const id in ITEMS) {
@@ -261,7 +300,7 @@ function htmlInventory() {
     if (ok) h += '<button data-action="craft" data-mult="5" data-id="' + rid + '">×5</button>';
     h += '</div>';
   }
-  h += '<div class="hint">提示：开局先挖 5 个石头合成石炉，再挖煤；点击炉子打开面板，把煤和矿石放进去就能炼铁板/铜板。机械臂需要电路板（要先用炉子炼出铜板）。</div>';
+  h += '<div class="hint">提示：开局先挖 5 个石头合成石炉，再挖煤；点击炉子打开面板，把煤和矿石放进去就能炼铁板/铜板。钢板用铁板×2 合成（石炉/电炉炼制更快）。<br>建造：直接点击上方材料区里任何可建造的设备图标即可选中进入放置模式（优先占用空快捷栏槽位），不必依赖底部工具栏；R 旋转、Q 取消。</div>';
   return h;
 }
 
@@ -271,10 +310,14 @@ function htmlTech() {
     const t = TECHS[tid];
     const done = G.techDone[tid];
     const prog = G.techProg[tid] || 0;
+    const total = techCostTotal(tid);
+    const costChips = [];
+    for (const pk in t.cost) costChips.push(ITEMS[pk].name + '×' + t.cost[pk]);
     h += '<div class="recipe tech ' + (done ? 'done' : '') + '">';
     h += '<div class="rmain"><div class="rname">' + t.name + '</div><div class="dim">' + t.desc + '</div>';
-    h += '<div class="bar"><i style="width:' + Math.min(100, prog / t.cost * 100) + '%"></i></div>';
-    h += '<div class="dim">' + (done ? '已完成' : prog + ' / ' + t.cost + ' 科学包') + '</div></div>';
+    h += '<div class="bar"><i style="width:' + Math.min(100, prog / total * 100) + '%"></i></div>';
+    h += '<div class="dim">' + (done ? '已完成' :
+      prog + ' / ' + total + '（' + costChips.join(' + ') + '）') + '</div></div>';
     if (!done) {
       h += (G.activeTech === tid)
         ? '<button data-action="tech-cancel">取消</button>'
@@ -282,7 +325,7 @@ function htmlTech() {
     }
     h += '</div>';
   }
-  h += '<div class="hint">建造研究院，放入科学包后选择课题；机械臂可自动喂科学包。</div>';
+  h += '<div class="hint">建造研究院，放入科学包后选择课题；研究院按配方顺序逐瓶消耗（红→绿→蓝）。机械臂可自动喂包。绿色科学包=传送带+机械臂；蓝色科学包=塑料+电路板+铜板（需打通石油链）。</div>';
   return h;
 }
 
@@ -293,10 +336,25 @@ function countStr(o) {
 }
 
 function htmlMachine(e) {
-  if (e instanceof Furnace) {
+  if (e instanceof Boiler) {
     let h = row('燃料', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : '<span class="dim">无</span>', 'fuel');
     if (invCount('coal') > 0)
       h += '<button data-action="fuel" data-id="coal">加入 5 煤 (' + invCount('coal') + ')</button>';
+    h += barHtml(0);
+    h += '<div class="status"></div>';
+    return h;
+  }
+  if (e instanceof SteamEngine)
+    return '<div class="dim">蒸汽机：紧邻点亮的锅炉即可发电，产出并入全地图共享的电力池（无需电线）。当前：' +
+      (e.on ? '发电中（+' + POWER_PER_ENGINE + '）' : '未发电，请把点亮的锅炉放到它旁边。') + '</div>';
+  if (e instanceof Furnace) {
+    const eFurn = e instanceof ElectricFurnace;
+    let h = '';
+    if (!eFurn) {
+      h += row('燃料', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : '<span class="dim">无</span>', 'fuel');
+      if (invCount('coal') > 0)
+        h += '<button data-action="fuel" data-id="coal">加入 5 煤 (' + invCount('coal') + ')</button>';
+    }
     h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
     for (const r of SMELTS) {
       const n = Math.min(invCount(r.inp), 25 - (e.inp[r.inp] || 0));
@@ -336,9 +394,15 @@ function htmlMachine(e) {
     return h;
   }
   if (e instanceof Drill) {
-    let h = row('燃料', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : '<span class="dim">无</span>', 'fuel');
-    if (invCount('coal') > 0)
-      h += '<button data-action="fuel" data-id="coal">加入 5 煤 (' + invCount('coal') + ')</button>';
+    const eDrill = e instanceof ElectricDrill;
+    let h = '';
+    if (eDrill) {
+      h += row('电力', G.power.sat > 0 ? '功率 ' + Math.round(G.power.sat * 100) + '%' : '<span class="dim">缺电</span>');
+    } else {
+      h += row('燃料', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : '<span class="dim">无</span>', 'fuel');
+      if (invCount('coal') > 0)
+        h += '<button data-action="fuel" data-id="coal">加入 5 煤 (' + invCount('coal') + ')</button>';
+    }
     h += row('矿物缓存', '<span class="dim"></span>', 'buffer');
     h += '<button data-action="takeout" id="btn-drill-takeout" style="display:none"></button>';
     h += barHtml(0);
@@ -348,11 +412,34 @@ function htmlMachine(e) {
   }
   if (e instanceof Lab) {
     let h = row('科学包', '', 'packs');
-    if (invCount('science-pack') > 0)
-      h += '<button data-action="labfill">从背包放入 10 科学包 (' + invCount('science-pack') + ')</button>';
+    for (const pk of SCIENCE_PACKS) {
+      const n = invCount(pk);
+      if (n > 0) h += '<button data-action="labfill" data-id="' + pk + '">放入 10 ' + ITEMS[pk].name + ' (' + n + ')</button>';
+    }
     h += '<button data-action="takeout" id="btn-lab-takeout" style="display:none"></button>';
     h += barHtml(0);
     h += row('课题', '', 'techline');
+    h += '<div class="dim">研究院按所选科技的配方顺序逐瓶消耗科学包；缺哪种包会暂停并提示。机械臂可自动喂包。</div>';
+    return h;
+  }
+  if (e instanceof Refinery) {
+    let h = row('原油', (e.inp['crude-oil'] || 0) > 0 ? chip('crude-oil', e.inp['crude-oil']) : '<span class="dim">空</span>', 'input');
+    if (invCount('crude-oil') > 0)
+      h += '<button data-action="feed" data-id="crude-oil">放入原油 ×' + Math.min(invCount('crude-oil'), 50 - (e.inp['crude-oil'] || 0)) + '</button>';
+    h += row('产物', Object.keys(e.outp).length ? countStr(e.outp) : '<span class="dim">空</span>', 'output');
+    h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
+    h += barHtml(0);
+    h += '<div class="status"></div>';
+    h += '<div class="dim">配方：原油×2 → 重油+轻油+石油气 各1（吃电力）。用管道把原油送进厂区旁，或机械臂直接喂入。</div>';
+    return h;
+  }
+  if (e instanceof Pipe) {
+    const agg = {};
+    for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
+    let h = row('流体', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
+    h += row('容量', '', 'cap');
+    if (Object.keys(agg).length) h += '<button data-action="takeout" id="btn-pipe-takeout">取出全部 (' + e.total() + ')</button>';
+    h += '<div class="dim">管道与相邻管道自动互连均压，并把原油送入邻接炼油厂；机械臂可从管道抓取流体。</div>';
     return h;
   }
   if (e instanceof Chest) {
@@ -365,8 +452,17 @@ function htmlMachine(e) {
     if (Object.keys(agg).length) h += '<button data-action="takeout">取出全部</button>';
     return h;
   }
-  if (e instanceof Splitter)
-    return '<div class="dim">分流器：货物轮流分向前方和右侧；一边堵了自动走另一边。R 旋转方向。</div>';
+  if (e instanceof Splitter) {
+    const prefNames = { '-1': '均衡轮发', '0': '优先一侧', '1': '优先另一侧' };
+    let h = '<div class="dim">分流器：货物分向前方两侧；一边堵了自动走另一边。R 旋转方向。</div>';
+    h += '<div class="mrow"><span class="mlabel">输出模式</span><span class="mval">';
+    for (const v of [-1, 0, 1]) {
+      h += '<button data-action="spref" data-v="' + v + '"' + (e.outPref === v ? ' style="border-color:#ffd23c;color:#ffd23c"' : '') + '>' + prefNames[v] + '</button> ';
+    }
+    h += '</span></div>';
+    if (e.outPref >= 0) h += '<div class="dim">带黄色箭头的一侧为优先输出道；堵住时自动溢出到另一侧。</div>';
+    return h;
+  }
   if (e instanceof Underground) {
     let txt;
     if (e.findMate()) txt = '【入口】货物钻入地下送往同向6格内出口。缓存 ' + e.items.length + '/' + UG_CAP + '，待发 ' + e.outItems.length;
@@ -374,6 +470,20 @@ function htmlMachine(e) {
     else txt = '【未配对】同向6格内没有另一座（中间不能隔固体建筑）。仍可收货排队，配对后自动发车。缓存 ' + e.items.length + '/' + UG_CAP;
     return '<div class="dim">地下带' + txt + '。R 旋转方向。</div>';
   }
+  if (e instanceof FilterInserter) {
+    let h = '<div class="dim">过滤机械臂：只抓取选中的物品，其余一律不碰。当前：' +
+      (e.filter ? chip(e.filter) : '<span class="dim">未设置</span>') + '</div>';
+    h += '<div class="sec">选择过滤物</div><div class="recgrid">';
+    for (const id of FILTER_CHOICES) {
+      h += '<button class="rcbtn ' + (e.filter === id ? 'sel' : '') + '" data-action="flt" data-id="' + id + '" data-itemid="' + id + '">' +
+        '<img src="' + iconDataURL(id) + '">' + ITEMS[id].name + '</button>';
+    }
+    h += '</div>';
+    if (e.filter) h += '<button data-action="flt-clear">清除过滤（恢复普通抓取）</button>';
+    return h;
+  }
+  if (e instanceof StackInserter)
+    return '<div class="dim">堆叠机械臂：一次最多抓取 3 个同种物品再放下，装卸效率约为普通臂的 3 倍。R 旋转。</div>';
   if (e instanceof Inserter)
     return '<div class="dim">机械臂：严格单向搬运。从臂体指向的一侧（灰色圆点）取货，放到地面箭头/亮色箭头的一侧（物流方向）。普通臂作用相邻格，长臂作用第二格。R 旋转。</div>';
   if (e instanceof Belt) return '<div class="dim">传送带：物品沿箭头方向流动。R 旋转方向。靠近后按 F 拿取带上物品。</div>';
@@ -424,6 +534,34 @@ function initPanelEvents() {
       buildHotbar();
       return;
     }
+    if (itEl && G.panelMode === 'inv' && !itEl.dataset.action) {
+      const iid = itEl.dataset.itemid;
+      if (BUILD_DEFS[iid]) {
+        const idx = HOTBAR.indexOf(iid);
+        if (idx >= 0) {
+          G.sel = idx;
+          G.quickSel = null;
+          refreshHotbar();
+        } else {
+          const empty = HOTBAR.indexOf(null);
+          if (empty >= 0) {
+            HOTBAR[empty] = iid;
+            G.sel = empty;
+            G.quickSel = null;
+            buildHotbar();
+            toast('已放入快捷栏槽位 ' + (empty === 9 ? 0 : empty + 1) + ' 并选中');
+          } else {
+            G.sel = -1;
+            G.quickSel = iid;
+            toast('已直接选中 ' + ITEMS[iid].name + '（快捷栏已满，Q 取消）');
+          }
+        }
+        G.ghostDir = 0;
+        closePanel();
+        uiDirty = true;
+        return;
+      }
+    }
     const setCb = ev.target.closest('[data-set]');
     if (setCb) {
       G.settings[setCb.dataset.set] = setCb.checked;
@@ -469,13 +607,21 @@ function initPanelEvents() {
       if (mch instanceof Drill) {
         if (mch.buf > 0 && mch.bufItem) { invAdd(mch.bufItem, mch.buf); mch.buf = 0; }
       } else if (mch instanceof Lab) {
-        if (mch.packs > 0) { invAdd('science-pack', mch.packs); mch.packs = 0; }
+        for (const k of Object.keys(mch.packs)) { invAdd(k, mch.packs[k]); delete mch.packs[k]; }
+      } else if (mch instanceof Pipe) {
+        for (const k of Object.keys(mch.fluid)) { invAdd(k, mch.fluid[k]); delete mch.fluid[k]; }
       } else {
         for (const k of Object.keys(mch.outp)) {
           invAdd(k, mch.outp[k]);
           delete mch.outp[k];
         }
       }
+    } else if (act === 'spref') {
+      if (G.panelEnt instanceof Splitter) G.panelEnt.outPref = parseInt(btn.dataset.v, 10);
+    } else if (act === 'flt') {
+      if (G.panelEnt instanceof FilterInserter) G.panelEnt.filter = id;
+    } else if (act === 'flt-clear') {
+      if (G.panelEnt instanceof FilterInserter) G.panelEnt.filter = null;
     } else if (act === 'chest-deposit') {
       const c = G.panelEnt;
       for (const id of [...ORES, 'coal']) {
@@ -485,10 +631,11 @@ function initPanelEvents() {
         if (moved > 0) invTake(id, moved);
       }
     } else if (act === 'labfill') {
-      const n = Math.min(10, invCount('science-pack'));
+      const pk = btn.dataset.id || 'science-pack';
+      const n = Math.min(10, invCount(pk));
       if (n <= 0) { toast('没有科学包'); return; }
-      invTake('science-pack', n);
-      G.panelEnt.packs += n;
+      invTake(pk, n);
+      G.panelEnt.packs[pk] = (G.panelEnt.packs[pk] || 0) + n;
     } else if (act === 'tech') {
       G.activeTech = id;
     } else if (act === 'tech-cancel') {
@@ -557,12 +704,12 @@ function updateHUD(dt, fps) {
   const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
   const si = selItem();
   let tool = '采集镐（按住左键挖矿）';
-  if (G.sel >= 0) tool = si ? '放置：' + ITEMS[si].name + '（R 旋转）' : '空槽位（背包 E 里可配置）';
+  if (si) tool = '放置：' + ITEMS[si].name + (G.sel < 0 ? '（背包直选，R 旋转 / Q 取消）' : '（R 旋转）');
+  else if (G.sel >= 0) tool = '空槽位（背包 E 里可配置）';
   el.textContent = 'FPS ' + fps + '   坐标 ' + tx + ',' + ty + '   ' + tool;
 }
 
 function mapTipAt(tx, ty) {
-  if (!inBounds(tx, ty)) return null;
   const e = entAt(tx, ty);
   if (e) {
     let extra = '';
@@ -572,8 +719,11 @@ function mapTipAt(tx, ty) {
       extra = e.status || ('开采中，产出朝' + ['东', '南', '西', '北'][e.dir]);
     else if (e instanceof Assembler)
       extra = e.recipe ? ('生产 ' + ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name) : '未设置配方，点击打开面板';
-    else if (e instanceof Lab)
-      extra = e.packs > 0 ? ('科学包 ×' + e.packs + (G.activeTech ? '，研究 ' + TECHS[G.activeTech].name : '')) : '无科学包';
+    else if (e instanceof Lab) {
+      let total = 0;
+      for (const k in e.packs) total += e.packs[k];
+      extra = total > 0 ? ('科学包 ×' + total + (G.activeTech ? '，研究 ' + TECHS[G.activeTech].name : '')) : '无科学包';
+    }
     else if (e instanceof Chest) {
       let n = 0, k = 0;
       for (const s of e.slots) if (s) { n += s.count; k++; }
@@ -586,13 +736,32 @@ function mapTipAt(tx, ty) {
       } else extra = '空闲';
     } else if (e instanceof Inserter)
       extra = e.holding ? ('搬运 ' + ITEMS[e.holding].name + '，8格取放') : '待机：周围8格取放（优先背面取、正面放）';
+    else if (e instanceof Boiler)
+      extra = e.lit ? '加热产蒸汽中' : '待料（加煤点火）';
+    else if (e instanceof SteamEngine)
+      extra = e.on ? '发电中：电力并入全图共享电网' : '未发电（旁边放点亮的锅炉）';
+    else if (e instanceof Refinery)
+      extra = e.working ? '精炼中' : ((e.inp['crude-oil'] || 0) < 2 ? '等待原油' : (G.power.sat <= 0 ? '缺电' : '待机'));
+    else if (e instanceof Pipe) {
+      const agg = {};
+      for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
+      extra = Object.keys(agg).length
+        ? ('流体 ' + Object.keys(agg).map(k => ITEMS[k].name + '×' + agg[k]).join('、') + '，按F拿取')
+        : '空管';
+    } else if (e instanceof FilterInserter)
+      extra = e.filter ? ('只搬 ' + ITEMS[e.filter].name) : '未设过滤（点击面板设置）';
+    else if (e instanceof StackInserter)
+      extra = e.holding ? ('搬运 ' + ITEMS[e.holding].name + '×' + (e.holdingCount || 1)) : '一次可抓 3 个同种物品';
+    else if (e instanceof ElectricDrill)
+      extra = e.status || ('吃电开采中，产出朝' + ['东', '南', '西', '北'][e.dir]);
     return ITEMS[e.type].name + '|' + extra;
   }
-  const idx = tileIdx(tx, ty);
-  if (G.world.terrain[idx] === T_WATER) return '水域|无法通行、不可建造';
-  const ti = G.world.oreType[idx];
-  if (ti >= 0 && G.world.oreAmt[idx] > 0)
-    return ITEMS[ORES[ti]].name + '|储量 ' + Math.floor(G.world.oreAmt[idx]) + '，按住左键开采';
+  if (getTerrain(tx, ty) === T_WATER) return '水域|无法通行、不可建造';
+  const ti = getOreType(tx, ty);
+  if (ti >= 0 && getOreAmt(tx, ty) > 0) {
+    if (ti === ORE_OIL) return '原油矿床|储量 ' + Math.floor(getOreAmt(tx, ty)) + '，建造抽油机开采（吃电力）';
+    return ITEMS[ORES[ti]].name + '|储量 ' + Math.floor(getOreAmt(tx, ty)) + '，按住左键开采';
+  }
   return null;
 }
 
@@ -668,7 +837,9 @@ function buildDebug() {
     ['+100铁板', 'iron-plate', 100], ['+100铜板', 'copper-plate', 100],
     ['+100煤', 'coal', 100], ['+100石头', 'stone', 100],
     ['+50齿轮', 'iron-gear', 50], ['+50电路', 'green-circuit', 50],
-    ['+20科学包', 'science-pack', 20]
+    ['+20科学包', 'science-pack', 20], ['+20绿包', 'green-science', 20],
+    ['+20蓝包', 'blue-science', 20], ['+50塑料', 'plastic-bar', 50],
+    ['+50原油', 'crude-oil', 50]
   ]) {
     const b = document.createElement('button');
     b.textContent = txt;
@@ -695,7 +866,7 @@ function buildDebug() {
     ['完成研究', () => {
       const t = G.activeTech;
       if (!t) { toast('没有进行中的研究'); return; }
-      G.techProg[t] = TECHS[t].cost;
+      G.techProg[t] = techCostTotal(t);
       G.techDone[t] = true;
       toast('研究完成：' + TECHS[t].name);
       G.activeTech = null;

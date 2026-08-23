@@ -10,6 +10,7 @@ const G = {
   grid: new Map(),
   inv: new Map(),
   sel: -1,
+  quickSel: null,
   ghostDir: 0,
   techDone: {},
   techProg: {},
@@ -26,7 +27,9 @@ const G = {
   hbArm: null,
   clipboard: null,
   settings: Object.assign({}, DEFAULT_SETTINGS),
-  autoT: 0
+  autoT: 0,
+  power: { prod: 0, demand: 0, sat: 1 },
+  powerT: 0
 };
 
 let lastPlaceKey = '';
@@ -55,6 +58,10 @@ function newGame() {
   G.techDone = {};
   G.techProg = {};
   G.activeTech = null;
+  G.sel = -1;
+  G.quickSel = null;
+  G.power = { prod: 0, demand: 0, sat: 1 };
+  G.powerT = 0;
   const [sx, sy] = findSpawn(G.world);
   G.player = makePlayer(sx, sy);
   G.spawn = { x: sx, y: sy };
@@ -68,8 +75,13 @@ function serializeAll() {
   return {
     v: 1,
     seed: G.world.seed,
-    oreType: Array.from(G.world.oreType),
-    oreAmt: Array.from(G.world.oreAmt),
+    world: {
+      remaining: Array.from(G.world.remaining, ([k, v]) => {
+        const i = k.indexOf(',');
+        return [+k.slice(0, i), +k.slice(i + 1), v];
+      }),
+      chunks: Array.from(G.world.chunks.values()).map(encodeChunkData)
+    },
     ents: G.ents.map(e => e.serialize()),
     inv: Array.from(G.inv),
     player: { x: G.player.x, y: G.player.y },
@@ -110,8 +122,26 @@ function loadGame() {
 
 function applySave(d) {
   G.world = genWorld(d.seed);
-  G.world.oreType.set(d.oreType);
-  G.world.oreAmt.set(d.oreAmt);
+  G.world.remaining = new Map();
+  if (d.world && Array.isArray(d.world.chunks)) {
+    // 已探索地图块原样还原：与生成算法解耦，保证升级后地图不变
+    for (const cd of d.world.chunks) {
+      try {
+        const c = decodeChunkData(cd);
+        G.world.chunks.set(c.cx + ',' + c.cy, c);
+      } catch (e) { /* 单块数据损坏则跳过，该块回退到按需生成 */ }
+    }
+  }
+  if (d.world && Array.isArray(d.world.remaining)) {
+    for (const [x, y, amt] of d.world.remaining) G.world.remaining.set(x + ',' + y, amt);
+  } else if (Array.isArray(d.oreType)) {
+    const OW = 180, OH = 180;
+    for (let i = 0; i < OW * OH; i++) {
+      if (d.oreType[i] >= 0 && d.oreAmt && d.oreAmt[i] >= 0) {
+        G.world.remaining.set((i % OW) + ',' + ((i / OW) | 0), d.oreAmt[i]);
+      }
+    }
+  }
   G.grid = new Map();
   G.ents = [];
   for (const s of d.ents) {
@@ -122,11 +152,15 @@ function applySave(d) {
   G.inv = new Map(d.inv);
   G.player = makePlayer(0, 0);
   G.player.x = d.player.x; G.player.y = d.player.y;
-  const [sx, sy] = findSpawn(G.world);
+  const [sx, sy] = findSpawn();
   G.spawn = { x: sx, y: sy };
   G.techDone = d.techDone || {};
   G.techProg = d.techProg || {};
   G.activeTech = d.activeTech || null;
+  G.sel = -1;
+  G.quickSel = null;
+  G.power = { prod: 0, demand: 0, sat: 1 };
+  G.powerT = 0;
   if (Array.isArray(d.hotbar)) {
     HOTBAR = d.hotbar.slice(0, 10);
     while (HOTBAR.length < 10) HOTBAR.push(null);
@@ -143,6 +177,7 @@ function tryPlaceAt(tx, ty) {
   if (invCount(type) < 1) {
     toast('背包里没有' + ITEMS[type].name + '了');
     G.sel = -1;
+    G.quickSel = null;
     refreshHotbar();
     return;
   }
@@ -172,7 +207,7 @@ function pickupAction() {
   else {
     const tx = Math.floor(G.player.x / TILE) + DX[G.player.dir];
     const ty = Math.floor(G.player.y / TILE) + DY[G.player.dir];
-    if (inBounds(tx, ty)) t = { tx, ty };
+    t = { tx, ty };
   }
   if (!t) return;
   const e = entAt(t.tx, t.ty);
@@ -257,8 +292,9 @@ function bindInput() {
     else if (k === 'escape' || k === 'q') {
       if (G.panelMode) {
         closePanel();
-      } else if (G.sel >= 0 || !G.cursorTile) {
+      } else if (buildActive() || !G.cursorTile) {
         G.sel = -1;
+        G.quickSel = null;
         refreshHotbar();
       } else {
         const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
@@ -319,14 +355,14 @@ function bindInput() {
   document.getElementById('game').addEventListener('click', ev => {
     if (ev.button !== 0 || ev.shiftKey) return;
     updateCursorTile(ev.clientX, ev.clientY);
-    if (G.sel >= 0 || !G.cursorTile) return;
+    if (buildActive() || !G.cursorTile) return;
     const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
     if (e) openPanel('machine', e);
   });
 }
 
 function handleLeftDown() {
-  if (G.sel >= 0 && G.cursorTile) {
+  if (buildActive() && G.cursorTile) {
     tryPlaceAt(G.cursorTile.tx, G.cursorTile.ty);
     lastPlaceKey = G.cursorTile.tx + ',' + G.cursorTile.ty;
   }
@@ -335,12 +371,12 @@ function handleLeftDown() {
 function updateCursorTile(cx, cy) {
   const [wx, wy] = screenToWorld(cx, cy);
   const tx = Math.floor(wx / TILE), ty = Math.floor(wy / TILE);
-  G.cursorTile = inBounds(tx, ty) ? { tx, ty } : null;
+  G.cursorTile = { tx, ty };
 }
 
 function updateHeldMouse(dt) {
   if (!G.mouseDown || !G.cursorTile) return;
-  if (G.sel >= 0) {
+  if (buildActive()) {
     const key = G.cursorTile.tx + ',' + G.cursorTile.ty;
     if (key !== lastPlaceKey) {
       tryPlaceAt(G.cursorTile.tx, G.cursorTile.ty);
@@ -369,6 +405,8 @@ function loop(ts) {
     updateHeldMouse(dt);
     updateMining(dt);
     for (const e of G.ents) e.update(dt);
+    G.powerT += dt;
+    if (G.powerT >= 0.25) { G.powerT = 0; updatePower(); }
     updateCamera(dt);
 
     render();

@@ -60,15 +60,14 @@ function onScreen(e) {
 
 function drawTerrain(ctx) {
   const b = viewBounds();
-  const tx0 = Math.max(0, Math.floor(b.x1 / TILE));
-  const ty0 = Math.max(0, Math.floor(b.y1 / TILE));
-  const tx1 = Math.min(WORLD_W - 1, Math.ceil(b.x0 / TILE));
-  const ty1 = Math.min(WORLD_H - 1, Math.ceil(b.y0 / TILE));
+  const tx0 = Math.floor(b.x1 / TILE);
+  const ty0 = Math.floor(b.y1 / TILE);
+  const tx1 = Math.ceil(b.x0 / TILE);
+  const ty1 = Math.ceil(b.y0 / TILE);
   for (let ty = ty0; ty <= ty1; ty++) {
     for (let tx = tx0; tx <= tx1; tx++) {
-      const idx = tileIdx(tx, ty);
       const px = tx * TILE, py = ty * TILE;
-      if (G.world.terrain[idx] === T_WATER) {
+      if (getTerrain(tx, ty) === T_WATER) {
         ctx.fillStyle = hash2(tx, ty) > 0.5 ? '#265d8a' : '#28618f';
         ctx.fillRect(px, py, TILE, TILE);
         continue;
@@ -76,20 +75,30 @@ function drawTerrain(ctx) {
       const v = hash2(tx, ty);
       ctx.fillStyle = v > 0.62 ? '#4f7c3b' : v > 0.3 ? '#4a7538' : '#456f35';
       ctx.fillRect(px, py, TILE, TILE);
-      const ti = G.world.oreType[idx];
-      if (ti >= 0) drawOreDots(ctx, px, py, ORES[ti], G.world.oreAmt[idx], tx, ty);
+      const ti = getOreType(tx, ty);
+      if (ti >= 0 && getOreAmt(tx, ty) > 0) drawOreDots(ctx, px, py, oreItemId(ti), getOreAmt(tx, ty), tx, ty);
     }
   }
 }
 
 function drawOreDots(ctx, px, py, itemId, amt, tx, ty) {
-  const n = Math.max(2, Math.min(7, Math.round(Math.sqrt(Math.max(amt, 0)) / 9)));
+  const n = itemId === 'crude-oil'
+    ? Math.max(1, Math.min(3, Math.round(Math.sqrt(Math.max(amt, 0)) / 40)))
+    : Math.max(2, Math.min(7, Math.round(Math.sqrt(Math.max(amt, 0)) / 9)));
   ctx.fillStyle = ITEMS[itemId].color;
   ctx.strokeStyle = 'rgba(0,0,0,.25)';
   ctx.lineWidth = 1;
+  const rad = itemId === 'crude-oil' ? 5.5 : null;
   for (let i = 0; i < n; i++) {
     const ox = hash2(tx * 13 + i, ty * 71 - i);
     const oy = hash2(tx * 29 - i, ty * 17 + i);
+    if (rad) { // 原油：油池样式
+      ctx.beginPath();
+      ctx.ellipse(px + 6 + ox * (TILE - 12), py + 6 + oy * (TILE - 12), rad * (0.8 + ox * 0.5), rad * (0.6 + oy * 0.4), ox * 3, 0, 7);
+      ctx.fill();
+      ctx.stroke();
+      continue;
+    }
     const r = 2 + hash2(tx + i, ty + i) * 1.4;
     ctx.beginPath();
     ctx.arc(px + 5 + ox * (TILE - 10), py + 5 + oy * (TILE - 10), r, 0, 7);
@@ -99,12 +108,12 @@ function drawOreDots(ctx, px, py, itemId, amt, tx, ty) {
 }
 
 function drawGridIfBuilding(ctx) {
-  if (G.sel < 0 && !G.panelEnt) return;
+  if (!buildActive() && !G.panelEnt) return;
   const b = viewBounds();
-  const tx0 = Math.max(0, Math.floor(b.x1 / TILE));
-  const ty0 = Math.max(0, Math.floor(b.y1 / TILE));
-  const tx1 = Math.min(WORLD_W - 1, Math.ceil(b.x0 / TILE));
-  const ty1 = Math.min(WORLD_H - 1, Math.ceil(b.y0 / TILE));
+  const tx0 = Math.floor(b.x1 / TILE);
+  const ty0 = Math.floor(b.y1 / TILE);
+  const tx1 = Math.ceil(b.x0 / TILE);
+  const ty1 = Math.ceil(b.y0 / TILE);
   ctx.strokeStyle = 'rgba(255,255,255,.07)';
   ctx.lineWidth = 1 / G.cam.z;
   ctx.beginPath();
@@ -137,8 +146,9 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const cx = px + TILE / 2, cy = py + TILE / 2;
   const inp = beltInputSide(e);
+  const fast = e.type === 'fast-transport-belt';
   ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#3a3f47';
+  ctx.fillStyle = fast ? '#4a3a34' : '#3a3f47';
   ctx.strokeStyle = '#22252a';
   ctx.lineWidth = 2;
 
@@ -153,7 +163,7 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
   }
 
   const step = TILE / 2;
-  const off = ((G.time * beltSpeed() * TILE) % step + step) % step;
+  const off = ((G.time * beltSpeed() * (e.speedMult ? e.speedMult() : 1) * TILE) % step + step) % step;
 
   strip(dir * Math.PI / 2, -TILE / 2 + 2, TILE - 4);
   if (inp) strip(Math.atan2(inp[1], inp[0]), 0, step);
@@ -164,7 +174,7 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
   ctx.beginPath();
   ctx.rect(-TILE / 2 + 3, -TILE / 2 + 3, TILE - 6, TILE - 6);
   ctx.clip();
-  ctx.fillStyle = 'rgba(224,178,60,.85)';
+  ctx.fillStyle = fast ? 'rgba(226,102,54,.9)' : 'rgba(224,178,60,.85)';
   for (let k = -1; k <= 2; k++) {
     const xx = -step + k * step + off;
     tri(ctx, xx - 3, -5, xx - 3, 5, xx + 3, 0);
@@ -180,7 +190,7 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
     ctx.beginPath();
     ctx.rect(0, -TILE / 2 + 3, step, TILE - 6);
     ctx.clip();
-    ctx.fillStyle = 'rgba(224,178,60,.85)';
+    ctx.fillStyle = fast ? 'rgba(226,102,54,.9)' : 'rgba(224,178,60,.85)';
     for (let k = 0; k <= 2; k++) {
       const xx = k * step - off;
       if (xx < -3 || xx > step + 3) continue;
@@ -230,15 +240,20 @@ function drawItemDot(ctx, x, y, item, r = 5) {
 function drawDrill(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const s = TILE * 2;
+  const electric = e.type === 'electric-drill' || e.type === 'pumpjack';
+  const pump = e.type === 'pumpjack';
+  const bodyC = pump ? '#2f5a56' : electric ? '#3b5a8c' : '#6e4630';
+  const bodyC2 = pump ? '#3d726d' : electric ? '#4d6ea8' : '#8a5a3e';
+  const lineC = pump ? '#1b3c39' : electric ? '#223a60' : '#43291b';
   ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#6e4630';
+  ctx.fillStyle = bodyC;
   rr(ctx, px + 3, py + 3, s - 6, s - 6, 8);
   ctx.fill();
-  ctx.strokeStyle = '#43291b';
+  ctx.strokeStyle = lineC;
   ctx.lineWidth = 3;
   rr(ctx, px + 3, py + 3, s - 6, s - 6, 8);
   ctx.stroke();
-  ctx.fillStyle = '#8a5a3e';
+  ctx.fillStyle = bodyC2;
   rr(ctx, px + 10, py + 10, s - 20, s - 20, 5);
   ctx.fill();
   const cx = px + s / 2, cy = py + s / 2 - 4;
@@ -267,11 +282,16 @@ function drawDrill(ctx, e, gx, gy, dir, alpha) {
     ctx.fill();
     ctx.restore();
   }
-  const fuelPct = Math.min(1, e.burnLeft / COAL_ENERGY);
-  ctx.fillStyle = '#20242b';
-  rr(ctx, px + 10, py + s - 12, s - 20, 5, 2); ctx.fill();
-  ctx.fillStyle = fuelPct > 0 ? '#e8762c' : '#c33';
-  rr(ctx, px + 10, py + s - 12, (s - 20) * fuelPct, 5, 2); ctx.fill();
+  if (!electric) {
+    const fuelPct = Math.min(1, e.burnLeft / COAL_ENERGY);
+    ctx.fillStyle = '#20242b';
+    rr(ctx, px + 10, py + s - 12, s - 20, 5, 2); ctx.fill();
+    ctx.fillStyle = fuelPct > 0 ? '#e8762c' : '#c33';
+    rr(ctx, px + 10, py + s - 12, (s - 20) * fuelPct, 5, 2); ctx.fill();
+  } else if (e.working) {
+    ctx.fillStyle = 'rgba(143,224,255,.7)';
+    rr(ctx, px + 10, py + s - 12, s - 20, 5, 2); ctx.fill();
+  }
   if (e.status) {
     ctx.fillStyle = '#ffd23c';
     ctx.fillRect(px + s - 14, py + 8, 5, 5);
@@ -282,26 +302,30 @@ function drawDrill(ctx, e, gx, gy, dir, alpha) {
 function drawFurnace(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const s = TILE * 2;
+  const electric = e.type === 'electric-furnace';
+  const bodyC = electric ? '#2e7d5c' : '#8b8577';
+  const lineC = electric ? '#1a4f3a' : '#57524a';
+  const innerC = electric ? '#25694c' : '#6d6759';
   ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#8b8577';
+  ctx.fillStyle = bodyC;
   rr(ctx, px + 3, py + 3, s - 6, s - 6, 8); ctx.fill();
-  ctx.strokeStyle = '#57524a';
+  ctx.strokeStyle = lineC;
   ctx.lineWidth = 3;
   rr(ctx, px + 3, py + 3, s - 6, s - 6, 8); ctx.stroke();
-  ctx.fillStyle = '#6d6759';
+  ctx.fillStyle = innerC;
   rr(ctx, px + 9, py + 9, s - 18, 12, 3); ctx.fill();
   if (e.lit) {
     const fl = 0.55 + Math.sin(G.time * 12 + px) * 0.2;
-    ctx.fillStyle = 'rgba(232,118,44,' + (fl * 0.35).toFixed(2) + ')';
+    ctx.fillStyle = electric ? 'rgba(64,216,160,' + (fl * 0.35).toFixed(2) + ')' : 'rgba(232,118,44,' + (fl * 0.35).toFixed(2) + ')';
     rr(ctx, px + 9, py + 9, s - 18, 12, 3); ctx.fill();
   }
   ctx.fillStyle = '#3a3630';
   rr(ctx, px + s * 0.24, py + s * 0.42, s * 0.52, s * 0.36, 6); ctx.fill();
   if (e.lit) {
     const fl = 0.65 + Math.sin(G.time * 12 + px) * 0.25;
-    ctx.fillStyle = 'rgba(232,118,44,' + fl.toFixed(2) + ')';
+    ctx.fillStyle = electric ? 'rgba(64,216,160,' + fl.toFixed(2) + ')' : 'rgba(232,118,44,' + fl.toFixed(2) + ')';
     rr(ctx, px + s * 0.27, py + s * 0.45, s * 0.46, s * 0.30, 4); ctx.fill();
-    ctx.fillStyle = 'rgba(255,210,60,' + (fl * 0.7).toFixed(2) + ')';
+    ctx.fillStyle = electric ? 'rgba(200,255,230,' + (fl * 0.7).toFixed(2) + ')' : 'rgba(255,210,60,' + (fl * 0.7).toFixed(2) + ')';
     rr(ctx, px + s * 0.32, py + s * 0.54, s * 0.36, s * 0.16, 3); ctx.fill();
   }
   if (e.cur && e.prog > 0) {
@@ -310,24 +334,30 @@ function drawFurnace(ctx, e, gx, gy, dir, alpha) {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(Math.floor(e.prog * 100) + '%', px + s / 2, py + 15);
   }
-  const fuelPct = Math.min(1, e.burnLeft / COAL_ENERGY);
-  ctx.fillStyle = '#20242b';
-  rr(ctx, px + 10, py + s - 12, s - 20, 5, 2); ctx.fill();
-  ctx.fillStyle = fuelPct > 0 ? '#e8762c' : '#c33';
-  rr(ctx, px + 10, py + s - 12, (s - 20) * fuelPct, 5, 2); ctx.fill();
+  if (!electric) {
+    const fuelPct = Math.min(1, e.burnLeft / COAL_ENERGY);
+    ctx.fillStyle = '#20242b';
+    rr(ctx, px + 10, py + s - 12, s - 20, 5, 2); ctx.fill();
+    ctx.fillStyle = fuelPct > 0 ? '#e8762c' : '#c33';
+    rr(ctx, px + 10, py + s - 12, (s - 20) * fuelPct, 5, 2); ctx.fill();
+  }
   ctx.globalAlpha = 1;
 }
 
 function drawAssembler(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const s = TILE * 2;
+  const mk2 = e.type === 'assembling-machine-mk2';
+  const bodyC = mk2 ? '#6b4d8f' : '#4d5f8f';
+  const lineC = mk2 ? '#3c2a52' : '#2e3a5c';
+  const innerC = mk2 ? '#4c3a66' : '#3a486e';
   ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#4d5f8f';
+  ctx.fillStyle = bodyC;
   rr(ctx, px + 3, py + 3, s - 6, s - 6, 7); ctx.fill();
-  ctx.strokeStyle = '#2e3a5c';
+  ctx.strokeStyle = lineC;
   ctx.lineWidth = 3;
   rr(ctx, px + 3, py + 3, s - 6, s - 6, 7); ctx.stroke();
-  ctx.fillStyle = '#3a486e';
+  ctx.fillStyle = innerC;
   rr(ctx, px + 10, py + 10, s - 20, s - 20, 5); ctx.fill();
   ctx.save();
   ctx.translate(px + s / 2, py + s / 2);
@@ -358,6 +388,154 @@ function drawAssembler(ctx, e, gx, gy, dir, alpha) {
 
 function drawItemDotBig(ctx, x, y, item) {
   drawItemDot(ctx, x, y, item, 7);
+}
+
+function drawBoiler(ctx, e, gx, gy, dir, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  const s = TILE * 2;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#8a6a45';
+  rr(ctx, px + 3, py + 3, s - 6, s - 6, 8); ctx.fill();
+  ctx.strokeStyle = '#4c3f28';
+  ctx.lineWidth = 3;
+  rr(ctx, px + 3, py + 3, s - 6, s - 6, 8); ctx.stroke();
+  ctx.fillStyle = '#5c4630';
+  rr(ctx, px + 9, py + 9, s - 18, 12, 3); ctx.fill();
+  if (e.lit) {
+    const fl = 0.55 + Math.sin(G.time * 12 + px) * 0.2;
+    ctx.fillStyle = 'rgba(232,118,44,' + (fl * 0.35).toFixed(2) + ')';
+    rr(ctx, px + 9, py + 9, s - 18, 12, 3); ctx.fill();
+    const fl2 = 0.65 + Math.sin(G.time * 12 + px) * 0.25;
+    ctx.fillStyle = 'rgba(255,210,60,' + (fl2 * 0.7).toFixed(2) + ')';
+    rr(ctx, px + s * 0.32, py + s * 0.44, s * 0.36, s * 0.14, 3); ctx.fill();
+  }
+  ctx.fillStyle = '#3b3230';
+  rr(ctx, px + s * 0.42, py + 6, s * 0.16, s * 0.3, 3); ctx.fill();
+  const fuelPct = Math.min(1, e.burnLeft / COAL_ENERGY);
+  ctx.fillStyle = '#20242b';
+  rr(ctx, px + 10, py + s - 12, s - 20, 5, 2); ctx.fill();
+  ctx.fillStyle = fuelPct > 0 ? '#e8762c' : '#c33';
+  rr(ctx, px + 10, py + s - 12, (s - 20) * fuelPct, 5, 2); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 10px system-ui';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('锅炉', px + s / 2, py + s - 50);
+  ctx.globalAlpha = 1;
+}
+
+function drawPipe(ctx, e, gx, gy, dir, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  const cx = px + TILE / 2, cy = py + TILE / 2;
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = '#7d7264';
+  ctx.lineWidth = 8;
+  for (const [dx, dy] of PIPE_DIRS) {
+    const nb = entAt(gx + dx, gy + dy);
+    if (nb instanceof Pipe || nb instanceof Refinery || nb instanceof Pumpjack) {
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + dx * TILE / 2, cy + dy * TILE / 2);
+      ctx.stroke();
+    }
+  }
+  ctx.fillStyle = '#8d8272';
+  ctx.beginPath(); ctx.arc(cx, cy, 8.5, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#55503f';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(cx, cy, 8.5, 0, 7); ctx.stroke();
+  const total = e.total ? e.total() : 0;
+  if (total > 0) {
+    const first = Object.keys(e.fluid).find(k => e.fluid[k] > 0);
+    if (first && ITEMS[first]) {
+      ctx.fillStyle = ITEMS[first].color;
+      ctx.beginPath();
+      ctx.arc(cx, cy, Math.max(3, 6.5 * Math.min(1, total / PIPE_CAP)), 0, 7);
+      ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawRefinery(ctx, e, gx, gy, dir, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  const s = TILE * 3;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#8f5a34';
+  rr(ctx, px + 3, py + 3, s - 6, s - 6, 10); ctx.fill();
+  ctx.strokeStyle = '#5c3820';
+  ctx.lineWidth = 3;
+  rr(ctx, px + 3, py + 3, s - 6, s - 6, 10); ctx.stroke();
+  ctx.fillStyle = '#3b3230';
+  rr(ctx, px + s * 0.12, py + 10, 13, s * 0.22, 3); ctx.fill();
+  rr(ctx, px + s * 0.28, py + 10, 13, s * 0.22, 3); ctx.fill();
+  if (e.working) {
+    const fl = 0.5 + Math.sin(G.time * 10 + px) * 0.25;
+    ctx.fillStyle = 'rgba(255,160,60,' + (fl * 0.45).toFixed(2) + ')';
+    rr(ctx, px + 12, py + s * 0.42, s - 24, s * 0.24, 6); ctx.fill();
+  }
+  let bx = px + 14;
+  for (const [id] of [['heavy-oil'], ['light-oil'], ['petroleum-gas']]) {
+    const n = e.outp[id] || 0;
+    ctx.fillStyle = '#20242b';
+    rr(ctx, bx, py + s - 18, 18, 7, 2); ctx.fill();
+    if (n > 0) {
+      ctx.fillStyle = ITEMS[id].color;
+      rr(ctx, bx, py + s - 18, 18 * Math.min(1, n / 16), 7, 2); ctx.fill();
+    }
+    bx += 24;
+  }
+  if (!e.working && (e.inp['crude-oil'] || 0) < 2) {
+    ctx.fillStyle = 'rgba(255,255,255,.55)';
+    ctx.font = 'bold 11px system-ui';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('缺原油', px + s / 2, py + s * 0.58);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawSteamEngine(ctx, e, gx, gy, dir, alpha) {  const px = gx * TILE, py = gy * TILE;
+  const s = TILE * 2;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#5d7790';
+  rr(ctx, px + 3, py + 3, s - 6, s - 6, 8); ctx.fill();
+  ctx.strokeStyle = '#33435a';
+  ctx.lineWidth = 3;
+  rr(ctx, px + 3, py + 3, s - 6, s - 6, 8); ctx.stroke();
+  ctx.fillStyle = '#466075';
+  rr(ctx, px + 10, py + 10, s - 20, s - 20, 5); ctx.fill();
+  if (e.on) {
+    ctx.save();
+    ctx.translate(px + s / 2, py + s / 2);
+    ctx.rotate(e.spin || 0);
+    ctx.fillStyle = '#aac8e8';
+    gearShape(ctx, 0, 0, 16, 10, 8);
+    ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(143,224,224,.9)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(px + s / 2, py + s / 2, 22, 0, Math.PI * 2);
+    ctx.stroke();
+    const fl = Math.sin(G.time * 20 + px);
+    if (fl > 0.2) {
+      ctx.fillStyle = 'rgba(255,255,255,.55)';
+      ctx.beginPath();
+      ctx.moveTo(px + s * 0.3, py + 14);
+      ctx.lineTo(px + s * 0.3 + 10, py + 3);
+      ctx.lineTo(px + s * 0.3 + 4, py + 14);
+      ctx.closePath();
+      ctx.fill();
+    }
+  } else {
+    ctx.fillStyle = '#7d8894';
+    gearShape(ctx, px + s / 2, py + s / 2, 16, 10, 8);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 10px system-ui';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('蒸汽机', px + s / 2, py + s - 14);
+  ctx.globalAlpha = 1;
 }
 
 function drawChest(ctx, e, gx, gy, dir, alpha) {
@@ -415,6 +593,13 @@ function drawInserter(ctx, e, gx, gy, dir, alpha) {
   ctx.lineWidth = 2;
   ctx.stroke();
   const long = e.type === 'long-inserter';
+  if (e.type === 'filter-inserter' && e.filter) {
+    ctx.strokeStyle = '#58b8e8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 12, 0, 7);
+    ctx.stroke();
+  }
   const len = e.holding ? (long ? TILE * 2.02 : TILE * 1.06) : (long ? TILE * 1.55 : TILE * 0.82);
   const ang = e.armAng !== undefined ? e.armAng : ((dir + 2) % 4) * Math.PI / 2;
   const tipx = cx + Math.cos(ang) * len;
@@ -428,6 +613,13 @@ function drawInserter(ctx, e, gx, gy, dir, alpha) {
   ctx.stroke();
   ctx.lineCap = 'butt';
   if (e.holding) drawItemDot(ctx, tipx, tipy, e.holding, 4);
+  if (e.holding && (e.holdingCount || 1) > 1) {
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 9px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('×' + e.holdingCount, tipx, tipy - 9);
+  }
   ctx.fillStyle = dirColorNotch(dir);
   notch(ctx, px, py, dir);
   drawFlowMarks(ctx, e, cx, cy, dir);
@@ -526,6 +718,19 @@ function drawSplitter(ctx, e, gx, gy, dir, alpha) {
   ctx.fillStyle = 'rgba(0,0,0,.28)';
   rr(ctx, -TILE * 0.2, -across / 2 + 3, TILE * 0.4, across - 6, 4);
   ctx.fill();
+  // 流向指示：亮色箭头指向输出方向（放置时即可辨认物流方向）
+  ctx.fillStyle = dirColorNotch(dir);
+  ctx.strokeStyle = 'rgba(0,0,0,.45)';
+  ctx.lineWidth = 1;
+  for (const ax of [-TILE * 0.26, TILE * 0.04]) {
+    ctx.beginPath();
+    ctx.moveTo(ax - 5, -7);
+    ctx.lineTo(ax - 5, 7);
+    ctx.lineTo(ax + 6, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
   if (running) {
     ctx.strokeStyle = 'rgba(143,224,143,' + (0.45 + 0.25 * Math.sin(G.time * 6)).toFixed(2) + ')';
     ctx.lineWidth = 2;
@@ -533,6 +738,19 @@ function drawSplitter(ctx, e, gx, gy, dir, alpha) {
     ctx.stroke();
   }
   ctx.restore();
+  if (e.outPref !== undefined && e.outPref >= 0) {
+    const [lx, ly] = e.laneCenter(e.outPref);
+    ctx.save();
+    ctx.translate(lx, ly);
+    ctx.rotate(dir * Math.PI / 2);
+    ctx.fillStyle = '#ffd23c';
+    tri(ctx, TILE * 0.14, -5, TILE * 0.14, 5, TILE * 0.3, 0);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+  }
   const p = e.laneVec();
   for (const o of e.items) {
     const outL = o.outLane !== undefined ? o.outLane : o.lane;
@@ -625,18 +843,28 @@ function drawUnderground(ctx, e, gx, gy, dir, alpha) {
 
 function statusColor(e) {
   switch (e.type) {
-    case 'burner-drill': return e.working ? 'g' : 'r';
+    case 'burner-drill':
+    case 'electric-drill':
+    case 'pumpjack': return e.working ? 'g' : 'r';
     case 'stone-furnace': return e.lit ? (e.cur ? 'g' : 'y') : 'r';
-    case 'assembling-machine': return e.recipe ? (e.crafting || e.prog > 0 ? 'g' : 'y') : 'r';
+    case 'electric-furnace': return e.lit ? (e.cur ? 'g' : 'r') : 'r';
+    case 'assembling-machine':
+    case 'assembling-machine-mk2': return e.recipe ? (e.crafting || e.prog > 0 ? 'g' : 'y') : 'r';
     case 'lab': {
-      if (!G.activeTech || G.techDone[G.activeTech]) return e.packs > 0 ? 'y' : 'r';
-      return e.packs > 0 ? 'g' : 'y';
+      if (!G.activeTech || G.techDone[G.activeTech]) return e.totalPacks() > 0 ? 'y' : 'r';
+      return e.totalPacks() > 0 ? (e.packCount(e.nextNeed()) > 0 ? 'g' : 'y') : 'r';
     }
-    case 'splitter': {
+    case 'boiler': return e.lit ? 'g' : 'r';
+    case 'steam-engine': return e.on ? 'g' : 'r';
+    case 'pipe': return e.total() > 0 ? 'g' : 'r';
+    case 'refinery': return e.working ? 'g' : ((e.inp['crude-oil'] || 0) >= 2 ? 'y' : 'r');
+    case 'splitter':
+    case 'priority-splitter': {
       if (!e.items.length) return 'r';
       return e.items.some(o => o.pos >= 0.499) ? 'y' : 'g';
     }
-    case 'underground': {
+    case 'underground':
+    case 'fast-underground-belt': {
       const paired = !!e.findMate();
       if (paired) {
         if (e.outItems.length >= UG_CAP || e.items.length >= UG_CAP) return 'y';
@@ -645,8 +873,11 @@ function statusColor(e) {
       return e.items.length > 0 ? 'y' : 'r';
     }
     case 'inserter':
-    case 'long-inserter': return e.holding ? (e.blocked ? 'y' : 'g') : (e.rotating ? 'g' : 'r');
-    case 'transport-belt': return e.items.length ? 'g' : 'r';
+    case 'long-inserter':
+    case 'filter-inserter':
+    case 'stack-inserter': return e.holding ? (e.blocked ? 'y' : 'g') : (e.rotating ? 'g' : 'r');
+    case 'transport-belt':
+    case 'fast-transport-belt': return e.items.length ? 'g' : 'r';
   }
   return null;
 }
@@ -665,16 +896,29 @@ function drawStatusDot(ctx, x, y, c) {
 
 function drawEntity(ctx, e, gx, gy, dir, alpha) {
   switch (e.type) {
-    case 'transport-belt': drawBelt(ctx, e, gx, gy, dir, alpha); break;
-    case 'splitter': drawSplitter(ctx, e, gx, gy, dir, alpha); break;
-    case 'underground': drawUnderground(ctx, e, gx, gy, dir, alpha); break;
-    case 'burner-drill': drawDrill(ctx, e, gx, gy, dir, alpha); break;
-    case 'stone-furnace': drawFurnace(ctx, e, gx, gy, dir, alpha); break;
-    case 'assembling-machine': drawAssembler(ctx, e, gx, gy, dir, alpha); break;
+    case 'transport-belt':
+    case 'fast-transport-belt': drawBelt(ctx, e, gx, gy, dir, alpha); break;
+    case 'splitter':
+    case 'priority-splitter': drawSplitter(ctx, e, gx, gy, dir, alpha); break;
+    case 'underground':
+    case 'fast-underground-belt': drawUnderground(ctx, e, gx, gy, dir, alpha); break;
+    case 'burner-drill':
+    case 'electric-drill':
+    case 'pumpjack': drawDrill(ctx, e, gx, gy, dir, alpha); break;
+    case 'stone-furnace':
+    case 'electric-furnace': drawFurnace(ctx, e, gx, gy, dir, alpha); break;
+    case 'assembling-machine':
+    case 'assembling-machine-mk2': drawAssembler(ctx, e, gx, gy, dir, alpha); break;
     case 'storage-chest': drawChest(ctx, e, gx, gy, dir, alpha); break;
     case 'lab': drawLab(ctx, e, gx, gy, dir, alpha); break;
+    case 'boiler': drawBoiler(ctx, e, gx, gy, dir, alpha); break;
+    case 'steam-engine': drawSteamEngine(ctx, e, gx, gy, dir, alpha); break;
+    case 'pipe': drawPipe(ctx, e, gx, gy, dir, alpha); break;
+    case 'refinery': drawRefinery(ctx, e, gx, gy, dir, alpha); break;
     case 'inserter':
-    case 'long-inserter': drawInserter(ctx, e, gx, gy, dir, alpha); break;
+    case 'long-inserter':
+    case 'filter-inserter':
+    case 'stack-inserter': drawInserter(ctx, e, gx, gy, dir, alpha); break;
   }
   if (alpha === 1) {
     const c = statusColor(e);
@@ -693,7 +937,7 @@ function getGhostEnt(type) {
 }
 
 function drawGhost(ctx) {
-  if (G.sel < 0 || !G.cursorTile || !G.canvasActive) return;
+  if (!buildActive() || !G.cursorTile || !G.canvasActive) return;
   const type = selItem();
   if (!type) return;
   const def = BUILD_DEFS[type];
@@ -715,21 +959,28 @@ function canPlaceAt(type, tx, ty, dir) {
   const def = BUILD_DEFS[type];
   let ew = def.w, eh = def.h;
   if (def.rotSwap && (dir % 2 === 1)) { ew = def.h; eh = def.w; }
-  if (tx < 0 || ty < 0 || tx + ew > WORLD_W || ty + eh > WORLD_H) return { ok: false };
   for (let dy = 0; dy < eh; dy++)
     for (let dx = 0; dx < ew; dx++) {
       if (isWater(tx + dx, ty + dy)) return { ok: false };
       if (entAt(tx + dx, ty + dy)) return { ok: false };
       if (!withinReach(tx + dx, ty + dy)) return { ok: false };
     }
-  if (type === 'burner-drill') {
+  if (type === 'burner-drill' || type === 'electric-drill') {
     let hasOre = false;
     for (let dy = 0; dy < eh && !hasOre; dy++)
       for (let dx = 0; dx < ew && !hasOre; dx++) {
-        const idx = tileIdx(tx + dx, ty + dy);
-        if (idx >= 0 && G.world.oreType[idx] >= 0) hasOre = true;
+        const ti = getOreType(tx + dx, ty + dy);
+        if (ti >= 0 && ti < ORES.length) hasOre = true;
       }
     if (!hasOre) return { ok: false };
+  }
+  if (type === 'pumpjack') {
+    let hasOil = false;
+    for (let dy = 0; dy < eh && !hasOil; dy++)
+      for (let dx = 0; dx < ew && !hasOil; dx++) {
+        if (getOreType(tx + dx, ty + dy) === ORE_OIL && getOreAmt(tx + dx, ty + dy) > 0) hasOil = true;
+      }
+    if (!hasOil) return { ok: false };
   }
   return { ok: true };
 }
@@ -746,9 +997,8 @@ function drawHoverAndMining(ctx) {
   const p = G.player;
   if (p.mining) {
     const [mx, my] = p.mining.split(',').map(Number);
-    const idx = tileIdx(mx, my);
-    const ti = G.world.oreType[idx];
-    if (ti >= 0) {
+    const ti = getOreType(mx, my);
+    if (ti >= 0 && ti < ORES.length) {
       ctx.strokeStyle = '#fff';
       ctx.lineWidth = 3;
       ctx.beginPath();

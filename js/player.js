@@ -42,8 +42,6 @@ function updatePlayer(dt) {
     if (!boxBlocked(nx, p.y, r)) p.x = nx;
     const ny = p.y + my * sp * dt;
     if (!boxBlocked(p.x, ny, r)) p.y = ny;
-    p.x = Math.max(TILE, Math.min(WORLD_W * TILE - TILE, p.x));
-    p.y = Math.max(TILE, Math.min(WORLD_H * TILE - TILE, p.y));
   }
 }
 
@@ -59,7 +57,8 @@ function invAdd(id, n = 1) {
 
 function invCount(id) { return G.inv.get(id) || 0; }
 
-function selItem() { return G.sel >= 0 ? (HOTBAR[G.sel] || null) : null; }
+function selItem() { return G.sel >= 0 ? (HOTBAR[G.sel] || null) : (G.quickSel || null); }
+function buildActive() { return G.sel >= 0 || !!G.quickSel; }
 
 function invTake(id, n = 1) {
   const c = invCount(id);
@@ -89,19 +88,18 @@ function doCraft(rid, times = 1) {
 
 function updateMining(dt) {
   const p = G.player;
-  if (!G.mouseDown || G.sel >= 0 || !G.canvasActive) { p.mining = null; p.mineProg = 0; return; }
+  if (!G.mouseDown || buildActive() || !G.canvasActive) { p.mining = null; p.mineProg = 0; return; }
   const t = G.cursorTile;
   if (!t) { p.mining = null; p.mineProg = 0; return; }
   const key = t.tx + ',' + t.ty;
   if (p.mining !== key) { p.mining = key; p.mineProg = 0; }
   if (!withinReach(t.tx, t.ty)) { p.mineProg = 0; return; }
-  const idx = tileIdx(t.tx, t.ty);
-  const ti = G.world.oreType[idx];
-  if (ti >= 0 && G.world.oreAmt[idx] > 0) {
+  const ti = getOreType(t.tx, t.ty);
+  if (ti >= 0 && ti < ORES.length && getOreAmt(t.tx, t.ty) > 0) {
     p.mineProg += dt * ((G.dbg && G.dbg.mineMult) || 1) / HAND_MINE_TIME;
     if (p.mineProg >= 1) {
       p.mineProg -= 1;
-      if (!G.settings.infiniteOre) G.world.oreAmt[idx]--;
+      if (!G.settings.infiniteOre) consumeOre(t.tx, t.ty);
       invAdd(ORES[ti]);
     }
   } else {
@@ -109,18 +107,17 @@ function updateMining(dt) {
   }
 }
 
-function findSpawn(world) {
-  const cx = WORLD_W >> 1, cy = WORLD_H >> 1;
+function findSpawn() {
   let best = null, bestD = Infinity;
-  for (let ty = 2; ty < WORLD_H - 2; ty++)
-    for (let tx = 2; tx < WORLD_W - 2; tx++) {
-      const idx = tileIdx(tx, ty);
-      if (world.terrain[idx] !== T_GRASS) continue;
-      if (world.oreType[idx] !== ORES.indexOf('iron-ore')) continue;
+  const R = 22;
+  for (let ty = -R; ty < R; ty++)
+    for (let tx = -R; tx < R; tx++) {
+      if (getTerrain(tx, ty) !== T_GRASS) continue;
+      if (getOreType(tx, ty) !== ORES.indexOf('iron-ore')) continue;
       if (isWater(tx + 1, ty) || isWater(tx - 1, ty) || isWater(tx, ty + 1) || isWater(tx, ty - 1)) continue;
-      const d = Math.hypot(tx - cx, ty - cy);
+      const d = Math.hypot(tx, ty);
       if (d < bestD) { bestD = d; best = [tx, ty]; }
     }
-  if (!best) best = [cx, cy];
+  if (!best) best = [4, 4];
   return best;
 }

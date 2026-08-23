@@ -1,24 +1,47 @@
 'use strict';
 
 const TILE = 32;
-const WORLD_W = 180;
-const WORLD_H = 180;
+const CHUNK = 32;
 const DX = [1, 0, -1, 0];
 const DY = [0, 1, 0, -1];
 
 const BELT_SPEED = 1.25;
 const BELT_SPACING = 0.25;
+const FAST_BELT_MULT = 1.9;
 const COAL_ENERGY = 12;
 const SELF_FUEL_MAX = 10;
 const UNDERGROUND_MAX = 6;
+const FAST_UNDERGROUND_MAX = 14;
 const UG_CAP = 8;
-const UG_TICK = 0.35;
-const UG_EJECT = 0.25;
 const DRILL_TIME = 1.0;
 const HAND_MINE_TIME = 0.45;
 const REACH_TILES = 5.5;
 const REACH_PX = REACH_TILES * TILE;
 const LAB_TIME = 4;
+const POWER_PER_ENGINE = 4;
+const POWER_USE = { 'electric-drill': 3, 'electric-furnace': 2, 'assembling-machine-mk2': 3, 'pumpjack': 2, 'refinery': 4 };
+
+const FLUIDS = ['crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas'];
+const ORE_OIL = 4;                       // 原油矿床的 oreType 索引（不进手挖矿表）
+function oreItemId(ti) { return ti === ORE_OIL ? 'crude-oil' : ORES[ti]; }
+const PIPE_CAP = 40;
+const PIPE_FLOW = 3;
+
+const SCIENCE_PACKS = ['science-pack', 'green-science', 'blue-science'];
+function isScience(item) { return SCIENCE_PACKS.indexOf(item) >= 0; }
+const FILTER_CHOICES = ['iron-plate', 'copper-plate', 'steel-plate', 'iron-gear', 'copper-cable', 'green-circuit',
+  'coal', 'stone', 'plastic-bar', 'science-pack', 'green-science', 'blue-science'].concat(FLUIDS);
+function techPacks(tid) { return (TECHS && TECHS[tid] && TECHS[tid].cost) || {}; }
+function techCostTotal(tid) {
+  let s = 0;
+  for (const k in techPacks(tid)) s += techPacks(tid)[k];
+  return s;
+}
+function techNeedList(tid) {
+  const cost = techPacks(tid), arr = [];
+  for (const item in cost) for (let i = 0; i < cost[item]; i++) arr.push(item);
+  return arr;
+}
 
 const ITEMS = {
   'iron-ore':   { name: '铁矿石', color: '#8fa0b8', mark: 'Fe', desc: '基础矿物，放入石炉冶炼成铁板' },
@@ -40,17 +63,40 @@ const ITEMS = {
   'storage-chest':     { name: '储物箱', color: '#8a6a45', desc: '存放物资，配合机械臂自动装卸' },
   'lab':               { name: '研究院', color: '#4aa8a0', desc: '消耗科学包推进所选科技（2×2）' },
   'splitter':          { name: '分流器', color: '#d98f3c', desc: '把一条带的货轮流分向前方和右侧；一边堵了自动走另一边' },
-  'underground':       { name: '地下传送带', color: '#9a7fd6', desc: '同向摆两座（最远6格）自动配对：入口收货钻入地下，出口送回地面向前输出' }
+  'underground':       { name: '地下传送带', color: '#9a7fd6', desc: '同向摆两座（最远6格）自动配对：入口收货钻入地下，出口送回地面向前输出' },
+  'steel-plate':       { name: '钢板',   color: '#c9ced6', mark: 'S', desc: '电炉炼铁板产出的高级建材' },
+  'boiler':            { name: '锅炉',   color: '#d0743a', desc: '烧煤产生蒸汽，供邻接的蒸汽机发电，电力全图共享' },
+  'steam-engine':      { name: '蒸汽机', color: '#8fb8d0', desc: '紧邻点亮的锅炉即可发电，产出并入全地图共享电网' },
+  'electric-drill':    { name: '电采矿机', color: '#4f7dd3', desc: '免燃料、吃电力开采，速度快于热能采矿机' },
+  'electric-furnace':  { name: '电炉',   color: '#3fa87e', desc: '免燃料、吃电力冶炼，速度更高，可出钢板' },
+  'assembling-machine-mk2': { name: '装配机 II', color: '#a05fd0', desc: '吃电力、速度更高的高级装配机' },
+  'fast-transport-belt': { name: '快速传送带', color: '#f2c14e', desc: '速度约为普通带的 1.9 倍' },
+  'fast-underground-belt': { name: '快速地下传送带', color: '#b98ee0', desc: '同向配对距离最远 14 格，速度是快带标准' },
+  'priority-splitter': { name: '优先级分流器', color: '#e07b2e', desc: '同分流器，但可通过面板指定优先把货推向一侧；另一侧仅作为溢出通道' },
+  'filter-inserter':   { name: '过滤机械臂', color: '#58b8e8', desc: '同机械臂，可在面板指定只抓取某种物品' },
+  'stack-inserter':    { name: '堆叠机械臂', color: '#e8e059', desc: '同机械臂，但可一次性抓取多达 3 个同种物品' },
+  'green-science':     { name: '绿色科学包', color: '#6fd06f', mark: 'GS', desc: '解锁二级科技（物流/石油等的钥匙）' },
+  'blue-science':      { name: '蓝色科学包', color: '#4f9fe8', mark: 'BS', desc: '依赖石油与塑料的高级科研包' },
+  'crude-oil':         { name: '原油', color: '#2a2418', mark: 'Oil', desc: '流体，用抽油机开采，经管道输送' },
+  'heavy-oil':         { name: '重油', color: '#5a3a1e', mark: 'HO', desc: '炼油副产物，常作为润滑油等原料' },
+  'light-oil':         { name: '轻油', color: '#8a5a22', mark: 'LO', desc: '炼油副产物，可继续加工成石油气' },
+  'petroleum-gas':     { name: '石油气', color: '#c9a84a', mark: 'PG', desc: '炼油关键产物，制造塑料的原料' },
+  'plastic-bar':       { name: '塑料板', color: '#cfe8a8', mark: 'Pl', desc: '石油化工产物，用于高级配方' },
+  'pipe':              { name: '管道', color: '#6a5f52', desc: '输送流体（原油/重轻油/石油气），相邻互连，容量 40' },
+  'pumpjack':          { name: '抽油机', color: '#3a6a66', desc: '吃电力开采原油矿床，产出原油（2×2）' },
+  'refinery':          { name: '炼油厂', color: '#b06a3e', desc: '把原油炼成重油/轻油/石油气（3×3，吃电力，需管道/机械臂输送）' }
 };
 
 const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone'];
 
 const SMELTS = [
   { id: 'iron-plate',   inp: 'iron-ore',   time: 1.6 },
-  { id: 'copper-plate', inp: 'copper-ore', time: 1.6 }
+  { id: 'copper-plate', inp: 'copper-ore', time: 1.6 },
+  { id: 'steel-plate',  inp: 'iron-plate', inCount: 2, time: 3.2 }
 ];
 
 const RECIPES = {
+  'steel-plate':        { time: 6,   inp: { 'iron-plate': 2 },                                   out: { 'steel-plate': 1 } },
   'iron-gear':          { time: 0.5, inp: { 'iron-plate': 2 },                                   out: { 'iron-gear': 1 } },
   'copper-cable':       { time: 0.5, inp: { 'copper-plate': 1 },                                 out: { 'copper-cable': 2 } },
   'green-circuit':      { time: 0.5, inp: { 'iron-plate': 1, 'copper-cable': 3 },                out: { 'green-circuit': 1 } },
@@ -64,29 +110,66 @@ const RECIPES = {
   'assembling-machine': { time: 2,   inp: { 'iron-plate': 5, 'iron-gear': 4, 'green-circuit': 3 }, out: { 'assembling-machine': 1 } },
   'lab':                { time: 3,   inp: { 'iron-gear': 8, 'green-circuit': 8, 'stone': 10 },   out: { 'lab': 1 } },
   'splitter':           { time: 1,   inp: { 'iron-plate': 4, 'iron-gear': 4 },                     out: { 'splitter': 1 } },
-  'underground':        { time: 1.5, inp: { 'iron-plate': 6, 'iron-gear': 4 },                     out: { 'underground': 1 } }
+  'underground':        { time: 1.5, inp: { 'iron-plate': 6, 'iron-gear': 4 },                     out: { 'underground': 1 } },
+  'boiler':             { time: 1.5, inp: { 'stone': 4, 'iron-plate': 2 },                         out: { 'boiler': 1 } },
+  'steam-engine':       { time: 2,   inp: { 'iron-plate': 2, 'iron-gear': 2, 'green-circuit': 2 }, out: { 'steam-engine': 1 } },
+  'electric-drill':     { time: 2,   inp: { 'iron-plate': 8, 'iron-gear': 3 },                     out: { 'electric-drill': 1 } },
+  'electric-furnace':   { time: 2.5, inp: { 'iron-plate': 6, 'steel-plate': 2, 'green-circuit': 2 }, out: { 'electric-furnace': 1 } },
+  'assembling-machine-mk2': { time: 3, inp: { 'steel-plate': 6, 'iron-gear': 4, 'green-circuit': 6 }, out: { 'assembling-machine-mk2': 1 } },
+  'fast-transport-belt': { time: 0.5, inp: { 'iron-plate': 2, 'iron-gear': 1 },                  out: { 'fast-transport-belt': 1 } },
+  'fast-underground-belt': { time: 1, inp: { 'underground': 1, 'iron-gear': 5 },                  out: { 'fast-underground-belt': 1 } },
+  'priority-splitter': { time: 1,   inp: { 'splitter': 1, 'iron-gear': 1 },                       out: { 'priority-splitter': 1 } },
+  'filter-inserter':   { time: 1,   inp: { 'inserter': 1, 'green-circuit': 1 },                   out: { 'filter-inserter': 1 } },
+  'stack-inserter':    { time: 1.5, inp: { 'inserter': 1, 'iron-gear': 8 },                       out: { 'stack-inserter': 1 } },
+  'green-science':     { time: 4,   inp: { 'transport-belt': 1, 'inserter': 1 },                  out: { 'green-science': 1 } },
+  'blue-science':      { time: 8,   inp: { 'plastic-bar': 2, 'green-circuit': 2, 'copper-plate': 1 }, out: { 'blue-science': 1 } },
+  'pipe':              { time: 0.5, inp: { 'iron-plate': 1 },                                     out: { 'pipe': 1 } },
+  'pumpjack':          { time: 2.5, inp: { 'steel-plate': 4, 'iron-gear': 3, 'green-circuit': 2 }, out: { 'pumpjack': 1 } },
+  'refinery':          { time: 3,   inp: { 'steel-plate': 8, 'pipe': 6, 'green-circuit': 5 },      out: { 'refinery': 1 } },
+  'plastic-bar':       { time: 2,   inp: { 'petroleum-gas': 1, 'coal': 1 },                       out: { 'plastic-bar': 1 } },
+  'crack-light':       { time: 3,   inp: { 'heavy-oil': 3 },                                      out: { 'light-oil': 2 } },
+  'crack-gas':         { time: 3,   inp: { 'light-oil': 3 },                                      out: { 'petroleum-gas': 2 } }
 };
 
 const BUILD_DEFS = {
   'transport-belt':     { w: 1, h: 1, solid: false },
+  'fast-transport-belt': { w: 1, h: 1, solid: false },
   'splitter':           { w: 1, h: 2, solid: false, rotSwap: true },
+  'priority-splitter':  { w: 1, h: 2, solid: false, rotSwap: true },
   'underground':        { w: 1, h: 1, solid: false },
+  'fast-underground-belt': { w: 1, h: 1, solid: false },
   'inserter':           { w: 1, h: 1, solid: true },
   'long-inserter':      { w: 1, h: 1, solid: true },
+  'filter-inserter':    { w: 1, h: 1, solid: true },
+  'stack-inserter':     { w: 1, h: 1, solid: true },
   'burner-drill':       { w: 2, h: 2, solid: true },
   'stone-furnace':      { w: 2, h: 2, solid: true },
   'assembling-machine': { w: 2, h: 2, solid: true },
   'storage-chest':      { w: 1, h: 1, solid: true },
-  'lab':                { w: 2, h: 2, solid: true }
+  'lab':                { w: 2, h: 2, solid: true },
+  'boiler':             { w: 2, h: 2, solid: true },
+  'steam-engine':       { w: 2, h: 2, solid: true },
+  'electric-drill':     { w: 2, h: 2, solid: true },
+  'electric-furnace':   { w: 2, h: 2, solid: true },
+  'assembling-machine-mk2': { w: 2, h: 2, solid: true },
+  'pipe':               { w: 1, h: 1, solid: true },
+  'pumpjack':           { w: 2, h: 2, solid: true },
+  'refinery':           { w: 3, h: 3, solid: true }
 };
 
 const DEFAULT_HOTBAR = ['transport-belt', 'splitter', 'underground', 'inserter', 'long-inserter', 'burner-drill', 'stone-furnace', 'assembling-machine', 'storage-chest', 'lab'];
 let HOTBAR = DEFAULT_HOTBAR.slice();
 
 const TECHS = {
-  mining:     { name: '采矿业', cost: 10, desc: '采矿机速度 ×2' },
-  logistics:  { name: '物流学', cost: 15, desc: '传送带速度 ×1.5' },
-  automation: { name: '自动化', cost: 20, desc: '装配机速度 ×1.5' }
+  mining:     { name: '采矿业', cost: { 'science-pack': 10 }, desc: '采矿机速度 ×2' },
+  logistics:  { name: '物流学', cost: { 'science-pack': 15 }, desc: '传送带速度 ×1.5' },
+  automation: { name: '自动化', cost: { 'science-pack': 20 }, desc: '装配机速度 ×1.5' },
+  logistics2: { name: '物流 II', cost: { 'green-science': 25 }, desc: '传送带速度额外 ×1.2（与物流学叠加）' },
+  electric:   { name: '电力工程', cost: { 'green-science': 15 }, desc: '电炉 / 电采矿机速度 ×1.2' },
+  oil:        { name: '石油冶金', cost: { 'green-science': 30 }, desc: '炼油厂 / 抽油机速度 ×1.5' },
+  plastic:    { name: '塑料合成', cost: { 'green-science': 20 }, desc: '装配机生产塑料耗时缩短 ✓（绿色科研的核心支付项）' },
+  automation2:{ name: '自动化 II', cost: { 'blue-science': 40 }, desc: '装配机 II 速度额外 ×1.2' },
+  deep:       { name: '重工蓝图', cost: { 'blue-science': 50 }, desc: '蓝包终技：科研总进度获取 +20%' }
 };
 
 const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: false };
@@ -187,7 +270,9 @@ function drawItemGlyph(x, id, cx, cy, s) {
       x.stroke();
       break;
     }
-    case 'science-pack': {
+    case 'science-pack':
+    case 'green-science':
+    case 'blue-science': {
       x.fillStyle = '#e8ecf2';
       x.fillRect(-r * 0.16, -r * 0.9, r * 0.32, r * 0.35);
       x.fillStyle = col;
@@ -197,6 +282,20 @@ function drawItemGlyph(x, id, cx, cy, s) {
       x.lineTo(r * 0.75, r * 0.75);
       x.arc(0, r * 0.75, r * 0.75, 0, Math.PI, true);
       x.closePath();
+      x.fill();
+      break;
+    }
+    case 'crude-oil':
+    case 'heavy-oil':
+    case 'light-oil':
+    case 'petroleum-gas': {
+      x.fillStyle = col;
+      x.beginPath();
+      x.arc(0, r * 0.15, r * 0.55, 0, 7);
+      x.fill();
+      x.beginPath();
+      x.ellipse(-r * 0.28, -r * 0.35, r * 0.2, r * 0.32, -0.5, 0, 7);
+      x.ellipse(r * 0.3, -r * 0.2, r * 0.16, r * 0.26, 0.6, 0, 7);
       x.fill();
       break;
     }
@@ -228,6 +327,10 @@ function rrPath(x, px, py, w, h, r) {
   return x;
 }
 
-function beltSpeed()  { return BELT_SPEED * (G.techDone.logistics ? 1.5 : 1) * ((G.dbg && G.dbg.beltMult) || 1); }
+function beltSpeed()  {
+  return BELT_SPEED * (G.techDone.logistics ? 1.5 : 1) * (G.techDone.logistics2 ? 1.2 : 1) * ((G.dbg && G.dbg.beltMult) || 1);
+}
 function drillMult()  { return (G.techDone.mining ? 2 : 1) * ((G.dbg && G.dbg.drillMult) || 1); }
-function asmMult()    { return (G.techDone.automation ? 1.5 : 1) * ((G.dbg && G.dbg.asmMult) || 1); }
+function asmMult()    { return (G.techDone.automation ? 1.5 : 1) * (G.techDone.automation2 ? 1.2 : 1) * ((G.dbg && G.dbg.asmMult) || 1); }
+function elecMachMult() { return (G.techDone.electric ? 1.2 : 1); }
+function oilMult()    { return (G.techDone.oil ? 1.5 : 1); }
