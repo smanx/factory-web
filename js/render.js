@@ -385,8 +385,9 @@ function drawAssembler(ctx, e, gx, gy, dir, alpha) {
   }
   const fr = e.fluidRecipe ? e.fluidRecipe() : null;
   if (fr) {
-    if (fr.fin.length) drawPort(ctx, gx, gy, (dir + 2) % 4, ITEMS[fr.fin[0]].color, false);
-    if (fr.fout.length) drawPort(ctx, gx, gy, dir, ITEMS[fr.fout[0]].color, true);
+    const pcx = px + s / 2, pcy = py + s / 2;
+    if (fr.fin.length) drawPort(ctx, pcx, pcy, (dir + 2) % 4, ITEMS[fr.fin[0]].color, false, 0, TILE);
+    if (fr.fout.length) drawPort(ctx, pcx, pcy, dir, ITEMS[fr.fout[0]].color, true, 0, TILE);
   }
   ctx.globalAlpha = 1;
 }
@@ -452,22 +453,24 @@ function drawItemDotBig(ctx, x, y, item) {
   drawItemDot(ctx, x, y, item, 7);
 }
 
-// 流体端口凸缘：side 0东1南2西3北，画在 2×2 实体对应边中点；arrow=出流方向箭头
-function drawPort(ctx, gx, gy, side, color, arrow) {
-  const cx = gx * TILE + TILE, cy = gy * TILE + TILE;
+// 流体端口凸缘：side 0东1南2西3北；(cx,cy)=实体中心像素；dist=中心到该边距离；
+// off=沿边偏移（±0.5 为半格）；arrow=出流方向箭头
+function drawPort(ctx, cx, cy, side, color, arrow, off, dist) {
+  if (!dist) dist = TILE;
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(side * Math.PI / 2);
+  if (off) ctx.translate(0, off * TILE);
   ctx.fillStyle = '#20242b';
-  rr(ctx, TILE - 9, -7, 10, 14, 3); ctx.fill();
+  rr(ctx, dist - 9, -7, 10, 14, 3); ctx.fill();
   ctx.strokeStyle = 'rgba(0,0,0,.4)';
   ctx.lineWidth = 1.5;
-  rr(ctx, TILE - 9, -7, 10, 14, 3); ctx.stroke();
+  rr(ctx, dist - 9, -7, 10, 14, 3); ctx.stroke();
   ctx.fillStyle = color;
-  rr(ctx, TILE - 7, -4.5, 6.5, 9, 2); ctx.fill();
+  rr(ctx, dist - 7, -4.5, 6.5, 9, 2); ctx.fill();
   if (arrow) {
     ctx.fillStyle = color;
-    tri(ctx, TILE - 13, -5, TILE - 13, 5, TILE - 20, 0);
+    tri(ctx, dist - 13, -5, dist - 13, 5, dist - 20, 0);
     ctx.fill();
   }
   ctx.restore();
@@ -478,42 +481,42 @@ const PORT_STEAM = '#dfe8ee';
 
 function drawBoiler(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
-  const s = TILE * 2;
+  const w = TILE * 3, h = TILE * 2;
   ctx.globalAlpha = alpha;
   ctx.fillStyle = '#8a6a45';
-  rr(ctx, px + 3, py + 3, s - 6, s - 6, 8); ctx.fill();
+  rr(ctx, px + 3, py + 3, w - 6, h - 6, 8); ctx.fill();
   ctx.strokeStyle = '#4c3f28';
   ctx.lineWidth = 3;
-  rr(ctx, px + 3, py + 3, s - 6, s - 6, 8); ctx.stroke();
+  rr(ctx, px + 3, py + 3, w - 6, h - 6, 8); ctx.stroke();
   ctx.fillStyle = '#5c4630';
-  rr(ctx, px + 9, py + 9, s - 18, 12, 3); ctx.fill();
+  rr(ctx, px + 9, py + 9, w - 18, 12, 3); ctx.fill();
   if (e.lit) {
     const fl = 0.55 + Math.sin(G.time * 12 + px) * 0.2;
     ctx.fillStyle = 'rgba(232,118,44,' + (fl * 0.35).toFixed(2) + ')';
-    rr(ctx, px + 9, py + 9, s - 18, 12, 3); ctx.fill();
+    rr(ctx, px + 9, py + 9, w - 18, 12, 3); ctx.fill();
     const fl2 = 0.65 + Math.sin(G.time * 12 + px) * 0.25;
     ctx.fillStyle = 'rgba(255,210,60,' + (fl2 * 0.7).toFixed(2) + ')';
-    rr(ctx, px + s * 0.32, py + s * 0.44, s * 0.36, s * 0.14, 3); ctx.fill();
+    rr(ctx, px + w * 0.36, py + h * 0.42, w * 0.28, h * 0.16, 3); ctx.fill();
   }
   ctx.fillStyle = '#3b3230';
-  rr(ctx, px + s * 0.42, py + 6, s * 0.16, s * 0.3, 3); ctx.fill();
+  rr(ctx, px + w * 0.46, py + 6, w * 0.08, h * 0.32, 3); ctx.fill();
   const fuelPct = Math.min(1, e.burnLeft / COAL_ENERGY);
   ctx.fillStyle = '#20242b';
-  rr(ctx, px + 10, py + s - 12, s - 20, 5, 2); ctx.fill();
+  rr(ctx, px + 10, py + h - 12, w - 20, 5, 2); ctx.fill();
   ctx.fillStyle = fuelPct > 0 ? '#e8762c' : '#c33';
-  rr(ctx, px + 10, py + s - 12, (s - 20) * fuelPct, 5, 2); ctx.fill();
+  rr(ctx, px + 10, py + h - 12, (w - 20) * fuelPct, 5, 2); ctx.fill();
   const wPct = Math.max(0, Math.min(1, (e.water || 0) / WATER_CAP));
   ctx.fillStyle = '#20242b';
-  rr(ctx, px + 10, py + s - 19, s - 20, 5, 2); ctx.fill();
+  rr(ctx, px + 10, py + h - 19, w - 20, 5, 2); ctx.fill();
   ctx.fillStyle = wPct > 0 ? '#3fa0e8' : '#b33';
-  rr(ctx, px + 10, py + s - 19, (s - 20) * wPct, 5, 2); ctx.fill();
+  rr(ctx, px + 10, py + h - 19, (w - 20) * wPct, 5, 2); ctx.fill();
   const tp = Math.max(0, Math.min(1, (e.temp || 0) / BOILER_TEMP_MAX));
   if (tp > 0.8) { // 温度达标：冒蒸汽
     for (let i = 0; i < 3; i++) {
       const t = ((G.time * 0.5) + i / 3) % 1;
       ctx.fillStyle = 'rgba(240,248,255,' + (0.5 * (1 - t)).toFixed(2) + ')';
       ctx.beginPath();
-      ctx.arc(px + s * 0.62 + Math.sin((t + i) * 6) * 5, py + 16 - t * 20, 2.5 + t * 3, 0, 7);
+      ctx.arc(px + w * 0.62 + Math.sin((t + i) * 6) * 5, py + 16 - t * 20, 2.5 + t * 3, 0, 7);
       ctx.fill();
     }
   }
@@ -523,9 +526,12 @@ function drawBoiler(ctx, e, gx, gy, dir, alpha) {
   ctx.fillText('锅炉', px + 8, py + 14);
   ctx.textAlign = 'right';
   ctx.fillStyle = tp >= 1 ? '#7fe08f' : tp > 0 ? '#ffd23c' : '#8a93a0';
-  ctx.fillText(Math.round(e.temp || 0) + '°C', px + s - 8, py + 14);
-  drawPort(ctx, gx, gy, e.waterSide(), PORT_WATER, false);
-  drawPort(ctx, gx, gy, e.steamSide(), PORT_STEAM, true);
+  ctx.fillText(Math.round(e.temp || 0) + '°C', px + w - 8, py + 14);
+  // 水口（蓝，双向互通）：左右两端下格侧边；汽口（白，只出）：底边中间
+  const cx = px + TILE * 1.5, cy = py + TILE;
+  drawPort(ctx, cx, cy, 2, PORT_WATER, false, -0.5, TILE);
+  drawPort(ctx, cx, cy, 0, PORT_WATER, false, 0.5, TILE);
+  drawPort(ctx, cx, cy, 1, PORT_STEAM, true, 0, TILE);
   ctx.globalAlpha = 1;
 }
 
@@ -601,20 +607,22 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
   ctx.globalAlpha = 1;
 }
 
-function drawSteamEngine(ctx, e, gx, gy, dir, alpha) {  const px = gx * TILE, py = gy * TILE;
-  const s = TILE * 2;
+function drawSteamEngine(ctx, e, gx, gy, dir, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  const w = TILE * 3, h = TILE * 5;
   const om = Math.max(0, Math.min(1, e.outMult || 0));
   ctx.globalAlpha = alpha;
   ctx.fillStyle = '#5d7790';
-  rr(ctx, px + 3, py + 3, s - 6, s - 6, 8); ctx.fill();
+  rr(ctx, px + 3, py + 3, w - 6, h - 6, 8); ctx.fill();
   ctx.strokeStyle = '#33435a';
   ctx.lineWidth = 3;
-  rr(ctx, px + 3, py + 3, s - 6, s - 6, 8); ctx.stroke();
+  rr(ctx, px + 3, py + 3, w - 6, h - 6, 8); ctx.stroke();
   ctx.fillStyle = '#466075';
-  rr(ctx, px + 10, py + 10, s - 20, s - 20, 5); ctx.fill();
+  rr(ctx, px + 10, py + 10, w - 20, h - 20, 5); ctx.fill();
+  const gcx = px + w / 2, gcy = py + h * 0.32;
   if (e.on) {
     ctx.save();
-    ctx.translate(px + s / 2, py + s / 2);
+    ctx.translate(gcx, gcy);
     ctx.rotate(e.spin || 0);
     ctx.fillStyle = om >= 1 ? '#c4e4ff' : '#aac8e8';
     gearShape(ctx, 0, 0, 16, 10, 8);
@@ -623,30 +631,31 @@ function drawSteamEngine(ctx, e, gx, gy, dir, alpha) {  const px = gx * TILE, py
     ctx.strokeStyle = 'rgba(143,224,224,' + (0.35 + 0.55 * om).toFixed(2) + ')';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(px + s / 2, py + s / 2, 22, 0, Math.PI * 2);
+    ctx.arc(gcx, gcy, 22, 0, Math.PI * 2);
     ctx.stroke();
     const fl = Math.sin(G.time * 20 + px);
     if (fl > 0.2) {
       ctx.fillStyle = 'rgba(255,255,255,' + (0.25 + 0.35 * om).toFixed(2) + ')';
       ctx.beginPath();
-      ctx.moveTo(px + s * 0.3, py + 14);
-      ctx.lineTo(px + s * 0.3 + 10, py + 3);
-      ctx.lineTo(px + s * 0.3 + 4, py + 14);
+      ctx.moveTo(gcx - 14, py + 26);
+      ctx.lineTo(gcx - 4, py + 12);
+      ctx.lineTo(gcx - 10, py + 26);
       ctx.closePath();
       ctx.fill();
     }
   } else {
     ctx.fillStyle = '#7d8894';
-    gearShape(ctx, px + s / 2, py + s / 2, 16, 10, 8);
+    gearShape(ctx, gcx, gcy, 16, 10, 8);
     ctx.fill();
   }
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 10px system-ui';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  if (e.on) ctx.fillText('+' + (e.powerOut || 0).toFixed(1), px + s / 2, py + s - 14);
-  else ctx.fillText('蒸汽机', px + s / 2, py + s - 14);
-  drawPort(ctx, gx, gy, (e.dir + 2) % 4, PORT_STEAM, false);
-  drawPort(ctx, gx, gy, e.dir, PORT_STEAM, true);
+  if (e.on) ctx.fillText('+' + (e.powerOut || 0).toFixed(1), px + w / 2, py + h - 14);
+  else ctx.fillText('蒸汽机', px + w / 2, py + h - 14);
+  // 两端通用汽口：任意一端均可进出蒸汽
+  drawPort(ctx, px + w / 2, py + h / 2, 3, PORT_STEAM, false, 0, h / 2);
+  drawPort(ctx, px + w / 2, py + h / 2, 1, PORT_STEAM, false, 0, h / 2);
   ctx.globalAlpha = 1;
 }
 

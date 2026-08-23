@@ -199,7 +199,7 @@ function updateMachineLive() {
     prog = e.temp / BOILER_TEMP_MAX * 100;
     status = e.steamBuf >= WATER_CAP - 0.01 ? '蒸汽憋满：等待蒸汽机/管道消耗'
       : e.burning ? '产汽中（耗煤+水）'
-      : e.water < 1 ? '缺水：等待抽水机经管道或进水口供水'
+      : e.water < 1 ? '缺水：等待抽水机经管道或两端水口供水'
       : (e.fuelCoal <= 0 && e.burnLeft <= 0) ? '无煤' : '待机';
   } else if (e instanceof SteamEngine) {
     set('power', e.on ? '+' + e.powerOut.toFixed(1) : dim('+0'));
@@ -207,7 +207,7 @@ function updateMachineLive() {
     prog = (e.outMult || 0) * 100;
     status = e.on ? '发电中：供汽越足功率越高'
       : e.steamBuf > 0 ? '蒸汽不足：功率随供汽量下降'
-      : '未发电：需经进汽口或蒸汽管道接入锅炉蒸汽';
+      : '未发电：从任一端汽口接入锅炉蒸汽（直连出汽口或经管道）';
   } else if (e instanceof Pump) {
     set('buf', e.buf >= 1 ? chip('water', Math.floor(e.buf)) : dim('空'));
     prog = e.working ? e.pulse * 100 : ((e.buf || 0) / WATER_CAP * 100);
@@ -409,7 +409,7 @@ function htmlMachine(e) {
     h += row('温度', '', 'temp');
     h += barHtml(0);
     h += '<div class="status"></div>';
-    h += '<div class="dim">供电链：抽水机 → 管道 → 锅炉背面蓝口（进水口）；加煤烧出的蒸汽从正面白口（出汽口）送往蒸汽机。出汽口可与蒸汽机首尾直连，也可经蒸汽管道远送；两台锅炉水口相对可串联通水。R 旋转朝向。</div>';
+    h += '<div class="dim">供电链：抽水机 → 管道 → 锅炉两端蓝口水口（左右互通、双向进出、水位自动平衡，可一端进另一端出、多台串联）；加煤烧出的蒸汽从底边中间白口送往下方蒸汽机，也可经蒸汽管道远送。</div>';
     return h;
   }
   if (e instanceof SteamEngine) {
@@ -417,7 +417,7 @@ function htmlMachine(e) {
     h += row('蒸汽存量', '<span class="dim"></span>', 'steam');
     h += barHtml(0);
     h += '<div class="status"></div>';
-    h += '<div class="dim">需经背面进汽口获取蒸汽：与锅炉正面出汽口首尾直连，或接入蒸汽管道。正面出汽口可串接下一台蒸汽机继续送汽。满功率耗汽 ' + ENGINE_STEAM_RATE +
+    h += '<div class="dim">上下两端各一只通用汽口，功能相同：蒸汽可从任意一端进入发电，多余蒸汽也可从另一端送出——可与相邻蒸汽机首尾串联或接入蒸汽管道。满功率耗汽 ' + ENGINE_STEAM_RATE +
       '/s（1 台锅炉约带 2 台），输出 +' + POWER_PER_ENGINE + ' 并入全图电网。</div>';
     return h;
   }
@@ -425,7 +425,7 @@ function htmlMachine(e) {
     let h = row('储水', '<span class="dim"></span>', 'buf');
     h += barHtml(0);
     h += '<div class="status"></div>';
-    h += '<div class="dim">必须放在水面上，免电力无限抽水。产出朝箭头方向：正对锅炉可直接供水，或接入管道远送。选中后按 R 旋转方向。</div>';
+    h += '<div class="dim">必须放在水面上，免电力无限抽水。产出朝箭头方向：指向锅炉左端/右端蓝口水口可直接供水，或接入管道远送。选中后按 R 旋转方向。</div>';
     return h;
   }
   if (e instanceof Furnace) {
@@ -876,12 +876,12 @@ function mapTipAt(tx, ty) {
     else if (e instanceof Boiler)
       extra = e.burning ? '产汽中 ' + Math.round(e.temp) + '°C（存汽' + Math.floor(e.steamBuf || 0) + '）'
         : e.steamBuf >= WATER_CAP - 0.01 ? '蒸汽憋满·等待消耗'
-        : e.water < 1 ? '缺水（检查背面进水口/管道）'
+        : e.water < 1 ? '缺水（检查左右两端蓝口水口/管道）'
         : (e.fuelCoal <= 0 && e.burnLeft <= 0) ? '无煤' : '待机';
     else if (e instanceof SteamEngine)
       extra = e.on ? '发电中 +' + (e.powerOut || 0).toFixed(1) + '（存汽' + Math.floor(e.steamBuf || 0) + '）'
         : (e.steamBuf > 0 ? '供汽不足，功率受限'
-        : '未接蒸汽：出汽口对准其进汽口或经管道送汽');
+        : '未接蒸汽：从任一端汽口接入（紧邻锅炉出汽口或经管道）');
     else if (e instanceof Pump)
       extra = e.working ? '抽水中，产出朝' + ['东', '南', '西', '北'][e.dir]
         : ((e.buf || 0) >= 1 ? '缓存满，等待输出' : '待机');
