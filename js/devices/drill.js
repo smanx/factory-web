@@ -135,7 +135,8 @@ class Drill extends Entity {
 // ===== 渲染（热能/电采矿机/抽油机共用同一绘制，按 type 换色）=====
 function drawDrill(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
-  const s = TILE * 2;
+  const s = TILE * e.w;
+  const sh = TILE * e.h;
   const electric = e.type === 'electric-drill' || e.type === 'pumpjack';
   const pump = e.type === 'pumpjack';
   const bodyC = pump ? '#2f5a56' : electric ? '#3b5a8c' : '#6e4630';
@@ -143,14 +144,14 @@ function drawDrill(ctx, e, gx, gy, dir, alpha) {
   const lineC = pump ? '#1b3c39' : electric ? '#223a60' : '#43291b';
   ctx.globalAlpha = alpha;
   ctx.fillStyle = bodyC;
-  rr(ctx, px + 3, py + 3, s - 6, s - 6, 8);
+  rr(ctx, px + 3, py + 3, s - 6, sh - 6, 8);
   ctx.fill();
   ctx.strokeStyle = lineC;
   ctx.lineWidth = 3;
-  rr(ctx, px + 3, py + 3, s - 6, s - 6, 8);
+  rr(ctx, px + 3, py + 3, s - 6, sh - 6, 8);
   ctx.stroke();
   ctx.fillStyle = bodyC2;
-  rr(ctx, px + 10, py + 10, s - 20, s - 20, 5);
+  rr(ctx, px + 10, py + 10, s - 20, sh - 20, 5);
   ctx.fill();
   const cx = px + s / 2, cy = py + s / 2 - 4;
   ctx.save();

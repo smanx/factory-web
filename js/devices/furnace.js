@@ -84,17 +84,18 @@ class Furnace extends Entity {
 // ===== 渲染（石炉/电炉共用，按 type 换色）=====
 function drawFurnace(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
-  const s = TILE * 2;
+  const s = TILE * e.w;
+  const sh = TILE * e.h;
   const electric = e.type === 'electric-furnace';
   const bodyC = electric ? '#2e7d5c' : '#8b8577';
   const lineC = electric ? '#1a4f3a' : '#57524a';
   const innerC = electric ? '#25694c' : '#6d6759';
   ctx.globalAlpha = alpha;
   ctx.fillStyle = bodyC;
-  rr(ctx, px + 3, py + 3, s - 6, s - 6, 8); ctx.fill();
+  rr(ctx, px + 3, py + 3, s - 6, sh - 6, 8); ctx.fill();
   ctx.strokeStyle = lineC;
   ctx.lineWidth = 3;
-  rr(ctx, px + 3, py + 3, s - 6, s - 6, 8); ctx.stroke();
+  rr(ctx, px + 3, py + 3, s - 6, sh - 6, 8); ctx.stroke();
   ctx.fillStyle = innerC;
   rr(ctx, px + 9, py + 9, s - 18, 12, 3); ctx.fill();
   if (e.lit) {

@@ -77,12 +77,12 @@ const ITEMS = {
   'steel-plate':       { name: '钢板',   color: '#c9ced6', mark: 'S', desc: '电炉炼铁板产出的高级建材' },
   'boiler':            { name: '锅炉',   color: '#d0743a', desc: '烧煤+水产出蒸汽（3×2）：左右两端各一只蓝口水口，双向进出、水位互通平衡，可从一端进水另一端出、多台同排串联；底边中间白口=出汽口，向下接蒸汽机或蒸汽管道' },
   'steam-engine':      { name: '蒸汽机', color: '#8fb8d0', desc: '蒸汽发电（3×5）：上下两端各一只功能相同的通用汽口，蒸汽可从任意一端进入，多余蒸汽也可从另一端送出，支持首尾串联；供汽越足功率越高，满功率并入全图电网' },
-  'offshore-pump':     { name: '抽水机', color: '#3f9fc0', mark: 'P', desc: '必须放在水面上，免电力无限抽水；产出朝箭头方向，指向锅炉左端/右端的蓝口水口可直接供水，或接管道' },
+  'offshore-pump':     { name: '抽水机', color: '#3f9fc0', mark: 'P', desc: '必须放在水面上，免电力无限抽水；产出朝箭头方向，指向锅炉左端/右端的蓝口水口可直接供水，或接管道（2×1）' },
   'water':             { name: '水',     color: '#4a90d9', mark: 'H₂O', desc: '流体，由抽水机从水域抽取，经管道或锅炉两端水口送入锅炉烧成蒸汽' },
   'steam':             { name: '蒸汽',   color: '#c8d4dc', mark: '汽', desc: '流体，锅炉烧水所得；经锅炉出汽口或蒸汽管道送往蒸汽机发电' },
-  'electric-drill':    { name: '电采矿机', color: '#4f7dd3', desc: '免燃料、吃电力开采，速度快于热能采矿机' },
-  'electric-furnace':  { name: '电炉',   color: '#3fa87e', desc: '免燃料、吃电力冶炼，速度更高，可出钢板' },
-  'assembling-machine-mk2': { name: '组装机 II', color: '#a05fd0', desc: '吃电力、速度更高的高级组装机' },
+  'electric-drill':    { name: '电采矿机', color: '#4f7dd3', desc: '免燃料、吃电力开采，速度快于热能采矿机（3×3）' },
+  'electric-furnace':  { name: '电炉',   color: '#3fa87e', desc: '免燃料、吃电力冶炼，速度更高，可出钢板（3×3）' },
+  'assembling-machine-mk2': { name: '组装机 II', color: '#a05fd0', desc: '吃电力、速度更高的高级组装机（3×3）' },
   'fast-transport-belt': { name: '快速传送带', color: '#f2c14e', desc: '速度约为普通带的 1.9 倍' },
   'fast-underground-belt': { name: '快速地下传送带', color: '#b98ee0', desc: '同向配对距离最远 14 格，速度是快带标准' },
   'priority-splitter': { name: '优先级分流器', color: '#e07b2e', desc: '同分流器，但可通过面板指定优先把货推向一侧；另一侧仅作为溢出通道' },
@@ -96,8 +96,8 @@ const ITEMS = {
   'petroleum-gas':     { name: '石油气', color: '#c9a84a', mark: 'PG', desc: '炼油关键产物，制造塑料的原料' },
   'plastic-bar':       { name: '塑料板', color: '#cfe8a8', mark: 'Pl', desc: '石油化工产物，须在化工厂用石油气+煤生产，用于高级配方' },
   'pipe':              { name: '管道', color: '#6a5f52', desc: '输送流体（水/蒸汽/原油/重轻油/石油气），相邻互连，容量 40' },
-  'pumpjack':          { name: '抽油机', color: '#3a6a66', desc: '吃电力开采原油矿床，产出原油（2×2）' },
-  'refinery':          { name: '炼油厂', color: '#b06a3e', desc: '把原油炼成重油/轻油/石油气（3×3，吃电力，需管道/机械臂输送）' },
+  'pumpjack':          { name: '抽油机', color: '#3a6a66', desc: '吃电力开采原油矿床，产出原油（3×3）' },
+  'refinery':          { name: '炼油厂', color: '#b06a3e', desc: '把原油炼成重油/轻油/石油气（5×5，吃电力，需管道/机械臂输送）' },
   'chemical-plant':    { name: '化工厂', color: '#7d9464', desc: '流体化学加工厂：石油气+煤→塑料，重油/轻油裂解（3×3，吃电力）；流体原料经相邻管道自动吸入，流体产物自动排回管道' }
 };
 
@@ -169,13 +169,13 @@ const BUILD_DEFS = {
   'lab':                { w: 3, h: 3, solid: true },
   'boiler':             { w: 3, h: 2, solid: true },
   'steam-engine':       { w: 3, h: 5, solid: true },
-  'offshore-pump':      { w: 1, h: 1, solid: true },
-  'electric-drill':     { w: 2, h: 2, solid: true },
-  'electric-furnace':   { w: 2, h: 2, solid: true },
-  'assembling-machine-mk2': { w: 2, h: 2, solid: true },
+  'offshore-pump':      { w: 2, h: 1, solid: true },
+  'electric-drill':     { w: 3, h: 3, solid: true },
+  'electric-furnace':   { w: 3, h: 3, solid: true },
+  'assembling-machine-mk2': { w: 3, h: 3, solid: true },
   'pipe':               { w: 1, h: 1, solid: true },
-  'pumpjack':           { w: 2, h: 2, solid: true },
-  'refinery':           { w: 3, h: 3, solid: true },
+  'pumpjack':           { w: 3, h: 3, solid: true },
+  'refinery':           { w: 5, h: 5, solid: true },
   'chemical-plant':     { w: 3, h: 3, solid: true }
 };
 
