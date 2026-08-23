@@ -416,10 +416,28 @@ function drawBoiler(ctx, e, gx, gy, dir, alpha) {
   rr(ctx, px + 10, py + s - 12, s - 20, 5, 2); ctx.fill();
   ctx.fillStyle = fuelPct > 0 ? '#e8762c' : '#c33';
   rr(ctx, px + 10, py + s - 12, (s - 20) * fuelPct, 5, 2); ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 10px system-ui';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('锅炉', px + s / 2, py + s - 50);
+  const wPct = Math.max(0, Math.min(1, (e.water || 0) / WATER_CAP));
+  ctx.fillStyle = '#20242b';
+  rr(ctx, px + 10, py + s - 19, s - 20, 5, 2); ctx.fill();
+  ctx.fillStyle = wPct > 0 ? '#3fa0e8' : '#b33';
+  rr(ctx, px + 10, py + s - 19, (s - 20) * wPct, 5, 2); ctx.fill();
+  const tp = Math.max(0, Math.min(1, (e.temp || 0) / BOILER_TEMP_MAX));
+  if (tp > 0.8) { // 温度达标：冒蒸汽
+    for (let i = 0; i < 3; i++) {
+      const t = ((G.time * 0.5) + i / 3) % 1;
+      ctx.fillStyle = 'rgba(240,248,255,' + (0.5 * (1 - t)).toFixed(2) + ')';
+      ctx.beginPath();
+      ctx.arc(px + s * 0.62 + Math.sin((t + i) * 6) * 5, py + 16 - t * 20, 2.5 + t * 3, 0, 7);
+      ctx.fill();
+    }
+  }
+  ctx.font = 'bold 11px system-ui';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#f4e9d8';
+  ctx.fillText('锅炉', px + 8, py + 14);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = tp >= 1 ? '#7fe08f' : tp > 0 ? '#ffd23c' : '#8a93a0';
+  ctx.fillText(Math.round(e.temp || 0) + '°C', px + s - 8, py + 14);
   ctx.globalAlpha = 1;
 }
 
@@ -431,7 +449,8 @@ function drawPipe(ctx, e, gx, gy, dir, alpha) {
   ctx.lineWidth = 8;
   for (const [dx, dy] of PIPE_DIRS) {
     const nb = entAt(gx + dx, gy + dy);
-    if (nb instanceof Pipe || nb instanceof Refinery || nb instanceof Pumpjack) {
+    if (nb instanceof Pipe || nb instanceof Refinery || nb instanceof Pumpjack ||
+        nb instanceof Boiler || nb instanceof Pump) {
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.lineTo(cx + dx * TILE / 2, cy + dy * TILE / 2);
@@ -495,6 +514,7 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
 
 function drawSteamEngine(ctx, e, gx, gy, dir, alpha) {  const px = gx * TILE, py = gy * TILE;
   const s = TILE * 2;
+  const om = Math.max(0, Math.min(1, e.outMult || 0));
   ctx.globalAlpha = alpha;
   ctx.fillStyle = '#5d7790';
   rr(ctx, px + 3, py + 3, s - 6, s - 6, 8); ctx.fill();
@@ -507,18 +527,18 @@ function drawSteamEngine(ctx, e, gx, gy, dir, alpha) {  const px = gx * TILE, py
     ctx.save();
     ctx.translate(px + s / 2, py + s / 2);
     ctx.rotate(e.spin || 0);
-    ctx.fillStyle = '#aac8e8';
+    ctx.fillStyle = om >= 1 ? '#c4e4ff' : '#aac8e8';
     gearShape(ctx, 0, 0, 16, 10, 8);
     ctx.fill();
     ctx.restore();
-    ctx.strokeStyle = 'rgba(143,224,224,.9)';
+    ctx.strokeStyle = 'rgba(143,224,224,' + (0.35 + 0.55 * om).toFixed(2) + ')';
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.arc(px + s / 2, py + s / 2, 22, 0, Math.PI * 2);
     ctx.stroke();
     const fl = Math.sin(G.time * 20 + px);
     if (fl > 0.2) {
-      ctx.fillStyle = 'rgba(255,255,255,.55)';
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.25 + 0.35 * om).toFixed(2) + ')';
       ctx.beginPath();
       ctx.moveTo(px + s * 0.3, py + 14);
       ctx.lineTo(px + s * 0.3 + 10, py + 3);
@@ -534,7 +554,43 @@ function drawSteamEngine(ctx, e, gx, gy, dir, alpha) {  const px = gx * TILE, py
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 10px system-ui';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('蒸汽机', px + s / 2, py + s - 14);
+  if (e.on) ctx.fillText('+' + (e.powerOut || 0).toFixed(1), px + s / 2, py + s - 14);
+  else ctx.fillText('蒸汽机', px + s / 2, py + s - 14);
+  ctx.globalAlpha = 1;
+}
+
+function drawPump(ctx, e, gx, gy, dir, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#1d3d55';
+  rr(ctx, px + 2, py + 2, TILE - 4, TILE - 4, 7); ctx.fill();
+  ctx.strokeStyle = '#12293b';
+  ctx.lineWidth = 2;
+  rr(ctx, px + 2, py + 2, TILE - 4, TILE - 4, 7); ctx.stroke();
+  ctx.fillStyle = '#3f9fc0';
+  rr(ctx, px + 8, py + 8, TILE - 16, TILE - 16, 5); ctx.fill();
+  ctx.strokeStyle = '#26688a';
+  ctx.lineWidth = 2;
+  rr(ctx, px + 8, py + 8, TILE - 16, TILE - 16, 5); ctx.stroke();
+  if (e.working) { // 抽水涟漪
+    const ph = (e.pulse || 0) % 1;
+    ctx.strokeStyle = 'rgba(170,225,255,' + (0.65 * (1 - ph)).toFixed(2) + ')';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(px + TILE / 2, py + TILE / 2, 5 + ph * 11, 0, Math.PI * 2);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = '#9fd8f0';
+    ctx.beginPath();
+    ctx.arc(px + TILE / 2, py + TILE / 2, 5, 0, 7);
+    ctx.fill();
+  }
+  ctx.fillStyle = dirColorNotch(dir);
+  notch(ctx, px, py, dir);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 9px system-ui';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('抽水机', px + TILE / 2, py + TILE / 2 + 12);
   ctx.globalAlpha = 1;
 }
 
@@ -854,8 +910,9 @@ function statusColor(e) {
       if (!G.activeTech || G.techDone[G.activeTech]) return e.totalPacks() > 0 ? 'y' : 'r';
       return e.totalPacks() > 0 ? (e.packCount(e.nextNeed()) > 0 ? 'g' : 'y') : 'r';
     }
-    case 'boiler': return e.lit ? 'g' : 'r';
+    case 'boiler': return (e.temp || 0) >= BOILER_TEMP_MAX ? 'g' : e.burning ? 'y' : 'r';
     case 'steam-engine': return e.on ? 'g' : 'r';
+    case 'offshore-pump': return e.working ? 'g' : ((e.buf || 0) >= 1 ? 'y' : 'r');
     case 'pipe': return e.total() > 0 ? 'g' : 'r';
     case 'refinery': return e.working ? 'g' : ((e.inp['crude-oil'] || 0) >= 2 ? 'y' : 'r');
     case 'splitter':
@@ -913,6 +970,7 @@ function drawEntity(ctx, e, gx, gy, dir, alpha) {
     case 'lab': drawLab(ctx, e, gx, gy, dir, alpha); break;
     case 'boiler': drawBoiler(ctx, e, gx, gy, dir, alpha); break;
     case 'steam-engine': drawSteamEngine(ctx, e, gx, gy, dir, alpha); break;
+    case 'offshore-pump': drawPump(ctx, e, gx, gy, dir, alpha); break;
     case 'pipe': drawPipe(ctx, e, gx, gy, dir, alpha); break;
     case 'refinery': drawRefinery(ctx, e, gx, gy, dir, alpha); break;
     case 'inserter':
@@ -959,6 +1017,10 @@ function canPlaceAt(type, tx, ty, dir) {
   const def = BUILD_DEFS[type];
   let ew = def.w, eh = def.h;
   if (def.rotSwap && (dir % 2 === 1)) { ew = def.h; eh = def.w; }
+  if (type === 'offshore-pump') { // 抽水机只能放在水面上
+    if (!isWater(tx, ty) || entAt(tx, ty) || !withinReach(tx, ty)) return { ok: false };
+    return { ok: true };
+  }
   for (let dy = 0; dy < eh; dy++)
     for (let dx = 0; dx < ew; dx++) {
       if (isWater(tx + dx, ty + dy)) return { ok: false };
