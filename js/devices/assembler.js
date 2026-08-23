@@ -1,6 +1,6 @@
 'use strict';
 
-// ===== 装配机：设置配方后自动生产 =====
+// ===== 组装机：设置配方后自动生产 =====
 class Assembler extends Entity {
   constructor(type, x, y) {
     super(type || 'assembling-machine', x, y);
@@ -115,10 +115,10 @@ class Assembler extends Entity {
   }
 }
 
-// ===== 渲染（装配机 I/II 共用，按 type 换色）=====
+// ===== 渲染（组装机 I/II 共用，按 type 换色）=====
 function drawAssembler(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
-  const s = TILE * 2;
+  const s = TILE * 3;
   const mk2 = e.type === 'assembling-machine-mk2';
   const bodyC = mk2 ? '#6b4d8f' : '#4d5f8f';
   const lineC = mk2 ? '#3c2a52' : '#2e3a5c';

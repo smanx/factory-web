@@ -1,6 +1,6 @@
 'use strict';
 
-// ===== 装配机 II：吃电力、速度更高的高级装配机 =====
+// ===== 组装机 II：吃电力、速度更高的高级组装机 =====
 class AssemblerMK2 extends Assembler {
   constructor(type, x, y) { super('assembling-machine-mk2', x, y); }
   update(dt) {

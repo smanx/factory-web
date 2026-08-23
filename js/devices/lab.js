@@ -1,6 +1,6 @@
 'use strict';
 
-// ===== 研究院：消耗科学包推进所选科技 =====
+// ===== 研究中心：消耗科学包推进所选科技 =====
 class Lab extends Entity {
   constructor(type, x, y) {
     super('lab', x, y);
@@ -97,7 +97,7 @@ class Lab extends Entity {
 // ===== 渲染 =====
 function drawLab(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
-  const s = TILE * 2;
+  const s = TILE * 3;
   ctx.globalAlpha = alpha;
   ctx.fillStyle = '#37807a';
   rr(ctx, px + 3, py + 3, s - 6, s - 6, 7); ctx.fill();
@@ -121,7 +121,7 @@ function drawLab(ctx, e, gx, gy, dir, alpha) {
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 10px system-ui';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('研究院', px + s / 2, py + s - 14);
+  ctx.fillText('研究中心', px + s / 2, py + s - 14);
   ctx.globalAlpha = 1;
 }
 
@@ -135,7 +135,7 @@ function labPanelHtml(e) {
   h += '<button data-action="takeout" id="btn-lab-takeout" style="display:none"></button>';
   h += barHtml(0);
   h += row('课题', '', 'techline');
-  h += '<div class="dim">研究院按所选科技的配方顺序逐瓶消耗科学包；缺哪种包会暂停并提示。机械臂可自动喂包。</div>';
+  h += '<div class="dim">研究中心按所选科技的配方顺序逐瓶消耗科学包；缺哪种包会暂停并提示。机械臂可自动喂包。</div>';
   return h;
 }
 function labPanelLive(e, api) {
