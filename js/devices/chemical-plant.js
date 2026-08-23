@@ -201,8 +201,11 @@ function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
   // 配方第1种流体原料进左侧输入口，第2种进右侧输入口
   drawRotatablePorts(ctx, e, px, py, s, CHEM_PORTS);
   const cd = e.dir | 0;
-  drawPortLabel(ctx, px, py, s, (1 + cd) % 4, '输入(第1种→左/第2种→右)', '#7fd87f');
-  drawPortLabel(ctx, px, py, s, (3 + cd) % 4, '产物输出', '#f0b072');
+  // 接口用途标签默认隐藏，按住 Alt 键显示（对齐《异星工厂》核心交互）
+  if (portLabelVisible()) {
+    drawPortLabel(ctx, px, py, s, (1 + cd) % 4, '输入(第1种→左/第2种→右)', '#7fd87f');
+    drawPortLabel(ctx, px, py, s, (3 + cd) % 4, '产物输出', '#f0b072');
+  }
   ctx.globalAlpha = 1;
 }
 

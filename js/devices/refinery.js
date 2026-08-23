@@ -152,8 +152,11 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
   // 布局：每个接口对齐到对应的格子（一格一接口）：背面(上方=北)2个输入口落在格1/格3，正面(下方=南)3个输出口落在格1/格2/格3
   drawRotatablePorts(ctx, e, px, py, s, REFINERY_PORTS);
   const d = e.dir | 0;
-  drawPortLabel(ctx, px, py, s, (3 + d) % 4, '原油输入', '#7fd87f');
-  drawPortLabel(ctx, px, py, s, (1 + d) % 4, '石油气/轻油/重油输出', '#f0b072');
+  // 接口用途标签默认隐藏，按住 Alt 键显示（对齐《异星工厂》核心交互）
+  if (portLabelVisible()) {
+    drawPortLabel(ctx, px, py, s, (3 + d) % 4, '原油输入', '#7fd87f');
+    drawPortLabel(ctx, px, py, s, (1 + d) % 4, '石油气/轻油/重油输出', '#f0b072');
+  }
   ctx.globalAlpha = 1;
 }
 

@@ -131,6 +131,11 @@ function drawRotatablePorts(ctx, e, px, py, s, ports) {
   }
 }
 
+// 是否显示流体接口用途标签（对齐《异星工厂》：默认隐藏，按住 Alt 键显示）
+function portLabelVisible() {
+  return !!(G && G.keys && G.keys['alt']);
+}
+
 // 围绕中心画一个指向某方向的箭头标签（用于进出方向提示）
 function drawPortLabel(ctx, px, py, s, side, text, color) {
   ctx.save();

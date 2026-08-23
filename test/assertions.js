@@ -167,5 +167,43 @@ check('chem plant rotated 180°: inputs moved to north, outputs to south',
   portCalls.filter(p => p.side === 3 && p.color === PORT_INPUT).length === 2 &&
   portCalls.filter(p => p.side === 1 && p.color === PORT_OUTPUT).length === 2);
 
+// ---- 防止流体混合：管道只容一种流体；不同流体不得混入同一管道 ----------------
+const mixA = place(Pipe, 90, 40);
+const mixB = place(Pipe, 90, 41);
+for (let i = 0; i < 10; i++) mixA.giveItem('water');
+for (let i = 0; i < 10; i++) mixB.giveItem('crude-oil');
+run(120); // 邻接且各含不同流体，不应互相混合
+check('adjacent pipes with different fluids do not mix',
+  !(mixA.fluid['crude-oil'] > 0) && !(mixB.fluid['water'] > 0) &&
+  (mixA.fluid['water'] || 0) === 10 && (mixB.fluid['crude-oil'] || 0) === 10);
+// giveItem 拒绝把不同流体加进已含别的流体的管道
+check('pipe giveItem rejects different fluid (no mixing)', mixA.giveItem('crude-oil') === false && mixA.giveItem('water') === true);
+// 空管可接收任一流体，与空管邻接传递仍正常
+const mixC = place(Pipe, 90, 39); // 空管邻接 mixA（含 water）
+run(60);
+check('fluid flows into empty neighbor pipe', (mixC.fluid['water'] || 0) > 0 && !(mixC.fluid['crude-oil'] > 0));
+
+// ---- 接口用途标签：默认隐藏，按住 Alt 显示 ----------------
+G.keys = {};
+const lblCalls = [];
+const realDrawPortLabel = drawPortLabel;
+drawPortLabel = function (ctx, px, py, s, side, text, color) { lblCalls.push(text); return realDrawPortLabel.apply(this, arguments); };
+const lblMockCtx = new Proxy({}, { get: (t, k) => (k in t ? t[k] : () => {}), set: () => true });
+const lblRef = new Refinery(undefined, 80, 60);
+lblRef.dir = 0;
+const lblChem = new ChemicalPlant(undefined, 84, 60);
+lblChem.dir = 0;
+lblCalls.length = 0;
+drawRefinery(lblMockCtx, lblRef, 80, 60, 0, 1);
+drawChemicalPlant(lblMockCtx, lblChem, 84, 60, 0, 1);
+check('port labels hidden without Alt', lblCalls.length === 0);
+G.keys['alt'] = true;
+lblCalls.length = 0;
+drawRefinery(lblMockCtx, lblRef, 80, 60, 0, 1);
+drawChemicalPlant(lblMockCtx, lblChem, 84, 60, 0, 1);
+check('port labels shown while Alt held', lblCalls.indexOf('原油输入') >= 0 && lblCalls.indexOf('产物输出') >= 0);
+drawPortLabel = realDrawPortLabel;
+G.keys = {};
+
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nALL PASSED');
 process.exit(failures ? 1 : 0);
