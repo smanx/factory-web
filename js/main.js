@@ -403,7 +403,9 @@ function loop(ts) {
   const raw = Math.min(0.05, now - (loop.lastT || now));
   loop.lastT = now;
   const dt = Math.min(0.3, raw * ((G.dbg && G.dbg.timeScale) || 1));
-  G.time += dt;
+  // 打开设置面板时暂停游戏：世界/设备/电力/玩家均停，仅保留渲染与界面
+  const paused = G.panelMode === 'set';
+  if (!paused) G.time += dt;
   fpsSmooth += (1 / Math.max(raw, 0.0001) - fpsSmooth) * 0.05;
   if (G.settings.autoSave) {
     G.autoT += raw;
@@ -411,13 +413,15 @@ function loop(ts) {
   }
 
   try {
-    updatePlayer(dt);
-    updateHeldMouse(dt);
-    updateMining(dt);
-    for (const e of G.ents) e.update(dt);
-    G.powerT += dt;
-    if (G.powerT >= 0.25) { G.powerT = 0; updatePower(); }
-    updateCamera(dt);
+    if (!paused) {
+      updatePlayer(dt);
+      updateHeldMouse(dt);
+      updateMining(dt);
+      for (const e of G.ents) e.update(dt);
+      G.powerT += dt;
+      if (G.powerT >= 0.25) { G.powerT = 0; updatePower(); }
+      updateCamera(dt);
+    }
 
     render();
 

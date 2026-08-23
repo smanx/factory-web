@@ -115,6 +115,11 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('缺原油', px + s / 2, py + s * 0.58);
   }
+  // ===== 流体出入口标注：四边流体口 + 进出文字 =====
+  drawFluidPorts(ctx, e, px, py, s, {
+    inputs: '原油',
+    outputs: '重油·轻油·石油气'
+  });
   ctx.globalAlpha = 1;
 }
 
