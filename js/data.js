@@ -189,16 +189,16 @@ const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas'];
 function isChemRecipe(id) { return CHEM_RECIPES.indexOf(id) >= 0; }
 function chemMult() { return (G.techDone.plastic ? 1.5 : 1) * ((G.dbg && G.dbg.asmMult) || 1); }
 
-// ===== 炼油厂配方（对齐《异星工厂》官方 Wiki：Oil refinery 共 4 种）=====
-// 基础原油加工：100 原油 → 50 重油（只产出重油，5s）
-// 进阶原油加工：100 原油 → 25 重油 + 45 轻油 + 55 石油气（5s）
-// 煤液化：10 煤 + 50 重油 + 50 蒸汽 → 90 重油 + 20 轻油 + 10 石油气（5s）
-// 简易煤液化（太空时代）：10 煤 + 25 方解石 → 25 重油 + 50 石油气（5s）
+// ===== 炼油厂配方（对齐《异星工厂》官方 Wiki：Oil processing 共 4 种）=====
+// 基础原油加工：100 原油 → 45 石油气（只产出石油气，5s）
+// 进阶原油加工：100 原油 + 50 水 → 25 重油 + 45 轻油 + 55 石油气（5s）
+// 煤液化：10 煤 + 25 重油 + 50 蒸汽 → 90 重油 + 20 轻油 + 10 石油气（5s）
+// 简易煤液化（太空时代）：10 煤 + 2 硫酸 + 25 方解石 → 50 重油（只产出重油，5s）
 const REFINERY_RECIPES = {
-  'basic-oil':      { name: '基础原油加工', time: 5, inp: { 'crude-oil': 100 },  out: { 'heavy-oil': 50 } },
-  'advanced-oil':   { name: '进阶原油加工', time: 5, inp: { 'crude-oil': 100 },  out: { 'heavy-oil': 25, 'light-oil': 45, 'petroleum-gas': 55 } },
-  'coal-liquefaction': { name: '煤液化', time: 5, inp: { 'coal': 10, 'heavy-oil': 50, 'steam': 50 }, out: { 'heavy-oil': 90, 'light-oil': 20, 'petroleum-gas': 10 } },
-  'simple-coal':    { name: '简易煤液化', time: 5, inp: { 'coal': 10, 'calcite': 25 }, out: { 'heavy-oil': 25, 'petroleum-gas': 50 } }
+  'basic-oil':      { name: '基础原油加工', time: 5, inp: { 'crude-oil': 100 },  out: { 'petroleum-gas': 45 } },
+  'advanced-oil':   { name: '进阶原油加工', time: 5, inp: { 'crude-oil': 100, 'water': 50 },  out: { 'heavy-oil': 25, 'light-oil': 45, 'petroleum-gas': 55 } },
+  'coal-liquefaction': { name: '煤液化', time: 5, inp: { 'coal': 10, 'heavy-oil': 25, 'steam': 50 }, out: { 'heavy-oil': 90, 'light-oil': 20, 'petroleum-gas': 10 } },
+  'simple-coal':    { name: '简易煤液化', time: 5, inp: { 'coal': 10, 'calcite': 25 }, out: { 'heavy-oil': 50 } }
 };
 const REFINERY_RECIPE_IDS = Object.keys(REFINERY_RECIPES);
 function isRefineryRecipe(id) { return REFINERY_RECIPES[id] !== undefined; }
