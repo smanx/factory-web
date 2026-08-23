@@ -279,6 +279,39 @@ function rotateAction() {
   G.ghostDir = (G.ghostDir + 1) % 4;
 }
 
+// 翻转方向：h=水平翻转（左右镜像，东西互兑），v=垂直翻转（上下镜像，南北互兑）
+// 方向 0东 1南 2西 3北。水平翻转交换 0<->2；垂直翻转交换 1<->3，另一轴方向保持不变。
+function flipDir(dir, axis) {
+  if (axis === 'h') return dir === 0 ? 2 : dir === 2 ? 0 : dir;
+  return dir === 1 ? 3 : dir === 3 ? 1 : dir;
+}
+
+function flipAction(axis) {
+  if (G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
+    const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
+    if (e && BUILD_DEFS[e.type]) {
+      // 非方形设备（分流器类）：翻转后脚印变化，需重挂网格
+      if (BUILD_DEFS[e.type].rotSwap) {
+        removeEnt(e);
+        e.dir = flipDir(e.dir, axis);
+        e.applyDir();
+        addEnt(e);
+        uiDirty = true;
+        return;
+      }
+      // 有朝向的设备：直接翻转
+      if (DEVICE_DIR_ROTATE[e.type]) {
+        e.dir = flipDir(e.dir, axis);
+        if (typeof e.onRotate === 'function') e.onRotate();
+        uiDirty = true;
+        return;
+      }
+    }
+  }
+  // 没有可翻转的已放置设备时，翻转幽灵/预览方向
+  G.ghostDir = flipDir(G.ghostDir, axis);
+}
+
 function bindInput() {
   window.addEventListener('keydown', ev => {
     const k = ev.key.toLowerCase();
@@ -304,6 +337,8 @@ function bindInput() {
       toast('配方已清除');
     }
     else if (k === 'r') rotateAction();
+    else if (k === 'h') flipAction('h');
+    else if (k === 'v') flipAction('v');
     else if (k === 'f') pickupAction();
     else if (k === 'e') G.panelMode === 'inv' ? closePanel() : openPanel('inv');
     else if (k === 't') G.panelMode === 'tech' ? closePanel() : openPanel('tech');
