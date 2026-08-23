@@ -75,6 +75,11 @@ function newGame() {
   G.cam.py = G.player.y;
   invAdd('stone-furnace', 1);
   invAdd('coal', 8);
+  // 测试用创造/虚空设备：各给 2 个，方便搭建测试物流与流体链路
+  invAdd('creative-chest', 2);
+  invAdd('void-chest', 2);
+  invAdd('creative-pipe', 2);
+  invAdd('void-pipe', 2);
 }
 
 function serializeAll() {
