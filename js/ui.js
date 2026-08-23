@@ -257,6 +257,16 @@ function updateMachineLive() {
     toggle('#btn-takeout', n > 0, '取回全部产物 (' + n + ')');
     prog = e.prog * 100;
     status = e.working ? '精炼中' : ((e.inp['crude-oil'] || 0) < 2 ? '等待原油' : (G.power.sat <= 0 ? '缺电' : '待机'));
+  } else if (e instanceof ChemicalPlant) {
+    set('input', Object.keys(e.inp).length ? countStr(e.inp) : dim('空'));
+    set('output', Object.keys(e.outp).length ? countStr(e.outp) : dim('空'));
+    const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
+    toggle('#btn-takeout', n > 0, '取回全部产物 (' + n + ')');
+    prog = e.recipe && e.crafting ? e.prog / RECIPES[e.recipe].time * 100 : 0;
+    status = !e.recipe ? '未设置配方'
+      : e.crafting ? '加工中（流体产物自动排入相邻管道）'
+      : G.power.sat <= 0 ? '缺电'
+      : '等待原料：所需流体经相邻管道自动吸入，固体用机械臂喂入';
   } else if (e instanceof Pipe) {
     const agg = {};
     for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
@@ -312,6 +322,7 @@ function htmlInventory() {
   h += '<input id="inv-recipe-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off" value="' + q + '">';
   h += '<div id="inv-recipes">';
   for (const rid in RECIPES) {
+    if (isChemRecipe(rid)) continue;
     const rec = RECIPES[rid];
     const ok = canCraft(rid);
     const outId = Object.keys(rec.out)[0];
@@ -334,7 +345,7 @@ function htmlInventory() {
   }
   h += '</div>';
   h += '<div class="dim" id="inv-recipe-empty" style="display:none"></div>';
-  h += '<div class="hint">提示：开局先挖 5 个石头合成石炉，再挖煤；点击炉子打开面板，把煤和矿石放进去就能炼铁板/铜板。钢板用铁板×2 合成（石炉/电炉炼制更快）。<br>建造：直接点击上方材料区里任何可建造的设备图标即可选中进入放置模式（优先占用空快捷栏槽位），不必依赖底部工具栏；R 旋转、Q 取消。</div>';
+  h += '<div class="hint">提示：开局先挖 5 个石头合成石炉，再挖煤；点击炉子打开面板，把煤和矿石放进去就能炼铁板/铜板。钢板用铁板×2 合成（石炉/电炉炼制更快）。塑料板等流体化学产物只能在化工厂生产（石油气经管道送入化工厂）。<br>建造：直接点击上方材料区里任何可建造的设备图标即可选中进入放置模式（优先占用空快捷栏槽位），不必依赖底部工具栏；R 旋转、Q 取消。</div>';
   return h;
 }
 
@@ -438,7 +449,7 @@ function htmlMachine(e) {
     h += '<div class="status"></div>';
     return h;
   }
-  if (e instanceof Assembler) {
+  if (e instanceof ChemicalPlant) {
     let h = row('当前配方', e.recipe ? ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name : '<span class="dim">未设置</span>');
     h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
     if (e.recipe)
@@ -448,11 +459,38 @@ function htmlMachine(e) {
           ITEMS[k].name + ' ×' + n + '</button>';
       }
     if (Object.keys(e.inp).length) h += '<button data-action="takein">取回全部输入</button>';
+    h += row('产物', Object.keys(e.outp).length ? countStr(e.outp) : '<span class="dim">空</span>', 'output');
+    h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
+    h += barHtml(0);
+    h += '<div class="status"></div>';
+    h += '<div class="sec">选择配方</div><div class="recgrid">';
+    for (const rid of CHEM_RECIPES) {
+      const outId = Object.keys(RECIPES[rid].out)[0];
+      const selCls = e.recipe === rid ? 'sel' : '';
+      h += '<button class="rcbtn ' + selCls + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-tip="' +
+        ITEMS[outId].name + '|' + RECIPES[rid].out[outId] + '个/次，耗时' + RECIPES[rid].time + '秒">' +
+        '<img src="' + iconDataURL(outId) + '">' + ITEMS[outId].name + '</button>';
+    }
+    h += '</div>';
+    if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
+    h += '<div class="dim">化工厂吃电力，专攻流体化学配方：塑料=石油气+煤；重油可逐级裂解成轻油、石油气。所需流体经相邻管道自动吸入，流体产物自动排回管道；塑料等固体产物用机械臂取走。</div>';
+    return h;
+  }
+  if (e instanceof Assembler) {
+    let h = row('当前配方', e.recipe ? ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name : '<span class="dim">未设置</span>');
+    h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
+    if (e.recipe)
+      for (const k in RECIPES[e.recipe].inp) {
+        const n = Math.min(invCount(k), 50 - (e.inp[k] || 0));
+        if (n > 0 && FLUIDS.indexOf(k) < 0) h += '<button data-action="feed" data-id="' + k + '">放入' +
+          ITEMS[k].name + ' ×' + n + '</button>';
+      }
+    if (Object.keys(e.inp).length) h += '<button data-action="takein">取回全部输入</button>';
     h += row('输出', Object.keys(e.outp).length ? countStr(e.outp) : '<span class="dim">空</span>', 'output');
     h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
     h += barHtml(0);
     h += '<div class="sec">选择配方</div><div class="recgrid">';
-    for (const rid in RECIPES) {
+    for (const rid of Object.keys(RECIPES).filter(r => !isChemRecipe(r))) {
       const outId = Object.keys(RECIPES[rid].out)[0];
       const selCls = e.recipe === rid ? 'sel' : '';
       h += '<button class="rcbtn ' + selCls + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-tip="' +
@@ -677,9 +715,9 @@ function initPanelEvents() {
       const made = doCraft(id, +(btn.dataset.mult || 1));
       if (!made) toast('材料不足');
     } else if (act === 'recipe') {
-      if (G.panelEnt instanceof Assembler) G.panelEnt.setRecipe(id);
+      if (G.panelEnt instanceof Assembler || G.panelEnt instanceof ChemicalPlant) G.panelEnt.setRecipe(id);
     } else if (act === 'recipe-clear') {
-      if (G.panelEnt instanceof Assembler) G.panelEnt.setRecipe(null);
+      if (G.panelEnt instanceof Assembler || G.panelEnt instanceof ChemicalPlant) G.panelEnt.setRecipe(null);
     } else if (act === 'fuel') {
       const n = Math.min(5, invCount('coal'));
       if (n <= 0) { toast('没有煤了'); return; }
@@ -849,6 +887,9 @@ function mapTipAt(tx, ty) {
         : ((e.buf || 0) >= 1 ? '缓存满，等待输出' : '待机');
     else if (e instanceof Refinery)
       extra = e.working ? '精炼中' : ((e.inp['crude-oil'] || 0) < 2 ? '等待原油' : (G.power.sat <= 0 ? '缺电' : '待机'));
+    else if (e instanceof ChemicalPlant)
+      extra = e.crafting ? ('加工 ' + ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name)
+        : (e.recipe ? '待料（流体经管道自动吸入）' : '未设置配方，点击打开面板');
     else if (e instanceof Pipe) {
       const agg = {};
       for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];

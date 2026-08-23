@@ -232,7 +232,7 @@ function pickupAction() {
 function copySettings(e) {
   if (!e) return;
   const s = { type: e.type, dir: e.dir };
-  if (e instanceof Assembler) s.recipe = e.recipe;
+  if (e instanceof Assembler || e instanceof ChemicalPlant) s.recipe = e.recipe;
   G.clipboard = s;
   toast('已复制 ' + ITEMS[e.type].name + ' 配置（Shift+左键粘贴到同类）');
 }
@@ -244,7 +244,7 @@ function pasteSettings(e) {
   if (c.dir === undefined) return;
   if (e instanceof Splitter) { removeEnt(e); e.dir = c.dir; e.applyDir(); addEnt(e); }
   else { e.dir = c.dir; }
-  if (c.recipe && e instanceof Assembler) e.setRecipe(c.recipe);
+  if (c.recipe && (e instanceof Assembler || e instanceof ChemicalPlant)) e.setRecipe(c.recipe);
   uiDirty = true;
   toast('配置已粘贴');
 }
@@ -284,7 +284,8 @@ function bindInput() {
     if (k >= '1' && k <= '9') selectSlot(+k - 1);
     else if (k === '0') selectSlot(9);
     else if (k === 'tab') { ev.preventDefault(); G.panelMode === 'inv' ? closePanel() : openPanel('inv'); }
-    else if ((k === 'delete' || k === 'backspace') && G.panelMode === 'machine' && G.panelEnt instanceof Assembler && G.panelEnt.recipe) {
+    else if ((k === 'delete' || k === 'backspace') && G.panelMode === 'machine' &&
+             (G.panelEnt instanceof Assembler || G.panelEnt instanceof ChemicalPlant) && G.panelEnt.recipe) {
       G.panelEnt.setRecipe(null);
       renderPanel(false);
       toast('配方已清除');

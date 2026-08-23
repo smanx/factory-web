@@ -383,6 +383,68 @@ function drawAssembler(ctx, e, gx, gy, dir, alpha) {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('无配方', px + s / 2, py + s / 2 + 30);
   }
+  const fr = e.fluidRecipe ? e.fluidRecipe() : null;
+  if (fr) {
+    if (fr.fin.length) drawPort(ctx, gx, gy, (dir + 2) % 4, ITEMS[fr.fin[0]].color, false);
+    if (fr.fout.length) drawPort(ctx, gx, gy, dir, ITEMS[fr.fout[0]].color, true);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  const s = TILE * 3;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#6f7f56';
+  rr(ctx, px + 3, py + 3, s - 6, s - 6, 10); ctx.fill();
+  ctx.strokeStyle = '#46523a';
+  ctx.lineWidth = 3;
+  rr(ctx, px + 3, py + 3, s - 6, s - 6, 10); ctx.stroke();
+  ctx.fillStyle = '#3b3230';
+  rr(ctx, px + s * 0.12, py + 10, 13, s * 0.22, 3); ctx.fill();
+  rr(ctx, px + s * 0.28, py + 10, 13, s * 0.22, 3); ctx.fill();
+  if (e.working || e.crafting) {
+    const fl = 0.5 + Math.sin(G.time * 9 + px) * 0.25;
+    ctx.fillStyle = 'rgba(170,225,130,' + (fl * 0.45).toFixed(2) + ')';
+    rr(ctx, px + 12, py + s * 0.42, s - 24, s * 0.22, 6); ctx.fill();
+  }
+  ctx.fillStyle = '#8a9a70';
+  ctx.beginPath();
+  ctx.arc(px + s * 0.62, py + s * 0.36, s * 0.15, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#46523a';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  if (e.recipe) {
+    const outId = Object.keys(RECIPES[e.recipe].out)[0];
+    drawItemDotBig(ctx, px + s * 0.62, py + s * 0.36, outId);
+    const pct = e.crafting ? Math.min(1, e.prog / RECIPES[e.recipe].time) : 0;
+    if (pct > 0) {
+      ctx.strokeStyle = '#8fe08f';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(px + s * 0.62, py + s * 0.36, 26, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2);
+      ctx.stroke();
+    }
+  } else {
+    ctx.fillStyle = 'rgba(255,255,255,.6)';
+    ctx.font = 'bold 11px system-ui';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('无配方', px + s * 0.62, py + s * 0.36);
+  }
+  let bx = px + 14;
+  for (const id of ['plastic-bar', 'light-oil', 'petroleum-gas']) {
+    const n = (e.outp && e.outp[id]) || 0;
+    if (!n) continue;
+    ctx.fillStyle = '#20242b';
+    rr(ctx, bx, py + s - 18, 18, 7, 2); ctx.fill();
+    ctx.fillStyle = ITEMS[id].color;
+    rr(ctx, bx, py + s - 18, 18 * Math.min(1, n / 16), 7, 2); ctx.fill();
+    bx += 24;
+  }
+  ctx.font = 'bold 11px system-ui';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#eef4e4';
+  ctx.fillText('化工厂', px + 8, py + s - 10);
   ctx.globalAlpha = 1;
 }
 
@@ -476,7 +538,8 @@ function drawPipe(ctx, e, gx, gy, dir, alpha) {
   for (const [dx, dy] of PIPE_DIRS) {
     const nb = entAt(gx + dx, gy + dy);
     if (nb instanceof Pipe || nb instanceof Refinery || nb instanceof Pumpjack ||
-        nb instanceof Boiler || nb instanceof Pump || nb instanceof SteamEngine) {
+        nb instanceof Boiler || nb instanceof Pump || nb instanceof SteamEngine ||
+        nb instanceof ChemicalPlant || nb instanceof Assembler) {
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.lineTo(cx + dx * TILE / 2, cy + dy * TILE / 2);
@@ -943,6 +1006,7 @@ function statusColor(e) {
     case 'offshore-pump': return e.working ? 'g' : ((e.buf || 0) >= 1 ? 'y' : 'r');
     case 'pipe': return e.total() > 0 ? 'g' : 'r';
     case 'refinery': return e.working ? 'g' : ((e.inp['crude-oil'] || 0) >= 2 ? 'y' : 'r');
+    case 'chemical-plant': return e.recipe ? (e.crafting ? 'g' : (G.power.sat <= 0 && Object.keys(e.inp).length ? 'r' : 'y')) : 'r';
     case 'splitter':
     case 'priority-splitter': {
       if (!e.items.length) return 'r';
@@ -1001,6 +1065,7 @@ function drawEntity(ctx, e, gx, gy, dir, alpha) {
     case 'offshore-pump': drawPump(ctx, e, gx, gy, dir, alpha); break;
     case 'pipe': drawPipe(ctx, e, gx, gy, dir, alpha); break;
     case 'refinery': drawRefinery(ctx, e, gx, gy, dir, alpha); break;
+    case 'chemical-plant': drawChemicalPlant(ctx, e, gx, gy, dir, alpha); break;
     case 'inserter':
     case 'long-inserter':
     case 'filter-inserter':

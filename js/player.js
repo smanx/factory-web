@@ -75,6 +75,7 @@ function canCraft(rid) {
 }
 
 function doCraft(rid, times = 1) {
+  if (isChemRecipe(rid)) return 0;
   let made = 0;
   for (let i = 0; i < times; i++) {
     if (!canCraft(rid)) break;
