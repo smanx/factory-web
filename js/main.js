@@ -23,11 +23,17 @@ const G = {
   mouseDown: false,
   canvasActive: false,
   time: 0,
-  dbg: { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1, infinite: false },
+  dbg: { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1, infinite: false, farReach: false },
   spawn: { x: 0, y: 0 },
   hbArm: null,
   invRecipeQ: '',
   clipboard: null,
+  blueprint: null,        // 蓝图数据：{ minX, minY, w, h, ents: [序列化实体...] }
+  blueMode: null,         // 'blue' | 'red' | 'paste'（框选/删除/粘贴蓝图）
+  blueStart: null,        // 框选起点瓦片
+  blueEnd: null,          // 框选终点瓦片
+  blueSelecting: false,   // 正在拖拽框选
+  statsTab: 'items',      // 统计面板当前页：items | power | perf
   settings: Object.assign({}, DEFAULT_SETTINGS),
   autoT: 0,
   power: { prod: 0, demand: 0, sat: 1 },
@@ -214,6 +220,120 @@ function deconstructAt(tx, ty) {
   uiDirty = true;
 }
 
+// ===== 蓝图 / 红图：框选一整块进行复制粘贴或删除 =====
+function toggleBlueprint(mode) {
+  // 再次点击同按钮取消框选
+  if (G.blueMode === mode) { cancelBlueprint(); return; }
+  if (G.blueMode === 'paste' && mode === 'blue') {
+    // 蓝图粘贴中再点蓝图：视为取消粘贴并重新框选
+    G.blueMode = 'blue';
+    G.blueStart = null; G.blueEnd = null;
+    toast('蓝图模式：拖拽框选要复制的区域');
+    return;
+  }
+  G.blueMode = mode;
+  G.blueStart = null; G.blueEnd = null;
+  G.sel = -1; G.quickSel = null; refreshHotbar();
+  toast(mode === 'blue'
+    ? '蓝图模式：拖拽框选要复制的区域，松开后点击空白处粘贴'
+    : '红图模式：拖拽框选要删除的区域，松开即删除整块');
+}
+
+function cancelBlueprint() {
+  G.blueMode = null;
+  G.blueStart = null; G.blueEnd = null;
+  refreshHotbar();
+}
+
+// 框选矩形（瓦片坐标，规范化左上/右下）
+function blueRect() {
+  if (!G.blueStart || !G.blueEnd) return null;
+  return {
+    x0: Math.min(G.blueStart.tx, G.blueEnd.tx),
+    y0: Math.min(G.blueStart.ty, G.blueEnd.ty),
+    x1: Math.max(G.blueStart.tx, G.blueEnd.tx),
+    y1: Math.max(G.blueStart.ty, G.blueEnd.ty)
+  };
+}
+
+// 红图：删除矩形区域内所有实体（含内部物资返还，跨区域不重复）
+function applyRedBlueprint() {
+  const r = blueRect();
+  if (!r) return;
+  const seen = new Set();
+  let count = 0;
+  for (let ty = r.y0; ty <= r.y1; ty++) {
+    for (let tx = r.x0; tx <= r.x1; tx++) {
+      const e = entAt(tx, ty);
+      if (!e || seen.has(e)) continue;
+      seen.add(e);
+      // 若实体中心在区域内才整体删除（避免误删部分在框内的巨型设备）
+      const cx = e.x + Math.floor(e.w / 2), cy = e.y + Math.floor(e.h / 2);
+      if (cx >= r.x0 && cx <= r.x1 && cy >= r.y0 && cy <= r.y1) {
+        for (const [id, n] of e.contents()) invAdd(id, n);
+        removeEnt(e);
+        if (G.panelEnt === e) closePanel();
+        count++;
+      }
+    }
+  }
+  cancelBlueprint();
+  toast('红图：已删除 ' + count + ' 个建筑（物资已返还背包）');
+  uiDirty = true;
+}
+
+// 蓝图：复制矩形区域内实体（相对坐标 + 完整配置）
+function captureBlueprint() {
+  const r = blueRect();
+  if (!r) return;
+  const ents = [];
+  const seen = new Set();
+  for (let ty = r.y0; ty <= r.y1; ty++) {
+    for (let tx = r.x0; tx <= r.x1; tx++) {
+      const e = entAt(tx, ty);
+      if (!e || seen.has(e)) continue;
+      seen.add(e);
+      const cx = e.x + Math.floor(e.w / 2), cy = e.y + Math.floor(e.h / 2);
+      if (cx < r.x0 || cx > r.x1 || cy < r.y0 || cy > r.y1) continue;
+      ents.push(e.serialize());
+    }
+  }
+  if (!ents.length) { toast('框选区域没有可复制的建筑'); return; }
+  G.blueprint = { minX: r.x0, minY: r.y0, ents };
+  G.blueMode = 'paste';
+  G.blueStart = null; G.blueEnd = null;
+  toast('蓝图已复制 ' + ents.length + ' 个建筑，点击空白处粘贴（右键取消）');
+}
+
+// 粘贴蓝图到鼠标所指位置
+function pasteBlueprint() {
+  if (!G.blueprint || !G.cursorTile) return;
+  const bp = G.blueprint;
+  const ox = G.cursorTile.tx - bp.minX;
+  const oy = G.cursorTile.ty - bp.minY;
+  // 先校验所有目标位置是否可放置，再一次性放置
+  const placements = [];
+  for (const s of bp.ents) {
+    const cls = ENT_CLASSES[s.type];
+    if (!cls) continue;
+    const nx = s.x + ox, ny = s.y + oy;
+    const tmp = cls.restore(Object.assign({}, s, { x: nx, y: ny }));
+    tmp.dir = s.dir | 0; tmp.applyDir();
+    if (!canPlaceAt(s.type, nx, ny, tmp.dir)) {
+      toast('粘贴失败：区域被占用或不可放置');
+      return;
+    }
+    placements.push({ cls, s, nx, ny });
+  }
+  for (const p of placements) {
+    const e = p.cls.restore(Object.assign({}, p.s, { x: p.nx, y: p.ny }));
+    e.dir = p.s.dir | 0; e.applyDir();
+    addEnt(e);
+  }
+  toast('蓝图已粘贴 ' + placements.length + ' 个建筑');
+  uiDirty = true;
+}
+
 function pickupAction() {
   let t = null;
   if (G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) t = G.cursorTile;
@@ -346,7 +466,9 @@ function bindInput() {
     else if (k === 'k') saveGame();
     else if (k === 'l') loadGame();
     else if (k === 'escape' || k === 'q') {
-      if (G.panelMode) {
+      if (G.blueMode) {
+        cancelBlueprint();
+      } else if (G.panelMode) {
         closePanel();
       } else if (buildActive() || !G.cursorTile) {
         G.sel = -1;
@@ -386,6 +508,9 @@ function bindInput() {
 
   G.canvas.addEventListener('mousemove', ev => {
     updateCursorTile(ev.clientX, ev.clientY);
+    if (G.blueSelecting && G.cursorTile) {
+      G.blueEnd = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
+    }
   });
   G.canvas.addEventListener('mouseenter', () => { G.canvasActive = true; });
   G.canvas.addEventListener('mouseleave', () => {
@@ -396,6 +521,22 @@ function bindInput() {
   G.canvas.addEventListener('mousedown', ev => {
     ev.preventDefault();
     updateCursorTile(ev.clientX, ev.clientY);
+    // 蓝图/红图交互：左键开始框选或粘贴，右键取消
+    if (G.blueMode) {
+      if (ev.button === 2) { cancelBlueprint(); return; }
+      if (ev.button === 0) {
+        if (G.blueMode === 'paste') {
+          pasteBlueprint();
+          cancelBlueprint();
+        } else {
+          G.blueStart = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
+          G.blueEnd = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
+          G.blueSelecting = true;
+        }
+        return;
+      }
+      return;
+    }
     const hovered = G.cursorTile ? entAt(G.cursorTile.tx, G.cursorTile.ty) : null;
     if (ev.button === 0) {
       if (ev.shiftKey && hovered) { pasteSettings(hovered); return; }
@@ -413,7 +554,15 @@ function bindInput() {
     }
   });
   window.addEventListener('mouseup', ev => {
-    if (ev.button === 0) G.mouseDown = false;
+    if (ev.button !== 0) return;
+    G.mouseDown = false;
+    // 蓝图/红图：松开鼠标完成框选
+    if (G.blueSelecting) {
+      G.blueSelecting = false;
+      if (!G.blueStart || !G.blueEnd) { cancelBlueprint(); return; }
+      if (G.blueMode === 'blue') captureBlueprint();
+      else if (G.blueMode === 'red') applyRedBlueprint();
+    }
   });
   G.canvas.addEventListener('contextmenu', ev => ev.preventDefault());
   G.canvas.addEventListener('wheel', ev => {
@@ -425,6 +574,7 @@ function bindInput() {
   window.addEventListener('resize', resize);
   document.getElementById('game').addEventListener('click', ev => {
     if (ev.button !== 0 || ev.shiftKey) return;
+    if (G.blueMode) return;   // 蓝图/红图模式下不触发面板
     updateCursorTile(ev.clientX, ev.clientY);
     if (buildActive() || !G.cursorTile) return;
     const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
@@ -496,6 +646,7 @@ function loop(ts) {
       lastPanelCheck = G.time;
       refreshHotbar();
       if (G.panelMode === 'machine') updateMachineLive();
+      if (G.panelMode === 'stats') updateStatsLive();
       if (uiDirty && (G.panelMode === 'inv' || G.panelMode === 'tech')) renderPanel(false);
       uiDirty = false;
     }

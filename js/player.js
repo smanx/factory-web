@@ -46,12 +46,15 @@ function updatePlayer(dt) {
 }
 
 function withinReach(tx, ty) {
+  // 调试开关“无限交互距离”开启时，可对任意远的格子交互/建造
+  if (G.dbg && G.dbg.farReach) return true;
   const p = G.player;
   return Math.hypot(tx * TILE + TILE / 2 - p.x, ty * TILE + TILE / 2 - p.y) <= REACH_PX;
 }
 
 function invAdd(id, n = 1) {
   G.inv.set(id, (G.inv.get(id) || 0) + n);
+  if (typeof trackProd === 'function') trackProd(id, n);
   uiDirty = true;
 }
 
@@ -64,6 +67,7 @@ function invTake(id, n = 1) {
   const c = invCount(id);
   if (c < n) return false;
   if (c - n <= 0) G.inv.delete(id); else G.inv.set(id, c - n);
+  if (typeof trackProd === 'function') trackProd(id, -n);
   uiDirty = true;
   return true;
 }

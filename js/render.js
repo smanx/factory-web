@@ -39,6 +39,7 @@ function render() {
     drawEntity(ctx, e, e.x, e.y, e.dir, 1);
   }
   drawGhost(ctx);
+  drawBlueprintOverlay(ctx);
   drawHoverAndMining(ctx);
   drawPlayer(ctx);
   drawEnemies(ctx);
@@ -60,15 +61,19 @@ function onScreen(e) {
          e.y * TILE < b.y0 + TILE && (e.y + e.h) * TILE > b.y1;
 }
 
-function drawTerrain(ctx) {
-  const b = viewBounds();
-  const tx0 = Math.floor(b.x1 / TILE);
-  const ty0 = Math.floor(b.y1 / TILE);
-  const tx1 = Math.ceil(b.x0 / TILE);
-  const ty1 = Math.ceil(b.y0 / TILE);
-  for (let ty = ty0; ty <= ty1; ty++) {
-    for (let tx = tx0; tx <= tx1; tx++) {
-      const px = tx * TILE, py = ty * TILE;
+// ===== 地形离屏缓存 =====
+// 把视口附近的地形底色绘到离屏画布，相机未大幅移动时直接整块贴图，
+// 避免每帧逐格重算；矿点因会随开采变化，仍每帧实时绘制在缓存之上。
+const terrainCache = { canvas: null, cx: 0, cy: 0, w: 0, h: 0, z: 1, rebuildMs: 0 };
+const terrainCacheStats = { state: '未启用', rebuildMs: 0, lastRebuild: 0 };
+const TERRAIN_CACHE_MARGIN = 5;   // 缓存向外扩的瓦片数（减少重建频率）
+
+// 仅绘制地形底色（草地/水域），不含矿点
+function drawTerrainInto(ctx, ox, oy, w, h) {
+  for (let dy = 0; dy < h; dy++) {
+    for (let dx = 0; dx < w; dx++) {
+      const tx = ox + dx, ty = oy + dy;
+      const px = dx * TILE, py = dy * TILE;
       if (getTerrain(tx, ty) === T_WATER) {
         ctx.fillStyle = hash2(tx, ty) > 0.5 ? '#265d8a' : '#28618f';
         ctx.fillRect(px, py, TILE, TILE);
@@ -77,10 +82,50 @@ function drawTerrain(ctx) {
       const v = hash2(tx, ty);
       ctx.fillStyle = v > 0.62 ? '#4f7c3b' : v > 0.3 ? '#4a7538' : '#456f35';
       ctx.fillRect(px, py, TILE, TILE);
-      const ti = getOreType(tx, ty);
-      if (ti >= 0 && getOreAmt(tx, ty) > 0) drawOreDots(ctx, px, py, oreItemId(ti), getOreAmt(tx, ty), tx, ty);
     }
   }
+}
+
+function drawTerrain(ctx) {
+  const b = viewBounds();
+  const tx0 = Math.floor(b.x1 / TILE);
+  const ty0 = Math.floor(b.y1 / TILE);
+  const tx1 = Math.ceil(b.x0 / TILE);
+  const ty1 = Math.ceil(b.y0 / TILE);
+  const tw = tx1 - tx0 + 1, th = ty1 - ty0 + 1;
+  const m = TERRAIN_CACHE_MARGIN;
+  // 缓存失效：无缓存、缩放变化、或当前视口超出缓存覆盖范围
+  const need = !terrainCache.canvas || terrainCache.z !== G.cam.z ||
+    tx0 < terrainCache.cx || ty0 < terrainCache.cy ||
+    tx1 > terrainCache.cx + terrainCache.w - 1 || ty1 > terrainCache.cy + terrainCache.h - 1;
+  if (need) {
+    const cw = tw + m * 2, chh = th + m * 2;
+    if (!terrainCache.canvas) terrainCache.canvas = document.createElement('canvas');
+    terrainCache.canvas.width = cw * TILE;
+    terrainCache.canvas.height = chh * TILE;
+    const cctx = terrainCache.canvas.getContext('2d');
+    const start = performance.now();
+    drawTerrainInto(cctx, tx0 - m, ty0 - m, cw, chh);
+    terrainCache.rebuildMs = performance.now() - start;
+    terrainCache.cx = tx0 - m; terrainCache.cy = ty0 - m;
+    terrainCache.w = cw; terrainCache.h = chh; terrainCache.z = G.cam.z;
+    terrainCacheStats.rebuildMs = terrainCache.rebuildMs;
+    terrainCacheStats.lastRebuild = G.time;
+  }
+  // 整块贴图缓存
+  const sx = (tx0 - terrainCache.cx) * TILE;
+  const sy = (ty0 - terrainCache.cy) * TILE;
+  ctx.drawImage(terrainCache.canvas, sx, sy, tw * TILE, th * TILE,
+    tx0 * TILE, ty0 * TILE, tw * TILE, th * TILE);
+  // 矿点每帧实时绘制（随开采实时减少）
+  for (let ty = ty0; ty <= ty1; ty++) {
+    for (let tx = tx0; tx <= tx1; tx++) {
+      const ti = getOreType(tx, ty);
+      if (ti >= 0 && getOreAmt(tx, ty) > 0)
+        drawOreDots(ctx, tx * TILE, ty * TILE, oreItemId(ti), getOreAmt(tx, ty), tx, ty);
+    }
+  }
+  terrainCacheStats.state = '已启用（缓存 ' + terrainCache.w + '×' + terrainCache.h + ' 瓦片）';
 }
 
 function drawOreDots(ctx, px, py, itemId, amt, tx, ty) {
@@ -125,6 +170,57 @@ function drawGridIfBuilding(ctx) {
 }
 
 function tileCenterPx(tx, ty) { return [tx * TILE + TILE / 2, ty * TILE + TILE / 2]; }
+
+// ===== 蓝图/红图叠加层 =====
+function drawBlueprintOverlay(ctx) {
+  if (!G.blueMode) return;
+  // 红图 / 蓝图框选区域（拖拽中）
+  if ((G.blueMode === 'blue' || G.blueMode === 'red') && G.blueStart && G.blueEnd) {
+    const x0 = Math.min(G.blueStart.tx, G.blueEnd.tx);
+    const y0 = Math.min(G.blueStart.ty, G.blueEnd.ty);
+    const x1 = Math.max(G.blueStart.tx, G.blueEnd.tx);
+    const y1 = Math.max(G.blueStart.ty, G.blueEnd.ty);
+    const red = G.blueMode === 'red';
+    ctx.fillStyle = red ? 'rgba(230,70,70,.16)' : 'rgba(90,160,255,.16)';
+    ctx.fillRect(x0 * TILE, y0 * TILE, (x1 - x0 + 1) * TILE, (y1 - y0 + 1) * TILE);
+    ctx.strokeStyle = red ? 'rgba(255,120,120,.95)' : 'rgba(120,180,255,.95)';
+    ctx.lineWidth = 2 / G.cam.z;
+    ctx.setLineDash([6 / G.cam.z, 4 / G.cam.z]);
+    ctx.strokeRect(x0 * TILE, y0 * TILE, (x1 - x0 + 1) * TILE, (y1 - y0 + 1) * TILE);
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 12px system-ui';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText((red ? '红图：删除整块' : '蓝图：复制整块') + ' ' +
+      (x1 - x0 + 1) + '×' + (y1 - y0 + 1), x0 * TILE + 4, y0 * TILE - 14);
+    return;
+  }
+  // 蓝图粘贴预览
+  if (G.blueMode === 'paste' && G.blueprint && G.cursorTile) {
+    const bp = G.blueprint;
+    const ox = G.cursorTile.tx - bp.minX;
+    const oy = G.cursorTile.ty - bp.minY;
+    for (const s of bp.ents) {
+      const cls = ENT_CLASSES[s.type];
+      if (!cls) continue;
+      const nx = s.x + ox, ny = s.y + oy;
+      const tmp = cls.restore(Object.assign({}, s, { x: nx, y: ny }));
+      tmp.dir = s.dir | 0; tmp.applyDir();
+      const ok = canPlaceAt(s.type, nx, ny, tmp.dir);
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = ok ? 'rgba(120,220,120,.18)' : 'rgba(230,80,80,.22)';
+      ctx.fillRect(nx * TILE, ny * TILE, tmp.w * TILE, tmp.h * TILE);
+      ctx.strokeStyle = ok ? 'rgba(140,255,140,.9)' : 'rgba(255,110,110,.9)';
+      ctx.lineWidth = 1.5 / G.cam.z;
+      ctx.strokeRect(nx * TILE + 1, ny * TILE + 1, tmp.w * TILE - 2, tmp.h * TILE - 2);
+      ctx.globalAlpha = 1;
+    }
+    ctx.fillStyle = '#8fd0ff';
+    ctx.font = 'bold 13px system-ui';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('点击放置蓝图 · 右键取消', G.cursorTile.tx * TILE + TILE / 2, G.cursorTile.ty * TILE - 14);
+  }
+}
 
 function lerpAngle(a, b, t) {
   let d = ((b - a + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
