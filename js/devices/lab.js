@@ -1,0 +1,182 @@
+'use strict';
+
+// ===== 研究院：消耗科学包推进所选科技 =====
+class Lab extends Entity {
+  constructor(type, x, y) {
+    super('lab', x, y);
+    this.packs = {};
+    this.t = 0;
+    this.active = false;
+  }
+  packCount(id) { return this.packs[id] || 0; }
+  totalPacks() { let s = 0; for (const k in this.packs) s += this.packs[k]; return s; }
+  nextNeed() {
+    const tech = G.activeTech;
+    if (!tech || G.techDone[tech]) return null;
+    const list = techNeedList(tech);
+    const done = G.techProg[tech] || 0;
+    return done < list.length ? list[done] : null;
+  }
+  update(dt) {
+    this.active = false;
+    const tech = G.activeTech;
+    if (!tech || G.techDone[tech]) { this.t = 0; return; }
+    const list = techNeedList(tech);
+    let done = G.techProg[tech] || 0;
+    if (done >= list.length) {
+      G.techDone[tech] = true;
+      toast('研究完成：' + TECHS[tech].name);
+      G.activeTech = null;
+      if (typeof renderPanel === 'function') renderPanel(false);
+      return;
+    }
+    const need = list[done];
+    if (!need || this.packCount(need) <= 0) { this.t = 0; return; }
+    this.active = true;
+    this.t += dt;
+    if (this.t >= LAB_TIME) {
+      this.t -= LAB_TIME;
+      this.packs[need]--;
+      if (this.packs[need] <= 0) delete this.packs[need];
+      done++;
+      G.techProg[tech] = done;
+      uiDirty = true;
+      if (done >= list.length) {
+        G.techDone[tech] = true;
+        toast('研究完成：' + TECHS[tech].name);
+        G.activeTech = null;
+        if (typeof renderPanel === 'function') renderPanel(false);
+      }
+    }
+  }
+  giveItem(item) {
+    if (isScience(item) && this.packCount(item) < 40) { this.packs[item] = this.packCount(item) + 1; return true; }
+    return false;
+  }
+  peekItem() {
+    for (const k of SCIENCE_PACKS) if (this.packCount(k) > 0) return k;
+    return null;
+  }
+  takeItem() {
+    for (const k of SCIENCE_PACKS) if (this.packCount(k) > 0) return this.takeItemOf(k);
+    return null;
+  }
+  countOf(item) { return this.packCount(item); }
+  takeItemOf(item) {
+    if (this.packCount(item) > 0) {
+      this.packs[item]--;
+      if (this.packs[item] <= 0) delete this.packs[item];
+      return item;
+    }
+    return null;
+  }
+  contents() {
+    const list = [[this.type, 1]];
+    for (const k in this.packs) if (this.packs[k] > 0) list.push([k, this.packs[k]]);
+    return list;
+  }
+  // 面板"取出全部"：退回所有科学包
+  takeAll() {
+    const rows = [];
+    for (const k of Object.keys(this.packs)) { rows.push([k, this.packs[k]]); delete this.packs[k]; }
+    return rows;
+  }
+  serialize() {
+    const s = super.serialize();
+    s.packs = this.packs; s.t = this.t;
+    return s;
+  }
+  static restore(s) {
+    const l = super.restore(s);
+    l.packs = typeof s.packs === 'number' ? { 'science-pack': s.packs } : (s.packs || {});
+    l.t = s.t || 0;
+    return l;
+  }
+}
+
+// ===== 渲染 =====
+function drawLab(ctx, e, gx, gy, dir, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  const s = TILE * 2;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#37807a';
+  rr(ctx, px + 3, py + 3, s - 6, s - 6, 7); ctx.fill();
+  ctx.strokeStyle = '#1e4a46';
+  ctx.lineWidth = 3;
+  rr(ctx, px + 3, py + 3, s - 6, s - 6, 7); ctx.stroke();
+  ctx.fillStyle = '#245c57';
+  rr(ctx, px + 10, py + 10, s - 20, s - 20, 5); ctx.fill();
+  ctx.fillStyle = e.active ? '#8ff0e0' : '#4a8f86';
+  ctx.beginPath();
+  ctx.arc(px + s / 2, py + s / 2, 12, 0, 7);
+  ctx.fill();
+  if (e.active) {
+    const bb = Math.sin(G.time * 8 + px) * 3;
+    ctx.fillStyle = 'rgba(255,255,255,.7)';
+    ctx.beginPath();
+    ctx.arc(px + s / 2 - 4, py + s / 2 - 4 + bb, 2.5, 0, 7);
+    ctx.arc(px + s / 2 + 5, py + s / 2 - 2 - bb, 2, 0, 7);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 10px system-ui';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('研究院', px + s / 2, py + s - 14);
+  ctx.globalAlpha = 1;
+}
+
+// ===== 面板 =====
+function labPanelHtml(e) {
+  let h = row('科学包', '', 'packs');
+  for (const pk of SCIENCE_PACKS) {
+    const n = invCount(pk);
+    if (n > 0) h += '<button data-action="labfill" data-id="' + pk + '">放入 10 ' + ITEMS[pk].name + ' (' + n + ')</button>';
+  }
+  h += '<button data-action="takeout" id="btn-lab-takeout" style="display:none"></button>';
+  h += barHtml(0);
+  h += row('课题', '', 'techline');
+  h += '<div class="dim">研究院按所选科技的配方顺序逐瓶消耗科学包；缺哪种包会暂停并提示。机械臂可自动喂包。</div>';
+  return h;
+}
+function labPanelLive(e, api) {
+  const parts = [];
+  let total = 0;
+  for (const pk of SCIENCE_PACKS) if (e.packCount(pk) > 0) { parts.push(chip(pk, e.packCount(pk))); total += e.packCount(pk); }
+  api.set('packs', parts.length ? parts.join('') : dimSpan('无'));
+  api.toggle('#btn-lab-takeout', total > 0, '取回科学包 (' + total + ')');
+  const tech = G.activeTech;
+  if (tech && !G.techDone[tech]) {
+    const need = e.nextNeed();
+    const doneN = G.techProg[tech] || 0;
+    api.set('techline', TECHS[tech].name + '（' + doneN + '/' + techCostTotal(tech) + '，下一瓶：' +
+      (need ? ITEMS[need].name : '—') + '）');
+    api.prog(doneN / techCostTotal(tech) * 100);
+  } else {
+    api.set('techline', dimSpan('未选择（T 打开研究面板）'));
+  }
+}
+function labTip(e) {
+  let total = 0;
+  for (const k in e.packs) total += e.packs[k];
+  return total > 0 ? ('科学包 ×' + total + (G.activeTech ? '，研究 ' + TECHS[G.activeTech].name : '')) : '无科学包';
+}
+function labOnAction(act, btn) {
+  if (act === 'labfill') {
+    const pk = btn.dataset.id || 'science-pack';
+    const n = Math.min(10, invCount(pk));
+    if (n <= 0) { toast('没有科学包'); return true; }
+    invTake(pk, n);
+    G.panelEnt.packs[pk] = (G.panelEnt.packs[pk] || 0) + n;
+    return true;
+  }
+  return false;
+}
+
+// ===== 注册 =====
+ENT_CLASSES['lab'] = Lab;
+DEVICE_RENDER['lab'] = drawLab;
+DEVICE_STATUS['lab'] = e => {
+  if (!G.activeTech || G.techDone[G.activeTech]) return e.totalPacks() > 0 ? 'y' : 'r';
+  return e.totalPacks() > 0 ? (e.packCount(e.nextNeed()) > 0 ? 'g' : 'y') : 'r';
+};
+DEVICE_PANEL['lab'] = { html: labPanelHtml, live: labPanelLive, tip: labTip, onAction: labOnAction };

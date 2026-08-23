@@ -34,36 +34,8 @@ function iconCanvas(id, size = 34) {
 }
 
 
-function gearShape(x, cx, cy, rOuter, rInner, teeth) {
-  x.beginPath();
-  for (let i = 0; i < teeth * 2; i++) {
-    const a = (i / (teeth * 2)) * Math.PI * 2;
-    const rad = i % 2 === 0 ? rOuter : rInner;
-    const px = cx + Math.cos(a) * rad, py = cy + Math.sin(a) * rad;
-    if (i === 0) x.moveTo(px, py); else x.lineTo(px, py);
-  }
-  x.closePath();
-  x.moveTo(cx + rInner * 0.45, cy);
-  x.arc(cx, cy, rInner * 0.45, 0, Math.PI * 2);
-}
-
-function tri(x, x1, y1, x2, y2, x3, y3) {
-  x.beginPath();
-  x.moveTo(x1, y1); x.lineTo(x2, y2); x.lineTo(x3, y3);
-  x.closePath();
-  return x;
-}
-
-function rr(x, px, py, w, h, r) {
-  x.beginPath();
-  x.moveTo(px + r, py);
-  x.arcTo(px + w, py, px + w, py + h, r);
-  x.arcTo(px + w, py + h, px, py + h, r);
-  x.arcTo(px, py + h, px, py, r);
-  x.arcTo(px, py, px + w, py, r);
-  x.closePath();
-  return x;
-}
+// 灰字片段（设备面板 live 刷新共用）
+function dimSpan(s) { return '<span class="dim">' + s + '</span>'; }
 
 function buildHotbar() {
   const hb = document.getElementById('hotbar');
@@ -178,110 +150,24 @@ function updateMachineLive() {
   const e = G.panelEnt;
   if (!G.ents.includes(e)) { closePanel(); return; }
   const body = document.getElementById('panel-body');
-  const set = (k, v) => {
-    const el = body.querySelector('[data-live="' + k + '"]');
-    if (el && el.innerHTML !== v) el.innerHTML = v;
-  };
-  const toggle = (sel, show, txt) => {
-    const el = body.querySelector(sel);
-    if (!el) return;
-    if (!show) { el.style.display = 'none'; return; }
-    el.style.display = '';
-    if (txt && el.textContent !== txt) el.textContent = txt;
-  };
-  const dim = s => '<span class="dim">' + s + '</span>';
   let prog = 0, status = '';
-  if (e instanceof Boiler) {
-    set('fuel', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : dim('无'));
-    set('water', e.water >= 1 ? chip('water', Math.floor(e.water)) : dim('空'));
-    set('steam', e.steamBuf >= 1 ? chip('steam', Math.floor(e.steamBuf)) : dim('空'));
-    set('temp', Math.round(e.temp) + ' / ' + BOILER_TEMP_MAX + ' °C');
-    prog = e.temp / BOILER_TEMP_MAX * 100;
-    status = e.steamBuf >= WATER_CAP - 0.01 ? '蒸汽憋满：等待蒸汽机/管道消耗'
-      : e.burning ? '产汽中（耗煤+水）'
-      : e.water < 1 ? '缺水：等待抽水机经管道或两端水口供水'
-      : (e.fuelCoal <= 0 && e.burnLeft <= 0) ? '无煤' : '待机';
-  } else if (e instanceof SteamEngine) {
-    set('power', e.on ? '+' + e.powerOut.toFixed(1) : dim('+0'));
-    set('steam', e.steamBuf >= 1 ? chip('steam', Math.floor(e.steamBuf)) : dim('空'));
-    prog = (e.outMult || 0) * 100;
-    status = e.on ? '发电中：供汽越足功率越高'
-      : e.steamBuf > 0 ? '蒸汽不足：功率随供汽量下降'
-      : '未发电：从任一端汽口接入锅炉蒸汽（直连出汽口或经管道）';
-  } else if (e instanceof Pump) {
-    set('buf', e.buf >= 1 ? chip('water', Math.floor(e.buf)) : dim('空'));
-    prog = e.working ? e.pulse * 100 : ((e.buf || 0) / WATER_CAP * 100);
-    status = e.working ? '抽水中，产出朝' + ['东', '南', '西', '北'][e.dir]
-      : (e.buf >= 1 ? '缓存已满，等待输出' : '待机');
-  } else if (e instanceof Furnace) {
-    if (!(e instanceof ElectricFurnace)) set('fuel', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : dim('无'));
-    set('input', Object.keys(e.inp).length ? countStr(e.inp) : dim('空'));
-    set('output', Object.keys(e.outp).length ? countStr(e.outp) : dim('空'));
-    const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
-    toggle('#btn-takeout', n > 0, '取回全部输出 (' + n + ')');
-    prog = e.prog * 100;
-    if (e instanceof ElectricFurnace) status = e.lit ? '冶炼中' : (e.cur && G.power.sat <= 0 ? '缺电' : '待料（放入铁板/矿石）');
-    else status = e.lit ? '冶炼中' : e.cur ? '等待燃料' : '待料（放入燃料和矿石）';
-  } else if (e instanceof Assembler) {
-    set('input', Object.keys(e.inp).length ? countStr(e.inp) : dim('空'));
-    set('output', Object.keys(e.outp).length ? countStr(e.outp) : dim('空'));
-    const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
-    toggle('#btn-takeout', n > 0, '取回全部输出 (' + n + ')');
-    prog = e.recipe && e.crafting ? e.prog / RECIPES[e.recipe].time * 100 : 0;
-  } else if (e instanceof Drill) {
-    if (!(e instanceof ElectricDrill)) set('fuel', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : dim('无'));
-    set('buffer', e.buf > 0 && e.bufItem ? chip(e.bufItem, e.buf) : dim('空'));
-    toggle('#btn-drill-takeout', e.buf > 0, '取回缓存 (' + e.buf + ')');
-    prog = e.working ? e.prog / DRILL_TIME * 100 : 0;
-    status = e.status || ('开采中，产出朝' + ['东', '南', '西', '北'][e.dir]);
-  } else if (e instanceof Lab) {
-    const parts = [];
-    let total = 0;
-    for (const pk of SCIENCE_PACKS) if (e.packCount(pk) > 0) { parts.push(chip(pk, e.packCount(pk))); total += e.packCount(pk); }
-    set('packs', parts.length ? parts.join('') : dim('无'));
-    toggle('#btn-lab-takeout', total > 0, '取回科学包 (' + total + ')');
-    const tech = G.activeTech;
-    if (tech && !G.techDone[tech]) {
-      const need = e.nextNeed();
-      const doneN = G.techProg[tech] || 0;
-      set('techline', TECHS[tech].name + '（' + doneN + '/' + techCostTotal(tech) + '，下一瓶：' +
-        (need ? ITEMS[need].name : '—') + '）');
-      prog = doneN / techCostTotal(tech) * 100;
-    } else {
-      set('techline', dim('未选择（T 打开研究面板）'));
-    }
-  } else if (e instanceof Refinery) {
-    set('input', (e.inp['crude-oil'] || 0) > 0 ? chip('crude-oil', e.inp['crude-oil']) : dim('空'));
-    set('output', Object.keys(e.outp).length ? countStr(e.outp) : dim('空'));
-    const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
-    toggle('#btn-takeout', n > 0, '取回全部产物 (' + n + ')');
-    prog = e.prog * 100;
-    status = e.working ? '精炼中' : ((e.inp['crude-oil'] || 0) < 2 ? '等待原油' : (G.power.sat <= 0 ? '缺电' : '待机'));
-  } else if (e instanceof ChemicalPlant) {
-    set('input', Object.keys(e.inp).length ? countStr(e.inp) : dim('空'));
-    set('output', Object.keys(e.outp).length ? countStr(e.outp) : dim('空'));
-    const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
-    toggle('#btn-takeout', n > 0, '取回全部产物 (' + n + ')');
-    prog = e.recipe && e.crafting ? e.prog / RECIPES[e.recipe].time * 100 : 0;
-    status = !e.recipe ? '未设置配方'
-      : e.crafting ? '加工中（流体产物自动排入相邻管道）'
-      : G.power.sat <= 0 ? '缺电'
-      : '等待原料：所需流体经相邻管道自动吸入，固体用机械臂喂入';
-  } else if (e instanceof Pipe) {
-    const agg = {};
-    for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
-    set('contents', Object.keys(agg).length ? countStr(agg) : dim('空'));
-    set('cap', e.total() + ' / ' + PIPE_CAP);
-    toggle('#btn-pipe-takeout', e.total() > 0, '取出全部 (' + e.total() + ')');
-    return;
-  } else if (e instanceof Chest) {
-    const agg = {};
-    let total = 0;
-    for (const s of e.slots) if (s) { agg[s.item] = (agg[s.item] || 0) + s.count; total += s.count; }
-    set('contents', Object.keys(agg).length ? countStr(agg) : dim('空'));
-    toggle('#btn-chest-takeout', total > 0, '取出全部 (' + total + ')');
-    return;
-  }
+  const api = {
+    set: (k, v) => {
+      const el = body.querySelector('[data-live="' + k + '"]');
+      if (el && el.innerHTML !== v) el.innerHTML = v;
+    },
+    toggle: (sel, show, txt) => {
+      const el = body.querySelector(sel);
+      if (!el) return;
+      if (!show) { el.style.display = 'none'; return; }
+      el.style.display = '';
+      if (txt && el.textContent !== txt) el.textContent = txt;
+    },
+    prog: v => { prog = v; },
+    status: s => { status = s; }
+  };
+  const panel = DEVICE_PANEL[e.type];
+  if (panel && panel.live) panel.live(e, api);
   const bar = body.querySelector('.bar i');
   if (bar) bar.style.width = Math.max(0, Math.min(100, prog)) + '%';
   const stEl = body.querySelector('.status');
@@ -397,217 +283,10 @@ function countStr(o) {
   return parts.join('');
 }
 
+// 机器面板：按设备类型查注册表分发，各设备的 html 定义在 js/devices/*.js
 function htmlMachine(e) {
-  if (e instanceof Boiler) {
-    let h = row('燃料', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : '<span class="dim">无</span>', 'fuel');
-    if (invCount('coal') > 0)
-      h += '<button data-action="fuel" data-id="coal">加入 5 煤 (' + invCount('coal') + ')</button>';
-    h += row('水', '<span class="dim"></span>', 'water');
-    if (invCount('water') > 0)
-      h += '<button data-action="feed" data-id="water">注入全部存水</button>';
-    h += row('蒸汽缓存', '<span class="dim"></span>', 'steam');
-    h += row('温度', '', 'temp');
-    h += barHtml(0);
-    h += '<div class="status"></div>';
-    h += '<div class="dim">供电链：抽水机 → 管道 → 锅炉两端蓝口水口（左右互通、双向进出、水位自动平衡，可一端进另一端出、多台串联）；加煤烧出的蒸汽从底边中间白口送往下方蒸汽机，也可经蒸汽管道远送。</div>';
-    return h;
-  }
-  if (e instanceof SteamEngine) {
-    let h = row('输出功率', '<span class="dim"></span>', 'power');
-    h += row('蒸汽存量', '<span class="dim"></span>', 'steam');
-    h += barHtml(0);
-    h += '<div class="status"></div>';
-    h += '<div class="dim">上下两端各一只通用汽口，功能相同：蒸汽可从任意一端进入发电，多余蒸汽也可从另一端送出——可与相邻蒸汽机首尾串联或接入蒸汽管道。满功率耗汽 ' + ENGINE_STEAM_RATE +
-      '/s（1 台锅炉约带 2 台），输出 +' + POWER_PER_ENGINE + ' 并入全图电网。</div>';
-    return h;
-  }
-  if (e instanceof Pump) {
-    let h = row('储水', '<span class="dim"></span>', 'buf');
-    h += barHtml(0);
-    h += '<div class="status"></div>';
-    h += '<div class="dim">必须放在水面上，免电力无限抽水。产出朝箭头方向：指向锅炉左端/右端蓝口水口可直接供水，或接入管道远送。选中后按 R 旋转方向。</div>';
-    return h;
-  }
-  if (e instanceof Furnace) {
-    const eFurn = e instanceof ElectricFurnace;
-    let h = '';
-    if (!eFurn) {
-      h += row('燃料', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : '<span class="dim">无</span>', 'fuel');
-      if (invCount('coal') > 0)
-        h += '<button data-action="fuel" data-id="coal">加入 5 煤 (' + invCount('coal') + ')</button>';
-    }
-    h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
-    for (const r of SMELTS) {
-      const n = Math.min(invCount(r.inp), 25 - (e.inp[r.inp] || 0));
-      if (n > 0) h += '<button data-action="feed" data-id="' + r.inp + '">放入' +
-        ITEMS[r.inp].name + ' ×' + n + '</button>';
-    }
-    if (Object.keys(e.inp).length) h += '<button data-action="takein">取回全部输入</button>';
-    h += row('输出', Object.keys(e.outp).length ? countStr(e.outp) : '<span class="dim">空</span>', 'output');
-    h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
-    h += barHtml(0);
-    h += '<div class="status"></div>';
-    return h;
-  }
-  if (e instanceof ChemicalPlant) {
-    let h = row('当前配方', e.recipe ? ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name : '<span class="dim">未设置</span>');
-    h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
-    if (e.recipe)
-      for (const k in RECIPES[e.recipe].inp) {
-        const n = Math.min(invCount(k), 50 - (e.inp[k] || 0));
-        if (n > 0) h += '<button data-action="feed" data-id="' + k + '">放入' +
-          ITEMS[k].name + ' ×' + n + '</button>';
-      }
-    if (Object.keys(e.inp).length) h += '<button data-action="takein">取回全部输入</button>';
-    h += row('产物', Object.keys(e.outp).length ? countStr(e.outp) : '<span class="dim">空</span>', 'output');
-    h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
-    h += barHtml(0);
-    h += '<div class="status"></div>';
-    h += '<div class="sec">选择配方</div><div class="recgrid">';
-    for (const rid of CHEM_RECIPES) {
-      const outId = Object.keys(RECIPES[rid].out)[0];
-      const selCls = e.recipe === rid ? 'sel' : '';
-      h += '<button class="rcbtn ' + selCls + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-tip="' +
-        ITEMS[outId].name + '|' + RECIPES[rid].out[outId] + '个/次，耗时' + RECIPES[rid].time + '秒">' +
-        '<img src="' + iconDataURL(outId) + '">' + ITEMS[outId].name + '</button>';
-    }
-    h += '</div>';
-    if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
-    h += '<div class="dim">化工厂吃电力，专攻流体化学配方：塑料=石油气+煤；重油可逐级裂解成轻油、石油气。所需流体经相邻管道自动吸入，流体产物自动排回管道；塑料等固体产物用机械臂取走。</div>';
-    return h;
-  }
-  if (e instanceof Assembler) {
-    let h = row('当前配方', e.recipe ? ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name : '<span class="dim">未设置</span>');
-    h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
-    if (e.recipe)
-      for (const k in RECIPES[e.recipe].inp) {
-        const n = Math.min(invCount(k), 50 - (e.inp[k] || 0));
-        if (n > 0 && FLUIDS.indexOf(k) < 0) h += '<button data-action="feed" data-id="' + k + '">放入' +
-          ITEMS[k].name + ' ×' + n + '</button>';
-      }
-    if (Object.keys(e.inp).length) h += '<button data-action="takein">取回全部输入</button>';
-    h += row('输出', Object.keys(e.outp).length ? countStr(e.outp) : '<span class="dim">空</span>', 'output');
-    h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
-    h += barHtml(0);
-    h += '<div class="sec">选择配方</div><div class="recgrid">';
-    for (const rid of Object.keys(RECIPES).filter(r => !isChemRecipe(r))) {
-      const outId = Object.keys(RECIPES[rid].out)[0];
-      const selCls = e.recipe === rid ? 'sel' : '';
-      h += '<button class="rcbtn ' + selCls + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-tip="' +
-        ITEMS[outId].name + '|' + RECIPES[rid].out[outId] + '个/次，耗时' + RECIPES[rid].time + '秒">' +
-        '<img src="' + iconDataURL(outId) + '">' + ITEMS[outId].name + '</button>';
-    }
-    h += '</div>';
-    if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
-    return h;
-  }
-  if (e instanceof Drill) {
-    const eDrill = e instanceof ElectricDrill;
-    let h = '';
-    if (eDrill) {
-      h += row('电力', G.power.sat > 0 ? '功率 ' + Math.round(G.power.sat * 100) + '%' : '<span class="dim">缺电</span>');
-    } else {
-      h += row('燃料', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : '<span class="dim">无</span>', 'fuel');
-      if (invCount('coal') > 0)
-        h += '<button data-action="fuel" data-id="coal">加入 5 煤 (' + invCount('coal') + ')</button>';
-    }
-    h += row('矿物缓存', '<span class="dim"></span>', 'buffer');
-    h += '<button data-action="takeout" id="btn-drill-takeout" style="display:none"></button>';
-    h += barHtml(0);
-    h += '<div class="status"></div>';
-    h += '<div class="dim">产出方向朝' + ['东', '南', '西', '北'][e.dir] + '，选中后按 R 旋转（需先关闭本面板或按 Q 取消选择）</div>';
-    return h;
-  }
-  if (e instanceof Lab) {
-    let h = row('科学包', '', 'packs');
-    for (const pk of SCIENCE_PACKS) {
-      const n = invCount(pk);
-      if (n > 0) h += '<button data-action="labfill" data-id="' + pk + '">放入 10 ' + ITEMS[pk].name + ' (' + n + ')</button>';
-    }
-    h += '<button data-action="takeout" id="btn-lab-takeout" style="display:none"></button>';
-    h += barHtml(0);
-    h += row('课题', '', 'techline');
-    h += '<div class="dim">研究院按所选科技的配方顺序逐瓶消耗科学包；缺哪种包会暂停并提示。机械臂可自动喂包。</div>';
-    return h;
-  }
-  if (e instanceof Refinery) {
-    let h = row('原油', (e.inp['crude-oil'] || 0) > 0 ? chip('crude-oil', e.inp['crude-oil']) : '<span class="dim">空</span>', 'input');
-    if (invCount('crude-oil') > 0)
-      h += '<button data-action="feed" data-id="crude-oil">放入原油 ×' + Math.min(invCount('crude-oil'), 50 - (e.inp['crude-oil'] || 0)) + '</button>';
-    h += row('产物', Object.keys(e.outp).length ? countStr(e.outp) : '<span class="dim">空</span>', 'output');
-    h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
-    h += barHtml(0);
-    h += '<div class="status"></div>';
-    h += '<div class="dim">配方：原油×2 → 重油+轻油+石油气 各1（吃电力）。用管道把原油送进厂区旁，或机械臂直接喂入。</div>';
-    return h;
-  }
-  if (e instanceof Pipe) {
-    const agg = {};
-    for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
-    let h = row('流体', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
-    h += row('容量', '', 'cap');
-    if (Object.keys(agg).length) h += '<button data-action="takeout" id="btn-pipe-takeout">取出全部 (' + e.total() + ')</button>';
-    h += '<div class="dim">管道与相邻管道自动互连均压，并把原油送入邻接炼油厂；机械臂可从管道抓取流体。</div>';
-    return h;
-  }
-  if (e instanceof Chest) {
-    const agg = {};
-    for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
-    let h = row('内容', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
-    const ids = Object.keys(agg);
-    for (const id in e.limits) if (!(id in agg)) ids.push(id);
-    h += '<div class="sec">存量上限（每种物品）</div>';
-    if (!ids.length) {
-      h += '<div class="dim">空箱。放入物品后可为每种物品设置最大存量，达到上限后机械臂/手动均无法再存入。</div>';
-    } else {
-      for (const id of ids) {
-        h += '<div class="limitrow">' + chip(id, agg[id]) +
-          '<input class="limit-in" type="number" min="0" step="10" placeholder="不限" data-limit="' + id + '"' +
-          ' value="' + (e.limits[id] || '') + '" data-tip="上限|该物品最大存量；留空或 0 表示不限制"></div>';
-      }
-      h += '<button data-action="limits-clear">清除所有上限</button>';
-    }
-    let total = 0;
-    for (const k in agg) total += agg[k];
-    if (total > 0) h += '<button data-action="takeout" id="btn-chest-takeout">取出全部 (' + total + ')</button>';
-    return h;
-  }
-  if (e instanceof Splitter) {
-    const prefNames = { '-1': '均衡轮发', '0': '优先一侧', '1': '优先另一侧' };
-    let h = '<div class="dim">分流器：货物分向前方两侧；一边堵了自动走另一边。R 旋转方向。</div>';
-    h += '<div class="mrow"><span class="mlabel">输出模式</span><span class="mval">';
-    for (const v of [-1, 0, 1]) {
-      h += '<button data-action="spref" data-v="' + v + '"' + (e.outPref === v ? ' style="border-color:#ffd23c;color:#ffd23c"' : '') + '>' + prefNames[v] + '</button> ';
-    }
-    h += '</span></div>';
-    if (e.outPref >= 0) h += '<div class="dim">带黄色箭头的一侧为优先输出道；堵住时自动溢出到另一侧。</div>';
-    return h;
-  }
-  if (e instanceof Underground) {
-    let txt;
-    if (e.findMate()) txt = '【入口】货物钻入地下送往同向6格内出口。缓存 ' + e.items.length + '/' + UG_CAP + '，待发 ' + e.outItems.length;
-    else if (e.findBackMate()) txt = '【出口】接收上游隧道来货并向前输出。待发 ' + e.outItems.length;
-    else txt = '【未配对】同向6格内没有另一座（中间不能隔固体建筑）。仍可收货排队，配对后自动发车。缓存 ' + e.items.length + '/' + UG_CAP;
-    return '<div class="dim">地下带' + txt + '。R 旋转方向。</div>';
-  }
-  if (e instanceof FilterInserter) {
-    let h = '<div class="dim">过滤机械臂：只抓取选中的物品，其余一律不碰。当前：' +
-      (e.filter ? chip(e.filter) : '<span class="dim">未设置</span>') + '</div>';
-    h += '<div class="sec">选择过滤物</div><div class="recgrid">';
-    for (const id of FILTER_CHOICES) {
-      h += '<button class="rcbtn ' + (e.filter === id ? 'sel' : '') + '" data-action="flt" data-id="' + id + '" data-itemid="' + id + '">' +
-        '<img src="' + iconDataURL(id) + '">' + ITEMS[id].name + '</button>';
-    }
-    h += '</div>';
-    if (e.filter) h += '<button data-action="flt-clear">清除过滤（恢复普通抓取）</button>';
-    return h;
-  }
-  if (e instanceof StackInserter)
-    return '<div class="dim">堆叠机械臂：一次最多抓取 3 个同种物品再放下，装卸效率约为普通臂的 3 倍。R 旋转。</div>';
-  if (e instanceof Inserter)
-    return '<div class="dim">机械臂：严格单向搬运。从臂体指向的一侧（灰色圆点）取货，放到地面箭头/亮色箭头的一侧（物流方向）。普通臂作用相邻格，长臂作用第二格。R 旋转。</div>';
-  if (e instanceof Belt) return '<div class="dim">传送带：物品沿箭头方向流动。R 旋转方向。靠近后按 F 拿取带上物品。</div>';
-  return '<div class="dim">无信息</div>';
+  const panel = DEVICE_PANEL[e.type];
+  return (panel && panel.html) ? panel.html(e) : '<div class="dim">无信息</div>';
 }
 
 function row(label, val, liveKey) {
@@ -626,18 +305,9 @@ function statusLine(txt) {
 
 function initPanelEvents() {
   document.getElementById('panel-body').addEventListener('change', ev => {
-    const lim = ev.target.closest ? ev.target.closest('[data-limit]') : null;
-    if (lim) {
-      const c = G.panelEnt;
-      if (c instanceof Chest) {
-        const id = lim.dataset.limit;
-        let v = Math.floor(+lim.value);
-        if (!isFinite(v) || v <= 0) { delete c.limits[id]; lim.value = ''; }
-        else { c.limits[id] = v; lim.value = v; }
-        uiDirty = true;
-      }
-      return;
-    }
+    // 设备专属输入（如储物箱存量上限）优先交给设备自己的 onChange
+    const panel = G.panelEnt && DEVICE_PANEL[G.panelEnt.type];
+    if (panel && panel.onChange && panel.onChange(ev)) return;
     if (ev.target.id !== 'imp-file') return;
     const f = ev.target.files[0];
     if (!f) return;
@@ -709,74 +379,49 @@ function initPanelEvents() {
     if (!btn) return;
     const act = btn.dataset.action;
     const id = btn.dataset.id;
-    if (act === 'exp-save') { downloadSave(); return; }
-    if (act === 'imp-save') { document.getElementById('imp-file').click(); return; }
-    if (act === 'craft') {
-      const made = doCraft(id, +(btn.dataset.mult || 1));
-      if (!made) toast('材料不足');
-    } else if (act === 'recipe') {
-      if (G.panelEnt instanceof Assembler || G.panelEnt instanceof ChemicalPlant) G.panelEnt.setRecipe(id);
-    } else if (act === 'recipe-clear') {
-      if (G.panelEnt instanceof Assembler || G.panelEnt instanceof ChemicalPlant) G.panelEnt.setRecipe(null);
-    } else if (act === 'fuel') {
-      const n = Math.min(5, invCount('coal'));
-      if (n <= 0) { toast('没有煤了'); return; }
-      if (invTake('coal', n)) {
-        G.panelEnt.fuelCoal += n;
-        if (G.panelEnt.burnLeft !== undefined && n > 0 && G.panelEnt.fuelCoal - n >= 0) {}
-      }
-    } else if (act === 'feed') {
-      const mch = G.panelEnt;
-      const id = btn.dataset.id;
-      let moved = 0;
-      const have = invCount(id);
-      while (moved < have && mch.giveItem(id)) moved++;
-      if (moved > 0) invTake(id, moved);
-      else toast('放不进去了');
-    } else if (act === 'takein') {
-      const mch = G.panelEnt;
-      for (const k of Object.keys(mch.inp || {})) {
-        invAdd(k, mch.inp[k]);
-        delete mch.inp[k];
-      }
-    } else if (act === 'takeout') {
-      const mch = G.panelEnt;
-      if (mch instanceof Drill) {
-        if (mch.buf > 0 && mch.bufItem) { invAdd(mch.bufItem, mch.buf); mch.buf = 0; }
-      } else if (mch instanceof Lab) {
-        for (const k of Object.keys(mch.packs)) { invAdd(k, mch.packs[k]); delete mch.packs[k]; }
-      } else if (mch instanceof Pipe) {
-        for (const k of Object.keys(mch.fluid)) { invAdd(k, mch.fluid[k]); delete mch.fluid[k]; }
-      } else if (mch instanceof Chest) {
-        let total = 0;
-        for (const s of mch.slots) if (s) { invAdd(s.item, s.count); total += s.count; }
-        mch.slots = [];
-        if (!total) toast('储物箱是空的');
-      } else {
-        for (const k of Object.keys(mch.outp)) {
-          invAdd(k, mch.outp[k]);
-          delete mch.outp[k];
+    // 设备专属动作（spref/flt/labfill 等）优先交给设备自己的 onAction
+    const panel = G.panelEnt && DEVICE_PANEL[G.panelEnt.type];
+    let handled = false;
+    if (panel && panel.onAction) handled = !!panel.onAction(act, btn);
+    if (!handled) {
+      if (act === 'exp-save') { downloadSave(); }
+      else if (act === 'imp-save') { document.getElementById('imp-file').click(); }
+      else if (act === 'craft') {
+        const made = doCraft(id, +(btn.dataset.mult || 1));
+        if (!made) toast('材料不足');
+      } else if (act === 'recipe') {
+        const mch = G.panelEnt;
+        if (mch && typeof mch.setRecipe === 'function') mch.setRecipe(id);
+      } else if (act === 'recipe-clear') {
+        const mch = G.panelEnt;
+        if (mch && typeof mch.setRecipe === 'function') mch.setRecipe(null);
+      } else if (act === 'fuel') {
+        const n = Math.min(5, invCount('coal'));
+        if (n <= 0) { toast('没有煤了'); return; }
+        if (invTake('coal', n)) G.panelEnt.fuelCoal += n;
+      } else if (act === 'feed') {
+        const mch = G.panelEnt;
+        const id = btn.dataset.id;
+        let moved = 0;
+        const have = invCount(id);
+        while (moved < have && mch.giveItem(id)) moved++;
+        if (moved > 0) invTake(id, moved);
+        else toast('放不进去了');
+      } else if (act === 'takein') {
+        const mch = G.panelEnt;
+        for (const k of Object.keys(mch.inp || {})) {
+          invAdd(k, mch.inp[k]);
+          delete mch.inp[k];
         }
+      } else if (act === 'takeout') {
+        // "取出全部"：各设备在自己的文件里实现 takeAll()（默认清空 outp）
+        const mch = G.panelEnt;
+        if (mch && mch.takeAll) for (const [k, n] of mch.takeAll()) invAdd(k, n);
+      } else if (act === 'tech') {
+        G.activeTech = id;
+      } else if (act === 'tech-cancel') {
+        G.activeTech = null;
       }
-    } else if (act === 'spref') {
-      if (G.panelEnt instanceof Splitter) G.panelEnt.outPref = parseInt(btn.dataset.v, 10);
-    } else if (act === 'flt') {
-      if (G.panelEnt instanceof FilterInserter) G.panelEnt.filter = id;
-    } else if (act === 'flt-clear') {
-      if (G.panelEnt instanceof FilterInserter) G.panelEnt.filter = null;
-    } else if (act === 'limits-clear') {
-      const c = G.panelEnt;
-      if (c instanceof Chest) c.limits = {};
-    } else if (act === 'labfill') {
-      const pk = btn.dataset.id || 'science-pack';
-      const n = Math.min(10, invCount(pk));
-      if (n <= 0) { toast('没有科学包'); return; }
-      invTake(pk, n);
-      G.panelEnt.packs[pk] = (G.panelEnt.packs[pk] || 0) + n;
-    } else if (act === 'tech') {
-      G.activeTech = id;
-    } else if (act === 'tech-cancel') {
-      G.activeTech = null;
     }
     renderPanel(false);
     refreshHotbar();
@@ -849,59 +494,13 @@ function updateHUD(dt, fps) {
 function mapTipAt(tx, ty) {
   const e = entAt(tx, ty);
   if (e) {
+    // 设备状态文案由各设备文件提供（DEVICE_PANEL[type].tip）
     let extra = '';
-    if (e instanceof Furnace)
-      extra = e.lit ? '冶炼中' : ((Object.keys(e.inp).length || e.fuelCoal > 0) ? '待料' : '空置，需放入燃料和矿石');
-    else if (e instanceof Drill)
-      extra = e.status || ('开采中，产出朝' + ['东', '南', '西', '北'][e.dir]);
-    else if (e instanceof Assembler)
-      extra = e.recipe ? ('生产 ' + ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name) : '未设置配方，点击打开面板';
-    else if (e instanceof Lab) {
-      let total = 0;
-      for (const k in e.packs) total += e.packs[k];
-      extra = total > 0 ? ('科学包 ×' + total + (G.activeTech ? '，研究 ' + TECHS[G.activeTech].name : '')) : '无科学包';
+    const panel = DEVICE_PANEL[e.type];
+    if (panel && panel.tip) {
+      const t = panel.tip(e);
+      if (t) extra = t;
     }
-    else if (e instanceof Chest) {
-      let n = 0, k = 0;
-      for (const s of e.slots) if (s) { n += s.count; k++; }
-      extra = k ? ('存货 ' + n + ' 个（' + k + ' 种）') : '空箱';
-    } else if (e instanceof Belt) {
-      if (e.items.length) {
-        const agg = {};
-        for (const o of e.items) agg[o.item] = (agg[o.item] || 0) + 1;
-        extra = '载物 ' + Object.keys(agg).map(k => ITEMS[k].name + '×' + agg[k]).join('、') + '，按F拿取';
-      } else extra = '空闲';
-    } else if (e instanceof Inserter)
-      extra = e.holding ? ('搬运 ' + ITEMS[e.holding].name + '，8格取放') : '待机：周围8格取放（优先背面取、正面放）';
-    else if (e instanceof Boiler)
-      extra = e.burning ? '产汽中 ' + Math.round(e.temp) + '°C（存汽' + Math.floor(e.steamBuf || 0) + '）'
-        : e.steamBuf >= WATER_CAP - 0.01 ? '蒸汽憋满·等待消耗'
-        : e.water < 1 ? '缺水（检查左右两端蓝口水口/管道）'
-        : (e.fuelCoal <= 0 && e.burnLeft <= 0) ? '无煤' : '待机';
-    else if (e instanceof SteamEngine)
-      extra = e.on ? '发电中 +' + (e.powerOut || 0).toFixed(1) + '（存汽' + Math.floor(e.steamBuf || 0) + '）'
-        : (e.steamBuf > 0 ? '供汽不足，功率受限'
-        : '未接蒸汽：从任一端汽口接入（紧邻锅炉出汽口或经管道）');
-    else if (e instanceof Pump)
-      extra = e.working ? '抽水中，产出朝' + ['东', '南', '西', '北'][e.dir]
-        : ((e.buf || 0) >= 1 ? '缓存满，等待输出' : '待机');
-    else if (e instanceof Refinery)
-      extra = e.working ? '精炼中' : ((e.inp['crude-oil'] || 0) < 2 ? '等待原油' : (G.power.sat <= 0 ? '缺电' : '待机'));
-    else if (e instanceof ChemicalPlant)
-      extra = e.crafting ? ('加工 ' + ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name)
-        : (e.recipe ? '待料（流体经管道自动吸入）' : '未设置配方，点击打开面板');
-    else if (e instanceof Pipe) {
-      const agg = {};
-      for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
-      extra = Object.keys(agg).length
-        ? ('流体 ' + Object.keys(agg).map(k => ITEMS[k].name + '×' + agg[k]).join('、') + '，按F拿取')
-        : '空管';
-    } else if (e instanceof FilterInserter)
-      extra = e.filter ? ('只搬 ' + ITEMS[e.filter].name) : '未设过滤（点击面板设置）';
-    else if (e instanceof StackInserter)
-      extra = e.holding ? ('搬运 ' + ITEMS[e.holding].name + '×' + (e.holdingCount || 1)) : '一次可抓 3 个同种物品';
-    else if (e instanceof ElectricDrill)
-      extra = e.status || ('吃电开采中，产出朝' + ['东', '南', '西', '北'][e.dir]);
     return ITEMS[e.type].name + '|' + extra;
   }
   if (getTerrain(tx, ty) === T_WATER) return '水域|无法通行；可把抽水机放在这里取水';

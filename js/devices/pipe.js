@@ -1,0 +1,139 @@
+'use strict';
+
+// ===== 管道：输送流体，相邻互连均压 =====
+class Pipe extends Entity {
+  constructor(type, x, y) {
+    super('pipe', x, y);
+    this.fluid = {};
+  }
+  total() {
+    let s = 0;
+    for (const k in this.fluid) s += this.fluid[k];
+    return s;
+  }
+  update(dt) {
+    for (const k of Object.keys(this.fluid)) {
+      if (!(this.fluid[k] > 0)) continue;
+      for (const [dx, dy] of PIPE_DIRS) {
+        if (!(this.fluid[k] > 0)) break;
+        const t = entAt(this.x + dx, this.y + dy);
+        if (!t || t === this) continue;
+        if (t instanceof Pipe) {
+          if (t.total() < PIPE_CAP && this.fluid[k] > (t.fluid[k] || 0)) {
+            this.fluid[k]--;
+            t.fluid[k] = (t.fluid[k] || 0) + 1;
+          }
+        } else if (((t instanceof Refinery) || (t instanceof ChemicalPlant) ||
+                    (t instanceof Assembler && t.acceptsFluid(k))) && t.giveItem(k)) {
+          this.fluid[k]--;
+        }
+        // 锅炉/蒸汽机不在此直推：水量由锅炉两端水口平衡，蒸汽由蒸汽机端汽口自取
+      }
+    }
+    for (const k of Object.keys(this.fluid)) if (!(this.fluid[k] > 0)) delete this.fluid[k];
+  }
+  giveItem(item) {
+    if (FLUIDS.indexOf(item) < 0) return false;
+    if (this.total() >= PIPE_CAP) return false;
+    this.fluid[item] = (this.fluid[item] || 0) + 1;
+    return true;
+  }
+  peekItem() {
+    for (const k in this.fluid) if (this.fluid[k] > 0) return k;
+    return null;
+  }
+  takeItem() {
+    for (const k in this.fluid) if (this.fluid[k] > 0) return this.takeItemOf(k);
+    return null;
+  }
+  takeOutput() { return this.takeItem(); }
+  countOf(item) { return this.fluid[item] || 0; }
+  takeItemOf(item) {
+    if ((this.fluid[item] || 0) > 0) {
+      this.fluid[item]--;
+      if (this.fluid[item] <= 0) delete this.fluid[item];
+      return item;
+    }
+    return null;
+  }
+  contents() {
+    const list = [[this.type, 1]];
+    for (const k in this.fluid) if (this.fluid[k] > 0) list.push([k, this.fluid[k]]);
+    return list;
+  }
+  // 面板"取出全部"：排空管内流体
+  takeAll() {
+    const rows = [];
+    for (const k of Object.keys(this.fluid)) { rows.push([k, this.fluid[k]]); delete this.fluid[k]; }
+    return rows;
+  }
+  serialize() { const s = super.serialize(); s.fluid = this.fluid; return s; }
+  static restore(s) { const p = super.restore(s); p.fluid = s.fluid || {}; return p; }
+}
+
+// ===== 渲染 =====
+function drawPipe(ctx, e, gx, gy, dir, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  const cx = px + TILE / 2, cy = py + TILE / 2;
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = '#7d7264';
+  ctx.lineWidth = 8;
+  for (const [dx, dy] of PIPE_DIRS) {
+    const nb = entAt(gx + dx, gy + dy);
+    if (nb instanceof Pipe || nb instanceof Refinery || nb instanceof Pumpjack ||
+        nb instanceof Boiler || nb instanceof Pump || nb instanceof SteamEngine ||
+        nb instanceof ChemicalPlant || nb instanceof Assembler) {
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + dx * TILE / 2, cy + dy * TILE / 2);
+      ctx.stroke();
+    }
+  }
+  ctx.fillStyle = '#8d8272';
+  ctx.beginPath(); ctx.arc(cx, cy, 8.5, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#55503f';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(cx, cy, 8.5, 0, 7); ctx.stroke();
+  const total = e.total ? e.total() : 0;
+  if (total > 0) {
+    const first = Object.keys(e.fluid).find(k => e.fluid[k] > 0);
+    if (first && ITEMS[first]) {
+      ctx.fillStyle = ITEMS[first].color;
+      ctx.beginPath();
+      ctx.arc(cx, cy, Math.max(3, 6.5 * Math.min(1, total / PIPE_CAP)), 0, 7);
+      ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ===== 面板 =====
+function pipePanelHtml(e) {
+  const agg = {};
+  for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
+  let h = row('流体', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
+  h += row('容量', '', 'cap');
+  if (Object.keys(agg).length) h += '<button data-action="takeout" id="btn-pipe-takeout">取出全部 (' + e.total() + ')</button>';
+  h += '<div class="dim">管道与相邻管道自动互连均压，并把原油送入邻接炼油厂；机械臂可从管道抓取流体。</div>';
+  return h;
+}
+function pipePanelLive(e, api) {
+  const agg = {};
+  for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
+  api.set('contents', Object.keys(agg).length ? countStr(agg) : dimSpan('空'));
+  api.set('cap', e.total() + ' / ' + PIPE_CAP);
+  api.toggle('#btn-pipe-takeout', e.total() > 0, '取出全部 (' + e.total() + ')');
+}
+function pipeTip(e) {
+  const agg = {};
+  for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
+  return Object.keys(agg).length
+    ? ('流体 ' + Object.keys(agg).map(k => ITEMS[k].name + '×' + agg[k]).join('、') + '，按F拿取')
+    : '空管';
+}
+
+// ===== 注册 =====
+ENT_CLASSES['pipe'] = Pipe;
+DEVICE_RENDER['pipe'] = drawPipe;
+DEVICE_STATUS['pipe'] = e => e.total() > 0 ? 'g' : 'r';
+DEVICE_PANEL['pipe'] = { html: pipePanelHtml, live: pipePanelLive, tip: pipeTip };

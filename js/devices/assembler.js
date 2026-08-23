@@ -1,0 +1,215 @@
+'use strict';
+
+// ===== 装配机：设置配方后自动生产 =====
+class Assembler extends Entity {
+  constructor(type, x, y) {
+    super(type || 'assembling-machine', x, y);
+    this.recipe = null;
+    this.inp = {};
+    this.outp = {};
+    this.crafting = false;
+    this.prog = 0;
+    this.spin = 0;
+  }
+  fluidRecipe() {
+    const r = this.recipe ? RECIPES[this.recipe] : null;
+    if (!r) return null;
+    const fin = Object.keys(r.inp).filter(k => FLUIDS.indexOf(k) >= 0);
+    const fout = Object.keys(r.out).filter(k => FLUIDS.indexOf(k) >= 0);
+    return (fin.length || fout.length) ? { rec: r, fin, fout } : null;
+  }
+  acceptsFluid(k) {
+    const r = this.recipe ? RECIPES[this.recipe] : null;
+    return !!(r && r.inp[k]);
+  }
+  portFlow() {
+    const fr = this.fluidRecipe();
+    if (!fr) return;
+    forEachNeighborEnt(this, n => {
+      if (!(n instanceof Pipe)) return;
+      for (const k of fr.fin)
+        if ((this.inp[k] || 0) < 50 && (n.fluid[k] || 0) >= 1) {
+          n.takeItemOf(k);
+          this.inp[k] = (this.inp[k] || 0) + 1;
+        }
+      for (const k of fr.fout)
+        if ((this.outp[k] || 0) > 0 && n.total() < PIPE_CAP && n.giveItem(k)) {
+          this.outp[k]--;
+          if (this.outp[k] <= 0) delete this.outp[k];
+        }
+    });
+  }
+  update(dt) {
+    this.portFlow();
+    if (!this.recipe) { this.crafting = false; return; }
+    const rec = RECIPES[this.recipe];
+    if (this.crafting) {
+      this.prog += dt * asmMult();
+      this.spin += dt * 4;
+      if (this.prog >= rec.time) {
+        for (const k in rec.out) this.outp[k] = (this.outp[k] || 0) + rec.out[k];
+        this.crafting = false;
+        this.prog = 0;
+      }
+      return;
+    }
+    for (const k in rec.inp) if ((this.inp[k] || 0) < rec.inp[k]) return;
+    for (const k in rec.out) if ((this.outp[k] || 0) + rec.out[k] > 50) return;
+    for (const k in rec.inp) {
+      this.inp[k] -= rec.inp[k];
+      if (this.inp[k] <= 0) delete this.inp[k];
+    }
+    this.crafting = true;
+    this.prog = 0;
+  }
+  setRecipe(id) {
+    if (this.recipe === id) return;
+    this.recipe = id;
+    this.inp = {}; this.outp = {};
+    this.crafting = false; this.prog = 0;
+  }
+  giveItem(item) {
+    if (!this.recipe) return false;
+    const rec = RECIPES[this.recipe];
+    if (!rec.inp[item]) return false;
+    if ((this.inp[item] || 0) >= 50) return false;
+    this.inp[item] = (this.inp[item] || 0) + 1;
+    return true;
+  }
+  peekItem() {
+    for (const k in this.outp) if (this.outp[k] > 0) return k;
+    return null;
+  }
+  takeItem() {
+    for (const k in this.outp) {
+      if (this.outp[k] > 0) {
+        this.outp[k]--;
+        if (this.outp[k] <= 0) delete this.outp[k];
+        return k;
+      }
+    }
+    return null;
+  }
+  countOf(item) { return this.outp[item] || 0; }
+  takeItemOf(item) {
+    if ((this.outp[item] || 0) > 0) { this.outp[item]--; if (this.outp[item] <= 0) delete this.outp[item]; return item; }
+    return null;
+  }
+  contents() {
+    const list = [[this.type, 1]];
+    for (const k in this.inp) list.push([k, this.inp[k]]);
+    for (const k in this.outp) list.push([k, this.outp[k]]);
+    return list;
+  }
+  serialize() {
+    const s = super.serialize();
+    s.recipe = this.recipe; s.inp = this.inp; s.outp = this.outp;
+    s.crafting = this.crafting; s.prog = this.prog;
+    return s;
+  }
+  static restore(s) {
+    const a = super.restore(s);
+    a.recipe = s.recipe || null; a.inp = s.inp || {}; a.outp = s.outp || {};
+    a.crafting = !!s.crafting; a.prog = s.prog || 0;
+    return a;
+  }
+}
+
+// ===== 渲染（装配机 I/II 共用，按 type 换色）=====
+function drawAssembler(ctx, e, gx, gy, dir, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  const s = TILE * 2;
+  const mk2 = e.type === 'assembling-machine-mk2';
+  const bodyC = mk2 ? '#6b4d8f' : '#4d5f8f';
+  const lineC = mk2 ? '#3c2a52' : '#2e3a5c';
+  const innerC = mk2 ? '#4c3a66' : '#3a486e';
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = bodyC;
+  rr(ctx, px + 3, py + 3, s - 6, s - 6, 7); ctx.fill();
+  ctx.strokeStyle = lineC;
+  ctx.lineWidth = 3;
+  rr(ctx, px + 3, py + 3, s - 6, s - 6, 7); ctx.stroke();
+  ctx.fillStyle = innerC;
+  rr(ctx, px + 10, py + 10, s - 20, s - 20, 5); ctx.fill();
+  ctx.save();
+  ctx.translate(px + s / 2, py + s / 2);
+  ctx.rotate(e.crafting ? e.spin : 0);
+  ctx.fillStyle = e.crafting ? '#cdd6ea' : '#8b98bd';
+  gearShape(ctx, 0, 0, 18, 12, 8);
+  ctx.fill();
+  ctx.restore();
+  if (e.recipe) {
+    const outId = Object.keys(RECIPES[e.recipe].out)[0];
+    drawItemDotBig(ctx, px + s / 2, py + s / 2, outId);
+    const pct = e.crafting ? Math.min(1, e.prog / RECIPES[e.recipe].time) : 0;
+    if (pct > 0) {
+      ctx.strokeStyle = '#8fe08f';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(px + s / 2, py + s / 2, 24, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2);
+      ctx.stroke();
+    }
+  } else {
+    ctx.fillStyle = 'rgba(255,255,255,.6)';
+    ctx.font = 'bold 11px system-ui';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('无配方', px + s / 2, py + s / 2 + 30);
+  }
+  const fr = e.fluidRecipe ? e.fluidRecipe() : null;
+  if (fr) {
+    const pcx = px + s / 2, pcy = py + s / 2;
+    if (fr.fin.length) drawPort(ctx, pcx, pcy, (dir + 2) % 4, ITEMS[fr.fin[0]].color, false, 0, TILE);
+    if (fr.fout.length) drawPort(ctx, pcx, pcy, dir, ITEMS[fr.fout[0]].color, true, 0, TILE);
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ===== 面板 =====
+function assemblerPanelHtml(e) {
+  let h = row('当前配方', e.recipe ? ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name : '<span class="dim">未设置</span>');
+  h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
+  if (e.recipe)
+    for (const k in RECIPES[e.recipe].inp) {
+      const n = Math.min(invCount(k), 50 - (e.inp[k] || 0));
+      if (n > 0 && FLUIDS.indexOf(k) < 0) h += '<button data-action="feed" data-id="' + k + '">放入' +
+        ITEMS[k].name + ' ×' + n + '</button>';
+    }
+  if (Object.keys(e.inp).length) h += '<button data-action="takein">取回全部输入</button>';
+  h += row('输出', Object.keys(e.outp).length ? countStr(e.outp) : '<span class="dim">空</span>', 'output');
+  h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
+  h += barHtml(0);
+  h += '<div class="sec">选择配方</div><div class="recgrid">';
+  for (const rid of Object.keys(RECIPES).filter(r => !isChemRecipe(r))) {
+    const outId = Object.keys(RECIPES[rid].out)[0];
+    const selCls = e.recipe === rid ? 'sel' : '';
+    h += '<button class="rcbtn ' + selCls + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-tip="' +
+      ITEMS[outId].name + '|' + RECIPES[rid].out[outId] + '个/次，耗时' + RECIPES[rid].time + '秒">' +
+      '<img src="' + iconDataURL(outId) + '">' + ITEMS[outId].name + '</button>';
+  }
+  h += '</div>';
+  if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
+  return h;
+}
+function assemblerPanelLive(e, api) {
+  api.set('input', Object.keys(e.inp).length ? countStr(e.inp) : dimSpan('空'));
+  api.set('output', Object.keys(e.outp).length ? countStr(e.outp) : dimSpan('空'));
+  const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
+  api.toggle('#btn-takeout', n > 0, '取回全部输出 (' + n + ')');
+  api.prog(e.recipe && e.crafting ? e.prog / RECIPES[e.recipe].time * 100 : 0);
+}
+function assemblerTip(e) {
+  return e.recipe ? ('生产 ' + ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name) : '未设置配方，点击打开面板';
+}
+
+// ===== 注册 =====
+ENT_CLASSES['assembling-machine'] = Assembler;
+DEVICE_RENDER['assembling-machine'] = drawAssembler;
+DEVICE_RENDER['assembling-machine-mk2'] = drawAssembler;
+function assemblerStatusFn(e) {
+  return e.recipe ? (e.crafting || e.prog > 0 ? 'g' : 'y') : 'r';
+}
+DEVICE_STATUS['assembling-machine'] = assemblerStatusFn;
+DEVICE_STATUS['assembling-machine-mk2'] = assemblerStatusFn;
+const assemblerPanel = { html: assemblerPanelHtml, live: assemblerPanelLive, tip: assemblerTip };
+DEVICE_PANEL['assembling-machine'] = assemblerPanel;
+DEVICE_PANEL['assembling-machine-mk2'] = assemblerPanel;

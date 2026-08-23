@@ -196,7 +196,7 @@ function tryPlaceAt(tx, ty) {
 function deconstructAt(tx, ty) {
   const e = entAt(tx, ty);
   if (!e || !withinReach(tx, ty)) return;
-  for (const [id, n] of entContents(e)) invAdd(id, n);
+  for (const [id, n] of e.contents()) invAdd(id, n);
   removeEnt(e);
   if (G.panelEnt === e) closePanel();
   uiDirty = true;
@@ -213,26 +213,19 @@ function pickupAction() {
   if (!t) return;
   const e = entAt(t.tx, t.ty);
   if (!e) return;
-  let got = null;
-  if (e instanceof Belt) {
-    if (!e.items.length) { toast('这条传送带上没有物品'); return; }
-    let best = e.items[0];
-    for (const o of e.items) if (o.pos > best.pos) best = o;
-    got = best.item;
-    e.items.splice(e.items.indexOf(best), 1);
-  } else {
-    got = e.takeItem();
+  const got = e.takeItem();
+  if (!got) {
+    if (e instanceof Belt) toast('这条传送带上没有物品');
+    return;
   }
-  if (got) {
-    invAdd(got);
-    uiDirty = true;
-  }
+  invAdd(got);
+  uiDirty = true;
 }
 
 function copySettings(e) {
   if (!e) return;
   const s = { type: e.type, dir: e.dir };
-  if (e instanceof Assembler || e instanceof ChemicalPlant) s.recipe = e.recipe;
+  if (typeof e.setRecipe === 'function') s.recipe = e.recipe;
   G.clipboard = s;
   toast('已复制 ' + ITEMS[e.type].name + ' 配置（Shift+左键粘贴到同类）');
 }
@@ -242,9 +235,9 @@ function pasteSettings(e) {
   const c = G.clipboard;
   if (e.type !== c.type) { toast('类型不匹配：剪贴板是' + ITEMS[c.type].name); return; }
   if (c.dir === undefined) return;
-  if (e instanceof Splitter) { removeEnt(e); e.dir = c.dir; e.applyDir(); addEnt(e); }
+  if (BUILD_DEFS[e.type] && BUILD_DEFS[e.type].rotSwap) { removeEnt(e); e.dir = c.dir; e.applyDir(); addEnt(e); }
   else { e.dir = c.dir; }
-  if (c.recipe && (e instanceof Assembler || e instanceof ChemicalPlant)) e.setRecipe(c.recipe);
+  if (c.recipe && typeof e.setRecipe === 'function') e.setRecipe(c.recipe);
   uiDirty = true;
   toast('配置已粘贴');
 }
@@ -252,20 +245,23 @@ function pasteSettings(e) {
 function rotateAction() {
   if (G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
     const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
-    if ((e instanceof Splitter)) {
-      removeEnt(e);
-      e.dir = (e.dir + 1) % 4;
-      e.applyDir();
-      addEnt(e);
-      uiDirty = true;
-      return;
-    }
-    if ((e instanceof Belt || e instanceof Inserter || e instanceof Drill || e instanceof Underground || e instanceof Pump ||
-         e instanceof Boiler || e instanceof SteamEngine)) {
-      e.dir = (e.dir + 1) % 4;
-      if (e instanceof Drill) e.tryOutput();
-      uiDirty = true;
-      return;
+    if (e && BUILD_DEFS[e.type]) {
+      // 非方形设备（分流器类）：旋转后脚印变化，需重挂网格
+      if (BUILD_DEFS[e.type].rotSwap) {
+        removeEnt(e);
+        e.dir = (e.dir + 1) % 4;
+        e.applyDir();
+        addEnt(e);
+        uiDirty = true;
+        return;
+      }
+      // 有朝向的设备：直接旋转（采矿机转完立即尝试朝新方向输出）
+      if (DEVICE_DIR_ROTATE[e.type]) {
+        e.dir = (e.dir + 1) % 4;
+        if (typeof e.onRotate === 'function') e.onRotate();
+        uiDirty = true;
+        return;
+      }
     }
   }
   G.ghostDir = (G.ghostDir + 1) % 4;
@@ -285,7 +281,7 @@ function bindInput() {
     else if (k === '0') selectSlot(9);
     else if (k === 'tab') { ev.preventDefault(); G.panelMode === 'inv' ? closePanel() : openPanel('inv'); }
     else if ((k === 'delete' || k === 'backspace') && G.panelMode === 'machine' &&
-             (G.panelEnt instanceof Assembler || G.panelEnt instanceof ChemicalPlant) && G.panelEnt.recipe) {
+             G.panelEnt && typeof G.panelEnt.setRecipe === 'function' && G.panelEnt.recipe) {
       G.panelEnt.setRecipe(null);
       renderPanel(false);
       toast('配方已清除');
