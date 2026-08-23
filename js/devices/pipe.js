@@ -25,6 +25,9 @@ class Pipe extends Entity {
             this.fluid[k]--;
             t.fluid[k] = (t.fluid[k] || 0) + 1;
           }
+        } else if (t instanceof StorageTank) {
+          // 管道把流体灌入储液罐（罐空或同种流体且未满时才能灌入）
+          if (t.giveItem(k)) this.fluid[k]--;
         } else if ((t instanceof Refinery) || (t instanceof ChemicalPlant) ||
                     (t instanceof Assembler && t.acceptsFluid(k))) {
           // 仅允许在设备的输入接口格子上注入（一格一接口），机械臂等非管道来源不受限
@@ -88,7 +91,7 @@ function drawPipe(ctx, e, gx, gy, dir, alpha) {
     const nb = entAt(gx + dx, gy + dy);
     if (nb instanceof Pipe || nb instanceof Refinery || nb instanceof Pumpjack ||
         nb instanceof Boiler || nb instanceof Pump || nb instanceof SteamEngine ||
-        nb instanceof ChemicalPlant || nb instanceof Assembler) {
+        nb instanceof ChemicalPlant || nb instanceof Assembler || nb instanceof StorageTank) {
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.lineTo(cx + dx * TILE / 2, cy + dy * TILE / 2);

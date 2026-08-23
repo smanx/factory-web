@@ -64,6 +64,10 @@ class ChemicalPlant extends Entity {
     }
     return false;
   }
+  // 所有流体输入口外侧相邻格的世界坐标（供储液罐等大实体缓冲供料时命中判断）
+  fluidInputCells() {
+    return CHEM_INPUT_CELLS.map(cell => sideNeighborCell(this, 1, cell));
+  }
   update(dt) {
     this.working = false;
     const rec = this.recipe ? RECIPES[this.recipe] : null;
@@ -293,3 +297,16 @@ DEVICE_STATUS['chemical-plant'] = e =>
 DEVICE_PANEL['chemical-plant'] = { html: chemicalPlantPanelHtml, live: chemicalPlantPanelLive, tip: chemicalPlantTip };
 // 化工厂四边均布流体口、本体对称，旋转仅记录朝向；选中/悬停后按 R 可直接旋转
 DEVICE_DIR_ROTATE['chemical-plant'] = true;
+// 显示详情(Alt)时，各接口流体图标所在世界格 + 对应流体名（用于鼠标悬停显示流体名称）
+DEVICE_FLUID_ICONS['chemical-plant'] = e => {
+  const icons = [];
+  for (const cell of CHEM_INPUT_CELLS) {
+    const f = chemInputFluid(e, cell);
+    if (f) icons.push({ x: fluidIconCell(e, 1, cell)[0], y: fluidIconCell(e, 1, cell)[1], fluid: f });
+  }
+  for (const cell of CHEM_OUTPUT_CELLS) {
+    const f = chemOutputFluid(e, cell);
+    if (f) icons.push({ x: fluidIconCell(e, 3, cell)[0], y: fluidIconCell(e, 3, cell)[1], fluid: f });
+  }
+  return icons;
+};
