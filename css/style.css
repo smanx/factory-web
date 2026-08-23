@@ -186,6 +186,23 @@ html, body {
 .mlabel { width: 70px; flex-shrink: 0; color: #8fa0b5; padding-top: 4px; }
 .mval { flex: 1; }
 
+.limitrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.limit-in {
+  width: 92px;
+  background: #10151c;
+  color: #dfe6ee;
+  border: 1px solid #46536a;
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 13px;
+}
+.limit-in:focus { outline: none; border-color: #ffd23c; }
+
 .bar {
   height: 8px;
   background: #10151c;

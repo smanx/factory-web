@@ -263,8 +263,10 @@ function updateMachineLive() {
     return;
   } else if (e instanceof Chest) {
     const agg = {};
-    for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
+    let total = 0;
+    for (const s of e.slots) if (s) { agg[s.item] = (agg[s.item] || 0) + s.count; total += s.count; }
     set('contents', Object.keys(agg).length ? countStr(agg) : dim('空'));
+    toggle('#btn-chest-takeout', total > 0, '取出全部 (' + total + ')');
     return;
   }
   const bar = body.querySelector('.bar i');
@@ -510,10 +512,22 @@ function htmlMachine(e) {
     const agg = {};
     for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
     let h = row('内容', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
-    let canDeposit = false;
-    for (const id of [...ORES, 'coal']) if (invCount(id) > 0) { canDeposit = true; break; }
-    if (canDeposit) h += '<button data-action="chest-deposit">存入全部矿物/燃料</button>';
-    if (Object.keys(agg).length) h += '<button data-action="takeout">取出全部</button>';
+    const ids = Object.keys(agg);
+    for (const id in e.limits) if (!(id in agg)) ids.push(id);
+    h += '<div class="sec">存量上限（每种物品）</div>';
+    if (!ids.length) {
+      h += '<div class="dim">空箱。放入物品后可为每种物品设置最大存量，达到上限后机械臂/手动均无法再存入。</div>';
+    } else {
+      for (const id of ids) {
+        h += '<div class="limitrow">' + chip(id, agg[id]) +
+          '<input class="limit-in" type="number" min="0" step="10" placeholder="不限" data-limit="' + id + '"' +
+          ' value="' + (e.limits[id] || '') + '" data-tip="上限|该物品最大存量；留空或 0 表示不限制"></div>';
+      }
+      h += '<button data-action="limits-clear">清除所有上限</button>';
+    }
+    let total = 0;
+    for (const k in agg) total += agg[k];
+    if (total > 0) h += '<button data-action="takeout" id="btn-chest-takeout">取出全部 (' + total + ')</button>';
     return h;
   }
   if (e instanceof Splitter) {
@@ -570,6 +584,18 @@ function statusLine(txt) {
 
 function initPanelEvents() {
   document.getElementById('panel-body').addEventListener('change', ev => {
+    const lim = ev.target.closest ? ev.target.closest('[data-limit]') : null;
+    if (lim) {
+      const c = G.panelEnt;
+      if (c instanceof Chest) {
+        const id = lim.dataset.limit;
+        let v = Math.floor(+lim.value);
+        if (!isFinite(v) || v <= 0) { delete c.limits[id]; lim.value = ''; }
+        else { c.limits[id] = v; lim.value = v; }
+        uiDirty = true;
+      }
+      return;
+    }
     if (ev.target.id !== 'imp-file') return;
     const f = ev.target.files[0];
     if (!f) return;
@@ -679,6 +705,11 @@ function initPanelEvents() {
         for (const k of Object.keys(mch.packs)) { invAdd(k, mch.packs[k]); delete mch.packs[k]; }
       } else if (mch instanceof Pipe) {
         for (const k of Object.keys(mch.fluid)) { invAdd(k, mch.fluid[k]); delete mch.fluid[k]; }
+      } else if (mch instanceof Chest) {
+        let total = 0;
+        for (const s of mch.slots) if (s) { invAdd(s.item, s.count); total += s.count; }
+        mch.slots = [];
+        if (!total) toast('储物箱是空的');
       } else {
         for (const k of Object.keys(mch.outp)) {
           invAdd(k, mch.outp[k]);
@@ -691,14 +722,9 @@ function initPanelEvents() {
       if (G.panelEnt instanceof FilterInserter) G.panelEnt.filter = id;
     } else if (act === 'flt-clear') {
       if (G.panelEnt instanceof FilterInserter) G.panelEnt.filter = null;
-    } else if (act === 'chest-deposit') {
+    } else if (act === 'limits-clear') {
       const c = G.panelEnt;
-      for (const id of [...ORES, 'coal']) {
-        const have = invCount(id);
-        let moved = 0;
-        while (moved < have && c.giveItem(id)) moved++;
-        if (moved > 0) invTake(id, moved);
-      }
+      if (c instanceof Chest) c.limits = {};
     } else if (act === 'labfill') {
       const pk = btn.dataset.id || 'science-pack';
       const n = Math.min(10, invCount(pk));
