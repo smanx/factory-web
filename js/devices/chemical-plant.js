@@ -159,6 +159,11 @@ function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   ctx.fillStyle = '#eef4e4';
   ctx.fillText('化工厂', px + 8, py + s - 10);
+  // ===== 流体出入口标注：四边流体口 + 进出文字（流体双向进出，固体产物用机械臂） =====
+  drawFluidPorts(ctx, e, px, py, s, {
+    inputs: '流体原料',
+    outputs: '流体产物'
+  });
   ctx.globalAlpha = 1;
 }
 

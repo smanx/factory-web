@@ -94,3 +94,24 @@ function drawPort(ctx, cx, cy, side, color, arrow, off, dist) {
 
 const PORT_WATER = '#3fa0e8';
 const PORT_STEAM = '#dfe8ee';
+// 油气通用流体口颜色（炼油厂 / 化工厂）
+const PORT_FLUID = '#c9a84a';
+// 在设备四周画流体接口凸缘并标注文字，指示可接管道的位置与进出方向
+function drawFluidPorts(ctx, e, px, py, s, { inputs, outputs }) {
+  const cxp = px + s / 2, cyp = py + s / 2, half = s / 2;
+  // 四边各画一只通用流体口凸缘（可接管道，双向进/出）
+  for (let sd = 0; sd < 4; sd++) drawPort(ctx, cxp, cyp, sd, PORT_FLUID, false, 0, half);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = 'bold 12px system-ui';
+  const label = (t, x, y, c) => {
+    ctx.fillStyle = 'rgba(0,0,0,.55)';
+    ctx.fillText(t, x + 1, y + 1);
+    ctx.fillStyle = c || '#ffe9c4';
+    ctx.fillText(t, x, y);
+  };
+  // 顶部：输入标注
+  if (inputs) label('⬆ 进：' + inputs, cxp, py + 18, '#a8e0a8');
+  // 底部：输出标注
+  if (outputs) label('出：' + outputs + ' ⬇', cxp, py + s - 30, '#ffd9a0');
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+}
