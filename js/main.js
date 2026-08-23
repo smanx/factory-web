@@ -19,6 +19,7 @@ const G = {
   panelEnt: null,
   cursorTile: null,
   keys: {},
+  showDetails: false,
   mouseDown: false,
   canvasActive: false,
   time: 0,
@@ -277,8 +278,13 @@ function bindInput() {
       return;
     }
     G.keys[k] = true;
-    // 按住 Alt 显示流体接口用途标签（对齐《异星工厂》），并避免浏览器菜单抢焦点
-    if (k === 'alt') ev.preventDefault();
+    // 按一下 Alt 切换流体接口用途详情（对齐《异星工厂》），并避免浏览器菜单抢焦点
+    if (k === 'alt') {
+      ev.preventDefault();
+      G.showDetails = !G.showDetails;
+      uiDirty = true;
+      return;
+    }
     if (k >= '1' && k <= '9') selectSlot(+k - 1);
     else if (k === '0') selectSlot(9);
     else if (k === 'tab') { ev.preventDefault(); G.panelMode === 'inv' ? closePanel() : openPanel('inv'); }
