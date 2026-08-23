@@ -36,7 +36,9 @@ function entContents(e) {
   if (e instanceof Boiler) {
     if (e.fuelCoal > 0) list.push(['coal', e.fuelCoal]);
     if (e.water >= 1) list.push(['water', Math.floor(e.water)]);
+    if (e.steamBuf >= 1) list.push(['steam', Math.floor(e.steamBuf)]);
   }
+  if (e instanceof SteamEngine && e.steamBuf >= 1) list.push(['steam', Math.floor(e.steamBuf)]);
   if (e instanceof Pump && e.buf >= 1) list.push(['water', Math.floor(e.buf)]);
   if (e instanceof Furnace) {
     if (e.fuelCoal > 0) list.push(['coal', e.fuelCoal]);
@@ -590,26 +592,58 @@ class Boiler extends Entity {
     super('boiler', x, y);
     this.fuelCoal = 0;
     this.burnLeft = 0;
-    this.water = 0;      // 内部水箱
-    this.temp = 0;       // 水温 °C，达标 BOILER_TEMP_MAX 后蒸汽机满功率
-    this.burning = false; // 正在耗煤+水升温
+    this.water = 0;      // 内部水箱：经背面进水口补水
+    this.steamBuf = 0;   // 蒸汽缓冲：经正面出汽口排向蒸汽机/管道
+    this.temp = 0;       // 水温 °C（产汽时升高）
+    this.burning = false; // 正在耗煤+水产汽
     this.lit = false;     // 炉火可见（有燃料在烧）
   }
+  waterSide() { return (this.dir + 2) % 4; } // 进水口在背面
+  steamSide() { return this.dir; }           // 出汽口在正面
   update(dt) {
     this.burning = false;
     this.temp = Math.max(0, this.temp - BOILER_COOL_RATE * dt);
-    if (this.temp >= BOILER_TEMP_MAX) { this.temp = BOILER_TEMP_MAX; this.lit = false; return; }
+    this.portFlow();
+    // 蒸汽憋满则熄火省煤，被耗走后自动再点火；温度仅作显示，不限制产汽
+    if (this.steamBuf >= WATER_CAP - 0.01) { this.lit = false; return; }
     // 只有既有水又有煤才点火；缺水时绝不空烧
     if (this.burnLeft <= 0 && this.water > 0 && this.fuelCoal > 0) {
       this.fuelCoal--; this.burnLeft += COAL_ENERGY;
     }
     if (this.burnLeft <= 0) { this.lit = false; return; }
     this.lit = true;
-    if (this.water <= 0) return; // 供水中断：暂停加热，炉内煤不消耗
+    if (this.water <= 0) return; // 供水中断：暂停产汽，炉内煤不消耗
     this.burning = true;
     this.burnLeft -= dt;
     this.water = Math.max(0, this.water - BOILER_WATER_RATE * dt);
+    this.steamBuf = Math.min(WATER_CAP, this.steamBuf + BOILER_WATER_RATE * dt);
     this.temp = Math.min(BOILER_TEMP_MAX, this.temp + BOILER_HEAT_RATE * dt);
+  }
+  // 端口物流：与首尾相连的锅炉通水；向正对的蒸汽机及相邻管道排汽/补水
+  portFlow() {
+    forEachNeighborEnt(this, n => {
+      if (n instanceof Boiler) {
+        const s = relFlushSide(this, n);
+        if (s >= 0 && s === this.waterSide() && n.waterSide() === (s + 2) % 4) {
+          if (this.water >= n.water + 1 && n.water < WATER_CAP - 0.01) {
+            this.water--; n.water = Math.min(WATER_CAP, n.water + 1);
+          } else if (n.water >= this.water + 1 && this.water < WATER_CAP - 0.01) {
+            n.water--; this.water = Math.min(WATER_CAP, this.water + 1);
+          }
+        }
+      } else if (n instanceof SteamEngine) {
+        const s = relFlushSide(this, n);
+        if (s >= 0 && s === this.steamSide() && (n.dir % 2) === (s % 2) &&
+            this.steamBuf >= 1 && n.steamBuf < ENGINE_STEAM_CAP - 0.01) {
+          this.steamBuf--; n.steamBuf++;
+        }
+      } else if (n instanceof Pipe) {
+        if (this.steamBuf >= 1 && n.total() < PIPE_CAP && n.giveItem('steam')) this.steamBuf--;
+        if (this.water < WATER_CAP - 1 && (n.fluid['water'] || 0) >= 1) {
+          n.takeItemOf('water'); this.water++;
+        }
+      }
+    });
   }
   giveItem(item) {
     if (item === 'coal' && this.fuelCoal < 20) { this.fuelCoal++; return true; }
@@ -619,13 +653,13 @@ class Boiler extends Entity {
   serialize() {
     const s = super.serialize();
     s.fuelCoal = this.fuelCoal; s.burnLeft = this.burnLeft;
-    s.water = this.water; s.temp = this.temp;
+    s.water = this.water; s.steamBuf = this.steamBuf; s.temp = this.temp;
     return s;
   }
   static restore(s) {
     const b = super.restore(s);
     b.fuelCoal = s.fuelCoal || 0; b.burnLeft = s.burnLeft || 0;
-    b.water = s.water || 0; b.temp = s.temp || 0;
+    b.water = s.water || 0; b.steamBuf = s.steamBuf || 0; b.temp = s.temp || 0;
     return b;
   }
 }
@@ -635,28 +669,56 @@ class SteamEngine extends Entity {
     super('steam-engine', x, y);
     this.spin = 0;
     this.on = false;
-    this.outMult = 0;   // 输出系数 = 锅炉温度 / 达标温度
+    this.outMult = 0;   // 输出系数 = 实际供汽 / 满功率耗汽
     this.powerOut = 0;  // 当前输出功率
-    this.bestTemp = 0;  // 邻接锅炉最高水温
-  }
-  // 扫描 2×2 机身周边一圈，收集所有邻接锅炉
-  adjBoilers() {
-    const res = [];
-    for (let dx = -1; dx <= this.w; dx++)
-      for (let dy = -1; dy <= this.h; dy++) {
-        if (dx >= 0 && dx < this.w && dy >= 0 && dy < this.h) continue;
-        const t = entAt(this.x + dx, this.y + dy);
-        if (t instanceof Boiler) res.push(t);
-      }
-    return res;
+    this.steamBuf = 0;  // 内部储汽：背面进汽口补汽，正面出汽口可串接下一台/管道
   }
   update(dt) {
-    this.bestTemp = 0;
-    for (const b of this.adjBoilers()) if (b.temp > this.bestTemp) this.bestTemp = b.temp;
-    this.outMult = Math.max(0, Math.min(1, this.bestTemp / BOILER_TEMP_MAX));
+    this.portFlow();
+    const want = ENGINE_STEAM_RATE * dt;
+    const took = Math.min(want, this.steamBuf);
+    this.steamBuf -= took;
+    const inst = want > 1e-9 ? Math.min(1, took / want) : 0;
+    this.outMult += (inst - this.outMult) * Math.min(1, dt * 6);
+    if (this.outMult < 0.005) this.outMult = 0;
     this.powerOut = POWER_PER_ENGINE * this.outMult;
     this.on = this.powerOut > 0.05;
     if (this.on) this.spin += dt * 8 * (0.35 + 0.65 * this.outMult);
+  }
+  // 端口物流：从相邻管道吸汽/泄余汽；与端对端的蒸汽机均衡蒸汽
+  portFlow() {
+    forEachNeighborEnt(this, n => {
+      if (n instanceof Pipe) {
+        if (this.steamBuf < ENGINE_STEAM_CAP - 0.01 && (n.fluid['steam'] || 0) >= 1) {
+          n.takeItemOf('steam'); this.steamBuf++;
+        }
+        if (this.steamBuf > ENGINE_STEAM_CAP * 0.5 && n.total() < PIPE_CAP && n.giveItem('steam')) this.steamBuf--;
+      } else if (n instanceof SteamEngine) {
+        const s = relFlushSide(this, n);
+        if (s >= 0 && (this.dir % 2) === (s % 2) && (n.dir % 2) === (s % 2)) {
+          if (this.steamBuf >= n.steamBuf + 1 && n.steamBuf < ENGINE_STEAM_CAP - 0.01) { this.steamBuf--; n.steamBuf++; }
+          else if (n.steamBuf >= this.steamBuf + 1 && this.steamBuf < ENGINE_STEAM_CAP - 0.01) { n.steamBuf--; this.steamBuf++; }
+        }
+      }
+    });
+  }
+  giveItem(item) {
+    if (item === 'steam' && this.steamBuf < ENGINE_STEAM_CAP - 0.01) { this.steamBuf = Math.min(ENGINE_STEAM_CAP, this.steamBuf + 1); return true; }
+    return false;
+  }
+  peekItem() { return this.steamBuf >= 1 ? 'steam' : null; }
+  takeItem() { if (this.steamBuf >= 1) { this.steamBuf--; return 'steam'; } return null; }
+  countOf(item) { return item === 'steam' ? Math.floor(this.steamBuf) : 0; }
+  takeItemOf(item) { if (item === 'steam' && this.steamBuf >= 1) { this.steamBuf--; return 'steam'; } return null; }
+  serialize() {
+    const s = super.serialize();
+    s.steamBuf = this.steamBuf;
+    return s;
+  }
+  static restore(s) {
+    const e = super.restore(s);
+    e.steamBuf = s.steamBuf || 0;
+    return e;
   }
 }
 
@@ -1196,6 +1258,30 @@ class StackInserter extends Inserter {
 // ===== 石油链：管道 / 抽油机 / 炼油厂 =====
 const PIPE_DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
+// ===== 流体端口：判定设备间"首尾相连" =====
+// 遍历实体正交相邻格上的实体（去重，不含斜角）
+function forEachNeighborEnt(e, fn) {
+  const seen = new Set();
+  for (let dx = -1; dx <= e.w; dx++)
+    for (let dy = -1; dy <= e.h; dy++) {
+      const inX = dx >= 0 && dx < e.w, inY = dy >= 0 && dy < e.h;
+      if (inX && inY) continue;      // 自身
+      if (!inX && !inY) continue;    // 斜角不算相邻
+      const t = entAt(e.x + dx, e.y + dy);
+      if (!t || t === e || seen.has(t)) continue;
+      seen.add(t);
+      fn(t);
+    }
+}
+// a 朝向 b 的边（0东1南2西3北）；不共边贴合返回 -1
+function relFlushSide(a, b) {
+  if (b.x === a.x + a.w && b.y < a.y + a.h && b.y + b.h > a.y) return 0;
+  if (b.y === a.y + a.h && b.x < a.x + a.w && b.x + b.w > a.x) return 1;
+  if (a.x === b.x + b.w && b.y < a.y + a.h && b.y + b.h > a.y) return 2;
+  if (a.y === b.y + b.h && b.x < a.x + a.w && b.x + b.w > a.x) return 3;
+  return -1;
+}
+
 class Pipe extends Entity {
   constructor(type, x, y) {
     super('pipe', x, y);
@@ -1219,6 +1305,8 @@ class Pipe extends Entity {
             t.fluid[k] = (t.fluid[k] || 0) + 1;
           }
         } else if ((t instanceof Refinery || t instanceof Boiler) && t.giveItem(k)) {
+          this.fluid[k]--;
+        } else if (k === 'steam' && t instanceof SteamEngine && t.giveItem('steam')) {
           this.fluid[k]--;
         }
       }

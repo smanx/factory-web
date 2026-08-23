@@ -390,6 +390,30 @@ function drawItemDotBig(ctx, x, y, item) {
   drawItemDot(ctx, x, y, item, 7);
 }
 
+// 流体端口凸缘：side 0东1南2西3北，画在 2×2 实体对应边中点；arrow=出流方向箭头
+function drawPort(ctx, gx, gy, side, color, arrow) {
+  const cx = gx * TILE + TILE, cy = gy * TILE + TILE;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(side * Math.PI / 2);
+  ctx.fillStyle = '#20242b';
+  rr(ctx, TILE - 9, -7, 10, 14, 3); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.4)';
+  ctx.lineWidth = 1.5;
+  rr(ctx, TILE - 9, -7, 10, 14, 3); ctx.stroke();
+  ctx.fillStyle = color;
+  rr(ctx, TILE - 7, -4.5, 6.5, 9, 2); ctx.fill();
+  if (arrow) {
+    ctx.fillStyle = color;
+    tri(ctx, TILE - 13, -5, TILE - 13, 5, TILE - 20, 0);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+const PORT_WATER = '#3fa0e8';
+const PORT_STEAM = '#dfe8ee';
+
 function drawBoiler(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const s = TILE * 2;
@@ -438,6 +462,8 @@ function drawBoiler(ctx, e, gx, gy, dir, alpha) {
   ctx.textAlign = 'right';
   ctx.fillStyle = tp >= 1 ? '#7fe08f' : tp > 0 ? '#ffd23c' : '#8a93a0';
   ctx.fillText(Math.round(e.temp || 0) + '°C', px + s - 8, py + 14);
+  drawPort(ctx, gx, gy, e.waterSide(), PORT_WATER, false);
+  drawPort(ctx, gx, gy, e.steamSide(), PORT_STEAM, true);
   ctx.globalAlpha = 1;
 }
 
@@ -450,7 +476,7 @@ function drawPipe(ctx, e, gx, gy, dir, alpha) {
   for (const [dx, dy] of PIPE_DIRS) {
     const nb = entAt(gx + dx, gy + dy);
     if (nb instanceof Pipe || nb instanceof Refinery || nb instanceof Pumpjack ||
-        nb instanceof Boiler || nb instanceof Pump) {
+        nb instanceof Boiler || nb instanceof Pump || nb instanceof SteamEngine) {
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.lineTo(cx + dx * TILE / 2, cy + dy * TILE / 2);
@@ -556,6 +582,8 @@ function drawSteamEngine(ctx, e, gx, gy, dir, alpha) {  const px = gx * TILE, py
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   if (e.on) ctx.fillText('+' + (e.powerOut || 0).toFixed(1), px + s / 2, py + s - 14);
   else ctx.fillText('蒸汽机', px + s / 2, py + s - 14);
+  drawPort(ctx, gx, gy, (e.dir + 2) % 4, PORT_STEAM, false);
+  drawPort(ctx, gx, gy, e.dir, PORT_STEAM, true);
   ctx.globalAlpha = 1;
 }
 
@@ -910,8 +938,8 @@ function statusColor(e) {
       if (!G.activeTech || G.techDone[G.activeTech]) return e.totalPacks() > 0 ? 'y' : 'r';
       return e.totalPacks() > 0 ? (e.packCount(e.nextNeed()) > 0 ? 'g' : 'y') : 'r';
     }
-    case 'boiler': return (e.temp || 0) >= BOILER_TEMP_MAX ? 'g' : e.burning ? 'y' : 'r';
-    case 'steam-engine': return e.on ? 'g' : 'r';
+    case 'boiler': return e.burning ? 'g' : (e.steamBuf >= WATER_CAP - 0.01 ? 'y' : 'r');
+    case 'steam-engine': return e.on ? 'g' : ((e.steamBuf || 0) > 0 ? 'y' : 'r');
     case 'offshore-pump': return e.working ? 'g' : ((e.buf || 0) >= 1 ? 'y' : 'r');
     case 'pipe': return e.total() > 0 ? 'g' : 'r';
     case 'refinery': return e.working ? 'g' : ((e.inp['crude-oil'] || 0) >= 2 ? 'y' : 'r');
