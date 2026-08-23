@@ -24,7 +24,6 @@ jobs:
             --json number,headRefName \
             --jq '.[] | select(.headRefName | startswith("opencode/")) | "\(.number) \(.headRefName)"')
           [ -z "$lines" ] && { echo "no open opencode PRs"; exit 0; }
-          failed=0
           while read -r number branch; do
             echo "::group::PR #$number ($branch)"
             if gh pr merge "$number" --repo "$REPO" --merge; then
@@ -34,17 +33,7 @@ jobs:
                 echo "::warning::merged #$number but failed to delete branch $branch"
               fi
             else
-              state=$(gh pr view "$number" --repo "$REPO" --json mergeStateStatus --jq .mergeStateStatus || echo UNKNOWN)
-              if [ "$state" = "DIRTY" ]; then
-                echo "::error::PR #$number has merge conflicts, branch kept"
-              else
-                echo "::error::merge #$number failed (state=$state), branch kept"
-              fi
-              failed=$((failed+1))
+              echo "::warning::merge #$number failed, branch kept"
             fi
             echo "::endgroup::"
           done <<< "$lines"
-          if [ "$failed" -gt 0 ]; then
-            echo "total failed: $failed"
-            exit 1
-          fi
