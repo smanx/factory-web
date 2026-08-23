@@ -14,8 +14,17 @@ class Refinery extends Entity {
     for (const k in this.outp) s += this.outp[k];
     return s;
   }
+  portInput() {
+    // 输入口位于背面（北 side 3，旋转后跟随）：从相邻管道吸入原油
+    for (const n of neighborsOnSide(this, sideVec(3, this.dir))) {
+      if (!(n instanceof Pipe)) continue;
+      if (!(n.fluid['crude-oil'] > 0)) continue;
+      if ((this.inp['crude-oil'] || 0) < 50 && n.takeItemOf('crude-oil')) this.inp['crude-oil'] = (this.inp['crude-oil'] || 0) + 1;
+    }
+  }
   update(dt) {
     this.working = false;
+    this.portInput();
     if ((this.inp['crude-oil'] || 0) < 2) { this.prog = 0; return; }
     if (this.outTotal() >= 48) return;
     if (G.power.sat <= 0) return;
@@ -30,11 +39,11 @@ class Refinery extends Entity {
     this.tryOutput();
   }
   tryOutput() {
+    // 输出口固定位于正面（南侧 side 1，旋转后跟随）；只从该侧排入管道/容器
     for (const k of Object.keys(this.outp)) {
       if (!(this.outp[k] > 0)) continue;
-      for (const [dx, dy] of PIPE_DIRS) {
-        const t = entAt(this.x + dx, this.y + dy);
-        if (!t || t === this) continue;
+      for (const t of neighborsOnSide(this, sideVec(1, this.dir))) {
+        if (t === this) continue;
         if ((t instanceof Pipe || t instanceof Chest) && !(t instanceof Splitter) && t.giveItem(k)) {
           this.outp[k]--;
           if (this.outp[k] <= 0) delete this.outp[k];
@@ -116,16 +125,18 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
     ctx.fillText('缺原油', px + s / 2, py + s * 0.58);
   }
   // ===== 流体出入口标注（对齐《异星工厂》：入口绿、出口橙红，位置随旋转） =====
+  // 布局：背面(默认朝向上的上方=北)2个输入口；正面(下方=南)3个输出口(石油气/轻油/重油)并排、相邻间隔1格
   const refPorts = [
-    { side: 1, color: PORT_INPUT, arrow: true },   // 南：原油入口
-    { side: 2, color: PORT_OUTPUT },                // 西：重油出口
-    { side: 0, color: PORT_OUTPUT },                // 东：轻油出口
-    { side: 3, color: PORT_OUTPUT }                 // 北：石油气出口
+    { side: 3, color: PORT_INPUT, arrow: true, off: -0.5 },  // 背面·左输入
+    { side: 3, color: PORT_INPUT, arrow: true, off: 0.5 },   // 背面·右输入
+    { side: 1, color: PORT_OUTPUT, off: -1 },                 // 正面·左输出
+    { side: 1, color: PORT_OUTPUT, off: 0 },                  // 正面·中输出
+    { side: 1, color: PORT_OUTPUT, off: 1 }                   // 正面·右输出
   ];
   drawRotatablePorts(ctx, e, px, py, s, refPorts);
   const d = e.dir | 0;
-  drawPortLabel(ctx, px, py, s, (1 + d) % 4, '原油↓', '#7fd87f');
-  drawPortLabel(ctx, px, py, s, (3 + d) % 4, '石油气↑', '#f0b072');
+  drawPortLabel(ctx, px, py, s, (3 + d) % 4, '原油输入', '#7fd87f');
+  drawPortLabel(ctx, px, py, s, (1 + d) % 4, '石油气/轻油/重油输出', '#f0b072');
   ctx.globalAlpha = 1;
 }
 
@@ -138,7 +149,7 @@ function refineryPanelHtml(e) {
   h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
   h += barHtml(0);
   h += '<div class="status"></div>';
-  h += '<div class="dim">配方：原油×2 → 重油+轻油+石油气 各1（吃电力）。用管道把原油送进厂区旁，或机械臂直接喂入。</div>';
+  h += '<div class="dim">配方：原油×2 → 重油+轻油+石油气 各1（吃电力）。接口：背面（上方）2个输入口进原油，正面（下方）3个输出口并排出重油/轻油/石油气，相邻间隔1格；旋转只改朝向，接口相对位置固定。用管道把原油送进背面输入口，或机械臂直接喂入。</div>';
   return h;
 }
 function refineryPanelLive(e, api) {
