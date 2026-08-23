@@ -118,19 +118,20 @@ class Assembler extends Entity {
 // ===== 渲染（组装机 I/II 共用，按 type 换色）=====
 function drawAssembler(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
-  const s = TILE * 3;
+  const s = TILE * e.w;
+  const sh = TILE * e.h;
   const mk2 = e.type === 'assembling-machine-mk2';
   const bodyC = mk2 ? '#6b4d8f' : '#4d5f8f';
   const lineC = mk2 ? '#3c2a52' : '#2e3a5c';
   const innerC = mk2 ? '#4c3a66' : '#3a486e';
   ctx.globalAlpha = alpha;
   ctx.fillStyle = bodyC;
-  rr(ctx, px + 3, py + 3, s - 6, s - 6, 7); ctx.fill();
+  rr(ctx, px + 3, py + 3, s - 6, sh - 6, 7); ctx.fill();
   ctx.strokeStyle = lineC;
   ctx.lineWidth = 3;
-  rr(ctx, px + 3, py + 3, s - 6, s - 6, 7); ctx.stroke();
+  rr(ctx, px + 3, py + 3, s - 6, sh - 6, 7); ctx.stroke();
   ctx.fillStyle = innerC;
-  rr(ctx, px + 10, py + 10, s - 20, s - 20, 5); ctx.fill();
+  rr(ctx, px + 10, py + 10, s - 20, sh - 20, 5); ctx.fill();
   ctx.save();
   ctx.translate(px + s / 2, py + s / 2);
   ctx.rotate(e.crafting ? e.spin : 0);

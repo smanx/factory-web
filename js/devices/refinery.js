@@ -82,13 +82,14 @@ class Refinery extends Entity {
 // ===== 渲染 =====
 function drawRefinery(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
-  const s = TILE * 3;
+  const s = TILE * e.w;
+  const sh = TILE * e.h;
   ctx.globalAlpha = alpha;
   ctx.fillStyle = '#8f5a34';
-  rr(ctx, px + 3, py + 3, s - 6, s - 6, 10); ctx.fill();
+  rr(ctx, px + 3, py + 3, s - 6, sh - 6, 10); ctx.fill();
   ctx.strokeStyle = '#5c3820';
   ctx.lineWidth = 3;
-  rr(ctx, px + 3, py + 3, s - 6, s - 6, 10); ctx.stroke();
+  rr(ctx, px + 3, py + 3, s - 6, sh - 6, 10); ctx.stroke();
   ctx.fillStyle = '#3b3230';
   rr(ctx, px + s * 0.12, py + 10, 13, s * 0.22, 3); ctx.fill();
   rr(ctx, px + s * 0.28, py + 10, 13, s * 0.22, 3); ctx.fill();

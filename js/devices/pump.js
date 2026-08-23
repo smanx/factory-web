@@ -16,11 +16,16 @@ class Pump extends Entity {
     if (this.working) this.pulse = (this.pulse + dt * 1.6) % 1;
     this.tryOutput();
   }
-  // 只朝箭头方向输出：送入管道，或指向锅炉两端水口格直接供水
+  // 只朝箭头方向输出：送入管道，或指向锅炉两端水口格直接供水（从脚印对应边缘出发）
   tryOutput() {
     let guard = 0;
     while (this.buf >= 1 && guard++ < 20) {
-      const cx = this.x + DX[this.dir], cy = this.y + DY[this.dir];
+      // 从脚印朝向侧边缘输出
+      let cx, cy;
+      if (this.dir === 0) { cx = this.x + this.w; cy = this.y; }
+      else if (this.dir === 2) { cx = this.x - 1; cy = this.y; }
+      else if (this.dir === 1) { cx = this.x; cy = this.y + this.h; }
+      else { cx = this.x; cy = this.y - 1; }
       const t = entAt(cx, cy);
       if (t instanceof Pipe) {
         if (!t.giveItem('water')) break;
@@ -50,28 +55,29 @@ class Pump extends Entity {
 // ===== 渲染 =====
 function drawPump(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
+  const pw = TILE * e.w, ph2 = TILE * e.h;
   ctx.globalAlpha = alpha;
   ctx.fillStyle = '#1d3d55';
-  rr(ctx, px + 2, py + 2, TILE - 4, TILE - 4, 7); ctx.fill();
+  rr(ctx, px + 2, py + 2, pw - 4, ph2 - 4, 7); ctx.fill();
   ctx.strokeStyle = '#12293b';
   ctx.lineWidth = 2;
-  rr(ctx, px + 2, py + 2, TILE - 4, TILE - 4, 7); ctx.stroke();
+  rr(ctx, px + 2, py + 2, pw - 4, ph2 - 4, 7); ctx.stroke();
   ctx.fillStyle = '#3f9fc0';
-  rr(ctx, px + 8, py + 8, TILE - 16, TILE - 16, 5); ctx.fill();
+  rr(ctx, px + 8, py + 8, pw - 16, ph2 - 16, 5); ctx.fill();
   ctx.strokeStyle = '#26688a';
   ctx.lineWidth = 2;
-  rr(ctx, px + 8, py + 8, TILE - 16, TILE - 16, 5); ctx.stroke();
+  rr(ctx, px + 8, py + 8, pw - 16, ph2 - 16, 5); ctx.stroke();
   if (e.working) { // 抽水涟漪
     const ph = (e.pulse || 0) % 1;
     ctx.strokeStyle = 'rgba(170,225,255,' + (0.65 * (1 - ph)).toFixed(2) + ')';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(px + TILE / 2, py + TILE / 2, 5 + ph * 11, 0, Math.PI * 2);
+    ctx.arc(px + pw / 2, py + ph2 / 2, 5 + ph * 11, 0, Math.PI * 2);
     ctx.stroke();
   } else {
     ctx.fillStyle = '#9fd8f0';
     ctx.beginPath();
-    ctx.arc(px + TILE / 2, py + TILE / 2, 5, 0, 7);
+    ctx.arc(px + pw / 2, py + ph2 / 2, 5, 0, 7);
     ctx.fill();
   }
   ctx.fillStyle = dirColorNotch(dir);
@@ -79,7 +85,7 @@ function drawPump(ctx, e, gx, gy, dir, alpha) {
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 9px system-ui';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('抽水机', px + TILE / 2, py + TILE / 2 + 12);
+  ctx.fillText('抽水机', px + pw / 2, py + ph2 / 2 + 12);
   ctx.globalAlpha = 1;
 }
 
@@ -108,6 +114,13 @@ DEVICE_RENDER['offshore-pump'] = drawPump;
 DEVICE_STATUS['offshore-pump'] = e => e.working ? 'g' : ((e.buf || 0) >= 1 ? 'y' : 'r');
 DEVICE_PANEL['offshore-pump'] = { html: pumpPanelHtml, live: pumpPanelLive, tip: pumpTip };
 // 放置规则：只能放在水面上的空格（完全替换默认校验）
-DEVICE_PLACE['offshore-pump'] = (type, tx, ty) =>
-  (!isWater(tx, ty) || entAt(tx, ty) || !withinReach(tx, ty)) ? { ok: false } : { ok: true };
+DEVICE_PLACE['offshore-pump'] = (type, tx, ty, dir, ew, eh) => {
+  if (!ew) ew = 2; if (!eh) eh = 1;
+  for (let dy = 0; dy < eh; dy++)
+    for (let dx = 0; dx < ew; dx++) {
+      const cx = tx + dx, cy = ty + dy;
+      if (!isWater(cx, cy) || entAt(cx, cy) || !withinReach(cx, cy)) return { ok: false };
+    }
+  return { ok: true };
+};
 DEVICE_DIR_ROTATE['offshore-pump'] = true;

@@ -34,7 +34,40 @@ global.document.createElement = tag => {
   return el;
 };
 
-const files = ['data.js', 'world.js', 'entities.js', 'player.js', 'ui.js', 'render.js', 'main.js'];
-let src = files.map(f => fs.readFileSync(path.join(__dirname, '..', 'js', f), 'utf8')).join('\n;\n');
+// Load source files in the same order as index.html
+const srcFiles = [
+  'data.js',
+  'world.js',
+  'core/registry.js',
+  'core/entity.js',
+  'core/draw.js',
+  'devices/belt.js',
+  'devices/splitter.js',
+  'devices/underground.js',
+  'devices/inserter.js',
+  'devices/drill.js',
+  'devices/electric-drill.js',
+  'devices/pumpjack.js',
+  'devices/furnace.js',
+  'devices/electric-furnace.js',
+  'devices/assembler.js',
+  'devices/assembler-mk2.js',
+  'devices/chest.js',
+  'devices/lab.js',
+  'devices/boiler.js',
+  'devices/steam-engine.js',
+  'devices/pump.js',
+  'devices/pipe.js',
+  'devices/refinery.js',
+  'devices/chemical-plant.js',
+  'core/power.js',
+  'player.js',
+  'ui.js',
+  'render.js',
+  'main.js'
+];
+let src = srcFiles.map(f => fs.readFileSync(path.join(__dirname, '..', 'js', f), 'utf8')).join('\n;\n');
 src += '\n;\n' + fs.readFileSync(path.join(__dirname, 'assertions.js'), 'utf8');
 (0, eval)(src);
+
+console.log('\n---- assertions done ----');
