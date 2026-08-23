@@ -155,3 +155,5 @@ ENT_CLASSES['refinery'] = Refinery;
 DEVICE_RENDER['refinery'] = drawRefinery;
 DEVICE_STATUS['refinery'] = e => e.working ? 'g' : ((e.inp['crude-oil'] || 0) >= 2 ? 'y' : 'r');
 DEVICE_PANEL['refinery'] = { html: refineryPanelHtml, live: refineryPanelLive, tip: refineryTip };
+// 炼油厂四边均布流体口、本体对称，旋转仅记录朝向；选中/悬停后按 R 可直接旋转
+DEVICE_DIR_ROTATE['refinery'] = true;

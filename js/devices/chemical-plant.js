@@ -218,3 +218,5 @@ DEVICE_RENDER['chemical-plant'] = drawChemicalPlant;
 DEVICE_STATUS['chemical-plant'] = e =>
   e.recipe ? (e.crafting ? 'g' : (G.power.sat <= 0 && Object.keys(e.inp).length ? 'r' : 'y')) : 'r';
 DEVICE_PANEL['chemical-plant'] = { html: chemicalPlantPanelHtml, live: chemicalPlantPanelLive, tip: chemicalPlantTip };
+// 化工厂四边均布流体口、本体对称，旋转仅记录朝向；选中/悬停后按 R 可直接旋转
+DEVICE_DIR_ROTATE['chemical-plant'] = true;
