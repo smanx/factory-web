@@ -301,6 +301,12 @@ function bindInput() {
         const idx = e ? HOTBAR.indexOf(e.type) : -1;
         if (idx < 0) {
           G.sel = -1;
+          if (e && BUILD_DEFS[e.type]) {
+            G.quickSel = e.type;
+            G.ghostDir = e.dir;
+            toast('已直接选中 ' + ITEMS[e.type].name + '（Q 取消）');
+          }
+          uiDirty = true;
           refreshHotbar();
         } else {
           G.sel = idx;
