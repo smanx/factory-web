@@ -951,7 +951,13 @@ const TECH_REQ = {
   // ===== 组装机 / 堆叠机械臂科技门控（对齐《异星工厂》Automation 3 / Logistics 3） =====
   'assembling-machine-3': 'automation3',
   'stack-inserter': 'logistics3',
-  'stack-filter-inserter': 'logistics3'
+  'stack-filter-inserter': 'logistics3',
+  // ===== 基础中间件科技门控（对齐《异星工厂》科技树） =====
+  'engine-unit': 'engine',          // 引擎单元：需「引擎技术」科技（对齐原版 Engine）
+  'battery': 'battery',                // 电池：需「电池技术」科技（对齐原版 Battery）
+  'plastic-bar': 'plastic',           // 塑料板：需「塑料合成」科技（对齐原版 Plastics）
+  'low-density-structure': 'rocket-science', // 低密度结构：需「火箭技术」（对齐原版 Rocket science）
+  'solid-fuel': 'oil'                // 固体燃料：需「石油冶金」（对齐原版 Oil processing）
 };
 // ===== 核能科技门控 =====
 for (const id of ['centrifuge', 'nuclear-reactor', 'steam-turbine', 'heat-pipe', 'heat-exchanger', 'uranium-235', 'uranium-238', 'nuclear-fuel']) {
@@ -1175,7 +1181,8 @@ const TECHS = {
   oil:        { name: '石油冶金', cost: { 'green-science': 30 }, desc: '炼油厂 / 抽油机速度 ×1.5', req: [] },
   railways:    { name: '铁路技术', cost: { 'green-science': 30 }, desc: '解锁铁轨、火车头、货运车厢与车站，构建铁路物流', req: ['logistics'] },
   'rail-signals': { name: '铁路信号', cost: { 'blue-science': 30 }, desc: '解锁铁路信号灯，允许多列火车安全同网行驶', req: ['railways'] },
-  plastic:    { name: '塑料合成', cost: { 'green-science': 20 }, desc: '化工厂生产塑料耗时缩短 ✓（绿色科研的核心支付项）', req: ['oil'] },
+  plastic:    { name: '塑料合成', cost: { 'green-science': 20 }, desc: '解锁塑料板制造；化工厂生产塑料耗时缩短 ✓（绿色科研的核心支付项，对齐《异星工厂》Plastics）', req: ['oil'] },
+  engine:     { name: '引擎技术', cost: { 'green-science': 30 }, desc: '解锁引擎单元制造，是载具、电动引擎与重型机械的核心动力部件（对齐《异星工厂》Engine 科技）', req: ['automation'] },
   barrel:     { name: '流体处理', cost: { 'blue-science': 50 }, desc: '解锁空桶与流体桶装配方，可把流体灌入桶中经物流网络/传送带/火车运输，实现流体走物流链', req: ['oil', 'electronics'] },
   'advanced-oil-processing': { name: '进阶原油加工', cost: { 'blue-science': 50 }, desc: '解锁进阶原油加工与重油/轻油裂化配方，原油产出更高价值的重/轻油与石油气（对齐《异星工厂》Advanced oil processing）', req: ['oil', 'electronics'] },
   'coal-liquefaction': { name: '煤液化', cost: { 'blue-science': 60, 'production-science-pack': 30 }, desc: '解锁煤液化配方：用煤+重油+蒸汽在炼油厂转化为重油/轻油/石油气，为缺油地区提供石油替代来源（对齐《异星工厂》Coal liquefaction）', req: ['advanced-oil-processing'] },
@@ -1193,6 +1200,7 @@ const TECHS = {
   'electric-energy-accumulators': { name: '蓄电器', cost: { 'blue-science': 30 }, desc: '解锁蓄电器，存储电力以在夜晚/低谷期为电网续供（对齐《异星工厂》Electric energy accumulators）', req: ['solar-energy'] },
   'steel-processing': { name: '炼钢科技', cost: { 'blue-science': 20 }, desc: '解锁钢炉与钢箱，提升冶炼效率与储物容量（对齐《异星工厂》Steel processing）', req: ['electric'] },
   'fluid-handling': { name: '地下管道', cost: { 'green-science': 20 }, desc: '解锁地下管道与流体泵，可跨格输送流体并提升管道网络吞吐（对齐《异星工厂》Fluid handling）', req: ['oil'] },
+  battery:    { name: '电池技术', cost: { 'blue-science': 30 }, desc: '解锁电池制造，用于激光炮塔、卫星与机器人（对齐《异星工厂》Battery 科技）', req: ['oil'] },
   'combat-robotics': { name: '战斗机器人', cost: { 'military-science': 40, 'blue-science': 30 }, desc: '解锁防御/干扰/破坏三种战斗机器人胶囊，可投掷释放伴随作战（对齐《异星工厂》Combat robotics）', req: ['advanced-combat', 'electronics'] },
   'rocket-science': { name: '火箭技术', cost: { 'blue-science': 100, 'military-science': 50 }, desc: '解锁火箭发射井、火箭部件与卫星，发射火箭赢得游戏', req: ['electronics', 'express'] },
   modules:    { name: '模块工程', cost: { 'blue-science': 40 }, desc: '解锁速度模块与产能模块（增强组装机/电炉）', req: ['electronics'] },
@@ -1307,6 +1315,10 @@ function migrateNewTechs(techDone) {
   if (techDone['modules']) techDone['advanced-material-processing'] = true;
   if (techDone['modules2']) techDone['advanced-material-processing-2'] = true;
   if (techDone['modules3']) techDone['advanced-material-processing-3'] = true;
+  // 兼容旧档：引擎单元/电池/塑料板/固体燃料此前不受科技门控，现分别由「引擎技术」「电池技术」「塑料合成」「石油冶金」解锁；
+  // 老玩家可能已拥有对应产线，补完对应科技避免被锁死（对齐《异星工厂》科技树）。
+  if (techDone['automation']) techDone['engine'] = true;
+  if (techDone['oil']) { techDone['battery'] = true; techDone['plastic'] = true; }
   return techDone;
 }
 

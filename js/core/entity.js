@@ -27,8 +27,12 @@ function dirFromVec(dx, dy) {
 
 // 实体增删会让邻居关系改变，进而影响附近传送带的输入侧判定。
 // 这里在 (x,y) 的 w×h 区域向外扩 2 格范围内，把命中的传送带缓存失效。
+// 该函数在 addEnt/removeEnt（拆/蓝图/建造高频）时被调用，为避免每次 new Set 造成 GC 压力，
+// 复用模块级去重 Set（P1 优化）：调用前 clear，遍历后与旧逻辑语义一致（同实体只处理一次）。
+let _beltSeenSet = new Set();
 function invalidateBeltInputNear(x, y, w, h) {
-  const seen = new Set();
+  const seen = _beltSeenSet;
+  seen.clear();
   for (let dy = -2; dy < h + 2; dy++)
     for (let dx = -2; dx < w + 2; dx++) {
       const t = entAt(x + dx, y + dy);
