@@ -46,7 +46,6 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
   const step = TILE / 2;
   const off = ((G.time * beltSpeed() * e.speedMult() * TILE) % step + step) % step;
   strip(dir * Math.PI / 2, -TILE / 2 + 2, TILE - 4);
-  for (const s of inp) strip(Math.atan2(s[1], s[0]), 0, step);
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(dir * Math.PI / 2);
@@ -60,6 +59,9 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
     ctx.fill();
   }
   ctx.restore();
+  // 侧面接入带：在主带箭头之后绘制，用带面色覆盖溢出的主轴箭头，
+  // 避免 T 型转角（双入单出）里侧面分支区域残留主方向箭头、造成流动“断开一小截”
+  for (const s of inp) strip(Math.atan2(s[1], s[0]), 0, step);
   for (const s of inp) {
     const sa = Math.atan2(s[1], s[0]);
     ctx.save();
