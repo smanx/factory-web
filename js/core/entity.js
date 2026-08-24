@@ -68,10 +68,14 @@ function addEnt(e) {
   if (typeof regPowerEnt === 'function') regPowerEnt(e);
   // 信标/物流网络设备增量注册表同步维护（见 devices/modules.js）
   if (typeof regExtraEnt === 'function') regExtraEnt(e);
+  // 占用多个网格键的复合实体（如列车：车头+各车厢各自占格）在挂载后补登记额外格
+  if (typeof e.afterAdd === 'function') e.afterAdd();
 }
 
 function removeEnt(e) {
   if (e._dead) return;
+  // 复合实体先注销其额外占格，再走统一移除流程
+  if (typeof e.beforeRemove === 'function') e.beforeRemove();
   e._dead = true;
   _tombCount++;
   if (_tombCount >= 128) _compactEnts();   // 墓碑积累到阈值再压缩，避免频繁 splice

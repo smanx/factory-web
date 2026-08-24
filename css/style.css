@@ -1092,3 +1092,71 @@ html, body {
   color: #c8d8ec;
 }
 .launch-stats b { color: #ffd23c; }
+
+/* ===== 铁路：列车计划表编辑器 ===== */
+.sched-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.sched-i {
+  min-width: 18px;
+  text-align: right;
+  color: #8fd0ff;
+  font-weight: bold;
+  font-size: 13px;
+}
+.sched-row input.sched-name {
+  flex: 1.4;
+  min-width: 0;
+  background: #141a22;
+  border: 1px solid #33405a;
+  border-radius: 7px;
+  color: #e8ecf2;
+  padding: 5px 8px;
+  font-size: 13px;
+}
+.sched-row select {
+  background: #141a22;
+  border: 1px solid #33405a;
+  border-radius: 7px;
+  color: #e8ecf2;
+  padding: 5px 4px;
+  font-size: 12.5px;
+}
+.sched-row input.sched-wait {
+  width: 52px;
+  background: #141a22;
+  border: 1px solid #33405a;
+  border-radius: 7px;
+  color: #e8ecf2;
+  padding: 5px 6px;
+  font-size: 13px;
+}
+.sched-row button {
+  padding: 5px 9px;
+}
+.sched-add {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0;
+}
+.sched-add input {
+  flex: 1;
+  background: #141a22;
+  border: 1px solid #33405a;
+  border-radius: 7px;
+  color: #e8ecf2;
+  padding: 6px 9px;
+  font-size: 13px;
+}
+input.stop-rename {
+  width: 140px;
+  background: #141a22;
+  border: 1px solid #33405a;
+  border-radius: 7px;
+  color: #e8ecf2;
+  padding: 5px 8px;
+  font-size: 13px;
+}

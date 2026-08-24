@@ -38,6 +38,8 @@ let FRAME_BOUNDS = null;
 let _B = {};
 // 复用的机械臂置顶绘制列表：渲染单遍扫描时暂存视口内机械臂，避免每帧分配数组。
 const _inserterDrawList = [];
+// 列车置顶绘制列表：车厢跨格行驶，后画避免被相邻建筑遮挡。
+const _trainDrawList = [];
 
 // ===== LOD 分级绘制 =====
 // 依据瓦片在屏幕上的像素尺寸（TILE * cam.z）决定绘制细节等级，
@@ -85,15 +87,20 @@ function render() {
     : null;
   const inserters = _inserterDrawList;
   inserters.length = 0;
+  const trains = _trainDrawList;
+  trains.length = 0;
   const visit = e => {
     if (e._dead || !onScreen(e)) return;
     if (IS_INSERTER[e.type]) inserters.push(e);
+    else if (typeof Train === 'function' && e instanceof Train) trains.push(e);
     else drawEntity(ctx, e, e.x, e.y, e.dir, 1);
   };
   if (keys) forEachEntInBuckets(keys, visit);
   else for (const e of G.ents) { if (!e._dead) visit(e); }
   for (const e of inserters) drawEntity(ctx, e, e.x, e.y, e.dir, 1);   // 机械臂置顶
+  for (const e of trains) drawEntity(ctx, e, e.x, e.y, e.dir, 1);      // 列车最顶（车厢跨格）
   inserters.length = 0;
+  trains.length = 0;
   // 物流网络覆盖圈（放置预览/选中港口时）
   if (typeof drawLogiOverlays === 'function') drawLogiOverlays(ctx);
   drawGhost(ctx);
@@ -120,11 +127,16 @@ function viewBounds(out) {
 }
 
 // 复用当前帧的视口包围盒做剔除，避免每次调用都新建对象。
+// 列车等复合实体提供 bb（各车厢包围盒，瓦片坐标），按整体范围剔除。
 function onScreen(e) {
   const b = FRAME_BOUNDS;
   if (!b) return true;
-  return e.x * TILE < b.x0 + TILE && (e.x + e.w) * TILE > b.x1 &&
-         e.y * TILE < b.y0 + TILE && (e.y + e.h) * TILE > b.y1;
+  const bx = e.bb ? e.bb.x0 : e.x;
+  const by = e.bb ? e.bb.y0 : e.y;
+  const bw = e.bb ? (e.bb.x1 - e.bb.x0 + 1) : e.w;
+  const bh = e.bb ? (e.bb.y1 - e.bb.y0 + 1) : e.h;
+  return bx * TILE < b.x0 + TILE && (bx + bw) * TILE > b.x1 &&
+         by * TILE < b.y0 + TILE && (by + bh) * TILE > b.y1;
 }
 
 // ===== 地形分块离屏缓存（P1 优化）=====

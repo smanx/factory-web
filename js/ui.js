@@ -1032,6 +1032,7 @@ function buildDebug() {
     ['+20燃料棒', 'nuclear-fuel-cell', 20], ['+10乏燃料棒', 'used-up-fuel-cell', 10],
     ['+2离心机', 'centrifuge', 2], ['+2反应堆', 'nuclear-reactor', 2],
     ['+20热管', 'heat-pipe', 20], ['+4换热器', 'heat-exchanger', 4], ['+8汽轮机', 'steam-turbine', 8],
+    ['+50铁轨', 'rail', 50], ['+4车站', 'train-stop', 4], ['+2机车头', 'locomotive', 2], ['+6货运车厢', 'cargo-wagon', 6],
     ['+50原油', 'crude-oil', 50], ['+50水', 'water', 50], ['+50蒸汽', 'steam', 50]
   ]) {
     const b = document.createElement('button');

@@ -27,6 +27,7 @@ const fakeEl = () => ({
 });
 const sandbox = {
   console, performance,
+  setTimeout: () => 0, clearTimeout: () => {},
   window: { location: { search: '' }, addEventListener() {}, innerWidth: 1280, innerHeight: 720 },
   document: {
     createElement: fakeEl,
@@ -174,4 +175,92 @@ vm.runInContext(`
   }
 
   console.log(out.join('|'));
+`, ctx);
+
+// ---- 集成冒烟：铁路运输全流程（放置→编组→计划表行驶→装卸→存读档）----
+vm.runInContext(`
+  const out2 = [];
+  function assert2(c, m) { out2.push((c ? '✓ ' : '✗ ') + m); if (!c) process.exitCode = 1; }
+  try {
+    G.techDone.railway = true;
+
+    // 铺设轨道：y=-60 横线 x=-70..-50，两座车站「矿区」「厂区」
+    for (let x = -70; x <= -50; x++)
+      addEnt(x === -66 ? new ENT_CLASSES['train-stop']('train-stop', x, -60)
+           : x === -54 ? new ENT_CLASSES['train-stop']('train-stop', x, -60)
+           : new ENT_CLASSES['rail']('rail', x, -60));
+    entAt(-66, -60).stopName = '矿区';
+    entAt(-54, -60).stopName = '厂区';
+
+    // 用真实放置 API：把机车放到铁轨上（替换被压住的铁轨并返还）
+    G.player.x = -68 * TILE; G.player.y = -60 * TILE + TILE / 2;
+    invAdd('locomotive', 1); invAdd('cargo-wagon', 4); invAdd('rail', 10);
+    const railsBefore = invCount('rail');
+    assert2(railwayTryPlace('locomotive', -68, -60), '放置 API：机车放上铁轨');
+    const train = entAt(-68, -60);
+    assert2(train && typeof train.attachCar === 'function' && invCount('locomotive') === 0,
+      '机车消耗且成为列车实体');
+    assert2(invCount('rail') === railsBefore + 1, '被压住的铁轨已返还背包');
+    // 挂接车厢：车尾西侧逐节放置
+    assert2(railwayTryPlace('cargo-wagon', -69, -60) && railwayTryPlace('cargo-wagon', -70, -60),
+      '放置 API：两节车厢挂到车尾');
+    assert2(train.cars.length === 3 && train.cars[0].x === -68, '编组完成：机车在头、车厢在后');
+    // 中段挂接被拒绝（只允许首尾）
+    invAdd('cargo-wagon', 1);
+    railwayTryPlace('cargo-wagon', -69, -59);
+    assert2(train.cars.length === 3, '非首尾位置挂接被拒绝');
+
+    // 计划表：矿区(定时) → 厂区(卸空发车)；装货 8 铁板 + 煤
+    train.schedule = [{ name: '矿区', cond: 'time', wait: 1 }, { name: '厂区', cond: 'empty', wait: 0 }];
+    for (let i = 0; i < 8; i++) train.giveItem('iron-plate');
+    train.giveItem('coal'); train.giveItem('coal'); train.giveItem('coal');
+    // 矿区旁机械臂卸货入箱：臂 (-54,-59) 在「厂区」车站正南、箭头朝南
+    // ⇒ 取格=北侧车站上停靠的列车车头，放格=南侧物流箱
+    const arm = new ENT_CLASSES['inserter']('inserter', -54, -59);
+    arm.dir = 1;
+    addEnt(arm);
+    const unloadChest = new ENT_CLASSES['logi-chest-passive']('logi-chest-passive', -54, -58);
+    addEnt(unloadChest);
+    train.state = 'enroute'; train.invalidateRoute();
+
+    let roundTrips = 0, lastStop = null, unloadOK = false;
+    for (let i = 0; i < 9000 && !unloadOK; i++) {
+      G.time += 0.05;
+      train.update(0.05);
+      arm.update(0.05);
+      if (train.state === 'loading') {
+        const sn = stopNameAt(train.cars[0].x, train.cars[0].y);
+        if (sn !== lastStop) { if (sn === '矿区' && lastStop === '厂区') roundTrips++; lastStop = sn; }
+        if (sn === '厂区' && unloadChest.countOf('iron-plate') >= 8 && train.totalCargo() === 0) unloadOK = true;
+      }
+    }
+    assert2(unloadOK, '端到端：列车自动往返并在「厂区」由机械臂卸空 8 件货物后发车');
+    assert2(roundTrips >= 1, '列车完成至少一次 矿区→厂区→矿区 循环');
+
+    // 存档往返
+    const hx = train.cars[0].x, hy = train.cars[0].y;
+    const snapRail = serializeAll();
+    applySave(JSON.parse(JSON.stringify(snapRail)));
+    const rtTrain = entAt(hx, hy);
+    assert2(rtTrain && rtTrain.cars.length === 3 && rtTrain.schedule.length === 2 &&
+            rtTrain.schedule[0].name === '矿区', '读档：列车编组与计划表完整还原');
+    assert2(stopNameAt(-66, -60) === '矿区', '读档：车站名还原');
+    // 读档后仍可继续行驶（先补燃料——此前长途运行可能已把煤烧完）
+    rtTrain.giveItem('coal'); rtTrain.giveItem('coal'); rtTrain.giveItem('coal');
+    rtTrain.state = 'enroute'; rtTrain.invalidateRoute();
+    let moved2 = false;
+    for (let i = 0; i < 2000 && !moved2; i++) {
+      G.time += 0.05; rtTrain.update(0.05);
+      if (rtTrain.state === 'loading' && stopNameAt(rtTrain.cars[0].x, rtTrain.cars[0].y) === '厂区') moved2 = true;
+    }
+    assert2(moved2, '读档后的列车继续按计划表运行');
+
+    // 拆除中间车厢 → 拆分编组
+    const midCar = rtTrain.cars[1];
+    const refundList = railwayDeconstruct(rtTrain, midCar.x, midCar.y);
+    assert2(Array.isArray(refundList) && refundList.length >= 1, '拆除中间车厢返回返还清单');
+  } catch (err) {
+    assert2(false, '铁路集成异常：' + err.message);
+  }
+  console.log(out2.join('|'));
 `, ctx);

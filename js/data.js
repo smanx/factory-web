@@ -82,6 +82,15 @@ const TURBINE_POWER = 3600;       // 汽轮机满功率输出（kW）= 4 台蒸�
 const TURBINE_STEAM_RATE = 1.2;   // 汽轮机满功率耗汽（单位/秒），效率约为蒸汽机的 2 倍/汽
 const TURBINE_STEAM_CAP = 20;     // 汽轮机内部储汽上限（高于蒸汽机，缓冲更足）
 const REACTOR_FUEL_CAP = 5;       // 反应堆内可存的燃料棒上限
+// ===== 铁路运输（对齐《异星工厂》Railway）=====
+// 铁轨连成轨道网 → 车站命名停靠点 → 机车按"车站计划表"自动往返，
+// 货运车厢停靠时经机械臂装卸货物。速度/加速度对齐本体手感缩放到本作格距。
+const TRAIN_SPEED_MAX = 9;        // 列车最高速度（格/秒），远快于传送带的终局物流
+const TRAIN_ACCEL = 2.5;          // 加速度（格/秒²）
+const TRAIN_BRAKE = 6;            // 制动减速度（格/秒²），进站自动刹停
+const WAGON_CAP = 400;            // 每节货运车厢载货上限（件）
+const LOCO_FUEL_CAP = 5;          // 机车燃料仓容量（块煤）
+const TRAIN_FUEL_VALUES = { 'coal': COAL_ENERGY, 'solid-fuel': COAL_ENERGY * 2, 'rocket-fuel': COAL_ENERGY * 5 };
 const POWER_PER_ENGINE = 900;   // 蒸汽机满功率输出
 const POWER_USE = {
   'electric-drill': 90,          // 电采矿机
@@ -126,7 +135,8 @@ const FILTER_CHOICES = ['iron-plate', 'copper-plate', 'steel-plate', 'iron-gear'
   'productivity-module', 'productivity-module-2', 'productivity-module-3',
   'effectivity-module', 'effectivity-module-2', 'effectivity-module-3',
   'production-science', 'utility-science',
-  'uranium-ore', 'uranium-235', 'uranium-238', 'nuclear-fuel-cell', 'used-up-fuel-cell'].concat(FLUIDS);
+  'uranium-ore', 'uranium-235', 'uranium-238', 'nuclear-fuel-cell', 'used-up-fuel-cell',
+  'rail', 'train-stop', 'locomotive', 'cargo-wagon'].concat(FLUIDS);
 function techPacks(tid) { return (TECHS && TECHS[tid] && TECHS[tid].cost) || {}; }
 function techCostTotal(tid) {
   let s = 0;
@@ -252,7 +262,12 @@ const ITEMS = {
   'nuclear-reactor':   { name: '核反应堆', color: '#4a4f58', desc: '燃烧核燃料棒产出巨量热量（5×5）：每台相邻反应堆 +100% 邻居加成；热量经热管送往换热器，热满自动保护性停堆不浪费燃料' },
   'heat-pipe':         { name: '热管', color: '#b06a2e', desc: '传导热量（1×1）：连接反应堆与换热器，温度越高颜色越亮（暗红→橙→白热）' },
   'heat-exchanger':    { name: '换热器', color: '#9a7d3e', desc: '把 ≥500°C 的热量转化为蒸汽（3×2）：两端蓝口水口进水、底边白汽口出汽，接法与锅炉一致；满负荷产汽可带满 2 台汽轮机' },
-  'steam-turbine':     { name: '汽轮机', color: '#57b0a2', desc: '高效蒸汽发电（3×5）：接法与蒸汽机一致（两端通用汽口），功率 = 4 台蒸汽机，耗汽效率更高' }
+  'steam-turbine':     { name: '汽轮机', color: '#57b0a2', desc: '高效蒸汽发电（3×5）：接法与蒸汽机一致（两端通用汽口），功率 = 4 台蒸汽机，耗汽效率更高' },
+  // ===== 铁路运输（对齐《异星工厂》Railway）=====
+  'rail':              { name: '铁轨', color: '#8d8d94', mark: '═', desc: '铺设轨道（1×1）：相邻铁轨/车站自动连接成网，列车沿轨道行驶。拖动可连续铺设' },
+  'train-stop':        { name: '车站', color: '#c9a53e', mark: 'S', desc: '铺在轨道上的停靠点：在面板中命名后加入机车计划表，列车到站自动停车装卸。同名车站视为同一目的地' },
+  'locomotive':        { name: '机车头', color: '#b3402e', mark: 'L', desc: '列车动力核心：烧煤驱动，按计划表在车站间自动往返。须放在铁轨/车站上；车厢放在其旁边即挂接' },
+  'cargo-wagon':       { name: '货运车厢', color: '#7a6a52', mark: 'W', desc: '载货 ' + WAGON_CAP + ' 件的车厢：放在机车/车厢旁边自动挂接；列车停站时机械臂可装卸货物' }
 };
 
 const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone', 'calcite', null, 'uranium-ore'];
@@ -372,7 +387,13 @@ const RECIPES = {
   'nuclear-reactor':       { time: 60, inp: { 'steel-plate': 40, 'stone-brick': 20, 'advanced-circuit': 10, 'copper-cable': 20 }, out: { 'nuclear-reactor': 1 } },
   'heat-pipe':             { time: 1,  inp: { 'steel-plate': 4, 'copper-plate': 4 }, out: { 'heat-pipe': 1 } },
   'heat-exchanger':        { time: 15, inp: { 'steel-plate': 10, 'pipe': 8, 'green-circuit': 5 }, out: { 'heat-exchanger': 1 } },
-  'steam-turbine':         { time: 15, inp: { 'iron-gear': 10, 'pipe': 8, 'steel-plate': 6 }, out: { 'steam-turbine': 1 } }
+  'steam-turbine':         { time: 15, inp: { 'iron-gear': 10, 'pipe': 8, 'steel-plate': 6 }, out: { 'steam-turbine': 1 } },
+  // ===== 铁路运输（对齐《异星工厂》配方结构，数值按本作规模缩放）=====
+  // 铁轨：本体 0.5s = 1铁棍+1石头 → 2 根；以铁板替代铁棍
+  'rail':                  { time: 0.5, inp: { 'iron-plate': 1, 'stone': 1 }, out: { 'rail': 2 } },
+  'train-stop':            { time: 3,   inp: { 'steel-plate': 3, 'iron-plate': 5, 'green-circuit': 2 }, out: { 'train-stop': 1 } },
+  'locomotive':            { time: 4,   inp: { 'steel-plate': 8, 'iron-gear': 8, 'green-circuit': 5 }, out: { 'locomotive': 1 } },
+  'cargo-wagon':           { time: 4,   inp: { 'steel-plate': 8, 'iron-plate': 8, 'iron-gear': 6 }, out: { 'cargo-wagon': 1 } }
 };
 
 // ===== 离心机配方（对齐《异星工厂》Centrifuge：全部为固体进出，机械臂投喂/取走）=====
@@ -487,7 +508,12 @@ const BUILD_DEFS = {
   'nuclear-reactor':    { w: 5, h: 5, solid: true },
   'heat-pipe':          { w: 1, h: 1, solid: true },
   'heat-exchanger':     { w: 3, h: 2, solid: true },
-  'steam-turbine':      { w: 3, h: 5, solid: true }
+  'steam-turbine':      { w: 3, h: 5, solid: true },
+  // ===== 铁路运输（轨道/列车均可通行，不阻挡玩家）=====
+  'rail':               { w: 1, h: 1, solid: false },
+  'train-stop':         { w: 1, h: 1, solid: false },
+  'locomotive':         { w: 1, h: 1, solid: false },
+  'cargo-wagon':        { w: 1, h: 1, solid: false }
 };
 
 // ===== 传送带阶级链（对齐《异星工厂》物流升级）=====
@@ -524,6 +550,7 @@ const TECHS = {
   automation: { name: '自动化', cost: { 'science-pack': 20 }, desc: '组装机速度 ×1.5' },
   logistics2: { name: '物流 II', cost: { 'green-science': 25 }, desc: '传送带速度额外 ×1.2（与物流学叠加）' },
   electric:   { name: '电力工程', cost: { 'green-science': 15 }, desc: '电炉 / 电采矿机速度 ×1.2' },
+  railway:    { name: '铁路运输', cost: { 'science-pack': 30, 'green-science': 50 }, desc: '解锁铁轨、车站、机车头与货运车厢：铺设轨道网，用计划表让列车在车站间自动往返，大宗远程物流的终极方案', unlock: ['rail', 'train-stop', 'locomotive', 'cargo-wagon'] },
   oil:        { name: '石油冶金', cost: { 'green-science': 30 }, desc: '炼油厂 / 抽油机速度 ×1.5' },
   plastic:    { name: '塑料合成', cost: { 'green-science': 20 }, desc: '化工厂生产塑料耗时缩短 ✓（绿色科研的核心支付项）' },
   lubricant:  { name: '润滑油', cost: { 'green-science': 20 }, desc: '解锁润滑油与电引擎单元（重油深加工链）', unlock: ['lubricant', 'electric-engine-unit'] },

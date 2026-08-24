@@ -291,6 +291,11 @@ function applySave(d) {
 function tryPlaceAt(tx, ty) {
   const type = selItem();
   if (!type) return;
+  // 铁路：机车/车厢必须放在轨道上（替换被压住的铁轨/车站，相邻车厢自动挂接）
+  if ((type === 'locomotive' || type === 'cargo-wagon') && railwayTryPlace(type, tx, ty)) {
+    uiDirty = true;
+    return;
+  }
   const infinite = !!(G.dbg && G.dbg.infinite);
   // 无限资源模式：建造不消耗原料，且可直接放置测试用创造/虚空箱与管道（无需背包里拥有）
   if (!infinite && invCount(type) < 1) {
@@ -498,6 +503,14 @@ function tryAutoUnderground(type, tx, ty) {
 function deconstructAt(tx, ty) {
   const e = entAt(tx, ty);
   if (!e || !withinReach(tx, ty)) return;
+  // 列车：只拆被点击的那节车厢（中间车厢拆除会拆分编组）
+  const railRefund = typeof railwayDeconstruct === 'function' ? railwayDeconstruct(e, tx, ty) : null;
+  if (railRefund) {
+    for (const [id, n] of railRefund) invAdd(id, n);
+    if (G.panelEnt && G.panelEnt._dead) closePanel();
+    uiDirty = true;
+    return;
+  }
   for (const [id, n] of e.contents()) invAdd(id, n);
   removeEnt(e);
   if (G.panelEnt === e) closePanel();

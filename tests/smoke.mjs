@@ -21,6 +21,7 @@ const FILES = [
   'js/core/power.js',
   'js/devices/modules.js',
   'js/devices/logistics.js',
+  'js/devices/railway.js',
   'js/devices/assembler.js',
   'js/devices/assembler-mk2.js',
   'js/devices/assembler-3.js',
@@ -94,7 +95,9 @@ vm.runInContext(`
     genWorld, getOreType, getOreAmt, mineableOre, ORES, URANIUM_ORE_TI,
     heatCapOf, heatTempOf, isHeatEnt, conductHeat,
     HEAT_CAP_PER_TILE, HEAT_TEMP_MAX, HEAT_EXCH_TEMP_MIN, REACTOR_HEAT_RATE, REACTOR_BURN_TIME,
-    REACTOR_FUEL_CAP, EXCHANGER_STEAM_RATE, TURBINE_POWER, TURBINE_STEAM_RATE
+    REACTOR_FUEL_CAP, EXCHANGER_STEAM_RATE, TURBINE_POWER, TURBINE_STEAM_RATE,
+    findRailPath, trackLinks, stopNameAt,
+    TRAIN_SPEED_MAX, TRAIN_ACCEL, TRAIN_BRAKE, WAGON_CAP, LOCO_FUEL_CAP, TRAIN_FUEL_VALUES
   };
 `, ctx);
 
@@ -502,6 +505,141 @@ section('核能链：序列化往返');
   const ts = JSON.parse(JSON.stringify(tb.serialize()));
   const tr = T.ENT_CLASSES['steam-turbine'].restore(ts);
   ok(tr.steamBuf === 12.5, '汽轮机储汽随存档还原');
+}
+
+// ================= 铁路：数据与注册 =================
+section('铁路：数据与注册');
+{
+  for (const t of ['rail', 'train-stop', 'locomotive', 'cargo-wagon']) {
+    ok(!!T.ITEMS[t] && !!T.RECIPES[t] && !!T.BUILD_DEFS[t] && !!T.ENT_CLASSES[t], '铁路物品/配方/建筑/实体注册齐全：' + t);
+  }
+  ok(T.BUILD_DEFS['rail'].solid === false && T.BUILD_DEFS['locomotive'].solid === false, '轨道与列车不阻挡玩家');
+  ok(Object.keys(T.TRAIN_FUEL_VALUES).indexOf('coal') >= 0, '机车燃料表包含煤');
+  ok(T.recipeUnlockTech('locomotive') === 'railway', '铁路设备由「铁路运输」科技解锁');
+}
+
+// ================= 铁路：轨道连通与寻路 =================
+section('铁路：轨道连通与寻路');
+{
+  // 铺一条 x=300..316 的横线，两端放同名/异名车站
+  const mkRail = (x, y) => { const r = new T.ENT_CLASSES['rail']('rail', x, y); T.addEnt(r); return r; };
+  const mkStop = (x, y, name) => {
+    const s = new T.ENT_CLASSES['train-stop']('train-stop', x, y);
+    s.stopName = name; T.addEnt(s); return s;
+  };
+  for (let x = 330; x <= 346; x++) if (x !== 334 && x !== 342) mkRail(x, 400);
+  const stopA = mkStop(334, 400, '甲');
+  const stopB = mkStop(342, 400, '乙');
+  ok(T.trackLinks(330, 400).length === 1 && T.trackLinks(338, 400).length === 2, '铁轨自动连接：端点 1 邻、中段 2 邻');
+  ok(T.stopNameAt(334, 400) === '甲', '车站名可读取');
+  const p = T.findRailPath(336, 400, '乙');
+  ok(Array.isArray(p) && p.length === 6 && p[5][0] === 342 && p[5][1] === 400,
+    'BFS 寻路：336→乙站 6 步到达（途经车站格）');
+  ok(T.findRailPath(336, 400, '不存在的站') === null, '找不到目标站返回 null');
+  T.G.techDone.railway = true;
+  ok(T.recipeUnlocked('rail') && T.recipeUnlocked('cargo-wagon'), '研究「铁路运输」后解锁全套铁路配方');
+  // 清场
+  for (let x = 330; x <= 346; x++) { const e = T.entAt(x, 400); if (e) T.removeEnt(e); }
+}
+
+// ================= 铁路：列车端到端 =================
+section('铁路：列车端到端');
+{
+  // 环形线：y=430 横线 x=360..380 + 两端折返竖线，两座车站
+  const placed = [];
+  const put = e => { T.addEnt(e); placed.push(e); return e; };
+  for (let x = 360; x <= 380; x++)
+    put(x === 365 ? new T.ENT_CLASSES['train-stop']('train-stop', x, 430) : new T.ENT_CLASSES['rail']('rail', x, 430));
+  put(new T.ENT_CLASSES['train-stop']('train-stop', 375, 430));
+  T.entAt(365, 430).stopName = '甲';
+  T.entAt(375, 430).stopName = '乙';
+  // 列车：机车+2 节车厢，初始停在 362
+  const train = put(new T.ENT_CLASSES['locomotive']('locomotive', 362, 430));
+  train.attachCar('cargo-wagon', 361, 430);
+  train.attachCar('cargo-wagon', 360, 430);
+  ok(train.cars.length === 3 && train.hasLoco() && train.wagonCount() === 2, '编组：1 机车 + 2 车厢挂接成功');
+  ok(train.cargoSpace() === T.WAGON_CAP * 2, '载货上限 = 车厢数 × WAGON_CAP');
+  // 停稳时可装货；给 5 个铁板
+  for (let i = 0; i < 5; i++) ok(train.giveItem('iron-plate'), '停稳时装货');
+  train.giveItem('coal');   // 燃料进机车仓
+  ok(train.fuelN === 1 && train.totalCargo() === 5, '煤进机车燃料仓、货物进车厢');
+  // 行驶中拒收拒出
+  train.speed = 5;
+  ok(!train.giveItem('iron-plate') && !train.takeItem() && train.countOf('iron-plate') === 0,
+    '行驶中拒收货物也拒出货物');
+  train.speed = 0;
+  // 计划表：甲(定时1s) → 乙(卸空发车)
+  train.schedule = [
+    { name: '甲', cond: 'time', wait: 1 },
+    { name: '乙', cond: 'empty', wait: 0 }
+  ];
+  train.si = 0;
+  train.state = 'enroute';
+  train.invalidateRoute();
+  let sawA = false, sawB = false, backA = false, unloadedByArm = false;
+  // 机械臂布局：臂放在乙站正南一格 (375,431)、朝南（放格=南侧物流箱），取格=北侧车站上的列车
+  const ins2 = put(new T.ENT_CLASSES['inserter']('inserter', 375, 431));
+  ins2.dir = 1;
+  const chest2 = put(new T.ENT_CLASSES['logi-chest-passive']('logi-chest-passive', 375, 432));
+
+  let steps = 0;
+  while (steps++ < 6000) {
+    T.G.time += 0.05;
+    train.update(0.05);
+    ins2.update(0.05);
+    const hx = train.cars[0].x, hy = train.cars[0].y;
+    if (train.state === 'loading' && T.stopNameAt(hx, hy) === '甲' && !sawA) sawA = true;
+    else if (train.state === 'loading' && T.stopNameAt(hx, hy) === '甲' && sawA && sawB) { backA = true; break; }
+    if (train.state === 'loading' && T.stopNameAt(hx, hy) === '乙') {
+      sawB = true;
+      if (chest2.countOf('iron-plate') >= 5) unloadedByArm = true;
+      if (train.totalCargo() === 0) { /* 卸空即发车 */ }
+    }
+  }
+  ok(sawA, '列车按计划表停靠第一站「甲」（定时条件）');
+  ok(sawB, '列车随后停靠第二站「乙」');
+  ok(unloadedByArm || chest2.countOf('iron-plate') > 0, '机械臂从停站列车卸货入箱');
+  ok(train.totalCargo() === 0, '「卸空发车」条件生效（货物被卸完后离站）');
+  ok(backA, '列车循环返回「甲」，开始下一轮往返');
+  ok(train.fuelN < 1 || train.burnLeft < T.TRAIN_FUEL_VALUES.coal, '行驶消耗了燃料');
+
+  // 序列化往返（含编组/计划表/货物/车站名）
+  const snap = JSON.parse(JSON.stringify(train.serialize()));
+  const rt = T.ENT_CLASSES['locomotive'].restore(snap);
+  ok(rt.cars.length === 3 && rt.schedule.length === 2 && rt.totalCargo() === 0 &&
+     rt.schedule[1].name === '乙' && rt.schedule[1].cond === 'empty', '列车存档往返：编组/计划表还原');
+  // 车头可能正停在甲站上（网格键归列车），从实体表里找车站本体
+  const stopEnt = T.G.ents.find(e => !e._dead && e instanceof T.ENT_CLASSES['train-stop'] && e.stopName === '甲');
+  const ssnap = JSON.parse(JSON.stringify(stopEnt.serialize()));
+  const srt = T.ENT_CLASSES['train-stop'].restore(ssnap);
+  ok(srt.stopName === '甲', '车站名随存档还原');
+  // 清场
+  for (const e of placed) if (!e._dead) T.removeEnt(e);
+}
+
+// ================= 铁路：拆车厢拆分编组 =================
+section('铁路：拆车厢拆分编组');
+{
+  const put = e => { T.addEnt(e); return e; };
+  for (let x = 460; x <= 464; x++) put(new T.ENT_CLASSES['rail']('rail', x, 470));
+  const t1 = put(new T.ENT_CLASSES['locomotive']('locomotive', 460, 470));
+  t1.attachCar('cargo-wagon', 461, 470);
+  t1.attachCar('cargo-wagon', 462, 470);
+  t1.attachCar('cargo-wagon', 463, 470);
+  t1.giveItem('iron-plate'); t1.giveItem('copper-plate');
+  const refund = t1.removeCarAt(462, 470);   // 中间车厢
+  ok(refund.length === 1 && refund[0][0] === 'cargo-wagon', '拆中间车厢返还该车');
+  const rear = T.entAt(463, 470);
+  const front = T.entAt(460, 470);
+  ok(rear && rear.cars && rear.cars.length === 1 && rear !== t1, '后段拆分为新列车');
+  ok(front.cars.length === 2 && front.cars[0].type === 'locomotive', '前段保留机车与首节车厢');
+  // 被拆格恢复为车底原有的铁轨（轨道不因列车通行/拆除而消失）
+  const mid = T.entAt(462, 470);
+  ok(mid && mid.type === 'rail', '被拆格恢复为铁轨');
+  // 拆分出的列车可继续拆解（最后一节拆完整列消失）
+  ok(rear.removeCarAt(463, 470).length === 1 && !T.entAt(463, 470), '拆分出的列车可继续拆解');
+  // 清场
+  for (let x = 460; x <= 464; x++) { const e = T.entAt(x, 470); if (e) T.removeEnt(e); }
 }
 
 console.log('\n========================');

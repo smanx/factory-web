@@ -166,6 +166,10 @@ class Inserter extends Entity {
         return item === 'nuclear-fuel-cell' && t.fuelCells < REACTOR_FUEL_CAP;
       case 'heat-exchanger':
         return item === 'water' && t.water < WATER_CAP - 0.01;
+      case 'locomotive':
+      case 'cargo-wagon':
+        // 列车：停稳时接受燃料（进机车燃料仓）与货物（进货运车厢）
+        return typeof t.acceptsInsert === 'function' && t.acceptsInsert(item);
       default:
         return false;
     }
