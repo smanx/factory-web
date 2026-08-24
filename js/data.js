@@ -179,11 +179,17 @@ const ITEMS = {
   // ===== 军事炮塔扩充 =====
   'laser-turret':    { name: '激光炮塔', color: '#d04a5a', desc: '吃电力自动发射激光，无需弹药，射程更远（2×2）' },
   'flamethrower-turret': { name: '火焰炮塔', color: '#d07a2a', desc: '喷射火焰造成持续灼烧伤害，消耗石油气，范围杀伤（2×2）' },
-  // ===== 模块系统 =====
+  // ===== 模块系统（速度/产能/效率各 1-3 级，对齐《异星工厂》Module tiers） =====
   'speed-module':    { name: '速度模块', color: '#4aa0d0', desc: '装入组装机/电炉/炼油厂等，提高生产速度（+40%），增加耗电' },
+  'speed-module-2':  { name: '速度模块 II', color: '#3a80b0', desc: '二级速度模块：提高生产速度（+80%），增加耗电。需模块工程 II' },
+  'speed-module-3':  { name: '速度模块 III', color: '#2a60a0', desc: '三级速度模块：大幅提高生产速度（+120%），增加耗电。需模块工程 III' },
   'productivity-module': { name: '产能模块', color: '#57b95c', desc: '装入组装机/电炉等，生产时累积额外产出（每 30 个 +1 免费产出），降低速度并增加耗电' },
+  'productivity-module-2': { name: '产能模块 II', color: '#3a9a4a', desc: '二级产能模块：累积额外产出效率更高（每 20 个 +1 免费产出），降低速度并增加耗电。需模块工程 II' },
+  'productivity-module-3': { name: '产能模块 III', color: '#2a8a3a', desc: '三级产能模块：累积额外产出效率最高（每 15 个 +1 免费产出），降低速度并增加耗电。需模块工程 III' },
   'beacon':        { name: '信号塔', color: '#5a7a9a', desc: '模块中继塔（3×3，吃电力）：内装 2 个模块，向 9×9 范围内的生产建筑广播模块加成，效果约为信号塔内模块的 ' + '50%' + '。一座信号塔可服务多台生产设备' },
   'efficiency-module': { name: '效率模块', color: '#8a7ae8', desc: '装入组装机/电炉等，大幅降低生产耗电（每级 -30% 用电，小幅度降速），节能环保' },
+  'efficiency-module-2': { name: '效率模块 II', color: '#6a5ac8', desc: '二级效率模块：更强降低生产耗电（-45% 用电），小幅度降速。需模块工程 II' },
+  'efficiency-module-3': { name: '效率模块 III', color: '#4a3aa8', desc: '三级效率模块：极强降低生产耗电（-60% 用电），小幅度降速。需模块工程 III' },
   // ===== 火箭发射（终局）=====
   'advanced-circuit':{ name: '高级电路板', color: '#d0608a', desc: '红板，中后期高级电子元件，用于产能模块与电引擎' },
   'engine-unit':     { name: '引擎单元', color: '#8a6a4a', desc: '基础机械动力单元' },
@@ -351,8 +357,14 @@ const RECIPES = {
   'flamethrower-turret': { time: 3, inp: { 'steel-plate': 8, 'iron-gear': 4, 'pipe': 4 },         out: { 'flamethrower-turret': 1 } },
   // ===== 模块系统 =====
   'speed-module':      { time: 2,   inp: { 'green-circuit': 4, 'advanced-circuit': 2 },            out: { 'speed-module': 1 } },
+  'speed-module-2':    { time: 4,   inp: { 'speed-module': 2, 'advanced-circuit': 2, 'processing-unit': 2, 'copper-cable': 4 }, out: { 'speed-module-2': 1 } },
+  'speed-module-3':    { time: 8,   inp: { 'speed-module-2': 2, 'processing-unit': 4, 'advanced-circuit': 4 }, out: { 'speed-module-3': 1 } },
   'productivity-module': { time: 2, inp: { 'advanced-circuit': 2, 'green-circuit': 2, 'iron-gear': 1 }, out: { 'productivity-module': 1 } },
+  'productivity-module-2': { time: 4, inp: { 'productivity-module': 2, 'advanced-circuit': 2, 'processing-unit': 2, 'iron-gear': 2 }, out: { 'productivity-module-2': 1 } },
+  'productivity-module-3': { time: 8, inp: { 'productivity-module-2': 2, 'processing-unit': 4, 'advanced-circuit': 4 }, out: { 'productivity-module-3': 1 } },
   'efficiency-module': { time: 2,   inp: { 'green-circuit': 3, 'advanced-circuit': 1, 'plastic-bar': 1 }, out: { 'efficiency-module': 1 } },
+  'efficiency-module-2': { time: 4, inp: { 'efficiency-module': 2, 'advanced-circuit': 2, 'processing-unit': 2, 'plastic-bar': 2 }, out: { 'efficiency-module-2': 1 } },
+  'efficiency-module-3': { time: 8, inp: { 'efficiency-module-2': 2, 'processing-unit': 4, 'advanced-circuit': 4 }, out: { 'efficiency-module-3': 1 } },
   'beacon':        { time: 4,   inp: { 'steel-plate': 10, 'advanced-circuit': 5, 'green-circuit': 10, 'copper-plate': 5 }, out: { 'beacon': 1 } },
   // ===== 火箭链路中间件 =====
   'advanced-circuit':  { time: 6,   inp: { 'green-circuit': 2, 'plastic-bar': 2, 'copper-cable': 4 }, out: { 'advanced-circuit': 1 } },
@@ -547,6 +559,12 @@ const TECH_REQ = {
   'speed-module': 'modules',
   'productivity-module': 'modules',
   'efficiency-module': 'modules',
+  'speed-module-2': 'modules2',
+  'speed-module-3': 'modules3',
+  'productivity-module-2': 'modules2',
+  'productivity-module-3': 'modules3',
+  'efficiency-module-2': 'modules2',
+  'efficiency-module-3': 'modules3',
   'advanced-circuit': 'electronics',
   'processing-unit': 'electronics',
   'electric-engine': 'electronics',
@@ -586,6 +604,47 @@ const WEAPON_TECH_REQ = {
 // ===== 配方按科技解锁（对齐《异星工厂》科技树门控）=====
 // 统一查询物品所需科技：优先 TECH_REQ（建造门控），再查武器科技门控。
 function itemTechReq(id) { return TECH_REQ[id] || WEAPON_TECH_REQ[id] || null; }
+
+// ===== 模块变体表与当量统计（对齐《异星工厂》模块 1-3 级） =====
+// 每个模块 id -> 等级(1/2/3) 与效果类型。当量用于折算速度/产能/效率加成。
+const MODULE_VARIANTS = {
+  'speed-module':         { tier: 1, type: 'speed', speed: 1,  power: 0.5 },
+  'speed-module-2':       { tier: 2, type: 'speed', speed: 2,  power: 0.8 },
+  'speed-module-3':       { tier: 3, type: 'speed', speed: 3,  power: 1.2 },
+  'productivity-module':  { tier: 1, type: 'prod',  prod: 1,   power: 0.5, prodThreshold: 30 },
+  'productivity-module-2':{ tier: 2, type: 'prod',  prod: 1.5, power: 0.8, prodThreshold: 20 },
+  'productivity-module-3':{ tier: 3, type: 'prod',  prod: 2,   power: 1.2, prodThreshold: 15 },
+  'efficiency-module':    { tier: 1, type: 'eff',   eff: 1,   power: 0 },
+  'efficiency-module-2':  { tier: 2, type: 'eff',   eff: 1.5, power: 0 },
+  'efficiency-module-3':  { tier: 3, type: 'eff',   eff: 2,   power: 0 }
+};
+function isModule(id) { return !!MODULE_VARIANTS[id]; }
+function moduleType(id) { const v = MODULE_VARIANTS[id]; return v ? v.type : null; }
+// 统计某设备 modules 表中速度/产能/效率模块的加权当量。
+// modules 形如 { 'speed-module': 2, 'productivity-module-2': 1, ... }
+function moduleCounts(modules) {
+  let speed = 0, prod = 0, eff = 0;
+  if (!modules) return { speed, prod, eff };
+  for (const id in modules) {
+    const v = MODULE_VARIANTS[id];
+    if (!v) continue;
+    const n = modules[id] || 0;
+    if (v.type === 'speed') speed += v.speed * n;
+    else if (v.type === 'prod') prod += v.prod * n;
+    else if (v.type === 'eff') eff += v.eff * n;
+  }
+  return { speed, prod, eff };
+}
+// 产能模块累计产出阈值：根据模块等级取最低阈值（更高等级阈值更小 → 产出更快）
+function moduleProdThreshold(modules) {
+  let minT = 30;
+  if (!modules) return minT;
+  for (const id in modules) {
+    const v = MODULE_VARIANTS[id];
+    if (v && v.type === 'prod' && (modules[id] || 0) > 0 && v.prodThreshold < minT) minT = v.prodThreshold;
+  }
+  return minT;
+}
 // 某物品是否已由科技解锁（无科技需求 = 开局可用；否则需对应科技已研究）
 function itemUnlocked(id) {
   const tr = itemTechReq(id);
@@ -661,6 +720,8 @@ const TECHS = {
   electronics: { name: '电子学', cost: { 'blue-science': 40 }, desc: '解锁高级电路板、处理器（火箭链路的关键）', req: ['plastic', 'oil'] },
   'rocket-science': { name: '火箭技术', cost: { 'blue-science': 100, 'military-science': 50 }, desc: '解锁火箭发射井、火箭部件与卫星，发射火箭赢得游戏', req: ['electronics', 'express'] },
   modules:    { name: '模块工程', cost: { 'blue-science': 40 }, desc: '解锁速度模块与产能模块（增强组装机/电炉）', req: ['electronics'] },
+  'modules2': { name: '模块工程 II', cost: { 'production-science-pack': 50, 'blue-science': 30 }, desc: '解锁二级速度/产能/效率模块（效果更强）', req: ['modules', 'production'] },
+  'modules3': { name: '模块工程 III', cost: { 'production-science-pack': 80, 'utility-science-pack': 60 }, desc: '解锁三级速度/产能/效率模块（效果最强）', req: ['modules2', 'utility'] },
   'logistics-network': { name: '物流网络', cost: { 'blue-science': 50 }, desc: '解锁机器人港、四类物流箱与物流机器人，构建自动化物流网络', req: ['logistics2', 'electronics'] },
   nuclear:    { name: '核能技术', cost: { 'blue-science': 60, 'military-science': 40 }, desc: '解锁离心机（铀矿处理）、核反应堆与汽轮机，构建核能发电体系', req: ['electronics', 'advanced-combat'] },
   'circuit-network': { name: '电路网络', cost: { 'blue-science': 40 }, desc: '解锁电线杆与组合器（常量/运算/判断），构建电路网络，实现信号逻辑控制', req: ['electronics'] },
@@ -672,6 +733,7 @@ const TECHS = {
   'worker-robot-speed': { name: '机器人速度', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, desc: '物流/施工机器人速度 ×1.5', req: ['production'] },
   utility: { name: '实用科技', cost: { 'utility-science-pack': 60 }, desc: '解锁飞行机器人框架、施工机器人，完善机器人网络', req: ['logistics-network', 'worker-robot-speed'] },
   'research-speed': { name: '科研速度', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, desc: '科研速度 +50%', req: ['utility'] },
+  'inserter-capacity': { name: '机械臂容量', cost: { 'production-science-pack': 50, 'utility-science-pack': 30 }, infinite: true, desc: '无限科技：每次研究让堆叠机械臂单次抓取数量 +1（对齐《异星工厂》Inserter capacity bonus）', req: ['production', 'utility'] },
   infinite:   { name: '无限科技', cost: {}, infinite: true, desc: '无限研究：消耗任意科学包，永不完成', req: [] }
 };
 

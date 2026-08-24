@@ -523,7 +523,7 @@ function drawEnemies(ctx) {
         const a = i * Math.PI / 2 + G.time * 0.5;
         ctx.beginPath(); ctx.arc(en.x + Math.cos(a) * size * 0.7, en.y + Math.sin(a) * size * 0.7, 2, 0, 7); ctx.fill();
       }
-    } else if (en.type === 'worm') {
+    } else if (en.type === 'worm' || en.type === 'big-worm') {
       ctx.beginPath();
       ctx.ellipse(en.x, en.y + bob, size, size * 0.5, 0, 0, 7);
       ctx.fill(); ctx.stroke();
@@ -551,13 +551,20 @@ function drawEnemies(ctx) {
     ctx.fillStyle = Math.max(0, Math.min(1, en.hp / maxhp)) > 0.5 ? '#57e389' : '#ff5b5b';
     ctx.fillRect(en.x - w / 2, en.y - 16, w * Math.max(0, en.hp / maxhp), 3);
   }
-  // 远程投射物
+  // 远程投射物（吐痰/火球）
   if (G.enemyProjectiles) {
     for (const pr of G.enemyProjectiles) {
-      ctx.fillStyle = 'rgba(150,180,60,.8)';
-      ctx.beginPath(); ctx.arc(pr.x, pr.y, 3, 0, 7); ctx.fill();
-      ctx.fillStyle = 'rgba(200,220,120,.6)';
-      ctx.beginPath(); ctx.arc(pr.x, pr.y, 2, 0, 7); ctx.fill();
+      if (pr.fire) {
+        ctx.fillStyle = 'rgba(255,140,40,.85)';
+        ctx.beginPath(); ctx.arc(pr.x, pr.y, 4, 0, 7); ctx.fill();
+        ctx.fillStyle = 'rgba(255,200,120,.7)';
+        ctx.beginPath(); ctx.arc(pr.x, pr.y, 2.2, 0, 7); ctx.fill();
+      } else {
+        ctx.fillStyle = 'rgba(150,180,60,.8)';
+        ctx.beginPath(); ctx.arc(pr.x, pr.y, 3, 0, 7); ctx.fill();
+        ctx.fillStyle = 'rgba(200,220,120,.6)';
+        ctx.beginPath(); ctx.arc(pr.x, pr.y, 2, 0, 7); ctx.fill();
+      }
     }
   }
 }

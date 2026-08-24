@@ -99,14 +99,22 @@ function assembler3PanelHtml(e) {
     }
   if (Object.keys(e.inp).length) h += '<button data-action="takein">取回全部输入</button>';
   // 模块槽位
-  h += row('模块', ((e.modules['speed-module'] || 0) + (e.modules['productivity-module'] || 0) + (e.modules['efficiency-module'] || 0)) ?
-    '速度×' + (e.modules['speed-module'] || 0) + ' 产能×' + (e.modules['productivity-module'] || 0) + ' 效率×' + (e.modules['efficiency-module'] || 0) : '<span class="dim">无</span>', 'mod');
-  for (const mid of ['speed-module', 'productivity-module', 'efficiency-module']) {
-    const n = Math.min(invCount(mid), 4 - (e.modules[mid] || 0));
-    if (n > 0) h += '<button data-action="feed" data-id="' + mid + '">装入' + ITEMS[mid].name + ' ×' + n + '</button>';
+  {
+    const mc = moduleCounts(e.modules);
+    const hasMod = (Object.keys(e.modules).length > 0);
+    h += row('模块', hasMod ?
+      '速度+' + mc.speed.toFixed(1) + ' 产能+' + mc.prod.toFixed(1) + ' 效率-' + mc.eff.toFixed(1) : '<span class="dim">无</span>', 'mod');
+    for (const mid of Object.keys(e.modules)) {
+      if ((e.modules[mid] || 0) > 0) h += '<span class="dim">' + ITEMS[mid].name + ' ×' + e.modules[mid] + '</span> ';
+    }
+    const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3'];
+    for (const mid of order) {
+      if (!itemUnlocked(mid)) continue;
+      const n = Math.min(invCount(mid), 4 - (e.modules[mid] || 0));
+      if (n > 0) h += '<button data-action="feed" data-id="' + mid + '">装入' + ITEMS[mid].name + ' ×' + n + '</button>';
+    }
+    if (hasMod) h += '<button data-action="takein" data-modules="1">取出全部模块</button>';
   }
-  if ((e.modules['speed-module'] || 0) + (e.modules['productivity-module'] || 0) + (e.modules['efficiency-module'] || 0) > 0)
-    h += '<button data-action="takein" data-modules="1">取出全部模块</button>';
   h += row('输出', Object.keys(e.outp).length ? countStr(e.outp) : '<span class="dim">空</span>', 'output');
   h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
   h += barHtml(0);
@@ -135,8 +143,11 @@ function assembler3PanelLive(e, api) {
   api.set('power', powerStatusLiveHtml(e));
   api.set('input', Object.keys(e.inp).length ? countStr(e.inp) : dimSpan('空'));
   api.set('output', Object.keys(e.outp).length ? countStr(e.outp) : dimSpan('空'));
-  api.set('mod', ((e.modules['speed-module'] || 0) + (e.modules['productivity-module'] || 0) + (e.modules['efficiency-module'] || 0)) ?
-    '速度×' + (e.modules['speed-module'] || 0) + ' 产能×' + (e.modules['productivity-module'] || 0) + ' 效率×' + (e.modules['efficiency-module'] || 0) : dimSpan('无'));
+  {
+    const mc = moduleCounts(e.modules);
+    api.set('mod', (Object.keys(e.modules).length > 0) ?
+      '速度+' + mc.speed.toFixed(1) + ' 产能+' + mc.prod.toFixed(1) + ' 效率-' + mc.eff.toFixed(1) : dimSpan('无'));
+  }
   const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
   api.toggle('#btn-takeout', n > 0, '取回全部输出 (' + n + ')');
   api.prog(e.recipe && e.crafting ? e.prog / RECIPES[e.recipe].time * 100 : 0);

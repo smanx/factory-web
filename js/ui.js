@@ -957,6 +957,10 @@ function updateHUD(dt, fps) {
   if (G.settings.combat) {
     const hp = Math.max(0, Math.round(G.playerHP));
     hud += '   <span style="color:' + (hp > 50 ? '#57e389' : hp > 25 ? '#ffd23c' : '#ff5b5b') + '">♥ ' + hp + '/' + G.playerHPmax + '</span>';
+    // 敌人进化度显示（对齐《异星工厂》Evolution factor）
+    const evo = Math.round((G.evolution || 0) * 100);
+    const evoColor = evo < 30 ? '#57e389' : evo < 60 ? '#ffd23c' : '#ff5b5b';
+    hud += '   <span style="color:' + evoColor + '" title="敌人进化度：随时间与击杀增长，越高敌人越强">⬆ ' + evo + '%</span>';
   }
   if (G.weapon && isWeapon(G.weapon)) {
     hud += '   🔫 ' + WEAPONS[G.weapon].name;

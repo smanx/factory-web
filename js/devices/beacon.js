@@ -22,7 +22,7 @@ class Beacon extends Entity {
     return n > 0 ? BEACON_POWER : 0;   // 有模块才耗电
   }
   giveItem(item) {
-    if (item !== 'speed-module' && item !== 'productivity-module' && item !== 'efficiency-module') return false;
+    if (!isModule(item)) return false;
     if (Object.values(this.modules).reduce((a, b) => a + b, 0) >= BEACON_MOD_SLOTS) return false;
     this.modules[item] = (this.modules[item] || 0) + 1;
     return true;
@@ -79,9 +79,10 @@ function beaconBonus(x, y) {
     // 判断 (x,y) 是否在信号塔影响范围内（曼哈顿距离，对齐异星工厂菱形范围近似为方形）
     const cx = e.x + Math.floor(e.w / 2), cy = e.y + Math.floor(e.h / 2);
     if (Math.abs(cx - x) <= BEACON_RANGE && Math.abs(cy - y) <= BEACON_RANGE) {
-      speed += (e.modules['speed-module'] || 0) * BEACON_MODULE_EFF;
-      prod += (e.modules['productivity-module'] || 0) * BEACON_MODULE_EFF;
-      eff += (e.modules['efficiency-module'] || 0) * BEACON_MODULE_EFF;
+      const bc = moduleCounts(e.modules);
+      speed += bc.speed * BEACON_MODULE_EFF;
+      prod += bc.prod * BEACON_MODULE_EFF;
+      eff += bc.eff * BEACON_MODULE_EFF;
     }
   });
   return { speed, prod, eff };
@@ -118,11 +119,17 @@ function drawBeacon(ctx, e, gx, gy, dir, alpha) {
 // 面板
 function beaconPanelHtml(e) {
   let h = row('信号塔', '向 ' + (BEACON_RANGE * 2 + e.w) + '×' + (BEACON_RANGE * 2 + e.h) + ' 范围内的生产建筑广播模块加成（效果 ' + (BEACON_MODULE_EFF * 100) + '%）');
-  h += row('模块', Object.values(e.modules).reduce((a, b) => a + b, 0) ?
-    '速度×' + (e.modules['speed-module'] || 0) + ' 产能×' + (e.modules['productivity-module'] || 0) + ' 效率×' + (e.modules['efficiency-module'] || 0) : '<span class="dim">无</span>', 'mod');
-  for (const mid of ['speed-module', 'productivity-module', 'efficiency-module']) {
-    const n = Math.min(invCount(mid), BEACON_MOD_SLOTS - Object.values(e.modules).reduce((a, b) => a + b, 0));
-    if (n > 0) h += '<button data-action="feed" data-id="' + mid + '">放入' + ITEMS[mid].name + ' ×' + n + '</button>';
+  {
+    const mc = moduleCounts(e.modules);
+    const hasMod = Object.values(e.modules).reduce((a, b) => a + b, 0) > 0;
+    h += row('模块', hasMod ?
+      '速度+' + mc.speed.toFixed(1) + ' 产能+' + mc.prod.toFixed(1) + ' 效率-' + mc.eff.toFixed(1) : '<span class="dim">无</span>', 'mod');
+    const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3'];
+    for (const mid of order) {
+      if (!itemUnlocked(mid)) continue;
+      const n = Math.min(invCount(mid), BEACON_MOD_SLOTS - Object.values(e.modules).reduce((a, b) => a + b, 0));
+      if (n > 0) h += '<button data-action="feed" data-id="' + mid + '">放入' + ITEMS[mid].name + ' ×' + n + '</button>';
+    }
   }
   if (Object.values(e.modules).reduce((a, b) => a + b, 0) > 0) h += '<button data-action="takein" data-modules="1">取出全部模块</button>';
   h += '<div class="status"></div>';
@@ -131,7 +138,10 @@ function beaconPanelHtml(e) {
 }
 function beaconPanelLive(e, api) {
   const n = Object.values(e.modules).reduce((a, b) => a + b, 0);
-  api.set('mod', n ? '速度×' + (e.modules['speed-module'] || 0) + ' 产能×' + (e.modules['productivity-module'] || 0) + ' 效率×' + (e.modules['efficiency-module'] || 0) : dimSpan('无'));
+  {
+    const mc = moduleCounts(e.modules);
+    api.set('mod', n ? '速度+' + mc.speed.toFixed(1) + ' 产能+' + mc.prod.toFixed(1) + ' 效率-' + mc.eff.toFixed(1) : dimSpan('无'));
+  }
   api.status(n > 0 ? '广播中：向周围生产建筑提供模块加成' : '无模块，空闲待机', n > 0 ? 'ok' : 'warn');
 }
 function beaconTip(e) {

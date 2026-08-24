@@ -116,6 +116,7 @@ function newGame() {
   G.powerT = 0;
   G.enemies = []; G.bullets = []; G.spawnT = 0;
   G.enemyProjectiles = [];
+  G.evolution = 0;   // 敌人进化度（战斗开启时随时间/击杀增长）
   G.combatRobots = [];
   G.driving = null;    // 新游戏清空驾驶状态
   G.craftQueue = [];   // 新游戏清空手搓队列
@@ -169,6 +170,7 @@ function serializeAll() {
     ents: G.ents.filter(e => !e._dead).map(e => e.serialize()),
     inv: Array.from(G.inv),
     player: { x: G.player.x, y: G.player.y, hp: G.playerHP, weapon: G.weapon, armor: G.armor },
+    evolution: G.evolution || 0,
     craftQueue: (G.craftQueue || []).map(q => ({
       rid: q.rid, time: q.time, total: q.total, done: q.done, outId: q.outId
     })),
@@ -268,6 +270,8 @@ function applySave(d) {
   if (typeof d.player.hp === 'number') G.playerHP = G.playerHPmax = Math.max(1, d.player.hp);
   G.weapon = d.player.weapon || null;
   G.armor = (isArmor && isArmor(d.player.armor)) ? d.player.armor : null;
+  // 恢复敌人进化度（旧档无该字段则从 0 开始）
+  G.evolution = (typeof d.evolution === 'number') ? Math.min(1, Math.max(0, d.evolution)) : 0;
   G.gameWon = !!d.gameWon;
   G.combatRobots = [];
   G.driving = null;

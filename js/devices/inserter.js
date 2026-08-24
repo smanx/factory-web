@@ -21,6 +21,13 @@ class Inserter extends Entity {
     this.blocked = false;
     this.armAng = undefined;
   }
+  // 单次抓取容量（对齐《异星工厂》：堆叠臂随「机械臂容量」无限科技提升抓取数量）
+  capacity() {
+    let cap = this.stackMax || 1;
+    // 机械臂容量（无限科技）：每研究一次，堆叠臂单次抓取 +1（普通臂一次仍 1 个）
+    if (this.stackMax > 1 && G.techProg['inserter-capacity']) cap += G.techProg['inserter-capacity'];
+    return cap;
+  }
   // ===== 几何：严格单向，取格 = 箭头反方向，放格 = 箭头方向 =====
   pickOffset() {
     const d = (this.dir + 2) % 4;
@@ -197,7 +204,7 @@ class Inserter extends Entity {
       this.blocked = false;
       if (!it) return;                       // 源为空：停在取物位等待
       if (!this.canDropAt(this.entAtDrop(), it)) return; // 目标暂不收：等待
-      const want = Math.max(1, Math.min(this.stackMax, this.countSourceOf(s, it)));
+      const want = Math.max(1, Math.min(this.capacity(), this.countSourceOf(s, it)));
       const got = this.takeNFrom(s, it, want);
       if (!got.length) return;
       this.holding = it;

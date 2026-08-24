@@ -6,20 +6,61 @@
 
 // ===== 敌人类型表 =====
 // kind: 'melee'（近战冲撞）| 'ranged'（远程吐痰）
+// evolution: 该类型刷出所需的最低进化度（0~1），越高越强（对齐《异星工厂》敌人随进化度解锁更强变种）
 const ENEMY_TYPES = {
-  'small-biter':  { name: '小虫',   hp: 30,  speed: 22,  size: 6,  dmg: 4,  color: '#d05040', kind: 'melee',   xp: 1 },
-  'medium-biter': { name: '大虫',   hp: 80,  speed: 18,  size: 9,  dmg: 9,  color: '#b03a30', kind: 'melee',   xp: 2 },
-  'spitter':      { name: '吐痰虫', hp: 50,  speed: 12,  size: 7,  dmg: 7,  color: '#8a6a2a', kind: 'ranged', xp: 2 },
-  'worm':         { name: '蠕虫',   hp: 120, speed: 0,   size: 12, dmg: 12, color: '#6a4a3a', kind: 'ranged', xp: 3 }
+  'small-biter':  { name: '小虫',   hp: 30,  speed: 22,  size: 6,  dmg: 4,  color: '#d05040', kind: 'melee',   xp: 1, evolution: 0 },
+  'medium-biter': { name: '大虫',   hp: 80,  speed: 18,  size: 9,  dmg: 9,  color: '#b03a30', kind: 'melee',   xp: 2, evolution: 0.05 },
+  'spitter':      { name: '吐痰虫', hp: 50,  speed: 12,  size: 7,  dmg: 7,  color: '#8a6a2a', kind: 'ranged', xp: 2, evolution: 0.15 },
+  'worm':         { name: '蠕虫',   hp: 120, speed: 0,   size: 12, dmg: 12, color: '#6a4a3a', kind: 'ranged', xp: 3, evolution: 0.2 },
+  // 进化变种（需更高进化度，属性更强）
+  'heavy-biter':  { name: '重甲虫', hp: 150, speed: 14,  size: 11, dmg: 16, color: '#8a2a2a', kind: 'melee',   xp: 4, evolution: 0.35 },
+  'fire-spitter': { name: '喷火虫', hp: 120, speed: 12,  size: 9,  dmg: 18, color: '#d08a2a', kind: 'ranged', xp: 4, evolution: 0.5 },
+  'big-worm':     { name: '巨型蠕虫', hp: 300, speed: 0,   size: 16, dmg: 24, color: '#4a3a2a', kind: 'ranged', xp: 6, evolution: 0.6 },
+  'huge-biter':   { name: '巨兽虫', hp: 500, speed: 12,  size: 15, dmg: 32, color: '#5a1a2a', kind: 'melee',   xp: 8, evolution: 0.8 }
 };
-// 按权重随机出一个敌人类型（前期以小虫为主，后期更强）
+
+// ===== 敌人进化度系统（对齐《异星工厂》Evolution factor） =====
+// 进化度 0~1，随时间（自然进化）与击杀敌人（战斗进化）而增长。
+// 进化度越高，刷出的敌人越强、越容易出现高级变种；同时敌人基础属性按进化度小幅增强。
+const EVOLUTION_TIME_RATE = 0.0015;   // 每秒自然进化增量（约 11 分钟到 1.0）
+const EVOLUTION_KILL_RATE = 0.012;    // 每击杀一个敌人进化增量（含巢穴）
+function evolutionFactor() { return G.evolution || 0; }
+function addEvolution(amount) {
+  G.evolution = Math.min(1, (G.evolution || 0) + amount);
+}
+// 每帧推进自然进化（仅战斗开启时）
+function updateEvolution(dt) {
+  if (!G.settings.combat) return;
+  addEvolution(EVOLUTION_TIME_RATE * dt);
+}
+// 敌人属性随进化度增强：hp/dmg 按进化度线性提升（最高 +120%）
+function scaledDef(def) {
+  const evo = evolutionFactor();
+  const mult = 1 + evo * 1.2;
+  return { ...def, hp: Math.round(def.hp * mult), dmg: Math.round(def.dmg * mult) };
+}
+
+// 按权重随机出一个敌人类型（前期以小虫为主，后期更强）。
+// 权重随进化度提升而向更强变种倾斜；进化度不足的变种不会刷出。
 function pickEnemyType() {
-  const weights = [
+  const evo = evolutionFactor();
+  const base = [
     ['small-biter', 60],
     ['medium-biter', G.techDone['advanced-combat'] ? 25 : 10],
     ['spitter', G.techDone['advanced-combat'] ? 12 : 4],
     ['worm', G.techDone['rocket-science'] ? 6 : 2]
   ];
+  // 高级变种在达到对应进化度后按权重加入，权重随进化度进一步增大
+  const advanced = [
+    ['heavy-biter', 0.35],
+    ['fire-spitter', 0.5],
+    ['big-worm', 0.6],
+    ['huge-biter', 0.8]
+  ];
+  const weights = base.map(([k, w]) => [k, w]);
+  for (const [k, thr] of advanced) {
+    if (evo >= thr) weights.push([k, 8 + Math.round((evo - thr) * 60)]);
+  }
   let total = 0;
   for (const [, w] of weights) total += w;
   let r = Math.random() * total;
@@ -101,7 +142,7 @@ function spawnEnemies(dt) {
     }
   }
   const t = pickEnemyType();
-  const def = ENEMY_TYPES[t];
+  const def = scaledDef(ENEMY_TYPES[t]);
   G.enemies.push({
     x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2,
     hp: def.hp, maxhp: def.hp, dead: false, dir: 0,
@@ -112,6 +153,8 @@ function spawnEnemies(dt) {
 
 function updateEnemies(dt) {
   if (!G.enemies) return;
+  // 推进自然进化（战斗开启时）
+  updateEvolution(dt);
   const p = G.player;
   const pR = 9;   // 玩家碰撞半径（格）
   for (const en of G.enemies) {
@@ -126,8 +169,8 @@ function updateEnemies(dt) {
     const d = Math.hypot(dx, dy) / TILE;   // 距离（格）
     if (en.kind === 'ranged') {
       // 远程敌人：与玩家保持距离，射程内间歇性吐痰
-      const range = en.type === 'worm' ? 10 : 8;
-      const keep = en.type === 'worm' ? 7 : 5;
+      const range = (en.type === 'worm' || en.type === 'big-worm') ? (en.type === 'big-worm' ? 12 : 10) : 8;
+      const keep = en.type === 'big-worm' ? 8 : (en.type === 'worm' ? 7 : 5);
       if (d > range) {
         en.x += (dx / d) * en.speed * dt;
         en.y += (dy / d) * en.speed * dt;
@@ -135,11 +178,13 @@ function updateEnemies(dt) {
         en.x -= (dx / d) * en.speed * dt;
         en.y -= (dy / d) * en.speed * dt;
       }
-      // 吐痰（投射物）
+      // 吐痰（投射物）；喷火虫/巨型蠕虫吐火球（命中造成持续灼烧）
       if (en.fireT <= 0 && d <= range) {
-        en.fireT = en.type === 'worm' ? 2.2 : 1.6;
+        en.fireT = en.type === 'worm' || en.type === 'big-worm' ? 2.2 : 1.6;
+        const fire = en.type === 'fire-spitter' || en.type === 'big-worm';
         (G.enemyProjectiles || (G.enemyProjectiles = [])).push({
-          x: en.x, y: en.y - en.size, tx: p.x, ty: p.y, speed: 3.2, dmg: en.dmg, t: 0
+          x: en.x, y: en.y - en.size, tx: p.x, ty: p.y, speed: 3.2, dmg: en.dmg, t: 0,
+          fire: fire, color: fire ? '#ff8a2a' : '#9ac04a'
         });
       }
     } else {
@@ -159,13 +204,22 @@ function updateEnemies(dt) {
       const dx = pr.tx - pr.x, dy = pr.ty - pr.y;
       const d = Math.hypot(dx, dy);
       const step = pr.speed * TILE * dt;
-      if (d <= step) { pr.hit = true; damagePlayer(pr.dmg); continue; }
+      if (d <= step) {
+        pr.hit = true;
+        damagePlayer(pr.dmg);
+        // 火球命中：额外灼烧伤害（模拟持续灼烧）
+        if (pr.fire) damagePlayer(pr.dmg * 0.6);
+        continue;
+      }
       pr.x += (dx / d) * step;
       pr.y += (dy / d) * step;
     }
     G.enemyProjectiles = G.enemyProjectiles.filter(pr => !pr.hit);
   }
-  G.enemies = G.enemies.filter(e => !e.dead);
+  // 击杀敌人推进战斗进化（含巢穴），提升进化度
+  let kills = 0;
+  G.enemies = G.enemies.filter(e => { if (e.dead) kills++; return !e.dead; });
+  if (kills > 0) addEvolution(EVOLUTION_KILL_RATE * kills);
 }
 
 function damagePlayer(dmg) {
