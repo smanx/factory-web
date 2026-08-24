@@ -55,12 +55,20 @@ function updateTrains(dt) {
     head.refuel();
     const coal = (head.fuel || 0);
     if (coal <= 0) continue;   // 没燃料则停车
-    // 车站停车：车头所在格是车站时停车等待
+    // 车站停车：车头所在格是车站时停车等待 + 自动装卸货
+    const station = trainStopAt(head.x, head.y);
+    if (station) {
+      // 停靠期间持续执行自动装卸；有装卸动作则延长停靠窗口，直至装/卸完成
+      const acted = trainAutoLoadUnload(tr, station);
+      if (acted) tr.stopT = TRAIN_STOP_WAIT;
+      else if (!tr.stopT) tr.stopT = TRAIN_STOP_WAIT;
+      tr.stopT -= dt;
+      continue;
+    }
     if (tr.stopT > 0) {
       tr.stopT -= dt;
       continue;
     }
-    if (trainStopAt(head.x, head.y)) { tr.stopT = TRAIN_STOP_WAIT; continue; }
     // 信号灯防追尾：前方有其它列车则停车
     if (railSignalBlocked(head)) continue;
 
@@ -347,16 +355,92 @@ class FluidWagon extends CargoWagon {
 }
 
 // ===== 车站 TrainStop =====
+// 对齐《异星工厂》Railway train stop：列车停靠后可自动装卸货。
+// 车站可配置“装载（load）”与“卸载（unload）”的物品清单：
+//   - 卸载：从列车车厢取出清单物品，存入车站旁 3×3 范围内的箱子；
+//   - 装载：从车站旁箱子取出清单物品，装入列车车厢。
+// 列车停靠期间持续装卸，装/卸完毕或超时后发车。
 class TrainStop extends Entity {
-  constructor(type, x, y) { super(type, x, y); }
+  constructor(type, x, y) {
+    super(type, x, y);
+    this.load = [];    // 要装入车厢的物品清单
+    this.unload = [];  // 要从车厢卸出的物品清单
+  }
+  contents() {
+    return [[this.type, 1]];
+  }
+  serialize() {
+    const s = super.serialize();
+    s.load = this.load; s.unload = this.unload;
+    return s;
+  }
+  static restore(s) {
+    const st = super.restore(s);
+    st.load = Array.isArray(s.load) ? s.load : [];
+    st.unload = Array.isArray(s.unload) ? s.unload : [];
+    return st;
+  }
 }
 function trainStopAt(tx, ty) {
   // 车头占用铁轨格，entAt 返回车头而非车站；改为遍历 G.ents 检测车站实体
   for (const e of G.ents) {
     if (e._dead) continue;
-    if (e.type === 'train-stop' && e.x === tx && e.y === ty) return true;
+    if (e.type === 'train-stop' && e.x === tx && e.y === ty) return e;
   }
-  return false;
+  return null;
+}
+// 获取车站旁 3×3 范围内的普通储物箱（含木/铁/钢箱，不含创造/虚空箱）
+function stationChests(st) {
+  const out = [];
+  for (let dy = -1; dy <= 1; dy++)
+    for (let dx = -1; dx <= 1; dx++) {
+      const e = entAt(st.x + dx, st.y + dy);
+      if (e && !e._dead && (e instanceof Chest)) out.push(e);
+    }
+  return out;
+}
+// 列车停靠车站时的自动装卸：
+// 对车站配置的每个 unload 物品：从车厢卸到相邻箱子；
+// 对每个 load 物品：从相邻箱子装进车厢。返回是否完成了本次装卸。
+function trainAutoLoadUnload(train, station) {
+  if (!train || !station) return false;
+  let acted = false;
+  const chests = stationChests(station);
+  if (!chests.length) return acted;
+  // 卸载：车厢 → 箱子
+  for (const item of station.unload || []) {
+    for (const car of train.cars) {
+      if (car.type === 'cargo-wagon' && car.countOf && typeof car.takeItemOf === 'function') {
+        if (car.countOf(item) > 0) {
+          while (car.countOf(item) > 0) {
+            let stored = false;
+            for (const c of chests) {
+              if (c.giveItem && c.giveItem(item)) { car.takeItemOf(item); stored = true; acted = true; break; }
+            }
+            if (!stored) break;
+          }
+        }
+      }
+    }
+  }
+  // 装载：箱子 → 车厢
+  for (const item of station.load || []) {
+    for (const car of train.cars) {
+      if (car.type === 'cargo-wagon' && car.giveItem && car.countOf) {
+        while (car.countOf(item) < WAGON_STACK * 10) {
+          let got = false;
+          for (const c of chests) {
+            if (c.countOf && c.countOf(item) > 0 && c.takeItemOf) {
+              const it = c.takeItemOf(item);
+              if (it && car.giveItem(it)) { got = true; acted = true; }
+            }
+          }
+          if (!got) break;
+        }
+      }
+    }
+  }
+  return acted;
 }
 
 // ===== 铁路信号灯 RailSignal =====
@@ -659,6 +743,73 @@ DEVICE_PLACE['rail-signal'] = (type, tx, ty) => {
 };
 
 // 读档后重建列车编组（由 main.js applySave 末尾调用）
+
+// ===== 车站面板：配置自动装卸清单 =====
+// 装卸循环：点击物品，状态在 [未选 → 装载(load) → 卸载(unload) → 未选] 间循环。
+function trainStopPanelHtml(e) {
+  let h = '<div class="dim">车站：列车停靠后自动装卸货。下方选择物品并设“装载/卸载”。</div>';
+  h += '<div class="sec">装载（箱子→车厢）</div><div class="rows">';
+  if (!e.load || !e.load.length) h += '<div class="dim">未设置</div>';
+  else for (const id of e.load) h += '<div class="row"><span>' + chip(id) + ' ' + ITEMS[id].name + '</span><button data-action="ts-unload" data-id="' + id + '">→卸</button><button data-action="ts-rm" data-id="' + id + '">✕</button></div>';
+  h += '</div>';
+  h += '<div class="sec">卸载（车厢→箱子）</div><div class="rows">';
+  if (!e.unload || !e.unload.length) h += '<div class="dim">未设置</div>';
+  else for (const id of e.unload) h += '<div class="row"><span>' + chip(id) + ' ' + ITEMS[id].name + '</span><button data-action="ts-load" data-id="' + id + '">→装</button><button data-action="ts-rm" data-id="' + id + '">✕</button></div>';
+  h += '</div>';
+  h += '<div class="sec">选择物品</div><div class="recgrid">';
+  const choices = (typeof filterChoices === 'function' ? filterChoices() : []);
+  for (const id of choices) {
+    const state = (e.load && e.load.includes(id)) ? 'L' : (e.unload && e.unload.includes(id)) ? 'U' : '';
+    h += '<button class="rcbtn ' + (state ? 'sel' : '') + '" data-action="ts-toggle" data-id="' + id + '" data-itemid="' + id + '">' +
+      (state ? '<b>[' + state + ']</b>' : '') + '<img src="' + iconDataURL(id) + '">' + ITEMS[id].name + '</button>';
+  }
+  h += '</div>';
+  h += '<div class="status"></div>';
+  h += '<div class="dim">放置：把车站放在铁轨上，车站旁（3×3）放储物箱。列车停靠时，自动把“卸载”物品从车厢卸入箱子、把“装载”物品从箱子装入车厢。对齐《异星工厂》火车车站装卸。</div>';
+  return h;
+}
+function trainStopPanelLive(e, api) {
+  let n = (e.load ? e.load.length : 0) + (e.unload ? e.unload.length : 0);
+  api.status(n ? ('已配置 ' + n + ' 种装卸物品') : '未配置装卸（列车仅短暂停车）', n ? 'ok' : 'warn');
+}
+function trainStopOnAction(act, btn) {
+  const st = G.panelEnt;
+  if (!st || !(st instanceof TrainStop)) return false;
+  const id = btn && btn.dataset ? btn.dataset.id : null;
+  if (!id) return false;
+  if (act === 'ts-rm') {
+    st.load = (st.load || []).filter(x => x !== id);
+    st.unload = (st.unload || []).filter(x => x !== id);
+    return true;
+  }
+  if (act === 'ts-load') {
+    st.load = (st.load || []).filter(x => x !== id);
+    if (!st.load.includes(id)) st.load.push(id);
+    st.unload = (st.unload || []).filter(x => x !== id);
+    return true;
+  }
+  if (act === 'ts-unload') {
+    st.unload = (st.unload || []).filter(x => x !== id);
+    if (!st.unload.includes(id)) st.unload.push(id);
+    st.load = (st.load || []).filter(x => x !== id);
+    return true;
+  }
+  if (act === 'ts-toggle') {
+    // 循环：未选 → 装载 → 卸载 → 未选
+    if (st.load && st.load.includes(id)) {
+      st.load = st.load.filter(x => x !== id);
+      if (!st.unload.includes(id)) st.unload.push(id);
+    } else if (st.unload && st.unload.includes(id)) {
+      st.unload = st.unload.filter(x => x !== id);
+    } else {
+      if (!st.load.includes(id)) st.load.push(id);
+    }
+    return true;
+  }
+  return false;
+}
+DEVICE_PANEL['train-stop'] = { html: trainStopPanelHtml, live: trainStopPanelLive, tip: () => '车站（列车停靠装卸）', onAction: trainStopOnAction };
+DEVICE_STATUS['train-stop'] = () => 'g';
 function rebuildTrains() {
   G.trains = [];
   G.railTiles = new Set();

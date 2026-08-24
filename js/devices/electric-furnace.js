@@ -9,6 +9,7 @@ class ElectricFurnace extends Furnace {
     if (!r) { this.prog = 0; this.lit = false; return; }
     if (G.power.sat <= 0) { this.lit = false; return; }
     this.lit = true;
+    furnaceEmit(this, dt);
     this.prog += dt / r.time * 2 * powerFactor();
     if (this.prog >= 1) {
       this.prog -= 1;

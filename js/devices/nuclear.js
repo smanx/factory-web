@@ -1,5 +1,19 @@
 'use strict';
 
+// ===== 核反应堆粒子（画面优化）：运行时光晕与蒸汽 =====
+function reactorEmit(e, dt) {
+  if (typeof spawnSteam !== 'function' || typeof spawnSpark !== 'function') return;
+  const key = 'r' + e.x + ',' + e.y;
+  if (!G.entFxTimer) G.entFxTimer = {};
+  G.entFxTimer[key] = (G.entFxTimer[key] || 0) + dt;
+  if (G.entFxTimer[key] < 0.3) return;
+  G.entFxTimer[key] = 0;
+  const cx = (e.x + 0.5) * TILE;
+  const cy = (e.y + 0.25) * TILE;
+  spawnSteam(cx + (Math.random() - 0.5) * e.w * TILE * 0.5, cy, { size: 5, color: '#b8e8d8' });
+  if (Math.random() < 0.4) spawnSpark(cx + (Math.random() - 0.5) * e.w * TILE * 0.5, cy + 6, { speed: 1, color: '#9affa0' });
+}
+
 // ===== 核能发电体系（对齐《异星工厂》核动力）=====
 // 完整链路：铀矿（远处生成）→ 电采矿机开采 → 离心机处理成铀-235/238
 //   → 铀-235 组装成核燃料 → 核反应堆（耗核燃料+水）产出高温蒸汽
@@ -177,14 +191,13 @@ class NuclearReactor extends Entity {
     super('nuclear-reactor', x, y);
     this.fuel = 0;          // 核燃料组数（燃料槽）
     this.burnLeft = 0;      // 当前燃料剩余燃烧秒数
-    this.water = 0;         // 内部水箱（左/右两侧进水口）
-    this.steamBuf = 0;      // 高温蒸汽缓冲（底边出汽口）
+    this.heatBuf = 0;       // 内部热量缓冲（对齐《异星工厂》：反应堆产生热量，经导热管传导）
     this.temp = 0;          // 堆芯温度（显示用）
     this.burning = false;
     this.lit = false;
     this.spent = 0;         // 已燃尽的废燃料棒（可被机械臂取走再生成铀-238）
   }
-  // 两侧水口：左端格左边 (x-1, midRow) & 右端格右边 (x+w, midRow)
+  // 两侧水口（保留兼容旧布局：热交换器独立进水，反应堆本身不再耗水）
   isWaterPortCell(cx, cy) {
     const r = this.y + this.h - 1;
     return cy === r && (cx === this.x - 1 || cx === this.x + this.w);
@@ -199,10 +212,11 @@ class NuclearReactor extends Entity {
   update(dt) {
     this.burning = false;
     this.temp = Math.max(0, this.temp - 1 * dt);
-    this.portFlow();
-    // 蒸汽憋满则暂停；被消耗后自动恢复
-    if (this.steamBuf >= REACTOR_STEAM_CAP - 0.01) { this.lit = false; return; }
-    if (this.burnLeft <= 0 && this.water > 0 && this.fuel > 0) {
+    // 向相邻导热管/热交换器传导热量
+    this.heatFlow(dt);
+    // 热量憋满则暂停；被导热管消耗后自动恢复
+    if (this.heatBuf >= REACTOR_HEAT_CAP - 0.01) { this.lit = false; return; }
+    if (this.burnLeft <= 0 && this.fuel > 0) {
       this.fuel--;
       if (typeof trackProd === 'function') trackProd('nuclear-fuel', -1);
       // 燃尽一根核燃料 → 产生一根废燃料棒（核燃料循环闭环）
@@ -212,15 +226,31 @@ class NuclearReactor extends Entity {
     }
     if (this.burnLeft <= 0) { this.lit = false; return; }
     this.lit = true;
-    if (this.water <= 0) return; // 断水：不产汽，燃料暂不烧
     this.burning = true;
+    reactorEmit(this, dt);
     this.burnLeft -= dt;
     // 核反应堆相邻加成（对齐《异星工厂》：每个相邻反应堆使输出 +100%，鼓励多堆并排布局）
     const neighbors = this.neighborCount();
-    const rate = REACTOR_WATER_RATE * (1 + neighbors); // 每秒耗水量与产汽量（远超锅炉）
-    this.water = Math.max(0, this.water - rate * dt);
-    this.steamBuf = Math.min(REACTOR_STEAM_CAP, this.steamBuf + rate * dt);
+    const rate = REACTOR_HEAT_RATE * (1 + neighbors); // 每秒产热量（远超锅炉产能）
+    this.heatBuf = Math.min(REACTOR_HEAT_CAP, this.heatBuf + rate * dt);
     this.temp = Math.min(200, this.temp + 20 * (1 + neighbors * 0.5) * dt);
+  }
+  // 热量传导：把热量输送给相邻的导热管/热交换器（从更热的流向更冷的）
+  heatFlow(dt) {
+    if (this.heatBuf < 0.01) return;
+    forEachNeighborEnt(this, n => {
+      if (n._dead) return;
+      const isHeatSink = (n instanceof HeatPipe) || (n instanceof HeatExchanger);
+      if (!isHeatSink) return;
+      // 仅相邻导热管/热交换器
+      if (this.heatBuf < 0.5) return;
+      const cap = n.heatCap ? n.heatCap() : HEAT_PIPE_CAP;
+      if (n.heatBuf >= cap - 0.01) return;
+      const want = Math.min(HEAT_PIPE_TRANSFER * dt, this.heatBuf, cap - n.heatBuf);
+      if (want <= 0) return;
+      this.heatBuf -= want;
+      n.heatBuf = Math.min(cap, n.heatBuf + want);
+    });
   }
   // 统计正交相邻（含自身周边）的核反应堆数量（用于相邻加成）
   neighborCount() {
@@ -238,30 +268,8 @@ class NuclearReactor extends Entity {
     }
     return n;
   }
-  // 端口物流：两侧水口双向进出、水位互通平衡（管道供水/排水）；底边中间汽口向下排汽
-  portFlow() {
-    const covers = (n, cx, cy) => cx >= n.x && cx < n.x + n.w && cy >= n.y && cy < n.y + n.h;
-    const wRow = this.y + this.h - 1;
-    forEachNeighborEnt(this, n => {
-      const wPort = covers(n, this.x - 1, wRow) || covers(n, this.x + this.w, wRow);
-      const sPort = covers(n, this.x + (this.w >> 1), this.y + this.h);
-      if (n instanceof Pipe) {
-        if (wPort) {
-          const pw = n.fluid['water'] || 0;
-          if (pw >= this.water + 1 && this.water < WATER_CAP - 0.01) { n.takeItemOf('water'); this.water++; }
-          else if (this.water >= pw + 1 && pw < PIPE_CAP && this.water >= 1) { n.giveItem('water'); this.water--; }
-        }
-        if (sPort && this.steamBuf >= 1 && n.total() < PIPE_CAP && n.giveItem('steam')) this.steamBuf--;
-      } else if (n instanceof SteamTurbine) {
-        if (sPort && this.steamBuf >= 1 && n.steamBuf < TURBINE_STEAM_CAP - 0.01) {
-          this.steamBuf--; n.steamBuf++;
-        }
-      }
-    });
-  }
   giveItem(item) {
     if (item === 'nuclear-fuel' && this.fuel < 5) { this.fuel++; return true; }
-    if (item === 'water' && this.water < WATER_CAP - 0.01) { this.water = Math.min(WATER_CAP, this.water + 1); return true; }
     return false;
   }
   peekItem() {
@@ -277,7 +285,7 @@ class NuclearReactor extends Entity {
     if (item === 'used-up-uranium-fuel-cell' && this.spent > 0) { this.spent--; return item; }
     return null;
   }
-  // 面板“取回全部”：退回废燃料棒（核燃料/水/蒸汽不参与）
+  // 面板“取回全部”：退回废燃料棒（核燃料不参与）
   takeAll() {
     const rows = [];
     if (this.spent > 0) { rows.push(['used-up-uranium-fuel-cell', this.spent]); this.spent = 0; }
@@ -287,20 +295,18 @@ class NuclearReactor extends Entity {
     const list = [[this.type, 1]];
     if (this.fuel > 0) list.push(['nuclear-fuel', this.fuel]);
     if (this.spent > 0) list.push(['used-up-uranium-fuel-cell', this.spent]);
-    if (this.water >= 1) list.push(['water', Math.floor(this.water)]);
-    if (this.steamBuf >= 1) list.push(['steam', Math.floor(this.steamBuf)]);
     return list;
   }
   serialize() {
     const s = super.serialize();
-    s.fuel = this.fuel; s.burnLeft = this.burnLeft; s.water = this.water;
-    s.steamBuf = this.steamBuf; s.temp = this.temp; s.spent = this.spent;
+    s.fuel = this.fuel; s.burnLeft = this.burnLeft; s.heatBuf = this.heatBuf;
+    s.temp = this.temp; s.spent = this.spent;
     return s;
   }
   static restore(s) {
     const r = super.restore(s);
-    r.fuel = s.fuel || 0; r.burnLeft = s.burnLeft || 0; r.water = s.water || 0;
-    r.steamBuf = s.steamBuf || 0; r.temp = s.temp || 0;
+    r.fuel = s.fuel || 0; r.burnLeft = s.burnLeft || 0; r.heatBuf = s.heatBuf || 0;
+    r.temp = s.temp || 0; r.spent = s.spent || 0;
     return r;
   }
 }
@@ -349,16 +355,14 @@ function drawNuclearReactor(ctx, e, gx, gy, dir, alpha) {
   rr(ctx, px + 12, py + h - 14, w - 24, 6, 3); ctx.fill();
   ctx.fillStyle = fp > 0 ? '#9ae06a' : '#5a6a5a';
   rr(ctx, px + 12, py + h - 14, (w - 24) * fp, 6, 3); ctx.fill();
-  // 水位条
-  const wPct = Math.max(0, Math.min(1, (e.water || 0) / WATER_CAP));
+  // 热量条（替代原水位条）
+  const wPct = Math.max(0, Math.min(1, (e.heatBuf || 0) / REACTOR_HEAT_CAP));
   ctx.fillStyle = '#20242b';
   rr(ctx, px + 12, py + h - 22, w - 24, 6, 3); ctx.fill();
-  ctx.fillStyle = wPct > 0 ? '#3fa0e8' : '#b33';
+  ctx.fillStyle = wPct > 0 ? '#d98a3a' : '#6a5a3a';
   rr(ctx, px + 12, py + h - 22, (w - 24) * wPct, 6, 3); ctx.fill();
-  // 端口：两侧水口（蓝）、底边中间汽口（白）
+  // 热量传输示意（橙色，与导热管对接）
   const midx = px + (w >> 1), midRow = py + TILE * (e.h - 1);
-  drawPort(ctx, px + TILE, midRow, 2, PORT_WATER, false, 0, TILE);
-  drawPort(ctx, px + w - TILE, midRow, 0, PORT_WATER, false, 0, TILE);
   drawPort(ctx, midx, py + h, 1, PORT_STEAM, true, 0, TILE);
   ctx.fillStyle = '#eaf6ea';
   ctx.font = 'bold 13px system-ui';
@@ -372,33 +376,30 @@ function reactorPanelHtml(e) {
     h += '<button data-action="fuel" data-id="nuclear-fuel">装入核燃料 (' + invCount('nuclear-fuel') + ')</button>';
   h += row('废燃料棒', '<span class="dim"></span>', 'spent');
   h += '<button data-action="takeout" id="btn-spent-takeout" style="display:none"></button>';
-  h += row('水', '<span class="dim"></span>', 'water');
-  h += row('蒸汽缓存', '<span class="dim"></span>', 'steam');
+  h += row('热量缓存', '<span class="dim"></span>', 'heat');
   h += row('堆芯温度', '', 'temp');
   h += barHtml(0);
   h += '<div class="status"></div>';
-  h += '<div class="dim">核反应堆：两侧蓝口水口接入供水管道（抽水机→管道），底边白口送出高温蒸汽到汽轮机/蒸汽管道。需核燃料，供汽能力远超锅炉。燃尽的燃料会留下废燃料棒，可在离心机再生为铀-238，闭合核燃料循环。核能技术解锁。</div>';
+  h += '<div class="dim">核反应堆：消耗核燃料产生巨量热量，经底边橙口传给导热管，再由导热管把热量送到热交换器，由热交换器把水烧成高温蒸汽供汽轮机发电（对齐《异星工厂》核能标准链路）。燃尽的燃料会留下废燃料棒，可在离心机再生为铀-238，闭合核燃料循环。核能技术解锁。</div>';
   h += '<div class="dim">💡 相邻加成：并排摆放多座反应堆，每座相邻反应堆使输出 +100%（对齐《异星工厂》）。</div>';
+  h += '<div class="dim">🔗 标准接法：反应堆→(导热管)→热交换器（接水管）→(蒸汽管)→汽轮机</div>';
   return h;
 }
 function reactorPanelLive(e, api) {
   api.set('fuel', e.fuel > 0 ? chip('nuclear-fuel', e.fuel) : dimSpan('无'));
   api.set('spent', e.spent > 0 ? chip('used-up-uranium-fuel-cell', e.spent) : dimSpan('无'));
   api.toggle('#btn-spent-takeout', e.spent > 0, '取回废燃料棒 (' + e.spent + ')');
-  api.set('water', e.water >= 1 ? chip('water', Math.floor(e.water)) : dimSpan('空'));
-  api.set('steam', e.steamBuf >= 1 ? chip('steam', Math.floor(e.steamBuf)) : dimSpan('空'));
+  api.set('heat', e.heatBuf >= 1 ? chip('heat-pipe', Math.floor(e.heatBuf)) : dimSpan('空'));
   api.set('temp', Math.round(e.temp) + ' / 200 °C');
   api.prog(Math.min(100, e.temp / 200 * 100));
-  if (e.steamBuf >= REACTOR_STEAM_CAP - 0.01) api.status('已暂停：蒸汽憋满，等待汽轮机/管道消耗', 'warn');
-  else if (e.burning) api.status('运行中：产出高温蒸汽', 'ok');
-  else if (e.water < 1) api.status('已暂停：缺水（检查两侧蓝口水口/管道供水）', 'bad');
+  if (e.heatBuf >= REACTOR_HEAT_CAP - 0.01) api.status('已暂停：热量满，等待导热管/热交换器消耗', 'warn');
+  else if (e.burning) api.status('运行中：产出热量', 'ok');
   else if (e.fuel <= 0 && e.burnLeft <= 0) api.status('已暂停：无核燃料', 'bad');
   else api.status('已暂停：待机', 'warn');
 }
 function reactorTip(e) {
-  return e.burning ? '运行中 ' + Math.round(e.temp) + '°C（存汽' + Math.floor(e.steamBuf || 0) + '）'
-    : e.steamBuf >= REACTOR_STEAM_CAP - 0.01 ? '蒸汽憋满·等待消耗'
-    : e.water < 1 ? '缺水（检查两侧蓝口水口/管道）'
+  return e.burning ? '运行中 ' + Math.round(e.temp) + '°C（存热' + Math.floor(e.heatBuf || 0) + '）'
+    : e.heatBuf >= REACTOR_HEAT_CAP - 0.01 ? '热量满·等待导热管消耗'
     : (e.fuel <= 0 && e.burnLeft <= 0) ? '无核燃料' : '待机';
 }
 
@@ -443,8 +444,8 @@ class SteamTurbine extends Entity {
         if (!(topPort || botPort)) return;
         if (this.steamBuf >= n.steamBuf + 1 && n.steamBuf < TURBINE_STEAM_CAP - 0.01) { this.steamBuf--; n.steamBuf++; }
         else if (n.steamBuf >= this.steamBuf + 1 && this.steamBuf < TURBINE_STEAM_CAP - 0.01) { n.steamBuf--; this.steamBuf++; }
-      } else if (n instanceof NuclearReactor) {
-        // 反应堆底边出汽口正对汽轮机顶部：直接受汽
+      } else if (n instanceof HeatExchanger) {
+        // 热交换器底边出汽口正对汽轮机顶部：直接受汽
         if (topPort && this.steamBuf < TURBINE_STEAM_CAP - 0.01 && n.steamBuf >= 1) { n.steamBuf--; this.steamBuf++; }
       }
     });
@@ -516,7 +517,7 @@ function turbinePanelHtml(e) {
   return row('功率输出', '<span class="dim"></span>', 'power') +
     row('蒸汽缓存', '<span class="dim"></span>', 'steam') +
     '<div class="status"></div>' +
-    '<div class="dim">汽轮机：底边汽口接入高温蒸汽（来自核反应堆/蒸汽管道），以远高于蒸汽机的功率发电。核能技术解锁。</div>';
+    '<div class="dim">汽轮机：底边汽口接入高温蒸汽（来自热交换器/蒸汽管道），以远高于蒸汽机的功率发电。核能技术解锁。</div>';
 }
 function turbinePanelLive(e, api) {
   api.set('power', '+' + (e.powerOut || 0).toFixed(0) + ' kW');
@@ -530,6 +531,235 @@ function turbineTip(e) {
     : e.steamBuf < 0.5 ? '无高温蒸汽（检查底部汽口/管道）' : '待机';
 }
 
+// ===================== 导热管 Heat Pipe（1×1）=====================
+// 对齐《异星工厂》Heat pipe：把核反应堆产生的热量沿路传导到热交换器。
+// 相邻导热管会按热差互相传导，可多根串联成导热线路。
+class HeatPipe extends Entity {
+  constructor(type, x, y) {
+    super('heat-pipe', x, y);
+    this.heatBuf = 0;
+    this.cool = 0.05; // 每秒散热（热量沿路衰减）
+  }
+  heatCap() { return HEAT_PIPE_CAP; }
+  update(dt) {
+    // 与相邻导热管/热交换器/反应堆按热差传导（从热的流向冷的）
+    this.flow(dt);
+    // 自然散热（衰减），避免热量滞留堆积
+    if (this.heatBuf > 0) this.heatBuf = Math.max(0, this.heatBuf - this.cool * dt);
+  }
+  flow(dt) {
+    forEachNeighborEnt(this, n => {
+      if (n._dead) return;
+      // 导热管向更冷的相邻导热管/热交换器传热（反应堆是热源，会主动送热）
+      const isHeatDev = (n instanceof HeatPipe) || (n instanceof HeatExchanger);
+      if (!isHeatDev) return;
+      if (this.heatBuf < 0.1) return;
+      const cap = n.heatCap ? n.heatCap() : HEAT_PIPE_CAP;
+      if (n.heatBuf >= cap - 0.01) return;
+      const want = Math.min(HEAT_PIPE_TRANSFER * dt, this.heatBuf, cap - n.heatBuf);
+      if (want <= 0) return;
+      this.heatBuf -= want;
+      n.heatBuf = Math.min(cap, n.heatBuf + want);
+    });
+  }
+  // 端口：相邻设备显示橙色热量口（用于逻辑判定：可传热）
+  isHeatPortCell(cx, cy) {
+    return cx === this.x && cy === this.y;
+  }
+  contents() {
+    const list = [[this.type, 1]];
+    if (this.heatBuf >= 1) list.push(['heat-pipe', Math.floor(this.heatBuf)]);
+    return list;
+  }
+  serialize() {
+    const s = super.serialize();
+    s.heatBuf = this.heatBuf;
+    return s;
+  }
+  static restore(s) {
+    const p = super.restore(s);
+    p.heatBuf = s.heatBuf || 0;
+    return p;
+  }
+}
+function drawHeatPipe(ctx, e, gx, gy, dir, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  const s = TILE;
+  const hp = Math.max(0, Math.min(1, (e.heatBuf || 0) / HEAT_PIPE_CAP));
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#3a3428';
+  rr(ctx, px + 2, py + 2, s - 4, s - 4, 5); ctx.fill();
+  ctx.strokeStyle = '#1c1710';
+  ctx.lineWidth = 2;
+  rr(ctx, px + 2, py + 2, s - 4, s - 4, 5); ctx.stroke();
+  // 内部导热芯（温度越高越亮）
+  ctx.fillStyle = hp > 0.05 ? '#e8a14a' : '#5a5245';
+  rr(ctx, px + 6, py + 6, s - 12, s - 12, 3); ctx.fill();
+  if (hp > 0.05) {
+    ctx.strokeStyle = 'rgba(255,170,80,' + (0.4 + hp * 0.6).toFixed(2) + ')';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(px + s / 2, py + s / 2, s * 0.22, 0, 7);
+    ctx.stroke();
+  }
+  ctx.fillStyle = hp > 0.4 ? '#ffe0b0' : '#b8a888';
+  ctx.font = 'bold 9px system-ui';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('导', px + s / 2, py + s / 2);
+  ctx.globalAlpha = 1;
+}
+function heatPipeTip(e) {
+  return (e.heatBuf || 0) > 0.5 ? '导热管（存热 ' + Math.floor(e.heatBuf) + '）' : '导热管（待机）';
+}
+
+// ===================== 热交换器 Heat Exchanger（3×1）=====================
+// 对齐《异星工厂》Heat exchanger：消耗导热管传来的热量 + 水 → 产出高温蒸汽供汽轮机。
+class HeatExchanger extends Entity {
+  constructor(type, x, y) {
+    super('heat-exchanger', x, y);
+    this.heatBuf = 0;
+    this.water = 0;       // 内部水箱（侧面进水口）
+    this.steamBuf = 0;    // 高温蒸汽缓冲（底边出汽口）
+    this.active = false;
+  }
+  heatCap() { return HEAT_EXCHANGER_CAP; }
+  // 进水口：左端/右端侧面接管道
+  acceptsPumpFeed(cx, cy, fromDir) {
+    if (cy !== this.y) return false;
+    if (cx === this.x) return fromDir === 0;
+    if (cx === this.x + this.w - 1) return fromDir === 2;
+    return false;
+  }
+  isWaterPortCell(cx, cy) {
+    return cy === this.y && (cx === this.x - 1 || cx === this.x + this.w);
+  }
+  update(dt) {
+    this.active = false;
+    this.heatFlow(dt);
+    this.portFlow(dt);
+  }
+  // 从相邻导热管/反应堆吸热（导热管/反应堆会主动送热，这里也做被动吸收兜底）
+  heatFlow(dt) {
+    forEachNeighborEnt(this, n => {
+      if (n._dead) return;
+      const isSrc = (n instanceof HeatPipe) || (n instanceof NuclearReactor);
+      if (!isSrc) return;
+      if (n.heatBuf < 0.5 || this.heatBuf >= HEAT_EXCHANGER_CAP - 0.01) return;
+      const want = Math.min(HEAT_PIPE_TRANSFER * dt, n.heatBuf, HEAT_EXCHANGER_CAP - this.heatBuf);
+      if (want <= 0) return;
+      n.heatBuf -= want;
+      this.heatBuf = Math.min(HEAT_EXCHANGER_CAP, this.heatBuf + want);
+    });
+  }
+  // 端口物流：侧面进水（水口）、底边出汽
+  portFlow(dt) {
+    const covers = (n, cx, cy) => cx >= n.x && cx < n.x + n.w && cy >= n.y && cy < n.y + n.h;
+    forEachNeighborEnt(this, n => {
+      const wPort = covers(n, this.x - 1, this.y) || covers(n, this.x + this.w, this.y);
+      const sPort = covers(n, this.x + (this.w >> 1), this.y + 1);
+      if (n instanceof Pipe) {
+        if (wPort) {
+          const pw = n.fluid['water'] || 0;
+          if (pw >= 1 && this.water < WATER_CAP - 0.01) { n.takeItemOf('water'); this.water++; }
+          else if (this.water >= 1 && pw < PIPE_CAP && this.water > 0) { n.giveItem('water'); this.water--; }
+        }
+        if (sPort && this.steamBuf >= 1 && n.total() < PIPE_CAP && n.giveItem('steam')) this.steamBuf--;
+      } else if (n instanceof SteamTurbine) {
+        if (sPort && this.steamBuf >= 1 && n.steamBuf < TURBINE_STEAM_CAP - 0.01) { this.steamBuf--; n.steamBuf++; }
+      }
+    });
+    // 产汽：耗热 + 耗水 → 蒸汽
+    if (this.heatBuf >= 0.5 && this.water >= 0.5) {
+      const rate = HEAT_EXCHANGER_STEAM_RATE;
+      const heatUse = Math.min(rate * dt, this.heatBuf, HEAT_EXCHANGER_CAP * 0.9);
+      const waterUse = Math.min(heatUse, this.water);
+      if (waterUse > 0) {
+        this.heatBuf -= waterUse;
+        this.water -= waterUse;
+        this.steamBuf = Math.min(HEAT_EXCHANGER_CAP, this.steamBuf + waterUse);
+        this.active = true;
+      }
+    }
+  }
+  giveItem(item) {
+    if (item === 'water' && this.water < WATER_CAP - 0.01) { this.water = Math.min(WATER_CAP, this.water + 1); return true; }
+    return false;
+  }
+  peekItem() { return this.steamBuf >= 1 ? 'steam' : null; }
+  takeItem() { if (this.steamBuf >= 1) { this.steamBuf--; return 'steam'; } return null; }
+  countOf(item) { return item === 'steam' ? Math.floor(this.steamBuf) : 0; }
+  takeItemOf(item) { if (item === 'steam' && this.steamBuf >= 1) { this.steamBuf--; return 'steam'; } return null; }
+  contents() {
+    const list = [[this.type, 1]];
+    if (this.water >= 1) list.push(['water', Math.floor(this.water)]);
+    if (this.steamBuf >= 1) list.push(['steam', Math.floor(this.steamBuf)]);
+    return list;
+  }
+  serialize() {
+    const s = super.serialize();
+    s.heatBuf = this.heatBuf; s.water = this.water; s.steamBuf = this.steamBuf;
+    return s;
+  }
+  static restore(s) {
+    const h = super.restore(s);
+    h.heatBuf = s.heatBuf || 0; h.water = s.water || 0; h.steamBuf = s.steamBuf || 0;
+    return h;
+  }
+}
+function drawHeatExchanger(ctx, e, gx, gy, dir, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  const w = TILE * e.w, h = TILE * e.h;
+  const hp = Math.max(0, Math.min(1, (e.heatBuf || 0) / HEAT_EXCHANGER_CAP));
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#5a4436';
+  rr(ctx, px + 2, py + 2, w - 4, h - 4, 6); ctx.fill();
+  ctx.strokeStyle = '#33261c';
+  ctx.lineWidth = 3;
+  rr(ctx, px + 2, py + 2, w - 4, h - 4, 6); ctx.stroke();
+  // 换热芯（温度越高越亮）
+  ctx.fillStyle = hp > 0.05 ? '#e8a14a' : '#7a6a58';
+  rr(ctx, px + 6, py + 8, w - 12, TILE * 0.5, 3); ctx.fill();
+  // 蒸汽输出波纹（运行中）
+  if (e.active) {
+    ctx.fillStyle = 'rgba(210,235,255,' + (0.4 + Math.sin(G.time * 8) * 0.3).toFixed(2) + ')';
+    ctx.font = 'bold 12px system-ui';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('☁', px + w / 2, py + 4);
+  }
+  // 进水口（两侧蓝）与出汽口（底边白）
+  drawPort(ctx, px + TILE, py + TILE, 2, PORT_WATER, false, 0, TILE);
+  drawPort(ctx, px + w - TILE, py + TILE, 0, PORT_WATER, false, 0, TILE);
+  drawPort(ctx, px + w / 2, py + h, 1, PORT_STEAM, true, 0, TILE);
+  ctx.fillStyle = '#ffe0b0';
+  ctx.font = 'bold 10px system-ui';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('热交换器', px + w / 2, py + h - 6);
+  ctx.globalAlpha = 1;
+}
+function heatExchangerPanelHtml(e) {
+  return row('热量', '<span class="dim"></span>', 'heat') +
+    row('水', '<span class="dim"></span>', 'water') +
+    row('蒸汽缓存', '<span class="dim"></span>', 'steam') +
+    '<div class="status"></div>' +
+    '<div class="dim">热交换器：顶面/侧面接收导热管传来的热量，侧面蓝口接水管进水，底边白口送出高温蒸汽到汽轮机。核能技术解锁。</div>' +
+    '<div class="dim">🔗 标准接法：反应堆→(导热管)→热交换器（接水管）→(蒸汽管)→汽轮机</div>';
+}
+function heatExchangerPanelLive(e, api) {
+  api.set('heat', e.heatBuf >= 1 ? chip('heat-pipe', Math.floor(e.heatBuf)) : dimSpan('空'));
+  api.set('water', e.water >= 1 ? chip('water', Math.floor(e.water)) : dimSpan('空'));
+  api.set('steam', e.steamBuf >= 1 ? chip('steam', Math.floor(e.steamBuf)) : dimSpan('空'));
+  if (e.active) api.status('运行中：产汽', 'ok');
+  else if (e.heatBuf < 0.5) api.status('缺热量（检查导热管/反应堆）', 'warn');
+  else if (e.water < 0.5) api.status('缺水（检查侧面蓝口水口）', 'bad');
+  else api.status('待机', 'ok');
+}
+function heatExchangerTip(e) {
+  if (e.active) return '运行中：产汽';
+  if (e.heatBuf < 0.5) return '缺热量（检查导热管/反应堆）';
+  if (e.water < 0.5) return '缺水（检查侧面蓝口水口）';
+  return '待机';
+}
+
 // ===== 注册 =====
 ENT_CLASSES['centrifuge'] = Centrifuge;
 DEVICE_RENDER['centrifuge'] = drawCentrifuge;
@@ -538,10 +768,20 @@ DEVICE_PANEL['centrifuge'] = { html: centrifugePanelHtml, live: centrifugePanelL
 
 ENT_CLASSES['nuclear-reactor'] = NuclearReactor;
 DEVICE_RENDER['nuclear-reactor'] = drawNuclearReactor;
-DEVICE_STATUS['nuclear-reactor'] = e => e.burning ? 'g' : (e.steamBuf >= REACTOR_STEAM_CAP - 0.01 ? 'y' : 'r');
+DEVICE_STATUS['nuclear-reactor'] = e => e.burning ? 'g' : (e.heatBuf >= REACTOR_HEAT_CAP - 0.01 ? 'y' : 'r');
 DEVICE_PANEL['nuclear-reactor'] = { html: reactorPanelHtml, live: reactorPanelLive, tip: reactorTip };
 
 ENT_CLASSES['steam-turbine'] = SteamTurbine;
 DEVICE_RENDER['steam-turbine'] = drawSteamTurbine;
 DEVICE_STATUS['steam-turbine'] = e => e.on ? 'g' : 'r';
 DEVICE_PANEL['steam-turbine'] = { html: turbinePanelHtml, live: turbinePanelLive, tip: turbineTip };
+
+ENT_CLASSES['heat-pipe'] = HeatPipe;
+DEVICE_RENDER['heat-pipe'] = drawHeatPipe;
+DEVICE_STATUS['heat-pipe'] = e => (e.heatBuf || 0) > 0.5 ? 'g' : 'r';
+DEVICE_PANEL['heat-pipe'] = { html: () => row('热量', '<span class="dim"></span>', 'heat') + '<div class="status"></div>' + '<div class="dim">导热管：把核反应堆产生的热量传导到热交换器，可多根串联成导热线路。核能技术解锁。</div>', live: (e, api) => api.set('heat', e.heatBuf >= 1 ? chip('heat-pipe', Math.floor(e.heatBuf)) : dimSpan('空')), tip: heatPipeTip };
+
+ENT_CLASSES['heat-exchanger'] = HeatExchanger;
+DEVICE_RENDER['heat-exchanger'] = drawHeatExchanger;
+DEVICE_STATUS['heat-exchanger'] = e => e.active ? 'g' : (e.heatBuf >= 0.5 ? 'y' : 'r');
+DEVICE_PANEL['heat-exchanger'] = { html: heatExchangerPanelHtml, live: heatExchangerPanelLive, tip: heatExchangerTip };

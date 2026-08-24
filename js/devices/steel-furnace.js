@@ -22,6 +22,7 @@ class SteelFurnace extends Furnace {
     }
     this.lit = true;
     this.burnLeft -= dt;
+    furnaceEmit(this, dt);
     this.prog += dt / r.time * 2;
     if (this.prog >= 1) {
       this.prog -= 1;

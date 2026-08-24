@@ -156,7 +156,7 @@ function updateCraftQueue(dt) {
     cur = G.craftQueue[0];
     cur.done = over;
   }
-  if (completed > 0) uiDirty = true;
+  if (completed > 0) { uiDirty = true; if (typeof playSfx === 'function') playSfx('craft'); }
   return completed;
 }
 
@@ -214,6 +214,7 @@ function updateMining(dt) {
       if (!G.settings.infiniteOre) consumeOre(t.tx, t.ty);
       const it = oreItemId(ti);
       invAdd(it);
+      if (typeof playSfx === 'function') playSfx('mine');
       // 手动采矿反馈去抖：累积到一定数量再提示一次，避免连挖时刷屏
       mineToastAcc++;
       if (mineToastAcc % 5 === 0 && typeof toast === 'function') {

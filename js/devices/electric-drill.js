@@ -14,6 +14,7 @@ class ElectricDrill extends Drill {
     if (G.power.sat <= 0) { this.status = '缺电'; this.spin = 0; return; }
     this.status = '';
     this.working = true;
+    drillEmit(this, dt);
     this.spin += dt * 6;
     this.prog += dt * drillMult() * this.machMult() * powerFactor();
     if (this.prog >= DRILL_TIME) {

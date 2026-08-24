@@ -90,6 +90,7 @@ function selectSlot(i) {
   // 选择武器：若该槽位是武器，则作为当前手持武器
   if (G.sel >= 0 && HOTBAR[G.sel]) setWeapon(HOTBAR[G.sel]);
   else if (G.sel < 0) setWeapon(null);
+  if (typeof playSfx === 'function') playSfx('select');
   refreshHotbar();
   closePanel(false);
 }
@@ -814,11 +815,20 @@ function initPanelEvents() {
         return;
       }
     }
+    const setVol = ev.target.closest('[data-setvol]');
+    if (setVol) {
+      G.settings[setVol.dataset.setvol] = parseFloat(setVol.value);
+      saveSettings();
+      if (typeof playSfx === 'function') playSfx('click');  // 音量调节试听
+      return;
+    }
     const setCb = ev.target.closest('[data-set]');
     if (setCb) {
       const key = setCb.dataset.set;
       G.settings[key] = setCb.checked;
       saveSettings();
+      // 音效开关改动后立即试听
+      if (key === 'sound') { if (typeof playSfx === 'function' && G.settings.sound) playSfx('build'); }
       // 分辨率相关设置改动后立即重建画布尺寸
       if (key === 'capDPR' || key === 'lowRes') {
         if (typeof resize === 'function') resize();
@@ -848,6 +858,7 @@ function initPanelEvents() {
           const tx = Math.floor((G.player.x + Math.cos(a) * TILE * 3) / TILE);
           const ty = Math.floor((G.player.y + Math.sin(a) * TILE * 3) / TILE);
           throwGrenade(tx, ty, type);
+          if (typeof playSfx === 'function') playSfx('throw');
           renderPanel(false);
         } else {
           toast('无法投掷（战斗系统未加载）');
@@ -1010,6 +1021,9 @@ async function htmlSettings() {
   h += '<label class="setrow"><input type="checkbox" data-set="combat"' + (G.settings.combat ? ' checked' : '') + '> 战斗模式（敌人入侵，可用炮塔/石墙防御）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="virtualJoystick"' + (G.settings.virtualJoystick ? ' checked' : '') + '> 虚拟摇杆（手机/触屏移动）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="minimap"' + (G.settings.minimap !== false ? ' checked' : '') + '> 小地图（右下角显示已探索区域，M 键切换）</label>';
+  h += '<div class="sec">音效</div>';
+  h += '<label class="setrow"><input type="checkbox" data-set="sound"' + (G.settings.sound ? ' checked' : '') + '> 游戏音效（建造/拆除/射击/爆炸等）</label>';
+  h += '<label class="setrow">音量 <input type="range" data-setvol="soundVol" min="0" max="1" step="0.05" value="' + (G.settings.soundVol != null ? G.settings.soundVol : 0.8) + '" style="width:120px;vertical-align:middle"></label>';
   h += '<div class="sec">性能优化</div>';
   h += '<label class="setrow"><input type="checkbox" data-set="capDPR"' + (G.settings.capDPR ? ' checked' : '') + '> 限制高清缩放（DPR ≤ 1.5，降载高分屏）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="lowRes"' + (G.settings.lowRes ? ' checked' : '') + '> 省电模式（降至半分辨率，显著降 GPU 负载）</label>';

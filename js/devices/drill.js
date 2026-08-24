@@ -1,5 +1,18 @@
 'use strict';
 
+// ===== 采矿机粒子（画面优化）：工作时扬尘 =====
+function drillEmit(e, dt) {
+  if (typeof spawnSmoke !== 'function') return;
+  const key = 'd' + e.x + ',' + e.y;
+  if (!G.entFxTimer) G.entFxTimer = {};
+  G.entFxTimer[key] = (G.entFxTimer[key] || 0) + dt;
+  if (G.entFxTimer[key] < 0.3) return;
+  G.entFxTimer[key] = 0;
+  const cx = (e.x + 0.5) * TILE;
+  const cy = (e.y + 0.7) * TILE;
+  spawnSmoke(cx + (Math.random() - 0.5) * e.w * TILE * 0.5, cy, { size: 3, color: '#8a7a6a' });
+}
+
 // ===== 热能采矿机（采矿业基类；电采矿机/抽油机继承自 ElectricDrill）=====
 class Drill extends Entity {
   constructor(type, x, y) {
@@ -60,6 +73,7 @@ class Drill extends Entity {
     }
     this.status = '';
     this.working = true;
+    drillEmit(this, dt);
     this.burnLeft -= dt;
     this.spin += dt * 6;
     this.prog += dt * drillMult() * 0.25; // 热能采矿机 mining-speed 0.25（对齐《异星工厂》）
