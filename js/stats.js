@@ -178,9 +178,12 @@ function htmlStatsItems() {
 }
 
 // 电量页
+// 下方分两个子 tab：发电设备（producers）与耗电设备（consumers）。
+// 设备列表按类型聚合，显示该类型设备数量、总功率与每个实例坐标明细。
 function htmlStatsPower() {
   const s = powerSummary();
   const satPct = Math.round((s.sat || 0) * 100);
+  const isProd = G.statsPowerTab !== 'cons';
   let h = '<div class="sec">电网概览</div>';
   h += '<div class="stat-table">';
   h += row2('产生', '<span data-live="pprod" style="color:#8fe08f;font-weight:bold">+' + s.prod.toFixed(1) + '</span>');
@@ -189,26 +192,45 @@ function htmlStatsPower() {
   h += row2('供电饱和度', '<span data-live="psat"><span class="satbar"><i style="width:' + satPct + '%"></i></span> <b>' + satPct + '%</b></span>');
   h += '</div>';
 
-  h += '<div class="sec">发电设备</div>';
-  if (!s.producers.length) h += '<div class="dim">没有正在发电的设备（蒸汽机 / 太阳能板 / 蓄电器放电）。</div>';
-  else {
-    h += '<div class="stat-table">';
-    for (const { e, v } of s.producers) {
-      h += '<div class="stat-row"><span>' + chip(e.type) + '<span class="dim2"> @' + e.x + ',' + e.y + '</span></span><span style="color:#8fe08f">+' + v.toFixed(1) + '</span></div>';
-    }
-    h += '</div>';
+  h += '<div class="sec">设备明细</div>';
+  h += '<div class="stat-subtabs">';
+  h += '<button class="stat-subtab' + (isProd ? ' active' : '') + '" data-stat-power-tab="prod">发电设备</button>';
+  h += '<button class="stat-subtab' + (!isProd ? ' active' : '') + '" data-stat-power-tab="cons">耗电设备</button>';
+  h += '</div>';
+
+  const list = isProd ? s.producers : s.consumers;
+  if (!list.length) {
+    h += '<div class="dim">没有' + (isProd ? '正在发电' : '正在耗电') + '的设备' +
+      (isProd ? '（蒸汽机 / 太阳能板 / 蓄电器放电）' : '（电采矿机 / 电炉 / 组装机 / 抽油机 / 炼油厂 / 化工厂）') + '。</div>';
+    return h;
   }
 
-  h += '<div class="sec">耗电设备</div>';
-  if (!s.consumers.length) h += '<div class="dim">没有正在耗电的设备（电采矿机 / 电炉 / 组装机 II/III / 抽油机 / 炼油厂 / 化工厂）。</div>';
-  else {
-    h += '<div class="stat-table">';
-    for (const { e, v } of s.consumers) {
-      h += '<div class="stat-row"><span>' + chip(e.type) + '<span class="dim2"> @' + e.x + ',' + e.y + '</span></span><span style="color:#ffd23c">' + v.toFixed(1) + '</span></div>';
-    }
-    h += '</div>';
+  // 按设备类型聚合：type -> { count, total, instances: [{e,v}] }
+  const groups = {};
+  for (const { e, v } of list) {
+    const t = e.type;
+    if (!groups[t]) groups[t] = { count: 0, total: 0, instances: [] };
+    const g = groups[t];
+    g.count++;
+    g.total += v;
+    g.instances.push({ e, v });
   }
-  h += '<div class="dim">各设备功率：发电为正 (+)，耗电为原值；净额 = 产生 − 消耗。供电饱和度 <100% 时用电设备按比例降速。</div>';
+  // 按类型名排序
+  const types = Object.keys(groups).sort((a, b) => (ITEMS[a].name < ITEMS[b].name ? -1 : 1));
+
+  h += '<div class="stat-table">';
+  for (const t of types) {
+    const g = groups[t];
+    const color = isProd ? '#8fe08f' : '#ffd23c';
+    h += '<div class="stat-row"><span>' + chip(t, g.count) +
+      '</span><span style="color:' + color + '">' + (isProd ? '+' : '') + g.total.toFixed(1) + '</span></div>';
+    // 每个实例坐标明细（折叠为次要小字行）
+    const coords = g.instances.map(i => i.e.x + ',' + i.e.y).join('　');
+    h += '<div class="stat-row dim2" style="font-size:11px;padding-left:22px">' +
+      '坐标：' + coords + '</div>';
+  }
+  h += '</div>';
+  h += '<div class="dim">各设备功率：发电为正 (+)，耗电为原值；设备数按类型汇总。净额 = 产生 − 消耗。供电饱和度 <100% 时用电设备按比例降速。</div>';
   return h;
 }
 
@@ -248,7 +270,7 @@ function statsListSig(tab) {
     const s = powerSummary();
     const sig = s.producers.map(p => p.e.type + '@' + p.e.x + ',' + p.e.y).join('|') + '#' +
       s.consumers.map(c => c.e.type + '@' + c.e.x + ',' + c.e.y).join('|');
-    return 'p:' + sig;
+    return 'p:' + (G.statsPowerTab || 'prod') + ':' + sig;
   }
   return 'f:';   // 性能页结构固定，只需增量更新数值
 }

@@ -458,6 +458,12 @@ function initPanelEvents() {
       renderPanel(false);
       return;
     }
+    const statPowerTab = ev.target.closest('[data-stat-power-tab]');
+    if (statPowerTab) {
+      G.statsPowerTab = statPowerTab.dataset.statPowerTab;
+      renderPanel(false);
+      return;
+    }
     const hbSlot = ev.target.closest('[data-hbedit]');
     if (hbSlot) {
       const i = +hbSlot.dataset.hbedit;
