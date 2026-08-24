@@ -25,6 +25,8 @@ const G = {
   canvasActive: false,
   time: 0,
   dbg: { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1, infinite: false, farReach: false },
+  // 是否开启开发者调试（仅当 URL 参数含 debug=1 时为 true）
+  debugEnabled: new URLSearchParams(window.location.search).get('debug') === '1',
   spawn: { x: 0, y: 0 },
   hbArm: null,
   invRecipeQ: '',
@@ -201,11 +203,16 @@ function applySave(d) {
   if (d.settings) Object.assign(G.settings, d.settings);
   // 读档后按设置刷新虚拟摇杆显示状态
   if (typeof updateJoystickVisibility === 'function') updateJoystickVisibility();
-  // 开发者调试数据随存档保存/读取，须在读档重建快捷栏前恢复，
-  // 否则无限资源（∞）等调试状态无法正确反映到快捷栏显示上
-  if (d.dbg && typeof d.dbg === 'object') Object.assign(G.dbg, d.dbg);
-  // 刷新Debug面板显示，使已恢复的调试数据正确展示在面板上
-  if (typeof refreshDebugPanel === 'function') refreshDebugPanel();
+  // 开发者调试数据随存档保存/读取。仅当 URL 参数含 debug=1（debug 按钮开启）时
+  // 才恢复已保存的调试数据；否则这些数据不生效，保持默认值。
+  if (G.debugEnabled) {
+    if (d.dbg && typeof d.dbg === 'object') Object.assign(G.dbg, d.dbg);
+    // 刷新Debug面板显示，使已恢复的调试数据正确展示在面板上
+    if (typeof refreshDebugPanel === 'function') refreshDebugPanel();
+  } else {
+    // debug 未开启：重置为默认值，确保读档含 debug 的数据也不生效
+    Object.assign(G.dbg, { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1, infinite: false, farReach: false });
+  }
   if (Array.isArray(d.hotbar)) {
     HOTBAR = d.hotbar.slice(0, 10);
     while (HOTBAR.length < 10) HOTBAR.push(null);
@@ -1114,6 +1121,54 @@ function bindInput() {
       else if (G.blueMode === 'red') applyRedBlueprint();
       else if (G.blueMode === 'green') applyGreenBlueprint();
     }
+  });
+
+  // ===== 触摸支持（手机/平板）：蓝图/红图/绿图框选与粘贴，以及普通建造/挖矿 =====
+  G.canvas.addEventListener('touchstart', ev => {
+    ev.preventDefault();
+    const t = ev.changedTouches[0];
+    if (!t) return;
+    updateCursorTile(t.clientX, t.clientY);
+    // 蓝图/红图交互：触摸开始框选（非粘贴）或粘贴（粘贴模式），模拟左键
+    if (G.blueMode) {
+      if (G.blueMode === 'paste') {
+        pasteBlueprint();
+      } else {
+        G.blueStart = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
+        G.blueEnd = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
+        G.blueSelecting = true;
+      }
+      return;
+    }
+    // 普通模式：模拟左键建造/挖矿
+    G.mouseDown = true;
+    lastPlaceKey = '';
+    handleLeftDown();
+  }, { passive: false });
+  G.canvas.addEventListener('touchmove', ev => {
+    ev.preventDefault();
+    const t = ev.changedTouches[0];
+    if (!t) return;
+    updateCursorTile(t.clientX, t.clientY);
+    if (G.blueSelecting && G.cursorTile) {
+      G.blueEnd = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
+    }
+  }, { passive: false });
+  G.canvas.addEventListener('touchend', ev => {
+    ev.preventDefault();
+    G.mouseDown = false;
+    // 蓝图/红图：松开手指完成框选（不依赖触摸坐标，确保框选必然收尾）
+    if (G.blueSelecting) {
+      G.blueSelecting = false;
+      if (!G.blueStart || !G.blueEnd) { cancelBlueprint(); return; }
+      if (G.blueMode === 'blue') captureBlueprint();
+      else if (G.blueMode === 'red') applyRedBlueprint();
+      else if (G.blueMode === 'green') applyGreenBlueprint();
+    }
+  }, { passive: false });
+  G.canvas.addEventListener('touchcancel', () => {
+    G.mouseDown = false;
+    G.blueSelecting = false;
   });
   G.canvas.addEventListener('contextmenu', ev => ev.preventDefault());
   G.canvas.addEventListener('wheel', ev => {
