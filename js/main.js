@@ -43,7 +43,7 @@ const G = {
   greenRect: null,        // 绿图最近一次框选区域
   statsTab: 'items',      // 统计面板当前页：items | power | perf
   statsItemTab: 'prod',   // 统计面板-物品速率页：prod(生产速率) | cons(消耗)
-  statsInterval: 0,       // 统计面板-物品速率页：统计间隔索引（0秒/10秒/分钟/小时/1天）
+  statsInterval: 2,       // 统计面板-物品速率页：统计间隔索引（0秒/10秒/分钟/小时/1天）；默认“分钟”（展开统计面板时以分钟为单位）
   statsPowerTab: 'prod',  // 统计面板-电量页：prod(发电设备) | cons(耗电设备)
   machTab: 'prod',        // 设备面板-消耗/生产 tab：cons | prod（已弃用）
   settings: Object.assign({}, DEFAULT_SETTINGS),
