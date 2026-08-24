@@ -568,10 +568,12 @@ html, body {
 }
 .stat-tab:hover { background: #3a4657; }
 .stat-tab.active {
-  background: #2c3a52;
+  background: #3a4a33;
   border-color: #ffd23c;
   color: #ffd23c;
   font-weight: bold;
+  box-shadow: inset 0 0 0 1px rgba(255,210,60,.35), 0 0 8px rgba(255,210,60,.25);
+  text-shadow: 0 0 6px rgba(255,210,60,.4);
 }
 
 .stat-table { margin-bottom: 6px; }
@@ -681,10 +683,12 @@ html, body {
 }
 .stat-subtab:hover { background: #2c3644; }
 .stat-subtab.active {
-  background: #2c3a52;
+  background: #14382c;
   border-color: #57e389;
   color: #57e389;
   font-weight: bold;
+  box-shadow: inset 0 0 0 1px rgba(87,227,137,.3), 0 0 8px rgba(87,227,137,.22);
+  text-shadow: 0 0 6px rgba(87,227,137,.4);
 }
 
 /* 物品速率页统计间隔切换：秒 / 10秒 / 分钟 / 小时 / 1天 */
@@ -702,10 +706,12 @@ html, body {
 }
 .stat-interval:hover { background: #2c3644; }
 .stat-interval.active {
-  background: #2c3a52;
+  background: #3a4a33;
   border-color: #ffd23c;
   color: #ffd23c;
   font-weight: bold;
+  box-shadow: inset 0 0 0 1px rgba(255,210,60,.3), 0 0 8px rgba(255,210,60,.2);
+  text-shadow: 0 0 6px rgba(255,210,60,.35);
 }
 
 /* 设备面板二级 tab：消耗 / 生产 */
