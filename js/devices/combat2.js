@@ -95,15 +95,77 @@ function makeSpawner() {
     const tx = Math.round(px + Math.cos(ang) * dist);
     const ty = Math.round(py + Math.sin(ang) * dist);
     if (!isWater(tx, ty) && !entAt(tx, ty)) {
-      return {
-        x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2,
-        hp: SPAWNER_HP, maxhp: SPAWNER_HP, dead: false, dir: 0,
-        type: 'spawner', kind: 'spawner', speed: 0, size: 13, dmg: 0,
-        color: '#5a3a8a', attackT: 0, fireT: 0
-      };
+      return spawnerAt(tx, ty);
     }
   }
   return null;
+}
+
+// ===== 敌人基地扩张（对齐《异星工厂》Biter expansion）=====
+// 虫巢会周期性派出“扩张党”在远处建立新巢穴，世界中的敌人领地会随时间不断蔓延，
+// 比“巢穴不足才补位”更贴近原版：即使玩家清剿了某片巢穴，其它巢穴仍会向四周扩张。
+// 扩张会尽量避开玩家所在的出生区（距玩家过近不建），避免开局即被巢穴包围。
+const EXPAND_MIN_INTERVAL = 45;   // 最短扩张间隔（秒）
+const EXPAND_BASE_INTERVAL = 120; // 基础扩张间隔（秒）
+const EXPAND_RANGE_MIN = 9;       // 距父巢穴最近距离（格）
+const EXPAND_RANGE_MAX = 16;      // 距父巢穴最远距离（格）
+const EXPAND_PLAYER_GAP = 12;     // 扩张巢穴距玩家至少保持的格数
+// 总巢穴数量上限：随进化度略微放宽，但始终受控，避免无限扩张导致失衡
+function spawnerCapByEvo() {
+  const evo = evolutionFactor();
+  const base = G.techDone['advanced-combat'] ? 3 : SPAWNER_TARGET;
+  return base + (evo > 0.4 ? 1 : 0) + (evo > 0.8 ? 1 : 0);
+}
+// 在一个目标格生成巢穴（若该格可用）；不可用返回 null
+function spawnerAt(tx, ty) {
+  if (isWater(tx, ty) || entAt(tx, ty)) return null;
+  return {
+    x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2,
+    hp: SPAWNER_HP, maxhp: SPAWNER_HP, dead: false, dir: 0,
+    type: 'spawner', kind: 'spawner', speed: 0, size: 13, dmg: 0,
+    color: '#5a3a8a', attackT: 0, fireT: 0
+  };
+}
+// 尝试让某个巢穴向远处扩张出一个新巢穴，成功返回 true
+function expandFromSpawner(parent) {
+  const px = G.player.x / TILE, py = G.player.y / TILE;
+  const sx = Math.round(parent.x / TILE), sy = Math.round(parent.y / TILE);
+  // 尽量朝“远离玩家”的扇形方向扩张，但带一定随机性；同时保证新巢穴距玩家不近于 EXPAND_PLAYER_GAP
+  for (let i = 0; i < 16; i++) {
+    // 与父巢到玩家的连线夹角偏向远离玩家侧（±60°），偶尔也允许其他方向
+    const toPlayer = Math.atan2(py - sy, px - sx);
+    const spread = (Math.random() * 2 - 1) * 1.1; // 扇形宽
+    const ang = toPlayer + (Math.random() < 0.7 ? Math.PI + spread : Math.random() * Math.PI * 2);
+    const dist = EXPAND_RANGE_MIN + Math.random() * (EXPAND_RANGE_MAX - EXPAND_RANGE_MIN);
+    const tx = Math.round(sx + Math.cos(ang) * dist);
+    const ty = Math.round(sy + Math.sin(ang) * dist);
+    const pd = Math.hypot(tx - px, ty - py);
+    if (pd < EXPAND_PLAYER_GAP) continue;
+    const s = spawnerAt(tx, ty);
+    if (s) { G.enemies.push(s); return true; }
+  }
+  return false;
+}
+// 每帧推进扩张计时，到点且满足条件时触发一次扩张
+function updateExpansion(dt) {
+  if (!G.settings.combat) return;
+  if (!G.enemies) G.enemies = [];
+  const spawners = G.enemies.filter(e => e.kind === 'spawner' && !e.dead);
+  if (spawners.length === 0) { G.expandT = 0; return; }
+  const cap = spawnerCapByEvo();
+  if (spawners.length >= cap) { G.expandT = 0; return; }
+  const evo = evolutionFactor();
+  const interval = Math.max(EXPAND_MIN_INTERVAL, EXPAND_BASE_INTERVAL * (1 - evo * 0.55));
+  G.expandT = (G.expandT || 0) + dt;
+  if (G.expandT < interval) return;
+  G.expandT = 0;
+  // 随机挑一个父巢穴扩张
+  const parent = spawners[(Math.random() * spawners.length) | 0];
+  if (parent && expandFromSpawner(parent)) {
+    if (typeof playSfx === 'function') playSfx('spawn');
+    // 轻微播报，让玩家感知领地蔓延
+    if (typeof toast === 'function') toast('⚠ 探测到虫巢向外扩张，出现新的巢穴');
+  }
 }
 
 function spawnEnemies(dt) {
@@ -112,9 +174,9 @@ function spawnEnemies(dt) {
   // 敌人数量越多刷新越慢；火箭时代可允许更多敌人同时在场
   const cap = G.techDone['advanced-combat'] ? 40 : 24;
   if (G.enemies.length >= cap) return;
-  // 维护巢穴数量：不足则在远处生成新巢穴
+  // 维护巢穴数量：不足则在远处生成新巢穴（初始布点由扩张系统接管后，这里仍保留保底补位）
   const spawners = G.enemies.filter(e => e.kind === 'spawner' && !e.dead);
-  const spawnerCap = G.techDone['advanced-combat'] ? 3 : SPAWNER_TARGET;
+  const spawnerCap = spawnerCapByEvo();
   if (spawners.length < spawnerCap && G.spawnT > 3) {
     const s = makeSpawner();
     if (s) G.enemies.push(s);
@@ -262,6 +324,8 @@ function updateEnemies(dt) {
   if (!G.enemies) return;
   // 推进自然进化（战斗开启时）
   updateEvolution(dt);
+  // 推进虫巢扩张（对齐《异星工厂》Biter expansion：领地向外蔓延）
+  updateExpansion(dt);
   const p = G.player;
   const pR = 9;   // 玩家碰撞半径（格）
   for (const en of G.enemies) {

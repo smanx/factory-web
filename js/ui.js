@@ -492,6 +492,7 @@ function htmlBlueBook() {
       '<div class="bb-main"><div class="bb-name">' + b.name + '</div>' +
       '<div class="dim">' + b.ents.length + ' 个建筑 · ' + typeNames + '</div></div>' +
       '<button data-bbuse="' + i + '">📋 粘贴</button>' +
+      '<button data-bbrename="' + i + '">✏️ 重命名</button>' +
       '<button data-bbdel="' + i + '" class="bb-del">🗑 删除</button>' +
       '</div>';
   }
@@ -784,6 +785,18 @@ function initPanelEvents() {
     if (bbDel && G.panelMode === 'bluebook') {
       if (typeof blueBookRemove === 'function') blueBookRemove(+bbDel.dataset.bbdel);
       renderPanel(false);
+      return;
+    }
+    // 蓝图库：重命名蓝图（对齐《异星工厂》：自由命名蓝图）
+    const bbRen = ev.target.closest('[data-bbrename]');
+    if (bbRen && G.panelMode === 'bluebook') {
+      const i = +bbRen.dataset.bbrename;
+      const cur = (G.blueBook && G.blueBook[i]) ? G.blueBook[i].name : '';
+      const nn = window.prompt('输入蓝图新名称：', cur);
+      if (nn !== null && typeof blueBookRename === 'function') {
+        blueBookRename(i, nn);
+        renderPanel(false);
+      }
       return;
     }
     // 装备网格点击（安装/卸下个人装备件）
