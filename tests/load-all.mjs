@@ -134,5 +134,44 @@ vm.runInContext(`
   try { for (let i = 0; i < 30; i++) { G.time += 0.05; updateLogistics(0.05); } out.push('✓ updateLogistics 主循环连续执行无异常'); }
   catch (err) { out.push('✗ updateLogistics 异常：' + err.message); process.exitCode = 1; }
 
+  // ---- 集成冒烟：核能链全流程（反应堆→热管→换热器→汽轮机）----
+  try {
+    G.techDone.nuclear = true;
+    G.techDone.atomicPower = true;
+    const nk = (t, x, y) => { const e = new ENT_CLASSES[t](t, x, y); e.dir = 0; e.applyDir(); addEnt(e); return e; };
+    const reactor = nk('nuclear-reactor', -40, -40);
+    const pipeH1 = nk('heat-pipe', -35, -40);
+    const pipeH2 = nk('heat-pipe', -34, -40);
+    const exch = nk('heat-exchanger', -33, -40);
+    const turb = nk('steam-turbine', -33, -38);
+    reactor.giveItem('nuclear-fuel-cell');
+    exch.water = 100;
+    let fullPower = false;
+    for (let i = 0; i < 1200 && !fullPower; i++) {
+      G.time += 0.05;
+      for (const e of [reactor, pipeH1, pipeH2, exch, turb]) e.update(0.05);
+      if (turb.powerOut >= TURBINE_POWER * 0.9) fullPower = true;
+    }
+    assert(fullPower, '核能链端到端：反应堆经热管/换热器带动汽轮机满功率发电');
+    assert(exch.temp() >= HEAT_EXCH_TEMP_MIN || exch.working, '换热器工作温度达标');
+
+    // 含核电设备的存档往返
+    const centrifuge = nk('centrifuge', -20, -20);
+    centrifuge.setRecipe('uranium-processing');
+    for (let i = 0; i < 10; i++) centrifuge.giveItem('uranium-ore');
+    for (let i = 0; i < 200; i++) { G.time += 0.1; centrifuge.update(0.1); if ((centrifuge.outp['uranium-238'] || 0) > 0) break; }
+    assert((centrifuge.outp['uranium-235'] || 0) === 1, '离心机铀加工产出铀-235');
+    reactor.usedCells = 2; reactor.burnLeft = 77;
+    const snap2 = serializeAll();
+    applySave(JSON.parse(JSON.stringify(snap2)));
+    const rReactor = entAt(-40, -40), rExch = entAt(-33, -40), rTurb = entAt(-33, -38), rCent = entAt(-20, -20);
+    assert(rReactor && rReactor.usedCells === 2 && Math.abs(rReactor.burnLeft - 77) < 1e-9, '读档：反应堆燃料状态还原');
+    assert(rTurb && rTurb.steamBuf > 0, '读档：汽轮机储汽还原');
+    assert(rCent && rCent.recipe === 'uranium-processing' && (rCent.outp['uranium-238'] || 0) === 39, '读档：离心机配方与产物还原');
+    assert(rExch && typeof rExch.temp === 'function', '读档：换热器还原且热实体方法就位');
+  } catch (err) {
+    assert(false, '核能链集成异常：' + err.message);
+  }
+
   console.log(out.join('|'));
 `, ctx);

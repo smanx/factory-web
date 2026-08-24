@@ -157,6 +157,15 @@ class Inserter extends Entity {
         return (item === 'magazine' || item === 'piercing-rounds') && t.ammoCount(item) < 40;
       case 'rocket-silo':
         return ROCKET_PART_RECIPE.inp[item] > 0 && (t.inp[item] || 0) < SILO_INPUT_CAP;
+      case 'centrifuge': {
+        if (!t.recipe) return false;
+        const crec = CENTRIFUGE_RECIPES[t.recipe];
+        return !!crec.inp[item] && (t.inp[item] || 0) < 50;
+      }
+      case 'nuclear-reactor':
+        return item === 'nuclear-fuel-cell' && t.fuelCells < REACTOR_FUEL_CAP;
+      case 'heat-exchanger':
+        return item === 'water' && t.water < WATER_CAP - 0.01;
       default:
         return false;
     }

@@ -269,6 +269,15 @@ function genChunk(cx, cy) {
     growOilField(terrain, oreType, oreAmt, rng, sx, sy, 4 + Math.floor(rng() * 5), 1500 + rng() * 2500, 3);
   }
 
+  // 铀矿（对齐《异星工厂》：稀有、越远离出生点越常见）：小片亮绿色晶簇
+  const uraniumChance = dist > 60 ? 0.32 : dist > 30 ? 0.18 : 0.05;
+  if (rng() < uraniumChance) {
+    const sx = 2 + Math.floor(rng() * (CHUNK - 4));
+    const sy = 2 + Math.floor(rng() * (CHUNK - 4));
+    growPolyfill(terrain, oreType, oreAmt, rng, sx, sy,
+      5 + Math.floor(rng() * 9), (650 + rng() * 900) * scale, URANIUM_ORE_TI);
+  }
+
   // 出生点保证：原点上一定有一片小型铁矿起步
   if (cx === 0 && cy === 0) {
     for (let attempt = 0; attempt < 8; attempt++) {
@@ -285,6 +294,15 @@ function genChunk(cx, cy) {
       const si = sy * CHUNK + sx;
       if (terrain[si] === T_GRASS && oreType[si] < 0 && Math.hypot(sx - 6, sy - 6) > 4) {
         growOilField(terrain, oreType, oreAmt, rng, sx, sy, 4, 2000, 3);
+        break;
+      }
+    }
+    // 出生点区块保证一小片铀矿（核能链入口，与铁矿/原油错开位置）
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const sx = 2 + Math.floor(rng() * (CHUNK - 4)), sy = 2 + Math.floor(rng() * (CHUNK - 4));
+      const si = sy * CHUNK + sx;
+      if (terrain[si] === T_GRASS && oreType[si] < 0 && Math.hypot(sx - 16, sy - 16) > 9) {
+        growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, 5, 700, URANIUM_ORE_TI);
         break;
       }
     }

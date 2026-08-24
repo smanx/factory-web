@@ -30,7 +30,11 @@ const FILES = [
   'js/devices/belt.js',
   'js/devices/splitter.js',
   'js/devices/underground.js',
-  'js/devices/inserter.js'
+  'js/devices/inserter.js',
+  'js/devices/boiler.js',
+  'js/devices/steam-engine.js',
+  'js/devices/pipe.js',
+  'js/devices/nuclear.js'
 ];
 
 // ---- 浏览器桩环境 ----
@@ -81,12 +85,16 @@ for (const f of FILES) {
 // 导出待测符号
 vm.runInContext(`
   globalThis.__T = {
-    G, ITEMS, RECIPES, REFINERY_RECIPES, TECHS, MODULES, MODULE_SLOTS, FILTER_CHOICES, FLUIDS,
+    G, ITEMS, RECIPES, REFINERY_RECIPES, CENTRIFUGE_RECIPES, TECHS, MODULES, MODULE_SLOTS, FILTER_CHOICES, FLUIDS,
     BUILD_DEFS, ENT_CLASSES, POWER_USE,
     recipeUnlocked, recipeUnlockTech, modAllowed, moduleBonusesOf, modSpeedMult, modPowerMult,
     grantOutputWithBonus, dispatchJobs, updateRobots, spawnDockedRobot, makeRobot,
     logiRobotsSerialize, logiRobotsRestore, ensureExtraReg, resetExtraReg,
-    entAt, addEnt, removeEnt
+    entAt, addEnt, removeEnt,
+    genWorld, getOreType, getOreAmt, mineableOre, ORES, URANIUM_ORE_TI,
+    heatCapOf, heatTempOf, isHeatEnt, conductHeat,
+    HEAT_CAP_PER_TILE, HEAT_TEMP_MAX, HEAT_EXCH_TEMP_MIN, REACTOR_HEAT_RATE, REACTOR_BURN_TIME,
+    REACTOR_FUEL_CAP, EXCHANGER_STEAM_RATE, TURBINE_POWER, TURBINE_STEAM_RATE
   };
 `, ctx);
 
@@ -111,12 +119,17 @@ section('数据一致性');
     for (const k in T.REFINERY_RECIPES[rid].inp) if (!T.ITEMS[k]) bad.push(rid + '<-' + k);
     for (const k in T.REFINERY_RECIPES[rid].out) if (!T.ITEMS[k]) bad.push(rid + '->' + k);
   }
+  for (const rid in T.CENTRIFUGE_RECIPES) {
+    for (const k in T.CENTRIFUGE_RECIPES[rid].inp) if (!T.ITEMS[k]) bad.push(rid + '<-' + k);
+    for (const k in T.CENTRIFUGE_RECIPES[rid].out) if (!T.ITEMS[k]) bad.push(rid + '->' + k);
+  }
   ok(bad.length === 0, '全部配方的输入/输出物品均存在' + (bad.length ? '（缺:' + bad.join(',') + '）' : ''));
 
   bad = [];
+  const recipeExists = rid => !!(T.RECIPES[rid] || T.REFINERY_RECIPES[rid] || T.CENTRIFUGE_RECIPES[rid] || T.ITEMS[rid]);
   for (const tid in T.TECHS) {
     const u = T.TECHS[tid].unlock;
-    if (u) for (const rid of u) if (!T.RECIPES[rid] && !T.ITEMS[rid]) bad.push(tid + '->' + rid);
+    if (u) for (const rid of u) if (!recipeExists(rid)) bad.push(tid + '->' + rid);
   }
   ok(bad.length === 0, '科技解锁项均指向有效配方/物品');
 
@@ -340,6 +353,155 @@ section('机械臂投喂规则');
   ok(!ins.canDropAt(port, 'iron-plate'), '港口不收铁板');
   const req = new T.ENT_CLASSES['logi-chest-requester']('logi-chest-requester', 126, 126);
   ok(ins.canDropAt(req, 'steel-plate'), '机械臂可向请求箱投喂');
+}
+
+// ================= 核能链：数据与铀矿生成 =================
+section('核能链：数据与铀矿生成');
+{
+  ok(T.mineableOre(5) === null && T.mineableOre(6) === 'uranium-ore' && T.mineableOre(0) === 'iron-ore',
+    '矿物查表：油床(索引5)不可开采、铀矿(索引6)与铁矿可开采');
+  // 出生点区块必有一小片铀矿
+  T.G.world = T.genWorld(20260824);
+  let found = 0;
+  for (let ly = 0; ly < 32; ly++)
+    for (let lx = 0; lx < 32; lx++)
+      if (T.getOreType(lx, ly) === T.URANIUM_ORE_TI) found++;
+  ok(found > 0, '出生点区块（0,0）保底生成铀矿');
+  // 远处区块铀矿富集（扫描 200 个远处区块，按概率应命中数十块）
+  let farChunksWithU = 0;
+  for (let c = 1; c <= 200; c++) {
+    let hit = false;
+    for (let ly = 0; ly < 32 && !hit; ly++)
+      for (let lx = 0; lx < 32 && !hit; lx++)
+        if (T.getOreType(c * 32 + lx, 512 + ly) === T.URANIUM_ORE_TI) hit = true;
+    if (hit) farChunksWithU++;
+  }
+  ok(farChunksWithU >= 25, '远处区块铀矿富集（200 块中 ' + farChunksWithU + ' 块含铀）');
+}
+
+// ================= 核能链：离心机端到端 =================
+section('核能链：离心机端到端');
+{
+  const c = new T.ENT_CLASSES['centrifuge']('centrifuge', 140, 140);
+  T.addEnt(c);
+  c.setRecipe('uranium-processing');
+  for (let i = 0; i < 10; i++) c.giveItem('uranium-ore');
+  let done = false;
+  for (let i = 0; i < 400 && !done; i++) { T.G.time += 0.1; c.update(0.1); done = (c.outp['uranium-238'] || 0) > 0; }
+  ok(done, '铀加工完成一个周期');
+  ok(c.outp['uranium-235'] === 1 && c.outp['uranium-238'] === 39, '铀加工产出 39 铀-238 + 1 铀-235');
+  // 机械臂从离心机东侧取货放入物流箱（臂在 (143,141) 朝东：取 (142,141)、放 (144,141)）
+  const chest = new T.ENT_CLASSES['logi-chest-storage']('logi-chest-storage', 144, 141);
+  const ins = new T.ENT_CLASSES['inserter']('inserter', 143, 141);
+  ins.dir = 0;
+  T.addEnt(chest); T.addEnt(ins);
+  let got = false;
+  for (let i = 0; i < 600 && !got; i++) {
+    T.G.time += 0.05;
+    c.update(0.05);
+    ins.update(0.05);
+    got = chest.countOf('uranium-238') > 0 || chest.countOf('uranium-235') > 0;
+  }
+  ok(got, '机械臂可从离心机取走产物送入钢箱');
+  T.removeEnt(c); T.removeEnt(chest); T.removeEnt(ins);
+}
+
+// ================= 核能链：反应堆燃烧与邻居加成 =================
+section('核能链：反应堆燃烧与邻居加成');
+{
+  // 单堆：放入燃料棒后开始产热；无邻居时 burnMult=1
+  const r = new T.ENT_CLASSES['nuclear-reactor']('nuclear-reactor', 160, 160);
+  ok(r.giveItem('nuclear-fuel-cell') && r.giveItem('nuclear-fuel-cell'), '可放入燃料棒');
+  ok(!r.giveItem('iron-plate'), '反应堆拒收非燃料物品');
+  ok(Math.abs(r.burnMult() - 1) < 1e-9, '无邻居时 burnMult=1');
+  r.update(0.5);
+  ok(r.burning === true && Math.abs(r.heat - T.REACTOR_HEAT_RATE * 0.5) < 1e-6,
+    '产热速率 = REACTOR_HEAT_RATE');
+  // 邻居加成：相邻反应堆使 burnMult ×2（纯几何判定）
+  const r2 = new T.ENT_CLASSES['nuclear-reactor']('nuclear-reactor', 165, 160);
+  T.addEnt(r2);
+  ok(r.neighborReactors() === 1 && Math.abs(r.burnMult() - 2) < 1e-9, '相邻反应堆使 burnMult ×2');
+  T.removeEnt(r2);
+  // 保护性停堆：热量灌满后不再消耗燃料
+  let guard = 0;
+  while (r.heat < T.heatCapOf(r) && guard++ < 400) { T.G.time += 0.1; r.update(0.1); }
+  ok(r.heat >= T.heatCapOf(r) - 1e-6, '孤立反应堆最终热饱和');
+  const fuelBefore = r.fuelCells, burnBefore = r.burnLeft;
+  T.G.time += 0.5;
+  r.update(0.5);
+  ok(!r.burning && r.fuelCells === fuelBefore && Math.abs(r.burnLeft - burnBefore) < 1e-9,
+    '热饱和时保护性停堆，不浪费燃料');
+}
+
+// ================= 核能链：换热器 + 汽轮机端到端 =================
+section('核能链：换热器+汽轮机端到端');
+{
+  // 布局：反应堆(5×5) | 换热器(3×2)贴其东侧，汽轮机(3×5)在换热器正下方
+  const r = new T.ENT_CLASSES['nuclear-reactor']('nuclear-reactor', 180, 180);
+  const ex = new T.ENT_CLASSES['heat-exchanger']('heat-exchanger', 185, 180);
+  const tb = new T.ENT_CLASSES['steam-turbine']('steam-turbine', 185, 182);
+  T.addEnt(r); T.addEnt(ex); T.addEnt(tb);
+  r.giveItem('nuclear-fuel-cell');
+  ex.water = 50;
+  ok(T.isHeatEnt(r) && T.isHeatEnt(ex) && T.isHeatEnt(tb) === false, '热实体判定正确（汽轮机不导热）');
+  let sawPower = false, sawSteamUse = false;
+  for (let i = 0; i < 1200; i++) {   // 模拟至多 60 秒
+    T.G.time += 0.05;
+    r.update(0.05); ex.update(0.05); tb.update(0.05);
+    if (ex.working) sawSteamUse = true;
+    if (tb.on) sawPower = true;
+    if (sawPower && tb.powerOut >= T.TURBINE_POWER * 0.9) break;
+  }
+  ok(sawSteamUse, '换热器达到 500°C 后开始产蒸汽');
+  ok(sawPower && tb.powerOut >= T.TURBINE_POWER * 0.9, '汽轮机满负荷发电（' + T.TURBINE_POWER + 'kW）');
+  ok(r.usedCells > 0 || r.burnLeft < T.REACTOR_BURN_TIME, '反应堆持续消耗燃料并积累乏燃料棒');
+  ok(ex.water < 50, '换热器消耗了水');
+  T.removeEnt(r); T.removeEnt(ex); T.removeEnt(tb);
+}
+
+// ================= 核能链：科技门控 =================
+section('核能链：科技门控');
+{
+  ok(!T.recipeUnlocked('centrifuge') && !T.recipeUnlocked('uranium-processing'), '未研究「核能科技」前无法使用离心机/铀加工');
+  T.G.techDone.nuclear = true;
+  ok(T.recipeUnlocked('centrifuge') && T.recipeUnlocked('uranium-processing'), '研究「核能科技」后解锁离心机/铀加工');
+  ok(T.G.techDone.atomicPower ? true : !T.recipeUnlocked('nuclear-reactor'), '未研究「原子能发电」前无法合成核反应堆');
+  T.G.techDone.atomicPower = true;
+  ok(T.recipeUnlocked('nuclear-reactor') && T.recipeUnlocked('steam-turbine') && T.recipeUnlocked('heat-pipe'), '研究「原子能发电」后解锁全套核电设备');
+  ok(!T.recipeUnlocked('kovarex-enrichment'), 'Kovarex 需单独研究「铀浓缩」');
+  T.G.techDone.kovarex = true;
+  ok(T.recipeUnlocked('kovarex-enrichment') && T.recipeUnlocked('nuclear-reprocessing'), '研究「铀浓缩」后解锁 Kovarex 与再处理');
+}
+
+// ================= 核能链：序列化往返 =================
+section('核能链：序列化往返');
+{
+  const r = new T.ENT_CLASSES['nuclear-reactor']('nuclear-reactor', 210, 210);
+  r.giveItem('nuclear-fuel-cell'); r.giveItem('nuclear-fuel-cell');
+  r.usedCells = 3; r.heat = 123.4; r.burnLeft = 45.6;
+  const rs = JSON.parse(JSON.stringify(r.serialize()));
+  const rr2 = T.ENT_CLASSES['nuclear-reactor'].restore(rs);
+  ok(rr2.fuelCells === 2 && rr2.usedCells === 3 && rr2.heat === 123.4 && rr2.burnLeft === 45.6,
+    '反应堆燃料/废料/热量/燃烧进度随存档还原');
+
+  const ex = new T.ENT_CLASSES['heat-exchanger']('heat-exchanger', 215, 215);
+  ex.water = 7; ex.steamBuf = 3.5; ex.heat = 88.8;
+  const es = JSON.parse(JSON.stringify(ex.serialize()));
+  const er = T.ENT_CLASSES['heat-exchanger'].restore(es);
+  ok(er.water === 7 && er.steamBuf === 3.5 && er.heat === 88.8, '换热器水/汽/热量随存档还原');
+
+  const c = new T.ENT_CLASSES['centrifuge']('centrifuge', 220, 220);
+  c.setRecipe('kovarex-enrichment');
+  c.inp = { 'uranium-235': 3 }; c.prog = 5;
+  const cs = JSON.parse(JSON.stringify(c.serialize()));
+  const cr = T.ENT_CLASSES['centrifuge'].restore(cs);
+  ok(cr.recipe === 'kovarex-enrichment' && cr.inp['uranium-235'] === 3 && cr.prog === 5, '离心机配方/输入/进度随存档还原');
+
+  const tb = new T.ENT_CLASSES['steam-turbine']('steam-turbine', 225, 225);
+  tb.steamBuf = 12.5;
+  const ts = JSON.parse(JSON.stringify(tb.serialize()));
+  const tr = T.ENT_CLASSES['steam-turbine'].restore(ts);
+  ok(tr.steamBuf === 12.5, '汽轮机储汽随存档还原');
 }
 
 console.log('\n========================');

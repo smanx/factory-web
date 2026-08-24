@@ -253,9 +253,9 @@ function htmlInventory() {
   const q = (G.invRecipeQ || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   h += '<input id="inv-recipe-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off" value="' + q + '">';
   h += '<div id="inv-recipes">';
-  // 组装机配方（含化工厂/炼油厂以外的普通配方）
+  // 组装机配方（含化工厂/炼油厂/离心机以外的普通配方）
   for (const rid in RECIPES) {
-    if (isChemRecipe(rid)) continue;
+    if (isChemRecipe(rid) || isCentrifugeRecipe(rid)) continue;
     const rec = RECIPES[rid];
     const ok = canCraft(rid) && recipeUnlocked(rid);
     const lockedTech = recipeUnlockTech(rid);
@@ -384,7 +384,13 @@ function htmlTech() {
     h += '<div class="rmain"><div class="rname">' + t.name + '</div><div class="dim">' + t.desc + '</div>';
     // 解锁内容说明（对齐《异星工厂》：科技面板展示研究奖励）
     if (t.unlock && t.unlock.length) {
-      const names = t.unlock.map(rid => RECIPES[rid] ? ITEMS[Object.keys(RECIPES[rid].out)[0]].name : rid).join('、');
+      const recName = rid => {
+        if (RECIPES[rid]) return ITEMS[Object.keys(RECIPES[rid].out)[0]].name;
+        if (REFINERY_RECIPES[rid]) return REFINERY_RECIPES[rid].name;
+        if (CENTRIFUGE_RECIPES[rid]) return CENTRIFUGE_RECIPES[rid].name;
+        return ITEMS[rid] ? ITEMS[rid].name : rid;
+      };
+      const names = t.unlock.map(recName).join('、');
       h += '<div class="dim" style="color:#8fd0ff">解锁配方：' + names + '</div>';
     }
     if (isInfiniteTech(tid)) {
@@ -1022,6 +1028,10 @@ function buildDebug() {
     ['+5效能模块', 'effectivity-module', 5], ['+5效能模块III', 'effectivity-module-3', 5],
     ['+2信标', 'beacon', 2], ['+2机器人港口', 'roboport', 2], ['+20物流机器人', 'logistic-robot', 20],
     ['+5被动物流箱', 'logi-chest-passive', 5], ['+5存储物流箱', 'logi-chest-storage', 5], ['+5请求物流箱', 'logi-chest-requester', 5],
+    ['+50铀矿', 'uranium-ore', 50], ['+10铀235', 'uranium-235', 10], ['+80铀238', 'uranium-238', 80],
+    ['+20燃料棒', 'nuclear-fuel-cell', 20], ['+10乏燃料棒', 'used-up-fuel-cell', 10],
+    ['+2离心机', 'centrifuge', 2], ['+2反应堆', 'nuclear-reactor', 2],
+    ['+20热管', 'heat-pipe', 20], ['+4换热器', 'heat-exchanger', 4], ['+8汽轮机', 'steam-turbine', 8],
     ['+50原油', 'crude-oil', 50], ['+50水', 'water', 50], ['+50蒸汽', 'steam', 50]
   ]) {
     const b = document.createElement('button');

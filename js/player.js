@@ -87,7 +87,7 @@ function canCraft(rid) {
 }
 
 function doCraft(rid, times = 1) {
-  if (isChemRecipe(rid)) return 0;
+  if (isChemRecipe(rid) || isCentrifugeRecipe(rid)) return 0;
   // 研究解锁：未研究对应科技的配方不可手工合成（对齐《异星工厂》）
   if (!recipeUnlocked(rid)) { toast('尚未研究「' + TECHS[recipeUnlockTech(rid)].name + '」，无法合成'); return 0; }
   let made = 0;
@@ -110,12 +110,12 @@ function updateMining(dt) {
   if (p.mining !== key) { p.mining = key; p.mineProg = 0; }
   if (!withinReach(t.tx, t.ty)) { p.mineProg = 0; return; }
   const ti = getOreType(t.tx, t.ty);
-  if (ti >= 0 && ti < ORES.length && getOreAmt(t.tx, t.ty) > 0) {
+  if (mineableOre(ti) && getOreAmt(t.tx, t.ty) > 0) {
     p.mineProg += dt * ((G.dbg && G.dbg.mineMult) || 1) / HAND_MINE_TIME;
     if (p.mineProg >= 1) {
       p.mineProg -= 1;
       if (!G.settings.infiniteOre) consumeOre(t.tx, t.ty);
-      invAdd(ORES[ti]);
+      invAdd(mineableOre(ti));
       // 手动采矿时在屏幕上方显示获得的物品文本
       if (typeof toast === 'function') toast('+1 ' + ITEMS[ORES[ti]].name);
     }

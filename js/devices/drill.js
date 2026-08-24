@@ -17,8 +17,7 @@ class Drill extends Entity {
     for (let dy = 0; dy < this.h; dy++)
       for (let dx = 0; dx < this.w; dx++) {
         const tx = this.x + dx, ty = this.y + dy;
-        const ti = getOreType(tx, ty);
-        if (ti >= 0 && ti < ORES.length && getOreAmt(tx, ty) > 0) return [tx, ty];
+        if (mineableOre(getOreType(tx, ty)) && getOreAmt(tx, ty) > 0) return [tx, ty];
       }
     return null;
   }
@@ -210,8 +209,7 @@ function drillNeedsOre(type, tx, ty, dir, ew, eh) {
   let hasOre = false;
   for (let dy = 0; dy < eh && !hasOre; dy++)
     for (let dx = 0; dx < ew && !hasOre; dx++) {
-      const ti = getOreType(tx + dx, ty + dy);
-      if (ti >= 0 && ti < ORES.length) hasOre = true;
+      if (mineableOre(getOreType(tx + dx, ty + dy))) hasOre = true;
     }
   return hasOre ? null : { ok: false };
 }

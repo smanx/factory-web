@@ -744,7 +744,7 @@ function htmlStatsPower() {
   const list = isProd ? s.producers : s.consumers;
   if (!list.length) {
     h += '<div class="dim">没有' + (isProd ? '正在发电' : '正在耗电') + '的设备' +
-      (isProd ? '（蒸汽机 / 太阳能板 / 蓄电器放电）' : '（电采矿机 / 电炉 / 组装机 / 抽油机 / 炼油厂 / 化工厂）') + '。</div>';
+      (isProd ? '（蒸汽机 / 汽轮机 / 太阳能板 / 蓄电器放电）' : '（电采矿机 / 电炉 / 组装机 / 抽油机 / 炼油厂 / 化工厂）') + '。</div>';
     return h;
   }
 

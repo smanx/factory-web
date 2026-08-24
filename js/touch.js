@@ -236,7 +236,7 @@ function onTouchStart(ev) {
       }
       // 长按矿石 → 连续采集
       const ti = getOreType(s.tx, s.ty);
-      if (ti >= 0 && ti < ORES.length && getOreAmt(s.tx, s.ty) > 0 && withinReach(s.tx, s.ty)) {
+      if (mineableOre(ti) && getOreAmt(s.tx, s.ty) > 0 && withinReach(s.tx, s.ty)) {
         TOUCH.mode = 'mining';
         TOUCH.miningKey = s.tx + ',' + s.ty;
         G.mouseDown = true;
@@ -483,7 +483,7 @@ function handleTap() {
 
   // 点击矿石 → 单次采集一格（快速收获）；长按/按住矿石则连续采集（见长按逻辑）
   const ti = getOreType(tx, ty);
-  if (ti >= 0 && ti < ORES.length && getOreAmt(tx, ty) > 0 && withinReach(tx, ty)) {
+  if (mineableOre(ti) && getOreAmt(tx, ty) > 0 && withinReach(tx, ty)) {
     if (!G.settings.infiniteOre) consumeOre(tx, ty);
     invAdd(ORES[ti]);
     toast('+1 ' + ITEMS[ORES[ti]].name);
@@ -509,7 +509,7 @@ function handleDoubleTap() {
   const e = entAt(tx, ty);
   // 双击矿石 → 连续采集两次（快速挖两格）
   const ti = getOreType(tx, ty);
-  if (ti >= 0 && ti < ORES.length && getOreAmt(tx, ty) > 0 && withinReach(tx, ty)) {
+  if (mineableOre(ti) && getOreAmt(tx, ty) > 0 && withinReach(tx, ty)) {
     for (let i = 0; i < 2; i++) {
       if (getOreAmt(tx, ty) <= 0) break;
       if (!G.settings.infiniteOre) consumeOre(tx, ty);

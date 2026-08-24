@@ -65,6 +65,23 @@ const ROBOT_CHARGE_MAX = 100;     // 机器人的电量上限
 const ROBOT_DRAIN_PER_TILE = 0.6; // 每飞行一格消耗的电量
 const ROBOT_RECHARGE_RATE = 14;   // 停靠充电速率（电量/秒，受电网供电比例影响）
 const ROBOT_JOB_RESERVE = 10;     // 接单所需最低电量冗余
+// ===== 核能链（对齐《异星工厂》Nuclear power）=====
+// 链路：铀矿 → 离心机分离 U-235/U-238 → 合成核燃料棒 → 反应堆燃烧产热
+//       → 热管导热 → 换热器（≥500°C）烧水成蒸汽 → 汽轮机高效发电
+const URANIUM_ORE_TI = 6;         // 铀矿的 oreType 索引（ORES 数组第 7 位，见 ORES 定义）
+const REACTOR_BURN_TIME = 120;    // 每根核燃料棒燃烧时长（秒），对齐本体 200s 的缩放版
+const REACTOR_HEAT_RATE = 240;    // 反应堆满负荷每秒产热（热单位/s）：恰好带 4 台换热器
+const REACTOR_NEIGHBOR_BONUS = 1.0; // 每台相邻反应堆 +100% 产热（对齐本体邻居加成）
+const HEAT_CAP_PER_TILE = 24;     // 热实体每格热容量（热单位）；占满即 1000°C
+const HEAT_TEMP_MAX = 1000;       // 热实体最高温度（°C）
+const HEAT_EXCH_TEMP_MIN = 500;   // 换热器最低工作温度（°C，对齐本体 500°C 高温蒸汽）
+const HEAT_TRANSFER_K = 0.6;      // 相邻热实体间导热系数（温差越大传热越快）
+const EXCHANGER_STEAM_RATE = 2.4; // 换热器满负荷产汽速率（单位/秒）：恰好带满 2 台汽轮机
+const HEAT_PER_STEAM = 25;        // 换热器每产出 1 单位蒸汽消耗的热量
+const TURBINE_POWER = 3600;       // 汽轮机满功率输出（kW）= 4 台蒸汽机，1 台反应堆 ≈ 32 台蒸汽机
+const TURBINE_STEAM_RATE = 1.2;   // 汽轮机满功率耗汽（单位/秒），效率约为蒸汽机的 2 倍/汽
+const TURBINE_STEAM_CAP = 20;     // 汽轮机内部储汽上限（高于蒸汽机，缓冲更足）
+const REACTOR_FUEL_CAP = 5;       // 反应堆内可存的燃料棒上限
 const POWER_PER_ENGINE = 900;   // 蒸汽机满功率输出
 const POWER_USE = {
   'electric-drill': 90,          // 电采矿机
@@ -76,6 +93,7 @@ const POWER_USE = {
   'refinery': 420,               // 炼油厂
   'chemical-plant': 210,         // 化工厂
   'lab': 60,                     // 研究中心
+  'centrifuge': 350,             // 离心机
   'rocket-silo': 350,            // 火箭发射井
   'beacon': 480                  // 信标（装有模块时耗电）
 };
@@ -107,7 +125,8 @@ const FILTER_CHOICES = ['iron-plate', 'copper-plate', 'steel-plate', 'iron-gear'
   'speed-module', 'speed-module-2', 'speed-module-3',
   'productivity-module', 'productivity-module-2', 'productivity-module-3',
   'effectivity-module', 'effectivity-module-2', 'effectivity-module-3',
-  'production-science', 'utility-science'].concat(FLUIDS);
+  'production-science', 'utility-science',
+  'uranium-ore', 'uranium-235', 'uranium-238', 'nuclear-fuel-cell', 'used-up-fuel-cell'].concat(FLUIDS);
 function techPacks(tid) { return (TECHS && TECHS[tid] && TECHS[tid].cost) || {}; }
 function techCostTotal(tid) {
   let s = 0;
@@ -127,6 +146,9 @@ const ITEMS = {
   'stone':      { name: '石头',   color: '#b3a685', mark: 'St', desc: '合成石炉的材料，可在熔炉烧成石砖' },
   'stone-brick': { name: '石砖',   color: '#b3a685', mark: 'Sb', desc: '由石头在熔炉烧制，可在组装机合成石墙' },
   'calcite':    { name: '方解石', color: '#e8e0d0', mark: 'Ca', desc: '矿物，用于炼油厂煤液化配方（太空时代）' },
+  'uranium-ore': { name: '铀矿石', color: '#7ed83c', mark: 'U', desc: '放射性矿物（亮绿色晶簇），在离心机中分离出铀-235 与铀-238' },
+  'uranium-235': { name: '铀-235', color: '#a4f04c', mark: 'U5', desc: '稀有裂变同位素，与铀-238 一起合成核燃料棒；Kovarex 流程可增殖' },
+  'uranium-238': { name: '铀-238', color: '#5a8a4a', mark: 'U8', desc: '丰产同位素，核燃料棒的主要原料，也是 Kovarex 增殖的消耗品' },
   'iron-plate':   { name: '铁板',   color: '#ccd4de', mark: 'Fp', desc: '最常用的结构材料' },
   'copper-plate': { name: '铜板',   color: '#e0975f', mark: 'Cp', desc: '用于拉制铜线' },
   'iron-gear':    { name: '铁齿轮', color: '#aab5c2', mark: 'G',  desc: '机械核心零件' },
@@ -222,10 +244,22 @@ const ITEMS = {
   'logistic-robot':    { name: '物流机器人', color: '#e05050', mark: 'Lo', desc: '在物流网络覆盖范围内自动把物品从被动物流箱/存储箱搬往请求箱，一次最多携带 ' + ROBOT_CARRY + ' 件；需放入机器人港口充电待命' },
   'logi-chest-passive': { name: '被动物流箱', color: '#b85a3a', mark: 'P', desc: '被动供应：网络中的机器人可从这里取货发往请求箱。配合机械臂投入产物即可实现全自动物流配送' },
   'logi-chest-storage': { name: '存储物流箱', color: '#5a7ab8', mark: 'S', desc: '存储物资，也可作为请求配送的次级取货来源（优先级低于被动供应箱）' },
-  'logi-chest-requester': { name: '请求物流箱', color: '#4a9a6a', mark: 'Q', desc: '在面板中设置每种物品的请求数量，机器人会自动从网络内补货到设定值。产线供料神器' }
+  'logi-chest-requester': { name: '请求物流箱', color: '#4a9a6a', mark: 'Q', desc: '在面板中设置每种物品的请求数量，机器人会自动从网络内补货到设定值。产线供料神器' },
+  // ===== 核能链（对齐《异星工厂》Nuclear power）=====
+  'centrifuge':        { name: '离心机', color: '#7a8a5c', desc: '高速旋转分离铀同位素：铀加工 / Kovarex 铀浓缩 / 核废料再处理（3×3，吃电力）' },
+  'nuclear-fuel-cell': { name: '核燃料棒', color: '#8fe05a', mark: 'Fu', desc: '铀-235+铀-238+铁板合成；放入核反应堆燃烧产热，烧完变成乏燃料棒' },
+  'used-up-fuel-cell': { name: '乏燃料棒', color: '#4a5a42', mark: 'Ex', desc: '反应堆烧完的核废料，可在离心机再处理回收部分铀-238' },
+  'nuclear-reactor':   { name: '核反应堆', color: '#4a4f58', desc: '燃烧核燃料棒产出巨量热量（5×5）：每台相邻反应堆 +100% 邻居加成；热量经热管送往换热器，热满自动保护性停堆不浪费燃料' },
+  'heat-pipe':         { name: '热管', color: '#b06a2e', desc: '传导热量（1×1）：连接反应堆与换热器，温度越高颜色越亮（暗红→橙→白热）' },
+  'heat-exchanger':    { name: '换热器', color: '#9a7d3e', desc: '把 ≥500°C 的热量转化为蒸汽（3×2）：两端蓝口水口进水、底边白汽口出汽，接法与锅炉一致；满负荷产汽可带满 2 台汽轮机' },
+  'steam-turbine':     { name: '汽轮机', color: '#57b0a2', desc: '高效蒸汽发电（3×5）：接法与蒸汽机一致（两端通用汽口），功率 = 4 台蒸汽机，耗汽效率更高' }
 };
 
-const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone', 'calcite'];
+const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone', 'calcite', null, 'uranium-ore'];
+// 索引 5 保留给原油矿床（ORE_OIL），索引 6 为铀矿石（URANIUM_ORE_TI）。
+// 手挖/采矿机遍历 ORES 时跳过 null（油床不进普通矿物流程）。
+// 可开采矿物查表：油床（索引 5，值为 null）与越界一律返回 null
+function mineableOre(ti) { return (ti >= 0 && ti < ORES.length && ORES[ti]) ? ORES[ti] : null; }
 
 const SMELTS = [
   { id: 'iron-plate',   inp: 'iron-ore',   time: 3.2 },
@@ -330,8 +364,30 @@ const RECIPES = {
   'logistic-robot':        { time: 10, inp: { 'flying-robot-frame': 1, 'processing-unit': 1 }, out: { 'logistic-robot': 1 } },
   'logi-chest-passive':    { time: 1,  inp: { 'steel-chest': 1, 'advanced-circuit': 1 }, out: { 'logi-chest-passive': 1 } },
   'logi-chest-storage':    { time: 1,  inp: { 'steel-chest': 1, 'green-circuit': 1 }, out: { 'logi-chest-storage': 1 } },
-  'logi-chest-requester':  { time: 1,  inp: { 'steel-chest': 1, 'advanced-circuit': 1, 'green-circuit': 3 }, out: { 'logi-chest-requester': 1 } }
+  'logi-chest-requester':  { time: 1,  inp: { 'steel-chest': 1, 'advanced-circuit': 1, 'green-circuit': 3 }, out: { 'logi-chest-requester': 1 } },
+  // ===== 核能链设备与燃料（对齐《异星工厂》配方结构，数值按本作规模缩放）=====
+  // 核燃料棒：本体 90s = 1铀235+19铀238+10铁 → 10 根；一次铀加工（1铀235+39铀238）恰好支持两批
+  'nuclear-fuel-cell':     { time: 60, inp: { 'uranium-235': 1, 'uranium-238': 19, 'iron-plate': 5 }, out: { 'nuclear-fuel-cell': 10 } },
+  'centrifuge':            { time: 20, inp: { 'steel-plate': 20, 'iron-gear': 20, 'pipe': 10, 'green-circuit': 10 }, out: { 'centrifuge': 1 } },
+  'nuclear-reactor':       { time: 60, inp: { 'steel-plate': 40, 'stone-brick': 20, 'advanced-circuit': 10, 'copper-cable': 20 }, out: { 'nuclear-reactor': 1 } },
+  'heat-pipe':             { time: 1,  inp: { 'steel-plate': 4, 'copper-plate': 4 }, out: { 'heat-pipe': 1 } },
+  'heat-exchanger':        { time: 15, inp: { 'steel-plate': 10, 'pipe': 8, 'green-circuit': 5 }, out: { 'heat-exchanger': 1 } },
+  'steam-turbine':         { time: 15, inp: { 'iron-gear': 10, 'pipe': 8, 'steel-plate': 6 }, out: { 'steam-turbine': 1 } }
 };
+
+// ===== 离心机配方（对齐《异星工厂》Centrifuge：全部为固体进出，机械臂投喂/取走）=====
+// 铀加工：10 铀矿石 → 39 铀-238 + 1 铀-235（12s）。取本体期望产率（0.7%≈每周期1个）的确定性版本，
+// 一个周期恰好支撑两批核燃料棒（2×19=38 个 U-238），自平衡不积压。
+// Kovarex 铀浓缩：3 铀-235 + 18 铀-238 → 4 铀-235 + 17 铀-238（30s）：净 +1 U-235，把过剩的
+// U-238 增殖成稀有同位素（对齐本体 Kovarex process 的"放大器"语义）。
+// 核废料再处理：5 乏燃料棒 → 3 铀-238（60s，对齐 Nuclear fuel reprocessing）。
+const CENTRIFUGE_RECIPES = {
+  'uranium-processing':   { name: '铀加工',          time: 12, inp: { 'uranium-ore': 10 },                          out: { 'uranium-238': 39, 'uranium-235': 1 } },
+  'kovarex-enrichment':   { name: 'Kovarex 铀浓缩',  time: 30, inp: { 'uranium-235': 3, 'uranium-238': 18 },        out: { 'uranium-235': 4, 'uranium-238': 17 } },
+  'nuclear-reprocessing': { name: '核废料再处理',     time: 60, inp: { 'used-up-fuel-cell': 5 },                     out: { 'uranium-238': 3 } }
+};
+const CENTRIFUGE_RECIPE_IDS = Object.keys(CENTRIFUGE_RECIPES);
+function isCentrifugeRecipe(id) { return CENTRIFUGE_RECIPES[id] !== undefined; }
 
 // 化工厂配方（对齐《异星工厂》官方数值）：
 // 塑料：1 石油气 + 1 煤 → 1 塑料板（1s）
@@ -359,15 +415,17 @@ const REFINERY_RECIPE_IDS = Object.keys(REFINERY_RECIPES);
 function isRefineryRecipe(id) { return REFINERY_RECIPES[id] !== undefined; }
 
 // ---- 配方归属设备 ----
-// 判断某配方适用于哪台设备：炼油厂 / 化工厂 / 组装机。
+// 判断某配方适用于哪台设备：炼油厂 / 化工厂 / 离心机 / 组装机。
 const DEVICE_NAMES = {
   'assembling-machine': '组装机',
   'chemical-plant': '化工厂',
-  'refinery': '炼油厂'
+  'refinery': '炼油厂',
+  'centrifuge': '离心机'
 };
 function recipeDevice(id) {
   if (isRefineryRecipe(id)) return 'refinery';
   if (isChemRecipe(id)) return 'chemical-plant';
+  if (isCentrifugeRecipe(id)) return 'centrifuge';
   return 'assembling-machine';
 }
 function recipeDeviceName(id) { return DEVICE_NAMES[recipeDevice(id)] || ''; }
@@ -423,7 +481,13 @@ const BUILD_DEFS = {
   'roboport':           { w: 4, h: 4, solid: true },
   'logi-chest-passive': { w: 1, h: 1, solid: true },
   'logi-chest-storage': { w: 1, h: 1, solid: true },
-  'logi-chest-requester': { w: 1, h: 1, solid: true }
+  'logi-chest-requester': { w: 1, h: 1, solid: true },
+  // ===== 核能链 =====
+  'centrifuge':         { w: 3, h: 3, solid: true },
+  'nuclear-reactor':    { w: 5, h: 5, solid: true },
+  'heat-pipe':          { w: 1, h: 1, solid: true },
+  'heat-exchanger':     { w: 3, h: 2, solid: true },
+  'steam-turbine':      { w: 3, h: 5, solid: true }
 };
 
 // ===== 传送带阶级链（对齐《异星工厂》物流升级）=====
@@ -484,6 +548,10 @@ const TECHS = {
   advModule:  { name: '高级模块', cost: { 'utility-science': 50, 'production-science': 40 }, desc: '解锁全部三级模块（速度/产能/效能 III）', unlock: ['speed-module-3', 'productivity-module-3', 'effectivity-module-3'] },
   beaconTech: { name: '信标', cost: { 'utility-science': 40 }, desc: '解锁信标：向周围机器转发模块效果，多台叠加全厂提速增产', unlock: ['beacon'] },
   logiNet:    { name: '物流网络', cost: { 'utility-science': 40, 'production-science': 30 }, desc: '解锁机器人港口、物流机器人与三种物流箱：被动物流体系，产线供料全自动', unlock: ['roboport', 'logistic-robot', 'logi-chest-passive', 'logi-chest-storage', 'logi-chest-requester'] },
+  // ===== 核能链（对齐《异星工厂》Nuclear power 科技线）=====
+  nuclear:    { name: '核能科技', cost: { 'blue-science': 40, 'production-science': 30 }, desc: '解锁离心机与铀加工：从铀矿石分离出铀-235 与铀-238', unlock: ['centrifuge', 'uranium-processing'] },
+  atomicPower:{ name: '原子能发电', cost: { 'production-science': 50, 'utility-science': 50 }, desc: '解锁核反应堆、热管、换热器、汽轮机与核燃料棒合成——1 台反应堆 ≈ 32 台蒸汽机的终局电力', unlock: ['nuclear-fuel-cell', 'nuclear-reactor', 'heat-pipe', 'heat-exchanger', 'steam-turbine'] },
+  kovarex:    { name: '铀浓缩', cost: { 'utility-science': 60, 'production-science': 40 }, desc: '解锁 Kovarex 铀浓缩（把过剩铀-238 增殖成稀有铀-235）与核废料再处理', unlock: ['kovarex-enrichment', 'nuclear-reprocessing'] },
   deep:       { name: '重工蓝图', cost: { 'blue-science': 50 }, desc: '科研总进度获取 +20%' },
   infinite:   { name: '无限科技', cost: {}, infinite: true, desc: '无限研究：消耗任意科学包，永不完成' }
 };
@@ -516,7 +584,8 @@ function drawItemGlyph(x, id, cx, cy, s) {
   x.translate(cx, cy);
   switch (id) {
     case 'iron-ore':
-    case 'copper-ore': {
+    case 'copper-ore':
+    case 'uranium-ore': {
       x.fillStyle = col;
       for (let i = 0; i < 3; i++) {
         const a = i * 2.09 - Math.PI / 2;
@@ -600,6 +669,20 @@ function drawItemGlyph(x, id, cx, cy, s) {
       x.beginPath();
       x.moveTo(-r * 0.5, 0); x.lineTo(r * 0.5, 0);
       x.moveTo(0, -r * 0.45); x.lineTo(0, r * 0.45);
+      x.stroke();
+      break;
+    }
+    case 'uranium-235':
+    case 'uranium-238': {
+      // 同位素圆盘：实心圆 + 高光环（对齐《异星工厂》铀同位素的圆盘造型）
+      x.fillStyle = col;
+      x.beginPath();
+      x.arc(0, 0, r * 0.78, 0, 7);
+      x.fill();
+      x.strokeStyle = 'rgba(255,255,255,.55)';
+      x.lineWidth = Math.max(1, s * 0.05);
+      x.beginPath();
+      x.arc(0, 0, r * 0.46, 0, 7);
       x.stroke();
       break;
     }
