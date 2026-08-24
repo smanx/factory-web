@@ -553,7 +553,7 @@ const RECIPES = {
   // 铀富集（Kovarex，离心机）：铀-238 在铀-235 催化下持续富集出更多铀-235（可自持循环）
   'kovarex':           { time: 60, inp: { 'uranium-238': 40, 'uranium-235': 1 },                  out: { 'uranium-235': 1, 'uranium-238': 41 } },
   // 核燃料（组装机）：由铀-235 制成
-  'nuclear-fuel':      { time: 5,   inp: { 'uranium-235': 1, 'iron-plate': 1 },                   out: { 'nuclear-fuel': 1 } },
+  'nuclear-fuel':      { time: 10,  inp: { 'uranium-235': 1 },                                 out: { 'nuclear-fuel': 1 } },
   // 离心机/反应堆/汽轮机（组装机制造）
   'centrifuge':        { time: 2,   inp: { 'iron-plate': 8, 'green-circuit': 4 },                 out: { 'centrifuge': 1 } },
   'nuclear-reactor':   { time: 15,  inp: { 'steel-plate': 40, 'copper-plate': 20, 'battery': 5, 'centrifuge': 1 }, out: { 'nuclear-reactor': 1 } },
@@ -1076,6 +1076,7 @@ const TECHS = {
   'space-research-speed': { name: '空间科研速度', cost: { 'space-science-pack': 100 }, infinite: true, desc: '无限科技：每次研究科研速度 +20%（对齐《异星工厂》Research speed 无限科技）', req: ['space-science'] },
   'space-mining-productivity': { name: '空间采矿产能', cost: { 'space-science-pack': 100 }, infinite: true, desc: '无限科技：每次研究采矿产能 +10%（对齐《异星工厂》Mining productivity 无限科技）', req: ['space-science'] },
   'weapon-damage': { name: '武器伤害', cost: { 'space-science-pack': 100, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升所有武器与炮塔伤害 +10%（对齐《异星工厂》Weapon damage 无限科技），让科技军备在终局持续成长', req: ['space-science', 'advanced-combat'] },
+  'follower-robot-count': { name: '追随机器人', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究提升同时在场战斗机器人数量上限 +2（对齐《异星工厂》Follower robot count）', req: ['utility', 'advanced-combat'] },
   infinite:   { name: '无限科技', cost: {}, infinite: true, desc: '无限研究：消耗任意科学包，永不完成', req: [] }
 };
 

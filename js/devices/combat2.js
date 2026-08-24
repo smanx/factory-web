@@ -804,9 +804,19 @@ function throwCapsule(id, tx, ty) {
     if (typeof toast === 'function') toast('需要先研究「' + TECHS[TECH_REQ[id]].name + '」才能使用 ' + ITEMS[id].name);
     return false;
   }
+  // 追随机器人数量上限（对齐《异星工厂》Follower robot count）：默认 5，逐级 +2
+  // 战斗机器人胶囊在消耗前校验上限，避免满员时白白扣掉胶囊（毒/减速胶囊不受此限制）
+  if (CAPSULES[id] && !(id === 'poison-capsule' || id === 'slowdown-capsule')) {
+    if (!G.combatRobots) G.combatRobots = [];
+    const cap = 5 + 2 * ((G.techProg && G.techProg['follower-robot-count']) || 0);
+    if (G.combatRobots.length >= cap) {
+      if (typeof toast === 'function') toast('战斗机器人已达上限（' + cap + '，研究「追随机器人」可提升）');
+      uiDirty = true;
+      return false;
+    }
+  }
   invTake(id, 1);
   if (typeof playSfx === 'function') playSfx('deploy');
-  // 毒胶囊/减速胶囊：落地生成区域力场（不是战斗机器人）
   if (id === 'poison-capsule' || id === 'slowdown-capsule') {
     const kind = id === 'poison-capsule' ? 'poison' : 'slowdown';
     if (!G.aoeZones) G.aoeZones = [];
@@ -821,9 +831,11 @@ function throwCapsule(id, tx, ty) {
   }
   const c = CAPSULES[id];
   if (!G.combatRobots) G.combatRobots = [];
+  const cap = 5 + 2 * ((G.techProg && G.techProg['follower-robot-count']) || 0);
   // 一次投掷释放 2 只（destroyer 1 只）
   const n = id === 'destroyer-capsule' ? 1 : 2;
   for (let i = 0; i < n; i++) {
+    if (G.combatRobots.length >= cap) break;
     G.combatRobots.push({
       type: id, kind: id.replace('-capsule', ''),
       name: c.name, hp: c.hp, maxhp: c.hp, dmg: c.dmg, speed: c.speed,
