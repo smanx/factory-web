@@ -111,6 +111,7 @@ function render() {
   drawGroundFires(ctx);
   drawAcidPools(ctx);
   drawLootDrops(ctx);
+  if (typeof drawGroundItems === 'function') drawGroundItems(ctx);
   drawLogisticsRobots(ctx);
   if (typeof drawConstruction === 'function') drawConstruction(ctx);
   if (typeof drawParticles === 'function') drawParticles(ctx);
@@ -1148,6 +1149,34 @@ function drawLootDrops(ctx) {
       ctx.strokeStyle = 'rgba(20,26,34,.6)';
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.arc(d.x, d.y + bob, 5, 0, 7); ctx.stroke();
+    }
+  }
+}
+
+// 玩家丢弃到地面的物品（见 player.js）：在格子中心绘制物品图标（可被传送带吸附/玩家拾取）
+function drawGroundItems(ctx) {
+  if (!G.groundItems || G.groundItems.length === 0) return;
+  for (const g of G.groundItems) {
+    if (g.taken || !ITEMS[g.item]) continue;
+    const cx = g.tx * TILE + TILE / 2;
+    const cy = g.ty * TILE + TILE / 2;
+    // 地面阴影
+    ctx.fillStyle = 'rgba(0,0,0,.18)';
+    ctx.beginPath(); ctx.ellipse(cx, cy + 6, 6, 3, 0, 0, 7); ctx.fill();
+    // 物品图标
+    if (typeof drawItemGlyph === 'function') {
+      drawItemGlyph(ctx, g.item, cx, cy, 14);
+    } else {
+      ctx.fillStyle = ITEMS[g.item].color;
+      ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 7); ctx.fill();
+    }
+    // 数量 > 1 时显示堆叠数
+    if (g.n > 1) {
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 9px system-ui';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(String(g.n), cx + 6, cy + 7);
     }
   }
 }

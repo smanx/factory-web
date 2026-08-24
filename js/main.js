@@ -65,6 +65,7 @@ const G = {
   bullets: [],
   combatRobots: [],
   lootDrops: undefined,   // 击杀敌人掉落的矿石（见 combat2.js dropEnemyLoot）
+  groundItems: undefined, // 玩家丢弃到地面的物品实体（见 player.js，供手动上料/传送带吸附）
 
   driving: null,       // 载具驾驶状态：{ ent: Car }，玩家进入驾驶时非空
   spawnT: 0,
@@ -1371,9 +1372,15 @@ function bindInput() {
       } else if (G.panelMode) {
         closePanel();
       } else if (buildActive() || !G.cursorTile) {
-        G.sel = -1;
-        G.quickSel = null;
-        refreshHotbar();
+        // 手持普通物品时按 Q 丢弃 1 个到地面（保持手持，便于手动上料，对齐《异星工厂》）；
+        // 手持建筑/工具时 Q 仍为取消选择。
+        if (buildActive() && typeof dropHeldItemToGround === 'function' && dropHeldItemToGround()) {
+          // 已丢弃到地面，保持手持
+        } else {
+          G.sel = -1;
+          G.quickSel = null;
+          refreshHotbar();
+        }
       } else {
         const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
         const idx = e ? HOTBAR.indexOf(e.type) : -1;
@@ -1610,6 +1617,7 @@ function loop(ts) {
       updateTouchMove(dt);
       updateHeldMouse(dt);
       updateMining(dt);
+      if (typeof updateGroundItems === 'function') updateGroundItems(dt);   // 地面物品（手动上料）拾取
       updateCraftQueue(dt);   // 手搓合成队列（按时间逐件制作）
       if (typeof updateFishing === 'function') updateFishing(dt);   // 钓鱼冷却
       if (typeof updatePersonalPower === 'function') updatePersonalPower(dt);   // 个人电网（装备件）

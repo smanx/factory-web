@@ -341,6 +341,86 @@ function updateMining(dt) {
   }
 }
 
+// ===== 玩家丢弃物品到地面（对齐《异星工厂》：按 Q 把手持普通物品放到地面/传送带）=====
+// G.groundItems：地面物品实体数组 { tx, ty, item, n, taken }
+// 用于玩家手动上料：物品落到地面后，可被传送带吸附带走、玩家走近拾取。
+
+function addGroundItem(tx, ty, item, n) {
+  if (!G.groundItems) G.groundItems = [];
+  // 同格同种物品自动合并（对齐《异星工厂》：地面同种物品堆叠）
+  for (const g of G.groundItems) {
+    if (!g.taken && g.tx === tx && g.ty === ty && g.item === item) { g.n += n; return; }
+  }
+  G.groundItems.push({ tx, ty, item, n, taken: false });
+}
+
+// 格子是否不可放置地面物品（水/峭壁/树/占用实体；传送带可承载故不视为阻挡）
+function groundTileBlocked(tx, ty) {
+  const t = getTerrain(tx, ty);
+  if (t === T_WATER || t === T_CLIFF || t === T_TREE) return true;
+  const e = entAt(tx, ty);
+  if (e && !(e instanceof Belt)) return true;   // 非传送带实体阻挡（传送带可承载物品）
+  return false;
+}
+
+// 手持物品是否为可丢弃到地面的普通物品（非建筑/工具/流体）
+function isGroundDroppable(id) {
+  if (!id || !ITEMS[id]) return false;
+  if (BUILD_DEFS[id]) return false;            // 建筑不丢，Q 用于取消选择
+  if (typeof isToolItem === 'function' && isToolItem(id)) return false;
+  if (FLUIDS.indexOf(id) >= 0) return false;   // 流体不可直接放置到地面
+  return true;
+}
+
+// 玩家按 Q 丢弃手持物品 1 个到前方地面（前方不可放则放脚下），保持手持便于连续上料
+function dropHeldItemToGround() {
+  const held = selItem();
+  if (!isGroundDroppable(held)) return false;
+  if (invCount(held) <= 0) return false;
+  let tx = Math.floor(G.player.x / TILE) + DX[G.player.dir];
+  let ty = Math.floor(G.player.y / TILE) + DY[G.player.dir];
+  if (groundTileBlocked(tx, ty)) { tx = Math.floor(G.player.x / TILE); ty = Math.floor(G.player.y / TILE); }
+  if (!invTake(held, 1)) return false;
+  addGroundItem(tx, ty, held, 1);
+  if (typeof playSfx === 'function') playSfx('loot');
+  uiDirty = true;
+  return true;
+}
+
+// 每帧更新地面物品：玩家靠近自动拾取（传送带吸附由 Belt.update 处理）
+function updateGroundItems(dt) {
+  if (!G.groundItems || G.groundItems.length === 0) return;
+  const p = G.player;
+  const pickR = REACH_PX * 0.9;
+  for (const g of G.groundItems) {
+    if (g.taken) continue;
+    const gx = g.tx * TILE + TILE / 2, gy = g.ty * TILE + TILE / 2;
+    if (Math.hypot(gx - p.x, gy - p.y) < pickR) {
+      const got = invAdd(g.item, g.n);
+      if (got > 0) {
+        if (typeof playSfx === 'function') playSfx('loot');
+        g.n -= got;
+        if (g.n <= 0) g.taken = true;
+      }
+    }
+  }
+  if (G.groundItems.length) {
+    let hasTaken = false;
+    for (const g of G.groundItems) if (g.taken) { hasTaken = true; break; }
+    if (hasTaken) {
+      G.groundItems = compactFilter(G.groundItems, g => !g.taken);
+      if (G.groundItems.length === 0) G.groundItems = undefined;
+    }
+  }
+}
+
+// 传送带吸附：返回 (tx,ty) 格的地面物品（若未取走）；由 Belt.update 调用
+function groundItemForBelt(tx, ty) {
+  if (!G.groundItems) return null;
+  for (const g of G.groundItems) if (!g.taken && g.tx === tx && g.ty === ty) return g;
+  return null;
+}
+
 function findSpawn() {
   let best = null, bestD = Infinity;
   const R = 22;

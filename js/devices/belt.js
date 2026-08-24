@@ -18,6 +18,14 @@ class Belt extends Entity {
   update(dt) {
     // 电路条件不满足时传送带停转，带上物品原地冻结
     if (!this.circuitEnabled()) return;
+    // 吸附地面物品：玩家按 Q 丢到带上的物品会被传送带带走（对齐《异星工厂》手动上料）
+    if (typeof groundItemForBelt === 'function' && (!this.items || this.items.length === 0)) {
+      const g = groundItemForBelt(this.x, this.y);
+      if (g && this.acceptItem(g.item)) {   // 不传来源方向：从带尾接入（相当于地面物品被带推动）
+        g.n--;
+        if (g.n <= 0) g.taken = true;
+      }
+    }
     // 惰性调度（P0 优化）：空带没有任何可移动物品，跳过真实更新
     // （排序/邻居扫描/转移判定），空传送带完全无需每帧运行。
     if (!this.items || this.items.length === 0) return;
