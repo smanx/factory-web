@@ -216,6 +216,12 @@ class Inserter extends Entity {
     if (this.filter) s.filter = this.filter;
     return s;
   }
+  // 蓝图只保留过滤器配置，不复制爪上抓取的物品
+  blueprint() {
+    const s = super.blueprint();
+    if (this.filter) s.filter = this.filter;
+    return s;
+  }
   static restore(s) {
     const i = super.restore(s);
     i.holding = s.holding || null;

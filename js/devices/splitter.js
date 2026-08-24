@@ -102,6 +102,12 @@ class Splitter extends Belt {
       items: this.items.map(o => [o.item, +o.pos.toFixed(3), o.lane, o.outLane === undefined ? -1 : o.outLane])
     };
   }
+  // 蓝图保留优先输出配置，不复制传送带上的物品
+  blueprint() {
+    const s = super.blueprint();
+    s.outPref = this.outPref;
+    return s;
+  }
   static restore(s) {
     const e = new this(s.type, s.x, s.y);
     e.dir = s.dir | 0;
