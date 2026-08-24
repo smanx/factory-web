@@ -1051,6 +1051,54 @@ function bindInput() {
       else if (G.blueMode === 'green') applyGreenBlueprint();
     }
   });
+
+  // ===== 触摸支持（手机/平板）：蓝图/红图/绿图框选与粘贴，以及普通建造/挖矿 =====
+  G.canvas.addEventListener('touchstart', ev => {
+    ev.preventDefault();
+    const t = ev.changedTouches[0];
+    if (!t) return;
+    updateCursorTile(t.clientX, t.clientY);
+    // 蓝图/红图交互：触摸开始框选（非粘贴）或粘贴（粘贴模式），模拟左键
+    if (G.blueMode) {
+      if (G.blueMode === 'paste') {
+        pasteBlueprint();
+      } else {
+        G.blueStart = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
+        G.blueEnd = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
+        G.blueSelecting = true;
+      }
+      return;
+    }
+    // 普通模式：模拟左键建造/挖矿
+    G.mouseDown = true;
+    lastPlaceKey = '';
+    handleLeftDown();
+  }, { passive: false });
+  G.canvas.addEventListener('touchmove', ev => {
+    ev.preventDefault();
+    const t = ev.changedTouches[0];
+    if (!t) return;
+    updateCursorTile(t.clientX, t.clientY);
+    if (G.blueSelecting && G.cursorTile) {
+      G.blueEnd = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
+    }
+  }, { passive: false });
+  G.canvas.addEventListener('touchend', ev => {
+    ev.preventDefault();
+    G.mouseDown = false;
+    // 蓝图/红图：松开手指完成框选（不依赖触摸坐标，确保框选必然收尾）
+    if (G.blueSelecting) {
+      G.blueSelecting = false;
+      if (!G.blueStart || !G.blueEnd) { cancelBlueprint(); return; }
+      if (G.blueMode === 'blue') captureBlueprint();
+      else if (G.blueMode === 'red') applyRedBlueprint();
+      else if (G.blueMode === 'green') applyGreenBlueprint();
+    }
+  }, { passive: false });
+  G.canvas.addEventListener('touchcancel', () => {
+    G.mouseDown = false;
+    G.blueSelecting = false;
+  });
   G.canvas.addEventListener('contextmenu', ev => ev.preventDefault());
   G.canvas.addEventListener('wheel', ev => {
     ev.preventDefault();
