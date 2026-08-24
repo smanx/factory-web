@@ -14,6 +14,7 @@ const TANK_FUEL_CAP = 120;
 const TANK_SHELL_CAP = 40;       // 内置炮弹容量
 const TANK_COLLIDE = 22;         // 坦克碰撞半径（比车大）
 const TANK_ARMOR = 0.55;         // 驾驶坦克时玩家所受伤害系数（55%）
+const TRUNK_SLOTS = 10;          // 载具储物箱槽位数（对齐《异星工厂》：汽车/坦克/蜘蛛机自带储物箱）
 
 class Car extends Entity {
   constructor(type, x, y) {
@@ -22,27 +23,54 @@ class Car extends Entity {
     this.fuelSolid = 0;         // 内置固体燃料量
     this.fuelRocket = 0;        // 内置火箭燃料量（最高级燃料，优先烧）
     this.dir = 0;               // 0东1南2西3北（车头朝向）
+    this.trunk = {};            // 储物箱：{ 物品id: 数量 }（对齐《异星工厂》载具自带储物箱）
   }
+  // ===== 载具储物箱（trunk）：可存放任意物品，槽位 = TRUNK_SLOTS，每槽不超过该物品堆叠上限 =====
+  trunkUsedSlots() {
+    let n = 0;
+    for (const k in this.trunk) if (this.trunk[k] > 0) n++;
+    return n;
+  }
+  trunkGiveItem(item) {
+    const stk = (typeof stackSize === 'function') ? stackSize(item) : 100;
+    const cur = this.trunk[item] || 0;
+    if (cur >= stk) return false;                       // 当前堆叠已满
+    if (cur === 0 && this.trunkUsedSlots() >= TRUNK_SLOTS) return false;  // 新物品但槽位已满
+    this.trunk[item] = cur + 1;
+    return true;
+  }
+  trunkTakeItemOf(item) {
+    if ((this.trunk[item] || 0) > 0) { this.trunk[item]--; if (this.trunk[item] <= 0) delete this.trunk[item]; return item; }
+    return null;
+  }
+  trunkCountOf(item) { return this.trunk[item] || 0; }
   giveItem(item) {
     if (item === 'rocket-fuel' && this.fuelCoal + this.fuelSolid + this.fuelRocket < (this.fuelCap || CAR_FUEL_CAP)) { this.fuelRocket++; return true; }
     if (item === 'coal' && this.fuelCoal + this.fuelSolid + this.fuelRocket < (this.fuelCap || CAR_FUEL_CAP)) { this.fuelCoal++; return true; }
     if (item === 'solid-fuel' && this.fuelCoal + this.fuelSolid + this.fuelRocket < (this.fuelCap || CAR_FUEL_CAP)) { this.fuelSolid++; return true; }
-    return false;
+    // 其余物品放入储物箱
+    return this.trunkGiveItem(item);
   }
   peekItem() { return null; }
   takeItem() { return null; }
-  countOf(item) { return item === 'coal' ? this.fuelCoal : (item === 'solid-fuel' ? this.fuelSolid : (item === 'rocket-fuel' ? this.fuelRocket : 0)); }
+  countOf(item) {
+    if (item === 'coal') return this.fuelCoal;
+    if (item === 'solid-fuel') return this.fuelSolid;
+    if (item === 'rocket-fuel') return this.fuelRocket;
+    return this.trunkCountOf(item);
+  }
   takeItemOf(item) {
     if (item === 'coal' && this.fuelCoal > 0) { this.fuelCoal--; return 'coal'; }
     if (item === 'solid-fuel' && this.fuelSolid > 0) { this.fuelSolid--; return 'solid-fuel'; }
     if (item === 'rocket-fuel' && this.fuelRocket > 0) { this.fuelRocket--; return 'rocket-fuel'; }
-    return null;
+    return this.trunkTakeItemOf(item);
   }
   contents() {
     const list = [[this.type, 1]];
     if (this.fuelRocket > 0) list.push(['rocket-fuel', this.fuelRocket]);
     if (this.fuelSolid > 0) list.push(['solid-fuel', this.fuelSolid]);
     if (this.fuelCoal > 0) list.push(['coal', this.fuelCoal]);
+    for (const k in this.trunk) if (this.trunk[k] > 0) list.push([k, this.trunk[k]]);
     return list;
   }
   takeAll() {
@@ -50,7 +78,8 @@ class Car extends Entity {
     if (this.fuelRocket > 0) rows.push(['rocket-fuel', this.fuelRocket]);
     if (this.fuelSolid > 0) rows.push(['solid-fuel', this.fuelSolid]);
     if (this.fuelCoal > 0) rows.push(['coal', this.fuelCoal]);
-    this.fuelCoal = 0; this.fuelSolid = 0; this.fuelRocket = 0;
+    for (const k in this.trunk) if (this.trunk[k] > 0) rows.push([k, this.trunk[k]]);
+    this.fuelCoal = 0; this.fuelSolid = 0; this.fuelRocket = 0; this.trunk = {};
     return rows;
   }
   // 行驶时烧燃料：优先烧固体燃料（更耐用），其次烧煤
@@ -62,11 +91,12 @@ class Car extends Entity {
   // 载具无需电力
   powerDemand() { return 0; }
   update(dt) {}
-  serialize() { const s = super.serialize(); s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket; return s; }
-  blueprint() { const s = super.blueprint(); s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket; return s; }
+  serialize() { const s = super.serialize(); s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket; if (Object.keys(this.trunk).length) s.trunk = this.trunk; return s; }
+  blueprint() { const s = super.blueprint(); s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket; if (Object.keys(this.trunk).length) s.trunk = this.trunk; return s; }
   static restore(s) {
     const c = super.restore(s);
     c.fuelCoal = s.fuelCoal || 0; c.fuelSolid = s.fuelSolid || 0; c.fuelRocket = s.fuelRocket || 0;
+    c.trunk = s.trunk ? JSON.parse(JSON.stringify(s.trunk)) : {};
     return c;
   }
 }
@@ -91,7 +121,8 @@ class Tank extends Car {
     if (item === 'uranium-cannon-shell' && this.uShells < TANK_SHELL_CAP) { this.uShells++; return true; }
     if (item === 'explosive-cannon-shell' && this.eShells < TANK_SHELL_CAP) { this.eShells++; return true; }
     if (item === 'explosive-uranium-cannon-shell' && this.euShells < TANK_SHELL_CAP) { this.euShells++; return true; }
-    return false;
+    // 其余物品放入储物箱
+    return this.trunkGiveItem(item);
   }
   takeItemOf(item) {
     if (item === 'coal' && this.fuelCoal > 0) { this.fuelCoal--; return 'coal'; }
@@ -101,7 +132,7 @@ class Tank extends Car {
     if (item === 'uranium-cannon-shell' && this.uShells > 0) { this.uShells--; return 'uranium-cannon-shell'; }
     if (item === 'explosive-cannon-shell' && this.eShells > 0) { this.eShells--; return 'explosive-cannon-shell'; }
     if (item === 'explosive-uranium-cannon-shell' && this.euShells > 0) { this.euShells--; return 'explosive-uranium-cannon-shell'; }
-    return null;
+    return this.trunkTakeItemOf(item);
   }
   countOf(item) {
     if (item === 'coal') return this.fuelCoal;
@@ -111,7 +142,7 @@ class Tank extends Car {
     if (item === 'uranium-cannon-shell') return this.uShells;
     if (item === 'explosive-cannon-shell') return this.eShells;
     if (item === 'explosive-uranium-cannon-shell') return this.euShells;
-    return 0;
+    return this.trunkCountOf(item);
   }
   contents() {
     const rows = [[this.type, 1]];
@@ -122,6 +153,7 @@ class Tank extends Car {
     if (this.eShells > 0) rows.push(['explosive-cannon-shell', this.eShells]);
     if (this.uShells > 0) rows.push(['uranium-cannon-shell', this.uShells]);
     if (this.shells > 0) rows.push(['cannon-shell', this.shells]);
+    for (const k in this.trunk) if (this.trunk[k] > 0) rows.push([k, this.trunk[k]]);
     return rows;
   }
   takeAll() {
@@ -133,7 +165,8 @@ class Tank extends Car {
     if (this.eShells > 0) rows.push(['explosive-cannon-shell', this.eShells]);
     if (this.uShells > 0) rows.push(['uranium-cannon-shell', this.uShells]);
     if (this.shells > 0) rows.push(['cannon-shell', this.shells]);
-    this.fuelCoal = 0; this.fuelSolid = 0; this.fuelRocket = 0; this.shells = 0; this.uShells = 0; this.eShells = 0; this.euShells = 0;
+    for (const k in this.trunk) if (this.trunk[k] > 0) rows.push([k, this.trunk[k]]);
+    this.fuelCoal = 0; this.fuelSolid = 0; this.fuelRocket = 0; this.shells = 0; this.uShells = 0; this.eShells = 0; this.euShells = 0; this.trunk = {};
     return rows;
   }
   serialize() {
@@ -224,19 +257,148 @@ const SPIDER_MISSILE_CAP = 50;     // 内置导弹容量
 const SPIDER_TURRET_RANGE = 7;     // 车载自动炮塔射程（格）
 const SPIDER_TURRET_RATE = 0.4;    // 自动炮塔射击间隔（秒）
 const SPIDER_AUTO_DMG = 8;         // 自动炮塔单发伤害
+const SPIDER_GRID = 4;             // 蜘蛛机器人装备网格尺寸（4×4，对齐《异星工厂》）
+const SPIDER_LASER_RATE = 0.6;     // 装备个人激光防御开火间隔（秒）
+const SPIDER_LASER_DMG = 15;
+const SPIDER_LASER_COST = 800;     // 每发耗电
+
 class Spidertron extends Tank {
   constructor(type, x, y) {
     super('spidertron', x, y);
     this.fuelCap = SPIDER_FUEL_CAP;
     this.missiles = 0;             // 内置导弹数（用 rocket 弹药）
     this.autoT = 0;                // 自动炮塔冷却
+    // 蜘蛛机器人装备网格（对齐《异星工厂》Spidertron 自带 4×4 装备网格）
+    this.equipGrid = [];           // [{id, r, c}]
+    this.equipEnergy = 0;          // 装备电网当前电量
+    this.equipEnergyMax = 0;       // 装备电网容量（含电池）
+    this.equipEnergyProd = 0;      // 装备电网发电速率（太阳能板/聚变堆）
+    this.spiderLaserT = 0;         // 个人激光防御冷却
+  }
+  // ===== 蜘蛛机器人装备网格：可安装外骨骼/激光/电池/聚变堆/护盾等装备件 =====
+  spiderGridSize() { return SPIDER_GRID; }
+  spiderEquipUsedSlots() { return this.equipGrid.length; }
+  spiderCanPlace(eid, r, c) {
+    const def = EQUIPMENT[eid];
+    const size = SPIDER_GRID;
+    if (!def) return false;
+    const s = def.size;
+    if (r < 0 || c < 0 || r + s > size || c + s > size) return false;
+    for (const e of this.equipGrid) {
+      const es = EQUIPMENT[e.id].size;
+      if (e.r < r + s && e.r + es > r && e.c < c + s && e.c + es > c) return false;
+    }
+    return true;
+  }
+  spiderFindFreeSlot(eid) {
+    const def = EQUIPMENT[eid];
+    if (!def) return null;
+    for (let r = 0; r <= SPIDER_GRID - def.size; r++)
+      for (let c = 0; c <= SPIDER_GRID - def.size; c++)
+        if (this.spiderCanPlace(eid, r, c)) return [r, c];
+    return null;
+  }
+  spiderInstall(eid) {
+    if (!isEquipment(eid)) return false;
+    if (typeof invCount !== 'function' || invCount(eid) < 1) { if (typeof toast === 'function') toast('背包里没有 ' + ITEMS[eid].name); return false; }
+    const slot = this.spiderFindFreeSlot(eid);
+    if (!slot) { if (typeof toast === 'function') toast('装备网格已满'); return false; }
+    invTake(eid, 1);
+    this.equipGrid.push({ id: eid, r: slot[0], c: slot[1] });
+    this.recomputeSpiderPower();
+    if (typeof playSfx === 'function') playSfx('equip');
+    if (typeof toast === 'function') toast('已安装 ' + ITEMS[eid].name);
+    uiDirty = true;
+    return true;
+  }
+  spiderRemove(r, c) {
+    const idx = this.equipGrid.findIndex(e => e.r === r && e.c === c);
+    if (idx < 0) return false;
+    const e = this.equipGrid[idx];
+    this.equipGrid.splice(idx, 1);
+    if (typeof invAdd === 'function') invAdd(e.id, 1);
+    this.recomputeSpiderPower();
+    if (typeof playSfx === 'function') playSfx('unequip');
+    if (typeof toast === 'function') toast('已卸下 ' + ITEMS[e.id].name);
+    uiDirty = true;
+    return true;
+  }
+  spiderEquipCount(id) { let n = 0; for (const e of this.equipGrid) if (e.id === id) n++; return n; }
+  // 汇总装备电网：发电量（太阳能板随昼夜）+ 储电容量（电池）
+  recomputeSpiderPower() {
+    let prod = 0, cap = 0;
+    for (const e of this.equipGrid) {
+      const def = EQUIPMENT[e.id];
+      if (def.powerOut) prod += def.powerOut;
+      if (def.powerCap) cap += def.powerCap;
+    }
+    // 便携聚变反应堆全天候发电；个人太阳能板仅白天发电
+    let solar = 0;
+    for (const e of this.equipGrid) if (e.id === 'portable-solar-panel' || e.id === 'portable-solar-panel-mk2') solar += EQUIPMENT[e.id].powerOut;
+    const isDay = typeof isDaytime === 'function' ? isDaytime() : true;
+    const totalProd = (prod - solar) + (isDay ? solar : 0);
+    this.equipEnergyProd = totalProd;
+    this.equipEnergyMax = cap;
+    if (this.equipEnergy > this.equipEnergyMax) this.equipEnergy = this.equipEnergyMax;
+  }
+  // 从装备电网取电（返回是否足够）
+  spiderDrainEnergy(need) {
+    if (this.equipEnergy < need) return false;
+    this.equipEnergy -= need;
+    return true;
+  }
+  // 每帧更新装备电网：充放电 + 个人激光防御 + 护盾（由载具 update 调用）
+  spiderUpdateEquipment(dt) {
+    this.recomputeSpiderPower();
+    // 发电充能
+    this.equipEnergy = Math.min(this.equipEnergyMax, this.equipEnergy + this.equipEnergyProd * dt);
+    // 个人激光防御：自动攻击射程内敌人（消耗装备电力）
+    const laserN = this.spiderEquipCount('personal-laser-defense');
+    if (laserN > 0 && G.settings.combat && G.enemies && G.enemies.length > 0) {
+      this.spiderLaserT = (this.spiderLaserT || 0) - dt;
+      if (this.spiderLaserT <= 0) {
+        const cx = this.x * TILE + TILE * this.w / 2, cy = this.y * TILE + TILE * this.h / 2;
+        const range = EQUIPMENT['personal-laser-defense'].laser * TILE;
+        let target = null, bestD = Infinity;
+        for (const en of G.enemies) {
+          if (!en || en.dead) continue;
+          const d = Math.hypot(en.x - cx, en.y - cy);
+          if (d <= range && d < bestD) { bestD = d; target = en; }
+        }
+        if (target && this.spiderDrainEnergy(SPIDER_LASER_COST)) {
+          this.spiderLaserT = SPIDER_LASER_RATE;
+          const dmg = Math.round(SPIDER_LASER_DMG * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('energy') : 1));
+          target.hp -= dmg;
+          if (target.hp <= 0) target.dead = true;
+          (G.bullets || (G.bullets = [])).push({ x: cx, y: cy, tx: target.x, ty: target.y, t: 0, life: 0.08, dmg, kind: 'laser' });
+        }
+      }
+    }
+  }
+  // 外骨骼速度加成（×）
+  spiderSpeedMult() {
+    const n = this.spiderEquipCount('exoskeleton');
+    return 1 + n * 0.4;
+  }
+  // 装备护盾：吸收载具所受伤害（返回剩余伤害）
+  spiderShieldAbsorb(dmg) {
+    const shieldN = this.spiderEquipCount('energy-shield') + this.spiderEquipCount('energy-shield-mk2') * 2;
+    if (shieldN <= 0) return dmg;
+    const per = EQUIPMENT['energy-shield'].shield;
+    // 简单模型：每次受击最多吸收 shield 量（按护盾总数），电力充足时吸收
+    if (this.spiderDrainEnergy(per)) {
+      const absorbed = Math.min(dmg, per);
+      return dmg - absorbed;
+    }
+    return dmg;
   }
   giveItem(item) {
     if (item === 'rocket-fuel' && this.fuelCoal + this.fuelSolid + this.fuelRocket < SPIDER_FUEL_CAP) { this.fuelRocket++; return true; }
     if (item === 'coal' && this.fuelCoal + this.fuelSolid + this.fuelRocket < SPIDER_FUEL_CAP) { this.fuelCoal++; return true; }
     if (item === 'solid-fuel' && this.fuelCoal + this.fuelSolid + this.fuelRocket < SPIDER_FUEL_CAP) { this.fuelSolid++; return true; }
     if (item === 'rocket' && this.missiles < SPIDER_MISSILE_CAP) { this.missiles++; return true; }
-    return false;
+    // 其余物品放入储物箱
+    return this.trunkGiveItem(item);
   }
   takeItemOf(item) {
     if (item === 'rocket' && this.missiles > 0) { this.missiles--; return 'rocket'; }
@@ -257,8 +419,8 @@ class Spidertron extends Tank {
     this.missiles = 0;
     return rows;
   }
-  serialize() { const s = super.serialize(); s.missiles = this.missiles; return s; }
-  static restore(s) { const c = super.restore(s); c.missiles = s.missiles | 0; return c; }
+  serialize() { const s = super.serialize(); s.missiles = this.missiles; if (this.equipGrid && this.equipGrid.length) s.spiderEquip = this.equipGrid; s.spiderEnergy = this.equipEnergy || 0; return s; }
+  static restore(s) { const c = super.restore(s); c.missiles = s.missiles | 0; c.equipGrid = s.spiderEquip ? JSON.parse(JSON.stringify(s.spiderEquip)) : []; c.equipEnergy = s.spiderEnergy || 0; c.spiderLaserT = 0; return c; }
   // 车载自动炮塔：自动攻击附近的敌人（无需玩家操作）
   autoTurret(dt) {
     this.autoT = (this.autoT || 0) - dt;
@@ -297,6 +459,8 @@ class Spidertron extends Tank {
   }
   // 遥控自主移动：被蜘蛛遥控器下达移动命令后，自动朝目标格寻路并沿途开火
   update(dt) {
+    // 每帧更新装备电网（发电/激光防御），无论是否在遥控移动
+    this.spiderUpdateEquipment(dt);
     if (!this.remoteTarget) return;
     // 卡死检测：若一段时间无法有效接近目标（位置未变），则放弃命令，避免每帧无效计算
     if (this._stallT === undefined) { this._stallT = 0; this._lastD = Infinity; }
@@ -319,7 +483,7 @@ class Spidertron extends Tank {
     if (dist < TILE * 0.6) { this.remoteTarget = null; return; }
     // 燃料不足则无法移动
     if (this.fuelCoal <= 0 && this.fuelSolid <= 0 && this.fuelRocket <= 0) return;
-    const speed = SPIDER_SPEED;
+    const speed = SPIDER_SPEED * this.spiderSpeedMult();
     const mx = dx / dist, my = dy / dist;
     // 更新朝向（东/南/西/北近似）
     if (Math.abs(mx) > Math.abs(my)) this.dir = mx > 0 ? 0 : 2;
@@ -401,6 +565,59 @@ function drawSpidertron(ctx, e, gx, gy, dir, alpha) {
 function spiderTip(e) {
   return '蜘蛛机器人：终极载具，可跨水/墙；车载自动炮塔 + 空格发射导弹';
 }
+// ===== 蜘蛛机器人装备网格面板（对齐《异星工厂》：Spidertron 自带 4×4 装备网格） =====
+function spiderEquipHtml(e) {
+  const size = e.spiderGridSize();
+  const cell = 42;
+  let h = '<div class="sec">装备网格（' + size + '×' + size + '）</div>';
+  h += '<div class="eqgrid" style="width:' + (size * cell + size * 4) + 'px;height:' + (size * cell + size * 4) + 'px">';
+  for (let r = 0; r < size; r++) for (let c = 0; c < size; c++)
+    h += '<div class="eqcell" data-spidereq="' + r + ',' + c + '" style="left:' + (c * (cell + 4)) + 'px;top:' + (r * (cell + 4)) + 'px;width:' + cell + 'px;height:' + cell + 'px"></div>';
+  for (const eq of e.equipGrid) {
+    const def = EQUIPMENT[eq.id]; if (!def) continue;
+    const s = def.size;
+    h += '<div class="eqitem" data-spidereq="' + eq.r + ',' + eq.c + '" data-tip="' + ITEMS[eq.id].name + '|' + def.desc + '（点击卸下）" style="left:' + (eq.c * (cell + 4)) + 'px;top:' + (eq.r * (cell + 4)) + 'px;width:' + (s * cell + (s - 1) * 4) + 'px;height:' + (s * cell + (s - 1) * 4) + 'px">' +
+      '<img src="' + iconDataURL(eq.id) + '"><b>' + ITEMS[eq.id].name + '</b></div>';
+  }
+  h += '</div>';
+  h += '<div class="eqlist">';
+  for (const eid in EQUIPMENT) {
+    const n = typeof invCount === 'function' ? invCount(eid) : 0;
+    if (n <= 0) continue;
+    const def = EQUIPMENT[eid];
+    const equippedN = e.spiderEquipCount(eid);
+    h += '<button class="rcbtn" data-spiderinstall="' + eid + '" data-tip="' + ITEMS[eid].name + '|' + def.desc + '">' +
+      '<img src="' + iconDataURL(eid) + '">' + ITEMS[eid].name + (equippedN > 0 ? ' 已装×' + equippedN : '') + ' 背包×' + n + '</button>';
+  }
+  h += '</div>';
+  const pct = e.equipEnergyMax > 0 ? Math.round(e.equipEnergy / e.equipEnergyMax * 100) : 0;
+  h += '<div class="dim">装备电网：发电 ' + Math.round(e.equipEnergyProd) + ' kW' +
+    (e.equipEnergyMax > 0 ? ' · 储电 ' + Math.round(e.equipEnergy / 1000) + '/' + Math.round(e.equipEnergyMax / 1000) + ' MJ（' + pct + '%）' : '（未装电池）') + '</div>';
+  h += '<div class="dim">外骨骼提升移动速度、能量护盾受击时消耗电网电力吸收伤害、个人激光防御自动攻击敌人（耗电）。点击背包装备件安装到网格空位，点击网格中的装备件卸下。</div>';
+  return h;
+}
+
+// 处理蜘蛛机器人装备网格点击（安装/卸下）。返回是否已处理。
+function spiderEquipPanelClick(el) {
+  if (!G.panelEnt || !(G.panelEnt instanceof Spidertron)) return false;
+  // 点击网格中的装备 → 卸下
+  const eqItem = el.closest('.eqitem');
+  if (eqItem) {
+    const [r, c] = (eqItem.dataset.spidereq || '0,0').split(',').map(Number);
+    G.panelEnt.spiderRemove(r, c);
+    renderPanel(false);
+    return true;
+  }
+  // 点击可安装装备件 → 安装
+  const ins = el.closest('[data-spiderinstall]');
+  if (ins) {
+    G.panelEnt.spiderInstall(ins.dataset.spiderinstall);
+    renderPanel(false);
+    return true;
+  }
+  return false;
+}
+
 function spiderPanelHtml(e) {
   let h = row('燃料', (e.fuelRocket > 0 ? ('火箭燃料 ' + e.fuelRocket) : '') + (e.fuelRocket > 0 && (e.fuelSolid > 0 || e.fuelCoal > 0) ? ' + ' : '') + (e.fuelSolid > 0 ? ('固体燃料 ' + e.fuelSolid) : '') + ((e.fuelRocket > 0 || e.fuelSolid > 0) && e.fuelCoal > 0 ? ' + ' : '') + (e.fuelCoal > 0 ? ('煤 ' + e.fuelCoal) : '<span class="dim">空</span>') + ' / ' + SPIDER_FUEL_CAP, 'fuel');
   h += row('导弹', e.missiles > 0 ? (e.missiles + ' / ' + SPIDER_MISSILE_CAP) : '<span class="dim">无</span>', 'missile');
@@ -415,6 +632,8 @@ function spiderPanelHtml(e) {
   h += '<div class="status"></div>';
   h += '<button data-action="drive" class="primary">🚀 进入驾驶（空格发射导弹）</button>';
   h += '<div class="dim">蜘蛛机器人：终极战斗载具，速度快、可跨越水域与墙体；车载自动炮塔自动攻击附近敌人，按空格发射导弹（范围爆炸）。需高级战斗科技。</div>';
+  h += trunkPanelHtml(e);
+  h += spiderEquipHtml(e);
   return h;
 }
 function spiderPanelLive(e, api) {
@@ -475,7 +694,7 @@ function updateDriving(dt) {
   const car = d.ent;
   const isTank = car instanceof Tank;
   const isSpider = car instanceof Spidertron;
-  const speed = isSpider ? SPIDER_SPEED : (isTank ? TANK_SPEED : CAR_SPEED);
+  const speed = isSpider ? SPIDER_SPEED * car.spiderSpeedMult() : (isTank ? TANK_SPEED : CAR_SPEED);
   // 蜘蛛机器人：车载自动炮塔持续开火
   if (isSpider) car.autoTurret(dt);
   let mx = 0, my = 0;
@@ -550,6 +769,28 @@ function updateDriving(dt) {
   }
 }
 
+// ===== 载具储物箱面板（对齐《异星工厂》：车辆自带储物箱，可在面板查看/存取物品） =====
+// 返回储物箱 HTML：列出箱内物品并提供"取出"按钮；空时提示可用机械臂/手动放入。
+function trunkPanelHtml(e) {
+  let h = '<div class="sec">储物箱（' + e.trunkUsedSlots() + '/' + TRUNK_SLOTS + ' 槽）</div>';
+  const keys = Object.keys(e.trunk || {}).filter(k => e.trunk[k] > 0);
+  if (!keys.length) {
+    h += '<div class="dim">储物箱空。打开背包选中物品后在载具面板点"放入"，或让机械臂直接送入载具。</div>';
+    return h;
+  }
+  let total = 0;
+  for (const k of keys) total += e.trunk[k];
+  h += '<div class="trunk-list">';
+  for (const k of keys) {
+    const cnt = e.trunk[k];
+    h += '<div class="trunk-item" data-tip="' + itemTip(k) + '"><img src="' + iconDataURL(k) + '"><span>' + ITEMS[k].name + ' ×' + cnt + '</span>' +
+      '<button data-action="trunk-take" data-id="' + k + '" data-tip="取出一件">取出</button></div>';
+  }
+  h += '</div>';
+  h += '<div class="dim">共 ' + keys.length + ' 种、' + total + ' 件。点击"取出"移回背包（受背包堆叠上限约束）。</div>';
+  return h;
+}
+
 // ===== 渲染 =====
 function drawCar(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
@@ -603,6 +844,7 @@ function carPanelHtml(e) {
   h += '<div class="status"></div>';
   h += '<button data-action="drive" id="btn-car-drive" class="primary">🚗 进入驾驶</button>';
   h += '<div class="dim">装甲车：靠近后按 E 进入驾驶（WASD 更快移动），移动消耗煤/固体燃料（固体燃料更耐用），E 下车。可用机械臂/手动放入。</div>';
+  h += trunkPanelHtml(e);
   return h;
 }
 function carPanelLive(e, api) {
@@ -693,6 +935,7 @@ function tankPanelHtml(e) {
   h += '<div class="status"></div>';
   h += '<button data-action="drive" class="primary">🚀 进入驾驶（空格开炮）</button>';
   h += '<div class="dim">坦克：重型战斗载具，装甲更厚（驾驶时受伤减少），按空格向光标方向发射炮弹（范围爆炸）。弹药分级对齐《异星工厂》：炮弹 → 爆炸炮弹（爆炸物科技，更大爆炸）→ 铀炮弹（核能科技）→ 铀爆炸炮弹（终极）。需高级战斗科技。</div>';
+  h += trunkPanelHtml(e);
   return h;
 }
 function tankPanelLive(e, api) {

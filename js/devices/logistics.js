@@ -90,7 +90,7 @@ class LogisticChest extends Entity {
   }
   giveItem(item) {
     for (const s of this.slots)
-      if (s && s.item === item && s.count < 50) { s.count++; return true; }
+      if (s && s.item === item && s.count < stackSize(item)) { s.count++; return true; }
     if (this.slots.length >= 12) return false;
     this.slots.push({ item, count: 1 });
     return true;

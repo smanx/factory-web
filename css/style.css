@@ -1403,3 +1403,10 @@ html, body {
 
 /* ===== 小地图（右下角） ===== */
 #hud-info { z-index: 5; }
+
+/* ===== 载具储物箱（trunk） ===== */
+.trunk-list { display: flex; flex-direction: column; gap: 4px; margin: 4px 0; }
+.trunk-item { display: flex; align-items: center; gap: 8px; padding: 4px 6px; background: rgba(20,26,22,.5); border: 1px solid #3a4a3a; border-radius: 6px; }
+.trunk-item img { width: 22px; height: 22px; border-radius: 4px; }
+.trunk-item span { flex: 1; color: #cfe0f0; font-size: 12px; }
+.trunk-item button { font-size: 11px; padding: 2px 8px; }

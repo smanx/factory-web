@@ -14,6 +14,15 @@ function iconDataURL(id) {
   return u;
 }
 
+// 物品悬浮提示：名称|描述（含物品堆叠上限，对齐《异星工厂》stack_size）
+function itemTip(id, extra) {
+  const it = ITEMS[id];
+  const stack = (typeof stackSize === 'function') ? stackSize(id) : 100;
+  let t = it.name + '|' + it.desc + (stack ? '（最大堆叠 ' + stack + '）' : '');
+  if (extra) t += (extra[0] === '|' ? '' : '|') + extra;
+  return t;
+}
+
 function iconCanvas(id, size = 34) {
   const key = id + '_' + size;
   if (ICON_CACHE[key]) return ICON_CACHE[key];
@@ -44,7 +53,7 @@ function buildHotbar() {
     const slot = document.createElement('div');
     slot.className = 'slot' + (id ? '' : ' nilslot');
     slot.dataset.idx = i;
-    if (id) slot.dataset.tip = ITEMS[id].name + '|' + ITEMS[id].desc;
+    if (id) slot.dataset.tip = itemTip(id);
     else slot.dataset.tip = '空槽位|打开背包(E)，在快捷栏编辑器里点选槽位后点击任意物品即可放入';
     if (id) {
       const ic = iconCanvas(id).cloneNode();
@@ -235,7 +244,7 @@ function updateMachineLive() {
 }
 
 function chip(id, n) {
-  return '<span class="chip" data-itemid="' + id + '" data-tip="' + ITEMS[id].name + '|' + ITEMS[id].desc + '"><img src="' + iconDataURL(id) + '">' +
+  return '<span class="chip" data-itemid="' + id + '" data-tip="' + itemTip(id) + '"><img src="' + iconDataURL(id) + '">' +
     ITEMS[id].name + (n !== undefined ? ' ×' + n : '') + '</span>';
 }
 
@@ -258,7 +267,7 @@ function htmlInventory() {
     const n = invCount(bid);
     const canBuild = infinite || n > 0;
     h += '<button class="rcbtn"' + (canBuild ? '' : ' disabled style="opacity:.45"') +
-      ' data-itemid="' + bid + '" data-tip="' + ITEMS[bid].name + '|' + ITEMS[bid].desc + '">' +
+      ' data-itemid="' + bid + '" data-tip="' + itemTip(bid) + '">' +
       '<img src="' + iconDataURL(bid) + '">' + ITEMS[bid].name + (n > 0 ? ' ×' + n : (infinite ? ' ∞' : '')) + '</button>';
   }
   h += '</div>';
@@ -371,14 +380,14 @@ function htmlInventory() {
     const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
       Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') + ' ' + recipeDeviceName(rid)).toLowerCase();
     h += '<div class="recipe' + (unlocked ? '' : ' locked-recipe') + '" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
-    h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + ITEMS[outId].name + '|' + ITEMS[outId].desc + '" src="' + iconDataURL(outId) + '">';
+    h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + itemTip(outId) + '" src="' + iconDataURL(outId) + '">';
     h += '<div class="rmain"><div class="rname">' + ITEMS[Object.keys(rec.out)[0]].name +
       (rec.out[Object.keys(rec.out)[0]] > 1 ? ' ×' + rec.out[Object.keys(rec.out)[0]] : '') +
       '<span class="rdev">' + recipeDeviceName(rid) + '</span></div>';
     h += '<div class="ring">';
     for (const k in rec.inp) {
       const have = invCount(k);
-      h += '<span class="ing ' + (have >= rec.inp[k] ? '' : 'lack') + '" data-itemid="' + k + '" data-tip="' + ITEMS[k].name + '|' + ITEMS[k].desc + '">' +
+      h += '<span class="ing ' + (have >= rec.inp[k] ? '' : 'lack') + '" data-itemid="' + k + '" data-tip="' + itemTip(k) + '">' +
         '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + have + '/' + rec.inp[k] + '</span>';
     }
     h += '</div></div>';
@@ -399,12 +408,12 @@ function htmlInventory() {
     const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
       Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') + ' 化工厂').toLowerCase();
     h += '<div class="recipe chem' + (unlocked ? '' : ' locked-recipe') + '" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
-    h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + ITEMS[outId].name + '|' + ITEMS[outId].desc + '" src="' + iconDataURL(outId) + '">';
+    h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + itemTip(outId) + '" src="' + iconDataURL(outId) + '">';
     h += '<div class="rmain"><div class="rname">' + ITEMS[outId].name +
       (rec.out[outId] > 1 ? ' ×' + rec.out[outId] : '') + '<span class="rdev">化工厂</span></div>';
     h += '<div class="ring">';
     for (const k in rec.inp) {
-      h += '<span class="ing" data-itemid="' + k + '" data-tip="' + ITEMS[k].name + '|' + ITEMS[k].desc + '">' +
+      h += '<span class="ing" data-itemid="' + k + '" data-tip="' + itemTip(k) + '">' +
         '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + rec.inp[k] + '</span>';
     }
     h += '</div></div>';
@@ -420,16 +429,16 @@ function htmlInventory() {
     const searchKey = (rec.name + ' ' + Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') +
       ' ' + Object.keys(rec.out).map(k => ITEMS[k].name).join(' ') + ' 炼油厂').toLowerCase();
     h += '<div class="recipe chem' + (unlocked ? '' : ' locked-recipe') + '" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
-    h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + ITEMS[outId].name + '|' + ITEMS[outId].desc + '" src="' + iconDataURL(outId) + '">';
+    h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + itemTip(outId) + '" src="' + iconDataURL(outId) + '">';
     h += '<div class="rmain"><div class="rname">' + rec.name + '<span class="rdev">炼油厂</span></div>';
     h += '<div class="ring">';
     for (const k in rec.inp) {
-      h += '<span class="ing" data-itemid="' + k + '" data-tip="' + ITEMS[k].name + '|' + ITEMS[k].desc + '">' +
+      h += '<span class="ing" data-itemid="' + k + '" data-tip="' + itemTip(k) + '">' +
         '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + rec.inp[k] + '</span>';
     }
     h += '<span class="ing arrow">→</span>';
     for (const k in rec.out) {
-      h += '<span class="ing" data-itemid="' + k + '" data-tip="' + ITEMS[k].name + '|' + ITEMS[k].desc + '">' +
+      h += '<span class="ing" data-itemid="' + k + '" data-tip="' + itemTip(k) + '">' +
         '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + rec.out[k] + '</span>';
     }
     h += '</div></div>';
@@ -475,7 +484,7 @@ function fillLogiReqGrid(q) {
   for (const id of ids) {
     if (ql && !(ITEMS[id].name + ' ' + id).toLowerCase().includes(ql)) continue;
     const req = (G.logiRequest && G.logiRequest[id]) || 0;
-    h += '<button class="rcbtn' + (req > 0 ? ' lreq-on' : '') + '" data-lreqitem="' + id + '" data-tip="' + ITEMS[id].name + '|' + ITEMS[id].desc + (req > 0 ? '（已请求 ' + req + '）' : '') + '">' +
+    h += '<button class="rcbtn' + (req > 0 ? ' lreq-on' : '') + '" data-lreqitem="' + id + '" data-tip="' + itemTip(id) + (req > 0 ? '（已请求 ' + req + '）' : '') + '">' +
       '<img src="' + iconDataURL(id) + '">' + ITEMS[id].name + (req > 0 ? ' ✓' + req : '') + '</button>';
   }
   grid.innerHTML = h;
@@ -845,6 +854,10 @@ function initPanelEvents() {
     if (typeof equipPanelClick === 'function' && equipPanelClick(ev.target)) {
       return;
     }
+    // 蜘蛛机器人装备网格点击
+    if (typeof spiderEquipPanelClick === 'function' && spiderEquipPanelClick(ev.target)) {
+      return;
+    }
     const hbSlot = ev.target.closest('[data-hbedit]');
     if (hbSlot) {
       const i = +hbSlot.dataset.hbedit;
@@ -1041,6 +1054,14 @@ function initPanelEvents() {
             invAdd(k, mch.inp[k]);
             delete mch.inp[k];
           }
+        }
+      } else if (act === 'trunk-take') {
+        // 载具储物箱：取出指定物品一件回背包（受背包堆叠上限约束）
+        const mch = G.panelEnt;
+        const id = btn.dataset.id;
+        if (mch && typeof mch.trunkTakeItemOf === 'function') {
+          const got = mch.trunkTakeItemOf(id);
+          if (got) { invAdd(got, 1); if (typeof playSfx === 'function') playSfx('pick'); }
         }
       } else if (act === 'takeout') {
         // "取出全部"：各设备在自己的文件里实现 takeAll()（默认清空 outp）

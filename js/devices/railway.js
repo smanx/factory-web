@@ -408,7 +408,7 @@ class CargoWagon extends Entity {
   giveItem(item) {
     if (item === 'logistic-robot') return false;
     for (const s of this.slots)
-      if (s && s.item === item && s.count < WAGON_STACK) { s.count++; return true; }
+      if (s && s.item === item && s.count < stackSize(item)) { s.count++; return true; }
     if (this.slots.length >= WAGON_SLOTS) return false;
     this.slots.push({ item, count: 1 });
     return true;
@@ -684,7 +684,7 @@ function trainAutoLoadUnload(train, station) {
   for (const item of station.load || []) {
     for (const car of train.cars) {
       if (car.type === 'cargo-wagon' && car.giveItem && car.countOf) {
-        while (car.countOf(item) < WAGON_STACK * 10) {
+        while (car.countOf(item) < WAGON_SLOTS * stackSize(item)) {
           let got = false;
           for (const c of chests) {
             if (c.countOf && c.countOf(item) > 0 && c.takeItemOf) {

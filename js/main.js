@@ -134,6 +134,7 @@ function newGame() {
   G.combatRobots = [];
   G.aoeZones = [];        // 新游戏清空区域力场（毒/减速胶囊）
   G.groundFires = [];     // 新游戏清空地面火焰残留
+  G.acidPools = [];       // 新游戏清空喷吐虫酸液洼地残留
   G.driving = null;    // 新游戏清空驾驶状态
   G.craftQueue = [];   // 新游戏清空手搓队列
   G.logiRobots = [];
@@ -1616,6 +1617,7 @@ function loop(ts) {
         updateCombatRobots(dt);
         updateAoeZones(dt);
         if (typeof updateGroundFires === 'function') updateGroundFires(dt);
+        if (typeof updateAcidPools === 'function') updateAcidPools(dt);
         if (typeof updatePersonalLaserDefense === 'function') updatePersonalLaserDefense(dt);
         if (typeof updateTankFire === 'function') updateTankFire(dt);
         if (typeof updateLootDrops === 'function') updateLootDrops(dt);

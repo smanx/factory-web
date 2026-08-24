@@ -168,9 +168,9 @@ class Inserter extends Entity {
       case 'refinery':
         return item === 'crude-oil' && (t.inp['crude-oil'] || 0) < 50;
       case 'storage-chest':
-        return t.slots.length < 12 || t.slots.some(s => s && s.item === item && s.count < 50);
+        return t.slots.length < 12 || t.slots.some(s => s && s.item === item && s.count < stackSize(item));
       case 'steel-chest':
-        return t.slots.length < 24 || t.slots.some(s => s && s.item === item && s.count < 50);
+        return t.slots.length < 24 || t.slots.some(s => s && s.item === item && s.count < stackSize(item));
       case 'void-chest':
         return true;   // 虚空箱：来者不拒，全部销毁
       case 'creative-chest':

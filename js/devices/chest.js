@@ -11,7 +11,7 @@ class Chest extends Entity {
     const cap = this.limits[item];
     if (cap !== undefined && this.countOf(item) >= cap) return false;
     for (const s of this.slots)
-      if (s && s.item === item && s.count < 50) { s.count++; return true; }
+      if (s && s.item === item && s.count < stackSize(item)) { s.count++; return true; }
     if (this.slots.length >= 12) return false;
     this.slots.push({ item, count: 1 });
     return true;
@@ -176,7 +176,7 @@ class WoodenChest extends Chest {
     const cap = this.limits[item];
     if (cap !== undefined && this.countOf(item) >= cap) return false;
     for (const s of this.slots)
-      if (s && s.item === item && s.count < 40) { s.count++; return true; }
+      if (s && s.item === item && s.count < stackSize(item)) { s.count++; return true; }
     if (this.slots.length >= 16) return false;
     this.slots.push({ item, count: 1 });
     return true;
@@ -230,7 +230,7 @@ class IronChest extends Chest {
     const cap = this.limits[item];
     if (cap !== undefined && this.countOf(item) >= cap) return false;
     for (const s of this.slots)
-      if (s && s.item === item && s.count < 50) { s.count++; return true; }
+      if (s && s.item === item && s.count < stackSize(item)) { s.count++; return true; }
     if (this.slots.length >= 32) return false;
     this.slots.push({ item, count: 1 });
     return true;

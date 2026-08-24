@@ -103,6 +103,7 @@ function render() {
   drawCombatRobots(ctx);
   drawAoeZones(ctx);
   drawGroundFires(ctx);
+  drawAcidPools(ctx);
   drawLootDrops(ctx);
   drawLogisticsRobots(ctx);
   if (typeof drawConstruction === 'function') drawConstruction(ctx);
@@ -1091,6 +1092,38 @@ function drawGroundFires(ctx) {
   }
   ctx.restore();
 }
+
+
+// 喷吐虫酸液洼地：半透明绿色腐蚀液面，随生命周期渐淡蒸发
+function drawAcidPools(ctx) {
+  if (!G.acidPools || G.acidPools.length === 0) return;
+  const cam = G.cam, z = cam.z;
+  const sx = (wx) => (wx - cam.px) * z + W / 2;
+  const sy = (wy) => (wy - cam.py) * z + H / 2;
+  for (const f of G.acidPools) {
+    if (f.life <= 0) continue;
+    const cx = sx(f.tx * TILE + TILE / 2), cy = sy(f.ty * TILE + TILE / 2);
+    const r = TILE * z * 0.62;
+    if (cx < -r || cx > W + r || cy < -r || cy > H + r) continue;
+    const lifeT = f.life / f.maxLife;
+    const a = Math.min(1, lifeT * 1.5);
+    const bubble = 0.85 + 0.15 * Math.sin(G.time * 8 + f.tx * 5 + f.ty * 11);
+    ctx.fillStyle = 'rgba(120,180,60,' + (0.4 * a).toFixed(3) + ')';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * bubble, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(180,230,110,' + (0.45 * a).toFixed(3) + ')';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.55 * bubble, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(90,150,50,' + (0.5 * a).toFixed(3) + ')';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * bubble, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
 
 // 击杀敌人掉落的地面矿石（见 combat2.js dropEnemyLoot）：小矿石图标带轻微上下浮动
 function drawLootDrops(ctx) {

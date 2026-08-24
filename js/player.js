@@ -113,9 +113,15 @@ function withinReach(tx, ty) {
 }
 
 function invAdd(id, n = 1) {
-  G.inv.set(id, (G.inv.get(id) || 0) + n);
-  if (typeof trackProd === 'function') trackProd(id, n);
+  // 物品堆叠上限（对齐《异星工厂》）：背包中每种物品不超过其最大堆叠数
+  const cap = (typeof stackSize === 'function') ? stackSize(id) : 100;
+  const cur = G.inv.get(id) || 0;
+  const addable = Math.max(0, Math.min(n, cap - cur));
+  if (addable <= 0) return 0;
+  G.inv.set(id, cur + addable);
+  if (typeof trackProd === 'function') trackProd(id, addable);
   uiDirty = true;
+  return addable;
 }
 
 function invCount(id) { return G.inv.get(id) || 0; }
@@ -189,6 +195,16 @@ function canCraft(rid) {
   return true;
 }
 
+// 是否有足够的背包空位容纳一次配方的全部产出（受物品堆叠上限约束）
+function hasCraftRoom(rid) {
+  const rec = RECIPES[rid];
+  for (const k in rec.out) {
+    if (FLUIDS.indexOf(k) >= 0) continue;          // 流体不入背包
+    if (invCount(k) + (rec.out[k] || 1) > stackSize(k)) return false;
+  }
+  return true;
+}
+
 // 是否允许玩家手搓该配方（组装机/化工厂/炼油厂/离心机专属配方与含流体原料/产物的配方除外）
 function isHandCraftable(rid) {
   if (isChemRecipe(rid) || isCentrifugeRecipe(rid) || isRefineryRecipe(rid)) return false;
@@ -214,7 +230,7 @@ function queueCraft(rid, times = 1) {
   const craftTime = (rec.time || 1) / Math.max(1, (G.dbg && G.dbg.asmMult) || 1);
   let queued = 0;
   for (let i = 0; i < times; i++) {
-    if (!canCraft(rid)) break;
+    if (!canCraft(rid) || !hasCraftRoom(rid)) break;
     for (const k in rec.inp) invTake(k, rec.inp[k]);
     if (!G.craftQueue) G.craftQueue = [];
     G.craftQueue.push({ rid, outId, time: craftTime, total: craftTime, done: 0 });
@@ -236,6 +252,9 @@ function updateCraftQueue(dt) {
   cur.done += dt;
   let completed = 0;
   while (cur && cur.done >= cur.time) {
+    // 背包已满（受物品堆叠上限约束）时暂停合成，避免产出丢失；
+    // 待腾出空间后继续（对齐《异星工厂》：背包满则停止手搓）。
+    if (!hasCraftRoom(cur.rid)) { cur.done = cur.time; break; }
     const over = cur.done - cur.time;
     for (const k in RECIPES[cur.rid].out) invAdd(k, RECIPES[cur.rid].out[k]);
     completed++;
@@ -265,7 +284,7 @@ function doCraft(rid, times = 1) {
   if (!isHandCraftable(rid)) return 0;
   let made = 0;
   for (let i = 0; i < times; i++) {
-    if (!canCraft(rid)) break;
+    if (!canCraft(rid) || !hasCraftRoom(rid)) break;
     for (const k in RECIPES[rid].inp) invTake(k, RECIPES[rid].inp[k]);
     for (const k in RECIPES[rid].out) invAdd(k, RECIPES[rid].out[k]);
     made++;

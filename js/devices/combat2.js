@@ -378,6 +378,8 @@ function updateEnemies(dt) {
         (G.enemyProjectiles || (G.enemyProjectiles = [])).push({
           x: en.x, y: en.y - en.size, tx: fireTarget.x, ty: fireTarget.y, speed: 3.2, dmg: en.dmg, t: 0,
           fire: fire, color: fire ? '#ff8a2a' : '#9ac04a',
+          // 普通喷吐虫的酸液命中地面会留下酸液洼地（对齐《异星工厂》Spitter acid）
+          acid: !fire,
           buildTarget: fireTarget !== p ? fireTarget : undefined
         });
       }
@@ -411,6 +413,8 @@ function updateEnemies(dt) {
         pr.hit = true;
         // 火球命中地面：留下燃烧火场（对齐《异星工厂》Fire entity）
         if (pr.fire && typeof spawnGroundFire === 'function') spawnGroundFire(pr.x, pr.y);
+        // 喷吐虫酸液命中：落点形成酸液洼地，对范围内持续腐蚀（对齐《异星工厂》Acid puddle）
+        if (pr.acid && typeof spawnAcidPool === 'function') spawnAcidPool(pr.x, pr.y);
         if (pr.buildTarget && pr.buildTarget._dead === false) {
           // 命中建筑：造成建筑伤害（火球附带灼烧）
           if (typeof damageBuilding === 'function') {
@@ -1272,6 +1276,54 @@ function updateGroundFires(dt) {
     G.burnSfxT = (G.burnSfxT || 0) - dt;
     if (G.burnSfxT <= 0) { G.burnSfxT = 0.9; playSfx('burn'); }
   }
+}
+
+// ===== 喷吐虫酸液洼地（对齐《异星工厂》：Spitter 远程酸液在落点形成酸液坑，对范围内持续伤害） =====
+// G.acidPools: [{ tx, ty, life, maxLife, tickT }]（同一瓦片只保留一个，新酸刷新）
+function ensureAcidPools() { if (!G.acidPools) G.acidPools = []; return G.acidPools; }
+
+const ACID_POOL_LIFE = 6.0;     // 单片酸液持续秒数
+const ACID_POOL_MAX = 120;      // 全图酸液瓦片上限（防爆量）
+const ACID_POOL_DMG = 7;        // 每 tick 腐蚀伤害
+const ACID_POOL_TICK = 0.5;     // 腐蚀 tick 间隔（秒）
+
+// 在世界坐标 wx,wy 所在瓦片生成/刷新酸液洼地（仅喷吐虫的酸液会留下）
+function spawnAcidPool(wx, wy) {
+  const tx = Math.floor(wx / TILE), ty = Math.floor(wy / TILE);
+  const arr = ensureAcidPools();
+  for (const f of arr) {
+    if (f.tx === tx && f.ty === ty) { f.life = ACID_POOL_LIFE; return; }  // 已有酸液：刷新时长
+  }
+  if (arr.length >= ACID_POOL_MAX) return;
+  arr.push({ tx, ty, life: ACID_POOL_LIFE, maxLife: ACID_POOL_LIFE, tickT: 0 });
+}
+
+// 每帧更新酸液洼地：计时、对站上的敌人（酸液也伤虫）与玩家造成腐蚀伤害
+function updateAcidPools(dt) {
+  const arr = G.acidPools;
+  if (!arr || arr.length === 0) return;
+  for (const f of arr) {
+    f.life -= dt;
+    if (f.life <= 0) continue;
+    const cx = f.tx * TILE + TILE / 2, cy = f.ty * TILE + TILE / 2;
+    f.tickT -= dt;
+    if (f.tickT <= 0) {
+      f.tickT = ACID_POOL_TICK;
+      // 酸液对范围内的敌人持续腐蚀（含虫巢，与火焰一致）
+      if (G.enemies) for (const en of G.enemies) {
+        if (en.dead) continue;
+        if (Math.hypot(en.x - cx, en.y - cy) <= TILE * 1.15) { en.hp -= ACID_POOL_DMG; if (en.hp <= 0) en.dead = true; }
+      }
+      // 玩家踩中酸液也受腐蚀
+      if (G.settings.combat && Math.hypot(G.player.x - cx, G.player.y - cy) <= TILE * 1.1) damagePlayer(ACID_POOL_DMG * 0.6);
+    }
+    // 酸液表面冒气泡（低频特效，避免爆量）
+    if (Math.random() < 0.25 && typeof spawnSmoke === 'function') {
+      spawnSmoke(cx + (Math.random() - 0.5) * TILE * 0.4, cy + (Math.random() - 0.5) * TILE * 0.4, { life: 0.7, size: 4, color: '#8ac04a', vx: (Math.random() - 0.5) * 0.2, vy: -(0.3 + Math.random() * 0.3) });
+    }
+  }
+  // 清理蒸发的酸液
+  G.acidPools = compactFilter(arr, f => f.life > 0);
 }
 
 // ===== 注册 =====

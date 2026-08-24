@@ -102,6 +102,42 @@ function techNeedList(tid) {
   return arr;
 }
 
+// ===== 物品堆叠上限（对齐《异星工厂》：每种物品有固定最大堆叠数） =====
+// 参考原版 stack_size：
+//   - 终局/单体物品（火箭、卫星、核反应堆、离心机、装甲、载具、蜘蛛机等）= 1
+//   - 原材料（矿石/煤/石头/原油桶等）= 50
+//   - 板材/电路/齿轮等中间产物与大部分机器 = 100
+//   - 科学包 = 200（对齐原版各色科学包 stack_size=200）
+// 未列出的物品使用默认 100。玩家背包/储物箱/载具等存储受此上限约束。
+const STACK_SIZES = {
+  // 终局单体物品与载具：堆叠 1
+  'rocket': 1, 'satellite': 1, 'nuclear-reactor': 1, 'rocket-silo': 1,
+  'car': 1, 'tank': 1, 'spidertron': 1, 'locomotive': 1, 'diesel-locomotive': 1,
+  'cargo-wagon': 1, 'fluid-wagon': 1, 'artillery-wagon': 1,
+  'light-armor': 1, 'heavy-armor': 1, 'modular-armor': 1, 'power-armor': 1, 'power-armor-mk2': 1,
+  'portable-fusion-reactor': 1, 'spidertron-remote': 1,
+  // 原材料：堆叠 50
+  'iron-ore': 50, 'copper-ore': 50, 'coal': 50, 'stone': 50, 'uranium-ore': 50,
+  'wood': 50, 'raw-fish': 20, 'stone-brick': 100, 'calcite': 50,
+  'sulfur': 50, 'uranium-235': 50, 'uranium-238': 50, 'nuclear-fuel': 1,
+  'used-up-uranium-fuel-cell': 50,
+  // 流体桶（对齐原版 1 桶 = 1 堆叠）
+  'empty-barrel': 10, 'water-barrel': 10, 'steam-barrel': 10, 'crude-oil-barrel': 10,
+  'heavy-oil-barrel': 10, 'light-oil-barrel': 10, 'petroleum-gas-barrel': 10,
+  'lubricant-barrel': 10, 'sulfuric-acid-barrel': 10,
+  // 科学包：堆叠 200（对齐原版）
+  'science-pack': 200, 'green-science': 200, 'blue-science': 200,
+  'military-science': 200, 'production-science-pack': 200, 'utility-science-pack': 200,
+  'space-science-pack': 200,
+  // 基础建材与管线：堆叠 100
+  'concrete': 100, 'refined-concrete': 100, 'hazard-concrete': 100, 'stone-path': 100, 'landfill': 100
+};
+// 返回某物品的最大堆叠数（未特别指定则默认 100，对齐原版多数物品）
+function stackSize(id) {
+  const v = STACK_SIZES[id];
+  return (typeof v === 'number' && v > 0) ? v : 100;
+}
+
 const ITEMS = {
   'iron-ore':   { name: '铁矿石', color: '#8fa0b8', mark: 'Fe', desc: '基础矿物，放入石炉冶炼成铁板' },
   'copper-ore': { name: '铜矿石', color: '#d0793f', mark: 'Cu', desc: '基础矿物，放入石炉冶炼成铜板' },
