@@ -79,7 +79,7 @@ function isScience(item) { return SCIENCE_PACKS.indexOf(item) >= 0; }
 const FILTER_CHOICES = ['iron-plate', 'copper-plate', 'steel-plate', 'iron-gear', 'iron-stick', 'steel-stick', 'copper-cable', 'green-circuit',
   'coal', 'solid-fuel', 'stone', 'plastic-bar', 'science-pack', 'green-science', 'blue-science', 'military-science',
   'production-science-pack', 'utility-science-pack', 'space-science-pack', 'flying-robot-frame',
-  'magazine', 'piercing-rounds', 'uranium-rounds', 'uranium-cannon-shell', 'flamethrower-ammo', 'poison-capsule', 'slowdown-capsule', 'shotgun-shell', 'piercing-shotgun-shell', 'cluster-grenade', 'logistic-robot', 'construction-robot', 'uranium-235', 'uranium-238', 'nuclear-fuel', 'used-up-uranium-fuel-cell', 'sulfur'].concat(FLUIDS);
+  'magazine', 'piercing-rounds', 'uranium-rounds', 'uranium-cannon-shell', 'flamethrower-ammo', 'poison-capsule', 'slowdown-capsule', 'shotgun-shell', 'piercing-shotgun-shell', 'cluster-grenade', 'logistic-robot', 'construction-robot', 'uranium-235', 'uranium-238', 'nuclear-fuel', 'used-up-uranium-fuel-cell', 'sulfur', 'raw-fish'].concat(FLUIDS);
 function techPacks(tid) { return (TECHS && TECHS[tid] && TECHS[tid].cost) || {}; }
 function techCostTotal(tid) {
   let s = 0;
@@ -512,6 +512,32 @@ const RECIPES = {
   'nightvision':       { time: 4,   inp: { 'iron-plate': 4, 'green-circuit': 3, 'advanced-circuit': 1 }, out: { 'nightvision': 1 } },
   'personal-laser-defense': { time: 8, inp: { 'laser-turret': 1, 'processing-unit': 2, 'battery': 4 }, out: { 'personal-laser-defense': 1 } }
 };
+
+// ===== 过滤/需求可选物品全集（对齐《异星工厂》：过滤机械臂、物流需求箱可筛选任意可生产物品）=====
+// FILTER_CHOICES 为基础静态清单；此处动态补全所有“可通过配方/冶炼/离心/炼油生产、或可建造/可收集”
+// 的物品，保证过滤机械臂与需求箱能选到任意中间件/终局物品（高级电路板、处理器、电池、引擎、火箭部件等）。
+let _filterChoicesCache = null;
+function filterChoices() {
+  if (_filterChoicesCache) return _filterChoicesCache;
+  const set = new Set(FILTER_CHOICES);
+  // 收集所有配方/炼油/离心配方中的输入输出
+  const addRec = (rec) => { if (!rec) return; for (const k in rec.inp) set.add(k); for (const k in rec.out) set.add(k); };
+  for (const rid in RECIPES) addRec(RECIPES[rid]);
+  for (const rid in REFINERY_RECIPES) addRec(REFINERY_RECIPES[rid]);
+  for (const rid in CENTRIFUGE_RECIPES) addRec(CENTRIFUGE_RECIPES[rid]);
+  // 冶炼产物（铁板/铜板/钢板/石砖）
+  for (const s of SMELTS) { set.add(s.id); set.add(s.inp); }
+  // 可建造物品
+  for (const id in BUILD_DEFS) set.add(id);
+  // 排除纯流体后的有序列表（流体仍保留，但排到末尾）
+  const fluids = new Set(FLUIDS);
+  const solids = [];
+  for (const id of set) if (ITEMS[id] && !fluids.has(id)) solids.push(id);
+  // 按物品名称排序，便于查找
+  solids.sort((a, b) => (ITEMS[a].name < ITEMS[b].name ? -1 : ITEMS[a].name > ITEMS[b].name ? 1 : 0));
+  _filterChoicesCache = solids.concat(FLUIDS.filter(f => ITEMS[f]));
+  return _filterChoicesCache;
+}
 
 const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant', 'solid-fuel', 'solid-fuel-light-oil', 'sulfur', 'sulfuric-acid', 'flamethrower-ammo'];
 function isChemRecipe(id) { return CHEM_RECIPES.indexOf(id) >= 0; }

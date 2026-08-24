@@ -365,7 +365,7 @@ function filterInserterPanelHtml(e) {
   let h = '<div class="dim">过滤机械臂：只抓取选中的物品，其余一律不碰。当前：' +
     (e.filter ? chip(e.filter) : '<span class="dim">未设置</span>') + '</div>';
   h += '<div class="sec">选择过滤物</div><div class="recgrid">';
-  for (const id of FILTER_CHOICES) {
+  for (const id of (typeof filterChoices === 'function' ? filterChoices() : FILTER_CHOICES)) {
     h += '<button class="rcbtn ' + (e.filter === id ? 'sel' : '') + '" data-action="flt" data-id="' + id + '" data-itemid="' + id + '">' +
       '<img src="' + iconDataURL(id) + '">' + ITEMS[id].name + '</button>';
   }
@@ -416,7 +416,7 @@ function stackFilterInserterPanelHtml(e) {
   let h = '<div class="dim">堆叠过滤机械臂：一次最多抓取 3 个「指定物品」再放下，装卸效率高且精确分类。当前：' +
     (e.filter ? chip(e.filter) : '<span class="dim">未设置</span>') + '</div>';
   h += '<div class="sec">选择过滤物</div><div class="recgrid">';
-  for (const id of FILTER_CHOICES) {
+  for (const id of (typeof filterChoices === 'function' ? filterChoices() : FILTER_CHOICES)) {
     h += '<button class="rcbtn ' + (e.filter === id ? 'sel' : '') + '" data-action="flt" data-id="' + id + '" data-itemid="' + id + '">' +
       '<img src="' + iconDataURL(id) + '">' + ITEMS[id].name + '</button>';
   }
