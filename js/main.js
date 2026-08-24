@@ -59,6 +59,8 @@ const G = {
   enemies: [],
   bullets: [],
   combatRobots: [],
+  lootDrops: undefined,   // 击杀敌人掉落的矿石（见 combat2.js dropEnemyLoot）
+
   driving: null,       // 载具驾驶状态：{ ent: Car }，玩家进入驾驶时非空
   spawnT: 0,
   playerHP: 100,
@@ -1318,6 +1320,7 @@ function loop(ts) {
         updateCombatRobots(dt);
         if (typeof updatePersonalLaserDefense === 'function') updatePersonalLaserDefense(dt);
         if (typeof updateTankFire === 'function') updateTankFire(dt);
+        if (typeof updateLootDrops === 'function') updateLootDrops(dt);
       }
       G.powerT += dt;
       if (G.powerT >= 0.25) { G.powerT = 0; updatePower(); }

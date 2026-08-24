@@ -177,6 +177,11 @@ html, body {
 }
 
 .chip img { width: 22px; height: 22px; border-radius: 4px; }
+.usebtn {
+  font-size: 11px; padding: 3px 8px; border-radius: 6px;
+  background: rgba(255,210,60,.15); border: 1px solid #d0a04a; color: #ffe08a; cursor: pointer;
+}
+.usebtn:hover { background: rgba(255,210,60,.3); }
 .chip-active { border-color: #ffd23c; background: rgba(255,210,60,.12); color: #ffe08a; }
 .chip-x { border: none; background: transparent; color: #ff5b5b; cursor: pointer; font-size: 12px; padding: 0 2px; line-height: 1; }
 

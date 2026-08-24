@@ -99,6 +99,7 @@ function render() {
   drawEnemies(ctx);
   drawBullets(ctx);
   drawCombatRobots(ctx);
+  drawLootDrops(ctx);
   drawLogisticsRobots(ctx);
   if (typeof drawConstruction === 'function') drawConstruction(ctx);
   ctx.restore();
@@ -650,6 +651,26 @@ function drawCombatRobots(ctx) {
     ctx.fillRect(r.x - w / 2, r.y + bob - r.size - 7, w, 2.5);
     ctx.fillStyle = r.hp > 0 ? '#57e389' : '#ff5b5b';
     ctx.fillRect(r.x - w / 2, r.y + bob - r.size - 7, w * Math.max(0, r.hp / r.maxhp), 2.5);
+  }
+}
+
+// 击杀敌人掉落的地面矿石（见 combat2.js dropEnemyLoot）：小矿石图标带轻微上下浮动
+function drawLootDrops(ctx) {
+  if (!G.lootDrops || G.lootDrops.length === 0) return;
+  for (const d of G.lootDrops) {
+    const bob = Math.sin(G.time * 3 + d.x) * 1.5;
+    // 地面阴影
+    ctx.fillStyle = 'rgba(0,0,0,.18)';
+    ctx.beginPath(); ctx.ellipse(d.x, d.y + 6, 5, 2.5, 0, 0, 7); ctx.fill();
+    // 矿石图标
+    const it = ITEMS[d.id];
+    if (it) {
+      ctx.fillStyle = it.color;
+      ctx.beginPath(); ctx.arc(d.x, d.y + bob, 5, 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(20,26,34,.6)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(d.x, d.y + bob, 5, 0, 7); ctx.stroke();
+    }
   }
 }
 

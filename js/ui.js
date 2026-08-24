@@ -285,7 +285,14 @@ function htmlInventory() {
   let any = false;
   for (const id in ITEMS) {
     const n = invCount(id);
-    if (n > 0) { h += chip(id, n); any = true; }
+    if (n > 0) {
+      h += chip(id, n);
+      // 手雷可在背包中直接投掷（对齐《异星工厂》投掷物）
+      if (id === 'grenade') {
+        h += '<button class="usebtn" data-action="use-grenade" title="投掷手雷（向当前朝向投掷，造成范围爆炸）">💣 投掷</button>';
+      }
+      any = true;
+    }
   }
   if (!any) h += '<span class="dim">空空如也，去地图上按住左键挖矿吧（铁矿/铜矿/煤/石头）</span>';
   h += '</div><div class="sec">配方</div>';
@@ -708,7 +715,19 @@ function initPanelEvents() {
     let handled = false;
     if (panel && panel.onAction) handled = !!panel.onAction(act, btn);
     if (!handled) {
-      if (act === 'quick-save') { await saveGame(); renderPanel(false); }
+      if (act === 'use-grenade') {
+        // 从背包投掷手雷：向玩家当前朝向投掷（目标点为玩家前方数格）
+        if (typeof throwGrenade === 'function') {
+          const a = G.player.dir * Math.PI / 2;
+          const tx = Math.floor((G.player.x + Math.cos(a) * TILE * 3) / TILE);
+          const ty = Math.floor((G.player.y + Math.sin(a) * TILE * 3) / TILE);
+          throwGrenade(tx, ty);
+          renderPanel(false);
+        } else {
+          toast('无法投掷手雷（战斗系统未加载）');
+        }
+      }
+      else if (act === 'quick-save') { await saveGame(); renderPanel(false); }
       else if (act === 'quick-load') {
         const newest = (await listAllSaves())[0];
         if (newest) { await loadGame(newest.id); } else { toast('暂无存档'); }

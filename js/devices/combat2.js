@@ -216,10 +216,63 @@ function updateEnemies(dt) {
     }
     G.enemyProjectiles = G.enemyProjectiles.filter(pr => !pr.hit);
   }
-  // 击杀敌人推进战斗进化（含巢穴），提升进化度
+  // 击杀敌人推进战斗进化（含巢穴），提升进化度；被击杀的敌人掉落少量矿石（对齐《异星工厂》）
   let kills = 0;
-  G.enemies = G.enemies.filter(e => { if (e.dead) kills++; return !e.dead; });
+  G.enemies = G.enemies.filter(e => {
+    if (e.dead) { kills++; dropEnemyLoot(e); return false; }
+    return true;
+  });
   if (kills > 0) addEvolution(EVOLUTION_KILL_RATE * kills);
+}
+
+// ===== 敌人掉落（对齐《异星工厂》：击杀虫群/巢穴会掉落少量矿石）=====
+// 敌人被击杀后，在死亡位置附近掉落少量矿石，供玩家拾取；巢穴掉落更多且大概率含铀矿。
+function dropEnemyLoot(e) {
+  if (!e || !e.x || !e.y) return;
+  // 巢穴被摧毁掉落更多（含少量铀矿，助力核能）；普通敌人掉 1-2 块矿石
+  const isSpawner = e.kind === 'spawner';
+  if (!G.lootDrops) G.lootDrops = [];
+  const n = isSpawner ? 3 + ((Math.random() * 3) | 0) : 1 + ((Math.random() * 2) | 0);
+  for (let i = 0; i < n; i++) {
+    // 巢穴约 20% 概率掉铀矿，其余掉铁矿/铜矿/煤/石头；普通敌人随机一种基础矿
+    let ore;
+    const r = Math.random();
+    if (isSpawner && r < 0.2) ore = 'uranium-ore';
+    else if (isSpawner && r < 0.35) ore = 'stone';
+    else {
+      const pool = ['iron-ore', 'copper-ore', 'coal', 'stone'];
+      ore = pool[(Math.random() * pool.length) | 0];
+    }
+    G.lootDrops.push({
+      x: e.x + (Math.random() - 0.5) * 24,
+      y: e.y + (Math.random() - 0.5) * 24,
+      id: ore, vx: (Math.random() - 0.5) * 40, vy: -20 - Math.random() * 20,
+      t: 0, life: 8
+    });
+  }
+}
+
+// 更新地面掉落物：飘落、玩家靠近自动拾取、超时消失
+function updateLootDrops(dt) {
+  if (!G.lootDrops || G.lootDrops.length === 0) return;
+  const p = G.player;
+  const pickR = REACH_PX * 0.9;
+  for (const d of G.lootDrops) {
+    d.t += dt;
+    // 简易抛物线：先上抛后落地
+    d.vy += 60 * dt;
+    d.x += d.vx * dt;
+    d.y += d.vy * dt;
+    if (d.y > (Math.floor(d.y / TILE) + 0.9) * TILE) d.y = (Math.floor(d.y / TILE) + 0.9) * TILE;
+    // 玩家靠近自动拾取
+    if (Math.hypot(d.x - p.x, d.y - p.y) < pickR) {
+      invAdd(d.id, 1);
+      if (typeof toast === 'function' && d.id === 'uranium-ore') toast('拾取 铀矿石');
+      d.picked = true;
+    }
+  }
+  G.lootDrops = G.lootDrops.filter(d => !d.picked && d.t < d.life);
+  if (G.lootDrops.length === 0) G.lootDrops = undefined;
 }
 
 function damagePlayer(dmg) {
@@ -405,6 +458,9 @@ function updatePlayerFire(dt) {
 // 玩家子弹命中敌人（沿子弹飞行路径检测）
 function updatePlayerBulletHits(dt) {
   if (!G.bullets) return;
+  // 性能优化：预先收集存活敌人列表（避免每颗子弹都遍历 dead 敌人）
+  const alive = (G.enemies || []).filter(e => !e.dead);
+  if (alive.length === 0) return;
   for (const b of G.bullets) {
     if (b.hit || (b.kind !== 'bullet' && b.kind !== 'flame' && b.kind !== 'rocket')) continue;
     // 火箭/手雷：飞行结束时在终点爆炸
@@ -415,8 +471,8 @@ function updatePlayerBulletHits(dt) {
     // 普通弹/火焰：命中飞行路径上的第一个敌人
     const t = b.t / b.life;
     const cx = b.x + (b.tx - b.x) * t, cy = b.y + (b.ty - b.y) * t;
-    for (const en of G.enemies) {
-      if (en.dead) continue;
+    for (const en of alive) {
+      if (en.dead) continue;   // 本帧内可能已被其他子弹/爆炸击杀
       const d = Math.hypot(cx - en.x, cy - en.y);
       if (d <= en.size + 4) {
         en.hp -= b.dmg;
@@ -537,16 +593,23 @@ function updateCombatRobots(dt) {
   G.combatRobots = G.combatRobots.filter(r => !r.dead);
 }
 
-// 手雷：从背包使用时投掷爆炸（由 ui.js 调用）
+// 手雷：从背包使用时投掷爆炸（由 ui.js 调用）。
+// 投掷物复用 splash 爆炸路径（kind 用 'rocket'，由 updatePlayerBulletHits 的 splash 分支处理爆炸）。
 function throwGrenade(tx, ty) {
   if (invCount('grenade') < 1) return;
+  if (!G.settings.combat) {
+    if (typeof toast === 'function') toast('需在设置中开启战斗才能投掷手雷');
+    return;
+  }
   invTake('grenade', 1);
-  // 手雷是物品，这里用特效在目标点爆炸
   const px = G.player.x, py = G.player.y;
+  // 投掷目标点：传入的是瓦片坐标，转换为世界坐标；若玩家在范围内则向目标投掷
+  let gx = tx * TILE + TILE / 2, gy = ty * TILE + TILE / 2;
   (G.bullets || (G.bullets = [])).push({
-    x: px, y: py, tx: tx * TILE + TILE / 2, ty: ty * TILE + TILE / 2,
-    t: 0, life: 0.4, dmg: 40, splash: 2.5, kind: 'grenade'
+    x: px, y: py, tx: gx, ty: gy,
+    t: 0, life: 0.45, dmg: 40, splash: 2.5, kind: 'rocket'
   });
+  if (typeof toast === 'function') toast('💣 投掷手雷');
   uiDirty = true;
 }
 
