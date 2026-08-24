@@ -32,7 +32,7 @@ function updatePlayer(dt) {
   if (typeof markExplored === 'function') {
     if (!G._exploreT || G.time - G._exploreT > 0.5) {
       G._exploreT = G.time;
-      markExplored(p.x, p.y, 2);
+      markExplored(Math.floor(p.x / TILE), Math.floor(p.y / TILE), 2);
     }
   }
   // 载具驾驶模式：由 updateDriving 驱动载具，玩家自身不移动
