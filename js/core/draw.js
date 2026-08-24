@@ -50,7 +50,51 @@ function notch(ctx, px, py, dir) {
   ctx.restore();
 }
 
+// ===== 物品 dot 贴图缓存（P1 优化）=====
+// 把每个物品的 dot 预渲染成一张小画布（含圆角底+描边+缩略物品图标），
+// 后续直接 drawImage 整张 blit，替代每帧 clip+glyph 的昂贵路径绘制。
+const ITEM_DOT_CACHE = {};
+// 尺寸基准：r=5 的普通 dot
+const ITEM_DOT_SIZE = 12;
+
+function itemDotSprite(item) {
+  let s = ITEM_DOT_CACHE[item];
+  if (s) return s;
+  const it = ITEMS[item];
+  const c = document.createElement('canvas');
+  c.width = c.height = ITEM_DOT_SIZE;
+  const x = c.getContext('2d');
+  const r = 5, cx = ITEM_DOT_SIZE / 2;
+  x.fillStyle = '#20242b';
+  rr(x, cx - r, cx - r, r * 2, r * 2, r * 0.55);
+  x.fill();
+  x.strokeStyle = it.color;
+  x.lineWidth = Math.max(1, r * 0.16);
+  x.stroke();
+  x.save();
+  rr(x, cx - r * 0.82, cx - r * 0.82, r * 1.64, r * 1.64, r * 0.42);
+  x.clip();
+  drawItemGlyph(x, item, cx, cx, r * 1.85);
+  x.restore();
+  ITEM_DOT_CACHE[item] = c;
+  // 异步升级为 ImageBitmap（GPU 位图），成功后替换缓存，之后的帧直接 blit 位图
+  if (typeof createImageBitmap === 'function') {
+    try {
+      createImageBitmap(c).then(bm => { ITEM_DOT_CACHE[item] = bm; });
+    } catch (e) { /* 忽略，继续用画布 */ }
+  }
+  return c;
+}
+
 function drawItemDot(ctx, x, y, item, r = 5) {
+  // 标准尺寸直接整张贴图（P1 优化：替代 clip+glyph）
+  if (r === 5) {
+    const sp = itemDotSprite(item);
+    if (sp) {
+      ctx.drawImage(sp, x - ITEM_DOT_SIZE / 2, y - ITEM_DOT_SIZE / 2);
+      return;
+    }
+  }
   const it = ITEMS[item];
   ctx.fillStyle = '#20242b';
   rr(ctx, x - r, y - r, r * 2, r * 2, r * 0.55);
@@ -102,6 +146,8 @@ const PORT_OUTPUT = '#e07b4a';
 // 在设备四周画流体接口凸缘并标注文字，指示可接管道的位置与进出方向
 function drawFluidPorts(ctx, e, px, py, s, { inputs, outputs }) {
   const cxp = px + s / 2, cyp = py + s / 2, half = s / 2;
+  // 低 LOD 时省略流体口凸缘与标注（缩放太小看不清）
+  if (LOD && LOD.simple) return;
   // 四边各画一只通用流体口凸缘（可接管道，双向进/出）
   for (let sd = 0; sd < 4; sd++) drawPort(ctx, cxp, cyp, sd, PORT_FLUID, false, 0, half);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -125,6 +171,8 @@ function drawFluidPorts(ctx, e, px, py, s, { inputs, outputs }) {
 function drawRotatablePorts(ctx, e, px, py, s, ports) {
   const cxp = px + s / 2, cyp = py + s / 2, half = s / 2;
   const dir = e.dir | 0;
+  // 低 LOD 时省略端口凸缘（缩放太小看不清）
+  if (LOD && LOD.simple) return;
   for (const p of ports) {
     const sd = (p.side + dir) % 4;
     drawPort(ctx, cxp, cyp, sd, p.color, p.arrow, p.off, half);

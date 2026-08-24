@@ -77,12 +77,13 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
   const exitX = DX[dir] * step, exitY = DY[dir] * step;
   let inX = cx, inY = cy;
   if (inp) { inX = cx + inp[0] * step; inY = cy + inp[1] * step; }
+  const itemFn = (LOD && LOD.simple) ? drawItemDotLOD : drawItemDot;
   for (const o of e.items) {
     let ix, iy;
     if (inp && o.pos < 0.5) { const t = o.pos / 0.5; ix = inX + (cx - inX) * t; iy = inY + (cy - inY) * t; }
     else if (inp) { const t = (o.pos - 0.5) / 0.5; ix = cx + exitX * t; iy = cy + exitY * t; }
     else { ix = cx + DX[dir] * (o.pos - 0.5) * TILE; iy = cy + DY[dir] * (o.pos - 0.5) * TILE; }
-    drawItemDot(ctx, ix, iy, o.item);
+    itemFn(ctx, ix, iy, o.item);
   }
   ctx.globalAlpha = 1;
 }
@@ -227,7 +228,7 @@ function drawExpressSplitter(ctx, e, gx, gy, dir, alpha) {
       ix = cx + (ox2 - cx) * t;
       iy = cy + (oy2 - cy) * t;
     }
-    drawItemDot(ctx, ix, iy, o.item);
+    ((LOD && LOD.simple) ? drawItemDotLOD : drawItemDot)(ctx, ix, iy, o.item);
   }
   ctx.globalAlpha = 1;
 }

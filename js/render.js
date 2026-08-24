@@ -3,7 +3,11 @@
 let W = 0, H = 0;
 
 function resize() {
-  const dpr = window.devicePixelRatio || 1;
+  let dpr = window.devicePixelRatio || 1;
+  // 性能设置：可限制高分屏 DPR≤1.5，或进一步降至半分辨率（省电模式）
+  const st = (G && G.settings) || {};
+  if (st.capDPR) dpr = Math.min(dpr, 1.5);
+  if (st.lowRes) dpr = Math.max(0.5, dpr * 0.5);
   W = window.innerWidth; H = window.innerHeight;
   G.canvas.width = W * dpr;
   G.canvas.height = H * dpr;
@@ -24,6 +28,34 @@ function screenToWorld(sx, sy) {
   return [(sx - W / 2) / G.cam.z + G.cam.px, (sy - H / 2) / G.cam.z + G.cam.py];
 }
 
+// 当前帧的视口世界包围盒（由 render 一次性计算，传给各 onScreen 判断，
+// 避免每个实体各自 new 一个对象）。
+let FRAME_BOUNDS = null;
+// 复用的包围盒缓冲：地形/网格等每帧只算一次，避免重复分配。
+let _B = {};
+
+// ===== LOD 分级绘制 =====
+// 依据瓦片在屏幕上的像素尺寸（TILE * cam.z）决定绘制细节等级，
+// 缩放很小时跳过昂贵细节（物品 dot 的 clip/glyph、状态灯、流体标注、动画三角等）。
+const LOD = { level: 2, simple: false, tilePx: TILE };
+// 屏幕尺寸低于该阈值时启用简化绘制（仅底色+箭头，物品改色块）。
+const LOD_SIMPLE_PX = 14;
+
+function updateLOD() {
+  LOD.tilePx = TILE * G.cam.z;
+  LOD.simple = LOD.tilePx < LOD_SIMPLE_PX;
+  LOD.level = LOD.simple ? 0 : 2;
+}
+
+// 低 LOD 时物品 dot 的简化画法：色块替代 clip+glyph，省去大量路径/裁剪。
+function drawItemDotLOD(ctx, x, y, item) {
+  const it = ITEMS[item];
+  ctx.fillStyle = '#20242b';
+  ctx.fillRect(x - 3.5, y - 3.5, 7, 7);
+  ctx.fillStyle = it.color;
+  ctx.fillRect(x - 2.5, y - 2.5, 5, 5);
+}
+
 function render() {
   const ctx = G.ctx;
   ctx.fillStyle = '#151a14';
@@ -32,6 +64,10 @@ function render() {
   ctx.translate(W / 2, H / 2);
   ctx.scale(G.cam.z, G.cam.z);
   ctx.translate(-G.cam.px, -G.cam.py);
+  // 视口包围盒只算一次，供本帧所有实体剔除复用
+  FRAME_BOUNDS = viewBounds();
+  // LOD 分级：缩放小时简化绘制细节
+  updateLOD();
   drawTerrain(ctx);
   drawGridIfBuilding(ctx);
   for (const e of G.ents) {
@@ -47,31 +83,41 @@ function render() {
   ctx.restore();
 }
 
-function viewBounds() {
+// 视口世界包围盒：写入传入对象以复用，避免每帧/每实体分配新对象。
+// 未传 out 时返回新建对象（仅给少数一次调用处用）。
+function viewBounds(out) {
   const hw = (W / 2) / G.cam.z, hh = (H / 2) / G.cam.z;
-  return {
-    x0: G.cam.px + hw, y0: G.cam.py + hh,
-    x1: G.cam.px - hw, y1: G.cam.py - hh
-  };
+  out = out || {};
+  out.x0 = G.cam.px + hw;
+  out.y0 = G.cam.py + hh;
+  out.x1 = G.cam.px - hw;
+  out.y1 = G.cam.py - hh;
+  return out;
 }
 
+// 复用当前帧的视口包围盒做剔除，避免每次调用都新建对象。
 function onScreen(e) {
-  const b = viewBounds();
+  const b = FRAME_BOUNDS;
+  if (!b) return true;
   return e.x * TILE < b.x0 + TILE && (e.x + e.w) * TILE > b.x1 &&
          e.y * TILE < b.y0 + TILE && (e.y + e.h) * TILE > b.y1;
 }
 
-// ===== 地形离屏缓存 =====
-// 把视口附近的地形底色绘到离屏画布，相机未大幅移动时直接整块贴图，
-// 避免每帧逐格重算；矿点因会随开采变化，仍每帧实时绘制在缓存之上。
-const terrainCache = { canvas: null, cx: 0, cy: 0, w: 0, h: 0, z: 1, rebuildMs: 0 };
-const terrainCacheStats = { state: '未启用', rebuildMs: 0, lastRebuild: 0 };
-const TERRAIN_CACHE_MARGIN = 5;   // 缓存向外扩的瓦片数（减少重建频率）
+// ===== 地形分块离屏缓存（P1 优化）=====
+// 每个 32×32 chunk 渲到一张 1024×1024 离屏 canvas，按 LRU 缓存（上限 ~16 张）。
+// 相机平移只额外补渲染新出现的 chunk，可见 chunk 直接整张 drawImage blit，
+// 把 8000 次逐格 fillRect 降为几次 blit。矿点随开采变化，仍每帧实时绘制在缓存之上。
+const terrainCacheStats = { state: '未启用', rebuildMs: 0, lastRebuild: 0, hits: 0, misses: 0, cached: 0 };
+const TERRAIN_CHUNK_LRU_MAX = 16;   // 分块离屏缓存上限（张）
+const TERRAIN_CHUNK_PX = CHUNK * TILE;   // 1024
+const terrainChunkCache = new Map();   // 'cx,cy' -> { canvas, last }
+terrainChunkCache._seq = 0;   // LRU 时钟序号
 
-// 仅绘制地形底色（草地/水域），不含矿点
-function drawTerrainInto(ctx, ox, oy, w, h) {
-  for (let dy = 0; dy < h; dy++) {
-    for (let dx = 0; dx < w; dx++) {
+// 仅绘制单个 chunk 的地形底色（草地/水域），不含矿点
+function drawChunkTerrainInto(ctx, cx, cy) {
+  const ox = cx * CHUNK, oy = cy * CHUNK;
+  for (let dy = 0; dy < CHUNK; dy++) {
+    for (let dx = 0; dx < CHUNK; dx++) {
       const tx = ox + dx, ty = oy + dy;
       const px = dx * TILE, py = dy * TILE;
       if (getTerrain(tx, ty) === T_WATER) {
@@ -86,37 +132,65 @@ function drawTerrainInto(ctx, ox, oy, w, h) {
   }
 }
 
+// 获取指定 chunk 的离屏缓存画布；未命中时生成并写回 LRU。
+function terrainChunkCanvas(cx, cy) {
+  const key = cx + ',' + cy;
+  let entry = terrainChunkCache.get(key);
+  if (entry) {
+    entry.last = ++terrainChunkCache._seq;
+    terrainCacheStats.hits++;
+    return entry.canvas;
+  }
+  const c = document.createElement('canvas');
+  c.width = c.height = TERRAIN_CHUNK_PX;
+  const cctx = c.getContext('2d');
+  const start = performance.now();
+  drawChunkTerrainInto(cctx, cx, cy);
+  terrainCacheStats.rebuildMs = performance.now() - start;
+  terrainChunkCache.set(key, { canvas: c, last: ++terrainChunkCache._seq });
+  terrainCacheStats.misses++;
+  terrainCacheStats.cached = terrainChunkCache.size;
+  // LRU 淘汰：超出上限时移除最久未用的 chunk
+  if (terrainChunkCache.size > TERRAIN_CHUNK_LRU_MAX) {
+    let oldestKey = null, oldest = Infinity;
+    for (const [k, v] of terrainChunkCache) {
+      if (v.last < oldest) { oldest = v.last; oldestKey = k; }
+    }
+    if (oldestKey) terrainChunkCache.delete(oldestKey);
+  }
+  terrainCacheStats.cached = terrainChunkCache.size;
+  return c;
+}
+
+// 新游戏/新种子时清空分块离屏缓存，避免残留旧世界地形。
+function clearTerrainCache() {
+  terrainChunkCache.clear();
+  terrainCacheStats.hits = 0;
+  terrainCacheStats.misses = 0;
+  terrainCacheStats.cached = 0;
+}
+
 function drawTerrain(ctx) {
-  const b = viewBounds();
+  const b = viewBounds(_B);
   const tx0 = Math.floor(b.x1 / TILE);
   const ty0 = Math.floor(b.y1 / TILE);
   const tx1 = Math.ceil(b.x0 / TILE);
   const ty1 = Math.ceil(b.y0 / TILE);
-  const tw = tx1 - tx0 + 1, th = ty1 - ty0 + 1;
-  const m = TERRAIN_CACHE_MARGIN;
-  // 缓存失效：无缓存、缩放变化、或当前视口超出缓存覆盖范围
-  const need = !terrainCache.canvas || terrainCache.z !== G.cam.z ||
-    tx0 < terrainCache.cx || ty0 < terrainCache.cy ||
-    tx1 > terrainCache.cx + terrainCache.w - 1 || ty1 > terrainCache.cy + terrainCache.h - 1;
-  if (need) {
-    const cw = tw + m * 2, chh = th + m * 2;
-    if (!terrainCache.canvas) terrainCache.canvas = document.createElement('canvas');
-    terrainCache.canvas.width = cw * TILE;
-    terrainCache.canvas.height = chh * TILE;
-    const cctx = terrainCache.canvas.getContext('2d');
-    const start = performance.now();
-    drawTerrainInto(cctx, tx0 - m, ty0 - m, cw, chh);
-    terrainCache.rebuildMs = performance.now() - start;
-    terrainCache.cx = tx0 - m; terrainCache.cy = ty0 - m;
-    terrainCache.w = cw; terrainCache.h = chh; terrainCache.z = G.cam.z;
-    terrainCacheStats.rebuildMs = terrainCache.rebuildMs;
-    terrainCacheStats.lastRebuild = G.time;
+  // 覆盖视口的 chunk 范围
+  const cX0 = Math.floor(tx0 / CHUNK), cY0 = Math.floor(ty0 / CHUNK);
+  const cX1 = Math.floor(tx1 / CHUNK), cY1 = Math.floor(ty1 / CHUNK);
+  for (let cy = cY0; cy <= cY1; cy++) {
+    for (let cx = cX0; cx <= cX1; cx++) {
+      const c = terrainChunkCanvas(cx, cy);
+      const sx = Math.max(cx * CHUNK, tx0) * TILE - cx * TERRAIN_CHUNK_PX;
+      const sy = Math.max(cy * CHUNK, ty0) * TILE - cy * TERRAIN_CHUNK_PX;
+      const dx = Math.max(cx * CHUNK, tx0) * TILE;
+      const dy = Math.max(cy * CHUNK, ty0) * TILE;
+      const ex = Math.min((cx + 1) * CHUNK - 1, tx1) * TILE + TILE;
+      const ey = Math.min((cy + 1) * CHUNK - 1, ty1) * TILE + TILE;
+      ctx.drawImage(c, sx, sy, ex - dx, ey - dy, dx, dy, ex - dx, ey - dy);
+    }
   }
-  // 整块贴图缓存
-  const sx = (tx0 - terrainCache.cx) * TILE;
-  const sy = (ty0 - terrainCache.cy) * TILE;
-  ctx.drawImage(terrainCache.canvas, sx, sy, tw * TILE, th * TILE,
-    tx0 * TILE, ty0 * TILE, tw * TILE, th * TILE);
   // 矿点每帧实时绘制（随开采实时减少）
   for (let ty = ty0; ty <= ty1; ty++) {
     for (let tx = tx0; tx <= tx1; tx++) {
@@ -125,7 +199,7 @@ function drawTerrain(ctx) {
         drawOreDots(ctx, tx * TILE, ty * TILE, oreItemId(ti), getOreAmt(tx, ty), tx, ty);
     }
   }
-  terrainCacheStats.state = '已启用（缓存 ' + terrainCache.w + '×' + terrainCache.h + ' 瓦片）';
+  terrainCacheStats.state = '分块缓存（' + terrainChunkCache.size + '/' + TERRAIN_CHUNK_LRU_MAX + ' 张，命中 ' + terrainCacheStats.hits + ' / 未命中 ' + terrainCacheStats.misses + '）';
 }
 
 function drawOreDots(ctx, px, py, itemId, amt, tx, ty) {
@@ -156,7 +230,7 @@ function drawOreDots(ctx, px, py, itemId, amt, tx, ty) {
 
 function drawGridIfBuilding(ctx) {
   if (!buildActive() && !G.panelEnt) return;
-  const b = viewBounds();
+  const b = viewBounds(_B);
   const tx0 = Math.floor(b.x1 / TILE);
   const ty0 = Math.floor(b.y1 / TILE);
   const tx1 = Math.ceil(b.x0 / TILE);
@@ -245,7 +319,8 @@ function drawStatusDot(ctx, x, y, c) {
 function drawEntity(ctx, e, gx, gy, dir, alpha) {
   const fn = DEVICE_RENDER[e.type];
   if (fn) fn(ctx, e, gx, gy, dir, alpha);
-  if (alpha === 1) {
+  // 低 LOD 时跳过状态灯（像素太小看不清，省一次 path+fill）
+  if (alpha === 1 && !LOD.simple) {
     const sf = DEVICE_STATUS[e.type];
     const c = sf ? sf(e) : null;
     if (c) drawStatusDot(ctx, (gx + e.w) * TILE - 8, gy + 8, c);

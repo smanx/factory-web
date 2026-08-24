@@ -6,11 +6,25 @@ function dirFromVec(dx, dy) {
   return dx === 1 ? 0 : dy === 1 ? 1 : dx === -1 ? 2 : 3;
 }
 
+// 实体增删会让邻居关系改变，进而影响附近传送带的输入侧判定。
+// 这里在 (x,y) 的 w×h 区域向外扩 2 格范围内，把命中的传送带缓存失效。
+function invalidateBeltInputNear(x, y, w, h) {
+  const seen = new Set();
+  for (let dy = -2; dy < h + 2; dy++)
+    for (let dx = -2; dx < w + 2; dx++) {
+      const t = entAt(x + dx, y + dy);
+      if (!t || seen.has(t)) continue;
+      seen.add(t);
+      if (typeof t.__inpCached === 'boolean') { t.__inpCached = false; t.__inp = undefined; }
+    }
+}
+
 function addEnt(e) {
   G.ents.push(e);
   for (let dy = 0; dy < e.h; dy++)
     for (let dx = 0; dx < e.w; dx++)
       G.grid.set(entKey(e.x + dx, e.y + dy), e);
+  invalidateBeltInputNear(e.x, e.y, e.w, e.h);
 }
 
 function removeEnt(e) {
@@ -21,6 +35,7 @@ function removeEnt(e) {
       const k = entKey(e.x + dx, e.y + dy);
       if (G.grid.get(k) === e) G.grid.delete(k);
     }
+  invalidateBeltInputNear(e.x, e.y, e.w, e.h);
 }
 
 // ===== 流体端口方向表：管道/流体设备共用 =====
