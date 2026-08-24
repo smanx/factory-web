@@ -113,7 +113,9 @@ const SFX = {
   // 组装机/采矿机持续运转：低频“嗡嗡”工业运转声
   'machine-run': { type: 'sawtooth', dur: 0.6, vol: 0.05, f0: 90, f1: 120, slide: true },
   // 坦克重炮开火：厚重“轰”重炮声（区别于普通火箭筒）
-  'tank-cannon': { type: 'noise', dur: 0.5, vol: 0.32, f0: 120, f1: 35, slide: true }
+  'tank-cannon': { type: 'noise', dur: 0.5, vol: 0.32, f0: 120, f1: 35, slide: true },
+  // 爆炸炮弹开火：比普通重炮更低沉浑厚、带低频轰鸣（对齐《异星工厂》爆炸炮弹的沉重发射感）
+  'tank-cannon-explosive': { type: 'noise', dur: 0.7, vol: 0.4, f0: 90, f1: 30, slide: true }
 };
 
 function sfxInit() {
