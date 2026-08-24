@@ -766,6 +766,9 @@ function dbgSlider(body, label, key, min, max, step) {
 function buildDebug() {
   const btn = document.getElementById('dbg-btn');
   const panel = document.getElementById('dbg-panel');
+  // 仅当 URL 参数含 debug=1 时才显示 debug 按钮
+  btn.style.display = G.debugEnabled ? 'flex' : 'none';
+  if (!G.debugEnabled) { panel.style.display = 'none'; return; }
   panel.innerHTML = '<div class="dhead"><span>开发者调试</span><button id="dbg-x">✕</button></div>';
   const body = document.createElement('div');
   body.className = 'dbody';
