@@ -80,6 +80,7 @@ function drawAssembler3(ctx, e, gx, gy, dir, alpha) {
 // ===== 面板：复用组装机面板（配方选择/输入/输出/进度）=====
 function assembler3PanelHtml(e) {
   let h = row('当前配方', e.recipe ? ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name : '<span class="dim">未设置</span>');
+  h += row('电力', powerStatusLiveHtml(e), 'power');
   h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
   if (e.recipe)
     for (const k in RECIPES[e.recipe].inp) {
@@ -106,6 +107,7 @@ function assembler3PanelHtml(e) {
   return h;
 }
 function assembler3PanelLive(e, api) {
+  api.set('power', powerStatusLiveHtml(e));
   api.set('input', Object.keys(e.inp).length ? countStr(e.inp) : dimSpan('空'));
   api.set('output', Object.keys(e.outp).length ? countStr(e.outp) : dimSpan('空'));
   const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
@@ -121,12 +123,20 @@ function assembler3PanelLive(e, api) {
   api.status('已暂停：等待材料就绪', 'warn');
 }
 function assembler3Tip(e) {
-  return e.recipe ? ('生产 ' + ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name) : '未设置配方，点击打开面板';
+  const base = e.recipe ? ('生产 ' + ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name) : '未设置配方，点击打开面板';
+  const s = powerStatusOf(e);
+  if (s.consuming && s.sat < 1) return base + '；' + (s.sat > 0 ? '电量不足' + Math.round(s.sat * 100) + '%' : '缺电停摆');
+  return base;
 }
 
 // ===== 注册 =====
 ENT_CLASSES['assembling-machine-3'] = Assembler3;
 DEVICE_RENDER['assembling-machine-3'] = drawAssembler3;
-DEVICE_STATUS['assembling-machine-3'] = e => e.recipe ? (e.crafting || e.prog > 0 ? 'g' : 'y') : 'r';
+// 组装机 III：正在耗电时按供电状态显灯（电量不足黄灯、缺电停摆红灯）；未耗电时按原逻辑
+DEVICE_STATUS['assembling-machine-3'] = e => {
+  const s = powerStatusOf(e);
+  if (s.consuming) return s.color;
+  return e.recipe ? (e.crafting || e.prog > 0 ? 'g' : 'y') : 'r';
+};
 DEVICE_PANEL['assembling-machine-3'] = { html: assembler3PanelHtml, live: assembler3PanelLive, tip: assembler3Tip };
 DEVICE_DIR_ROTATE['assembling-machine-3'] = true;

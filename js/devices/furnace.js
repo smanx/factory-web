@@ -132,7 +132,9 @@ function drawFurnace(ctx, e, gx, gy, dir, alpha) {
 function furnacePanelHtml(e) {
   const eFurn = e instanceof ElectricFurnace;
   let h = '';
-  if (!eFurn) {
+  if (eFurn) {
+    h += row('电力', powerStatusLiveHtml(e), 'power');
+  } else {
     h += row('燃料', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : '<span class="dim">无</span>', 'fuel');
     if (invCount('coal') > 0)
       h += '<button data-action="fuel" data-id="coal">加入 5 煤 (' + invCount('coal') + ')</button>';
@@ -152,6 +154,7 @@ function furnacePanelHtml(e) {
 }
 function furnacePanelLive(e, api) {
   const eFurn = e instanceof ElectricFurnace;
+  if (eFurn) api.set('power', powerStatusLiveHtml(e));
   if (!eFurn) api.set('fuel', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : dimSpan('无'));
   api.set('input', Object.keys(e.inp).length ? countStr(e.inp) : dimSpan('空'));
   api.set('output', Object.keys(e.outp).length ? countStr(e.outp) : dimSpan('空'));
@@ -169,7 +172,13 @@ function furnacePanelLive(e, api) {
   }
 }
 function furnaceTip(e) {
-  return e.lit ? '冶炼中' : ((Object.keys(e.inp).length || e.fuelCoal > 0) ? '待料' : '空置，需放入燃料和矿石');
+  const base = e.lit ? '冶炼中' : ((Object.keys(e.inp).length || e.fuelCoal > 0) ? '待料' : '空置，需放入燃料和矿石');
+  // 电炉：电量不足（正在耗电且 sat<1）时在提示中注明
+  if (e instanceof ElectricFurnace) {
+    const s = powerStatusOf(e);
+    if (s.consuming && s.sat < 1) return base + '；' + (s.sat > 0 ? '电量不足' + Math.round(s.sat * 100) + '%' : '缺电停摆');
+  }
+  return base;
 }
 
 // ===== 注册 =====
@@ -178,7 +187,11 @@ DEVICE_RENDER['stone-furnace'] = drawFurnace;
 DEVICE_RENDER['electric-furnace'] = drawFurnace;
 // 石炉：无配方时黄灯（等燃料），电炉：无配方时红灯
 DEVICE_STATUS['stone-furnace'] = e => e.lit ? (e.cur ? 'g' : 'y') : 'r';
-DEVICE_STATUS['electric-furnace'] = e => e.lit ? (e.cur ? 'g' : 'r') : 'r';
+// 电炉：正在耗电且电量不足（sat<1）时亮黄灯提示；缺电停摆时红灯；未耗电时按是否冶炼显红/绿
+DEVICE_STATUS['electric-furnace'] = e => {
+  const s = powerStatusOf(e);
+  return s.consuming ? s.color : (e.lit ? (e.cur ? 'g' : 'r') : 'r');
+};
 const furnacePanel = { html: furnacePanelHtml, live: furnacePanelLive, tip: furnaceTip };
 DEVICE_PANEL['stone-furnace'] = furnacePanel;
 DEVICE_PANEL['electric-furnace'] = furnacePanel;

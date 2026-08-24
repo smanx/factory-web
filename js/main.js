@@ -208,7 +208,13 @@ function tryPlaceAt(tx, ty) {
     return;
   }
   const chk = canPlaceAt(type, tx, ty, G.ghostDir);
-  if (!chk.ok) return;
+  if (!chk.ok) {
+    // 若障碍本身就是同向传送带：直接铺设普通传送带衔接即可，无需地下带跨越
+    if (tryPlaceOntoSameDirBelt(type, tx, ty)) { uiDirty = true; return; }
+    // 拖动连续铺设传送带遇障碍：自动改用地下传送带跨越障碍继续铺
+    if (tryAutoUnderground(type, tx, ty)) { uiDirty = true; }
+    return;
+  }
   // 覆盖升级/降级：把带/地下带/分流器放到同族现有传送带上，直接覆盖当前连续的一段
   const target = entAt(tx, ty);
   if (target && canOverwriteWithBelt(type, target)) {
@@ -313,6 +319,85 @@ function overwriteBeltTile(tx, ty, type, infinite) {
   toast('已' + (tierNext(oldType) === type ? '升级' : '降级') + '为 ' + ITEMS[type].name);
   uiDirty = true;
   refreshHotbar();
+}
+
+// 传送带类型 → 对应的地下传送带类型
+const BELT_TO_UG = {
+  'transport-belt': 'underground',
+  'fast-transport-belt': 'fast-underground-belt',
+  'express-transport-belt': 'express-underground-belt'
+};
+
+function ugMaxDist(ugType) {
+  return ugType === 'fast-underground-belt' ? FAST_UNDERGROUND_MAX
+    : ugType === 'express-underground-belt' ? EXPRESS_UNDERGROUND_MAX
+    : UNDERGROUND_MAX;
+}
+
+// 障碍本身是同向传送带时，直接铺设普通传送带衔接（替换原传送带），无需地下带跨越。
+// 返回 true 表示已成功铺设；否则返回 false 交由地下带逻辑处理。
+function tryPlaceOntoSameDirBelt(type, tx, ty) {
+  const t = entAt(tx, ty);
+  // 必须是普通传送带（含快速/极速带，非分流器/地下带），且方向与当前铺设方向一致
+  if (!(t instanceof Belt) || t instanceof Splitter || t instanceof Underground) return false;
+  if (t.dir !== G.ghostDir) return false;
+  const infinite = !!(G.dbg && G.dbg.infinite);
+  if (!infinite && invCount(type) < 1) return false;
+  // 同向传送带衔接：用当前传送带替换掉已有传送带，无需消耗地下带
+  removeEnt(t);
+  const e = new (ENT_CLASSES[type])(type, tx, ty);
+  e.dir = G.ghostDir;
+  e.applyDir();
+  addEnt(e);
+  if (!infinite) invTake(type, 1);
+  refreshHotbar();
+  return true;
+}
+
+// 拖动铺传送带遇障碍时自动搭一对地下传送带跨越：入口放在障碍前一格，
+// 出口放在障碍之后第一个能放置的格子（不超过同档地下带的最大跨距）。
+function tryAutoUnderground(type, tx, ty) {
+  const ugType = BELT_TO_UG[type];
+  if (!ugType) return false;              // 非传送带不触发
+  if (entAt(tx, ty) instanceof Underground) return false; // 当前格已有地下带，不再生成
+  const infinite = !!(G.dbg && G.dbg.infinite);
+  const dir = G.ghostDir;
+  const maxDist = ugMaxDist(ugType);
+
+  // 入口位置：障碍前（沿铺设方向）一格
+  const ex = tx - DX[dir], ey = ty - DY[dir];
+  let replaced = null;
+  let entOk = canPlaceAt(ugType, ex, ey, dir).ok;
+  if (!entOk) {
+    const t = entAt(ex, ey);
+    if (t instanceof Belt && !(t instanceof Underground)) { replaced = t; entOk = true; }
+    else return false;
+  }
+  if (!entOk) return false;
+
+  // 出口位置：沿方向扫描障碍之后第一个可放置格
+  let ox = null, oy = null;
+  for (let k = 1; k <= maxDist; k++) {
+    const px2 = tx + DX[dir] * k, py2 = ty + DY[dir] * k;
+    if (canPlaceAt(ugType, px2, py2, dir).ok) { ox = px2; oy = py2; break; }
+  }
+  if (ox === null) return false;
+
+  // 物资：优先扣地下带，不足则用普通传送带兜底（方便拖动时无缝跨越）
+  if (!infinite) {
+    if (invCount(ugType) >= 2) invTake(ugType, 2);
+    else if (invCount(type) >= 2) invTake(type, 2);
+    else return false;
+    if (replaced) invAdd(type, 1);        // 归还被替换成入口的那条传送带
+  }
+
+  if (replaced) removeEnt(replaced);
+  const ugIn = new (ENT_CLASSES[ugType])(ugType, ex, ey);
+  ugIn.dir = dir; ugIn.applyDir(); addEnt(ugIn);
+  const ugOut = new (ENT_CLASSES[ugType])(ugType, ox, oy);
+  ugOut.dir = dir; ugOut.applyDir(); addEnt(ugOut);
+  refreshHotbar();
+  return true;
 }
 
 function deconstructAt(tx, ty) {
@@ -534,7 +619,7 @@ function pasteBlueprint() {
     e.dir = p.s.dir | 0; e.applyDir();
     addEnt(e);
   }
-  toast('蓝图已粘贴 ' + placements.length + ' 个建筑');
+  toast('蓝图已粘贴 ' + placements.length + ' 个建筑（可继续点击空白处粘贴，右键取消）');
   uiDirty = true;
 }
 
@@ -731,7 +816,7 @@ function bindInput() {
       if (ev.button === 0) {
         if (G.blueMode === 'paste') {
           pasteBlueprint();
-          cancelBlueprint();
+          // 粘贴后保持粘贴模式，可继续在别处粘贴（右键或按 Q/Esc 取消）
         } else {
           G.blueStart = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
           G.blueEnd = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };

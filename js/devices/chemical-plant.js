@@ -247,6 +247,7 @@ function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
 // ===== 面板 =====
 function chemicalPlantPanelHtml(e) {
   let h = row('当前配方', e.recipe ? ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name : '<span class="dim">未设置</span>');
+  h += row('电力', powerStatusLiveHtml(e), 'power');
   h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
   if (e.recipe)
     for (const k in RECIPES[e.recipe].inp) {
@@ -274,6 +275,7 @@ function chemicalPlantPanelHtml(e) {
   return h;
 }
 function chemicalPlantPanelLive(e, api) {
+  api.set('power', powerStatusLiveHtml(e));
   api.set('input', Object.keys(e.inp).length ? countStr(e.inp) : dimSpan('空'));
   api.set('output', Object.keys(e.outp).length ? countStr(e.outp) : dimSpan('空'));
   const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
@@ -286,15 +288,22 @@ function chemicalPlantPanelLive(e, api) {
     !e.recipe || G.power.sat <= 0 ? 'warn' : (e.crafting ? 'ok' : 'warn'));
 }
 function chemicalPlantTip(e) {
-  return e.crafting ? ('加工 ' + ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name)
+  let base = e.crafting ? ('加工 ' + ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name)
     : (e.recipe ? '待料（流体经管道自动吸入）' : '未设置配方，点击打开面板');
+  const s = powerStatusOf(e);
+  if (s.consuming && s.sat < 1) return base + '；' + (s.sat > 0 ? '电量不足' + Math.round(s.sat * 100) + '%' : '缺电停摆');
+  return base;
 }
 
 // ===== 注册 =====
 ENT_CLASSES['chemical-plant'] = ChemicalPlant;
 DEVICE_RENDER['chemical-plant'] = drawChemicalPlant;
-DEVICE_STATUS['chemical-plant'] = e =>
-  e.recipe ? (e.crafting ? 'g' : (G.power.sat <= 0 && Object.keys(e.inp).length ? 'r' : 'y')) : 'r';
+// 化工厂：正在耗电时按供电状态显灯（电量不足黄灯、缺电停摆红灯）；未耗电时按原逻辑
+DEVICE_STATUS['chemical-plant'] = e => {
+  const s = powerStatusOf(e);
+  if (s.consuming) return s.color;
+  return e.recipe ? (e.crafting ? 'g' : (G.power.sat <= 0 && Object.keys(e.inp).length ? 'r' : 'y')) : 'r';
+};
 DEVICE_PANEL['chemical-plant'] = { html: chemicalPlantPanelHtml, live: chemicalPlantPanelLive, tip: chemicalPlantTip };
 // 化工厂四边均布流体口、本体对称，旋转仅记录朝向；选中/悬停后按 R 可直接旋转
 DEVICE_DIR_ROTATE['chemical-plant'] = true;

@@ -68,6 +68,35 @@ check('assembler rejects fluids when recipe is solid', asm2.acceptsFluid('water'
 updatePower();
 check('chem plant adds power demand', G.power.demand >= POWER_USE['chemical-plant']);
 
+// ---- 耗电设备状态（当前耗电状态 + 是否电量不足）----
+const _origSat = G.power.sat;
+const _chemPlant = plant;
+// 供电正常：耗电设备满速，状态绿
+G.power.sat = 1;
+let _ps = powerStatusOf(_chemPlant);
+check('power status: normal supply green', _ps.consuming && _ps.color === 'g' && _ps.text.includes('供电正常'));
+// 电量不足：0<sat<1 时亮黄灯并提示降速
+G.power.sat = 0.6;
+_ps = powerStatusOf(_chemPlant);
+check('power status: low supply yellow', _ps.consuming && _ps.color === 'y' && _ps.text.includes('电量不足') && _ps.text.includes('60%'));
+// 缺电停摆：sat<=0 时亮红灯
+G.power.sat = 0;
+_ps = powerStatusOf(_chemPlant);
+check('power status: outage red', _ps.consuming && _ps.color === 'r' && _ps.text.includes('缺电停摆'));
+// 未耗电设备（powerDemand 为 0）：不提示电量不足
+const _idle = { powerDemand: () => 0 };
+_ps = powerStatusOf(_idle);
+check('power status: idle not low', _ps.consuming === false && _ps.color === 'g' && _ps.text === '未耗电');
+// 非耗电设备（无 powerDemand）：视为未耗电
+_ps = powerStatusOf({});
+check('power status: no-power-device idle', _ps.consuming === false);
+G.power.sat = _origSat;
+// 面板“电力”行会渲染出耗电状态
+const _chemHtml = htmlMachine(plant);
+check('chem panel shows power status row', _chemHtml.includes('电力') && _chemHtml.includes('power'));
+const _drillPanel = htmlMachine(place(ElectricDrill, 30, 5));
+check('electric drill panel shows power status row', _drillPanel.includes('电力'));
+
 // ---- serialize roundtrip ----
 const s1 = plant.serialize();
 const r1 = ChemicalPlant.restore(JSON.parse(JSON.stringify(s1)));
@@ -595,6 +624,99 @@ check('greenprint one-click downgrade', gDown === 3);
 G.blueMode = null;
 G.greenRect = null;
 toast = savedToastFn2;
+
+// ==================== 地下传送带：进洞的货只能从出口出来 ====================
+// Bug：地下带同时作为“出口（接收后方入口）”和“入口（转发给更前方出口）”时，
+// 若在其后一格放普通传送带，货会泄漏到该带，而不是继续走地下到最终出口。
+function resetWorld() { G.ents = []; G.grid = new Map(); G.time = 0; }
+resetWorld();
+function placeDir(cls, x, y, dir) { const e = place(cls, x, y); e.dir = dir; e.applyDir(); return e; }
+function runT(ticks) { for (let t = 0; t < ticks; t++) { for (const e of G.ents) e.update(1 / 60); G.time += 1 / 60; } }
+// 三座地下带链：入口(40) -> 中段(42) -> 出口(44)，并在中段入口下一格(43)放普通带
+const ugA = placeDir(Underground, 400, 100, 0);
+const ugB = placeDir(Underground, 402, 100, 0);
+const ugC = placeDir(Underground, 404, 100, 0);
+const leakBelt = placeDir(Belt, 403, 100, 0);
+const feedA = placeDir(Belt, 399, 100, 0);
+feedA.items.push({ item: 'iron-plate', pos: 0.8 });
+runT(240);
+check('underground chain: item reaches final exit, not leaked belt',
+  ugC.outItems.length > 0 || ugC.items.length > 0);
+check('underground chain: no item leaks to belt after mid entrance', leakBelt.items.length === 0);
+
+// 地下带可跨过固体障碍配对（这是自动铺设跨越障碍的前提）
+resetWorld();
+const wallOb = placeDir(StoneWall, 410, 100, 0); // 固体障碍
+const ugP = placeDir(Underground, 409, 100, 0);
+const ugQ = placeDir(Underground, 411, 100, 0);
+check('underground mates across solid obstacle', ugP.findMate() === ugQ && ugQ.findBackMate() === ugP);
+
+// ==================== 拖动铺设传送带遇障碍自动改用地下带 ====================
+resetWorld();
+G.dbg.farReach = true;
+G.inv = new Map(); G.inv.set('transport-belt', 100); G.inv.set('underground', 10);
+G.sel = -1; G.quickSel = 'transport-belt';
+G.ghostDir = 0; // 朝东
+G.player = makePlayer(-30, -30);
+const ax = -30, ay = -30;
+const obst2 = new (ENT_CLASSES['stone-furnace'])('stone-furnace', ax + 3, ay);
+obst2.dir = 0; obst2.applyDir(); addEnt(obst2);
+function dragTo(tx, ty) { G.cursorTile = { tx, ty }; tryPlaceAt(tx, ty); }
+dragTo(ax, ay); dragTo(ax + 1, ay); dragTo(ax + 2, ay);
+dragTo(ax + 3, ay); // 遇障碍 -> 自动地下带
+const ugList = G.ents.filter(e => e.type === 'underground');
+check('auto-underground: entrance placed before obstacle',
+  ugList.some(e => e.x === ax + 2 && e.y === ay));
+check('auto-underground: exit placed after obstacle',
+  ugList.some(e => e.x >= ax + 4 && e.y === ay));
+const ugEn = G.ents.find(e => e.type === 'underground' && e.x === ax + 2 && e.y === ay);
+const ugEx = G.ents.find(e => e.type === 'underground' && e.x >= ax + 4 && e.y === ay);
+check('auto-underground: entrance pairs with exit (crosses obstacle)',
+  !!ugEn && !!ugEx && ugEn.findMate() === ugEx);
+check('auto-underground: consumed underground items',
+  G.inv.get('underground') === 8); // 10 -> 8，并归还了被替换的传送带
+// 继续拖动：出口后再铺普通带
+G.quickSel = 'transport-belt';
+dragTo(ax + 6, ay);
+check('auto-underground: normal belt continues after exit',
+  entAt(ax + 6, ay) && entAt(ax + 6, ay).type === 'transport-belt');
+G.dbg.farReach = false;
+
+// ==================== 拖动铺设：障碍是同向传送带时直接铺普通带，不用地下带 ====================
+resetWorld();
+G.dbg.farReach = true;
+G.inv = new Map(); G.inv.set('transport-belt', 100); G.inv.set('underground', 10);
+G.sel = -1; G.quickSel = 'transport-belt';
+G.ghostDir = 0; // 朝东
+G.player = makePlayer(-60, -60);
+const bx = -60, by = -60;
+// 在拖动路径上预先放一座同向（朝东）传送带作为“障碍”
+const sameDirBelt = new (ENT_CLASSES['transport-belt'])('transport-belt', bx + 2, by);
+sameDirBelt.dir = 0; sameDirBelt.applyDir(); addEnt(sameDirBelt);
+const ugCountBefore = G.ents.filter(e => e.type === 'underground').length;
+dragTo(bx, by); dragTo(bx + 1, by);
+dragTo(bx + 2, by); // 遇同向传送带障碍
+// 应直接铺普通传送带衔接，不生成地下带
+const ugCountAfter = G.ents.filter(e => e.type === 'underground').length;
+check('same-dir belt obstacle: no underground created', ugCountAfter === ugCountBefore);
+check('same-dir belt obstacle: normal belt placed at obstacle',
+  entAt(bx + 2, by) && entAt(bx + 2, by).type === 'transport-belt' && entAt(bx + 2, by).dir === 0);
+
+// 反向传送带障碍（方向相反）应仍走地下带逻辑
+resetWorld();
+G.dbg.farReach = true;
+G.inv = new Map(); G.inv.set('transport-belt', 100); G.inv.set('underground', 10);
+G.sel = -1; G.quickSel = 'transport-belt';
+G.ghostDir = 0;
+G.player = makePlayer(-70, -70);
+const cx2 = -70, cy2 = -70;
+const oppBelt = new (ENT_CLASSES['transport-belt'])('transport-belt', cx2 + 2, cy2);
+oppBelt.dir = 2; oppBelt.applyDir(); addEnt(oppBelt); // 朝西（反向）
+dragTo(cx2, cy2); dragTo(cx2 + 1, cy2);
+dragTo(cx2 + 2, cy2); // 遇反向传送带障碍
+const ugOpp = G.ents.filter(e => e.type === 'underground');
+check('opposite-dir belt obstacle: underground created', ugOpp.length === 2);
+G.dbg.farReach = false;
 
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nALL PASSED');
 process.exit(failures ? 1 : 0);

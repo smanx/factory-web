@@ -297,7 +297,10 @@ function canPlaceAt(type, tx, ty, dir) {
       if (isWater(tx + dx, ty + dy)) return { ok: false };
       if (entAt(tx + dx, ty + dy)) {
         // 传送带升级/降级覆盖：用带系/地下带/分流器的同类覆盖现有同族带（对齐《异星工厂》覆盖升级）
-        if (canOverwriteWithBelt(type, entAt(tx + dx, ty + dy))) continue;
+        // 但反向传送带视为障碍（不参与覆盖），交由自动地下带逻辑跨越处理
+        const e = entAt(tx + dx, ty + dy);
+        const reversed = e instanceof Belt && Math.abs(((e.dir - dir) % 4 + 4) % 4) === 2;
+        if (!reversed && canOverwriteWithBelt(type, e)) continue;
         return { ok: false };
       }
       if (!withinReach(tx + dx, ty + dy)) return { ok: false };
