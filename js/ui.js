@@ -328,6 +328,8 @@ function htmlTech() {
       h += '<div class="dim">' + (done ? '已完成' :
         prog + ' / ' + total + '（' + costChips.join(' + ') + '）') + '</div>';
     }
+    h += '</div>';
+    // 按钮作为 .recipe 的直接子元素（在 .rmain 外部），配合 .recipe 的 space-between 布局将其置于最右侧
     if (!done && !isInfiniteTech(tid)) {
       h += (G.activeTech === tid)
         ? '<button data-action="tech-cancel">取消</button>'
@@ -338,7 +340,6 @@ function htmlTech() {
         ? '<button data-action="tech-cancel">停止</button>'
         : '<button data-action="tech" data-id="' + tid + '">研究</button>';
     }
-    h += '</div>';
   }
   h += '<div class="hint">建造研究中心，放入科学包后选择课题；研究中心按配方顺序逐瓶消耗（红→绿→蓝→灰）。机械臂可自动喂包。绿色科学包=传送带+机械臂；蓝色科学包=塑料+电路板+铜板（需打通石油链）；军事科学包=弹药匣+石墙+穿甲弹（解锁极速物流与军事工程）。「无限科技」为无限研究：只要中心里有任意科学包就会被持续消耗、永不完成。</div>';
   return h;
