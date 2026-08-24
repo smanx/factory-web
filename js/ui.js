@@ -638,6 +638,10 @@ function initTopButtons() {
   const topMenu = document.getElementById('topright');
   const menuToggle = document.getElementById('btn-menu-toggle');
   if (topMenu && menuToggle) {
+    // 默认折叠顶部菜单（与 index.html 中 #topright 默认 collapsed 保持一致）
+    const isCollapsed = topMenu.classList.contains('collapsed');
+    menuToggle.textContent = isCollapsed ? '☰' : '✕';
+    menuToggle.title = isCollapsed ? '展开顶部菜单' : '折叠顶部菜单';
     menuToggle.addEventListener('click', () => {
       const collapsed = topMenu.classList.toggle('collapsed');
       menuToggle.textContent = collapsed ? '☰' : '✕';
