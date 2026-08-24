@@ -45,7 +45,7 @@ class Assembler extends Entity {
     if (G.power.sat <= 0) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
-      this.prog += dt * asmMult() * (G.power.sat < 1 ? G.power.sat : 1);
+      this.prog += dt * asmMult() * 0.5 * (G.power.sat < 1 ? G.power.sat : 1);
       this.spin += dt * 4;
       if (this.prog >= rec.time) {
         for (const k in rec.out) this.outp[k] = (this.outp[k] || 0) + rec.out[k];
@@ -196,8 +196,8 @@ function assemblerPanelHtml(e) {
   }
   h += '</div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
-  // 组装机 II 速度为 I 的 1.5 倍，并受电学科技加成
-  const asmM = e.type === 'assembling-machine-mk2' ? asmMult() * 1.5 * elecMachMult() : asmMult();
+  // 组装机 II 速度为 I 的 1.5 倍（官方 crafting-speed：I=0.5，II=0.75）
+  const asmM = e.type === 'assembling-machine-mk2' ? asmMult() * 0.75 : asmMult() * 0.5;
   h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? asmM : 1);
   h += '<div class="dim">选中后按 R 旋转朝向（流体入口在背部、固体产物经机械臂取走）；背部通用流体口可接管道，向含流体原料的配方自动供液。</div>';
   return h;

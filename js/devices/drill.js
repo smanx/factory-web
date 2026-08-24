@@ -51,7 +51,7 @@ class Drill extends Entity {
     this.working = true;
     this.burnLeft -= dt;
     this.spin += dt * 6;
-    this.prog += dt * drillMult();
+    this.prog += dt * drillMult() * 0.25; // 热能采矿机 mining-speed 0.25（对齐《异星工厂》）
     if (this.prog >= DRILL_TIME) {
       this.prog -= DRILL_TIME;
       if (!G.settings.infiniteOre) consumeOre(o[0], o[1]);
@@ -242,7 +242,7 @@ function drillPanelLive(e, api) {
   if (rateEl) {
     const o = e.oreTile();
     const item = o ? e.mineItem(o) : (e.bufItem || null);
-    const mult = e instanceof ElectricDrill ? drillMult() * e.machMult() : drillMult();
+    const mult = e instanceof ElectricDrill ? drillMult() * e.machMult() : drillMult() * 0.25;
     const rec = item ? { time: DRILL_TIME, inp: {}, out: { [item]: 1 } } : null;
     const html = rec ? machRateHtml(rec, mult) : '';
     if (rateEl.innerHTML !== html) rateEl.innerHTML = html;

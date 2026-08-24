@@ -25,9 +25,9 @@ const POWER_PER_ENGINE = 900;   // 蒸汽机满功率输出
 const POWER_USE = {
   'electric-drill': 90,          // 电采矿机
   'electric-furnace': 180,       // 电炉
-  'assembling-machine': 90,      // 组装机 I
+  'assembling-machine': 75,      // 组装机 I
   'assembling-machine-mk2': 150, // 组装机 II
-  'assembling-machine-3': 210,   // 组装机 III
+  'assembling-machine-3': 375,   // 组装机 III
   'pumpjack': 90,                // 抽油机
   'refinery': 420,               // 炼油厂
   'chemical-plant': 210,         // 化工厂
@@ -142,14 +142,14 @@ const ITEMS = {
 const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone', 'calcite'];
 
 const SMELTS = [
-  { id: 'iron-plate',   inp: 'iron-ore',   time: 1.6 },
-  { id: 'copper-plate', inp: 'copper-ore', time: 1.6 },
-  { id: 'steel-plate',  inp: 'iron-plate', inCount: 2, time: 3.2 },
-  { id: 'stone-brick',  inp: 'stone',      time: 1.6 }
+  { id: 'iron-plate',   inp: 'iron-ore',   time: 3.2 },
+  { id: 'copper-plate', inp: 'copper-ore', time: 3.2 },
+  { id: 'steel-plate',  inp: 'iron-plate', inCount: 2, time: 16 },
+  { id: 'stone-brick',  inp: 'stone',      time: 3.2 }
 ];
 
 const RECIPES = {
-  'steel-plate':        { time: 6,   inp: { 'iron-plate': 2 },                                   out: { 'steel-plate': 1 } },
+  'steel-plate':        { time: 16,  inp: { 'iron-plate': 2 },                                   out: { 'steel-plate': 1 } },
   'iron-gear':          { time: 0.5, inp: { 'iron-plate': 2 },                                   out: { 'iron-gear': 1 } },
   'copper-cable':       { time: 0.5, inp: { 'copper-plate': 1 },                                 out: { 'copper-cable': 2 } },
   'green-circuit':      { time: 0.5, inp: { 'iron-plate': 1, 'copper-cable': 3 },                out: { 'green-circuit': 1 } },
