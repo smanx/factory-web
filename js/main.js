@@ -992,6 +992,17 @@ function blueBookRemove(i) {
   uiDirty = true;
 }
 
+// 重命名蓝图库中指定项（对齐《异星工厂》：蓝图库中可自由为蓝图命名）
+function blueBookRename(i, newName) {
+  if (!Array.isArray(G.blueBook) || i < 0 || i >= G.blueBook.length) return;
+  const old = G.blueBook[i].name;
+  const name = String(newName || '').trim();
+  if (!name) { toast('蓝图名称不能为空'); return; }
+  G.blueBook[i].name = name;
+  toast('已重命名蓝图：' + old + ' → ' + name);
+  uiDirty = true;
+}
+
 // 尝试进入面前的装甲车（F 键 / 交互）。成功返回 true。
 function tryEnterNearbyCar() {
   if (G.driving) return false;

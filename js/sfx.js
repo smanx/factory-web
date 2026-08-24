@@ -108,6 +108,8 @@ const SFX = {
   'chain-signal': { type: 'square', dur: 0.06, f0: 560, f1: 420, vol: 0.14, slide: true },
   // 地面火焰燃烧：低频“噼啪”烈焰（火焰炮塔/喷射器/火球残留火场）
   burn: { type: 'noise', dur: 0.25, vol: 0.16, f0: 600, f1: 140, slide: true },
+  // 虫巢扩张：低频阴森的“咕涌”声（对齐《异星工厂》Biter expansion 的可感知反馈）
+  spawn: { type: 'sawtooth', dur: 0.6, vol: 0.2, f0: 130, f1: 70, slide: true, arpeggio: [130, 110, 90, 70] },
   // 玩家行走脚步：短促柔软踩踏声
   step: { type: 'noise', dur: 0.07, vol: 0.12, f0: 350, f1: 220, slide: true },
   // 组装机/采矿机持续运转：低频“嗡嗡”工业运转声
