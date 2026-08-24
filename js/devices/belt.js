@@ -44,19 +44,49 @@ class Belt extends Entity {
     }
     return false;
   }
+  // 判断邻居带 (x,y) 是否“有货即将进入本带”：其前端物品已过半程、逼近出口。
+  // 用于 T 型转角调度：直线优先时判定直通方向是否待进入；双侧轮流时判定对侧是否待进入。
+  _beltIncoming(x, y) {
+    const nb = entAt(x, y);
+    if (!(nb instanceof Belt) || !nb.items || !nb.items.length) return false;
+    for (const o of nb.items) if (o.pos >= 0.5) return true;
+    return false;
+  }
+  // 是否背面存在同向直行带（即“直线输入”，与出口同一直线）。
+  _hasStraightBack() {
+    const bx = this.x - DX[this.dir], by = this.y - DY[this.dir];
+    const nb = entAt(bx, by);
+    return nb instanceof Belt && nb.dir === this.dir;
+  }
   acceptItem(item, fromDir) {
-    const candidates = [];
-    let side = -1;
-    if (fromDir !== undefined && fromDir !== null) {
-      const rel = ((fromDir - this.dir) % 4 + 4) % 4;
-      if (rel === 1 || rel === 3) { candidates.push(0.45); side = beltSideIndex(this, fromDir); }
+    const rel = (fromDir === undefined || fromDir === null) ? -1 : ((fromDir - this.dir) % 4 + 4) % 4;
+    const isSide = rel === 1 || rel === 3;
+    const side = isSide ? beltSideIndex(this, fromDir) : -1;
+    const inp = beltInputSide(this);
+    const haveBack = this._hasStraightBack();
+
+    // —— 调度规则（仅对 T 型多路进“双路进一出”生效）——
+    if (isSide && (haveBack || inp.length >= 2)) {
+      // 1) 直线优先：背面存在直通输入时，直线方向先于侧面进入；
+      //    直通有货待进入则侧面暂缓（return false，让直通先过）。
+      if (haveBack && this._beltIncoming(this.x - DX[this.dir], this.y - DY[this.dir])) return false;
+      // 2) 两个相对侧面（无背面直通）：轮流进入。
+      //    若上次进入的也是本侧且对侧有货待进入，则让对侧先进（本侧暂缓）。
+      if (!haveBack && inp.length >= 2 && this._lastSideIn === side) {
+        const other = inp[1 - side];
+        if (other && this._beltIncoming(this.x + other[0], this.y + other[1])) return false;
+      }
+      this._lastSideIn = side;
     }
+
+    const candidates = [];
+    if (isSide) candidates.push(0.45);
     candidates.push(0);
     for (const p of candidates) {
       let ok = true;
       for (const o of this.items)
         if (Math.abs(o.pos - p) < BELT_SPACING) { ok = false; break; }
-      if (ok) { this.items.push({ item, pos: p, side }); return true; }
+      if (ok) { this.items.push({ item, pos: p, side: isSide ? side : -1 }); return true; }
     }
     return false;
   }
