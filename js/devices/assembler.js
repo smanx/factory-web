@@ -55,6 +55,7 @@ class Assembler extends Entity {
           if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
         }
         this.applyProductivity(rec);
+        if (this.recipe && this.recipe.indexOf('-barrel') >= 0 && typeof playSfx === 'function') playSfx('barrel');
         this.crafting = false;
         this.prog = 0;
       }

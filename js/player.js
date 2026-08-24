@@ -105,11 +105,15 @@ function canCraft(rid) {
   return true;
 }
 
-// 是否允许玩家手搓该配方（组装机/化工厂/炼油厂/离心机专属配方与含流体原料的配方除外）
+// 是否允许玩家手搓该配方（组装机/化工厂/炼油厂/离心机专属配方与含流体原料/产物的配方除外）
 function isHandCraftable(rid) {
   if (isChemRecipe(rid) || isCentrifugeRecipe(rid) || isRefineryRecipe(rid)) return false;
   const _rec = RECIPES[rid];
-  if (_rec && Object.keys(_rec.inp).some(k => FLUIDS.indexOf(k) >= 0)) return false;
+  if (_rec) {
+    if (Object.keys(_rec.inp).some(k => FLUIDS.indexOf(k) >= 0)) return false;
+    // 产出流体（如倒空桶）的配方也不可手搓——流体只能进管道，不能直接入背包
+    if (Object.keys(_rec.out).some(k => FLUIDS.indexOf(k) >= 0)) return false;
+  }
   return true;
 }
 

@@ -101,12 +101,20 @@ function drawBeacon(ctx, e, gx, gy, dir, alpha) {
   // 塔顶灯泡
   const cx = px + s / 2, cy = py + sh / 2;
   const hasMod = Object.values(e.modules).reduce((a, b) => a + b, 0) > 0;
+  // 发光光晕（低 LOD 关闭；有模块时随心跳轻微脉动，强化“工作”氛围）
+  if (hasMod && !LOD.simple) {
+    const pulse = 0.55 + 0.3 * Math.sin(G.time * 3);
+    ctx.save();
+    ctx.shadowColor = 'rgba(120,240,150,' + pulse.toFixed(2) + ')';
+    ctx.shadowBlur = 14;
+  }
   ctx.fillStyle = hasMod ? '#8fe08f' : '#6a7a8a';
   ctx.beginPath();
   ctx.arc(cx, cy - 10, 8, 0, 7); ctx.fill();
   ctx.fillStyle = '#3a5468';
   ctx.fillRect(cx - 18, cy + 6, 36, 4);
   ctx.fillRect(cx - 4, cy + 6, 8, 22);
+  if (hasMod && !LOD.simple) ctx.restore();
   // 发光范围（仅高亮时显示）
   if (hasMod && !LOD.simple) {
     ctx.strokeStyle = 'rgba(143,224,143,.5)';

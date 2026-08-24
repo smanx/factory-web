@@ -70,7 +70,9 @@ const SFX = {
   // 投掷物/胶囊部署：短促“嗖—嗒”
   deploy: { type: 'triangle', dur: 0.18, f0: 700, f1: 300, slide: true },
   // 炮塔旋转/装弹：金属“咔”
-  turret: { type: 'square', dur: 0.07, f0: 480, f1: 360, slide: true }
+  turret: { type: 'square', dur: 0.07, f0: 480, f1: 360, slide: true },
+  // 流体桶装配/倒空：液体灌装/倾倒的“咕咚”
+  barrel: { type: 'noise', dur: 0.22, vol: 0.16, f0: 420, f1: 160, slide: true }
 };
 
 function sfxInit() {
