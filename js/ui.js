@@ -87,6 +87,9 @@ function selectSlot(i) {
   if (G.deconstructMode) toggleDeconstructMode(false);
   G.sel = (G.sel === i ? -1 : i);
   G.quickSel = null;
+  // 选择武器：若该槽位是武器，则作为当前手持武器
+  if (G.sel >= 0 && HOTBAR[G.sel]) setWeapon(HOTBAR[G.sel]);
+  else if (G.sel < 0) setWeapon(null);
   refreshHotbar();
   closePanel(false);
 }
@@ -255,6 +258,9 @@ function htmlInventory() {
   // 组装机配方（含化工厂/炼油厂以外的普通配方）
   for (const rid in RECIPES) {
     if (isChemRecipe(rid)) continue;
+    const _r = RECIPES[rid];
+    // 含流体原料的配方不列入手搓清单（需在组装机/化工厂生产）
+    if (Object.keys(_r.inp).some(k => FLUIDS.indexOf(k) >= 0)) continue;
     const rec = RECIPES[rid];
     const ok = canCraft(rid);
     const outId = Object.keys(rec.out)[0];
@@ -645,9 +651,18 @@ function initPanelEvents() {
         else toast('放不进去了');
       } else if (act === 'takein') {
         const mch = G.panelEnt;
-        for (const k of Object.keys(mch.inp || {})) {
-          invAdd(k, mch.inp[k]);
-          delete mch.inp[k];
+        if (btn.dataset.modules === '1') {
+          // 取出全部模块
+          for (const k of Object.keys(mch.modules || {})) {
+            invAdd(k, mch.modules[k]);
+            delete mch.modules[k];
+          }
+          mch.prodBuf = 0;
+        } else {
+          for (const k of Object.keys(mch.inp || {})) {
+            invAdd(k, mch.inp[k]);
+            delete mch.inp[k];
+          }
         }
       } else if (act === 'takeout') {
         // "取出全部"：各设备在自己的文件里实现 takeAll()（默认清空 outp）
@@ -834,7 +849,15 @@ function updateHUD(dt, fps) {
   const el = document.getElementById('hud-info');
   const p = G.player;
   const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
-  el.textContent = fps + '   (' + tx + ',' + ty + ')';
+  let hud = fps + '   (' + tx + ',' + ty + ')';
+  if (G.settings.combat) {
+    const hp = Math.max(0, Math.round(G.playerHP));
+    hud += '   <span style="color:' + (hp > 50 ? '#57e389' : hp > 25 ? '#ffd23c' : '#ff5b5b') + '">♥ ' + hp + '/' + G.playerHPmax + '</span>';
+  }
+  if (G.weapon && isWeapon(G.weapon)) {
+    hud += '   🔫 ' + WEAPONS[G.weapon].name;
+  }
+  el.innerHTML = hud;
 }
 
 function mapTipAt(tx, ty) {
@@ -1022,7 +1045,7 @@ function buildDebug() {
     ['新地图', () => { newGame(); closePanel(); toast('新地图已生成'); }],
     ['切换战斗', () => {
       G.settings.combat = !G.settings.combat;
-      if (!G.settings.combat) { G.enemies = []; G.bullets = []; }
+      if (!G.settings.combat) { G.enemies = []; G.bullets = []; G.enemyProjectiles = []; }
       toast('战斗模式：' + (G.settings.combat ? '开启' : '关闭'));
     }]
   ];

@@ -58,6 +58,12 @@ const G = {
   enemies: [],
   bullets: [],
   spawnT: 0,
+  playerHP: 100,
+  playerHPmax: 100,
+  playerFireT: 0,
+  weapon: null,       // 当前选中的武器 id（player 持有）
+  gameWon: false,     // 是否已发射火箭赢得游戏
+  victoryT: 0,
   inMenu: true,       // 开始菜单显示中：游戏世界尚未初始化，loop 暂停渲染与更新
   deconstructMode: false,  // 触屏拆除模式：开启后点触建筑即可拆除（PC 右键拆除不受影响）
   deconstructHeld: false,  // 拆除模式：左键/触屏是否处于按住连续拆除状态
@@ -105,6 +111,11 @@ function newGame() {
   G.power = { prod: 0, demand: 0, sat: 1 };
   G.powerT = 0;
   G.enemies = []; G.bullets = []; G.spawnT = 0;
+  G.enemyProjectiles = [];
+  G.playerHP = 100; G.playerHPmax = 100;
+  G.weapon = null;
+  G.gameWon = false;
+  G.victoryT = 0;
   if (typeof resetPowerReg === 'function') resetPowerReg();
   // 重置累计时间与历史统计（新游戏从头开始，无历史）
   G.time = 0;
@@ -142,7 +153,8 @@ function serializeAll() {
     },
     ents: G.ents.filter(e => !e._dead).map(e => e.serialize()),
     inv: Array.from(G.inv),
-    player: { x: G.player.x, y: G.player.y },
+    player: { x: G.player.x, y: G.player.y, hp: G.playerHP, weapon: G.weapon },
+    gameWon: G.gameWon,
     techDone: G.techDone,
     techProg: G.techProg,
     activeTech: G.activeTech,
@@ -228,6 +240,9 @@ function applySave(d) {
   G.inv = new Map(d.inv);
   G.player = makePlayer(0, 0);
   G.player.x = d.player.x; G.player.y = d.player.y;
+  if (typeof d.player.hp === 'number') G.playerHP = G.playerHPmax = Math.max(1, d.player.hp);
+  G.weapon = d.player.weapon || null;
+  G.gameWon = !!d.gameWon;
   const [sx, sy] = findSpawn();
   G.spawn = { x: sx, y: sy };
   G.techDone = d.techDone || {};
@@ -270,6 +285,11 @@ function tryPlaceAt(tx, ty) {
   const type = selItem();
   if (!type) return;
   const infinite = !!(G.dbg && G.dbg.infinite);
+  // 科技解锁要求拦截（火箭/激光炮塔等高级建筑）
+  if (TECH_REQ[type] && !G.techDone[TECH_REQ[type]]) {
+    toast('需要先研究「' + TECHS[TECH_REQ[type]].name + '」才能建造 ' + ITEMS[type].name);
+    return;
+  }
   // 无限资源模式：建造不消耗原料，且可直接放置测试用创造/虚空箱与管道（无需背包里拥有）
   if (!infinite && invCount(type) < 1) {
     toast('背包里没有' + ITEMS[type].name + '了');
@@ -1181,6 +1201,8 @@ function loop(ts) {
         spawnEnemies(dt);
         updateEnemies(dt);
         updateBullets(dt);
+        updatePlayerFire(dt);
+        updatePlayerBulletHits(dt);
       }
       G.powerT += dt;
       if (G.powerT >= 0.25) { G.powerT = 0; updatePower(); }

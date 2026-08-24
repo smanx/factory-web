@@ -467,29 +467,53 @@ function drawEnemies(ctx) {
   for (const en of G.enemies) {
     if (en.dead) continue;
     const bob = Math.sin(G.time * 8 + en.x) * 1.2;
+    const size = en.size || 8;
+    const maxhp = en.maxhp || 40;
     ctx.fillStyle = 'rgba(0,0,0,.25)';
     ctx.beginPath();
-    ctx.ellipse(en.x, en.y + 10, 8, 3.5, 0, 0, 7);
+    ctx.ellipse(en.x, en.y + 10, size * 1.2, size * 0.5, 0, 0, 7);
     ctx.fill();
-    ctx.fillStyle = enemyColor(en.hp, 40);
+    // 不同敌人不同形状：蠕虫为细长条形，其余为圆
+    const color = en.color || enemyColor(en.hp, 40);
+    ctx.fillStyle = color;
     ctx.strokeStyle = '#7c1a12';
     ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(en.x, en.y + bob, 8, 0, 7);
-    ctx.fill();
-    ctx.stroke();
-    // 眼睛朝玩家
-    const a = Math.atan2(G.player.y - en.y, G.player.x - en.x);
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(en.x + Math.cos(a) * 3, en.y + bob + Math.sin(a) * 3, 2.5, 0, 7);
-    ctx.fill();
+    if (en.type === 'worm') {
+      ctx.beginPath();
+      ctx.ellipse(en.x, en.y + bob, size, size * 0.5, 0, 0, 7);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#3a2a22';
+      ctx.beginPath(); ctx.arc(en.x, en.y + bob - 4, 3, 0, 7); ctx.fill();
+    } else if (en.kind === 'ranged') {
+      ctx.beginPath();
+      ctx.arc(en.x, en.y + bob, size, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffe0a0';
+      ctx.beginPath(); ctx.arc(en.x, en.y + bob - 3, 2, 0, 7); ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.arc(en.x, en.y + bob, size, 0, 7); ctx.fill(); ctx.stroke();
+      // 眼睛朝玩家
+      const a = Math.atan2(G.player.y - en.y, G.player.x - en.x);
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(en.x + Math.cos(a) * size * 0.4, en.y + bob + Math.sin(a) * size * 0.4, 2.5, 0, 7);
+      ctx.fill();
+    }
     // 血条
     const w = 16;
     ctx.fillStyle = '#20242b';
     ctx.fillRect(en.x - w / 2, en.y - 16, w, 3);
-    ctx.fillStyle = Math.max(0, Math.min(1, en.hp / 40)) > 0.5 ? '#57e389' : '#ff5b5b';
-    ctx.fillRect(en.x - w / 2, en.y - 16, w * Math.max(0, en.hp / 40), 3);
+    ctx.fillStyle = Math.max(0, Math.min(1, en.hp / maxhp)) > 0.5 ? '#57e389' : '#ff5b5b';
+    ctx.fillRect(en.x - w / 2, en.y - 16, w * Math.max(0, en.hp / maxhp), 3);
+  }
+  // 远程投射物
+  if (G.enemyProjectiles) {
+    for (const pr of G.enemyProjectiles) {
+      ctx.fillStyle = 'rgba(150,180,60,.8)';
+      ctx.beginPath(); ctx.arc(pr.x, pr.y, 3, 0, 7); ctx.fill();
+      ctx.fillStyle = 'rgba(200,220,120,.6)';
+      ctx.beginPath(); ctx.arc(pr.x, pr.y, 2, 0, 7); ctx.fill();
+    }
   }
 }
 
@@ -497,12 +521,31 @@ function drawBullets(ctx) {
   if (!G.bullets) return;
   for (const b of G.bullets) {
     const t = b.t / b.life;
-    ctx.strokeStyle = 'rgba(255,220,120,' + (1 - t).toFixed(2) + ')';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(b.x, b.y);
-    ctx.lineTo(b.x + (b.tx - b.x) * t, b.y + (b.ty - b.y) * t);
-    ctx.stroke();
+    const cx = b.x + (b.tx - b.x) * t, cy = b.y + (b.ty - b.y) * t;
+    if (b.kind === 'laser') {
+      ctx.strokeStyle = 'rgba(255,60,80,' + (1 - t).toFixed(2) + ')';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
+    } else if (b.kind === 'flame') {
+      ctx.fillStyle = 'rgba(255,' + (120 + Math.random() * 60 | 0) + ',40,' + (1 - t).toFixed(2) + ')';
+      ctx.beginPath(); ctx.arc(cx, cy, 6 + Math.random() * 5, 0, 7); ctx.fill();
+    } else if (b.splash) {
+      // 火箭/手雷：轨迹 + 命中爆炸圈
+      ctx.strokeStyle = 'rgba(255,200,120,' + (1 - t).toFixed(2) + ')';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
+      if (t >= 1) {
+        ctx.strokeStyle = 'rgba(255,160,60,.8)';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(b.tx, b.ty, b.splash * TILE * 0.6, 0, 7); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,180,80,.25)';
+        ctx.beginPath(); ctx.arc(b.tx, b.ty, b.splash * TILE * 0.6, 0, 7); ctx.fill();
+      }
+    } else {
+      ctx.strokeStyle = 'rgba(255,220,120,' + (1 - t).toFixed(2) + ')';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
+    }
   }
 }
 

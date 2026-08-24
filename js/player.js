@@ -88,6 +88,9 @@ function canCraft(rid) {
 
 function doCraft(rid, times = 1) {
   if (isChemRecipe(rid)) return 0;
+  // 含流体原料的配方（如火箭燃料用石油气）需在组装机/化工厂生产，不能手搓
+  const _rec = RECIPES[rid];
+  if (_rec && Object.keys(_rec.inp).some(k => FLUIDS.indexOf(k) >= 0)) return 0;
   let made = 0;
   for (let i = 0; i < times; i++) {
     if (!canCraft(rid)) break;

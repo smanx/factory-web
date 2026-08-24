@@ -9,13 +9,14 @@ class AssemblerMK2 extends Assembler {
     if (G.power.sat <= 0) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
-      this.prog += dt * asmMult() * 0.75 * powerFactor();
+      this.prog += dt * asmMult() * 0.75 * this.moduleSpeedMult() * powerFactor();
       this.spin += dt * 4;
       if (this.prog >= rec.time) {
         for (const k in rec.out) {
           this.outp[k] = (this.outp[k] || 0) + rec.out[k];
           if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
         }
+        this.applyProductivity(rec);
         this.crafting = false;
         this.prog = 0;
       }
