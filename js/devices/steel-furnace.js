@@ -79,6 +79,8 @@ function steelFurnacePanelHtml(e) {
   let h = row('燃料', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : '<span class="dim">无</span>', 'fuel');
   if (invCount('coal') > 0)
     h += '<button data-action="fuel" data-id="coal">加入 5 煤 (' + invCount('coal') + ')</button>';
+  // 消耗/产出速率显示在面板靠前位置（燃料行之后）
+  h += '<div id="mach-rate-block"></div>';
   h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
   for (const r of SMELTS) {
     const n = Math.min(invCount(r.inp), 25 - (e.inp[r.inp] || 0));
@@ -90,7 +92,6 @@ function steelFurnacePanelHtml(e) {
   h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
   h += barHtml(0);
   h += '<div class="status"></div>';
-  h += '<div id="mach-rate-block"></div>';
   h += '<div class="dim">钢铁炉：烧煤冶炼，速度约为石炉的 2 倍，可高效产铁板/铜板/钢板（2×2）。</div>';
   return h;
 }

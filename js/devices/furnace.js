@@ -139,6 +139,8 @@ function furnacePanelHtml(e) {
     if (invCount('coal') > 0)
       h += '<button data-action="fuel" data-id="coal">加入 5 煤 (' + invCount('coal') + ')</button>';
   }
+  // 消耗/产出速率显示在面板靠前位置（电力/燃料行之后）
+  h += '<div id="mach-rate-block"></div>';
   h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
   for (const r of SMELTS) {
     const n = Math.min(invCount(r.inp), 25 - (e.inp[r.inp] || 0));
@@ -150,7 +152,6 @@ function furnacePanelHtml(e) {
   h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
   h += barHtml(0);
   h += '<div class="status"></div>';
-  h += '<div id="mach-rate-block"></div>';
   return h;
 }
 function furnacePanelLive(e, api) {

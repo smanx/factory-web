@@ -222,11 +222,12 @@ function drillPanelHtml(e) {
     if (invCount('coal') > 0)
       h += '<button data-action="fuel" data-id="coal">加入 5 煤 (' + invCount('coal') + ')</button>';
   }
+  // 采矿速率显示在面板靠前位置（电力/燃料行之后）
+  h += '<div id="mach-rate-block"></div>';
   h += row('矿物缓存', '<span class="dim"></span>', 'buffer');
   h += '<button data-action="takeout" id="btn-drill-takeout" style="display:none"></button>';
   h += barHtml(0);
   h += '<div class="status"></div>';
-  h += '<div id="mach-rate-block"></div>';
   h += '<div class="dim">产出方向朝' + ['东', '南', '西', '北'][e.dir] + '，选中后按 R 旋转（需先关闭本面板或按 Q 取消选择）</div>';
   return h;
 }

@@ -172,6 +172,10 @@ function drawAssembler(ctx, e, gx, gy, dir, alpha) {
 // ===== 面板 =====
 function assemblerPanelHtml(e) {
   let h = row('当前配方', e.recipe ? ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name : '<span class="dim">未设置</span>');
+  // 组装机 II 速度为 I 的 1.5 倍，并受电学科技加成
+  const asmM = e.type === 'assembling-machine-mk2' ? asmMult() * 1.5 * elecMachMult() : asmMult();
+  // 消耗/产出速率显示在面板靠前位置（当前配方之后）
+  h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? asmM : 1);
   // 吃电机型（组装机 II）显示当前耗电状态与是否电量不足
   if (typeof e.powerDemand === 'function') h += row('电力', powerStatusLiveHtml(e), 'power');
   h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
@@ -196,9 +200,6 @@ function assemblerPanelHtml(e) {
   }
   h += '</div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
-  // 组装机 II 速度为 I 的 1.5 倍，并受电学科技加成
-  const asmM = e.type === 'assembling-machine-mk2' ? asmMult() * 1.5 * elecMachMult() : asmMult();
-  h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? asmM : 1);
   h += '<div class="dim">选中后按 R 旋转朝向（流体入口在背部、固体产物经机械臂取走）；背部通用流体口可接管道，向含流体原料的配方自动供液。</div>';
   return h;
 }
