@@ -296,16 +296,10 @@ function drawSplitter(ctx, e, gx, gy, dir, alpha) {
     ctx.fill();
     ctx.stroke();
   }
-  // 呼吸边框：作为底层装饰绘制（在流动箭头/物品动画之前），确保物品移动动画显示在上层；
-  // 只绘制在宽度方向两侧的边框线，避开物品沿长度方向的移动路径（避免边框线横切物品）
   if (running) {
     ctx.strokeStyle = 'rgba(143,224,143,' + (0.45 + 0.25 * Math.sin(G.time * 6)).toFixed(2) + ')';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(-TILE / 2 + 3, -across / 2 + 2);
-    ctx.lineTo(TILE / 2 - 3, -across / 2 + 2);
-    ctx.moveTo(-TILE / 2 + 3, across / 2 - 2);
-    ctx.lineTo(TILE / 2 - 3, across / 2 - 2);
+    ctx.lineWidth = 2;
+    rr(ctx, -TILE / 2 + 2, -across / 2 + 2, TILE - 4, across - 4, 6);
     ctx.stroke();
   }
   ctx.restore();
