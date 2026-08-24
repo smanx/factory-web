@@ -42,8 +42,10 @@ const G = {
   greenAction: null,      // 绿图框选后的动作：'upgrade' | 'downgrade' | null
   greenRect: null,        // 绿图最近一次框选区域
   statsTab: 'items',      // 统计面板当前页：items | power | perf
-  statsItemTab: 'prod',   // 统计面板-物品速率页：prod(生产速率) | cons(消耗)
+  statsItemTab: 'prod',   // 统计面板-物品速率页：prod(生产速率) | cons(消耗) | hist(历史图)
   statsInterval: 2,       // 统计面板-物品速率页：统计间隔索引（0秒/10秒/分钟/小时/1天）；默认“分钟”（展开统计面板时以分钟为单位）
+  statsHistItem: null,    // 统计面板-历史页：当前选中的物品 id
+  statsHistZoom: 3,       // 统计面板-历史页：时间档位索引（10分钟/1小时/6小时/24小时）；默认 24 小时
   statsPowerTab: 'prod',  // 统计面板-电量页：prod(发电设备) | cons(耗电设备)
   machTab: 'prod',        // 设备面板-消耗/生产 tab：cons | prod（已弃用）
   settings: Object.assign({}, DEFAULT_SETTINGS),
@@ -103,6 +105,13 @@ function newGame() {
   G.powerT = 0;
   G.enemies = []; G.bullets = []; G.spawnT = 0;
   if (typeof resetPowerReg === 'function') resetPowerReg();
+  // 重置累计时间与历史统计（新游戏从头开始，无历史）
+  G.time = 0;
+  lastPanelCheck = 0;
+  if (typeof histReset === 'function') histReset();
+  G.statsHistItem = null;
+  G.statsItemTab = 'prod';
+  G.statsHistZoom = 3;
   const [sx, sy] = findSpawn(G.world);
   G.player = makePlayer(sx, sy);
   G.spawn = { x: sx, y: sy };
@@ -136,7 +145,11 @@ function serializeAll() {
     activeTech: G.activeTech,
     hotbar: HOTBAR.slice(),
     settings: Object.assign({}, G.settings),
-    dbg: Object.assign({}, G.dbg)
+    dbg: Object.assign({}, G.dbg),
+    // 游戏累计时间（秒）：用于历史统计分桶的时间锚点，读档后延续
+    time: G.time,
+    // 历史统计：聚合为小时粒度写入（体积极小，最多 24 小时/物品）
+    hist: (typeof histSerialize === 'function') ? histSerialize() : null
   };
 }
 
@@ -239,6 +252,13 @@ function applySave(d) {
     while (HOTBAR.length < 10) HOTBAR.push(null);
     buildHotbar();
   }
+  // 恢复游戏累计时间（历史统计的时间锚点；旧档无该字段则从 0 开始）
+  if (typeof d.time === 'number' && isFinite(d.time)) G.time = d.time;
+  // 恢复历史统计（把存档中的小时序列展开回环形缓冲；无历史则重置）
+  if (typeof histReset === 'function') histReset();
+  if (typeof histDeserialize === 'function' && d.hist) histDeserialize(d.hist);
+  G.statsHistItem = null;
+  G.statsHistZoom = G.statsHistZoom || 3;
   G.cam.px = G.player.x; G.cam.py = G.player.y;
   uiDirty = true;
 }
