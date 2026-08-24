@@ -182,6 +182,9 @@ function renderPanel(full) {
   } else if (G.panelMode === 'set') {
     title.textContent = '设置';
     renderSettingsAsync(body, st);
+  } else if (G.panelMode === 'maptags') {
+    title.textContent = '地图标记（Map Tags）';
+    body.innerHTML = (typeof mapTagsPanelHtml === 'function') ? mapTagsPanelHtml() : '<div class="dim">标记功能未加载</div>';
   } else if (G.panelMode === 'machine' && G.panelEnt) {
     title.textContent = ITEMS[G.panelEnt.type].name;
     // 机器面板：设备专属内容 + 底部通用操作区（旋转/水平翻转/垂直翻转/拆除，PC/手机端均可点击操作当前建筑）
@@ -896,7 +899,13 @@ function initPanelEvents() {
     let handled = false;
     if (panel && panel.onAction) handled = !!panel.onAction(act, btn);
     if (!handled) {
-      if (act === 'use-grenade') {
+      if (act === 'tag-tp' || act === 'tag-del' || act === 'tag-rename') {
+        // 地图标记管理动作（传送/删除/重命名）
+        if (typeof mapTagsAction === 'function') {
+          mapTagsAction(act, id, { render: () => renderPanel(false) });
+        }
+      }
+      else if (act === 'use-grenade') {
         // 从背包投掷手雷/集束手雷：向玩家当前朝向投掷（目标点为玩家前方数格）
         if (typeof throwGrenade === 'function') {
           const type = btn.getAttribute('data-type') || 'grenade';
@@ -1081,6 +1090,7 @@ async function htmlSettings() {
   h += '<label class="setrow"><input type="checkbox" data-set="combat"' + (G.settings.combat ? ' checked' : '') + '> 战斗模式（敌人入侵，可用炮塔/石墙防御）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="virtualJoystick"' + (G.settings.virtualJoystick ? ' checked' : '') + '> 虚拟摇杆（手机/触屏移动）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="minimap"' + (G.settings.minimap !== false ? ' checked' : '') + '> 小地图（右下角显示已探索区域，M 键切换）</label>';
+  h += '<label class="setrow"><input type="checkbox" data-set="weather"' + (G.settings.weather !== false ? ' checked' : '') + '> 天气（动态云影 / 阴云氛围）</label>';
   h += '<div class="sec">音效</div>';
   h += '<label class="setrow"><input type="checkbox" data-set="sound"' + (G.settings.sound ? ' checked' : '') + '> 游戏音效（建造/拆除/射击/爆炸等）</label>';
   h += '<label class="setrow">音量 <input type="range" data-setvol="soundVol" min="0" max="1" step="0.05" value="' + (G.settings.soundVol != null ? G.settings.soundVol : 0.8) + '" style="width:120px;vertical-align:middle"></label>';

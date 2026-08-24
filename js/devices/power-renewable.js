@@ -14,7 +14,9 @@ function solarFactor() {
 class SolarPanel extends Entity {
   constructor(type, x, y) { super('solar-panel', x, y); this.powerOut = 0; }
   update(dt) {
-    this.powerOut = SOLAR_POWER * solarFactor();
+    // 天气（动态云层/阴云）会轻微遮蔽日照，降低太阳能出力
+    const wm = (typeof weatherSolarMult === 'function') ? weatherSolarMult() : 1;
+    this.powerOut = SOLAR_POWER * solarFactor() * wm;
     // 电力增量注册表同步：powerOut 变化后重新注册，确保被 updatePower 扫描到
     if (typeof regPowerEnt === 'function') regPowerEnt(this);
   }

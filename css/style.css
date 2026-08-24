@@ -526,6 +526,75 @@ html, body {
   animation: overlayFade .18s ease;
 }
 .load-save-overlay.hidden { display: none; }
+
+/* ===== 新手引导面板 ===== */
+.tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 230;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 9, 7, .72);
+  backdrop-filter: blur(3px);
+  animation: overlayFade .18s ease;
+}
+.tutorial-overlay.hidden { display: none; }
+.tutorial-panel {
+  width: min(480px, 92vw);
+  max-height: 86vh;
+  overflow-y: auto;
+  background: #161b17;
+  border: 1px solid rgba(120, 190, 150, .35);
+  border-radius: 14px;
+  padding: 22px 26px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .55);
+}
+.tutorial-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #e8f2ea;
+}
+.tutorial-sub {
+  font-size: 12px;
+  color: #8fb89a;
+  letter-spacing: 1px;
+  margin-bottom: 14px;
+}
+.tutorial-body {
+  font-size: 13px;
+  color: #c3cec6;
+  line-height: 1.8;
+}
+.tutorial-body b { color: #ffd23c; }
+.tutorial-sec {
+  margin: 12px 0 4px;
+  font-weight: 700;
+  color: #7fd4a0;
+  border-bottom: 1px solid rgba(127, 212, 160, .18);
+  padding-bottom: 3px;
+}
+.tutorial-hint {
+  margin-top: 14px;
+  font-size: 12px;
+  color: #8fa89a;
+  background: rgba(127, 212, 160, .08);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+.tutorial-close {
+  margin-top: 16px;
+  width: 100%;
+  padding: 11px;
+  font-size: 15px;
+  font-weight: 700;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #3fa87e, #2f8a6a);
+  color: #eafff3;
+  cursor: pointer;
+}
+.tutorial-close:hover { filter: brightness(1.1); }
 @keyframes overlayFade {
   from { opacity: 0; }
   to { opacity: 1; }

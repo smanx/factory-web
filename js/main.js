@@ -141,6 +141,7 @@ function newGame() {
   G.logiNetT = 0;
   G.logiRequest = {};   // 新游戏清空个人物流请求
   G.blueBook = [];      // 新游戏清空蓝图库
+  G.mapTags = [];       // 新游戏清空地图标记
   G.railTiles = new Set();
   G.trains = [];
   G.playerHP = 100; G.playerHPmax = 100;
@@ -154,6 +155,7 @@ function newGame() {
   // 重置累计时间与历史统计（新游戏从头开始，无历史）
   G.time = 0;
   lastPanelCheck = 0;
+  if (typeof initWeather === 'function') initWeather();  // 初始化天气（云层布局随世界种子确定性生成）
   if (typeof histReset === 'function') histReset();
   G.statsHistItem = null;
   G.statsItemTab = 'hist';
@@ -212,7 +214,8 @@ function serializeAll() {
     hist: (typeof histSerialize === 'function') ? histSerialize() : null,
     constr: (typeof constrSerialize === 'function') ? constrSerialize() : null,
     equipment: (typeof equipmentSerialize === 'function') ? equipmentSerialize() : null,
-    blueBook: (G.blueBook || []).map(b => ({ name: b.name, minX: b.minX | 0, minY: b.minY | 0, ents: b.ents }))
+    blueBook: (G.blueBook || []).map(b => ({ name: b.name, minX: b.minX | 0, minY: b.minY | 0, ents: b.ents })),
+    mapTags: (typeof mapTagsSerialize === 'function') ? mapTagsSerialize() : (G.mapTags || []).slice()
   };
 }
 
@@ -320,6 +323,7 @@ function applySave(d) {
   }
   G.repairPackUses = (typeof d.repairPackUses === 'number') ? d.repairPackUses : 0;
   G.axeDura = (typeof d.axeDura === 'number') ? d.axeDura : 0;
+  if (typeof mapTagsDeserialize === 'function') mapTagsDeserialize(d.mapTags); else G.mapTags = [];
   G.combatRobots = [];
   G.driving = null;
   G.logiRobots = [];
@@ -365,6 +369,7 @@ function applySave(d) {
   }
   // 恢复游戏累计时间（历史统计的时间锚点；旧档无该字段则从 0 开始）
   if (typeof d.time === 'number' && isFinite(d.time)) G.time = d.time;
+  if (typeof initWeather === 'function') initWeather();  // 读档后按世界种子初始化天气
   // 恢复历史统计（把存档中的小时序列展开回环形缓冲；无历史则重置）
   if (typeof histReset === 'function') histReset();
   if (typeof histDeserialize === 'function' && d.hist) histDeserialize(d.hist);
@@ -1206,10 +1211,41 @@ function flipAction(axis) {
 
 // ===== 开始菜单：新游戏 / 读取存档 =====
 // 游戏启动后先停留在开始菜单，由用户选择才开始/继续游戏。
+
+// 显示新手引导面板（首次新游戏时自动弹出；也可用 Alt+H 手动查看完整说明）
+function showTutorial() {
+  const ov = document.getElementById('tutorial-overlay');
+  if (ov) {
+    ov.classList.remove('hidden');
+    if (typeof playSfx === 'function') playSfx('click');
+  }
+}
+function hideTutorial() {
+  const ov = document.getElementById('tutorial-overlay');
+  if (ov) ov.classList.add('hidden');
+}
+function tutorialShownMark() {
+  G.settings.tutorialShown = true;
+  hideTutorial();
+  if (typeof saveSettings === 'function') saveSettings(); // 持久化已看标记
+}
+
+// 初始化新手引导：绑定“开始游戏”关闭按钮（供首次引导与 Alt+H 说明共用）
+function initTutorial() {
+  const btn = document.getElementById('btn-tutorial-close');
+  if (btn) {
+    btn.addEventListener('click', () => tutorialShownMark());
+  }
+  // 点击遮罩空白处也可关闭
+  const ov = document.getElementById('tutorial-overlay');
+  if (ov) ov.addEventListener('click', ev => { if (ev.target === ov) tutorialShownMark(); });
+}
+
 function startNewGame() {
   newGame();
   buildHotbar();
   enterGame();
+  if (!G.settings.tutorialShown) showTutorial();   // 首次新游戏：弹出新手引导
 }
 
 async function startFromSave() {
@@ -1296,6 +1332,14 @@ function bindInput() {
     else if (k === 't') G.panelMode === 'tech' ? closePanel() : openPanel('tech');
     else if (k === 'o') G.panelMode === 'set' ? closePanel() : openPanel('set');
     else if (k === 'm') { G.settings.minimap = !(G.settings.minimap !== false); toast(G.settings.minimap ? '小地图：开启' : '小地图：关闭'); }
+    // 地图标记（对齐《异星工厂》：N 放置地图标记，Alt+N 管理）
+    else if (ev.altKey && k === 'n') {
+      ev.preventDefault();
+      G.panelMode === 'maptags' ? closePanel() : openPanel('maptags');
+    }
+    else if (k === 'n') { if (typeof placeMapTag === 'function') placeMapTag(); }
+    // 操作说明（Alt+H）：随时查看完整快捷键指南
+    else if (ev.altKey && k === 'h') { ev.preventDefault(); if (typeof showTutorial === 'function') showTutorial(); }
     // 放电防御装备：C 键激活对周围敌人放电（对齐《异星工厂》Discharge defense）
     else if (k === 'c') { if (typeof activateDischargeDefense === 'function') activateDischargeDefense(); }
     else if (k === 'escape' || k === 'q') {
@@ -1577,6 +1621,8 @@ function loop(ts) {
       updateCamera(dt);
       // 全屏闪光衰减（原子弹核爆等触发的强光，随时间减弱）
       if (G.screenFlash > 0) G.screenFlash = Math.max(0, G.screenFlash - dt * 1.6);
+      // 天气系统（动态云层 / 阴云，低开销）
+      if (typeof updateWeather === 'function') updateWeather(dt);
       // 环境氛围音（Web Audio 昼夜背景音）
       if (typeof ambientUpdate === 'function') ambientUpdate(dt);
     }
@@ -1613,6 +1659,7 @@ function boot() {
     ['joystick', () => initJoystick()],
     ['deconstruct', () => initDeconstructBtn()],
     ['tooltip', () => initTooltips()],
+    ['tutorial', () => initTutorial()],
     ['debug', () => buildDebug()],
     ['input', () => bindInput()]
   ];

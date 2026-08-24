@@ -143,6 +143,12 @@ function render() {
     ctx.fillRect(0, 0, W, H);
   }
 
+  // 地图标记：在昼夜遮罩之上绘制世界中的标记（对齐《异星工厂》地图标签，夜间亦可见）
+  if (typeof drawMapTagsWorld === 'function') drawMapTagsWorld(ctx);
+
+  // 天气系统：动态云影覆盖层（低开销，不影响分块缓存）
+  if (typeof drawWeatherOverlay === 'function') drawWeatherOverlay(ctx, W, H);
+
   // 小地图（位于画布右下角）
   if (G.settings && G.settings.minimap !== false) drawMinimap(ctx);
 }
@@ -1309,6 +1315,8 @@ function drawMinimap(ctx) {
       }
     }
   }
+  // 地图标记：在小地图上绘制已探索范围内的标记
+  if (typeof drawMapTagsMinimap === 'function') drawMapTagsMinimap(ctx, cx, cy, z, pcx, pcy, x0, y0, size);
   ctx.restore();
   // 污染系统：在小地图叠加污染范围（红褐色）
   if (typeof drawPollutionMinimap === 'function') {
