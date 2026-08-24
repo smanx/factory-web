@@ -11,7 +11,13 @@ function ensurePowerReg() {
 function regPowerEnt(e) {
   if (!e) return;
   const r = ensurePowerReg();
-  if (e.powerOut !== undefined && e.powerOut !== 0) r.producers.add(e);
+  // 有 powerOut 属性即视为“潜在发电设备”（蒸汽机 / 太阳能板 / 蓄电器等）。
+  // 注意：不能以 powerOut!==0 作为入集合条件——发电设备放置/读档时 powerOut
+  // 初值都为 0（蒸汽机供汽后、太阳能板天亮后、蓄电器放电时才 >0），若此处排除，
+  // 它们就永远不会被注册进 producers，导致 updatePower/powerSummary 扫不到
+  // 发电设备：统计面板发电设备为空、G.power.prod 恒为 0、全网误判停电。
+  // 实际是否发电由 updatePower/powerSummary 按 powerOut 实时判定（powerOut>0 才算产）。
+  if (e.powerOut !== undefined) r.producers.add(e);
   else r.producers.delete(e);
   if (typeof e.powerDemand === 'function') r.consumers.add(e);
   else r.consumers.delete(e);
