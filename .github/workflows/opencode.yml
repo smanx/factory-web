@@ -4,9 +4,9 @@ on:
   issues:
     types: [opened]
   issue_comment:
-    types: [created]
+    types: [created, edited]
   pull_request_review_comment:
-    types: [created]
+    types: [created, edited]
 
 jobs:
   opencode:
