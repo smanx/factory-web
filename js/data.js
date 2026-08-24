@@ -22,6 +22,18 @@ const REACH_PX = REACH_TILES * TILE;
 const LAB_TIME = 1; // 研究中心每瓶科学包耗时（秒）
 // 功率数值对齐《异星工厂》(Factorio) 官方 Wiki（单位 kW）
 const POWER_PER_ENGINE = 900;   // 蒸汽机满功率输出
+const POWER_PER_TURBINE = 5800; // 汽轮机满功率输出（对齐《异星工厂》5.8MW）
+const CENTRIFUGE_POWER = 75;    // 离心机功耗 kW（对齐《异星工厂》）
+// ===== 核能（对齐《异星工厂》核动力）=====
+// 核反应堆：消耗核燃料 + 水 → 产出高温蒸汽；汽轮机以远高于蒸汽机的功率发电。
+const REACTOR_POWER = 40000;    // 反应堆热功率 40MW（对齐官方）；简化：直接折算成产汽能力
+const REACTOR_FUEL_ENERGY = 200;  // 每组核燃料可持续燃烧秒数
+const REACTOR_WATER_RATE = 4.0;   // 反应堆每秒耗水量（远超锅炉，产汽量更高）
+const REACTOR_STEAM_CAP = 40;     // 反应堆内部蒸汽缓冲
+const TURBINE_STEAM_RATE = 1.5;   // 汽轮机满功率耗汽（单位/秒）
+const TURBINE_STEAM_CAP = 12;     // 汽轮机内部储汽上限
+const CENTRIFUGE_TIME = 12;       // 离心机处理一批铀矿耗时（秒）
+const URANIUM_CENTRIFUGE_KOVAREX_TIME = 60; // Kovarex 富集耗时（秒）
 const POWER_USE = {
   'electric-drill': 90,          // 电采矿机
   'electric-furnace': 180,       // 电炉
@@ -31,6 +43,7 @@ const POWER_USE = {
   'pumpjack': 90,                // 抽油机
   'refinery': 420,               // 炼油厂
   'chemical-plant': 210,         // 化工厂
+  'centrifuge': 75,              // 离心机
   'lab': 60                      // 研究中心
 };
 
@@ -45,8 +58,15 @@ const ENGINE_STEAM_RATE = 0.6;   // 蒸汽机满功率耗汽（单位/秒）：1
 const ENGINE_STEAM_CAP = 10;     // 蒸汽机内部储汽上限
 
 const FLUIDS = ['water', 'steam', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas', 'lubricant'];
+// 矿石索引：iron/copper/coal/stone/calcite = 0-4；原油 = 5（不进手挖矿表）；铀矿 = 6。
+// ⚠️ 版本迁移：早期版本原油索引为 5，本次新增铀矿后改为 6，读档时对旧档做 5→6 重映射。
 const ORE_OIL = 5;                       // 原油矿床的 oreType 索引（不进手挖矿表）
-function oreItemId(ti) { return ti === ORE_OIL ? 'crude-oil' : ORES[ti]; }
+const ORE_URANIUM = 6;                   // 铀矿床的 oreType 索引
+function oreItemId(ti) {
+  if (ti === ORE_OIL) return 'crude-oil';
+  if (ti === ORE_URANIUM) return 'uranium-ore';
+  return ORES[ti];
+}
 const PIPE_CAP = 40;
 const PIPE_FLOW = 3;
 // 储液罐（对齐《异星工厂》Storage Tank）：占地 3×3、容量大、只存单一流体，东西两侧各一个通用流体口
@@ -56,7 +76,7 @@ const SCIENCE_PACKS = ['science-pack', 'green-science', 'blue-science', 'militar
 function isScience(item) { return SCIENCE_PACKS.indexOf(item) >= 0; }
 const FILTER_CHOICES = ['iron-plate', 'copper-plate', 'steel-plate', 'iron-gear', 'copper-cable', 'green-circuit',
   'coal', 'stone', 'plastic-bar', 'science-pack', 'green-science', 'blue-science', 'military-science',
-  'magazine', 'piercing-rounds', 'logistic-robot'].concat(FLUIDS);
+  'magazine', 'piercing-rounds', 'logistic-robot', 'uranium-235', 'uranium-238', 'nuclear-fuel'].concat(FLUIDS);
 function techPacks(tid) { return (TECHS && TECHS[tid] && TECHS[tid].cost) || {}; }
 function techCostTotal(tid) {
   let s = 0;
@@ -182,10 +202,18 @@ const ITEMS = {
   'logistic-chest-passive': { name: '被动供应箱', color: '#c9a84a', desc: '物流箱：可手动/机械臂存入货物，物流机器人会从箱中取货送往需求箱；也能接收机器人返还的货物' },
   'logistic-chest-active':  { name: '主动供应箱', color: '#d0743a', desc: '物流箱：机器人优先从此取货供应网络；多出的货物机器人会收纳到这里，适合作为原料集散点' },
   'logistic-chest-storage': { name: '仓储箱', color: '#8a9a6a', desc: '物流箱：机器人把返还/多余货物收纳到这里，也可作为备用取货源。所有仓储箱共享存放' },
-  'logistic-chest-requester': { name: '需求箱', color: '#5a8ad0', desc: '物流箱：在面板设置每种物品的需求量，物流机器人会自动从供应箱/仓储箱送货过来补足到目标数量' }
+  'logistic-chest-requester': { name: '需求箱', color: '#5a8ad0', desc: '物流箱：在面板设置每种物品的需求量，物流机器人会自动从供应箱/仓储箱送货过来补足到目标数量' },
+  // ===== 核能（对齐《异星工厂》核动力）=====
+  'uranium-ore':  { name: '铀矿石', color: '#7fd44a', mark: 'U', desc: '放射性矿物，距出生点较远处生成，须用电采矿机开采，离心机处理成铀' },
+  'uranium-235': { name: '铀-235', color: '#9af07a', mark: 'U⁵', desc: '裂变同位素，由离心机处理铀矿小概率获得；是制造核燃料的关键' },
+  'uranium-238': { name: '铀-238', color: '#6aa84a', mark: 'U⁸', desc: '丰度同位素，由离心机处理铀矿大量获得，可参与富集循环' },
+  'nuclear-fuel': { name: '核燃料', color: '#9ae06a', mark: '☢', desc: '核反应堆的燃料，由铀-235制造，可持续提供巨量高温蒸汽' },
+  'centrifuge':   { name: '离心机', color: '#7a8a9a', desc: '把铀矿石分离成铀-235 / 铀-238；也可进行铀富集循环（Kovarex）（2×2，吃电力）' },
+  'nuclear-reactor': { name: '核反应堆', color: '#4a8a5a', desc: '消耗核燃料+水产出高温蒸汽（5×5，吃水）。高温蒸汽经汽轮机以远高于蒸汽机的功率发电' },
+  'steam-turbine': { name: '汽轮机', color: '#8fb8d0', desc: '消耗高温蒸汽发电，功率远高于蒸汽机（3×3）。接入反应堆/储汽的蒸汽管道即可' }
 };
 
-const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone', 'calcite'];
+const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone', 'calcite'];  // 0-4；原油/铀矿用特殊索引（见 ORE_OIL/ORE_URANIUM）
 
 const SMELTS = [
   { id: 'iron-plate',   inp: 'iron-ore',   time: 3.2 },
@@ -289,7 +317,16 @@ const RECIPES = {
   'logistic-chest-passive': { time: 1, inp: { 'iron-plate': 4, 'green-circuit': 1 },                    out: { 'logistic-chest-passive': 1 } },
   'logistic-chest-active':  { time: 1.5, inp: { 'iron-plate': 6, 'green-circuit': 2 },                  out: { 'logistic-chest-active': 1 } },
   'logistic-chest-storage': { time: 1.5, inp: { 'iron-plate': 4, 'green-circuit': 2 },                  out: { 'logistic-chest-storage': 1 } },
-  'logistic-chest-requester': { time: 1.5, inp: { 'iron-plate': 6, 'green-circuit': 3 },                out: { 'logistic-chest-requester': 1 } }
+  'logistic-chest-requester': { time: 1.5, inp: { 'iron-plate': 6, 'green-circuit': 3 },                out: { 'logistic-chest-requester': 1 } },
+  // ===== 核能配方 =====
+  // 铀富集（Kovarex，离心机）：铀-238 在铀-235 催化下持续富集出更多铀-235（可自持循环）
+  'kovarex':           { time: 60, inp: { 'uranium-238': 40, 'uranium-235': 1 },                  out: { 'uranium-235': 1, 'uranium-238': 41 } },
+  // 核燃料（组装机）：由铀-235 制成
+  'nuclear-fuel':      { time: 5,   inp: { 'uranium-235': 1, 'iron-plate': 1 },                   out: { 'nuclear-fuel': 1 } },
+  // 离心机/反应堆/汽轮机（组装机制造）
+  'centrifuge':        { time: 2,   inp: { 'iron-plate': 8, 'green-circuit': 4 },                 out: { 'centrifuge': 1 } },
+  'nuclear-reactor':   { time: 15,  inp: { 'steel-plate': 40, 'copper-plate': 20, 'battery': 5, 'centrifuge': 1 }, out: { 'nuclear-reactor': 1 } },
+  'steam-turbine':     { time: 5,   inp: { 'steel-plate': 20, 'iron-gear': 8, 'copper-plate': 10 }, out: { 'steam-turbine': 1 } }
 };
 
 const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant'];
@@ -310,16 +347,26 @@ const REFINERY_RECIPES = {
 const REFINERY_RECIPE_IDS = Object.keys(REFINERY_RECIPES);
 function isRefineryRecipe(id) { return REFINERY_RECIPES[id] !== undefined; }
 
+// ===== 离心机配方（对齐《异星工厂》Centrifuge）=====
+// 铀矿处理：10 铀矿石 → 小概率 1 铀-235 + 大量铀-238
+// Kovarex 富集循环由通用配方表 RECIPES['kovarex'] 承载（也由离心机执行）。
+const CENTRIFUGE_RECIPES = {
+  'uranium-processing': { name: '铀矿处理', time: 12, inp: { 'uranium-ore': 10 }, out: { 'uranium-235': 1, 'uranium-238': 9 } }
+};
+function isCentrifugeRecipe(id) { return CENTRIFUGE_RECIPES[id] !== undefined || id === 'kovarex'; }
+
 // ---- 配方归属设备 ----
-// 判断某配方适用于哪台设备：炼油厂 / 化工厂 / 组装机。
+// 判断某配方适用于哪台设备：炼油厂 / 化工厂 / 离心机 / 组装机。
 const DEVICE_NAMES = {
   'assembling-machine': '组装机',
   'chemical-plant': '化工厂',
-  'refinery': '炼油厂'
+  'refinery': '炼油厂',
+  'centrifuge': '离心机'
 };
 function recipeDevice(id) {
   if (isRefineryRecipe(id)) return 'refinery';
   if (isChemRecipe(id)) return 'chemical-plant';
+  if (isCentrifugeRecipe(id)) return 'centrifuge';
   return 'assembling-machine';
 }
 function recipeDeviceName(id) { return DEVICE_NAMES[recipeDevice(id)] || ''; }
@@ -374,6 +421,10 @@ const BUILD_DEFS = {
   'refinery':           { w: 5, h: 5, solid: true },
   'chemical-plant':     { w: 3, h: 3, solid: true },
   'storage-tank':       { w: 3, h: 3, solid: true },
+  // ===== 核能建筑 =====
+  'centrifuge':         { w: 2, h: 2, solid: true },
+  'nuclear-reactor':    { w: 5, h: 5, solid: true },
+  'steam-turbine':      { w: 3, h: 3, solid: true },
   'roboport':           { w: 4, h: 4, solid: true },
   'rail':               { w: 1, h: 1, solid: false },
   'locomotive':         { w: 1, h: 1, solid: true },
@@ -405,6 +456,10 @@ const TECH_REQ = {
   'electric-engine': 'electronics',
   'radar': 'radar'
 };
+// ===== 核能科技门控 =====
+for (const id of ['centrifuge', 'nuclear-reactor', 'steam-turbine', 'uranium-235', 'uranium-238', 'nuclear-fuel']) {
+  if (!TECH_REQ[id]) TECH_REQ[id] = 'nuclear';
+}
 // ===== 铁路科技门控 =====
 const RAIL_ITEMS = ['rail', 'locomotive', 'cargo-wagon', 'train-stop'];
 for (const id of RAIL_ITEMS) if (!TECH_REQ[id]) TECH_REQ[id] = 'railways';
@@ -470,6 +525,7 @@ const TECHS = {
   modules:    { name: '模块工程', cost: { 'blue-science': 40 }, desc: '解锁速度模块与产能模块（增强组装机/电炉）' },
   radar:      { name: '雷达技术', cost: { 'green-science': 30 }, desc: '解锁雷达，自动扫描并标记新探索区域' },
   'logistics-network': { name: '物流网络', cost: { 'blue-science': 50 }, desc: '解锁机器人港、四类物流箱与物流机器人，构建自动化物流网络' },
+  nuclear:    { name: '核能技术', cost: { 'blue-science': 60, 'military-science': 40 }, desc: '解锁离心机（铀矿处理）、核反应堆与汽轮机，构建核能发电体系' },
   deep:       { name: '重工蓝图', cost: { 'blue-science': 50 }, desc: '蓝包终技：科研总进度获取 +20%' },
   infinite:   { name: '无限科技', cost: {}, infinite: true, desc: '无限研究：消耗任意科学包，永不完成' }
 };

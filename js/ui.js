@@ -258,6 +258,7 @@ function htmlInventory() {
   // 组装机配方（含化工厂/炼油厂以外的普通配方）
   for (const rid in RECIPES) {
     if (isChemRecipe(rid)) continue;
+    if (isCentrifugeRecipe(rid)) continue;
     const _r = RECIPES[rid];
     // 含流体原料的配方不列入手搓清单（需在组装机/化工厂生产）
     if (Object.keys(_r.inp).some(k => FLUIDS.indexOf(k) >= 0)) continue;
@@ -889,7 +890,8 @@ function mapTipAt(tx, ty) {
   const ti = getOreType(tx, ty);
   if (ti >= 0 && getOreAmt(tx, ty) > 0) {
     if (ti === ORE_OIL) return '原油矿床|储量 ' + Math.floor(getOreAmt(tx, ty)) + '，建造抽油机开采（吃电力）';
-    return ITEMS[ORES[ti]].name + '|储量 ' + Math.floor(getOreAmt(tx, ty)) + '，按住左键开采';
+    const nm = oreItemId(ti);
+    return (ITEMS[nm] ? ITEMS[nm].name : '未知矿') + '|储量 ' + Math.floor(getOreAmt(tx, ty)) + '，按住左键开采';
   }
   return null;
 }

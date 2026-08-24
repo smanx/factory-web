@@ -111,14 +111,15 @@ function updateMining(dt) {
   if (p.mining !== key) { p.mining = key; p.mineProg = 0; }
   if (!withinReach(t.tx, t.ty)) { p.mineProg = 0; return; }
   const ti = getOreType(t.tx, t.ty);
-  if (ti >= 0 && ti < ORES.length && getOreAmt(t.tx, t.ty) > 0) {
+  if (((ti >= 0 && ti < ORES.length) || ti === ORE_URANIUM) && getOreAmt(t.tx, t.ty) > 0) {
     p.mineProg += dt * ((G.dbg && G.dbg.mineMult) || 1) / HAND_MINE_TIME;
     if (p.mineProg >= 1) {
       p.mineProg -= 1;
       if (!G.settings.infiniteOre) consumeOre(t.tx, t.ty);
-      invAdd(ORES[ti]);
+      const it = oreItemId(ti);
+      invAdd(it);
       // 手动采矿时在屏幕上方显示获得的物品文本
-      if (typeof toast === 'function') toast('+1 ' + ITEMS[ORES[ti]].name);
+      if (typeof toast === 'function') toast('+1 ' + (ITEMS[it] ? ITEMS[it].name : '未知矿'));
     }
   } else {
     p.mineProg = 0;

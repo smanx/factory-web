@@ -267,6 +267,16 @@ function genChunk(cx, cy) {
     growOilField(terrain, oreType, oreAmt, rng, sx, sy, 4 + Math.floor(rng() * 5), 1500 + rng() * 2500, 3);
   }
 
+  // 铀矿：距离较远处才生成（核能后期），越远越多，矿团适中
+  const uChance = dist > 120 ? 0.4 : dist > 60 ? 0.18 : 0.04;
+  if (rng() < uChance) {
+    const sx = 2 + Math.floor(rng() * (CHUNK - 4));
+    const sy = 2 + Math.floor(rng() * (CHUNK - 4));
+    const usz = Math.max(4, Math.round((10 + rng() * 12) * Math.min(2.2, scale)));
+    const uamt = (400 + rng() * 700) * scale;
+    growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, usz, uamt, ORE_URANIUM);
+  }
+
   // 出生点保证：原点上一定有一片小型铁矿起步
   if (cx === 0 && cy === 0) {
     for (let attempt = 0; attempt < 8; attempt++) {
