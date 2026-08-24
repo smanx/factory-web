@@ -66,6 +66,20 @@
       WASD 移动 · 左键建造/挖矿 · 右键拆除 · R 旋转 · F 拿取 ·
       中键/E 面板 · T 科技 · K/L 存读档
     </div>
+
+    <!-- 地图设置：开始新游戏前配置世界参数（对齐《异星工厂》地图生成器） -->
+    <div id="world-config-overlay" class="world-config-overlay hidden">
+      <div class="world-config-panel">
+        <div class="world-config-head">
+          <span class="world-config-title">🗺️ 地图设置</span>
+          <button id="world-config-close" class="world-config-close" title="关闭">✕</button>
+        </div>
+        <div class="world-config-body"></div>
+        <div class="world-config-foot">
+          <button id="world-config-ok" class="world-config-ok primary">▶ 开始游戏</button>
+        </div>
+      </div>
+    </div>
     <div class="start-hint sub">📱 手机/触屏：点按建造/开面板/移动 · 长按建筑弹操作盘（旋转/拆除/复制） · 拖动平移视角 · 双指捏合缩放 · 双击旋转/回中</div>
   </div>
 </div>
@@ -95,7 +109,8 @@
   </div>
 </div>
 <script src="js/data.js?v=56"></script>
-<script src="js/world.js?v=12"></script>
+<script src="js/world-config.js?v=1"></script>
+<script src="js/world.js?v=13"></script>
 <script src="js/core/registry.js?v=7"></script>
 <script src="js/core/entity.js?v=13"></script>
 <script src="js/core/draw.js?v=10"></script>
@@ -135,7 +150,7 @@
 <script src="js/devices/passive-power.js?v=1"></script>
 <script src="js/devices/military.js?v=15"></script>
 <script src="js/devices/gate.js?v=1"></script>
-<script src="js/devices/combat2.js?v=30"></script>
+<script src="js/devices/combat2.js?v=31"></script>
 <script src="js/devices/pollution.js?v=3"></script>
 <script src="js/devices/weather.js?v=1"></script>
 <script src="js/devices/maptags.js?v=1"></script>
@@ -154,12 +169,12 @@
 <script src="js/core/power.js?v=10"></script>
 <script src="js/player.js?v=27"></script>
 <script src="js/ui.js?v=45"></script>
-<script src="js/menu.js?v=3"></script>
+<script src="js/menu.js?v=4"></script>
 <script src="js/render.js?v=38"></script>
 <script src="js/stats.js?v=14"></script>
 <script src="js/saves.js?v=3"></script>
 <script src="js/sfx.js?v=11"></script>
 <script src="js/touch.js?v=6"></script>
-<script src="js/main.js?v=53"></script>
+<script src="js/main.js?v=54"></script>
 </body>
 </html>

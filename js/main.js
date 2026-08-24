@@ -110,7 +110,7 @@ function loadSettings() {
 }
 
 function newGame() {
-  const seed = (Math.random() * 1e9) | 0;
+  const seed = (typeof resolveWorldSeed === 'function') ? resolveWorldSeed() : ((Math.random() * 1e9) | 0);
   G.world = genWorld(seed);
   // 新种子下地形变化，清空分块离屏缓存
   if (typeof clearTerrainCache === 'function') clearTerrainCache();
@@ -129,6 +129,10 @@ function newGame() {
   G.enemies = []; G.bullets = []; G.spawnT = 0;
   G.enemyProjectiles = [];
   G.evolution = 0;   // 敌人进化度（战斗开启时随时间/击杀增长）
+  // 敌人强度配置（对齐《异星工厂》新游戏敌人设置）：高难度开局即有一定初始进化度
+  if (typeof enemyConfig === 'function' && G && G.worldConfig && enemyConfig().initEvolution) {
+    G.evolution = enemyConfig().initEvolution;
+  }
   G.pollution = 0;    // 污染值（对齐《异星工厂》：工业排放污染激怒虫群）
   G.pollutionWaves = 0; G.pollutionT = 0; G.pollutionScanT = 0;
   G.combatRobots = [];
@@ -182,6 +186,7 @@ function serializeAll() {
   return {
     v: 1,
     seed: G.world.seed,
+    worldConfig: (typeof normalizeWorldConfig === 'function') ? normalizeWorldConfig(G.worldConfig) : G.worldConfig,
     world: {
       remaining: Array.from(G.world.remaining, ([k, v]) => {
         const i = k.indexOf(',');
@@ -260,6 +265,13 @@ async function loadGame(id) {
 }
 
 function applySave(d) {
+  // 恢复地图生成配置（对齐《异星工厂》：新游戏的世界参数随存档持久化）
+  if (typeof normalizeWorldConfig === 'function') {
+    const wc = normalizeWorldConfig(d.worldConfig);
+    // 用存档种子填充配置 seed（读档后不再用其重新生成，仅保留语义）
+    wc.seed = (d.seed && d.seed > 0) ? d.seed : wc.seed;
+    G.worldConfig = wc;
+  }
   G.world = genWorld(d.seed);
   G.world.remaining = new Map();
   if (d.world && Array.isArray(d.world.chunks)) {

@@ -132,7 +132,15 @@ function chunkLocalIdx(tx, ty) {
 function getChunk(cx, cy) {
   const k = cx + ',' + cy;
   let c = G.world.chunks.get(k);
-  if (!c) { c = genChunk(cx, cy); G.world.chunks.set(k, c); }
+  if (!c) {
+    c = genChunk(cx, cy);
+    // 地图边界（超出可探索范围，地图大小配置）返回 null → 用全水域的“边界块”填充，
+    // 表现地图边缘为不可通行的海洋（对齐《异星工厂》有限地图边界）。
+    if (!c) {
+      c = { cx, cy, terrain: new Uint8Array(CHUNK * CHUNK).fill(T_WATER), oreType: new Int8Array(CHUNK * CHUNK).fill(-1), oreAmt: new Float32Array(CHUNK * CHUNK) };
+    }
+    G.world.chunks.set(k, c);
+  }
   return c;
 }
 
@@ -200,11 +208,13 @@ function isCliffTile(gx, gy) {
 function isLake(tx, ty) {
   const cell = 13;
   const gx = Math.floor(tx / cell), gy = Math.floor(ty / cell);
+  // 水频率配置（对齐《异星工厂》地图生成器）：调整湖泊密度阈值（+bias 更多水体 / -bias 更少水体）
+  const bias = (typeof waterBias === 'function') ? waterBias() : 0;
   for (let ogx = gx - 1; ogx <= gx + 1; ogx++) {
     for (let ogy = gy - 1; ogy <= gy + 1; ogy++) {
       // 湖泊密度：阈值从 0.04 再降到 0.02，使全图水体数量在上次基础上再减半
       const h = hash2(ogx * 12.9898, ogy * 78.233);
-      if (h < 0.02) {
+      if (h < 0.02 + bias) {
         const px = (ogx + (hash2(ogx * 3.1, ogy * 7.7) * 0.7 + 0.15)) * cell;
         const py = (ogy + (hash2(ogx * 5.3, ogy * 1.9) * 0.7 + 0.15)) * cell;
         // 单个水体面积适当增大：半径从 3~7.5 提升到 5~11
@@ -340,15 +350,21 @@ function genChunk(cx, cy) {
 
   const cxn = cx * CHUNK + CHUNK / 2, cyn = cy * CHUNK + CHUNK / 2;
   const dist = Math.hypot(cxn, cyn);
+  // 地图大小限制（对齐《异星工厂》地图大小）：超出可探索范围的地块视为边界（不可生成）
+  if (typeof maxMapDist === 'function' && dist > maxMapDist()) return null;
   const scale = 1 + dist / 90;
+  // 资源频率/大小/丰富度配置（对齐《异星工厂》地图生成器）
+  const fq = (typeof frequencyMult === 'function') ? frequencyMult() : 1;
+  const sz = (typeof sizeMult === 'function') ? sizeMult() : 1;
+  const ri = (typeof richnessMult === 'function') ? richnessMult() : 1;
   // 矿物数量在上次基础上放大一倍（更密集的矿脉分布）
-  const count = (2 + Math.floor(rng() * 2)) * 2 + (dist > 60 && rng() < 0.6 ? 2 : 0);
+  const count = Math.max(1, Math.round(((2 + Math.floor(rng() * 2)) * 2 + (dist > 60 && rng() < 0.6 ? 2 : 0)) * fq));
 
   for (let n = 0; n < count; n++) {
     const ti = pickOreType(rng, dist);
     // 单个矿物体积面积放大一倍（更大的矿团）
-    const size = Math.max(5, Math.round((20 + rng() * 20) * Math.min(2.6, scale)));
-    const amt = (500 + rng() * 900) * scale;
+    const size = Math.max(5, Math.round((20 + rng() * 20) * Math.min(2.6, scale) * sz));
+    const amt = (500 + rng() * 900) * scale * ri;
     const sx = 1 + Math.floor(rng() * (CHUNK - 2));
     const sy = 1 + Math.floor(rng() * (CHUNK - 2));
     growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, size, amt, ti);
@@ -360,7 +376,7 @@ function genChunk(cx, cy) {
     const sx = 2 + Math.floor(rng() * (CHUNK - 4));
     const sy = 2 + Math.floor(rng() * (CHUNK - 4));
     // 原油矿床：隔几格一个，整体聚集（gap≈3 即每个油点相隔 3 格左右）
-    growOilField(terrain, oreType, oreAmt, rng, sx, sy, 4 + Math.floor(rng() * 5), 1500 + rng() * 2500, 3);
+    growOilField(terrain, oreType, oreAmt, rng, sx, sy, 4 + Math.floor(rng() * 5), (1500 + rng() * 2500) * ri, 3);
   }
 
   // 铀矿：距离较远处才生成（核能后期），越远越多，矿团适中
@@ -368,8 +384,8 @@ function genChunk(cx, cy) {
   if (rng() < uChance) {
     const sx = 2 + Math.floor(rng() * (CHUNK - 4));
     const sy = 2 + Math.floor(rng() * (CHUNK - 4));
-    const usz = Math.max(4, Math.round((10 + rng() * 12) * Math.min(2.2, scale)));
-    const uamt = (400 + rng() * 700) * scale;
+    const usz = Math.max(4, Math.round((10 + rng() * 12) * Math.min(2.2, scale) * sz));
+    const uamt = (400 + rng() * 700) * scale * ri;
     growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, usz, uamt, ORE_URANIUM);
   }
 

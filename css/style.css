@@ -530,6 +530,127 @@ html, body {
 }
 .load-save-overlay.hidden { display: none; }
 
+/* ===== 地图设置面板（对齐《异星工厂》新游戏地图生成器）===== */
+.world-config-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 225;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 9, 7, .68);
+  backdrop-filter: blur(3px);
+  animation: overlayFade .18s ease;
+}
+.world-config-overlay.hidden { display: none; }
+.world-config-panel {
+  width: min(440px, 92vw);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(16, 22, 18, .97);
+  border: 1px solid #3f5a48;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .7);
+  overflow: hidden;
+}
+.world-config-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: linear-gradient(180deg, #223027, #18241c);
+  border-bottom: 1px solid #33493a;
+}
+.world-config-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #eef6ee;
+  letter-spacing: 1px;
+}
+.world-config-close {
+  background: none;
+  border: none;
+  color: #8a9a90;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.world-config-close:hover { color: #ff9a8a; background: rgba(255, 90, 70, .12); }
+.world-config-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+.wcfg-field { margin-bottom: 12px; }
+.wcfg-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.wcfg-label {
+  font-size: 13px;
+  color: #cfe0d2;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.wcfg-opts { display: flex; gap: 6px; flex-wrap: wrap; }
+.wcfg-opt {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 8px;
+  background: #202b23;
+  color: #b8c8bc;
+  border: 1px solid #33473a;
+  cursor: pointer;
+  transition: all .15s;
+}
+.wcfg-opt:hover { border-color: #57b95c; color: #eef6ee; }
+.wcfg-opt.active {
+  background: linear-gradient(180deg, #3a7445, #235330);
+  border-color: #6fd17e;
+  color: #effff2;
+  box-shadow: 0 0 10px rgba(87, 185, 92, .25);
+}
+.wcfg-seedrow { display: flex; gap: 8px; margin-bottom: 6px; }
+.wcfg-seedrow input {
+  flex: 1;
+  padding: 7px 10px;
+  font-size: 13px;
+  border-radius: 8px;
+  background: #202b23;
+  color: #eef6ee;
+  border: 1px solid #33473a;
+  min-width: 0;
+}
+.wcfg-seedrow input:focus { outline: none; border-color: #57b95c; }
+.wcfg-desc { font-size: 11px; color: #74817a; line-height: 1.5; margin-bottom: 10px; }
+.world-config-foot {
+  padding: 14px 20px;
+  border-top: 1px solid #33493a;
+  background: #141c16;
+}
+.world-config-ok {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  border-radius: 10px;
+  border: 1px solid #6fd17e;
+  background: linear-gradient(180deg, #3a7445, #235330);
+  color: #effff2;
+  cursor: pointer;
+  box-shadow: 0 0 18px rgba(87, 185, 92, .25), 0 3px 0 #1b3a22;
+  transition: all .18s;
+}
+.world-config-ok:hover {
+  background: linear-gradient(180deg, #46905a, #2b6b3a);
+  box-shadow: 0 0 24px rgba(87, 185, 92, .5), 0 3px 0 #1b3a22;
+}
+
 /* ===== 新手引导面板 ===== */
 .tutorial-overlay {
   position: fixed;

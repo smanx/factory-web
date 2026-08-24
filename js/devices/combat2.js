@@ -185,9 +185,12 @@ function updateExpansion(dt) {
 
 function spawnEnemies(dt) {
   if (!G.enemies) G.enemies = [];
+  // 敌人强度配置（对齐《异星工厂》新游戏敌人设置）：和平模式不刷敌人
+  const ecfg = (typeof enemyConfig === 'function') ? enemyConfig() : { peaceful: false, spawnMult: 1 };
+  if (ecfg.peaceful) return;
   G.spawnT = (G.spawnT || 0) + dt;
-  // 敌人数量越多刷新越慢；火箭时代可允许更多敌人同时在场
-  const cap = G.techDone['advanced-combat'] ? 40 : 24;
+  // 敌人数量越多刷新越慢；火箭时代可允许更多敌人同时在场；高敌人强度提高上限
+  const cap = Math.round((G.techDone['advanced-combat'] ? 40 : 24) * ecfg.spawnMult);
   if (G.enemies.length >= cap) return;
   // 维护巢穴数量：不足则在远处生成新巢穴（初始布点由扩张系统接管后，这里仍保留保底补位）
   const spawners = getSpawnerList();
@@ -196,7 +199,8 @@ function spawnEnemies(dt) {
     const s = makeSpawner();
     if (s) G.enemies.push(s);
   }
-  const interval = Math.max(3, 12 - Math.min(9, (G.enemies.length || 0) / 3));
+  // 高敌人强度 → 刷新更快（间隔缩短）
+  const interval = Math.max(3, 12 - Math.min(9, (G.enemies.length || 0) / 3)) / Math.max(0.4, ecfg.spawnMult);
   if (G.spawnT < interval) return;
   G.spawnT = 0;
   const px = G.player.x / TILE, py = G.player.y / TILE;
