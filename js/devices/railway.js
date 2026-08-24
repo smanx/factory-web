@@ -1,0 +1,534 @@
+'use strict';
+
+// ===== 铁路系统（火车，对齐《异星工厂》Railway）=====
+// 铁轨 Rail：1×1 非实体占用，铺设成网。与相邻铁轨自动连通，可直行/转弯。
+// 火车头 Locomotive：烧煤驱动，在铁轨上移动；可挂接货运车厢组成列车。
+// 货运车厢 CargoWagon：跟随车头移动，存 10 格×100，车站可用机械臂装卸。
+// 车站 TrainStop：放在铁轨上，列车经过即短暂停车（装卸窗口）。
+// 铁路信号灯 RailSignal：放在铁轨旁，指示前方是否被其他列车占用，防追尾。
+//
+// 模型：火车不依赖网格实体的 entAt 检测轨道，而是通过独立的轨道集合
+// G.railTiles（坐标 Set）查询连接。火车实体（车头/车厢）以 solid 实体
+// addEnt 到网格，移动时 removeEnt/addEnt 跨格；铁轨实体在 G.ents 中独立
+// 保留用于渲染，即使被火车覆盖也不影响 railTiles 连接判定。
+
+// ===== 常量 =====
+const TRAIN_SPEED = 0.35;      // 列车每格移动耗时（秒），慢于传送带但运量大
+const LOCO_FUEL = 400;         // 单格煤提供的燃料量（一格跑多格）
+const LOCO_MAX_FUEL = 4000;    // 车头燃料槽上限（约 10 格煤）
+const LOCO_COAL_PER = 1;       // 每格耗煤 1 单位
+const WAGON_SLOTS = 10;        // 车厢槽位数
+const WAGON_STACK = 100;       // 每槽容量
+const TRAIN_STOP_WAIT = 1.6;   // 车站停车时长（秒）
+const SIGNAL_RANGE = 10;       // 信号灯检测前方列车距离（格）
+
+// ===== 铁轨集合 =====
+// 由铁轨实体 addEnt/removeEnt 时同步维护。惰性初始化（G 在 main.js 中定义，加载时不可访问）。
+function ensureRailGlobals() {
+  if (!G.railTiles) G.railTiles = new Set();
+  if (!G.trains) G.trains = [];
+}
+function railConnAt(tx, ty) {
+  ensureRailGlobals();
+  return {
+    E: G.railTiles.has((tx + 1) + ',' + ty),
+    S: G.railTiles.has(tx + ',' + (ty + 1)),
+    W: G.railTiles.has((tx - 1) + ',' + ty),
+    N: G.railTiles.has(tx + ',' + (ty - 1))
+  };
+}
+function railHas(tx, ty) { ensureRailGlobals(); return G.railTiles.has(tx + ',' + ty); }
+
+// ===== 列车列表 =====
+// G.trains: 数组，每项 { id, cars: [car...], active, stopT }
+// car: Locomotive 或 CargoWagon 实体（car.head=true 表示车头）。
+
+// 列车更新入口（main.js loop 中调用）
+function updateTrains(dt) {
+  ensureRailGlobals();
+  for (const tr of G.trains) {
+    if (tr.cars.length === 0) continue;
+    const head = tr.cars[0];
+    // 车头烧煤移动
+    const coal = (head.fuel || 0);
+    if (coal <= 0) continue;   // 没煤则停车
+    // 车站停车：车头所在格是车站时停车等待
+    if (tr.stopT > 0) {
+      tr.stopT -= dt;
+      continue;
+    }
+    if (trainStopAt(head.x, head.y)) { tr.stopT = TRAIN_STOP_WAIT; continue; }
+    // 信号灯防追尾：前方有其它列车则停车
+    if (railSignalBlocked(head)) continue;
+
+    tr.moveT = (tr.moveT || 0) + dt;
+    if (tr.moveT >= TRAIN_SPEED) {
+      tr.moveT -= TRAIN_SPEED;
+      moveTrain(tr);
+    }
+  }
+}
+
+// 车头尝试沿 dir 前进一格（直行优先，转弯次之，均不可则掉头）
+function moveTrain(tr) {
+  const head = tr.cars[0];
+  if (!head) return;
+  // 记录每节车旧位置，车厢依次继承前一节
+  const oldPos = tr.cars.map(c => ({ x: c.x, y: c.y, dir: c.dir }));
+  const dir = head.dir;
+  const fwd = [DX[dir], DY[dir]];
+  let nd = null;
+  // 直行
+  if (railHas(head.x + fwd[0], head.y + fwd[1]) && !trainOccupy(head.x + fwd[0], head.y + fwd[1], head)) {
+    nd = dir;
+  } else {
+    // 转弯：优先右转，其次左转
+    for (const d of [(dir + 1) % 4, (dir + 3) % 4]) {
+      const dx = DX[d], dy = DY[d];
+      if (railHas(head.x + dx, head.y + dy) && !trainOccupy(head.x + dx, head.y + dy, head)) { nd = d; break; }
+    }
+  }
+  // 前方与左右都不通：尝试掉头（反向也是铁轨时）；否则停车不动
+  if (nd === null) {
+    const rd = (dir + 2) % 4;
+    if (railHas(head.x + DX[rd], head.y + DY[rd]) && !trainOccupy(head.x + DX[rd], head.y + DY[rd], head)) nd = rd;
+  }
+  if (nd === null) return;
+  // 移动车头到下一格
+  head.x += DX[nd]; head.y += DY[nd]; head.dir = nd;
+  removeEntFromGrid(head); addEntToGrid(head);
+  head.fuel -= LOCO_COAL_PER;
+  // 车厢依次占据前一节车的旧位置
+  for (let i = 1; i < tr.cars.length; i++) {
+    const car = tr.cars[i];
+    removeEntFromGrid(car);
+    car.x = oldPos[i - 1].x; car.y = oldPos[i - 1].y;
+    addEntToGrid(car);
+  }
+}
+
+// 目标格是否被除 head 自身列车外的其它列车占用（防重叠）
+function trainOccupy(tx, ty, head) {
+  let own = null;
+  for (const tr of G.trains) if (tr.cars.indexOf(head) >= 0) { own = tr; break; }
+  for (const tr of G.trains) {
+    if (tr === own) continue;
+    for (const c of tr.cars) {
+      if (c.x === tx && c.y === ty) return true;
+    }
+  }
+  return false;
+}
+
+// 前方信号灯是否拦截：前方 SIGNAL_RANGE 格内存在其它列车的车厢则停车
+// 仅检查“其它列车”，忽略同一列车自己的车厢，避免自我拦截。
+function railSignalBlocked(head) {
+  // 找到 head 所在列车
+  let own = null;
+  for (const tr of G.trains) if (tr.cars.indexOf(head) >= 0) { own = tr; break; }
+  for (const tr of G.trains) {
+    if (tr === own) continue;
+    for (const c of tr.cars) {
+      const dist = Math.abs(c.x - head.x) + Math.abs(c.y - head.y);
+      if (dist > 0 && dist <= SIGNAL_RANGE) return true;
+    }
+  }
+  return false;
+}
+
+// 网格操作：火车实体在铁轨上移动，removeEnt/addEnt 更新 grid 与 buckets
+function removeEntFromGrid(e) {
+  if (e._dead) return;
+  e._dead = true;
+  _tombCount++;
+  if (_tombCount >= 128) _compactEnts();
+  const b = bucketKey(e.x, e.y);
+  const bs = G.buckets.get(b);
+  if (bs) { bs.delete(e); if (!bs.size) G.buckets.delete(b); }
+  for (let dy = 0; dy < e.h; dy++)
+    for (let dx = 0; dx < e.w; dx++) {
+      const k = entKey(e.x + dx, e.y + dy);
+      if (G.grid.get(k) === e) G.grid.delete(k);
+    }
+}
+function addEntToGrid(e) {
+  if (e._dead) e._dead = false;
+  ensureBucket(bucketKey(e.x, e.y)).add(e);
+  for (let dy = 0; dy < e.h; dy++)
+    for (let dx = 0; dx < e.w; dx++)
+      G.grid.set(entKey(e.x + dx, e.y + dy), e);
+}
+
+// ===== 铁轨 Rail =====
+class Rail extends Entity {
+  constructor(type, x, y) { super(type, x, y); }
+  giveItem(item) { return false; }
+  contents() { return [[this.type, 1]]; }
+}
+// 铁轨放置后/拆除时维护 railTiles
+function registerRail(x, y) { G.railTiles.add(x + ',' + y); }
+function unregisterRail(x, y) { G.railTiles.delete(x + ',' + y); }
+
+// ===== 车头 Locomotive =====
+class Locomotive extends Entity {
+  constructor(type, x, y) {
+    super(type, x, y);
+    this.fuel = 0;
+  }
+  giveItem(item) {
+    if (item === 'coal' && this.fuel < LOCO_MAX_FUEL) {
+      this.fuel += LOCO_FUEL;
+      if (this.fuel > LOCO_MAX_FUEL) this.fuel = LOCO_MAX_FUEL;
+      return true;
+    }
+    return false;
+  }
+  countOf(item) { return item === 'coal' ? Math.floor(this.fuel / LOCO_FUEL) : 0; }
+  takeItemOf(item) {
+    if (item !== 'coal' || this.fuel < LOCO_FUEL) return null;
+    this.fuel -= LOCO_FUEL;
+    return 'coal';
+  }
+  contents() {
+    const n = Math.floor(this.fuel / LOCO_FUEL);
+    return [[this.type, 1]].concat(n > 0 ? [['coal', n]] : []);
+  }
+  serialize() {
+    const s = super.serialize();
+    s.fuel = this.fuel;
+    return s;
+  }
+  blueprint() {
+    const s = super.blueprint();
+    s.fuel = this.fuel;
+    return s;
+  }
+  static restore(s) {
+    const e = super.restore(s);
+    e.fuel = s.fuel | 0;
+    return e;
+  }
+}
+
+// ===== 货运车厢 CargoWagon =====
+class CargoWagon extends Entity {
+  constructor(type, x, y) {
+    super(type, x, y);
+    this.slots = [];
+  }
+  giveItem(item) {
+    if (item === 'logistic-robot') return false;
+    for (const s of this.slots)
+      if (s && s.item === item && s.count < WAGON_STACK) { s.count++; return true; }
+    if (this.slots.length >= WAGON_SLOTS) return false;
+    this.slots.push({ item, count: 1 });
+    return true;
+  }
+  peekItem() {
+    for (let i = this.slots.length - 1; i >= 0; i--) { const s = this.slots[i]; if (s) return s.item; }
+    return null;
+  }
+  takeItem() {
+    for (let i = this.slots.length - 1; i >= 0; i--) {
+      const s = this.slots[i];
+      if (s) {
+        const it = s.item; s.count--;
+        if (s.count <= 0) this.slots.splice(i, 1);
+        return it;
+      }
+    }
+    return null;
+  }
+  countOf(item) { let n = 0; for (const st of this.slots) if (st && st.item === item) n += st.count; return n; }
+  takeItemOf(item) {
+    for (let i = this.slots.length - 1; i >= 0; i--) {
+      const s = this.slots[i];
+      if (s && s.item === item) {
+        s.count--;
+        if (s.count <= 0) this.slots.splice(i, 1);
+        return item;
+      }
+    }
+    return null;
+  }
+  contents() {
+    const rows = [[this.type, 1]];
+    for (const s of this.slots) if (s) rows.push([s.item, s.count]);
+    return rows;
+  }
+  serialize() {
+    const s = super.serialize();
+    s.slots = this.slots.filter(Boolean);
+    return s;
+  }
+  blueprint() {
+    const s = super.blueprint();
+    s.slots = [];
+    return s;
+  }
+  static restore(s) {
+    const e = super.restore(s);
+    e.slots = (s.slots || []).map(x => ({ item: x.item, count: x.count }));
+    return e;
+  }
+}
+
+// ===== 车站 TrainStop =====
+class TrainStop extends Entity {
+  constructor(type, x, y) { super(type, x, y); }
+}
+function trainStopAt(tx, ty) {
+  // 车头占用铁轨格，entAt 返回车头而非车站；改为遍历 G.ents 检测车站实体
+  for (const e of G.ents) {
+    if (e._dead) continue;
+    if (e.type === 'train-stop' && e.x === tx && e.y === ty) return true;
+  }
+  return false;
+}
+
+// ===== 铁路信号灯 RailSignal =====
+class RailSignal extends Entity {
+  constructor(type, x, y) { super(type, x, y); }
+}
+function railSignalAt(tx, ty) {
+  const e = entAt(tx, ty);
+  return e && e.type === 'rail-signal';
+}
+
+// ===== 列车编组管理 =====
+// 车头放置：若目标铁轨上无火车，则创建一列仅含车头的列车。
+// 车厢放置：若与已有车头/车厢相邻，挂接到该列车末尾。
+function addTrainCar(e, tx, ty) {
+  // 找到把该车加入哪列列车
+  let train = null;
+  for (const tr of G.trains) {
+    const last = tr.cars[tr.cars.length - 1];
+    if (last && Math.abs(last.x - tx) + Math.abs(last.y - ty) === 1) { train = tr; break; }
+  }
+  if (e instanceof Locomotive) {
+    train = { id: G.trains.length + 1, cars: [e], moveT: 0, stopT: 0 };
+    G.trains.push(train);
+  } else {
+    if (!train) {
+      // 孤立车厢：也算单独"列车"（不移动）
+      train = { id: G.trains.length + 1, cars: [e], moveT: 0, stopT: 0 };
+      G.trains.push(train);
+    } else {
+      train.cars.push(e);
+    }
+  }
+}
+
+function removeTrainCar(e) {
+  for (let i = G.trains.length - 1; i >= 0; i--) {
+    const tr = G.trains[i];
+    const idx = tr.cars.indexOf(e);
+    if (idx >= 0) {
+      tr.cars.splice(idx, 1);
+      if (tr.cars.length === 0) G.trains.splice(i, 1);
+      return;
+    }
+  }
+}
+
+// 拆除/重建时火车实体通过 removeEnt 移除，需同步从列车列表摘除。
+// 在铁路设备 removeEnt 的包装函数中调用。
+
+// ===== 铁轨渲染 =====
+DEVICE_RENDER['rail'] = function (ctx, e, gx, gy, dir, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#4a4a52';
+  ctx.fillRect(gx, gy, TILE, TILE);
+  const c = railConnAt(e.x, e.y);
+  ctx.strokeStyle = '#8a8a92';
+  ctx.lineWidth = TILE * 0.22;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  // 水平方向连接
+  if (c.E || c.W) {
+    const x1 = c.E ? gx + TILE : gx + TILE / 2;
+    const x2 = c.W ? gx : gx + TILE / 2;
+    ctx.moveTo(x2, gy + TILE / 2); ctx.lineTo(x1, gy + TILE / 2);
+  }
+  // 垂直方向连接
+  if (c.N || c.S) {
+    const y1 = c.S ? gy + TILE : gy + TILE / 2;
+    const y2 = c.N ? gy : gy + TILE / 2;
+    ctx.moveTo(gx + TILE / 2, y2); ctx.lineTo(gx + TILE / 2, y1);
+  }
+  ctx.stroke();
+  // 枕木
+  ctx.fillStyle = '#5a5a64';
+  if (c.E || c.W) { ctx.fillRect(gx + TILE * 0.42, gy + TILE * 0.18, TILE * 0.16, TILE * 0.64); }
+  if (c.N || c.S) { ctx.fillRect(gx + TILE * 0.18, gy + TILE * 0.42, TILE * 0.64, TILE * 0.16); }
+  ctx.restore();
+};
+
+// ===== 车头渲染 =====
+DEVICE_RENDER['locomotive'] = function (ctx, e, gx, gy, dir, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(gx + TILE / 2, gy + TILE / 2);
+  ctx.rotate(dir * Math.PI / 2);
+  ctx.fillStyle = '#d04a3a';
+  rrPath(ctx, -TILE * 0.42, -TILE * 0.32, TILE * 0.84, TILE * 0.64, TILE * 0.12);
+  ctx.fill();
+  ctx.strokeStyle = '#7a2018'; ctx.lineWidth = 2; ctx.stroke();
+  // 车灯朝前
+  ctx.fillStyle = '#ffe08a';
+  ctx.fillRect(TILE * 0.2, -TILE * 0.06, TILE * 0.1, TILE * 0.12);
+  // 燃料状态灯
+  ctx.fillStyle = (e.fuel || 0) > 0 ? '#6fd06f' : '#b04040';
+  ctx.fillRect(-TILE * 0.2, -TILE * 0.38, TILE * 0.12, TILE * 0.12);
+  ctx.restore();
+};
+
+// ===== 车厢渲染 =====
+DEVICE_RENDER['cargo-wagon'] = function (ctx, e, gx, gy, dir, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(gx + TILE / 2, gy + TILE / 2);
+  ctx.rotate(dir * Math.PI / 2);
+  ctx.fillStyle = '#8a6a4a';
+  rrPath(ctx, -TILE * 0.42, -TILE * 0.3, TILE * 0.84, TILE * 0.6, TILE * 0.08);
+  ctx.fill();
+  ctx.strokeStyle = '#4a3222'; ctx.lineWidth = 2; ctx.stroke();
+  // 货物指示灯
+  ctx.fillStyle = (e.slots && e.slots.length) ? '#e0b23c' : '#555';
+  ctx.fillRect(-TILE * 0.2, -TILE * 0.38, TILE * 0.12, TILE * 0.12);
+  ctx.restore();
+};
+
+// ===== 车站渲染 =====
+DEVICE_RENDER['train-stop'] = function (ctx, e, gx, gy, dir, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#3a4a6a';
+  rrPath(ctx, gx + 4, gy + 4, TILE - 8, TILE - 8, 6); ctx.fill();
+  ctx.strokeStyle = '#5a8ac0'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#9ac0e8';
+  ctx.font = 'bold ' + Math.round(TILE * 0.4) + 'px system-ui';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('S', gx + TILE / 2, gy + TILE / 2);
+  ctx.restore();
+};
+
+// ===== 信号灯渲染 =====
+DEVICE_RENDER['rail-signal'] = function (ctx, e, gx, gy, dir, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#3a3a44';
+  ctx.fillRect(gx + TILE * 0.3, gy + TILE * 0.3, TILE * 0.4, TILE * 0.4);
+  const blocked = railSignalBlocked({ x: e.x, y: e.y, type: 'rail-signal' });
+  ctx.fillStyle = blocked ? '#e04a4a' : '#4ae04a';
+  ctx.beginPath(); ctx.arc(gx + TILE / 2, gy + TILE / 2, TILE * 0.14, 0, 7); ctx.fill();
+  ctx.restore();
+};
+
+// ===== 面板 =====
+DEVICE_PANEL['locomotive'] = {
+  html(e) {
+    const n = Math.floor((e.fuel || 0) / LOCO_FUEL);
+    return '<div class="dim">车头：烧煤在铁轨上行驶。装入煤后自动前进，可挂接货运车厢。</div>' +
+      '<div class="sec">燃料</div><div class="rows">' +
+      '<div class="row"><span>煤</span><b>' + n + '</b><button data-act="putcoal">+1</button><button data-act="takecoal">取出</button></div>' +
+      '</div>';
+  },
+  live() { return ''; },
+  tip() { return 'g'; },
+  onAction(btn, e) {
+    if (btn === 'putcoal' && invCount('coal') > 0) { e.giveItem('coal'); invTake('coal', 1); toast('已加煤'); uiDirty = true; }
+    else if (btn === 'takecoal') { const it = e.takeItemOf('coal'); if (it) { invAdd(it); toast('已取出煤'); uiDirty = true; } }
+    return true;
+  }
+};
+
+DEVICE_PANEL['cargo-wagon'] = {
+  html(e) {
+    let h = '<div class="dim">货运车厢：挂在车头后随列车移动，最多 ' + WAGON_SLOTS + ' 格各 ' + WAGON_STACK + ' 个。车站可用机械臂装卸。</div><div class="sec">货物</div><div class="rows">';
+    if (!e.slots || !e.slots.length) h += '<div class="dim">车厢是空的</div>';
+    else for (const s of e.slots) if (s) h += '<div class="row"><span>' + ITEMS[s.item].name + '</span><b>' + s.count + '</b><button data-act="take" data-id="' + s.item + '">取出1</button></div>';
+    return h + '</div>';
+  },
+  live() { return ''; },
+  tip() { return 'g'; },
+  onAction(btn, e) {
+    const id = btn && btn.dataset ? btn.dataset.id : null;
+    if (btn === 'take' && id && e.countOf(id) > 0) {
+      const it = e.takeItemOf(id); if (it) { invAdd(it); uiDirty = true; }
+    }
+    return true;
+  }
+};
+
+// ===== 放置/拆除钩子（包装 addEnt/removeEnt，维护 railTiles 与列车编组）=====
+const __railAddEnt = addEnt;
+const __railRemoveEnt = removeEnt;
+addEnt = function (e) {
+  __railAddEnt(e);
+  afterRailAdd(e);
+};
+removeEnt = function (e) {
+  beforeRailRemove(e);
+  __railRemoveEnt(e);
+};
+
+function afterRailAdd(e) {
+  ensureRailGlobals();
+  if (e instanceof Rail) registerRail(e.x, e.y);
+  else if (e instanceof Locomotive || e instanceof CargoWagon) {
+    // 车头/车厢放置：加入列车编组
+    if (!e._inTrain) {
+      addTrainCar(e, e.x, e.y);
+      e._inTrain = true;
+    }
+  }
+}
+
+function beforeRailRemove(e) {
+  if (e instanceof Rail) unregisterRail(e.x, e.y);
+  else if (e instanceof Locomotive || e instanceof CargoWagon) {
+    removeTrainCar(e);
+    e._inTrain = false;
+  }
+}
+
+// ===== 实体注册 =====
+ENT_CLASSES['rail'] = Rail;
+ENT_CLASSES['locomotive'] = Locomotive;
+ENT_CLASSES['cargo-wagon'] = CargoWagon;
+ENT_CLASSES['train-stop'] = TrainStop;
+ENT_CLASSES['rail-signal'] = RailSignal;
+
+// R 键可旋转车头（决定行进方向）
+DEVICE_DIR_ROTATE['locomotive'] = true;
+
+// 放置规则
+DEVICE_PLACE['rail'] = null;   // 铁轨放任何空地
+DEVICE_PLACE['locomotive'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true } : { ok: false };
+DEVICE_PLACE['cargo-wagon'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true } : { ok: false };
+DEVICE_PLACE['train-stop'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true } : { ok: false };
+// 信号灯：放在铁轨旁任意一格（四周有铁轨即可）
+DEVICE_PLACE['rail-signal'] = (type, tx, ty) => {
+  const c = railConnAt(tx, ty);
+  return (c.E || c.S || c.W || c.N) ? { ok: true } : { ok: false };
+};
+
+// 读档后重建列车编组（由 main.js applySave 末尾调用）
+function rebuildTrains() {
+  G.trains = [];
+  G.railTiles = new Set();
+  for (const e of G.ents) {
+    if (e._dead) continue;
+    if (e instanceof Rail) registerRail(e.x, e.y);
+  }
+  for (const e of G.ents) {
+    if (e._dead) continue;
+    if (e instanceof Locomotive || e instanceof CargoWagon) {
+      e._inTrain = false;
+      addTrainCar(e, e.x, e.y);
+      e._inTrain = true;
+    }
+  }
+}

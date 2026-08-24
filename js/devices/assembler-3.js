@@ -99,13 +99,13 @@ function assembler3PanelHtml(e) {
     }
   if (Object.keys(e.inp).length) h += '<button data-action="takein">取回全部输入</button>';
   // 模块槽位
-  h += row('模块', ((e.modules['speed-module'] || 0) + (e.modules['productivity-module'] || 0)) ?
-    '速度×' + (e.modules['speed-module'] || 0) + ' 产能×' + (e.modules['productivity-module'] || 0) : '<span class="dim">无</span>', 'mod');
-  for (const mid of ['speed-module', 'productivity-module']) {
+  h += row('模块', ((e.modules['speed-module'] || 0) + (e.modules['productivity-module'] || 0) + (e.modules['efficiency-module'] || 0)) ?
+    '速度×' + (e.modules['speed-module'] || 0) + ' 产能×' + (e.modules['productivity-module'] || 0) + ' 效率×' + (e.modules['efficiency-module'] || 0) : '<span class="dim">无</span>', 'mod');
+  for (const mid of ['speed-module', 'productivity-module', 'efficiency-module']) {
     const n = Math.min(invCount(mid), 4 - (e.modules[mid] || 0));
     if (n > 0) h += '<button data-action="feed" data-id="' + mid + '">装入' + ITEMS[mid].name + ' ×' + n + '</button>';
   }
-  if ((e.modules['speed-module'] || 0) + (e.modules['productivity-module'] || 0) > 0)
+  if ((e.modules['speed-module'] || 0) + (e.modules['productivity-module'] || 0) + (e.modules['efficiency-module'] || 0) > 0)
     h += '<button data-action="takein" data-modules="1">取出全部模块</button>';
   h += row('输出', Object.keys(e.outp).length ? countStr(e.outp) : '<span class="dim">空</span>', 'output');
   h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
@@ -135,8 +135,8 @@ function assembler3PanelLive(e, api) {
   api.set('power', powerStatusLiveHtml(e));
   api.set('input', Object.keys(e.inp).length ? countStr(e.inp) : dimSpan('空'));
   api.set('output', Object.keys(e.outp).length ? countStr(e.outp) : dimSpan('空'));
-  api.set('mod', ((e.modules['speed-module'] || 0) + (e.modules['productivity-module'] || 0)) ?
-    '速度×' + (e.modules['speed-module'] || 0) + ' 产能×' + (e.modules['productivity-module'] || 0) : dimSpan('无'));
+  api.set('mod', ((e.modules['speed-module'] || 0) + (e.modules['productivity-module'] || 0) + (e.modules['efficiency-module'] || 0)) ?
+    '速度×' + (e.modules['speed-module'] || 0) + ' 产能×' + (e.modules['productivity-module'] || 0) + ' 效率×' + (e.modules['efficiency-module'] || 0) : dimSpan('无'));
   const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
   api.toggle('#btn-takeout', n > 0, '取回全部输出 (' + n + ')');
   api.prog(e.recipe && e.crafting ? e.prog / RECIPES[e.recipe].time * 100 : 0);

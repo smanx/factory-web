@@ -479,7 +479,21 @@ function drawEnemies(ctx) {
     ctx.fillStyle = color;
     ctx.strokeStyle = '#7c1a12';
     ctx.lineWidth = 2;
-    if (en.type === 'worm') {
+    if (en.kind === 'spawner') {
+      // 巢穴：带呼吸的肉质圆形虫巢
+      const pulse = 1 + Math.sin(G.time * 2 + en.x) * 0.06;
+      ctx.fillStyle = '#5a3a8a';
+      ctx.beginPath(); ctx.arc(en.x, en.y, size * pulse, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#3a225a';
+      ctx.beginPath(); ctx.arc(en.x, en.y, size * 0.5, 0, 7); ctx.fill();
+      ctx.fillStyle = '#8a5ac0';
+      ctx.beginPath(); ctx.arc(en.x, en.y, size * 0.3, 0, 7); ctx.fill();
+      ctx.fillStyle = '#ffd0a0';
+      for (let i = 0; i < 4; i++) {
+        const a = i * Math.PI / 2 + G.time * 0.5;
+        ctx.beginPath(); ctx.arc(en.x + Math.cos(a) * size * 0.7, en.y + Math.sin(a) * size * 0.7, 2, 0, 7); ctx.fill();
+      }
+    } else if (en.type === 'worm') {
       ctx.beginPath();
       ctx.ellipse(en.x, en.y + bob, size, size * 0.5, 0, 0, 7);
       ctx.fill(); ctx.stroke();

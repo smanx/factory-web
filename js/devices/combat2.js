@@ -29,24 +29,76 @@ function pickEnemyType() {
 
 // ===== 覆盖/扩展敌人刷出与更新 =====
 // 原 military.js 的 spawnEnemies/updateEnemies 为简单版，这里增强为多类型。
+// ===== 敌人巢穴系统（对齐《异星工厂》Enemy spawner）=====
+// 巢穴（Spawner）是敌方生产点：敌人从巢穴附近生成，而非随机在玩家周围。
+// 巢穴有生命值，可被武器攻击摧毁；摧毁后该区域不再刷怪。
+// 巢穴作为 G.enemies 中的一个特殊项（kind='spawner'）复用敌人渲染/伤害管线。
+const SPAWNER_HP = 260;          // 虫巢生命值
+const SPAWNER_TARGET = 2;        // 同时存在的巢穴目标数（高级战斗后 3）
+const SPAWNER_RANGE = 14;        // 巢穴生成敌人的距离（格）
+
+function makeSpawner() {
+  const px = G.player.x / TILE, py = G.player.y / TILE;
+  // 在玩家远处（16~26 格）生成巢穴，尽量避开水面/建筑
+  for (let i = 0; i < 12; i++) {
+    const dist = 16 + Math.random() * 10;
+    const ang = Math.random() * Math.PI * 2;
+    const tx = Math.round(px + Math.cos(ang) * dist);
+    const ty = Math.round(py + Math.sin(ang) * dist);
+    if (!isWater(tx, ty) && !entAt(tx, ty)) {
+      return {
+        x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2,
+        hp: SPAWNER_HP, maxhp: SPAWNER_HP, dead: false, dir: 0,
+        type: 'spawner', kind: 'spawner', speed: 0, size: 13, dmg: 0,
+        color: '#5a3a8a', attackT: 0, fireT: 0
+      };
+    }
+  }
+  return null;
+}
+
 function spawnEnemies(dt) {
   if (!G.enemies) G.enemies = [];
   G.spawnT = (G.spawnT || 0) + dt;
   // 敌人数量越多刷新越慢；火箭时代可允许更多敌人同时在场
   const cap = G.techDone['advanced-combat'] ? 40 : 24;
   if (G.enemies.length >= cap) return;
+  // 维护巢穴数量：不足则在远处生成新巢穴
+  const spawners = G.enemies.filter(e => e.kind === 'spawner' && !e.dead);
+  const spawnerCap = G.techDone['advanced-combat'] ? 3 : SPAWNER_TARGET;
+  if (spawners.length < spawnerCap && G.spawnT > 3) {
+    const s = makeSpawner();
+    if (s) G.enemies.push(s);
+  }
   const interval = Math.max(3, 12 - Math.min(9, (G.enemies.length || 0) / 3));
   if (G.spawnT < interval) return;
   G.spawnT = 0;
   const px = G.player.x / TILE, py = G.player.y / TILE;
-  const dist = 16 + Math.random() * 9;
-  const ang = Math.random() * Math.PI * 2;
-  let tx = Math.round(px + Math.cos(ang) * dist);
-  let ty = Math.round(py + Math.sin(ang) * dist);
-  for (let i = 0; i < 8; i++) {
-    const cx2 = tx + Math.floor(Math.random() * 5) - 2;
-    const cy2 = ty + Math.floor(Math.random() * 5) - 2;
-    if (!isWater(cx2, cy2) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
+  let tx, ty;
+  // 优先从最近/随机的巢穴附近生成敌人
+  const src = spawners.length ? spawners[(Math.random() * spawners.length) | 0] : null;
+  if (src) {
+    const gx = Math.round(src.x / TILE), gy = Math.round(src.y / TILE);
+    const dist = 3 + Math.random() * 4;
+    const ang = Math.random() * Math.PI * 2;
+    tx = Math.round(gx + Math.cos(ang) * dist);
+    ty = Math.round(gy + Math.sin(ang) * dist);
+    for (let i = 0; i < 8; i++) {
+      const cx2 = tx + Math.floor(Math.random() * 5) - 2;
+      const cy2 = ty + Math.floor(Math.random() * 5) - 2;
+      if (!isWater(cx2, cy2) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
+    }
+  } else {
+    // 兜底：无巢穴时（巢穴尚未生成或全部被摧毁）在玩家远处生成
+    const dist = 16 + Math.random() * 9;
+    const ang = Math.random() * Math.PI * 2;
+    tx = Math.round(px + Math.cos(ang) * dist);
+    ty = Math.round(py + Math.sin(ang) * dist);
+    for (let i = 0; i < 8; i++) {
+      const cx2 = tx + Math.floor(Math.random() * 5) - 2;
+      const cy2 = ty + Math.floor(Math.random() * 5) - 2;
+      if (!isWater(cx2, cy2) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
+    }
   }
   const t = pickEnemyType();
   const def = ENEMY_TYPES[t];
@@ -64,6 +116,8 @@ function updateEnemies(dt) {
   const pR = 9;   // 玩家碰撞半径（格）
   for (const en of G.enemies) {
     if (en.dead) continue;
+    // 巢穴不移动、不攻击，仅作为生产点
+    if (en.kind === 'spawner') continue;
     en.attackT = (en.attackT || 0) - dt;
     en.fireT = (en.fireT || 0) - dt;
     // 兼容旧档敌人：补充默认字段

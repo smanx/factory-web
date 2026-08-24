@@ -115,6 +115,8 @@ function newGame() {
   G.logiRobots = [];
   G.logiNet = null;
   G.logiNetT = 0;
+  G.railTiles = new Set();
+  G.trains = [];
   G.playerHP = 100; G.playerHPmax = 100;
   G.weapon = null;
   G.gameWon = false;
@@ -249,6 +251,7 @@ function applySave(d) {
   G.logiRobots = [];
   G.logiNet = null;
   G.logiNetT = 0;
+  if (typeof rebuildTrains === 'function') rebuildTrains();
   const [sx, sy] = findSpawn();
   G.spawn = { x: sx, y: sy };
   G.techDone = d.techDone || {};
@@ -1213,6 +1216,7 @@ function loop(ts) {
       G.powerT += dt;
       if (G.powerT >= 0.25) { G.powerT = 0; updatePower(); }
       updateLogistics(dt);
+      updateTrains(dt);
       updateCamera(dt);
     }
 

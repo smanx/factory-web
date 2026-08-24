@@ -44,7 +44,7 @@ const PUMP_RATE = 6;             // 抽水机每秒产水
 const ENGINE_STEAM_RATE = 0.6;   // 蒸汽机满功率耗汽（单位/秒）：1 台锅炉可带 2 台蒸汽机
 const ENGINE_STEAM_CAP = 10;     // 蒸汽机内部储汽上限
 
-const FLUIDS = ['water', 'steam', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas'];
+const FLUIDS = ['water', 'steam', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas', 'lubricant'];
 const ORE_OIL = 5;                       // 原油矿床的 oreType 索引（不进手挖矿表）
 function oreItemId(ti) { return ti === ORE_OIL ? 'crude-oil' : ORES[ti]; }
 const PIPE_CAP = 40;
@@ -154,6 +154,7 @@ const ITEMS = {
   // ===== 模块系统 =====
   'speed-module':    { name: '速度模块', color: '#4aa0d0', desc: '装入组装机/电炉/炼油厂等，提高生产速度（+40%），增加耗电' },
   'productivity-module': { name: '产能模块', color: '#57b95c', desc: '装入组装机/电炉等，生产时累积额外产出（每 30 个 +1 免费产出），降低速度并增加耗电' },
+  'efficiency-module': { name: '效率模块', color: '#8a7ae8', desc: '装入组装机/电炉等，大幅降低生产耗电（每级 -30% 用电，小幅度降速），节能环保' },
   // ===== 火箭发射（终局）=====
   'advanced-circuit':{ name: '高级电路板', color: '#d0608a', desc: '红板，中后期高级电子元件，用于产能模块与电引擎' },
   'engine-unit':     { name: '引擎单元', color: '#8a6a4a', desc: '基础机械动力单元' },
@@ -167,6 +168,14 @@ const ITEMS = {
   'radar':           { name: '雷达', color: '#5a8a8a', desc: '周期性扫描周围区域，点亮小地图/标记新探索区（3×3，吃电力）' },
   'explosive':       { name: '爆炸物', color: '#d05a2a', desc: '由煤和石油气制造的高能化合物，用于火箭弹' },
   'battery':         { name: '电池', color: '#d0c04a', desc: '储能元件，用于激光炮塔与卫星' },
+  // ===== 铁路系统（火车） =====
+  'rail':              { name: '铁轨', color: '#6a6a70', desc: '铺设铁轨形成铁路网，火车沿轨道行驶。与相邻铁轨自动连通，可拐弯（1×1）' },
+  'locomotive':        { name: '火车头', color: '#d04a3a', desc: '烧煤驱动的机车，在铁轨上行驶。煤装入后自动前进；可挂接货运车厢组成列车' },
+  'cargo-wagon':       { name: '货运车厢', color: '#8a6a4a', desc: '货车厢，挂在火车头后沿铁轨随行，最多存放 10 种物品各 100 个。车站可用机械臂装卸' },
+  'train-stop':        { name: '车站', color: '#5a8ac0', desc: '火车停靠站：列车行驶到车站所在铁轨即停车，便于机械臂/传送带装卸货物' },
+  'rail-signal':       { name: '铁路信号灯', color: '#e04a4a', desc: '放在铁轨旁，指示前方区段是否被列车占用，用于多列火车防追尾（1×1）' },
+  // ===== 润滑油 =====
+  'lubricant':         { name: '润滑油', color: '#d8c020', mark: 'Lub', desc: '流体，由化工厂用重油加工得到，用于制造电动引擎等高级部件' },
   // ===== 物流机器人网络 =====
   'roboport':          { name: '机器人港', color: '#3a8a8a', desc: '物流机器人的基地与充电站（4×4，吃电力）。把物流机器人放入机器人港后自动调度，机器人往返供应箱与需求箱搬运货物，电量低时回到机器人港充电' },
   'logistic-robot':    { name: '物流机器人', color: '#4aa0d0', desc: '飞行机器人，放入机器人港后自动在供应箱/需求箱之间搬运物资，消耗电量，需回港充电' },
@@ -237,6 +246,13 @@ const RECIPES = {
   'plastic-bar':       { time: 2,   inp: { 'petroleum-gas': 1, 'coal': 1 },                       out: { 'plastic-bar': 1 } },
   'crack-light':       { time: 3,   inp: { 'heavy-oil': 3 },                                      out: { 'light-oil': 2 } },
   'crack-gas':         { time: 3,   inp: { 'light-oil': 3 },                                      out: { 'petroleum-gas': 2 } },
+  'lubricant':         { time: 2,   inp: { 'heavy-oil': 2 },                                      out: { 'lubricant': 1 } },
+  // ===== 铁路系统（火车） =====
+  'rail':              { time: 0.5, inp: { 'iron-plate': 1, 'stone': 1 },                          out: { 'rail': 2 } },
+  'locomotive':        { time: 4,   inp: { 'iron-plate': 16, 'steel-plate': 6, 'iron-gear': 8, 'green-circuit': 4 }, out: { 'locomotive': 1 } },
+  'cargo-wagon':       { time: 3,   inp: { 'iron-plate': 12, 'steel-plate': 6, 'iron-gear': 6 },  out: { 'cargo-wagon': 1 } },
+  'train-stop':        { time: 2,   inp: { 'iron-plate': 8, 'green-circuit': 3, 'steel-plate': 2 }, out: { 'train-stop': 1 } },
+  'rail-signal':       { time: 1,   inp: { 'iron-plate': 4, 'green-circuit': 1 },                 out: { 'rail-signal': 1 } },
   // ===== 玩家武器（战斗体系扩充） =====
   'pistol':            { time: 1,   inp: { 'iron-plate': 4, 'iron-gear': 1 },                     out: { 'pistol': 1 } },
   'submachine-gun':    { time: 2,   inp: { 'pistol': 1, 'steel-plate': 4, 'iron-gear': 2 },        out: { 'submachine-gun': 1 } },
@@ -251,10 +267,11 @@ const RECIPES = {
   // ===== 模块系统 =====
   'speed-module':      { time: 2,   inp: { 'green-circuit': 4, 'advanced-circuit': 2 },            out: { 'speed-module': 1 } },
   'productivity-module': { time: 2, inp: { 'advanced-circuit': 2, 'green-circuit': 2, 'iron-gear': 1 }, out: { 'productivity-module': 1 } },
+  'efficiency-module': { time: 2,   inp: { 'green-circuit': 3, 'advanced-circuit': 1, 'plastic-bar': 1 }, out: { 'efficiency-module': 1 } },
   // ===== 火箭链路中间件 =====
   'advanced-circuit':  { time: 6,   inp: { 'green-circuit': 2, 'plastic-bar': 2, 'copper-cable': 4 }, out: { 'advanced-circuit': 1 } },
   'engine-unit':       { time: 10,  inp: { 'steel-plate': 1, 'iron-gear': 1, 'pipe': 2 },           out: { 'engine-unit': 1 } },
-  'electric-engine':   { time: 10,  inp: { 'engine-unit': 1, 'green-circuit': 2, 'copper-plate': 2 }, out: { 'electric-engine': 1 } },
+  'electric-engine':   { time: 10,  inp: { 'engine-unit': 1, 'green-circuit': 2, 'lubricant': 2 }, out: { 'electric-engine': 1 } },
   'processing-unit':   { time: 10,  inp: { 'advanced-circuit': 2, 'green-circuit': 20, 'copper-cable': 4 }, out: { 'processing-unit': 1 } },
   'low-density-structure': { time: 20, inp: { 'copper-plate': 20, 'plastic-bar': 5, 'steel-plate': 2 }, out: { 'low-density-structure': 1 } },
   'rocket-fuel':       { time: 8,   inp: { 'petroleum-gas': 10, 'electric-engine': 1 },             out: { 'rocket-fuel': 1 } },
@@ -275,7 +292,7 @@ const RECIPES = {
   'logistic-chest-requester': { time: 1.5, inp: { 'iron-plate': 6, 'green-circuit': 3 },                out: { 'logistic-chest-requester': 1 } }
 };
 
-const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas'];
+const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant'];
 function isChemRecipe(id) { return CHEM_RECIPES.indexOf(id) >= 0; }
 function chemMult() { return (G.techDone.plastic ? 1.5 : 1) * ((G.dbg && G.dbg.asmMult) || 1); }
 
@@ -358,6 +375,11 @@ const BUILD_DEFS = {
   'chemical-plant':     { w: 3, h: 3, solid: true },
   'storage-tank':       { w: 3, h: 3, solid: true },
   'roboport':           { w: 4, h: 4, solid: true },
+  'rail':               { w: 1, h: 1, solid: false },
+  'locomotive':         { w: 1, h: 1, solid: true },
+  'cargo-wagon':        { w: 1, h: 1, solid: true },
+  'train-stop':         { w: 1, h: 1, solid: true },
+  'rail-signal':        { w: 1, h: 1, solid: true },
   'logistic-chest-passive': { w: 1, h: 1, solid: true },
   'logistic-chest-active':  { w: 1, h: 1, solid: true },
   'logistic-chest-storage': { w: 1, h: 1, solid: true },
@@ -377,11 +399,16 @@ const TECH_REQ = {
   'rocket-fuel': 'rocket-science',
   'speed-module': 'modules',
   'productivity-module': 'modules',
+  'efficiency-module': 'modules',
   'advanced-circuit': 'electronics',
   'processing-unit': 'electronics',
   'electric-engine': 'electronics',
   'radar': 'radar'
 };
+// ===== 铁路科技门控 =====
+const RAIL_ITEMS = ['rail', 'locomotive', 'cargo-wagon', 'train-stop'];
+for (const id of RAIL_ITEMS) if (!TECH_REQ[id]) TECH_REQ[id] = 'railways';
+if (!TECH_REQ['rail-signal']) TECH_REQ['rail-signal'] = 'rail-signals';
 // ===== 物流机器人网络 =====
 const LOGISTIC_ITEMS = ['roboport', 'logistic-robot', 'logistic-chest-passive', 'logistic-chest-active', 'logistic-chest-storage', 'logistic-chest-requester'];
 // 物流箱科技门控：所有物流设备需先研究「物流网络」
@@ -430,6 +457,8 @@ const TECHS = {
   logistics2: { name: '物流 II', cost: { 'green-science': 25 }, desc: '传送带速度额外 ×1.2（与物流学叠加）' },
   electric:   { name: '电力工程', cost: { 'green-science': 15 }, desc: '电炉 / 电采矿机速度 ×1.2' },
   oil:        { name: '石油冶金', cost: { 'green-science': 30 }, desc: '炼油厂 / 抽油机速度 ×1.5' },
+  railways:    { name: '铁路技术', cost: { 'green-science': 30 }, desc: '解锁铁轨、火车头、货运车厢与车站，构建铁路物流' },
+  'rail-signals': { name: '铁路信号', cost: { 'blue-science': 30 }, desc: '解锁铁路信号灯，允许多列火车安全同网行驶' },
   plastic:    { name: '塑料合成', cost: { 'green-science': 20 }, desc: '化工厂生产塑料耗时缩短 ✓（绿色科研的核心支付项）' },
   automation2:{ name: '自动化 II', cost: { 'blue-science': 40 }, desc: '组装机 II 速度额外 ×1.2' },
   express:    { name: '极速物流', cost: { 'military-science': 40 }, desc: '解锁极速传送带/地下带/分流器，物流终极档' },
