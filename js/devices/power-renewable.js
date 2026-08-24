@@ -15,6 +15,8 @@ class SolarPanel extends Entity {
   constructor(type, x, y) { super('solar-panel', x, y); this.powerOut = 0; }
   update(dt) {
     this.powerOut = SOLAR_POWER * solarFactor();
+    // 电力增量注册表同步：powerOut 变化后重新注册，确保被 updatePower 扫描到
+    if (typeof regPowerEnt === 'function') regPowerEnt(this);
   }
 }
 
@@ -42,6 +44,8 @@ class Accumulator extends Entity {
     if (G.power.prod < G.power.demand && this.stored > 0) {
       this.powerOut = Math.min(ACCUM_CHARGE_RATE, this.stored * 20);
     }
+    // 电力增量注册表同步：powerOut 变化后重新注册，确保被 updatePower 扫描到
+    if (typeof regPowerEnt === 'function') regPowerEnt(this);
   }
   serialize() { const s = super.serialize(); s.stored = this.stored; return s; }
   static restore(s) { const a = super.restore(s); a.stored = s.stored || 0; return a; }
