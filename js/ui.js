@@ -677,7 +677,7 @@ async function saveListHtml() {
     const tag = s.type === 'auto' ? '<span class="save-tag auto">自动</span>' : '<span class="save-tag user">用户</span>';
     h += '<div class="save-item">';
     h += '  <div class="save-item-info">' + tag + ' <span class="save-name">' + escHtml(s.name || '存档') + '</span>';
-    h += '    <div class="save-time">' + time + '</div>';
+    h += '    <div class="save-time">' + time + ' · ' + escHtml(s.sizeText || '') + '</div>';
     h += '  </div>';
     h += '  <div class="save-item-ops">';
     h += '    <button data-action="load-save" data-id="' + s.id + '" title="读取该存档">📂 读取</button>';
