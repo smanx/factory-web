@@ -95,15 +95,20 @@ function assembler3PanelHtml(e) {
   h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
   h += barHtml(0);
   h += '<div class="status"></div>';
-  h += '<div class="sec">选择配方</div><div class="recgrid">';
+  h += '<div class="sec">选择配方</div>';
+  h += '<input id="asm-recipe-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off" value="">';
+  h += '<div class="recgrid">';
   for (const rid of Object.keys(RECIPES).filter(r => !isChemRecipe(r))) {
     const outId = Object.keys(RECIPES[rid].out)[0];
     const selCls = e.recipe === rid ? 'sel' : '';
-    h += '<button class="rcbtn ' + selCls + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-tip="' +
+    const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
+      Object.keys(RECIPES[rid].inp).map(k => ITEMS[k].name).join(' ')).toLowerCase();
+    h += '<button class="rcbtn ' + selCls + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-rsearch="' + searchKey.replace(/"/g, '') + '" data-tip="' +
       ITEMS[outId].name + '|' + RECIPES[rid].out[outId] + '个/次，耗时' + RECIPES[rid].time + '秒">' +
       '<img src="' + iconDataURL(outId) + '">' + ITEMS[outId].name + '</button>';
   }
   h += '</div>';
+  h += '<div class="dim" id="asm-recipe-empty" style="display:none"></div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
   // 组装机 III 速度为 I 的 2.5 倍（官方 crafting-speed：III=1.25）
   h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? asmMult() * 1.25 : 1);
