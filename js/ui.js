@@ -978,6 +978,19 @@ function buildDebug() {
 
   let drag = null;
   let suppressClick = false;
+  // 展开/收起 Debug 面板（鼠标点击与触屏轻点共用）
+  function togglePanel() {
+    if (panel.style.display === 'block') { panel.style.display = 'none'; return; }
+    const r = btn.getBoundingClientRect();
+    let x = r.right + 8, y = r.top;
+    if (x + 260 > innerWidth) x = Math.max(8, r.left - 262);
+    y = Math.max(8, Math.min(innerHeight - 330, y));
+    panel.style.left = x + 'px';
+    panel.style.top = y + 'px';
+    panel.style.right = 'auto';
+    panel.style.bottom = 'auto';
+    panel.style.display = 'block';
+  }
   // 拖拽 Debug 按钮：统一处理鼠标 / 触屏，使触屏模式下也能拖动按钮
   function moveDebugBtn(cx, cy) {
     if (!drag) return;
@@ -999,7 +1012,9 @@ function buildDebug() {
   });
   window.addEventListener('mousemove', ev => moveDebugBtn(ev.clientX, ev.clientY));
   window.addEventListener('mouseup', endDebugDrag);
-  // 触屏拖拽：使用与摇杆一致的 touch 事件处理方式
+  // 触屏拖拽：使用与摇杆一致的 touch 事件处理方式。
+  // 注意：touchstart 里 preventDefault 会抑制系统生成的 click 事件，
+  // 因此触屏的“轻点展开”需在 touchend 里根据是否拖动过自行触发。
   btn.addEventListener('touchstart', ev => {
     const t = ev.changedTouches[0];
     if (!t) return;
@@ -1014,20 +1029,16 @@ function buildDebug() {
     }
     ev.preventDefault();
   }, { passive: false });
-  window.addEventListener('touchend', endDebugDrag);
+  window.addEventListener('touchend', ev => {
+    const wasMoved = drag && drag.moved;
+    endDebugDrag();
+    // 轻点（未拖动）时展开/收起面板，拖动后不触发
+    if (!wasMoved && !suppressClick) togglePanel();
+  });
   window.addEventListener('touchcancel', endDebugDrag);
   btn.addEventListener('click', () => {
     if (suppressClick) { suppressClick = false; return; }
-    if (panel.style.display === 'block') { panel.style.display = 'none'; return; }
-    const r = btn.getBoundingClientRect();
-    let x = r.right + 8, y = r.top;
-    if (x + 260 > innerWidth) x = Math.max(8, r.left - 262);
-    y = Math.max(8, Math.min(innerHeight - 330, y));
-    panel.style.left = x + 'px';
-    panel.style.top = y + 'px';
-    panel.style.right = 'auto';
-    panel.style.bottom = 'auto';
-    panel.style.display = 'block';
+    togglePanel();
   });
 }
 
