@@ -1,7 +1,7 @@
 'use strict';
 
 // ===== 极速物流三件套：极速传送带 / 极速地下带 / 极速分流器 =====
-// 速度约为普通带的 3.75 倍（EXPRESS_BELT_MULT），为物流终极档。
+// 速度约为普通带的 3 倍（EXPRESS_BELT_MULT），为物流终极档（对齐《异星工厂》）。
 
 // ===== 极速传送带 =====
 class ExpressBelt extends Belt {

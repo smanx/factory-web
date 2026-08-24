@@ -5,10 +5,10 @@ const CHUNK = 32;
 const DX = [1, 0, -1, 0];
 const DY = [0, 1, 0, -1];
 
-const BELT_SPEED = 1.25;
+const BELT_SPEED = 1.875;   // 基础传送带速度（格/秒），对齐《异星工厂》1.875 tiles/s
 const BELT_SPACING = 0.25;
-const FAST_BELT_MULT = 1.9;
-const EXPRESS_BELT_MULT = 3.75;
+const FAST_BELT_MULT = 2;    // 快速传送带 = 2× 基础（对齐《异星工厂》3.75 tiles/s）
+const EXPRESS_BELT_MULT = 3; // 极速传送带 = 3× 基础（对齐《异星工厂》5.625 tiles/s）
 const COAL_ENERGY = 12;
 const SELF_FUEL_MAX = 10;
 const UNDERGROUND_MAX = 6;
@@ -19,7 +19,7 @@ const DRILL_TIME = 1.0;
 const HAND_MINE_TIME = 0.45;
 const REACH_TILES = 5.5;
 const REACH_PX = REACH_TILES * TILE;
-const LAB_TIME = 4;
+const LAB_TIME = 60; // 研究中心每瓶科学包耗时（秒），对齐《异星工厂》每研究单位 60 秒基准
 // 功率数值对齐《异星工厂》(Factorio) 官方 Wiki（单位 kW）
 const POWER_PER_ENGINE = 900;   // 蒸汽机满功率输出
 const POWER_USE = {
@@ -101,9 +101,9 @@ const ITEMS = {
   'electric-drill':    { name: '电采矿机', color: '#4f7dd3', desc: '免燃料、吃电力开采，速度快于热能采矿机（3×3）' },
   'electric-furnace':  { name: '电炉',   color: '#3fa87e', desc: '免燃料、吃电力冶炼，速度更高，可出钢板（3×3）' },
   'assembling-machine-mk2': { name: '组装机 II', color: '#a05fd0', desc: '吃电力、速度更高的高级组装机（3×3）' },
-  'fast-transport-belt': { name: '快速传送带', color: '#f2c14e', desc: '速度约为普通带的 1.9 倍' },
+  'fast-transport-belt': { name: '快速传送带', color: '#f2c14e', desc: '速度约为普通带的 2 倍（对齐《异星工厂》）' },
   'fast-underground-belt': { name: '快速地下传送带', color: '#b98ee0', desc: '同向配对距离最远 14 格，速度是快带标准' },
-  'express-transport-belt': { name: '极速传送带', color: '#e05a4e', desc: '速度约为普通带的 3.75 倍，物流终极档' },
+  'express-transport-belt': { name: '极速传送带', color: '#e05a4e', desc: '速度约为普通带的 3 倍，物流终极档（对齐《异星工厂》）' },
   'express-underground-belt': { name: '极速地下传送带', color: '#e07a6a', desc: '同向配对距离最远 20 格，速度是极速带标准' },
   'express-splitter': { name: '极速分流器', color: '#e06048', desc: '同分流器，但吞吐与极速带一致，可输送最快物流' },
   'priority-splitter': { name: '优先级分流器', color: '#e07b2e', desc: '同分流器，但可通过面板指定优先把货推向一侧；另一侧仅作为溢出通道' },
