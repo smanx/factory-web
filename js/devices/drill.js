@@ -216,7 +216,7 @@ function drillPanelHtml(e) {
   const eDrill = e instanceof ElectricDrill;
   let h = '';
   if (eDrill) {
-    h += row('电力', G.power.sat > 0 ? '功率 ' + Math.round(G.power.sat * 100) + '%' : '<span class="dim">缺电</span>');
+    h += row('电力', powerStatusLiveHtml(e), 'power');
   } else {
     h += row('燃料', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : '<span class="dim">无</span>', 'fuel');
     if (invCount('coal') > 0)
@@ -231,6 +231,7 @@ function drillPanelHtml(e) {
 }
 function drillPanelLive(e, api) {
   const eDrill = e instanceof ElectricDrill;
+  if (eDrill) api.set('power', powerStatusLiveHtml(e));
   if (!eDrill) api.set('fuel', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : dimSpan('无'));
   api.set('buffer', e.buf > 0 && e.bufItem ? chip(e.bufItem, e.buf) : dimSpan('空'));
   api.toggle('#btn-drill-takeout', e.buf > 0, '取回缓存 (' + e.buf + ')');
@@ -241,7 +242,13 @@ function drillPanelLive(e, api) {
   else api.status('开采中：产出朝' + ['东', '南', '西', '北'][e.dir], 'ok');
 }
 function drillTip(e) {
-  return e.status || ('开采中，产出朝' + ['东', '南', '西', '北'][e.dir]);
+  const base = e.status || ('开采中，产出朝' + ['东', '南', '西', '北'][e.dir]);
+  // 电采矿机/抽油机：电量不足（正在耗电且 sat<1）时在提示中注明
+  if (e instanceof ElectricDrill) {
+    const s = powerStatusOf(e);
+    if (s.consuming && s.sat < 1) return base + '；' + (s.sat > 0 ? '电量不足' + Math.round(s.sat * 100) + '%' : '缺电停摆');
+  }
+  return base;
 }
 
 // ===== 注册（渲染/面板/提示对三类采矿机统一注册）=====
@@ -250,8 +257,13 @@ DEVICE_RENDER['burner-drill'] = drawDrill;
 DEVICE_RENDER['electric-drill'] = drawDrill;
 DEVICE_RENDER['pumpjack'] = drawDrill;
 DEVICE_STATUS['burner-drill'] = e => e.working ? 'g' : 'r';
-DEVICE_STATUS['electric-drill'] = e => e.working ? 'g' : 'r';
-DEVICE_STATUS['pumpjack'] = e => e.working ? 'g' : 'r';
+// 电采矿机/抽油机：正在耗电且电量不足（sat<1）时亮黄灯提示；未耗电时按是否工作显红/绿
+function electricDrillStatus(e) {
+  const s = powerStatusOf(e);
+  return s.consuming ? s.color : (e.working ? 'g' : 'r');
+}
+DEVICE_STATUS['electric-drill'] = electricDrillStatus;
+DEVICE_STATUS['pumpjack'] = electricDrillStatus;
 const drillPanel = { html: drillPanelHtml, live: drillPanelLive, tip: drillTip };
 DEVICE_PANEL['burner-drill'] = drillPanel;
 DEVICE_PANEL['electric-drill'] = drillPanel;
