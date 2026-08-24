@@ -128,7 +128,27 @@ class PrioritySplitter extends Splitter {
 }
 
 // ===== 渲染 =====
-// 检测分流器每条 lane 的输入/输出是否接有传送带（或地下带出口）。
+// 判断某格实体是否可作为“入口连接”：普通传送带（朝向一致）、地下带出口（朝向一致），
+// 或另一个分流器（朝向一致，视为连接的传送带）。
+function isInletConnected(ent, dir) {
+  if (!ent) return false;
+  if (ent instanceof Belt && !(ent instanceof Splitter) && ent.dir === dir) return true;
+  if (ent instanceof Underground && ent.dir === dir && ent.findBackMate()) return true;
+  // 上游分流器的出口朝向我们（dir 一致）时，视为连接的传送带，一样处理。
+  if (ent instanceof Splitter && ent.dir === dir) return true;
+  return false;
+}
+// 判断某格实体是否可作为“出口连接”：普通传送带（朝向一致）、地下带出口（朝向一致），
+// 或另一个分流器（朝向一致，视为连接的传送带）。
+function isOutletConnected(ent, dir) {
+  if (!ent) return false;
+  if (ent instanceof Belt && !(ent instanceof Splitter) && ent.dir === dir) return true;
+  if (ent instanceof Underground && ent.dir === dir && ent.findBackMate()) return true;
+  // 下游分流器的入口朝向我们（dir 一致）时，视为连接的传送带，一样处理。
+  if (ent instanceof Splitter && ent.dir === dir) return true;
+  return false;
+}
+// 检测分流器每条 lane 的输入/输出是否接有传送带（或地下带出口 / 相连的分流器）。
 // 返回 { inp:[bool,bool], out:[bool,bool] }，inp[l]/out[l] 表示 lane l 是否接了带。
 // ox/oy 为实体左上角绘制坐标（正常= e.x/e.y；蓝图/鬼影=光标格），用于在预览时也能正确计算。
 function splitterLinks(e, ox, oy) {
@@ -139,14 +159,10 @@ function splitterLinks(e, ox, oy) {
     // 否则只退半格会落在分流器自身格子上（导致入口连接永远判为 false）。
     const inTx = Math.floor((lx - DX[e.dir] * TILE) / TILE);
     const inTy = Math.floor((ly - DY[e.dir] * TILE) / TILE);
-    const inEnt = entAt(inTx, inTy);
-    if (inEnt instanceof Belt && !(inEnt instanceof Splitter) && inEnt.dir === e.dir) inp[l] = true;
-    else if (inEnt instanceof Underground && inEnt.dir === e.dir && inEnt.findBackMate()) inp[l] = true;
+    inp[l] = isInletConnected(entAt(inTx, inTy), e.dir);
     const outTx = Math.floor((lx + DX[e.dir] * TILE) / TILE);
     const outTy = Math.floor((ly + DY[e.dir] * TILE) / TILE);
-    const outEnt = entAt(outTx, outTy);
-    if (outEnt instanceof Belt && !(outEnt instanceof Splitter) && outEnt.dir === e.dir) out[l] = true;
-    else if (outEnt instanceof Underground && outEnt.dir === e.dir && outEnt.findBackMate()) out[l] = true;
+    out[l] = isOutletConnected(entAt(outTx, outTy), e.dir);
   }
   return { inp, out };
 }
