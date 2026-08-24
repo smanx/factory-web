@@ -195,6 +195,33 @@ function applySave(d) {
   uiDirty = true;
 }
 
+// 是否处于《异星工厂》的超级强制建造（Ctrl+Shift+左键）：建造时覆盖占用格，原设备被拆除、新设备落地
+function superForcedBuild() {
+  return !!(G.keys['control'] && G.keys['shift']);
+}
+
+// 超级强制建造：跳过实体碰撞，先拆除占用格上的所有原设备（返还物资），再放置新设备
+function forcedPlaceAt(type, tx, ty, infinite) {
+  const chk = canPlaceAt(type, tx, ty, G.ghostDir, { skipEnt: true });
+  if (!chk.ok || !chk.ents || chk.ents.length === 0) return false; // 非实体冲突（压水/无矿等）或无需拆除
+  // 拆除占用格上的原设备（不消耗背包，返还其物资）
+  for (const e of chk.ents) {
+    for (const [id, n] of e.contents()) invAdd(id, n);
+    removeEnt(e);
+    if (G.panelEnt === e) closePanel();
+  }
+  // 放置新设备
+  const cls = ENT_CLASSES[type];
+  const e = new cls(type, tx, ty);
+  e.dir = G.ghostDir;
+  e.applyDir();
+  addEnt(e);
+  if (!infinite) invTake(type, 1);
+  uiDirty = true;
+  refreshHotbar();
+  return true;
+}
+
 function tryPlaceAt(tx, ty) {
   const type = selItem();
   if (!type) return;
@@ -209,6 +236,10 @@ function tryPlaceAt(tx, ty) {
   }
   const chk = canPlaceAt(type, tx, ty, G.ghostDir);
   if (!chk.ok) {
+    // 《异星工厂》超级强制建造（Ctrl+Shift+左键）：跳过实体碰撞，原设备拆除、新设备直接落地
+    if (superForcedBuild()) {
+      if (forcedPlaceAt(type, tx, ty, infinite)) return;
+    }
     // 若障碍本身就是同向传送带：直接铺设普通传送带衔接即可，无需地下带跨越
     if (tryPlaceOntoSameDirBelt(type, tx, ty)) { uiDirty = true; return; }
     // 拖动连续铺设传送带遇障碍：自动改用地下传送带跨越障碍继续铺
@@ -838,7 +869,8 @@ function bindInput() {
     }
     const hovered = G.cursorTile ? entAt(G.cursorTile.tx, G.cursorTile.ty) : null;
     if (ev.button === 0) {
-      if (ev.shiftKey && hovered) { pasteSettings(hovered); return; }
+      // 《异星工厂》超级强制建造用 Ctrl+Shift+左键，不与 Shift+左键“粘贴设置”冲突
+      if (ev.shiftKey && !ev.ctrlKey && hovered) { pasteSettings(hovered); return; }
       G.mouseDown = true;
       lastPlaceKey = '';
       handleLeftDown();
@@ -981,7 +1013,7 @@ function boot() {
     }
   }
   if (!G.rafStarted) { G.rafStarted = true; requestAnimationFrame(loop); }
-  toast('WASD 移动 · 左键挖矿/放建筑 · 右键拆除 · R 旋转 · F 拿取 · Q 取消/拾取朝向 · 中键/E 面板 · T 科技 · K/L 存读档');
+  toast('WASD 移动 · 左键挖矿/放建筑 · 右键拆除 · R 旋转 · F 拿取 · Q 取消/拾取朝向 · 中键/E 面板 · T 科技 · K/L 存读档 · Ctrl+Shift+左键强制覆盖建造');
 }
 window.addEventListener('load', boot);
 if (document.readyState === 'complete') setTimeout(boot, 0);
