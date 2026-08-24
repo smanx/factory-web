@@ -137,11 +137,13 @@ function isLake(tx, ty) {
   const gx = Math.floor(tx / cell), gy = Math.floor(ty / cell);
   for (let ogx = gx - 1; ogx <= gx + 1; ogx++) {
     for (let ogy = gy - 1; ogy <= gy + 1; ogy++) {
+      // 湖泊密度：阈值从 0.2 降到 0.04，使全图水体数量大幅减少
       const h = hash2(ogx * 12.9898, ogy * 78.233);
-      if (h < 0.2) {
+      if (h < 0.04) {
         const px = (ogx + (hash2(ogx * 3.1, ogy * 7.7) * 0.7 + 0.15)) * cell;
         const py = (ogy + (hash2(ogx * 5.3, ogy * 1.9) * 0.7 + 0.15)) * cell;
-        const r = 3.0 + hash2(ogx * 8.8, ogy * 4.4) * 4.5;
+        // 单个水体面积适当增大：半径从 3~7.5 提升到 5~11
+        const r = 5.0 + hash2(ogx * 8.8, ogy * 4.4) * 6.0;
         const d = Math.hypot(tx - px, ty - py);
         const wob = (hash2(tx * 7.3, ty * 5.1) - 0.5) * 1.6;
         if (d < r + wob) return true;
@@ -204,6 +206,17 @@ function genChunk(cx, cy) {
     for (let lx = 0; lx < CHUNK; lx++)
       terrain[ly * CHUNK + lx] = isLake(ox + lx, oy + ly) ? T_WATER : T_GRASS;
 
+  // 出生点附近水体保证：在原点区块固定生成一片水体，
+  // 让玩家开局即可在出生点附近取水（抽水机），同时全图水体依旧稀少。
+  if (cx === 0 && cy === 0) {
+    const lc = 14, lr = 5;
+    for (let ly = 0; ly < CHUNK; ly++)
+      for (let lx = 0; lx < CHUNK; lx++) {
+        const d = Math.hypot(lx - lc, ly - lc);
+        const wob = (hash2(ox + lx * 7.3, oy + ly * 5.1) - 0.5) * 2.0;
+        if (d < lr + wob) terrain[ly * CHUNK + lx] = T_WATER;
+      }
+  }
   const cxn = cx * CHUNK + CHUNK / 2, cyn = cy * CHUNK + CHUNK / 2;
   const dist = Math.hypot(cxn, cyn);
   const scale = 1 + dist / 90;
@@ -211,7 +224,7 @@ function genChunk(cx, cy) {
 
   for (let n = 0; n < count; n++) {
     const ti = pickOreType(rng, dist);
-    const size = Math.max(3, Math.round((6 + rng() * 7) * Math.min(2.2, scale)));
+    const size = Math.max(5, Math.round((10 + rng() * 10) * Math.min(2.6, scale)));
     const amt = (500 + rng() * 900) * scale;
     const sx = 1 + Math.floor(rng() * (CHUNK - 2));
     const sy = 1 + Math.floor(rng() * (CHUNK - 2));
