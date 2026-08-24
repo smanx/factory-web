@@ -83,6 +83,8 @@ function refreshHotbar() {
 }
 
 function selectSlot(i) {
+  // 选择快捷栏物品建造时退出触屏拆除模式，避免左键行为冲突
+  if (G.deconstructMode) toggleDeconstructMode(false);
   G.sel = (G.sel === i ? -1 : i);
   G.quickSel = null;
   refreshHotbar();
@@ -947,6 +949,24 @@ function refreshDebugPanel() {
 // ===== 虚拟摇杆（手机/触屏移动） =====
 // 摇杆状态存于 G.joystick；仅在开启"虚拟摇杆"设置且设备为触屏时显示。
 // 拖拽摇杆把位移量归一化为 [-1,1] 的 dx/dy，供 updatePlayer 叠加到移动方向。
+// ===== 拆除模式按钮（触屏专用，替代手机端无法使用的右键） =====
+// 触屏设备才显示该按钮；点击进入/退出拆除模式，进入后点触建筑即可拆除。
+function updateDeconstructBtn() {
+  const el = document.getElementById('deconstruct-btn');
+  if (!el) return;
+  const touchCapable = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  if (!touchCapable) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  el.classList.toggle('active', !!G.deconstructMode);
+}
+
+function initDeconstructBtn() {
+  const el = document.getElementById('deconstruct-btn');
+  if (!el) return;
+  el.addEventListener('click', () => toggleDeconstructMode());
+  updateDeconstructBtn();
+}
+
 function updateJoystickVisibility() {
   const el = document.getElementById('joystick');
   if (!el) return;
