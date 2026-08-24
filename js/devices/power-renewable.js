@@ -12,7 +12,7 @@ function solarFactor() {
   return (0.75 - ph) / 0.25;                          // 正午→黄昏 下降
 }
 class SolarPanel extends Entity {
-  constructor(type, x, y) { super('solar-panel', x, y); }
+  constructor(type, x, y) { super('solar-panel', x, y); this.powerOut = 0; }
   update(dt) {
     this.powerOut = SOLAR_POWER * solarFactor();
   }
@@ -26,6 +26,7 @@ class Accumulator extends Entity {
   constructor(type, x, y) {
     super('accumulator', x, y);
     this.stored = 0;               // 当前储电量
+    this.powerOut = 0;             // 电网注入功率（放电时 >0），注册用
   }
   update(dt) {
     // 电网盈余时充电；电网缺口时放电（受速率限制）

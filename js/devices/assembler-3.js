@@ -12,7 +12,7 @@ class Assembler3 extends Assembler {
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
       // 速度：组装机 III 基础 1.25，远高于 I/II；叠加科技与电力饱和
-      this.prog += dt * asmMult() * 1.25 * (G.power.sat < 1 ? G.power.sat : 1);
+      this.prog += dt * asmMult() * 1.25 * powerFactor();
       this.spin += dt * 4;
       if (this.prog >= rec.time) {
         for (const k in rec.out) this.outp[k] = (this.outp[k] || 0) + rec.out[k];

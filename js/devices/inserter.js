@@ -185,6 +185,12 @@ class Inserter extends Entity {
     this.rotating = false;
     this.armAng = target;
     if (!holdingNow) {
+      // 惰性调度（P0 优化）：空手待机在取物位时，降频探测取/放（约 5 次/秒）。
+      // 避免大量闲置机械臂每帧都做 entAt+peekSource+canDropAt 的邻居探测；
+      // 有货/持物/旋转时仍每帧更新，不影响搬运响应。
+      this._probeT = (this._probeT || 0) - dt;
+      if (this._probeT > 0) return;
+      this._probeT = 0.15;
       // 到达取物位：一次性完成“看源、验目标、取走”，避免探测与执行之间的状态漂移
       const s = this.entAtPick();
       const it = this.peekSource(s);

@@ -1,6 +1,10 @@
 'use strict';
 
-function entKey(x, y) { return x + ',' + y; }
+// ===== 整数化空间网格 key（P1 优化）=====
+// 用单个 32 位整数编码 (x,y) 替代高频字符串拼接。范围 ±32767 内的瓦片坐标
+// 足够覆盖本游戏玩法（更大区域也可扩展到 ±2^15）。相对坐标偏移后可安全做位运算。
+const ENT_KEY_OFF = 32768;
+function entKey(x, y) { return ((x + ENT_KEY_OFF) << 16) | (y + ENT_KEY_OFF); }
 function entAt(x, y) { return G.grid.get(entKey(x, y)); }
 function dirFromVec(dx, dy) {
   return dx === 1 ? 0 : dy === 1 ? 1 : dx === -1 ? 2 : 3;
@@ -19,23 +23,67 @@ function invalidateBeltInputNear(x, y, w, h) {
     }
 }
 
+// ===== 区块（桶）空间索引（P0 优化）=====
+// 除瓦片级 G.grid 外，再加一层粗粒度桶索引（BUCK=16 瓦片见方）。
+// 渲染与更新只遍历视野/活跃的桶，避免对数千实体的 G.ents 全量线性扫描。
+// G.buckets: bucketKey -> Set<Entity>
+const BUCK = 16;
+// 桶坐标 = 瓦片坐标 >> 4（16×16 一桶）。用偏移量保证正负都能编码为唯一整数。
+const BUCK_OFF = 4096;   // 2^12，覆盖桶坐标 ±4095（即 ±65536 瓦片范围）
+function bucketKey(x, y) { return ((x >> 4) + BUCK_OFF) * 8192 + ((y >> 4) + BUCK_OFF); }
+function bucketXOf(k) { return ((k / 8192) | 0) - BUCK_OFF; }
+function bucketYOf(k) { return (k % 8192) - BUCK_OFF; }
+function ensureBucket(k) {
+  let s = G.buckets.get(k);
+  if (!s) { s = new Set(); G.buckets.set(k, s); }
+  return s;
+}
+// 返回覆盖 (x0,y0)-(x1,y1)（含）矩形区域的所有桶 key（去重）。
+function bucketKeysIn(x0, y0, x1, y1) {
+  const keys = [];
+  const b0x = x0 >> 4, b0y = y0 >> 4, b1x = x1 >> 4, b1y = y1 >> 4;
+  for (let by = b0y; by <= b1y; by++)
+    for (let bx = b0x; bx <= b1x; bx++) keys.push(((bx + BUCK_OFF) * 8192) + (by + BUCK_OFF));
+  return keys;
+}
+
+// 墓碑标记 + 惰性清理（P0 优化）：
+// removeEnt 不再对数组做 indexOf+splice（拆/蓝图高频时 O(n)），
+// 改为打上 _dead 标记并从 grid/桶移除；当墓碑积累到阈值时才一次性压缩数组。
+let _tombCount = 0;
+function _compactEnts() {
+  G.ents = G.ents.filter(e => !e._dead);
+  _tombCount = 0;
+}
+
 function addEnt(e) {
+  if (e._dead) e._dead = false;
   G.ents.push(e);
+  ensureBucket(bucketKey(e.x, e.y)).add(e);
   for (let dy = 0; dy < e.h; dy++)
     for (let dx = 0; dx < e.w; dx++)
       G.grid.set(entKey(e.x + dx, e.y + dy), e);
   invalidateBeltInputNear(e.x, e.y, e.w, e.h);
+  // 电力增量注册表同步维护（P1 优化）
+  if (typeof regPowerEnt === 'function') regPowerEnt(e);
 }
 
 function removeEnt(e) {
-  const i = G.ents.indexOf(e);
-  if (i >= 0) G.ents.splice(i, 1);
+  if (e._dead) return;
+  e._dead = true;
+  _tombCount++;
+  if (_tombCount >= 128) _compactEnts();   // 墓碑积累到阈值再压缩，避免频繁 splice
+  const b = bucketKey(e.x, e.y);
+  const bs = G.buckets.get(b);
+  if (bs) { bs.delete(e); if (!bs.size) G.buckets.delete(b); }
   for (let dy = 0; dy < e.h; dy++)
     for (let dx = 0; dx < e.w; dx++) {
       const k = entKey(e.x + dx, e.y + dy);
       if (G.grid.get(k) === e) G.grid.delete(k);
     }
   invalidateBeltInputNear(e.x, e.y, e.w, e.h);
+  // 电力增量注册表同步移除
+  if (typeof unregPowerEnt === 'function') unregPowerEnt(e);
 }
 
 // ===== 流体端口方向表：管道/流体设备共用 =====
@@ -86,6 +134,20 @@ function neighborOnSideCell(e, side, cell) {
 }
 
 // 遍历实体正交相邻格上的实体（去重，不含斜角）
+// 遍历给定桶集合内的实体（去重，跳过墓碑）。
+function forEachEntInBuckets(keys, fn) {
+  const seen = new Set();
+  for (const k of keys) {
+    const s = G.buckets.get(k);
+    if (!s) continue;
+    for (const e of s) {
+      if (e._dead || seen.has(e)) continue;
+      seen.add(e);
+      fn(e);
+    }
+  }
+}
+
 function forEachNeighborEnt(e, fn) {
   const seen = new Set();
   for (let dx = -1; dx <= e.w; dx++)

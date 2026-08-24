@@ -24,6 +24,8 @@ class Underground extends Entity {
   // 与同档传送带完全一致的吞吐：每 BELT_SPACING 格一个物品 → 间隔 = 间距/带速
   ugInterval() { return BELT_SPACING / Math.max(0.05, beltSpeed() * this.speedMult()); }
   update(dt) {
+    // 惰性调度（P0 优化）：入口/出口都空时无需每帧扫描
+    if ((!this.items || !this.items.length) && (!this.outItems || !this.outItems.length)) return;
     const iv = this.ugInterval();
     this.cd -= dt;
     // 未配对的地下带仅作静态显示，不传送任何物品：清空缓存并直接待机

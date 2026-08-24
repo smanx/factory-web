@@ -45,7 +45,7 @@ class Lab extends Entity {
       const any = this.peekAnyPack();
       if (!any) { this.t = 0; return; }   // 没有任何科学包则暂停
       this.active = true;
-      this.t += dt;
+      this.t += dt * powerFactor();
       if (this.t >= LAB_TIME) {
         this.t -= LAB_TIME;
         this.consumeAnyPack(1);
@@ -66,7 +66,7 @@ class Lab extends Entity {
     const need = list[done];
     if (!need || this.packCount(need) <= 0) { this.t = 0; return; }
     this.active = true;
-    this.t += dt;
+    this.t += dt * powerFactor();
     if (this.t >= LAB_TIME) {
       this.t -= LAB_TIME;
       this.packs[need]--;

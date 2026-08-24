@@ -8,6 +8,7 @@ const G = {
   player: null,
   ents: [],
   grid: new Map(),
+  buckets: new Map(),   // 区块（桶）空间索引：bucketKey -> Set<Entity>（见 core/entity.js）
   inv: new Map(),
   sel: -1,
   quickSel: null,
@@ -73,6 +74,7 @@ function newGame() {
   // 新种子下地形变化，清空分块离屏缓存
   if (typeof clearTerrainCache === 'function') clearTerrainCache();
   G.grid = new Map();
+  G.buckets = new Map();
   G.ents = [];
   G.inv = new Map();
   G.techDone = {};
@@ -83,6 +85,7 @@ function newGame() {
   G.power = { prod: 0, demand: 0, sat: 1 };
   G.powerT = 0;
   G.enemies = []; G.bullets = []; G.spawnT = 0;
+  if (typeof resetPowerReg === 'function') resetPowerReg();
   const [sx, sy] = findSpawn(G.world);
   G.player = makePlayer(sx, sy);
   G.spawn = { x: sx, y: sy };
@@ -108,7 +111,7 @@ function serializeAll() {
       }),
       chunks: Array.from(G.world.chunks.values()).map(encodeChunkData)
     },
-    ents: G.ents.map(e => e.serialize()),
+    ents: G.ents.filter(e => !e._dead).map(e => e.serialize()),
     inv: Array.from(G.inv),
     player: { x: G.player.x, y: G.player.y },
     techDone: G.techDone,
@@ -170,7 +173,9 @@ function applySave(d) {
     }
   }
   G.grid = new Map();
+  G.buckets = new Map();
   G.ents = [];
+  if (typeof resetPowerReg === 'function') resetPowerReg();
   for (const s of d.ents) {
     const cls = ENT_CLASSES[s.type];
     if (!cls) continue;
@@ -1059,7 +1064,7 @@ function loop(ts) {
       updatePlayer(dt);
       updateHeldMouse(dt);
       updateMining(dt);
-      for (const e of G.ents) e.update(dt);
+      for (const e of G.ents) if (!e._dead && typeof e.update === 'function') e.update(dt);
       // 敌人/子弹系统（可在设置中开关战斗）
       if (G.settings.combat) {
         spawnEnemies(dt);

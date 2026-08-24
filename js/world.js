@@ -40,17 +40,46 @@ function encodeChunkData(c) {
   return { cx: c.cx, cy: c.cy, t, o, a };
 }
 
+// 字符→数字 查找表（避免每字符都做 charCodeAt-48），读档批量解码用（P2 优化）
+const _chunkDigitLUT = (() => {
+  const lut = new Int8Array(256);
+  for (let i = 0; i < 256; i++) lut[i] = i - 48;
+  return lut;
+})();
+
+// 批量解码地图块：用 LUT + 局部变量 + 4 格展开，替代逐字符反复 charCodeAt/属性访问（P2 优化）。
+// 地形块多时（读档/大地图）显著降低逐格 for 循环开销。
 function decodeChunkData(d) {
-  const terrain = new Uint8Array(CHUNK * CHUNK);
-  const oreType = new Int8Array(CHUNK * CHUNK);
-  const oreAmt = new Float32Array(CHUNK * CHUNK);
-  let ai = 0;
-  for (let i = 0; i < CHUNK * CHUNK; i++) {
-    terrain[i] = d.t.charCodeAt(i) - 48;
-    const ch = d.o[i];
-    if (ch === '.') { oreType[i] = -1; continue; }
-    oreType[i] = ch.charCodeAt(0) - 48;
-    oreAmt[i] = d.a[ai++] || 0;
+  const N = CHUNK * CHUNK;
+  const terrain = new Uint8Array(N);
+  const oreType = new Int8Array(N);
+  const oreAmt = new Float32Array(N);
+  const t = d.t, o = d.o, a = d.a, lut = _chunkDigitLUT;
+  let ai = 0, i = 0;
+  // 每轮处理 4 格（若 N 为 4 的倍数则可完整展开；否则兜底补足）
+  for (; i + 4 <= N; i += 4) {
+    terrain[i] = lut[t.charCodeAt(i)];
+    terrain[i + 1] = lut[t.charCodeAt(i + 1)];
+    terrain[i + 2] = lut[t.charCodeAt(i + 2)];
+    terrain[i + 3] = lut[t.charCodeAt(i + 3)];
+    let ch = o.charCodeAt(i);
+    oreType[i] = ch === 46 ? -1 : lut[ch];
+    if (ch !== 46) oreAmt[i] = a[ai++] || 0;
+    ch = o.charCodeAt(i + 1);
+    oreType[i + 1] = ch === 46 ? -1 : lut[ch];
+    if (ch !== 46) oreAmt[i + 1] = a[ai++] || 0;
+    ch = o.charCodeAt(i + 2);
+    oreType[i + 2] = ch === 46 ? -1 : lut[ch];
+    if (ch !== 46) oreAmt[i + 2] = a[ai++] || 0;
+    ch = o.charCodeAt(i + 3);
+    oreType[i + 3] = ch === 46 ? -1 : lut[ch];
+    if (ch !== 46) oreAmt[i + 3] = a[ai++] || 0;
+  }
+  for (; i < N; i++) {
+    terrain[i] = lut[t.charCodeAt(i)];
+    const ch = o.charCodeAt(i);
+    oreType[i] = ch === 46 ? -1 : lut[ch];
+    if (ch !== 46) oreAmt[i] = a[ai++] || 0;
   }
   return { cx: d.cx | 0, cy: d.cy | 0, terrain, oreType, oreAmt };
 }
@@ -108,11 +137,13 @@ function isLake(tx, ty) {
   const gx = Math.floor(tx / cell), gy = Math.floor(ty / cell);
   for (let ogx = gx - 1; ogx <= gx + 1; ogx++) {
     for (let ogy = gy - 1; ogy <= gy + 1; ogy++) {
+      // 湖泊密度：阈值从 0.2 降到 0.04，使全图水体数量大幅减少
       const h = hash2(ogx * 12.9898, ogy * 78.233);
-      if (h < 0.2) {
+      if (h < 0.04) {
         const px = (ogx + (hash2(ogx * 3.1, ogy * 7.7) * 0.7 + 0.15)) * cell;
         const py = (ogy + (hash2(ogx * 5.3, ogy * 1.9) * 0.7 + 0.15)) * cell;
-        const r = 3.0 + hash2(ogx * 8.8, ogy * 4.4) * 4.5;
+        // 单个水体面积适当增大：半径从 3~7.5 提升到 5~11
+        const r = 5.0 + hash2(ogx * 8.8, ogy * 4.4) * 6.0;
         const d = Math.hypot(tx - px, ty - py);
         const wob = (hash2(tx * 7.3, ty * 5.1) - 0.5) * 1.6;
         if (d < r + wob) return true;
@@ -175,6 +206,17 @@ function genChunk(cx, cy) {
     for (let lx = 0; lx < CHUNK; lx++)
       terrain[ly * CHUNK + lx] = isLake(ox + lx, oy + ly) ? T_WATER : T_GRASS;
 
+  // 出生点附近水体保证：在原点区块固定生成一片水体，
+  // 让玩家开局即可在出生点附近取水（抽水机），同时全图水体依旧稀少。
+  if (cx === 0 && cy === 0) {
+    const lc = 14, lr = 5;
+    for (let ly = 0; ly < CHUNK; ly++)
+      for (let lx = 0; lx < CHUNK; lx++) {
+        const d = Math.hypot(lx - lc, ly - lc);
+        const wob = (hash2(ox + lx * 7.3, oy + ly * 5.1) - 0.5) * 2.0;
+        if (d < lr + wob) terrain[ly * CHUNK + lx] = T_WATER;
+      }
+  }
   const cxn = cx * CHUNK + CHUNK / 2, cyn = cy * CHUNK + CHUNK / 2;
   const dist = Math.hypot(cxn, cyn);
   const scale = 1 + dist / 90;
@@ -182,7 +224,7 @@ function genChunk(cx, cy) {
 
   for (let n = 0; n < count; n++) {
     const ti = pickOreType(rng, dist);
-    const size = Math.max(3, Math.round((6 + rng() * 7) * Math.min(2.2, scale)));
+    const size = Math.max(5, Math.round((10 + rng() * 10) * Math.min(2.6, scale)));
     const amt = (500 + rng() * 900) * scale;
     const sx = 1 + Math.floor(rng() * (CHUNK - 2));
     const sy = 1 + Math.floor(rng() * (CHUNK - 2));

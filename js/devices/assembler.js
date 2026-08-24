@@ -45,7 +45,7 @@ class Assembler extends Entity {
     if (G.power.sat <= 0) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
-      this.prog += dt * asmMult() * 0.5 * (G.power.sat < 1 ? G.power.sat : 1);
+      this.prog += dt * asmMult() * 0.5 * powerFactor();
       this.spin += dt * 4;
       if (this.prog >= rec.time) {
         for (const k in rec.out) this.outp[k] = (this.outp[k] || 0) + rec.out[k];

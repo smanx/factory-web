@@ -70,9 +70,22 @@ function render() {
   updateLOD();
   drawTerrain(ctx);
   drawGridIfBuilding(ctx);
-  for (const e of G.ents) {
-    if (!onScreen(e)) continue;
-    drawEntity(ctx, e, e.x, e.y, e.dir, 1);
+  // 空间分区（桶）索引：只遍历视口覆盖到的桶，避免对全量 G.ents 线性扫描（P0 优化）
+  if (G.buckets && G.buckets.size) {
+    const b = FRAME_BOUNDS;
+    const x0 = Math.floor(b.x1 / TILE), y0 = Math.floor(b.y1 / TILE);
+    const x1 = Math.ceil(b.x0 / TILE), y1 = Math.ceil(b.y0 / TILE);
+    // 桶按实体左上角归位，多格设备（如 3×3/3×5）可能从邻近桶伸入视口，故扩一圈再剔除
+    const keys = bucketKeysIn(x0 - BUCK, y0 - BUCK, x1 + BUCK, y1 + BUCK);
+    forEachEntInBuckets(keys, e => {
+      if (!onScreen(e)) return;
+      drawEntity(ctx, e, e.x, e.y, e.dir, 1);
+    });
+  } else {
+    for (const e of G.ents) {
+      if (e._dead || !onScreen(e)) continue;
+      drawEntity(ctx, e, e.x, e.y, e.dir, 1);
+    }
   }
   drawGhost(ctx);
   drawBlueprintOverlay(ctx);

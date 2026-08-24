@@ -1,14 +1,58 @@
 'use strict';
 
+// ===== 电力增量注册表（P1 优化）=====
+// 维护“可能发电”与“可能耗电”的设备子集，由 addEnt/removeEnt 同步增删。
+// updatePower/powerSummary 只扫这两个子集，而不是全量 G.ents。
+// 设备是否真正发电/耗电仍由各自的 powerOut()/powerDemand() 实时判定。
+function ensurePowerReg() {
+  if (!G.powerReg) G.powerReg = { producers: new Set(), consumers: new Set() };
+  return G.powerReg;
+}
+function regPowerEnt(e) {
+  if (!e) return;
+  const r = ensurePowerReg();
+  if (e.powerOut !== undefined && e.powerOut !== 0) r.producers.add(e);
+  else r.producers.delete(e);
+  if (typeof e.powerDemand === 'function') r.consumers.add(e);
+  else r.consumers.delete(e);
+}
+function unregPowerEnt(e) {
+  if (!e || !G.powerReg) return;
+  G.powerReg.producers.delete(e);
+  G.powerReg.consumers.delete(e);
+}
+function resetPowerReg() {
+  G.powerReg = { producers: new Set(), consumers: new Set() };
+}
+
+// ===== 异星工厂式“低效率运转”降速模型 =====
+// 对齐《异星工厂》：电网供电不足（生产<需求）时，设备不是按比例一直降到趋近于 0、
+// 更不是直接停摆，而是有一个最低运转下限（约 20%）。只要电网还有一点电力（sat>0），
+// 各用电设备就始终以至少 MIN_POWER_SAT 的比例低效率运转，不会停下来；
+// 只有电网完全无电（prod=0，sat=0）时设备才真正停摆。
+const MIN_POWER_SAT = 0.2;   // 供电不足时的最低运转比例（对齐异星工厂 20% 下限）
+
+// 返回设备实际应采用的速度倍率：
+//   - sat>=1 ：满速 1
+//   - 0<sat<1：max(sat, MIN_POWER_SAT)，保证至少以 20% 低效率运转、不会直接停
+//   - sat<=0 ：0（完全断电才停摆）
+function powerFactor() {
+  const sat = G.power ? G.power.sat : 1;
+  if (sat >= 1) return 1;
+  if (sat > 0) return Math.max(sat, MIN_POWER_SAT);
+  return 0;
+}
+
 // 全局共享电力模型：每 0.25s 复算。产出 = 运行中蒸汽机的 powerOut 之和，
 // 需求 = 各用电设备 powerDemand()（在各自设备文件里定义，闲置时返回 0）之和，
-// sat = min(1, prod/demand)，各机器按 sat 比例降速；sat=0 全图"缺电"停摆。
+// sat = min(1, prod/demand)，各机器按 powerFactor()（有 20% 下限）比例降速；
+// sat=0（完全断电）才全图"缺电"停摆。
 function updatePower() {
   let prod = 0, demand = 0;
-  for (const e of G.ents) {
-    prod += e.powerOut || 0;
-    if (e.powerDemand) demand += e.powerDemand();
-  }
+  const r = ensurePowerReg();
+  // 只扫注册过的发电/耗电子集，不再全量遍历 G.ents（P1 优化）
+  for (const e of r.producers) { if (!e._dead) prod += e.powerOut || 0; }
+  for (const e of r.consumers) { if (!e._dead && e.powerDemand) demand += e.powerDemand(); }
   G.power.prod = prod;
   G.power.demand = demand;
   G.power.sat = demand <= 0 ? 1 : Math.min(1, prod / demand);
@@ -19,15 +63,15 @@ function updatePower() {
 // + 是否电量不足”在所有耗电设备上口径一致。
 // 电量不足判定：该设备正在耗电（powerDemand>0）且电网饱和度 sat<1。
 //   - sat>=1 ：供电正常，满速运行；
-//   - 0<sat<1：电量不足，按 sat 比例降速（黄灯提示）；
-//   - sat<=0 ：缺电停摆（红灯提示）。
+//   - 0<sat<1：电量不足，按 powerFactor()（有 20% 下限）低效率运转（黄灯提示）；
+//   - sat<=0 ：完全断电才停摆（红灯提示）。
 function powerStatusOf(e) {
   const d = (typeof e.powerDemand === 'function') ? (e.powerDemand() || 0) : 0;
   const sat = G.power.sat || 0;
   let text;
   if (d <= 0) text = '未耗电';
   else if (sat >= 1) text = '耗电 ' + d.toFixed(1) + ' · 供电正常';
-  else if (sat > 0) text = '耗电 ' + d.toFixed(1) + ' · 电量不足 ' + Math.round(sat * 100) + '%（按比例降速）';
+  else if (sat > 0) text = '耗电 ' + d.toFixed(1) + ' · 电量不足 ' + Math.round(sat * 100) + '%（低效率运转 ≥' + Math.round(MIN_POWER_SAT * 100) + '%）';
   else text = '耗电 ' + d.toFixed(1) + ' · 已缺电停摆';
   // 状态灯颜色：未耗电绿、供电正常绿、电量不足黄、缺电停摆红
   const color = d <= 0 ? 'g' : (sat >= 1 ? 'g' : (sat > 0 ? 'y' : 'r'));
