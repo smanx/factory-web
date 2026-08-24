@@ -20,6 +20,14 @@ class Inserter extends Entity {
     this.filter = null;  // 过滤臂：只抓该物品
     this.blocked = false;
     this.armAng = undefined;
+    // 电路控制（对齐《异星工厂》：机械臂接入电路网络，可按信号启停）
+    this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
+  }
+  // 电路启停：未启用条件时恒工作；启用后仅当附近电路信号满足条件才运转
+  circuitEnabled() {
+    if (!this.circuitCond || !this.circuitCond.enabled) return true;
+    const sig = circuitSignalNear(this);
+    return circuitCondOk(sig, this.circuitCond);
   }
   // 单次抓取容量（对齐《异星工厂》：堆叠臂随「机械臂容量」无限科技提升抓取数量）
   capacity() {
@@ -177,6 +185,8 @@ class Inserter extends Entity {
     return !!(it && this.canDropAt(this.entAtDrop(), it));
   }
   update(dt) {
+    // 电路条件不满足时机械臂停转（保持当前姿态，不取放）
+    if (!this.circuitEnabled()) { this.rotating = false; return; }
     if (this.armAng === undefined) this.armAng = this.pickAng();
     const step = Math.PI * 4.4 * dt;
     // 统一状态机：
@@ -211,6 +221,7 @@ class Inserter extends Entity {
       if (!got.length) return;
       this.holding = it;
       this.holdingCount = got.length;
+      if (typeof playSfx === 'function') playSfx('inserter');
     } else {
       // 到达放物位：循环放入；失败保持持物、标记堵塞，下帧继续重试
       const t = this.entAtDrop();
@@ -229,12 +240,14 @@ class Inserter extends Entity {
     s.holding = this.holding;
     s.holdingCount = this.holdingCount || 1;
     if (this.filter) s.filter = this.filter;
+    if (this.circuitCond) s.circuitCond = this.circuitCond;
     return s;
   }
-  // 蓝图只保留过滤器配置，不复制爪上抓取的物品
+  // 蓝图只保留过滤器与电路配置，不复制爪上抓取的物品
   blueprint() {
     const s = super.blueprint();
     if (this.filter) s.filter = this.filter;
+    if (this.circuitCond) s.circuitCond = this.circuitCond;
     return s;
   }
   static restore(s) {
@@ -242,6 +255,7 @@ class Inserter extends Entity {
     i.holding = s.holding || null;
     i.holdingCount = s.holding ? (s.holdingCount || 1) : 0;
     i.filter = s.filter || null;
+    i.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
     return i;
   }
 }
@@ -356,10 +370,10 @@ function drawFlowMarks(ctx, e, cx, cy, dir) {
 
 // ===== 面板 =====
 function inserterPanelHtml(e) {
-  return '<div class="dim">机械臂：严格单向搬运。从臂体指向的一侧（灰色圆点）取货，放到地面箭头/亮色箭头的一侧（物流方向）。普通臂作用相邻格，长臂作用第二格。R 旋转。</div><div class="status"></div>';
+  return '<div class="dim">机械臂：严格单向搬运。从臂体指向的一侧（灰色圆点）取货，放到地面箭头/亮色箭头的一侧（物流方向）。普通臂作用相邻格，长臂作用第二格。R 旋转。</div>' + circuitPanelHtml(e, 'ins') + '<div class="status"></div>';
 }
 function stackInserterPanelHtml(e) {
-  return '<div class="dim">堆叠机械臂：一次最多抓取 3 个同种物品再放下，装卸效率约为普通臂的 3 倍。R 旋转。</div><div class="status"></div>';
+  return '<div class="dim">堆叠机械臂：一次最多抓取 3 个同种物品再放下，装卸效率约为普通臂的 3 倍。R 旋转。</div>' + circuitPanelHtml(e, 'ins') + '<div class="status"></div>';
 }
 function filterInserterPanelHtml(e) {
   let h = '<div class="dim">过滤机械臂：只抓取选中的物品，其余一律不碰。当前：' +
@@ -371,6 +385,7 @@ function filterInserterPanelHtml(e) {
   }
   h += '</div>';
   if (e.filter) h += '<button data-action="flt-clear">清除过滤（恢复普通抓取）</button>';
+  h += circuitPanelHtml(e, 'ins');
   h += '<div class="status"></div>';
   return h;
 }
@@ -383,7 +398,7 @@ function filterInserterOnAction(act, btn) {
     if (G.panelEnt && (G.panelEnt instanceof FilterInserter || G.panelEnt instanceof StackFilterInserter)) G.panelEnt.filter = null;
     return true;
   }
-  return false;
+  return circuitPanelAction('ins', act);
 }
 // 悬浮提示（普通/长臂/过滤/堆叠共用）
 function inserterTip(e) {
@@ -391,6 +406,7 @@ function inserterTip(e) {
 }
 // 面板实时状态：工作中或暂停原因
 function inserterPanelLive(e, api) {
+  if (!e.circuitEnabled()) { api.status('已停止：电路条件不满足', 'warn'); return; }
   if (e.holding) {
     if (e.blocked) api.status('已暂停：放货格已满，卡住 ' + ITEMS[e.holding].name, 'warn');
     else api.status('搬运中：' + ITEMS[e.holding].name, 'ok');
@@ -408,8 +424,44 @@ function inserterPanelLive(e, api) {
   else api.status('待机：等待取货格出现货物', 'ok');
 }
 
+// ===== 电路控制面板（机械臂/传送带通用） =====
+// 复用电路网络 UI：启用条件后，仅当附近电路信号满足条件时设备才运转。
+// prefix 用于生成唯一控件 id，避免同屏多面板冲突（机械臂 ins / 传送带 belt）。
+function circuitPanelHtml(e, prefix) {
+  const c = e.circuitCond || {};
+  prefix = prefix || 'cb';
+  let h = '<div class="sec">电路控制</div>';
+  h += '<div class="circ-add">' +
+    '<select id="' + prefix + '-en" class="circ-btype">' +
+      '<option value="off"' + (!c.enabled ? ' selected' : '') + '>关闭（常开）</option>' +
+      '<option value="on"' + (c.enabled ? ' selected' : '') + '>启用条件</option>' +
+    '</select>' +
+    '<select id="' + prefix + '-ch" class="circ-op">' + (typeof channelSelect === 'function' ? channelSelect(c.channel) : '') + '</select>' +
+    '<input type="text" id="' + prefix + '-sig" class="circ-siginv" value="' + (ITEMS[c.sig]?.name || c.sig || '') + '" placeholder="信号" autocomplete="off">' +
+    '<select id="' + prefix + '-op" class="circ-op">' + ['>', '<', '=', '!=', '>=', '<='].map(o => '<option value="' + o + '"' + (c.op === o ? ' selected' : '') + '>' + o + '</option>').join('') + '</select>' +
+    '<input type="number" id="' + prefix + '-cnt" class="circ-cnt" value="' + (c.count || 0) + '" min="-99999" max="99999">' +
+    '<button data-action="cb-cond">应用</button></div>';
+  h += '<div class="dim">启用后，仅当所选电路信号满足条件时设备才工作（如铁板信号 ≥ 100 才运转）。</div>';
+  return h;
+}
+function circuitPanelAction(prefix, act) {
+  if (act !== 'cb-cond') return false;
+  const e = G.panelEnt;
+  if (!e) return false;
+  if (!e.circuitCond) e.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
+  const c = e.circuitCond;
+  c.enabled = document.getElementById(prefix + '-en').value === 'on';
+  c.channel = document.getElementById(prefix + '-ch').value;
+  c.sig = (typeof resolveSignalName === 'function' ? resolveSignalName(document.getElementById(prefix + '-sig').value) : document.getElementById(prefix + '-sig').value) || c.sig;
+  c.op = document.getElementById(prefix + '-op').value;
+  c.count = Math.floor(Number(document.getElementById(prefix + '-cnt').value)) || 0;
+  uiDirty = true;
+  return true;
+}
+
 // ===== 注册 =====
 function inserterStatusFn(e) {
+  if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) return 'r';
   return e.holding ? (e.blocked ? 'y' : 'g') : (e.rotating ? 'g' : 'r');
 }
 function stackFilterInserterPanelHtml(e) {
@@ -426,8 +478,8 @@ function stackFilterInserterPanelHtml(e) {
   return h;
 }
 
-const inserterPanel = { html: inserterPanelHtml, live: inserterPanelLive, tip: inserterTip };
-const stackInserterPanel = { html: stackInserterPanelHtml, live: inserterPanelLive, tip: inserterTip };
+const inserterPanel = { html: inserterPanelHtml, live: inserterPanelLive, tip: inserterTip, onAction: (a) => circuitPanelAction('ins', a) };
+const stackInserterPanel = { html: stackInserterPanelHtml, live: inserterPanelLive, tip: inserterTip, onAction: (a) => circuitPanelAction('ins', a) };
 const filterInserterPanel = { html: filterInserterPanelHtml, onAction: filterInserterOnAction, live: inserterPanelLive, tip: inserterTip };
 const stackFilterInserterPanel = { html: stackFilterInserterPanelHtml, onAction: filterInserterOnAction, live: inserterPanelLive, tip: inserterTip };
 ENT_CLASSES['inserter'] = Inserter;

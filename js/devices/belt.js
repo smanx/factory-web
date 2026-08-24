@@ -5,9 +5,19 @@ class Belt extends Entity {
   constructor(type, x, y) {
     super(type || 'transport-belt', x, y);
     this.items = [];
+    // 电路控制（对齐《异星工厂》：传送带接入电路网络，可按信号启停）
+    this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
+  }
+  // 电路启停：未启用条件时恒运转；启用后仅当附近电路信号满足条件才送带
+  circuitEnabled() {
+    if (!this.circuitCond || !this.circuitCond.enabled) return true;
+    const sig = circuitSignalNear(this);
+    return circuitCondOk(sig, this.circuitCond);
   }
   speedMult() { return this.type === 'fast-transport-belt' ? FAST_BELT_MULT : 1; }
   update(dt) {
+    // 电路条件不满足时传送带停转，带上物品原地冻结
+    if (!this.circuitEnabled()) return;
     // 惰性调度（P0 优化）：空带没有任何可移动物品，跳过真实更新
     // （排序/邻居扫描/转移判定），空传送带完全无需每帧运行。
     if (!this.items || this.items.length === 0) return;
@@ -127,11 +137,13 @@ class Belt extends Entity {
   serialize() {
     const s = super.serialize();
     s.items = this.items.map(o => [o.item, +o.pos.toFixed(3), o.side === undefined ? -1 : o.side]);
+    if (this.circuitCond) s.circuitCond = this.circuitCond;
     return s;
   }
   static restore(s) {
     const b = super.restore(s);
     b.items = (s.items || []).map(a => ({ item: a[0], pos: a[1], side: a.length > 2 ? a[2] : -1 }));
+    b.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
     return b;
   }
 }
@@ -398,11 +410,14 @@ function drawBeltMark(ctx, e, gx, gy, alpha) {
 }
 
 // ===== 注册 =====
-function beltPanelHtml() {
+function beltPanelHtml(e) {
   return '<div class="dim">传送带：物品沿箭头方向流动。R 旋转方向。靠近后按 F 拿取带上物品。</div>' +
-    '<div class="dim">当前速度：<span data-live="speed">-</span>（格/秒）</div><div class="status"></div>';
+    '<div class="dim">当前速度：<span data-live="speed">-</span>（格/秒）</div>' +
+    (typeof circuitPanelHtml === 'function' ? circuitPanelHtml(e, 'belt') : '') +
+    '<div class="status"></div>';
 }
 function beltPanelLive(e, api) {
+  if (!e.circuitEnabled()) { api.status('已停止：电路条件不满足', 'warn'); return; }
   const mult = e.speedMult ? e.speedMult() : 1;
   const speed = beltSpeed() * mult;
   api.set('speed', speed.toFixed(speed >= 10 ? 1 : 2));
@@ -425,7 +440,7 @@ DEVICE_RENDER['transport-belt'] = drawBelt;
 DEVICE_RENDER['fast-transport-belt'] = drawBelt;
 DEVICE_STATUS['transport-belt'] = e => e.items.length ? 'g' : 'r';
 DEVICE_STATUS['fast-transport-belt'] = e => e.items.length ? 'g' : 'r';
-const beltPanel = { html: beltPanelHtml, live: beltPanelLive, tip: beltTip };
+const beltPanel = { html: beltPanelHtml, live: beltPanelLive, tip: beltTip, onAction: (a) => (typeof circuitPanelAction === 'function' ? circuitPanelAction('belt', a) : false) };
 DEVICE_PANEL['transport-belt'] = beltPanel;
 DEVICE_PANEL['fast-transport-belt'] = beltPanel;
 // 已铺设的传送带可用 R 键直接旋转方向（对齐《异星工厂》）

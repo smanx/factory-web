@@ -25,6 +25,7 @@ class Beacon extends Entity {
     if (!isModule(item)) return false;
     if (Object.values(this.modules).reduce((a, b) => a + b, 0) >= BEACON_MOD_SLOTS) return false;
     this.modules[item] = (this.modules[item] || 0) + 1;
+    if (typeof playSfx === 'function') playSfx('module');
     return true;
   }
   peekItem() {

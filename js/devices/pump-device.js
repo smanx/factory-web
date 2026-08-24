@@ -31,22 +31,24 @@ class FluidPump extends Entity {
       }
     }
     // 泵出：向前侧管道/储液罐/设备
+    let transferred = 0;
     if (this.total() > 0 && front) {
       let n = PUMP_FLOW_PER_TICK;
       for (const k of Object.keys(this.fluid)) {
         if (!(this.fluid[k] > 0) || n <= 0) break;
         if (front instanceof Pipe) {
           while (n > 0 && this.fluid[k] > 0 && front.total() < PIPE_CAP && front.giveItem(k)) {
-            this.fluid[k]--; n--;
+            this.fluid[k]--; n--; transferred++;
           }
         } else if (front instanceof StorageTank || front instanceof Boiler) {
-          while (n > 0 && this.fluid[k] > 0 && front.giveItem(k)) { this.fluid[k]--; n--; }
+          while (n > 0 && this.fluid[k] > 0 && front.giveItem(k)) { this.fluid[k]--; n--; transferred++; }
         } else if (front instanceof Refinery || front instanceof ChemicalPlant ||
                    (front instanceof Assembler && front.acceptsFluid(k))) {
           if (front.isFluidInlet && !front.isFluidInlet(this.x, this.y)) break;
-          while (n > 0 && this.fluid[k] > 0 && front.giveItem(k)) { this.fluid[k]--; n--; }
+          while (n > 0 && this.fluid[k] > 0 && front.giveItem(k)) { this.fluid[k]--; n--; transferred++; }
         }
       }
+      if (transferred > 0 && typeof playSfx === 'function') playSfx('pump');
     }
     for (const k of Object.keys(this.fluid)) if (!(this.fluid[k] > 0)) delete this.fluid[k];
   }

@@ -23,6 +23,9 @@ const WAGON_SLOTS = 10;        // 车厢槽位数
 const WAGON_STACK = 100;       // 每槽容量
 const TRAIN_STOP_WAIT = 1.6;   // 车站停车时长（秒）
 const SIGNAL_RANGE = 10;       // 信号灯检测前方列车距离（格）
+// 链式信号灯：连锁转发，检测前方区段整段是否畅通（距离更长），
+// 防止列车在复杂交叉口内停车堵塞。对齐《异星工厂》Rail chain signal。
+const CHAIN_SIGNAL_RANGE = 20; // 链式信号灯向前额外延伸检测距离（格）
 
 // ===== 铁轨集合 =====
 // 由铁轨实体 addEnt/removeEnt 时同步维护。惰性初始化（G 在 main.js 中定义，加载时不可访问）。
@@ -51,6 +54,8 @@ function updateTrains(dt) {
   for (const tr of G.trains) {
     if (tr.cars.length === 0) continue;
     const head = tr.cars[0];
+    // 炮兵车厢：列车行驶/停靠期间自动轰击远处敌人
+    if (typeof updateTrainArtillery === 'function' && G.settings.combat) updateTrainArtillery(tr, dt);
     // 车头烧煤移动：能量池耗尽时从燃料槽补一单位（优先固体燃料）
     head.refuel();
     const coal = (head.fuel || 0);
@@ -223,12 +228,28 @@ function railSignalBlocked(head) {
   // 找到 head 所在列车
   let own = null;
   for (const tr of G.trains) if (tr.cars.indexOf(head) >= 0) { own = tr; break; }
+  // 车头前方是否紧邻链式信号灯（链式信号灯强制更大的跟车距离）
+  const chainAhead = chainSignalNearAhead(head);
+  const range = chainAhead ? CHAIN_SIGNAL_RANGE : SIGNAL_RANGE;
   for (const tr of G.trains) {
     if (tr === own) continue;
     for (const c of tr.cars) {
       const dist = Math.abs(c.x - head.x) + Math.abs(c.y - head.y);
-      if (dist > 0 && dist <= SIGNAL_RANGE) return true;
+      if (dist > 0 && dist <= range) return true;
     }
+  }
+  return false;
+}
+
+// 车头朝向正前方一小段距离内是否存在链式信号灯（用于扩大跟车距离）。
+function chainSignalNearAhead(head) {
+  const cx = head.x, cy = head.y;
+  const dir = head.dir != null ? head.dir : 0;
+  const dx = DX[dir], dy = DY[dir];
+  // 检查车头前方 1~4 格内是否有链式信号灯实体
+  for (let i = 1; i <= 4; i++) {
+    const e = entAt(cx + dx * i, cy + dy * i);
+    if (e && e.type === 'rail-chain-signal') return true;
   }
   return false;
 }
@@ -444,6 +465,80 @@ class FluidWagon extends CargoWagon {
   }
 }
 
+// ===== 炮兵车厢 ArtilleryWagon（对齐《异星工厂》Artillery wagon） =====
+// 挂在列车上的远程炮兵：内装炮兵炮弹（artillery-shell），列车行驶/停靠期间自动
+// 轰击极远距离的敌人，命中造成大范围爆炸。需先研究高级战斗科技（与炮兵连相同）。
+const ARTILLERY_WAGON_SHELLS = 20;  // 炮兵车厢炮弹容量（对齐《异星工厂》容量 100，简化为 20）
+class ArtilleryWagon extends CargoWagon {
+  constructor(type, x, y) {
+    super(type, x, y);
+    this.shells = 0;
+    this.cooldown = 0;
+    this.facing = 0;
+  }
+  // 只接受炮兵炮弹，其余物品拒绝
+  giveItem(item) {
+    if (item === 'artillery-shell' && this.shells < ARTILLERY_WAGON_SHELLS) { this.shells++; return true; }
+    return false;
+  }
+  takeItem() { return this.shells > 0 ? this.takeItemOf('artillery-shell') : null; }
+  peekItem() { return this.shells > 0 ? 'artillery-shell' : null; }
+  countOf(item) { return item === 'artillery-shell' ? this.shells : 0; }
+  takeItemOf(item) {
+    if (item === 'artillery-shell' && this.shells > 0) { this.shells--; return item; }
+    return null;
+  }
+  contents() {
+    const list = [[this.type, 1]];
+    if (this.shells > 0) list.push(['artillery-shell', this.shells]);
+    return list;
+  }
+  takeAll() {
+    const rows = [];
+    if (this.shells > 0) rows.push(['artillery-shell', this.shells]);
+    this.shells = 0;
+    return rows;
+  }
+  serialize() {
+    const s = super.serialize();
+    s.shells = this.shells;
+    return s;
+  }
+  blueprint() {
+    const s = super.blueprint();
+    s.shells = 0;
+    return s;
+  }
+  static restore(s) {
+    const e = super.restore(s);
+    e.shells = (s && s.shells) | 0;
+    return e;
+  }
+}
+// 列车炮击：每帧由 updateTrains 调用，检查列车上所有炮兵车厢并对射程内敌人开火。
+function updateTrainArtillery(tr, dt) {
+  for (const car of tr.cars) {
+    if (!(car instanceof ArtilleryWagon) || car.shells <= 0) continue;
+    car.cooldown = (car.cooldown || 0) - dt;
+    if (car.cooldown > 0) continue;
+    const cx = car.x + car.w / 2, cy = car.y + car.h / 2;
+    let best = null, bestD = Infinity;
+    for (const en of (G.enemies || [])) {
+      if (!en || en.dead) continue;
+      const d = Math.hypot(en.x / TILE - cx, en.y / TILE - cy);
+      if (d <= ARTILLERY_RANGE && d > 4 && d < bestD) { best = en; bestD = d; }
+    }
+    if (!best) continue;
+    car.facing = Math.atan2(best.y - cy * TILE, best.x - cx * TILE);
+    car.cooldown = ARTILLERY_FIRE_RATE;
+    car.shells--;
+    (G.bullets || (G.bullets = [])).push({
+      x: cx * TILE, y: cy * TILE, tx: best.x, ty: best.y, t: 0,
+      life: Math.max(0.3, bestD / 40), art: true, splash: ARTILLERY_RADIUS, dmg: ARTILLERY_DMG
+    });
+  }
+}
+
 // ===== 车站 TrainStop =====
 // 对齐《异星工厂》Railway train stop：列车停靠后可自动装卸货。
 // 车站可配置“装载（load）”与“卸载（unload）”的物品清单：
@@ -555,6 +650,10 @@ class RailSignal extends Entity {
 function railSignalAt(tx, ty) {
   const e = entAt(tx, ty);
   return e && e.type === 'rail-signal';
+}
+// ===== 链式信号灯 RailChainSignal（对齐《异星工厂》Rail chain signal）=====
+class RailChainSignal extends Entity {
+  constructor(type, x, y) { super(type, x, y); }
 }
 
 // ===== 列车编组管理 =====
@@ -732,6 +831,37 @@ DEVICE_RENDER['fluid-wagon'] = function (ctx, e, gx, gy, dir, alpha) {
   ctx.restore();
 };
 
+// ===== 炮兵车厢渲染 =====
+DEVICE_RENDER['artillery-wagon'] = function (ctx, e, gx, gy, dir, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(gx + TILE / 2, gy + TILE / 2);
+  ctx.rotate(dir * Math.PI / 2);
+  // 车体
+  ctx.fillStyle = '#5a4a42';
+  rrPath(ctx, -TILE * 0.44, -TILE * 0.3, TILE * 0.88, TILE * 0.6, TILE * 0.08);
+  ctx.fill();
+  ctx.strokeStyle = '#3a2f2a'; ctx.lineWidth = 2; ctx.stroke();
+  // 转盘炮座
+  ctx.fillStyle = '#4a3d35';
+  ctx.beginPath(); ctx.arc(0, 0, TILE * 0.22, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#2e2620'; ctx.lineWidth = 1.5; ctx.stroke();
+  // 炮管（朝向目标或车厢朝向）
+  const ang = e.facing !== undefined ? e.facing : (dir * Math.PI) / 2;
+  ctx.strokeStyle = '#2e2620';
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(Math.cos(ang) * 6, Math.sin(ang) * 6);
+  ctx.lineTo(Math.cos(ang) * TILE * 0.5, Math.sin(ang) * TILE * 0.5);
+  ctx.stroke();
+  ctx.lineCap = 'butt';
+  // 炮弹余量指示灯
+  ctx.fillStyle = e.shells > 0 ? '#ff5a3a' : '#555';
+  ctx.fillRect(-TILE * 0.2, -TILE * 0.38, TILE * 0.12, TILE * 0.12);
+  ctx.restore();
+};
+
 DEVICE_RENDER['train-stop'] = function (ctx, e, gx, gy, dir, alpha) {
   ctx.save();
   ctx.globalAlpha = alpha;
@@ -765,6 +895,22 @@ DEVICE_RENDER['rail-signal'] = function (ctx, e, gx, gy, dir, alpha) {
   const blocked = railSignalBlocked({ x: e.x, y: e.y, type: 'rail-signal' });
   ctx.fillStyle = blocked ? '#e04a4a' : '#4ae04a';
   ctx.beginPath(); ctx.arc(gx + TILE / 2, gy + TILE / 2, TILE * 0.14, 0, 7); ctx.fill();
+  ctx.restore();
+};
+
+// ===== 链式信号灯渲染（橙黄灯身，双色指示灯）=====
+DEVICE_RENDER['rail-chain-signal'] = function (ctx, e, gx, gy, dir, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#3a3a44';
+  ctx.fillRect(gx + TILE * 0.3, gy + TILE * 0.3, TILE * 0.4, TILE * 0.4);
+  // 前方是否被占用（用链式信号灯的大范围检测）
+  const blocked = railSignalBlocked({ x: e.x, y: e.y, type: 'rail-chain-signal' });
+  ctx.fillStyle = blocked ? '#e0a04a' : '#4ae04a';
+  ctx.beginPath(); ctx.arc(gx + TILE / 2, gy + TILE / 2, TILE * 0.14, 0, 7); ctx.fill();
+  // 双灯：上方小圆点表示连锁（黄/绿）
+  ctx.fillStyle = blocked ? '#e04a4a' : '#4ae04a';
+  ctx.beginPath(); ctx.arc(gx + TILE / 2, gy + TILE * 0.32, TILE * 0.08, 0, 7); ctx.fill();
   ctx.restore();
 };
 
@@ -899,6 +1045,26 @@ DEVICE_PANEL['fluid-wagon'] = {
   }
 };
 
+// ===== 炮兵车厢面板 =====
+DEVICE_PANEL['artillery-wagon'] = {
+  html(e) {
+    let h = '<div class="dim">炮兵车厢：挂在车头后随列车移动，行驶/停靠期间自动轰击射程内远处敌人（' + ARTILLERY_RANGE + ' 格），命中造成 ' + ARTILLERY_DMG + ' 点大范围爆炸（对齐《异星工厂》Artillery wagon）。</div><div class="sec">炮弹</div>';
+    h += '<div class="row"><span>炮兵炮弹</span><b>' + e.shells + ' / ' + ARTILLERY_WAGON_SHELLS + '</b></div>';
+    const n = invCount('artillery-shell');
+    if (n > 0) h += '<button data-action="feed" data-id="artillery-shell">装入炮弹 ×' + n + '</button>';
+    if (e.shells > 0) h += '<button data-action="takeout" id="btn-aw-takeout">取出全部炮弹</button>';
+    h += '<div class="status"></div>';
+    return h;
+  },
+  live(e, api) {
+    api.set('shells', e.shells + ' / ' + ARTILLERY_WAGON_SHELLS);
+    api.toggle('#btn-aw-takeout', e.shells > 0, '取出全部炮弹 (' + e.shells + ')');
+    if (e.shells <= 0) api.status('已暂停：无炮弹', 'warn');
+    else api.status('待机：列车行驶/停靠时自动轰击敌人', 'ok');
+  },
+  tip(e) { return e.shells <= 0 ? '无炮弹，需装入炮弹' : '待机（炮弹 ×' + e.shells + '）'; }
+};
+
 // ===== 放置/拆除钩子（包装 addEnt/removeEnt，维护 railTiles 与列车编组）=====
 const __railAddEnt = addEnt;
 const __railRemoveEnt = removeEnt;
@@ -936,8 +1102,10 @@ ENT_CLASSES['rail'] = Rail;
 ENT_CLASSES['locomotive'] = Locomotive;
 ENT_CLASSES['cargo-wagon'] = CargoWagon;
 ENT_CLASSES['fluid-wagon'] = FluidWagon;
+ENT_CLASSES['artillery-wagon'] = ArtilleryWagon;
 ENT_CLASSES['train-stop'] = TrainStop;
 ENT_CLASSES['rail-signal'] = RailSignal;
+ENT_CLASSES['rail-chain-signal'] = RailChainSignal;
 
 // R 键可旋转车头（决定行进方向）
 DEVICE_DIR_ROTATE['locomotive'] = true;
@@ -948,9 +1116,15 @@ DEVICE_PLACE['rail'] = null;   // 铁轨放任何空地
 DEVICE_PLACE['locomotive'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true } : { ok: false };
 DEVICE_PLACE['cargo-wagon'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true } : { ok: false };
 DEVICE_PLACE['fluid-wagon'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true } : { ok: false };
+DEVICE_PLACE['artillery-wagon'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true } : { ok: false };
 DEVICE_PLACE['train-stop'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true } : { ok: false };
 // 信号灯：放在铁轨旁任意一格（四周有铁轨即可）
 DEVICE_PLACE['rail-signal'] = (type, tx, ty) => {
+  const c = railConnAt(tx, ty);
+  return (c.E || c.S || c.W || c.N) ? { ok: true } : { ok: false };
+};
+// 链式信号灯：同样放在铁轨旁（四周有铁轨即可）
+DEVICE_PLACE['rail-chain-signal'] = (type, tx, ty) => {
   const c = railConnAt(tx, ty);
   return (c.E || c.S || c.W || c.N) ? { ok: true } : { ok: false };
 };

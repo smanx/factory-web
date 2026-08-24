@@ -146,6 +146,8 @@ class Tank extends Car {
     });
     this.fireT = 0.9;
     uiDirty = true;
+    // 坦克重炮：厚重主炮音；蜘蛛机器人发射导弹用较轻的火箭音
+    if (typeof playSfx === 'function') playSfx(this instanceof Spidertron ? 'rocket' : 'tank-cannon');
     return true;
   }
 }

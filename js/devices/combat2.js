@@ -330,6 +330,8 @@ function updateEnemies(dt) {
       const step = pr.speed * TILE * dt;
       if (d <= step) {
         pr.hit = true;
+        // 火球命中地面：留下燃烧火场（对齐《异星工厂》Fire entity）
+        if (pr.fire && typeof spawnGroundFire === 'function') spawnGroundFire(pr.x, pr.y);
         if (pr.buildTarget && pr.buildTarget._dead === false) {
           // 命中建筑：造成建筑伤害（火球附带灼烧）
           if (typeof damageBuilding === 'function') {
@@ -399,7 +401,7 @@ function updateLootDrops(dt) {
     if (Math.hypot(d.x - p.x, d.y - p.y) < pickR) {
       invAdd(d.id, d.n || 1);
       if (typeof toast === 'function' && d.id === 'uranium-ore') toast('拾取 铀矿石');
-      if (typeof playSfx === 'function') playSfx('select');
+      if (typeof playSfx === 'function') playSfx('loot');
       d.picked = true;
     }
   }
@@ -419,6 +421,13 @@ function damagePlayer(dmg) {
   if (G.armor) {
     const a = ARMORS[G.armor];
     if (a && a.protect) dmg *= a.protect;
+  }
+  dmg = Math.max(0, dmg);
+  // 能量护盾吸收：受击时优先消耗个人电网电力生成护盾吸收伤害（对齐《异星工厂》Energy shield）
+  if (typeof applyShieldAbsorb === 'function' && totalShieldCapacity() > 0) {
+    const before = dmg;
+    dmg = applyShieldAbsorb(dmg);
+    if (dmg < before && typeof playSfx === 'function') playSfx('shield');
   }
   dmg = Math.max(0, dmg);
   G.playerHP -= dmg;
@@ -489,6 +498,18 @@ function updateBullets(dt) {
       // 落点爆破特效（大圈）
       b.boomBig = true;
     }
+    // 火箭/手雷等范围爆炸：命中后延长存在时间以播放“冲击波扩散 + 火焰消散”动画（画面优化）
+    if (b.splash && !b.hit && b.t >= b.life) {
+      b.hit = true;
+      explodeDamage(b.tx, b.ty, b.splash, b.dmg);
+      b.boomBig = true;
+    }
+    if ((b.splash || b.boomBig) && b.hit && b._boomT === undefined) {
+      b._boomT = 0;
+      b._boomBase = b.life;
+      b.life = b._boomBase + (b.art ? 0.6 : 0.35);
+    }
+    if (b._boomT !== undefined) b._boomT += dt;
     // 地雷爆炸特效：仅视觉短促闪光，无需额外伤害（已由 removeEnt 前引爆）
   }
   G.bullets = G.bullets.filter(b => b.t < b.life);
@@ -502,6 +523,7 @@ const WEAPONS = {
   'shotgun':         { name: '散弹枪', dmg: 6,  rate: 0.5, ammo: 'shotgun-shell', spread: 0.4,  auto: false, range: 6, pellets: 6, sfx: 'shotgun' },
   'combat-shotgun':  { name: '战斗散弹枪', dmg: 10, rate: 0.35, ammo: 'piercing-shotgun-shell', spread: 0.32, auto: false, range: 7, pellets: 8, sfx: 'shotgun' },
   'rocket-launcher': { name: '火箭筒', dmg: 35, rate: 1.1, ammo: 'rocket',          spread: 0.03, auto: false, range: 9, splash: 1.8, sfx: 'rocket' },
+  'explosive-rocket-launcher': { name: '爆炸火箭筒', dmg: 60, rate: 1.3, ammo: 'explosive-rocket', spread: 0.05, auto: false, range: 9, splash: 3.2, sfx: 'rocket' },
   'grenade':         { name: '手雷',   dmg: 40, rate: 0.8, ammo: 'grenade',          spread: 0.05, auto: false, range: 6, splash: 2.5, sfx: 'throw' },
   'cluster-grenade': { name: '集束手雷', dmg: 80, rate: 1.0, ammo: 'cluster-grenade', spread: 0.05, auto: false, range: 6, splash: 4.5, sfx: 'throw' },
   'flamethrower':    { name: '火焰喷射器', dmg: 6, rate: 0.12, ammo: 'flamethrower-ammo', spread: 0.2, auto: true, range: 6, flame: true, sfx: 'flamethrower' },
@@ -547,6 +569,8 @@ function playerFire(tx, ty) {
   }
   const baseAng = Math.atan2(ty - py, tx - px);
   const pellets = w.pellets || 1;
+  // 武器伤害无限科技倍率（对齐《异星工厂》Weapon damage research）
+  const dmg = Math.round(w.dmg * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1));
   for (let i = 0; i < pellets; i++) {
     const a = baseAng + (Math.random() - 0.5) * 2 * w.spread;
     const dist = w.range * TILE;
@@ -556,15 +580,15 @@ function playerFire(tx, ty) {
       // 火箭弹：命中目标后范围爆炸
       (G.bullets || (G.bullets = [])).push({
         x: px, y: py, tx: tx2, ty: ty2, t: 0, life: 0.18,
-        splash: w.splash, dmg: w.dmg, kind: 'rocket'
+        splash: w.splash, dmg: dmg, kind: 'rocket'
       });
     } else if (w.flame) {
       (G.bullets || (G.bullets = [])).push({
-        x: px, y: py, tx: tx2, ty: ty2, t: 0, life: 0.2, dmg: w.dmg, kind: 'flame'
+        x: px, y: py, tx: tx2, ty: ty2, t: 0, life: 0.2, dmg: dmg, kind: 'flame'
       });
     } else {
       (G.bullets || (G.bullets = [])).push({
-        x: px, y: py, tx: tx2, ty: ty2, t: 0, life: 0.12, dmg: w.dmg, kind: 'bullet'
+        x: px, y: py, tx: tx2, ty: ty2, t: 0, life: 0.12, dmg: dmg, kind: 'bullet'
       });
     }
   }
@@ -615,6 +639,8 @@ function updatePlayerBulletHits(dt) {
       const d = Math.hypot(cx - en.x, cy - en.y);
       if (d <= en.size + 4) {
         en.hp -= b.dmg;
+        // 火焰命中敌人：在该处地面留下燃烧火场
+        if (b.kind === 'flame' && typeof spawnGroundFire === 'function') spawnGroundFire(en.x, en.y);
         if (en.hp <= 0) en.dead = true;
         b.hit = true;
         break;
@@ -836,7 +862,7 @@ class LaserTurret extends Entity {
     this.facing = Math.atan2(best.y - (this.y + this.h / 2) * TILE, best.x - (this.x + this.w / 2) * TILE);
     if (this.cooldown > 0) return;
     this.cooldown = LASER_FIRE_RATE;
-    best.hp -= LASER_DMG;
+    best.hp -= Math.round(LASER_DMG * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1));
     this.beamT = 0.15;
     (G.bullets || (G.bullets = [])).push({
       x: (this.x + this.w / 2) * TILE, y: (this.y + this.h / 2) * TILE,
@@ -967,12 +993,14 @@ class FlamethrowerTurret extends Entity {
       const d = Math.hypot(dx, dy);
       if (d > FT_RANGE * TILE) continue;
       const da = Math.abs(normAng(Math.atan2(dy, dx) - ang));
-      if (da < 0.5) { en.hp -= FT_DMG; if (en.hp <= 0) en.dead = true; }
+      if (da < 0.5) { en.hp -= Math.round(FT_DMG * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1)); if (en.hp <= 0) en.dead = true; }
     }
     (G.bullets || (G.bullets = [])).push({
       x: (this.x + this.w / 2) * TILE, y: (this.y + this.h / 2) * TILE,
       tx: best.x, ty: best.y, t: 0, life: 0.3, dmg: 0, kind: 'flame'
     });
+    // 火焰落地后在地面残留燃烧火场（对齐《异星工厂》Fire entity）
+    if (typeof spawnGroundFire === 'function') spawnGroundFire(best.x, best.y);
     if (typeof playSfx === 'function') playSfx('flamethrower');
   }
   powerDemand() { return 200; }
@@ -1035,6 +1063,62 @@ function flameTurretTip(e) {
   if (G.power.sat <= 0) return '缺电停摆';
   if ((e.fluid['petroleum-gas'] || 0) <= 0) return '缺石油气';
   return e.target ? '喷射中（火焰）' : '待机';
+}
+
+// ===== 地面火焰残留（燃烧火场，对齐《异星工厂》Fire entity）=====
+// 火焰炮塔/火焰喷射器/喷火虫/火球命中后会在命中地面留下燃烧火场（按瓦片记），
+// 火场内敌人/玩家持续受灼烧伤害，数秒后火焰自然熄灭。
+// G.groundFires: [{ tx, ty, life, maxLife, tickT }]（同一瓦片只保留一个，新火刷新余焰）
+function ensureGroundFires() { if (!G.groundFires) G.groundFires = []; return G.groundFires; }
+
+const GROUND_FIRE_LIFE = 4.0;      // 单片火焰持续秒数
+const GROUND_FIRE_MAX = 120;       // 全图火焰瓦片上限（防爆量）
+const GROUND_FIRE_DMG = 9;         // 每 tick 灼烧伤害
+const GROUND_FIRE_TICK = 0.5;      // 灼烧 tick 间隔（秒）
+
+// 在世界坐标 wx,wy 所在瓦片生成/刷新地面火焰
+function spawnGroundFire(wx, wy) {
+  const tx = Math.floor(wx / TILE), ty = Math.floor(wy / TILE);
+  const arr = ensureGroundFires();
+  for (const f of arr) {
+    if (f.tx === tx && f.ty === ty) { f.life = GROUND_FIRE_LIFE; return; }  // 已有火焰：刷新余焰
+  }
+  if (arr.length >= GROUND_FIRE_MAX) return;
+  arr.push({ tx, ty, life: GROUND_FIRE_LIFE, maxLife: GROUND_FIRE_LIFE, tickT: 0 });
+}
+
+// 每帧更新地面火焰：计时、对站上火焰的敌人/玩家造成灼烧
+function updateGroundFires(dt) {
+  const arr = G.groundFires;
+  if (!arr || arr.length === 0) return;
+  for (const f of arr) {
+    f.life -= dt;
+    if (f.life <= 0) continue;
+    // 火焰中心世界坐标
+    const cx = f.tx * TILE + TILE / 2, cy = f.ty * TILE + TILE / 2;
+    // 周期性灼烧范围内的敌人（含巢穴，但巢穴不受火焰灼烧）
+    f.tickT -= dt;
+    if (f.tickT <= 0) {
+      f.tickT = GROUND_FIRE_TICK;
+      if (G.enemies) for (const en of G.enemies) {
+        if (en.dead || en.type === 'spawner') continue;
+        if (Math.hypot(en.x - cx, en.y - cy) <= TILE * 1.15) { en.hp -= GROUND_FIRE_DMG; if (en.hp <= 0) en.dead = true; }
+      }
+      // 玩家站在火焰上也受灼烧
+      if (G.settings.combat && Math.hypot(G.player.x - cx, G.player.y - cy) <= TILE * 1.1) damagePlayer(GROUND_FIRE_DMG * 0.6);
+    }
+    // 火焰燃烧时冒出零星火星/余烬（低频，避免爆量）
+    if (Math.random() < 0.25 && typeof spawnSmoke === 'function') {
+      spawnSmoke(cx + (Math.random() - 0.5) * TILE * 0.5, cy + (Math.random() - 0.5) * TILE * 0.4, { life: 0.8, size: 3, color: '#3a3a3a', vx: (Math.random() - 0.5) * 0.3, vy: -(0.6 + Math.random() * 0.4) });
+    }
+  }
+  // 清理熄灭的火焰
+  G.groundFires = arr.filter(f => f.life > 0);
+  // 有火焰燃烧时播放低频烈焰声（限频，避免音爆）
+  if (G.groundFires.length > 0 && typeof playSfx === 'function') {
+    G.burnSfxT = (G.burnSfxT || 0) - dt;
+    if (G.burnSfxT <= 0) { G.burnSfxT = 0.9; playSfx('burn'); }
+  }
 }
 
 // ===== 注册 =====

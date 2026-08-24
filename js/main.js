@@ -124,7 +124,11 @@ function newGame() {
   G.enemies = []; G.bullets = []; G.spawnT = 0;
   G.enemyProjectiles = [];
   G.evolution = 0;   // 敌人进化度（战斗开启时随时间/击杀增长）
+  G.pollution = 0;    // 污染值（对齐《异星工厂》：工业排放污染激怒虫群）
+  G.pollutionWaves = 0; G.pollutionT = 0; G.pollutionScanT = 0;
   G.combatRobots = [];
+  G.aoeZones = [];        // 新游戏清空区域力场（毒/减速胶囊）
+  G.groundFires = [];     // 新游戏清空地面火焰残留
   G.driving = null;    // 新游戏清空驾驶状态
   G.craftQueue = [];   // 新游戏清空手搓队列
   G.logiRobots = [];
@@ -182,6 +186,7 @@ function serializeAll() {
     logiRequest: Object.assign({}, G.logiRequest || {}),
     player: { x: G.player.x, y: G.player.y, hp: G.playerHP, weapon: G.weapon, armor: G.armor },
     evolution: G.evolution || 0,
+    pollution: (typeof pollutionSerialize === 'function') ? pollutionSerialize() : null,
     craftQueue: (G.craftQueue || []).map(q => ({
       rid: q.rid, time: q.time, total: q.total, done: q.done, outId: q.outId
     })),
@@ -292,6 +297,9 @@ function applySave(d) {
   G.armor = (isArmor && isArmor(d.player.armor)) ? d.player.armor : null;
   // 恢复敌人进化度（旧档无该字段则从 0 开始）
   G.evolution = (typeof d.evolution === 'number') ? Math.min(1, Math.max(0, d.evolution)) : 0;
+  // 恢复污染状态（旧档无该字段则从 0 开始）
+  if (typeof pollutionRestore === 'function') pollutionRestore(d.pollution);
+  else { G.pollution = 0; G.pollutionWaves = 0; G.pollutionT = 0; }
   G.gameWon = !!d.gameWon;
   // 恢复蓝图库（旧档无该字段则置空）
   G.blueBook = [];
@@ -835,6 +843,7 @@ function captureBlueprint() {
   G.blueprint = { minX: r.x0, minY: r.y0, ents };
   // 自动存入蓝图库（去重：与已有蓝图内容相同则不重复添加）
   if (typeof blueBookAdd === 'function') blueBookAdd(G.blueprint);
+  if (typeof playSfx === 'function') playSfx('blueprint');
   G.blueMode = 'paste';
   G.blueStart = null; G.blueEnd = null;
   G.blueRot = 0; G.blueFlipH = false; G.blueFlipV = false;
@@ -917,7 +926,7 @@ function pasteBlueprint() {
     const n = pasteBlueprintAsGhosts(bp);
     toast(n > 0 ? ('已排布 ' + n + ' 个建造幽灵，施工机器人正在建造' + (constrPending().build > 0 ? '（剩 ' + constrPending().build + ' 个待建）' : ''))
       : '无可建造的位置（区域内已有建筑或超出机器人范围）');
-    if (typeof playSfx === 'function') playSfx('select');
+    if (typeof playSfx === 'function') playSfx('blueprint');
     uiDirty = true;
     return;
   }
@@ -942,7 +951,7 @@ function pasteBlueprint() {
     e.dir = p.s.dir | 0; e.applyDir();
     addEnt(e);
   }
-  if (typeof playSfx === 'function') playSfx('select');
+  if (typeof playSfx === 'function') playSfx('blueprint');
   toast('蓝图已粘贴 ' + placements.length + ' 个建筑（可继续点击空白处粘贴，R旋转/V翻转，右键取消）');
   uiDirty = true;
 }
@@ -1013,7 +1022,7 @@ function pickupAction() {
     return;
   }
   invAdd(got);
-  if (typeof playSfx === 'function') playSfx('select');
+  if (typeof playSfx === 'function') playSfx('pickup');
   uiDirty = true;
 }
 
@@ -1445,12 +1454,14 @@ function loop(ts) {
       if (G.settings.combat) {
         spawnEnemies(dt);
         if (typeof updateWaves === 'function') updateWaves(dt);
+        if (typeof updatePollution === 'function') updatePollution(dt);   // 污染系统（对齐《异星工厂》)
         updateEnemies(dt);
         updateBullets(dt);
         updatePlayerFire(dt);
         updatePlayerBulletHits(dt);
         updateCombatRobots(dt);
         updateAoeZones(dt);
+        if (typeof updateGroundFires === 'function') updateGroundFires(dt);
         if (typeof updatePersonalLaserDefense === 'function') updatePersonalLaserDefense(dt);
         if (typeof updateTankFire === 'function') updateTankFire(dt);
         if (typeof updateLootDrops === 'function') updateLootDrops(dt);
@@ -1465,6 +1476,8 @@ function loop(ts) {
       updateTrains(dt);
       if (typeof updateParticles === 'function') updateParticles(dt);
       updateCamera(dt);
+      // 环境氛围音（Web Audio 昼夜背景音）
+      if (typeof ambientUpdate === 'function') ambientUpdate(dt);
     }
 
     render();

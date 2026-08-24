@@ -50,6 +50,7 @@ class GunTurret extends Entity {
     if (TURRET_AMMO_TYPES.indexOf(item) >= 0) {
       if (this.ammoCount(item) >= 40) return false;
       this.ammo[item] = this.ammoCount(item) + 1;
+      if (typeof playSfx === 'function') playSfx('turret');
       return true;
     }
     return false;
@@ -105,6 +106,8 @@ class GunTurret extends Entity {
       if (this.ammoCount(k) > 0) { this.ammo[k]--; dmg = dmgMap[k]; break; }
     }
     for (const k of TURRET_AMMO_TYPES) if (this.ammo[k] <= 0) delete this.ammo[k];
+    // 武器伤害无限科技倍率（对齐《异星工厂》Weapon damage research）
+    dmg = Math.round(dmg * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1));
     best.hp -= dmg;
     // 子弹特效
     (G.bullets || (G.bullets = [])).push({

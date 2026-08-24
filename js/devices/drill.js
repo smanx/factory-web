@@ -74,6 +74,11 @@ class Drill extends Entity {
     this.status = '';
     this.working = true;
     drillEmit(this, dt);
+    // 采矿机运转环境音（限频避免音爆）
+    if (typeof playSfx === 'function' && G.settings.sound) {
+      this._runSfxT = (this._runSfxT || 0) - dt;
+      if (this._runSfxT <= 0) { this._runSfxT = 2.2; playSfx('machine-run'); }
+    }
     this.burnLeft -= dt;
     this.spin += dt * 6;
     this.prog += dt * drillMult() * 0.25; // 热能采矿机 mining-speed 0.25（对齐《异星工厂》）

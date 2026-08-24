@@ -52,7 +52,14 @@ class Boiler extends Entity {
     this.lit = true;
     if (this.water <= 0) return; // 供水中断：暂停产汽，炉内煤不消耗
     this.burning = true;
+    if (typeof playSfx === 'function') playSfx('steam');
     boilerEmit(this, dt);
+    // 蒸汽音效节流（约每 0.9 秒一次柔和气声，避免连续刷音）
+    this._steamSfxT = (this._steamSfxT || 0) - dt;
+    if (this._steamSfxT <= 0) {
+      this._steamSfxT = 0.9;
+      if (typeof playSfx === 'function') playSfx('steam');
+    }
     this.burnLeft -= dt;
     this.water = Math.max(0, this.water - BOILER_WATER_RATE * dt);
     this.steamBuf = Math.min(WATER_CAP, this.steamBuf + BOILER_WATER_RATE * dt);

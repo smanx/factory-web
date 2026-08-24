@@ -49,6 +49,15 @@ class Assembler extends Entity {
     if (this.crafting) {
       this.prog += dt * asmMult() * 0.5 * this.moduleSpeedMult() * powerFactor();
       this.spin += dt * 4;
+      // 工业氛围：组装机运转时低频迸出细碎火花（画面优化）
+      if (typeof spawnSpark === 'function' && Math.random() < dt * 1.2) {
+        spawnSpark((this.x + 0.5 + (Math.random() - 0.5) * 0.7) * TILE, (this.y + 0.4) * TILE, { size: 1.2, life: 0.4, speed: 2 });
+      }
+      // 运转环境音：低频“嗡嗡”（限频避免音爆）
+      if (typeof playSfx === 'function' && G.settings.sound) {
+        this._runSfxT = (this._runSfxT || 0) - dt;
+        if (this._runSfxT <= 0) { this._runSfxT = 1.4; playSfx('machine-run'); }
+      }
       if (this.prog >= rec.time) {
         for (const k in rec.out) {
           this.outp[k] = (this.outp[k] || 0) + rec.out[k];
@@ -117,7 +126,7 @@ class Assembler extends Entity {
     if (isModule(item)) {
       if ((this.modules[item] || 0) >= 4) return false;
       this.modules[item] = (this.modules[item] || 0) + 1;
-      if (typeof playSfx === 'function') playSfx('select');
+      if (typeof playSfx === 'function') playSfx('module');
       return true;
     }
     if (!this.recipe) return false;

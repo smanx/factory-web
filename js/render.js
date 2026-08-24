@@ -73,6 +73,8 @@ function render() {
   updateLOD();
   drawTerrain(ctx);
   drawGridIfBuilding(ctx);
+  // 污染系统可视化（对齐《异星工厂》：基地工业排放的红褐色污染云）
+  if (typeof drawPollution === 'function') drawPollution(ctx);
   // 空间分区（桶）索引：只遍历视口覆盖到的桶，避免对全量 G.ents 线性扫描（P0 优化）
   // 机械臂（Inserter 族）最后单独绘制在最上层，避免被传送带/其他设备遮挡。
   const keys = (G.buckets && G.buckets.size)
@@ -100,6 +102,7 @@ function render() {
   drawBullets(ctx);
   drawCombatRobots(ctx);
   drawAoeZones(ctx);
+  drawGroundFires(ctx);
   drawLootDrops(ctx);
   drawLogisticsRobots(ctx);
   if (typeof drawConstruction === 'function') drawConstruction(ctx);
@@ -441,8 +444,12 @@ function drawOreDots(ctx, px, py, itemId, amt, tx, ty) {
   const n = itemId === 'crude-oil'
     ? Math.max(1, Math.min(3, Math.round(Math.sqrt(Math.max(amt, 0)) / 40)))
     : Math.max(2, Math.min(7, Math.round(Math.sqrt(Math.max(amt, 0)) / 9)));
-  ctx.fillStyle = ITEMS[itemId].color;
-  ctx.strokeStyle = 'rgba(0,0,0,.25)';
+  const col = ITEMS[itemId].color;
+  // 在矿格上铺一层淡淡的底色，让矿脉更醒目、更具“富矿感”（画面优化）
+  ctx.fillStyle = 'rgba(' + hexToRgb(col) + ',0.18)';
+  ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 4);
+  ctx.fillStyle = col;
+  ctx.strokeStyle = 'rgba(0,0,0,.3)';
   ctx.lineWidth = 1;
   const rad = itemId === 'crude-oil' ? 5.5 : null;
   for (let i = 0; i < n; i++) {
@@ -453,14 +460,36 @@ function drawOreDots(ctx, px, py, itemId, amt, tx, ty) {
       ctx.ellipse(px + 6 + ox * (TILE - 12), py + 6 + oy * (TILE - 12), rad * (0.8 + ox * 0.5), rad * (0.6 + oy * 0.4), ox * 3, 0, 7);
       ctx.fill();
       ctx.stroke();
+      // 原油反光高光
+      ctx.fillStyle = 'rgba(255,255,255,.22)';
+      ctx.beginPath();
+      ctx.ellipse(px + 6 + ox * (TILE - 12) - rad * 0.3, py + 6 + oy * (TILE - 12) - rad * 0.25, rad * 0.28, rad * 0.18, ox * 3, 0, 7);
+      ctx.fill();
+      ctx.fillStyle = col;
       continue;
     }
     const r = 2 + hash2(tx + i, ty + i) * 1.4;
+    const cx = px + 5 + ox * (TILE - 10), cy = py + 5 + oy * (TILE - 10);
     ctx.beginPath();
-    ctx.arc(px + 5 + ox * (TILE - 10), py + 5 + oy * (TILE - 10), r, 0, 7);
+    ctx.arc(cx, cy, r, 0, 7);
     ctx.fill();
     ctx.stroke();
+    // 矿物顶部高光，增加立体感（画面优化）
+    ctx.fillStyle = 'rgba(255,255,255,.28)';
+    ctx.beginPath();
+    ctx.arc(cx - r * 0.3, cy - r * 0.35, r * 0.35, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = col;
   }
+}
+
+// 辅助：把 #rrggbb 颜色转成 'r,g,b' 字符串（用于矿格底色半透明填充）
+function hexToRgb(hex) {
+  if (hex.charAt(0) === '#') hex = hex.slice(1);
+  if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+  const n = parseInt(hex, 16);
+  if (isNaN(n)) return '128,128,128';
+  return ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255);
 }
 
 function drawGridIfBuilding(ctx) {
@@ -551,9 +580,30 @@ function drawStatusDot(ctx, x, y, c) {
   ctx.fill();
 }
 
+// 画面优化：实体建筑软阴影——在建筑脚下绘制柔和椭圆投影，增强立体感与工业氛围
+// 仅在离屏缓存首次渲染时生成（不破坏分块缓存复用），低开销
+function drawEntityShadow(ctx, e, gx, gy) {
+  const w = e.w * TILE, h = e.h * TILE;
+  const px = gx * TILE, py = gy * TILE;
+  ctx.save();
+  ctx.globalAlpha = 0.16;
+  ctx.fillStyle = '#000';
+  // 沿底边绘制椭圆投影
+  ctx.beginPath();
+  ctx.ellipse(px + w / 2, py + h - TILE * 0.28, w * 0.42, TILE * 0.3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawEntity(ctx, e, gx, gy, dir, alpha) {
   const fn = DEVICE_RENDER[e.type];
-  if (fn) fn(ctx, e, gx, gy, dir, alpha);
+  if (fn) {
+    // 画面优化：实体建筑软阴影（仅实际建筑、非幽灵/低LOD，增强立体感）
+    if (alpha === 1 && !LOD.simple && BUILD_DEFS[e.type] && BUILD_DEFS[e.type].solid) {
+      drawEntityShadow(ctx, e, gx, gy);
+    }
+    fn(ctx, e, gx, gy, dir, alpha);
+  }
   // 建筑受损：绘制耐久条与裂纹（对齐《异星工厂》建筑受击表现）
   if (alpha === 1 && e.maxhp > 0 && e.hp !== undefined && e.hp < e.maxhp) {
     const px = gx * TILE, py = gy * TILE, w = e.w * TILE, h = e.h * TILE;
@@ -721,13 +771,20 @@ function drawEnemies(ctx) {
     ctx.strokeStyle = '#7c1a12';
     ctx.lineWidth = 2;
     if (en.kind === 'spawner') {
-      // 巢穴：带呼吸的肉质圆形虫巢
-      const pulse = 1 + Math.sin(G.time * 2 + en.x) * 0.06;
-      ctx.fillStyle = '#5a3a8a';
+      // 巢穴：带呼吸的肉质圆形虫巢；污染高时被激怒（变红、脉动加快、泛光）
+      const aggrod = (typeof pollutionAggroFactor === 'function') ? pollutionAggroFactor() : 0;
+      const pulse = 1 + Math.sin(G.time * (2 + aggrod * 4) + en.x) * (0.06 + aggrod * 0.12);
+      const baseCol = aggrod > 0.6 ? '#8a2a1a' : (aggrod > 0.2 ? '#7a2a2a' : '#5a3a8a');
+      ctx.fillStyle = baseCol;
       ctx.beginPath(); ctx.arc(en.x, en.y, size * pulse, 0, 7); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#3a225a';
+      // 污染激怒时巢穴整体泛红
+      if (aggrod > 0.1) {
+        ctx.fillStyle = 'rgba(255,80,40,' + (0.18 * aggrod).toFixed(3) + ')';
+        ctx.beginPath(); ctx.arc(en.x, en.y, size * (pulse + 1.2), 0, 7); ctx.fill();
+      }
+      ctx.fillStyle = aggrod > 0.6 ? '#5a1010' : '#3a225a';
       ctx.beginPath(); ctx.arc(en.x, en.y, size * 0.5, 0, 7); ctx.fill();
-      ctx.fillStyle = '#8a5ac0';
+      ctx.fillStyle = aggrod > 0.6 ? '#e06040' : '#8a5ac0';
       ctx.beginPath(); ctx.arc(en.x, en.y, size * 0.3, 0, 7); ctx.fill();
       ctx.fillStyle = '#ffd0a0';
       for (let i = 0; i < 4; i++) {
@@ -810,16 +867,29 @@ function drawBullets(ctx) {
       ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
       if (t >= 1) {
         const rad = (b.splash || 0) * TILE * (b.art ? 0.8 : 0.6);
+        // 爆炸推进进度：用 _boomT 让爆炸随时间膨胀/消散（画面优化：层次火球 + 冲击波环）
+        const boomDur = (b.art ? 0.6 : 0.35);
+        const age = (b._boomT || 0);
+        const prog = age > 0 ? Math.min(1, age / boomDur) : 1;
+        const grow = 0.7 + 0.6 * prog;               // 冲击波扩散
+        const fade = Math.max(0, 1 - prog);           // 火焰渐隐
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        // 爆炸：外层火球 + 中心高亮闪光
-        ctx.fillStyle = b.art ? 'rgba(255,120,50,.4)' : 'rgba(255,160,60,.35)';
+        // 外层冲击波环（扩散+渐隐）
+        ctx.strokeStyle = 'rgba(255,220,160,' + (fade * 0.6).toFixed(2) + ')';
+        ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.arc(b.tx, b.ty, rad * grow, 0, 7); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,150,70,' + (fade * 0.5).toFixed(2) + ')';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(b.tx, b.ty, rad * grow * 1.15, 0, 7); ctx.stroke();
+        // 外层火球 + 中心高亮闪光
+        ctx.fillStyle = b.art ? 'rgba(255,120,50,' + (0.4 * fade).toFixed(2) + ')' : 'rgba(255,160,60,' + (0.35 * fade).toFixed(2) + ')';
         ctx.beginPath(); ctx.arc(b.tx, b.ty, rad, 0, 7); ctx.fill();
-        ctx.fillStyle = b.art ? 'rgba(255,200,120,.55)' : 'rgba(255,220,140,.5)';
+        ctx.fillStyle = b.art ? 'rgba(255,200,120,' + (0.55 * fade).toFixed(2) + ')' : 'rgba(255,220,140,' + (0.5 * fade).toFixed(2) + ')';
         ctx.beginPath(); ctx.arc(b.tx, b.ty, rad * 0.55, 0, 7); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,230,.85)';
+        ctx.fillStyle = 'rgba(255,255,230,' + (0.85 * fade).toFixed(2) + ')';
         ctx.beginPath(); ctx.arc(b.tx, b.ty, rad * 0.22, 0, 7); ctx.fill();
-        ctx.strokeStyle = b.art ? 'rgba(255,120,50,.9)' : 'rgba(255,160,60,.8)';
+        ctx.strokeStyle = b.art ? 'rgba(255,120,50,' + (0.9 * fade).toFixed(2) + ')' : 'rgba(255,160,60,' + (0.8 * fade).toFixed(2) + ')';
         ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(b.tx, b.ty, rad, 0, 7); ctx.stroke();
         ctx.restore();
@@ -905,6 +975,47 @@ function drawAoeZones(ctx) {
       }
     }
   }
+}
+
+// 地面火焰残留（燃烧火场）：橙色摇曳火焰 + 中心高亮，随生命周期渐弱熄灭
+function drawGroundFires(ctx) {
+  if (!G.groundFires || G.groundFires.length === 0) return;
+  const cam = G.cam, z = cam.z;
+  const sx = (wx) => (wx - cam.px) * z + W / 2;
+  const sy = (wy) => (wy - cam.py) * z + H / 2;
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (const f of G.groundFires) {
+    if (f.life <= 0) continue;
+    const cx = sx(f.tx * TILE + TILE / 2), cy = sy(f.ty * TILE + TILE / 2);
+    const r = TILE * z * 0.6;                     // 火焰半径
+    const lifeT = f.life / f.maxLife;             // 剩余寿命比例（1→0）
+    const flick = 0.75 + 0.5 * Math.sin(G.time * 18 + f.tx * 3 + f.ty * 7);   // 火苗摇曳
+    const rr = r * (0.85 + 0.3 * flick) * (0.6 + 0.4 * lifeT);
+    if (cx < -rr || cx > W + rr || cy < -rr || cy > H + rr) continue;
+    const a = Math.min(1, lifeT * 1.4);
+    // 外层橙焰（半透明，摇曳）
+    ctx.fillStyle = 'rgba(255,' + (90 + 40 * flick) + ',20,' + (0.5 * a).toFixed(3) + ')';
+    ctx.beginPath();
+    // 用三段弧线叠加模拟不规则火苗
+    for (let k = 0; k < 3; k++) {
+      const fa = k * 2.09 + G.time * 3;
+      const fr = rr * (0.7 + 0.3 * Math.sin(G.time * 12 + k * 2));
+      ctx.arc(cx + Math.cos(fa) * rr * 0.5, cy + Math.sin(fa) * rr * 0.3, fr, 0, Math.PI * 2);
+    }
+    ctx.fill();
+    // 内层高亮火心
+    ctx.fillStyle = 'rgba(255,220,120,' + (0.75 * a).toFixed(3) + ')';
+    ctx.beginPath();
+    ctx.arc(cx, cy - r * 0.1, rr * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+    // 顶部亮白火焰舌
+    ctx.fillStyle = 'rgba(255,255,220,' + (0.6 * a).toFixed(3) + ')';
+    ctx.beginPath();
+    ctx.arc(cx, cy - r * 0.25, rr * 0.22, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 // 击杀敌人掉落的地面矿石（见 combat2.js dropEnemyLoot）：小矿石图标带轻微上下浮动
@@ -1069,6 +1180,26 @@ function drawPlayer(ctx) {
     ctx.arc(mx, my, 1.3, 0.3, Math.PI - 0.3);
     ctx.stroke();
   }
+
+  // ---- 能量护盾：受击/激活时在玩家周身绘出淡蓝能量护罩（对齐《异星工厂》Energy shield 视觉）----
+  if (typeof totalShieldCapacity === 'function' && totalShieldCapacity() > 0) {
+    const cap = totalShieldCapacity();
+    const rem = (typeof shieldRemaining === 'function') ? shieldRemaining() : cap;
+    if (rem > 0) {
+      const pulse = 0.5 + 0.5 * Math.sin(G.time * 3);
+      const r = 15 + pulse * 1.5;
+      ctx.save();
+      // 护盾护罩：半透明淡蓝椭圆，随剩余护盾量淡化
+      ctx.globalAlpha = 0.10 + 0.10 * (rem / cap);
+      ctx.fillStyle = '#3ad0e0';
+      ctx.strokeStyle = '#8af0ff';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, r, r * 1.05, 0, 0, 7);
+      ctx.fill(); ctx.stroke();
+      ctx.restore();
+    }
+  }
 }
 
 // ===== 小地图（Minimap） =====
@@ -1121,6 +1252,10 @@ function drawMinimap(ctx) {
     }
   }
   ctx.restore();
+  // 污染系统：在小地图叠加污染范围（红褐色）
+  if (typeof drawPollutionMinimap === 'function') {
+    drawPollutionMinimap(ctx, cx + (G.spawn ? G.spawn.x - pcx : 0) * z, cy + (G.spawn ? G.spawn.y - pcy : 0) * z, z);
+  }
   // 边框（覆盖 clip 外缘）
   ctx.strokeStyle = 'rgba(140,200,160,0.4)';
   ctx.lineWidth = 1;

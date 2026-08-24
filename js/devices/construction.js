@@ -214,7 +214,7 @@ function completeBuild(g) {
   addEnt(e);
   g._dead = true;
   // 施工机器人建成：短促金属“叮”
-  if (typeof playSfx === 'function') playSfx('build');
+  if (typeof playSfx === 'function') playSfx('robot-build');
 }
 
 // 完成一个拆除标记：返还物资并移除实体

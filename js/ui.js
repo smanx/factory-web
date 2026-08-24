@@ -307,6 +307,10 @@ function htmlInventory() {
       if (id === 'grenade' || id === 'cluster-grenade') {
         h += '<button class="usebtn" data-action="use-grenade" data-type="' + id + '" title="投掷' + ITEMS[id].name + '（向当前朝向投掷，造成范围爆炸）">💣 投掷</button>';
       }
+      // 生鱼可在背包中直接食用回血（对齐《异星工厂》：吃鱼治疗）
+      if (id === 'raw-fish') {
+        h += '<button class="usebtn" data-action="eat-fish" data-type="' + id + '" title="食用' + ITEMS[id].name + '（恢复 20 生命值）">🐟 食用</button>';
+      }
       any = true;
     }
   }
@@ -881,6 +885,19 @@ function initPanelEvents() {
           renderPanel(false);
         } else {
           toast('无法投掷（战斗系统未加载）');
+        }
+      }
+      else if (act === 'eat-fish') {
+        // 食用生鱼回血（对齐《异星工厂》：吃鱼恢复生命值）
+        if (invCount('raw-fish') > 0) {
+          const heal = FISH_HEAL || 20;
+          invTake('raw-fish', 1);
+          G.playerHP = Math.min(G.playerHPmax, G.playerHP + heal);
+          if (typeof playSfx === 'function') playSfx('fish');
+          toast('🐟 食用生鱼，恢复 ' + heal + ' 生命值（' + Math.round(G.playerHP) + '/' + G.playerHPmax + '）');
+          renderPanel(false);
+        } else {
+          toast('没有生鱼可食用');
         }
       }
       else if (act === 'quick-save') { await saveGame(); renderPanel(false); }

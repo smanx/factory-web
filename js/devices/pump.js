@@ -20,6 +20,12 @@ class Pump extends Entity {
     const take = Math.min(room, PUMP_RATE * dt);
     if (take > 0) { this.buf += take; this.working = true; }
     if (this.working) this.pulse = (this.pulse + dt * 1.6) % 1;
+    // 泵音效节流（约每 1.1 秒一次，避免连续刷音）
+    this._pumpSfxT = (this._pumpSfxT || 0) - dt;
+    if (this.working && this._pumpSfxT <= 0) {
+      this._pumpSfxT = 1.1;
+      if (typeof playSfx === 'function') playSfx('pump');
+    }
     this.tryOutput();
   }
   // 只朝箭头方向输出：送入管道，或指向锅炉两端水口格直接供水（从脚印对应边缘出发）

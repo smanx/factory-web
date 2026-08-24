@@ -41,6 +41,7 @@ class Roboport extends Entity {
     if (item !== 'logistic-robot') return false;
     if (this.roboCap >= ROBOPORT_CAP) return false;
     this.roboCap++;
+    if (typeof playSfx === 'function') playSfx('robot');
     return true;
   }
   takeItem() {
@@ -48,6 +49,7 @@ class Roboport extends Entity {
     this.roboCap--;
     // 若已派生出超出新上限的机器人，回收多余空闲机器人
     retireExcessRobots(this);
+    if (typeof playSfx === 'function') playSfx('robot');
     return 'logistic-robot';
   }
   countOf(item) { return item === 'logistic-robot' ? this.roboCap : 0; }
@@ -386,6 +388,7 @@ function assignTask(r) {
   r.tx = (best.e.x + best.e.w / 2) * TILE;
   r.ty = (best.e.y + best.e.h / 2) * TILE;
   r.state = 'collecting';
+  if (typeof playSfx === 'function') playSfx('robot');
 }
 
 // ===== 机器人飞行更新 =====
