@@ -25,7 +25,11 @@ const EQUIPMENT = {
   'personal-laser-defense':   { name: '个人激光防御',      size: 1, laser: 9, desc: '射程 9 格' },
   // 能量护盾：受击时优先消耗个人电网电力生成护盾吸收伤害（shield: 每件护盾吸收上限）
   'energy-shield':            { name: '能量护盾',          size: 2, shield: 200, desc: '吸收 200 伤害' },
-  'energy-shield-mk2':        { name: '能量护盾 II',       size: 2, shield: 400, desc: '吸收 400 伤害' }
+  'energy-shield-mk2':        { name: '能量护盾 II',       size: 2, shield: 400, desc: '吸收 400 伤害' },
+  // 传送带免疫：站上传送带不再被带动位移
+  'belt-immunity-equipment':  { name: '传送带免疫',        size: 1, beltImmune: true, desc: '传送带推动免疫' },
+  // 放电防御：手动激活对周围敌人释放连锁电击，消耗个人电网电力
+  'discharge-defense':        { name: '放电防御',          size: 3, discharge: true, desc: '主动放电打击周围敌人' }
 };
 function isEquipment(id) { return !!EQUIPMENT[id]; }
 
@@ -231,6 +235,75 @@ function updatePersonalLaserDefense(dt) {
   return true;
 }
 
+
+// ===== 传送带免疫装备（对齐《异星工厂》Belt immunity equipment） =====
+// 穿戴至少一件传送带免疫装备后，玩家站上传送带不再被带动位移。
+function hasBeltImmunity() {
+  return equipCount('belt-immunity-equipment') > 0;
+}
+
+// ===== 放电防御装备（对齐《异星工厂》Discharge defense） =====
+// 手动激活（按快捷键或点击装备）后，以玩家为中心的大范围内所有敌人被连锁电击，
+// 造成高额伤害并消耗个人电网电力。电力不足时无法激活。
+const DISCHARGE_RANGE = 12;         // 电击半径（格）
+const DISCHARGE_DMG = 100;          // 每个敌人受到的伤害
+const DISCHARGE_COST = 5000;        // 每次激活耗电（与个人电池 10MJ 量级匹配）
+const DISCHARGE_COOLDOWN = 2;       // 激活冷却（秒），避免连续按键刷屏
+
+// 玩家是否已装备放电防御（用于快捷键判定）
+function hasDischargeDefense() {
+  return equipCount('discharge-defense') > 0;
+}
+
+// 激活放电防御：对周围敌人造成连锁电击。返回是否成功激活。
+function activateDischargeDefense() {
+  if (!hasDischargeDefense()) {
+    if (typeof toast === 'function') toast('需要先安装「放电防御」装备');
+    return false;
+  }
+  if (!G.settings.combat || !G.enemies || G.enemies.length === 0) {
+    if (typeof toast === 'function') toast('当前没有敌人');
+    return false;
+  }
+  if (G.dischargeCd > 0) return false;
+  // 消耗个人电网电力；电力不足无法激活
+  if (!drainPersonalPower(DISCHARGE_COST)) {
+    if (typeof toast === 'function') toast('个人电网电力不足，无法放电');
+    return false;
+  }
+  G.dischargeCd = DISCHARGE_COOLDOWN;
+  const range = DISCHARGE_RANGE * TILE;
+  const px = G.player.x, py = G.player.y;
+  // 收集射程内敌人并逐一对每个敌人造成伤害（与手雷类似的范围电击）
+  const hits = [];
+  for (const en of G.enemies) {
+    if (en.dead) continue;
+    const d = Math.hypot(en.x - px, en.y - py);
+    if (d <= range) { en.hp -= DISCHARGE_DMG; if (en.hp <= 0) en.dead = true; hits.push(en); }
+  }
+  // 电击特效：从玩家向每个被击中的敌人拉一道闪电弧（复用 bullet 管线，kind='laser' 短促亮弧）
+  (G.bullets || (G.bullets = [])).push({
+    x: px, y: py, tx: px, ty: py, t: 0, life: 0.06, dmg: 0, kind: 'laser'
+  });
+  for (const en of hits) {
+    (G.bullets || (G.bullets = [])).push({
+      x: px, y: py, tx: en.x, ty: en.y, t: 0, life: 0.12, dmg: 0, kind: 'laser', color: '#7ac0ff'
+    });
+  }
+  if (typeof playSfx === 'function') playSfx('discharge');
+  if (typeof spawnParticle === 'function') {
+    for (let i = 0; i < 12; i++) spawnParticle('spark', px, py, { color: '#7ac0ff', speed: 8, life: 0.5 });
+  }
+  if (typeof toast === 'function') toast('⚡ 放电防御！击中 ' + hits.length + ' 个敌人');
+  uiDirty = true;
+  return true;
+}
+
+// 每帧推进放电防御冷却
+function updateDischargeCooldown(dt) {
+  if (G.dischargeCd > 0) G.dischargeCd -= dt;
+}
+
 // ===== 序列化 =====
 function equipmentSerialize() {
   ensureEquip();
@@ -317,12 +390,23 @@ function equipPowerHtml() {
     const rem = shieldRemaining();
     h += '<div class="dim">🛡 能量护盾：剩余 ' + Math.round(rem) + ' / ' + cap + ' 伤害吸收（受击时消耗个人电网电力）</div>';
   }
+  // 放电防御：点击按钮激活
+  if (hasDischargeDefense()) {
+    const cd = Math.max(0, G.dischargeCd || 0);
+    h += '<div class="dim"><button class="rcbtn" id="btn-discharge" data-discharge="1"' + (cd > 0 ? ' disabled' : '') + '>⚡ 放电防御（C 键，冷却 ' + cd.toFixed(1) + 's）</button><span class="dim">对周围 ' + DISCHARGE_RANGE + ' 格内敌人连锁电击，消耗 ' + (DISCHARGE_COST/1000) + 'MJ 个人电力</span></div>';
+  }
   return h;
 }
 
 // 处理装备网格相关点击。返回是否已处理。
 function equipPanelClick(el) {
   if (G.panelMode !== 'inv') return false;
+  // 点击放电防御按钮 → 激活
+  if (el.closest('[data-discharge]')) {
+    activateDischargeDefense();
+    renderPanel(false);
+    return true;
+  }
   // 点击网格中的装备 → 卸下
   const eqItem = el.closest('.eqitem');
   if (eqItem) {

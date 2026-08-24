@@ -12,6 +12,7 @@ let AC = null;
 let sfxMaster = null;
 let sfxNoiseBuf = null;
 let sfxReady = false;
+let sfxBound = false;   // 是否已绑定首次用户手势解锁
 
 // 程序化音效定义表
 const SFX = {
@@ -63,6 +64,8 @@ const SFX = {
   train: { type: 'sawtooth', dur: 1.2, vol: 0.22, f0: 392, f1: 494, slide: true, arpeggio: [392, 466, 392] },
   // 激光炮塔开火：短促尖啸“滋”
   laser: { type: 'square', dur: 0.09, vol: 0.16, f0: 1500, f1: 600, slide: true },
+  // 放电防御：短促高频电击“噼啪”
+  discharge: { type: 'noise', dur: 0.25, vol: 0.32, f0: 2600, f1: 500, slide: true },
   // 火焰喷射/火焰塔：低频“呼——轰”
   flamethrower: { type: 'noise', dur: 0.5, vol: 0.2, f0: 400, f1: 80, slide: true },
   // 机枪连发：短促连续爆裂（冲锋枪/机枪塔）
@@ -139,6 +142,22 @@ function sfxResume() {
   if (AC && AC.state === 'suspended') { try { AC.resume(); } catch (e) {} }
 }
 
+// 首次用户手势时解锁音频（一次性）：读档等异步流程结束后 AudioContext
+// 常处于 suspended 状态，靠用户再次交互才真正运行；此处确保一旦交互即恢复。
+function sfxBindGesture() {
+  if (sfxBound) return;
+  sfxBound = true;
+  const unlock = function () {
+    sfxResume();
+    window.removeEventListener('pointerdown', unlock);
+    window.removeEventListener('keydown', unlock);
+    window.removeEventListener('click', unlock);
+  };
+  window.addEventListener('pointerdown', unlock);
+  window.addEventListener('keydown', unlock);
+  window.addEventListener('click', unlock);
+}
+
 // 噪声源：对预生成白噪声做带通滤波，制造“咔哒/爆炸/碎裂”质感
 function noiseSrc() {
   const src = AC.createBufferSource();
@@ -170,7 +189,10 @@ function tone(osc, type, t0, f0, f1, dur, vol, g) {
 function sfxPlay(name) {
   if (!sfxReady || !AC || !sfxMaster) return;
   if (!(G && G.settings && G.settings.sound)) return;   // 音效开关
-  sfxResume();
+  // 音频上下文处于 suspended 时 AC.currentTime 冻结在旧值：此时若照常排程，
+  // 读档/进场首帧的大量音效会全挤在同一时间戳，恢复后齐响造成“爆音”，
+  // 且节点堆积会压垮上下文导致后续音效全部失效。因此挂起期间只尝试恢复、不排程。
+  if (AC.state !== 'running') { sfxResume(); return; }
   const sp = SFX[name];
   if (!sp) return;
   const now = AC.currentTime;
@@ -229,6 +251,7 @@ function playSfx(name) {
   if (!G || !G.settings || !G.settings.sound) return;
   if (!SFX[name]) return;
   sfxInit();          // 惰性初始化（首次播放时）
+  sfxBindGesture();  // 确保挂起的上下文能在下一次用户手势时被解锁
   sfxPlay(name);
 }
 
@@ -306,6 +329,7 @@ function ambientEnsure() {
 // 播放一次环境点缀音（鸟鸣/虫鸣），由 ambientUpdate 按昼夜节奏触发
 function ambientAccent(light) {
   if (!AC || !sfxMaster) return;
+  if (AC.state !== 'running') return;   // 挂起时 AC.currentTime 冻结，避免同一时间戳堆积爆音
   const now = AC.currentTime;
   const out = AC.createGain();
   out.gain.value = 1;
@@ -347,9 +371,14 @@ function ambientAccent(light) {
 // 每帧推进环境音：随昼夜调节音量/滤波，并间歇触发点缀音。
 function ambientUpdate(dt) {
   if (!G || !G.settings || !G.settings.sound) { if (ambNodes) { try { ambNodes.g.gain.value = 0; } catch (e) {} } return; }
-  sfxInit();
-  if (!sfxReady) return;
-  sfxResume();
+  // 仅在音频上下文已就绪并运行时推进：读档/进场首帧上下文常处于 suspended，
+  // 此时 AC.currentTime 冻结，若强行创建环境节点会造成爆音，故等待解锁后再启用。
+  if (!AC || !sfxReady || AC.state !== 'running') {
+    sfxResume();
+    sfxBindGesture();
+    if (!AC || !sfxReady) sfxInit();
+    return;
+  }
   if (!ambientEnsure()) return;
   const { light } = ambientPhase();
   // 目标音量：白天略高、夜晚略低（整体很低，不喧宾夺主）
