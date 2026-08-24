@@ -233,7 +233,7 @@ function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
   // 配方第1种流体原料进左侧输入口，第2种进右侧输入口
   drawRotatablePorts(ctx, e, px, py, s, CHEM_PORTS);
   const cd = e.dir | 0;
-  // 接口图标默认隐藏，松开 Alt 切换显示详情：各口只画流体/气体图标，不再显示文字标签
+  // 接口图标默认显示详情：各口只画流体/气体图标，不再显示文字标签
   if (portLabelVisible()) {
     const inSide = (1 + cd) % 4, outSide = (3 + cd) % 4;
     // 输入口（底部）：沿边偏移 = 格号 - 中心格(1)
@@ -316,7 +316,7 @@ DEVICE_STATUS['chemical-plant'] = e => {
 DEVICE_PANEL['chemical-plant'] = { html: chemicalPlantPanelHtml, live: chemicalPlantPanelLive, tip: chemicalPlantTip };
 // 化工厂四边均布流体口、本体对称，旋转仅记录朝向；选中/悬停后按 R 可直接旋转
 DEVICE_DIR_ROTATE['chemical-plant'] = true;
-// 显示详情(Alt)时，各接口流体图标所在世界格 + 对应流体名（用于鼠标悬停显示流体名称）
+// 显示详情时，各接口流体图标所在世界格 + 对应流体名（用于鼠标悬停显示流体名称）
 DEVICE_FLUID_ICONS['chemical-plant'] = e => {
   const icons = [];
   for (const cell of CHEM_INPUT_CELLS) {

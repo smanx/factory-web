@@ -179,7 +179,7 @@ function drawRotatablePorts(ctx, e, px, py, s, ports) {
   }
 }
 
-// 是否显示流体接口用途标签（对齐《异星工厂》：默认隐藏，按一下 Alt 切换显示详情）
+// 是否显示流体接口用途标签（默认显示详情）
 function portLabelVisible() {
   return !!(G && G.showDetails);
 }
