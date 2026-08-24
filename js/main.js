@@ -55,7 +55,8 @@ const G = {
   spawnT: 0,
   inMenu: true,       // 开始菜单显示中：游戏世界尚未初始化，loop 暂停渲染与更新
   deconstructMode: false,  // 触屏拆除模式：开启后点触建筑即可拆除（PC 右键拆除不受影响）
-  deconstructHeld: false   // 拆除模式：左键/触屏是否处于按住连续拆除状态
+  deconstructHeld: false,  // 拆除模式：左键/触屏是否处于按住连续拆除状态
+  touchStart: null          // 触屏普通模式触摸起点 {x,y}，用于识别轻点打开建筑面板
 };
 
 let lastPlaceKey = '';
@@ -1150,6 +1151,7 @@ function bindInput() {
     // 普通模式：模拟左键建造/挖矿
     G.mouseDown = true;
     lastPlaceKey = '';
+    G.touchStart = { x: t.clientX, y: t.clientY };
     handleLeftDown();
   }, { passive: false });
   G.canvas.addEventListener('touchmove', ev => {
@@ -1171,11 +1173,28 @@ function bindInput() {
       if (G.blueMode === 'blue') captureBlueprint();
       else if (G.blueMode === 'red') applyRedBlueprint();
       else if (G.blueMode === 'green') applyGreenBlueprint();
+      return;
+    }
+    // 手机端轻点建筑：识别“点选”操作，打开对应建筑面板（与 PC 端点击一致）
+    const t = ev.changedTouches[0];
+    if (t && G.touchStart) {
+      const dx = t.clientX - G.touchStart.x;
+      const dy = t.clientY - G.touchStart.y;
+      // 位移很小视为轻点（tap），且未在建造/拆除模式时打开建筑面板
+      if (Math.hypot(dx, dy) < 12 && !buildActive() && !G.deconstructMode) {
+        updateCursorTile(t.clientX, t.clientY);
+        if (G.cursorTile) {
+          const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
+          if (e) openPanel('machine', e);
+        }
+      }
+      G.touchStart = null;
     }
   }, { passive: false });
   G.canvas.addEventListener('touchcancel', () => {
     G.mouseDown = false;
     G.blueSelecting = false;
+    G.touchStart = null;
   });
   G.canvas.addEventListener('contextmenu', ev => ev.preventDefault());
   G.canvas.addEventListener('wheel', ev => {

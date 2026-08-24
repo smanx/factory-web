@@ -686,6 +686,22 @@ html, body {
 }
 #deconstruct-btn.hidden { display: none; }
 
+/* 建筑面板内的“拆除”按钮（PC/手机端通用）：红色破坏性操作样式 */
+#panel button.deconstruct-btn-inline {
+  width: 100%;
+  margin-top: 4px;
+  padding: 9px 12px;
+  font-weight: bold;
+  color: #fff;
+  background: rgba(120, 30, 30, .85);
+  border: 1px solid #ff5b5b;
+  box-shadow: 0 0 8px rgba(255, 91, 91, .3);
+}
+#panel button.deconstruct-btn-inline:hover:not(:disabled) {
+  background: rgba(150, 40, 40, .95);
+  border-color: #ff8080;
+}
+
 /* ===== 手机 / 窄屏适配：放大字体与触控热区，避免文字过小 ===== */
 @media (max-width: 720px) {
   body { -webkit-text-size-adjust: 100%; }
