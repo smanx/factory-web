@@ -276,12 +276,14 @@ function htmlInventory() {
     const _r = RECIPES[rid];
     // 含流体原料的配方不列入手搓清单（需在组装机/化工厂生产）
     if (Object.keys(_r.inp).some(k => FLUIDS.indexOf(k) >= 0)) continue;
+    const unlocked = recipeUnlocked(rid);
+    const lockTech = recipeLockingTech(rid);
     const rec = RECIPES[rid];
-    const ok = canCraft(rid);
+    const ok = unlocked && canCraft(rid);
     const outId = Object.keys(rec.out)[0];
     const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
       Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') + ' ' + recipeDeviceName(rid)).toLowerCase();
-    h += '<div class="recipe" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
+    h += '<div class="recipe' + (unlocked ? '' : ' locked-recipe') + '" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
     h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + ITEMS[outId].name + '|' + ITEMS[outId].desc + '" src="' + iconDataURL(outId) + '">';
     h += '<div class="rmain"><div class="rname">' + ITEMS[Object.keys(rec.out)[0]].name +
       (rec.out[Object.keys(rec.out)[0]] > 1 ? ' ×' + rec.out[Object.keys(rec.out)[0]] : '') +
@@ -293,17 +295,23 @@ function htmlInventory() {
         '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + have + '/' + rec.inp[k] + '</span>';
     }
     h += '</div></div>';
-    h += '<button data-action="craft" data-id="' + rid + '" ' + (ok ? '' : 'disabled') + '>合成</button>';
-    if (ok) h += '<button data-action="craft" data-mult="5" data-id="' + rid + '">×5</button>';
+    if (!unlocked) {
+      h += '<button disabled title="需先研究：' + TECHS[lockTech].name + '">🔒 需' + TECHS[lockTech].name + '</button>';
+    } else {
+      h += '<button data-action="craft" data-id="' + rid + '" ' + (ok ? '' : 'disabled') + '>合成</button>';
+      if (ok) h += '<button data-action="craft" data-mult="5" data-id="' + rid + '">×5</button>';
+    }
     h += '</div>';
   }
   // 化工厂配方
   for (const rid of CHEM_RECIPES) {
+    const unlocked = recipeUnlocked(rid);
+    const lockTech = recipeLockingTech(rid);
     const rec = RECIPES[rid];
     const outId = Object.keys(rec.out)[0];
     const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
       Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') + ' 化工厂').toLowerCase();
-    h += '<div class="recipe chem" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
+    h += '<div class="recipe chem' + (unlocked ? '' : ' locked-recipe') + '" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
     h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + ITEMS[outId].name + '|' + ITEMS[outId].desc + '" src="' + iconDataURL(outId) + '">';
     h += '<div class="rmain"><div class="rname">' + ITEMS[outId].name +
       (rec.out[outId] > 1 ? ' ×' + rec.out[outId] : '') + '<span class="rdev">化工厂</span></div>';
@@ -313,16 +321,18 @@ function htmlInventory() {
         '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + rec.inp[k] + '</span>';
     }
     h += '</div></div>';
-    h += '<span class="rdev-note">需化工厂</span>';
+    h += unlocked ? '<span class="rdev-note">需化工厂</span>' : '<span class="rdev-note lock-tag">🔒 需' + TECHS[lockTech].name + '</span>';
     h += '</div>';
   }
   // 炼油厂配方
   for (const rid of REFINERY_RECIPE_IDS) {
+    const unlocked = recipeUnlocked(rid);
+    const lockTech = recipeLockingTech(rid);
     const rec = REFINERY_RECIPES[rid];
     const outId = Object.keys(rec.out)[0];
     const searchKey = (rec.name + ' ' + Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') +
       ' ' + Object.keys(rec.out).map(k => ITEMS[k].name).join(' ') + ' 炼油厂').toLowerCase();
-    h += '<div class="recipe chem" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
+    h += '<div class="recipe chem' + (unlocked ? '' : ' locked-recipe') + '" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
     h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + ITEMS[outId].name + '|' + ITEMS[outId].desc + '" src="' + iconDataURL(outId) + '">';
     h += '<div class="rmain"><div class="rname">' + rec.name + '<span class="rdev">炼油厂</span></div>';
     h += '<div class="ring">';
@@ -336,7 +346,7 @@ function htmlInventory() {
         '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + rec.out[k] + '</span>';
     }
     h += '</div></div>';
-    h += '<span class="rdev-note">需炼油厂</span>';
+    h += unlocked ? '<span class="rdev-note">需炼油厂</span>' : '<span class="rdev-note lock-tag">🔒 需' + TECHS[lockTech].name + '</span>';
     h += '</div>';
   }
   h += '</div>';
@@ -385,12 +395,14 @@ function htmlTech() {
   for (const tid in TECHS) {
     const t = TECHS[tid];
     const done = G.techDone[tid];
+    const locked = !done && techLocked(tid);
+    const missing = techMissingPrereqs(tid);
     const prog = G.techProg[tid] || 0;
     const total = techCostTotal(tid);
     const costChips = [];
     for (const pk in t.cost) costChips.push(ITEMS[pk].name + '×' + t.cost[pk]);
-    h += '<div class="recipe tech ' + (done ? 'done' : '') + '">';
-    h += '<div class="rmain"><div class="rname">' + t.name + '</div><div class="dim">' + t.desc + '</div>';
+    h += '<div class="recipe tech ' + (done ? 'done' : '') + (locked ? ' locked' : '') + '">';
+    h += '<div class="rmain"><div class="rname">' + t.name + (locked ? ' <span class="lock-tag">🔒</span>' : '') + '</div><div class="dim">' + t.desc + '</div>';
     if (isInfiniteTech(tid)) {
       // 无限科技：进度无限，永不完成，消耗任意科学包
       h += '<div class="bar"><i style="width:100%"></i></div>';
@@ -404,9 +416,13 @@ function htmlTech() {
     h += '</div>';
     // 按钮作为 .recipe 的直接子元素（在 .rmain 外部），配合 .recipe 的 space-between 布局将其置于最右侧
     if (!done && !isInfiniteTech(tid)) {
-      h += (G.activeTech === tid)
-        ? '<button data-action="tech-cancel">取消</button>'
-        : '<button data-action="tech" data-id="' + tid + '">研究</button>';
+      if (locked) {
+        h += '<button disabled title="需先研究：' + missing.map(m => TECHS[m].name).join('、') + '">需先研究 ' + missing.map(m => TECHS[m].name).join('+') + '</button>';
+      } else {
+        h += (G.activeTech === tid)
+          ? '<button data-action="tech-cancel">取消</button>'
+          : '<button data-action="tech" data-id="' + tid + '">研究</button>';
+      }
     } else if (isInfiniteTech(tid)) {
       // 无限科技始终可选（重复研究也继续，永不完成）
       h += (G.activeTech === tid)
@@ -671,10 +687,27 @@ function initPanelEvents() {
         }
       } else if (act === 'recipe') {
         const mch = G.panelEnt;
-        if (mch && typeof mch.setRecipe === 'function') mch.setRecipe(id);
+        if (mch && typeof mch.setRecipe === 'function') {
+          // 科技门控：未解锁的配方不能在设备中选择
+          if (id !== 'kovarex' && !recipeUnlocked(id)) {
+            toast('需先研究「' + TECHS[recipeLockingTech(id)].name + '」才能生产' + ITEMS[Object.keys((RECIPES[id] || REFINERY_RECIPES[id] || CENTRIFUGE_RECIPES[id]).out)[0]].name);
+          } else {
+            mch.setRecipe(id);
+          }
+        }
       } else if (act === 'recipe-clear') {
         const mch = G.panelEnt;
         if (mch && typeof mch.setRecipe === 'function') mch.setRecipe(null);
+      } else if (act === 'rec') {
+        // 离心机等使用 data-action="rec" 选择配方（含科技门控）
+        const mch = G.panelEnt;
+        if (mch && typeof mch.setRecipe === 'function') {
+          if (id !== 'kovarex' && !recipeUnlocked(id)) {
+            toast('需先研究「' + TECHS[recipeLockingTech(id)].name + '」才能执行' + (CENTRIFUGE_RECIPES[id] ? CENTRIFUGE_RECIPES[id].name : id));
+          } else {
+            mch.setRecipe(id);
+          }
+        }
       } else if (act === 'fuel') {
         const fid = btn.dataset.id || 'coal';
         const n = Math.min(5, invCount(fid));
@@ -713,6 +746,12 @@ function initPanelEvents() {
         const mch = G.panelEnt;
         if (mch && mch.takeAll) for (const [k, n] of mch.takeAll()) invAdd(k, n);
       } else if (act === 'tech') {
+        // 前置科技校验：未满足前置的科技不能开始研究
+        if (G.techDone[id]) { toast('该科技已完成'); return; }
+        if (techLocked(id)) {
+          toast('需先研究：' + techMissingPrereqs(id).map(m => TECHS[m].name).join('、'));
+          return;
+        }
         G.activeTech = id;
       } else if (act === 'tech-cancel') {
         G.activeTech = null;

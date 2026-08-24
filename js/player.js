@@ -117,6 +117,8 @@ function isHandCraftable(rid) {
 // 点击时一次性把本批次的材料扣除并入队，制作过程中无需再检查材料。
 function queueCraft(rid, times = 1) {
   if (!isHandCraftable(rid)) return 0;
+  // 科技门控：未解锁的配方不能手搓（对齐《异星工厂》科技解锁配方）
+  if (!recipeUnlocked(rid)) return 0;
   const rec = RECIPES[rid];
   const outId = Object.keys(rec.out)[0];
   const craftTime = (rec.time || 1) / Math.max(1, (G.dbg && G.dbg.asmMult) || 1);

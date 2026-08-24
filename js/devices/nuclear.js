@@ -182,6 +182,7 @@ class NuclearReactor extends Entity {
     this.temp = 0;          // 堆芯温度（显示用）
     this.burning = false;
     this.lit = false;
+    this.spent = 0;         // 已燃尽的废燃料棒（可被机械臂取走再生成铀-238）
   }
   // 两侧水口：左端格左边 (x-1, midRow) & 右端格右边 (x+w, midRow)
   isWaterPortCell(cx, cy) {
@@ -204,6 +205,9 @@ class NuclearReactor extends Entity {
     if (this.burnLeft <= 0 && this.water > 0 && this.fuel > 0) {
       this.fuel--;
       if (typeof trackProd === 'function') trackProd('nuclear-fuel', -1);
+      // 燃尽一根核燃料 → 产生一根废燃料棒（核燃料循环闭环）
+      this.spent++;
+      if (typeof trackProd === 'function') trackProd('used-up-uranium-fuel-cell', 1);
       this.burnLeft += REACTOR_FUEL_ENERGY;
     }
     if (this.burnLeft <= 0) { this.lit = false; return; }
@@ -242,9 +246,29 @@ class NuclearReactor extends Entity {
     if (item === 'water' && this.water < WATER_CAP - 0.01) { this.water = Math.min(WATER_CAP, this.water + 1); return true; }
     return false;
   }
+  peekItem() {
+    if (this.spent > 0) return 'used-up-uranium-fuel-cell';
+    return null;
+  }
+  takeItem() {
+    if (this.spent > 0) { this.spent--; return 'used-up-uranium-fuel-cell'; }
+    return null;
+  }
+  countOf(item) { return item === 'used-up-uranium-fuel-cell' ? this.spent : 0; }
+  takeItemOf(item) {
+    if (item === 'used-up-uranium-fuel-cell' && this.spent > 0) { this.spent--; return item; }
+    return null;
+  }
+  // 面板“取回全部”：退回废燃料棒（核燃料/水/蒸汽不参与）
+  takeAll() {
+    const rows = [];
+    if (this.spent > 0) { rows.push(['used-up-uranium-fuel-cell', this.spent]); this.spent = 0; }
+    return rows;
+  }
   contents() {
     const list = [[this.type, 1]];
     if (this.fuel > 0) list.push(['nuclear-fuel', this.fuel]);
+    if (this.spent > 0) list.push(['used-up-uranium-fuel-cell', this.spent]);
     if (this.water >= 1) list.push(['water', Math.floor(this.water)]);
     if (this.steamBuf >= 1) list.push(['steam', Math.floor(this.steamBuf)]);
     return list;
@@ -252,7 +276,7 @@ class NuclearReactor extends Entity {
   serialize() {
     const s = super.serialize();
     s.fuel = this.fuel; s.burnLeft = this.burnLeft; s.water = this.water;
-    s.steamBuf = this.steamBuf; s.temp = this.temp;
+    s.steamBuf = this.steamBuf; s.temp = this.temp; s.spent = this.spent;
     return s;
   }
   static restore(s) {
@@ -328,16 +352,20 @@ function reactorPanelHtml(e) {
   let h = row('核燃料', e.fuel > 0 ? chip('nuclear-fuel', e.fuel) : '<span class="dim">无</span>', 'fuel');
   if (invCount('nuclear-fuel') > 0)
     h += '<button data-action="fuel" data-id="nuclear-fuel">装入核燃料 (' + invCount('nuclear-fuel') + ')</button>';
+  h += row('废燃料棒', '<span class="dim"></span>', 'spent');
+  h += '<button data-action="takeout" id="btn-spent-takeout" style="display:none"></button>';
   h += row('水', '<span class="dim"></span>', 'water');
   h += row('蒸汽缓存', '<span class="dim"></span>', 'steam');
   h += row('堆芯温度', '', 'temp');
   h += barHtml(0);
   h += '<div class="status"></div>';
-  h += '<div class="dim">核反应堆：两侧蓝口水口接入供水管道（抽水机→管道），底边白口送出高温蒸汽到汽轮机/蒸汽管道。需核燃料，供汽能力远超锅炉。核能技术解锁。</div>';
+  h += '<div class="dim">核反应堆：两侧蓝口水口接入供水管道（抽水机→管道），底边白口送出高温蒸汽到汽轮机/蒸汽管道。需核燃料，供汽能力远超锅炉。燃尽的燃料会留下废燃料棒，可在离心机再生为铀-238，闭合核燃料循环。核能技术解锁。</div>';
   return h;
 }
 function reactorPanelLive(e, api) {
   api.set('fuel', e.fuel > 0 ? chip('nuclear-fuel', e.fuel) : dimSpan('无'));
+  api.set('spent', e.spent > 0 ? chip('used-up-uranium-fuel-cell', e.spent) : dimSpan('无'));
+  api.toggle('#btn-spent-takeout', e.spent > 0, '取回废燃料棒 (' + e.spent + ')');
   api.set('water', e.water >= 1 ? chip('water', Math.floor(e.water)) : dimSpan('空'));
   api.set('steam', e.steamBuf >= 1 ? chip('steam', Math.floor(e.steamBuf)) : dimSpan('空'));
   api.set('temp', Math.round(e.temp) + ' / 200 °C');

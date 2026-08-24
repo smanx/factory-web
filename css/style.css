@@ -196,6 +196,13 @@ html, body {
   margin-top: 4px;
 }
 .recipe.done { opacity: .6; }
+.recipe.tech.locked { opacity: .55; }
+.recipe.tech.locked .rname { color: #9aa;
+}
+.lock-tag { color: #e0b23c; font-weight: bold; }
+.locked-recipe { opacity: .55; }
+.locked-recipe .rname { color: #9aa; }
+.rcbtn.locked { opacity: .5; }
 
 .recipe .ric { width: 34px; height: 34px; }
 .rmain { flex: 1; min-width: 0; }

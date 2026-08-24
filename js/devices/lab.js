@@ -41,6 +41,8 @@ class Lab extends Entity {
     const tech = G.activeTech;
     if (G.power.sat <= 0) { this.t = 0; return; }
     if (!tech || G.techDone[tech]) { this.t = 0; return; }
+    // 前置科技未满足时暂停研究（旧档可能残留不合法的 activeTech）
+    if (techLocked(tech)) { this.t = 0; return; }
     // 无限科技：永不完成，持续消耗任意存在的科学包
     if (isInfiniteTech(tech)) {
       const any = this.peekAnyPack();

@@ -254,14 +254,16 @@ function assemblerPanelHtml(e) {
   h += '<div class="recgrid">';
   for (const rid of Object.keys(RECIPES).filter(r => !isChemRecipe(r) && !isCentrifugeRecipe(r))) {
     const outId = Object.keys(RECIPES[rid].out)[0];
+    const unlocked = recipeUnlocked(rid);
+    const lockTech = recipeLockingTech(rid);
     const selCls = e.recipe === rid ? 'sel' : '';
     // 鼠标悬停显示所需原料（异星工厂惯例）
     const inpStr = Object.keys(RECIPES[rid].inp).map(k => ITEMS[k].name + '×' + RECIPES[rid].inp[k]).join('、');
     const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
       Object.keys(RECIPES[rid].inp).map(k => ITEMS[k].name).join(' ')).toLowerCase();
-    h += '<button class="rcbtn ' + selCls + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-rsearch="' + searchKey.replace(/"/g, '') + '" data-tip="' +
-      ITEMS[outId].name + '|' + RECIPES[rid].out[outId] + '个/次，耗时' + RECIPES[rid].time + '秒。所需原料：' + inpStr + '">' +
-      '<img src="' + iconDataURL(outId) + '">' + ITEMS[outId].name + '</button>';
+    h += '<button class="rcbtn ' + selCls + (unlocked ? '' : ' locked') + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-rsearch="' + searchKey.replace(/"/g, '') + '" data-tip="' +
+      ITEMS[outId].name + '|' + RECIPES[rid].out[outId] + '个/次，耗时' + RECIPES[rid].time + '秒。所需原料：' + inpStr + (unlocked ? '' : '。未解锁：需先研究「' + TECHS[lockTech].name + '」') + '" ' + (unlocked ? '' : 'disabled') + '>' +
+      '<img src="' + iconDataURL(outId) + '">' + ITEMS[outId].name + (unlocked ? '' : '<br><small>🔒' + TECHS[lockTech].name + '</small>') + '</button>';
   }
   h += '</div>';
   h += '<div class="dim" id="asm-recipe-empty" style="display:none"></div>';
