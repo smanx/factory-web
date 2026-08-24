@@ -656,7 +656,11 @@ function pasteSettings(e) {
   const c = G.clipboard;
   if (e.type !== c.type) { toast('类型不匹配：剪贴板是' + ITEMS[c.type].name); return; }
   if (c.dir === undefined) return;
-  if (BUILD_DEFS[e.type] && BUILD_DEFS[e.type].rotSwap) { removeEnt(e); e.dir = c.dir; e.applyDir(); addEnt(e); }
+  if (BUILD_DEFS[e.type] && BUILD_DEFS[e.type].rotSwap) {
+    // 抽水机旋转后脚印变化，需重新校验仍压水面
+    if (e.type === 'offshore-pump' && !pumpCanFace(e, c.dir)) { toast('无法粘贴：抽水机必须仍压在水面上'); return; }
+    removeEnt(e); e.dir = c.dir; e.applyDir(); addEnt(e);
+  }
   else { e.dir = c.dir; }
   if (c.recipe && typeof e.setRecipe === 'function') e.setRecipe(c.recipe);
   uiDirty = true;
@@ -669,8 +673,11 @@ function rotateAction() {
     if (e && BUILD_DEFS[e.type]) {
       // 非方形设备（分流器类）：旋转后脚印变化，需重挂网格
       if (BUILD_DEFS[e.type].rotSwap) {
+        const nd = (e.dir + 1) % 4;
+        // 抽水机必须始终压在水面上，旋转后脚印变化需重新校验
+        if (e.type === 'offshore-pump' && !pumpCanFace(e, nd)) { toast('抽水机无法朝该方向旋转：必须仍压在水面上'); return; }
         removeEnt(e);
-        e.dir = (e.dir + 1) % 4;
+        e.dir = nd;
         e.applyDir();
         addEnt(e);
         uiDirty = true;
@@ -701,8 +708,11 @@ function flipAction(axis) {
     if (e && BUILD_DEFS[e.type]) {
       // 非方形设备（分流器类）：翻转后脚印变化，需重挂网格
       if (BUILD_DEFS[e.type].rotSwap) {
+        const nd = flipDir(e.dir, axis);
+        // 抽水机必须始终压在水面上，翻转后脚印变化需重新校验
+        if (e.type === 'offshore-pump' && !pumpCanFace(e, nd)) { toast('抽水机无法朝该方向翻转：必须仍压在水面上'); return; }
         removeEnt(e);
-        e.dir = flipDir(e.dir, axis);
+        e.dir = nd;
         e.applyDir();
         addEnt(e);
         uiDirty = true;
