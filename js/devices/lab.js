@@ -170,6 +170,8 @@ function labPanelHtml(e) {
   h += barHtml(0);
   h += '<div class="status"></div>';
   h += row('课题', '', 'techline');
+  // 消耗速率：每 LAB_TIME 秒消耗 1 瓶科学包（按所选科技配方逐瓶消耗）
+  h += machRateHtml({ inp: { 'science-pack': 1 }, out: {}, time: LAB_TIME }, 1);
   h += '<div class="dim">研究中心按所选科技的配方顺序逐瓶消耗科学包；缺哪种包会暂停并提示。机械臂可自动喂包。</div>';
   return h;
 }
