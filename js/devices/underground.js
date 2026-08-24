@@ -73,8 +73,25 @@ class Underground extends Entity {
     this.items.push(item);
     return true;
   }
+  // 机械臂抓取：优先取出口待发（outItems），其次取入口缓存（items）。
+  // 这样机械臂既能抓地下带出口即将喷射的货，也能抓入口尚未送入地下的缓存。
   peekItem() {
-    return this.outItems.length ? this.outItems[0] : null;
+    if (this.outItems.length) return this.outItems[0];
+    if (this.items.length) return this.items[0];
+    return null;
+  }
+  countOf(item) {
+    let n = 0;
+    for (const it of this.outItems) if (it === item) n++;
+    for (const it of this.items) if (it === item) n++;
+    return n;
+  }
+  takeItemOf(item) {
+    let i = this.outItems.indexOf(item);
+    if (i >= 0) return this.outItems.splice(i, 1)[0];
+    i = this.items.indexOf(item);
+    if (i >= 0) return this.items.splice(i, 1)[0];
+    return null;
   }
   takeOutput() {
     return this.outItems.length ? this.outItems.shift() : null;
