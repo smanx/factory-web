@@ -52,6 +52,7 @@ class Boiler extends Entity {
     this.lit = true;
     if (this.water <= 0) return; // 供水中断：暂停产汽，炉内煤不消耗
     this.burning = true;
+    if (typeof playSfx === 'function') playSfx('steam');
     boilerEmit(this, dt);
     this.burnLeft -= dt;
     this.water = Math.max(0, this.water - BOILER_WATER_RATE * dt);

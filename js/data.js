@@ -256,6 +256,7 @@ const ITEMS = {
   'artillery-wagon':   { name: '炮兵车厢', color: '#8a5a3a', desc: '挂载于列车的远程炮兵：列车行驶/停靠期间自动轰击射程内远处敌人，命中造成大范围爆炸，内装炮兵炮弹（对齐《异星工厂》Artillery wagon）' },
   'train-stop':        { name: '车站', color: '#5a8ac0', desc: '火车停靠站：列车行驶到车站所在铁轨即停车，便于机械臂/传送带装卸货物' },
   'rail-signal':       { name: '铁路信号灯', color: '#e04a4a', desc: '放在铁轨旁，指示前方区段是否被列车占用，用于多列火车防追尾（1×1）' },
+  'rail-chain-signal': { name: '铁路链式信号灯', color: '#e0a04a', desc: '放在铁轨旁，连锁转发前方信号灯状态：只有当前方区段整段畅通时才放行，防止列车在复杂交叉口内停车堵塞（1×1，对齐《异星工厂》Rail chain signal）' },
   // ===== 润滑油 =====
   'lubricant':         { name: '润滑油', color: '#d8c020', mark: 'Lub', desc: '流体，由化工厂用重油加工得到，用于制造电动引擎等高级部件' },
   // ===== 硫磺/硫酸（对齐《异星工厂》Sulfur & Sulfuric acid 化工链）=====
@@ -439,6 +440,7 @@ const RECIPES = {
   'artillery-wagon':   { time: 8,   inp: { 'cargo-wagon': 1, 'artillery-turret': 1, 'steel-plate': 20, 'iron-gear': 10, 'processing-unit': 2 }, out: { 'artillery-wagon': 1 } },
   'train-stop':        { time: 2,   inp: { 'iron-plate': 8, 'green-circuit': 3, 'steel-plate': 2 }, out: { 'train-stop': 1 } },
   'rail-signal':       { time: 1,   inp: { 'iron-plate': 4, 'green-circuit': 1 },                 out: { 'rail-signal': 1 } },
+  'rail-chain-signal': { time: 1,   inp: { 'iron-plate': 5, 'green-circuit': 2, 'iron-stick': 2 }, out: { 'rail-chain-signal': 1 } },
   // ===== 载具（对齐《异星工厂》Car，需引擎单元）=====
   'car':               { time: 6,   inp: { 'engine-unit': 2, 'steel-plate': 10, 'iron-plate': 6, 'iron-gear': 4 }, out: { 'car': 1 } },
   'tank':              { time: 10,  inp: { 'engine-unit': 4, 'steel-plate': 30, 'iron-gear': 12, 'processing-unit': 2 }, out: { 'tank': 1 } },
@@ -727,6 +729,7 @@ const BUILD_DEFS = {
   'artillery-wagon':    { w: 1, h: 1, solid: true },
   'train-stop':         { w: 1, h: 1, solid: true },
   'rail-signal':        { w: 1, h: 1, solid: true },
+  'rail-chain-signal':  { w: 1, h: 1, solid: true },
   'car':                { w: 2, h: 2, solid: true, rotSwap: true },
   'tank':               { w: 3, h: 3, solid: true, rotSwap: true },
   'spidertron':         { w: 3, h: 3, solid: true, rotSwap: true },
@@ -777,7 +780,7 @@ const BUILDING_HP = {
   'constant-combinator': 100, 'arithmetic-combinator': 100, 'decider-combinator': 100,
   'power-switch': 100,
   'lamp': 50, 'programmable-speaker': 100,
-  'rail': 100, 'locomotive': 300, 'cargo-wagon': 250, 'fluid-wagon': 250, 'artillery-wagon': 300, 'train-stop': 300, 'rail-signal': 100,
+  'rail': 100, 'locomotive': 300, 'cargo-wagon': 250, 'fluid-wagon': 250, 'artillery-wagon': 300, 'train-stop': 300, 'rail-signal': 100, 'rail-chain-signal': 100,
   'car': 200, 'tank': 400, 'spidertron': 600, 'land-mine': 100
 };
 function buildingMaxHp(type) { return BUILDING_HP[type] || 100; }
@@ -862,6 +865,7 @@ for (const f of BARREL_FLUIDS) TECH_REQ[f + '-barrel'] = 'barrel';
 const RAIL_ITEMS = ['rail', 'locomotive', 'cargo-wagon', 'train-stop', 'fluid-wagon'];
 for (const id of RAIL_ITEMS) if (!TECH_REQ[id]) TECH_REQ[id] = 'railways';
 if (!TECH_REQ['rail-signal']) TECH_REQ['rail-signal'] = 'rail-signals';
+if (!TECH_REQ['rail-chain-signal']) TECH_REQ['rail-chain-signal'] = 'rail-signals';
 // ===== 物流机器人网络 =====
 const LOGISTIC_ITEMS = ['roboport', 'logistic-robot', 'logistic-chest-passive', 'logistic-chest-active', 'logistic-chest-storage', 'logistic-chest-requester', 'logistic-chest-buffer'];
 // 物流箱科技门控：所有物流设备需先研究「物流网络」

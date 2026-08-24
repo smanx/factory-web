@@ -27,7 +27,7 @@ class RocketSilo extends Entity {
     if ((this.inp[item] || 0) >= SILO_CAP) return false;
     this.inp[item] = (this.inp[item] || 0) + 1;
     // 火箭部件/卫星送入井内：厚重金属装配声
-    if (typeof playSfx === 'function') playSfx('build');
+    if (typeof playSfx === 'function') playSfx('rocket-part');
     return true;
   }
   takeItem() {

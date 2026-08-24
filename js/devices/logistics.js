@@ -386,6 +386,7 @@ function assignTask(r) {
   r.tx = (best.e.x + best.e.w / 2) * TILE;
   r.ty = (best.e.y + best.e.h / 2) * TILE;
   r.state = 'collecting';
+  if (typeof playSfx === 'function') playSfx('robot');
 }
 
 // ===== 机器人飞行更新 =====

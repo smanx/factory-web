@@ -23,6 +23,9 @@ const WAGON_SLOTS = 10;        // 车厢槽位数
 const WAGON_STACK = 100;       // 每槽容量
 const TRAIN_STOP_WAIT = 1.6;   // 车站停车时长（秒）
 const SIGNAL_RANGE = 10;       // 信号灯检测前方列车距离（格）
+// 链式信号灯：连锁转发，检测前方区段整段是否畅通（距离更长），
+// 防止列车在复杂交叉口内停车堵塞。对齐《异星工厂》Rail chain signal。
+const CHAIN_SIGNAL_RANGE = 20; // 链式信号灯向前额外延伸检测距离（格）
 
 // ===== 铁轨集合 =====
 // 由铁轨实体 addEnt/removeEnt 时同步维护。惰性初始化（G 在 main.js 中定义，加载时不可访问）。
@@ -225,12 +228,28 @@ function railSignalBlocked(head) {
   // 找到 head 所在列车
   let own = null;
   for (const tr of G.trains) if (tr.cars.indexOf(head) >= 0) { own = tr; break; }
+  // 车头前方是否紧邻链式信号灯（链式信号灯强制更大的跟车距离）
+  const chainAhead = chainSignalNearAhead(head);
+  const range = chainAhead ? CHAIN_SIGNAL_RANGE : SIGNAL_RANGE;
   for (const tr of G.trains) {
     if (tr === own) continue;
     for (const c of tr.cars) {
       const dist = Math.abs(c.x - head.x) + Math.abs(c.y - head.y);
-      if (dist > 0 && dist <= SIGNAL_RANGE) return true;
+      if (dist > 0 && dist <= range) return true;
     }
+  }
+  return false;
+}
+
+// 车头朝向正前方一小段距离内是否存在链式信号灯（用于扩大跟车距离）。
+function chainSignalNearAhead(head) {
+  const cx = head.x, cy = head.y;
+  const dir = head.dir != null ? head.dir : 0;
+  const dx = DX[dir], dy = DY[dir];
+  // 检查车头前方 1~4 格内是否有链式信号灯实体
+  for (let i = 1; i <= 4; i++) {
+    const e = entAt(cx + dx * i, cy + dy * i);
+    if (e && e.type === 'rail-chain-signal') return true;
   }
   return false;
 }
@@ -632,6 +651,10 @@ function railSignalAt(tx, ty) {
   const e = entAt(tx, ty);
   return e && e.type === 'rail-signal';
 }
+// ===== 链式信号灯 RailChainSignal（对齐《异星工厂》Rail chain signal）=====
+class RailChainSignal extends Entity {
+  constructor(type, x, y) { super(type, x, y); }
+}
 
 // ===== 列车编组管理 =====
 // 车头放置：若目标铁轨上无火车，则创建一列仅含车头的列车。
@@ -875,6 +898,22 @@ DEVICE_RENDER['rail-signal'] = function (ctx, e, gx, gy, dir, alpha) {
   ctx.restore();
 };
 
+// ===== 链式信号灯渲染（橙黄灯身，双色指示灯）=====
+DEVICE_RENDER['rail-chain-signal'] = function (ctx, e, gx, gy, dir, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#3a3a44';
+  ctx.fillRect(gx + TILE * 0.3, gy + TILE * 0.3, TILE * 0.4, TILE * 0.4);
+  // 前方是否被占用（用链式信号灯的大范围检测）
+  const blocked = railSignalBlocked({ x: e.x, y: e.y, type: 'rail-chain-signal' });
+  ctx.fillStyle = blocked ? '#e0a04a' : '#4ae04a';
+  ctx.beginPath(); ctx.arc(gx + TILE / 2, gy + TILE / 2, TILE * 0.14, 0, 7); ctx.fill();
+  // 双灯：上方小圆点表示连锁（黄/绿）
+  ctx.fillStyle = blocked ? '#e04a4a' : '#4ae04a';
+  ctx.beginPath(); ctx.arc(gx + TILE / 2, gy + TILE * 0.32, TILE * 0.08, 0, 7); ctx.fill();
+  ctx.restore();
+};
+
 // ===== 面板 =====
 // ===== 车头自动调度面板 =====
 function locoScheduleHtml(e) {
@@ -1066,6 +1105,7 @@ ENT_CLASSES['fluid-wagon'] = FluidWagon;
 ENT_CLASSES['artillery-wagon'] = ArtilleryWagon;
 ENT_CLASSES['train-stop'] = TrainStop;
 ENT_CLASSES['rail-signal'] = RailSignal;
+ENT_CLASSES['rail-chain-signal'] = RailChainSignal;
 
 // R 键可旋转车头（决定行进方向）
 DEVICE_DIR_ROTATE['locomotive'] = true;
@@ -1080,6 +1120,11 @@ DEVICE_PLACE['artillery-wagon'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true
 DEVICE_PLACE['train-stop'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true } : { ok: false };
 // 信号灯：放在铁轨旁任意一格（四周有铁轨即可）
 DEVICE_PLACE['rail-signal'] = (type, tx, ty) => {
+  const c = railConnAt(tx, ty);
+  return (c.E || c.S || c.W || c.N) ? { ok: true } : { ok: false };
+};
+// 链式信号灯：同样放在铁轨旁（四周有铁轨即可）
+DEVICE_PLACE['rail-chain-signal'] = (type, tx, ty) => {
   const c = railConnAt(tx, ty);
   return (c.E || c.S || c.W || c.N) ? { ok: true } : { ok: false };
 };

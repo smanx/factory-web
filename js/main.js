@@ -924,7 +924,7 @@ function pasteBlueprint() {
     const n = pasteBlueprintAsGhosts(bp);
     toast(n > 0 ? ('已排布 ' + n + ' 个建造幽灵，施工机器人正在建造' + (constrPending().build > 0 ? '（剩 ' + constrPending().build + ' 个待建）' : ''))
       : '无可建造的位置（区域内已有建筑或超出机器人范围）');
-    if (typeof playSfx === 'function') playSfx('select');
+    if (typeof playSfx === 'function') playSfx('blueprint');
     uiDirty = true;
     return;
   }
@@ -949,7 +949,7 @@ function pasteBlueprint() {
     e.dir = p.s.dir | 0; e.applyDir();
     addEnt(e);
   }
-  if (typeof playSfx === 'function') playSfx('select');
+  if (typeof playSfx === 'function') playSfx('blueprint');
   toast('蓝图已粘贴 ' + placements.length + ' 个建筑（可继续点击空白处粘贴，R旋转/V翻转，右键取消）');
   uiDirty = true;
 }
@@ -1020,7 +1020,7 @@ function pickupAction() {
     return;
   }
   invAdd(got);
-  if (typeof playSfx === 'function') playSfx('select');
+  if (typeof playSfx === 'function') playSfx('pickup');
   uiDirty = true;
 }
 

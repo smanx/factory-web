@@ -86,7 +86,21 @@ const SFX = {
   // 敌人死亡/拾取战利品：短促“叮”一声（对齐《异星工厂》击杀反馈）
   loot: { type: 'square', dur: 0.09, f0: 1560, f1: 2080, vol: 0.14, slide: true },
   // 污染激怒虫群：低沉压抑的警报号角（比波次警报更沉闷、更具压迫感）
-  pollution: { type: 'sawtooth', dur: 1.1, vol: 0.24, f0: 98, f1: 65, slide: true, arpeggio: [98, 82, 65, 82] }
+  pollution: { type: 'sawtooth', dur: 1.1, vol: 0.24, f0: 98, f1: 65, slide: true, arpeggio: [98, 82, 65, 82] },
+  // 物品拾取（地面掉落物/F 拿取）：清脆“叮”上滑
+  pickup: { type: 'sine', dur: 0.09, f0: 880, f1: 1320, vol: 0.16, slide: true },
+  // 模块安装：金属“咔嗒”
+  module: { type: 'square', dur: 0.08, f0: 420, f1: 640, vol: 0.18, slide: true },
+  // 火箭部件装配：厚重“哐”+ 上行提示
+  'rocket-part': { type: 'square', dur: 0.16, f0: 160, f1: 240, vol: 0.22, slide: true },
+  // 施工机器人建成：轻盈“叮”
+  'robot-build': { type: 'sine', dur: 0.14, f0: 660, f1: 990, vol: 0.16, slide: true },
+  // 地雷部署：短促“嗒”
+  landmine: { type: 'triangle', dur: 0.06, f0: 500, f1: 300, vol: 0.16, slide: true },
+  // 炮兵/炮兵车厢开火：远程重炮“轰”
+  artillery: { type: 'noise', dur: 0.6, vol: 0.3, f0: 200, f1: 40, slide: true },
+  // 铁路链式信号灯切换：清脆“咔哒”
+  'chain-signal': { type: 'square', dur: 0.06, f0: 560, f1: 420, vol: 0.14, slide: true }
 };
 
 function sfxInit() {
