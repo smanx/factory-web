@@ -22,18 +22,20 @@ const PROD = {
   events: []                          // [{t, item, delta}]（按时间递增）
 };
 
-// 统计间隔选项：label 显示名，sec 窗口秒数。
+// 统计间隔选项：label 显示名，unit 速率单位，sec 窗口秒数。
 const STAT_INTERVALS = [
-  { label: '秒', sec: 1 },
-  { label: '10秒', sec: 10 },
-  { label: '分钟', sec: 60 },
-  { label: '小时', sec: 3600 },
-  { label: '1天', sec: 86400 }
+  { label: '秒', unit: '/秒', sec: 1 },
+  { label: '10秒', unit: '/10秒', sec: 10 },
+  { label: '分钟', unit: '/分钟', sec: 60 },
+  { label: '小时', unit: '/小时', sec: 3600 },
+  { label: '1天', unit: '/1天', sec: 86400 }
 ];
 
 // 当前选中的统计间隔（秒），默认“秒”。
 function statIntervalSec() { return STAT_INTERVALS[G.statsInterval] ? STAT_INTERVALS[G.statsInterval].sec : 1; }
 function statIntervalLabel() { return STAT_INTERVALS[G.statsInterval] ? STAT_INTERVALS[G.statsInterval].label : '秒'; }
+// 当前选中的统计间隔对应的速率单位（如 /秒、/10秒、/分钟……）。
+function statIntervalUnit() { return STAT_INTERVALS[G.statsInterval] ? STAT_INTERVALS[G.statsInterval].unit : '/秒'; }
 
 // 任意物品增减均在此记录：delta>0 表示生成，delta<0 表示消耗。
 function trackProd(item, delta) {
@@ -91,6 +93,10 @@ function prodLossRate(item) {
   const w = prodWindow(item, statIntervalSec(), -1);
   return w.span ? w.sum / w.span : 0;
 }
+
+// 将每秒速率折算为当前统计间隔单位下的速率（如 /秒、/10秒、/分钟……）。
+function prodGainRatePerInterval(item) { return prodGainRate(item) * statIntervalSec(); }
+function prodLossRatePerInterval(item) { return prodLossRate(item) * statIntervalSec(); }
 
 // 所有有活动记录的物品 id（按名称排序）
 function prodActiveItems() {
@@ -196,10 +202,11 @@ function htmlStatsItems() {
     return h;
   }
 
+  const unit = statIntervalUnit();
   if (isProd) {
-    h += '<div class="stat-table"><div class="stat-head"><span>物品</span><span>生产速率/秒</span><span>累计产出</span></div>';
+    h += '<div class="stat-table"><div class="stat-head"><span>物品</span><span>生产速率' + unit + '</span><span>累计产出</span></div>';
     for (const id of items) {
-      const rate = prodGainRate(id);
+      const rate = prodGainRatePerInterval(id);
       h += '<div class="stat-row">';
       h += '<span>' + chip(id) + '</span>';
       h += '<span data-live="p-' + id + '" style="color:#8fe08f;font-weight:bold">+' + rate.toFixed(2) + '</span>';
@@ -208,9 +215,9 @@ function htmlStatsItems() {
     }
     h += '</div>';
   } else {
-    h += '<div class="stat-table"><div class="stat-head"><span>物品</span><span>消耗速率/秒</span><span>累计消耗</span></div>';
+    h += '<div class="stat-table"><div class="stat-head"><span>物品</span><span>消耗速率' + unit + '</span><span>累计消耗</span></div>';
     for (const id of items) {
-      const rate = prodLossRate(id);
+      const rate = prodLossRatePerInterval(id);
       h += '<div class="stat-row">';
       h += '<span>' + chip(id) + '</span>';
       h += '<span data-live="p-' + id + '" style="color:#ff8a7a;font-weight:bold">−' + rate.toFixed(2) + '</span>';
@@ -219,7 +226,7 @@ function htmlStatsItems() {
     }
     h += '</div>';
   }
-  h += '<div class="dim">生产速率为物品被产出的速率，消耗速率为物品被消耗的速率（均按所选统计间隔[' + statIntervalLabel() + ']折算到每秒，非设备产能）。数据不足所选间隔时按已有记录时长预估。累计为最近游戏进行中的总量。</div>';
+  h += '<div class="dim">生产速率为物品被产出的速率，消耗速率为物品被消耗的速率（均按所选统计间隔[' + statIntervalLabel() + ']折算，即每' + statIntervalLabel() + '多少单位，非设备产能）。数据不足所选间隔时按已有记录时长预估。累计为最近游戏进行中的总量。</div>';
   return h;
 }
 
@@ -343,11 +350,11 @@ function updateStatsLive() {
     for (const id of prodActiveItems()) {
       if (isProd) {
         if ((PROD.gained[id] || 0) > 0) {
-          set('p-' + id, '+' + prodGainRate(id).toFixed(2));
+          set('p-' + id, '+' + prodGainRatePerInterval(id).toFixed(2));
           set('t-' + id, '+' + (PROD.gained[id] || 0).toFixed(0));
         }
       } else if ((PROD.lost[id] || 0) > 0) {
-        set('p-' + id, '−' + prodLossRate(id).toFixed(2));
+        set('p-' + id, '−' + prodLossRatePerInterval(id).toFixed(2));
         set('t-' + id, '−' + (PROD.lost[id] || 0).toFixed(0));
       }
     }
