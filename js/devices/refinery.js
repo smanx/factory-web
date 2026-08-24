@@ -222,7 +222,7 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
     ctx.fillStyle = 'rgba(255,160,60,' + (fl * 0.45).toFixed(2) + ')';
     rr(ctx, px + 12, py + s * 0.42, s - 24, s * 0.24, 6); ctx.fill();
   }
-  // ===== 中央显示当前配方（对齐《异星工厂》：显示详情时展示配方图标）=====
+  // ===== 中央显示当前配方（默认显示详情时展示配方图标）=====
   if (portLabelVisible()) {
     const cxp = px + s / 2, cyp = py + s / 2;
     if (e.recipe) {
@@ -260,7 +260,7 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
   // 布局：每个接口对齐到对应的格子（一格一接口）：背面(上方=北)2个输入口落在格1/格3，正面(下方=南)3个输出口落在格0/格2/格4（各留 1 格间隔）
   drawRotatablePorts(ctx, e, px, py, s, REFINERY_PORTS);
   const d = e.dir | 0;
-  // 接口图标默认隐藏，松开 Alt 切换显示详情：各口只画流体/气体图标，不再显示文字标签
+  // 接口图标默认显示详情：各口只画流体/气体图标，不再显示文字标签
   if (portLabelVisible()) {
     const inSide = (3 + d) % 4, outSide = (1 + d) % 4;
     // 输入口：沿边偏移 = 格号 - 中心格(2)
@@ -319,7 +319,7 @@ function refineryPanelHtml(e) {
   }
   h += '</div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
-  h += '<div class="dim">炼油厂吃电力，须先选配方。接口对齐格子：背面（上方）2个输入口分别在左数第2、4格，正面（下方）3个输出口分别在左数第1、3、5格（各口之间留 1 格间隔）。所需流体经背面输入口相邻管道自动吸入，流体产物自动经正面输出口排回管道；煤/方解石等固体原料机械臂可从任意方向抓取放入。按一下 Alt 可切换显示详情（中央配方 + 各接口流体图标）。</div>';
+  h += '<div class="dim">炼油厂吃电力，须先选配方。接口对齐格子：背面（上方）2个输入口分别在左数第2、4格，正面（下方）3个输出口分别在左数第1、3、5格（各口之间留 1 格间隔）。所需流体经背面输入口相邻管道自动吸入，流体产物自动经正面输出口排回管道；煤/方解石等固体原料机械臂可从任意方向抓取放入。中央配方 + 各接口流体图标会直接显示。</div>';
   return h;
 }
 function refineryPanelLive(e, api) {
@@ -358,7 +358,7 @@ DEVICE_STATUS['refinery'] = e => {
 DEVICE_PANEL['refinery'] = { html: refineryPanelHtml, live: refineryPanelLive, tip: refineryTip };
 // 炼油厂四边均布流体口、本体对称，旋转仅记录朝向；选中/悬停后按 R 可直接旋转
 DEVICE_DIR_ROTATE['refinery'] = true;
-// 显示详情(Alt)时，各接口流体图标所在世界格 + 对应流体名（用于鼠标悬停显示流体名称）
+// 显示详情时，各接口流体图标所在世界格 + 对应流体名（用于鼠标悬停显示流体名称）
 DEVICE_FLUID_ICONS['refinery'] = e => {
   const icons = [];
   for (const cell of REFINERY_INPUT_CELLS) {

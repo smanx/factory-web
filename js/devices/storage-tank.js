@@ -117,7 +117,7 @@ function drawStorageTank(ctx, e, gx, gy, dir, alpha) {
   }
   // 流体出入口凸缘（东/西各一口，位置随旋转跟随）
   drawRotatablePorts(ctx, e, px, py, s, TANK_PORTS);
-  // 接口图标默认隐藏，松开 Alt 切换显示详情：在出入口处画当前流体图标
+  // 接口图标默认显示详情：在出入口处画当前流体图标
   if (portLabelVisible()) {
     const d = e.dir | 0;
     for (const cell of TANK_PORT_CELLS) {
@@ -139,7 +139,7 @@ function storageTankPanelHtml(e) {
   h += row('容量', e.total() + ' / ' + STORAGE_TANK_CAP, 'cap');
   if (Object.keys(agg).length) h += '<button data-action="takeout" id="btn-tank-takeout">取出全部 (' + e.total() + ')</button>';
   h += '<div class="status"></div>';
-  h += '<div class="dim">储液罐大容量缓冲（' + STORAGE_TANK_CAP + ' 单位），罐内只容纳单一液体/气体。东西两侧各一只通用流体口：相邻管道会自动把流体灌入罐内，罐也会向相邻炼油厂/化工厂等输入口供料。按一下 Alt 可切换显示详情（出入口处显示当前流体图标）。</div>';
+  h += '<div class="dim">储液罐大容量缓冲（' + STORAGE_TANK_CAP + ' 单位），罐内只容纳单一液体/气体。东西两侧各一只通用流体口：相邻管道会自动把流体灌入罐内，罐也会向相邻炼油厂/化工厂等输入口供料。出入口处会显示当前流体图标。</div>';
   return h;
 }
 function storageTankPanelLive(e, api) {
@@ -165,7 +165,7 @@ ENT_CLASSES['storage-tank'] = StorageTank;
 DEVICE_RENDER['storage-tank'] = drawStorageTank;
 DEVICE_STATUS['storage-tank'] = e => e.total() > 0 ? 'g' : 'r';
 DEVICE_PANEL['storage-tank'] = { html: storageTankPanelHtml, live: storageTankPanelLive, tip: storageTankTip };
-// 显示详情(Alt)时，东西两侧接口流体图标所在世界格 + 当前存储流体名（用于鼠标悬停显示流体名称）
+// 显示详情时，东西两侧接口流体图标所在世界格 + 当前存储流体名（用于鼠标悬停显示流体名称）
 DEVICE_FLUID_ICONS['storage-tank'] = e => {
   const f = tankFluid(e);
   if (!f) return [];

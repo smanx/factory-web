@@ -20,7 +20,7 @@ const G = {
   panelEnt: null,
   cursorTile: null,
   keys: {},
-  showDetails: false,
+  showDetails: true,
   mouseDown: false,
   canvasActive: false,
   time: 0,
@@ -974,11 +974,6 @@ function bindInput() {
       return;
     }
     G.keys[k] = true;
-    // 按 Alt 时不立即切换详情，仅阻止浏览器菜单；松开（keyup）时才切换
-    if (k === 'alt') {
-      ev.preventDefault();
-      return;
-    }
     if (k >= '1' && k <= '9') selectSlot(+k - 1);
     else if (k === '0') selectSlot(9);
     else if (k === 'tab') { ev.preventDefault(); G.panelMode === 'inv' ? closePanel() : openPanel('inv'); }
@@ -1034,12 +1029,6 @@ function bindInput() {
   });
   window.addEventListener('keyup', ev => {
     const k = ev.key.toLowerCase();
-    // 松开 Alt 才切换显示详情（对齐《异星工厂》），并避免浏览器菜单抢焦点
-    if (k === 'alt') {
-      ev.preventDefault();
-      G.showDetails = !G.showDetails;
-      uiDirty = true;
-    }
     G.keys[k] = false;
   });
 
