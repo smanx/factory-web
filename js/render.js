@@ -608,13 +608,6 @@ function drawPlayer(ctx) {
     ctx.arc(hx, hy - 1.8, 5.0, Math.PI, 0);   // 头顶发际线（上半圆）
     ctx.closePath();
     ctx.fill(); ctx.stroke();
-    // 侧边碎发（两侧短鬓角）
-    ctx.beginPath();
-    ctx.arc(hx - 4.4, hy + 0.5, 1.8, Math.PI * 0.6, Math.PI * 1.9);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(hx + 4.4, hy + 0.5, 1.8, Math.PI * 0.1, Math.PI * 1.4);
-    ctx.fill();
 
     // ---- 眼睛：朝向移动方向，始终水平排列（正面分开、侧面靠拢）带高光显精神 ----
     ctx.fillStyle = '#2b2b2b';
