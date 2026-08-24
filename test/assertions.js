@@ -525,5 +525,62 @@ G.blueMode = null;
 G.blueprint = null;
 toast = savedToastFn;
 
+// ==================== 地下传送带：进洞的货只能从出口出来 ====================
+// Bug：地下带同时作为“出口（接收后方入口）”和“入口（转发给更前方出口）”时，
+// 若在其后一格放普通传送带，货会泄漏到该带，而不是继续走地下到最终出口。
+function resetWorld() { G.ents = []; G.grid = new Map(); G.time = 0; }
+resetWorld();
+function placeDir(cls, x, y, dir) { const e = place(cls, x, y); e.dir = dir; e.applyDir(); return e; }
+function runT(ticks) { for (let t = 0; t < ticks; t++) { for (const e of G.ents) e.update(1 / 60); G.time += 1 / 60; } }
+// 三座地下带链：入口(40) -> 中段(42) -> 出口(44)，并在中段入口下一格(43)放普通带
+const ugA = placeDir(Underground, 400, 100, 0);
+const ugB = placeDir(Underground, 402, 100, 0);
+const ugC = placeDir(Underground, 404, 100, 0);
+const leakBelt = placeDir(Belt, 403, 100, 0);
+const feedA = placeDir(Belt, 399, 100, 0);
+feedA.items.push({ item: 'iron-plate', pos: 0.8 });
+runT(240);
+check('underground chain: item reaches final exit, not leaked belt',
+  ugC.outItems.length > 0 || ugC.items.length > 0);
+check('underground chain: no item leaks to belt after mid entrance', leakBelt.items.length === 0);
+
+// 地下带可跨过固体障碍配对（这是自动铺设跨越障碍的前提）
+resetWorld();
+const wallOb = placeDir(StoneWall, 410, 100, 0); // 固体障碍
+const ugP = placeDir(Underground, 409, 100, 0);
+const ugQ = placeDir(Underground, 411, 100, 0);
+check('underground mates across solid obstacle', ugP.findMate() === ugQ && ugQ.findBackMate() === ugP);
+
+// ==================== 拖动铺设传送带遇障碍自动改用地下带 ====================
+resetWorld();
+G.dbg.farReach = true;
+G.inv = new Map(); G.inv.set('transport-belt', 100); G.inv.set('underground', 10);
+G.sel = -1; G.quickSel = 'transport-belt';
+G.ghostDir = 0; // 朝东
+G.player = makePlayer(-30, -30);
+const ax = -30, ay = -30;
+const obst2 = new (ENT_CLASSES['stone-furnace'])('stone-furnace', ax + 3, ay);
+obst2.dir = 0; obst2.applyDir(); addEnt(obst2);
+function dragTo(tx, ty) { G.cursorTile = { tx, ty }; tryPlaceAt(tx, ty); }
+dragTo(ax, ay); dragTo(ax + 1, ay); dragTo(ax + 2, ay);
+dragTo(ax + 3, ay); // 遇障碍 -> 自动地下带
+const ugList = G.ents.filter(e => e.type === 'underground');
+check('auto-underground: entrance placed before obstacle',
+  ugList.some(e => e.x === ax + 2 && e.y === ay));
+check('auto-underground: exit placed after obstacle',
+  ugList.some(e => e.x >= ax + 4 && e.y === ay));
+const ugEn = G.ents.find(e => e.type === 'underground' && e.x === ax + 2 && e.y === ay);
+const ugEx = G.ents.find(e => e.type === 'underground' && e.x >= ax + 4 && e.y === ay);
+check('auto-underground: entrance pairs with exit (crosses obstacle)',
+  !!ugEn && !!ugEx && ugEn.findMate() === ugEx);
+check('auto-underground: consumed underground items',
+  G.inv.get('underground') === 8); // 10 -> 8，并归还了被替换的传送带
+// 继续拖动：出口后再铺普通带
+G.quickSel = 'transport-belt';
+dragTo(ax + 6, ay);
+check('auto-underground: normal belt continues after exit',
+  entAt(ax + 6, ay) && entAt(ax + 6, ay).type === 'transport-belt');
+G.dbg.farReach = false;
+
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nALL PASSED');
 process.exit(failures ? 1 : 0);
