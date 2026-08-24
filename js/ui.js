@@ -619,11 +619,7 @@ function updateHUD(dt, fps) {
   const el = document.getElementById('hud-info');
   const p = G.player;
   const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
-  const si = selItem();
-  let tool = '采集镐（按住左键挖矿）';
-  if (si) tool = '放置：' + ITEMS[si].name + (G.sel < 0 ? '（背包直选，R 旋转 / Q 取消）' : '（R 旋转）');
-  else if (G.sel >= 0) tool = '空槽位（背包 E 里可配置）';
-  el.textContent = 'FPS ' + fps + '   坐标 ' + tx + ',' + ty + '   ' + tool;
+  el.textContent = fps + '   ' + tx + ',' + ty;
 }
 
 function mapTipAt(tx, ty) {
