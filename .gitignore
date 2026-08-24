@@ -7,3 +7,6 @@ out.log
 # 系统文件
 Thumbs.db
 .DS_Store
+
+# 测试目录
+test/
