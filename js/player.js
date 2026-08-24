@@ -77,6 +77,31 @@ function updatePlayer(dt) {
     const ny = p.y + my * sp * dt;
     if (!boxBlocked(p.x, ny, r)) p.y = ny;
   }
+  // 传送带推动玩家（对齐《异星工厂》）：站上运转的传送带会被带动位移，除非穿戴传送带免疫装备
+  updateBeltPush(dt);
+}
+
+// ===== 传送带推动玩家（对齐《异星工厂》物理机制） =====
+// 玩家脚下所在格的传送带若在运转，会沿带向带动玩家移动。
+// 穿戴「传送带免疫」装备后不再被推动。推动速度约为带速的 0.9 倍（略低于物品随带速度）。
+function updateBeltPush(dt) {
+  if (typeof hasBeltImmunity === 'function' && hasBeltImmunity()) return;
+  const p = G.player;
+  if (G.driving && G.driving.ent && !G.driving.ent._dead) return;  // 驾驶载具时不推动
+  const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
+  const e = entAt(tx, ty);
+  if (!e || typeof e.update !== 'function' || !(e instanceof Belt)) return;
+  // 传送带电路停转时不推动
+  if (typeof e.circuitEnabled === 'function' && !e.circuitEnabled()) return;
+  // 空带仍在运转（有速度）同样推动玩家
+  const spd = beltSpeed() * e.speedMult() * 0.9;
+  if (spd <= 0) return;
+  // 沿带方向推动
+  const r = 9;
+  const nx = p.x + DX[e.dir] * spd * dt;
+  if (!boxBlocked(nx, p.y, r)) p.x = nx;
+  const ny = p.y + DY[e.dir] * spd * dt;
+  if (!boxBlocked(p.x, ny, r)) p.y = ny;
 }
 
 function withinReach(tx, ty) {

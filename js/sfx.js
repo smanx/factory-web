@@ -63,6 +63,8 @@ const SFX = {
   train: { type: 'sawtooth', dur: 1.2, vol: 0.22, f0: 392, f1: 494, slide: true, arpeggio: [392, 466, 392] },
   // 激光炮塔开火：短促尖啸“滋”
   laser: { type: 'square', dur: 0.09, vol: 0.16, f0: 1500, f1: 600, slide: true },
+  // 放电防御：短促高频电击“噼啪”
+  discharge: { type: 'noise', dur: 0.25, vol: 0.32, f0: 2600, f1: 500, slide: true },
   // 火焰喷射/火焰塔：低频“呼——轰”
   flamethrower: { type: 'noise', dur: 0.5, vol: 0.2, f0: 400, f1: 80, slide: true },
   // 机枪连发：短促连续爆裂（冲锋枪/机枪塔）
