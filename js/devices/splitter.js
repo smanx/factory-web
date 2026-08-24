@@ -129,23 +129,26 @@ class PrioritySplitter extends Splitter {
 
 // ===== 渲染 =====
 // 判断某格实体是否可作为“入口连接”：普通传送带（朝向一致）、地下带出口（朝向一致），
-// 或另一个分流器（朝向一致，视为连接的传送带）。
+// 或另一个分流器（视为连接的传送带）。
+// 注：分流器之间无论朝向如何都应视为已连接——因为分流器的 pushOut 会把物品
+// 无条件交给相邻的下游分流器（giveItem 不检查方向），物品确实能流过去，
+// 因此即使下游分流器朝向不同，也照样显示“入口流入 / 出口流出”动画。
 function isInletConnected(ent, dir) {
   if (!ent) return false;
   if (ent instanceof Belt && !(ent instanceof Splitter) && ent.dir === dir) return true;
   if (ent instanceof Underground && ent.dir === dir && ent.findBackMate()) return true;
-  // 上游分流器的出口朝向我们（dir 一致）时，视为连接的传送带，一样处理。
-  if (ent instanceof Splitter && ent.dir === dir) return true;
+  // 上游分流器的出口朝向我们时，视为连接的传送带，一样处理。
+  if (ent instanceof Splitter) return true;
   return false;
 }
 // 判断某格实体是否可作为“出口连接”：普通传送带（朝向一致）、地下带出口（朝向一致），
-// 或另一个分流器（朝向一致，视为连接的传送带）。
+// 或另一个分流器（视为连接的传送带）。
 function isOutletConnected(ent, dir) {
   if (!ent) return false;
   if (ent instanceof Belt && !(ent instanceof Splitter) && ent.dir === dir) return true;
   if (ent instanceof Underground && ent.dir === dir && ent.findBackMate()) return true;
-  // 下游分流器的入口朝向我们（dir 一致）时，视为连接的传送带，一样处理。
-  if (ent instanceof Splitter && ent.dir === dir) return true;
+  // 下游分流器的入口朝向我们时，视为连接的传送带，一样处理。
+  if (ent instanceof Splitter) return true;
   return false;
 }
 // 检测分流器每条 lane 的输入/输出是否接有传送带（或地下带出口 / 相连的分流器）。
