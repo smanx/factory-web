@@ -13,6 +13,24 @@ let sfxMaster = null;
 let sfxNoiseBuf = null;
 let sfxReady = false;
 let sfxBound = false;   // 是否已绑定首次用户手势解锁
+let sfxActiveNodes = 0; // 当前同时在播的音效节点数（用于限流防过载）
+let sfxMaxNodes = 18;   // 同时播放上限：防止读档/进场首帧节点堆积压垮音频上下文
+let sfxSettleUntil = 0; // 读档进场后的“静默缓冲”截止时间戳（performance.now() 毫秒）
+let sfxLastPlayT = {};  // 各音效名最近一次播放时间（毫秒），用于重复音效节流
+
+// 读档/进场后进入静默缓冲：在缓冲窗口内不排程任何音效，只确保解锁音频，
+// 让恢复的大量实体产生的首帧声音被静默过滤，杜绝“爆音”与上下文过载。
+function sfxWarmup(ms) {
+  ms = (typeof ms === 'number' && ms > 0) ? ms : 400;
+  const t = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  sfxSettleUntil = Math.max(sfxSettleUntil, t + ms);
+}
+
+// 是否处于静默缓冲窗口（读档进场首帧）
+function sfxInSettle() {
+  const t = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  return t < sfxSettleUntil;
+}
 
 // 程序化音效定义表
 const SFX = {
@@ -191,10 +209,20 @@ function tone(osc, type, t0, f0, f1, dur, vol, g) {
 function sfxPlay(name) {
   if (!sfxReady || !AC || !sfxMaster) return;
   if (!(G && G.settings && G.settings.sound)) return;   // 音效开关
+  // 读档/进场静默缓冲窗口内不排程音效（只确保解锁），
+  // 过滤掉恢复实体在首帧产生的大量重复/堆叠声音，从根本上杜绝“爆音”。
+  if (sfxInSettle()) { sfxResume(); return; }
   // 音频上下文处于 suspended 时 AC.currentTime 冻结在旧值：此时若照常排程，
   // 读档/进场首帧的大量音效会全挤在同一时间戳，恢复后齐响造成“爆音”，
   // 且节点堆积会压垮上下文导致后续音效全部失效。因此挂起期间只尝试恢复、不排程。
   if (AC.state !== 'running') { sfxResume(); return; }
+  // 同时播放节点数达上限时丢弃本次音效，防止上下文过载导致后续音效全部失效。
+  if (sfxActiveNodes >= sfxMaxNodes) return;
+  // 同一音效的节流：限制高频重复音效（机器运转/蒸汽等）的触发频率，避免刷音。
+  const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  if (sfxLastPlayT[name] && nowMs - sfxLastPlayT[name] < 40) return;
+  sfxLastPlayT[name] = nowMs;
+
   const sp = SFX[name];
   if (!sp) return;
   const now = AC.currentTime;
@@ -202,6 +230,8 @@ function sfxPlay(name) {
   const out = AC.createGain();
   out.gain.value = 1;
   out.connect(sfxMaster);
+  sfxActiveNodes++;
+  const rel = function () { if (sfxActiveNodes > 0) sfxActiveNodes--; };
 
   // 噪声型音效
   if (sp.type === 'noise') {
@@ -217,6 +247,7 @@ function sfxPlay(name) {
     gGain.connect(out);
     n.src.start(t0);
     n.src.stop(t0 + dur + 0.02);
+    n.src.onended = rel;
     return;
   }
 
@@ -224,6 +255,8 @@ function sfxPlay(name) {
   if (sp.arpeggio) {
     const dur = Math.max(0.5, sp.dur);
     const step = dur / Math.max(1, sp.arpeggio.length);
+    let cnt = sp.arpeggio.length;
+    const relArp = function () { cnt--; if (cnt <= 0) rel(); };
     sp.arpeggio.forEach((f, i) => {
       const osc = AC.createOscillator();
       const t0 = now + i * step;
@@ -238,6 +271,7 @@ function sfxPlay(name) {
       gGain.connect(out);
       osc.start(t0);
       osc.stop(t0 + step);
+      osc.onended = relArp;
     });
     return;
   }
@@ -245,6 +279,7 @@ function sfxPlay(name) {
   // 常规滑音振荡器
   const osc = AC.createOscillator();
   tone(osc, sp.type, now, sp.f0, sp.slide ? sp.f1 : sp.f0, sp.dur, vol, out);
+  osc.onended = rel;
 }
 
 // 对外统一入口：playSfx('build') → 立即播放对应音效
@@ -332,6 +367,7 @@ function ambientEnsure() {
 function ambientAccent(light) {
   if (!AC || !sfxMaster) return;
   if (AC.state !== 'running') return;   // 挂起时 AC.currentTime 冻结，避免同一时间戳堆积爆音
+  if (sfxInSettle()) return;            // 读档进场静默缓冲期内不触发点缀音
   const now = AC.currentTime;
   const out = AC.createGain();
   out.gain.value = 1;
@@ -375,7 +411,7 @@ function ambientUpdate(dt) {
   if (!G || !G.settings || !G.settings.sound) { if (ambNodes) { try { ambNodes.g.gain.value = 0; } catch (e) {} } return; }
   // 仅在音频上下文已就绪并运行时推进：读档/进场首帧上下文常处于 suspended，
   // 此时 AC.currentTime 冻结，若强行创建环境节点会造成爆音，故等待解锁后再启用。
-  if (!AC || !sfxReady || AC.state !== 'running') {
+  if (!AC || !sfxReady || AC.state !== 'running' || sfxInSettle()) {
     sfxResume();
     sfxBindGesture();
     if (!AC || !sfxReady) sfxInit();
