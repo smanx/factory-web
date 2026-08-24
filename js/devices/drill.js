@@ -19,6 +19,7 @@ class Drill extends Entity {
     super(type || 'burner-drill', x, y);
     this.fuelCoal = 0;
     this.fuelSolid = 0;
+    this.fuelRocket = 0;
     this.burnLeft = 0;
     this.bufItem = null;
     this.buf = 0;
@@ -60,7 +61,11 @@ class Drill extends Entity {
     if (!o) { this.status = '无矿'; this.spin = 0; return; }
     if (this.buf >= 20) { this.status = '缓存已满'; this.spin = 0; return; }
     if (this.burnLeft <= 0) {
-      if (this.fuelSolid > 0) {
+      if (this.fuelRocket > 0) {
+        this.fuelRocket--;
+        if (typeof trackProd === 'function') trackProd('rocket-fuel', -1);
+        this.burnLeft += ROCKET_FUEL_ENERGY;
+      } else if (this.fuelSolid > 0) {
         this.fuelSolid--;
         if (typeof trackProd === 'function') trackProd('solid-fuel', -1);
         this.burnLeft += SOLID_FUEL_ENERGY;
@@ -119,6 +124,7 @@ class Drill extends Entity {
     }
   }
   giveItem(item) {
+    if (item === 'rocket-fuel' && this.fuelRocket < 10) { this.fuelRocket++; return true; }
     if (item === 'coal' && this.fuelCoal < 10) { this.fuelCoal++; return true; }
     if (item === 'solid-fuel' && this.fuelSolid < 10) { this.fuelSolid++; return true; }
     return false;
@@ -141,6 +147,8 @@ class Drill extends Entity {
   }
   contents() {
     const list = [[this.type, 1]];
+    if (this.fuelRocket > 0) list.push(['rocket-fuel', this.fuelRocket]);
+    if (this.fuelSolid > 0) list.push(['solid-fuel', this.fuelSolid]);
     if (this.fuelCoal > 0) list.push(['coal', this.fuelCoal]);
     if (this.bufN > 0 && this.bufItem) list.push([this.bufItem, this.bufN]);
     return list;
@@ -158,13 +166,13 @@ class Drill extends Entity {
   onRotate() { this.tryOutput(); }
   serialize() {
     const s = super.serialize();
-    s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.burnLeft = this.burnLeft;
+    s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket; s.burnLeft = this.burnLeft;
     s.bufItem = this.bufItem; s.buf = this.buf; s.prog = this.prog;
     return s;
   }
   static restore(s) {
     const d = super.restore(s);
-    d.fuelCoal = s.fuelCoal || 0; d.fuelSolid = s.fuelSolid || 0; d.burnLeft = s.burnLeft || 0;
+    d.fuelCoal = s.fuelCoal || 0; d.fuelSolid = s.fuelSolid || 0; d.fuelRocket = s.fuelRocket || 0; d.burnLeft = s.burnLeft || 0;
     d.bufItem = s.bufItem || null; d.buf = s.buf || 0; d.prog = s.prog || 0;
     return d;
   }
@@ -256,11 +264,13 @@ function drillPanelHtml(e) {
   if (eDrill) {
     h += row('电力', powerStatusLiveHtml(e), 'power');
   } else {
-    h += row('燃料', (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : '<span class="dim">无</span>'), 'fuel');
+    h += row('燃料', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '') + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : '<span class="dim">无</span>'), 'fuel');
     if (invCount('coal') > 0)
       h += '<button data-action="fuel" data-id="coal">加 5 煤 (' + invCount('coal') + ')</button>';
     if (invCount('solid-fuel') > 0)
       h += '<button data-action="fuel" data-id="solid-fuel">加 5 固体燃料 (' + invCount('solid-fuel') + ')</button>';
+    if (invCount('rocket-fuel') > 0)
+      h += '<button data-action="fuel" data-id="rocket-fuel">加 5 火箭燃料 (' + invCount('rocket-fuel') + ')</button>';
   }
   // 采矿速率显示在面板靠前位置（电力/燃料行之后）
   h += '<div id="mach-rate-block"></div>';
@@ -274,7 +284,7 @@ function drillPanelHtml(e) {
 function drillPanelLive(e, api) {
   const eDrill = e instanceof ElectricDrill;
   if (eDrill) api.set('power', powerStatusLiveHtml(e));
-  if (!eDrill) api.set('fuel', (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : dimSpan('无')));
+  if (!eDrill) api.set('fuel', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '') + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : dimSpan('无')));
   api.set('buffer', e.buf > 0 && e.bufItem ? chip(e.bufItem, e.buf) : dimSpan('空'));
   api.toggle('#btn-drill-takeout', e.buf > 0, '取回缓存 (' + e.buf + ')');
   api.prog(e.working ? e.prog / DRILL_TIME * 100 : 0);
