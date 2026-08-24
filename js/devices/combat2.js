@@ -281,7 +281,17 @@ function canEquipArmor(id) {
 
 function updateBullets(dt) {
   if (!G.bullets) return;
-  for (const b of G.bullets) { b.t += dt; }
+  for (const b of G.bullets) {
+    b.t += dt;
+    // 炮兵炮弹：飞行结束时在落点引发超大范围爆炸
+    if (b.art && b.t >= b.life && !b.hit) {
+      b.hit = true;
+      explodeDamage(b.tx, b.ty, b.splash, b.dmg);
+      // 落点爆破特效（大圈）
+      b.boomBig = true;
+    }
+    // 地雷爆炸特效：仅视觉短促闪光，无需额外伤害（已由 removeEnt 前引爆）
+  }
   G.bullets = G.bullets.filter(b => b.t < b.life);
 }
 

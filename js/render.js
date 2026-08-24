@@ -581,18 +581,23 @@ function drawBullets(ctx) {
     } else if (b.kind === 'flame') {
       ctx.fillStyle = 'rgba(255,' + (120 + Math.random() * 60 | 0) + ',40,' + (1 - t).toFixed(2) + ')';
       ctx.beginPath(); ctx.arc(cx, cy, 6 + Math.random() * 5, 0, 7); ctx.fill();
-    } else if (b.splash) {
-      // 火箭/手雷：轨迹 + 命中爆炸圈
-      ctx.strokeStyle = 'rgba(255,200,120,' + (1 - t).toFixed(2) + ')';
-      ctx.lineWidth = 2.5;
+    } else if (b.splash || b.art) {
+      // 火箭/手雷/炮兵炮弹：轨迹 + 命中爆炸圈
+      ctx.strokeStyle = b.art ? 'rgba(255,140,90,' + (1 - t).toFixed(2) + ')' : 'rgba(255,200,120,' + (1 - t).toFixed(2) + ')';
+      ctx.lineWidth = b.art ? 3.5 : 2.5;
       ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
       if (t >= 1) {
-        ctx.strokeStyle = 'rgba(255,160,60,.8)';
+        const rad = (b.splash || 0) * TILE * (b.art ? 0.8 : 0.6);
+        ctx.strokeStyle = b.art ? 'rgba(255,120,50,.9)' : 'rgba(255,160,60,.8)';
         ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(b.tx, b.ty, b.splash * TILE * 0.6, 0, 7); ctx.stroke();
-        ctx.fillStyle = 'rgba(255,180,80,.25)';
-        ctx.beginPath(); ctx.arc(b.tx, b.ty, b.splash * TILE * 0.6, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.arc(b.tx, b.ty, rad, 0, 7); ctx.stroke();
+        ctx.fillStyle = b.art ? 'rgba(255,150,70,.3)' : 'rgba(255,180,80,.25)';
+        ctx.beginPath(); ctx.arc(b.tx, b.ty, rad, 0, 7); ctx.fill();
       }
+    } else if (b.boom) {
+      // 地雷爆炸：短促闪光
+      ctx.fillStyle = 'rgba(255,190,90,' + (1 - t).toFixed(2) + ')';
+      ctx.beginPath(); ctx.arc(b.x, b.y, 10 + (1 - t) * 20, 0, 7); ctx.fill();
     } else {
       ctx.strokeStyle = 'rgba(255,220,120,' + (1 - t).toFixed(2) + ')';
       ctx.lineWidth = 2.5;
