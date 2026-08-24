@@ -12,7 +12,7 @@ class Assembler3 extends Assembler {
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
       // 速度：组装机 III 基础 1.25，远高于 I/II；叠加科技与电力饱和
-      this.prog += dt * asmMult() * 1.25 * 1.5 * elecMachMult() * (G.power.sat < 1 ? G.power.sat : 1);
+      this.prog += dt * asmMult() * 1.25 * (G.power.sat < 1 ? G.power.sat : 1);
       this.spin += dt * 4;
       if (this.prog >= rec.time) {
         for (const k in rec.out) this.outp[k] = (this.outp[k] || 0) + rec.out[k];
@@ -105,8 +105,8 @@ function assembler3PanelHtml(e) {
   }
   h += '</div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
-  // 组装机 III 速度为 I 的 1.25×1.5 倍，并受电学科技加成
-  h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? asmMult() * 1.25 * 1.5 * elecMachMult() : 1);
+  // 组装机 III 速度为 I 的 2.5 倍（官方 crafting-speed：III=1.25）
+  h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? asmMult() * 1.25 : 1);
   h += '<div class="dim">组装机 III：吃电力、速度最高的组装机。选中后按 R 旋转朝向（流体入口在背部、固体产物经机械臂取走）。</div>';
   return h;
 }
