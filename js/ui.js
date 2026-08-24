@@ -200,6 +200,8 @@ function htmlInventory() {
   h += '<div class="sec">建造设备（点击直接选中放置）</div><div class="recgrid">';
   const infinite = !!(G.dbg && G.dbg.infinite);
   for (const bid of Object.keys(BUILD_DEFS)) {
+    // 被动供电设备是测试/应急设备：仅在开启"无限资源"调试模式后显示到背包建造列表
+    if (bid === 'passive-power' && !infinite) continue;
     const n = invCount(bid);
     const canBuild = infinite || n > 0;
     h += '<button class="rcbtn"' + (canBuild ? '' : ' disabled style="opacity:.45"') +

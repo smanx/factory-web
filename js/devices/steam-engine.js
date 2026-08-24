@@ -21,6 +21,8 @@ class SteamEngine extends Entity {
     this.powerOut = POWER_PER_ENGINE * this.outMult;
     this.on = this.powerOut > 0.05;
     if (this.on) this.spin += dt * 8 * (0.35 + 0.65 * this.outMult);
+    // 电力增量注册表同步：powerOut 变化后重新注册，确保被 updatePower 扫描到（发电设备正确计入 prod）
+    if (typeof regPowerEnt === 'function') regPowerEnt(this);
   }
   // 端口物流：上下两端各一只功能相同的汽口——蒸汽可从任意一端进入，
   // 多余蒸汽也可从另一端送出；与端对端的相邻蒸汽机均衡串汽
