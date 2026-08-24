@@ -49,13 +49,12 @@ function refreshNodeWires(node) {
   node.red.clear();
   node.green.clear();
   const nodes = collectCircuitNodes();
-  const key = entKey(node.x, node.y);
   for (const o of nodes) {
     if (o === node || o._dead) continue;
     const d = node.distTo(o);
     if (d <= node.range && d <= o.range) {
-      // 只连“坐标更大”的节点，避免重复连线重复计算（同色拓扑相同）
-      if (entKey(o.x, o.y) <= key) continue;
+      // 双向互连：每个节点都把范围内的连通邻居加入自己的 red/green，
+      // 保证 BFS 从任意节点出发都能遍历整个连通组件（避免单向连线遗漏）。
       node.red.add(o);
       node.green.add(o);
     }
@@ -80,7 +79,9 @@ function recomputeCircuit() {
   if (!nodes.length) return;
   for (const n of nodes) refreshNodeWires(n);
 
-  // BFS 沿（红=绿同拓扑）划分连通组件
+  // BFS 沿（红=绿同拓扑，双向互连）划分连通组件。
+  // refreshNodeWires 建立双向连线，从任意节点出发都能遍历整个连通组件，
+  // 确保任意建造顺序下蓄电器/组合器/开关等都能正确分组并共享信号。
   const seen = new Set();
   const groups = [];
   for (const start of nodes) {
@@ -105,6 +106,13 @@ function recomputeCircuit() {
       const out = n.output; // { red:[{sig,count}], green:[...] }
       if (out && out.red) for (const it of out.red) addSignal(aggRed, it.sig, it.count);
       if (out && out.green) for (const it of out.green) addSignal(aggGreen, it.sig, it.count);
+    }
+    // 1b) 蓄电器：把储电量百分比（0~100）以 signal-charge 信号输出到网络（对齐《异星工厂》蓄电器电路信号）。
+    //     电量信号聚合到红线（也同步到绿线，便于任意通道读取）。
+    for (const n of group) {
+      if (!(n instanceof Accumulator)) continue;
+      const pct = Math.round(Math.max(0, Math.min(1, (n.stored || 0) / ACCUM_CAP)) * 100);
+      if (pct > 0) { addSignal(aggRed, 'signal-charge', pct); addSignal(aggGreen, 'signal-charge', pct); }
     }
     // 2) 运算/判断组合器：读取（红+绿）合并信号，计算后输出到指定通道（可级联）
     for (const n of group) {

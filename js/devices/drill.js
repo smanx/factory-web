@@ -278,6 +278,7 @@ function drillPanelHtml(e) {
   h += '<button data-action="takeout" id="btn-drill-takeout" style="display:none"></button>';
   h += barHtml(0);
   h += '<div class="status"></div>';
+  h += '<div id="drill-ore-remain" class="dim"></div>';
   h += '<div class="dim">产出方向朝' + ['东', '南', '西', '北'][e.dir] + '，选中后按 R 旋转（需先关闭本面板或按 Q 取消选择）</div>';
   return h;
 }
@@ -302,15 +303,49 @@ function drillPanelLive(e, api) {
   if (e.status) api.status('已暂停：' + e.status, 'warn');
   else if (!e.working) api.status('待机：产出朝' + ['东', '南', '西', '北'][e.dir], 'ok');
   else api.status('开采中：产出朝' + ['东', '南', '西', '北'][e.dir], 'ok');
+  // 矿脉剩余储量显示（对齐《异星工厂》：矿脉储量有限、会逐渐采空，便于规划迁移）
+  const oreRemainEl = body.querySelector('#drill-ore-remain');
+  if (oreRemainEl) {
+    let oreRemain = 0, oreFound = false;
+    for (let dy = 0; dy < e.h; dy++)
+      for (let dx = 0; dx < e.w; dx++) {
+        const tx = e.x + dx, ty = e.y + dy;
+        if (!e.minableOreType(getOreType(tx, ty))) continue;
+        const amt = getOreAmt(tx, ty);
+        if (amt <= 0) continue;
+        oreRemain += amt; oreFound = true;
+      }
+    const txt = oreFound
+      ? ('矿脉剩余：' + Math.round(oreRemain) + (oreRemain <= 100 ? '（⚠ 即将采空）' : ''))
+      : '矿脉剩余：—';
+    if (oreRemainEl.textContent !== txt) oreRemainEl.textContent = txt;
+  }
 }
 function drillTip(e) {
   const base = e.status || ('开采中，产出朝' + ['东', '南', '西', '北'][e.dir]);
+  // 矿脉剩余储量提示（对齐《异星工厂》：矿脉储量有限、会逐渐采空）。
+  // 计算本采矿机覆盖范围内剩余矿量总和，供玩家感知矿脉枯竭、及时迁移。
+  let oreRemain = 0;
+  let oreFound = false;
+  for (let dy = 0; dy < e.h; dy++)
+    for (let dx = 0; dx < e.w; dx++) {
+      const tx = e.x + dx, ty = e.y + dy;
+      if (!e.minableOreType(getOreType(tx, ty))) continue;
+      const amt = getOreAmt(tx, ty);
+      if (amt <= 0) continue;
+      oreRemain += amt;
+      oreFound = true;
+    }
+  let tip = base;
+  if (oreFound) {
+    tip += '；矿脉剩余 ' + Math.round(oreRemain) + (oreRemain <= 100 ? '（⚠ 即将采空）' : '');
+  }
   // 电采矿机/抽油机：电量不足（正在耗电且 sat<1）时在提示中注明
   if (e instanceof ElectricDrill) {
     const s = powerStatusOf(e);
-    if (s.consuming && s.sat < 1) return base + '；' + (s.sat > 0 ? '电量不足' + Math.round(s.sat * 100) + '%' : '缺电停摆');
+    if (s.consuming && s.sat < 1) tip += '；' + (s.sat > 0 ? '电量不足' + Math.round(s.sat * 100) + '%' : '缺电停摆');
   }
-  return base;
+  return tip;
 }
 
 // ===== 注册（渲染/面板/提示对三类采矿机统一注册）=====
