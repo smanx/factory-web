@@ -206,17 +206,6 @@ function genChunk(cx, cy) {
     for (let lx = 0; lx < CHUNK; lx++)
       terrain[ly * CHUNK + lx] = isLake(ox + lx, oy + ly) ? T_WATER : T_GRASS;
 
-  // 出生点附近水体保证：在原点区块固定生成一片水体，
-  // 让玩家开局即可在出生点附近取水（抽水机），同时全图水体依旧稀少。
-  if (cx === 0 && cy === 0) {
-    const lc = 14, lr = 5;
-    for (let ly = 0; ly < CHUNK; ly++)
-      for (let lx = 0; lx < CHUNK; lx++) {
-        const d = Math.hypot(lx - lc, ly - lc);
-        const wob = (hash2(ox + lx * 7.3, oy + ly * 5.1) - 0.5) * 2.0;
-        if (d < lr + wob) terrain[ly * CHUNK + lx] = T_WATER;
-      }
-  }
   const cxn = cx * CHUNK + CHUNK / 2, cyn = cy * CHUNK + CHUNK / 2;
   const dist = Math.hypot(cxn, cyn);
   const scale = 1 + dist / 90;
