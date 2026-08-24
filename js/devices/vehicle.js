@@ -24,6 +24,11 @@ class Car extends Entity {
     this.fuelRocket = 0;        // 内置火箭燃料量（最高级燃料，优先烧）
     this.dir = 0;               // 0东1南2西3北（车头朝向）
     this.trunk = {};            // 储物箱：{ 物品id: 数量 }（对齐《异星工厂》载具自带储物箱）
+    // 载具装备网格（对齐《异星工厂》Vehicle equipment grid）：Car 5×5、Tank 6×6（蜘蛛机用自带的 4×4 网格）
+    this.equipGrid = [];           // [{id, r, c}]
+    this.equipEnergy = 0;          // 装备电网当前电量
+    this.equipEnergyMax = 0;       // 装备电网容量（含电池）
+    this.equipEnergyProd = 0;      // 装备电网发电速率（太阳能板/聚变堆）
   }
   // ===== 载具储物箱（trunk）：可存放任意物品，槽位 = TRUNK_SLOTS，每槽不超过该物品堆叠上限 =====
   trunkUsedSlots() {
@@ -91,12 +96,122 @@ class Car extends Entity {
   // 载具无需电力
   powerDemand() { return 0; }
   update(dt) {}
-  serialize() { const s = super.serialize(); s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket; if (Object.keys(this.trunk).length) s.trunk = this.trunk; return s; }
-  blueprint() { const s = super.blueprint(); s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket; if (Object.keys(this.trunk).length) s.trunk = this.trunk; return s; }
+
+  // ===== 载具装备网格（对齐《异星工厂》：Car 5×5、Tank 6×6；蜘蛛机用自带 4×4） =====
+  vehGridSize() { return (typeof VEHICLE_GRIDS === 'object') ? (VEHICLE_GRIDS[this.type] || 0) : 0; }
+  vehEquipUsedSlots() { return (this.equipGrid || []).length; }
+  vehEquipCount(id) { let n = 0; for (const e of (this.equipGrid || [])) if (e.id === id) n++; return n; }
+  vehCanPlace(eid, r, c) {
+    const def = EQUIPMENT[eid]; const size = this.vehGridSize();
+    if (!def || size <= 0) return false;
+    const s = def.size;
+    if (r < 0 || c < 0 || r + s > size || c + s > size) return false;
+    for (const e of (this.equipGrid || [])) {
+      const es = EQUIPMENT[e.id].size;
+      if (e.r < r + s && e.r + es > r && e.c < c + s && e.c + es > c) return false;
+    }
+    return true;
+  }
+  vehFindFreeSlot(eid) {
+    const def = EQUIPMENT[eid];
+    if (!def) return null;
+    const size = this.vehGridSize();
+    for (let r = 0; r <= size - def.size; r++)
+      for (let c = 0; c <= size - def.size; c++)
+        if (this.vehCanPlace(eid, r, c)) return [r, c];
+    return null;
+  }
+  vehInstall(eid) {
+    if (!isEquipment(eid)) return false;
+    if (typeof invCount !== 'function' || invCount(eid) < 1) { if (typeof toast === 'function') toast('背包里没有 ' + ITEMS[eid].name); return false; }
+    const slot = this.vehFindFreeSlot(eid);
+    if (!slot) { if (typeof toast === 'function') toast('载具装备网格已满'); return false; }
+    invTake(eid, 1);
+    this.equipGrid.push({ id: eid, r: slot[0], c: slot[1] });
+    this.vehRecomputePower();
+    if (typeof playSfx === 'function') playSfx('equip');
+    if (typeof toast === 'function') toast('已安装 ' + ITEMS[eid].name + ' 到载具装备网格');
+    uiDirty = true;
+    return true;
+  }
+  vehRemove(r, c) {
+    const idx = (this.equipGrid || []).findIndex(e => e.r === r && e.c === c);
+    if (idx < 0) return false;
+    const e = this.equipGrid[idx];
+    this.equipGrid.splice(idx, 1);
+    if (typeof invAdd === 'function') invAdd(e.id, 1);
+    this.vehRecomputePower();
+    if (typeof playSfx === 'function') playSfx('unequip');
+    if (typeof toast === 'function') toast('已卸下 ' + ITEMS[e.id].name + ' 并返还背包');
+    uiDirty = true;
+    return true;
+  }
+  vehRecomputePower() {
+    let prod = 0, cap = 0;
+    for (const e of (this.equipGrid || [])) {
+      const def = EQUIPMENT[e.id];
+      if (def.powerOut) prod += def.powerOut;
+      if (def.powerCap) cap += def.powerCap;
+    }
+    let solar = 0;
+    for (const e of (this.equipGrid || [])) if (e.id === 'portable-solar-panel' || e.id === 'portable-solar-panel-mk2') solar += EQUIPMENT[e.id].powerOut;
+    const isDay = typeof isDaytime === 'function' ? isDaytime() : true;
+    this.equipEnergyProd = (prod - solar) + (isDay ? solar : 0);
+    this.equipEnergyMax = cap;
+    if (this.equipEnergy > this.equipEnergyMax) this.equipEnergy = this.equipEnergyMax;
+  }
+  vehDrainEnergy(need) {
+    if (this.equipEnergy < need) return false;
+    this.equipEnergy -= need;
+    return true;
+  }
+  // 每帧更新装备电网：发电充能 + 个人激光防御 + 护盾（仅非蜘蛛载具调用）
+  vehUpdateEquipment(dt) {
+    this.vehRecomputePower();
+    this.equipEnergy = Math.min(this.equipEnergyMax, this.equipEnergy + this.equipEnergyProd * dt);
+    // 个人激光防御：自动攻击射程内敌人
+    const laserN = this.vehEquipCount('personal-laser-defense');
+    if (laserN > 0 && G.settings.combat && G.enemies && G.enemies.length > 0) {
+      this.vehLaserT = (this.vehLaserT || 0) - dt;
+      if (this.vehLaserT <= 0) {
+        const cx = this.x * TILE + TILE * this.w / 2, cy = this.y * TILE + TILE * this.h / 2;
+        let best = null, bestD = Infinity;
+        for (const en of G.enemies) {
+          if (!en || en.dead) continue;
+          const d = Math.hypot(en.x - cx, en.y - cy);
+          if (d <= EQUIPMENT['personal-laser-defense'].laser * TILE && d < bestD) { best = en; bestD = d; }
+        }
+        if (best && this.vehDrainEnergy(SPIDER_LASER_COST)) {
+          best.hp -= SPIDER_LASER_DMG;
+          if (best.hp <= 0) best.dead = true;
+          this.vehLaserT = SPIDER_LASER_RATE;
+          (G.bullets || (G.bullets = [])).push({ x: cx, y: cy, tx: best.x, ty: best.y, t: 0, life: 0.08, dmg: SPIDER_LASER_DMG, kind: 'laser' });
+          uiDirty = true;
+        }
+      }
+    }
+  }
+  // 外骨骼速度加成：每个 +40% 叠加
+  vehSpeedMult() {
+    return 1 + this.vehEquipCount('exoskeleton') * 0.4;
+  }
+  // 护盾吸收（对齐《异星工厂》：载具装备护盾受击时消耗装备电网电力吸收伤害）
+  vehShieldAbsorb(dmg) {
+    const cap = (this.vehEquipCount('energy-shield') * 200) + (this.vehEquipCount('energy-shield-mk2') * 400);
+    if (cap <= 0 || this.equipEnergy <= 0 || dmg <= 0) return dmg;
+    const absorb = Math.min(dmg, cap, this.equipEnergy / 5);
+    if (absorb <= 0) return dmg;
+    this.equipEnergy -= absorb * 5;
+    return Math.max(0, dmg - absorb);
+  }
+  serialize() { const s = super.serialize(); s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket; if (Object.keys(this.trunk).length) s.trunk = this.trunk; if (this.equipGrid && this.equipGrid.length) s.carEquip = this.equipGrid; s.carEnergy = this.equipEnergy || 0; return s; }
+  blueprint() { const s = super.blueprint(); s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket; if (Object.keys(this.trunk).length) s.trunk = this.trunk; if (this.equipGrid && this.equipGrid.length) s.carEquip = this.equipGrid; s.carEnergy = this.equipEnergy || 0; return s; }
   static restore(s) {
     const c = super.restore(s);
     c.fuelCoal = s.fuelCoal || 0; c.fuelSolid = s.fuelSolid || 0; c.fuelRocket = s.fuelRocket || 0;
     c.trunk = s.trunk ? JSON.parse(JSON.stringify(s.trunk)) : {};
+    c.equipGrid = s.carEquip ? JSON.parse(JSON.stringify(s.carEquip)) : [];
+    c.equipEnergy = s.carEnergy || 0; c.equipEnergyMax = 0; c.equipEnergyProd = 0;
     return c;
   }
 }
@@ -565,6 +680,58 @@ function drawSpidertron(ctx, e, gx, gy, dir, alpha) {
 function spiderTip(e) {
   return '蜘蛛机器人：终极载具，可跨水/墙；车载自动炮塔 + 空格发射导弹';
 }
+// ===== 装甲车/坦克装备网格面板（对齐《异星工厂》：Car 5×5、Tank 6×6 装备网格） =====
+function vehEquipHtml(e) {
+  const size = e.vehGridSize();
+  if (size <= 0) return '';
+  const cell = 42;
+  const vname = e.type === 'tank' ? '坦克' : '装甲车';
+  let h = '<div class="sec">载具装备网格（' + vname + ' ' + size + '×' + size + '）</div>';
+  h += '<div class="eqgrid" style="width:' + (size * cell + size * 4) + 'px;height:' + (size * cell + size * 4) + 'px">';
+  for (let r = 0; r < size; r++) for (let c = 0; c < size; c++)
+    h += '<div class="eqcell" data-veq="' + r + ',' + c + '" style="left:' + (c * (cell + 4)) + 'px;top:' + (r * (cell + 4)) + 'px;width:' + cell + 'px;height:' + cell + 'px"></div>';
+  for (const eq of (e.equipGrid || [])) {
+    const def = EQUIPMENT[eq.id]; if (!def) continue;
+    const s = def.size;
+    h += '<div class="eqitem" data-veq="' + eq.r + ',' + eq.c + '" data-tip="' + ITEMS[eq.id].name + '|' + def.desc + '（点击卸下）" style="left:' + (eq.c * (cell + 4)) + 'px;top:' + (eq.r * (cell + 4)) + 'px;width:' + (s * cell + (s - 1) * 4) + 'px;height:' + (s * cell + (s - 1) * 4) + 'px">' +
+      '<img src="' + iconDataURL(eq.id) + '"><b>' + ITEMS[eq.id].name + '</b></div>';
+  }
+  h += '</div>';
+  h += '<div class="eqlist">';
+  for (const eid in EQUIPMENT) {
+    const n = typeof invCount === 'function' ? invCount(eid) : 0;
+    if (n <= 0) continue;
+    const def = EQUIPMENT[eid];
+    const equippedN = e.vehEquipCount(eid);
+    h += '<button class="rcbtn" data-veqinstall="' + eid + '" data-tip="' + ITEMS[eid].name + '|' + def.desc + '">' +
+      '<img src="' + iconDataURL(eid) + '">' + ITEMS[eid].name + (equippedN > 0 ? ' 已装×' + equippedN : '') + ' 背包×' + n + '</button>';
+  }
+  h += '</div>';
+  const pct = e.equipEnergyMax > 0 ? Math.round(e.equipEnergy / e.equipEnergyMax * 100) : 0;
+  h += '<div class="dim">载具装备电网：发电 ' + Math.round(e.equipEnergyProd) + ' kW' +
+    (e.equipEnergyMax > 0 ? ' · 储电 ' + Math.round(e.equipEnergy / 1000) + '/' + Math.round(e.equipEnergyMax / 1000) + ' MJ（' + pct + '%）' : '（未装电池）') + '</div>';
+  h += '<div class="dim">外骨骼提升载具移动速度（每个 +40%）、能量护盾受击时消耗电网电力吸收伤害、个人激光防御自动攻击敌人（耗电）、夜视/传送带免疫驾驶时生效。点击背包装备件安装到网格空位，点击网格中的装备件卸下。</div>';
+  return h;
+}
+// 处理装甲车/坦克装备网格点击（安装/卸下）。返回是否已处理。
+function vehEquipPanelClick(el) {
+  if (!G.panelEnt || !(G.panelEnt instanceof Car) || G.panelEnt instanceof Spidertron) return false;
+  const eqItem = el.closest('.eqitem');
+  if (eqItem) {
+    const [r, c] = (eqItem.dataset.veq || '0,0').split(',').map(Number);
+    G.panelEnt.vehRemove(r, c);
+    renderPanel(false);
+    return true;
+  }
+  const ins = el.closest('[data-veqinstall]');
+  if (ins) {
+    G.panelEnt.vehInstall(ins.dataset.veqinstall);
+    renderPanel(false);
+    return true;
+  }
+  return false;
+}
+
 // ===== 蜘蛛机器人装备网格面板（对齐《异星工厂》：Spidertron 自带 4×4 装备网格） =====
 function spiderEquipHtml(e) {
   const size = e.spiderGridSize();
@@ -694,9 +861,10 @@ function updateDriving(dt) {
   const car = d.ent;
   const isTank = car instanceof Tank;
   const isSpider = car instanceof Spidertron;
-  const speed = isSpider ? SPIDER_SPEED * car.spiderSpeedMult() : (isTank ? TANK_SPEED : CAR_SPEED);
-  // 蜘蛛机器人：车载自动炮塔持续开火
+  const speed = isSpider ? SPIDER_SPEED * car.spiderSpeedMult() : (isTank ? TANK_SPEED : CAR_SPEED) * (car.vehSpeedMult ? car.vehSpeedMult() : 1);
+  // 蜘蛛机器人：车载自动炮塔持续开火；装甲车/坦克更新载具装备电网（个人激光防御等）
   if (isSpider) car.autoTurret(dt);
+  else if (typeof car.vehUpdateEquipment === 'function') car.vehUpdateEquipment(dt);
   let mx = 0, my = 0;
   if (G.keys['w'] || G.keys['arrowup']) my -= 1;
   if (G.keys['s'] || G.keys['arrowdown']) my += 1;
@@ -845,6 +1013,7 @@ function carPanelHtml(e) {
   h += '<button data-action="drive" id="btn-car-drive" class="primary">🚗 进入驾驶</button>';
   h += '<div class="dim">装甲车：靠近后按 E 进入驾驶（WASD 更快移动），移动消耗煤/固体燃料（固体燃料更耐用），E 下车。可用机械臂/手动放入。</div>';
   h += trunkPanelHtml(e);
+  h += vehEquipHtml(e);
   return h;
 }
 function carPanelLive(e, api) {
@@ -936,6 +1105,7 @@ function tankPanelHtml(e) {
   h += '<button data-action="drive" class="primary">🚀 进入驾驶（空格开炮）</button>';
   h += '<div class="dim">坦克：重型战斗载具，装甲更厚（驾驶时受伤减少），按空格向光标方向发射炮弹（范围爆炸）。弹药分级对齐《异星工厂》：炮弹 → 爆炸炮弹（爆炸物科技，更大爆炸）→ 铀炮弹（核能科技）→ 铀爆炸炮弹（终极）。需高级战斗科技。</div>';
   h += trunkPanelHtml(e);
+  h += vehEquipHtml(e);
   return h;
 }
 function tankPanelLive(e, api) {

@@ -238,6 +238,8 @@ function damageBuilding(e, dmg) {
   if (e.maxhp <= 0) return;           // 不可损坏的实体（若有）
   // 蜘蛛机器人装备护盾：优先消耗装备电网电力吸收伤害（对齐《异星工厂》能量护盾）
   if (typeof e.spiderShieldAbsorb === 'function') dmg = e.spiderShieldAbsorb(dmg);
+  // 装甲车/坦克装备护盾：载具装有能量护盾时，消耗载具装备电网电力吸收伤害（蜘蛛机走上面的专属逻辑）
+  if (typeof e.spiderShieldAbsorb !== 'function' && typeof e.vehShieldAbsorb === 'function' && e.equipGrid && e.equipGrid.length) dmg = e.vehShieldAbsorb(dmg);
   e.hp = (e.hp === undefined ? e.maxhp : e.hp) - dmg;
   if (e.hp > 0) return e.hp;
   // HP 归零 → 摧毁

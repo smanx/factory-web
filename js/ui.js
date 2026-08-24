@@ -858,6 +858,10 @@ function initPanelEvents() {
     if (typeof spiderEquipPanelClick === 'function' && spiderEquipPanelClick(ev.target)) {
       return;
     }
+    // 装甲车/坦克装备网格点击
+    if (typeof vehEquipPanelClick === 'function' && vehEquipPanelClick(ev.target)) {
+      return;
+    }
     const hbSlot = ev.target.closest('[data-hbedit]');
     if (hbSlot) {
       const i = +hbSlot.dataset.hbedit;

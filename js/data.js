@@ -83,6 +83,9 @@ const PIPE_FLOW = 3;
 // 储液罐（对齐《异星工厂》Storage Tank）：占地 3×3、容量大、只存单一流体，东西两侧各一个通用流体口
 const STORAGE_TANK_CAP = 2500;
 const FLUID_WAGON_CAP = 2500;   // 流体车厢容量（对齐《异星工厂》Fluid Wagon 2.5 万单位）
+// 载具装备网格尺寸（对齐《异星工厂》Vehicle equipment grid：Car 5×5、Tank 6×6；蜘蛛机另用 4×4 见 vehicle.js）
+// 载具可安装个人装备件（外骨骼加速、太阳能板/聚变堆供能、电池储电、夜视/传送带免疫等）
+const VEHICLE_GRIDS = { car: 5, tank: 6 };
 
 const SCIENCE_PACKS = ['science-pack', 'green-science', 'blue-science', 'military-science', 'production-science-pack', 'utility-science-pack', 'space-science-pack'];
 function isScience(item) { return SCIENCE_PACKS.indexOf(item) >= 0; }
@@ -279,8 +282,8 @@ const ITEMS = {
   'distractor-capsule':{ name: '干扰机器人胶囊', color: '#d0a04a', desc: '投掷后释放干扰机器人：原地悬浮吸引敌人火力，为玩家争取时间' },
   'destroyer-capsule': { name: '破坏机器人胶囊', color: '#d05a5a', desc: '投掷后释放破坏机器人：主动冲向并摧毁敌人，伤害更高（高级战斗解锁）' },
   // ===== 载具（对齐《异星工厂》Car）=====
-  'car':               { name: '装甲车', color: '#8a6a3a', desc: '可驾驶的载具：靠近后按 E 进入驾驶（WASD 更快移动），消耗煤作燃料，E 下车' },
-  'tank':              { name: '坦克', color: '#4a6a3a', desc: '重型战斗载具：装甲更厚、速度较慢，可发射炮弹造成范围伤害。需高级战斗科技' },
+  'car':               { name: '装甲车', color: '#8a6a3a', desc: '可驾驶的载具：靠近后按 E 进入驾驶（WASD 更快移动），消耗煤作燃料，E 下车。自带 ' + VEHICLE_GRIDS.car + '×' + VEHICLE_GRIDS.car + ' 载具装备网格与储物箱，可安装外骨骼等装备件' },
+  'tank':              { name: '坦克', color: '#4a6a3a', desc: '重型战斗载具：装甲更厚、速度较慢，可发射炮弹造成范围伤害。需高级战斗科技。自带 ' + VEHICLE_GRIDS.tank + '×' + VEHICLE_GRIDS.tank + ' 载具装备网格与储物箱' },
   'cannon-shell':      { name: '炮弹', color: '#8a5a2a', desc: '坦克主炮的弹药，命中后造成范围爆炸伤害' },
   'explosive-cannon-shell': { name: '爆炸炮弹', color: '#d05a2a', desc: '装填高能爆炸物的重型炮弹：命中后造成更大范围、更高伤害的爆炸，供坦克主炮使用（对齐《异星工厂》Explosive cannon shell）' },
   'explosive-uranium-cannon-shell': { name: '铀爆炸炮弹', color: '#9ae07a', desc: '铀-238 制成的终极重型炮弹：兼具铀的穿透杀伤与爆炸的范围杀伤，是坦克最强弹药（对齐《异星工厂》Explosive uranium cannon shell）' },
