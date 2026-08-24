@@ -146,10 +146,89 @@ function beltSideIndex(e, fromDir) {
   return -1;
 }
 
+// ===== 90° 转角渲染 =====
+// 判断是否为"纯 90° 转角"：有且仅有一个侧面输入，且背面（与行进方向相反）
+// 没有同向直行传送带。这样的单转角用弯曲圆弧绘制，区别于 T 型转角（背面有直行）。
+// 返回该侧面输入方向向量；非转角返回 null。
+function beltCornerDir(e) {
+  const inp = beltInputSide(e);
+  if (inp.length !== 1) return null;
+  const bx = e.x - DX[e.dir], by = e.y - DY[e.dir];
+  const nb = entAt(bx, by);
+  if (nb instanceof Belt && nb.dir === e.dir) return null; // 背面有直行 → T 型，非纯转角
+  return inp[0];
+}
+
+// 绘制 90° 转角（弯曲圆弧带）。返回 true 表示已按转角绘制完成（含动效与物品）。
+// colors: { belt: 轨道底色, chev: 动效箭头色 }
+function drawBeltCorner(ctx, e, gx, gy, dir, alpha, colors) {
+  const s = beltCornerDir(e);
+  if (!s) return false;
+  const px = gx * TILE, py = gy * TILE;
+  const cx = px + TILE / 2, cy = py + TILE / 2;
+  const step = TILE / 2;
+  // 转角圆弧的圆心 = 入口边与出口边相交的格角点
+  // （竖直格边坐标来自水平方向 s/dir，水平格边坐标来自竖直方向 s/dir）
+  const CCx = (s[0] !== 0 ? s[0] : DX[dir]) * step;
+  const CCy = (s[1] !== 0 ? s[1] : DY[dir]) * step;
+  const aE = Math.atan2(s[1] * step - CCy, s[0] * step - CCx); // 入口角
+  const aX = Math.atan2(DY[dir] * step - CCy, DX[dir] * step - CCx); // 出口角
+  let d = aX - aE;
+  while (d > Math.PI) d -= 2 * Math.PI;
+  while (d < -Math.PI) d += 2 * Math.PI;
+  const ccw = d < 0;
+  // 轨道带：带宽 18 与直行带一致，中心线半径 = step（衔接相邻格边中心）
+  const rIn = step - 9, rOut = step + 9, rC = step;
+
+  // 轨道底色（圆环带）
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = colors.belt;
+  ctx.strokeStyle = '#22252a';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx + CCx, cy + CCy, rOut, aE, aX, ccw);
+  ctx.arc(cx + CCx, cy + CCy, rIn, aX, aE, !ccw);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // 动效箭头沿弧（随带速前进）
+  const off = ((G.time * beltSpeed() * (e.speedMult ? e.speedMult() : 1) * TILE) % step + step) % step;
+  const arcLen = rC * Math.abs(d);
+  ctx.fillStyle = colors.chev;
+  for (let ap = off - step; ap <= arcLen + step; ap += step) {
+    if (ap < 0 || ap > arcLen) continue;
+    const ang = aE + d * (ap / arcLen);
+    const ax = cx + CCx + Math.cos(ang) * rC, ay = cy + CCy + Math.sin(ang) * rC;
+    // 切向即物品行进方向
+    const tAng = ccw ? Math.atan2(-Math.cos(ang), Math.sin(ang)) : Math.atan2(Math.cos(ang), -Math.sin(ang));
+    ctx.save();
+    ctx.translate(ax, ay);
+    ctx.rotate(tAng);
+    tri(ctx, -3, -5, -3, 5, 3, 0);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // 物品沿圆弧行进
+  const itemFn = (LOD && LOD.simple) ? drawItemDotLOD : drawItemDot;
+  for (const o of e.items) {
+    const ang = aE + d * o.pos;
+    const ix = cx + CCx + Math.cos(ang) * rC, iy = cy + CCy + Math.sin(ang) * rC;
+    itemFn(ctx, ix, iy, o.item);
+  }
+  ctx.globalAlpha = 1;
+  return true;
+}
+
 function drawBelt(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const cx = px + TILE / 2, cy = py + TILE / 2;
   const inp = beltInputSide(e);
+  // 纯 90° 转角：直接以弯曲圆弧绘制，区分于 T 型转角
+  if (drawBeltCorner(ctx, e, gx, gy, dir, alpha,
+    { belt: e.type === 'fast-transport-belt' ? '#4a3a34' : '#3a3f47',
+      chev: e.type === 'fast-transport-belt' ? 'rgba(226,102,54,.9)' : 'rgba(224,178,60,.85)' })) return;
   const fast = e.type === 'fast-transport-belt';
   ctx.globalAlpha = alpha;
   ctx.fillStyle = fast ? '#4a3a34' : '#3a3f47';
