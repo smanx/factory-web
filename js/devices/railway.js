@@ -579,7 +579,8 @@ function updateTrainArtillery(tr, dt) {
     }
     if (!best) continue;
     car.facing = Math.atan2(best.y - cy * TILE, best.x - cx * TILE);
-    car.cooldown = ARTILLERY_FIRE_RATE;
+    // 炮兵炮弹射击速度无限科技：射速提升 → 射击间隔缩短
+    car.cooldown = ARTILLERY_FIRE_RATE / (typeof artilleryShootingSpeedMult === 'function' ? artilleryShootingSpeedMult() : 1);
     car.shells--;
     (G.bullets || (G.bullets = [])).push({
       x: cx * TILE, y: cy * TILE, tx: best.x, ty: best.y, t: 0,

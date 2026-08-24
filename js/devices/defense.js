@@ -109,7 +109,8 @@ class ArtilleryTurret extends Entity {
     this.target = best;
     this.facing = Math.atan2(best.y - cy * TILE, best.x - cx * TILE);
     if (this.shells <= 0 || this.cooldown > 0) return;
-    this.cooldown = ARTILLERY_FIRE_RATE;
+    // 炮兵炮弹射击速度无限科技：射速提升 → 射击间隔缩短
+    this.cooldown = ARTILLERY_FIRE_RATE / (typeof artilleryShootingSpeedMult === 'function' ? artilleryShootingSpeedMult() : 1);
     this.shells--;
     if (typeof playSfx === 'function') playSfx('artillery');
     // 炮弹出膛：以抛物弹道飞向目标（借用 bullet 系统，落地爆炸）

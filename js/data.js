@@ -1115,6 +1115,8 @@ const TECHS = {
   'space-mining-productivity': { name: '空间采矿产能', cost: { 'space-science-pack': 100 }, infinite: true, desc: '无限科技：每次研究采矿产能 +10%（对齐《异星工厂》Mining productivity 无限科技）', req: ['space-science'] },
   'weapon-damage': { name: '武器伤害', cost: { 'space-science-pack': 100, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升所有武器与炮塔伤害 +10%（对齐《异星工厂》Weapon damage 无限科技），让科技军备在终局持续成长', req: ['space-science', 'advanced-combat'] },
   'follower-robot-count': { name: '追随机器人', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究提升同时在场战斗机器人数量上限 +2（对齐《异星工厂》Follower robot count）', req: ['utility', 'advanced-combat'] },
+  'worker-robot-cargo-size': { name: '机器人容量', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究提升物流/施工机器人单次搬运物品数量 +2（对齐《异星工厂》Worker robot cargo size 无限科技）', req: ['production', 'utility'] },
+  'artillery-shooting-speed': { name: '炮兵射速', cost: { 'production-science-pack': 60, 'utility-science-pack': 60, 'military-science': 40 }, infinite: true, desc: '无限科技：每次研究提升炮兵连与炮兵车厢射击速度 +10%（对齐《异星工厂》Artillery shell shooting speed 无限科技）', req: ['production', 'utility', 'advanced-combat'] },
   infinite:   { name: '无限科技', cost: {}, infinite: true, desc: '无限研究：消耗任意科学包，永不完成', req: [] }
 };
 
@@ -1525,5 +1527,15 @@ function miningProdMult() {
 // 武器伤害无限科技倍率（对齐《异星工厂》Weapon damage）：每级 +10%，作用于玩家武器与炮塔
 function weaponDamageMult() {
   const lvl = (G.techProg && G.techProg['weapon-damage']) || 0;
+  return 1 + 0.1 * lvl;
+}
+// 机器人容量（对齐《异星工厂》Worker robot cargo size 无限科技）：物流/施工机器人单次搬运量基础 3，每级 +2。
+function robotCarryCap() {
+  const lvl = (G.techProg && G.techProg['worker-robot-cargo-size']) || 0;
+  return 3 + 2 * lvl;
+}
+// 炮兵炮弹射击速度（对齐《异星工厂》Artillery shell shooting speed 无限科技）：每级射击间隔缩短 10%（即射速提升）。
+function artilleryShootingSpeedMult() {
+  const lvl = (G.techProg && G.techProg['artillery-shooting-speed']) || 0;
   return 1 + 0.1 * lvl;
 }
