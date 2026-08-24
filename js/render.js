@@ -521,6 +521,7 @@ function drawPlayer(ctx) {
   const a = p.dir * Math.PI / 2;
   const cx = Math.cos(a), cy = Math.sin(a);           // 朝向单位向量
   const moving = Math.abs(step) > 0.05;
+  const facingUp = p.dir === 3;                        // 朝上 = 背面视角（后脑勺+后背）
   ctx.lineCap = 'round';
 
   // ---- 双腿：行走时交替前后摆动 ----
@@ -548,11 +549,21 @@ function drawPlayer(ctx) {
   ctx.beginPath();
   ctx.ellipse(bx, by + 4, 5.8, 2.2, 0, 0, 7);
   ctx.stroke();
-  // 胸前扣子
-  ctx.fillStyle = '#5a3515';
-  ctx.beginPath();
-  ctx.arc(bx, by - 1, 0.9, 0, 7);
-  ctx.fill();
+  if (facingUp) {
+    // 后背：背部中缝线（替代胸前扣子）
+    ctx.strokeStyle = '#5a3515';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(bx, by - 4.5);
+    ctx.lineTo(bx, by + 2.5);
+    ctx.stroke();
+  } else {
+    // 胸前扣子
+    ctx.fillStyle = '#5a3515';
+    ctx.beginPath();
+    ctx.arc(bx, by - 1, 0.9, 0, 7);
+    ctx.fill();
+  }
 
   // ---- 双臂：两侧自然垂放，行走/采矿时摆动 ----
   const mining = p.mining && p.mineProg > 0;
@@ -576,45 +587,63 @@ function drawPlayer(ctx) {
   ctx.arc(hx, hy, 5.6, 0, 7);
   ctx.fill(); ctx.stroke();
 
-  // ---- 头发：深棕短发（年轻人发型，取代安全帽）----
-  ctx.fillStyle = '#5a3a22';   // 深棕发色
-  ctx.strokeStyle = '#3c2413';
-  ctx.lineWidth = 0.8;
-  // 头顶短发（后脑勺弧线 + 头顶略蓬松）
-  ctx.beginPath();
-  ctx.arc(hx, hy - 1.8, 5.0, Math.PI, 0);   // 头顶发际线（上半圆）
-  ctx.closePath();
-  ctx.fill(); ctx.stroke();
-  // 侧边碎发（两侧短鬓角）
-  ctx.beginPath();
-  ctx.arc(hx - 4.4, hy + 0.5, 1.8, Math.PI * 0.6, Math.PI * 1.9);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(hx + 4.4, hy + 0.5, 1.8, Math.PI * 0.1, Math.PI * 1.4);
-  ctx.fill();
+  if (facingUp) {
+    // ---- 背面视角：显示完整后脑勺（头发覆盖整个头部，不画眼睛和嘴）----
+    ctx.fillStyle = '#5a3a22';   // 深棕发色
+    ctx.strokeStyle = '#3c2413';
+    ctx.lineWidth = 0.8;
+    // 后脑勺：整圆头发覆盖头部后面
+    ctx.beginPath();
+    ctx.arc(hx, hy, 5.7, 0, 7);
+    ctx.fill(); ctx.stroke();
+    // 后脑勺发旋/发丝质感
+    ctx.strokeStyle = '#3c2413';
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(hx, hy - 2);
+    ctx.lineTo(hx, hy + 2);
+    ctx.stroke();
+  } else {
+    // 头发：深棕短发（年轻人发型，取代安全帽）
+    ctx.fillStyle = '#5a3a22';   // 深棕发色
+    ctx.strokeStyle = '#3c2413';
+    ctx.lineWidth = 0.8;
+    // 头顶短发（后脑勺弧线 + 头顶略蓬松）
+    ctx.beginPath();
+    ctx.arc(hx, hy - 1.8, 5.0, Math.PI, 0);   // 头顶发际线（上半圆）
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    // 侧边碎发（两侧短鬓角）
+    ctx.beginPath();
+    ctx.arc(hx - 4.4, hy + 0.5, 1.8, Math.PI * 0.6, Math.PI * 1.9);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(hx + 4.4, hy + 0.5, 1.8, Math.PI * 0.1, Math.PI * 1.4);
+    ctx.fill();
 
-  // ---- 眼睛：朝向移动方向，始终水平排列（正面分开、侧面靠拢）带高光显精神 ----
-  ctx.fillStyle = '#2b2b2b';
-  const eyeSpread = Math.abs(cy) < 0.5 ? 1.5 : 2.4;   // 侧面时靠拢、正面时分开
-  for (const s of [-1, 1]) {
-    const ex = hx + cx * 1.6 + s * eyeSpread;
-    const ey = hy + cy * 1.8;
-    ctx.beginPath();
-    ctx.arc(ex, ey, 1.2, 0, 7);
-    ctx.fill();
-    // 眼睛高光
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(ex - 0.4, ey - 0.4, 0.4, 0, 7);
-    ctx.fill();
+    // ---- 眼睛：朝向移动方向，始终水平排列（正面分开、侧面靠拢）带高光显精神 ----
     ctx.fillStyle = '#2b2b2b';
-  }
+    const eyeSpread = Math.abs(cy) < 0.5 ? 1.5 : 2.4;   // 侧面时靠拢、正面时分开
+    for (const s of [-1, 1]) {
+      const ex = hx + cx * 1.6 + s * eyeSpread;
+      const ey = hy + cy * 1.8;
+      ctx.beginPath();
+      ctx.arc(ex, ey, 1.2, 0, 7);
+      ctx.fill();
+      // 眼睛高光
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(ex - 0.4, ey - 0.4, 0.4, 0, 7);
+      ctx.fill();
+      ctx.fillStyle = '#2b2b2b';
+    }
 
-  // ---- 嘴：年轻微笑 ----
-  ctx.strokeStyle = '#c96a4a';
-  ctx.lineWidth = 0.9;
-  ctx.beginPath();
-  const mx = hx + cx * 3.2, my = hy + cy * 3.2;
-  ctx.arc(mx, my, 1.3, 0.3, Math.PI - 0.3);
-  ctx.stroke();
+    // ---- 嘴：年轻微笑 ----
+    ctx.strokeStyle = '#c96a4a';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    const mx = hx + cx * 3.2, my = hy + cy * 3.2;
+    ctx.arc(mx, my, 1.3, 0.3, Math.PI - 0.3);
+    ctx.stroke();
+  }
 }
