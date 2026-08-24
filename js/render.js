@@ -73,6 +73,8 @@ function render() {
   updateLOD();
   drawTerrain(ctx);
   drawGridIfBuilding(ctx);
+  // 污染系统可视化（对齐《异星工厂》：基地工业排放的红褐色污染云）
+  if (typeof drawPollution === 'function') drawPollution(ctx);
   // 空间分区（桶）索引：只遍历视口覆盖到的桶，避免对全量 G.ents 线性扫描（P0 优化）
   // 机械臂（Inserter 族）最后单独绘制在最上层，避免被传送带/其他设备遮挡。
   const keys = (G.buckets && G.buckets.size)
@@ -747,13 +749,20 @@ function drawEnemies(ctx) {
     ctx.strokeStyle = '#7c1a12';
     ctx.lineWidth = 2;
     if (en.kind === 'spawner') {
-      // 巢穴：带呼吸的肉质圆形虫巢
-      const pulse = 1 + Math.sin(G.time * 2 + en.x) * 0.06;
-      ctx.fillStyle = '#5a3a8a';
+      // 巢穴：带呼吸的肉质圆形虫巢；污染高时被激怒（变红、脉动加快、泛光）
+      const aggrod = (typeof pollutionAggroFactor === 'function') ? pollutionAggroFactor() : 0;
+      const pulse = 1 + Math.sin(G.time * (2 + aggrod * 4) + en.x) * (0.06 + aggrod * 0.12);
+      const baseCol = aggrod > 0.6 ? '#8a2a1a' : (aggrod > 0.2 ? '#7a2a2a' : '#5a3a8a');
+      ctx.fillStyle = baseCol;
       ctx.beginPath(); ctx.arc(en.x, en.y, size * pulse, 0, 7); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#3a225a';
+      // 污染激怒时巢穴整体泛红
+      if (aggrod > 0.1) {
+        ctx.fillStyle = 'rgba(255,80,40,' + (0.18 * aggrod).toFixed(3) + ')';
+        ctx.beginPath(); ctx.arc(en.x, en.y, size * (pulse + 1.2), 0, 7); ctx.fill();
+      }
+      ctx.fillStyle = aggrod > 0.6 ? '#5a1010' : '#3a225a';
       ctx.beginPath(); ctx.arc(en.x, en.y, size * 0.5, 0, 7); ctx.fill();
-      ctx.fillStyle = '#8a5ac0';
+      ctx.fillStyle = aggrod > 0.6 ? '#e06040' : '#8a5ac0';
       ctx.beginPath(); ctx.arc(en.x, en.y, size * 0.3, 0, 7); ctx.fill();
       ctx.fillStyle = '#ffd0a0';
       for (let i = 0; i < 4; i++) {
@@ -1180,6 +1189,10 @@ function drawMinimap(ctx) {
     }
   }
   ctx.restore();
+  // 污染系统：在小地图叠加污染范围（红褐色）
+  if (typeof drawPollutionMinimap === 'function') {
+    drawPollutionMinimap(ctx, cx + (G.spawn ? G.spawn.x - pcx : 0) * z, cy + (G.spawn ? G.spawn.y - pcy : 0) * z, z);
+  }
   // 边框（覆盖 clip 外缘）
   ctx.strokeStyle = 'rgba(140,200,160,0.4)';
   ctx.lineWidth = 1;

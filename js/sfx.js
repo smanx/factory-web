@@ -84,7 +84,9 @@ const SFX = {
   // 蓝图复制/粘贴：清脆的电子“嗡—嘀”（对齐《异星工厂》蓝图操作的科技感）
   blueprint: { type: 'triangle', dur: 0.24, f0: 880, f1: 1320, vol: 0.16, slide: true, arpeggio: [880, 1100, 1320] },
   // 敌人死亡/拾取战利品：短促“叮”一声（对齐《异星工厂》击杀反馈）
-  loot: { type: 'square', dur: 0.09, f0: 1560, f1: 2080, vol: 0.14, slide: true }
+  loot: { type: 'square', dur: 0.09, f0: 1560, f1: 2080, vol: 0.14, slide: true },
+  // 污染激怒虫群：低沉压抑的警报号角（比波次警报更沉闷、更具压迫感）
+  pollution: { type: 'sawtooth', dur: 1.1, vol: 0.24, f0: 98, f1: 65, slide: true, arpeggio: [98, 82, 65, 82] }
 };
 
 function sfxInit() {

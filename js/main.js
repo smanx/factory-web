@@ -124,6 +124,8 @@ function newGame() {
   G.enemies = []; G.bullets = []; G.spawnT = 0;
   G.enemyProjectiles = [];
   G.evolution = 0;   // 敌人进化度（战斗开启时随时间/击杀增长）
+  G.pollution = 0;    // 污染值（对齐《异星工厂》：工业排放污染激怒虫群）
+  G.pollutionWaves = 0; G.pollutionT = 0; G.pollutionScanT = 0;
   G.combatRobots = [];
   G.driving = null;    // 新游戏清空驾驶状态
   G.craftQueue = [];   // 新游戏清空手搓队列
@@ -182,6 +184,7 @@ function serializeAll() {
     logiRequest: Object.assign({}, G.logiRequest || {}),
     player: { x: G.player.x, y: G.player.y, hp: G.playerHP, weapon: G.weapon, armor: G.armor },
     evolution: G.evolution || 0,
+    pollution: (typeof pollutionSerialize === 'function') ? pollutionSerialize() : null,
     craftQueue: (G.craftQueue || []).map(q => ({
       rid: q.rid, time: q.time, total: q.total, done: q.done, outId: q.outId
     })),
@@ -292,6 +295,9 @@ function applySave(d) {
   G.armor = (isArmor && isArmor(d.player.armor)) ? d.player.armor : null;
   // 恢复敌人进化度（旧档无该字段则从 0 开始）
   G.evolution = (typeof d.evolution === 'number') ? Math.min(1, Math.max(0, d.evolution)) : 0;
+  // 恢复污染状态（旧档无该字段则从 0 开始）
+  if (typeof pollutionRestore === 'function') pollutionRestore(d.pollution);
+  else { G.pollution = 0; G.pollutionWaves = 0; G.pollutionT = 0; }
   G.gameWon = !!d.gameWon;
   // 恢复蓝图库（旧档无该字段则置空）
   G.blueBook = [];
@@ -1446,6 +1452,7 @@ function loop(ts) {
       if (G.settings.combat) {
         spawnEnemies(dt);
         if (typeof updateWaves === 'function') updateWaves(dt);
+        if (typeof updatePollution === 'function') updatePollution(dt);   // 污染系统（对齐《异星工厂》)
         updateEnemies(dt);
         updateBullets(dt);
         updatePlayerFire(dt);
