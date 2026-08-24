@@ -230,8 +230,12 @@ function drawExpressSplitter(ctx, e, gx, gy, dir, alpha) {
     ctx.restore();
   }
   const p = e.laneVec();
+  const links = splitterLinks(e, gx, gy);
   for (const o of e.items) {
     const outL = o.outLane !== undefined ? o.outLane : o.lane;
+    // 入口未接传送带：不绘制该入口的物品移动动画（物品不会凭空从无带入口出现）；
+    // 出口未接传送带：不绘制该出口的物品移动动画（物品不会凭空流向无带出口）。
+    if (o.pos <= 0.5 ? !links.inp[o.lane] : !links.out[outL]) continue;
     let ix, iy;
     if (o.pos <= 0.5) {
       const [lx, ly] = e.laneCenter(o.lane);
