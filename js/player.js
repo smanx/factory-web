@@ -38,6 +38,8 @@ function updatePlayer(dt) {
   }
   const len = Math.hypot(mx, my);
   if (len > 0) {
+    // 手动输入（方向键/摇杆）时取消“点击移动”目标
+    if (typeof cancelTouchMove === 'function') cancelTouchMove();
     mx /= len; my /= len;
     p.walkT += dt * 10;
     if (Math.abs(mx) > Math.abs(my)) p.dir = mx > 0 ? 0 : 2;

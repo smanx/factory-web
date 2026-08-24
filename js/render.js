@@ -18,8 +18,11 @@ function resize() {
 
 function updateCamera(dt) {
   const cam = G.cam;
-  const txp = G.player.x - TILE / 2;
-  const typ = G.player.y - TILE / 2;
+  const pan = cam.pan || { x: 0, y: 0 };
+  // 触屏拖动平移时：相机跟随玩家，但在玩家基础上附加 pan 偏移；
+  // 玩家移动后偏移仍保持（视角相对玩家位置固定）。
+  const txp = G.player.x - TILE / 2 + pan.x;
+  const typ = G.player.y - TILE / 2 + pan.y;
   cam.px += (txp - cam.px) * Math.min(1, dt * 8);
   cam.py += (typ - cam.py) * Math.min(1, dt * 8);
 }

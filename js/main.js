@@ -3,7 +3,7 @@
 const G = {
   canvas: null,
   ctx: null,
-  cam: { px: 0, py: 0, z: 1 },
+  cam: { px: 0, py: 0, z: 1, pan: { x: 0, y: 0 } },
   world: null,
   player: null,
   ents: [],
@@ -61,7 +61,6 @@ const G = {
   inMenu: true,       // 开始菜单显示中：游戏世界尚未初始化，loop 暂停渲染与更新
   deconstructMode: false,  // 触屏拆除模式：开启后点触建筑即可拆除（PC 右键拆除不受影响）
   deconstructHeld: false,  // 拆除模式：左键/触屏是否处于按住连续拆除状态
-  touchStart: null          // 触屏普通模式触摸起点 {x,y}，用于识别轻点打开建筑面板
 };
 
 let lastPlaceKey = '';
@@ -953,6 +952,8 @@ function enterGame() {
   if (sc) sc.classList.add('hidden');
   G.inMenu = false;
   toast('WASD 移动 · 左键挖矿/放建筑(覆盖建造) · 右键拆除 · R 旋转 · F 拿取 · Q 取消/拾取朝向 · 中键/E 面板 · T 科技 · P 统计 · B 蓝图 · Alt+D 红图 · Alt+U 绿图 · K/L 存读档');
+  // 触屏设备：首次进入展示新手引导
+  if (typeof maybeShowTouchTip === 'function') maybeShowTouchTip();
 }
 
 function bindInput() {
@@ -1036,34 +1037,8 @@ function bindInput() {
       G.blueEnd = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
     }
   });
-  // 触屏交互：在拆除模式下，点触/长按拖动建筑即可拆除（替代手机端无法使用的右键）
-  G.canvas.addEventListener('touchstart', ev => {
-    G.canvasActive = true;   // 触屏无 mouseenter，先激活画布，供左键建造/挖矿使用
-    if (!G.deconstructMode) return;
-    // 触屏拆除模式：由 touch 直接处理并阻止合成鼠标事件，避免与左键建造冲突
-    ev.preventDefault();
-    const t = ev.changedTouches[0];
-    if (!t) return;
-    updateCursorTile(t.clientX, t.clientY);
-    if (G.cursorTile) deconstructAt(G.cursorTile.tx, G.cursorTile.ty);
-    G.deconstructHeld = true;
-  }, { passive: false });
-  G.canvas.addEventListener('touchmove', ev => {
-    if (!G.deconstructMode || !G.deconstructHeld) return;
-    ev.preventDefault();
-    const t = ev.changedTouches[0];
-    if (!t) return;
-    updateCursorTile(t.clientX, t.clientY);
-    if (G.cursorTile) deconstructAt(G.cursorTile.tx, G.cursorTile.ty);
-  }, { passive: false });
-  G.canvas.addEventListener('touchend', ev => {
-    if (!G.deconstructMode) return;
-    ev.preventDefault();
-    G.deconstructHeld = false;
-  }, { passive: false });
-  G.canvas.addEventListener('touchcancel', () => {
-    if (G.deconstructMode) G.deconstructHeld = false;
-  }, { passive: false });
+  // 触屏手势交互：由 js/touch.js 的 touchInit() 统一注册（点按/长按操作盘/拖动平移/攒合缩放等）
+  touchInit();
   G.canvas.addEventListener('mouseenter', () => { G.canvasActive = true; });
   G.canvas.addEventListener('mouseleave', () => {
     G.canvasActive = false;
@@ -1126,71 +1101,8 @@ function bindInput() {
     }
   });
 
-  // ===== 触摸支持（手机/平板）：蓝图/红图/绿图框选与粘贴，以及普通建造/挖矿 =====
-  G.canvas.addEventListener('touchstart', ev => {
-    ev.preventDefault();
-    const t = ev.changedTouches[0];
-    if (!t) return;
-    updateCursorTile(t.clientX, t.clientY);
-    // 蓝图/红图交互：触摸开始框选（非粘贴）或粘贴（粘贴模式），模拟左键
-    if (G.blueMode) {
-      if (G.blueMode === 'paste') {
-        pasteBlueprint();
-      } else {
-        G.blueStart = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
-        G.blueEnd = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
-        G.blueSelecting = true;
-      }
-      return;
-    }
-    // 普通模式：模拟左键建造/挖矿
-    G.mouseDown = true;
-    lastPlaceKey = '';
-    G.touchStart = { x: t.clientX, y: t.clientY };
-    handleLeftDown();
-  }, { passive: false });
-  G.canvas.addEventListener('touchmove', ev => {
-    ev.preventDefault();
-    const t = ev.changedTouches[0];
-    if (!t) return;
-    updateCursorTile(t.clientX, t.clientY);
-    if (G.blueSelecting && G.cursorTile) {
-      G.blueEnd = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
-    }
-  }, { passive: false });
-  G.canvas.addEventListener('touchend', ev => {
-    ev.preventDefault();
-    G.mouseDown = false;
-    // 蓝图/红图：松开手指完成框选（不依赖触摸坐标，确保框选必然收尾）
-    if (G.blueSelecting) {
-      G.blueSelecting = false;
-      if (!G.blueStart || !G.blueEnd) { cancelBlueprint(); return; }
-      if (G.blueMode === 'blue') captureBlueprint();
-      else if (G.blueMode === 'red') applyRedBlueprint();
-      else if (G.blueMode === 'green') applyGreenBlueprint();
-      return;
-    }
-    // 手机端轻点建筑：识别“点选”操作，打开对应建筑面板（与 PC 端点击一致）
-    const t = ev.changedTouches[0];
-    if (t && G.touchStart) {
-      const dx = t.clientX - G.touchStart.x;
-      const dy = t.clientY - G.touchStart.y;
-      // 位移很小视为轻点（tap），且未在建造/拆除模式时打开建筑面板
-      if (Math.hypot(dx, dy) < 12 && !buildActive() && !G.deconstructMode) {
-        updateCursorTile(t.clientX, t.clientY);
-        if (G.cursorTile) {
-          const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
-          if (e) openPanel('machine', e);
-        }
-      }
-      G.touchStart = null;
-    }
-  }, { passive: false });
-  G.canvas.addEventListener('touchcancel', () => {
-    G.mouseDown = false;
-    G.blueSelecting = false;
-    G.touchStart = null;
-  });
+  // ===== 触屏手势已由 js/touch.js 的 touchInit() 统一接管（点按/长按/拖动/攒合/双击） =====
+
   G.canvas.addEventListener('contextmenu', ev => ev.preventDefault());
   G.canvas.addEventListener('wheel', ev => {
     ev.preventDefault();
@@ -1260,6 +1172,7 @@ function loop(ts) {
   try {
     if (!paused) {
       updatePlayer(dt);
+      updateTouchMove(dt);
       updateHeldMouse(dt);
       updateMining(dt);
       for (const e of G.ents) if (!e._dead && typeof e.update === 'function') e.update(dt);
