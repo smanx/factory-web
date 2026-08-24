@@ -83,7 +83,7 @@ class Refinery extends Entity {
     if (this.crafting) {
       if (G.power.sat <= 0) return;
       this.working = true;
-      this.prog += dt * oilMult() * (G.power.sat < 1 ? G.power.sat : 1);
+      this.prog += dt * oilMult() * powerFactor();
       if (this.prog >= rec.time) {
         for (const k in rec.out) this.outp[k] = (this.outp[k] || 0) + rec.out[k];
         this.crafting = false;
