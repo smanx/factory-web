@@ -701,16 +701,53 @@ function trainAutoLoadUnload(train, station) {
 }
 
 // ===== 铁路信号灯 RailSignal =====
+// 电路控制（对齐《异星工厂》：信号灯可接入电路网络，按电路信号强制闭合/放行）。
 class RailSignal extends Entity {
-  constructor(type, x, y) { super(type, x, y); }
+  constructor(type, x, y) {
+    super(type, x, y);
+    // 电路条件：未启用时恒为正常信号灯；启用后仅当条件满足才放行，否则强制红灯闭合
+    this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
+  }
+  // 电路放行：未启用条件时恒放行；启用后仅当附近电路信号满足条件才允许通过
+  circuitEnabled() {
+    if (!this.circuitCond || !this.circuitCond.enabled) return true;
+    const sig = circuitSignalNear(this);
+    return circuitCondOk(sig, this.circuitCond);
+  }
+  serialize() {
+    const s = super.serialize();
+    if (this.circuitCond) s.circuitCond = this.circuitCond;
+    return s;
+  }
+  blueprint() {
+    const s = super.blueprint();
+    if (this.circuitCond) s.circuitCond = this.circuitCond;
+    return s;
+  }
+  static restore(s) {
+    const e = super.restore(s);
+    e.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
+    return e;
+  }
 }
 function railSignalAt(tx, ty) {
   const e = entAt(tx, ty);
   return e && e.type === 'rail-signal';
 }
 // ===== 链式信号灯 RailChainSignal（对齐《异星工厂》Rail chain signal）=====
-class RailChainSignal extends Entity {
-  constructor(type, x, y) { super(type, x, y); }
+class RailChainSignal extends RailSignal {
+  constructor(type, x, y) { super(type || 'rail-chain-signal', x, y); }
+}
+// 车头前方 1~4 格内是否存在任一铁路信号灯（普通/链式）实体，用于电路闭合判定。
+function signalNearAhead(head) {
+  const cx = head.x, cy = head.y;
+  const dir = head.dir != null ? head.dir : 0;
+  const dx = DX[dir], dy = DY[dir];
+  for (let i = 1; i <= 4; i++) {
+    const e = entAt(cx + dx * i, cy + dy * i);
+    if (e && (e.type === 'rail-signal' || e.type === 'rail-chain-signal')) return e;
+  }
+  return null;
 }
 
 // ===== 列车编组管理 =====
@@ -978,7 +1015,9 @@ DEVICE_RENDER['rail-signal'] = function (ctx, e, gx, gy, dir, alpha) {
   ctx.globalAlpha = alpha;
   ctx.fillStyle = '#3a3a44';
   ctx.fillRect(gx + TILE * 0.3, gy + TILE * 0.3, TILE * 0.4, TILE * 0.4);
-  const blocked = railSignalBlocked({ x: e.x, y: e.y, type: 'rail-signal' });
+  // 电路闭合（条件不满足）时强制红灯；否则按前方占用状态显示
+  const closed = e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled();
+  const blocked = closed || railSignalBlocked({ x: e.x, y: e.y, type: 'rail-signal' });
   ctx.fillStyle = blocked ? '#e04a4a' : '#4ae04a';
   ctx.beginPath(); ctx.arc(gx + TILE / 2, gy + TILE / 2, TILE * 0.14, 0, 7); ctx.fill();
   ctx.restore();
@@ -990,8 +1029,9 @@ DEVICE_RENDER['rail-chain-signal'] = function (ctx, e, gx, gy, dir, alpha) {
   ctx.globalAlpha = alpha;
   ctx.fillStyle = '#3a3a44';
   ctx.fillRect(gx + TILE * 0.3, gy + TILE * 0.3, TILE * 0.4, TILE * 0.4);
-  // 前方是否被占用（用链式信号灯的大范围检测）
-  const blocked = railSignalBlocked({ x: e.x, y: e.y, type: 'rail-chain-signal' });
+  // 电路闭合（条件不满足）时强制红灯；否则按前方占用状态显示
+  const closed = e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled();
+  const blocked = closed || railSignalBlocked({ x: e.x, y: e.y, type: 'rail-chain-signal' });
   ctx.fillStyle = blocked ? '#e0a04a' : '#4ae04a';
   ctx.beginPath(); ctx.arc(gx + TILE / 2, gy + TILE / 2, TILE * 0.14, 0, 7); ctx.fill();
   // 双灯：上方小圆点表示连锁（黄/绿）
@@ -999,6 +1039,38 @@ DEVICE_RENDER['rail-chain-signal'] = function (ctx, e, gx, gy, dir, alpha) {
   ctx.beginPath(); ctx.arc(gx + TILE / 2, gy + TILE * 0.32, TILE * 0.08, 0, 7); ctx.fill();
   ctx.restore();
 };
+
+// ===== 信号灯电路控制面板（对齐《异星工厂》：信号灯接入电路网络） =====
+function railSignalPanelLive(e, api) {
+  if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) {
+    api.status('强制闭合：电路条件不满足（禁止列车通过）', 'warn');
+  } else {
+    api.status(railSignalBlocked({ x: e.x, y: e.y, type: e.type }) ? '前方区段被占用（红灯）' : '允许通过（绿灯）', 'ok');
+  }
+}
+DEVICE_PANEL['rail-signal'] = {
+  html(e) {
+    return '<div class="dim">铁路信号灯：防止列车追尾。接入电路网络后，可设置电路条件——条件不满足时强制红灯闭合、禁止列车通过（对齐《异星工厂》信号灯电路控制）。</div>' +
+      circuitPanelHtml(e, 'rs');
+  },
+  live(e) { return railSignalPanelLive(e); },
+  onAction(act) { return circuitPanelAction('rs', act); }
+};
+DEVICE_PANEL['rail-chain-signal'] = {
+  html(e) {
+    return '<div class="dim">铁路链式信号灯：在复杂交叉口强制更大的跟车距离。接入电路网络后，条件不满足时强制红灯闭合、禁止列车通过。</div>' +
+      circuitPanelHtml(e, 'rc');
+  },
+  live(e) { return railSignalPanelLive(e); },
+  onAction(act) { return circuitPanelAction('rc', act); }
+};
+// 信号灯状态灯：电路闭合（条件不满足）显示红灯，正常信号灯按阻断状态显示
+function railSignalStatus(e) {
+  if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) return 'r';
+  return railSignalBlocked({ x: e.x, y: e.y, type: e.type }) ? 'r' : 'g';
+}
+DEVICE_STATUS['rail-signal'] = railSignalStatus;
+DEVICE_STATUS['rail-chain-signal'] = railSignalStatus;
 
 // ===== 面板 =====
 // ===== 车头自动调度面板 =====
