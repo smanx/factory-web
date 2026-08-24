@@ -623,6 +623,16 @@ function importSaveText(text) {
 }
 
 function initTopButtons() {
+  // 顶部菜单折叠/展开
+  const topMenu = document.getElementById('topright');
+  const menuToggle = document.getElementById('btn-menu-toggle');
+  if (topMenu && menuToggle) {
+    menuToggle.addEventListener('click', () => {
+      const collapsed = topMenu.classList.toggle('collapsed');
+      menuToggle.textContent = collapsed ? '☰' : '✕';
+      menuToggle.title = collapsed ? '展开顶部菜单' : '折叠顶部菜单';
+    });
+  }
   document.getElementById('btn-inv').addEventListener('click', () =>
     G.panelMode === 'inv' ? closePanel() : openPanel('inv'));
   document.getElementById('btn-tech').addEventListener('click', () =>
