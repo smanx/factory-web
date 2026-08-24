@@ -268,19 +268,6 @@ function statIntervalLabel() { return STAT_INTERVALS[G.statsInterval] ? STAT_INT
 // 当前选中的统计间隔对应的速率单位（如 /秒、/10秒、/分钟……）。
 function statIntervalUnit() { return STAT_INTERVALS[G.statsInterval] ? STAT_INTERVALS[G.statsInterval].unit : '/秒'; }
 
-// 任意物品增减均在此记录：delta>0 表示生成，delta<0 表示消耗。
-function trackProd(item, delta) {
-  if (!item || !delta) return;
-  const now = G.time;
-  // 双保险：既按 1 天窗口剪除过期头部（满足最长统计间隔），又设硬上限防无限膨胀（P2 优化）
-  while (PROD.events.length && now - PROD.events[0].t > PROD_KEEP) PROD.events.shift();
-  if (PROD.events.length > PROD_EVENT_MAX) PROD.events.splice(0, PROD.events.length - PROD_EVENT_MAX);
-  if (delta > 0) PROD.gained[item] = (PROD.gained[item] || 0) + delta;
-  else PROD.lost[item] = (PROD.lost[item] || 0) - delta;
-  PROD.total[item] = (PROD.total[item] || 0) + delta;
-  PROD.events.push({ t: now, item, delta });
-}
-
 // 取某物品最近 intervalSec 秒内事件的总和（可限定方向）。
 // dir：1=仅生成(+)、-1=仅消耗(-)、0=全部；返回 { sum, span }：
 //   sum 为筛选后增量总和（消耗方向取正值），span 为速率分母（秒）。
