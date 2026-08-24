@@ -22,6 +22,7 @@ class ElectricDrill extends Drill {
       const mined = this.mineItem(o);
       this.bufItem = mined;
       this.buf++;
+      if (typeof trackProd === 'function') trackProd(mined, 1);
       this.tryOutput();
     }
   }

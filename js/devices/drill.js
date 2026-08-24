@@ -44,7 +44,11 @@ class Drill extends Entity {
     if (!o) { this.status = '无矿'; this.spin = 0; return; }
     if (this.buf >= 20) { this.status = '缓存已满'; this.spin = 0; return; }
     if (this.burnLeft <= 0) {
-      if (this.fuelCoal > 0) { this.fuelCoal--; this.burnLeft += COAL_ENERGY; }
+      if (this.fuelCoal > 0) {
+        this.fuelCoal--;
+        if (typeof trackProd === 'function') trackProd('coal', -1);
+        this.burnLeft += COAL_ENERGY;
+      }
       else { this.status = '缺燃料'; this.spin = 0; return; }
     }
     this.status = '';
@@ -61,6 +65,7 @@ class Drill extends Entity {
       } else {
         this.bufItem = mined;
         this.buf++;
+        if (typeof trackProd === 'function') trackProd(mined, 1);
         this.tryOutput();
       }
     }

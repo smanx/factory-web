@@ -15,7 +15,10 @@ class Assembler3 extends Assembler {
       this.prog += dt * asmMult() * 1.25 * powerFactor();
       this.spin += dt * 4;
       if (this.prog >= rec.time) {
-        for (const k in rec.out) this.outp[k] = (this.outp[k] || 0) + rec.out[k];
+        for (const k in rec.out) {
+          this.outp[k] = (this.outp[k] || 0) + rec.out[k];
+          if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
+        }
         this.crafting = false;
         this.prog = 0;
       }
@@ -25,6 +28,7 @@ class Assembler3 extends Assembler {
     for (const k in rec.out) if ((this.outp[k] || 0) + rec.out[k] > 50) return;
     for (const k in rec.inp) {
       this.inp[k] -= rec.inp[k];
+      if (typeof trackProd === 'function') trackProd(k, -rec.inp[k]);
       if (this.inp[k] <= 0) delete this.inp[k];
     }
     this.crafting = true;

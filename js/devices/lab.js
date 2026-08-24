@@ -22,6 +22,7 @@ class Lab extends Entity {
       if (c <= 0) continue;
       const take = Math.min(n, c);
       this.packs[k] -= take;
+      if (typeof trackProd === 'function') trackProd(k, -take);
       if (this.packs[k] <= 0) delete this.packs[k];
       n -= take;
       if (n <= 0) break;
@@ -70,6 +71,7 @@ class Lab extends Entity {
     if (this.t >= LAB_TIME) {
       this.t -= LAB_TIME;
       this.packs[need]--;
+      if (typeof trackProd === 'function') trackProd(need, -1);
       if (this.packs[need] <= 0) delete this.packs[need];
       done++;
       G.techProg[tech] = done;

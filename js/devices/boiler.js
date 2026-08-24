@@ -30,7 +30,9 @@ class Boiler extends Entity {
     if (this.steamBuf >= WATER_CAP - 0.01) { this.lit = false; return; }
     // 只有既有水又有煤才点火；缺水时绝不空烧
     if (this.burnLeft <= 0 && this.water > 0 && this.fuelCoal > 0) {
-      this.fuelCoal--; this.burnLeft += COAL_ENERGY;
+      this.fuelCoal--;
+      if (typeof trackProd === 'function') trackProd('coal', -1);
+      this.burnLeft += COAL_ENERGY;
     }
     if (this.burnLeft <= 0) { this.lit = false; return; }
     this.lit = true;

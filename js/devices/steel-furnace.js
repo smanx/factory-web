@@ -9,7 +9,11 @@ class SteelFurnace extends Furnace {
     this.cur = r;
     if (!r) { this.prog = 0; this.lit = false; return; }
     if (this.burnLeft <= 0) {
-      if (this.fuelCoal > 0) { this.fuelCoal--; this.burnLeft += COAL_ENERGY; }
+      if (this.fuelCoal > 0) {
+        this.fuelCoal--;
+        if (typeof trackProd === 'function') trackProd('coal', -1);
+        this.burnLeft += COAL_ENERGY;
+      }
       else { this.lit = false; return; }
     }
     this.lit = true;
@@ -18,8 +22,10 @@ class SteelFurnace extends Furnace {
     if (this.prog >= 1) {
       this.prog -= 1;
       this.inp[r.inp] = (this.inp[r.inp] || 0) - (r.inCount || 1);
+      if (typeof trackProd === 'function') trackProd(r.inp, -(r.inCount || 1));
       if (this.inp[r.inp] <= 0) delete this.inp[r.inp];
       this.outp[r.id] = (this.outp[r.id] || 0) + 1;
+      if (typeof trackProd === 'function') trackProd(r.id, 1);
     }
   }
   giveItem(item) {
