@@ -26,6 +26,13 @@ class Underground extends Entity {
   update(dt) {
     const iv = this.ugInterval();
     this.cd -= dt;
+    // 未配对的地下带仅作静态显示，不传送任何物品：清空缓存并直接待机
+    if (!this.isPaired()) {
+      if (this.items.length || this.outItems.length) {
+        this.items = []; this.outItems = [];
+      }
+      return;
+    }
     const mate = this.findMate();
     if (mate) {
       // 本格是入口（或链中段，同时向更前方的出口输送）：把本格收进 items 的货
@@ -68,8 +75,13 @@ class Underground extends Entity {
     }
     return null;
   }
+  // 是否已配对（前方或后方有同向同档地下带）。
+  // 未配对的地下带仅作静态显示，不参与任何物品传输（对齐《异星工厂》）。
+  isPaired() { return !!(this.findMate() || this.findBackMate()); }
   acceptItem(item) {
     if (this.items.length >= UG_CAP) return false;
+    // 未配对的地下带不接收任何物品（不搭在其他传送带上、不传送，仅显示）
+    if (!this.isPaired()) return false;
     this.items.push(item);
     return true;
   }
@@ -200,13 +212,13 @@ function undergroundPanelHtml(e) {
   let txt;
   if (e.findMate()) txt = '【入口】货物钻入地下送往同向6格内出口。缓存 ' + e.items.length + '/' + UG_CAP + '，待发 ' + e.outItems.length;
   else if (e.findBackMate()) txt = '【出口】接收上游隧道来货并向前输出。待发 ' + e.outItems.length;
-  else txt = '【未配对】同向' + e.maxDist() + '格内没有另一座。仍可收货排队，配对后自动发车。缓存 ' + e.items.length + '/' + UG_CAP;
+  else txt = '【未配对】同向' + e.maxDist() + '格内没有另一座。仅作显示，不接收/不传送物品。缓存 ' + e.items.length + '/' + UG_CAP;
   return '<div class="dim">地下带' + txt + '。R 旋转方向。</div><div class="status"></div>';
 }
 function undergroundPanelLive(e, api) {
-  const paired = !!e.findMate();
+  const paired = e.isPaired();
   const n = e.items.length + e.outItems.length;
-  if (!paired) api.status('已暂停：未配对（同向 6 格内无另一座地下带）', 'warn');
+  if (!paired) api.status('仅显示：未配对（同向 ' + e.maxDist() + ' 格内无另一座地下带），不接收/不传送物品', 'warn');
   else if (e.outItems.length >= UG_CAP || e.items.length >= UG_CAP) api.status('已暂停：缓存已满，等待输出', 'warn');
   else if (n > 0) api.status('输送中：' + n + ' 件在途', 'ok');
   else api.status('待机：已配对，等待货物', 'ok');
@@ -214,12 +226,12 @@ function undergroundPanelLive(e, api) {
 
 // ===== 注册 =====
 function undergroundStatusFn(e) {
-  const paired = !!e.findMate();
+  const paired = e.isPaired();
   if (paired) {
     if (e.outItems.length >= UG_CAP || e.items.length >= UG_CAP) return 'y';
     return (e.items.length + e.outItems.length) > 0 ? 'g' : 'r';
   }
-  return e.items.length > 0 ? 'y' : 'r';
+  return 'r';
 }
 ENT_CLASSES['underground'] = Underground;
 ENT_CLASSES['fast-underground-belt'] = FastUnderground;

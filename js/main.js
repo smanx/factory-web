@@ -33,6 +33,9 @@ const G = {
   blueStart: null,        // 框选起点瓦片
   blueEnd: null,          // 框选终点瓦片
   blueSelecting: false,   // 正在拖拽框选
+  blueRot: 0,             // 蓝图粘贴旋转次数（0-3，顺时针90°）
+  blueFlipH: false,       // 蓝图粘贴水平翻转
+  blueFlipV: false,       // 蓝图粘贴垂直翻转
   greenAction: null,      // 绿图框选后的动作：'upgrade' | 'downgrade' | null
   greenRect: null,        // 绿图最近一次框选区域
   statsTab: 'items',      // 统计面板当前页：items | power | perf
@@ -448,6 +451,7 @@ function toggleBlueprint(mode) {
     // 蓝图粘贴中再点蓝图：视为取消粘贴并重新框选
     G.blueMode = 'blue';
     G.blueStart = null; G.blueEnd = null;
+    G.blueRot = 0; G.blueFlipH = false; G.blueFlipV = false;
     toast('蓝图模式：拖拽框选要复制的区域');
     return;
   }
@@ -465,6 +469,7 @@ function toggleBlueprint(mode) {
 function cancelBlueprint() {
   G.blueMode = null;
   G.blueStart = null; G.blueEnd = null;
+  G.blueRot = 0; G.blueFlipH = false; G.blueFlipV = false;
   G.greenRect = null; G.greenAction = null;
   hideGreenBar();
   refreshHotbar();
@@ -631,13 +636,81 @@ function captureBlueprint() {
   G.blueprint = { minX: r.x0, minY: r.y0, ents };
   G.blueMode = 'paste';
   G.blueStart = null; G.blueEnd = null;
-  toast('蓝图已复制 ' + ents.length + ' 个建筑，点击空白处粘贴（右键取消）');
+  G.blueRot = 0; G.blueFlipH = false; G.blueFlipV = false;
+  toast('蓝图已复制 ' + ents.length + ' 个建筑，点击空白处粘贴（R旋转，V/H翻转，右键取消）');
+}
+
+// ===== 蓝图变换（粘贴时 R 旋转 / V、H 翻转，对齐《异星工厂》）=====
+// 计算实体在蓝图中占用的宽高（rotSwap 设备随朝向交换宽高）
+function blueprintFootprint(s) {
+  const def = BUILD_DEFS[s.type];
+  if (!def) return { w: 1, h: 1 };
+  if (def.rotSwap && (s.dir & 1)) return { w: def.h, h: def.w };
+  return { w: def.w, h: def.h };
+}
+
+// 蓝图包围盒（含各实体占用范围）
+function blueprintBounds(ents) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const s of ents) {
+    const fp = blueprintFootprint(s);
+    minX = Math.min(minX, s.x);
+    minY = Math.min(minY, s.y);
+    maxX = Math.max(maxX, s.x + fp.w - 1);
+    maxY = Math.max(maxY, s.y + fp.h - 1);
+  }
+  return { minX, minY, maxX, maxY, W: maxX - minX + 1, H: maxY - minY + 1 };
+}
+
+// 顺时针旋转蓝图 90°：以包围盒几何中心为轴，左上角锚点旋转，实体朝向 +1
+function rotateEnts90(ents) {
+  const bb = blueprintBounds(ents);
+  const cx = bb.minX + bb.W / 2, cy = bb.minY + bb.H / 2;
+  const k1 = cx - cy, k2 = cx + cy;
+  const newEnts = ents.map(s => {
+    // 绕中心顺时针旋转 90°：x'=k1+y, y'=k2-x，四舍五入对齐网格
+    const nx = Math.round(k1 + s.y);
+    const ny = Math.round(k2 - s.x);
+    return { ...s, x: nx, y: ny, dir: (s.dir + 1) % 4 };
+  });
+  const nb = blueprintBounds(newEnts);
+  return { ents: newEnts, minX: nb.minX, minY: nb.minY };
+}
+
+// 翻转蓝图：axis='h' 水平镜像（东西互兑），axis='v' 垂直镜像（南北互兑）
+function flipEnts(ents, axis) {
+  const bb = blueprintBounds(ents);
+  const newEnts = ents.map(s => {
+    const fp = blueprintFootprint(s);
+    let nx = s.x, ny = s.y, ndir = s.dir;
+    if (axis === 'h') {
+      nx = bb.minX + bb.maxX - (s.x + fp.w - 1);
+      ndir = flipDir(s.dir, 'h');
+    } else {
+      ny = bb.minY + bb.maxY - (s.y + fp.h - 1);
+      ndir = flipDir(s.dir, 'v');
+    }
+    return { ...s, x: nx, y: ny, dir: ndir };
+  });
+  const nb = blueprintBounds(newEnts);
+  return { ents: newEnts, minX: nb.minX, minY: nb.minY };
+}
+
+// 应用当前旋转/翻转状态，返回变换后的蓝图实体与新的左上角基准
+function applyBlueprintTransform() {
+  let ents = G.blueprint.ents.map(s => ({ ...s }));
+  if (G.blueFlipH) { const r = flipEnts(ents, 'h'); ents = r.ents; }
+  if (G.blueFlipV) { const r = flipEnts(ents, 'v'); ents = r.ents; }
+  const rot = ((G.blueRot % 4) + 4) % 4;
+  for (let i = 0; i < rot; i++) { const r = rotateEnts90(ents); ents = r.ents; }
+  const bb = blueprintBounds(ents);
+  return { ents, minX: bb.minX, minY: bb.minY };
 }
 
 // 粘贴蓝图到鼠标所指位置
 function pasteBlueprint() {
   if (!G.blueprint || !G.cursorTile) return;
-  const bp = G.blueprint;
+  const bp = applyBlueprintTransform();
   const ox = G.cursorTile.tx - bp.minX;
   const oy = G.cursorTile.ty - bp.minY;
   // 先校验所有目标位置是否可放置，再一次性放置
@@ -659,7 +732,7 @@ function pasteBlueprint() {
     e.dir = p.s.dir | 0; e.applyDir();
     addEnt(e);
   }
-  toast('蓝图已粘贴 ' + placements.length + ' 个建筑（可继续点击空白处粘贴，右键取消）');
+  toast('蓝图已粘贴 ' + placements.length + ' 个建筑（可继续点击空白处粘贴，R旋转/V翻转，右键取消）');
   uiDirty = true;
 }
 
@@ -708,6 +781,13 @@ function pasteSettings(e) {
 }
 
 function rotateAction() {
+  // 蓝图粘贴中：旋转整个蓝图（对齐《异星工厂》R 键旋转蓝图）
+  if (G.blueMode === 'paste' && G.blueprint) {
+    G.blueRot = (G.blueRot + 1) % 4;
+    uiDirty = true;
+    toast('蓝图已旋转 90°（R 继续旋转，V/H 翻转）');
+    return;
+  }
   if (G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
     const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
     if (e && BUILD_DEFS[e.type]) {
@@ -745,6 +825,14 @@ function flipDir(dir, axis) {
 }
 
 function flipAction(axis) {
+  // 蓝图粘贴中：翻转整个蓝图（V 垂直翻转 / H 水平翻转，对齐《异星工厂》）
+  if (G.blueMode === 'paste' && G.blueprint) {
+    if (axis === 'h') G.blueFlipH = !G.blueFlipH;
+    else G.blueFlipV = !G.blueFlipV;
+    uiDirty = true;
+    toast('蓝图已' + (axis === 'h' ? '水平翻转' : '垂直翻转') + '（R 旋转，V/H 翻转）');
+    return;
+  }
   if (G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
     const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
     if (e && BUILD_DEFS[e.type]) {

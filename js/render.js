@@ -272,7 +272,7 @@ function drawBlueprintOverlay(ctx) {
   }
   // 蓝图粘贴预览
   if (G.blueMode === 'paste' && G.blueprint && G.cursorTile) {
-    const bp = G.blueprint;
+    const bp = applyBlueprintTransform();
     const ox = G.cursorTile.tx - bp.minX;
     const oy = G.cursorTile.ty - bp.minY;
     for (const s of bp.ents) {
@@ -293,7 +293,7 @@ function drawBlueprintOverlay(ctx) {
     ctx.fillStyle = '#8fd0ff';
     ctx.font = 'bold 13px system-ui';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('点击放置蓝图 · 右键取消', G.cursorTile.tx * TILE + TILE / 2, G.cursorTile.ty * TILE - 14);
+    ctx.fillText('点击放置蓝图 · 右键取消（R 旋转，V/H 翻转）', G.cursorTile.tx * TILE + TILE / 2, G.cursorTile.ty * TILE - 14);
   }
 }
 
