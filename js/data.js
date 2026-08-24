@@ -1081,11 +1081,11 @@ const TECHS = {
   deep:       { name: '重工蓝图', cost: { 'blue-science': 50 }, desc: '蓝包终技：科研总进度获取 +20%', req: ['automation2', 'express'] },
   // ==== 四级科技（紫瓶：产能科学） ====
   production: { name: '产能科技', cost: { 'production-science-pack': 50 }, desc: '解锁信号塔（Beacon）与产能科学链，让产能模块覆盖范围翻倍', req: ['modules', 'deep'] },
-  'mining-productivity': { name: '采矿产能', cost: { 'production-science-pack': 60 }, desc: '采矿机额外产出（每级 +10%）', req: ['production'] },
+  'mining-productivity': { name: '采矿产能', cost: { 'production-science-pack': 60 }, infinite: true, desc: '无限科技：采矿机额外产出（每级 +10%），可无限叠加（对齐《异星工厂》Mining productivity 无限科技）', req: ['production'] },
   // ==== 五级科技（黄瓶：实用科学） ====
-  'worker-robot-speed': { name: '机器人速度', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, desc: '物流/施工机器人速度 ×1.5', req: ['production'] },
+  'worker-robot-speed': { name: '机器人速度', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：物流/施工机器人速度每级 ×1.5，可无限叠加（对齐《异星工厂》Worker robot speed 无限科技）', req: ['production'] },
   utility: { name: '实用科技', cost: { 'utility-science-pack': 60 }, desc: '解锁飞行机器人框架、施工机器人，完善机器人网络', req: ['logistics-network', 'worker-robot-speed'] },
-  'research-speed': { name: '科研速度', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, desc: '科研速度 +50%', req: ['utility'] },
+  'research-speed': { name: '科研速度', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：科研速度每级 +50%，可无限叠加（对齐《异星工厂》Research speed 无限科技）', req: ['utility'] },
   'kovarex-enrichment': { name: '铀富集', cost: { 'production-science-pack': 60, 'utility-science-pack': 40 }, desc: '解锁 Kovarex 富集循环：用铀-238 在铀-235 催化下持续富集出更多铀-235，可自持循环（对齐《异星工厂》Kovarex enrichment process）', req: ['nuclear', 'production'] },
   'inserter-capacity': { name: '机械臂容量', cost: { 'production-science-pack': 50, 'utility-science-pack': 30 }, infinite: true, desc: '无限科技：每次研究让堆叠机械臂单次抓取数量 +1（对齐《异星工厂》Inserter capacity bonus）', req: ['production', 'utility'] },
   // ==== 终局装备科技（对齐《异星工厂》Modular armor / Power armor 科技链）====
@@ -1103,13 +1103,22 @@ const TECHS = {
 
 // 判断是否为无限科技（永不完成、消耗任意科学包）
 function isInfiniteTech(tid) { return !!(TECHS[tid] && TECHS[tid].infinite); }
+// 科技是否已“研究过”（可为前置所用）：已完成，或无限科技至少研究过一次（G.techProg>0）。
+// 异星工厂中「机器人速度/科研速度/采矿产能/武器伤害/机械臂容量/追随机器人」等均为可重复
+// 研究的无限科技，首次研究即满足前置依赖，后续可继续无限叠加等级。
+function techResearched(tid) {
+  if (G.techDone[tid]) return true;
+  return isInfiniteTech(tid) && (G.techProg[tid] || 0) > 0;
+}
+// 无限科技当前研究等级（未研究返回 0）
+function techLevel(tid) { return (G.techProg[tid] || 0); }
 // 研究队列：完成当前科技后顺延到队列下一项。返回下一个 activeTech（或 null）。
 function advanceTechQueue() {
   if (!G.techQueue) G.techQueue = [];
   // 移除已完成/已入队的当前项
   if (G.techQueue.length && G.techQueue[0] === G.activeTech) G.techQueue.shift();
   // 跳过已完成与前置未满足的项
-  while (G.techQueue.length && (G.techDone[G.techQueue[0]] || techLocked(G.techQueue[0]))) G.techQueue.shift();
+  while (G.techQueue.length && (techResearched(G.techQueue[0]) || techLocked(G.techQueue[0]))) G.techQueue.shift();
   G.activeTech = G.techQueue.length ? G.techQueue[0] : null;
   if (typeof renderPanel === 'function') renderPanel(false);
   return G.activeTech;
@@ -1117,7 +1126,7 @@ function advanceTechQueue() {
 // 前置科技是否全部完成（空前置或无前置即视为满足）
 function techPrereqsDone(tid) {
   const req = (TECHS[tid] && TECHS[tid].req) || [];
-  for (const r of req) if (!G.techDone[r]) return false;
+  for (const r of req) if (!techResearched(r)) return false;
   return true;
 }
 // 科技是否被前置锁定（有未完成的前置科技）
@@ -1125,7 +1134,7 @@ function techLocked(tid) { return !techPrereqsDone(tid); }
 // 返回未完成的前置科技 id 列表（用于界面提示）
 function techMissingPrereqs(tid) {
   const req = (TECHS[tid] && TECHS[tid].req) || [];
-  return req.filter(r => !G.techDone[r]);
+  return req.filter(r => !techResearched(r));
 }
 
 // ===== 新增科技迁移（对齐《异星工厂》进阶科技，保持旧档可用）=====
@@ -1433,9 +1442,27 @@ function drillMult()  { return (G.techDone.mining ? 2 : 1) * ((G.dbg && G.dbg.dr
 function asmMult()    { return (G.techDone.automation ? 1.5 : 1) * (G.techDone.automation2 ? 1.2 : 1) * ((G.dbg && G.dbg.asmMult) || 1); }
 function elecMachMult() { return (G.techDone.electric ? 1.2 : 1); }
 function oilMult()    { return (G.techDone.oil ? 1.5 : 1); }
-function labSpeedMult()  { return (G.techDone['research-speed'] ? 1.5 : 1); }   // 科研速度
-function robotSpeedMult() { return (G.techDone['worker-robot-speed'] ? 1.5 : 1); } // 机器人速度
-function miningProdMult() { return (G.techDone['mining-productivity'] ? 1.1 : 1); } // 采矿产能 +10%
+// 科研速度倍率（对齐《异星工厂》Research speed 无限科技）：普通科研速度 ×1.5，
+// 空间科研速度无限科技每级再 ×1.2，可无限叠加。
+function labSpeedMult() {
+  let m = (techResearched('research-speed') ? 1.5 : 1);
+  m *= Math.pow(1.2, techLevel('space-research-speed'));
+  return m;
+}
+// 机器人速度倍率（对齐《异星工厂》Worker robot speed 无限科技）：每级 ×1.5 叠加。
+// 兼容旧档：此前该科技为单次科技（techDone 已置位但 techProg=0），按 1 级处理。
+function robotSpeedMult() {
+  if (!techResearched('worker-robot-speed')) return 1;
+  const lvl = Math.max(1, techLevel('worker-robot-speed'));
+  return Math.pow(1.5, lvl);
+}
+// 采矿产能倍率（对齐《异星工厂》Mining productivity 无限科技）：采矿产能 ×1.1，
+// 空间采矿产能无限科技每级再 ×1.1，可无限叠加。
+function miningProdMult() {
+  let m = (techResearched('mining-productivity') ? 1.1 : 1);
+  m *= Math.pow(1.1, techLevel('space-mining-productivity'));
+  return m;
+}
 // 武器伤害无限科技倍率（对齐《异星工厂》Weapon damage）：每级 +10%，作用于玩家武器与炮塔
 function weaponDamageMult() {
   const lvl = (G.techProg && G.techProg['weapon-damage']) || 0;
