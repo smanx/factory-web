@@ -106,7 +106,8 @@ function newGame() {
   G.spawn = { x: sx, y: sy };
   G.cam.px = G.player.x;
   G.cam.py = G.player.y;
-  invAdd('stone-furnace', 1);
+  invAdd('burner-drill', 1);   // 热能采矿机
+  invAdd('stone-furnace', 1);  // 石炉
   invAdd('coal', 8);
   // 测试用创造/虚空设备：各给 2 个，方便搭建测试物流与流体链路
   invAdd('creative-chest', 2);
