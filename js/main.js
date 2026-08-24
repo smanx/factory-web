@@ -305,10 +305,35 @@ function applySave(d) {
   uiDirty = true;
 }
 
+// 地面铺设：混凝土/石砖路铺在草地上，填海把水面填成草地
+const PAVE_TILE = { 'concrete': T_CONCRETE, 'stone-path': T_PATH };
+function placeGround(type, tx, ty, infinite) {
+  const t = getTerrain(tx, ty);
+  if (type === 'landfill') {
+    if (t !== T_WATER) { toast('填海料只能铺在水面上'); return; }
+    if (entAt(tx, ty)) { toast('水面有建筑，无法填海'); return; }
+    setTerrain(tx, ty, T_GRASS);
+  } else {
+    const to = PAVE_TILE[type];
+    if (t !== T_GRASS && t !== to) { toast('混凝土/石砖路只能铺在地面上'); return; }
+    if (t === to) return; // 已是同种地砖，不重复消耗
+    if (entAt(tx, ty)) { toast('地面有建筑，先拆除'); return; }
+    setTerrain(tx, ty, to);
+  }
+  if (typeof invalidateTerrainChunk === 'function') invalidateTerrainChunk(tx, ty);
+  if (!infinite) invTake(type, 1);
+  refreshHotbar();
+}
+
 function tryPlaceAt(tx, ty) {
   const type = selItem();
   if (!type) return;
   const infinite = !!(G.dbg && G.dbg.infinite);
+  // 地面铺设（混凝土/石砖路/填海）：不创建实体，直接修改地形
+  if (type === 'concrete' || type === 'stone-path' || type === 'landfill') {
+    placeGround(type, tx, ty, infinite);
+    return;
+  }
   // 科技解锁要求拦截（火箭/激光炮塔等高级建筑）
   if (TECH_REQ[type] && !G.techDone[TECH_REQ[type]]) {
     toast('需要先研究「' + TECHS[TECH_REQ[type]].name + '」才能建造 ' + ITEMS[type].name);
@@ -1252,6 +1277,9 @@ function loop(ts) {
       }
       G.powerT += dt;
       if (G.powerT >= 0.25) { G.powerT = 0; updatePower(); }
+      // 电路网络重算（固定间隔，红/绿信号聚合）
+      G.circuitT = (G.circuitT || 0) + dt;
+      if (G.circuitT >= 0.25) { G.circuitT = 0; if (typeof recomputeCircuit === 'function') recomputeCircuit(); }
       updateLogistics(dt);
       updateTrains(dt);
       updateCamera(dt);

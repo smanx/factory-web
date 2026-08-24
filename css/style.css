@@ -1004,3 +1004,71 @@ html, body {
   #action-wheel .aw-btn .aw-ic { font-size: 22px; }
   #action-wheel .aw-btn .aw-lb { font-size: 12px; }
 }
+
+/* ===== 电路网络（电线杆/组合器面板）===== */
+.circ-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin: 4px 0 8px;
+  font-size: 13px;
+}
+.circ-siginv {
+  flex: 1 1 90px;
+  min-width: 60px;
+  padding: 5px 8px;
+  background: #10151c;
+  border: 1px solid #37424f;
+  border-radius: 5px;
+  color: #dfe6ee;
+  font-size: 12px;
+  outline: none;
+  user-select: text;
+}
+.circ-siginv:focus { border-color: #ffd23c; }
+.circ-cnt {
+  width: 62px;
+  padding: 5px 6px;
+  background: #10151c;
+  border: 1px solid #37424f;
+  border-radius: 5px;
+  color: #dfe6ee;
+  font-size: 12px;
+  outline: none;
+  user-select: text;
+}
+.circ-op, .circ-btype {
+  padding: 5px 4px;
+  background: #10151c;
+  border: 1px solid #37424f;
+  border-radius: 5px;
+  color: #dfe6ee;
+  font-size: 12px;
+  outline: none;
+}
+.circ-signal-list { margin: 2px 0 4px; }
+.circ-sig {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  margin: 2px 0;
+  background: #141a22;
+  border: 1px solid #2c3644;
+  border-radius: 5px;
+  font-size: 13px;
+}
+.circ-sig .csig { color: #cfe0f0; }
+.circ-sig button {
+  margin-left: auto;
+  width: 20px; height: 20px;
+  line-height: 18px;
+  padding: 0;
+  font-size: 12px;
+  background: #2c3a46 !important;
+}
+.circ-add button {
+  padding: 5px 10px;
+  font-size: 12px;
+}

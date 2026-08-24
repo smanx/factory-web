@@ -16,6 +16,11 @@ function hash2(x, y) {
 
 const T_GRASS = 0;
 const T_WATER = 1;
+const T_CONCRETE = 2;   // 混凝土（玩家行走加速）
+const T_PATH = 3;       // 石砖路（玩家行走加速）
+function isWalkableTerrain(t) { return t !== T_WATER; }
+// 地形是否“硬化”（混凝土/石砖路）：玩家行走速度提升
+function isPaved(t) { return t === T_CONCRETE || t === T_PATH; }
 
 // ===== 无限分块世界 =====
 // 世界由 32×32 块按需确定性生成。矿量稀疏存储：only remaining（被采过且
@@ -106,6 +111,11 @@ function getChunk(cx, cy) {
 function getTerrain(tx, ty) {
   const c = getChunk(Math.floor(tx / CHUNK), Math.floor(ty / CHUNK));
   return c.terrain[chunkLocalIdx(tx, ty)];
+}
+// 修改地形（混凝土/石砖路/填海等），随区块持久化；不会改变矿量。
+function setTerrain(tx, ty, value) {
+  const c = getChunk(Math.floor(tx / CHUNK), Math.floor(ty / CHUNK));
+  c.terrain[chunkLocalIdx(tx, ty)] = value;
 }
 
 function getOreType(tx, ty) {

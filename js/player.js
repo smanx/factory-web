@@ -53,7 +53,9 @@ function updatePlayer(dt) {
     if (Math.abs(mx) > Math.abs(my)) p.dir = mx > 0 ? 0 : 2;
     else p.dir = my > 0 ? 1 : 3;
     const r = 9;
-    const sp = playerSpeed();
+    // 硬化地面（混凝土/石砖路）上玩家行走提速 40%
+    let sp = playerSpeed();
+    if (isPaved(getTerrain(Math.floor(p.x / TILE), Math.floor(p.y / TILE)))) sp *= 1.4;
     const nx = p.x + mx * sp * dt;
     if (!boxBlocked(nx, p.y, r)) p.x = nx;
     const ny = p.y + my * sp * dt;

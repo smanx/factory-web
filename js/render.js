@@ -140,9 +140,30 @@ function drawChunkTerrainInto(ctx, cx, cy) {
     for (let dx = 0; dx < CHUNK; dx++) {
       const tx = ox + dx, ty = oy + dy;
       const px = dx * TILE, py = dy * TILE;
-      if (getTerrain(tx, ty) === T_WATER) {
+      const t = getTerrain(tx, ty);
+      if (t === T_WATER) {
         ctx.fillStyle = hash2(tx, ty) > 0.5 ? '#265d8a' : '#28618f';
         ctx.fillRect(px, py, TILE, TILE);
+        continue;
+      }
+      if (t === T_CONCRETE) {
+        const v = hash2(tx, ty);
+        ctx.fillStyle = v > 0.5 ? '#9a9a9e' : '#929298';
+        ctx.fillRect(px, py, TILE, TILE);
+        ctx.strokeStyle = 'rgba(70,70,76,.5)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
+        continue;
+      }
+      if (t === T_PATH) {
+        const v = hash2(tx, ty);
+        ctx.fillStyle = v > 0.5 ? '#a49c94' : '#9c948c';
+        ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = 'rgba(120,110,100,.3)';
+        for (const [bx, by] of [[8, 8], [20, 14], [14, 24]]) {
+          ctx.fillRect(px + bx, py + by, 4, 4);
+          ctx.fillRect(px + bx + 2, py + by + 2, 2, 2);
+        }
         continue;
       }
       const v = hash2(tx, ty);
@@ -150,6 +171,10 @@ function drawChunkTerrainInto(ctx, cx, cy) {
       ctx.fillRect(px, py, TILE, TILE);
     }
   }
+}
+// 地形被修改（铺混凝土/石砖路/填海）后清除对应 chunk 的地形缓存
+function invalidateTerrainChunk(tx, ty) {
+  terrainChunkCache.delete(Math.floor(tx / CHUNK) + ',' + Math.floor(ty / CHUNK));
 }
 
 // 获取指定 chunk 的离屏缓存画布；未命中时生成并写回 LRU。

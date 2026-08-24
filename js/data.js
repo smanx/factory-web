@@ -216,7 +216,18 @@ const ITEMS = {
   'nuclear-fuel': { name: '核燃料', color: '#9ae06a', mark: '☢', desc: '核反应堆的燃料，由铀-235制造，可持续提供巨量高温蒸汽' },
   'centrifuge':   { name: '离心机', color: '#7a8a9a', desc: '把铀矿石分离成铀-235 / 铀-238；也可进行铀富集循环（Kovarex）（2×2，吃电力）' },
   'nuclear-reactor': { name: '核反应堆', color: '#4a8a5a', desc: '消耗核燃料+水产出高温蒸汽（5×5，吃水）。高温蒸汽经汽轮机以远高于蒸汽机的功率发电' },
-  'steam-turbine': { name: '汽轮机', color: '#8fb8d0', desc: '消耗高温蒸汽发电，功率远高于蒸汽机（3×3）。接入反应堆/储汽的蒸汽管道即可' }
+  'steam-turbine': { name: '汽轮机', color: '#8fb8d0', desc: '消耗高温蒸汽发电，功率远高于蒸汽机（3×3）。接入反应堆/储汽的蒸汽管道即可' },
+  // ===== 电路网络（对齐《异星工厂》Circuit Network）=====
+  'small-electric-pole': { name: '小型电线杆', color: '#8a5a2a', desc: '电线杆：铺设后与附近电线杆自动连线，构成电路网络（1×1，连接距离 7 格）。红/绿线可独立传输信号' },
+  'medium-electric-pole': { name: '中型电线杆', color: '#a06a2a', desc: '电线杆：连接距离更远（9 格），构成更大范围的电路网络（2×2）' },
+  'big-electric-pole': { name: '大型电线杆', color: '#b0802a', desc: '电线杆：超远连接距离（15 格），用于跨区域组网（2×2）' },
+  'constant-combinator': { name: '常量组合器', color: '#4a7ac0', desc: '电路设备：面板设置若干常量信号，持续输出到所连网络（1×1）。可指定输出到红线或绿线' },
+  'arithmetic-combinator': { name: '运算组合器', color: '#4a9ac0', desc: '电路设备：读取网络输入信号，做加减乘除运算后输出结果信号（1×1）' },
+  'decider-combinator': { name: '判断组合器', color: '#4ac0a0', desc: '电路设备：按条件（如 信号 > 10）判断，满足时输出指定信号；可做“非”逻辑（1×1）' },
+  // ===== 混凝土 / 地形改造（对齐《异星工厂》Concrete & Landfill）=====
+  'concrete': { name: '混凝土', color: '#9a9aa0', desc: '地面装饰：铺设在草地上可加速玩家行走（比泥地快），需在玩家脚下使用或按住铺设' },
+  'stone-path': { name: '石砖路', color: '#a8a09a', desc: '地面装饰：铺设在地面上美观且加速行走（由石砖合成）' },
+  'landfill': { name: '填海料', color: '#8a6a3a', desc: '地形改造：把水面填成可建造的陆地（由石头+土合成）' }
 };
 
 const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone', 'calcite'];  // 0-4；原油/铀矿用特殊索引（见 ORE_OIL/ORE_URANIUM）
@@ -338,7 +349,18 @@ const RECIPES = {
   // 离心机/反应堆/汽轮机（组装机制造）
   'centrifuge':        { time: 2,   inp: { 'iron-plate': 8, 'green-circuit': 4 },                 out: { 'centrifuge': 1 } },
   'nuclear-reactor':   { time: 15,  inp: { 'steel-plate': 40, 'copper-plate': 20, 'battery': 5, 'centrifuge': 1 }, out: { 'nuclear-reactor': 1 } },
-  'steam-turbine':     { time: 5,   inp: { 'steel-plate': 20, 'iron-gear': 8, 'copper-plate': 10 }, out: { 'steam-turbine': 1 } }
+  'steam-turbine':     { time: 5,   inp: { 'steel-plate': 20, 'iron-gear': 8, 'copper-plate': 10 }, out: { 'steam-turbine': 1 } },
+  // ===== 电路网络配方 =====
+  'small-electric-pole': { time: 0.5, inp: { 'iron-plate': 1, 'copper-plate': 1 },                   out: { 'small-electric-pole': 1 } },
+  'medium-electric-pole': { time: 1,  inp: { 'iron-plate': 3, 'copper-plate': 2, 'iron-gear': 1 },   out: { 'medium-electric-pole': 1 } },
+  'big-electric-pole': { time: 1.5,   inp: { 'iron-plate': 5, 'copper-plate': 3, 'iron-gear': 2 },   out: { 'big-electric-pole': 1 } },
+  'constant-combinator': { time: 1.5, inp: { 'iron-plate': 4, 'green-circuit': 2, 'copper-cable': 4 }, out: { 'constant-combinator': 1 } },
+  'arithmetic-combinator': { time: 1.5, inp: { 'iron-plate': 4, 'green-circuit': 3, 'copper-cable': 4 }, out: { 'arithmetic-combinator': 1 } },
+  'decider-combinator': { time: 1.5,  inp: { 'iron-plate': 4, 'green-circuit': 3, 'copper-cable': 4 }, out: { 'decider-combinator': 1 } },
+  // ===== 混凝土 / 地形改造配方 =====
+  'concrete':          { time: 0.5, inp: { 'stone-brick': 5, 'iron-plate': 2 },                     out: { 'concrete': 10 } },
+  'stone-path':        { time: 0.5, inp: { 'stone-brick': 2 },                                      out: { 'stone-path': 4 } },
+  'landfill':          { time: 0.5, inp: { 'stone': 20, 'iron-plate': 1 },                          out: { 'landfill': 1 } }
 };
 
 const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant'];
@@ -447,7 +469,14 @@ const BUILD_DEFS = {
   'logistic-chest-passive': { w: 1, h: 1, solid: true },
   'logistic-chest-active':  { w: 1, h: 1, solid: true },
   'logistic-chest-storage': { w: 1, h: 1, solid: true },
-  'logistic-chest-requester': { w: 1, h: 1, solid: true }
+  'logistic-chest-requester': { w: 1, h: 1, solid: true },
+  // ===== 电路网络 =====
+  'small-electric-pole': { w: 1, h: 1, solid: true },
+  'medium-electric-pole': { w: 2, h: 2, solid: true },
+  'big-electric-pole': { w: 2, h: 2, solid: true },
+  'constant-combinator': { w: 1, h: 1, solid: true },
+  'arithmetic-combinator': { w: 1, h: 1, solid: true },
+  'decider-combinator': { w: 1, h: 1, solid: true }
 };
 
 // ===== 科技解锁要求（建造/武器/模块）=====
@@ -484,6 +513,9 @@ if (!TECH_REQ['rail-signal']) TECH_REQ['rail-signal'] = 'rail-signals';
 const LOGISTIC_ITEMS = ['roboport', 'logistic-robot', 'logistic-chest-passive', 'logistic-chest-active', 'logistic-chest-storage', 'logistic-chest-requester'];
 // 物流箱科技门控：所有物流设备需先研究「物流网络」
 for (const id of LOGISTIC_ITEMS) if (!TECH_REQ[id]) TECH_REQ[id] = 'logistics-network';
+// ===== 电路网络科技门控 =====
+const CIRCUIT_ITEMS = ['small-electric-pole', 'medium-electric-pole', 'big-electric-pole', 'constant-combinator', 'arithmetic-combinator', 'decider-combinator'];
+for (const id of CIRCUIT_ITEMS) if (!TECH_REQ[id]) TECH_REQ[id] = 'circuit-network';
 // 玩家武器所需科技（用于选择武器时拦截）
 const WEAPON_TECH_REQ = {
   'pistol': 'weapons',
@@ -542,6 +574,7 @@ const TECHS = {
   radar:      { name: '雷达技术', cost: { 'green-science': 30 }, desc: '解锁雷达，自动扫描并标记新探索区域' },
   'logistics-network': { name: '物流网络', cost: { 'blue-science': 50 }, desc: '解锁机器人港、四类物流箱与物流机器人，构建自动化物流网络' },
   nuclear:    { name: '核能技术', cost: { 'blue-science': 60, 'military-science': 40 }, desc: '解锁离心机（铀矿处理）、核反应堆与汽轮机，构建核能发电体系' },
+  'circuit-network': { name: '电路网络', cost: { 'blue-science': 40 }, desc: '解锁电线杆与组合器（常量/运算/判断），构建电路网络，实现信号逻辑控制' },
   deep:       { name: '重工蓝图', cost: { 'blue-science': 50 }, desc: '蓝包终技：科研总进度获取 +20%' },
   infinite:   { name: '无限科技', cost: {}, infinite: true, desc: '无限研究：消耗任意科学包，永不完成' }
 };
