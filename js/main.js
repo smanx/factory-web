@@ -149,6 +149,11 @@ function saveGame(id, name) {
     if (res) toast('已覆盖存档：' + (res.name || '存档'));
     else toast('保存失败');
   } else {
+    // 新建用户存档：最多只能有 MAX_USER_SAVES 个，超出则提示
+    if (!id && countUserSaves() >= MAX_USER_SAVES) {
+      toast('已达用户存档上限（' + MAX_USER_SAVES + ' 个），请先删除或覆盖旧存档');
+      return null;
+    }
     res = writeSave(data, 'user', id || null, name || '');
     if (res) toast('已保存');
     else toast('保存失败');
