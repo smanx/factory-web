@@ -125,6 +125,8 @@ class Inserter extends Entity {
       }
       case 'burner-drill':
         return item === 'coal' && t.fuelCoal < 10;
+      case 'burner-inserter':
+        return item === 'coal' && t.fuelCoal < 5;
       case 'electric-drill':
         return false;
       case 'offshore-pump':

@@ -115,11 +115,74 @@ function render() {
     if (dark > 0.01) {
       ctx.fillStyle = 'rgba(6,10,18,' + dark.toFixed(3) + ')';
       ctx.fillRect(0, 0, W, H);
+      // 电灯：在黑暗遮罩上凿出光圈并叠加暖色光晕（需夜间有点灯设备时）
+      if (typeof drawLampLights === 'function' && !hasNightVision()) drawLampLights(ctx, dark);
     }
   }
 
   // 小地图（位于画布右下角）
   if (G.settings && G.settings.minimap !== false) drawMinimap(ctx);
+}
+
+// ===== 电灯照明：在黑暗遮罩上凿出光圈并叠加暖光 =====
+// 遍历视口内通电点亮的电灯，用 destination-out 把对应区域的黑暗削掉，
+// 再叠加一圈暖色光晕，使夜间基地可见。所有坐标转换为屏幕像素。
+function drawLampLights(ctx, dark) {
+  const cam = G.cam, z = cam.z;
+  const rPx = 5 * TILE * z;            // 照亮半径转像素
+  const keys = (G.buckets && G.buckets.size)
+    ? bucketKeysIn(
+        Math.floor(FRAME_BOUNDS.x1 / TILE) - 6, Math.floor(FRAME_BOUNDS.y1 / TILE) - 6,
+        Math.ceil(FRAME_BOUNDS.x0 / TILE) + 6, Math.ceil(FRAME_BOUNDS.y0 / TILE) + 6)
+    : null;
+  const sx = (wx) => (wx - cam.px) * z + W / 2;
+  const sy = (wy) => (wy - cam.py) * z + H / 2;
+  let first = true;
+  const punch = (e) => {
+    if (!e._dead && e.type === 'lamp' && e.shouldLight && e.shouldLight()) {
+      const cx = sx((e.x + 0.5) * TILE);
+      const cy = sy((e.y + 0.5) * TILE);
+      if (cx < -rPx || cx > W + rPx || cy < -rPx || cy > H + rPx) return;
+      if (first) {
+        // 切换到“挖空”模式：把暗罩下方内容显露出来（即减去黑暗）
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        first = false;
+      }
+      const g = ctx.createRadialGradient(cx, cy, rPx * 0.12, cx, cy, rPx);
+      g.addColorStop(0, 'rgba(0,0,0,' + Math.min(1, dark * 2.4) + ')');
+      g.addColorStop(0.5, 'rgba(0,0,0,' + (dark * 0.85).toFixed(3) + ')');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(cx, cy, rPx, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  };
+  if (keys) forEachEntInBuckets(keys, punch);
+  else for (const e of G.ents) punch(e);
+  if (!first) ctx.restore();
+  // 叠加暖色光晕（半透明黄色辉光，重新正常混合）
+  let drewGlow = false;
+  const glow = (e) => {
+    if (!e._dead && e.type === 'lamp' && e.shouldLight && e.shouldLight()) {
+      const cx = sx((e.x + 0.5) * TILE);
+      const cy = sy((e.y + 0.5) * TILE);
+      if (cx < -rPx || cx > W + rPx || cy < -rPx || cy > H + rPx) return;
+      if (!drewGlow) { ctx.save(); drewGlow = true; }
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rPx);
+      g.addColorStop(0, 'rgba(255,246,178,' + (0.5).toFixed(2) + ')');
+      g.addColorStop(0.4, 'rgba(255,220,120,' + (0.22).toFixed(2) + ')');
+      g.addColorStop(1, 'rgba(255,200,90,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(cx, cy, rPx, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  };
+  if (keys) forEachEntInBuckets(keys, glow);
+  else for (const e of G.ents) glow(e);
+  if (drewGlow) ctx.restore();
 }
 
 // 视口世界包围盒：写入传入对象以复用，避免每帧/每实体分配新对象。
