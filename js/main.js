@@ -625,7 +625,8 @@ function captureBlueprint() {
       seen.add(e);
       const cx = e.x + Math.floor(e.w / 2), cy = e.y + Math.floor(e.h / 2);
       if (cx < r.x0 || cx > r.x1 || cy < r.y0 || cy > r.y1) continue;
-      ents.push(e.serialize());
+      // 仅复制建筑本身，不含内部原料/输出/燃料/流体及传送带物品
+      ents.push(e.blueprint());
     }
   }
   if (!ents.length) { toast('框选区域没有可复制的建筑'); return; }

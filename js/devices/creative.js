@@ -37,6 +37,12 @@ class CreativeChest extends Entity {
     s.selected = this.selected;
     return s;
   }
+  // 蓝图保留选定物品配置
+  blueprint() {
+    const s = super.blueprint();
+    s.selected = this.selected;
+    return s;
+  }
   static restore(s) {
     const c = super.restore(s);
     c.selected = s.selected || null;
@@ -78,6 +84,12 @@ class CreativePipe extends Pipe {
   takeAll() { const rows = []; for (const k of Object.keys(this.fluid)) { rows.push([k, this.fluid[k]]); delete this.fluid[k]; } return rows; }
   serialize() {
     const s = super.serialize();
+    s.selected = this.selected;
+    return s;
+  }
+  // 蓝图保留选定流体配置
+  blueprint() {
+    const s = super.blueprint();
     s.selected = this.selected;
     return s;
   }
