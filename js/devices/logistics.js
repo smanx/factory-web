@@ -246,7 +246,7 @@ function retireExcessRobots(port) {
       if (excess <= 0) break;
     }
   }
-  if (G.logiRobots.some(r => r._dead)) G.logiRobots = G.logiRobots.filter(r => !r._dead);
+  G.logiRobots = compactFilter(G.logiRobots, r => !r._dead);   // 单遍 compactFilter 清理死亡机器人（P0 优化）
 }
 
 // 新增机器人实体（挂到某机器人港名下）
@@ -530,8 +530,8 @@ function updateLogistics(dt) {
   }
   // 更新所有机器人
   for (const r of G.logiRobots) updateRobot(r, dt);
-  // 清理死亡机器人
-  if (G.logiRobots.some(r => r._dead)) G.logiRobots = G.logiRobots.filter(r => !r._dead);
+  // 清理死亡机器人（单遍 compactFilter 原地清理，避免每帧分配新数组）
+  G.logiRobots = compactFilter(G.logiRobots, r => !r._dead);
   // 空闲且满电的机器人尝试接任务
   if (G.logiNet) {
     // 性能优化：网络无需求且无玩家回收任务时，跳过对全部机器人的空闲扫描，

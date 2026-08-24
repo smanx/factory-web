@@ -147,10 +147,25 @@ function expandFromSpawner(parent) {
   return false;
 }
 // 每帧推进扩张计时，到点且满足条件时触发一次扩张
+
+// 每帧懒计算并复用 spawner（巢穴）列表（P0 优化）：
+// updateExpansion / spawnEnemies / updateWaves 三处每帧各做一次
+// G.enemies.filter(...) 会分配新数组造成 GC 压力；改为每帧只算一次并复用同一数组。
+// 由主循环在每帧 combat 块开头调用 resetSpawnerCache() 使缓存失效。
+function resetSpawnerCache() { G._spawnerList = null; }
+function getSpawnerList() {
+  if (G._spawnerList) return G._spawnerList;
+  const list = [];
+  const src = G.enemies || EMPTY_ARR;
+  for (let i = 0; i < src.length; i++) if (src[i].kind === 'spawner' && !src[i].dead) list.push(src[i]);
+  G._spawnerList = list;
+  return list;
+}
+
 function updateExpansion(dt) {
   if (!G.settings.combat) return;
   if (!G.enemies) G.enemies = [];
-  const spawners = G.enemies.filter(e => e.kind === 'spawner' && !e.dead);
+  const spawners = getSpawnerList();
   if (spawners.length === 0) { G.expandT = 0; return; }
   const cap = spawnerCapByEvo();
   if (spawners.length >= cap) { G.expandT = 0; return; }
@@ -175,7 +190,7 @@ function spawnEnemies(dt) {
   const cap = G.techDone['advanced-combat'] ? 40 : 24;
   if (G.enemies.length >= cap) return;
   // 维护巢穴数量：不足则在远处生成新巢穴（初始布点由扩张系统接管后，这里仍保留保底补位）
-  const spawners = G.enemies.filter(e => e.kind === 'spawner' && !e.dead);
+  const spawners = getSpawnerList();
   const spawnerCap = spawnerCapByEvo();
   if (spawners.length < spawnerCap && G.spawnT > 3) {
     const s = makeSpawner();
@@ -259,7 +274,7 @@ function updateWaves(dt) {
   if (!G.settings.combat) return;
   const evo = evolutionFactor();
   // 至少有一座巢穴、且进化度达到一定水平后才触发进攻波，避免开局就压垮玩家
-  const spawners = G.enemies ? G.enemies.filter(e => e.kind === 'spawner' && !e.dead) : [];
+  const spawners = getSpawnerList();
   if (spawners.length === 0 || evo < 0.06) return;
   G.waveT = (G.waveT || 0) + dt;
   if (G.waveT < waveInterval()) return;

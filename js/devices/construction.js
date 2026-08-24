@@ -295,22 +295,25 @@ function updateConstruction(dt) {
   ensureConstr();
   // 没有个人机器人港则静默清理（保留幽灵等待下次装备？为符合直觉，直接清空幽灵与机器人）
   if (!hasPersonalRoboport()) {
-    G.constrGhosts = G.constrGhosts.filter(g => !g._dead);
-    G.deconMarks = G.deconMarks.filter(m => !m._dead);
-    if (G.constrRobots.some(r => !r._dead)) G.constrRobots = G.constrRobots.filter(r => r._dead);
+    // 单遍 compactFilter 原地清理（替代 .filter 每帧分配新数组），并修复原有误：原实现
+    // G.constrRobots.filter(r => r._dead) 误保留死亡机器人、丢弃存活机器人，此处改为保留存活。
+    G.constrGhosts = compactFilter(G.constrGhosts, g => !g._dead);
+    G.deconMarks = compactFilter(G.deconMarks, m => !m._dead);
+    G.constrRobots = compactFilter(G.constrRobots, r => !r._dead);
     return;
   }
-  // 清理墓碑
-  if (G.constrGhosts.some(g => g._dead)) G.constrGhosts = G.constrGhosts.filter(g => !g._dead);
-  if (G.deconMarks.some(m => m._dead)) G.deconMarks = G.deconMarks.filter(m => !m._dead);
-  if (G.constrRobots.some(r => r._dead)) G.constrRobots = G.constrRobots.filter(r => !r._dead);
+  // 清理墓碑：单遍 compactFilter（替代原 .some()+filter 双遍扫描，减少每帧遍历与分配）
+  G.constrGhosts = compactFilter(G.constrGhosts, g => !g._dead);
+  G.deconMarks = compactFilter(G.deconMarks, m => !m._dead);
+  G.constrRobots = compactFilter(G.constrRobots, r => !r._dead);
 
   // 更新现有机器人
   for (const r of G.constrRobots) updateConstrRobot(r, dt);
 
-  // 统计当前在施工的机器人数量
+  // 统计当前在施工的机器人数量（计数循环替代 filter().length，避免每帧分配新数组）
   const rInfo = constrRoboportInfo();
-  const activeCount = G.constrRobots.filter(r => !r._dead && r.state !== 'idle').length;
+  let activeCount = 0;
+  for (const r of G.constrRobots) if (!r._dead && r.state !== 'idle') activeCount++;
   if (activeCount >= rInfo.maxActive) return;
 
   // 找待施工幽灵（优先未在施工的）

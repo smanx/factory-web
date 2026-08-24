@@ -1587,6 +1587,7 @@ function loop(ts) {
       for (const e of G.ents) if (!e._dead && typeof e.update === 'function') e.update(dt);
       // 敌人/子弹系统（可在设置中开关战斗）
       if (G.settings.combat) {
+        if (typeof resetSpawnerCache === 'function') resetSpawnerCache();   // 每帧失效 spawner 列表缓存（P0 优化）
         spawnEnemies(dt);
         // 性能优化：本帧存活敌人列表只计算一次，供子弹命中/战斗机器人/区域力场等复用，
         // 避免每帧多处在 combat2.js 里各自 filter 生成全新数组（降低 GC 压力）。
