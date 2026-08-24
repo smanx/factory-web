@@ -35,6 +35,15 @@ const TURBINE_STEAM_RATE = 1.5;   // 汽轮机满功率耗汽（单位/秒）
 const TURBINE_STEAM_CAP = 12;     // 汽轮机内部储汽上限
 const CENTRIFUGE_TIME = 12;       // 离心机处理一批铀矿耗时（秒）
 const URANIUM_CENTRIFUGE_KOVAREX_TIME = 60; // Kovarex 富集耗时（秒）
+// ===== 核能热量链路（反应堆 → 导热管 → 热交换器 → 高温蒸汽 → 汽轮机）=====
+// 引入“热量(heat)”概念：反应堆不直接产蒸汽，而是产热量；热量经导热管传导，
+// 在热交换器处把水烧成高温蒸汽，再供汽轮机发电（对齐《异星工厂》核能标准链路）。
+const REACTOR_HEAT_RATE = 6.0;     // 反应堆每秒产热量（单位/秒）
+const REACTOR_HEAT_CAP = 60;       // 反应堆内部热量缓冲（相当于原蒸汽缓冲）
+const HEAT_PIPE_CAP = 12;          // 导热管内部热量缓冲
+const HEAT_PIPE_TRANSFER = 6.0;    // 导热管每秒向相邻导热管/热交换器传导的热量上限
+const HEAT_EXCHANGER_CAP = 12;     // 热交换器内部热量缓冲
+const HEAT_EXCHANGER_STEAM_RATE = 2.0; // 热交换器满功率耗热量→产蒸汽速率（单位/秒）
 const POWER_USE = {
   'electric-drill': 90,          // 电采矿机
   'electric-furnace': 180,       // 电炉
@@ -268,8 +277,10 @@ const ITEMS = {
   'nuclear-fuel': { name: '核燃料', color: '#9ae06a', mark: '☢', desc: '核反应堆的燃料，由铀-235制造，可持续提供巨量高温蒸汽' },
   'used-up-uranium-fuel-cell': { name: '废燃料棒', color: '#6a7a4a', mark: '废', desc: '核燃料燃尽的残棒，可在离心机再生为铀-238，闭合核燃料循环' },
   'centrifuge':   { name: '离心机', color: '#7a8a9a', desc: '把铀矿石分离成铀-235 / 铀-238；也可进行铀富集循环（Kovarex）（2×2，吃电力）' },
-  'nuclear-reactor': { name: '核反应堆', color: '#4a8a5a', desc: '消耗核燃料+水产出高温蒸汽（5×5，吃水）。高温蒸汽经汽轮机以远高于蒸汽机的功率发电' },
-  'steam-turbine': { name: '汽轮机', color: '#8fb8d0', desc: '消耗高温蒸汽发电，功率远高于蒸汽机（3×3）。接入反应堆/储汽的蒸汽管道即可' },
+  'nuclear-reactor': { name: '核反应堆', color: '#4a8a5a', desc: '消耗核燃料产生巨量热量（5×5）。热量经导热管传导至热交换器，由热交换器把水烧成高温蒸汽，再供汽轮机发电（对齐《异星工厂》核能标准链路）' },
+  'steam-turbine': { name: '汽轮机', color: '#8fb8d0', desc: '消耗高温蒸汽发电，功率远高于蒸汽机（3×3）。接入热交换器/储汽的蒸汽管道即可' },
+  'heat-pipe':    { name: '导热管', color: '#d98a3a', desc: '核能的传热设备（1×1）：把核反应堆产生的热量传导到热交换器，可多根串联、沿路传输（对齐《异星工厂》Heat pipe）' },
+  'heat-exchanger': { name: '热交换器', color: '#a06a4a', desc: '核能的水→蒸汽转换设备（3×1）：消耗导热管传来的热量，把水烧成高温蒸汽供汽轮机发电（对齐《异星工厂》Heat exchanger）' },
   // ===== 电路网络（对齐《异星工厂》Circuit Network）=====
   'small-electric-pole': { name: '小型电线杆', color: '#8a5a2a', desc: '电线杆：铺设后与附近电线杆自动连线，构成电路网络（1×1，连接距离 7 格）。红/绿线可独立传输信号' },
   'medium-electric-pole': { name: '中型电线杆', color: '#a06a2a', desc: '电线杆：连接距离更远（9 格），构成更大范围的电路网络（2×2）' },
@@ -484,6 +495,8 @@ const RECIPES = {
   'centrifuge':        { time: 2,   inp: { 'iron-plate': 8, 'green-circuit': 4 },                 out: { 'centrifuge': 1 } },
   'nuclear-reactor':   { time: 15,  inp: { 'steel-plate': 40, 'copper-plate': 20, 'battery': 5, 'centrifuge': 1 }, out: { 'nuclear-reactor': 1 } },
   'steam-turbine':     { time: 5,   inp: { 'steel-plate': 20, 'iron-gear': 8, 'copper-plate': 10 }, out: { 'steam-turbine': 1 } },
+  'heat-pipe':         { time: 1,   inp: { 'steel-plate': 4, 'copper-plate': 3 }, out: { 'heat-pipe': 1 } },
+  'heat-exchanger':    { time: 3,   inp: { 'steel-plate': 15, 'copper-plate': 15, 'pipe': 10 }, out: { 'heat-exchanger': 1 } },
   // ===== 电路网络配方 =====
   'small-electric-pole': { time: 0.5, inp: { 'iron-plate': 1, 'copper-plate': 1 },                   out: { 'small-electric-pole': 1 } },
   'substation':        { time: 2,   inp: { 'big-electric-pole': 2, 'steel-plate': 8, 'copper-plate': 8, 'processing-unit': 2 }, out: { 'substation': 1 } },
@@ -645,6 +658,8 @@ const BUILD_DEFS = {
   'centrifuge':         { w: 2, h: 2, solid: true },
   'nuclear-reactor':    { w: 5, h: 5, solid: true },
   'steam-turbine':      { w: 3, h: 3, solid: true },
+  'heat-pipe':          { w: 1, h: 1, solid: true },
+  'heat-exchanger':     { w: 3, h: 1, solid: true },
   'roboport':           { w: 4, h: 4, solid: true },
   'rail':               { w: 1, h: 1, solid: false },
   'locomotive':         { w: 1, h: 1, solid: true },
@@ -694,7 +709,7 @@ const BUILDING_HP = {
   'gun-turret': 400, 'laser-turret': 400, 'flamethrower-turret': 400, 'artillery-turret': 800,
   'stone-wall': 350, 'gate': 350,
   'refinery': 500, 'chemical-plant': 400, 'rocket-silo': 1000, 'radar': 300,
-  'centrifuge': 300, 'nuclear-reactor': 1000, 'steam-turbine': 400,
+  'centrifuge': 300, 'nuclear-reactor': 1000, 'steam-turbine': 400, 'heat-pipe': 200, 'heat-exchanger': 300,
   'roboport': 600, 'logistic-chest-passive': 200, 'logistic-chest-active': 200,
   'logistic-chest-storage': 200, 'logistic-chest-requester': 200, 'logistic-chest-buffer': 200,
   'small-electric-pole': 60, 'medium-electric-pole': 100, 'big-electric-pole': 150, 'substation': 300,
@@ -769,7 +784,7 @@ const TECH_REQ = {
   'portable-fusion-reactor': 'armor-power-mk2'
 };
 // ===== 核能科技门控 =====
-for (const id of ['centrifuge', 'nuclear-reactor', 'steam-turbine', 'uranium-235', 'uranium-238', 'nuclear-fuel']) {
+for (const id of ['centrifuge', 'nuclear-reactor', 'steam-turbine', 'heat-pipe', 'heat-exchanger', 'uranium-235', 'uranium-238', 'nuclear-fuel']) {
   if (!TECH_REQ[id]) TECH_REQ[id] = 'nuclear';
 }
 // ===== 铁路科技门控 =====
