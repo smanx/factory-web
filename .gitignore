@@ -10,3 +10,6 @@ Thumbs.db
 
 # 测试目录
 test/
+
+# 依赖
+node_modules/

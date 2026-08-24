@@ -100,6 +100,8 @@ function render() {
     for (const e of G.ents) drawPass(e, false);
     for (const e of G.ents) drawPass(e, true);
   }
+  // ALT 模式（对齐《异星工厂》）：在建筑上叠加显示当前配方/内容标签
+  if (G.settings.altMode) drawAltMode(ctx, keys, _bucketSeenBuf);
   drawGhost(ctx);
   drawBlueprintOverlay(ctx);
   drawHoverAndMining(ctx);
@@ -455,7 +457,7 @@ function drawTerrain(ctx) {
   for (let ty = ty0; ty <= ty1; ty++) {
     const cy = Math.floor(ty / CHUNK);
     const ly = ((ty % CHUNK) + CHUNK) % CHUNK;
-    let c = null, curCx = -1;
+    let c = null, curCx = NaN;   // NaN 哨兵：保证首帧必取 chunk（-1 会与负坐标 chunk 索引冲突，导致 c 为 null 崩溃）
     for (let tx = tx0; tx <= tx1; tx++) {
       const cx = Math.floor(tx / CHUNK);
       if (cx !== curCx) { c = getChunk(cx, cy); curCx = cx; }
@@ -702,6 +704,140 @@ function drawEntity(ctx, e, gx, gy, dir, alpha) {
 const IS_INSERTER = { inserter: true, 'long-inserter': true, 'filter-inserter': true, 'stack-inserter': true, 'fast-inserter': true };
 
 const ghostCache = { type: null, ent: null };
+
+// ===== ALT 模式（对齐《异星工厂》ALT 模式）=====
+// 在建筑上叠加显示当前配方/内容标签，方便玩家快速总览产线：
+//  - 组装机/炼油厂/化工厂/离心机/火箭井：当前配方产出物
+//  - 研究中心：当前研究科技
+//  - 各类箱/货运车厢/载具储物箱：箱内主要物品
+//  - 带过滤的机械臂：过滤物品
+//  - 机枪炮塔/炮兵：弹药数量
+// 缓存复用：只对配方/内容发生变化的建筑重算标签（key 直接挂实体上），避免每帧字符串拼接。
+function _altLabelKey(e) {
+  const t = e.type;
+  if (e.recipe) return 'r:' + e.recipe;
+  if (t === 'lab') return 'lab:' + (G.activeTech || '');
+  if (t === 'rocket-silo') {
+    const inp = e.inp || {};
+    return 'rs:' + (inp.rocket || 0) + ':' + (inp.satellite || 0) + ':' + (e.launching ? 1 : 0);
+  }
+  if (t === 'gun-turret' || t === 'artillery-turret') {
+    // 避免 JSON.stringify 每帧分配；用弹药类型数+总数做轻量指纹
+    let n = 0, types = 0;
+    if (e.ammo) { for (const k in e.ammo) if (e.ammo[k] > 0) { n += e.ammo[k]; types++; } }
+    if (t === 'artillery-turret') n = (e.shells || 0);
+    return 'ammo:' + n + ':' + types;
+  }
+  if (e.slots) {
+    // 箱/车厢内容标签：拼接每槽物品+数量
+    let k = 'sl:';
+    for (const s of e.slots) if (s) k += s.item + ':' + s.count + ';';
+    return k;
+  }
+  if (t === 'car' || t === 'tank' || t === 'spidertron') {
+    const tr = e.trunk || {};
+    let k = 'tr:';
+    for (const id in tr) if (tr[id] > 0) k += id + ':' + tr[id] + ';';
+    return k;
+  }
+  if (e.filter) return 'f:' + e.filter;
+  return '';
+}
+function _altLabelText(e) {
+  const t = e.type;
+  // 带配方机器：配方产出物名
+  if (e.recipe) {
+    const rec = RECIPES[e.recipe] || REFINERY_RECIPES[e.recipe] || CENTRIFUGE_RECIPES[e.recipe];
+    if (!rec) return null;
+    const outs = Object.keys(rec.out || {});
+    if (!outs.length) return null;
+    const nm = outs.map(id => ITEMS[id] ? ITEMS[id].name : id).join('+');
+    return (rec.out[outs[0]] > 1 && Object.keys(rec.out).length === 1) ? (nm + ' ×' + rec.out[outs[0]]) : nm;
+  }
+  if (t === 'lab') {
+    if (!G.activeTech || !TECHS[G.activeTech]) return null;
+    return '研究 ' + TECHS[G.activeTech].name;
+  }
+  if (t === 'rocket-silo') {
+    const inp = e.inp || {};
+    if (e.launching) return '🚀 发射中…';
+    if ((inp.rocket || 0) > 0) return '火箭 ✓  ' + ((inp.satellite || 0) > 0 ? '卫星 ✓' : '待装卫星');
+    const need = (typeof SILO_ASSEMBLE === 'object' && SILO_ASSEMBLE) ? SILO_ASSEMBLE : null;
+    if (need) {
+      const miss = Object.keys(need).filter(k => (inp[k] || 0) < need[k]);
+      return miss.length ? ('组装中 ' + miss.map(k => (ITEMS[k] ? ITEMS[k].name : k)).join('/')) : '部件齐备';
+    }
+    return '火箭发射井';
+  }
+  if (t === 'gun-turret') {
+    const n = e.totalAmmo ? e.totalAmmo() : 0;
+    return n > 0 ? ('弹药 ' + n) : '空弹药';
+  }
+  if (t === 'artillery-turret') {
+    return (e.shells || 0) > 0 ? ('炮弹 ' + e.shells) : '空炮弹';
+  }
+  if (e.slots) {
+    // 箱/车厢：最多显示 3 种主要物品
+    const parts = [];
+    let shown = 0;
+    for (const s of e.slots) {
+      if (!s) continue;
+      parts.push((ITEMS[s.item] ? ITEMS[s.item].name : s.item) + (s.count > 1 ? '×' + s.count : ''));
+      if (++shown >= 3) break;
+    }
+    if (!shown) return null;
+    return parts.join(' ');
+  }
+  if (t === 'car' || t === 'tank' || t === 'spidertron') {
+    const tr = e.trunk || {};
+    const parts = [];
+    for (const id in tr) if (tr[id] > 0) parts.push((ITEMS[id] ? ITEMS[id].name : id) + '×' + tr[id]);
+    return parts.length ? parts.slice(0, 3).join(' ') : null;
+  }
+  if (e.filter) return '⇥ ' + (ITEMS[e.filter] ? ITEMS[e.filter].name : e.filter);
+  return null;
+}
+function drawAltMode(ctx, keys, seenBuf) {
+  const fontBase = Math.max(8, 10 * G.cam.z);
+  const lh = fontBase + 3;
+  const iter = e => {
+    if (e._dead || !onScreen(e)) return;
+    // 缓存复用：把上次计算的 key/text 直接挂在实体上，只有 key 变化才重算 text，
+    // 避免每帧为稳定内容重复字符串拼接与 ITEMS 查名（ALT 模式高频路径优化）。
+    const key = _altLabelKey(e);
+    if (!key) { if (e._altKey) { e._altKey = ''; e._altText = null; } return; }
+    let text;
+    if (e._altKey === key) {
+      text = e._altText;
+    } else {
+      text = _altLabelText(e);
+      e._altKey = key;
+      e._altText = text;
+    }
+    if (!text) return;
+    // 标签绘制在建筑顶部中央
+    const px = (e.x + e.w / 2) * TILE;
+    const py = e.y * TILE - 2;
+    ctx.save();
+    ctx.font = '600 ' + fontBase + 'px sans-serif';
+    const tw = ctx.measureText(text).width;
+    const pad = 3, bw = tw + pad * 2, bh = lh;
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = 'rgba(8,10,14,0.78)';
+    ctx.fillRect(px - bw / 2, py - bh, bw, bh);
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(px - bw / 2 + 0.5, py - bh + 0.5, bw - 1, bh - 1);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#f2f2f2';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, px, py - bh / 2 + 0.5);
+    ctx.restore();
+  };
+  if (keys) forEachEntInBuckets(keys, iter, seenBuf);
+  else for (const e of G.ents) iter(e);
+}
 
 function getGhostEnt(type) {
   if (ghostCache.type !== type) {

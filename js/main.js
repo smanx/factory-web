@@ -1392,6 +1392,13 @@ function bindInput() {
     else if (ev.altKey && k === 'h') { ev.preventDefault(); if (typeof showTutorial === 'function') showTutorial(); }
     // 放电防御装备：C 键激活对周围敌人放电（对齐《异星工厂》Discharge defense）
     else if (k === 'c') { if (typeof activateDischargeDefense === 'function') activateDischargeDefense(); }
+    // ALT 模式（对齐《异星工厂》ALT 模式）：按 Alt 键切换建筑配方/内容叠加显示
+    else if (k === 'alt') {
+      ev.preventDefault();
+      G.settings.altMode = !(G.settings.altMode !== false);
+      saveSettings();
+      toast(G.settings.altMode ? 'ALT 模式：开（显示建筑配方/内容叠加）' : 'ALT 模式：关');
+    }
     else if (k === 'escape' || k === 'q') {
       if (G.driving) { if (typeof exitCar === 'function') exitCar(); }
       else if (G.blueMode) {
