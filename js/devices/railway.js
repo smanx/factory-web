@@ -28,6 +28,9 @@ const LOCO_MAX_UNITS = 10;     // 车头燃料槽可存燃料个数（煤/固体
 const LOCO_COAL_PER = 1;       // 每格耗煤 1 单位
 const WAGON_SLOTS = 10;        // 车厢槽位数
 const WAGON_STACK = 100;       // 每槽容量
+// 铁路产能无限科技：每次研究提升货运车厢槽位容量 +2（对齐《异星工厂》Rail productivity）
+const RAIL_PRODUCTIVITY_SLOTS = 2; // 每级科技新增槽位数
+function wagonSlots() { return WAGON_SLOTS + (typeof G !== 'undefined' && G.techProg && G.techProg['rail-productivity'] ? G.techProg['rail-productivity'] * RAIL_PRODUCTIVITY_SLOTS : 0); }
 const TRAIN_STOP_WAIT = 1.6;   // 车站停车时长（秒）
 const SIGNAL_RANGE = 10;       // 信号灯检测前方列车距离（格）
 // 链式信号灯：连锁转发，检测前方区段整段是否畅通（距离更长），
@@ -468,7 +471,7 @@ class CargoWagon extends Entity {
     if (item === 'logistic-robot') return false;
     for (const s of this.slots)
       if (s && s.item === item && s.count < stackSize(item)) { s.count++; return true; }
-    if (this.slots.length >= WAGON_SLOTS) return false;
+    if (this.slots.length >= wagonSlots()) return false;
     this.slots.push({ item, count: 1 });
     return true;
   }
@@ -743,7 +746,7 @@ function trainAutoLoadUnload(train, station) {
   for (const item of station.load || []) {
     for (const car of train.cars) {
       if (car.type === 'cargo-wagon' && car.giveItem && car.countOf) {
-        while (car.countOf(item) < WAGON_SLOTS * stackSize(item)) {
+        while (car.countOf(item) < wagonSlots() * stackSize(item)) {
           let got = false;
           for (const c of chests) {
             if (c.countOf && c.countOf(item) > 0 && c.takeItemOf) {
@@ -884,7 +887,7 @@ function allTrainStopNames() {
 function trainCargoSlotsFull(w) {
   if (w instanceof FluidWagon) return w.fluid ? w.amount >= w.fluidCapacity() : false;
   if (w instanceof CargoWagon) {
-    if (w.slots.length < WAGON_SLOTS) return false;
+    if (w.slots.length < wagonSlots()) return false;
     for (const s of w.slots) if (s && s.count < stackSize(s.item)) return false;
     return true;
   }
@@ -1376,7 +1379,7 @@ DEVICE_PANEL['diesel-locomotive'] = {
 
 DEVICE_PANEL['cargo-wagon'] = {
   html(e) {
-    let h = '<div class="dim">货运车厢：挂在车头后随列车移动，最多 ' + WAGON_SLOTS + ' 格各 ' + WAGON_STACK + ' 个。车站可用机械臂装卸。</div><div class="sec">货物</div><div class="rows">';
+    let h = '<div class="dim">货运车厢：挂在车头后随列车移动，最多 ' + wagonSlots() + ' 格各 ' + WAGON_STACK + ' 个。车站可用机械臂装卸。</div><div class="sec">货物</div><div class="rows">';
     if (!e.slots || !e.slots.length) h += '<div class="dim">车厢是空的</div>';
     else for (const s of e.slots) if (s) h += '<div class="row"><span>' + ITEMS[s.item].name + '</span><b>' + s.count + '</b><button data-act="take" data-id="' + s.item + '">取出1</button></div>';
     return h + '</div>';
