@@ -32,6 +32,39 @@ class Centrifuge extends Entity {
     this.crafting = false;
     this.prog = 0;
     this.spin = 0;
+    this.modules = {};       // 离心机可装 2 个模块（对齐《异星工厂》Centrifuge）
+    this.prodBuf = 0;        // 产能模块累积进度
+  }
+  moduleSlotCount() { return 2; } // 对齐《异星工厂》：离心机 2 槽
+  moduleSpeedMult() {
+    const mc = moduleCounts(this.modules);
+    const bb = (typeof beaconBonus === 'function') ? beaconBonus(this.x, this.y) : null;
+    if (bb) { mc.speed += bb.speed; mc.prod += bb.prod; mc.eff += bb.eff; }
+    return 1 + 0.4 * mc.speed - 0.1 * mc.prod - 0.03 * mc.eff;
+  }
+  applyProductivity(rec) {
+    const mc = moduleCounts(this.modules);
+    const bb = (typeof beaconBonus === 'function') ? beaconBonus(this.x, this.y) : null;
+    let nProd = mc.prod;
+    if (bb) nProd += bb.prod;
+    if (nProd <= 0) return 0;
+    const thr = moduleProdThreshold(this.modules);
+    this.prodBuf = (this.prodBuf || 0) + nProd;
+    if (this.prodBuf >= thr) {
+      this.prodBuf -= thr;
+      const mainOut = rec ? Object.keys(rec.out)[0] : null;
+      if (mainOut) { this.outp[mainOut] = (this.outp[mainOut] || 0) + 1; if (typeof trackProd === 'function') trackProd(mainOut, 1); }
+      return 1;
+    }
+    return 0;
+  }
+  modulePowerFactor() {
+    const mc = moduleCounts(this.modules);
+    const bb = (typeof beaconBonus === 'function') ? beaconBonus(this.x, this.y) : null;
+    if (bb) { mc.speed += bb.speed; mc.prod += bb.prod; mc.eff += bb.eff; }
+    const effMult = Math.max(0.2, 1 - 0.15 * mc.eff);
+    const powMult = 1 + (mc.speed * 0.25 + mc.prod * 0.25);
+    return powMult * effMult;
   }
   recipeObj() {
     if (!this.recipe) return null;
@@ -44,13 +77,14 @@ class Centrifuge extends Entity {
     const rec = this.recipeObj();
     if (!rec) { this.crafting = false; return; }
     if (this.crafting) {
-      this.prog += dt * 1 * powerFactor();
+      this.prog += dt * 1 * this.moduleSpeedMult() * powerFactor();
       this.spin += dt * 10;
       if (this.prog >= rec.time) {
         for (const k in rec.out) {
           this.outp[k] = (this.outp[k] || 0) + rec.out[k];
           if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
         }
+        this.applyProductivity(rec);
         this.crafting = false;
         this.prog = 0;
       }
@@ -68,7 +102,7 @@ class Centrifuge extends Entity {
     this.prog = 0;
   }
   powerDemand() {
-    return this.recipe ? POWER_USE['centrifuge'] : 0;
+    return this.recipe ? POWER_USE['centrifuge'] * this.modulePowerFactor() : 0;
   }
   setRecipe(id) {
     if (this.recipe === id) return;
@@ -77,6 +111,13 @@ class Centrifuge extends Entity {
     this.crafting = false; this.prog = 0;
   }
   giveItem(item) {
+    if (isModule(item)) {
+      // 模块槽位限制（对齐《异星工厂》：离心机 2 槽）
+      if ((this.modules[item] || 0) >= this.moduleSlotCount()) return false;
+      this.modules[item] = (this.modules[item] || 0) + 1;
+      if (typeof playSfx === 'function') playSfx('module');
+      return true;
+    }
     if (!this.recipe) return false;
     const rec = this.recipeObj();
     if (!rec || !rec.inp[item]) return false;
@@ -91,6 +132,7 @@ class Centrifuge extends Entity {
   contents() {
     const list = [[this.type, 1]];
     for (const k in this.outp) if (this.outp[k] > 0) list.push([k, this.outp[k]]);
+    for (const k in this.modules) if (this.modules[k] > 0) list.push([k, this.modules[k]]);
     return list;
   }
   takeAll() {
@@ -101,11 +143,18 @@ class Centrifuge extends Entity {
   serialize() {
     const s = super.serialize();
     s.recipe = this.recipe; s.inp = this.inp; s.outp = this.outp; s.prog = this.prog;
+    s.modules = this.modules; s.prodBuf = this.prodBuf;
+    return s;
+  }
+  blueprint() {
+    const s = super.blueprint();
+    s.recipe = this.recipe; s.modules = this.modules;
     return s;
   }
   static restore(s) {
     const c = super.restore(s);
     c.recipe = s.recipe || null; c.inp = s.inp || {}; c.outp = s.outp || {}; c.prog = s.prog || 0;
+    c.modules = s.modules || {}; c.prodBuf = s.prodBuf || 0;
     return c;
   }
 }
@@ -153,12 +202,14 @@ function centrifugePanelHtml(e) {
   const kovUnlocked = recipeUnlocked('kovarex');
   const kovLock = recipeLockingTech('kovarex');
   h += '<button data-action="rec" data-id="kovarex" class="' + (cur === 'kovarex' ? 'on' : '') + (kovUnlocked ? '' : ' locked-recipe') + '" ' + (kovUnlocked ? '' : 'disabled') + ' title="' + (kovUnlocked ? '铀富集：持续增产铀-235' : ('🔒 需先研究「' + (kovLock ? TECHS[kovLock].name : '研究') + '」')) + '">铀富集(Kovarex)' + (kovUnlocked ? '' : ' 🔒') + '</button>';
+  // 模块槽位（对齐《异星工厂》：离心机可装 2 模块）
+  h += modulePanelSection(e);
   h += row('原料', '<span class="dim"></span>', 'inp');
   h += row('产出', '<span class="dim"></span>', 'out');
   h += row('电力', powerStatusLiveHtml(e), 'power');
   h += barHtml(0);
   h += '<div class="status"></div>';
-  h += '<div class="dim">离心机：把铀矿分离成铀-235（小概率）/铀-238。铀-235 在组装机制成核燃料；也可用铀富集循环持续增产铀-235。原料由机械臂/传送带放入，产出由机械臂取出。</div>';
+  h += '<div class="dim">离心机：把铀矿分离成铀-235（小概率）/铀-238。铀-235 在组装机制成核燃料；也可用铀富集循环持续增产铀-235。原料由机械臂/传送带放入，产出由机械臂取出。可装 2 个模块（速度/产能/效率）并受信号塔加成。</div>';
   return h;
 }
 function centrifugePanelLive(e, api) {

@@ -187,6 +187,8 @@ function furnacePanelHtml(e) {
   }
   // 消耗/产出速率显示在面板靠前位置（电力/燃料行之后）
   h += '<div id="mach-rate-block"></div>';
+  // 模块槽位（仅电炉，对齐《异星工厂》：电炉可装 2 模块）
+  if (eFurn) h += modulePanelSection(e);
   h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
   for (const r of SMELTS) {
     const n = Math.min(invCount(r.inp), 25 - (e.inp[r.inp] || 0));
@@ -212,7 +214,7 @@ function furnacePanelLive(e, api) {
   // 当前冶炼项的消耗/产出速率（石炉×1、电炉×2，对齐《异星工厂》crafting-speed）
   const rateEl = body.querySelector('#mach-rate-block');
   if (rateEl) {
-    const mult = eFurn ? 2 : 1;
+    const mult = eFurn ? 2 * e.moduleSpeedMult() : 1;
     const rec = e.cur ? { time: e.cur.time, inp: { [e.cur.inp]: e.cur.inCount || 1 }, out: { [e.cur.id]: 1 } } : null;
     const html = rec ? machRateHtml(rec, mult) : '';
     if (rateEl.innerHTML !== html) rateEl.innerHTML = html;

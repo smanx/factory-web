@@ -23,6 +23,39 @@ class ChemicalPlant extends Entity {
     this.crafting = false;
     this.prog = 0;
     this.working = false;
+    this.modules = {};  // 化工厂可装 3 个模块（对齐《异星工厂》Chemical plant）
+    this.prodBuf = 0;   // 产能模块累积进度
+  }
+  moduleSlotCount() { return 3; } // 对齐《异星工厂》：化工厂 3 槽
+  moduleSpeedMult() {
+    const mc = moduleCounts(this.modules);
+    const bb = (typeof beaconBonus === 'function') ? beaconBonus(this.x, this.y) : null;
+    if (bb) { mc.speed += bb.speed; mc.prod += bb.prod; mc.eff += bb.eff; }
+    return 1 + 0.4 * mc.speed - 0.1 * mc.prod - 0.03 * mc.eff;
+  }
+  applyProductivity(rec) {
+    const mc = moduleCounts(this.modules);
+    const bb = (typeof beaconBonus === 'function') ? beaconBonus(this.x, this.y) : null;
+    let nProd = mc.prod;
+    if (bb) nProd += bb.prod;
+    if (nProd <= 0) return 0;
+    const thr = moduleProdThreshold(this.modules);
+    this.prodBuf = (this.prodBuf || 0) + nProd;
+    if (this.prodBuf >= thr) {
+      this.prodBuf -= thr;
+      const mainOut = rec ? Object.keys(rec.out)[0] : null;
+      if (mainOut) { this.outp[mainOut] = (this.outp[mainOut] || 0) + 1; if (typeof trackProd === 'function') trackProd(mainOut, 1); }
+      return 1;
+    }
+    return 0;
+  }
+  modulePowerFactor() {
+    const mc = moduleCounts(this.modules);
+    const bb = (typeof beaconBonus === 'function') ? beaconBonus(this.x, this.y) : null;
+    if (bb) { mc.speed += bb.speed; mc.prod += bb.prod; mc.eff += bb.eff; }
+    const effMult = Math.max(0.2, 1 - 0.15 * mc.eff);
+    const powMult = 1 + (mc.speed * 0.25 + mc.prod * 0.25);
+    return powMult * effMult;
   }
   setRecipe(id) {
     if (this.recipe === id) return;
@@ -90,12 +123,13 @@ class ChemicalPlant extends Entity {
       if (G.power.sat <= 0) return;
       this.working = true;
       chemPlantEmit(this, dt);
-      this.prog += dt * chemMult() * oilMult() * powerFactor();
+      this.prog += dt * chemMult() * oilMult() * this.moduleSpeedMult() * powerFactor();
       if (this.prog >= rec.time) {
         for (const k in rec.out) {
           this.outp[k] = (this.outp[k] || 0) + rec.out[k];
           if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
         }
+        this.applyProductivity(rec);
         this.crafting = false;
         this.prog = 0;
       }
@@ -112,6 +146,13 @@ class ChemicalPlant extends Entity {
     this.prog = 0;
   }
   giveItem(item) {
+    if (isModule(item)) {
+      // 模块槽位限制（对齐《异星工厂》：化工厂 3 槽）
+      if ((this.modules[item] || 0) >= this.moduleSlotCount()) return false;
+      this.modules[item] = (this.modules[item] || 0) + 1;
+      if (typeof playSfx === 'function') playSfx('module');
+      return true;
+    }
     if (!this.recipe) return false;
     const rec = RECIPES[this.recipe];
     if (!rec.inp[item]) return false;
@@ -132,29 +173,32 @@ class ChemicalPlant extends Entity {
     if ((this.outp[item] || 0) > 0) { this.outp[item]--; if (this.outp[item] <= 0) delete this.outp[item]; return item; }
     return null;
   }
-  powerDemand() { return this.recipe ? POWER_USE['chemical-plant'] : 0; }
+  powerDemand() { return this.recipe ? POWER_USE['chemical-plant'] * this.modulePowerFactor() : 0; }
   contents() {
     const list = [[this.type, 1]];
     for (const k in this.inp) list.push([k, this.inp[k]]);
     for (const k in this.outp) list.push([k, this.outp[k]]);
+    for (const k in this.modules) if (this.modules[k] > 0) list.push([k, this.modules[k]]);
     return list;
   }
   serialize() {
     const s = super.serialize();
     s.recipe = this.recipe; s.inp = this.inp; s.outp = this.outp;
     s.crafting = this.crafting; s.prog = this.prog;
+    s.modules = this.modules; s.prodBuf = this.prodBuf;
     return s;
   }
-  // 蓝图只保留配方配置，不复制内部原料/输出/进度
+  // 蓝图只保留配方配置与模块，不复制内部原料/输出/进度
   blueprint() {
     const s = super.blueprint();
-    s.recipe = this.recipe;
+    s.recipe = this.recipe; s.modules = this.modules;
     return s;
   }
   static restore(s) {
     const c = super.restore(s);
     c.recipe = s.recipe || null; c.inp = s.inp || {}; c.outp = s.outp || {};
     c.crafting = !!s.crafting; c.prog = s.prog || 0;
+    c.modules = s.modules || {}; c.prodBuf = s.prodBuf || 0;
     return c;
   }
 }
@@ -274,8 +318,10 @@ function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
 function chemicalPlantPanelHtml(e) {
   let h = row('当前配方', e.recipe ? ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name : '<span class="dim">未设置</span>');
   // 消耗/产出速率显示在面板靠前位置（当前配方之后）
-  h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? chemMult() * oilMult() : 1);
+  h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? chemMult() * oilMult() * e.moduleSpeedMult() : 1);
   h += row('电力', powerStatusLiveHtml(e), 'power');
+  // 模块槽位（对齐《异星工厂》：化工厂可装 3 模块）
+  h += modulePanelSection(e);
   h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
   if (e.recipe)
     for (const k in RECIPES[e.recipe].inp) {
@@ -304,7 +350,7 @@ function chemicalPlantPanelHtml(e) {
   }
   h += '</div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
-  h += '<div class="dim">化工厂吃电力，专攻流体化学配方：塑料=石油气+煤；重油可逐级裂解成轻油、石油气。接口对齐格子：底部2个输入口分别在左数第1、3格（第1种原料进左侧、第2种进右侧），顶部2个输出口分别在左数第1、3格，一格对应一个接口、位置随旋转不变。所需流体经底部输入口相邻管道自动吸入，流体产物自动经顶部输出口排回管道；煤/铁板等固体原料机械臂可从任意方向抓取放入。</div>';
+  h += '<div class="dim">化工厂吃电力，专攻流体化学配方：塑料=石油气+煤；重油可逐级裂解成轻油、石油气。接口对齐格子：底部2个输入口分别在左数第1、3格（第1种原料进左侧、第2种进右侧），顶部2个输出口分别在左数第1、3格，一格对应一个接口、位置随旋转不变。所需流体经底部输入口相邻管道自动吸入，流体产物自动经顶部输出口排回管道；煤/铁板等固体原料机械臂可从任意方向抓取放入。可装 3 个模块（速度/产能/效率）并受信号塔加成。</div>';
   return h;
 }
 function chemicalPlantPanelLive(e, api) {

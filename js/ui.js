@@ -1040,6 +1040,8 @@ function initPanelEvents() {
         while (moved < have && mch.giveItem(id)) moved++;
         if (moved > 0) invTake(id, moved);
         else toast('放不进去了');
+        // 装入模块后整面板重渲染，刷新模块按钮数量与速率显示
+        if (moved > 0 && isModule(id)) { renderPanel(true); return; }
       } else if (act === 'takein') {
         const mch = G.panelEnt;
         if (btn.dataset.modules === '1') {
@@ -1049,6 +1051,7 @@ function initPanelEvents() {
             delete mch.modules[k];
           }
           mch.prodBuf = 0;
+          renderPanel(true); return;
         } else {
           for (const k of Object.keys(mch.inp || {})) {
             invAdd(k, mch.inp[k]);

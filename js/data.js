@@ -1049,6 +1049,23 @@ function moduleProdThreshold(modules) {
   }
   return minT;
 }
+// 生产建筑模块槽位面板区块（对齐《异星工厂》：电炉/炼油厂/化工厂/离心机等可装模块）。
+// 生成「模块」行 + 各等级模块装入按钮 + 取出全部模块按钮。依赖 e.moduleSlotCount()、e.modules。
+function modulePanelSection(e) {
+  const slot = (typeof e.moduleSlotCount === 'function') ? e.moduleSlotCount() : 4;
+  const mc = moduleCounts(e.modules);
+  const hasMod = Object.keys(e.modules).length > 0;
+  let h = row('模块', hasMod ? '速度+' + mc.speed.toFixed(1) + ' 产能+' + mc.prod.toFixed(1) + ' 效率-' + mc.eff.toFixed(1) : '<span class="dim">无</span>', 'mod');
+  for (const mid of Object.keys(e.modules)) if ((e.modules[mid] || 0) > 0) h += '<span class="dim">' + ITEMS[mid].name + ' x' + e.modules[mid] + '</span> ';
+  const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3'];
+  for (const mid of order) {
+    if (!itemUnlocked(mid)) continue;
+    const n = Math.min(invCount(mid), slot - (e.modules[mid] || 0));
+    if (n > 0) h += '<button data-action="feed" data-id="' + mid + '">装入' + ITEMS[mid].name + ' x' + n + '</button>';
+  }
+  if (hasMod) h += '<button data-action="takein" data-modules="1">取出全部模块</button>';
+  return h;
+}
 // 某物品是否已由科技解锁（无科技需求 = 开局可用；否则需对应科技已研究）
 function itemUnlocked(id) {
   const tr = itemTechReq(id);
