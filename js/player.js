@@ -112,6 +112,8 @@ function updateMining(dt) {
       p.mineProg -= 1;
       if (!G.settings.infiniteOre) consumeOre(t.tx, t.ty);
       invAdd(ORES[ti]);
+      // 手动采矿时在屏幕上方显示获得的物品文本
+      if (typeof toast === 'function') toast('+1 ' + ITEMS[ORES[ti]].name);
     }
   } else {
     p.mineProg = 0;
