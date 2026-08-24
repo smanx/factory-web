@@ -411,6 +411,11 @@ html, body {
   color: #67746b;
   line-height: 1.7;
 }
+.start-hint.sub {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #8b9b8b;
+}
 
 #dbg-btn {
   position: fixed;
@@ -656,6 +661,30 @@ html, body {
   pointer-events: none;
   transition: transform .05s linear;
 }
+
+/* ===== 拆除模式按钮（触屏专用，替代手机右键） ===== */
+#deconstruct-btn {
+  position: absolute;
+  bottom: 82px;
+  right: 16px;
+  z-index: 60;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #fff;
+  background: rgba(30, 36, 44, .72);
+  border: 2px solid #7f93ad;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .4);
+  display: block;
+}
+#deconstruct-btn.active {
+  background: rgba(120, 30, 30, .9);
+  border-color: #ff5b5b;
+  box-shadow: 0 0 12px rgba(255, 91, 91, .5);
+}
+#deconstruct-btn.hidden { display: none; }
 
 /* ===== 手机 / 窄屏适配：放大字体与触控热区，避免文字过小 ===== */
 @media (max-width: 720px) {

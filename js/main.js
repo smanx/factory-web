@@ -53,7 +53,9 @@ const G = {
   enemies: [],
   bullets: [],
   spawnT: 0,
-  inMenu: true        // 开始菜单显示中：游戏世界尚未初始化，loop 暂停渲染与更新
+  inMenu: true,       // 开始菜单显示中：游戏世界尚未初始化，loop 暂停渲染与更新
+  deconstructMode: false,  // 触屏拆除模式：开启后点触建筑即可拆除（PC 右键拆除不受影响）
+  deconstructHeld: false   // 拆除模式：左键/触屏是否处于按住连续拆除状态
 };
 
 let lastPlaceKey = '';
@@ -463,8 +465,33 @@ function deconstructAt(tx, ty) {
   uiDirty = true;
 }
 
+// ===== 拆除模式（触屏专用，PC 右键拆除不受影响） =====
+// 手机端无法使用鼠标右键，通过“拆除模式”开关替代：
+// 开启后，点触/左键点击建筑即可拆除单个建筑，长按可连续拆除。
+function toggleDeconstructMode(on) {
+  const next = (on === undefined) ? !G.deconstructMode : !!on;
+  if (next === G.deconstructMode) return;
+  G.deconstructMode = next;
+  G.deconstructHeld = false;
+  G.mouseDown = false;
+  if (next) {
+    // 进入拆除模式时退出蓝图/建造选择，避免左键行为冲突
+    if (G.blueMode) cancelBlueprint();
+    G.sel = -1;
+    G.quickSel = null;
+    refreshHotbar();
+    updateDeconstructBtn();
+    toast('拆除模式：点触建筑即可拆除，再次点击按钮或按 Q/Esc 退出');
+  } else {
+    updateDeconstructBtn();
+  }
+  uiDirty = true;
+}
+
 // ===== 蓝图 / 红图：框选一整块进行复制粘贴或删除 =====
 function toggleBlueprint(mode) {
+  // 进入蓝图/红图/绿图模式时退出触屏拆除模式，避免左键行为冲突
+  if (!G.blueMode && G.deconstructMode) toggleDeconstructMode(false);
   // 再次点击同按钮取消框选
   if (G.blueMode === mode) { cancelBlueprint(); return; }
   if (G.blueMode === 'paste' && mode === 'blue') {
@@ -960,6 +987,8 @@ function bindInput() {
     else if (k === 'escape' || k === 'q') {
       if (G.blueMode) {
         cancelBlueprint();
+      } else if (G.deconstructMode) {
+        toggleDeconstructMode(false);
       } else if (G.panelMode) {
         closePanel();
       } else if (buildActive() || !G.cursorTile) {
@@ -1004,6 +1033,34 @@ function bindInput() {
       G.blueEnd = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
     }
   });
+  // 触屏交互：在拆除模式下，点触/长按拖动建筑即可拆除（替代手机端无法使用的右键）
+  G.canvas.addEventListener('touchstart', ev => {
+    G.canvasActive = true;   // 触屏无 mouseenter，先激活画布，供左键建造/挖矿使用
+    if (!G.deconstructMode) return;
+    // 触屏拆除模式：由 touch 直接处理并阻止合成鼠标事件，避免与左键建造冲突
+    ev.preventDefault();
+    const t = ev.changedTouches[0];
+    if (!t) return;
+    updateCursorTile(t.clientX, t.clientY);
+    if (G.cursorTile) deconstructAt(G.cursorTile.tx, G.cursorTile.ty);
+    G.deconstructHeld = true;
+  }, { passive: false });
+  G.canvas.addEventListener('touchmove', ev => {
+    if (!G.deconstructMode || !G.deconstructHeld) return;
+    ev.preventDefault();
+    const t = ev.changedTouches[0];
+    if (!t) return;
+    updateCursorTile(t.clientX, t.clientY);
+    if (G.cursorTile) deconstructAt(G.cursorTile.tx, G.cursorTile.ty);
+  }, { passive: false });
+  G.canvas.addEventListener('touchend', ev => {
+    if (!G.deconstructMode) return;
+    ev.preventDefault();
+    G.deconstructHeld = false;
+  }, { passive: false });
+  G.canvas.addEventListener('touchcancel', () => {
+    if (G.deconstructMode) G.deconstructHeld = false;
+  }, { passive: false });
   G.canvas.addEventListener('mouseenter', () => { G.canvasActive = true; });
   G.canvas.addEventListener('mouseleave', () => {
     G.canvasActive = false;
@@ -1033,6 +1090,12 @@ function bindInput() {
     if (ev.button === 0) {
       // Shift+左键“粘贴设置”，与普通左键建造（默认支持覆盖）区分开
       if (ev.shiftKey && !ev.ctrlKey && hovered) { pasteSettings(hovered); return; }
+      // 拆除模式：左键（含触屏模拟）用于拆除建筑，而非建造/挖矿
+      if (G.deconstructMode) {
+        G.deconstructHeld = true;
+        if (G.cursorTile) deconstructAt(G.cursorTile.tx, G.cursorTile.ty);
+        return;
+      }
       G.mouseDown = true;
       lastPlaceKey = '';
       handleLeftDown();
@@ -1049,6 +1112,7 @@ function bindInput() {
   window.addEventListener('mouseup', ev => {
     if (ev.button !== 0) return;
     G.mouseDown = false;
+    G.deconstructHeld = false;
     // 蓝图/红图：松开鼠标完成框选
     if (G.blueSelecting) {
       G.blueSelecting = false;
@@ -1138,6 +1202,12 @@ function updateCursorTile(cx, cy) {
 }
 
 function updateHeldMouse(dt) {
+  // 拆除模式：按住左键/触屏拖动可连续拆除目标格上的建筑
+  if (G.deconstructHeld && G.cursorTile) {
+    if (G.blueMode) { G.deconstructHeld = false; return; }
+    deconstructAt(G.cursorTile.tx, G.cursorTile.ty);
+    return;
+  }
   if (!G.mouseDown || !G.cursorTile) return;
   if (buildActive()) {
     const key = G.cursorTile.tx + ',' + G.cursorTile.ty;
@@ -1212,6 +1282,7 @@ function boot() {
     ['topbtn', () => initTopButtons()],
     ['panel', () => initPanelEvents()],
     ['joystick', () => initJoystick()],
+    ['deconstruct', () => initDeconstructBtn()],
     ['tooltip', () => initTooltips()],
     ['debug', () => buildDebug()],
     ['input', () => bindInput()]

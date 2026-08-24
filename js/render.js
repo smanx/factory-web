@@ -415,6 +415,31 @@ function drawHoverAndMining(ctx) {
   if (!G.cursorTile) return;
   const { tx, ty } = G.cursorTile;
   const e = entAt(tx, ty);
+  // 拆除模式：红色高亮光标所在建筑，提示将被拆除（替代手机端无法使用的右键）
+  if (G.deconstructMode) {
+    if (e && withinReach(tx, ty)) {
+      ctx.fillStyle = 'rgba(230,60,60,.22)';
+      ctx.fillRect(e.x * TILE, e.y * TILE, e.w * TILE, e.h * TILE);
+      ctx.strokeStyle = 'rgba(255,90,90,.95)';
+      ctx.lineWidth = 2.5 / G.cam.z;
+      ctx.strokeRect(e.x * TILE + 1, e.y * TILE + 1, e.w * TILE - 2, e.h * TILE - 2);
+      // 画红色叉
+      const cx = e.x * TILE + e.w * TILE / 2, cy = e.y * TILE + e.h * TILE / 2;
+      const r = Math.min(e.w * TILE, e.h * TILE) * 0.28;
+      ctx.beginPath();
+      ctx.moveTo(cx - r, cy - r); ctx.lineTo(cx + r, cy + r);
+      ctx.moveTo(cx + r, cy - r); ctx.lineTo(cx - r, cy + r);
+      ctx.stroke();
+    } else if (withinReach(tx, ty)) {
+      // 空白格：淡红提示拆除模式已开启
+      ctx.fillStyle = 'rgba(230,60,60,.12)';
+      ctx.fillRect(tx * TILE, ty * TILE, TILE, TILE);
+      ctx.strokeStyle = 'rgba(255,90,90,.7)';
+      ctx.lineWidth = 1.5 / G.cam.z;
+      ctx.strokeRect(tx * TILE + 1, ty * TILE + 1, TILE - 2, TILE - 2);
+    }
+    return;
+  }
   if (e && withinReach(tx, ty)) {
     ctx.strokeStyle = 'rgba(255,255,255,.8)';
     ctx.lineWidth = 2 / G.cam.z;
