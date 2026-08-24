@@ -99,6 +99,7 @@ function render() {
   drawEnemies(ctx);
   drawBullets(ctx);
   drawCombatRobots(ctx);
+  drawAoeZones(ctx);
   drawLootDrops(ctx);
   drawLogisticsRobots(ctx);
   if (typeof drawConstruction === 'function') drawConstruction(ctx);
@@ -762,6 +763,44 @@ function drawCombatRobots(ctx) {
     ctx.fillRect(r.x - w / 2, r.y + bob - r.size - 7, w, 2.5);
     ctx.fillStyle = r.hp > 0 ? '#57e389' : '#ff5b5b';
     ctx.fillRect(r.x - w / 2, r.y + bob - r.size - 7, w * Math.max(0, r.hp / r.maxhp), 2.5);
+  }
+}
+
+// 区域力场（毒胶囊 / 减速胶囊）：毒云雾/减速圈的半透明范围叠加
+function drawAoeZones(ctx) {
+  if (!G.aoeZones) return;
+  for (const z of G.aoeZones) {
+    if (z.lifetime <= 0) continue;
+    const fade = Math.min(1, z.lifetime / (z.maxLife || 10));
+    if (z.kind === 'poison') {
+      ctx.fillStyle = 'rgba(120,208,70,' + (0.28 * fade) + ')';
+      ctx.strokeStyle = 'rgba(160,235,110,' + (0.6 * fade) + ')';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(z.x, z.y, z.radius, 0, 7); ctx.fill(); ctx.stroke();
+      // 冒泡微粒
+      ctx.fillStyle = 'rgba(170,235,110,' + (0.7 * fade) + ')';
+      for (let i = 0; i < 6; i++) {
+        const a = i * 1.05 + G.time * 1.3;
+        ctx.beginPath();
+        ctx.arc(z.x + Math.cos(a) * z.radius * 0.6, z.y + Math.sin(a) * z.radius * 0.6 + Math.sin(G.time * 2 + i) * 3, 2, 0, 7);
+        ctx.fill();
+      }
+    } else if (z.kind === 'slowdown') {
+      ctx.fillStyle = 'rgba(74,154,208,' + (0.22 * fade) + ')';
+      ctx.strokeStyle = 'rgba(120,190,235,' + (0.55 * fade) + ')';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 5]);
+      ctx.beginPath(); ctx.arc(z.x, z.y, z.radius, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.setLineDash([]);
+      // 涡旋雪花
+      ctx.fillStyle = 'rgba(160,215,250,' + (0.8 * fade) + ')';
+      for (let i = 0; i < 5; i++) {
+        const a = i * 1.25 + G.time * 0.8;
+        ctx.beginPath();
+        ctx.arc(z.x + Math.cos(a) * z.radius * 0.55, z.y + Math.sin(a) * z.radius * 0.55, 2.2, 0, 7);
+        ctx.fill();
+      }
+    }
   }
 }
 

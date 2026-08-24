@@ -1365,6 +1365,7 @@ function loop(ts) {
         updatePlayerFire(dt);
         updatePlayerBulletHits(dt);
         updateCombatRobots(dt);
+        updateAoeZones(dt);
         if (typeof updatePersonalLaserDefense === 'function') updatePersonalLaserDefense(dt);
         if (typeof updateTankFire === 'function') updateTankFire(dt);
         if (typeof updateLootDrops === 'function') updateLootDrops(dt);

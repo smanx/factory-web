@@ -205,6 +205,8 @@ function updateEnemies(dt) {
     en.fireT = (en.fireT || 0) - dt;
     // 兼容旧档敌人：补充默认字段
     if (en.speed === undefined) { en.speed = 22; en.size = 8; en.dmg = 5; en.kind = 'melee'; en.maxhp = en.hp || 40; if (!en.color) en.color = enemyColor(en.hp, en.maxhp); }
+    // 减速力场（减速胶囊）：降低移动速度
+    const slow = aoeSlowFactor(en.x, en.y);
     const dx = p.x - en.x, dy = p.y - en.y;
     const d = Math.hypot(dx, dy) / TILE;   // 距离（格）
     if (en.kind === 'ranged') {
@@ -216,11 +218,11 @@ function updateEnemies(dt) {
       if (d <= range) fireTarget = p;
       else fireTarget = findEnemyRangedTarget(en, range);
       if (d > range) {
-        en.x += (dx / d) * en.speed * dt;
-        en.y += (dy / d) * en.speed * dt;
+        en.x += (dx / d) * en.speed * dt * slow;
+        en.y += (dy / d) * en.speed * dt * slow;
       } else if (d < keep) {
-        en.x -= (dx / d) * en.speed * dt;
-        en.y -= (dy / d) * en.speed * dt;
+        en.x -= (dx / d) * en.speed * dt * slow;
+        en.y -= (dy / d) * en.speed * dt * slow;
       }
       // 吐痰（投射物）；喷火虫/巨型蠕虫吐火球（命中造成持续灼烧）
       if (en.fireT <= 0 && fireTarget) {
@@ -244,8 +246,8 @@ function updateEnemies(dt) {
       }
       // 冲向玩家，贴近后咬人
       if (d > 1.1) {
-        en.x += (dx / d) * en.speed * dt;
-        en.y += (dy / d) * en.speed * dt;
+        en.x += (dx / d) * en.speed * dt * slow;
+        en.y += (dy / d) * en.speed * dt * slow;
       } else if (en.attackT <= 0) {
         en.attackT = 1.0;
         if (G.settings.combat) damagePlayer(en.dmg);
@@ -429,7 +431,9 @@ const WEAPONS = {
   'shotgun':         { name: '散弹枪', dmg: 6,  rate: 0.5, ammo: 'piercing-rounds', spread: 0.4,  auto: false, range: 6, pellets: 6 },
   'rocket-launcher': { name: '火箭筒', dmg: 35, rate: 1.1, ammo: 'rocket',          spread: 0.03, auto: false, range: 9, splash: 1.8 },
   'grenade':         { name: '手雷',   dmg: 40, rate: 0.8, ammo: 'grenade',          spread: 0.05, auto: false, range: 6, splash: 2.5 },
-  'flamethrower':    { name: '火焰喷射器', dmg: 6, rate: 0.12, ammo: 'petroleum-gas', spread: 0.2, auto: true, range: 6, flame: true },
+  'flamethrower':    { name: '火焰喷射器', dmg: 6, rate: 0.12, ammo: 'flamethrower-ammo', spread: 0.2, auto: true, range: 6, flame: true },
+  'poison-capsule':  { name: '毒胶囊', dmg: 0, rate: 0.8, ammo: 'poison-capsule', spread: 0.05, auto: false, range: 6, capsule: 'poison' },
+  'slowdown-capsule':{ name: '减速胶囊', dmg: 0, rate: 0.8, ammo: 'slowdown-capsule', spread: 0.05, auto: false, range: 6, capsule: 'slowdown' },
   // 战斗机器人胶囊：投掷后释放战斗机器人（见 CAPSULES）
   'defender-capsule':   { name: '防御机器人',   dmg: 0, rate: 0.8, ammo: 'defender-capsule',   spread: 0, auto: false, range: 6, capsule: 'defender' },
   'distractor-capsule': { name: '干扰机器人',   dmg: 0, rate: 0.8, ammo: 'distractor-capsule', spread: 0, auto: false, range: 6, capsule: 'distractor' },
@@ -577,6 +581,19 @@ function throwCapsule(id, tx, ty) {
     return false;
   }
   invTake(id, 1);
+  // 毒胶囊/减速胶囊：落地生成区域力场（不是战斗机器人）
+  if (id === 'poison-capsule' || id === 'slowdown-capsule') {
+    const kind = id === 'poison-capsule' ? 'poison' : 'slowdown';
+    if (!G.aoeZones) G.aoeZones = [];
+    G.aoeZones.push({
+      kind, x: tx, y: ty, radius: (id === 'poison-capsule' ? 3 : 3.5) * TILE,
+      lifetime: (id === 'poison-capsule' ? 12 : 10), maxLife: (id === 'poison-capsule' ? 12 : 10),
+      dmg: id === 'poison-capsule' ? 8 : 0, tickT: 0
+    });
+    if (typeof toast === 'function') toast('投掷 ' + ITEMS[id].name + '：释放' + (id === 'poison-capsule' ? '剧毒云雾' : '减速力场'));
+    uiDirty = true;
+    return true;
+  }
   const c = CAPSULES[id];
   if (!G.combatRobots) G.combatRobots = [];
   // 一次投掷释放 2 只（destroyer 1 只）
@@ -652,6 +669,42 @@ function updateCombatRobots(dt) {
     }
   }
   G.combatRobots = G.combatRobots.filter(r => !r.dead);
+}
+
+// ===== 区域力场（毒胶囊 / 减速胶囊）=====
+// 毒胶囊落地形成剧毒云雾，对范围内敌人持续伤害；减速胶囊形成减速力场，降低敌人移动速度。
+function updateAoeZones(dt) {
+  if (!G.aoeZones || G.aoeZones.length === 0) return;
+  const alive = (G.enemies || []).filter(e => !e.dead);
+  for (const z of G.aoeZones) {
+    z.lifetime -= dt;
+    if (z.lifetime <= 0) continue;
+    if (z.kind === 'poison') {
+      // 每秒造成一次范围伤害
+      z.tickT -= dt;
+      if (z.tickT <= 0) {
+        z.tickT = 1;
+        for (const en of alive) {
+          if (en.dead) continue;
+          const d = Math.hypot(en.x - z.x, en.y - z.y);
+          if (d <= z.radius + en.size) en.hp -= z.dmg;
+          if (en.hp <= 0) en.dead = true;
+        }
+      }
+    } else if (z.kind === 'slowdown') {
+      // 减速：标记力场是否覆盖玩家
+      z.playerSlow = Math.hypot(G.player.x - z.x, G.player.y - z.y) <= z.radius;
+    }
+  }
+  G.aoeZones = G.aoeZones.filter(z => z.lifetime > 0);
+}
+// 供敌人移动逻辑调用：若敌人位于减速力场则返回减速系数（0.5 = 半速）
+function aoeSlowFactor(x, y) {
+  if (!G.aoeZones) return 1;
+  for (const z of G.aoeZones) {
+    if (z.kind === 'slowdown' && z.lifetime > 0 && Math.hypot(x - z.x, y - z.y) <= z.radius) return 0.45;
+  }
+  return 1;
 }
 
 // 手雷：从背包使用时投掷爆炸（由 ui.js 调用）。

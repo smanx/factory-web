@@ -79,7 +79,7 @@ function isScience(item) { return SCIENCE_PACKS.indexOf(item) >= 0; }
 const FILTER_CHOICES = ['iron-plate', 'copper-plate', 'steel-plate', 'iron-gear', 'iron-stick', 'steel-stick', 'copper-cable', 'green-circuit',
   'coal', 'solid-fuel', 'stone', 'plastic-bar', 'science-pack', 'green-science', 'blue-science', 'military-science',
   'production-science-pack', 'utility-science-pack', 'space-science-pack', 'flying-robot-frame',
-  'magazine', 'piercing-rounds', 'logistic-robot', 'construction-robot', 'uranium-235', 'uranium-238', 'nuclear-fuel', 'used-up-uranium-fuel-cell', 'sulfur'].concat(FLUIDS);
+  'magazine', 'piercing-rounds', 'uranium-rounds', 'uranium-cannon-shell', 'flamethrower-ammo', 'poison-capsule', 'slowdown-capsule', 'logistic-robot', 'construction-robot', 'uranium-235', 'uranium-238', 'nuclear-fuel', 'used-up-uranium-fuel-cell', 'sulfur'].concat(FLUIDS);
 function techPacks(tid) { return (TECHS && TECHS[tid] && TECHS[tid].cost) || {}; }
 function techCostTotal(tid) {
   let s = 0;
@@ -179,7 +179,12 @@ const ITEMS = {
   'rocket-launcher': { name: '火箭筒', color: '#5a7a4a', desc: '发射火箭弹造成范围爆炸伤害' },
   'grenade':         { name: '手雷',   color: '#4a7a3a', desc: '投掷爆炸物，对范围敌人造成伤害，可在背包直接使用' },
   'rocket':          { name: '火箭弹', color: '#7a5a4a', desc: '火箭筒的弹药，爆炸造成范围伤害' },
-  'flamethrower':    { name: '火焰喷射器', color: '#a05a2a', desc: '喷射燃烧的火焰，造成持续灼烧伤害，消耗石油气' },
+  'flamethrower':    { name: '火焰喷射器', color: '#a05a2a', desc: '喷射燃烧的火焰，造成持续灼烧伤害，消耗火焰弹药（由化工厂用轻油/重油制造）' },
+  'flamethrower-ammo': { name: '火焰弹药', color: '#d06a2a', desc: '火焰喷射器的专用燃料，由化工厂用轻油+重油制成，能量密度高（对齐《异星工厂》Flamethrower ammo）' },
+  'uranium-rounds':  { name: '铀弹', color: '#9af07a', desc: '铀-238 制成的穿甲弹药，威力远超穿甲弹，供冲锋枪与机枪炮塔使用（对齐《异星工厂》Uranium rounds）' },
+  'uranium-cannon-shell': { name: '铀炮弹', color: '#9af07a', desc: '铀-238 制成的重型炮弹，威力远超普通炮弹，供坦克主炮使用（对齐《异星工厂》Uranium cannon shell）' },
+  'poison-capsule':  { name: '毒胶囊', color: '#7ad04a', desc: '投掷后落地释放剧毒云雾，对范围内的敌人持续造成伤害（对齐《异星工厂》Poison capsule）' },
+  'slowdown-capsule':{ name: '减速胶囊', color: '#4a9ad0', desc: '投掷后落地形成减速力场，大幅降低范围内敌人的移动速度（对齐《异星工厂》Slowdown capsule）' },
   // ===== 军事炮塔扩充 =====
   'laser-turret':    { name: '激光炮塔', color: '#d04a5a', desc: '吃电力自动发射激光，无需弹药，射程更远（2×2）' },
   'flamethrower-turret': { name: '火焰炮塔', color: '#d07a2a', desc: '喷射火焰造成持续灼烧伤害，消耗石油气，范围杀伤（2×2）' },
@@ -398,6 +403,16 @@ const RECIPES = {
   'grenade':           { time: 1,   inp: { 'iron-plate': 2, 'coal': 2 },                           out: { 'grenade': 1 } },
   'rocket':            { time: 1,   inp: { 'explosive': 1, 'iron-plate': 2 },                      out: { 'rocket': 1 } },
   'flamethrower':      { time: 2,   inp: { 'steel-plate': 8, 'iron-gear': 4 },                     out: { 'flamethrower': 1 } },
+  // ===== 终局战斗弹药与胶囊（对齐《异星工厂》Uranium ammo / Capsules）=====
+  // 铀弹：铀-238 + 穿甲弹 → 高伤害穿甲弹药（供冲锋枪/机枪炮塔）
+  'uranium-rounds':  { time: 2,   inp: { 'piercing-rounds': 1, 'uranium-238': 1 },                out: { 'uranium-rounds': 1 } },
+  // 铀炮弹：普通炮弹 + 铀-238 → 坦克超重炮
+  'uranium-cannon-shell': { time: 3, inp: { 'cannon-shell': 1, 'uranium-238': 2 },                out: { 'uranium-cannon-shell': 1 } },
+  // 毒胶囊 / 减速胶囊（对齐《异星工厂》Combat capsules）
+  'poison-capsule':  { time: 3,   inp: { 'iron-plate': 2, 'green-circuit': 1, 'sulfuric-acid': 2 }, out: { 'poison-capsule': 1 } },
+  'slowdown-capsule':{ time: 3,   inp: { 'iron-plate': 2, 'green-circuit': 2, 'sulfuric-acid': 1 }, out: { 'slowdown-capsule': 1 } },
+  // 火焰弹药：轻油+重油在化工厂制成（对齐《异星工厂》Flamethrower ammo，化工厂配方）
+  'flamethrower-ammo': { time: 2, inp: { 'light-oil': 2, 'heavy-oil': 1 },                        out: { 'flamethrower-ammo': 1 } },
   // ===== 军事炮塔扩充 =====
   'laser-turret':      { time: 4,   inp: { 'steel-plate': 8, 'green-circuit': 10, 'battery': 2 },  out: { 'laser-turret': 1 } },
   'flamethrower-turret': { time: 3, inp: { 'steel-plate': 8, 'iron-gear': 4, 'pipe': 4 },         out: { 'flamethrower-turret': 1 } },
@@ -483,7 +498,7 @@ const RECIPES = {
   'personal-laser-defense': { time: 8, inp: { 'laser-turret': 1, 'processing-unit': 2, 'battery': 4 }, out: { 'personal-laser-defense': 1 } }
 };
 
-const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant', 'solid-fuel', 'solid-fuel-light-oil', 'sulfur', 'sulfuric-acid'];
+const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant', 'solid-fuel', 'solid-fuel-light-oil', 'sulfur', 'sulfuric-acid', 'flamethrower-ammo'];
 function isChemRecipe(id) { return CHEM_RECIPES.indexOf(id) >= 0; }
 function chemMult() { return (G.techDone.plastic ? 1.5 : 1) * ((G.dbg && G.dbg.asmMult) || 1); }
 
@@ -665,6 +680,12 @@ const TECH_REQ = {
   'destroyer-capsule': 'advanced-combat',
   'defender-capsule': 'weapons',
   'distractor-capsule': 'weapons',
+  // 终局战斗弹药与胶囊（对齐《异星工厂》）：铀弹需核能科技（铀-238 依赖），毒/减速胶囊与火焰弹药需高级战斗
+  'uranium-rounds': 'nuclear',
+  'uranium-cannon-shell': 'nuclear',
+  'poison-capsule': 'advanced-combat',
+  'slowdown-capsule': 'advanced-combat',
+  'flamethrower-ammo': 'advanced-combat',
   'rocket-silo': 'rocket-science',
   'rocket': 'rocket-science',
   'satellite': 'rocket-science',

@@ -63,6 +63,8 @@ function updatePlayer(dt) {
     // 硬化地面（混凝土/石砖路）上玩家行走提速 40%
     let sp = playerSpeed();
     if (isPaved(getTerrain(Math.floor(p.x / TILE), Math.floor(p.y / TILE)))) sp *= 1.4;
+    // 减速力场（减速胶囊）内玩家减速
+    if (typeof aoeSlowFactor === 'function') sp *= aoeSlowFactor(p.x, p.y);
     const nx = p.x + mx * sp * dt;
     if (!boxBlocked(nx, p.y, r)) p.x = nx;
     const ny = p.y + my * sp * dt;
