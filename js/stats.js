@@ -406,13 +406,28 @@ function htmlStatsHist(all) {
   const zoomIdx = G.statsHistZoom || 3;   // 默认 24 小时
   const zoom = HIST_ZOOMS[zoomIdx] || HIST_ZOOMS[HIST_ZOOMS.length - 1];
 
+  // 快速筛选关键字：若已设置，则把默认选中项收敛到匹配关键字的第一项（避免下拉为空）
+  const kw = (G.statsHistFilter || '').trim().toLowerCase();
+  if (kw) {
+    const match = id => (itemName(id).toLowerCase().indexOf(kw) >= 0 || id.toLowerCase().indexOf(kw) >= 0);
+    if (!match(sel)) {
+      const first = items.find(match);
+      if (first) sel = first;
+    }
+  }
+
   let h = '<div class="dim" style="margin-bottom:4px">选择物品（最近 24 小时，1 分钟粒度）：</div>';
-  // 物品选择下拉
+  // 快速筛选输入 + 物品选择下拉：输入名称关键字可过滤下拉列表，回车或下拉可直接选择
+  h += '<div class="stat-hist-pick">';
+  h += '<input class="stat-hist-filter" data-stat-hist-filter type="text" placeholder="输入名称筛选，回车快速选择" autocomplete="off" value="' + (G.statsHistFilter || '') + '">';
   h += '<select class="stat-hist-select" data-stat-hist-item>';
   for (const id of items) {
-    h += '<option value="' + id + '"' + (id === sel ? ' selected' : '') + '>' + itemName(id) + '</option>';
+    const nm = itemName(id);
+    if (kw && nm.toLowerCase().indexOf(kw) < 0 && id.toLowerCase().indexOf(kw) < 0) continue;
+    h += '<option value="' + id + '"' + (id === sel ? ' selected' : '') + '>' + nm + '</option>';
   }
   h += '</select>';
+  h += '</div>';
 
   // 时间档位切换
   h += '<div class="stat-intervals stat-hist-zooms">';
@@ -440,6 +455,48 @@ function htmlStatsHist(all) {
   window.__histLast.item = sel;
   window.__histLast.zoom = zoom.sec;
   return h;
+}
+
+// 历史页：在“名称筛选”输入框打字时，就地过滤下方下拉列表的选项（不改 Canvas、不抢焦点）。
+// 保留当前选中物品（若仍匹配），否则回退到列表第一个可见项。
+function applyStatsHistFilter(filter) {
+  const body = document.getElementById('panel-body');
+  if (!body) return;
+  const sel = body.querySelector('[data-stat-hist-item]');
+  if (!sel) return;
+  const kw = (filter || '').trim().toLowerCase();
+  const all = Array.from(PROD_HIST.data.keys());
+  let kept = sel.value;
+  const keptStillMatch = kw ? (itemName(kept).toLowerCase().indexOf(kw) >= 0 || kept.toLowerCase().indexOf(kw) >= 0) : true;
+  let first = null;
+  // 重建选项（保留当前值优先，其次第一匹配项）
+  const opts = [];
+  for (const id of all) {
+    const nm = itemName(id);
+    if (kw && nm.toLowerCase().indexOf(kw) < 0 && id.toLowerCase().indexOf(kw) < 0) continue;
+    opts.push([id, nm]);
+  }
+  if (opts.length) first = opts[0][0];
+  const newVal = (keptStillMatch && kept && opts.some(o => o[0] === kept)) ? kept : (first || kept);
+  sel.innerHTML = '';
+  for (const [id, nm] of opts) {
+    const o = document.createElement('option');
+    o.value = id;
+    o.textContent = nm;
+    if (id === newVal) o.selected = true;
+    sel.appendChild(o);
+  }
+  G.statsHistFilter = filter;
+}
+
+// 历史页：回车快速选择——选中当前筛选后的第一匹配物品并重绘图表。
+function statsHistPickFiltered() {
+  const body = document.getElementById('panel-body');
+  if (!body) return;
+  const sel = body.querySelector('[data-stat-hist-item]');
+  if (!sel || !sel.options.length) return;
+  G.statsHistItem = sel.options[sel.selectedIndex].value;
+  renderPanel(false);
 }
 
 // 在 Canvas 上绘制历史折线图。
@@ -536,8 +593,8 @@ function htmlStatsItems() {
   h += '<button class="stat-subtab' + (isHist ? ' active' : '') + '" data-stat-item-tab="hist">历史</button>';
   h += '</div>';
 
-  // 历史页：折线图
-  if (isHist) return htmlStatsHist(all);
+  // 历史页：折线图（返回时保留子 tab 栏）
+  if (isHist) return h + htmlStatsHist(all);
 
   // 速率/累计页：统计间隔切换按钮（秒 / 10秒 / 分钟 / 小时 / 1天）
   h += '<div class="dim" style="margin-bottom:6px">统计间隔：</div>';
