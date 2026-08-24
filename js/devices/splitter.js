@@ -162,10 +162,11 @@ function laneCenterAt(e, ox, oy, l) {
 
 function drawSplitterFlow(ctx, e, gx, gy, color, alpha) {
   const links = splitterLinks(e, gx, gy);
-  const nIn = (links.inp[0] ? 1 : 0) + (links.inp[1] ? 1 : 0);
-  const nOut = (links.out[0] ? 1 : 0) + (links.out[1] ? 1 : 0);
-  // 完全没接带：无需内部流动动画（保持静态外形）
-  if (nIn === 0 && nOut === 0) return;
+  // 只有某条 lane 同时接入入口带和出口带，物品才真正能流经分流器，才显示流动动画。
+  // 否则（入口/出口单边接带、或完全没接带）物品会凭空产生/消失，一律不画。
+  const active = [false, false];
+  for (let l = 0; l < 2; l++) active[l] = links.inp[l] && links.out[l];
+  if (!active[0] && !active[1]) return;
   const cx = (gx + e.w / 2) * TILE, cy = (gy + e.h / 2) * TILE;
   const dx = DX[e.dir], dy = DY[e.dir];
   const ang = Math.atan2(dy, dx);
@@ -185,9 +186,9 @@ function drawSplitterFlow(ctx, e, gx, gy, color, alpha) {
     ctx.stroke();
     ctx.restore();
   };
-  // 输出侧：从中心流向各出口 lane
+  // 输出侧：从中心流向各出口 lane（仅对入口+出口都接带的活跃 lane 绘制）
   for (let l = 0; l < 2; l++) {
-    if (!links.out[l]) continue;
+    if (!active[l]) continue;
     const [lx, ly] = laneCenterAt(e, gx, gy, l);
     const ox = lx + dx * TILE / 2, oy = ly + dy * TILE / 2;
     for (let k = 0; k <= 2; k++) {
@@ -196,9 +197,9 @@ function drawSplitterFlow(ctx, e, gx, gy, color, alpha) {
       drawArrow(cx + (ox - cx) * t, cy + (oy - cy) * t);
     }
   }
-  // 输入侧：从各入口 lane 流向中心
+  // 输入侧：从各入口 lane 流向中心（仅对入口+出口都接带的活跃 lane 绘制）
   for (let l = 0; l < 2; l++) {
-    if (!links.inp[l]) continue;
+    if (!active[l]) continue;
     const [lx, ly] = laneCenterAt(e, gx, gy, l);
     const ix = lx - dx * TILE / 2, iy = ly - dy * TILE / 2;
     for (let k = 0; k <= 2; k++) {
