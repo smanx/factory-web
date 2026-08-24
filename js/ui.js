@@ -163,7 +163,7 @@ function renderPanel(full) {
     body.innerHTML = htmlStats();
   } else if (G.panelMode === 'set') {
     title.textContent = '设置';
-    body.innerHTML = htmlSettings();
+    renderSettingsAsync(body, st);
   } else if (G.panelMode === 'machine' && G.panelEnt) {
     title.textContent = ITEMS[G.panelEnt.type].name;
     // 机器面板：设备专属内容 + 底部通用“拆除”按钮（PC/手机端均可点击拆除当前建筑）
@@ -171,7 +171,7 @@ function renderPanel(full) {
       '<div class="sec">操作</div>' +
       '<button data-action="panel-deconstruct" class="deconstruct-btn-inline">✖ 拆除该建筑</button>';
   }
-  body.scrollTop = st;
+  if (G.panelMode !== 'set') body.scrollTop = st;
 }
 
 function updateMachineLive() {
@@ -474,7 +474,7 @@ function initPanelEvents() {
       applyAssemblerRecipeFilter(ev.target.value);
     }
   });
-  document.getElementById('panel-body').addEventListener('click', ev => {
+  document.getElementById('panel-body').addEventListener('click', async ev => {
     const statTab = ev.target.closest('[data-stat-tab]');
     if (statTab) {
       G.statsTab = statTab.dataset.statTab;
@@ -565,15 +565,15 @@ function initPanelEvents() {
     let handled = false;
     if (panel && panel.onAction) handled = !!panel.onAction(act, btn);
     if (!handled) {
-      if (act === 'quick-save') { saveGame(); renderPanel(false); }
+      if (act === 'quick-save') { await saveGame(); renderPanel(false); }
       else if (act === 'quick-load') {
-        const newest = listAllSaves()[0];
-        if (newest) { loadGame(newest.id); } else { toast('暂无存档'); }
+        const newest = (await listAllSaves())[0];
+        if (newest) { await loadGame(newest.id); } else { toast('暂无存档'); }
       }
-      else if (act === 'load-save') { loadGame(id); }
-      else if (act === 'overwrite-save') { saveGame(id); renderPanel(false); }
+      else if (act === 'load-save') { await loadGame(id); }
+      else if (act === 'overwrite-save') { await saveGame(id); renderPanel(false); }
       else if (act === 'delete-save') {
-        deleteSave(id);
+        await deleteSave(id);
         toast('已删除存档');
         renderPanel(false);
       }
@@ -631,7 +631,15 @@ function initPanelEvents() {
   });
 }
 
-function htmlSettings() {
+// 异步渲染设置面板（含基于 IndexedDB 的存档列表）
+async function renderSettingsAsync(body, st) {
+  body.innerHTML = await htmlSettings();
+  // 异步返回后需确认当前面板仍是设置面板，避免竞态覆盖其他面板
+  if (G.panelMode !== 'set') return;
+  body.scrollTop = st;
+}
+
+async function htmlSettings() {
   let h = '<div class="sec">游戏设置</div>';
   h += '<label class="setrow"><input type="checkbox" data-set="infiniteOre"' + (G.settings.infiniteOre ? ' checked' : '') + '> 无限矿脉（矿藏永不枯竭）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="autoSave"' + (G.settings.autoSave ? ' checked' : '') + '> 自动保存（每60秒）</label>';
@@ -647,13 +655,13 @@ function htmlSettings() {
   h += '<button data-action="imp-save">从文件导入存档</button>';
   h += '<input type="file" id="imp-file" accept=".json,application/json" style="display:none">';
   h += '<div class="hint">自动存档保留最近 3 个（旧的自动覆盖）；用户可自行新建/覆盖/读取/删除存档。</div>';
-  h += saveListHtml();
+  h += await saveListHtml();
   return h;
 }
 
 // 生成存档列表（自动 + 用户），每项提供“读取 / 覆盖 / 删除”操作
-function saveListHtml() {
-  const saves = listAllSaves();
+async function saveListHtml() {
+  const saves = await listAllSaves();
   if (!saves.length) return '<div class="hint">暂无存档。点击“➕ 新建存档”保存当前进度。</div>';
   let h = '<div class="sec save-list-title">全部存档（' + saves.length + '）</div>';
   h += '<div class="save-list">';

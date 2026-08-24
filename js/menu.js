@@ -16,15 +16,16 @@
     const infoEl = document.getElementById('start-save-info');
 
     // 启动时检测是否存在可用存档，并提示
-    const hasSave = hasAnySave();
     if (infoEl) {
-      if (hasSave) {
-        infoEl.textContent = '检测到已有存档，可点击"读取存档"继续上次的工厂。';
-        infoEl.className = 'start-save-info has-save';
-      } else {
-        infoEl.textContent = '暂无存档，点击"开始新游戏"创建新世界。';
-        infoEl.className = 'start-save-info no-save';
-      }
+      hasAnySave().then(hasSave => {
+        if (hasSave) {
+          infoEl.textContent = '检测到已有存档，可点击"读取存档"继续上次的工厂。';
+          infoEl.className = 'start-save-info has-save';
+        } else {
+          infoEl.textContent = '暂无存档，点击"开始新游戏"创建新世界。';
+          infoEl.className = 'start-save-info no-save';
+        }
+      });
     }
 
     // 新游戏
@@ -58,13 +59,15 @@
 
   // 检测是否存在任意存档（自动或用户）
   function hasAnySave() {
-    try {
-      // 首次打开时迁移旧版单键存档到新多存档系统
-      if (typeof migrateLegacySave === 'function') migrateLegacySave();
-      return typeof listAllSaves === 'function' ? listAllSaves().length > 0 : false;
-    } catch (e) {
-      return false;
-    }
+    return (async () => {
+      try {
+        // 首次打开时迁移旧版单键存档到新多存档系统
+        if (typeof migrateLegacySave === 'function') await migrateLegacySave();
+        return typeof listAllSaves === 'function' ? (await listAllSaves()).length > 0 : false;
+      } catch (e) {
+        return false;
+      }
+    })();
   }
 
   if (document.readyState === 'loading') {

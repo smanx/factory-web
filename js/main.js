@@ -140,21 +140,21 @@ function serializeAll() {
 }
 
 // 保存为一条用户存档（type='user'）。id 为空时新建，否则覆盖指定存档。
-// name 为用户自定义名称。返回保存结果对象或 null。
-function saveGame(id, name) {
+// name 为用户自定义名称。返回 Promise<保存结果对象或 null>。
+async function saveGame(id, name) {
   const data = serializeAll();
   let res;
-  if (id && hasSave(id)) {
-    res = overwriteSave(id, data);
+  if (id && await hasSave(id)) {
+    res = await overwriteSave(id, data);
     if (res) toast('已覆盖存档：' + (res.name || '存档'));
     else toast('保存失败');
   } else {
     // 新建用户存档：最多只能有 MAX_USER_SAVES 个，超出则提示
-    if (!id && countUserSaves() >= MAX_USER_SAVES) {
+    if (!id && await countUserSaves() >= MAX_USER_SAVES) {
       toast('已达用户存档上限（' + MAX_USER_SAVES + ' 个），请先删除或覆盖旧存档');
       return null;
     }
-    res = writeSave(data, 'user', id || null, name || '');
+    res = await writeSave(data, 'user', id || null, name || '');
     if (res) toast('已保存');
     else toast('保存失败');
   }
@@ -162,9 +162,9 @@ function saveGame(id, name) {
 }
 
 // 读取指定 id 的存档（不存在则返回 false）
-function loadGame(id) {
+async function loadGame(id) {
   if (!id) { toast('没有存档'); return false; }
-  const data = readSave(id);
+  const data = await readSave(id);
   if (!data) { toast('没有存档'); return false; }
   try {
     applySave(data);
@@ -933,9 +933,9 @@ function startNewGame() {
   enterGame();
 }
 
-function startFromSave() {
+async function startFromSave() {
   // 读取时间最新的存档（自动或用户均可）
-  const data = readNewestSave();
+  const data = await readNewestSave();
   if (!data) { toast('没有存档，请先开始新游戏'); return false; }
   try {
     applySave(data);
@@ -1267,7 +1267,7 @@ function loop(ts) {
   fpsSmooth += (1 / Math.max(raw, 0.0001) - fpsSmooth) * 0.05;
   if (G.settings.autoSave) {
     G.autoT += raw;
-    if (G.autoT >= 60) { G.autoT = 0; autoSaveGame(); toast('自动保存完成'); }
+    if (G.autoT >= 60) { G.autoT = 0; autoSaveGame().then(() => toast('自动保存完成')); }
   }
 
   try {
