@@ -386,7 +386,8 @@ function updateCarFire(dt) {
     tx = c.x * TILE + TILE * c.w / 2 + Math.cos(a) * TILE * 3;
     ty = c.y * TILE + TILE * c.h / 2 + Math.sin(a) * TILE * 3;
   }
-  if (c.fireMachineGun(tx, ty)) c.mgT = 0.12; // 高速连发（对齐原版车载机枪射速）
+  // 射击速度无限科技：车载机枪射速提升（对齐《异星工厂》Shooting speed）
+  if (c.fireMachineGun(tx, ty)) c.mgT = 0.12 / (typeof shootingSpeedMult === 'function' ? shootingSpeedMult() : 1); // 高速连发（对齐原版车载机枪射速）
 }
 
 // 驾驶坦克时：按住空格向光标方向开炮（需战斗模式开启）

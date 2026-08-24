@@ -100,7 +100,8 @@ class GunTurret extends Entity {
     let ammo = 0;
     for (const k of TURRET_AMMO_TYPES) ammo += this.ammoCount(k);
     if (ammo <= 0 || this.cooldown > 0) return;
-    this.cooldown = TURRET_FIRE_RATE;
+    // 射击速度无限科技：射击间隔缩短，射速提升（对齐《异星工厂》Shooting speed）
+    this.cooldown = (typeof shootingSpeedMult === 'function' ? TURRET_FIRE_RATE / shootingSpeedMult() : TURRET_FIRE_RATE);
     // 用弹药攻击：铀弹 > 穿甲弹 > 普通弹（对齐《异星工厂》：铀弹威力最高）
     const dmgMap = { 'uranium-rounds': 18, 'piercing-rounds': 10, 'magazine': 5 };
     let dmg = 5;

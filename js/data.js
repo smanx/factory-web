@@ -1227,6 +1227,7 @@ const TECHS = {
   'follower-robot-count': { name: '追随机器人', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究提升同时在场战斗机器人数量上限 +2（对齐《异星工厂》Follower robot count）', req: ['utility', 'advanced-combat'] },
   'worker-robot-cargo-size': { name: '机器人容量', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究提升物流/施工机器人单次搬运物品数量 +2（对齐《异星工厂》Worker robot cargo size 无限科技）', req: ['production', 'utility'] },
   'artillery-shooting-speed': { name: '炮兵射速', cost: { 'production-science-pack': 60, 'utility-science-pack': 60, 'military-science': 40 }, infinite: true, desc: '无限科技：每次研究提升炮兵连与炮兵车厢射击速度 +10%（对齐《异星工厂》Artillery shell shooting speed 无限科技）', req: ['production', 'utility', 'advanced-combat'] },
+  'shooting-speed': { name: '射击速度', cost: { 'military-science': 40, 'blue-science': 30 }, infinite: true, desc: '无限科技：每次研究提升玩家枪械（手枪/冲锋枪/散弹枪/战斗散弹枪）与机枪炮塔的射击速度，射击间隔缩短 10%（对齐《异星工厂》Shooting speed 无限科技）', req: ['advanced-combat'] },
   'artillery-shell-range': { name: '炮兵射程', cost: { 'production-science-pack': 60, 'utility-science-pack': 60, 'military-science': 40 }, infinite: true, desc: '无限科技：每次研究提升炮兵连与炮兵车厢的射程 +30%，让远程火力覆盖更远（对齐《异星工厂》Artillery shell range 无限科技）', req: ['production', 'utility', 'advanced-combat'] },
   'physical-projectile-damage': { name: '投射物伤害', cost: { 'space-science-pack': 80, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升玩家枪械与子弹（手枪/冲锋枪/散弹枪/机枪炮塔/车辆机炮等投射物）伤害 +10%（对齐《异星工厂》Physical projectile damage）', req: ['space-science', 'advanced-combat'] },
   'energy-weapons-damage': { name: '能量武器伤害', cost: { 'space-science-pack': 80, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升激光炮塔与个人激光防御等能量武器伤害 +10%（对齐《异星工厂》Energy weapons damage）', req: ['space-science', 'advanced-combat'] },
@@ -1714,6 +1715,11 @@ function robotCarryCap() {
 // 炮兵炮弹射击速度（对齐《异星工厂》Artillery shell shooting speed 无限科技）：每级射击间隔缩短 10%（即射速提升）。
 function artilleryShootingSpeedMult() {
   const lvl = (G.techProg && G.techProg['artillery-shooting-speed']) || 0;
+  return 1 + 0.1 * lvl;
+}
+// 玩家枪械/机枪炮塔射击速度（对齐《异星工厂》Shooting speed 无限科技）：每级射击间隔缩短 10%（即射速提升）。
+function shootingSpeedMult() {
+  const lvl = (G.techProg && G.techProg['shooting-speed']) || 0;
   return 1 + 0.1 * lvl;
 }
 // 炮兵射程（对齐《异星工厂》Artillery shell range 无限科技）：每级射程提升 30%。

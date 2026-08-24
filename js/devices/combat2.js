@@ -714,7 +714,8 @@ function updatePlayerFire(dt) {
     ty = G.player.y + Math.sin(a) * TILE * 3;
   }
   playerFire(tx, ty);
-  G.playerFireT = w.rate;
+  // 射击速度无限科技：射击间隔缩短，射速提升（对齐《异星工厂》Shooting speed）
+  G.playerFireT = (typeof shootingSpeedMult === 'function' ? w.rate / shootingSpeedMult() : w.rate);
 }
 // 玩家子弹命中敌人（沿子弹飞行路径检测）
 function updatePlayerBulletHits(dt) {
