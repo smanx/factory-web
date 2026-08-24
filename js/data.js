@@ -947,7 +947,11 @@ const TECH_REQ = {
   'energy-shield-mk2': 'armor-power-mk2',
   // 传送带免疫/放电防御装备科技门控（对齐《异星工厂》装备科技线）
   'belt-immunity-equipment': 'armor-modular',
-  'discharge-defense': 'armor-power'
+  'discharge-defense': 'armor-power',
+  // ===== 组装机 / 堆叠机械臂科技门控（对齐《异星工厂》Automation 3 / Logistics 3） =====
+  'assembling-machine-3': 'automation3',
+  'stack-inserter': 'logistics3',
+  'stack-filter-inserter': 'logistics3'
 };
 // ===== 核能科技门控 =====
 for (const id of ['centrifuge', 'nuclear-reactor', 'steam-turbine', 'heat-pipe', 'heat-exchanger', 'uranium-235', 'uranium-238', 'nuclear-fuel']) {
@@ -1145,6 +1149,7 @@ const TECHS = {
   automation: { name: '自动化', cost: { 'science-pack': 20 }, desc: '组装机速度 ×1.5', req: [] },
   // ==== 二级科技（绿瓶） ====
   logistics2: { name: '物流 II', cost: { 'green-science': 25 }, desc: '传送带速度额外 ×1.2（与物流学叠加）', req: ['logistics'] },
+  logistics3: { name: '物流 III', cost: { 'green-science': 40, 'blue-science': 30 }, desc: '解锁堆叠机械臂与堆叠过滤机械臂，可一次抓取多达 3 个同种物品，装卸效率极高（对齐《异星工厂》Logistics 3）', req: ['logistics2'] },
   electric:   { name: '电力工程', cost: { 'green-science': 15 }, desc: '电炉 / 电采矿机速度 ×1.2', req: ['automation'] },
   oil:        { name: '石油冶金', cost: { 'green-science': 30 }, desc: '炼油厂 / 抽油机速度 ×1.5', req: [] },
   railways:    { name: '铁路技术', cost: { 'green-science': 30 }, desc: '解锁铁轨、火车头、货运车厢与车站，构建铁路物流', req: ['logistics'] },
@@ -1156,6 +1161,7 @@ const TECHS = {
   radar:      { name: '雷达技术', cost: { 'green-science': 30 }, desc: '解锁雷达，自动扫描并标记新探索区域', req: ['logistics'] },
   // ==== 三级科技（蓝/军瓶） ====
   automation2:{ name: '自动化 II', cost: { 'blue-science': 40 }, desc: '组装机 II 速度额外 ×1.2', req: ['electric'] },
+  automation3:{ name: '自动化 III', cost: { 'blue-science': 50, 'green-science': 30 }, desc: '解锁组装机 III，速度最高的生产建筑（对齐《异星工厂》Automation 3）', req: ['automation2'] },
   express:    { name: '极速物流', cost: { 'military-science': 40 }, desc: '解锁极速传送带/地下带/分流器，物流终极档', req: ['logistics2'] },
   military:   { name: '军事工程', cost: { 'military-science': 30 }, desc: '解锁机枪炮塔、石墙、弹药（防御体系）', req: [] },
   weapons:    { name: '单兵武器', cost: { 'military-science': 20 }, desc: '解锁手枪、冲锋枪、散弹枪（F 键或空格攻击）', req: ['military'] },
@@ -1265,6 +1271,10 @@ function migrateNewTechs(techDone) {
   }
   if (techDone['oil']) techDone['fluid-handling'] = true;
   if (techDone['advanced-combat']) techDone['combat-robotics'] = true;
+  // 兼容旧档：堆叠机械臂/堆叠过滤臂此前无科技门控，组装机 III 此前开局可用；
+  // 拆分后分别由「物流 III」与「自动化 III」门控，老玩家补完对应科技避免产线被锁死（对齐《异星工厂》Logistics 3 / Automation 3）。
+  if (techDone['logistics2'] || techDone['express']) techDone['logistics3'] = true;
+  if (techDone['automation2']) techDone['automation3'] = true;
   return techDone;
 }
 
