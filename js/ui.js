@@ -533,7 +533,9 @@ function initPanelEvents() {
     let handled = false;
     if (panel && panel.onAction) handled = !!panel.onAction(act, btn);
     if (!handled) {
-      if (act === 'exp-save') { downloadSave(); }
+      if (act === 'quick-save') { saveGame(); }
+      else if (act === 'quick-load') { loadGame(); }
+      else if (act === 'exp-save') { downloadSave(); }
       else if (act === 'imp-save') { document.getElementById('imp-file').click(); }
       else if (act === 'craft') {
         const made = doCraft(id, +(btn.dataset.mult || 1));
@@ -586,10 +588,13 @@ function htmlSettings() {
   h += '<label class="setrow"><input type="checkbox" data-set="capDPR"' + (G.settings.capDPR ? ' checked' : '') + '> 限制高清缩放（DPR ≤ 1.5，降载高分屏）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="lowRes"' + (G.settings.lowRes ? ' checked' : '') + '> 省电模式（降至半分辨率，显著降 GPU 负载）</label>';
   h += '<div class="sec">存档管理</div>';
+  h += '<button data-action="quick-save">保存游戏</button> ';
+  h += '<button data-action="quick-load">读取存档</button>';
+  h += '<div class="hint">保存 / 读取为浏览器本地存档（无快捷键，仅可通过点击触发）。</div>';
   h += '<button data-action="exp-save">导出存档到文件</button> ';
   h += '<button data-action="imp-save">从文件导入存档</button>';
   h += '<input type="file" id="imp-file" accept=".json,application/json" style="display:none">';
-  h += '<div class="hint" id="imp-hint">导出为 JSON 文件，可分享或备份；导入会覆盖当前进度。K/L 为浏览器本地快速存读。</div>';
+  h += '<div class="hint">导出为 JSON 文件，可分享或备份；导入会覆盖当前进度。</div>';
   return h;
 }
 
@@ -662,8 +667,6 @@ function initTopButtons() {
   });
   document.getElementById('btn-set').addEventListener('click', () =>
     G.panelMode === 'set' ? closePanel() : openPanel('set'));
-  document.getElementById('btn-save').addEventListener('click', saveGame);
-  document.getElementById('btn-load').addEventListener('click', loadGame);
 }
 
 function updateHUD(dt, fps) {

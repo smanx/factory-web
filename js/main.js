@@ -912,8 +912,6 @@ function bindInput() {
     else if (k === 'e') G.panelMode === 'inv' ? closePanel() : openPanel('inv');
     else if (k === 't') G.panelMode === 'tech' ? closePanel() : openPanel('tech');
     else if (k === 'o') G.panelMode === 'set' ? closePanel() : openPanel('set');
-    else if (k === 'k') saveGame();
-    else if (k === 'l') loadGame();
     else if (k === 'escape' || k === 'q') {
       if (G.blueMode) {
         cancelBlueprint();
