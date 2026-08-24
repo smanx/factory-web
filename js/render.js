@@ -103,6 +103,7 @@ function render() {
   drawLootDrops(ctx);
   drawLogisticsRobots(ctx);
   if (typeof drawConstruction === 'function') drawConstruction(ctx);
+  if (typeof drawParticles === 'function') drawParticles(ctx);
   ctx.restore();
 
   // 昼夜黑暗遮罩：夜晚整个世界变暗（由 solarFactor 推算），夜视仪可抵消

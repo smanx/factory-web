@@ -44,7 +44,17 @@ const SFX = {
   // 机械臂动作
   inserter: { type: 'triangle', dur: 0.08, f0: 260, f1: 320, vol: 0.08, slide: true },
   // 胜利号角（火箭成功发射后的庆祝音）
-  victory: { type: 'sine', dur: 1.6, f0: 523, f1: 1046, vol: 0.25, arpeggio: [523, 659, 784, 1046, 784, 1046], slide: true }
+  victory: { type: 'sine', dur: 1.6, f0: 523, f1: 1046, vol: 0.25, arpeggio: [523, 659, 784, 1046, 784, 1046], slide: true },
+  // 流体泵：短促“咕噜”液流声
+  pump: { type: 'noise', dur: 0.12, vol: 0.12, f0: 700, f1: 300, slide: true },
+  // 机器人飞行：轻快嗡鸣上滑
+  robot: { type: 'sine', dur: 0.18, f0: 900, f1: 1400, vol: 0.1, slide: true },
+  // 功率开关切换：清脆“咔哒”
+  'power-switch': { type: 'square', dur: 0.07, f0: 420, f1: 300, vol: 0.18, slide: true },
+  // 手雷/投掷物投掷：轻巧抛掷“嗖”
+  throw: { type: 'triangle', dur: 0.2, f0: 600, f1: 200, vol: 0.14, slide: true },
+  // 蒸汽/锅炉排气：柔和的低频气声
+  steam: { type: 'noise', dur: 0.3, vol: 0.1, f0: 500, f1: 200, slide: true }
 };
 
 function sfxInit() {

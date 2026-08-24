@@ -1,5 +1,19 @@
 'use strict';
 
+// ===== 核反应堆粒子（画面优化）：运行时光晕与蒸汽 =====
+function reactorEmit(e, dt) {
+  if (typeof spawnSteam !== 'function' || typeof spawnSpark !== 'function') return;
+  const key = 'r' + e.x + ',' + e.y;
+  if (!G.entFxTimer) G.entFxTimer = {};
+  G.entFxTimer[key] = (G.entFxTimer[key] || 0) + dt;
+  if (G.entFxTimer[key] < 0.3) return;
+  G.entFxTimer[key] = 0;
+  const cx = (e.x + 0.5) * TILE;
+  const cy = (e.y + 0.25) * TILE;
+  spawnSteam(cx + (Math.random() - 0.5) * e.w * TILE * 0.5, cy, { size: 5, color: '#b8e8d8' });
+  if (Math.random() < 0.4) spawnSpark(cx + (Math.random() - 0.5) * e.w * TILE * 0.5, cy + 6, { speed: 1, color: '#9affa0' });
+}
+
 // ===== 核能发电体系（对齐《异星工厂》核动力）=====
 // 完整链路：铀矿（远处生成）→ 电采矿机开采 → 离心机处理成铀-235/238
 //   → 铀-235 组装成核燃料 → 核反应堆（耗核燃料+水）产出高温蒸汽
@@ -213,6 +227,7 @@ class NuclearReactor extends Entity {
     if (this.burnLeft <= 0) { this.lit = false; return; }
     this.lit = true;
     this.burning = true;
+    reactorEmit(this, dt);
     this.burnLeft -= dt;
     // 核反应堆相邻加成（对齐《异星工厂》：每个相邻反应堆使输出 +100%，鼓励多堆并排布局）
     const neighbors = this.neighborCount();

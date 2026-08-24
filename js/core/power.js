@@ -61,7 +61,14 @@ function updatePower() {
   for (const e of r.consumers) { if (!e._dead && e.powerDemand) demand += e.powerDemand(); }
   G.power.prod = prod;
   G.power.demand = demand;
-  G.power.sat = demand <= 0 ? 1 : Math.min(1, prod / demand);
+  // 功率开关（Power Switch）：任一开关处于"断开"触发态时强制全图断电（甩负荷保护）
+  let tripped = false;
+  if (typeof anyPowerSwitchTripped === 'function') tripped = anyPowerSwitchTripped();
+  if (tripped) {
+    G.power.sat = 0;
+  } else {
+    G.power.sat = demand <= 0 ? 1 : Math.min(1, prod / demand);
+  }
 }
 
 // ===== 耗电设备状态辅助 =====

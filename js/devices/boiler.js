@@ -1,5 +1,18 @@
 'use strict';
 
+// ===== 锅炉粒子（画面优化）：烧水时冒蒸汽 =====
+function boilerEmit(e, dt) {
+  if (typeof spawnSteam !== 'function') return;
+  const key = 'b' + e.x + ',' + e.y;
+  if (!G.entFxTimer) G.entFxTimer = {};
+  G.entFxTimer[key] = (G.entFxTimer[key] || 0) + dt;
+  if (G.entFxTimer[key] < 0.4) return;
+  G.entFxTimer[key] = 0;
+  const cx = (e.x + 0.5) * TILE;
+  const cy = (e.y + 0.3) * TILE;
+  spawnSteam(cx + (Math.random() - 0.5) * e.w * TILE * 0.4, cy, { size: 4, color: '#dde8f0' });
+}
+
 // ===== 锅炉：烧煤+水产汽 =====
 class Boiler extends Entity {
   constructor(type, x, y) {
@@ -39,6 +52,7 @@ class Boiler extends Entity {
     this.lit = true;
     if (this.water <= 0) return; // 供水中断：暂停产汽，炉内煤不消耗
     this.burning = true;
+    boilerEmit(this, dt);
     this.burnLeft -= dt;
     this.water = Math.max(0, this.water - BOILER_WATER_RATE * dt);
     this.steamBuf = Math.min(WATER_CAP, this.steamBuf + BOILER_WATER_RATE * dt);

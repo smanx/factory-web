@@ -858,6 +858,7 @@ function initPanelEvents() {
           const tx = Math.floor((G.player.x + Math.cos(a) * TILE * 3) / TILE);
           const ty = Math.floor((G.player.y + Math.sin(a) * TILE * 3) / TILE);
           throwGrenade(tx, ty, type);
+          if (typeof playSfx === 'function') playSfx('throw');
           renderPanel(false);
         } else {
           toast('无法投掷（战斗系统未加载）');

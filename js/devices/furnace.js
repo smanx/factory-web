@@ -1,5 +1,26 @@
 'use strict';
 
+// ===== 熔炉粒子（画面优化）：燃烧时冒烟/迸火星 =====
+// 用 G.entFxTimer 按实体位置节流，避免每帧都生成。石炉/钢炉冒橙烟+火星，电炉冒淡绿烟。
+function furnaceEmit(e, dt) {
+  if (typeof spawnSmoke !== 'function' || typeof spawnSpark !== 'function') return;
+  const key = e.x + ',' + e.y;
+  if (!G.entFxTimer) G.entFxTimer = {};
+  const t = G.entFxTimer[key] || 0;
+  G.entFxTimer[key] = t + dt;
+  if (G.entFxTimer[key] < 0.18) return;   // 节流：约每秒 5 次
+  G.entFxTimer[key] = 0;
+  const electric = e.type === 'electric-furnace';
+  const cx = (e.x + 0.5) * TILE;
+  const cy = (e.y + 0.3) * TILE;
+  if (electric) {
+    spawnSteam(cx + (Math.random() - 0.5) * e.w * TILE * 0.4, cy, { size: 3, color: '#b8e8c8' });
+  } else {
+    spawnSmoke(cx + (Math.random() - 0.5) * e.w * TILE * 0.4, cy, { size: 4, color: '#9a8a80' });
+    if (Math.random() < 0.5) spawnSpark(cx + (Math.random() - 0.5) * e.w * TILE * 0.4, cy + 4, { speed: 1.5, color: '#ff9a3a' });
+  }
+}
+
 // ===== 石炉：烧煤冶炼 =====
 class Furnace extends Entity {
   constructor(type, x, y) {
@@ -36,6 +57,7 @@ class Furnace extends Entity {
     }
     this.lit = true;
     this.burnLeft -= dt;
+    furnaceEmit(this, dt);
     this.prog += dt / r.time;
     if (this.prog >= 1) {
       this.prog -= 1;

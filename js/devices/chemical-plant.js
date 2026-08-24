@@ -1,5 +1,18 @@
 'use strict';
 
+// ===== 化工厂粒子（画面优化）：生产时冒蒸汽 =====
+function chemPlantEmit(e, dt) {
+  if (typeof spawnSteam !== 'function') return;
+  const key = 'c' + e.x + ',' + e.y;
+  if (!G.entFxTimer) G.entFxTimer = {};
+  G.entFxTimer[key] = (G.entFxTimer[key] || 0) + dt;
+  if (G.entFxTimer[key] < 0.4) return;
+  G.entFxTimer[key] = 0;
+  const cx = (e.x + 0.5) * TILE;
+  const cy = (e.y + 0.3) * TILE;
+  spawnSteam(cx + (Math.random() - 0.5) * e.w * TILE * 0.4, cy, { size: 3, color: '#cfdde8' });
+}
+
 // ===== 化工厂：流体化学加工（塑料/裂解）=====
 class ChemicalPlant extends Entity {
   constructor(type, x, y) {
@@ -76,6 +89,7 @@ class ChemicalPlant extends Entity {
     if (this.crafting) {
       if (G.power.sat <= 0) return;
       this.working = true;
+      chemPlantEmit(this, dt);
       this.prog += dt * chemMult() * oilMult() * powerFactor();
       if (this.prog >= rec.time) {
         for (const k in rec.out) {

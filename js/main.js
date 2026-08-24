@@ -1446,6 +1446,7 @@ function loop(ts) {
       updateLogistics(dt);
       if (typeof updateConstruction === 'function') updateConstruction(dt);
       updateTrains(dt);
+      if (typeof updateParticles === 'function') updateParticles(dt);
       updateCamera(dt);
     }
 
