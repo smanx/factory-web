@@ -284,18 +284,20 @@ const BUILD_DEFS = {
 const BELT_TIERS = ['transport-belt', 'fast-transport-belt', 'express-transport-belt'];
 const UNDERGROUND_TIERS = ['underground', 'fast-underground-belt', 'express-underground-belt'];
 const SPLITTER_TIERS = ['splitter', 'priority-splitter', 'express-splitter'];
+// 组装机阶级链（对齐《异星工厂》组装机 I/II/III）：绿图批量升级/降级也支持组装机
+const ASSEMBLER_TIERS = ['assembling-machine', 'assembling-machine-mk2', 'assembling-machine-3'];
 // 合并为“可升级物流链”查表：type -> 高一阶 / 低一阶（无则返回 null）
 const TIER_NEXT = {};
 const TIER_PREV = {};
-for (const chain of [BELT_TIERS, UNDERGROUND_TIERS, SPLITTER_TIERS]) {
+for (const chain of [BELT_TIERS, UNDERGROUND_TIERS, SPLITTER_TIERS, ASSEMBLER_TIERS]) {
   for (let i = 0; i < chain.length; i++) {
     TIER_NEXT[chain[i]] = i + 1 < chain.length ? chain[i + 1] : null;
     TIER_PREV[chain[i]] = i > 0 ? chain[i - 1] : null;
   }
 }
-// 属于同一条升级链的族：用于判断“能否用同类覆盖”（普通带只能被带系/地下带/分流器按各自链条覆盖）
+// 属于同一条升级链的族：用于判断“能否用同类覆盖”（普通带只能被带系/地下带/分流器按各自链条覆盖；组装机只能被组装机链覆盖）
 const TIER_FAMILY = {};
-for (const chain of [BELT_TIERS, UNDERGROUND_TIERS, SPLITTER_TIERS]) for (const t of chain) TIER_FAMILY[t] = chain;
+for (const chain of [BELT_TIERS, UNDERGROUND_TIERS, SPLITTER_TIERS, ASSEMBLER_TIERS]) for (const t of chain) TIER_FAMILY[t] = chain;
 function tierNext(type) { return TIER_NEXT[type] || null; }
 function tierPrev(type) { return TIER_PREV[type] || null; }
 function tierFamily(type) { return TIER_FAMILY[type] || null; }

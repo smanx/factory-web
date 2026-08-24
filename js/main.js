@@ -485,7 +485,7 @@ function applyGreenBlueprint() {
   const stats = greenAreaStats(r);
   if (!stats.total) {
     G.blueStart = null; G.blueEnd = null;
-    toast('框选区域内没有可升级/降级的传送带');
+    toast('框选区域内没有可升级/降级的传送带或组装机');
     return;
   }
   G.greenRect = r;
@@ -494,7 +494,7 @@ function applyGreenBlueprint() {
   showGreenBar(r, stats);
 }
 
-// 统计矩形区域内可升级（有更高阶）/可降级（有更低阶）的带子数量
+// 统计矩形区域内可升级（有更高阶）/可降级（有更低阶）的传送带与组装机数量
 function greenAreaStats(r) {
   const seen = new Set();
   let up = 0, down = 0, total = 0;
@@ -552,12 +552,20 @@ function greenAreaAction(action) {
       if (!infinite && action === 'upgrade' && invCount(target) < 1) continue;   // 升级需有对应新带
       const dir = e.dir;
       const items = e.items ? e.items.map(o => ({ item: o.item, pos: o.pos })) : [];
+      // 带内部状态（如组装机的配方/输入输出/进度）的实体：序列化后改 type 再还原，保留全部状态
+      const st = e.serialize ? e.serialize() : null;
       removeEnt(e);
       const cls = ENT_CLASSES[target];
-      const ne = new cls(target, e.x, e.y);
-      ne.dir = dir;
-      ne.applyDir();
-      if (ne.items) ne.items = items;
+      let ne;
+      if (st && st.recipe !== undefined && typeof cls.restore === 'function') {
+        st.type = target;
+        ne = cls.restore(st);
+      } else {
+        ne = new cls(target, e.x, e.y);
+        ne.dir = dir;
+        ne.applyDir();
+        if (ne.items) ne.items = items;
+      }
       addEnt(ne);
       if (!infinite) {
         if (action === 'upgrade') invTake(target, 1);
@@ -567,7 +575,7 @@ function greenAreaAction(action) {
     }
   }
   if (G.panelEnt && !G.ents.includes(G.panelEnt)) closePanel();
-  toast('绿图已' + (action === 'upgrade' ? '升级' : '降级') + ' ' + changed + ' 格传送带');
+  toast('绿图已' + (action === 'upgrade' ? '升级' : '降级') + ' ' + changed + ' 个传送带/组装机');
   uiDirty = true;
 }
 
