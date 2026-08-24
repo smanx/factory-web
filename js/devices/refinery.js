@@ -222,17 +222,19 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
     ctx.fillStyle = 'rgba(255,160,60,' + (fl * 0.45).toFixed(2) + ')';
     rr(ctx, px + 12, py + s * 0.42, s - 24, s * 0.24, 6); ctx.fill();
   }
-  // ===== 中央显示当前配方（默认显示详情时展示配方图标）=====
-  if (portLabelVisible()) {
+  // ===== 中央显示当前配方（选择配方后始终展示占满一格的大图标） =====
+  {
     const cxp = px + s / 2, cyp = py + s / 2;
     if (e.recipe) {
       const outId = Object.keys(REFINERY_RECIPES[e.recipe].out)[0];
-      drawItemDotBig(ctx, cxp, cyp, outId);
-      ctx.fillStyle = 'rgba(255,255,255,.85)';
-      ctx.font = 'bold 12px system-ui';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(REFINERY_RECIPES[e.recipe].name, cxp, cyp + s * 0.17);
-    } else {
+      drawRecipeIconCell(ctx, cxp, cyp, outId);
+      if (portLabelVisible()) {
+        ctx.fillStyle = 'rgba(255,255,255,.85)';
+        ctx.font = 'bold 12px system-ui';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(REFINERY_RECIPES[e.recipe].name, cxp, cyp + s * 0.17);
+      }
+    } else if (portLabelVisible()) {
       ctx.fillStyle = 'rgba(255,255,255,.6)';
       ctx.font = 'bold 11px system-ui';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -250,11 +252,11 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
     }
     bx += 24;
   }
-  if (!e.working && (!e.recipe || refineryMissingInput(e)) && !(LOD && LOD.simple)) {
+  if (!e.working && e.recipe && refineryMissingInput(e) && !(LOD && LOD.simple)) {
     ctx.fillStyle = 'rgba(255,255,255,.55)';
     ctx.font = 'bold 11px system-ui';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(e.recipe ? '缺原料' : '无配方', px + s / 2, py + s * 0.58);
+    ctx.fillText('缺原料', px + s / 2, py + s * 0.72);
   }
   // ===== 流体出入口标注（对齐《异星工厂》：入口绿、出口橙红，位置随旋转） =====
   // 布局：每个接口对齐到对应的格子（一格一接口）：背面(上方=北)2个输入口落在格1/格3，正面(下方=南)3个输出口落在格0/格2/格4（各留 1 格间隔）

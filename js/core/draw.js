@@ -113,6 +113,11 @@ function drawItemDotBig(ctx, x, y, item) {
   drawItemDot(ctx, x, y, item, 7);
 }
 
+// 配方图标：占据一整格面积的大图标（TILE×TILE），用于设备中央展示当前配方
+function drawRecipeIconCell(ctx, x, y, item) {
+  drawItemDot(ctx, x, y, item, Math.round(TILE * 0.46));
+}
+
 // 流体端口凸缘：side 0东1南2西3北；(cx,cy)=实体中心像素；dist=中心到该边距离；
 // off=沿边偏移（±0.5 为半格）；arrow=出流方向箭头
 function drawPort(ctx, cx, cy, side, color, arrow, off, dist) {
