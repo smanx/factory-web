@@ -42,8 +42,10 @@ const G = {
   greenAction: null,      // 绿图框选后的动作：'upgrade' | 'downgrade' | null
   greenRect: null,        // 绿图最近一次框选区域
   statsTab: 'items',      // 统计面板当前页：items | power | perf
-  statsItemTab: 'prod',   // 统计面板-物品速率页：prod(生产速率) | cons(消耗) | hist(历史图)
-  statsInterval: 2,       // 统计面板-物品速率页：统计间隔索引（0秒/10秒/分钟/小时/1天）；默认“分钟”（展开统计面板时以分钟为单位）
+  statsItemTab: 'hist',   // 统计面板-物品速率页：hist(历史,默认在前) | live(实时)
+  statsLiveSub: 'prod',   // 统计面板-实时页子 tab：prod(生产) | cons(消耗)
+  statsHistSub: 'prod',   // 统计面板-历史页子 tab：prod(生产) | cons(消耗)
+  statsInterval: 2,       // 统计面板-实时页：统计间隔索引（0秒/10秒/分钟/小时/1天）；默认“分钟”（展开统计面板时以分钟为单位）
   statsHistItem: null,    // 统计面板-历史页：当前选中的物品 id
   statsHistZoom: 3,       // 统计面板-历史页：时间档位索引（10分钟/1小时/6小时/24小时）；默认 24 小时
   statsPowerTab: 'prod',  // 统计面板-电量页：prod(发电设备) | cons(耗电设备)
@@ -110,7 +112,9 @@ function newGame() {
   lastPanelCheck = 0;
   if (typeof histReset === 'function') histReset();
   G.statsHistItem = null;
-  G.statsItemTab = 'prod';
+  G.statsItemTab = 'hist';
+  G.statsHistSub = 'prod';
+  G.statsLiveSub = 'prod';
   G.statsHistZoom = 3;
   const [sx, sy] = findSpawn(G.world);
   G.player = makePlayer(sx, sy);

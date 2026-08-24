@@ -390,20 +390,30 @@ function htmlStats() {
   return h;
 }
 
-// 物品速率页：下方再分两个 tab——生产速率（物品被产出）与消耗（物品被消耗）。
 // 展示的是物品自身的产生/消耗速率，而非设备的产能。
 function itemName(id) { return (ITEMS[id] && ITEMS[id].name) ? ITEMS[id].name : id; }
 
-// 历史页：物品选择 + 时间档位 + Canvas 折线图（生产=绿 / 消耗=红）。
+// 历史页 zoom 档位索引：避免 0（10分钟）被 `||` 误判为空而回退到 24 小时（P0 bug）。
+function histZoomIdx() {
+  const i = G.statsHistZoom;
+  return (i === undefined || i === null) ? 3 : i;
+}
+
+// 历史页：下面再分 生产 / 消耗 两个子 tab，分别展示对应方向的折线；
+// 物品选择为同一输入框（可输入筛选，也可从 datalist 下拉直接选择）；
+// 折线图下方有列表，列出各物品在所选档位内的数据。
 function htmlStatsHist(all) {
   const items = all.filter(id => PROD_HIST.data.has(id));
   if (!items.length) {
     return '<div class="dim">暂无历史记录。生产/消耗活动会以 1 分钟粒度保留最近 24 小时，并随存档保存。生成 / 消耗的物品增减即在此累计。</div>';
   }
+  const sub = (G.statsHistSub === 'cons') ? 'cons' : 'prod';
+  const isProd = sub === 'prod';
+
   // 默认选中物品
   let sel = histSelectedItem();
   if (!sel || !items.includes(sel)) sel = items[0];
-  const zoomIdx = G.statsHistZoom || 3;   // 默认 24 小时
+  const zoomIdx = histZoomIdx();
   const zoom = HIST_ZOOMS[zoomIdx] || HIST_ZOOMS[HIST_ZOOMS.length - 1];
 
   // 快速筛选关键字：若已设置，则把默认选中项收敛到匹配关键字的第一项（避免下拉为空）
@@ -416,18 +426,23 @@ function htmlStatsHist(all) {
     }
   }
 
-  let h = '<div class="dim" style="margin-bottom:4px">选择物品（最近 24 小时，1 分钟粒度）：</div>';
-  // 快速筛选输入 + 物品选择下拉：输入名称关键字可过滤下拉列表，回车或下拉可直接选择
-  h += '<div class="stat-hist-pick">';
-  h += '<input class="stat-hist-filter" data-stat-hist-filter type="text" placeholder="输入名称筛选，回车快速选择" autocomplete="off" value="' + (G.statsHistFilter || '') + '">';
-  h += '<select class="stat-hist-select" data-stat-hist-item>';
+  let h = '';
+  // 历史子 tab：生产 / 消耗
+  h += '<div class="stat-subtabs">';
+  h += '<button class="stat-subtab' + (isProd ? ' active' : '') + '" data-stat-hist-sub="prod">生产</button>';
+  h += '<button class="stat-subtab' + (!isProd ? ' active' : '') + '" data-stat-hist-sub="cons">消耗</button>';
+  h += '</div>';
+
+  // 物品选择：同一输入框，可输入名称筛选，也可从下拉直接选择
+  h += '<div class="dim" style="margin-bottom:4px">选择物品（最近 24 小时，1 分钟粒度）：</div>';
+  h += '<input class="stat-hist-filter" data-stat-hist-filter list="stat-hist-dl" type="text" placeholder="输入名称筛选，或从下拉选择物品" autocomplete="off" value="' + ((G.statsHistFilter && G.statsHistFilter.trim()) ? G.statsHistFilter : itemName(sel)) + '">';
+  h += '<datalist id="stat-hist-dl">';
   for (const id of items) {
     const nm = itemName(id);
     if (kw && nm.toLowerCase().indexOf(kw) < 0 && id.toLowerCase().indexOf(kw) < 0) continue;
-    h += '<option value="' + id + '"' + (id === sel ? ' selected' : '') + '>' + nm + '</option>';
+    h += '<option value="' + nm + '"></option>';
   }
-  h += '</select>';
-  h += '</div>';
+  h += '</datalist>';
 
   // 时间档位切换
   h += '<div class="stat-intervals stat-hist-zooms">';
@@ -438,71 +453,115 @@ function htmlStatsHist(all) {
 
   h += '<canvas class="stat-hist-canvas" data-stat-hist-canvas width="480" height="180"></canvas>';
   h += '<div class="stat-hist-legend">';
-  h += '<span class="legend-gain">▬ 生产</span>';
-  h += '<span class="legend-loss">▬ 消耗</span>';
+  if (isProd) h += '<span class="legend-gain">▬ 生产</span>';
+  else h += '<span class="legend-loss">▬ 消耗</span>';
   h += '<span class="dim" data-stat-hist-sum"></span>';
   h += '</div>';
-  h += '<div class="dim">折线为所选时间档位内每分钟（超出时按均值抽稀）的生产/消耗量。历史保留最近 24 小时并随存档保存；读档后旧时段为小时均值，此后实时累计。</div>';
+  h += '<div class="dim">折线为所选时间档位内每分钟（超出时按均值抽稀）的' + (isProd ? '生产' : '消耗') + '量。历史保留最近 24 小时并随存档保存；读档后旧时段为小时均值，此后实时累计。</div>';
 
   // 渲染图表（内联脚本在面板 DOM 就绪后调用）
   setTimeout(function () {
     const cv = document.querySelector('[data-stat-hist-canvas]');
-    if (cv && typeof renderHistChart === 'function') renderHistChart(cv, sel, zoom.sec);
+    if (cv && typeof renderHistChart === 'function') renderHistChart(cv, sel, zoom.sec, sub);
   }, 0);
+
+  // 折线图下方：各物品数据列表
+  h += histDataList(items, zoom.sec, isProd);
 
   // 让 updateStatsLive 能刷新数值汇总（无则忽略）
   if (!window.__histLast) window.__histLast = {};
   window.__histLast.item = sel;
   window.__histLast.zoom = zoom.sec;
+  window.__histLast.dir = sub;
   return h;
 }
 
-// 历史页：在“名称筛选”输入框打字时，就地过滤下方下拉列表的选项（不改 Canvas、不抢焦点）。
-// 保留当前选中物品（若仍匹配），否则回退到列表第一个可见项。
-function applyStatsHistFilter(filter) {
-  const body = document.getElementById('panel-body');
-  if (!body) return;
-  const sel = body.querySelector('[data-stat-hist-item]');
-  if (!sel) return;
-  const kw = (filter || '').trim().toLowerCase();
-  const all = Array.from(PROD_HIST.data.keys());
-  let kept = sel.value;
-  const keptStillMatch = kw ? (itemName(kept).toLowerCase().indexOf(kw) >= 0 || kept.toLowerCase().indexOf(kw) >= 0) : true;
-  let first = null;
-  // 重建选项（保留当前值优先，其次第一匹配项）
-  const opts = [];
-  for (const id of all) {
-    const nm = itemName(id);
-    if (kw && nm.toLowerCase().indexOf(kw) < 0 && id.toLowerCase().indexOf(kw) < 0) continue;
-    opts.push([id, nm]);
+// 历史页折线图下方的列表：列出各物品在所选档位内的累计生产 / 消耗数据。
+// 生产子 tab 按生产量降序，消耗子 tab 按消耗量降序；并高亮当前选中物品。
+function histDataList(items, zoomSec, isProd) {
+  const rows = [];
+  for (const id of items) {
+    const t = histItemTotals(id, zoomSec);
+    if (!t) continue;
+    if ((isProd && t.gain <= 0) || (!isProd && t.loss <= 0)) continue;
+    rows.push({ id, gain: t.gain, loss: t.loss });
   }
-  if (opts.length) first = opts[0][0];
-  const newVal = (keptStillMatch && kept && opts.some(o => o[0] === kept)) ? kept : (first || kept);
-  sel.innerHTML = '';
-  for (const [id, nm] of opts) {
-    const o = document.createElement('option');
-    o.value = id;
-    o.textContent = nm;
-    if (id === newVal) o.selected = true;
-    sel.appendChild(o);
+  if (!rows.length) {
+    return '<div class="sec" style="margin-top:8px">物品明细</div>' +
+      '<div class="dim">该档位内暂无' + (isProd ? '生产' : '消耗') + '记录。</div>';
   }
-  G.statsHistFilter = filter;
+  rows.sort((a, b) => (isProd ? b.gain - a.gain : b.loss - a.loss));
+  const selId = histSelectedItem();
+  let h = '<div class="sec" style="margin-top:8px">物品明细（' + (isProd ? '生产' : '消耗') + '）</div>';
+  h += '<div class="stat-table">';
+  h += '<div class="stat-head"><span>物品</span><span>生产</span><span>消耗</span></div>';
+  for (const r of rows) {
+    const hl = r.id === selId ? ' style="background:rgba(87,227,137,.08)"' : '';
+    h += '<div class="stat-row"' + hl + '>';
+    h += '<span>' + chip(r.id) + '</span>';
+    h += '<span style="color:#8fe08f">+' + fmtNum(r.gain) + '</span>';
+    h += '<span style="color:#ff8a7a">−' + fmtNum(r.loss) + '</span>';
+    h += '</div>';
+  }
+  h += '</div>';
+  h += '<div class="dim">列表为各物品在所选时间档位内的累计生产 / 消耗量（分钟粒度）。</div>';
+  return h;
 }
 
-// 历史页：回车快速选择——选中当前筛选后的第一匹配物品并重绘图表。
+// 计算某物品在 [now-zoomSec, now] 区间内的累计生产/消耗量。
+function histItemTotals(id, zoomSec) {
+  const s = histSeries(id, zoomSec);
+  if (!s) return null;
+  let g = 0, l = 0;
+  for (let i = 0; i < s.gain.length; i++) { g += s.gain[i]; l += s.loss[i]; }
+  return { gain: g, loss: l };
+}
+
+// 历史页：在“名称筛选”输入框打字时，记录筛选关键字（datalist 会自动过滤下拉项）。
+// 不重建面板、不抢焦点；当输入内容精确匹配某个物品名时立即选中并重绘图表。
+function applyStatsHistFilter(filter) {
+  G.statsHistFilter = filter;
+  // 输入内容精确匹配某物品名 → 视为“直接选择”
+  const name = (filter || '').trim();
+  if (!name) return;
+  for (const [id] of PROD_HIST.data) {
+    if (itemName(id) === name) {
+      if (G.statsHistItem !== id) {
+        G.statsHistItem = id;
+        G.statsHistFilter = '';
+        renderPanel(false);
+      }
+      return;
+    }
+  }
+}
+
+// 历史页：从 datalist 下拉选中物品（change 事件）——按输入值匹配物品并重绘图表。
 function statsHistPickFiltered() {
   const body = document.getElementById('panel-body');
   if (!body) return;
-  const sel = body.querySelector('[data-stat-hist-item]');
-  if (!sel || !sel.options.length) return;
-  G.statsHistItem = sel.options[sel.selectedIndex].value;
-  renderPanel(false);
+  const inp = body.querySelector('[data-stat-hist-filter]');
+  if (!inp) return;
+  const name = (inp.value || '').trim();
+  if (!name) return;
+  for (const [id] of PROD_HIST.data) {
+    if (itemName(id) === name) {
+      G.statsHistItem = id;
+      G.statsHistFilter = '';
+      renderPanel(false);
+      return;
+    }
+  }
 }
 
 // 在 Canvas 上绘制历史折线图。
-function renderHistChart(cv, item, zoomSec) {
+// dir：'both'（默认，生产+消耗两条线）/ 'prod'（仅生产）/ 'cons'（仅消耗）。
+function renderHistChart(cv, item, zoomSec, dir) {
   const s = histSeries(item, zoomSec);
   if (!s) return;
+  dir = dir || 'both';
+  const showGain = dir !== 'cons';
+  const showLoss = dir !== 'prod';
   // 抽稀到至多 HIST_MAX_POINTS 个点
   const d = histDownsample(s.ids, s.gain, s.loss, HIST_MAX_POINTS);
   const W = cv.width, H = cv.height;
@@ -511,9 +570,12 @@ function renderHistChart(cv, item, zoomSec) {
 
   const padL = 34, padR = 10, padT = 8, padB = 18;
   const pw = W - padL - padR, ph = H - padT - padB;
-  // 计算 Y 轴最大值（生产/消耗统一取最大）
+  // 计算 Y 轴最大值（只取需要绘制的方向）
   let max = 0;
-  for (let i = 0; i < d.gain.length; i++) max = Math.max(max, d.gain[i], d.loss[i]);
+  for (let i = 0; i < d.gain.length; i++) {
+    if (showGain) max = Math.max(max, d.gain[i]);
+    if (showLoss) max = Math.max(max, d.loss[i]);
+  }
   // 顶部留 10% 空间
   const yMax = max > 0 ? max * 1.1 : 1;
 
@@ -562,14 +624,18 @@ function renderHistChart(cv, item, zoomSec) {
     gainPts.push({ x: n > 1 ? i / (n - 1) : 0, v: d.gain[i] });
     lossPts.push({ x: n > 1 ? i / (n - 1) : 0, v: d.loss[i] });
   }
-  line(gainPts, '#8fe08f');
-  line(lossPts, '#ff8a7a');
+  if (showGain) line(gainPts, '#8fe08f');
+  if (showLoss) line(lossPts, '#ff8a7a');
 
   // 图例数值汇总：显示该档位内累计生产/消耗
   let tg = 0, tl = 0;
   for (let i = 0; i < d.gain.length; i++) { tg += d.gain[i]; tl += d.loss[i]; }
   const sumEl = cv.parentElement ? cv.parentElement.querySelector('[data-stat-hist-sum]') : null;
-  if (sumEl) sumEl.textContent = '　档内累计：生产 +' + fmtNum(tg) + ' / 消耗 −' + fmtNum(tl);
+  if (sumEl) {
+    if (dir === 'prod') sumEl.textContent = '　档内累计：生产 +' + fmtNum(tg);
+    else if (dir === 'cons') sumEl.textContent = '　档内累计：消耗 −' + fmtNum(tl);
+    else sumEl.textContent = '　档内累计：生产 +' + fmtNum(tg) + ' / 消耗 −' + fmtNum(tl);
+  }
 }
 
 // 数字紧凑格式化：>=1000 显示为 1.2k 等。
@@ -579,24 +645,36 @@ function fmtNum(v) {
   return (Math.round(v * 10) / 10).toString();
 }
 
+// 物品速率页：最外层分两个 tab——历史（带图表，在前）与 实时（在后）。
+// 历史页与实时页下又各分 生产 / 消耗 两个子 tab，分别展示对应方向的数据。
 function htmlStatsItems() {
   const all = prodActiveItems().sort((a, b) => (itemName(a) < itemName(b) ? -1 : 1));
-  const tab = G.statsItemTab;
-  const isProd = tab !== 'cons' && tab !== 'hist';
-  const isHist = tab === 'hist';
+  // 第一层：历史（默认，在前）/ 实时
+  const topTab = (G.statsItemTab === 'live') ? 'live' : 'hist';
+  const isHist = topTab === 'hist';
 
   let h = '<div class="sec">物品统计</div>';
-  // 子 tab：生产速率 / 消耗 / 历史（图表）
-  h += '<div class="stat-subtabs stat-subtabs3">';
-  h += '<button class="stat-subtab' + (tab === 'prod' ? ' active' : '') + '" data-stat-item-tab="prod">生产</button>';
-  h += '<button class="stat-subtab' + (tab === 'cons' ? ' active' : '') + '" data-stat-item-tab="cons">消耗</button>';
+  // 第一层 tab：历史在前，实时在后
+  h += '<div class="stat-subtabs">';
   h += '<button class="stat-subtab' + (isHist ? ' active' : '') + '" data-stat-item-tab="hist">历史</button>';
+  h += '<button class="stat-subtab' + (!isHist ? ' active' : '') + '" data-stat-item-tab="live">实时</button>';
   h += '</div>';
 
-  // 历史页：折线图（返回时保留子 tab 栏）
   if (isHist) return h + htmlStatsHist(all);
+  return h + htmlStatsLive(all);
+}
 
-  // 速率/累计页：统计间隔切换按钮（秒 / 10秒 / 分钟 / 小时 / 1天）
+// 实时页：下方再分 生产 / 消耗 两个子 tab，展示实时的速率表格。
+function htmlStatsLive(all) {
+  const sub = (G.statsLiveSub === 'cons') ? 'cons' : 'prod';
+  const isProd = sub === 'prod';
+
+  let h = '<div class="stat-subtabs">';
+  h += '<button class="stat-subtab' + (isProd ? ' active' : '') + '" data-stat-live-sub="prod">生产</button>';
+  h += '<button class="stat-subtab' + (!isProd ? ' active' : '') + '" data-stat-live-sub="cons">消耗</button>';
+  h += '</div>';
+
+  // 统计间隔切换按钮（秒 / 10秒 / 分钟 / 小时 / 1天）
   h += '<div class="dim" style="margin-bottom:6px">统计间隔：</div>';
   h += '<div class="stat-intervals">';
   for (let i = 0; i < STAT_INTERVALS.length; i++) {
@@ -605,7 +683,7 @@ function htmlStatsItems() {
   }
   h += '</div>';
 
-  // 只列出本 tab 有活动的物品
+  // 只列出本子 tab 有活动的物品
   const items = all.filter(id =>
     isProd ? ((PROD.gained[id] || 0) > 0) : ((PROD.lost[id] || 0) > 0));
 
@@ -725,15 +803,16 @@ function htmlStatsPerf() {
 // 才触发整体 DOM 重建；否则只增量更新数值节点，避免每 0.25s 重建整个面板（P2 优化）。
 function statsListSig(tab) {
   if (tab === 'items') {
-    // 历史页：结构随选中物品 + 时间档位变化；并纳入当前桶序号，使图表随新桶推进而重绘
+    // 历史页：结构随选中物品 + 时间档位 + 历史子 tab 变化；并纳入当前桶序号，使图表随新桶推进而重绘
     if (G.statsItemTab === 'hist') {
-      return 'ih:' + (G.statsHistItem || '') + ':z' + (G.statsHistZoom || 3) + ':b' + PROD_HIST.curBucketId;
+      return 'ih:' + (G.statsHistItem || '') + ':s' + (G.statsHistSub || 'prod') + ':z' + histZoomIdx() + ':b' + PROD_HIST.curBucketId;
     }
-    const isProd = G.statsItemTab !== 'cons';
+    // 实时页：结构随实时子 tab（生产/消耗）+ 统计间隔 + 物品列表变化
+    const isProd = (G.statsLiveSub !== 'cons');
     const items = prodActiveItems()
       .filter(id => isProd ? ((PROD.gained[id] || 0) > 0) : ((PROD.lost[id] || 0) > 0))
       .sort((a, b) => (itemName(a) < itemName(b) ? -1 : 1));
-    return 'i:' + (G.statsItemTab || 'prod') + ':iv' + (G.statsInterval || 0) + ':' + items.join(',');
+    return 'i:live:' + (isProd ? 'prod' : 'cons') + ':iv' + (G.statsInterval || 0) + ':' + items.join(',');
   }
   if (tab === 'power') {
     const s = powerSummary();
@@ -762,17 +841,19 @@ function updateStatsLive() {
     if (el && el.innerHTML !== v) el.innerHTML = v;
   };
   if (G.statsTab === 'items') {
-    // 历史页：若结构未变（同一物品/档位/桶），仅重绘图表以反映当前桶内的实时累计
+    // 历史页：若结构未变（同一物品/档位/子 tab/桶），仅重绘图表以反映当前桶内的实时累计
     if (G.statsItemTab === 'hist') {
       const cv = body.querySelector('[data-stat-hist-canvas]');
       if (cv && typeof renderHistChart === 'function') {
         const item = window.__histLast ? window.__histLast.item : histSelectedItem();
         const zoom = window.__histLast ? window.__histLast.zoom : 86400;
-        if (item) renderHistChart(cv, item, zoom);
+        const dir = window.__histLast ? window.__histLast.dir : 'both';
+        if (item) renderHistChart(cv, item, zoom, dir);
       }
       return;
     }
-    const isProd = G.statsItemTab !== 'cons';
+    // 实时页：按实时子 tab（生产/消耗）增量更新速率数值
+    const isProd = (G.statsLiveSub !== 'cons');
     for (const id of prodActiveItems()) {
       if (isProd) {
         if ((PROD.gained[id] || 0) > 0) {
