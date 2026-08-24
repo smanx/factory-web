@@ -135,13 +135,15 @@ function splitterLinks(e, ox, oy) {
   const inp = [false, false], out = [false, false];
   for (let l = 0; l < 2; l++) {
     const [lx, ly] = laneCenterAt(e, ox, oy, l);
-    const inTx = Math.floor((lx - DX[e.dir] * TILE / 2) / TILE);
-    const inTy = Math.floor((ly - DY[e.dir] * TILE / 2) / TILE);
+    // 入口传送带位于分流器后方一整个 tile：从 lane 中心沿流向反方向退一整格，
+    // 否则只退半格会落在分流器自身格子上（导致入口连接永远判为 false）。
+    const inTx = Math.floor((lx - DX[e.dir] * TILE) / TILE);
+    const inTy = Math.floor((ly - DY[e.dir] * TILE) / TILE);
     const inEnt = entAt(inTx, inTy);
     if (inEnt instanceof Belt && !(inEnt instanceof Splitter) && inEnt.dir === e.dir) inp[l] = true;
     else if (inEnt instanceof Underground && inEnt.dir === e.dir && inEnt.findBackMate()) inp[l] = true;
-    const outTx = Math.floor((lx + DX[e.dir] * TILE / 2) / TILE);
-    const outTy = Math.floor((ly + DY[e.dir] * TILE / 2) / TILE);
+    const outTx = Math.floor((lx + DX[e.dir] * TILE) / TILE);
+    const outTy = Math.floor((ly + DY[e.dir] * TILE) / TILE);
     const outEnt = entAt(outTx, outTy);
     if (outEnt instanceof Belt && !(outEnt instanceof Splitter) && outEnt.dir === e.dir) out[l] = true;
     else if (outEnt instanceof Underground && outEnt.dir === e.dir && outEnt.findBackMate()) out[l] = true;
@@ -164,8 +166,8 @@ function laneCenterAt(e, ox, oy, l) {
 // 入口传送带位于分流器后方沿 dir 反方向；只要带上有物品且方向朝向分流器，即视为“有货流入”。
 function splitterInputHasItem(e, l, gx, gy) {
   const [lx, ly] = laneCenterAt(e, gx, gy, l);
-  const inTx = Math.floor((lx - DX[e.dir] * TILE / 2) / TILE);
-  const inTy = Math.floor((ly - DY[e.dir] * TILE / 2) / TILE);
+  const inTx = Math.floor((lx - DX[e.dir] * TILE) / TILE);
+  const inTy = Math.floor((ly - DY[e.dir] * TILE) / TILE);
   const inEnt = entAt(inTx, inTy);
   if (!inEnt || !inEnt.items || !inEnt.items.length) return false;
   // 传送带上确有物品（物品最终会流向分流器）
@@ -298,8 +300,12 @@ function drawSplitter(ctx, e, gx, gy, dir, alpha) {
     ctx.restore();
   }
   const p = e.laneVec();
+  const links = splitterLinks(e, gx, gy);
   for (const o of e.items) {
     const outL = o.outLane !== undefined ? o.outLane : o.lane;
+    // 入口未接传送带：不绘制该入口的物品移动动画（物品不会凭空从无带入口出现）；
+    // 出口未接传送带：不绘制该出口的物品移动动画（物品不会凭空流向无带出口）。
+    if (o.pos <= 0.5 ? !links.inp[o.lane] : !links.out[outL]) continue;
     let ix, iy;
     if (o.pos <= 0.5) {
       const [lx, ly] = e.laneCenter(o.lane);
