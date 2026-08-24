@@ -843,14 +843,16 @@ function drawBullets(ctx) {
     const t = b.t / b.life;
     const cx = b.x + (b.tx - b.x) * t, cy = b.y + (b.ty - b.y) * t;
     if (b.kind === 'laser') {
-      // 激光：中心亮白 + 外层红晕辉光，增强命中视觉效果
+      // 激光/放电电弧：中心亮白 + 外层辉光，增强命中视觉效果（可自定义颜色）
       const a = (1 - t);
+      const col = b.color || '#ff5070';   // 放电防御的电击弧为浅蓝色，普通激光为红色
+      const r1 = parseInt(col.slice(1, 3), 16), g1 = parseInt(col.slice(3, 5), 16), bl1 = parseInt(col.slice(5, 7), 16);
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.strokeStyle = 'rgba(255,120,150,' + (a * 0.35).toFixed(2) + ')';
+      ctx.strokeStyle = 'rgba(' + r1 + ',' + g1 + ',' + bl1 + ',' + (a * 0.35).toFixed(2) + ')';
       ctx.lineWidth = 8;
       ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,60,80,' + (a * 0.9).toFixed(2) + ')';
+      ctx.strokeStyle = 'rgba(' + r1 + ',' + g1 + ',' + bl1 + ',' + (a * 0.9).toFixed(2) + ')';
       ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
       ctx.strokeStyle = 'rgba(255,255,255,' + (a * 0.7).toFixed(2) + ')';

@@ -1250,6 +1250,8 @@ function bindInput() {
     else if (k === 't') G.panelMode === 'tech' ? closePanel() : openPanel('tech');
     else if (k === 'o') G.panelMode === 'set' ? closePanel() : openPanel('set');
     else if (k === 'm') { G.settings.minimap = !(G.settings.minimap !== false); toast(G.settings.minimap ? '小地图：开启' : '小地图：关闭'); }
+    // 放电防御装备：C 键激活对周围敌人放电（对齐《异星工厂》Discharge defense）
+    else if (k === 'c') { if (typeof activateDischargeDefense === 'function') activateDischargeDefense(); }
     else if (k === 'escape' || k === 'q') {
       if (G.driving) { if (typeof exitCar === 'function') exitCar(); }
       else if (G.blueMode) {
@@ -1449,6 +1451,7 @@ function loop(ts) {
       updateCraftQueue(dt);   // 手搓合成队列（按时间逐件制作）
       if (typeof updateFishing === 'function') updateFishing(dt);   // 钓鱼冷却
       if (typeof updatePersonalPower === 'function') updatePersonalPower(dt);   // 个人电网（装备件）
+      if (typeof updateDischargeCooldown === 'function') updateDischargeCooldown(dt);   // 放电防御冷却
       for (const e of G.ents) if (!e._dead && typeof e.update === 'function') e.update(dt);
       // 敌人/子弹系统（可在设置中开关战斗）
       if (G.settings.combat) {

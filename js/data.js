@@ -320,6 +320,10 @@ const ITEMS = {
   // ===== 能量护盾（对齐《异星工厂》Energy shield：受击时消耗个人电力吸收伤害） =====
   'energy-shield':   { name: '能量护盾', color: '#4ac0d0', desc: '装备件（2×2）：受击时优先消耗个人电网电力生成护盾吸收伤害（每件最多吸收 200 伤害），电力不足时护盾失效、按原伤害扣血' },
   'energy-shield-mk2': { name: '能量护盾 II', color: '#3aa0e0', desc: '装备件（2×2）：更强大的能量护盾（每件最多吸收 400 伤害），受击时优先消耗个人电网电力吸收伤害（对齐《异星工厂》Energy shield MK2）' },
+  // ===== 传送带免疫装备（对齐《异星工厂》Belt immunity equipment：站上传送带不再被推动） =====
+  'belt-immunity-equipment': { name: '传送带免疫', color: '#8a6ac0', desc: '装备件（1×1）：穿戴后玩家站上传送带不再被带动位移，可稳定在带上站立/作业（对齐《异星工厂》Belt immunity equipment）' },
+  // ===== 放电防御装备（对齐《异星工厂》Discharge defense：主动对周围敌人释放电击） =====
+  'discharge-defense': { name: '放电防御', color: '#7ac0e0', desc: '装备件（3×3）：手动激活（面板/快捷键）后对以玩家为中心的大范围内所有敌人释放连锁电击，造成高额伤害并大幅消耗个人电网电力。电力不足时无法激活（对齐《异星工厂》Discharge defense equipment）' },
   // ===== 地形树木与木材（对齐《异星工厂》：树可砍伐获得木） =====
   'wood': { name: '木材', color: '#8a6a3a', mark: 'W', desc: '由砍伐树木获得，是木质家具与修理包的原料，也可作低效燃料' },
   // ===== 基础储物箱（对齐《异星工厂》：木箱/铁箱/钢箱递进） =====
@@ -578,7 +582,11 @@ const RECIPES = {
   'personal-laser-defense': { time: 8, inp: { 'laser-turret': 1, 'processing-unit': 2, 'battery': 4 }, out: { 'personal-laser-defense': 1 } },
   // ===== 能量护盾配方（对齐《异星工厂》：护盾需个人电池/高级电路板/处理器） =====
   'energy-shield':   { time: 8,  inp: { 'steel-plate': 6, 'advanced-circuit': 4, 'battery': 2, 'processing-unit': 1 }, out: { 'energy-shield': 1 } },
-  'energy-shield-mk2': { time: 12, inp: { 'energy-shield': 1, 'steel-plate': 10, 'processing-unit': 4, 'battery': 4, 'low-density-structure': 2 }, out: { 'energy-shield-mk2': 1 } }
+  'energy-shield-mk2': { time: 12, inp: { 'energy-shield': 1, 'steel-plate': 10, 'processing-unit': 4, 'battery': 4, 'low-density-structure': 2 }, out: { 'energy-shield-mk2': 1 } },
+  // ===== 传送带免疫装备（对齐《异星工厂》：铁板+电路板，早期装备件） =====
+  'belt-immunity-equipment': { time: 2, inp: { 'iron-plate': 6, 'green-circuit': 4, 'steel-plate': 2 }, out: { 'belt-immunity-equipment': 1 } },
+  // ===== 放电防御装备（对齐《异星工厂》：需高级电路板/电池/处理器等） =====
+  'discharge-defense': { time: 10, inp: { 'steel-plate': 10, 'advanced-circuit': 6, 'battery': 4, 'processing-unit': 2 }, out: { 'discharge-defense': 1 } }
 };
 
 // ===== 流体桶装配方（对齐《异星工厂》Barrel system） =====
@@ -860,7 +868,10 @@ const TECH_REQ = {
   'portable-fusion-reactor': 'armor-power-mk2',
   // 能量护盾：I 型需强力装甲科技，II 型需终极强力装甲 II 科技（对齐《异星工厂》Energy shield 科技线）
   'energy-shield': 'armor-power',
-  'energy-shield-mk2': 'armor-power-mk2'
+  'energy-shield-mk2': 'armor-power-mk2',
+  // 传送带免疫/放电防御装备科技门控（对齐《异星工厂》装备科技线）
+  'belt-immunity-equipment': 'armor-modular',
+  'discharge-defense': 'armor-power'
 };
 // ===== 核能科技门控 =====
 for (const id of ['centrifuge', 'nuclear-reactor', 'steam-turbine', 'heat-pipe', 'heat-exchanger', 'uranium-235', 'uranium-238', 'nuclear-fuel']) {
