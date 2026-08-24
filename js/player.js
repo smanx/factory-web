@@ -32,7 +32,7 @@ function updatePlayer(dt) {
   if (typeof markExplored === 'function') {
     if (!G._exploreT || G.time - G._exploreT > 0.5) {
       G._exploreT = G.time;
-      markExplored(p.x, p.y, 2);
+      markExplored(Math.floor(p.x / TILE), Math.floor(p.y / TILE), 2);
     }
   }
   // 载具驾驶模式：由 updateDriving 驱动载具，玩家自身不移动
@@ -60,9 +60,10 @@ function updatePlayer(dt) {
     if (Math.abs(mx) > Math.abs(my)) p.dir = mx > 0 ? 0 : 2;
     else p.dir = my > 0 ? 1 : 3;
     const r = 9;
-    // 硬化地面（混凝土/石砖路）上玩家行走提速 40%
+    // 硬化地面（混凝土/石砖路）上玩家行走提速 40%；精炼混凝土提速更高（50%，对齐《异星工厂》Refined concrete 更快）
     let sp = playerSpeed();
-    if (isPaved(getTerrain(Math.floor(p.x / TILE), Math.floor(p.y / TILE)))) sp *= 1.4;
+    const ptile = getTerrain(Math.floor(p.x / TILE), Math.floor(p.y / TILE));
+    if (isPaved(ptile)) sp *= (ptile === T_REF_CONCRETE) ? 1.5 : 1.4;
     // 减速力场（减速胶囊）内玩家减速
     if (typeof aoeSlowFactor === 'function') sp *= aoeSlowFactor(p.x, p.y);
     const nx = p.x + mx * sp * dt;

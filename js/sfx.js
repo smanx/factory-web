@@ -72,7 +72,11 @@ const SFX = {
   // 炮塔旋转/装弹：金属“咔”
   turret: { type: 'square', dur: 0.07, f0: 480, f1: 360, slide: true },
   // 流体桶装配/倒空：液体灌装/倾倒的“咕咚”
-  barrel: { type: 'noise', dur: 0.22, vol: 0.16, f0: 420, f1: 160, slide: true }
+  barrel: { type: 'noise', dur: 0.22, vol: 0.16, f0: 420, f1: 160, slide: true },
+  // 装备/穿戴（护甲、机器人港等）：金属“咔嗒”上滑
+  equip: { type: 'square', dur: 0.12, f0: 320, f1: 560, vol: 0.2, slide: true },
+  // 拆解/脱卸：短促下滑
+  unequip: { type: 'square', dur: 0.1, f0: 520, f1: 300, vol: 0.16, slide: true }
 };
 
 function sfxInit() {

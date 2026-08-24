@@ -19,9 +19,11 @@ const T_WATER = 1;
 const T_CONCRETE = 2;   // 混凝土（玩家行走加速）
 const T_PATH = 3;       // 石砖路（玩家行走加速）
 const T_TREE = 4;       // 树木（可砍伐获得木材）
+const T_REF_CONCRETE = 5; // 精炼混凝土（玩家行走加速更快，对齐《异星工厂》Refined concrete）
+const T_HAZARD = 6;       // 警示混凝土（黑黄条纹装饰，行走加速同普通混凝土，对齐《异星工厂》Hazard concrete）
 function isWalkableTerrain(t) { return t !== T_WATER; }
-// 地形是否“硬化”（混凝土/石砖路）：玩家行走速度提升
-function isPaved(t) { return t === T_CONCRETE || t === T_PATH; }
+// 地形是否“硬化”（混凝土/石砖路等铺装地）：玩家行走速度提升
+function isPaved(t) { return t === T_CONCRETE || t === T_PATH || t === T_REF_CONCRETE || t === T_HAZARD; }
 
 // ===== 无限分块世界 =====
 // 世界由 32×32 块按需确定性生成。矿量稀疏存储：only remaining（被采过且

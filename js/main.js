@@ -354,7 +354,7 @@ function applySave(d) {
 }
 
 // 地面铺设：混凝土/石砖路铺在草地上，填海把水面填成草地
-const PAVE_TILE = { 'concrete': T_CONCRETE, 'stone-path': T_PATH };
+const PAVE_TILE = { 'concrete': T_CONCRETE, 'refined-concrete': T_REF_CONCRETE, 'hazard-concrete': T_HAZARD, 'stone-path': T_PATH };
 function placeGround(type, tx, ty, infinite) {
   const t = getTerrain(tx, ty);
   if (type === 'landfill') {
@@ -380,14 +380,14 @@ function placeGround(type, tx, ty, infinite) {
 function tryPlaceAt(tx, ty) {
   const type = selItem();
   if (!type) return;
-  // 非可建造物品（如修理包）不触发建造
-  if (!BUILD_DEFS[type]) return;
   const infinite = !!(G.dbg && G.dbg.infinite);
-  // 地面铺设（混凝土/石砖路/填海）：不创建实体，直接修改地形
-  if (type === 'concrete' || type === 'stone-path' || type === 'landfill') {
+  // 地面铺设（混凝土/石砖路/填海等）：不创建实体，直接修改地形（需优先于 BUILD_DEFS 守卫判定）
+  if (type === 'concrete' || type === 'refined-concrete' || type === 'hazard-concrete' || type === 'stone-path' || type === 'landfill') {
     placeGround(type, tx, ty, infinite);
     return;
   }
+  // 非可建造物品（如修理包）不触发建造
+  if (!BUILD_DEFS[type]) return;
   // 科技解锁要求拦截（火箭/激光炮塔等高级建筑）
   if (TECH_REQ[type] && !G.techDone[TECH_REQ[type]]) {
     toast('需要先研究「' + TECHS[TECH_REQ[type]].name + '」才能建造 ' + ITEMS[type].name);
@@ -917,6 +917,7 @@ function pasteBlueprint() {
     const n = pasteBlueprintAsGhosts(bp);
     toast(n > 0 ? ('已排布 ' + n + ' 个建造幽灵，施工机器人正在建造' + (constrPending().build > 0 ? '（剩 ' + constrPending().build + ' 个待建）' : ''))
       : '无可建造的位置（区域内已有建筑或超出机器人范围）');
+    if (typeof playSfx === 'function') playSfx('select');
     uiDirty = true;
     return;
   }
@@ -941,6 +942,7 @@ function pasteBlueprint() {
     e.dir = p.s.dir | 0; e.applyDir();
     addEnt(e);
   }
+  if (typeof playSfx === 'function') playSfx('select');
   toast('蓝图已粘贴 ' + placements.length + ' 个建筑（可继续点击空白处粘贴，R旋转/V翻转，右键取消）');
   uiDirty = true;
 }
@@ -1011,6 +1013,7 @@ function pickupAction() {
     return;
   }
   invAdd(got);
+  if (typeof playSfx === 'function') playSfx('select');
   uiDirty = true;
 }
 
@@ -1159,6 +1162,19 @@ async function startFromSave() {
   // 读取时间最新的存档（自动或用户均可）
   const data = await readNewestSave();
   if (!data) { toast('没有存档，请先开始新游戏'); return false; }
+  return enterFromSave(data, '已读档');
+}
+
+// 从开始菜单读取指定 id 的存档并进入游戏
+async function loadSaveFromMenu(id) {
+  if (!id) { toast('没有存档'); return false; }
+  const data = await readSave(id);
+  if (!data) { toast('存档不存在或已损坏'); return false; }
+  return enterFromSave(data, '已读档');
+}
+
+// 应用存档数据并进入游戏（供开始菜单读取存档复用）
+function enterFromSave(data, okMsg) {
   try {
     applySave(data);
   } catch (err) {
@@ -1167,7 +1183,7 @@ async function startFromSave() {
   }
   buildHotbar();
   enterGame();
-  toast('已读档');
+  if (okMsg) toast(okMsg);
   return true;
 }
 

@@ -110,13 +110,20 @@ function render() {
   if (typeof solarFactor === 'function' && typeof hasNightVision === 'function') {
     const ph = ((G.time / DAY_CYCLE) % 1 + 1) % 1;
     let dark = 0;
-    if (ph < 0.25 || ph >= 0.75) dark = 0.4;        // 深夜
-    else if (ph < 0.32) dark = (0.32 - ph) / 0.07 * 0.4;  // 黄昏过渡
-    else if (ph >= 0.68) dark = (ph - 0.68) / 0.07 * 0.4; // 黎明过渡
+    let ambientTint = null;
+    if (ph < 0.25 || ph >= 0.75) { dark = 0.4; ambientTint = 'rgba(10,16,34,'; }   // 深夜：偏冷蓝
+    else if (ph < 0.32) { dark = (0.32 - ph) / 0.07 * 0.4; ambientTint = 'rgba(255,120,60,'; } // 黄昏：偏暖橙
+    else if (ph >= 0.68) { dark = (ph - 0.68) / 0.07 * 0.4; ambientTint = 'rgba(255,140,80,'; } // 黎明：偏暖橙
     if (hasNightVision()) dark *= 0.12;              // 夜视仪：大幅削弱黑暗
     if (dark > 0.01) {
+      // 主暗色遮罩
       ctx.fillStyle = 'rgba(6,10,18,' + dark.toFixed(3) + ')';
       ctx.fillRect(0, 0, W, H);
+      // 环境色温（暖橙黄昏/黎明、冷蓝深夜）：叠加极淡的全局色调，增强昼夜氛围
+      if (ambientTint) {
+        ctx.fillStyle = ambientTint + (dark * 0.18).toFixed(3) + ')';
+        ctx.fillRect(0, 0, W, H);
+      }
       // 电灯：在黑暗遮罩上凿出光圈并叠加暖色光晕（需夜间有点灯设备时）
       if (typeof drawLampLights === 'function' && !hasNightVision()) drawLampLights(ctx, dark);
     }
@@ -237,6 +244,50 @@ function drawChunkTerrainInto(ctx, cx, cy) {
         ctx.strokeStyle = 'rgba(70,70,76,.5)';
         ctx.lineWidth = 1;
         ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
+        continue;
+      }
+      if (t === T_REF_CONCRETE) {
+        // 精炼混凝土：更亮的浅灰，带更细的石板缝，略有高光（对齐《异星工厂》Refined concrete）
+        const v = hash2(tx, ty);
+        ctx.fillStyle = v > 0.5 ? '#b4b6bc' : '#abadb3';
+        ctx.fillRect(px, py, TILE, TILE);
+        ctx.strokeStyle = 'rgba(120,122,130,.6)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
+        // 十字石板缝
+        ctx.strokeStyle = 'rgba(70,72,80,.45)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(px + TILE / 2, py); ctx.lineTo(px + TILE / 2, py + TILE);
+        ctx.moveTo(px, py + TILE / 2); ctx.lineTo(px + TILE, py + TILE / 2);
+        ctx.stroke();
+        // 高光
+        ctx.fillStyle = 'rgba(255,255,255,.08)';
+        ctx.fillRect(px + 1, py + 1, TILE / 2 - 1, TILE / 2 - 1);
+        continue;
+      }
+      if (t === T_HAZARD) {
+        // 警示混凝土：黑黄条纹装饰地砖（对齐《异星工厂》Hazard concrete）
+        ctx.fillStyle = '#c8c016';
+        ctx.fillRect(px, py, TILE, TILE);
+        ctx.strokeStyle = 'rgba(70,70,76,.5)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
+        // 黑黄斜向条纹
+        ctx.fillStyle = 'rgba(30,30,34,.85)';
+        const bw = TILE / 2.4;
+        ctx.beginPath();
+        ctx.moveTo(px, py + bw); ctx.lineTo(px + bw, py); ctx.lineTo(px, py);
+        ctx.closePath(); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(px + TILE, py + bw); ctx.lineTo(px + TILE - bw, py); ctx.lineTo(px + TILE, py);
+        ctx.closePath(); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(px, py + TILE - bw); ctx.lineTo(px + bw, py + TILE); ctx.lineTo(px, py + TILE);
+        ctx.closePath(); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(px + TILE, py + TILE - bw); ctx.lineTo(px + TILE - bw, py + TILE); ctx.lineTo(px + TILE, py + TILE);
+        ctx.closePath(); ctx.fill();
         continue;
       }
       if (t === T_PATH) {
@@ -735,9 +786,20 @@ function drawBullets(ctx) {
     const t = b.t / b.life;
     const cx = b.x + (b.tx - b.x) * t, cy = b.y + (b.ty - b.y) * t;
     if (b.kind === 'laser') {
-      ctx.strokeStyle = 'rgba(255,60,80,' + (1 - t).toFixed(2) + ')';
-      ctx.lineWidth = 3;
+      // 激光：中心亮白 + 外层红晕辉光，增强命中视觉效果
+      const a = (1 - t);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = 'rgba(255,120,150,' + (a * 0.35).toFixed(2) + ')';
+      ctx.lineWidth = 8;
       ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,60,80,' + (a * 0.9).toFixed(2) + ')';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,' + (a * 0.7).toFixed(2) + ')';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
+      ctx.restore();
     } else if (b.kind === 'flame') {
       ctx.fillStyle = 'rgba(255,' + (120 + Math.random() * 60 | 0) + ',40,' + (1 - t).toFixed(2) + ')';
       ctx.beginPath(); ctx.arc(cx, cy, 6 + Math.random() * 5, 0, 7); ctx.fill();
@@ -748,11 +810,19 @@ function drawBullets(ctx) {
       ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
       if (t >= 1) {
         const rad = (b.splash || 0) * TILE * (b.art ? 0.8 : 0.6);
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        // 爆炸：外层火球 + 中心高亮闪光
+        ctx.fillStyle = b.art ? 'rgba(255,120,50,.4)' : 'rgba(255,160,60,.35)';
+        ctx.beginPath(); ctx.arc(b.tx, b.ty, rad, 0, 7); ctx.fill();
+        ctx.fillStyle = b.art ? 'rgba(255,200,120,.55)' : 'rgba(255,220,140,.5)';
+        ctx.beginPath(); ctx.arc(b.tx, b.ty, rad * 0.55, 0, 7); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,230,.85)';
+        ctx.beginPath(); ctx.arc(b.tx, b.ty, rad * 0.22, 0, 7); ctx.fill();
         ctx.strokeStyle = b.art ? 'rgba(255,120,50,.9)' : 'rgba(255,160,60,.8)';
         ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(b.tx, b.ty, rad, 0, 7); ctx.stroke();
-        ctx.fillStyle = b.art ? 'rgba(255,150,70,.3)' : 'rgba(255,180,80,.25)';
-        ctx.beginPath(); ctx.arc(b.tx, b.ty, rad, 0, 7); ctx.fill();
+        ctx.restore();
       }
     } else if (b.boom) {
       // 地雷爆炸：短促闪光
@@ -1035,6 +1105,8 @@ function drawMinimap(ctx) {
       const t = getTerrain(tx, ty);
       ctx.fillStyle = (t === T_WATER) ? 'rgba(40,90,140,0.9)'
         : (t === T_CONCRETE) ? 'rgba(120,120,126,0.85)'
+        : (t === T_REF_CONCRETE) ? 'rgba(165,168,176,0.85)'
+        : (t === T_HAZARD) ? 'rgba(190,180,40,0.85)'
         : (t === T_PATH) ? 'rgba(150,140,130,0.85)'
         : 'rgba(52,78,50,0.9)';
       ctx.fillRect(px, py, z + 0.4, z + 0.4);

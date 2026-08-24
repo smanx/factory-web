@@ -277,14 +277,25 @@ function htmlInventory() {
   // 个人机器人港装备（施工机器人）
   if (typeof hasPersonalRoboport === 'function') {
     const equippedPR = hasPersonalRoboport();
+    const prType = G && G.personalRoboport === 'mk2' ? 'personal-roboport-mk2' : 'personal-roboport';
     const prCount = invCount('personal-roboport');
+    const pr2Count = invCount('personal-roboport-mk2');
+    const showType = equippedPR ? prType : (pr2Count > 0 ? 'personal-roboport-mk2' : 'personal-roboport');
+    const shown = ITEMS[showType];
+    const rInfo = typeof constrRoboportInfo === 'function' ? constrRoboportInfo() : null;
     h += '<div class="sec">装备（施工）</div><div class="armor-row">';
-    h += '<div class="armor-slot' + (equippedPR ? ' equipped' : '') + '" data-tip="个人机器人港|' + ITEMS['personal-roboport'].desc + '" data-roboport="toggle">' +
-      (equippedPR ? '<img src="' + iconDataURL('personal-roboport') + '"><b>已装备</b>' : '<span>🔧 未装备</span>') + '</div>';
+    h += '<div class="armor-slot' + (equippedPR ? ' equipped' : '') + '" data-tip="' + shown.name + '|' + shown.desc + '" data-roboport="toggle">' +
+      (equippedPR ? '<img src="' + iconDataURL(prType) + '"><b>已装备</b>' : '<span>🔧 未装备</span>') + '</div>';
+    // Mk1 装备按钮
     h += '<button class="rcbtn armor-eq' + (!equippedPR && prCount > 0 ? '' : ' disabled') + '" data-roboport="toggle"' +
-      ' data-tip="个人机器人港|' + ITEMS['personal-roboport'].desc + '">' +
-      '<img src="' + iconDataURL('personal-roboport') + '">' + ITEMS['personal-roboport'].name + (equippedPR ? ' ✔' : (prCount > 0 ? ' ×' + prCount : '')) + '</button>';
-    h += '</div><div class="dim">装备个人机器人港 + 背包携带施工机器人后，蓝图粘贴自动生成建造幽灵、红图框选生成拆除标记，由施工机器人自动施工/拆除。</div>';
+      ' data-tip="' + ITEMS['personal-roboport'].name + '|' + ITEMS['personal-roboport'].desc + '">' +
+      '<img src="' + iconDataURL('personal-roboport') + '">' + ITEMS['personal-roboport'].name + (G && G.personalRoboport === true ? ' ✔' : (prCount > 0 ? ' ×' + prCount : '')) + '</button>';
+    // Mk2 装备按钮
+    h += '<button class="rcbtn armor-eq' + (!equippedPR && pr2Count > 0 ? '' : ' disabled') + '" data-roboport="toggle2"' +
+      ' data-tip="' + ITEMS['personal-roboport-mk2'].name + '|' + ITEMS['personal-roboport-mk2'].desc + '">' +
+      '<img src="' + iconDataURL('personal-roboport-mk2') + '">' + ITEMS['personal-roboport-mk2'].name + (G && G.personalRoboport === 'mk2' ? ' ✔' : (pr2Count > 0 ? ' ×' + pr2Count : '')) + '</button>';
+    h += '</div><div class="dim">装备个人机器人港 + 背包携带施工机器人后，蓝图粘贴自动生成建造幽灵、红图框选生成拆除标记，由施工机器人自动施工/拆除。' +
+      (rInfo ? '当前工作范围 <b>' + rInfo.range + '</b> 格、最多 <b>' + rInfo.maxActive + '</b> 台机器人同时施工（II 型更大更强）。' : '') + '</div>';
   }
   h += '<div class="sec">材料</div><div class="chips">';
   let any = false;
@@ -715,9 +726,16 @@ function initPanelEvents() {
     }
     const roboEl = ev.target.closest('[data-roboport]');
     if (roboEl && G.panelMode === 'inv' && typeof togglePersonalRoboport === 'function') {
+      // 判断点击的是 Mk1 还是 Mk2 装备按钮
+      const wantMk2 = roboEl.getAttribute('data-roboport') === 'toggle2';
       // 科技门控检查
-      if (!itemUnlocked('personal-roboport')) { toast('需要先研究「' + TECHS[TECH_REQ['personal-roboport']].name + '」才能装备'); renderPanel(false); return; }
-      togglePersonalRoboport();
+      if (!itemUnlocked(wantMk2 ? 'personal-roboport-mk2' : 'personal-roboport')) {
+        const tid = wantMk2 ? 'personal-roboport-mk2' : 'personal-roboport';
+        toast('需要先研究「' + TECHS[TECH_REQ[tid]].name + '」才能装备');
+        renderPanel(false);
+        return;
+      }
+      togglePersonalRoboport(wantMk2);
       renderPanel(false);
       return;
     }
@@ -788,8 +806,8 @@ function initPanelEvents() {
     }
     if (itEl && G.panelMode === 'inv' && !itEl.dataset.action) {
       const iid = itEl.dataset.itemid;
-      // 地面物品（混凝土/石砖路/填海）虽非建筑实体，但同样可选中放入快捷栏以铺设
-      const isGroundItem = iid === 'concrete' || iid === 'stone-path' || iid === 'landfill';
+      // 地面物品（混凝土/石砖路/填海等）虽非建筑实体，但同样可选中放入快捷栏以铺设
+      const isGroundItem = iid === 'concrete' || iid === 'refined-concrete' || iid === 'hazard-concrete' || iid === 'stone-path' || iid === 'landfill';
       if (BUILD_DEFS[iid] || isGroundItem) {
         const idx = HOTBAR.indexOf(iid);
         if (idx >= 0) {

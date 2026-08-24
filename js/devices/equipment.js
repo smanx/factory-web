@@ -77,6 +77,7 @@ function installEquip(eid) {
   if (!slot) { if (typeof toast === 'function') toast('装备网格已满'); return false; }
   invTake(eid, 1);
   G.equipGrid.push({ id: eid, r: slot[0], c: slot[1] });
+  if (typeof playSfx === 'function') playSfx('equip');
   if (typeof toast === 'function') toast('已安装 ' + ITEMS[eid].name);
   uiDirty = true;
   return true;
@@ -89,6 +90,7 @@ function removeEquip(r, c) {
   const e = G.equipGrid[idx];
   G.equipGrid.splice(idx, 1);
   invAdd(e.id, 1);
+  if (typeof playSfx === 'function') playSfx('unequip');
   if (typeof toast === 'function') toast('已卸下 ' + ITEMS[e.id].name);
   uiDirty = true;
   return true;
