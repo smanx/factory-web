@@ -497,6 +497,7 @@ function playerFire(tx, ty) {
       });
     }
   }
+  if (typeof playSfx === 'function') playSfx(w.sfx || (w.pellets > 1 ? 'shotgun' : 'shoot'));
   uiDirty = true;
 }
 // 玩家开火更新：按住空格/左键对敌人持续射击
@@ -563,6 +564,7 @@ function explodeDamage(cx, cy, radius, dmg) {
   }
   // 爆炸也会伤害玩家自身（距离过近时）
   if (Math.hypot(cx - G.player.x, cy - G.player.y) <= radius * TILE * 0.5) damagePlayer(dmg * 0.4);
+  if (typeof playSfx === 'function') playSfx('explosion');
 }
 
 // ===== 战斗机器人胶囊（对齐《异星工厂》Combat robots） =====

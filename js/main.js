@@ -373,6 +373,7 @@ function placeGround(type, tx, ty, infinite) {
   }
   if (typeof invalidateTerrainChunk === 'function') invalidateTerrainChunk(tx, ty);
   if (!infinite) invTake(type, 1);
+  if (typeof playSfx === 'function') playSfx('build');
   refreshHotbar();
 }
 
@@ -395,6 +396,7 @@ function tryPlaceAt(tx, ty) {
   // 无限资源模式：建造不消耗原料，且可直接放置测试用创造/虚空箱与管道（无需背包里拥有）
   if (!infinite && invCount(type) < 1) {
     toast('背包里没有' + ITEMS[type].name + '了');
+    if (typeof playSfx === 'function') playSfx('deny');
     G.sel = -1;
     G.quickSel = null;
     refreshHotbar();
@@ -408,6 +410,7 @@ function tryPlaceAt(tx, ty) {
     // 不允许覆盖建造：目标格已有建筑（如组装机）时直接提示，不拆除替换。
     // 传送带升级/降级仍走上方同族覆盖逻辑，其余建筑冲突一律拒绝。
     toast('无法在这里建造');
+    if (typeof playSfx === 'function') playSfx('deny');
     return;
   }
   // 覆盖升级/降级：把带/地下带/分流器放到同族现有传送带上，直接覆盖当前连续的一段
@@ -426,6 +429,7 @@ function tryPlaceAt(tx, ty) {
   e.applyDir();
   addEnt(e);
   if (!infinite) invTake(type, 1);
+  if (typeof playSfx === 'function') playSfx('build');
   refreshHotbar();
 }
 
@@ -603,6 +607,7 @@ function deconstructAt(tx, ty) {
   for (const [id, n] of e.contents()) invAdd(id, n);
   removeEnt(e);
   if (G.panelEnt === e) closePanel();
+  if (typeof playSfx === 'function') playSfx('demolish');
   uiDirty = true;
 }
 

@@ -985,7 +985,7 @@ function techMissingPrereqs(tid) {
   return req.filter(r => !G.techDone[r]);
 }
 
-const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: true, combat: false, capDPR: true, lowRes: false, virtualJoystick: false, minimap: true };
+const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: true, combat: false, capDPR: true, lowRes: false, virtualJoystick: false, minimap: true, sound: true, soundVol: 0.8 }; // sound:音效开关 soundVol:音量0~1
 const SETTINGS_KEY = 'factory-settings-v1';
 
 function drawItemGlyph(x, id, cx, cy, s) {
