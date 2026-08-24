@@ -53,6 +53,11 @@ class Assembler extends Entity {
       if (typeof spawnSpark === 'function' && Math.random() < dt * 1.2) {
         spawnSpark((this.x + 0.5 + (Math.random() - 0.5) * 0.7) * TILE, (this.y + 0.4) * TILE, { size: 1.2, life: 0.4, speed: 2 });
       }
+      // 运转环境音：低频“嗡嗡”（限频避免音爆）
+      if (typeof playSfx === 'function' && G.settings.sound) {
+        this._runSfxT = (this._runSfxT || 0) - dt;
+        if (this._runSfxT <= 0) { this._runSfxT = 1.4; playSfx('machine-run'); }
+      }
       if (this.prog >= rec.time) {
         for (const k in rec.out) {
           this.outp[k] = (this.outp[k] || 0) + rec.out[k];

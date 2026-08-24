@@ -330,6 +330,8 @@ function updateEnemies(dt) {
       const step = pr.speed * TILE * dt;
       if (d <= step) {
         pr.hit = true;
+        // 火球命中地面：留下燃烧火场（对齐《异星工厂》Fire entity）
+        if (pr.fire && typeof spawnGroundFire === 'function') spawnGroundFire(pr.x, pr.y);
         if (pr.buildTarget && pr.buildTarget._dead === false) {
           // 命中建筑：造成建筑伤害（火球附带灼烧）
           if (typeof damageBuilding === 'function') {
@@ -635,6 +637,8 @@ function updatePlayerBulletHits(dt) {
       const d = Math.hypot(cx - en.x, cy - en.y);
       if (d <= en.size + 4) {
         en.hp -= b.dmg;
+        // 火焰命中敌人：在该处地面留下燃烧火场
+        if (b.kind === 'flame' && typeof spawnGroundFire === 'function') spawnGroundFire(en.x, en.y);
         if (en.hp <= 0) en.dead = true;
         b.hit = true;
         break;
@@ -993,6 +997,8 @@ class FlamethrowerTurret extends Entity {
       x: (this.x + this.w / 2) * TILE, y: (this.y + this.h / 2) * TILE,
       tx: best.x, ty: best.y, t: 0, life: 0.3, dmg: 0, kind: 'flame'
     });
+    // 火焰落地后在地面残留燃烧火场（对齐《异星工厂》Fire entity）
+    if (typeof spawnGroundFire === 'function') spawnGroundFire(best.x, best.y);
     if (typeof playSfx === 'function') playSfx('flamethrower');
   }
   powerDemand() { return 200; }
@@ -1055,6 +1061,62 @@ function flameTurretTip(e) {
   if (G.power.sat <= 0) return '缺电停摆';
   if ((e.fluid['petroleum-gas'] || 0) <= 0) return '缺石油气';
   return e.target ? '喷射中（火焰）' : '待机';
+}
+
+// ===== 地面火焰残留（燃烧火场，对齐《异星工厂》Fire entity）=====
+// 火焰炮塔/火焰喷射器/喷火虫/火球命中后会在命中地面留下燃烧火场（按瓦片记），
+// 火场内敌人/玩家持续受灼烧伤害，数秒后火焰自然熄灭。
+// G.groundFires: [{ tx, ty, life, maxLife, tickT }]（同一瓦片只保留一个，新火刷新余焰）
+function ensureGroundFires() { if (!G.groundFires) G.groundFires = []; return G.groundFires; }
+
+const GROUND_FIRE_LIFE = 4.0;      // 单片火焰持续秒数
+const GROUND_FIRE_MAX = 120;       // 全图火焰瓦片上限（防爆量）
+const GROUND_FIRE_DMG = 9;         // 每 tick 灼烧伤害
+const GROUND_FIRE_TICK = 0.5;      // 灼烧 tick 间隔（秒）
+
+// 在世界坐标 wx,wy 所在瓦片生成/刷新地面火焰
+function spawnGroundFire(wx, wy) {
+  const tx = Math.floor(wx / TILE), ty = Math.floor(wy / TILE);
+  const arr = ensureGroundFires();
+  for (const f of arr) {
+    if (f.tx === tx && f.ty === ty) { f.life = GROUND_FIRE_LIFE; return; }  // 已有火焰：刷新余焰
+  }
+  if (arr.length >= GROUND_FIRE_MAX) return;
+  arr.push({ tx, ty, life: GROUND_FIRE_LIFE, maxLife: GROUND_FIRE_LIFE, tickT: 0 });
+}
+
+// 每帧更新地面火焰：计时、对站上火焰的敌人/玩家造成灼烧
+function updateGroundFires(dt) {
+  const arr = G.groundFires;
+  if (!arr || arr.length === 0) return;
+  for (const f of arr) {
+    f.life -= dt;
+    if (f.life <= 0) continue;
+    // 火焰中心世界坐标
+    const cx = f.tx * TILE + TILE / 2, cy = f.ty * TILE + TILE / 2;
+    // 周期性灼烧范围内的敌人（含巢穴，但巢穴不受火焰灼烧）
+    f.tickT -= dt;
+    if (f.tickT <= 0) {
+      f.tickT = GROUND_FIRE_TICK;
+      if (G.enemies) for (const en of G.enemies) {
+        if (en.dead || en.type === 'spawner') continue;
+        if (Math.hypot(en.x - cx, en.y - cy) <= TILE * 1.15) { en.hp -= GROUND_FIRE_DMG; if (en.hp <= 0) en.dead = true; }
+      }
+      // 玩家站在火焰上也受灼烧
+      if (G.settings.combat && Math.hypot(G.player.x - cx, G.player.y - cy) <= TILE * 1.1) damagePlayer(GROUND_FIRE_DMG * 0.6);
+    }
+    // 火焰燃烧时冒出零星火星/余烬（低频，避免爆量）
+    if (Math.random() < 0.25 && typeof spawnSmoke === 'function') {
+      spawnSmoke(cx + (Math.random() - 0.5) * TILE * 0.5, cy + (Math.random() - 0.5) * TILE * 0.4, { life: 0.8, size: 3, color: '#3a3a3a', vx: (Math.random() - 0.5) * 0.3, vy: -(0.6 + Math.random() * 0.4) });
+    }
+  }
+  // 清理熄灭的火焰
+  G.groundFires = arr.filter(f => f.life > 0);
+  // 有火焰燃烧时播放低频烈焰声（限频，避免音爆）
+  if (G.groundFires.length > 0 && typeof playSfx === 'function') {
+    G.burnSfxT = (G.burnSfxT || 0) - dt;
+    if (G.burnSfxT <= 0) { G.burnSfxT = 0.9; playSfx('burn'); }
+  }
 }
 
 // ===== 注册 =====

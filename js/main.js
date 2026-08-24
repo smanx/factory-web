@@ -127,6 +127,8 @@ function newGame() {
   G.pollution = 0;    // 污染值（对齐《异星工厂》：工业排放污染激怒虫群）
   G.pollutionWaves = 0; G.pollutionT = 0; G.pollutionScanT = 0;
   G.combatRobots = [];
+  G.aoeZones = [];        // 新游戏清空区域力场（毒/减速胶囊）
+  G.groundFires = [];     // 新游戏清空地面火焰残留
   G.driving = null;    // 新游戏清空驾驶状态
   G.craftQueue = [];   // 新游戏清空手搓队列
   G.logiRobots = [];
@@ -1459,6 +1461,7 @@ function loop(ts) {
         updatePlayerBulletHits(dt);
         updateCombatRobots(dt);
         updateAoeZones(dt);
+        if (typeof updateGroundFires === 'function') updateGroundFires(dt);
         if (typeof updatePersonalLaserDefense === 'function') updatePersonalLaserDefense(dt);
         if (typeof updateTankFire === 'function') updateTankFire(dt);
         if (typeof updateLootDrops === 'function') updateLootDrops(dt);

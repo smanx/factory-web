@@ -100,7 +100,15 @@ const SFX = {
   // 炮兵/炮兵车厢开火：远程重炮“轰”
   artillery: { type: 'noise', dur: 0.6, vol: 0.3, f0: 200, f1: 40, slide: true },
   // 铁路链式信号灯切换：清脆“咔哒”
-  'chain-signal': { type: 'square', dur: 0.06, f0: 560, f1: 420, vol: 0.14, slide: true }
+  'chain-signal': { type: 'square', dur: 0.06, f0: 560, f1: 420, vol: 0.14, slide: true },
+  // 地面火焰燃烧：低频“噼啪”烈焰（火焰炮塔/喷射器/火球残留火场）
+  burn: { type: 'noise', dur: 0.25, vol: 0.16, f0: 600, f1: 140, slide: true },
+  // 玩家行走脚步：短促柔软踩踏声
+  step: { type: 'noise', dur: 0.07, vol: 0.12, f0: 350, f1: 220, slide: true },
+  // 组装机/采矿机持续运转：低频“嗡嗡”工业运转声
+  'machine-run': { type: 'sawtooth', dur: 0.6, vol: 0.05, f0: 90, f1: 120, slide: true },
+  // 坦克重炮开火：厚重“轰”重炮声（区别于普通火箭筒）
+  'tank-cannon': { type: 'noise', dur: 0.5, vol: 0.32, f0: 120, f1: 35, slide: true }
 };
 
 function sfxInit() {

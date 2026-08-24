@@ -102,6 +102,7 @@ function render() {
   drawBullets(ctx);
   drawCombatRobots(ctx);
   drawAoeZones(ctx);
+  drawGroundFires(ctx);
   drawLootDrops(ctx);
   drawLogisticsRobots(ctx);
   if (typeof drawConstruction === 'function') drawConstruction(ctx);
@@ -953,6 +954,47 @@ function drawAoeZones(ctx) {
       }
     }
   }
+}
+
+// 地面火焰残留（燃烧火场）：橙色摇曳火焰 + 中心高亮，随生命周期渐弱熄灭
+function drawGroundFires(ctx) {
+  if (!G.groundFires || G.groundFires.length === 0) return;
+  const cam = G.cam, z = cam.z;
+  const sx = (wx) => (wx - cam.px) * z + W / 2;
+  const sy = (wy) => (wy - cam.py) * z + H / 2;
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (const f of G.groundFires) {
+    if (f.life <= 0) continue;
+    const cx = sx(f.tx * TILE + TILE / 2), cy = sy(f.ty * TILE + TILE / 2);
+    const r = TILE * z * 0.6;                     // 火焰半径
+    const lifeT = f.life / f.maxLife;             // 剩余寿命比例（1→0）
+    const flick = 0.75 + 0.5 * Math.sin(G.time * 18 + f.tx * 3 + f.ty * 7);   // 火苗摇曳
+    const rr = r * (0.85 + 0.3 * flick) * (0.6 + 0.4 * lifeT);
+    if (cx < -rr || cx > W + rr || cy < -rr || cy > H + rr) continue;
+    const a = Math.min(1, lifeT * 1.4);
+    // 外层橙焰（半透明，摇曳）
+    ctx.fillStyle = 'rgba(255,' + (90 + 40 * flick) + ',20,' + (0.5 * a).toFixed(3) + ')';
+    ctx.beginPath();
+    // 用三段弧线叠加模拟不规则火苗
+    for (let k = 0; k < 3; k++) {
+      const fa = k * 2.09 + G.time * 3;
+      const fr = rr * (0.7 + 0.3 * Math.sin(G.time * 12 + k * 2));
+      ctx.arc(cx + Math.cos(fa) * rr * 0.5, cy + Math.sin(fa) * rr * 0.3, fr, 0, Math.PI * 2);
+    }
+    ctx.fill();
+    // 内层高亮火心
+    ctx.fillStyle = 'rgba(255,220,120,' + (0.75 * a).toFixed(3) + ')';
+    ctx.beginPath();
+    ctx.arc(cx, cy - r * 0.1, rr * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+    // 顶部亮白火焰舌
+    ctx.fillStyle = 'rgba(255,255,220,' + (0.6 * a).toFixed(3) + ')';
+    ctx.beginPath();
+    ctx.arc(cx, cy - r * 0.25, rr * 0.22, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 // 击杀敌人掉落的地面矿石（见 combat2.js dropEnemyLoot）：小矿石图标带轻微上下浮动
