@@ -888,6 +888,11 @@ function bindInput() {
     if (k >= '1' && k <= '9') selectSlot(+k - 1);
     else if (k === '0') selectSlot(9);
     else if (k === 'tab') { ev.preventDefault(); G.panelMode === 'inv' ? closePanel() : openPanel('inv'); }
+    // 统计/蓝图/红图/绿图快捷键（对齐《异星工厂》：P 统计、B 蓝图、Alt+D 红图、Alt+U 绿图）
+    else if (k === 'p') G.panelMode === 'stats' ? closePanel() : openPanel('stats');
+    else if (k === 'b') { closePanel(); toggleBlueprint('blue'); }
+    else if (ev.altKey && k === 'd') { ev.preventDefault(); closePanel(); toggleBlueprint('red'); }
+    else if (ev.altKey && k === 'u') { ev.preventDefault(); closePanel(); toggleBlueprint('green'); }
     else if ((k === 'delete' || k === 'backspace') && G.panelMode === 'machine' &&
              G.panelEnt && typeof G.panelEnt.setRecipe === 'function' && G.panelEnt.recipe) {
       G.panelEnt.setRecipe(null);
@@ -1121,7 +1126,7 @@ function boot() {
     }
   }
   if (!G.rafStarted) { G.rafStarted = true; requestAnimationFrame(loop); }
-  toast('WASD 移动 · 左键挖矿/放建筑(覆盖建造) · 右键拆除 · R 旋转 · F 拿取 · Q 取消/拾取朝向 · 中键/E 面板 · T 科技 · K/L 存读档');
+  toast('WASD 移动 · 左键挖矿/放建筑(覆盖建造) · 右键拆除 · R 旋转 · F 拿取 · Q 取消/拾取朝向 · 中键/E 面板 · T 科技 · P 统计 · B 蓝图 · Alt+D 红图 · Alt+U 绿图 · K/L 存读档');
 }
 window.addEventListener('load', boot);
 if (document.readyState === 'complete') setTimeout(boot, 0);
