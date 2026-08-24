@@ -112,11 +112,8 @@ function newGame() {
   invAdd('transport-belt', 32); // 传送带
   invAdd('inserter', 4);        // 机械臂
   invAdd('coal', 8);
-  // 测试用创造/虚空设备：各给 2 个，方便搭建测试物流与流体链路
-  invAdd('creative-chest', 2);
-  invAdd('void-chest', 2);
-  invAdd('creative-pipe', 2);
-  invAdd('void-pipe', 2);
+  // 测试用创造/虚空设备（创造箱/虚空箱/创造管道/虚空管道）不再默认发放：
+  // 仅当在 Debug 模式中开启"无限资源"后才通过建造列表出现，正常游玩不可见。
 }
 
 function serializeAll() {
