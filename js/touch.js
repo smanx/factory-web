@@ -501,6 +501,11 @@ function handleTap() {
     return;
   }
 
+  // 点击水域 → 钓鱼（对齐《异星工厂》钓鱼玩法）
+  if (isWater(tx, ty) && typeof tryFishAt === 'function') {
+    if (tryFishAt(tx, ty)) return;
+  }
+
   // 点击空地 → 玩家走过去（点击移动）
   if (withinReach(tx, ty) || true) {
     movePlayerTo(tx, ty);

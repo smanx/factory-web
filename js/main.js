@@ -1304,6 +1304,9 @@ function handleLeftDown() {
   if (buildActive() && G.cursorTile) {
     tryPlaceAt(G.cursorTile.tx, G.cursorTile.ty);
     lastPlaceKey = G.cursorTile.tx + ',' + G.cursorTile.ty;
+  } else if (G.cursorTile && typeof tryFishAt === 'function' && isWater(G.cursorTile.tx, G.cursorTile.ty)) {
+    // 无建造选中、点击水域 → 钓鱼（对齐《异星工厂》鼠标钓鱼）
+    tryFishAt(G.cursorTile.tx, G.cursorTile.ty);
   }
 }
 
@@ -1355,6 +1358,7 @@ function loop(ts) {
       updateHeldMouse(dt);
       updateMining(dt);
       updateCraftQueue(dt);   // 手搓合成队列（按时间逐件制作）
+      if (typeof updateFishing === 'function') updateFishing(dt);   // 钓鱼冷却
       if (typeof updatePersonalPower === 'function') updatePersonalPower(dt);   // 个人电网（装备件）
       for (const e of G.ents) if (!e._dead && typeof e.update === 'function') e.update(dt);
       // 敌人/子弹系统（可在设置中开关战斗）

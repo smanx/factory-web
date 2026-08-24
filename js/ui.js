@@ -287,9 +287,9 @@ function htmlInventory() {
     const n = invCount(id);
     if (n > 0) {
       h += chip(id, n);
-      // 手雷可在背包中直接投掷（对齐《异星工厂》投掷物）
-      if (id === 'grenade') {
-        h += '<button class="usebtn" data-action="use-grenade" title="投掷手雷（向当前朝向投掷，造成范围爆炸）">💣 投掷</button>';
+      // 手雷/集束手雷可在背包中直接投掷（对齐《异星工厂》投掷物）
+      if (id === 'grenade' || id === 'cluster-grenade') {
+        h += '<button class="usebtn" data-action="use-grenade" data-type="' + id + '" title="投掷' + ITEMS[id].name + '（向当前朝向投掷，造成范围爆炸）">💣 投掷</button>';
       }
       any = true;
     }
@@ -716,15 +716,16 @@ function initPanelEvents() {
     if (panel && panel.onAction) handled = !!panel.onAction(act, btn);
     if (!handled) {
       if (act === 'use-grenade') {
-        // 从背包投掷手雷：向玩家当前朝向投掷（目标点为玩家前方数格）
+        // 从背包投掷手雷/集束手雷：向玩家当前朝向投掷（目标点为玩家前方数格）
         if (typeof throwGrenade === 'function') {
+          const type = btn.getAttribute('data-type') || 'grenade';
           const a = G.player.dir * Math.PI / 2;
           const tx = Math.floor((G.player.x + Math.cos(a) * TILE * 3) / TILE);
           const ty = Math.floor((G.player.y + Math.sin(a) * TILE * 3) / TILE);
-          throwGrenade(tx, ty);
+          throwGrenade(tx, ty, type);
           renderPanel(false);
         } else {
-          toast('无法投掷手雷（战斗系统未加载）');
+          toast('无法投掷（战斗系统未加载）');
         }
       }
       else if (act === 'quick-save') { await saveGame(); renderPanel(false); }

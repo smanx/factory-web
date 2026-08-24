@@ -428,9 +428,11 @@ function updateBullets(dt) {
 const WEAPONS = {
   'pistol':          { name: '手枪',   dmg: 10, rate: 0.3, ammo: 'magazine',        spread: 0.06, auto: false, range: 7 },
   'submachine-gun':  { name: '冲锋枪', dmg: 7,  rate: 0.1, ammo: 'magazine',        spread: 0.12, auto: true,  range: 7 },
-  'shotgun':         { name: '散弹枪', dmg: 6,  rate: 0.5, ammo: 'piercing-rounds', spread: 0.4,  auto: false, range: 6, pellets: 6 },
+  'shotgun':         { name: '散弹枪', dmg: 6,  rate: 0.5, ammo: 'shotgun-shell', spread: 0.4,  auto: false, range: 6, pellets: 6 },
+  'combat-shotgun':  { name: '战斗散弹枪', dmg: 10, rate: 0.35, ammo: 'piercing-shotgun-shell', spread: 0.32, auto: false, range: 7, pellets: 8 },
   'rocket-launcher': { name: '火箭筒', dmg: 35, rate: 1.1, ammo: 'rocket',          spread: 0.03, auto: false, range: 9, splash: 1.8 },
   'grenade':         { name: '手雷',   dmg: 40, rate: 0.8, ammo: 'grenade',          spread: 0.05, auto: false, range: 6, splash: 2.5 },
+  'cluster-grenade': { name: '集束手雷', dmg: 80, rate: 1.0, ammo: 'cluster-grenade', spread: 0.05, auto: false, range: 6, splash: 4.5 },
   'flamethrower':    { name: '火焰喷射器', dmg: 6, rate: 0.12, ammo: 'flamethrower-ammo', spread: 0.2, auto: true, range: 6, flame: true },
   'poison-capsule':  { name: '毒胶囊', dmg: 0, rate: 0.8, ammo: 'poison-capsule', spread: 0.05, auto: false, range: 6, capsule: 'poison' },
   'slowdown-capsule':{ name: '减速胶囊', dmg: 0, rate: 0.8, ammo: 'slowdown-capsule', spread: 0.05, auto: false, range: 6, capsule: 'slowdown' },
@@ -707,23 +709,25 @@ function aoeSlowFactor(x, y) {
   return 1;
 }
 
-// 手雷：从背包使用时投掷爆炸（由 ui.js 调用）。
+// 手雷/集束手雷：从背包使用时投掷爆炸（由 ui.js 调用）。
 // 投掷物复用 splash 爆炸路径（kind 用 'rocket'，由 updatePlayerBulletHits 的 splash 分支处理爆炸）。
-function throwGrenade(tx, ty) {
-  if (invCount('grenade') < 1) return;
+function throwGrenade(tx, ty, type) {
+  type = type || 'grenade';
+  if (invCount(type) < 1) return;
   if (!G.settings.combat) {
-    if (typeof toast === 'function') toast('需在设置中开启战斗才能投掷手雷');
+    if (typeof toast === 'function') toast('需在设置中开启战斗才能投掷');
     return;
   }
-  invTake('grenade', 1);
+  const w = WEAPONS[type] || WEAPONS['grenade'];
+  invTake(type, 1);
   const px = G.player.x, py = G.player.y;
   // 投掷目标点：传入的是瓦片坐标，转换为世界坐标；若玩家在范围内则向目标投掷
   let gx = tx * TILE + TILE / 2, gy = ty * TILE + TILE / 2;
   (G.bullets || (G.bullets = [])).push({
     x: px, y: py, tx: gx, ty: gy,
-    t: 0, life: 0.45, dmg: 40, splash: 2.5, kind: 'rocket'
+    t: 0, life: 0.45, dmg: w.dmg, splash: w.splash, kind: 'rocket'
   });
-  if (typeof toast === 'function') toast('💣 投掷手雷');
+  if (typeof toast === 'function') toast('💣 投掷 ' + ITEMS[type].name);
   uiDirty = true;
 }
 
