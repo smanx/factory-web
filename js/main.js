@@ -109,6 +109,8 @@ function newGame() {
   G.cam.py = G.player.y;
   invAdd('burner-drill', 1);   // 热能采矿机
   invAdd('stone-furnace', 1);  // 石炉
+  invAdd('transport-belt', 32); // 传送带
+  invAdd('inserter', 4);        // 机械臂
   invAdd('coal', 8);
   // 测试用创造/虚空设备：各给 2 个，方便搭建测试物流与流体链路
   invAdd('creative-chest', 2);
