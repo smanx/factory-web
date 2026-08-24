@@ -117,19 +117,49 @@ function autoSlotIdsNewestFirst(reg) {
   return list;
 }
 
-// 取得当前所有存档（元数据列表），按时间倒序，含类型/名称/时间/槽位
+// 计算存档数据的大小（字节数），基于 JSON 序列化后的 UTF-8 长度
+function saveSizeBytes(data) {
+  try {
+    const json = JSON.stringify(data);
+    // 计算 UTF-8 编码下的字节数，用于显示更准确的文件大小
+    let bytes = 0;
+    for (let i = 0; i < json.length; i++) {
+      const code = json.charCodeAt(i);
+      if (code < 0x80) bytes += 1;
+      else if (code < 0x800) bytes += 2;
+      else if (code >= 0xD800 && code <= 0xDBFF) { bytes += 4; i++; }
+      else bytes += 3;
+    }
+    return bytes;
+  } catch (e) {
+    return 0;
+  }
+}
+
+// 将字节数格式化为可读大小（B / KB / MB）
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  const kb = bytes / 1024;
+  if (kb < 1024) return kb.toFixed(1) + ' KB';
+  return (kb / 1024).toFixed(2) + ' MB';
+}
+
+// 取得当前所有存档（元数据列表），按时间倒序，含类型/名称/时间/槽位/大小
 async function listAllSaves() {
   const reg = await loadSaveRegistry();
   const arr = [];
   for (const id of Object.keys(reg)) {
     const s = reg[id];
     if (!s || !s.data) continue;
+    const size = saveSizeBytes(s.data);
     arr.push({
       id,
       name: s.name || (s.type === 'auto' ? '自动存档' : '用户存档'),
       type: s.type || 'user',
       time: s.time || 0,
-      seed: s.seed || 0
+      seed: s.seed || 0,
+      sizeBytes: size,
+      sizeText: formatSize(size)
     });
   }
   arr.sort((a, b) => (b.time || 0) - (a.time || 0));
