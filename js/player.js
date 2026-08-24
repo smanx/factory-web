@@ -123,6 +123,57 @@ function invCount(id) { return G.inv.get(id) || 0; }
 function selItem() { return G.sel >= 0 ? (HOTBAR[G.sel] || null) : (G.quickSel || null); }
 function buildActive() { return G.sel >= 0 || !!G.quickSel; }
 
+// ===== 开采工具（铁斧 / 钢斧，对齐《异星工厂》Iron axe / Steel axe） =====
+// 选中持有时手挖/砍树速度提升，且每次挖矿/砍树消耗耐久，耐久用尽后工具消失。
+const AXE_DURABILITY = { 'iron-axe': 300, 'steel-axe': 600 };   // 可挖矿次数
+const AXE_SPEED = { 'iron-axe': 1.5, 'steel-axe': 2 };          // 挖矿/砍树速度倍率
+// 当前手持的开采工具（无则返回 null）
+function currentAxe() {
+  const it = selItem();
+  return (it === 'iron-axe' || it === 'steel-axe') ? it : null;
+}
+// 是否为手持工具（非建筑、选中时不应阻断采矿/使用）
+function isToolItem(id) {
+  return id === 'iron-axe' || id === 'steel-axe' ||
+         id === 'deconstruction-planner' || id === 'upgrade-planner' ||
+         id === 'repair-pack' || id === 'cliff-explosives' || id === 'spidertron-remote';
+}
+// 当前开采工具的挖矿/砍树速度倍率（未持斧返回 1）
+function axeMineMult() {
+  const ax = currentAxe();
+  return ax ? (AXE_SPEED[ax] || 1) : 1;
+}
+// 挖矿/砍树后消耗当前手持斧头的耐久；用尽则移除该斧头
+function axeConsume() {
+  const ax = currentAxe();
+  if (!ax) return;
+  const max = AXE_DURABILITY[ax] || 1;
+  G.axeDura = (G.axeDura || 0) - 1;
+  if (G.axeDura <= 0) {
+    G.axeDura = 0;
+    // 移除一把当前手持的斧头
+    if (invTake(ax, 1)) {
+      // 若背包中已无剩余斧头，则自动取消选中，避免“幽灵斧”继续挖矿
+      if (invCount(ax) <= 0) {
+        G.sel = -1; G.quickSel = null; refreshHotbar();
+        if (typeof playSfx === 'function') playSfx('deny');
+        if (typeof toast === 'function') toast(ITEMS[ax].name + ' 耐久用尽');
+        return;
+      }
+      G.axeDura = max;   // 下一把斧头重置耐久
+      if (typeof playSfx === 'function') playSfx('deny');
+      if (typeof toast === 'function') toast(ITEMS[ax].name + ' 耐久用尽');
+      refreshHotbar();
+    } else {
+      // 没有多余斧头（理论上背包应已为空）
+      G.axeDura = max;
+      G.sel = -1; G.quickSel = null; refreshHotbar();
+    }
+  } else {
+    uiDirty = true;
+  }
+}
+
 function invTake(id, n = 1) {
   const c = invCount(id);
   if (c < n) return false;
@@ -227,7 +278,8 @@ function updateMining(dt) {
   const p = G.player;
   // 载具驾驶中不能采矿
   if (G.driving && G.driving.ent && !G.driving.ent._dead) { p.mining = null; p.mineProg = 0; return; }
-  if (!G.mouseDown || buildActive() || !G.canvasActive) { p.mining = null; p.mineProg = 0; return; }
+  // 手持工具（如开采工具）选中时不阻断采矿；仅当真正在放置建筑时才阻断
+  if (!G.mouseDown || (buildActive() && !isToolItem(selItem())) || !G.canvasActive) { p.mining = null; p.mineProg = 0; return; }
   const t = G.cursorTile;
   if (!t) { p.mining = null; p.mineProg = 0; return; }
   const key = t.tx + ',' + t.ty;
@@ -236,7 +288,9 @@ function updateMining(dt) {
   const ti = getOreType(t.tx, t.ty);
   // 砍树：T_TREE 地形，按住可连续砍伐获得木材（对齐《异星工厂》）
   if (getTerrain(t.tx, t.ty) === T_TREE) {
-    p.mineProg += dt * ((G.dbg && G.dbg.mineMult) || 1) / (HAND_MINE_TIME * 1.5);
+    const axm = axeMineMult();
+    if (axm > 1 && !(G.axeDura > 0)) G.axeDura = AXE_DURABILITY[currentAxe()] || 0;
+    p.mineProg += dt * ((G.dbg && G.dbg.mineMult) || 1) * axm / (HAND_MINE_TIME * 1.5);
     if (p.mineProg >= 1) {
       p.mineProg -= 1;
       setTerrain(t.tx, t.ty, T_GRASS);
@@ -244,15 +298,19 @@ function updateMining(dt) {
       invalidateTerrainChunk(t.tx, t.ty);
       if (typeof playSfx === 'function') playSfx('mine');
       if (typeof toast === 'function') toast('+1 木材');
+      if (axm > 1) axeConsume();
     }
   } else if (((ti >= 0 && ti < ORES.length) || ti === ORE_URANIUM) && getOreAmt(t.tx, t.ty) > 0) {
-    p.mineProg += dt * ((G.dbg && G.dbg.mineMult) || 1) / HAND_MINE_TIME;
+    const axm = axeMineMult();
+    if (axm > 1 && !(G.axeDura > 0)) G.axeDura = AXE_DURABILITY[currentAxe()] || 0;
+    p.mineProg += dt * ((G.dbg && G.dbg.mineMult) || 1) * axm / HAND_MINE_TIME;
     if (p.mineProg >= 1) {
       p.mineProg -= 1;
       if (!G.settings.infiniteOre) consumeOre(t.tx, t.ty);
       const it = oreItemId(ti);
       invAdd(it);
       if (typeof playSfx === 'function') playSfx('mine');
+      if (axm > 1) axeConsume();
       // 手动采矿反馈去抖：累积到一定数量再提示一次，避免连挖时刷屏
       mineToastAcc++;
       if (mineToastAcc % 5 === 0 && typeof toast === 'function') {

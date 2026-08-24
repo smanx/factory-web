@@ -935,7 +935,7 @@ function updateAoeZones(dt) {
       z.playerSlow = Math.hypot(G.player.x - z.x, G.player.y - z.y) <= z.radius;
     }
   }
-  G.aoeZones = G.aoeZones.filter(z => z.lifetime > 0);
+  G.aoeZones = compactFilter(G.aoeZones, z => z.lifetime > 0);
 }
 // 供敌人移动逻辑调用：若敌人位于减速力场则返回减速系数（0.5 = 半速）
 function aoeSlowFactor(x, y) {
@@ -1250,7 +1250,7 @@ function updateGroundFires(dt) {
     }
   }
   // 清理熄灭的火焰
-  G.groundFires = arr.filter(f => f.life > 0);
+  G.groundFires = compactFilter(arr, f => f.life > 0);
   // 有火焰燃烧时播放低频烈焰声（限频，避免音爆）
   if (G.groundFires.length > 0 && typeof playSfx === 'function') {
     G.burnSfxT = (G.burnSfxT || 0) - dt;

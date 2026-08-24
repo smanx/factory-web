@@ -337,6 +337,12 @@ const ITEMS = {
   'iron-chest': { name: '铁箱', color: '#b0b8c4', desc: '由木箱升级的储物箱，容量更大（32 格）' },
   // ===== 修理包（对齐《异星工厂》Repair pack） =====
   'repair-pack': { name: '修理包', color: '#5aa0d0', desc: '选中后点击受损建筑可修复其耐久度。每个修理包有多次使用次数，损坏建筑恢复 HP' },
+  // ===== 开采工具（对齐《异星工厂》Iron axe / Steel axe：手持加速手挖） =====
+  'iron-axe':  { name: '铁斧', color: '#b8c0c8', mark: '斧', desc: '基础开采工具：选中持有时手挖/砍树速度提升（约 x1.5）。有耐久度，挖矿会逐渐损耗，用尽后消失' },
+  'steel-axe': { name: '钢斧', color: '#d0d6dc', mark: '钢', desc: '高级开采工具：选中持有时手挖/砍树速度提升（约 x2），比铁斧更耐用。耐久用尽后消失（对齐《异星工厂》Steel axe）' },
+  // ===== 规划器（对齐《异星工厂》Deconstruction planner / Upgrade planner） =====
+  'deconstruction-planner': { name: '拆除规划器', color: '#d04848', mark: '拆', desc: '手持规划器：选中后进入红图框选模式，框选一块区域即可批量拆除其中的建筑（装备个人机器人港后改由施工机器人拆除）。对齐《异星工厂》Deconstruction planner' },
+  'upgrade-planner': { name: '升级规划器', color: '#57b95c', mark: '升', desc: '手持规划器：选中后进入绿图框选模式，框选一块区域后可批量升级/降级其中的建筑。对齐《异星工厂》Upgrade planner' },
   // ===== 空间科学包（对齐《异星工厂》Space science pack，火箭发射产出） =====
   'space-science-pack': { name: '空间科学包', color: '#d0d0e0', mark: 'SC', desc: '由卫星成功发射后获得的高级科学包，用于终局无限科研（科研速度/采矿产能等）' },
   // ===== 流体桶装系统（对齐《异星工厂》Barrel system） =====
@@ -423,6 +429,12 @@ const RECIPES = {
   'iron-chest':       { time: 1,   inp: { 'wooden-chest': 1, 'iron-plate': 4 }, out: { 'iron-chest': 1 } },
   // ===== 修理包（对齐《异星工厂》Repair pack） =====
   'repair-pack':      { time: 1,   inp: { 'iron-gear': 1, 'copper-plate': 2 }, out: { 'repair-pack': 1 } },
+  // ===== 开采工具配方（对齐《异星工厂》Iron axe / Steel axe） =====
+  'iron-axe':  { time: 1.5, inp: { 'iron-plate': 2, 'iron-stick': 2 }, out: { 'iron-axe': 1 } },
+  'steel-axe': { time: 3,   inp: { 'steel-plate': 2, 'iron-stick': 2 }, out: { 'steel-axe': 1 } },
+  // ===== 规划器配方（对齐《异星工厂》Deconstruction planner / Upgrade planner） =====
+  'deconstruction-planner': { time: 1, inp: { 'iron-plate': 1 }, out: { 'deconstruction-planner': 1 } },
+  'upgrade-planner': { time: 1, inp: { 'iron-plate': 1, 'green-circuit': 1 }, out: { 'upgrade-planner': 1 } },
   'steel-furnace':    { time: 2,   inp: { 'steel-plate': 8, 'stone': 6 }, out: { 'steel-furnace': 1 } },
   'assembling-machine-3': { time: 3, inp: { 'assembling-machine-mk2': 1, 'steel-plate': 8, 'iron-gear': 6, 'green-circuit': 8 }, out: { 'assembling-machine-3': 1 } },
   'pipe-to-ground':   { time: 1,   inp: { 'pipe': 10, 'iron-plate': 5 }, out: { 'pipe-to-ground': 1 } },
@@ -1396,6 +1408,48 @@ function drawItemGlyph(x, id, cx, cy, s) {
       x.strokeStyle = dark;
       x.lineWidth = Math.max(1, s * 0.04);
       x.stroke();
+      break;
+    }
+    // ===== 开采工具（铁斧 / 钢斧，对齐《异星工厂》Axe） =====
+    case 'iron-axe':
+    case 'steel-axe': {
+      const steel = id === 'steel-axe';
+      // 木柄
+      x.fillStyle = '#8a6a3a';
+      x.fillRect(-r * 0.06, -r * 0.95, r * 0.2, r * 1.9);
+      // 斧刃
+      x.fillStyle = steel ? '#e0e6ec' : '#b8c0c8';
+      x.beginPath();
+      x.moveTo(r * 0.05, -r * 0.95);
+      x.arc(r * 0.5, -r * 0.5, r * 0.62, -Math.PI / 2, Math.PI / 2);
+      x.lineTo(r * 0.05, r * 0.15);
+      x.closePath();
+      x.fill();
+      x.fillStyle = 'rgba(255,255,255,.45)';
+      x.beginPath();
+      x.moveTo(r * 0.05, -r * 0.95);
+      x.arc(r * 0.5, -r * 0.5, r * 0.62, -Math.PI / 2, 0);
+      x.lineTo(r * 0.05, -r * 0.2);
+      x.closePath();
+      x.fill();
+      break;
+    }
+    // ===== 规划器（拆除/升级，对齐《异星工厂》Planner） =====
+    case 'deconstruction-planner':
+    case 'upgrade-planner': {
+      const decon = id === 'deconstruction-planner';
+      x.fillStyle = '#f4f6f8';
+      rrPath(x, -r * 0.8, -r * 0.7, r * 1.6, r * 1.4, s * 0.12);
+      x.fill();
+      x.strokeStyle = dark;
+      x.lineWidth = Math.max(1, s * 0.05);
+      x.stroke();
+      x.fillStyle = decon ? '#d04848' : '#57b95c';
+      rrPath(x, -r * 0.62, -r * 0.5, r * 1.24, r * 0.6, s * 0.08);
+      x.fill();
+      x.fillStyle = decon ? '#57b95c' : '#d04848';
+      rrPath(x, -r * 0.62, r * 0.22, r * 1.24, r * 0.32, s * 0.08);
+      x.fill();
       break;
     }
     default: {

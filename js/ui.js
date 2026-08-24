@@ -85,11 +85,21 @@ function refreshHotbar() {
 function selectSlot(i) {
   // 选择快捷栏物品建造时退出触屏拆除模式，避免左键行为冲突
   if (G.deconstructMode) toggleDeconstructMode(false);
+  const prev = G.sel >= 0 ? (HOTBAR[G.sel] || null) : null;
   G.sel = (G.sel === i ? -1 : i);
   G.quickSel = null;
   // 选择武器：若该槽位是武器，则作为当前手持武器
   if (G.sel >= 0 && HOTBAR[G.sel]) setWeapon(HOTBAR[G.sel]);
   else if (G.sel < 0) setWeapon(null);
+  // 规划器（拆除/升级）选中：进入对应红图/绿图框选模式（对齐《异星工厂》Planner）
+  if (typeof toggleBlueprint === 'function') {
+    const cur = G.sel >= 0 ? (HOTBAR[G.sel] || null) : null;
+    if (cur === 'deconstruction-planner') { toggleBlueprint('red'); }
+    else if (cur === 'upgrade-planner') { toggleBlueprint('green'); }
+    else if (prev === 'deconstruction-planner' || prev === 'upgrade-planner') {
+      if (G.blueMode) cancelBlueprint();
+    }
+  }
   if (typeof playSfx === 'function') playSfx('select');
   refreshHotbar();
   closePanel(false);
@@ -1207,6 +1217,15 @@ function updateHUD(dt, fps) {
   }
   if (G.weapon && isWeapon(G.weapon)) {
     hud += '   🔫 ' + WEAPONS[G.weapon].name;
+  }
+  // 手持开采工具：显示耐久度（对齐《异星工厂》Axe）
+  const _ax = (typeof currentAxe === 'function') ? currentAxe() : null;
+  if (_ax) {
+    const _max = (typeof AXE_DURABILITY === 'object' && AXE_DURABILITY[_ax]) ? AXE_DURABILITY[_ax] : 1;
+    const _d = (G.axeDura || 0);
+    const _pct = Math.max(0, Math.min(100, Math.round(_d / _max * 100)));
+    const _c = _pct > 30 ? '#57e389' : _pct > 10 ? '#ffd23c' : '#ff5b5b';
+    hud += '   <span style="color:' + _c + '" title="' + ITEMS[_ax].name + ' 耐久 ' + _d + '/' + _max + '">⛏ ' + ITEMS[_ax].name + ' ' + _pct + '%</span>';
   }
   if (G.armor && isArmor(G.armor)) {
     hud += '   🛡 ' + ARMORS[G.armor].name;

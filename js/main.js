@@ -73,6 +73,7 @@ const G = {
   armor: null,        // 当前穿戴的护甲 id（light-armor / heavy-armor）
   gameWon: false,     // 是否已发射火箭赢得游戏
   repairPackUses: 0,  // 当前修理包剩余使用次数（用尽后消耗一个新修理包）
+  axeDura: 0,         // 当前手持开采工具（铁斧/钢斧）剩余耐久（用尽后消失，对齐《异星工厂》Axe）
   victoryT: 0,
   inMenu: true,       // 开始菜单显示中：游戏世界尚未初始化，loop 暂停渲染与更新
   deconstructMode: false,  // 触屏拆除模式：开启后点触建筑即可拆除（PC 右键拆除不受影响）
@@ -193,6 +194,7 @@ function serializeAll() {
     })),
     gameWon: G.gameWon,
     repairPackUses: G.repairPackUses || 0,
+    axeDura: G.axeDura || 0,
     techDone: G.techDone,
     techProg: G.techProg,
     activeTech: G.activeTech,
@@ -313,6 +315,7 @@ function applySave(d) {
     }
   }
   G.repairPackUses = (typeof d.repairPackUses === 'number') ? d.repairPackUses : 0;
+  G.axeDura = (typeof d.axeDura === 'number') ? d.axeDura : 0;
   G.combatRobots = [];
   G.driving = null;
   G.logiRobots = [];
