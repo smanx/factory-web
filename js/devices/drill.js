@@ -274,6 +274,23 @@ function drillPanelHtml(e) {
   }
   // 采矿速率显示在面板靠前位置（电力/燃料行之后）
   h += '<div id="mach-rate-block"></div>';
+  // 模块槽位（仅电采矿机/抽油机，对齐《异星工厂》：采矿设备可装模块）
+  if (eDrill) {
+    const mc = moduleCounts(e.modules);
+    const hasMod = (Object.keys(e.modules).length > 0);
+    h += row('模块', hasMod ?
+      '速度+' + mc.speed.toFixed(1) + ' 产能+' + mc.prod.toFixed(1) + ' 效率-' + mc.eff.toFixed(1) : '<span class="dim">无</span>', 'mod');
+    for (const mid of Object.keys(e.modules)) {
+      if ((e.modules[mid] || 0) > 0) h += '<span class="dim">' + ITEMS[mid].name + ' ×' + e.modules[mid] + '</span> ';
+    }
+    const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3'];
+    for (const mid of order) {
+      if (!itemUnlocked(mid)) continue;
+      const n = Math.min(invCount(mid), e.moduleSlotCount() - (e.modules[mid] || 0));
+      if (n > 0) h += '<button data-action="feed" data-id="' + mid + '">装入' + ITEMS[mid].name + ' ×' + n + '</button>';
+    }
+    if (hasMod) h += '<button data-action="takein" data-modules="1">取出全部模块</button>';
+  }
   h += row('矿物缓存', '<span class="dim"></span>', 'buffer');
   h += '<button data-action="takeout" id="btn-drill-takeout" style="display:none"></button>';
   h += barHtml(0);
@@ -294,7 +311,7 @@ function drillPanelLive(e, api) {
   if (rateEl) {
     const o = e.oreTile();
     const item = o ? e.mineItem(o) : (e.bufItem || null);
-    const mult = e instanceof ElectricDrill ? drillMult() * e.machMult() : drillMult() * 0.25;
+    const mult = e instanceof ElectricDrill ? drillMult() * e.machMult() * e.moduleSpeedMult() : drillMult() * 0.25;
     const rec = item ? { time: DRILL_TIME, inp: {}, out: { [item]: 1 } } : null;
     const html = rec ? machRateHtml(rec, mult) : '';
     if (rateEl.innerHTML !== html) rateEl.innerHTML = html;

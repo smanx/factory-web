@@ -8,6 +8,8 @@ const PUMPJACK_YIELD_DECAY = 0.005;    // 每次抽取递减量（每产 1 桶�
 
 class Pumpjack extends ElectricDrill {
   constructor(type, x, y) { super(type || 'pumpjack', x, y); this.yieldFactor = 1; }
+  // 模块槽位数（对齐《异星工厂》：抽油机 2 槽）
+  moduleSlotCount() { return 2; }
   // 原油输出只从正面居中的那一个格子排出（一格一接口，对齐管道格子）
   frontTargets() {
     const c = Math.floor(this.w / 2);   // 3x3 居中格 = 1
@@ -37,7 +39,7 @@ class Pumpjack extends ElectricDrill {
     }
     return 'crude-oil';
   }
-  powerDemand() { return (this.oreTile() && this.buf < 20) ? POWER_USE['pumpjack'] : 0; }
+  powerDemand() { return (this.oreTile() && this.buf < 20) ? POWER_USE['pumpjack'] * this.modulePowerFactor() : 0; }
   serialize() {
     const s = super.serialize();
     if (this.yieldFactor !== undefined && this.yieldFactor < 1) s.yield = Math.round(this.yieldFactor * 100) / 100;
