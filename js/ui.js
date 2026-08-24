@@ -619,7 +619,7 @@ function updateHUD(dt, fps) {
   const el = document.getElementById('hud-info');
   const p = G.player;
   const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
-  el.textContent = fps + '   ' + tx + ',' + ty;
+  el.textContent = fps + '   (' + tx + ',' + ty + ')';
 }
 
 function mapTipAt(tx, ty) {
