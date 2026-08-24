@@ -569,25 +569,31 @@ function drawPlayer(ctx) {
 
   // ---- 头部：肤色圆，朝移动方向偏移 ----
   const hx = p.x + cx * 4, hy = p.y + bob - 9;
-  ctx.fillStyle = '#ffd9a0';
+  ctx.fillStyle = '#ffe0b0';   // 更显年轻的亮肤色
   ctx.strokeStyle = '#7c431a';
   ctx.lineWidth = 1.2;
   ctx.beginPath();
   ctx.arc(hx, hy, 5.6, 0, 7);
   ctx.fill(); ctx.stroke();
 
-  // ---- 安全帽 ----
-  ctx.fillStyle = '#f0b53a';
-  ctx.strokeStyle = '#b8860b';
-  ctx.lineWidth = 1.2;
+  // ---- 头发：深棕短发（年轻人发型，取代安全帽）----
+  ctx.fillStyle = '#5a3a22';   // 深棕发色
+  ctx.strokeStyle = '#3c2413';
+  ctx.lineWidth = 0.8;
+  // 头顶短发（后脑勺弧线 + 头顶略蓬松）
   ctx.beginPath();
-  ctx.arc(hx, hy - 2.4, 4.2, Math.PI, 0);   // 帽檐（上半圆）
+  ctx.arc(hx, hy - 1.8, 5.0, Math.PI, 0);   // 头顶发际线（上半圆）
+  ctx.closePath();
   ctx.fill(); ctx.stroke();
+  // 侧边碎发（两侧短鬓角）
   ctx.beginPath();
-  ctx.arc(hx, hy - 2.8, 2.6, 0, 7);         // 帽顶
-  ctx.fill(); ctx.stroke();
+  ctx.arc(hx - 4.4, hy + 0.5, 1.8, Math.PI * 0.6, Math.PI * 1.9);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(hx + 4.4, hy + 0.5, 1.8, Math.PI * 0.1, Math.PI * 1.4);
+  ctx.fill();
 
-  // ---- 眼睛：朝向移动方向 ----
+  // ---- 眼睛：朝向移动方向，带高光显精神 ----
   ctx.fillStyle = '#2b2b2b';
   for (const s of [-1, 1]) {
     const ex = hx + cx * 1.8 + (Math.abs(cy) < 0.5 ? s * 2.2 : 0);
@@ -595,5 +601,19 @@ function drawPlayer(ctx) {
     ctx.beginPath();
     ctx.arc(ex, ey, 1.2, 0, 7);
     ctx.fill();
+    // 眼睛高光
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(ex - 0.4, ey - 0.4, 0.4, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = '#2b2b2b';
   }
+
+  // ---- 嘴：年轻微笑 ----
+  ctx.strokeStyle = '#c96a4a';
+  ctx.lineWidth = 0.9;
+  ctx.beginPath();
+  const mx = hx + cx * 3.2, my = hy + cy * 3.2;
+  ctx.arc(mx, my, 1.3, 0.3, Math.PI - 0.3);
+  ctx.stroke();
 }
