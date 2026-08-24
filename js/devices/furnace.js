@@ -5,6 +5,7 @@ class Furnace extends Entity {
   constructor(type, x, y) {
     super(type || 'stone-furnace', x, y);
     this.fuelCoal = 0;
+    this.fuelSolid = 0;
     this.burnLeft = 0;
     this.inp = {};
     this.outp = {};
@@ -22,7 +23,11 @@ class Furnace extends Entity {
     this.cur = r;
     if (!r) { this.prog = 0; this.lit = false; return; }
     if (this.burnLeft <= 0) {
-      if (this.fuelCoal > 0) {
+      if (this.fuelSolid > 0) {
+        this.fuelSolid--;
+        if (typeof trackProd === 'function') trackProd('solid-fuel', -1);
+        this.burnLeft += SOLID_FUEL_ENERGY;
+      } else if (this.fuelCoal > 0) {
         this.fuelCoal--;
         if (typeof trackProd === 'function') trackProd('coal', -1);
         this.burnLeft += COAL_ENERGY;
@@ -43,6 +48,7 @@ class Furnace extends Entity {
   }
   giveItem(item) {
     if (item === 'coal' && this.fuelCoal < 20) { this.fuelCoal++; return true; }
+    if (item === 'solid-fuel' && this.fuelSolid < 20) { this.fuelSolid++; return true; }
     for (const r of SMELTS)
       if (r.inp === item && (this.inp[item] || 0) < 25) { this.inp[item] = (this.inp[item] || 0) + 1; return true; }
     return false;
@@ -68,6 +74,7 @@ class Furnace extends Entity {
   }
   contents() {
     const list = [[this.type, 1]];
+    if (this.fuelSolid > 0) list.push(['solid-fuel', this.fuelSolid]);
     if (this.fuelCoal > 0) list.push(['coal', this.fuelCoal]);
     for (const k in this.inp) list.push([k, this.inp[k]]);
     for (const k in this.outp) list.push([k, this.outp[k]]);
@@ -75,13 +82,13 @@ class Furnace extends Entity {
   }
   serialize() {
     const s = super.serialize();
-    s.fuelCoal = this.fuelCoal; s.burnLeft = this.burnLeft;
+    s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.burnLeft = this.burnLeft;
     s.inp = this.inp; s.outp = this.outp; s.prog = this.prog;
     return s;
   }
   static restore(s) {
     const f = super.restore(s);
-    f.fuelCoal = s.fuelCoal || 0; f.burnLeft = s.burnLeft || 0;
+    f.fuelCoal = s.fuelCoal || 0; f.fuelSolid = s.fuelSolid || 0; f.burnLeft = s.burnLeft || 0;
     f.inp = s.inp || {}; f.outp = s.outp || {}; f.prog = s.prog || 0;
     return f;
   }
@@ -141,9 +148,11 @@ function furnacePanelHtml(e) {
   if (eFurn) {
     h += row('电力', powerStatusLiveHtml(e), 'power');
   } else {
-    h += row('燃料', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : '<span class="dim">无</span>', 'fuel');
+    h += row('燃料', (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : '<span class="dim">无</span>'), 'fuel');
     if (invCount('coal') > 0)
-      h += '<button data-action="fuel" data-id="coal">加入 5 煤 (' + invCount('coal') + ')</button>';
+      h += '<button data-action="fuel" data-id="coal">加 5 煤 (' + invCount('coal') + ')</button>';
+    if (invCount('solid-fuel') > 0)
+      h += '<button data-action="fuel" data-id="solid-fuel">加 5 固体燃料 (' + invCount('solid-fuel') + ')</button>';
   }
   // 消耗/产出速率显示在面板靠前位置（电力/燃料行之后）
   h += '<div id="mach-rate-block"></div>';
@@ -163,7 +172,7 @@ function furnacePanelHtml(e) {
 function furnacePanelLive(e, api) {
   const eFurn = e instanceof ElectricFurnace;
   if (eFurn) api.set('power', powerStatusLiveHtml(e));
-  if (!eFurn) api.set('fuel', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : dimSpan('无'));
+  if (!eFurn) api.set('fuel', (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : dimSpan('无')));
   api.set('input', Object.keys(e.inp).length ? countStr(e.inp) : dimSpan('空'));
   api.set('output', Object.keys(e.outp).length ? countStr(e.outp) : dimSpan('空'));
   const n = Object.values(e.outp).reduce((a, b) => a + b, 0);

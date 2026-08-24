@@ -15,7 +15,9 @@
 // ===== 常量 =====
 const TRAIN_SPEED = 0.35;      // 列车每格移动耗时（秒），慢于传送带但运量大
 const LOCO_FUEL = 400;         // 单格煤提供的燃料量（一格跑多格）
-const LOCO_MAX_FUEL = 4000;    // 车头燃料槽上限（约 10 格煤）
+const LOCO_SOLID_FUEL = 1600;  // 单格固体燃料提供的燃料量（约为煤的 4 倍）
+const LOCO_MAX_FUEL = 4000;    // 车头燃料能量池上限
+const LOCO_MAX_UNITS = 10;     // 车头燃料槽可存燃料个数（煤/固体燃料合计）
 const LOCO_COAL_PER = 1;       // 每格耗煤 1 单位
 const WAGON_SLOTS = 10;        // 车厢槽位数
 const WAGON_STACK = 100;       // 每槽容量
@@ -49,9 +51,10 @@ function updateTrains(dt) {
   for (const tr of G.trains) {
     if (tr.cars.length === 0) continue;
     const head = tr.cars[0];
-    // 车头烧煤移动
+    // 车头烧煤移动：能量池耗尽时从燃料槽补一单位（优先固体燃料）
+    head.refuel();
     const coal = (head.fuel || 0);
-    if (coal <= 0) continue;   // 没煤则停车
+    if (coal <= 0) continue;   // 没燃料则停车
     // 车站停车：车头所在格是车站时停车等待
     if (tr.stopT > 0) {
       tr.stopT -= dt;
@@ -173,39 +176,50 @@ function unregisterRail(x, y) { G.railTiles.delete(x + ',' + y); }
 class Locomotive extends Entity {
   constructor(type, x, y) {
     super(type, x, y);
-    this.fuel = 0;
+    this.fuel = 0;       // 能量池（用于烧起来）；由煤/固体燃料填充
+    this.fuelCoal = 0;   // 存煤个数
+    this.fuelSolid = 0;  // 存固体燃料个数
   }
   giveItem(item) {
-    if (item === 'coal' && this.fuel < LOCO_MAX_FUEL) {
-      this.fuel += LOCO_FUEL;
-      if (this.fuel > LOCO_MAX_FUEL) this.fuel = LOCO_MAX_FUEL;
-      return true;
+    if (item === 'coal' && this.fuelCoal + this.fuelSolid < LOCO_MAX_UNITS) {
+      this.fuelCoal++; return true;
+    }
+    if (item === 'solid-fuel' && this.fuelCoal + this.fuelSolid < LOCO_MAX_UNITS) {
+      this.fuelSolid++; return true;
     }
     return false;
   }
-  countOf(item) { return item === 'coal' ? Math.floor(this.fuel / LOCO_FUEL) : 0; }
+  // 能量池不足时从燃料槽取一单位填充（优先固体燃料，其次煤）
+  refuel() {
+    if (this.fuel >= LOCO_FUEL) return;
+    if (this.fuelSolid > 0) { this.fuelSolid--; this.fuel = Math.min(LOCO_MAX_FUEL, this.fuel + LOCO_SOLID_FUEL); }
+    else if (this.fuelCoal > 0) { this.fuelCoal--; this.fuel = Math.min(LOCO_MAX_FUEL, this.fuel + LOCO_FUEL); }
+  }
+  countOf(item) { return item === 'coal' ? this.fuelCoal : (item === 'solid-fuel' ? this.fuelSolid : 0); }
   takeItemOf(item) {
-    if (item !== 'coal' || this.fuel < LOCO_FUEL) return null;
-    this.fuel -= LOCO_FUEL;
-    return 'coal';
+    if (item === 'coal' && this.fuelCoal > 0) { this.fuelCoal--; return 'coal'; }
+    if (item === 'solid-fuel' && this.fuelSolid > 0) { this.fuelSolid--; return 'solid-fuel'; }
+    return null;
   }
   contents() {
-    const n = Math.floor(this.fuel / LOCO_FUEL);
-    return [[this.type, 1]].concat(n > 0 ? [['coal', n]] : []);
+    const list = [[this.type, 1]];
+    if (this.fuelSolid > 0) list.push(['solid-fuel', this.fuelSolid]);
+    if (this.fuelCoal > 0) list.push(['coal', this.fuelCoal]);
+    return list;
   }
   serialize() {
     const s = super.serialize();
-    s.fuel = this.fuel;
+    s.fuel = this.fuel; s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid;
     return s;
   }
   blueprint() {
     const s = super.blueprint();
-    s.fuel = this.fuel;
+    s.fuel = this.fuel; s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid;
     return s;
   }
   static restore(s) {
     const e = super.restore(s);
-    e.fuel = s.fuel | 0;
+    e.fuel = s.fuel | 0; e.fuelCoal = s.fuelCoal | 0; e.fuelSolid = s.fuelSolid | 0;
     return e;
   }
 }
@@ -517,10 +531,12 @@ DEVICE_RENDER['rail-signal'] = function (ctx, e, gx, gy, dir, alpha) {
 // ===== 面板 =====
 DEVICE_PANEL['locomotive'] = {
   html(e) {
-    const n = Math.floor((e.fuel || 0) / LOCO_FUEL);
-    return '<div class="dim">车头：烧煤在铁轨上行驶。装入煤后自动前进，可挂接货运车厢。</div>' +
+    return '<div class="dim">车头：烧燃料在铁轨上行驶。装入煤/固体燃料后自动前进，可挂接货运车厢。固体燃料更耐用。</div>' +
       '<div class="sec">燃料</div><div class="rows">' +
-      '<div class="row"><span>煤</span><b>' + n + '</b><button data-act="putcoal">+1</button><button data-act="takecoal">取出</button></div>' +
+      '<div class="row"><span>煤</span><b>' + (e.fuelCoal || 0) + '</b><button data-act="putcoal">+1</button><button data-act="takecoal">取出</button></div>' +
+      (invCount('solid-fuel') > 0 || (e.fuelSolid || 0) > 0
+        ? '<div class="row"><span>固体燃料</span><b>' + (e.fuelSolid || 0) + '</b><button data-act="putsolid">+1</button><button data-act="takesolid">取出</button></div>'
+        : '') +
       '</div>';
   },
   live() { return ''; },
@@ -528,6 +544,8 @@ DEVICE_PANEL['locomotive'] = {
   onAction(btn, e) {
     if (btn === 'putcoal' && invCount('coal') > 0) { e.giveItem('coal'); invTake('coal', 1); toast('已加煤'); uiDirty = true; }
     else if (btn === 'takecoal') { const it = e.takeItemOf('coal'); if (it) { invAdd(it); toast('已取出煤'); uiDirty = true; } }
+    else if (btn === 'putsolid' && invCount('solid-fuel') > 0) { e.giveItem('solid-fuel'); invTake('solid-fuel', 1); toast('已加固体燃料'); uiDirty = true; }
+    else if (btn === 'takesolid') { const it = e.takeItemOf('solid-fuel'); if (it) { invAdd(it); toast('已取出固体燃料'); uiDirty = true; } }
     return true;
   }
 };

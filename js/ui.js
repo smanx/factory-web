@@ -676,9 +676,15 @@ function initPanelEvents() {
         const mch = G.panelEnt;
         if (mch && typeof mch.setRecipe === 'function') mch.setRecipe(null);
       } else if (act === 'fuel') {
-        const n = Math.min(5, invCount('coal'));
-        if (n <= 0) { toast('没有煤了'); return; }
-        if (invTake('coal', n)) G.panelEnt.fuelCoal += n;
+        const fid = btn.dataset.id || 'coal';
+        const n = Math.min(5, invCount(fid));
+        if (n <= 0) { toast('没有' + ITEMS[fid].name + '了'); return; }
+        if (invTake(fid, n)) {
+          // 固体燃料 / 煤存入对应燃料槽；其它设备若只认煤则回退到 feed 通用逻辑
+          if (fid === 'coal') G.panelEnt.fuelCoal += n;
+          else if (fid === 'solid-fuel' && 'fuelSolid' in G.panelEnt) G.panelEnt.fuelSolid += n;
+          else if ('giveItem' in G.panelEnt) { G.panelEnt.giveItem(fid); G.panelEnt.giveItem(fid); G.panelEnt.giveItem(fid); G.panelEnt.giveItem(fid); G.panelEnt.giveItem(fid); }
+        }
       } else if (act === 'feed') {
         const mch = G.panelEnt;
         const id = btn.dataset.id;
