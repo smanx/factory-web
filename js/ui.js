@@ -971,24 +971,44 @@ function buildDebug() {
 
   let drag = null;
   let suppressClick = false;
+  // 拖拽 Debug 按钮：统一处理鼠标 / 触屏，使触屏模式下也能拖动按钮
+  function moveDebugBtn(cx, cy) {
+    if (!drag) return;
+    if (Math.abs(cx - drag.sx) + Math.abs(cy - drag.sy) > 6) drag.moved = true;
+    if (drag.moved) {
+      btn.style.left = Math.max(4, Math.min(innerWidth - 50, drag.bx + cx - drag.sx)) + 'px';
+      btn.style.top = Math.max(4, Math.min(innerHeight - 50, drag.by + cy - drag.sy)) + 'px';
+      btn.style.right = 'auto';
+      btn.style.bottom = 'auto';
+    }
+  }
+  function endDebugDrag() {
+    if (drag) suppressClick = drag.moved;
+    drag = null;
+  }
   btn.addEventListener('mousedown', ev => {
     drag = { sx: ev.clientX, sy: ev.clientY, bx: btn.offsetLeft, by: btn.offsetTop, moved: false };
     ev.preventDefault();
   });
-  window.addEventListener('mousemove', ev => {
+  window.addEventListener('mousemove', ev => moveDebugBtn(ev.clientX, ev.clientY));
+  window.addEventListener('mouseup', endDebugDrag);
+  // 触屏拖拽：使用与摇杆一致的 touch 事件处理方式
+  btn.addEventListener('touchstart', ev => {
+    const t = ev.changedTouches[0];
+    if (!t) return;
+    drag = { sx: t.clientX, sy: t.clientY, bx: btn.offsetLeft, by: btn.offsetTop, moved: false };
+    ev.preventDefault();
+  }, { passive: false });
+  window.addEventListener('touchmove', ev => {
     if (!drag) return;
-    if (Math.abs(ev.clientX - drag.sx) + Math.abs(ev.clientY - drag.sy) > 6) drag.moved = true;
-    if (drag.moved) {
-      btn.style.left = Math.max(4, Math.min(innerWidth - 50, drag.bx + ev.clientX - drag.sx)) + 'px';
-      btn.style.top = Math.max(4, Math.min(innerHeight - 50, drag.by + ev.clientY - drag.sy)) + 'px';
-      btn.style.right = 'auto';
-      btn.style.bottom = 'auto';
+    for (const t of ev.changedTouches) {
+      moveDebugBtn(t.clientX, t.clientY);
+      break;
     }
-  });
-  window.addEventListener('mouseup', () => {
-    if (drag) suppressClick = drag.moved;
-    drag = null;
-  });
+    ev.preventDefault();
+  }, { passive: false });
+  window.addEventListener('touchend', endDebugDrag);
+  window.addEventListener('touchcancel', endDebugDrag);
   btn.addEventListener('click', () => {
     if (suppressClick) { suppressClick = false; return; }
     if (panel.style.display === 'block') { panel.style.display = 'none'; return; }
