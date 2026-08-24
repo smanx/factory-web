@@ -54,7 +54,13 @@ function updateTrains(dt) {
     // 车头烧煤移动：能量池耗尽时从燃料槽补一单位（优先固体燃料）
     head.refuel();
     const coal = (head.fuel || 0);
-    if (coal <= 0) continue;   // 没燃料则停车
+    if (coal <= 0) { tr.wasStopped = true; continue; }   // 没燃料则停车
+
+    // ===== 自动调度路线：列车按路线循环前往各站装卸 =====
+    if (trainHasSchedule(tr)) {
+      if (updateScheduledTrain(tr, dt)) continue;
+    }
+
     // 车站停车：车头所在格是车站时停车等待 + 自动装卸货
     const station = trainStopAt(head.x, head.y);
     if (station) {
@@ -86,6 +92,77 @@ function updateTrains(dt) {
       tr.moveT -= TRAIN_SPEED;
       moveTrain(tr);
     }
+  }
+}
+
+// 调度模式下驱动列车：朝当前目标站点行驶，到站装卸后前往下一站。
+// 返回 true 表示本次已由调度逻辑处理（占用当前帧）。
+function updateScheduledTrain(tr, dt) {
+  const head = tr.cars[0];
+  if (!head || !(head instanceof Locomotive)) return false;
+  const target = scheduleTargetStop(tr);
+  // 目标站不存在（被拆/改名）：直接回退为普通行驶
+  if (!target) return false;
+  // 到达目标站所在格：停靠装卸，完成停留后前往下一站
+  if (head.x === target.x && head.y === target.y) {
+    const acted = trainAutoLoadUnload(tr, target);
+    if (acted) tr.waitT = TRAIN_STOP_WAIT;
+    else if (!tr.waitT) tr.waitT = TRAIN_STOP_WAIT;
+    tr.waitT -= dt;
+    tr.stopT = Math.max(tr.stopT || 0, tr.waitT);
+    tr.wasStopped = true;
+    // 停留结束：前往路线下一站（循环）
+    if (tr.waitT <= 0) {
+      tr.routeIdx = (tr.routeIdx + 1) % tr.route.length;
+      tr.waitT = 0;
+      if (typeof playSfx === 'function') playSfx('train');
+    }
+    return true;
+  }
+  // 等待窗口（到站装卸刚结束）
+  if (tr.waitT > 0) {
+    tr.waitT -= dt;
+    tr.wasStopped = true;
+    return true;
+  }
+  // 信号灯防追尾
+  if (railSignalBlocked(head)) { tr.wasStopped = true; return true; }
+  // 朝目标站行驶
+  if (tr.wasStopped && typeof playSfx === 'function') playSfx('train');
+  tr.wasStopped = false;
+  tr.moveT = (tr.moveT || 0) + dt;
+  if (tr.moveT >= TRAIN_SPEED) {
+    tr.moveT -= TRAIN_SPEED;
+    moveTrainToward(tr, target.x, target.y);
+  }
+  return true;
+}
+
+// 朝目标格行驶（自动调度用）：直行优先，岔路口优先选择使车头更接近目标的方向。
+// 复用 moveTrain 的车厢跟随逻辑，但转向优先级不同。
+function moveTrainToward(tr, tx, ty) {
+  const head = tr.cars[0];
+  if (!head) return;
+  const oldPos = tr.cars.map(c => ({ x: c.x, y: c.y, dir: c.dir }));
+  const dir = head.dir;
+  let nd = null;
+  // 候选方向：直行 + 左右转 + 掉头，按“接近目标”程度排序
+  const cand = [dir, (dir + 1) % 4, (dir + 3) % 4, (dir + 2) % 4];
+  const dist = d => Math.abs(head.x + DX[d] - tx) + Math.abs(head.y + DY[d] - ty);
+  cand.sort((a, b) => dist(a) - dist(b));
+  for (const d of cand) {
+    const dx = DX[d], dy = DY[d];
+    if (railHas(head.x + dx, head.y + dy) && !trainOccupy(head.x + dx, head.y + dy, head)) { nd = d; break; }
+  }
+  if (nd === null) return;
+  head.x += DX[nd]; head.y += DY[nd]; head.dir = nd;
+  removeEntFromGrid(head); addEntToGrid(head);
+  head.fuel -= LOCO_COAL_PER;
+  for (let i = 1; i < tr.cars.length; i++) {
+    const car = tr.cars[i];
+    removeEntFromGrid(car);
+    car.x = oldPos[i - 1].x; car.y = oldPos[i - 1].y;
+    addEntToGrid(car);
   }
 }
 
@@ -196,6 +273,7 @@ class Locomotive extends Entity {
     this.fuel = 0;       // 能量池（用于烧起来）；由煤/固体燃料填充
     this.fuelCoal = 0;   // 存煤个数
     this.fuelSolid = 0;  // 存固体燃料个数
+    this.schedule = [];  // 自动调度路线：车站名数组（列车按此顺序循环行驶装卸）
   }
   giveItem(item) {
     if (item === 'coal' && this.fuelCoal + this.fuelSolid < LOCO_MAX_UNITS) {
@@ -227,16 +305,19 @@ class Locomotive extends Entity {
   serialize() {
     const s = super.serialize();
     s.fuel = this.fuel; s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid;
+    s.schedule = this.schedule;
     return s;
   }
   blueprint() {
     const s = super.blueprint();
     s.fuel = this.fuel; s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid;
+    s.schedule = this.schedule;
     return s;
   }
   static restore(s) {
     const e = super.restore(s);
     e.fuel = s.fuel | 0; e.fuelCoal = s.fuelCoal | 0; e.fuelSolid = s.fuelSolid | 0;
+    e.schedule = Array.isArray(s.schedule) ? s.schedule.slice() : [];
     return e;
   }
 }
@@ -374,19 +455,34 @@ class TrainStop extends Entity {
     super(type, x, y);
     this.load = [];    // 要装入车厢的物品清单
     this.unload = [];  // 要从车厢卸出的物品清单
+    this.name = '';    // 车站名（用于列车自动调度路线引用）
   }
   contents() {
     return [[this.type, 1]];
   }
+  displayName() {
+    if (this.name) return this.name;
+    // 未命名车站：按在 G.ents 中的放置顺序分配唯一编号（站1、站2…）
+    let n = 0;
+    for (const e of G.ents) {
+      if (e._dead) continue;
+      if (e instanceof TrainStop) {
+        n++;
+        if (e === this) break;
+      }
+    }
+    return '站' + n;
+  }
   serialize() {
     const s = super.serialize();
-    s.load = this.load; s.unload = this.unload;
+    s.load = this.load; s.unload = this.unload; s.name = this.name;
     return s;
   }
   static restore(s) {
     const st = super.restore(s);
     st.load = Array.isArray(s.load) ? s.load : [];
     st.unload = Array.isArray(s.unload) ? s.unload : [];
+    st.name = s.name || '';
     return st;
   }
 }
@@ -472,17 +568,57 @@ function addTrainCar(e, tx, ty) {
     if (last && Math.abs(last.x - tx) + Math.abs(last.y - ty) === 1) { train = tr; break; }
   }
   if (e instanceof Locomotive) {
-    train = { id: G.trains.length + 1, cars: [e], moveT: 0, stopT: 0 };
+    train = newTrain(e);
     G.trains.push(train);
   } else {
     if (!train) {
       // 孤立车厢：也算单独"列车"（不移动）
-      train = { id: G.trains.length + 1, cars: [e], moveT: 0, stopT: 0 };
+      train = newTrain(e);
       G.trains.push(train);
     } else {
       train.cars.push(e);
     }
   }
+}
+// 创建列车对象（含自动调度运行态）
+function newTrain(loco) {
+  const t = { id: G.trains.length + 1, cars: [], moveT: 0, stopT: 0, route: [], routeIdx: 0, waitT: 0 };
+  if (loco) {
+    t.cars = [loco];
+    t.route = (loco.schedule || []).slice();
+    t.routeIdx = 0;
+  }
+  return t;
+}
+// 列车是否有自动调度路线
+function trainHasSchedule(tr) { return !!(tr && tr.route && tr.route.length > 0); }
+// 找到路线中当前目标站点实体（按车站名）
+function scheduleTargetStop(tr) {
+  if (!trainHasSchedule(tr)) return null;
+  const name = tr.route[tr.routeIdx];
+  for (const e of G.ents) {
+    if (e._dead || !(e instanceof TrainStop)) continue;
+    if (e.displayName() === name) return e;
+  }
+  return null;
+}
+// 查找所有车站名（用于调度面板选择）
+function allTrainStopNames() {
+  const names = [];
+  for (const e of G.ents) {
+    if (e._dead || !(e instanceof TrainStop)) continue;
+    const n = e.displayName();
+    if (names.indexOf(n) < 0) names.push(n);
+  }
+  return names;
+}
+// 该车站是否被任一列车的自动调度路线引用（用于渲染调度光环标记）
+function stationInSchedule(stop) {
+  const n = stop.displayName();
+  for (const tr of G.trains) {
+    if (tr.route && tr.route.indexOf(n) >= 0) return true;
+  }
+  return false;
 }
 
 function removeTrainCar(e) {
@@ -606,6 +742,17 @@ DEVICE_RENDER['train-stop'] = function (ctx, e, gx, gy, dir, alpha) {
   ctx.font = 'bold ' + Math.round(TILE * 0.4) + 'px system-ui';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('S', gx + TILE / 2, gy + TILE / 2);
+  // 若该车站被列车自动调度路线引用：叠加呼吸的蓝色调度光环，直观标记调度网络节点
+  if (stationInSchedule(e)) {
+    const t = (performance.now() || Date.now()) / 1000;
+    const pulse = 0.5 + 0.5 * Math.sin(t * 2.4);
+    ctx.globalAlpha = alpha * (0.35 + 0.35 * pulse);
+    ctx.strokeStyle = '#4ab8ff';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(gx + TILE / 2, gy + TILE / 2, TILE * (0.62 + 0.06 * pulse), 0, Math.PI * 2);
+    ctx.stroke();
+  }
   ctx.restore();
 };
 
@@ -622,6 +769,32 @@ DEVICE_RENDER['rail-signal'] = function (ctx, e, gx, gy, dir, alpha) {
 };
 
 // ===== 面板 =====
+// ===== 车头自动调度面板 =====
+function locoScheduleHtml(e) {
+  const stops = allTrainStopNames();
+  let h = '<div class="sec">🚂 自动调度路线（对齐《异星工厂》Schedule）</div>';
+  if (!stops.length) {
+    h += '<div class="dim">尚未放置任何车站。请先放置车站（Train Stop）到铁轨上，再回来配置路线。</div>';
+    return h;
+  }
+  // 当前路线
+  h += '<div class="rows">';
+  if (!e.schedule || !e.schedule.length) h += '<div class="dim">未配置路线：列车将一直直线行驶、遇站装卸。配置路线后按序循环往返各站。</div>';
+  else for (let i = 0; i < e.schedule.length; i++) {
+    h += '<div class="row"><span>' + (i + 1) + '. ' + chip('train-stop') + ' ' + e.schedule[i] + '</span>' +
+      '<button data-act="sch-up" data-idx="' + i + '" title="上移">↑</button>' +
+      '<button data-act="sch-down" data-idx="' + i + '" title="下移">↓</button>' +
+      '<button data-act="sch-del" data-idx="' + i + '" title="删除该站">✕</button></div>';
+  }
+  h += '</div>';
+  // 添加站点（下拉选择车站）
+  h += '<div class="rows"><div class="row"><span>加入站点</span><select id="sch-add" data-act="sch-add">' +
+    stops.map((n, i) => '<option value="' + n + '">' + n + '</option>').join('') +
+    '</select><button data-act="sch-add-btn">＋ 追加</button></div></div>';
+  h += '<div class="dim">路线按顺序循环：列车沿铁轨驶向路线中的每个车站，到站自动装卸该站的“装载/卸载”物品，随后前往下一站。用此实现两站（或多站）间往返自动化运输。</div>';
+  return h;
+}
+
 DEVICE_PANEL['locomotive'] = {
   html(e) {
     return '<div class="dim">车头：烧燃料在铁轨上行驶。装入煤/固体燃料后自动前进，可挂接货运车厢。固体燃料更耐用。</div>' +
@@ -630,7 +803,7 @@ DEVICE_PANEL['locomotive'] = {
       (invCount('solid-fuel') > 0 || (e.fuelSolid || 0) > 0
         ? '<div class="row"><span>固体燃料</span><b>' + (e.fuelSolid || 0) + '</b><button data-act="putsolid">+1</button><button data-act="takesolid">取出</button></div>'
         : '') +
-      '</div>';
+      '</div>' + locoScheduleHtml(e);
   },
   live() { return ''; },
   tip() { return 'g'; },
@@ -639,9 +812,40 @@ DEVICE_PANEL['locomotive'] = {
     else if (btn === 'takecoal') { const it = e.takeItemOf('coal'); if (it) { invAdd(it); toast('已取出煤'); uiDirty = true; } }
     else if (btn === 'putsolid' && invCount('solid-fuel') > 0) { e.giveItem('solid-fuel'); invTake('solid-fuel', 1); toast('已加固体燃料'); uiDirty = true; }
     else if (btn === 'takesolid') { const it = e.takeItemOf('solid-fuel'); if (it) { invAdd(it); toast('已取出固体燃料'); uiDirty = true; } }
+    else if (btn === 'sch-add-btn') {
+      const sel = document.getElementById('sch-add');
+      if (sel && sel.value) {
+        e.schedule = e.schedule || [];
+        e.schedule.push(sel.value);
+        // 同步到所属列车的 route（若列车已在运行）
+        syncLocoSchedule(e);
+        toast('已把车站「' + sel.value + '」加入路线');
+        uiDirty = true;
+      }
+    }
+    else if (btn === 'sch-del' || btn === 'sch-up' || btn === 'sch-down') {
+      const idx = +((btn && btn.dataset && btn.dataset.idx) || -1);
+      if (!e.schedule || idx < 0 || idx >= e.schedule.length) return true;
+      if (btn === 'sch-del') e.schedule.splice(idx, 1);
+      else if (btn === 'sch-up' && idx > 0) { const t = e.schedule[idx]; e.schedule[idx] = e.schedule[idx - 1]; e.schedule[idx - 1] = t; }
+      else if (btn === 'sch-down' && idx < e.schedule.length - 1) { const t = e.schedule[idx]; e.schedule[idx] = e.schedule[idx + 1]; e.schedule[idx + 1] = t; }
+      syncLocoSchedule(e);
+      uiDirty = true;
+    }
     return true;
   }
 };
+
+// 把车头的 schedule 同步到其所属列车的 route（编辑路线时实时生效）
+function syncLocoSchedule(loco) {
+  for (const tr of G.trains) {
+    if (tr.cars[0] === loco) {
+      tr.route = (loco.schedule || []).slice();
+      if (tr.routeIdx >= tr.route.length) tr.routeIdx = 0;
+      return;
+    }
+  }
+}
 
 DEVICE_PANEL['cargo-wagon'] = {
   html(e) {
@@ -757,6 +961,11 @@ DEVICE_PLACE['rail-signal'] = (type, tx, ty) => {
 // 装卸循环：点击物品，状态在 [未选 → 装载(load) → 卸载(unload) → 未选] 间循环。
 function trainStopPanelHtml(e) {
   let h = '<div class="dim">车站：列车停靠后自动装卸货。下方选择物品并设“装载/卸载”。</div>';
+  // 车站名（用于列车自动调度路线引用）
+  h += '<div class="sec">车站名（自动调度引用）</div>' +
+    '<div class="rows"><div class="row"><input id="ts-name" type="text" maxlength="12" value="' + escHtml(e.displayName()) + '" placeholder="车站名">' +
+    '<button data-act="ts-rename">重命名</button></div></div>' +
+    '<div class="dim">给本站命名后，在车头面板的“自动调度路线”里把本站加入路线，列车即可按路线循环往返本站装卸。</div>';
   h += '<div class="sec">装载（箱子→车厢）</div><div class="rows">';
   if (!e.load || !e.load.length) h += '<div class="dim">未设置</div>';
   else for (const id of e.load) h += '<div class="row"><span>' + chip(id) + ' ' + ITEMS[id].name + '</span><button data-action="ts-unload" data-id="' + id + '">→卸</button><button data-action="ts-rm" data-id="' + id + '">✕</button></div>';
@@ -779,11 +988,28 @@ function trainStopPanelHtml(e) {
 }
 function trainStopPanelLive(e, api) {
   let n = (e.load ? e.load.length : 0) + (e.unload ? e.unload.length : 0);
-  api.status(n ? ('已配置 ' + n + ' 种装卸物品') : '未配置装卸（列车仅短暂停车）', n ? 'ok' : 'warn');
+  const sched = stationInSchedule(e);
+  const parts = [];
+  if (sched) parts.push('已纳入列车自动调度路线（蓝色光环标记）');
+  if (n) parts.push('已配置 ' + n + ' 种装卸物品');
+  else parts.push('未配置装卸（列车仅短暂停车）');
+  api.status(parts.join(' · '), (sched ? 'ok' : n ? 'ok' : 'warn'));
 }
 function trainStopOnAction(act, btn) {
   const st = G.panelEnt;
   if (!st || !(st instanceof TrainStop)) return false;
+  if (act === 'ts-rename') {
+    const inp = document.getElementById('ts-name');
+    if (inp && inp.value.trim()) {
+      const name = inp.value.trim().slice(0, 12);
+      st.name = name;
+      // 车站改名后，所有调度路线中的旧名引用失效——同步各列车：若旧自动名被引用则跟随改名
+      toast('车站已命名为「' + name + '」');
+      uiDirty = true;
+      return true;
+    }
+    return true;
+  }
   const id = btn && btn.dataset ? btn.dataset.id : null;
   if (!id) return false;
   if (act === 'ts-rm') {
