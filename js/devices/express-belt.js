@@ -256,7 +256,7 @@ function drawExpressSplitter(ctx, e, gx, gy, dir, alpha) {
 }
 
 // ===== 面板（复用传送带/地下带/分流器面板）=====
-const expressBeltPanel = { html: beltPanelHtml, live: beltPanelLive, tip: beltTip };
+const expressBeltPanel = { html: beltPanelHtml, live: beltPanelLive, tip: beltTip, onAction: (a) => (typeof circuitPanelAction === 'function' ? circuitPanelAction('belt', a) : false) };
 const expressUndergroundPanel = { html: undergroundPanelHtml, live: undergroundPanelLive };
 const expressSplitterPanel = { html: splitterPanelHtml, onAction: splitterOnAction, live: splitterPanelLive };
 

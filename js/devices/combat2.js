@@ -399,7 +399,7 @@ function updateLootDrops(dt) {
     if (Math.hypot(d.x - p.x, d.y - p.y) < pickR) {
       invAdd(d.id, d.n || 1);
       if (typeof toast === 'function' && d.id === 'uranium-ore') toast('拾取 铀矿石');
-      if (typeof playSfx === 'function') playSfx('select');
+      if (typeof playSfx === 'function') playSfx('loot');
       d.picked = true;
     }
   }

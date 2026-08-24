@@ -84,6 +84,10 @@ class Refinery extends Entity {
       if (G.power.sat <= 0) return;
       this.working = true;
       this.prog += dt * oilMult() * powerFactor();
+      // 炼油厂运转：顶部低频排放蒸汽（画面优化）
+      if (typeof spawnSteam === 'function' && Math.random() < dt * 0.9) {
+        spawnSteam((this.x + 0.5 + (Math.random() - 0.5) * 0.6) * TILE, (this.y + 0.25) * TILE, { size: 3, life: 1.5 });
+      }
       if (this.prog >= rec.time) {
         for (const k in rec.out) {
           this.outp[k] = (this.outp[k] || 0) + rec.out[k];

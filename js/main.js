@@ -835,6 +835,7 @@ function captureBlueprint() {
   G.blueprint = { minX: r.x0, minY: r.y0, ents };
   // 自动存入蓝图库（去重：与已有蓝图内容相同则不重复添加）
   if (typeof blueBookAdd === 'function') blueBookAdd(G.blueprint);
+  if (typeof playSfx === 'function') playSfx('blueprint');
   G.blueMode = 'paste';
   G.blueStart = null; G.blueEnd = null;
   G.blueRot = 0; G.blueFlipH = false; G.blueFlipV = false;

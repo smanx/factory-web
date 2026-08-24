@@ -49,6 +49,10 @@ class Assembler extends Entity {
     if (this.crafting) {
       this.prog += dt * asmMult() * 0.5 * this.moduleSpeedMult() * powerFactor();
       this.spin += dt * 4;
+      // 工业氛围：组装机运转时低频迸出细碎火花（画面优化）
+      if (typeof spawnSpark === 'function' && Math.random() < dt * 1.2) {
+        spawnSpark((this.x + 0.5 + (Math.random() - 0.5) * 0.7) * TILE, (this.y + 0.4) * TILE, { size: 1.2, life: 0.4, speed: 2 });
+      }
       if (this.prog >= rec.time) {
         for (const k in rec.out) {
           this.outp[k] = (this.outp[k] || 0) + rec.out[k];

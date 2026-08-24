@@ -80,7 +80,11 @@ const SFX = {
   // 能量护盾吸收：短促高频“嗡”闪光（对齐《异星工厂》能量护盾受击音）
   shield: { type: 'triangle', dur: 0.14, f0: 1400, f1: 600, vol: 0.2, slide: true },
   // 吃鱼回血：清爽“咕嘟”水声（对齐《异星工厂》吃鱼治疗音）
-  fish: { type: 'sine', dur: 0.3, f0: 500, f1: 300, vol: 0.16, slide: true, arpeggio: [500, 400, 300] }
+  fish: { type: 'sine', dur: 0.3, f0: 500, f1: 300, vol: 0.16, slide: true, arpeggio: [500, 400, 300] },
+  // 蓝图复制/粘贴：清脆的电子“嗡—嘀”（对齐《异星工厂》蓝图操作的科技感）
+  blueprint: { type: 'triangle', dur: 0.24, f0: 880, f1: 1320, vol: 0.16, slide: true, arpeggio: [880, 1100, 1320] },
+  // 敌人死亡/拾取战利品：短促“叮”一声（对齐《异星工厂》击杀反馈）
+  loot: { type: 'square', dur: 0.09, f0: 1560, f1: 2080, vol: 0.14, slide: true }
 };
 
 function sfxInit() {
