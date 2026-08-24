@@ -307,6 +307,24 @@ function applyInvRecipeFilter(q) {
   }
 }
 
+// 组装机面板：按关键字过滤「选择配方」网格中的配方按钮
+function applyAssemblerRecipeFilter(q) {
+  const body = document.getElementById('panel-body');
+  if (!body) return;
+  const ql = (q || '').trim().toLowerCase();
+  let shown = 0;
+  body.querySelectorAll('.recgrid .rcbtn[data-rsearch]').forEach(el => {
+    const hit = !ql || el.dataset.rsearch.includes(ql);
+    el.style.display = hit ? '' : 'none';
+    if (hit) shown++;
+  });
+  const emp = document.getElementById('asm-recipe-empty');
+  if (emp) {
+    emp.textContent = ql ? '没有匹配「' + q.trim() + '」的配方' : '';
+    emp.style.display = (ql && !shown) ? '' : 'none';
+  }
+}
+
 function htmlTech() {
   let h = '';
   for (const tid in TECHS) {
@@ -420,9 +438,12 @@ function initPanelEvents() {
   });
   document.getElementById('panel-close').addEventListener('click', () => closePanel());
   document.getElementById('panel-body').addEventListener('input', ev => {
-    if (ev.target.id !== 'inv-recipe-search') return;
-    G.invRecipeQ = ev.target.value;
-    applyInvRecipeFilter(G.invRecipeQ);
+    if (ev.target.id === 'inv-recipe-search') {
+      G.invRecipeQ = ev.target.value;
+      applyInvRecipeFilter(G.invRecipeQ);
+    } else if (ev.target.id === 'asm-recipe-search') {
+      applyAssemblerRecipeFilter(ev.target.value);
+    }
   });
   document.getElementById('panel-body').addEventListener('click', ev => {
     const statTab = ev.target.closest('[data-stat-tab]');
