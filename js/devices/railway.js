@@ -273,6 +273,65 @@ class CargoWagon extends Entity {
   }
 }
 
+// ===== 流体车厢 FluidWagon（对齐《异星工厂》Fluid Wagon） =====
+// 继承 CargoWagon 以复用列车编组逻辑；但存储的是单一流体而非物品槽位。
+// 容量 FLUID_WAGON_CAP，只容纳一种流体。车站可用流体泵从侧边装卸。
+class FluidWagon extends CargoWagon {
+  constructor(type, x, y) {
+    super(type, x, y);
+    this.slots = [];
+    this.fluid = null;   // 当前装载的流体 id
+    this.amount = 0;     // 已装流体量
+  }
+  // 物品接口：流体车厢不存普通物品
+  giveItem(item) { return false; }
+  peekItem() { return null; }
+  takeItem() { return null; }
+  countOf(item) { return 0; }
+  takeItemOf(item) { return null; }
+  contents() { return [[this.type, 1]]; }
+  takeAll() { return [[this.type, 1]]; }
+  // 流体接口：由泵/面板调用
+  fluidContents() { return this.fluid ? { item: this.fluid, count: this.amount } : null; }
+  fluidCapacity() { return FLUID_WAGON_CAP; }
+  // 向车厢注入流体；返回实际注入量
+  addFluid(fid, n) {
+    if (this.fluid && this.fluid !== fid) return 0;
+    const room = FLUID_WAGON_CAP - this.amount;
+    const take = Math.min(room, n);
+    if (take <= 0) return 0;
+    this.fluid = fid;
+    this.amount += take;
+    return take;
+  }
+  // 从车厢抽出流体；返回实际抽出量
+  takeFluid(fid, n) {
+    if (!this.fluid || (fid && this.fluid !== fid) || this.amount <= 0) return 0;
+    const out = Math.min(this.amount, n);
+    this.amount -= out;
+    if (this.amount <= 0) this.fluid = null;
+    return out;
+  }
+  serialize() {
+    const s = super.serialize();
+    s.fluid = this.fluid;
+    s.amount = this.amount;
+    return s;
+  }
+  blueprint() {
+    const s = super.blueprint();
+    s.fluid = this.fluid;
+    s.amount = this.amount;
+    return s;
+  }
+  static restore(s) {
+    const e = super.restore(s);
+    e.fluid = s.fluid || null;
+    e.amount = s.amount | 0;
+    return e;
+  }
+}
+
 // ===== 车站 TrainStop =====
 class TrainStop extends Entity {
   constructor(type, x, y) { super(type, x, y); }
@@ -401,6 +460,35 @@ DEVICE_RENDER['cargo-wagon'] = function (ctx, e, gx, gy, dir, alpha) {
 };
 
 // ===== 车站渲染 =====
+DEVICE_RENDER['fluid-wagon'] = function (ctx, e, gx, gy, dir, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(gx + TILE / 2, gy + TILE / 2);
+  ctx.rotate(dir * Math.PI / 2);
+  // 罐体
+  ctx.fillStyle = '#3a6a8a';
+  rrPath(ctx, -TILE * 0.4, -TILE * 0.3, TILE * 0.8, TILE * 0.6, TILE * 0.22);
+  ctx.fill();
+  ctx.strokeStyle = '#1a3a52'; ctx.lineWidth = 2; ctx.stroke();
+  // 装载液位
+  const fc = (typeof e.fluidContents === 'function') ? e.fluidContents() : null;
+  if (fc && fc.count > 0) {
+    const fcol = ITEMS[fc.item] ? ITEMS[fc.item].color : '#4a90c0';
+    ctx.fillStyle = fcol;
+    const lvl = Math.max(0.1, fc.count / FLUID_WAGON_CAP);
+    rrPath(ctx, -TILE * 0.32, TILE * 0.3 - TILE * 0.6 * lvl, TILE * 0.64, TILE * 0.6 * lvl, TILE * 0.12);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold ' + Math.round(TILE * 0.32) + 'px system-ui';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(fc.item === 'water' ? 'H2O' : fc.item === 'crude-oil' ? 'OIL' : fc.item === 'steam' ? 'ST' : fc.item, 0, 0);
+  }
+  // 液位状态灯
+  ctx.fillStyle = fc && fc.count > 0 ? '#7fd0ff' : '#555';
+  ctx.fillRect(-TILE * 0.2, -TILE * 0.38, TILE * 0.12, TILE * 0.12);
+  ctx.restore();
+};
+
 DEVICE_RENDER['train-stop'] = function (ctx, e, gx, gy, dir, alpha) {
   ctx.save();
   ctx.globalAlpha = alpha;
@@ -462,6 +550,40 @@ DEVICE_PANEL['cargo-wagon'] = {
   }
 };
 
+DEVICE_PANEL['fluid-wagon'] = {
+  html(e) {
+    const fc = (typeof e.fluidContents === 'function') ? e.fluidContents() : null;
+    let h = '<div class="dim">流体车厢：挂在车头后随列车移动，可运输任意一种流体（容量 ' + FLUID_WAGON_CAP + '）。可用流体泵从侧边装卸，或面板手动加/取。</div><div class="sec">装载</div>';
+    if (!fc || fc.count <= 0) h += '<div class="dim">车厢是空的</div>';
+    else h += '<div class="row"><span>' + (ITEMS[fc.item] ? ITEMS[fc.item].name : fc.item) + '</span><b>' + fc.count + ' / ' + FLUID_WAGON_CAP + '</b></div>';
+    // 手动装卸流体下拉
+    const opts = FLUIDS.map(f => '<option value="' + f + '">' + (ITEMS[f] ? ITEMS[f].name : f) + '</option>').join('');
+    h += '<div class="rows"><div class="row"><span>装载流体</span><select id="fw-fluid">' + opts + '</select>' +
+      '<button data-act="fw-add">加1000</button><button data-act="fw-take">取1000</button></div></div>';
+    return h;
+  },
+  live() { return ''; },
+  tip() { return 'g'; },
+  onAction(btn, e) {
+    if (btn === 'fw-add' || btn === 'fw-take') {
+      const sel = document.getElementById('fw-fluid');
+      const fid = sel ? sel.value : 'water';
+      if (btn === 'fw-add') {
+        if (!invCount(fid)) { toast('背包里没有该流体'); return true; }
+        const n = e.addFluid(fid, 1000);
+        if (n > 0) { invTake(fid, n); toast('已装入 ' + n + ' ' + (ITEMS[fid] ? ITEMS[fid].name : fid)); uiDirty = true; }
+        else toast('车厢已满或流体不兼容');
+      } else {
+        const n = e.takeFluid(fid, 1000);
+        if (n > 0) { invAdd(fid, n); toast('已取出 ' + n); uiDirty = true; }
+        else toast('没有可取的流体');
+      }
+      return true;
+    }
+    return false;
+  }
+};
+
 // ===== 放置/拆除钩子（包装 addEnt/removeEnt，维护 railTiles 与列车编组）=====
 const __railAddEnt = addEnt;
 const __railRemoveEnt = removeEnt;
@@ -498,16 +620,19 @@ function beforeRailRemove(e) {
 ENT_CLASSES['rail'] = Rail;
 ENT_CLASSES['locomotive'] = Locomotive;
 ENT_CLASSES['cargo-wagon'] = CargoWagon;
+ENT_CLASSES['fluid-wagon'] = FluidWagon;
 ENT_CLASSES['train-stop'] = TrainStop;
 ENT_CLASSES['rail-signal'] = RailSignal;
 
 // R 键可旋转车头（决定行进方向）
 DEVICE_DIR_ROTATE['locomotive'] = true;
+DEVICE_DIR_ROTATE['fluid-wagon'] = true;
 
 // 放置规则
 DEVICE_PLACE['rail'] = null;   // 铁轨放任何空地
 DEVICE_PLACE['locomotive'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true } : { ok: false };
 DEVICE_PLACE['cargo-wagon'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true } : { ok: false };
+DEVICE_PLACE['fluid-wagon'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true } : { ok: false };
 DEVICE_PLACE['train-stop'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true } : { ok: false };
 // 信号灯：放在铁轨旁任意一格（四周有铁轨即可）
 DEVICE_PLACE['rail-signal'] = (type, tx, ty) => {

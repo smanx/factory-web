@@ -64,6 +64,7 @@ const G = {
   playerHPmax: 100,
   playerFireT: 0,
   weapon: null,       // 当前选中的武器 id（player 持有）
+  armor: null,        // 当前穿戴的护甲 id（light-armor / heavy-armor）
   gameWon: false,     // 是否已发射火箭赢得游戏
   victoryT: 0,
   inMenu: true,       // 开始菜单显示中：游戏世界尚未初始化，loop 暂停渲染与更新
@@ -125,6 +126,7 @@ function newGame() {
   G.trains = [];
   G.playerHP = 100; G.playerHPmax = 100;
   G.weapon = null;
+  G.armor = null;
   G.gameWon = false;
   G.victoryT = 0;
   if (typeof resetPowerReg === 'function') resetPowerReg();
@@ -160,11 +162,12 @@ function serializeAll() {
         const i = k.indexOf(',');
         return [+k.slice(0, i), +k.slice(i + 1), v];
       }),
-      chunks: Array.from(G.world.chunks.values()).map(encodeChunkData)
+      chunks: Array.from(G.world.chunks.values()).map(encodeChunkData),
+      explored: (G.world.explored ? Array.from(G.world.explored) : [])
     },
     ents: G.ents.filter(e => !e._dead).map(e => e.serialize()),
     inv: Array.from(G.inv),
-    player: { x: G.player.x, y: G.player.y, hp: G.playerHP, weapon: G.weapon },
+    player: { x: G.player.x, y: G.player.y, hp: G.playerHP, weapon: G.weapon, armor: G.armor },
     craftQueue: (G.craftQueue || []).map(q => ({
       rid: q.rid, time: q.time, total: q.total, done: q.done, outId: q.outId
     })),
@@ -245,6 +248,8 @@ function applySave(d) {
   G.grid = new Map();
   G.buckets = new Map();
   G.ents = [];
+  if (Array.isArray(d.world && d.world.explored)) G.world.explored = new Set(d.world.explored);
+  else if (!G.world.explored) G.world.explored = new Set();
   if (typeof resetPowerReg === 'function') resetPowerReg();
   for (const s of d.ents) {
     const cls = ENT_CLASSES[s.type];
@@ -260,6 +265,7 @@ function applySave(d) {
   G.player.x = d.player.x; G.player.y = d.player.y;
   if (typeof d.player.hp === 'number') G.playerHP = G.playerHPmax = Math.max(1, d.player.hp);
   G.weapon = d.player.weapon || null;
+  G.armor = (isArmor && isArmor(d.player.armor)) ? d.player.armor : null;
   G.gameWon = !!d.gameWon;
   G.combatRobots = [];
   G.driving = null;
@@ -876,7 +882,7 @@ function tryEnterNearbyCar() {
   const checks = [[px, py], [px + DX[G.player.dir], py + DY[G.player.dir]]];
   for (const [tx, ty] of checks) {
     const e = entAt(tx, ty);
-    if (e && e.type === 'car' && typeof enterCar === 'function') { enterCar(e); return true; }
+    if (e && (e.type === 'car' || e.type === 'tank') && typeof enterCar === 'function') { enterCar(e); return true; }
   }
   return false;
 }
@@ -1082,6 +1088,7 @@ function bindInput() {
     }
     else if (k === 't') G.panelMode === 'tech' ? closePanel() : openPanel('tech');
     else if (k === 'o') G.panelMode === 'set' ? closePanel() : openPanel('set');
+    else if (k === 'm') { G.settings.minimap = !(G.settings.minimap !== false); toast(G.settings.minimap ? '小地图：开启' : '小地图：关闭'); }
     else if (k === 'escape' || k === 'q') {
       if (G.driving) { if (typeof exitCar === 'function') exitCar(); }
       else if (G.blueMode) {
@@ -1274,6 +1281,7 @@ function loop(ts) {
         updatePlayerFire(dt);
         updatePlayerBulletHits(dt);
         updateCombatRobots(dt);
+        if (typeof updateTankFire === 'function') updateTankFire(dt);
       }
       G.powerT += dt;
       if (G.powerT >= 0.25) { G.powerT = 0; updatePower(); }

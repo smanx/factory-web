@@ -26,7 +26,31 @@ function isPaved(t) { return t === T_CONCRETE || t === T_PATH; }
 // 世界由 32×32 块按需确定性生成。矿量稀疏存储：only remaining（被采过且
 // 低于基础值的格子），未触碰的格子永远按基础值重建，保证无限矿脉与远行富集。
 function genWorld(seed) {
-  return { seed, chunks: new Map(), remaining: new Map() };
+  return { seed, chunks: new Map(), remaining: new Map(), explored: new Set() };
+}
+
+// ===== 探索追踪（小地图/雷达用） =====
+// G.world.explored：已“点亮”区块的坐标集合（chunk 粒度）。
+// 玩家移动会自动点亮脚下区块；雷达/侦察会调用 markExplored 点亮更大范围。
+// 探索状态随存档持久化，用于小地图绘制与敌人生成范围控制。
+function markExplored(px, py, radius) {
+  if (!G.world.explored) G.world.explored = new Set();
+  const r = (radius == null ? 1 : radius);
+  const c0 = Math.floor((px - r) / CHUNK), c1 = Math.floor((px + r) / CHUNK);
+  const d0 = Math.floor((py - r) / CHUNK), d1 = Math.floor((py + r) / CHUNK);
+  for (let cx = c0; cx <= c1; cx++)
+    for (let cy = d0; cy <= d1; cy++)
+      G.world.explored.add(cx + ',' + cy);
+}
+
+// 区块是否已探索
+function chunkExplored(cx, cy) {
+  return !!(G.world && G.world.explored && G.world.explored.has(cx + ',' + cy));
+}
+
+// 当前是否已知晓某瓦片（小地图是否可绘制该格）
+function tileExplored(tx, ty) {
+  return chunkExplored(Math.floor(tx / CHUNK), Math.floor(ty / CHUNK));
 }
 
 // ===== 地图块持久化 =====
