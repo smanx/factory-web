@@ -529,13 +529,13 @@ function drawPlayer(ctx) {
     const sw = moving ? step * s * 2.6 : 0;
     ctx.strokeStyle = '#4d3318';
     ctx.beginPath();
-    ctx.moveTo(p.x - cx * 1.5 + s * 2.3, p.y + 3);
-    ctx.lineTo(p.x - cx * 1.5 + s * 2.3 + cx * sw, p.y + 8 + Math.abs(sw) * 0.35);
+    ctx.moveTo(p.x + s * 2.3, p.y + 3);
+    ctx.lineTo(p.x + s * 2.3 + cx * sw, p.y + 8 + Math.abs(sw) * 0.35);
     ctx.stroke();
   }
 
   // ---- 身体：橙色工装上衣（圆角躯干 + 腰带）----
-  const bx = p.x - cx * 1.5, by = p.y + bob - 2;
+  const bx = p.x, by = p.y + bob - 2;
   ctx.fillStyle = '#d97b2f';
   ctx.strokeStyle = '#7c431a';
   ctx.lineWidth = 1.5;
@@ -562,13 +562,13 @@ function drawPlayer(ctx) {
     const armSwing = mining ? Math.sin(t + s * 0.7) * 2 : (moving ? step * s * 1.8 : 0);
     ctx.strokeStyle = '#d97b2f';
     ctx.beginPath();
-    ctx.moveTo(bx + cx * 1.5 + s * 3.8, by - 1);
-    ctx.lineTo(bx + cx * 1.5 + s * 4.2 + cx * armSwing * 0.6, by + 5 + armSwing * 0.8);
+    ctx.moveTo(bx + s * 3.8, by - 1);
+    ctx.lineTo(bx + s * 4.2 + cx * armSwing * 0.6, by + 5 + armSwing * 0.8);
     ctx.stroke();
   }
 
   // ---- 头部：肤色圆，朝移动方向偏移 ----
-  const hx = p.x + cx * 4, hy = p.y + bob - 9;
+  const hx = p.x, hy = p.y + bob - 9;
   ctx.fillStyle = '#ffe0b0';   // 更显年轻的亮肤色
   ctx.strokeStyle = '#7c431a';
   ctx.lineWidth = 1.2;
@@ -593,11 +593,12 @@ function drawPlayer(ctx) {
   ctx.arc(hx + 4.4, hy + 0.5, 1.8, Math.PI * 0.1, Math.PI * 1.4);
   ctx.fill();
 
-  // ---- 眼睛：朝向移动方向，带高光显精神 ----
+  // ---- 眼睛：朝向移动方向，始终水平排列（正面分开、侧面靠拢）带高光显精神 ----
   ctx.fillStyle = '#2b2b2b';
+  const eyeSpread = Math.abs(cy) < 0.5 ? 1.5 : 2.4;   // 侧面时靠拢、正面时分开
   for (const s of [-1, 1]) {
-    const ex = hx + cx * 1.8 + (Math.abs(cy) < 0.5 ? s * 2.2 : 0);
-    const ey = hy + cy * 1.8 + (Math.abs(cy) >= 0.5 ? s * 2 : 0);
+    const ex = hx + cx * 1.6 + s * eyeSpread;
+    const ey = hy + cy * 1.8;
     ctx.beginPath();
     ctx.arc(ex, ey, 1.2, 0, 7);
     ctx.fill();
