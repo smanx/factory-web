@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>工厂原型 Factory Proto</title>
-<link rel="stylesheet" href="css/style.css?v=22">
+<link rel="stylesheet" href="css/style.css?v=23">
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -49,6 +49,18 @@
       <button id="btn-new-game" class="start-btn primary">▶ 开始新游戏</button>
       <button id="btn-continue" class="start-btn">📂 读取存档</button>
       <div id="start-save-info" class="start-save-info"></div>
+    </div>
+
+    <!-- 读取存档：弹出存档列表弹层，可选指定存档或一键加载最新 -->
+    <div id="load-save-overlay" class="load-save-overlay hidden">
+      <div class="load-save-panel">
+        <div class="load-save-head">
+          <span class="load-save-title">📂 读取存档</span>
+          <button id="load-save-close" class="load-save-close" title="关闭">✕</button>
+        </div>
+        <button id="btn-load-newest" class="load-newest-btn">⚡ 一键加载最新存档</button>
+        <div id="load-save-list" class="load-save-list"></div>
+      </div>
     </div>
     <div class="start-hint">
       WASD 移动 · 左键建造/挖矿 · 右键拆除 · R 旋转 · F 拿取 ·
@@ -114,12 +126,12 @@
 <script src="js/core/power.js?v=10"></script>
 <script src="js/player.js?v=20"></script>
 <script src="js/ui.js?v=34"></script>
-<script src="js/menu.js?v=2"></script>
+<script src="js/menu.js?v=3"></script>
 <script src="js/render.js?v=28"></script>
 <script src="js/stats.js?v=14"></script>
 <script src="js/saves.js?v=3"></script>
 <script src="js/sfx.js?v=4"></script>
 <script src="js/touch.js?v=4"></script>
-<script src="js/main.js?v=38"></script>
+<script src="js/main.js?v=39"></script>
 </body>
 </html>

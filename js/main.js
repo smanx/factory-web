@@ -1159,6 +1159,19 @@ async function startFromSave() {
   // 读取时间最新的存档（自动或用户均可）
   const data = await readNewestSave();
   if (!data) { toast('没有存档，请先开始新游戏'); return false; }
+  return enterFromSave(data, '已读档');
+}
+
+// 从开始菜单读取指定 id 的存档并进入游戏
+async function loadSaveFromMenu(id) {
+  if (!id) { toast('没有存档'); return false; }
+  const data = await readSave(id);
+  if (!data) { toast('存档不存在或已损坏'); return false; }
+  return enterFromSave(data, '已读档');
+}
+
+// 应用存档数据并进入游戏（供开始菜单读取存档复用）
+function enterFromSave(data, okMsg) {
   try {
     applySave(data);
   } catch (err) {
@@ -1167,7 +1180,7 @@ async function startFromSave() {
   }
   buildHotbar();
   enterGame();
-  toast('已读档');
+  if (okMsg) toast(okMsg);
   return true;
 }
 
