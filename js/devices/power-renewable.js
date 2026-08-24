@@ -2,7 +2,7 @@
 
 // ===== 太阳能板：白天无燃料发电（对齐《异星工厂》Solar panel，占地 2×2）=====
 // 加入白天/黑夜时间周期，白天满发、夜晚零发，并入全图电网（作为 powerOut 正项）。
-const SOLAR_POWER = 5;              // 满日照功率
+const SOLAR_POWER = 60;             // 满日照功率（对齐《异星工厂》太阳能板 60kW）
 const DAY_CYCLE = 60;               // 一昼夜时长（秒）
 function solarFactor() {
   // 用 G.time 模拟昼夜：0.25（黎明）→0.5（正午）→0.75（黄昏）→1（深夜）
@@ -20,8 +20,8 @@ class SolarPanel extends Entity {
 
 // ===== 蓄电器：储存电力，白天充电、夜间放电（对齐《异星工厂》Accumulator，占地 2×2）=====
 // 作为电网的“缓冲电池”：白天电网有盈余时充电，夜间/不足时放电补充。
-const ACCUM_CAP = 30;              // 储电上限
-const ACCUM_CHARGE_RATE = 3;       // 每秒充/放电速率上限
+const ACCUM_CAP = 5000;            // 储电上限 5MJ（对齐《异星工厂》蓄电器，单位 kJ）
+const ACCUM_CHARGE_RATE = 300;     // 每秒充/放电速率上限（对齐《异星工厂》蓄电器 300kW）
 class Accumulator extends Entity {
   constructor(type, x, y) {
     super('accumulator', x, y);
