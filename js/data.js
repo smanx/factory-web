@@ -264,7 +264,20 @@ const ITEMS = {
   // ===== 混凝土 / 地形改造（对齐《异星工厂》Concrete & Landfill）=====
   'concrete': { name: '混凝土', color: '#9a9aa0', desc: '地面装饰：铺设在草地上可加速玩家行走（比泥地快），需在玩家脚下使用或按住铺设' },
   'stone-path': { name: '石砖路', color: '#a8a09a', desc: '地面装饰：铺设在地面上美观且加速行走（由石砖合成）' },
-  'landfill': { name: '填海料', color: '#8a6a3a', desc: '地形改造：把水面填成可建造的陆地（由石头+土合成）' }
+  'landfill': { name: '填海料', color: '#8a6a3a', desc: '地形改造：把水面填成可建造的陆地（由石头+土合成）' },
+  // ===== 模块化护甲 + 个人装备（对齐《异星工厂》Modular armor & Equipment grid）=====
+  'modular-armor':  { name: '模块化护甲', color: '#6a8a9a', desc: '基础模块化护甲：减伤 30%，自带 5×5 装备网格，可安装太阳能板/电池/外骨骼等个人装备' },
+  'power-armor':    { name: '强力装甲', color: '#5a7aa8', desc: '高级模块化护甲：减伤 45%，自带 7×7 装备网格，更多插槽安装个人装备' },
+  'power-armor-mk2':{ name: '强力装甲 II', color: '#5a5aa8', desc: '顶级模块化护甲：减伤 55%，自带 8×8 装备网格，容纳最强个人装备组合' },
+  // ---- 个人装备件（装入护甲网格生效） ----
+  'portable-solar-panel': { name: '个人太阳能板', color: '#4aa0d0', desc: '装备件（1×1）：白天为个人电网发电，为外骨骼/激光防御等装备供能' },
+  'portable-solar-panel-mk2': { name: '个人太阳能板 II', color: '#3a80c0', desc: '装备件（1×1）：更高功率的个人太阳能板，为个人电网提供更多电力' },
+  'portable-fusion-reactor': { name: '便携聚变反应堆', color: '#8ae0a0', desc: '装备件（4×4）：无惧昼夜、持续大功率发电，个人电网的终极电源' },
+  'personal-battery': { name: '个人电池', color: '#d0c04a', desc: '装备件（2×2）：存储个人电力，白天/发电盈余时充电，供装备随时调用' },
+  'personal-battery-mk2': { name: '个人电池 II', color: '#c0a030', desc: '装备件（2×2）：更大储电量的个人电池' },
+  'exoskeleton':    { name: '外骨骼', color: '#8a7a5a', desc: '装备件（2×2）：穿戴后大幅提升玩家移动速度，每个 +40%（叠加）' },
+  'nightvision':    { name: '夜视仪', color: '#5aa05a', desc: '装备件（1×1）：夜间增强视野，使夜晚如同白昼（对齐《异星工厂》Night vision）' },
+  'personal-laser-defense': { name: '个人激光防御', color: '#d04a5a', desc: '装备件（1×1）：自动攻击进入射程的敌人，消耗个人电力，每个激光器各自独立开火' }
 };
 
 const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone', 'calcite'];  // 0-4；原油/铀矿用特殊索引（见 ORE_OIL/ORE_URANIUM）
@@ -431,7 +444,20 @@ const RECIPES = {
   // ===== 混凝土 / 地形改造配方 =====
   'concrete':          { time: 0.5, inp: { 'stone-brick': 5, 'iron-plate': 2 },                     out: { 'concrete': 10 } },
   'stone-path':        { time: 0.5, inp: { 'stone-brick': 2 },                                      out: { 'stone-path': 4 } },
-  'landfill':          { time: 0.5, inp: { 'stone': 20, 'iron-plate': 1 },                          out: { 'landfill': 1 } }
+  'landfill':          { time: 0.5, inp: { 'stone': 20, 'iron-plate': 1 },                          out: { 'landfill': 1 } },
+  // ===== 模块化护甲（对齐《异星工厂》Modular armor）=====
+  'modular-armor':     { time: 6,   inp: { 'iron-plate': 20, 'steel-plate': 10, 'green-circuit': 8, 'engine-unit': 2 }, out: { 'modular-armor': 1 } },
+  'power-armor':       { time: 12,  inp: { 'modular-armor': 1, 'steel-plate': 30, 'advanced-circuit': 8, 'processing-unit': 4 }, out: { 'power-armor': 1 } },
+  'power-armor-mk2':   { time: 20,  inp: { 'power-armor': 1, 'steel-plate': 60, 'processing-unit': 12, 'low-density-structure': 8 }, out: { 'power-armor-mk2': 1 } },
+  // ===== 个人装备件 =====
+  'portable-solar-panel': { time: 4, inp: { 'solar-panel': 1, 'steel-plate': 3, 'green-circuit': 2 }, out: { 'portable-solar-panel': 1 } },
+  'portable-solar-panel-mk2': { time: 8, inp: { 'portable-solar-panel': 2, 'processing-unit': 2, 'steel-plate': 5 }, out: { 'portable-solar-panel-mk2': 1 } },
+  'portable-fusion-reactor': { time: 20, inp: { 'nuclear-reactor': 1, 'processing-unit': 20, 'low-density-structure': 10, 'electric-engine': 10 }, out: { 'portable-fusion-reactor': 1 } },
+  'personal-battery':  { time: 4,   inp: { 'battery': 2, 'steel-plate': 2, 'copper-plate': 2 },     out: { 'personal-battery': 1 } },
+  'personal-battery-mk2': { time: 8, inp: { 'personal-battery': 2, 'processing-unit': 2, 'steel-plate': 4 }, out: { 'personal-battery-mk2': 1 } },
+  'exoskeleton':       { time: 10,  inp: { 'engine-unit': 4, 'steel-plate': 20, 'processing-unit': 4, 'battery': 4 }, out: { 'exoskeleton': 1 } },
+  'nightvision':       { time: 4,   inp: { 'iron-plate': 4, 'green-circuit': 3, 'advanced-circuit': 1 }, out: { 'nightvision': 1 } },
+  'personal-laser-defense': { time: 8, inp: { 'laser-turret': 1, 'processing-unit': 2, 'battery': 4 }, out: { 'personal-laser-defense': 1 } }
 };
 
 const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant', 'solid-fuel', 'solid-fuel-light-oil', 'sulfur', 'sulfuric-acid'];
@@ -603,7 +629,19 @@ const TECH_REQ = {
   'utility-science-pack': 'utility',
   'flying-robot-frame': 'utility',
   'construction-robot': 'utility',
-  'personal-roboport': 'utility'
+  'personal-roboport': 'utility',
+  // ===== 模块化护甲与个人装备科技门控 =====
+  'modular-armor': 'armor-modular',
+  'power-armor': 'armor-power',
+  'power-armor-mk2': 'armor-power-mk2',
+  'portable-solar-panel': 'armor-modular',
+  'portable-solar-panel-mk2': 'armor-modular',
+  'personal-battery': 'armor-modular',
+  'personal-battery-mk2': 'armor-modular',
+  'exoskeleton': 'armor-power',
+  'nightvision': 'armor-modular',
+  'personal-laser-defense': 'armor-power',
+  'portable-fusion-reactor': 'armor-power-mk2'
 };
 // ===== 核能科技门控 =====
 for (const id of ['centrifuge', 'nuclear-reactor', 'steam-turbine', 'uranium-235', 'uranium-238', 'nuclear-fuel']) {
@@ -762,11 +800,26 @@ const TECHS = {
   utility: { name: '实用科技', cost: { 'utility-science-pack': 60 }, desc: '解锁飞行机器人框架、施工机器人，完善机器人网络', req: ['logistics-network', 'worker-robot-speed'] },
   'research-speed': { name: '科研速度', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, desc: '科研速度 +50%', req: ['utility'] },
   'inserter-capacity': { name: '机械臂容量', cost: { 'production-science-pack': 50, 'utility-science-pack': 30 }, infinite: true, desc: '无限科技：每次研究让堆叠机械臂单次抓取数量 +1（对齐《异星工厂》Inserter capacity bonus）', req: ['production', 'utility'] },
+  // ==== 终局装备科技（对齐《异星工厂》Modular armor / Power armor 科技链）====
+  'armor-modular': { name: '模块化护甲', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, desc: '解锁模块化护甲与基础个人装备（个人太阳能板 / 个人电池 / 夜视仪），装备网格中可安装外骨骼等装备件', req: ['production', 'utility'] },
+  'armor-power': { name: '强力装甲', cost: { 'utility-science-pack': 80 }, desc: '解锁强力装甲（更大装备网格）与外骨骼、个人激光防御等高级装备件', req: ['armor-modular'] },
+  'armor-power-mk2': { name: '强力装甲 II', cost: { 'utility-science-pack': 120 }, desc: '解锁终极强力装甲 II 与便携聚变反应堆，个人电网获得终极动力', req: ['armor-power', 'nuclear'] },
   infinite:   { name: '无限科技', cost: {}, infinite: true, desc: '无限研究：消耗任意科学包，永不完成', req: [] }
 };
 
 // 判断是否为无限科技（永不完成、消耗任意科学包）
 function isInfiniteTech(tid) { return !!(TECHS[tid] && TECHS[tid].infinite); }
+// 研究队列：完成当前科技后顺延到队列下一项。返回下一个 activeTech（或 null）。
+function advanceTechQueue() {
+  if (!G.techQueue) G.techQueue = [];
+  // 移除已完成/已入队的当前项
+  if (G.techQueue.length && G.techQueue[0] === G.activeTech) G.techQueue.shift();
+  // 跳过已完成与前置未满足的项
+  while (G.techQueue.length && (G.techDone[G.techQueue[0]] || techLocked(G.techQueue[0]))) G.techQueue.shift();
+  G.activeTech = G.techQueue.length ? G.techQueue[0] : null;
+  if (typeof renderPanel === 'function') renderPanel(false);
+  return G.activeTech;
+}
 // 前置科技是否全部完成（空前置或无前置即视为满足）
 function techPrereqsDone(tid) {
   const req = (TECHS[tid] && TECHS[tid].req) || [];

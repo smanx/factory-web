@@ -2,7 +2,7 @@
 
 let mineToastAcc = 0;   // 手动挖矿提示去抖计数
 
-function playerSpeed() { return 140 * ((G.dbg && G.dbg.moveSpeed) || 1); }
+function playerSpeed() { return 140 * ((G.dbg && G.dbg.moveSpeed) || 1) * (typeof equipmentSpeedMult === 'function' ? equipmentSpeedMult() : 1); }
 
 function makePlayer(tx, ty) {
   return {

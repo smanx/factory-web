@@ -62,7 +62,9 @@ class Lab extends Entity {
     if (done >= list.length) {
       G.techDone[tech] = true;
       toast('研究完成：' + TECHS[tech].name);
-      G.activeTech = null;
+      // 顺延到研究队列下一项（若队列还有则继续）
+      if (typeof advanceTechQueue === 'function') advanceTechQueue();
+      else G.activeTech = null;
       if (typeof renderPanel === 'function') renderPanel(false);
       return;
     }
@@ -81,7 +83,9 @@ class Lab extends Entity {
       if (done >= list.length) {
         G.techDone[tech] = true;
         toast('研究完成：' + TECHS[tech].name);
-        G.activeTech = null;
+        // 顺延到研究队列下一项（若队列还有则继续）
+        if (typeof advanceTechQueue === 'function') advanceTechQueue();
+        else G.activeTech = null;
         if (typeof renderPanel === 'function') renderPanel(false);
       }
     }

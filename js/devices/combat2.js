@@ -253,22 +253,34 @@ function damagePlayer(dmg) {
 // ===== 护甲系统（对齐《异星工厂》Armor） =====
 // 玩家可穿戴护甲减少所受伤害。护甲在背包中“使用”即装备，脱卸后回到背包。
 const ARMORS = {
-  'light-armor': { name: '轻型护甲', protect: 0.8 },   // 减伤 20%
-  'heavy-armor': { name: '重型护甲', protect: 0.55 }   // 减伤 45%
+  'light-armor': { name: '轻型护甲', protect: 0.8, grid: 0 },   // 减伤 20%
+  'heavy-armor': { name: '重型护甲', protect: 0.55, grid: 0 },   // 减伤 45%
+  // 模块化护甲：自带装备网格（grid 为行列数），可安装个人装备件
+  'modular-armor':   { name: '模块化护甲', protect: 0.7,  grid: 5 },  // 减伤 30%，5×5 网格
+  'power-armor':     { name: '强力装甲',   protect: 0.55, grid: 7 },  // 减伤 45%，7×7 网格
+  'power-armor-mk2': { name: '强力装甲 II', protect: 0.45, grid: 8 }   // 减伤 55%，8×8 网格
 };
 function isArmor(id) { return !!ARMORS[id]; }
 // 装备护甲：消耗背包中的护甲；若已穿戴则替换（旧护甲回包）
 function equipArmor(id) {
   if (!isArmor(id)) return;
-  if (G.armor && G.armor !== id) invAdd(G.armor, 1);
+  const old = G.armor;
+  if (old && old !== id) invAdd(old, 1);
   G.armor = id;
+  // 更换护甲时迁移装备网格（新护甲装得下则保留，否则返还）
+  if (typeof migrateEquipGrid === 'function') migrateEquipGrid(old, id);
   invTake(id, 1);
-  if (typeof toast === 'function') toast('已装备 ' + ARMORS[id].name + '（受伤 -' + Math.round((1 - ARMORS[id].protect) * 100) + '%）');
+  if (typeof toast === 'function') toast('已装备 ' + ARMORS[id].name + '（受伤 -' + Math.round((1 - ARMORS[id].protect) * 100) + '%' + (ARMORS[id].grid ? '，装备网格 ' + ARMORS[id].grid + '×' + ARMORS[id].grid : '') + '）');
   uiDirty = true;
 }
-// 脱卸护甲：回到背包
+// 脱卸护甲：回到背包（装备网格一并返还）
 function unequipArmor() {
-  if (G.armor) { invAdd(G.armor, 1); G.armor = null; }
+  if (G.armor) {
+    invAdd(G.armor, 1);
+    // 返还网格中的装备件
+    if (typeof migrateEquipGrid === 'function') migrateEquipGrid(G.armor, null);
+    G.armor = null;
+  }
   if (typeof toast === 'function') toast('已脱下护甲');
   uiDirty = true;
 }

@@ -248,16 +248,27 @@ function htmlInventory() {
   // 当前穿戴护甲展示与脱卸
   h += '<div class="armor-slot' + (G.armor ? ' equipped' : '') + '" data-tip="' + (G.armor ? (ITEMS[G.armor].name + '|当前穿戴的护甲，点击脱卸') : '未穿戴护甲|护甲可减少所受伤害') + '" data-armor="unequip">' +
     (G.armor ? '<img src="' + iconDataURL(G.armor) + '"><b>' + ITEMS[G.armor].name + '</b>' : '<span>🛡 未穿戴</span>') + '</div>';
-  // 可装备的护甲列表
-  for (const aid of ['light-armor', 'heavy-armor']) {
+  // 可装备的护甲列表（含模块化护甲）
+  for (const aid of ['light-armor', 'heavy-armor', 'modular-armor', 'power-armor', 'power-armor-mk2']) {
     const n = invCount(aid);
     const equipped = G.armor === aid;
     const can = n > 0 && !equipped;
+    const tip = ITEMS[aid].desc + (ARMORS[aid].grid ? '（装备网格 ' + ARMORS[aid].grid + '×' + ARMORS[aid].grid + '）' : '');
     h += '<button class="rcbtn armor-eq' + (can ? '' : ' disabled') + '" data-armor="' + aid + '"' +
-      ' data-tip="' + ITEMS[aid].name + '|' + ITEMS[aid].desc + '">' +
+      ' data-tip="' + ITEMS[aid].name + '|' + tip + '">' +
       '<img src="' + iconDataURL(aid) + '">' + ITEMS[aid].name + (equipped ? ' ✔' : (n > 0 ? ' ×' + n : '')) + '</button>';
   }
-  h += '</div><div class="dim">护甲可减少所受伤害。点击下方护甲图标即可装备（需在背包中拥有），再次点击已穿戴护甲可脱卸。</div>';
+  h += '</div><div class="dim">护甲可减少所受伤害。点击下方护甲图标即可装备（需在背包中拥有），再次点击已穿戴护甲可脱卸。模块化护甲自带装备网格，可在网格中安装个人装备件。</div>';
+  // 装备网格（当前穿戴的模块化护甲）
+  if (G.armor && ARMORS[G.armor] && ARMORS[G.armor].grid) {
+    h += '<div class="sec">装备网格（' + G.armor + ' ' + ARMORS[G.armor].grid + '×' + ARMORS[G.armor].grid + '）</div>';
+    if (typeof equipGridHtml === 'function') h += equipGridHtml();
+    else h += '<div class="dim">（装备网格组件未加载）</div>';
+  }
+  // 个人电网状态（模块化护甲时展示）
+  if (G.armor && ARMORS[G.armor] && ARMORS[G.armor].grid && typeof equipPowerHtml === 'function') {
+    h += equipPowerHtml();
+  }
   // 个人机器人港装备（施工机器人）
   if (typeof hasPersonalRoboport === 'function') {
     const equippedPR = hasPersonalRoboport();
@@ -404,6 +415,16 @@ function applyAssemblerRecipeFilter(q) {
 
 function htmlTech() {
   let h = '';
+  // 研究队列展示（对齐《异星工厂》Research queue）
+  if (G.techQueue && G.techQueue.length) {
+    h += '<div class="sec">研究队列（' + G.techQueue.length + ' 项）</div><div class="chips">';
+    G.techQueue.forEach((qid, i) => {
+      h += '<span class="chip' + (i === 0 ? ' chip-active' : '') + '" title="' + (i === 0 ? '正在研究' : '排队中') + '：' + (TECHS[qid] ? TECHS[qid].name : qid) + '">' +
+        (i === 0 ? '▶ ' : (i + 1) + '. ') + (TECHS[qid] ? TECHS[qid].name : qid) +
+        (i === 0 ? ' <button class="chip-x" data-action="tech-cancel" data-id="' + qid + '">✕</button>' : '') + '</span>';
+    });
+    h += '</div>';
+  }
   for (const tid in TECHS) {
     const t = TECHS[tid];
     const done = G.techDone[tid];
@@ -431,15 +452,17 @@ function htmlTech() {
       if (locked) {
         h += '<button disabled title="需先研究：' + missing.map(m => TECHS[m].name).join('、') + '">需先研究 ' + missing.map(m => TECHS[m].name).join('+') + '</button>';
       } else {
+        const inQueue = !!(G.techQueue && G.techQueue.indexOf(tid) >= 0);
         h += (G.activeTech === tid)
-          ? '<button data-action="tech-cancel">取消</button>'
-          : '<button data-action="tech" data-id="' + tid + '">研究</button>';
+          ? '<button data-action="tech-cancel" data-id="' + tid + '">取消</button>'
+          : (inQueue ? '<button disabled>排队中</button>' : '<button data-action="tech" data-id="' + tid + '">研究</button>');
       }
     } else if (isInfiniteTech(tid)) {
       // 无限科技始终可选（重复研究也继续，永不完成）
+      const inQueue = !!(G.techQueue && G.techQueue.indexOf(tid) >= 0);
       h += (G.activeTech === tid)
-        ? '<button data-action="tech-cancel">停止</button>'
-        : '<button data-action="tech" data-id="' + tid + '">研究</button>';
+        ? '<button data-action="tech-cancel" data-id="' + tid + '">停止</button>'
+        : (inQueue ? '<button disabled>排队中</button>' : '<button data-action="tech" data-id="' + tid + '">研究</button>');
     }
     // 关闭 .recipe.tech 条目，保证各科技条目平级而非互相嵌套
     h += '</div>';
@@ -607,6 +630,10 @@ function initPanelEvents() {
       renderPanel(false);
       return;
     }
+    // 装备网格点击（安装/卸下个人装备件）
+    if (typeof equipPanelClick === 'function' && equipPanelClick(ev.target)) {
+      return;
+    }
     const hbSlot = ev.target.closest('[data-hbedit]');
     if (hbSlot) {
       const i = +hbSlot.dataset.hbedit;
@@ -772,9 +799,16 @@ function initPanelEvents() {
           toast('需先研究：' + techMissingPrereqs(id).map(m => TECHS[m].name).join('、'));
           return;
         }
-        G.activeTech = id;
+        // 加入研究队列（对齐《异星工厂》Research queue）
+        if (!G.techQueue) G.techQueue = [];
+        if (G.techQueue.indexOf(id) >= 0 || G.activeTech === id) { toast('该科技已在研究队列中'); return; }
+        G.techQueue.push(id);
+        if (!G.activeTech) G.activeTech = id;
+        toast('已加入研究队列：' + TECHS[id].name);
       } else if (act === 'tech-cancel') {
-        G.activeTech = null;
+        // 取消研究：移除当前项（若队列还有下一项则顺延）
+        if (G.techQueue && G.techQueue.length) G.techQueue.shift();
+        G.activeTech = (G.techQueue && G.techQueue.length) ? G.techQueue[0] : null;
       } else if (act === 'panel-rotate' || act === 'panel-flip-h' || act === 'panel-flip-v') {
         // 面板操作区：旋转 / 水平翻转 / 垂直翻转当前选中的建筑（复用蓝图变换的方向算法）
         const mch = G.panelEnt;
@@ -967,6 +1001,15 @@ function updateHUD(dt, fps) {
   }
   if (G.armor && isArmor(G.armor)) {
     hud += '   🛡 ' + ARMORS[G.armor].name;
+    // 模块化护甲：显示个人电网状态（含装备件数量）
+    if (ARMORS[G.armor].grid && typeof equipCount === 'function' && typeof equipmentSerialize === 'function') {
+      const eqN = (G.equipGrid || []).length;
+      let pp = '';
+      if (typeof G.personalPowerMax === 'number' && G.personalPowerMax > 0) {
+        pp = ' · ⚡' + Math.round((G.personalPower || 0) / 1000) + '/' + Math.round(G.personalPowerMax / 1000) + 'MJ';
+      }
+      hud += ' <span style="opacity:.75">(' + eqN + ' 装备' + pp + ')</span>';
+    }
   }
   if (G.driving && G.driving.ent) {
     hud += '   🚗 ' + (G.driving.ent instanceof Tank ? '坦克' : '装甲车') + '（E 下车）';

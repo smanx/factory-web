@@ -16,6 +16,7 @@ const G = {
   techDone: {},
   techProg: {},
   activeTech: null,
+  techQueue: [],
   panelMode: null,
   panelEnt: null,
   cursorTile: null,
@@ -110,6 +111,7 @@ function newGame() {
   G.techDone = {};
   G.techProg = {};
   G.activeTech = null;
+  G.techQueue = [];
   G.sel = -1;
   G.quickSel = null;
   G.power = { prod: 0, demand: 0, sat: 1 };
@@ -130,6 +132,7 @@ function newGame() {
   G.armor = null;
   G.gameWon = false;
   if (typeof constrRestore === 'function') constrRestore(null);   // 重置个人机器人港与施工机器人状态
+  if (typeof equipmentRestore === 'function') equipmentRestore(null);  // 重置个人装备网格
   G.victoryT = 0;
   if (typeof resetPowerReg === 'function') resetPowerReg();
   // 重置累计时间与历史统计（新游戏从头开始，无历史）
@@ -178,6 +181,7 @@ function serializeAll() {
     techDone: G.techDone,
     techProg: G.techProg,
     activeTech: G.activeTech,
+    techQueue: G.techQueue || [],
     hotbar: HOTBAR.slice(),
     settings: Object.assign({}, G.settings),
     dbg: Object.assign({}, G.dbg),
@@ -185,7 +189,8 @@ function serializeAll() {
     time: G.time,
     // 历史统计：聚合为小时粒度写入（体积极小，最多 24 小时/物品）
     hist: (typeof histSerialize === 'function') ? histSerialize() : null,
-    constr: (typeof constrSerialize === 'function') ? constrSerialize() : null
+    constr: (typeof constrSerialize === 'function') ? constrSerialize() : null,
+    equipment: (typeof equipmentSerialize === 'function') ? equipmentSerialize() : null
   };
 }
 
@@ -279,12 +284,17 @@ function applySave(d) {
   G.logiNet = null;
   G.logiNetT = 0;
   if (typeof constrRestore === 'function') constrRestore(d.constr);
+  if (typeof equipmentRestore === 'function') equipmentRestore(d.equipment);
   if (typeof rebuildTrains === 'function') rebuildTrains();
   const [sx, sy] = findSpawn();
   G.spawn = { x: sx, y: sy };
   G.techDone = d.techDone || {};
   G.techProg = d.techProg || {};
   G.activeTech = d.activeTech || null;
+  // 恢复研究队列（过滤已完成/无效项）
+  G.techQueue = Array.isArray(d.techQueue)
+    ? d.techQueue.filter(t => TECHS[t] && !G.techDone[t])
+    : (G.activeTech ? [G.activeTech] : []);
   G.sel = -1;
   G.quickSel = null;
   G.power = { prod: 0, demand: 0, sat: 1 };
@@ -1296,6 +1306,7 @@ function loop(ts) {
       updateHeldMouse(dt);
       updateMining(dt);
       updateCraftQueue(dt);   // 手搓合成队列（按时间逐件制作）
+      if (typeof updatePersonalPower === 'function') updatePersonalPower(dt);   // 个人电网（装备件）
       for (const e of G.ents) if (!e._dead && typeof e.update === 'function') e.update(dt);
       // 敌人/子弹系统（可在设置中开关战斗）
       if (G.settings.combat) {
@@ -1305,6 +1316,7 @@ function loop(ts) {
         updatePlayerFire(dt);
         updatePlayerBulletHits(dt);
         updateCombatRobots(dt);
+        if (typeof updatePersonalLaserDefense === 'function') updatePersonalLaserDefense(dt);
         if (typeof updateTankFire === 'function') updateTankFire(dt);
       }
       G.powerT += dt;

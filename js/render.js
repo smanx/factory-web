@@ -103,6 +103,20 @@ function render() {
   if (typeof drawConstruction === 'function') drawConstruction(ctx);
   ctx.restore();
 
+  // 昼夜黑暗遮罩：夜晚整个世界变暗（由 solarFactor 推算），夜视仪可抵消
+  if (typeof solarFactor === 'function' && typeof hasNightVision === 'function') {
+    const ph = ((G.time / DAY_CYCLE) % 1 + 1) % 1;
+    let dark = 0;
+    if (ph < 0.25 || ph >= 0.75) dark = 0.4;        // 深夜
+    else if (ph < 0.32) dark = (0.32 - ph) / 0.07 * 0.4;  // 黄昏过渡
+    else if (ph >= 0.68) dark = (ph - 0.68) / 0.07 * 0.4; // 黎明过渡
+    if (hasNightVision()) dark *= 0.12;              // 夜视仪：大幅削弱黑暗
+    if (dark > 0.01) {
+      ctx.fillStyle = 'rgba(6,10,18,' + dark.toFixed(3) + ')';
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
   // 小地图（位于画布右下角）
   if (G.settings && G.settings.minimap !== false) drawMinimap(ctx);
 }
