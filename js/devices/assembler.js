@@ -194,7 +194,9 @@ function assemblerPanelHtml(e) {
   }
   h += '</div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
-  h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null);
+  // 组装机 II 速度为 I 的 1.5 倍，并受电学科技加成
+  const asmM = e.type === 'assembling-machine-mk2' ? asmMult() * 1.5 * elecMachMult() : asmMult();
+  h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? asmM : 1);
   h += '<div class="dim">选中后按 R 旋转朝向（流体入口在背部、固体产物经机械臂取走）；背部通用流体口可接管道，向含流体原料的配方自动供液。</div>';
   return h;
 }

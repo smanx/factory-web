@@ -270,7 +270,7 @@ function chemicalPlantPanelHtml(e) {
   }
   h += '</div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
-  h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null);
+  h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? chemMult() * oilMult() : 1);
   h += '<div class="dim">化工厂吃电力，专攻流体化学配方：塑料=石油气+煤；重油可逐级裂解成轻油、石油气。接口对齐格子：底部2个输入口分别在左数第1、3格（第1种原料进左侧、第2种进右侧），顶部2个输出口分别在左数第1、3格，一格对应一个接口、位置随旋转不变。所需流体经底部输入口相邻管道自动吸入，流体产物自动经顶部输出口排回管道；煤/铁板等固体原料机械臂可从任意方向抓取放入。</div>';
   return h;
 }

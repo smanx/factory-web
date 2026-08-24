@@ -226,6 +226,7 @@ function drillPanelHtml(e) {
   h += '<button data-action="takeout" id="btn-drill-takeout" style="display:none"></button>';
   h += barHtml(0);
   h += '<div class="status"></div>';
+  h += '<div id="mach-rate-block"></div>';
   h += '<div class="dim">产出方向朝' + ['东', '南', '西', '北'][e.dir] + '，选中后按 R 旋转（需先关闭本面板或按 Q 取消选择）</div>';
   return h;
 }
@@ -236,6 +237,16 @@ function drillPanelLive(e, api) {
   api.set('buffer', e.buf > 0 && e.bufItem ? chip(e.bufItem, e.buf) : dimSpan('空'));
   api.toggle('#btn-drill-takeout', e.buf > 0, '取回缓存 (' + e.buf + ')');
   api.prog(e.working ? e.prog / DRILL_TIME * 100 : 0);
+  // 开采速率：每秒产矿量 = 1 / DRILL_TIME × 采矿科技 × 机型倍率（电钻×电学、抽油×石油科技）
+  const rateEl = body.querySelector('#mach-rate-block');
+  if (rateEl) {
+    const o = e.oreTile();
+    const item = o ? e.mineItem(o) : (e.bufItem || null);
+    const mult = e instanceof ElectricDrill ? drillMult() * e.machMult() : drillMult();
+    const rec = item ? { time: DRILL_TIME, inp: {}, out: { [item]: 1 } } : null;
+    const html = rec ? machRateHtml(rec, mult) : '';
+    if (rateEl.innerHTML !== html) rateEl.innerHTML = html;
+  }
   // 状态：工作中或暂停原因（无矿/缓存满/缺电/缺燃料）
   if (e.status) api.status('已暂停：' + e.status, 'warn');
   else if (!e.working) api.status('待机：产出朝' + ['东', '南', '西', '北'][e.dir], 'ok');
