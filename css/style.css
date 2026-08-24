@@ -318,6 +318,99 @@ html, body {
 
 #tooltip b { display: block; color: #ffd23c; font-size: 12.5px; margin-bottom: 2px; }
 
+/* ===== 开始菜单 ===== */
+#start-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#start-screen.hidden { display: none; }
+
+.start-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(60, 110, 70, .25), transparent 60%),
+    linear-gradient(180deg, #10150f 0%, #18201a 55%, #0e120d 100%);
+  opacity: .96;
+}
+
+.start-box {
+  position: relative;
+  width: 420px;
+  max-width: 92vw;
+  padding: 34px 38px 26px;
+  background: rgba(16, 21, 18, .88);
+  border: 1px solid #3f5a48;
+  border-radius: 16px;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, .6), inset 0 0 0 1px rgba(255, 210, 60, .06);
+  text-align: center;
+}
+
+.start-logo { margin-bottom: 26px; }
+.start-title {
+  font-size: 46px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: #f3f6ee;
+  text-shadow: 0 0 18px rgba(120, 200, 130, .35), 0 3px 0 #1c2b1f;
+}
+.start-sub {
+  margin-top: 4px;
+  font-size: 12px;
+  letter-spacing: 8px;
+  color: #7faa86;
+}
+
+.start-menu { display: flex; flex-direction: column; gap: 12px; }
+
+.start-btn {
+  padding: 14px 16px;
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  background: #232d26;
+  color: #e7f0e7;
+  border: 1px solid #3f5a48;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.start-btn:hover {
+  background: #2e3d31;
+  border-color: #57b95c;
+  box-shadow: 0 0 12px rgba(87, 185, 92, .25);
+}
+.start-btn.primary {
+  background: linear-gradient(180deg, #2f5c38, #1f4a2a);
+  border-color: #57b95c;
+  color: #eafff0;
+}
+.start-btn.primary:hover {
+  background: linear-gradient(180deg, #3a7445, #276035);
+  box-shadow: 0 0 16px rgba(87, 185, 92, .4);
+}
+
+.start-save-info {
+  min-height: 18px;
+  margin-top: 2px;
+  font-size: 12px;
+  color: #7d8894;
+}
+.start-save-info.has-save { color: #9fe0b2; }
+.start-save-info.no-save { color: #ff8080; }
+
+.start-hint {
+  margin-top: 22px;
+  font-size: 12px;
+  color: #67746b;
+  line-height: 1.7;
+}
+
 #dbg-btn {
   position: fixed;
   right: 14px; top: 56px;

@@ -137,9 +137,9 @@ function isLake(tx, ty) {
   const gx = Math.floor(tx / cell), gy = Math.floor(ty / cell);
   for (let ogx = gx - 1; ogx <= gx + 1; ogx++) {
     for (let ogy = gy - 1; ogy <= gy + 1; ogy++) {
-      // 湖泊密度：阈值从 0.2 降到 0.04，使全图水体数量大幅减少
+      // 湖泊密度：阈值从 0.04 再降到 0.02，使全图水体数量在上次基础上再减半
       const h = hash2(ogx * 12.9898, ogy * 78.233);
-      if (h < 0.04) {
+      if (h < 0.02) {
         const px = (ogx + (hash2(ogx * 3.1, ogy * 7.7) * 0.7 + 0.15)) * cell;
         const py = (ogy + (hash2(ogx * 5.3, ogy * 1.9) * 0.7 + 0.15)) * cell;
         // 单个水体面积适当增大：半径从 3~7.5 提升到 5~11
@@ -194,6 +194,42 @@ function growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, size, amt, ti) {
   }
 }
 
+// 原油矿床：与普通矿石（连续聚团）不同，油点需要“隔几格一个”，
+// 但整体围绕矿床中心聚集在一起（散布成一片油区，而非一整块实心矿团）。
+function growOilField(terrain, oreType, oreAmt, rng, sx, sy, count, amt, gap) {
+  const placed = [[sx, sy]];
+  let done = 0, guard = 0;
+  const isOk = (x, y) => {
+    if (x < 1 || y < 1 || x >= CHUNK - 1 || y >= CHUNK - 1) return false;
+    const idx = y * CHUNK + x;
+    if (terrain[idx] !== T_GRASS || oreType[idx] !== -1) return false;
+    // 与已有油点至少间隔 gap 格（隔几格一个）
+    for (let i = 0; i < placed.length; i++) {
+      const dx = placed[i][0] - x, dy = placed[i][1] - y;
+      if (dx * dx + dy * dy < gap * gap) return false;
+    }
+    return true;
+  };
+  // 首点放上
+  oreType[sy * CHUNK + sx] = ORE_OIL;
+  oreAmt[sy * CHUNK + sx] = amt * (0.7 + rng() * 0.6);
+  done++;
+  while (done < count && guard++ < count * 20) {
+    const base = placed[(rng() * placed.length) | 0];
+    const ang = rng() * Math.PI * 2;
+    // 以 base 为起点，朝随机方向走 gap~2*gap 格，使各油点彼此隔开
+    const step = gap + Math.floor(rng() * gap);
+    const nx = base[0] + Math.round(Math.cos(ang) * step);
+    const ny = base[1] + Math.round(Math.sin(ang) * step);
+    if (isOk(nx, ny)) {
+      oreType[ny * CHUNK + nx] = ORE_OIL;
+      oreAmt[ny * CHUNK + nx] = amt * (0.7 + rng() * 0.6);
+      placed.push([nx, ny]);
+      done++;
+    }
+  }
+}
+
 function genChunk(cx, cy) {
   const rng = mulberry32(chunkSeed(cx, cy));
   const terrain = new Uint8Array(CHUNK * CHUNK);
@@ -206,25 +242,16 @@ function genChunk(cx, cy) {
     for (let lx = 0; lx < CHUNK; lx++)
       terrain[ly * CHUNK + lx] = isLake(ox + lx, oy + ly) ? T_WATER : T_GRASS;
 
-  // 出生点附近水体保证：在原点区块固定生成一片水体，
-  // 让玩家开局即可在出生点附近取水（抽水机），同时全图水体依旧稀少。
-  if (cx === 0 && cy === 0) {
-    const lc = 14, lr = 5;
-    for (let ly = 0; ly < CHUNK; ly++)
-      for (let lx = 0; lx < CHUNK; lx++) {
-        const d = Math.hypot(lx - lc, ly - lc);
-        const wob = (hash2(ox + lx * 7.3, oy + ly * 5.1) - 0.5) * 2.0;
-        if (d < lr + wob) terrain[ly * CHUNK + lx] = T_WATER;
-      }
-  }
   const cxn = cx * CHUNK + CHUNK / 2, cyn = cy * CHUNK + CHUNK / 2;
   const dist = Math.hypot(cxn, cyn);
   const scale = 1 + dist / 90;
-  const count = 2 + Math.floor(rng() * 2) + (dist > 60 && rng() < 0.6 ? 1 : 0);
+  // 矿物数量在上次基础上放大一倍（更密集的矿脉分布）
+  const count = (2 + Math.floor(rng() * 2)) * 2 + (dist > 60 && rng() < 0.6 ? 2 : 0);
 
   for (let n = 0; n < count; n++) {
     const ti = pickOreType(rng, dist);
-    const size = Math.max(5, Math.round((10 + rng() * 10) * Math.min(2.6, scale)));
+    // 单个矿物体积面积放大一倍（更大的矿团）
+    const size = Math.max(5, Math.round((20 + rng() * 20) * Math.min(2.6, scale)));
     const amt = (500 + rng() * 900) * scale;
     const sx = 1 + Math.floor(rng() * (CHUNK - 2));
     const sy = 1 + Math.floor(rng() * (CHUNK - 2));
@@ -236,7 +263,8 @@ function genChunk(cx, cy) {
   if (rng() < oilChance) {
     const sx = 2 + Math.floor(rng() * (CHUNK - 4));
     const sy = 2 + Math.floor(rng() * (CHUNK - 4));
-    growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, 4 + Math.floor(rng() * 5), 1500 + rng() * 2500, ORE_OIL);
+    // 原油矿床：隔几格一个，整体聚集（gap≈3 即每个油点相隔 3 格左右）
+    growOilField(terrain, oreType, oreAmt, rng, sx, sy, 4 + Math.floor(rng() * 5), 1500 + rng() * 2500, 3);
   }
 
   // 出生点保证：原点上一定有一片小型铁矿起步
@@ -254,7 +282,7 @@ function genChunk(cx, cy) {
       const sx = 3 + Math.floor(rng() * (CHUNK - 6)), sy = 3 + Math.floor(rng() * (CHUNK - 6));
       const si = sy * CHUNK + sx;
       if (terrain[si] === T_GRASS && oreType[si] < 0 && Math.hypot(sx - 6, sy - 6) > 4) {
-        growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, 4, 2000, ORE_OIL);
+        growOilField(terrain, oreType, oreAmt, rng, sx, sy, 4, 2000, 3);
         break;
       }
     }

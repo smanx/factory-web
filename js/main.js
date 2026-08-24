@@ -50,7 +50,8 @@ const G = {
   powerT: 0,
   enemies: [],
   bullets: [],
-  spawnT: 0
+  spawnT: 0,
+  inMenu: true        // 开始菜单显示中：游戏世界尚未初始化，loop 暂停渲染与更新
 };
 
 let lastPlaceKey = '';
@@ -873,9 +874,43 @@ function flipAction(axis) {
   G.ghostDir = flipDir(G.ghostDir, axis);
 }
 
+// ===== 开始菜单：新游戏 / 读取存档 =====
+// 游戏启动后先停留在开始菜单，由用户选择才开始/继续游戏。
+function startNewGame() {
+  newGame();
+  buildHotbar();
+  enterGame();
+}
+
+function startFromSave() {
+  let data;
+  try { data = localStorage.getItem(SAVE_KEY); }
+  catch (e) { toast('读取失败：' + e.message); return false; }
+  if (!data) { toast('没有存档，请先开始新游戏'); return false; }
+  try {
+    applySave(JSON.parse(data));
+  } catch (err) {
+    toast('存档损坏：' + err.message);
+    return false;
+  }
+  buildHotbar();
+  enterGame();
+  toast('已读档');
+  return true;
+}
+
+// 隐藏开始菜单并进入游戏主循环（loop 检测 G.inMenu=false 后开始渲染/更新）。
+function enterGame() {
+  const sc = document.getElementById('start-screen');
+  if (sc) sc.classList.add('hidden');
+  G.inMenu = false;
+  toast('WASD 移动 · 左键挖矿/放建筑(覆盖建造) · 右键拆除 · R 旋转 · F 拿取 · Q 取消/拾取朝向 · 中键/E 面板 · T 科技 · P 统计 · B 蓝图 · Alt+D 红图 · Alt+U 绿图 · K/L 存读档');
+}
+
 function bindInput() {
   window.addEventListener('keydown', ev => {
     const k = ev.key.toLowerCase();
+    if (G.inMenu) return;                 // 开始菜单期间屏蔽游戏快捷键
     if (k === 'f5' || k === 'f12') return;
     const t = ev.target;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
@@ -915,8 +950,6 @@ function bindInput() {
     else if (k === 'e') G.panelMode === 'inv' ? closePanel() : openPanel('inv');
     else if (k === 't') G.panelMode === 'tech' ? closePanel() : openPanel('tech');
     else if (k === 'o') G.panelMode === 'set' ? closePanel() : openPanel('set');
-    else if (k === 'k') saveGame();
-    else if (k === 'l') loadGame();
     else if (k === 'escape' || k === 'q') {
       if (G.blueMode) {
         cancelBlueprint();
@@ -1064,6 +1097,7 @@ function updateHeldMouse(dt) {
 
 function loop(ts) {
   requestAnimationFrame(loop);
+  if (G.inMenu) return;   // 开始菜单显示中：不渲染、不更新游戏世界
   const now = ts / 1000;
   const raw = Math.min(0.05, now - (loop.lastT || now));
   loop.lastT = now;
@@ -1120,8 +1154,6 @@ function boot() {
   const steps = [
     ['canvas', () => { G.canvas = document.getElementById('game'); G.ctx = G.canvas.getContext('2d'); resize(); }],
     ['settings', () => loadSettings()],
-    ['world', () => newGame()],
-    ['hotbar', () => buildHotbar()],
     ['topbtn', () => initTopButtons()],
     ['panel', () => initPanelEvents()],
     ['joystick', () => initJoystick()],
@@ -1136,7 +1168,6 @@ function boot() {
     }
   }
   if (!G.rafStarted) { G.rafStarted = true; requestAnimationFrame(loop); }
-  toast('WASD 移动 · 左键挖矿/放建筑(覆盖建造) · 右键拆除 · R 旋转 · F 拿取 · Q 取消/拾取朝向 · 中键/E 面板 · T 科技 · P 统计 · B 蓝图 · Alt+D 红图 · Alt+U 绿图 · K/L 存读档');
 }
 window.addEventListener('load', boot);
 if (document.readyState === 'complete') setTimeout(boot, 0);
