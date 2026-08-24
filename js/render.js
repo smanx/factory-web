@@ -580,9 +580,30 @@ function drawStatusDot(ctx, x, y, c) {
   ctx.fill();
 }
 
+// 画面优化：实体建筑软阴影——在建筑脚下绘制柔和椭圆投影，增强立体感与工业氛围
+// 仅在离屏缓存首次渲染时生成（不破坏分块缓存复用），低开销
+function drawEntityShadow(ctx, e, gx, gy) {
+  const w = e.w * TILE, h = e.h * TILE;
+  const px = gx * TILE, py = gy * TILE;
+  ctx.save();
+  ctx.globalAlpha = 0.16;
+  ctx.fillStyle = '#000';
+  // 沿底边绘制椭圆投影
+  ctx.beginPath();
+  ctx.ellipse(px + w / 2, py + h - TILE * 0.28, w * 0.42, TILE * 0.3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawEntity(ctx, e, gx, gy, dir, alpha) {
   const fn = DEVICE_RENDER[e.type];
-  if (fn) fn(ctx, e, gx, gy, dir, alpha);
+  if (fn) {
+    // 画面优化：实体建筑软阴影（仅实际建筑、非幽灵/低LOD，增强立体感）
+    if (alpha === 1 && !LOD.simple && BUILD_DEFS[e.type] && BUILD_DEFS[e.type].solid) {
+      drawEntityShadow(ctx, e, gx, gy);
+    }
+    fn(ctx, e, gx, gy, dir, alpha);
+  }
   // 建筑受损：绘制耐久条与裂纹（对齐《异星工厂》建筑受击表现）
   if (alpha === 1 && e.maxhp > 0 && e.hp !== undefined && e.hp < e.maxhp) {
     const px = gx * TILE, py = gy * TILE, w = e.w * TILE, h = e.h * TILE;

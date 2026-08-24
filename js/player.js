@@ -216,6 +216,7 @@ function updateMining(dt) {
       setTerrain(t.tx, t.ty, T_GRASS);
       invAdd('wood');
       invalidateTerrainChunk(t.tx, t.ty);
+      if (typeof playSfx === 'function') playSfx('mine');
       if (typeof toast === 'function') toast('+1 木材');
     }
   } else if (((ti >= 0 && ti < ORES.length) || ti === ORE_URANIUM) && getOreAmt(t.tx, t.ty) > 0) {

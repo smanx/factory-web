@@ -569,6 +569,8 @@ function playerFire(tx, ty) {
   }
   const baseAng = Math.atan2(ty - py, tx - px);
   const pellets = w.pellets || 1;
+  // 武器伤害无限科技倍率（对齐《异星工厂》Weapon damage research）
+  const dmg = Math.round(w.dmg * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1));
   for (let i = 0; i < pellets; i++) {
     const a = baseAng + (Math.random() - 0.5) * 2 * w.spread;
     const dist = w.range * TILE;
@@ -578,15 +580,15 @@ function playerFire(tx, ty) {
       // 火箭弹：命中目标后范围爆炸
       (G.bullets || (G.bullets = [])).push({
         x: px, y: py, tx: tx2, ty: ty2, t: 0, life: 0.18,
-        splash: w.splash, dmg: w.dmg, kind: 'rocket'
+        splash: w.splash, dmg: dmg, kind: 'rocket'
       });
     } else if (w.flame) {
       (G.bullets || (G.bullets = [])).push({
-        x: px, y: py, tx: tx2, ty: ty2, t: 0, life: 0.2, dmg: w.dmg, kind: 'flame'
+        x: px, y: py, tx: tx2, ty: ty2, t: 0, life: 0.2, dmg: dmg, kind: 'flame'
       });
     } else {
       (G.bullets || (G.bullets = [])).push({
-        x: px, y: py, tx: tx2, ty: ty2, t: 0, life: 0.12, dmg: w.dmg, kind: 'bullet'
+        x: px, y: py, tx: tx2, ty: ty2, t: 0, life: 0.12, dmg: dmg, kind: 'bullet'
       });
     }
   }
@@ -860,7 +862,7 @@ class LaserTurret extends Entity {
     this.facing = Math.atan2(best.y - (this.y + this.h / 2) * TILE, best.x - (this.x + this.w / 2) * TILE);
     if (this.cooldown > 0) return;
     this.cooldown = LASER_FIRE_RATE;
-    best.hp -= LASER_DMG;
+    best.hp -= Math.round(LASER_DMG * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1));
     this.beamT = 0.15;
     (G.bullets || (G.bullets = [])).push({
       x: (this.x + this.w / 2) * TILE, y: (this.y + this.h / 2) * TILE,
@@ -991,7 +993,7 @@ class FlamethrowerTurret extends Entity {
       const d = Math.hypot(dx, dy);
       if (d > FT_RANGE * TILE) continue;
       const da = Math.abs(normAng(Math.atan2(dy, dx) - ang));
-      if (da < 0.5) { en.hp -= FT_DMG; if (en.hp <= 0) en.dead = true; }
+      if (da < 0.5) { en.hp -= Math.round(FT_DMG * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1)); if (en.hp <= 0) en.dead = true; }
     }
     (G.bullets || (G.bullets = [])).push({
       x: (this.x + this.w / 2) * TILE, y: (this.y + this.h / 2) * TILE,

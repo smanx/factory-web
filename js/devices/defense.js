@@ -115,7 +115,7 @@ class ArtilleryTurret extends Entity {
     // 炮弹出膛：以抛物弹道飞向目标（借用 bullet 系统，落地爆炸）
     (G.bullets || (G.bullets = [])).push({
       x: cx * TILE, y: cy * TILE, tx: best.x, ty: best.y, t: 0,
-      life: Math.max(0.3, bestD / 40), art: true, splash: ARTILLERY_RADIUS, dmg: ARTILLERY_DMG
+      life: Math.max(0.3, bestD / 40), art: true, splash: ARTILLERY_RADIUS, dmg: Math.round(ARTILLERY_DMG * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1))
     });
   }
   serialize() { const s = super.serialize(); s.shells = this.shells; return s; }
