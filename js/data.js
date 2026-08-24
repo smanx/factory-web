@@ -883,25 +883,25 @@ const TECH_REQ = {
   'heavy-armor': 'advanced-combat',
   'spidertron': 'advanced-combat',
   'spidertron-remote': 'advanced-combat',   // 蜘蛛遥控器需高级战斗科技
-  'land-mine': 'military',
+  'land-mine': 'land-mine',
   'artillery-turret': 'advanced-combat',
   'artillery-shell': 'advanced-combat',
   'artillery-wagon': 'advanced-combat',
-  'laser-turret': 'advanced-combat',
-  'flamethrower-turret': 'advanced-combat',
-  'rocket-launcher': 'advanced-combat',
-  'flamethrower': 'advanced-combat',
+  'laser-turret': 'laser-turrets',
+  'flamethrower-turret': 'flamethrower',
+  'rocket-launcher': 'military2',
+  'flamethrower': 'flamethrower',
   'explosive-rocket-launcher': 'explosives',
   'destroyer-capsule': 'advanced-combat',
   'defender-capsule': 'weapons',
   'distractor-capsule': 'weapons',
   // 终局战斗弹药与胶囊（对齐《异星工厂》）：铀弹需核能科技（铀-238 依赖），毒/减速胶囊与火焰弹药需高级战斗
-  'uranium-rounds': 'nuclear',
+  'uranium-rounds': 'uranium-ammo',
   'atomic-bomb': 'atomic-bomb',   // 原子弹需独立「原子弹科技」（对齐原版，需核能+火箭基础上进阶研究）
-  'uranium-cannon-shell': 'nuclear',
+  'uranium-cannon-shell': 'uranium-ammo',
   'poison-capsule': 'advanced-combat',
   'slowdown-capsule': 'advanced-combat',
-  'flamethrower-ammo': 'advanced-combat',
+  'flamethrower-ammo': 'flamethrower',
   'rocket-silo': 'rocket-science',
   'rocket': 'rocket-science',
   'satellite': 'rocket-science',
@@ -1000,15 +1000,15 @@ const WEAPON_TECH_REQ = {
   'pistol': 'weapons',
   'submachine-gun': 'weapons',
   'shotgun': 'weapons',
-  'combat-shotgun': 'advanced-combat',
-  'rocket-launcher': 'advanced-combat',
+  'combat-shotgun': 'military2',
+  'rocket-launcher': 'military2',
   'explosive-rocket-launcher': 'explosives',
-  'flamethrower': 'advanced-combat'
+  'flamethrower': 'flamethrower'
 };
 // 弹药/投掷物科技门控：散弹枪弹由武器科技解锁，穿甲散弹枪弹与集束手雷由高级战斗解锁
 TECH_REQ['shotgun-shell'] = 'weapons';
-TECH_REQ['piercing-shotgun-shell'] = 'advanced-combat';
-TECH_REQ['cluster-grenade'] = 'advanced-combat';
+TECH_REQ['piercing-shotgun-shell'] = 'military2';
+TECH_REQ['cluster-grenade'] = 'cluster-grenade';
 // 爆炸火箭弹/爆炸火箭筒：研究「爆炸物科技」后解锁（对齐《异星工厂》Explosive rocket 独立科技）
 TECH_REQ['explosive-rocket'] = 'explosives';
 TECH_REQ['explosive-rocket-launcher'] = 'explosives';
@@ -1186,15 +1186,22 @@ const TECHS = {
   barrel:     { name: '流体处理', cost: { 'blue-science': 50 }, desc: '解锁空桶与流体桶装配方，可把流体灌入桶中经物流网络/传送带/火车运输，实现流体走物流链', req: ['oil', 'electronics'] },
   'advanced-oil-processing': { name: '进阶原油加工', cost: { 'blue-science': 50 }, desc: '解锁进阶原油加工与重油/轻油裂化配方，原油产出更高价值的重/轻油与石油气（对齐《异星工厂》Advanced oil processing）', req: ['oil', 'electronics'] },
   'coal-liquefaction': { name: '煤液化', cost: { 'blue-science': 60, 'production-science-pack': 30 }, desc: '解锁煤液化配方：用煤+重油+蒸汽在炼油厂转化为重油/轻油/石油气，为缺油地区提供石油替代来源（对齐《异星工厂》Coal liquefaction）', req: ['advanced-oil-processing'] },
-  radar:      { name: '雷达技术', cost: { 'green-science': 30 }, desc: '解锁雷达，自动扫描并标记新探索区域', req: ['logistics'] },
+  optics:     { name: '光学', cost: { 'blue-science': 30 }, desc: '解锁雷达建造，并掌握先进光学仪器制造（对齐《异星工厂》Optics 科技，雷达的前置）', req: ['electronics'] },
+  radar:      { name: '雷达技术', cost: { 'green-science': 30 }, desc: '解锁雷达，自动扫描并标记新探索区域', req: ['optics'] },
   // ==== 三级科技（蓝/军瓶） ====
   automation2:{ name: '自动化 II', cost: { 'blue-science': 40 }, desc: '组装机 II 速度额外 ×1.2', req: ['electric'] },
   automation3:{ name: '自动化 III', cost: { 'blue-science': 50, 'green-science': 30 }, desc: '解锁组装机 III，速度最高的生产建筑（对齐《异星工厂》Automation 3）', req: ['automation2'] },
   express:    { name: '极速物流', cost: { 'military-science': 40 }, desc: '解锁极速传送带/地下带/分流器，物流终极档', req: ['logistics2'] },
   military:   { name: '军事工程', cost: { 'military-science': 30 }, desc: '解锁机枪炮塔、石墙、弹药（防御体系）', req: [] },
   weapons:    { name: '单兵武器', cost: { 'military-science': 20 }, desc: '解锁手枪、冲锋枪、散弹枪（F 键或空格攻击）', req: ['military'] },
-  'advanced-combat': { name: '高级战斗', cost: { 'military-science': 40, 'blue-science': 30 }, desc: '解锁激光炮塔、火焰炮塔、火箭筒、火焰喷射器与远程敌人', req: ['weapons', 'electronics'] },
+  military2:  { name: '军事科技 II', cost: { 'military-science': 30 }, desc: '解锁战斗散弹枪、火箭筒与穿甲散弹枪弹，强化单兵火力（对齐《异星工厂》Military 2）', req: ['weapons'] },
+  'advanced-combat': { name: '高级战斗', cost: { 'military-science': 40, 'blue-science': 30 }, desc: '解锁坦克、重型护甲、蜘蛛机器人、炮兵连与战斗机器人胶囊，以及更强的远程敌人', req: ['military2', 'electronics'] },
   explosives: { name: '爆炸物科技', cost: { 'military-science': 30 }, desc: '解锁爆炸火箭弹（更高威力与更大爆炸范围）与更多爆炸类弹药', req: ['advanced-combat'] },
+  'laser-turrets': { name: '激光炮塔', cost: { 'military-science': 30, 'blue-science': 30 }, desc: '解锁激光炮塔，无需弹药、靠电力自动攻击（对齐《异星工厂》Laser turret 科技）', req: ['advanced-combat', 'battery'] },
+  flamethrower: { name: '火焰科技', cost: { 'military-science': 30, 'blue-science': 30 }, desc: '解锁火焰喷射器、火焰炮塔与火焰弹药，喷射燃烧火焰造成持续灼烧（对齐《异星工厂》Flamethrower 科技）', req: ['advanced-combat', 'oil'] },
+  'land-mine': { name: '地雷', cost: { 'military-science': 20 }, desc: '解锁地雷，铺设后敌人踏入即爆炸造成范围伤害（对齐《异星工厂》Landmines 科技）', req: ['military'] },
+  'cluster-grenade': { name: '集束手雷', cost: { 'military-science': 30 }, desc: '解锁集束手雷，爆炸范围与威力远胜普通手雷（对齐《异星工厂》Cluster grenade 科技）', req: ['explosives'] },
+  'uranium-ammo': { name: '铀弹', cost: { 'production-science-pack': 30, 'military-science': 30 }, desc: '解锁铀弹与铀炮弹，以铀-238 制成的高伤害弹药（对齐《异星工厂》Uranium ammo 科技）', req: ['nuclear'] },
   electronics: { name: '电子学', cost: { 'blue-science': 40 }, desc: '解锁高级电路板、处理器（火箭链路的关键）', req: ['plastic', 'oil'] },
   'solar-energy': { name: '太阳能', cost: { 'blue-science': 30 }, desc: '解锁太阳能板，白天可采集阳光发电（对齐《异星工厂》Solar energy）', req: ['electric', 'electronics'] },
   'electric-energy-accumulators': { name: '蓄电器', cost: { 'blue-science': 30 }, desc: '解锁蓄电器，存储电力以在夜晚/低谷期为电网续供（对齐《异星工厂》Electric energy accumulators）', req: ['solar-energy'] },
