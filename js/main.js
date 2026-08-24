@@ -879,6 +879,12 @@ function bindInput() {
       if (k === 'escape') { ev.target.blur(); ev.stopPropagation(); }
       return;
     }
+    // 只有鼠标点击按钮才能触发按钮操作；按回车/空格不再触发当前聚焦按钮的点击
+    if (t && t.tagName === 'BUTTON' && (k === 'enter' || k === ' ')) {
+      ev.preventDefault();
+      t.blur();
+      return;
+    }
     G.keys[k] = true;
     // 按 Alt 时不立即切换详情，仅阻止浏览器菜单；松开（keyup）时才切换
     if (k === 'alt') {
