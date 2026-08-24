@@ -22,6 +22,7 @@ function trainMoveTime(head) {
 const LOCO_FUEL = 400;         // 单格煤提供的燃料量（一格跑多格）
 const LOCO_SOLID_FUEL = 1600;  // 单格固体燃料提供的燃料量（约为煤的 4 倍）
 const LOCO_ROCKET_FUEL = 16000; // 单格火箭燃料提供的燃料量（约为固体燃料的 10 倍，对齐《异星工厂》Rocket fuel）
+const LOCO_WOOD_FUEL = 100;    // 单格木材提供的燃料量（低效燃料，约为煤的 1/4，对齐《异星工厂》木可烧）
 const LOCO_MAX_FUEL = 4000;    // 车头燃料能量池上限
 const LOCO_MAX_UNITS = 10;     // 车头燃料槽可存燃料个数（煤/固体燃料合计）
 const LOCO_COAL_PER = 1;       // 每格耗煤 1 单位
@@ -304,32 +305,37 @@ class Locomotive extends Entity {
     this.fuelCoal = 0;   // 存煤个数
     this.fuelSolid = 0;  // 存固体燃料个数
     this.fuelRocket = 0; // 存火箭燃料个数（最高级燃料，优先烧）
+    this.fuelWood = 0;   // 存木材个数（低效燃料，对齐《异星工厂》：车头可用木材烧）
     this.schedule = [];  // 自动调度路线：车站名数组（列车按此顺序循环行驶装卸）
   }
   giveItem(item) {
-    if (item === 'rocket-fuel' && this.fuelCoal + this.fuelSolid + this.fuelRocket < LOCO_MAX_UNITS) {
-      this.fuelRocket++; return true;
-    }
-    if (item === 'coal' && this.fuelCoal + this.fuelSolid + this.fuelRocket < LOCO_MAX_UNITS) {
-      this.fuelCoal++; return true;
-    }
-    if (item === 'solid-fuel' && this.fuelCoal + this.fuelSolid + this.fuelRocket < LOCO_MAX_UNITS) {
-      this.fuelSolid++; return true;
-    }
+    if (item === 'rocket-fuel' && this._fuelCount() < LOCO_MAX_UNITS) { this.fuelRocket++; return true; }
+    if (item === 'coal' && this._fuelCount() < LOCO_MAX_UNITS) { this.fuelCoal++; return true; }
+    if (item === 'solid-fuel' && this._fuelCount() < LOCO_MAX_UNITS) { this.fuelSolid++; return true; }
+    if (item === 'wood' && this._fuelCount() < LOCO_MAX_UNITS) { this.fuelWood++; return true; }
     return false;
   }
-  // 能量池不足时从燃料槽取一单位填充（优先固体燃料，其次煤）
+  _fuelCount() { return (this.fuelCoal || 0) + (this.fuelSolid || 0) + (this.fuelRocket || 0) + (this.fuelWood || 0); }
+  // 能量池不足时从燃料槽取一单位填充（优先火箭燃料，其次固体燃料/煤，最后木材）
   refuel() {
     if (this.fuel >= LOCO_FUEL) return;
     if (this.fuelRocket > 0) { this.fuelRocket--; this.fuel = Math.min(LOCO_MAX_FUEL, this.fuel + LOCO_ROCKET_FUEL); }
     else if (this.fuelSolid > 0) { this.fuelSolid--; this.fuel = Math.min(LOCO_MAX_FUEL, this.fuel + LOCO_SOLID_FUEL); }
     else if (this.fuelCoal > 0) { this.fuelCoal--; this.fuel = Math.min(LOCO_MAX_FUEL, this.fuel + LOCO_FUEL); }
+    else if (this.fuelWood > 0) { this.fuelWood--; this.fuel = Math.min(LOCO_MAX_FUEL, this.fuel + LOCO_WOOD_FUEL); }
   }
-  countOf(item) { return item === 'coal' ? this.fuelCoal : (item === 'solid-fuel' ? this.fuelSolid : (item === 'rocket-fuel' ? this.fuelRocket : 0)); }
+  countOf(item) {
+    if (item === 'coal') return this.fuelCoal;
+    if (item === 'solid-fuel') return this.fuelSolid;
+    if (item === 'rocket-fuel') return this.fuelRocket;
+    if (item === 'wood') return this.fuelWood;
+    return 0;
+  }
   takeItemOf(item) {
     if (item === 'coal' && this.fuelCoal > 0) { this.fuelCoal--; return 'coal'; }
     if (item === 'solid-fuel' && this.fuelSolid > 0) { this.fuelSolid--; return 'solid-fuel'; }
     if (item === 'rocket-fuel' && this.fuelRocket > 0) { this.fuelRocket--; return 'rocket-fuel'; }
+    if (item === 'wood' && this.fuelWood > 0) { this.fuelWood--; return 'wood'; }
     return null;
   }
   contents() {
@@ -337,23 +343,24 @@ class Locomotive extends Entity {
     if (this.fuelRocket > 0) list.push(['rocket-fuel', this.fuelRocket]);
     if (this.fuelSolid > 0) list.push(['solid-fuel', this.fuelSolid]);
     if (this.fuelCoal > 0) list.push(['coal', this.fuelCoal]);
+    if (this.fuelWood > 0) list.push(['wood', this.fuelWood]);
     return list;
   }
   serialize() {
     const s = super.serialize();
-    s.fuel = this.fuel; s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket;
+    s.fuel = this.fuel; s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket; s.fuelWood = this.fuelWood;
     s.schedule = this.schedule;
     return s;
   }
   blueprint() {
     const s = super.blueprint();
-    s.fuel = this.fuel; s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket;
+    s.fuel = this.fuel; s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket; s.fuelWood = this.fuelWood;
     s.schedule = this.schedule;
     return s;
   }
   static restore(s) {
     const e = super.restore(s);
-    e.fuel = s.fuel | 0; e.fuelCoal = s.fuelCoal | 0; e.fuelSolid = s.fuelSolid | 0; e.fuelRocket = s.fuelRocket | 0;
+    e.fuel = s.fuel | 0; e.fuelCoal = s.fuelCoal | 0; e.fuelSolid = s.fuelSolid | 0; e.fuelRocket = s.fuelRocket | 0; e.fuelWood = s.fuelWood | 0;
     e.schedule = Array.isArray(s.schedule) ? s.schedule.slice() : [];
     return e;
   }
@@ -1031,6 +1038,9 @@ DEVICE_PANEL['locomotive'] = {
       (invCount('rocket-fuel') > 0 || (e.fuelRocket || 0) > 0
         ? '<div class="row"><span>火箭燃料</span><b>' + (e.fuelRocket || 0) + '</b><button data-act="putrocket">+1</button><button data-act="takerocket">取出</button></div>'
         : '') +
+      (invCount('wood') > 0 || (e.fuelWood || 0) > 0
+        ? '<div class="row"><span>木材</span><b>' + (e.fuelWood || 0) + '</b><button data-act="putwood">+1</button><button data-act="takewood">取出</button></div>'
+        : '') +
       '</div>' + locoScheduleHtml(e);
   },
   live() { return ''; },
@@ -1042,6 +1052,8 @@ DEVICE_PANEL['locomotive'] = {
     else if (btn === 'takesolid') { const it = e.takeItemOf('solid-fuel'); if (it) { invAdd(it); toast('已取出固体燃料'); uiDirty = true; } }
     else if (btn === 'putrocket' && invCount('rocket-fuel') > 0) { e.giveItem('rocket-fuel'); invTake('rocket-fuel', 1); toast('已加火箭燃料'); uiDirty = true; }
     else if (btn === 'takerocket') { const it = e.takeItemOf('rocket-fuel'); if (it) { invAdd(it); toast('已取出火箭燃料'); uiDirty = true; } }
+    else if (btn === 'putwood' && invCount('wood') > 0) { e.giveItem('wood'); invTake('wood', 1); toast('已加木材'); uiDirty = true; }
+    else if (btn === 'takewood') { const it = e.takeItemOf('wood'); if (it) { invAdd(it); toast('已取出木材'); uiDirty = true; } }
     else if (btn === 'sch-add-btn') {
       const sel = document.getElementById('sch-add');
       if (sel && sel.value) {

@@ -3,16 +3,37 @@
 // ===== 电灯 Lamp（对齐《异星工厂》Lamp，1×1）=====
 // 耗电照明设备：夜间通电时点亮，在昼夜黑暗遮罩上凿出光圈照亮周围，
 // 让基地在黑暗中清晰可见；白天不耗电不点亮。断电时熄灭。
+// 支持电路网络控制：可设置"启用条件"，仅当电路信号满足条件时才点亮（对齐《异星工厂》灯接入电路网络）。
 const LAMP_POWER = 5;        // 电灯夜间功耗 5kW（对齐《异星工厂》约 5kW）
 const LAMP_RADIUS = 5;       // 照亮半径（格）
 class Lamp extends Entity {
   constructor(type, x, y) { super('lamp', x, y); }
-  // 是否应点亮：夜间且电网供电充足
+  // 电路条件是否满足（未启用条件则恒满足）
+  circuitOk() {
+    if (!this.circuitCond || !this.circuitCond.enabled) return true;
+    const sig = (typeof circuitSignalNear === 'function') ? circuitSignalNear(this) : null;
+    return (typeof circuitCondOk === 'function') ? circuitCondOk(sig, this.circuitCond) : true;
+  }
+  // 是否应点亮：夜间且电网供电充足，且（未设置电路条件 || 电路条件满足）
   shouldLight() {
-    return nightPhase() && G.power && G.power.sat > 0;
+    return nightPhase() && G.power && G.power.sat > 0 && this.circuitOk();
   }
   powerDemand() { return this.shouldLight() ? LAMP_POWER : 0; }
-  serialize() { const s = super.serialize(); return s; }
+  serialize() {
+    const s = super.serialize();
+    if (this.circuitCond) s.circuitCond = this.circuitCond;
+    return s;
+  }
+  blueprint() {
+    const s = super.blueprint();
+    if (this.circuitCond) s.circuitCond = this.circuitCond;
+    return s;
+  }
+  static restore(s) {
+    const e = super.restore(s);
+    e.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
+    return e;
+  }
 }
 
 // 昼夜相位：返回当前是否处于"需要点灯"的暗时（黄昏/黎明过渡 + 深夜）
@@ -52,12 +73,14 @@ function drawLamp(ctx, e, gx, gy, dir, alpha) {
 }
 
 // ===== 面板 =====
-function lampPanelHtml() {
+function lampPanelHtml(e) {
   return row('状态', '<span class="dim"></span>', 'st') +
     '<div class="status"></div>' +
-    '<div class="dim">电灯：夜间通电时点亮，照亮周围 ' + LAMP_RADIUS + ' 格，让基地在黑暗中清晰可见。白天不耗电。断电或供电不足时熄灭（1×1，需电力工程科技）。</div>';
+    (typeof circuitPanelHtml === 'function' ? circuitPanelHtml(e || { circuitCond: null }, 'lamp') : '') +
+    '<div class="dim">电灯：夜间通电时点亮，照亮周围 ' + LAMP_RADIUS + ' 格，让基地在黑暗中清晰可见。白天不耗电。断电或供电不足时熄灭。可在电路控制中设置启用条件，仅当电路信号满足时才点亮（1×1，需电力工程科技）。</div>';
 }
 function lampPanelLive(e, api) {
+  if (!e.circuitOk()) { api.set('st', '电路关断'); api.status('已熄灭：电路条件不满足', 'warn'); return; }
   if (nightPhase()) {
     if (G.power && G.power.sat > 0) { api.set('st', '点亮（夜间）'); api.status('点亮：夜间供电正常', 'ok'); }
     else { api.set('st', '断电熄灭'); api.status('已熄灭：电网断电，等待供电', 'warn'); }
@@ -67,13 +90,14 @@ function lampPanelLive(e, api) {
   }
 }
 function lampTip(e) {
+  if (e.circuitCond && e.circuitCond.enabled && !e.circuitOk()) return '电灯：电路关断';
   if (!nightPhase()) return '电灯：待机（白天）';
   return e.shouldLight() ? '电灯：点亮' : '电灯：断电熄灭';
 }
 
 // ===== 注册 =====
-const lampPanel = { html: lampPanelHtml, live: lampPanelLive, tip: lampTip };
+const lampPanel = { html: lampPanelHtml, live: lampPanelLive, tip: lampTip, onAction: (a) => (typeof circuitPanelAction === 'function' ? circuitPanelAction('lamp', a) : false) };
 ENT_CLASSES['lamp'] = Lamp;
 DEVICE_RENDER['lamp'] = drawLamp;
-DEVICE_STATUS['lamp'] = e => e.shouldLight() ? 'g' : (nightPhase() ? 'y' : 'r');
+DEVICE_STATUS['lamp'] = e => e.circuitOk() ? (e.shouldLight() ? 'g' : (nightPhase() ? 'y' : 'r')) : 'r';
 DEVICE_PANEL['lamp'] = lampPanel;
