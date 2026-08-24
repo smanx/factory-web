@@ -1030,10 +1030,13 @@ function buildDebug() {
     ev.preventDefault();
   }, { passive: false });
   window.addEventListener('touchend', ev => {
+    // 仅当触摸起始于 Debug 按钮（touchstart 设置了 drag）时才可能展开/收起面板；
+    // 否则在屏幕其他位置点触会误触发面板切换（此前 bug）。
+    const wasOnBtn = !!drag;
     const wasMoved = drag && drag.moved;
     endDebugDrag();
     // 轻点（未拖动）时展开/收起面板，拖动后不触发
-    if (!wasMoved && !suppressClick) togglePanel();
+    if (wasOnBtn && !wasMoved && !suppressClick) togglePanel();
   });
   window.addEventListener('touchcancel', endDebugDrag);
   btn.addEventListener('click', () => {
