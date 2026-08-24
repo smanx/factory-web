@@ -285,29 +285,32 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
   }
 
   const exitX = DX[dir] * step, exitY = DY[dir] * step;
-  // 根据物品来源侧面计算进入起点；无侧面输入时沿主行进方向
-  const sideIn = function (o) {
-    if (inp.length === 0) return null;
-    if (o.side !== undefined && o.side >= 0 && o.side < inp.length) return inp[o.side];
-    return inp[0];
-  };
   // 低 LOD：物品用色块直填，省去 clip+glyph 的昂贵路径绘制
   const itemFn = (LOD && LOD.simple) ? drawItemDotLOD : drawItemDot;
   for (const o of e.items) {
     let ix, iy;
-    if (inp.length && o.pos < 0.5) {
-      const s = sideIn(o);
-      const inX = cx + s[0] * step, inY = cy + s[1] * step;
-      const t = o.pos / 0.5;
-      ix = inX + (cx - inX) * t;
-      iy = inY + (cy - inY) * t;
-    } else if (inp.length) {
+    // 前半段（pos<0.5）：从入口走到格心。仅“确实来自侧面”的物品走侧面接入线；
+    // 直通物品（side<0，从背面同向进来）及无侧面输入的普通带仍沿主轴从背面进入，
+    // 避免 T 型转角里直通方向的物品被错误画到侧面分支上。
+    const fromSide = inp.length > 0 && o.side !== undefined && o.side >= 0 && o.side < inp.length;
+    if (o.pos < 0.5) {
+      if (fromSide) {
+        const s = inp[o.side];
+        const inX = cx + s[0] * step, inY = cy + s[1] * step;
+        const t = o.pos / 0.5;
+        ix = inX + (cx - inX) * t;
+        iy = inY + (cy - inY) * t;
+      } else {
+        const inX = cx - DX[dir] * step, inY = cy - DY[dir] * step; // 背面入口
+        const t = o.pos / 0.5;
+        ix = inX + (cx - inX) * t;
+        iy = inY + (cy - inY) * t;
+      }
+    } else {
+      // 后半段：从格心走到出口（侧面与直通物品共用）
       const t = (o.pos - 0.5) / 0.5;
       ix = cx + exitX * t;
       iy = cy + exitY * t;
-    } else {
-      ix = cx + DX[dir] * (o.pos - 0.5) * TILE;
-      iy = cy + DY[dir] * (o.pos - 0.5) * TILE;
     }
     itemFn(ctx, ix, iy, o.item);
   }

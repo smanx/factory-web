@@ -78,22 +78,26 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
     ctx.restore();
   }
   const exitX = DX[dir] * step, exitY = DY[dir] * step;
-  const sideIn = function (o) {
-    if (inp.length === 0) return null;
-    if (o.side !== undefined && o.side >= 0 && o.side < inp.length) return inp[o.side];
-    return inp[0];
-  };
   const itemFn = (LOD && LOD.simple) ? drawItemDotLOD : drawItemDot;
   for (const o of e.items) {
     let ix, iy;
-    if (inp.length && o.pos < 0.5) {
-      const s = sideIn(o);
-      const inX = cx + s[0] * step, inY = cy + s[1] * step;
-      const t = o.pos / 0.5;
-      ix = inX + (cx - inX) * t; iy = inY + (cy - inY) * t;
+    // 与普通带一致：仅确实来自侧面的物品走侧面接入线；直通物品（side<0）沿主轴从背面进入
+    const fromSide = inp.length > 0 && o.side !== undefined && o.side >= 0 && o.side < inp.length;
+    if (o.pos < 0.5) {
+      if (fromSide) {
+        const s = inp[o.side];
+        const inX = cx + s[0] * step, inY = cy + s[1] * step;
+        const t = o.pos / 0.5;
+        ix = inX + (cx - inX) * t; iy = inY + (cy - inY) * t;
+      } else {
+        const inX = cx - DX[dir] * step, inY = cy - DY[dir] * step;
+        const t = o.pos / 0.5;
+        ix = inX + (cx - inX) * t; iy = inY + (cy - inY) * t;
+      }
+    } else {
+      const t = (o.pos - 0.5) / 0.5;
+      ix = cx + exitX * t; iy = cy + exitY * t;
     }
-    else if (inp.length) { const t = (o.pos - 0.5) / 0.5; ix = cx + exitX * t; iy = cy + exitY * t; }
-    else { ix = cx + DX[dir] * (o.pos - 0.5) * TILE; iy = cy + DY[dir] * (o.pos - 0.5) * TILE; }
     itemFn(ctx, ix, iy, o.item);
   }
   ctx.globalAlpha = 1;
