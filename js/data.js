@@ -305,6 +305,8 @@ const ITEMS = {
   'decider-combinator': { name: '判断组合器', color: '#4ac0a0', desc: '电路设备：按条件（如 信号 > 10）判断，满足时输出指定信号；可做“非”逻辑（1×1）' },
   // ===== 功率开关（对齐《异星工厂》Power switch，电路控制断电）=====
   'power-switch': { name: '功率开关', color: '#c06040', desc: '电路设备（1×1）：接入电路网络，按面板设定的条件判断是否切断电网供电。条件满足时强制全图断电（甩负荷保护），不满足时正常供电，用于按燃料/电量等信号自动调度电力（对齐《异星工厂》Power switch）' },
+  'red-wire': { name: '红电路线缆', color: '#e05a4a', mark: 'R', desc: '手持后点击任意电路设备，可把该设备切换为「仅接入红线网络」（再点切回自动双通）。同一区域内仅用红线连接的设备构成独立的红线网络，实现红绿信号物理隔离（对齐《异星工厂》Red wire）' },
+  'green-wire': { name: '绿电路线缆', color: '#5ae06a', mark: 'G', desc: '手持后点击任意电路设备，可把该设备切换为「仅接入绿线网络」（再点切回自动双通）。同一区域内仅用绿线连接的设备构成独立的绿线网络，实现红绿信号物理隔离（对齐《异星工厂》Green wire）' },
   // ===== 混凝土 / 地形改造（对齐《异星工厂》Concrete & Landfill）=====
   'concrete': { name: '混凝土', color: '#9a9aa0', desc: '地面装饰：铺设在草地上可加速玩家行走（比泥地快），需在玩家脚下使用或按住铺设' },
   'refined-concrete': { name: '精炼混凝土', color: '#b0b0b6', desc: '地面装饰：比普通混凝土更耐磨、行走加速更明显（对齐《异星工厂》Refined concrete）' },
@@ -589,6 +591,9 @@ const RECIPES = {
   'decider-combinator': { time: 1.5,  inp: { 'iron-plate': 4, 'green-circuit': 3, 'copper-cable': 4 }, out: { 'decider-combinator': 1 } },
   // 功率开关（对齐《异星工厂》Power switch）：铁板 + 电路板 + 铜线
   'power-switch':       { time: 1.5,  inp: { 'iron-plate': 4, 'green-circuit': 2, 'copper-cable': 4 }, out: { 'power-switch': 1 } },
+  // 红/绿电路线缆（对齐《异星工厂》：用铜线+电路板制成，用于手动区分接入红/绿网络）
+  'red-wire':          { time: 1,    inp: { 'copper-cable': 2, 'green-circuit': 1 },                   out: { 'red-wire': 4 } },
+  'green-wire':        { time: 1,    inp: { 'copper-cable': 2, 'green-circuit': 1 },                   out: { 'green-wire': 4 } },
   // ===== 混凝土 / 地形改造配方 =====
   'concrete':          { time: 0.5, inp: { 'stone-brick': 5, 'iron-plate': 2 },                     out: { 'concrete': 10 } },
   'refined-concrete':  { time: 0.5, inp: { 'concrete': 2, 'steel-plate': 1 },                       out: { 'refined-concrete': 2 } },
@@ -924,7 +929,7 @@ const LOGISTIC_ITEMS = ['roboport', 'logistic-robot', 'logistic-chest-passive', 
 // 物流箱科技门控：所有物流设备需先研究「物流网络」
 for (const id of LOGISTIC_ITEMS) if (!TECH_REQ[id]) TECH_REQ[id] = 'logistics-network';
 // ===== 电路网络科技门控 =====
-const CIRCUIT_ITEMS = ['small-electric-pole', 'medium-electric-pole', 'big-electric-pole', 'constant-combinator', 'arithmetic-combinator', 'decider-combinator', 'substation', 'programmable-speaker', 'power-switch'];
+const CIRCUIT_ITEMS = ['small-electric-pole', 'medium-electric-pole', 'big-electric-pole', 'constant-combinator', 'arithmetic-combinator', 'decider-combinator', 'substation', 'programmable-speaker', 'power-switch', 'red-wire', 'green-wire'];
 for (const id of CIRCUIT_ITEMS) if (!TECH_REQ[id]) TECH_REQ[id] = 'circuit-network';
 // 电灯：需电力工程科技解锁（对齐《异星工厂》灯由电力工程解锁）
 TECH_REQ['lamp'] = 'electric';
@@ -1388,6 +1393,27 @@ function drawItemGlyph(x, id, cx, cy, s) {
           x.stroke();
         }
       }
+      break;
+    }
+    // ===== 红/绿电路线缆（对齐《异星工厂》Red/Green wire）：一段卷曲的线缆 =====
+    case 'red-wire':
+    case 'green-wire': {
+      const wireC = (id === 'red-wire') ? '#e05a4a' : '#3fbf4f';
+      x.strokeStyle = wireC;
+      x.lineWidth = Math.max(1.5, s * 0.12);
+      x.lineCap = 'round';
+      x.beginPath();
+      for (let i = 0; i <= 14; i++) {
+        const t = i / 14;
+        const px = -r * 0.85 + t * r * 1.7;
+        const py = Math.sin(t * Math.PI * 4) * r * 0.5 + (i === 0 ? -r * 0.3 : i === 14 ? r * 0.3 : 0);
+        i === 0 ? x.moveTo(px, py) : x.lineTo(px, py);
+      }
+      x.stroke();
+      // 两端线头
+      x.fillStyle = '#d8dee2';
+      x.beginPath(); x.arc(-r * 0.85, -r * 0.3, s * 0.07, 0, 7); x.fill();
+      x.beginPath(); x.arc(r * 0.85, r * 0.3, s * 0.07, 0, 7); x.fill();
       break;
     }
     case 'personal-roboport':

@@ -597,7 +597,25 @@ function countStr(o) {
 // 机器面板：按设备类型查注册表分发，各设备的 html 定义在 js/devices/*.js
 function htmlMachine(e) {
   const panel = DEVICE_PANEL[e.type];
-  return (panel && panel.html) ? panel.html(e) : '<div class="dim">无信息</div>';
+  let h = (panel && panel.html) ? panel.html(e) : '<div class="dim">无信息</div>';
+  // 电路节点设备：追加「接入通道」设置（对齐《异星工厂》红/绿线缆，实现红绿信号物理隔离）
+  if (typeof isCircuitNodeEntity === 'function' && isCircuitNodeEntity(e)) {
+    const ch = e.wireChan || 'both';
+    h += '<div class="sec">电路接入通道</div>' +
+      '<div class="mrow"><span class="mlabel">接入</span><span class="mval">' +
+      (ch === 'both' ? '红 + 绿（双通）' : ch === 'red' ? '仅红线' : '仅绿线') +
+      '</span></div>' +
+      '<div class="circ-wire-row">' +
+        '<button data-wire="red" class="btn sm">接红线</button>' +
+        '<button data-wire="green" class="btn sm">接绿线</button>' +
+        '<button data-wire="both" class="btn sm">双通</button>' +
+      '</div>' +
+      '<div class="dim">' + (ch === 'both'
+        ? '当前同时接入红/绿网络，可感知两通道全部信号。'
+        : '当前仅接入' + (ch === 'red' ? '红线' : '绿线') + '网络，只感知该通道信号，与另一通道物理隔离。') +
+      '（也可手持对应线缆点击设备快速切换）</div>';
+  }
+  return h;
 }
 
 function row(label, val, liveKey) {
@@ -726,6 +744,17 @@ function initPanelEvents() {
     if (histZoom) {
       G.statsHistZoom = +histZoom.dataset.statHistZoom || 0;
       renderPanel(false);
+      return;
+    }
+    // 电路节点面板：接入通道切换（对齐《异星工厂》红/绿线缆）
+    const wireBtn = ev.target.closest('[data-wire]');
+    if (wireBtn && G.panelEnt && typeof isCircuitNodeEntity === 'function' && isCircuitNodeEntity(G.panelEnt)) {
+      const w = wireBtn.dataset.wire;
+      if (w === 'red' || w === 'green' || w === 'both') {
+        G.panelEnt.wireChan = w;
+        if (typeof recomputeCircuit === 'function') recomputeCircuit();
+        renderPanel(false);
+      }
       return;
     }
     const armorEl = ev.target.closest('[data-armor]');

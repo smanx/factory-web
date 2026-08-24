@@ -24,7 +24,13 @@ class CircuitNode extends Entity {
     this.netRed = {};         // 本节点所属网络的红线聚合信号
     this.netGreen = {};       // 本节点所属网络的绿线聚合信号
     this._tick = -1;
+    // 电路接入通道（对齐《异星工厂》红/绿线缆）：'both' 同时接入红+绿（默认，向后兼容），
+    // 'red' 仅接入红线网络（只读红线信号），'green' 仅接入绿线网络，实现红绿信号物理隔离。
+    // 注：与组合器自身的输出通道 channel 属性无关，此处用 wireChan 避免命名冲突。
+    this.wireChan = 'both';
   }
+  serialize() { const s = super.serialize(); s.wireChan = this.wireChan; return s; }
+  static restore(s) { const e = super.restore(s); e.wireChan = s.wireChan || 'both'; return e; }
   get range() {
     return CIRCUIT_POLE_RANGE[this.type] !== undefined ? CIRCUIT_POLE_RANGE[this.type] : CIRCUIT_COMB_RANGE;
   }
@@ -45,10 +51,12 @@ function collectCircuitNodes() {
 }
 
 // 重建单个节点的连线（同色通道均连接到范围内其它节点）
-function refreshNodeWires(node) {
+// 性能优化：可传入预先收集的 nodes 数组，避免在 recompute 全量重建时对每个节点重复遍历
+// G.ents（原为 O(n²) 的 collectCircuitNodes 调用），仅在未传参时才自行收集（保持向后兼容）。
+function refreshNodeWires(node, nodes) {
   node.red.clear();
   node.green.clear();
-  const nodes = collectCircuitNodes();
+  if (!nodes) nodes = collectCircuitNodes();
   for (const o of nodes) {
     if (o === node || o._dead) continue;
     const d = node.distTo(o);
@@ -73,11 +81,20 @@ function mergeSignals(a, b) {
   return r;
 }
 
+// 组合器输入信号：按接入通道（wireChan）过滤——'red' 仅红线、'green' 仅绿线、'both' 红绿合并。
+// 对齐《异星工厂》：组合器只接红线/只接绿线时，其输入端只感知对应通道信号，实现红绿物理隔离。
+function combinatorInput(n, aggRed, aggGreen) {
+  if (n.wireChan === 'red') return aggRed;
+  if (n.wireChan === 'green') return aggGreen;
+  return mergeSignals(aggRed, aggGreen);
+}
+
 // 全网络重算：重建连线 → BFS 分组 → 聚合常量 → 级联运算/判断 → 写回各节点
 function recomputeCircuit() {
   const nodes = collectCircuitNodes();
   if (!nodes.length) return;
-  for (const n of nodes) refreshNodeWires(n);
+  // 性能优化：把已收集的 nodes 缓存传入 refreshNodeWires，避免每个节点再次全量遍历 G.ents
+  for (const n of nodes) refreshNodeWires(n, nodes);
 
   // BFS 沿（红=绿同拓扑，双向互连）划分连通组件。
   // refreshNodeWires 建立双向连线，从任意节点出发都能遍历整个连通组件，
@@ -114,17 +131,18 @@ function recomputeCircuit() {
       const pct = Math.round(Math.max(0, Math.min(1, (n.stored || 0) / ACCUM_CAP)) * 100);
       if (pct > 0) { addSignal(aggRed, 'signal-charge', pct); addSignal(aggGreen, 'signal-charge', pct); }
     }
-    // 2) 运算/判断组合器：读取（红+绿）合并信号，计算后输出到指定通道（可级联）
+    // 2) 运算/判断组合器：读取输入信号，计算后输出到指定通道（可级联）。
+    //    输入信号遵循组合器的接入通道（wireChan）：'red' 仅读红线、'green' 仅读绿线、
+    //    'both' 读红+绿合并（默认，向后兼容）。实现红绿信号物理隔离对齐《异星工厂》。
     for (const n of group) {
+      const input = combinatorInput(n, aggRed, aggGreen);
       if (n instanceof ArithmeticCombinator) {
-        const input = mergeSignals(aggRed, aggGreen);
         const out = n.compute(input);
         if (out && out.sig !== null && out.count) {
           if (n.channel === 'green') addSignal(aggGreen, out.sig, out.count);
           else addSignal(aggRed, out.sig, out.count);
         }
       } else if (n instanceof DeciderCombinator) {
-        const input = mergeSignals(aggRed, aggGreen);
         const out = n.compute(input);
         if (out) {
           for (const it of out) {
@@ -134,8 +152,13 @@ function recomputeCircuit() {
         }
       }
     }
-    // 3) 写回各节点
-    for (const n of group) { n.netRed = aggRed; n.netGreen = aggGreen; }
+    // 3) 写回各节点（按接入通道隔离：'red' 只读红线、'green' 只读绿线、'both' 双通）
+    //    对齐《异星工厂》：设备仅接红线/仅接绿线时，只感知对应通道网络信号，实现红绿物理隔离。
+    for (const n of group) {
+      if (n.wireChan === 'red')      { n.netRed = aggRed;   n.netGreen = {}; }
+      else if (n.wireChan === 'green'){ n.netRed = {};      n.netGreen = aggGreen; }
+      else                           { n.netRed = aggRed;   n.netGreen = aggGreen; }
+    }
   }
 }
 
@@ -528,6 +551,23 @@ DEVICE_STATUS['decider-combinator'] = e => Object.keys(e.netGreen).length ? 'g' 
 DEVICE_PANEL['constant-combinator'] = constantPanel;
 DEVICE_PANEL['arithmetic-combinator'] = arithPanel;
 DEVICE_PANEL['decider-combinator'] = deciderPanel;
+
+// ===== 红/绿电路线缆（对齐《异星工厂》Red/Green wire）=====
+// 手持红/绿线缆点击电路设备，切换其接入通道（red/green/both），实现红绿信号物理隔离。
+function isCircuitNodeEntity(e) { return !!(e && (e instanceof CircuitNode)); }
+// 手持线缆点击节点：同色再点切回双通，异色则切换为该色通道
+function applyWireToNode(e, wireColor) {
+  if (!isCircuitNodeEntity(e)) return false;
+  if (wireColor === 'red') e.wireChan = (e.wireChan === 'red') ? 'both' : 'red';
+  else e.wireChan = (e.wireChan === 'green') ? 'both' : 'green';
+  if (typeof recomputeCircuit === 'function') recomputeCircuit();
+  if (typeof renderPanel === 'function' && G && G.panelEnt === e) renderPanel(false);
+  return true;
+}
+function wireToolSelected() {
+  const it = (typeof selItem === 'function') ? selItem() : null;
+  return (it === 'red-wire' || it === 'green-wire') ? it : null;
+}
 
 // ===== 电路信号读取辅助 =====
 // 供其它设备（如流体泵）读取某实体周围电路网络的红/绿信号。

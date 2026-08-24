@@ -251,6 +251,9 @@ html, body {
 .mrow { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
 .mlabel { width: 70px; flex-shrink: 0; color: #8fa0b5; padding-top: 4px; }
 .mval { flex: 1; }
+.circ-wire-row { display: flex; gap: 6px; margin-bottom: 6px; }
+.btn.sm { flex: 1; padding: 5px 6px; font-size: 12px; background: #3a4657; color: #dfe6ee; border: 1px solid #4c5a70; border-radius: 5px; cursor: pointer; }
+.btn.sm:hover { background: #465570; border-color: #ffd23c; }
 
 .limitrow {
   display: flex;

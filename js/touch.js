@@ -474,6 +474,14 @@ function handleTap() {
   const tx = t.tx, ty = t.ty;
   const e = entAt(tx, ty);
 
+  // 手持红/绿电路线缆点击电路设备 → 切换其接入通道（对齐《异星工厂》Red/Green wire）
+  if (e && typeof wireToolSelected === 'function' && wireToolSelected() && withinReach(tx, ty)) {
+    if (applyWireToNode(e, wireToolSelected())) {
+      toast((e.wireChan === 'both' ? '已恢复双通道接入' : '仅接入' + (e.wireChan === 'red' ? '红线' : '绿线') + '网络') + '（' + ITEMS[e.type].name + '）');
+      return;
+    }
+  }
+
   // 选中了物品 → 建造（就地放置）
   if (buildActive()) {
     // 手持修理包点击受损建筑 → 修复（对齐《异星工厂》触屏维修）

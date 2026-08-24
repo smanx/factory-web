@@ -1474,6 +1474,11 @@ function bindInput() {
     if (typeof selItem === 'function' && selItem() === 'spidertron-remote') { commandSpidertron(G.cursorTile.tx, G.cursorTile.ty); return; }
     // 手持峭壁炸药点击峭壁 → 炸毁清除（对齐《异星工厂》Cliff explosives）
     if (hasCliffBlastSelected() && isCliff(G.cursorTile.tx, G.cursorTile.ty)) { cliffBlastAt(G.cursorTile.tx, G.cursorTile.ty); return; }
+    // 手持红/绿电路线缆点击电路设备 → 切换其接入通道（对齐《异星工厂》Red/Green wire）
+    if (typeof wireToolSelected === 'function' && wireToolSelected() && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
+      const we = entAt(G.cursorTile.tx, G.cursorTile.ty);
+      if (we && applyWireToNode(we, wireToolSelected())) { toast((we.wireChan === 'both' ? '已恢复双通道接入' : '仅接入' + (we.wireChan === 'red' ? '红线' : '绿线') + '网络') + '（' + ITEMS[we.type].name + '）'); return; }
+    }
     if (buildActive()) return;
     const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
     if (e) openPanel('machine', e);
@@ -1495,6 +1500,11 @@ function handleLeftDown() {
   if (hasCliffBlastSelected() && G.cursorTile && isCliff(G.cursorTile.tx, G.cursorTile.ty)) {
     cliffBlastAt(G.cursorTile.tx, G.cursorTile.ty);
     return;
+  }
+  // 手持红/绿电路线缆点击电路设备 → 切换其接入通道（对齐《异星工厂》Red/Green wire）
+  if (G.cursorTile && typeof wireToolSelected === 'function' && wireToolSelected() && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
+    const we = entAt(G.cursorTile.tx, G.cursorTile.ty);
+    if (we && applyWireToNode(we, wireToolSelected())) { toast((we.wireChan === 'both' ? '已恢复双通道接入' : '仅接入' + (we.wireChan === 'red' ? '红线' : '绿线') + '网络') + '（' + ITEMS[we.type].name + '）'); return; }
   }
   if (buildActive() && G.cursorTile) {
     tryPlaceAt(G.cursorTile.tx, G.cursorTile.ty);
