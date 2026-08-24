@@ -68,6 +68,35 @@ check('assembler rejects fluids when recipe is solid', asm2.acceptsFluid('water'
 updatePower();
 check('chem plant adds power demand', G.power.demand >= POWER_USE['chemical-plant']);
 
+// ---- 耗电设备状态（当前耗电状态 + 是否电量不足）----
+const _origSat = G.power.sat;
+const _chemPlant = plant;
+// 供电正常：耗电设备满速，状态绿
+G.power.sat = 1;
+let _ps = powerStatusOf(_chemPlant);
+check('power status: normal supply green', _ps.consuming && _ps.color === 'g' && _ps.text.includes('供电正常'));
+// 电量不足：0<sat<1 时亮黄灯并提示降速
+G.power.sat = 0.6;
+_ps = powerStatusOf(_chemPlant);
+check('power status: low supply yellow', _ps.consuming && _ps.color === 'y' && _ps.text.includes('电量不足') && _ps.text.includes('60%'));
+// 缺电停摆：sat<=0 时亮红灯
+G.power.sat = 0;
+_ps = powerStatusOf(_chemPlant);
+check('power status: outage red', _ps.consuming && _ps.color === 'r' && _ps.text.includes('缺电停摆'));
+// 未耗电设备（powerDemand 为 0）：不提示电量不足
+const _idle = { powerDemand: () => 0 };
+_ps = powerStatusOf(_idle);
+check('power status: idle not low', _ps.consuming === false && _ps.color === 'g' && _ps.text === '未耗电');
+// 非耗电设备（无 powerDemand）：视为未耗电
+_ps = powerStatusOf({});
+check('power status: no-power-device idle', _ps.consuming === false);
+G.power.sat = _origSat;
+// 面板“电力”行会渲染出耗电状态
+const _chemHtml = htmlMachine(plant);
+check('chem panel shows power status row', _chemHtml.includes('电力') && _chemHtml.includes('power'));
+const _drillPanel = htmlMachine(place(ElectricDrill, 30, 5));
+check('electric drill panel shows power status row', _drillPanel.includes('电力'));
+
 // ---- serialize roundtrip ----
 const s1 = plant.serialize();
 const r1 = ChemicalPlant.restore(JSON.parse(JSON.stringify(s1)));
