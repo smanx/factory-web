@@ -82,6 +82,8 @@ function drawAssembler3(ctx, e, gx, gy, dir, alpha) {
 // ===== 面板：复用组装机面板（配方选择/输入/输出/进度）=====
 function assembler3PanelHtml(e) {
   let h = row('当前配方', e.recipe ? ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name : '<span class="dim">未设置</span>');
+  // 消耗/产出速率显示在面板靠前位置（当前配方之后）
+  h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? asmMult() * 1.25 * 1.5 * elecMachMult() : 1);
   h += row('电力', powerStatusLiveHtml(e), 'power');
   h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
   if (e.recipe)
@@ -110,8 +112,6 @@ function assembler3PanelHtml(e) {
   h += '</div>';
   h += '<div class="dim" id="asm-recipe-empty" style="display:none"></div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
-  // 组装机 III 速度为 I 的 2.5 倍（官方 crafting-speed：III=1.25）
-  h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? asmMult() * 1.25 : 1);
   h += '<div class="dim">组装机 III：吃电力、速度最高的组装机。选中后按 R 旋转朝向（流体入口在背部、固体产物经机械臂取走）。</div>';
   return h;
 }
