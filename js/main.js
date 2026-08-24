@@ -240,6 +240,7 @@ async function loadGame(id) {
     applySave(data);
     closePanel();
     toast('已读档');
+    if (typeof sfxWarmup === 'function') sfxWarmup(500); // 读档静默缓冲，过滤首帧实体恢复爆音
   } catch (err) {
     toast('存档损坏：' + err.message);
     return false;
@@ -1191,6 +1192,7 @@ function enterFromSave(data, okMsg) {
     return false;
   }
   buildHotbar();
+  if (typeof sfxWarmup === 'function') sfxWarmup(500); // 读档静默缓冲，过滤首帧实体恢复爆音
   enterGame();
   if (okMsg) toast(okMsg);
   return true;
