@@ -79,7 +79,7 @@ function render() {
     : null;
   const drawPass = (e, drawInserter) => {
     if (e._dead || !onScreen(e)) return;
-    if (drawInserter !== IS_INSERTER[e.type]) return;
+    if (drawInserter !== !!IS_INSERTER[e.type]) return;
     drawEntity(ctx, e, e.x, e.y, e.dir, 1);
   };
   if (keys) {
@@ -343,7 +343,7 @@ function drawEntity(ctx, e, gx, gy, dir, alpha) {
 }
 
 // 机械臂类型集合：绘制时置顶，永远显示在传送带/其他设备之上，不被遮挡。
-const IS_INSERTER = { inserter: 1, 'long-inserter': 1, 'filter-inserter': 1, 'stack-inserter': 1 };
+const IS_INSERTER = { inserter: true, 'long-inserter': true, 'filter-inserter': true, 'stack-inserter': true };
 
 const ghostCache = { type: null, ent: null };
 
