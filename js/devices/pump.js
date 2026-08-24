@@ -100,9 +100,9 @@ function drawPump(ctx, e, gx, gy, dir, alpha) {
     ctx.arc(0, 0, 5, 0, 7);
     ctx.fill();
   }
-  // 出口箭头：固定在短边一侧（设备短边始终为下方），不随朝向移动，只做水流出口指示
+  // 出口箭头：贴在设备出流端（朝向那一侧的短边），指向出流方向，标识水流输出位置
   ctx.fillStyle = dirColorNotch(dir);
-  notch(ctx, 0, H / 2 - 2, 1);
+  notch(ctx, 0, -H / 2, 0);
   ctx.restore();
   ctx.globalAlpha = 1;
 }
