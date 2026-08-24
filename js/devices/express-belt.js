@@ -251,3 +251,4 @@ DEVICE_PANEL['express-transport-belt'] = expressBeltPanel;
 DEVICE_PANEL['express-underground-belt'] = expressUndergroundPanel;
 DEVICE_PANEL['express-splitter'] = expressSplitterPanel;
 DEVICE_DIR_ROTATE['express-underground-belt'] = true;
+DEVICE_DIR_ROTATE['express-transport-belt'] = true;

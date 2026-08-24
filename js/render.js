@@ -174,16 +174,17 @@ function tileCenterPx(tx, ty) { return [tx * TILE + TILE / 2, ty * TILE + TILE /
 // ===== 蓝图/红图叠加层 =====
 function drawBlueprintOverlay(ctx) {
   if (!G.blueMode) return;
-  // 红图 / 蓝图框选区域（拖拽中）
-  if ((G.blueMode === 'blue' || G.blueMode === 'red') && G.blueStart && G.blueEnd) {
+  // 红图 / 蓝图 / 绿图框选区域（拖拽中）
+  if ((G.blueMode === 'blue' || G.blueMode === 'red' || G.blueMode === 'green') && G.blueStart && G.blueEnd) {
     const x0 = Math.min(G.blueStart.tx, G.blueEnd.tx);
     const y0 = Math.min(G.blueStart.ty, G.blueEnd.ty);
     const x1 = Math.max(G.blueStart.tx, G.blueEnd.tx);
     const y1 = Math.max(G.blueStart.ty, G.blueEnd.ty);
-    const red = G.blueMode === 'red';
-    ctx.fillStyle = red ? 'rgba(230,70,70,.16)' : 'rgba(90,160,255,.16)';
+    const mode = G.blueMode;
+    const col = mode === 'red' ? [230, 70, 70] : mode === 'green' ? [80, 200, 110] : [90, 160, 255];
+    ctx.fillStyle = 'rgba(' + col[0] + ',' + col[1] + ',' + col[2] + ',.16)';
     ctx.fillRect(x0 * TILE, y0 * TILE, (x1 - x0 + 1) * TILE, (y1 - y0 + 1) * TILE);
-    ctx.strokeStyle = red ? 'rgba(255,120,120,.95)' : 'rgba(120,180,255,.95)';
+    ctx.strokeStyle = 'rgba(' + col[0] + ',' + col[1] + ',' + col[2] + ',.95)';
     ctx.lineWidth = 2 / G.cam.z;
     ctx.setLineDash([6 / G.cam.z, 4 / G.cam.z]);
     ctx.strokeRect(x0 * TILE, y0 * TILE, (x1 - x0 + 1) * TILE, (y1 - y0 + 1) * TILE);
@@ -191,7 +192,7 @@ function drawBlueprintOverlay(ctx) {
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 12px system-ui';
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText((red ? '红图：删除整块' : '蓝图：复制整块') + ' ' +
+    ctx.fillText((mode === 'red' ? '红图：删除整块' : mode === 'green' ? '绿图：升级/降级整块' : '蓝图：复制整块') + ' ' +
       (x1 - x0 + 1) + '×' + (y1 - y0 + 1), x0 * TILE + 4, y0 * TILE - 14);
     return;
   }
@@ -294,10 +295,22 @@ function canPlaceAt(type, tx, ty, dir) {
   for (let dy = 0; dy < eh; dy++)
     for (let dx = 0; dx < ew; dx++) {
       if (isWater(tx + dx, ty + dy)) return { ok: false };
-      if (entAt(tx + dx, ty + dy)) return { ok: false };
+      if (entAt(tx + dx, ty + dy)) {
+        // 传送带升级/降级覆盖：用带系/地下带/分流器的同类覆盖现有同族带（对齐《异星工厂》覆盖升级）
+        if (canOverwriteWithBelt(type, entAt(tx + dx, ty + dy))) continue;
+        return { ok: false };
+      }
       if (!withinReach(tx + dx, ty + dy)) return { ok: false };
     }
   return { ok: true };
+}
+
+// 判断能否用 type 覆盖现有实体 e（仅限同族物流链：传送带/地下带/分流器按各自链条覆盖）
+function canOverwriteWithBelt(type, e) {
+  if (!e) return false;
+  // 1×1 且属于同一条升级链（传送带覆盖传送带、地下带覆盖地下带、分流器覆盖分流器）
+  if (!sameTierFamily(type, e.type)) return false;
+  return true;
 }
 
 function drawHoverAndMining(ctx) {

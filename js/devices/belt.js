@@ -228,3 +228,6 @@ DEVICE_STATUS['fast-transport-belt'] = e => e.items.length ? 'g' : 'r';
 const beltPanel = { html: beltPanelHtml, live: beltPanelLive, tip: beltTip };
 DEVICE_PANEL['transport-belt'] = beltPanel;
 DEVICE_PANEL['fast-transport-belt'] = beltPanel;
+// 已铺设的传送带可用 R 键直接旋转方向（对齐《异星工厂》）
+DEVICE_DIR_ROTATE['transport-belt'] = true;
+DEVICE_DIR_ROTATE['fast-transport-belt'] = true;
