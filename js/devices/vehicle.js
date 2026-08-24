@@ -73,6 +73,8 @@ class Tank extends Car {
     this.fuelCap = TANK_FUEL_CAP;
     this.shells = 0;           // 内置炮弹数（普通）
     this.uShells = 0;          // 内置铀炮弹数（高级，威力更高）
+    this.eShells = 0;          // 内置爆炸炮弹数（爆炸范围更大）
+    this.euShells = 0;         // 内置铀爆炸炮弹数（终极，威力最强）
     this.fireT = 0;            // 主炮冷却计时
   }
   giveItem(item) {
@@ -80,6 +82,8 @@ class Tank extends Car {
     if (item === 'solid-fuel' && this.fuelCoal + this.fuelSolid < TANK_FUEL_CAP) { this.fuelSolid++; return true; }
     if (item === 'cannon-shell' && this.shells < TANK_SHELL_CAP) { this.shells++; return true; }
     if (item === 'uranium-cannon-shell' && this.uShells < TANK_SHELL_CAP) { this.uShells++; return true; }
+    if (item === 'explosive-cannon-shell' && this.eShells < TANK_SHELL_CAP) { this.eShells++; return true; }
+    if (item === 'explosive-uranium-cannon-shell' && this.euShells < TANK_SHELL_CAP) { this.euShells++; return true; }
     return false;
   }
   takeItemOf(item) {
@@ -87,6 +91,8 @@ class Tank extends Car {
     if (item === 'solid-fuel' && this.fuelSolid > 0) { this.fuelSolid--; return 'solid-fuel'; }
     if (item === 'cannon-shell' && this.shells > 0) { this.shells--; return 'cannon-shell'; }
     if (item === 'uranium-cannon-shell' && this.uShells > 0) { this.uShells--; return 'uranium-cannon-shell'; }
+    if (item === 'explosive-cannon-shell' && this.eShells > 0) { this.eShells--; return 'explosive-cannon-shell'; }
+    if (item === 'explosive-uranium-cannon-shell' && this.euShells > 0) { this.euShells--; return 'explosive-uranium-cannon-shell'; }
     return null;
   }
   countOf(item) {
@@ -94,12 +100,16 @@ class Tank extends Car {
     if (item === 'solid-fuel') return this.fuelSolid;
     if (item === 'cannon-shell') return this.shells;
     if (item === 'uranium-cannon-shell') return this.uShells;
+    if (item === 'explosive-cannon-shell') return this.eShells;
+    if (item === 'explosive-uranium-cannon-shell') return this.euShells;
     return 0;
   }
   contents() {
     const rows = [[this.type, 1]];
     if (this.fuelSolid > 0) rows.push(['solid-fuel', this.fuelSolid]);
     if (this.fuelCoal > 0) rows.push(['coal', this.fuelCoal]);
+    if (this.euShells > 0) rows.push(['explosive-uranium-cannon-shell', this.euShells]);
+    if (this.eShells > 0) rows.push(['explosive-cannon-shell', this.eShells]);
     if (this.uShells > 0) rows.push(['uranium-cannon-shell', this.uShells]);
     if (this.shells > 0) rows.push(['cannon-shell', this.shells]);
     return rows;
@@ -108,46 +118,67 @@ class Tank extends Car {
     const rows = [];
     if (this.fuelSolid > 0) rows.push(['solid-fuel', this.fuelSolid]);
     if (this.fuelCoal > 0) rows.push(['coal', this.fuelCoal]);
+    if (this.euShells > 0) rows.push(['explosive-uranium-cannon-shell', this.euShells]);
+    if (this.eShells > 0) rows.push(['explosive-cannon-shell', this.eShells]);
     if (this.uShells > 0) rows.push(['uranium-cannon-shell', this.uShells]);
     if (this.shells > 0) rows.push(['cannon-shell', this.shells]);
-    this.fuelCoal = 0; this.fuelSolid = 0; this.shells = 0; this.uShells = 0;
+    this.fuelCoal = 0; this.fuelSolid = 0; this.shells = 0; this.uShells = 0; this.eShells = 0; this.euShells = 0;
     return rows;
   }
   serialize() {
     const s = super.serialize();
     s.shells = this.shells;
     s.uShells = this.uShells;
+    s.eShells = this.eShells;
+    s.euShells = this.euShells;
     return s;
   }
   blueprint() {
     const s = super.blueprint();
     s.shells = this.shells;
     s.uShells = this.uShells;
+    s.eShells = this.eShells;
+    s.euShells = this.euShells;
     return s;
   }
   static restore(s) {
     const c = super.restore(s);
     c.shells = s.shells | 0;
     c.uShells = s.uShells | 0;
+    c.eShells = s.eShells | 0;
+    c.euShells = s.euShells | 0;
     return c;
   }
   // 主炮开火：发射一枚炮弹（范围爆炸），消耗内置炮弹（铀炮弹威力更高）
   fire(tx, ty) {
-    if (this.shells + this.uShells <= 0) return false;
-    const useU = this.uShells > 0;
-    if (useU) this.uShells--; else this.shells--;
+    // 弹药优先级（对齐《异星工厂》：优先消耗最强弹药）：铀爆炸 > 爆炸 > 铀 > 普通
+    if (this.euShells + this.eShells + this.shells + this.uShells <= 0) return false;
+    let use = 'shells';
+    if (this.euShells > 0) { use = 'euShells'; }
+    else if (this.eShells > 0) { use = 'eShells'; }
+    else if (this.uShells > 0) { use = 'uShells'; }
+    this[use]--;
+    // 威力与爆炸范围分级（对齐《异星工厂》Cannon shell / Explosive cannon shell / Uranium / Explosive uranium）
+    const dmg = use === 'euShells' ? 160 : (use === 'eShells' ? 110 : (use === 'uShells' ? 100 : 60));
+    const splash = use === 'euShells' ? 5 : (use === 'eShells' ? 4.5 : (use === 'uShells' ? 4 : 3));
+    const explosive = (use === 'eShells' || use === 'euShells');   // 爆炸系弹药：命中即引爆，特效更华丽
     const px = this.x * TILE + TILE * this.w / 2, py = this.y * TILE + TILE * this.h / 2;
     const dist = 10 * TILE;
     const a = Math.atan2(ty - py, tx - px);
     const tx2 = px + Math.cos(a) * dist, ty2 = py + Math.sin(a) * dist;
     (G.bullets || (G.bullets = [])).push({
       x: px, y: py, tx: tx2, ty: ty2, t: 0, life: 0.22,
-      splash: useU ? 4 : 3, dmg: useU ? 100 : 60, kind: 'rocket', tank: true
+      splash: splash, dmg: dmg, kind: 'rocket', tank: true,
+      explosive: explosive   // 爆炸系炮弹：命中时触发增强版爆炸特效与音效
     });
     this.fireT = 0.9;
     uiDirty = true;
-    // 坦克重炮：厚重主炮音；蜘蛛机器人发射导弹用较轻的火箭音
-    if (typeof playSfx === 'function') playSfx(this instanceof Spidertron ? 'rocket' : 'tank-cannon');
+    // 坦克重炮：厚重主炮音；爆炸系炮弹发射音更沉；蜘蛛机器人发射导弹用较轻的火箭音
+    if (typeof playSfx === 'function') {
+      if (this instanceof Spidertron) playSfx('rocket');
+      else if (explosive) playSfx('tank-cannon-explosive');
+      else playSfx('tank-cannon');
+    }
     return true;
   }
 }
@@ -552,40 +583,57 @@ function drawTank(ctx, e, gx, gy, dir, alpha) {
 }
 function tankPanelHtml(e) {
   let h = row('燃料', (e.fuelSolid > 0 ? ('固体燃料 ' + e.fuelSolid) : '') + (e.fuelSolid > 0 && e.fuelCoal > 0 ? ' + ' : '') + (e.fuelCoal > 0 ? ('煤 ' + e.fuelCoal) : '<span class="dim">空</span>') + ' / ' + TANK_FUEL_CAP, 'fuel');
-  const shellStr = (e.uShells > 0 ? ('铀弹 ' + e.uShells) : '') + (e.uShells > 0 && e.shells > 0 ? ' + ' : '') + (e.shells > 0 ? ('炮弹 ' + e.shells) : '') + (e.uShells + e.shells > 0 ? ' / ' + TANK_SHELL_CAP : '<span class="dim">无</span>');
+  const parts = [];
+  if (e.euShells > 0) parts.push('铀爆弹 ' + e.euShells);
+  if (e.eShells > 0) parts.push('爆炸弹 ' + e.eShells);
+  if (e.uShells > 0) parts.push('铀弹 ' + e.uShells);
+  if (e.shells > 0) parts.push('炮弹 ' + e.shells);
+  const shellStr = parts.length ? parts.join(' + ') + ' / ' + TANK_SHELL_CAP : '<span class="dim">无</span>';
   h += row('炮弹', shellStr, 'shell');
   const cf = Math.min(invCount('coal'), TANK_FUEL_CAP - e.fuelCoal - e.fuelSolid);
   const csol = Math.min(invCount('solid-fuel'), TANK_FUEL_CAP - e.fuelCoal - e.fuelSolid);
   const cs = Math.min(invCount('cannon-shell'), TANK_SHELL_CAP - e.shells);
   const cu = Math.min(invCount('uranium-cannon-shell'), TANK_SHELL_CAP - e.uShells);
+  const ce = Math.min(invCount('explosive-cannon-shell'), TANK_SHELL_CAP - e.eShells);
+  const ceu = Math.min(invCount('explosive-uranium-cannon-shell'), TANK_SHELL_CAP - e.euShells);
   if (cf > 0) h += '<button data-action="feed" data-id="coal">放入煤 ×' + cf + '</button>';
   if (csol > 0) h += '<button data-action="feed" data-id="solid-fuel">放入固体燃料 ×' + csol + '</button>';
   if (cs > 0) h += '<button data-action="feed" data-id="cannon-shell">装填炮弹 ×' + cs + '</button>';
   if (cu > 0) h += '<button data-action="feed" data-id="uranium-cannon-shell">装填铀炮弹 ×' + cu + '</button>';
+  if (ce > 0) h += '<button data-action="feed" data-id="explosive-cannon-shell">装填爆炸炮弹 ×' + ce + '</button>';
+  if (ceu > 0) h += '<button data-action="feed" data-id="explosive-uranium-cannon-shell">装填铀爆炸炮弹 ×' + ceu + '</button>';
   h += '<div class="status"></div>';
   h += '<button data-action="drive" class="primary">🚀 进入驾驶（空格开炮）</button>';
-  h += '<div class="dim">坦克：重型战斗载具，装甲更厚（驾驶时受伤减少），按空格向光标方向发射炮弹（范围爆炸）。铀炮弹威力更高（需核能科技）。需高级战斗科技。燃料可用煤或固体燃料（更耐用）。</div>';
+  h += '<div class="dim">坦克：重型战斗载具，装甲更厚（驾驶时受伤减少），按空格向光标方向发射炮弹（范围爆炸）。弹药分级对齐《异星工厂》：炮弹 → 爆炸炮弹（爆炸物科技，更大爆炸）→ 铀炮弹（核能科技）→ 铀爆炸炮弹（终极）。需高级战斗科技。</div>';
   return h;
 }
 function tankPanelLive(e, api) {
   api.set('fuel', (e.fuelSolid > 0 ? ('固体燃料 ' + e.fuelSolid) : '') + (e.fuelSolid > 0 && e.fuelCoal > 0 ? ' + ' : '') + (e.fuelCoal > 0 ? ('煤 ' + e.fuelCoal) : dimSpan('空')) + ' / ' + TANK_FUEL_CAP);
-  const shellStr = (e.uShells > 0 ? ('铀弹 ' + e.uShells) : '') + (e.uShells > 0 && e.shells > 0 ? ' + ' : '') + (e.shells > 0 ? ('炮弹 ' + e.shells) : (e.uShells + e.shells > 0 ? '' : dimSpan('无'))) + (e.uShells + e.shells > 0 ? ' / ' + TANK_SHELL_CAP : '');
-  api.set('shell', shellStr);
+  const parts = [];
+  if (e.euShells > 0) parts.push('铀爆弹 ' + e.euShells);
+  if (e.eShells > 0) parts.push('爆炸弹 ' + e.eShells);
+  if (e.uShells > 0) parts.push('铀弹 ' + e.uShells);
+  if (e.shells > 0) parts.push('炮弹 ' + e.shells);
+  api.set('shell', parts.length ? parts.join(' + ') + ' / ' + TANK_SHELL_CAP : dimSpan('无'));
   const cf = Math.min(invCount('coal'), TANK_FUEL_CAP - e.fuelCoal - e.fuelSolid);
   const csol = Math.min(invCount('solid-fuel'), TANK_FUEL_CAP - e.fuelCoal - e.fuelSolid);
   const cs = Math.min(invCount('cannon-shell'), TANK_SHELL_CAP - e.shells);
   const cu = Math.min(invCount('uranium-cannon-shell'), TANK_SHELL_CAP - e.uShells);
+  const ce = Math.min(invCount('explosive-cannon-shell'), TANK_SHELL_CAP - e.eShells);
+  const ceu = Math.min(invCount('explosive-uranium-cannon-shell'), TANK_SHELL_CAP - e.euShells);
   api.toggle('button[data-action="feed"][data-id="coal"]', cf > 0, '放入煤 ×' + cf);
   api.toggle('button[data-action="feed"][data-id="solid-fuel"]', csol > 0, '放入固体燃料 ×' + csol);
   api.toggle('button[data-action="feed"][data-id="cannon-shell"]', cs > 0, '装填炮弹 ×' + cs);
   api.toggle('button[data-action="feed"][data-id="uranium-cannon-shell"]', cu > 0, '装填铀炮弹 ×' + cu);
+  api.toggle('button[data-action="feed"][data-id="explosive-cannon-shell"]', ce > 0, '装填爆炸炮弹 ×' + ce);
+  api.toggle('button[data-action="feed"][data-id="explosive-uranium-cannon-shell"]', ceu > 0, '装填铀爆炸炮弹 ×' + ceu);
   if (G.driving && G.driving.ent === e) api.status('驾驶中（空格开炮，E 下车）', 'ok');
   else if (e.fuelCoal <= 0 && e.fuelSolid <= 0) api.status('缺燃料：放入煤/固体燃料后可驾驶', 'warn');
   else api.status('可驾驶', 'ok');
 }
 function tankTip(e) {
   if (G.driving && G.driving.ent === e) return '坦克驾驶中（空格开炮，E 下车）';
-  return '坦克（煤 ' + (e.fuelCoal || 0) + (e.fuelSolid > 0 ? '，固体燃料 ' + e.fuelSolid : '') + ' · 炮弹 ' + (e.shells || 0) + (e.uShells > 0 ? ' + 铀弹 ' + e.uShells : '') + '），按 E 进入驾驶';
+  return '坦克（煤 ' + (e.fuelCoal || 0) + (e.fuelSolid > 0 ? '，固体燃料 ' + e.fuelSolid : '') + ' · 炮弹 ' + (e.shells || 0) + (e.uShells > 0 ? ' + 铀弹 ' + e.uShells : '') + (e.eShells > 0 ? ' + 爆炸弹 ' + e.eShells : '') + (e.euShells > 0 ? ' + 铀爆弹 ' + e.euShells : '') + '），按 E 进入驾驶';
 }
 function tankOnAction(act) {
   if (act === 'drive') {

@@ -241,6 +241,8 @@ const ITEMS = {
   'car':               { name: '装甲车', color: '#8a6a3a', desc: '可驾驶的载具：靠近后按 E 进入驾驶（WASD 更快移动），消耗煤作燃料，E 下车' },
   'tank':              { name: '坦克', color: '#4a6a3a', desc: '重型战斗载具：装甲更厚、速度较慢，可发射炮弹造成范围伤害。需高级战斗科技' },
   'cannon-shell':      { name: '炮弹', color: '#8a5a2a', desc: '坦克主炮的弹药，命中后造成范围爆炸伤害' },
+  'explosive-cannon-shell': { name: '爆炸炮弹', color: '#d05a2a', desc: '装填高能爆炸物的重型炮弹：命中后造成更大范围、更高伤害的爆炸，供坦克主炮使用（对齐《异星工厂》Explosive cannon shell）' },
+  'explosive-uranium-cannon-shell': { name: '铀爆炸炮弹', color: '#9ae07a', desc: '铀-238 制成的终极重型炮弹：兼具铀的穿透杀伤与爆炸的范围杀伤，是坦克最强弹药（对齐《异星工厂》Explosive uranium cannon shell）' },
   // ===== 护甲（对齐《异星工厂》Armor）=====
   'light-armor':       { name: '轻型护甲', color: '#8a8a72', desc: '基础护甲：减少 20% 所受伤害。穿在身上防御敌人' },
   'heavy-armor':       { name: '重型护甲', color: '#6a6a5a', desc: '高级护甲：减少 45% 所受伤害。需高级战斗科技' },
@@ -416,7 +418,7 @@ const RECIPES = {
   'pump':             { time: 1,   inp: { 'iron-plate': 4, 'steel-plate': 2, 'green-circuit': 1 }, out: { 'pump': 1 } },
   'solar-panel':      { time: 5,   inp: { 'copper-plate': 5, 'steel-plate': 5, 'green-circuit': 5 }, out: { 'solar-panel': 1 } },
   'accumulator':      { time: 3,   inp: { 'iron-plate': 2, 'copper-plate': 2, 'green-circuit': 2 }, out: { 'accumulator': 1 } },
-  'military-science': { time: 6,   inp: { 'magazine': 1, 'stone-wall': 1, 'piercing-rounds': 1 }, out: { 'military-science': 1 } },
+  'military-science': { time: 6,   inp: { 'grenade': 1, 'stone-wall': 1, 'piercing-rounds': 1 }, out: { 'military-science': 1 } },  // 对齐《异星工厂》：石墙+穿甲弹+手雷
   // ===== 后期科学包（对齐《异星工厂》7 色科学包）=====
   'flying-robot-frame': { time: 20, inp: { 'electric-engine': 1, 'battery': 2, 'steel-plate': 2, 'green-circuit': 3 }, out: { 'flying-robot-frame': 1 } },
   'production-science-pack': { time: 21, inp: { 'rail': 1, 'electric-furnace': 1, 'productivity-module': 1 }, out: { 'production-science-pack': 1 } },
@@ -447,6 +449,9 @@ const RECIPES = {
   'car':               { time: 6,   inp: { 'engine-unit': 2, 'steel-plate': 10, 'iron-plate': 6, 'iron-gear': 4 }, out: { 'car': 1 } },
   'tank':              { time: 10,  inp: { 'engine-unit': 4, 'steel-plate': 30, 'iron-gear': 12, 'processing-unit': 2 }, out: { 'tank': 1 } },
   'cannon-shell':      { time: 2,   inp: { 'steel-plate': 4, 'explosive': 2 },                           out: { 'cannon-shell': 1 } },
+  // 爆炸炮弹 / 铀爆炸炮弹（对齐《异星工厂》Explosive cannon shell / Explosive uranium cannon shell，坦克弹药分级）
+  'explosive-cannon-shell': { time: 3, inp: { 'cannon-shell': 1, 'explosive': 2, 'steel-plate': 2 },       out: { 'explosive-cannon-shell': 1 } },
+  'explosive-uranium-cannon-shell': { time: 4, inp: { 'explosive-cannon-shell': 1, 'uranium-238': 2 },   out: { 'explosive-uranium-cannon-shell': 1 } },
   'light-armor':       { time: 3,   inp: { 'iron-plate': 20, 'steel-plate': 5 },                       out: { 'light-armor': 1 } },
   'heavy-armor':       { time: 6,   inp: { 'light-armor': 1, 'steel-plate': 20, 'advanced-circuit': 4 }, out: { 'heavy-armor': 1 } },
   'spidertron':        { time: 30,  inp: { 'tank': 1, 'engine-unit': 16, 'electric-engine': 16, 'low-density-structure': 8, 'processing-unit': 4, 'iron-gear': 20 }, out: { 'spidertron': 1 } },
@@ -895,6 +900,9 @@ TECH_REQ['cluster-grenade'] = 'advanced-combat';
 // 爆炸火箭弹/爆炸火箭筒：研究「爆炸物科技」后解锁（对齐《异星工厂》Explosive rocket 独立科技）
 TECH_REQ['explosive-rocket'] = 'explosives';
 TECH_REQ['explosive-rocket-launcher'] = 'explosives';
+// 爆炸炮弹 / 铀爆炸炮弹：需爆炸物科技解锁（对齐《异星工厂》：爆炸炮弹由爆炸物科技与核能科技门控）
+TECH_REQ['explosive-cannon-shell'] = 'explosives';
+TECH_REQ['explosive-uranium-cannon-shell'] = 'nuclear';
 
 // ===== 配方按科技解锁（对齐《异星工厂》科技树门控）=====
 // 统一查询物品所需科技：优先 TECH_REQ（建造门控），再查武器科技门控。

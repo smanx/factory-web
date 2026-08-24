@@ -866,9 +866,9 @@ function drawBullets(ctx) {
       ctx.lineWidth = b.art ? 3.5 : 2.5;
       ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
       if (t >= 1) {
-        const rad = (b.splash || 0) * TILE * (b.art ? 0.8 : 0.6);
+        const rad = (b.splash || 0) * TILE * (b.art ? 0.8 : 0.6) * (b.explosive ? 1.25 : 1);
         // 爆炸推进进度：用 _boomT 让爆炸随时间膨胀/消散（画面优化：层次火球 + 冲击波环）
-        const boomDur = (b.art ? 0.6 : 0.35);
+        const boomDur = (b.art ? 0.6 : (b.explosive ? 0.5 : 0.35));
         const age = (b._boomT || 0);
         const prog = age > 0 ? Math.min(1, age / boomDur) : 1;
         const grow = 0.7 + 0.6 * prog;               // 冲击波扩散
@@ -889,6 +889,19 @@ function drawBullets(ctx) {
         ctx.beginPath(); ctx.arc(b.tx, b.ty, rad * 0.55, 0, 7); ctx.fill();
         ctx.fillStyle = 'rgba(255,255,230,' + (0.85 * fade).toFixed(2) + ')';
         ctx.beginPath(); ctx.arc(b.tx, b.ty, rad * 0.22, 0, 7); ctx.fill();
+        // 爆炸系弹药（爆炸炮弹/铀爆炸炮弹）增强特效：灼热橙芯 + 外圈飞散火星（画面优化）
+        if (b.explosive) {
+          ctx.fillStyle = 'rgba(255,190,80,' + (0.7 * fade).toFixed(2) + ')';
+          ctx.beginPath(); ctx.arc(b.tx, b.ty, rad * 0.42, 0, 7); ctx.fill();
+          ctx.fillStyle = 'rgba(255,120,40,' + (0.6 * fade).toFixed(2) + ')';
+          ctx.beginPath(); ctx.arc(b.tx, b.ty, rad * 0.62, 0, 7); ctx.fill();
+          for (let i = 0; i < 10; i++) {
+            const ea = Math.random() * Math.PI * 2;
+            const er = rad * (0.4 + Math.random() * 0.8) * prog;
+            ctx.fillStyle = 'rgba(255,' + (140 + Math.random() * 80 | 0) + ',50,' + (fade * 0.8).toFixed(2) + ')';
+            ctx.beginPath(); ctx.arc(b.tx + Math.cos(ea) * er, b.ty + Math.sin(ea) * er, 2 + Math.random() * 3, 0, 7); ctx.fill();
+          }
+        }
         ctx.strokeStyle = b.art ? 'rgba(255,120,50,' + (0.9 * fade).toFixed(2) + ')' : 'rgba(255,160,60,' + (0.8 * fade).toFixed(2) + ')';
         ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(b.tx, b.ty, rad, 0, 7); ctx.stroke();
