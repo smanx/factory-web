@@ -206,9 +206,11 @@ function htmlInventory() {
   h += '</div><div class="dim">点一个槽位选中（黄框），再点击下面任意物品图标即可放入该槽位；再点一次同槽位清空。数字键 1-9/0 切换。</div>';
   h += '<div class="sec">建造设备（点击直接选中放置）</div><div class="recgrid">';
   const infinite = !!(G.dbg && G.dbg.infinite);
+  // 测试/应急设备（被动供电、创造/虚空箱、创造/虚空管道）仅在开启"无限资源"
+  // Debug 模式后才会出现在建造列表；正常游玩不可见、不可获取。
+  const dbgOnlyDevices = new Set(['passive-power', 'creative-chest', 'void-chest', 'creative-pipe', 'void-pipe']);
   for (const bid of Object.keys(BUILD_DEFS)) {
-    // 被动供电设备是测试/应急设备：仅在开启"无限资源"调试模式后显示到背包建造列表
-    if (bid === 'passive-power' && !infinite) continue;
+    if (dbgOnlyDevices.has(bid) && !infinite) continue;
     const n = invCount(bid);
     const canBuild = infinite || n > 0;
     h += '<button class="rcbtn"' + (canBuild ? '' : ' disabled style="opacity:.45"') +
