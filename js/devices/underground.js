@@ -15,7 +15,8 @@ class Underground extends Entity {
       const t = entAt(nx, ny);
       if (!t) continue;
       if (t instanceof Underground) return (t.dir === this.dir && t.type === this.type) ? t : null;
-      if (t.solid) return null;
+      // 地下传送带可跨过固体障碍（建筑/水域），这正是它的用途：
+      // 拖动铺设遇障碍时自动配一对地下带即可钻过障碍继续铺。
     }
     return null;
   }
@@ -27,24 +28,34 @@ class Underground extends Entity {
     this.cd -= dt;
     const mate = this.findMate();
     if (mate) {
-      if (this.cd <= 0 && this.items.length > 0 && mate.outItems.length < UG_CAP) {
-        mate.outItems.push(this.items.shift());
-        this.cd = iv;
+      // 本格是入口（或链中段，同时向更前方的出口输送）：把本格收进 items 的货
+      // 以及后方入口转来的 outItems 一并送往前方出口，绝不向地面带外溢，
+      // 保证“进洞的货只能从出口出来”，避免在入口下一格被普通传送带截走。
+      if (this.cd <= 0 && mate.outItems.length < UG_CAP) {
+        if (this.items.length > 0) {
+          mate.outItems.push(this.items.shift());
+          this.cd = iv;
+        } else if (this.outItems.length > 0) {
+          mate.outItems.push(this.outItems.shift());
+          this.cd = iv;
+        }
       }
-    }
-    this.ejectT = (this.ejectT || 0) - dt;
-    if (this.outItems.length > 0 && this.ejectT <= 0) {
-      const nx = this.x + DX[this.dir], ny = this.y + DY[this.dir];
-      let sent = false;
-      const t = entAt(nx, ny);
-      if (t instanceof Belt) {
-        if (!(t instanceof Splitter) && t.dir === ((this.dir + 2) % 4)) sent = false;
-        else sent = t.acceptItem(this.outItems[0], this.dir);
-      } else if (t && !(t instanceof Underground)) {
-        sent = t.giveItem(this.outItems[0]);
+    } else {
+      // 纯出口（前方无同向地下带）：把收到的货投向地面（前方带/设备）
+      this.ejectT = (this.ejectT || 0) - dt;
+      if (this.outItems.length > 0 && this.ejectT <= 0) {
+        const nx = this.x + DX[this.dir], ny = this.y + DY[this.dir];
+        let sent = false;
+        const t = entAt(nx, ny);
+        if (t instanceof Belt) {
+          if (!(t instanceof Splitter) && t.dir === ((this.dir + 2) % 4)) sent = false;
+          else sent = t.acceptItem(this.outItems[0], this.dir);
+        } else if (t && !(t instanceof Underground)) {
+          sent = t.giveItem(this.outItems[0]);
+        }
+        if (sent) { this.outItems.shift(); this.ejectT = iv; }
+        else this.ejectT = 0.15;
       }
-      if (sent) { this.outItems.shift(); this.ejectT = iv; }
-      else this.ejectT = 0.15;
     }
   }
   findBackMate() {
@@ -53,7 +64,7 @@ class Underground extends Entity {
       const t = entAt(nx, ny);
       if (!t) continue;
       if (t instanceof Underground) return (t.dir === this.dir && t.type === this.type) ? t : null;
-      if (t.solid) return null;
+      // 同 findMate：可跨过固体障碍配对。
     }
     return null;
   }
@@ -172,7 +183,7 @@ function undergroundPanelHtml(e) {
   let txt;
   if (e.findMate()) txt = '【入口】货物钻入地下送往同向6格内出口。缓存 ' + e.items.length + '/' + UG_CAP + '，待发 ' + e.outItems.length;
   else if (e.findBackMate()) txt = '【出口】接收上游隧道来货并向前输出。待发 ' + e.outItems.length;
-  else txt = '【未配对】同向6格内没有另一座（中间不能隔固体建筑）。仍可收货排队，配对后自动发车。缓存 ' + e.items.length + '/' + UG_CAP;
+  else txt = '【未配对】同向' + e.maxDist() + '格内没有另一座。仍可收货排队，配对后自动发车。缓存 ' + e.items.length + '/' + UG_CAP;
   return '<div class="dim">地下带' + txt + '。R 旋转方向。</div><div class="status"></div>';
 }
 function undergroundPanelLive(e, api) {

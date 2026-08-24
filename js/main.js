@@ -203,7 +203,11 @@ function tryPlaceAt(tx, ty) {
     return;
   }
   const chk = canPlaceAt(type, tx, ty, G.ghostDir);
-  if (!chk.ok) return;
+  if (!chk.ok) {
+    // 拖动连续铺设传送带遇障碍：自动改用地下传送带跨越障碍继续铺
+    if (tryAutoUnderground(type, tx, ty)) { uiDirty = true; }
+    return;
+  }
   const cls = ENT_CLASSES[type];
   const e = new cls(type, tx, ty);
   e.dir = G.ghostDir;
@@ -211,6 +215,65 @@ function tryPlaceAt(tx, ty) {
   addEnt(e);
   if (!infinite) invTake(type, 1);
   refreshHotbar();
+}
+
+// 传送带类型 → 对应的地下传送带类型
+const BELT_TO_UG = {
+  'transport-belt': 'underground',
+  'fast-transport-belt': 'fast-underground-belt',
+  'express-transport-belt': 'express-underground-belt'
+};
+
+function ugMaxDist(ugType) {
+  return ugType === 'fast-underground-belt' ? FAST_UNDERGROUND_MAX
+    : ugType === 'express-underground-belt' ? EXPRESS_UNDERGROUND_MAX
+    : UNDERGROUND_MAX;
+}
+
+// 拖动铺传送带遇障碍时自动搭一对地下传送带跨越：入口放在障碍前一格，
+// 出口放在障碍之后第一个能放置的格子（不超过同档地下带的最大跨距）。
+function tryAutoUnderground(type, tx, ty) {
+  const ugType = BELT_TO_UG[type];
+  if (!ugType) return false;              // 非传送带不触发
+  if (entAt(tx, ty) instanceof Underground) return false; // 当前格已有地下带，不再生成
+  const infinite = !!(G.dbg && G.dbg.infinite);
+  const dir = G.ghostDir;
+  const maxDist = ugMaxDist(ugType);
+
+  // 入口位置：障碍前（沿铺设方向）一格
+  const ex = tx - DX[dir], ey = ty - DY[dir];
+  let replaced = null;
+  let entOk = canPlaceAt(ugType, ex, ey, dir).ok;
+  if (!entOk) {
+    const t = entAt(ex, ey);
+    if (t instanceof Belt && !(t instanceof Underground)) { replaced = t; entOk = true; }
+    else return false;
+  }
+  if (!entOk) return false;
+
+  // 出口位置：沿方向扫描障碍之后第一个可放置格
+  let ox = null, oy = null;
+  for (let k = 1; k <= maxDist; k++) {
+    const px2 = tx + DX[dir] * k, py2 = ty + DY[dir] * k;
+    if (canPlaceAt(ugType, px2, py2, dir).ok) { ox = px2; oy = py2; break; }
+  }
+  if (ox === null) return false;
+
+  // 物资：优先扣地下带，不足则用普通传送带兜底（方便拖动时无缝跨越）
+  if (!infinite) {
+    if (invCount(ugType) >= 2) invTake(ugType, 2);
+    else if (invCount(type) >= 2) invTake(type, 2);
+    else return false;
+    if (replaced) invAdd(type, 1);        // 归还被替换成入口的那条传送带
+  }
+
+  if (replaced) removeEnt(replaced);
+  const ugIn = new (ENT_CLASSES[ugType])(ugType, ex, ey);
+  ugIn.dir = dir; ugIn.applyDir(); addEnt(ugIn);
+  const ugOut = new (ENT_CLASSES[ugType])(ugType, ox, oy);
+  ugOut.dir = dir; ugOut.applyDir(); addEnt(ugOut);
+  refreshHotbar();
+  return true;
 }
 
 function deconstructAt(tx, ty) {
