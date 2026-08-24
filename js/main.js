@@ -503,11 +503,8 @@ function toggleBlueprint(mode) {
   // 再次点击同按钮取消框选
   if (G.blueMode === mode) { cancelBlueprint(); return; }
   if (G.blueMode === 'paste' && mode === 'blue') {
-    // 蓝图粘贴中再点蓝图：视为取消粘贴并重新框选
-    G.blueMode = 'blue';
-    G.blueStart = null; G.blueEnd = null;
-    G.blueRot = 0; G.blueFlipH = false; G.blueFlipV = false;
-    toast('蓝图模式：拖拽框选要复制的区域');
+    // 蓝图粘贴中再点蓝图：退出蓝图模式（保留已复制的蓝图数据可再次粘贴）
+    cancelBlueprint();
     return;
   }
   G.blueMode = mode;
