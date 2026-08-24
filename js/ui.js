@@ -148,7 +148,10 @@ function renderPanel(full) {
     body.innerHTML = htmlSettings();
   } else if (G.panelMode === 'machine' && G.panelEnt) {
     title.textContent = ITEMS[G.panelEnt.type].name;
-    body.innerHTML = htmlMachine(G.panelEnt);
+    // 机器面板：设备专属内容 + 底部通用“拆除”按钮（PC/手机端均可点击拆除当前建筑）
+    body.innerHTML = htmlMachine(G.panelEnt) +
+      '<div class="sec">操作</div>' +
+      '<button data-action="panel-deconstruct" class="deconstruct-btn-inline">✖ 拆除该建筑</button>';
   }
   body.scrollTop = st;
 }
@@ -581,6 +584,16 @@ function initPanelEvents() {
         G.activeTech = id;
       } else if (act === 'tech-cancel') {
         G.activeTech = null;
+      } else if (act === 'panel-deconstruct') {
+        // 建筑面板内的“拆除”按钮：拆除当前选中的建筑（PC/手机端通用）
+        const mch = G.panelEnt;
+        if (mch && G.ents.includes(mch)) {
+          // 直接拆除面板对应的建筑，并返还物资；不受距离限制（面板已打开）
+          for (const [iid, n] of mch.contents()) invAdd(iid, n);
+          removeEnt(mch);
+          if (G.panelEnt === mch) closePanel();
+          uiDirty = true;
+        }
       }
     }
     renderPanel(false);
