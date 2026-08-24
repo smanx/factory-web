@@ -177,6 +177,13 @@ html, body {
 }
 
 .chip img { width: 22px; height: 22px; border-radius: 4px; }
+.usebtn {
+  font-size: 11px; padding: 3px 8px; border-radius: 6px;
+  background: rgba(255,210,60,.15); border: 1px solid #d0a04a; color: #ffe08a; cursor: pointer;
+}
+.usebtn:hover { background: rgba(255,210,60,.3); }
+.chip-active { border-color: #ffd23c; background: rgba(255,210,60,.12); color: #ffe08a; }
+.chip-x { border: none; background: transparent; color: #ff5b5b; cursor: pointer; font-size: 12px; padding: 0 2px; line-height: 1; }
 
 .recipe {
   display: flex; align-items: center; gap: 8px;
@@ -196,6 +203,13 @@ html, body {
   margin-top: 4px;
 }
 .recipe.done { opacity: .6; }
+.recipe.tech.locked { opacity: .55; }
+.recipe.tech.locked .rname { color: #9aa;
+}
+.lock-tag { color: #e0b23c; font-weight: bold; }
+.locked-recipe { opacity: .55; }
+.locked-recipe .rname { color: #9aa; }
+.rcbtn.locked { opacity: .5; }
 
 .recipe .ric { width: 34px; height: 34px; }
 .rmain { flex: 1; min-width: 0; }
@@ -1084,6 +1098,24 @@ html, body {
 .armor-slot img { width: 20px; height: 20px; border-radius: 4px; }
 .armor-eq { display: inline-flex; align-items: center; gap: 5px; }
 .armor-eq img { width: 20px; height: 20px; border-radius: 4px; }
+
+/* ===== 装备网格（个人装备件） ===== */
+.eqgrid { position: relative; margin: 4px 0; background: rgba(20,26,22,.6); border: 1px solid #3a4a3a; border-radius: 6px; }
+.eqcell {
+  position: absolute; box-sizing: border-box; border: 1px dashed #3a4a3a;
+  background: rgba(40,52,44,.4); border-radius: 3px;
+}
+.eqitem {
+  position: absolute; box-sizing: border-box; border: 1px solid #7aa0c0;
+  background: rgba(45,60,55,.9); border-radius: 5px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px; cursor: pointer;
+  box-shadow: 0 0 6px rgba(90,140,180,.4);
+}
+.eqitem img { width: 24px; height: 24px; border-radius: 4px; }
+.eqitem b { font-size: 9px; color: #cfe0f0; text-align: center; line-height: 1.1; }
+.eqlist { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.eqlist .rcbtn { display: inline-flex; align-items: center; gap: 5px; }
+.eqlist .rcbtn img { width: 18px; height: 18px; border-radius: 4px; }
 
 /* ===== 小地图（右下角） ===== */
 #hud-info { z-index: 5; }

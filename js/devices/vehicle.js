@@ -160,6 +160,154 @@ function updateTankFire(dt) {
   t.fire(tx, ty);
 }
 
+// ===== 蜘蛛机器人 Spidertron（对齐《异星工厂》Spidertron） =====
+// 终极战斗载具：速度快、可跨越水域/墙体，具备车载自动炮塔（自动攻击附近敌人）
+// 与玩家主炮（空格发射导弹造成范围爆炸）。
+const SPIDER_SPEED = 340;          // 速度（像素/秒），高于坦克
+const SPIDER_FUEL_BURN = 0.05;     // 每秒燃料消耗（固体燃料/煤）
+const SPIDER_FUEL_CAP = 100;
+const SPIDER_MISSILE_CAP = 50;     // 内置导弹容量
+const SPIDER_TURRET_RANGE = 7;     // 车载自动炮塔射程（格）
+const SPIDER_TURRET_RATE = 0.4;    // 自动炮塔射击间隔（秒）
+const SPIDER_AUTO_DMG = 8;         // 自动炮塔单发伤害
+class Spidertron extends Tank {
+  constructor(type, x, y) {
+    super('spidertron', x, y);
+    this.fuelCap = SPIDER_FUEL_CAP;
+    this.missiles = 0;             // 内置导弹数（用 rocket 弹药）
+    this.autoT = 0;                // 自动炮塔冷却
+  }
+  giveItem(item) {
+    if (item === 'coal' && this.fuelCoal + this.fuelSolid < SPIDER_FUEL_CAP) { this.fuelCoal++; return true; }
+    if (item === 'solid-fuel' && this.fuelCoal + this.fuelSolid < SPIDER_FUEL_CAP) { this.fuelSolid++; return true; }
+    if (item === 'rocket' && this.missiles < SPIDER_MISSILE_CAP) { this.missiles++; return true; }
+    return false;
+  }
+  takeItemOf(item) {
+    if (item === 'rocket' && this.missiles > 0) { this.missiles--; return 'rocket'; }
+    return super.takeItemOf(item);
+  }
+  countOf(item) {
+    if (item === 'rocket') return this.missiles;
+    return super.countOf(item);
+  }
+  contents() {
+    const rows = super.contents();
+    if (this.missiles > 0) rows.push(['rocket', this.missiles]);
+    return rows;
+  }
+  takeAll() {
+    const rows = super.takeAll();
+    if (this.missiles > 0) rows.push(['rocket', this.missiles]);
+    this.missiles = 0;
+    return rows;
+  }
+  serialize() { const s = super.serialize(); s.missiles = this.missiles; return s; }
+  static restore(s) { const c = super.restore(s); c.missiles = s.missiles | 0; return c; }
+  // 车载自动炮塔：自动攻击附近的敌人（无需玩家操作）
+  autoTurret(dt) {
+    this.autoT = (this.autoT || 0) - dt;
+    if (this.autoT > 0) return;
+    const cx = this.x * TILE + TILE * this.w / 2, cy = this.y * TILE + TILE * this.h / 2;
+    let best = null, bestD = Infinity;
+    for (const en of (G.enemies || [])) {
+      if (!en || en.dead) continue;
+      const d = Math.hypot(en.x - cx, en.y - cy) / TILE;
+      if (d <= SPIDER_TURRET_RANGE && d < bestD) { best = en; bestD = d; }
+    }
+    if (!best) return;
+    this.autoT = SPIDER_TURRET_RATE;
+    best.hp -= SPIDER_AUTO_DMG;
+    if (best.hp <= 0) best.dead = true;
+    (G.bullets || (G.bullets = [])).push({
+      x: cx, y: cy, tx: best.x, ty: best.y, t: 0, life: 0.12, kind: 'bullet', dmg: SPIDER_AUTO_DMG
+    });
+  }
+  // 主炮：发射导弹（范围爆炸），消耗内置导弹
+  fire(tx, ty) {
+    if (this.missiles <= 0) { if (typeof toast === 'function') toast('蜘蛛机器人需要导弹（rocket）'); return false; }
+    this.missiles--;
+    const px = this.x * TILE + TILE * this.w / 2, py = this.y * TILE + TILE * this.h / 2;
+    const dist = 12 * TILE;
+    const a = Math.atan2(ty - py, tx - px);
+    const tx2 = px + Math.cos(a) * dist, ty2 = py + Math.sin(a) * dist;
+    (G.bullets || (G.bullets = [])).push({
+      x: px, y: py, tx: tx2, ty: ty2, t: 0, life: 0.3,
+      splash: 3.5, dmg: 70, kind: 'rocket', tank: true
+    });
+    this.fireT = 0.9;
+    uiDirty = true;
+    return true;
+  }
+}
+function drawSpidertron(ctx, e, gx, gy, dir, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  const s = TILE * e.w;
+  ctx.globalAlpha = alpha;
+  // 六足（四条固定腿 + 身体），深紫色步行机
+  ctx.strokeStyle = '#4a3a6a';
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const lx = px + s / 2 + Math.cos(a) * s * 0.38;
+    const ly = py + s / 2 + Math.sin(a) * s * 0.38;
+    ctx.beginPath();
+    ctx.moveTo(px + s / 2, py + s / 2);
+    ctx.lineTo(lx, ly);
+    ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
+  // 身体
+  ctx.fillStyle = '#6a58b0';
+  ctx.beginPath(); ctx.arc(px + s / 2, py + s / 2, 20, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#45358a';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  // 座舱（玩家方向）
+  ctx.fillStyle = '#8a7ad0';
+  ctx.beginPath(); ctx.arc(px + s / 2, py + s / 2, 10, 0, 7); ctx.fill();
+  // 主炮朝向
+  const ang = e.dir * Math.PI / 2;
+  ctx.strokeStyle = '#3a2f5a';
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(px + s / 2 + Math.cos(ang) * 8, py + s / 2 + Math.sin(ang) * 8);
+  ctx.lineTo(px + s / 2 + Math.cos(ang) * 34, py + s / 2 + Math.sin(ang) * 34);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+function spiderTip(e) {
+  return '蜘蛛机器人：终极载具，可跨水/墙；车载自动炮塔 + 空格发射导弹';
+}
+function spiderPanelHtml(e) {
+  let h = row('燃料', (e.fuelSolid > 0 ? ('固体燃料 ' + e.fuelSolid) : '') + (e.fuelSolid > 0 && e.fuelCoal > 0 ? ' + ' : '') + (e.fuelCoal > 0 ? ('煤 ' + e.fuelCoal) : '<span class="dim">空</span>') + ' / ' + SPIDER_FUEL_CAP, 'fuel');
+  h += row('导弹', e.missiles > 0 ? (e.missiles + ' / ' + SPIDER_MISSILE_CAP) : '<span class="dim">无</span>', 'missile');
+  const cf = Math.min(invCount('coal'), SPIDER_FUEL_CAP - e.fuelCoal - e.fuelSolid);
+  const csol = Math.min(invCount('solid-fuel'), SPIDER_FUEL_CAP - e.fuelCoal - e.fuelSolid);
+  const cr = Math.min(invCount('rocket'), SPIDER_MISSILE_CAP - e.missiles);
+  if (cf > 0) h += '<button data-action="feed" data-id="coal">放入煤 ×' + cf + '</button>';
+  if (csol > 0) h += '<button data-action="feed" data-id="solid-fuel">放入固体燃料 ×' + csol + '</button>';
+  if (cr > 0) h += '<button data-action="feed" data-id="rocket">装填导弹 ×' + cr + '</button>';
+  h += '<div class="status"></div>';
+  h += '<button data-action="drive" class="primary">🚀 进入驾驶（空格发射导弹）</button>';
+  h += '<div class="dim">蜘蛛机器人：终极战斗载具，速度快、可跨越水域与墙体；车载自动炮塔自动攻击附近敌人，按空格发射导弹（范围爆炸）。需高级战斗科技。</div>';
+  return h;
+}
+function spiderPanelLive(e, api) {
+  api.set('fuel', (e.fuelSolid > 0 ? ('固体燃料 ' + e.fuelSolid) : '') + (e.fuelSolid > 0 && e.fuelCoal > 0 ? ' + ' : '') + (e.fuelCoal > 0 ? ('煤 ' + e.fuelCoal) : dimSpan('空')) + ' / ' + SPIDER_FUEL_CAP);
+  api.set('missile', e.missiles > 0 ? (e.missiles + ' / ' + SPIDER_MISSILE_CAP) : dimSpan('无'));
+  const cf = Math.min(invCount('coal'), SPIDER_FUEL_CAP - e.fuelCoal - e.fuelSolid);
+  const csol = Math.min(invCount('solid-fuel'), SPIDER_FUEL_CAP - e.fuelCoal - e.fuelSolid);
+  const cr = Math.min(invCount('rocket'), SPIDER_MISSILE_CAP - e.missiles);
+  api.toggle('button[data-action="feed"][data-id="coal"]', cf > 0, '放入煤 ×' + cf);
+  api.toggle('button[data-action="feed"][data-id="solid-fuel"]', csol > 0, '放入固体燃料 ×' + csol);
+  api.toggle('button[data-action="feed"][data-id="rocket"]', cr > 0, '装填导弹 ×' + cr);
+  if (G.driving && G.driving.ent === e) api.status('驾驶中（空格发射导弹，E 下车）', 'ok');
+  else if (e.fuelCoal <= 0 && e.fuelSolid <= 0) api.status('缺燃料：放入煤/固体燃料后可驾驶', 'warn');
+  else api.status('可驾驶', 'ok');
+}
+
 // ===== 进入/退出驾驶 =====
 function enterCar(car) {
   if (!(car instanceof Car)) return;
@@ -201,7 +349,10 @@ function updateDriving(dt) {
   if (!d || !d.ent || d.ent._dead) return;
   const car = d.ent;
   const isTank = car instanceof Tank;
-  const speed = isTank ? TANK_SPEED : CAR_SPEED;
+  const isSpider = car instanceof Spidertron;
+  const speed = isSpider ? SPIDER_SPEED : (isTank ? TANK_SPEED : CAR_SPEED);
+  // 蜘蛛机器人：车载自动炮塔持续开火
+  if (isSpider) car.autoTurret(dt);
   let mx = 0, my = 0;
   if (G.keys['w'] || G.keys['arrowup']) my -= 1;
   if (G.keys['s'] || G.keys['arrowdown']) my += 1;
@@ -211,7 +362,7 @@ function updateDriving(dt) {
   if (len > 0) {
     // 消耗燃料：燃料不足则无法移动
     if (car.fuelCoal <= 0) {
-      if (!d.warned) { d.warned = true; if (typeof toast === 'function') toast('燃料不足：' + (isTank ? '坦克' : '装甲车') + '需要煤'); }
+      if (!d.warned) { d.warned = true; if (typeof toast === 'function') toast('燃料不足：' + (isSpider ? '蜘蛛机器人' : (isTank ? '坦克' : '装甲车')) + '需要煤'); }
       // 玩家仍可下车（E）
       return;
     }
@@ -224,21 +375,21 @@ function updateDriving(dt) {
     const nx = cx + mx * speed * dt, ny = cy + my * speed * dt;
     const r = isTank ? TANK_COLLIDE : 14; // 载具碰撞半径
     let okX = !boxBlocked(nx, cy, r), okY = !boxBlocked(cx, ny, r);
-    // 载具不能驶入建筑/水域：额外检查中心格
+    // 载具不能驶入建筑/水域：额外检查中心格（蜘蛛机器人可跨水/墙，不受此限）
     let ntx = car.x, nty = car.y;
-    if (!isWater(Math.floor(nx / TILE), Math.floor(cy / TILE))) {
+    if (isSpider || !isWater(Math.floor(nx / TILE), Math.floor(cy / TILE))) {
       if (okX) ntx = Math.floor(nx / TILE);
     }
-    if (!isWater(Math.floor(cx / TILE), Math.floor(ny / TILE))) {
+    if (isSpider || !isWater(Math.floor(cx / TILE), Math.floor(ny / TILE))) {
       if (okY) nty = Math.floor(ny / TILE);
     }
-    // 目的地格子是否被其他实体占据（载具自身除外）
+    // 目的地格子是否被其他实体占据（载具自身除外；蜘蛛机器人可越过石墙）
     let targetOccupied = false;
     if (ntx !== car.x || nty !== car.y) {
       for (let dy = 0; dy < car.h && !targetOccupied; dy++)
         for (let dx = 0; dx < car.w && !targetOccupied; dx++) {
           const other = entAt(ntx + dx, nty + dy);
-          if (other && other !== car) targetOccupied = true;
+          if (other && other !== car && !(isSpider && other.type === 'stone-wall')) targetOccupied = true;
         }
     }
     if (targetOccupied) { return; }
@@ -264,8 +415,8 @@ function updateDriving(dt) {
     // 玩家位置跟随载具中心
     G.player.x = car.x * TILE + TILE * car.w / 2;
     G.player.y = car.y * TILE + TILE * car.h / 2;
-    // 燃料消耗（坦克耗燃料更快；优先烧固体燃料）
-    car.burnFuel((isTank ? TANK_FUEL_BURN : CAR_FUEL_BURN) * dt);
+    // 燃料消耗（蜘蛛最省、坦克最快；优先烧固体燃料）
+    car.burnFuel((isSpider ? SPIDER_FUEL_BURN : (isTank ? TANK_FUEL_BURN : CAR_FUEL_BURN)) * dt);
   }
 }
 
@@ -425,4 +576,7 @@ function tankOnAction(act) {
 ENT_CLASSES['tank'] = Tank;
 DEVICE_RENDER['tank'] = drawTank;
 DEVICE_PANEL['tank'] = { html: tankPanelHtml, live: tankPanelLive, tip: tankTip, onAction: tankOnAction };
+ENT_CLASSES['spidertron'] = Spidertron;
+DEVICE_RENDER['spidertron'] = drawSpidertron;
+DEVICE_PANEL['spidertron'] = { html: spiderPanelHtml, live: spiderPanelLive, tip: spiderTip, onAction: tankOnAction };
 DEVICE_DIR_ROTATE['tank'] = true;

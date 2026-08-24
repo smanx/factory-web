@@ -67,14 +67,20 @@ class Drill extends Entity {
       this.prog -= DRILL_TIME;
       if (!G.settings.infiniteOre) consumeOre(o[0], o[1]);
       const mined = this.mineItem(o);
+      // 采矿产能科技：按比例累积免费额外产出（对齐《异星工厂》Mining productivity）
+      if (this.prodAccum === undefined) this.prodAccum = 0;
+      this.prodAccum += (miningProdMult() - 1);
+      const bonus = Math.floor(this.prodAccum);
+      if (bonus > 0) this.prodAccum -= bonus;
       if (mined === 'coal' && this.fuelCoal < SELF_FUEL_MAX) {
-        this.fuelCoal++;
+        this.fuelCoal++;   // 采到的煤直接进燃料仓自用
+        if (bonus > 0) { this.bufItem = mined; this.buf += bonus; if (typeof trackProd === 'function') trackProd(mined, bonus); }
       } else {
         this.bufItem = mined;
-        this.buf++;
-        if (typeof trackProd === 'function') trackProd(mined, 1);
-        this.tryOutput();
+        this.buf += 1 + bonus;
+        if (typeof trackProd === 'function') trackProd(mined, 1 + bonus);
       }
+      this.tryOutput();
     }
   }
   tryOutput() {

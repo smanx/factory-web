@@ -99,11 +99,90 @@ function render() {
   drawEnemies(ctx);
   drawBullets(ctx);
   drawCombatRobots(ctx);
+  drawLootDrops(ctx);
   drawLogisticsRobots(ctx);
+  if (typeof drawConstruction === 'function') drawConstruction(ctx);
   ctx.restore();
+
+  // 昼夜黑暗遮罩：夜晚整个世界变暗（由 solarFactor 推算），夜视仪可抵消
+  if (typeof solarFactor === 'function' && typeof hasNightVision === 'function') {
+    const ph = ((G.time / DAY_CYCLE) % 1 + 1) % 1;
+    let dark = 0;
+    if (ph < 0.25 || ph >= 0.75) dark = 0.4;        // 深夜
+    else if (ph < 0.32) dark = (0.32 - ph) / 0.07 * 0.4;  // 黄昏过渡
+    else if (ph >= 0.68) dark = (ph - 0.68) / 0.07 * 0.4; // 黎明过渡
+    if (hasNightVision()) dark *= 0.12;              // 夜视仪：大幅削弱黑暗
+    if (dark > 0.01) {
+      ctx.fillStyle = 'rgba(6,10,18,' + dark.toFixed(3) + ')';
+      ctx.fillRect(0, 0, W, H);
+      // 电灯：在黑暗遮罩上凿出光圈并叠加暖色光晕（需夜间有点灯设备时）
+      if (typeof drawLampLights === 'function' && !hasNightVision()) drawLampLights(ctx, dark);
+    }
+  }
 
   // 小地图（位于画布右下角）
   if (G.settings && G.settings.minimap !== false) drawMinimap(ctx);
+}
+
+// ===== 电灯照明：在黑暗遮罩上凿出光圈并叠加暖光 =====
+// 遍历视口内通电点亮的电灯，用 destination-out 把对应区域的黑暗削掉，
+// 再叠加一圈暖色光晕，使夜间基地可见。所有坐标转换为屏幕像素。
+function drawLampLights(ctx, dark) {
+  const cam = G.cam, z = cam.z;
+  const rPx = 5 * TILE * z;            // 照亮半径转像素
+  const keys = (G.buckets && G.buckets.size)
+    ? bucketKeysIn(
+        Math.floor(FRAME_BOUNDS.x1 / TILE) - 6, Math.floor(FRAME_BOUNDS.y1 / TILE) - 6,
+        Math.ceil(FRAME_BOUNDS.x0 / TILE) + 6, Math.ceil(FRAME_BOUNDS.y0 / TILE) + 6)
+    : null;
+  const sx = (wx) => (wx - cam.px) * z + W / 2;
+  const sy = (wy) => (wy - cam.py) * z + H / 2;
+  let first = true;
+  const punch = (e) => {
+    if (!e._dead && e.type === 'lamp' && e.shouldLight && e.shouldLight()) {
+      const cx = sx((e.x + 0.5) * TILE);
+      const cy = sy((e.y + 0.5) * TILE);
+      if (cx < -rPx || cx > W + rPx || cy < -rPx || cy > H + rPx) return;
+      if (first) {
+        // 切换到“挖空”模式：把暗罩下方内容显露出来（即减去黑暗）
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        first = false;
+      }
+      const g = ctx.createRadialGradient(cx, cy, rPx * 0.12, cx, cy, rPx);
+      g.addColorStop(0, 'rgba(0,0,0,' + Math.min(1, dark * 2.4) + ')');
+      g.addColorStop(0.5, 'rgba(0,0,0,' + (dark * 0.85).toFixed(3) + ')');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(cx, cy, rPx, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  };
+  if (keys) forEachEntInBuckets(keys, punch);
+  else for (const e of G.ents) punch(e);
+  if (!first) ctx.restore();
+  // 叠加暖色光晕（半透明黄色辉光，重新正常混合）
+  let drewGlow = false;
+  const glow = (e) => {
+    if (!e._dead && e.type === 'lamp' && e.shouldLight && e.shouldLight()) {
+      const cx = sx((e.x + 0.5) * TILE);
+      const cy = sy((e.y + 0.5) * TILE);
+      if (cx < -rPx || cx > W + rPx || cy < -rPx || cy > H + rPx) return;
+      if (!drewGlow) { ctx.save(); drewGlow = true; }
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rPx);
+      g.addColorStop(0, 'rgba(255,246,178,' + (0.5).toFixed(2) + ')');
+      g.addColorStop(0.4, 'rgba(255,220,120,' + (0.22).toFixed(2) + ')');
+      g.addColorStop(1, 'rgba(255,200,90,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(cx, cy, rPx, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  };
+  if (keys) forEachEntInBuckets(keys, glow);
+  else for (const e of G.ents) glow(e);
+  if (drewGlow) ctx.restore();
 }
 
 // 视口世界包围盒：写入传入对象以复用，避免每帧/每实体分配新对象。
@@ -522,7 +601,7 @@ function drawEnemies(ctx) {
         const a = i * Math.PI / 2 + G.time * 0.5;
         ctx.beginPath(); ctx.arc(en.x + Math.cos(a) * size * 0.7, en.y + Math.sin(a) * size * 0.7, 2, 0, 7); ctx.fill();
       }
-    } else if (en.type === 'worm') {
+    } else if (en.type === 'worm' || en.type === 'big-worm') {
       ctx.beginPath();
       ctx.ellipse(en.x, en.y + bob, size, size * 0.5, 0, 0, 7);
       ctx.fill(); ctx.stroke();
@@ -550,13 +629,20 @@ function drawEnemies(ctx) {
     ctx.fillStyle = Math.max(0, Math.min(1, en.hp / maxhp)) > 0.5 ? '#57e389' : '#ff5b5b';
     ctx.fillRect(en.x - w / 2, en.y - 16, w * Math.max(0, en.hp / maxhp), 3);
   }
-  // 远程投射物
+  // 远程投射物（吐痰/火球）
   if (G.enemyProjectiles) {
     for (const pr of G.enemyProjectiles) {
-      ctx.fillStyle = 'rgba(150,180,60,.8)';
-      ctx.beginPath(); ctx.arc(pr.x, pr.y, 3, 0, 7); ctx.fill();
-      ctx.fillStyle = 'rgba(200,220,120,.6)';
-      ctx.beginPath(); ctx.arc(pr.x, pr.y, 2, 0, 7); ctx.fill();
+      if (pr.fire) {
+        ctx.fillStyle = 'rgba(255,140,40,.85)';
+        ctx.beginPath(); ctx.arc(pr.x, pr.y, 4, 0, 7); ctx.fill();
+        ctx.fillStyle = 'rgba(255,200,120,.7)';
+        ctx.beginPath(); ctx.arc(pr.x, pr.y, 2.2, 0, 7); ctx.fill();
+      } else {
+        ctx.fillStyle = 'rgba(150,180,60,.8)';
+        ctx.beginPath(); ctx.arc(pr.x, pr.y, 3, 0, 7); ctx.fill();
+        ctx.fillStyle = 'rgba(200,220,120,.6)';
+        ctx.beginPath(); ctx.arc(pr.x, pr.y, 2, 0, 7); ctx.fill();
+      }
     }
   }
 }
@@ -573,18 +659,23 @@ function drawBullets(ctx) {
     } else if (b.kind === 'flame') {
       ctx.fillStyle = 'rgba(255,' + (120 + Math.random() * 60 | 0) + ',40,' + (1 - t).toFixed(2) + ')';
       ctx.beginPath(); ctx.arc(cx, cy, 6 + Math.random() * 5, 0, 7); ctx.fill();
-    } else if (b.splash) {
-      // 火箭/手雷：轨迹 + 命中爆炸圈
-      ctx.strokeStyle = 'rgba(255,200,120,' + (1 - t).toFixed(2) + ')';
-      ctx.lineWidth = 2.5;
+    } else if (b.splash || b.art) {
+      // 火箭/手雷/炮兵炮弹：轨迹 + 命中爆炸圈
+      ctx.strokeStyle = b.art ? 'rgba(255,140,90,' + (1 - t).toFixed(2) + ')' : 'rgba(255,200,120,' + (1 - t).toFixed(2) + ')';
+      ctx.lineWidth = b.art ? 3.5 : 2.5;
       ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
       if (t >= 1) {
-        ctx.strokeStyle = 'rgba(255,160,60,.8)';
+        const rad = (b.splash || 0) * TILE * (b.art ? 0.8 : 0.6);
+        ctx.strokeStyle = b.art ? 'rgba(255,120,50,.9)' : 'rgba(255,160,60,.8)';
         ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(b.tx, b.ty, b.splash * TILE * 0.6, 0, 7); ctx.stroke();
-        ctx.fillStyle = 'rgba(255,180,80,.25)';
-        ctx.beginPath(); ctx.arc(b.tx, b.ty, b.splash * TILE * 0.6, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.arc(b.tx, b.ty, rad, 0, 7); ctx.stroke();
+        ctx.fillStyle = b.art ? 'rgba(255,150,70,.3)' : 'rgba(255,180,80,.25)';
+        ctx.beginPath(); ctx.arc(b.tx, b.ty, rad, 0, 7); ctx.fill();
       }
+    } else if (b.boom) {
+      // 地雷爆炸：短促闪光
+      ctx.fillStyle = 'rgba(255,190,90,' + (1 - t).toFixed(2) + ')';
+      ctx.beginPath(); ctx.arc(b.x, b.y, 10 + (1 - t) * 20, 0, 7); ctx.fill();
     } else {
       ctx.strokeStyle = 'rgba(255,220,120,' + (1 - t).toFixed(2) + ')';
       ctx.lineWidth = 2.5;
@@ -623,6 +714,26 @@ function drawCombatRobots(ctx) {
     ctx.fillRect(r.x - w / 2, r.y + bob - r.size - 7, w, 2.5);
     ctx.fillStyle = r.hp > 0 ? '#57e389' : '#ff5b5b';
     ctx.fillRect(r.x - w / 2, r.y + bob - r.size - 7, w * Math.max(0, r.hp / r.maxhp), 2.5);
+  }
+}
+
+// 击杀敌人掉落的地面矿石（见 combat2.js dropEnemyLoot）：小矿石图标带轻微上下浮动
+function drawLootDrops(ctx) {
+  if (!G.lootDrops || G.lootDrops.length === 0) return;
+  for (const d of G.lootDrops) {
+    const bob = Math.sin(G.time * 3 + d.x) * 1.5;
+    // 地面阴影
+    ctx.fillStyle = 'rgba(0,0,0,.18)';
+    ctx.beginPath(); ctx.ellipse(d.x, d.y + 6, 5, 2.5, 0, 0, 7); ctx.fill();
+    // 矿石图标
+    const it = ITEMS[d.id];
+    if (it) {
+      ctx.fillStyle = it.color;
+      ctx.beginPath(); ctx.arc(d.x, d.y + bob, 5, 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(20,26,34,.6)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(d.x, d.y + bob, 5, 0, 7); ctx.stroke();
+    }
   }
 }
 

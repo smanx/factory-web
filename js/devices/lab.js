@@ -41,12 +41,14 @@ class Lab extends Entity {
     const tech = G.activeTech;
     if (G.power.sat <= 0) { this.t = 0; return; }
     if (!tech || G.techDone[tech]) { this.t = 0; return; }
+    // 前置科技未满足时暂停研究（旧档可能残留不合法的 activeTech）
+    if (techLocked(tech)) { this.t = 0; return; }
     // 无限科技：永不完成，持续消耗任意存在的科学包
     if (isInfiniteTech(tech)) {
       const any = this.peekAnyPack();
       if (!any) { this.t = 0; return; }   // 没有任何科学包则暂停
       this.active = true;
-      this.t += dt * powerFactor();
+      this.t += dt * powerFactor() * labSpeedMult();
       if (this.t >= LAB_TIME) {
         this.t -= LAB_TIME;
         this.consumeAnyPack(1);
@@ -60,14 +62,16 @@ class Lab extends Entity {
     if (done >= list.length) {
       G.techDone[tech] = true;
       toast('研究完成：' + TECHS[tech].name);
-      G.activeTech = null;
+      // 顺延到研究队列下一项（若队列还有则继续）
+      if (typeof advanceTechQueue === 'function') advanceTechQueue();
+      else G.activeTech = null;
       if (typeof renderPanel === 'function') renderPanel(false);
       return;
     }
     const need = list[done];
     if (!need || this.packCount(need) <= 0) { this.t = 0; return; }
     this.active = true;
-    this.t += dt * powerFactor();
+    this.t += dt * powerFactor() * labSpeedMult();
     if (this.t >= LAB_TIME) {
       this.t -= LAB_TIME;
       this.packs[need]--;
@@ -79,7 +83,9 @@ class Lab extends Entity {
       if (done >= list.length) {
         G.techDone[tech] = true;
         toast('研究完成：' + TECHS[tech].name);
-        G.activeTech = null;
+        // 顺延到研究队列下一项（若队列还有则继续）
+        if (typeof advanceTechQueue === 'function') advanceTechQueue();
+        else G.activeTech = null;
         if (typeof renderPanel === 'function') renderPanel(false);
       }
     }

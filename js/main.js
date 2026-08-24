@@ -16,6 +16,7 @@ const G = {
   techDone: {},
   techProg: {},
   activeTech: null,
+  techQueue: [],
   panelMode: null,
   panelEnt: null,
   cursorTile: null,
@@ -58,6 +59,8 @@ const G = {
   enemies: [],
   bullets: [],
   combatRobots: [],
+  lootDrops: undefined,   // 击杀敌人掉落的矿石（见 combat2.js dropEnemyLoot）
+
   driving: null,       // 载具驾驶状态：{ ent: Car }，玩家进入驾驶时非空
   spawnT: 0,
   playerHP: 100,
@@ -110,12 +113,14 @@ function newGame() {
   G.techDone = {};
   G.techProg = {};
   G.activeTech = null;
+  G.techQueue = [];
   G.sel = -1;
   G.quickSel = null;
   G.power = { prod: 0, demand: 0, sat: 1 };
   G.powerT = 0;
   G.enemies = []; G.bullets = []; G.spawnT = 0;
   G.enemyProjectiles = [];
+  G.evolution = 0;   // 敌人进化度（战斗开启时随时间/击杀增长）
   G.combatRobots = [];
   G.driving = null;    // 新游戏清空驾驶状态
   G.craftQueue = [];   // 新游戏清空手搓队列
@@ -128,6 +133,8 @@ function newGame() {
   G.weapon = null;
   G.armor = null;
   G.gameWon = false;
+  if (typeof constrRestore === 'function') constrRestore(null);   // 重置个人机器人港与施工机器人状态
+  if (typeof equipmentRestore === 'function') equipmentRestore(null);  // 重置个人装备网格
   G.victoryT = 0;
   if (typeof resetPowerReg === 'function') resetPowerReg();
   // 重置累计时间与历史统计（新游戏从头开始，无历史）
@@ -168,6 +175,7 @@ function serializeAll() {
     ents: G.ents.filter(e => !e._dead).map(e => e.serialize()),
     inv: Array.from(G.inv),
     player: { x: G.player.x, y: G.player.y, hp: G.playerHP, weapon: G.weapon, armor: G.armor },
+    evolution: G.evolution || 0,
     craftQueue: (G.craftQueue || []).map(q => ({
       rid: q.rid, time: q.time, total: q.total, done: q.done, outId: q.outId
     })),
@@ -175,13 +183,16 @@ function serializeAll() {
     techDone: G.techDone,
     techProg: G.techProg,
     activeTech: G.activeTech,
+    techQueue: G.techQueue || [],
     hotbar: HOTBAR.slice(),
     settings: Object.assign({}, G.settings),
     dbg: Object.assign({}, G.dbg),
     // 游戏累计时间（秒）：用于历史统计分桶的时间锚点，读档后延续
     time: G.time,
     // 历史统计：聚合为小时粒度写入（体积极小，最多 24 小时/物品）
-    hist: (typeof histSerialize === 'function') ? histSerialize() : null
+    hist: (typeof histSerialize === 'function') ? histSerialize() : null,
+    constr: (typeof constrSerialize === 'function') ? constrSerialize() : null,
+    equipment: (typeof equipmentSerialize === 'function') ? equipmentSerialize() : null
   };
 }
 
@@ -266,18 +277,26 @@ function applySave(d) {
   if (typeof d.player.hp === 'number') G.playerHP = G.playerHPmax = Math.max(1, d.player.hp);
   G.weapon = d.player.weapon || null;
   G.armor = (isArmor && isArmor(d.player.armor)) ? d.player.armor : null;
+  // 恢复敌人进化度（旧档无该字段则从 0 开始）
+  G.evolution = (typeof d.evolution === 'number') ? Math.min(1, Math.max(0, d.evolution)) : 0;
   G.gameWon = !!d.gameWon;
   G.combatRobots = [];
   G.driving = null;
   G.logiRobots = [];
   G.logiNet = null;
   G.logiNetT = 0;
+  if (typeof constrRestore === 'function') constrRestore(d.constr);
+  if (typeof equipmentRestore === 'function') equipmentRestore(d.equipment);
   if (typeof rebuildTrains === 'function') rebuildTrains();
   const [sx, sy] = findSpawn();
   G.spawn = { x: sx, y: sy };
   G.techDone = d.techDone || {};
   G.techProg = d.techProg || {};
   G.activeTech = d.activeTech || null;
+  // 恢复研究队列（过滤已完成/无效项）
+  G.techQueue = Array.isArray(d.techQueue)
+    ? d.techQueue.filter(t => TECHS[t] && !G.techDone[t])
+    : (G.activeTech ? [G.activeTech] : []);
   G.sel = -1;
   G.quickSel = null;
   G.power = { prod: 0, demand: 0, sat: 1 };
@@ -628,6 +647,15 @@ function blueRect() {
 function applyRedBlueprint() {
   const r = blueRect();
   if (!r) return;
+  // 装备个人机器人港且有施工机器人：生成拆除标记，由施工机器人拆除
+  if (typeof canUseConstruction === 'function' && canUseConstruction() && typeof markAreaForDecon === 'function') {
+    const n = markAreaForDecon(r);
+    G.blueStart = null; G.blueEnd = null;
+    toast(n > 0 ? ('已标记 ' + n + ' 个建筑待拆除，施工机器人正在拆除' + (constrPending().decon > 0 ? '（剩 ' + constrPending().decon + ' 个待拆）' : ''))
+      : '区域内没有可拆除的建筑');
+    uiDirty = true;
+    return;
+  }
   const seen = new Set();
   let count = 0;
   for (let ty = r.y0; ty <= r.y1; ty++) {
@@ -849,6 +877,14 @@ function applyBlueprintTransform() {
 function pasteBlueprint() {
   if (!G.blueprint || !G.cursorTile) return;
   const bp = applyBlueprintTransform();
+  // 装备个人机器人港且有施工机器人：生成建造幽灵，由施工机器人自动施工
+  if (typeof canUseConstruction === 'function' && canUseConstruction()) {
+    const n = pasteBlueprintAsGhosts(bp);
+    toast(n > 0 ? ('已排布 ' + n + ' 个建造幽灵，施工机器人正在建造' + (constrPending().build > 0 ? '（剩 ' + constrPending().build + ' 个待建）' : ''))
+      : '无可建造的位置（区域内已有建筑或超出机器人范围）');
+    uiDirty = true;
+    return;
+  }
   const ox = G.cursorTile.tx - bp.minX;
   const oy = G.cursorTile.ty - bp.minY;
   // 先校验所有目标位置是否可放置，再一次性放置
@@ -1272,6 +1308,7 @@ function loop(ts) {
       updateHeldMouse(dt);
       updateMining(dt);
       updateCraftQueue(dt);   // 手搓合成队列（按时间逐件制作）
+      if (typeof updatePersonalPower === 'function') updatePersonalPower(dt);   // 个人电网（装备件）
       for (const e of G.ents) if (!e._dead && typeof e.update === 'function') e.update(dt);
       // 敌人/子弹系统（可在设置中开关战斗）
       if (G.settings.combat) {
@@ -1281,7 +1318,9 @@ function loop(ts) {
         updatePlayerFire(dt);
         updatePlayerBulletHits(dt);
         updateCombatRobots(dt);
+        if (typeof updatePersonalLaserDefense === 'function') updatePersonalLaserDefense(dt);
         if (typeof updateTankFire === 'function') updateTankFire(dt);
+        if (typeof updateLootDrops === 'function') updateLootDrops(dt);
       }
       G.powerT += dt;
       if (G.powerT >= 0.25) { G.powerT = 0; updatePower(); }
@@ -1289,6 +1328,7 @@ function loop(ts) {
       G.circuitT = (G.circuitT || 0) + dt;
       if (G.circuitT >= 0.25) { G.circuitT = 0; if (typeof recomputeCircuit === 'function') recomputeCircuit(); }
       updateLogistics(dt);
+      if (typeof updateConstruction === 'function') updateConstruction(dt);
       updateTrains(dt);
       updateCamera(dt);
     }

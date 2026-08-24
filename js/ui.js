@@ -248,21 +248,51 @@ function htmlInventory() {
   // 当前穿戴护甲展示与脱卸
   h += '<div class="armor-slot' + (G.armor ? ' equipped' : '') + '" data-tip="' + (G.armor ? (ITEMS[G.armor].name + '|当前穿戴的护甲，点击脱卸') : '未穿戴护甲|护甲可减少所受伤害') + '" data-armor="unequip">' +
     (G.armor ? '<img src="' + iconDataURL(G.armor) + '"><b>' + ITEMS[G.armor].name + '</b>' : '<span>🛡 未穿戴</span>') + '</div>';
-  // 可装备的护甲列表
-  for (const aid of ['light-armor', 'heavy-armor']) {
+  // 可装备的护甲列表（含模块化护甲）
+  for (const aid of ['light-armor', 'heavy-armor', 'modular-armor', 'power-armor', 'power-armor-mk2']) {
     const n = invCount(aid);
     const equipped = G.armor === aid;
     const can = n > 0 && !equipped;
+    const tip = ITEMS[aid].desc + (ARMORS[aid].grid ? '（装备网格 ' + ARMORS[aid].grid + '×' + ARMORS[aid].grid + '）' : '');
     h += '<button class="rcbtn armor-eq' + (can ? '' : ' disabled') + '" data-armor="' + aid + '"' +
-      ' data-tip="' + ITEMS[aid].name + '|' + ITEMS[aid].desc + '">' +
+      ' data-tip="' + ITEMS[aid].name + '|' + tip + '">' +
       '<img src="' + iconDataURL(aid) + '">' + ITEMS[aid].name + (equipped ? ' ✔' : (n > 0 ? ' ×' + n : '')) + '</button>';
   }
-  h += '</div><div class="dim">护甲可减少所受伤害。点击下方护甲图标即可装备（需在背包中拥有），再次点击已穿戴护甲可脱卸。</div>';
+  h += '</div><div class="dim">护甲可减少所受伤害。点击下方护甲图标即可装备（需在背包中拥有），再次点击已穿戴护甲可脱卸。模块化护甲自带装备网格，可在网格中安装个人装备件。</div>';
+  // 装备网格（当前穿戴的模块化护甲）
+  if (G.armor && ARMORS[G.armor] && ARMORS[G.armor].grid) {
+    h += '<div class="sec">装备网格（' + G.armor + ' ' + ARMORS[G.armor].grid + '×' + ARMORS[G.armor].grid + '）</div>';
+    if (typeof equipGridHtml === 'function') h += equipGridHtml();
+    else h += '<div class="dim">（装备网格组件未加载）</div>';
+  }
+  // 个人电网状态（模块化护甲时展示）
+  if (G.armor && ARMORS[G.armor] && ARMORS[G.armor].grid && typeof equipPowerHtml === 'function') {
+    h += equipPowerHtml();
+  }
+  // 个人机器人港装备（施工机器人）
+  if (typeof hasPersonalRoboport === 'function') {
+    const equippedPR = hasPersonalRoboport();
+    const prCount = invCount('personal-roboport');
+    h += '<div class="sec">装备（施工）</div><div class="armor-row">';
+    h += '<div class="armor-slot' + (equippedPR ? ' equipped' : '') + '" data-tip="个人机器人港|' + ITEMS['personal-roboport'].desc + '" data-roboport="toggle">' +
+      (equippedPR ? '<img src="' + iconDataURL('personal-roboport') + '"><b>已装备</b>' : '<span>🔧 未装备</span>') + '</div>';
+    h += '<button class="rcbtn armor-eq' + (!equippedPR && prCount > 0 ? '' : ' disabled') + '" data-roboport="toggle"' +
+      ' data-tip="个人机器人港|' + ITEMS['personal-roboport'].desc + '">' +
+      '<img src="' + iconDataURL('personal-roboport') + '">' + ITEMS['personal-roboport'].name + (equippedPR ? ' ✔' : (prCount > 0 ? ' ×' + prCount : '')) + '</button>';
+    h += '</div><div class="dim">装备个人机器人港 + 背包携带施工机器人后，蓝图粘贴自动生成建造幽灵、红图框选生成拆除标记，由施工机器人自动施工/拆除。</div>';
+  }
   h += '<div class="sec">材料</div><div class="chips">';
   let any = false;
   for (const id in ITEMS) {
     const n = invCount(id);
-    if (n > 0) { h += chip(id, n); any = true; }
+    if (n > 0) {
+      h += chip(id, n);
+      // 手雷可在背包中直接投掷（对齐《异星工厂》投掷物）
+      if (id === 'grenade') {
+        h += '<button class="usebtn" data-action="use-grenade" title="投掷手雷（向当前朝向投掷，造成范围爆炸）">💣 投掷</button>';
+      }
+      any = true;
+    }
   }
   if (!any) h += '<span class="dim">空空如也，去地图上按住左键挖矿吧（铁矿/铜矿/煤/石头）</span>';
   h += '</div><div class="sec">配方</div>';
@@ -276,12 +306,14 @@ function htmlInventory() {
     const _r = RECIPES[rid];
     // 含流体原料的配方不列入手搓清单（需在组装机/化工厂生产）
     if (Object.keys(_r.inp).some(k => FLUIDS.indexOf(k) >= 0)) continue;
+    const unlocked = recipeUnlocked(rid);
+    const lockTech = recipeLockingTech(rid);
     const rec = RECIPES[rid];
-    const ok = canCraft(rid);
+    const ok = unlocked && canCraft(rid);
     const outId = Object.keys(rec.out)[0];
     const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
       Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') + ' ' + recipeDeviceName(rid)).toLowerCase();
-    h += '<div class="recipe" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
+    h += '<div class="recipe' + (unlocked ? '' : ' locked-recipe') + '" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
     h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + ITEMS[outId].name + '|' + ITEMS[outId].desc + '" src="' + iconDataURL(outId) + '">';
     h += '<div class="rmain"><div class="rname">' + ITEMS[Object.keys(rec.out)[0]].name +
       (rec.out[Object.keys(rec.out)[0]] > 1 ? ' ×' + rec.out[Object.keys(rec.out)[0]] : '') +
@@ -293,17 +325,23 @@ function htmlInventory() {
         '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + have + '/' + rec.inp[k] + '</span>';
     }
     h += '</div></div>';
-    h += '<button data-action="craft" data-id="' + rid + '" ' + (ok ? '' : 'disabled') + '>合成</button>';
-    if (ok) h += '<button data-action="craft" data-mult="5" data-id="' + rid + '">×5</button>';
+    if (!unlocked) {
+      h += '<button disabled title="需先研究：' + TECHS[lockTech].name + '">🔒 需' + TECHS[lockTech].name + '</button>';
+    } else {
+      h += '<button data-action="craft" data-id="' + rid + '" ' + (ok ? '' : 'disabled') + '>合成</button>';
+      if (ok) h += '<button data-action="craft" data-mult="5" data-id="' + rid + '">×5</button>';
+    }
     h += '</div>';
   }
   // 化工厂配方
   for (const rid of CHEM_RECIPES) {
+    const unlocked = recipeUnlocked(rid);
+    const lockTech = recipeLockingTech(rid);
     const rec = RECIPES[rid];
     const outId = Object.keys(rec.out)[0];
     const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
       Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') + ' 化工厂').toLowerCase();
-    h += '<div class="recipe chem" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
+    h += '<div class="recipe chem' + (unlocked ? '' : ' locked-recipe') + '" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
     h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + ITEMS[outId].name + '|' + ITEMS[outId].desc + '" src="' + iconDataURL(outId) + '">';
     h += '<div class="rmain"><div class="rname">' + ITEMS[outId].name +
       (rec.out[outId] > 1 ? ' ×' + rec.out[outId] : '') + '<span class="rdev">化工厂</span></div>';
@@ -313,16 +351,18 @@ function htmlInventory() {
         '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + rec.inp[k] + '</span>';
     }
     h += '</div></div>';
-    h += '<span class="rdev-note">需化工厂</span>';
+    h += unlocked ? '<span class="rdev-note">需化工厂</span>' : '<span class="rdev-note lock-tag">🔒 需' + TECHS[lockTech].name + '</span>';
     h += '</div>';
   }
   // 炼油厂配方
   for (const rid of REFINERY_RECIPE_IDS) {
+    const unlocked = recipeUnlocked(rid);
+    const lockTech = recipeLockingTech(rid);
     const rec = REFINERY_RECIPES[rid];
     const outId = Object.keys(rec.out)[0];
     const searchKey = (rec.name + ' ' + Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') +
       ' ' + Object.keys(rec.out).map(k => ITEMS[k].name).join(' ') + ' 炼油厂').toLowerCase();
-    h += '<div class="recipe chem" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
+    h += '<div class="recipe chem' + (unlocked ? '' : ' locked-recipe') + '" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
     h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + ITEMS[outId].name + '|' + ITEMS[outId].desc + '" src="' + iconDataURL(outId) + '">';
     h += '<div class="rmain"><div class="rname">' + rec.name + '<span class="rdev">炼油厂</span></div>';
     h += '<div class="ring">';
@@ -336,7 +376,7 @@ function htmlInventory() {
         '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + rec.out[k] + '</span>';
     }
     h += '</div></div>';
-    h += '<span class="rdev-note">需炼油厂</span>';
+    h += unlocked ? '<span class="rdev-note">需炼油厂</span>' : '<span class="rdev-note lock-tag">🔒 需' + TECHS[lockTech].name + '</span>';
     h += '</div>';
   }
   h += '</div>';
@@ -382,15 +422,27 @@ function applyAssemblerRecipeFilter(q) {
 
 function htmlTech() {
   let h = '';
+  // 研究队列展示（对齐《异星工厂》Research queue）
+  if (G.techQueue && G.techQueue.length) {
+    h += '<div class="sec">研究队列（' + G.techQueue.length + ' 项）</div><div class="chips">';
+    G.techQueue.forEach((qid, i) => {
+      h += '<span class="chip' + (i === 0 ? ' chip-active' : '') + '" title="' + (i === 0 ? '正在研究' : '排队中') + '：' + (TECHS[qid] ? TECHS[qid].name : qid) + '">' +
+        (i === 0 ? '▶ ' : (i + 1) + '. ') + (TECHS[qid] ? TECHS[qid].name : qid) +
+        (i === 0 ? ' <button class="chip-x" data-action="tech-cancel" data-id="' + qid + '">✕</button>' : '') + '</span>';
+    });
+    h += '</div>';
+  }
   for (const tid in TECHS) {
     const t = TECHS[tid];
     const done = G.techDone[tid];
+    const locked = !done && techLocked(tid);
+    const missing = techMissingPrereqs(tid);
     const prog = G.techProg[tid] || 0;
     const total = techCostTotal(tid);
     const costChips = [];
     for (const pk in t.cost) costChips.push(ITEMS[pk].name + '×' + t.cost[pk]);
-    h += '<div class="recipe tech ' + (done ? 'done' : '') + '">';
-    h += '<div class="rmain"><div class="rname">' + t.name + '</div><div class="dim">' + t.desc + '</div>';
+    h += '<div class="recipe tech ' + (done ? 'done' : '') + (locked ? ' locked' : '') + '">';
+    h += '<div class="rmain"><div class="rname">' + t.name + (locked ? ' <span class="lock-tag">🔒</span>' : '') + '</div><div class="dim">' + t.desc + '</div>';
     if (isInfiniteTech(tid)) {
       // 无限科技：进度无限，永不完成，消耗任意科学包
       h += '<div class="bar"><i style="width:100%"></i></div>';
@@ -404,14 +456,20 @@ function htmlTech() {
     h += '</div>';
     // 按钮作为 .recipe 的直接子元素（在 .rmain 外部），配合 .recipe 的 space-between 布局将其置于最右侧
     if (!done && !isInfiniteTech(tid)) {
-      h += (G.activeTech === tid)
-        ? '<button data-action="tech-cancel">取消</button>'
-        : '<button data-action="tech" data-id="' + tid + '">研究</button>';
+      if (locked) {
+        h += '<button disabled title="需先研究：' + missing.map(m => TECHS[m].name).join('、') + '">需先研究 ' + missing.map(m => TECHS[m].name).join('+') + '</button>';
+      } else {
+        const inQueue = !!(G.techQueue && G.techQueue.indexOf(tid) >= 0);
+        h += (G.activeTech === tid)
+          ? '<button data-action="tech-cancel" data-id="' + tid + '">取消</button>'
+          : (inQueue ? '<button disabled>排队中</button>' : '<button data-action="tech" data-id="' + tid + '">研究</button>');
+      }
     } else if (isInfiniteTech(tid)) {
       // 无限科技始终可选（重复研究也继续，永不完成）
+      const inQueue = !!(G.techQueue && G.techQueue.indexOf(tid) >= 0);
       h += (G.activeTech === tid)
-        ? '<button data-action="tech-cancel">停止</button>'
-        : '<button data-action="tech" data-id="' + tid + '">研究</button>';
+        ? '<button data-action="tech-cancel" data-id="' + tid + '">停止</button>'
+        : (inQueue ? '<button disabled>排队中</button>' : '<button data-action="tech" data-id="' + tid + '">研究</button>');
     }
     // 关闭 .recipe.tech 条目，保证各科技条目平级而非互相嵌套
     h += '</div>';
@@ -571,6 +629,18 @@ function initPanelEvents() {
       renderPanel(false);
       return;
     }
+    const roboEl = ev.target.closest('[data-roboport]');
+    if (roboEl && G.panelMode === 'inv' && typeof togglePersonalRoboport === 'function') {
+      // 科技门控检查
+      if (!itemUnlocked('personal-roboport')) { toast('需要先研究「' + TECHS[TECH_REQ['personal-roboport']].name + '」才能装备'); renderPanel(false); return; }
+      togglePersonalRoboport();
+      renderPanel(false);
+      return;
+    }
+    // 装备网格点击（安装/卸下个人装备件）
+    if (typeof equipPanelClick === 'function' && equipPanelClick(ev.target)) {
+      return;
+    }
     const hbSlot = ev.target.closest('[data-hbedit]');
     if (hbSlot) {
       const i = +hbSlot.dataset.hbedit;
@@ -645,7 +715,19 @@ function initPanelEvents() {
     let handled = false;
     if (panel && panel.onAction) handled = !!panel.onAction(act, btn);
     if (!handled) {
-      if (act === 'quick-save') { await saveGame(); renderPanel(false); }
+      if (act === 'use-grenade') {
+        // 从背包投掷手雷：向玩家当前朝向投掷（目标点为玩家前方数格）
+        if (typeof throwGrenade === 'function') {
+          const a = G.player.dir * Math.PI / 2;
+          const tx = Math.floor((G.player.x + Math.cos(a) * TILE * 3) / TILE);
+          const ty = Math.floor((G.player.y + Math.sin(a) * TILE * 3) / TILE);
+          throwGrenade(tx, ty);
+          renderPanel(false);
+        } else {
+          toast('无法投掷手雷（战斗系统未加载）');
+        }
+      }
+      else if (act === 'quick-save') { await saveGame(); renderPanel(false); }
       else if (act === 'quick-load') {
         const newest = (await listAllSaves())[0];
         if (newest) { await loadGame(newest.id); } else { toast('暂无存档'); }
@@ -671,10 +753,27 @@ function initPanelEvents() {
         }
       } else if (act === 'recipe') {
         const mch = G.panelEnt;
-        if (mch && typeof mch.setRecipe === 'function') mch.setRecipe(id);
+        if (mch && typeof mch.setRecipe === 'function') {
+          // 科技门控：未解锁的配方不能在设备中选择
+          if (id !== 'kovarex' && !recipeUnlocked(id)) {
+            toast('需先研究「' + TECHS[recipeLockingTech(id)].name + '」才能生产' + ITEMS[Object.keys((RECIPES[id] || REFINERY_RECIPES[id] || CENTRIFUGE_RECIPES[id]).out)[0]].name);
+          } else {
+            mch.setRecipe(id);
+          }
+        }
       } else if (act === 'recipe-clear') {
         const mch = G.panelEnt;
         if (mch && typeof mch.setRecipe === 'function') mch.setRecipe(null);
+      } else if (act === 'rec') {
+        // 离心机等使用 data-action="rec" 选择配方（含科技门控）
+        const mch = G.panelEnt;
+        if (mch && typeof mch.setRecipe === 'function') {
+          if (id !== 'kovarex' && !recipeUnlocked(id)) {
+            toast('需先研究「' + TECHS[recipeLockingTech(id)].name + '」才能执行' + (CENTRIFUGE_RECIPES[id] ? CENTRIFUGE_RECIPES[id].name : id));
+          } else {
+            mch.setRecipe(id);
+          }
+        }
       } else if (act === 'fuel') {
         const fid = btn.dataset.id || 'coal';
         const n = Math.min(5, invCount(fid));
@@ -713,9 +812,22 @@ function initPanelEvents() {
         const mch = G.panelEnt;
         if (mch && mch.takeAll) for (const [k, n] of mch.takeAll()) invAdd(k, n);
       } else if (act === 'tech') {
-        G.activeTech = id;
+        // 前置科技校验：未满足前置的科技不能开始研究
+        if (G.techDone[id]) { toast('该科技已完成'); return; }
+        if (techLocked(id)) {
+          toast('需先研究：' + techMissingPrereqs(id).map(m => TECHS[m].name).join('、'));
+          return;
+        }
+        // 加入研究队列（对齐《异星工厂》Research queue）
+        if (!G.techQueue) G.techQueue = [];
+        if (G.techQueue.indexOf(id) >= 0 || G.activeTech === id) { toast('该科技已在研究队列中'); return; }
+        G.techQueue.push(id);
+        if (!G.activeTech) G.activeTech = id;
+        toast('已加入研究队列：' + TECHS[id].name);
       } else if (act === 'tech-cancel') {
-        G.activeTech = null;
+        // 取消研究：移除当前项（若队列还有下一项则顺延）
+        if (G.techQueue && G.techQueue.length) G.techQueue.shift();
+        G.activeTech = (G.techQueue && G.techQueue.length) ? G.techQueue[0] : null;
       } else if (act === 'panel-rotate' || act === 'panel-flip-h' || act === 'panel-flip-v') {
         // 面板操作区：旋转 / 水平翻转 / 垂直翻转当前选中的建筑（复用蓝图变换的方向算法）
         const mch = G.panelEnt;
@@ -898,12 +1010,25 @@ function updateHUD(dt, fps) {
   if (G.settings.combat) {
     const hp = Math.max(0, Math.round(G.playerHP));
     hud += '   <span style="color:' + (hp > 50 ? '#57e389' : hp > 25 ? '#ffd23c' : '#ff5b5b') + '">♥ ' + hp + '/' + G.playerHPmax + '</span>';
+    // 敌人进化度显示（对齐《异星工厂》Evolution factor）
+    const evo = Math.round((G.evolution || 0) * 100);
+    const evoColor = evo < 30 ? '#57e389' : evo < 60 ? '#ffd23c' : '#ff5b5b';
+    hud += '   <span style="color:' + evoColor + '" title="敌人进化度：随时间与击杀增长，越高敌人越强">⬆ ' + evo + '%</span>';
   }
   if (G.weapon && isWeapon(G.weapon)) {
     hud += '   🔫 ' + WEAPONS[G.weapon].name;
   }
   if (G.armor && isArmor(G.armor)) {
     hud += '   🛡 ' + ARMORS[G.armor].name;
+    // 模块化护甲：显示个人电网状态（含装备件数量）
+    if (ARMORS[G.armor].grid && typeof equipCount === 'function' && typeof equipmentSerialize === 'function') {
+      const eqN = (G.equipGrid || []).length;
+      let pp = '';
+      if (typeof G.personalPowerMax === 'number' && G.personalPowerMax > 0) {
+        pp = ' · ⚡' + Math.round((G.personalPower || 0) / 1000) + '/' + Math.round(G.personalPowerMax / 1000) + 'MJ';
+      }
+      hud += ' <span style="opacity:.75">(' + eqN + ' 装备' + pp + ')</span>';
+    }
   }
   if (G.driving && G.driving.ent) {
     hud += '   🚗 ' + (G.driving.ent instanceof Tank ? '坦克' : '装甲车') + '（E 下车）';
@@ -1036,7 +1161,8 @@ function buildDebug() {
     ['+100煤', 'coal', 100], ['+100石头', 'stone', 100],
     ['+50齿轮', 'iron-gear', 50], ['+50电路', 'green-circuit', 50],
     ['+20科学包', 'science-pack', 20], ['+20绿包', 'green-science', 20],
-    ['+20蓝包', 'blue-science', 20], ['+20灰包', 'military-science', 20], ['+50塑料', 'plastic-bar', 50],
+    ['+20蓝包', 'blue-science', 20], ['+20灰包', 'military-science', 20],
+    ['+20紫包', 'production-science-pack', 20], ['+20黄包', 'utility-science-pack', 20], ['+50塑料', 'plastic-bar', 50],
     ['+50弹药', 'magazine', 50], ['+50穿甲弹', 'piercing-rounds', 50], ['+5铁箱', 'steel-chest', 5],
     ['+50原油', 'crude-oil', 50], ['+50水', 'water', 50], ['+50蒸汽', 'steam', 50]
   ]) {

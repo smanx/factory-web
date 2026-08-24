@@ -334,7 +334,7 @@ function moveToward(r, dt) {
   const dx = r.tx - r.x, dy = r.ty - r.y;
   const dist = Math.hypot(dx, dy);
   if (dist < 2) { r.x = r.tx; r.y = r.ty; return true; }
-  const step = ROBOT_SPEED * TILE * dt;
+  const step = ROBOT_SPEED * robotSpeedMult() * TILE * dt;
   const m = Math.min(step, dist);
   r.x += dx / dist * m;
   r.y += dy / dist * m;
