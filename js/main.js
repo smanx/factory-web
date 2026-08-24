@@ -46,6 +46,7 @@ const G = {
   statsPowerTab: 'prod',  // 统计面板-电量页：prod(发电设备) | cons(耗电设备)
   machTab: 'prod',        // 设备面板-消耗/生产 tab：cons | prod（已弃用）
   settings: Object.assign({}, DEFAULT_SETTINGS),
+  joystick: { active: false, id: null, baseX: 0, baseY: 0, dx: 0, dy: 0 },
   autoT: 0,
   power: { prod: 0, demand: 0, sat: 1 },
   powerT: 0,
@@ -198,6 +199,8 @@ function applySave(d) {
   G.power = { prod: 0, demand: 0, sat: 1 };
   G.powerT = 0;
   if (d.settings) Object.assign(G.settings, d.settings);
+  // 读档后按设置刷新虚拟摇杆显示状态
+  if (typeof updateJoystickVisibility === 'function') updateJoystickVisibility();
   // 开发者调试数据随存档保存/读取。仅当 URL 参数含 debug=1（debug 按钮开启）时
   // 才恢复已保存的调试数据；否则这些数据不生效，保持默认值。
   if (G.debugEnabled) {
@@ -1160,6 +1163,7 @@ function boot() {
     ['settings', () => loadSettings()],
     ['topbtn', () => initTopButtons()],
     ['panel', () => initPanelEvents()],
+    ['joystick', () => initJoystick()],
     ['tooltip', () => initTooltips()],
     ['debug', () => buildDebug()],
     ['input', () => bindInput()]
