@@ -332,8 +332,9 @@ function htmlInventory() {
     if (isChemRecipe(rid)) continue;
     if (isCentrifugeRecipe(rid)) continue;
     const _r = RECIPES[rid];
-    // 含流体原料的配方不列入手搓清单（需在组装机/化工厂生产）
+    // 含流体原料或产物的配方不列入手搓清单（流体只能走管道，需在组装机/化工厂生产）
     if (Object.keys(_r.inp).some(k => FLUIDS.indexOf(k) >= 0)) continue;
+    if (Object.keys(_r.out).some(k => FLUIDS.indexOf(k) >= 0)) continue;
     const unlocked = recipeUnlocked(rid);
     const lockTech = recipeLockingTech(rid);
     const rec = RECIPES[rid];

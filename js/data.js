@@ -315,8 +315,29 @@ const ITEMS = {
   // ===== 修理包（对齐《异星工厂》Repair pack） =====
   'repair-pack': { name: '修理包', color: '#5aa0d0', desc: '选中后点击受损建筑可修复其耐久度。每个修理包有多次使用次数，损坏建筑恢复 HP' },
   // ===== 空间科学包（对齐《异星工厂》Space science pack，火箭发射产出） =====
-  'space-science-pack': { name: '空间科学包', color: '#d0d0e0', mark: 'SC', desc: '由卫星成功发射后获得的高级科学包，用于终局无限科研（科研速度/采矿产能等）' }
+  'space-science-pack': { name: '空间科学包', color: '#d0d0e0', mark: 'SC', desc: '由卫星成功发射后获得的高级科学包，用于终局无限科研（科研速度/采矿产能等）' },
+  // ===== 流体桶装系统（对齐《异星工厂》Barrel system） =====
+  'empty-barrel': { name: '空桶', color: '#9aa0aa', mark: '桶', desc: '可盛装流体的金属桶（1×1）。把空桶放进组装机并接好流体管道，选桶装配方即可把流体灌入桶中；装满的桶可用传送带/机械臂/物流机器人/火车运输，实现流体走物流网络；再把满桶放回组装机选倒空配方，即可把流体倒回管道' },
+  'water-barrel':          { name: '桶装水',   color: '#4a90d9', mark: '桶', desc: '盛满水的桶，可经物流网络运输，倒空后获得空桶' },
+  'steam-barrel':          { name: '桶装蒸汽', color: '#c8d4dc', mark: '桶', desc: '盛满蒸汽的桶，可经物流网络运输，倒空后获得空桶' },
+  'crude-oil-barrel':      { name: '桶装原油', color: '#2a2418', mark: '桶', desc: '盛满原油的桶，可经物流网络运输，倒空后获得空桶' },
+  'heavy-oil-barrel':      { name: '桶装重油', color: '#5a3a1e', mark: '桶', desc: '盛满重油的桶，可经物流网络运输，倒空后获得空桶' },
+  'light-oil-barrel':      { name: '桶装轻油', color: '#8a5a22', mark: '桶', desc: '盛满轻油的桶，可经物流网络运输，倒空后获得空桶' },
+  'petroleum-gas-barrel':  { name: '桶装石油气', color: '#c9a84a', mark: '桶', desc: '盛满石油气的桶，可经物流网络运输，倒空后获得空桶' },
+  'lubricant-barrel':      { name: '桶装润滑油', color: '#d8c020', mark: '桶', desc: '盛满润滑油的桶，可经物流网络运输，倒空后获得空桶' },
+  'sulfuric-acid-barrel':  { name: '桶装硫酸', color: '#c8c030', mark: '桶', desc: '盛满硫酸的桶，可经物流网络运输，倒空后获得空桶' }
 };
+
+// ===== 可桶装的流体（对齐《异星工厂》：所有流体均可桶装，蒸汽亦可） =====
+const BARREL_FLUIDS = ['water', 'steam', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas', 'lubricant', 'sulfuric-acid'];
+const BARREL_CAP = 50;  // 每桶盛装流体量（对齐《异星工厂》Barrel 容量）
+// 由流体 id 取对应桶物品 id；非桶装流体返回 null
+function barrelItemId(fluid) { return BARREL_FLUIDS.indexOf(fluid) >= 0 ? fluid + '-barrel' : null; }
+function fluidFromBarrelItem(item) {
+  if (item === 'empty-barrel') return null;
+  for (const f of BARREL_FLUIDS) if (f + '-barrel' === item) return f;
+  return null;
+}
 
 const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone', 'calcite'];  // 0-4；原油/铀矿用特殊索引（见 ORE_OIL/ORE_URANIUM）
 
@@ -529,6 +550,19 @@ const RECIPES = {
   'nightvision':       { time: 4,   inp: { 'iron-plate': 4, 'green-circuit': 3, 'advanced-circuit': 1 }, out: { 'nightvision': 1 } },
   'personal-laser-defense': { time: 8, inp: { 'laser-turret': 1, 'processing-unit': 2, 'battery': 4 }, out: { 'personal-laser-defense': 1 } }
 };
+
+// ===== 流体桶装配方（对齐《异星工厂》Barrel system） =====
+// 桶装：空桶 + 50 流体 → 对应满桶（组装机）；倒空：满桶 → 50 流体 + 空桶。
+// 通过下方循环动态生成到 RECIPES，配方归属组装机（含流体输入/输出走管道口）。
+(function() {
+  for (const f of BARREL_FLUIDS) {
+    const barrel = f + '-barrel';
+    RECIPES['fill-' + barrel] = { time: 1, inp: { 'empty-barrel': 1, [f]: BARREL_CAP }, out: { [barrel]: 1 } };
+    RECIPES['empty-' + barrel] = { time: 1, inp: { [barrel]: 1 }, out: { 'empty-barrel': 1, [f]: BARREL_CAP } };
+  }
+  // 空桶制造配方（对齐《异星工厂》：钢桶由钢板压制）
+  RECIPES['empty-barrel'] = { time: 1, inp: { 'steel-plate': 1 }, out: { 'empty-barrel': 1 } };
+})();
 
 // ===== 过滤/需求可选物品全集（对齐《异星工厂》：过滤机械臂、物流需求箱可筛选任意可生产物品）=====
 // FILTER_CHOICES 为基础静态清单；此处动态补全所有“可通过配方/冶炼/离心/炼油生产、或可建造/可收集”
@@ -793,6 +827,9 @@ const TECH_REQ = {
 for (const id of ['centrifuge', 'nuclear-reactor', 'steam-turbine', 'heat-pipe', 'heat-exchanger', 'uranium-235', 'uranium-238', 'nuclear-fuel']) {
   if (!TECH_REQ[id]) TECH_REQ[id] = 'nuclear';
 }
+// ===== 流体桶装科技门控（对齐《异星工厂》：桶装需流体处理科技） =====
+TECH_REQ['empty-barrel'] = 'barrel';
+for (const f of BARREL_FLUIDS) TECH_REQ[f + '-barrel'] = 'barrel';
 // ===== 铁路科技门控 =====
 const RAIL_ITEMS = ['rail', 'locomotive', 'cargo-wagon', 'train-stop', 'fluid-wagon'];
 for (const id of RAIL_ITEMS) if (!TECH_REQ[id]) TECH_REQ[id] = 'railways';
@@ -929,6 +966,7 @@ const TECHS = {
   railways:    { name: '铁路技术', cost: { 'green-science': 30 }, desc: '解锁铁轨、火车头、货运车厢与车站，构建铁路物流', req: ['logistics'] },
   'rail-signals': { name: '铁路信号', cost: { 'blue-science': 30 }, desc: '解锁铁路信号灯，允许多列火车安全同网行驶', req: ['railways'] },
   plastic:    { name: '塑料合成', cost: { 'green-science': 20 }, desc: '化工厂生产塑料耗时缩短 ✓（绿色科研的核心支付项）', req: ['oil'] },
+  barrel:     { name: '流体处理', cost: { 'blue-science': 50 }, desc: '解锁空桶与流体桶装配方，可把流体灌入桶中经物流网络/传送带/火车运输，实现流体走物流链', req: ['oil', 'electronics'] },
   radar:      { name: '雷达技术', cost: { 'green-science': 30 }, desc: '解锁雷达，自动扫描并标记新探索区域', req: ['logistics'] },
   // ==== 三级科技（蓝/军瓶） ====
   automation2:{ name: '自动化 II', cost: { 'blue-science': 40 }, desc: '组装机 II 速度额外 ×1.2', req: ['electric'] },
@@ -1121,6 +1159,55 @@ function drawItemGlyph(x, id, cx, cy, s) {
       x.beginPath();
       x.ellipse(-r * 0.28, -r * 0.35, r * 0.2, r * 0.32, -0.5, 0, 7);
       x.ellipse(r * 0.3, -r * 0.2, r * 0.16, r * 0.26, 0.6, 0, 7);
+      x.fill();
+      break;
+    }
+    // ===== 流体桶（对齐《异星工厂》Barrel）：金属桶身 + 顶部环口 + 流体色带 =====
+    case 'empty-barrel':
+    case 'water-barrel':
+    case 'steam-barrel':
+    case 'crude-oil-barrel':
+    case 'heavy-oil-barrel':
+    case 'light-oil-barrel':
+    case 'petroleum-gas-barrel':
+    case 'lubricant-barrel':
+    case 'sulfuric-acid-barrel': {
+      const fluid = fluidFromBarrelItem(id);
+      const bodyC = '#a8b0b8', rimC = '#7a8288', fluidC = fluid ? ITEMS[fluid].color : 'transparent';
+      // 桶身
+      x.fillStyle = bodyC;
+      x.beginPath();
+      x.moveTo(-r * 0.72, r * 0.05);
+      x.lineTo(-r * 0.72, -r * 0.55);
+      x.arc(0, -r * 0.55, r * 0.72, Math.PI, 0, true);
+      x.lineTo(r * 0.72, r * 0.05);
+      x.closePath();
+      x.fill();
+      // 底部
+      x.fillStyle = rimC;
+      x.beginPath();
+      x.moveTo(-r * 0.72, r * 0.05);
+      x.lineTo(r * 0.72, r * 0.05);
+      x.lineTo(r * 0.62, r * 0.3);
+      x.lineTo(-r * 0.62, r * 0.3);
+      x.closePath();
+      x.fill();
+      // 流体色带（盛装流体的颜色）
+      if (fluid) {
+        x.fillStyle = fluidC;
+        x.fillRect(-r * 0.6, -r * 0.15, r * 1.2, r * 0.28);
+        x.fillStyle = 'rgba(0,0,0,.25)';
+        x.fillRect(-r * 0.6, -r * 0.15, r * 1.2, r * 0.05);
+      }
+      // 顶部环口
+      x.strokeStyle = rimC;
+      x.lineWidth = Math.max(1.5, s * 0.08);
+      x.beginPath();
+      x.arc(0, -r * 0.72, r * 0.22, 0, 7);
+      x.stroke();
+      x.fillStyle = '#d8dee2';
+      x.beginPath();
+      x.arc(0, -r * 0.72, r * 0.12, 0, 7);
       x.fill();
       break;
     }
