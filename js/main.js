@@ -196,6 +196,8 @@ async function loadGame(id) {
 
 function applySave(d) {
   G.world = genWorld(d.seed);
+  // 存档的种子/地图与当前画面可能不同，清空分块离屏缓存避免残留旧世界地形
+  if (typeof clearTerrainCache === 'function') clearTerrainCache();
   G.world.remaining = new Map();
   if (d.world && Array.isArray(d.world.chunks)) {
     // 已探索地图块原样还原：与生成算法解耦，保证升级后地图不变
@@ -671,7 +673,8 @@ function greenAreaAction(action) {
       changed++;
     }
   }
-  if (G.panelEnt && !G.ents.includes(G.panelEnt)) closePanel();
+  // 面板建筑若在本次操作中被拆除（墓碑标记）则关闭面板
+  if (G.panelEnt && G.panelEnt._dead) closePanel();
   toast('绿图已' + (action === 'upgrade' ? '升级' : '降级') + ' ' + changed + ' 个传送带/组装机');
   uiDirty = true;
 }
@@ -1148,9 +1151,9 @@ function updateHeldMouse(dt) {
       tryPlaceAt(G.cursorTile.tx, G.cursorTile.ty);
       lastPlaceKey = key;
     }
-  } else {
-    updateMining(dt);
   }
+  // 手挖进度由主循环统一调用 updateMining(dt) 推进；
+  // 此前这里还会再调一次，导致按住左键挖矿速度双倍（bug 已修）。
 }
 
 function loop(ts) {

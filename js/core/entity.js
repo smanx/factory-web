@@ -133,16 +133,17 @@ function neighborOnSideCell(e, side, cell) {
   return entAt(e.x - 1, e.y + cell);                        // 西
 }
 
-// 遍历实体正交相邻格上的实体（去重，不含斜角）
 // 遍历给定桶集合内的实体（去重，跳过墓碑）。
+// 去重 Set 为模块级复用（每帧渲染都会调用，避免反复分配/回收大 Set）。
+const _bucketSeen = new Set();
 function forEachEntInBuckets(keys, fn) {
-  const seen = new Set();
+  _bucketSeen.clear();
   for (const k of keys) {
     const s = G.buckets.get(k);
     if (!s) continue;
     for (const e of s) {
-      if (e._dead || seen.has(e)) continue;
-      seen.add(e);
+      if (e._dead || _bucketSeen.has(e)) continue;
+      _bucketSeen.add(e);
       fn(e);
     }
   }

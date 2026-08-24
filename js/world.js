@@ -128,6 +128,8 @@ function consumeOre(tx, ty) {
   const amt = getOreAmt(tx, ty);
   if (amt <= 0) return;
   G.world.remaining.set(key, amt - 1);
+  // 矿点已烘焙进地形分块离屏缓存：矿量变化后局部重绘该格（P1 优化）
+  if (typeof invalidateOreTile === 'function') invalidateOreTile(tx, ty);
 }
 
 function isWater(tx, ty) { return getTerrain(tx, ty) === T_WATER; }

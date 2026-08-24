@@ -182,7 +182,8 @@ function renderPanel(full) {
 function updateMachineLive() {
   if (G.panelMode !== 'machine' || !G.panelEnt) return;
   const e = G.panelEnt;
-  if (!G.ents.includes(e)) { closePanel(); return; }
+  // 墓碑标记判断替代 G.ents.includes 的 O(n) 扫描（面板每 0.25s 刷新一次）
+  if (e._dead) { closePanel(); return; }
   const body = document.getElementById('panel-body');
   let prog = 0, status = '', state = 'warn';
   const api = {
@@ -660,7 +661,7 @@ function initPanelEvents() {
       } else if (act === 'panel-rotate' || act === 'panel-flip-h' || act === 'panel-flip-v') {
         // 面板操作区：旋转 / 水平翻转 / 垂直翻转当前选中的建筑（复用蓝图变换的方向算法）
         const mch = G.panelEnt;
-        if (mch && G.ents.includes(mch) && BUILD_DEFS[mch.type]) {
+        if (mch && !mch._dead && BUILD_DEFS[mch.type]) {
           const nd = act === 'panel-rotate' ? (mch.dir + 1) % 4 : flipDir(mch.dir, act === 'panel-flip-h' ? 'h' : 'v');
           if (nd === mch.dir && act !== 'panel-rotate') { toast('该建筑已处于该朝向'); }
           // 非方形设备（分流器类）：旋转/翻转后脚印变化，需重挂网格
@@ -684,7 +685,7 @@ function initPanelEvents() {
       } else if (act === 'panel-deconstruct') {
         // 建筑面板内的“拆除”按钮：拆除当前选中的建筑（PC/手机端通用）
         const mch = G.panelEnt;
-        if (mch && G.ents.includes(mch)) {
+        if (mch && !mch._dead) {
           // 直接拆除面板对应的建筑，并返还物资；不受距离限制（面板已打开）
           for (const [iid, n] of mch.contents()) invAdd(iid, n);
           removeEnt(mch);
@@ -830,23 +831,29 @@ function initTopButtons() {
     G.panelMode === 'set' ? closePanel() : openPanel('set'));
 }
 
+let _hudEl = null, _hudText = '';
 function updateHUD(dt, fps) {
-  const el = document.getElementById('hud-info');
+  if (!_hudEl) _hudEl = document.getElementById('hud-info');
   const p = G.player;
   const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
-  el.textContent = fps + '   (' + tx + ',' + ty + ')';
+  // 内容未变时跳过 textContent 写入，避免每帧无谓的 DOM 更新
+  const s = fps + '   (' + tx + ',' + ty + ')';
+  if (s !== _hudText) { _hudText = s; _hudEl.textContent = s; }
 }
 
 function mapTipAt(tx, ty) {
-  // 显示详情时：鼠标移到某流体出入口图标上，优先显示该流体的具体名称
+  // 显示详情时：鼠标移到某流体出入口图标上，优先显示该流体的具体名称。
+  // 流体图标格必落在设备自身脚印内（见 core/draw.js fluidIconCell），
+  // 因此 entAt 一次即可命中所属设备，无需全量扫描 G.ents（P2 优化）。
   if (G.showDetails) {
-    for (const ent of G.ents) {
-      if (ent._dead) continue;
+    const ent = entAt(tx, ty);
+    if (ent && !ent._dead) {
       const fn = DEVICE_FLUID_ICONS[ent.type];
-      if (!fn) continue;
-      for (const ic of fn(ent)) {
-        if (ic.x === tx && ic.y === ty && ITEMS[ic.fluid]) {
-          return ITEMS[ic.fluid].name + '|' + ITEMS[ic.fluid].desc;
+      if (fn) {
+        for (const ic of fn(ent)) {
+          if (ic.x === tx && ic.y === ty && ITEMS[ic.fluid]) {
+            return ITEMS[ic.fluid].name + '|' + ITEMS[ic.fluid].desc;
+          }
         }
       }
     }
