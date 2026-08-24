@@ -36,10 +36,13 @@ class Underground extends Entity {
       return;
     }
     const mate = this.findMate();
-    if (mate) {
-      // 本格是入口（或链中段，同时向更前方的出口输送）：把本格收进 items 的货
-      // 以及后方入口转来的 outItems 一并送往前方出口，绝不向地面带外溢，
-      // 保证“进洞的货只能从出口出来”，避免在入口下一格被普通传送带截走。
+    // 只与离它最近的那一个配对：地下带只作为“入口”向前输送，当且仅当它
+    // 后方没有另一座同向同档地下带（即它是链的起点）。一旦后方已有配对，
+    // 它就是“出口”，把收到的货投向地面，而不再继续把货转给更前方的地下带，
+    // 从而避免 A→B→C 整条链一路把货送到最远的出口（对齐《异星工厂》配对逻辑）。
+    if (mate && !this.findBackMate()) {
+      // 入口：把本格收进 items 的货以及后方入口转来的 outItems 一并送往最近的前方出口，
+      // 绝不向地面带外溢，保证“进洞的货只能从出口出来”。
       if (this.cd <= 0 && mate.outItems.length < UG_CAP) {
         if (this.items.length > 0) {
           mate.outItems.push(this.items.shift());
@@ -49,8 +52,8 @@ class Underground extends Entity {
           this.cd = iv;
         }
       }
-    } else {
-      // 纯出口（前方无同向地下带）：把收到的货投向地面（前方带/设备）
+    } else if (this.findBackMate()) {
+      // 出口：后方已有配对，把收到的货投向地面（前方带/设备），不再转给更前方。
       this.ejectT = (this.ejectT || 0) - dt;
       if (this.outItems.length > 0 && this.ejectT <= 0) {
         const nx = this.x + DX[this.dir], ny = this.y + DY[this.dir];
@@ -67,6 +70,12 @@ class Underground extends Entity {
       }
     }
   }
+  // 是否作为“出口”：后方已有同向同档地下带配对（无论前方是否还有更远的带）。
+  // 出口把收到的货投向地面，不再向更前方的地下带转送（只与最近者配对）。
+  isExit() { return !!this.findBackMate(); }
+  // 是否作为“入口”：前方有同向同档地下带配对，且后方没有配对（是链的起点）。
+  // 入口把货送向最近的前方出口。
+  isEntrance() { return !this.findBackMate() && !!this.findMate(); }
   findBackMate() {
     for (let k = 1; k <= this.maxDist(); k++) {
       const nx = this.x - DX[this.dir] * k, ny = this.y - DY[this.dir] * k;
@@ -144,8 +153,7 @@ class FastUnderground extends Underground {
 function drawUnderground(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const cx = px + TILE / 2, cy = py + TILE / 2;
-  const mateA = !!e.findMate();
-  const st = mateA ? 'in' : (!!e.findBackMate() ? 'out' : 'idle');
+  const st = e.isEntrance() ? 'in' : (e.isExit() ? 'out' : 'idle');
   const bodyCol = st === 'in' ? '#3f3552' : st === 'out' ? '#33405a' : '#3c4046';
   const accCol = st === 'in' ? '#b39ddb' : st === 'out' ? '#90caf9' : '#9aa0a8';
 
@@ -212,8 +220,8 @@ function drawUnderground(ctx, e, gx, gy, dir, alpha) {
 // ===== 面板 =====
 function undergroundPanelHtml(e) {
   let txt;
-  if (e.findMate()) txt = '【入口】货物钻入地下送往同向6格内出口。缓存 ' + e.items.length + '/' + UG_CAP + '，待发 ' + e.outItems.length;
-  else if (e.findBackMate()) txt = '【出口】接收上游隧道来货并向前输出。待发 ' + e.outItems.length;
+  if (e.isEntrance()) txt = '【入口】货物钻入地下送往最近的前方出口。缓存 ' + e.items.length + '/' + UG_CAP + '，待发 ' + e.outItems.length;
+  else if (e.isExit()) txt = '【出口】接收后方隧道来货并向前输出（只与最近者配对，不再向更前方转送）。待发 ' + e.outItems.length;
   else txt = '【未配对】同向' + e.maxDist() + '格内没有另一座。仅作显示，不接收/不传送物品。缓存 ' + e.items.length + '/' + UG_CAP;
   return '<div class="dim">地下带' + txt + '。R 旋转方向。</div><div class="status"></div>';
 }

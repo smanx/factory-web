@@ -99,8 +99,7 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
 function drawExpressUnderground(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const cx = px + TILE / 2, cy = py + TILE / 2;
-  const mateA = !!e.findMate();
-  const st = mateA ? 'in' : (!!e.findBackMate() ? 'out' : 'idle');
+  const st = e.isEntrance() ? 'in' : (e.isExit() ? 'out' : 'idle');
   const bodyCol = st === 'in' ? '#5a2a26' : st === 'out' ? '#4a302a' : '#4a3030';
   const accCol = st === 'in' ? '#e07a6a' : st === 'out' ? '#e08a7a' : '#b07068';
   ctx.globalAlpha = alpha;
