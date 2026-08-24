@@ -160,13 +160,30 @@ function laneCenterAt(e, ox, oy, l) {
   return [cx + p[0] * off, cy + p[1] * off];
 }
 
+// 检查分流器某条 lane 的入口传送带上是否有物品（有货要流进来），从而驱动流入动画。
+// 入口传送带位于分流器后方沿 dir 反方向；只要带上有物品且方向朝向分流器，即视为“有货流入”。
+function splitterInputHasItem(e, l, gx, gy) {
+  const [lx, ly] = laneCenterAt(e, gx, gy, l);
+  const inTx = Math.floor((lx - DX[e.dir] * TILE / 2) / TILE);
+  const inTy = Math.floor((ly - DY[e.dir] * TILE / 2) / TILE);
+  const inEnt = entAt(inTx, inTy);
+  if (!inEnt || !inEnt.items || !inEnt.items.length) return false;
+  // 传送带上确有物品（物品最终会流向分流器）
+  return true;
+}
+
+// 重新设计的分流器流动动画：
+//  - 流入动画（入口→中心）：某 lane 入口接了传送带，且（入口传送带上有货 或 分流器内部确有物品正在从该入口流入）；
+//  - 流出动画（中心→出口）：某 lane 出口接了传送带，且分流器内部确有物品正在从该出口流出。
+// 这样既能避免“出口没接带却凭空消失 / 入口没货却凭空产生”，又能在物品即将进入/正在离开时保持动画连贯。
 function drawSplitterFlow(ctx, e, gx, gy, color, alpha) {
   const links = splitterLinks(e, gx, gy);
-  // 流入动画：该 lane 入口接了带，且确有物品正在从该入口流入（入口空则不画，避免凭空产生）。
-  // 流出动画：该 lane 出口接了带，且确有物品正在从该出口流出（出口没接带则不画，避免凭空消失）。
   const inFlow = [false, false], outFlow = [false, false];
   for (let l = 0; l < 2; l++) {
-    inFlow[l] = links.inp[l] && e.items.some(o => o.lane === l && o.pos < 0.5);
+    // 流入：入口接带 &&（入口传送带上有货 或 分流器内部有物品正从该入口流向中心）
+    inFlow[l] = links.inp[l] && (splitterInputHasItem(e, l, gx, gy) ||
+      e.items.some(o => o.lane === l && o.pos < 0.5));
+    // 流出：出口接带 && 分流器内部确有物品正在从该出口流向出口
     outFlow[l] = links.out[l] && e.items.some(o => (o.outLane !== undefined ? o.outLane : o.lane) === l && o.pos >= 0.5);
   }
   if (!inFlow[0] && !inFlow[1] && !outFlow[0] && !outFlow[1]) return;
