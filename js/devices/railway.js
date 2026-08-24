@@ -13,7 +13,12 @@
 // 保留用于渲染，即使被火车覆盖也不影响 railTiles 连接判定。
 
 // ===== 常量 =====
-const TRAIN_SPEED = 0.35;      // 列车每格移动耗时（秒），慢于传送带但运量大
+const TRAIN_SPEED = 0.35;      // 列车每格移动耗时（秒），慢于传送带但运量大（蒸汽车头）
+const DIESEL_SPEED = 0.24;     // 内燃机车每格移动耗时（秒），约为蒸汽车头的 1.45 倍速（对齐《异星工厂》Diesel locomotive 更快）
+// 按车头类型返回每格移动耗时：内燃机车更快，其余为蒸汽车头标准速度。
+function trainMoveTime(head) {
+  return (head && head.type === 'diesel-locomotive') ? DIESEL_SPEED : TRAIN_SPEED;
+}
 const LOCO_FUEL = 400;         // 单格煤提供的燃料量（一格跑多格）
 const LOCO_SOLID_FUEL = 1600;  // 单格固体燃料提供的燃料量（约为煤的 4 倍）
 const LOCO_ROCKET_FUEL = 16000; // 单格火箭燃料提供的燃料量（约为固体燃料的 10 倍，对齐《异星工厂》Rocket fuel）
@@ -51,6 +56,9 @@ function railHas(tx, ty) { ensureRailGlobals(); return G.railTiles.has(tx + ',' 
 
 // 列车更新入口（main.js loop 中调用）
 function updateTrains(dt) {
+  // 性能：早期无任何列车时直接短路返回，避免每帧惰性初始化检查与空数组遍历
+  // （ensureRailGlobals 的 if 判断仅在存在列车/铁轨时才需要触发）
+  if (!G.trains || !G.trains.length) return;
   ensureRailGlobals();
   for (const tr of G.trains) {
     if (tr.cars.length === 0) continue;
@@ -94,8 +102,8 @@ function updateTrains(dt) {
     tr.wasStopped = false;
 
     tr.moveT = (tr.moveT || 0) + dt;
-    if (tr.moveT >= TRAIN_SPEED) {
-      tr.moveT -= TRAIN_SPEED;
+    if (tr.moveT >= trainMoveTime(head)) {
+      tr.moveT -= trainMoveTime(head);
       moveTrain(tr);
     }
   }
@@ -137,8 +145,8 @@ function updateScheduledTrain(tr, dt) {
   if (tr.wasStopped && typeof playSfx === 'function') playSfx('train');
   tr.wasStopped = false;
   tr.moveT = (tr.moveT || 0) + dt;
-  if (tr.moveT >= TRAIN_SPEED) {
-    tr.moveT -= TRAIN_SPEED;
+  if (tr.moveT >= trainMoveTime(head)) {
+    tr.moveT -= trainMoveTime(head);
     moveTrainToward(tr, target.x, target.y);
   }
   return true;
@@ -348,6 +356,39 @@ class Locomotive extends Entity {
     e.fuel = s.fuel | 0; e.fuelCoal = s.fuelCoal | 0; e.fuelSolid = s.fuelSolid | 0; e.fuelRocket = s.fuelRocket | 0;
     e.schedule = Array.isArray(s.schedule) ? s.schedule.slice() : [];
     return e;
+  }
+}
+
+// ===== 内燃机车 DieselLocomotive（对齐《异星工厂》Diesel locomotive） =====
+// 进阶机车：速度更快（trainMoveTime 取 DIESEL_SPEED），吃固体燃料/火箭燃料（不吃煤，对齐原版内燃机车）。
+class DieselLocomotive extends Locomotive {
+  constructor(type, x, y) {
+    super(type, x, y);
+    this.fuelCoal = 0; // 内燃机车不吃煤（原版内燃机车烧液体/固体燃料），煤槽始终为空
+  }
+  giveItem(item) {
+    // 内燃机车只吃固体燃料与火箭燃料（对齐《异星工厂》：内燃机车不使用煤）
+    const total = this.fuelCoal + this.fuelSolid + this.fuelRocket;
+    if (item === 'rocket-fuel' && total < LOCO_MAX_UNITS) { this.fuelRocket++; return true; }
+    if (item === 'solid-fuel' && total < LOCO_MAX_UNITS) { this.fuelSolid++; return true; }
+    return false;
+  }
+  refuel() {
+    if (this.fuel >= LOCO_FUEL) return;
+    if (this.fuelRocket > 0) { this.fuelRocket--; this.fuel = Math.min(LOCO_MAX_FUEL, this.fuel + LOCO_ROCKET_FUEL); }
+    else if (this.fuelSolid > 0) { this.fuelSolid--; this.fuel = Math.min(LOCO_MAX_FUEL, this.fuel + LOCO_SOLID_FUEL); }
+    // 内燃机车不吃煤，fuelCoal 恒为 0，不会走到煤分支
+  }
+  takeItemOf(item) {
+    if (item === 'solid-fuel' && this.fuelSolid > 0) { this.fuelSolid--; return 'solid-fuel'; }
+    if (item === 'rocket-fuel' && this.fuelRocket > 0) { this.fuelRocket--; return 'rocket-fuel'; }
+    return null;
+  }
+  contents() {
+    const list = [[this.type, 1]];
+    if (this.fuelRocket > 0) list.push(['rocket-fuel', this.fuelRocket]);
+    if (this.fuelSolid > 0) list.push(['solid-fuel', this.fuelSolid]);
+    return list;
   }
 }
 
@@ -793,6 +834,35 @@ DEVICE_RENDER['locomotive'] = function (ctx, e, gx, gy, dir, alpha) {
   ctx.restore();
 };
 
+// ===== 内燃机车渲染（蓝灰进阶车头，带速度标识） =====
+DEVICE_RENDER['diesel-locomotive'] = function (ctx, e, gx, gy, dir, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(gx + TILE / 2, gy + TILE / 2);
+  ctx.rotate(dir * Math.PI / 2);
+  // 车体（蓝灰）
+  ctx.fillStyle = '#3f6fa8';
+  rrPath(ctx, -TILE * 0.42, -TILE * 0.32, TILE * 0.84, TILE * 0.64, TILE * 0.12);
+  ctx.fill();
+  ctx.strokeStyle = '#1f3f68'; ctx.lineWidth = 2; ctx.stroke();
+  // 车头驾驶舱窗（体现内燃机车更流线）
+  ctx.fillStyle = '#9fc8ef';
+  rrPath(ctx, TILE * 0.02, -TILE * 0.18, TILE * 0.22, TILE * 0.36, TILE * 0.06);
+  ctx.fill();
+  // 车灯朝前
+  ctx.fillStyle = '#ffe08a';
+  ctx.fillRect(TILE * 0.2, -TILE * 0.06, TILE * 0.1, TILE * 0.12);
+  // 速度标识（两道速度线，标志更快）
+  ctx.strokeStyle = '#c8e0ff'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-TILE * 0.3, -TILE * 0.1); ctx.lineTo(-TILE * 0.3, -TILE * 0.24); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-TILE * 0.18, -TILE * 0.1); ctx.lineTo(-TILE * 0.18, -TILE * 0.24); ctx.stroke();
+  ctx.lineCap = 'butt';
+  // 燃料状态灯
+  ctx.fillStyle = (e.fuel || 0) > 0 ? '#6fd06f' : '#b04040';
+  ctx.fillRect(-TILE * 0.34, -TILE * 0.38, TILE * 0.12, TILE * 0.12);
+  ctx.restore();
+};
+
 // ===== 车厢渲染 =====
 DEVICE_RENDER['cargo-wagon'] = function (ctx, e, gx, gy, dir, alpha) {
   ctx.save();
@@ -1006,6 +1076,49 @@ function syncLocoSchedule(loco) {
   }
 }
 
+// 内燃机车面板：复用调度路线，但不吃煤（只吃固体/火箭燃料）
+DEVICE_PANEL['diesel-locomotive'] = {
+  html(e) {
+    return '<div class="dim">内燃机车：进阶车头，速度约为烧煤车头的 1.5 倍。只吃固体燃料/火箭燃料（不吃煤，对齐《异星工厂》内燃机车）。可挂接货运车厢。</div>' +
+      '<div class="sec">燃料</div><div class="rows">' +
+      (invCount('solid-fuel') > 0 || (e.fuelSolid || 0) > 0
+        ? '<div class="row"><span>固体燃料</span><b>' + (e.fuelSolid || 0) + '</b><button data-act="putsolid">+1</button><button data-act="takesolid">取出</button></div>'
+        : '') +
+      (invCount('rocket-fuel') > 0 || (e.fuelRocket || 0) > 0
+        ? '<div class="row"><span>火箭燃料</span><b>' + (e.fuelRocket || 0) + '</b><button data-act="putrocket">+1</button><button data-act="takerocket">取出</button></div>'
+        : '') +
+      '</div>' + locoScheduleHtml(e);
+  },
+  live() { return ''; },
+  tip() { return 'g'; },
+  onAction(btn, e) {
+    if (btn === 'putsolid' && invCount('solid-fuel') > 0) { e.giveItem('solid-fuel'); invTake('solid-fuel', 1); toast('已加固体燃料'); uiDirty = true; }
+    else if (btn === 'takesolid') { const it = e.takeItemOf('solid-fuel'); if (it) { invAdd(it); toast('已取出固体燃料'); uiDirty = true; } }
+    else if (btn === 'putrocket' && invCount('rocket-fuel') > 0) { e.giveItem('rocket-fuel'); invTake('rocket-fuel', 1); toast('已加火箭燃料'); uiDirty = true; }
+    else if (btn === 'takerocket') { const it = e.takeItemOf('rocket-fuel'); if (it) { invAdd(it); toast('已取出火箭燃料'); uiDirty = true; } }
+    else if (btn === 'sch-add-btn') {
+      const sel = document.getElementById('sch-add');
+      if (sel && sel.value) {
+        e.schedule = e.schedule || [];
+        e.schedule.push(sel.value);
+        syncLocoSchedule(e);
+        toast('已把车站「' + sel.value + '」加入路线');
+        uiDirty = true;
+      }
+    }
+    else if (btn === 'sch-del' || btn === 'sch-up' || btn === 'sch-down') {
+      const idx = +((btn && btn.dataset && btn.dataset.idx) || -1);
+      if (!e.schedule || idx < 0 || idx >= e.schedule.length) return true;
+      if (btn === 'sch-del') e.schedule.splice(idx, 1);
+      else if (btn === 'sch-up' && idx > 0) { const t = e.schedule[idx]; e.schedule[idx] = e.schedule[idx - 1]; e.schedule[idx - 1] = t; }
+      else if (btn === 'sch-down' && idx < e.schedule.length - 1) { const t = e.schedule[idx]; e.schedule[idx] = e.schedule[idx + 1]; e.schedule[idx + 1] = t; }
+      syncLocoSchedule(e);
+      uiDirty = true;
+    }
+    return true;
+  }
+};
+
 DEVICE_PANEL['cargo-wagon'] = {
   html(e) {
     let h = '<div class="dim">货运车厢：挂在车头后随列车移动，最多 ' + WAGON_SLOTS + ' 格各 ' + WAGON_STACK + ' 个。车站可用机械臂装卸。</div><div class="sec">货物</div><div class="rows">';
@@ -1113,6 +1226,7 @@ function beforeRailRemove(e) {
 // ===== 实体注册 =====
 ENT_CLASSES['rail'] = Rail;
 ENT_CLASSES['locomotive'] = Locomotive;
+ENT_CLASSES['diesel-locomotive'] = DieselLocomotive;
 ENT_CLASSES['cargo-wagon'] = CargoWagon;
 ENT_CLASSES['fluid-wagon'] = FluidWagon;
 ENT_CLASSES['artillery-wagon'] = ArtilleryWagon;
@@ -1122,11 +1236,13 @@ ENT_CLASSES['rail-chain-signal'] = RailChainSignal;
 
 // R 键可旋转车头（决定行进方向）
 DEVICE_DIR_ROTATE['locomotive'] = true;
+DEVICE_DIR_ROTATE['diesel-locomotive'] = true;
 DEVICE_DIR_ROTATE['fluid-wagon'] = true;
 
 // 放置规则
 DEVICE_PLACE['rail'] = null;   // 铁轨放任何空地
 DEVICE_PLACE['locomotive'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true } : { ok: false };
+DEVICE_PLACE['diesel-locomotive'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true } : { ok: false };
 DEVICE_PLACE['cargo-wagon'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true } : { ok: false };
 DEVICE_PLACE['fluid-wagon'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true } : { ok: false };
 DEVICE_PLACE['artillery-wagon'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true } : { ok: false };

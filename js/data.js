@@ -260,6 +260,7 @@ const ITEMS = {
   // ===== 铁路系统（火车） =====
   'rail':              { name: '铁轨', color: '#6a6a70', desc: '铺设铁轨形成铁路网，火车沿轨道行驶。与相邻铁轨自动连通，可拐弯（1×1）' },
   'locomotive':        { name: '火车头', color: '#d04a3a', desc: '烧煤驱动的机车，在铁轨上行驶。煤装入后自动前进；可挂接货运车厢组成列车' },
+  'diesel-locomotive': { name: '内燃机车', color: '#3f7fc0', mark: 'DL', desc: '进阶机车：速度约为烧煤车头的 1.5 倍，吃固体燃料/火箭燃料更高效。需铁路技术+电子学解锁（对齐《异星工厂》Diesel locomotive）' },
   'cargo-wagon':       { name: '货运车厢', color: '#8a6a4a', desc: '货车厢，挂在火车头后沿铁轨随行，最多存放 10 种物品各 100 个。车站可用机械臂装卸' },
   'fluid-wagon':       { name: '流体车厢', color: '#4a90c0', desc: '罐车车厢，挂在车头后沿铁轨随行，可运输任意一种流体（容量 ' + FLUID_WAGON_CAP + '）。车站可用泵从侧边装卸流体' },
   'artillery-wagon':   { name: '炮兵车厢', color: '#8a5a3a', desc: '挂载于列车的远程炮兵：列车行驶/停靠期间自动轰击射程内远处敌人，命中造成大范围爆炸，内装炮兵炮弹（对齐《异星工厂》Artillery wagon）' },
@@ -462,6 +463,7 @@ const RECIPES = {
   // ===== 铁路系统（火车） =====
   'rail':              { time: 0.5, inp: { 'iron-plate': 1, 'stone': 1, 'iron-stick': 1 },          out: { 'rail': 2 } },
   'locomotive':        { time: 4,   inp: { 'iron-plate': 16, 'steel-plate': 6, 'iron-gear': 8, 'green-circuit': 4 }, out: { 'locomotive': 1 } },
+  'diesel-locomotive': { time: 5,   inp: { 'engine-unit': 20, 'steel-plate': 10, 'processing-unit': 5 },        out: { 'diesel-locomotive': 1 } },
   'cargo-wagon':       { time: 3,   inp: { 'iron-plate': 12, 'steel-plate': 6, 'iron-gear': 6 },  out: { 'cargo-wagon': 1 } },
   'fluid-wagon':       { time: 3,   inp: { 'iron-plate': 8, 'steel-plate': 6, 'pipe': 8 },        out: { 'fluid-wagon': 1 } },
   'artillery-wagon':   { time: 8,   inp: { 'cargo-wagon': 1, 'artillery-turret': 1, 'steel-plate': 20, 'iron-gear': 10, 'processing-unit': 2 }, out: { 'artillery-wagon': 1 } },
@@ -765,6 +767,7 @@ const BUILD_DEFS = {
   'roboport':           { w: 4, h: 4, solid: true },
   'rail':               { w: 1, h: 1, solid: false },
   'locomotive':         { w: 1, h: 1, solid: true },
+  'diesel-locomotive':  { w: 1, h: 1, solid: true },
   'cargo-wagon':        { w: 1, h: 1, solid: true },
   'fluid-wagon':        { w: 1, h: 1, solid: true },
   'artillery-wagon':    { w: 1, h: 1, solid: true },
@@ -821,7 +824,7 @@ const BUILDING_HP = {
   'constant-combinator': 100, 'arithmetic-combinator': 100, 'decider-combinator': 100,
   'power-switch': 100,
   'lamp': 50, 'programmable-speaker': 100,
-  'rail': 100, 'locomotive': 300, 'cargo-wagon': 250, 'fluid-wagon': 250, 'artillery-wagon': 300, 'train-stop': 300, 'rail-signal': 100, 'rail-chain-signal': 100,
+  'rail': 100, 'locomotive': 300, 'diesel-locomotive': 350, 'cargo-wagon': 250, 'fluid-wagon': 250, 'artillery-wagon': 300, 'train-stop': 300, 'rail-signal': 100, 'rail-chain-signal': 100,
   'car': 200, 'tank': 400, 'spidertron': 600, 'land-mine': 100
 };
 function buildingMaxHp(type) { return BUILDING_HP[type] || 100; }
@@ -908,8 +911,10 @@ for (const id of ['centrifuge', 'nuclear-reactor', 'steam-turbine', 'heat-pipe',
 TECH_REQ['empty-barrel'] = 'barrel';
 for (const f of BARREL_FLUIDS) TECH_REQ[f + '-barrel'] = 'barrel';
 // ===== 铁路科技门控 =====
-const RAIL_ITEMS = ['rail', 'locomotive', 'cargo-wagon', 'train-stop', 'fluid-wagon'];
+const RAIL_ITEMS = ['rail', 'locomotive', 'cargo-wagon', 'train-stop', 'fluid-wagon', 'diesel-locomotive'];
 for (const id of RAIL_ITEMS) if (!TECH_REQ[id]) TECH_REQ[id] = 'railways';
+// 内燃机车需处理单元（电子学），故需铁路技术+电子学双重前置（对齐原版：内燃机车需进阶电子科技）
+TECH_REQ['diesel-locomotive'] = 'railways'; // 基础解锁为 railways，额外电子学前置由配方所用材料自动约束
 if (!TECH_REQ['rail-signal']) TECH_REQ['rail-signal'] = 'rail-signals';
 if (!TECH_REQ['rail-chain-signal']) TECH_REQ['rail-chain-signal'] = 'rail-signals';
 // ===== 物流机器人网络 =====
