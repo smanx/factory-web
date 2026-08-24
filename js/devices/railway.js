@@ -643,7 +643,7 @@ function updateTrainArtillery(tr, dt) {
     for (const en of (G.enemies || [])) {
       if (!en || en.dead) continue;
       const d = Math.hypot(en.x / TILE - cx, en.y / TILE - cy);
-      if (d <= ARTILLERY_RANGE && d > 4 && d < bestD) { best = en; bestD = d; }
+      if (d <= (typeof artilleryRange === 'function' ? artilleryRange() : ARTILLERY_RANGE) && d > 4 && d < bestD) { best = en; bestD = d; }
     }
     if (!best) continue;
     car.facing = Math.atan2(best.y - cy * TILE, best.x - cx * TILE);
@@ -1320,7 +1320,7 @@ DEVICE_PANEL['fluid-wagon'] = {
 // ===== 炮兵车厢面板 =====
 DEVICE_PANEL['artillery-wagon'] = {
   html(e) {
-    let h = '<div class="dim">炮兵车厢：挂在车头后随列车移动，行驶/停靠期间自动轰击射程内远处敌人（' + ARTILLERY_RANGE + ' 格），命中造成 ' + ARTILLERY_DMG + ' 点大范围爆炸（对齐《异星工厂》Artillery wagon）。</div><div class="sec">炮弹</div>';
+    let h = '<div class="dim">炮兵车厢：挂在车头后随列车移动，行驶/停靠期间自动轰击射程内远处敌人（' + (typeof artilleryRange === 'function' ? artilleryRange() : ARTILLERY_RANGE) + ' 格，基础 ' + ARTILLERY_RANGE + '，受「炮兵射程」无限科技加成），命中造成 ' + ARTILLERY_DMG + ' 点大范围爆炸（对齐《异星工厂》Artillery wagon）。</div><div class="sec">炮弹</div>';
     h += '<div class="row"><span>炮兵炮弹</span><b>' + e.shells + ' / ' + ARTILLERY_WAGON_SHELLS + '</b></div>';
     const n = invCount('artillery-shell');
     if (n > 0) h += '<button data-action="feed" data-id="artillery-shell">装入炮弹 ×' + n + '</button>';

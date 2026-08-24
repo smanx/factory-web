@@ -909,13 +909,13 @@ const TECH_REQ = {
   'rocket-fuel': 'rocket-science',
   'speed-module': 'modules',
   'productivity-module': 'modules',
-  'efficiency-module': 'modules',
+  'efficiency-module': 'advanced-material-processing',
   'speed-module-2': 'modules2',
   'speed-module-3': 'modules3',
   'productivity-module-2': 'modules2',
   'productivity-module-3': 'modules3',
-  'efficiency-module-2': 'modules2',
-  'efficiency-module-3': 'modules3',
+  'efficiency-module-2': 'advanced-material-processing-2',
+  'efficiency-module-3': 'advanced-material-processing-3',
   'advanced-circuit': 'electronics',
   'sulfur': 'oil',
   'sulfuric-acid': 'oil',
@@ -1076,7 +1076,10 @@ function modulePanelSection(e) {
 // 某物品是否已由科技解锁（无科技需求 = 开局可用；否则需对应科技已研究）
 function itemUnlocked(id) {
   const tr = itemTechReq(id);
-  return !tr || !!(G.techDone[tr]);
+  if (!tr) return true;
+  const anyList = RECIPE_TECH_ANY[tr];
+  if (anyList) return anyList.some(t => !!G.techDone[t]);
+  return !!(G.techDone[tr]);
 }
 // 配方是否已解锁：产出物（主输出）未被科技门控，或对应科技已研究。
 // 用于手搓面板与各生产设备（组装机/化工厂/炼油厂/离心机）配方选择列表的解锁判断。
@@ -1090,6 +1093,14 @@ const RECIPE_TECH = {
   'coal-liquefaction': 'coal-liquefaction',
   'kovarex': 'kovarex-enrichment'
 };
+// ===== 任一科技解锁（对齐《异星工厂》科技树）=====
+// 某些配方（如效率模块）既可被新拆分的进阶科技解锁，也可被旧「模块工程」科技解锁，
+// 用于保证旧存档兼容：只要满足其中任一科技即可解锁。
+const RECIPE_TECH_ANY = {
+  'advanced-material-processing':     ['modules', 'advanced-material-processing'],
+  'advanced-material-processing-2':   ['modules2', 'advanced-material-processing-2'],
+  'advanced-material-processing-3':   ['modules3', 'advanced-material-processing-3']
+};
 // 查询配方所需科技：优先配方级门控，其次按产出物判断；无则返回 null。
 function recipeTechReq(rid) {
   if (RECIPE_TECH[rid]) return RECIPE_TECH[rid];
@@ -1100,17 +1111,27 @@ function recipeTechReq(rid) {
   return itemTechReq(outKeys[0]);
 }
 // 配方是否已解锁：无配方级/产出物科技需求 = 解锁；否则需对应科技已研究。
+// 若配方属于 RECIPE_TECH_ANY（任一科技解锁），只要满足其中任意一个即视为解锁。
 function recipeUnlocked(rid) {
   const rec = RECIPES[rid] || REFINERY_RECIPES[rid] || CENTRIFUGE_RECIPES[rid];
   if (!rec) return false;
   const tr = recipeTechReq(rid);
-  return !tr || !!(G.techDone[tr]);
+  if (!tr) return true;
+  const anyList = RECIPE_TECH_ANY[tr];
+  if (anyList) return anyList.some(t => !!G.techDone[t]);
+  return !!(G.techDone[tr]);
 }
-// 返回配方因缺少哪个科技而锁定（未锁定返回 null）
+// 返回配方因缺少哪个科技而锁定（未锁定返回 null）。多科技解锁时返回第一个未满足的科技。
 function recipeLockingTech(rid) {
   const rec = RECIPES[rid] || REFINERY_RECIPES[rid] || CENTRIFUGE_RECIPES[rid];
   if (!rec) return null;
   const tr = recipeTechReq(rid);
+  if (!tr) return null;
+  const anyList = RECIPE_TECH_ANY[tr];
+  if (anyList) {
+    for (const t of anyList) if (!G.techDone[t]) return t;
+    return null;
+  }
   return tr && !G.techDone[tr] ? tr : null;
 }
 
@@ -1175,8 +1196,11 @@ const TECHS = {
   'combat-robotics': { name: '战斗机器人', cost: { 'military-science': 40, 'blue-science': 30 }, desc: '解锁防御/干扰/破坏三种战斗机器人胶囊，可投掷释放伴随作战（对齐《异星工厂》Combat robotics）', req: ['advanced-combat', 'electronics'] },
   'rocket-science': { name: '火箭技术', cost: { 'blue-science': 100, 'military-science': 50 }, desc: '解锁火箭发射井、火箭部件与卫星，发射火箭赢得游戏', req: ['electronics', 'express'] },
   modules:    { name: '模块工程', cost: { 'blue-science': 40 }, desc: '解锁速度模块与产能模块（增强组装机/电炉）', req: ['electronics'] },
-  'modules2': { name: '模块工程 II', cost: { 'production-science-pack': 50, 'blue-science': 30 }, desc: '解锁二级速度/产能/效率模块（效果更强）', req: ['modules', 'production'] },
-  'modules3': { name: '模块工程 III', cost: { 'production-science-pack': 80, 'utility-science-pack': 60 }, desc: '解锁三级速度/产能/效率模块（效果最强）', req: ['modules2', 'utility'] },
+  'modules2': { name: '模块工程 II', cost: { 'production-science-pack': 50, 'blue-science': 30 }, desc: '解锁二级速度/产能模块（效果更强）', req: ['modules', 'production'] },
+  'modules3': { name: '模块工程 III', cost: { 'production-science-pack': 80, 'utility-science-pack': 60 }, desc: '解锁三级速度/产能模块（效果最强）', req: ['modules2', 'utility'] },
+  'advanced-material-processing': { name: '进阶材料处理', cost: { 'blue-science': 50 }, desc: '解锁效率模块（大幅降低生产耗电）。对齐《异星工厂》Advanced material processing 科技，与模块工程（速度/产能模块）并列' }, 
+  'advanced-material-processing-2': { name: '进阶材料处理 II', cost: { 'production-science-pack': 50, 'blue-science': 30 }, desc: '解锁效率模块 II（更强降耗）。对齐《异星工厂》Advanced material processing 2', req: ['advanced-material-processing', 'production'] },
+  'advanced-material-processing-3': { name: '进阶材料处理 III', cost: { 'production-science-pack': 80, 'utility-science-pack': 60 }, desc: '解锁效率模块 III（极强降耗）。对齐《异星工厂》Advanced material processing 3', req: ['advanced-material-processing-2', 'utility'] },
   'logistics-network': { name: '物流网络', cost: { 'blue-science': 50 }, desc: '解锁机器人港、四类物流箱与物流机器人，构建自动化物流网络', req: ['logistics2', 'electronics'] },
   nuclear:    { name: '核能技术', cost: { 'blue-science': 60, 'military-science': 40 }, desc: '解锁离心机（铀矿处理）、核反应堆与汽轮机，构建核能发电体系', req: ['electronics', 'advanced-combat'] },
   'atomic-bomb': { name: '原子弹科技', cost: { 'blue-science': 80, 'military-science': 80 }, desc: '解锁终极核武器原子弹：由铀-235+火箭+爆炸物制成，落地引发超大范围核爆（对齐《异星工厂》Atomic bomb 独立科技）', req: ['nuclear', 'rocket-science'] },
@@ -1203,6 +1227,7 @@ const TECHS = {
   'follower-robot-count': { name: '追随机器人', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究提升同时在场战斗机器人数量上限 +2（对齐《异星工厂》Follower robot count）', req: ['utility', 'advanced-combat'] },
   'worker-robot-cargo-size': { name: '机器人容量', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究提升物流/施工机器人单次搬运物品数量 +2（对齐《异星工厂》Worker robot cargo size 无限科技）', req: ['production', 'utility'] },
   'artillery-shooting-speed': { name: '炮兵射速', cost: { 'production-science-pack': 60, 'utility-science-pack': 60, 'military-science': 40 }, infinite: true, desc: '无限科技：每次研究提升炮兵连与炮兵车厢射击速度 +10%（对齐《异星工厂》Artillery shell shooting speed 无限科技）', req: ['production', 'utility', 'advanced-combat'] },
+  'artillery-shell-range': { name: '炮兵射程', cost: { 'production-science-pack': 60, 'utility-science-pack': 60, 'military-science': 40 }, infinite: true, desc: '无限科技：每次研究提升炮兵连与炮兵车厢的射程 +30%，让远程火力覆盖更远（对齐《异星工厂》Artillery shell range 无限科技）', req: ['production', 'utility', 'advanced-combat'] },
   'physical-projectile-damage': { name: '投射物伤害', cost: { 'space-science-pack': 80, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升玩家枪械与子弹（手枪/冲锋枪/散弹枪/机枪炮塔/车辆机炮等投射物）伤害 +10%（对齐《异星工厂》Physical projectile damage）', req: ['space-science', 'advanced-combat'] },
   'energy-weapons-damage': { name: '能量武器伤害', cost: { 'space-science-pack': 80, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升激光炮塔与个人激光防御等能量武器伤害 +10%（对齐《异星工厂》Energy weapons damage）', req: ['space-science', 'advanced-combat'] },
   'refined-flammables': { name: '燃烧伤害', cost: { 'space-science-pack': 80, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升火焰喷射器、火焰炮塔与地面火场等燃烧伤害 +10%（对齐《异星工厂》Refined flammables）', req: ['space-science', 'advanced-combat'] },
@@ -1275,6 +1300,11 @@ function migrateNewTechs(techDone) {
   // 拆分后分别由「物流 III」与「自动化 III」门控，老玩家补完对应科技避免产线被锁死（对齐《异星工厂》Logistics 3 / Automation 3）。
   if (techDone['logistics2'] || techDone['express']) techDone['logistics3'] = true;
   if (techDone['automation2']) techDone['automation3'] = true;
+  // 兼容旧档：效率模块此前由「模块工程」解锁，现拆分出「进阶材料处理」科技链；
+  // 旧档已研究模块工程时补完对应进阶材料处理科技，保持科技树一致（功能本身仍兼容任一解锁）。
+  if (techDone['modules']) techDone['advanced-material-processing'] = true;
+  if (techDone['modules2']) techDone['advanced-material-processing-2'] = true;
+  if (techDone['modules3']) techDone['advanced-material-processing-3'] = true;
   return techDone;
 }
 
@@ -1685,4 +1715,9 @@ function robotCarryCap() {
 function artilleryShootingSpeedMult() {
   const lvl = (G.techProg && G.techProg['artillery-shooting-speed']) || 0;
   return 1 + 0.1 * lvl;
+}
+// 炮兵射程（对齐《异星工厂》Artillery shell range 无限科技）：每级射程提升 30%。
+function artilleryRangeMult() {
+  const lvl = (G.techProg && G.techProg['artillery-shell-range']) || 0;
+  return 1 + 0.3 * lvl;
 }
