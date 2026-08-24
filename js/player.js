@@ -63,6 +63,8 @@ function updatePlayer(dt) {
     // 硬化地面（混凝土/石砖路）上玩家行走提速 40%
     let sp = playerSpeed();
     if (isPaved(getTerrain(Math.floor(p.x / TILE), Math.floor(p.y / TILE)))) sp *= 1.4;
+    // 减速力场（减速胶囊）内玩家减速
+    if (typeof aoeSlowFactor === 'function') sp *= aoeSlowFactor(p.x, p.y);
     const nx = p.x + mx * sp * dt;
     if (!boxBlocked(nx, p.y, r)) p.x = nx;
     const ny = p.y + my * sp * dt;
@@ -195,7 +197,17 @@ function updateMining(dt) {
   if (p.mining !== key) { p.mining = key; p.mineProg = 0; }
   if (!withinReach(t.tx, t.ty)) { p.mineProg = 0; return; }
   const ti = getOreType(t.tx, t.ty);
-  if (((ti >= 0 && ti < ORES.length) || ti === ORE_URANIUM) && getOreAmt(t.tx, t.ty) > 0) {
+  // 砍树：T_TREE 地形，按住可连续砍伐获得木材（对齐《异星工厂》）
+  if (getTerrain(t.tx, t.ty) === T_TREE) {
+    p.mineProg += dt * ((G.dbg && G.dbg.mineMult) || 1) / (HAND_MINE_TIME * 1.5);
+    if (p.mineProg >= 1) {
+      p.mineProg -= 1;
+      setTerrain(t.tx, t.ty, T_GRASS);
+      invAdd('wood');
+      invalidateTerrainChunk(t.tx, t.ty);
+      if (typeof toast === 'function') toast('+1 木材');
+    }
+  } else if (((ti >= 0 && ti < ORES.length) || ti === ORE_URANIUM) && getOreAmt(t.tx, t.ty) > 0) {
     p.mineProg += dt * ((G.dbg && G.dbg.mineMult) || 1) / HAND_MINE_TIME;
     if (p.mineProg >= 1) {
       p.mineProg -= 1;

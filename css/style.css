@@ -185,6 +185,29 @@ html, body {
 .chip-active { border-color: #ffd23c; background: rgba(255,210,60,.12); color: #ffe08a; }
 .chip-x { border: none; background: transparent; color: #ff5b5b; cursor: pointer; font-size: 12px; padding: 0 2px; line-height: 1; }
 
+/* 个人物流请求 */
+.lreq-chip { border-color: #3a9a4a; background: rgba(58,154,74,.12); cursor: pointer; }
+.lreq-chip:hover { border-color: #ff5b5b; background: rgba(255,91,91,.15); }
+.lreq-have { color: #9ab8d0; font-size: 11px; }
+.lreq-on { border-color: #3a9a4a; box-shadow: 0 0 5px rgba(58,154,74,.4); }
+.logi-req { margin-bottom: 8px; }
+
+/* 蓝图库 */
+.bluebook-item {
+  display: flex; align-items: center; gap: 8px;
+  background: #222b35; border: 1px solid #37424f; border-radius: 8px;
+  padding: 8px; margin-bottom: 6px;
+}
+.bb-main { flex: 1; min-width: 0; }
+.bb-name { font-weight: bold; color: #ffd88a; margin-bottom: 2px; }
+.bluebook-item button {
+  font-size: 12px; padding: 5px 10px; border-radius: 6px; cursor: pointer;
+  background: rgba(90,138,208,.18); border: 1px solid #5a8ad0; color: #cfe0ff;
+}
+.bluebook-item button:hover { background: rgba(90,138,208,.35); }
+.bluebook-item .bb-del { background: rgba(255,91,91,.12); border-color: #d05a5a; color: #ffb3b3; }
+.bluebook-item .bb-del:hover { background: rgba(255,91,91,.28); }
+
 .recipe {
   display: flex; align-items: center; gap: 8px;
   padding: 7px 8px;

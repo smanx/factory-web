@@ -99,6 +99,7 @@ function render() {
   drawEnemies(ctx);
   drawBullets(ctx);
   drawCombatRobots(ctx);
+  drawAoeZones(ctx);
   drawLootDrops(ctx);
   drawLogisticsRobots(ctx);
   if (typeof drawConstruction === 'function') drawConstruction(ctx);
@@ -251,8 +252,31 @@ function drawChunkTerrainInto(ctx, cx, cy) {
       const v = hash2(tx, ty);
       ctx.fillStyle = v > 0.62 ? '#4f7c3b' : v > 0.3 ? '#4a7538' : '#456f35';
       ctx.fillRect(px, py, TILE, TILE);
+      if (t === T_TREE) drawTreeInto(ctx, px, py, tx, ty);
     }
   }
+}
+
+// 绘制单棵树木（用 hash 决定树形与枝叶细节，保证确定性）
+function drawTreeInto(ctx, px, py, tx, ty) {
+  const h = hash2(tx * 3.7, ty * 7.1);
+  const cx = px + TILE / 2;
+  const baseY = py + TILE;
+  // 树干
+  ctx.fillStyle = '#5c4630';
+  ctx.fillRect(cx - 2.5, baseY - 13, 5, 13);
+  // 树冠：三层圆形/多边形枝叶
+  ctx.fillStyle = h > 0.5 ? '#2e5d22' : '#376b2a';
+  ctx.beginPath();
+  ctx.arc(cx, baseY - 18, 7 + h * 2, 0, 7); ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx - 4, baseY - 13, 5, 0, 7); ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx + 4, baseY - 13, 5, 0, 7); ctx.fill();
+  // 顶部高光
+  ctx.fillStyle = 'rgba(140,220,120,.35)';
+  ctx.beginPath();
+  ctx.arc(cx - 1, baseY - 20, 3, 0, 7); ctx.fill();
 }
 // 地形被修改（铺混凝土/石砖路/填海）后清除对应 chunk 的地形缓存
 function invalidateTerrainChunk(tx, ty) {
@@ -446,6 +470,29 @@ function drawStatusDot(ctx, x, y, c) {
 function drawEntity(ctx, e, gx, gy, dir, alpha) {
   const fn = DEVICE_RENDER[e.type];
   if (fn) fn(ctx, e, gx, gy, dir, alpha);
+  // 建筑受损：绘制耐久条与裂纹（对齐《异星工厂》建筑受击表现）
+  if (alpha === 1 && e.maxhp > 0 && e.hp !== undefined && e.hp < e.maxhp) {
+    const px = gx * TILE, py = gy * TILE, w = e.w * TILE, h = e.h * TILE;
+    // 裂纹随受损程度加深
+    const ratio = e.hp / e.maxhp;
+    if (ratio < 0.5) {
+      ctx.strokeStyle = 'rgba(20,20,20,.55)';
+      ctx.lineWidth = Math.max(1, 12 * (1 - ratio));
+      ctx.beginPath();
+      ctx.moveTo(px + w * 0.25, py + h * 0.2); ctx.lineTo(px + w * 0.5, py + h * 0.5);
+      ctx.lineTo(px + w * 0.35, py + h * 0.85);
+      ctx.stroke();
+    }
+    // 顶部耐久条（HP 低时更醒目）
+    if (ratio < 0.75) {
+      const barW = Math.min(w, TILE * 2.4), barH = 3;
+      const bx = gx * TILE + (w - barW) / 2, by = py - 4;
+      ctx.fillStyle = 'rgba(10,10,12,.6)';
+      ctx.fillRect(bx - 1, by - 1, barW + 2, barH + 2);
+      ctx.fillStyle = ratio > 0.5 ? '#7ec850' : (ratio > 0.25 ? '#e0b23c' : '#e04a3a');
+      ctx.fillRect(bx, by, barW * ratio, barH);
+    }
+  }
   // 低 LOD 时跳过状态灯（像素太小看不清，省一次 path+fill）
   if (alpha === 1 && !LOD.simple) {
     const sf = DEVICE_STATUS[e.type];
@@ -502,6 +549,8 @@ function canPlaceAt(type, tx, ty, dir) {
   for (let dy = 0; dy < eh; dy++)
     for (let dx = 0; dx < ew; dx++) {
       if (isWater(tx + dx, ty + dy)) return { ok: false };
+      // 树木阻挡建造（对齐《异星工厂》：需先砍树清空场地）
+      if (getTerrain(tx + dx, ty + dy) === T_TREE) return { ok: false };
       if (entAt(tx + dx, ty + dy)) {
         // 传送带升级/降级覆盖：用带系/地下带/分流器的同类覆盖现有同族带（对齐《异星工厂》覆盖升级）
         // 但反向传送带视为障碍（不参与覆盖），交由自动地下带逻辑跨越处理
@@ -714,6 +763,44 @@ function drawCombatRobots(ctx) {
     ctx.fillRect(r.x - w / 2, r.y + bob - r.size - 7, w, 2.5);
     ctx.fillStyle = r.hp > 0 ? '#57e389' : '#ff5b5b';
     ctx.fillRect(r.x - w / 2, r.y + bob - r.size - 7, w * Math.max(0, r.hp / r.maxhp), 2.5);
+  }
+}
+
+// 区域力场（毒胶囊 / 减速胶囊）：毒云雾/减速圈的半透明范围叠加
+function drawAoeZones(ctx) {
+  if (!G.aoeZones) return;
+  for (const z of G.aoeZones) {
+    if (z.lifetime <= 0) continue;
+    const fade = Math.min(1, z.lifetime / (z.maxLife || 10));
+    if (z.kind === 'poison') {
+      ctx.fillStyle = 'rgba(120,208,70,' + (0.28 * fade) + ')';
+      ctx.strokeStyle = 'rgba(160,235,110,' + (0.6 * fade) + ')';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(z.x, z.y, z.radius, 0, 7); ctx.fill(); ctx.stroke();
+      // 冒泡微粒
+      ctx.fillStyle = 'rgba(170,235,110,' + (0.7 * fade) + ')';
+      for (let i = 0; i < 6; i++) {
+        const a = i * 1.05 + G.time * 1.3;
+        ctx.beginPath();
+        ctx.arc(z.x + Math.cos(a) * z.radius * 0.6, z.y + Math.sin(a) * z.radius * 0.6 + Math.sin(G.time * 2 + i) * 3, 2, 0, 7);
+        ctx.fill();
+      }
+    } else if (z.kind === 'slowdown') {
+      ctx.fillStyle = 'rgba(74,154,208,' + (0.22 * fade) + ')';
+      ctx.strokeStyle = 'rgba(120,190,235,' + (0.55 * fade) + ')';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 5]);
+      ctx.beginPath(); ctx.arc(z.x, z.y, z.radius, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.setLineDash([]);
+      // 涡旋雪花
+      ctx.fillStyle = 'rgba(160,215,250,' + (0.8 * fade) + ')';
+      for (let i = 0; i < 5; i++) {
+        const a = i * 1.25 + G.time * 0.8;
+        ctx.beginPath();
+        ctx.arc(z.x + Math.cos(a) * z.radius * 0.55, z.y + Math.sin(a) * z.radius * 0.55, 2.2, 0, 7);
+        ctx.fill();
+      }
+    }
   }
 }
 

@@ -10,6 +10,7 @@ const G = {
   grid: new Map(),
   buckets: new Map(),   // 区块（桶）空间索引：bucketKey -> Set<Entity>（见 core/entity.js）
   inv: new Map(),
+  logiRequest: {},   // 个人物流请求：item -> 目标数量（由物流机器人送达）
   sel: -1,
   quickSel: null,
   ghostDir: 0,
@@ -33,6 +34,7 @@ const G = {
   invRecipeQ: '',
   clipboard: null,
   blueprint: null,        // 蓝图数据：{ minX, minY, w, h, ents: [序列化实体...] }
+  blueBook: [],           // 蓝图库：保存的多个蓝图 { name, minX, minY, ents }（对齐《异星工厂》蓝图库）
   blueMode: null,         // 'blue' | 'red' | 'paste'（框选/删除/粘贴蓝图）
   blueStart: null,        // 框选起点瓦片
   blueEnd: null,          // 框选终点瓦片
@@ -69,6 +71,7 @@ const G = {
   weapon: null,       // 当前选中的武器 id（player 持有）
   armor: null,        // 当前穿戴的护甲 id（light-armor / heavy-armor）
   gameWon: false,     // 是否已发射火箭赢得游戏
+  repairPackUses: 0,  // 当前修理包剩余使用次数（用尽后消耗一个新修理包）
   victoryT: 0,
   inMenu: true,       // 开始菜单显示中：游戏世界尚未初始化，loop 暂停渲染与更新
   deconstructMode: false,  // 触屏拆除模式：开启后点触建筑即可拆除（PC 右键拆除不受影响）
@@ -127,6 +130,8 @@ function newGame() {
   G.logiRobots = [];
   G.logiNet = null;
   G.logiNetT = 0;
+  G.logiRequest = {};   // 新游戏清空个人物流请求
+  G.blueBook = [];      // 新游戏清空蓝图库
   G.railTiles = new Set();
   G.trains = [];
   G.playerHP = 100; G.playerHPmax = 100;
@@ -174,12 +179,14 @@ function serializeAll() {
     },
     ents: G.ents.filter(e => !e._dead).map(e => e.serialize()),
     inv: Array.from(G.inv),
+    logiRequest: Object.assign({}, G.logiRequest || {}),
     player: { x: G.player.x, y: G.player.y, hp: G.playerHP, weapon: G.weapon, armor: G.armor },
     evolution: G.evolution || 0,
     craftQueue: (G.craftQueue || []).map(q => ({
       rid: q.rid, time: q.time, total: q.total, done: q.done, outId: q.outId
     })),
     gameWon: G.gameWon,
+    repairPackUses: G.repairPackUses || 0,
     techDone: G.techDone,
     techProg: G.techProg,
     activeTech: G.activeTech,
@@ -192,7 +199,8 @@ function serializeAll() {
     // 历史统计：聚合为小时粒度写入（体积极小，最多 24 小时/物品）
     hist: (typeof histSerialize === 'function') ? histSerialize() : null,
     constr: (typeof constrSerialize === 'function') ? constrSerialize() : null,
-    equipment: (typeof equipmentSerialize === 'function') ? equipmentSerialize() : null
+    equipment: (typeof equipmentSerialize === 'function') ? equipmentSerialize() : null,
+    blueBook: (G.blueBook || []).map(b => ({ name: b.name, minX: b.minX | 0, minY: b.minY | 0, ents: b.ents }))
   };
 }
 
@@ -268,6 +276,11 @@ function applySave(d) {
     addEnt(cls.restore(s));
   }
   G.inv = new Map(d.inv);
+  // 恢复个人物流请求（旧档无该字段则置空）
+  G.logiRequest = {};
+  if (d.logiRequest && typeof d.logiRequest === 'object') {
+    for (const k in d.logiRequest) if (ITEMS[k] && d.logiRequest[k] > 0) G.logiRequest[k] = d.logiRequest[k] | 0;
+  }
   G.craftQueue = Array.isArray(d.craftQueue)
     ? d.craftQueue.filter(q => RECIPES[q.rid] && isHandCraftable(q.rid)).map(q => ({
       rid: q.rid, outId: q.outId, time: q.time || 1, total: q.time || 1, done: q.done || 0
@@ -280,6 +293,16 @@ function applySave(d) {
   // 恢复敌人进化度（旧档无该字段则从 0 开始）
   G.evolution = (typeof d.evolution === 'number') ? Math.min(1, Math.max(0, d.evolution)) : 0;
   G.gameWon = !!d.gameWon;
+  // 恢复蓝图库（旧档无该字段则置空）
+  G.blueBook = [];
+  if (Array.isArray(d.blueBook)) {
+    for (const b of d.blueBook) {
+      if (b && Array.isArray(b.ents) && b.ents.length && b.name) {
+        G.blueBook.push({ name: String(b.name), minX: b.minX | 0, minY: b.minY | 0, ents: b.ents });
+      }
+    }
+  }
+  G.repairPackUses = (typeof d.repairPackUses === 'number') ? d.repairPackUses : 0;
   G.combatRobots = [];
   G.driving = null;
   G.logiRobots = [];
@@ -340,8 +363,11 @@ function placeGround(type, tx, ty, infinite) {
     setTerrain(tx, ty, T_GRASS);
   } else {
     const to = PAVE_TILE[type];
-    if (t !== T_GRASS && t !== to) { toast('混凝土/石砖路只能铺在地面上'); return; }
-    if (t === to) return; // 已是同种地砖，不重复消耗
+    // 铺设在树木上：先砍掉树（对齐《异星工厂》：铺设前自动清理树木）
+    if (t === T_TREE) setTerrain(tx, ty, T_GRASS);
+    const t2 = getTerrain(tx, ty);
+    if (t2 !== T_GRASS && t2 !== to) { toast('混凝土/石砖路只能铺在地面上'); return; }
+    if (t2 === to) return; // 已是同种地砖，不重复消耗
     if (entAt(tx, ty)) { toast('地面有建筑，先拆除'); return; }
     setTerrain(tx, ty, to);
   }
@@ -353,6 +379,8 @@ function placeGround(type, tx, ty, infinite) {
 function tryPlaceAt(tx, ty) {
   const type = selItem();
   if (!type) return;
+  // 非可建造物品（如修理包）不触发建造
+  if (!BUILD_DEFS[type]) return;
   const infinite = !!(G.dbg && G.dbg.infinite);
   // 地面铺设（混凝土/石砖路/填海）：不创建实体，直接修改地形
   if (type === 'concrete' || type === 'stone-path' || type === 'landfill') {
@@ -800,6 +828,8 @@ function captureBlueprint() {
   }
   if (!ents.length) { toast('框选区域没有可复制的建筑'); return; }
   G.blueprint = { minX: r.x0, minY: r.y0, ents };
+  // 自动存入蓝图库（去重：与已有蓝图内容相同则不重复添加）
+  if (typeof blueBookAdd === 'function') blueBookAdd(G.blueprint);
   G.blueMode = 'paste';
   G.blueStart = null; G.blueEnd = null;
   G.blueRot = 0; G.blueFlipH = false; G.blueFlipV = false;
@@ -910,6 +940,42 @@ function pasteBlueprint() {
   uiDirty = true;
 }
 
+// ===== 蓝图库（对齐《异星工厂》Blueprint book）：保存多个蓝图供随时调用 =====
+// 复制蓝图时自动加入蓝图库；也可在蓝图库面板中加载任一蓝图进行粘贴。
+function blueBookAdd(bp) {
+  if (!bp || !bp.ents || !bp.ents.length) return;
+  if (!Array.isArray(G.blueBook)) G.blueBook = [];
+  // 去重：内容（类型+相对位置）与已有蓝图相同则不重复添加
+  const key = bp.ents.map(e => e.type + '@' + (e.x - bp.minX) + ',' + (e.y - bp.minY)).join('|');
+  for (const b of G.blueBook) {
+    const bk = b.ents.map(e => e.type + '@' + (e.x - b.minX) + ',' + (e.y - b.minY)).join('|');
+    if (bk === key) return;   // 已存在相同蓝图
+  }
+  G.blueBook.push({ name: '蓝图 ' + (G.blueBook.length + 1), minX: bp.minX, minY: bp.minY, ents: bp.ents.slice() });
+  uiDirty = true;
+}
+
+// 从蓝图库加载指定蓝图，进入粘贴模式
+function blueBookLoad(i) {
+  const b = G.blueBook[i];
+  if (!b) { toast('蓝图库中没有该项'); return; }
+  G.blueprint = { minX: b.minX, minY: b.minY, ents: b.ents.slice() };
+  G.blueMode = 'paste';
+  G.blueStart = null; G.blueEnd = null;
+  G.blueRot = 0; G.blueFlipH = false; G.blueFlipV = false;
+  closePanel();
+  toast('已加载蓝图「' + b.name + '」，点击空白处粘贴（R旋转，右键取消）');
+}
+
+// 删除蓝图库中指定项
+function blueBookRemove(i) {
+  if (!Array.isArray(G.blueBook) || i < 0 || i >= G.blueBook.length) return;
+  const name = G.blueBook[i].name;
+  G.blueBook.splice(i, 1);
+  toast('已从蓝图库删除「' + name + '」');
+  uiDirty = true;
+}
+
 // 尝试进入面前的装甲车（F 键 / 交互）。成功返回 true。
 function tryEnterNearbyCar() {
   if (G.driving) return false;
@@ -942,6 +1008,34 @@ function pickupAction() {
   invAdd(got);
   uiDirty = true;
 }
+
+// 手持修理包点击受损建筑：消耗修理包使用次数修复建筑 HP（对齐《异星工厂》Repair pack）
+// 每个修理包最多修复 REPAIR_PACK_USES 次，用完后消耗该物品。
+const REPAIR_PACK_USES = 5;
+function repairActionAt(tx, ty) {
+  if (!withinReach(tx, ty)) { toast('距离太远'); return false; }
+  const e = entAt(tx, ty);
+  if (!e || !isDamaged(e)) { toast('该建筑无需修复'); return false; }
+  // 消耗修理包
+  let uses = G.repairPackUses || 0;
+  if (uses <= 0) {
+    if (!invCount('repair-pack')) { toast('需要修理包'); return false; }
+    uses = REPAIR_PACK_USES;
+    invTake('repair-pack', 1);
+  }
+  const fixed = repairBuilding(e, 100);
+  uses -= 1;
+  if (uses <= 0) { uses = 0; toast('修理包已用尽'); }
+  G.repairPackUses = uses;
+  if (fixed > 0) {
+    if (typeof makeSparkFx === 'function') makeSparkFx(e.x + e.w / 2, e.y + e.h / 2, e.w);
+    if (typeof playSfx === 'function') playSfx('repair');
+  }
+  uiDirty = true;
+  return true;
+}
+// 当前选中修理包（用于建造/点击优先触发修复）
+function hasRepairPackSelected() { return selItem() === 'repair-pack'; }
 
 function copySettings(e) {
   if (!e) return;
@@ -1077,7 +1171,7 @@ function enterGame() {
   const sc = document.getElementById('start-screen');
   if (sc) sc.classList.add('hidden');
   G.inMenu = false;
-  toast('WASD 移动 · 左键挖矿/放建筑(覆盖建造) · 右键拆除 · R 旋转 · F 拿取 · Q 取消/拾取朝向 · 中键/E 面板 · T 科技 · P 统计 · B 蓝图 · Alt+D 红图 · Alt+U 绿图 · K/L 存读档');
+  toast('WASD 移动 · 左键挖矿/放建筑(覆盖建造) · 右键拆除 · R 旋转 · F 拿取 · Q 取消/拾取朝向 · 中键/E 面板 · T 科技 · P 统计 · B 蓝图 · Alt+B 蓝图库 · Alt+D 红图 · Alt+U 绿图 · K/L 存读档');
   // 触屏设备：首次进入展示新手引导
   if (typeof maybeShowTouchTip === 'function') maybeShowTouchTip();
 }
@@ -1105,6 +1199,7 @@ function bindInput() {
     // 统计/蓝图/红图/绿图快捷键（对齐《异星工厂》：P 统计、B 蓝图、Alt+D 红图、Alt+U 绿图）
     else if (k === 'p') G.panelMode === 'stats' ? closePanel() : openPanel('stats');
     else if (k === 'b') { closePanel(); toggleBlueprint('blue'); }
+    else if (ev.altKey && k === 'b') { ev.preventDefault(); if (G.blueMode) cancelBlueprint(); G.panelMode === 'bluebook' ? closePanel() : openPanel('bluebook'); }
     else if (ev.altKey && k === 'd') { ev.preventDefault(); closePanel(); toggleBlueprint('red'); }
     else if (ev.altKey && k === 'u') { ev.preventDefault(); closePanel(); toggleBlueprint('green'); }
     else if ((k === 'delete' || k === 'backspace') && G.panelMode === 'machine' &&
@@ -1247,16 +1342,30 @@ function bindInput() {
     if (ev.button !== 0 || ev.shiftKey) return;
     if (G.blueMode) return;   // 蓝图/红图模式下不触发面板
     updateCursorTile(ev.clientX, ev.clientY);
-    if (buildActive() || !G.cursorTile) return;
+    if (!G.cursorTile) return;
+    // 手持修理包点击受损建筑 → 修复（优先于打开面板）
+    if (hasRepairPackSelected() && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
+      const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
+      if (e && isDamaged(e)) { repairActionAt(G.cursorTile.tx, G.cursorTile.ty); return; }
+    }
+    if (buildActive()) return;
     const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
     if (e) openPanel('machine', e);
   });
 }
 
 function handleLeftDown() {
+  // 手持修理包点击受损建筑 → 修复（对齐《异星工厂》：左键维修）
+  if (hasRepairPackSelected() && G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
+    const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
+    if (e && isDamaged(e)) { repairActionAt(G.cursorTile.tx, G.cursorTile.ty); return; }
+  }
   if (buildActive() && G.cursorTile) {
     tryPlaceAt(G.cursorTile.tx, G.cursorTile.ty);
     lastPlaceKey = G.cursorTile.tx + ',' + G.cursorTile.ty;
+  } else if (G.cursorTile && typeof tryFishAt === 'function' && isWater(G.cursorTile.tx, G.cursorTile.ty)) {
+    // 无建造选中、点击水域 → 钓鱼（对齐《异星工厂》鼠标钓鱼）
+    tryFishAt(G.cursorTile.tx, G.cursorTile.ty);
   }
 }
 
@@ -1308,6 +1417,7 @@ function loop(ts) {
       updateHeldMouse(dt);
       updateMining(dt);
       updateCraftQueue(dt);   // 手搓合成队列（按时间逐件制作）
+      if (typeof updateFishing === 'function') updateFishing(dt);   // 钓鱼冷却
       if (typeof updatePersonalPower === 'function') updatePersonalPower(dt);   // 个人电网（装备件）
       for (const e of G.ents) if (!e._dead && typeof e.update === 'function') e.update(dt);
       // 敌人/子弹系统（可在设置中开关战斗）
@@ -1318,6 +1428,7 @@ function loop(ts) {
         updatePlayerFire(dt);
         updatePlayerBulletHits(dt);
         updateCombatRobots(dt);
+        updateAoeZones(dt);
         if (typeof updatePersonalLaserDefense === 'function') updatePersonalLaserDefense(dt);
         if (typeof updateTankFire === 'function') updateTankFire(dt);
         if (typeof updateLootDrops === 'function') updateLootDrops(dt);

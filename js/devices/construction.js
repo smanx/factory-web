@@ -239,30 +239,25 @@ function updateConstruction(dt) {
     // 范围内判断
     if (Math.abs((g.x + g.w / 2) - G.player.x / TILE) > CONSTR_RANGE) continue;
     if (Math.abs((g.y + g.h / 2) - G.player.y / TILE) > CONSTR_RANGE) continue;
-    // 需要材料且背包有材料才施工
+    // 需要材料：只有全部材料齐备时才施工（材料不足的幽灵原地等待，下次材料备齐自动续建，不会丢失）
     const rec = RECIPES[g.type] || null;
     if (rec) {
-      const needItem = Object.keys(rec.inp)[0];
-      if (invCount(needItem) < rec.inp[needItem]) continue;   // 材料不足跳过
+      let enough = true;
+      for (const k in rec.inp) if (invCount(k) < rec.inp[k]) { enough = false; break; }
+      if (!enough) continue;   // 材料不足跳过，等下次再试
     }
     targetGhost = g;
     break;
   }
   if (targetGhost) {
-    // 从背包扣除建造所需材料（先校验全部材料充足再一次性扣足，避免部分扣取后放弃）
+    // 从背包扣除建造所需材料（此时已确认全部材料充足，一次性扣足）
     const rec = RECIPES[targetGhost.type];
     if (rec) {
-      let ok = true;
-      for (const k in rec.inp) if (invCount(k) < rec.inp[k]) { ok = false; break; }
-      if (!ok) { targetGhost._dead = true; }   // 材料不足则放弃该幽灵
-      else {
-        for (const k in rec.inp) {
-          for (let i = 0; i < rec.inp[k]; i++) invTake(k, 1);
-          if (typeof trackProd === 'function') trackProd(k, -rec.inp[k]);
-        }
+      for (const k in rec.inp) {
+        for (let i = 0; i < rec.inp[k]; i++) invTake(k, 1);
+        if (typeof trackProd === 'function') trackProd(k, -rec.inp[k]);
       }
     }
-    if (targetGhost._dead) return;
     targetGhost.building = true;
     const r = new ConstrRobot(G.player.x, G.player.y);
     r.state = 'toghost';

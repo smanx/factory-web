@@ -18,7 +18,8 @@ const LOGI_CHEST_KINDS = {
   'logistic-chest-passive': 'passive',
   'logistic-chest-active': 'active',
   'logistic-chest-storage': 'storage',
-  'logistic-chest-requester': 'requester'
+  'logistic-chest-requester': 'requester',
+  'logistic-chest-buffer': 'buffer'
 };
 const ROBOT_SPEED = 5.2;        // 物流机器人飞行速度（格/秒），对齐异星工厂快于玩家
 const ROBOT_MAX_CHARGE = 100;   // 满电
@@ -190,6 +191,30 @@ class LogisticRequester extends LogisticChest {
   }
 }
 
+// 缓冲箱（对齐《异星工厂》Buffer chest 0.17+）：介于需求箱与仓储箱之间
+// 既按设定请求货物（如需求箱），又向物流网络供应（如仓储箱），作为中转缓冲
+class LogisticBuffer extends LogisticChest {
+  constructor(type, x, y) {
+    super('logistic-chest-buffer', x, y);
+    this.requests = {};   // item -> 目标数量
+  }
+  // 需求缺口：目标量 - 当前存量
+  deficitOf(item) {
+    return Math.max(0, (this.requests[item] || 0) - this.countOf(item));
+  }
+  serialize() {
+    const s = super.serialize();
+    s.requests = this.requests;
+    return s;
+  }
+  static restore(s) {
+    const c = super.restore(s);
+    c.requests = {};
+    for (const k in (s.requests || {})) if (s.requests[k] > 0) c.requests[k] = s.requests[k];
+    return c;
+  }
+}
+
 // ===== 全局物流网络状态 =====
 // G.logiRobots: 全部物流机器人实体数组
 // G.logiNet: 最近一次调度缓存 {supply, demand, ports}
@@ -200,7 +225,7 @@ function ensureLogi() {
 
 // 判定某实体是否为“机器人可从其取货”的物流供应箱
 function isLogiSupply(e) {
-  return e && (e instanceof LogisticPassive || e instanceof LogisticActive || e instanceof LogisticStorage);
+  return e && (e instanceof LogisticPassive || e instanceof LogisticActive || e instanceof LogisticStorage || e instanceof LogisticBuffer);
 }
 
 // 向机器人港塞入 logistic-robot：玩家/机械臂往港内 give 时增加 roboCap
@@ -249,6 +274,27 @@ function ensurePortRobots() {
   }
 }
 
+// ===== 玩家个人物流请求（对齐《异星工厂》Personal logistic request）=====
+// 玩家可在背包面板设置个人请求量，只要处于物流网络内（已研究物流网络且有机器人港），
+// 物流机器人会自动把请求的物品送达玩家背包，并把玩家身上超出请求量的物品带回网络存储。
+function playerLogiTarget() {
+  return {
+    isPlayer: true,
+    x: (G.player ? G.player.x : 0) / TILE,
+    y: (G.player ? G.player.y : 0) / TILE,
+    w: 1, h: 1,
+    _dead: false,
+    deficitOf(item) {
+      const want = (G.logiRequest && G.logiRequest[item]) || 0;
+      if (want <= 0) return 0;
+      return Math.max(0, want - invCount(item));
+    },
+    giveItem(item) { invAdd(item, 1); return true; },
+    countOf(item) { return invCount(item); },
+    takeItemOf(item) { return invTake(item, 1) ? item : null; }
+  };
+}
+
 // ===== 网络调度：计算供应与需求缺口，指派空闲机器人 =====
 function scanNetwork() {
   // 供应：按物品聚合 { item -> count }，区分主动/被动/仓储优先级
@@ -262,13 +308,14 @@ function scanNetwork() {
     if (e._dead) continue;
     if (e instanceof Roboport) { ports.push(e); continue; }
     if (!(e instanceof LogisticChest)) continue;
-    if (e instanceof LogisticRequester) {
+    // 需求类：需求箱与缓冲箱都会按设定请求货物（缓冲箱同时是供应源，不 continue）
+    if (e instanceof LogisticRequester || e instanceof LogisticBuffer) {
       requesters.push(e);
       for (const k in e.requests) {
         const d = e.deficitOf(k);
         if (d > 0) demand[k] = (demand[k] || 0) + d;
       }
-      continue;
+      if (e instanceof LogisticRequester) continue;
     }
     // 供应类箱：汇总每种物品可用量
     for (const s of e.slots) {
@@ -278,6 +325,17 @@ function scanNetwork() {
       if (e instanceof LogisticActive) supply[s.item].active += s.count;
       supplies.push({ e, item: s.item, count: s.count, active: e instanceof LogisticActive });
     }
+  }
+
+  // 玩家个人物流请求：作为额外的需求端（仅当玩家有个人请求且背包缺货时）
+  if (G.logiRequest) {
+    const pt = playerLogiTarget();
+    let anyReq = false;
+    for (const k in G.logiRequest) {
+      const d = pt.deficitOf(k);
+      if (d > 0) { demand[k] = (demand[k] || 0) + d; anyReq = true; }
+    }
+    if (anyReq) requesters.push(pt);
   }
 
   // 赋值给全局供调度使用
@@ -318,7 +376,8 @@ function assignTask(r) {
   const req = net.requesters.find(q => q.deficitOf(best.item) > 0);
   if (!req) return;
 
-  const takeN = Math.min(ROBOT_CARRY, best.need, best.e.countOf(best.item));
+  // 取货量不超过目标缺口、供应量与单次搬运上限（避免超出缺口导致物品丢失）
+  const takeN = Math.min(ROBOT_CARRY, req.deficitOf(best.item), best.e.countOf(best.item));
   if (takeN <= 0) return;
 
   // 指派
@@ -386,6 +445,20 @@ function updateRobot(r, dt) {
             if (r.target.takeItemOf(r.carry.item) === r.carry.item) taken++;
           if (taken > 0) r.carry.count = taken;
         }
+        if (r.fromPlayer) {
+          // 回收场景：从玩家取货后送回一个可存放的供应箱（仓储/主动/被动箱）
+          const drop = (G.ents || []).find(e => !e._dead && e instanceof LogisticChest && !(e instanceof LogisticRequester) && e !== r.target && e.countOf && e.giveItem);
+          if (r.carry && r.carry.count > 0 && drop) {
+            r.target = drop;
+            r.tx = (drop.x + drop.w / 2) * TILE;
+            r.ty = (drop.y + drop.h / 2) * TILE;
+            r.state = 'delivering';
+            r.fromPlayer = false;
+          } else {
+            r.carry = null; r.state = 'returning';
+          }
+          break;
+        }
         // 找需求箱送货
         const net = G.logiNet || scanNetwork();
         const req = (net.requesters || []).find(q => q.deficitOf(r.carry ? r.carry.item : '') > 0);
@@ -406,7 +479,7 @@ function updateRobot(r, dt) {
       if (moveToward(r, dt)) {
         // 到达需求箱：放货（不超过需求缺口）
         if (r.carry) {
-          const can = r.target instanceof LogisticRequester ? r.target.deficitOf(r.carry.item) : r.carry.count;
+          const can = (r.target instanceof LogisticRequester || r.target instanceof LogisticBuffer || (r.target && r.target.isPlayer)) ? r.target.deficitOf(r.carry.item) : r.carry.count;
           const give = Math.max(0, Math.min(r.carry.count, can));
           for (let i = 0; i < give; i++) {
             if (!r.target.giveItem(r.carry.item)) break;
@@ -460,10 +533,34 @@ function updateLogistics(dt) {
   if (G.logiNet) {
     for (const r of G.logiRobots) {
       if (r._dead || r.state !== 'idle' || r.charge < ROBOT_MAX_CHARGE) continue;
+      // 优先回收玩家身上超出个人请求量的物品
+      if (assignRecycleTask(r)) break;
       assignTask(r);
       if (r.state !== 'idle') break;   // 每帧至多指派一个，避免瞬间把所有机器人派空
     }
   }
+}
+
+// 回收玩家身上超出个人请求量的物品（对齐《异星工厂》：机器人带走多余物资存回网络）
+function assignRecycleTask(r) {
+  if (!G.logiRequest) return false;
+  const pt = playerLogiTarget();
+  for (const item in G.logiRequest) {
+    const want = G.logiRequest[item] || 0;
+    if (want <= 0) continue;
+    const excess = invCount(item) - want;
+    if (excess <= 0) continue;
+    const takeN = Math.min(ROBOT_CARRY, excess);
+    if (takeN <= 0) continue;
+    r.carry = { item, count: takeN };
+    r.target = pt;
+    r.tx = (G.player ? G.player.x : 0);
+    r.ty = (G.player ? G.player.y : 0);
+    r.fromPlayer = true;
+    r.state = 'collecting';
+    return true;
+  }
+  return false;
 }
 
 // ===== 渲染 =====
@@ -503,6 +600,9 @@ function drawLogiStorage(ctx, e, gx, gy, dir, alpha) {
 }
 function drawLogiRequester(ctx, e, gx, gy, dir, alpha) {
   drawLogiChest(ctx, e, gx, gy, dir, alpha, { base: '#4a6a9c', lid: '#5f84b8', stroke: '#334a6a', badge: '#5a8ad0' }, '需');
+}
+function drawLogiBuffer(ctx, e, gx, gy, dir, alpha) {
+  drawLogiChest(ctx, e, gx, gy, dir, alpha, { base: '#9c8a4a', lid: '#b8a860', stroke: '#6a5e2e', badge: '#c8a05a' }, '缓');
 }
 
 function drawRoboport(ctx, e, gx, gy, dir, alpha) {
@@ -581,7 +681,7 @@ function logiChestPanelHtml(e) {
   let h = row('内容', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
   h += '<div class="status"></div>';
   const kind = LOGI_CHEST_KINDS[e.type];
-  if (kind === 'requester') {
+  if (kind === 'requester' || kind === 'buffer') {
     h += '<div class="sec">需求量（机器人自动送货补足）</div>';
     const ids = Object.keys(e.requests);
     if (!ids.length) {
@@ -592,6 +692,9 @@ function logiChestPanelHtml(e) {
           '<input class="limit-in" type="number" min="0" step="10" data-req="' + id + '"' +
           ' value="' + (e.requests[id] || 0) + '" data-tip="需求量|物流机器人会送货至此数量；0 表示不需求"></div>';
       }
+    }
+    if (kind === 'buffer') {
+      h += '<div class="dim">缓冲箱：请求货物后，也会向物流网络供应库存，作为中转缓冲。</div>';
     }
     h += '<div class="dim">提示：在下方输入物品名后点击「应用需求」。</div>';
     h += '<div class="sec">添加需求物品</div>';
@@ -612,7 +715,7 @@ function logiChestPanelLive(e, api) {
   api.set('contents', Object.keys(agg).length ? countStr(agg) : dimSpan('空'));
   api.toggle('#btn-chest-takeout', total > 0, '取出全部 (' + total + ')');
   const kind = LOGI_CHEST_KINDS[e.type];
-  if (kind === 'requester') {
+  if (kind === 'requester' || kind === 'buffer') {
     const short = Object.keys(e.requests).filter(k => e.deficitOf(k) > 0).length;
     if (short) api.status('需求待补：' + short + ' 种，物流机器人正在配送…', 'ok');
     else if (Object.keys(e.requests).length) api.status('需求已满足', 'ok');
@@ -628,7 +731,7 @@ function logiRequesterOnChange(ev) {
   const req = ev.target.closest('[data-req]');
   if (!req) return false;
   const e = G.panelEnt;
-  if (!(e instanceof LogisticRequester)) return false;
+  if (!(e instanceof LogisticRequester) && !(e instanceof LogisticBuffer)) return false;
   const id = req.dataset.req;
   let v = Math.floor(+req.value);
   if (!isFinite(v) || v <= 0) { delete e.requests[id]; req.value = ''; }
@@ -640,12 +743,12 @@ function logiRequesterOnChange(ev) {
 function logiChestOnAction(act) {
   const e = G.panelEnt;
   if (!(e instanceof LogisticChest)) return false;
-  if (act === 'logi-req-clear' && e instanceof LogisticRequester) {
+  if (act === 'logi-req-clear' && (e instanceof LogisticRequester || e instanceof LogisticBuffer)) {
     e.requests = {};
     renderPanel(false);
     return true;
   }
-  if (act === 'logi-req-apply' && e instanceof LogisticRequester) {
+  if (act === 'logi-req-apply' && (e instanceof LogisticRequester || e instanceof LogisticBuffer)) {
     const input = document.getElementById('logi-req-add');
     if (!input) return true;
     const name = input.value.trim();
@@ -667,7 +770,7 @@ function logiChestOnAction(act) {
 function logiChestTip(e) {
   let n = 0, k = 0;
   for (const s of e.slots) if (s) { n += s.count; k++; }
-  if (e instanceof LogisticRequester) {
+  if (e instanceof LogisticRequester || e instanceof LogisticBuffer) {
     const short = Object.keys(e.requests).filter(i => e.deficitOf(i) > 0).length;
     return (k ? '存货 ' + n + ' 个' : '空') + (short ? ' · 待补 ' + short + ' 种' : '');
   }
@@ -720,10 +823,12 @@ ENT_CLASSES['logistic-chest-passive'] = LogisticPassive;
 ENT_CLASSES['logistic-chest-active'] = LogisticActive;
 ENT_CLASSES['logistic-chest-storage'] = LogisticStorage;
 ENT_CLASSES['logistic-chest-requester'] = LogisticRequester;
+ENT_CLASSES['logistic-chest-buffer'] = LogisticBuffer;
 DEVICE_RENDER['logistic-chest-passive'] = drawLogiPassive;
 DEVICE_RENDER['logistic-chest-active'] = drawLogiActive;
 DEVICE_RENDER['logistic-chest-storage'] = drawLogiStorage;
 DEVICE_RENDER['logistic-chest-requester'] = drawLogiRequester;
+DEVICE_RENDER['logistic-chest-buffer'] = drawLogiBuffer;
 for (const t of Object.keys(LOGI_CHEST_KINDS)) {
   DEVICE_PANEL[t] = { html: logiChestPanelHtml, live: logiChestPanelLive, tip: logiChestTip, onAction: logiChestOnAction, onChange: logiRequesterOnChange };
 }

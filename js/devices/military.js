@@ -31,13 +31,15 @@ function stoneWallPanelLive(e, api) {
 function stoneWallTip() { return '石墙：阻挡敌人通行'; }
 
 // ===== 机枪炮塔（对齐《异星工厂》Gun turret，占地 2×2）=====
-// 需装入弹药（弹药匣/穿甲弹），自动攻击射程内敌人。
+// 需装入弹药（弹药匣/穿甲弹/铀弹），自动攻击射程内敌人。
+// 弹药等级列表：优先级从高到低（威力从大到小）。集中定义避免各处硬编码重复。
+const TURRET_AMMO_TYPES = ['uranium-rounds', 'piercing-rounds', 'magazine'];
 const TURRET_RANGE = 6;      // 射程（格）
 const TURRET_FIRE_RATE = 0.3; // 两次射击间隔（秒）
 class GunTurret extends Entity {
   constructor(type, x, y) {
     super('gun-turret', x, y);
-    this.ammo = {};      // { 'magazine': n, 'piercing-rounds': n }
+    this.ammo = {};      // { 'magazine': n, 'piercing-rounds': n, 'uranium-rounds': n }
     this.cooldown = 0;
     this.target = null;
     this.facing = 0;
@@ -45,7 +47,7 @@ class GunTurret extends Entity {
   ammoCount(id) { return this.ammo[id] || 0; }
   totalAmmo() { let s = 0; for (const k in this.ammo) s += this.ammo[k]; return s; }
   giveItem(item) {
-    if (item === 'magazine' || item === 'piercing-rounds') {
+    if (TURRET_AMMO_TYPES.indexOf(item) >= 0) {
       if (this.ammoCount(item) >= 40) return false;
       this.ammo[item] = this.ammoCount(item) + 1;
       return true;
@@ -53,12 +55,12 @@ class GunTurret extends Entity {
     return false;
   }
   takeItem() {
-    for (const k of ['magazine', 'piercing-rounds'])
+    for (const k of TURRET_AMMO_TYPES)
       if (this.ammoCount(k) > 0) return this.takeItemOf(k);
     return null;
   }
   peekItem() {
-    for (const k of ['magazine', 'piercing-rounds'])
+    for (const k of TURRET_AMMO_TYPES)
       if (this.ammoCount(k) > 0) return k;
     return null;
   }
@@ -92,15 +94,17 @@ class GunTurret extends Entity {
     this.target = best;
     this.facing = Math.atan2(best.y - (this.y + this.h / 2) * TILE, best.x - (this.x + this.w / 2) * TILE);
     // 需要有弹药才能射击
-    const ammo = this.ammoCount('magazine') + this.ammoCount('piercing-rounds');
+    let ammo = 0;
+    for (const k of TURRET_AMMO_TYPES) ammo += this.ammoCount(k);
     if (ammo <= 0 || this.cooldown > 0) return;
     this.cooldown = TURRET_FIRE_RATE;
-    // 用弹药攻击
+    // 用弹药攻击：铀弹 > 穿甲弹 > 普通弹（对齐《异星工厂》：铀弹威力最高）
+    const dmgMap = { 'uranium-rounds': 18, 'piercing-rounds': 10, 'magazine': 5 };
     let dmg = 5;
-    if (this.ammoCount('piercing-rounds') > 0) { this.ammo['piercing-rounds']--; dmg = 10; }
-    else { this.ammo['magazine']--; }
-    if (this.ammo['piercing-rounds'] <= 0) delete this.ammo['piercing-rounds'];
-    if (this.ammo['magazine'] <= 0) delete this.ammo['magazine'];
+    for (const k of TURRET_AMMO_TYPES) {
+      if (this.ammoCount(k) > 0) { this.ammo[k]--; dmg = dmgMap[k]; break; }
+    }
+    for (const k of TURRET_AMMO_TYPES) if (this.ammo[k] <= 0) delete this.ammo[k];
     best.hp -= dmg;
     // 子弹特效
     (G.bullets || (G.bullets = [])).push({
@@ -149,20 +153,20 @@ function drawGunTurret(ctx, e, gx, gy, dir, alpha) {
 }
 function gunTurretPanelHtml(e) {
   let h = row('弹药', e.totalAmmo() > 0 ? countStr(e.ammo) : '<span class="dim">空</span>', 'ammo');
-  for (const [id] of [['magazine'], ['piercing-rounds']]) {
+  for (const id of TURRET_AMMO_TYPES) {
     const n = Math.min(invCount(id), 40 - e.ammoCount(id));
     if (n > 0) h += '<button data-action="feed" data-id="' + id + '">放入' +
       ITEMS[id].name + ' ×' + n + '</button>';
   }
   if (e.totalAmmo() > 0) h += '<button data-action="takeout" id="btn-turret-takeout">取出全部弹药</button>';
   h += '<div class="status"></div>';
-  h += '<div class="dim">机枪炮塔：自动攻击射程内（' + TURRET_RANGE + ' 格）的敌人，需装入弹药。穿甲弹威力更高。配合石墙构筑防御阵地（2×2）。</div>';
+  h += '<div class="dim">机枪炮塔：自动攻击射程内（' + TURRET_RANGE + ' 格）的敌人，需装入弹药。威力：铀弹 > 穿甲弹 > 弹药匣。配合石墙构筑防御阵地（2×2）。</div>';
   return h;
 }
 function gunTurretPanelLive(e, api) {
   api.set('ammo', e.totalAmmo() > 0 ? countStr(e.ammo) : dimSpan('空'));
   api.toggle('#btn-turret-takeout', e.totalAmmo() > 0, '取出全部弹药 (' + e.totalAmmo() + ')');
-  if (e.totalAmmo() <= 0) api.status('已暂停：无弹药（放入弹药匣/穿甲弹）', 'warn');
+  if (e.totalAmmo() <= 0) api.status('已暂停：无弹药（放入弹药匣/穿甲弹/铀弹）', 'warn');
   else if (e.target) api.status('开火中：攻击敌人', 'ok');
   else api.status('待机：射程内无敌人', 'ok');
 }

@@ -476,6 +476,11 @@ function handleTap() {
 
   // 选中了物品 → 建造（就地放置）
   if (buildActive()) {
+    // 手持修理包点击受损建筑 → 修复（对齐《异星工厂》触屏维修）
+    if (hasRepairPackSelected() && e && isDamaged(e) && withinReach(tx, ty)) {
+      repairActionAt(tx, ty);
+      return;
+    }
     tryPlaceAt(tx, ty);
     return;
   }
@@ -494,6 +499,11 @@ function handleTap() {
   if (e && BUILD_DEFS[e.type]) {
     openPanel('machine', e);
     return;
+  }
+
+  // 点击水域 → 钓鱼（对齐《异星工厂》钓鱼玩法）
+  if (isWater(tx, ty) && typeof tryFishAt === 'function') {
+    if (tryFishAt(tx, ty)) return;
   }
 
   // 点击空地 → 玩家走过去（点击移动）
