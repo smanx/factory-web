@@ -106,6 +106,8 @@ class Centrifuge extends Entity {
   }
   setRecipe(id) {
     if (this.recipe === id) return;
+    // 切换配方前返还已投入/已产出物料（对齐《异星工厂》：切换配方返还残留）
+    if (this.inp || this.outp) returnMachineContents(this);
     this.recipe = id;
     this.inp = {}; this.outp = {};
     this.crafting = false; this.prog = 0;

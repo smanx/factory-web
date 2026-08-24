@@ -651,6 +651,35 @@ function deconstructAt(tx, ty) {
   uiDirty = true;
 }
 
+// ===== 右键取物（对齐《异星工厂》：右键点击传送带/地下带取最前物品、点击机械臂取爪上物品） =====
+// 返回 true 表示已取到物品（此时不再执行拆除）。物品优先进背包，背包满则掉落到脚下地面。
+function rightClickPickupAt(tx, ty) {
+  const e = entAt(tx, ty);
+  if (!e || !withinReach(tx, ty)) return false;
+  let id = null;
+  if (e instanceof Belt && typeof e.takeItem === 'function') {
+    id = e.takeItem();
+  } else if (typeof e.takeItem === 'function' && (e.type === 'underground' || e.type === 'fast-underground-belt' || e.type === 'express-underground-belt')) {
+    id = e.takeItem();
+  } else if (e.holding && e.holdingCount > 0) {
+    // 机械臂爪上抓取的物品
+    id = e.holding;
+    e.holdingCount = (e.holdingCount || 1) - 1;
+    if (e.holdingCount <= 0) e.holding = null;
+  }
+  if (!id) return false;
+  if (!invAdd(id, 1)) {
+    // 背包已满（或堆叠达到上限）：掉落到脚下地面
+    if (typeof addGroundItem === 'function') {
+      const fx = Math.floor(G.player.x / TILE), fy = Math.floor(G.player.y / TILE);
+      addGroundItem(fx, fy, id, 1);
+    }
+  }
+  if (typeof playSfx === 'function') playSfx('loot');
+  uiDirty = true;
+  return true;
+}
+
 // ===== 拆除模式（触屏专用，PC 右键拆除不受影响） =====
 // 手机端无法使用鼠标右键，通过“拆除模式”开关替代：
 // 开启后，点触/左键点击建筑即可拆除单个建筑，长按可连续拆除。
@@ -1455,6 +1484,10 @@ function bindInput() {
       handleLeftDown();
     } else if (ev.button === 2) {
       if (ev.shiftKey && hovered) { copySettings(hovered); return; }
+      // 右键取物优先：传送带/地下带/机械臂（对齐《异星工厂》）
+      if (G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
+        if (rightClickPickupAt(G.cursorTile.tx, G.cursorTile.ty)) return;
+      }
       if (G.cursorTile) deconstructAt(G.cursorTile.tx, G.cursorTile.ty);
     } else if (ev.button === 1) {
       if (G.cursorTile) {

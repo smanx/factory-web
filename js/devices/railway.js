@@ -124,25 +124,23 @@ function updateScheduledTrain(tr, dt) {
   const target = scheduleTargetStop(tr);
   // 目标站不存在（被拆/改名）：直接回退为普通行驶
   if (!target) return false;
-  // 到达目标站所在格：停靠装卸，完成停留后前往下一站
+  // 到达目标站所在格：停靠装卸，满足该站“等待条件”后前往下一站
   if (head.x === target.x && head.y === target.y) {
-    const acted = trainAutoLoadUnload(tr, target);
-    if (acted) tr.waitT = TRAIN_STOP_WAIT;
-    else if (!tr.waitT) tr.waitT = TRAIN_STOP_WAIT;
-    tr.waitT -= dt;
+    trainAutoLoadUnload(tr, target);
+    // 累计本站停留时间
+    tr.waitT = (tr.waitT || 0) + dt;
     tr.stopT = Math.max(tr.stopT || 0, tr.waitT);
     tr.wasStopped = true;
-    // 停留结束：前往路线下一站（循环）
-    if (tr.waitT <= 0) {
+    // 等待条件满足后发往路线下一站（循环）
+    if (trainWaitMet(tr, tr.waitT)) {
       tr.routeIdx = (tr.routeIdx + 1) % tr.route.length;
       tr.waitT = 0;
       if (typeof playSfx === 'function') playSfx('train');
     }
     return true;
   }
-  // 等待窗口（到站装卸刚结束）
+  // 到站停留窗口（尚未驶离，等待下一格移动节拍）
   if (tr.waitT > 0) {
-    tr.waitT -= dt;
     tr.wasStopped = true;
     return true;
   }
@@ -846,10 +844,20 @@ function newTrain(loco) {
 }
 // 列车是否有自动调度路线
 function trainHasSchedule(tr) { return !!(tr && tr.route && tr.route.length > 0); }
+// 取路线条目对应的车站名（条目可为字符串或 {stop, cond, time} 对象）
+function routeEntryName(en) {
+  return (typeof en === 'object' && en) ? en.stop : en;
+}
+function routeEntryCond(en) {
+  return (typeof en === 'object' && en && en.cond) ? en.cond : 'leave';
+}
+function routeEntryTime(en) {
+  return (typeof en === 'object' && en && typeof en.time === 'number') ? en.time : 10;
+}
 // 找到路线中当前目标站点实体（按车站名）
 function scheduleTargetStop(tr) {
   if (!trainHasSchedule(tr)) return null;
-  const name = tr.route[tr.routeIdx];
+  const name = routeEntryName(tr.route[tr.routeIdx]);
   for (const e of G.ents) {
     if (e._dead || !(e instanceof TrainStop)) continue;
     if (e.displayName() === name) return e;
@@ -866,11 +874,60 @@ function allTrainStopNames() {
   }
   return names;
 }
+
+// ===== 列车调度“等待条件”（对齐《异星工厂》Train stop wait conditions） =====
+// 路线每站可设置离开条件：
+//   leave  —— 完成本站装卸后稍作停留即出发（默认，保持原行为）
+//   full   —— 等待至列车全部车厢满载（货运箱槽满 / 流体车厢灌满）
+//   empty  —— 等待至列车全部车厢卸空
+//   time   —— 到站后停留固定秒数再出发
+function trainCargoSlotsFull(w) {
+  if (w instanceof FluidWagon) return w.fluid ? w.amount >= w.fluidCapacity() : false;
+  if (w instanceof CargoWagon) {
+    if (w.slots.length < WAGON_SLOTS) return false;
+    for (const s of w.slots) if (s && s.count < stackSize(s.item)) return false;
+    return true;
+  }
+  return true;
+}
+function trainCargoSlotsEmpty(w) {
+  if (w instanceof FluidWagon) return !w.fluid || w.amount <= 0;
+  if (w instanceof CargoWagon) return !w.slots || w.slots.length === 0 || w.slots.every(s => !s || s.count <= 0);
+  return true;
+}
+function trainCargoFull(tr) {
+  let wagons = tr.cars.filter(c => c instanceof CargoWagon);
+  if (!wagons.length) return false;
+  return wagons.every(w => trainCargoSlotsFull(w));
+}
+function trainCargoEmpty(tr) {
+  let wagons = tr.cars.filter(c => c instanceof CargoWagon);
+  if (!wagons.length) return true;
+  return wagons.every(w => trainCargoSlotsEmpty(w));
+}
+// 判断当前停靠站是否满足离开条件。arriveT 为本站已停留秒数。
+function trainWaitMet(tr, arriveT) {
+  const en = tr.route[tr.routeIdx];
+  const cond = routeEntryCond(en);
+  if (cond === 'full') return trainCargoFull(tr);
+  if (cond === 'empty') return trainCargoEmpty(tr);
+  if (cond === 'time') return arriveT >= routeEntryTime(en);
+  // leave：默认“装卸后出发”——至少停留一个装卸窗口（对齐原固定停靠时长），保证装/卸能完成
+  return arriveT >= TRAIN_STOP_WAIT;
+}
+// 当前路线条目的等待条件描述（用于面板显示）
+function routeEntryCondLabel(en) {
+  const c = routeEntryCond(en);
+  if (c === 'full') return '满载后出发';
+  if (c === 'empty') return '卸空后出发';
+  if (c === 'time') return '停留 ' + routeEntryTime(en) + ' 秒';
+  return '装卸后出发';
+}
 // 该车站是否被任一列车的自动调度路线引用（用于渲染调度光环标记）
 function stationInSchedule(stop) {
   const n = stop.displayName();
   for (const tr of G.trains) {
-    if (tr.route && tr.route.indexOf(n) >= 0) return true;
+    if (tr.route && tr.route.some(en => routeEntryName(en) === n)) return true;
   }
   return false;
 }
@@ -1146,10 +1203,23 @@ function locoScheduleHtml(e) {
   h += '<div class="rows">';
   if (!e.schedule || !e.schedule.length) h += '<div class="dim">未配置路线：列车将一直直线行驶、遇站装卸。配置路线后按序循环往返各站。</div>';
   else for (let i = 0; i < e.schedule.length; i++) {
-    h += '<div class="row"><span>' + (i + 1) + '. ' + chip('train-stop') + ' ' + e.schedule[i] + '</span>' +
+    const en = e.schedule[i];
+    const stopName = routeEntryName(en);
+    const cond = routeEntryCond(en);
+    const tm = routeEntryTime(en);
+    h += '<div class="row"><span>' + (i + 1) + '. ' + chip('train-stop') + ' ' + stopName + '</span>' +
       '<button data-act="sch-up" data-idx="' + i + '" title="上移">↑</button>' +
       '<button data-act="sch-down" data-idx="' + i + '" title="下移">↓</button>' +
-      '<button data-act="sch-del" data-idx="' + i + '" title="删除该站">✕</button></div>';
+      '<button data-act="sch-del" data-idx="' + i + '" title="删除该站">✕</button></div>' +
+      '<div class="row" style="padding-left:16px"><span class="dim">等待</span>' +
+      '<select data-act="sch-cond" data-idx="' + i + '">' +
+        '<option value="leave"' + (cond === 'leave' ? ' selected' : '') + '>装卸后出发</option>' +
+        '<option value="full"' + (cond === 'full' ? ' selected' : '') + '>满载后出发</option>' +
+        '<option value="empty"' + (cond === 'empty' ? ' selected' : '') + '>卸空后出发</option>' +
+        '<option value="time"' + (cond === 'time' ? ' selected' : '') + '>停留固定秒数</option>' +
+      '</select>' +
+      (cond === 'time' ? '<input type="number" min="1" max="120" value="' + tm + '" style="width:50px" data-act="sch-time" data-idx="' + i + '">秒' : '') +
+      '</div>';
   }
   h += '</div>';
   // 添加站点（下拉选择车站）
@@ -1179,32 +1249,52 @@ DEVICE_PANEL['locomotive'] = {
   live() { return ''; },
   tip() { return 'g'; },
   onAction(btn, e) {
-    if (btn === 'putcoal' && invCount('coal') > 0) { e.giveItem('coal'); invTake('coal', 1); toast('已加煤'); uiDirty = true; }
-    else if (btn === 'takecoal') { const it = e.takeItemOf('coal'); if (it) { invAdd(it); toast('已取出煤'); uiDirty = true; } }
-    else if (btn === 'putsolid' && invCount('solid-fuel') > 0) { e.giveItem('solid-fuel'); invTake('solid-fuel', 1); toast('已加固体燃料'); uiDirty = true; }
-    else if (btn === 'takesolid') { const it = e.takeItemOf('solid-fuel'); if (it) { invAdd(it); toast('已取出固体燃料'); uiDirty = true; } }
-    else if (btn === 'putrocket' && invCount('rocket-fuel') > 0) { e.giveItem('rocket-fuel'); invTake('rocket-fuel', 1); toast('已加火箭燃料'); uiDirty = true; }
-    else if (btn === 'takerocket') { const it = e.takeItemOf('rocket-fuel'); if (it) { invAdd(it); toast('已取出火箭燃料'); uiDirty = true; } }
-    else if (btn === 'putwood' && invCount('wood') > 0) { e.giveItem('wood'); invTake('wood', 1); toast('已加木材'); uiDirty = true; }
-    else if (btn === 'takewood') { const it = e.takeItemOf('wood'); if (it) { invAdd(it); toast('已取出木材'); uiDirty = true; } }
+    const mch = G.panelEnt;   // 实体通过 G.panelEnt 获取（对齐其它设备面板 onAction 惯例）
+    const idx = +((e && e.dataset && e.dataset.idx) || -1);   // 按钮/控件 DOM 元素在第二参
+    if (btn === 'putcoal' && invCount('coal') > 0) { mch.giveItem('coal'); invTake('coal', 1); toast('已加煤'); uiDirty = true; }
+    else if (btn === 'takecoal') { const it = mch.takeItemOf('coal'); if (it) { invAdd(it); toast('已取出煤'); uiDirty = true; } }
+    else if (btn === 'putsolid' && invCount('solid-fuel') > 0) { mch.giveItem('solid-fuel'); invTake('solid-fuel', 1); toast('已加固体燃料'); uiDirty = true; }
+    else if (btn === 'takesolid') { const it = mch.takeItemOf('solid-fuel'); if (it) { invAdd(it); toast('已取出固体燃料'); uiDirty = true; } }
+    else if (btn === 'putrocket' && invCount('rocket-fuel') > 0) { mch.giveItem('rocket-fuel'); invTake('rocket-fuel', 1); toast('已加火箭燃料'); uiDirty = true; }
+    else if (btn === 'takerocket') { const it = mch.takeItemOf('rocket-fuel'); if (it) { invAdd(it); toast('已取出火箭燃料'); uiDirty = true; } }
+    else if (btn === 'putwood' && invCount('wood') > 0) { mch.giveItem('wood'); invTake('wood', 1); toast('已加木材'); uiDirty = true; }
+    else if (btn === 'takewood') { const it = mch.takeItemOf('wood'); if (it) { invAdd(it); toast('已取出木材'); uiDirty = true; } }
     else if (btn === 'sch-add-btn') {
       const sel = document.getElementById('sch-add');
       if (sel && sel.value) {
-        e.schedule = e.schedule || [];
-        e.schedule.push(sel.value);
+        mch.schedule = mch.schedule || [];
+        // 新加入站点默认“装卸后出发”，可再逐站设置等待条件（对齐《异星工厂》wait conditions）
+        mch.schedule.push({ stop: sel.value, cond: 'leave', time: 10 });
         // 同步到所属列车的 route（若列车已在运行）
-        syncLocoSchedule(e);
+        syncLocoSchedule(mch);
         toast('已把车站「' + sel.value + '」加入路线');
         uiDirty = true;
       }
     }
+    else if (btn === 'sch-cond') {
+      if (!mch.schedule || idx < 0 || idx >= mch.schedule.length) return true;
+      const en = mch.schedule[idx];
+      const enObj = (typeof en === 'object' && en) ? en : { stop: en, time: 10 };
+      enObj.cond = (e && e.value) || 'leave';
+      mch.schedule[idx] = enObj;
+      syncLocoSchedule(mch);
+      uiDirty = true;
+    }
+    else if (btn === 'sch-time') {
+      if (!mch.schedule || idx < 0 || idx >= mch.schedule.length) return true;
+      const en = mch.schedule[idx];
+      const enObj = (typeof en === 'object' && en) ? en : { stop: en, time: 10 };
+      enObj.time = Math.max(1, Math.min(120, (+((e && e.value) || 10))));
+      mch.schedule[idx] = enObj;
+      syncLocoSchedule(mch);
+      uiDirty = true;
+    }
     else if (btn === 'sch-del' || btn === 'sch-up' || btn === 'sch-down') {
-      const idx = +((btn && btn.dataset && btn.dataset.idx) || -1);
-      if (!e.schedule || idx < 0 || idx >= e.schedule.length) return true;
-      if (btn === 'sch-del') e.schedule.splice(idx, 1);
-      else if (btn === 'sch-up' && idx > 0) { const t = e.schedule[idx]; e.schedule[idx] = e.schedule[idx - 1]; e.schedule[idx - 1] = t; }
-      else if (btn === 'sch-down' && idx < e.schedule.length - 1) { const t = e.schedule[idx]; e.schedule[idx] = e.schedule[idx + 1]; e.schedule[idx + 1] = t; }
-      syncLocoSchedule(e);
+      if (!mch.schedule || idx < 0 || idx >= mch.schedule.length) return true;
+      if (btn === 'sch-del') mch.schedule.splice(idx, 1);
+      else if (btn === 'sch-up' && idx > 0) { const t = mch.schedule[idx]; mch.schedule[idx] = mch.schedule[idx - 1]; mch.schedule[idx - 1] = t; }
+      else if (btn === 'sch-down' && idx < mch.schedule.length - 1) { const t = mch.schedule[idx]; mch.schedule[idx] = mch.schedule[idx + 1]; mch.schedule[idx + 1] = t; }
+      syncLocoSchedule(mch);
       uiDirty = true;
     }
     return true;
@@ -1238,27 +1328,46 @@ DEVICE_PANEL['diesel-locomotive'] = {
   live() { return ''; },
   tip() { return 'g'; },
   onAction(btn, e) {
-    if (btn === 'putsolid' && invCount('solid-fuel') > 0) { e.giveItem('solid-fuel'); invTake('solid-fuel', 1); toast('已加固体燃料'); uiDirty = true; }
-    else if (btn === 'takesolid') { const it = e.takeItemOf('solid-fuel'); if (it) { invAdd(it); toast('已取出固体燃料'); uiDirty = true; } }
-    else if (btn === 'putrocket' && invCount('rocket-fuel') > 0) { e.giveItem('rocket-fuel'); invTake('rocket-fuel', 1); toast('已加火箭燃料'); uiDirty = true; }
-    else if (btn === 'takerocket') { const it = e.takeItemOf('rocket-fuel'); if (it) { invAdd(it); toast('已取出火箭燃料'); uiDirty = true; } }
+    const mch = G.panelEnt;
+    const idx = +((e && e.dataset && e.dataset.idx) || -1);
+    if (btn === 'putsolid' && invCount('solid-fuel') > 0) { mch.giveItem('solid-fuel'); invTake('solid-fuel', 1); toast('已加固体燃料'); uiDirty = true; }
+    else if (btn === 'takesolid') { const it = mch.takeItemOf('solid-fuel'); if (it) { invAdd(it); toast('已取出固体燃料'); uiDirty = true; } }
+    else if (btn === 'putrocket' && invCount('rocket-fuel') > 0) { mch.giveItem('rocket-fuel'); invTake('rocket-fuel', 1); toast('已加火箭燃料'); uiDirty = true; }
+    else if (btn === 'takerocket') { const it = mch.takeItemOf('rocket-fuel'); if (it) { invAdd(it); toast('已取出火箭燃料'); uiDirty = true; } }
     else if (btn === 'sch-add-btn') {
       const sel = document.getElementById('sch-add');
       if (sel && sel.value) {
-        e.schedule = e.schedule || [];
-        e.schedule.push(sel.value);
-        syncLocoSchedule(e);
+        mch.schedule = mch.schedule || [];
+        mch.schedule.push({ stop: sel.value, cond: 'leave', time: 10 });
+        syncLocoSchedule(mch);
         toast('已把车站「' + sel.value + '」加入路线');
         uiDirty = true;
       }
     }
+    else if (btn === 'sch-cond') {
+      if (!mch.schedule || idx < 0 || idx >= mch.schedule.length) return true;
+      const en = mch.schedule[idx];
+      const enObj = (typeof en === 'object' && en) ? en : { stop: en, time: 10 };
+      enObj.cond = (e && e.value) || 'leave';
+      mch.schedule[idx] = enObj;
+      syncLocoSchedule(mch);
+      uiDirty = true;
+    }
+    else if (btn === 'sch-time') {
+      if (!mch.schedule || idx < 0 || idx >= mch.schedule.length) return true;
+      const en = mch.schedule[idx];
+      const enObj = (typeof en === 'object' && en) ? en : { stop: en, time: 10 };
+      enObj.time = Math.max(1, Math.min(120, (+((e && e.value) || 10))));
+      mch.schedule[idx] = enObj;
+      syncLocoSchedule(mch);
+      uiDirty = true;
+    }
     else if (btn === 'sch-del' || btn === 'sch-up' || btn === 'sch-down') {
-      const idx = +((btn && btn.dataset && btn.dataset.idx) || -1);
-      if (!e.schedule || idx < 0 || idx >= e.schedule.length) return true;
-      if (btn === 'sch-del') e.schedule.splice(idx, 1);
-      else if (btn === 'sch-up' && idx > 0) { const t = e.schedule[idx]; e.schedule[idx] = e.schedule[idx - 1]; e.schedule[idx - 1] = t; }
-      else if (btn === 'sch-down' && idx < e.schedule.length - 1) { const t = e.schedule[idx]; e.schedule[idx] = e.schedule[idx + 1]; e.schedule[idx + 1] = t; }
-      syncLocoSchedule(e);
+      if (!mch.schedule || idx < 0 || idx >= mch.schedule.length) return true;
+      if (btn === 'sch-del') mch.schedule.splice(idx, 1);
+      else if (btn === 'sch-up' && idx > 0) { const t = mch.schedule[idx]; mch.schedule[idx] = mch.schedule[idx - 1]; mch.schedule[idx - 1] = t; }
+      else if (btn === 'sch-down' && idx < mch.schedule.length - 1) { const t = mch.schedule[idx]; mch.schedule[idx] = mch.schedule[idx + 1]; mch.schedule[idx + 1] = t; }
+      syncLocoSchedule(mch);
       uiDirty = true;
     }
     return true;
@@ -1275,9 +1384,10 @@ DEVICE_PANEL['cargo-wagon'] = {
   live() { return ''; },
   tip() { return 'g'; },
   onAction(btn, e) {
+    const mch = G.panelEnt;
     const id = btn && btn.dataset ? btn.dataset.id : null;
-    if (btn === 'take' && id && e.countOf(id) > 0) {
-      const it = e.takeItemOf(id); if (it) { invAdd(it); uiDirty = true; }
+    if (btn === 'take' && id && mch.countOf(id) > 0) {
+      const it = mch.takeItemOf(id); if (it) { invAdd(it); uiDirty = true; }
     }
     return true;
   }
@@ -1298,16 +1408,17 @@ DEVICE_PANEL['fluid-wagon'] = {
   live() { return ''; },
   tip() { return 'g'; },
   onAction(btn, e) {
+    const mch = G.panelEnt;
     if (btn === 'fw-add' || btn === 'fw-take') {
       const sel = document.getElementById('fw-fluid');
       const fid = sel ? sel.value : 'water';
       if (btn === 'fw-add') {
         if (!invCount(fid)) { toast('背包里没有该流体'); return true; }
-        const n = e.addFluid(fid, 1000);
+        const n = mch.addFluid(fid, 1000);
         if (n > 0) { invTake(fid, n); toast('已装入 ' + n + ' ' + (ITEMS[fid] ? ITEMS[fid].name : fid)); uiDirty = true; }
         else toast('车厢已满或流体不兼容');
       } else {
-        const n = e.takeFluid(fid, 1000);
+        const n = mch.takeFluid(fid, 1000);
         if (n > 0) { invAdd(fid, n); toast('已取出 ' + n); uiDirty = true; }
         else toast('没有可取的流体');
       }

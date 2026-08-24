@@ -387,6 +387,53 @@ function dropHeldItemToGround() {
   return true;
 }
 
+// ===== 设备切换配方时返还已投入原料（对齐《异星工厂》：切换配方返还残留物料） =====
+// 组装机/化工/炼油/离心机在切换或清除配方时，把已投入但未消耗的原料与已产出的
+// 成品返还到机器旁：固体掉落到旁边地面（addGroundItem，同格同种自动合并），
+// 流体尝试推回相连管道；无法推回管道时丢弃（微量损失，简化实现）。
+// 返回 { dropped, lostFluid } 供调用方决定提示。
+function returnMachineContents(e) {
+  if (!e) return { dropped: 0, lostFluid: false };
+  let dropped = 0, lostFluid = false;
+  // 选取机器旁第一个可放置地面物品的格子（前方优先，其次两侧、后方，最后机器自身格）
+  let fx = e.x, fy = e.y;
+  const cand = [];
+  cand.push([e.x + DX[e.dir], e.y + DY[e.dir]]);            // 前方
+  cand.push([e.x + DY[e.dir], e.y - DX[e.dir]]);            // 左侧
+  cand.push([e.x - DY[e.dir], e.y + DX[e.dir]]);            // 右侧
+  cand.push([e.x - DX[e.dir], e.y - DY[e.dir]]);            // 后方
+  for (const [cx, cy] of cand) {
+    if (!groundTileBlocked(cx, cy)) { fx = cx; fy = cy; break; }
+  }
+  const ret = (buff) => {
+    if (!buff) return;
+    for (const k in buff) {
+      const n = buff[k];
+      if (n <= 0) continue;
+      if (FLUIDS.indexOf(k) >= 0) {
+        // 流体：尝试推回机器四周相连管道
+        let left = n;
+        for (let i = 0; i < 4 && left > 0; i++) {
+          const nb = entAt(e.x + DX[i], e.y + DY[i]);
+          if (nb instanceof Pipe && nb.total() < PIPE_CAP) {
+            while (left > 0 && nb.total() < PIPE_CAP && nb.giveItem(k)) left--;
+          }
+        }
+        if (left > 0) lostFluid = true;
+      } else {
+        // 固体：掉落到机器旁地面
+        addGroundItem(fx, fy, k, n);
+        dropped += n;
+      }
+    }
+  };
+  ret(e.inp);
+  ret(e.outp);
+  e.inp = {}; e.outp = {};
+  if (dropped > 0 && typeof playSfx === 'function') playSfx('loot');
+  return { dropped, lostFluid };
+}
+
 // 每帧更新地面物品：玩家靠近自动拾取（传送带吸附由 Belt.update 处理）
 function updateGroundItems(dt) {
   if (!G.groundItems || G.groundItems.length === 0) return;

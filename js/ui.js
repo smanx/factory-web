@@ -678,6 +678,13 @@ function initPanelEvents() {
     // 设备专属输入（如储物箱存量上限）优先交给设备自己的 onChange
     const panel = G.panelEnt && DEVICE_PANEL[G.panelEnt.type];
     if (panel && panel.onChange && panel.onChange(ev)) return;
+    // 车头调度“等待条件”下拉 / 秒数输入：与 click 分发一致，直接交给设备 onAction
+    const condCtrl = ev.target.closest && ev.target.closest('[data-act="sch-cond"], [data-act="sch-time"]');
+    if (condCtrl && panel && panel.onAction) {
+      const act = condCtrl.dataset.act;
+      panel.onAction(act, condCtrl);
+      return;
+    }
     // 历史页物品选择（datalist 下拉选中）
     const histFilter = ev.target.closest('[data-stat-hist-filter]');
     if (histFilter) {
@@ -936,9 +943,9 @@ function initPanelEvents() {
       }
       return;
     }
-    const btn = ev.target.closest('[data-action]');
+    const btn = ev.target.closest('[data-action], [data-act]');
     if (!btn) return;
-    const act = btn.dataset.action;
+    const act = btn.dataset.action || btn.dataset.act;
     const id = btn.dataset.id;
     // 设备专属动作（spref/flt/labfill 等）优先交给设备自己的 onAction
     const panel = G.panelEnt && DEVICE_PANEL[G.panelEnt.type];
