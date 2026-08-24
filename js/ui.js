@@ -162,6 +162,9 @@ function renderPanel(full) {
   } else if (G.panelMode === 'tech') {
     title.textContent = '科技研究';
     body.innerHTML = htmlTech();
+  } else if (G.panelMode === 'bluebook') {
+    title.textContent = '蓝图库（Blueprint book）';
+    body.innerHTML = htmlBlueBook();
   } else if (G.panelMode === 'stats') {
     title.textContent = '统计面板';
     body.innerHTML = htmlStats();
@@ -451,6 +454,33 @@ function fillLogiReqGrid(q) {
   }
 }
 
+// 蓝图库面板：列出所有保存的蓝图，可加载粘贴或删除
+function htmlBlueBook() {
+  const list = Array.isArray(G.blueBook) ? G.blueBook : [];
+  let h = '<div class="dim">按 <b>B</b> 框选复制蓝图会自动存入蓝图库；也可复制后点这里加载复用。点击“粘贴”后回到地图点击空白处放置（R旋转，右键取消）。</div>';
+  if (!list.length) {
+    h += '<div class="dim">蓝图库为空。请先在地图上按 <b>B</b> 拖拽框选一片建筑进行复制，蓝图会自动保存到这里。</div>';
+    return h;
+  }
+  for (let i = 0; i < list.length; i++) {
+    const b = list[i];
+    const types = {};
+    for (const e of b.ents) {
+      const t = e.type;
+      types[t] = (types[t] || 0) + 1;
+    }
+    const typeNames = Object.keys(types).slice(0, 4).map(t => ITEMS[t] ? ITEMS[t].name : t).join('、') +
+      (Object.keys(types).length > 4 ? ' 等' : '');
+    h += '<div class="bluebook-item" data-bb="' + i + '">' +
+      '<div class="bb-main"><div class="bb-name">' + b.name + '</div>' +
+      '<div class="dim">' + b.ents.length + ' 个建筑 · ' + typeNames + '</div></div>' +
+      '<button data-bbuse="' + i + '">📋 粘贴</button>' +
+      '<button data-bbdel="' + i + '" class="bb-del">🗑 删除</button>' +
+      '</div>';
+  }
+  return h;
+}
+
 // 组装机面板：按关键字过滤「选择配方」网格中的配方按钮
 function applyAssemblerRecipeFilter(q) {
   const body = document.getElementById('panel-body');
@@ -716,6 +746,19 @@ function initPanelEvents() {
         G.logiRequest[item] = Math.min(v, 10000);
         toast('已请求 ' + ITEMS[item].name + ' ×' + G.logiRequest[item] + '，物流机器人将自动送达');
       }
+      renderPanel(false);
+      return;
+    }
+    // 蓝图库：加载蓝图粘贴
+    const bbUse = ev.target.closest('[data-bbuse]');
+    if (bbUse && G.panelMode === 'bluebook') {
+      if (typeof blueBookLoad === 'function') blueBookLoad(+bbUse.dataset.bbuse);
+      return;
+    }
+    // 蓝图库：删除蓝图
+    const bbDel = ev.target.closest('[data-bbdel]');
+    if (bbDel && G.panelMode === 'bluebook') {
+      if (typeof blueBookRemove === 'function') blueBookRemove(+bbDel.dataset.bbdel);
       renderPanel(false);
       return;
     }

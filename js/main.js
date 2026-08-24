@@ -34,6 +34,7 @@ const G = {
   invRecipeQ: '',
   clipboard: null,
   blueprint: null,        // 蓝图数据：{ minX, minY, w, h, ents: [序列化实体...] }
+  blueBook: [],           // 蓝图库：保存的多个蓝图 { name, minX, minY, ents }（对齐《异星工厂》蓝图库）
   blueMode: null,         // 'blue' | 'red' | 'paste'（框选/删除/粘贴蓝图）
   blueStart: null,        // 框选起点瓦片
   blueEnd: null,          // 框选终点瓦片
@@ -130,6 +131,7 @@ function newGame() {
   G.logiNet = null;
   G.logiNetT = 0;
   G.logiRequest = {};   // 新游戏清空个人物流请求
+  G.blueBook = [];      // 新游戏清空蓝图库
   G.railTiles = new Set();
   G.trains = [];
   G.playerHP = 100; G.playerHPmax = 100;
@@ -197,7 +199,8 @@ function serializeAll() {
     // 历史统计：聚合为小时粒度写入（体积极小，最多 24 小时/物品）
     hist: (typeof histSerialize === 'function') ? histSerialize() : null,
     constr: (typeof constrSerialize === 'function') ? constrSerialize() : null,
-    equipment: (typeof equipmentSerialize === 'function') ? equipmentSerialize() : null
+    equipment: (typeof equipmentSerialize === 'function') ? equipmentSerialize() : null,
+    blueBook: (G.blueBook || []).map(b => ({ name: b.name, minX: b.minX | 0, minY: b.minY | 0, ents: b.ents }))
   };
 }
 
@@ -290,6 +293,15 @@ function applySave(d) {
   // 恢复敌人进化度（旧档无该字段则从 0 开始）
   G.evolution = (typeof d.evolution === 'number') ? Math.min(1, Math.max(0, d.evolution)) : 0;
   G.gameWon = !!d.gameWon;
+  // 恢复蓝图库（旧档无该字段则置空）
+  G.blueBook = [];
+  if (Array.isArray(d.blueBook)) {
+    for (const b of d.blueBook) {
+      if (b && Array.isArray(b.ents) && b.ents.length && b.name) {
+        G.blueBook.push({ name: String(b.name), minX: b.minX | 0, minY: b.minY | 0, ents: b.ents });
+      }
+    }
+  }
   G.repairPackUses = (typeof d.repairPackUses === 'number') ? d.repairPackUses : 0;
   G.combatRobots = [];
   G.driving = null;
@@ -816,6 +828,8 @@ function captureBlueprint() {
   }
   if (!ents.length) { toast('框选区域没有可复制的建筑'); return; }
   G.blueprint = { minX: r.x0, minY: r.y0, ents };
+  // 自动存入蓝图库（去重：与已有蓝图内容相同则不重复添加）
+  if (typeof blueBookAdd === 'function') blueBookAdd(G.blueprint);
   G.blueMode = 'paste';
   G.blueStart = null; G.blueEnd = null;
   G.blueRot = 0; G.blueFlipH = false; G.blueFlipV = false;
@@ -923,6 +937,42 @@ function pasteBlueprint() {
     addEnt(e);
   }
   toast('蓝图已粘贴 ' + placements.length + ' 个建筑（可继续点击空白处粘贴，R旋转/V翻转，右键取消）');
+  uiDirty = true;
+}
+
+// ===== 蓝图库（对齐《异星工厂》Blueprint book）：保存多个蓝图供随时调用 =====
+// 复制蓝图时自动加入蓝图库；也可在蓝图库面板中加载任一蓝图进行粘贴。
+function blueBookAdd(bp) {
+  if (!bp || !bp.ents || !bp.ents.length) return;
+  if (!Array.isArray(G.blueBook)) G.blueBook = [];
+  // 去重：内容（类型+相对位置）与已有蓝图相同则不重复添加
+  const key = bp.ents.map(e => e.type + '@' + (e.x - bp.minX) + ',' + (e.y - bp.minY)).join('|');
+  for (const b of G.blueBook) {
+    const bk = b.ents.map(e => e.type + '@' + (e.x - b.minX) + ',' + (e.y - b.minY)).join('|');
+    if (bk === key) return;   // 已存在相同蓝图
+  }
+  G.blueBook.push({ name: '蓝图 ' + (G.blueBook.length + 1), minX: bp.minX, minY: bp.minY, ents: bp.ents.slice() });
+  uiDirty = true;
+}
+
+// 从蓝图库加载指定蓝图，进入粘贴模式
+function blueBookLoad(i) {
+  const b = G.blueBook[i];
+  if (!b) { toast('蓝图库中没有该项'); return; }
+  G.blueprint = { minX: b.minX, minY: b.minY, ents: b.ents.slice() };
+  G.blueMode = 'paste';
+  G.blueStart = null; G.blueEnd = null;
+  G.blueRot = 0; G.blueFlipH = false; G.blueFlipV = false;
+  closePanel();
+  toast('已加载蓝图「' + b.name + '」，点击空白处粘贴（R旋转，右键取消）');
+}
+
+// 删除蓝图库中指定项
+function blueBookRemove(i) {
+  if (!Array.isArray(G.blueBook) || i < 0 || i >= G.blueBook.length) return;
+  const name = G.blueBook[i].name;
+  G.blueBook.splice(i, 1);
+  toast('已从蓝图库删除「' + name + '」');
   uiDirty = true;
 }
 
@@ -1121,7 +1171,7 @@ function enterGame() {
   const sc = document.getElementById('start-screen');
   if (sc) sc.classList.add('hidden');
   G.inMenu = false;
-  toast('WASD 移动 · 左键挖矿/放建筑(覆盖建造) · 右键拆除 · R 旋转 · F 拿取 · Q 取消/拾取朝向 · 中键/E 面板 · T 科技 · P 统计 · B 蓝图 · Alt+D 红图 · Alt+U 绿图 · K/L 存读档');
+  toast('WASD 移动 · 左键挖矿/放建筑(覆盖建造) · 右键拆除 · R 旋转 · F 拿取 · Q 取消/拾取朝向 · 中键/E 面板 · T 科技 · P 统计 · B 蓝图 · Alt+B 蓝图库 · Alt+D 红图 · Alt+U 绿图 · K/L 存读档');
   // 触屏设备：首次进入展示新手引导
   if (typeof maybeShowTouchTip === 'function') maybeShowTouchTip();
 }
@@ -1149,6 +1199,7 @@ function bindInput() {
     // 统计/蓝图/红图/绿图快捷键（对齐《异星工厂》：P 统计、B 蓝图、Alt+D 红图、Alt+U 绿图）
     else if (k === 'p') G.panelMode === 'stats' ? closePanel() : openPanel('stats');
     else if (k === 'b') { closePanel(); toggleBlueprint('blue'); }
+    else if (ev.altKey && k === 'b') { ev.preventDefault(); if (G.blueMode) cancelBlueprint(); G.panelMode === 'bluebook' ? closePanel() : openPanel('bluebook'); }
     else if (ev.altKey && k === 'd') { ev.preventDefault(); closePanel(); toggleBlueprint('red'); }
     else if (ev.altKey && k === 'u') { ev.preventDefault(); closePanel(); toggleBlueprint('green'); }
     else if ((k === 'delete' || k === 'backspace') && G.panelMode === 'machine' &&
