@@ -274,6 +274,27 @@ function ensurePortRobots() {
   }
 }
 
+// ===== 玩家个人物流请求（对齐《异星工厂》Personal logistic request）=====
+// 玩家可在背包面板设置个人请求量，只要处于物流网络内（已研究物流网络且有机器人港），
+// 物流机器人会自动把请求的物品送达玩家背包，并把玩家身上超出请求量的物品带回网络存储。
+function playerLogiTarget() {
+  return {
+    isPlayer: true,
+    x: (G.player ? G.player.x : 0) / TILE,
+    y: (G.player ? G.player.y : 0) / TILE,
+    w: 1, h: 1,
+    _dead: false,
+    deficitOf(item) {
+      const want = (G.logiRequest && G.logiRequest[item]) || 0;
+      if (want <= 0) return 0;
+      return Math.max(0, want - invCount(item));
+    },
+    giveItem(item) { invAdd(item, 1); return true; },
+    countOf(item) { return invCount(item); },
+    takeItemOf(item) { return invTake(item, 1) ? item : null; }
+  };
+}
+
 // ===== 网络调度：计算供应与需求缺口，指派空闲机器人 =====
 function scanNetwork() {
   // 供应：按物品聚合 { item -> count }，区分主动/被动/仓储优先级
@@ -304,6 +325,17 @@ function scanNetwork() {
       if (e instanceof LogisticActive) supply[s.item].active += s.count;
       supplies.push({ e, item: s.item, count: s.count, active: e instanceof LogisticActive });
     }
+  }
+
+  // 玩家个人物流请求：作为额外的需求端（仅当玩家有个人请求且背包缺货时）
+  if (G.logiRequest) {
+    const pt = playerLogiTarget();
+    let anyReq = false;
+    for (const k in G.logiRequest) {
+      const d = pt.deficitOf(k);
+      if (d > 0) { demand[k] = (demand[k] || 0) + d; anyReq = true; }
+    }
+    if (anyReq) requesters.push(pt);
   }
 
   // 赋值给全局供调度使用
@@ -344,7 +376,8 @@ function assignTask(r) {
   const req = net.requesters.find(q => q.deficitOf(best.item) > 0);
   if (!req) return;
 
-  const takeN = Math.min(ROBOT_CARRY, best.need, best.e.countOf(best.item));
+  // 取货量不超过目标缺口、供应量与单次搬运上限（避免超出缺口导致物品丢失）
+  const takeN = Math.min(ROBOT_CARRY, req.deficitOf(best.item), best.e.countOf(best.item));
   if (takeN <= 0) return;
 
   // 指派
@@ -412,6 +445,20 @@ function updateRobot(r, dt) {
             if (r.target.takeItemOf(r.carry.item) === r.carry.item) taken++;
           if (taken > 0) r.carry.count = taken;
         }
+        if (r.fromPlayer) {
+          // 回收场景：从玩家取货后送回一个可存放的供应箱（仓储/主动/被动箱）
+          const drop = (G.ents || []).find(e => !e._dead && e instanceof LogisticChest && !(e instanceof LogisticRequester) && e !== r.target && e.countOf && e.giveItem);
+          if (r.carry && r.carry.count > 0 && drop) {
+            r.target = drop;
+            r.tx = (drop.x + drop.w / 2) * TILE;
+            r.ty = (drop.y + drop.h / 2) * TILE;
+            r.state = 'delivering';
+            r.fromPlayer = false;
+          } else {
+            r.carry = null; r.state = 'returning';
+          }
+          break;
+        }
         // 找需求箱送货
         const net = G.logiNet || scanNetwork();
         const req = (net.requesters || []).find(q => q.deficitOf(r.carry ? r.carry.item : '') > 0);
@@ -432,7 +479,7 @@ function updateRobot(r, dt) {
       if (moveToward(r, dt)) {
         // 到达需求箱：放货（不超过需求缺口）
         if (r.carry) {
-          const can = (r.target instanceof LogisticRequester || r.target instanceof LogisticBuffer) ? r.target.deficitOf(r.carry.item) : r.carry.count;
+          const can = (r.target instanceof LogisticRequester || r.target instanceof LogisticBuffer || (r.target && r.target.isPlayer)) ? r.target.deficitOf(r.carry.item) : r.carry.count;
           const give = Math.max(0, Math.min(r.carry.count, can));
           for (let i = 0; i < give; i++) {
             if (!r.target.giveItem(r.carry.item)) break;
@@ -486,10 +533,34 @@ function updateLogistics(dt) {
   if (G.logiNet) {
     for (const r of G.logiRobots) {
       if (r._dead || r.state !== 'idle' || r.charge < ROBOT_MAX_CHARGE) continue;
+      // 优先回收玩家身上超出个人请求量的物品
+      if (assignRecycleTask(r)) break;
       assignTask(r);
       if (r.state !== 'idle') break;   // 每帧至多指派一个，避免瞬间把所有机器人派空
     }
   }
+}
+
+// 回收玩家身上超出个人请求量的物品（对齐《异星工厂》：机器人带走多余物资存回网络）
+function assignRecycleTask(r) {
+  if (!G.logiRequest) return false;
+  const pt = playerLogiTarget();
+  for (const item in G.logiRequest) {
+    const want = G.logiRequest[item] || 0;
+    if (want <= 0) continue;
+    const excess = invCount(item) - want;
+    if (excess <= 0) continue;
+    const takeN = Math.min(ROBOT_CARRY, excess);
+    if (takeN <= 0) continue;
+    r.carry = { item, count: takeN };
+    r.target = pt;
+    r.tx = (G.player ? G.player.x : 0);
+    r.ty = (G.player ? G.player.y : 0);
+    r.fromPlayer = true;
+    r.state = 'collecting';
+    return true;
+  }
+  return false;
 }
 
 // ===== 渲染 =====

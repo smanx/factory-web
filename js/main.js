@@ -10,6 +10,7 @@ const G = {
   grid: new Map(),
   buckets: new Map(),   // 区块（桶）空间索引：bucketKey -> Set<Entity>（见 core/entity.js）
   inv: new Map(),
+  logiRequest: {},   // 个人物流请求：item -> 目标数量（由物流机器人送达）
   sel: -1,
   quickSel: null,
   ghostDir: 0,
@@ -128,6 +129,7 @@ function newGame() {
   G.logiRobots = [];
   G.logiNet = null;
   G.logiNetT = 0;
+  G.logiRequest = {};   // 新游戏清空个人物流请求
   G.railTiles = new Set();
   G.trains = [];
   G.playerHP = 100; G.playerHPmax = 100;
@@ -175,6 +177,7 @@ function serializeAll() {
     },
     ents: G.ents.filter(e => !e._dead).map(e => e.serialize()),
     inv: Array.from(G.inv),
+    logiRequest: Object.assign({}, G.logiRequest || {}),
     player: { x: G.player.x, y: G.player.y, hp: G.playerHP, weapon: G.weapon, armor: G.armor },
     evolution: G.evolution || 0,
     craftQueue: (G.craftQueue || []).map(q => ({
@@ -270,6 +273,11 @@ function applySave(d) {
     addEnt(cls.restore(s));
   }
   G.inv = new Map(d.inv);
+  // 恢复个人物流请求（旧档无该字段则置空）
+  G.logiRequest = {};
+  if (d.logiRequest && typeof d.logiRequest === 'object') {
+    for (const k in d.logiRequest) if (ITEMS[k] && d.logiRequest[k] > 0) G.logiRequest[k] = d.logiRequest[k] | 0;
+  }
   G.craftQueue = Array.isArray(d.craftQueue)
     ? d.craftQueue.filter(q => RECIPES[q.rid] && isHandCraftable(q.rid)).map(q => ({
       rid: q.rid, outId: q.outId, time: q.time || 1, total: q.time || 1, done: q.done || 0

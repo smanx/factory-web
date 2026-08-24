@@ -185,6 +185,13 @@ html, body {
 .chip-active { border-color: #ffd23c; background: rgba(255,210,60,.12); color: #ffe08a; }
 .chip-x { border: none; background: transparent; color: #ff5b5b; cursor: pointer; font-size: 12px; padding: 0 2px; line-height: 1; }
 
+/* 个人物流请求 */
+.lreq-chip { border-color: #3a9a4a; background: rgba(58,154,74,.12); cursor: pointer; }
+.lreq-chip:hover { border-color: #ff5b5b; background: rgba(255,91,91,.15); }
+.lreq-have { color: #9ab8d0; font-size: 11px; }
+.lreq-on { border-color: #3a9a4a; box-shadow: 0 0 5px rgba(58,154,74,.4); }
+.logi-req { margin-bottom: 8px; }
+
 .recipe {
   display: flex; align-items: center; gap: 8px;
   padding: 7px 8px;

@@ -154,6 +154,7 @@ function renderPanel(full) {
     const keepFocus = document.activeElement && document.activeElement.id === 'inv-recipe-search';
     body.innerHTML = htmlInventory();
     applyInvRecipeFilter(G.invRecipeQ);
+    if (typeof fillLogiReqGrid === 'function') fillLogiReqGrid(G.lreqQ || '');
     if (keepFocus) {
       const inp = document.getElementById('inv-recipe-search');
       if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
@@ -295,7 +296,30 @@ function htmlInventory() {
     }
   }
   if (!any) h += '<span class="dim">空空如也，去地图上按住左键挖矿吧（铁矿/铜矿/煤/石头）</span>';
-  h += '</div><div class="sec">配方</div>';
+  h += '</div>';
+  // ===== 个人物流请求（对齐《异星工厂》Personal logistic request）=====
+  // 玩家设置请求量后，物流机器人会自动送达（需已研究物流网络且在物流网络范围内）；
+  // 若玩家身上有超出请求量的物品，机器人也会将其带走存回网络。
+  h += '<div class="sec">个人物流请求 <span class="dim">（需物流网络科技 + 机器人港）</span></div>';
+  h += '<div class="logi-req" id="logi-req">';
+  const lreq = G.logiRequest || {};
+  const lreqKeys = Object.keys(lreq).filter(k => lreq[k] > 0);
+  if (!lreqKeys.length) {
+    h += '<div class="dim" id="logi-req-empty">点击下方物品设置请求量，物流机器人会自动把物品送到你身上。</div>';
+  } else {
+    h += '<div class="dim" id="logi-req-empty" style="display:none">点击下方物品设置请求量，物流机器人会自动把物品送到你身上。</div>';
+    h += '<div class="chips">';
+    for (const k of lreqKeys) {
+      const have = invCount(k);
+      h += '<span class="chip lreq-chip" data-itemid="' + k + '" data-tip="' + ITEMS[k].name + '|请求 ' + lreq[k] + '，已持有 ' + have + '。点击清除请求" data-lreqclear="' + k + '"><img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ×' + lreq[k] + ' <span class="lreq-have">(' + have + ')</span> ×</span>';
+    }
+    h += '</div>';
+  }
+  h += '<div class="dim">设置请求：先点击下方物品图标选中，再输入数量并点“请求”。清除：点击上方已设置的请求项。</div>';
+  h += '<input id="lreq-search" class="inv-search" type="text" placeholder="搜索物品（设置个人请求）" autocomplete="off">';
+  h += '<div id="lreq-grid" class="recgrid"></div>';
+  h += '</div>';
+  h += '<div class="sec">配方</div>';
   const q = (G.invRecipeQ || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   h += '<input id="inv-recipe-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off" value="' + q + '">';
   h += '<div id="inv-recipes">';
@@ -399,6 +423,31 @@ function applyInvRecipeFilter(q) {
   if (emp) {
     emp.textContent = ql ? '没有匹配「' + q.trim() + '」的配方' : '没有匹配的配方';
     emp.style.display = shown ? 'none' : '';
+  }
+}
+
+// 个人物流请求：填充可选物品网格并过滤
+function fillLogiReqGrid(q) {
+  const grid = document.getElementById('lreq-grid');
+  if (!grid) return;
+  const ql = (q || '').trim().toLowerCase();
+  const ids = Object.keys(ITEMS).filter(id => {
+    // 排除流体与测试设备；仅列出可作为物品请求的内容
+    if (FLUIDS.indexOf(id) >= 0) return false;
+    if (id.indexOf('creative-') === 0 || id.indexOf('void-') === 0) return false;
+    if (id === 'passive-power') return false;
+    return true;
+  });
+  let h = '';
+  for (const id of ids) {
+    if (ql && !(ITEMS[id].name + ' ' + id).toLowerCase().includes(ql)) continue;
+    const req = (G.logiRequest && G.logiRequest[id]) || 0;
+    h += '<button class="rcbtn' + (req > 0 ? ' lreq-on' : '') + '" data-lreqitem="' + id + '" data-tip="' + ITEMS[id].name + '|' + ITEMS[id].desc + (req > 0 ? '（已请求 ' + req + '）' : '') + '">' +
+      '<img src="' + iconDataURL(id) + '">' + ITEMS[id].name + (req > 0 ? ' ✓' + req : '') + '</button>';
+  }
+  grid.innerHTML = h;
+  if (!h) {
+    grid.innerHTML = '<div class="dim">没有匹配的物品</div>';
   }
 }
 
@@ -560,6 +609,9 @@ function initPanelEvents() {
     if (ev.target.id === 'inv-recipe-search') {
       G.invRecipeQ = ev.target.value;
       applyInvRecipeFilter(G.invRecipeQ);
+    } else if (ev.target.id === 'lreq-search') {
+      G.lreqQ = ev.target.value;
+      if (typeof fillLogiReqGrid === 'function') fillLogiReqGrid(G.lreqQ);
     } else if (ev.target.id === 'asm-recipe-search') {
       applyAssemblerRecipeFilter(ev.target.value);
     } else if (ev.target.matches && ev.target.matches('[data-stat-hist-filter]')) {
@@ -634,6 +686,36 @@ function initPanelEvents() {
       // 科技门控检查
       if (!itemUnlocked('personal-roboport')) { toast('需要先研究「' + TECHS[TECH_REQ['personal-roboport']].name + '」才能装备'); renderPanel(false); return; }
       togglePersonalRoboport();
+      renderPanel(false);
+      return;
+    }
+    // 个人物流请求：清除已设置的请求项
+    const lreqClear = ev.target.closest('[data-lreqclear]');
+    if (lreqClear && G.panelMode === 'inv') {
+      const item = lreqClear.dataset.lreqclear;
+      if (G.logiRequest && G.logiRequest[item] != null) {
+        delete G.logiRequest[item];
+        toast('已清除对 ' + ITEMS[item].name + ' 的个人请求');
+      }
+      renderPanel(false);
+      return;
+    }
+    // 个人物流请求：点击物品设置请求量
+    const lreqPick = ev.target.closest('#lreq-grid .rcbtn[data-lreqitem]');
+    if (lreqPick && G.panelMode === 'inv') {
+      const item = lreqPick.dataset.lreqitem;
+      if (!G.logiRequest) G.logiRequest = {};
+      const cur = G.logiRequest[item] || 0;
+      const have = invCount(item);
+      const inp = window.prompt('设置对「' + ITEMS[item].name + '」的个人请求数量（当前已请求 ' + cur + '，持有 ' + have + '，输入 0 清除）：', cur || '10');
+      if (inp === null) return;
+      const v = parseInt(inp, 10);
+      if (isNaN(v) || v <= 0) {
+        if (G.logiRequest[item] != null) { delete G.logiRequest[item]; toast('已清除对 ' + ITEMS[item].name + ' 的个人请求'); }
+      } else {
+        G.logiRequest[item] = Math.min(v, 10000);
+        toast('已请求 ' + ITEMS[item].name + ' ×' + G.logiRequest[item] + '，物流机器人将自动送达');
+      }
       renderPanel(false);
       return;
     }
