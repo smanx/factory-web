@@ -50,6 +50,13 @@ function collectCircuitNodes() {
   return nodes;
 }
 
+// 电路节点缓存（性能优化）：recomputeCircuit 每 0.25s 收集一次节点列表并存入缓存，
+// circuitSignalNear（被传送带/机械臂/电灯/流体泵/铁路信号灯每帧调用）复用该缓存，
+// 避免每次调用都全量遍历 G.ents（高设备密度下显著降低帧开销）。
+let _circuitNodesCache = null;
+function cacheCircuitNodes(nodes) { _circuitNodesCache = nodes; }
+function getCachedCircuitNodes() { return _circuitNodesCache || (_circuitNodesCache = collectCircuitNodes()); }
+
 // 重建单个节点的连线（同色通道均连接到范围内其它节点）
 // 性能优化：可传入预先收集的 nodes 数组，避免在 recompute 全量重建时对每个节点重复遍历
 // G.ents（原为 O(n²) 的 collectCircuitNodes 调用），仅在未传参时才自行收集（保持向后兼容）。
@@ -92,6 +99,7 @@ function combinatorInput(n, aggRed, aggGreen) {
 // 全网络重算：重建连线 → BFS 分组 → 聚合常量 → 级联运算/判断 → 写回各节点
 function recomputeCircuit() {
   const nodes = collectCircuitNodes();
+  cacheCircuitNodes(nodes);   // 缓存供 circuitSignalNear 复用（P 优化）
   if (!nodes.length) return;
   // 性能优化：把已收集的 nodes 缓存传入 refreshNodeWires，避免每个节点再次全量遍历 G.ents
   for (const n of nodes) refreshNodeWires(n, nodes);
@@ -688,7 +696,7 @@ function wireToolSelected() {
 // 供其它设备（如流体泵）读取某实体周围电路网络的红/绿信号。
 // 返回 { red:{}, green:{} }；若无可读取的节点则返回 null。
 function circuitSignalNear(e) {
-  const nodes = collectCircuitNodes();
+  const nodes = getCachedCircuitNodes();
   let best = null, bestD = 1e9;
   for (const n of nodes) {
     if (n._dead) continue;
