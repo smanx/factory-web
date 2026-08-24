@@ -119,7 +119,9 @@ function beltInputSide(e) {
     const nb = entAt(e.x + sx, e.y + sy);
     if (!nb) continue;
     const want = dirIndexOf(-sx, -sy);
-    if (nb instanceof Underground && nb.dir === want) { res = [sx, sy]; break; }
+    // 地下带只有“出口”（前方无同向mate）才会把货投向地面带，入口会把货钻入地下、
+    // 不会向旁边传送带输出，因此入口不搭在侧面传送带上（对齐《异星工厂》）。
+    if (nb instanceof Underground && nb.dir === want && !nb.findMate()) { res = [sx, sy]; break; }
     if (nb instanceof Belt && nb.dir === want) { res = [sx, sy]; break; }
   }
   e.__inp = res;
