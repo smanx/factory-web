@@ -1,0 +1,555 @@
+'use strict';
+
+// ===== 电路网络（对齐《异星工厂》Circuit Network）=====
+// 电线杆 + 组合器（常量/运算/判断）。节点间自动连线，信号在连通组件内
+// 沿红/绿两个独立通道聚合；组合器输出信号到指定通道，供其它设备（如流体泵）
+// 读取实现逻辑控制。
+
+const CIRCUIT_POLE_RANGE = {
+  'small-electric-pole': 7,
+  'medium-electric-pole': 9,
+  'big-electric-pole': 15
+};
+const CIRCUIT_COMB_RANGE = 7;   // 组合器的连接范围（与电线杆/组合器互联）
+
+// 全局节流：网络重算每 CIRCUIT_RECOMPUTE_INTERVAL 秒一次。
+const CIRCUIT_RECOMPUTE_INTERVAL = 0.25;
+
+// ===== 电路节点基类 =====
+class CircuitNode extends Entity {
+  constructor(type, x, y) {
+    super(type, x, y);
+    this.red = new Set();     // 红线相连的其它节点
+    this.green = new Set();   // 绿线相连的其它节点
+    this.netRed = {};         // 本节点所属网络的红线聚合信号
+    this.netGreen = {};       // 本节点所属网络的绿线聚合信号
+    this._tick = -1;
+  }
+  get range() {
+    return CIRCUIT_POLE_RANGE[this.type] !== undefined ? CIRCUIT_POLE_RANGE[this.type] : CIRCUIT_COMB_RANGE;
+  }
+  cx() { return this.x + this.w / 2; }
+  cy() { return this.y + this.h / 2; }
+  // 距另一节点中心的切比雪夫距离（格）
+  distTo(o) { return Math.max(Math.abs(this.cx() - o.cx()), Math.abs(this.cy() - o.cy())); }
+  // 网络重算由主循环按固定间隔调用 recomputeCircuit()，节点 update 无需额外逻辑
+  update(dt) {}
+  contents() { return [[this.type, 1]]; }
+}
+
+// 收集当前所有电路节点
+function collectCircuitNodes() {
+  const nodes = [];
+  for (const e of G.ents) if (!e._dead && e instanceof CircuitNode) nodes.push(e);
+  return nodes;
+}
+
+// 重建单个节点的连线（同色通道均连接到范围内其它节点）
+function refreshNodeWires(node) {
+  node.red.clear();
+  node.green.clear();
+  const nodes = collectCircuitNodes();
+  const key = entKey(node.x, node.y);
+  for (const o of nodes) {
+    if (o === node || o._dead) continue;
+    const d = node.distTo(o);
+    if (d <= node.range && d <= o.range) {
+      // 只连“坐标更大”的节点，避免重复连线重复计算（同色拓扑相同）
+      if (entKey(o.x, o.y) <= key) continue;
+      node.red.add(o);
+      node.green.add(o);
+    }
+  }
+}
+
+// 信号累加
+function addSignal(target, sig, count) {
+  if (!count) return;
+  target[sig] = (target[sig] || 0) + count;
+}
+function mergeSignals(a, b) {
+  const r = {};
+  for (const k in a) r[k] = (r[k] || 0) + a[k];
+  for (const k in b) r[k] = (r[k] || 0) + b[k];
+  return r;
+}
+
+// 全网络重算：重建连线 → BFS 分组 → 聚合常量 → 级联运算/判断 → 写回各节点
+function recomputeCircuit() {
+  const nodes = collectCircuitNodes();
+  if (!nodes.length) return;
+  for (const n of nodes) refreshNodeWires(n);
+
+  // BFS 沿（红=绿同拓扑）划分连通组件
+  const seen = new Set();
+  const groups = [];
+  for (const start of nodes) {
+    if (seen.has(start)) continue;
+    const group = [];
+    const queue = [start];
+    seen.add(start);
+    while (queue.length) {
+      const n = queue.shift();
+      group.push(n);
+      for (const o of n.red) if (!seen.has(o)) { seen.add(o); queue.push(o); }
+    }
+    groups.push(group);
+  }
+
+  for (const group of groups) {
+    let aggRed = {};
+    let aggGreen = {};
+    // 1) 常量组合器：把常量直接累加进对应通道
+    for (const n of group) {
+      if (!(n instanceof ConstantCombinator)) continue;
+      const out = n.output; // { red:[{sig,count}], green:[...] }
+      if (out && out.red) for (const it of out.red) addSignal(aggRed, it.sig, it.count);
+      if (out && out.green) for (const it of out.green) addSignal(aggGreen, it.sig, it.count);
+    }
+    // 2) 运算/判断组合器：读取（红+绿）合并信号，计算后输出到指定通道（可级联）
+    for (const n of group) {
+      if (n instanceof ArithmeticCombinator) {
+        const input = mergeSignals(aggRed, aggGreen);
+        const out = n.compute(input);
+        if (out && out.sig !== null && out.count) {
+          if (n.channel === 'green') addSignal(aggGreen, out.sig, out.count);
+          else addSignal(aggRed, out.sig, out.count);
+        }
+      } else if (n instanceof DeciderCombinator) {
+        const input = mergeSignals(aggRed, aggGreen);
+        const out = n.compute(input);
+        if (out) {
+          for (const it of out) {
+            if (n.channel === 'green') addSignal(aggGreen, it.sig, it.count);
+            else addSignal(aggRed, it.sig, it.count);
+          }
+        }
+      }
+    }
+    // 3) 写回各节点
+    for (const n of group) { n.netRed = aggRed; n.netGreen = aggGreen; }
+  }
+}
+
+// ===== 常量组合器 =====
+class ConstantCombinator extends CircuitNode {
+  constructor(type, x, y) {
+    super('constant-combinator', x, y);
+    this.output = { red: [], green: [] }; // { red:[{sig,count}], green:[{sig,count}] }
+  }
+  serialize() { const s = super.serialize(); s.output = this.output; return s; }
+  static restore(s) { const e = super.restore(s); e.output = s.output || { red: [], green: [] }; return e; }
+}
+
+// ===== 运算组合器 =====
+// 配置：aSig（输入信号）/ bConst 或 bSig（第二操作数，const=1 用常量）
+// op: '+'|'-'|'*'|'/'  outSig（输出信号） channel: 'red'|'green'
+class ArithmeticCombinator extends CircuitNode {
+  constructor(type, x, y) {
+    super('arithmetic-combinator', x, y);
+    this.aSig = 'iron-plate';
+    this.bConst = 0; this.useConst = true;
+    this.op = '+';
+    this.outSig = 'signal-count';
+    this.channel = 'red';
+  }
+  compute(input) {
+    const a = input[this.aSig] || 0;
+    const b = this.useConst ? this.bConst : (input[this.bSig] || 0);
+    let v = 0;
+    switch (this.op) {
+      case '+': v = a + b; break;
+      case '-': v = a - b; break;
+      case '*': v = a * b; break;
+      case '/': v = b === 0 ? 0 : Math.floor(a / b); break;
+    }
+    v = Math.floor(v);
+    return { sig: this.outSig, count: v };
+  }
+  serialize() {
+    const s = super.serialize();
+    s.aSig = this.aSig; s.bConst = this.bConst; s.useConst = this.useConst; s.bSig = this.bSig;
+    s.op = this.op; s.outSig = this.outSig; s.channel = this.channel;
+    return s;
+  }
+  static restore(s) {
+    const e = super.restore(s);
+    e.aSig = s.aSig || 'iron-plate'; e.bConst = s.bConst || 0; e.useConst = s.useConst !== false;
+    e.bSig = s.bSig; e.op = s.op || '+'; e.outSig = s.outSig || 'signal-count'; e.channel = s.channel || 'red';
+    return e;
+  }
+}
+
+// ===== 判断组合器 =====
+// 配置：aSig op bConst/bSig, outSig×outCount, copyFrom 复制输入信号
+// op: '>'|'<'|'='|'!='  channel: 'red'|'green'
+class DeciderCombinator extends CircuitNode {
+  constructor(type, x, y) {
+    super('decider-combinator', x, y);
+    this.aSig = 'iron-plate';
+    this.op = '>';
+    this.useConst = true; this.bConst = 0; this.bSig = null;
+    this.outSig = 'signal-count'; this.outCount = 1;
+    this.copyFrom = false; // true=复制满足条件的输入信号而非固定输出
+    this.channel = 'green';
+  }
+  compute(input) {
+    const a = input[this.aSig] || 0;
+    const b = this.useConst ? this.bConst : (input[this.bSig] || 0);
+    let ok = false;
+    switch (this.op) {
+      case '>': ok = a > b; break;
+      case '<': ok = a < b; break;
+      case '=': ok = a === b; break;
+      case '!=': ok = a !== b; break;
+      case '>=': ok = a >= b; break;
+      case '<=': ok = a <= b; break;
+    }
+    if (!ok) return [];
+    if (this.copyFrom) {
+      // 复制该输入信号（原值），输出到指定通道
+      return [{ sig: this.aSig, count: a }];
+    }
+    return [{ sig: this.outSig, count: Math.floor(this.outCount) }];
+  }
+  serialize() {
+    const s = super.serialize();
+    s.aSig = this.aSig; s.op = this.op; s.useConst = this.useConst; s.bConst = this.bConst;
+    s.bSig = this.bSig; s.outSig = this.outSig; s.outCount = this.outCount;
+    s.copyFrom = this.copyFrom; s.channel = this.channel;
+    return s;
+  }
+  static restore(s) {
+    const e = super.restore(s);
+    e.aSig = s.aSig || 'iron-plate'; e.op = s.op || '>'; e.useConst = s.useConst !== false;
+    e.bConst = s.bConst || 0; e.bSig = s.bSig; e.outSig = s.outSig || 'signal-count';
+    e.outCount = s.outCount || 1; e.copyFrom = !!s.copyFrom; e.channel = s.channel || 'green';
+    return e;
+  }
+}
+
+// ===== 渲染：电线杆 =====
+const POLE_COLORS = {
+  'small-electric-pole': ['#8a5a2a', '#6b4420'],
+  'medium-electric-pole': ['#a06a2a', '#7a4e20'],
+  'big-electric-pole': ['#b0802a', '#8a6220']
+};
+function drawCircuitPole(ctx, e, gx, gy, dir, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  const s = TILE * e.w;
+  const col = POLE_COLORS[e.type] || ['#8a5a2a', '#6b4420'];
+  ctx.globalAlpha = alpha;
+  // 底座
+  ctx.fillStyle = '#4a403a';
+  rr(ctx, px + 4, py + 4, s - 8, s - 8, 6); ctx.fill();
+  // 杆身
+  ctx.fillStyle = col[0];
+  rr(ctx, px + s / 2 - 4, py + 4, 8, s - 8, 3); ctx.fill();
+  ctx.strokeStyle = col[1];
+  ctx.lineWidth = 2;
+  rr(ctx, px + s / 2 - 4, py + 4, 8, s - 8, 3); ctx.stroke();
+  // 顶部横担（接线处）
+  ctx.fillStyle = col[1];
+  rr(ctx, px + s / 2 - 10, py + 2, 20, 5, 2); ctx.fill();
+  // 红/绿信号指示灯
+  ctx.fillStyle = '#e05a4a'; ctx.beginPath(); ctx.arc(px + s / 2 - 5, py + 5, 2.2, 0, 7); ctx.fill();
+  ctx.fillStyle = '#5ae06a'; ctx.beginPath(); ctx.arc(px + s / 2 + 5, py + 5, 2.2, 0, 7); ctx.fill();
+  ctx.globalAlpha = 1;
+  drawCircuitWires(ctx, e);
+}
+
+// ===== 渲染：组合器 =====
+const COMB_COLORS = {
+  'constant-combinator': ['#4a7ac0', '#3a5c96'],
+  'arithmetic-combinator': ['#4a9ac0', '#387291'],
+  'decider-combinator': ['#4ac0a0', '#38937c']
+};
+function drawCombinator(ctx, e, gx, gy, dir, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  const col = COMB_COLORS[e.type] || ['#4a7ac0', '#3a5c96'];
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = col[0];
+  rr(ctx, px + 3, py + 3, TILE - 6, TILE - 6, 6); ctx.fill();
+  ctx.strokeStyle = col[1];
+  ctx.lineWidth = 3;
+  rr(ctx, px + 3, py + 3, TILE - 6, TILE - 6, 6); ctx.stroke();
+  ctx.fillStyle = '#14161a';
+  ctx.font = 'bold 12px system-ui';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const label = e instanceof ConstantCombinator ? '≡' : e instanceof ArithmeticCombinator ? '∑' : '≷';
+  ctx.fillText(label, px + TILE / 2, py + TILE / 2);
+  ctx.globalAlpha = 1;
+  drawCircuitWires(ctx, e);
+}
+
+// 绘制节点与相邻节点之间的连线（只画向“坐标更大”的节点，避免重复）
+function drawCircuitWires(ctx, e) {
+  if (!e.red && !e.green) return;
+  const selfKey = entKey(e.x, e.y);
+  const cx = (e.x + e.w / 2) * TILE, cy = (e.y + e.h / 2) * TILE;
+  const drawn = new Set();
+  const drawWire = (o, color, off) => {
+    if (entKey(o.x, o.y) <= selfKey) return;
+    const id = o.x + ',' + o.y;
+    if (drawn.has(id)) return; drawn.add(id);
+    const ox = (o.x + o.w / 2) * TILE, oy = (o.y + o.h / 2) * TILE;
+    // 红/绿线各偏移一点，避免完全重叠
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2 / Math.max(0.5, G.cam.z);
+    ctx.globalAlpha = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(cx + off, cy);
+    ctx.quadraticCurveTo((cx + ox) / 2 + off, cy, ox + off, oy);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  };
+  if (e.red) for (const o of e.red) drawWire(o, '#e05a4a', -2);
+  if (e.green) for (const o of e.green) drawWire(o, '#5ae06a', 2);
+}
+
+// ===== 面板：常量组合器 =====
+function constantPanelHtml(e) {
+  let h = row('类型', '常量组合器 · 输出固定信号', 'kind');
+  h += '<div class="sec">常量输出（红线）</div>';
+  h += '<div class="circ-signal-list" id="c-red-list">' + constantSignalListHtml(e.output.red) + '</div>';
+  h += signalAddRow('c-red', e);
+  h += '<div class="sec">常量输出（绿线）</div>';
+  h += '<div class="circ-signal-list" id="c-green-list">' + constantSignalListHtml(e.output.green) + '</div>';
+  h += signalAddRow('c-green', e);
+  h += '<div class="status"></div>';
+  h += '<div class="dim">把指定物品信号以固定数值持续输出到红线/绿线网络。信号名=物品，数值可正可负。</div>';
+  return h;
+}
+function constantSignalListHtml(list) {
+  if (!list || !list.length) return '<span class="dim">（空）</span>';
+  let h = '';
+  list.forEach((it, i) => {
+    h += '<div class="circ-sig"><span class="csig">' + ITEMS[it.sig]?.name + '</span> × <b>' + it.count + '</b>' +
+      ' <button data-action="c-del" data-ch="' + (it._ch || 'red') + '" data-idx="' + i + '">✕</button></div>';
+  });
+  return h;
+}
+function signalAddRow(ch, e) {
+  return '<div class="circ-add">' +
+    '<input type="text" id="' + ch + '-sig" class="circ-siginv" placeholder="输入物品名" autocomplete="off">' +
+    '<input type="number" id="' + ch + '-cnt" class="circ-cnt" value="1" min="-99999" max="99999">' +
+    '<button data-action="c-add" data-ch="' + ch + '">添加</button></div>';
+}
+function constantPanelLive(e, api) {
+  api.set('c-red-list', constantSignalListHtml(e.output.red));
+  api.set('c-green-list', constantSignalListHtml(e.output.green));
+  api.status('输出 ' + (e.output.red.length) + ' 个红信号 / ' + (e.output.green.length) + ' 个绿信号', 'ok');
+}
+function constantPanelAction(action, el) {
+  const e = G.panelEnt;
+  if (action === 'c-add') {
+    const ch = el.dataset.ch;
+    const sigEl = document.getElementById(ch + '-sig');
+    const cntEl = document.getElementById(ch + '-cnt');
+    const query = (sigEl ? sigEl.value : '').trim().toLowerCase();
+    const sig = resolveSignalName(query);
+    if (!sig) { toast('找不到该物品信号'); return true; }
+    const count = Math.floor(Number(cntEl.value)) || 1;
+    const list = ch === 'green' ? e.output.green : e.output.red;
+    list.push({ sig, count });
+    sigEl.value = '';
+    uiDirty = true;
+    return true;
+  } else if (action === 'c-del') {
+    const ch = el.dataset.ch;
+    const idx = Number(el.dataset.idx);
+    const list = ch === 'green' ? e.output.green : e.output.red;
+    if (list[idx]) list.splice(idx, 1);
+    uiDirty = true;
+    return true;
+  }
+  return false;
+}
+const constantPanel = {
+  html: constantPanelHtml,
+  live: constantPanelLive,
+  onAction: constantPanelAction,
+  tip: e => '常量组合器：输出固定信号到电路网络'
+};
+
+// ===== 面板：运算组合器 =====
+function arithPanelHtml(e) {
+  let h = row('类型', '运算组合器 · 读信号做运算', 'kind');
+  h += '<div class="sec">运算设置</div>';
+  h += '<div class="circ-add">' +
+    '<input type="text" id="a-a" class="circ-siginv" value="' + (ITEMS[e.aSig]?.name || e.aSig) + '" placeholder="信号A" autocomplete="off">' +
+    '<select id="a-op" class="circ-op">' + ['+', '-', '*', '/'].map(o => '<option value="' + o + '"' + (e.op === o ? ' selected' : '') + '>' + o + '</option>').join('') + '</select>' +
+    '<select id="a-btype" class="circ-btype">' +
+      '<option value="const"' + (e.useConst ? ' selected' : '') + '>常量</option>' +
+      '<option value="sig"' + (!e.useConst ? ' selected' : '') + '>信号</option>' +
+    '</select>' +
+    (e.useConst
+      ? '<input type="number" id="a-bconst" class="circ-cnt" value="' + e.bConst + '" min="-99999" max="99999">'
+      : '<input type="text" id="a-bsig" class="circ-siginv" value="' + (e.bSig ? (ITEMS[e.bSig]?.name || e.bSig) : '') + '" placeholder="信号B" autocomplete="off">') +
+    '</div>';
+  h += '<div class="circ-add">' +
+    '输出信号 <input type="text" id="a-out" class="circ-siginv" value="' + (ITEMS[e.outSig]?.name || e.outSig) + '" placeholder="输出信号" autocomplete="off">' +
+    '到 <select id="a-ch" class="circ-op">' + channelSelect(e.channel) + '</select>' +
+    '<button data-action="a-apply">应用</button></div>';
+  h += '<div class="status"></div>';
+  h += '<div class="dim">读取网络（红+绿）信号做运算，结果输出到指定通道。÷ 为整除。</div>';
+  return h;
+}
+function channelSelect(cur) {
+  return '<option value="red"' + (cur === 'red' ? ' selected' : '') + '>红线</option>' +
+    '<option value="green"' + (cur === 'green' ? ' selected' : '') + '>绿线</option>';
+}
+function arithPanelLive(e, api) {
+  api.status('输出 ' + (e.outSig ? (ITEMS[e.outSig]?.name || e.outSig) : '') + ' = 信号A ' + e.op + ' ' + (e.useConst ? e.bConst : (e.bSig ? (ITEMS[e.bSig]?.name || e.bSig) : '?')) + ' → ' + (e.channel === 'green' ? '绿线' : '红线'), 'ok');
+}
+function arithPanelAction(action, el) {
+  const e = G.panelEnt;
+  if (action === 'a-apply') {
+    const a = resolveSignalName(document.getElementById('a-a').value);
+    const op = document.getElementById('a-op').value;
+    const useConst = document.getElementById('a-btype').value === 'const';
+    let bConst = 0, bSig = null;
+    if (useConst) bConst = Math.floor(Number(document.getElementById('a-bconst').value)) || 0;
+    else bSig = resolveSignalName(document.getElementById('a-bsig').value) || 'iron-plate';
+    const outSig = resolveSignalName(document.getElementById('a-out').value) || 'signal-count';
+    const channel = document.getElementById('a-ch').value;
+    e.aSig = a; e.op = op; e.useConst = useConst; e.bConst = bConst; e.bSig = bSig;
+    e.outSig = outSig; e.channel = channel;
+    uiDirty = true;
+    return true;
+  }
+  return false;
+}
+const arithPanel = {
+  html: arithPanelHtml,
+  live: arithPanelLive,
+  onAction: arithPanelAction,
+  tip: e => '运算组合器：信号做 + − × ÷ 运算'
+};
+
+// ===== 面板：判断组合器 =====
+function deciderPanelHtml(e) {
+  let h = row('类型', '判断组合器 · 条件判断输出', 'kind');
+  h += '<div class="sec">条件设置</div>';
+  h += '<div class="circ-add">' +
+    '<input type="text" id="d-a" class="circ-siginv" value="' + (ITEMS[e.aSig]?.name || e.aSig) + '" placeholder="信号A" autocomplete="off">' +
+    '<select id="d-op" class="circ-op">' + ['>', '<', '=', '!=', '>=', '<='].map(o => '<option value="' + o + '"' + (e.op === o ? ' selected' : '') + '>' + o + '</option>').join('') + '</select>' +
+    '<select id="d-btype" class="circ-btype">' +
+      '<option value="const"' + (e.useConst ? ' selected' : '') + '>常量</option>' +
+      '<option value="sig"' + (!e.useConst ? ' selected' : '') + '>信号</option>' +
+    '</select>' +
+    (e.useConst
+      ? '<input type="number" id="d-bconst" class="circ-cnt" value="' + e.bConst + '" min="-99999" max="99999">'
+      : '<input type="text" id="d-bsig" class="circ-siginv" value="' + (e.bSig ? (ITEMS[e.bSig]?.name || e.bSig) : '') + '" placeholder="信号B" autocomplete="off">') +
+    '</div>';
+  h += '<div class="circ-add">' +
+    '满足时输出 <input type="text" id="d-out" class="circ-siginv" value="' + (ITEMS[e.outSig]?.name || e.outSig) + '" placeholder="输出信号" autocomplete="off">' +
+    ' × <input type="number" id="d-cnt" class="circ-cnt" value="' + e.outCount + '" min="0" max="99999">' +
+    ' 到 <select id="d-ch" class="circ-op">' + channelSelect(e.channel) + '</select>' +
+    '<button data-action="d-apply">应用</button></div>';
+  h += '<div class="circ-add"><label><input type="checkbox" id="d-copy"' + (e.copyFrom ? ' checked' : '') + '> 复制信号A原值输出（而非固定值）</label></div>';
+  h += '<div class="status"></div>';
+  h += '<div class="dim">当 信号A 满足 条件 时输出信号。可用作“非”门、阈值开关等逻辑。</div>';
+  return h;
+}
+function deciderPanelLive(e, api) {
+  api.status('条件 ' + (ITEMS[e.aSig]?.name || e.aSig) + ' ' + e.op + ' ' + (e.useConst ? e.bConst : (e.bSig ? (ITEMS[e.bSig]?.name || e.bSig) : '?')) + ' → 输出' + (e.copyFrom ? ' 复制' : (' ' + (ITEMS[e.outSig]?.name || e.outSig) + '×' + e.outCount)) + ' → ' + (e.channel === 'green' ? '绿线' : '红线'), 'ok');
+}
+function deciderPanelAction(action, el) {
+  const e = G.panelEnt;
+  if (action === 'd-apply') {
+    e.aSig = resolveSignalName(document.getElementById('d-a').value);
+    e.op = document.getElementById('d-op').value;
+    e.useConst = document.getElementById('d-btype').value === 'const';
+    if (e.useConst) { e.bConst = Math.floor(Number(document.getElementById('d-bconst').value)) || 0; e.bSig = null; }
+    else e.bSig = resolveSignalName(document.getElementById('d-bsig').value) || 'iron-plate';
+    e.outSig = resolveSignalName(document.getElementById('d-out').value) || 'signal-count';
+    e.outCount = Math.floor(Number(document.getElementById('d-cnt').value)) || 1;
+    e.channel = document.getElementById('d-ch').value;
+    e.copyFrom = document.getElementById('d-copy').checked;
+    uiDirty = true;
+    return true;
+  }
+  return false;
+}
+const deciderPanel = {
+  html: deciderPanelHtml,
+  live: deciderPanelLive,
+  onAction: deciderPanelAction,
+  tip: e => '判断组合器：条件判断输出'
+};
+
+// 把用户输入（物品名或 id）解析为信号名（物品 id）
+function resolveSignalName(text) {
+  const q = (text || '').trim().toLowerCase();
+  if (!q) return null;
+  // 精确 id 或名称匹配
+  for (const id in ITEMS) {
+    if (id.toLowerCase() === q || (ITEMS[id].name || '').toLowerCase() === q) return id;
+  }
+  // 模糊：名称包含
+  for (const id in ITEMS) {
+    if ((ITEMS[id].name || '').toLowerCase().includes(q)) return id;
+  }
+  // 特殊信号名
+  const special = { 'signal-count': 'signal-count', '数量': 'signal-count', 'count': 'signal-count' };
+  if (special[q]) return special[q];
+  return null;
+}
+
+// ===== 注册 =====
+ENT_CLASSES['small-electric-pole'] = CircuitNode;
+ENT_CLASSES['medium-electric-pole'] = CircuitNode;
+ENT_CLASSES['big-electric-pole'] = CircuitNode;
+DEVICE_RENDER['small-electric-pole'] = drawCircuitPole;
+DEVICE_RENDER['medium-electric-pole'] = drawCircuitPole;
+DEVICE_RENDER['big-electric-pole'] = drawCircuitPole;
+DEVICE_STATUS['small-electric-pole'] = e => (e.red && e.red.size) ? 'g' : 'y';
+DEVICE_STATUS['medium-electric-pole'] = e => (e.red && e.red.size) ? 'g' : 'y';
+DEVICE_STATUS['big-electric-pole'] = e => (e.red && e.red.size) ? 'g' : 'y';
+
+ENT_CLASSES['constant-combinator'] = ConstantCombinator;
+ENT_CLASSES['arithmetic-combinator'] = ArithmeticCombinator;
+ENT_CLASSES['decider-combinator'] = DeciderCombinator;
+DEVICE_RENDER['constant-combinator'] = drawCombinator;
+DEVICE_RENDER['arithmetic-combinator'] = drawCombinator;
+DEVICE_RENDER['decider-combinator'] = drawCombinator;
+DEVICE_STATUS['constant-combinator'] = e => Object.keys(e.netRed).length + Object.keys(e.netGreen).length ? 'g' : 'y';
+DEVICE_STATUS['arithmetic-combinator'] = e => Object.keys(e.netRed).length ? 'g' : 'y';
+DEVICE_STATUS['decider-combinator'] = e => Object.keys(e.netGreen).length ? 'g' : 'y';
+DEVICE_PANEL['constant-combinator'] = constantPanel;
+DEVICE_PANEL['arithmetic-combinator'] = arithPanel;
+DEVICE_PANEL['decider-combinator'] = deciderPanel;
+
+// ===== 电路信号读取辅助 =====
+// 供其它设备（如流体泵）读取某实体周围电路网络的红/绿信号。
+// 返回 { red:{}, green:{} }；若无可读取的节点则返回 null。
+function circuitSignalNear(e) {
+  const nodes = collectCircuitNodes();
+  let best = null, bestD = 1e9;
+  for (const n of nodes) {
+    if (n._dead) continue;
+    const d = Math.max(Math.abs(n.cx() - (e.x + e.w / 2)), Math.abs(n.cy() - (e.y + e.h / 2)));
+    if (d <= 2 && d < bestD) { bestD = d; best = n; }
+  }
+  if (!best) return null;
+  return { red: best.netRed || {}, green: best.netGreen || {} };
+}
+
+// 通用电路启用条件判定：cond = { channel:'red'|'green', sig, op, count, enabled }
+// 返回 true 表示允许运行。
+function circuitCondOk(signal, cond) {
+  if (!cond || !cond.enabled) return true;
+  const net = signal ? signal[cond.channel === 'green' ? 'green' : 'red'] : null;
+  const val = net ? (net[cond.sig] || 0) : 0;
+  const b = cond.count || 0;
+  switch (cond.op) {
+    case '>': return val > b;
+    case '<': return val < b;
+    case '=': return val === b;
+    case '!=': return val !== b;
+    case '>=': return val >= b;
+    case '<=': return val <= b;
+  }
+  return true;
+}

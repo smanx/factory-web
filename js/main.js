@@ -57,10 +57,19 @@ const G = {
   powerT: 0,
   enemies: [],
   bullets: [],
+  combatRobots: [],
+  driving: null,       // 载具驾驶状态：{ ent: Car }，玩家进入驾驶时非空
   spawnT: 0,
+  playerHP: 100,
+  playerHPmax: 100,
+  playerFireT: 0,
+  weapon: null,       // 当前选中的武器 id（player 持有）
+  gameWon: false,     // 是否已发射火箭赢得游戏
+  victoryT: 0,
   inMenu: true,       // 开始菜单显示中：游戏世界尚未初始化，loop 暂停渲染与更新
   deconstructMode: false,  // 触屏拆除模式：开启后点触建筑即可拆除（PC 右键拆除不受影响）
   deconstructHeld: false,  // 拆除模式：左键/触屏是否处于按住连续拆除状态
+  craftQueue: [],     // 手搓合成队列：见 player.js 的 queueCraft / updateCraftQueue
 };
 
 let lastPlaceKey = '';
@@ -105,6 +114,19 @@ function newGame() {
   G.power = { prod: 0, demand: 0, sat: 1 };
   G.powerT = 0;
   G.enemies = []; G.bullets = []; G.spawnT = 0;
+  G.enemyProjectiles = [];
+  G.combatRobots = [];
+  G.driving = null;    // 新游戏清空驾驶状态
+  G.craftQueue = [];   // 新游戏清空手搓队列
+  G.logiRobots = [];
+  G.logiNet = null;
+  G.logiNetT = 0;
+  G.railTiles = new Set();
+  G.trains = [];
+  G.playerHP = 100; G.playerHPmax = 100;
+  G.weapon = null;
+  G.gameWon = false;
+  G.victoryT = 0;
   if (typeof resetPowerReg === 'function') resetPowerReg();
   // 重置累计时间与历史统计（新游戏从头开始，无历史）
   G.time = 0;
@@ -142,7 +164,11 @@ function serializeAll() {
     },
     ents: G.ents.filter(e => !e._dead).map(e => e.serialize()),
     inv: Array.from(G.inv),
-    player: { x: G.player.x, y: G.player.y },
+    player: { x: G.player.x, y: G.player.y, hp: G.playerHP, weapon: G.weapon },
+    craftQueue: (G.craftQueue || []).map(q => ({
+      rid: q.rid, time: q.time, total: q.total, done: q.done, outId: q.outId
+    })),
+    gameWon: G.gameWon,
     techDone: G.techDone,
     techProg: G.techProg,
     activeTech: G.activeTech,
@@ -226,8 +252,21 @@ function applySave(d) {
     addEnt(cls.restore(s));
   }
   G.inv = new Map(d.inv);
+  G.craftQueue = Array.isArray(d.craftQueue)
+    ? d.craftQueue.filter(q => RECIPES[q.rid] && isHandCraftable(q.rid)).map(q => ({
+      rid: q.rid, outId: q.outId, time: q.time || 1, total: q.time || 1, done: q.done || 0
+    })) : [];
   G.player = makePlayer(0, 0);
   G.player.x = d.player.x; G.player.y = d.player.y;
+  if (typeof d.player.hp === 'number') G.playerHP = G.playerHPmax = Math.max(1, d.player.hp);
+  G.weapon = d.player.weapon || null;
+  G.gameWon = !!d.gameWon;
+  G.combatRobots = [];
+  G.driving = null;
+  G.logiRobots = [];
+  G.logiNet = null;
+  G.logiNetT = 0;
+  if (typeof rebuildTrains === 'function') rebuildTrains();
   const [sx, sy] = findSpawn();
   G.spawn = { x: sx, y: sy };
   G.techDone = d.techDone || {};
@@ -266,10 +305,40 @@ function applySave(d) {
   uiDirty = true;
 }
 
+// 地面铺设：混凝土/石砖路铺在草地上，填海把水面填成草地
+const PAVE_TILE = { 'concrete': T_CONCRETE, 'stone-path': T_PATH };
+function placeGround(type, tx, ty, infinite) {
+  const t = getTerrain(tx, ty);
+  if (type === 'landfill') {
+    if (t !== T_WATER) { toast('填海料只能铺在水面上'); return; }
+    if (entAt(tx, ty)) { toast('水面有建筑，无法填海'); return; }
+    setTerrain(tx, ty, T_GRASS);
+  } else {
+    const to = PAVE_TILE[type];
+    if (t !== T_GRASS && t !== to) { toast('混凝土/石砖路只能铺在地面上'); return; }
+    if (t === to) return; // 已是同种地砖，不重复消耗
+    if (entAt(tx, ty)) { toast('地面有建筑，先拆除'); return; }
+    setTerrain(tx, ty, to);
+  }
+  if (typeof invalidateTerrainChunk === 'function') invalidateTerrainChunk(tx, ty);
+  if (!infinite) invTake(type, 1);
+  refreshHotbar();
+}
+
 function tryPlaceAt(tx, ty) {
   const type = selItem();
   if (!type) return;
   const infinite = !!(G.dbg && G.dbg.infinite);
+  // 地面铺设（混凝土/石砖路/填海）：不创建实体，直接修改地形
+  if (type === 'concrete' || type === 'stone-path' || type === 'landfill') {
+    placeGround(type, tx, ty, infinite);
+    return;
+  }
+  // 科技解锁要求拦截（火箭/激光炮塔等高级建筑）
+  if (TECH_REQ[type] && !G.techDone[TECH_REQ[type]]) {
+    toast('需要先研究「' + TECHS[TECH_REQ[type]].name + '」才能建造 ' + ITEMS[type].name);
+    return;
+  }
   // 无限资源模式：建造不消耗原料，且可直接放置测试用创造/虚空箱与管道（无需背包里拥有）
   if (!infinite && invCount(type) < 1) {
     toast('背包里没有' + ITEMS[type].name + '了');
@@ -476,6 +545,8 @@ function tryAutoUnderground(type, tx, ty) {
 function deconstructAt(tx, ty) {
   const e = entAt(tx, ty);
   if (!e || !withinReach(tx, ty)) return;
+  // 拆除的是正在驾驶的载具：先下车再拆除
+  if (G.driving && G.driving.ent === e && typeof exitCar === 'function') exitCar();
   for (const [id, n] of e.contents()) invAdd(id, n);
   removeEnt(e);
   if (G.panelEnt === e) closePanel();
@@ -797,6 +868,19 @@ function pasteBlueprint() {
   uiDirty = true;
 }
 
+// 尝试进入面前的装甲车（F 键 / 交互）。成功返回 true。
+function tryEnterNearbyCar() {
+  if (G.driving) return false;
+  if (typeof enterCar !== 'function') return false;
+  const px = Math.floor(G.player.x / TILE), py = Math.floor(G.player.y / TILE);
+  const checks = [[px, py], [px + DX[G.player.dir], py + DY[G.player.dir]]];
+  for (const [tx, ty] of checks) {
+    const e = entAt(tx, ty);
+    if (e && e.type === 'car' && typeof enterCar === 'function') { enterCar(e); return true; }
+  }
+  return false;
+}
+
 function pickupAction() {
   let t = null;
   if (G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) t = G.cursorTile;
@@ -990,12 +1074,17 @@ function bindInput() {
     else if (k === 'r') rotateAction();
     else if (k === 'h') flipAction('h');
     else if (k === 'v') flipAction('v');
-    else if (k === 'f') pickupAction();
-    else if (k === 'e') G.panelMode === 'inv' ? closePanel() : openPanel('inv');
+    else if (k === 'f') { if (!tryEnterNearbyCar()) pickupAction(); }
+    else if (k === 'e') {
+      if (G.driving) { if (typeof exitCar === 'function') exitCar(); }
+      else if (G.panelMode === 'inv') closePanel();
+      else openPanel('inv');
+    }
     else if (k === 't') G.panelMode === 'tech' ? closePanel() : openPanel('tech');
     else if (k === 'o') G.panelMode === 'set' ? closePanel() : openPanel('set');
     else if (k === 'escape' || k === 'q') {
-      if (G.blueMode) {
+      if (G.driving) { if (typeof exitCar === 'function') exitCar(); }
+      else if (G.blueMode) {
         cancelBlueprint();
       } else if (G.deconstructMode) {
         toggleDeconstructMode(false);
@@ -1175,15 +1264,24 @@ function loop(ts) {
       updateTouchMove(dt);
       updateHeldMouse(dt);
       updateMining(dt);
+      updateCraftQueue(dt);   // 手搓合成队列（按时间逐件制作）
       for (const e of G.ents) if (!e._dead && typeof e.update === 'function') e.update(dt);
       // 敌人/子弹系统（可在设置中开关战斗）
       if (G.settings.combat) {
         spawnEnemies(dt);
         updateEnemies(dt);
         updateBullets(dt);
+        updatePlayerFire(dt);
+        updatePlayerBulletHits(dt);
+        updateCombatRobots(dt);
       }
       G.powerT += dt;
       if (G.powerT >= 0.25) { G.powerT = 0; updatePower(); }
+      // 电路网络重算（固定间隔，红/绿信号聚合）
+      G.circuitT = (G.circuitT || 0) + dt;
+      if (G.circuitT >= 0.25) { G.circuitT = 0; if (typeof recomputeCircuit === 'function') recomputeCircuit(); }
+      updateLogistics(dt);
+      updateTrains(dt);
       updateCamera(dt);
     }
 

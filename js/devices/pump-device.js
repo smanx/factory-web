@@ -8,9 +8,17 @@ class FluidPump extends Entity {
   constructor(type, x, y) {
     super('pump', x, y);
     this.fluid = {};
+    this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
   }
   total() { let s = 0; for (const k in this.fluid) s += this.fluid[k]; return s; }
+  // 电路控制：若启用了条件，读取附近电路网络信号，不满足则停泵
+  circuitEnabled() {
+    if (!this.circuitCond || !this.circuitCond.enabled) return true;
+    const sig = circuitSignalNear(this);
+    return circuitCondOk(sig, this.circuitCond);
+  }
   update(dt) {
+    if (!this.circuitEnabled()) return;
     const back = entAt(this.x - DX[this.dir], this.y - DY[this.dir]);
     const front = entAt(this.x + DX[this.dir], this.y + DY[this.dir]);
     // 吸入：从背侧管道
@@ -66,8 +74,8 @@ class FluidPump extends Entity {
     for (const k of Object.keys(this.fluid)) { rows.push([k, this.fluid[k]]); delete this.fluid[k]; }
     return rows;
   }
-  serialize() { const s = super.serialize(); s.fluid = this.fluid; return s; }
-  static restore(s) { const p = super.restore(s); p.fluid = s.fluid || {}; return p; }
+  serialize() { const s = super.serialize(); s.fluid = this.fluid; s.circuitCond = this.circuitCond; return s; }
+  static restore(s) { const p = super.restore(s); p.fluid = s.fluid || {}; p.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 }; return p; }
 }
 
 // ===== 渲染 =====
@@ -128,7 +136,19 @@ function fluidPumpPanelHtml(e) {
   h += row('缓冲', e.total() + ' / ' + PUMP_BUF_CAP, 'cap');
   if (Object.keys(agg).length) h += '<button data-action="takeout" id="btn-pump-takeout">取出全部 (' + e.total() + ')</button>';
   h += '<div class="status"></div>';
-  h += '<div class="dim">流体泵：背侧（箭头反方向）吸入流体，向前侧（箭头方向）加压泵出，单向输送、吞吐更高，可为长管道提速。R 旋转方向。</div>';
+  h += '<div class="sec">电路控制</div>';
+  h += '<div class="circ-add">' +
+    '<select id="p-en" class="circ-btype">' +
+      '<option value="off"' + (!e.circuitCond.enabled ? ' selected' : '') + '>关闭（常开）</option>' +
+      '<option value="on"' + (e.circuitCond.enabled ? ' selected' : '') + '>启用条件</option>' +
+    '</select>' +
+    '<select id="p-ch" class="circ-op">' + channelSelect(e.circuitCond.channel) + '</select>' +
+    '<input type="text" id="p-sig" class="circ-siginv" value="' + (ITEMS[e.circuitCond.sig]?.name || e.circuitCond.sig) + '" placeholder="信号" autocomplete="off">' +
+    '<select id="p-op" class="circ-op">' + ['>', '<', '=', '!=', '>=', '<='].map(o => '<option value="' + o + '"' + (e.circuitCond.op === o ? ' selected' : '') + '>' + o + '</option>').join('') + '</select>' +
+    '<input type="number" id="p-cnt" class="circ-cnt" value="' + e.circuitCond.count + '" min="-99999" max="99999">' +
+    '<button data-action="p-cond">应用</button></div>';
+  h += '<div class="dim">启用后，仅当所选电路信号满足条件时泵才工作（如储液罐满时停泵）。</div>';
+  h += '<div class="dim">流体泵：背侧吸入流体，向前侧加压泵出，单向输送、吞吐更高，可为长管道提速。R 旋转方向。</div>';
   return h;
 }
 function fluidPumpPanelLive(e, api) {
@@ -139,9 +159,23 @@ function fluidPumpPanelLive(e, api) {
   api.toggle('#btn-pump-takeout', e.total() > 0, '取出全部 (' + e.total() + ')');
   const back = entAt(e.x - DX[e.dir], e.y - DY[e.dir]);
   const front = entAt(e.x + DX[e.dir], e.y + DY[e.dir]);
+  if (!e.circuitEnabled()) { api.status('已停止：电路条件不满足', 'warn'); return; }
   if (e.total() > 0 && front) api.status('泵送中：背侧→前侧', 'ok');
   else if (back instanceof Pipe && back.total() > 0) api.status('待泵：背侧有流体可吸入', 'ok');
   else api.status('待机：背侧无流体', 'ok');
+}
+function fluidPumpPanelAction(action, el) {
+  const e = G.panelEnt;
+  if (action === 'p-cond') {
+    e.circuitCond.enabled = document.getElementById('p-en').value === 'on';
+    e.circuitCond.channel = document.getElementById('p-ch').value;
+    e.circuitCond.sig = resolveSignalName(document.getElementById('p-sig').value) || e.circuitCond.sig;
+    e.circuitCond.op = document.getElementById('p-op').value;
+    e.circuitCond.count = Math.floor(Number(document.getElementById('p-cnt').value)) || 0;
+    uiDirty = true;
+    return true;
+  }
+  return false;
 }
 function fluidPumpTip(e) {
   const agg = {};
@@ -154,6 +188,6 @@ function fluidPumpTip(e) {
 // ===== 注册 =====
 ENT_CLASSES['pump'] = FluidPump;
 DEVICE_RENDER['pump'] = drawFluidPump;
-DEVICE_STATUS['pump'] = e => e.total() > 0 ? 'g' : 'r';
-DEVICE_PANEL['pump'] = { html: fluidPumpPanelHtml, live: fluidPumpPanelLive, tip: fluidPumpTip };
+DEVICE_STATUS['pump'] = e => e.total() > 0 ? 'g' : (e.circuitEnabled ? (e.circuitEnabled() ? 'y' : 'r') : 'r');
+DEVICE_PANEL['pump'] = { html: fluidPumpPanelHtml, live: fluidPumpPanelLive, tip: fluidPumpTip, onAction: fluidPumpPanelAction };
 DEVICE_DIR_ROTATE['pump'] = true;

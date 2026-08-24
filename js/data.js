@@ -22,6 +22,18 @@ const REACH_PX = REACH_TILES * TILE;
 const LAB_TIME = 1; // 研究中心每瓶科学包耗时（秒）
 // 功率数值对齐《异星工厂》(Factorio) 官方 Wiki（单位 kW）
 const POWER_PER_ENGINE = 900;   // 蒸汽机满功率输出
+const POWER_PER_TURBINE = 5800; // 汽轮机满功率输出（对齐《异星工厂》5.8MW）
+const CENTRIFUGE_POWER = 75;    // 离心机功耗 kW（对齐《异星工厂》）
+// ===== 核能（对齐《异星工厂》核动力）=====
+// 核反应堆：消耗核燃料 + 水 → 产出高温蒸汽；汽轮机以远高于蒸汽机的功率发电。
+const REACTOR_POWER = 40000;    // 反应堆热功率 40MW（对齐官方）；简化：直接折算成产汽能力
+const REACTOR_FUEL_ENERGY = 200;  // 每组核燃料可持续燃烧秒数
+const REACTOR_WATER_RATE = 4.0;   // 反应堆每秒耗水量（远超锅炉，产汽量更高）
+const REACTOR_STEAM_CAP = 40;     // 反应堆内部蒸汽缓冲
+const TURBINE_STEAM_RATE = 1.5;   // 汽轮机满功率耗汽（单位/秒）
+const TURBINE_STEAM_CAP = 12;     // 汽轮机内部储汽上限
+const CENTRIFUGE_TIME = 12;       // 离心机处理一批铀矿耗时（秒）
+const URANIUM_CENTRIFUGE_KOVAREX_TIME = 60; // Kovarex 富集耗时（秒）
 const POWER_USE = {
   'electric-drill': 90,          // 电采矿机
   'electric-furnace': 180,       // 电炉
@@ -31,6 +43,7 @@ const POWER_USE = {
   'pumpjack': 90,                // 抽油机
   'refinery': 420,               // 炼油厂
   'chemical-plant': 210,         // 化工厂
+  'centrifuge': 75,              // 离心机
   'lab': 60                      // 研究中心
 };
 
@@ -44,9 +57,16 @@ const PUMP_RATE = 6;             // 抽水机每秒产水
 const ENGINE_STEAM_RATE = 0.6;   // 蒸汽机满功率耗汽（单位/秒）：1 台锅炉可带 2 台蒸汽机
 const ENGINE_STEAM_CAP = 10;     // 蒸汽机内部储汽上限
 
-const FLUIDS = ['water', 'steam', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas'];
+const FLUIDS = ['water', 'steam', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas', 'lubricant'];
+// 矿石索引：iron/copper/coal/stone/calcite = 0-4；原油 = 5（不进手挖矿表）；铀矿 = 6。
+// ⚠️ 版本迁移：早期版本原油索引为 5，本次新增铀矿后改为 6，读档时对旧档做 5→6 重映射。
 const ORE_OIL = 5;                       // 原油矿床的 oreType 索引（不进手挖矿表）
-function oreItemId(ti) { return ti === ORE_OIL ? 'crude-oil' : ORES[ti]; }
+const ORE_URANIUM = 6;                   // 铀矿床的 oreType 索引
+function oreItemId(ti) {
+  if (ti === ORE_OIL) return 'crude-oil';
+  if (ti === ORE_URANIUM) return 'uranium-ore';
+  return ORES[ti];
+}
 const PIPE_CAP = 40;
 const PIPE_FLOW = 3;
 // 储液罐（对齐《异星工厂》Storage Tank）：占地 3×3、容量大、只存单一流体，东西两侧各一个通用流体口
@@ -56,7 +76,7 @@ const SCIENCE_PACKS = ['science-pack', 'green-science', 'blue-science', 'militar
 function isScience(item) { return SCIENCE_PACKS.indexOf(item) >= 0; }
 const FILTER_CHOICES = ['iron-plate', 'copper-plate', 'steel-plate', 'iron-gear', 'copper-cable', 'green-circuit',
   'coal', 'stone', 'plastic-bar', 'science-pack', 'green-science', 'blue-science', 'military-science',
-  'magazine', 'piercing-rounds'].concat(FLUIDS);
+  'magazine', 'piercing-rounds', 'logistic-robot', 'uranium-235', 'uranium-238', 'nuclear-fuel'].concat(FLUIDS);
 function techPacks(tid) { return (TECHS && TECHS[tid] && TECHS[tid].cost) || {}; }
 function techCostTotal(tid) {
   let s = 0;
@@ -139,10 +159,78 @@ const ITEMS = {
   'magazine':          { name: '弹药匣', color: '#b08a4a', desc: '机枪炮塔的标准弹药' },
   'piercing-rounds':   { name: '穿甲弹', color: '#b05a4a', desc: '比普通弹药威力更高的穿甲弹药' },
   'refinery':          { name: '炼油厂', color: '#b06a3e', desc: '把原油炼成重油/轻油/石油气，或煤液化（5×5，吃电力，需选配方）。背面2输入、正面3输出' },
-  'chemical-plant':    { name: '化工厂', color: '#7d9464', desc: '流体化学加工厂：石油气+煤→塑料，重油/轻油裂解（3×3，吃电力）。底部2输入、顶部2输出，成对固定；固体原料机械臂任意方向放入' }
+  'chemical-plant':    { name: '化工厂', color: '#7d9464', desc: '流体化学加工厂：石油气+煤→塑料，重油/轻油裂解（3×3，吃电力）。底部2输入、顶部2输出，成对固定；固体原料机械臂任意方向放入' },
+  // ===== 玩家武器与弹药（战斗体系扩充） =====
+  'pistol':          { name: '手枪',   color: '#8a8f9a', desc: '基础随身武器。选中后按空格或对敌人点击开火，消耗弹药匣' },
+  'submachine-gun':  { name: '冲锋枪', color: '#6a7285', desc: '高射速全自动武器，消耗弹药匣' },
+  'shotgun':         { name: '散弹枪', color: '#a07a4a', desc: '近距霰弹，多弹丸高伤害，消耗穿甲弹' },
+  'rocket-launcher': { name: '火箭筒', color: '#5a7a4a', desc: '发射火箭弹造成范围爆炸伤害' },
+  'grenade':         { name: '手雷',   color: '#4a7a3a', desc: '投掷爆炸物，对范围敌人造成伤害，可在背包直接使用' },
+  'rocket':          { name: '火箭弹', color: '#7a5a4a', desc: '火箭筒的弹药，爆炸造成范围伤害' },
+  'flamethrower':    { name: '火焰喷射器', color: '#a05a2a', desc: '喷射燃烧的火焰，造成持续灼烧伤害，消耗石油气' },
+  // ===== 军事炮塔扩充 =====
+  'laser-turret':    { name: '激光炮塔', color: '#d04a5a', desc: '吃电力自动发射激光，无需弹药，射程更远（2×2）' },
+  'flamethrower-turret': { name: '火焰炮塔', color: '#d07a2a', desc: '喷射火焰造成持续灼烧伤害，消耗石油气，范围杀伤（2×2）' },
+  // ===== 模块系统 =====
+  'speed-module':    { name: '速度模块', color: '#4aa0d0', desc: '装入组装机/电炉/炼油厂等，提高生产速度（+40%），增加耗电' },
+  'productivity-module': { name: '产能模块', color: '#57b95c', desc: '装入组装机/电炉等，生产时累积额外产出（每 30 个 +1 免费产出），降低速度并增加耗电' },
+  'efficiency-module': { name: '效率模块', color: '#8a7ae8', desc: '装入组装机/电炉等，大幅降低生产耗电（每级 -30% 用电，小幅度降速），节能环保' },
+  // ===== 火箭发射（终局）=====
+  'advanced-circuit':{ name: '高级电路板', color: '#d0608a', desc: '红板，中后期高级电子元件，用于产能模块与电引擎' },
+  'engine-unit':     { name: '引擎单元', color: '#8a6a4a', desc: '基础机械动力单元' },
+  'electric-engine': { name: '电动引擎', color: '#7a9a6a', desc: '高级动力单元，用于火箭燃料' },
+  'processing-unit': { name: '处理器', color: '#5a8ad0', desc: '蓝板，最先进电子元件，用于火箭控制单元' },
+  'low-density-structure': { name: '低密度结构', color: '#b0b8c0', desc: '轻质航空结构材料' },
+  'rocket-fuel':     { name: '火箭燃料', color: '#d07a2a', desc: '火箭推进剂，用石油气+电引擎制造' },
+  'rocket-control-unit': { name: '火箭控制单元', color: '#d04a4a', desc: '火箭的大脑，用处理器+高级电路板制造' },
+  'satellite':       { name: '卫星', color: '#c0c8d0', desc: '放入火箭发射井发射，赢得游戏' },
+  'rocket-silo':     { name: '火箭发射井', color: '#7a6a5a', desc: '组装并发射火箭的终局建筑（5×5），放入卫星并填充火箭部件后发射' },
+  'radar':           { name: '雷达', color: '#5a8a8a', desc: '周期性扫描周围区域，点亮小地图/标记新探索区（3×3，吃电力）' },
+  'explosive':       { name: '爆炸物', color: '#d05a2a', desc: '由煤和石油气制造的高能化合物，用于火箭弹' },
+  'battery':         { name: '电池', color: '#d0c04a', desc: '储能元件，用于激光炮塔与卫星' },
+  // ===== 战斗机器人胶囊（对齐《异星工厂》Combat robots / Capsules）=====
+  'defender-capsule':  { name: '防御机器人胶囊', color: '#5aa0d0', desc: '投掷后释放防御机器人：跟随玩家，自动攻击附近敌人（有续航时间）' },
+  'distractor-capsule':{ name: '干扰机器人胶囊', color: '#d0a04a', desc: '投掷后释放干扰机器人：原地悬浮吸引敌人火力，为玩家争取时间' },
+  'destroyer-capsule': { name: '破坏机器人胶囊', color: '#d05a5a', desc: '投掷后释放破坏机器人：主动冲向并摧毁敌人，伤害更高（高级战斗解锁）' },
+  // ===== 载具（对齐《异星工厂》Car）=====
+  'car':               { name: '装甲车', color: '#8a6a3a', desc: '可驾驶的载具：靠近后按 E 进入驾驶（WASD 更快移动），消耗煤作燃料，E 下车' },
+  // ===== 铁路系统（火车） =====
+  'rail':              { name: '铁轨', color: '#6a6a70', desc: '铺设铁轨形成铁路网，火车沿轨道行驶。与相邻铁轨自动连通，可拐弯（1×1）' },
+  'locomotive':        { name: '火车头', color: '#d04a3a', desc: '烧煤驱动的机车，在铁轨上行驶。煤装入后自动前进；可挂接货运车厢组成列车' },
+  'cargo-wagon':       { name: '货运车厢', color: '#8a6a4a', desc: '货车厢，挂在火车头后沿铁轨随行，最多存放 10 种物品各 100 个。车站可用机械臂装卸' },
+  'train-stop':        { name: '车站', color: '#5a8ac0', desc: '火车停靠站：列车行驶到车站所在铁轨即停车，便于机械臂/传送带装卸货物' },
+  'rail-signal':       { name: '铁路信号灯', color: '#e04a4a', desc: '放在铁轨旁，指示前方区段是否被列车占用，用于多列火车防追尾（1×1）' },
+  // ===== 润滑油 =====
+  'lubricant':         { name: '润滑油', color: '#d8c020', mark: 'Lub', desc: '流体，由化工厂用重油加工得到，用于制造电动引擎等高级部件' },
+  // ===== 物流机器人网络 =====
+  'roboport':          { name: '机器人港', color: '#3a8a8a', desc: '物流机器人的基地与充电站（4×4，吃电力）。把物流机器人放入机器人港后自动调度，机器人往返供应箱与需求箱搬运货物，电量低时回到机器人港充电' },
+  'logistic-robot':    { name: '物流机器人', color: '#4aa0d0', desc: '飞行机器人，放入机器人港后自动在供应箱/需求箱之间搬运物资，消耗电量，需回港充电' },
+  'logistic-chest-passive': { name: '被动供应箱', color: '#c9a84a', desc: '物流箱：可手动/机械臂存入货物，物流机器人会从箱中取货送往需求箱；也能接收机器人返还的货物' },
+  'logistic-chest-active':  { name: '主动供应箱', color: '#d0743a', desc: '物流箱：机器人优先从此取货供应网络；多出的货物机器人会收纳到这里，适合作为原料集散点' },
+  'logistic-chest-storage': { name: '仓储箱', color: '#8a9a6a', desc: '物流箱：机器人把返还/多余货物收纳到这里，也可作为备用取货源。所有仓储箱共享存放' },
+  'logistic-chest-requester': { name: '需求箱', color: '#5a8ad0', desc: '物流箱：在面板设置每种物品的需求量，物流机器人会自动从供应箱/仓储箱送货过来补足到目标数量' },
+  // ===== 核能（对齐《异星工厂》核动力）=====
+  'uranium-ore':  { name: '铀矿石', color: '#7fd44a', mark: 'U', desc: '放射性矿物，距出生点较远处生成，须用电采矿机开采，离心机处理成铀' },
+  'uranium-235': { name: '铀-235', color: '#9af07a', mark: 'U⁵', desc: '裂变同位素，由离心机处理铀矿小概率获得；是制造核燃料的关键' },
+  'uranium-238': { name: '铀-238', color: '#6aa84a', mark: 'U⁸', desc: '丰度同位素，由离心机处理铀矿大量获得，可参与富集循环' },
+  'nuclear-fuel': { name: '核燃料', color: '#9ae06a', mark: '☢', desc: '核反应堆的燃料，由铀-235制造，可持续提供巨量高温蒸汽' },
+  'centrifuge':   { name: '离心机', color: '#7a8a9a', desc: '把铀矿石分离成铀-235 / 铀-238；也可进行铀富集循环（Kovarex）（2×2，吃电力）' },
+  'nuclear-reactor': { name: '核反应堆', color: '#4a8a5a', desc: '消耗核燃料+水产出高温蒸汽（5×5，吃水）。高温蒸汽经汽轮机以远高于蒸汽机的功率发电' },
+  'steam-turbine': { name: '汽轮机', color: '#8fb8d0', desc: '消耗高温蒸汽发电，功率远高于蒸汽机（3×3）。接入反应堆/储汽的蒸汽管道即可' },
+  // ===== 电路网络（对齐《异星工厂》Circuit Network）=====
+  'small-electric-pole': { name: '小型电线杆', color: '#8a5a2a', desc: '电线杆：铺设后与附近电线杆自动连线，构成电路网络（1×1，连接距离 7 格）。红/绿线可独立传输信号' },
+  'medium-electric-pole': { name: '中型电线杆', color: '#a06a2a', desc: '电线杆：连接距离更远（9 格），构成更大范围的电路网络（2×2）' },
+  'big-electric-pole': { name: '大型电线杆', color: '#b0802a', desc: '电线杆：超远连接距离（15 格），用于跨区域组网（2×2）' },
+  'constant-combinator': { name: '常量组合器', color: '#4a7ac0', desc: '电路设备：面板设置若干常量信号，持续输出到所连网络（1×1）。可指定输出到红线或绿线' },
+  'arithmetic-combinator': { name: '运算组合器', color: '#4a9ac0', desc: '电路设备：读取网络输入信号，做加减乘除运算后输出结果信号（1×1）' },
+  'decider-combinator': { name: '判断组合器', color: '#4ac0a0', desc: '电路设备：按条件（如 信号 > 10）判断，满足时输出指定信号；可做“非”逻辑（1×1）' },
+  // ===== 混凝土 / 地形改造（对齐《异星工厂》Concrete & Landfill）=====
+  'concrete': { name: '混凝土', color: '#9a9aa0', desc: '地面装饰：铺设在草地上可加速玩家行走（比泥地快），需在玩家脚下使用或按住铺设' },
+  'stone-path': { name: '石砖路', color: '#a8a09a', desc: '地面装饰：铺设在地面上美观且加速行走（由石砖合成）' },
+  'landfill': { name: '填海料', color: '#8a6a3a', desc: '地形改造：把水面填成可建造的陆地（由石头+土合成）' }
 };
 
-const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone', 'calcite'];
+const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone', 'calcite'];  // 0-4；原油/铀矿用特殊索引（见 ORE_OIL/ORE_URANIUM）
 
 const SMELTS = [
   { id: 'iron-plate',   inp: 'iron-ore',   time: 3.2 },
@@ -202,10 +290,80 @@ const RECIPES = {
   'piercing-rounds':  { time: 1,   inp: { 'magazine': 1, 'copper-plate': 1, 'steel-plate': 1 }, out: { 'piercing-rounds': 1 } },
   'plastic-bar':       { time: 2,   inp: { 'petroleum-gas': 1, 'coal': 1 },                       out: { 'plastic-bar': 1 } },
   'crack-light':       { time: 3,   inp: { 'heavy-oil': 3 },                                      out: { 'light-oil': 2 } },
-  'crack-gas':         { time: 3,   inp: { 'light-oil': 3 },                                      out: { 'petroleum-gas': 2 } }
+  'crack-gas':         { time: 3,   inp: { 'light-oil': 3 },                                      out: { 'petroleum-gas': 2 } },
+  'lubricant':         { time: 2,   inp: { 'heavy-oil': 2 },                                      out: { 'lubricant': 1 } },
+  // ===== 铁路系统（火车） =====
+  'rail':              { time: 0.5, inp: { 'iron-plate': 1, 'stone': 1 },                          out: { 'rail': 2 } },
+  'locomotive':        { time: 4,   inp: { 'iron-plate': 16, 'steel-plate': 6, 'iron-gear': 8, 'green-circuit': 4 }, out: { 'locomotive': 1 } },
+  'cargo-wagon':       { time: 3,   inp: { 'iron-plate': 12, 'steel-plate': 6, 'iron-gear': 6 },  out: { 'cargo-wagon': 1 } },
+  'train-stop':        { time: 2,   inp: { 'iron-plate': 8, 'green-circuit': 3, 'steel-plate': 2 }, out: { 'train-stop': 1 } },
+  'rail-signal':       { time: 1,   inp: { 'iron-plate': 4, 'green-circuit': 1 },                 out: { 'rail-signal': 1 } },
+  // ===== 载具（对齐《异星工厂》Car，需引擎单元）=====
+  'car':               { time: 6,   inp: { 'engine-unit': 2, 'steel-plate': 10, 'iron-plate': 6, 'iron-gear': 4 }, out: { 'car': 1 } },
+  // ===== 玩家武器（战斗体系扩充） =====
+  'pistol':            { time: 1,   inp: { 'iron-plate': 4, 'iron-gear': 1 },                     out: { 'pistol': 1 } },
+  'submachine-gun':    { time: 2,   inp: { 'pistol': 1, 'steel-plate': 4, 'iron-gear': 2 },        out: { 'submachine-gun': 1 } },
+  'shotgun':           { time: 2,   inp: { 'iron-plate': 6, 'steel-plate': 4 },                    out: { 'shotgun': 1 } },
+  'rocket-launcher':   { time: 3,   inp: { 'steel-plate': 8, 'iron-gear': 6, 'advanced-circuit': 2 }, out: { 'rocket-launcher': 1 } },
+  'grenade':           { time: 1,   inp: { 'iron-plate': 2, 'coal': 2 },                           out: { 'grenade': 1 } },
+  'rocket':            { time: 1,   inp: { 'explosive': 1, 'iron-plate': 2 },                      out: { 'rocket': 1 } },
+  'flamethrower':      { time: 2,   inp: { 'steel-plate': 8, 'iron-gear': 4 },                     out: { 'flamethrower': 1 } },
+  // ===== 军事炮塔扩充 =====
+  'laser-turret':      { time: 4,   inp: { 'steel-plate': 8, 'green-circuit': 10, 'battery': 2 },  out: { 'laser-turret': 1 } },
+  'flamethrower-turret': { time: 3, inp: { 'steel-plate': 8, 'iron-gear': 4, 'pipe': 4 },         out: { 'flamethrower-turret': 1 } },
+  // ===== 模块系统 =====
+  'speed-module':      { time: 2,   inp: { 'green-circuit': 4, 'advanced-circuit': 2 },            out: { 'speed-module': 1 } },
+  'productivity-module': { time: 2, inp: { 'advanced-circuit': 2, 'green-circuit': 2, 'iron-gear': 1 }, out: { 'productivity-module': 1 } },
+  'efficiency-module': { time: 2,   inp: { 'green-circuit': 3, 'advanced-circuit': 1, 'plastic-bar': 1 }, out: { 'efficiency-module': 1 } },
+  // ===== 火箭链路中间件 =====
+  'advanced-circuit':  { time: 6,   inp: { 'green-circuit': 2, 'plastic-bar': 2, 'copper-cable': 4 }, out: { 'advanced-circuit': 1 } },
+  'engine-unit':       { time: 10,  inp: { 'steel-plate': 1, 'iron-gear': 1, 'pipe': 2 },           out: { 'engine-unit': 1 } },
+  'electric-engine':   { time: 10,  inp: { 'engine-unit': 1, 'green-circuit': 2, 'lubricant': 2 }, out: { 'electric-engine': 1 } },
+  'processing-unit':   { time: 10,  inp: { 'advanced-circuit': 2, 'green-circuit': 20, 'copper-cable': 4 }, out: { 'processing-unit': 1 } },
+  'low-density-structure': { time: 20, inp: { 'copper-plate': 20, 'plastic-bar': 5, 'steel-plate': 2 }, out: { 'low-density-structure': 1 } },
+  'rocket-fuel':       { time: 8,   inp: { 'petroleum-gas': 10, 'electric-engine': 1 },             out: { 'rocket-fuel': 1 } },
+  'rocket-control-unit': { time: 15, inp: { 'processing-unit': 1, 'advanced-circuit': 3 },          out: { 'rocket-control-unit': 1 } },
+  'satellite':         { time: 10,  inp: { 'rocket-control-unit': 1, 'low-density-structure': 100, 'processing-unit': 1, 'solar-panel': 1 }, out: { 'satellite': 1 } },
+  'rocket-silo':       { time: 20,  inp: { 'steel-plate': 50, 'engine-unit': 20, 'processing-unit': 20, 'green-circuit': 50 }, out: { 'rocket-silo': 1 } },
+  'radar':             { time: 2,   inp: { 'iron-plate': 6, 'steel-plate': 2, 'green-circuit': 2 }, out: { 'radar': 1 } },
+  // 爆炸物（火箭弹/手雷专用）
+  'explosive':         { time: 2,   inp: { 'coal': 2, 'petroleum-gas': 1 },                        out: { 'explosive': 1 } },
+  // 电池（激光炮塔/卫星）
+  'battery':           { time: 4,   inp: { 'iron-plate': 2, 'copper-plate': 2, 'coal': 1 },         out: { 'battery': 1 } },
+  // ===== 战斗机器人胶囊配方（对齐《异星工厂》Capsules）=====
+  'defender-capsule':   { time: 3,  inp: { 'iron-plate': 2, 'green-circuit': 1, 'battery': 1 },         out: { 'defender-capsule': 1 } },
+  'distractor-capsule': { time: 3,  inp: { 'iron-plate': 2, 'green-circuit': 2, 'battery': 2 },         out: { 'distractor-capsule': 1 } },
+  'destroyer-capsule':  { time: 4,  inp: { 'steel-plate': 2, 'advanced-circuit': 1, 'battery': 2 },      out: { 'destroyer-capsule': 1 } },
+  // ===== 物流机器人网络 =====
+  'roboport':          { time: 10,  inp: { 'steel-plate': 20, 'advanced-circuit': 5, 'green-circuit': 10, 'battery': 4 }, out: { 'roboport': 1 } },
+  'logistic-robot':    { time: 3,   inp: { 'green-circuit': 4, 'iron-gear': 2, 'battery': 2 },          out: { 'logistic-robot': 1 } },
+  'logistic-chest-passive': { time: 1, inp: { 'iron-plate': 4, 'green-circuit': 1 },                    out: { 'logistic-chest-passive': 1 } },
+  'logistic-chest-active':  { time: 1.5, inp: { 'iron-plate': 6, 'green-circuit': 2 },                  out: { 'logistic-chest-active': 1 } },
+  'logistic-chest-storage': { time: 1.5, inp: { 'iron-plate': 4, 'green-circuit': 2 },                  out: { 'logistic-chest-storage': 1 } },
+  'logistic-chest-requester': { time: 1.5, inp: { 'iron-plate': 6, 'green-circuit': 3 },                out: { 'logistic-chest-requester': 1 } },
+  // ===== 核能配方 =====
+  // 铀富集（Kovarex，离心机）：铀-238 在铀-235 催化下持续富集出更多铀-235（可自持循环）
+  'kovarex':           { time: 60, inp: { 'uranium-238': 40, 'uranium-235': 1 },                  out: { 'uranium-235': 1, 'uranium-238': 41 } },
+  // 核燃料（组装机）：由铀-235 制成
+  'nuclear-fuel':      { time: 5,   inp: { 'uranium-235': 1, 'iron-plate': 1 },                   out: { 'nuclear-fuel': 1 } },
+  // 离心机/反应堆/汽轮机（组装机制造）
+  'centrifuge':        { time: 2,   inp: { 'iron-plate': 8, 'green-circuit': 4 },                 out: { 'centrifuge': 1 } },
+  'nuclear-reactor':   { time: 15,  inp: { 'steel-plate': 40, 'copper-plate': 20, 'battery': 5, 'centrifuge': 1 }, out: { 'nuclear-reactor': 1 } },
+  'steam-turbine':     { time: 5,   inp: { 'steel-plate': 20, 'iron-gear': 8, 'copper-plate': 10 }, out: { 'steam-turbine': 1 } },
+  // ===== 电路网络配方 =====
+  'small-electric-pole': { time: 0.5, inp: { 'iron-plate': 1, 'copper-plate': 1 },                   out: { 'small-electric-pole': 1 } },
+  'medium-electric-pole': { time: 1,  inp: { 'iron-plate': 3, 'copper-plate': 2, 'iron-gear': 1 },   out: { 'medium-electric-pole': 1 } },
+  'big-electric-pole': { time: 1.5,   inp: { 'iron-plate': 5, 'copper-plate': 3, 'iron-gear': 2 },   out: { 'big-electric-pole': 1 } },
+  'constant-combinator': { time: 1.5, inp: { 'iron-plate': 4, 'green-circuit': 2, 'copper-cable': 4 }, out: { 'constant-combinator': 1 } },
+  'arithmetic-combinator': { time: 1.5, inp: { 'iron-plate': 4, 'green-circuit': 3, 'copper-cable': 4 }, out: { 'arithmetic-combinator': 1 } },
+  'decider-combinator': { time: 1.5,  inp: { 'iron-plate': 4, 'green-circuit': 3, 'copper-cable': 4 }, out: { 'decider-combinator': 1 } },
+  // ===== 混凝土 / 地形改造配方 =====
+  'concrete':          { time: 0.5, inp: { 'stone-brick': 5, 'iron-plate': 2 },                     out: { 'concrete': 10 } },
+  'stone-path':        { time: 0.5, inp: { 'stone-brick': 2 },                                      out: { 'stone-path': 4 } },
+  'landfill':          { time: 0.5, inp: { 'stone': 20, 'iron-plate': 1 },                          out: { 'landfill': 1 } }
 };
 
-const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas'];
+const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant'];
 function isChemRecipe(id) { return CHEM_RECIPES.indexOf(id) >= 0; }
 function chemMult() { return (G.techDone.plastic ? 1.5 : 1) * ((G.dbg && G.dbg.asmMult) || 1); }
 
@@ -223,16 +381,26 @@ const REFINERY_RECIPES = {
 const REFINERY_RECIPE_IDS = Object.keys(REFINERY_RECIPES);
 function isRefineryRecipe(id) { return REFINERY_RECIPES[id] !== undefined; }
 
+// ===== 离心机配方（对齐《异星工厂》Centrifuge）=====
+// 铀矿处理：10 铀矿石 → 小概率 1 铀-235 + 大量铀-238
+// Kovarex 富集循环由通用配方表 RECIPES['kovarex'] 承载（也由离心机执行）。
+const CENTRIFUGE_RECIPES = {
+  'uranium-processing': { name: '铀矿处理', time: 12, inp: { 'uranium-ore': 10 }, out: { 'uranium-235': 1, 'uranium-238': 9 } }
+};
+function isCentrifugeRecipe(id) { return CENTRIFUGE_RECIPES[id] !== undefined || id === 'kovarex'; }
+
 // ---- 配方归属设备 ----
-// 判断某配方适用于哪台设备：炼油厂 / 化工厂 / 组装机。
+// 判断某配方适用于哪台设备：炼油厂 / 化工厂 / 离心机 / 组装机。
 const DEVICE_NAMES = {
   'assembling-machine': '组装机',
   'chemical-plant': '化工厂',
-  'refinery': '炼油厂'
+  'refinery': '炼油厂',
+  'centrifuge': '离心机'
 };
 function recipeDevice(id) {
   if (isRefineryRecipe(id)) return 'refinery';
   if (isChemRecipe(id)) return 'chemical-plant';
+  if (isCentrifugeRecipe(id)) return 'centrifuge';
   return 'assembling-machine';
 }
 function recipeDeviceName(id) { return DEVICE_NAMES[recipeDevice(id)] || ''; }
@@ -278,11 +446,83 @@ const BUILD_DEFS = {
   'accumulator':        { w: 2, h: 2, solid: true },
   'passive-power':      { w: 2, h: 2, solid: true },
   'gun-turret':         { w: 2, h: 2, solid: true },
+  'laser-turret':       { w: 2, h: 2, solid: true },
+  'flamethrower-turret':{ w: 2, h: 2, solid: true },
+  'rocket-silo':        { w: 5, h: 5, solid: true },
+  'radar':              { w: 3, h: 3, solid: true },
   'stone-wall':         { w: 1, h: 1, solid: true },
   'pumpjack':           { w: 3, h: 3, solid: true },
   'refinery':           { w: 5, h: 5, solid: true },
   'chemical-plant':     { w: 3, h: 3, solid: true },
-  'storage-tank':       { w: 3, h: 3, solid: true }
+  'storage-tank':       { w: 3, h: 3, solid: true },
+  // ===== 核能建筑 =====
+  'centrifuge':         { w: 2, h: 2, solid: true },
+  'nuclear-reactor':    { w: 5, h: 5, solid: true },
+  'steam-turbine':      { w: 3, h: 3, solid: true },
+  'roboport':           { w: 4, h: 4, solid: true },
+  'rail':               { w: 1, h: 1, solid: false },
+  'locomotive':         { w: 1, h: 1, solid: true },
+  'cargo-wagon':        { w: 1, h: 1, solid: true },
+  'train-stop':         { w: 1, h: 1, solid: true },
+  'rail-signal':        { w: 1, h: 1, solid: true },
+  'car':                { w: 2, h: 2, solid: true, rotSwap: true },
+  'logistic-chest-passive': { w: 1, h: 1, solid: true },
+  'logistic-chest-active':  { w: 1, h: 1, solid: true },
+  'logistic-chest-storage': { w: 1, h: 1, solid: true },
+  'logistic-chest-requester': { w: 1, h: 1, solid: true },
+  // ===== 电路网络 =====
+  'small-electric-pole': { w: 1, h: 1, solid: true },
+  'medium-electric-pole': { w: 2, h: 2, solid: true },
+  'big-electric-pole': { w: 2, h: 2, solid: true },
+  'constant-combinator': { w: 1, h: 1, solid: true },
+  'arithmetic-combinator': { w: 1, h: 1, solid: true },
+  'decider-combinator': { w: 1, h: 1, solid: true }
+};
+
+// ===== 科技解锁要求（建造/武器/模块）=====
+// 物品 -> 所需已完成科技 id。缺少科技时建造/使用会被拦截并提示。
+const TECH_REQ = {
+  'laser-turret': 'advanced-combat',
+  'flamethrower-turret': 'advanced-combat',
+  'rocket-launcher': 'advanced-combat',
+  'flamethrower': 'advanced-combat',
+  'destroyer-capsule': 'advanced-combat',
+  'defender-capsule': 'weapons',
+  'distractor-capsule': 'weapons',
+  'rocket-silo': 'rocket-science',
+  'satellite': 'rocket-science',
+  'rocket-control-unit': 'rocket-science',
+  'rocket-fuel': 'rocket-science',
+  'speed-module': 'modules',
+  'productivity-module': 'modules',
+  'efficiency-module': 'modules',
+  'advanced-circuit': 'electronics',
+  'processing-unit': 'electronics',
+  'electric-engine': 'electronics',
+  'radar': 'radar'
+};
+// ===== 核能科技门控 =====
+for (const id of ['centrifuge', 'nuclear-reactor', 'steam-turbine', 'uranium-235', 'uranium-238', 'nuclear-fuel']) {
+  if (!TECH_REQ[id]) TECH_REQ[id] = 'nuclear';
+}
+// ===== 铁路科技门控 =====
+const RAIL_ITEMS = ['rail', 'locomotive', 'cargo-wagon', 'train-stop'];
+for (const id of RAIL_ITEMS) if (!TECH_REQ[id]) TECH_REQ[id] = 'railways';
+if (!TECH_REQ['rail-signal']) TECH_REQ['rail-signal'] = 'rail-signals';
+// ===== 物流机器人网络 =====
+const LOGISTIC_ITEMS = ['roboport', 'logistic-robot', 'logistic-chest-passive', 'logistic-chest-active', 'logistic-chest-storage', 'logistic-chest-requester'];
+// 物流箱科技门控：所有物流设备需先研究「物流网络」
+for (const id of LOGISTIC_ITEMS) if (!TECH_REQ[id]) TECH_REQ[id] = 'logistics-network';
+// ===== 电路网络科技门控 =====
+const CIRCUIT_ITEMS = ['small-electric-pole', 'medium-electric-pole', 'big-electric-pole', 'constant-combinator', 'arithmetic-combinator', 'decider-combinator'];
+for (const id of CIRCUIT_ITEMS) if (!TECH_REQ[id]) TECH_REQ[id] = 'circuit-network';
+// 玩家武器所需科技（用于选择武器时拦截）
+const WEAPON_TECH_REQ = {
+  'pistol': 'weapons',
+  'submachine-gun': 'weapons',
+  'shotgun': 'weapons',
+  'rocket-launcher': 'advanced-combat',
+  'flamethrower': 'advanced-combat'
 };
 
 // ===== 传送带阶级链（对齐《异星工厂》物流升级）=====
@@ -320,10 +560,21 @@ const TECHS = {
   logistics2: { name: '物流 II', cost: { 'green-science': 25 }, desc: '传送带速度额外 ×1.2（与物流学叠加）' },
   electric:   { name: '电力工程', cost: { 'green-science': 15 }, desc: '电炉 / 电采矿机速度 ×1.2' },
   oil:        { name: '石油冶金', cost: { 'green-science': 30 }, desc: '炼油厂 / 抽油机速度 ×1.5' },
+  railways:    { name: '铁路技术', cost: { 'green-science': 30 }, desc: '解锁铁轨、火车头、货运车厢与车站，构建铁路物流' },
+  'rail-signals': { name: '铁路信号', cost: { 'blue-science': 30 }, desc: '解锁铁路信号灯，允许多列火车安全同网行驶' },
   plastic:    { name: '塑料合成', cost: { 'green-science': 20 }, desc: '化工厂生产塑料耗时缩短 ✓（绿色科研的核心支付项）' },
   automation2:{ name: '自动化 II', cost: { 'blue-science': 40 }, desc: '组装机 II 速度额外 ×1.2' },
   express:    { name: '极速物流', cost: { 'military-science': 40 }, desc: '解锁极速传送带/地下带/分流器，物流终极档' },
   military:   { name: '军事工程', cost: { 'military-science': 30 }, desc: '解锁机枪炮塔、石墙、弹药（防御体系）' },
+  weapons:    { name: '单兵武器', cost: { 'military-science': 20 }, desc: '解锁手枪、冲锋枪、散弹枪（F 键或空格攻击）' },
+  'advanced-combat': { name: '高级战斗', cost: { 'military-science': 40, 'blue-science': 30 }, desc: '解锁激光炮塔、火焰炮塔、火箭筒、火焰喷射器与远程敌人' },
+  electronics: { name: '电子学', cost: { 'blue-science': 40 }, desc: '解锁高级电路板、处理器（火箭链路的关键）' },
+  'rocket-science': { name: '火箭技术', cost: { 'blue-science': 100, 'military-science': 50 }, desc: '解锁火箭发射井、火箭部件与卫星，发射火箭赢得游戏' },
+  modules:    { name: '模块工程', cost: { 'blue-science': 40 }, desc: '解锁速度模块与产能模块（增强组装机/电炉）' },
+  radar:      { name: '雷达技术', cost: { 'green-science': 30 }, desc: '解锁雷达，自动扫描并标记新探索区域' },
+  'logistics-network': { name: '物流网络', cost: { 'blue-science': 50 }, desc: '解锁机器人港、四类物流箱与物流机器人，构建自动化物流网络' },
+  nuclear:    { name: '核能技术', cost: { 'blue-science': 60, 'military-science': 40 }, desc: '解锁离心机（铀矿处理）、核反应堆与汽轮机，构建核能发电体系' },
+  'circuit-network': { name: '电路网络', cost: { 'blue-science': 40 }, desc: '解锁电线杆与组合器（常量/运算/判断），构建电路网络，实现信号逻辑控制' },
   deep:       { name: '重工蓝图', cost: { 'blue-science': 50 }, desc: '蓝包终技：科研总进度获取 +20%' },
   infinite:   { name: '无限科技', cost: {}, infinite: true, desc: '无限研究：消耗任意科学包，永不完成' }
 };

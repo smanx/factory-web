@@ -13,16 +13,18 @@ class Drill extends Entity {
     this.status = '';
     this.spin = 0;
   }
+  // 可开采的矿石索引：普通矿 0-4 + 铀矿 6（原油 5 由抽油机专用）。
+  minableOreType(ti) { return (ti >= 0 && ti < ORES.length) || ti === ORE_URANIUM; }
   oreTile() {
     for (let dy = 0; dy < this.h; dy++)
       for (let dx = 0; dx < this.w; dx++) {
         const tx = this.x + dx, ty = this.y + dy;
         const ti = getOreType(tx, ty);
-        if (ti >= 0 && ti < ORES.length && getOreAmt(tx, ty) > 0) return [tx, ty];
+        if (this.minableOreType(ti) && getOreAmt(tx, ty) > 0) return [tx, ty];
       }
     return null;
   }
-  mineItem(o) { return ORES[getOreType(o[0], o[1])]; }
+  mineItem(o) { return oreItemId(getOreType(o[0], o[1])); }
   frontTargets() {
     const res = [];
     if (this.dir === 0) for (let dy = 0; dy < this.h; dy++) res.push([this.x + this.w, this.y + dy]);
@@ -211,7 +213,7 @@ function drillNeedsOre(type, tx, ty, dir, ew, eh) {
   for (let dy = 0; dy < eh && !hasOre; dy++)
     for (let dx = 0; dx < ew && !hasOre; dx++) {
       const ti = getOreType(tx + dx, ty + dy);
-      if (ti >= 0 && ti < ORES.length) hasOre = true;
+      if ((ti >= 0 && ti < ORES.length) || ti === ORE_URANIUM) hasOre = true;
     }
   return hasOre ? null : { ok: false };
 }

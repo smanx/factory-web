@@ -98,6 +98,8 @@ function render() {
   drawPlayer(ctx);
   drawEnemies(ctx);
   drawBullets(ctx);
+  drawCombatRobots(ctx);
+  drawLogisticsRobots(ctx);
   ctx.restore();
 }
 
@@ -138,9 +140,30 @@ function drawChunkTerrainInto(ctx, cx, cy) {
     for (let dx = 0; dx < CHUNK; dx++) {
       const tx = ox + dx, ty = oy + dy;
       const px = dx * TILE, py = dy * TILE;
-      if (getTerrain(tx, ty) === T_WATER) {
+      const t = getTerrain(tx, ty);
+      if (t === T_WATER) {
         ctx.fillStyle = hash2(tx, ty) > 0.5 ? '#265d8a' : '#28618f';
         ctx.fillRect(px, py, TILE, TILE);
+        continue;
+      }
+      if (t === T_CONCRETE) {
+        const v = hash2(tx, ty);
+        ctx.fillStyle = v > 0.5 ? '#9a9a9e' : '#929298';
+        ctx.fillRect(px, py, TILE, TILE);
+        ctx.strokeStyle = 'rgba(70,70,76,.5)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
+        continue;
+      }
+      if (t === T_PATH) {
+        const v = hash2(tx, ty);
+        ctx.fillStyle = v > 0.5 ? '#a49c94' : '#9c948c';
+        ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = 'rgba(120,110,100,.3)';
+        for (const [bx, by] of [[8, 8], [20, 14], [14, 24]]) {
+          ctx.fillRect(px + bx, py + by, 4, 4);
+          ctx.fillRect(px + bx + 2, py + by + 2, 2, 2);
+        }
         continue;
       }
       const v = hash2(tx, ty);
@@ -148,6 +171,10 @@ function drawChunkTerrainInto(ctx, cx, cy) {
       ctx.fillRect(px, py, TILE, TILE);
     }
   }
+}
+// 地形被修改（铺混凝土/石砖路/填海）后清除对应 chunk 的地形缓存
+function invalidateTerrainChunk(tx, ty) {
+  terrainChunkCache.delete(Math.floor(tx / CHUNK) + ',' + Math.floor(ty / CHUNK));
 }
 
 // 获取指定 chunk 的离屏缓存画布；未命中时生成并写回 LRU。
@@ -452,7 +479,7 @@ function drawHoverAndMining(ctx) {
   if (p.mining) {
     const [mx, my] = p.mining.split(',').map(Number);
     const ti = getOreType(mx, my);
-    if (ti >= 0 && ti < ORES.length) {
+    if ((ti >= 0 && ti < ORES.length) || ti === ORE_URANIUM) {
       ctx.strokeStyle = '#fff';
       ctx.lineWidth = 3;
       ctx.beginPath();
@@ -467,29 +494,67 @@ function drawEnemies(ctx) {
   for (const en of G.enemies) {
     if (en.dead) continue;
     const bob = Math.sin(G.time * 8 + en.x) * 1.2;
+    const size = en.size || 8;
+    const maxhp = en.maxhp || 40;
     ctx.fillStyle = 'rgba(0,0,0,.25)';
     ctx.beginPath();
-    ctx.ellipse(en.x, en.y + 10, 8, 3.5, 0, 0, 7);
+    ctx.ellipse(en.x, en.y + 10, size * 1.2, size * 0.5, 0, 0, 7);
     ctx.fill();
-    ctx.fillStyle = enemyColor(en.hp, 40);
+    // 不同敌人不同形状：蠕虫为细长条形，其余为圆
+    const color = en.color || enemyColor(en.hp, 40);
+    ctx.fillStyle = color;
     ctx.strokeStyle = '#7c1a12';
     ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(en.x, en.y + bob, 8, 0, 7);
-    ctx.fill();
-    ctx.stroke();
-    // 眼睛朝玩家
-    const a = Math.atan2(G.player.y - en.y, G.player.x - en.x);
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(en.x + Math.cos(a) * 3, en.y + bob + Math.sin(a) * 3, 2.5, 0, 7);
-    ctx.fill();
+    if (en.kind === 'spawner') {
+      // 巢穴：带呼吸的肉质圆形虫巢
+      const pulse = 1 + Math.sin(G.time * 2 + en.x) * 0.06;
+      ctx.fillStyle = '#5a3a8a';
+      ctx.beginPath(); ctx.arc(en.x, en.y, size * pulse, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#3a225a';
+      ctx.beginPath(); ctx.arc(en.x, en.y, size * 0.5, 0, 7); ctx.fill();
+      ctx.fillStyle = '#8a5ac0';
+      ctx.beginPath(); ctx.arc(en.x, en.y, size * 0.3, 0, 7); ctx.fill();
+      ctx.fillStyle = '#ffd0a0';
+      for (let i = 0; i < 4; i++) {
+        const a = i * Math.PI / 2 + G.time * 0.5;
+        ctx.beginPath(); ctx.arc(en.x + Math.cos(a) * size * 0.7, en.y + Math.sin(a) * size * 0.7, 2, 0, 7); ctx.fill();
+      }
+    } else if (en.type === 'worm') {
+      ctx.beginPath();
+      ctx.ellipse(en.x, en.y + bob, size, size * 0.5, 0, 0, 7);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#3a2a22';
+      ctx.beginPath(); ctx.arc(en.x, en.y + bob - 4, 3, 0, 7); ctx.fill();
+    } else if (en.kind === 'ranged') {
+      ctx.beginPath();
+      ctx.arc(en.x, en.y + bob, size, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffe0a0';
+      ctx.beginPath(); ctx.arc(en.x, en.y + bob - 3, 2, 0, 7); ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.arc(en.x, en.y + bob, size, 0, 7); ctx.fill(); ctx.stroke();
+      // 眼睛朝玩家
+      const a = Math.atan2(G.player.y - en.y, G.player.x - en.x);
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(en.x + Math.cos(a) * size * 0.4, en.y + bob + Math.sin(a) * size * 0.4, 2.5, 0, 7);
+      ctx.fill();
+    }
     // 血条
     const w = 16;
     ctx.fillStyle = '#20242b';
     ctx.fillRect(en.x - w / 2, en.y - 16, w, 3);
-    ctx.fillStyle = Math.max(0, Math.min(1, en.hp / 40)) > 0.5 ? '#57e389' : '#ff5b5b';
-    ctx.fillRect(en.x - w / 2, en.y - 16, w * Math.max(0, en.hp / 40), 3);
+    ctx.fillStyle = Math.max(0, Math.min(1, en.hp / maxhp)) > 0.5 ? '#57e389' : '#ff5b5b';
+    ctx.fillRect(en.x - w / 2, en.y - 16, w * Math.max(0, en.hp / maxhp), 3);
+  }
+  // 远程投射物
+  if (G.enemyProjectiles) {
+    for (const pr of G.enemyProjectiles) {
+      ctx.fillStyle = 'rgba(150,180,60,.8)';
+      ctx.beginPath(); ctx.arc(pr.x, pr.y, 3, 0, 7); ctx.fill();
+      ctx.fillStyle = 'rgba(200,220,120,.6)';
+      ctx.beginPath(); ctx.arc(pr.x, pr.y, 2, 0, 7); ctx.fill();
+    }
   }
 }
 
@@ -497,17 +562,80 @@ function drawBullets(ctx) {
   if (!G.bullets) return;
   for (const b of G.bullets) {
     const t = b.t / b.life;
-    ctx.strokeStyle = 'rgba(255,220,120,' + (1 - t).toFixed(2) + ')';
-    ctx.lineWidth = 2.5;
+    const cx = b.x + (b.tx - b.x) * t, cy = b.y + (b.ty - b.y) * t;
+    if (b.kind === 'laser') {
+      ctx.strokeStyle = 'rgba(255,60,80,' + (1 - t).toFixed(2) + ')';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
+    } else if (b.kind === 'flame') {
+      ctx.fillStyle = 'rgba(255,' + (120 + Math.random() * 60 | 0) + ',40,' + (1 - t).toFixed(2) + ')';
+      ctx.beginPath(); ctx.arc(cx, cy, 6 + Math.random() * 5, 0, 7); ctx.fill();
+    } else if (b.splash) {
+      // 火箭/手雷：轨迹 + 命中爆炸圈
+      ctx.strokeStyle = 'rgba(255,200,120,' + (1 - t).toFixed(2) + ')';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
+      if (t >= 1) {
+        ctx.strokeStyle = 'rgba(255,160,60,.8)';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(b.tx, b.ty, b.splash * TILE * 0.6, 0, 7); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,180,80,.25)';
+        ctx.beginPath(); ctx.arc(b.tx, b.ty, b.splash * TILE * 0.6, 0, 7); ctx.fill();
+      }
+    } else {
+      ctx.strokeStyle = 'rgba(255,220,120,' + (1 - t).toFixed(2) + ')';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
+    }
+  }
+}
+
+// 战斗机器人（胶囊投掷物）：悬浮小无人机，附电池条/血条
+function drawCombatRobots(ctx) {
+  if (!G.combatRobots) return;
+  for (const r of G.combatRobots) {
+    if (r.dead) continue;
+    const bob = Math.sin(G.time * 6 + r.x) * 2;
+    ctx.fillStyle = 'rgba(0,0,0,.25)';
     ctx.beginPath();
-    ctx.moveTo(b.x, b.y);
-    ctx.lineTo(b.x + (b.tx - b.x) * t, b.y + (b.ty - b.y) * t);
-    ctx.stroke();
+    ctx.ellipse(r.x, r.y + 8, r.size * 1.2, r.size * 0.5, 0, 0, 7);
+    ctx.fill();
+    // 机身
+    ctx.fillStyle = r.color;
+    ctx.strokeStyle = '#1a2028';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(r.x, r.y + bob, r.size, 0, 7);
+    ctx.fill(); ctx.stroke();
+    // 小翅膀
+    ctx.fillStyle = 'rgba(255,255,255,.35)';
+    ctx.fillRect(r.x - r.size - 3, r.y + bob - 1, 3, 4);
+    ctx.fillRect(r.x + r.size, r.y + bob - 1, 3, 4);
+    // 状态灯
+    ctx.fillStyle = r.kind === 'destroyer' ? '#ff5b5b' : (r.kind === 'distractor' ? '#ffd23c' : '#7ff0ff');
+    ctx.beginPath(); ctx.arc(r.x, r.y + bob - r.size * 0.5, 2, 0, 7); ctx.fill();
+    // 血条 / 续航条
+    const w = 14;
+    ctx.fillStyle = '#20242b';
+    ctx.fillRect(r.x - w / 2, r.y + bob - r.size - 7, w, 2.5);
+    ctx.fillStyle = r.hp > 0 ? '#57e389' : '#ff5b5b';
+    ctx.fillRect(r.x - w / 2, r.y + bob - r.size - 7, w * Math.max(0, r.hp / r.maxhp), 2.5);
   }
 }
 
 function drawPlayer(ctx) {
   const p = G.player;
+  // 载具驾驶中：不绘制玩家角色本体（载具已绘制），仅显示头顶驾驶员轮廓提示
+  if (p.inVehicle && G.driving && G.driving.ent) {
+    const bob = Math.sin(G.time * 4) * 1;
+    ctx.fillStyle = '#2a2620';
+    ctx.beginPath();
+    ctx.arc(p.x, p.y + 6 + bob, 5, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ffe0b0';
+    ctx.beginPath();
+    ctx.arc(p.x, p.y + 4 + bob, 2.4, 0, 7); ctx.fill();
+    return;
+  }
   // 地面阴影
   ctx.fillStyle = 'rgba(0,0,0,.3)';
   ctx.beginPath();

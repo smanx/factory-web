@@ -16,6 +16,11 @@ function hash2(x, y) {
 
 const T_GRASS = 0;
 const T_WATER = 1;
+const T_CONCRETE = 2;   // 混凝土（玩家行走加速）
+const T_PATH = 3;       // 石砖路（玩家行走加速）
+function isWalkableTerrain(t) { return t !== T_WATER; }
+// 地形是否“硬化”（混凝土/石砖路）：玩家行走速度提升
+function isPaved(t) { return t === T_CONCRETE || t === T_PATH; }
 
 // ===== 无限分块世界 =====
 // 世界由 32×32 块按需确定性生成。矿量稀疏存储：only remaining（被采过且
@@ -106,6 +111,11 @@ function getChunk(cx, cy) {
 function getTerrain(tx, ty) {
   const c = getChunk(Math.floor(tx / CHUNK), Math.floor(ty / CHUNK));
   return c.terrain[chunkLocalIdx(tx, ty)];
+}
+// 修改地形（混凝土/石砖路/填海等），随区块持久化；不会改变矿量。
+function setTerrain(tx, ty, value) {
+  const c = getChunk(Math.floor(tx / CHUNK), Math.floor(ty / CHUNK));
+  c.terrain[chunkLocalIdx(tx, ty)] = value;
 }
 
 function getOreType(tx, ty) {
@@ -265,6 +275,16 @@ function genChunk(cx, cy) {
     const sy = 2 + Math.floor(rng() * (CHUNK - 4));
     // 原油矿床：隔几格一个，整体聚集（gap≈3 即每个油点相隔 3 格左右）
     growOilField(terrain, oreType, oreAmt, rng, sx, sy, 4 + Math.floor(rng() * 5), 1500 + rng() * 2500, 3);
+  }
+
+  // 铀矿：距离较远处才生成（核能后期），越远越多，矿团适中
+  const uChance = dist > 120 ? 0.4 : dist > 60 ? 0.18 : 0.04;
+  if (rng() < uChance) {
+    const sx = 2 + Math.floor(rng() * (CHUNK - 4));
+    const sy = 2 + Math.floor(rng() * (CHUNK - 4));
+    const usz = Math.max(4, Math.round((10 + rng() * 12) * Math.min(2.2, scale)));
+    const uamt = (400 + rng() * 700) * scale;
+    growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, usz, uamt, ORE_URANIUM);
   }
 
   // 出生点保证：原点上一定有一片小型铁矿起步

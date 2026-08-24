@@ -87,6 +87,9 @@ function selectSlot(i) {
   if (G.deconstructMode) toggleDeconstructMode(false);
   G.sel = (G.sel === i ? -1 : i);
   G.quickSel = null;
+  // 选择武器：若该槽位是武器，则作为当前手持武器
+  if (G.sel >= 0 && HOTBAR[G.sel]) setWeapon(HOTBAR[G.sel]);
+  else if (G.sel < 0) setWeapon(null);
   refreshHotbar();
   closePanel(false);
 }
@@ -255,6 +258,10 @@ function htmlInventory() {
   // 组装机配方（含化工厂/炼油厂以外的普通配方）
   for (const rid in RECIPES) {
     if (isChemRecipe(rid)) continue;
+    if (isCentrifugeRecipe(rid)) continue;
+    const _r = RECIPES[rid];
+    // 含流体原料的配方不列入手搓清单（需在组装机/化工厂生产）
+    if (Object.keys(_r.inp).some(k => FLUIDS.indexOf(k) >= 0)) continue;
     const rec = RECIPES[rid];
     const ok = canCraft(rid);
     const outId = Object.keys(rec.out)[0];
@@ -556,7 +563,9 @@ function initPanelEvents() {
     }
     if (itEl && G.panelMode === 'inv' && !itEl.dataset.action) {
       const iid = itEl.dataset.itemid;
-      if (BUILD_DEFS[iid]) {
+      // 地面物品（混凝土/石砖路/填海）虽非建筑实体，但同样可选中放入快捷栏以铺设
+      const isGroundItem = iid === 'concrete' || iid === 'stone-path' || iid === 'landfill';
+      if (BUILD_DEFS[iid] || isGroundItem) {
         const idx = HOTBAR.indexOf(iid);
         if (idx >= 0) {
           G.sel = idx;
@@ -623,8 +632,15 @@ function initPanelEvents() {
       else if (act === 'exp-save') { downloadSave(); }
       else if (act === 'imp-save') { document.getElementById('imp-file').click(); }
       else if (act === 'craft') {
-        const made = doCraft(id, +(btn.dataset.mult || 1));
-        if (!made) toast('材料不足');
+        const n = +(btn.dataset.mult || 1);
+        // 手搓合成队列：按时间逐件制作（对齐《异星工厂》）
+        const queued = queueCraft(id, n);
+        if (!queued) toast('材料不足');
+        else {
+          // 队首已开始制作：优先把界面切换到背包以看到队列反馈
+          const cur = craftCurrent();
+          if (cur) toast('已开始制作 ' + ITEMS[cur.outId].name + (queued > 1 ? ' ×' + queued : ''));
+        }
       } else if (act === 'recipe') {
         const mch = G.panelEnt;
         if (mch && typeof mch.setRecipe === 'function') mch.setRecipe(id);
@@ -645,9 +661,18 @@ function initPanelEvents() {
         else toast('放不进去了');
       } else if (act === 'takein') {
         const mch = G.panelEnt;
-        for (const k of Object.keys(mch.inp || {})) {
-          invAdd(k, mch.inp[k]);
-          delete mch.inp[k];
+        if (btn.dataset.modules === '1') {
+          // 取出全部模块
+          for (const k of Object.keys(mch.modules || {})) {
+            invAdd(k, mch.modules[k]);
+            delete mch.modules[k];
+          }
+          mch.prodBuf = 0;
+        } else {
+          for (const k of Object.keys(mch.inp || {})) {
+            invAdd(k, mch.inp[k]);
+            delete mch.inp[k];
+          }
         }
       } else if (act === 'takeout') {
         // "取出全部"：各设备在自己的文件里实现 takeAll()（默认清空 outp）
@@ -834,7 +859,29 @@ function updateHUD(dt, fps) {
   const el = document.getElementById('hud-info');
   const p = G.player;
   const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
-  el.textContent = fps + '   (' + tx + ',' + ty + ')';
+  let hud = fps + '   (' + tx + ',' + ty + ')';
+  if (G.settings.combat) {
+    const hp = Math.max(0, Math.round(G.playerHP));
+    hud += '   <span style="color:' + (hp > 50 ? '#57e389' : hp > 25 ? '#ffd23c' : '#ff5b5b') + '">♥ ' + hp + '/' + G.playerHPmax + '</span>';
+  }
+  if (G.weapon && isWeapon(G.weapon)) {
+    hud += '   🔫 ' + WEAPONS[G.weapon].name;
+  }
+  // 手搓合成队列进度
+  const cur = craftCurrent();
+  if (cur) {
+    const pct = Math.min(100, (cur.done / cur.time) * 100);
+    const nm = (ITEMS[cur.outId] && ITEMS[cur.outId].name) || cur.outId;
+    const rest = (G.craftQueue ? G.craftQueue.length - 1 : 0);
+    hud += '   <span style="color:#7fd4a0">⚒ ' + nm +
+      (rest > 0 ? ' (+' + rest + ')' : '') + ' ' + pct.toFixed(0) + '%' +
+      ' <a href="javascript:void(0)" id="craft-cancel" style="color:#ff8a8a;pointer-events:auto;text-decoration:none" title="取消制作">✕</a></span>';
+  }
+  el.innerHTML = hud;
+  const cc = document.getElementById('craft-cancel');
+  if (cc) {
+    cc.onclick = () => { cancelCraftQueue(); toast('已取消制作（返还排队材料）'); };
+  }
 }
 
 function mapTipAt(tx, ty) {
@@ -866,7 +913,8 @@ function mapTipAt(tx, ty) {
   const ti = getOreType(tx, ty);
   if (ti >= 0 && getOreAmt(tx, ty) > 0) {
     if (ti === ORE_OIL) return '原油矿床|储量 ' + Math.floor(getOreAmt(tx, ty)) + '，建造抽油机开采（吃电力）';
-    return ITEMS[ORES[ti]].name + '|储量 ' + Math.floor(getOreAmt(tx, ty)) + '，按住左键开采';
+    const nm = oreItemId(ti);
+    return (ITEMS[nm] ? ITEMS[nm].name : '未知矿') + '|储量 ' + Math.floor(getOreAmt(tx, ty)) + '，按住左键开采';
   }
   return null;
 }
@@ -1022,7 +1070,7 @@ function buildDebug() {
     ['新地图', () => { newGame(); closePanel(); toast('新地图已生成'); }],
     ['切换战斗', () => {
       G.settings.combat = !G.settings.combat;
-      if (!G.settings.combat) { G.enemies = []; G.bullets = []; }
+      if (!G.settings.combat) { G.enemies = []; G.bullets = []; G.enemyProjectiles = []; }
       toast('战斗模式：' + (G.settings.combat ? '开启' : '关闭'));
     }]
   ];

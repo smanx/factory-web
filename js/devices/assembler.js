@@ -10,6 +10,8 @@ class Assembler extends Entity {
     this.crafting = false;
     this.prog = 0;
     this.spin = 0;
+    this.modules = {};      // { 'speed-module': n, 'productivity-module': n }
+    this.prodBuf = 0;       // 产能模块累积进度
   }
   fluidRecipe() {
     const r = this.recipe ? RECIPES[this.recipe] : null;
@@ -45,13 +47,14 @@ class Assembler extends Entity {
     if (G.power.sat <= 0) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
-      this.prog += dt * asmMult() * 0.5 * powerFactor();
+      this.prog += dt * asmMult() * 0.5 * this.moduleSpeedMult() * powerFactor();
       this.spin += dt * 4;
       if (this.prog >= rec.time) {
         for (const k in rec.out) {
           this.outp[k] = (this.outp[k] || 0) + rec.out[k];
           if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
         }
+        this.applyProductivity(rec);
         this.crafting = false;
         this.prog = 0;
       }
@@ -67,7 +70,36 @@ class Assembler extends Entity {
     this.crafting = true;
     this.prog = 0;
   }
-  powerDemand() { return this.recipe ? POWER_USE['assembling-machine'] : 0; }
+  // 模块速度倍率（速度模块加速，产能/效率模块小降速）
+  moduleSpeedMult() {
+    const nSpeed = this.modules['speed-module'] || 0;
+    const nProd = this.modules['productivity-module'] || 0;
+    const nEff = this.modules['efficiency-module'] || 0;
+    return 1 + 0.4 * nSpeed - 0.15 * nProd - 0.05 * nEff;
+  }
+  // 每次生产后结算产能模块：返回额外主产物数量
+  applyProductivity(rec) {
+    const nProd = this.modules['productivity-module'] || 0;
+    let bonus = 0;
+    if (nProd > 0) {
+      this.prodBuf = (this.prodBuf || 0) + nProd;
+      if (this.prodBuf >= 30) {
+        this.prodBuf -= 30;
+        const mainOut = Object.keys(rec.out)[0];
+        if (mainOut) { bonus = 1; this.outp[mainOut] = (this.outp[mainOut] || 0) + 1; if (typeof trackProd === 'function') trackProd(mainOut, 1); }
+      }
+    }
+    return bonus;
+  }
+  powerDemand() {
+    if (!this.recipe) return 0;
+    const nSpeed = this.modules['speed-module'] || 0;
+    const nProd = this.modules['productivity-module'] || 0;
+    const nEff = this.modules['efficiency-module'] || 0;
+    // 效率模块降低耗电（最多降到 20%）
+    const effMult = Math.max(0.2, 1 - 0.3 * nEff);
+    return POWER_USE['assembling-machine'] * (1 + (nSpeed + nProd) * 0.5) * effMult;
+  }
   setRecipe(id) {
     if (this.recipe === id) return;
     this.recipe = id;
@@ -75,6 +107,11 @@ class Assembler extends Entity {
     this.crafting = false; this.prog = 0;
   }
   giveItem(item) {
+    if (item === 'speed-module' || item === 'productivity-module' || item === 'efficiency-module') {
+      if ((this.modules[item] || 0) >= 4) return false;
+      this.modules[item] = (this.modules[item] || 0) + 1;
+      return true;
+    }
     if (!this.recipe) return false;
     const rec = RECIPES[this.recipe];
     if (!rec.inp[item]) return false;
@@ -103,6 +140,7 @@ class Assembler extends Entity {
   }
   contents() {
     const list = [[this.type, 1]];
+    for (const k in this.modules) if (this.modules[k] > 0) list.push([k, this.modules[k]]);
     for (const k in this.inp) list.push([k, this.inp[k]]);
     for (const k in this.outp) list.push([k, this.outp[k]]);
     return list;
@@ -111,6 +149,7 @@ class Assembler extends Entity {
     const s = super.serialize();
     s.recipe = this.recipe; s.inp = this.inp; s.outp = this.outp;
     s.crafting = this.crafting; s.prog = this.prog;
+    s.modules = this.modules; s.prodBuf = this.prodBuf;
     return s;
   }
   // 蓝图只保留配方配置，不复制内部原料/输出/进度
@@ -123,6 +162,7 @@ class Assembler extends Entity {
     const a = super.restore(s);
     a.recipe = s.recipe || null; a.inp = s.inp || {}; a.outp = s.outp || {};
     a.crafting = !!s.crafting; a.prog = s.prog || 0;
+    a.modules = s.modules || {}; a.prodBuf = s.prodBuf || 0;
     return a;
   }
 }
@@ -196,6 +236,15 @@ function assemblerPanelHtml(e) {
         ITEMS[k].name + ' ×' + n + '</button>';
     }
   if (Object.keys(e.inp).length) h += '<button data-action="takein">取回全部输入</button>';
+  // 模块槽位
+  h += row('模块', ((e.modules['speed-module'] || 0) + (e.modules['productivity-module'] || 0) + (e.modules['efficiency-module'] || 0)) ?
+    '速度×' + (e.modules['speed-module'] || 0) + ' 产能×' + (e.modules['productivity-module'] || 0) + ' 效率×' + (e.modules['efficiency-module'] || 0) : '<span class="dim">无</span>', 'mod');
+  for (const mid of ['speed-module', 'productivity-module', 'efficiency-module']) {
+    const n = Math.min(invCount(mid), 4 - (e.modules[mid] || 0));
+    if (n > 0) h += '<button data-action="feed" data-id="' + mid + '">装入' + ITEMS[mid].name + ' ×' + n + '</button>';
+  }
+  if ((e.modules['speed-module'] || 0) + (e.modules['productivity-module'] || 0) + (e.modules['efficiency-module'] || 0) > 0)
+    h += '<button data-action="takein" data-modules="1">取出全部模块</button>';
   h += row('输出', Object.keys(e.outp).length ? countStr(e.outp) : '<span class="dim">空</span>', 'output');
   h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
   h += barHtml(0);
@@ -203,7 +252,7 @@ function assemblerPanelHtml(e) {
   h += '<div class="sec">选择配方</div>';
   h += '<input id="asm-recipe-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off" value="">';
   h += '<div class="recgrid">';
-  for (const rid of Object.keys(RECIPES).filter(r => !isChemRecipe(r))) {
+  for (const rid of Object.keys(RECIPES).filter(r => !isChemRecipe(r) && !isCentrifugeRecipe(r))) {
     const outId = Object.keys(RECIPES[rid].out)[0];
     const selCls = e.recipe === rid ? 'sel' : '';
     // 鼠标悬停显示所需原料（异星工厂惯例）
@@ -224,6 +273,8 @@ function assemblerPanelLive(e, api) {
   if (typeof e.powerDemand === 'function') api.set('power', powerStatusLiveHtml(e));
   api.set('input', Object.keys(e.inp).length ? countStr(e.inp) : dimSpan('空'));
   api.set('output', Object.keys(e.outp).length ? countStr(e.outp) : dimSpan('空'));
+  api.set('mod', ((e.modules['speed-module'] || 0) + (e.modules['productivity-module'] || 0) + (e.modules['efficiency-module'] || 0)) ?
+    '速度×' + (e.modules['speed-module'] || 0) + ' 产能×' + (e.modules['productivity-module'] || 0) + ' 效率×' + (e.modules['efficiency-module'] || 0) : dimSpan('无'));
   const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
   api.toggle('#btn-takeout', n > 0, '取回全部输出 (' + n + ')');
   api.prog(e.recipe && e.crafting ? e.prog / RECIPES[e.recipe].time * 100 : 0);
