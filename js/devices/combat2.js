@@ -421,6 +421,13 @@ function damagePlayer(dmg) {
     if (a && a.protect) dmg *= a.protect;
   }
   dmg = Math.max(0, dmg);
+  // 能量护盾吸收：受击时优先消耗个人电网电力生成护盾吸收伤害（对齐《异星工厂》Energy shield）
+  if (typeof applyShieldAbsorb === 'function' && totalShieldCapacity() > 0) {
+    const before = dmg;
+    dmg = applyShieldAbsorb(dmg);
+    if (dmg < before && typeof playSfx === 'function') playSfx('shield');
+  }
+  dmg = Math.max(0, dmg);
   G.playerHP -= dmg;
   if (G.playerHP <= 0) {
     G.playerHP = 0;
@@ -489,6 +496,18 @@ function updateBullets(dt) {
       // 落点爆破特效（大圈）
       b.boomBig = true;
     }
+    // 火箭/手雷等范围爆炸：命中后延长存在时间以播放“冲击波扩散 + 火焰消散”动画（画面优化）
+    if (b.splash && !b.hit && b.t >= b.life) {
+      b.hit = true;
+      explodeDamage(b.tx, b.ty, b.splash, b.dmg);
+      b.boomBig = true;
+    }
+    if ((b.splash || b.boomBig) && b.hit && b._boomT === undefined) {
+      b._boomT = 0;
+      b._boomBase = b.life;
+      b.life = b._boomBase + (b.art ? 0.6 : 0.35);
+    }
+    if (b._boomT !== undefined) b._boomT += dt;
     // 地雷爆炸特效：仅视觉短促闪光，无需额外伤害（已由 removeEnt 前引爆）
   }
   G.bullets = G.bullets.filter(b => b.t < b.life);

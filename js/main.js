@@ -1465,6 +1465,8 @@ function loop(ts) {
       updateTrains(dt);
       if (typeof updateParticles === 'function') updateParticles(dt);
       updateCamera(dt);
+      // 环境氛围音（Web Audio 昼夜背景音）
+      if (typeof ambientUpdate === 'function') ambientUpdate(dt);
     }
 
     render();

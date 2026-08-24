@@ -441,8 +441,12 @@ function drawOreDots(ctx, px, py, itemId, amt, tx, ty) {
   const n = itemId === 'crude-oil'
     ? Math.max(1, Math.min(3, Math.round(Math.sqrt(Math.max(amt, 0)) / 40)))
     : Math.max(2, Math.min(7, Math.round(Math.sqrt(Math.max(amt, 0)) / 9)));
-  ctx.fillStyle = ITEMS[itemId].color;
-  ctx.strokeStyle = 'rgba(0,0,0,.25)';
+  const col = ITEMS[itemId].color;
+  // 在矿格上铺一层淡淡的底色，让矿脉更醒目、更具“富矿感”（画面优化）
+  ctx.fillStyle = 'rgba(' + hexToRgb(col) + ',0.18)';
+  ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 4);
+  ctx.fillStyle = col;
+  ctx.strokeStyle = 'rgba(0,0,0,.3)';
   ctx.lineWidth = 1;
   const rad = itemId === 'crude-oil' ? 5.5 : null;
   for (let i = 0; i < n; i++) {
@@ -453,14 +457,36 @@ function drawOreDots(ctx, px, py, itemId, amt, tx, ty) {
       ctx.ellipse(px + 6 + ox * (TILE - 12), py + 6 + oy * (TILE - 12), rad * (0.8 + ox * 0.5), rad * (0.6 + oy * 0.4), ox * 3, 0, 7);
       ctx.fill();
       ctx.stroke();
+      // 原油反光高光
+      ctx.fillStyle = 'rgba(255,255,255,.22)';
+      ctx.beginPath();
+      ctx.ellipse(px + 6 + ox * (TILE - 12) - rad * 0.3, py + 6 + oy * (TILE - 12) - rad * 0.25, rad * 0.28, rad * 0.18, ox * 3, 0, 7);
+      ctx.fill();
+      ctx.fillStyle = col;
       continue;
     }
     const r = 2 + hash2(tx + i, ty + i) * 1.4;
+    const cx = px + 5 + ox * (TILE - 10), cy = py + 5 + oy * (TILE - 10);
     ctx.beginPath();
-    ctx.arc(px + 5 + ox * (TILE - 10), py + 5 + oy * (TILE - 10), r, 0, 7);
+    ctx.arc(cx, cy, r, 0, 7);
     ctx.fill();
     ctx.stroke();
+    // 矿物顶部高光，增加立体感（画面优化）
+    ctx.fillStyle = 'rgba(255,255,255,.28)';
+    ctx.beginPath();
+    ctx.arc(cx - r * 0.3, cy - r * 0.35, r * 0.35, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = col;
   }
+}
+
+// 辅助：把 #rrggbb 颜色转成 'r,g,b' 字符串（用于矿格底色半透明填充）
+function hexToRgb(hex) {
+  if (hex.charAt(0) === '#') hex = hex.slice(1);
+  if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+  const n = parseInt(hex, 16);
+  if (isNaN(n)) return '128,128,128';
+  return ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255);
 }
 
 function drawGridIfBuilding(ctx) {
@@ -810,16 +836,29 @@ function drawBullets(ctx) {
       ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
       if (t >= 1) {
         const rad = (b.splash || 0) * TILE * (b.art ? 0.8 : 0.6);
+        // 爆炸推进进度：用 _boomT 让爆炸随时间膨胀/消散（画面优化：层次火球 + 冲击波环）
+        const boomDur = (b.art ? 0.6 : 0.35);
+        const age = (b._boomT || 0);
+        const prog = age > 0 ? Math.min(1, age / boomDur) : 1;
+        const grow = 0.7 + 0.6 * prog;               // 冲击波扩散
+        const fade = Math.max(0, 1 - prog);           // 火焰渐隐
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        // 爆炸：外层火球 + 中心高亮闪光
-        ctx.fillStyle = b.art ? 'rgba(255,120,50,.4)' : 'rgba(255,160,60,.35)';
+        // 外层冲击波环（扩散+渐隐）
+        ctx.strokeStyle = 'rgba(255,220,160,' + (fade * 0.6).toFixed(2) + ')';
+        ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.arc(b.tx, b.ty, rad * grow, 0, 7); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,150,70,' + (fade * 0.5).toFixed(2) + ')';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(b.tx, b.ty, rad * grow * 1.15, 0, 7); ctx.stroke();
+        // 外层火球 + 中心高亮闪光
+        ctx.fillStyle = b.art ? 'rgba(255,120,50,' + (0.4 * fade).toFixed(2) + ')' : 'rgba(255,160,60,' + (0.35 * fade).toFixed(2) + ')';
         ctx.beginPath(); ctx.arc(b.tx, b.ty, rad, 0, 7); ctx.fill();
-        ctx.fillStyle = b.art ? 'rgba(255,200,120,.55)' : 'rgba(255,220,140,.5)';
+        ctx.fillStyle = b.art ? 'rgba(255,200,120,' + (0.55 * fade).toFixed(2) + ')' : 'rgba(255,220,140,' + (0.5 * fade).toFixed(2) + ')';
         ctx.beginPath(); ctx.arc(b.tx, b.ty, rad * 0.55, 0, 7); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,230,.85)';
+        ctx.fillStyle = 'rgba(255,255,230,' + (0.85 * fade).toFixed(2) + ')';
         ctx.beginPath(); ctx.arc(b.tx, b.ty, rad * 0.22, 0, 7); ctx.fill();
-        ctx.strokeStyle = b.art ? 'rgba(255,120,50,.9)' : 'rgba(255,160,60,.8)';
+        ctx.strokeStyle = b.art ? 'rgba(255,120,50,' + (0.9 * fade).toFixed(2) + ')' : 'rgba(255,160,60,' + (0.8 * fade).toFixed(2) + ')';
         ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(b.tx, b.ty, rad, 0, 7); ctx.stroke();
         ctx.restore();
@@ -1068,6 +1107,26 @@ function drawPlayer(ctx) {
     const mx = hx + cx * 3.2, my = hy + cy * 3.2;
     ctx.arc(mx, my, 1.3, 0.3, Math.PI - 0.3);
     ctx.stroke();
+  }
+
+  // ---- 能量护盾：受击/激活时在玩家周身绘出淡蓝能量护罩（对齐《异星工厂》Energy shield 视觉）----
+  if (typeof totalShieldCapacity === 'function' && totalShieldCapacity() > 0) {
+    const cap = totalShieldCapacity();
+    const rem = (typeof shieldRemaining === 'function') ? shieldRemaining() : cap;
+    if (rem > 0) {
+      const pulse = 0.5 + 0.5 * Math.sin(G.time * 3);
+      const r = 15 + pulse * 1.5;
+      ctx.save();
+      // 护盾护罩：半透明淡蓝椭圆，随剩余护盾量淡化
+      ctx.globalAlpha = 0.10 + 0.10 * (rem / cap);
+      ctx.fillStyle = '#3ad0e0';
+      ctx.strokeStyle = '#8af0ff';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, r, r * 1.05, 0, 0, 7);
+      ctx.fill(); ctx.stroke();
+      ctx.restore();
+    }
   }
 }
 

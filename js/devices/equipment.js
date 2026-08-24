@@ -22,7 +22,10 @@ const EQUIPMENT = {
   'personal-battery-mk2':     { name: '个人电池 II',       size: 2, powerCap: 20000, desc: '储电 20MJ' },
   'exoskeleton':              { name: '外骨骼',            size: 2, speed: 0.4, desc: '移动速度 +40%' },
   'nightvision':              { name: '夜视仪',            size: 1, night: true, desc: '夜间如白昼' },
-  'personal-laser-defense':   { name: '个人激光防御',      size: 1, laser: 9, desc: '射程 9 格' }
+  'personal-laser-defense':   { name: '个人激光防御',      size: 1, laser: 9, desc: '射程 9 格' },
+  // 能量护盾：受击时优先消耗个人电网电力生成护盾吸收伤害（shield: 每件护盾吸收上限）
+  'energy-shield':            { name: '能量护盾',          size: 2, shield: 200, desc: '吸收 200 伤害' },
+  'energy-shield-mk2':        { name: '能量护盾 II',       size: 2, shield: 400, desc: '吸收 400 伤害' }
 };
 function isEquipment(id) { return !!EQUIPMENT[id]; }
 
@@ -145,6 +148,39 @@ function drainPersonalPower(amount) {
     return true;
   }
   return false;
+}
+
+// ===== 能量护盾（对齐《异星工厂》Energy shield） =====
+// 当前装备的所有护盾总吸收上限。
+function totalShieldCapacity() {
+  ensureEquip();
+  let cap = 0;
+  for (const e of G.equipGrid) {
+    const def = EQUIPMENT[e.id];
+    if (def && def.shield) cap += def.shield;
+  }
+  return cap;
+}
+// 当前护盾剩余可吸收量（受个人电网电力与护盾上限双重约束）。
+// 每点伤害需消耗 5 单位个人电力（与个人电池 10MJ 量级匹配），护盾电量为 0 则无吸收能力。
+function shieldRemaining() {
+  ensureEquip();
+  const cap = totalShieldCapacity();
+  if (cap <= 0) return 0;
+  return Math.min(cap, G.personalPower / 5);
+}
+// 用护盾吸收伤害。返回“实际扣除的玩家 HP 伤害”（已扣除被护盾吸收的部分）。
+function applyShieldAbsorb(dmg) {
+  ensureEquip();
+  const cap = totalShieldCapacity();
+  if (cap <= 0 || G.personalPower <= 0 || dmg <= 0) return dmg;
+  const absorb = Math.min(dmg, cap, G.personalPower / 5);
+  if (absorb <= 0) return dmg;
+  G.personalPower -= absorb * 5;
+  if (typeof spawnParticle === 'function') {
+    for (let i = 0; i < 4; i++) spawnParticle('spark', G.player.x, G.player.y, { color: '#4ad0e0', speed: 3, life: 0.4 });
+  }
+  return Math.max(0, dmg - absorb);
 }
 
 // ===== 装备效果接入 =====
@@ -275,6 +311,12 @@ function equipPowerHtml() {
   const pct = G.personalPowerMax > 0 ? Math.round(G.personalPower / G.personalPowerMax * 100) : 0;
   let h = '<div class="dim">个人电网：发电 ' + Math.round(G.personalPowerProd) + ' kW' +
     (G.personalPowerMax > 0 ? ' · 储电 ' + Math.round(G.personalPower / 1000) + '/' + Math.round(G.personalPowerMax / 1000) + ' MJ（' + pct + '%）' : '（未装电池，电力无法存储）') + '</div>';
+  // 能量护盾状态
+  if (typeof totalShieldCapacity === 'function' && totalShieldCapacity() > 0) {
+    const cap = totalShieldCapacity();
+    const rem = shieldRemaining();
+    h += '<div class="dim">🛡 能量护盾：剩余 ' + Math.round(rem) + ' / ' + cap + ' 伤害吸收（受击时消耗个人电网电力）</div>';
+  }
   return h;
 }
 

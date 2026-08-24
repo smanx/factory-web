@@ -253,6 +253,7 @@ const ITEMS = {
   'locomotive':        { name: '火车头', color: '#d04a3a', desc: '烧煤驱动的机车，在铁轨上行驶。煤装入后自动前进；可挂接货运车厢组成列车' },
   'cargo-wagon':       { name: '货运车厢', color: '#8a6a4a', desc: '货车厢，挂在火车头后沿铁轨随行，最多存放 10 种物品各 100 个。车站可用机械臂装卸' },
   'fluid-wagon':       { name: '流体车厢', color: '#4a90c0', desc: '罐车车厢，挂在车头后沿铁轨随行，可运输任意一种流体（容量 ' + FLUID_WAGON_CAP + '）。车站可用泵从侧边装卸流体' },
+  'artillery-wagon':   { name: '炮兵车厢', color: '#8a5a3a', desc: '挂载于列车的远程炮兵：列车行驶/停靠期间自动轰击射程内远处敌人，命中造成大范围爆炸，内装炮兵炮弹（对齐《异星工厂》Artillery wagon）' },
   'train-stop':        { name: '车站', color: '#5a8ac0', desc: '火车停靠站：列车行驶到车站所在铁轨即停车，便于机械臂/传送带装卸货物' },
   'rail-signal':       { name: '铁路信号灯', color: '#e04a4a', desc: '放在铁轨旁，指示前方区段是否被列车占用，用于多列火车防追尾（1×1）' },
   // ===== 润滑油 =====
@@ -272,7 +273,7 @@ const ITEMS = {
   'logistic-chest-buffer': { name: '缓冲箱', color: '#c8a05a', desc: '物流箱：介于需求箱与仓储箱之间——既按设定请求货物，又可向网络供应，作为中转缓冲（对齐《异星工厂》Buffer chest）' },
   'logistic-chest-requester': { name: '需求箱', color: '#5a8ad0', desc: '物流箱：在面板设置每种物品的需求量，物流机器人会自动从供应箱/仓储箱送货过来补足到目标数量' },
   // ===== 钓鱼与生鱼（对齐《异星工厂》：水域可钓鱼，钓到生鱼） =====
-  'raw-fish': { name: '生鱼', color: '#8ab0c0', mark: '鱼', desc: '在水域边缘钓鱼获得的基础食物，可作为低效燃料使用' },
+  'raw-fish': { name: '生鱼', color: '#8ab0c0', mark: '鱼', desc: '在水域边缘钓鱼获得的基础食物，可作为低效燃料使用；也可在背包中食用恢复生命值（对齐《异星工厂》：吃鱼治疗）' },
   // ===== 核能（对齐《异星工厂》核动力）=====
   'uranium-ore':  { name: '铀矿石', color: '#7fd44a', mark: 'U', desc: '放射性矿物，距出生点较远处生成，须用电采矿机开采，离心机处理成铀' },
   'uranium-235': { name: '铀-235', color: '#9af07a', mark: 'U⁵', desc: '裂变同位素，由离心机处理铀矿小概率获得；是制造核燃料的关键' },
@@ -312,6 +313,9 @@ const ITEMS = {
   'exoskeleton':    { name: '外骨骼', color: '#8a7a5a', desc: '装备件（2×2）：穿戴后大幅提升玩家移动速度，每个 +40%（叠加）' },
   'nightvision':    { name: '夜视仪', color: '#5aa05a', desc: '装备件（1×1）：夜间增强视野，使夜晚如同白昼（对齐《异星工厂》Night vision）' },
   'personal-laser-defense': { name: '个人激光防御', color: '#d04a5a', desc: '装备件（1×1）：自动攻击进入射程的敌人，消耗个人电力，每个激光器各自独立开火' },
+  // ===== 能量护盾（对齐《异星工厂》Energy shield：受击时消耗个人电力吸收伤害） =====
+  'energy-shield':   { name: '能量护盾', color: '#4ac0d0', desc: '装备件（2×2）：受击时优先消耗个人电网电力生成护盾吸收伤害（每件最多吸收 200 伤害），电力不足时护盾失效、按原伤害扣血' },
+  'energy-shield-mk2': { name: '能量护盾 II', color: '#3aa0e0', desc: '装备件（2×2）：更强大的能量护盾（每件最多吸收 400 伤害），受击时优先消耗个人电网电力吸收伤害（对齐《异星工厂》Energy shield MK2）' },
   // ===== 地形树木与木材（对齐《异星工厂》：树可砍伐获得木） =====
   'wood': { name: '木材', color: '#8a6a3a', mark: 'W', desc: '由砍伐树木获得，是木质家具与修理包的原料，也可作低效燃料' },
   // ===== 基础储物箱（对齐《异星工厂》：木箱/铁箱/钢箱递进） =====
@@ -332,6 +336,9 @@ const ITEMS = {
   'lubricant-barrel':      { name: '桶装润滑油', color: '#d8c020', mark: '桶', desc: '盛满润滑油的桶，可经物流网络运输，倒空后获得空桶' },
   'sulfuric-acid-barrel':  { name: '桶装硫酸', color: '#c8c030', mark: '桶', desc: '盛满硫酸的桶，可经物流网络运输，倒空后获得空桶' }
 };
+
+// ===== 食用生鱼回血（对齐《异星工厂》：吃鱼治疗） =====
+const FISH_HEAL = 20;  // 食用一条生鱼恢复的生命值
 
 // ===== 可桶装的流体（对齐《异星工厂》：所有流体均可桶装，蒸汽亦可） =====
 const BARREL_FLUIDS = ['water', 'steam', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas', 'lubricant', 'sulfuric-acid'];
@@ -429,6 +436,7 @@ const RECIPES = {
   'locomotive':        { time: 4,   inp: { 'iron-plate': 16, 'steel-plate': 6, 'iron-gear': 8, 'green-circuit': 4 }, out: { 'locomotive': 1 } },
   'cargo-wagon':       { time: 3,   inp: { 'iron-plate': 12, 'steel-plate': 6, 'iron-gear': 6 },  out: { 'cargo-wagon': 1 } },
   'fluid-wagon':       { time: 3,   inp: { 'iron-plate': 8, 'steel-plate': 6, 'pipe': 8 },        out: { 'fluid-wagon': 1 } },
+  'artillery-wagon':   { time: 8,   inp: { 'cargo-wagon': 1, 'artillery-turret': 1, 'steel-plate': 20, 'iron-gear': 10, 'processing-unit': 2 }, out: { 'artillery-wagon': 1 } },
   'train-stop':        { time: 2,   inp: { 'iron-plate': 8, 'green-circuit': 3, 'steel-plate': 2 }, out: { 'train-stop': 1 } },
   'rail-signal':       { time: 1,   inp: { 'iron-plate': 4, 'green-circuit': 1 },                 out: { 'rail-signal': 1 } },
   // ===== 载具（对齐《异星工厂》Car，需引擎单元）=====
@@ -558,7 +566,10 @@ const RECIPES = {
   'personal-battery-mk2': { time: 8, inp: { 'personal-battery': 2, 'processing-unit': 2, 'steel-plate': 4 }, out: { 'personal-battery-mk2': 1 } },
   'exoskeleton':       { time: 10,  inp: { 'engine-unit': 4, 'steel-plate': 20, 'processing-unit': 4, 'battery': 4 }, out: { 'exoskeleton': 1 } },
   'nightvision':       { time: 4,   inp: { 'iron-plate': 4, 'green-circuit': 3, 'advanced-circuit': 1 }, out: { 'nightvision': 1 } },
-  'personal-laser-defense': { time: 8, inp: { 'laser-turret': 1, 'processing-unit': 2, 'battery': 4 }, out: { 'personal-laser-defense': 1 } }
+  'personal-laser-defense': { time: 8, inp: { 'laser-turret': 1, 'processing-unit': 2, 'battery': 4 }, out: { 'personal-laser-defense': 1 } },
+  // ===== 能量护盾配方（对齐《异星工厂》：护盾需个人电池/高级电路板/处理器） =====
+  'energy-shield':   { time: 8,  inp: { 'steel-plate': 6, 'advanced-circuit': 4, 'battery': 2, 'processing-unit': 1 }, out: { 'energy-shield': 1 } },
+  'energy-shield-mk2': { time: 12, inp: { 'energy-shield': 1, 'steel-plate': 10, 'processing-unit': 4, 'battery': 4, 'low-density-structure': 2 }, out: { 'energy-shield-mk2': 1 } }
 };
 
 // ===== 流体桶装配方（对齐《异星工厂》Barrel system） =====
@@ -713,6 +724,7 @@ const BUILD_DEFS = {
   'locomotive':         { w: 1, h: 1, solid: true },
   'cargo-wagon':        { w: 1, h: 1, solid: true },
   'fluid-wagon':        { w: 1, h: 1, solid: true },
+  'artillery-wagon':    { w: 1, h: 1, solid: true },
   'train-stop':         { w: 1, h: 1, solid: true },
   'rail-signal':        { w: 1, h: 1, solid: true },
   'car':                { w: 2, h: 2, solid: true, rotSwap: true },
@@ -765,7 +777,7 @@ const BUILDING_HP = {
   'constant-combinator': 100, 'arithmetic-combinator': 100, 'decider-combinator': 100,
   'power-switch': 100,
   'lamp': 50, 'programmable-speaker': 100,
-  'rail': 100, 'locomotive': 300, 'cargo-wagon': 250, 'fluid-wagon': 250, 'train-stop': 300, 'rail-signal': 100,
+  'rail': 100, 'locomotive': 300, 'cargo-wagon': 250, 'fluid-wagon': 250, 'artillery-wagon': 300, 'train-stop': 300, 'rail-signal': 100,
   'car': 200, 'tank': 400, 'spidertron': 600, 'land-mine': 100
 };
 function buildingMaxHp(type) { return BUILDING_HP[type] || 100; }
@@ -780,6 +792,7 @@ const TECH_REQ = {
   'land-mine': 'military',
   'artillery-turret': 'advanced-combat',
   'artillery-shell': 'advanced-combat',
+  'artillery-wagon': 'advanced-combat',
   'laser-turret': 'advanced-combat',
   'flamethrower-turret': 'advanced-combat',
   'rocket-launcher': 'advanced-combat',
@@ -833,7 +846,10 @@ const TECH_REQ = {
   'exoskeleton': 'armor-power',
   'nightvision': 'armor-modular',
   'personal-laser-defense': 'armor-power',
-  'portable-fusion-reactor': 'armor-power-mk2'
+  'portable-fusion-reactor': 'armor-power-mk2',
+  // 能量护盾：I 型需强力装甲科技，II 型需终极强力装甲 II 科技（对齐《异星工厂》Energy shield 科技线）
+  'energy-shield': 'armor-power',
+  'energy-shield-mk2': 'armor-power-mk2'
 };
 // ===== 核能科技门控 =====
 for (const id of ['centrifuge', 'nuclear-reactor', 'steam-turbine', 'heat-pipe', 'heat-exchanger', 'uranium-235', 'uranium-238', 'nuclear-fuel']) {

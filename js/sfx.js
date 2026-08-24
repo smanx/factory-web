@@ -76,7 +76,11 @@ const SFX = {
   // 装备/穿戴（护甲、机器人港等）：金属“咔嗒”上滑
   equip: { type: 'square', dur: 0.12, f0: 320, f1: 560, vol: 0.2, slide: true },
   // 拆解/脱卸：短促下滑
-  unequip: { type: 'square', dur: 0.1, f0: 520, f1: 300, vol: 0.16, slide: true }
+  unequip: { type: 'square', dur: 0.1, f0: 520, f1: 300, vol: 0.16, slide: true },
+  // 能量护盾吸收：短促高频“嗡”闪光（对齐《异星工厂》能量护盾受击音）
+  shield: { type: 'triangle', dur: 0.14, f0: 1400, f1: 600, vol: 0.2, slide: true },
+  // 吃鱼回血：清爽“咕嘟”水声（对齐《异星工厂》吃鱼治疗音）
+  fish: { type: 'sine', dur: 0.3, f0: 500, f1: 300, vol: 0.16, slide: true, arpeggio: [500, 400, 300] }
 };
 
 function sfxInit() {
@@ -202,4 +206,133 @@ function playSfx(name) {
 function sfxUpdate() {
   if (AC && AC.state === 'suspended') return;
   if (!sfxReady && AC) sfxReady = true;
+}
+
+// =============================================================
+// 环境氛围音（Web Audio 昼夜背景音，画面氛围优化）
+// 在游戏过程中叠加一层极低音量的环境底噪，随昼夜周期变化：
+//   白昼：轻工业嗡鸣 + 偶尔鸟鸣，营造繁忙工厂的生机
+//   夜晚：静谧的虫鸣与低缓风声，营造野外静谧感
+// 全部程序化合成，零依赖；音量受主音效开关与音量滑块控制，极低开销。
+// =============================================================
+let ambNodes = null;          // 环境节点 { drone, filter, noise, g }（惰性创建）
+let ambAccentT = 0;           // 环境点缀音计时器
+
+function ambientPhase() {
+  if (typeof solarFactor !== 'function') return { light: 0.5 };
+  const f = solarFactor();
+  // f：0=深夜，1=正午。转成 0(夜)~1(昼) 连续亮度
+  return { light: f, phase: ((G.time / (DAY_CYCLE || 60)) % 1 + 1) % 1 };
+}
+
+// 惰性创建环境节点（首次需要时；用户手势后浏览器允许音频）
+function ambientEnsure() {
+  if (!G || !G.settings || !G.settings.sound || !sfxReady || !AC || !sfxMaster) return false;
+  if (ambNodes) return true;
+  try {
+    const g = AC.createGain();
+    g.gain.value = 0;
+    g.connect(sfxMaster);
+    // 白天工业嗡鸣：两个轻微失谐的方波振荡器，低通后叠加
+    const drone = AC.createOscillator();
+    drone.type = 'sine';
+    drone.frequency.value = 55;
+    const drone2 = AC.createOscillator();
+    drone2.type = 'sine';
+    drone2.frequency.value = 55.5;
+    const droneG = AC.createGain();
+    droneG.gain.value = 0.12;
+    const droneF = AC.createBiquadFilter();
+    droneF.type = 'lowpass';
+    droneF.frequency.value = 400;
+    drone.connect(droneG); drone2.connect(droneG);
+    droneG.connect(droneF);
+    droneF.connect(g);
+    drone.start(); drone2.start();
+    // 环境风声/底噪：白噪声 → 低通 → 慢速 LFO 呼吸
+    const noise = AC.createBufferSource();
+    noise.buffer = sfxNoiseBuf;
+    noise.loop = true;
+    const nF = AC.createBiquadFilter();
+    nF.type = 'lowpass';
+    nF.frequency.value = 600;
+    const nG = AC.createGain();
+    nG.gain.value = 0.05;
+    const lfo = AC.createOscillator();
+    lfo.frequency.value = 0.07;
+    const lfoG = AC.createGain();
+    lfoG.gain.value = 0.03;
+    lfo.connect(lfoG); lfoG.connect(nG.gain);
+    noise.connect(nF); nF.connect(nG); nG.connect(g);
+    noise.start(); lfo.start();
+    ambNodes = { g, drone, drone2, noise, nF, nG, lfo };
+    return true;
+  } catch (e) {
+    ambNodes = null;
+    return false;
+  }
+}
+
+// 播放一次环境点缀音（鸟鸣/虫鸣），由 ambientUpdate 按昼夜节奏触发
+function ambientAccent(light) {
+  if (!AC || !sfxMaster) return;
+  const now = AC.currentTime;
+  const out = AC.createGain();
+  out.gain.value = 1;
+  out.connect(sfxMaster);
+  const vol = ((G.settings.soundVol != null ? G.settings.soundVol : 1)) * (light > 0.4 ? 0.05 : 0.035);
+  if (light > 0.4) {
+    // 鸟鸣：两个短促上滑的清脆啁啾
+    for (const shift of [0, 0.09]) {
+      const osc = AC.createOscillator();
+      osc.type = 'sine';
+      const t0 = now + shift;
+      const gGain = AC.createGain();
+      gGain.gain.setValueAtTime(0.0001, t0);
+      gGain.gain.exponentialRampToValueAtTime(vol, t0 + 0.01);
+      gGain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.12);
+      const base = 2000 + Math.random() * 1500;
+      osc.frequency.setValueAtTime(base, t0);
+      osc.frequency.exponentialRampToValueAtTime(base * 1.6, t0 + 0.06);
+      osc.connect(gGain); gGain.connect(out);
+      osc.start(t0); osc.stop(t0 + 0.15);
+    }
+  } else {
+    // 虫鸣：高亢断续的短促鸣叫
+    for (let i = 0; i < 3; i++) {
+      const t0 = now + i * 0.07;
+      const osc = AC.createOscillator();
+      osc.type = 'sine';
+      const gGain = AC.createGain();
+      gGain.gain.setValueAtTime(0.0001, t0);
+      gGain.gain.exponentialRampToValueAtTime(vol * 0.8, t0 + 0.01);
+      gGain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.1);
+      osc.frequency.setValueAtTime(4400 + Math.random() * 400, t0);
+      osc.connect(gGain); gGain.connect(out);
+      osc.start(t0); osc.stop(t0 + 0.12);
+    }
+  }
+}
+
+// 每帧推进环境音：随昼夜调节音量/滤波，并间歇触发点缀音。
+function ambientUpdate(dt) {
+  if (!G || !G.settings || !G.settings.sound) { if (ambNodes) { try { ambNodes.g.gain.value = 0; } catch (e) {} } return; }
+  sfxInit();
+  if (!sfxReady) return;
+  sfxResume();
+  if (!ambientEnsure()) return;
+  const { light } = ambientPhase();
+  // 目标音量：白天略高、夜晚略低（整体很低，不喧宾夺主）
+  const baseVol = (G.settings.soundVol != null ? G.settings.soundVol : 1);
+  const target = (0.05 + 0.04 * light) * baseVol;
+  const cur = ambNodes.g.gain.value;
+  ambNodes.g.gain.value = cur + (target - cur) * Math.min(1, dt * 2);
+  // 风声低通滤波随昼夜变化（夜晚更低沉）
+  ambNodes.nF.frequency.value = 400 + light * 700;
+  // 点缀音节奏
+  ambAccentT -= dt;
+  if (ambAccentT <= 0) {
+    ambAccentT = (light > 0.4 ? 8 : 4) + Math.random() * 6;
+    ambientAccent(light);
+  }
 }
