@@ -33,6 +33,8 @@ const G = {
   blueStart: null,        // 框选起点瓦片
   blueEnd: null,          // 框选终点瓦片
   blueSelecting: false,   // 正在拖拽框选
+  greenAction: null,      // 绿图框选后的动作：'upgrade' | 'downgrade' | null
+  greenRect: null,        // 绿图最近一次框选区域
   statsTab: 'items',      // 统计面板当前页：items | power | perf
   statsItemTab: 'prod',   // 统计面板-物品速率页：prod(生产速率) | cons(消耗)
   machTab: 'prod',        // 设备面板-消耗/生产 tab：cons | prod
@@ -213,12 +215,109 @@ function tryPlaceAt(tx, ty) {
     if (tryAutoUnderground(type, tx, ty)) { uiDirty = true; }
     return;
   }
+  // 覆盖升级/降级：把带/地下带/分流器放到同族现有传送带上，直接覆盖当前连续的一段
+  const target = entAt(tx, ty);
+  if (target && canOverwriteWithBelt(type, target)) {
+    if (target instanceof Belt) {
+      upgradeBeltSegment(tx, ty, type, infinite);   // 传送带：一键升级/降级整条连续带线
+    } else {
+      overwriteBeltTile(tx, ty, type, infinite);     // 地下带/分流器：单格覆盖
+    }
+    return;
+  }
   const cls = ENT_CLASSES[type];
   const e = new cls(type, tx, ty);
   e.dir = G.ghostDir;
   e.applyDir();
   addEnt(e);
   if (!infinite) invTake(type, 1);
+  refreshHotbar();
+}
+
+// 点击传送带：用 type 覆盖目标，并一键升级/降级当前连续的所有同族传送带（对齐《异星工厂》覆盖升级整条带线）。
+// 只升级当前那一节（同一方向、相互衔接、同阶）的带子；消耗新带、返还旧带，物品保留。
+function upgradeBeltSegment(tx, ty, type, infinite) {
+  const oldType = entAt(tx, ty) ? entAt(tx, ty).type : null;
+  if (!oldType || oldType === type) return;   // 同阶覆盖：不消耗、视为未改变
+  const family = tierFamily(type);
+  const oldFamily = tierFamily(oldType);
+  if (!family || family !== oldFamily) return; // 非同族：不应走到这里
+
+  // 收集目标所在连续段：与目标同族、且当前同阶的相邻（含斜向衔接的转弯带）带子
+  const seg = new Set();
+  const q = [[tx, ty]];
+  seg.add(tx + ',' + ty);
+  while (q.length) {
+    const [cx, cy] = q.pop();
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = cx + dx, ny = cy + dy;
+      const k = nx + ',' + ny;
+      if (seg.has(k)) continue;
+      const n = entAt(nx, ny);
+      if (n && tierFamily(n.type) === family && n.type === oldType) {
+        seg.add(k);
+        q.push([nx, ny]);
+      }
+    }
+  }
+  const count = seg.size;
+  // 检查是否有足够的新带（升级时消耗；降级时不消耗反而返还旧带）
+  if (!infinite && tierNext(oldType) === type && invCount(type) < count) {
+    toast('背包里没有足够的' + ITEMS[type].name + '（需 ' + count + '）');
+    return;
+  }
+  // 执行：把段内所有带子换成新带，保留朝向与物品
+  for (const k of seg) {
+    const [sx, sy] = k.split(',').map(Number);
+    const e = entAt(sx, sy);
+    const dir = e.dir;
+    const items = e.items ? e.items.map(o => ({ item: o.item, pos: o.pos })) : [];
+    removeEnt(e);
+    const cls = ENT_CLASSES[type];
+    const ne = new cls(type, sx, sy);
+    ne.dir = dir;
+    ne.applyDir();
+    if (ne.items) ne.items = items;
+    addEnt(ne);
+  }
+  if (!infinite) {
+    if (tierNext(oldType) === type) invTake(type, count);          // 升级：扣新带
+    else invAdd(oldType, count);                                     // 降级：返还旧带
+  }
+  if (G.panelEnt && seg.has(G.panelEnt.x + ',' + G.panelEnt.y)) closePanel();
+  toast('已' + (tierNext(oldType) === type ? '升级' : '降级') + ' ' + count + ' 格' + ITEMS[oldType].name + ' → ' + ITEMS[type].name);
+  uiDirty = true;
+  refreshHotbar();
+}
+
+// 单格覆盖：地下带/分流器等非 1×1 带子在原位置直接替换为 type（对齐《异星工厂》覆盖升级）
+function overwriteBeltTile(tx, ty, type, infinite) {
+  const old = entAt(tx, ty);
+  if (!old) return;
+  const oldType = old.type;
+  if (oldType === type) return;
+  const dir = old.dir;
+  const items = old.items ? old.items.map(o => ({ item: o.item, pos: o.pos })) : [];
+  const outp = old.outp ? JSON.parse(JSON.stringify(old.outp)) : null;
+  if (!infinite && tierNext(oldType) === type && invCount(type) < 1) {
+    toast('背包里没有' + ITEMS[type].name);
+    return;
+  }
+  removeEnt(old);
+  const cls = ENT_CLASSES[type];
+  const ne = new cls(type, tx, ty);
+  ne.dir = dir;
+  ne.applyDir();
+  if (ne.items) ne.items = items;
+  if (ne.outp && outp) ne.outp = outp;
+  addEnt(ne);
+  if (!infinite) {
+    if (tierNext(oldType) === type) invTake(type, 1);
+    else invAdd(oldType, 1);
+  }
+  if (G.panelEnt === old) closePanel();
+  toast('已' + (tierNext(oldType) === type ? '升级' : '降级') + '为 ' + ITEMS[type].name);
+  uiDirty = true;
   refreshHotbar();
 }
 
@@ -323,15 +422,20 @@ function toggleBlueprint(mode) {
   }
   G.blueMode = mode;
   G.blueStart = null; G.blueEnd = null;
+  G.greenAction = null;
   G.sel = -1; G.quickSel = null; refreshHotbar();
   toast(mode === 'blue'
     ? '蓝图模式：拖拽框选要复制的区域，松开后点击空白处粘贴'
-    : '红图模式：拖拽框选要删除的区域，松开即删除整块');
+    : mode === 'red'
+      ? '红图模式：拖拽框选要删除的区域，松开即删除整块'
+      : '绿图模式：拖拽框选要升级/降级的区域，松开后选择升级或降级');
 }
 
 function cancelBlueprint() {
   G.blueMode = null;
   G.blueStart = null; G.blueEnd = null;
+  G.greenRect = null; G.greenAction = null;
+  hideGreenBar();
   refreshHotbar();
 }
 
@@ -370,6 +474,100 @@ function applyRedBlueprint() {
   // 保持红图模式，仅重置框选范围，便于继续框选删除
   G.blueStart = null; G.blueEnd = null;
   toast('红图：已删除 ' + count + ' 个建筑（物资已返还背包），可继续框选');
+  uiDirty = true;
+}
+
+// 绿图：框选完成后，记录区域并弹出升级/降级操作栏，由用户选择后批量升级/降级
+function applyGreenBlueprint() {
+  const r = blueRect();
+  if (!r) return;
+  // 统计区域内可升级/降级的同族物流数量，供操作栏显示
+  const stats = greenAreaStats(r);
+  if (!stats.total) {
+    G.blueStart = null; G.blueEnd = null;
+    toast('框选区域内没有可升级/降级的传送带');
+    return;
+  }
+  G.greenRect = r;
+  G.greenAction = null;
+  // 保持绿图模式，展示操作栏，便于继续框选
+  showGreenBar(r, stats);
+}
+
+// 统计矩形区域内可升级（有更高阶）/可降级（有更低阶）的带子数量
+function greenAreaStats(r) {
+  const seen = new Set();
+  let up = 0, down = 0, total = 0;
+  for (let ty = r.y0; ty <= r.y1; ty++) {
+    for (let tx = r.x0; tx <= r.x1; tx++) {
+      const e = entAt(tx, ty);
+      if (!e || seen.has(e)) continue;
+      seen.add(e);
+      const cx = e.x + Math.floor(e.w / 2), cy = e.y + Math.floor(e.h / 2);
+      if (cx < r.x0 || cx > r.x1 || cy < r.y0 || cy > r.y1) continue;
+      if (!tierFamily(e.type)) continue;
+      total++;
+      if (tierNext(e.type)) up++;
+      if (tierPrev(e.type)) down++;
+    }
+  }
+  return { up, down, total };
+}
+
+// 显示绿图操作栏（升级/降级/取消）
+function showGreenBar(r, stats) {
+  const bar = document.getElementById('greenbar');
+  if (!bar) return;
+  const w = (r.x1 - r.x0 + 1), h = (r.y1 - r.y0 + 1);
+  bar.innerHTML =
+    '<span class="gb-t">绿图 ' + w + '×' + h + '：可升级 ' + stats.up + ' · 可降级 ' + stats.down + '</span>' +
+    '<button data-gact="upgrade">⬆ 一键升级</button>' +
+    '<button data-gact="downgrade">⬇ 一键降级</button>' +
+    '<button data-gact="cancel">取消</button>';
+  bar.style.display = 'flex';
+}
+
+function hideGreenBar() {
+  const bar = document.getElementById('greenbar');
+  if (bar) bar.style.display = 'none';
+}
+
+// 执行绿图升级/降级：作用于上次框选的 greenRect 内所有同族带子
+function greenAreaAction(action) {
+  const r = G.greenRect;
+  if (!r) return;
+  const infinite = !!(G.dbg && G.dbg.infinite);
+  let changed = 0;
+  const seen = new Set();
+  for (let ty = r.y0; ty <= r.y1; ty++) {
+    for (let tx = r.x0; tx <= r.x1; tx++) {
+      const e = entAt(tx, ty);
+      if (!e || seen.has(e)) continue;
+      seen.add(e);
+      const cx = e.x + Math.floor(e.w / 2), cy = e.y + Math.floor(e.h / 2);
+      if (cx < r.x0 || cx > r.x1 || cy < r.y0 || cy > r.y1) continue;
+      if (!tierFamily(e.type)) continue;
+      const target = action === 'upgrade' ? tierNext(e.type) : tierPrev(e.type);
+      if (!target) continue;
+      if (!infinite && action === 'upgrade' && invCount(target) < 1) continue;   // 升级需有对应新带
+      const dir = e.dir;
+      const items = e.items ? e.items.map(o => ({ item: o.item, pos: o.pos })) : [];
+      removeEnt(e);
+      const cls = ENT_CLASSES[target];
+      const ne = new cls(target, e.x, e.y);
+      ne.dir = dir;
+      ne.applyDir();
+      if (ne.items) ne.items = items;
+      addEnt(ne);
+      if (!infinite) {
+        if (action === 'upgrade') invTake(target, 1);
+        else invAdd(e.type, 1);
+      }
+      changed++;
+    }
+  }
+  if (G.panelEnt && !G.ents.includes(G.panelEnt)) closePanel();
+  toast('绿图已' + (action === 'upgrade' ? '升级' : '降级') + ' ' + changed + ' 格传送带');
   uiDirty = true;
 }
 
@@ -653,6 +851,7 @@ function bindInput() {
       if (!G.blueStart || !G.blueEnd) { cancelBlueprint(); return; }
       if (G.blueMode === 'blue') captureBlueprint();
       else if (G.blueMode === 'red') applyRedBlueprint();
+      else if (G.blueMode === 'green') applyGreenBlueprint();
     }
   });
   G.canvas.addEventListener('contextmenu', ev => ev.preventDefault());

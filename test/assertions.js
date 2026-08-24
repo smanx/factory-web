@@ -554,6 +554,77 @@ G.blueMode = null;
 G.blueprint = null;
 toast = savedToastFn;
 
+// ==================== 新增：传送带旋转 / 覆盖升级降级 / 绿图 ====================
+// 传送带阶级链
+check('belt tier chain defined', BELT_TIERS.join(',') === 'transport-belt,fast-transport-belt,express-transport-belt');
+check('tierNext/Prev for belts', tierNext('transport-belt') === 'fast-transport-belt' && tierNext('fast-transport-belt') === 'express-transport-belt' && tierNext('express-transport-belt') === null);
+check('tierPrev for belts', tierPrev('express-transport-belt') === 'fast-transport-belt' && tierPrev('transport-belt') === null);
+check('sameTierFamily true for belts, false cross-family', sameTierFamily('transport-belt', 'express-transport-belt') === true && sameTierFamily('transport-belt', 'underground') === false);
+check('underground/splitter chains registered', tierNext('underground') === 'fast-underground-belt' && tierNext('splitter') === 'priority-splitter');
+
+// R 键旋转：已铺设传送带可旋转
+check('belts are R-rotatable', DEVICE_DIR_ROTATE['transport-belt'] === true && DEVICE_DIR_ROTATE['fast-transport-belt'] === true && DEVICE_DIR_ROTATE['express-transport-belt'] === true);
+const rotBelt = place(Belt, 400, 200);
+rotBelt.dir = 0;
+G.player = { x: rotBelt.x, y: rotBelt.y };
+G.cursorTile = { tx: 400, ty: 200 };
+G.dbg.farReach = true;
+rotateAction();
+check('R rotates placed belt', rotBelt.dir === 1);
+
+// 覆盖升级：用快速带覆盖普通带，应升级整条连续带线并消耗新带
+const savedToastFn2 = toast;
+toast = () => {};
+// 清理当前玩家选区
+G.blueMode = null;
+G.sel = -1; G.quickSel = null;
+// 摆放一条 3 格普通带（横向连续）
+for (let i = 0; i < 3; i++) { const b = place(Belt, 410 + i, 210); b.dir = 0; }
+const beforeCount = G.ents.filter(e => e.type === 'transport-belt' && e.x >= 410 && e.x <= 412 && e.y === 210).length;
+check('placed 3 contiguous normal belts', beforeCount === 3);
+// 背包放入快速带，选中快速带并尝试放置到其中一格 → 升级整段
+invAdd('fast-transport-belt', 10);
+G.quickSel = 'fast-transport-belt';
+G.ghostDir = 0;
+G.cursorTile = { tx: 411, ty: 210 };
+tryPlaceAt(411, 210);
+const upCount = G.ents.filter(e => e.type === 'fast-transport-belt' && e.x >= 410 && e.x <= 412 && e.y === 210).length;
+check('overwrite upgrades whole contiguous segment', upCount === 3);
+check('upgrade consumed 3 fast belts', invCount('fast-transport-belt') === 7);
+// 降级：用普通带覆盖快速带，返还旧带
+invAdd('transport-belt', 5);
+G.quickSel = 'transport-belt';
+G.cursorTile = { tx: 410, ty: 210 };
+tryPlaceAt(410, 210);
+const downCount = G.ents.filter(e => e.type === 'transport-belt' && e.x >= 410 && e.x <= 412 && e.y === 210).length;
+check('overwrite downgrades whole contiguous segment', downCount === 3);
+check('downgrade refunds fast belts', invCount('fast-transport-belt') === 10);
+
+// 同阶覆盖：不改变、不消耗
+const sameCount = G.ents.filter(e => e.type === 'transport-belt' && e.x >= 410 && e.x <= 412 && e.y === 210).length;
+G.quickSel = 'transport-belt';
+G.cursorTile = { tx: 411, ty: 210 };
+tryPlaceAt(411, 210);
+check('same-tier overwrite no change', G.ents.filter(e => e.type === 'transport-belt' && e.x >= 410 && e.x <= 412 && e.y === 210).length === sameCount);
+
+// 绿图：框选区域统计 + 一键升级 + 一键降级
+G.blueMode = 'green';
+G.blueStart = { tx: 410, ty: 210 };
+G.blueEnd = { tx: 412, ty: 210 };
+applyGreenBlueprint();
+check('greenprint selects area & stores rect', G.greenRect && G.greenRect.x0 === 410 && G.greenRect.x1 === 412);
+// 升级：把区域内普通带升级为快速带
+greenAreaAction('upgrade');
+const gUp = G.ents.filter(e => e.type === 'fast-transport-belt' && e.x >= 410 && e.x <= 412 && e.y === 210).length;
+check('greenprint one-click upgrade', gUp === 3);
+// 降级：把区域内快速带降级为普通带
+greenAreaAction('downgrade');
+const gDown = G.ents.filter(e => e.type === 'transport-belt' && e.x >= 410 && e.x <= 412 && e.y === 210).length;
+check('greenprint one-click downgrade', gDown === 3);
+G.blueMode = null;
+G.greenRect = null;
+toast = savedToastFn2;
+
 // ==================== 地下传送带：进洞的货只能从出口出来 ====================
 // Bug：地下带同时作为“出口（接收后方入口）”和“入口（转发给更前方出口）”时，
 // 若在其后一格放普通传送带，货会泄漏到该带，而不是继续走地下到最终出口。

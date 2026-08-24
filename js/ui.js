@@ -595,6 +595,19 @@ function initTopButtons() {
     closePanel();
     toggleBlueprint('red');
   });
+  document.getElementById('btn-green').addEventListener('click', () => {
+    closePanel();
+    toggleBlueprint('green');
+  });
+  // 绿图操作栏：升级/降级/取消
+  const greenbar = document.getElementById('greenbar');
+  if (greenbar) greenbar.addEventListener('click', ev => {
+    const b = ev.target.closest('[data-gact]');
+    if (!b) return;
+    const act = b.dataset.gact;
+    if (act === 'cancel') { hideGreenBar(); G.greenRect = null; return; }
+    greenAreaAction(act);
+  });
   document.getElementById('btn-set').addEventListener('click', () =>
     G.panelMode === 'set' ? closePanel() : openPanel('set'));
   document.getElementById('btn-save').addEventListener('click', saveGame);

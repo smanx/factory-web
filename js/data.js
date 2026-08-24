@@ -268,6 +268,29 @@ const BUILD_DEFS = {
   'storage-tank':       { w: 3, h: 3, solid: true }
 };
 
+// ===== 传送带阶级链（对齐《异星工厂》物流升级）=====
+// 普通带 → 快速带 → 极速带。用于 R 旋转、覆盖升级/降级、绿图批量升级等。
+const BELT_TIERS = ['transport-belt', 'fast-transport-belt', 'express-transport-belt'];
+const UNDERGROUND_TIERS = ['underground', 'fast-underground-belt', 'express-underground-belt'];
+const SPLITTER_TIERS = ['splitter', 'priority-splitter', 'express-splitter'];
+// 合并为“可升级物流链”查表：type -> 高一阶 / 低一阶（无则返回 null）
+const TIER_NEXT = {};
+const TIER_PREV = {};
+for (const chain of [BELT_TIERS, UNDERGROUND_TIERS, SPLITTER_TIERS]) {
+  for (let i = 0; i < chain.length; i++) {
+    TIER_NEXT[chain[i]] = i + 1 < chain.length ? chain[i + 1] : null;
+    TIER_PREV[chain[i]] = i > 0 ? chain[i - 1] : null;
+  }
+}
+// 属于同一条升级链的族：用于判断“能否用同类覆盖”（普通带只能被带系/地下带/分流器按各自链条覆盖）
+const TIER_FAMILY = {};
+for (const chain of [BELT_TIERS, UNDERGROUND_TIERS, SPLITTER_TIERS]) for (const t of chain) TIER_FAMILY[t] = chain;
+function tierNext(type) { return TIER_NEXT[type] || null; }
+function tierPrev(type) { return TIER_PREV[type] || null; }
+function tierFamily(type) { return TIER_FAMILY[type] || null; }
+// 判断两种物流类型是否属于同一升级链（可互相覆盖升级/降级）
+function sameTierFamily(a, b) { return !!tierFamily(a) && tierFamily(a) === tierFamily(b); }
+
 const DEFAULT_HOTBAR = ['transport-belt', 'splitter', 'underground', 'inserter', 'long-inserter', 'burner-drill', 'stone-furnace', 'assembling-machine', 'storage-chest', 'lab'];
 let HOTBAR = DEFAULT_HOTBAR.slice();
 

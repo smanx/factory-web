@@ -246,6 +246,33 @@ html, body {
 }
 .toast.fade { opacity: 0; }
 
+/* 绿图操作栏：框选后选择升级/降级 */
+#greenbar {
+  position: absolute;
+  top: 58px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(16, 24, 18, .92);
+  border: 1px solid #3f6f50;
+  color: #e8f6ec;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  z-index: 70;
+  box-shadow: 0 2px 10px rgba(0,0,0,.4);
+}
+#greenbar .gb-t { color: #9fe0b2; margin-right: 4px; }
+#greenbar button {
+  background: #235036;
+  color: #d9f5e2;
+  border: 1px solid #3f8a5a;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+#greenbar button:hover { background: #2e6b43; }
+
 #tooltip {
   position: fixed;
   display: none;
