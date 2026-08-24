@@ -166,9 +166,14 @@ function renderPanel(full) {
     renderSettingsAsync(body, st);
   } else if (G.panelMode === 'machine' && G.panelEnt) {
     title.textContent = ITEMS[G.panelEnt.type].name;
-    // 机器面板：设备专属内容 + 底部通用“拆除”按钮（PC/手机端均可点击拆除当前建筑）
+    // 机器面板：设备专属内容 + 底部通用操作区（旋转/水平翻转/垂直翻转/拆除，PC/手机端均可点击操作当前建筑）
     body.innerHTML = htmlMachine(G.panelEnt) +
       '<div class="sec">操作</div>' +
+      '<div class="panel-op-row">' +
+        '<button data-action="panel-rotate" class="panel-op-btn" title="顺时针旋转 90°（R）">⟳ 旋转</button>' +
+        '<button data-action="panel-flip-h" class="panel-op-btn" title="水平翻转（H）">⇋ 水平翻转</button>' +
+        '<button data-action="panel-flip-v" class="panel-op-btn" title="垂直翻转（V）">⇵ 垂直翻转</button>' +
+      '</div>' +
       '<button data-action="panel-deconstruct" class="deconstruct-btn-inline">✖ 拆除该建筑</button>';
   }
   if (G.panelMode !== 'set') body.scrollTop = st;
@@ -620,6 +625,30 @@ function initPanelEvents() {
         G.activeTech = id;
       } else if (act === 'tech-cancel') {
         G.activeTech = null;
+      } else if (act === 'panel-rotate' || act === 'panel-flip-h' || act === 'panel-flip-v') {
+        // 面板操作区：旋转 / 水平翻转 / 垂直翻转当前选中的建筑（复用蓝图变换的方向算法）
+        const mch = G.panelEnt;
+        if (mch && G.ents.includes(mch) && BUILD_DEFS[mch.type]) {
+          const nd = act === 'panel-rotate' ? (mch.dir + 1) % 4 : flipDir(mch.dir, act === 'panel-flip-h' ? 'h' : 'v');
+          if (nd === mch.dir && act !== 'panel-rotate') { toast('该建筑已处于该朝向'); }
+          // 非方形设备（分流器类）：旋转/翻转后脚印变化，需重挂网格
+          if (BUILD_DEFS[mch.type].rotSwap) {
+            if (mch.type === 'offshore-pump' && !pumpCanFace(mch, nd)) { toast('抽水机无法朝该方向操作：必须仍压在水面上'); return; }
+            removeEnt(mch);
+            mch.dir = nd;
+            mch.applyDir();
+            addEnt(mch);
+            uiDirty = true;
+          } else if (DEVICE_DIR_ROTATE[mch.type]) {
+            // 有朝向的设备：直接旋转/翻转（传送带方向变化会改变输入侧判定，失效附近缓存）
+            mch.dir = nd;
+            invalidateBeltInputNear(mch.x, mch.y, mch.w, mch.h);
+            if (typeof mch.onRotate === 'function') mch.onRotate();
+            uiDirty = true;
+          } else {
+            toast('该建筑不支持旋转/翻转');
+          }
+        }
       } else if (act === 'panel-deconstruct') {
         // 建筑面板内的“拆除”按钮：拆除当前选中的建筑（PC/手机端通用）
         const mch = G.panelEnt;
