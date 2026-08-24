@@ -21,6 +21,14 @@ const REACH_TILES = 5.5;
 const REACH_PX = REACH_TILES * TILE;
 const LAB_TIME = 1; // 研究中心每瓶科学包耗时（秒）
 // 功率数值对齐《异星工厂》(Factorio) 官方 Wiki（单位 kW）
+// ===== 火箭发射（终局目标，对齐《异星工厂》火箭发射井）=====
+// 发射井固定配方：4 低密度结构 + 4 火箭燃料 + 4 处理器 → 1 火箭部件（12 秒/件）；
+// 攒满 100 个部件自动点火发射（Space Age 同款 50 部件的减负版取 100 对齐本体）。
+const ROCKET_PART_TIME = 12;
+const ROCKET_PARTS_TOTAL = 100;
+const ROCKET_LAUNCH_DUR = 8;   // 点火到升空完成的动画时长（秒）
+const SILO_INPUT_CAP = 200;    // 发射井每种原料缓存上限
+const ROCKET_PART_RECIPE = { time: ROCKET_PART_TIME, inp: { 'low-density-structure': 4, 'rocket-fuel': 4, 'processing-unit': 4 }, out: { 'rocket-part': 1 } };
 const POWER_PER_ENGINE = 900;   // 蒸汽机满功率输出
 const POWER_USE = {
   'electric-drill': 90,          // 电采矿机
@@ -31,7 +39,8 @@ const POWER_USE = {
   'pumpjack': 90,                // 抽油机
   'refinery': 420,               // 炼油厂
   'chemical-plant': 210,         // 化工厂
-  'lab': 60                      // 研究中心
+  'lab': 60,                     // 研究中心
+  'rocket-silo': 350             // 火箭发射井
 };
 
 // ===== 发电链（抽水机 → 水 → 锅炉烧出蒸汽 → 蒸汽口送汽 → 蒸汽机发电）=====
@@ -44,7 +53,7 @@ const PUMP_RATE = 6;             // 抽水机每秒产水
 const ENGINE_STEAM_RATE = 0.6;   // 蒸汽机满功率耗汽（单位/秒）：1 台锅炉可带 2 台蒸汽机
 const ENGINE_STEAM_CAP = 10;     // 蒸汽机内部储汽上限
 
-const FLUIDS = ['water', 'steam', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas'];
+const FLUIDS = ['water', 'steam', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas', 'lubricant', 'sulfuric-acid'];
 const ORE_OIL = 5;                       // 原油矿床的 oreType 索引（不进手挖矿表）
 function oreItemId(ti) { return ti === ORE_OIL ? 'crude-oil' : ORES[ti]; }
 const PIPE_CAP = 40;
@@ -52,11 +61,13 @@ const PIPE_FLOW = 3;
 // 储液罐（对齐《异星工厂》Storage Tank）：占地 3×3、容量大、只存单一流体，东西两侧各一个通用流体口
 const STORAGE_TANK_CAP = 2500;
 
-const SCIENCE_PACKS = ['science-pack', 'green-science', 'blue-science', 'military-science'];
+const SCIENCE_PACKS = ['science-pack', 'green-science', 'blue-science', 'military-science', 'production-science', 'utility-science'];
 function isScience(item) { return SCIENCE_PACKS.indexOf(item) >= 0; }
 const FILTER_CHOICES = ['iron-plate', 'copper-plate', 'steel-plate', 'iron-gear', 'copper-cable', 'green-circuit',
   'coal', 'stone', 'plastic-bar', 'science-pack', 'green-science', 'blue-science', 'military-science',
-  'magazine', 'piercing-rounds'].concat(FLUIDS);
+  'magazine', 'piercing-rounds', 'sulfur', 'battery', 'advanced-circuit', 'processing-unit',
+  'electric-engine-unit', 'flying-robot-frame', 'low-density-structure', 'rocket-fuel',
+  'production-science', 'utility-science'].concat(FLUIDS);
 function techPacks(tid) { return (TECHS && TECHS[tid] && TECHS[tid].cost) || {}; }
 function techCostTotal(tid) {
   let s = 0;
@@ -139,7 +150,22 @@ const ITEMS = {
   'magazine':          { name: '弹药匣', color: '#b08a4a', desc: '机枪炮塔的标准弹药' },
   'piercing-rounds':   { name: '穿甲弹', color: '#b05a4a', desc: '比普通弹药威力更高的穿甲弹药' },
   'refinery':          { name: '炼油厂', color: '#b06a3e', desc: '把原油炼成重油/轻油/石油气，或煤液化（5×5，吃电力，需选配方）。背面2输入、正面3输出' },
-  'chemical-plant':    { name: '化工厂', color: '#7d9464', desc: '流体化学加工厂：石油气+煤→塑料，重油/轻油裂解（3×3，吃电力）。底部2输入、顶部2输出，成对固定；固体原料机械臂任意方向放入' }
+  'chemical-plant':    { name: '化工厂', color: '#7d9464', desc: '流体化学加工厂：石油气+煤→塑料，重油/轻油裂解（3×3，吃电力）。底部2输入、顶部2输出，成对固定；固体原料机械臂任意方向放入' },
+  'solid-fuel':        { name: '固体燃料', color: '#5a5a64', mark: 'F', desc: '由重油/轻油/石油气在化工厂制成的高能量燃料，也是火箭燃料的原料' },
+  'lubricant':         { name: '润滑油', color: '#c86a2a', mark: 'Lu', desc: '流体，由重油在化工厂制成，电引擎单元的关键原料' },
+  'sulfur':            { name: '硫', color: '#e0d44a', mark: 'S', desc: '石油气在化工厂的产物，用于制硫酸' },
+  'sulfuric-acid':     { name: '硫酸', color: '#b5c23c', mark: 'Sa', desc: '流体，硫+水+铁板在化工厂反应所得；经管道供给组装机制造电池与处理器' },
+  'battery':           { name: '电池', color: '#43c26e', mark: 'B', desc: '铁板+铜板+硫酸在组装机合成（硫酸需管道接入），飞行机器人机架的原料' },
+  'advanced-circuit':  { name: '高级电路板', color: '#cf4a3a', mark: 'AC', desc: '红色电路板：电路板+塑料板+铜线，处理器与高科技产品的核心元件' },
+  'processing-unit':   { name: '处理器', color: '#c04ad0', mark: 'PU', desc: '蓝色电路板：高级电路板+电路板+硫酸，最高级电子元件，火箭部件必备' },
+  'electric-engine-unit': { name: '电引擎单元', color: '#98a8bc', mark: 'EE', desc: '钢板+齿轮+润滑油在组装机合成，飞行机器人机架的动力核心' },
+  'flying-robot-frame': { name: '飞行机器人机架', color: '#dfe6ee', mark: 'FR', desc: '电引擎单元+电池+电路板组装而成，黄色高科技科学包的主要部件' },
+  'low-density-structure': { name: '低密度结构', color: '#d09a58', mark: 'LD', desc: '铜板+塑料板+钢板的轻量化高强度材料，火箭与高科技产品的骨架' },
+  'rocket-fuel':       { name: '火箭燃料', color: '#d05a2a', mark: 'RF', desc: '固体燃料+轻油在组装机合成的高能燃料，推动火箭升空' },
+  'rocket-part':       { name: '火箭部件', color: '#d8dde4', mark: 'Rp', desc: '只能在发射井内组装：低密度结构+火箭燃料+处理器；攒满100个即可点火发射' },
+  'production-science':{ name: '生产科学包', color: '#c05acd', mark: 'PS', desc: '紫色科学包：石砖+钢板+电炉，解锁生产侧终极科技' },
+  'utility-science':   { name: '高科技科学包', color: '#e0c840', mark: 'US', desc: '黄色科学包：飞行机器人机架+低密度结构+处理器，解锁最高科技与火箭' },
+  'rocket-silo':       { name: '火箭发射井', color: '#8892a2', desc: '终局建筑（7×7）：自动组装火箭部件，攒满100个点火发射。发射火箭即达成通关目标！' }
 };
 
 const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone', 'calcite'];
@@ -202,10 +228,45 @@ const RECIPES = {
   'piercing-rounds':  { time: 1,   inp: { 'magazine': 1, 'copper-plate': 1, 'steel-plate': 1 }, out: { 'piercing-rounds': 1 } },
   'plastic-bar':       { time: 2,   inp: { 'petroleum-gas': 1, 'coal': 1 },                       out: { 'plastic-bar': 1 } },
   'crack-light':       { time: 3,   inp: { 'heavy-oil': 3 },                                      out: { 'light-oil': 2 } },
-  'crack-gas':         { time: 3,   inp: { 'light-oil': 3 },                                      out: { 'petroleum-gas': 2 } }
+  'crack-gas':         { time: 3,   inp: { 'light-oil': 3 },                                      out: { 'petroleum-gas': 2 } },
+  // ===== 中后期链：高级电子 / 化工深加工（对齐《异星工厂》配方比例，数值按本作规模缩放）=====
+  // 高级电路板（红）：本体 6s = 2电路板+2塑料+4铜线
+  'advanced-circuit':  { time: 6,   inp: { 'green-circuit': 2, 'plastic-bar': 2, 'copper-cable': 4 }, out: { 'advanced-circuit': 1 } },
+  // 电池：本体 2s = 铁板1+铜板1+硫酸20（硫酸为流体，需管道接入组装机）
+  'battery':           { time: 2,   inp: { 'iron-plate': 1, 'copper-plate': 1, 'sulfuric-acid': 10 }, out: { 'battery': 1 } },
+  // 处理器（蓝）：本体 10s = 20高级+2普通+2硫酸；按规模缩放
+  'processing-unit':   { time: 10,  inp: { 'advanced-circuit': 4, 'green-circuit': 2, 'sulfuric-acid': 4 }, out: { 'processing-unit': 1 } },
+  // 电引擎单元：本体 = 引擎(钢板1+齿轮1)+润滑油
+  'electric-engine-unit': { time: 8, inp: { 'steel-plate': 1, 'iron-gear': 1, 'lubricant': 8 },    out: { 'electric-engine-unit': 1 } },
+  // 飞行机器人机架：本体 15s = 电引擎1+电池2+电路板3
+  'flying-robot-frame':{ time: 15,  inp: { 'electric-engine-unit': 1, 'battery': 2, 'green-circuit': 3 }, out: { 'flying-robot-frame': 1 } },
+  // 低密度结构：本体 20s = 铜板20+塑料5+钢板2
+  'low-density-structure': { time: 12, inp: { 'copper-plate': 10, 'plastic-bar': 5, 'steel-plate': 2 }, out: { 'low-density-structure': 1 } },
+  // 火箭燃料：本体 = 固体燃料10+轻油50
+  'rocket-fuel':       { time: 8,   inp: { 'solid-fuel': 5, 'light-oil': 25 },                     out: { 'rocket-fuel': 1 } },
+  // 生产科学包（紫）：本体 21s = 电炉1+产能模块1+铁轨30 → 3包；以电炉+石砖+钢板对齐生产侧定位
+  'production-science':{ time: 14,  inp: { 'stone-brick': 8, 'steel-plate': 2, 'electric-furnace': 1 }, out: { 'production-science': 2 } },
+  // 高科技科学包（黄）：本体 21s = 机架1+低密度3+处理器2 → 3包
+  'utility-science':   { time: 18,  inp: { 'flying-robot-frame': 1, 'low-density-structure': 2, 'processing-unit': 2 }, out: { 'utility-science': 3 } },
+  // 火箭发射井：本体需电引擎+处理器+混凝土；以钢板/石砖/管道对齐
+  'rocket-silo':       { time: 60,  inp: { 'steel-plate': 50, 'stone-brick': 50, 'pipe': 20, 'processing-unit': 10, 'electric-engine-unit': 10 }, out: { 'rocket-silo': 1 } },
+  // ===== 化工厂配方（固体产物经机械臂取出，流体产物自动排回管道）=====
+  'solid-fuel-light':  { time: 3,   inp: { 'light-oil': 10 },      out: { 'solid-fuel': 1 } },
+  'solid-fuel-heavy':  { time: 3,   inp: { 'heavy-oil': 20 },      out: { 'solid-fuel': 1 } },
+  'solid-fuel-gas':    { time: 3,   inp: { 'petroleum-gas': 20 },  out: { 'solid-fuel': 1 } },
+  'sulfur':            { time: 1,   inp: { 'petroleum-gas': 30 },  out: { 'sulfur': 2 } },
+  'sulfuric-acid':     { time: 1,   inp: { 'sulfur': 5, 'water': 40, 'iron-plate': 1 }, out: { 'sulfuric-acid': 40 } },
+  'lubricant':         { time: 1,   inp: { 'heavy-oil': 10 },      out: { 'lubricant': 8 } }
 };
 
-const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas'];
+// 化工厂配方（对齐《异星工厂》官方数值）：
+// 塑料：1 石油气 + 1 煤 → 1 塑料板（1s）
+// 重油裂解：3 重油 → 2 轻油；轻油裂解：3 轻油 → 2 石油气
+// 固体燃料：轻油10/重油20/石油气20 → 1（本体 3s）
+// 硫：30 石油气 → 2 硫（1s）；硫酸：5硫+40水+1铁板 → 40 硫酸（1s）
+// 润滑油：10 重油 → 8 润滑油（1s）
+const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas',
+  'solid-fuel-light', 'solid-fuel-heavy', 'solid-fuel-gas', 'sulfur', 'sulfuric-acid', 'lubricant'];
 function isChemRecipe(id) { return CHEM_RECIPES.indexOf(id) >= 0; }
 function chemMult() { return (G.techDone.plastic ? 1.5 : 1) * ((G.dbg && G.dbg.asmMult) || 1); }
 
@@ -282,7 +343,8 @@ const BUILD_DEFS = {
   'pumpjack':           { w: 3, h: 3, solid: true },
   'refinery':           { w: 5, h: 5, solid: true },
   'chemical-plant':     { w: 3, h: 3, solid: true },
-  'storage-tank':       { w: 3, h: 3, solid: true }
+  'storage-tank':       { w: 3, h: 3, solid: true },
+  'rocket-silo':        { w: 7, h: 7, solid: true }
 };
 
 // ===== 传送带阶级链（对齐《异星工厂》物流升级）=====
@@ -321,12 +383,38 @@ const TECHS = {
   electric:   { name: '电力工程', cost: { 'green-science': 15 }, desc: '电炉 / 电采矿机速度 ×1.2' },
   oil:        { name: '石油冶金', cost: { 'green-science': 30 }, desc: '炼油厂 / 抽油机速度 ×1.5' },
   plastic:    { name: '塑料合成', cost: { 'green-science': 20 }, desc: '化工厂生产塑料耗时缩短 ✓（绿色科研的核心支付项）' },
+  lubricant:  { name: '润滑油', cost: { 'green-science': 20 }, desc: '解锁润滑油与电引擎单元（重油深加工链）', unlock: ['lubricant', 'electric-engine-unit'] },
+  solidFuel:  { name: '可燃物加工', cost: { 'green-science': 25 }, desc: '解锁固体燃料：重油/轻油/石油气均可制成', unlock: ['solid-fuel-light', 'solid-fuel-heavy', 'solid-fuel-gas'] },
+  sulfur:     { name: '硫处理', cost: { 'green-science': 30 }, desc: '解锁硫与硫酸（电池与处理器的前置）', unlock: ['sulfur', 'sulfuric-acid'] },
   automation2:{ name: '自动化 II', cost: { 'blue-science': 40 }, desc: '组装机 II 速度额外 ×1.2' },
-  express:    { name: '极速物流', cost: { 'military-science': 40 }, desc: '解锁极速传送带/地下带/分流器，物流终极档' },
+  advElec:    { name: '高级电子学', cost: { 'blue-science': 25 }, desc: '解锁高级电路板（红电路）', unlock: ['advanced-circuit'] },
+  battery:    { name: '电池', cost: { 'blue-science': 25 }, desc: '解锁电池（硫酸需经管道接入组装机）', unlock: ['battery'] },
+  processing: { name: '处理器', cost: { 'blue-science': 45 }, desc: '解锁处理器（蓝电路，火箭部件必备）', unlock: ['processing-unit'] },
   military:   { name: '军事工程', cost: { 'military-science': 30 }, desc: '解锁机枪炮塔、石墙、弹药（防御体系）' },
-  deep:       { name: '重工蓝图', cost: { 'blue-science': 50 }, desc: '蓝包终技：科研总进度获取 +20%' },
+  express:    { name: '极速物流', cost: { 'military-science': 40 }, desc: '解锁极速传送带/地下带/分流器，物流终极档' },
+  prodSci:    { name: '生产科学包', cost: { 'blue-science': 45 }, desc: '解锁紫色生产科学包（石砖+钢板+电炉）', unlock: ['production-science'] },
+  lds:        { name: '低密度结构', cost: { 'blue-science': 30, 'production-science': 30 }, desc: '解锁低密度结构（火箭骨架材料）', unlock: ['low-density-structure'] },
+  robotics:   { name: '机器人工程', cost: { 'production-science': 45 }, desc: '解锁飞行机器人机架（黄包主件）', unlock: ['flying-robot-frame'] },
+  rocketFuel: { name: '火箭燃料', cost: { 'production-science': 40 }, desc: '解锁火箭燃料（固体燃料+轻油）', unlock: ['rocket-fuel'] },
+  utilSci:    { name: '高科技科学包', cost: { 'production-science': 50 }, desc: '解锁黄色高科技科学包', unlock: ['utility-science'] },
+  rocketSilo: { name: '火箭发射井', cost: { 'production-science': 80, 'utility-science': 80 }, desc: '终局科技：解锁火箭发射井——攒满100个火箭部件发射火箭通关！', unlock: ['rocket-silo'] },
+  deep:       { name: '重工蓝图', cost: { 'blue-science': 50 }, desc: '科研总进度获取 +20%' },
   infinite:   { name: '无限科技', cost: {}, infinite: true, desc: '无限研究：消耗任意科学包，永不完成' }
 };
+
+// ===== 研究解锁配方（对齐《异星工厂》：研究科技后才能使用对应配方）=====
+// RECIPE_UNLOCK_TECH: 配方id -> 解锁它的科技id。未登记的配方默认始终可用
+// （兼容旧行为：基础配方无需研究）。读入旧存档时按 techDone 判定。
+const RECIPE_UNLOCK_TECH = {};
+for (const tid in TECHS) {
+  const u = TECHS[tid].unlock;
+  if (u) for (const rid of u) RECIPE_UNLOCK_TECH[rid] = tid;
+}
+function recipeUnlockTech(rid) { return RECIPE_UNLOCK_TECH[rid] || null; }
+function recipeUnlocked(rid) {
+  const t = RECIPE_UNLOCK_TECH[rid];
+  return !t || !!G.techDone[t];
+}
 
 // 判断是否为无限科技（永不完成、消耗任意科学包）
 function isInfiniteTech(tid) { return !!(TECHS[tid] && TECHS[tid].infinite); }
@@ -431,7 +519,9 @@ function drawItemGlyph(x, id, cx, cy, s) {
     }
     case 'science-pack':
     case 'green-science':
-    case 'blue-science': {
+    case 'blue-science':
+    case 'production-science':
+    case 'utility-science': {
       x.fillStyle = '#e8ecf2';
       x.fillRect(-r * 0.16, -r * 0.9, r * 0.32, r * 0.35);
       x.fillStyle = col;
@@ -449,7 +539,9 @@ function drawItemGlyph(x, id, cx, cy, s) {
     case 'crude-oil':
     case 'heavy-oil':
     case 'light-oil':
-    case 'petroleum-gas': {
+    case 'petroleum-gas':
+    case 'lubricant':
+    case 'sulfuric-acid': {
       x.fillStyle = col;
       x.beginPath();
       x.arc(0, r * 0.15, r * 0.55, 0, 7);

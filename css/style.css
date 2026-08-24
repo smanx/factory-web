@@ -1004,3 +1004,69 @@ html, body {
   #action-wheel .aw-btn .aw-ic { font-size: 22px; }
   #action-wheel .aw-btn .aw-lb { font-size: 12px; }
 }
+
+/* ===== 火箭发射通关庆祝画面 ===== */
+#launch-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, rgba(12, 20, 38, .88), rgba(4, 6, 12, .96));
+  backdrop-filter: blur(3px);
+}
+.launch-box {
+  text-align: center;
+  color: #eaf0f8;
+  max-width: min(92vw, 520px);
+  padding: 34px 40px;
+  border-radius: 16px;
+  background: rgba(18, 26, 40, .92);
+  border: 1px solid #3d5a80;
+  box-shadow: 0 10px 60px rgba(60, 140, 255, .25);
+  animation: launchpop .5s cubic-bezier(.2, 1.4, .4, 1);
+}
+@keyframes launchpop {
+  from { transform: scale(.7); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.launch-rocket {
+  font-size: 72px;
+  line-height: 1;
+  animation: rocketrise 2.6s ease-in-out infinite alternate;
+}
+@keyframes rocketrise {
+  from { transform: translateY(8px) rotate(-6deg); }
+  to { transform: translateY(-14px) rotate(6deg); }
+}
+.launch-box h1 {
+  margin: 14px 0 8px;
+  font-size: 30px;
+  background: linear-gradient(90deg, #ffd23c, #ff8a5c, #ffd23c);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.launch-sub {
+  color: #a8bcd4;
+  font-size: 15px;
+  margin: 0 0 18px;
+  line-height: 1.7;
+}
+.launch-stats {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+.launch-stats span {
+  background: rgba(70, 110, 170, .18);
+  border: 1px solid #35507a;
+  border-radius: 9px;
+  padding: 8px 13px;
+  font-size: 13.5px;
+  color: #c8d8ec;
+}
+.launch-stats b { color: #ffd23c; }

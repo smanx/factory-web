@@ -149,6 +149,8 @@ class Inserter extends Entity {
         return false;  // 创造箱：只产不收
       case 'gun-turret':
         return (item === 'magazine' || item === 'piercing-rounds') && t.ammoCount(item) < 40;
+      case 'rocket-silo':
+        return ROCKET_PART_RECIPE.inp[item] > 0 && (t.inp[item] || 0) < SILO_INPUT_CAP;
       default:
         return false;
     }

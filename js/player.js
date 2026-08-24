@@ -88,6 +88,8 @@ function canCraft(rid) {
 
 function doCraft(rid, times = 1) {
   if (isChemRecipe(rid)) return 0;
+  // 研究解锁：未研究对应科技的配方不可手工合成（对齐《异星工厂》）
+  if (!recipeUnlocked(rid)) { toast('尚未研究「' + TECHS[recipeUnlockTech(rid)].name + '」，无法合成'); return 0; }
   let made = 0;
   for (let i = 0; i < times; i++) {
     if (!canCraft(rid)) break;

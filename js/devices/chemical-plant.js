@@ -219,7 +219,10 @@ function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
     }
   }
   let bx = px + 14;
-  for (const id of ['plastic-bar', 'light-oil', 'petroleum-gas']) {
+  // 底部产物余量条：展示当前配方全部产物（无配方时展示常见三项）
+  const barIds = e.recipe ? Object.keys(RECIPES[e.recipe].out)
+    : ['plastic-bar', 'light-oil', 'petroleum-gas'];
+  for (const id of barIds) {
     const n = (e.outp && e.outp[id]) || 0;
     if (!n) continue;
     ctx.fillStyle = '#20242b';
@@ -275,7 +278,11 @@ function chemicalPlantPanelHtml(e) {
   h += barHtml(0);
   h += '<div class="status"></div>';
   h += '<div class="sec">选择配方</div><div class="recgrid">';
+  // 仅显示当前科技已解锁的化工配方（对齐《异星工厂》：研究后才能使用配方）
+  let chemShown = 0;
   for (const rid of CHEM_RECIPES) {
+    if (!recipeUnlocked(rid)) continue;
+    chemShown++;
     const outId = Object.keys(RECIPES[rid].out)[0];
     const selCls = e.recipe === rid ? 'sel' : '';
     h += '<button class="rcbtn ' + selCls + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-tip="' +
@@ -283,6 +290,8 @@ function chemicalPlantPanelHtml(e) {
       '<img src="' + iconDataURL(outId) + '">' + ITEMS[outId].name + '</button>';
   }
   h += '</div>';
+  const chemLocked = CHEM_RECIPES.length - chemShown;
+  if (chemLocked > 0) h += '<div class="dim">另有 ' + chemLocked + ' 项化工配方未解锁：前往研究面板（T）研究对应科技。</div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
   h += '<div class="dim">化工厂吃电力，专攻流体化学配方：塑料=石油气+煤；重油可逐级裂解成轻油、石油气。接口对齐格子：底部2个输入口分别在左数第1、3格（第1种原料进左侧、第2种进右侧），顶部2个输出口分别在左数第1、3格，一格对应一个接口、位置随旋转不变。所需流体经底部输入口相邻管道自动吸入，流体产物自动经顶部输出口排回管道；煤/铁板等固体原料机械臂可从任意方向抓取放入。</div>';
   return h;

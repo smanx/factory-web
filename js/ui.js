@@ -257,7 +257,8 @@ function htmlInventory() {
   for (const rid in RECIPES) {
     if (isChemRecipe(rid)) continue;
     const rec = RECIPES[rid];
-    const ok = canCraft(rid);
+    const ok = canCraft(rid) && recipeUnlocked(rid);
+    const lockedTech = recipeUnlockTech(rid);
     const outId = Object.keys(rec.out)[0];
     const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
       Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') + ' ' + recipeDeviceName(rid)).toLowerCase();
@@ -272,7 +273,13 @@ function htmlInventory() {
       h += '<span class="ing ' + (have >= rec.inp[k] ? '' : 'lack') + '" data-itemid="' + k + '" data-tip="' + ITEMS[k].name + '|' + ITEMS[k].desc + '">' +
         '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + have + '/' + rec.inp[k] + '</span>';
     }
-    h += '</div></div>';
+    h += '</div>';
+    // 未解锁配方：标注解锁科技（对齐《异星工厂》研究解锁）
+    if (lockedTech && !G.techDone[lockedTech]) {
+      h += '<div class="rdev-note">🔒 需研究「' + TECHS[lockedTech].name + '」</div></div>';
+      continue;
+    }
+    h += '</div>';
     h += '<button data-action="craft" data-id="' + rid + '" ' + (ok ? '' : 'disabled') + '>合成</button>';
     if (ok) h += '<button data-action="craft" data-mult="5" data-id="' + rid + '">×5</button>';
     h += '</div>';
@@ -280,6 +287,8 @@ function htmlInventory() {
   // 化工厂配方
   for (const rid of CHEM_RECIPES) {
     const rec = RECIPES[rid];
+    const lockedTech = recipeUnlockTech(rid);
+    const unlocked = !lockedTech || !!G.techDone[lockedTech];
     const outId = Object.keys(rec.out)[0];
     const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
       Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') + ' 化工厂').toLowerCase();
@@ -292,7 +301,9 @@ function htmlInventory() {
       h += '<span class="ing" data-itemid="' + k + '" data-tip="' + ITEMS[k].name + '|' + ITEMS[k].desc + '">' +
         '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + rec.inp[k] + '</span>';
     }
-    h += '</div></div>';
+    h += '</div>';
+    if (!unlocked) { h += '<div class="rdev-note">🔒 需研究「' + TECHS[lockedTech].name + '」</div></div>'; continue; }
+    h += '</div>';
     h += '<span class="rdev-note">需化工厂</span>';
     h += '</div>';
   }
@@ -321,7 +332,7 @@ function htmlInventory() {
   }
   h += '</div>';
   h += '<div class="dim" id="inv-recipe-empty" style="display:none"></div>';
-  h += '<div class="hint">提示：开局先挖 5 个石头合成石炉，再挖煤；点击炉子打开面板，把煤和矿石放进去就能炼铁板/铜板。钢板用铁板×2 合成（石炉/电炉炼制更快）。塑料板等流体化学产物只能在化工厂生产（石油气经管道送入化工厂）。<br>建造：直接点击上方材料区里任何可建造的设备图标即可选中进入放置模式（优先占用空快捷栏槽位），不必依赖底部工具栏；R 旋转、Q 取消。建造支持覆盖：目标格已有建筑时会先拆除旧建筑（返还物资）再放置新建筑，但同一格不会叠加。</div>';
+  h += '<div class="hint">提示：开局先挖 5 个石头合成石炉，再挖煤；点击炉子打开面板，把煤和矿石放进去就能炼铁板/铜板。钢板用铁板×2 合成（石炉/电炉炼制更快）。塑料板等流体化学产物只能在化工厂生产（石油气经管道送入化工厂）。<br>中后期：绿包研究硫处理/润滑油/固体燃料 → 化工厂产硫酸与电池（硫酸经管道接入组装机）；蓝包解锁高级电路板与处理器；紫包+黄包冲「火箭发射井」，攒满 100 个火箭部件发射通关！<br>建造：直接点击上方材料区里任何可建造的设备图标即可选中进入放置模式（优先占用空快捷栏槽位），不必依赖底部工具栏；R 旋转、Q 取消。建造支持覆盖：目标格已有建筑时会先拆除旧建筑（返还物资）再放置新建筑，但同一格不会叠加。</div>';
   return h;
 }
 
@@ -371,6 +382,11 @@ function htmlTech() {
     for (const pk in t.cost) costChips.push(ITEMS[pk].name + '×' + t.cost[pk]);
     h += '<div class="recipe tech ' + (done ? 'done' : '') + '">';
     h += '<div class="rmain"><div class="rname">' + t.name + '</div><div class="dim">' + t.desc + '</div>';
+    // 解锁内容说明（对齐《异星工厂》：科技面板展示研究奖励）
+    if (t.unlock && t.unlock.length) {
+      const names = t.unlock.map(rid => RECIPES[rid] ? ITEMS[Object.keys(RECIPES[rid].out)[0]].name : rid).join('、');
+      h += '<div class="dim" style="color:#8fd0ff">解锁配方：' + names + '</div>';
+    }
     if (isInfiniteTech(tid)) {
       // 无限科技：进度无限，永不完成，消耗任意科学包
       h += '<div class="bar"><i style="width:100%"></i></div>';
@@ -396,8 +412,35 @@ function htmlTech() {
     // 关闭 .recipe.tech 条目，保证各科技条目平级而非互相嵌套
     h += '</div>';
   }
-  h += '<div class="hint">建造研究中心，放入科学包后选择课题；研究中心按配方顺序逐瓶消耗（红→绿→蓝→灰）。机械臂可自动喂包。自动化科学包（红）=齿轮+铜板；物流科学包（绿）=传送带+机械臂；化工科学包（蓝）=塑料+电路板+铜板（需打通石油链）；军事科学包（灰）=弹药匣+石墙+穿甲弹（解锁极速物流与军事工程）。「无限科技」为无限研究：只要中心里有任意科学包就会被持续消耗、永不完成。</div>';
+  h += '<div class="hint">建造研究中心，放入科学包后选择课题；研究中心按配方顺序逐瓶消耗（红→绿→蓝→灰→紫→黄）。机械臂可自动喂包。自动化科学包（红）=齿轮+铜板；物流科学包（绿）=传送带+机械臂；化工科学包（蓝）=塑料+电路板+铜板（需打通石油链）；军事科学包（灰）=弹药匣+石墙+穿甲弹（解锁极速物流与军事工程）；生产科学包（紫）=石砖+钢板+电炉；高科技科学包（黄）=飞行机器人机架+低密度结构+处理器。<br>研究科技会解锁新配方（硫/硫酸/电池/润滑油/高级电路/处理器等），最终研究「火箭发射井」，攒满 100 个火箭部件发射火箭通关！「无限科技」为无限研究：只要中心里有任意科学包就会被持续消耗、永不完成。</div>';
   return h;
+}
+
+// ===== 火箭发射通关庆祝画面 =====
+function showLaunchOverlay() {
+  const ov = document.getElementById('launch-overlay');
+  if (!ov) return;
+  const doneTechs = Object.keys(G.techDone).filter(t => G.techDone[t] && TECHS[t] && !TECHS[t].infinite).length;
+  const t = Math.floor(G.time || 0);
+  const timeStr = Math.floor(t / 86400) > 0
+    ? Math.floor(t / 86400) + ' 天 ' + Math.floor(t % 86400 / 3600) + ' 小时'
+    : Math.floor(t / 3600) + ' 小时 ' + Math.floor(t % 3600 / 60) + ' 分钟';
+  ov.innerHTML =
+    '<div class="launch-box">' +
+    '<div class="launch-rocket">🚀</div>' +
+    '<h1>火箭发射成功！</h1>' +
+    '<p class="launch-sub">' + ((G.launches || 0) <= 1 ? '你的工厂已经把第一枚火箭送上了太空——工厂永不停歇！' : '第 ' + G.launches + ' 枚火箭升空，太空在向你招手！') + '</p>' +
+    '<div class="launch-stats">' +
+    '<span>累计发射 <b>' + (G.launches || 0) + '</b> 枚</span>' +
+    '<span>游戏时间 <b>' + timeStr + '</b></span>' +
+    '<span>完成科技 <b>' + doneTechs + '</b> 项</span>' +
+    '</div>' +
+    '<button id="btn-launch-close" class="start-btn primary">继续建设工厂</button>' +
+    '</div>';
+  ov.style.display = 'flex';
+  document.getElementById('btn-launch-close').addEventListener('click', () => {
+    ov.style.display = 'none';
+  });
 }
 
 function countStr(o) {
@@ -460,6 +503,14 @@ function statusLine(txt) {
 
 function initPanelEvents() {
   document.getElementById('panel-body').addEventListener('change', ev => {
+    // 发射井：满部件自动发射开关
+    if (ev.target.matches && ev.target.matches('[data-silo-auto]')) {
+      if (G.panelEnt && typeof G.panelEnt.ignite === 'function') {
+        G.panelEnt.autoLaunch = ev.target.checked;
+        toast('自动发射已' + (ev.target.checked ? '开启' : '关闭'));
+      }
+      return;
+    }
     // 设备专属输入（如储物箱存量上限）优先交给设备自己的 onChange
     const panel = G.panelEnt && DEVICE_PANEL[G.panelEnt.type];
     if (panel && panel.onChange && panel.onChange(ev)) return;
@@ -609,7 +660,14 @@ function initPanelEvents() {
     let handled = false;
     if (panel && panel.onAction) handled = !!panel.onAction(act, btn);
     if (!handled) {
-      if (act === 'quick-save') { await saveGame(); renderPanel(false); }
+      if (act === 'silo-launch') {
+        const mch = G.panelEnt;
+        if (mch && typeof mch.ignite === 'function') {
+          if (mch.launching || mch.parts < ROCKET_PARTS_TOTAL) toast('火箭部件不足（' + mch.parts + '/' + ROCKET_PARTS_TOTAL + '）');
+          else mch.ignite();
+        }
+      }
+      else if (act === 'quick-save') { await saveGame(); renderPanel(false); }
       else if (act === 'quick-load') {
         const newest = (await listAllSaves())[0];
         if (newest) { await loadGame(newest.id); } else { toast('暂无存档'); }
@@ -953,6 +1011,11 @@ function buildDebug() {
     ['+50齿轮', 'iron-gear', 50], ['+50电路', 'green-circuit', 50],
     ['+20科学包', 'science-pack', 20], ['+20绿包', 'green-science', 20],
     ['+20蓝包', 'blue-science', 20], ['+20灰包', 'military-science', 20], ['+50塑料', 'plastic-bar', 50],
+    ['+20紫包', 'production-science', 20], ['+20黄包', 'utility-science', 20],
+    ['+30红电路', 'advanced-circuit', 30], ['+20处理器', 'processing-unit', 20], ['+20电池', 'battery', 20],
+    ['+20硫', 'sulfur', 20], ['+50润滑油', 'lubricant', 50], ['+50硫酸', 'sulfuric-acid', 50],
+    ['+20固体燃料', 'solid-fuel', 20], ['+10电引擎', 'electric-engine-unit', 10], ['+10机架', 'flying-robot-frame', 10],
+    ['+10低密度结构', 'low-density-structure', 10], ['+10火箭燃料', 'rocket-fuel', 10],
     ['+50弹药', 'magazine', 50], ['+50穿甲弹', 'piercing-rounds', 50], ['+5铁箱', 'steel-chest', 5],
     ['+50原油', 'crude-oil', 50], ['+50水', 'water', 50], ['+50蒸汽', 'steam', 50]
   ]) {

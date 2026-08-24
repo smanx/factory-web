@@ -104,7 +104,8 @@ function assembler3PanelHtml(e) {
   h += '<div class="sec">选择配方</div>';
   h += '<input id="asm-recipe-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off" value="">';
   h += '<div class="recgrid">';
-  for (const rid of Object.keys(RECIPES).filter(r => !isChemRecipe(r))) {
+  // 仅显示当前科技已解锁的配方（对齐《异星工厂》：研究后才能使用配方）
+  for (const rid of Object.keys(RECIPES).filter(r => !isChemRecipe(r) && recipeUnlocked(r))) {
     const outId = Object.keys(RECIPES[rid].out)[0];
     const selCls = e.recipe === rid ? 'sel' : '';
     // 鼠标悬停显示所需原料（异星工厂惯例）

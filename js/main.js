@@ -61,6 +61,8 @@ const G = {
   inMenu: true,       // 开始菜单显示中：游戏世界尚未初始化，loop 暂停渲染与更新
   deconstructMode: false,  // 触屏拆除模式：开启后点触建筑即可拆除（PC 右键拆除不受影响）
   deconstructHeld: false,  // 拆除模式：左键/触屏是否处于按住连续拆除状态
+  launches: 0,        // 累计火箭发射次数（终局统计，随存档保存）
+  rocketWon: false,   // 是否已达成首次发射（通关庆祝只弹一次）
 };
 
 let lastPlaceKey = '';
@@ -106,6 +108,9 @@ function newGame() {
   G.powerT = 0;
   G.enemies = []; G.bullets = []; G.spawnT = 0;
   if (typeof resetPowerReg === 'function') resetPowerReg();
+  // 火箭发射进度归零（新游戏从头开始）
+  G.launches = 0;
+  G.rocketWon = false;
   // 重置累计时间与历史统计（新游戏从头开始，无历史）
   G.time = 0;
   lastPanelCheck = 0;
@@ -151,6 +156,9 @@ function serializeAll() {
     dbg: Object.assign({}, G.dbg),
     // 游戏累计时间（秒）：用于历史统计分桶的时间锚点，读档后延续
     time: G.time,
+    // 火箭发射进度：累计次数 + 首发庆祝标记
+    launches: G.launches || 0,
+    rocketWon: !!G.rocketWon,
     // 历史统计：聚合为小时粒度写入（体积极小，最多 24 小时/物品）
     hist: (typeof histSerialize === 'function') ? histSerialize() : null
   };
@@ -259,6 +267,9 @@ function applySave(d) {
   }
   // 恢复游戏累计时间（历史统计的时间锚点；旧档无该字段则从 0 开始）
   if (typeof d.time === 'number' && isFinite(d.time)) G.time = d.time;
+  // 恢复火箭发射进度（旧档无该字段则保持默认 0/false）
+  G.launches = d.launches || 0;
+  G.rocketWon = !!d.rocketWon;
   // 恢复历史统计（把存档中的小时序列展开回环形缓冲；无历史则重置）
   if (typeof histReset === 'function') histReset();
   if (typeof histDeserialize === 'function' && d.hist) histDeserialize(d.hist);
