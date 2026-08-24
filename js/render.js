@@ -457,11 +457,6 @@ function drawHoverAndMining(ctx) {
       ctx.stroke();
     }
   }
-  ctx.strokeStyle = 'rgba(255,255,255,.12)';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.arc(p.x, p.y, REACH_PX, 0, 7);
-  ctx.stroke();
 }
 
 function drawEnemies(ctx) {
