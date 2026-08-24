@@ -3,7 +3,7 @@
 // ===== 多存档管理系统 =====
 // 存档分为两类：
 //   - 自动存档（auto）：固定 3 个槽位，每次自动保存写入最新一个；超 3 个删除最旧。
-//   - 用户存档（user）：数量不限，由用户在设置面板中自行新建 / 覆盖 / 读取 / 删除。
+//   - 用户存档（user）：最多 MAX_USER_SAVES 个，由用户在设置面板中自行新建 / 覆盖 / 读取 / 删除。
 //
 // 每个存档条目 = 元数据（id/name/type/time/seed）+ 完整游戏数据（serializeAll 的结果）。
 // 所有条目统一存放在一个 localStorage 键里，避免占满 localStorage 的命名空间。
@@ -12,6 +12,8 @@
 const SAVES_KEY = 'factory-proto-saves-v1';
 // 自动存档槽位数
 const AUTO_SLOTS = 3;
+// 用户存档最大数量
+const MAX_USER_SAVES = 10;
 
 // 兼容旧的单存档键：首次升级时把旧存档迁移为一个用户存档
 const LEGACY_SAVE_KEY = 'factory-proto-save-v1';
@@ -88,6 +90,16 @@ function hasAnySave() {
 function hasSave(id) {
   const reg = loadSaveRegistry();
   return !!(reg[id] && reg[id].data);
+}
+
+// 统计用户存档（type='user'）的数量
+function countUserSaves() {
+  const reg = loadSaveRegistry();
+  let n = 0;
+  for (const id of Object.keys(reg)) {
+    if (reg[id] && reg[id].data && reg[id].type === 'user') n++;
+  }
+  return n;
 }
 
 // ===== 写入存档 =====
