@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>工厂原型 Factory Proto</title>
-<link rel="stylesheet" href="css/style.css?v=9">
+<link rel="stylesheet" href="css/style.css?v=10">
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -35,6 +35,26 @@
 <div id="tooltip"><b></b><span></span></div>
 <div id="dbg-btn">DBG</div>
 <div id="dbg-panel"></div>
+
+<!-- 开始菜单：新游戏 / 读取存档 -->
+<div id="start-screen">
+  <div class="start-bg"></div>
+  <div class="start-box">
+    <div class="start-logo">
+      <div class="start-title">工厂原型</div>
+      <div class="start-sub">FACTORY PROTO</div>
+    </div>
+    <div class="start-menu">
+      <button id="btn-new-game" class="start-btn primary">▶ 开始新游戏</button>
+      <button id="btn-continue" class="start-btn">📂 读取存档</button>
+      <div id="start-save-info" class="start-save-info"></div>
+    </div>
+    <div class="start-hint">
+      WASD 移动 · 左键建造/挖矿 · 右键拆除 · R 旋转 · F 拿取 ·
+      中键/E 面板 · T 科技 · K/L 存读档
+    </div>
+  </div>
+</div>
 <script src="js/data.js?v=10"></script>
 <script src="js/world.js?v=7"></script>
 <script src="js/core/registry.js?v=7"></script>
@@ -73,6 +93,7 @@
 <script src="js/core/power.js?v=9"></script>
 <script src="js/player.js?v=8"></script>
 <script src="js/ui.js?v=12"></script>
+<script src="js/menu.js?v=1"></script>
 <script src="js/render.js?v=9"></script>
 <script src="js/stats.js?v=11"></script>
 <script src="js/main.js?v=11"></script>
