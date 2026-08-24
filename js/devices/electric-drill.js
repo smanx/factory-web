@@ -15,7 +15,7 @@ class ElectricDrill extends Drill {
     this.status = '';
     this.working = true;
     this.spin += dt * 6;
-    this.prog += dt * drillMult() * this.machMult() * (G.power.sat < 1 ? G.power.sat : 1);
+    this.prog += dt * drillMult() * this.machMult() * powerFactor();
     if (this.prog >= DRILL_TIME) {
       this.prog -= DRILL_TIME;
       if (!G.settings.infiniteOre) consumeOre(o[0], o[1]);
