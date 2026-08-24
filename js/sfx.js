@@ -43,6 +43,8 @@ const SFX = {
   select: { type: 'sine', dur: 0.07, f0: 660, f1: 990, vol: 0.14, slide: true },
   // 机械臂动作
   inserter: { type: 'triangle', dur: 0.08, f0: 260, f1: 320, vol: 0.08, slide: true },
+  // 分流器分流物品：轻柔机械“咔嗒”（快速分流器，节流播放避免噪杂）
+  splitter: { type: 'triangle', dur: 0.05, f0: 380, f1: 300, vol: 0.07, slide: true },
   // 胜利号角（火箭成功发射后的庆祝音）
   victory: { type: 'sine', dur: 1.6, f0: 523, f1: 1046, vol: 0.25, arpeggio: [523, 659, 784, 1046, 784, 1046], slide: true },
   // 流体泵：短促“咕噜”液流声

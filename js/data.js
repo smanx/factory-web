@@ -145,6 +145,7 @@ const ITEMS = {
   'express-transport-belt': { name: '极速传送带', color: '#e05a4e', desc: '速度约为普通带的 3 倍，物流终极档（对齐《异星工厂》）' },
   'express-underground-belt': { name: '极速地下传送带', color: '#e07a6a', desc: '同向配对距离最远 20 格，速度是极速带标准' },
   'express-splitter': { name: '极速分流器', color: '#e06048', desc: '同分流器，但吞吐与极速带一致，可输送最快物流' },
+  'fast-splitter':    { name: '快速分流器', color: '#d04a3a', desc: '同分流器，但吞吐与快速带一致，可输送更快的物流（对齐《异星工厂》Fast splitter）' },
   'priority-splitter': { name: '优先级分流器', color: '#e07b2e', desc: '同分流器，但可通过面板指定优先把货推向一侧；另一侧仅作为溢出通道' },
   'filter-inserter':   { name: '过滤机械臂', color: '#58b8e8', desc: '同机械臂，可在面板指定只抓取某种物品' },
   'stack-inserter':    { name: '堆叠机械臂', color: '#e8e059', desc: '同机械臂，但可一次性抓取多达 3 个同种物品' },
@@ -402,6 +403,7 @@ const RECIPES = {
   'express-transport-belt': { time: 0.5, inp: { 'fast-transport-belt': 1, 'iron-gear': 5 }, out: { 'express-transport-belt': 1 } },
   'express-underground-belt': { time: 1, inp: { 'fast-underground-belt': 1, 'iron-gear': 10 }, out: { 'express-underground-belt': 1 } },
   'express-splitter': { time: 1, inp: { 'fast-transport-belt': 4, 'iron-gear': 10 }, out: { 'express-splitter': 1 } },
+  'fast-splitter':   { time: 1, inp: { 'splitter': 1, 'iron-gear': 5 }, out: { 'fast-splitter': 1 } },
   'steel-chest':      { time: 1,   inp: { 'steel-plate': 8 }, out: { 'steel-chest': 1 } },
   // ===== 基础储物箱（木箱→铁箱→钢箱递进，对齐《异星工厂》） =====
   'wooden-chest':     { time: 0.5, inp: { 'wood': 2 }, out: { 'wooden-chest': 1 } },
@@ -664,6 +666,7 @@ const BUILD_DEFS = {
   'splitter':           { w: 1, h: 2, solid: false, rotSwap: true },
   'priority-splitter':  { w: 1, h: 2, solid: false, rotSwap: true },
   'express-splitter':   { w: 1, h: 2, solid: false, rotSwap: true },
+  'fast-splitter':      { w: 1, h: 2, solid: false, rotSwap: true },
   'underground':        { w: 1, h: 1, solid: false },
   'fast-underground-belt': { w: 1, h: 1, solid: false },
   'express-underground-belt': { w: 1, h: 1, solid: false },
@@ -756,7 +759,7 @@ const BUILD_DEFS = {
 // HP 归零即被摧毁。无线索设备（传送带/管道/电线等）也有 HP，但敌人优先攻击防御建筑。
 const BUILDING_HP = {
   'transport-belt': 60, 'fast-transport-belt': 100, 'express-transport-belt': 140,
-  'splitter': 80, 'priority-splitter': 100, 'express-splitter': 120,
+  'splitter': 80, 'priority-splitter': 100, 'express-splitter': 120, 'fast-splitter': 100,
   'underground': 60, 'fast-underground-belt': 100, 'express-underground-belt': 140,
   'inserter': 100, 'long-inserter': 100, 'filter-inserter': 100, 'stack-inserter': 100, 'stack-filter-inserter': 100,
   'burner-inserter': 100,
@@ -965,7 +968,7 @@ function recipeLockingTech(rid) {
 // 普通带 → 快速带 → 极速带。用于 R 旋转、覆盖升级/降级、绿图批量升级等。
 const BELT_TIERS = ['transport-belt', 'fast-transport-belt', 'express-transport-belt'];
 const UNDERGROUND_TIERS = ['underground', 'fast-underground-belt', 'express-underground-belt'];
-const SPLITTER_TIERS = ['splitter', 'priority-splitter', 'express-splitter'];
+const SPLITTER_TIERS = ['splitter', 'fast-splitter', 'express-splitter'];
 // 组装机阶级链（对齐《异星工厂》组装机 I/II/III）：绿图批量升级/降级也支持组装机
 const ASSEMBLER_TIERS = ['assembling-machine', 'assembling-machine-mk2', 'assembling-machine-3'];
 // 合并为“可升级物流链”查表：type -> 高一阶 / 低一阶（无则返回 null）
