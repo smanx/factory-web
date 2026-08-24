@@ -286,7 +286,7 @@ function htmlInventory() {
   }
   h += '</div>';
   h += '<div class="dim" id="inv-recipe-empty" style="display:none"></div>';
-  h += '<div class="hint">提示：开局先挖 5 个石头合成石炉，再挖煤；点击炉子打开面板，把煤和矿石放进去就能炼铁板/铜板。钢板用铁板×2 合成（石炉/电炉炼制更快）。塑料板等流体化学产物只能在化工厂生产（石油气经管道送入化工厂）。<br>建造：直接点击上方材料区里任何可建造的设备图标即可选中进入放置模式（优先占用空快捷栏槽位），不必依赖底部工具栏；R 旋转、Q 取消；Ctrl+Shift+左键可强制覆盖建造（原设备拆除、新设备落地）。</div>';
+  h += '<div class="hint">提示：开局先挖 5 个石头合成石炉，再挖煤；点击炉子打开面板，把煤和矿石放进去就能炼铁板/铜板。钢板用铁板×2 合成（石炉/电炉炼制更快）。塑料板等流体化学产物只能在化工厂生产（石油气经管道送入化工厂）。<br>建造：直接点击上方材料区里任何可建造的设备图标即可选中进入放置模式（优先占用空快捷栏槽位），不必依赖底部工具栏；R 旋转、Q 取消。建造支持覆盖：目标格已有建筑时会先拆除旧建筑（返还物资）再放置新建筑，但同一格不会叠加。</div>';
   return h;
 }
 
@@ -304,6 +304,24 @@ function applyInvRecipeFilter(q) {
   if (emp) {
     emp.textContent = ql ? '没有匹配「' + q.trim() + '」的配方' : '没有匹配的配方';
     emp.style.display = shown ? 'none' : '';
+  }
+}
+
+// 组装机面板：按关键字过滤「选择配方」网格中的配方按钮
+function applyAssemblerRecipeFilter(q) {
+  const body = document.getElementById('panel-body');
+  if (!body) return;
+  const ql = (q || '').trim().toLowerCase();
+  let shown = 0;
+  body.querySelectorAll('.recgrid .rcbtn[data-rsearch]').forEach(el => {
+    const hit = !ql || el.dataset.rsearch.includes(ql);
+    el.style.display = hit ? '' : 'none';
+    if (hit) shown++;
+  });
+  const emp = document.getElementById('asm-recipe-empty');
+  if (emp) {
+    emp.textContent = ql ? '没有匹配「' + q.trim() + '」的配方' : '';
+    emp.style.display = (ql && !shown) ? '' : 'none';
   }
 }
 
@@ -420,9 +438,12 @@ function initPanelEvents() {
   });
   document.getElementById('panel-close').addEventListener('click', () => closePanel());
   document.getElementById('panel-body').addEventListener('input', ev => {
-    if (ev.target.id !== 'inv-recipe-search') return;
-    G.invRecipeQ = ev.target.value;
-    applyInvRecipeFilter(G.invRecipeQ);
+    if (ev.target.id === 'inv-recipe-search') {
+      G.invRecipeQ = ev.target.value;
+      applyInvRecipeFilter(G.invRecipeQ);
+    } else if (ev.target.id === 'asm-recipe-search') {
+      applyAssemblerRecipeFilter(ev.target.value);
+    }
   });
   document.getElementById('panel-body').addEventListener('click', ev => {
     const statTab = ev.target.closest('[data-stat-tab]');

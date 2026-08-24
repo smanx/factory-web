@@ -109,6 +109,12 @@ class Assembler extends Entity {
     s.crafting = this.crafting; s.prog = this.prog;
     return s;
   }
+  // 蓝图只保留配方配置，不复制内部原料/输出/进度
+  blueprint() {
+    const s = super.blueprint();
+    s.recipe = this.recipe;
+    return s;
+  }
   static restore(s) {
     const a = super.restore(s);
     a.recipe = s.recipe || null; a.inp = s.inp || {}; a.outp = s.outp || {};
@@ -186,17 +192,22 @@ function assemblerPanelHtml(e) {
   h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
   h += barHtml(0);
   h += '<div class="status"></div>';
-  h += '<div class="sec">选择配方</div><div class="recgrid">';
+  h += '<div class="sec">选择配方</div>';
+  h += '<input id="asm-recipe-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off" value="">';
+  h += '<div class="recgrid">';
   for (const rid of Object.keys(RECIPES).filter(r => !isChemRecipe(r))) {
     const outId = Object.keys(RECIPES[rid].out)[0];
     const selCls = e.recipe === rid ? 'sel' : '';
     // 鼠标悬停显示所需原料（异星工厂惯例）
     const inpStr = Object.keys(RECIPES[rid].inp).map(k => ITEMS[k].name + '×' + RECIPES[rid].inp[k]).join('、');
-    h += '<button class="rcbtn ' + selCls + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-tip="' +
+    const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
+      Object.keys(RECIPES[rid].inp).map(k => ITEMS[k].name).join(' ')).toLowerCase();
+    h += '<button class="rcbtn ' + selCls + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-rsearch="' + searchKey.replace(/"/g, '') + '" data-tip="' +
       ITEMS[outId].name + '|' + RECIPES[rid].out[outId] + '个/次，耗时' + RECIPES[rid].time + '秒。所需原料：' + inpStr + '">' +
       '<img src="' + iconDataURL(outId) + '">' + ITEMS[outId].name + '</button>';
   }
   h += '</div>';
+  h += '<div class="dim" id="asm-recipe-empty" style="display:none"></div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
   // 组装机 II 速度为 I 的 1.5 倍（官方 crafting-speed：I=0.5，II=0.75）
   const asmM = e.type === 'assembling-machine-mk2' ? asmMult() * 0.75 : asmMult() * 0.5;

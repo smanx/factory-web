@@ -129,6 +129,11 @@ class Entity {
   serialize() {
     return { type: this.type, x: this.x, y: this.y, dir: this.dir };
   }
+  // 蓝图专用：仅序列化建筑本身（类型/坐标/方向），
+  // 不含建筑内部原料、输出、燃料、流体，以及传送带上的物品。
+  blueprint() {
+    return { type: this.type, x: this.x, y: this.y, dir: this.dir };
+  }
   static restore(s) {
     const e = new this(s.type, s.x, s.y);
     e.dir = s.dir | 0;
