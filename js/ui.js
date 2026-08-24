@@ -676,14 +676,15 @@ async function saveListHtml() {
     const time = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
     const tag = s.type === 'auto' ? '<span class="save-tag auto">自动</span>' : '<span class="save-tag user">用户</span>';
     h += '<div class="save-item">';
-    h += '  <div class="save-item-info">' + tag + ' <span class="save-name">' + escHtml(s.name || '存档') + '</span>';
-    h += '    <div class="save-time">' + time + ' · ' + escHtml(s.sizeText || '') + '</div>';
+    h += '  <div class="save-item-top">';
+    h += '    <div class="save-item-info">' + tag + ' <span class="save-name">' + escHtml(s.name || '存档') + '</span></div>';
+    h += '    <div class="save-item-ops">';
+    h += '      <button data-action="load-save" data-id="' + s.id + '" title="读取该存档">📂 读取</button>';
+    h += '      <button data-action="overwrite-save" data-id="' + s.id + '" title="用当前进度覆盖该存档">💾 覆盖</button>';
+    h += '      <button data-action="delete-save" data-id="' + s.id + '" title="删除该存档">🗑 删除</button>';
+    h += '    </div>';
     h += '  </div>';
-    h += '  <div class="save-item-ops">';
-    h += '    <button data-action="load-save" data-id="' + s.id + '" title="读取该存档">📂 读取</button>';
-    h += '    <button data-action="overwrite-save" data-id="' + s.id + '" title="用当前进度覆盖该存档">💾 覆盖</button>';
-    h += '    <button data-action="delete-save" data-id="' + s.id + '" title="删除该存档">🗑 删除</button>';
-    h += '  </div>';
+    h += '  <div class="save-time">' + time + ' · ' + escHtml(s.sizeText || '') + '</div>';
     h += '</div>';
   }
   h += '</div>';
