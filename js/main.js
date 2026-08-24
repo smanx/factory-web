@@ -69,7 +69,14 @@ function saveSettings() {
 function loadSettings() {
   try {
     const s = localStorage.getItem(SETTINGS_KEY);
-    if (s) Object.assign(G.settings, JSON.parse(s));
+    if (s) {
+      // 已有保存的设置：以设置为准
+      Object.assign(G.settings, JSON.parse(s));
+    } else {
+      // 首次打开：自动检测是否为触屏设备，触屏则自动开启虚拟摇杆
+      const touchCapable = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+      if (touchCapable) G.settings.virtualJoystick = true;
+    }
   } catch (e) {}
 }
 
