@@ -7,6 +7,12 @@ class Pump extends Entity {
     this.buf = 0;
     this.working = false;
     this.pulse = 0;
+    this.applyDir();
+  }
+  // 整个设备随方向旋转：横向(东/西)为 2×1，纵向(南/北)为 1×2
+  applyDir() {
+    if (this.dir % 2 === 1) { this.w = this.def.h; this.h = this.def.w; }
+    else { this.w = this.def.w; this.h = this.def.h; }
   }
   update(dt) {
     this.working = false;
@@ -49,43 +55,59 @@ class Pump extends Entity {
     return list;
   }
   serialize() { const s = super.serialize(); s.buf = this.buf; return s; }
-  static restore(s) { const p = super.restore(s); p.buf = s.buf || 0; return p; }
+  static restore(s) {
+    const p = new Pump(s.type, s.x, s.y);
+    p.dir = s.dir | 0;
+    p.applyDir();
+    p.buf = s.buf || 0;
+    return p;
+  }
 }
 
 // ===== 渲染 =====
+// 整个抽水机机身随方向(dir)旋转：基准朝东(2×1 横放)，旋转后 1×2 纵放，
+// 设备整体朝向即水流出口方向，而不再只是出口箭头单独旋转。
 function drawPump(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
-  const pw = TILE * e.w, ph2 = TILE * e.h;
+  const cx = px + TILE * e.w / 2, cy = py + TILE * e.h / 2;
   ctx.globalAlpha = alpha;
+  ctx.save();
+  ctx.translate(cx, cy);
+  // 旋转整个机身，使其朝向 dir（基准方向为东）
+  ctx.rotate(dir * Math.PI / 2);
+  const W = TILE * 2, H = TILE;      // 基准 2×1 机身尺寸
+  const lx = -W / 2, ly = -H / 2;    // 基准机身左上角（相对中心）
   ctx.fillStyle = '#1d3d55';
-  rr(ctx, px + 2, py + 2, pw - 4, ph2 - 4, 7); ctx.fill();
+  rr(ctx, lx + 2, ly + 2, W - 4, H - 4, 7); ctx.fill();
   ctx.strokeStyle = '#12293b';
   ctx.lineWidth = 2;
-  rr(ctx, px + 2, py + 2, pw - 4, ph2 - 4, 7); ctx.stroke();
+  rr(ctx, lx + 2, ly + 2, W - 4, H - 4, 7); ctx.stroke();
   ctx.fillStyle = '#3f9fc0';
-  rr(ctx, px + 8, py + 8, pw - 16, ph2 - 16, 5); ctx.fill();
+  rr(ctx, lx + 8, ly + 8, W - 16, H - 16, 5); ctx.fill();
   ctx.strokeStyle = '#26688a';
   ctx.lineWidth = 2;
-  rr(ctx, px + 8, py + 8, pw - 16, ph2 - 16, 5); ctx.stroke();
+  rr(ctx, lx + 8, ly + 8, W - 16, H - 16, 5); ctx.stroke();
   if (e.working) { // 抽水涟漪
     const ph = (e.pulse || 0) % 1;
     ctx.strokeStyle = 'rgba(170,225,255,' + (0.65 * (1 - ph)).toFixed(2) + ')';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(px + pw / 2, py + ph2 / 2, 5 + ph * 11, 0, Math.PI * 2);
+    ctx.arc(0, 0, 5 + ph * 11, 0, Math.PI * 2);
     ctx.stroke();
   } else {
     ctx.fillStyle = '#9fd8f0';
     ctx.beginPath();
-    ctx.arc(px + pw / 2, py + ph2 / 2, 5, 0, 7);
+    ctx.arc(0, 0, 5, 0, 7);
     ctx.fill();
   }
+  // 出口箭头（基准朝东，随机身一起旋转）
   ctx.fillStyle = dirColorNotch(dir);
-  notch(ctx, px, py, dir);
+  notch(ctx, lx, ly, 0);
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 9px system-ui';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('抽水机', px + pw / 2, py + ph2 / 2 + 12);
+  ctx.fillText('抽水机', 0, 12);
+  ctx.restore();
   ctx.globalAlpha = 1;
 }
 
@@ -125,3 +147,19 @@ DEVICE_PLACE['offshore-pump'] = (type, tx, ty, dir, ew, eh) => {
   return { ok: true };
 };
 DEVICE_DIR_ROTATE['offshore-pump'] = true;
+
+// 抽水机旋转/翻转后新脚印是否仍合法：必须仍全压水面、不与其它实体重叠、且在触及范围内
+function pumpCanFace(e, newDir) {
+  const def = BUILD_DEFS['offshore-pump'];
+  let ew = def.w, eh = def.h;
+  if (newDir % 2 === 1) { ew = def.h; eh = def.w; }
+  for (let dy = 0; dy < eh; dy++)
+    for (let dx = 0; dx < ew; dx++) {
+      const cx = e.x + dx, cy = e.y + dy;
+      if (!isWater(cx, cy)) return false;
+      const t = entAt(cx, cy);
+      if (t && t !== e) return false;
+      if (!withinReach(cx, cy)) return false;
+    }
+  return true;
+}

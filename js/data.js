@@ -249,7 +249,7 @@ const BUILD_DEFS = {
   'lab':                { w: 3, h: 3, solid: true },
   'boiler':             { w: 3, h: 2, solid: true },
   'steam-engine':       { w: 3, h: 5, solid: true },
-  'offshore-pump':      { w: 2, h: 1, solid: true },
+  'offshore-pump':      { w: 2, h: 1, solid: true, rotSwap: true },
   'electric-drill':     { w: 3, h: 3, solid: true },
   'electric-furnace':   { w: 3, h: 3, solid: true },
   'assembling-machine-mk2': { w: 3, h: 3, solid: true },
