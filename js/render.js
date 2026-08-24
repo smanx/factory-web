@@ -351,7 +351,39 @@ function drawTerrain(ctx) {
         drawOreDots(ctx, tx * TILE, ty * TILE, oreItemId(ti), getOreAmt(tx, ty), tx, ty);
     }
   }
+  // 动态水面波浪（画面优化）：在水域瓦片叠加缓缓流动的高光波纹
+  drawWaterAnimation(ctx, tx0, ty0, tx1, ty1);
   terrainCacheStats.state = '分块缓存（' + terrainChunkCache.size + '/' + TERRAIN_CHUNK_LRU_MAX + ' 张，命中 ' + terrainCacheStats.hits + ' / 未命中 ' + terrainCacheStats.misses + '）';
+}
+
+// 动态水面：对可见范围内的水域瓦片绘制缓慢漂移的高光波纹，营造“水面流动”感。
+// 只在主渲染层叠加（不写入离屏缓存），避免破坏缓存复用；波纹基于时间与瓦片坐标做确定性错相。
+function drawWaterAnimation(ctx, tx0, ty0, tx1, ty1) {
+  if (!G || !G.time) return;
+  const t = G.time;
+  for (let ty = ty0; ty <= ty1; ty++) {
+    for (let tx = tx0; tx <= tx1; tx++) {
+      if (getTerrain(tx, ty) !== T_WATER) continue;
+      const px = tx * TILE, py = ty * TILE;
+      // 缓慢漂移的高光波纹：位置随世界坐标与时间缓慢移动，随机错相避免整齐划一
+      const phase = hash2(tx, ty) * 6.2832;
+      const driftX = Math.sin(t * 0.4 + phase) * 5;
+      const driftY = Math.cos(t * 0.32 + phase * 1.3) * 4;
+      // 主高光弧线（半透明白色，随波漂移）
+      const a = 0.12 + 0.08 * Math.sin(t * 1.2 + phase);
+      ctx.strokeStyle = 'rgba(190,220,245,' + a.toFixed(3) + ')';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(px + TILE / 2 + driftX, py + TILE / 2 + driftY, TILE * 0.32, Math.PI * 0.2, Math.PI * 1.6);
+      ctx.stroke();
+      // 更浅的第二道副波纹
+      ctx.strokeStyle = 'rgba(200,225,250,' + (a * 0.7).toFixed(3) + ')';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(px + TILE / 2 - driftX * 0.6, py + TILE / 2 - driftY * 0.6, TILE * 0.2, Math.PI * 0.4, Math.PI * 1.8);
+      ctx.stroke();
+    }
+  }
 }
 
 function drawOreDots(ctx, px, py, itemId, amt, tx, ty) {
@@ -651,7 +683,7 @@ function drawEnemies(ctx) {
         const a = i * Math.PI / 2 + G.time * 0.5;
         ctx.beginPath(); ctx.arc(en.x + Math.cos(a) * size * 0.7, en.y + Math.sin(a) * size * 0.7, 2, 0, 7); ctx.fill();
       }
-    } else if (en.type === 'worm' || en.type === 'big-worm') {
+    } else if (en.type === 'worm' || en.type === 'big-worm' || en.type === 'behemoth-worm') {
       ctx.beginPath();
       ctx.ellipse(en.x, en.y + bob, size, size * 0.5, 0, 0, 7);
       ctx.fill(); ctx.stroke();

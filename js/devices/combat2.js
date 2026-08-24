@@ -16,7 +16,11 @@ const ENEMY_TYPES = {
   'heavy-biter':  { name: '重甲虫', hp: 150, speed: 14,  size: 11, dmg: 16, color: '#8a2a2a', kind: 'melee',   xp: 4, evolution: 0.35 },
   'fire-spitter': { name: '喷火虫', hp: 120, speed: 12,  size: 9,  dmg: 18, color: '#d08a2a', kind: 'ranged', xp: 4, evolution: 0.5 },
   'big-worm':     { name: '巨型蠕虫', hp: 300, speed: 0,   size: 16, dmg: 24, color: '#4a3a2a', kind: 'ranged', xp: 6, evolution: 0.6 },
-  'huge-biter':   { name: '巨兽虫', hp: 500, speed: 12,  size: 15, dmg: 32, color: '#5a1a2a', kind: 'melee',   xp: 8, evolution: 0.8 }
+  'huge-biter':   { name: '巨兽虫', hp: 500, speed: 12,  size: 15, dmg: 32, color: '#5a1a2a', kind: 'melee',   xp: 8, evolution: 0.8 },
+  // 终局变种（对齐《异星工厂》Behemoth 巨兽级，进化度 0.9+）：属性最强，需最先进火力应对
+  'behemoth-biter':   { name: '巨兽甲虫', hp: 1200, speed: 10,  size: 19, dmg: 56, color: '#3a1018', kind: 'melee',   xp: 16, evolution: 0.9 },
+  'behemoth-spitter': { name: '巨兽吐痰虫', hp: 900, speed: 9,  size: 14, dmg: 48, color: '#5a3a1a', kind: 'ranged', xp: 14, evolution: 0.92 },
+  'behemoth-worm':    { name: '巨兽蠕虫', hp: 1500, speed: 0,  size: 20, dmg: 55, color: '#2e1c14', kind: 'ranged', xp: 22, evolution: 0.95 }
 };
 
 // ===== 敌人进化度系统（对齐《异星工厂》Evolution factor） =====
@@ -55,7 +59,11 @@ function pickEnemyType() {
     ['heavy-biter', 0.35],
     ['fire-spitter', 0.5],
     ['big-worm', 0.6],
-    ['huge-biter', 0.8]
+    ['huge-biter', 0.8],
+    // 终局 Behemoth 巨兽级（进化度 0.9+）
+    ['behemoth-biter', 0.9],
+    ['behemoth-spitter', 0.92],
+    ['behemoth-worm', 0.95]
   ];
   const weights = base.map(([k, w]) => [k, w]);
   for (const [k, thr] of advanced) {
@@ -151,6 +159,65 @@ function spawnEnemies(dt) {
   });
 }
 
+// ===== 巢穴进攻波次系统（对齐《异星工厂》：虫群定期集结成波进攻基地）=====
+// 巢穴随时间积攒“攻击性”，达到阈值后在巢穴附近集结一支成建制的进攻波，
+// 波内敌人锁定玩家基地/玩家，列队挺进，比散兵游勇更有压迫感。
+// 进攻波敌人带 wave:true 标记，波次刷出时跳过普通数量上限约束。
+const WAVE_BASE_INTERVAL = 90;        // 基础波次间隔（秒）
+const WAVE_MIN_INTERVAL = 35;         // 最短波次间隔（高级战斗/高进化后加速）
+const WAVE_TIMER_KEY = 'waveT';       // 波次倒计时存于 G
+function waveInterval() {
+  const evo = evolutionFactor();
+  const mult = G.techDone['advanced-combat'] ? 0.6 : 1;
+  return Math.max(WAVE_MIN_INTERVAL, WAVE_BASE_INTERVAL * (1 - evo * 0.5) * mult);
+}
+// 一次进攻波的敌人构成：数量与强度随进化度提升，末期加入 Behemoth 巨兽级
+function composeWave(px, py) {
+  const evo = evolutionFactor();
+  const group = [];
+  const n = 5 + Math.round(evo * 10);   // 波次敌人总数（随进化度增长）
+  for (let i = 0; i < n; i++) {
+    const t = pickEnemyType();
+    const def = scaledDef(ENEMY_TYPES[t]);
+    // 在巢穴/玩家远处随机散布，保证整波成面推进而非重叠成一点
+    const ang = Math.random() * Math.PI * 2;
+    const rad = 4 + Math.random() * 4;
+    group.push({
+      x: px + Math.cos(ang) * rad * TILE, y: py + Math.sin(ang) * rad * TILE,
+      hp: def.hp, maxhp: def.hp, dead: false, dir: 0,
+      type: t, kind: def.kind, speed: def.speed, size: def.size, dmg: def.dmg,
+      color: def.color, attackT: 0, fireT: 0,
+      wave: true   // 标记为进攻波敌人
+    });
+  }
+  return group;
+}
+// 每帧更新波次计时，触发进攻波
+function updateWaves(dt) {
+  if (!G.settings.combat) return;
+  const evo = evolutionFactor();
+  // 至少有一座巢穴、且进化度达到一定水平后才触发进攻波，避免开局就压垮玩家
+  const spawners = G.enemies ? G.enemies.filter(e => e.kind === 'spawner' && !e.dead) : [];
+  if (spawners.length === 0 || evo < 0.06) return;
+  G.waveT = (G.waveT || 0) + dt;
+  if (G.waveT < waveInterval()) return;
+  G.waveT = 0;
+  // 选一座巢穴作为波次集结中心（优先离玩家最近的巢穴）
+  let src = spawners[0];
+  let bestD = Infinity;
+  for (const s of spawners) {
+    const d = Math.hypot(s.x - G.player.x, s.y - G.player.y);
+    if (d < bestD) { bestD = d; src = s; }
+  }
+  const wave = composeWave(src.x, src.y);
+  // 清掉可能卡在巢穴格上的旧物，然后压入波次
+  if (G.enemies.length + wave.length > 120) G.enemies = G.enemies.filter(e => !e.wave);
+  G.enemies.push(...wave);
+  // 播报 + 音效（若存在）
+  if (typeof toast === 'function') toast('⚠ 虫群进攻波次来袭！' + (evo >= 0.9 ? '（出现巨兽级）' : ''));
+  if (typeof playSfx === 'function') playSfx('wave');
+}
+
 // 近战敌人：寻找可攻击的建筑。敌人撞到/贴近实心建筑时攻击它，而非穿过。
 // 优先攻击防御类建筑（石墙/门/炮塔），其次生产建筑。返回目标实体或 null。
 function findEnemyBuildingTarget(en) {
@@ -211,8 +278,9 @@ function updateEnemies(dt) {
     const d = Math.hypot(dx, dy) / TILE;   // 距离（格）
     if (en.kind === 'ranged') {
       // 远程敌人：与玩家保持距离，射程内间歇性吐痰
-      const range = (en.type === 'worm' || en.type === 'big-worm') ? (en.type === 'big-worm' ? 12 : 10) : 8;
-      const keep = en.type === 'big-worm' ? 8 : (en.type === 'worm' ? 7 : 5);
+      const isWorm = en.type === 'worm' || en.type === 'big-worm' || en.type === 'behemoth-worm';
+      const range = isWorm ? (en.type === 'behemoth-worm' ? 14 : (en.type === 'big-worm' ? 12 : 10)) : 8;
+      const keep = en.type === 'behemoth-worm' ? 9 : (en.type === 'big-worm' ? 8 : (en.type === 'worm' ? 7 : 5));
       // 玩家在射程内则以玩家为目标；否则攻击射程内的建筑（对齐《异星工厂》：远程虫群也会破坏基地）
       let fireTarget = null;
       if (d <= range) fireTarget = p;
@@ -226,8 +294,8 @@ function updateEnemies(dt) {
       }
       // 吐痰（投射物）；喷火虫/巨型蠕虫吐火球（命中造成持续灼烧）
       if (en.fireT <= 0 && fireTarget) {
-        en.fireT = en.type === 'worm' || en.type === 'big-worm' ? 2.2 : 1.6;
-        const fire = en.type === 'fire-spitter' || en.type === 'big-worm';
+        en.fireT = isWorm ? (en.type === 'behemoth-worm' ? 2.6 : 2.2) : 1.6;
+        const fire = en.type === 'fire-spitter' || en.type === 'big-worm' || en.type === 'behemoth-worm';
         (G.enemyProjectiles || (G.enemyProjectiles = [])).push({
           x: en.x, y: en.y - en.size, tx: fireTarget.x, ty: fireTarget.y, speed: 3.2, dmg: en.dmg, t: 0,
           fire: fire, color: fire ? '#ff8a2a' : '#9ac04a',
@@ -426,14 +494,14 @@ function updateBullets(dt) {
 // ===== 玩家武器 =====
 // 武器数据：伤害、射速、弹药、弹种
 const WEAPONS = {
-  'pistol':          { name: '手枪',   dmg: 10, rate: 0.3, ammo: 'magazine',        spread: 0.06, auto: false, range: 7 },
-  'submachine-gun':  { name: '冲锋枪', dmg: 7,  rate: 0.1, ammo: 'magazine',        spread: 0.12, auto: true,  range: 7 },
-  'shotgun':         { name: '散弹枪', dmg: 6,  rate: 0.5, ammo: 'shotgun-shell', spread: 0.4,  auto: false, range: 6, pellets: 6 },
-  'combat-shotgun':  { name: '战斗散弹枪', dmg: 10, rate: 0.35, ammo: 'piercing-shotgun-shell', spread: 0.32, auto: false, range: 7, pellets: 8 },
-  'rocket-launcher': { name: '火箭筒', dmg: 35, rate: 1.1, ammo: 'rocket',          spread: 0.03, auto: false, range: 9, splash: 1.8 },
-  'grenade':         { name: '手雷',   dmg: 40, rate: 0.8, ammo: 'grenade',          spread: 0.05, auto: false, range: 6, splash: 2.5 },
-  'cluster-grenade': { name: '集束手雷', dmg: 80, rate: 1.0, ammo: 'cluster-grenade', spread: 0.05, auto: false, range: 6, splash: 4.5 },
-  'flamethrower':    { name: '火焰喷射器', dmg: 6, rate: 0.12, ammo: 'flamethrower-ammo', spread: 0.2, auto: true, range: 6, flame: true },
+  'pistol':          { name: '手枪',   dmg: 10, rate: 0.3, ammo: 'magazine',        spread: 0.06, auto: false, range: 7, sfx: 'shoot' },
+  'submachine-gun':  { name: '冲锋枪', dmg: 7,  rate: 0.1, ammo: 'magazine',        spread: 0.12, auto: true,  range: 7, sfx: 'machine-gun' },
+  'shotgun':         { name: '散弹枪', dmg: 6,  rate: 0.5, ammo: 'shotgun-shell', spread: 0.4,  auto: false, range: 6, pellets: 6, sfx: 'shotgun' },
+  'combat-shotgun':  { name: '战斗散弹枪', dmg: 10, rate: 0.35, ammo: 'piercing-shotgun-shell', spread: 0.32, auto: false, range: 7, pellets: 8, sfx: 'shotgun' },
+  'rocket-launcher': { name: '火箭筒', dmg: 35, rate: 1.1, ammo: 'rocket',          spread: 0.03, auto: false, range: 9, splash: 1.8, sfx: 'rocket' },
+  'grenade':         { name: '手雷',   dmg: 40, rate: 0.8, ammo: 'grenade',          spread: 0.05, auto: false, range: 6, splash: 2.5, sfx: 'throw' },
+  'cluster-grenade': { name: '集束手雷', dmg: 80, rate: 1.0, ammo: 'cluster-grenade', spread: 0.05, auto: false, range: 6, splash: 4.5, sfx: 'throw' },
+  'flamethrower':    { name: '火焰喷射器', dmg: 6, rate: 0.12, ammo: 'flamethrower-ammo', spread: 0.2, auto: true, range: 6, flame: true, sfx: 'flamethrower' },
   'poison-capsule':  { name: '毒胶囊', dmg: 0, rate: 0.8, ammo: 'poison-capsule', spread: 0.05, auto: false, range: 6, capsule: 'poison' },
   'slowdown-capsule':{ name: '减速胶囊', dmg: 0, rate: 0.8, ammo: 'slowdown-capsule', spread: 0.05, auto: false, range: 6, capsule: 'slowdown' },
   // 战斗机器人胶囊：投掷后释放战斗机器人（见 CAPSULES）
@@ -585,6 +653,7 @@ function throwCapsule(id, tx, ty) {
     return false;
   }
   invTake(id, 1);
+  if (typeof playSfx === 'function') playSfx('deploy');
   // 毒胶囊/减速胶囊：落地生成区域力场（不是战斗机器人）
   if (id === 'poison-capsule' || id === 'slowdown-capsule') {
     const kind = id === 'poison-capsule' ? 'poison' : 'slowdown';
@@ -770,6 +839,7 @@ class LaserTurret extends Entity {
       x: (this.x + this.w / 2) * TILE, y: (this.y + this.h / 2) * TILE,
       tx: best.x, ty: best.y, t: 0, life: 0.1, dmg: 0, kind: 'laser'
     });
+    if (typeof playSfx === 'function') playSfx('laser');
     if (best.hp <= 0) best.dead = true;
   }
   powerDemand() { return 180; }
@@ -900,6 +970,7 @@ class FlamethrowerTurret extends Entity {
       x: (this.x + this.w / 2) * TILE, y: (this.y + this.h / 2) * TILE,
       tx: best.x, ty: best.y, t: 0, life: 0.3, dmg: 0, kind: 'flame'
     });
+    if (typeof playSfx === 'function') playSfx('flamethrower');
   }
   powerDemand() { return 200; }
   serialize() { const s = super.serialize(); s.fluid = this.fluid; return s; }
