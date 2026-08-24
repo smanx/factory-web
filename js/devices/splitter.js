@@ -128,6 +128,88 @@ class PrioritySplitter extends Splitter {
 }
 
 // ===== 渲染 =====
+// 检测分流器每条 lane 的输入/输出是否接有传送带（或地下带出口）。
+// 返回 { inp:[bool,bool], out:[bool,bool] }，inp[l]/out[l] 表示 lane l 是否接了带。
+// ox/oy 为实体左上角绘制坐标（正常= e.x/e.y；蓝图/鬼影=光标格），用于在预览时也能正确计算。
+function splitterLinks(e, ox, oy) {
+  const inp = [false, false], out = [false, false];
+  for (let l = 0; l < 2; l++) {
+    const [lx, ly] = laneCenterAt(e, ox, oy, l);
+    const inTx = Math.floor((lx - DX[e.dir] * TILE / 2) / TILE);
+    const inTy = Math.floor((ly - DY[e.dir] * TILE / 2) / TILE);
+    const inEnt = entAt(inTx, inTy);
+    if (inEnt instanceof Belt && !(inEnt instanceof Splitter) && inEnt.dir === e.dir) inp[l] = true;
+    else if (inEnt instanceof Underground && inEnt.dir === e.dir && inEnt.findBackMate()) inp[l] = true;
+    const outTx = Math.floor((lx + DX[e.dir] * TILE / 2) / TILE);
+    const outTy = Math.floor((ly + DY[e.dir] * TILE / 2) / TILE);
+    const outEnt = entAt(outTx, outTy);
+    if (outEnt instanceof Belt && !(outEnt instanceof Splitter) && outEnt.dir === e.dir) out[l] = true;
+    else if (outEnt instanceof Underground && outEnt.dir === e.dir && outEnt.findBackMate()) out[l] = true;
+  }
+  return { inp, out };
+}
+
+// 沿分流器内部路径绘制流动箭头动画：
+//  - 双入双出（两入口+两出口都接带）：两条 lane 各自流入、各自流出，交叉分流；
+//  - 单入单出（仅一入口+一出口）：沿该 lane 直线直通，像普通传送带一样流动。
+// 在恢复世界坐标系后调用（箭头路径用世界坐标），alpha 用于蓝图/鬼影半透明。
+function laneCenterAt(e, ox, oy, l) {
+  const cx = (ox + e.w / 2) * TILE, cy = (oy + e.h / 2) * TILE;
+  const p = [-DY[e.dir], DX[e.dir]];
+  const off = (l - 0.5) * TILE;
+  return [cx + p[0] * off, cy + p[1] * off];
+}
+
+function drawSplitterFlow(ctx, e, gx, gy, color, alpha) {
+  const links = splitterLinks(e, gx, gy);
+  const nIn = (links.inp[0] ? 1 : 0) + (links.inp[1] ? 1 : 0);
+  const nOut = (links.out[0] ? 1 : 0) + (links.out[1] ? 1 : 0);
+  // 完全没接带：无需内部流动动画（保持静态外形）
+  if (nIn === 0 && nOut === 0) return;
+  const cx = (gx + e.w / 2) * TILE, cy = (gy + e.h / 2) * TILE;
+  const dx = DX[e.dir], dy = DY[e.dir];
+  const ang = Math.atan2(dy, dx);
+  const step = TILE / 2;
+  const offset = (G.time * beltSpeed() * (e.speedMult ? e.speedMult() : 1) * TILE) % step;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = color;
+  ctx.strokeStyle = 'rgba(0,0,0,.4)';
+  ctx.lineWidth = 1;
+  const drawArrow = (ax, ay) => {
+    ctx.save();
+    ctx.translate(ax, ay);
+    ctx.rotate(ang);
+    tri(ctx, -3, -5, -3, 5, 3, 0);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  };
+  // 输出侧：从中心流向各出口 lane
+  for (let l = 0; l < 2; l++) {
+    if (!links.out[l]) continue;
+    const [lx, ly] = laneCenterAt(e, gx, gy, l);
+    const ox = lx + dx * TILE / 2, oy = ly + dy * TILE / 2;
+    for (let k = 0; k <= 2; k++) {
+      const t = (k * step + offset) / step;
+      if (t > 1) continue;
+      drawArrow(cx + (ox - cx) * t, cy + (oy - cy) * t);
+    }
+  }
+  // 输入侧：从各入口 lane 流向中心
+  for (let l = 0; l < 2; l++) {
+    if (!links.inp[l]) continue;
+    const [lx, ly] = laneCenterAt(e, gx, gy, l);
+    const ix = lx - dx * TILE / 2, iy = ly - dy * TILE / 2;
+    for (let k = 0; k <= 2; k++) {
+      const t = (k * step + offset) / step;
+      if (t > 1) continue;
+      drawArrow(ix + (cx - ix) * t, iy + (cy - iy) * t);
+    }
+  }
+  ctx.restore();
+}
+
 function drawSplitter(ctx, e, gx, gy, dir, alpha) {
   ctx.globalAlpha = alpha;
   const cx = (gx + e.w / 2) * TILE, cy = (gy + e.h / 2) * TILE;
@@ -179,6 +261,8 @@ function drawSplitter(ctx, e, gx, gy, dir, alpha) {
     ctx.stroke();
   }
   ctx.restore();
+  // 根据输入/输出传送带连接情况绘制流动箭头动画（双入双出交叉分流；单入单出直通）
+  drawSplitterFlow(ctx, e, gx, gy, 'rgba(224,178,60,.8)', alpha);
   if (e.outPref !== undefined && e.outPref >= 0) {
     const [lx, ly] = e.laneCenter(e.outPref);
     ctx.save();

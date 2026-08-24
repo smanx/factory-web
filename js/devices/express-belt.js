@@ -214,6 +214,8 @@ function drawExpressSplitter(ctx, e, gx, gy, dir, alpha) {
     ctx.stroke();
   }
   ctx.restore();
+  // 极速分流器：根据输入/输出传送带连接情况绘制流动箭头动画（复用分流器通用绘制）
+  drawSplitterFlow(ctx, e, gx, gy, 'rgba(224,90,78,.8)', alpha);
   if (e.outPref !== undefined && e.outPref >= 0) {
     const [lx, ly] = e.laneCenter(e.outPref);
     ctx.save();
