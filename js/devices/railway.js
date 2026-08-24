@@ -68,6 +68,12 @@ function updateTrains(dt) {
     if (typeof updateTrainArtillery === 'function' && G.settings.combat) updateTrainArtillery(tr, dt);
     // 车头烧煤移动：能量池耗尽时从燃料槽补一单位（优先固体燃料）
     head.refuel();
+    // 玩家正驾驶该车头：自动调度让位给手动驾驶，仅保持燃料/炮兵等刷新，不自动移动
+    if (G.driving && G.driving.ent === head) {
+      tr.wasStopped = false;
+      tr.stopT = 0; tr.waitT = 0;
+      continue;
+    }
     const coal = (head.fuel || 0);
     if (coal <= 0) { tr.wasStopped = true; continue; }   // 没燃料则停车
 
@@ -219,10 +225,66 @@ function moveTrain(tr) {
   }
 }
 
+// 找到包含某车头/车厢的列车对象（玩家驾驶/乘坐时用）。找不到返回 null。
+function findTrainOfCar(car) {
+  if (!G.trains) return null;
+  for (const tr of G.trains) if (tr.cars.indexOf(car) >= 0) return tr;
+  return null;
+}
+
+// 玩家驾驶火车时：让整列车反向移动一格（车头后退、车厢反向依次跟进）。
+// 以车尾为基准向“车尾当前朝向”前方移动，其余节依次继承前一节旧位置。
+function moveTrainBack(tr) {
+  const cars = tr.cars;
+  if (!cars || !cars.length) return false;
+  const head = cars[0];
+  // 倒车方向 = 列车前进方向的反向（车头朝向不变，整列车沿反向平移一格，对齐《异星工厂》倒车）
+  const backDir = (head.dir + 2) % 4;
+  const bx = DX[backDir], by = DY[backDir];
+  const tail = cars[cars.length - 1];
+  const ntx = tail.x + bx, nty = tail.y + by;
+  // 车尾目标格必须仍是轨道，且未被本列车其它节或其它列车占用
+  if (!railHas(ntx, nty)) return false;
+  for (const c of cars) if (c.x === ntx && c.y === nty) return false;
+  if (trainOccupy(ntx, nty, head)) return false;
+  const oldPos = cars.map(c => ({ x: c.x, y: c.y }));
+  // 所有节整体平移一格（朝向不变）
+  for (let i = 0; i < cars.length; i++) {
+    const c = cars[i];
+    removeEntFromGrid(c);
+    c.x = oldPos[i].x + bx; c.y = oldPos[i].y + by;
+    addEntToGrid(c);
+  }
+  if (head.fuel != null) head.fuel -= LOCO_COAL_PER;
+  if (typeof playSfx === 'function') playSfx('train');
+  return true;
+}
+
+// 玩家驾驶火车时反转车头朝向（在轨道上掉头，对齐《异星工厂》按 R 反转车头）。
+function reverseTrain(tr) {
+  const head = tr.cars[0];
+  if (!head) return;
+  head.dir = (head.dir + 2) % 4;
+  removeEntFromGrid(head); addEntToGrid(head);
+  if (typeof playSfx === 'function') playSfx('train');
+}
+
+// 玩家驾驶火车时向前移动一格（复用 moveTrain，但带燃料检查与音效）。返回是否移动。
+function moveTrainManual(tr) {
+  const head = tr.cars[0];
+  if (!head) return false;
+  head.refuel();
+  if ((head.fuel || 0) <= 0) return false;  // 无燃料无法前进
+  const ox = head.x, oy = head.y;
+  moveTrain(tr);
+  if (head.x === ox && head.y === oy) return false; // 前方无轨/被占，未移动
+  if (typeof playSfx === 'function') playSfx('train');
+  return true;
+}
+
 // 目标格是否被除 head 自身列车外的其它列车占用（防重叠）
 function trainOccupy(tx, ty, head) {
-  let own = null;
-  for (const tr of G.trains) if (tr.cars.indexOf(head) >= 0) { own = tr; break; }
+  const own = findTrainOfCar(head);
   for (const tr of G.trains) {
     if (tr === own) continue;
     for (const c of tr.cars) {
@@ -236,8 +298,7 @@ function trainOccupy(tx, ty, head) {
 // 仅检查“其它列车”，忽略同一列车自己的车厢，避免自我拦截。
 function railSignalBlocked(head) {
   // 找到 head 所在列车
-  let own = null;
-  for (const tr of G.trains) if (tr.cars.indexOf(head) >= 0) { own = tr; break; }
+  const own = findTrainOfCar(head);
   // 车头前方是否紧邻链式信号灯（链式信号灯强制更大的跟车距离）
   const chainAhead = chainSignalNearAhead(head);
   const range = chainAhead ? CHAIN_SIGNAL_RANGE : SIGNAL_RANGE;

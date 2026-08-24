@@ -1034,7 +1034,7 @@ function tryEnterNearbyCar() {
   const checks = [[px, py], [px + DX[G.player.dir], py + DY[G.player.dir]]];
   for (const [tx, ty] of checks) {
     const e = entAt(tx, ty);
-    if (e && (e.type === 'car' || e.type === 'tank') && typeof enterCar === 'function') { enterCar(e); return true; }
+    if (e && (e.type === 'car' || e.type === 'tank' || e.type === 'locomotive' || e.type === 'diesel-locomotive' || e.type === 'cargo-wagon' || e.type === 'fluid-wagon' || e.type === 'artillery-wagon') && typeof enterCar === 'function') { enterCar(e); return true; }
   }
   return false;
 }
@@ -1130,6 +1130,13 @@ function pasteSettings(e) {
 }
 
 function rotateAction() {
+  // 驾驶火车时：R 反转车头方向（对齐《异星工厂》：驾驶列车按 R 掉头）
+  if (G.driving && G.driving.ent && typeof reverseTrain === 'function' &&
+      (G.driving.ent instanceof Locomotive || G.driving.ent instanceof CargoWagon) && G.driving.mode === 'drive') {
+    const tr = findTrainOfCar ? findTrainOfCar(G.driving.ent) : null;
+    if (tr) reverseTrain(tr);
+    return;
+  }
   // 蓝图粘贴中：旋转整个蓝图（对齐《异星工厂》R 键旋转蓝图）
   if (G.blueMode === 'paste' && G.blueprint) {
     G.blueRot = (G.blueRot + 1) % 4;

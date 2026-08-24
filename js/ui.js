@@ -1307,7 +1307,12 @@ function updateHUD(dt, fps) {
     }
   }
   if (G.driving && G.driving.ent) {
-    hud += '   🚗 ' + (G.driving.ent instanceof Tank ? '坦克' : '装甲车') + '（E 下车）';
+    const de = G.driving.ent;
+    if (typeof Locomotive !== 'undefined' && (de instanceof Locomotive || de instanceof CargoWagon)) {
+      hud += '   🚂 ' + (de instanceof Locomotive ? '火车驾驶' : '乘坐车厢') + '（E 下车' + (de instanceof Locomotive && G.driving.mode === 'drive' ? '，W 前进 / S 后退 / R 反转' : '') + '）';
+    } else {
+      hud += '   🚗 ' + (de instanceof Tank ? '坦克' : '装甲车') + '（E 下车）';
+    }
   }
   // 手搓合成队列进度
   const cur = craftCurrent();
