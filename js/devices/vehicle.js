@@ -97,6 +97,33 @@ class Car extends Entity {
   powerDemand() { return 0; }
   update(dt) {}
 
+  // ===== 车载机枪（对齐《异星工厂》Car 车载机枪） =====
+  // 装甲车自带车载机枪：驾驶时按住空格向光标方向自动连发子弹，
+  // 消耗玩家背包中的弹药（优先穿甲弹、其次普通弹药匣），实现边驾驶边射击（对齐原版）。
+  fireMachineGun(tx, ty) {
+    // 弹药检查：优先穿甲弹（威力更高），其次普通弹药匣（对齐《异星工厂》优先级）
+    let use = null;
+    if (typeof invCount === 'function' && invCount('piercing-rounds') > 0) use = 'piercing-rounds';
+    else if (typeof invCount === 'function' && invCount('magazine') > 0) use = 'magazine';
+    if (!use) return false;
+    if (typeof invTake === 'function') invTake(use, 1);
+    // 车载机枪伤害：穿甲弹强于普通弹（对齐原版）；叠加通用武器伤害与投射物伤害无限科技
+    const base = 8 * (use === 'piercing-rounds' ? 1.6 : 1) *
+      (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) *
+      (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('projectile') : 1);
+    const px = this.x * TILE + TILE * this.w / 2, py = this.y * TILE + TILE * this.h / 2;
+    const a = Math.atan2(ty - py, tx - px) + (Math.random() - 0.5) * 0.12; // 轻微的散射（对齐原版车载机枪散布）
+    const dist = 8 * TILE;
+    const tx2 = px + Math.cos(a) * dist, ty2 = py + Math.sin(a) * dist;
+    (G.bullets || (G.bullets = [])).push({
+      x: px, y: py, tx: tx2, ty: ty2, t: 0, life: 0.12,
+      dmg: Math.round(base), kind: 'bullet', carMG: true
+    });
+    if (typeof playSfx === 'function') playSfx('machine-gun');
+    uiDirty = true;
+    return true;
+  }
+
   // ===== 载具装备网格（对齐《异星工厂》：Car 5×5、Tank 6×6；蜘蛛机用自带 4×4） =====
   vehGridSize() { return (typeof VEHICLE_GRIDS === 'object') ? (VEHICLE_GRIDS[this.type] || 0) : 0; }
   vehEquipUsedSlots() { return (this.equipGrid || []).length; }
@@ -340,6 +367,26 @@ class Tank extends Car {
     }
     return true;
   }
+}
+
+// 驾驶装甲车时：按住空格向光标方向用车载机枪连发（需战斗模式开启，消耗玩家背包弹药）
+function updateCarFire(dt) {
+  const d = G.driving;
+  if (!d || !(d.ent instanceof Car) || d.ent instanceof Tank || !G.settings.combat) return;
+  const c = d.ent;
+  c.mgT = (c.mgT || 0) - dt;
+  if (c.mgT > 0) return;
+  if (!G.keys[' ']) return;
+  let tx, ty;
+  if (G.cursorTile) {
+    tx = G.cursorTile.tx * TILE + TILE / 2;
+    ty = G.cursorTile.ty * TILE + TILE / 2;
+  } else {
+    const a = (c.dir || 0) * Math.PI / 2;
+    tx = c.x * TILE + TILE * c.w / 2 + Math.cos(a) * TILE * 3;
+    ty = c.y * TILE + TILE * c.h / 2 + Math.sin(a) * TILE * 3;
+  }
+  if (c.fireMachineGun(tx, ty)) c.mgT = 0.12; // 高速连发（对齐原版车载机枪射速）
 }
 
 // 驾驶坦克时：按住空格向光标方向开炮（需战斗模式开启）
@@ -836,7 +883,7 @@ function enterCar(car) {
   G.player.y = car.y * TILE + TILE * car.h / 2;
   G.player.inVehicle = true;
   closePanel();
-  if (typeof toast === 'function') toast(car instanceof Tank ? '已进入坦克（WASD 驾驶，空格开炮，E 下车）' : '已进入装甲车（WASD 驾驶，E 下车）');
+  if (typeof toast === 'function') toast(car instanceof Tank ? '已进入坦克（WASD 驾驶，空格开炮，E 下车）' : '已进入装甲车（WASD 驾驶，空格车载机枪，E 下车）');
   uiDirty = true;
 }
 
@@ -1042,6 +1089,10 @@ function drawCar(ctx, e, gx, gy, dir, alpha) {
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(ang);
+  // 车载机枪（对齐《异星工厂》Car）：车头前伸的短机枪枪管
+  ctx.fillStyle = '#2a2620';
+  ctx.fillRect(12, -2.5, 9, 5);
+  ctx.fillRect(8, -4, 5, 8);
   ctx.fillStyle = '#e8c85a';
   ctx.beginPath();
   ctx.moveTo(12, 0); ctx.lineTo(5, -5); ctx.lineTo(5, 5); ctx.closePath();
@@ -1074,7 +1125,7 @@ function carPanelHtml(e) {
   if (nrk > 0) h += '<button data-action="feed" data-id="rocket-fuel">放入火箭燃料 ×' + nrk + '</button>';
   h += '<div class="status"></div>';
   h += '<button data-action="drive" id="btn-car-drive" class="primary">🚗 进入驾驶</button>';
-  h += '<div class="dim">装甲车：靠近后按 E 进入驾驶（WASD 更快移动），移动消耗煤/固体燃料（固体燃料更耐用），E 下车。可用机械臂/手动放入。</div>';
+  h += '<div class="dim">装甲车：靠近后按 E 进入驾驶（WASD 更快移动），移动消耗煤/固体燃料（固体燃料更耐用），驾驶时按空格发射车载机枪（消耗背包弹药），E 下车。可用机械臂/手动放入。</div>';
   h += trunkPanelHtml(e);
   h += vehEquipHtml(e);
   return h;
@@ -1094,7 +1145,7 @@ function carPanelLive(e, api) {
 }
 function carTip(e) {
   if (G.driving && G.driving.ent === e) return '驾驶中（E 下车）';
-  return '装甲车（煤 ' + (e.fuelCoal || 0) + (e.fuelSolid > 0 ? '，固体燃料 ' + e.fuelSolid : '') + (e.fuelRocket > 0 ? '，火箭燃料 ' + e.fuelRocket : '') + '），按 E 进入驾驶';
+  return '装甲车（煤 ' + (e.fuelCoal || 0) + (e.fuelSolid > 0 ? '，固体燃料 ' + e.fuelSolid : '') + (e.fuelRocket > 0 ? '，火箭燃料 ' + e.fuelRocket : '') + '），按 E 进入驾驶，空格发射车载机枪';
 }
 function carOnAction(act) {
   if (act === 'drive') {

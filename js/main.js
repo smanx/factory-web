@@ -1626,6 +1626,7 @@ function loop(ts) {
         if (typeof updateGroundFires === 'function') updateGroundFires(dt);
         if (typeof updateAcidPools === 'function') updateAcidPools(dt);
         if (typeof updatePersonalLaserDefense === 'function') updatePersonalLaserDefense(dt);
+        if (typeof updateCarFire === 'function') updateCarFire(dt);   // 车载机枪（对齐《异星工厂》Car）
         if (typeof updateTankFire === 'function') updateTankFire(dt);
         if (typeof updateLootDrops === 'function') updateLootDrops(dt);
       }

@@ -690,6 +690,8 @@ function playerFire(tx, ty) {
 // 玩家开火更新：按住空格/左键对敌人持续射击
 function updatePlayerFire(dt) {
   if (!G.weapon || !G.settings.combat) return;
+  // 驾驶装甲车/坦克时：按住空格由车载机枪/主炮开火，不再用手持武器（对齐《异星工厂》：驾驶载具用载具武器）
+  if (G.driving && G.driving.ent && (G.driving.ent instanceof Car)) return;
   G.playerFireT -= dt;
   // 空格键开火（触屏可自行调用 playerFire 实现开火）
   const firing = !!G.keys[' '];
