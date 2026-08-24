@@ -38,6 +38,7 @@ class Lab extends Entity {
   update(dt) {
     this.active = false;
     const tech = G.activeTech;
+    if (G.power.sat <= 0) { this.t = 0; return; }
     if (!tech || G.techDone[tech]) { this.t = 0; return; }
     // 无限科技：永不完成，持续消耗任意存在的科学包
     if (isInfiniteTech(tech)) {
@@ -81,6 +82,7 @@ class Lab extends Entity {
       }
     }
   }
+  powerDemand() { return this.active ? POWER_USE['lab'] : 0; }
   giveItem(item) {
     if (isScience(item) && this.packCount(item) < 40) { this.packs[item] = this.packCount(item) + 1; return true; }
     return false;
