@@ -43,7 +43,7 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
   const step = TILE / 2;
   const off = ((G.time * beltSpeed() * e.speedMult() * TILE) % step + step) % step;
   strip(dir * Math.PI / 2, -TILE / 2 + 2, TILE - 4);
-  if (inp) strip(Math.atan2(inp[1], inp[0]), 0, step);
+  for (const s of inp) strip(Math.atan2(s[1], s[0]), 0, step);
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(dir * Math.PI / 2);
@@ -57,8 +57,8 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
     ctx.fill();
   }
   ctx.restore();
-  if (inp) {
-    const sa = Math.atan2(inp[1], inp[0]);
+  for (const s of inp) {
+    const sa = Math.atan2(s[1], s[0]);
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(sa);
@@ -75,13 +75,21 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
     ctx.restore();
   }
   const exitX = DX[dir] * step, exitY = DY[dir] * step;
-  let inX = cx, inY = cy;
-  if (inp) { inX = cx + inp[0] * step; inY = cy + inp[1] * step; }
+  const sideIn = function (o) {
+    if (inp.length === 0) return null;
+    if (o.side !== undefined && o.side >= 0 && o.side < inp.length) return inp[o.side];
+    return inp[0];
+  };
   const itemFn = (LOD && LOD.simple) ? drawItemDotLOD : drawItemDot;
   for (const o of e.items) {
     let ix, iy;
-    if (inp && o.pos < 0.5) { const t = o.pos / 0.5; ix = inX + (cx - inX) * t; iy = inY + (cy - inY) * t; }
-    else if (inp) { const t = (o.pos - 0.5) / 0.5; ix = cx + exitX * t; iy = cy + exitY * t; }
+    if (inp.length && o.pos < 0.5) {
+      const s = sideIn(o);
+      const inX = cx + s[0] * step, inY = cy + s[1] * step;
+      const t = o.pos / 0.5;
+      ix = inX + (cx - inX) * t; iy = inY + (cy - inY) * t;
+    }
+    else if (inp.length) { const t = (o.pos - 0.5) / 0.5; ix = cx + exitX * t; iy = cy + exitY * t; }
     else { ix = cx + DX[dir] * (o.pos - 0.5) * TILE; iy = cy + DY[dir] * (o.pos - 0.5) * TILE; }
     itemFn(ctx, ix, iy, o.item);
   }
