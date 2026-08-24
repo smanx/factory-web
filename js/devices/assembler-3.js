@@ -54,7 +54,7 @@ function drawAssembler3(ctx, e, gx, gy, dir, alpha) {
   ctx.restore();
   if (e.recipe) {
     const outId = Object.keys(RECIPES[e.recipe].out)[0];
-    drawItemDotBig(ctx, px + s / 2, py + s / 2, outId);
+    drawRecipeIconCell(ctx, px + s / 2, py + s / 2, outId);
     const pct = e.crafting ? Math.min(1, e.prog / RECIPES[e.recipe].time) : 0;
     if (pct > 0) {
       ctx.strokeStyle = '#8fe08f';

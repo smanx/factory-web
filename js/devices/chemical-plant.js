@@ -197,13 +197,13 @@ function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
   ctx.stroke();
   if (e.recipe) {
     const outId = Object.keys(RECIPES[e.recipe].out)[0];
-    drawItemDotBig(ctx, px + s * 0.62, py + s * 0.36, outId);
+    drawRecipeIconCell(ctx, px + s / 2, py + s / 2, outId);
     const pct = e.crafting ? Math.min(1, e.prog / RECIPES[e.recipe].time) : 0;
     if (pct > 0) {
       ctx.strokeStyle = '#8fe08f';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(px + s * 0.62, py + s * 0.36, 26, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2);
+      ctx.arc(px + s / 2, py + s / 2, 24, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2);
       ctx.stroke();
     }
   } else {
@@ -211,7 +211,7 @@ function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
     if (!(LOD && LOD.simple)) {
       ctx.font = 'bold 11px system-ui';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('无配方', px + s * 0.62, py + s * 0.36);
+      ctx.fillText('无配方', px + s / 2, py + s / 2);
     }
   }
   let bx = px + 14;
