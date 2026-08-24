@@ -74,6 +74,7 @@ html, body {
 .slot {
   position: relative;
   width: 46px; height: 46px;
+  flex-shrink: 0;
   border-radius: 8px;
   border: 2px solid #3a4550;
   cursor: pointer;
@@ -695,14 +696,15 @@ html, body {
   #panel-title { font-size: 16px; }
   .hint, .dim, .ing, .chip { font-size: 14px; }
 
-  /* 快捷栏：放大热区，触屏更易点选；窄屏下超宽时可横向滚动 */
+  /* 快捷栏：手机端改为换行居中排列，每行固定 5 个槽位（10 槽分两行），不压缩槽位 */
   #hotbar {
     gap: 5px;
     padding: 5px;
     max-width: calc(100vw - 24px);
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
+    flex-wrap: wrap;
+    justify-content: center;
+    /* 每行固定 5 个槽位：5×52px + 4×5px(gap) + 2×5px(padding) = 290px */
+    width: 290px;
   }
   #hotbar::-webkit-scrollbar { height: 4px; }
   #hotbar::-webkit-scrollbar-thumb { background: rgba(120,140,160,.5); border-radius: 4px; }
@@ -717,8 +719,9 @@ html, body {
   /* toast 提示放大 */
   .toast { font-size: 15px; padding: 9px 16px; }
 
-  /* 虚拟摇杆定位到左下角，避开快捷栏 */
+  /* 虚拟摇杆定位到左下角，避开快捷栏（两行布局后进一步上移） */
   .joystick.active { display: flex; }
+  .joystick { bottom: 130px; }
 }
 
 /* 超窄屏（如竖屏手机）进一步压缩顶部按钮，避免溢出 */
