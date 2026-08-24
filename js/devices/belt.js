@@ -108,17 +108,23 @@ function dirIndexOf(dx, dy) {
   return -1;
 }
 
+// beltInputSide 结果缓存在实体上：邻居增删时由 addEnt/removeEnt 统一失效，
+// 避免每帧为每条传送带反复遍历邻居实体（P0 优化）。
 function beltInputSide(e) {
+  if (e.__inpCached) return e.__inp;
   const fdx = DX[e.dir], fdy = DY[e.dir];
   const sides = [[fdy, -fdx], [-fdy, fdx]];
+  let res = null;
   for (const [sx, sy] of sides) {
     const nb = entAt(e.x + sx, e.y + sy);
     if (!nb) continue;
     const want = dirIndexOf(-sx, -sy);
-    if (nb instanceof Underground && nb.dir === want) return [sx, sy];
-    if (nb instanceof Belt && nb.dir === want) return [sx, sy];
+    if (nb instanceof Underground && nb.dir === want) { res = [sx, sy]; break; }
+    if (nb instanceof Belt && nb.dir === want) { res = [sx, sy]; break; }
   }
-  return null;
+  e.__inp = res;
+  e.__inpCached = true;
+  return res;
 }
 
 function drawBelt(ctx, e, gx, gy, dir, alpha) {
@@ -182,6 +188,8 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
   const exitX = DX[dir] * step, exitY = DY[dir] * step;
   let inX = cx, inY = cy;
   if (inp) { inX = cx + inp[0] * step; inY = cy + inp[1] * step; }
+  // 低 LOD：物品用色块直填，省去 clip+glyph 的昂贵路径绘制
+  const itemFn = (LOD && LOD.simple) ? drawItemDotLOD : drawItemDot;
   for (const o of e.items) {
     let ix, iy;
     if (inp && o.pos < 0.5) {
@@ -196,7 +204,7 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
       ix = cx + DX[dir] * (o.pos - 0.5) * TILE;
       iy = cy + DY[dir] * (o.pos - 0.5) * TILE;
     }
-    drawItemDot(ctx, ix, iy, o.item);
+    itemFn(ctx, ix, iy, o.item);
   }
   ctx.globalAlpha = 1;
 }

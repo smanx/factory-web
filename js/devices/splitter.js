@@ -201,7 +201,7 @@ function drawSplitter(ctx, e, gx, gy, dir, alpha) {
       ix = cx + (ox2 - cx) * t;
       iy = cy + (oy2 - cy) * t;
     }
-    drawItemDot(ctx, ix, iy, o.item);
+    ((LOD && LOD.simple) ? drawItemDotLOD : drawItemDot)(ctx, ix, iy, o.item);
   }
   ctx.globalAlpha = 1;
 }

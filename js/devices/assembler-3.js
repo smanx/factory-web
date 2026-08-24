@@ -64,10 +64,12 @@ function drawAssembler3(ctx, e, gx, gy, dir, alpha) {
       ctx.stroke();
     }
   } else {
-    ctx.fillStyle = 'rgba(255,255,255,.6)';
-    ctx.font = 'bold 11px system-ui';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('无配方', px + s / 2, py + s / 2 + 30);
+    if (!(LOD && LOD.simple)) {
+      ctx.fillStyle = 'rgba(255,255,255,.6)';
+      ctx.font = 'bold 11px system-ui';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('无配方', px + s / 2, py + s / 2 + 30);
+    }
   }
   const fr = e.fluidRecipe ? e.fluidRecipe() : null;
   const pcx = px + s / 2, pcy = py + s / 2;

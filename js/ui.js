@@ -485,8 +485,14 @@ function initPanelEvents() {
     }
     const setCb = ev.target.closest('[data-set]');
     if (setCb) {
-      G.settings[setCb.dataset.set] = setCb.checked;
+      const key = setCb.dataset.set;
+      G.settings[key] = setCb.checked;
       saveSettings();
+      // 分辨率相关设置改动后立即重建画布尺寸
+      if (key === 'capDPR' || key === 'lowRes') {
+        if (typeof resize === 'function') resize();
+        toast('画面分辨率已更新');
+      }
       return;
     }
     const btn = ev.target.closest('[data-action]');
@@ -547,6 +553,9 @@ function htmlSettings() {
   h += '<label class="setrow"><input type="checkbox" data-set="infiniteOre"' + (G.settings.infiniteOre ? ' checked' : '') + '> 无限矿脉（矿藏永不枯竭）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="autoSave"' + (G.settings.autoSave ? ' checked' : '') + '> 自动保存（每60秒）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="combat"' + (G.settings.combat ? ' checked' : '') + '> 战斗模式（敌人入侵，可用炮塔/石墙防御）</label>';
+  h += '<div class="sec">性能优化</div>';
+  h += '<label class="setrow"><input type="checkbox" data-set="capDPR"' + (G.settings.capDPR ? ' checked' : '') + '> 限制高清缩放（DPR ≤ 1.5，降载高分屏）</label>';
+  h += '<label class="setrow"><input type="checkbox" data-set="lowRes"' + (G.settings.lowRes ? ' checked' : '') + '> 省电模式（降至半分辨率，显著降 GPU 负载）</label>';
   h += '<div class="sec">存档管理</div>';
   h += '<button data-action="exp-save">导出存档到文件</button> ';
   h += '<button data-action="imp-save">从文件导入存档</button>';

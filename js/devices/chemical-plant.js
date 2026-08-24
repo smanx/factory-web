@@ -202,9 +202,11 @@ function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
     }
   } else {
     ctx.fillStyle = 'rgba(255,255,255,.6)';
-    ctx.font = 'bold 11px system-ui';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('无配方', px + s * 0.62, py + s * 0.36);
+    if (!(LOD && LOD.simple)) {
+      ctx.font = 'bold 11px system-ui';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('无配方', px + s * 0.62, py + s * 0.36);
+    }
   }
   let bx = px + 14;
   for (const id of ['plastic-bar', 'light-oil', 'petroleum-gas']) {

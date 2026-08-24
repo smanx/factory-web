@@ -84,7 +84,8 @@ const PERF = {
   tiles: 0,
   cacheState: '—',
   cacheRebuildMs: 0,
-  zoom: 1
+  zoom: 1,
+  lodState: '—'
 };
 
 // 读取/刷新性能指标（每次渲染面板时调用）
@@ -93,6 +94,7 @@ function refreshPerf() {
   PERF.frameMs = fpsSmooth > 0 ? (1000 / fpsSmooth) : 0;
   PERF.ents = G.ents.length;
   PERF.zoom = G.cam.z;
+  PERF.lodState = (typeof LOD === 'object' && LOD) ? (LOD.simple ? '简化（瓦片 ' + LOD.tilePx.toFixed(1) + 'px < ' + LOD_SIMPLE_PX + 'px）' : '完整') : '—';
   if (typeof terrainCacheStats === 'object') {
     PERF.cacheState = terrainCacheStats.state || '—';
     PERF.cacheRebuildMs = terrainCacheStats.rebuildMs || 0;
@@ -216,6 +218,7 @@ function htmlStatsPerf() {
   h += row2('地形离屏缓存状态', PERF.cacheState);
   h += row2('地形缓存最近重建耗时', (PERF.cacheRebuildMs || 0).toFixed(1) + ' ms');
   h += row2('缩放级别', '×' + PERF.zoom.toFixed(2));
+  h += row2('LOD 分级', PERF.lodState);
   h += '</div>';
   h += '<div class="dim">地形离屏缓存：地形绘到离屏画布，相机未大幅移动时直接整块贴图，避免逐格重算；缓存失效时会重建并记录耗时。</div>';
   return h;

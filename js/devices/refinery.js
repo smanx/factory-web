@@ -244,7 +244,7 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
     }
     bx += 24;
   }
-  if (!e.working && (!e.recipe || refineryMissingInput(e))) {
+  if (!e.working && (!e.recipe || refineryMissingInput(e)) && !(LOD && LOD.simple)) {
     ctx.fillStyle = 'rgba(255,255,255,.55)';
     ctx.font = 'bold 11px system-ui';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
