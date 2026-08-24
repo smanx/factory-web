@@ -1008,7 +1008,9 @@ class LaserTurret extends Entity {
     if (G.power.sat <= 0) return;
     const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
     let best = null, bestD = Infinity;
-    for (const en of (G.enemies || [])) {
+    // 性能优化：复用主循环每帧缓存的存活敌人列表（_aliveEnemies），避免重复 dead 判断遍历全数组
+    const enemies = G._aliveEnemies || (G.enemies || []);
+    for (const en of enemies) {
       if (!en || en.dead) continue;
       const ex = en.x / TILE, ey = en.y / TILE;
       const d = Math.hypot(ex - cx, ey - cy);
@@ -1129,7 +1131,9 @@ class FlamethrowerTurret extends Entity {
     if ((this.fluid['light-oil'] || 0) <= 0) return;
     const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
     let best = null, bestD = Infinity;
-    for (const en of (G.enemies || [])) {
+    // 性能优化：复用主循环每帧缓存的存活敌人列表（_aliveEnemies）
+    const enemies = G._aliveEnemies || (G.enemies || []);
+    for (const en of enemies) {
       if (!en || en.dead) continue;
       const ex = en.x / TILE, ey = en.y / TILE;
       const d = Math.hypot(ex - cx, ey - cy);
@@ -1144,7 +1148,7 @@ class FlamethrowerTurret extends Entity {
     if (this.fluid['light-oil'] <= 0) delete this.fluid['light-oil'];
     // 喷射火焰覆盖锥形范围
     const ang = this.facing;
-    for (const en of G.enemies) {
+    for (const en of enemies) {
       if (en.dead) continue;
       const dx = en.x - (this.x + this.w / 2) * TILE, dy = en.y - (this.y + this.h / 2) * TILE;
       const d = Math.hypot(dx, dy);

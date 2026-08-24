@@ -85,7 +85,9 @@ class GunTurret extends Entity {
     this.target = null;
     const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
     let best = null, bestD = Infinity;
-    for (const en of (G.enemies || [])) {
+    // 性能优化：复用主循环每帧缓存的存活敌人列表（_aliveEnemies），避免重复 dead 判断遍历全数组
+    const enemies = G._aliveEnemies || (G.enemies || []);
+    for (const en of enemies) {
       if (!en || en.dead) continue;
       const ex = en.x / TILE, ey = en.y / TILE;
       const d = Math.hypot(ex - cx, ey - cy);

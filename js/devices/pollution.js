@@ -88,7 +88,9 @@ function pollutionAggro(dt) {
   G.pollutionT = (G.pollutionT || 0) + dt;
   if (G.pollutionT < POLLUTION_MIN_WAVE_GAP) return;
   // 存在虫巢才可能被激怒（没有虫巢就无从进攻）
-  const spawners = G.enemies ? G.enemies.filter(e => e.kind === 'spawner' && !e.dead) : [];
+  // 性能优化：复用 combat2.js 中每帧缓存的存活巢穴列表 getSpawnerList()，
+  // 避免此处每帧 G.enemies.filter(...) 分配新数组造成 GC 压力（P0 优化）。
+  const spawners = (typeof getSpawnerList === 'function') ? getSpawnerList() : (G.enemies ? G.enemies.filter(e => e.kind === 'spawner' && !e.dead) : []);
   if (spawners.length === 0) return;
   G.pollutionT = 0;
   // 消耗部分污染（虫群集结吸收），避免无限连发
