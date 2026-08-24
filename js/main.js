@@ -108,7 +108,8 @@ function serializeAll() {
     techProg: G.techProg,
     activeTech: G.activeTech,
     hotbar: HOTBAR.slice(),
-    settings: Object.assign({}, G.settings)
+    settings: Object.assign({}, G.settings),
+    dbg: Object.assign({}, G.dbg)
   };
 }
 
@@ -186,6 +187,8 @@ function applySave(d) {
     buildHotbar();
   }
   if (d.settings) Object.assign(G.settings, d.settings);
+  // 开发者调试数据随存档保存/读取，读档时自动恢复调试设置
+  if (d.dbg && typeof d.dbg === 'object') Object.assign(G.dbg, d.dbg);
   G.cam.px = G.player.x; G.cam.py = G.player.y;
   uiDirty = true;
 }
