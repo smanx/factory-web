@@ -501,7 +501,12 @@ function updateBullets(dt) {
     // 火箭/手雷等范围爆炸：命中后延长存在时间以播放“冲击波扩散 + 火焰消散”动画（画面优化）
     if (b.splash && !b.hit && b.t >= b.life) {
       b.hit = true;
-      explodeDamage(b.tx, b.ty, b.splash, b.dmg);
+      // 纯冲击波环子弹（核爆特效用）只作视觉，不再重复伤害/特效
+      if (!b.waveOnly) {
+        explodeDamage(b.tx, b.ty, b.splash, b.dmg);
+        // 原子弹：核爆特效（蘑菇云 + 冲击波 + 强光 + 高温火球）
+        if (b.nuclear && typeof spawnNuclearExplosion === 'function') spawnNuclearExplosion(b.tx, b.ty);
+      }
       b.boomBig = true;
     }
     if ((b.splash || b.boomBig) && b.hit && b._boomT === undefined) {
@@ -524,6 +529,8 @@ const WEAPONS = {
   'combat-shotgun':  { name: '战斗散弹枪', dmg: 10, rate: 0.35, ammo: 'piercing-shotgun-shell', spread: 0.32, auto: false, range: 7, pellets: 8, sfx: 'shotgun' },
   'rocket-launcher': { name: '火箭筒', dmg: 35, rate: 1.1, ammo: 'rocket',          spread: 0.03, auto: false, range: 9, splash: 1.8, sfx: 'rocket' },
   'explosive-rocket-launcher': { name: '爆炸火箭筒', dmg: 60, rate: 1.3, ammo: 'explosive-rocket', spread: 0.05, auto: false, range: 9, splash: 3.2, sfx: 'rocket' },
+  // 原子弹（对齐《异星工厂》Atomic bomb）：火箭筒发射的终极核武器，命中引发超大范围核爆
+  'atomic-bomb': { name: '原子弹', dmg: 300, rate: 2.5, ammo: 'atomic-bomb', spread: 0.02, auto: false, range: 12, splash: 9, nuclear: true, sfx: 'rocket' },
   'grenade':         { name: '手雷',   dmg: 40, rate: 0.8, ammo: 'grenade',          spread: 0.05, auto: false, range: 6, splash: 2.5, sfx: 'throw' },
   'cluster-grenade': { name: '集束手雷', dmg: 80, rate: 1.0, ammo: 'cluster-grenade', spread: 0.05, auto: false, range: 6, splash: 4.5, sfx: 'throw' },
   'flamethrower':    { name: '火焰喷射器', dmg: 6, rate: 0.12, ammo: 'flamethrower-ammo', spread: 0.2, auto: true, range: 6, flame: true, sfx: 'flamethrower' },
@@ -580,7 +587,8 @@ function playerFire(tx, ty) {
       // 火箭弹：命中目标后范围爆炸
       (G.bullets || (G.bullets = [])).push({
         x: px, y: py, tx: tx2, ty: ty2, t: 0, life: 0.18,
-        splash: w.splash, dmg: dmg, kind: 'rocket'
+        splash: w.splash, dmg: dmg, kind: 'rocket',
+        nuclear: !!w.nuclear
       });
     } else if (w.flame) {
       (G.bullets || (G.bullets = [])).push({
@@ -663,6 +671,57 @@ function explodeDamage(cx, cy, radius, dmg) {
   if (Math.hypot(cx - G.player.x, cy - G.player.y) <= radius * TILE * 0.5) damagePlayer(dmg * 0.4);
   if (typeof playSfx === 'function') playSfx('explosion');
 }
+
+// ===== 核爆特效（原子弹，对齐《异星工厂》Atomic bomb 的蘑菇云） =====
+// 生成蘑菇云烟柱、冲击波环与强光闪光，并在爆炸中心留下高温灼烧粒子。
+function spawnNuclearExplosion(cx, cy) {
+  // 蘑菇云烟柱：多条上飘的烟粒子，随高度扩散
+  const cols = ['#ffd27a', '#ff9a3a', '#d05a2a', '#7a4a3a', '#4a3a3a', '#9a9aa0'];
+  for (let i = 0; i < 60; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const sp = 1 + Math.random() * 4;
+    const hgt = (Math.random() * 4 + 1) * TILE;
+    if (typeof spawnSmoke === 'function') {
+      spawnSmoke(cx + Math.cos(a) * sp * 6, cy - hgt, {
+        life: 2.5 + Math.random() * 2,
+        size: 8 + Math.random() * 14,
+        vx: Math.cos(a) * sp * 2,
+        vy: -(3 + Math.random() * 5),
+        color: cols[(Math.random() * cols.length) | 0]
+      });
+    }
+  }
+  // 蘑菇云顶部圆盘（球形扩散）
+  for (let i = 0; i < 40; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = (Math.random() * 5 + 2) * TILE;
+    if (typeof spawnSmoke === 'function') {
+      spawnSmoke(cx + Math.cos(a) * r, cy - 4 * TILE - Math.random() * 2 * TILE, {
+        life: 2 + Math.random() * 2,
+        size: 10 + Math.random() * 16,
+        vx: Math.cos(a) * 1.5,
+        vy: -1 + Math.random(),
+        color: '#c87a4a'
+      });
+    }
+  }
+  // 高温火花：爆炸中心向外飞溅
+  for (let i = 0; i < 50; i++) {
+    if (typeof spawnSpark === 'function') spawnSpark(cx, cy, { speed: 5 + Math.random() * 8, life: 0.8, size: 3, color: '#ffe0a0' });
+  }
+  // 冲击波环标记：通过 G.bullets 插入一枚无伤害的“波环”子弹，仅用于渲染扩散冲击波
+  (G.bullets || (G.bullets = [])).push({
+    x: cx, y: cy, tx: cx, ty: cy, t: 0, life: 0.8, dmg: 0,
+    splash: 9, kind: 'nuclear-wave', _boomT: 0, _boomBase: 0, nuclear: true, waveOnly: true
+  });
+  // 强光闪屏
+  if (typeof addScreenFlash === 'function') addScreenFlash(0.9);
+  else if (G.screenFlash === undefined) G.screenFlash = 1;
+  else G.screenFlash = Math.max(G.screenFlash || 0, 1);
+  // 核爆轰鸣音效
+  if (typeof playSfx === 'function') playSfx('explosion');
+}
+
 
 // ===== 战斗机器人胶囊（对齐《异星工厂》Combat robots） =====
 // 玩家选择胶囊后按空格/点击投掷，落地释放战斗机器人：

@@ -69,6 +69,7 @@ const G = {
   playerHPmax: 100,
   playerFireT: 0,
   weapon: null,       // 当前选中的武器 id（player 持有）
+  screenFlash: 0,     // 全屏白光闪光强度（0~1，原子弹等大爆炸时触发，逐帧衰减）
   armor: null,        // 当前穿戴的护甲 id（light-armor / heavy-armor）
   gameWon: false,     // 是否已发射火箭赢得游戏
   repairPackUses: 0,  // 当前修理包剩余使用次数（用尽后消耗一个新修理包）
@@ -1382,6 +1383,8 @@ function bindInput() {
       const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
       if (e && isDamaged(e)) { repairActionAt(G.cursorTile.tx, G.cursorTile.ty); return; }
     }
+    // 手持蜘蛛遥控器点击地面 → 命令蜘蛛机器人移动
+    if (typeof selItem === 'function' && selItem() === 'spidertron-remote') { commandSpidertron(G.cursorTile.tx, G.cursorTile.ty); return; }
     if (buildActive()) return;
     const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
     if (e) openPanel('machine', e);
@@ -1389,6 +1392,11 @@ function bindInput() {
 }
 
 function handleLeftDown() {
+  // 手持蜘蛛遥控器点击地面 → 命令蜘蛛机器人移动到目标点（对齐《异星工厂》Spidertron remote）
+  if (typeof selItem === 'function' && selItem() === 'spidertron-remote' && G.cursorTile) {
+    commandSpidertron(G.cursorTile.tx, G.cursorTile.ty);
+    return;
+  }
   // 手持修理包点击受损建筑 → 修复（对齐《异星工厂》：左键维修）
   if (hasRepairPackSelected() && G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
     const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
@@ -1401,6 +1409,34 @@ function handleLeftDown() {
     // 无建造选中、点击水域 → 钓鱼（对齐《异星工厂》鼠标钓鱼）
     tryFishAt(G.cursorTile.tx, G.cursorTile.ty);
   }
+}
+
+// 触发全屏强光闪光（原子弹核爆等大爆炸用）：叠加白光，数值越大越亮
+function addScreenFlash(v) {
+  G.screenFlash = Math.max(G.screenFlash || 0, v);
+}
+
+// ===== 蜘蛛遥控器（对齐《异星工厂》Spidertron remote）=====
+// 手持遥控器点击地图：命令最近的蜘蛛机器人（优先当前驾驶的）自主移动到目标点。
+// 若当前在驾驶蜘蛛机器人，则退出驾驶，交由自主移动接管。
+function commandSpidertron(tx, ty) {
+  const px = G.player.x, py = G.player.y;
+  let best = null, bestD = Infinity;
+  for (const e of G.ents) {
+    if (e._dead || e.type !== 'spidertron') continue;
+    const d = Math.hypot((e.x + e.w / 2) * TILE - px, (e.y + e.h / 2) * TILE - py);
+    if (d < bestD) { best = e; bestD = d; }
+  }
+  if (!best) {
+    if (typeof toast === 'function') toast('未找到蜘蛛机器人，请先建造蜘蛛机器人');
+    return;
+  }
+  // 若正驾驶的是该蜘蛛，则退出驾驶
+  if (G.driving && G.driving.ent === best && typeof exitCar === 'function') exitCar();
+  best.remoteTarget = { x: tx, y: ty };
+  if (typeof toast === 'function') toast('蜘蛛机器人正在前往目标点…');
+  if (typeof playSfx === 'function') playSfx('click');
+  uiDirty = true;
 }
 
 function updateCursorTile(cx, cy) {
@@ -1481,6 +1517,8 @@ function loop(ts) {
       updateTrains(dt);
       if (typeof updateParticles === 'function') updateParticles(dt);
       updateCamera(dt);
+      // 全屏闪光衰减（原子弹核爆等触发的强光，随时间减弱）
+      if (G.screenFlash > 0) G.screenFlash = Math.max(0, G.screenFlash - dt * 1.6);
       // 环境氛围音（Web Audio 昼夜背景音）
       if (typeof ambientUpdate === 'function') ambientUpdate(dt);
     }

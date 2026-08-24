@@ -132,6 +132,17 @@ function render() {
     }
   }
 
+  // 全屏强光闪光（原子弹核爆触发）：叠加整屏白/橙光，随 G.screenFlash 强度衰减（屏幕坐标）
+  if (G.screenFlash > 0.01) {
+    const fs = Math.min(1, G.screenFlash);
+    // 白热核心
+    ctx.fillStyle = 'rgba(255,250,240,' + (fs * 0.85).toFixed(3) + ')';
+    ctx.fillRect(0, 0, W, H);
+    // 暖橙火光照亮
+    ctx.fillStyle = 'rgba(255,160,60,' + (fs * 0.4).toFixed(3) + ')';
+    ctx.fillRect(0, 0, W, H);
+  }
+
   // 小地图（位于画布右下角）
   if (G.settings && G.settings.minimap !== false) drawMinimap(ctx);
 }
@@ -868,9 +879,12 @@ function drawBullets(ctx) {
       ctx.lineWidth = b.art ? 3.5 : 2.5;
       ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
       if (t >= 1) {
-        const rad = (b.splash || 0) * TILE * (b.art ? 0.8 : 0.6) * (b.explosive ? 1.25 : 1);
+        const rad0 = (b.splash || 0) * TILE * (b.art ? 0.8 : 0.6) * (b.explosive ? 1.25 : 1);
+        // 原子弹核爆：超大范围蘑菇云冲击波环 + 高温火球（对齐《异星工厂》原子弹）
+        const rad = b.nuclear ? Math.max(rad0, 9 * TILE) : rad0;
+        const nucBoost = b.nuclear ? 1.8 : 1;
         // 爆炸推进进度：用 _boomT 让爆炸随时间膨胀/消散（画面优化：层次火球 + 冲击波环）
-        const boomDur = (b.art ? 0.6 : (b.explosive ? 0.5 : 0.35));
+        const boomDur = b.nuclear ? 0.9 : (b.art ? 0.6 : (b.explosive ? 0.5 : 0.35));
         const age = (b._boomT || 0);
         const prog = age > 0 ? Math.min(1, age / boomDur) : 1;
         const grow = 0.7 + 0.6 * prog;               // 冲击波扩散
@@ -878,9 +892,9 @@ function drawBullets(ctx) {
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
         // 外层冲击波环（扩散+渐隐）
-        ctx.strokeStyle = 'rgba(255,220,160,' + (fade * 0.6).toFixed(2) + ')';
-        ctx.lineWidth = 4;
-        ctx.beginPath(); ctx.arc(b.tx, b.ty, rad * grow, 0, 7); ctx.stroke();
+        ctx.strokeStyle = 'rgba(' + (b.nuclear ? '255,240,200' : '255,220,160') + ',' + (fade * (b.nuclear ? 0.85 : 0.6)).toFixed(2) + ')';
+        ctx.lineWidth = b.nuclear ? 6 : 4;
+        ctx.beginPath(); ctx.arc(b.tx, b.ty, rad * grow * (b.nuclear ? 1.35 : 1), 0, 7); ctx.stroke();
         ctx.strokeStyle = 'rgba(255,150,70,' + (fade * 0.5).toFixed(2) + ')';
         ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(b.tx, b.ty, rad * grow * 1.15, 0, 7); ctx.stroke();

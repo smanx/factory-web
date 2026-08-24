@@ -282,6 +282,71 @@ class Spidertron extends Tank {
     uiDirty = true;
     return true;
   }
+  // 遥控自主移动：被蜘蛛遥控器下达移动命令后，自动朝目标格寻路并沿途开火
+  update(dt) {
+    if (!this.remoteTarget) return;
+    // 卡死检测：若一段时间无法有效接近目标（位置未变），则放弃命令，避免每帧无效计算
+    if (this._stallT === undefined) { this._stallT = 0; this._lastD = Infinity; }
+    const dist0 = Math.hypot((this.remoteTarget.x + 0.5) * TILE - (this.x + this.w / 2) * TILE, (this.remoteTarget.y + 0.5) * TILE - (this.y + this.h / 2) * TILE);
+    if (dist0 >= this._lastD - 2) this._stallT += dt; else this._stallT = 0;
+    this._lastD = dist0;
+    if (this._stallT > 3) {
+      this.remoteTarget = null; this._stallT = 0; this._lastD = Infinity;
+      if (typeof toast === 'function') toast('蜘蛛机器人无法到达目标点（被障碍阻挡）');
+      return;
+    }
+    // 车载自动炮塔持续开火（自主移动时也生效）
+    this.autoTurret(dt);
+    const t = this.remoteTarget;
+    const cx = this.x * TILE + TILE * this.w / 2, cy = this.y * TILE + TILE * this.h / 2;
+    const tcx = t.x * TILE + TILE / 2, tcy = t.y * TILE + TILE / 2;
+    const dx = tcx - cx, dy = tcy - cy;
+    const dist = Math.hypot(dx, dy);
+    // 到达目标格：停下并清除命令
+    if (dist < TILE * 0.6) { this.remoteTarget = null; return; }
+    // 燃料不足则无法移动
+    if (this.fuelCoal <= 0 && this.fuelSolid <= 0) return;
+    const speed = SPIDER_SPEED;
+    const mx = dx / dist, my = dy / dist;
+    // 更新朝向（东/南/西/北近似）
+    if (Math.abs(mx) > Math.abs(my)) this.dir = mx > 0 ? 0 : 2;
+    else this.dir = my > 0 ? 1 : 3;
+    const nx = cx + mx * speed * dt, ny = cy + my * speed * dt;
+    // 蜘蛛可跨水/墙，仅需避开其他建筑实体
+    const r = 14;
+    let okX = !boxBlocked(nx, cy, r), okY = !boxBlocked(cx, ny, r);
+    let ntx = this.x, nty = this.y;
+    if (okX) ntx = Math.floor(nx / TILE);
+    if (okY) nty = Math.floor(ny / TILE);
+    // 目的地格子被占用则跳过（蜘蛛可越过石墙，其余实体阻挡）
+    let targetOccupied = false;
+    if (ntx !== this.x || nty !== this.y) {
+      for (let dy2 = 0; dy2 < this.h && !targetOccupied; dy2++)
+        for (let dx2 = 0; dx2 < this.w && !targetOccupied; dx2++) {
+          const other = entAt(ntx + dx2, nty + dy2);
+          if (other && other !== this && !(other.type === 'stone-wall')) targetOccupied = true;
+        }
+    }
+    if (targetOccupied) return;
+    if (ntx !== this.x || nty !== this.y) {
+      // 空间索引重定位
+      const ob = bucketKey(this.x, this.y);
+      const obs = G.buckets.get(ob);
+      if (obs) { obs.delete(this); if (!obs.size) G.buckets.delete(ob); }
+      for (let dy2 = 0; dy2 < this.h; dy2++)
+        for (let dx2 = 0; dx2 < this.w; dx2++) {
+          const k = entKey(this.x + dx2, this.y + dy2);
+          if (G.grid.get(k) === this) G.grid.delete(k);
+        }
+      this.x = ntx; this.y = nty;
+      ensureBucket(bucketKey(this.x, this.y)).add(this);
+      for (let dy2 = 0; dy2 < this.h; dy2++)
+        for (let dx2 = 0; dx2 < this.w; dx2++)
+          G.grid.set(entKey(this.x + dx2, this.y + dy2), this);
+      if (typeof invalidateBeltInputNear === 'function') invalidateBeltInputNear(this.x, this.y, this.w, this.h);
+    }
+    this.burnFuel(SPIDER_FUEL_BURN * dt);
+  }
 }
 function drawSpidertron(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
