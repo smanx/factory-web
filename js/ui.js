@@ -659,6 +659,7 @@ function mapTipAt(tx, ty) {
   // 显示详情(Alt)时：鼠标移到某流体出入口图标上，优先显示该流体的具体名称
   if (G.showDetails) {
     for (const ent of G.ents) {
+      if (ent._dead) continue;
       const fn = DEVICE_FLUID_ICONS[ent.type];
       if (!fn) continue;
       for (const ic of fn(ent)) {

@@ -8,6 +8,9 @@ class Belt extends Entity {
   }
   speedMult() { return this.type === 'fast-transport-belt' ? FAST_BELT_MULT : 1; }
   update(dt) {
+    // 惰性调度（P0 优化）：空带没有任何可移动物品，跳过真实更新
+    // （排序/邻居扫描/转移判定），空传送带完全无需每帧运行。
+    if (!this.items || this.items.length === 0) return;
     const sp = beltSpeed() * this.speedMult() * dt;
     this.items.sort((a, b) => b.pos - a.pos);
     if (this.items.length && this.items[0].pos + sp >= 1) this.transferFront();

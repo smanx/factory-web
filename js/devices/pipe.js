@@ -12,6 +12,13 @@ class Pipe extends Entity {
     return s;
   }
   update(dt) {
+    // 惰性调度（P0 优化）：流体扩散是抽象均衡而非实时速率，
+    // 按帧节流（约 20 次/秒）即可，避免数千管道每帧都做四向邻居扫描。
+    // 空管（无流体）直接跳过。
+    if (!this.fluid) return;
+    this._balT = (this._balT || 0) - dt;
+    if (this._balT > 0) return;
+    this._balT = 0.05;
     for (const k of Object.keys(this.fluid)) {
       if (!(this.fluid[k] > 0)) continue;
       for (const [dx, dy] of PIPE_DIRS) {
