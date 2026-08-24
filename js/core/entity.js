@@ -12,13 +12,14 @@ function dirFromVec(dx, dy) {
 
 // 实体增删会让邻居关系改变，进而影响附近传送带的输入侧判定。
 // 这里在 (x,y) 的 w×h 区域向外扩 2 格范围内，把命中的传送带缓存失效。
+// 去重用共享递增戳（P1 优化）：建造/拆除高频路径不再分配 Set。
 function invalidateBeltInputNear(x, y, w, h) {
-  const seen = new Set();
+  const stamp = ++_nbStampSeq;
   for (let dy = -2; dy < h + 2; dy++)
     for (let dx = -2; dx < w + 2; dx++) {
       const t = entAt(x + dx, y + dy);
-      if (!t || seen.has(t)) continue;
-      seen.add(t);
+      if (!t || t._nbStamp === stamp) continue;
+      t._nbStamp = stamp;
       if (typeof t.__inpCached === 'boolean') { t.__inpCached = false; t.__inp = undefined; }
     }
 }
@@ -30,6 +31,9 @@ function invalidateBeltInputNear(x, y, w, h) {
 const BUCK = 16;
 // 桶坐标 = 瓦片坐标 >> 4（16×16 一桶）。用偏移量保证正负都能编码为唯一整数。
 const BUCK_OFF = 4096;   // 2^12，覆盖桶坐标 ±4095（即 ±65536 瓦片范围）
+// 渲染剔除时视口外扩的瓦片数：只需 ≥ 最大设备脚印-1（炼油厂 5×5 → 4 格），
+// 取 8 留余量；小于一个整桶，可显著减少每帧要扫的桶数量（P1 优化）。
+const BUCKET_PAD = 8;
 function bucketKey(x, y) { return ((x >> 4) + BUCK_OFF) * 8192 + ((y >> 4) + BUCK_OFF); }
 function bucketXOf(k) { return ((k / 8192) | 0) - BUCK_OFF; }
 function bucketYOf(k) { return (k % 8192) - BUCK_OFF; }
@@ -39,8 +43,12 @@ function ensureBucket(k) {
   return s;
 }
 // 返回覆盖 (x0,y0)-(x1,y1)（含）矩形区域的所有桶 key（去重）。
+// 复用模块级数组（P1 优化）：渲染每帧调用一次，避免反复分配；
+// 调用方须在下次调用前消费完返回值（当前唯一调用点 render 即用即弃）。
+const _bucketKeysBuf = [];
 function bucketKeysIn(x0, y0, x1, y1) {
-  const keys = [];
+  const keys = _bucketKeysBuf;
+  keys.length = 0;
   const b0x = x0 >> 4, b0y = y0 >> 4, b1x = x1 >> 4, b1y = y1 >> 4;
   for (let by = b0y; by <= b1y; by++)
     for (let bx = b0x; bx <= b1x; bx++) keys.push(((bx + BUCK_OFF) * 8192) + (by + BUCK_OFF));
@@ -95,31 +103,41 @@ function sideVec(side, dir) { return SIDE_VEC[(side + (dir | 0)) % 4]; }
 
 // 获取实体某一世界方向(side)整条边上的相邻实体（去重、不含自身）
 // half 可选 'L'/'R'：仅返回该边前半/后半（沿边方向），南/北边即世界左侧/右侧
+// 去重用递增戳标记（P1 优化）：不再每调用分配一个 Set，高频逐帧路径零分配。
+// 注意 _nbStamp 计数器为 neighborsOnSide / forEachNeighborEnt 共享（单调递增，
+// 每次遍历自增后使用，保证同一次遍历内唯一，也避免两套计数器数值撞车）。
+let _nbStampSeq = 0;
 function neighborsOnSide(e, side, half) {
-  const res = new Set();
+  const res = [];
+  const stamp = ++_nbStampSeq;
+  const mark = t => {
+    if (t._nbStamp === stamp) return;
+    t._nbStamp = stamp;
+    res.push(t);
+  };
   if (side === 1) {          // 南：y = e.y + e.h
     for (let dx = 0; dx < e.w; dx++) {
       if (half === 'L' && dx >= e.w / 2) continue;
       if (half === 'R' && dx < e.w / 2) continue;
-      const t = entAt(e.x + dx, e.y + e.h); if (t && t !== e) res.add(t);
+      const t = entAt(e.x + dx, e.y + e.h); if (t && t !== e) mark(t);
     }
   } else if (side === 3) {   // 北：y = e.y - 1
     for (let dx = 0; dx < e.w; dx++) {
       if (half === 'L' && dx >= e.w / 2) continue;
       if (half === 'R' && dx < e.w / 2) continue;
-      const t = entAt(e.x + dx, e.y - 1); if (t && t !== e) res.add(t);
+      const t = entAt(e.x + dx, e.y - 1); if (t && t !== e) mark(t);
     }
   } else if (side === 0) {   // 东：x = e.x + e.w
     for (let dy = 0; dy < e.h; dy++) {
       if (half === 'L' && dy >= e.h / 2) continue;
       if (half === 'R' && dy < e.h / 2) continue;
-      const t = entAt(e.x + e.w, e.y + dy); if (t && t !== e) res.add(t);
+      const t = entAt(e.x + e.w, e.y + dy); if (t && t !== e) mark(t);
     }
   } else {                   // 西：x = e.x - 1
     for (let dy = 0; dy < e.h; dy++) {
       if (half === 'L' && dy >= e.h / 2) continue;
       if (half === 'R' && dy < e.h / 2) continue;
-      const t = entAt(e.x - 1, e.y + dy); if (t && t !== e) res.add(t);
+      const t = entAt(e.x - 1, e.y + dy); if (t && t !== e) mark(t);
     }
   }
   return res;
@@ -135,8 +153,11 @@ function neighborOnSideCell(e, side, cell) {
 
 // 遍历实体正交相邻格上的实体（去重，不含斜角）
 // 遍历给定桶集合内的实体（去重，跳过墓碑）。
+// 去重用模块级 Set 复用 clear()（P1 优化）：每帧渲染调用，避免反复新建 Set。
+const _bucketSeen = new Set();
 function forEachEntInBuckets(keys, fn) {
-  const seen = new Set();
+  const seen = _bucketSeen;
+  seen.clear();
   for (const k of keys) {
     const s = G.buckets.get(k);
     if (!s) continue;
@@ -148,16 +169,18 @@ function forEachEntInBuckets(keys, fn) {
   }
 }
 
+// 邻居去重用递增戳（P1 优化）：不分配 Set；_nbStamp 挂在实体上，
+// 首次访问后形状稳定，逐帧调用零分配。计数器与 neighborsOnSide 共享。
 function forEachNeighborEnt(e, fn) {
-  const seen = new Set();
+  const stamp = ++_nbStampSeq;
   for (let dx = -1; dx <= e.w; dx++)
     for (let dy = -1; dy <= e.h; dy++) {
       const inX = dx >= 0 && dx < e.w, inY = dy >= 0 && dy < e.h;
       if (inX && inY) continue;      // 自身
       if (!inX && !inY) continue;    // 斜角不算相邻
       const t = entAt(e.x + dx, e.y + dy);
-      if (!t || t === e || seen.has(t)) continue;
-      seen.add(t);
+      if (!t || t === e || t._nbStamp === stamp) continue;
+      t._nbStamp = stamp;
       fn(t);
     }
 }

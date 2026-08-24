@@ -28,16 +28,24 @@ class Refinery extends Entity {
     return !!(r && r.inp[k] && FLUIDS.indexOf(k) >= 0);
   }
   // 当前配方下的流体输入清单（按顺序，映射到输入口）
+  // 按配方 id 缓存（P1 优化）：portInput/tryOutput 每帧调用，
+  // 原先每次都 Object.keys+filter 分配新数组。
   fluidInputs() {
-    const r = this.recipe ? REFINERY_RECIPES[this.recipe] : null;
-    if (!r) return [];
-    return Object.keys(r.inp).filter(k => FLUIDS.indexOf(k) >= 0);
+    if (this._fiFor !== this.recipe) {
+      const r = this.recipe ? REFINERY_RECIPES[this.recipe] : null;
+      this._fi = r ? Object.keys(r.inp).filter(k => FLUIDS.indexOf(k) >= 0) : [];
+      this._fiFor = this.recipe;
+    }
+    return this._fi;
   }
-  // 当前配方下的流体输出清单（按顺序，映射到输出口）
+  // 当前配方下的流体输出清单（按顺序，映射到输出口）；同样按配方 id 缓存
   fluidOutputs() {
-    const r = this.recipe ? REFINERY_RECIPES[this.recipe] : null;
-    if (!r) return [];
-    return Object.keys(r.out).filter(k => FLUIDS.indexOf(k) >= 0);
+    if (this._foFor !== this.recipe) {
+      const r = this.recipe ? REFINERY_RECIPES[this.recipe] : null;
+      this._fo = r ? Object.keys(r.out).filter(k => FLUIDS.indexOf(k) >= 0) : [];
+      this._foFor = this.recipe;
+    }
+    return this._fo;
   }
   // 从背面(北)输入口的相邻管道吸入配方所需流体
   portInput() {

@@ -107,8 +107,8 @@ function serializeAll() {
     seed: G.world.seed,
     world: {
       remaining: Array.from(G.world.remaining, ([k, v]) => {
-        const i = k.indexOf(',');
-        return [+k.slice(0, i), +k.slice(i + 1), v];
+        const [x, y] = unmapKey(k);
+        return [x, y, v];
       }),
       chunks: Array.from(G.world.chunks.values()).map(encodeChunkData)
     },
@@ -159,17 +159,17 @@ function applySave(d) {
     for (const cd of d.world.chunks) {
       try {
         const c = decodeChunkData(cd);
-        G.world.chunks.set(c.cx + ',' + c.cy, c);
+        G.world.chunks.set(ckey(c.cx, c.cy), c);
       } catch (e) { /* 单块数据损坏则跳过，该块回退到按需生成 */ }
     }
   }
   if (d.world && Array.isArray(d.world.remaining)) {
-    for (const [x, y, amt] of d.world.remaining) G.world.remaining.set(x + ',' + y, amt);
+    for (const [x, y, amt] of d.world.remaining) G.world.remaining.set(mapKey(x, y), amt);
   } else if (Array.isArray(d.oreType)) {
     const OW = 180, OH = 180;
     for (let i = 0; i < OW * OH; i++) {
       if (d.oreType[i] >= 0 && d.oreAmt && d.oreAmt[i] >= 0) {
-        G.world.remaining.set((i % OW) + ',' + ((i / OW) | 0), d.oreAmt[i]);
+        G.world.remaining.set(mapKey(i % OW, (i / OW) | 0), d.oreAmt[i]);
       }
     }
   }
@@ -1068,7 +1068,7 @@ function loop(ts) {
       updatePlayer(dt);
       updateHeldMouse(dt);
       updateMining(dt);
-      for (const e of G.ents) if (!e._dead && typeof e.update === 'function') e.update(dt);
+      for (const e of G.ents) if (!e._dead) e.update(dt);
       // 敌人/子弹系统（可在设置中开关战斗）
       if (G.settings.combat) {
         spawnEnemies(dt);

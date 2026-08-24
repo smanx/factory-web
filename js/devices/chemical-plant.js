@@ -21,13 +21,23 @@ class ChemicalPlant extends Entity {
     const r = this.recipe ? RECIPES[this.recipe] : null;
     return !!(r && r.inp[k]);
   }
+  // 配方中的流体原料列表缓存（P1 优化）：portFlow 每帧调用，
+  // 原先每次都 Object.keys+filter 分配新数组；配方不变时直接复用。
+  fluidInputs() {
+    if (this._fiFor !== this.recipe) {
+      const r = this.recipe ? RECIPES[this.recipe] : null;
+      this._fi = r ? Object.keys(r.inp).filter(k => FLUIDS.indexOf(k) >= 0) : [];
+      this._fiFor = this.recipe;
+    }
+    return this._fi;
+  }
   portFlow() {
     const rec = this.recipe ? RECIPES[this.recipe] : null;
     if (!rec) return;
     // 接口布局（对齐《异星工厂》化工厂）：2个输入口在底部(南)、2个输出口在顶部(北)，固定成对
     // 每个接口对齐一个格子（一格一接口）：输入/输出口分别落在沿边第0、2格；左右输入有讲究：
     // 配方第1种流体原料进左侧(格0)输入口，第2种进右侧(格2)输入口
-    const fluidInps = Object.keys(rec.inp).filter(k => FLUIDS.indexOf(k) >= 0);
+    const fluidInps = this.fluidInputs();
     const inSide = (1 + (this.dir | 0)) % 4;   // 输入口基准：南
     const outSide = (3 + (this.dir | 0)) % 4;  // 输出口基准：北
     // 吸入：左侧输入口(格0)只收第1种流体，右侧输入口(格2)只收第2种流体

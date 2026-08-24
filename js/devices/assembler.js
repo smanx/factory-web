@@ -11,12 +11,20 @@ class Assembler extends Entity {
     this.prog = 0;
     this.spin = 0;
   }
+  // 配方派生的流体进出缓存（P1 优化）：fluidRecipe 在 update->portFlow 与渲染中
+  // 每帧各调用一次，原先每次都 Object.keys+filter+新对象分配。配方不变时直接复用。
   fluidRecipe() {
+    if (this._frFor === this.recipe) return this._fr;
     const r = this.recipe ? RECIPES[this.recipe] : null;
-    if (!r) return null;
-    const fin = Object.keys(r.inp).filter(k => FLUIDS.indexOf(k) >= 0);
-    const fout = Object.keys(r.out).filter(k => FLUIDS.indexOf(k) >= 0);
-    return (fin.length || fout.length) ? { rec: r, fin, fout } : null;
+    let fr = null;
+    if (r) {
+      const fin = Object.keys(r.inp).filter(k => FLUIDS.indexOf(k) >= 0);
+      const fout = Object.keys(r.out).filter(k => FLUIDS.indexOf(k) >= 0);
+      if (fin.length || fout.length) fr = { rec: r, fin, fout };
+    }
+    this._frFor = this.recipe;
+    this._fr = fr;
+    return fr;
   }
   acceptsFluid(k) {
     const r = this.recipe ? RECIPES[this.recipe] : null;

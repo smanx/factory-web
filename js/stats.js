@@ -101,8 +101,10 @@ const PERF = {
 function refreshPerf() {
   PERF.fps = Math.round(fpsSmooth || 60);
   PERF.frameMs = fpsSmooth > 0 ? (1000 / fpsSmooth) : 0;
-  // 只统计存活实体（墓碑惰性清理期间不计入已拆除的）
-  PERF.ents = G.ents.filter(e => !e._dead).length;
+  // 只统计存活实体（墓碑惰性清理期间不计入已拆除的）；计数即可，无需分配过滤数组
+  let alive = 0;
+  for (const e of G.ents) if (!e._dead) alive++;
+  PERF.ents = alive;
   PERF.zoom = G.cam.z;
   PERF.lodState = (typeof LOD === 'object' && LOD) ? (LOD.simple ? '简化（瓦片 ' + LOD.tilePx.toFixed(1) + 'px < ' + LOD_SIMPLE_PX + 'px）' : '完整') : '—';
   if (typeof terrainCacheStats === 'object') {

@@ -656,7 +656,13 @@ function initTopButtons() {
   document.getElementById('btn-load').addEventListener('click', loadGame);
 }
 
+// HUD 文本写入节流（P2 优化）：坐标/FPS 每帧写 textContent 会触发无谓的
+// DOM 更新，改为约 4 次/秒，肉眼无感知差异。
+let _hudT = 0;
 function updateHUD(dt, fps) {
+  _hudT -= dt;
+  if (_hudT > 0) return;
+  _hudT = 0.25;
   const el = document.getElementById('hud-info');
   const p = G.player;
   const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
@@ -664,15 +670,18 @@ function updateHUD(dt, fps) {
 }
 
 function mapTipAt(tx, ty) {
-  // 显示详情(Alt)时：鼠标移到某流体出入口图标上，优先显示该流体的具体名称
+  // 显示详情(Alt)时：鼠标移到某流体出入口图标上，优先显示该流体的具体名称。
+  // P2 优化：接口图标都画在设备自身占用的格子里，直接查该格实体即可，
+  // 无需原先对全量 G.ents 的 O(n) 扫描（鼠标每次移动都会触发本函数）。
   if (G.showDetails) {
-    for (const ent of G.ents) {
-      if (ent._dead) continue;
+    const ent = entAt(tx, ty);
+    if (ent && !ent._dead) {
       const fn = DEVICE_FLUID_ICONS[ent.type];
-      if (!fn) continue;
-      for (const ic of fn(ent)) {
-        if (ic.x === tx && ic.y === ty && ITEMS[ic.fluid]) {
-          return ITEMS[ic.fluid].name + '|' + ITEMS[ic.fluid].desc;
+      if (fn) {
+        for (const ic of fn(ent)) {
+          if (ic.x === tx && ic.y === ty && ITEMS[ic.fluid]) {
+            return ITEMS[ic.fluid].name + '|' + ITEMS[ic.fluid].desc;
+          }
         }
       }
     }

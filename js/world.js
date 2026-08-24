@@ -24,6 +24,17 @@ function genWorld(seed) {
   return { seed, chunks: new Map(), remaining: new Map() };
 }
 
+// ===== 整数化地图键（P1 优化）=====
+// chunks / remaining 是每帧最热的两处 Map 查询（地形/矿点渲染、采矿机、
+// 悬停提示都会逐格调用），原先用 "x,y" 字符串拼接做键，每次查询都要分配
+// 临时字符串。这里统一改为单个 32 位整数键，与 core/entity.js 的 entKey 同构。
+const MAP_KEY_OFF = 32768;   // 覆盖瓦片坐标 ±32767（与 entKey 一致）
+function mapKey(x, y) { return ((x + MAP_KEY_OFF) << 16) | (y + MAP_KEY_OFF); }
+// 整数键 → [x, y]（存档序列化 remaining 时用）
+function unmapKey(k) { return [(k >> 16) - MAP_KEY_OFF, (k & 0xffff) - MAP_KEY_OFF]; }
+// chunk 键：chunk 坐标范围远小于瓦片坐标，用同一编码即可（±32767 块 ≈ ±100 万格）
+function ckey(cx, cy) { return ((cx + MAP_KEY_OFF) << 16) | (cy + MAP_KEY_OFF); }
+
 // ===== 地图块持久化 =====
 // 把已生成块编码为紧凑文本，随存档保存；读档时直接还原。
 // 这样已探索区域与生成算法完全解耦——今后算法再怎么改，
@@ -54,6 +65,7 @@ function decodeChunkData(d) {
   const terrain = new Uint8Array(N);
   const oreType = new Int8Array(N);
   const oreAmt = new Float32Array(N);
+  let hasOre = false;
   const t = d.t, o = d.o, a = d.a, lut = _chunkDigitLUT;
   let ai = 0, i = 0;
   // 每轮处理 4 格（若 N 为 4 的倍数则可完整展开；否则兜底补足）
@@ -64,24 +76,24 @@ function decodeChunkData(d) {
     terrain[i + 3] = lut[t.charCodeAt(i + 3)];
     let ch = o.charCodeAt(i);
     oreType[i] = ch === 46 ? -1 : lut[ch];
-    if (ch !== 46) oreAmt[i] = a[ai++] || 0;
+    if (ch !== 46) { oreAmt[i] = a[ai++] || 0; hasOre = true; }
     ch = o.charCodeAt(i + 1);
     oreType[i + 1] = ch === 46 ? -1 : lut[ch];
-    if (ch !== 46) oreAmt[i + 1] = a[ai++] || 0;
+    if (ch !== 46) { oreAmt[i + 1] = a[ai++] || 0; hasOre = true; }
     ch = o.charCodeAt(i + 2);
     oreType[i + 2] = ch === 46 ? -1 : lut[ch];
-    if (ch !== 46) oreAmt[i + 2] = a[ai++] || 0;
+    if (ch !== 46) { oreAmt[i + 2] = a[ai++] || 0; hasOre = true; }
     ch = o.charCodeAt(i + 3);
     oreType[i + 3] = ch === 46 ? -1 : lut[ch];
-    if (ch !== 46) oreAmt[i + 3] = a[ai++] || 0;
+    if (ch !== 46) { oreAmt[i + 3] = a[ai++] || 0; hasOre = true; }
   }
   for (; i < N; i++) {
     terrain[i] = lut[t.charCodeAt(i)];
     const ch = o.charCodeAt(i);
     oreType[i] = ch === 46 ? -1 : lut[ch];
-    if (ch !== 46) oreAmt[i] = a[ai++] || 0;
+    if (ch !== 46) { oreAmt[i] = a[ai++] || 0; hasOre = true; }
   }
-  return { cx: d.cx | 0, cy: d.cy | 0, terrain, oreType, oreAmt };
+  return { cx: d.cx | 0, cy: d.cy | 0, terrain, oreType, oreAmt, hasOre };
 }
 
 function chunkSeed(cx, cy) {
@@ -97,7 +109,7 @@ function chunkLocalIdx(tx, ty) {
 }
 
 function getChunk(cx, cy) {
-  const k = cx + ',' + cy;
+  const k = ckey(cx, cy);
   let c = G.world.chunks.get(k);
   if (!c) { c = genChunk(cx, cy); G.world.chunks.set(k, c); }
   return c;
@@ -119,12 +131,12 @@ function baseOreAmt(tx, ty) {
 }
 
 function getOreAmt(tx, ty) {
-  const rem = G.world.remaining.get(tx + ',' + ty);
+  const rem = G.world.remaining.get(mapKey(tx, ty));
   return rem !== undefined ? rem : baseOreAmt(tx, ty);
 }
 
 function consumeOre(tx, ty) {
-  const key = tx + ',' + ty;
+  const key = mapKey(tx, ty);
   const amt = getOreAmt(tx, ty);
   if (amt <= 0) return;
   G.world.remaining.set(key, amt - 1);
@@ -192,6 +204,7 @@ function growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, size, amt, ti) {
       }
     }
   }
+  return placed;
 }
 
 function genChunk(cx, cy) {
@@ -200,6 +213,7 @@ function genChunk(cx, cy) {
   const oreType = new Int8Array(CHUNK * CHUNK);
   oreType.fill(-1);
   const oreAmt = new Float32Array(CHUNK * CHUNK);
+  let hasOre = false;   // 块级“含矿”标记（P1 优化）：渲染矿点层时可整块跳过无矿块
 
   const ox = cx * CHUNK, oy = cy * CHUNK;
   for (let ly = 0; ly < CHUNK; ly++)
@@ -228,7 +242,7 @@ function genChunk(cx, cy) {
     const amt = (500 + rng() * 900) * scale;
     const sx = 1 + Math.floor(rng() * (CHUNK - 2));
     const sy = 1 + Math.floor(rng() * (CHUNK - 2));
-    growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, size, amt, ti);
+    if (growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, size, amt, ti) > 0) hasOre = true;
   }
 
   // 原油矿床：越远越常见，储量更高
@@ -236,7 +250,7 @@ function genChunk(cx, cy) {
   if (rng() < oilChance) {
     const sx = 2 + Math.floor(rng() * (CHUNK - 4));
     const sy = 2 + Math.floor(rng() * (CHUNK - 4));
-    growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, 4 + Math.floor(rng() * 5), 1500 + rng() * 2500, ORE_OIL);
+    if (growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, 4 + Math.floor(rng() * 5), 1500 + rng() * 2500, ORE_OIL) > 0) hasOre = true;
   }
 
   // 出生点保证：原点上一定有一片小型铁矿起步
@@ -246,6 +260,7 @@ function genChunk(cx, cy) {
       const si = sy * CHUNK + sx;
       if (terrain[si] === T_GRASS && oreType[si] < 0) {
         growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, 10, 900, ORES.indexOf('iron-ore'));
+        hasOre = true;
         break;
       }
     }
@@ -255,12 +270,13 @@ function genChunk(cx, cy) {
       const si = sy * CHUNK + sx;
       if (terrain[si] === T_GRASS && oreType[si] < 0 && Math.hypot(sx - 6, sy - 6) > 4) {
         growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, 4, 2000, ORE_OIL);
+        hasOre = true;
         break;
       }
     }
   }
 
-  return { cx, cy, terrain, oreType, oreAmt };
+  return { cx, cy, terrain, oreType, oreAmt, hasOre };
 }
 
 function shuffle(arr, rng) {

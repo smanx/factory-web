@@ -75,8 +75,9 @@ function render() {
     const b = FRAME_BOUNDS;
     const x0 = Math.floor(b.x1 / TILE), y0 = Math.floor(b.y1 / TILE);
     const x1 = Math.ceil(b.x0 / TILE), y1 = Math.ceil(b.y0 / TILE);
-    // 桶按实体左上角归位，多格设备（如 3×3/3×5）可能从邻近桶伸入视口，故扩一圈再剔除
-    const keys = bucketKeysIn(x0 - BUCK, y0 - BUCK, x1 + BUCK, y1 + BUCK);
+    // 桶按实体左上角归位，多格设备（最大 5×5，如炼油厂）可能从视口外最多 4 格伸入，
+    // 故只需外扩 BUCKET_PAD=8 格（不足一整桶），比原先外扩 16 格少扫约一半桶（P1 优化）
+    const keys = bucketKeysIn(x0 - BUCKET_PAD, y0 - BUCKET_PAD, x1 + BUCKET_PAD, y1 + BUCKET_PAD);
     forEachEntInBuckets(keys, e => {
       if (!onScreen(e)) return;
       drawEntity(ctx, e, e.x, e.y, e.dir, 1);
@@ -204,12 +205,33 @@ function drawTerrain(ctx) {
       ctx.drawImage(c, sx, sy, ex - dx, ey - dy, dx, dy, ex - dx, ey - dy);
     }
   }
-  // 矿点每帧实时绘制（随开采实时减少）
-  for (let ty = ty0; ty <= ty1; ty++) {
-    for (let tx = tx0; tx <= tx1; tx++) {
-      const ti = getOreType(tx, ty);
-      if (ti >= 0 && getOreAmt(tx, ty) > 0)
-        drawOreDots(ctx, tx * TILE, ty * TILE, oreItemId(ti), getOreAmt(tx, ty), tx, ty);
+  // 矿点每帧实时绘制（随开采实时减少）。
+  // P1 优化：按块直读类型数组——原先逐格调用 getOreType/getOreAmt，
+  // 每格都要做 chunk 查找与键构造；现在每块只查一次，无矿块整块跳过
+  //（全图绝大多数区块没有矿），仅对含矿格做 remaining 覆盖查询。
+  for (let cy = cY0; cy <= cY1; cy++) {
+    for (let cx = cX0; cx <= cX1; cx++) {
+      const c = getChunk(cx, cy);
+      if (!c.hasOre) continue;
+      const ox = cx * CHUNK, oy = cy * CHUNK;
+      const lx0 = Math.max(0, tx0 - ox), ly0 = Math.max(0, ty0 - oy);
+      const lx1 = Math.min(CHUNK - 1, tx1 - ox), ly1 = Math.min(CHUNK - 1, ty1 - oy);
+      const oreType = c.oreType, oreAmt = c.oreAmt, rem = G.world.remaining;
+      for (let ly = ly0; ly <= ly1; ly++) {
+        const rowBase = ly * CHUNK;
+        const py = (oy + ly) * TILE;
+        for (let lx = lx0; lx <= lx1; lx++) {
+          const idx = rowBase + lx;
+          const ti = oreType[idx];
+          if (ti < 0) continue;
+          const base = oreAmt[idx];
+          if (!(base > 0)) continue;
+          const r = rem.get(mapKey(ox + lx, oy + ly));
+          // remaining 有记录则以其为准（已被开采），否则按基础储量显示
+          if (r !== undefined && !(r > 0)) continue;
+          drawOreDots(ctx, (ox + lx) * TILE, py, oreItemId(ti), r !== undefined ? r : base, ox + lx, oy + ly);
+        }
+      }
     }
   }
   terrainCacheStats.state = '分块缓存（' + terrainChunkCache.size + '/' + TERRAIN_CHUNK_LRU_MAX + ' 张，命中 ' + terrainCacheStats.hits + ' / 未命中 ' + terrainCacheStats.misses + '）';

@@ -203,6 +203,13 @@ class Inserter extends Entity {
       this.holding = it;
       this.holdingCount = got.length;
     } else {
+      // 堵塞降频重试（P1 优化）：放货格已满时机械臂每帧循环 deliverAt 只会白耗 CPU
+      // （大工厂里堵臂很常见），改为约 8 次/秒重试；一旦疏通立即恢复逐帧搬运。
+      if (this.blocked && this.holdingCount > 0) {
+        this._retryT = (this._retryT || 0) - dt;
+        if (this._retryT > 0) return;
+        this._retryT = 0.12;
+      }
       // 到达放物位：循环放入；失败保持持物、标记堵塞，下帧继续重试
       const t = this.entAtDrop();
       while (this.holdingCount > 0 && this.deliverAt(t)) this.holdingCount--;
