@@ -38,6 +38,7 @@ const G = {
   greenRect: null,        // 绿图最近一次框选区域
   statsTab: 'items',      // 统计面板当前页：items | power | perf
   statsItemTab: 'prod',   // 统计面板-物品速率页：prod(生产速率) | cons(消耗)
+  statsPowerTab: 'prod',  // 统计面板-电量页：prod(发电设备) | cons(耗电设备)
   machTab: 'prod',        // 设备面板-消耗/生产 tab：cons | prod（已弃用）
   settings: Object.assign({}, DEFAULT_SETTINGS),
   autoT: 0,
