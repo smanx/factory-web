@@ -1094,15 +1094,15 @@ const FT_FLUID_CAP = 200;
 class FlamethrowerTurret extends Entity {
   constructor(type, x, y) {
     super('flamethrower-turret', x, y);
-    this.fluid = {};       // { 'petroleum-gas': n }
+    this.fluid = {};       // { 'light-oil': n }（对齐《异星工厂》：火焰炮塔以轻油为燃料）
     this.cooldown = 0;
     this.target = null;
     this.facing = 0;
   }
   giveItem(item) {
-    if (item === 'petroleum-gas') {
-      if ((this.fluid['petroleum-gas'] || 0) >= FT_FLUID_CAP) return false;
-      this.fluid['petroleum-gas'] = (this.fluid['petroleum-gas'] || 0) + 1;
+    if (item === 'light-oil') {
+      if ((this.fluid['light-oil'] || 0) >= FT_FLUID_CAP) return false;
+      this.fluid['light-oil'] = (this.fluid['light-oil'] || 0) + 1;
       return true;
     }
     return false;
@@ -1115,10 +1115,10 @@ class FlamethrowerTurret extends Entity {
   }
   contents() { return [[this.type, 1]].concat(Object.keys(this.fluid).map(k => [k, this.fluid[k]])); }
   fluidPort() {
-    // 底部(南)一格接石油气
+    // 底部(南)一格接轻油（对齐《异星工厂》：火焰炮塔以轻油为燃料）
     const n = neighborOnSideCell(this, (1 + (this.dir | 0)) % 4, 0);
-    if (n instanceof Pipe && n.fluid['petroleum-gas'] > 0 && (this.fluid['petroleum-gas'] || 0) < FT_FLUID_CAP && n.takeItemOf('petroleum-gas')) {
-      this.fluid['petroleum-gas'] = (this.fluid['petroleum-gas'] || 0) + 1;
+    if (n instanceof Pipe && n.fluid['light-oil'] > 0 && (this.fluid['light-oil'] || 0) < FT_FLUID_CAP && n.takeItemOf('light-oil')) {
+      this.fluid['light-oil'] = (this.fluid['light-oil'] || 0) + 1;
     }
   }
   update(dt) {
@@ -1126,7 +1126,7 @@ class FlamethrowerTurret extends Entity {
     this.target = null;
     this.fluidPort();
     if (G.power.sat <= 0) return;
-    if ((this.fluid['petroleum-gas'] || 0) <= 0) return;
+    if ((this.fluid['light-oil'] || 0) <= 0) return;
     const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
     let best = null, bestD = Infinity;
     for (const en of (G.enemies || [])) {
@@ -1140,8 +1140,8 @@ class FlamethrowerTurret extends Entity {
     this.facing = Math.atan2(best.y - (this.y + this.h / 2) * TILE, best.x - (this.x + this.w / 2) * TILE);
     if (this.cooldown > 0) return;
     this.cooldown = FT_FIRE_RATE;
-    this.fluid['petroleum-gas']--;
-    if (this.fluid['petroleum-gas'] <= 0) delete this.fluid['petroleum-gas'];
+    this.fluid['light-oil']--;
+    if (this.fluid['light-oil'] <= 0) delete this.fluid['light-oil'];
     // 喷射火焰覆盖锥形范围
     const ang = this.facing;
     for (const en of G.enemies) {
@@ -1162,7 +1162,13 @@ class FlamethrowerTurret extends Entity {
   }
   powerDemand() { return 200; }
   serialize() { const s = super.serialize(); s.fluid = this.fluid; return s; }
-  static restore(s) { const t = super.restore(s); t.fluid = s.fluid || {}; return t; }
+  static restore(s) {
+    const t = super.restore(s);
+    t.fluid = s.fluid || {};
+    // 迁移旧存档：旧版火焰炮塔以石油气为燃料，读档时丢弃残留的石油气，避免遗留旧流体
+    if (t.fluid['petroleum-gas']) delete t.fluid['petroleum-gas'];
+    return t;
+  }
 }
 function normAng(a) { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; }
 function drawFlamethrowerTurret(ctx, e, gx, gy, dir, alpha) {
@@ -1191,7 +1197,7 @@ function drawFlamethrowerTurret(ctx, e, gx, gy, dir, alpha) {
     ctx.arc(e.target.x, e.target.y, 8 + Math.random() * 5, 0, 7);
     ctx.fill();
   }
-  const fl = (e.fluid && e.fluid['petroleum-gas']) || 0;
+  const fl = (e.fluid && e.fluid['light-oil']) || 0;
   if (fl > 0) {
     ctx.fillStyle = '#d0a04a';
     ctx.font = 'bold 10px system-ui';
@@ -1201,24 +1207,24 @@ function drawFlamethrowerTurret(ctx, e, gx, gy, dir, alpha) {
   ctx.globalAlpha = 1;
 }
 function flameTurretPanelHtml(e) {
-  let h = row('石油气', (e.fluid['petroleum-gas'] || 0) > 0 ? ((e.fluid['petroleum-gas'] || 0) + ' 单位') : '<span class="dim">空</span>', 'fluid');
-  const n = Math.min(invCount('petroleum-gas'), FT_FLUID_CAP - (e.fluid['petroleum-gas'] || 0));
-  if (n > 0) h += '<button data-action="feed" data-id="petroleum-gas">放入石油气 ×' + n + '</button>';
+  let h = row('轻油', (e.fluid['light-oil'] || 0) > 0 ? ((e.fluid['light-oil'] || 0) + ' 单位') : '<span class="dim">空</span>', 'fluid');
+  const n = Math.min(invCount('light-oil'), FT_FLUID_CAP - (e.fluid['light-oil'] || 0));
+  if (n > 0) h += '<button data-action="feed" data-id="light-oil">放入轻油 ×' + n + '</button>';
   h += '<div class="status"></div>';
-  h += '<div class="dim">火焰炮塔：消耗石油气喷射火焰，对锥形范围敌人造成持续灼烧伤害。可从底部输入口相邻管道自动吸入石油气（2×2）。</div>';
+  h += '<div class="dim">火焰炮塔：消耗轻油喷射火焰，对锥形范围敌人造成持续灼烧伤害。可从底部输入口相邻管道自动吸入轻油（2×2）。对齐《异星工厂》Flamethrower turret：以轻油为燃料。</div>';
   return h;
 }
 function flameTurretPanelLive(e, api) {
-  api.set('fluid', (e.fluid['petroleum-gas'] || 0) > 0 ? ((e.fluid['petroleum-gas'] || 0) + ' 单位') : dimSpan('空'));
-  const fl = e.fluid['petroleum-gas'] || 0;
+  api.set('fluid', (e.fluid['light-oil'] || 0) > 0 ? ((e.fluid['light-oil'] || 0) + ' 单位') : dimSpan('空'));
+  const fl = e.fluid['light-oil'] || 0;
   if (G.power.sat <= 0) api.status('已暂停：缺电', 'warn');
-  else if (fl <= 0) api.status('已暂停：缺石油气（管道或按钮放入）', 'warn');
+  else if (fl <= 0) api.status('已暂停：缺轻油（管道或按钮放入）', 'warn');
   else if (e.target) api.status('喷射中：灼烧敌人', 'ok');
   else api.status('待机：射程内无敌人', 'ok');
 }
 function flameTurretTip(e) {
   if (G.power.sat <= 0) return '缺电停摆';
-  if ((e.fluid['petroleum-gas'] || 0) <= 0) return '缺石油气';
+  if ((e.fluid['light-oil'] || 0) <= 0) return '缺轻油';
   return e.target ? '喷射中（火焰）' : '待机';
 }
 
@@ -1257,8 +1263,11 @@ function updateGroundFires(dt) {
     f.tickT -= dt;
     if (f.tickT <= 0) {
       f.tickT = GROUND_FIRE_TICK;
-      if (G.enemies) for (const en of G.enemies) {
-        if (en.dead || en.type === 'spawner') continue;
+      // 性能优化：复用主循环缓存的存活敌人列表（G._aliveEnemies），避免全量遍历含已死敌人
+      const _alive = G._aliveEnemies || (G.enemies || EMPTY_ARR);
+      for (let i = 0; i < _alive.length; i++) {
+        const en = _alive[i];
+        if (!en || en.dead || en.type === 'spawner') continue;
         if (Math.hypot(en.x - cx, en.y - cy) <= TILE * 1.15) { en.hp -= Math.round(GROUND_FIRE_DMG * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('fire') : 1)); if (en.hp <= 0) en.dead = true; }
       }
       // 玩家站在火焰上也受灼烧
@@ -1310,8 +1319,11 @@ function updateAcidPools(dt) {
     if (f.tickT <= 0) {
       f.tickT = ACID_POOL_TICK;
       // 酸液对范围内的敌人持续腐蚀（含虫巢，与火焰一致）
-      if (G.enemies) for (const en of G.enemies) {
-        if (en.dead) continue;
+      // 性能优化：复用主循环缓存的存活敌人列表（G._aliveEnemies），避免全量遍历含已死敌人
+      const _alive = G._aliveEnemies || (G.enemies || EMPTY_ARR);
+      for (let i = 0; i < _alive.length; i++) {
+        const en = _alive[i];
+        if (!en || en.dead) continue;
         if (Math.hypot(en.x - cx, en.y - cy) <= TILE * 1.15) { en.hp -= ACID_POOL_DMG; if (en.hp <= 0) en.dead = true; }
       }
       // 玩家踩中酸液也受腐蚀
@@ -1332,7 +1344,7 @@ ENT_CLASSES['flamethrower-turret'] = FlamethrowerTurret;
 DEVICE_RENDER['laser-turret'] = drawLaserTurret;
 DEVICE_RENDER['flamethrower-turret'] = drawFlamethrowerTurret;
 DEVICE_STATUS['laser-turret'] = e => (G.power.sat <= 0 ? 'r' : (e.target ? 'g' : 'y'));
-DEVICE_STATUS['flamethrower-turret'] = e => (G.power.sat <= 0 ? 'r' : ((e.fluid['petroleum-gas'] || 0) <= 0 ? 'r' : (e.target ? 'g' : 'y')));
+DEVICE_STATUS['flamethrower-turret'] = e => (G.power.sat <= 0 ? 'r' : ((e.fluid['light-oil'] || 0) <= 0 ? 'r' : (e.target ? 'g' : 'y')));
 DEVICE_PANEL['laser-turret'] = { html: laserTurretPanelHtml, live: laserTurretPanelLive, tip: laserTurretTip };
 DEVICE_PANEL['flamethrower-turret'] = { html: flameTurretPanelHtml, live: flameTurretPanelLive, tip: flameTurretTip };
 DEVICE_DIR_ROTATE['laser-turret'] = true;
