@@ -457,7 +457,7 @@ function circuitPanelHtml(e, prefix) {
       '<option value="on"' + (c.enabled ? ' selected' : '') + '>启用条件</option>' +
     '</select>' +
     '<select id="' + prefix + '-ch" class="circ-op">' + (typeof channelSelect === 'function' ? channelSelect(c.channel) : '') + '</select>' +
-    '<input type="text" id="' + prefix + '-sig" class="circ-siginv" value="' + (ITEMS[c.sig]?.name || c.sig || '') + '" placeholder="信号" autocomplete="off">' +
+    '<input type="text" id="' + prefix + '-sig" class="circ-siginv" value="' + (typeof signalDisplayName === 'function' ? signalDisplayName(c.sig) : (ITEMS[c.sig]?.name || c.sig || '')) + '" placeholder="信号" autocomplete="off">' +
     '<select id="' + prefix + '-op" class="circ-op">' + ['>', '<', '=', '!=', '>=', '<='].map(o => '<option value="' + o + '"' + (c.op === o ? ' selected' : '') + '>' + o + '</option>').join('') + '</select>' +
     '<input type="number" id="' + prefix + '-cnt" class="circ-cnt" value="' + (c.count || 0) + '" min="-99999" max="99999">' +
     '<button data-action="cb-cond">应用</button></div>';
