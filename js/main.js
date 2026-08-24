@@ -282,8 +282,9 @@ function applyRedBlueprint() {
       }
     }
   }
-  cancelBlueprint();
-  toast('红图：已删除 ' + count + ' 个建筑（物资已返还背包）');
+  // 保持红图模式，仅重置框选范围，便于继续框选删除
+  G.blueStart = null; G.blueEnd = null;
+  toast('红图：已删除 ' + count + ' 个建筑（物资已返还背包），可继续框选');
   uiDirty = true;
 }
 
