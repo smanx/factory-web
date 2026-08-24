@@ -327,7 +327,7 @@ const TECHS = {
 // 判断是否为无限科技（永不完成、消耗任意科学包）
 function isInfiniteTech(tid) { return !!(TECHS[tid] && TECHS[tid].infinite); }
 
-const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: false, combat: false, capDPR: true, lowRes: false, virtualJoystick: false };
+const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: true, combat: false, capDPR: true, lowRes: false, virtualJoystick: false };
 const SETTINGS_KEY = 'factory-settings-v1';
 
 function drawItemGlyph(x, id, cx, cy, s) {

@@ -5,8 +5,7 @@
 // 由用户点击开始菜单按钮后才调用 startNewGame() / startFromSave() 进入游戏。
 
 (function () {
-  // 存档键与 main.js 保持一致（主存档）
-  const MENU_SAVE_KEY = 'factory-proto-save-v1';
+  // 存档由 js/saves.js 的多存档系统管理，此处仅检测是否存在任意存档。
 
   function initStartMenu() {
     const screen = document.getElementById('start-screen');
@@ -57,11 +56,12 @@
     });
   }
 
-  // 检测主存档是否存在且非空
+  // 检测是否存在任意存档（自动或用户）
   function hasAnySave() {
     try {
-      const raw = localStorage.getItem(MENU_SAVE_KEY);
-      return !!(raw && raw.length > 0);
+      // 首次打开时迁移旧版单键存档到新多存档系统
+      if (typeof migrateLegacySave === 'function') migrateLegacySave();
+      return typeof listAllSaves === 'function' ? listAllSaves().length > 0 : false;
     } catch (e) {
       return false;
     }

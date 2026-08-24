@@ -512,6 +512,34 @@ html, body {
 }
 .setrow input[type=checkbox] { width: 15px; height: 15px; accent-color: #57e389; }
 
+/* ===== 存档管理 ===== */
+.save-list { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+.save-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #232c38;
+  border: 1px solid #303b4a;
+  border-radius: 6px;
+}
+.save-item-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.save-name { color: #e8eef5; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
+.save-time { color: #7d8894; font-size: 11px; }
+.save-tag {
+  display: inline-block;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-right: 4px;
+  vertical-align: 1px;
+}
+.save-tag.auto { background: #3a3f6b; color: #aab6ff; }
+.save-tag.user { background: #2f5d3a; color: #7be08e; }
+.save-item-ops { display: flex; gap: 4px; flex-shrink: 0; }
+.save-item-ops button { padding: 4px 7px; font-size: 12px; }
+
 /* ===== 统计面板 ===== */
 .stat-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
 .stat-tab {

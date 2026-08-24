@@ -545,8 +545,18 @@ function initPanelEvents() {
     let handled = false;
     if (panel && panel.onAction) handled = !!panel.onAction(act, btn);
     if (!handled) {
-      if (act === 'quick-save') { saveGame(); }
-      else if (act === 'quick-load') { loadGame(); }
+      if (act === 'quick-save') { saveGame(); renderPanel(false); }
+      else if (act === 'quick-load') {
+        const newest = listAllSaves()[0];
+        if (newest) { loadGame(newest.id); } else { toast('暂无存档'); }
+      }
+      else if (act === 'load-save') { loadGame(id); }
+      else if (act === 'overwrite-save') { saveGame(id); renderPanel(false); }
+      else if (act === 'delete-save') {
+        deleteSave(id);
+        toast('已删除存档');
+        renderPanel(false);
+      }
       else if (act === 'exp-save') { downloadSave(); }
       else if (act === 'imp-save') { document.getElementById('imp-file').click(); }
       else if (act === 'craft') {
@@ -611,15 +621,43 @@ function htmlSettings() {
   h += '<label class="setrow"><input type="checkbox" data-set="capDPR"' + (G.settings.capDPR ? ' checked' : '') + '> 限制高清缩放（DPR ≤ 1.5，降载高分屏）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="lowRes"' + (G.settings.lowRes ? ' checked' : '') + '> 省电模式（降至半分辨率，显著降 GPU 负载）</label>';
   h += '<div class="sec">存档管理</div>';
-  h += '<button data-action="quick-save">保存游戏</button> ';
-  h += '<button data-action="quick-load">读取存档</button>';
-  h += '<div class="hint">保存 / 读取为浏览器本地存档（无快捷键，仅可通过点击触发）。</div>';
+  h += '<button data-action="quick-save">➕ 新建存档</button> ';
+  h += '<button data-action="quick-load">读取最新存档</button>';
   h += '<button data-action="exp-save">导出存档到文件</button> ';
   h += '<button data-action="imp-save">从文件导入存档</button>';
   h += '<input type="file" id="imp-file" accept=".json,application/json" style="display:none">';
-  h += '<div class="hint">导出为 JSON 文件，可分享或备份；导入会覆盖当前进度。</div>';
+  h += '<div class="hint">自动存档保留最近 3 个（旧的自动覆盖）；用户可自行新建/覆盖/读取/删除存档。</div>';
+  h += saveListHtml();
   return h;
 }
+
+// 生成存档列表（自动 + 用户），每项提供“读取 / 覆盖 / 删除”操作
+function saveListHtml() {
+  const saves = listAllSaves();
+  if (!saves.length) return '<div class="hint">暂无存档。点击“➕ 新建存档”保存当前进度。</div>';
+  let h = '<div class="sec save-list-title">全部存档（' + saves.length + '）</div>';
+  h += '<div class="save-list">';
+  for (const s of saves) {
+    const d = new Date(s.time);
+    const time = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+    const tag = s.type === 'auto' ? '<span class="save-tag auto">自动</span>' : '<span class="save-tag user">用户</span>';
+    h += '<div class="save-item">';
+    h += '  <div class="save-item-info">' + tag + ' <span class="save-name">' + escHtml(s.name || '存档') + '</span>';
+    h += '    <div class="save-time">' + time + '</div>';
+    h += '  </div>';
+    h += '  <div class="save-item-ops">';
+    h += '    <button data-action="load-save" data-id="' + s.id + '" title="读取该存档">📂 读取</button>';
+    h += '    <button data-action="overwrite-save" data-id="' + s.id + '" title="用当前进度覆盖该存档">💾 覆盖</button>';
+    h += '    <button data-action="delete-save" data-id="' + s.id + '" title="删除该存档">🗑 删除</button>';
+    h += '  </div>';
+    h += '</div>';
+  }
+  h += '</div>';
+  return h;
+}
+
+function pad2(n) { return (n < 10 ? '0' : '') + n; }
+function escHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
 function downloadSave() {
   try {
