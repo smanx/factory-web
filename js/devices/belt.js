@@ -46,16 +46,17 @@ class Belt extends Entity {
   }
   acceptItem(item, fromDir) {
     const candidates = [];
+    let side = -1;
     if (fromDir !== undefined && fromDir !== null) {
       const rel = ((fromDir - this.dir) % 4 + 4) % 4;
-      if (rel === 1 || rel === 3) candidates.push(0.45);
+      if (rel === 1 || rel === 3) { candidates.push(0.45); side = beltSideIndex(this, fromDir); }
     }
     candidates.push(0);
     for (const p of candidates) {
       let ok = true;
       for (const o of this.items)
         if (Math.abs(o.pos - p) < BELT_SPACING) { ok = false; break; }
-      if (ok) { this.items.push({ item, pos: p }); return true; }
+      if (ok) { this.items.push({ item, pos: p, side }); return true; }
     }
     return false;
   }
@@ -95,12 +96,12 @@ class Belt extends Entity {
   }
   serialize() {
     const s = super.serialize();
-    s.items = this.items.map(o => [o.item, +o.pos.toFixed(3)]);
+    s.items = this.items.map(o => [o.item, +o.pos.toFixed(3), o.side === undefined ? -1 : o.side]);
     return s;
   }
   static restore(s) {
     const b = super.restore(s);
-    b.items = (s.items || []).map(a => ({ item: a[0], pos: a[1] }));
+    b.items = (s.items || []).map(a => ({ item: a[0], pos: a[1], side: a.length > 2 ? a[2] : -1 }));
     return b;
   }
 }
@@ -113,23 +114,35 @@ function dirIndexOf(dx, dy) {
 
 // beltInputSide 结果缓存在实体上：邻居增删时由 addEnt/removeEnt 统一失效，
 // 避免每帧为每条传送带反复遍历邻居实体（P0 优化）。
+// 返回一个数组：横向传送带的左右两侧都可各接一条传送带（对齐《异星工厂》），
+// 因此这里返回 0~2 个侧面输入源，而不再只取第一个。
 function beltInputSide(e) {
   if (e.__inpCached) return e.__inp;
   const fdx = DX[e.dir], fdy = DY[e.dir];
   const sides = [[fdy, -fdx], [-fdy, fdx]];
-  let res = null;
+  const inps = [];
   for (const [sx, sy] of sides) {
     const nb = entAt(e.x + sx, e.y + sy);
     if (!nb) continue;
     const want = dirIndexOf(-sx, -sy);
     // 地下带只有“出口”（前方无同向mate）才会把货投向地面带，入口会把货钻入地下、
     // 不会向旁边传送带输出，因此入口不搭在侧面传送带上（对齐《异星工厂》）。
-    if (nb instanceof Underground && nb.dir === want && !nb.findMate()) { res = [sx, sy]; break; }
-    if (nb instanceof Belt && nb.dir === want) { res = [sx, sy]; break; }
+    if (nb instanceof Underground && nb.dir === want && !nb.findMate()) { inps.push([sx, sy]); continue; }
+    if (nb instanceof Belt && nb.dir === want) { inps.push([sx, sy]); continue; }
   }
-  e.__inp = res;
+  e.__inp = inps;
   e.__inpCached = true;
-  return res;
+  return inps;
+}
+
+// 返回 fromDir 对应的侧面输入索引（0/1），若 not 侧面输入返回 -1。
+// 用于 acceptItem 记录物品来自哪个侧面，从而在渲染时让物品从对应侧面“搭上去”。
+function beltSideIndex(e, fromDir) {
+  const fdx = DX[e.dir], fdy = DY[e.dir];
+  const sides = [[fdy, -fdx], [-fdy, fdx]];
+  const sx = -DX[fromDir], sy = -DY[fromDir];
+  for (let i = 0; i < 2; i++) if (sides[i][0] === sx && sides[i][1] === sy) return i;
+  return -1;
 }
 
 function drawBelt(ctx, e, gx, gy, dir, alpha) {
@@ -156,7 +169,7 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
   const off = ((G.time * beltSpeed() * (e.speedMult ? e.speedMult() : 1) * TILE) % step + step) % step;
 
   strip(dir * Math.PI / 2, -TILE / 2 + 2, TILE - 4);
-  if (inp) strip(Math.atan2(inp[1], inp[0]), 0, step);
+  for (const s of inp) strip(Math.atan2(s[1], s[0]), 0, step);
 
   ctx.save();
   ctx.translate(cx, cy);
@@ -172,8 +185,9 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
   }
   ctx.restore();
 
-  if (inp) {
-    const sa = Math.atan2(inp[1], inp[0]);
+  // 每个侧面输入各画一条接入带，两侧可同时“搭上去”
+  for (const s of inp) {
+    const sa = Math.atan2(s[1], s[0]);
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(sa);
@@ -191,17 +205,23 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
   }
 
   const exitX = DX[dir] * step, exitY = DY[dir] * step;
-  let inX = cx, inY = cy;
-  if (inp) { inX = cx + inp[0] * step; inY = cy + inp[1] * step; }
+  // 根据物品来源侧面计算进入起点；无侧面输入时沿主行进方向
+  const sideIn = function (o) {
+    if (inp.length === 0) return null;
+    if (o.side !== undefined && o.side >= 0 && o.side < inp.length) return inp[o.side];
+    return inp[0];
+  };
   // 低 LOD：物品用色块直填，省去 clip+glyph 的昂贵路径绘制
   const itemFn = (LOD && LOD.simple) ? drawItemDotLOD : drawItemDot;
   for (const o of e.items) {
     let ix, iy;
-    if (inp && o.pos < 0.5) {
+    if (inp.length && o.pos < 0.5) {
+      const s = sideIn(o);
+      const inX = cx + s[0] * step, inY = cy + s[1] * step;
       const t = o.pos / 0.5;
       ix = inX + (cx - inX) * t;
       iy = inY + (cy - inY) * t;
-    } else if (inp) {
+    } else if (inp.length) {
       const t = (o.pos - 0.5) / 0.5;
       ix = cx + exitX * t;
       iy = cy + exitY * t;
