@@ -170,6 +170,18 @@ function updateEnemies(dt) {
 
 function damagePlayer(dmg) {
   if (G.dbg && G.dbg.infinite) return;
+  // 载具装甲减免：驾驶坦克时受伤大幅减少；驾驶装甲车小幅减少
+  if (G.driving && G.driving.ent) {
+    const v = G.driving.ent;
+    if (v instanceof Tank) dmg *= TANK_ARMOR;
+    else if (v && typeof v.type === 'string' && v.type === 'car') dmg *= 0.8;
+  }
+  // 玩家护甲减免：装备护甲后进一步减伤
+  if (G.armor) {
+    const a = ARMORS[G.armor];
+    if (a && a.protect) dmg *= a.protect;
+  }
+  dmg = Math.max(0, dmg);
   G.playerHP -= dmg;
   if (G.playerHP <= 0) {
     G.playerHP = 0;
@@ -182,6 +194,35 @@ function damagePlayer(dmg) {
     G.playerHP = G.playerHPmax;
   }
   uiDirty = true;
+}
+
+// ===== 护甲系统（对齐《异星工厂》Armor） =====
+// 玩家可穿戴护甲减少所受伤害。护甲在背包中“使用”即装备，脱卸后回到背包。
+const ARMORS = {
+  'light-armor': { name: '轻型护甲', protect: 0.8 },   // 减伤 20%
+  'heavy-armor': { name: '重型护甲', protect: 0.55 }   // 减伤 45%
+};
+function isArmor(id) { return !!ARMORS[id]; }
+// 装备护甲：消耗背包中的护甲；若已穿戴则替换（旧护甲回包）
+function equipArmor(id) {
+  if (!isArmor(id)) return;
+  if (G.armor && G.armor !== id) invAdd(G.armor, 1);
+  G.armor = id;
+  invTake(id, 1);
+  if (typeof toast === 'function') toast('已装备 ' + ARMORS[id].name + '（受伤 -' + Math.round((1 - ARMORS[id].protect) * 100) + '%）');
+  uiDirty = true;
+}
+// 脱卸护甲：回到背包
+function unequipArmor() {
+  if (G.armor) { invAdd(G.armor, 1); G.armor = null; }
+  if (typeof toast === 'function') toast('已脱下护甲');
+  uiDirty = true;
+}
+// 是否为可穿戴护甲且当前可装备（科技门控）
+function canEquipArmor(id) {
+  if (!isArmor(id)) return false;
+  if (TECH_REQ[id] && !G.techDone[TECH_REQ[id]]) return false;
+  return true;
 }
 
 function updateBullets(dt) {

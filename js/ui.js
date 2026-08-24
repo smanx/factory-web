@@ -244,6 +244,20 @@ function htmlInventory() {
       '<img src="' + iconDataURL(bid) + '">' + ITEMS[bid].name + (n > 0 ? ' ×' + n : (infinite ? ' ∞' : '')) + '</button>';
   }
   h += '</div>';
+  h += '<div class="sec">护甲</div><div class="armor-row">';
+  // 当前穿戴护甲展示与脱卸
+  h += '<div class="armor-slot' + (G.armor ? ' equipped' : '') + '" data-tip="' + (G.armor ? (ITEMS[G.armor].name + '|当前穿戴的护甲，点击脱卸') : '未穿戴护甲|护甲可减少所受伤害') + '" data-armor="unequip">' +
+    (G.armor ? '<img src="' + iconDataURL(G.armor) + '"><b>' + ITEMS[G.armor].name + '</b>' : '<span>🛡 未穿戴</span>') + '</div>';
+  // 可装备的护甲列表
+  for (const aid of ['light-armor', 'heavy-armor']) {
+    const n = invCount(aid);
+    const equipped = G.armor === aid;
+    const can = n > 0 && !equipped;
+    h += '<button class="rcbtn armor-eq' + (can ? '' : ' disabled') + '" data-armor="' + aid + '"' +
+      ' data-tip="' + ITEMS[aid].name + '|' + ITEMS[aid].desc + '">' +
+      '<img src="' + iconDataURL(aid) + '">' + ITEMS[aid].name + (equipped ? ' ✔' : (n > 0 ? ' ×' + n : '')) + '</button>';
+  }
+  h += '</div><div class="dim">护甲可减少所受伤害。点击下方护甲图标即可装备（需在背包中拥有），再次点击已穿戴护甲可脱卸。</div>';
   h += '<div class="sec">材料</div><div class="chips">';
   let any = false;
   for (const id in ITEMS) {
@@ -543,6 +557,20 @@ function initPanelEvents() {
       renderPanel(false);
       return;
     }
+    const armorEl = ev.target.closest('[data-armor]');
+    if (armorEl && G.panelMode === 'inv') {
+      const aid = armorEl.dataset.armor;
+      if (aid === 'unequip') {
+        if (G.armor) unequipArmor();
+      } else if (isArmor(aid)) {
+        if (invCount(aid) < 1) { toast('背包里没有' + ITEMS[aid].name); }
+        else if (G.armor === aid) { unequipArmor(); }
+        else if (!canEquipArmor(aid)) { toast('需要先研究「' + TECHS[TECH_REQ[aid]].name + '」才能装备'); }
+        else equipArmor(aid);
+      }
+      renderPanel(false);
+      return;
+    }
     const hbSlot = ev.target.closest('[data-hbedit]');
     if (hbSlot) {
       const i = +hbSlot.dataset.hbedit;
@@ -648,9 +676,15 @@ function initPanelEvents() {
         const mch = G.panelEnt;
         if (mch && typeof mch.setRecipe === 'function') mch.setRecipe(null);
       } else if (act === 'fuel') {
-        const n = Math.min(5, invCount('coal'));
-        if (n <= 0) { toast('没有煤了'); return; }
-        if (invTake('coal', n)) G.panelEnt.fuelCoal += n;
+        const fid = btn.dataset.id || 'coal';
+        const n = Math.min(5, invCount(fid));
+        if (n <= 0) { toast('没有' + ITEMS[fid].name + '了'); return; }
+        if (invTake(fid, n)) {
+          // 固体燃料 / 煤存入对应燃料槽；其它设备若只认煤则回退到 feed 通用逻辑
+          if (fid === 'coal') G.panelEnt.fuelCoal += n;
+          else if (fid === 'solid-fuel' && 'fuelSolid' in G.panelEnt) G.panelEnt.fuelSolid += n;
+          else if ('giveItem' in G.panelEnt) { G.panelEnt.giveItem(fid); G.panelEnt.giveItem(fid); G.panelEnt.giveItem(fid); G.panelEnt.giveItem(fid); G.panelEnt.giveItem(fid); }
+        }
       } else if (act === 'feed') {
         const mch = G.panelEnt;
         const id = btn.dataset.id;
@@ -737,6 +771,7 @@ async function htmlSettings() {
   h += '<label class="setrow"><input type="checkbox" data-set="autoSave"' + (G.settings.autoSave ? ' checked' : '') + '> 自动保存（每60秒）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="combat"' + (G.settings.combat ? ' checked' : '') + '> 战斗模式（敌人入侵，可用炮塔/石墙防御）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="virtualJoystick"' + (G.settings.virtualJoystick ? ' checked' : '') + '> 虚拟摇杆（手机/触屏移动）</label>';
+  h += '<label class="setrow"><input type="checkbox" data-set="minimap"' + (G.settings.minimap !== false ? ' checked' : '') + '> 小地图（右下角显示已探索区域，M 键切换）</label>';
   h += '<div class="sec">性能优化</div>';
   h += '<label class="setrow"><input type="checkbox" data-set="capDPR"' + (G.settings.capDPR ? ' checked' : '') + '> 限制高清缩放（DPR ≤ 1.5，降载高分屏）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="lowRes"' + (G.settings.lowRes ? ' checked' : '') + '> 省电模式（降至半分辨率，显著降 GPU 负载）</label>';
@@ -866,6 +901,12 @@ function updateHUD(dt, fps) {
   }
   if (G.weapon && isWeapon(G.weapon)) {
     hud += '   🔫 ' + WEAPONS[G.weapon].name;
+  }
+  if (G.armor && isArmor(G.armor)) {
+    hud += '   🛡 ' + ARMORS[G.armor].name;
+  }
+  if (G.driving && G.driving.ent) {
+    hud += '   🚗 ' + (G.driving.ent instanceof Tank ? '坦克' : '装甲车') + '（E 下车）';
   }
   // 手搓合成队列进度
   const cur = craftCurrent();

@@ -9,7 +9,11 @@ class SteelFurnace extends Furnace {
     this.cur = r;
     if (!r) { this.prog = 0; this.lit = false; return; }
     if (this.burnLeft <= 0) {
-      if (this.fuelCoal > 0) {
+      if (this.fuelSolid > 0) {
+        this.fuelSolid--;
+        if (typeof trackProd === 'function') trackProd('solid-fuel', -1);
+        this.burnLeft += SOLID_FUEL_ENERGY;
+      } else if (this.fuelCoal > 0) {
         this.fuelCoal--;
         if (typeof trackProd === 'function') trackProd('coal', -1);
         this.burnLeft += COAL_ENERGY;
@@ -30,6 +34,7 @@ class SteelFurnace extends Furnace {
   }
   giveItem(item) {
     if (item === 'coal' && this.fuelCoal < 20) { this.fuelCoal++; return true; }
+    if (item === 'solid-fuel' && this.fuelSolid < 20) { this.fuelSolid++; return true; }
     for (const r of SMELTS)
       if (r.inp === item && (this.inp[item] || 0) < 25) { this.inp[item] = (this.inp[item] || 0) + 1; return true; }
     return false;

@@ -28,6 +28,13 @@ function boxBlocked(cx, cy, r) {
 
 function updatePlayer(dt) {
   const p = G.player;
+  // 玩家移动会点亮脚下区块（用于小地图）；限频避免每帧重算
+  if (typeof markExplored === 'function') {
+    if (!G._exploreT || G.time - G._exploreT > 0.5) {
+      G._exploreT = G.time;
+      markExplored(p.x, p.y, 2);
+    }
+  }
   // 载具驾驶模式：由 updateDriving 驱动载具，玩家自身不移动
   if (G.driving && G.driving.ent && !G.driving.ent._dead) {
     if (typeof updateDriving === 'function') updateDriving(dt);

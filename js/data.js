@@ -10,6 +10,7 @@ const BELT_SPACING = 0.25;
 const FAST_BELT_MULT = 2;    // 快速传送带 = 2× 基础（对齐《异星工厂》3.75 tiles/s）
 const EXPRESS_BELT_MULT = 3; // 极速传送带 = 3× 基础（对齐《异星工厂》5.625 tiles/s）
 const COAL_ENERGY = 12;
+const SOLID_FUEL_ENERGY = 50;   // 固体燃料能量密度（对齐《异星工厂》：约 4 倍于煤），可作煤的替代燃料
 const SELF_FUEL_MAX = 10;
 const UNDERGROUND_MAX = 6;
 const FAST_UNDERGROUND_MAX = 14;
@@ -71,11 +72,12 @@ const PIPE_CAP = 40;
 const PIPE_FLOW = 3;
 // 储液罐（对齐《异星工厂》Storage Tank）：占地 3×3、容量大、只存单一流体，东西两侧各一个通用流体口
 const STORAGE_TANK_CAP = 2500;
+const FLUID_WAGON_CAP = 2500;   // 流体车厢容量（对齐《异星工厂》Fluid Wagon 2.5 万单位）
 
 const SCIENCE_PACKS = ['science-pack', 'green-science', 'blue-science', 'military-science'];
 function isScience(item) { return SCIENCE_PACKS.indexOf(item) >= 0; }
 const FILTER_CHOICES = ['iron-plate', 'copper-plate', 'steel-plate', 'iron-gear', 'copper-cable', 'green-circuit',
-  'coal', 'stone', 'plastic-bar', 'science-pack', 'green-science', 'blue-science', 'military-science',
+  'coal', 'solid-fuel', 'stone', 'plastic-bar', 'science-pack', 'green-science', 'blue-science', 'military-science',
   'magazine', 'piercing-rounds', 'logistic-robot', 'uranium-235', 'uranium-238', 'nuclear-fuel'].concat(FLUIDS);
 function techPacks(tid) { return (TECHS && TECHS[tid] && TECHS[tid].cost) || {}; }
 function techCostTotal(tid) {
@@ -93,6 +95,7 @@ const ITEMS = {
   'iron-ore':   { name: '铁矿石', color: '#8fa0b8', mark: 'Fe', desc: '基础矿物，放入石炉冶炼成铁板' },
   'copper-ore': { name: '铜矿石', color: '#d0793f', mark: 'Cu', desc: '基础矿物，放入石炉冶炼成铜板' },
   'coal':       { name: '煤',     color: '#3a3a42', mark: 'C',  desc: '燃料，供采矿机与石炉燃烧' },
+  'solid-fuel': { name: '固体燃料', color: '#d08a3a', mark: 'SF', desc: '由石油气/轻油在化工厂制成的致密燃料，能量约为煤的 4 倍，可作煤的高效替代品' },
   'stone':      { name: '石头',   color: '#b3a685', mark: 'St', desc: '合成石炉的材料，可在熔炉烧成石砖' },
   'stone-brick': { name: '石砖',   color: '#b3a685', mark: 'Sb', desc: '由石头在熔炉烧制，可在组装机合成石墙' },
   'calcite':    { name: '方解石', color: '#e8e0d0', mark: 'Ca', desc: '矿物，用于炼油厂煤液化配方（太空时代）' },
@@ -129,6 +132,7 @@ const ITEMS = {
   'priority-splitter': { name: '优先级分流器', color: '#e07b2e', desc: '同分流器，但可通过面板指定优先把货推向一侧；另一侧仅作为溢出通道' },
   'filter-inserter':   { name: '过滤机械臂', color: '#58b8e8', desc: '同机械臂，可在面板指定只抓取某种物品' },
   'stack-inserter':    { name: '堆叠机械臂', color: '#e8e059', desc: '同机械臂，但可一次性抓取多达 3 个同种物品' },
+  'stack-filter-inserter': { name: '堆叠过滤机械臂', color: '#d8e048', desc: '过滤与堆叠二合一：可一次抓取多达 3 个「指定物品」，装卸效率高且精确分类' },
   'steel-chest':       { name: '钢箱', color: '#9aa4b0', desc: '比储物箱容量更大的钢铁储物箱（24 格）' },
   'creative-chest':    { name: '创造箱', color: '#3e8f4a', mark: '∞', desc: '测试设备：无限生成选定物品，点开面板选择要生成的物品，机械臂可无限取走' },
   'void-chest':        { name: '虚空箱', color: '#4a3430', mark: '×', desc: '测试设备：无限销毁任何存入的物品，放进去即刻消失' },
@@ -194,10 +198,16 @@ const ITEMS = {
   'destroyer-capsule': { name: '破坏机器人胶囊', color: '#d05a5a', desc: '投掷后释放破坏机器人：主动冲向并摧毁敌人，伤害更高（高级战斗解锁）' },
   // ===== 载具（对齐《异星工厂》Car）=====
   'car':               { name: '装甲车', color: '#8a6a3a', desc: '可驾驶的载具：靠近后按 E 进入驾驶（WASD 更快移动），消耗煤作燃料，E 下车' },
+  'tank':              { name: '坦克', color: '#4a6a3a', desc: '重型战斗载具：装甲更厚、速度较慢，可发射炮弹造成范围伤害。需高级战斗科技' },
+  'cannon-shell':      { name: '炮弹', color: '#8a5a2a', desc: '坦克主炮的弹药，命中后造成范围爆炸伤害' },
+  // ===== 护甲（对齐《异星工厂》Armor）=====
+  'light-armor':       { name: '轻型护甲', color: '#8a8a72', desc: '基础护甲：减少 20% 所受伤害。穿在身上防御敌人' },
+  'heavy-armor':       { name: '重型护甲', color: '#6a6a5a', desc: '高级护甲：减少 45% 所受伤害。需高级战斗科技' },
   // ===== 铁路系统（火车） =====
   'rail':              { name: '铁轨', color: '#6a6a70', desc: '铺设铁轨形成铁路网，火车沿轨道行驶。与相邻铁轨自动连通，可拐弯（1×1）' },
   'locomotive':        { name: '火车头', color: '#d04a3a', desc: '烧煤驱动的机车，在铁轨上行驶。煤装入后自动前进；可挂接货运车厢组成列车' },
   'cargo-wagon':       { name: '货运车厢', color: '#8a6a4a', desc: '货车厢，挂在火车头后沿铁轨随行，最多存放 10 种物品各 100 个。车站可用机械臂装卸' },
+  'fluid-wagon':       { name: '流体车厢', color: '#4a90c0', desc: '罐车车厢，挂在车头后沿铁轨随行，可运输任意一种流体（容量 ' + FLUID_WAGON_CAP + '）。车站可用泵从侧边装卸流体' },
   'train-stop':        { name: '车站', color: '#5a8ac0', desc: '火车停靠站：列车行驶到车站所在铁轨即停车，便于机械臂/传送带装卸货物' },
   'rail-signal':       { name: '铁路信号灯', color: '#e04a4a', desc: '放在铁轨旁，指示前方区段是否被列车占用，用于多列火车防追尾（1×1）' },
   // ===== 润滑油 =====
@@ -266,6 +276,7 @@ const RECIPES = {
   'priority-splitter': { time: 1,   inp: { 'splitter': 1, 'iron-gear': 1 },                       out: { 'priority-splitter': 1 } },
   'filter-inserter':   { time: 1,   inp: { 'inserter': 1, 'green-circuit': 1 },                   out: { 'filter-inserter': 1 } },
   'stack-inserter':    { time: 1.5, inp: { 'inserter': 1, 'iron-gear': 8 },                       out: { 'stack-inserter': 1 } },
+  'stack-filter-inserter': { time: 2, inp: { 'filter-inserter': 1, 'stack-inserter': 1, 'iron-gear': 4 }, out: { 'stack-filter-inserter': 1 } },
   'green-science':     { time: 4,   inp: { 'transport-belt': 1, 'inserter': 1 },                  out: { 'green-science': 1 } },
   'blue-science':      { time: 8,   inp: { 'plastic-bar': 2, 'green-circuit': 2, 'copper-plate': 1 }, out: { 'blue-science': 1 } },
   'pipe':              { time: 0.5, inp: { 'iron-plate': 1 },                                     out: { 'pipe': 1 } },
@@ -292,14 +303,22 @@ const RECIPES = {
   'crack-light':       { time: 3,   inp: { 'heavy-oil': 3 },                                      out: { 'light-oil': 2 } },
   'crack-gas':         { time: 3,   inp: { 'light-oil': 3 },                                      out: { 'petroleum-gas': 2 } },
   'lubricant':         { time: 2,   inp: { 'heavy-oil': 2 },                                      out: { 'lubricant': 1 } },
+  // 固体燃料（对齐《异星工厂》：石油气/轻油在化工厂压制）
+  'solid-fuel':        { time: 2,   inp: { 'petroleum-gas': 20 },                                 out: { 'solid-fuel': 1 } },
+  'solid-fuel-light-oil': { time: 2, inp: { 'light-oil': 10 },                                    out: { 'solid-fuel': 1 } },
   // ===== 铁路系统（火车） =====
   'rail':              { time: 0.5, inp: { 'iron-plate': 1, 'stone': 1 },                          out: { 'rail': 2 } },
   'locomotive':        { time: 4,   inp: { 'iron-plate': 16, 'steel-plate': 6, 'iron-gear': 8, 'green-circuit': 4 }, out: { 'locomotive': 1 } },
   'cargo-wagon':       { time: 3,   inp: { 'iron-plate': 12, 'steel-plate': 6, 'iron-gear': 6 },  out: { 'cargo-wagon': 1 } },
+  'fluid-wagon':       { time: 3,   inp: { 'iron-plate': 8, 'steel-plate': 6, 'pipe': 8 },        out: { 'fluid-wagon': 1 } },
   'train-stop':        { time: 2,   inp: { 'iron-plate': 8, 'green-circuit': 3, 'steel-plate': 2 }, out: { 'train-stop': 1 } },
   'rail-signal':       { time: 1,   inp: { 'iron-plate': 4, 'green-circuit': 1 },                 out: { 'rail-signal': 1 } },
   // ===== 载具（对齐《异星工厂》Car，需引擎单元）=====
   'car':               { time: 6,   inp: { 'engine-unit': 2, 'steel-plate': 10, 'iron-plate': 6, 'iron-gear': 4 }, out: { 'car': 1 } },
+  'tank':              { time: 10,  inp: { 'engine-unit': 4, 'steel-plate': 30, 'iron-gear': 12, 'processing-unit': 2 }, out: { 'tank': 1 } },
+  'cannon-shell':      { time: 2,   inp: { 'steel-plate': 4, 'explosive': 2 },                           out: { 'cannon-shell': 1 } },
+  'light-armor':       { time: 3,   inp: { 'iron-plate': 20, 'steel-plate': 5 },                       out: { 'light-armor': 1 } },
+  'heavy-armor':       { time: 6,   inp: { 'light-armor': 1, 'steel-plate': 20, 'advanced-circuit': 4 }, out: { 'heavy-armor': 1 } },
   // ===== 玩家武器（战斗体系扩充） =====
   'pistol':            { time: 1,   inp: { 'iron-plate': 4, 'iron-gear': 1 },                     out: { 'pistol': 1 } },
   'submachine-gun':    { time: 2,   inp: { 'pistol': 1, 'steel-plate': 4, 'iron-gear': 2 },        out: { 'submachine-gun': 1 } },
@@ -321,7 +340,7 @@ const RECIPES = {
   'electric-engine':   { time: 10,  inp: { 'engine-unit': 1, 'green-circuit': 2, 'lubricant': 2 }, out: { 'electric-engine': 1 } },
   'processing-unit':   { time: 10,  inp: { 'advanced-circuit': 2, 'green-circuit': 20, 'copper-cable': 4 }, out: { 'processing-unit': 1 } },
   'low-density-structure': { time: 20, inp: { 'copper-plate': 20, 'plastic-bar': 5, 'steel-plate': 2 }, out: { 'low-density-structure': 1 } },
-  'rocket-fuel':       { time: 8,   inp: { 'petroleum-gas': 10, 'electric-engine': 1 },             out: { 'rocket-fuel': 1 } },
+  'rocket-fuel':       { time: 8,   inp: { 'solid-fuel': 10, 'light-oil': 10, 'electric-engine': 1 }, out: { 'rocket-fuel': 1 } },
   'rocket-control-unit': { time: 15, inp: { 'processing-unit': 1, 'advanced-circuit': 3 },          out: { 'rocket-control-unit': 1 } },
   'satellite':         { time: 10,  inp: { 'rocket-control-unit': 1, 'low-density-structure': 100, 'processing-unit': 1, 'solar-panel': 1 }, out: { 'satellite': 1 } },
   'rocket-silo':       { time: 20,  inp: { 'steel-plate': 50, 'engine-unit': 20, 'processing-unit': 20, 'green-circuit': 50 }, out: { 'rocket-silo': 1 } },
@@ -363,7 +382,7 @@ const RECIPES = {
   'landfill':          { time: 0.5, inp: { 'stone': 20, 'iron-plate': 1 },                          out: { 'landfill': 1 } }
 };
 
-const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant'];
+const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant', 'solid-fuel', 'solid-fuel-light-oil'];
 function isChemRecipe(id) { return CHEM_RECIPES.indexOf(id) >= 0; }
 function chemMult() { return (G.techDone.plastic ? 1.5 : 1) * ((G.dbg && G.dbg.asmMult) || 1); }
 
@@ -419,6 +438,7 @@ const BUILD_DEFS = {
   'long-inserter':      { w: 1, h: 1, solid: true },
   'filter-inserter':    { w: 1, h: 1, solid: true },
   'stack-inserter':     { w: 1, h: 1, solid: true },
+  'stack-filter-inserter': { w: 1, h: 1, solid: true },
   'burner-drill':       { w: 2, h: 2, solid: true },
   'stone-furnace':      { w: 2, h: 2, solid: true },
   'steel-furnace':      { w: 2, h: 2, solid: true },
@@ -463,9 +483,11 @@ const BUILD_DEFS = {
   'rail':               { w: 1, h: 1, solid: false },
   'locomotive':         { w: 1, h: 1, solid: true },
   'cargo-wagon':        { w: 1, h: 1, solid: true },
+  'fluid-wagon':        { w: 1, h: 1, solid: true },
   'train-stop':         { w: 1, h: 1, solid: true },
   'rail-signal':        { w: 1, h: 1, solid: true },
   'car':                { w: 2, h: 2, solid: true, rotSwap: true },
+  'tank':               { w: 3, h: 3, solid: true, rotSwap: true },
   'logistic-chest-passive': { w: 1, h: 1, solid: true },
   'logistic-chest-active':  { w: 1, h: 1, solid: true },
   'logistic-chest-storage': { w: 1, h: 1, solid: true },
@@ -482,6 +504,9 @@ const BUILD_DEFS = {
 // ===== 科技解锁要求（建造/武器/模块）=====
 // 物品 -> 所需已完成科技 id。缺少科技时建造/使用会被拦截并提示。
 const TECH_REQ = {
+  'tank': 'advanced-combat',
+  'cannon-shell': 'advanced-combat',
+  'heavy-armor': 'advanced-combat',
   'laser-turret': 'advanced-combat',
   'flamethrower-turret': 'advanced-combat',
   'rocket-launcher': 'advanced-combat',
@@ -506,7 +531,7 @@ for (const id of ['centrifuge', 'nuclear-reactor', 'steam-turbine', 'uranium-235
   if (!TECH_REQ[id]) TECH_REQ[id] = 'nuclear';
 }
 // ===== 铁路科技门控 =====
-const RAIL_ITEMS = ['rail', 'locomotive', 'cargo-wagon', 'train-stop'];
+const RAIL_ITEMS = ['rail', 'locomotive', 'cargo-wagon', 'train-stop', 'fluid-wagon'];
 for (const id of RAIL_ITEMS) if (!TECH_REQ[id]) TECH_REQ[id] = 'railways';
 if (!TECH_REQ['rail-signal']) TECH_REQ['rail-signal'] = 'rail-signals';
 // ===== 物流机器人网络 =====
@@ -582,7 +607,7 @@ const TECHS = {
 // 判断是否为无限科技（永不完成、消耗任意科学包）
 function isInfiniteTech(tid) { return !!(TECHS[tid] && TECHS[tid].infinite); }
 
-const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: true, combat: false, capDPR: true, lowRes: false, virtualJoystick: false };
+const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: true, combat: false, capDPR: true, lowRes: false, virtualJoystick: false, minimap: true };
 const SETTINGS_KEY = 'factory-settings-v1';
 
 function drawItemGlyph(x, id, cx, cy, s) {
@@ -738,6 +763,10 @@ function rrPath(x, px, py, w, h, r) {
   x.closePath();
   return x;
 }
+
+// 判断某物品是否为可燃烧燃料（煤 / 固体燃料）。各烧煤设备以此判断能否加入燃料。
+function isBurnerFuel(item) { return item === 'coal' || item === 'solid-fuel'; }
+function fuelEnergy(item) { return item === 'solid-fuel' ? SOLID_FUEL_ENERGY : COAL_ENERGY; }
 
 function beltSpeed()  {
   return BELT_SPEED * (G.techDone.logistics ? 1.5 : 1) * (G.techDone.logistics2 ? 1.2 : 1) * ((G.dbg && G.dbg.beltMult) || 1);

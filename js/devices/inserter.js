@@ -255,6 +255,14 @@ class StackInserter extends Inserter {
   }
 }
 
+// 堆叠过滤机械臂：过滤 + 堆叠二合一，一次最多抓取 3 个「指定物品」
+class StackFilterInserter extends Inserter {
+  constructor(type, x, y) {
+    super(type || 'stack-filter-inserter', x, y);
+    this.stackMax = 3;
+  }
+}
+
 // ===== 渲染 =====
 function drawInserter(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
@@ -266,7 +274,7 @@ function drawInserter(ctx, e, gx, gy, dir, alpha) {
   ctx.lineWidth = 2;
   ctx.stroke();
   const long = e.type === 'long-inserter';
-  if (e.type === 'filter-inserter' && e.filter) {
+  if ((e.type === 'filter-inserter' || e.type === 'stack-filter-inserter') && e.filter) {
     ctx.strokeStyle = '#58b8e8';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -359,11 +367,11 @@ function filterInserterPanelHtml(e) {
 }
 function filterInserterOnAction(act, btn) {
   if (act === 'flt') {
-    if (G.panelEnt instanceof FilterInserter) G.panelEnt.filter = btn.dataset.id;
+    if (G.panelEnt && (G.panelEnt instanceof FilterInserter || G.panelEnt instanceof StackFilterInserter)) G.panelEnt.filter = btn.dataset.id;
     return true;
   }
   if (act === 'flt-clear') {
-    if (G.panelEnt instanceof FilterInserter) G.panelEnt.filter = null;
+    if (G.panelEnt && (G.panelEnt instanceof FilterInserter || G.panelEnt instanceof StackFilterInserter)) G.panelEnt.filter = null;
     return true;
   }
   return false;
@@ -395,26 +403,46 @@ function inserterPanelLive(e, api) {
 function inserterStatusFn(e) {
   return e.holding ? (e.blocked ? 'y' : 'g') : (e.rotating ? 'g' : 'r');
 }
+function stackFilterInserterPanelHtml(e) {
+  let h = '<div class="dim">堆叠过滤机械臂：一次最多抓取 3 个「指定物品」再放下，装卸效率高且精确分类。当前：' +
+    (e.filter ? chip(e.filter) : '<span class="dim">未设置</span>') + '</div>';
+  h += '<div class="sec">选择过滤物</div><div class="recgrid">';
+  for (const id of FILTER_CHOICES) {
+    h += '<button class="rcbtn ' + (e.filter === id ? 'sel' : '') + '" data-action="flt" data-id="' + id + '" data-itemid="' + id + '">' +
+      '<img src="' + iconDataURL(id) + '">' + ITEMS[id].name + '</button>';
+  }
+  h += '</div>';
+  if (e.filter) h += '<button data-action="flt-clear">清除过滤（恢复抓取任意物品）</button>';
+  h += '<div class="status"></div>';
+  return h;
+}
+
 const inserterPanel = { html: inserterPanelHtml, live: inserterPanelLive, tip: inserterTip };
 const stackInserterPanel = { html: stackInserterPanelHtml, live: inserterPanelLive, tip: inserterTip };
 const filterInserterPanel = { html: filterInserterPanelHtml, onAction: filterInserterOnAction, live: inserterPanelLive, tip: inserterTip };
+const stackFilterInserterPanel = { html: stackFilterInserterPanelHtml, onAction: filterInserterOnAction, live: inserterPanelLive, tip: inserterTip };
 ENT_CLASSES['inserter'] = Inserter;
 ENT_CLASSES['long-inserter'] = LongInserter;
 ENT_CLASSES['filter-inserter'] = FilterInserter;
 ENT_CLASSES['stack-inserter'] = StackInserter;
+ENT_CLASSES['stack-filter-inserter'] = StackFilterInserter;
 DEVICE_RENDER['inserter'] = drawInserter;
 DEVICE_RENDER['long-inserter'] = drawInserter;
 DEVICE_RENDER['filter-inserter'] = drawInserter;
 DEVICE_RENDER['stack-inserter'] = drawInserter;
+DEVICE_RENDER['stack-filter-inserter'] = drawInserter;
 DEVICE_STATUS['inserter'] = inserterStatusFn;
 DEVICE_STATUS['long-inserter'] = inserterStatusFn;
 DEVICE_STATUS['filter-inserter'] = inserterStatusFn;
 DEVICE_STATUS['stack-inserter'] = inserterStatusFn;
+DEVICE_STATUS['stack-filter-inserter'] = inserterStatusFn;
 DEVICE_PANEL['inserter'] = inserterPanel;
 DEVICE_PANEL['long-inserter'] = inserterPanel;
 DEVICE_PANEL['filter-inserter'] = filterInserterPanel;
 DEVICE_PANEL['stack-inserter'] = stackInserterPanel;
+DEVICE_PANEL['stack-filter-inserter'] = stackFilterInserterPanel;
 DEVICE_DIR_ROTATE['inserter'] = true;
 DEVICE_DIR_ROTATE['long-inserter'] = true;
 DEVICE_DIR_ROTATE['filter-inserter'] = true;
 DEVICE_DIR_ROTATE['stack-inserter'] = true;
+DEVICE_DIR_ROTATE['stack-filter-inserter'] = true;

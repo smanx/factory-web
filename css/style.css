@@ -1072,3 +1072,18 @@ html, body {
   padding: 5px 10px;
   font-size: 12px;
 }
+
+/* ===== 护甲面板 ===== */
+.armor-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 4px; }
+.armor-slot {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px;
+  background: rgba(30,36,32,.7); border: 1px dashed #7a8a72; border-radius: 6px;
+  font-size: 12px; color: #aac0a0; cursor: pointer;
+}
+.armor-slot.equipped { border-color: #ffd23c; background: rgba(255,210,60,.12); color: #ffe08a; }
+.armor-slot img { width: 20px; height: 20px; border-radius: 4px; }
+.armor-eq { display: inline-flex; align-items: center; gap: 5px; }
+.armor-eq img { width: 20px; height: 20px; border-radius: 4px; }
+
+/* ===== 小地图（右下角） ===== */
+#hud-info { z-index: 5; }
