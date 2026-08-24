@@ -237,9 +237,13 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
 
 // ===== 注册 =====
 function beltPanelHtml() {
-  return '<div class="dim">传送带：物品沿箭头方向流动。R 旋转方向。靠近后按 F 拿取带上物品。</div><div class="status"></div>';
+  return '<div class="dim">传送带：物品沿箭头方向流动。R 旋转方向。靠近后按 F 拿取带上物品。</div>' +
+    '<div class="dim">当前速度：<span data-live="speed">-</span>（格/秒）</div><div class="status"></div>';
 }
 function beltPanelLive(e, api) {
+  const mult = e.speedMult ? e.speedMult() : 1;
+  const speed = beltSpeed() * mult;
+  api.set('speed', speed.toFixed(speed >= 10 ? 1 : 2));
   const agg = {};
   for (const o of e.items) agg[o.item] = (agg[o.item] || 0) + 1;
   if (e.items.length) api.status('输送中：' + Object.keys(agg).map(k => ITEMS[k].name + '×' + agg[k]).join('、'), 'ok');
