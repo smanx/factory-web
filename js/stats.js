@@ -10,9 +10,11 @@
 // =====================================================================
 
 // ---- 物品生成/消耗速率追踪 ----
-// 记录每个物品的增减事件，用最近 2 秒滑动窗口计算速率；同时累计总量。
-const PROD_WINDOW = 2.0;              // 滑动平均窗口（秒）
-const PROD_EVENT_MAX = 4096;          // 事件队列硬上限（防止高吞吐下无限膨胀，P2 优化）
+// 记录每个物品的增减事件，按“统计间隔”计算速率；同时累计总量。
+// 统计间隔可切换：秒 / 10秒 / 分钟 / 小时 / 1天，数据不足时按已有记录时长预估。
+// 事件队列需要保留最久（1天）间隔的数据，故不再在写入时按 2 秒剪除，而保留到 1 天。
+const PROD_KEEP = 86400;              // 事件队列保留时长（秒）= 最长统计间隔 1 天
+const PROD_EVENT_MAX = 200000;        // 事件队列硬上限（防止高吞吐下无限膨胀，P2 优化）
 const PROD = {
   total: {},                          // item -> 累计净增减
   gained: {},                         // item -> 累计生成量
@@ -20,12 +22,25 @@ const PROD = {
   events: []                          // [{t, item, delta}]（按时间递增）
 };
 
+// 统计间隔选项：label 显示名，sec 窗口秒数。
+const STAT_INTERVALS = [
+  { label: '秒', sec: 1 },
+  { label: '10秒', sec: 10 },
+  { label: '分钟', sec: 60 },
+  { label: '小时', sec: 3600 },
+  { label: '1天', sec: 86400 }
+];
+
+// 当前选中的统计间隔（秒），默认“秒”。
+function statIntervalSec() { return STAT_INTERVALS[G.statsInterval] ? STAT_INTERVALS[G.statsInterval].sec : 1; }
+function statIntervalLabel() { return STAT_INTERVALS[G.statsInterval] ? STAT_INTERVALS[G.statsInterval].label : '秒'; }
+
 // 任意物品增减均在此记录：delta>0 表示生成，delta<0 表示消耗。
 function trackProd(item, delta) {
   if (!item || !delta) return;
   const now = G.time;
-  // 双保险：既按 2 秒窗口剪除过期头部，又设硬上限，防止高吞吐下事件队列无限增长（P2 优化）
-  while (PROD.events.length && now - PROD.events[0].t > PROD_WINDOW) PROD.events.shift();
+  // 双保险：既按 1 天窗口剪除过期头部（满足最长统计间隔），又设硬上限防无限膨胀（P2 优化）
+  while (PROD.events.length && now - PROD.events[0].t > PROD_KEEP) PROD.events.shift();
   if (PROD.events.length > PROD_EVENT_MAX) PROD.events.splice(0, PROD.events.length - PROD_EVENT_MAX);
   if (delta > 0) PROD.gained[item] = (PROD.gained[item] || 0) + delta;
   else PROD.lost[item] = (PROD.lost[item] || 0) - delta;
@@ -33,25 +48,48 @@ function trackProd(item, delta) {
   PROD.events.push({ t: now, item, delta });
 }
 
-// 计算某物品最近 2 秒内净速率（生成+，消耗-，单位/秒）。
+// 取某物品最近 intervalSec 秒内事件的总和（可限定方向）。
+// dir：1=仅生成(+)、-1=仅消耗(-)、0=全部；返回 { sum, span }：
+//   sum 为筛选后增量总和（消耗方向取正值），span 为速率分母（秒）。
+// 若窗口内无符合方向的事件，span 取 0，由调用方判定数据不足；
+// 若统计至今的总时长不足所选间隔（数据不够），则以总时长作为分母“预估”速率。
+function prodWindow(item, intervalSec, dir) {
+  const now = G.time;
+  const cutoff = now - intervalSec;
+  let sum = 0;
+  for (const ev of PROD.events) {
+    if (ev.item !== item) continue;
+    if (ev.t <= cutoff) continue;      // 窗口 (cutoff, now]，排除边界
+    if (dir > 0 && ev.delta <= 0) continue;
+    if (dir < 0 && ev.delta >= 0) continue;
+    sum += dir < 0 ? -ev.delta : ev.delta;
+  }
+  if (!sum) return { sum: 0, span: 0 };
+  // 速率分母：数据充足时用完整间隔 intervalSec。
+  // 若统计至今总时长（整个事件队列最早 → now）不足所选间隔，则以该总时长“预估”；
+  // 总时长过小（≈0，如统计刚开始第一条事件）时回退用 intervalSec，避免除零导致速率虚高。
+  const globalFirst = PROD.events.length ? PROD.events[0].t : now;
+  const histLen = now - globalFirst;
+  const span = (histLen >= 0.01 && histLen < intervalSec) ? histLen : intervalSec;
+  return { sum, span };
+}
+
+// 计算某物品最近 intervalSec 秒内净速率（生成+，消耗-，单位/秒）。
 function prodNetRate(item) {
-  let sum = 0;
-  for (const ev of PROD.events) if (ev.item === item) sum += ev.delta;
-  return sum / PROD_WINDOW;
+  const w = prodWindow(item, statIntervalSec(), 0);
+  return w.span ? w.sum / w.span : 0;
 }
 
-// 某物品最近 2 秒内的生成速率（单位/秒，仅计生成事件）。
+// 某物品最近 intervalSec 秒内的生成速率（单位/秒，仅计生成事件）。
 function prodGainRate(item) {
-  let sum = 0;
-  for (const ev of PROD.events) if (ev.item === item && ev.delta > 0) sum += ev.delta;
-  return sum / PROD_WINDOW;
+  const w = prodWindow(item, statIntervalSec(), 1);
+  return w.span ? w.sum / w.span : 0;
 }
 
-// 某物品最近 2 秒内的消耗速率（单位/秒，取正值，仅计消耗事件）。
+// 某物品最近 intervalSec 秒内的消耗速率（单位/秒，取正值，仅计消耗事件）。
 function prodLossRate(item) {
-  let sum = 0;
-  for (const ev of PROD.events) if (ev.item === item && ev.delta < 0) sum += -ev.delta;
-  return sum / PROD_WINDOW;
+  const w = prodWindow(item, statIntervalSec(), -1);
+  return w.span ? w.sum / w.span : 0;
 }
 
 // 所有有活动记录的物品 id（按名称排序）
@@ -136,7 +174,14 @@ function htmlStatsItems() {
   const tab = G.statsItemTab === 'cons' ? 'cons' : 'prod';
   const isProd = tab === 'prod';
 
-  let h = '<div class="sec">物品速率 <span class="dim">（最近 ' + PROD_WINDOW + ' 秒滑动平均）</span></div>';
+  let h = '<div class="sec">物品速率 <span class="dim">（统计间隔：</span></div>';
+  // 统计间隔切换按钮：秒 / 10秒 / 分钟 / 小时 / 1天
+  h += '<div class="stat-intervals">';
+  for (let i = 0; i < STAT_INTERVALS.length; i++) {
+    const it = STAT_INTERVALS[i];
+    h += '<button class="stat-interval' + (G.statsInterval === i ? ' active' : '') + '" data-stat-interval="' + i + '">' + it.label + '</button>';
+  }
+  h += '</div>';
   h += '<div class="stat-subtabs">';
   h += '<button class="stat-subtab' + (isProd ? ' active' : '') + '" data-stat-item-tab="prod">生产速率</button>';
   h += '<button class="stat-subtab' + (!isProd ? ' active' : '') + '" data-stat-item-tab="cons">消耗</button>';
@@ -174,7 +219,7 @@ function htmlStatsItems() {
     }
     h += '</div>';
   }
-  h += '<div class="dim">生产速率为物品被产出的速率，消耗速率为物品被消耗的速率（均按最近 2 秒滑动平均，非设备产能）。累计为最近游戏进行中的总量。</div>';
+  h += '<div class="dim">生产速率为物品被产出的速率，消耗速率为物品被消耗的速率（均按所选统计间隔[' + statIntervalLabel() + ']折算到每秒，非设备产能）。数据不足所选间隔时按已有记录时长预估。累计为最近游戏进行中的总量。</div>';
   return h;
 }
 
@@ -265,7 +310,7 @@ function statsListSig(tab) {
     const items = prodActiveItems()
       .filter(id => isProd ? ((PROD.gained[id] || 0) > 0) : ((PROD.lost[id] || 0) > 0))
       .sort((a, b) => (itemName(a) < itemName(b) ? -1 : 1));
-    return 'i:' + (G.statsItemTab || 'prod') + ':' + items.join(',');
+    return 'i:' + (G.statsItemTab || 'prod') + ':iv' + (G.statsInterval || 0) + ':' + items.join(',');
   }
   if (tab === 'power') {
     const s = powerSummary();

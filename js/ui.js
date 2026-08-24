@@ -487,6 +487,12 @@ function initPanelEvents() {
       renderPanel(false);
       return;
     }
+    const statInterval = ev.target.closest('[data-stat-interval]');
+    if (statInterval) {
+      G.statsInterval = +statInterval.dataset.statInterval || 0;
+      renderPanel(false);
+      return;
+    }
     const statPowerTab = ev.target.closest('[data-stat-power-tab]');
     if (statPowerTab) {
       G.statsPowerTab = statPowerTab.dataset.statPowerTab;
