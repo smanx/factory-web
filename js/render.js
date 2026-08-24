@@ -269,7 +269,11 @@ function drawGhost(ctx) {
   const def = BUILD_DEFS[type];
   let ew = def.w, eh = def.h;
   if (def.rotSwap && (G.ghostDir % 2 === 1)) { ew = def.h; eh = def.w; }
-  const chk = canPlaceAt(type, G.cursorTile.tx, G.cursorTile.ty, G.ghostDir);
+  // 超级强制建造（Ctrl+Shift）时按“可强制覆盖”判定绿色，否则普通校验
+  const forced = !!(G.keys['control'] && G.keys['shift']);
+  const chk = forced
+    ? canPlaceAt(type, G.cursorTile.tx, G.cursorTile.ty, G.ghostDir, { skipEnt: true })
+    : canPlaceAt(type, G.cursorTile.tx, G.cursorTile.ty, G.ghostDir);
   const tmp = getGhostEnt(type);
   tmp.dir = G.ghostDir;
   tmp.w = ew; tmp.h = eh;
@@ -283,7 +287,9 @@ function drawGhost(ctx) {
 
 // 放置校验：默认规则（不能压水/已有实体/超出触及范围）+ 设备自定义规则
 // （DEVICE_PLACE[type] 返回 {ok} 则短路，返回 null 则继续默认校验）
-function canPlaceAt(type, tx, ty, dir) {
+// opts.skipEnt 为 true 时跳过“已有实体”校验（用于《异星工厂》超级强制建造：
+// 原实体将被拆除，新设备直接落地，返回 ok，并附带冲突实体列表 opts.ents）
+function canPlaceAt(type, tx, ty, dir, opts) {
   const def = BUILD_DEFS[type];
   let ew = def.w, eh = def.h;
   if (def.rotSwap && (dir % 2 === 1)) { ew = def.h; eh = def.w; }
@@ -292,6 +298,8 @@ function canPlaceAt(type, tx, ty, dir) {
     const r = rule(type, tx, ty, dir, ew, eh);
     if (r) return r;
   }
+  const skipEnt = !!(opts && opts.skipEnt);
+  const ents = skipEnt ? new Set() : null;
   for (let dy = 0; dy < eh; dy++)
     for (let dx = 0; dx < ew; dx++) {
       if (isWater(tx + dx, ty + dy)) return { ok: false };
@@ -299,13 +307,14 @@ function canPlaceAt(type, tx, ty, dir) {
         // 传送带升级/降级覆盖：用带系/地下带/分流器的同类覆盖现有同族带（对齐《异星工厂》覆盖升级）
         // 但反向传送带视为障碍（不参与覆盖），交由自动地下带逻辑跨越处理
         const e = entAt(tx + dx, ty + dy);
+        if (skipEnt) { if (ents) ents.add(e); continue; }
         const reversed = e instanceof Belt && Math.abs(((e.dir - dir) % 4 + 4) % 4) === 2;
         if (!reversed && canOverwriteWithBelt(type, e)) continue;
         return { ok: false };
       }
       if (!withinReach(tx + dx, ty + dy)) return { ok: false };
     }
-  return { ok: true };
+  return { ok: true, ents: ents ? [...ents] : [] };
 }
 
 // 判断能否用 type 覆盖现有实体 e（仅限同族物流链：传送带/地下带/分流器按各自链条覆盖）
