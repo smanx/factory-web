@@ -11,7 +11,7 @@ class Pumpjack extends ElectricDrill {
     if (this.dir === 1) return [[this.x + c, this.y + this.h]];
     return [[this.x + c, this.y - 1]];
   }
-  machMult() { return oilMult(); }
+  machMult() { return 1; } // 抽油机 mining-speed 1（对齐《异星工厂》）
   oreTile() {
     for (let dy = 0; dy < this.h; dy++)
       for (let dx = 0; dx < this.w; dx++) {

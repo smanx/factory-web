@@ -12,7 +12,7 @@ class Assembler3 extends Assembler {
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
       // 速度：组装机 III 基础 1.25，远高于 I/II；叠加科技与电力饱和
-      this.prog += dt * asmMult() * 1.25 * 1.5 * elecMachMult() * (G.power.sat < 1 ? G.power.sat : 1);
+      this.prog += dt * asmMult() * 1.25 * (G.power.sat < 1 ? G.power.sat : 1);
       this.spin += dt * 4;
       if (this.prog >= rec.time) {
         for (const k in rec.out) this.outp[k] = (this.outp[k] || 0) + rec.out[k];
@@ -97,15 +97,20 @@ function assembler3PanelHtml(e) {
   h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
   h += barHtml(0);
   h += '<div class="status"></div>';
-  h += '<div class="sec">选择配方</div><div class="recgrid">';
+  h += '<div class="sec">选择配方</div>';
+  h += '<input id="asm-recipe-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off" value="">';
+  h += '<div class="recgrid">';
   for (const rid of Object.keys(RECIPES).filter(r => !isChemRecipe(r))) {
     const outId = Object.keys(RECIPES[rid].out)[0];
     const selCls = e.recipe === rid ? 'sel' : '';
-    h += '<button class="rcbtn ' + selCls + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-tip="' +
+    const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
+      Object.keys(RECIPES[rid].inp).map(k => ITEMS[k].name).join(' ')).toLowerCase();
+    h += '<button class="rcbtn ' + selCls + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-rsearch="' + searchKey.replace(/"/g, '') + '" data-tip="' +
       ITEMS[outId].name + '|' + RECIPES[rid].out[outId] + '个/次，耗时' + RECIPES[rid].time + '秒">' +
       '<img src="' + iconDataURL(outId) + '">' + ITEMS[outId].name + '</button>';
   }
   h += '</div>';
+  h += '<div class="dim" id="asm-recipe-empty" style="display:none"></div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
   h += '<div class="dim">组装机 III：吃电力、速度最高的组装机。选中后按 R 旋转朝向（流体入口在背部、固体产物经机械臂取走）。</div>';
   return h;

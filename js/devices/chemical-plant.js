@@ -127,6 +127,12 @@ class ChemicalPlant extends Entity {
     s.crafting = this.crafting; s.prog = this.prog;
     return s;
   }
+  // 蓝图只保留配方配置，不复制内部原料/输出/进度
+  blueprint() {
+    const s = super.blueprint();
+    s.recipe = this.recipe;
+    return s;
+  }
   static restore(s) {
     const c = super.restore(s);
     c.recipe = s.recipe || null; c.inp = s.inp || {}; c.outp = s.outp || {};

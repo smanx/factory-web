@@ -69,6 +69,12 @@ class Chest extends Entity {
     s.limits = this.limits;
     return s;
   }
+  // 蓝图保留格子数量上限配置，不复制箱内物品
+  blueprint() {
+    const s = super.blueprint();
+    s.limits = this.limits;
+    return s;
+  }
   static restore(s) {
     const c = super.restore(s);
     c.slots = (s.slots || []).map(v => v ? { item: v[0], count: v[1] } : null);

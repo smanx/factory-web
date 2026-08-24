@@ -3,7 +3,7 @@
 // ===== 电采矿机：免燃料、吃电力 =====
 class ElectricDrill extends Drill {
   constructor(type, x, y) { super(type || 'electric-drill', x, y); }
-  machMult() { return elecMachMult(); }
+  machMult() { return 0.5; } // 电采矿机 mining-speed 0.5（对齐《异星工厂》）
   update(dt) {
     this.working = false;
     if (this.bufN === undefined) this.bufN = 0;
