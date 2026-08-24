@@ -582,5 +582,41 @@ check('auto-underground: normal belt continues after exit',
   entAt(ax + 6, ay) && entAt(ax + 6, ay).type === 'transport-belt');
 G.dbg.farReach = false;
 
+// ==================== 拖动铺设：障碍是同向传送带时直接铺普通带，不用地下带 ====================
+resetWorld();
+G.dbg.farReach = true;
+G.inv = new Map(); G.inv.set('transport-belt', 100); G.inv.set('underground', 10);
+G.sel = -1; G.quickSel = 'transport-belt';
+G.ghostDir = 0; // 朝东
+G.player = makePlayer(-60, -60);
+const bx = -60, by = -60;
+// 在拖动路径上预先放一座同向（朝东）传送带作为“障碍”
+const sameDirBelt = new (ENT_CLASSES['transport-belt'])('transport-belt', bx + 2, by);
+sameDirBelt.dir = 0; sameDirBelt.applyDir(); addEnt(sameDirBelt);
+const ugCountBefore = G.ents.filter(e => e.type === 'underground').length;
+dragTo(bx, by); dragTo(bx + 1, by);
+dragTo(bx + 2, by); // 遇同向传送带障碍
+// 应直接铺普通传送带衔接，不生成地下带
+const ugCountAfter = G.ents.filter(e => e.type === 'underground').length;
+check('same-dir belt obstacle: no underground created', ugCountAfter === ugCountBefore);
+check('same-dir belt obstacle: normal belt placed at obstacle',
+  entAt(bx + 2, by) && entAt(bx + 2, by).type === 'transport-belt' && entAt(bx + 2, by).dir === 0);
+
+// 反向传送带障碍（方向相反）应仍走地下带逻辑
+resetWorld();
+G.dbg.farReach = true;
+G.inv = new Map(); G.inv.set('transport-belt', 100); G.inv.set('underground', 10);
+G.sel = -1; G.quickSel = 'transport-belt';
+G.ghostDir = 0;
+G.player = makePlayer(-70, -70);
+const cx2 = -70, cy2 = -70;
+const oppBelt = new (ENT_CLASSES['transport-belt'])('transport-belt', cx2 + 2, cy2);
+oppBelt.dir = 2; oppBelt.applyDir(); addEnt(oppBelt); // 朝西（反向）
+dragTo(cx2, cy2); dragTo(cx2 + 1, cy2);
+dragTo(cx2 + 2, cy2); // 遇反向传送带障碍
+const ugOpp = G.ents.filter(e => e.type === 'underground');
+check('opposite-dir belt obstacle: underground created', ugOpp.length === 2);
+G.dbg.farReach = false;
+
 console.log(failures ? '\n' + failures + ' FAILURES' : '\nALL PASSED');
 process.exit(failures ? 1 : 0);
