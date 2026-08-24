@@ -901,6 +901,7 @@ function enterGame() {
   const sc = document.getElementById('start-screen');
   if (sc) sc.classList.add('hidden');
   G.inMenu = false;
+  toast('WASD 移动 · 左键挖矿/放建筑(覆盖建造) · 右键拆除 · R 旋转 · F 拿取 · Q 取消/拾取朝向 · 中键/E 面板 · T 科技 · P 统计 · B 蓝图 · Alt+D 红图 · Alt+U 绿图 · K/L 存读档');
 }
 
 function bindInput() {
@@ -913,6 +914,12 @@ function bindInput() {
       if (k === 'escape') { ev.target.blur(); ev.stopPropagation(); }
       return;
     }
+    // 只有鼠标点击按钮才能触发按钮操作；按回车/空格不再触发当前聚焦按钮的点击
+    if (t && t.tagName === 'BUTTON' && (k === 'enter' || k === ' ')) {
+      ev.preventDefault();
+      t.blur();
+      return;
+    }
     G.keys[k] = true;
     // 按 Alt 时不立即切换详情，仅阻止浏览器菜单；松开（keyup）时才切换
     if (k === 'alt') {
@@ -922,6 +929,11 @@ function bindInput() {
     if (k >= '1' && k <= '9') selectSlot(+k - 1);
     else if (k === '0') selectSlot(9);
     else if (k === 'tab') { ev.preventDefault(); G.panelMode === 'inv' ? closePanel() : openPanel('inv'); }
+    // 统计/蓝图/红图/绿图快捷键（对齐《异星工厂》：P 统计、B 蓝图、Alt+D 红图、Alt+U 绿图）
+    else if (k === 'p') G.panelMode === 'stats' ? closePanel() : openPanel('stats');
+    else if (k === 'b') { closePanel(); toggleBlueprint('blue'); }
+    else if (ev.altKey && k === 'd') { ev.preventDefault(); closePanel(); toggleBlueprint('red'); }
+    else if (ev.altKey && k === 'u') { ev.preventDefault(); closePanel(); toggleBlueprint('green'); }
     else if ((k === 'delete' || k === 'backspace') && G.panelMode === 'machine' &&
              G.panelEnt && typeof G.panelEnt.setRecipe === 'function' && G.panelEnt.recipe) {
       G.panelEnt.setRecipe(null);

@@ -27,6 +27,27 @@ html, body {
   display: flex; gap: 6px;
 }
 
+#topright-menu {
+  display: flex; gap: 6px;
+}
+
+#topright.collapsed #topright-menu {
+  display: none;
+}
+
+#btn-menu-toggle {
+  background: #2a3340;
+  color: #dfe6ee;
+  border: 1px solid #46536a;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+#btn-menu-toggle:hover { background: #3a4657; }
+
 #topright button, #panel button {
   background: #2a3340;
   color: #dfe6ee;
