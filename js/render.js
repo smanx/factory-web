@@ -510,30 +510,90 @@ function drawBullets(ctx) {
 
 function drawPlayer(ctx) {
   const p = G.player;
+  // 地面阴影
   ctx.fillStyle = 'rgba(0,0,0,.3)';
   ctx.beginPath();
-  ctx.ellipse(p.x, p.y + 9, 9, 4, 0, 0, 7);
+  ctx.ellipse(p.x, p.y + 10, 9, 4, 0, 0, 7);
   ctx.fill();
+
   const bob = Math.sin(p.walkT) * 1.5;
+  const step = Math.sin(p.walkT);                     // 行走步态相位
+  const a = p.dir * Math.PI / 2;
+  const cx = Math.cos(a), cy = Math.sin(a);           // 朝向单位向量
+  const moving = Math.abs(step) > 0.05;
+  ctx.lineCap = 'round';
+
+  // ---- 双腿：行走时交替前后摆动 ----
+  ctx.lineWidth = 3.2;
+  for (const s of [-1, 1]) {
+    const sw = moving ? step * s * 2.6 : 0;
+    ctx.strokeStyle = '#4d3318';
+    ctx.beginPath();
+    ctx.moveTo(p.x - cx * 1.5 + s * 2.3, p.y + 3);
+    ctx.lineTo(p.x - cx * 1.5 + s * 2.3 + cx * sw, p.y + 8 + Math.abs(sw) * 0.35);
+    ctx.stroke();
+  }
+
+  // ---- 身体：橙色工装上衣（圆角躯干 + 腰带）----
+  const bx = p.x - cx * 1.5, by = p.y + bob - 2;
   ctx.fillStyle = '#d97b2f';
   ctx.strokeStyle = '#7c431a';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.arc(p.x, p.y + bob, 10, 0, 7);
+  ctx.ellipse(bx, by, 6.8, 7.2, 0, 0, 7);
   ctx.fill(); ctx.stroke();
-  const a = p.dir * Math.PI / 2;
-  ctx.fillStyle = '#ffd9a0';
+  // 腰带
+  ctx.strokeStyle = '#5a3515';
+  ctx.lineWidth = 1.4;
   ctx.beginPath();
-  ctx.arc(p.x + Math.cos(a) * 4, p.y + bob + Math.sin(a) * 4, 4.5, 0, 7);
+  ctx.ellipse(bx, by + 4, 5.8, 2.2, 0, 0, 7);
+  ctx.stroke();
+  // 胸前扣子
+  ctx.fillStyle = '#5a3515';
+  ctx.beginPath();
+  ctx.arc(bx, by - 1, 0.9, 0, 7);
   ctx.fill();
-  if (p.mining && p.mineProg > 0) {
-    const t = G.time * 14;
-    ctx.fillStyle = '#e8e0c8';
-    for (const side of [-1, 1]) {
-      const ha = a + side * 0.9 + Math.sin(t) * 0.25 * side;
-      ctx.beginPath();
-      ctx.arc(p.x + Math.cos(ha) * 11, p.y + bob + Math.sin(ha) * 11, 3, 0, 7);
-      ctx.fill();
-    }
+
+  // ---- 双臂：两侧自然垂放，行走/采矿时摆动 ----
+  const mining = p.mining && p.mineProg > 0;
+  const t = G.time * 12;
+  ctx.lineWidth = 3;
+  for (const s of [-1, 1]) {
+    const armSwing = mining ? Math.sin(t + s * 0.7) * 2 : (moving ? step * s * 1.8 : 0);
+    ctx.strokeStyle = '#d97b2f';
+    ctx.beginPath();
+    ctx.moveTo(bx + cx * 1.5 + s * 3.8, by - 1);
+    ctx.lineTo(bx + cx * 1.5 + s * 4.2 + cx * armSwing * 0.6, by + 5 + armSwing * 0.8);
+    ctx.stroke();
+  }
+
+  // ---- 头部：肤色圆，朝移动方向偏移 ----
+  const hx = p.x + cx * 4, hy = p.y + bob - 9;
+  ctx.fillStyle = '#ffd9a0';
+  ctx.strokeStyle = '#7c431a';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.arc(hx, hy, 5.6, 0, 7);
+  ctx.fill(); ctx.stroke();
+
+  // ---- 安全帽 ----
+  ctx.fillStyle = '#f0b53a';
+  ctx.strokeStyle = '#b8860b';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.arc(hx, hy - 2.4, 4.2, Math.PI, 0);   // 帽檐（上半圆）
+  ctx.fill(); ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(hx, hy - 2.8, 2.6, 0, 7);         // 帽顶
+  ctx.fill(); ctx.stroke();
+
+  // ---- 眼睛：朝向移动方向 ----
+  ctx.fillStyle = '#2b2b2b';
+  for (const s of [-1, 1]) {
+    const ex = hx + cx * 1.8 + (Math.abs(cy) < 0.5 ? s * 2.2 : 0);
+    const ey = hy + cy * 1.8 + (Math.abs(cy) >= 0.5 ? s * 2 : 0);
+    ctx.beginPath();
+    ctx.arc(ex, ey, 1.2, 0, 7);
+    ctx.fill();
   }
 }
