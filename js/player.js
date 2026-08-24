@@ -30,6 +30,12 @@ function updatePlayer(dt) {
   if (G.keys['s'] || G.keys['arrowdown']) my += 1;
   if (G.keys['a'] || G.keys['arrowleft']) mx -= 1;
   if (G.keys['d'] || G.keys['arrowright']) mx += 1;
+  // 虚拟摇杆输入（手机/触屏）：叠加到方向向量上
+  const j = G.joystick;
+  if (j && (j.dx !== 0 || j.dy !== 0)) {
+    mx += j.dx;
+    my += j.dy;
+  }
   const len = Math.hypot(mx, my);
   if (len > 0) {
     mx /= len; my /= len;

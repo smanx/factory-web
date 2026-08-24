@@ -522,6 +522,11 @@ function initPanelEvents() {
         if (typeof resize === 'function') resize();
         toast('画面分辨率已更新');
       }
+      // 虚拟摇杆开关改动后立即显示/隐藏
+      if (key === 'virtualJoystick') {
+        if (typeof updateJoystickVisibility === 'function') updateJoystickVisibility();
+        toast('虚拟摇杆已' + (G.settings.virtualJoystick ? '开启' : '关闭'));
+      }
       return;
     }
     const btn = ev.target.closest('[data-action]');
@@ -584,6 +589,7 @@ function htmlSettings() {
   h += '<label class="setrow"><input type="checkbox" data-set="infiniteOre"' + (G.settings.infiniteOre ? ' checked' : '') + '> 无限矿脉（矿藏永不枯竭）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="autoSave"' + (G.settings.autoSave ? ' checked' : '') + '> 自动保存（每60秒）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="combat"' + (G.settings.combat ? ' checked' : '') + '> 战斗模式（敌人入侵，可用炮塔/石墙防御）</label>';
+  h += '<label class="setrow"><input type="checkbox" data-set="virtualJoystick"' + (G.settings.virtualJoystick ? ' checked' : '') + '> 虚拟摇杆（手机/触屏移动）</label>';
   h += '<div class="sec">性能优化</div>';
   h += '<label class="setrow"><input type="checkbox" data-set="capDPR"' + (G.settings.capDPR ? ' checked' : '') + '> 限制高清缩放（DPR ≤ 1.5，降载高分屏）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="lowRes"' + (G.settings.lowRes ? ' checked' : '') + '> 省电模式（降至半分辨率，显著降 GPU 负载）</label>';
@@ -936,4 +942,102 @@ function refreshDebugPanel() {
       b.dataset.dbgact = txt;
     }
   });
+}
+
+// ===== 虚拟摇杆（手机/触屏移动） =====
+// 摇杆状态存于 G.joystick；仅在开启"虚拟摇杆"设置且设备为触屏时显示。
+// 拖拽摇杆把位移量归一化为 [-1,1] 的 dx/dy，供 updatePlayer 叠加到移动方向。
+function updateJoystickVisibility() {
+  const el = document.getElementById('joystick');
+  if (!el) return;
+  const touchCapable = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  const show = !!(G.settings.virtualJoystick && touchCapable);
+  if (show) {
+    el.classList.add('active');
+    el.classList.remove('hidden');
+  } else {
+    el.classList.remove('active');
+    el.classList.add('hidden');
+  }
+}
+
+function initJoystick() {
+  const el = document.getElementById('joystick');
+  if (!el) return;
+  const knob = document.getElementById('joystick-knob');
+  const MAX = 40;   // 摇杆最大拖动半径（px）
+
+  // 摇杆圆心：把摇杆元素左下角作为基准，便于后续计算
+  function setJoystickPos(cx, cy) {
+    el.style.left = (cx - el.offsetWidth / 2) + 'px';
+    el.style.top = (cy - el.offsetHeight / 2) + 'px';
+    el.style.bottom = 'auto';
+  }
+  function resetKnob() {
+    if (knob) knob.style.transform = 'translate(0px,0px)';
+  }
+  function resetJoystick() {
+    G.joystick.active = false;
+    G.joystick.id = null;
+    G.joystick.dx = 0;
+    G.joystick.dy = 0;
+    resetKnob();
+  }
+
+  el.addEventListener('touchstart', ev => {
+    if (!G.settings.virtualJoystick) return;
+    ev.preventDefault();
+    const t = ev.changedTouches[0];
+    if (!t) return;
+    G.joystick.active = true;
+    G.joystick.id = t.identifier;
+    G.joystick.baseX = t.clientX;
+    G.joystick.baseY = t.clientY;
+    G.joystick.dx = 0;
+    G.joystick.dy = 0;
+    // 摇杆跟随手指起点
+    setJoystickPos(t.clientX, t.clientY);
+    resetKnob();
+  }, { passive: false });
+
+  el.addEventListener('touchmove', ev => {
+    if (!G.settings.virtualJoystick || !G.joystick.active) return;
+    ev.preventDefault();
+    for (const t of ev.changedTouches) {
+      if (t.identifier !== G.joystick.id) continue;
+      let dx = t.clientX - G.joystick.baseX;
+      let dy = t.clientY - G.joystick.baseY;
+      const len = Math.hypot(dx, dy);
+      if (len > MAX) {
+        // 超出最大半径时，把摇杆圆心底跟随移动，保持位移方向
+        const over = len - MAX;
+        G.joystick.baseX += dx / len * over;
+        G.joystick.baseY += dy / len * over;
+        dx = dx / len * MAX;
+        dy = dy / len * MAX;
+        setJoystickPos(G.joystick.baseX, G.joystick.baseY);
+      }
+      // 归一化到 [-1,1]，带死区避免轻微抖动
+      G.joystick.dx = Math.abs(dx) < 4 ? 0 : dx / MAX;
+      G.joystick.dy = Math.abs(dy) < 4 ? 0 : dy / MAX;
+      if (knob) knob.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+    }
+  }, { passive: false });
+
+  el.addEventListener('touchend', ev => {
+    if (!G.settings.virtualJoystick) return;
+    ev.preventDefault();
+    for (const t of ev.changedTouches) {
+      if (t.identifier === G.joystick.id) resetJoystick();
+    }
+  });
+  el.addEventListener('touchcancel', ev => {
+    if (!G.settings.virtualJoystick) return;
+    ev.preventDefault();
+    for (const t of ev.changedTouches) {
+      if (t.identifier === G.joystick.id) resetJoystick();
+    }
+  });
+
+  updateJoystickVisibility();
 }
