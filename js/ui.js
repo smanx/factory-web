@@ -967,12 +967,7 @@ function initJoystick() {
   const knob = document.getElementById('joystick-knob');
   const MAX = 40;   // 摇杆最大拖动半径（px）
 
-  // 摇杆圆心：把摇杆元素左下角作为基准，便于后续计算
-  function setJoystickPos(cx, cy) {
-    el.style.left = (cx - el.offsetWidth / 2) + 'px';
-    el.style.top = (cy - el.offsetHeight / 2) + 'px';
-    el.style.bottom = 'auto';
-  }
+  // 摇杆本体位置固定不动（由 CSS 定位），拖动时只移动内部旋钮
   function resetKnob() {
     if (knob) knob.style.transform = 'translate(0px,0px)';
   }
@@ -995,8 +990,7 @@ function initJoystick() {
     G.joystick.baseY = t.clientY;
     G.joystick.dx = 0;
     G.joystick.dy = 0;
-    // 摇杆跟随手指起点
-    setJoystickPos(t.clientX, t.clientY);
+    // 摇杆本体位置保持不变，仅记录手指起点作为旋钮位移基准
     resetKnob();
   }, { passive: false });
 
@@ -1009,13 +1003,9 @@ function initJoystick() {
       let dy = t.clientY - G.joystick.baseY;
       const len = Math.hypot(dx, dy);
       if (len > MAX) {
-        // 超出最大半径时，把摇杆圆心底跟随移动，保持位移方向
-        const over = len - MAX;
-        G.joystick.baseX += dx / len * over;
-        G.joystick.baseY += dy / len * over;
+        // 只把旋钮限制在最大半径内，摇杆本体位置保持不变
         dx = dx / len * MAX;
         dy = dy / len * MAX;
-        setJoystickPos(G.joystick.baseX, G.joystick.baseY);
       }
       // 归一化到 [-1,1]，带死区避免轻微抖动
       G.joystick.dx = Math.abs(dx) < 4 ? 0 : dx / MAX;
