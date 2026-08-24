@@ -98,6 +98,7 @@ function render() {
   drawPlayer(ctx);
   drawEnemies(ctx);
   drawBullets(ctx);
+  drawCombatRobots(ctx);
   drawLogisticsRobots(ctx);
   ctx.restore();
 }
@@ -564,8 +565,52 @@ function drawBullets(ctx) {
   }
 }
 
+// 战斗机器人（胶囊投掷物）：悬浮小无人机，附电池条/血条
+function drawCombatRobots(ctx) {
+  if (!G.combatRobots) return;
+  for (const r of G.combatRobots) {
+    if (r.dead) continue;
+    const bob = Math.sin(G.time * 6 + r.x) * 2;
+    ctx.fillStyle = 'rgba(0,0,0,.25)';
+    ctx.beginPath();
+    ctx.ellipse(r.x, r.y + 8, r.size * 1.2, r.size * 0.5, 0, 0, 7);
+    ctx.fill();
+    // 机身
+    ctx.fillStyle = r.color;
+    ctx.strokeStyle = '#1a2028';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(r.x, r.y + bob, r.size, 0, 7);
+    ctx.fill(); ctx.stroke();
+    // 小翅膀
+    ctx.fillStyle = 'rgba(255,255,255,.35)';
+    ctx.fillRect(r.x - r.size - 3, r.y + bob - 1, 3, 4);
+    ctx.fillRect(r.x + r.size, r.y + bob - 1, 3, 4);
+    // 状态灯
+    ctx.fillStyle = r.kind === 'destroyer' ? '#ff5b5b' : (r.kind === 'distractor' ? '#ffd23c' : '#7ff0ff');
+    ctx.beginPath(); ctx.arc(r.x, r.y + bob - r.size * 0.5, 2, 0, 7); ctx.fill();
+    // 血条 / 续航条
+    const w = 14;
+    ctx.fillStyle = '#20242b';
+    ctx.fillRect(r.x - w / 2, r.y + bob - r.size - 7, w, 2.5);
+    ctx.fillStyle = r.hp > 0 ? '#57e389' : '#ff5b5b';
+    ctx.fillRect(r.x - w / 2, r.y + bob - r.size - 7, w * Math.max(0, r.hp / r.maxhp), 2.5);
+  }
+}
+
 function drawPlayer(ctx) {
   const p = G.player;
+  // 载具驾驶中：不绘制玩家角色本体（载具已绘制），仅显示头顶驾驶员轮廓提示
+  if (p.inVehicle && G.driving && G.driving.ent) {
+    const bob = Math.sin(G.time * 4) * 1;
+    ctx.fillStyle = '#2a2620';
+    ctx.beginPath();
+    ctx.arc(p.x, p.y + 6 + bob, 5, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ffe0b0';
+    ctx.beginPath();
+    ctx.arc(p.x, p.y + 4 + bob, 2.4, 0, 7); ctx.fill();
+    return;
+  }
   // 地面阴影
   ctx.fillStyle = 'rgba(0,0,0,.3)';
   ctx.beginPath();

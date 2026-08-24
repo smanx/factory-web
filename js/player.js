@@ -1,5 +1,7 @@
 'use strict';
 
+let mineToastAcc = 0;   // 手动挖矿提示去抖计数
+
 function playerSpeed() { return 140 * ((G.dbg && G.dbg.moveSpeed) || 1); }
 
 function makePlayer(tx, ty) {
@@ -9,7 +11,8 @@ function makePlayer(tx, ty) {
     dir: 2,
     mining: null,
     mineProg: 0,
-    walkT: 0
+    walkT: 0,
+    inVehicle: false   // 是否在载具驾驶中
   };
 }
 
@@ -25,6 +28,11 @@ function boxBlocked(cx, cy, r) {
 
 function updatePlayer(dt) {
   const p = G.player;
+  // 载具驾驶模式：由 updateDriving 驱动载具，玩家自身不移动
+  if (G.driving && G.driving.ent && !G.driving.ent._dead) {
+    if (typeof updateDriving === 'function') updateDriving(dt);
+    return;
+  }
   let mx = 0, my = 0;
   if (G.keys['w'] || G.keys['arrowup']) my -= 1;
   if (G.keys['s'] || G.keys['arrowdown']) my += 1;
@@ -86,11 +94,74 @@ function canCraft(rid) {
   return true;
 }
 
-function doCraft(rid, times = 1) {
-  if (isChemRecipe(rid)) return 0;
-  // 含流体原料的配方（如火箭燃料用石油气）需在组装机/化工厂生产，不能手搓
+// 是否允许玩家手搓该配方（组装机/化工厂/炼油厂/离心机专属配方与含流体原料的配方除外）
+function isHandCraftable(rid) {
+  if (isChemRecipe(rid) || isCentrifugeRecipe(rid) || isRefineryRecipe(rid)) return false;
   const _rec = RECIPES[rid];
-  if (_rec && Object.keys(_rec.inp).some(k => FLUIDS.indexOf(k) >= 0)) return 0;
+  if (_rec && Object.keys(_rec.inp).some(k => FLUIDS.indexOf(k) >= 0)) return false;
+  return true;
+}
+
+// ===== 手搓合成队列（对齐《异星工厂》Hand-crafting） =====
+// 玩家点“合成”不再瞬时完成，而是进入制作队列，按配方耗时逐件生产（可后台排队、显示进度）。
+// G.craftQueue: [{ rid, time, total, done, made }]  —— 队首为当前正在制作的一项。
+// 点击时一次性把本批次的材料扣除并入队，制作过程中无需再检查材料。
+function queueCraft(rid, times = 1) {
+  if (!isHandCraftable(rid)) return 0;
+  const rec = RECIPES[rid];
+  const outId = Object.keys(rec.out)[0];
+  const craftTime = (rec.time || 1) / Math.max(1, (G.dbg && G.dbg.asmMult) || 1);
+  let queued = 0;
+  for (let i = 0; i < times; i++) {
+    if (!canCraft(rid)) break;
+    for (const k in rec.inp) invTake(k, rec.inp[k]);
+    if (!G.craftQueue) G.craftQueue = [];
+    G.craftQueue.push({ rid, outId, time: craftTime, total: craftTime, done: 0 });
+    queued++;
+  }
+  if (queued > 0) uiDirty = true;
+  return queued;
+}
+
+// 队列当前正在制作的一项（队首）
+function craftCurrent() {
+  return (G.craftQueue && G.craftQueue.length) ? G.craftQueue[0] : null;
+}
+
+// 推进手搓队列（每帧调用）。返回本帧完成的件数。
+function updateCraftQueue(dt) {
+  if (!G.craftQueue || G.craftQueue.length === 0) return;
+  let cur = G.craftQueue[0];
+  cur.done += dt;
+  let completed = 0;
+  while (cur && cur.done >= cur.time) {
+    const over = cur.done - cur.time;
+    for (const k in RECIPES[cur.rid].out) invAdd(k, RECIPES[cur.rid].out[k]);
+    completed++;
+    G.craftQueue.shift();
+    if (G.craftQueue.length === 0) break;
+    cur = G.craftQueue[0];
+    cur.done = over;
+  }
+  if (completed > 0) uiDirty = true;
+  return completed;
+}
+
+// 取消队列中所有未开始/正在进行的制作，返还材料（仅返还尚未制作完成的剩余件数的材料）
+function cancelCraftQueue() {
+  if (!G.craftQueue || G.craftQueue.length === 0) return;
+  // 当前项若已消耗部分时间，其材料不返还；其余排队项全部返还材料
+  for (let i = 1; i < G.craftQueue.length; i++) {
+    const q = G.craftQueue[i];
+    for (const k in RECIPES[q.rid].inp) invAdd(k, RECIPES[q.rid].inp[k]);
+  }
+  G.craftQueue = [];
+  uiDirty = true;
+}
+
+// 兼容旧的即时合成调用（调试/一次性使用）：直接结算，不排队
+function doCraft(rid, times = 1) {
+  if (!isHandCraftable(rid)) return 0;
   let made = 0;
   for (let i = 0; i < times; i++) {
     if (!canCraft(rid)) break;
@@ -104,6 +175,8 @@ function doCraft(rid, times = 1) {
 
 function updateMining(dt) {
   const p = G.player;
+  // 载具驾驶中不能采矿
+  if (G.driving && G.driving.ent && !G.driving.ent._dead) { p.mining = null; p.mineProg = 0; return; }
   if (!G.mouseDown || buildActive() || !G.canvasActive) { p.mining = null; p.mineProg = 0; return; }
   const t = G.cursorTile;
   if (!t) { p.mining = null; p.mineProg = 0; return; }
@@ -118,8 +191,11 @@ function updateMining(dt) {
       if (!G.settings.infiniteOre) consumeOre(t.tx, t.ty);
       const it = oreItemId(ti);
       invAdd(it);
-      // 手动采矿时在屏幕上方显示获得的物品文本
-      if (typeof toast === 'function') toast('+1 ' + (ITEMS[it] ? ITEMS[it].name : '未知矿'));
+      // 手动采矿反馈去抖：累积到一定数量再提示一次，避免连挖时刷屏
+      mineToastAcc++;
+      if (mineToastAcc % 5 === 0 && typeof toast === 'function') {
+        toast('+' + mineToastAcc + ' ' + (ITEMS[it] ? ITEMS[it].name : '未知矿'));
+      }
     }
   } else {
     p.mineProg = 0;

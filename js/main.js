@@ -57,6 +57,8 @@ const G = {
   powerT: 0,
   enemies: [],
   bullets: [],
+  combatRobots: [],
+  driving: null,       // 载具驾驶状态：{ ent: Car }，玩家进入驾驶时非空
   spawnT: 0,
   playerHP: 100,
   playerHPmax: 100,
@@ -67,6 +69,7 @@ const G = {
   inMenu: true,       // 开始菜单显示中：游戏世界尚未初始化，loop 暂停渲染与更新
   deconstructMode: false,  // 触屏拆除模式：开启后点触建筑即可拆除（PC 右键拆除不受影响）
   deconstructHeld: false,  // 拆除模式：左键/触屏是否处于按住连续拆除状态
+  craftQueue: [],     // 手搓合成队列：见 player.js 的 queueCraft / updateCraftQueue
 };
 
 let lastPlaceKey = '';
@@ -112,6 +115,9 @@ function newGame() {
   G.powerT = 0;
   G.enemies = []; G.bullets = []; G.spawnT = 0;
   G.enemyProjectiles = [];
+  G.combatRobots = [];
+  G.driving = null;    // 新游戏清空驾驶状态
+  G.craftQueue = [];   // 新游戏清空手搓队列
   G.logiRobots = [];
   G.logiNet = null;
   G.logiNetT = 0;
@@ -159,6 +165,9 @@ function serializeAll() {
     ents: G.ents.filter(e => !e._dead).map(e => e.serialize()),
     inv: Array.from(G.inv),
     player: { x: G.player.x, y: G.player.y, hp: G.playerHP, weapon: G.weapon },
+    craftQueue: (G.craftQueue || []).map(q => ({
+      rid: q.rid, time: q.time, total: q.total, done: q.done, outId: q.outId
+    })),
     gameWon: G.gameWon,
     techDone: G.techDone,
     techProg: G.techProg,
@@ -243,11 +252,17 @@ function applySave(d) {
     addEnt(cls.restore(s));
   }
   G.inv = new Map(d.inv);
+  G.craftQueue = Array.isArray(d.craftQueue)
+    ? d.craftQueue.filter(q => RECIPES[q.rid] && isHandCraftable(q.rid)).map(q => ({
+      rid: q.rid, outId: q.outId, time: q.time || 1, total: q.time || 1, done: q.done || 0
+    })) : [];
   G.player = makePlayer(0, 0);
   G.player.x = d.player.x; G.player.y = d.player.y;
   if (typeof d.player.hp === 'number') G.playerHP = G.playerHPmax = Math.max(1, d.player.hp);
   G.weapon = d.player.weapon || null;
   G.gameWon = !!d.gameWon;
+  G.combatRobots = [];
+  G.driving = null;
   G.logiRobots = [];
   G.logiNet = null;
   G.logiNetT = 0;
@@ -505,6 +520,8 @@ function tryAutoUnderground(type, tx, ty) {
 function deconstructAt(tx, ty) {
   const e = entAt(tx, ty);
   if (!e || !withinReach(tx, ty)) return;
+  // 拆除的是正在驾驶的载具：先下车再拆除
+  if (G.driving && G.driving.ent === e && typeof exitCar === 'function') exitCar();
   for (const [id, n] of e.contents()) invAdd(id, n);
   removeEnt(e);
   if (G.panelEnt === e) closePanel();
@@ -826,6 +843,19 @@ function pasteBlueprint() {
   uiDirty = true;
 }
 
+// 尝试进入面前的装甲车（F 键 / 交互）。成功返回 true。
+function tryEnterNearbyCar() {
+  if (G.driving) return false;
+  if (typeof enterCar !== 'function') return false;
+  const px = Math.floor(G.player.x / TILE), py = Math.floor(G.player.y / TILE);
+  const checks = [[px, py], [px + DX[G.player.dir], py + DY[G.player.dir]]];
+  for (const [tx, ty] of checks) {
+    const e = entAt(tx, ty);
+    if (e && e.type === 'car' && typeof enterCar === 'function') { enterCar(e); return true; }
+  }
+  return false;
+}
+
 function pickupAction() {
   let t = null;
   if (G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) t = G.cursorTile;
@@ -1019,12 +1049,17 @@ function bindInput() {
     else if (k === 'r') rotateAction();
     else if (k === 'h') flipAction('h');
     else if (k === 'v') flipAction('v');
-    else if (k === 'f') pickupAction();
-    else if (k === 'e') G.panelMode === 'inv' ? closePanel() : openPanel('inv');
+    else if (k === 'f') { if (!tryEnterNearbyCar()) pickupAction(); }
+    else if (k === 'e') {
+      if (G.driving) { if (typeof exitCar === 'function') exitCar(); }
+      else if (G.panelMode === 'inv') closePanel();
+      else openPanel('inv');
+    }
     else if (k === 't') G.panelMode === 'tech' ? closePanel() : openPanel('tech');
     else if (k === 'o') G.panelMode === 'set' ? closePanel() : openPanel('set');
     else if (k === 'escape' || k === 'q') {
-      if (G.blueMode) {
+      if (G.driving) { if (typeof exitCar === 'function') exitCar(); }
+      else if (G.blueMode) {
         cancelBlueprint();
       } else if (G.deconstructMode) {
         toggleDeconstructMode(false);
@@ -1204,6 +1239,7 @@ function loop(ts) {
       updateTouchMove(dt);
       updateHeldMouse(dt);
       updateMining(dt);
+      updateCraftQueue(dt);   // 手搓合成队列（按时间逐件制作）
       for (const e of G.ents) if (!e._dead && typeof e.update === 'function') e.update(dt);
       // 敌人/子弹系统（可在设置中开关战斗）
       if (G.settings.combat) {
@@ -1212,6 +1248,7 @@ function loop(ts) {
         updateBullets(dt);
         updatePlayerFire(dt);
         updatePlayerBulletHits(dt);
+        updateCombatRobots(dt);
       }
       G.powerT += dt;
       if (G.powerT >= 0.25) { G.powerT = 0; updatePower(); }

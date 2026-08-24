@@ -198,9 +198,14 @@ const WEAPONS = {
   'shotgun':         { name: '散弹枪', dmg: 6,  rate: 0.5, ammo: 'piercing-rounds', spread: 0.4,  auto: false, range: 6, pellets: 6 },
   'rocket-launcher': { name: '火箭筒', dmg: 35, rate: 1.1, ammo: 'rocket',          spread: 0.03, auto: false, range: 9, splash: 1.8 },
   'grenade':         { name: '手雷',   dmg: 40, rate: 0.8, ammo: 'grenade',          spread: 0.05, auto: false, range: 6, splash: 2.5 },
-  'flamethrower':    { name: '火焰喷射器', dmg: 6, rate: 0.12, ammo: 'petroleum-gas', spread: 0.2, auto: true, range: 6, flame: true }
+  'flamethrower':    { name: '火焰喷射器', dmg: 6, rate: 0.12, ammo: 'petroleum-gas', spread: 0.2, auto: true, range: 6, flame: true },
+  // 战斗机器人胶囊：投掷后释放战斗机器人（见 CAPSULES）
+  'defender-capsule':   { name: '防御机器人',   dmg: 0, rate: 0.8, ammo: 'defender-capsule',   spread: 0, auto: false, range: 6, capsule: 'defender' },
+  'distractor-capsule': { name: '干扰机器人',   dmg: 0, rate: 0.8, ammo: 'distractor-capsule', spread: 0, auto: false, range: 6, capsule: 'distractor' },
+  'destroyer-capsule':  { name: '破坏机器人',   dmg: 0, rate: 0.8, ammo: 'destroyer-capsule',  spread: 0, auto: false, range: 6, capsule: 'destroyer' }
 };
 function isWeapon(id) { return !!WEAPONS[id]; }
+function isCapsuleWeapon(id) { return !!(WEAPONS[id] && WEAPONS[id].capsule); }
 // 设置当前手持武器（带科技/物品存在校验）
 function setWeapon(id) {
   if (!id) { G.weapon = null; uiDirty = true; return; }
@@ -218,6 +223,11 @@ function playerFire(tx, ty) {
   if (!id) return;
   if (WEAPON_TECH_REQ[id] && !G.techDone[WEAPON_TECH_REQ[id]]) return;
   const w = WEAPONS[id];
+  // 战斗机器人胶囊：投掷后释放机器人
+  if (isCapsuleWeapon(id)) {
+    throwCapsule(id, tx, ty);
+    return;
+  }
   const px = G.player.x, py = G.player.y;
   // 弹药检查：火焰喷射器消耗石油气（流体），其余消耗物品
   if (w.ammo === 'petroleum-gas') {
@@ -313,6 +323,101 @@ function explodeDamage(cx, cy, radius, dmg) {
   }
   // 爆炸也会伤害玩家自身（距离过近时）
   if (Math.hypot(cx - G.player.x, cy - G.player.y) <= radius * TILE * 0.5) damagePlayer(dmg * 0.4);
+}
+
+// ===== 战斗机器人胶囊（对齐《异星工厂》Combat robots） =====
+// 玩家选择胶囊后按空格/点击投掷，落地释放战斗机器人：
+//  - defender（防御）：跟随玩家，自动攻击附近敌人，有续航时间
+//  - distractor（干扰）：原地悬浮吸引敌人火力
+//  - destroyer（破坏）：主动冲向并摧毁敌人，伤害更高
+const CAPSULES = {
+  'defender-capsule':   { name: '防御机器人', hp: 120, dmg: 6,  speed: 60,  lifetime: 45, size: 5, follow: true,  seek: false, color: '#5aa0d0' },
+  'distractor-capsule': { name: '干扰机器人', hp: 200, dmg: 0,  speed: 0,   lifetime: 30, size: 6, follow: false, seek: false, color: '#d0a04a' },
+  'destroyer-capsule':  { name: '破坏机器人', hp: 100, dmg: 10, speed: 90,  lifetime: 30, size: 5, follow: true,  seek: true,  color: '#d05a5a' }
+};
+function isCapsule(id) { return !!CAPSULES[id]; }
+function throwCapsule(id, tx, ty) {
+  if (invCount(id) < 1) return false;
+  if (TECH_REQ[id] && !G.techDone[TECH_REQ[id]]) {
+    if (typeof toast === 'function') toast('需要先研究「' + TECHS[TECH_REQ[id]].name + '」才能使用 ' + ITEMS[id].name);
+    return false;
+  }
+  invTake(id, 1);
+  const c = CAPSULES[id];
+  if (!G.combatRobots) G.combatRobots = [];
+  // 一次投掷释放 2 只（destroyer 1 只）
+  const n = id === 'destroyer-capsule' ? 1 : 2;
+  for (let i = 0; i < n; i++) {
+    G.combatRobots.push({
+      type: id, kind: id.replace('-capsule', ''),
+      name: c.name, hp: c.hp, maxhp: c.hp, dmg: c.dmg, speed: c.speed,
+      lifetime: c.lifetime, size: c.size, follow: c.follow, seek: c.seek,
+      color: c.color, x: G.player.x + (Math.random() - 0.5) * 10,
+      y: G.player.y + (Math.random() - 0.5) * 10, fireT: 0, dead: false, dir: 0
+    });
+  }
+  if (typeof toast === 'function') toast('投掷 ' + ITEMS[id].name + '：释放 ' + c.name);
+  uiDirty = true;
+  return true;
+}
+// 更新战斗机器人：跟随/攻击/续航倒计时
+function updateCombatRobots(dt) {
+  if (!G.combatRobots || G.combatRobots.length === 0) return;
+  const p = G.player;
+  const enemies = (G.enemies || []).filter(e => !e.dead);
+  for (const r of G.combatRobots) {
+    if (r.dead) continue;
+    r.lifetime -= dt;
+    if (r.lifetime <= 0 || r.hp <= 0) { r.dead = true; continue; }
+    r.fireT -= dt;
+    if (r.kind === 'distractor') {
+      // 干扰机器人：原地悬浮，不做攻击，但吸引近战敌人靠近
+      continue;
+    }
+    // 寻找最近敌人
+    let target = null, bestD = Infinity;
+    for (const en of enemies) {
+      if (en.kind === 'spawner') continue;
+      const d = Math.hypot(en.x - r.x, en.y - r.y);
+      if (d < bestD) { bestD = d; target = en; }
+    }
+    if (r.kind === 'destroyer' && target) {
+      // 破坏机器人：主动冲向敌人
+      const d = Math.max(1, Math.hypot(target.x - r.x, target.y - r.y));
+      r.x += ((target.x - r.x) / d) * r.speed * dt;
+      r.y += ((target.y - r.y) / d) * r.speed * dt;
+      if (bestD < r.size + target.size + 6) {
+        if (r.fireT <= 0) { r.fireT = 0.6; target.hp -= r.dmg; if (target.hp <= 0) target.dead = true; }
+      }
+    } else if (target) {
+      // 防御机器人：跟随玩家，对射程内敌人开火
+      const pd = Math.hypot(p.x - r.x, p.y - r.y);
+      if (pd > TILE * 4) {
+        const d = Math.max(1, pd);
+        r.x += ((p.x - r.x) / d) * r.speed * dt;
+        r.y += ((p.y - r.y) / d) * r.speed * dt;
+      }
+      if (bestD < TILE * 7 && r.fireT <= 0) {
+        r.fireT = 0.5;
+        target.hp -= r.dmg;
+        if (target.hp <= 0) target.dead = true;
+      }
+    } else if (r.follow) {
+      const pd = Math.hypot(p.x - r.x, p.y - r.y);
+      if (pd > TILE * 3) {
+        const d = Math.max(1, pd);
+        r.x += ((p.x - r.x) / d) * r.speed * dt;
+        r.y += ((p.y - r.y) / d) * r.speed * dt;
+      }
+    }
+    // 机器人会被近战敌人攻击
+    for (const en of enemies) {
+      if (en.kind !== 'melee') continue;
+      const d = Math.hypot(en.x - r.x, en.y - r.y);
+      if (d < r.size + en.size + 4) { r.hp -= en.dmg * dt; }
+    }
+  }
+  G.combatRobots = G.combatRobots.filter(r => !r.dead);
 }
 
 // 手雷：从背包使用时投掷爆炸（由 ui.js 调用）

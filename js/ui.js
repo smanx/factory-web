@@ -630,8 +630,15 @@ function initPanelEvents() {
       else if (act === 'exp-save') { downloadSave(); }
       else if (act === 'imp-save') { document.getElementById('imp-file').click(); }
       else if (act === 'craft') {
-        const made = doCraft(id, +(btn.dataset.mult || 1));
-        if (!made) toast('材料不足');
+        const n = +(btn.dataset.mult || 1);
+        // 手搓合成队列：按时间逐件制作（对齐《异星工厂》）
+        const queued = queueCraft(id, n);
+        if (!queued) toast('材料不足');
+        else {
+          // 队首已开始制作：优先把界面切换到背包以看到队列反馈
+          const cur = craftCurrent();
+          if (cur) toast('已开始制作 ' + ITEMS[cur.outId].name + (queued > 1 ? ' ×' + queued : ''));
+        }
       } else if (act === 'recipe') {
         const mch = G.panelEnt;
         if (mch && typeof mch.setRecipe === 'function') mch.setRecipe(id);
@@ -858,7 +865,21 @@ function updateHUD(dt, fps) {
   if (G.weapon && isWeapon(G.weapon)) {
     hud += '   🔫 ' + WEAPONS[G.weapon].name;
   }
+  // 手搓合成队列进度
+  const cur = craftCurrent();
+  if (cur) {
+    const pct = Math.min(100, (cur.done / cur.time) * 100);
+    const nm = (ITEMS[cur.outId] && ITEMS[cur.outId].name) || cur.outId;
+    const rest = (G.craftQueue ? G.craftQueue.length - 1 : 0);
+    hud += '   <span style="color:#7fd4a0">⚒ ' + nm +
+      (rest > 0 ? ' (+' + rest + ')' : '') + ' ' + pct.toFixed(0) + '%' +
+      ' <a href="javascript:void(0)" id="craft-cancel" style="color:#ff8a8a;pointer-events:auto;text-decoration:none" title="取消制作">✕</a></span>';
+  }
   el.innerHTML = hud;
+  const cc = document.getElementById('craft-cancel');
+  if (cc) {
+    cc.onclick = () => { cancelCraftQueue(); toast('已取消制作（返还排队材料）'); };
+  }
 }
 
 function mapTipAt(tx, ty) {
