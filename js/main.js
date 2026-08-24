@@ -207,6 +207,8 @@ function tryPlaceAt(tx, ty) {
   }
   const chk = canPlaceAt(type, tx, ty, G.ghostDir);
   if (!chk.ok) {
+    // 若障碍本身就是同向传送带：直接铺设普通传送带衔接即可，无需地下带跨越
+    if (tryPlaceOntoSameDirBelt(type, tx, ty)) { uiDirty = true; return; }
     // 拖动连续铺设传送带遇障碍：自动改用地下传送带跨越障碍继续铺
     if (tryAutoUnderground(type, tx, ty)) { uiDirty = true; }
     return;
@@ -231,6 +233,26 @@ function ugMaxDist(ugType) {
   return ugType === 'fast-underground-belt' ? FAST_UNDERGROUND_MAX
     : ugType === 'express-underground-belt' ? EXPRESS_UNDERGROUND_MAX
     : UNDERGROUND_MAX;
+}
+
+// 障碍本身是同向传送带时，直接铺设普通传送带衔接（替换原传送带），无需地下带跨越。
+// 返回 true 表示已成功铺设；否则返回 false 交由地下带逻辑处理。
+function tryPlaceOntoSameDirBelt(type, tx, ty) {
+  const t = entAt(tx, ty);
+  // 必须是普通传送带（含快速/极速带，非分流器/地下带），且方向与当前铺设方向一致
+  if (!(t instanceof Belt) || t instanceof Splitter || t instanceof Underground) return false;
+  if (t.dir !== G.ghostDir) return false;
+  const infinite = !!(G.dbg && G.dbg.infinite);
+  if (!infinite && invCount(type) < 1) return false;
+  // 同向传送带衔接：用当前传送带替换掉已有传送带，无需消耗地下带
+  removeEnt(t);
+  const e = new (ENT_CLASSES[type])(type, tx, ty);
+  e.dir = G.ghostDir;
+  e.applyDir();
+  addEnt(e);
+  if (!infinite) invTake(type, 1);
+  refreshHotbar();
+  return true;
 }
 
 // 拖动铺传送带遇障碍时自动搭一对地下传送带跨越：入口放在障碍前一格，
