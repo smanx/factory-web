@@ -251,17 +251,26 @@ function drawBeltCorner(ctx, e, gx, gy, dir, alpha, colors) {
   return true;
 }
 
+// 传送带配色解析：普通/快速带为黄橙系，创造带为绿色系，虚空带为暗红系（测试设备）。
+function beltColors(e) {
+  if (e.type === 'fast-transport-belt') return { belt: '#4a3a34', chev: 'rgba(226,102,54,.9)' };
+  if (e.type === 'creative-belt') return { belt: '#2e6b3a', chev: 'rgba(140,255,175,.9)' };
+  if (e.type === 'void-belt') return { belt: '#3a2a28', chev: 'rgba(255,138,128,.9)' };
+  return { belt: '#3a3f47', chev: 'rgba(224,178,60,.85)' };
+}
+
 function drawBelt(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const cx = px + TILE / 2, cy = py + TILE / 2;
   const inp = beltInputSide(e);
+  const col = beltColors(e);
   // 纯 90° 转角：直接以弯曲圆弧绘制，区分于 T 型转角
-  if (drawBeltCorner(ctx, e, gx, gy, dir, alpha,
-    { belt: e.type === 'fast-transport-belt' ? '#4a3a34' : '#3a3f47',
-      chev: e.type === 'fast-transport-belt' ? 'rgba(226,102,54,.9)' : 'rgba(224,178,60,.85)' })) return;
-  const fast = e.type === 'fast-transport-belt';
+  if (drawBeltCorner(ctx, e, gx, gy, dir, alpha, col)) {
+    drawBeltMark(ctx, e, gx, gy, alpha);
+    return;
+  }
   ctx.globalAlpha = alpha;
-  ctx.fillStyle = fast ? '#4a3a34' : '#3a3f47';
+  ctx.fillStyle = col.belt;
   ctx.strokeStyle = '#22252a';
   ctx.lineWidth = 2;
 
@@ -286,7 +295,7 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
   ctx.beginPath();
   ctx.rect(-TILE / 2 + 3, -TILE / 2 + 3, TILE - 6, TILE - 6);
   ctx.clip();
-  ctx.fillStyle = fast ? 'rgba(226,102,54,.9)' : 'rgba(224,178,60,.85)';
+  ctx.fillStyle = col.chev;
   for (let k = -1; k <= 2; k++) {
     const xx = -step + k * step + off;
     tri(ctx, xx - 3, -5, xx - 3, 5, xx + 3, 0);
@@ -307,7 +316,7 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
     ctx.beginPath();
     ctx.rect(0, -TILE / 2 + 3, step, TILE - 6);
     ctx.clip();
-    ctx.fillStyle = fast ? 'rgba(226,102,54,.9)' : 'rgba(224,178,60,.85)';
+    ctx.fillStyle = col.chev;
     for (let k = 0; k <= 2; k++) {
       const xx = k * step - off;
       if (xx < -3 || xx > step + 3) continue;
@@ -347,7 +356,45 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
     }
     itemFn(ctx, ix, iy, o.item);
   }
+  drawBeltMark(ctx, e, gx, gy, alpha);
   ctx.globalAlpha = 1;
+}
+
+// 创造/虚空传送带叠加角标：绿色 ∞（创造带）与红色 ×（虚空带），便于辨识测试设备。
+function drawBeltMark(ctx, e, gx, gy, alpha) {
+  if (e.type !== 'creative-belt' && e.type !== 'void-belt') return;
+  const px = gx * TILE, py = gy * TILE;
+  const cx = px + TILE / 2, cy = py + TILE / 2;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  if (e.type === 'creative-belt') {
+    // 角标底色小圆
+    ctx.fillStyle = '#1d4d29';
+    ctx.beginPath(); ctx.arc(cx, cy, 6, 0, 7); ctx.fill();
+    // ∞ 标志
+    ctx.strokeStyle = '#d8ffe0';
+    ctx.lineWidth = 2;
+    const R = 3.2;
+    ctx.beginPath(); ctx.ellipse(cx - 3.4, cy, R, R * 0.6, 0, 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(cx + 3.4, cy, R, R * 0.6, 0, 0, 7); ctx.stroke();
+    // 选中物品色点
+    if (e.selected && ITEMS[e.selected]) {
+      ctx.fillStyle = ITEMS[e.selected].color;
+      ctx.beginPath(); ctx.arc(cx, cy + 6.5, 2.2, 0, 7); ctx.fill();
+    }
+  } else {
+    // 虚空带：红色 ×
+    ctx.fillStyle = '#2a1a18';
+    ctx.beginPath(); ctx.arc(cx, cy, 6, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#ff8a80';
+    ctx.lineWidth = 2.5;
+    const R = 3.4;
+    ctx.beginPath();
+    ctx.moveTo(cx - R, cy - R); ctx.lineTo(cx + R, cy + R);
+    ctx.moveTo(cx + R, cy - R); ctx.lineTo(cx - R, cy + R);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 // ===== 注册 =====

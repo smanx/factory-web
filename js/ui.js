@@ -231,7 +231,7 @@ function htmlInventory() {
   const infinite = !!(G.dbg && G.dbg.infinite);
   // 测试/应急设备（被动供电、创造/虚空箱、创造/虚空管道）仅在开启"无限资源"
   // Debug 模式后才会出现在建造列表；正常游玩不可见、不可获取。
-  const dbgOnlyDevices = new Set(['passive-power', 'creative-chest', 'void-chest', 'creative-pipe', 'void-pipe']);
+  const dbgOnlyDevices = new Set(['passive-power', 'creative-chest', 'void-chest', 'creative-pipe', 'void-pipe', 'creative-belt', 'void-belt']);
   for (const bid of Object.keys(BUILD_DEFS)) {
     if (dbgOnlyDevices.has(bid) && !infinite) continue;
     const n = invCount(bid);

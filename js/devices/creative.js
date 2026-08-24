@@ -346,3 +346,122 @@ DEVICE_PANEL['void-pipe'] = { html: voidPipePanelHtml, live: voidPipePanelLive, 
 // 创造/虚空管道可旋转本体（默认 R 键旋转方向；虽无朝向语义，保留一致体验）
 DEVICE_DIR_ROTATE['creative-pipe'] = true;
 DEVICE_DIR_ROTATE['void-pipe'] = true;
+
+// ===== 创造传送带：点击面板选择物品，带上无限生成该物品 =====
+class CreativeBelt extends Belt {
+  constructor(type, x, y) {
+    super('creative-belt', x, y);
+    this.selected = null;   // 当前生成的物品
+  }
+  // 每帧在带上尾部生成选定物品，保持带上始终有货可流动、可被机械臂取走。
+  update(dt) {
+    if (this.selected) {
+      // 从尾部（pos=0）起补货：一次只补一个空位，后续帧持续补满整条带
+      for (const p of [0, BELT_SPACING, BELT_SPACING * 2, BELT_SPACING * 3]) {
+        if (this.items.some(o => Math.abs(o.pos - p) < BELT_SPACING - 0.001)) continue;
+        this.items.push({ item: this.selected, pos: p, side: -1 });
+        break;
+      }
+    }
+    super.update(dt);
+  }
+  // 创造带只产不收：外部物品一律拒收（仅生成面板选定的物品）
+  acceptItem() { return false; }
+  // 选中物品的“无限库存”，供机械臂/玩家读取
+  countOf(item) { return this.selected === item ? 0x3fffffff : 0; }
+  peekItem() {
+    if (!this.selected) return null;
+    const z = this.grabZone();
+    return z ? z.item : (this.selected);
+  }
+  contents() {
+    const list = [[this.type, 1]];
+    for (const o of this.items) list.push([o.item, 1]);
+    return list;
+  }
+  serialize() {
+    const s = super.serialize();
+    s.selected = this.selected;
+    return s;
+  }
+  blueprint() {
+    const s = super.blueprint();
+    s.selected = this.selected;
+    return s;
+  }
+  static restore(s) {
+    const b = super.restore(s);
+    b.selected = s.selected || null;
+    return b;
+  }
+}
+
+// ===== 虚空传送带：任何物品流转到带上即刻销毁 =====
+class VoidBelt extends Belt {
+  constructor(type, x, y) {
+    super('void-belt', x, y);
+  }
+  // 每帧清空带上物品，实现“来即销毁”。
+  update(dt) {
+    this.items = [];
+    super.update(dt);
+  }
+  // 来者不拒：接受任何物品后立即销毁（清空），作为物流汇点。
+  acceptItem() { return true; }
+  countOf() { return 0; }
+  peekItem() { return null; }
+  takeItem() { return null; }
+  contents() { return [[this.type, 1]]; }
+}
+
+// ===== 创造传送带面板：选择要生成的物品 =====
+function creativeBeltPanelHtml(e) {
+  let h = '<div class="dim">创造传送带（测试）：无限生成选中的物品，随带向前流动，机械臂/玩家可无限取走。当前：' +
+    (e.selected ? chip(e.selected) : '<span class="dim">未选择</span>') + '</div>';
+  h += '<div class="sec">选择要生成的物品</div><div class="recgrid">';
+  for (const id of creativeItemChoices()) {
+    h += '<button class="rcbtn ' + (e.selected === id ? 'sel' : '') + '" data-action="cbsel" data-id="' + id + '" data-itemid="' + id + '">' +
+      '<img src="' + iconDataURL(id) + '">' + ITEMS[id].name + '</button>';
+  }
+  h += '</div>';
+  if (e.selected) h += '<button data-action="cbsel-clear">停止生成</button>';
+  h += '<div class="status"></div>';
+  return h;
+}
+function creativeBeltPanelLive(e, api) {
+  if (e.selected) api.status('生成中：带上无限产出 ' + ITEMS[e.selected].name, 'ok');
+  else api.status('未选择生成物，等待选择', 'warn');
+}
+function creativeBeltOnAction(act, btn) {
+  if (act === 'cbsel') { if (G.panelEnt instanceof CreativeBelt) G.panelEnt.selected = btn.dataset.id; return true; }
+  if (act === 'cbsel-clear') { if (G.panelEnt instanceof CreativeBelt) G.panelEnt.selected = null; return true; }
+  return false;
+}
+function creativeBeltTip(e) {
+  return e.selected ? ('无限产出 ' + ITEMS[e.selected].name) : '创造传送带（未选择生成物）';
+}
+
+// ===== 虚空传送带面板 =====
+function voidBeltPanelHtml() {
+  return '<div class="dim">虚空传送带（测试）：任何流转到这条带上的物品都会被即刻销毁，无法取出，作为物流销毁汇点。</div><div class="status"></div>';
+}
+function voidBeltPanelLive(e, api) {
+  api.status('销毁中：流转到带上的物品即刻消失', 'ok');
+}
+function voidBeltTip() { return '虚空传送带：无限销毁流转物品'; }
+
+// ===== 状态灯 =====
+function creativeBeltStatus(e) { return e.selected ? 'g' : 'r'; }
+
+// ===== 注册 =====
+ENT_CLASSES['creative-belt'] = CreativeBelt;
+ENT_CLASSES['void-belt'] = VoidBelt;
+DEVICE_RENDER['creative-belt'] = drawBelt;
+DEVICE_RENDER['void-belt'] = drawBelt;
+DEVICE_STATUS['creative-belt'] = creativeBeltStatus;
+DEVICE_STATUS['void-belt'] = () => 'g';
+DEVICE_PANEL['creative-belt'] = { html: creativeBeltPanelHtml, live: creativeBeltPanelLive, tip: creativeBeltTip, onAction: creativeBeltOnAction };
+DEVICE_PANEL['void-belt'] = { html: voidBeltPanelHtml, live: voidBeltPanelLive, tip: voidBeltTip };
+// 创造/虚空传送带可旋转方向（对齐普通传送带）
+DEVICE_DIR_ROTATE['creative-belt'] = true;
+DEVICE_DIR_ROTATE['void-belt'] = true;
