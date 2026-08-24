@@ -267,29 +267,6 @@ function applySave(d) {
   uiDirty = true;
 }
 
-// 覆盖建造：跳过实体碰撞，先拆除占用格上的所有原设备（返还物资），再放置新设备。
-// 同一格始终只保留一个实体，不会叠加；仅对实体冲突生效（压水/超距等非实体冲突返回 false 不覆盖）。
-function forcedPlaceAt(type, tx, ty, infinite) {
-  const chk = canPlaceAt(type, tx, ty, G.ghostDir, { skipEnt: true });
-  if (!chk.ok || !chk.ents || chk.ents.length === 0) return false; // 非实体冲突（压水/无矿等）或无需拆除
-  // 拆除占用格上的原设备（不消耗背包，返还其物资）
-  for (const e of chk.ents) {
-    for (const [id, n] of e.contents()) invAdd(id, n);
-    removeEnt(e);
-    if (G.panelEnt === e) closePanel();
-  }
-  // 放置新设备
-  const cls = ENT_CLASSES[type];
-  const e = new cls(type, tx, ty);
-  e.dir = G.ghostDir;
-  e.applyDir();
-  addEnt(e);
-  if (!infinite) invTake(type, 1);
-  uiDirty = true;
-  refreshHotbar();
-  return true;
-}
-
 function tryPlaceAt(tx, ty) {
   const type = selItem();
   if (!type) return;
@@ -307,12 +284,8 @@ function tryPlaceAt(tx, ty) {
     // 传送带特殊逻辑优先：同向衔接铺设、或自动改用地下带跨越障碍
     if (tryPlaceOntoSameDirBelt(type, tx, ty)) { uiDirty = true; return; }
     if (tryAutoUnderground(type, tx, ty)) { uiDirty = true; return; }
-    // 覆盖建造（对齐《异星工厂》强制建造，但作为默认行为）：
-    // 目标格已有建筑时，先拆除原设备并返还物资，再在其上放置新设备。
-    // 只覆盖实体冲突，绝不叠加——同一格始终只有一个实体；压水/超距等
-    // 非实体冲突不会覆盖（forcedPlaceAt 内部会再次校验）。
-    if (forcedPlaceAt(type, tx, ty, infinite)) { uiDirty = true; return; }
-    // 仍无法放置（如压水、超距）：提示并保持当前选中
+    // 不允许覆盖建造：目标格已有建筑（如组装机）时直接提示，不拆除替换。
+    // 传送带升级/降级仍走上方同族覆盖逻辑，其余建筑冲突一律拒绝。
     toast('无法在这里建造');
     return;
   }
@@ -810,7 +783,7 @@ function pasteBlueprint() {
     const nx = s.x + ox, ny = s.y + oy;
     const tmp = cls.restore(Object.assign({}, s, { x: nx, y: ny }));
     tmp.dir = s.dir | 0; tmp.applyDir();
-    if (!canPlaceAt(s.type, nx, ny, tmp.dir)) {
+    if (!canPlaceAt(s.type, nx, ny, tmp.dir).ok) {
       toast('粘贴失败：区域被占用或不可放置');
       return;
     }
