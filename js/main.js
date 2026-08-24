@@ -198,6 +198,8 @@ function applySave(d) {
   // 开发者调试数据随存档保存/读取，须在读档重建快捷栏前恢复，
   // 否则无限资源（∞）等调试状态无法正确反映到快捷栏显示上
   if (d.dbg && typeof d.dbg === 'object') Object.assign(G.dbg, d.dbg);
+  // 刷新Debug面板显示，使已恢复的调试数据正确展示在面板上
+  if (typeof refreshDebugPanel === 'function') refreshDebugPanel();
   if (Array.isArray(d.hotbar)) {
     HOTBAR = d.hotbar.slice(0, 10);
     while (HOTBAR.length < 10) HOTBAR.push(null);

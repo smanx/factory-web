@@ -894,3 +894,33 @@ function buildDebug() {
     panel.style.display = 'block';
   });
 }
+
+// 读档后刷新Debug面板，使已恢复的调试数据显示在面板上
+function refreshDebugPanel() {
+  const panel = document.getElementById('dbg-panel');
+  if (!panel) return;
+  // 更新速度滑块及其数值显示
+  panel.querySelectorAll('input[data-dbgkey]').forEach(inp => {
+    const key = inp.dataset.dbgkey;
+    if (G.dbg[key] === undefined) return;
+    inp.value = G.dbg[key];
+    const row = inp.closest('.drow');
+    if (row) {
+      const val = row.querySelector('.dval');
+      if (val) val.textContent = G.dbg[key] + 'x';
+    }
+  });
+  // 更新开关按钮（无限资源 / 无限交互距离）文本
+  panel.querySelectorAll('button[data-dbgact]').forEach(b => {
+    const act = b.dataset.dbgact;
+    if (act.indexOf('无限资源：') === 0) {
+      const txt = '无限资源：' + (G.dbg.infinite ? '开' : '关');
+      b.textContent = txt;
+      b.dataset.dbgact = txt;
+    } else if (act.indexOf('无限交互距离：') === 0) {
+      const txt = '无限交互距离：' + (G.dbg.farReach ? '开' : '关');
+      b.textContent = txt;
+      b.dataset.dbgact = txt;
+    }
+  });
+}
