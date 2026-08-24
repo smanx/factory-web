@@ -627,6 +627,24 @@ html, body {
   color: #cdd6df;
   font-size: 13px;
 }
+.stat-hist-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.stat-hist-pick .stat-hist-select { margin-bottom: 0; }
+.stat-hist-filter {
+  width: 100%;
+  padding: 6px 8px;
+  background: #20272f;
+  border: 1px solid #3a4657;
+  border-radius: 6px;
+  color: #cdd6df;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+.stat-hist-filter:focus { outline: none; border-color: #4a8cff; }
 .stat-hist-zooms { margin-bottom: 8px; }
 .stat-hist-canvas {
   width: 100%;

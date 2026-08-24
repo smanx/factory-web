@@ -484,6 +484,14 @@ function initPanelEvents() {
       applyInvRecipeFilter(G.invRecipeQ);
     } else if (ev.target.id === 'asm-recipe-search') {
       applyAssemblerRecipeFilter(ev.target.value);
+    } else if (ev.target.matches && ev.target.matches('[data-stat-hist-filter]')) {
+      applyStatsHistFilter(ev.target.value);
+    }
+  });
+  document.getElementById('panel-body').addEventListener('keydown', ev => {
+    if (ev.target.matches && ev.target.matches('[data-stat-hist-filter]') && ev.key === 'Enter') {
+      ev.preventDefault();
+      statsHistPickFiltered();
     }
   });
   document.getElementById('panel-body').addEventListener('click', async ev => {
