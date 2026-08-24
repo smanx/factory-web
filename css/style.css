@@ -919,3 +919,88 @@ html, body {
   .recipe { flex-wrap: wrap; }
   .recgrid { grid-template-columns: 1fr 1fr; }
 }
+
+/* ===== 全新触屏交互：长按操作盘（径向菜单） ===== */
+#action-wheel {
+  position: fixed;
+  z-index: 120;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  width: 0; height: 0;
+}
+#action-wheel .aw-btn {
+  pointer-events: auto;
+  position: absolute;
+  left: 0; top: 0;
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: rgba(22, 28, 36, .96);
+  border: 2px solid;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  cursor: pointer;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, .55);
+}
+#action-wheel .aw-btn .aw-ic {
+  font-size: 20px;
+  line-height: 1;
+  font-weight: bold;
+}
+#action-wheel .aw-btn .aw-lb {
+  font-size: 11px;
+  color: #e8eef5;
+  font-weight: 600;
+}
+#action-wheel .aw-center {
+  position: absolute;
+  left: 0; top: 0;
+  width: 52px; height: 52px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: rgba(30, 38, 48, .95);
+  border: 2px solid #7f93ad;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 10px rgba(0, 0, 0, .4);
+}
+#action-wheel .aw-center img,
+#action-wheel .aw-center canvas {
+  width: 34px; height: 34px;
+  border-radius: 6px;
+}
+
+/* 触屏提示条（新手上手指引） */
+#touch-tip {
+  position: absolute;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 80;
+  background: rgba(10, 14, 18, .82);
+  color: #e8eef5;
+  border: 1px solid #3a4550;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+  pointer-events: none;
+  max-width: 88vw;
+  text-align: center;
+  line-height: 1.6;
+  box-shadow: 0 2px 12px rgba(0,0,0,.4);
+  animation: tipfade 6s forwards;
+}
+@keyframes tipfade {
+  0%, 70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* 触屏模式：操作盘按钮热区加大 */
+@media (max-width: 720px) {
+  #action-wheel .aw-btn { width: 70px; height: 70px; }
+  #action-wheel .aw-btn .aw-ic { font-size: 22px; }
+  #action-wheel .aw-btn .aw-lb { font-size: 12px; }
+}
