@@ -112,6 +112,9 @@ function newGame() {
   G.powerT = 0;
   G.enemies = []; G.bullets = []; G.spawnT = 0;
   G.enemyProjectiles = [];
+  G.logiRobots = [];
+  G.logiNet = null;
+  G.logiNetT = 0;
   G.playerHP = 100; G.playerHPmax = 100;
   G.weapon = null;
   G.gameWon = false;
@@ -243,6 +246,9 @@ function applySave(d) {
   if (typeof d.player.hp === 'number') G.playerHP = G.playerHPmax = Math.max(1, d.player.hp);
   G.weapon = d.player.weapon || null;
   G.gameWon = !!d.gameWon;
+  G.logiRobots = [];
+  G.logiNet = null;
+  G.logiNetT = 0;
   const [sx, sy] = findSpawn();
   G.spawn = { x: sx, y: sy };
   G.techDone = d.techDone || {};
@@ -1206,6 +1212,7 @@ function loop(ts) {
       }
       G.powerT += dt;
       if (G.powerT >= 0.25) { G.powerT = 0; updatePower(); }
+      updateLogistics(dt);
       updateCamera(dt);
     }
 

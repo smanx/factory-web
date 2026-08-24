@@ -56,7 +56,7 @@ const SCIENCE_PACKS = ['science-pack', 'green-science', 'blue-science', 'militar
 function isScience(item) { return SCIENCE_PACKS.indexOf(item) >= 0; }
 const FILTER_CHOICES = ['iron-plate', 'copper-plate', 'steel-plate', 'iron-gear', 'copper-cable', 'green-circuit',
   'coal', 'stone', 'plastic-bar', 'science-pack', 'green-science', 'blue-science', 'military-science',
-  'magazine', 'piercing-rounds'].concat(FLUIDS);
+  'magazine', 'piercing-rounds', 'logistic-robot'].concat(FLUIDS);
 function techPacks(tid) { return (TECHS && TECHS[tid] && TECHS[tid].cost) || {}; }
 function techCostTotal(tid) {
   let s = 0;
@@ -166,7 +166,14 @@ const ITEMS = {
   'rocket-silo':     { name: '火箭发射井', color: '#7a6a5a', desc: '组装并发射火箭的终局建筑（5×5），放入卫星并填充火箭部件后发射' },
   'radar':           { name: '雷达', color: '#5a8a8a', desc: '周期性扫描周围区域，点亮小地图/标记新探索区（3×3，吃电力）' },
   'explosive':       { name: '爆炸物', color: '#d05a2a', desc: '由煤和石油气制造的高能化合物，用于火箭弹' },
-  'battery':         { name: '电池', color: '#d0c04a', desc: '储能元件，用于激光炮塔与卫星' }
+  'battery':         { name: '电池', color: '#d0c04a', desc: '储能元件，用于激光炮塔与卫星' },
+  // ===== 物流机器人网络 =====
+  'roboport':          { name: '机器人港', color: '#3a8a8a', desc: '物流机器人的基地与充电站（4×4，吃电力）。把物流机器人放入机器人港后自动调度，机器人往返供应箱与需求箱搬运货物，电量低时回到机器人港充电' },
+  'logistic-robot':    { name: '物流机器人', color: '#4aa0d0', desc: '飞行机器人，放入机器人港后自动在供应箱/需求箱之间搬运物资，消耗电量，需回港充电' },
+  'logistic-chest-passive': { name: '被动供应箱', color: '#c9a84a', desc: '物流箱：可手动/机械臂存入货物，物流机器人会从箱中取货送往需求箱；也能接收机器人返还的货物' },
+  'logistic-chest-active':  { name: '主动供应箱', color: '#d0743a', desc: '物流箱：机器人优先从此取货供应网络；多出的货物机器人会收纳到这里，适合作为原料集散点' },
+  'logistic-chest-storage': { name: '仓储箱', color: '#8a9a6a', desc: '物流箱：机器人把返还/多余货物收纳到这里，也可作为备用取货源。所有仓储箱共享存放' },
+  'logistic-chest-requester': { name: '需求箱', color: '#5a8ad0', desc: '物流箱：在面板设置每种物品的需求量，物流机器人会自动从供应箱/仓储箱送货过来补足到目标数量' }
 };
 
 const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone', 'calcite'];
@@ -258,7 +265,14 @@ const RECIPES = {
   // 爆炸物（火箭弹/手雷专用）
   'explosive':         { time: 2,   inp: { 'coal': 2, 'petroleum-gas': 1 },                        out: { 'explosive': 1 } },
   // 电池（激光炮塔/卫星）
-  'battery':           { time: 4,   inp: { 'iron-plate': 2, 'copper-plate': 2, 'coal': 1 },         out: { 'battery': 1 } }
+  'battery':           { time: 4,   inp: { 'iron-plate': 2, 'copper-plate': 2, 'coal': 1 },         out: { 'battery': 1 } },
+  // ===== 物流机器人网络 =====
+  'roboport':          { time: 10,  inp: { 'steel-plate': 20, 'advanced-circuit': 5, 'green-circuit': 10, 'battery': 4 }, out: { 'roboport': 1 } },
+  'logistic-robot':    { time: 3,   inp: { 'green-circuit': 4, 'iron-gear': 2, 'battery': 2 },          out: { 'logistic-robot': 1 } },
+  'logistic-chest-passive': { time: 1, inp: { 'iron-plate': 4, 'green-circuit': 1 },                    out: { 'logistic-chest-passive': 1 } },
+  'logistic-chest-active':  { time: 1.5, inp: { 'iron-plate': 6, 'green-circuit': 2 },                  out: { 'logistic-chest-active': 1 } },
+  'logistic-chest-storage': { time: 1.5, inp: { 'iron-plate': 4, 'green-circuit': 2 },                  out: { 'logistic-chest-storage': 1 } },
+  'logistic-chest-requester': { time: 1.5, inp: { 'iron-plate': 6, 'green-circuit': 3 },                out: { 'logistic-chest-requester': 1 } }
 };
 
 const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas'];
@@ -342,7 +356,12 @@ const BUILD_DEFS = {
   'pumpjack':           { w: 3, h: 3, solid: true },
   'refinery':           { w: 5, h: 5, solid: true },
   'chemical-plant':     { w: 3, h: 3, solid: true },
-  'storage-tank':       { w: 3, h: 3, solid: true }
+  'storage-tank':       { w: 3, h: 3, solid: true },
+  'roboport':           { w: 4, h: 4, solid: true },
+  'logistic-chest-passive': { w: 1, h: 1, solid: true },
+  'logistic-chest-active':  { w: 1, h: 1, solid: true },
+  'logistic-chest-storage': { w: 1, h: 1, solid: true },
+  'logistic-chest-requester': { w: 1, h: 1, solid: true }
 };
 
 // ===== 科技解锁要求（建造/武器/模块）=====
@@ -363,6 +382,10 @@ const TECH_REQ = {
   'electric-engine': 'electronics',
   'radar': 'radar'
 };
+// ===== 物流机器人网络 =====
+const LOGISTIC_ITEMS = ['roboport', 'logistic-robot', 'logistic-chest-passive', 'logistic-chest-active', 'logistic-chest-storage', 'logistic-chest-requester'];
+// 物流箱科技门控：所有物流设备需先研究「物流网络」
+for (const id of LOGISTIC_ITEMS) if (!TECH_REQ[id]) TECH_REQ[id] = 'logistics-network';
 // 玩家武器所需科技（用于选择武器时拦截）
 const WEAPON_TECH_REQ = {
   'pistol': 'weapons',
@@ -417,6 +440,7 @@ const TECHS = {
   'rocket-science': { name: '火箭技术', cost: { 'blue-science': 100, 'military-science': 50 }, desc: '解锁火箭发射井、火箭部件与卫星，发射火箭赢得游戏' },
   modules:    { name: '模块工程', cost: { 'blue-science': 40 }, desc: '解锁速度模块与产能模块（增强组装机/电炉）' },
   radar:      { name: '雷达技术', cost: { 'green-science': 30 }, desc: '解锁雷达，自动扫描并标记新探索区域' },
+  'logistics-network': { name: '物流网络', cost: { 'blue-science': 50 }, desc: '解锁机器人港、四类物流箱与物流机器人，构建自动化物流网络' },
   deep:       { name: '重工蓝图', cost: { 'blue-science': 50 }, desc: '蓝包终技：科研总进度获取 +20%' },
   infinite:   { name: '无限科技', cost: {}, infinite: true, desc: '无限研究：消耗任意科学包，永不完成' }
 };

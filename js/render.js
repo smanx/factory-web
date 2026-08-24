@@ -98,6 +98,7 @@ function render() {
   drawPlayer(ctx);
   drawEnemies(ctx);
   drawBullets(ctx);
+  drawLogisticsRobots(ctx);
   ctx.restore();
 }
 
