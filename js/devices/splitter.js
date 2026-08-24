@@ -7,6 +7,7 @@ class Splitter extends Belt {
     this.items = [];
     this.inPref = 0;
     this.outToggle = false;
+    this.filter = null; // 可编程分离器过滤：仅放行该物品，其余物品被挡在入口（对齐《异星工厂》Programmable splitter）
     this.outPref = type === 'priority-splitter' ? 1 : -1; // -1=均衡轮发，0/1=优先某侧
     this.applyDir();
   }
@@ -63,6 +64,8 @@ class Splitter extends Belt {
     return false;
   }
   acceptItem(item, fromDir, sx, sy) {
+    // 可编程分离器过滤：设置了过滤物且物品不匹配时，拒绝放行（物品停留在上游传送带）
+    if (this.filter && item !== this.filter) return false;
     let pref = this.inPref;
     const rel = ((fromDir - this.dir) % 4 + 4) % 4;
     if (sx !== undefined && sx !== null && rel === 0) {
@@ -101,6 +104,7 @@ class Splitter extends Belt {
     return {
       type: this.type, x: this.x, y: this.y, dir: this.dir,
       outPref: this.outPref,
+      filter: this.filter,
       items: this.items.map(o => [o.item, +o.pos.toFixed(3), o.lane, o.outLane === undefined ? -1 : o.outLane])
     };
   }
@@ -108,6 +112,7 @@ class Splitter extends Belt {
   blueprint() {
     const s = super.blueprint();
     s.outPref = this.outPref;
+    s.filter = this.filter;
     return s;
   }
   static restore(s) {
@@ -115,6 +120,7 @@ class Splitter extends Belt {
     e.dir = s.dir | 0;
     e.applyDir();
     e.outPref = typeof s.outPref === 'number' ? s.outPref : (e.constructor === PrioritySplitter ? 1 : -1);
+    e.filter = s.filter || null;
     e.items = (s.items || []).map(a => ({ item: a[0], pos: a[1], lane: a[2] || 0, outLane: a[3] >= 0 ? a[3] : undefined }));
     return e;
   }
@@ -318,6 +324,21 @@ function drawSplitter(ctx, e, gx, gy, dir, alpha) {
     ctx.stroke();
     ctx.restore();
   }
+  // 可编程分离器：叠加过滤物品小图标（对齐《异星工厂》Programmable splitter 视觉提示）
+  if (e.filter && ITEMS[e.filter]) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.globalAlpha *= 0.9;
+    ctx.fillStyle = 'rgba(0,0,0,.5)';
+    ctx.beginPath();
+    ctx.arc(0, 0, TILE * 0.24, 0, 7);
+    ctx.fill();
+    ctx.strokeStyle = '#ffd23c';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+    drawItemDot(ctx, cx, cy, e.filter);
+  }
   const p = e.laneVec();
   const links = splitterLinks(e, gx, gy);
   for (const o of e.items) {
@@ -354,6 +375,17 @@ function splitterPanelHtml(e) {
   }
   h += '</span></div>';
   if (e.outPref >= 0) h += '<div class="dim">带黄色箭头的一侧为优先输出道；堵住时自动溢出到另一侧。</div>';
+  // 可编程分离器：物品过滤（对齐《异星工厂》Programmable splitter）
+  h += '<div class="sec">过滤（可编程分离器）</div>';
+  h += '<div class="mrow"><span class="mlabel">仅放行</span><span class="mval">' +
+    (e.filter ? chip(e.filter) : '<span class="dim">全部放行</span>') + '</span></div>';
+  h += '<div class="recgrid">';
+  for (const id of (typeof filterChoices === 'function' ? filterChoices() : FILTER_CHOICES)) {
+    h += '<button class="rcbtn ' + (e.filter === id ? 'sel' : '') + '" data-action="sflt" data-id="' + id + '" data-itemid="' + id + '">' +
+      '<img src="' + iconDataURL(id) + '">' + ITEMS[id].name + '</button>';
+  }
+  h += '</div>';
+  if (e.filter) h += '<button data-action="sflt-clear">清除过滤（放行所有物品）</button>';
   h += '<div class="status"></div>';
   return h;
 }
@@ -368,15 +400,31 @@ function splitterOnAction(act, btn) {
     if (G.panelEnt instanceof Splitter) G.panelEnt.outPref = parseInt(btn.dataset.v, 10);
     return true;
   }
+  if (act === 'sflt') {
+    if (G.panelEnt instanceof Splitter) G.panelEnt.filter = btn.dataset.id || null;
+    return true;
+  }
+  if (act === 'sflt-clear') {
+    if (G.panelEnt instanceof Splitter) G.panelEnt.filter = null;
+    return true;
+  }
   return false;
 }
 function splitterPanelLive(e, api) {
+  if (e.filter) {
+    api.status('过滤中：仅放行「' + ITEMS[e.filter].name + '」', 'ok');
+    return;
+  }
   if (!e.items.length) { api.status('空闲（无物品）', 'ok'); return; }
   // 出口拥堵：任一物品到达输出端却无法送出（停住）
   const stuck = e.items.some(o => o.pos >= 0.999);
   api.status(stuck ? '已暂停：输出端拥堵，等待疏通' : '分选中：' + e.items.length + ' 件在途', stuck ? 'warn' : 'ok');
 }
-const splitterPanel = { html: splitterPanelHtml, onAction: splitterOnAction, live: splitterPanelLive };
+const splitterPanel = { html: splitterPanelHtml, onAction: splitterOnAction, live: splitterPanelLive, tip: splitterTip };
+function splitterTip(e) {
+  if (e.filter) return '分流器：仅放行「' + ITEMS[e.filter].name + '」' + (e.outPref >= 0 ? '，优先一侧' : '');
+  return '分流器：分向前方两侧（R 旋转；点开面板可设过滤/优先级）';
+}
 ENT_CLASSES['splitter'] = Splitter;
 ENT_CLASSES['priority-splitter'] = PrioritySplitter;
 DEVICE_RENDER['splitter'] = drawSplitter;

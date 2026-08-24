@@ -821,6 +821,10 @@ function greenAreaAction(action) {
         ne.dir = dir;
         ne.applyDir();
         if (ne.items) ne.items = items;
+        // 分流器升级/降级时保留可编程分离器的过滤配置（对齐《异星工厂》Programmable splitter）
+        if (st && st.filter && typeof Splitter !== 'undefined' && ne instanceof Splitter) {
+          ne.filter = st.filter;
+        }
       }
       addEnt(ne);
       if (!infinite) {
