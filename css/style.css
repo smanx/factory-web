@@ -8,7 +8,7 @@ html, body {
   user-select: none;
 }
 
-#game { display: block; position: absolute; inset: 0; cursor: crosshair; }
+#game { display: block; position: absolute; inset: 0; cursor: crosshair; touch-action: none; }
 
 #hud-info {
   position: absolute;
@@ -531,4 +531,97 @@ html, body {
   display: block;
   height: 100%;
   background: linear-gradient(90deg, #57b95c, #8fe08f);
+}
+
+/* ===== 虚拟摇杆（手机/触屏，可在设置中开关） ===== */
+.joystick {
+  position: absolute;
+  z-index: 60;
+  left: 24px;
+  bottom: 96px;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background: rgba(20, 26, 34, .45);
+  border: 2px solid rgba(120, 140, 160, .5);
+  touch-action: none;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .4);
+}
+.joystick.active { display: flex; }
+.joystick.hidden { display: none; }
+#joystick-knob {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(90, 120, 150, .75);
+  border: 2px solid rgba(160, 190, 220, .8);
+  box-shadow: 0 0 8px rgba(0, 0, 0, .35);
+  pointer-events: none;
+  transition: transform .05s linear;
+}
+
+/* ===== 手机 / 窄屏适配：放大字体与触控热区，避免文字过小 ===== */
+@media (max-width: 720px) {
+  body { -webkit-text-size-adjust: 100%; }
+
+  /* 顶部按钮菜单：改为竖向折叠面板，方便触控，字体放大 */
+  #topright {
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-end;
+  }
+  #topright-menu {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    background: rgba(16, 21, 28, .92);
+    border: 1px solid #3a4550;
+    border-radius: 8px;
+    padding: 8px;
+  }
+  #topright button, #panel button, #btn-menu-toggle {
+    font-size: 16px;
+    padding: 10px 14px;
+  }
+
+  /* 信息栏、面板字体放大 */
+  #hud-info { font-size: 15px; }
+  #panel {
+    width: 92vw;
+    right: 4vw;
+    left: 4vw;
+    max-height: calc(100vh - 120px);
+    top: 64px;
+  }
+  #panel-body, #panel-body input, #panel-body select, #panel-body button {
+    font-size: 15px;
+  }
+  #panel-title { font-size: 16px; }
+  .hint, .dim, .ing, .chip { font-size: 14px; }
+
+  /* 快捷栏：放大热区，触屏更易点选 */
+  #hotbar { gap: 5px; padding: 5px; }
+  .slot { width: 52px; height: 52px; }
+  .slot .key { font-size: 12px; }
+  .slot .cnt { font-size: 13px; }
+
+  /* 绿图操作栏放大 */
+  #greenbar { font-size: 15px; padding: 10px 16px; }
+  #greenbar button { font-size: 15px; padding: 8px 14px; }
+
+  /* toast 提示放大 */
+  .toast { font-size: 15px; padding: 9px 16px; }
+
+  /* 虚拟摇杆定位到左下角，避开快捷栏 */
+  .joystick.active { display: flex; }
+}
+
+/* 超窄屏（如竖屏手机）进一步压缩顶部按钮，避免溢出 */
+@media (max-width: 480px) {
+  #panel-body button { width: 100%; }
+  .recipe { flex-wrap: wrap; }
+  .recgrid { grid-template-columns: 1fr 1fr; }
 }
