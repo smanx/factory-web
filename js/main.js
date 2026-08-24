@@ -63,7 +63,8 @@ let lastPlaceKey = '';
 let lastPanelCheck = 0;
 let fpsSmooth = 60;
 
-const SAVE_KEY = 'factory-proto-save-v1';
+// 存档由 js/saves.js 的多存档系统管理（自动存档 + 用户存档），不再使用单一键。
+// 保留旧键常量供首次升级时迁移（见 migrateLegacySave）。
 
 function saveSettings() {
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(G.settings)); } catch (e) {}
@@ -138,31 +139,37 @@ function serializeAll() {
   };
 }
 
-function saveGame() {
-  try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(serializeAll()));
-    toast('已保存');
-  } catch (err) {
-    toast('保存失败：' + err.message);
+// 保存为一条用户存档（type='user'）。id 为空时新建，否则覆盖指定存档。
+// name 为用户自定义名称。返回保存结果对象或 null。
+function saveGame(id, name) {
+  const data = serializeAll();
+  let res;
+  if (id && hasSave(id)) {
+    res = overwriteSave(id, data);
+    if (res) toast('已覆盖存档：' + (res.name || '存档'));
+    else toast('保存失败');
+  } else {
+    res = writeSave(data, 'user', id || null, name || '');
+    if (res) toast('已保存');
+    else toast('保存失败');
   }
+  return res;
 }
 
-function loadGame() {
-  let data;
+// 读取指定 id 的存档（不存在则返回 false）
+function loadGame(id) {
+  if (!id) { toast('没有存档'); return false; }
+  const data = readSave(id);
+  if (!data) { toast('没有存档'); return false; }
   try {
-    data = localStorage.getItem(SAVE_KEY);
-  } catch (err) {
-    toast('读取失败：' + err.message);
-    return;
-  }
-  if (!data) { toast('没有存档'); return; }
-  try {
-    applySave(JSON.parse(data));
+    applySave(data);
     closePanel();
     toast('已读档');
   } catch (err) {
     toast('存档损坏：' + err.message);
+    return false;
   }
+  return true;
 }
 
 function applySave(d) {
@@ -922,12 +929,11 @@ function startNewGame() {
 }
 
 function startFromSave() {
-  let data;
-  try { data = localStorage.getItem(SAVE_KEY); }
-  catch (e) { toast('读取失败：' + e.message); return false; }
+  // 读取时间最新的存档（自动或用户均可）
+  const data = readNewestSave();
   if (!data) { toast('没有存档，请先开始新游戏'); return false; }
   try {
-    applySave(JSON.parse(data));
+    applySave(data);
   } catch (err) {
     toast('存档损坏：' + err.message);
     return false;
@@ -1256,7 +1262,7 @@ function loop(ts) {
   fpsSmooth += (1 / Math.max(raw, 0.0001) - fpsSmooth) * 0.05;
   if (G.settings.autoSave) {
     G.autoT += raw;
-    if (G.autoT >= 60) { G.autoT = 0; saveGame(); toast('自动保存完成'); }
+    if (G.autoT >= 60) { G.autoT = 0; autoSaveGame(); toast('自动保存完成'); }
   }
 
   try {
@@ -1302,6 +1308,7 @@ function boot() {
   const steps = [
     ['canvas', () => { G.canvas = document.getElementById('game'); G.ctx = G.canvas.getContext('2d'); resize(); }],
     ['settings', () => loadSettings()],
+    ['saves', () => migrateLegacySave()],
     ['topbtn', () => initTopButtons()],
     ['panel', () => initPanelEvents()],
     ['joystick', () => initJoystick()],
