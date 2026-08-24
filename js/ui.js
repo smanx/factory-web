@@ -834,6 +834,7 @@ function initTopButtons() {
 let _hudEl = null, _hudText = '';
 function updateHUD(dt, fps) {
   if (!_hudEl) _hudEl = document.getElementById('hud-info');
+  if (!_hudEl) return;   // 元素不存在时静默跳过，避免每帧抛错
   const p = G.player;
   const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
   // 内容未变时跳过 textContent 写入，避免每帧无谓的 DOM 更新
@@ -845,29 +846,26 @@ function mapTipAt(tx, ty) {
   // 显示详情时：鼠标移到某流体出入口图标上，优先显示该流体的具体名称。
   // 流体图标格必落在设备自身脚印内（见 core/draw.js fluidIconCell），
   // 因此 entAt 一次即可命中所属设备，无需全量扫描 G.ents（P2 优化）。
-  if (G.showDetails) {
-    const ent = entAt(tx, ty);
-    if (ent && !ent._dead) {
-      const fn = DEVICE_FLUID_ICONS[ent.type];
-      if (fn) {
-        for (const ic of fn(ent)) {
-          if (ic.x === tx && ic.y === ty && ITEMS[ic.fluid]) {
-            return ITEMS[ic.fluid].name + '|' + ITEMS[ic.fluid].desc;
-          }
+  const ent = entAt(tx, ty);
+  if (G.showDetails && ent && !ent._dead) {
+    const fn = DEVICE_FLUID_ICONS[ent.type];
+    if (fn) {
+      for (const ic of fn(ent)) {
+        if (ic.x === tx && ic.y === ty && ITEMS[ic.fluid]) {
+          return ITEMS[ic.fluid].name + '|' + ITEMS[ic.fluid].desc;
         }
       }
     }
   }
-  const e = entAt(tx, ty);
-  if (e) {
+  if (ent) {
     // 设备状态文案由各设备文件提供（DEVICE_PANEL[type].tip）
     let extra = '';
-    const panel = DEVICE_PANEL[e.type];
+    const panel = DEVICE_PANEL[ent.type];
     if (panel && panel.tip) {
-      const t = panel.tip(e);
+      const t = panel.tip(ent);
       if (t) extra = t;
     }
-    return ITEMS[e.type].name + '|' + extra;
+    return ITEMS[ent.type].name + '|' + extra;
   }
   if (getTerrain(tx, ty) === T_WATER) return '水域|无法通行；可把抽水机放在这里取水';
   const ti = getOreType(tx, ty);

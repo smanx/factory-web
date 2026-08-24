@@ -209,9 +209,13 @@ function clearTerrainCache() {
   terrainCacheStats.cached = 0;
 }
 
-// 矿点已烘焙进 chunk 缓存：某格矿量变化时只需重绘该格及其 3×3 邻域
-// （油点椭圆可能溢出到相邻格边缘）。由 world.consumeOre 在矿量减少时调用，
-// 未缓存的 chunk 无需处理（下次生成时自然带最新矿量）。
+// 矿点已烘焙进 chunk 缓存：某格矿量变化时只需重绘该格及其 3×3 邻域地形，
+// 并把矿点重画到 5×5 范围（油点椭圆带描边最多可溢出自身格边 ~1.65px，
+// 距变化格切比雪夫距离为 2 的油格也可能在该次擦除区域内留下笔触，
+// 因此矿点重绘半径取 2 才能与整块重新烘焙的结果完全一致）。
+// 由 world.consumeOre 在矿量减少时调用；未缓存的 chunk 无需处理
+// （下次生成时自然带最新矿量）。每张分块画布只包含本 chunk 格子的绘制
+// （越界部分被画布裁掉），故无需通知相邻 chunk 的缓存。
 function invalidateOreTile(tx, ty) {
   const cx = Math.floor(tx / CHUNK), cy = Math.floor(ty / CHUNK);
   const entry = terrainChunkCache.get(cx + ',' + cy);
@@ -226,8 +230,8 @@ function invalidateOreTile(tx, ty) {
       drawTerrainTile(cctx, nx, ny, px, py);
     }
   }
-  for (let dy = -1; dy <= 1; dy++) {
-    for (let dx = -1; dx <= 1; dx++) {
+  for (let dy = -2; dy <= 2; dy++) {
+    for (let dx = -2; dx <= 2; dx++) {
       const nx = tx + dx, ny = ty + dy;
       if (Math.floor(nx / CHUNK) !== cx || Math.floor(ny / CHUNK) !== cy) continue;
       const ti = getOreType(nx, ny);
