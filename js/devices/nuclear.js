@@ -149,7 +149,10 @@ function centrifugePanelHtml(e) {
     const r = CENTRIFUGE_RECIPES[rid];
     h += '<button data-action="rec" data-id="' + rid + '" class="' + (cur === rid ? 'on' : '') + '">' + r.name + '</button>';
   }
-  h += '<button data-action="rec" data-id="kovarex" class="' + (cur === 'kovarex' ? 'on' : '') + '">铀富集(Kovarex)</button>';
+  // 铀富集(Kovarex)：需「铀富集」科技解锁（对齐《异星工厂》Kovarex enrichment process）
+  const kovUnlocked = recipeUnlocked('kovarex');
+  const kovLock = recipeLockingTech('kovarex');
+  h += '<button data-action="rec" data-id="kovarex" class="' + (cur === 'kovarex' ? 'on' : '') + (kovUnlocked ? '' : ' locked-recipe') + '" ' + (kovUnlocked ? '' : 'disabled') + ' title="' + (kovUnlocked ? '铀富集：持续增产铀-235' : ('🔒 需先研究「' + (kovLock ? TECHS[kovLock].name : '研究') + '」')) + '">铀富集(Kovarex)' + (kovUnlocked ? '' : ' 🔒') + '</button>';
   h += row('原料', '<span class="dim"></span>', 'inp');
   h += row('产出', '<span class="dim"></span>', 'out');
   h += row('电力', powerStatusLiveHtml(e), 'power');

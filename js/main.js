@@ -324,6 +324,10 @@ function applySave(d) {
   const [sx, sy] = findSpawn();
   G.spawn = { x: sx, y: sy };
   G.techDone = d.techDone || {};
+  // 科技树新增科技迁移（对齐《异星工厂》进阶科技，保持旧档可用）
+  // 新版本把原可直接用/仅按核能门控的配方拆成独立进阶科技；
+  // 旧档已研究上游科技时自动补完新科技，避免已有产线因配方锁定而失效。
+  migrateNewTechs(G.techDone);
   G.techProg = d.techProg || {};
   G.activeTech = d.activeTech || null;
   // 恢复研究队列（过滤已完成/无效项）
@@ -1529,6 +1533,9 @@ function loop(ts) {
       // 敌人/子弹系统（可在设置中开关战斗）
       if (G.settings.combat) {
         spawnEnemies(dt);
+        // 性能优化：本帧存活敌人列表只计算一次，供子弹命中/战斗机器人/区域力场等复用，
+        // 避免每帧多处在 combat2.js 里各自 filter 生成全新数组（降低 GC 压力）。
+        G._aliveEnemies = (G.enemies || []).filter(e => !e.dead);
         if (typeof updateWaves === 'function') updateWaves(dt);
         if (typeof updatePollution === 'function') updatePollution(dt);   // 污染系统（对齐《异星工厂》)
         updateEnemies(dt);

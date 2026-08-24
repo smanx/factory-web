@@ -693,8 +693,8 @@ function updatePlayerFire(dt) {
 // 玩家子弹命中敌人（沿子弹飞行路径检测）
 function updatePlayerBulletHits(dt) {
   if (!G.bullets) return;
-  // 性能优化：预先收集存活敌人列表（避免每颗子弹都遍历 dead 敌人）
-  const alive = (G.enemies || []).filter(e => !e.dead);
+  // 性能优化：复用主循环每帧缓存的存活敌人列表（避免重复 filter 分配数组）
+  const alive = G._aliveEnemies || (G.enemies || []).filter(e => !e.dead);
   if (alive.length === 0) return;
   for (const b of G.bullets) {
     if (b.hit || (b.kind !== 'bullet' && b.kind !== 'flame' && b.kind !== 'rocket')) continue;
@@ -852,7 +852,8 @@ function throwCapsule(id, tx, ty) {
 function updateCombatRobots(dt) {
   if (!G.combatRobots || G.combatRobots.length === 0) return;
   const p = G.player;
-  const enemies = (G.enemies || []).filter(e => !e.dead);
+  // 性能优化：复用主循环每帧缓存的存活敌人列表
+  const enemies = G._aliveEnemies || (G.enemies || []).filter(e => !e.dead);
   for (const r of G.combatRobots) {
     if (r.dead) continue;
     r.lifetime -= dt;
@@ -912,7 +913,8 @@ function updateCombatRobots(dt) {
 // 毒胶囊落地形成剧毒云雾，对范围内敌人持续伤害；减速胶囊形成减速力场，降低敌人移动速度。
 function updateAoeZones(dt) {
   if (!G.aoeZones || G.aoeZones.length === 0) return;
-  const alive = (G.enemies || []).filter(e => !e.dead);
+  // 性能优化：复用主循环每帧缓存的存活敌人列表
+  const alive = G._aliveEnemies || (G.enemies || []).filter(e => !e.dead);
   for (const z of G.aoeZones) {
     z.lifetime -= dt;
     if (z.lifetime <= 0) continue;

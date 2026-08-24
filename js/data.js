@@ -835,7 +835,7 @@ const TECH_REQ = {
   'distractor-capsule': 'weapons',
   // 终局战斗弹药与胶囊（对齐《异星工厂》）：铀弹需核能科技（铀-238 依赖），毒/减速胶囊与火焰弹药需高级战斗
   'uranium-rounds': 'nuclear',
-  'atomic-bomb': 'nuclear',   // 原子弹需核能科技（依赖铀-235）
+  'atomic-bomb': 'atomic-bomb',   // 原子弹需独立「原子弹科技」（对齐原版，需核能+火箭基础上进阶研究）
   'uranium-cannon-shell': 'nuclear',
   'poison-capsule': 'advanced-combat',
   'slowdown-capsule': 'advanced-combat',
@@ -910,7 +910,7 @@ for (const id of CIRCUIT_ITEMS) if (!TECH_REQ[id]) TECH_REQ[id] = 'circuit-netwo
 TECH_REQ['lamp'] = 'electric';
 // 玩家武器所需科技（用于选择武器时拦截）
 const WEAPON_TECH_REQ = {
-  'atomic-bomb': 'nuclear',   // 原子弹需核能科技（铀-235 依赖）
+  'atomic-bomb': 'atomic-bomb',   // 原子弹需独立「原子弹科技」
   'pistol': 'weapons',
   'submachine-gun': 'weapons',
   'shotgun': 'weapons',
@@ -983,21 +983,37 @@ function itemUnlocked(id) {
 }
 // 配方是否已解锁：产出物（主输出）未被科技门控，或对应科技已研究。
 // 用于手搓面板与各生产设备（组装机/化工厂/炼油厂/离心机）配方选择列表的解锁判断。
+// ===== 配方级科技门控（对齐《异星工厂》科技树颗粒度）=====
+// 部分配方的产出物为流体（炼油/裂解/富集），无法仅凭"产出物科技"区分解锁节奏，
+// 需单独指定所需科技。此项优先于产出物判断，让原版独立科技形成各自进阶解锁节奏。
+const RECIPE_TECH = {
+  'advanced-oil': 'advanced-oil-processing',
+  'crack-light':  'advanced-oil-processing',
+  'crack-gas':    'advanced-oil-processing',
+  'coal-liquefaction': 'coal-liquefaction',
+  'kovarex': 'kovarex-enrichment'
+};
+// 查询配方所需科技：优先配方级门控，其次按产出物判断；无则返回 null。
+function recipeTechReq(rid) {
+  if (RECIPE_TECH[rid]) return RECIPE_TECH[rid];
+  const rec = RECIPES[rid] || REFINERY_RECIPES[rid] || CENTRIFUGE_RECIPES[rid];
+  if (!rec) return null;
+  const outKeys = Object.keys(rec.out || {});
+  if (!outKeys.length) return null;
+  return itemTechReq(outKeys[0]);
+}
+// 配方是否已解锁：无配方级/产出物科技需求 = 解锁；否则需对应科技已研究。
 function recipeUnlocked(rid) {
   const rec = RECIPES[rid] || REFINERY_RECIPES[rid] || CENTRIFUGE_RECIPES[rid];
   if (!rec) return false;
-  const outKeys = Object.keys(rec.out || {});
-  // 无产出物的配方视为未解锁（不会出现）；取第一个产出判断
-  if (!outKeys.length) return false;
-  return itemUnlocked(outKeys[0]);
+  const tr = recipeTechReq(rid);
+  return !tr || !!(G.techDone[tr]);
 }
 // 返回配方因缺少哪个科技而锁定（未锁定返回 null）
 function recipeLockingTech(rid) {
   const rec = RECIPES[rid] || REFINERY_RECIPES[rid] || CENTRIFUGE_RECIPES[rid];
   if (!rec) return null;
-  const outKeys = Object.keys(rec.out || {});
-  if (!outKeys.length) return null;
-  const tr = itemTechReq(outKeys[0]);
+  const tr = recipeTechReq(rid);
   return tr && !G.techDone[tr] ? tr : null;
 }
 
@@ -1042,6 +1058,8 @@ const TECHS = {
   'rail-signals': { name: '铁路信号', cost: { 'blue-science': 30 }, desc: '解锁铁路信号灯，允许多列火车安全同网行驶', req: ['railways'] },
   plastic:    { name: '塑料合成', cost: { 'green-science': 20 }, desc: '化工厂生产塑料耗时缩短 ✓（绿色科研的核心支付项）', req: ['oil'] },
   barrel:     { name: '流体处理', cost: { 'blue-science': 50 }, desc: '解锁空桶与流体桶装配方，可把流体灌入桶中经物流网络/传送带/火车运输，实现流体走物流链', req: ['oil', 'electronics'] },
+  'advanced-oil-processing': { name: '进阶原油加工', cost: { 'blue-science': 50 }, desc: '解锁进阶原油加工与重油/轻油裂化配方，原油产出更高价值的重/轻油与石油气（对齐《异星工厂》Advanced oil processing）', req: ['oil', 'electronics'] },
+  'coal-liquefaction': { name: '煤液化', cost: { 'blue-science': 60, 'production-science-pack': 30 }, desc: '解锁煤液化配方：用煤+重油+蒸汽在炼油厂转化为重油/轻油/石油气，为缺油地区提供石油替代来源（对齐《异星工厂》Coal liquefaction）', req: ['advanced-oil-processing'] },
   radar:      { name: '雷达技术', cost: { 'green-science': 30 }, desc: '解锁雷达，自动扫描并标记新探索区域', req: ['logistics'] },
   // ==== 三级科技（蓝/军瓶） ====
   automation2:{ name: '自动化 II', cost: { 'blue-science': 40 }, desc: '组装机 II 速度额外 ×1.2', req: ['electric'] },
@@ -1057,6 +1075,7 @@ const TECHS = {
   'modules3': { name: '模块工程 III', cost: { 'production-science-pack': 80, 'utility-science-pack': 60 }, desc: '解锁三级速度/产能/效率模块（效果最强）', req: ['modules2', 'utility'] },
   'logistics-network': { name: '物流网络', cost: { 'blue-science': 50 }, desc: '解锁机器人港、四类物流箱与物流机器人，构建自动化物流网络', req: ['logistics2', 'electronics'] },
   nuclear:    { name: '核能技术', cost: { 'blue-science': 60, 'military-science': 40 }, desc: '解锁离心机（铀矿处理）、核反应堆与汽轮机，构建核能发电体系', req: ['electronics', 'advanced-combat'] },
+  'atomic-bomb': { name: '原子弹科技', cost: { 'blue-science': 80, 'military-science': 80 }, desc: '解锁终极核武器原子弹：由铀-235+火箭+爆炸物制成，落地引发超大范围核爆（对齐《异星工厂》Atomic bomb 独立科技）', req: ['nuclear', 'rocket-science'] },
   'circuit-network': { name: '电路网络', cost: { 'blue-science': 40 }, desc: '解锁电线杆与组合器（常量/运算/判断），构建电路网络，实现信号逻辑控制；含超大型变电站与可编程音箱（告警）', req: ['electronics'] },
   deep:       { name: '重工蓝图', cost: { 'blue-science': 50 }, desc: '蓝包终技：科研总进度获取 +20%', req: ['automation2', 'express'] },
   // ==== 四级科技（紫瓶：产能科学） ====
@@ -1066,6 +1085,7 @@ const TECHS = {
   'worker-robot-speed': { name: '机器人速度', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, desc: '物流/施工机器人速度 ×1.5', req: ['production'] },
   utility: { name: '实用科技', cost: { 'utility-science-pack': 60 }, desc: '解锁飞行机器人框架、施工机器人，完善机器人网络', req: ['logistics-network', 'worker-robot-speed'] },
   'research-speed': { name: '科研速度', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, desc: '科研速度 +50%', req: ['utility'] },
+  'kovarex-enrichment': { name: '铀富集', cost: { 'production-science-pack': 60, 'utility-science-pack': 40 }, desc: '解锁 Kovarex 富集循环：用铀-238 在铀-235 催化下持续富集出更多铀-235，可自持循环（对齐《异星工厂》Kovarex enrichment process）', req: ['nuclear', 'production'] },
   'inserter-capacity': { name: '机械臂容量', cost: { 'production-science-pack': 50, 'utility-science-pack': 30 }, infinite: true, desc: '无限科技：每次研究让堆叠机械臂单次抓取数量 +1（对齐《异星工厂》Inserter capacity bonus）', req: ['production', 'utility'] },
   // ==== 终局装备科技（对齐《异星工厂》Modular armor / Power armor 科技链）====
   'armor-modular': { name: '模块化护甲', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, desc: '解锁模块化护甲与基础个人装备（个人太阳能板 / 个人电池 / 夜视仪），装备网格中可安装外骨骼等装备件', req: ['production', 'utility'] },
@@ -1105,6 +1125,25 @@ function techLocked(tid) { return !techPrereqsDone(tid); }
 function techMissingPrereqs(tid) {
   const req = (TECHS[tid] && TECHS[tid].req) || [];
   return req.filter(r => !G.techDone[r]);
+}
+
+// ===== 新增科技迁移（对齐《异星工厂》进阶科技，保持旧档可用）=====
+// 新版本把部分原本直接可用或仅按核能门控的配方拆成独立进阶科技（进阶原油加工、
+// 煤液化、铀富集、原子弹科技）。旧档玩家在拆分前已研究对应上游科技（石油冶金/核能），
+// 加载时自动补完这些新科技，避免已有产线因配方锁定而失效。对新档无影响。
+function migrateNewTechs(techDone) {
+  if (!techDone) return;
+  // 已研究「石油冶金」→ 自动补完「进阶原油加工」「煤液化」（原版进阶原油加工解锁裂化）
+  if (techDone['oil']) {
+    techDone['advanced-oil-processing'] = true;
+    techDone['coal-liquefaction'] = true;
+  }
+  // 已研究「核能技术」→ 自动补完「铀富集」「原子弹科技」（拆分前二者仅受核能门控）
+  if (techDone['nuclear']) {
+    techDone['kovarex-enrichment'] = true;
+    techDone['atomic-bomb'] = true;
+  }
+  return techDone;
 }
 
 const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: true, combat: false, capDPR: true, lowRes: false, virtualJoystick: false, minimap: true, sound: true, soundVol: 0.8 }; // sound:音效开关 soundVol:音量0~1

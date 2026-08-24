@@ -941,7 +941,7 @@ function initPanelEvents() {
         const mch = G.panelEnt;
         if (mch && typeof mch.setRecipe === 'function') {
           // 科技门控：未解锁的配方不能在设备中选择
-          if (id !== 'kovarex' && !recipeUnlocked(id)) {
+          if (!recipeUnlocked(id)) {
             toast('需先研究「' + TECHS[recipeLockingTech(id)].name + '」才能生产' + ITEMS[Object.keys((RECIPES[id] || REFINERY_RECIPES[id] || CENTRIFUGE_RECIPES[id]).out)[0]].name);
           } else {
             mch.setRecipe(id);
@@ -954,7 +954,7 @@ function initPanelEvents() {
         // 离心机等使用 data-action="rec" 选择配方（含科技门控）
         const mch = G.panelEnt;
         if (mch && typeof mch.setRecipe === 'function') {
-          if (id !== 'kovarex' && !recipeUnlocked(id)) {
+          if (!recipeUnlocked(id)) {
             toast('需先研究「' + TECHS[recipeLockingTech(id)].name + '」才能执行' + (CENTRIFUGE_RECIPES[id] ? CENTRIFUGE_RECIPES[id].name : id));
           } else {
             mch.setRecipe(id);

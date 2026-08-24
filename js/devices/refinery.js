@@ -323,9 +323,15 @@ function refineryPanelHtml(e) {
     const r = REFINERY_RECIPES[rid];
     const outId = Object.keys(r.out)[0];
     const selCls = e.recipe === rid ? 'sel' : '';
-    h += '<button class="rcbtn ' + selCls + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-tip="' +
-      r.name + '|' + r.out[outId] + '个/次，耗时' + r.time + '秒">' +
-      '<img src="' + iconDataURL(outId) + '">' + r.name + '</button>';
+    // 科技门控：未解锁的炼油配方显示锁定（对齐《异星工厂》进阶原油加工/煤液化独立科技）
+    const unlocked = recipeUnlocked(rid);
+    const lockTech = recipeLockingTech(rid);
+    const lockCls = unlocked ? '' : ' locked-recipe';
+    const disabled = unlocked ? '' : ' disabled';
+    const lockNote = unlocked ? '' : ('🔒 需' + (lockTech ? TECHS[lockTech].name : '研究'));
+    h += '<button class="rcbtn ' + selCls + lockCls + '" ' + disabled + ' data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-tip="' +
+      r.name + '|' + (unlocked ? (r.out[outId] + '个/次，耗时' + r.time + '秒') : (lockNote + '')) + '">' +
+      '<img src="' + iconDataURL(outId) + '">' + r.name + (unlocked ? '' : ' 🔒') + '</button>';
   }
   h += '</div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
