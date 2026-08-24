@@ -738,6 +738,13 @@ function buildDebug() {
   const grid2 = document.createElement('div');
   grid2.className = 'dgrid';
   const acts = [
+    ['一键重置所有功能', () => {
+      Object.assign(G.dbg, { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1, infinite: false, farReach: false });
+      buildDebug();
+      panel.style.display = 'block';
+      refreshHotbar();
+      toast('所有调试功能已重置为默认值');
+    }],
     ['重置速度', () => {
       Object.assign(G.dbg, { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1 });
       buildDebug();
