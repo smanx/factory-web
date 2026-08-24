@@ -336,7 +336,7 @@ function pasteBlueprint() {
     e.dir = p.s.dir | 0; e.applyDir();
     addEnt(e);
   }
-  toast('蓝图已粘贴 ' + placements.length + ' 个建筑');
+  toast('蓝图已粘贴 ' + placements.length + ' 个建筑（可继续点击空白处粘贴，右键取消）');
   uiDirty = true;
 }
 
@@ -533,7 +533,7 @@ function bindInput() {
       if (ev.button === 0) {
         if (G.blueMode === 'paste') {
           pasteBlueprint();
-          cancelBlueprint();
+          // 粘贴后保持粘贴模式，可继续在别处粘贴（右键或按 Q/Esc 取消）
         } else {
           G.blueStart = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
           G.blueEnd = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
