@@ -344,11 +344,9 @@ function drawGhost(ctx) {
   const def = BUILD_DEFS[type];
   let ew = def.w, eh = def.h;
   if (def.rotSwap && (G.ghostDir % 2 === 1)) { ew = def.h; eh = def.w; }
-  // 超级强制建造（Ctrl+Shift）时按“可强制覆盖”判定绿色，否则普通校验
-  const forced = !!(G.keys['control'] && G.keys['shift']);
-  const chk = forced
-    ? canPlaceAt(type, G.cursorTile.tx, G.cursorTile.ty, G.ghostDir, { skipEnt: true })
-    : canPlaceAt(type, G.cursorTile.tx, G.cursorTile.ty, G.ghostDir);
+  // 覆盖建造默认允许：目标格已有实体也会被拆除后覆盖，故按“跳过实体碰撞”判定绿色；
+  // 压水/超距等非实体冲突仍显示红色（不会覆盖）。
+  const chk = canPlaceAt(type, G.cursorTile.tx, G.cursorTile.ty, G.ghostDir, { skipEnt: true });
   const tmp = getGhostEnt(type);
   tmp.dir = G.ghostDir;
   tmp.w = ew; tmp.h = eh;
@@ -362,7 +360,7 @@ function drawGhost(ctx) {
 
 // 放置校验：默认规则（不能压水/已有实体/超出触及范围）+ 设备自定义规则
 // （DEVICE_PLACE[type] 返回 {ok} 则短路，返回 null 则继续默认校验）
-// opts.skipEnt 为 true 时跳过“已有实体”校验（用于《异星工厂》超级强制建造：
+// opts.skipEnt 为 true 时跳过“已有实体”校验（用于覆盖建造：
 // 原实体将被拆除，新设备直接落地，返回 ok，并附带冲突实体列表 opts.ents）
 function canPlaceAt(type, tx, ty, dir, opts) {
   const def = BUILD_DEFS[type];
