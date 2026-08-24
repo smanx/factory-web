@@ -67,6 +67,8 @@ function loadSettings() {
 function newGame() {
   const seed = (Math.random() * 1e9) | 0;
   G.world = genWorld(seed);
+  // 新种子下地形变化，清空分块离屏缓存
+  if (typeof clearTerrainCache === 'function') clearTerrainCache();
   G.grid = new Map();
   G.ents = [];
   G.inv = new Map();
@@ -725,6 +727,8 @@ function rotateAction() {
       // 有朝向的设备：直接旋转（采矿机转完立即尝试朝新方向输出）
       if (DEVICE_DIR_ROTATE[e.type]) {
         e.dir = (e.dir + 1) % 4;
+        // 传送带方向变化会改变其输入侧判定，失效附近缓存
+        invalidateBeltInputNear(e.x, e.y, e.w, e.h);
         if (typeof e.onRotate === 'function') e.onRotate();
         uiDirty = true;
         return;
