@@ -1,5 +1,8 @@
 'use strict';
 
+// 共享空数组（避免战斗路径中每帧因 `G.enemies || []` 生成新字面量）
+const EMPTY_ARR = [];
+
 const G = {
   canvas: null,
   ctx: null,
@@ -167,6 +170,7 @@ function newGame() {
   invAdd('transport-belt', 32); // 传送带
   invAdd('inserter', 4);        // 机械臂
   invAdd('coal', 8);
+  invAdd('iron-axe', 1);       // 铁斧（对齐《异星工厂》开局默认手持铁斧，砍树/手挖更快）
   // 测试用创造/虚空设备（创造箱/虚空箱/创造管道/虚空管道）不再默认发放：
   // 仅当在 Debug 模式中开启"无限资源"后才通过建造列表出现，正常游玩不可见。
 }
@@ -1538,7 +1542,12 @@ function loop(ts) {
         spawnEnemies(dt);
         // 性能优化：本帧存活敌人列表只计算一次，供子弹命中/战斗机器人/区域力场等复用，
         // 避免每帧多处在 combat2.js 里各自 filter 生成全新数组（降低 GC 压力）。
-        G._aliveEnemies = (G.enemies || []).filter(e => !e.dead);
+        // 复用数组而非每帧 new：先清空再用 for 循环回填，避免每帧分配新数组带来的 GC 压力。
+        if (!G._aliveEnemies) G._aliveEnemies = [];
+        const _ae = G._aliveEnemies;
+        _ae.length = 0;
+        const _src = G.enemies || EMPTY_ARR;
+        for (let i = 0; i < _src.length; i++) if (!_src[i].dead) _ae.push(_src[i]);
         if (typeof updateWaves === 'function') updateWaves(dt);
         if (typeof updatePollution === 'function') updatePollution(dt);   // 污染系统（对齐《异星工厂》)
         updateEnemies(dt);
