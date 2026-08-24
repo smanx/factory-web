@@ -85,7 +85,10 @@ class Refinery extends Entity {
       this.working = true;
       this.prog += dt * oilMult() * powerFactor();
       if (this.prog >= rec.time) {
-        for (const k in rec.out) this.outp[k] = (this.outp[k] || 0) + rec.out[k];
+        for (const k in rec.out) {
+          this.outp[k] = (this.outp[k] || 0) + rec.out[k];
+          if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
+        }
         this.crafting = false;
         this.prog = 0;
       }
@@ -99,6 +102,7 @@ class Refinery extends Entity {
     // 消耗原料，开始加工
     for (const k in rec.inp) {
       this.inp[k] -= rec.inp[k];
+      if (typeof trackProd === 'function') trackProd(k, -rec.inp[k]);
       if (this.inp[k] <= 0) delete this.inp[k];
     }
     this.crafting = true;

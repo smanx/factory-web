@@ -130,8 +130,9 @@ function htmlStats() {
 
 // 物品速率页：下方再分两个 tab——生产速率（物品被产出）与消耗（物品被消耗）。
 // 展示的是物品自身的产生/消耗速率，而非设备的产能。
+function itemName(id) { return (ITEMS[id] && ITEMS[id].name) ? ITEMS[id].name : id; }
 function htmlStatsItems() {
-  const all = prodActiveItems().sort((a, b) => (ITEMS[a].name < ITEMS[b].name ? -1 : 1));
+  const all = prodActiveItems().sort((a, b) => (itemName(a) < itemName(b) ? -1 : 1));
   const tab = G.statsItemTab === 'cons' ? 'cons' : 'prod';
   const isProd = tab === 'prod';
 
@@ -216,7 +217,7 @@ function htmlStatsPower() {
     g.instances.push({ e, v });
   }
   // 按类型名排序
-  const types = Object.keys(groups).sort((a, b) => (ITEMS[a].name < ITEMS[b].name ? -1 : 1));
+  const types = Object.keys(groups).sort((a, b) => (itemName(a) < itemName(b) ? -1 : 1));
 
   h += '<div class="stat-table">';
   for (const t of types) {
@@ -263,7 +264,7 @@ function statsListSig(tab) {
     const isProd = G.statsItemTab !== 'cons';
     const items = prodActiveItems()
       .filter(id => isProd ? ((PROD.gained[id] || 0) > 0) : ((PROD.lost[id] || 0) > 0))
-      .sort((a, b) => (ITEMS[a].name < ITEMS[b].name ? -1 : 1));
+      .sort((a, b) => (itemName(a) < itemName(b) ? -1 : 1));
     return 'i:' + (G.statsItemTab || 'prod') + ':' + items.join(',');
   }
   if (tab === 'power') {

@@ -13,8 +13,10 @@ class ElectricFurnace extends Furnace {
     if (this.prog >= 1) {
       this.prog -= 1;
       this.inp[r.inp] = (this.inp[r.inp] || 0) - (r.inCount || 1);
+      if (typeof trackProd === 'function') trackProd(r.inp, -(r.inCount || 1));
       if (this.inp[r.inp] <= 0) delete this.inp[r.inp];
       this.outp[r.id] = (this.outp[r.id] || 0) + 1;
+      if (typeof trackProd === 'function') trackProd(r.id, 1);
     }
   }
   giveItem(item) {
