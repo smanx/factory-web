@@ -914,6 +914,18 @@ const TECH_REQ = {
 for (const id of ['centrifuge', 'nuclear-reactor', 'steam-turbine', 'heat-pipe', 'heat-exchanger', 'uranium-235', 'uranium-238', 'nuclear-fuel']) {
   if (!TECH_REQ[id]) TECH_REQ[id] = 'nuclear';
 }
+// ===== 补齐原版科技门控（对齐《异星工厂》科技树） =====
+// 太阳能/蓄电器：太阳能板与蓄电器需蓝瓶科技解锁（对齐《异星工厂》Solar energy / Electric energy accumulators）
+TECH_REQ['solar-panel'] = 'solar-energy';
+TECH_REQ['accumulator'] = 'electric-energy-accumulators';
+// 炼钢：钢炉与钢箱需炼钢科技解锁（对齐《异星工厂》Steel processing）
+TECH_REQ['steel-furnace'] = 'steel-processing';
+TECH_REQ['steel-chest'] = 'steel-processing';
+// 地下管道：地下管道与流体泵需地下管道科技解锁（对齐《异星工厂》Fluid handling）
+TECH_REQ['pipe-to-ground'] = 'fluid-handling';
+TECH_REQ['pump'] = 'fluid-handling';
+// 战斗机器人：三种战斗机器人胶囊需战斗机器人科技解锁（对齐《异星工厂》Combat robotics）
+for (const id of ['defender-capsule', 'distractor-capsule', 'destroyer-capsule']) TECH_REQ[id] = 'combat-robotics';
 // ===== 流体桶装科技门控（对齐《异星工厂》：桶装需流体处理科技） =====
 TECH_REQ['empty-barrel'] = 'barrel';
 for (const f of BARREL_FLUIDS) TECH_REQ[f + '-barrel'] = 'barrel';
@@ -1094,6 +1106,11 @@ const TECHS = {
   'advanced-combat': { name: '高级战斗', cost: { 'military-science': 40, 'blue-science': 30 }, desc: '解锁激光炮塔、火焰炮塔、火箭筒、火焰喷射器与远程敌人', req: ['weapons', 'electronics'] },
   explosives: { name: '爆炸物科技', cost: { 'military-science': 30 }, desc: '解锁爆炸火箭弹（更高威力与更大爆炸范围）与更多爆炸类弹药', req: ['advanced-combat'] },
   electronics: { name: '电子学', cost: { 'blue-science': 40 }, desc: '解锁高级电路板、处理器（火箭链路的关键）', req: ['plastic', 'oil'] },
+  'solar-energy': { name: '太阳能', cost: { 'blue-science': 30 }, desc: '解锁太阳能板，白天可采集阳光发电（对齐《异星工厂》Solar energy）', req: ['electric', 'electronics'] },
+  'electric-energy-accumulators': { name: '蓄电器', cost: { 'blue-science': 30 }, desc: '解锁蓄电器，存储电力以在夜晚/低谷期为电网续供（对齐《异星工厂》Electric energy accumulators）', req: ['solar-energy'] },
+  'steel-processing': { name: '炼钢科技', cost: { 'blue-science': 20 }, desc: '解锁钢炉与钢箱，提升冶炼效率与储物容量（对齐《异星工厂》Steel processing）', req: ['electric'] },
+  'fluid-handling': { name: '地下管道', cost: { 'green-science': 20 }, desc: '解锁地下管道与流体泵，可跨格输送流体并提升管道网络吞吐（对齐《异星工厂》Fluid handling）', req: ['oil'] },
+  'combat-robotics': { name: '战斗机器人', cost: { 'military-science': 40, 'blue-science': 30 }, desc: '解锁防御/干扰/破坏三种战斗机器人胶囊，可投掷释放伴随作战（对齐《异星工厂》Combat robotics）', req: ['advanced-combat', 'electronics'] },
   'rocket-science': { name: '火箭技术', cost: { 'blue-science': 100, 'military-science': 50 }, desc: '解锁火箭发射井、火箭部件与卫星，发射火箭赢得游戏', req: ['electronics', 'express'] },
   modules:    { name: '模块工程', cost: { 'blue-science': 40 }, desc: '解锁速度模块与产能模块（增强组装机/电炉）', req: ['electronics'] },
   'modules2': { name: '模块工程 II', cost: { 'production-science-pack': 50, 'blue-science': 30 }, desc: '解锁二级速度/产能/效率模块（效果更强）', req: ['modules', 'production'] },
@@ -1124,6 +1141,10 @@ const TECHS = {
   'follower-robot-count': { name: '追随机器人', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究提升同时在场战斗机器人数量上限 +2（对齐《异星工厂》Follower robot count）', req: ['utility', 'advanced-combat'] },
   'worker-robot-cargo-size': { name: '机器人容量', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究提升物流/施工机器人单次搬运物品数量 +2（对齐《异星工厂》Worker robot cargo size 无限科技）', req: ['production', 'utility'] },
   'artillery-shooting-speed': { name: '炮兵射速', cost: { 'production-science-pack': 60, 'utility-science-pack': 60, 'military-science': 40 }, infinite: true, desc: '无限科技：每次研究提升炮兵连与炮兵车厢射击速度 +10%（对齐《异星工厂》Artillery shell shooting speed 无限科技）', req: ['production', 'utility', 'advanced-combat'] },
+  'physical-projectile-damage': { name: '投射物伤害', cost: { 'space-science-pack': 80, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升玩家枪械与子弹（手枪/冲锋枪/散弹枪/机枪炮塔/车辆机炮等投射物）伤害 +10%（对齐《异星工厂》Physical projectile damage）', req: ['space-science', 'advanced-combat'] },
+  'energy-weapons-damage': { name: '能量武器伤害', cost: { 'space-science-pack': 80, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升激光炮塔与个人激光防御等能量武器伤害 +10%（对齐《异星工厂》Energy weapons damage）', req: ['space-science', 'advanced-combat'] },
+  'refined-flammables': { name: '燃烧伤害', cost: { 'space-science-pack': 80, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升火焰喷射器、火焰炮塔与地面火场等燃烧伤害 +10%（对齐《异星工厂》Refined flammables）', req: ['space-science', 'advanced-combat'] },
+  'stronger-explosives': { name: '爆炸伤害', cost: { 'space-science-pack': 80, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升火箭筒/炮弹/手雷/炮兵/地雷/原子弹等爆炸类伤害 +10%（对齐《异星工厂》Stronger explosives）', req: ['space-science', 'explosives'] },
   infinite:   { name: '无限科技', cost: {}, infinite: true, desc: '无限研究：消耗任意科学包，永不完成', req: [] }
 };
 
@@ -1179,6 +1200,15 @@ function migrateNewTechs(techDone) {
     techDone['kovarex-enrichment'] = true;
     techDone['atomic-bomb'] = true;
   }
+  // 兼容旧档：此前太阳能板/蓄电器/钢炉/钢箱/地下管道/流体泵/战斗机器人胶囊
+  // 未受科技门控，老玩家可能已拥有；补完对应新科技以避免被锁死（对齐《异星工厂》科技树拆分）。
+  if (techDone['electronics'] || techDone['electric']) {
+    techDone['solar-energy'] = true;
+    techDone['electric-energy-accumulators'] = true;
+    techDone['steel-processing'] = true;
+  }
+  if (techDone['oil']) techDone['fluid-handling'] = true;
+  if (techDone['advanced-combat']) techDone['combat-robotics'] = true;
   return techDone;
 }
 
@@ -1556,6 +1586,29 @@ function miningProdMult() {
 function weaponDamageMult() {
   const lvl = (G.techProg && G.techProg['weapon-damage']) || 0;
   return 1 + 0.1 * lvl;
+}
+// 分类军事无限科技倍率（对齐《异星工厂》Military research 无限科技）：
+// 在通用武器伤害之上再按武器类别叠加（投射物/能量/燃烧/爆炸）。
+// kind: 'projectile' | 'energy' | 'fire' | 'explosive'
+function weaponCategoryMult(kind) {
+  const map = { projectile: 'physical-projectile-damage', energy: 'energy-weapons-damage', fire: 'refined-flammables', explosive: 'stronger-explosives' };
+  const tid = map[kind];
+  if (!tid) return 1;
+  const lvl = (G.techProg && G.techProg[tid]) || 0;
+  return 1 + 0.1 * lvl;
+}
+// 根据武器/设备 id 返回其伤害分类（projectile/energy/fire/explosive），用于套用分类军事无限科技。
+function weaponDamageKind(id) {
+  if (!id) return 'projectile';
+  // 枪械类投射物
+  if (/pistol|submachine|shotgun|magazine|rounds|cannon|turret(?!-laser)|machine/.test(id)) return 'projectile';
+  // 能量武器
+  if (/laser/.test(id)) return 'energy';
+  // 燃烧类
+  if (/flame|fire|flammable/.test(id)) return 'fire';
+  // 爆炸类
+  if (/rocket|grenade|explosive|bomb|artillery|land-mine|shell|mine/.test(id)) return 'explosive';
+  return 'projectile';
 }
 // 机器人容量（对齐《异星工厂》Worker robot cargo size 无限科技）：物流/施工机器人单次搬运量基础 3，每级 +2。
 function robotCarryCap() {

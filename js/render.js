@@ -441,11 +441,22 @@ function drawTerrain(ctx) {
     }
   }
   // 矿点每帧实时绘制（随开采实时减少）
+  // 性能优化：同一行内按区块边界分段，只对每个区块 getChunk 一次，
+  // 且每瓦片只查一次 remaining（此前 if 条件与 drawOreDots 调用各查一次，字符串键重复分配）。
   for (let ty = ty0; ty <= ty1; ty++) {
+    const cy = Math.floor(ty / CHUNK);
+    const ly = ((ty % CHUNK) + CHUNK) % CHUNK;
+    let c = null, curCx = -1;
     for (let tx = tx0; tx <= tx1; tx++) {
-      const ti = getOreType(tx, ty);
-      if (ti >= 0 && getOreAmt(tx, ty) > 0)
-        drawOreDots(ctx, tx * TILE, ty * TILE, oreItemId(ti), getOreAmt(tx, ty), tx, ty);
+      const cx = Math.floor(tx / CHUNK);
+      if (cx !== curCx) { c = getChunk(cx, cy); curCx = cx; }
+      const lx = ((tx % CHUNK) + CHUNK) % CHUNK;
+      const idx = ly * CHUNK + lx;
+      const ti = c.oreType[idx];
+      if (ti < 0) continue;
+      const rem = G.world.remaining.get(tx + ',' + ty);
+      const amt = rem !== undefined ? rem : c.oreAmt[idx];
+      if (amt > 0) drawOreDots(ctx, tx * TILE, ty * TILE, oreItemId(ti), amt, tx, ty);
     }
   }
   // 动态水面波浪（画面优化）：在水域瓦片叠加缓缓流动的高光波纹

@@ -170,7 +170,7 @@ class Tank extends Car {
     else if (this.uShells > 0) { use = 'uShells'; }
     this[use]--;
     // 威力与爆炸范围分级（对齐《异星工厂》Cannon shell / Explosive cannon shell / Uranium / Explosive uranium）
-    const dmg = use === 'euShells' ? 160 : (use === 'eShells' ? 110 : (use === 'uShells' ? 100 : 60));
+    const dmg = Math.round((use === 'euShells' ? 160 : (use === 'eShells' ? 110 : (use === 'uShells' ? 100 : 60))) * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('explosive') : 1));
     const splash = use === 'euShells' ? 5 : (use === 'eShells' ? 4.5 : (use === 'uShells' ? 4 : 3));
     const explosive = (use === 'eShells' || use === 'euShells');   // 爆炸系弹药：命中即引爆，特效更华丽
     const px = this.x * TILE + TILE * this.w / 2, py = this.y * TILE + TILE * this.h / 2;
@@ -272,10 +272,11 @@ class Spidertron extends Tank {
     }
     if (!best) return;
     this.autoT = SPIDER_TURRET_RATE;
-    best.hp -= SPIDER_AUTO_DMG;
+    const autoDmg = Math.round(SPIDER_AUTO_DMG * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('projectile') : 1));
+    best.hp -= autoDmg;
     if (best.hp <= 0) best.dead = true;
     (G.bullets || (G.bullets = [])).push({
-      x: cx, y: cy, tx: best.x, ty: best.y, t: 0, life: 0.12, kind: 'bullet', dmg: SPIDER_AUTO_DMG
+      x: cx, y: cy, tx: best.x, ty: best.y, t: 0, life: 0.12, kind: 'bullet', dmg: autoDmg
     });
   }
   // 主炮：发射导弹（范围爆炸），消耗内置导弹
@@ -288,7 +289,7 @@ class Spidertron extends Tank {
     const tx2 = px + Math.cos(a) * dist, ty2 = py + Math.sin(a) * dist;
     (G.bullets || (G.bullets = [])).push({
       x: px, y: py, tx: tx2, ty: ty2, t: 0, life: 0.3,
-      splash: 3.5, dmg: 70, kind: 'rocket', tank: true
+      splash: 3.5, dmg: Math.round(70 * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('explosive') : 1)), kind: 'rocket', tank: true
     });
     this.fireT = 0.9;
     uiDirty = true;

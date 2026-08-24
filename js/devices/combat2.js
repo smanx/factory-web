@@ -655,8 +655,9 @@ function playerFire(tx, ty) {
   }
   const baseAng = Math.atan2(ty - py, tx - px);
   const pellets = w.pellets || 1;
-  // 武器伤害无限科技倍率（对齐《异星工厂》Weapon damage research）
-  const dmg = Math.round(w.dmg * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1));
+  // 武器伤害无限科技倍率（对齐《异星工厂》Weapon damage research）+ 分类军事无限科技
+  const base = (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult(weaponDamageKind(id)) : 1);
+  const dmg = Math.round(w.dmg * base);
   for (let i = 0; i < pellets; i++) {
     const a = baseAng + (Math.random() - 0.5) * 2 * w.spread;
     const dist = w.range * TILE;
@@ -1014,7 +1015,7 @@ class LaserTurret extends Entity {
     this.facing = Math.atan2(best.y - (this.y + this.h / 2) * TILE, best.x - (this.x + this.w / 2) * TILE);
     if (this.cooldown > 0) return;
     this.cooldown = LASER_FIRE_RATE;
-    best.hp -= Math.round(LASER_DMG * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1));
+    best.hp -= Math.round(LASER_DMG * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('energy') : 1));
     this.beamT = 0.15;
     (G.bullets || (G.bullets = [])).push({
       x: (this.x + this.w / 2) * TILE, y: (this.y + this.h / 2) * TILE,
@@ -1145,7 +1146,7 @@ class FlamethrowerTurret extends Entity {
       const d = Math.hypot(dx, dy);
       if (d > FT_RANGE * TILE) continue;
       const da = Math.abs(normAng(Math.atan2(dy, dx) - ang));
-      if (da < 0.5) { en.hp -= Math.round(FT_DMG * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1)); if (en.hp <= 0) en.dead = true; }
+      if (da < 0.5) { en.hp -= Math.round(FT_DMG * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('fire') : 1)); if (en.hp <= 0) en.dead = true; }
     }
     (G.bullets || (G.bullets = [])).push({
       x: (this.x + this.w / 2) * TILE, y: (this.y + this.h / 2) * TILE,
@@ -1254,7 +1255,7 @@ function updateGroundFires(dt) {
       f.tickT = GROUND_FIRE_TICK;
       if (G.enemies) for (const en of G.enemies) {
         if (en.dead || en.type === 'spawner') continue;
-        if (Math.hypot(en.x - cx, en.y - cy) <= TILE * 1.15) { en.hp -= GROUND_FIRE_DMG; if (en.hp <= 0) en.dead = true; }
+        if (Math.hypot(en.x - cx, en.y - cy) <= TILE * 1.15) { en.hp -= Math.round(GROUND_FIRE_DMG * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('fire') : 1)); if (en.hp <= 0) en.dead = true; }
       }
       // 玩家站在火焰上也受灼烧
       if (G.settings.combat && Math.hypot(G.player.x - cx, G.player.y - cy) <= TILE * 1.1) damagePlayer(GROUND_FIRE_DMG * 0.6);

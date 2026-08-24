@@ -222,14 +222,15 @@ function updatePersonalLaserDefense(dt) {
   if (!target) return false;
   // 消耗个人电力；电力不足则不开火
   if (!drainPersonalPower(PERSONAL_LASER_COST)) return false;
-  // 对目标造成伤害
-  target.hp -= PERSONAL_LASER_DMG;
+  // 对目标造成伤害（能量武器分类无限科技加成）
+  const laserDmg = Math.round(PERSONAL_LASER_DMG * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('energy') : 1));
+  target.hp -= laserDmg;
   if (target.hp <= 0) target.dead = true;
   G.personalLaserT = PERSONAL_LASER_RATE;
   // 激光特效（短暂闪光）
   (G.bullets || (G.bullets = [])).push({
     x: G.player.x, y: G.player.y, tx: target.x, ty: target.y, t: 0, life: 0.08,
-    dmg: PERSONAL_LASER_DMG, kind: 'laser'
+    dmg: laserDmg, kind: 'laser'
   });
   uiDirty = true;
   return true;

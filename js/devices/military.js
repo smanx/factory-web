@@ -106,8 +106,8 @@ class GunTurret extends Entity {
       if (this.ammoCount(k) > 0) { this.ammo[k]--; dmg = dmgMap[k]; break; }
     }
     for (const k of TURRET_AMMO_TYPES) if (this.ammo[k] <= 0) delete this.ammo[k];
-    // 武器伤害无限科技倍率（对齐《异星工厂》Weapon damage research）
-    dmg = Math.round(dmg * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1));
+    // 武器伤害无限科技倍率（对齐《异星工厂》Weapon damage research）+ 分类军事无限科技（投射物）
+    dmg = Math.round(dmg * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('projectile') : 1));
     best.hp -= dmg;
     // 子弹特效
     (G.bullets || (G.bullets = [])).push({
