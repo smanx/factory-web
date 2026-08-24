@@ -615,6 +615,40 @@ html, body {
 .stat-row .chip { font-size: 12px; }
 .dim2 { color: #5f6b78; font-size: 11px; margin-left: 4px; }
 
+/* 历史页（物品速率 → 历史） */
+.stat-subtabs3 .stat-subtab { flex: 1; }
+.stat-hist-select {
+  width: 100%;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+  background: #20272f;
+  border: 1px solid #3a4657;
+  border-radius: 6px;
+  color: #cdd6df;
+  font-size: 13px;
+}
+.stat-hist-zooms { margin-bottom: 8px; }
+.stat-hist-canvas {
+  width: 100%;
+  height: auto;
+  background: #161c24;
+  border: 1px solid #2c3644;
+  border-radius: 6px;
+  display: block;
+  margin-bottom: 6px;
+}
+.stat-hist-legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 12px;
+  color: #cdd6df;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.legend-gain { color: #8fe08f; }
+.legend-loss { color: #ff8a7a; }
+
 /* 物品速率页二级 tab：生产速率 / 消耗 */
 .stat-subtabs { display: flex; gap: 6px; margin-bottom: 8px; }
 .stat-subtab {

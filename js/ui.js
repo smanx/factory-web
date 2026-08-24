@@ -462,6 +462,13 @@ function initPanelEvents() {
     // 设备专属输入（如储物箱存量上限）优先交给设备自己的 onChange
     const panel = G.panelEnt && DEVICE_PANEL[G.panelEnt.type];
     if (panel && panel.onChange && panel.onChange(ev)) return;
+    // 历史页物品下拉切换
+    const histItem = ev.target.closest('[data-stat-hist-item]');
+    if (histItem) {
+      G.statsHistItem = histItem.value;
+      renderPanel(false);
+      return;
+    }
     if (ev.target.id !== 'imp-file') return;
     const f = ev.target.files[0];
     if (!f) return;
@@ -501,6 +508,12 @@ function initPanelEvents() {
     const statPowerTab = ev.target.closest('[data-stat-power-tab]');
     if (statPowerTab) {
       G.statsPowerTab = statPowerTab.dataset.statPowerTab;
+      renderPanel(false);
+      return;
+    }
+    const histZoom = ev.target.closest('[data-stat-hist-zoom]');
+    if (histZoom) {
+      G.statsHistZoom = +histZoom.dataset.statHistZoom || 0;
       renderPanel(false);
       return;
     }

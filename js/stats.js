@@ -22,6 +22,237 @@ const PROD = {
   events: []                          // [{t, item, delta}]（按时间递增）
 };
 
+// ------------------------------------------------------------------
+// 历史记录（分桶统计）：把物品的生成/消耗按固定时间窗分桶累加，形成一条
+// 时间序列，用于“统计面板 → 物品速率 → 历史”页的折线图展示，并随存档持久化。
+//
+// 设计要点（兼顾“保留 24 小时”与“存档不膨胀”）：
+//   * 内存中保留 1 分钟粒度、最长 24 小时（1440 桶/方向/物品）的环形缓冲，
+//     供实时折线图在 10分钟/1小时/6小时/24小时 等多档缩放下查看细节；
+//   * 存档时把 1 分钟桶聚合为 1 小时粒度（24 点/方向/物品）再写入，体积极小；
+//     读档后再把小时数据填充回环形缓冲，旧时段呈小时均值，新时段继续累计细粒度。
+//   * 只记录有过活动的物品，且每个物品只有两个等长数组（生成/消耗），无稀疏空洞。
+// ------------------------------------------------------------------
+const PROD_HIST_BUCKET = 60;         // 每个历史桶的时长（秒）= 1 分钟
+const PROD_HIST_KEEP = 86400;        // 历史保留时长（秒）= 24 小时
+const PROD_HIST_COUNT = PROD_HIST_KEEP / PROD_HIST_BUCKET;   // 1440 桶
+const PROD_HIST_SAVE_BUCKET = 3600;  // 存档粒度：1 小时（聚合为 24 点/方向/物品）
+const PROD_HIST_SAVE_COUNT = PROD_HIST_KEEP / PROD_HIST_SAVE_BUCKET; // 24 点
+
+// 历史数据：
+//   data: Map<item, { gain: Float32Array(COUNT), loss: Float32Array(COUNT) }>（环形缓冲）
+//   head: 当前最新桶在环形数组中的下标
+//   curBucketId: 当前正在累加的桶序号（floor(G.time/BUCKET)），用于判断是否换桶
+//   loadedAt: 最近一次读档注入小时数据的时刻，用于标记旧段为小时均值（见 histFill 注释）
+const PROD_HIST = {
+  data: new Map(),
+  head: 0,
+  curBucketId: -1,
+  loadedAt: 0
+};
+
+// 历史折线图视图档位：{ label, sec }——每档对应折线图横轴跨度。
+const HIST_ZOOMS = [
+  { label: '10分钟', sec: 600 },
+  { label: '1小时', sec: 3600 },
+  { label: '6小时', sec: 21600 },
+  { label: '24小时', sec: 86400 }
+];
+// 折线图最多画多少个点（数据点更多时按比例抽稀，控制渲染开销）。
+const HIST_MAX_POINTS = 180;
+
+// 历史页当前选中物品（在 htmlStatsItems 里渲染时默认取最近活动物品）
+// 存在 G.statsHistItem；不存在时动态选择。
+function histSelectedItem() {
+  if (G.statsHistItem && PROD_HIST.data.has(G.statsHistItem)) return G.statsHistItem;
+  // 选最近一次有活动（按总生成+消耗之和）的物品
+  let best = null, bestScore = -1;
+  for (const [id, h] of PROD_HIST.data) {
+    const score = (PROD.gained[id] || 0) + (PROD.lost[id] || 0);
+    if (score > bestScore) { bestScore = score; best = id; }
+  }
+  return best;
+}
+
+// 把某物品某方向的一个增量累加进“当前桶”。direction：+1 生成 / -1 消耗。
+// gain 与 loss 均以正数存储（loss 为消耗量绝对值），便于折线图与存档。
+function histAccum(item, delta, direction) {
+  let h = PROD_HIST.data.get(item);
+  if (!h) {
+    h = { gain: new Float32Array(PROD_HIST_COUNT), loss: new Float32Array(PROD_HIST_COUNT) };
+    PROD_HIST.data.set(item, h);
+  }
+  const arr = direction > 0 ? h.gain : h.loss;
+  arr[PROD_HIST.head] += Math.abs(delta);
+}
+
+// 确保环形缓冲已推进到“当前桶”。每次调用把游标推进到 G.time 对应的桶，
+// 并为跨过的空桶清零（过期桶直接丢弃，实现“最多保留 24 小时”）。
+function histTick(now) {
+  const bucketId = Math.floor(now / PROD_HIST_BUCKET);
+  if (bucketId === PROD_HIST.curBucketId) return;
+  if (PROD_HIST.curBucketId < 0) {
+    // 首次：初始化当前桶，其余桶为空
+    PROD_HIST.curBucketId = bucketId;
+    PROD_HIST.head = bucketId % PROD_HIST_COUNT;
+    return;
+  }
+  // 推进若干桶（正常推进 1 桶；长时间暂停/大 dt 可能一次跨多桶）
+  let step = bucketId - PROD_HIST.curBucketId;
+  if (step > PROD_HIST_COUNT) step = PROD_HIST_COUNT;   // 超过环形长度则整环丢弃
+  for (let k = 0; k < step; k++) {
+    PROD_HIST.head = (PROD_HIST.head + 1) % PROD_HIST_COUNT;
+    // 清空新到桶（丢弃最旧数据）
+    for (const h of PROD_HIST.data.values()) {
+      h.gain[PROD_HIST.head] = 0;
+      h.loss[PROD_HIST.head] = 0;
+    }
+  }
+  // 整环跳过（游戏暂停很久）时直接把所有桶清零，从头累计
+  if (step >= PROD_HIST_COUNT) {
+    for (const h of PROD_HIST.data.values()) { h.gain.fill(0); h.loss.fill(0); }
+  }
+  PROD_HIST.curBucketId = bucketId;
+}
+
+// 取某物品在 [now-zoomSec, now] 区间内的历史序列（环形缓冲 → 时间升序数组）。
+// 返回 { ids, gain, loss, t0, t1 }，ids 为每个点的实际桶序号（绝对），
+// gain/loss 为对应的生成/消耗累计（消耗为正值）。
+function histSeries(item, zoomSec) {
+  const h = PROD_HIST.data.get(item);
+  if (!h) return null;
+  const now = G.time;
+  histTick(now);
+  const win = Math.min(zoomSec, PROD_HIST_KEEP);
+  const nBuckets = Math.max(1, Math.min(Math.ceil(win / PROD_HIST_BUCKET), PROD_HIST_COUNT));
+  // 覆盖的桶序号范围（绝对）：[startId, endId]
+  const endId = PROD_HIST.curBucketId;
+  const startId = endId - nBuckets + 1;
+  const ids = [], gain = [], loss = [];
+  for (let id = startId; id <= endId; id++) {
+    const idx = ((id % PROD_HIST_COUNT) + PROD_HIST_COUNT) % PROD_HIST_COUNT;
+    ids.push(id);
+    gain.push(h.gain[idx]);
+    loss.push(h.loss[idx]);
+  }
+  return { ids, gain, loss };
+}
+
+// 把一串原始桶序列抽稀为至多 maxPts 个点（按跨度均值聚合），供折线图绘制。
+function histDownsample(ids, gain, loss, maxPts) {
+  if (ids.length <= maxPts) return { ids, gain, loss };
+  const step = Math.ceil(ids.length / maxPts);
+  const outIds = [], outGain = [], outLoss = [];
+  for (let s = 0; s < ids.length; s += step) {
+    const e = Math.min(s + step, ids.length);
+    let g = 0, l = 0, c = 0;
+    for (let i = s; i < e; i++) { g += gain[i]; l += loss[i]; c++; }
+    outIds.push(ids[(s + e - 1) >> 1]);
+    outGain.push(g / c);
+    outLoss.push(l / c);
+  }
+  return { ids: outIds, gain: outGain, loss: outLoss };
+}
+
+// ---- 历史持久化 ----
+// 把内存中 1 分钟环形缓冲聚合成“小时序列”，供存档写入（体积极小）。
+// 返回 { t0: 最早小时序号, data: { item: [gain0, loss0, gain1, loss1, ...] } }
+function histSerialize() {
+  const now = G.time;
+  histTick(now);
+  const data = {};
+  let hasData = false;
+  const curHourId = Math.floor(now / PROD_HIST_SAVE_BUCKET);
+  const startHour = curHourId - PROD_HIST_SAVE_COUNT + 1;
+  for (const [item, h] of PROD_HIST.data) {
+    // 24 个小时点 × (gain,loss)
+    const arr = new Array(PROD_HIST_SAVE_COUNT * 2);
+    let any = false;
+    for (let s = 0; s < PROD_HIST_SAVE_COUNT; s++) {
+      const hourId = startHour + s;
+      let g = 0, l = 0;
+      // 该小时内的分钟桶（环形下标）；用绝对分钟序号 nowMin 封顶，避免读到“未来”桶
+      const nowMin = Math.floor(now / PROD_HIST_BUCKET);
+      const firstMin = Math.max(hourId * 60, nowMin - PROD_HIST_COUNT + 1);
+      const lastMin = Math.min(hourId * 60 + 59, nowMin);
+      for (let m = firstMin; m <= lastMin; m++) {
+        const idx = ((m % PROD_HIST_COUNT) + PROD_HIST_COUNT) % PROD_HIST_COUNT;
+        g += h.gain[idx]; l += h.loss[idx];
+      }
+      arr[s * 2] = Math.round(g);
+      arr[s * 2 + 1] = Math.round(l);
+      if (g || l) any = true;
+    }
+    if (any) {
+      data[item] = arr;
+      hasData = true;
+    }
+  }
+  if (!hasData) return null;
+  return { t0: startHour, t1: curHourId, data };
+}
+
+// 从存档恢复历史：把小时序列展开回 1 分钟环形缓冲（旧段为小时均值），
+// 并推进到当前桶，后续实时累计继续细粒度。
+function histDeserialize(saved) {
+  if (!saved || !saved.data) return;
+  const now = G.time;
+  const curHourId = Math.floor(now / PROD_HIST_SAVE_BUCKET);
+  const startHour = curHourId - PROD_HIST_SAVE_COUNT + 1;
+  // 记录读档时刻，用于图表区分“小时均值”旧段与实时细粒度段
+  PROD_HIST.loadedAt = now;
+  for (const item of Object.keys(saved.data)) {
+    const arr = saved.data[item];
+    let h = PROD_HIST.data.get(item);
+    if (!h) {
+      h = { gain: new Float32Array(PROD_HIST_COUNT), loss: new Float32Array(PROD_HIST_COUNT) };
+      PROD_HIST.data.set(item, h);
+    }
+    for (let s = 0; s < PROD_HIST_SAVE_COUNT; s++) {
+      const hourId = startHour + s;
+      const g = arr[s * 2] || 0, l = arr[s * 2 + 1] || 0;
+      if (!g && !l) continue;
+      // 把该小时的均值均匀填入该小时内每一分钟桶（只填到当前分钟，不填未来桶）
+      const nowMin = Math.floor(now / PROD_HIST_BUCKET);
+      const firstMin = Math.max(hourId * 60, nowMin - PROD_HIST_COUNT + 1);
+      const lastMin = Math.min(hourId * 60 + 59, nowMin);
+      const cnt = Math.max(1, lastMin - firstMin + 1);
+      const perG = g / cnt, perL = l / cnt;
+      for (let m = firstMin; m <= lastMin; m++) {
+        const idx = ((m % PROD_HIST_COUNT) + PROD_HIST_COUNT) % PROD_HIST_COUNT;
+        h.gain[idx] = perG;
+        h.loss[idx] = perL;
+      }
+    }
+  }
+  // 推进到当前桶（把游标与当前分钟桶对齐）
+  histTick(now);
+}
+
+// 重置历史（新游戏时清空）
+function histReset() {
+  PROD_HIST.data = new Map();
+  PROD_HIST.head = 0;
+  PROD_HIST.curBucketId = -1;
+  PROD_HIST.loadedAt = 0;
+}
+
+// 任意物品增减的入口：实时速率 + 历史分桶一并记录。
+function trackProd(item, delta) {
+  if (!item || !delta) return;
+  const now = G.time;
+  // 历史分桶累计（实时）
+  histTick(now);
+  histAccum(item, delta, delta > 0 ? 1 : -1);
+  // 事件队列：按 1 天窗口剪除过期头部 + 硬上限防无限膨胀（用于“当前速率”窗口计算）
+  while (PROD.events.length && now - PROD.events[0].t > PROD_KEEP) PROD.events.shift();
+  if (PROD.events.length > PROD_EVENT_MAX) PROD.events.splice(0, PROD.events.length - PROD_EVENT_MAX);
+  if (delta > 0) PROD.gained[item] = (PROD.gained[item] || 0) + delta;
+  else PROD.lost[item] = (PROD.lost[item] || 0) - delta;
+  PROD.total[item] = (PROD.total[item] || 0) + delta;
+  PROD.events.push({ t: now, item, delta });
+}
+
 // 统计间隔选项：label 显示名，unit 速率单位，sec 窗口秒数。
 const STAT_INTERVALS = [
   { label: '秒', unit: '/秒', sec: 1 },
@@ -175,22 +406,159 @@ function htmlStats() {
 // 物品速率页：下方再分两个 tab——生产速率（物品被产出）与消耗（物品被消耗）。
 // 展示的是物品自身的产生/消耗速率，而非设备的产能。
 function itemName(id) { return (ITEMS[id] && ITEMS[id].name) ? ITEMS[id].name : id; }
+
+// 历史页：物品选择 + 时间档位 + Canvas 折线图（生产=绿 / 消耗=红）。
+function htmlStatsHist(all) {
+  const items = all.filter(id => PROD_HIST.data.has(id));
+  if (!items.length) {
+    return '<div class="dim">暂无历史记录。生产/消耗活动会以 1 分钟粒度保留最近 24 小时，并随存档保存。生成 / 消耗的物品增减即在此累计。</div>';
+  }
+  // 默认选中物品
+  let sel = histSelectedItem();
+  if (!sel || !items.includes(sel)) sel = items[0];
+  const zoomIdx = G.statsHistZoom || 3;   // 默认 24 小时
+  const zoom = HIST_ZOOMS[zoomIdx] || HIST_ZOOMS[HIST_ZOOMS.length - 1];
+
+  let h = '<div class="dim" style="margin-bottom:4px">选择物品（最近 24 小时，1 分钟粒度）：</div>';
+  // 物品选择下拉
+  h += '<select class="stat-hist-select" data-stat-hist-item>';
+  for (const id of items) {
+    h += '<option value="' + id + '"' + (id === sel ? ' selected' : '') + '>' + itemName(id) + '</option>';
+  }
+  h += '</select>';
+
+  // 时间档位切换
+  h += '<div class="stat-intervals stat-hist-zooms">';
+  for (let i = 0; i < HIST_ZOOMS.length; i++) {
+    h += '<button class="stat-interval' + (zoomIdx === i ? ' active' : '') + '" data-stat-hist-zoom="' + i + '">' + HIST_ZOOMS[i].label + '</button>';
+  }
+  h += '</div>';
+
+  h += '<canvas class="stat-hist-canvas" data-stat-hist-canvas width="480" height="180"></canvas>';
+  h += '<div class="stat-hist-legend">';
+  h += '<span class="legend-gain">▬ 生产</span>';
+  h += '<span class="legend-loss">▬ 消耗</span>';
+  h += '<span class="dim" data-stat-hist-sum"></span>';
+  h += '</div>';
+  h += '<div class="dim">折线为所选时间档位内每分钟（超出时按均值抽稀）的生产/消耗量。历史保留最近 24 小时并随存档保存；读档后旧时段为小时均值，此后实时累计。</div>';
+
+  // 渲染图表（内联脚本在面板 DOM 就绪后调用）
+  setTimeout(function () {
+    const cv = document.querySelector('[data-stat-hist-canvas]');
+    if (cv && typeof renderHistChart === 'function') renderHistChart(cv, sel, zoom.sec);
+  }, 0);
+
+  // 让 updateStatsLive 能刷新数值汇总（无则忽略）
+  if (!window.__histLast) window.__histLast = {};
+  window.__histLast.item = sel;
+  window.__histLast.zoom = zoom.sec;
+  return h;
+}
+
+// 在 Canvas 上绘制历史折线图。
+function renderHistChart(cv, item, zoomSec) {
+  const s = histSeries(item, zoomSec);
+  if (!s) return;
+  // 抽稀到至多 HIST_MAX_POINTS 个点
+  const d = histDownsample(s.ids, s.gain, s.loss, HIST_MAX_POINTS);
+  const W = cv.width, H = cv.height;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+
+  const padL = 34, padR = 10, padT = 8, padB = 18;
+  const pw = W - padL - padR, ph = H - padT - padB;
+  // 计算 Y 轴最大值（生产/消耗统一取最大）
+  let max = 0;
+  for (let i = 0; i < d.gain.length; i++) max = Math.max(max, d.gain[i], d.loss[i]);
+  // 顶部留 10% 空间
+  const yMax = max > 0 ? max * 1.1 : 1;
+
+  // 背景网格
+  ctx.strokeStyle = 'rgba(255,255,255,.08)';
+  ctx.fillStyle = '#8fa0b5';
+  ctx.font = '10px sans-serif';
+  ctx.lineWidth = 1;
+  const gridLines = 4;
+  for (let g = 0; g <= gridLines; g++) {
+    const y = padT + (ph * g / gridLines);
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+    const val = yMax * (1 - g / gridLines);
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(fmtNum(val), padL - 4, y);
+  }
+  // 时间轴标注（首/中/末）
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  const zoomLabel = HIST_ZOOMS.find(z => z.sec === zoomSec) || { label: '' };
+  ctx.fillText('← ' + zoomLabel.label + '前', padL, H - padB + 2);
+  ctx.fillText('现在', W - padR, H - padB + 2);
+
+  // 折线
+  function line(pts, color) {
+    if (!pts.length) return;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    for (let i = 0; i < pts.length; i++) {
+      const x = padL + (pts[i].x * pw);
+      const y = padT + ph - (pts[i].v / yMax) * ph;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    // 端点小圆点
+    ctx.fillStyle = color;
+    for (let i = 0; i < pts.length; i += Math.max(1, (pts.length / 40) | 0)) {
+      const x = padL + (pts[i].x * pw);
+      const y = padT + ph - (pts[i].v / yMax) * ph;
+      ctx.beginPath(); ctx.arc(x, y, 1.4, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  const n = d.gain.length;
+  const gainPts = [], lossPts = [];
+  for (let i = 0; i < n; i++) {
+    gainPts.push({ x: n > 1 ? i / (n - 1) : 0, v: d.gain[i] });
+    lossPts.push({ x: n > 1 ? i / (n - 1) : 0, v: d.loss[i] });
+  }
+  line(gainPts, '#8fe08f');
+  line(lossPts, '#ff8a7a');
+
+  // 图例数值汇总：显示该档位内累计生产/消耗
+  let tg = 0, tl = 0;
+  for (let i = 0; i < d.gain.length; i++) { tg += d.gain[i]; tl += d.loss[i]; }
+  const sumEl = cv.parentElement ? cv.parentElement.querySelector('[data-stat-hist-sum]') : null;
+  if (sumEl) sumEl.textContent = '　档内累计：生产 +' + fmtNum(tg) + ' / 消耗 −' + fmtNum(tl);
+}
+
+// 数字紧凑格式化：>=1000 显示为 1.2k 等。
+function fmtNum(v) {
+  if (Math.abs(v) >= 1000000) return (v / 1000000).toFixed(1) + 'M';
+  if (Math.abs(v) >= 1000) return (v / 1000).toFixed(1) + 'k';
+  return (Math.round(v * 10) / 10).toString();
+}
+
 function htmlStatsItems() {
   const all = prodActiveItems().sort((a, b) => (itemName(a) < itemName(b) ? -1 : 1));
-  const tab = G.statsItemTab === 'cons' ? 'cons' : 'prod';
-  const isProd = tab === 'prod';
+  const tab = G.statsItemTab;
+  const isProd = tab !== 'cons' && tab !== 'hist';
+  const isHist = tab === 'hist';
 
-  let h = '<div class="sec">物品速率 <span class="dim">（统计间隔：</span></div>';
-  // 统计间隔切换按钮：秒 / 10秒 / 分钟 / 小时 / 1天
+  let h = '<div class="sec">物品统计</div>';
+  // 子 tab：生产速率 / 消耗 / 历史（图表）
+  h += '<div class="stat-subtabs stat-subtabs3">';
+  h += '<button class="stat-subtab' + (tab === 'prod' ? ' active' : '') + '" data-stat-item-tab="prod">生产</button>';
+  h += '<button class="stat-subtab' + (tab === 'cons' ? ' active' : '') + '" data-stat-item-tab="cons">消耗</button>';
+  h += '<button class="stat-subtab' + (isHist ? ' active' : '') + '" data-stat-item-tab="hist">历史</button>';
+  h += '</div>';
+
+  // 历史页：折线图
+  if (isHist) return htmlStatsHist(all);
+
+  // 速率/累计页：统计间隔切换按钮（秒 / 10秒 / 分钟 / 小时 / 1天）
+  h += '<div class="dim" style="margin-bottom:6px">统计间隔：</div>';
   h += '<div class="stat-intervals">';
   for (let i = 0; i < STAT_INTERVALS.length; i++) {
     const it = STAT_INTERVALS[i];
     h += '<button class="stat-interval' + (G.statsInterval === i ? ' active' : '') + '" data-stat-interval="' + i + '">' + it.label + '</button>';
   }
-  h += '</div>';
-  h += '<div class="stat-subtabs">';
-  h += '<button class="stat-subtab' + (isProd ? ' active' : '') + '" data-stat-item-tab="prod">生产速率</button>';
-  h += '<button class="stat-subtab' + (!isProd ? ' active' : '') + '" data-stat-item-tab="cons">消耗</button>';
   h += '</div>';
 
   // 只列出本 tab 有活动的物品
@@ -313,6 +681,10 @@ function htmlStatsPerf() {
 // 才触发整体 DOM 重建；否则只增量更新数值节点，避免每 0.25s 重建整个面板（P2 优化）。
 function statsListSig(tab) {
   if (tab === 'items') {
+    // 历史页：结构随选中物品 + 时间档位变化；并纳入当前桶序号，使图表随新桶推进而重绘
+    if (G.statsItemTab === 'hist') {
+      return 'ih:' + (G.statsHistItem || '') + ':z' + (G.statsHistZoom || 3) + ':b' + PROD_HIST.curBucketId;
+    }
     const isProd = G.statsItemTab !== 'cons';
     const items = prodActiveItems()
       .filter(id => isProd ? ((PROD.gained[id] || 0) > 0) : ((PROD.lost[id] || 0) > 0))
@@ -346,6 +718,16 @@ function updateStatsLive() {
     if (el && el.innerHTML !== v) el.innerHTML = v;
   };
   if (G.statsTab === 'items') {
+    // 历史页：若结构未变（同一物品/档位/桶），仅重绘图表以反映当前桶内的实时累计
+    if (G.statsItemTab === 'hist') {
+      const cv = body.querySelector('[data-stat-hist-canvas]');
+      if (cv && typeof renderHistChart === 'function') {
+        const item = window.__histLast ? window.__histLast.item : histSelectedItem();
+        const zoom = window.__histLast ? window.__histLast.zoom : 86400;
+        if (item) renderHistChart(cv, item, zoom);
+      }
+      return;
+    }
     const isProd = G.statsItemTab !== 'cons';
     for (const id of prodActiveItems()) {
       if (isProd) {
