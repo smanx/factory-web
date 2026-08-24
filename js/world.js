@@ -18,6 +18,7 @@ const T_GRASS = 0;
 const T_WATER = 1;
 const T_CONCRETE = 2;   // 混凝土（玩家行走加速）
 const T_PATH = 3;       // 石砖路（玩家行走加速）
+const T_TREE = 4;       // 树木（可砍伐获得木材）
 function isWalkableTerrain(t) { return t !== T_WATER; }
 // 地形是否“硬化”（混凝土/石砖路）：玩家行走速度提升
 function isPaved(t) { return t === T_CONCRETE || t === T_PATH; }
@@ -275,6 +276,28 @@ function genChunk(cx, cy) {
   for (let ly = 0; ly < CHUNK; ly++)
     for (let lx = 0; lx < CHUNK; lx++)
       terrain[ly * CHUNK + lx] = isLake(ox + lx, oy + ly) ? T_WATER : T_GRASS;
+
+  // 树木（对齐《异星工厂》：森林与草地上的树可砍伐获得木）。
+  // 用噪声在草地上确定性撒点，树林成团分布；靠近出生点较少，越远越密集。
+  const seedR = mulberry32((chunkSeed(cx, cy) ^ 0x51ed270b) >>> 0);
+  for (let ly = 0; ly < CHUNK; ly++) {
+    for (let lx = 0; lx < CHUNK; lx++) {
+      const idx = ly * CHUNK + lx;
+      if (terrain[idx] !== T_GRASS) continue;
+      const gx = ox + lx, gy = oy + ly;
+      // 用 hash 造低频森林斑块，树在其中成群
+      const forest = hash2(Math.floor(gx / 5) * 7.13, Math.floor(gy / 5) * 3.71);
+      if (forest > 0.58) {
+        const dist = Math.hypot(gx, gy);
+        // 出生点附近稀疏，越远越密（对齐《异星工厂》出生点多为草地）
+        const dens = dist < 15 ? 0.18 : (dist < 40 ? 0.4 : (dist < 80 ? 0.62 : 0.8));
+        if (seedR() < dens) {
+          // 避免树生成在矿石/原油/铀矿格上
+          if (oreType[idx] < 0) terrain[idx] = T_TREE;
+        }
+      }
+    }
+  }
 
   const cxn = cx * CHUNK + CHUNK / 2, cyn = cy * CHUNK + CHUNK / 2;
   const dist = Math.hypot(cxn, cyn);

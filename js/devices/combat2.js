@@ -151,6 +151,46 @@ function spawnEnemies(dt) {
   });
 }
 
+// 近战敌人：寻找可攻击的建筑。敌人撞到/贴近实心建筑时攻击它，而非穿过。
+// 优先攻击防御类建筑（石墙/门/炮塔），其次生产建筑。返回目标实体或 null。
+function findEnemyBuildingTarget(en) {
+  const gx = Math.floor(en.x / TILE), gy = Math.floor(en.y / TILE);
+  const r = 2;   // 扫描半径（格）
+  let best = null, bestD = Infinity, bestDef = 0;
+  const defPriority = { 'stone-wall': 3, 'gate': 3, 'gun-turret': 3, 'laser-turret': 3, 'flamethrower-turret': 3, 'artillery-turret': 3, 'land-mine': 3 };
+  const ex = en.x / TILE, ey = en.y / TILE;
+  // 用桶索引遍历附近实体，避免对空地形逐格 entAt（P2 优化）
+  forEachEntInBuckets(bucketKeysIn(gx - r, gy - r, gx + r, gy + r), e => {
+    if (e._dead || !e.solid || e.maxhp <= 0) return;
+    const nearX = Math.max(e.x, Math.min(ex, e.x + e.w));
+    const nearY = Math.max(e.y, Math.min(ey, e.y + e.h));
+    const dist = Math.hypot(ex - nearX, ey - nearY);
+    const reach = (e.w + e.h) / 4 + 0.8;
+    if (dist > reach) return;
+    const pri = defPriority[e.type] || 1;
+    if (dist < bestD - 0.01 || (Math.abs(dist - bestD) < 0.01 && pri > bestDef)) {
+      bestD = dist; best = e; bestDef = pri;
+    }
+  });
+  return best;
+}
+
+// 远程敌人：在射程内寻找可攻击的建筑目标（玩家不在射程时）。
+function findEnemyRangedTarget(en, range) {
+  const gx = Math.floor(en.x / TILE), gy = Math.floor(en.y / TILE);
+  const r = Math.ceil(range) + 1;
+  let best = null, bestD = Infinity;
+  const ex = en.x / TILE, ey = en.y / TILE;
+  forEachEntInBuckets(bucketKeysIn(gx - r, gy - r, gx + r, gy + r), e => {
+    if (e._dead || !e.solid || e.maxhp <= 0) return;
+    const nearX = Math.max(e.x, Math.min(ex, e.x + e.w));
+    const nearY = Math.max(e.y, Math.min(ey, e.y + e.h));
+    const dist = Math.hypot(ex - nearX, ey - nearY);
+    if (dist <= range && dist < bestD) { bestD = dist; best = e; }
+  });
+  return best;
+}
+
 function updateEnemies(dt) {
   if (!G.enemies) return;
   // 推进自然进化（战斗开启时）
@@ -171,6 +211,10 @@ function updateEnemies(dt) {
       // 远程敌人：与玩家保持距离，射程内间歇性吐痰
       const range = (en.type === 'worm' || en.type === 'big-worm') ? (en.type === 'big-worm' ? 12 : 10) : 8;
       const keep = en.type === 'big-worm' ? 8 : (en.type === 'worm' ? 7 : 5);
+      // 玩家在射程内则以玩家为目标；否则攻击射程内的建筑（对齐《异星工厂》：远程虫群也会破坏基地）
+      let fireTarget = null;
+      if (d <= range) fireTarget = p;
+      else fireTarget = findEnemyRangedTarget(en, range);
       if (d > range) {
         en.x += (dx / d) * en.speed * dt;
         en.y += (dy / d) * en.speed * dt;
@@ -179,16 +223,26 @@ function updateEnemies(dt) {
         en.y -= (dy / d) * en.speed * dt;
       }
       // 吐痰（投射物）；喷火虫/巨型蠕虫吐火球（命中造成持续灼烧）
-      if (en.fireT <= 0 && d <= range) {
+      if (en.fireT <= 0 && fireTarget) {
         en.fireT = en.type === 'worm' || en.type === 'big-worm' ? 2.2 : 1.6;
         const fire = en.type === 'fire-spitter' || en.type === 'big-worm';
         (G.enemyProjectiles || (G.enemyProjectiles = [])).push({
-          x: en.x, y: en.y - en.size, tx: p.x, ty: p.y, speed: 3.2, dmg: en.dmg, t: 0,
-          fire: fire, color: fire ? '#ff8a2a' : '#9ac04a'
+          x: en.x, y: en.y - en.size, tx: fireTarget.x, ty: fireTarget.y, speed: 3.2, dmg: en.dmg, t: 0,
+          fire: fire, color: fire ? '#ff8a2a' : '#9ac04a',
+          buildTarget: fireTarget !== p ? fireTarget : undefined
         });
       }
     } else {
-      // 近战敌人：冲向玩家，贴近后咬人
+      // 近战敌人：优先攻击附近建筑（石墙/炮塔/工厂等），受阻时转向攻击而非穿过
+      const target = findEnemyBuildingTarget(en);
+      if (target) {
+        if (en.attackT <= 0) {
+          en.attackT = 1.0;
+          if (typeof damageBuilding === 'function') damageBuilding(target, en.dmg);
+        }
+        continue;
+      }
+      // 冲向玩家，贴近后咬人
       if (d > 1.1) {
         en.x += (dx / d) * en.speed * dt;
         en.y += (dy / d) * en.speed * dt;
@@ -198,7 +252,7 @@ function updateEnemies(dt) {
       }
     }
   }
-  // 更新远程投射物，命中玩家扣血
+  // 更新远程投射物，命中玩家扣血 / 命中建筑损坏建筑
   if (G.enemyProjectiles) {
     for (const pr of G.enemyProjectiles) {
       const dx = pr.tx - pr.x, dy = pr.ty - pr.y;
@@ -206,9 +260,16 @@ function updateEnemies(dt) {
       const step = pr.speed * TILE * dt;
       if (d <= step) {
         pr.hit = true;
-        damagePlayer(pr.dmg);
-        // 火球命中：额外灼烧伤害（模拟持续灼烧）
-        if (pr.fire) damagePlayer(pr.dmg * 0.6);
+        if (pr.buildTarget && pr.buildTarget._dead === false) {
+          // 命中建筑：造成建筑伤害（火球附带灼烧）
+          if (typeof damageBuilding === 'function') {
+            damageBuilding(pr.buildTarget, pr.dmg + (pr.fire ? Math.round(pr.dmg * 0.5) : 0));
+          }
+        } else {
+          damagePlayer(pr.dmg);
+          // 火球命中：额外灼烧伤害（模拟持续灼烧）
+          if (pr.fire) damagePlayer(pr.dmg * 0.6);
+        }
         continue;
       }
       pr.x += (dx / d) * step;
@@ -266,7 +327,7 @@ function updateLootDrops(dt) {
     if (d.y > (Math.floor(d.y / TILE) + 0.9) * TILE) d.y = (Math.floor(d.y / TILE) + 0.9) * TILE;
     // 玩家靠近自动拾取
     if (Math.hypot(d.x - p.x, d.y - p.y) < pickR) {
-      invAdd(d.id, 1);
+      invAdd(d.id, d.n || 1);
       if (typeof toast === 'function' && d.id === 'uranium-ore') toast('拾取 铀矿石');
       d.picked = true;
     }

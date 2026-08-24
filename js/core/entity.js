@@ -170,6 +170,9 @@ class Entity {
     this.h = this.def.h;
     this.x = x; this.y = y;
     this.dir = 0;
+    // 建筑耐久度（对齐《异星工厂》）：每个可建造建筑有 HP，受敌人攻击会损毁，可用修理包修复
+    this.maxhp = (typeof buildingMaxHp === 'function') ? buildingMaxHp(type) : 100;
+    this.hp = this.maxhp;
   }
   get solid() { return this.def.solid; }
   applyDir() { this.w = this.def.w; this.h = this.def.h; }
@@ -189,7 +192,9 @@ class Entity {
     return rows;
   }
   serialize() {
-    return { type: this.type, x: this.x, y: this.y, dir: this.dir };
+    const s = { type: this.type, x: this.x, y: this.y, dir: this.dir };
+    if (this.hp !== undefined && this.hp < this.maxhp) s.hp = Math.max(1, Math.round(this.hp));
+    return s;
   }
   // 蓝图专用：仅序列化建筑本身（类型/坐标/方向），
   // 不含建筑内部原料、输出、燃料、流体，以及传送带上的物品。
@@ -199,6 +204,70 @@ class Entity {
   static restore(s) {
     const e = new this(s.type, s.x, s.y);
     e.dir = s.dir | 0;
+    if (typeof s.hp === 'number' && s.hp > 0 && s.hp < e.maxhp) e.hp = s.hp;
     return e;
   }
 }
+
+// ===== 建筑受击 / 损毁 / 修复（对齐《异星工厂》建筑耐久度机制）=====
+// 敌人攻击基地建筑；建筑 HP 归零即被摧毁，其内部物资与自身掉落地面（不丢失）。
+// 玩家手持修理包点击受损建筑可修复。
+
+// 建筑受击：扣减 HP，归零则摧毁并掉落物资。
+function damageBuilding(e, dmg) {
+  if (!e || e._dead) return;
+  if (e.maxhp <= 0) return;           // 不可损坏的实体（若有）
+  e.hp = (e.hp === undefined ? e.maxhp : e.hp) - dmg;
+  if (e.hp > 0) return e.hp;
+  // HP 归零 → 摧毁
+  e.hp = 0;
+  destroyBuilding(e);
+  return 0;
+}
+
+// 摧毁建筑：掉落内部物资与自身，然后从世界移除。
+function destroyBuilding(e) {
+  if (!e || e._dead) return;
+  if (typeof buildingDropLoot === 'function') buildingDropLoot(e);
+  // 火车车厢/载具等被摧毁时清理关联状态
+  if (typeof unregisterVehicle === 'function') unregisterVehicle(e);
+  removeEnt(e);
+  if (typeof toast === 'function') toast((ITEMS[e.type] ? ITEMS[e.type].name : e.type) + ' 被摧毁');
+}
+
+// 建筑损毁掉落：把建筑自身（或其返还清单）与内部物资作为地面掉落物抛出。
+function buildingDropLoot(e) {
+  if (!G.lootDrops) G.lootDrops = [];
+  const cx = (e.x + e.w / 2) * TILE, cy = (e.y + e.h / 2) * TILE;
+  let items;
+  try { items = (typeof e.contents === 'function') ? e.contents() : [[e.type, 1]]; }
+  catch (err) { items = [[e.type, 1]]; }
+  if (!items || !items.length) items = [[e.type, 1]];
+  for (const [id, n] of items) {
+    if (!n || n <= 0 || !ITEMS[id]) continue;
+    // 单个掉落物最大堆叠 10，超出拆分为多个掉落物
+    let left = n;
+    while (left > 0) {
+      const amt = Math.min(10, left);
+      left -= amt;
+      G.lootDrops.push({
+        x: cx + (Math.random() - 0.5) * 30,
+        y: cy + (Math.random() - 0.5) * 30,
+        id: id, n: amt, vx: (Math.random() - 0.5) * 40, vy: -20 - Math.random() * 20,
+        t: 0, life: 20
+      });
+    }
+  }
+}
+
+// 修复建筑：恢复指定 HP，返回是否产生了修复（用于判定是否消耗修理包使用次数）。
+function repairBuilding(e, amount) {
+  if (!e || e._dead || e.maxhp <= 0) return 0;
+  if (e.hp >= e.maxhp) return 0;
+  const before = e.hp;
+  e.hp = Math.min(e.maxhp, e.hp + amount);
+  return e.hp - before;
+}
+
+// 建筑是否受损（HP 未满）。
+function isDamaged(e) { return !!(e && e.maxhp > 0 && e.hp !== undefined && e.hp < e.maxhp); }

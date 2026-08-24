@@ -69,6 +69,7 @@ const G = {
   weapon: null,       // 当前选中的武器 id（player 持有）
   armor: null,        // 当前穿戴的护甲 id（light-armor / heavy-armor）
   gameWon: false,     // 是否已发射火箭赢得游戏
+  repairPackUses: 0,  // 当前修理包剩余使用次数（用尽后消耗一个新修理包）
   victoryT: 0,
   inMenu: true,       // 开始菜单显示中：游戏世界尚未初始化，loop 暂停渲染与更新
   deconstructMode: false,  // 触屏拆除模式：开启后点触建筑即可拆除（PC 右键拆除不受影响）
@@ -180,6 +181,7 @@ function serializeAll() {
       rid: q.rid, time: q.time, total: q.total, done: q.done, outId: q.outId
     })),
     gameWon: G.gameWon,
+    repairPackUses: G.repairPackUses || 0,
     techDone: G.techDone,
     techProg: G.techProg,
     activeTech: G.activeTech,
@@ -280,6 +282,7 @@ function applySave(d) {
   // 恢复敌人进化度（旧档无该字段则从 0 开始）
   G.evolution = (typeof d.evolution === 'number') ? Math.min(1, Math.max(0, d.evolution)) : 0;
   G.gameWon = !!d.gameWon;
+  G.repairPackUses = (typeof d.repairPackUses === 'number') ? d.repairPackUses : 0;
   G.combatRobots = [];
   G.driving = null;
   G.logiRobots = [];
@@ -340,8 +343,11 @@ function placeGround(type, tx, ty, infinite) {
     setTerrain(tx, ty, T_GRASS);
   } else {
     const to = PAVE_TILE[type];
-    if (t !== T_GRASS && t !== to) { toast('混凝土/石砖路只能铺在地面上'); return; }
-    if (t === to) return; // 已是同种地砖，不重复消耗
+    // 铺设在树木上：先砍掉树（对齐《异星工厂》：铺设前自动清理树木）
+    if (t === T_TREE) setTerrain(tx, ty, T_GRASS);
+    const t2 = getTerrain(tx, ty);
+    if (t2 !== T_GRASS && t2 !== to) { toast('混凝土/石砖路只能铺在地面上'); return; }
+    if (t2 === to) return; // 已是同种地砖，不重复消耗
     if (entAt(tx, ty)) { toast('地面有建筑，先拆除'); return; }
     setTerrain(tx, ty, to);
   }
@@ -353,6 +359,8 @@ function placeGround(type, tx, ty, infinite) {
 function tryPlaceAt(tx, ty) {
   const type = selItem();
   if (!type) return;
+  // 非可建造物品（如修理包）不触发建造
+  if (!BUILD_DEFS[type]) return;
   const infinite = !!(G.dbg && G.dbg.infinite);
   // 地面铺设（混凝土/石砖路/填海）：不创建实体，直接修改地形
   if (type === 'concrete' || type === 'stone-path' || type === 'landfill') {
@@ -943,6 +951,34 @@ function pickupAction() {
   uiDirty = true;
 }
 
+// 手持修理包点击受损建筑：消耗修理包使用次数修复建筑 HP（对齐《异星工厂》Repair pack）
+// 每个修理包最多修复 REPAIR_PACK_USES 次，用完后消耗该物品。
+const REPAIR_PACK_USES = 5;
+function repairActionAt(tx, ty) {
+  if (!withinReach(tx, ty)) { toast('距离太远'); return false; }
+  const e = entAt(tx, ty);
+  if (!e || !isDamaged(e)) { toast('该建筑无需修复'); return false; }
+  // 消耗修理包
+  let uses = G.repairPackUses || 0;
+  if (uses <= 0) {
+    if (!invCount('repair-pack')) { toast('需要修理包'); return false; }
+    uses = REPAIR_PACK_USES;
+    invTake('repair-pack', 1);
+  }
+  const fixed = repairBuilding(e, 100);
+  uses -= 1;
+  if (uses <= 0) { uses = 0; toast('修理包已用尽'); }
+  G.repairPackUses = uses;
+  if (fixed > 0) {
+    if (typeof makeSparkFx === 'function') makeSparkFx(e.x + e.w / 2, e.y + e.h / 2, e.w);
+    if (typeof playSfx === 'function') playSfx('repair');
+  }
+  uiDirty = true;
+  return true;
+}
+// 当前选中修理包（用于建造/点击优先触发修复）
+function hasRepairPackSelected() { return selItem() === 'repair-pack'; }
+
 function copySettings(e) {
   if (!e) return;
   const s = { type: e.type, dir: e.dir };
@@ -1247,13 +1283,24 @@ function bindInput() {
     if (ev.button !== 0 || ev.shiftKey) return;
     if (G.blueMode) return;   // 蓝图/红图模式下不触发面板
     updateCursorTile(ev.clientX, ev.clientY);
-    if (buildActive() || !G.cursorTile) return;
+    if (!G.cursorTile) return;
+    // 手持修理包点击受损建筑 → 修复（优先于打开面板）
+    if (hasRepairPackSelected() && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
+      const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
+      if (e && isDamaged(e)) { repairActionAt(G.cursorTile.tx, G.cursorTile.ty); return; }
+    }
+    if (buildActive()) return;
     const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
     if (e) openPanel('machine', e);
   });
 }
 
 function handleLeftDown() {
+  // 手持修理包点击受损建筑 → 修复（对齐《异星工厂》：左键维修）
+  if (hasRepairPackSelected() && G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
+    const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
+    if (e && isDamaged(e)) { repairActionAt(G.cursorTile.tx, G.cursorTile.ty); return; }
+  }
   if (buildActive() && G.cursorTile) {
     tryPlaceAt(G.cursorTile.tx, G.cursorTile.ty);
     lastPlaceKey = G.cursorTile.tx + ',' + G.cursorTile.ty;

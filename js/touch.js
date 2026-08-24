@@ -476,6 +476,11 @@ function handleTap() {
 
   // 选中了物品 → 建造（就地放置）
   if (buildActive()) {
+    // 手持修理包点击受损建筑 → 修复（对齐《异星工厂》触屏维修）
+    if (hasRepairPackSelected() && e && isDamaged(e) && withinReach(tx, ty)) {
+      repairActionAt(tx, ty);
+      return;
+    }
     tryPlaceAt(tx, ty);
     return;
   }

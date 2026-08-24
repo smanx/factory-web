@@ -259,6 +259,11 @@ function siloTip(e) {
 function onRocketLaunch() {
   G.gameWon = true;
   G.victoryT = 0;
+  // 每次卫星发射获得空间科学包（对齐《异星工厂》：Space science pack 由火箭发射产出，用于终局无限科研）
+  const spaceGain = 100;
+  invAdd('space-science-pack', spaceGain);
+  if (typeof trackProd === 'function') trackProd('space-science-pack', spaceGain);
+  if (typeof toast === 'function') toast('🛰️ 卫星发射成功，获得 +' + spaceGain + ' 空间科学包！');
   // 全屏胜利横幅
   showVictory();
   if (typeof toast === 'function') toast('🎉 恭喜！火箭发射成功，你赢得了游戏！');

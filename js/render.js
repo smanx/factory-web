@@ -251,8 +251,31 @@ function drawChunkTerrainInto(ctx, cx, cy) {
       const v = hash2(tx, ty);
       ctx.fillStyle = v > 0.62 ? '#4f7c3b' : v > 0.3 ? '#4a7538' : '#456f35';
       ctx.fillRect(px, py, TILE, TILE);
+      if (t === T_TREE) drawTreeInto(ctx, px, py, tx, ty);
     }
   }
+}
+
+// 绘制单棵树木（用 hash 决定树形与枝叶细节，保证确定性）
+function drawTreeInto(ctx, px, py, tx, ty) {
+  const h = hash2(tx * 3.7, ty * 7.1);
+  const cx = px + TILE / 2;
+  const baseY = py + TILE;
+  // 树干
+  ctx.fillStyle = '#5c4630';
+  ctx.fillRect(cx - 2.5, baseY - 13, 5, 13);
+  // 树冠：三层圆形/多边形枝叶
+  ctx.fillStyle = h > 0.5 ? '#2e5d22' : '#376b2a';
+  ctx.beginPath();
+  ctx.arc(cx, baseY - 18, 7 + h * 2, 0, 7); ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx - 4, baseY - 13, 5, 0, 7); ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx + 4, baseY - 13, 5, 0, 7); ctx.fill();
+  // 顶部高光
+  ctx.fillStyle = 'rgba(140,220,120,.35)';
+  ctx.beginPath();
+  ctx.arc(cx - 1, baseY - 20, 3, 0, 7); ctx.fill();
 }
 // 地形被修改（铺混凝土/石砖路/填海）后清除对应 chunk 的地形缓存
 function invalidateTerrainChunk(tx, ty) {
@@ -446,6 +469,29 @@ function drawStatusDot(ctx, x, y, c) {
 function drawEntity(ctx, e, gx, gy, dir, alpha) {
   const fn = DEVICE_RENDER[e.type];
   if (fn) fn(ctx, e, gx, gy, dir, alpha);
+  // 建筑受损：绘制耐久条与裂纹（对齐《异星工厂》建筑受击表现）
+  if (alpha === 1 && e.maxhp > 0 && e.hp !== undefined && e.hp < e.maxhp) {
+    const px = gx * TILE, py = gy * TILE, w = e.w * TILE, h = e.h * TILE;
+    // 裂纹随受损程度加深
+    const ratio = e.hp / e.maxhp;
+    if (ratio < 0.5) {
+      ctx.strokeStyle = 'rgba(20,20,20,.55)';
+      ctx.lineWidth = Math.max(1, 12 * (1 - ratio));
+      ctx.beginPath();
+      ctx.moveTo(px + w * 0.25, py + h * 0.2); ctx.lineTo(px + w * 0.5, py + h * 0.5);
+      ctx.lineTo(px + w * 0.35, py + h * 0.85);
+      ctx.stroke();
+    }
+    // 顶部耐久条（HP 低时更醒目）
+    if (ratio < 0.75) {
+      const barW = Math.min(w, TILE * 2.4), barH = 3;
+      const bx = gx * TILE + (w - barW) / 2, by = py - 4;
+      ctx.fillStyle = 'rgba(10,10,12,.6)';
+      ctx.fillRect(bx - 1, by - 1, barW + 2, barH + 2);
+      ctx.fillStyle = ratio > 0.5 ? '#7ec850' : (ratio > 0.25 ? '#e0b23c' : '#e04a3a');
+      ctx.fillRect(bx, by, barW * ratio, barH);
+    }
+  }
   // 低 LOD 时跳过状态灯（像素太小看不清，省一次 path+fill）
   if (alpha === 1 && !LOD.simple) {
     const sf = DEVICE_STATUS[e.type];
@@ -502,6 +548,8 @@ function canPlaceAt(type, tx, ty, dir) {
   for (let dy = 0; dy < eh; dy++)
     for (let dx = 0; dx < ew; dx++) {
       if (isWater(tx + dx, ty + dy)) return { ok: false };
+      // 树木阻挡建造（对齐《异星工厂》：需先砍树清空场地）
+      if (getTerrain(tx + dx, ty + dy) === T_TREE) return { ok: false };
       if (entAt(tx + dx, ty + dy)) {
         // 传送带升级/降级覆盖：用带系/地下带/分流器的同类覆盖现有同族带（对齐《异星工厂》覆盖升级）
         // 但反向传送带视为障碍（不参与覆盖），交由自动地下带逻辑跨越处理

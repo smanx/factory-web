@@ -215,10 +215,28 @@ class NuclearReactor extends Entity {
     if (this.water <= 0) return; // 断水：不产汽，燃料暂不烧
     this.burning = true;
     this.burnLeft -= dt;
-    const rate = REACTOR_WATER_RATE; // 每秒耗水量与产汽量（远超锅炉）
+    // 核反应堆相邻加成（对齐《异星工厂》：每个相邻反应堆使输出 +100%，鼓励多堆并排布局）
+    const neighbors = this.neighborCount();
+    const rate = REACTOR_WATER_RATE * (1 + neighbors); // 每秒耗水量与产汽量（远超锅炉）
     this.water = Math.max(0, this.water - rate * dt);
     this.steamBuf = Math.min(REACTOR_STEAM_CAP, this.steamBuf + rate * dt);
-    this.temp = Math.min(200, this.temp + 20 * dt);
+    this.temp = Math.min(200, this.temp + 20 * (1 + neighbors * 0.5) * dt);
+  }
+  // 统计正交相邻（含自身周边）的核反应堆数量（用于相邻加成）
+  neighborCount() {
+    let n = 0;
+    const seen = new Set();
+    // 反应堆周围一圈的相邻格
+    for (let dy = -1; dy <= this.h; dy++) {
+      for (let dx = -1; dx <= this.w; dx++) {
+        const inX = dx >= 0 && dx < this.w, inY = dy >= 0 && dy < this.h;
+        if (inX && inY) continue;         // 自身内部
+        if (!inX && !inY) continue;       // 斜角不算
+        const t = entAt(this.x + dx, this.y + dy);
+        if (t && !t._dead && t.type === 'nuclear-reactor' && !seen.has(t)) { seen.add(t); n++; }
+      }
+    }
+    return n;
   }
   // 端口物流：两侧水口双向进出、水位互通平衡（管道供水/排水）；底边中间汽口向下排汽
   portFlow() {
@@ -360,6 +378,7 @@ function reactorPanelHtml(e) {
   h += barHtml(0);
   h += '<div class="status"></div>';
   h += '<div class="dim">核反应堆：两侧蓝口水口接入供水管道（抽水机→管道），底边白口送出高温蒸汽到汽轮机/蒸汽管道。需核燃料，供汽能力远超锅炉。燃尽的燃料会留下废燃料棒，可在离心机再生为铀-238，闭合核燃料循环。核能技术解锁。</div>';
+  h += '<div class="dim">💡 相邻加成：并排摆放多座反应堆，每座相邻反应堆使输出 +100%（对齐《异星工厂》）。</div>';
   return h;
 }
 function reactorPanelLive(e, api) {

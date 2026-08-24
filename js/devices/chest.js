@@ -168,3 +168,111 @@ function chestOnChange(ev) {
 ENT_CLASSES['storage-chest'] = Chest;
 DEVICE_RENDER['storage-chest'] = drawChest;
 DEVICE_PANEL['storage-chest'] = { html: chestPanelHtml, live: chestPanelLive, tip: chestTip, onAction: chestOnAction, onChange: chestOnChange };
+
+// ===== 木箱（对齐《异星工厂》Wooden chest，占地 1×1，容量较小 16 格）=====
+class WoodenChest extends Chest {
+  constructor(type, x, y) { super('wooden-chest', x, y); }
+  giveItem(item) {
+    const cap = this.limits[item];
+    if (cap !== undefined && this.countOf(item) >= cap) return false;
+    for (const s of this.slots)
+      if (s && s.item === item && s.count < 40) { s.count++; return true; }
+    if (this.slots.length >= 16) return false;
+    this.slots.push({ item, count: 1 });
+    return true;
+  }
+}
+function drawWoodenChest(ctx, e, gx, gy, dir, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#8a6a42';
+  rr(ctx, px + 4, py + 8, TILE - 8, TILE - 13, 3); ctx.fill();
+  ctx.fillStyle = '#a08050';
+  rr(ctx, px + 4, py + 5, TILE - 8, 10, 3); ctx.fill();
+  ctx.strokeStyle = '#5c4326';
+  ctx.lineWidth = 1.5;
+  rr(ctx, px + 4, py + 8, TILE - 8, TILE - 13, 3); ctx.stroke();
+  ctx.fillStyle = '#c8a860';
+  ctx.fillRect(px + TILE / 2 - 2, py + 12, 4, 6);
+  ctx.globalAlpha = 1;
+}
+function woodenChestPanelHtml(e) {
+  const agg = {};
+  for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
+  let h = row('内容', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
+  h += '<div class="status"></div>';
+  let total = 0;
+  for (const k in agg) total += agg[k];
+  if (total > 0) h += '<button data-action="takeout" id="btn-chest-takeout">取出全部 (' + total + ')</button>';
+  h += '<div class="dim">木箱：最基础的储物箱（16 格），开局即可用木材合成。</div>';
+  return h;
+}
+function woodenChestPanelLive(e, api) {
+  let total = 0, k = 0;
+  for (const s of e.slots) if (s) { total += s.count; k++; }
+  api.set('contents', total ? countStr(e.slots.filter(Boolean).reduce((a, s) => (a[s.item] = (a[s.item] || 0) + s.count, a), {})) : dimSpan('空'));
+  api.toggle('#btn-chest-takeout', total > 0, '取出全部 (' + total + ')');
+  api.status(total ? ('收纳中：' + k + ' 种，共 ' + total + ' 件') : '空木箱', total ? 'ok' : 'ok');
+}
+function woodenChestTip(e) {
+  let n = 0;
+  for (const s of e.slots) if (s) n += s.count;
+  return n ? ('木箱存货 ' + n + ' 个') : '空木箱';
+}
+ENT_CLASSES['wooden-chest'] = WoodenChest;
+DEVICE_RENDER['wooden-chest'] = drawWoodenChest;
+DEVICE_PANEL['wooden-chest'] = { html: woodenChestPanelHtml, live: woodenChestPanelLive, tip: woodenChestTip, onAction: chestOnAction, onChange: chestOnChange };
+
+// ===== 铁箱（对齐《异星工厂》Iron chest，占地 1×1，容量 32 格，比木箱大、比钢箱小）=====
+class IronChest extends Chest {
+  constructor(type, x, y) { super('iron-chest', x, y); }
+  giveItem(item) {
+    const cap = this.limits[item];
+    if (cap !== undefined && this.countOf(item) >= cap) return false;
+    for (const s of this.slots)
+      if (s && s.item === item && s.count < 50) { s.count++; return true; }
+    if (this.slots.length >= 32) return false;
+    this.slots.push({ item, count: 1 });
+    return true;
+  }
+}
+function drawIronChest(ctx, e, gx, gy, dir, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#8a939e';
+  rr(ctx, px + 4, py + 8, TILE - 8, TILE - 13, 3); ctx.fill();
+  ctx.fillStyle = '#a3aab5';
+  rr(ctx, px + 4, py + 5, TILE - 8, 10, 3); ctx.fill();
+  ctx.strokeStyle = '#58616c';
+  ctx.lineWidth = 1.5;
+  rr(ctx, px + 4, py + 8, TILE - 8, TILE - 13, 3); ctx.stroke();
+  ctx.fillStyle = '#c8d0da';
+  ctx.fillRect(px + TILE / 2 - 2, py + 12, 4, 6);
+  ctx.globalAlpha = 1;
+}
+function ironChestPanelHtml(e) {
+  const agg = {};
+  for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
+  let h = row('内容', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
+  h += '<div class="status"></div>';
+  let total = 0;
+  for (const k in agg) total += agg[k];
+  if (total > 0) h += '<button data-action="takeout" id="btn-chest-takeout">取出全部 (' + total + ')</button>';
+  h += '<div class="dim">铁箱：容量比木箱更大（32 格），由木箱升级而来。</div>';
+  return h;
+}
+function ironChestPanelLive(e, api) {
+  let total = 0, k = 0;
+  for (const s of e.slots) if (s) { total += s.count; k++; }
+  api.set('contents', total ? countStr(e.slots.filter(Boolean).reduce((a, s) => (a[s.item] = (a[s.item] || 0) + s.count, a), {})) : dimSpan('空'));
+  api.toggle('#btn-chest-takeout', total > 0, '取出全部 (' + total + ')');
+  api.status(total ? ('收纳中：' + k + ' 种，共 ' + total + ' 件') : '空铁箱', total ? 'ok' : 'ok');
+}
+function ironChestTip(e) {
+  let n = 0;
+  for (const s of e.slots) if (s) n += s.count;
+  return n ? ('铁箱存货 ' + n + ' 个') : '空铁箱';
+}
+ENT_CLASSES['iron-chest'] = IronChest;
+DEVICE_RENDER['iron-chest'] = drawIronChest;
+DEVICE_PANEL['iron-chest'] = { html: ironChestPanelHtml, live: ironChestPanelLive, tip: ironChestTip, onAction: chestOnAction, onChange: chestOnChange };

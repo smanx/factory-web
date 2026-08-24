@@ -74,11 +74,11 @@ const PIPE_FLOW = 3;
 const STORAGE_TANK_CAP = 2500;
 const FLUID_WAGON_CAP = 2500;   // 流体车厢容量（对齐《异星工厂》Fluid Wagon 2.5 万单位）
 
-const SCIENCE_PACKS = ['science-pack', 'green-science', 'blue-science', 'military-science', 'production-science-pack', 'utility-science-pack'];
+const SCIENCE_PACKS = ['science-pack', 'green-science', 'blue-science', 'military-science', 'production-science-pack', 'utility-science-pack', 'space-science-pack'];
 function isScience(item) { return SCIENCE_PACKS.indexOf(item) >= 0; }
 const FILTER_CHOICES = ['iron-plate', 'copper-plate', 'steel-plate', 'iron-gear', 'iron-stick', 'steel-stick', 'copper-cable', 'green-circuit',
   'coal', 'solid-fuel', 'stone', 'plastic-bar', 'science-pack', 'green-science', 'blue-science', 'military-science',
-  'production-science-pack', 'utility-science-pack', 'flying-robot-frame',
+  'production-science-pack', 'utility-science-pack', 'space-science-pack', 'flying-robot-frame',
   'magazine', 'piercing-rounds', 'logistic-robot', 'construction-robot', 'uranium-235', 'uranium-238', 'nuclear-fuel', 'used-up-uranium-fuel-cell', 'sulfur'].concat(FLUIDS);
 function techPacks(tid) { return (TECHS && TECHS[tid] && TECHS[tid].cost) || {}; }
 function techCostTotal(tid) {
@@ -281,7 +281,16 @@ const ITEMS = {
   'personal-battery-mk2': { name: '个人电池 II', color: '#c0a030', desc: '装备件（2×2）：更大储电量的个人电池' },
   'exoskeleton':    { name: '外骨骼', color: '#8a7a5a', desc: '装备件（2×2）：穿戴后大幅提升玩家移动速度，每个 +40%（叠加）' },
   'nightvision':    { name: '夜视仪', color: '#5aa05a', desc: '装备件（1×1）：夜间增强视野，使夜晚如同白昼（对齐《异星工厂》Night vision）' },
-  'personal-laser-defense': { name: '个人激光防御', color: '#d04a5a', desc: '装备件（1×1）：自动攻击进入射程的敌人，消耗个人电力，每个激光器各自独立开火' }
+  'personal-laser-defense': { name: '个人激光防御', color: '#d04a5a', desc: '装备件（1×1）：自动攻击进入射程的敌人，消耗个人电力，每个激光器各自独立开火' },
+  // ===== 地形树木与木材（对齐《异星工厂》：树可砍伐获得木） =====
+  'wood': { name: '木材', color: '#8a6a3a', mark: 'W', desc: '由砍伐树木获得，是木质家具与修理包的原料，也可作低效燃料' },
+  // ===== 基础储物箱（对齐《异星工厂》：木箱/铁箱/钢箱递进） =====
+  'wooden-chest': { name: '木箱', color: '#a08050', desc: '最基础的储物箱，容量较小（16 格），开局即可合成' },
+  'iron-chest': { name: '铁箱', color: '#b0b8c4', desc: '由木箱升级的储物箱，容量更大（32 格）' },
+  // ===== 修理包（对齐《异星工厂》Repair pack） =====
+  'repair-pack': { name: '修理包', color: '#5aa0d0', desc: '选中后点击受损建筑可修复其耐久度。每个修理包有多次使用次数，损坏建筑恢复 HP' },
+  // ===== 空间科学包（对齐《异星工厂》Space science pack，火箭发射产出） =====
+  'space-science-pack': { name: '空间科学包', color: '#d0d0e0', mark: 'SC', desc: '由卫星成功发射后获得的高级科学包，用于终局无限科研（科研速度/采矿产能等）' }
 };
 
 const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone', 'calcite'];  // 0-4；原油/铀矿用特殊索引（见 ORE_OIL/ORE_URANIUM）
@@ -335,6 +344,11 @@ const RECIPES = {
   'express-underground-belt': { time: 1, inp: { 'fast-underground-belt': 1, 'iron-gear': 10 }, out: { 'express-underground-belt': 1 } },
   'express-splitter': { time: 1, inp: { 'fast-transport-belt': 4, 'iron-gear': 10 }, out: { 'express-splitter': 1 } },
   'steel-chest':      { time: 1,   inp: { 'steel-plate': 8 }, out: { 'steel-chest': 1 } },
+  // ===== 基础储物箱（木箱→铁箱→钢箱递进，对齐《异星工厂》） =====
+  'wooden-chest':     { time: 0.5, inp: { 'wood': 2 }, out: { 'wooden-chest': 1 } },
+  'iron-chest':       { time: 1,   inp: { 'wooden-chest': 1, 'iron-plate': 4 }, out: { 'iron-chest': 1 } },
+  // ===== 修理包（对齐《异星工厂》Repair pack） =====
+  'repair-pack':      { time: 1,   inp: { 'iron-gear': 1, 'copper-plate': 2 }, out: { 'repair-pack': 1 } },
   'steel-furnace':    { time: 2,   inp: { 'steel-plate': 8, 'stone': 6 }, out: { 'steel-furnace': 1 } },
   'assembling-machine-3': { time: 3, inp: { 'assembling-machine-mk2': 1, 'steel-plate': 8, 'iron-gear': 6, 'green-circuit': 8 }, out: { 'assembling-machine-3': 1 } },
   'pipe-to-ground':   { time: 1,   inp: { 'pipe': 10, 'iron-plate': 5 }, out: { 'pipe-to-ground': 1 } },
@@ -346,6 +360,7 @@ const RECIPES = {
   'flying-robot-frame': { time: 20, inp: { 'electric-engine': 1, 'battery': 2, 'steel-plate': 2, 'green-circuit': 3 }, out: { 'flying-robot-frame': 1 } },
   'production-science-pack': { time: 21, inp: { 'rail': 1, 'electric-furnace': 1, 'productivity-module': 1 }, out: { 'production-science-pack': 1 } },
   'utility-science-pack': { time: 21, inp: { 'processing-unit': 1, 'flying-robot-frame': 1, 'low-density-structure': 3 }, out: { 'utility-science-pack': 1 } },
+  // 空间科学包：卫星发射后由火箭发射井产出（非合成配方，见 rocket.js 发射逻辑）
   'gun-turret':       { time: 3,   inp: { 'iron-plate': 8, 'iron-gear': 4, 'copper-plate': 2 }, out: { 'gun-turret': 1 } },
   'stone-wall':       { time: 0.5, inp: { 'stone-brick': 2 }, out: { 'stone-wall': 1 } },
   'gate':             { time: 1,   inp: { 'stone-brick': 4, 'steel-plate': 2 }, out: { 'gate': 1 } },
@@ -537,6 +552,8 @@ const BUILD_DEFS = {
   'assembling-machine-3': { w: 3, h: 3, solid: true },
   'beacon':             { w: 3, h: 3, solid: true },
   'storage-chest':      { w: 1, h: 1, solid: true },
+  'wooden-chest':       { w: 1, h: 1, solid: true },
+  'iron-chest':         { w: 1, h: 1, solid: true },
   'steel-chest':        { w: 1, h: 1, solid: true },
   'creative-chest':     { w: 1, h: 1, solid: true },
   'void-chest':         { w: 1, h: 1, solid: true },
@@ -597,6 +614,39 @@ const BUILD_DEFS = {
   'decider-combinator': { w: 1, h: 1, solid: true },
   'substation':        { w: 4, h: 4, solid: true }
 };
+
+// ===== 建筑耐久度（对齐《异星工厂》HP 数值） =====
+// 每个可建造建筑的最大 HP。敌人会攻击基地内的建筑，受损建筑可用修理包修复；
+// HP 归零即被摧毁。无线索设备（传送带/管道/电线等）也有 HP，但敌人优先攻击防御建筑。
+const BUILDING_HP = {
+  'transport-belt': 60, 'fast-transport-belt': 100, 'express-transport-belt': 140,
+  'splitter': 80, 'priority-splitter': 100, 'express-splitter': 120,
+  'underground': 60, 'fast-underground-belt': 100, 'express-underground-belt': 140,
+  'inserter': 100, 'long-inserter': 100, 'filter-inserter': 100, 'stack-inserter': 100, 'stack-filter-inserter': 100,
+  'burner-inserter': 100,
+  'burner-drill': 300, 'electric-drill': 300, 'pumpjack': 400,
+  'stone-furnace': 200, 'steel-furnace': 200, 'electric-furnace': 300,
+  'assembling-machine': 300, 'assembling-machine-mk2': 300, 'assembling-machine-3': 400, 'beacon': 300,
+  'storage-chest': 150, 'wooden-chest': 100, 'iron-chest': 150, 'steel-chest': 200,
+  'creative-chest': 200, 'void-chest': 200,
+  'lab': 400,
+  'boiler': 200, 'steam-engine': 300, 'offshore-pump': 200,
+  'pipe': 50, 'pipe-to-ground': 50, 'pump': 100, 'storage-tank': 300,
+  'creative-pipe': 100, 'void-pipe': 100, 'creative-belt': 100, 'void-belt': 100,
+  'solar-panel': 100, 'accumulator': 100, 'passive-power': 200,
+  'gun-turret': 400, 'laser-turret': 400, 'flamethrower-turret': 400, 'artillery-turret': 800,
+  'stone-wall': 350, 'gate': 350,
+  'refinery': 500, 'chemical-plant': 400, 'rocket-silo': 1000, 'radar': 300,
+  'centrifuge': 300, 'nuclear-reactor': 1000, 'steam-turbine': 400,
+  'roboport': 600, 'logistic-chest-passive': 200, 'logistic-chest-active': 200,
+  'logistic-chest-storage': 200, 'logistic-chest-requester': 200,
+  'small-electric-pole': 60, 'medium-electric-pole': 100, 'big-electric-pole': 150, 'substation': 300,
+  'constant-combinator': 100, 'arithmetic-combinator': 100, 'decider-combinator': 100,
+  'lamp': 50, 'programmable-speaker': 100,
+  'rail': 100, 'locomotive': 300, 'cargo-wagon': 250, 'fluid-wagon': 250, 'train-stop': 300, 'rail-signal': 100,
+  'car': 200, 'tank': 400, 'spidertron': 600, 'land-mine': 100
+};
+function buildingMaxHp(type) { return BUILDING_HP[type] || 100; }
 
 // ===== 科技解锁要求（建造/武器/模块）=====
 // 物品 -> 所需已完成科技 id。缺少科技时建造/使用会被拦截并提示。
@@ -818,6 +868,10 @@ const TECHS = {
   'armor-modular': { name: '模块化护甲', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, desc: '解锁模块化护甲与基础个人装备（个人太阳能板 / 个人电池 / 夜视仪），装备网格中可安装外骨骼等装备件', req: ['production', 'utility'] },
   'armor-power': { name: '强力装甲', cost: { 'utility-science-pack': 80 }, desc: '解锁强力装甲（更大装备网格）与外骨骼、个人激光防御等高级装备件', req: ['armor-modular'] },
   'armor-power-mk2': { name: '强力装甲 II', cost: { 'utility-science-pack': 120 }, desc: '解锁终极强力装甲 II 与便携聚变反应堆，个人电网获得终极动力', req: ['armor-power', 'nuclear'] },
+  // ==== 空间科技（火箭发射后，用空间科学包推进终极无限科研）====
+  'space-science': { name: '空间科技', cost: { 'space-science-pack': 50, 'utility-science-pack': 50 }, desc: '解锁空间科学科研体系，允许用空间科学包研究终极科技（科研速度/采矿产能等）', req: ['utility', 'rocket-science'] },
+  'space-research-speed': { name: '空间科研速度', cost: { 'space-science-pack': 100 }, infinite: true, desc: '无限科技：每次研究科研速度 +20%（对齐《异星工厂》Research speed 无限科技）', req: ['space-science'] },
+  'space-mining-productivity': { name: '空间采矿产能', cost: { 'space-science-pack': 100 }, infinite: true, desc: '无限科技：每次研究采矿产能 +10%（对齐《异星工厂》Mining productivity 无限科技）', req: ['space-science'] },
   infinite:   { name: '无限科技', cost: {}, infinite: true, desc: '无限研究：消耗任意科学包，永不完成', req: [] }
 };
 
