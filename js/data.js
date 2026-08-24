@@ -262,7 +262,8 @@ const ITEMS = {
   'roboport':          { name: '机器人港', color: '#3a8a8a', desc: '物流机器人的基地与充电站（4×4，吃电力）。把物流机器人放入机器人港后自动调度，机器人往返供应箱与需求箱搬运货物，电量低时回到机器人港充电' },
   'logistic-robot':    { name: '物流机器人', color: '#4aa0d0', desc: '飞行机器人，放入机器人港后自动在供应箱/需求箱之间搬运物资，消耗电量，需回港充电' },
   'construction-robot':{ name: '施工机器人', color: '#d0a04a', desc: '飞行机器人，装备个人机器人港后，可自动按蓝图/红图施工：建造蓝图中的建筑、拆除标记的建筑，消耗背包物资' },
-  'personal-roboport':{ name: '个人机器人港', color: '#7a9a4a', desc: '个人装备：装备后提供施工机器人工作范围，蓝图粘贴自动由施工机器人建造（需背包中拥有施工机器人）' },
+  'personal-roboport':{ name: '个人机器人港', color: '#7a9a4a', desc: '个人装备：装备后提供施工机器人工作范围（12 格、最多 4 台在场），蓝图粘贴自动由施工机器人建造（需背包中拥有施工机器人）' },
+  'personal-roboport-mk2':{ name: '个人机器人港 II', color: '#5a8ac0', desc: '进阶个人装备：装备后提供更大施工机器人工作范围（20 格、最多 8 台在场），蓝图粘贴自动由施工机器人建造（对齐《异星工厂》Personal roboport Mk2）' },
   'logistic-chest-passive': { name: '被动供应箱', color: '#c9a84a', desc: '物流箱：可手动/机械臂存入货物，物流机器人会从箱中取货送往需求箱；也能接收机器人返还的货物' },
   'logistic-chest-active':  { name: '主动供应箱', color: '#d0743a', desc: '物流箱：机器人优先从此取货供应网络；多出的货物机器人会收纳到这里，适合作为原料集散点' },
   'logistic-chest-storage': { name: '仓储箱', color: '#8a9a6a', desc: '物流箱：机器人把返还/多余货物收纳到这里，也可作为备用取货源。所有仓储箱共享存放' },
@@ -292,6 +293,8 @@ const ITEMS = {
   'power-switch': { name: '功率开关', color: '#c06040', desc: '电路设备（1×1）：接入电路网络，按面板设定的条件判断是否切断电网供电。条件满足时强制全图断电（甩负荷保护），不满足时正常供电，用于按燃料/电量等信号自动调度电力（对齐《异星工厂》Power switch）' },
   // ===== 混凝土 / 地形改造（对齐《异星工厂》Concrete & Landfill）=====
   'concrete': { name: '混凝土', color: '#9a9aa0', desc: '地面装饰：铺设在草地上可加速玩家行走（比泥地快），需在玩家脚下使用或按住铺设' },
+  'refined-concrete': { name: '精炼混凝土', color: '#b0b0b6', desc: '地面装饰：比普通混凝土更耐磨、行走加速更明显（对齐《异星工厂》Refined concrete）' },
+  'hazard-concrete': { name: '警示混凝土', color: '#c0a020', desc: '地面装饰：黑黄警示条纹装饰地砖，行走加速同普通混凝土（对齐《异星工厂》Hazard concrete）' },
   'stone-path': { name: '石砖路', color: '#a8a09a', desc: '地面装饰：铺设在地面上美观且加速行走（由石砖合成）' },
   'landfill': { name: '填海料', color: '#8a6a3a', desc: '地形改造：把水面填成可建造的陆地（由石头+土合成）' },
   // ===== 模块化护甲 + 个人装备（对齐《异星工厂》Modular armor & Equipment grid）=====
@@ -503,6 +506,7 @@ const RECIPES = {
   'logistic-robot':    { time: 3,   inp: { 'green-circuit': 4, 'iron-gear': 2, 'battery': 2 },          out: { 'logistic-robot': 1 } },
   'construction-robot':{ time: 3,   inp: { 'iron-gear': 2, 'green-circuit': 2, 'battery': 2, 'flying-robot-frame': 1 }, out: { 'construction-robot': 1 } },
   'personal-roboport':{ time: 8,   inp: { 'steel-plate': 12, 'advanced-circuit': 6, 'battery': 4, 'green-circuit': 6 }, out: { 'personal-roboport': 1 } },
+  'personal-roboport-mk2':{ time: 14, inp: { 'personal-roboport': 1, 'processing-unit': 10, 'steel-plate': 20, 'battery': 10, 'low-density-structure': 5 }, out: { 'personal-roboport-mk2': 1 } },
   'logistic-chest-passive': { time: 1, inp: { 'iron-plate': 4, 'green-circuit': 1 },                    out: { 'logistic-chest-passive': 1 } },
   'logistic-chest-active':  { time: 1.5, inp: { 'iron-plate': 6, 'green-circuit': 2 },                  out: { 'logistic-chest-active': 1 } },
   'logistic-chest-storage': { time: 1.5, inp: { 'iron-plate': 4, 'green-circuit': 2 },                  out: { 'logistic-chest-storage': 1 } },
@@ -534,6 +538,8 @@ const RECIPES = {
   'power-switch':       { time: 1.5,  inp: { 'iron-plate': 4, 'green-circuit': 2, 'copper-cable': 4 }, out: { 'power-switch': 1 } },
   // ===== 混凝土 / 地形改造配方 =====
   'concrete':          { time: 0.5, inp: { 'stone-brick': 5, 'iron-plate': 2 },                     out: { 'concrete': 10 } },
+  'refined-concrete':  { time: 0.5, inp: { 'concrete': 2, 'steel-plate': 1 },                       out: { 'refined-concrete': 2 } },
+  'hazard-concrete':   { time: 0.5, inp: { 'concrete': 1, 'stone-brick': 1, 'iron-plate': 1 },      out: { 'hazard-concrete': 4 } },
   'stone-path':        { time: 0.5, inp: { 'stone-brick': 2 },                                      out: { 'stone-path': 4 } },
   'landfill':          { time: 0.5, inp: { 'stone': 20, 'iron-plate': 1 },                          out: { 'landfill': 1 } },
   // ===== 模块化护甲（对齐《异星工厂》Modular armor）=====
@@ -810,6 +816,7 @@ const TECH_REQ = {
   'flying-robot-frame': 'utility',
   'construction-robot': 'utility',
   'personal-roboport': 'utility',
+  'personal-roboport-mk2': 'armor-power-mk2',
   // ===== 模块化护甲与个人装备科技门控 =====
   'modular-armor': 'armor-modular',
   'power-armor': 'armor-power',
@@ -1209,6 +1216,66 @@ function drawItemGlyph(x, id, cx, cy, s) {
       x.beginPath();
       x.arc(0, -r * 0.72, r * 0.12, 0, 7);
       x.fill();
+      break;
+    }
+    case 'refined-concrete':
+    case 'hazard-concrete': {
+      // 地砖图标：四块石板拼合（警示混凝土加条纹）
+      x.fillStyle = col;
+      rrPath(x, -r * 0.8, -r * 0.8, r * 1.6, r * 1.6, s * 0.1);
+      x.fill();
+      x.strokeStyle = dark;
+      x.lineWidth = Math.max(1, s * 0.05);
+      x.stroke();
+      // 石板缝
+      x.strokeStyle = 'rgba(0,0,0,.35)';
+      x.lineWidth = Math.max(1, s * 0.04);
+      x.beginPath();
+      x.moveTo(-r * 0.2, -r * 0.8); x.lineTo(-r * 0.2, r * 0.8);
+      x.moveTo(r * 0.55, -r * 0.8); x.lineTo(r * 0.55, r * 0.8);
+      x.moveTo(-r * 0.8, r * 0.1); x.lineTo(r * 0.8, r * 0.1);
+      x.stroke();
+      if (id === 'hazard-concrete') {
+        // 黑黄警示斜纹
+        x.strokeStyle = '#2a2a30';
+        x.lineWidth = Math.max(1.5, s * 0.1);
+        for (let i = 0; i < 3; i++) {
+          const yy = -r * 0.9 + i * r * 0.6;
+          x.beginPath();
+          x.moveTo(-r * 0.9, yy + r * 0.3); x.lineTo(-r * 0.9 + r * 0.6, yy);
+          x.moveTo(r * 0.9, yy + r * 0.3); x.lineTo(r * 0.9 - r * 0.6, yy);
+          x.stroke();
+        }
+      }
+      break;
+    }
+    case 'personal-roboport':
+    case 'personal-roboport-mk2': {
+      // 机器人港：带雷达天线的方形基座
+      x.fillStyle = col;
+      rrPath(x, -r * 0.8, -r * 0.65, r * 1.6, r * 1.3, s * 0.1);
+      x.fill();
+      x.strokeStyle = dark;
+      x.lineWidth = Math.max(1, s * 0.05);
+      x.stroke();
+      // 天线
+      x.strokeStyle = dark;
+      x.lineWidth = Math.max(1.2, s * 0.06);
+      x.beginPath();
+      x.moveTo(0, -r * 0.65); x.lineTo(0, -r * 0.95);
+      x.stroke();
+      x.fillStyle = '#e0d040';
+      x.beginPath();
+      x.arc(0, -r * 0.98, r * 0.1, 0, 7);
+      x.fill();
+      // 中部圆盘（机器人进出港标识）
+      x.fillStyle = (id === 'personal-roboport-mk2') ? '#d04a5a' : '#b8c0a0';
+      x.beginPath();
+      x.arc(0, -r * 0.1, r * 0.32, 0, 7);
+      x.fill();
+      x.strokeStyle = dark;
+      x.lineWidth = Math.max(1, s * 0.04);
+      x.stroke();
       break;
     }
     default: {

@@ -117,6 +117,7 @@ class Assembler extends Entity {
     if (isModule(item)) {
       if ((this.modules[item] || 0) >= 4) return false;
       this.modules[item] = (this.modules[item] || 0) + 1;
+      if (typeof playSfx === 'function') playSfx('select');
       return true;
     }
     if (!this.recipe) return false;

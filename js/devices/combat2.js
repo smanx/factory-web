@@ -399,6 +399,7 @@ function updateLootDrops(dt) {
     if (Math.hypot(d.x - p.x, d.y - p.y) < pickR) {
       invAdd(d.id, d.n || 1);
       if (typeof toast === 'function' && d.id === 'uranium-ore') toast('拾取 铀矿石');
+      if (typeof playSfx === 'function') playSfx('select');
       d.picked = true;
     }
   }
@@ -454,6 +455,7 @@ function equipArmor(id) {
   // 更换护甲时迁移装备网格（新护甲装得下则保留，否则返还）
   if (typeof migrateEquipGrid === 'function') migrateEquipGrid(old, id);
   invTake(id, 1);
+  if (typeof playSfx === 'function') playSfx('equip');
   if (typeof toast === 'function') toast('已装备 ' + ARMORS[id].name + '（受伤 -' + Math.round((1 - ARMORS[id].protect) * 100) + '%' + (ARMORS[id].grid ? '，装备网格 ' + ARMORS[id].grid + '×' + ARMORS[id].grid : '') + '）');
   uiDirty = true;
 }
@@ -465,6 +467,7 @@ function unequipArmor() {
     if (typeof migrateEquipGrid === 'function') migrateEquipGrid(G.armor, null);
     G.armor = null;
   }
+  if (typeof playSfx === 'function') playSfx('unequip');
   if (typeof toast === 'function') toast('已脱下护甲');
   uiDirty = true;
 }

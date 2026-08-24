@@ -17,8 +17,16 @@
 // ===== 常量 =====
 const CONSTR_ROBOT_SPEED = 5.2;      // 施工机器人飞行速度（格/秒）
 const CONSTR_BUILD_TIME = 1.0;       // 单格建造耗时（秒）
-const CONSTR_RANGE = 12;             // 个人机器人港工作范围（格，含玩家所在格）
-const CONSTR_MAX_ACTIVE = 4;         // 同时最多在场施工的机器人数量
+const CONSTR_RANGE = 12;             // 个人机器人港 Mk1 工作范围（格，含玩家所在格）
+const CONSTR_MAX_ACTIVE = 4;         // 个人机器人港 Mk1 同时最多在场施工的机器人数量
+const CONSTR_RANGE_MK2 = 20;         // 个人机器人港 II 工作范围（格）
+const CONSTR_MAX_ACTIVE_MK2 = 8;     // 个人机器人港 II 同时最多在场施工的机器人数量
+
+// 根据已装备的个人机器人港版本返回 { range, maxActive }（对齐《异星工厂》Personal roboport Mk2：更大范围、更多机器人）
+function constrRoboportInfo() {
+  if (G.personalRoboport === 'mk2') return { range: CONSTR_RANGE_MK2, maxActive: CONSTR_MAX_ACTIVE_MK2 };
+  return { range: CONSTR_RANGE, maxActive: CONSTR_MAX_ACTIVE };
+}
 
 // ===== 个人机器人港装备 =====
 function ensureConstr() {
@@ -37,17 +45,24 @@ function constrRobotCount() {
 function canUseConstruction() {
   return hasPersonalRoboport() && constrRobotCount() > 0;
 }
-// 装备/卸下个人机器人港（背包“使用”触发，或面板按钮）
-function togglePersonalRoboport() {
+// 装备/卸下个人机器人港（背包“使用”触发，或面板按钮）。
+// wantMk2：点击 Mk2 按钮时强制装备 Mk2；否则若持有 Mk2 优先装备 Mk2（对齐《异星工厂》：机器人港可升级换代）
+function togglePersonalRoboport(wantMk2) {
   if (hasPersonalRoboport()) {
-    invAdd('personal-roboport', 1);
+    const id = (G.personalRoboport === 'mk2') ? 'personal-roboport-mk2' : 'personal-roboport';
+    invAdd(id, 1);
     G.personalRoboport = false;
-    if (typeof toast === 'function') toast('已卸下个人机器人港');
+    if (typeof playSfx === 'function') playSfx('unequip');
+    if (typeof toast === 'function') toast('已卸下' + ITEMS[id].name);
   } else {
-    if (invCount('personal-roboport') < 1) { if (typeof toast === 'function') toast('背包里没有个人机器人港'); return; }
-    invTake('personal-roboport', 1);
-    G.personalRoboport = true;
-    if (typeof toast === 'function') toast('已装备个人机器人港：蓝图由施工机器人自动建造');
+    const haveMk2 = invCount('personal-roboport-mk2') > 0;
+    const useMk2 = (wantMk2 === true) ? (invCount('personal-roboport-mk2') > 0) : (haveMk2 && invCount('personal-roboport') < 1);
+    const id = useMk2 ? 'personal-roboport-mk2' : 'personal-roboport';
+    if (invCount(id) < 1) { if (typeof toast === 'function') toast('背包里没有' + ITEMS[id].name); return; }
+    invTake(id, 1);
+    G.personalRoboport = useMk2 ? 'mk2' : true;
+    if (typeof playSfx === 'function') playSfx('equip');
+    if (typeof toast === 'function') toast('已装备' + ITEMS[id].name + '：蓝图由施工机器人自动建造');
   }
   uiDirty = true;
 }
@@ -198,6 +213,8 @@ function completeBuild(g) {
   if (g.recipe && typeof e.setRecipe === 'function') e.setRecipe(g.recipe);
   addEnt(e);
   g._dead = true;
+  // 施工机器人建成：短促金属“叮”
+  if (typeof playSfx === 'function') playSfx('build');
 }
 
 // 完成一个拆除标记：返还物资并移除实体
@@ -229,16 +246,17 @@ function updateConstruction(dt) {
   for (const r of G.constrRobots) updateConstrRobot(r, dt);
 
   // 统计当前在施工的机器人数量
+  const rInfo = constrRoboportInfo();
   const activeCount = G.constrRobots.filter(r => !r._dead && r.state !== 'idle').length;
-  if (activeCount >= CONSTR_MAX_ACTIVE) return;
+  if (activeCount >= rInfo.maxActive) return;
 
   // 找待施工幽灵（优先未在施工的）
   let targetGhost = null;
   for (const g of G.constrGhosts) {
     if (g._dead || g.building) continue;
     // 范围内判断
-    if (Math.abs((g.x + g.w / 2) - G.player.x / TILE) > CONSTR_RANGE) continue;
-    if (Math.abs((g.y + g.h / 2) - G.player.y / TILE) > CONSTR_RANGE) continue;
+    if (Math.abs((g.x + g.w / 2) - G.player.x / TILE) > rInfo.range) continue;
+    if (Math.abs((g.y + g.h / 2) - G.player.y / TILE) > rInfo.range) continue;
     // 需要材料：只有全部材料齐备时才施工（材料不足的幽灵原地等待，下次材料备齐自动续建，不会丢失）
     const rec = RECIPES[g.type] || null;
     if (rec) {
@@ -270,8 +288,8 @@ function updateConstruction(dt) {
   let targetMark = null;
   for (const m of G.deconMarks) {
     if (m._dead || m.building) continue;
-    if (Math.abs(m.x - G.player.x / TILE) > CONSTR_RANGE) continue;
-    if (Math.abs(m.y - G.player.y / TILE) > CONSTR_RANGE) continue;
+    if (Math.abs(m.x - G.player.x / TILE) > rInfo.range) continue;
+    if (Math.abs(m.y - G.player.y / TILE) > rInfo.range) continue;
     targetMark = m;
     break;
   }
@@ -362,10 +380,11 @@ function drawConstruction(ctx) {
 
 // 序列化个人机器人港状态（随存档保存）
 function constrSerialize() {
-  return { personalRoboport: !!G.personalRoboport };
+  return { personalRoboport: G.personalRoboport === 'mk2' ? 'mk2' : !!G.personalRoboport };
 }
 function constrRestore(s) {
-  G.personalRoboport = !!(s && s.personalRoboport);
+  const v = s && s.personalRoboport;
+  G.personalRoboport = (v === 'mk2' || v === true) ? (v === 'mk2' ? 'mk2' : true) : false;
   G.constrGhosts = [];
   G.deconMarks = [];
   G.constrRobots = [];
