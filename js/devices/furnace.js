@@ -150,6 +150,7 @@ function furnacePanelHtml(e) {
   h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
   h += barHtml(0);
   h += '<div class="status"></div>';
+  h += '<div id="mach-rate-block"></div>';
   return h;
 }
 function furnacePanelLive(e, api) {
@@ -161,6 +162,14 @@ function furnacePanelLive(e, api) {
   const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
   api.toggle('#btn-takeout', n > 0, '取回全部输出 (' + n + ')');
   api.prog(e.prog * 100);
+  // 当前冶炼项的消耗/产出速率（石炉×1、电炉×1.5×电学科技）
+  const rateEl = body.querySelector('#mach-rate-block');
+  if (rateEl) {
+    const mult = eFurn ? 1.5 * elecMachMult() : 1;
+    const rec = e.cur ? { time: e.cur.time, inp: { [e.cur.inp]: e.cur.inCount || 1 }, out: { [e.cur.id]: 1 } } : null;
+    const html = rec ? machRateHtml(rec, mult) : '';
+    if (rateEl.innerHTML !== html) rateEl.innerHTML = html;
+  }
   if (eFurn) {
     if (e.lit) api.status('冶炼中', 'ok');
     else if (e.cur && G.power.sat <= 0) api.status('已暂停：缺电', 'bad');

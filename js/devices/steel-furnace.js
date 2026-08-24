@@ -90,6 +90,7 @@ function steelFurnacePanelHtml(e) {
   h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
   h += barHtml(0);
   h += '<div class="status"></div>';
+  h += '<div id="mach-rate-block"></div>';
   h += '<div class="dim">钢铁炉：烧煤冶炼，速度约为石炉的 2 倍，可高效产铁板/铜板/钢板（2×2）。</div>';
   return h;
 }
@@ -100,6 +101,13 @@ function steelFurnacePanelLive(e, api) {
   const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
   api.toggle('#btn-takeout', n > 0, '取回全部输出 (' + n + ')');
   api.prog(e.prog * 100);
+  // 当前冶炼项的消耗/产出速率（钢铁炉×2）
+  const rateEl = body.querySelector('#mach-rate-block');
+  if (rateEl) {
+    const rec = e.cur ? { time: e.cur.time, inp: { [e.cur.inp]: e.cur.inCount || 1 }, out: { [e.cur.id]: 1 } } : null;
+    const html = rec ? machRateHtml(rec, 2) : '';
+    if (rateEl.innerHTML !== html) rateEl.innerHTML = html;
+  }
   if (e.lit) api.status('冶炼中（钢铁炉·高速）', 'ok');
   else if (e.cur) api.status('已暂停：等待燃料（加入煤）', 'warn');
   else api.status('已暂停：待料（放入燃料和矿石）', 'warn');

@@ -367,29 +367,36 @@ function barHtml(pct) {
   return '<div class="bar"><i style="width:' + pct + '%"></i></div>';
 }
 
-// 设备面板下方的“消耗 / 生产”二级 tab：按配方 time 折算每秒消耗/产出速率。
-// 展示的是该配方对应的输入消耗速率与输出生产速率（单位/秒），而非设备的产能。
-function machRateHtml(rec) {
+// 设备面板的“消耗速率 / 产出速率”：按配方 time 折算每秒消耗/产出速率（单位/秒），
+// 并计入设备当前的生产倍率 mult（如科技加成、机型差异等），让玩家明确看到当前设备
+// 每秒消耗多少原料、生产多少产品。
+function machRateBlocks(rec, mult) {
   if (!rec) return '';
-  const tab = G.machTab === 'cons' ? 'cons' : 'prod';
-  let h = '<div class="mach-tabs">';
-  h += '<button class="mach-tab' + (tab === 'cons' ? ' active' : '') + '" data-mach-tab="cons">消耗</button>';
-  h += '<button class="mach-tab' + (tab === 'prod' ? ' active' : '') + '" data-mach-tab="prod">生产</button>';
-  h += '</div>';
-  if (tab === 'cons') {
-    if (!Object.keys(rec.inp).length) h += '<div class="dim">该配方无需输入。</div>';
+  mult = mult || 1;
+  let h = '';
+  if (Object.keys(rec.inp).length) {
+    h += '<div class="sec">消耗速率</div>';
     for (const k in rec.inp) {
-      const rate = rec.inp[k] / rec.time;
+      const rate = (rec.inp[k] / rec.time) * mult;
       h += '<div class="mach-rate"><b style="color:#ff8a7a">−' + rate.toFixed(2) + '/秒</b>' + chip(k, rec.inp[k]) + '</div>';
     }
-  } else {
+  }
+  if (Object.keys(rec.out).length) {
+    h += '<div class="sec">产出速率</div>';
     for (const k in rec.out) {
-      const rate = rec.out[k] / rec.time;
+      const rate = (rec.out[k] / rec.time) * mult;
       h += '<div class="mach-rate"><b style="color:#8fe08f">+' + rate.toFixed(2) + '/秒</b>' + chip(k, rec.out[k]) + '</div>';
     }
   }
-  h += '<div class="dim">速率为按配方耗时折算的每秒输入/输出量，非设备产能。</div>';
   return h;
+}
+
+function machRateHtml(rec, mult) {
+  const blocks = machRateBlocks(rec, mult);
+  if (!blocks) return '';
+  const m = mult || 1;
+  return blocks + '<div class="dim">速率为按配方耗时折算的每秒输入/输出量' +
+    (m !== 1 ? '，已计入设备当前倍率 ×' + m.toFixed(2) : '') + '。</div>';
 }
 
 function statusLine(txt) {
@@ -425,12 +432,6 @@ function initPanelEvents() {
     const statItemTab = ev.target.closest('[data-stat-item-tab]');
     if (statItemTab) {
       G.statsItemTab = statItemTab.dataset.statItemTab;
-      renderPanel(false);
-      return;
-    }
-    const machTab = ev.target.closest('[data-mach-tab]');
-    if (machTab) {
-      G.machTab = machTab.dataset.machTab;
       renderPanel(false);
       return;
     }
