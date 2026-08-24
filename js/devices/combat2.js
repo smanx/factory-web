@@ -611,7 +611,7 @@ function updateBullets(dt) {
 // 武器数据：伤害、射速、弹药、弹种
 const WEAPONS = {
   'pistol':          { name: '手枪',   dmg: 10, rate: 0.3, ammo: 'magazine',        spread: 0.06, auto: false, range: 7, sfx: 'shoot' },
-  'submachine-gun':  { name: '冲锋枪', dmg: 7,  rate: 0.1, ammo: 'magazine',        spread: 0.12, auto: true,  range: 7, sfx: 'machine-gun' },
+  'submachine-gun':  { name: '冲锋枪', dmg: 7,  rate: 0.1, ammo: 'magazine', ammoTiers: ['magazine', 'piercing-rounds', 'uranium-rounds'], ammoDmg: { 'magazine': 7, 'piercing-rounds': 10, 'uranium-rounds': 16 }, spread: 0.12, auto: true,  range: 7, sfx: 'machine-gun' },
   'shotgun':         { name: '散弹枪', dmg: 6,  rate: 0.5, ammo: 'shotgun-shell', spread: 0.4,  auto: false, range: 6, pellets: 6, sfx: 'shotgun' },
   'combat-shotgun':  { name: '战斗散弹枪', dmg: 10, rate: 0.35, ammo: 'piercing-shotgun-shell', spread: 0.32, auto: false, range: 7, pellets: 8, sfx: 'shotgun' },
   'rocket-launcher': { name: '火箭筒', dmg: 35, rate: 1.1, ammo: 'rocket',          spread: 0.03, auto: false, range: 9, splash: 1.8, sfx: 'rocket' },
@@ -653,19 +653,29 @@ function playerFire(tx, ty) {
     return;
   }
   const px = G.player.x, py = G.player.y;
-  // 弹药检查：火焰喷射器消耗石油气（流体），其余消耗物品
-  if (w.ammo === 'petroleum-gas') {
+  // 弹药检查：火焰喷射器消耗石油气（流体），其余消耗物品。
+  // 冲锋枪等支持弹药升级的武器，自动消耗玩家身上最优的弹药并套用对应伤害（对齐《异星工厂》）。
+  let ammoUsed = w.ammo;
+  if (w.ammoTiers && w.ammoTiers.length > 1) {
+    for (let i = w.ammoTiers.length - 1; i >= 0; i--) {
+      if (invCount(w.ammoTiers[i]) >= 1) { ammoUsed = w.ammoTiers[i]; break; }
+    }
+  }
+  if (ammoUsed === 'petroleum-gas') {
     if (invCount('petroleum-gas') < 1) return;
     invTake('petroleum-gas', 1);
   } else {
-    if (invCount(w.ammo) < 1) return;
-    invTake(w.ammo, 1);
+    if (invCount(ammoUsed) < 1) return;
+    invTake(ammoUsed, 1);
   }
   const baseAng = Math.atan2(ty - py, tx - px);
   const pellets = w.pellets || 1;
   // 武器伤害无限科技倍率（对齐《异星工厂》Weapon damage research）+ 分类军事无限科技
   const base = (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult(weaponDamageKind(id)) : 1);
-  const dmg = Math.round(w.dmg * base);
+  // 弹药升级伤害：使用穿甲弹/铀弹时套用对应伤害，否则用武器基础伤害
+  let baseDmg = w.dmg;
+  if (w.ammoDmg && w.ammoDmg[ammoUsed]) baseDmg = w.ammoDmg[ammoUsed];
+  const dmg = Math.round(baseDmg * base);
   for (let i = 0; i < pellets; i++) {
     const a = baseAng + (Math.random() - 0.5) * 2 * w.spread;
     const dist = w.range * TILE;

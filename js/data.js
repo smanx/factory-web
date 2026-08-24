@@ -225,7 +225,7 @@ const ITEMS = {
   'chemical-plant':    { name: '化工厂', color: '#7d9464', desc: '流体化学加工厂：石油气+煤→塑料，重油/轻油裂解（3×3，吃电力）。底部2输入、顶部2输出，成对固定；固体原料机械臂任意方向放入' },
   // ===== 玩家武器与弹药（战斗体系扩充） =====
   'pistol':          { name: '手枪',   color: '#8a8f9a', desc: '基础随身武器。选中后按空格或对敌人点击开火，消耗弹药匣' },
-  'submachine-gun':  { name: '冲锋枪', color: '#6a7285', desc: '高射速全自动武器，消耗弹药匣' },
+  'submachine-gun':  { name: '冲锋枪', color: '#6a7285', desc: '高射速全自动武器，消耗弹药匣；自动优先消耗更高级弹药（穿甲弹 / 铀弹）以提升伤害（对齐《异星工厂》SMG 弹药升级）' },
   'shotgun':         { name: '散弹枪', color: '#a07a4a', desc: '近距霰弹，多弹丸高伤害，消耗散弹枪弹' },
   'combat-shotgun':  { name: '战斗散弹枪', color: '#a05a3a', desc: '进阶散弹枪：射速更快、伤害更高，消耗穿甲散弹枪弹（对齐《异星工厂》Combat shotgun）' },
   'shotgun-shell':   { name: '散弹枪弹', color: '#c07a4a', desc: '散弹枪的专用弹药，一次性发射多枚弹丸（对齐《异星工厂》Shotgun shell）' },
