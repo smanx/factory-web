@@ -194,14 +194,15 @@ function applySave(d) {
   G.quickSel = null;
   G.power = { prod: 0, demand: 0, sat: 1 };
   G.powerT = 0;
+  if (d.settings) Object.assign(G.settings, d.settings);
+  // 开发者调试数据随存档保存/读取，须在读档重建快捷栏前恢复，
+  // 否则无限资源（∞）等调试状态无法正确反映到快捷栏显示上
+  if (d.dbg && typeof d.dbg === 'object') Object.assign(G.dbg, d.dbg);
   if (Array.isArray(d.hotbar)) {
     HOTBAR = d.hotbar.slice(0, 10);
     while (HOTBAR.length < 10) HOTBAR.push(null);
     buildHotbar();
   }
-  if (d.settings) Object.assign(G.settings, d.settings);
-  // 开发者调试数据随存档保存/读取，读档时自动恢复调试设置
-  if (d.dbg && typeof d.dbg === 'object') Object.assign(G.dbg, d.dbg);
   G.cam.px = G.player.x; G.cam.py = G.player.y;
   uiDirty = true;
 }
