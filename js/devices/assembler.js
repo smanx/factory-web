@@ -42,9 +42,10 @@ class Assembler extends Entity {
   update(dt) {
     this.portFlow();
     if (!this.recipe) { this.crafting = false; return; }
+    if (G.power.sat <= 0) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
-      this.prog += dt * asmMult();
+      this.prog += dt * asmMult() * (G.power.sat < 1 ? G.power.sat : 1);
       this.spin += dt * 4;
       if (this.prog >= rec.time) {
         for (const k in rec.out) this.outp[k] = (this.outp[k] || 0) + rec.out[k];
@@ -62,6 +63,7 @@ class Assembler extends Entity {
     this.crafting = true;
     this.prog = 0;
   }
+  powerDemand() { return this.recipe ? POWER_USE['assembling-machine'] : 0; }
   setRecipe(id) {
     if (this.recipe === id) return;
     this.recipe = id;

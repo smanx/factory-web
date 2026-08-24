@@ -20,8 +20,19 @@ const HAND_MINE_TIME = 0.45;
 const REACH_TILES = 5.5;
 const REACH_PX = REACH_TILES * TILE;
 const LAB_TIME = 4;
-const POWER_PER_ENGINE = 4;
-const POWER_USE = { 'electric-drill': 3, 'electric-furnace': 2, 'assembling-machine-mk2': 3, 'assembling-machine-3': 5, 'pumpjack': 2, 'refinery': 4, 'chemical-plant': 4 };
+// 功率数值对齐《异星工厂》(Factorio) 官方 Wiki（单位 kW）
+const POWER_PER_ENGINE = 900;   // 蒸汽机满功率输出
+const POWER_USE = {
+  'electric-drill': 90,          // 电采矿机
+  'electric-furnace': 180,       // 电炉
+  'assembling-machine': 90,      // 组装机 I
+  'assembling-machine-mk2': 150, // 组装机 II
+  'assembling-machine-3': 210,   // 组装机 III
+  'pumpjack': 90,                // 抽油机
+  'refinery': 420,               // 炼油厂
+  'chemical-plant': 210,         // 化工厂
+  'lab': 60                      // 研究中心
+};
 
 // ===== 发电链（抽水机 → 水 → 锅炉烧出蒸汽 → 蒸汽口送汽 → 蒸汽机发电）=====
 const WATER_CAP = 20;            // 锅炉/抽水机内部储水上限（兼作锅炉蒸汽缓冲上限）
