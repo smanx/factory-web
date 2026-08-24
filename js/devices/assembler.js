@@ -12,11 +12,21 @@ class Assembler extends Entity {
     this.spin = 0;
   }
   fluidRecipe() {
-    const r = this.recipe ? RECIPES[this.recipe] : null;
-    if (!r) return null;
-    const fin = Object.keys(r.inp).filter(k => FLUIDS.indexOf(k) >= 0);
-    const fout = Object.keys(r.out).filter(k => FLUIDS.indexOf(k) >= 0);
-    return (fin.length || fout.length) ? { rec: r, fin, fout } : null;
+    // 缓存（P1 优化）：结果只随 recipe 变化，而 update/portFlow/渲染每帧都会查询。
+    // 原实现每次都做两轮 Object.keys().filter() 分配数组；改为按配方 id 惰性缓存，
+    // 未设置流体配方（绝大多数组装机）时恒返回 null，零分配。
+    if (this._frKey !== this.recipe) {
+      const r = this.recipe ? RECIPES[this.recipe] : null;
+      let fr = null;
+      if (r) {
+        const fin = Object.keys(r.inp).filter(k => FLUIDS.indexOf(k) >= 0);
+        const fout = Object.keys(r.out).filter(k => FLUIDS.indexOf(k) >= 0);
+        if (fin.length || fout.length) fr = { rec: r, fin, fout };
+      }
+      this._frKey = this.recipe;
+      this._fr = fr;
+    }
+    return this._fr;
   }
   acceptsFluid(k) {
     const r = this.recipe ? RECIPES[this.recipe] : null;
@@ -25,6 +35,14 @@ class Assembler extends Entity {
   portFlow() {
     const fr = this.fluidRecipe();
     if (!fr) return;
+    // 快速路径（P1 优化）：输入不缺、也没有待输出流体时无需做邻居扫描，
+    // 省去 forEachNeighborEnt 每帧的 Set/闭包分配。
+    let need = false;
+    for (const k of fr.fin) { if ((this.inp[k] || 0) < 50) { need = true; break; } }
+    if (!need) {
+      for (const k of fr.fout) { if ((this.outp[k] || 0) > 0) { need = true; break; } }
+    }
+    if (!need) return;
     forEachNeighborEnt(this, n => {
       if (!(n instanceof Pipe)) return;
       for (const k of fr.fin)

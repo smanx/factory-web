@@ -239,7 +239,7 @@ function drillPanelLive(e, api) {
   api.toggle('#btn-drill-takeout', e.buf > 0, '取回缓存 (' + e.buf + ')');
   api.prog(e.working ? e.prog / DRILL_TIME * 100 : 0);
   // 开采速率：每秒产矿量 = 1 / DRILL_TIME × 采矿科技 × 机型倍率（电钻×电学、抽油×石油科技）
-  const rateEl = body.querySelector('#mach-rate-block');
+  const rateEl = document.getElementById('mach-rate-block');
   if (rateEl) {
     const o = e.oreTile();
     const item = o ? e.mineItem(o) : (e.bufItem || null);

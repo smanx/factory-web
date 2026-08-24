@@ -56,6 +56,9 @@ function drawItemDotLOD(ctx, x, y, item) {
   ctx.fillRect(x - 2.5, y - 2.5, 5, 5);
 }
 
+// 复用的桶 key 缓冲：渲染每帧只遍历视口覆盖的桶，避免每次分配数组（P2 优化）
+const _bucketKeys = [];
+
 function render() {
   const ctx = G.ctx;
   ctx.fillStyle = '#151a14';
@@ -76,7 +79,8 @@ function render() {
     const x0 = Math.floor(b.x1 / TILE), y0 = Math.floor(b.y1 / TILE);
     const x1 = Math.ceil(b.x0 / TILE), y1 = Math.ceil(b.y0 / TILE);
     // 桶按实体左上角归位，多格设备（如 3×3/3×5）可能从邻近桶伸入视口，故扩一圈再剔除
-    const keys = bucketKeysIn(x0 - BUCK, y0 - BUCK, x1 + BUCK, y1 + BUCK);
+    _bucketKeys.length = 0;
+    const keys = bucketKeysIn(x0 - BUCK, y0 - BUCK, x1 + BUCK, y1 + BUCK, _bucketKeys);
     forEachEntInBuckets(keys, e => {
       if (!onScreen(e)) return;
       drawEntity(ctx, e, e.x, e.y, e.dir, 1);
@@ -120,13 +124,17 @@ function onScreen(e) {
 // 每个 32×32 chunk 渲到一张 1024×1024 离屏 canvas，按 LRU 缓存（上限 ~16 张）。
 // 相机平移只额外补渲染新出现的 chunk，可见 chunk 直接整张 drawImage blit，
 // 把 8000 次逐格 fillRect 降为几次 blit。矿点随开采变化，仍每帧实时绘制在缓存之上。
-const terrainCacheStats = { state: '未启用', rebuildMs: 0, lastRebuild: 0, hits: 0, misses: 0, cached: 0 };
+const terrainCacheStats = { state: '未启用', rebuildMs: 0, lastRebuild: 0, hits: 0, misses: 0, cached: 0, redraws: 0 };
 const TERRAIN_CHUNK_LRU_MAX = 16;   // 分块离屏缓存上限（张）
 const TERRAIN_CHUNK_PX = CHUNK * TILE;   // 1024
 const terrainChunkCache = new Map();   // 'cx,cy' -> { canvas, last }
 terrainChunkCache._seq = 0;   // LRU 时钟序号
 
-// 仅绘制单个 chunk 的地形底色（草地/水域），不含矿点
+// 仅绘制单个 chunk 的地形底色（草地/水域）+ 矿点。
+// 矿点随 chunk 一起烘焙进离屏画布（P1 优化）：此前矿点每帧在视口内逐格
+// 实时重绘（getOreType/getOreAmt 字符串键查询 + hash2 的 Math.sin + 圆弧路径），
+// 缩小视野（z 放大）时每帧可达数千格。开采消耗时由 consumeOre 标脏，
+// 下次取用该 chunk 时原地重绘一次即可保持实时性。
 function drawChunkTerrainInto(ctx, cx, cy) {
   const ox = cx * CHUNK, oy = cy * CHUNK;
   for (let dy = 0; dy < CHUNK; dy++) {
@@ -141,16 +149,29 @@ function drawChunkTerrainInto(ctx, cx, cy) {
       const v = hash2(tx, ty);
       ctx.fillStyle = v > 0.62 ? '#4f7c3b' : v > 0.3 ? '#4a7538' : '#456f35';
       ctx.fillRect(px, py, TILE, TILE);
+      const ti = getOreType(tx, ty);
+      if (ti >= 0 && getOreAmt(tx, ty) > 0)
+        drawOreDots(ctx, px, py, oreItemId(ti), getOreAmt(tx, ty), tx, ty);
     }
   }
 }
 
 // 获取指定 chunk 的离屏缓存画布；未命中时生成并写回 LRU。
+// 带脏标记（矿被开采）时原地重绘，避免整张缓存失效重建。
 function terrainChunkCanvas(cx, cy) {
   const key = cx + ',' + cy;
   let entry = terrainChunkCache.get(key);
   if (entry) {
     entry.last = ++terrainChunkCache._seq;
+    if (entry.dirty) {
+      const start = performance.now();
+      const cctx = entry.canvas.getContext('2d');
+      cctx.clearRect(0, 0, TERRAIN_CHUNK_PX, TERRAIN_CHUNK_PX);
+      drawChunkTerrainInto(cctx, cx, cy);
+      terrainCacheStats.rebuildMs = performance.now() - start;
+      terrainCacheStats.redraws++;
+      entry.dirty = false;
+    }
     terrainCacheStats.hits++;
     return entry.canvas;
   }
@@ -160,7 +181,7 @@ function terrainChunkCanvas(cx, cy) {
   const start = performance.now();
   drawChunkTerrainInto(cctx, cx, cy);
   terrainCacheStats.rebuildMs = performance.now() - start;
-  terrainChunkCache.set(key, { canvas: c, last: ++terrainChunkCache._seq });
+  terrainChunkCache.set(key, { canvas: c, last: ++terrainChunkCache._seq, dirty: false });
   terrainCacheStats.misses++;
   terrainCacheStats.cached = terrainChunkCache.size;
   // LRU 淘汰：超出上限时移除最久未用的 chunk
@@ -175,12 +196,23 @@ function terrainChunkCanvas(cx, cy) {
   return c;
 }
 
-// 新游戏/新种子时清空分块离屏缓存，避免残留旧世界地形。
+// 新游戏/新种子/读档时清空分块离屏缓存，避免残留旧世界地形与矿量。
 function clearTerrainCache() {
   terrainChunkCache.clear();
   terrainCacheStats.hits = 0;
   terrainCacheStats.misses = 0;
+  terrainCacheStats.redraws = 0;
   terrainCacheStats.cached = 0;
+}
+
+// 矿量变化时标脏所在 chunk（由 consumeOre 调用）：下次取用该 chunk 时重绘矿点。
+function markTerrainChunkDirty(tx, ty) {
+  const c = G.world && G.world.chunks.get(Math.floor(tx / CHUNK) + ',' + Math.floor(ty / CHUNK));
+  if (c) {
+    // chunk 尚未生成则无需标脏：首次生成时本就按当前矿量绘制
+    const e = terrainChunkCache.get(c.cx + ',' + c.cy);
+    if (e) e.dirty = true;
+  }
 }
 
 function drawTerrain(ctx) {
@@ -204,15 +236,11 @@ function drawTerrain(ctx) {
       ctx.drawImage(c, sx, sy, ex - dx, ey - dy, dx, dy, ex - dx, ey - dy);
     }
   }
-  // 矿点每帧实时绘制（随开采实时减少）
-  for (let ty = ty0; ty <= ty1; ty++) {
-    for (let tx = tx0; tx <= tx1; tx++) {
-      const ti = getOreType(tx, ty);
-      if (ti >= 0 && getOreAmt(tx, ty) > 0)
-        drawOreDots(ctx, tx * TILE, ty * TILE, oreItemId(ti), getOreAmt(tx, ty), tx, ty);
-    }
-  }
-  terrainCacheStats.state = '分块缓存（' + terrainChunkCache.size + '/' + TERRAIN_CHUNK_LRU_MAX + ' 张，命中 ' + terrainCacheStats.hits + ' / 未命中 ' + terrainCacheStats.misses + '）';
+  // 矿点已随 chunk 烘焙进离屏画布（见 drawChunkTerrainInto），
+  // 开采消耗由 consumeOre 标脏、按需重绘，不再每帧逐格重绘（P1 优化）。
+  terrainCacheStats.state = '分块缓存（' + terrainChunkCache.size + '/' + TERRAIN_CHUNK_LRU_MAX +
+    ' 张，命中 ' + terrainCacheStats.hits + ' / 未命中 ' + terrainCacheStats.misses +
+    ' / 脏重绘 ' + terrainCacheStats.redraws + '）';
 }
 
 function drawOreDots(ctx, px, py, itemId, amt, tx, ty) {

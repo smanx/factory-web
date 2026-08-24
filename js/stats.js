@@ -17,41 +17,62 @@ const PROD = {
   total: {},                          // item -> 累计净增减
   gained: {},                         // item -> 累计生成量
   lost: {},                           // item -> 累计消耗量
-  events: []                          // [{t, item, delta}]（按时间递增）
+  events: [],                         // [{t, item, delta}]（按时间递增）
+  head: 0                             // 窗口内起始下标（P1 优化：替代 O(n) 的 Array#shift 剪枝）
 };
 
 // 任意物品增减均在此记录：delta>0 表示生成，delta<0 表示消耗。
 function trackProd(item, delta) {
   if (!item || !delta) return;
   const now = G.time;
-  // 双保险：既按 2 秒窗口剪除过期头部，又设硬上限，防止高吞吐下事件队列无限增长（P2 优化）
-  while (PROD.events.length && now - PROD.events[0].t > PROD_WINDOW) PROD.events.shift();
-  if (PROD.events.length > PROD_EVENT_MAX) PROD.events.splice(0, PROD.events.length - PROD_EVENT_MAX);
+  // 双保险：既按 2 秒窗口剪除过期头部，又设硬上限。
+  // 头部用游标推进而非 shift()：高吞吐下每件物品增减都会触发剪枝，
+  // shift 的整体开销是 O(n²)；游标为 O(1)，仅在游标过半时一次性压缩数组。
+  const ev = PROD.events;
+  while (PROD.head < ev.length && now - ev[PROD.head].t > PROD_WINDOW) PROD.head++;
+  if (ev.length - PROD.head > PROD_EVENT_MAX) PROD.head = ev.length - PROD_EVENT_MAX;
+  if (PROD.head > 1024 && PROD.head * 2 >= ev.length) { ev.splice(0, PROD.head); PROD.head = 0; }
   if (delta > 0) PROD.gained[item] = (PROD.gained[item] || 0) + delta;
   else PROD.lost[item] = (PROD.lost[item] || 0) - delta;
   PROD.total[item] = (PROD.total[item] || 0) + delta;
-  PROD.events.push({ t: now, item, delta });
+  ev.push({ t: now, item, delta });
+}
+
+// ---- 窗口内速率快照（P1 优化）----
+// 统计面板每次刷新要算所有物品的速率：原实现每个物品都线性扫描整个事件
+// 队列，O(物品数×事件数)（上限 4096×N）。改为一次遍历聚合出
+// item -> {gain, loss} 快照，同一刷新周期内复用（按 长度+头标+时间 签名缓存）。
+let _rateSnap = { sig: '', map: null };
+function prodRateSnapshot() {
+  const sig = PROD.events.length + ':' + PROD.head + ':' + G.time;
+  if (_rateSnap.sig === sig) return _rateSnap.map;
+  const m = {};
+  for (let i = PROD.head; i < PROD.events.length; i++) {
+    const e = PROD.events[i];
+    let r = m[e.item];
+    if (!r) r = m[e.item] = { gain: 0, loss: 0 };
+    if (e.delta > 0) r.gain += e.delta; else r.loss -= e.delta;
+  }
+  _rateSnap = { sig, map: m };
+  return m;
 }
 
 // 计算某物品最近 2 秒内净速率（生成+，消耗-，单位/秒）。
 function prodNetRate(item) {
-  let sum = 0;
-  for (const ev of PROD.events) if (ev.item === item) sum += ev.delta;
-  return sum / PROD_WINDOW;
+  const r = prodRateSnapshot()[item];
+  return r ? (r.gain - r.loss) / PROD_WINDOW : 0;
 }
 
 // 某物品最近 2 秒内的生成速率（单位/秒，仅计生成事件）。
 function prodGainRate(item) {
-  let sum = 0;
-  for (const ev of PROD.events) if (ev.item === item && ev.delta > 0) sum += ev.delta;
-  return sum / PROD_WINDOW;
+  const r = prodRateSnapshot()[item];
+  return r ? r.gain / PROD_WINDOW : 0;
 }
 
 // 某物品最近 2 秒内的消耗速率（单位/秒，取正值，仅计消耗事件）。
 function prodLossRate(item) {
-  let sum = 0;
-  for (const ev of PROD.events) if (ev.item === item && ev.delta < 0) sum += -ev.delta;
-  return sum / PROD_WINDOW;
+  const r = prodRateSnapshot()[item];
+  return r ? r.loss / PROD_WINDOW : 0;
 }
 
 // 所有有活动记录的物品 id（按名称排序）

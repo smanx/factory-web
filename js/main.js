@@ -153,6 +153,8 @@ function loadGame() {
 
 function applySave(d) {
   G.world = genWorld(d.seed);
+  // 读档/导入可能来自不同存档：清空地形离屏缓存（含烘焙矿点），按新世界重绘
+  if (typeof clearTerrainCache === 'function') clearTerrainCache();
   G.world.remaining = new Map();
   if (d.world && Array.isArray(d.world.chunks)) {
     // 已探索地图块原样还原：与生成算法解耦，保证升级后地图不变

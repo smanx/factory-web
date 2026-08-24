@@ -1,6 +1,19 @@
 'use strict';
 
 // ===== 传送带 =====
+// 带上物品按 pos 降序（车头在前）。物品每帧只前移、新物品从尾部进入，
+// 数组几乎总是已排序：用插入排序维护顺序只需 O(n) 比较、零交换、零分配，
+// 替代每帧全量 Array#sort 的 O(n log n)+比较器开销（P1 优化）。
+function sortItemsDesc(arr) {
+  for (let i = 1; i < arr.length; i++) {
+    const it = arr[i];
+    if (arr[i - 1].pos >= it.pos) continue;
+    let j = i - 1;
+    do { arr[j + 1] = arr[j]; j--; } while (j >= 0 && arr[j].pos < it.pos);
+    arr[j + 1] = it;
+  }
+}
+
 class Belt extends Entity {
   constructor(type, x, y) {
     super(type || 'transport-belt', x, y);
@@ -12,7 +25,7 @@ class Belt extends Entity {
     // （排序/邻居扫描/转移判定），空传送带完全无需每帧运行。
     if (!this.items || this.items.length === 0) return;
     const sp = beltSpeed() * this.speedMult() * dt;
-    this.items.sort((a, b) => b.pos - a.pos);
+    sortItemsDesc(this.items);
     if (this.items.length && this.items[0].pos + sp >= 1) this.transferFront();
     for (let i = 0; i < this.items.length; i++) {
       const it = this.items[i];

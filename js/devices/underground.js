@@ -20,6 +20,22 @@ class Underground extends Entity {
     }
     return null;
   }
+  // ===== 配对关系缓存（P1 优化）=====
+  // findMate/findBackMate 各要沿朝向扫描至多 maxDist 格（普通6/快速14/极速20），
+  // 而配对状态会被 update（每帧）、DEVICE_STATUS（每个可见地下带每帧）、
+  // drawUnderground（isEntrance+isExit，每帧两次）反复查询——
+  // 一条可见的未配对极速地下带一帧最多触发上百次 entAt。
+  // 配对结果只随“任意实体增删”变化：用全局网格版本号做惰性失效，
+  // 建造/拆除前缓存恒有效，查询降为一次版本号比对。
+  pairInfo() {
+    if (this._pairV !== gridVersion()) {
+      const front = this.findMate();
+      const back = this.findBackMate();
+      this._pair = { front, back };
+      this._pairV = gridVersion();
+    }
+    return this._pair;
+  }
   speedMult() { return this.type === 'fast-underground-belt' ? FAST_BELT_MULT : 1; }
   // 与同档传送带完全一致的吞吐：每 BELT_SPACING 格一个物品 → 间隔 = 间距/带速
   ugInterval() { return BELT_SPACING / Math.max(0.05, beltSpeed() * this.speedMult()); }
@@ -35,12 +51,12 @@ class Underground extends Entity {
       }
       return;
     }
-    const mate = this.findMate();
+    const mate = this.pairInfo().front;
     // 只与离它最近的那一个配对：地下带只作为“入口”向前输送，当且仅当它
     // 后方没有另一座同向同档地下带（即它是链的起点）。一旦后方已有配对，
     // 它就是“出口”，把收到的货投向地面，而不再继续把货转给更前方的地下带，
     // 从而避免 A→B→C 整条链一路把货送到最远的出口（对齐《异星工厂》配对逻辑）。
-    if (mate && !this.findBackMate()) {
+    if (mate && !this.pairInfo().back) {
       // 入口：把本格收进 items 的货以及后方入口转来的 outItems 一并送往最近的前方出口，
       // 绝不向地面带外溢，保证“进洞的货只能从出口出来”。
       if (this.cd <= 0 && mate.outItems.length < UG_CAP) {
@@ -70,12 +86,13 @@ class Underground extends Entity {
       }
     }
   }
+  // 以下三个判定全部走 pairInfo() 缓存（P1 优化）。
   // 是否作为“出口”：后方已有同向同档地下带配对（无论前方是否还有更远的带）。
   // 出口把收到的货投向地面，不再向更前方的地下带转送（只与最近者配对）。
-  isExit() { return !!this.findBackMate(); }
+  isExit() { return !!this.pairInfo().back; }
   // 是否作为“入口”：前方有同向同档地下带配对，且后方没有配对（是链的起点）。
   // 入口把货送向最近的前方出口。
-  isEntrance() { return !this.findBackMate() && !!this.findMate(); }
+  isEntrance() { const p = this.pairInfo(); return !p.back && !!p.front; }
   findBackMate() {
     for (let k = 1; k <= this.maxDist(); k++) {
       const nx = this.x - DX[this.dir] * k, ny = this.y - DY[this.dir] * k;
@@ -88,7 +105,7 @@ class Underground extends Entity {
   }
   // 是否已配对（前方或后方有同向同档地下带）。
   // 未配对的地下带仅作静态显示，不参与任何物品传输（对齐《异星工厂》）。
-  isPaired() { return !!(this.findMate() || this.findBackMate()); }
+  isPaired() { const p = this.pairInfo(); return !!(p.front || p.back); }
   acceptItem(item) {
     if (this.items.length >= UG_CAP) return false;
     // 未配对的地下带不接收任何物品（不搭在其他传送带上、不传送，仅显示）

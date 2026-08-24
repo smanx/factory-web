@@ -37,6 +37,22 @@ function iconCanvas(id, size = 34) {
 // 灰字片段（设备面板 live 刷新共用）
 function dimSpan(s) { return '<span class="dim">' + s + '</span>'; }
 
+// 快捷栏槽位/计数元素引用缓存（P2 优化）：refreshHotbar 由每次物品增减
+// （挖矿/合成/建造）触发，原实现每次都做 10×2 次 getElementById + children 索引；
+// 缓存后仅 buildHotbar 重建 DOM 时失效一次。
+let HB_REFS = null;
+
+function hbRefs() {
+  if (!HB_REFS) {
+    const slots = document.getElementById('hotbar').children;
+    HB_REFS = [];
+    for (let i = 0; i < 10; i++) {
+      HB_REFS.push({ slot: slots[i], cnt: document.getElementById('hb-cnt-' + i) });
+    }
+  }
+  return HB_REFS;
+}
+
 function buildHotbar() {
   const hb = document.getElementById('hotbar');
   hb.innerHTML = '';
@@ -67,18 +83,19 @@ function buildHotbar() {
     slot.addEventListener('click', () => selectSlot(i));
     hb.appendChild(slot);
   });
+  HB_REFS = null;   // DOM 已重建，刷新引用缓存
   refreshHotbar();
 }
 
 function refreshHotbar() {
   const infinite = !!(G.dbg && G.dbg.infinite);
+  const refs = hbRefs();
   HOTBAR.forEach((id, i) => {
-    const el = document.getElementById('hb-cnt-' + i);
-    if (!el) return;
-    el.textContent = id ? (infinite ? '∞' : invCount(id)) : '';
-    const slot = document.getElementById('hotbar').children[i];
-    slot.classList.toggle('active', G.sel === i);
-    slot.classList.toggle('empty', !!id && !infinite && invCount(id) <= 0);
+    const ref = refs[i];
+    if (!ref.cnt || !ref.slot) return;
+    ref.cnt.textContent = id ? (infinite ? '∞' : invCount(id)) : '';
+    ref.slot.classList.toggle('active', G.sel === i);
+    ref.slot.classList.toggle('empty', !!id && !infinite && invCount(id) <= 0);
   });
 }
 
@@ -664,15 +681,19 @@ function updateHUD(dt, fps) {
 }
 
 function mapTipAt(tx, ty) {
-  // 显示详情(Alt)时：鼠标移到某流体出入口图标上，优先显示该流体的具体名称
+  // 显示详情(Alt)时：鼠标移到某流体出入口图标上，优先显示该流体的具体名称。
+  // 流体口图标恒画在设备脚印内部的格子上（见 core/draw.js fluidIconCell），
+  // 因此只需查鼠标所在格命中的设备本身，无需全量扫描 G.ents（P1 优化：
+  // 原实现每次 mousemove 遍历全部实体，大工厂下悬停明显掉帧）。
   if (G.showDetails) {
-    for (const ent of G.ents) {
-      if (ent._dead) continue;
-      const fn = DEVICE_FLUID_ICONS[ent.type];
-      if (!fn) continue;
-      for (const ic of fn(ent)) {
-        if (ic.x === tx && ic.y === ty && ITEMS[ic.fluid]) {
-          return ITEMS[ic.fluid].name + '|' + ITEMS[ic.fluid].desc;
+    const dev = entAt(tx, ty);
+    if (dev && !dev._dead) {
+      const fn = DEVICE_FLUID_ICONS[dev.type];
+      if (fn) {
+        for (const ic of fn(dev)) {
+          if (ic.x === tx && ic.y === ty && ITEMS[ic.fluid]) {
+            return ITEMS[ic.fluid].name + '|' + ITEMS[ic.fluid].desc;
+          }
         }
       }
     }

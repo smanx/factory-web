@@ -6,6 +6,14 @@
 const ENT_KEY_OFF = 32768;
 function entKey(x, y) { return ((x + ENT_KEY_OFF) << 16) | (y + ENT_KEY_OFF); }
 function entAt(x, y) { return G.grid.get(entKey(x, y)); }
+
+// ===== 全局网格版本号（P1 优化）=====
+// 任何实体增删都会使“依赖邻居布局的派生结果”失效（如地下带配对关系）。
+// 用一个单调递增版本号做惰性失效：派生结果缓存版本号，访问时比对，
+// 不一致才重算。建造/拆除是低频事件，而配对查询是每帧高频操作，
+// 相比“每次增删主动广播失效”更简单且无遗漏。
+let _gridVer = 1;
+function gridVersion() { return _gridVer; }
 function dirFromVec(dx, dy) {
   return dx === 1 ? 0 : dy === 1 ? 1 : dx === -1 ? 2 : 3;
 }
@@ -39,8 +47,10 @@ function ensureBucket(k) {
   return s;
 }
 // 返回覆盖 (x0,y0)-(x1,y1)（含）矩形区域的所有桶 key（去重）。
-function bucketKeysIn(x0, y0, x1, y1) {
-  const keys = [];
+// 传入 out 时写入并复用该数组（渲染每帧调用，避免分配，P2 优化）。
+function bucketKeysIn(x0, y0, x1, y1, out) {
+  const keys = out || [];
+  if (!out) keys.length = 0;
   const b0x = x0 >> 4, b0y = y0 >> 4, b1x = x1 >> 4, b1y = y1 >> 4;
   for (let by = b0y; by <= b1y; by++)
     for (let bx = b0x; bx <= b1x; bx++) keys.push(((bx + BUCK_OFF) * 8192) + (by + BUCK_OFF));
@@ -63,6 +73,7 @@ function addEnt(e) {
   for (let dy = 0; dy < e.h; dy++)
     for (let dx = 0; dx < e.w; dx++)
       G.grid.set(entKey(e.x + dx, e.y + dy), e);
+  _gridVer++;
   invalidateBeltInputNear(e.x, e.y, e.w, e.h);
   // 电力增量注册表同步维护（P1 优化）
   if (typeof regPowerEnt === 'function') regPowerEnt(e);
@@ -81,6 +92,7 @@ function removeEnt(e) {
       const k = entKey(e.x + dx, e.y + dy);
       if (G.grid.get(k) === e) G.grid.delete(k);
     }
+  _gridVer++;
   invalidateBeltInputNear(e.x, e.y, e.w, e.h);
   // 电力增量注册表同步移除
   if (typeof unregPowerEnt === 'function') unregPowerEnt(e);
@@ -133,10 +145,12 @@ function neighborOnSideCell(e, side, cell) {
   return entAt(e.x - 1, e.y + cell);                        // 西
 }
 
-// 遍历实体正交相邻格上的实体（去重，不含斜角）
 // 遍历给定桶集合内的实体（去重，跳过墓碑）。
+// seen 集合复用模块级实例（调用方不嵌套、不重入），避免每帧 new Set 的 GC 压力（P2 优化）。
+const _bucketSeen = new Set();
 function forEachEntInBuckets(keys, fn) {
-  const seen = new Set();
+  const seen = _bucketSeen;
+  seen.clear();
   for (const k of keys) {
     const s = G.buckets.get(k);
     if (!s) continue;
@@ -148,6 +162,7 @@ function forEachEntInBuckets(keys, fn) {
   }
 }
 
+// 遍历实体正交相邻格上的实体（去重，不含斜角）
 function forEachNeighborEnt(e, fn) {
   const seen = new Set();
   for (let dx = -1; dx <= e.w; dx++)

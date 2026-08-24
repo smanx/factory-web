@@ -25,7 +25,7 @@ class Splitter extends Belt {
     // 惰性调度（P0 优化）：空分流器无需每帧处理
     if (!this.items || this.items.length === 0) return;
     const sp = beltSpeed() * dt;
-    this.items.sort((a, b) => b.pos - a.pos);
+    sortItemsDesc(this.items);   // 近似有序插入排序（见 belt.js，P1 优化）
     for (let i = 0; i < this.items.length; i++) {
       const o = this.items[i];
       const lim = i === 0 ? 0.999 : Math.max(0, this.items[i - 1].pos - BELT_SPACING);

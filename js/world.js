@@ -128,6 +128,8 @@ function consumeOre(tx, ty) {
   const amt = getOreAmt(tx, ty);
   if (amt <= 0) return;
   G.world.remaining.set(key, amt - 1);
+  // 矿点已烘焙进地形离屏缓存：开采后标脏所在 chunk，下次取用时重绘（P1 优化）
+  if (typeof markTerrainChunkDirty === 'function') markTerrainChunkDirty(tx, ty);
 }
 
 function isWater(tx, ty) { return getTerrain(tx, ty) === T_WATER; }
