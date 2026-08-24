@@ -100,13 +100,9 @@ function drawPump(ctx, e, gx, gy, dir, alpha) {
     ctx.arc(0, 0, 5, 0, 7);
     ctx.fill();
   }
-  // 出口箭头（基准朝东，随机身一起旋转）
+  // 出口箭头：固定在短边一侧（设备短边始终为下方），不随朝向移动，只做水流出口指示
   ctx.fillStyle = dirColorNotch(dir);
-  notch(ctx, lx, ly, 0);
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 9px system-ui';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('抽水机', 0, 12);
+  notch(ctx, 0, H / 2 - 2, 1);
   ctx.restore();
   ctx.globalAlpha = 1;
 }
