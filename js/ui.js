@@ -462,11 +462,10 @@ function initPanelEvents() {
     // 设备专属输入（如储物箱存量上限）优先交给设备自己的 onChange
     const panel = G.panelEnt && DEVICE_PANEL[G.panelEnt.type];
     if (panel && panel.onChange && panel.onChange(ev)) return;
-    // 历史页物品下拉切换
-    const histItem = ev.target.closest('[data-stat-hist-item]');
-    if (histItem) {
-      G.statsHistItem = histItem.value;
-      renderPanel(false);
+    // 历史页物品选择（datalist 下拉选中）
+    const histFilter = ev.target.closest('[data-stat-hist-filter]');
+    if (histFilter) {
+      statsHistPickFiltered();
       return;
     }
     if (ev.target.id !== 'imp-file') return;
@@ -504,6 +503,18 @@ function initPanelEvents() {
     const statItemTab = ev.target.closest('[data-stat-item-tab]');
     if (statItemTab) {
       G.statsItemTab = statItemTab.dataset.statItemTab;
+      renderPanel(false);
+      return;
+    }
+    const statLiveSub = ev.target.closest('[data-stat-live-sub]');
+    if (statLiveSub) {
+      G.statsLiveSub = statLiveSub.dataset.statLiveSub;
+      renderPanel(false);
+      return;
+    }
+    const statHistSub = ev.target.closest('[data-stat-hist-sub]');
+    if (statHistSub) {
+      G.statsHistSub = statHistSub.dataset.statHistSub;
       renderPanel(false);
       return;
     }
