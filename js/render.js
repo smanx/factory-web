@@ -36,6 +36,11 @@ function screenToWorld(sx, sy) {
 let FRAME_BOUNDS = null;
 // 复用的包围盒缓冲：地形/网格等每帧只算一次，避免重复分配。
 let _B = {};
+// 渲染热路径复用缓冲区：桶 keys 数组与去重 Set，避免每帧多次分配（GC 压力）。
+// render() 与 drawLampLights() 内的 bucketKeysIn/forEachEntInBuckets 均为顺序非嵌套调用，
+// 可安全复用同一对缓冲区（每次调用前会自动 clear）。
+let _bucketKeysBuf = [];
+let _bucketSeenBuf = new Set();
 
 // ===== LOD 分级绘制 =====
 // 依据瓦片在屏幕上的像素尺寸（TILE * cam.z）决定绘制细节等级，
@@ -80,7 +85,8 @@ function render() {
   const keys = (G.buckets && G.buckets.size)
     ? bucketKeysIn(
         Math.floor(FRAME_BOUNDS.x1 / TILE) - BUCK, Math.floor(FRAME_BOUNDS.y1 / TILE) - BUCK,
-        Math.ceil(FRAME_BOUNDS.x0 / TILE) + BUCK, Math.ceil(FRAME_BOUNDS.y0 / TILE) + BUCK)
+        Math.ceil(FRAME_BOUNDS.x0 / TILE) + BUCK, Math.ceil(FRAME_BOUNDS.y0 / TILE) + BUCK,
+        _bucketKeysBuf)
     : null;
   const drawPass = (e, drawInserter) => {
     if (e._dead || !onScreen(e)) return;
@@ -88,8 +94,8 @@ function render() {
     drawEntity(ctx, e, e.x, e.y, e.dir, 1);
   };
   if (keys) {
-    forEachEntInBuckets(keys, e => drawPass(e, false));   // 普通设备（含传送带等）
-    forEachEntInBuckets(keys, e => drawPass(e, true));    // 机械臂置顶
+    forEachEntInBuckets(keys, e => drawPass(e, false), _bucketSeenBuf);   // 普通设备（含传送带等）
+    forEachEntInBuckets(keys, e => drawPass(e, true), _bucketSeenBuf);    // 机械臂置顶
   } else {
     for (const e of G.ents) drawPass(e, false);
     for (const e of G.ents) drawPass(e, true);
@@ -163,7 +169,8 @@ function drawLampLights(ctx, dark) {
   const keys = (G.buckets && G.buckets.size)
     ? bucketKeysIn(
         Math.floor(FRAME_BOUNDS.x1 / TILE) - 6, Math.floor(FRAME_BOUNDS.y1 / TILE) - 6,
-        Math.ceil(FRAME_BOUNDS.x0 / TILE) + 6, Math.ceil(FRAME_BOUNDS.y0 / TILE) + 6)
+        Math.ceil(FRAME_BOUNDS.x0 / TILE) + 6, Math.ceil(FRAME_BOUNDS.y0 / TILE) + 6,
+        _bucketKeysBuf)
     : null;
   const sx = (wx) => (wx - cam.px) * z + W / 2;
   const sy = (wy) => (wy - cam.py) * z + H / 2;
@@ -189,7 +196,7 @@ function drawLampLights(ctx, dark) {
       ctx.fill();
     }
   };
-  if (keys) forEachEntInBuckets(keys, punch);
+  if (keys) forEachEntInBuckets(keys, punch, _bucketSeenBuf);
   else for (const e of G.ents) punch(e);
   if (!first) ctx.restore();
   // 叠加暖色光晕（半透明黄色辉光，重新正常混合）
@@ -210,7 +217,7 @@ function drawLampLights(ctx, dark) {
       ctx.fill();
     }
   };
-  if (keys) forEachEntInBuckets(keys, glow);
+  if (keys) forEachEntInBuckets(keys, glow, _bucketSeenBuf);
   else for (const e of G.ents) glow(e);
   if (drewGlow) ctx.restore();
 }

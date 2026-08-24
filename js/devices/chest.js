@@ -1,7 +1,10 @@
 'use strict';
 
 // ===== 储物箱：存物资，可设每种物品的存量上限 =====
-class Chest extends Entity {
+// 继承 CircuitNode（CircuitNode 亦是 Entity 子类）：储物箱可接入电路网络，
+// 把箱内每种物品的数量作为信号输出到所连网络，供组合器/机械臂/传送带等做逻辑控制
+// （对齐《异星工厂》：储物箱可通过电路网络读取物品数量，实现按库存自动化）。
+class Chest extends CircuitNode {
   constructor(type, x, y) {
     super('storage-chest', x, y);
     this.slots = [];

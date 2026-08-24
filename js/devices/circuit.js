@@ -131,6 +131,18 @@ function recomputeCircuit() {
       const pct = Math.round(Math.max(0, Math.min(1, (n.stored || 0) / ACCUM_CAP)) * 100);
       if (pct > 0) { addSignal(aggRed, 'signal-charge', pct); addSignal(aggGreen, 'signal-charge', pct); }
     }
+    // 1c) 储物箱（Chest 家族：木箱/铁箱/钢箱）：把箱内每种物品的数量以该物品为信号名
+    //     输出到网络（对齐《异星工厂》：箱子接入电路后可读取物品数量，实现按库存自动化）。
+    //     信号同时写入红线与绿线，便于任意通道读取。
+    for (const n of group) {
+      if (!(n instanceof Chest)) continue;
+      if (!n.slots || !n.slots.length) continue;
+      for (const st of n.slots) {
+        if (!st || !st.item || !st.count) continue;
+        addSignal(aggRed, st.item, st.count);
+        addSignal(aggGreen, st.item, st.count);
+      }
+    }
     // 2) 运算/判断组合器：读取输入信号，计算后输出到指定通道（可级联）。
     //    输入信号遵循组合器的接入通道（wireChan）：'red' 仅读红线、'green' 仅读绿线、
     //    'both' 读红+绿合并（默认，向后兼容）。实现红绿信号物理隔离对齐《异星工厂》。

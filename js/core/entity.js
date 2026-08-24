@@ -54,8 +54,10 @@ function ensureBucket(k) {
   return s;
 }
 // 返回覆盖 (x0,y0)-(x1,y1)（含）矩形区域的所有桶 key（去重）。
-function bucketKeysIn(x0, y0, x1, y1) {
-  const keys = [];
+// 热路径复用：传入 out 数组时直接回填（先清空），避免每帧分配新数组（GC 压力）。
+function bucketKeysIn(x0, y0, x1, y1, out) {
+  const keys = out || [];
+  keys.length = 0;
   const b0x = x0 >> 4, b0y = y0 >> 4, b1x = x1 >> 4, b1y = y1 >> 4;
   for (let by = b0y; by <= b1y; by++)
     for (let bx = b0x; bx <= b1x; bx++) keys.push(((bx + BUCK_OFF) * 8192) + (by + BUCK_OFF));
@@ -150,8 +152,10 @@ function neighborOnSideCell(e, side, cell) {
 
 // 遍历实体正交相邻格上的实体（去重，不含斜角）
 // 遍历给定桶集合内的实体（去重，跳过墓碑）。
-function forEachEntInBuckets(keys, fn) {
-  const seen = new Set();
+// 热路径复用：可选传入外部 seen Set，避免每帧/每次调用分配新 Set（GC 压力）。
+function forEachEntInBuckets(keys, fn, seen) {
+  if (!seen) seen = new Set();
+  else seen.clear();
   for (const k of keys) {
     const s = G.buckets.get(k);
     if (!s) continue;
