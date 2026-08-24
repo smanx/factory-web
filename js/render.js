@@ -100,6 +100,7 @@ function render() {
   drawBullets(ctx);
   drawCombatRobots(ctx);
   drawLogisticsRobots(ctx);
+  if (typeof drawConstruction === 'function') drawConstruction(ctx);
   ctx.restore();
 
   // 小地图（位于画布右下角）

@@ -258,6 +258,18 @@ function htmlInventory() {
       '<img src="' + iconDataURL(aid) + '">' + ITEMS[aid].name + (equipped ? ' ✔' : (n > 0 ? ' ×' + n : '')) + '</button>';
   }
   h += '</div><div class="dim">护甲可减少所受伤害。点击下方护甲图标即可装备（需在背包中拥有），再次点击已穿戴护甲可脱卸。</div>';
+  // 个人机器人港装备（施工机器人）
+  if (typeof hasPersonalRoboport === 'function') {
+    const equippedPR = hasPersonalRoboport();
+    const prCount = invCount('personal-roboport');
+    h += '<div class="sec">装备（施工）</div><div class="armor-row">';
+    h += '<div class="armor-slot' + (equippedPR ? ' equipped' : '') + '" data-tip="个人机器人港|' + ITEMS['personal-roboport'].desc + '" data-roboport="toggle">' +
+      (equippedPR ? '<img src="' + iconDataURL('personal-roboport') + '"><b>已装备</b>' : '<span>🔧 未装备</span>') + '</div>';
+    h += '<button class="rcbtn armor-eq' + (!equippedPR && prCount > 0 ? '' : ' disabled') + '" data-roboport="toggle"' +
+      ' data-tip="个人机器人港|' + ITEMS['personal-roboport'].desc + '">' +
+      '<img src="' + iconDataURL('personal-roboport') + '">' + ITEMS['personal-roboport'].name + (equippedPR ? ' ✔' : (prCount > 0 ? ' ×' + prCount : '')) + '</button>';
+    h += '</div><div class="dim">装备个人机器人港 + 背包携带施工机器人后，蓝图粘贴自动生成建造幽灵、红图框选生成拆除标记，由施工机器人自动施工/拆除。</div>';
+  }
   h += '<div class="sec">材料</div><div class="chips">';
   let any = false;
   for (const id in ITEMS) {
@@ -584,6 +596,14 @@ function initPanelEvents() {
         else if (!canEquipArmor(aid)) { toast('需要先研究「' + TECHS[TECH_REQ[aid]].name + '」才能装备'); }
         else equipArmor(aid);
       }
+      renderPanel(false);
+      return;
+    }
+    const roboEl = ev.target.closest('[data-roboport]');
+    if (roboEl && G.panelMode === 'inv' && typeof togglePersonalRoboport === 'function') {
+      // 科技门控检查
+      if (!itemUnlocked('personal-roboport')) { toast('需要先研究「' + TECHS[TECH_REQ['personal-roboport']].name + '」才能装备'); renderPanel(false); return; }
+      togglePersonalRoboport();
       renderPanel(false);
       return;
     }
@@ -1075,7 +1095,8 @@ function buildDebug() {
     ['+100煤', 'coal', 100], ['+100石头', 'stone', 100],
     ['+50齿轮', 'iron-gear', 50], ['+50电路', 'green-circuit', 50],
     ['+20科学包', 'science-pack', 20], ['+20绿包', 'green-science', 20],
-    ['+20蓝包', 'blue-science', 20], ['+20灰包', 'military-science', 20], ['+50塑料', 'plastic-bar', 50],
+    ['+20蓝包', 'blue-science', 20], ['+20灰包', 'military-science', 20],
+    ['+20紫包', 'production-science-pack', 20], ['+20黄包', 'utility-science-pack', 20], ['+50塑料', 'plastic-bar', 50],
     ['+50弹药', 'magazine', 50], ['+50穿甲弹', 'piercing-rounds', 50], ['+5铁箱', 'steel-chest', 5],
     ['+50原油', 'crude-oil', 50], ['+50水', 'water', 50], ['+50蒸汽', 'steam', 50]
   ]) {

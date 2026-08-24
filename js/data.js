@@ -74,11 +74,12 @@ const PIPE_FLOW = 3;
 const STORAGE_TANK_CAP = 2500;
 const FLUID_WAGON_CAP = 2500;   // 流体车厢容量（对齐《异星工厂》Fluid Wagon 2.5 万单位）
 
-const SCIENCE_PACKS = ['science-pack', 'green-science', 'blue-science', 'military-science'];
+const SCIENCE_PACKS = ['science-pack', 'green-science', 'blue-science', 'military-science', 'production-science-pack', 'utility-science-pack'];
 function isScience(item) { return SCIENCE_PACKS.indexOf(item) >= 0; }
-const FILTER_CHOICES = ['iron-plate', 'copper-plate', 'steel-plate', 'iron-gear', 'copper-cable', 'green-circuit',
+const FILTER_CHOICES = ['iron-plate', 'copper-plate', 'steel-plate', 'iron-gear', 'iron-stick', 'steel-stick', 'copper-cable', 'green-circuit',
   'coal', 'solid-fuel', 'stone', 'plastic-bar', 'science-pack', 'green-science', 'blue-science', 'military-science',
-  'magazine', 'piercing-rounds', 'logistic-robot', 'uranium-235', 'uranium-238', 'nuclear-fuel', 'used-up-uranium-fuel-cell'].concat(FLUIDS);
+  'production-science-pack', 'utility-science-pack', 'flying-robot-frame',
+  'magazine', 'piercing-rounds', 'logistic-robot', 'construction-robot', 'uranium-235', 'uranium-238', 'nuclear-fuel', 'used-up-uranium-fuel-cell'].concat(FLUIDS);
 function techPacks(tid) { return (TECHS && TECHS[tid] && TECHS[tid].cost) || {}; }
 function techCostTotal(tid) {
   let s = 0;
@@ -102,6 +103,8 @@ const ITEMS = {
   'iron-plate':   { name: '铁板',   color: '#ccd4de', mark: 'Fp', desc: '最常用的结构材料' },
   'copper-plate': { name: '铜板',   color: '#e0975f', mark: 'Cp', desc: '用于拉制铜线' },
   'iron-gear':    { name: '铁齿轮', color: '#aab5c2', mark: 'G',  desc: '机械核心零件' },
+  'iron-stick':   { name: '铁杆',   color: '#b8c0c8', mark: 'Is', desc: '细铁杆，用于分流器、地下带、铁轨与部分配方（对齐《异星工厂》）' },
+  'steel-stick':  { name: '钢杆',   color: '#d0d6dc', mark: 'Ss', desc: '细钢杆，用于部分高级配方（对齐《异星工厂》）' },
   'copper-cable': { name: '铜线',   color: '#e8a06a', mark: 'W',  desc: '制造电路板的原料' },
   'green-circuit':{ name: '电路板', color: '#57b95c', mark: 'GC', desc: '自动化与科研的基础元件' },
   'science-pack': { name: '自动化科学包', color: '#d04848', mark: 'SP', desc: '红色科学包，初期的科研消耗品（自动化科学）' },
@@ -160,6 +163,7 @@ const ITEMS = {
   'military-science':  { name: '军事科学包', color: '#b0b0b0', mark: 'MS', desc: '灰色科学包，解锁军事科技（炮塔/墙壁/弹药等）' },
   'gun-turret':        { name: '机枪炮塔', color: '#5a5a66', desc: '自动攻击进入射程的敌人，需装入弹药（2×2）' },
   'stone-wall':        { name: '石墙', color: '#8d8578', desc: '防御障碍，阻挡敌人与玩家通行（1×1）' },
+  'gate':              { name: '门', color: '#7a7468', desc: '可开合的入口：玩家靠近自动打开、离开自动关闭，敌人无法通过（1×1），与石墙搭配构建防线' },
   'magazine':          { name: '弹药匣', color: '#b08a4a', desc: '机枪炮塔的标准弹药' },
   'piercing-rounds':   { name: '穿甲弹', color: '#b05a4a', desc: '比普通弹药威力更高的穿甲弹药' },
   'refinery':          { name: '炼油厂', color: '#b06a3e', desc: '把原油炼成重油/轻油/石油气，或煤液化（5×5，吃电力，需选配方）。背面2输入、正面3输出' },
@@ -178,6 +182,7 @@ const ITEMS = {
   // ===== 模块系统 =====
   'speed-module':    { name: '速度模块', color: '#4aa0d0', desc: '装入组装机/电炉/炼油厂等，提高生产速度（+40%），增加耗电' },
   'productivity-module': { name: '产能模块', color: '#57b95c', desc: '装入组装机/电炉等，生产时累积额外产出（每 30 个 +1 免费产出），降低速度并增加耗电' },
+  'beacon':        { name: '信号塔', color: '#5a7a9a', desc: '模块中继塔（3×3，吃电力）：内装 2 个模块，向 9×9 范围内的生产建筑广播模块加成，效果约为信号塔内模块的 ' + '50%' + '。一座信号塔可服务多台生产设备' },
   'efficiency-module': { name: '效率模块', color: '#8a7ae8', desc: '装入组装机/电炉等，大幅降低生产耗电（每级 -30% 用电，小幅度降速），节能环保' },
   // ===== 火箭发射（终局）=====
   'advanced-circuit':{ name: '高级电路板', color: '#d0608a', desc: '红板，中后期高级电子元件，用于产能模块与电引擎' },
@@ -192,6 +197,10 @@ const ITEMS = {
   'radar':           { name: '雷达', color: '#5a8a8a', desc: '周期性扫描周围区域，点亮小地图/标记新探索区（3×3，吃电力）' },
   'explosive':       { name: '爆炸物', color: '#d05a2a', desc: '由煤和石油气制造的高能化合物，用于火箭弹' },
   'battery':         { name: '电池', color: '#d0c04a', desc: '储能元件，用于激光炮塔与卫星' },
+  // ===== 后期科学包与飞行机器人框架（对齐《异星工厂》7 色科学包）=====
+  'flying-robot-frame':{ name: '飞行机器人框架', color: '#7a9ad0', desc: '机器人飞行骨架，制造施工/物流机器人与黄瓶的关键中间件' },
+  'production-science-pack': { name: '产能科学包', color: '#a05ad0', mark: 'PP', desc: '紫色科学包，晚期科研消耗品（产能科学）' },
+  'utility-science-pack': { name: '实用科学包', color: '#d0d048', mark: 'UP', desc: '黄色科学包，最高级科研消耗品（实用科学）' },
   // ===== 战斗机器人胶囊（对齐《异星工厂》Combat robots / Capsules）=====
   'defender-capsule':  { name: '防御机器人胶囊', color: '#5aa0d0', desc: '投掷后释放防御机器人：跟随玩家，自动攻击附近敌人（有续航时间）' },
   'distractor-capsule':{ name: '干扰机器人胶囊', color: '#d0a04a', desc: '投掷后释放干扰机器人：原地悬浮吸引敌人火力，为玩家争取时间' },
@@ -215,6 +224,8 @@ const ITEMS = {
   // ===== 物流机器人网络 =====
   'roboport':          { name: '机器人港', color: '#3a8a8a', desc: '物流机器人的基地与充电站（4×4，吃电力）。把物流机器人放入机器人港后自动调度，机器人往返供应箱与需求箱搬运货物，电量低时回到机器人港充电' },
   'logistic-robot':    { name: '物流机器人', color: '#4aa0d0', desc: '飞行机器人，放入机器人港后自动在供应箱/需求箱之间搬运物资，消耗电量，需回港充电' },
+  'construction-robot':{ name: '施工机器人', color: '#d0a04a', desc: '飞行机器人，装备个人机器人港后，可自动按蓝图/红图施工：建造蓝图中的建筑、拆除标记的建筑，消耗背包物资' },
+  'personal-roboport':{ name: '个人机器人港', color: '#7a9a4a', desc: '个人装备：装备后提供施工机器人工作范围，蓝图粘贴自动由施工机器人建造（需背包中拥有施工机器人）' },
   'logistic-chest-passive': { name: '被动供应箱', color: '#c9a84a', desc: '物流箱：可手动/机械臂存入货物，物流机器人会从箱中取货送往需求箱；也能接收机器人返还的货物' },
   'logistic-chest-active':  { name: '主动供应箱', color: '#d0743a', desc: '物流箱：机器人优先从此取货供应网络；多出的货物机器人会收纳到这里，适合作为原料集散点' },
   'logistic-chest-storage': { name: '仓储箱', color: '#8a9a6a', desc: '物流箱：机器人把返还/多余货物收纳到这里，也可作为备用取货源。所有仓储箱共享存放' },
@@ -253,6 +264,8 @@ const SMELTS = [
 const RECIPES = {
   'steel-plate':        { time: 16,  inp: { 'iron-plate': 2 },                                   out: { 'steel-plate': 1 } },
   'iron-gear':          { time: 0.5, inp: { 'iron-plate': 2 },                                   out: { 'iron-gear': 1 } },
+  'iron-stick':         { time: 0.5, inp: { 'iron-plate': 1 },                                   out: { 'iron-stick': 2 } },
+  'steel-stick':        { time: 0.5, inp: { 'steel-plate': 1 },                                  out: { 'steel-stick': 2 } },
   'copper-cable':       { time: 0.5, inp: { 'copper-plate': 1 },                                 out: { 'copper-cable': 2 } },
   'green-circuit':      { time: 0.5, inp: { 'iron-plate': 1, 'copper-cable': 3 },                out: { 'green-circuit': 1 } },
   'science-pack':       { time: 5,   inp: { 'copper-plate': 1, 'iron-gear': 1 },                 out: { 'science-pack': 1 } },
@@ -264,8 +277,8 @@ const RECIPES = {
   'storage-chest':      { time: 1,   inp: { 'iron-plate': 8 },                                   out: { 'storage-chest': 1 } },
   'assembling-machine': { time: 2,   inp: { 'iron-plate': 5, 'iron-gear': 4, 'green-circuit': 3 }, out: { 'assembling-machine': 1 } },
   'lab':                { time: 3,   inp: { 'iron-gear': 8, 'green-circuit': 8, 'stone': 10 },   out: { 'lab': 1 } },
-  'splitter':           { time: 1,   inp: { 'iron-plate': 4, 'iron-gear': 4 },                     out: { 'splitter': 1 } },
-  'underground':        { time: 1.5, inp: { 'iron-plate': 6, 'iron-gear': 4 },                     out: { 'underground': 1 } },
+  'splitter':           { time: 1,   inp: { 'iron-plate': 4, 'iron-gear': 4, 'iron-stick': 2 },       out: { 'splitter': 1 } },
+  'underground':        { time: 1.5, inp: { 'iron-plate': 6, 'iron-gear': 4, 'iron-stick': 4 },       out: { 'underground': 1 } },
   'boiler':             { time: 1.5, inp: { 'stone': 4, 'iron-plate': 2 },                         out: { 'boiler': 1 } },
   'steam-engine':       { time: 2,   inp: { 'iron-plate': 2, 'iron-gear': 2, 'green-circuit': 2 }, out: { 'steam-engine': 1 } },
   'offshore-pump':      { time: 1,   inp: { 'iron-plate': 5, 'iron-gear': 2 },                     out: { 'offshore-pump': 1 } },
@@ -296,8 +309,13 @@ const RECIPES = {
   'solar-panel':      { time: 5,   inp: { 'copper-plate': 5, 'steel-plate': 5, 'green-circuit': 5 }, out: { 'solar-panel': 1 } },
   'accumulator':      { time: 3,   inp: { 'iron-plate': 2, 'copper-plate': 2, 'green-circuit': 2 }, out: { 'accumulator': 1 } },
   'military-science': { time: 6,   inp: { 'magazine': 1, 'stone-wall': 1, 'piercing-rounds': 1 }, out: { 'military-science': 1 } },
+  // ===== 后期科学包（对齐《异星工厂》7 色科学包）=====
+  'flying-robot-frame': { time: 20, inp: { 'electric-engine': 1, 'battery': 2, 'steel-plate': 2, 'green-circuit': 3 }, out: { 'flying-robot-frame': 1 } },
+  'production-science-pack': { time: 21, inp: { 'rail': 1, 'electric-furnace': 1, 'productivity-module': 1 }, out: { 'production-science-pack': 1 } },
+  'utility-science-pack': { time: 21, inp: { 'processing-unit': 1, 'flying-robot-frame': 1, 'low-density-structure': 3 }, out: { 'utility-science-pack': 1 } },
   'gun-turret':       { time: 3,   inp: { 'iron-plate': 8, 'iron-gear': 4, 'copper-plate': 2 }, out: { 'gun-turret': 1 } },
   'stone-wall':       { time: 0.5, inp: { 'stone-brick': 2 }, out: { 'stone-wall': 1 } },
+  'gate':             { time: 1,   inp: { 'stone-brick': 4, 'steel-plate': 2 }, out: { 'gate': 1 } },
   'magazine':         { time: 0.5, inp: { 'iron-plate': 1 }, out: { 'magazine': 4 } },
   'piercing-rounds':  { time: 1,   inp: { 'magazine': 1, 'copper-plate': 1, 'steel-plate': 1 }, out: { 'piercing-rounds': 1 } },
   'plastic-bar':       { time: 2,   inp: { 'petroleum-gas': 1, 'coal': 1 },                       out: { 'plastic-bar': 1 } },
@@ -308,7 +326,7 @@ const RECIPES = {
   'solid-fuel':        { time: 2,   inp: { 'petroleum-gas': 20 },                                 out: { 'solid-fuel': 1 } },
   'solid-fuel-light-oil': { time: 2, inp: { 'light-oil': 10 },                                    out: { 'solid-fuel': 1 } },
   // ===== 铁路系统（火车） =====
-  'rail':              { time: 0.5, inp: { 'iron-plate': 1, 'stone': 1 },                          out: { 'rail': 2 } },
+  'rail':              { time: 0.5, inp: { 'iron-plate': 1, 'stone': 1, 'iron-stick': 1 },          out: { 'rail': 2 } },
   'locomotive':        { time: 4,   inp: { 'iron-plate': 16, 'steel-plate': 6, 'iron-gear': 8, 'green-circuit': 4 }, out: { 'locomotive': 1 } },
   'cargo-wagon':       { time: 3,   inp: { 'iron-plate': 12, 'steel-plate': 6, 'iron-gear': 6 },  out: { 'cargo-wagon': 1 } },
   'fluid-wagon':       { time: 3,   inp: { 'iron-plate': 8, 'steel-plate': 6, 'pipe': 8 },        out: { 'fluid-wagon': 1 } },
@@ -335,6 +353,7 @@ const RECIPES = {
   'speed-module':      { time: 2,   inp: { 'green-circuit': 4, 'advanced-circuit': 2 },            out: { 'speed-module': 1 } },
   'productivity-module': { time: 2, inp: { 'advanced-circuit': 2, 'green-circuit': 2, 'iron-gear': 1 }, out: { 'productivity-module': 1 } },
   'efficiency-module': { time: 2,   inp: { 'green-circuit': 3, 'advanced-circuit': 1, 'plastic-bar': 1 }, out: { 'efficiency-module': 1 } },
+  'beacon':        { time: 4,   inp: { 'steel-plate': 10, 'advanced-circuit': 5, 'green-circuit': 10, 'copper-plate': 5 }, out: { 'beacon': 1 } },
   // ===== 火箭链路中间件 =====
   'advanced-circuit':  { time: 6,   inp: { 'green-circuit': 2, 'plastic-bar': 2, 'copper-cable': 4 }, out: { 'advanced-circuit': 1 } },
   'engine-unit':       { time: 10,  inp: { 'steel-plate': 1, 'iron-gear': 1, 'pipe': 2 },           out: { 'engine-unit': 1 } },
@@ -357,6 +376,8 @@ const RECIPES = {
   // ===== 物流机器人网络 =====
   'roboport':          { time: 10,  inp: { 'steel-plate': 20, 'advanced-circuit': 5, 'green-circuit': 10, 'battery': 4 }, out: { 'roboport': 1 } },
   'logistic-robot':    { time: 3,   inp: { 'green-circuit': 4, 'iron-gear': 2, 'battery': 2 },          out: { 'logistic-robot': 1 } },
+  'construction-robot':{ time: 3,   inp: { 'iron-gear': 2, 'green-circuit': 2, 'battery': 2, 'flying-robot-frame': 1 }, out: { 'construction-robot': 1 } },
+  'personal-roboport':{ time: 8,   inp: { 'steel-plate': 12, 'advanced-circuit': 6, 'battery': 4, 'green-circuit': 6 }, out: { 'personal-roboport': 1 } },
   'logistic-chest-passive': { time: 1, inp: { 'iron-plate': 4, 'green-circuit': 1 },                    out: { 'logistic-chest-passive': 1 } },
   'logistic-chest-active':  { time: 1.5, inp: { 'iron-plate': 6, 'green-circuit': 2 },                  out: { 'logistic-chest-active': 1 } },
   'logistic-chest-storage': { time: 1.5, inp: { 'iron-plate': 4, 'green-circuit': 2 },                  out: { 'logistic-chest-storage': 1 } },
@@ -447,6 +468,7 @@ const BUILD_DEFS = {
   'steel-furnace':      { w: 2, h: 2, solid: true },
   'assembling-machine': { w: 3, h: 3, solid: true },
   'assembling-machine-3': { w: 3, h: 3, solid: true },
+  'beacon':             { w: 3, h: 3, solid: true },
   'storage-chest':      { w: 1, h: 1, solid: true },
   'steel-chest':        { w: 1, h: 1, solid: true },
   'creative-chest':     { w: 1, h: 1, solid: true },
@@ -474,6 +496,7 @@ const BUILD_DEFS = {
   'rocket-silo':        { w: 5, h: 5, solid: true },
   'radar':              { w: 3, h: 3, solid: true },
   'stone-wall':         { w: 1, h: 1, solid: true },
+  'gate':               { w: 1, h: 1, solid: true },
   'pumpjack':           { w: 3, h: 3, solid: true },
   'refinery':           { w: 5, h: 5, solid: true },
   'chemical-plant':     { w: 3, h: 3, solid: true },
@@ -527,7 +550,14 @@ const TECH_REQ = {
   'advanced-circuit': 'electronics',
   'processing-unit': 'electronics',
   'electric-engine': 'electronics',
-  'radar': 'radar'
+  'radar': 'radar',
+  'gate': 'military',
+  'production-science-pack': 'production',
+  'beacon': 'production',
+  'utility-science-pack': 'utility',
+  'flying-robot-frame': 'utility',
+  'construction-robot': 'utility',
+  'personal-roboport': 'utility'
 };
 // ===== 核能科技门控 =====
 for (const id of ['centrifuge', 'nuclear-reactor', 'steam-turbine', 'uranium-235', 'uranium-238', 'nuclear-fuel']) {
@@ -635,6 +665,13 @@ const TECHS = {
   nuclear:    { name: '核能技术', cost: { 'blue-science': 60, 'military-science': 40 }, desc: '解锁离心机（铀矿处理）、核反应堆与汽轮机，构建核能发电体系', req: ['electronics', 'advanced-combat'] },
   'circuit-network': { name: '电路网络', cost: { 'blue-science': 40 }, desc: '解锁电线杆与组合器（常量/运算/判断），构建电路网络，实现信号逻辑控制', req: ['electronics'] },
   deep:       { name: '重工蓝图', cost: { 'blue-science': 50 }, desc: '蓝包终技：科研总进度获取 +20%', req: ['automation2', 'express'] },
+  // ==== 四级科技（紫瓶：产能科学） ====
+  production: { name: '产能科技', cost: { 'production-science-pack': 50 }, desc: '解锁信号塔（Beacon）与产能科学链，让产能模块覆盖范围翻倍', req: ['modules', 'deep'] },
+  'mining-productivity': { name: '采矿产能', cost: { 'production-science-pack': 60 }, desc: '采矿机额外产出（每级 +10%）', req: ['production'] },
+  // ==== 五级科技（黄瓶：实用科学） ====
+  'worker-robot-speed': { name: '机器人速度', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, desc: '物流/施工机器人速度 ×1.5', req: ['production'] },
+  utility: { name: '实用科技', cost: { 'utility-science-pack': 60 }, desc: '解锁飞行机器人框架、施工机器人，完善机器人网络', req: ['logistics-network', 'worker-robot-speed'] },
+  'research-speed': { name: '科研速度', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, desc: '科研速度 +50%', req: ['utility'] },
   infinite:   { name: '无限科技', cost: {}, infinite: true, desc: '无限研究：消耗任意科学包，永不完成', req: [] }
 };
 
@@ -754,7 +791,10 @@ function drawItemGlyph(x, id, cx, cy, s) {
     }
     case 'science-pack':
     case 'green-science':
-    case 'blue-science': {
+    case 'blue-science':
+    case 'military-science':
+    case 'production-science-pack':
+    case 'utility-science-pack': {
       x.fillStyle = '#e8ecf2';
       x.fillRect(-r * 0.16, -r * 0.9, r * 0.32, r * 0.35);
       x.fillStyle = col;
@@ -822,3 +862,6 @@ function drillMult()  { return (G.techDone.mining ? 2 : 1) * ((G.dbg && G.dbg.dr
 function asmMult()    { return (G.techDone.automation ? 1.5 : 1) * (G.techDone.automation2 ? 1.2 : 1) * ((G.dbg && G.dbg.asmMult) || 1); }
 function elecMachMult() { return (G.techDone.electric ? 1.2 : 1); }
 function oilMult()    { return (G.techDone.oil ? 1.5 : 1); }
+function labSpeedMult()  { return (G.techDone['research-speed'] ? 1.5 : 1); }   // 科研速度
+function robotSpeedMult() { return (G.techDone['worker-robot-speed'] ? 1.5 : 1); } // 机器人速度
+function miningProdMult() { return (G.techDone['mining-productivity'] ? 1.1 : 1); } // 采矿产能 +10%

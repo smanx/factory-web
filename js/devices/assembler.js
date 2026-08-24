@@ -72,15 +72,20 @@ class Assembler extends Entity {
   }
   // 模块速度倍率（速度模块加速，产能/效率模块小降速）
   moduleSpeedMult() {
-    const nSpeed = this.modules['speed-module'] || 0;
-    const nProd = this.modules['productivity-module'] || 0;
-    const nEff = this.modules['efficiency-module'] || 0;
+    let nSpeed = this.modules['speed-module'] || 0;
+    let nProd = this.modules['productivity-module'] || 0;
+    let nEff = this.modules['efficiency-module'] || 0;
+    // 信号塔广播的额外模块加成（本机模块槽外额外叠加）
+    const bb = (typeof beaconBonus === 'function') ? beaconBonus(this.x, this.y) : null;
+    if (bb) { nSpeed += bb.speed; nProd += bb.prod; nEff += bb.eff; }
     return 1 + 0.4 * nSpeed - 0.15 * nProd - 0.05 * nEff;
   }
   // 每次生产后结算产能模块：返回额外主产物数量
   applyProductivity(rec) {
-    const nProd = this.modules['productivity-module'] || 0;
+    let nProd = this.modules['productivity-module'] || 0;
     let bonus = 0;
+    const bb = (typeof beaconBonus === 'function') ? beaconBonus(this.x, this.y) : null;
+    if (bb) nProd += bb.prod;
     if (nProd > 0) {
       this.prodBuf = (this.prodBuf || 0) + nProd;
       if (this.prodBuf >= 30) {
@@ -93,9 +98,11 @@ class Assembler extends Entity {
   }
   powerDemand() {
     if (!this.recipe) return 0;
-    const nSpeed = this.modules['speed-module'] || 0;
-    const nProd = this.modules['productivity-module'] || 0;
-    const nEff = this.modules['efficiency-module'] || 0;
+    let nSpeed = this.modules['speed-module'] || 0;
+    let nProd = this.modules['productivity-module'] || 0;
+    let nEff = this.modules['efficiency-module'] || 0;
+    const bb = (typeof beaconBonus === 'function') ? beaconBonus(this.x, this.y) : null;
+    if (bb) { nSpeed += bb.speed; nProd += bb.prod; nEff += bb.eff; }
     // 效率模块降低耗电（最多降到 20%）
     const effMult = Math.max(0.2, 1 - 0.3 * nEff);
     return POWER_USE['assembling-machine'] * (1 + (nSpeed + nProd) * 0.5) * effMult;

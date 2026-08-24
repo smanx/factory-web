@@ -128,6 +128,7 @@ function newGame() {
   G.weapon = null;
   G.armor = null;
   G.gameWon = false;
+  if (typeof constrRestore === 'function') constrRestore(null);   // 重置个人机器人港与施工机器人状态
   G.victoryT = 0;
   if (typeof resetPowerReg === 'function') resetPowerReg();
   // 重置累计时间与历史统计（新游戏从头开始，无历史）
@@ -181,7 +182,8 @@ function serializeAll() {
     // 游戏累计时间（秒）：用于历史统计分桶的时间锚点，读档后延续
     time: G.time,
     // 历史统计：聚合为小时粒度写入（体积极小，最多 24 小时/物品）
-    hist: (typeof histSerialize === 'function') ? histSerialize() : null
+    hist: (typeof histSerialize === 'function') ? histSerialize() : null,
+    constr: (typeof constrSerialize === 'function') ? constrSerialize() : null
   };
 }
 
@@ -272,6 +274,7 @@ function applySave(d) {
   G.logiRobots = [];
   G.logiNet = null;
   G.logiNetT = 0;
+  if (typeof constrRestore === 'function') constrRestore(d.constr);
   if (typeof rebuildTrains === 'function') rebuildTrains();
   const [sx, sy] = findSpawn();
   G.spawn = { x: sx, y: sy };
@@ -628,6 +631,15 @@ function blueRect() {
 function applyRedBlueprint() {
   const r = blueRect();
   if (!r) return;
+  // 装备个人机器人港且有施工机器人：生成拆除标记，由施工机器人拆除
+  if (typeof canUseConstruction === 'function' && canUseConstruction() && typeof markAreaForDecon === 'function') {
+    const n = markAreaForDecon(r);
+    G.blueStart = null; G.blueEnd = null;
+    toast(n > 0 ? ('已标记 ' + n + ' 个建筑待拆除，施工机器人正在拆除' + (constrPending().decon > 0 ? '（剩 ' + constrPending().decon + ' 个待拆）' : ''))
+      : '区域内没有可拆除的建筑');
+    uiDirty = true;
+    return;
+  }
   const seen = new Set();
   let count = 0;
   for (let ty = r.y0; ty <= r.y1; ty++) {
@@ -849,6 +861,14 @@ function applyBlueprintTransform() {
 function pasteBlueprint() {
   if (!G.blueprint || !G.cursorTile) return;
   const bp = applyBlueprintTransform();
+  // 装备个人机器人港且有施工机器人：生成建造幽灵，由施工机器人自动施工
+  if (typeof canUseConstruction === 'function' && canUseConstruction()) {
+    const n = pasteBlueprintAsGhosts(bp);
+    toast(n > 0 ? ('已排布 ' + n + ' 个建造幽灵，施工机器人正在建造' + (constrPending().build > 0 ? '（剩 ' + constrPending().build + ' 个待建）' : ''))
+      : '无可建造的位置（区域内已有建筑或超出机器人范围）');
+    uiDirty = true;
+    return;
+  }
   const ox = G.cursorTile.tx - bp.minX;
   const oy = G.cursorTile.ty - bp.minY;
   // 先校验所有目标位置是否可放置，再一次性放置
@@ -1289,6 +1309,7 @@ function loop(ts) {
       G.circuitT = (G.circuitT || 0) + dt;
       if (G.circuitT >= 0.25) { G.circuitT = 0; if (typeof recomputeCircuit === 'function') recomputeCircuit(); }
       updateLogistics(dt);
+      if (typeof updateConstruction === 'function') updateConstruction(dt);
       updateTrains(dt);
       updateCamera(dt);
     }
