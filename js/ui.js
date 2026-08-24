@@ -93,13 +93,31 @@ function selectSlot(i) {
 
 function toast(msg) {
   const box = document.getElementById('toasts');
+  // 最多只保留 3 条，超出则移除最旧的一条
+  while (box.children.length >= 3) box.firstChild.remove();
   const t = document.createElement('div');
   t.className = 'toast';
   t.textContent = msg;
   box.appendChild(t);
-  setTimeout(() => { t.classList.add('fade'); }, 2200);
+  refreshToastOpacity();
+  setTimeout(() => {
+    t.classList.add('fade');
+    t.classList.remove('aged-1', 'aged-2');
+  }, 2200);
   setTimeout(() => t.remove(), 2800);
-  while (box.children.length > 6) box.firstChild.remove();
+}
+
+// 按新旧程度刷新提示透明度：最新的不透明，越旧越透明
+function refreshToastOpacity() {
+  const box = document.getElementById('toasts');
+  const items = Array.from(box.children);
+  const n = items.length;
+  items.forEach((el, i) => {
+    el.classList.remove('aged-1', 'aged-2');
+    const age = n - 1 - i; // 0 = 最新
+    if (age === 1) el.classList.add('aged-1');
+    else if (age === 2) el.classList.add('aged-2');
+  });
 }
 
 function openPanel(mode, ent) {
