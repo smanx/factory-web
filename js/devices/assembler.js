@@ -105,7 +105,7 @@ class Assembler extends Entity {
     const effMult = Math.max(0.2, 1 - 0.15 * mc.eff);
     // 速度/产能模块增加耗电（按当量比例）
     const powMult = 1 + (mc.speed * 0.25 + mc.prod * 0.25);
-    return POWER_USE[assembling-machine] * powMult * effMult;
+    return POWER_USE['assembling-machine'] * powMult * effMult;
   }
   setRecipe(id) {
     if (this.recipe === id) return;
