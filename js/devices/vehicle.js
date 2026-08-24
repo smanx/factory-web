@@ -490,10 +490,10 @@ function updateDriving(dt) {
     let okX = !boxBlocked(nx, cy, r), okY = !boxBlocked(cx, ny, r);
     // 载具不能驶入建筑/水域：额外检查中心格（蜘蛛机器人可跨水/墙，不受此限）
     let ntx = car.x, nty = car.y;
-    if (isSpider || !isWater(Math.floor(nx / TILE), Math.floor(cy / TILE))) {
+    if (isSpider || (!isWater(Math.floor(nx / TILE), Math.floor(cy / TILE)) && !isCliff(Math.floor(nx / TILE), Math.floor(cy / TILE)))) {
       if (okX) ntx = Math.floor(nx / TILE);
     }
-    if (isSpider || !isWater(Math.floor(cx / TILE), Math.floor(ny / TILE))) {
+    if (isSpider || (!isWater(Math.floor(cx / TILE), Math.floor(ny / TILE)) && !isCliff(Math.floor(cx / TILE), Math.floor(ny / TILE)))) {
       if (okY) nty = Math.floor(ny / TILE);
     }
     // 目的地格子是否被其他实体占据（载具自身除外；蜘蛛机器人可越过石墙）

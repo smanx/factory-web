@@ -94,7 +94,7 @@ function makeSpawner() {
     const ang = Math.random() * Math.PI * 2;
     const tx = Math.round(px + Math.cos(ang) * dist);
     const ty = Math.round(py + Math.sin(ang) * dist);
-    if (!isWater(tx, ty) && !entAt(tx, ty)) {
+    if ((!isWater(tx, ty) && !isCliff(tx, ty)) && !entAt(tx, ty)) {
       return spawnerAt(tx, ty);
     }
   }
@@ -118,7 +118,7 @@ function spawnerCapByEvo() {
 }
 // 在一个目标格生成巢穴（若该格可用）；不可用返回 null
 function spawnerAt(tx, ty) {
-  if (isWater(tx, ty) || entAt(tx, ty)) return null;
+  if (isWater(tx, ty) || isCliff(tx, ty) || entAt(tx, ty)) return null;
   return {
     x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2,
     hp: SPAWNER_HP, maxhp: SPAWNER_HP, dead: false, dir: 0,
@@ -197,7 +197,7 @@ function spawnEnemies(dt) {
     for (let i = 0; i < 8; i++) {
       const cx2 = tx + Math.floor(Math.random() * 5) - 2;
       const cy2 = ty + Math.floor(Math.random() * 5) - 2;
-      if (!isWater(cx2, cy2) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
+      if ((!isWater(cx2, cy2) && !isCliff(cx2, cy2)) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
     }
   } else {
     // 兜底：无巢穴时（巢穴尚未生成或全部被摧毁）在玩家远处生成
@@ -208,7 +208,7 @@ function spawnEnemies(dt) {
     for (let i = 0; i < 8; i++) {
       const cx2 = tx + Math.floor(Math.random() * 5) - 2;
       const cy2 = ty + Math.floor(Math.random() * 5) - 2;
-      if (!isWater(cx2, cy2) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
+      if ((!isWater(cx2, cy2) && !isCliff(cx2, cy2)) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
     }
   }
   const t = pickEnemyType();
@@ -411,11 +411,11 @@ function updateEnemies(dt) {
       pr.x += (dx / d) * step;
       pr.y += (dy / d) * step;
     }
-    G.enemyProjectiles = G.enemyProjectiles.filter(pr => !pr.hit);
+    G.enemyProjectiles = compactFilter(G.enemyProjectiles, pr => !pr.hit);
   }
   // 击杀敌人推进战斗进化（含巢穴），提升进化度；被击杀的敌人掉落少量矿石（对齐《异星工厂》）
   let kills = 0;
-  G.enemies = G.enemies.filter(e => {
+  G.enemies = compactFilter(G.enemies, e => {
     if (e.dead) { kills++; dropEnemyLoot(e); return false; }
     return true;
   });
@@ -469,7 +469,7 @@ function updateLootDrops(dt) {
       d.picked = true;
     }
   }
-  G.lootDrops = G.lootDrops.filter(d => !d.picked && d.t < d.life);
+  G.lootDrops = compactFilter(G.lootDrops, d => !d.picked && d.t < d.life);
   if (G.lootDrops.length === 0) G.lootDrops = undefined;
 }
 
@@ -581,7 +581,7 @@ function updateBullets(dt) {
     if (b._boomT !== undefined) b._boomT += dt;
     // 地雷爆炸特效：仅视觉短促闪光，无需额外伤害（已由 removeEnt 前引爆）
   }
-  G.bullets = G.bullets.filter(b => b.t < b.life);
+  G.bullets = compactFilter(G.bullets, b => b.t < b.life);
 }
 
 // ===== 玩家武器 =====
@@ -893,7 +893,7 @@ function updateCombatRobots(dt) {
       if (d < r.size + en.size + 4) { r.hp -= en.dmg * dt; }
     }
   }
-  G.combatRobots = G.combatRobots.filter(r => !r.dead);
+  G.combatRobots = compactFilter(G.combatRobots, r => !r.dead);
 }
 
 // ===== 区域力场（毒胶囊 / 减速胶囊）=====

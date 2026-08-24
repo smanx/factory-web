@@ -18,7 +18,8 @@ function makePlayer(tx, ty) {
 
 function solidAtPx(px, py) {
   const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE);
-  return isWater(tx, ty);
+  // 玩家/载具碰撞：水与峭壁均不可通行（对齐《异星工厂》Cliff 阻隔移动）
+  return isWater(tx, ty) || isCliff(tx, ty);
 }
 
 function boxBlocked(cx, cy, r) {

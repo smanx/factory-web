@@ -1067,6 +1067,23 @@ function repairActionAt(tx, ty) {
 // 当前选中修理包（用于建造/点击优先触发修复）
 function hasRepairPackSelected() { return selItem() === 'repair-pack'; }
 
+// 使用峭壁炸药：选中峭壁炸药并点击峭壁格，炸毁该格峭壁（对齐《异星工厂》Cliff explosives）
+function hasCliffBlastSelected() { return selItem() === 'cliff-explosives'; }
+function cliffBlastAt(tx, ty) {
+  if (!withinReach(tx, ty)) { toast('距离太远'); return false; }
+  if (!isCliff(tx, ty)) { toast('这里没有峭壁'); return false; }
+  if (!invCount('cliff-explosives')) { toast('需要峭壁炸药'); return false; }
+  invTake('cliff-explosives', 1);
+  setTerrain(tx, ty, T_GRASS);
+  // 爆炸视觉 + 音效
+  if (typeof spawnSmoke === 'function') {
+    for (let i = 0; i < 6; i++) spawnSmoke(tx * TILE + TILE / 2 + (Math.random() - 0.5) * 22, ty * TILE + TILE / 2 + (Math.random() - 0.5) * 22, { life: 1.2, size: 8, color: '#b0a898' });
+  }
+  if (typeof playSfx === 'function') playSfx('explosion');
+  uiDirty = true;
+  return true;
+}
+
 function copySettings(e) {
   if (!e) return;
   const s = { type: e.type, dir: e.dir };
@@ -1396,6 +1413,8 @@ function bindInput() {
     }
     // 手持蜘蛛遥控器点击地面 → 命令蜘蛛机器人移动
     if (typeof selItem === 'function' && selItem() === 'spidertron-remote') { commandSpidertron(G.cursorTile.tx, G.cursorTile.ty); return; }
+    // 手持峭壁炸药点击峭壁 → 炸毁清除（对齐《异星工厂》Cliff explosives）
+    if (hasCliffBlastSelected() && isCliff(G.cursorTile.tx, G.cursorTile.ty)) { cliffBlastAt(G.cursorTile.tx, G.cursorTile.ty); return; }
     if (buildActive()) return;
     const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
     if (e) openPanel('machine', e);
@@ -1412,6 +1431,11 @@ function handleLeftDown() {
   if (hasRepairPackSelected() && G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
     const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
     if (e && isDamaged(e)) { repairActionAt(G.cursorTile.tx, G.cursorTile.ty); return; }
+  }
+  // 手持峭壁炸药点击峭壁 → 炸毁清除（对齐《异星工厂》Cliff explosives）
+  if (hasCliffBlastSelected() && G.cursorTile && isCliff(G.cursorTile.tx, G.cursorTile.ty)) {
+    cliffBlastAt(G.cursorTile.tx, G.cursorTile.ty);
+    return;
   }
   if (buildActive() && G.cursorTile) {
     tryPlaceAt(G.cursorTile.tx, G.cursorTile.ty);

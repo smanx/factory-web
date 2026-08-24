@@ -1,5 +1,20 @@
 'use strict';
 
+// ===== 原地过滤（P0 优化）=====
+// 高频每帧清理（子弹/掉落/机器人等）避免每次 filter 分配新数组造成 GC 压力：
+// 仅当存在应移除项时才原地压缩，语义与 Array.prototype.filter 一致（保留顺序、只留保留项）。
+// 返回过滤后的数组；若全部存活则返回原数组引用（零分配）。
+function compactFilter(arr, keep) {
+  if (!arr || arr.length === 0) return arr;
+  let j = 0;
+  for (let i = 0; i < arr.length; i++) {
+    if (keep(arr[i])) arr[j++] = arr[i];
+  }
+  if (j === arr.length) return arr;      // 全存活，零分配
+  arr.length = j;                        // 原地截断，回收多余槽位
+  return arr;
+}
+
 // ===== 整数化空间网格 key（P1 优化）=====
 // 用单个 32 位整数编码 (x,y) 替代高频字符串拼接。范围 ±32767 内的瓦片坐标
 // 足够覆盖本游戏玩法（更大区域也可扩展到 ±2^15）。相对坐标偏移后可安全做位运算。

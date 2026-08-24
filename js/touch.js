@@ -481,6 +481,11 @@ function handleTap() {
       repairActionAt(tx, ty);
       return;
     }
+    // 手持峭壁炸药点击峭壁 → 炸毁清除（对齐《异星工厂》Cliff explosives）
+    if (hasCliffBlastSelected() && isCliff(tx, ty)) {
+      cliffBlastAt(tx, ty);
+      return;
+    }
     tryPlaceAt(tx, ty);
     return;
   }

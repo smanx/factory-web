@@ -315,6 +315,32 @@ function drawChunkTerrainInto(ctx, cx, cy) {
         }
         continue;
       }
+      if (t === T_CLIFF) {
+        // 峭壁（对齐《异星工厂》Cliff）：灰褐色岩体 + 岩缝，比周围地面略高
+        const v = hash2(tx, ty);
+        ctx.fillStyle = v > 0.5 ? '#6d6a63' : '#65625c';
+        ctx.fillRect(px, py, TILE, TILE);
+        // 岩体立体边缘（左上受光，右下背光）
+        ctx.fillStyle = 'rgba(255,255,255,.16)';
+        ctx.beginPath();
+        ctx.moveTo(px, py); ctx.lineTo(px + TILE, py); ctx.lineTo(px, py + TILE);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,0,.28)';
+        ctx.beginPath();
+        ctx.moveTo(px + TILE, py); ctx.lineTo(px + TILE, py + TILE); ctx.lineTo(px, py + TILE);
+        ctx.closePath(); ctx.fill();
+        // 岩缝与碎石
+        ctx.strokeStyle = 'rgba(30,28,24,.6)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(px + TILE * 0.3, py + TILE * 0.15); ctx.lineTo(px + TILE * 0.45, py + TILE * 0.5);
+        ctx.lineTo(px + TILE * 0.3, py + TILE * 0.85);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(140,136,126,.7)';
+        ctx.fillRect(px + TILE * 0.6, py + TILE * 0.35, 4, 4);
+        ctx.fillRect(px + TILE * 0.7, py + TILE * 0.65, 3, 3);
+        continue;
+      }
       const v = hash2(tx, ty);
       ctx.fillStyle = v > 0.62 ? '#4f7c3b' : v > 0.3 ? '#4a7538' : '#456f35';
       ctx.fillRect(px, py, TILE, TILE);
@@ -647,7 +673,7 @@ function drawEntity(ctx, e, gx, gy, dir, alpha) {
 }
 
 // 机械臂类型集合：绘制时置顶，永远显示在传送带/其他设备之上，不被遮挡。
-const IS_INSERTER = { inserter: true, 'long-inserter': true, 'filter-inserter': true, 'stack-inserter': true };
+const IS_INSERTER = { inserter: true, 'long-inserter': true, 'filter-inserter': true, 'stack-inserter': true, 'fast-inserter': true };
 
 const ghostCache = { type: null, ent: null };
 
@@ -694,6 +720,8 @@ function canPlaceAt(type, tx, ty, dir) {
   for (let dy = 0; dy < eh; dy++)
     for (let dx = 0; dx < ew; dx++) {
       if (isWater(tx + dx, ty + dy)) return { ok: false };
+      // 峭壁阻挡建造（对齐《异星工厂》：峭壁需先用峭壁炸药清除）
+      if (getTerrain(tx + dx, ty + dy) === T_CLIFF) return { ok: false };
       // 树木阻挡建造（对齐《异星工厂》：需先砍树清空场地）
       if (getTerrain(tx + dx, ty + dy) === T_TREE) return { ok: false };
       if (entAt(tx + dx, ty + dy)) {
@@ -1268,6 +1296,7 @@ function drawMinimap(ctx) {
         : (t === T_REF_CONCRETE) ? 'rgba(165,168,176,0.85)'
         : (t === T_HAZARD) ? 'rgba(190,180,40,0.85)'
         : (t === T_PATH) ? 'rgba(150,140,130,0.85)'
+        : (t === T_CLIFF) ? 'rgba(100,96,88,0.9)'
         : 'rgba(52,78,50,0.9)';
       ctx.fillRect(px, py, z + 0.4, z + 0.4);
       // 矿脉标记

@@ -21,7 +21,8 @@ const T_PATH = 3;       // 石砖路（玩家行走加速）
 const T_TREE = 4;       // 树木（可砍伐获得木材）
 const T_REF_CONCRETE = 5; // 精炼混凝土（玩家行走加速更快，对齐《异星工厂》Refined concrete）
 const T_HAZARD = 6;       // 警示混凝土（黑黄条纹装饰，行走加速同普通混凝土，对齐《异星工厂》Hazard concrete）
-function isWalkableTerrain(t) { return t !== T_WATER; }
+const T_CLIFF = 7;          // 峭壁（对齐《异星工厂》Cliff）：不可通行、不可建造的地形障碍，可用峭壁炸药清除
+function isWalkableTerrain(t) { return t !== T_WATER && t !== T_CLIFF; }
 // 地形是否“硬化”（混凝土/石砖路等铺装地）：玩家行走速度提升
 function isPaved(t) { return t === T_CONCRETE || t === T_PATH || t === T_REF_CONCRETE || t === T_HAZARD; }
 
@@ -168,6 +169,33 @@ function consumeOre(tx, ty) {
 }
 
 function isWater(tx, ty) { return getTerrain(tx, ty) === T_WATER; }
+function isCliff(tx, ty) { return getTerrain(tx, ty) === T_CLIFF; }
+
+// 平滑插值
+function lerp(a, b, t) { return a + (b - a) * t; }
+function smoothstep(t) { return t * t * (3 - 2 * t); }
+// 低频值噪声（0~1），用于生成蜿蜒的峭壁山脊线（确定性、随世界种子）
+function valueNoise(gx, gy) {
+  const ix = Math.floor(gx), iy = Math.floor(gy);
+  const fx = gx - ix, fy = gy - iy;
+  const v00 = hash2(ix, iy), v10 = hash2(ix + 1, iy), v01 = hash2(ix, iy + 1), v11 = hash2(ix + 1, iy + 1);
+  const sx = smoothstep(fx), sy = smoothstep(fy);
+  return lerp(lerp(v00, v10, sx), lerp(v01, v11, sx), sy);
+}
+// 判断世界坐标是否为峭壁（对齐《异星工厂》Cliff）：低频噪声零点附近的窄条带形成蜿蜒山脊。
+// 出生点附近不生成（避免堵住开局），越远越密集。
+function isCliffTile(gx, gy) {
+  const d = Math.hypot(gx, gy);
+  if (d < 24) return false;
+  const f = 8;                       // 低频
+  const n = valueNoise(gx / f, gy / f);
+  // 距原点越远条带越宽 → 峭壁更密集；取噪声 0.5 两侧的窄条带
+  const band = 0.03 + 0.025 * Math.min(1, (d - 24) / 250);
+  const v = n - 0.5;
+  if (Math.abs(v) > band * 0.5) return false;
+  // 让山脊呈断续的蜿蜒线（避免整片连成实心墙）
+  return hash2(gx * 3.1, gy * 7.7) > 0.28;
+}
 
 function isLake(tx, ty) {
   const cell = 13;
@@ -298,6 +326,15 @@ function genChunk(cx, cy) {
           if (oreType[idx] < 0) terrain[idx] = T_TREE;
         }
       }
+    }
+  }
+
+  // 峭壁（对齐《异星工厂》Cliff）：低频噪声生成蜿蜒山脊，阻挡通行与建造，可用峭壁炸药清除
+  for (let ly = 0; ly < CHUNK; ly++) {
+    for (let lx = 0; lx < CHUNK; lx++) {
+      const idx = ly * CHUNK + lx;
+      if (terrain[idx] !== T_GRASS) continue;
+      if (isCliffTile(ox + lx, oy + ly)) terrain[idx] = T_CLIFF;
     }
   }
 

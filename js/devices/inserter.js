@@ -17,6 +17,7 @@ class Inserter extends Entity {
     this.holding = null;
     this.holdingCount = 0;
     this.stackMax = 1;   // 堆叠臂改为 3
+    this.rotSpeed = 1;   // 旋转速度倍率：快速臂为 2，对齐《异星工厂》Fast inserter
     this.filter = null;  // 过滤臂：只抓该物品
     this.blocked = false;
     this.armAng = undefined;
@@ -188,7 +189,7 @@ class Inserter extends Entity {
     // 电路条件不满足时机械臂停转（保持当前姿态，不取放）
     if (!this.circuitEnabled()) { this.rotating = false; return; }
     if (this.armAng === undefined) this.armAng = this.pickAng();
-    const step = Math.PI * 4.4 * dt;
+    const step = Math.PI * 4.4 * (this.rotSpeed || 1) * dt;
     // 统一状态机：
     //  空手 -> 转向取物格 -> 到达后原子地“预览+校验+取走（可堆叠抓 N 个）”
     //  持物 -> 转向放物格 -> 到达后循环放入直到放空或目标拒收
@@ -267,6 +268,14 @@ class LongInserter extends Inserter {
   }
 }
 
+// 快速机械臂：旋转速度约为普通臂的 2 倍（对齐《异星工厂》Fast inserter），抓取效率更高
+class FastInserter extends Inserter {
+  constructor(type, x, y) {
+    super(type || 'fast-inserter', x, y);
+    this.rotSpeed = 2;
+  }
+}
+
 class FilterInserter extends Inserter {
   constructor(type, x, y) { super(type || 'filter-inserter', x, y); }
 }
@@ -308,7 +317,8 @@ function drawInserter(ctx, e, gx, gy, dir, alpha) {
   const ang = e.armAng !== undefined ? e.armAng : ((dir + 2) % 4) * Math.PI / 2;
   const tipx = cx + Math.cos(ang) * len;
   const tipy = cy + Math.sin(ang) * len;
-  ctx.strokeStyle = e.holding ? '#ffe066' : long ? '#e08a4a' : '#b9bec8';
+  const fast = e.type === 'fast-inserter';
+  ctx.strokeStyle = e.holding ? '#ffe066' : fast ? '#7ec850' : long ? '#e08a4a' : '#b9bec8';
   ctx.lineWidth = long ? 5 : 4;
   ctx.lineCap = 'round';
   ctx.beginPath();
@@ -487,23 +497,28 @@ ENT_CLASSES['long-inserter'] = LongInserter;
 ENT_CLASSES['filter-inserter'] = FilterInserter;
 ENT_CLASSES['stack-inserter'] = StackInserter;
 ENT_CLASSES['stack-filter-inserter'] = StackFilterInserter;
+ENT_CLASSES['fast-inserter'] = FastInserter;
 DEVICE_RENDER['inserter'] = drawInserter;
 DEVICE_RENDER['long-inserter'] = drawInserter;
 DEVICE_RENDER['filter-inserter'] = drawInserter;
 DEVICE_RENDER['stack-inserter'] = drawInserter;
 DEVICE_RENDER['stack-filter-inserter'] = drawInserter;
+DEVICE_RENDER['fast-inserter'] = drawInserter;
 DEVICE_STATUS['inserter'] = inserterStatusFn;
 DEVICE_STATUS['long-inserter'] = inserterStatusFn;
 DEVICE_STATUS['filter-inserter'] = inserterStatusFn;
 DEVICE_STATUS['stack-inserter'] = inserterStatusFn;
 DEVICE_STATUS['stack-filter-inserter'] = inserterStatusFn;
+DEVICE_STATUS['fast-inserter'] = inserterStatusFn;
 DEVICE_PANEL['inserter'] = inserterPanel;
 DEVICE_PANEL['long-inserter'] = inserterPanel;
 DEVICE_PANEL['filter-inserter'] = filterInserterPanel;
 DEVICE_PANEL['stack-inserter'] = stackInserterPanel;
 DEVICE_PANEL['stack-filter-inserter'] = stackFilterInserterPanel;
+DEVICE_PANEL['fast-inserter'] = inserterPanel;
 DEVICE_DIR_ROTATE['inserter'] = true;
 DEVICE_DIR_ROTATE['long-inserter'] = true;
 DEVICE_DIR_ROTATE['filter-inserter'] = true;
 DEVICE_DIR_ROTATE['stack-inserter'] = true;
 DEVICE_DIR_ROTATE['stack-filter-inserter'] = true;
+DEVICE_DIR_ROTATE['fast-inserter'] = true;

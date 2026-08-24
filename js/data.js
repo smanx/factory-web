@@ -150,6 +150,7 @@ const ITEMS = {
   'filter-inserter':   { name: '过滤机械臂', color: '#58b8e8', desc: '同机械臂，可在面板指定只抓取某种物品' },
   'stack-inserter':    { name: '堆叠机械臂', color: '#e8e059', desc: '同机械臂，但可一次性抓取多达 3 个同种物品' },
   'stack-filter-inserter': { name: '堆叠过滤机械臂', color: '#d8e048', desc: '过滤与堆叠二合一：可一次抓取多达 3 个「指定物品」，装卸效率高且精确分类' },
+  'fast-inserter':     { name: '快速机械臂', color: '#7ec850', desc: '比普通机械臂抓取更快（旋转速度约为其 2 倍），介于普通与过滤/堆叠臂之间（对齐《异星工厂》Fast inserter）' },
   'steel-chest':       { name: '钢箱', color: '#9aa4b0', desc: '比储物箱容量更大的钢铁储物箱（24 格）' },
   'creative-chest':    { name: '创造箱', color: '#3e8f4a', mark: '∞', desc: '测试设备：无限生成选定物品，点开面板选择要生成的物品，机械臂可无限取走' },
   'void-chest':        { name: '虚空箱', color: '#4a3430', mark: '×', desc: '测试设备：无限销毁任何存入的物品，放进去即刻消失' },
@@ -230,6 +231,7 @@ const ITEMS = {
   'rocket-silo':     { name: '火箭发射井', color: '#7a6a5a', desc: '组装并发射火箭的终局建筑（5×5），放入卫星并填充火箭部件后发射' },
   'radar':           { name: '雷达', color: '#5a8a8a', desc: '周期性扫描周围区域，点亮小地图/标记新探索区（3×3，吃电力）' },
   'explosive':       { name: '爆炸物', color: '#d05a2a', desc: '由煤和石油气制造的高能化合物，用于火箭弹' },
+  'cliff-explosives': { name: '峭壁炸药', color: '#8a7a5a', desc: '选中后点击峭壁即可将其炸毁清除，开辟地形通途（对齐《异星工厂》Cliff explosives）' },
   'battery':         { name: '电池', color: '#d0c04a', desc: '储能元件，用于激光炮塔与卫星' },
   // ===== 后期科学包与飞行机器人框架（对齐《异星工厂》7 色科学包）=====
   'flying-robot-frame':{ name: '飞行机器人框架', color: '#7a9ad0', desc: '机器人飞行骨架，制造施工/物流机器人与黄瓶的关键中间件' },
@@ -383,6 +385,7 @@ const RECIPES = {
   'inserter':           { time: 1,   inp: { 'iron-plate': 1, 'iron-gear': 1, 'green-circuit': 1 }, out: { 'inserter': 1 } },
   'burner-inserter':    { time: 0.5, inp: { 'iron-plate': 1, 'iron-gear': 1 },                  out: { 'burner-inserter': 1 } },
   'long-inserter':      { time: 1,   inp: { 'inserter': 1, 'iron-plate': 2 },                             out: { 'long-inserter': 1 } },
+  'fast-inserter':     { time: 1,   inp: { 'inserter': 1, 'iron-plate': 2 },                             out: { 'fast-inserter': 1 } },
   'burner-drill':       { time: 2,   inp: { 'iron-plate': 4, 'iron-gear': 2 },                   out: { 'burner-drill': 1 } },
   'stone-furnace':      { time: 0.5, inp: { 'stone': 5 },                                        out: { 'stone-furnace': 1 } },
   'storage-chest':      { time: 1,   inp: { 'iron-plate': 8 },                                   out: { 'storage-chest': 1 } },
@@ -465,6 +468,7 @@ const RECIPES = {
   // 蜘蛛遥控器（对齐《异星工厂》Spidertron remote）：用于远程命令蜘蛛机器人移动
   'spidertron-remote': { time: 5, inp: { 'processing-unit': 2, 'advanced-circuit': 4, 'iron-gear': 6, 'battery': 2 }, out: { 'spidertron-remote': 1 } },
   'land-mine':         { time: 2,   inp: { 'iron-plate': 3, 'steel-plate': 1, 'explosive': 2 },         out: { 'land-mine': 4 } },
+  'cliff-explosives':  { time: 8,   inp: { 'explosive': 10, 'iron-plate': 5, 'stone': 5 },               out: { 'cliff-explosives': 20 } },
   'artillery-turret':  { time: 15,  inp: { 'steel-plate': 40, 'iron-gear': 16, 'processing-unit': 4, 'steel-stick': 8 }, out: { 'artillery-turret': 1 } },
   'artillery-shell':   { time: 8,   inp: { 'steel-plate': 4, 'explosive': 4, 'processing-unit': 1 }, out: { 'artillery-shell': 1 } },
   // ===== 玩家武器（战斗体系扩充） =====
@@ -698,6 +702,7 @@ const BUILD_DEFS = {
   'filter-inserter':    { w: 1, h: 1, solid: true },
   'stack-inserter':     { w: 1, h: 1, solid: true },
   'stack-filter-inserter': { w: 1, h: 1, solid: true },
+  'fast-inserter':      { w: 1, h: 1, solid: true },
   'burner-drill':       { w: 2, h: 2, solid: true },
   'stone-furnace':      { w: 2, h: 2, solid: true },
   'steel-furnace':      { w: 2, h: 2, solid: true },
@@ -781,7 +786,7 @@ const BUILDING_HP = {
   'transport-belt': 60, 'fast-transport-belt': 100, 'express-transport-belt': 140,
   'splitter': 80, 'priority-splitter': 100, 'express-splitter': 120, 'fast-splitter': 100,
   'underground': 60, 'fast-underground-belt': 100, 'express-underground-belt': 140,
-  'inserter': 100, 'long-inserter': 100, 'filter-inserter': 100, 'stack-inserter': 100, 'stack-filter-inserter': 100,
+  'inserter': 100, 'long-inserter': 100, 'filter-inserter': 100, 'stack-inserter': 100, 'stack-filter-inserter': 100, 'fast-inserter': 100,
   'burner-inserter': 100,
   'burner-drill': 300, 'electric-drill': 300, 'pumpjack': 400,
   'stone-furnace': 200, 'steel-furnace': 200, 'electric-furnace': 300,
@@ -921,6 +926,8 @@ TECH_REQ['cluster-grenade'] = 'advanced-combat';
 // 爆炸火箭弹/爆炸火箭筒：研究「爆炸物科技」后解锁（对齐《异星工厂》Explosive rocket 独立科技）
 TECH_REQ['explosive-rocket'] = 'explosives';
 TECH_REQ['explosive-rocket-launcher'] = 'explosives';
+// 峭壁炸药：研究「爆炸物科技」后解锁（对齐《异星工厂》Cliff explosives 需爆炸物科技）
+TECH_REQ['cliff-explosives'] = 'explosives';
 // 爆炸炮弹 / 铀爆炸炮弹：需爆炸物科技解锁（对齐《异星工厂》：爆炸炮弹由爆炸物科技与核能科技门控）
 TECH_REQ['explosive-cannon-shell'] = 'explosives';
 TECH_REQ['explosive-uranium-cannon-shell'] = 'nuclear';

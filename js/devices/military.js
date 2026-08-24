@@ -199,7 +199,7 @@ function spawnEnemies(dt) {
     for (let i = 0; i < 8; i++) {
       const cx2 = tx + Math.floor(Math.random() * 5) - 2;
       const cy2 = ty + Math.floor(Math.random() * 5) - 2;
-      if (!isWater(cx2, cy2) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
+      if ((!isWater(cx2, cy2) && !isCliff(cx2, cy2)) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
     }
     G.enemies.push({ x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2, hp: 40, dead: false, dir: 0 });
   }
@@ -218,12 +218,12 @@ function updateEnemies(dt) {
     }
   }
   // 清理死亡敌人
-  G.enemies = G.enemies.filter(e => !e.dead);
+  G.enemies = compactFilter(G.enemies, e => !e.dead);
 }
 function updateBullets(dt) {
   if (!G.bullets) return;
   for (const b of G.bullets) { b.t += dt; }
-  G.bullets = G.bullets.filter(b => b.t < b.life);
+  G.bullets = compactFilter(G.bullets, b => b.t < b.life);
 }
 
 // ===== 注册 =====
