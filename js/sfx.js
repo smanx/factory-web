@@ -54,7 +54,23 @@ const SFX = {
   // 手雷/投掷物投掷：轻巧抛掷“嗖”
   throw: { type: 'triangle', dur: 0.2, f0: 600, f1: 200, vol: 0.14, slide: true },
   // 蒸汽/锅炉排气：柔和的低频气声
-  steam: { type: 'noise', dur: 0.3, vol: 0.1, f0: 500, f1: 200, slide: true }
+  steam: { type: 'noise', dur: 0.3, vol: 0.1, f0: 500, f1: 200, slide: true },
+  // 虫群进攻波次警报：低沉压抑的号角（警示玩家布防）
+  wave: { type: 'sawtooth', dur: 0.9, vol: 0.2, f0: 110, f1: 82, slide: true, arpeggio: [110, 98, 82] },
+  // 火车鸣笛：拉长的“呜——”
+  train: { type: 'sawtooth', dur: 1.2, vol: 0.22, f0: 392, f1: 494, slide: true, arpeggio: [392, 466, 392] },
+  // 激光炮塔开火：短促尖啸“滋”
+  laser: { type: 'square', dur: 0.09, vol: 0.16, f0: 1500, f1: 600, slide: true },
+  // 火焰喷射/火焰塔：低频“呼——轰”
+  flamethrower: { type: 'noise', dur: 0.5, vol: 0.2, f0: 400, f1: 80, slide: true },
+  // 机枪连发：短促连续爆裂（冲锋枪/机枪塔）
+  'machine-gun': { type: 'square', dur: 0.05, vol: 0.18, f0: 260, f1: 120, slide: true },
+  // 车辆引擎怠速/行驶：低频轰鸣（可循环）
+  engine: { type: 'sawtooth', dur: 0.5, vol: 0.12, f0: 60, f1: 80, slide: true },
+  // 投掷物/胶囊部署：短促“嗖—嗒”
+  deploy: { type: 'triangle', dur: 0.18, f0: 700, f1: 300, slide: true },
+  // 炮塔旋转/装弹：金属“咔”
+  turret: { type: 'square', dur: 0.07, f0: 480, f1: 360, slide: true }
 };
 
 function sfxInit() {

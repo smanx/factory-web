@@ -370,6 +370,11 @@ function updateDriving(dt) {
   if (G.keys['d'] || G.keys['arrowright']) mx += 1;
   const len = Math.hypot(mx, my);
   if (len > 0) {
+    // 车辆引擎环境音（节流，避免每帧重复触发）
+    if (typeof playSfx === 'function' && (!d.sfxT || d.sfxT <= 0)) {
+      playSfx('engine'); d.sfxT = 0.8;
+    }
+    if (d.sfxT) d.sfxT -= dt;
     // 消耗燃料：燃料不足则无法移动
     if (car.fuelCoal <= 0) {
       if (!d.warned) { d.warned = true; if (typeof toast === 'function') toast('燃料不足：' + (isSpider ? '蜘蛛机器人' : (isTank ? '坦克' : '装甲车')) + '需要煤'); }

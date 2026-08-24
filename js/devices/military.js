@@ -111,6 +111,7 @@ class GunTurret extends Entity {
       x: (this.x + this.w / 2) * TILE, y: (this.y + this.h / 2) * TILE,
       tx: best.x, ty: best.y, t: 0, life: 0.15
     });
+    if (typeof playSfx === 'function') playSfx('machine-gun');
     if (best.hp <= 0) best.dead = true;
   }
   powerDemand() { return 0; }

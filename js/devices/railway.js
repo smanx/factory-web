@@ -63,14 +63,23 @@ function updateTrains(dt) {
       if (acted) tr.stopT = TRAIN_STOP_WAIT;
       else if (!tr.stopT) tr.stopT = TRAIN_STOP_WAIT;
       tr.stopT -= dt;
+      tr.wasStopped = true;
       continue;
     }
     if (tr.stopT > 0) {
       tr.stopT -= dt;
+      tr.wasStopped = true;
       continue;
     }
     // 信号灯防追尾：前方有其它列车则停车
-    if (railSignalBlocked(head)) continue;
+    if (railSignalBlocked(head)) {
+      tr.wasStopped = true;
+      continue;
+    }
+
+    // 从停靠/等待状态恢复行驶时鸣笛（对齐《异星工厂》：列车启动鸣笛）
+    if ((tr.stopT > 0 || tr.wasStopped) && typeof playSfx === 'function') playSfx('train');
+    tr.wasStopped = false;
 
     tr.moveT = (tr.moveT || 0) + dt;
     if (tr.moveT >= TRAIN_SPEED) {

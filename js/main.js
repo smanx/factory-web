@@ -1428,6 +1428,7 @@ function loop(ts) {
       // 敌人/子弹系统（可在设置中开关战斗）
       if (G.settings.combat) {
         spawnEnemies(dt);
+        if (typeof updateWaves === 'function') updateWaves(dt);
         updateEnemies(dt);
         updateBullets(dt);
         updatePlayerFire(dt);
