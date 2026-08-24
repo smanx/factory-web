@@ -24,6 +24,8 @@ class Underground extends Entity {
   // 与同档传送带完全一致的吞吐：每 BELT_SPACING 格一个物品 → 间隔 = 间距/带速
   ugInterval() { return BELT_SPACING / Math.max(0.05, beltSpeed() * this.speedMult()); }
   update(dt) {
+    // 惰性调度（P0 优化）：入口/出口都空时无需每帧扫描
+    if ((!this.items || !this.items.length) && (!this.outItems || !this.outItems.length)) return;
     const iv = this.ugInterval();
     this.cd -= dt;
     const mate = this.findMate();

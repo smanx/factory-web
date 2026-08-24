@@ -40,17 +40,46 @@ function encodeChunkData(c) {
   return { cx: c.cx, cy: c.cy, t, o, a };
 }
 
+// 字符→数字 查找表（避免每字符都做 charCodeAt-48），读档批量解码用（P2 优化）
+const _chunkDigitLUT = (() => {
+  const lut = new Int8Array(256);
+  for (let i = 0; i < 256; i++) lut[i] = i - 48;
+  return lut;
+})();
+
+// 批量解码地图块：用 LUT + 局部变量 + 4 格展开，替代逐字符反复 charCodeAt/属性访问（P2 优化）。
+// 地形块多时（读档/大地图）显著降低逐格 for 循环开销。
 function decodeChunkData(d) {
-  const terrain = new Uint8Array(CHUNK * CHUNK);
-  const oreType = new Int8Array(CHUNK * CHUNK);
-  const oreAmt = new Float32Array(CHUNK * CHUNK);
-  let ai = 0;
-  for (let i = 0; i < CHUNK * CHUNK; i++) {
-    terrain[i] = d.t.charCodeAt(i) - 48;
-    const ch = d.o[i];
-    if (ch === '.') { oreType[i] = -1; continue; }
-    oreType[i] = ch.charCodeAt(0) - 48;
-    oreAmt[i] = d.a[ai++] || 0;
+  const N = CHUNK * CHUNK;
+  const terrain = new Uint8Array(N);
+  const oreType = new Int8Array(N);
+  const oreAmt = new Float32Array(N);
+  const t = d.t, o = d.o, a = d.a, lut = _chunkDigitLUT;
+  let ai = 0, i = 0;
+  // 每轮处理 4 格（若 N 为 4 的倍数则可完整展开；否则兜底补足）
+  for (; i + 4 <= N; i += 4) {
+    terrain[i] = lut[t.charCodeAt(i)];
+    terrain[i + 1] = lut[t.charCodeAt(i + 1)];
+    terrain[i + 2] = lut[t.charCodeAt(i + 2)];
+    terrain[i + 3] = lut[t.charCodeAt(i + 3)];
+    let ch = o.charCodeAt(i);
+    oreType[i] = ch === 46 ? -1 : lut[ch];
+    if (ch !== 46) oreAmt[i] = a[ai++] || 0;
+    ch = o.charCodeAt(i + 1);
+    oreType[i + 1] = ch === 46 ? -1 : lut[ch];
+    if (ch !== 46) oreAmt[i + 1] = a[ai++] || 0;
+    ch = o.charCodeAt(i + 2);
+    oreType[i + 2] = ch === 46 ? -1 : lut[ch];
+    if (ch !== 46) oreAmt[i + 2] = a[ai++] || 0;
+    ch = o.charCodeAt(i + 3);
+    oreType[i + 3] = ch === 46 ? -1 : lut[ch];
+    if (ch !== 46) oreAmt[i + 3] = a[ai++] || 0;
+  }
+  for (; i < N; i++) {
+    terrain[i] = lut[t.charCodeAt(i)];
+    const ch = o.charCodeAt(i);
+    oreType[i] = ch === 46 ? -1 : lut[ch];
+    if (ch !== 46) oreAmt[i] = a[ai++] || 0;
   }
   return { cx: d.cx | 0, cy: d.cy | 0, terrain, oreType, oreAmt };
 }

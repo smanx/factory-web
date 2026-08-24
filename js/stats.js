@@ -12,6 +12,7 @@
 // ---- 物品生成/消耗速率追踪 ----
 // 记录每个物品的增减事件，用最近 2 秒滑动窗口计算速率；同时累计总量。
 const PROD_WINDOW = 2.0;              // 滑动平均窗口（秒）
+const PROD_EVENT_MAX = 4096;          // 事件队列硬上限（防止高吞吐下无限膨胀，P2 优化）
 const PROD = {
   total: {},                          // item -> 累计净增减
   gained: {},                         // item -> 累计生成量
@@ -23,7 +24,9 @@ const PROD = {
 function trackProd(item, delta) {
   if (!item || !delta) return;
   const now = G.time;
+  // 双保险：既按 2 秒窗口剪除过期头部，又设硬上限，防止高吞吐下事件队列无限增长（P2 优化）
   while (PROD.events.length && now - PROD.events[0].t > PROD_WINDOW) PROD.events.shift();
+  if (PROD.events.length > PROD_EVENT_MAX) PROD.events.splice(0, PROD.events.length - PROD_EVENT_MAX);
   if (delta > 0) PROD.gained[item] = (PROD.gained[item] || 0) + delta;
   else PROD.lost[item] = (PROD.lost[item] || 0) - delta;
   PROD.total[item] = (PROD.total[item] || 0) + delta;
@@ -63,7 +66,13 @@ function powerSummary() {
   const producers = [];
   const consumers = [];
   let prod = 0, demand = 0;
-  for (const e of G.ents) {
+  // 只扫电力增量注册子集（P1 优化），避免全量遍历 G.ents
+  const reg = (typeof ensurePowerReg === 'function') ? ensurePowerReg() : null;
+  const iter = reg ? [...reg.producers, ...reg.consumers] : G.ents;
+  const seen = new Set();
+  for (const e of iter) {
+    if (e._dead || seen.has(e)) continue;
+    seen.add(e);
     const po = e.powerOut || 0;
     if (po > 0) { producers.push({ e, v: po }); prod += po; }
     if (typeof e.powerDemand === 'function') {
@@ -92,7 +101,8 @@ const PERF = {
 function refreshPerf() {
   PERF.fps = Math.round(fpsSmooth || 60);
   PERF.frameMs = fpsSmooth > 0 ? (1000 / fpsSmooth) : 0;
-  PERF.ents = G.ents.length;
+  // 只统计存活实体（墓碑惰性清理期间不计入已拆除的）
+  PERF.ents = G.ents.filter(e => !e._dead).length;
   PERF.zoom = G.cam.z;
   PERF.lodState = (typeof LOD === 'object' && LOD) ? (LOD.simple ? '简化（瓦片 ' + LOD.tilePx.toFixed(1) + 'px < ' + LOD_SIMPLE_PX + 'px）' : '完整') : '—';
   if (typeof terrainCacheStats === 'object') {
@@ -146,8 +156,8 @@ function htmlStatsItems() {
       const rate = prodGainRate(id);
       h += '<div class="stat-row">';
       h += '<span>' + chip(id) + '</span>';
-      h += '<span style="color:#8fe08f;font-weight:bold">+' + rate.toFixed(2) + '</span>';
-      h += '<span class="dim">+' + (PROD.gained[id] || 0).toFixed(0) + '</span>';
+      h += '<span data-live="p-' + id + '" style="color:#8fe08f;font-weight:bold">+' + rate.toFixed(2) + '</span>';
+      h += '<span data-live="t-' + id + '" class="dim">+' + (PROD.gained[id] || 0).toFixed(0) + '</span>';
       h += '</div>';
     }
     h += '</div>';
@@ -157,8 +167,8 @@ function htmlStatsItems() {
       const rate = prodLossRate(id);
       h += '<div class="stat-row">';
       h += '<span>' + chip(id) + '</span>';
-      h += '<span style="color:#ff8a7a;font-weight:bold">−' + rate.toFixed(2) + '</span>';
-      h += '<span class="dim">−' + (PROD.lost[id] || 0).toFixed(0) + '</span>';
+      h += '<span data-live="p-' + id + '" style="color:#ff8a7a;font-weight:bold">−' + rate.toFixed(2) + '</span>';
+      h += '<span data-live="t-' + id + '" class="dim">−' + (PROD.lost[id] || 0).toFixed(0) + '</span>';
       h += '</div>';
     }
     h += '</div>';
@@ -173,10 +183,10 @@ function htmlStatsPower() {
   const satPct = Math.round((s.sat || 0) * 100);
   let h = '<div class="sec">电网概览</div>';
   h += '<div class="stat-table">';
-  h += row2('产生', '<span style="color:#8fe08f;font-weight:bold">+' + s.prod.toFixed(1) + '</span>');
-  h += row2('消耗', '<span style="color:#ff8a7a;font-weight:bold">−' + s.demand.toFixed(1) + '</span>');
-  h += row2('净额', (s.net >= 0 ? '+' : '') + s.net.toFixed(1));
-  h += row2('供电饱和度', '<span class="satbar"><i style="width:' + satPct + '%"></i></span> <b>' + satPct + '%</b>');
+  h += row2('产生', '<span data-live="pprod" style="color:#8fe08f;font-weight:bold">+' + s.prod.toFixed(1) + '</span>');
+  h += row2('消耗', '<span data-live="pdem" style="color:#ff8a7a;font-weight:bold">−' + s.demand.toFixed(1) + '</span>');
+  h += row2('净额', '<span data-live="pnet">' + (s.net >= 0 ? '+' : '') + s.net.toFixed(1) + '</span>');
+  h += row2('供电饱和度', '<span data-live="psat"><span class="satbar"><i style="width:' + satPct + '%"></i></span> <b>' + satPct + '%</b></span>');
   h += '</div>';
 
   h += '<div class="sec">发电设备</div>';
@@ -211,24 +221,84 @@ function htmlStatsPerf() {
   refreshPerf();
   let h = '<div class="sec">性能分析</div>';
   h += '<div class="stat-table">';
-  h += row2('帧率 (FPS)', '<b>' + PERF.fps + '</b>');
-  h += row2('单帧耗时', PERF.frameMs.toFixed(2) + ' ms');
-  h += row2('实体数量', PERF.ents);
-  h += row2('地形格子数（已加载块）', PERF.tiles + ' 格（' + (G.world.chunks ? G.world.chunks.size : 0) + ' 块）');
-  h += row2('地形离屏缓存状态', PERF.cacheState);
-  h += row2('地形缓存最近重建耗时', (PERF.cacheRebuildMs || 0).toFixed(1) + ' ms');
-  h += row2('缩放级别', '×' + PERF.zoom.toFixed(2));
-  h += row2('LOD 分级', PERF.lodState);
+  h += row2('帧率 (FPS)', '<b data-live="pfps">' + PERF.fps + '</b>');
+  h += row2('单帧耗时', '<span data-live="pframems">' + PERF.frameMs.toFixed(2) + ' ms</span>');
+  h += row2('实体数量', '<span data-live="pents">' + PERF.ents + '</span>');
+  h += row2('地形格子数（已加载块）', '<span data-live="ptiles">' + PERF.tiles + ' 格（' + (G.world.chunks ? G.world.chunks.size : 0) + ' 块）</span>');
+  h += row2('地形离屏缓存状态', '<span data-live="pcache">' + PERF.cacheState + '</span>');
+  h += row2('地形缓存最近重建耗时', '<span data-live="pcachem">' + (PERF.cacheRebuildMs || 0).toFixed(1) + ' ms</span>');
+  h += row2('缩放级别', '<span data-live="pzoom">×' + PERF.zoom.toFixed(2) + '</span>');
+  h += row2('LOD 分级', '<span data-live="plod">' + PERF.lodState + '</span>');
   h += '</div>';
   h += '<div class="dim">地形离屏缓存：地形绘到离屏画布，相机未大幅移动时直接整块贴图，避免逐格重算；缓存失效时会重建并记录耗时。</div>';
   return h;
 }
 
-// 统计面板实时刷新：由 main loop 每 0.25s 调用一次，重绘当前页面以反映最新数据。
+// 计算统计面板各页的“结构签名”：仅在列表成员（物品 / 发电·耗电设备）集合变化时
+// 才触发整体 DOM 重建；否则只增量更新数值节点，避免每 0.25s 重建整个面板（P2 优化）。
+function statsListSig(tab) {
+  if (tab === 'items') {
+    const isProd = G.statsItemTab !== 'cons';
+    const items = prodActiveItems()
+      .filter(id => isProd ? ((PROD.gained[id] || 0) > 0) : ((PROD.lost[id] || 0) > 0))
+      .sort((a, b) => (ITEMS[a].name < ITEMS[b].name ? -1 : 1));
+    return 'i:' + (G.statsItemTab || 'prod') + ':' + items.join(',');
+  }
+  if (tab === 'power') {
+    const s = powerSummary();
+    const sig = s.producers.map(p => p.e.type + '@' + p.e.x + ',' + p.e.y).join('|') + '#' +
+      s.consumers.map(c => c.e.type + '@' + c.e.x + ',' + c.e.y).join('|');
+    return 'p:' + sig;
+  }
+  return 'f:';   // 性能页结构固定，只需增量更新数值
+}
+
+// 统计面板实时刷新：由 main loop 每 0.25s 调用一次。
+// 结构（成员列表）未变时只更新带 data-live 的数值节点，避免整段 innerHTML 重建。
 function updateStatsLive() {
   if (G.panelMode !== 'stats') return;
   const body = document.getElementById('panel-body');
   if (!body) return;
-  // 仅当当前 tab 渲染内容确实变化时才重绘，避免不必要的 DOM 重建
-  if (typeof renderPanel === 'function') renderPanel(false);
+  const sig = statsListSig(G.statsTab);
+  if (body._statsSig !== sig) {
+    body._statsSig = sig;
+    if (typeof renderPanel === 'function') renderPanel(false);
+    return;   // 刚重建过，本帧无需再增量更新
+  }
+  // 结构未变：增量更新变化数值
+  const set = (k, v) => {
+    const el = body.querySelector('[data-live="' + k + '"]');
+    if (el && el.innerHTML !== v) el.innerHTML = v;
+  };
+  if (G.statsTab === 'items') {
+    const isProd = G.statsItemTab !== 'cons';
+    for (const id of prodActiveItems()) {
+      if (isProd) {
+        if ((PROD.gained[id] || 0) > 0) {
+          set('p-' + id, '+' + prodGainRate(id).toFixed(2));
+          set('t-' + id, '+' + (PROD.gained[id] || 0).toFixed(0));
+        }
+      } else if ((PROD.lost[id] || 0) > 0) {
+        set('p-' + id, '−' + prodLossRate(id).toFixed(2));
+        set('t-' + id, '−' + (PROD.lost[id] || 0).toFixed(0));
+      }
+    }
+  } else if (G.statsTab === 'power') {
+    const s = powerSummary();
+    const satPct = Math.round((s.sat || 0) * 100);
+    set('pprod', '+' + s.prod.toFixed(1));
+    set('pdem', '−' + s.demand.toFixed(1));
+    set('pnet', (s.net >= 0 ? '+' : '') + s.net.toFixed(1));
+    set('psat', '<span class="satbar"><i style="width:' + satPct + '%"></i></span> <b>' + satPct + '%</b>');
+  } else {
+    refreshPerf();
+    set('pfps', PERF.fps);
+    set('pframems', PERF.frameMs.toFixed(2) + ' ms');
+    set('pents', PERF.ents);
+    set('ptiles', PERF.tiles + ' 格（' + (G.world.chunks ? G.world.chunks.size : 0) + ' 块）');
+    set('pcache', PERF.cacheState);
+    set('pcachem', (PERF.cacheRebuildMs || 0).toFixed(1) + ' ms');
+    set('pzoom', '×' + PERF.zoom.toFixed(2));
+    set('plod', PERF.lodState);
+  }
 }
