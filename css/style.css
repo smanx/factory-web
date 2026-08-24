@@ -525,17 +525,22 @@ html, body {
 .save-list { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
 .save-item {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
   padding: 8px 10px;
   background: #232c38;
   border: 1px solid #303b4a;
   border-radius: 6px;
 }
-.save-item-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.save-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.save-item-info { display: flex; align-items: center; gap: 3px; min-width: 0; }
 .save-name { color: #e8eef5; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
-.save-time { color: #7d8894; font-size: 11px; }
+.save-time { color: #7d8894; font-size: 11px; white-space: nowrap; }
 .save-tag {
   display: inline-block;
   font-size: 10px;
