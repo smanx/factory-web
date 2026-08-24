@@ -29,6 +29,42 @@ const ROCKET_PARTS_TOTAL = 100;
 const ROCKET_LAUNCH_DUR = 8;   // 点火到升空完成的动画时长（秒）
 const SILO_INPUT_CAP = 200;    // 发射井每种原料缓存上限
 const ROCKET_PART_RECIPE = { time: ROCKET_PART_TIME, inp: { 'low-density-structure': 4, 'rocket-fuel': 4, 'processing-unit': 4 }, out: { 'rocket-part': 1 } };
+// ===== 插件模块（对齐《异星工厂》Modules：速度/产能/效能 ×3 阶）=====
+// speed：设备速度加成；power：耗电倍率增量；prod：额外免费产出概率
+const MODULES = {
+  'speed-module':          { tier: 1, kind: 'speed', speed: 0.20, power: 0.40 },
+  'speed-module-2':        { tier: 2, kind: 'speed', speed: 0.30, power: 0.60 },
+  'speed-module-3':        { tier: 3, kind: 'speed', speed: 0.50, power: 0.80 },
+  'productivity-module':   { tier: 1, kind: 'prod',  prod: 0.04, speed: -0.05, power: 0.40 },
+  'productivity-module-2': { tier: 2, kind: 'prod',  prod: 0.06, speed: -0.10, power: 0.60 },
+  'productivity-module-3': { tier: 3, kind: 'prod',  prod: 0.10, speed: -0.15, power: 0.80 },
+  'effectivity-module':    { tier: 1, kind: 'eff',   power: -0.30 },
+  'effectivity-module-2':  { tier: 2, kind: 'eff',   power: -0.40 },
+  'effectivity-module-3':  { tier: 3, kind: 'eff',   power: -0.50 }
+};
+// 模块效果下限（对齐《异星工厂》：速度/耗电最低降至 20%）
+const MOD_SPEED_MIN = 0.2;
+const MOD_POWER_MIN = 0.2;
+// 各设备模块插槽数（对齐《异星工厂》：组装机 II=2 / III=4，化工厂/炼油厂=4，研究中心=2）
+const MODULE_SLOTS = {
+  'assembling-machine-mk2': 2,
+  'assembling-machine-3': 4,
+  'chemical-plant': 4,
+  'refinery': 4,
+  'lab': 2
+};
+// ===== 信标（对齐《异星工厂》Beacon）：向作用半径内的机器转发模块效果 =====
+const BEACON_RANGE = 8;    // 信标中心到机器中心的最大作用距离（格）
+const BEACON_EFF = 0.5;    // 信标转发模块效果的折算系数（多台信标叠加）
+// ===== 物流机器人网络（对齐《异星工厂》Logistic network）=====
+const ROBO_COVER_R = 22;          // 机器人港口覆盖半径（格）
+const ROBO_PORT_ROBOT_CAP = 50;   // 每座港口可容纳机器人数
+const ROBOT_CARRY = 4;            // 物流机器人一次搬运件数
+const ROBOT_SPEED = 5.2;          // 巡航速度（格/秒）
+const ROBOT_CHARGE_MAX = 100;     // 机器人的电量上限
+const ROBOT_DRAIN_PER_TILE = 0.6; // 每飞行一格消耗的电量
+const ROBOT_RECHARGE_RATE = 14;   // 停靠充电速率（电量/秒，受电网供电比例影响）
+const ROBOT_JOB_RESERVE = 10;     // 接单所需最低电量冗余
 const POWER_PER_ENGINE = 900;   // 蒸汽机满功率输出
 const POWER_USE = {
   'electric-drill': 90,          // 电采矿机
@@ -40,7 +76,8 @@ const POWER_USE = {
   'refinery': 420,               // 炼油厂
   'chemical-plant': 210,         // 化工厂
   'lab': 60,                     // 研究中心
-  'rocket-silo': 350             // 火箭发射井
+  'rocket-silo': 350,            // 火箭发射井
+  'beacon': 480                  // 信标（装有模块时耗电）
 };
 
 // ===== 发电链（抽水机 → 水 → 锅炉烧出蒸汽 → 蒸汽口送汽 → 蒸汽机发电）=====
@@ -67,6 +104,9 @@ const FILTER_CHOICES = ['iron-plate', 'copper-plate', 'steel-plate', 'iron-gear'
   'coal', 'stone', 'plastic-bar', 'science-pack', 'green-science', 'blue-science', 'military-science',
   'magazine', 'piercing-rounds', 'sulfur', 'battery', 'advanced-circuit', 'processing-unit',
   'electric-engine-unit', 'flying-robot-frame', 'low-density-structure', 'rocket-fuel',
+  'speed-module', 'speed-module-2', 'speed-module-3',
+  'productivity-module', 'productivity-module-2', 'productivity-module-3',
+  'effectivity-module', 'effectivity-module-2', 'effectivity-module-3',
   'production-science', 'utility-science'].concat(FLUIDS);
 function techPacks(tid) { return (TECHS && TECHS[tid] && TECHS[tid].cost) || {}; }
 function techCostTotal(tid) {
@@ -165,7 +205,24 @@ const ITEMS = {
   'rocket-part':       { name: '火箭部件', color: '#d8dde4', mark: 'Rp', desc: '只能在发射井内组装：低密度结构+火箭燃料+处理器；攒满100个即可点火发射' },
   'production-science':{ name: '生产科学包', color: '#c05acd', mark: 'PS', desc: '紫色科学包：石砖+钢板+电炉，解锁生产侧终极科技' },
   'utility-science':   { name: '高科技科学包', color: '#e0c840', mark: 'US', desc: '黄色科学包：飞行机器人机架+低密度结构+处理器，解锁最高科技与火箭' },
-  'rocket-silo':       { name: '火箭发射井', color: '#8892a2', desc: '终局建筑（7×7）：自动组装火箭部件，攒满100个点火发射。发射火箭即达成通关目标！' }
+  'rocket-silo':       { name: '火箭发射井', color: '#8892a2', desc: '终局建筑（7×7）：自动组装火箭部件，攒满100个点火发射。发射火箭即达成通关目标！' },
+  // ===== 插件模块（对齐《异星工厂》：插入机器插槽改变速度/耗电/产能）=====
+  'speed-module':          { name: '速度模块 I',   color: '#e8d24a', mark: 'S1', desc: '设备速度 +20%，耗电 +40%。可插入组装机 II/III、化工厂、炼油厂、研究中心与信标' },
+  'speed-module-2':        { name: '速度模块 II',  color: '#f0e05a', mark: 'S2', desc: '设备速度 +30%，耗电 +60%' },
+  'speed-module-3':        { name: '速度模块 III', color: '#fff06a', mark: 'S3', desc: '设备速度 +50%，耗电 +80%' },
+  'productivity-module':   { name: '产能模块 I',   color: '#c05acd', mark: 'P1', desc: '每次生产额外 +4% 免费产出，速度 -5%，耗电 +40%（不能插入研究中心）' },
+  'productivity-module-2': { name: '产能模块 II',  color: '#ce6ada', mark: 'P2', desc: '额外 +6% 免费产出，速度 -10%，耗电 +60%' },
+  'productivity-module-3': { name: '产能模块 III', color: '#dc7ae8', mark: 'P3', desc: '额外 +10% 免费产出，速度 -15%，耗电 +80%' },
+  'effectivity-module':    { name: '效能模块 I',   color: '#57b95c', mark: 'E1', desc: '设备耗电 -30%。高耗电工厂的省钱利器' },
+  'effectivity-module-2':  { name: '效能模块 II',  color: '#67c96c', mark: 'E2', desc: '设备耗电 -40%' },
+  'effectivity-module-3':  { name: '效能模块 III', color: '#77d97c', mark: 'E3', desc: '设备耗电 -50%' },
+  // ===== 信标与物流机器人网络 =====
+  'beacon':            { name: '信标', color: '#4ac0c8', mark: '◈', desc: '（3×3）向作用半径 ' + BEACON_RANGE + ' 格内的机器转发其插槽内模块的效果（折算 ' + (BEACON_EFF * 100) + '%）。多台信标效果叠加，是全厂提速/增产的核心手段' },
+  'roboport':          { name: '机器人港口', color: '#d0743a', mark: 'Rb', desc: '物流网络核心（4×4）：覆盖半径 ' + ROBO_COVER_R + ' 格，为停靠的物流机器人充电并派发搬运任务。把物流机器人放入港口即可组网' },
+  'logistic-robot':    { name: '物流机器人', color: '#e05050', mark: 'Lo', desc: '在物流网络覆盖范围内自动把物品从被动物流箱/存储箱搬往请求箱，一次最多携带 ' + ROBOT_CARRY + ' 件；需放入机器人港口充电待命' },
+  'logi-chest-passive': { name: '被动物流箱', color: '#b85a3a', mark: 'P', desc: '被动供应：网络中的机器人可从这里取货发往请求箱。配合机械臂投入产物即可实现全自动物流配送' },
+  'logi-chest-storage': { name: '存储物流箱', color: '#5a7ab8', mark: 'S', desc: '存储物资，也可作为请求配送的次级取货来源（优先级低于被动供应箱）' },
+  'logi-chest-requester': { name: '请求物流箱', color: '#4a9a6a', mark: 'Q', desc: '在面板中设置每种物品的请求数量，机器人会自动从网络内补货到设定值。产线供料神器' }
 };
 
 const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone', 'calcite'];
@@ -256,7 +313,24 @@ const RECIPES = {
   'solid-fuel-gas':    { time: 3,   inp: { 'petroleum-gas': 20 },  out: { 'solid-fuel': 1 } },
   'sulfur':            { time: 1,   inp: { 'petroleum-gas': 30 },  out: { 'sulfur': 2 } },
   'sulfuric-acid':     { time: 1,   inp: { 'sulfur': 5, 'water': 40, 'iron-plate': 1 }, out: { 'sulfuric-acid': 40 } },
-  'lubricant':         { time: 1,   inp: { 'heavy-oil': 10 },      out: { 'lubricant': 8 } }
+  'lubricant':         { time: 1,   inp: { 'heavy-oil': 10 },      out: { 'lubricant': 8 } },
+  // ===== 插件模块（对齐《异星工厂》模块配方结构：低阶模块×2 + 高级电子件合成高阶）=====
+  'speed-module':          { time: 15, inp: { 'green-circuit': 5, 'advanced-circuit': 1 }, out: { 'speed-module': 1 } },
+  'speed-module-2':        { time: 30, inp: { 'speed-module': 2, 'advanced-circuit': 2, 'processing-unit': 1 }, out: { 'speed-module-2': 1 } },
+  'speed-module-3':        { time: 45, inp: { 'speed-module-2': 2, 'processing-unit': 4, 'advanced-circuit': 3 }, out: { 'speed-module-3': 1 } },
+  'productivity-module':   { time: 30, inp: { 'green-circuit': 5, 'plastic-bar': 2, 'advanced-circuit': 1 }, out: { 'productivity-module': 1 } },
+  'productivity-module-2': { time: 60, inp: { 'productivity-module': 2, 'advanced-circuit': 2, 'processing-unit': 1 }, out: { 'productivity-module-2': 1 } },
+  'productivity-module-3': { time: 90, inp: { 'productivity-module-2': 2, 'processing-unit': 4, 'low-density-structure': 2 }, out: { 'productivity-module-3': 1 } },
+  'effectivity-module':    { time: 15, inp: { 'green-circuit': 5, 'advanced-circuit': 1 }, out: { 'effectivity-module': 1 } },
+  'effectivity-module-2':  { time: 30, inp: { 'effectivity-module': 2, 'advanced-circuit': 2, 'processing-unit': 1 }, out: { 'effectivity-module-2': 1 } },
+  'effectivity-module-3':  { time: 45, inp: { 'effectivity-module-2': 2, 'processing-unit': 4, 'advanced-circuit': 3 }, out: { 'effectivity-module-3': 1 } },
+  // ===== 信标与物流网络设备 =====
+  'beacon':                { time: 30, inp: { 'steel-plate': 10, 'green-circuit': 10, 'advanced-circuit': 5, 'copper-cable': 10 }, out: { 'beacon': 1 } },
+  'roboport':              { time: 20, inp: { 'steel-plate': 30, 'iron-gear': 30, 'battery': 20, 'processing-unit': 10 }, out: { 'roboport': 1 } },
+  'logistic-robot':        { time: 10, inp: { 'flying-robot-frame': 1, 'processing-unit': 1 }, out: { 'logistic-robot': 1 } },
+  'logi-chest-passive':    { time: 1,  inp: { 'steel-chest': 1, 'advanced-circuit': 1 }, out: { 'logi-chest-passive': 1 } },
+  'logi-chest-storage':    { time: 1,  inp: { 'steel-chest': 1, 'green-circuit': 1 }, out: { 'logi-chest-storage': 1 } },
+  'logi-chest-requester':  { time: 1,  inp: { 'steel-chest': 1, 'advanced-circuit': 1, 'green-circuit': 3 }, out: { 'logi-chest-requester': 1 } }
 };
 
 // 化工厂配方（对齐《异星工厂》官方数值）：
@@ -344,7 +418,12 @@ const BUILD_DEFS = {
   'refinery':           { w: 5, h: 5, solid: true },
   'chemical-plant':     { w: 3, h: 3, solid: true },
   'storage-tank':       { w: 3, h: 3, solid: true },
-  'rocket-silo':        { w: 7, h: 7, solid: true }
+  'rocket-silo':        { w: 7, h: 7, solid: true },
+  'beacon':             { w: 3, h: 3, solid: true },
+  'roboport':           { w: 4, h: 4, solid: true },
+  'logi-chest-passive': { w: 1, h: 1, solid: true },
+  'logi-chest-storage': { w: 1, h: 1, solid: true },
+  'logi-chest-requester': { w: 1, h: 1, solid: true }
 };
 
 // ===== 传送带阶级链（对齐《异星工厂》物流升级）=====
@@ -398,6 +477,13 @@ const TECHS = {
   rocketFuel: { name: '火箭燃料', cost: { 'production-science': 40 }, desc: '解锁火箭燃料（固体燃料+轻油）', unlock: ['rocket-fuel'] },
   utilSci:    { name: '高科技科学包', cost: { 'production-science': 50 }, desc: '解锁黄色高科技科学包', unlock: ['utility-science'] },
   rocketSilo: { name: '火箭发射井', cost: { 'production-science': 80, 'utility-science': 80 }, desc: '终局科技：解锁火箭发射井——攒满100个火箭部件发射火箭通关！', unlock: ['rocket-silo'] },
+  // ===== 模块与物流网络（终局工厂优化玩法）=====
+  effModule:  { name: '效能模块', cost: { 'blue-science': 25 }, desc: '解锁效能模块 I/II：降低设备耗电（耗电大户必备）', unlock: ['effectivity-module', 'effectivity-module-2'] },
+  spdModule:  { name: '速度模块', cost: { 'blue-science': 30 }, desc: '解锁速度模块 I/II：提升设备速度、增加耗电', unlock: ['speed-module', 'speed-module-2'] },
+  prodModule: { name: '产能模块', cost: { 'production-science': 35 }, desc: '解锁产能模块 I/II：免费额外产出，代价是降速增耗（不能插入研究中心）', unlock: ['productivity-module', 'productivity-module-2'] },
+  advModule:  { name: '高级模块', cost: { 'utility-science': 50, 'production-science': 40 }, desc: '解锁全部三级模块（速度/产能/效能 III）', unlock: ['speed-module-3', 'productivity-module-3', 'effectivity-module-3'] },
+  beaconTech: { name: '信标', cost: { 'utility-science': 40 }, desc: '解锁信标：向周围机器转发模块效果，多台叠加全厂提速增产', unlock: ['beacon'] },
+  logiNet:    { name: '物流网络', cost: { 'utility-science': 40, 'production-science': 30 }, desc: '解锁机器人港口、物流机器人与三种物流箱：被动物流体系，产线供料全自动', unlock: ['roboport', 'logistic-robot', 'logi-chest-passive', 'logi-chest-storage', 'logi-chest-requester'] },
   deep:       { name: '重工蓝图', cost: { 'blue-science': 50 }, desc: '科研总进度获取 +20%' },
   infinite:   { name: '无限科技', cost: {}, infinite: true, desc: '无限研究：消耗任意科学包，永不完成' }
 };

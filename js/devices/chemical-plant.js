@@ -10,6 +10,7 @@ class ChemicalPlant extends Entity {
     this.crafting = false;
     this.prog = 0;
     this.working = false;
+    this.mods = new Array(MODULE_SLOTS['chemical-plant'] || 0).fill(null);   // 模块插槽
   }
   setRecipe(id) {
     if (this.recipe === id) return;
@@ -76,12 +77,9 @@ class ChemicalPlant extends Entity {
     if (this.crafting) {
       if (G.power.sat <= 0) return;
       this.working = true;
-      this.prog += dt * chemMult() * oilMult() * powerFactor();
+      this.prog += dt * chemMult() * oilMult() * modSpeedMult(this) * powerFactor();
       if (this.prog >= rec.time) {
-        for (const k in rec.out) {
-          this.outp[k] = (this.outp[k] || 0) + rec.out[k];
-          if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
-        }
+        grantOutputWithBonus(this, rec, moduleBonusesOf(this));
         this.crafting = false;
         this.prog = 0;
       }
@@ -118,7 +116,7 @@ class ChemicalPlant extends Entity {
     if ((this.outp[item] || 0) > 0) { this.outp[item]--; if (this.outp[item] <= 0) delete this.outp[item]; return item; }
     return null;
   }
-  powerDemand() { return this.recipe ? POWER_USE['chemical-plant'] : 0; }
+  powerDemand() { return this.recipe ? POWER_USE['chemical-plant'] * modPowerMult(this) : 0; }
   contents() {
     const list = [[this.type, 1]];
     for (const k in this.inp) list.push([k, this.inp[k]]);
@@ -129,6 +127,8 @@ class ChemicalPlant extends Entity {
     const s = super.serialize();
     s.recipe = this.recipe; s.inp = this.inp; s.outp = this.outp;
     s.crafting = this.crafting; s.prog = this.prog;
+    if (this._frac) s.frac = this._frac;
+    s.mods = modsSerialize(this);
     return s;
   }
   // 蓝图只保留配方配置，不复制内部原料/输出/进度
@@ -141,6 +141,8 @@ class ChemicalPlant extends Entity {
     const c = super.restore(s);
     c.recipe = s.recipe || null; c.inp = s.inp || {}; c.outp = s.outp || {};
     c.crafting = !!s.crafting; c.prog = s.prog || 0;
+    c._frac = s.frac || null;
+    modsRestore(c, s.mods, MODULE_SLOTS['chemical-plant'] || 0);
     return c;
   }
 }
@@ -262,9 +264,10 @@ function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
 // ===== 面板 =====
 function chemicalPlantPanelHtml(e) {
   let h = row('当前配方', e.recipe ? ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name : '<span class="dim">未设置</span>');
-  // 消耗/产出速率显示在面板靠前位置（当前配方之后）
-  h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? chemMult() * oilMult() : 1);
+  // 消耗/产出速率显示在面板靠前位置（当前配方之后）；叠加模块/信标效果
+  h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? chemMult() * oilMult() * modSpeedMult(e) : 1);
   h += row('电力', powerStatusLiveHtml(e), 'power');
+  h += modSectionHtml(e);
   h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
   if (e.recipe)
     for (const k in RECIPES[e.recipe].inp) {
@@ -326,7 +329,7 @@ DEVICE_STATUS['chemical-plant'] = e => {
   if (s.consuming) return s.color;
   return e.recipe ? (e.crafting ? 'g' : (G.power.sat <= 0 && Object.keys(e.inp).length ? 'r' : 'y')) : 'r';
 };
-DEVICE_PANEL['chemical-plant'] = { html: chemicalPlantPanelHtml, live: chemicalPlantPanelLive, tip: chemicalPlantTip };
+DEVICE_PANEL['chemical-plant'] = { html: chemicalPlantPanelHtml, live: chemicalPlantPanelLive, tip: chemicalPlantTip, onAction: (act, btn) => modOnAction(act, btn) };
 // 化工厂四边均布流体口、本体对称，旋转仅记录朝向；选中/悬停后按 R 可直接旋转
 DEVICE_DIR_ROTATE['chemical-plant'] = true;
 // 显示详情时，各接口流体图标所在世界格 + 对应流体名（用于鼠标悬停显示流体名称）

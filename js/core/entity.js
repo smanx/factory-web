@@ -66,6 +66,8 @@ function addEnt(e) {
   invalidateBeltInputNear(e.x, e.y, e.w, e.h);
   // 电力增量注册表同步维护（P1 优化）
   if (typeof regPowerEnt === 'function') regPowerEnt(e);
+  // 信标/物流网络设备增量注册表同步维护（见 devices/modules.js）
+  if (typeof regExtraEnt === 'function') regExtraEnt(e);
 }
 
 function removeEnt(e) {
@@ -84,6 +86,8 @@ function removeEnt(e) {
   invalidateBeltInputNear(e.x, e.y, e.w, e.h);
   // 电力增量注册表同步移除
   if (typeof unregPowerEnt === 'function') unregPowerEnt(e);
+  // 信标/物流网络设备增量注册表同步移除
+  if (typeof unregExtraEnt === 'function') unregExtraEnt(e);
 }
 
 // ===== 流体端口方向表：管道/流体设备共用 =====

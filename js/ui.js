@@ -1017,6 +1017,11 @@ function buildDebug() {
     ['+20固体燃料', 'solid-fuel', 20], ['+10电引擎', 'electric-engine-unit', 10], ['+10机架', 'flying-robot-frame', 10],
     ['+10低密度结构', 'low-density-structure', 10], ['+10火箭燃料', 'rocket-fuel', 10],
     ['+50弹药', 'magazine', 50], ['+50穿甲弹', 'piercing-rounds', 50], ['+5铁箱', 'steel-chest', 5],
+    ['+5速度模块', 'speed-module', 5], ['+5速度模块III', 'speed-module-3', 5],
+    ['+5产能模块', 'productivity-module', 5], ['+5产能模块III', 'productivity-module-3', 5],
+    ['+5效能模块', 'effectivity-module', 5], ['+5效能模块III', 'effectivity-module-3', 5],
+    ['+2信标', 'beacon', 2], ['+2机器人港口', 'roboport', 2], ['+20物流机器人', 'logistic-robot', 20],
+    ['+5被动物流箱', 'logi-chest-passive', 5], ['+5存储物流箱', 'logi-chest-storage', 5], ['+5请求物流箱', 'logi-chest-requester', 5],
     ['+50原油', 'crude-oil', 50], ['+50水', 'water', 50], ['+50蒸汽', 'steam', 50]
   ]) {
     const b = document.createElement('button');

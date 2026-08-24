@@ -10,6 +10,7 @@ class Assembler extends Entity {
     this.crafting = false;
     this.prog = 0;
     this.spin = 0;
+    this.mods = new Array(MODULE_SLOTS[this.type] || 0).fill(null);   // 模块插槽
   }
   fluidRecipe() {
     const r = this.recipe ? RECIPES[this.recipe] : null;
@@ -44,14 +45,12 @@ class Assembler extends Entity {
     if (!this.recipe) { this.crafting = false; return; }
     if (G.power.sat <= 0) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
+    const bon = moduleBonusesOf(this);   // 模块/信标效果（含缓存）
     if (this.crafting) {
-      this.prog += dt * asmMult() * 0.5 * powerFactor();
+      this.prog += dt * asmMult() * 0.5 * modSpeedMult(this) * powerFactor();
       this.spin += dt * 4;
       if (this.prog >= rec.time) {
-        for (const k in rec.out) {
-          this.outp[k] = (this.outp[k] || 0) + rec.out[k];
-          if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
-        }
+        grantOutputWithBonus(this, rec, bon);
         this.crafting = false;
         this.prog = 0;
       }
@@ -111,6 +110,8 @@ class Assembler extends Entity {
     const s = super.serialize();
     s.recipe = this.recipe; s.inp = this.inp; s.outp = this.outp;
     s.crafting = this.crafting; s.prog = this.prog;
+    if (this._frac) s.frac = this._frac;
+    s.mods = modsSerialize(this);
     return s;
   }
   // 蓝图只保留配方配置，不复制内部原料/输出/进度
@@ -123,6 +124,8 @@ class Assembler extends Entity {
     const a = super.restore(s);
     a.recipe = s.recipe || null; a.inp = s.inp || {}; a.outp = s.outp || {};
     a.crafting = !!s.crafting; a.prog = s.prog || 0;
+    a._frac = s.frac || null;
+    modsRestore(a, s.mods, MODULE_SLOTS[a.type] || 0);
     return a;
   }
 }
@@ -182,12 +185,14 @@ function drawAssembler(ctx, e, gx, gy, dir, alpha) {
 // ===== 面板 =====
 function assemblerPanelHtml(e) {
   let h = row('当前配方', e.recipe ? ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name : '<span class="dim">未设置</span>');
-  // 组装机 II 速度为 I 的 1.5 倍，并受电学科技加成
+  // 组装机 II 速度为 I 的 1.5 倍，并受电学科技加成；再叠加模块/信标效果
   const asmM = e.type === 'assembling-machine-mk2' ? asmMult() * 1.5 * elecMachMult() : asmMult();
+  const modM = modSpeedMult(e);
   // 消耗/产出速率显示在面板靠前位置（当前配方之后）
-  h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? asmM : 1);
+  h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? asmM * modM : 1);
   // 吃电机型（组装机 II）显示当前耗电状态与是否电量不足
   if (typeof e.powerDemand === 'function') h += row('电力', powerStatusLiveHtml(e), 'power');
+  h += modSectionHtml(e);
   h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
   if (e.recipe)
     for (const k in RECIPES[e.recipe].inp) {
@@ -256,6 +261,8 @@ function assemblerTip(e) {
   }
   return base;
 }
+// 组装机面板动作：模块插入/取回
+function assemblerOnAction(act, btn) { return modOnAction(act, btn); }
 
 // ===== 注册 =====
 ENT_CLASSES['assembling-machine'] = Assembler;
@@ -271,7 +278,7 @@ function assemblerStatusFn(e) {
 }
 DEVICE_STATUS['assembling-machine'] = assemblerStatusFn;
 DEVICE_STATUS['assembling-machine-mk2'] = assemblerStatusFn;
-const assemblerPanel = { html: assemblerPanelHtml, live: assemblerPanelLive, tip: assemblerTip };
+const assemblerPanel = { html: assemblerPanelHtml, live: assemblerPanelLive, tip: assemblerTip, onAction: assemblerOnAction };
 DEVICE_PANEL['assembling-machine'] = assemblerPanel;
 DEVICE_PANEL['assembling-machine-mk2'] = assemblerPanel;
 // 组装机 I/II 均可旋转朝向；旋转改变流体入口/出口所在侧（背部入口、前部出口）

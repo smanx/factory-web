@@ -245,6 +245,28 @@ html, body {
 .status.ok { color: #57e389; }
 .status.bad { color: #ff5b5b; }
 
+/* 模块插槽（组装机 II/III、化工厂、炼油厂、研究中心、信标面板） */
+.modrow { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+.modslot {
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  background: #10151c;
+  border: 1.5px dashed #46536a;
+  border-radius: 8px;
+  color: #5a6a80;
+  font-size: 18px;
+  padding: 0;
+  cursor: default;
+}
+.modslot img { width: 30px; height: 30px; border-radius: 6px; }
+.modslot.filled {
+  border-style: solid;
+  border-color: #ffd23c;
+  box-shadow: 0 0 6px rgba(255, 210, 60, .35);
+  cursor: pointer;
+}
+.modslot.filled:hover { box-shadow: 0 0 9px rgba(255, 210, 60, .65); }
+
 .recgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 8px; }
 .rcbtn {
   display: flex; align-items: center; gap: 6px;

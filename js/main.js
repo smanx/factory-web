@@ -63,6 +63,7 @@ const G = {
   deconstructHeld: false,  // 拆除模式：左键/触屏是否处于按住连续拆除状态
   launches: 0,        // 累计火箭发射次数（终局统计，随存档保存）
   rocketWon: false,   // 是否已达成首次发射（通关庆祝只弹一次）
+  logiRobots: [],     // 物流机器人（含停靠/充电/飞行中，见 devices/logistics.js）
 };
 
 let lastPlaceKey = '';
@@ -108,6 +109,8 @@ function newGame() {
   G.powerT = 0;
   G.enemies = []; G.bullets = []; G.spawnT = 0;
   if (typeof resetPowerReg === 'function') resetPowerReg();
+  if (typeof resetExtraReg === 'function') resetExtraReg();
+  G.logiRobots = [];
   // 火箭发射进度归零（新游戏从头开始）
   G.launches = 0;
   G.rocketWon = false;
@@ -159,6 +162,8 @@ function serializeAll() {
     // 火箭发射进度：累计次数 + 首发庆祝标记
     launches: G.launches || 0,
     rocketWon: !!G.rocketWon,
+    // 物流机器人（含停靠与在途，引用以瓦片坐标记录）
+    logiRobots: (typeof logiRobotsSerialize === 'function') ? logiRobotsSerialize() : [],
     // 历史统计：聚合为小时粒度写入（体积极小，最多 24 小时/物品）
     hist: (typeof histSerialize === 'function') ? histSerialize() : null
   };
@@ -230,6 +235,7 @@ function applySave(d) {
   G.buckets = new Map();
   G.ents = [];
   if (typeof resetPowerReg === 'function') resetPowerReg();
+  if (typeof resetExtraReg === 'function') resetExtraReg();   // 信标/物流设备注册表清空，随实体恢复重建
   for (const s of d.ents) {
     const cls = ENT_CLASSES[s.type];
     if (!cls) continue;
@@ -270,6 +276,9 @@ function applySave(d) {
   // 恢复火箭发射进度（旧档无该字段则保持默认 0/false）
   G.launches = d.launches || 0;
   G.rocketWon = !!d.rocketWon;
+  // 恢复物流机器人（旧档无该字段则为空）
+  if (typeof logiRobotsRestore === 'function') logiRobotsRestore(d.logiRobots);
+  else G.logiRobots = [];
   // 恢复历史统计（把存档中的小时序列展开回环形缓冲；无历史则重置）
   if (typeof histReset === 'function') histReset();
   if (typeof histDeserialize === 'function' && d.hist) histDeserialize(d.hist);
@@ -1190,6 +1199,8 @@ function loop(ts) {
       updateHeldMouse(dt);
       updateMining(dt);
       for (const e of G.ents) if (!e._dead && typeof e.update === 'function') e.update(dt);
+      // 物流机器人网络：飞行更新 + 任务调度（devices/logistics.js）
+      if (typeof updateLogistics === 'function') updateLogistics(dt);
       // 敌人/子弹系统（可在设置中开关战斗）
       if (G.settings.combat) {
         spawnEnemies(dt);

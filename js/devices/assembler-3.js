@@ -10,15 +10,13 @@ class Assembler3 extends Assembler {
     if (!this.recipe) { this.crafting = false; return; }
     if (G.power.sat <= 0) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
+    const bon = moduleBonusesOf(this);   // 模块/信标效果（含缓存）
     if (this.crafting) {
-      // 速度：组装机 III 基础 1.25，远高于 I/II；叠加科技与电力饱和
-      this.prog += dt * asmMult() * 1.25 * powerFactor();
+      // 速度：组装机 III 基础 1.25，远高于 I/II；叠加科技、模块/信标与电力饱和
+      this.prog += dt * asmMult() * 1.25 * modSpeedMult(this) * powerFactor();
       this.spin += dt * 4;
       if (this.prog >= rec.time) {
-        for (const k in rec.out) {
-          this.outp[k] = (this.outp[k] || 0) + rec.out[k];
-          if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
-        }
+        grantOutputWithBonus(this, rec, bon);
         this.crafting = false;
         this.prog = 0;
       }
@@ -34,7 +32,7 @@ class Assembler3 extends Assembler {
     this.crafting = true;
     this.prog = 0;
   }
-  powerDemand() { return this.recipe ? POWER_USE['assembling-machine-3'] : 0; }
+  powerDemand() { return this.recipe ? POWER_USE['assembling-machine-3'] * modPowerMult(this) : 0; }
 }
 
 // ===== 渲染：与组装机 I/II 共用绘制，仅换色（深紫金属）=====
@@ -86,9 +84,10 @@ function drawAssembler3(ctx, e, gx, gy, dir, alpha) {
 // ===== 面板：复用组装机面板（配方选择/输入/输出/进度）=====
 function assembler3PanelHtml(e) {
   let h = row('当前配方', e.recipe ? ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name : '<span class="dim">未设置</span>');
-  // 消耗/产出速率显示在面板靠前位置（当前配方之后）
-  h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? asmMult() * 1.25 * 1.5 * elecMachMult() : 1);
+  // 消耗/产出速率显示在面板靠前位置（当前配方之后）；叠加模块/信标效果
+  h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? asmMult() * 1.25 * modSpeedMult(e) : 1);
   h += row('电力', powerStatusLiveHtml(e), 'power');
+  h += modSectionHtml(e);
   h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
   if (e.recipe)
     for (const k in RECIPES[e.recipe].inp) {
@@ -154,5 +153,5 @@ DEVICE_STATUS['assembling-machine-3'] = e => {
   if (s.consuming) return s.color;
   return e.recipe ? (e.crafting || e.prog > 0 ? 'g' : 'y') : 'r';
 };
-DEVICE_PANEL['assembling-machine-3'] = { html: assembler3PanelHtml, live: assembler3PanelLive, tip: assembler3Tip };
+DEVICE_PANEL['assembling-machine-3'] = { html: assembler3PanelHtml, live: assembler3PanelLive, tip: assembler3Tip, onAction: (act, btn) => modOnAction(act, btn) };
 DEVICE_DIR_ROTATE['assembling-machine-3'] = true;

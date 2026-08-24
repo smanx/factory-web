@@ -16,6 +16,7 @@ class Refinery extends Entity {
     this.crafting = false;
     this.prog = 0;
     this.working = false;
+    this.mods = new Array(MODULE_SLOTS['refinery'] || 0).fill(null);   // 模块插槽
   }
   setRecipe(id) {
     if (this.recipe === id) return;
@@ -83,12 +84,9 @@ class Refinery extends Entity {
     if (this.crafting) {
       if (G.power.sat <= 0) return;
       this.working = true;
-      this.prog += dt * oilMult() * powerFactor();
+      this.prog += dt * oilMult() * modSpeedMult(this) * powerFactor();
       if (this.prog >= rec.time) {
-        for (const k in rec.out) {
-          this.outp[k] = (this.outp[k] || 0) + rec.out[k];
-          if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
-        }
+        grantOutputWithBonus(this, rec, moduleBonusesOf(this));
         this.crafting = false;
         this.prog = 0;
       }
@@ -142,7 +140,7 @@ class Refinery extends Entity {
     if ((this.outp[item] || 0) > 0) { this.outp[item]--; if (this.outp[item] <= 0) delete this.outp[item]; return item; }
     return null;
   }
-  powerDemand() { return this.recipe ? POWER_USE['refinery'] : 0; }
+  powerDemand() { return this.recipe ? POWER_USE['refinery'] * modPowerMult(this) : 0; }
   contents() {
     const list = [[this.type, 1]];
     for (const k in this.inp) list.push([k, this.inp[k]]);
@@ -153,6 +151,8 @@ class Refinery extends Entity {
     const s = super.serialize();
     s.recipe = this.recipe; s.inp = this.inp; s.outp = this.outp;
     s.crafting = this.crafting; s.prog = this.prog;
+    if (this._frac) s.frac = this._frac;
+    s.mods = modsSerialize(this);
     return s;
   }
   // 蓝图只保留配方配置，不复制内部原料/输出/进度
@@ -165,6 +165,8 @@ class Refinery extends Entity {
     const r = super.restore(s);
     r.recipe = s.recipe || null; r.inp = s.inp || {}; r.outp = s.outp || {};
     r.crafting = !!s.crafting; r.prog = s.prog || 0;
+    r._frac = s.frac || null;
+    modsRestore(r, s.mods, MODULE_SLOTS['refinery'] || 0);
     return r;
   }
 }
@@ -300,8 +302,9 @@ function drawPortIcon(ctx, px, py, s, side, off, fluid) {
 function refineryPanelHtml(e) {
   let h = row('当前配方', e.recipe ? REFINERY_RECIPES[e.recipe].name : '<span class="dim">未设置</span>');
   // 消耗/产出速率显示在面板靠前位置（当前配方之后）
-  h += machRateHtml(e.recipe ? REFINERY_RECIPES[e.recipe] : null, e.recipe ? oilMult() : 1);
+  h += machRateHtml(e.recipe ? REFINERY_RECIPES[e.recipe] : null, e.recipe ? oilMult() * modSpeedMult(e) : 1);
   h += row('电力', powerStatusLiveHtml(e), 'power');
+  h += modSectionHtml(e);
   h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
   if (e.recipe)
     for (const k in REFINERY_RECIPES[e.recipe].inp) {
@@ -361,7 +364,7 @@ DEVICE_STATUS['refinery'] = e => {
   if (s.consuming) return s.color;
   return e.recipe ? (e.crafting ? 'g' : (G.power.sat <= 0 && Object.keys(e.inp).length ? 'r' : 'y')) : 'r';
 };
-DEVICE_PANEL['refinery'] = { html: refineryPanelHtml, live: refineryPanelLive, tip: refineryTip };
+DEVICE_PANEL['refinery'] = { html: refineryPanelHtml, live: refineryPanelLive, tip: refineryTip, onAction: (act, btn) => modOnAction(act, btn) };
 // 炼油厂四边均布流体口、本体对称，旋转仅记录朝向；选中/悬停后按 R 可直接旋转
 DEVICE_DIR_ROTATE['refinery'] = true;
 // 显示详情时，各接口流体图标所在世界格 + 对应流体名（用于鼠标悬停显示流体名称）

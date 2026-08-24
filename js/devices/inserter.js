@@ -143,6 +143,12 @@ class Inserter extends Entity {
         return t.slots.length < 12 || t.slots.some(s => s && s.item === item && s.count < 50);
       case 'steel-chest':
         return t.slots.length < 24 || t.slots.some(s => s && s.item === item && s.count < 50);
+      case 'logi-chest-passive':
+      case 'logi-chest-storage':
+      case 'logi-chest-requester':
+        return t.slots.length < 12 || t.slots.some(s => s && s.item === item && s.count < 50);
+      case 'roboport':
+        return item === 'logistic-robot' && t.dockedCount() < ROBO_PORT_ROBOT_CAP;
       case 'void-chest':
         return true;   // 虚空箱：来者不拒，全部销毁
       case 'creative-chest':

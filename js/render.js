@@ -94,12 +94,16 @@ function render() {
   else for (const e of G.ents) { if (!e._dead) visit(e); }
   for (const e of inserters) drawEntity(ctx, e, e.x, e.y, e.dir, 1);   // 机械臂置顶
   inserters.length = 0;
+  // 物流网络覆盖圈（放置预览/选中港口时）
+  if (typeof drawLogiOverlays === 'function') drawLogiOverlays(ctx);
   drawGhost(ctx);
   drawBlueprintOverlay(ctx);
   drawHoverAndMining(ctx);
   drawPlayer(ctx);
   drawEnemies(ctx);
   drawBullets(ctx);
+  // 物流机器人最顶层绘制（飞行中不被建筑遮挡）
+  if (typeof drawLogiRobots === 'function') drawLogiRobots(ctx);
   ctx.restore();
 }
 

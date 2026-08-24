@@ -7,6 +7,7 @@ class Lab extends Entity {
     this.packs = {};
     this.t = 0;
     this.active = false;
+    this.mods = new Array(MODULE_SLOTS['lab'] || 0).fill(null);   // 模块插槽（产能模块不可用）
   }
   packCount(id) { return this.packs[id] || 0; }
   totalPacks() { let s = 0; for (const k in this.packs) s += this.packs[k]; return s; }
@@ -46,7 +47,7 @@ class Lab extends Entity {
       const any = this.peekAnyPack();
       if (!any) { this.t = 0; return; }   // 没有任何科学包则暂停
       this.active = true;
-      this.t += dt * powerFactor();
+      this.t += dt * modSpeedMult(this) * powerFactor();
       if (this.t >= LAB_TIME) {
         this.t -= LAB_TIME;
         this.consumeAnyPack(1);
@@ -67,7 +68,7 @@ class Lab extends Entity {
     const need = list[done];
     if (!need || this.packCount(need) <= 0) { this.t = 0; return; }
     this.active = true;
-    this.t += dt * powerFactor();
+    this.t += dt * modSpeedMult(this) * powerFactor();
     if (this.t >= LAB_TIME) {
       this.t -= LAB_TIME;
       this.packs[need]--;
@@ -84,7 +85,7 @@ class Lab extends Entity {
       }
     }
   }
-  powerDemand() { return this.active ? POWER_USE['lab'] : 0; }
+  powerDemand() { return this.active ? POWER_USE['lab'] * modPowerMult(this) : 0; }
   giveItem(item) {
     if (isScience(item) && this.packCount(item) < 40) { this.packs[item] = this.packCount(item) + 1; return true; }
     return false;
@@ -120,12 +121,14 @@ class Lab extends Entity {
   serialize() {
     const s = super.serialize();
     s.packs = this.packs; s.t = this.t;
+    s.mods = modsSerialize(this);
     return s;
   }
   static restore(s) {
     const l = super.restore(s);
     l.packs = typeof s.packs === 'number' ? { 'science-pack': s.packs } : (s.packs || {});
     l.t = s.t || 0;
+    modsRestore(l, s.mods, MODULE_SLOTS['lab'] || 0);
     return l;
   }
 }
@@ -172,6 +175,7 @@ function labPanelHtml(e) {
   h += barHtml(0);
   h += '<div class="status"></div>';
   h += row('课题', '', 'techline');
+  h += modSectionHtml(e);
   // 消耗速率：每 LAB_TIME 秒消耗 1 瓶科学包（按所选科技配方逐瓶消耗）
   h += machRateHtml({ inp: { 'science-pack': 1 }, out: {}, time: LAB_TIME }, 1);
   h += '<div class="dim">研究中心按所选科技的配方顺序逐瓶消耗科学包；缺哪种包会暂停并提示。机械臂可自动喂包。</div>';
@@ -232,4 +236,4 @@ DEVICE_STATUS['lab'] = e => {
   if (!G.activeTech || G.techDone[G.activeTech]) return e.totalPacks() > 0 ? 'y' : 'r';
   return e.totalPacks() > 0 ? (e.packCount(e.nextNeed()) > 0 ? 'g' : 'y') : 'r';
 };
-DEVICE_PANEL['lab'] = { html: labPanelHtml, live: labPanelLive, tip: labTip, onAction: labOnAction };
+DEVICE_PANEL['lab'] = { html: labPanelHtml, live: labPanelLive, tip: labTip, onAction: (act, btn) => labOnAction(act, btn) || modOnAction(act, btn) };

@@ -8,14 +8,12 @@ class AssemblerMK2 extends Assembler {
     if (!this.recipe) { this.crafting = false; return; }
     if (G.power.sat <= 0) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
+    const bon = moduleBonusesOf(this);   // 模块/信标效果（含缓存）
     if (this.crafting) {
-      this.prog += dt * asmMult() * 0.75 * powerFactor();
+      this.prog += dt * asmMult() * 0.75 * modSpeedMult(this) * powerFactor();
       this.spin += dt * 4;
       if (this.prog >= rec.time) {
-        for (const k in rec.out) {
-          this.outp[k] = (this.outp[k] || 0) + rec.out[k];
-          if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
-        }
+        grantOutputWithBonus(this, rec, bon);
         this.crafting = false;
         this.prog = 0;
       }
@@ -31,7 +29,7 @@ class AssemblerMK2 extends Assembler {
     this.crafting = true;
     this.prog = 0;
   }
-  powerDemand() { return this.recipe ? POWER_USE['assembling-machine-mk2'] : 0; }
+  powerDemand() { return this.recipe ? POWER_USE['assembling-machine-mk2'] * modPowerMult(this) : 0; }
 }
 
 // ===== 注册 =====
