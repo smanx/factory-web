@@ -8,6 +8,32 @@ html, body {
   user-select: none;
 }
 
+/* ===== 统一滚动条（工业风，与游戏画面匹配） ===== */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track {
+  background: rgba(16, 21, 28, .75);
+  border-left: 1px solid rgba(60, 74, 90, .35);
+  border-radius: 5px;
+}
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #4a5868, #37424f);
+  border: 1px solid #5a6b80;
+  border-radius: 5px;
+  min-height: 36px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #e6c241, #ffd23c);
+  border-color: #ffe27a;
+}
+*::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, #ffd23c, #d9b437);
+  border-color: #fff0a8;
+}
+*::-webkit-scrollbar-corner { background: transparent; }
+
+/* Firefox：细滚动条 + 工业风配色 */
+* { scrollbar-width: thin; scrollbar-color: #4a5868 rgba(16, 21, 28, .75); }
+
 #game { display: block; position: absolute; inset: 0; cursor: crosshair; touch-action: none; }
 
 #hud-info {
@@ -140,10 +166,6 @@ html, body {
   color: #cdd6df;
   font-size: 13px;
 }
-
-#panel-body::-webkit-scrollbar { width: 8px; }
-#panel-body::-webkit-scrollbar-thumb { background: #37424f; border-radius: 4px; }
-#panel-body::-webkit-scrollbar-track { background: transparent; }
 
 .sec { margin: 10px 0 6px; font-weight: bold; color: #ffd23c; }
 
@@ -367,6 +389,16 @@ html, body {
 }
 
 #tooltip b { display: block; color: #ffd23c; font-size: 12.5px; margin-bottom: 2px; }
+#tooltip-recipe {
+  display: none;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed #3a4657;
+  color: #9fd3a0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
 
 /* ===== 开始菜单 ===== */
 #start-screen {
@@ -384,37 +416,18 @@ html, body {
 .start-bg {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse at 50% 28%, rgba(70, 130, 90, .32), transparent 62%),
-    radial-gradient(ellipse at 82% 78%, rgba(30, 60, 90, .28), transparent 55%),
-    linear-gradient(180deg, #0d120e 0%, #16231a 52%, #0b100c 100%);
-  opacity: .97;
+  /* 仅作为画布底层的深色兜底，地图画布完全铺满并直接展示 */
+  background: linear-gradient(180deg, #0d120e 0%, #16231a 52%, #0b100c 100%);
 }
 
-/* 背景浮动光点，提升氛围感 */
-.start-bg::before,
-.start-bg::after {
-  content: '';
+/* 用游戏地图生成功能随机生成的地图背景（canvas）：全屏铺满、不透明度拉满直接显示 */
+.start-bg-canvas {
   position: absolute;
-  border-radius: 50%;
-  filter: blur(1px);
-  opacity: .55;
-  animation: bgFloat 14s ease-in-out infinite;
-}
-.start-bg::before {
-  width: 120px; height: 120px;
-  left: 12%; top: 22%;
-  background: radial-gradient(circle, rgba(120, 220, 150, .5), transparent 70%);
-}
-.start-bg::after {
-  width: 90px; height: 90px;
-  right: 16%; bottom: 18%;
-  background: radial-gradient(circle, rgba(90, 160, 220, .45), transparent 70%);
-  animation-delay: -7s;
-}
-@keyframes bgFloat {
-  0%, 100% { transform: translateY(0) scale(1); opacity: .45; }
-  50% { transform: translateY(-26px) scale(1.12); opacity: .7; }
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 1;
+  mix-blend-mode: normal;
 }
 
 .start-box {
@@ -719,6 +732,55 @@ html, body {
   cursor: pointer;
 }
 .tutorial-close:hover { filter: brightness(1.1); }
+
+/* 死亡结算菜单：阵亡后选择 出生点复活 / 读取存档 / 重新开始 */
+.death-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 240;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 5, 5, .66);
+  backdrop-filter: blur(3px);
+  animation: overlayFade .2s ease;
+}
+.death-overlay.hidden { display: none; }
+.death-panel {
+  width: min(360px, 90vw);
+  text-align: center;
+  background: #1c1416;
+  border: 1px solid rgba(255, 90, 90, .4);
+  border-radius: 14px;
+  padding: 26px 24px;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, .6);
+}
+.death-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #ff6b6b;
+  text-shadow: 0 0 18px rgba(255, 80, 80, .5);
+}
+.death-sub {
+  font-size: 13px;
+  color: #a88686;
+  margin: 6px 0 18px;
+}
+.death-menu { display: flex; flex-direction: column; gap: 10px; }
+.death-btn {
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #2c2f36;
+  color: #e8edf4;
+  transition: filter .15s;
+}
+.death-btn:hover { filter: brightness(1.15); }
+.death-btn.primary { background: linear-gradient(135deg, #3fa87e, #2f8a6a); color: #eafff3; }
+.death-btn.danger { background: linear-gradient(135deg, #c04a4a, #9a3232); color: #ffecec; }
 @keyframes overlayFade {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -792,8 +854,6 @@ html, body {
   gap: 8px;
   min-height: 60px;
 }
-.load-save-list::-webkit-scrollbar { width: 8px; }
-.load-save-list::-webkit-scrollbar-thumb { background: #3f5a48; border-radius: 4px; }
 .load-save-empty {
   padding: 22px 10px;
   font-size: 13px;
@@ -900,6 +960,11 @@ html, body {
 .drow input[type=range] { width: 100%; accent-color: #b06ccf; }
 
 .dsec { margin: 10px 0 5px; color: #c9a6ff; font-weight: bold; }
+.dsec-sub { margin: 8px 0 4px; color: #9fb6cc; font-weight: bold; font-size: 11px; }
+.dswlist { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
+.dsw { display: flex; align-items: center; gap: 6px; padding: 3px 6px; background: #2a3340; border: 1px solid #46536a; border-radius: 5px; cursor: pointer; color: #dfe6ee; }
+.dsw input[type=checkbox] { accent-color: #b06ccf; margin: 0; }
+.dsw:hover { background: #3a4657; }
 .dgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
 .dgrid button {
   font-size: 11px;
@@ -911,6 +976,51 @@ html, body {
   cursor: pointer;
 }
 .dgrid button:hover { background: #3a4657; }
+
+/* 调试面板-资源发放：搜索框、分组标题、无结果提示、一键发放 */
+.dsearch { margin: 4px 0 8px; }
+.dsearch input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 5px 8px;
+  background: #1e2733;
+  border: 1px solid #46536a;
+  color: #dfe6ee;
+  border-radius: 5px;
+  font-size: 12px;
+  outline: none;
+}
+.dsearch input:focus { border-color: #b06ccf; }
+.dsearch input::placeholder { color: #6a7686; }
+.dgroup {
+  grid-column: 1 / -1;
+  margin: 6px 0 2px;
+  padding: 2px 0;
+  color: #8fe08f;
+  font-size: 11px;
+  font-weight: bold;
+  border-bottom: 1px dashed #3a4657;
+}
+.dnone {
+  grid-column: 1 / -1;
+  color: #98a5b5;
+  text-align: center;
+  padding: 8px 0;
+}
+.dgiveall {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px 4px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #1e2733;
+  background: #8fe08f;
+  border: 1px solid #5ab85a;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.dgiveall:hover { background: #a6eaa6; }
 
 .hbedit { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
 
@@ -1312,8 +1422,13 @@ html, body {
     /* 每行固定 5 个槽位：5×52px + 4×5px(gap) + 2×5px(padding) = 290px */
     width: 290px;
   }
-  #hotbar::-webkit-scrollbar { height: 4px; }
-  #hotbar::-webkit-scrollbar-thumb { background: rgba(120,140,160,.5); border-radius: 4px; }
+  #hotbar { scrollbar-width: thin; }
+  #hotbar::-webkit-scrollbar { height: 4px; width: 4px; }
+  #hotbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(90deg, #4a5868, #37424f);
+    border: none;
+    border-radius: 2px;
+  }
   .slot { width: 52px; height: 52px; }
   .slot .key { font-size: 12px; }
   .slot .cnt { font-size: 13px; }
@@ -1531,3 +1646,41 @@ html, body {
 .trunk-item img { width: 22px; height: 22px; border-radius: 4px; }
 .trunk-item span { flex: 1; color: #cfe0f0; font-size: 12px; }
 .trunk-item button { font-size: 11px; padding: 2px 8px; }
+
+/* ===== 成就系统（对齐《异星工厂》Achievements）===== */
+.ach-progress {
+  height: 10px;
+  background: #10151c;
+  border: 1px solid #37424f;
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 4px 0 10px;
+}
+.ach-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ffd23c, #ff9f3c);
+  transition: width .4s ease;
+}
+.ach-list { display: flex; flex-direction: column; gap: 6px; }
+.ach-item {
+  display: flex; align-items: center; gap: 10px;
+  background: #141a22;
+  border: 1px solid #2c3644;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.ach-item.done { border-color: #ffd23c; background: rgba(255, 210, 60, .06); }
+.ach-item.locked { opacity: .6; }
+.ach-icon {
+  width: 34px; height: 34px; flex: 0 0 34px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  background: #0d1218;
+  border: 1px solid #2c3644;
+  border-radius: 8px;
+}
+.ach-item.done .ach-icon { border-color: #ffd23c; }
+.ach-info { flex: 1; }
+.ach-name { font-weight: bold; color: #dfe6ee; font-size: 13px; }
+.ach-item.done .ach-name { color: #ffd23c; }
+.ach-desc { color: #8a95a3; font-size: 12px; margin-top: 2px; line-height: 1.4; }

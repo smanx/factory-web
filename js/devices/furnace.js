@@ -37,7 +37,7 @@ class Furnace extends Entity {
   }
   pickRecipe() {
     for (const r of SMELTS)
-      if ((this.inp[r.inp] || 0) >= (r.inCount || 1) && (this.outp[r.id] || 0) < 25) return r;
+      if ((this.inp[r.inp] || 0) >= (r.inCount || 1) && (this.outp[r.id] || 0) < 50) return r;
     return null;
   }
   update(dt) {
@@ -61,7 +61,7 @@ class Furnace extends Entity {
       else { this.lit = false; return; }
     }
     this.lit = true;
-    this.burnLeft -= dt;
+    this.burnLeft -= dt * fuelConsumptionMult();
     furnaceEmit(this, dt);
     this.prog += dt / r.time;
     if (this.prog >= 1) {
@@ -78,7 +78,7 @@ class Furnace extends Entity {
     if (item === 'coal' && this.fuelCoal < 20) { this.fuelCoal++; return true; }
     if (item === 'solid-fuel' && this.fuelSolid < 20) { this.fuelSolid++; return true; }
     for (const r of SMELTS)
-      if (r.inp === item && (this.inp[item] || 0) < 25) { this.inp[item] = (this.inp[item] || 0) + 1; return true; }
+      if (r.inp === item && (this.inp[item] || 0) < 50) { this.inp[item] = (this.inp[item] || 0) + 1; return true; }
     return false;
   }
   peekItem() {
@@ -191,7 +191,7 @@ function furnacePanelHtml(e) {
   if (eFurn) h += modulePanelSection(e);
   h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
   for (const r of SMELTS) {
-    const n = Math.min(invCount(r.inp), 25 - (e.inp[r.inp] || 0));
+    const n = Math.min(invCount(r.inp), 50 - (e.inp[r.inp] || 0));
     if (n > 0) h += '<button data-action="feed" data-id="' + r.inp + '">放入' +
       ITEMS[r.inp].name + ' ×' + n + '</button>';
   }

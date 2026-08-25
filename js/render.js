@@ -599,12 +599,21 @@ function drawOreDots(ctx, px, py, itemId, amt, tx, ty) {
 }
 
 // 辅助：把 #rrggbb 颜色转成 'r,g,b' 字符串（用于矿格底色半透明填充）
+// 性能优化：颜色值在运行期基本不变（ITEM 色表恒定），用缓存避免每帧对每个可见矿格重复 slice/parseInt。
+// 纯函数确定性缓存，不影响任何返回结果（仅加速）。
+const _hexRgbCache = {};
 function hexToRgb(hex) {
-  if (hex.charAt(0) === '#') hex = hex.slice(1);
-  if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
-  const n = parseInt(hex, 16);
-  if (isNaN(n)) return '128,128,128';
-  return ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255);
+  const c = _hexRgbCache[hex];
+  if (c !== undefined) return c;
+  let h = hex;
+  if (h.charAt(0) === '#') h = h.slice(1);
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  const n = parseInt(h, 16);
+  let out;
+  if (isNaN(n)) out = '128,128,128';
+  else out = ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255);
+  _hexRgbCache[hex] = out;
+  return out;
 }
 
 function drawGridIfBuilding(ctx) {
@@ -766,6 +775,10 @@ const ghostCache = { type: null, ent: null };
 function _altLabelKey(e) {
   const t = e.type;
   if (e.recipe) return 'r:' + e.recipe;
+  if (t === 'train-stop') {
+    // 车站：以站名 + 装卸清单为指纹（对齐《异星工厂》ALT 模式显示车站装卸内容）
+    return 'st:' + (e.name || '') + ':' + (e.load || []).join(',') + ':' + (e.unload || []).join(',');
+  }
   if (t === 'lab') return 'lab:' + (G.activeTech || '');
   if (t === 'rocket-silo') {
     const inp = e.inp || {};
@@ -803,6 +816,15 @@ function _altLabelText(e) {
     if (!outs.length) return null;
     const nm = outs.map(id => ITEMS[id] ? ITEMS[id].name : id).join('+');
     return (rec.out[outs[0]] > 1 && Object.keys(rec.out).length === 1) ? (nm + ' ×' + rec.out[outs[0]]) : nm;
+  }
+  if (t === 'train-stop') {
+    // 车站：显示站名（如有）与装卸物品清单（对齐《异星工厂》ALT 模式）
+    const parts = [];
+    if (e.name) parts.push(e.name);
+    if ((e.load || []).length) parts.push('装 ' + e.load.map(id => (ITEMS[id] ? ITEMS[id].name : id)).join('/'));
+    if ((e.unload || []).length) parts.push('卸 ' + e.unload.map(id => (ITEMS[id] ? ITEMS[id].name : id)).join('/'));
+    if (!parts.length) return null;
+    return parts.join(' ');
   }
   if (t === 'lab') {
     if (!G.activeTech || !TECHS[G.activeTech]) return null;
@@ -1049,14 +1071,41 @@ function drawEnemies(ctx) {
       ctx.fillStyle = '#ffe0a0';
       ctx.beginPath(); ctx.arc(en.x, en.y + bob - 3, 2, 0, 7); ctx.fill();
     } else {
-      ctx.beginPath();
-      ctx.arc(en.x, en.y + bob, size, 0, 7); ctx.fill(); ctx.stroke();
-      // 眼睛朝玩家
+      // 近战敌人：扑咬动画——攻击帧（lungeT>0）时朝玩家方向前扑并张开血盆大口
       const a = Math.atan2(G.player.y - en.y, G.player.x - en.x);
+      const lunge = (en.lungeT || 0) > 0 ? Math.min(1, (en.lungeT || 0) / 0.28) : 0;
+      const bx = en.x + Math.cos(a) * lunge * 7;   // 前扑位移
+      const by = en.y + bob + Math.sin(a) * lunge * 7;
+      // 扑咬时身体略微前倾放大
+      const biteScale = 1 + lunge * 0.12;
+      ctx.save();
+      ctx.translate(bx, by);
+      ctx.scale(biteScale, biteScale);
+      ctx.beginPath();
+      ctx.arc(0, 0, size, 0, 7); ctx.fill(); ctx.stroke();
+      // 眼睛朝玩家
       ctx.fillStyle = '#fff';
       ctx.beginPath();
-      ctx.arc(en.x + Math.cos(a) * size * 0.4, en.y + bob + Math.sin(a) * size * 0.4, 2.5, 0, 7);
+      ctx.arc(Math.cos(a) * size * 0.4, Math.sin(a) * size * 0.4, 2.5, 0, 7);
       ctx.fill();
+      ctx.fillStyle = '#1a1a2a';
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * size * 0.4, Math.sin(a) * size * 0.4, 1.2, 0, 7);
+      ctx.fill();
+      // 扑咬时张开大口（朝玩家的血盆大口/獠牙）
+      if (lunge > 0) {
+        ctx.fillStyle = '#e0402a';
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * size * 0.55, Math.sin(a) * size * 0.55, size * (0.32 + lunge * 0.15), 0, 7);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        for (let i = -1; i <= 1; i++) {
+          ctx.beginPath();
+          ctx.arc(Math.cos(a) * size * (0.7 + lunge * 0.1) + Math.sin(a) * i * 2.5, Math.sin(a) * size * (0.7 + lunge * 0.1) - Math.cos(a) * i * 2.5, 1.6, 0, 7);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
     }
     // 血条
     const w = 16;
@@ -1317,7 +1366,10 @@ function drawAcidPools(ctx) {
 // 击杀敌人掉落的地面矿石（见 combat2.js dropEnemyLoot）：小矿石图标带轻微上下浮动
 function drawLootDrops(ctx) {
   if (!G.lootDrops || G.lootDrops.length === 0) return;
+  // 视口剔除（P 优化）：只绘制屏幕范围内的掉落物，避免战后大量远处掉落每帧全量绘制。
+  const b = FRAME_BOUNDS;
   for (const d of G.lootDrops) {
+    if (b && (d.x < b.x1 || d.x > b.x0 || d.y < b.y1 || d.y > b.y0)) continue;
     const bob = Math.sin(G.time * 3 + d.x) * 1.5;
     // 地面阴影
     ctx.fillStyle = 'rgba(0,0,0,.18)';
@@ -1337,10 +1389,13 @@ function drawLootDrops(ctx) {
 // 玩家丢弃到地面的物品（见 player.js）：在格子中心绘制物品图标（可被传送带吸附/玩家拾取）
 function drawGroundItems(ctx) {
   if (!G.groundItems || G.groundItems.length === 0) return;
+  // 视口剔除（P 优化）：只绘制屏幕范围内的地面物品，避免大量远处堆积物品每帧全量 drawItemGlyph。
+  const b = FRAME_BOUNDS;
   for (const g of G.groundItems) {
     if (g.taken || !ITEMS[g.item]) continue;
     const cx = g.tx * TILE + TILE / 2;
     const cy = g.ty * TILE + TILE / 2;
+    if (b && (cx < b.x1 || cx > b.x0 || cy < b.y1 || cy > b.y0)) continue;
     // 地面阴影
     ctx.fillStyle = 'rgba(0,0,0,.18)';
     ctx.beginPath(); ctx.ellipse(cx, cy + 6, 6, 3, 0, 0, 7); ctx.fill();
@@ -1440,6 +1495,44 @@ function drawPlayer(ctx) {
     ctx.beginPath();
     ctx.moveTo(bx + s * 3.8, by - 1);
     ctx.lineTo(bx + s * 4.2 + cx * armSwing * 0.6, by + 5 + armSwing * 0.8);
+    ctx.stroke();
+  }
+
+  // ---- 自动刀具反击：近战虫贴身咬到主角时主角挥刀还击的动画 ----
+  // counterT>0 时，向 counterDir 方向快速挥出一记刀光（从举起到劈落），附带金属刀身。
+  if ((p.counterT || 0) > 0) {
+    const prog = 1 - Math.min(1, p.counterT / 0.34);        // 0→1 挥刀进度
+    const ca = p.counterDir;                                 // 攻击方向（弧度）
+    const a0 = ca - 1.0, a1 = ca + 1.0;                      // 起手 → 收势角度
+    const ang = a0 + (a1 - a0) * Math.min(1, prog * 1.4);    // 刀身当前角度
+    const rBase = 5, rTip = 15;                              // 刀柄到刀尖的半径
+    const hx2 = p.x + Math.cos(ca) * 2, hy2 = p.y + Math.sin(ca) * 2 - 3;  // 挥刀支点（身前）
+    // 刀光残影（挥刀弧线）
+    ctx.strokeStyle = 'rgba(230,240,255,0.35)';
+    ctx.lineWidth = 3.2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (let k = 0; k <= 8; k++) {
+      const aa = a0 + (a1 - a0) * k / 8 * Math.min(1, prog * 1.4);
+      const rr = rBase + (rTip - rBase) * k / 8;
+      const px2 = hx2 + Math.cos(aa) * rr, py2 = hy2 + Math.sin(aa) * rr;
+      if (k === 0) ctx.moveTo(px2, py2); else ctx.lineTo(px2, py2);
+    }
+    ctx.stroke();
+    // 金属刀身：从支点向刀尖延伸的亮银色刀刃
+    const tipX = hx2 + Math.cos(ang) * rTip, tipY = hy2 + Math.sin(ang) * rTip;
+    ctx.strokeStyle = '#e8f0ff';
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.moveTo(hx2 + Math.cos(ang) * rBase, hy2 + Math.sin(ang) * rBase);
+    ctx.lineTo(tipX, tipY);
+    ctx.stroke();
+    // 刀刃高光
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(hx2 + Math.cos(ang) * (rBase + 1), hy2 + Math.sin(ang) * (rBase + 1));
+    ctx.lineTo(tipX, tipY);
     ctx.stroke();
   }
 

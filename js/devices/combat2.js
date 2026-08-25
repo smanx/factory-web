@@ -8,18 +8,18 @@
 // kind: 'melee'（近战冲撞）| 'ranged'（远程吐痰）
 // evolution: 该类型刷出所需的最低进化度（0~1），越高越强（对齐《异星工厂》敌人随进化度解锁更强变种）
 const ENEMY_TYPES = {
-  'small-biter':  { name: '小虫',   hp: 30,  speed: 22,  size: 6,  dmg: 4,  color: '#d05040', kind: 'melee',   xp: 1, evolution: 0 },
-  'medium-biter': { name: '大虫',   hp: 80,  speed: 18,  size: 9,  dmg: 9,  color: '#b03a30', kind: 'melee',   xp: 2, evolution: 0.05 },
-  'spitter':      { name: '吐痰虫', hp: 50,  speed: 12,  size: 7,  dmg: 7,  color: '#8a6a2a', kind: 'ranged', xp: 2, evolution: 0.15 },
+  'small-biter':  { name: '小虫',   hp: 30,  speed: 2.3, size: 6,  dmg: 4,  color: '#d05040', kind: 'melee',   xp: 1, evolution: 0 },
+  'medium-biter': { name: '大虫',   hp: 80,  speed: 1.75,size: 9,  dmg: 9,  color: '#b03a30', kind: 'melee',   xp: 2, evolution: 0.05 },
+  'spitter':      { name: '吐痰虫', hp: 50,  speed: 1.75,size: 7,  dmg: 7,  color: '#8a6a2a', kind: 'ranged', xp: 2, evolution: 0.15 },
   'worm':         { name: '蠕虫',   hp: 120, speed: 0,   size: 12, dmg: 12, color: '#6a4a3a', kind: 'ranged', xp: 3, evolution: 0.2 },
   // 进化变种（需更高进化度，属性更强）
-  'heavy-biter':  { name: '重甲虫', hp: 150, speed: 14,  size: 11, dmg: 16, color: '#8a2a2a', kind: 'melee',   xp: 4, evolution: 0.35 },
-  'fire-spitter': { name: '喷火虫', hp: 120, speed: 12,  size: 9,  dmg: 18, color: '#d08a2a', kind: 'ranged', xp: 4, evolution: 0.5 },
+  'heavy-biter':  { name: '重甲虫', hp: 150, speed: 1.75,size: 11, dmg: 16, color: '#8a2a2a', kind: 'melee',   xp: 4, evolution: 0.35 },
+  'fire-spitter': { name: '喷火虫', hp: 120, speed: 1.75,size: 9,  dmg: 18, color: '#d08a2a', kind: 'ranged', xp: 4, evolution: 0.5 },
   'big-worm':     { name: '巨型蠕虫', hp: 300, speed: 0,   size: 16, dmg: 24, color: '#4a3a2a', kind: 'ranged', xp: 6, evolution: 0.6 },
-  'huge-biter':   { name: '巨兽虫', hp: 500, speed: 12,  size: 15, dmg: 32, color: '#5a1a2a', kind: 'melee',   xp: 8, evolution: 0.8 },
+  'huge-biter':   { name: '巨兽虫', hp: 500, speed: 1.75,size: 15, dmg: 32, color: '#5a1a2a', kind: 'melee',   xp: 8, evolution: 0.8 },
   // 终局变种（对齐《异星工厂》Behemoth 巨兽级，进化度 0.9+）：属性最强，需最先进火力应对
-  'behemoth-biter':   { name: '巨兽甲虫', hp: 1200, speed: 10,  size: 19, dmg: 56, color: '#3a1018', kind: 'melee',   xp: 16, evolution: 0.9 },
-  'behemoth-spitter': { name: '巨兽吐痰虫', hp: 900, speed: 9,  size: 14, dmg: 48, color: '#5a3a1a', kind: 'ranged', xp: 14, evolution: 0.92 },
+  'behemoth-biter':   { name: '巨兽甲虫', hp: 1200, speed: 1.45,size: 19, dmg: 56, color: '#3a1018', kind: 'melee',   xp: 16, evolution: 0.9 },
+  'behemoth-spitter': { name: '巨兽吐痰虫', hp: 900, speed: 1.45,size: 14, dmg: 48, color: '#5a3a1a', kind: 'ranged', xp: 14, evolution: 0.92 },
   'behemoth-worm':    { name: '巨兽蠕虫', hp: 1500, speed: 0,  size: 20, dmg: 55, color: '#2e1c14', kind: 'ranged', xp: 22, evolution: 0.95 }
 };
 
@@ -85,16 +85,17 @@ function pickEnemyType() {
 const SPAWNER_HP = 260;          // 虫巢生命值
 const SPAWNER_TARGET = 2;        // 同时存在的巢穴目标数（高级战斗后 3）
 const SPAWNER_RANGE = 14;        // 巢穴生成敌人的距离（格）
+const ENEMY_AGGRO_RANGE = 8;     // 主角靠近该距离（格）内，聚集在虫巢周围的虫子主动攻击主角
 
 function makeSpawner() {
   const px = G.player.x / TILE, py = G.player.y / TILE;
-  // 在玩家远处（16~26 格）生成巢穴，尽量避开水面/建筑
+  // 在玩家远处（22~32 格）生成巢穴，尽量避开水面/建筑
   for (let i = 0; i < 12; i++) {
-    const dist = 16 + Math.random() * 10;
+    const dist = 22 + Math.random() * 10;
     const ang = Math.random() * Math.PI * 2;
     const tx = Math.round(px + Math.cos(ang) * dist);
     const ty = Math.round(py + Math.sin(ang) * dist);
-    if ((!isWater(tx, ty) && !isCliff(tx, ty)) && !entAt(tx, ty)) {
+    if ((!isWater(tx, ty) && !isCliff(tx, ty) && !isTree(tx, ty)) && !entAt(tx, ty)) {
       return spawnerAt(tx, ty);
     }
   }
@@ -116,14 +117,35 @@ function spawnerCapByEvo() {
   const base = G.techDone['advanced-combat'] ? 3 : SPAWNER_TARGET;
   return base + (evo > 0.4 ? 1 : 0) + (evo > 0.8 ? 1 : 0);
 }
+// 虫巢占地：2×2 格（对齐《异星工厂》Enemy spawner 的 2×2 footprint）
+const SPAWNER_FOOT = 2;   // 边长（格）
+
+// 判断以 (tx,ty) 为左上角的 SPAWNER_FOOT×SPAWNER_FOOT 区域是否可用于放置虫巢
+function spawnerAreaFree(tx, ty) {
+  for (let dy = 0; dy < SPAWNER_FOOT; dy++) {
+    for (let dx = 0; dx < SPAWNER_FOOT; dx++) {
+      if (isWater(tx + dx, ty + dy) || isCliff(tx + dx, ty + dy) || isTree(tx + dx, ty + dy) || entAt(tx + dx, ty + dy)) return false;
+    }
+  }
+  // 避免与其它虫巢的 2×2 占地重叠（虫巢不在 G.ents 网格中，需手动检查）
+  const src = G.enemies || EMPTY_ARR;
+  for (let i = 0; i < src.length; i++) {
+    const s = src[i];
+    if (s.dead || s.kind !== 'spawner') continue;
+    const scx = Math.floor(s.x / TILE), scy = Math.floor(s.y / TILE);
+    if (Math.abs(tx - scx) <= 1 && Math.abs(ty - scy) <= 1) return false;
+  }
+  return true;
+}
+
 // 在一个目标格生成巢穴（若该格可用）；不可用返回 null
 function spawnerAt(tx, ty) {
-  if (isWater(tx, ty) || isCliff(tx, ty) || entAt(tx, ty)) return null;
+  if (!spawnerAreaFree(tx, ty)) return null;
   return {
-    x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2,
+    x: (tx + (SPAWNER_FOOT - 1) / 2) * TILE, y: (ty + (SPAWNER_FOOT - 1) / 2) * TILE,
     hp: SPAWNER_HP, maxhp: SPAWNER_HP, dead: false, dir: 0,
-    type: 'spawner', kind: 'spawner', speed: 0, size: 13, dmg: 0,
-    color: '#5a3a8a', attackT: 0, fireT: 0
+    type: 'spawner', kind: 'spawner', speed: 0, size: SPAWNER_FOOT * TILE * 0.42, dmg: 0,
+    color: '#5a3a8a', attackT: 0, fireT: 0, foot: SPAWNER_FOOT
   };
 }
 // 尝试让某个巢穴向远处扩张出一个新巢穴，成功返回 true
@@ -164,6 +186,9 @@ function getSpawnerList() {
 
 function updateExpansion(dt) {
   if (!G.settings.combat) return;
+  // “无”模式不生成虫巢（完全不刷敌人）
+  const ecfg = (typeof enemyConfig === 'function') ? enemyConfig() : { peaceful: false };
+  if (ecfg.none) return;
   if (!G.enemies) G.enemies = [];
   const spawners = getSpawnerList();
   if (spawners.length === 0) { G.expandT = 0; return; }
@@ -185,9 +210,9 @@ function updateExpansion(dt) {
 
 function spawnEnemies(dt) {
   if (!G.enemies) G.enemies = [];
-  // 敌人强度配置（对齐《异星工厂》新游戏敌人设置）：和平模式不刷敌人
+  // 敌人强度配置（对齐《异星工厂》新游戏敌人设置）：“无”模式不刷敌人；和平模式会刷敌但由 AI 保证不进攻
   const ecfg = (typeof enemyConfig === 'function') ? enemyConfig() : { peaceful: false, spawnMult: 1 };
-  if (ecfg.peaceful) return;
+  if (ecfg.none) return;
   G.spawnT = (G.spawnT || 0) + dt;
   // 敌人数量越多刷新越慢；火箭时代可允许更多敌人同时在场；高敌人强度提高上限
   const cap = Math.round((G.techDone['advanced-combat'] ? 40 : 24) * ecfg.spawnMult);
@@ -216,7 +241,7 @@ function spawnEnemies(dt) {
     for (let i = 0; i < 8; i++) {
       const cx2 = tx + Math.floor(Math.random() * 5) - 2;
       const cy2 = ty + Math.floor(Math.random() * 5) - 2;
-      if ((!isWater(cx2, cy2) && !isCliff(cx2, cy2)) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
+      if ((!isWater(cx2, cy2) && !isCliff(cx2, cy2) && !isTree(cx2, cy2)) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
     }
   } else {
     // 兜底：无巢穴时（巢穴尚未生成或全部被摧毁）在玩家远处生成
@@ -227,16 +252,19 @@ function spawnEnemies(dt) {
     for (let i = 0; i < 8; i++) {
       const cx2 = tx + Math.floor(Math.random() * 5) - 2;
       const cy2 = ty + Math.floor(Math.random() * 5) - 2;
-      if ((!isWater(cx2, cy2) && !isCliff(cx2, cy2)) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
+      if ((!isWater(cx2, cy2) && !isCliff(cx2, cy2) && !isTree(cx2, cy2)) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
     }
   }
   const t = pickEnemyType();
   const def = scaledDef(ENEMY_TYPES[t]);
+  // 记录敌人所属虫巢（home）坐标：默认围绕其游荡，污染覆盖其虫巢后才转为进攻（对齐《异星工厂》）。
+  const home = src ? { x: src.x, y: src.y } : null;
   G.enemies.push({
     x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2,
     hp: def.hp, maxhp: def.hp, dead: false, dir: 0,
     type: t, kind: def.kind, speed: def.speed, size: def.size, dmg: def.dmg,
-    color: def.color, attackT: 0, fireT: 0
+    color: def.color, attackT: 0, fireT: 0,
+    home: home, wanderT: Math.random() * 2, aggro: false
   });
 }
 
@@ -274,12 +302,20 @@ function composeWave(px, py) {
   return group;
 }
 // 每帧更新波次计时，触发进攻波
+// 对齐《异星工厂》：进攻波由污染驱动——仅当至少一个虫巢被污染覆盖时才集结进攻，
+// 且“无”模式不刷敌人、“和平”模式不主动进攻。
 function updateWaves(dt) {
   if (!G.settings.combat) return;
+  const ecfg = (typeof enemyConfig === 'function') ? enemyConfig() : { peaceful: false };
+  if (ecfg.none || ecfg.peaceful) return;
   const evo = evolutionFactor();
   // 至少有一座巢穴、且进化度达到一定水平后才触发进攻波，避免开局就压垮玩家
   const spawners = getSpawnerList();
   if (spawners.length === 0 || evo < 0.06) return;
+  // 仅当有虫巢被污染覆盖时才可能触发进攻波（对齐《异星工厂》：无污染则虫子不进攻）
+  let polluted = false;
+  for (const s of spawners) { if (spawnerPolluted(s)) { polluted = true; break; } }
+  if (!polluted) return;
   G.waveT = (G.waveT || 0) + dt;
   if (G.waveT < waveInterval()) return;
   G.waveT = 0;
@@ -339,6 +375,98 @@ function findEnemyRangedTarget(en, range) {
   return best;
 }
 
+// ===== 敌人 AI（对齐《异星工厂》Biter 行为）=====
+// 原版 Biter/Spitter 正常模式：不会主动冲向玩家，而是在各自虫巢（Spawner）周围游荡、
+// 守护巢穴；只有当工业污染扩散并覆盖到该虫巢所在的区块时，虫群才会被激怒而发起进攻。
+// 本项目据此实现：敌人默认围绕所属虫巢游荡，仅在所属虫巢被污染覆盖时转为进攻状态。
+
+// 计算某虫巢是否被污染覆盖（对齐原版：污染云扩散到虫巢即激怒）。
+// 污染云以基地为圆心向外扩散，半径随污染值增大（与 drawPollution 的视觉半径一致）。
+function spawnerPolluted(s) {
+  if (!G || !G.settings || !G.settings.combat || !G.pollution) return false;
+  if (!s) return false;
+  const bx = (G.spawn ? G.spawn.x : 0) * TILE;
+  const by = (G.spawn ? G.spawn.y : 0) * TILE;
+  const radius = (12 + G.pollution / 30) * TILE;   // 污染云半径（像素），与 drawPollution 一致
+  const d = Math.hypot(s.x - bx, s.y - by);
+  // 污染值需达到激怒阈值且污染云覆盖到该虫巢
+  return d <= radius && G.pollution >= POLLUTION_WAVE_THRESHOLD;
+}
+
+// 判断单个敌人当前是否处于“进攻”状态（会主动攻击玩家/建筑）。
+// 逻辑（对齐《异星工厂》）：
+//   - 波次敌人（进攻波/污染激怒波）天然处于进攻状态；
+//   - 普通敌人默认不进攻，仅当所属虫巢被污染覆盖时才转为进攻；
+//   - 主角靠近普通敌人（进入其激怒距离）时，即使虫巢未被污染也会主动扑向主角；
+//   - 和平模式（peaceful）敌人永远不主动进攻，只会游荡。
+function isEnemyAggressive(en) {
+  // 战斗关闭/无敌人配置时始终不进攻
+  if (!G.settings.combat) return false;
+  const ecfg = (typeof enemyConfig === 'function') ? enemyConfig() : { peaceful: false };
+  if (ecfg.none) return false;               // “无”模式没有任何敌人
+  if (ecfg.peaceful) return false;           // “和平”模式敌人不主动攻击
+  if (en.wave) return true;                  // 进攻波敌人始终进攻
+  if (en.aggro) return true;                 // 已被标记为激怒（如遭攻击）
+  // 主角靠近该敌人时主动攻击：即使虫巢未被污染激怒，聚集在虫巢周围的虫子也会扑向近身的主角
+  if (G.player && en.x !== undefined && en.y !== undefined) {
+    const d = Math.hypot(G.player.x - en.x, G.player.y - en.y) / TILE;
+    if (d <= ENEMY_AGGRO_RANGE) return true;
+  }
+  // 普通敌人：所属虫巢被污染覆盖则进攻
+  if (en.home) return spawnerPolluted({ x: en.home.x, y: en.home.y });
+  // 无归属虫巢的敌人（兜底）：以当前污染是否达阈值判断
+  return G.pollution >= POLLUTION_WAVE_THRESHOLD;
+}
+
+// 默认行为：在所属虫巢周围游荡（随机小幅徘徊），不主动追击玩家。
+// 每次徘徊计时到点后在虫巢附近换一个随机方向游走；超出虫巢半径则拉回。
+function wanderAroundHome(en, dt) {
+  en.wanderT = (en.wanderT || 0) - dt;
+  const home = en.home;
+  if (!home) return;
+  const homeR = 6 * TILE;      // 虫巢周围游荡半径（像素）
+  if (en.wanderT <= 0) {
+    en.wanderT = 1.5 + Math.random() * 2.5;   // 每 1.5~4 秒换一次方向
+    const a = Math.random() * Math.PI * 2;
+    en.wdir = { x: Math.cos(a), y: Math.sin(a) };
+  }
+  const dx = home.x - en.x, dy = home.y - en.y;
+  const dist = Math.hypot(dx, dy);
+  // 远离虫巢时拉回；否则按当前游荡方向缓慢移动
+  let mx = 0, my = 0;
+  if (dist > homeR) {
+    mx = dx / (dist || 1); my = dy / (dist || 1);
+  } else if (en.wdir) {
+    mx = en.wdir.x; my = en.wdir.y;
+  }
+  const slow = aoeSlowFactor(en.x, en.y);
+  moveEnemy(en, mx, my, en.speed * 0.55 * dt * slow);
+  // 游荡时更新朝向（用于敌人行走渲染），静止则保持原朝向
+  if (mx !== 0 || my !== 0) {
+    const a = Math.atan2(my, mx);
+    en.dir = (a >= -Math.PI / 4 && a < Math.PI / 4) ? 0 : (a >= Math.PI / 4 && a < 3 * Math.PI / 4) ? 1 : (a >= -3 * Math.PI / 4 && a < -Math.PI / 4) ? 3 : 2;
+  }
+}
+
+// 敌人/虫巢碰撞半径（像素）：虫子用其 size，虫巢按 2×2 占地边长一半计算（静态占地体积）。
+function enemyRadius(e) {
+  return (e.kind === 'spawner' ? e.foot * TILE * 0.5 : e.size);
+}
+
+// 敌人是否会被树木阻挡（需求：树木也阻碍敌人移动，对齐玩家——树木不可穿越，需绕开）。
+function enemyTreeBlocked(px, py) {
+  return isTree(Math.floor(px / TILE), Math.floor(py / TILE));
+}
+
+// 敌人移动（含树木阻挡）：逐轴尝试移动，目标格为树木则该轴被挡住（避免斜向贴边穿树）。
+function moveEnemy(en, mx, my, dist) {
+  if (dist <= 0 || (mx === 0 && my === 0)) return;
+  const nx = en.x + mx * dist;
+  if (!enemyTreeBlocked(nx, en.y)) en.x = nx;
+  const ny = en.y + my * dist;
+  if (!enemyTreeBlocked(en.x, ny)) en.y = ny;
+}
+
 function updateEnemies(dt) {
   if (!G.enemies) return;
   // 推进自然进化（战斗开启时）
@@ -353,10 +481,19 @@ function updateEnemies(dt) {
     if (en.kind === 'spawner') continue;
     en.attackT = (en.attackT || 0) - dt;
     en.fireT = (en.fireT || 0) - dt;
+    // 攻击动画计时：>0 时敌人处于“扑咬/喷吐”动作帧（供渲染表现），随时间衰减
+    en.lungeT = (en.lungeT || 0) - dt;
     // 兼容旧档敌人：补充默认字段
-    if (en.speed === undefined) { en.speed = 22; en.size = 8; en.dmg = 5; en.kind = 'melee'; en.maxhp = en.hp || 40; if (!en.color) en.color = enemyColor(en.hp, en.maxhp); }
+    if (en.speed === undefined) { en.speed = 2.3; en.size = 8; en.dmg = 5; en.kind = 'melee'; en.maxhp = en.hp || 40; if (!en.color) en.color = enemyColor(en.hp, en.maxhp); }
     // 减速力场（减速胶囊）：降低移动速度
     const slow = aoeSlowFactor(en.x, en.y);
+    // 敌人是否处于进攻状态（对齐《异星工厂》：默认围绕虫巢游荡，仅污染覆盖虫巢才进攻）
+    const aggressive = isEnemyAggressive(en);
+    if (!aggressive) {
+      // 非进攻状态：在所属虫巢周围游荡，不主动攻击玩家/建筑
+      wanderAroundHome(en, dt);
+      continue;
+    }
     const dx = p.x - en.x, dy = p.y - en.y;
     const d = Math.hypot(dx, dy) / TILE;   // 距离（格）
     if (en.kind === 'ranged') {
@@ -369,15 +506,15 @@ function updateEnemies(dt) {
       if (d <= range) fireTarget = p;
       else fireTarget = findEnemyRangedTarget(en, range);
       if (d > range) {
-        en.x += (dx / d) * en.speed * dt * slow;
-        en.y += (dy / d) * en.speed * dt * slow;
+        moveEnemy(en, dx / d, dy / d, en.speed * dt * slow);
       } else if (d < keep) {
-        en.x -= (dx / d) * en.speed * dt * slow;
-        en.y -= (dy / d) * en.speed * dt * slow;
+        moveEnemy(en, -dx / d, -dy / d, en.speed * dt * slow);
       }
       // 吐痰（投射物）；喷火虫/巨型蠕虫吐火球（命中造成持续灼烧）
       if (en.fireT <= 0 && fireTarget) {
         en.fireT = isWorm ? (en.type === 'behemoth-worm' ? 2.6 : 2.2) : 1.6;
+        en.lungeT = 0.22;   // 喷吐动作帧
+        if (typeof playSfx === 'function') playSfx('spit');   // 远程敌人喷吐音效
         const fire = en.type === 'fire-spitter' || en.type === 'big-worm' || en.type === 'behemoth-worm';
         (G.enemyProjectiles || (G.enemyProjectiles = [])).push({
           x: en.x, y: en.y - en.size, tx: fireTarget.x, ty: fireTarget.y, speed: 3.2, dmg: en.dmg, t: 0,
@@ -393,17 +530,54 @@ function updateEnemies(dt) {
       if (target) {
         if (en.attackT <= 0) {
           en.attackT = 1.0;
+          en.lungeT = 0.28;   // 扑咬建筑动作帧
+          // 扑咬时短暂朝目标建筑前扑（视觉动作，对齐《异星工厂》Biter 扑咬姿态）
+          const tdx = (target.x + target.w / 2 - en.x), tdy = (target.y + target.h / 2 - en.y);
+          const td = Math.max(1, Math.hypot(tdx, tdy));
+          moveEnemy(en, tdx / td, tdy / td, 5);
+          if (typeof playSfx === 'function') playSfx('bite');
           if (typeof damageBuilding === 'function') damageBuilding(target, en.dmg);
         }
         continue;
       }
       // 冲向玩家，贴近后咬人
       if (d > 1.1) {
-        en.x += (dx / d) * en.speed * dt * slow;
-        en.y += (dy / d) * en.speed * dt * slow;
+        moveEnemy(en, dx / d, dy / d, en.speed * dt * slow);
       } else if (en.attackT <= 0) {
         en.attackT = 1.0;
-        if (G.settings.combat) damagePlayer(en.dmg);
+        en.lungeT = 0.28;   // 扑咬玩家动作帧
+        if (typeof playSfx === 'function') playSfx('bite');
+        if (G.settings.combat) {
+          // 近战虫贴身咬玩家：主角自动用刀具还击（触发自动反击动画 + 音效）
+          if (typeof playerAutoCounter === 'function') playerAutoCounter(en);
+          damagePlayer(en.dmg);
+        }
+      }
+    }
+  }
+  // 敌人/虫巢碰撞分离（需求：虫子与虫子、虫子与虫巢都要有碰撞效果）
+  //  - 虫子与虫子互斥推开，保持间距不叠成一团（对齐《异星工厂》虫群列队）；
+  //  - 虫子与虫巢同样互斥，但虫巢为静态占地（kind==='spawner'），只推动虫子、自身不动。
+  const alive = G._aliveEnemies || G.enemies;
+  for (let i = 0; i < alive.length; i++) {
+    const a = alive[i];
+    if (a.dead) continue;
+    const aIsSpawner = a.kind === 'spawner';
+    for (let j = i + 1; j < alive.length; j++) {
+      const b = alive[j];
+      if (b.dead) continue;
+      const bIsSpawner = b.kind === 'spawner';
+      // 虫巢之间无需处理（布点已保证互不重叠）；其余组合（虫-虫、虫-巢）均参与碰撞
+      if (aIsSpawner && bIsSpawner) continue;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const d = Math.hypot(dx, dy);
+      const minD = (enemyRadius(a) + enemyRadius(b)) * 0.9 + 4;
+      if (d > 0 && d < minD) {
+        const push = ((minD - d) / minD) * 26 * dt;
+        const ux = dx / d, uy = dy / d;
+        // 虫巢不移动：只推动非虫巢一方，避免虫巢被虫子顶走（且不把虫子顶进树木）
+        if (!aIsSpawner) moveEnemy(a, -ux, -uy, push);
+        if (!bIsSpawner) moveEnemy(b, ux, uy, push);
       }
     }
   }
@@ -442,7 +616,11 @@ function updateEnemies(dt) {
     if (e.dead) { kills++; dropEnemyLoot(e); return false; }
     return true;
   });
-  if (kills > 0) addEvolution(EVOLUTION_KILL_RATE * kills);
+  if (kills > 0) {
+    addEvolution(EVOLUTION_KILL_RATE * kills);
+    // 成就：击杀计数（对齐《异星工厂》战斗成就）
+    if (typeof achEnsureStats === 'function') { achEnsureStats(); G.achStats.kills += kills; checkAchievements(); }
+  }
 }
 
 // ===== 敌人掉落（对齐《异星工厂》：击杀虫群/巢穴会掉落少量矿石）=====
@@ -496,6 +674,24 @@ function updateLootDrops(dt) {
   if (G.lootDrops.length === 0) G.lootDrops = undefined;
 }
 
+// 主角自动刀具反击：近战虫贴身咬到主角时，主角挥刀自动还击（对齐《异星工厂》玩家初始近战刀具）。
+// 触发挥刀动画（counterT，供渲染表现）+ 挥刀音效，并对咬击自己的敌人造成反击伤害。
+// 反击伤害随武器伤害科技（weaponDamageMult）增强，让玩家在后期也能有效贴身还击。
+function playerAutoCounter(en) {
+  const p = G.player;
+  if (!p || !en || en.dead) return;
+  // 反击动画/冷却：挥刀动画未结束前不再触发，避免连续无间隔挥刀
+  if (p.counterT > 0) return;
+  p.counterT = 0.34;   // 挥刀动画时长（秒）
+  p.counterDir = Math.atan2(en.y - p.y, en.x - p.x);   // 面向攻击者方向挥刀
+  // 反击伤害（基础刀具伤害；随武器伤害科技增强）
+  let dmg = 12;
+  if (typeof weaponDamageMult === 'function') dmg = Math.round(dmg * weaponDamageMult());
+  en.hp -= dmg;
+  if (en.hp <= 0) en.dead = true;
+  if (typeof playSfx === 'function') playSfx('knife');
+}
+
 function damagePlayer(dmg) {
   if (G.dbg && G.dbg.infinite) return;
   // 载具装甲减免：驾驶坦克时受伤大幅减少；驾驶装甲车小幅减少
@@ -517,16 +713,26 @@ function damagePlayer(dmg) {
     if (dmg < before && typeof playSfx === 'function') playSfx('shield');
   }
   dmg = Math.max(0, dmg);
-  G.playerHP -= dmg;
-  if (G.playerHP <= 0) {
-    G.playerHP = 0;
-    // 玩家阵亡：清空附近敌人并重置于出生点，HP 回满
-    if (typeof toast === 'function') toast('你阵亡了！已回到出生点');
-    G.enemies = []; G.enemyProjectiles = [];
-    G.player.x = G.spawn.x * TILE + TILE / 2;
-    G.player.y = G.spawn.y * TILE + TILE / 2;
-    G.cam.px = G.player.x; G.cam.py = G.player.y;
-    G.playerHP = G.playerHPmax;
+  if (dmg > 0) {
+    G.playerHP -= dmg;
+    // 记录受伤时间，重置自动回血延迟计时（对齐《异星工厂》：受伤后需等待几秒才重新开始自动回血）
+    if (G.player && typeof G.player === 'object') G.player.lastHurtT = G.time;
+    // 主角受击音效（真正扣血时播放；护盾完全吸收则无受击音）
+    if (typeof playSfx === 'function') playSfx('hit');
+    if (G.playerHP <= 0) {
+      G.playerHP = 0;
+      // 玩家阵亡：弹出死亡菜单供玩家选择（出生点复活 / 读取存档 / 重新开始），对齐《异星工厂》阵亡结算
+      if (typeof playSfx === 'function') playSfx('player-death');
+      if (typeof showDeathMenu === 'function') showDeathMenu();
+      else {
+        // 兜底：无死亡菜单时回退到原行为（回出生点回满）
+        G.enemies = []; G.enemyProjectiles = [];
+        G.player.x = G.spawn.x * TILE + TILE / 2;
+        G.player.y = G.spawn.y * TILE + TILE / 2;
+        G.cam.px = G.player.x; G.cam.py = G.player.y;
+        G.playerHP = G.playerHPmax;
+      }
+    }
   }
   uiDirty = true;
 }
@@ -1010,19 +1216,46 @@ function throwGrenade(tx, ty, type) {
 const LASER_RANGE = 9;
 const LASER_FIRE_RATE = 0.35;
 const LASER_DMG = 14;
-class LaserTurret extends Entity {
+class LaserTurret extends CircuitNode {
   constructor(type, x, y) {
     super('laser-turret', x, y);
     this.cooldown = 0;
     this.target = null;
     this.facing = 0;
     this.beamT = 0;
+    // 电路控制（对齐《异星工厂》：炮塔接入电路网络，可按信号启停火力）
+    this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
+  }
+  // 电路启停：未启用条件时恒工作；启用后仅当附近电路信号满足条件才开火
+  circuitEnabled() {
+    if (!this.circuitCond || !this.circuitCond.enabled) return true;
+    const sig = circuitSignalNear(this);
+    return circuitCondOk(sig, this.circuitCond);
+  }
+  // 射程内存活敌人数量（作为传感器信号输出到电路网络）
+  enemiesInRange() {
+    const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
+    const enemies = G._aliveEnemies || (G.enemies || []);
+    let n = 0;
+    for (const en of enemies) {
+      if (!en || en.dead) continue;
+      const d = Math.hypot(en.x / TILE - cx, en.y / TILE - cy);
+      if (d <= LASER_RANGE) n++;
+    }
+    return n;
+  }
+  outputCircuitSignals() {
+    const n = this.enemiesInRange();
+    if (n <= 0) return [];
+    return [{ sig: 'signal-enemy', count: n }];
   }
   update(dt) {
     this.cooldown -= dt;
     this.beamT = Math.max(0, this.beamT - dt);
     this.target = null;
     if (G.power.sat <= 0) return;
+    // 电路条件不满足时炮塔停火
+    if (!this.circuitEnabled()) return;
     const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
     let best = null, bestD = Infinity;
     // 性能优化：复用主循环每帧缓存的存活敌人列表（_aliveEnemies），避免重复 dead 判断遍历全数组
@@ -1048,8 +1281,8 @@ class LaserTurret extends Entity {
     if (best.hp <= 0) best.dead = true;
   }
   powerDemand() { return 180; }
-  serialize() { return super.serialize(); }
-  static restore(s) { return super.restore(s); }
+  serialize() { const s = super.serialize(); if (this.circuitCond) s.circuitCond = this.circuitCond; return s; }
+  static restore(s) { const e = super.restore(s); e.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 }; return e; }
 }
 function drawLaserTurret(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
@@ -1092,10 +1325,12 @@ function laserTurretPanelHtml(e) {
   let h = row('电力', powerStatusLiveHtml(e), 'power');
   h += '<div class="status"></div>';
   h += '<div class="dim">激光炮塔：吃电力自动发射激光攻击射程内（' + LASER_RANGE + ' 格）敌人，无需弹药，伤害高于机枪。供电不足时停止开火。配合石墙构筑防线（2×2）。</div>';
+  h += circuitPanelHtml(e, 'lt');
   return h;
 }
 function laserTurretPanelLive(e, api) {
   api.set('power', powerStatusLiveHtml(e));
+  if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) { api.status('已停火：电路条件不满足', 'warn'); return; }
   if (G.power.sat <= 0) api.status('已暂停：缺电', 'warn');
   else if (e.target) api.status('开火中：激光攻击敌人', 'ok');
   else api.status('待机：射程内无敌人', 'ok');
@@ -1110,13 +1345,38 @@ const FT_RANGE = 6;
 const FT_FIRE_RATE = 0.3;
 const FT_DMG = 8;
 const FT_FLUID_CAP = 200;
-class FlamethrowerTurret extends Entity {
+class FlamethrowerTurret extends CircuitNode {
   constructor(type, x, y) {
     super('flamethrower-turret', x, y);
     this.fluid = {};       // { 'light-oil': n }（对齐《异星工厂》：火焰炮塔以轻油为燃料）
     this.cooldown = 0;
     this.target = null;
     this.facing = 0;
+    // 电路控制（对齐《异星工厂》：炮塔接入电路网络，可按信号启停火力）
+    this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
+  }
+  // 电路启停：未启用条件时恒工作；启用后仅当附近电路信号满足条件才开火
+  circuitEnabled() {
+    if (!this.circuitCond || !this.circuitCond.enabled) return true;
+    const sig = circuitSignalNear(this);
+    return circuitCondOk(sig, this.circuitCond);
+  }
+  // 射程内存活敌人数量（作为传感器信号输出到电路网络）
+  enemiesInRange() {
+    const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
+    const enemies = G._aliveEnemies || (G.enemies || []);
+    let n = 0;
+    for (const en of enemies) {
+      if (!en || en.dead) continue;
+      const d = Math.hypot(en.x / TILE - cx, en.y / TILE - cy);
+      if (d <= FT_RANGE) n++;
+    }
+    return n;
+  }
+  outputCircuitSignals() {
+    const n = this.enemiesInRange();
+    if (n <= 0) return [];
+    return [{ sig: 'signal-enemy', count: n }];
   }
   giveItem(item) {
     if (item === 'light-oil') {
@@ -1146,6 +1406,8 @@ class FlamethrowerTurret extends Entity {
     this.fluidPort();
     if (G.power.sat <= 0) return;
     if ((this.fluid['light-oil'] || 0) <= 0) return;
+    // 电路条件不满足时炮塔停火
+    if (!this.circuitEnabled()) return;
     const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
     let best = null, bestD = Infinity;
     // 性能优化：复用主循环每帧缓存的存活敌人列表（_aliveEnemies）
@@ -1182,10 +1444,11 @@ class FlamethrowerTurret extends Entity {
     if (typeof playSfx === 'function') playSfx('flamethrower');
   }
   powerDemand() { return 200; }
-  serialize() { const s = super.serialize(); s.fluid = this.fluid; return s; }
+  serialize() { const s = super.serialize(); s.fluid = this.fluid; if (this.circuitCond) s.circuitCond = this.circuitCond; return s; }
   static restore(s) {
     const t = super.restore(s);
     t.fluid = s.fluid || {};
+    t.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
     // 迁移旧存档：旧版火焰炮塔以石油气为燃料，读档时丢弃残留的石油气，避免遗留旧流体
     if (t.fluid['petroleum-gas']) delete t.fluid['petroleum-gas'];
     return t;
@@ -1233,11 +1496,13 @@ function flameTurretPanelHtml(e) {
   if (n > 0) h += '<button data-action="feed" data-id="light-oil">放入轻油 ×' + n + '</button>';
   h += '<div class="status"></div>';
   h += '<div class="dim">火焰炮塔：消耗轻油喷射火焰，对锥形范围敌人造成持续灼烧伤害。可从底部输入口相邻管道自动吸入轻油（2×2）。对齐《异星工厂》Flamethrower turret：以轻油为燃料。</div>';
+  h += circuitPanelHtml(e, 'ft');
   return h;
 }
 function flameTurretPanelLive(e, api) {
   api.set('fluid', (e.fluid['light-oil'] || 0) > 0 ? ((e.fluid['light-oil'] || 0) + ' 单位') : dimSpan('空'));
   const fl = e.fluid['light-oil'] || 0;
+  if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) { api.status('已停火：电路条件不满足', 'warn'); return; }
   if (G.power.sat <= 0) api.status('已暂停：缺电', 'warn');
   else if (fl <= 0) api.status('已暂停：缺轻油（管道或按钮放入）', 'warn');
   else if (e.target) api.status('喷射中：灼烧敌人', 'ok');
@@ -1366,7 +1631,7 @@ DEVICE_RENDER['laser-turret'] = drawLaserTurret;
 DEVICE_RENDER['flamethrower-turret'] = drawFlamethrowerTurret;
 DEVICE_STATUS['laser-turret'] = e => (G.power.sat <= 0 ? 'r' : (e.target ? 'g' : 'y'));
 DEVICE_STATUS['flamethrower-turret'] = e => (G.power.sat <= 0 ? 'r' : ((e.fluid['light-oil'] || 0) <= 0 ? 'r' : (e.target ? 'g' : 'y')));
-DEVICE_PANEL['laser-turret'] = { html: laserTurretPanelHtml, live: laserTurretPanelLive, tip: laserTurretTip };
-DEVICE_PANEL['flamethrower-turret'] = { html: flameTurretPanelHtml, live: flameTurretPanelLive, tip: flameTurretTip };
+DEVICE_PANEL['laser-turret'] = { html: laserTurretPanelHtml, live: laserTurretPanelLive, tip: laserTurretTip, onAction: (a) => circuitPanelAction('lt', a) };
+DEVICE_PANEL['flamethrower-turret'] = { html: flameTurretPanelHtml, live: flameTurretPanelLive, tip: flameTurretTip, onAction: (a) => circuitPanelAction('ft', a) };
 DEVICE_DIR_ROTATE['laser-turret'] = true;
 DEVICE_DIR_ROTATE['flamethrower-turret'] = true;

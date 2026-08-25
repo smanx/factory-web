@@ -17,7 +17,8 @@ function defaultWorldConfig() {
     resourceFrequency: 'normal', // 资源频率（矿团数量）
     resourceSize: 'normal',      // 资源大小（矿团尺寸）
     water: 'normal',             // 水频率
-    enemy: 'normal'              // 敌人强度
+    enemy: 'normal',             // 敌人强度
+    cliff: 'on'                  // 是否生成峭壁（对齐《异星工厂》：峭壁默认开启）
   };
 }
 // 默认配置单例：保证 worldConfig() 在未设置时返回同一引用，避免缓存永不命中的递归/重建
@@ -36,10 +37,15 @@ const WORLD_LEVEL_OPTIONS = [
   { v: 'high',   name: '高' }
 ];
 const WORLD_ENEMY_OPTIONS = [
+  { v: 'none',     name: '无' },
   { v: 'peaceful', name: '和平' },
   { v: 'low',      name: '低' },
   { v: 'normal',   name: '中' },
   { v: 'high',     name: '高' }
+];
+const WORLD_CLIFF_OPTIONS = [
+  { v: 'on',  name: '开启' },
+  { v: 'off', name: '关闭' }
 ];
 
 // 归一化：确保配置对象字段完整、取值合法（旧存档/外部传入可能缺字段）
@@ -54,6 +60,7 @@ function normalizeWorldConfig(c) {
   out.resourceSize = WORLD_LEVEL_OPTIONS.some(o => o.v === c.resourceSize) ? c.resourceSize : d.resourceSize;
   out.water = WORLD_LEVEL_OPTIONS.some(o => o.v === c.water) ? c.water : d.water;
   out.enemy = WORLD_ENEMY_OPTIONS.some(o => o.v === c.enemy) ? c.enemy : d.enemy;
+  out.cliff = WORLD_CLIFF_OPTIONS.some(o => o.v === c.cliff) ? c.cliff : d.cliff;
   return out;
 }
 
@@ -66,7 +73,7 @@ function worldConfig() {
   const cfg = (G && G.worldConfig) ? G.worldConfig : DEFAULT_WC;
   if (_wcCache !== cfg) {
     _wcCache = cfg;   // 先更新引用，避免计算派生值时递归
-    _wcf = { richness: richnessMult0(), frequency: frequencyMult0(), size: sizeMult0(), water: waterBias0(), enemy: enemyConfig0() };
+    _wcf = { richness: richnessMult0(), frequency: frequencyMult0(), size: sizeMult0(), water: waterBias0(), enemy: enemyConfig0(), cliff: cliffOn0() };
   }
   return _wcCache;
 }
@@ -76,6 +83,7 @@ function frequencyMult() { return worldConfig() && _wcf ? _wcf.frequency : frequ
 function sizeMult() { return worldConfig() && _wcf ? _wcf.size : sizeMult0(); }
 function waterBias() { return worldConfig() && _wcf ? _wcf.water : waterBias0(); }
 function enemyConfig() { return worldConfig() && _wcf ? _wcf.enemy : enemyConfig0(); }
+function cliffOn() { return worldConfig() && _wcf ? _wcf.cliff : cliffOn0(); }
 
 // 实际计算逻辑（供 worldConfig 缓存派生值；也可在缓存未就绪时直接调用）
 function richnessMult0() {
@@ -102,9 +110,14 @@ function waterBias0() {
   if (v === 'high') return 0.006;
   return 0;
 }
+function cliffOn0() {
+  return worldConfig().cliff !== 'off';
+}
 function enemyConfig0() {
   const v = worldConfig().enemy;
-  if (v === 'peaceful') return { peaceful: true, initEvolution: 0, spawnMult: 0 };
+  if (v === 'none') return { none: true, peaceful: true, initEvolution: 0, spawnMult: 0 };
+  // 和平模式：敌人存在并在虫巢周围游荡，但永不主动攻击（由 isEnemyAggressive 保证）
+  if (v === 'peaceful') return { peaceful: true, initEvolution: 0, spawnMult: 1 };
   if (v === 'low') return { peaceful: false, initEvolution: 0.1, spawnMult: 0.55 };
   if (v === 'high') return { peaceful: false, initEvolution: 0.5, spawnMult: 2.1 };
   return { peaceful: false, initEvolution: 0, spawnMult: 1 };
@@ -176,8 +189,10 @@ function buildWorldConfigHtml(ov, cfg) {
   h += '<div class="dim wcfg-desc">影响单个矿团的尺寸。</div>';
   h += seg('水频率', WORLD_LEVEL_OPTIONS, cfg.water, 'water');
   h += '<div class="dim wcfg-desc">影响水域的数量。</div>';
-  h += seg('敌人强度', WORLD_ENEMY_OPTIONS, cfg.enemy, 'enemy');
-  h += '<div class="dim wcfg-desc">和平 = 不刷敌人；低/中/高 = 影响初始进化度与刷怪频率。</div>';
+  h += seg('峭壁', WORLD_CLIFF_OPTIONS, cfg.cliff, 'cliff');
+  h += '<div class="dim wcfg-desc">是否生成峭壁山脊（阻挡通行，可用峭壁炸药清除）。关闭则世界无峭壁。</div>';
+  h += seg('敌人', WORLD_ENEMY_OPTIONS, cfg.enemy, 'enemy');
+  h += '<div class="dim wcfg-desc">无 = 完全没有敌人；和平 = 敌人存在但不主动攻击，只会游荡；低/中/高 = 影响初始进化度与刷怪频率，且敌人仅在污染覆盖虫巢后发动进攻。</div>';
   ov.querySelector('.world-config-body').innerHTML = h;
 
   // 随机种子按钮

@@ -20,6 +20,9 @@ function itemTip(id, extra) {
   const stack = (typeof stackSize === 'function') ? stackSize(id) : 100;
   let t = it.name + '|' + it.desc + (stack ? '（最大堆叠 ' + stack + '）' : '');
   if (extra) t += (extra[0] === '|' ? '' : '|') + extra;
+  // 可合成物品：在 tooltip 末尾追加合成配方（需求：建造物品悬停显示配方）
+  const recipe = itemRecipeText(id);
+  if (recipe) t += '||' + recipe;
   return t;
 }
 
@@ -171,12 +174,15 @@ function renderPanel(full) {
   const st = full ? 0 : panelScrollTop();
   if (G.panelMode === 'inv') {
     title.textContent = '背包与手工制造';
-    const keepFocus = document.activeElement && document.activeElement.id === 'inv-recipe-search';
+    const keepFocusId = document.activeElement &&
+      (document.activeElement.id === 'inv-recipe-search' || document.activeElement.id === 'build-dev-search') ?
+      document.activeElement.id : null;
     body.innerHTML = htmlInventory();
     applyInvRecipeFilter(G.invRecipeQ);
+    applyBuildSearch(G.buildDevQ);
     if (typeof fillLogiReqGrid === 'function') fillLogiReqGrid(G.lreqQ || '');
-    if (keepFocus) {
-      const inp = document.getElementById('inv-recipe-search');
+    if (keepFocusId) {
+      const inp = document.getElementById(keepFocusId);
       if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
     }
   } else if (G.panelMode === 'tech') {
@@ -188,6 +194,9 @@ function renderPanel(full) {
   } else if (G.panelMode === 'stats') {
     title.textContent = '统计面板';
     body.innerHTML = htmlStats();
+  } else if (G.panelMode === 'ach') {
+    title.textContent = '成就（Achievements）';
+    body.innerHTML = (typeof htmlAchievements === 'function') ? htmlAchievements() : '<div class="dim">成就系统未加载</div>';
   } else if (G.panelMode === 'set') {
     title.textContent = '设置';
     renderSettingsAsync(body, st);
@@ -257,7 +266,10 @@ function htmlInventory() {
       (id ? '<img src="' + iconDataURL(id) + '">' : '<span>空</span>') + '</div>';
   }
   h += '</div><div class="dim">点一个槽位选中（黄框），再点击下面任意物品图标即可放入该槽位；再点一次同槽位清空。数字键 1-9/0 切换。</div>';
-  h += '<div class="sec">建造设备（点击直接选中放置）</div><div class="recgrid">';
+  h += '<div class="sec">建造设备（点击直接选中放置）</div>';
+  const bdq = (G.buildDevQ || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  h += '<input id="build-dev-search" class="inv-search" type="text" placeholder="搜索建造设备（输入名称）" autocomplete="off" value="' + bdq + '">';
+  h += '<div class="recgrid" id="build-dev-grid">';
   const infinite = !!(G.dbg && G.dbg.infinite);
   // 测试/应急设备（被动供电、创造/虚空箱、创造/虚空管道）仅在开启"无限资源"
   // Debug 模式后才会出现在建造列表；正常游玩不可见、不可获取。
@@ -266,11 +278,13 @@ function htmlInventory() {
     if (dbgOnlyDevices.has(bid) && !infinite) continue;
     const n = invCount(bid);
     const canBuild = infinite || n > 0;
-    h += '<button class="rcbtn"' + (canBuild ? '' : ' disabled style="opacity:.45"') +
-      ' data-itemid="' + bid + '" data-tip="' + itemTip(bid) + '">' +
+    const bsearch = (ITEMS[bid].name + ' ' + bid).toLowerCase();
+    h += '<button class="rcbtn buildbtn"' + (canBuild ? '' : ' disabled style="opacity:.45"') +
+      ' data-itemid="' + bid + '" data-buildsearch="' + bsearch.replace(/"/g, '') + '" data-tip="' + itemTip(bid) + '">' +
       '<img src="' + iconDataURL(bid) + '">' + ITEMS[bid].name + (n > 0 ? ' ×' + n : (infinite ? ' ∞' : '')) + '</button>';
   }
   h += '</div>';
+  h += '<div class="dim" id="build-dev-empty" style="display:none"></div>';
   h += '<div class="sec">护甲</div><div class="armor-row">';
   // 当前穿戴护甲展示与脱卸
   h += '<div class="armor-slot' + (G.armor ? ' equipped' : '') + '" data-tip="' + (G.armor ? (ITEMS[G.armor].name + '|当前穿戴的护甲，点击脱卸') : '未穿戴护甲|护甲可减少所受伤害') + '" data-armor="unequip">' +
@@ -464,6 +478,24 @@ function applyInvRecipeFilter(q) {
   const emp = document.getElementById('inv-recipe-empty');
   if (emp) {
     emp.textContent = ql ? '没有匹配「' + q.trim() + '」的配方' : '没有匹配的配方';
+    emp.style.display = shown ? 'none' : '';
+  }
+}
+
+// 背包「建造设备」列表：按关键字过滤建造设备按钮
+function applyBuildSearch(q) {
+  const body = document.getElementById('panel-body');
+  if (!body) return;
+  const ql = (q || '').trim().toLowerCase();
+  let shown = 0;
+  body.querySelectorAll('#build-dev-grid .buildbtn').forEach(el => {
+    const hit = !ql || el.dataset.buildsearch.includes(ql);
+    el.style.display = hit ? '' : 'none';
+    if (hit) shown++;
+  });
+  const emp = document.getElementById('build-dev-empty');
+  if (emp) {
+    emp.textContent = ql ? '没有匹配「' + q.trim() + '」的建造设备' : '没有匹配的建造设备';
     emp.style.display = shown ? 'none' : '';
   }
 }
@@ -704,6 +736,9 @@ function initPanelEvents() {
     if (ev.target.id === 'inv-recipe-search') {
       G.invRecipeQ = ev.target.value;
       applyInvRecipeFilter(G.invRecipeQ);
+    } else if (ev.target.id === 'build-dev-search') {
+      G.buildDevQ = ev.target.value;
+      applyBuildSearch(G.buildDevQ);
     } else if (ev.target.id === 'lreq-search') {
       G.lreqQ = ev.target.value;
       if (typeof fillLogiReqGrid === 'function') fillLogiReqGrid(G.lreqQ);
@@ -999,6 +1034,7 @@ function initPanelEvents() {
       }
       else if (act === 'exp-save') { downloadSave(); }
       else if (act === 'imp-save') { document.getElementById('imp-file').click(); }
+      else if (act === 'quit-to-menu') { if (typeof returnToMenu === 'function') returnToMenu(); }
       else if (act === 'craft') {
         const n = +(btn.dataset.mult || 1);
         // 手搓合成队列：按时间逐件制作（对齐《异星工厂》）
@@ -1154,9 +1190,10 @@ async function htmlSettings() {
   h += '<label class="setrow"><input type="checkbox" data-set="combat"' + (G.settings.combat ? ' checked' : '') + '> 战斗模式（敌人入侵，可用炮塔/石墙防御）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="virtualJoystick"' + (G.settings.virtualJoystick ? ' checked' : '') + '> 虚拟摇杆（手机/触屏移动）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="minimap"' + (G.settings.minimap !== false ? ' checked' : '') + '> 小地图（右下角显示已探索区域，M 键切换）</label>';
-  h += '<label class="setrow"><input type="checkbox" data-set="weather"' + (G.settings.weather !== false ? ' checked' : '') + '> 天气（动态云影 / 阴云氛围）</label>';
+  h += '<label class="setrow"><input type="checkbox" data-set="weather"' + (G.settings.weather !== false ? ' checked' : '') + '> 天气（阴云氛围，阴天时整体略暗）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="altMode"' + (G.settings.altMode ? ' checked' : '') + '> ALT 模式（建筑上显示配方/内容，Alt 键切换）</label>';
   h += '<div class="sec">音效</div>';
+  h += '<label class="setrow"><input type="checkbox" data-set="music"' + (G.settings.music !== false ? ' checked' : '') + '> 背景音乐（可单独开关）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="sound"' + (G.settings.sound ? ' checked' : '') + '> 游戏音效（建造/拆除/射击/爆炸等）</label>';
   h += '<label class="setrow">音量 <input type="range" data-setvol="soundVol" min="0" max="1" step="0.05" value="' + (G.settings.soundVol != null ? G.settings.soundVol : 0.8) + '" style="width:120px;vertical-align:middle"></label>';
   h += '<div class="sec">性能优化</div>';
@@ -1170,6 +1207,9 @@ async function htmlSettings() {
   h += '<input type="file" id="imp-file" accept=".json,application/json" style="display:none">';
   h += '<div class="hint">自动存档保留最近 3 个（旧的自动覆盖）；用户可自行新建/覆盖/读取/删除存档。</div>';
   h += await saveListHtml();
+  h += '<div class="sec">退出</div>';
+  h += '<button data-action="quit-to-menu" style="color:#ff8a8a">🚪 退出到主页面</button>';
+  h += '<div class="hint">退出到开始菜单，游戏进度请先保存（新建存档后自动持久化）。</div>';
   return h;
 }
 
@@ -1252,6 +1292,9 @@ function initTopButtons() {
     G.panelMode === 'tech' ? closePanel() : openPanel('tech'));
   document.getElementById('btn-stats').addEventListener('click', () =>
     G.panelMode === 'stats' ? closePanel() : openPanel('stats'));
+  const achBtn = document.getElementById('btn-ach');
+  if (achBtn) achBtn.addEventListener('click', () =>
+    G.panelMode === 'ach' ? closePanel() : openPanel('ach'));
   document.getElementById('btn-blue').addEventListener('click', () => {
     closePanel();
     toggleBlueprint('blue');
@@ -1275,6 +1318,22 @@ function initTopButtons() {
   });
   document.getElementById('btn-set').addEventListener('click', () =>
     G.panelMode === 'set' ? closePanel() : openPanel('set'));
+  // 顶部“暂停/继续”按钮：切换游戏暂停状态，并更新按钮文字
+  const pauseBtn = document.getElementById('btn-pause');
+  if (pauseBtn) {
+    const syncPauseBtn = () => {
+      if (G.paused) { pauseBtn.textContent = '▶ 继续'; pauseBtn.title = '继续游戏'; }
+      else { pauseBtn.textContent = '⏸ 暂停'; pauseBtn.title = '暂停游戏'; }
+    };
+    pauseBtn.addEventListener('click', () => {
+      G.paused = !G.paused;
+      syncPauseBtn();
+      if (typeof playSfx === 'function') playSfx('click');
+      if (G.paused) toast('游戏已暂停');
+      else toast('游戏继续');
+    });
+    syncPauseBtn();
+  }
 }
 
 function updateHUD(dt, fps) {
@@ -1284,7 +1343,8 @@ function updateHUD(dt, fps) {
   let hud = fps + '   (' + tx + ',' + ty + ')';
   if (G.settings.combat) {
     const hp = Math.max(0, Math.round(G.playerHP));
-    hud += '   <span style="color:' + (hp > 50 ? '#57e389' : hp > 25 ? '#ffd23c' : '#ff5b5b') + '">♥ ' + hp + '/' + G.playerHPmax + '</span>';
+    const hpPct = G.playerHPmax > 0 ? hp / G.playerHPmax : 0;
+    hud += '   <span style="color:' + (hpPct > 0.5 ? '#57e389' : hpPct > 0.25 ? '#ffd23c' : '#ff5b5b') + '">♥ ' + hp + '/' + G.playerHPmax + '</span>';
     // 敌人进化度显示（对齐《异星工厂》Evolution factor）
     const evo = Math.round((G.evolution || 0) * 100);
     const evoColor = evo < 30 ? '#57e389' : evo < 60 ? '#ffd23c' : '#ff5b5b';
@@ -1339,16 +1399,43 @@ function updateHUD(dt, fps) {
   }
 }
 
+function enemyAtTile(tx, ty) {
+  const list = G.enemies || [];
+  for (let i = 0; i < list.length; i++) {
+    const en = list[i];
+    if (en.dead) continue;
+    // 敌人中心所在格，且按其体型（size）扩大判定到所占范围，鼠标指向其任意身体部分均能识别
+    const cx = Math.floor(en.x / TILE), cy = Math.floor(en.y / TILE);
+    // 虫巢为 2×2 占地（对齐《异星工厂》Enemy spawner footprint）：以中心所在格为中心，向四周各覆盖 1 格
+    let half;
+    if (en.kind === 'spawner') half = 1;
+    else half = Math.max(0, Math.ceil((en.size || 6) / TILE) - 1);
+    if (Math.abs(tx - cx) <= half && Math.abs(ty - cy) <= half) return en;
+  }
+  return null;
+}
+
+// 敌人简要介绍：由类型属性生成（对齐《异星工厂》虫族图鉴感）
+function enemyDesc(en) {
+  const d = ENEMY_TYPES[en.type];
+  if (!d) return '敌对单位';
+  const kindTxt = en.kind === 'spawner' ? '虫巢' : (d.kind === 'ranged' ? '远程单位，会喷吐攻击' : '近战单位，会冲向并攻击建筑');
+  return kindTxt + '；生命 ' + (en.maxhp || d.hp) + '，攻击 ' + (en.dmg || d.dmg) + '。可点击攻击或建造炮塔防御。';
+}
+
 function mapTipAt(tx, ty) {
   // 显示详情时：鼠标移到某流体出入口图标上，优先显示该流体的具体名称
   if (G.showDetails) {
-    for (const ent of G.ents) {
-      if (ent._dead) continue;
-      const fn = DEVICE_FLUID_ICONS[ent.type];
-      if (!fn) continue;
-      for (const ic of fn(ent)) {
-        if (ic.x === tx && ic.y === ty && ITEMS[ic.fluid]) {
-          return ITEMS[ic.fluid].name + '|' + ITEMS[ic.fluid].desc;
+    // 性能优化：仅检查光标所在格被占位的实体（entAt），替代遍历全部 G.ents 寻找流体图标。
+    // 流体接口图标都在实体自身占地格（含边缘端口格），故 entAt(tx,ty) 命中的实体即为原逻辑中唯一匹配者，行为一致。
+    const _fe = entAt(tx, ty);
+    if (_fe && !_fe._dead) {
+      const fn = DEVICE_FLUID_ICONS[_fe.type];
+      if (fn) {
+        for (const ic of fn(_fe)) {
+          if (ic.x === tx && ic.y === ty && ITEMS[ic.fluid]) {
+            return ITEMS[ic.fluid].name + '|' + ITEMS[ic.fluid].desc;
+          }
         }
       }
     }
@@ -1364,7 +1451,17 @@ function mapTipAt(tx, ty) {
     }
     return ITEMS[e.type].name + '|' + extra;
   }
+  // 敌人生成在格子中央，悬停到其上时优先显示敌人具体名称（对齐《异星工厂》）
+  const enemy = enemyAtTile(tx, ty);
+  if (enemy) {
+    const d = ENEMY_TYPES[enemy.type];
+    const nm = d ? d.name : (enemy.kind === 'spawner' ? '虫巢' : '敌人');
+    return nm + '|点击查看详细说明';
+  }
+  if (getTerrain(tx, ty) === T_CLIFF) return '峭壁|不可通行、不可建造的地形障碍；可手持峭壁炸药点击清除';
   if (getTerrain(tx, ty) === T_WATER) return '水域|无法通行；可把抽水机放在这里取水';
+  // 树木：悬停显示树木信息（对齐《异星工厂》：树木是资源型地形，可砍伐）
+  if (getTerrain(tx, ty) === T_TREE) return '树木|可砍伐获得木材；手持斧头/开采工具按住左键砍伐，或直接在其上铺设建筑自动清理';
   const ti = getOreType(tx, ty);
   if (ti >= 0 && getOreAmt(tx, ty) > 0) {
     if (ti === ORE_OIL) return '原油矿床|储量 ' + Math.floor(getOreAmt(tx, ty)) + '，建造抽油机开采（吃电力）';
@@ -1385,9 +1482,15 @@ function initTooltips() {
     if (!text && ev.target === G.canvas && G.cursorTile)
       text = mapTipAt(G.cursorTile.tx, G.cursorTile.ty);
     if (text) {
-      const p = text.split('|');
+      const parts = text.split('||');
+      const p = parts[0].split('|');
       tip.querySelector('b').textContent = p[0] || '';
-      tip.querySelector('span').textContent = p[1] || '';
+      tip.querySelector('span').textContent = p.slice(1).join('|') || '';
+      const recipeEl = tip.querySelector('#tooltip-recipe');
+      if (recipeEl) {
+        recipeEl.textContent = parts[1] || '';
+        recipeEl.style.display = parts[1] ? '' : 'none';
+      }
       tip.style.display = 'block';
       const r = tip.getBoundingClientRect();
       let x = ev.clientX + 14, y = ev.clientY + 16;
@@ -1421,12 +1524,89 @@ function dbgSlider(body, label, key, min, max, step) {
   body.appendChild(row);
 }
 
+// ===== 调试面板可发放的资源清单（按类别分组，覆盖全部可获取材料/流体/弹药/科技包等）=====
+// 每组：[类别名, [[物品id, 发放数量], ...]]
+const DBG_GIVE_GROUPS = [
+  ['矿石', [
+    ['iron-ore', 100], ['copper-ore', 100], ['coal', 100], ['stone', 100],
+    ['uranium-ore', 100], ['calcite', 100], ['raw-fish', 20]
+  ]],
+  ['板材·材料', [
+    ['iron-plate', 200], ['copper-plate', 200], ['steel-plate', 100], ['stone-brick', 100],
+    ['iron-gear', 100], ['iron-stick', 100], ['steel-stick', 100], ['copper-cable', 100],
+    ['plastic-bar', 100], ['wood', 100], ['concrete', 100], ['refined-concrete', 100],
+    ['hazard-concrete', 100], ['stone-path', 100], ['landfill', 100]
+  ]],
+  ['电路·元件', [
+    ['green-circuit', 100], ['red-wire', 100], ['green-wire', 100],
+    ['advanced-circuit', 100], ['processing-unit', 100], ['engine-unit', 50], ['electric-engine', 50]
+  ]],
+  ['燃料', [
+    ['solid-fuel', 100], ['battery', 100], ['nuclear-fuel', 20], ['used-up-uranium-fuel-cell', 20]
+  ]],
+  ['科学包', [
+    ['science-pack', 50], ['green-science', 50], ['blue-science', 50],
+    ['military-science', 50], ['production-science-pack', 50], ['utility-science-pack', 50],
+    ['space-science-pack', 50]
+  ]],
+  ['流体', [
+    ['water', 500], ['steam', 500], ['crude-oil', 500], ['heavy-oil', 500],
+    ['light-oil', 500], ['petroleum-gas', 500], ['lubricant', 500], ['sulfuric-acid', 500],
+    ['sulfur', 100]
+  ]],
+  ['弹药·武器', [
+    ['magazine', 100], ['piercing-rounds', 100], ['uranium-rounds', 100],
+    ['shotgun-shell', 100], ['piercing-shotgun-shell', 100], ['flamethrower-ammo', 100],
+    ['rocket', 50], ['explosive-rocket', 50], ['cannon-shell', 50], ['explosive-cannon-shell', 50],
+    ['explosive-uranium-cannon-shell', 50], ['artillery-shell', 20], ['uranium-cannon-shell', 50],
+    ['grenade', 50], ['cluster-grenade', 50], ['poison-capsule', 50], ['slowdown-capsule', 50],
+    ['land-mine', 50], ['explosive', 100], ['cliff-explosives', 50]
+  ]],
+  ['模块', [
+    ['speed-module', 50], ['speed-module-2', 50], ['speed-module-3', 50],
+    ['productivity-module', 50], ['productivity-module-2', 50], ['productivity-module-3', 50],
+    ['efficiency-module', 50], ['efficiency-module-2', 50], ['efficiency-module-3', 50]
+  ]],
+  ['核能', [
+    ['uranium-235', 20], ['uranium-238', 100], ['uranium-cannon-shell', 50],
+    ['atomic-bomb', 5], ['nuclear-fuel', 20]
+  ]],
+  ['装备·机器人', [
+    ['repair-pack', 50], ['iron-axe', 5], ['steel-axe', 5], ['light-armor', 5], ['heavy-armor', 5],
+    ['logistic-robot', 20], ['construction-robot', 20], ['flying-robot-frame', 20],
+    ['defender-capsule', 20], ['distractor-capsule', 20], ['destroyer-capsule', 20]
+  ]],
+  ['桶装流体', [
+    ['water-barrel', 50], ['steam-barrel', 50], ['crude-oil-barrel', 50], ['heavy-oil-barrel', 50],
+    ['light-oil-barrel', 50], ['petroleum-gas-barrel', 50], ['lubricant-barrel', 50], ['sulfuric-acid-barrel', 50]
+  ]],
+  ['载具·建筑', [
+    ['car', 5], ['tank', 5], ['locomotive', 5], ['diesel-locomotive', 5], ['cargo-wagon', 5],
+    ['fluid-wagon', 5], ['artillery-wagon', 5], ['rail', 100], ['rail-signal', 50], ['rail-chain-signal', 50]
+  ]]
+];
+
+const DBG_BTN_POS_KEY = 'factory_dbg_btn_pos';
+
 function buildDebug() {
   const btn = document.getElementById('dbg-btn');
   const panel = document.getElementById('dbg-panel');
   // 仅当 URL 参数含 debug=1 时才显示 debug 按钮
   btn.style.display = G.debugEnabled ? 'flex' : 'none';
   if (!G.debugEnabled) { panel.style.display = 'none'; return; }
+  // 恢复上次拖拽保存的按钮位置（记录屏幕坐标，跨启动保留）
+  try {
+    const saved = localStorage.getItem(DBG_BTN_POS_KEY);
+    if (saved) {
+      const p = JSON.parse(saved);
+      if (typeof p.left === 'number' && typeof p.top === 'number') {
+        btn.style.left = Math.max(4, Math.min(innerWidth - 50, p.left)) + 'px';
+        btn.style.top = Math.max(4, Math.min(innerHeight - 50, p.top)) + 'px';
+        btn.style.right = 'auto';
+        btn.style.bottom = 'auto';
+      }
+    }
+  } catch (e) {}
   panel.innerHTML = '<div class="dhead"><span>开发者调试</span><button id="dbg-x">✕</button></div>';
   const body = document.createElement('div');
   body.className = 'dbody';
@@ -1439,40 +1619,78 @@ function buildDebug() {
   dbgSlider(body, '采矿机速度', 'drillMult', 0.25, 5, 0.25);
   dbgSlider(body, '组装机速度', 'asmMult', 0.25, 5, 0.25);
 
-  const sec1 = document.createElement('div');
-  sec1.className = 'dsec';
-  sec1.textContent = '发放资源';
-  body.appendChild(sec1);
-  const grid1 = document.createElement('div');
-  grid1.className = 'dgrid';
-  for (const [txt, id, n] of [
-    ['+100铁板', 'iron-plate', 100], ['+100铜板', 'copper-plate', 100],
-    ['+100煤', 'coal', 100], ['+100石头', 'stone', 100],
-    ['+50齿轮', 'iron-gear', 50], ['+50电路', 'green-circuit', 50],
-    ['+20科学包', 'science-pack', 20], ['+20绿包', 'green-science', 20],
-    ['+20蓝包', 'blue-science', 20], ['+20灰包', 'military-science', 20],
-    ['+20紫包', 'production-science-pack', 20], ['+20黄包', 'utility-science-pack', 20], ['+50塑料', 'plastic-bar', 50],
-    ['+50弹药', 'magazine', 50], ['+50穿甲弹', 'piercing-rounds', 50], ['+5铁箱', 'steel-chest', 5],
-    ['+50原油', 'crude-oil', 50], ['+50水', 'water', 50], ['+50蒸汽', 'steam', 50]
-  ]) {
-    const b = document.createElement('button');
-    b.textContent = txt;
-    b.dataset.giveid = id;
-    b.dataset.given = n;
-    b.addEventListener('click', () => { invAdd(id, n); toast('+ ' + n + ' ' + ITEMS[id].name); });
-    grid1.appendChild(b);
-  }
-  body.appendChild(grid1);
+  // ---- 操作区域（含“开关”与“动作”两个子区，置于“发放资源”之上） ----
+  const opSec = document.createElement('div');
+  opSec.className = 'dsec';
+  opSec.textContent = '操作';
+  body.appendChild(opSec);
 
-  const sec2 = document.createElement('div');
-  sec2.className = 'dsec';
-  sec2.textContent = '操作';
-  body.appendChild(sec2);
+  // 子区一：开关（全部以勾选方式展示）
+  const swSec = document.createElement('div');
+  swSec.className = 'dsec-sub';
+  swSec.textContent = '开关';
+  body.appendChild(swSec);
+  const swList = document.createElement('div');
+  swList.className = 'dswlist';
+  const switches = [
+    {
+      key: 'infinite', label: '无限资源', dataKey: 'dbgSwitch',
+      on() { toast('无限资源模式已开启：建造不消耗原料，可直接建造测试箱（创造/虚空）与测试管道（创造/虚空）'); refreshHotbar(); },
+      off() { toast('无限资源模式已关闭'); refreshHotbar(); }
+    },
+    {
+      key: 'farReach', label: '无限交互距离', dataKey: 'dbgSwitch',
+      on() { toast('无限交互距离已开启：可对任意远的格子交互/建造'); },
+      off() { toast('无限交互距离已关闭'); }
+    },
+    {
+      key: 'noclip', label: '主角无视碰撞', dataKey: 'dbgSwitch',
+      on() { toast('主角无视碰撞已开启：可穿过水/峭壁/树木等障碍'); },
+      off() { toast('主角无视碰撞已关闭'); }
+    },
+    {
+      key: 'combat', label: '切换战斗', dataKey: 'dbgSwitch', source: 'settings',
+      on() { toast('战斗模式：开启'); },
+      off() { G.enemies = []; G.bullets = []; G.enemyProjectiles = []; toast('战斗模式：关闭'); }
+    }
+  ];
+  for (const sw of switches) {
+    const row = document.createElement('label');
+    row.className = 'dsw';
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.dataset[sw.dataKey] = sw.key;
+    const val = sw.source === 'settings' ? !!G.settings[sw.key] : !!G.dbg[sw.key];
+    box.checked = val;
+    box.addEventListener('change', () => {
+      const on = box.checked;
+      if (sw.source === 'settings') {
+        G.settings[sw.key] = on;
+      } else {
+        G.dbg[sw.key] = on;
+      }
+      (on ? sw.on : sw.off)();
+    });
+    row.appendChild(box);
+    const span = document.createElement('span');
+    span.textContent = sw.label;
+    row.appendChild(span);
+    swList.appendChild(row);
+  }
+  body.appendChild(swList);
+
+  // 子区二：动作（一次性操作按钮）
+  const opSubSec = document.createElement('div');
+  opSubSec.className = 'dsec-sub';
+  opSubSec.textContent = '动作';
+  body.appendChild(opSubSec);
   const grid2 = document.createElement('div');
   grid2.className = 'dgrid';
   const acts = [
     ['一键重置所有功能', () => {
-      Object.assign(G.dbg, { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1, infinite: false, farReach: false });
+      Object.assign(G.dbg, { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1, infinite: false, farReach: false, noclip: false });
+      G.settings.combat = false;
+      if (!G.settings.combat) { G.enemies = []; G.bullets = []; G.enemyProjectiles = []; }
       buildDebug();
       panel.style.display = 'block';
       refreshHotbar();
@@ -1483,27 +1701,6 @@ function buildDebug() {
       buildDebug();
       panel.style.display = 'block';
       toast('所有速度已重置为 1x');
-    }],
-    ['无限资源：' + (G.dbg.infinite ? '开' : '关'), () => {
-      G.dbg.infinite = !G.dbg.infinite;
-      if (G.dbg.infinite) {
-        toast('无限资源模式已开启：建造不消耗原料，可直接建造测试箱（创造/虚空）与测试管道（创造/虚空）');
-      } else {
-        toast('无限资源模式已关闭');
-      }
-      buildDebug();
-      panel.style.display = 'block';
-      refreshHotbar();
-    }],
-    ['无限交互距离：' + (G.dbg.farReach ? '开' : '关'), () => {
-      G.dbg.farReach = !G.dbg.farReach;
-      if (G.dbg.farReach) {
-        toast('无限交互距离已开启：可对任意远的格子交互/建造');
-      } else {
-        toast('无限交互距离已关闭');
-      }
-      buildDebug();
-      panel.style.display = 'block';
     }],
     ['完成研究', () => {
       const t = G.activeTech;
@@ -1524,10 +1721,54 @@ function buildDebug() {
       toast('建筑已清空');
     }],
     ['新地图', () => { newGame(); closePanel(); toast('新地图已生成'); }],
-    ['切换战斗', () => {
-      G.settings.combat = !G.settings.combat;
-      if (!G.settings.combat) { G.enemies = []; G.bullets = []; G.enemyProjectiles = []; }
-      toast('战斗模式：' + (G.settings.combat ? '开启' : '关闭'));
+    ['一键完成全部科技', () => {
+      for (const t in TECHS) {
+        G.techDone[t] = true;
+        if (G.techProg[t] === undefined) G.techProg[t] = techCostTotal(t);
+      }
+      G.activeTech = null; G.techQueue = [];
+      toast('已解锁全部 ' + Object.keys(TECHS).length + ' 项科技');
+      renderPanel(false);
+    }],
+    ['回满血', () => {
+      G.playerHP = G.playerHPmax;
+      toast('生命值已恢复满');
+    }],
+    ['清除污染', () => {
+      if (typeof pollutionRestore === 'function') pollutionRestore({ pollution: 0 });
+      else G.pollution = 0;
+      toast('污染已清零');
+    }],
+    ['清空敌人', () => {
+      G.enemies = []; G.bullets = []; G.enemyProjectiles = [];
+      toast('已清空全部敌人与弹幕');
+    }],
+    ['在面前刷一批敌人', () => {
+      if (!G.settings.combat) { toast('请先开启战斗模式'); return; }
+      if (typeof pickEnemyType === 'function' && typeof scaledDef === 'function' && ENEMY_TYPES) {
+        for (let i = 0; i < 8; i++) {
+          const t = pickEnemyType();
+          const def = scaledDef(ENEMY_TYPES[t]);
+          const px = G.player.x / TILE, py = G.player.y / TILE;
+          const ang = Math.random() * Math.PI * 2;
+          const dist = 6 + Math.random() * 4;
+          const tx = Math.round(px + Math.cos(ang) * dist);
+          const ty = Math.round(py + Math.sin(ang) * dist);
+          G.enemies.push({
+            x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2,
+            hp: def.hp, maxhp: def.hp, dead: false, dir: 0,
+            type: t, kind: def.kind, speed: def.speed, size: def.size, dmg: def.dmg,
+            color: def.color, attackT: 0, fireT: 0
+          });
+        }
+        toast('已在周围生成 8 只敌人');
+      } else { toast('战斗系统不可用'); }
+    }],
+    ['日夜切换', () => {
+      const cycle = (typeof DAY_CYCLE === 'number') ? DAY_CYCLE : 60;
+      const ph = ((G.time / cycle) % 1 + 1) % 1;
+      G.time = Math.floor(G.time / cycle) * cycle + cycle * (ph > 0.5 ? 0.02 : 0.5);
+      toast('时间已切换');
     }]
   ];
   for (const [txt, fn] of acts) {
@@ -1538,6 +1779,71 @@ function buildDebug() {
     grid2.appendChild(b);
   }
   body.appendChild(grid2);
+
+  const sec1 = document.createElement('div');
+  sec1.className = 'dsec';
+  sec1.textContent = '发放资源';
+  body.appendChild(sec1);
+
+  // 搜索筛选框：输入关键词实时过滤资源按钮
+  const searchRow = document.createElement('div');
+  searchRow.className = 'dsearch';
+  const searchInp = document.createElement('input');
+  searchInp.type = 'text';
+  searchInp.placeholder = '🔍 搜索资源（名称/类别）…';
+  searchRow.appendChild(searchInp);
+  body.appendChild(searchRow);
+
+  const grid1 = document.createElement('div');
+  grid1.className = 'dgrid';
+  body.appendChild(grid1);
+
+  // 渲染资源按钮到 grid1；kw 为空显示全部（含分组标题）
+  function renderGiveGrid(kw) {
+    grid1.innerHTML = '';
+    const q = (kw || '').trim().toLowerCase();
+    let any = false;
+    for (const [cat, list] of DBG_GIVE_GROUPS) {
+      const matched = q ? list.filter(([id]) => {
+        const it = ITEMS[id];
+        return (it && it.name && it.name.toLowerCase().indexOf(q) >= 0) || id.indexOf(q) >= 0;
+      }) : list;
+      if (!matched.length) continue;
+      any = true;
+      const head = document.createElement('div');
+      head.className = 'dgroup';
+      head.textContent = cat;
+      grid1.appendChild(head);
+      for (const [id, n] of matched) {
+        const it = ITEMS[id];
+        const b = document.createElement('button');
+        b.textContent = (it ? it.name : id) + ' +' + n;
+        b.title = (it && it.desc) ? it.desc : id;
+        b.addEventListener('click', () => { invAdd(id, n); toast('+ ' + n + ' ' + (it ? it.name : id)); refreshHotbar(); });
+        grid1.appendChild(b);
+      }
+    }
+    if (!any) {
+      const none = document.createElement('div');
+      none.className = 'dnone';
+      none.textContent = '无匹配资源';
+      grid1.appendChild(none);
+    }
+  }
+  searchInp.addEventListener('input', () => renderGiveGrid(searchInp.value));
+  renderGiveGrid('');
+
+  // 一键发放全部资源（便于快速搭建设置好测试环境）
+  const giveAllBtn = document.createElement('button');
+  giveAllBtn.textContent = '一键发放全部资源';
+  giveAllBtn.className = 'dgiveall';
+  giveAllBtn.addEventListener('click', () => {
+    let cnt = 0;
+    for (const [, list] of DBG_GIVE_GROUPS) for (const [id, n] of list) { invAdd(id, n); cnt++; }
+    toast('已发放 ' + cnt + ' 种资源');
+    refreshHotbar();
+  });
+  body.appendChild(giveAllBtn);
 
   document.getElementById('dbg-x').addEventListener('click', () => { panel.style.display = 'none'; });
 
@@ -1568,7 +1874,15 @@ function buildDebug() {
     }
   }
   function endDebugDrag() {
-    if (drag) suppressClick = drag.moved;
+    if (drag) {
+      suppressClick = drag.moved;
+      // 记录拖拽后的最终位置（仅当确实移动过），跨启动恢复到上次位置
+      if (drag.moved) {
+        try {
+          localStorage.setItem(DBG_BTN_POS_KEY, JSON.stringify({ left: btn.offsetLeft, top: btn.offsetTop }));
+        } catch (e) {}
+      }
+    }
     drag = null;
   }
   btn.addEventListener('mousedown', ev => {
@@ -1625,18 +1939,11 @@ function refreshDebugPanel() {
       if (val) val.textContent = G.dbg[key] + 'x';
     }
   });
-  // 更新开关按钮（无限资源 / 无限交互距离）文本
-  panel.querySelectorAll('button[data-dbgact]').forEach(b => {
-    const act = b.dataset.dbgact;
-    if (act.indexOf('无限资源：') === 0) {
-      const txt = '无限资源：' + (G.dbg.infinite ? '开' : '关');
-      b.textContent = txt;
-      b.dataset.dbgact = txt;
-    } else if (act.indexOf('无限交互距离：') === 0) {
-      const txt = '无限交互距离：' + (G.dbg.farReach ? '开' : '关');
-      b.textContent = txt;
-      b.dataset.dbgact = txt;
-    }
+  // 更新开关勾选框（无限资源 / 无限交互距离 / 主角无视碰撞 / 切换战斗）
+  panel.querySelectorAll('input[data-dbg-switch]').forEach(box => {
+    const key = box.dataset.dbgSwitch;
+    if (key === 'combat') box.checked = !!G.settings.combat;
+    else if (G.dbg[key] !== undefined) box.checked = !!G.dbg[key];
   });
 }
 

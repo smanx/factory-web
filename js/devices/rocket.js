@@ -18,7 +18,9 @@ const SILO_CAP = 100;
 // 原版需 100 件；本作结合经济规模取 10 件，使产能模块装进发射井（4 槽）能真正累积免费部件、缩减终局材料投入，
 // 复现《异星工厂》"火箭井装产能模块"的经典玩法。每件部件配方 = SILO_ASSEMBLE（火箭燃料×10 + 火箭控制单元×1 + 低密度结构×10）。
 const ROCKET_PARTS = 10;
-class RocketSilo extends Entity {
+// 火箭产能（对齐《异星工厂》Rocket productivity）：每级降低火箭燃料与低密度结构部件需求（最低保留 1）。
+function siloPartNeed(k) { return (typeof rocketPartNeed === 'function') ? rocketPartNeed(k, SILO_ASSEMBLE[k]) : SILO_ASSEMBLE[k]; }
+class RocketSilo extends CircuitNode {
   constructor(type, x, y) {
     super('rocket-silo', x, y);
     this.inp = {};           // 井内物品：组装部件
@@ -27,7 +29,20 @@ class RocketSilo extends Entity {
     this.prodBuf = 0;        // 产能模块累积进度
     this.launching = false;  // 发射倒计时中
     this.launchT = 0;
-    this.launched = false;   // 已发射完成
+    this.launchCount = 0;    // 该发射井累计发射次数（对齐《异星工厂》：发射井可重复使用，多次发射产空间科学包）
+    this.launched = false;   // 历史已发射过（用于渲染/状态；不阻止再次发射）
+  }
+  // 电路网络信号输出（对齐《异星工厂》：火箭发射井可接入电路网络读取井内状态）。
+  // 输出信号：signal-rocket 火箭本体数量、signal-satellite 卫星数量、
+  // signal-rocket-parts 已就位组装部件数、signal-rocket-launch 发射倒计时标志。
+  outputCircuitSignals() {
+    const out = [];
+    const sat = this.inp['satellite'] || 0;
+    if (this.hasRocket()) out.push({ sig: 'signal-rocket', count: 1 });
+    if (sat > 0) out.push({ sig: 'signal-satellite', count: sat });
+    if (this.parts > 0) out.push({ sig: 'signal-rocket-parts', count: this.parts });
+    if (this.launching) out.push({ sig: 'signal-rocket-launch', count: 1 });
+    return out;
   }
   moduleSlotCount() { return 4; } // 对齐《异星工厂》：火箭发射井 4 个模块槽
   // 模块速度倍率（速度模块加速，产能/效率模块小降速；与组装机一致）
@@ -101,14 +116,14 @@ class RocketSilo extends Entity {
   }
   // 组装部件是否集齐（一次火箭部件的原料齐备）
   hasAssembleParts() {
-    for (const k in SILO_ASSEMBLE) if ((this.inp[k] || 0) < SILO_ASSEMBLE[k]) return false;
+    for (const k in SILO_ASSEMBLE) if ((this.inp[k] || 0) < siloPartNeed(k)) return false;
     return true;
   }
   assembleReady() {
     const out = {};
     for (const k in SILO_ASSEMBLE) {
       const have = this.inp[k] || 0;
-      out[k] = have >= SILO_ASSEMBLE[k];
+      out[k] = have >= siloPartNeed(k);
     }
     return out;
   }
@@ -125,7 +140,7 @@ class RocketSilo extends Entity {
       return false;
     }
     for (const k in SILO_ASSEMBLE) {
-      this.inp[k] -= SILO_ASSEMBLE[k];
+      this.inp[k] -= siloPartNeed(k);
       if ((this.inp[k] || 0) <= 0) delete this.inp[k];
     }
     this.parts++;
@@ -137,7 +152,7 @@ class RocketSilo extends Entity {
     return true;
   }
   tryLaunch() {
-    if (this.launched || this.launching) return false;
+    if (this.launching) return false;
     if (G.power.sat <= 0) { if (typeof toast === 'function') toast('发射需要电力！'); return false; }
     if (!this.hasAllParts()) {
       if (typeof toast === 'function') toast('尚未就绪：需要完整火箭本体与卫星');
@@ -158,6 +173,7 @@ class RocketSilo extends Entity {
     this.launchT += dt;
     if (this.launchT >= 10) {
       this.launching = false;
+      this.launchCount++;
       this.launched = true;
       onRocketLaunch();
     }
@@ -166,13 +182,13 @@ class RocketSilo extends Entity {
   serialize() {
     const s = super.serialize();
     s.inp = this.inp; s.parts = this.parts; s.modules = this.modules; s.prodBuf = this.prodBuf;
-    s.launching = this.launching; s.launchT = this.launchT; s.launched = this.launched;
+    s.launching = this.launching; s.launchT = this.launchT; s.launched = this.launched; s.launchCount = this.launchCount || 0;
     return s;
   }
   static restore(s) {
     const t = super.restore(s);
     t.inp = s.inp || {}; t.parts = s.parts || 0; t.modules = s.modules || {}; t.prodBuf = s.prodBuf || 0;
-    t.launching = !!s.launching; t.launchT = s.launchT || 0; t.launched = !!s.launched;
+    t.launching = !!s.launching; t.launchT = s.launchT || 0; t.launched = !!s.launched; t.launchCount = s.launchCount || (s.launched ? 1 : 0);
     // 旧档迁移：旧版火箭井直接存 inp.rocket（已组装出火箭本体），换算为已集齐火箭部件
     if (t.parts <= 0 && (t.inp['rocket'] || 0) > 0) { t.parts = ROCKET_PARTS; delete t.inp['rocket']; }
     return t;
@@ -182,7 +198,8 @@ function assemblePartsNeededStr(e) {
   const need = [];
   for (const k in SILO_ASSEMBLE) {
     const have = e.inp[k] || 0;
-    if (have < SILO_ASSEMBLE[k]) need.push(ITEMS[k].name + ' ×' + (SILO_ASSEMBLE[k] - have));
+    const needN = siloPartNeed(k);
+    if (have < needN) need.push(ITEMS[k].name + ' ×' + (needN - have));
   }
   return need.join('、');
 }
@@ -214,8 +231,9 @@ function drawRocketSilo(ctx, e, gx, gy, dir, alpha) {
     ctx.fillStyle = 'rgba(255,160,60,.8)';
     ctx.beginPath(); ctx.moveTo(cx - 8, ry); ctx.lineTo(cx + 8, ry); ctx.lineTo(cx, ry + 18 + Math.random() * 8); ctx.closePath(); ctx.fill();
   } else if (e.launched) {
-    ctx.fillStyle = 'rgba(255,255,255,.5)';
-    ctx.beginPath(); ctx.arc(cx, cy, s * 0.18, 0, 7); ctx.fill();
+    // 已发射过：发射台上短暂保留白色余晖（发射井可再次组装复用）
+    ctx.fillStyle = 'rgba(255,255,255,.35)';
+    ctx.beginPath(); ctx.arc(cx, cy, s * 0.15, 0, 7); ctx.fill();
   } else if (e.hasRocket()) {
     // 已组装完成的火箭本体矗立在发射台上
     ctx.fillStyle = '#c0c8d0';
@@ -245,7 +263,7 @@ function drawRocketSilo(ctx, e, gx, gy, dir, alpha) {
     bx += 12;
     for (const k of Object.keys(SILO_ASSEMBLE)) {
       const have = e.inp[k] || 0;
-      const need = SILO_ASSEMBLE[k];
+      const need = siloPartNeed(k);
       const ready = have >= need;
       ctx.fillStyle = ready ? '#57e389' : '#c0b090';
       ctx.fillText(ITEMS[k].name[0] + (have > need ? '✓' : (have > 0 ? String(Math.min(have, need)) : '')), bx, by);
@@ -264,6 +282,9 @@ function drawRocketSilo(ctx, e, gx, gy, dir, alpha) {
 }
 function siloPanelHtml(e) {
   let h = '';
+  if (e.launchCount > 0) {
+    h += '<div class="sec">🛰️ 已累计发射 ' + e.launchCount + ' 次（对齐《异星工厂》：发射井可反复发射，每次产出空间科学包）</div>';
+  }
   if (!e.hasRocket()) {
     // 阶段①：逐件组装火箭部件
     h += '<div class="sec">组装火箭部件（阶段 1/2）' + e.parts + '/' + ROCKET_PARTS + '</div>';
@@ -271,7 +292,7 @@ function siloPanelHtml(e) {
     const ready = e.assembleReady();
     for (const k of Object.keys(SILO_ASSEMBLE)) {
       const have = e.inp[k] || 0;
-      const need = SILO_ASSEMBLE[k];
+      const need = siloPartNeed(k);
       h += row(ITEMS[k].name, (ready[k] ? '✓ ' : '') + have + '/' + need, k);
     }
     h += '<button data-action="assemble" id="btn-assemble" ' + (e.hasRocket() || !e.hasAssembleParts() ? 'disabled' : '') + '>🛠️ 组装 1 个火箭部件</button>';
@@ -283,12 +304,12 @@ function siloPanelHtml(e) {
     h += row(ITEMS['satellite'].name, (haveSat > 0 ? '✓ ' : '') + haveSat + '/1', 'satellite');
     h += '<button data-action="feed" data-id="satellite" ' + (haveSat > 0 ? 'disabled' : '') + '>放入卫星</button>';
   }
-  h += '<button data-action="launch" id="btn-launch" ' + ((e.launched || e.launching || !e.hasAllParts()) ? 'disabled' : '') + '>' +
-    (e.launching ? '发射中…' : e.launched ? '已发射' : '🚀 发射火箭') + '</button>';
+  h += '<button data-action="launch" id="btn-launch" ' + ((e.launching || !e.hasAllParts()) ? 'disabled' : '') + '>' +
+    (e.launching ? '发射中…' : '🚀 发射火箭') + '</button>';
   h += '<div class="status"></div>';
   // 模块槽（4 槽，对齐《异星工厂》：火箭井可装速度/产能/效率模块，产能模块累积免费部件）
   h += modulePanelSection(e);
-  h += '<div class="dim">火箭发射井分两阶段（对齐《异星工厂》）：① 集齐火箭燃料×10、火箭控制单元×1、低密度结构×10 组装出 1 个火箭部件，逐件组装共 ' + ROCKET_PARTS + ' 个部件后拼成完整火箭；② 放入卫星后点击「发射」。发射井有 4 个模块槽，装产能模块可免费累积额外部件、装速度模块加速组装。发射倒计时需持续供电，成功后赢得游戏！部件可用机械臂/手动放入（5×5，吃电力）。</div>';
+  h += '<div class="dim">火箭发射井分两阶段（对齐《异星工厂》）：① 集齐火箭燃料×10、火箭控制单元×1、低密度结构×10 组装出 1 个火箭部件，逐件组装共 ' + ROCKET_PARTS + ' 个部件后拼成完整火箭；② 放入卫星后点击「发射」。发射井有 4 个模块槽，装产能模块可免费累积额外部件、装速度模块加速组装；装火箭产能科技可降低部件需求。发射倒计时需持续供电，成功后赢得游戏，且发射井可反复发射继续冲刺无限科研（对齐《异星工厂》：Rocket silo 可复用，每次卫星发射获得空间科学包）！部件可用机械臂/手动放入（5×5，吃电力）。</div>';
   return h;
 }
 function siloPanelLive(e, api) {
@@ -302,7 +323,7 @@ function siloPanelLive(e, api) {
     api.set('rocket-part', e.parts + '/' + ROCKET_PARTS);
     for (const k of Object.keys(SILO_ASSEMBLE)) {
       const have = e.inp[k] || 0;
-      api.set(k, (ready[k] ? '✓ ' : '') + have + '/' + SILO_ASSEMBLE[k]);
+      api.set(k, (ready[k] ? '✓ ' : '') + have + '/' + siloPartNeed(k));
     }
   } else {
     const haveSat = e.inp['satellite'] || 0;
@@ -313,11 +334,10 @@ function siloPanelLive(e, api) {
   }
   const launchBtn = document.getElementById('btn-launch');
   if (launchBtn) {
-    launchBtn.disabled = e.launched || e.launching || !e.hasAllParts();
-    launchBtn.textContent = e.launching ? '发射中…' : (e.launched ? '已发射' : '🚀 发射火箭');
+    launchBtn.disabled = e.launching || !e.hasAllParts();
+    launchBtn.textContent = e.launching ? '发射中…' : '🚀 发射火箭';
   }
-  if (e.launched) api.status('✅ 火箭已发射！', 'ok');
-  else if (e.launching) api.status('🚀 发射倒计时 ' + Math.ceil(10 - e.launchT) + ' 秒（需供电）', 'ok');
+  if (e.launching) api.status('🚀 发射倒计时 ' + Math.ceil(10 - e.launchT) + ' 秒（需供电）', 'ok');
   else if (G.power.sat <= 0) api.status('已暂停：缺电', 'warn');
   else if (!e.hasRocket() && !e.hasAssembleParts()) api.status('待组装：缺少 ' + assemblePartsNeededStr(e), 'warn');
   else if (!e.hasRocket()) api.status('部件原料齐备，点击「🛠️ 组装 1 个火箭部件」！', 'ok');
@@ -325,27 +345,38 @@ function siloPanelLive(e, api) {
   else api.status('全部就绪，点击「🚀 发射火箭」！', 'ok');
 }
 function siloTip(e) {
-  if (e.launched) return '火箭已发射！';
   if (e.launching) return '发射中 ' + Math.ceil(10 - e.launchT) + 's';
   if (!e.hasRocket()) return '火箭部件 ' + e.parts + '/' + ROCKET_PARTS + (e.hasAssembleParts() ? '（原料齐备，可组装）' : '：缺少 ' + assemblePartsNeededStr(e));
   return (e.inp['satellite'] || 0) > 0 ? '火箭+卫星齐备，可发射' : '火箭已就绪，等待放入卫星'; }
 
 // ===== 火箭发射成功 =====
 function onRocketLaunch() {
-  G.gameWon = true;
-  G.victoryT = 0;
-  if (typeof playSfx === 'function') playSfx('rocket');
-  setTimeout(function () { if (typeof playSfx === 'function') playSfx('victory'); }, 1200);
+  const first = !G.gameWon;
+  if (first) {
+    G.gameWon = true;
+    G.victoryT = 0;
+    // 成就：发射火箭赢得游戏（对齐《异星工厂》：So long and thanks for all the fish）
+    if (typeof checkAchievements === 'function') checkAchievements();
+    if (typeof playSfx === 'function') playSfx('rocket');
+    setTimeout(function () { if (typeof playSfx === 'function') playSfx('victory'); }, 1200);
+  } else {
+    // 后续重复发射：轻量反馈，不重复全屏胜利（对齐《异星工厂》：发射井可反复发射）
+    if (typeof playSfx === 'function') playSfx('rocket');
+  }
   // 每次卫星发射获得空间科学包（对齐《异星工厂》：Space science pack 由火箭发射产出，用于终局无限科研）
   const spaceGain = 100;
   invAdd('space-science-pack', spaceGain);
   if (typeof trackProd === 'function') trackProd('space-science-pack', spaceGain);
   if (typeof toast === 'function') toast('🛰️ 卫星发射成功，获得 +' + spaceGain + ' 空间科学包！');
-  // 全屏胜利横幅
-  showVictory();
-  if (typeof toast === 'function') toast('🎉 恭喜！火箭发射成功，你赢得了游戏！');
-  // 战斗胜利后停止刷怪，让玩家安心看烟花
-  G.enemies = [];
+  if (first) {
+    // 全屏胜利横幅
+    showVictory();
+    if (typeof toast === 'function') toast('🎉 恭喜！火箭发射成功，你赢得了游戏！');
+    // 战斗胜利后停止刷怪，让玩家安心看烟花
+    G.enemies = [];
+  } else if (typeof toast === 'function') {
+    toast('🚀 再次发射成功！空间科学包 +' + spaceGain);
+  }
   uiDirty = true;
 }
 let victoryEl = null;

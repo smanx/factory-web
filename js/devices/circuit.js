@@ -150,6 +150,17 @@ function recomputeCircuit() {
       const pct = Math.round(Math.max(0, Math.min(1, (n.stored || 0) / ACCUM_CAP)) * 100);
       if (pct > 0) { addSignal(aggRed, 'signal-charge', pct); addSignal(aggGreen, 'signal-charge', pct); }
     }
+    // 1b2) 储液罐（StorageTank）：把罐内当前流体的存量以该流体为信号名输出到网络
+    //       （对齐《异星工厂》：储液罐可接入电路网络读取流体存量，实现按液位自动化的流量/产线调度）。
+    //       信号同时写入红线与绿线，便于任意通道读取；空罐输出 0 不产生信号。
+    for (const n of group) {
+      if (!(n instanceof StorageTank)) continue;
+      if (typeof n.storedFluid !== 'function') continue;
+      const f = n.storedFluid();
+      if (!f) continue;
+      const qty = n.countOf ? n.countOf(f) : 0;
+      if (qty > 0) { addSignal(aggRed, f, qty); addSignal(aggGreen, f, qty); }
+    }
     // 1c) 储物箱（Chest 家族：木箱/铁箱/钢箱）：把箱内每种物品的数量以该物品为信号名
     //     输出到网络（对齐《异星工厂》：箱子接入电路后可读取物品数量，实现按库存自动化）。
     //     信号同时写入红线与绿线，便于任意通道读取。
@@ -162,7 +173,21 @@ function recomputeCircuit() {
         addSignal(aggGreen, st.item, st.count);
       }
     }
-    // 1d) 机械臂「读取手持物品」（对齐《异星工厂》：机械臂把爪上物品数量输出到电路网络）。
+    // 1d) 通用电路信号输出（对齐《异星工厂》：炮塔等设备可输出传感器信号到网络）。
+    //     任何实现 outputCircuitSignals() 方法的电路节点（如机枪/激光/火焰炮塔把射程内
+    //     敌人数量输出为信号）都会在此被收集并写入红/绿通道，供组合器/功率开关/告警音箱读取，
+    //     实现“敌人靠近自动切换电力 / 触发告警 / 调度防御”等自动化。
+    for (const n of group) {
+      if (typeof n.outputCircuitSignals !== 'function') continue;
+      const out = n.outputCircuitSignals();
+      if (!out || !out.length) continue;
+      for (const it of out) {
+        if (!it || !it.sig || !it.count) continue;
+        addSignal(aggRed, it.sig, it.count);
+        addSignal(aggGreen, it.sig, it.count);
+      }
+    }
+    // 1e) 机械臂「读取手持物品」（对齐《异星工厂》：机械臂把爪上物品数量输出到电路网络）。
     //     仅当机械臂开启 readHand 且正抓着物品时，把该物品数量加入网络信号（红线+绿线）。
     //     机械臂需与任一电路节点相邻（d<=2，与 circuitSignalNear 判定一致）。
     for (const n of group) {
@@ -233,7 +258,13 @@ const VIRTUAL_SIGNALS = {
   'signal-each': '每个信号',
   'signal-everything': '全部信号',
   'signal-anything': '任一信号',
-  'signal-count': '数量'
+  'signal-count': '数量',
+  'signal-enemy': '敌人数量',
+  'signal-train': '车站列车信号',
+  'signal-rocket': '火箭本体',
+  'signal-satellite': '卫星',
+  'signal-rocket-parts': '火箭部件就绪',
+  'signal-rocket-launch': '火箭发射中'
 };
 // 判断某信号名是否为虚拟信号（各列表/输入框均识别）
 function isVirtualSignal(sig) { return Object.prototype.hasOwnProperty.call(VIRTUAL_SIGNALS, sig); }

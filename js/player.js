@@ -2,6 +2,11 @@
 
 let mineToastAcc = 0;   // 手动挖矿提示去抖计数
 
+// ===== 主角自动回血（对齐《异星工厂》：受伤后延迟几秒，之后每秒回复 6 点生命）=====
+const PLAYER_REGEN_DELAY = 3;   // 受伤后延迟秒数，之后才开始自动回血
+const PLAYER_REGEN_RATE = 6;    // 每秒回复生命值
+const PLAYER_BASE_MAX_HP = 250; // 主角基础最大生命值
+
 function playerSpeed() { return 140 * ((G.dbg && G.dbg.moveSpeed) || 1) * (typeof equipmentSpeedMult === 'function' ? equipmentSpeedMult() : 1); }
 
 function makePlayer(tx, ty) {
@@ -12,23 +17,35 @@ function makePlayer(tx, ty) {
     mining: null,
     mineProg: 0,
     walkT: 0,
-    inVehicle: false   // 是否在载具驾驶中
+    inVehicle: false,   // 是否在载具驾驶中
+    counterT: 0,        // 自动刀具反击动画计时（>0 时渲染挥刀动作帧）
+    counterDir: 0,      // 反击时面向的攻击方向（角度，弧度）
+    lastHurtT: (typeof G !== 'undefined' && G.time) || 0  // 最近一次受伤的时间（用于自动回血延迟判断）
   };
 }
 
 function solidAtPx(px, py) {
   const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE);
-  // 玩家/载具碰撞：水与峭壁均不可通行（对齐《异星工厂》Cliff 阻隔移动）
-  return isWater(tx, ty) || isCliff(tx, ty);
+  // 玩家/载具碰撞：水、峭壁与树木均不可通行（对齐《异星工厂》：树与 Cliff 均阻隔移动，需砍伐/清除才能通过）
+  return isWater(tx, ty) || isCliff(tx, ty) || isTree(tx, ty);
 }
 
 function boxBlocked(cx, cy, r) {
+  // 开发者调试：主角无视碰撞（穿越水/峭壁/树木等障碍）
+  if (G.dbg && G.dbg.noclip) return false;
   return solidAtPx(cx - r, cy - r) || solidAtPx(cx + r, cy - r) ||
          solidAtPx(cx - r, cy + r) || solidAtPx(cx + r, cy + r);
 }
 
 function updatePlayer(dt) {
   const p = G.player;
+  // 自动回血（对齐《异星工厂》）：受伤后延迟几秒，之后每秒回复 6 点生命值，直到回满
+  if (G.playerHP < G.playerHPmax && G.time - (p.lastHurtT || 0) > PLAYER_REGEN_DELAY) {
+    G.playerHP = Math.min(G.playerHPmax, G.playerHP + PLAYER_REGEN_RATE * dt);
+    uiDirty = true;
+  }
+  // 自动刀具反击动画计时递减（>0 时渲染挥刀动作帧）
+  if (p.counterT > 0) p.counterT -= dt;
   // 玩家移动会点亮脚下区块（用于小地图）；限频避免每帧重算
   if (typeof markExplored === 'function') {
     if (!G._exploreT || G.time - G._exploreT > 0.5) {
@@ -58,12 +75,7 @@ function updatePlayer(dt) {
     if (typeof cancelTouchMove === 'function') cancelTouchMove();
     mx /= len; my /= len;
     p.walkT += dt * 10;
-    // 行走脚步声：随步态相位周期触发（低频短促，增强沉浸感）
-    if (typeof playSfx === 'function' && G.settings.sound) {
-      const stepPhase = Math.sin(p.walkT);
-      if (stepPhase < -0.7 && (G._lastStepPhase >= -0.7)) playSfx('step');
-      G._lastStepPhase = stepPhase;
-    }
+    // 角色移动音效已去除（用户要求）：不再播放脚步音
     if (Math.abs(mx) > Math.abs(my)) p.dir = mx > 0 ? 0 : 2;
     else p.dir = my > 0 ? 1 : 3;
     const r = 9;
@@ -80,6 +92,38 @@ function updatePlayer(dt) {
   }
   // 传送带推动玩家（对齐《异星工厂》）：站上运转的传送带会被带动位移，除非穿戴传送带免疫装备
   updateBeltPush(dt);
+  // 玩家与敌人/虫巢相互碰撞（需求：主角、敌人和虫巢之间相互都要有碰撞效果）
+  playerEnemyCollision();
+}
+
+// 玩家与敌人/虫巢的实体碰撞分离（需求：主角、敌人和虫巢之间相互都要有碰撞效果）。
+// 玩家不能穿过敌人与虫巢；重叠时按双方碰撞半径互相推开。虫巢为静态占地（kind==='spawner'），
+// 只推玩家、自身不动；普通敌人会被推开，实现“相互碰撞”。
+function playerEnemyCollision() {
+  if (!G.settings || !G.settings.combat) return;
+  const p = G.player;
+  const src = G.enemies || EMPTY_ARR;
+  const pr = 9;   // 玩家碰撞半径（像素，与移动 boxBlocked 的 r 一致）
+  const r = 9;
+  for (let i = 0; i < src.length; i++) {
+    const e = src[i];
+    if (e.dead) continue;
+    const dx = p.x - e.x, dy = p.y - e.y;
+    const d = Math.hypot(dx, dy);
+    const er = (e.kind === 'spawner' ? e.foot * TILE * 0.5 : e.size);
+    const minD = pr + er;
+    if (d > 0 && d < minD) {
+      const push = (minD - d) * 0.5;
+      const ux = dx / d, uy = dy / d;
+      // 推动玩家（避开地形以免被挤入水/峭壁）
+      const px2 = p.x + ux * push;
+      if (!boxBlocked(px2, p.y, r)) p.x = px2;
+      const py2 = p.y + uy * push;
+      if (!boxBlocked(p.x, py2, r)) p.y = py2;
+      // 虫巢静态不动；普通敌人被推开，实现“相互碰撞”
+      if (e.kind !== 'spawner') { e.x -= ux * push; e.y -= uy * push; }
+    }
+  }
 }
 
 // ===== 传送带推动玩家（对齐《异星工厂》物理机制） =====
@@ -258,6 +302,8 @@ function updateCraftQueue(dt) {
     const over = cur.done - cur.time;
     for (const k in RECIPES[cur.rid].out) invAdd(k, RECIPES[cur.rid].out[k]);
     completed++;
+    // 成就：手搓完成计数（对齐《异星工厂》手工合成成就）
+    if (typeof achEnsureStats === 'function') { achEnsureStats(); G.achStats.crafts++; checkAchievements(); }
     G.craftQueue.shift();
     if (G.craftQueue.length === 0) break;
     cur = G.craftQueue[0];
@@ -315,6 +361,7 @@ function updateMining(dt) {
       setTerrain(t.tx, t.ty, T_GRASS);
       invAdd('wood');
       invalidateTerrainChunk(t.tx, t.ty);
+      if (typeof achEnsureStats === 'function') { achEnsureStats(); G.achStats.mined++; checkAchievements(); }
       if (typeof playSfx === 'function') playSfx('mine');
       if (typeof toast === 'function') toast('+1 木材');
       if (axm > 1) axeConsume();
@@ -328,6 +375,7 @@ function updateMining(dt) {
       if (!G.settings.infiniteOre) consumeOre(t.tx, t.ty);
       const it = oreItemId(ti);
       invAdd(it);
+      if (typeof achEnsureStats === 'function') { achEnsureStats(); G.achStats.mined++; checkAchievements(); }
       if (typeof playSfx === 'function') playSfx('mine');
       if (axm > 1) axeConsume();
       // 手动采矿反馈去抖：累积到一定数量再提示一次，避免连挖时刷屏
@@ -468,17 +516,38 @@ function groundItemForBelt(tx, ty) {
   return null;
 }
 
+// 判断坐标是否可安全出生：必须是可通行的草地，且四邻中至少有一个可通行的邻格，
+// 避免出生即被水/峭壁团团围住而无法移动（修复“生成在水中央”bug）。
+function isSafeSpawn(tx, ty) {
+  if (getTerrain(tx, ty) !== T_GRASS) return false;
+  if (isWater(tx, ty) || isCliff(tx, ty)) return false;
+  for (let k = 0; k < 4; k++) {
+    const nt = getTerrain(tx + DX[k], ty + DY[k]);
+    if (nt !== T_WATER && nt !== T_CLIFF) return true;
+  }
+  return false;
+}
+
 function findSpawn() {
   let best = null, bestD = Infinity;
   const R = 22;
   for (let ty = -R; ty < R; ty++)
     for (let tx = -R; tx < R; tx++) {
-      if (getTerrain(tx, ty) !== T_GRASS) continue;
-      if (getOreType(tx, ty) !== ORES.indexOf('iron-ore')) continue;
-      if (isWater(tx + 1, ty) || isWater(tx - 1, ty) || isWater(tx, ty + 1) || isWater(tx, ty - 1)) continue;
+      if (!isSafeSpawn(tx, ty)) continue;
       const d = Math.hypot(tx, ty);
       if (d < bestD) { bestD = d; best = [tx, ty]; }
     }
-  if (!best) best = [4, 4];
-  return best;
+  // 出生点保证：从原点向外螺旋搜索第一个安全草地，避免兜底落到水里
+  if (!best) {
+    for (let r = 0; r <= R; r++) {
+      for (let ty = -r; ty <= r; ty++) {
+        for (let tx = -r; tx <= r; tx++) {
+          if (Math.max(Math.abs(tx), Math.abs(ty)) !== r) continue;
+          if (isSafeSpawn(tx, ty)) return [tx, ty];
+        }
+      }
+    }
+  }
+  if (best) return best;
+  return [0, 0];  // 理论不可达：原点区块保证出生点附近为草地
 }

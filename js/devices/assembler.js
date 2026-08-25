@@ -12,6 +12,14 @@ class Assembler extends Entity {
     this.spin = 0;
     this.modules = {};      // { 'speed-module': n, 'productivity-module': n }
     this.prodBuf = 0;       // 产能模块累积进度
+    // 电路控制（对齐《异星工厂》：生产建筑可接入电路网络，按信号条件启用/禁用配方）
+    this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
+  }
+  // 电路启停：未启用条件时恒工作；启用后仅当附近电路信号满足条件才生产
+  circuitEnabled() {
+    if (!this.circuitCond || !this.circuitCond.enabled) return true;
+    const sig = circuitSignalNear(this);
+    return circuitCondOk(sig, this.circuitCond);
   }
   fluidRecipe() {
     const r = this.recipe ? RECIPES[this.recipe] : null;
@@ -45,6 +53,8 @@ class Assembler extends Entity {
     this.portFlow();
     if (!this.recipe) { this.crafting = false; return; }
     if (G.power.sat <= 0) { this.crafting = false; return; }
+    // 电路条件不满足时暂停生产（对齐《异星工厂》：电路控制配方启停）
+    if (!this.circuitEnabled()) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
       this.prog += dt * asmMult() * 0.5 * this.moduleSpeedMult() * powerFactor();
@@ -169,12 +179,14 @@ class Assembler extends Entity {
     s.recipe = this.recipe; s.inp = this.inp; s.outp = this.outp;
     s.crafting = this.crafting; s.prog = this.prog;
     s.modules = this.modules; s.prodBuf = this.prodBuf;
+    if (this.circuitCond) s.circuitCond = this.circuitCond;
     return s;
   }
   // 蓝图只保留配方配置，不复制内部原料/输出/进度
   blueprint() {
     const s = super.blueprint();
     s.recipe = this.recipe;
+    if (this.circuitCond) s.circuitCond = this.circuitCond;
     return s;
   }
   static restore(s) {
@@ -182,6 +194,7 @@ class Assembler extends Entity {
     a.recipe = s.recipe || null; a.inp = s.inp || {}; a.outp = s.outp || {};
     a.crafting = !!s.crafting; a.prog = s.prog || 0;
     a.modules = s.modules || {}; a.prodBuf = s.prodBuf || 0;
+    a.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
     return a;
   }
 }
@@ -296,9 +309,11 @@ function assemblerPanelHtml(e) {
   h += '<div class="dim" id="asm-recipe-empty" style="display:none"></div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
   h += '<div class="dim">选中后按 R 旋转朝向（流体入口在背部、固体产物经机械臂取走）；背部通用流体口可接管道，向含流体原料的配方自动供液。</div>';
+  h += circuitPanelHtml(e, 'am');
   return h;
 }
 function assemblerPanelLive(e, api) {
+  if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) { api.status('已暂停：电路条件不满足', 'warn'); return; }
   if (typeof e.powerDemand === 'function') api.set('power', powerStatusLiveHtml(e));
   api.set('input', Object.keys(e.inp).length ? countStr(e.inp) : dimSpan('空'));
   api.set('output', Object.keys(e.outp).length ? countStr(e.outp) : dimSpan('空'));
@@ -350,7 +365,7 @@ function assemblerStatusFn(e) {
 }
 DEVICE_STATUS['assembling-machine'] = assemblerStatusFn;
 DEVICE_STATUS['assembling-machine-mk2'] = assemblerStatusFn;
-const assemblerPanel = { html: assemblerPanelHtml, live: assemblerPanelLive, tip: assemblerTip };
+const assemblerPanel = { html: assemblerPanelHtml, live: assemblerPanelLive, tip: assemblerTip, onAction: (a) => circuitPanelAction('am', a) };
 DEVICE_PANEL['assembling-machine'] = assemblerPanel;
 DEVICE_PANEL['assembling-machine-mk2'] = assemblerPanel;
 // 组装机 I/II 均可旋转朝向；旋转改变流体入口/出口所在侧（背部入口、前部出口）

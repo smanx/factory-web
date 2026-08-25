@@ -29,12 +29,13 @@ const G = {
   mouseDown: false,
   canvasActive: false,
   time: 0,
-  dbg: { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1, infinite: false, farReach: false },
+  dbg: { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1, infinite: false, farReach: false, noclip: false },
   // 是否开启开发者调试（仅当 URL 参数含 debug=1 时为 true）
   debugEnabled: new URLSearchParams(window.location.search).get('debug') === '1',
   spawn: { x: 0, y: 0 },
   hbArm: null,
   invRecipeQ: '',
+  buildDevQ: '',     // 背包「建造设备」列表的搜索关键字
   clipboard: null,
   blueprint: null,        // 蓝图数据：{ minX, minY, w, h, ents: [序列化实体...] }
   blueBook: [],           // 蓝图库：保存的多个蓝图 { name, minX, minY, ents }（对齐《异星工厂》蓝图库）
@@ -69,8 +70,8 @@ const G = {
 
   driving: null,       // 载具驾驶状态：{ ent: Car }，玩家进入驾驶时非空
   spawnT: 0,
-  playerHP: 100,
-  playerHPmax: 100,
+  playerHP: PLAYER_BASE_MAX_HP,
+  playerHPmax: PLAYER_BASE_MAX_HP,
   playerFireT: 0,
   weapon: null,       // 当前选中的武器 id（player 持有）
   screenFlash: 0,     // 全屏白光闪光强度（0~1，原子弹等大爆炸时触发，逐帧衰减）
@@ -80,6 +81,7 @@ const G = {
   axeDura: 0,         // 当前手持开采工具（铁斧/钢斧）剩余耐久（用尽后消失，对齐《异星工厂》Axe）
   victoryT: 0,
   inMenu: true,       // 开始菜单显示中：游戏世界尚未初始化，loop 暂停渲染与更新
+  paused: false,      // 游戏暂停：由顶部“暂停/继续”按钮控制，暂停时世界/设备/玩家停摆
   deconstructMode: false,  // 触屏拆除模式：开启后点触建筑即可拆除（PC 右键拆除不受影响）
   deconstructHeld: false,  // 拆除模式：左键/触屏是否处于按住连续拆除状态
   craftQueue: [],     // 手搓合成队列：见 player.js 的 queueCraft / updateCraftQueue
@@ -135,7 +137,8 @@ function newGame() {
     G.evolution = enemyConfig().initEvolution;
   }
   G.pollution = 0;    // 污染值（对齐《异星工厂》：工业排放污染激怒虫群）
-  G.pollutionWaves = 0; G.pollutionT = 0; G.pollutionScanT = 0;
+  G.pollutionWaves = 0; G.pollutionT = 0; G.pollutionScanT = 0; G.pollutionSpreadT = 0;
+  G.pollutionField = null; G.treeWither = null;   // 逐格污染场与树枯萎进度（新游戏重置）
   G.combatRobots = [];
   G.aoeZones = [];        // 新游戏清空区域力场（毒/减速胶囊）
   G.groundFires = [];     // 新游戏清空地面火焰残留
@@ -148,9 +151,10 @@ function newGame() {
   G.logiRequest = {};   // 新游戏清空个人物流请求
   G.blueBook = [];      // 新游戏清空蓝图库
   G.mapTags = [];       // 新游戏清空地图标记
+  if (typeof achInitStats === 'function') achInitStats();   // 新游戏清空成就状态
   G.railTiles = new Set();
   G.trains = [];
-  G.playerHP = 100; G.playerHPmax = 100;
+  G.playerHP = PLAYER_BASE_MAX_HP; G.playerHPmax = PLAYER_BASE_MAX_HP;
   G.weapon = null;
   G.armor = null;
   G.gameWon = false;
@@ -222,7 +226,8 @@ function serializeAll() {
     constr: (typeof constrSerialize === 'function') ? constrSerialize() : null,
     equipment: (typeof equipmentSerialize === 'function') ? equipmentSerialize() : null,
     blueBook: (G.blueBook || []).map(b => ({ name: b.name, minX: b.minX | 0, minY: b.minY | 0, ents: b.ents })),
-    mapTags: (typeof mapTagsSerialize === 'function') ? mapTagsSerialize() : (G.mapTags || []).slice()
+    mapTags: (typeof mapTagsSerialize === 'function') ? mapTagsSerialize() : (G.mapTags || []).slice(),
+    achievements: (typeof achievementsSerialize === 'function') ? achievementsSerialize() : null
   };
 }
 
@@ -317,7 +322,9 @@ function applySave(d) {
     })) : [];
   G.player = makePlayer(0, 0);
   G.player.x = d.player.x; G.player.y = d.player.y;
-  if (typeof d.player.hp === 'number') G.playerHP = G.playerHPmax = Math.max(1, d.player.hp);
+  // 加载存档：保留当前生命值（不超过基础最大值），但最大生命值统一对齐《异星工厂》主角 250 点
+  if (typeof d.player.hp === 'number') G.playerHP = Math.min(PLAYER_BASE_MAX_HP, Math.max(1, d.player.hp));
+  G.playerHPmax = PLAYER_BASE_MAX_HP;
   G.weapon = d.player.weapon || null;
   G.armor = (isArmor && isArmor(d.player.armor)) ? d.player.armor : null;
   // 恢复敌人进化度（旧档无该字段则从 0 开始）
@@ -338,6 +345,7 @@ function applySave(d) {
   G.repairPackUses = (typeof d.repairPackUses === 'number') ? d.repairPackUses : 0;
   G.axeDura = (typeof d.axeDura === 'number') ? d.axeDura : 0;
   if (typeof mapTagsDeserialize === 'function') mapTagsDeserialize(d.mapTags); else G.mapTags = [];
+  if (typeof achievementsRestore === 'function') achievementsRestore(d.achievements); else if (typeof achInitStats === 'function') achInitStats();
   G.combatRobots = [];
   G.driving = null;
   G.logiRobots = [];
@@ -374,7 +382,7 @@ function applySave(d) {
     if (typeof refreshDebugPanel === 'function') refreshDebugPanel();
   } else {
     // debug 未开启：重置为默认值，确保读档含 debug 的数据也不生效
-    Object.assign(G.dbg, { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1, infinite: false, farReach: false });
+    Object.assign(G.dbg, { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1, infinite: false, farReach: false, noclip: false });
   }
   if (Array.isArray(d.hotbar)) {
     HOTBAR = d.hotbar.slice(0, 10);
@@ -469,6 +477,8 @@ function tryPlaceAt(tx, ty) {
   e.applyDir();
   addEnt(e);
   if (!infinite) invTake(type, 1);
+  // 成就：建造计数（对齐《异星工厂》建造成就）
+  if (typeof achEnsureStats === 'function') { achEnsureStats(); G.achStats.builds++; checkAchievements(); }
   if (typeof playSfx === 'function') playSfx('build');
   refreshHotbar();
 }
@@ -1333,9 +1343,83 @@ function enterGame() {
   const sc = document.getElementById('start-screen');
   if (sc) sc.classList.add('hidden');
   G.inMenu = false;
+  G.paused = false;
+  const pb = document.getElementById('btn-pause');
+  if (pb) { pb.textContent = '⏸ 暂停'; pb.title = '暂停游戏'; }
   toast('WASD 移动 · 左键挖矿/放建筑(覆盖建造) · 右键拆除 · R 旋转 · F 拿取 · Q 取消/拾取朝向 · 中键/E 面板 · T 科技 · P 统计 · B 蓝图 · Alt+B 蓝图库 · Alt+D 红图 · Alt+U 绿图 · K/L 存读档');
   // 触屏设备：首次进入展示新手引导
   if (typeof maybeShowTouchTip === 'function') maybeShowTouchTip();
+}
+
+// 退出到开始菜单（主页面）：隐藏游戏界面、显示开始菜单，并暂停游戏循环。
+function returnToMenu() {
+  if (typeof closePanel === 'function') closePanel();
+  G.inMenu = true;
+  G.paused = false;
+  G.sel = -1;
+  G.blueMode = null;
+  G.deconstructMode = false;
+  G.ghostDir = 0;
+  const sc = document.getElementById('start-screen');
+  if (sc) sc.classList.remove('hidden');
+  const pb = document.getElementById('btn-pause');
+  if (pb) { pb.textContent = '⏸ 暂停'; pb.title = '暂停游戏'; }
+  // 收起顶部菜单（保持整洁的主菜单视图）
+  const topMenu = document.getElementById('topright');
+  const menuToggle = document.getElementById('btn-menu-toggle');
+  if (topMenu && !topMenu.classList.contains('collapsed')) {
+    topMenu.classList.add('collapsed');
+    if (menuToggle) { menuToggle.textContent = '☰'; menuToggle.title = '展开顶部菜单'; }
+  }
+  if (typeof playSfx === 'function') playSfx('click');
+  toast('已退出到主页面');
+  // 回到主菜单时随机生成一张新地图作为背景（复用游戏地图生成功能）
+  if (typeof refreshStartBackground === 'function') refreshStartBackground();
+}
+
+// ===== 死亡结算菜单（对齐《异星工厂》：阵亡后选择 出生点复活 / 读取存档 / 重新开始）=====
+// 玩家阵亡时由 combat2.damagePlayer 调用；暂停游戏并弹出死亡菜单。
+function showDeathMenu() {
+  const ov = document.getElementById('death-overlay');
+  if (ov) ov.classList.remove('hidden');
+  G.paused = true;   // 阵亡后暂停游戏世界，等待玩家选择
+  if (typeof playSfx === 'function') playSfx('player-death');
+}
+function hideDeathMenu() {
+  const ov = document.getElementById('death-overlay');
+  if (ov) ov.classList.add('hidden');
+}
+
+// 出生点复活：清空附近敌人，回到出生点并回满生命，继续游戏
+function respawnAtSpawn() {
+  hideDeathMenu();
+  G.enemies = []; G.enemyProjectiles = [];
+  G.player.x = G.spawn.x * TILE + TILE / 2;
+  G.player.y = G.spawn.y * TILE + TILE / 2;
+  G.cam.px = G.player.x; G.cam.py = G.player.y;
+  G.playerHP = G.playerHPmax;
+  G.paused = false;
+  if (typeof toast === 'function') toast('已在出生点复活');
+  uiDirty = true;
+}
+
+function initDeathMenu() {
+  const r = document.getElementById('btn-death-respawn');
+  const l = document.getElementById('btn-death-load');
+  const s = document.getElementById('btn-death-restart');
+  if (r) r.addEventListener('click', () => { if (typeof playSfx === 'function') playSfx('click'); respawnAtSpawn(); });
+  if (l) l.addEventListener('click', async () => {
+    if (typeof playSfx === 'function') playSfx('click');
+    hideDeathMenu();
+    // 读取最新存档继续（无存档则回退到出生点复活）
+    const ok = await startFromSave();
+    if (!ok) respawnAtSpawn();
+  });
+  if (s) s.addEventListener('click', () => {
+    if (typeof playSfx === 'function') playSfx('click');
+    hideDeathMenu();
+    startNewGame();   // 重新开始游戏（生成新世界）
+  });
 }
 
 function bindInput() {
@@ -1549,6 +1633,15 @@ function bindInput() {
     if (buildActive()) return;
     const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
     if (e) openPanel('machine', e);
+    // 点击敌人 → 显示该敌人的简单介绍（对齐《异星工厂》：可查看敌对单位图鉴信息）
+    else {
+      const en = (typeof enemyAtTile === 'function') ? enemyAtTile(G.cursorTile.tx, G.cursorTile.ty) : null;
+      if (en) {
+        const d = ENEMY_TYPES[en.type];
+        const nm = d ? d.name : (en.kind === 'spawner' ? '虫巢' : '敌人');
+        toast(nm + '：' + ((typeof enemyDesc === 'function') ? enemyDesc(en) : '敌对单位'));
+      }
+    }
   });
 }
 
@@ -1642,8 +1735,9 @@ function loop(ts) {
   const raw = Math.min(0.05, now - (loop.lastT || now));
   loop.lastT = now;
   const dt = Math.min(0.3, raw * ((G.dbg && G.dbg.timeScale) || 1));
-  // 打开设置面板时暂停游戏：世界/设备/电力/玩家均停，仅保留渲染与界面
-  const paused = G.panelMode === 'set';
+  // 游戏暂停：由顶部“暂停/继续”按钮控制（G.paused）。
+  // 打开设置面板不再暂停游戏（仅暂停时世界/设备/电力/玩家停摆）。
+  const paused = !!G.paused;
   if (!paused) G.time += dt;
   fpsSmooth += (1 / Math.max(raw, 0.0001) - fpsSmooth) * 0.05;
   if (G.settings.autoSave) {
@@ -1653,6 +1747,9 @@ function loop(ts) {
 
   try {
     if (!paused) {
+      // 成就周期性判定（每 3s 覆盖污染等连续增长条件；事件触发点另有即时判定）
+      G.achT = (G.achT || 0) + dt;
+      if (G.achT >= 3) { G.achT = 0; if (typeof checkAchievements === 'function') checkAchievements(); }
       updatePlayer(dt);
       updateTouchMove(dt);
       updateHeldMouse(dt);
@@ -1715,6 +1812,9 @@ function loop(ts) {
       if (typeof ambientUpdate === 'function') ambientUpdate(dt);
     }
 
+    // 背景音乐（可独立开关）：暂停游戏时仍持续播放（界面层氛围）
+    if (typeof bgmUpdate === 'function') bgmUpdate(dt);
+
     render();
 
     if (uiDirty || G.time - lastPanelCheck > 0.25) {
@@ -1749,6 +1849,7 @@ function boot() {
     ['tooltip', () => initTooltips()],
     ['tutorial', () => initTutorial()],
     ['debug', () => buildDebug()],
+    ['deathmenu', () => initDeathMenu()],
     ['input', () => bindInput()]
   ];
   for (const [name, fn] of steps) {

@@ -84,7 +84,7 @@ class Drill extends Entity {
       this._runSfxT = (this._runSfxT || 0) - dt;
       if (this._runSfxT <= 0) { this._runSfxT = 2.2; playSfx('machine-run'); }
     }
-    this.burnLeft -= dt;
+    this.burnLeft -= dt * fuelConsumptionMult();
     this.spin += dt * 6;
     this.prog += dt * drillMult() * 0.25; // 热能采矿机 mining-speed 0.25（对齐《异星工厂》）
     if (this.prog >= DRILL_TIME) {
@@ -125,7 +125,7 @@ class Drill extends Entity {
   }
   giveItem(item) {
     if (item === 'rocket-fuel' && this.fuelRocket < 10) { this.fuelRocket++; return true; }
-    if (item === 'coal' && this.fuelCoal < 10) { this.fuelCoal++; return true; }
+    if (item === 'coal' && this.fuelCoal < SELF_FUEL_MAX) { this.fuelCoal++; return true; }
     if (item === 'solid-fuel' && this.fuelSolid < 10) { this.fuelSolid++; return true; }
     return false;
   }

@@ -32,6 +32,11 @@ const WAGON_STACK = 100;       // 每槽容量
 // 铁路产能无限科技：每次研究提升货运车厢槽位容量 +2（对齐《异星工厂》Rail productivity）
 const RAIL_PRODUCTIVITY_SLOTS = 2; // 每级科技新增槽位数
 function wagonSlots() { return WAGON_SLOTS + (typeof G !== 'undefined' && G.techProg && G.techProg['rail-productivity'] ? G.techProg['rail-productivity'] * RAIL_PRODUCTIVITY_SLOTS : 0); }
+// 火车制动（对齐《异星工厂》Braking force 无限科技）：每级缩短停靠/让行等待时长，提升铁路吞吐。
+function trainBrakeWait() {
+  const base = TRAIN_STOP_WAIT;
+  return (typeof brakingForceMult === 'function' ? base * brakingForceMult() : base);
+}
 const TRAIN_STOP_WAIT = 1.6;   // 车站停车时长（秒）
 const SIGNAL_RANGE = 10;       // 信号灯检测前方列车距离（格）
 // 链式信号灯：连锁转发，检测前方区段整段是否畅通（距离更长），
@@ -91,8 +96,9 @@ function updateTrains(dt) {
     if (station) {
       // 停靠期间持续执行自动装卸；有装卸动作则延长停靠窗口，直至装/卸完成
       const acted = trainAutoLoadUnload(tr, station);
-      if (acted) tr.stopT = TRAIN_STOP_WAIT;
-      else if (!tr.stopT) tr.stopT = TRAIN_STOP_WAIT;
+      const bw = trainBrakeWait();
+      if (acted) tr.stopT = bw;
+      else if (!tr.stopT) tr.stopT = bw;
       tr.stopT -= dt;
       tr.wasStopped = true;
       continue;
@@ -180,7 +186,7 @@ function moveTrainToward(tr, tx, ty) {
   if (nd === null) return;
   head.x += DX[nd]; head.y += DY[nd]; head.dir = nd;
   removeEntFromGrid(head); addEntToGrid(head);
-  head.fuel -= LOCO_COAL_PER;
+  head.fuel -= LOCO_COAL_PER * fuelConsumptionMult();
   for (let i = 1; i < tr.cars.length; i++) {
     const car = tr.cars[i];
     removeEntFromGrid(car);
@@ -217,7 +223,7 @@ function moveTrain(tr) {
   // 移动车头到下一格
   head.x += DX[nd]; head.y += DY[nd]; head.dir = nd;
   removeEntFromGrid(head); addEntToGrid(head);
-  head.fuel -= LOCO_COAL_PER;
+  head.fuel -= LOCO_COAL_PER * fuelConsumptionMult();
   // 车厢依次占据前一节车的旧位置
   for (let i = 1; i < tr.cars.length; i++) {
     const car = tr.cars[i];
@@ -257,7 +263,7 @@ function moveTrainBack(tr) {
     c.x = oldPos[i].x + bx; c.y = oldPos[i].y + by;
     addEntToGrid(c);
   }
-  if (head.fuel != null) head.fuel -= LOCO_COAL_PER;
+  if (head.fuel != null) head.fuel -= LOCO_COAL_PER * fuelConsumptionMult();
   if (typeof playSfx === 'function') playSfx('train');
   return true;
 }
@@ -675,12 +681,30 @@ function updateTrainArtillery(tr, dt) {
 //   - 卸载：从列车车厢取出清单物品，存入车站旁 3×3 范围内的箱子；
 //   - 装载：从车站旁箱子取出清单物品，装入列车车厢。
 // 列车停靠期间持续装卸，装/卸完毕或超时后发车。
-class TrainStop extends Entity {
+// 继承 CircuitNode（CircuitNode 亦是 Entity 子类）：车站可接入电路网络，
+// 当有列车停靠本站时输出 signal-train 信号，供组合器/功率开关/告警音箱读取，
+// 实现按列车到站自动化的调度（对齐《异星工厂》Train stop 电路信号）。
+class TrainStop extends CircuitNode {
   constructor(type, x, y) {
     super(type, x, y);
     this.load = [];    // 要装入车厢的物品清单
     this.unload = [];  // 要从车厢卸出的物品清单
     this.name = '';    // 车站名（用于列车自动调度路线引用）
+  }
+  // 是否有列车停靠本站（车头停在车站所在格且处于停靠状态）
+  trainPresent() {
+    if (!G.trains || !G.trains.length) return false;
+    for (const tr of G.trains) {
+      if (!tr || !tr.cars || !tr.cars.length) continue;
+      const head = tr.cars[0];
+      if (!head || head._dead) continue;
+      if (head.x === this.x && head.y === this.y) return true;
+    }
+    return false;
+  }
+  // 电路信号输出：有列车停靠时输出 signal-train=1（对齐《异星工厂》车站列车信号）
+  outputCircuitSignals() {
+    return this.trainPresent() ? [{ sig: 'signal-train', count: 1 }] : [];
   }
   contents() {
     return [[this.type, 1]];
@@ -926,8 +950,8 @@ function trainWaitMet(tr, arriveT) {
   if (cond === 'full') return trainCargoFull(tr);
   if (cond === 'empty') return trainCargoEmpty(tr);
   if (cond === 'time') return arriveT >= routeEntryTime(en);
-  // leave：默认“装卸后出发”——至少停留一个装卸窗口（对齐原固定停靠时长），保证装/卸能完成
-  return arriveT >= TRAIN_STOP_WAIT;
+  // leave：默认“装卸后出发”——至少停留一个装卸窗口（对齐原固定停靠时长），保证装/卸能完成；受火车制动科技缩短
+  return arriveT >= trainBrakeWait();
 }
 // 当前路线条目的等待条件描述（用于面板显示）
 function routeEntryCondLabel(en) {
@@ -1286,6 +1310,8 @@ DEVICE_PANEL['locomotive'] = {
         mch.schedule.push({ stop: sel.value, cond: 'leave', time: 10 });
         // 同步到所属列车的 route（若列车已在运行）
         syncLocoSchedule(mch);
+        // 成就：设置列车自动调度路线（对齐《异星工厂》：Getting on track like a pro）
+        if (typeof achEnsureStats === 'function') { achEnsureStats(); G.achStats.trainRoutes++; checkAchievements(); }
         toast('已把车站「' + sel.value + '」加入路线');
         uiDirty = true;
       }
@@ -1568,6 +1594,7 @@ function trainStopPanelHtml(e) {
   h += '</div>';
   h += '<div class="status"></div>';
   h += '<div class="dim">放置：把车站放在铁轨上，车站旁（3×3）放储物箱。列车停靠时，自动把“卸载”物品从车厢卸入箱子、把“装载”物品从箱子装入车厢。对齐《异星工厂》火车车站装卸。</div>';
+  h += '<div class="dim">已接入电路网络：有列车停靠本站时输出 signal-train（车站列车信号）到所连网络，供组合器/功率开关/告警音箱读取，实现按列车到站自动化的调度（对齐《异星工厂》车站电路信号）。</div>';
   return h;
 }
 function trainStopPanelLive(e, api) {

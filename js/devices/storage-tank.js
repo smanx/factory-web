@@ -3,7 +3,10 @@
 // ===== 储液罐（对齐《异星工厂》Storage Tank）：大容量缓冲、单一流体、东西两侧各一个通用流体口 =====
 // 占地 3×3；容量 STORAGE_TANK_CAP；罐内只容纳一种流体（液体/气体均可）；
 // 相邻管道会自动把流体灌入罐内，罐也会把流体供给相邻下游设备的输入口，作为缓冲库容。
-class StorageTank extends Entity {
+// 继承 CircuitNode（CircuitNode 亦是 Entity 子类）：储液罐可接入电路网络，
+// 把罐内当前流体的存量以该流体为信号名输出到所连网络，供组合器/机械臂/功率开关等做逻辑控制
+// （对齐《异星工厂》：储液罐可接入电路网络读取流体存量，实现按液位自动化）。
+class StorageTank extends CircuitNode {
   constructor(type, x, y) {
     super('storage-tank', x, y);
     this.fluid = {};
@@ -140,6 +143,7 @@ function storageTankPanelHtml(e) {
   if (Object.keys(agg).length) h += '<button data-action="takeout" id="btn-tank-takeout">取出全部 (' + e.total() + ')</button>';
   h += '<div class="status"></div>';
   h += '<div class="dim">储液罐大容量缓冲（' + STORAGE_TANK_CAP + ' 单位），罐内只容纳单一液体/气体。东西两侧各一只通用流体口：相邻管道会自动把流体灌入罐内，罐也会向相邻炼油厂/化工厂等输入口供料。出入口处会显示当前流体图标。</div>';
+  h += '<div class="dim">已接入电路网络：罐内流体存量以流体名（如水→water）作为信号输出到所连网络，供组合器/功率开关/机械臂等做按液位自动化（对齐《异星工厂》储液罐电路信号）。</div>';
   return h;
 }
 function storageTankPanelLive(e, api) {

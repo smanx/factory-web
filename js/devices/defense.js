@@ -66,13 +66,38 @@ const ARTILLERY_FIRE_RATE = 3;   // 两次射击间隔（秒）
 const ARTILLERY_DMG = 200;       // 爆炸伤害
 const ARTILLERY_RADIUS = 5;      // 爆炸范围（格）
 const ARTILLERY_SHELL_CAP = 40;  // 内置炮弹容量
-class ArtilleryTurret extends Entity {
+class ArtilleryTurret extends CircuitNode {
   constructor(type, x, y) {
     super('artillery-turret', x, y);
     this.shells = 0;
     this.cooldown = 0;
     this.target = null;
     this.facing = 0;
+    // 电路控制（对齐《异星工厂》：炮兵接入电路网络，可按信号启停火力）
+    this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
+  }
+  // 电路启停：未启用条件时恒工作；启用后仅当附近电路信号满足条件才开火
+  circuitEnabled() {
+    if (!this.circuitCond || !this.circuitCond.enabled) return true;
+    const sig = circuitSignalNear(this);
+    return circuitCondOk(sig, this.circuitCond);
+  }
+  // 射程内存活敌人数量（作为传感器信号输出到电路网络）
+  enemiesInRange() {
+    const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
+    const enemies = G._aliveEnemies || (G.enemies || []);
+    let n = 0;
+    for (const en of enemies) {
+      if (!en || en.dead) continue;
+      const d = Math.hypot(en.x / TILE - cx, en.y / TILE - cy);
+      if (d <= artilleryRange() && d > 4) n++;
+    }
+    return n;
+  }
+  outputCircuitSignals() {
+    const n = this.enemiesInRange();
+    if (n <= 0) return [];
+    return [{ sig: 'signal-enemy', count: n }];
   }
   giveItem(item) {
     if (item === 'artillery-shell' && this.shells < ARTILLERY_SHELL_CAP) { this.shells++; return true; }
@@ -100,6 +125,8 @@ class ArtilleryTurret extends Entity {
   update(dt) {
     this.cooldown -= dt;
     this.target = null;
+    // 电路条件不满足时炮兵停火
+    if (!this.circuitEnabled()) return;
     const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
     let best = null, bestD = Infinity;
     for (const en of (G.enemies || [])) {
@@ -121,8 +148,8 @@ class ArtilleryTurret extends Entity {
       life: Math.max(0.3, bestD / 40), art: true, splash: ARTILLERY_RADIUS, dmg: Math.round(ARTILLERY_DMG * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('explosive') : 1))
     });
   }
-  serialize() { const s = super.serialize(); s.shells = this.shells; return s; }
-  static restore(s) { const t = super.restore(s); t.shells = s.shells || 0; return t; }
+  serialize() { const s = super.serialize(); s.shells = this.shells; if (this.circuitCond) s.circuitCond = this.circuitCond; return s; }
+  static restore(s) { const t = super.restore(s); t.shells = s.shells || 0; t.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 }; return t; }
 }
 function drawArtillery(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
@@ -165,11 +192,13 @@ function artilleryPanelHtml(e) {
   if (e.shells > 0) h += '<button data-action="takeout" id="btn-art-takeout">取出全部炮弹</button>';
   h += '<div class="status"></div>';
   h += '<div class="dim">炮兵连：射程 ' + artilleryRange() + ' 格（基础 ' + ARTILLERY_RANGE + '，受「炮兵射程」无限科技加成），消耗炮弹轰击超远距离敌人，命中造成 ' + ARTILLERY_DMG + ' 点大范围爆炸伤害（4×4）。晚期基地防御的利器。</div>';
+  h += circuitPanelHtml(e, 'at');
   return h;
 }
 function artilleryPanelLive(e, api) {
   api.set('shells', e.shells + ' / ' + ARTILLERY_SHELL_CAP);
   api.toggle('#btn-art-takeout', e.shells > 0, '取出全部炮弹 (' + e.shells + ')');
+  if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) { api.status('已停火：电路条件不满足', 'warn'); return; }
   if (e.shells <= 0) api.status('已暂停：无炮弹（放入炮弹）', 'warn');
   else if (e.target) api.status('开火中：轰击远处敌人', 'ok');
   else api.status('待机：射程内无敌人', 'ok');
@@ -187,4 +216,4 @@ DEVICE_RENDER['artillery-turret'] = drawArtillery;
 DEVICE_STATUS['land-mine'] = () => null;
 DEVICE_STATUS['artillery-turret'] = e => e.shells > 0 ? (e.target ? 'g' : 'y') : 'r';
 DEVICE_PANEL['land-mine'] = { html: landMinePanelHtml, live: landMinePanelLive, tip: landMineTip };
-DEVICE_PANEL['artillery-turret'] = { html: artilleryPanelHtml, live: artilleryPanelLive, tip: artilleryTip };
+DEVICE_PANEL['artillery-turret'] = { html: artilleryPanelHtml, live: artilleryPanelLive, tip: artilleryTip, onAction: (a) => circuitPanelAction('at', a) };

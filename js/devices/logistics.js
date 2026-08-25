@@ -32,10 +32,18 @@ const ROBOPORT_CAP = 50;        // 单机器人港最多容纳的机器人数量
 const ROBOPORT_POWER_IDLE = 40; // 机器人港基础耗电（kW）
 
 // 机器人港实体
-class Roboport extends Entity {
+class Roboport extends CircuitNode {
   constructor(type, x, y) {
     super('roboport', x, y);
     this.roboCap = 0;   // 已投入的物流机器人数量（往港里塞 logistic-robot 增加）
+  }
+  // 电路网络信号输出（对齐《异星工厂》：机器人港可接入电路网络读取所在物流网络物资）。
+  // 把整个物流网络中供应箱/仓储箱内的每种物品总量以该物品为信号输出，
+  // 供组合器/功率开关/告警音箱读取，实现按网络库存的自动化调度。
+  outputCircuitSignals() {
+    const net = G.logiNet;
+    if (!net || !net.signals) return [];
+    return net.signals;   // 复用 scanNetwork 预计算好的信号缓存（性能优化）
   }
   giveItem(item) {
     if (item !== 'logistic-robot') return false;
@@ -266,8 +274,20 @@ function spawnRobotAt(port) {
   return r;
 }
 
-// 确保每个机器人港拥有 roboCap 个机器人
+// 确保每个机器人港拥有 roboCap 个机器人。
+// 优先复用 scanNetwork 已收集的机器人港列表（G.logiNet.ports），避免对 G.ents 重复全量遍历（性能优化）。
 function ensurePortRobots() {
+  const ports = (G.logiNet && G.logiNet.ports) || null;
+  if (ports) {
+    for (const e of ports) {
+      if (e._dead) continue;
+      let mine = 0;
+      for (const r of G.logiRobots) if (r.home === e && !r._dead) mine++;
+      for (let i = mine; i < e.roboCap; i++) spawnRobotAt(e);
+    }
+    return;
+  }
+  // 兜底：尚无缓存时（如物流网络刚解锁、首次调度）再全量遍历一次
   for (const e of G.ents) {
     if (!(e instanceof Roboport) || e._dead) continue;
     let mine = 0;
@@ -342,6 +362,15 @@ function scanNetwork() {
 
   // 赋值给全局供调度使用
   G.logiNet = { supply, supplies, demand, requesters, ports };
+  // 预计算物流网络电路信号缓存（性能优化）：把网络各物品库存总量转成
+  // [{sig,count},...] 信号列表，供所有机器人港的 outputCircuitSignals 复用，
+  // 避免每个机器人港在电路重算时各自重复遍历 supply。
+  const sigList = [];
+  for (const item in supply) {
+    const c = supply[item];
+    if (c && c.total > 0) sigList.push({ sig: item, count: c.total });
+  }
+  G.logiNet.signals = sigList;
   return G.logiNet;
 }
 
@@ -489,6 +518,10 @@ function updateRobot(r, dt) {
             if (typeof trackProd === 'function') trackProd(r.carry.item, 1);
           }
         }
+        if (r.carry && r.carry.item) {
+          // 成就：物流机器人完成一次搬运（对齐《异星工厂》：机器人革命）
+          if (typeof achEnsureStats === 'function') { achEnsureStats(); G.achStats.robotDeliveries++; checkAchievements(); }
+        }
         r.carry = null;
         r.state = 'returning';
       }
@@ -525,8 +558,10 @@ function updateLogistics(dt) {
   G.logiNetT += dt;
   if (G.logiNetT >= ROBOT_NET_T) {
     G.logiNetT = 0;
-    ensurePortRobots();
+    // 性能优化：先 scanNetwork 收集机器人港列表到 G.logiNet.ports，
+    // ensurePortRobots 复用该缓存，避免对 G.ents 做两次全量遍历。
     scanNetwork();
+    ensurePortRobots();
   }
   // 更新所有机器人
   for (const r of G.logiRobots) updateRobot(r, dt);

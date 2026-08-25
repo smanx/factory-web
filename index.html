@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>工厂原型 Factory Proto</title>
-<link rel="stylesheet" href="css/style.css?v=26">
+<link rel="stylesheet" href="css/style.css?v=31">
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -15,10 +15,12 @@
   <button id="btn-inv">背包 (E)</button>
   <button id="btn-tech">研究 (T)</button>
   <button id="btn-stats">统计 (P)</button>
+  <button id="btn-ach" title="成就系统（对齐异星工厂 Achievements）">🏆 成就</button>
   <button id="btn-blue">蓝图 (B)</button>
   <button id="btn-red">红图 (Alt+D)</button>
   <button id="btn-green">绿图 (Alt+U)</button>
   <button id="btn-set">设置 (O)</button>
+  <button id="btn-pause" title="暂停/继续游戏">⏸ 暂停</button>
   </div>
 </div>
 <div id="hotbar"></div>
@@ -32,14 +34,17 @@
 </div>
 <div id="toasts"></div>
 <div id="greenbar" style="display:none"></div>
-<div id="tooltip"><b></b><span></span></div>
+<div id="tooltip"><b></b><span></span><div id="tooltip-recipe"></div></div>
 <div id="joystick" class="joystick hidden"><div id="joystick-knob"></div></div>
 <div id="dbg-btn">DBG</div>
 <div id="dbg-panel"></div>
+<img src="https://visitor-badge.laobi.icu/badge?page_id=smanx/factory-web&format=true&left_text=v&left_color=%23000000&right_color=%23000000"
+     alt="visitor badge"
+     style="position:fixed;bottom:8px;left:8px;z-index:9999;opacity:0.3">
 
 <!-- 开始菜单：新游戏 / 读取存档 -->
 <div id="start-screen">
-  <div class="start-bg"></div>
+  <div class="start-bg"><canvas id="start-bg-canvas" class="start-bg-canvas"></canvas></div>
   <div class="start-box">
     <div class="start-logo">
       <div class="start-title">工厂原型</div>
@@ -48,6 +53,7 @@
     <div class="start-menu">
       <button id="btn-new-game" class="start-btn primary">▶ 开始新游戏</button>
       <button id="btn-continue" class="start-btn">📂 读取存档</button>
+      <button id="btn-start-ach" class="start-btn">🏆 成就</button>
       <div id="start-save-info" class="start-save-info"></div>
     </div>
 
@@ -108,9 +114,21 @@
     <button id="btn-tutorial-close" class="tutorial-close">开始游戏 ▶</button>
   </div>
 </div>
-<script src="js/data.js?v=62"></script>
-<script src="js/world-config.js?v=1"></script>
-<script src="js/world.js?v=13"></script>
+<!-- 死亡结算菜单：玩家阵亡后选择 出生点复活 / 读取存档 / 重新开始（对齐《异星工厂》阵亡处理） -->
+<div id="death-overlay" class="death-overlay hidden">
+  <div class="death-panel">
+    <div class="death-title">💀 你阵亡了</div>
+    <div class="death-sub">你被虫群击败了……</div>
+    <div class="death-menu">
+      <button id="btn-death-respawn" class="death-btn primary">🔄 出生点复活</button>
+      <button id="btn-death-load" class="death-btn">📂 读取存档</button>
+      <button id="btn-death-restart" class="death-btn danger">↻ 重新开始游戏</button>
+    </div>
+  </div>
+</div>
+<script src="js/data.js?v=65"></script>
+<script src="js/world-config.js?v=3"></script>
+<script src="js/world.js?v=15"></script>
 <script src="js/core/registry.js?v=7"></script>
 <script src="js/core/entity.js?v=13"></script>
 <script src="js/core/draw.js?v=10"></script>
@@ -119,62 +137,63 @@
 <script src="js/devices/splitter.js?v=10"></script>
 <script src="js/devices/underground.js?v=9"></script>
 <script src="js/devices/express-belt.js?v=13"></script>
-<script src="js/devices/inserter.js?v=17"></script>
-<script src="js/devices/burner-inserter.js?v=2"></script>
+<script src="js/devices/inserter.js?v=18"></script>
+<script src="js/devices/burner-inserter.js?v=4"></script>
 <script src="js/devices/lamp.js?v=2"></script>
-<script src="js/devices/drill.js?v=16"></script>
+<script src="js/devices/drill.js?v=17"></script>
 <script src="js/devices/electric-drill.js?v=11"></script>
 <script src="js/devices/pumpjack.js?v=10"></script>
-<script src="js/devices/furnace.js?v=14"></script>
+<script src="js/devices/furnace.js?v=15"></script>
 <script src="js/devices/electric-furnace.js?v=11"></script>
-<script src="js/devices/steel-furnace.js?v=12"></script>
-<script src="js/devices/assembler.js?v=24"></script>
+<script src="js/devices/steel-furnace.js?v=13"></script>
+<script src="js/devices/assembler.js?v=25"></script>
 <script src="js/devices/assembler-mk2.js?v=10"></script>
-<script src="js/devices/assembler-3.js?v=17"></script>
+<script src="js/devices/assembler-3.js?v=18"></script>
 <script src="js/devices/beacon.js?v=4"></script>
-<script src="js/devices/circuit.js?v=8"></script>
+<script src="js/devices/circuit.js?v=10"></script>
 <script src="js/devices/chest.js?v=11"></script>
 <script src="js/devices/steel-chest.js?v=10"></script>
-<script src="js/devices/lab.js?v=15"></script>
-<script src="js/devices/boiler.js?v=13"></script>
+<script src="js/devices/lab.js?v=16"></script>
+<script src="js/devices/boiler.js?v=14"></script>
 <script src="js/devices/steam-engine.js?v=8"></script>
 <script src="js/devices/pump.js?v=10"></script>
 <script src="js/devices/pipe.js?v=8"></script>
 <script src="js/devices/pipe-ground.js?v=8"></script>
 <script src="js/devices/pump-device.js?v=10"></script>
-<script src="js/devices/storage-tank.js?v=8"></script>
+<script src="js/devices/storage-tank.js?v=9"></script>
 <script src="js/devices/creative.js?v=9"></script>
-<script src="js/devices/refinery.js?v=17"></script>
-<script src="js/devices/chemical-plant.js?v=17"></script>
-<script src="js/devices/nuclear.js?v=7"></script>
+<script src="js/devices/refinery.js?v=18"></script>
+<script src="js/devices/chemical-plant.js?v=18"></script>
+<script src="js/devices/nuclear.js?v=8"></script>
 <script src="js/devices/passive-power.js?v=1"></script>
-<script src="js/devices/military.js?v=16"></script>
+<script src="js/devices/military.js?v=18"></script>
 <script src="js/devices/gate.js?v=1"></script>
-<script src="js/devices/combat2.js?v=33"></script>
-<script src="js/devices/pollution.js?v=3"></script>
+<script src="js/devices/combat2.js?v=36"></script>
+<script src="js/devices/pollution.js?v=5"></script>
 <script src="js/devices/weather.js?v=1"></script>
 <script src="js/devices/maptags.js?v=1"></script>
 <script src="js/devices/equipment.js?v=5"></script>
-<script src="js/devices/rocket.js?v=6"></script>
-<script src="js/devices/defense.js?v=6"></script>
-<script src="js/devices/logistics.js?v=9"></script>
+<script src="js/devices/rocket.js?v=10"></script>
+<script src="js/devices/defense.js?v=7"></script>
+<script src="js/devices/logistics.js?v=12"></script>
 <script src="js/devices/fishing.js?v=1"></script>
 <script src="js/devices/construction.js?v=6"></script>
-<script src="js/devices/railway.js?v=17"></script>
+<script src="js/devices/railway.js?v=21"></script>
 <script src="js/devices/vehicle.js?v=20"></script>
 <script src="js/devices/power-renewable.js?v=11"></script>
 <script src="js/devices/power-switch.js?v=2"></script>
 <script src="js/devices/substation.js?v=1"></script>
 <script src="js/devices/speaker.js?v=1"></script>
 <script src="js/core/power.js?v=10"></script>
-<script src="js/player.js?v=29"></script>
-<script src="js/ui.js?v=47"></script>
-<script src="js/menu.js?v=4"></script>
-<script src="js/render.js?v=40"></script>
-<script src="js/stats.js?v=14"></script>
+<script src="js/devices/achievements.js?v=1"></script>
+<script src="js/player.js?v=30"></script>
+<script src="js/ui.js?v=50"></script>
+<script src="js/menu.js?v=7"></script>
+<script src="js/render.js?v=43"></script>
+<script src="js/stats.js?v=15"></script>
 <script src="js/saves.js?v=3"></script>
-<script src="js/sfx.js?v=11"></script>
+<script src="js/sfx.js?v=13"></script>
 <script src="js/touch.js?v=6"></script>
-<script src="js/main.js?v=57"></script>
+<script src="js/main.js?v=62"></script>
 </body>
 </html>

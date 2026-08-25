@@ -82,6 +82,8 @@ class Lab extends Entity {
       G.techDone[tech] = true;
       toast('研究完成：' + TECHS[tech].name);
       if (typeof playSfx === 'function') playSfx('research');
+      // 成就：研究完成计数（对齐《异星工厂》科研成就）
+      if (typeof achEnsureStats === 'function') { achEnsureStats(); G.achStats.researched++; checkAchievements(); }
       // 顺延到研究队列下一项（若队列还有则继续）
       if (typeof advanceTechQueue === 'function') advanceTechQueue();
       else G.activeTech = null;
@@ -107,6 +109,8 @@ class Lab extends Entity {
         G.techDone[tech] = true;
         toast('研究完成：' + TECHS[tech].name);
         if (typeof playSfx === 'function') playSfx('research');
+        // 成就：研究完成计数（对齐《异星工厂》科研成就）
+        if (typeof achEnsureStats === 'function') { achEnsureStats(); G.achStats.researched++; checkAchievements(); }
         // 顺延到研究队列下一项（若队列还有则继续）
         if (typeof advanceTechQueue === 'function') advanceTechQueue();
         else G.activeTech = null;

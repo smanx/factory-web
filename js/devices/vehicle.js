@@ -105,7 +105,9 @@ class Car extends Entity {
     return rows;
   }
   // 行驶时烧燃料：优先烧固体燃料（更耐用），其次烧煤
+  // 受「燃料效率」无限科技影响：乘 fuelConsumptionMult()（<1）让每单位燃料更耐用
   burnFuel(n) {
+    n *= fuelConsumptionMult();
     if (this.fuelNuclear > 0) this.fuelNuclear = Math.max(0, this.fuelNuclear - n);
     else if (this.fuelRocket > 0) this.fuelRocket = Math.max(0, this.fuelRocket - n);
     else if (this.fuelSolid > 0) this.fuelSolid = Math.max(0, this.fuelSolid - n);

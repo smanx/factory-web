@@ -180,6 +180,7 @@ function consumeOre(tx, ty) {
 
 function isWater(tx, ty) { return getTerrain(tx, ty) === T_WATER; }
 function isCliff(tx, ty) { return getTerrain(tx, ty) === T_CLIFF; }
+function isTree(tx, ty) { return getTerrain(tx, ty) === T_TREE; }
 
 // 平滑插值
 function lerp(a, b, t) { return a + (b - a) * t; }
@@ -231,9 +232,7 @@ function isLake(tx, ty) {
 }
 
 function pickOreType(rng, dist) {
-  const roll = rng();
-  // 方解石较稀有，全图少量分布
-  if (roll < 0.05) return ORES.indexOf('calcite');
+  // 方解石为《太空时代》DLC 内容，不在地图生成中
   const r2 = rng();
   if (dist > 70) {
     if (r2 < 0.34) return ORES.indexOf('iron-ore');
@@ -248,6 +247,23 @@ function pickOreType(rng, dist) {
 }
 
 function growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, size, amt, ti) {
+  // 若起点不在可放置的草地上（如落在树/水/已占用格），向四周搜索最近的可行格；
+  // 找不到则放弃本矿床，避免生成 1 格残矿（占地面积过小，放不下采矿机）。
+  if (terrain[sy * CHUNK + sx] !== T_GRASS || oreType[sy * CHUNK + sx] !== -1) {
+    let found = false;
+    for (let r = 1; r <= 6 && !found; r++) {
+      for (let dy = -r; dy <= r && !found; dy++) {
+        for (let dx = -r; dx <= r && !found; dx++) {
+          if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+          const x = sx + dx, y = sy + dy;
+          if (x < 1 || y < 1 || x >= CHUNK - 1 || y >= CHUNK - 1) continue;
+          const idx = y * CHUNK + x;
+          if (terrain[idx] === T_GRASS && oreType[idx] === -1) { sx = x; sy = y; found = true; }
+        }
+      }
+    }
+    if (!found) return 0;
+  }
   const queue = [[sx, sy]];
   const seen = new Set([sx + ',' + sy]);
   let placed = 0, guard = 0;
@@ -269,6 +285,7 @@ function growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, size, amt, ti) {
       }
     }
   }
+  return placed;
 }
 
 // 原油矿床：与普通矿石（连续聚团）不同，油点需要“隔几格一个”，
@@ -341,15 +358,6 @@ function genChunk(cx, cy) {
     }
   }
 
-  // 峭壁（对齐《异星工厂》Cliff）：低频噪声生成蜿蜒山脊，阻挡通行与建造，可用峭壁炸药清除
-  for (let ly = 0; ly < CHUNK; ly++) {
-    for (let lx = 0; lx < CHUNK; lx++) {
-      const idx = ly * CHUNK + lx;
-      if (terrain[idx] !== T_GRASS) continue;
-      if (isCliffTile(ox + lx, oy + ly)) terrain[idx] = T_CLIFF;
-    }
-  }
-
   const cxn = cx * CHUNK + CHUNK / 2, cyn = cy * CHUNK + CHUNK / 2;
   const dist = Math.hypot(cxn, cyn);
   // 地图大小限制（对齐《异星工厂》地图大小）：超出可探索范围的地块视为边界（不可生成）
@@ -359,21 +367,50 @@ function genChunk(cx, cy) {
   const fq = (typeof frequencyMult === 'function') ? frequencyMult() : 1;
   const sz = (typeof sizeMult === 'function') ? sizeMult() : 1;
   const ri = (typeof richnessMult === 'function') ? richnessMult() : 1;
-  // 矿物数量在上次基础上放大一倍（更密集的矿脉分布）
-  const count = Math.max(1, Math.round(((2 + Math.floor(rng() * 2)) * 2 + (dist > 60 && rng() < 0.6 ? 2 : 0)) * fq));
+  // 矿床数量：资源频率在当前基础上再降至 1/5（更稀疏散布）。
+  // 原为每区块约 1 个矿床，现改为平均约每 5 个区块才有 1 个矿床（保留越远越多趋势）。
+  const freqProb = 0.2 * fq * (1 + Math.min(0.5, dist / 200));
+  const count = rng() < freqProb ? 1 : 0;
+  // 记录已放置的矿床中心与近似半径，用于保证矿床之间留有足够间隔
+  const placed = [];
 
   for (let n = 0; n < count; n++) {
     const ti = pickOreType(rng, dist);
-    // 单个矿物体积面积放大一倍（更大的矿团）
-    const size = Math.max(5, Math.round((20 + rng() * 20) * Math.min(2.6, scale) * sz));
+    // 单个矿床面积提高到原来的 5 倍（更大的矿团，占地足够放下多台采矿机）
+    const size = Math.max(12, Math.round((40 + rng() * 40) * Math.min(2.2, scale) * sz * 5));
+    // 由面积估算矿床近似半径（圆形面积 ≈ πr²）
+    const rad = Math.max(4, Math.sqrt(size / Math.PI) * 1.1);
     const amt = (500 + rng() * 900) * scale * ri;
-    const sx = 1 + Math.floor(rng() * (CHUNK - 2));
-    const sy = 1 + Math.floor(rng() * (CHUNK - 2));
-    growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, size, amt, ti);
+    // 找一个离已有矿床足够远的位置，确保矿床之间间隔较远；
+    // 若因地形（树/水）导致矿团过小，则换位置重试，保证每个矿床占地足够大。
+    const minPlaced = Math.max(15, Math.floor(size * 0.4));
+    const snapshot = new Int8Array(oreType); // 用于回滚过小的失败尝试
+    let placedCnt = 0, sx = -1, sy = -1;
+    for (let attempt = 0; attempt < 12; attempt++) {
+      sx = -1; sy = -1;
+      for (let it = 0; it < 40 && sx < 0; it++) {
+        const tx = 1 + Math.floor(rng() * (CHUNK - 2));
+        const ty = 1 + Math.floor(rng() * (CHUNK - 2));
+        let ok = true;
+        for (let p = 0; p < placed.length; p++) {
+          if (Math.hypot(placed[p].x - tx, placed[p].y - ty) < placed[p].rad + rad + 2) {
+            ok = false; break;
+          }
+        }
+        if (ok) { sx = tx; sy = ty; }
+      }
+      if (sx < 0) { sx = 1 + Math.floor(rng() * (CHUNK - 2)); sy = 1 + Math.floor(rng() * (CHUNK - 2)); }
+      placedCnt = growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, size, amt, ti);
+      if (placedCnt >= minPlaced) break;
+      // 过小则回滚本次尝试，换位置重来，避免留下 1 格残矿
+      oreType.set(snapshot);
+      placedCnt = 0;
+    }
+    if (placedCnt > 0) placed.push({ x: sx, y: sy, rad });
   }
 
-  // 原油矿床：越远越常见，储量更高
-  const oilChance = dist > 40 ? 0.55 : dist > 15 ? 0.28 : 0.06;
+  // 原油矿床：离角色稍远才生成（出生点周围只有石/铁/煤/铜矿），越远越常见、储量越高
+  const oilChance = dist > 60 ? 0.55 : dist > 25 ? 0.15 : 0;
   if (rng() < oilChance) {
     const sx = 2 + Math.floor(rng() * (CHUNK - 4));
     const sy = 2 + Math.floor(rng() * (CHUNK - 4));
@@ -381,12 +418,12 @@ function genChunk(cx, cy) {
     growOilField(terrain, oreType, oreAmt, rng, sx, sy, 4 + Math.floor(rng() * 5), (1500 + rng() * 2500) * ri, 3);
   }
 
-  // 铀矿：距离较远处才生成（核能后期），越远越多，矿团适中
-  const uChance = dist > 120 ? 0.4 : dist > 60 ? 0.18 : 0.04;
+  // 铀矿：距离较远才生成（核能后期，且离角色比原油更远），越远越多，矿团适中
+  const uChance = dist > 120 ? 0.4 : dist > 80 ? 0.15 : 0;
   if (rng() < uChance) {
     const sx = 2 + Math.floor(rng() * (CHUNK - 4));
     const sy = 2 + Math.floor(rng() * (CHUNK - 4));
-    const usz = Math.max(4, Math.round((10 + rng() * 12) * Math.min(2.2, scale) * sz));
+    const usz = Math.max(8, Math.round((18 + rng() * 20) * Math.min(2.2, scale) * sz));
     const uamt = (400 + rng() * 700) * scale * ri;
     growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, usz, uamt, ORE_URANIUM);
   }
@@ -401,13 +438,19 @@ function genChunk(cx, cy) {
         break;
       }
     }
-    // 出生点附近保证一小片原油，方便早期接触石油链
-    for (let attempt = 0; attempt < 8; attempt++) {
-      const sx = 3 + Math.floor(rng() * (CHUNK - 6)), sy = 3 + Math.floor(rng() * (CHUNK - 6));
-      const si = sy * CHUNK + sx;
-      if (terrain[si] === T_GRASS && oreType[si] < 0 && Math.hypot(sx - 6, sy - 6) > 4) {
-        growOilField(terrain, oreType, oreAmt, rng, sx, sy, 4, 2000, 3);
-        break;
+  }
+
+  // 峭壁（对齐《异星工厂》Cliff）：低频噪声生成蜿蜒山脊，阻挡通行与建造，可用峭壁炸药清除。
+  // 受地图设置「峭壁」开关控制：关闭时整个世界不生成峭壁。
+  // 放在矿床生成之后：跳过已生成矿石的格子，避免在矿床中间出现悬崖峭壁割裂矿脉。
+  const cliffEnabled = (typeof cliffOn === 'function') ? cliffOn() : true;
+  if (cliffEnabled) {
+    for (let ly = 0; ly < CHUNK; ly++) {
+      for (let lx = 0; lx < CHUNK; lx++) {
+        const idx = ly * CHUNK + lx;
+        if (terrain[idx] !== T_GRASS) continue;
+        if (oreType[idx] >= 0) continue;   // 不覆盖矿石/原油/铀矿，保证矿床中间无峭壁
+        if (isCliffTile(ox + lx, oy + ly)) terrain[idx] = T_CLIFF;
       }
     }
   }

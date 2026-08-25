@@ -13,7 +13,7 @@ const COAL_ENERGY = 12;
 const SOLID_FUEL_ENERGY = 50;   // 固体燃料能量密度（对齐《异星工厂》：约 4 倍于煤），可作煤的替代燃料
 const ROCKET_FUEL_ENERGY = 500; // 火箭燃料能量密度（对齐《异星工厂》：约 10 倍于固体燃料、约 40 倍于煤），可燃烧燃料
 const NUCLEAR_FUEL_ENERGY = 2500; // 核燃料能量密度（对齐《异星工厂》：核燃料约 1.21GJ，约为火箭燃料 225MJ 的 5 倍多），可作载具/车头/锅炉等燃烧器的最高级燃料
-const SELF_FUEL_MAX = 10;
+const SELF_FUEL_MAX = 4;   // 热能采矿机燃料槽容量（对齐《异星工厂》：burner mining drill 16MJ/4MJ=4 个煤）
 const UNDERGROUND_MAX = 6;
 const FAST_UNDERGROUND_MAX = 14;
 const EXPRESS_UNDERGROUND_MAX = 20;
@@ -70,7 +70,7 @@ const ENGINE_STEAM_RATE = 0.6;   // 蒸汽机满功率耗汽（单位/秒）：1
 const ENGINE_STEAM_CAP = 10;     // 蒸汽机内部储汽上限
 
 const FLUIDS = ['water', 'steam', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas', 'lubricant', 'sulfuric-acid'];
-// 矿石索引：iron/copper/coal/stone/calcite = 0-4；原油 = 5（不进手挖矿表）；铀矿 = 6。
+// 矿石索引：iron/copper/coal/stone = 0-3；原油 = 5（不进手挖矿表）；铀矿 = 6。
 // ⚠️ 版本迁移：早期版本原油索引为 5，本次新增铀矿后改为 6，读档时对旧档做 5→6 重映射。
 const ORE_OIL = 5;                       // 原油矿床的 oreType 索引（不进手挖矿表）
 const ORE_URANIUM = 6;                   // 铀矿床的 oreType 索引
@@ -249,16 +249,16 @@ const ITEMS = {
   'laser-turret':    { name: '激光炮塔', color: '#d04a5a', desc: '吃电力自动发射激光，无需弹药，射程更远（2×2）' },
   'flamethrower-turret': { name: '火焰炮塔', color: '#d07a2a', desc: '喷射火焰造成持续灼烧伤害，消耗轻油，范围杀伤（2×2）。对齐《异星工厂》Flamethrower turret：以轻油为燃料' },
   // ===== 模块系统（速度/产能/效率各 1-3 级，对齐《异星工厂》Module tiers） =====
-  'speed-module':    { name: '速度模块', color: '#4aa0d0', desc: '装入组装机/电炉/炼油厂等，提高生产速度（+40%），增加耗电' },
-  'speed-module-2':  { name: '速度模块 II', color: '#3a80b0', desc: '二级速度模块：提高生产速度（+80%），增加耗电。需模块工程 II' },
-  'speed-module-3':  { name: '速度模块 III', color: '#2a60a0', desc: '三级速度模块：大幅提高生产速度（+120%），增加耗电。需模块工程 III' },
-  'productivity-module': { name: '产能模块', color: '#57b95c', desc: '装入组装机/电炉等，生产时累积额外产出（每 30 个 +1 免费产出），降低速度并增加耗电' },
-  'productivity-module-2': { name: '产能模块 II', color: '#3a9a4a', desc: '二级产能模块：累积额外产出效率更高（每 20 个 +1 免费产出），降低速度并增加耗电。需模块工程 II' },
-  'productivity-module-3': { name: '产能模块 III', color: '#2a8a3a', desc: '三级产能模块：累积额外产出效率最高（每 15 个 +1 免费产出），降低速度并增加耗电。需模块工程 III' },
+  'speed-module':    { name: '速度模块', color: '#4aa0d0', desc: '装入组装机/电炉/炼油厂等，提高生产速度（+40%），增加耗电与污染排放（对齐《异星工厂》速度模块副作用）' },
+  'speed-module-2':  { name: '速度模块 II', color: '#3a80b0', desc: '二级速度模块：提高生产速度（+80%），增加耗电与污染排放。需模块工程 II' },
+  'speed-module-3':  { name: '速度模块 III', color: '#2a60a0', desc: '三级速度模块：大幅提高生产速度（+120%），增加耗电与污染排放。需模块工程 III' },
+  'productivity-module': { name: '产能模块', color: '#57b95c', desc: '装入组装机/电炉等，生产时累积额外产出（每 30 个 +1 免费产出），降低速度并增加耗电与污染排放' },
+  'productivity-module-2': { name: '产能模块 II', color: '#3a9a4a', desc: '二级产能模块：累积额外产出效率更高（每 20 个 +1 免费产出），降低速度并增加耗电与污染排放。需模块工程 II' },
+  'productivity-module-3': { name: '产能模块 III', color: '#2a8a3a', desc: '三级产能模块：累积额外产出效率最高（每 15 个 +1 免费产出），降低速度并增加耗电与污染排放。需模块工程 III' },
   'beacon':        { name: '信号塔', color: '#5a7a9a', desc: '模块中继塔（3×3，吃电力）：内装 2 个模块，向 9×9 范围内的生产建筑广播模块加成，效果约为信号塔内模块的 ' + '50%' + '。一座信号塔可服务多台生产设备' },
-  'efficiency-module': { name: '效率模块', color: '#8a7ae8', desc: '装入组装机/电炉等，大幅降低生产耗电（每级 -30% 用电，小幅度降速），节能环保' },
-  'efficiency-module-2': { name: '效率模块 II', color: '#6a5ac8', desc: '二级效率模块：更强降低生产耗电（-45% 用电），小幅度降速。需模块工程 II' },
-  'efficiency-module-3': { name: '效率模块 III', color: '#4a3aa8', desc: '三级效率模块：极强降低生产耗电（-60% 用电），小幅度降速。需模块工程 III' },
+  'efficiency-module': { name: '效率模块', color: '#8a7ae8', desc: '装入组装机/电炉等，大幅降低生产耗电（每级 -30% 用电）并减少污染排放（每级约 -30% 污染，对齐《异星工厂》效率模块环保），小幅度降速' },
+  'efficiency-module-2': { name: '效率模块 II', color: '#6a5ac8', desc: '二级效率模块：更强降低生产耗电（-45% 用电）并大幅减少污染排放（约 -45% 污染）。需模块工程 II' },
+  'efficiency-module-3': { name: '效率模块 III', color: '#4a3aa8', desc: '三级效率模块：极强降低生产耗电（-60% 用电）并极大幅减少污染排放（约 -60% 污染）。需模块工程 III' },
   // ===== 火箭发射（终局）=====
   'advanced-circuit':{ name: '高级电路板', color: '#d0608a', desc: '红板，中后期高级电子元件，用于产能模块与电引擎' },
   'engine-unit':     { name: '引擎单元', color: '#8a6a4a', desc: '基础机械动力单元' },
@@ -270,7 +270,7 @@ const ITEMS = {
   'rocket-part':     { name: '火箭部件', color: '#a8b0c0', mark: '◈', desc: '火箭发射井逐件组装的中间部件（对齐《异星工厂》Rocket part），集齐后拼装出完整火箭；装产能模块可免费累积额外部件' },
   'rocket':          { name: '火箭', color: '#c0c8d0', mark: '🚀', desc: '由火箭发射井集齐火箭部件组装而成的完整火箭本体，放入卫星后可发射' },
   'satellite':       { name: '卫星', color: '#c0c8d0', desc: '放入火箭发射井发射，赢得游戏' },
-  'rocket-silo':     { name: '火箭发射井', color: '#7a6a5a', desc: '组装并发射火箭的终局建筑（5×5），放入卫星并填充火箭部件后发射' },
+  'rocket-silo':     { name: '火箭发射井', color: '#7a6a5a', desc: '组装并发射火箭的终局建筑（5×5），放入卫星并填充火箭部件后发射。可接入电路网络输出井内火箭/卫星/部件就绪状态信号（对齐《异星工厂》火箭发射井电路信号）' },
   'radar':           { name: '雷达', color: '#5a8a8a', desc: '周期性扫描周围区域，点亮小地图/标记新探索区（3×3，吃电力）' },
   'explosive':       { name: '爆炸物', color: '#d05a2a', desc: '由煤和石油气制造的高能化合物，用于火箭弹' },
   'cliff-explosives': { name: '峭壁炸药', color: '#8a7a5a', desc: '选中后点击峭壁即可将其炸毁清除，开辟地形通途（对齐《异星工厂》Cliff explosives）' },
@@ -285,15 +285,15 @@ const ITEMS = {
   'destroyer-capsule': { name: '破坏机器人胶囊', color: '#d05a5a', desc: '投掷后释放破坏机器人：主动冲向并摧毁敌人，伤害更高（高级战斗解锁）' },
   // ===== 载具（对齐《异星工厂》Car）=====
   'car':               { name: '装甲车', color: '#8a6a3a', desc: '可驾驶的载具：靠近后按 E 进入驾驶（WASD 更快移动），消耗煤作燃料，E 下车。驾驶时按空格可发射车载机枪（消耗背包弹药），实现边驾驶边战斗（对齐《异星工厂》Car）。自带 ' + VEHICLE_GRIDS.car + '×' + VEHICLE_GRIDS.car + ' 载具装备网格与储物箱，可安装外骨骼等装备件' },
-  'tank':              { name: '坦克', color: '#4a6a3a', desc: '重型战斗载具：装甲更厚、速度较慢，可发射炮弹造成范围伤害。需高级战斗科技。自带 ' + VEHICLE_GRIDS.tank + '×' + VEHICLE_GRIDS.tank + ' 载具装备网格与储物箱' },
+  'tank':              { name: '坦克', color: '#4a6a3a', desc: '重型战斗载具：装甲更厚、速度较慢，可发射炮弹造成范围伤害。需军事科技 III。自带 ' + VEHICLE_GRIDS.tank + '×' + VEHICLE_GRIDS.tank + ' 载具装备网格与储物箱' },
   'cannon-shell':      { name: '炮弹', color: '#8a5a2a', desc: '坦克主炮的弹药，命中后造成范围爆炸伤害' },
   'explosive-cannon-shell': { name: '爆炸炮弹', color: '#d05a2a', desc: '装填高能爆炸物的重型炮弹：命中后造成更大范围、更高伤害的爆炸，供坦克主炮使用（对齐《异星工厂》Explosive cannon shell）' },
   'explosive-uranium-cannon-shell': { name: '铀爆炸炮弹', color: '#9ae07a', desc: '铀-238 制成的终极重型炮弹：兼具铀的穿透杀伤与爆炸的范围杀伤，是坦克最强弹药（对齐《异星工厂》Explosive uranium cannon shell）' },
   // ===== 护甲（对齐《异星工厂》Armor）=====
   'light-armor':       { name: '轻型护甲', color: '#8a8a72', desc: '基础护甲：减少 20% 所受伤害。穿在身上防御敌人' },
-  'heavy-armor':       { name: '重型护甲', color: '#6a6a5a', desc: '高级护甲：减少 45% 所受伤害。需高级战斗科技' },
+  'heavy-armor':       { name: '重型护甲', color: '#6a6a5a', desc: '高级护甲：减少 45% 所受伤害。需军事科技 III' },
   // ===== 终局载具与防御（对齐《异星工厂》Spidertron / Artillery / Landmine）=====
-  'spidertron':        { name: '蜘蛛机器人', color: '#7a6ad0', desc: '终极战斗载具：六足步行机，速度快、可发射导弹并配备车载自动炮塔，无视地形（跨越水/墙）（3×3）' },
+  'spidertron':        { name: '蜘蛛机器人', color: '#7a6ad0', desc: '终极战斗载具：六足步行机，速度快、可发射导弹并配备车载自动炮塔，无视地形（跨越水/墙）（3×3）。需军事科技 IV' },
   'spidertron-remote': { name: '蜘蛛遥控器', color: '#a08ae0', mark: '⌖', desc: '远程遥控蜘蛛机器人的手持设备：选中后点击地图任意位置，命令蜘蛛机器人自主移动到目标点并沿途自动开火（对齐《异星工厂》Spidertron remote）' },
   'land-mine':         { name: '地雷', color: '#8a7a5a', desc: '铺设在地面，敌人踏入时爆炸造成范围伤害。一次性消耗（1×1）' },
   'artillery-turret':  { name: '炮兵连', color: '#7a5a4a', desc: '超远程炮台：消耗炮弹轰击超远距离的敌人，是晚期基地防御的利器（4×4）' },
@@ -314,7 +314,7 @@ const ITEMS = {
   'sulfur':            { name: '硫磺', color: '#d8d020', mark: 'S', desc: '黄色粉末，由石油气+水在化工厂制得，是制造硫酸的原料' },
   'sulfuric-acid':     { name: '硫酸', color: '#c8c030', mark: 'H₂SO₄', desc: '强腐蚀性流体，由硫磺+水+铁板在化工厂制得，用于制造电池、激光炮塔与火箭卫星等高级装备' },
   // ===== 物流机器人网络 =====
-  'roboport':          { name: '机器人港', color: '#3a8a8a', desc: '物流机器人的基地与充电站（4×4，吃电力）。把物流机器人放入机器人港后自动调度，机器人往返供应箱与需求箱搬运货物，电量低时回到机器人港充电' },
+  'roboport':          { name: '机器人港', color: '#3a8a8a', desc: '物流机器人的基地与充电站（4×4，吃电力）。把物流机器人放入机器人港后自动调度，机器人往返供应箱与需求箱搬运货物，电量低时回到机器人港充电。可接入电路网络输出整个物流网络各物品库存总量信号（对齐《异星工厂》机器人港电路信号）' },
   'logistic-robot':    { name: '物流机器人', color: '#4aa0d0', desc: '飞行机器人，放入机器人港后自动在供应箱/需求箱之间搬运物资，消耗电量，需回港充电' },
   'construction-robot':{ name: '施工机器人', color: '#d0a04a', desc: '飞行机器人，装备个人机器人港后，可自动按蓝图/红图施工：建造蓝图中的建筑、拆除标记的建筑，消耗背包物资' },
   'personal-roboport':{ name: '个人机器人港', color: '#7a9a4a', desc: '个人装备：装备后提供施工机器人工作范围（12 格、最多 4 台在场），蓝图粘贴自动由施工机器人建造（需背包中拥有施工机器人）' },
@@ -415,7 +415,7 @@ function fluidFromBarrelItem(item) {
   return null;
 }
 
-const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone', 'calcite'];  // 0-4；原油/铀矿用特殊索引（见 ORE_OIL/ORE_URANIUM）
+const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone'];  // 0-3；原油/铀矿用特殊索引（见 ORE_OIL/ORE_URANIUM）
 
 const SMELTS = [
   { id: 'iron-plate',   inp: 'iron-ore',   time: 3.2 },
@@ -746,6 +746,28 @@ function recipeDevice(id) {
 }
 function recipeDeviceName(id) { return DEVICE_NAMES[recipeDevice(id)] || ''; }
 
+// 返回物品作为产物时对应的合成配方描述（用于 tooltip 展示），无配方返回 null。
+function itemRecipeText(id) {
+  let rec = RECIPES[id];
+  let found = !!(rec && rec.inp);
+  if (!found) {
+    const candidates = [REFINERY_RECIPES, CENTRIFUGE_RECIPES];
+    for (const table of candidates) {
+      for (const key in table) {
+        const r = table[key];
+        if (r && r.out && r.out[id] !== undefined) { rec = r; found = true; break; }
+      }
+      if (found) break;
+    }
+  }
+  if (!found || !rec || !rec.inp) return null;
+  if (Object.keys(rec.inp).some(k => FLUIDS.indexOf(k) >= 0)) return null;
+  const inpParts = Object.keys(rec.inp).map(k => (ITEMS[k] ? ITEMS[k].name : k) + "×" + rec.inp[k]);
+  const outParts = Object.keys(rec.out).map(k => (ITEMS[k] ? ITEMS[k].name : k) + (rec.out[k] > 1 ? "×" + rec.out[k] : ""));
+  const dev = recipeDeviceName(id) || "组装机";
+  return "配方（" + dev + "）：" + inpParts.join(" + ") + " → " + outParts.join(" + ");
+}
+
 const BUILD_DEFS = {
   'transport-belt':     { w: 1, h: 1, solid: false },
   'fast-transport-belt': { w: 1, h: 1, solid: false },
@@ -880,15 +902,15 @@ function buildingMaxHp(type) { return BUILDING_HP[type] || 100; }
 // ===== 科技解锁要求（建造/武器/模块）=====
 // 物品 -> 所需已完成科技 id。缺少科技时建造/使用会被拦截并提示。
 const TECH_REQ = {
-  'tank': 'advanced-combat',
-  'cannon-shell': 'advanced-combat',
-  'heavy-armor': 'advanced-combat',
-  'spidertron': 'advanced-combat',
-  'spidertron-remote': 'advanced-combat',   // 蜘蛛遥控器需高级战斗科技
+  'tank': 'military3',
+  'cannon-shell': 'military3',
+  'heavy-armor': 'military3',
+  'spidertron': 'military4',
+  'spidertron-remote': 'military4',   // 蜘蛛遥控器需军事科技 IV
   'land-mine': 'land-mine',
-  'artillery-turret': 'advanced-combat',
-  'artillery-shell': 'advanced-combat',
-  'artillery-wagon': 'advanced-combat',
+  'artillery-turret': 'military4',
+  'artillery-shell': 'military4',
+  'artillery-wagon': 'military4',
   'laser-turret': 'laser-turrets',
   'flamethrower-turret': 'flamethrower',
   'rocket-launcher': 'military2',
@@ -1054,6 +1076,13 @@ function moduleCounts(modules) {
   }
   return { speed, prod, eff };
 }
+// 模块污染影响标签（对齐《异星工厂》：速度/产能模块增污、效率模块减污）。
+// 供模块面板展示；与 pollution.js 的 modulePollutionMult 使用相同系数保持口径一致。
+function modulePollutionLabel(speed, prod, eff) {
+  const delta = speed * 0.5 + prod * 0.6 - eff * 0.3;
+  if (delta > 0) return '+' + delta.toFixed(1);
+  return delta.toFixed(1);
+}
 // 产能模块累计产出阈值：根据模块等级取最低阈值（更高等级阈值更小 → 产出更快）
 function moduleProdThreshold(modules) {
   let minT = 30;
@@ -1070,7 +1099,7 @@ function modulePanelSection(e) {
   const slot = (typeof e.moduleSlotCount === 'function') ? e.moduleSlotCount() : 4;
   const mc = moduleCounts(e.modules);
   const hasMod = Object.keys(e.modules).length > 0;
-  let h = row('模块', hasMod ? '速度+' + mc.speed.toFixed(1) + ' 产能+' + mc.prod.toFixed(1) + ' 效率-' + mc.eff.toFixed(1) : '<span class="dim">无</span>', 'mod');
+  let h = row('模块', hasMod ? '速度+' + mc.speed.toFixed(1) + ' 产能+' + mc.prod.toFixed(1) + ' 效率-' + mc.eff.toFixed(1) + ' 污染' + modulePollutionLabel(mc.speed, mc.prod, mc.eff) : '<span class="dim">无</span>', 'mod');
   for (const mid of Object.keys(e.modules)) if ((e.modules[mid] || 0) > 0) h += '<span class="dim">' + ITEMS[mid].name + ' x' + e.modules[mid] + '</span> ';
   const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3'];
   for (const mid of order) {
@@ -1201,7 +1230,9 @@ const TECHS = {
   military:   { name: '军事工程', cost: { 'military-science': 30 }, desc: '解锁机枪炮塔、石墙、弹药（防御体系）', req: [] },
   weapons:    { name: '单兵武器', cost: { 'military-science': 20 }, desc: '解锁手枪、冲锋枪、散弹枪（F 键或空格攻击）', req: ['military'] },
   military2:  { name: '军事科技 II', cost: { 'military-science': 30 }, desc: '解锁战斗散弹枪、火箭筒与穿甲散弹枪弹，强化单兵火力（对齐《异星工厂》Military 2）', req: ['weapons'] },
-  'advanced-combat': { name: '高级战斗', cost: { 'military-science': 40, 'blue-science': 30 }, desc: '解锁坦克、重型护甲、蜘蛛机器人、炮兵连与战斗机器人胶囊，以及更强的远程敌人', req: ['military2', 'electronics'] },
+  military3:  { name: '军事科技 III', cost: { 'military-science': 40, 'blue-science': 30 }, desc: '解锁坦克、炮弹与重型护甲；机枪炮塔伤害 +40%（对齐《异星工厂》Military 3）', req: ['military2', 'electronics'] },
+  military4:  { name: '军事科技 IV', cost: { 'military-science': 60, 'blue-science': 40, 'production-science-pack': 30 }, desc: '解锁蜘蛛机器人、蜘蛛遥控器与炮兵系统；机枪炮塔伤害额外 +60%（对齐《异星工厂》Military 4）', req: ['military3', 'rocket-science'] },
+  'advanced-combat': { name: '高级战斗', cost: { 'military-science': 40, 'blue-science': 30 }, desc: '解锁战斗机器人胶囊、更强的远程敌人，以及激光/火焰炮塔、爆炸物、核能等高级科技的前置', req: ['military3'] },
   explosives: { name: '爆炸物科技', cost: { 'military-science': 30 }, desc: '解锁爆炸火箭弹（更高威力与更大爆炸范围）与更多爆炸类弹药', req: ['advanced-combat'] },
   'laser-turrets': { name: '激光炮塔', cost: { 'military-science': 30, 'blue-science': 30 }, desc: '解锁激光炮塔，无需弹药、靠电力自动攻击（对齐《异星工厂》Laser turret 科技）', req: ['advanced-combat', 'battery'] },
   flamethrower: { name: '火焰科技', cost: { 'military-science': 30, 'blue-science': 30 }, desc: '解锁火焰喷射器、火焰炮塔与火焰弹药，喷射燃烧火焰造成持续灼烧（对齐《异星工厂》Flamethrower 科技）', req: ['advanced-combat', 'oil'] },
@@ -1255,10 +1286,15 @@ const TECHS = {
   'shooting-speed': { name: '射击速度', cost: { 'military-science': 40, 'blue-science': 30 }, infinite: true, desc: '无限科技：每次研究提升玩家枪械（手枪/冲锋枪/散弹枪/战斗散弹枪）与机枪炮塔的射击速度，射击间隔缩短 10%（对齐《异星工厂》Shooting speed 无限科技）', req: ['advanced-combat'] },
   'artillery-shell-range': { name: '炮兵射程', cost: { 'production-science-pack': 60, 'utility-science-pack': 60, 'military-science': 40 }, infinite: true, desc: '无限科技：每次研究提升炮兵连与炮兵车厢的射程 +30%，让远程火力覆盖更远（对齐《异星工厂》Artillery shell range 无限科技）', req: ['production', 'utility', 'advanced-combat'] },
   'rail-productivity': { name: '铁路产能', cost: { 'production-science-pack': 60, 'utility-science-pack': 60 }, infinite: true, desc: '无限科技：每次研究提升货运车厢槽位容量 +2，列车单趟装载更多货物（对齐《异星工厂》Rail productivity 无限科技）', req: ['production', 'utility', 'railways'] },
+  // ==== 火车制动（对齐《异星工厂》Braking force 无限科技：强化列车制动，缩短停靠/让行等待，提升铁路吞吐）====
+  'braking-force': { name: '火车制动', cost: { 'production-science-pack': 50, 'utility-science-pack': 40 }, infinite: true, desc: '无限科技：每次研究提升列车制动能力，车站停靠与信号灯让行的等待时间缩短 15%（对齐《异星工厂》Braking force 无限科技）', req: ['production', 'utility', 'railways'] },
+  // ==== 火箭产能（对齐《异星工厂》Rocket productivity：逐级降低火箭组装部件需求）====
+  'rocket-productivity': { name: '火箭产能', cost: { 'production-science-pack': 60, 'utility-science-pack': 40 }, desc: '逐级降低火箭组装所需的火箭燃料与低密度结构数量（每级各 -1，最低保留 1），让终局火箭冲刺更轻松（对齐《异星工厂》Rocket productivity）', req: ['rocket-science', 'production'] },
   'physical-projectile-damage': { name: '投射物伤害', cost: { 'space-science-pack': 80, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升玩家枪械与子弹（手枪/冲锋枪/散弹枪/机枪炮塔/车辆机炮等投射物）伤害 +10%（对齐《异星工厂》Physical projectile damage）', req: ['space-science', 'advanced-combat'] },
   'energy-weapons-damage': { name: '能量武器伤害', cost: { 'space-science-pack': 80, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升激光炮塔与个人激光防御等能量武器伤害 +10%（对齐《异星工厂》Energy weapons damage）', req: ['space-science', 'advanced-combat'] },
   'refined-flammables': { name: '燃烧伤害', cost: { 'space-science-pack': 80, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升火焰喷射器、火焰炮塔与地面火场等燃烧伤害 +10%（对齐《异星工厂》Refined flammables）', req: ['space-science', 'advanced-combat'] },
   'stronger-explosives': { name: '爆炸伤害', cost: { 'space-science-pack': 80, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升火箭筒/炮弹/手雷/炮兵/地雷/原子弹等爆炸类伤害 +10%（对齐《异星工厂》Stronger explosives）', req: ['space-science', 'explosives'] },
+  'fuel-efficiency': { name: '燃料效率', cost: { 'space-science-pack': 80, 'utility-science-pack': 40 }, infinite: true, desc: '无限科技：每次研究降低所有燃烧设备（锅炉/熔炉/矿机/燃料机械臂/车头/载具等）的燃料消耗约 9%，让每单位燃料更耐用（对齐《异星工厂》Fuel efficiency 无限科技），核燃料棒不受影响', req: ['space-science', 'utility'] },
   infinite:   { name: '无限科技', cost: {}, infinite: true, desc: '无限研究：消耗任意科学包，永不完成', req: [] }
 };
 
@@ -1322,7 +1358,7 @@ function migrateNewTechs(techDone) {
     techDone['steel-processing'] = true;
   }
   if (techDone['oil']) techDone['fluid-handling'] = true;
-  if (techDone['advanced-combat']) techDone['combat-robotics'] = true;
+  if (techDone['advanced-combat']) { techDone['combat-robotics'] = true; techDone['military3'] = true; techDone['military4'] = true; }
   // 兼容旧档：堆叠机械臂/堆叠过滤臂此前无科技门控，组装机 III 此前开局可用；
   // 拆分后分别由「物流 III」与「自动化 III」门控，老玩家补完对应科技避免产线被锁死（对齐《异星工厂》Logistics 3 / Automation 3）。
   if (techDone['logistics2'] || techDone['express']) techDone['logistics3'] = true;
@@ -1344,7 +1380,7 @@ function migrateNewTechs(techDone) {
   return techDone;
 }
 
-const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: true, combat: false, capDPR: true, lowRes: false, virtualJoystick: false, minimap: true, sound: true, soundVol: 0.8, altMode: true };  // sound:音效开关 soundVol:音量0~1  altMode:ALT模式(建筑配方/内容叠加显示)
+const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: true, combat: false, capDPR: true, lowRes: false, virtualJoystick: false, minimap: true, sound: true, soundVol: 0.8, altMode: true, weather: false, music: true };  // sound:音效开关 soundVol:音量0~1  altMode:ALT模式(建筑配方/内容叠加显示)
 const SETTINGS_KEY = 'factory-settings-v1';
 
 function drawItemGlyph(x, id, cx, cy, s) {
@@ -1715,6 +1751,20 @@ function miningProdMult() {
   m *= Math.pow(1.1, techLevel('space-mining-productivity'));
   return m;
 }
+// 燃料效率无限科技（对齐《异星工厂》Fuel efficiency）：每级降低所有燃烧设备燃料消耗约 9%。
+// 通过把每秒燃料能量消耗乘以 fuelConsumptionMult()（<1），让每单位燃料维持更久、更耐用。
+// 不影响核燃料棒（原版燃料效率不作用于核燃料燃烧时间）。
+function fuelEfficiencyLevel() {
+  if (!techResearched('fuel-efficiency')) return 0;
+  return techLevel('fuel-efficiency');
+}
+// 燃料消耗系数（<1 表示更省燃料）。每级消耗降至 1/1.1 ≈ 0.909，即省约 9%。
+function fuelConsumptionMult() {
+  const lvl = fuelEfficiencyLevel();
+  if (!lvl) return 1;
+  return 1 / Math.pow(1.1, lvl);
+}
+
 // 武器伤害无限科技倍率（对齐《异星工厂》Weapon damage）：每级 +10%，作用于玩家武器与炮塔
 function weaponDamageMult() {
   const lvl = (G.techProg && G.techProg['weapon-damage']) || 0;
@@ -1762,4 +1812,26 @@ function shootingSpeedMult() {
 function artilleryRangeMult() {
   const lvl = (G.techProg && G.techProg['artillery-shell-range']) || 0;
   return 1 + 0.3 * lvl;
+}
+
+// 军事科技 III / IV 机枪炮塔伤害倍率（对齐《异星工厂》Military 3 / Military 4）：
+// 军事科技 III 使机枪炮塔伤害 +40%，军事科技 IV 额外 +60%（叠加）。
+function turretDamageMult() {
+  let m = 1;
+  if (G.techDone && G.techDone['military3']) m *= 1.4;
+  if (G.techDone && G.techDone['military4']) m *= 1.6;
+  return m;
+}
+// 火车制动（对齐《异星工厂》Braking force 无限科技）：每级让列车停靠/让行等待时间缩短 15%。
+function brakingForceMult() {
+  const lvl = (G.techProg && G.techProg['braking-force']) || 0;
+  return Math.pow(0.85, lvl);
+}
+// 火箭产能（对齐《异星工厂》Rocket productivity）：每级降低火箭组装部件需求。
+// 返回各部件当前所需数量（每级各 -1，最低保留 1）。lvl 为已研究等级。
+function rocketPartNeed(item, base) {
+  const lvl = (G.techProg && G.techProg['rocket-productivity']) || 0;
+  // 仅低密度结构与火箭燃料享受产能减免（对齐原版：产能作用于火箭燃料与低密度结构）
+  if (item !== 'low-density-structure' && item !== 'rocket-fuel') return base;
+  return Math.max(1, base - lvl);
 }

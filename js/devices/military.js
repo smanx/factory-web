@@ -36,13 +36,39 @@ function stoneWallTip() { return '石墙：阻挡敌人通行'; }
 const TURRET_AMMO_TYPES = ['uranium-rounds', 'piercing-rounds', 'magazine'];
 const TURRET_RANGE = 6;      // 射程（格）
 const TURRET_FIRE_RATE = 0.3; // 两次射击间隔（秒）
-class GunTurret extends Entity {
+class GunTurret extends CircuitNode {
   constructor(type, x, y) {
     super('gun-turret', x, y);
     this.ammo = {};      // { 'magazine': n, 'piercing-rounds': n, 'uranium-rounds': n }
     this.cooldown = 0;
     this.target = null;
     this.facing = 0;
+    // 电路控制（对齐《异星工厂》：炮塔接入电路网络，可按信号启停火力）
+    this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
+  }
+  // 电路启停：未启用条件时恒工作；启用后仅当附近电路信号满足条件才开火
+  circuitEnabled() {
+    if (!this.circuitCond || !this.circuitCond.enabled) return true;
+    const sig = circuitSignalNear(this);
+    return circuitCondOk(sig, this.circuitCond);
+  }
+  // 射程内存活敌人数量（作为传感器信号输出到电路网络）
+  enemiesInRange() {
+    const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
+    const enemies = G._aliveEnemies || (G.enemies || []);
+    let n = 0;
+    for (const en of enemies) {
+      if (!en || en.dead) continue;
+      const d = Math.hypot(en.x / TILE - cx, en.y / TILE - cy);
+      if (d <= TURRET_RANGE) n++;
+    }
+    return n;
+  }
+  // 输出传感器信号（对齐《异星工厂》：炮塔把射程内敌人数量以 signal-enemy 输出）
+  outputCircuitSignals() {
+    const n = this.enemiesInRange();
+    if (n <= 0) return [];
+    return [{ sig: 'signal-enemy', count: n }];
   }
   ammoCount(id) { return this.ammo[id] || 0; }
   totalAmmo() { let s = 0; for (const k in this.ammo) s += this.ammo[k]; return s; }
@@ -83,6 +109,8 @@ class GunTurret extends Entity {
   update(dt) {
     this.cooldown -= dt;
     this.target = null;
+    // 电路条件不满足时炮塔停火（不选目标、不开枪）
+    if (!this.circuitEnabled()) return;
     const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
     let best = null, bestD = Infinity;
     // 性能优化：复用主循环每帧缓存的存活敌人列表（_aliveEnemies），避免重复 dead 判断遍历全数组
@@ -110,7 +138,8 @@ class GunTurret extends Entity {
     }
     for (const k of TURRET_AMMO_TYPES) if (this.ammo[k] <= 0) delete this.ammo[k];
     // 武器伤害无限科技倍率（对齐《异星工厂》Weapon damage research）+ 分类军事无限科技（投射物）
-    dmg = Math.round(dmg * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('projectile') : 1));
+    // + 军事科技 III / IV（对齐《异星工厂》Military 3 / Military 4：机枪炮塔伤害强化）
+    dmg = Math.round(dmg * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('projectile') : 1) * (typeof turretDamageMult === 'function' ? turretDamageMult() : 1));
     best.hp -= dmg;
     // 子弹特效
     (G.bullets || (G.bullets = [])).push({
@@ -121,8 +150,8 @@ class GunTurret extends Entity {
     if (best.hp <= 0) best.dead = true;
   }
   powerDemand() { return 0; }
-  serialize() { const s = super.serialize(); s.ammo = this.ammo; return s; }
-  static restore(s) { const t = super.restore(s); t.ammo = s.ammo || {}; return t; }
+  serialize() { const s = super.serialize(); s.ammo = this.ammo; if (this.circuitCond) s.circuitCond = this.circuitCond; return s; }
+  static restore(s) { const t = super.restore(s); t.ammo = s.ammo || {}; t.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 }; return t; }
 }
 function drawGunTurret(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
@@ -168,9 +197,11 @@ function gunTurretPanelHtml(e) {
   if (e.totalAmmo() > 0) h += '<button data-action="takeout" id="btn-turret-takeout">取出全部弹药</button>';
   h += '<div class="status"></div>';
   h += '<div class="dim">机枪炮塔：自动攻击射程内（' + TURRET_RANGE + ' 格）的敌人，需装入弹药。威力：铀弹 > 穿甲弹 > 弹药匣。配合石墙构筑防御阵地（2×2）。</div>';
+  h += circuitPanelHtml(e, 'gt');
   return h;
 }
 function gunTurretPanelLive(e, api) {
+  if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) { api.status('已停火：电路条件不满足', 'warn'); return; }
   api.set('ammo', e.totalAmmo() > 0 ? countStr(e.ammo) : dimSpan('空'));
   api.toggle('#btn-turret-takeout', e.totalAmmo() > 0, '取出全部弹药 (' + e.totalAmmo() + ')');
   if (e.totalAmmo() <= 0) api.status('已暂停：无弹药（放入弹药匣/穿甲弹/铀弹）', 'warn');
@@ -236,6 +267,6 @@ DEVICE_RENDER['gun-turret'] = drawGunTurret;
 DEVICE_RENDER['stone-wall'] = drawStoneWall;
 DEVICE_STATUS['gun-turret'] = e => e.totalAmmo() > 0 ? (e.target ? 'g' : 'r') : 'r';
 DEVICE_STATUS['stone-wall'] = () => null;
-DEVICE_PANEL['gun-turret'] = { html: gunTurretPanelHtml, live: gunTurretPanelLive, tip: gunTurretTip };
+DEVICE_PANEL['gun-turret'] = { html: gunTurretPanelHtml, live: gunTurretPanelLive, tip: gunTurretTip, onAction: (a) => circuitPanelAction('gt', a) };
 DEVICE_PANEL['stone-wall'] = { html: stoneWallPanelHtml, live: stoneWallPanelLive, tip: stoneWallTip };
 DEVICE_DIR_ROTATE['gun-turret'] = true;
