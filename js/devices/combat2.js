@@ -715,6 +715,8 @@ function damagePlayer(dmg) {
   dmg = Math.max(0, dmg);
   if (dmg > 0) {
     G.playerHP -= dmg;
+    // 记录受伤时间，重置自动回血延迟计时（对齐《异星工厂》：受伤后需等待几秒才重新开始自动回血）
+    if (G.player && typeof G.player === 'object') G.player.lastHurtT = G.time;
     // 主角受击音效（真正扣血时播放；护盾完全吸收则无受击音）
     if (typeof playSfx === 'function') playSfx('hit');
     if (G.playerHP <= 0) {

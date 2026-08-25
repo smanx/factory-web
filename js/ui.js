@@ -1343,7 +1343,8 @@ function updateHUD(dt, fps) {
   let hud = fps + '   (' + tx + ',' + ty + ')';
   if (G.settings.combat) {
     const hp = Math.max(0, Math.round(G.playerHP));
-    hud += '   <span style="color:' + (hp > 50 ? '#57e389' : hp > 25 ? '#ffd23c' : '#ff5b5b') + '">♥ ' + hp + '/' + G.playerHPmax + '</span>';
+    const hpPct = G.playerHPmax > 0 ? hp / G.playerHPmax : 0;
+    hud += '   <span style="color:' + (hpPct > 0.5 ? '#57e389' : hpPct > 0.25 ? '#ffd23c' : '#ff5b5b') + '">♥ ' + hp + '/' + G.playerHPmax + '</span>';
     // 敌人进化度显示（对齐《异星工厂》Evolution factor）
     const evo = Math.round((G.evolution || 0) * 100);
     const evoColor = evo < 30 ? '#57e389' : evo < 60 ? '#ffd23c' : '#ff5b5b';

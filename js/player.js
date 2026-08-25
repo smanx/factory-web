@@ -2,6 +2,11 @@
 
 let mineToastAcc = 0;   // 手动挖矿提示去抖计数
 
+// ===== 主角自动回血（对齐《异星工厂》：受伤后延迟几秒，之后每秒回复 6 点生命）=====
+const PLAYER_REGEN_DELAY = 3;   // 受伤后延迟秒数，之后才开始自动回血
+const PLAYER_REGEN_RATE = 6;    // 每秒回复生命值
+const PLAYER_BASE_MAX_HP = 250; // 主角基础最大生命值
+
 function playerSpeed() { return 140 * ((G.dbg && G.dbg.moveSpeed) || 1) * (typeof equipmentSpeedMult === 'function' ? equipmentSpeedMult() : 1); }
 
 function makePlayer(tx, ty) {
@@ -14,7 +19,8 @@ function makePlayer(tx, ty) {
     walkT: 0,
     inVehicle: false,   // 是否在载具驾驶中
     counterT: 0,        // 自动刀具反击动画计时（>0 时渲染挥刀动作帧）
-    counterDir: 0       // 反击时面向的攻击方向（角度，弧度）
+    counterDir: 0,      // 反击时面向的攻击方向（角度，弧度）
+    lastHurtT: (typeof G !== 'undefined' && G.time) || 0  // 最近一次受伤的时间（用于自动回血延迟判断）
   };
 }
 
@@ -31,6 +37,11 @@ function boxBlocked(cx, cy, r) {
 
 function updatePlayer(dt) {
   const p = G.player;
+  // 自动回血（对齐《异星工厂》）：受伤后延迟几秒，之后每秒回复 6 点生命值，直到回满
+  if (G.playerHP < G.playerHPmax && G.time - (p.lastHurtT || 0) > PLAYER_REGEN_DELAY) {
+    G.playerHP = Math.min(G.playerHPmax, G.playerHP + PLAYER_REGEN_RATE * dt);
+    uiDirty = true;
+  }
   // 自动刀具反击动画计时递减（>0 时渲染挥刀动作帧）
   if (p.counterT > 0) p.counterT -= dt;
   // 玩家移动会点亮脚下区块（用于小地图）；限频避免每帧重算
