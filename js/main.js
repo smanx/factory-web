@@ -707,13 +707,13 @@ function deconstructAt(tx, ty) {
 
 // ===== 右键取物（对齐《异星工厂》：右键点击传送带/地下带取最前物品、点击机械臂取爪上物品） =====
 // 返回 true 表示已取到物品（此时不再执行拆除）。物品优先进背包，背包满则掉落到脚下地面。
+// 注意：传送带与地下传送带是流动的，若右键优先取物会永远取不完、且拆除永不触发，
+// 因此二者都不走“右键取物”，由调用方排除后直接整体拆除（见右键处理处）。
 function rightClickPickupAt(tx, ty) {
   const e = entAt(tx, ty);
   if (!e || !withinReach(tx, ty)) return false;
   let id = null;
   if (e instanceof Belt && typeof e.takeItem === 'function') {
-    id = e.takeItem();
-  } else if (typeof e.takeItem === 'function' && (e.type === 'underground' || e.type === 'fast-underground-belt' || e.type === 'express-underground-belt')) {
     id = e.takeItem();
   } else if (e.holding && e.holdingCount > 0) {
     // 机械臂爪上抓取的物品
@@ -1789,9 +1789,11 @@ function bindInput() {
       // 注意：传送带是流动的，若右键优先取物，移动中的传送带会不断补充导致永远取不完、
       // 且拆除永远不触发（return 提前返回）。因此传送带不参与“右键取物”，右键直接整体拆除：
       // 由 deconstructAt 一次性把带上全部物品移除并返还，再移除建筑本身（对齐《异星工厂》拆除）。
+      // 地下传送带同理：它在运行时也是流动的，若先取物则同样永远取不完、拆除永不触发，
+      // 因此也排除在“右键取物”之外，右键直接整体拆除（连同洞内/待发的全部物品一起返还）。
       if (G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
         const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
-        if (!(e instanceof Belt) && rightClickPickupAt(G.cursorTile.tx, G.cursorTile.ty)) return;
+        if (!(e instanceof Belt) && !(e instanceof Underground) && rightClickPickupAt(G.cursorTile.tx, G.cursorTile.ty)) return;
       }
       if (G.cursorTile) deconstructAt(G.cursorTile.tx, G.cursorTile.ty);
     } else if (ev.button === 1) {

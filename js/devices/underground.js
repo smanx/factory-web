@@ -31,7 +31,9 @@ class Underground extends Entity {
     // 惰性调度（P0 优化）：入口/出口都空时无需每帧扫描
     if ((!this.items || !this.items.length) && (!this.outItems || !this.outItems.length)) return;
     const iv = this.ugInterval();
-    this.cd -= dt;
+    // 累积计时器（而非倒计时）：按真实经过时间批量转移/喷射，
+    // 避免高速档（iv < 帧时长 dt）时被帧率封顶（例如极速带 60fps 下只能 60 件/秒）。
+    this.cd += dt;
     // 未配对的地下带仅作静态显示，不传送任何物品：清空缓存并直接待机
     if (!this.isPaired()) {
       if (this.items.length || this.outItems.length) {
@@ -47,19 +49,20 @@ class Underground extends Entity {
     if (mate && !this.findBackMate()) {
       // 入口：把本格收进 items 的货以及后方入口转来的 outItems 一并送往最近的前方出口，
       // 绝不向地面带外溢，保证“进洞的货只能从出口出来”。
-      if (this.cd <= 0 && mate.outItems.length < UG_CAP) {
-        if (this.items.length > 0) {
-          mate.outItems.push(this.items.shift());
-          this.cd = iv;
-        } else if (this.outItems.length > 0) {
-          mate.outItems.push(this.outItems.shift());
-          this.cd = iv;
+      if (mate.outItems.length < UG_CAP) {
+        // 累积计时批量转移：一次可能转移多件（高速档），达到与地上满带一致的真实吞吐。
+        while (this.cd >= iv && mate.outItems.length < UG_CAP) {
+          let moved = false;
+          if (this.items.length > 0) { mate.outItems.push(this.items.shift()); moved = true; }
+          else if (this.outItems.length > 0) { mate.outItems.push(this.outItems.shift()); moved = true; }
+          if (!moved) break;
+          this.cd -= iv;
         }
       }
     } else if (this.findBackMate()) {
       // 出口：后方已有配对，把收到的货投向地面（前方带/设备），不再转给更前方。
-      this.ejectT = (this.ejectT || 0) - dt;
-      if (this.outItems.length > 0 && this.ejectT <= 0) {
+      this.ejectT = (this.ejectT || 0) + dt;
+      while (this.outItems.length > 0 && this.ejectT >= iv) {
         const nx = this.x + DX[this.dir], ny = this.y + DY[this.dir];
         let sent = false;
         const t = entAt(nx, ny);
@@ -71,8 +74,8 @@ class Underground extends Entity {
         } else if (t && !(t instanceof Underground)) {
           sent = t.giveItem(this.outItems[0].item);
         }
-        if (sent) { this.outItems.shift(); this.ejectT = iv; }
-        else this.ejectT = 0.15;
+        if (sent) { this.outItems.shift(); this.ejectT -= iv; }
+        else { this.ejectT = 0; break; }  // 下游无空位：清空计时等待下一帧重试
       }
     }
   }
@@ -261,14 +264,15 @@ function undergroundPanelHtml(e) {
   else if (e.isExit()) txt = '【出口】接收后方隧道来货并向前输出（只与最近者配对，不再向更前方转送）。待发 ' + e.outItems.length;
   else txt = '【未配对】同向' + e.maxDist() + '格内没有另一座。仅作显示，不接收/不传送物品。缓存 ' + e.items.length + '/' + UG_CAP;
   return '<div class="dim">地下带' + txt + '。R 旋转方向。</div>' +
-    '<div class="dim">当前吞吐：<span data-live="speed">-</span>（件/秒，单侧车道）</div>' +
+    '<div class="dim">当前吞吐：<span data-live="speed">-</span>（件/秒，与地上满带一致）</div>' +
     '<div class="status"></div>';
 }
 function undergroundPanelLive(e, api) {
   const paired = e.isPaired();
   const n = e.items.length + e.outItems.length;
-  const mult = e.speedMult ? e.speedMult() : 1;
-  const speed = (1 / BELT_SPACING) * beltSpeed() * mult;
+  // 地下带为隧道内单队列输送，吞吐 = 1/ugInterval()。与地上双列带的总吞吐对齐：
+  // 基础带 = beltSpeed×2/BELT_SPACING = 30 件/秒（与地上满带总吞吐一致）。
+  const speed = (e.ugInterval ? 1 / e.ugInterval() : 0);
   api.set('speed', (Math.round(speed * 10) / 10) + '');
   if (!paired) api.status('仅显示：未配对（同向 ' + e.maxDist() + ' 格内无另一座地下带），不接收/不传送物品', 'warn');
   else if (e.outItems.length >= UG_CAP || e.items.length >= UG_CAP) api.status('已暂停：缓存已满，等待输出', 'warn');
