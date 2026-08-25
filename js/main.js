@@ -1797,16 +1797,7 @@ function bindInput() {
   G.canvas.addEventListener('contextmenu', ev => ev.preventDefault());
   G.canvas.addEventListener('wheel', ev => {
     ev.preventDefault();
-    // 滚轮切换快捷栏（对齐《异星工厂》：滚轮在快捷栏槽位间循环切换）；
-    // 按住 Ctrl/Shift 时仍用滚轮缩放视野（保留原缩放交互）；
-    // 打开面板/蓝图/红图/绿图时滚轮不切换快捷栏（避免误关面板）。
-    if (!ev.ctrlKey && !ev.shiftKey && !G.panelMode && !G.blueMode && !G.deconstructMode) {
-      const delta = ev.deltaY > 0 ? 1 : -1;
-      const n = HOTBAR.length || 10;
-      const cur = G.sel >= 0 && G.sel < n ? G.sel : 0;
-      selectSlot((cur + delta + n) % n);
-      return;
-    }
+    // 鼠标滚轮直接放大/缩小画面视野（默认交互，不切换快捷栏选择图标）。
     G.cam.z *= ev.deltaY < 0 ? 1.12 : 0.89;
     G.cam.z = Math.max(0.5, Math.min(2.2, G.cam.z));
   }, { passive: false });
