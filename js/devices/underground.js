@@ -61,9 +61,11 @@ class Underground extends Entity {
         const t = entAt(nx, ny);
         if (t instanceof Belt) {
           if (!(t instanceof Splitter) && t.dir === ((this.dir + 2) % 4)) sent = false;
-          else sent = t.acceptItem(this.outItems[0], this.dir);
+          // 把隧道内物品的 lane 作为 laneHint 传给下游传送带，保证左线进从右线（同一 lane）
+          // 出来，右线进的也从同一 lane 出来，不会在两条车道间混合/轮流装载（与地上传送带一致）。
+          else sent = t.acceptItem(this.outItems[0].item, this.dir, undefined, undefined, this.outItems[0].lane);
         } else if (t && !(t instanceof Underground)) {
-          sent = t.giveItem(this.outItems[0]);
+          sent = t.giveItem(this.outItems[0].item);
         }
         if (sent) { this.outItems.shift(); this.ejectT = iv; }
         else this.ejectT = 0.15;
@@ -89,57 +91,62 @@ class Underground extends Entity {
   // 是否已配对（前方或后方有同向同档地下带）。
   // 未配对的地下带仅作静态显示，不参与任何物品传输（对齐《异星工厂》）。
   isPaired() { return !!(this.findMate() || this.findBackMate()); }
-  acceptItem(item) {
+  // 与地上传送带一致的双线逻辑：接收带 laneHint 的物品，进入地下时保留其所在车道
+  // （lane 0/1），隧道内两条线路各自独立、互不混合，出口按同一 lane 送出（左进左出/右进右出）。
+  acceptItem(item, fromDir, sx, sy, laneHint) {
     if (this.items.length >= UG_CAP) return false;
     // 未配对的地下带不接收任何物品（不搭在其他传送带上、不传送，仅显示）
     if (!this.isPaired()) return false;
-    this.items.push(item);
+    const lane = (laneHint !== undefined && laneHint !== null) ? (laneHint === 1 ? 1 : 0) : 0;
+    this.items.push({ item, lane });
     return true;
   }
   // 机械臂抓取：优先取出口待发（outItems），其次取入口缓存（items）。
   // 这样机械臂既能抓地下带出口即将喷射的货，也能抓入口尚未送入地下的缓存。
   peekItem() {
-    if (this.outItems.length) return this.outItems[0];
-    if (this.items.length) return this.items[0];
+    if (this.outItems.length) return this.outItems[0].item;
+    if (this.items.length) return this.items[0].item;
     return null;
   }
   countOf(item) {
     let n = 0;
-    for (const it of this.outItems) if (it === item) n++;
-    for (const it of this.items) if (it === item) n++;
+    for (const it of this.outItems) if (it.item === item) n++;
+    for (const it of this.items) if (it.item === item) n++;
     return n;
   }
   takeItemOf(item) {
-    let i = this.outItems.indexOf(item);
-    if (i >= 0) return this.outItems.splice(i, 1)[0];
-    i = this.items.indexOf(item);
-    if (i >= 0) return this.items.splice(i, 1)[0];
+    let i = this.outItems.findIndex(o => o.item === item);
+    if (i >= 0) return this.outItems.splice(i, 1)[0].item;
+    i = this.items.findIndex(o => o.item === item);
+    if (i >= 0) return this.items.splice(i, 1)[0].item;
     return null;
   }
   takeOutput() {
-    return this.outItems.length ? this.outItems.shift() : null;
+    return this.outItems.length ? this.outItems.shift().item : null;
   }
   takeItem() {
-    if (this.outItems.length) return this.outItems.shift();
-    if (this.items.length) return this.items.shift();
+    if (this.outItems.length) return this.outItems.shift().item;
+    if (this.items.length) return this.items.shift().item;
     return null;
   }
-  giveItem(item) { return this.acceptItem(item); }
+  giveItem(item, fromDir, sx, sy, laneHint) { return this.acceptItem(item, fromDir, sx, sy, laneHint); }
   contents() {
     const list = [[this.type, 1]];
-    for (const it of [...this.items, ...this.outItems]) list.push([it, 1]);
+    for (const it of [...this.items, ...this.outItems]) list.push([it.item, 1]);
     return list;
   }
   serialize() {
     const s = super.serialize();
-    s.items = this.items.slice();
-    s.outItems = this.outItems.slice();
+    s.items = this.items.map(o => ({ item: o.item, lane: o.lane }));
+    s.outItems = this.outItems.map(o => ({ item: o.item, lane: o.lane }));
     return s;
   }
   static restore(s) {
     const u = super.restore(s);
-    u.items = (s.items || []).slice();
-    u.outItems = (s.outItems || []).slice();
+    // 兼容旧存档（纯物品 id 数组）：统一转为 { item, lane } 对象
+    const norm = a => (a || []).map(o => (typeof o === 'string' ? { item: o, lane: 0 } : { item: o.item, lane: o.lane }));
+    u.items = norm(s.items);
+    u.outItems = norm(s.outItems);
     u.cd = 0;
     return u;
   }

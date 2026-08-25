@@ -89,7 +89,14 @@ class Belt extends Entity {
       this.items.splice(idx, 1);
       return true;
     }
-    if ((nb instanceof Underground || nb instanceof Splitter) && nb.giveItem(f.item)) {
+    if (nb instanceof Underground) {
+      // 传入 lane 作为 laneHint：让地下带保留物品所在车道（左进左出/右进右出），
+      // 与地上传送带直通逻辑一致，避免进洞后 lane 信息丢失导致两线混合。
+      if (!nb.acceptItem(f.item, this.dir, this.x, this.y, f.lane)) return false;
+      this.items.splice(idx, 1);
+      return true;
+    }
+    if (nb instanceof Splitter && nb.giveItem(f.item)) {
       this.items.splice(idx, 1);
       return true;
     }
