@@ -485,6 +485,25 @@ function tryPlaceAt(tx, ty) {
     }
     return;
   }
+  // 分流器/地下带等多格实体：若新实体的「非光标分格」也覆盖了同族多格实体
+  // （例如横向分流器覆盖纵向分流器时，光标落在空白格、仅另一半叠在旧分流器上），
+  // 上面的 cursor 格判定会因 entAt(tx,ty) 为空而走不到覆盖分支，从而直接新建叠加，
+  // 造成旧分流器未移除、新分流器只叠一半（bug）。这里扫一遍新实体占地格补上覆盖。
+  const _def = BUILD_DEFS[type];
+  let _ew = _def.w, _eh = _def.h;
+  if (_def.rotSwap && (G.ghostDir % 2 === 1)) { _ew = _def.h; _eh = _def.w; }
+  if (_ew > 1 || _eh > 1) {
+    for (let dy = 0; dy < _eh; dy++) {
+      for (let dx = 0; dx < _ew; dx++) {
+        if (dx === 0 && dy === 0) continue; // 光标格已在上面处理过
+        const e = entAt(tx + dx, ty + dy);
+        if (e && canOverwriteWithBelt(type, e) && !(e instanceof Belt && !(e instanceof Splitter))) {
+          overwriteBeltTile(tx + dx, ty + dy, type, infinite);
+          return;
+        }
+      }
+    }
+  }
   const cls = ENT_CLASSES[type];
   const e = new cls(type, tx, ty);
   e.dir = G.ghostDir;
@@ -573,7 +592,10 @@ function overwriteBeltTile(tx, ty, type, infinite) {
   }
   removeEnt(old);
   const cls = ENT_CLASSES[type];
-  const ne = new cls(type, tx, ty);
+  // 新实体放在旧实体的原点 (old.x, old.y)，而非传入的 (tx,ty)：
+  // 否则光标落在 2 格分流器的第二格时，会以第二格为原点导致整体平移一格、
+  // 半边空出半边残留（覆盖错位）。保持 dir 沿用旧方向，占地与旧实体一致。
+  const ne = new cls(type, old.x, old.y);
   ne.dir = dir;
   ne.applyDir();
   if (ne.items) ne.items = items;
