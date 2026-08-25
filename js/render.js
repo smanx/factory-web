@@ -1671,11 +1671,11 @@ function drawMinimap(ctx) {
   }
   // 地图标记：在小地图上绘制已探索范围内的标记
   if (typeof drawMapTagsMinimap === 'function') drawMapTagsMinimap(ctx, cx, cy, z, pcx, pcy, x0, y0, size);
-  ctx.restore();
-  // 污染系统：在小地图叠加污染范围（红褐色）
+  // 污染系统：在小地图叠加污染范围（红褐色），需在 clip() 内绘制，确保污染显示范围不超出小地图边界
   if (typeof drawPollutionMinimap === 'function') {
     drawPollutionMinimap(ctx, cx + (G.spawn ? G.spawn.x - pcx : 0) * z, cy + (G.spawn ? G.spawn.y - pcy : 0) * z, z);
   }
+  ctx.restore();
   // 边框（覆盖 clip 外缘）
   ctx.strokeStyle = 'rgba(140,200,160,0.4)';
   ctx.lineWidth = 1;
