@@ -13,6 +13,7 @@ declare -a scripts=(
   "tools/verify-beacon-modules.js"
   "tools/verify-nuclear.js"
   "tools/verify-inserter-lane-priority.js"
+  "tools/verify-splitter-input-priority.js"
 )
 
 fail=0
