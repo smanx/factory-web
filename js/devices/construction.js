@@ -284,7 +284,10 @@ function completeBuild(g) {
 function completeDecon(m) {
   const e = m.ent;
   if (!e || e._dead) { m._dead = true; return; }
-  for (const [id, n] of e.contents()) if (typeof invAdd === 'function') invAdd(id, n);
+  // 传送带/分流器拆除时连同带上物品一并移除，不再返还带上物品（对齐《异星工厂》
+  if (!(e instanceof Belt)) {
+    for (const [id, n] of e.contents()) if (typeof invAdd === 'function') invAdd(id, n);
+  }
   removeEnt(e);
   if (G.panelEnt === e && typeof closePanel === 'function') closePanel();
   m._dead = true;
