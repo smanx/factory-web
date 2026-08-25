@@ -151,7 +151,6 @@ function openPanel(mode, ent) {
   G.panelEnt = ent || null;
   document.getElementById('panel').style.display = 'flex';
   renderPanel(true);
-  updateDeconstructBtn();
 }
 
 function closePanel(hide = true) {
@@ -159,7 +158,6 @@ function closePanel(hide = true) {
   G.panelEnt = null;
   G.invRecipeQ = '';
   if (hide) document.getElementById('panel').style.display = 'none';
-  updateDeconstructBtn();
 }
 
 function panelScrollTop() {
@@ -2287,29 +2285,6 @@ function refreshDebugPanel() {
 // ===== 虚拟摇杆（手机/触屏移动） =====
 // 摇杆状态存于 G.joystick；仅在开启"虚拟摇杆"设置且设备为触屏时显示。
 // 拖拽摇杆把位移量归一化为 [-1,1] 的 dx/dy，供 updatePlayer 叠加到移动方向。
-// ===== 拆除模式按钮（触屏专用，替代手机端无法使用的右键） =====
-// 触屏设备才显示该按钮。为避免一直显示干扰操作，仅当用户“选择了某个建筑”
-//（即打开该建筑的机器面板，G.panelEnt 指向该建筑）时才显示；
-// 若已进入拆除模式则保持可见以便退出。点击进入/退出拆除模式，进入后点触建筑即可拆除。
-function updateDeconstructBtn() {
-  const el = document.getElementById('deconstruct-btn');
-  if (!el) return;
-  const touchCapable = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-  if (!touchCapable) { el.classList.add('hidden'); return; }
-  // 拆除模式中保持按钮可见以便退出；否则仅当用户选中了某个建筑时才显示
-  const show = G.deconstructMode || !!G.panelEnt;
-  if (!show) { el.classList.add('hidden'); return; }
-  el.classList.remove('hidden');
-  el.classList.toggle('active', !!G.deconstructMode);
-}
-
-function initDeconstructBtn() {
-  const el = document.getElementById('deconstruct-btn');
-  if (!el) return;
-  el.addEventListener('click', () => toggleDeconstructMode());
-  updateDeconstructBtn();
-}
-
 function updateJoystickVisibility() {
   const el = document.getElementById('joystick');
   if (!el) return;

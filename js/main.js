@@ -749,10 +749,7 @@ function toggleDeconstructMode(on) {
     G.sel = -1;
     G.quickSel = null;
     refreshHotbar();
-    updateDeconstructBtn();
     toast('拆除模式：点触建筑即可拆除，再次点击按钮或按 Q/Esc 退出');
-  } else {
-    updateDeconstructBtn();
   }
   uiDirty = true;
 }
@@ -2070,7 +2067,6 @@ function boot() {
     ['topbtn', () => initTopButtons()],
     ['panel', () => initPanelEvents()],
     ['joystick', () => initJoystick()],
-    ['deconstruct', () => initDeconstructBtn()],
     ['tooltip', () => initTooltips()],
     ['hudinfo', () => initHudInfo()],
     ['tutorial', () => initTutorial()],
