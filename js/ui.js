@@ -999,6 +999,7 @@ function initPanelEvents() {
       }
       else if (act === 'exp-save') { downloadSave(); }
       else if (act === 'imp-save') { document.getElementById('imp-file').click(); }
+      else if (act === 'quit-to-menu') { if (typeof returnToMenu === 'function') returnToMenu(); }
       else if (act === 'craft') {
         const n = +(btn.dataset.mult || 1);
         // 手搓合成队列：按时间逐件制作（对齐《异星工厂》）
@@ -1154,9 +1155,10 @@ async function htmlSettings() {
   h += '<label class="setrow"><input type="checkbox" data-set="combat"' + (G.settings.combat ? ' checked' : '') + '> 战斗模式（敌人入侵，可用炮塔/石墙防御）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="virtualJoystick"' + (G.settings.virtualJoystick ? ' checked' : '') + '> 虚拟摇杆（手机/触屏移动）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="minimap"' + (G.settings.minimap !== false ? ' checked' : '') + '> 小地图（右下角显示已探索区域，M 键切换）</label>';
-  h += '<label class="setrow"><input type="checkbox" data-set="weather"' + (G.settings.weather !== false ? ' checked' : '') + '> 天气（动态云影 / 阴云氛围）</label>';
+  h += '<label class="setrow"><input type="checkbox" data-set="weather"' + (G.settings.weather !== false ? ' checked' : '') + '> 天气（阴云氛围，阴天时整体略暗）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="altMode"' + (G.settings.altMode ? ' checked' : '') + '> ALT 模式（建筑上显示配方/内容，Alt 键切换）</label>';
   h += '<div class="sec">音效</div>';
+  h += '<label class="setrow"><input type="checkbox" data-set="music"' + (G.settings.music !== false ? ' checked' : '') + '> 背景音乐（可单独开关）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="sound"' + (G.settings.sound ? ' checked' : '') + '> 游戏音效（建造/拆除/射击/爆炸等）</label>';
   h += '<label class="setrow">音量 <input type="range" data-setvol="soundVol" min="0" max="1" step="0.05" value="' + (G.settings.soundVol != null ? G.settings.soundVol : 0.8) + '" style="width:120px;vertical-align:middle"></label>';
   h += '<div class="sec">性能优化</div>';
@@ -1170,6 +1172,9 @@ async function htmlSettings() {
   h += '<input type="file" id="imp-file" accept=".json,application/json" style="display:none">';
   h += '<div class="hint">自动存档保留最近 3 个（旧的自动覆盖）；用户可自行新建/覆盖/读取/删除存档。</div>';
   h += await saveListHtml();
+  h += '<div class="sec">退出</div>';
+  h += '<button data-action="quit-to-menu" style="color:#ff8a8a">🚪 退出到主页面</button>';
+  h += '<div class="hint">退出到开始菜单，游戏进度请先保存（新建存档后自动持久化）。</div>';
   return h;
 }
 
@@ -1275,6 +1280,22 @@ function initTopButtons() {
   });
   document.getElementById('btn-set').addEventListener('click', () =>
     G.panelMode === 'set' ? closePanel() : openPanel('set'));
+  // 顶部“暂停/继续”按钮：切换游戏暂停状态，并更新按钮文字
+  const pauseBtn = document.getElementById('btn-pause');
+  if (pauseBtn) {
+    const syncPauseBtn = () => {
+      if (G.paused) { pauseBtn.textContent = '▶ 继续'; pauseBtn.title = '继续游戏'; }
+      else { pauseBtn.textContent = '⏸ 暂停'; pauseBtn.title = '暂停游戏'; }
+    };
+    pauseBtn.addEventListener('click', () => {
+      G.paused = !G.paused;
+      syncPauseBtn();
+      if (typeof playSfx === 'function') playSfx('click');
+      if (G.paused) toast('游戏已暂停');
+      else toast('游戏继续');
+    });
+    syncPauseBtn();
+  }
 }
 
 function updateHUD(dt, fps) {

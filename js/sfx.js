@@ -435,3 +435,81 @@ function ambientUpdate(dt) {
     ambientAccent(light);
   }
 }
+
+// =============================================================
+// 背景音乐（BGM）系统：程序化合成一段工业氛围的循环配乐。
+// 零外部音频文件，全部由 Web Audio 实时合成。
+// 由 G.settings.music 独立开关控制（与游戏音效 sound 分开）。
+// 随 G.settings.soundVol 音量滑块调节整体音量，音乐音量更低、不喧宾夺主。
+// =============================================================
+let bgmNodes = null;   // { g, noteIdx, barT }
+
+// 背景音乐是否启用（独立开关，默认开启）
+function bgmEnabled() {
+  return !!(G && G.settings && G.settings.music !== false);
+}
+
+// 配乐音阶（A 小调五声音阶，带工业氛围）：以 A4=440 为基准的降频音高
+const BGM_SCALE = [220.00, 246.94, 261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
+// 旋律片段（音阶下标，-1=休止），循环播放
+const BGM_MELODY = [0, 2, 3, 2, 4, 3, 2, 1, 0, 2, 4, 5, 4, 3, 2, 1, 3, 5, 6, 5, 4, 3, 4, 2, 0, 1, 2, 1, 0, -1, 0, -1];
+// 低音走位（每音符一个根音，作低音声部）
+const BGM_BASS = [0, 0, 1, 1, 0, 0, 2, 1, 0, 0, 1, 1, 2, 2, 1, 1, 0, 0, 1, 1, 2, 2, 1, 1, 0, 0, 1, 1, 0, 0, -1, 0];
+const BGM_NOTE_DUR = 0.30;   // 每音符时长（秒）
+
+// 惰性创建 BGM 输出节点
+function bgmEnsure() {
+  if (!AC || !sfxReady || !sfxMaster) return false;
+  if (bgmNodes) return true;
+  try {
+    const g = AC.createGain();
+    g.gain.value = 0;
+    g.connect(sfxMaster);
+    bgmNodes = { g, noteIdx: 0, barT: 0 };
+    return true;
+  } catch (e) { bgmNodes = null; return false; }
+}
+
+// 播放单个 BGM 音符（旋律或低音）
+function bgmNote(noteIdx, dur, vol, type, bass) {
+  if (noteIdx < 0) return;   // 休止符
+  if (!AC || !bgmNodes || !bgmNodes.g) return;
+  const now = AC.currentTime;
+  const gGain = AC.createGain();
+  const v = vol * ((G.settings.soundVol != null ? G.settings.soundVol : 1));
+  gGain.gain.setValueAtTime(0.0001, now);
+  gGain.gain.exponentialRampToValueAtTime(v, now + 0.03);
+  gGain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+  const osc = AC.createOscillator();
+  osc.type = type;
+  const base = bass ? (BGM_SCALE[noteIdx % 4] / 2) : BGM_SCALE[noteIdx % BGM_SCALE.length];
+  osc.frequency.setValueAtTime(base, now);
+  osc.connect(gGain);
+  gGain.connect(bgmNodes.g);
+  osc.start(now);
+  osc.stop(now + dur + 0.02);
+}
+
+// 推进背景音乐（主循环每帧调用）
+function bgmUpdate(dt) {
+  if (!bgmEnabled()) {
+    if (bgmNodes) { try { bgmNodes.g.gain.value = 0; } catch (e) {} }
+    return;
+  }
+  if (!AC || !sfxReady || AC.state !== 'running') {
+    sfxResume(); sfxBindGesture();
+    if (!AC || !sfxReady) sfxInit();
+    return;
+  }
+  if (!bgmEnsure()) return;
+  const target = ((G.settings.soundVol != null ? G.settings.soundVol : 1)) * 0.12;
+  bgmNodes.g.gain.value += (target - bgmNodes.g.gain.value) * Math.min(1, dt * 2);
+  bgmNodes.barT += dt;
+  if (bgmNodes.barT >= BGM_NOTE_DUR) {
+    bgmNodes.barT -= BGM_NOTE_DUR;
+    const idx = bgmNodes.noteIdx % BGM_MELODY.length;
+    bgmNote(BGM_MELODY[idx], BGM_NOTE_DUR * 1.25, 0.05, 'triangle', false);
+    bgmNote(BGM_BASS[idx], BGM_NOTE_DUR * 1.15, 0.06, 'sawtooth', true);
+    bgmNodes.noteIdx++;
+  }
+}

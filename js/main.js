@@ -80,6 +80,7 @@ const G = {
   axeDura: 0,         // 当前手持开采工具（铁斧/钢斧）剩余耐久（用尽后消失，对齐《异星工厂》Axe）
   victoryT: 0,
   inMenu: true,       // 开始菜单显示中：游戏世界尚未初始化，loop 暂停渲染与更新
+  paused: false,      // 游戏暂停：由顶部“暂停/继续”按钮控制，暂停时世界/设备/玩家停摆
   deconstructMode: false,  // 触屏拆除模式：开启后点触建筑即可拆除（PC 右键拆除不受影响）
   deconstructHeld: false,  // 拆除模式：左键/触屏是否处于按住连续拆除状态
   craftQueue: [],     // 手搓合成队列：见 player.js 的 queueCraft / updateCraftQueue
@@ -1333,9 +1334,36 @@ function enterGame() {
   const sc = document.getElementById('start-screen');
   if (sc) sc.classList.add('hidden');
   G.inMenu = false;
+  G.paused = false;
+  const pb = document.getElementById('btn-pause');
+  if (pb) { pb.textContent = '⏸ 暂停'; pb.title = '暂停游戏'; }
   toast('WASD 移动 · 左键挖矿/放建筑(覆盖建造) · 右键拆除 · R 旋转 · F 拿取 · Q 取消/拾取朝向 · 中键/E 面板 · T 科技 · P 统计 · B 蓝图 · Alt+B 蓝图库 · Alt+D 红图 · Alt+U 绿图 · K/L 存读档');
   // 触屏设备：首次进入展示新手引导
   if (typeof maybeShowTouchTip === 'function') maybeShowTouchTip();
+}
+
+// 退出到开始菜单（主页面）：隐藏游戏界面、显示开始菜单，并暂停游戏循环。
+function returnToMenu() {
+  if (typeof closePanel === 'function') closePanel();
+  G.inMenu = true;
+  G.paused = false;
+  G.sel = -1;
+  G.blueMode = null;
+  G.deconstructMode = false;
+  G.ghostDir = 0;
+  const sc = document.getElementById('start-screen');
+  if (sc) sc.classList.remove('hidden');
+  const pb = document.getElementById('btn-pause');
+  if (pb) { pb.textContent = '⏸ 暂停'; pb.title = '暂停游戏'; }
+  // 收起顶部菜单（保持整洁的主菜单视图）
+  const topMenu = document.getElementById('topright');
+  const menuToggle = document.getElementById('btn-menu-toggle');
+  if (topMenu && !topMenu.classList.contains('collapsed')) {
+    topMenu.classList.add('collapsed');
+    if (menuToggle) { menuToggle.textContent = '☰'; menuToggle.title = '展开顶部菜单'; }
+  }
+  if (typeof playSfx === 'function') playSfx('click');
+  toast('已退出到主页面');
 }
 
 function bindInput() {
@@ -1642,8 +1670,9 @@ function loop(ts) {
   const raw = Math.min(0.05, now - (loop.lastT || now));
   loop.lastT = now;
   const dt = Math.min(0.3, raw * ((G.dbg && G.dbg.timeScale) || 1));
-  // 打开设置面板时暂停游戏：世界/设备/电力/玩家均停，仅保留渲染与界面
-  const paused = G.panelMode === 'set';
+  // 游戏暂停：由顶部“暂停/继续”按钮控制（G.paused）。
+  // 打开设置面板不再暂停游戏（仅暂停时世界/设备/电力/玩家停摆）。
+  const paused = !!G.paused;
   if (!paused) G.time += dt;
   fpsSmooth += (1 / Math.max(raw, 0.0001) - fpsSmooth) * 0.05;
   if (G.settings.autoSave) {
@@ -1714,6 +1743,9 @@ function loop(ts) {
       // 环境氛围音（Web Audio 昼夜背景音）
       if (typeof ambientUpdate === 'function') ambientUpdate(dt);
     }
+
+    // 背景音乐（可独立开关）：暂停游戏时仍持续播放（界面层氛围）
+    if (typeof bgmUpdate === 'function') bgmUpdate(dt);
 
     render();
 

@@ -58,12 +58,7 @@ function updatePlayer(dt) {
     if (typeof cancelTouchMove === 'function') cancelTouchMove();
     mx /= len; my /= len;
     p.walkT += dt * 10;
-    // 行走脚步声：随步态相位周期触发（低频短促，增强沉浸感）
-    if (typeof playSfx === 'function' && G.settings.sound) {
-      const stepPhase = Math.sin(p.walkT);
-      if (stepPhase < -0.7 && (G._lastStepPhase >= -0.7)) playSfx('step');
-      G._lastStepPhase = stepPhase;
-    }
+    // 角色移动音效已去除（用户要求）：不再播放脚步音
     if (Math.abs(mx) > Math.abs(my)) p.dir = mx > 0 ? 0 : 2;
     else p.dir = my > 0 ? 1 : 3;
     const r = 9;

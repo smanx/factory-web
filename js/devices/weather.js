@@ -87,36 +87,12 @@ function weatherSolarMult() { return weatherLightMult(); }
 function drawWeatherOverlay(ctx, W, H) {
   if (!weatherEnabled() || !G.weather || !G.weather.clouds) return;
   const w = G.weather;
-  const z = (G.cam && G.cam.z) || 1;
-  // 云层只在白天明显可见（夜间融入黑暗），用太阳高度决定云的不透明度
-  const sun = solarFactor(); // 0~1
-  const baseA = 0.05 + sun * 0.13;   // 云不透明度随日照增强
-  if (baseA <= 0.01 && w.overcast <= 0.02) return;
+  // 云朵效果已去除：不再绘制飘动的云团（保留阴云氛围微调光照）
+  if (w.overcast <= 0.02) return;
   ctx.save();
   ctx.globalCompositeOperation = 'source-over';
-  // 云朵：多个柔和椭圆拼合成"云团"
-  for (const c of w.clouds) {
-    const cx = ((c.x * 1.5 - 0.25) % 1 + 1) % 1 * W;   // 横跨屏幕
-    const cy = c.y * H;
-    const wpx = c.s * 220 * (z < 1 ? 1 : 1 / Math.max(1, z * 0.7));  // 缩放时云适当跟随
-    const alpha = baseA * (0.6 + 0.4 * Math.sin(c.a + w.t * 0.05));
-    if (alpha <= 0.01) continue;
-    // 主团 + 两个子团
-    ctx.fillStyle = 'rgba(255,255,255,' + (alpha * 0.5).toFixed(3) + ')';
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, wpx * 1.1, wpx * 0.42, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(cx - wpx * 0.7, cy + wpx * 0.08, wpx * 0.6, wpx * 0.3, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(cx + wpx * 0.7, cy - wpx * 0.04, wpx * 0.5, wpx * 0.26, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
   // 阴云天气：整体加一层淡淡灰蓝，增强阴沉氛围
-  if (w.overcast > 0.02) {
-    ctx.fillStyle = 'rgba(150,155,165,' + (w.overcast * 0.12).toFixed(3) + ')';
-    ctx.fillRect(0, 0, W, H);
-  }
+  ctx.fillStyle = 'rgba(150,155,165,' + (w.overcast * 0.12).toFixed(3) + ')';
+  ctx.fillRect(0, 0, W, H);
   ctx.restore();
 }

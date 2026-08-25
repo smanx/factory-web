@@ -12,7 +12,7 @@ const EXPRESS_BELT_MULT = 3; // 极速传送带 = 3× 基础（对齐《异星�
 const COAL_ENERGY = 12;
 const SOLID_FUEL_ENERGY = 50;   // 固体燃料能量密度（对齐《异星工厂》：约 4 倍于煤），可作煤的替代燃料
 const ROCKET_FUEL_ENERGY = 500; // 火箭燃料能量密度（对齐《异星工厂》：约 10 倍于固体燃料、约 40 倍于煤），最高级可燃烧燃料
-const SELF_FUEL_MAX = 10;
+const SELF_FUEL_MAX = 4;   // 热能采矿机燃料槽容量（对齐《异星工厂》：burner mining drill 16MJ/4MJ=4 个煤）
 const UNDERGROUND_MAX = 6;
 const FAST_UNDERGROUND_MAX = 14;
 const EXPRESS_UNDERGROUND_MAX = 20;
@@ -1330,7 +1330,7 @@ function migrateNewTechs(techDone) {
   return techDone;
 }
 
-const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: true, combat: false, capDPR: true, lowRes: false, virtualJoystick: false, minimap: true, sound: true, soundVol: 0.8, altMode: true };  // sound:音效开关 soundVol:音量0~1  altMode:ALT模式(建筑配方/内容叠加显示)
+const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: true, combat: false, capDPR: true, lowRes: false, virtualJoystick: false, minimap: true, sound: true, soundVol: 0.8, altMode: true, weather: false, music: true };  // sound:音效开关 soundVol:音量0~1  altMode:ALT模式(建筑配方/内容叠加显示)
 const SETTINGS_KEY = 'factory-settings-v1';
 
 function drawItemGlyph(x, id, cx, cy, s) {

@@ -125,7 +125,7 @@ class Drill extends Entity {
   }
   giveItem(item) {
     if (item === 'rocket-fuel' && this.fuelRocket < 10) { this.fuelRocket++; return true; }
-    if (item === 'coal' && this.fuelCoal < 10) { this.fuelCoal++; return true; }
+    if (item === 'coal' && this.fuelCoal < SELF_FUEL_MAX) { this.fuelCoal++; return true; }
     if (item === 'solid-fuel' && this.fuelSolid < 10) { this.fuelSolid++; return true; }
     return false;
   }
