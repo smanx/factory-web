@@ -1615,3 +1615,41 @@ html, body {
 .trunk-item img { width: 22px; height: 22px; border-radius: 4px; }
 .trunk-item span { flex: 1; color: #cfe0f0; font-size: 12px; }
 .trunk-item button { font-size: 11px; padding: 2px 8px; }
+
+/* ===== 成就系统（对齐《异星工厂》Achievements）===== */
+.ach-progress {
+  height: 10px;
+  background: #10151c;
+  border: 1px solid #37424f;
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 4px 0 10px;
+}
+.ach-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ffd23c, #ff9f3c);
+  transition: width .4s ease;
+}
+.ach-list { display: flex; flex-direction: column; gap: 6px; }
+.ach-item {
+  display: flex; align-items: center; gap: 10px;
+  background: #141a22;
+  border: 1px solid #2c3644;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.ach-item.done { border-color: #ffd23c; background: rgba(255, 210, 60, .06); }
+.ach-item.locked { opacity: .6; }
+.ach-icon {
+  width: 34px; height: 34px; flex: 0 0 34px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  background: #0d1218;
+  border: 1px solid #2c3644;
+  border-radius: 8px;
+}
+.ach-item.done .ach-icon { border-color: #ffd23c; }
+.ach-info { flex: 1; }
+.ach-name { font-weight: bold; color: #dfe6ee; font-size: 13px; }
+.ach-item.done .ach-name { color: #ffd23c; }
+.ach-desc { color: #8a95a3; font-size: 12px; margin-top: 2px; line-height: 1.4; }

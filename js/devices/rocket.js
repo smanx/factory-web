@@ -264,6 +264,8 @@ function siloTip(e) {
 function onRocketLaunch() {
   G.gameWon = true;
   G.victoryT = 0;
+  // 成就：发射火箭赢得游戏（对齐《异星工厂》：So long and thanks for all the fish）
+  if (typeof checkAchievements === 'function') checkAchievements();
   if (typeof playSfx === 'function') playSfx('rocket');
   setTimeout(function () { if (typeof playSfx === 'function') playSfx('victory'); }, 1200);
   // 每次卫星发射获得空间科学包（对齐《异星工厂》：Space science pack 由火箭发射产出，用于终局无限科研）

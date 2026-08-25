@@ -1276,6 +1276,8 @@ DEVICE_PANEL['locomotive'] = {
         mch.schedule.push({ stop: sel.value, cond: 'leave', time: 10 });
         // 同步到所属列车的 route（若列车已在运行）
         syncLocoSchedule(mch);
+        // 成就：设置列车自动调度路线（对齐《异星工厂》：Getting on track like a pro）
+        if (typeof achEnsureStats === 'function') { achEnsureStats(); G.achStats.trainRoutes++; checkAchievements(); }
         toast('已把车站「' + sel.value + '」加入路线');
         uiDirty = true;
       }

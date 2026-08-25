@@ -588,7 +588,11 @@ function updateEnemies(dt) {
     if (e.dead) { kills++; dropEnemyLoot(e); return false; }
     return true;
   });
-  if (kills > 0) addEvolution(EVOLUTION_KILL_RATE * kills);
+  if (kills > 0) {
+    addEvolution(EVOLUTION_KILL_RATE * kills);
+    // 成就：击杀计数（对齐《异星工厂》战斗成就）
+    if (typeof achEnsureStats === 'function') { achEnsureStats(); G.achStats.kills += kills; checkAchievements(); }
+  }
 }
 
 // ===== 敌人掉落（对齐《异星工厂》：击杀虫群/巢穴会掉落少量矿石）=====

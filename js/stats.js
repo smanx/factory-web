@@ -251,6 +251,8 @@ function trackProd(item, delta) {
   else PROD.lost[item] = (PROD.lost[item] || 0) - delta;
   PROD.total[item] = (PROD.total[item] || 0) + delta;
   PROD.events.push({ t: now, item, delta });
+  // 成就：累计正向产出（对齐《异星工厂》生产成就），并触发成就判定
+  if (typeof achTrackProduced === 'function' && delta > 0) achTrackProduced(item, delta);
 }
 
 // 统计间隔选项：label 显示名，unit 速率单位，sec 窗口秒数。

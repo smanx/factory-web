@@ -501,6 +501,10 @@ function updateRobot(r, dt) {
             if (typeof trackProd === 'function') trackProd(r.carry.item, 1);
           }
         }
+        if (r.carry && r.carry.item) {
+          // 成就：物流机器人完成一次搬运（对齐《异星工厂》：机器人革命）
+          if (typeof achEnsureStats === 'function') { achEnsureStats(); G.achStats.robotDeliveries++; checkAchievements(); }
+        }
         r.carry = null;
         r.state = 'returning';
       }

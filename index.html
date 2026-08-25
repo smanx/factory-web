@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>工厂原型 Factory Proto</title>
-<link rel="stylesheet" href="css/style.css?v=27">
+<link rel="stylesheet" href="css/style.css?v=28">
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -15,6 +15,7 @@
   <button id="btn-inv">背包 (E)</button>
   <button id="btn-tech">研究 (T)</button>
   <button id="btn-stats">统计 (P)</button>
+  <button id="btn-ach" title="成就系统（对齐异星工厂 Achievements）">🏆 成就</button>
   <button id="btn-blue">蓝图 (B)</button>
   <button id="btn-red">红图 (Alt+D)</button>
   <button id="btn-green">绿图 (Alt+U)</button>
@@ -49,6 +50,7 @@
     <div class="start-menu">
       <button id="btn-new-game" class="start-btn primary">▶ 开始新游戏</button>
       <button id="btn-continue" class="start-btn">📂 读取存档</button>
+      <button id="btn-start-ach" class="start-btn">🏆 成就</button>
       <div id="start-save-info" class="start-save-info"></div>
     </div>
 
@@ -148,7 +150,7 @@
 <script src="js/devices/circuit.js?v=7"></script>
 <script src="js/devices/chest.js?v=11"></script>
 <script src="js/devices/steel-chest.js?v=10"></script>
-<script src="js/devices/lab.js?v=15"></script>
+<script src="js/devices/lab.js?v=16"></script>
 <script src="js/devices/boiler.js?v=14"></script>
 <script src="js/devices/steam-engine.js?v=8"></script>
 <script src="js/devices/pump.js?v=10"></script>
@@ -168,26 +170,27 @@
 <script src="js/devices/weather.js?v=1"></script>
 <script src="js/devices/maptags.js?v=1"></script>
 <script src="js/devices/equipment.js?v=5"></script>
-<script src="js/devices/rocket.js?v=7"></script>
+<script src="js/devices/rocket.js?v=8"></script>
 <script src="js/devices/defense.js?v=7"></script>
-<script src="js/devices/logistics.js?v=10"></script>
+<script src="js/devices/logistics.js?v=11"></script>
 <script src="js/devices/fishing.js?v=1"></script>
 <script src="js/devices/construction.js?v=6"></script>
-<script src="js/devices/railway.js?v=18"></script>
+<script src="js/devices/railway.js?v=19"></script>
 <script src="js/devices/vehicle.js?v=20"></script>
 <script src="js/devices/power-renewable.js?v=11"></script>
 <script src="js/devices/power-switch.js?v=2"></script>
 <script src="js/devices/substation.js?v=1"></script>
 <script src="js/devices/speaker.js?v=1"></script>
 <script src="js/core/power.js?v=10"></script>
+<script src="js/devices/achievements.js?v=1"></script>
 <script src="js/player.js?v=30"></script>
-<script src="js/ui.js?v=48"></script>
-<script src="js/menu.js?v=4"></script>
+<script src="js/ui.js?v=49"></script>
+<script src="js/menu.js?v=5"></script>
 <script src="js/render.js?v=42"></script>
-<script src="js/stats.js?v=14"></script>
+<script src="js/stats.js?v=15"></script>
 <script src="js/saves.js?v=3"></script>
 <script src="js/sfx.js?v=13"></script>
 <script src="js/touch.js?v=6"></script>
-<script src="js/main.js?v=58"></script>
+<script src="js/main.js?v=60"></script>
 </body>
 </html>

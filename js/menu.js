@@ -86,6 +86,16 @@
       });
     }
 
+    // 开始菜单“成就”按钮：打开成就面板（对齐《异星工厂》成就系统）
+    const startAchBtn = document.getElementById('btn-start-ach');
+    if (startAchBtn) {
+      startAchBtn.addEventListener('click', function () {
+        if (typeof openPanel === 'function') openPanel('ach');
+        else if (typeof G !== 'undefined') { G.panelMode = 'ach'; if (typeof renderPanel === 'function') renderPanel(true); }
+        if (typeof playSfx === 'function') playSfx('click');
+      });
+    }
+
     // 开始菜单期间屏蔽空格/回车等默认滚动，保持体验
     screen.addEventListener('keydown', function (e) {
       if (e.key === ' ' || e.key === 'Tab') e.preventDefault();

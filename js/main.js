@@ -150,6 +150,7 @@ function newGame() {
   G.logiRequest = {};   // 新游戏清空个人物流请求
   G.blueBook = [];      // 新游戏清空蓝图库
   G.mapTags = [];       // 新游戏清空地图标记
+  if (typeof achInitStats === 'function') achInitStats();   // 新游戏清空成就状态
   G.railTiles = new Set();
   G.trains = [];
   G.playerHP = 100; G.playerHPmax = 100;
@@ -224,7 +225,8 @@ function serializeAll() {
     constr: (typeof constrSerialize === 'function') ? constrSerialize() : null,
     equipment: (typeof equipmentSerialize === 'function') ? equipmentSerialize() : null,
     blueBook: (G.blueBook || []).map(b => ({ name: b.name, minX: b.minX | 0, minY: b.minY | 0, ents: b.ents })),
-    mapTags: (typeof mapTagsSerialize === 'function') ? mapTagsSerialize() : (G.mapTags || []).slice()
+    mapTags: (typeof mapTagsSerialize === 'function') ? mapTagsSerialize() : (G.mapTags || []).slice(),
+    achievements: (typeof achievementsSerialize === 'function') ? achievementsSerialize() : null
   };
 }
 
@@ -340,6 +342,7 @@ function applySave(d) {
   G.repairPackUses = (typeof d.repairPackUses === 'number') ? d.repairPackUses : 0;
   G.axeDura = (typeof d.axeDura === 'number') ? d.axeDura : 0;
   if (typeof mapTagsDeserialize === 'function') mapTagsDeserialize(d.mapTags); else G.mapTags = [];
+  if (typeof achievementsRestore === 'function') achievementsRestore(d.achievements); else if (typeof achInitStats === 'function') achInitStats();
   G.combatRobots = [];
   G.driving = null;
   G.logiRobots = [];
@@ -471,6 +474,8 @@ function tryPlaceAt(tx, ty) {
   e.applyDir();
   addEnt(e);
   if (!infinite) invTake(type, 1);
+  // 成就：建造计数（对齐《异星工厂》建造成就）
+  if (typeof achEnsureStats === 'function') { achEnsureStats(); G.achStats.builds++; checkAchievements(); }
   if (typeof playSfx === 'function') playSfx('build');
   refreshHotbar();
 }
@@ -1737,6 +1742,9 @@ function loop(ts) {
 
   try {
     if (!paused) {
+      // 成就周期性判定（每 3s 覆盖污染等连续增长条件；事件触发点另有即时判定）
+      G.achT = (G.achT || 0) + dt;
+      if (G.achT >= 3) { G.achT = 0; if (typeof checkAchievements === 'function') checkAchievements(); }
       updatePlayer(dt);
       updateTouchMove(dt);
       updateHeldMouse(dt);

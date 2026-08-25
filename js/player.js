@@ -257,6 +257,8 @@ function updateCraftQueue(dt) {
     const over = cur.done - cur.time;
     for (const k in RECIPES[cur.rid].out) invAdd(k, RECIPES[cur.rid].out[k]);
     completed++;
+    // 成就：手搓完成计数（对齐《异星工厂》手工合成成就）
+    if (typeof achEnsureStats === 'function') { achEnsureStats(); G.achStats.crafts++; checkAchievements(); }
     G.craftQueue.shift();
     if (G.craftQueue.length === 0) break;
     cur = G.craftQueue[0];
@@ -314,6 +316,7 @@ function updateMining(dt) {
       setTerrain(t.tx, t.ty, T_GRASS);
       invAdd('wood');
       invalidateTerrainChunk(t.tx, t.ty);
+      if (typeof achEnsureStats === 'function') { achEnsureStats(); G.achStats.mined++; checkAchievements(); }
       if (typeof playSfx === 'function') playSfx('mine');
       if (typeof toast === 'function') toast('+1 木材');
       if (axm > 1) axeConsume();
@@ -327,6 +330,7 @@ function updateMining(dt) {
       if (!G.settings.infiniteOre) consumeOre(t.tx, t.ty);
       const it = oreItemId(ti);
       invAdd(it);
+      if (typeof achEnsureStats === 'function') { achEnsureStats(); G.achStats.mined++; checkAchievements(); }
       if (typeof playSfx === 'function') playSfx('mine');
       if (axm > 1) axeConsume();
       // 手动采矿反馈去抖：累积到一定数量再提示一次，避免连挖时刷屏

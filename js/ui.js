@@ -194,6 +194,9 @@ function renderPanel(full) {
   } else if (G.panelMode === 'stats') {
     title.textContent = '统计面板';
     body.innerHTML = htmlStats();
+  } else if (G.panelMode === 'ach') {
+    title.textContent = '成就（Achievements）';
+    body.innerHTML = (typeof htmlAchievements === 'function') ? htmlAchievements() : '<div class="dim">成就系统未加载</div>';
   } else if (G.panelMode === 'set') {
     title.textContent = '设置';
     renderSettingsAsync(body, st);
@@ -1289,6 +1292,9 @@ function initTopButtons() {
     G.panelMode === 'tech' ? closePanel() : openPanel('tech'));
   document.getElementById('btn-stats').addEventListener('click', () =>
     G.panelMode === 'stats' ? closePanel() : openPanel('stats'));
+  const achBtn = document.getElementById('btn-ach');
+  if (achBtn) achBtn.addEventListener('click', () =>
+    G.panelMode === 'ach' ? closePanel() : openPanel('ach'));
   document.getElementById('btn-blue').addEventListener('click', () => {
     closePanel();
     toggleBlueprint('blue');
