@@ -292,6 +292,17 @@ html, body {
 .bluebook-item .bb-del { background: rgba(255,91,91,.12); border-color: #d05a5a; color: #ffb3b3; }
 .bluebook-item .bb-del:hover { background: rgba(255,91,91,.28); }
 
+.bb-import-row { display: flex; gap: 8px; margin: 4px 0 8px; }
+.bb-import-row input {
+  flex: 1; min-width: 0; padding: 6px 8px; border-radius: 6px;
+  background: #12181f; border: 1px solid #37424f; color: #dbe6f0; font-size: 12px;
+}
+.bb-import-row button {
+  font-size: 12px; padding: 6px 12px; border-radius: 6px; cursor: pointer;
+  background: rgba(90,138,208,.18); border: 1px solid #5a8ad0; color: #cfe0ff;
+}
+.bb-import-row button:hover { background: rgba(90,138,208,.35); }
+
 .recipe {
   display: flex; align-items: center; gap: 8px;
   padding: 7px 8px;

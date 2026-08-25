@@ -229,7 +229,7 @@ function serializeAll() {
     hist: (typeof histSerialize === 'function') ? histSerialize() : null,
     constr: (typeof constrSerialize === 'function') ? constrSerialize() : null,
     equipment: (typeof equipmentSerialize === 'function') ? equipmentSerialize() : null,
-    blueBook: (G.blueBook || []).map(b => ({ name: b.name, minX: b.minX | 0, minY: b.minY | 0, ents: b.ents })),
+    blueBook: (G.blueBook || []).map(b => ({ name: b.name, minX: b.minX | 0, minY: b.minY | 0, ents: b.ents, tiles: Array.isArray(b.tiles) ? b.tiles : [] })),
     mapTags: (typeof mapTagsSerialize === 'function') ? mapTagsSerialize() : (G.mapTags || []).slice(),
     achievements: (typeof achievementsSerialize === 'function') ? achievementsSerialize() : null
   };
@@ -347,7 +347,7 @@ function applySave(d) {
   if (Array.isArray(d.blueBook)) {
     for (const b of d.blueBook) {
       if (b && Array.isArray(b.ents) && b.ents.length && b.name) {
-        G.blueBook.push({ name: String(b.name), minX: b.minX | 0, minY: b.minY | 0, ents: b.ents });
+        G.blueBook.push({ name: String(b.name), minX: b.minX | 0, minY: b.minY | 0, ents: b.ents, tiles: Array.isArray(b.tiles) ? b.tiles : [] });
       }
     }
   }
@@ -932,7 +932,18 @@ function captureBlueprint() {
     }
   }
   if (!ents.length) { toast('框选区域没有可复制的建筑'); return; }
-  G.blueprint = { minX: r.x0, minY: r.y0, ents };
+  // 蓝图含地面铺装（混凝土/石砖路/填海料等，对齐《异星工厂》：蓝图会记录地砖）
+  const TILE_IDS = { '2': 'concrete', '3': 'stone-path', '5': 'refined-concrete', '6': 'hazard-concrete' };
+  const tiles = [];
+  for (let ty = r.y0; ty <= r.y1; ty++) {
+    for (let tx = r.x0; tx <= r.x1; tx++) {
+      const t = getTerrain(tx, ty);
+      const tid = TILE_IDS[t];
+      if (!tid) continue;
+      tiles.push({ type: tid, x: tx, y: ty });
+    }
+  }
+  G.blueprint = { minX: r.x0, minY: r.y0, ents, tiles: tiles.length ? tiles : [] };
   // 自动存入蓝图库（去重：与已有蓝图内容相同则不重复添加）
   if (typeof blueBookAdd === 'function') blueBookAdd(G.blueprint);
   if (typeof playSfx === 'function') playSfx('blueprint');
@@ -979,6 +990,19 @@ function rotateEnts90(ents) {
   return { ents: newEnts, minX: nb.minX, minY: nb.minY };
 }
 
+// 旋转地砖数组（90°顺时针）：以包围盒几何中心为轴，与实体旋转同坐标系
+function rotateTiles90(tiles, bb) {
+  const cx = bb.minX + bb.W / 2, cy = bb.minY + bb.H / 2;
+  const k1 = cx - cy, k2 = cx + cy;
+  return tiles.map(t => ({ type: t.type, x: Math.round(k1 + t.y), y: Math.round(k2 - t.x) }));
+}
+// 翻转地砖数组：axis='h' 水平镜像 / 'v' 垂直镜像（与实体翻转同坐标系）
+function flipTiles(tiles, axis, bb) {
+  return tiles.map(t => axis === 'h'
+    ? { type: t.type, x: bb.minX + bb.maxX - t.x, y: t.y }
+    : { type: t.type, x: t.x, y: bb.minY + bb.maxY - t.y });
+}
+
 // 翻转蓝图：axis='h' 水平镜像（东西互兑），axis='v' 垂直镜像（南北互兑）
 function flipEnts(ents, axis) {
   const bb = blueprintBounds(ents);
@@ -1001,12 +1025,22 @@ function flipEnts(ents, axis) {
 // 应用当前旋转/翻转状态，返回变换后的蓝图实体与新的左上角基准
 function applyBlueprintTransform() {
   let ents = G.blueprint.ents.map(s => ({ ...s }));
-  if (G.blueFlipH) { const r = flipEnts(ents, 'h'); ents = r.ents; }
-  if (G.blueFlipV) { const r = flipEnts(ents, 'v'); ents = r.ents; }
+  let tiles = Array.isArray(G.blueprint.tiles) ? G.blueprint.tiles.map(t => ({ ...t })) : [];
+  if (G.blueFlipH) {
+    const bb = blueprintBounds(ents); if (tiles.length) tiles = flipTiles(tiles, 'h', bb);
+    const r = flipEnts(ents, 'h'); ents = r.ents;
+  }
+  if (G.blueFlipV) {
+    const bb = blueprintBounds(ents); if (tiles.length) tiles = flipTiles(tiles, 'v', bb);
+    const r = flipEnts(ents, 'v'); ents = r.ents;
+  }
   const rot = ((G.blueRot % 4) + 4) % 4;
-  for (let i = 0; i < rot; i++) { const r = rotateEnts90(ents); ents = r.ents; }
+  for (let i = 0; i < rot; i++) {
+    const bb = blueprintBounds(ents); if (tiles.length) tiles = rotateTiles90(tiles, bb);
+    const r = rotateEnts90(ents); ents = r.ents;
+  }
   const bb = blueprintBounds(ents);
-  return { ents, minX: bb.minX, minY: bb.minY };
+  return { ents, tiles, minX: bb.minX, minY: bb.minY };
 }
 
 // 粘贴蓝图到鼠标所指位置
@@ -1043,8 +1077,24 @@ function pasteBlueprint() {
     e.dir = p.s.dir | 0; e.applyDir();
     addEnt(e);
   }
+  // 恢复蓝图地砖（混凝土/石砖路/填海料等，对齐《异星工厂》：蓝图粘贴含地砖）
+  let tileCount = 0;
+  if (Array.isArray(bp.tiles) && bp.tiles.length) {
+    for (const t of bp.tiles) {
+      const nx = t.x + ox, ny = t.y + oy;
+      const to = PAVE_TILE[t.type];
+      if (to === undefined) continue;
+      // 仅在目标格为草地/同种可覆盖且无建筑时才铺设，避免覆盖已有地砖或建筑
+      const cur = getTerrain(nx, ny);
+      if (cur !== T_GRASS && cur !== to) continue;
+      if (entAt(nx, ny)) continue;
+      setTerrain(nx, ny, to);
+      if (typeof invalidateTerrainChunk === 'function') invalidateTerrainChunk(nx, ny);
+      tileCount++;
+    }
+  }
   if (typeof playSfx === 'function') playSfx('blueprint');
-  toast('蓝图已粘贴 ' + placements.length + ' 个建筑（可继续点击空白处粘贴，R旋转/V翻转，右键取消）');
+  toast('蓝图已粘贴 ' + placements.length + ' 个建筑' + (tileCount ? '（含 ' + tileCount + ' 格地砖）' : '') + '（可继续点击空白处粘贴，R旋转/V翻转，右键取消）');
   uiDirty = true;
 }
 
@@ -1059,7 +1109,7 @@ function blueBookAdd(bp) {
     const bk = b.ents.map(e => e.type + '@' + (e.x - b.minX) + ',' + (e.y - b.minY)).join('|');
     if (bk === key) return;   // 已存在相同蓝图
   }
-  G.blueBook.push({ name: '蓝图 ' + (G.blueBook.length + 1), minX: bp.minX, minY: bp.minY, ents: bp.ents.slice() });
+  G.blueBook.push({ name: '蓝图 ' + (G.blueBook.length + 1), minX: bp.minX, minY: bp.minY, ents: bp.ents.slice(), tiles: Array.isArray(bp.tiles) ? bp.tiles.slice() : [] });
   uiDirty = true;
 }
 
@@ -1067,7 +1117,7 @@ function blueBookAdd(bp) {
 function blueBookLoad(i) {
   const b = G.blueBook[i];
   if (!b) { toast('蓝图库中没有该项'); return; }
-  G.blueprint = { minX: b.minX, minY: b.minY, ents: b.ents.slice() };
+  G.blueprint = { minX: b.minX, minY: b.minY, ents: b.ents.slice(), tiles: Array.isArray(b.tiles) ? b.tiles.slice() : [] };
   G.blueMode = 'paste';
   G.blueStart = null; G.blueEnd = null;
   G.blueRot = 0; G.blueFlipH = false; G.blueFlipV = false;
@@ -1093,6 +1143,87 @@ function blueBookRename(i, newName) {
   G.blueBook[i].name = name;
   toast('已重命名蓝图：' + old + ' → ' + name);
   uiDirty = true;
+}
+
+// ===== 蓝图字符串导出/导入（对齐《异星工厂》Blueprint string）=====
+// Factorio 允许把蓝图导出为编码字符串（Blueprint string）供复制分享、或粘贴导入复用。
+// 这里把蓝图序列化为紧凑 JSON 再用 UTF-8 安全 Base64 编码（兼容任意物品/名称字符）。
+function utf8ToB64(s) {
+  // 用 TextEncoder 生成 UTF-8 字节序列后逐字节 Base64 编码，避免 btoa 对中文抛错
+  const bytes = new TextEncoder().encode(s);
+  let bin = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunk, bytes.length)));
+  }
+  return btoa(bin);
+}
+function b64ToUtf8(b64) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+// 把蓝图库中的一项编码为可分享的字符串。返回 null 表示空蓝图。
+function blueprintEncode(b) {
+  if (!b || !Array.isArray(b.ents) || !b.ents.length) return null;
+  const ents = b.ents.map(e => {
+    const arr = [e.type, e.x - b.minX, e.y - b.minY, e.dir | 0];
+    return arr;
+  });
+  const obj = { n: String(b.name || '蓝图'), w: 1, h: 1, e: ents };
+  const fp = blueprintBounds(b.ents);
+  obj.w = fp.W; obj.h = fp.H;
+  // 蓝图字符串携带地砖（对齐《异星工厂》：蓝图含地面铺装）
+  if (Array.isArray(b.tiles) && b.tiles.length) {
+    obj.t = b.tiles.map(t => [t.type, t.x - b.minX, t.y - b.minY]);
+  }
+  return utf8ToB64(JSON.stringify(obj));
+}
+
+// 从字符串解码蓝图对象。成功返回 { name, minX, minY, ents }；失败返回 null。
+function blueprintDecode(str) {
+  try {
+    const json = b64ToUtf8(String(str || '').trim());
+    const obj = JSON.parse(json);
+    if (!obj || !Array.isArray(obj.e)) return null;
+    const ents = obj.e.map(arr => {
+      if (!Array.isArray(arr) || arr.length < 3) return null;
+      const e = { type: String(arr[0]), x: arr[1], y: arr[2], dir: (arr[3] || 0) | 0 };
+      // 仅接受已知设备类型，避免导入未知类型导致异常
+      if (!BUILD_DEFS[e.type] && !ENT_CLASSES[e.type]) return null;
+      return e;
+    }).filter(Boolean);
+    if (!ents.length) return null;
+    const bb = blueprintBounds(ents);
+    // 解析地砖（相对坐标 → 绝对坐标，对齐《异星工厂》：蓝图含地面铺装）
+    let tiles = [];
+    if (Array.isArray(obj.t)) {
+      for (const arr of obj.t) {
+        if (!Array.isArray(arr) || arr.length < 3) continue;
+        const type = String(arr[0]);
+        if (PAVE_TILE[type] === undefined) continue;
+        tiles.push({ type, x: arr[1] + bb.minX, y: arr[2] + bb.minY });
+      }
+    }
+    return { name: String(obj.n || '导入蓝图'), minX: bb.minX, minY: bb.minY, ents, tiles };
+  } catch (e) {
+    return null;
+  }
+}
+
+// 导出指定蓝图库项到剪贴板（显示字符串供复制分享）。
+function blueBookExport(i) {
+  const b = Array.isArray(G.blueBook) ? G.blueBook[i] : null;
+  if (!b) { toast('蓝图库中没有该项'); return; }
+  const s = blueprintEncode(b);
+  if (!s) { toast('蓝图为空，无法导出'); return; }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(s).then(() => toast('蓝图「' + b.name + '」已复制到剪贴板')).catch(() => toast('蓝图字符串：' + s));
+  } else {
+    prompt('蓝图字符串（复制保存以便分享/导入）', s);
+  }
 }
 
 // 尝试进入面前的装甲车（F 键 / 交互）。成功返回 true。
@@ -1767,6 +1898,8 @@ function loop(ts) {
       // 成就周期性判定（每 3s 覆盖污染等连续增长条件；事件触发点另有即时判定）
       G.achT = (G.achT || 0) + dt;
       if (G.achT >= 3) { G.achT = 0; if (typeof checkAchievements === 'function') checkAchievements(); }
+      // 每帧失效信号塔模块加成缓存（P0 优化：同一帧内同坐标只查询一次）
+      if (typeof clearBeaconBonusCache === 'function') clearBeaconBonusCache();
       updatePlayer(dt);
       updateTouchMove(dt);
       updateHeldMouse(dt);

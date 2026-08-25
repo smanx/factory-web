@@ -587,6 +587,9 @@ function fillTrashGrid(q) {
 function htmlBlueBook() {
   const list = Array.isArray(G.blueBook) ? G.blueBook : [];
   let h = '<div class="dim">按 <b>B</b> 框选复制蓝图会自动存入蓝图库；也可复制后点这里加载复用。点击“粘贴”后回到地图点击空白处放置（R旋转，右键取消）。</div>';
+  h += '<div class="sec">导入蓝图 <span class="dim">（对齐《异星工厂》Blueprint string）</span></div>' +
+    '<div class="bb-import-row"><input id="bb-import-input" type="text" placeholder="粘贴蓝图字符串后点导入…" autocomplete="off">' +
+    '<button data-bbimport="1">📥 导入</button></div>';
   if (!list.length) {
     h += '<div class="dim">蓝图库为空。请先在地图上按 <b>B</b> 拖拽框选一片建筑进行复制，蓝图会自动保存到这里。</div>';
     return h;
@@ -604,6 +607,7 @@ function htmlBlueBook() {
       '<div class="bb-main"><div class="bb-name">' + b.name + '</div>' +
       '<div class="dim">' + b.ents.length + ' 个建筑 · ' + typeNames + '</div></div>' +
       '<button data-bbuse="' + i + '">📋 粘贴</button>' +
+      '<button data-bbexport="' + i + '" title="导出为蓝图字符串（复制分享/导入）">📤 导出</button>' +
       '<button data-bbrename="' + i + '">✏️ 重命名</button>' +
       '<button data-bbdel="' + i + '" class="bb-del">🗑 删除</button>' +
       '</div>';
@@ -990,6 +994,26 @@ function initPanelEvents() {
         blueBookRename(i, nn);
         renderPanel(false);
       }
+      return;
+    }
+    // 蓝图库：导出蓝图字符串（对齐《异星工厂》Blueprint string）
+    const bbExp = ev.target.closest('[data-bbexport]');
+    if (bbExp && G.panelMode === 'bluebook') {
+      if (typeof blueBookExport === 'function') blueBookExport(+bbExp.dataset.bbexport);
+      return;
+    }
+    // 蓝图库：导入蓝图字符串
+    const bbImp = ev.target.closest('[data-bbimport]');
+    if (bbImp && G.panelMode === 'bluebook') {
+      const input = document.getElementById('bb-import-input');
+      const val = (input && input.value) ? input.value.trim() : '';
+      if (!val) { toast('请先粘贴蓝图字符串'); return; }
+      if (typeof blueprintDecode !== 'function') { toast('导入功能不可用'); return; }
+      const bp = blueprintDecode(val);
+      if (!bp) { toast('蓝图字符串无效或已损坏'); return; }
+      if (typeof blueBookAdd === 'function') blueBookAdd(bp);
+      toast('已导入蓝图「' + bp.name + '」（' + bp.ents.length + ' 个建筑）');
+      renderPanel(false);
       return;
     }
     // 装备网格点击（安装/卸下个人装备件）

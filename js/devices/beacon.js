@@ -70,9 +70,19 @@ class Beacon extends Entity {
 
 // 查询某坐标附近的信号塔给出的模块加成（叠加全部覆盖到的信号塔模块，并乘以生效系数）。
 // 返回 { speed, prod, eff }。
+// 性能优化：信号塔查询被组装机/化工厂/电采矿机等每帧多次调用（每次做桶索引遍历）。
+// 这里做按坐标的逐帧缓存——同一帧内同一坐标的结果只计算一次，避免同格被多个系统重复查询。
+// 信号塔仅在放置/拆除/装模块时变化（均由玩家操作触发，发生在帧间），帧内缓存不会产生行为差异；
+// 每帧由 clearBeaconBonusCache() 清空，保证跨帧始终返回最新结果（语义与旧逻辑完全一致）。
+let _beaconCache = null;
+let _beaconCacheKeys = 0;
+function clearBeaconBonusCache() { _beaconCache = null; _beaconCacheKeys = 0; }
 function beaconBonus(x, y) {
+  if (!G.techDone.production) return { speed: 0, prod: 0, eff: 0 };
+  // 缓存命中：同一帧内同一坐标直接返回已算结果
+  const key = x + ',' + y;
+  if (_beaconCache && _beaconCache[key]) return _beaconCache[key];
   let speed = 0, prod = 0, eff = 0;
-  if (!G.techDone.production) return { speed, prod, eff };
   // 在 9×9 范围内查找信号塔（按桶索引加速）
   const keys = bucketKeysIn(x - BEACON_RANGE, y - BEACON_RANGE, x + BEACON_RANGE, y + BEACON_RANGE);
   forEachEntInBuckets(keys, e => {
@@ -86,7 +96,12 @@ function beaconBonus(x, y) {
       eff += bc.eff * BEACON_MODULE_EFF;
     }
   });
-  return { speed, prod, eff };
+  const res = { speed, prod, eff };
+  // 写入缓存（懒初始化，避免每帧创建空 Map；用对象按坐标缓存，超阈值时整帧清空防内存膨胀）
+  if (!_beaconCache) _beaconCache = {};
+  _beaconCache[key] = res;
+  if (++_beaconCacheKeys > 4096) { _beaconCache = {}; _beaconCacheKeys = 0; }
+  return res;
 }
 
 // 渲染
