@@ -8,18 +8,18 @@
 // kind: 'melee'（近战冲撞）| 'ranged'（远程吐痰）
 // evolution: 该类型刷出所需的最低进化度（0~1），越高越强（对齐《异星工厂》敌人随进化度解锁更强变种）
 const ENEMY_TYPES = {
-  'small-biter':  { name: '小虫',   hp: 30,  speed: 22,  size: 6,  dmg: 4,  color: '#d05040', kind: 'melee',   xp: 1, evolution: 0 },
-  'medium-biter': { name: '大虫',   hp: 80,  speed: 18,  size: 9,  dmg: 9,  color: '#b03a30', kind: 'melee',   xp: 2, evolution: 0.05 },
-  'spitter':      { name: '吐痰虫', hp: 50,  speed: 12,  size: 7,  dmg: 7,  color: '#8a6a2a', kind: 'ranged', xp: 2, evolution: 0.15 },
+  'small-biter':  { name: '小虫',   hp: 30,  speed: 2.3, size: 6,  dmg: 4,  color: '#d05040', kind: 'melee',   xp: 1, evolution: 0 },
+  'medium-biter': { name: '大虫',   hp: 80,  speed: 1.75,size: 9,  dmg: 9,  color: '#b03a30', kind: 'melee',   xp: 2, evolution: 0.05 },
+  'spitter':      { name: '吐痰虫', hp: 50,  speed: 1.75,size: 7,  dmg: 7,  color: '#8a6a2a', kind: 'ranged', xp: 2, evolution: 0.15 },
   'worm':         { name: '蠕虫',   hp: 120, speed: 0,   size: 12, dmg: 12, color: '#6a4a3a', kind: 'ranged', xp: 3, evolution: 0.2 },
   // 进化变种（需更高进化度，属性更强）
-  'heavy-biter':  { name: '重甲虫', hp: 150, speed: 14,  size: 11, dmg: 16, color: '#8a2a2a', kind: 'melee',   xp: 4, evolution: 0.35 },
-  'fire-spitter': { name: '喷火虫', hp: 120, speed: 12,  size: 9,  dmg: 18, color: '#d08a2a', kind: 'ranged', xp: 4, evolution: 0.5 },
+  'heavy-biter':  { name: '重甲虫', hp: 150, speed: 1.75,size: 11, dmg: 16, color: '#8a2a2a', kind: 'melee',   xp: 4, evolution: 0.35 },
+  'fire-spitter': { name: '喷火虫', hp: 120, speed: 1.75,size: 9,  dmg: 18, color: '#d08a2a', kind: 'ranged', xp: 4, evolution: 0.5 },
   'big-worm':     { name: '巨型蠕虫', hp: 300, speed: 0,   size: 16, dmg: 24, color: '#4a3a2a', kind: 'ranged', xp: 6, evolution: 0.6 },
-  'huge-biter':   { name: '巨兽虫', hp: 500, speed: 12,  size: 15, dmg: 32, color: '#5a1a2a', kind: 'melee',   xp: 8, evolution: 0.8 },
+  'huge-biter':   { name: '巨兽虫', hp: 500, speed: 1.75,size: 15, dmg: 32, color: '#5a1a2a', kind: 'melee',   xp: 8, evolution: 0.8 },
   // 终局变种（对齐《异星工厂》Behemoth 巨兽级，进化度 0.9+）：属性最强，需最先进火力应对
-  'behemoth-biter':   { name: '巨兽甲虫', hp: 1200, speed: 10,  size: 19, dmg: 56, color: '#3a1018', kind: 'melee',   xp: 16, evolution: 0.9 },
-  'behemoth-spitter': { name: '巨兽吐痰虫', hp: 900, speed: 9,  size: 14, dmg: 48, color: '#5a3a1a', kind: 'ranged', xp: 14, evolution: 0.92 },
+  'behemoth-biter':   { name: '巨兽甲虫', hp: 1200, speed: 1.45,size: 19, dmg: 56, color: '#3a1018', kind: 'melee',   xp: 16, evolution: 0.9 },
+  'behemoth-spitter': { name: '巨兽吐痰虫', hp: 900, speed: 1.45,size: 14, dmg: 48, color: '#5a3a1a', kind: 'ranged', xp: 14, evolution: 0.92 },
   'behemoth-worm':    { name: '巨兽蠕虫', hp: 1500, speed: 0,  size: 20, dmg: 55, color: '#2e1c14', kind: 'ranged', xp: 22, evolution: 0.95 }
 };
 
@@ -471,7 +471,7 @@ function updateEnemies(dt) {
     // 攻击动画计时：>0 时敌人处于“扑咬/喷吐”动作帧（供渲染表现），随时间衰减
     en.lungeT = (en.lungeT || 0) - dt;
     // 兼容旧档敌人：补充默认字段
-    if (en.speed === undefined) { en.speed = 22; en.size = 8; en.dmg = 5; en.kind = 'melee'; en.maxhp = en.hp || 40; if (!en.color) en.color = enemyColor(en.hp, en.maxhp); }
+    if (en.speed === undefined) { en.speed = 2.3; en.size = 8; en.dmg = 5; en.kind = 'melee'; en.maxhp = en.hp || 40; if (!en.color) en.color = enemyColor(en.hp, en.maxhp); }
     // 减速力场（减速胶囊）：降低移动速度
     const slow = aoeSlowFactor(en.x, en.y);
     // 敌人是否处于进攻状态（对齐《异星工厂》：默认围绕虫巢游荡，仅污染覆盖虫巢才进攻）
