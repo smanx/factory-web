@@ -673,10 +673,10 @@ function deconstructAt(tx, ty) {
   if (!e || !withinReach(tx, ty)) return;
   // 拆除的是正在驾驶的载具：先下车再拆除
   if (G.driving && G.driving.ent === e && typeof exitCar === 'function') exitCar();
-  // 传送带/分流器（含快速/高速带）：拆除时连同带上物品一并移除，不再先返还带上物品（对齐《异星工厂》）
-  if (!(e instanceof Belt)) {
-    for (const [id, n] of e.contents()) invAdd(id, n);
-  }
+  // 拆除时瞬间返还实体内容（含传送带上携带的物品），对齐红图批量删除行为：
+  // 传送带是流动的，若逐件先取物品，移动中的传送带会不断补充导致无法清空，
+  // 因此需一次性移除整条带上的所有物品并全部返还，再移除实体本身。
+  for (const [id, n] of e.contents()) invAdd(id, n);
   removeEnt(e);
   if (G.panelEnt === e) closePanel();
   if (typeof playSfx === 'function') playSfx('demolish');

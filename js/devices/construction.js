@@ -284,10 +284,10 @@ function completeBuild(g) {
 function completeDecon(m) {
   const e = m.ent;
   if (!e || e._dead) { m._dead = true; return; }
-  // 传送带/分流器拆除时连同带上物品一并移除，不再返还带上物品（对齐《异星工厂》
-  if (!(e instanceof Belt)) {
-    for (const [id, n] of e.contents()) if (typeof invAdd === 'function') invAdd(id, n);
-  }
+  // 拆除时瞬间返还实体内容（含传送带上携带的物品），对齐手动拆除/红图批量删除：
+  // 传送带是流动的，若逐件先取物品，移动中的传送带会不断补充导致无法清空，
+  // 因此需一次性移除整条带上的所有物品并全部返还，再移除实体本身。
+  for (const [id, n] of e.contents()) if (typeof invAdd === 'function') invAdd(id, n);
   removeEnt(e);
   if (G.panelEnt === e && typeof closePanel === 'function') closePanel();
   m._dead = true;
