@@ -240,7 +240,8 @@ function drawSplitterBase(ctx, e, gx, gy, dir, alpha, colors, opts) {
   ctx.fill();
 
   // --- 流向指示箭头（放置时即可辨认物流方向）---
-  ctx.fillStyle = dirColorNotch(dir);
+  // 固定使用档位色（与传送带动效箭头 chev 一致），避免旋转方向时颜色改变。
+  ctx.fillStyle = colors.chev;
   ctx.strokeStyle = 'rgba(0,0,0,.45)';
   ctx.lineWidth = 1;
   for (const ax of [-TILE * 0.26, TILE * 0.04]) {
