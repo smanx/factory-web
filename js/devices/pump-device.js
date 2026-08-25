@@ -50,7 +50,7 @@ class FluidPump extends Entity {
           while (n > 0 && this.fluid[k] > 0 && front.giveItem(k)) { this.fluid[k]--; n--; transferred++; }
         }
       }
-      if (transferred > 0 && typeof playSfx === 'function') playSfx('pump');
+      if (transferred > 0 && typeof onScreen === 'function' && onScreen(this) && typeof playSfx === 'function') playSfx('pump');
     }
     for (const k of Object.keys(this.fluid)) if (!(this.fluid[k] > 0)) delete this.fluid[k];
   }

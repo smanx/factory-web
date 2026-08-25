@@ -29,7 +29,7 @@ class FastSplitter extends Splitter {
   // 分流成功时低频播放轻柔机械声（节流，避免噪杂）
   pushOut(item, port, lane) {
     const ok = super.pushOut(item, port, lane);
-    if (ok && typeof playSfx === 'function') {
+    if (ok && typeof onScreen === 'function' && onScreen(this) && typeof playSfx === 'function') {
       const now = G.time || 0;
       if (!this._sfxT || now - this._sfxT > 0.5) { this._sfxT = now; playSfx('splitter'); }
     }

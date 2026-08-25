@@ -281,7 +281,7 @@ class Inserter extends Entity {
       if (!got.length) return;
       this.holding = it;
       this.holdingCount = got.length;
-      if (typeof playSfx === 'function') playSfx('inserter');
+      if (typeof onScreen === 'function' && onScreen(this) && typeof playSfx === 'function') playSfx('inserter');
     } else {
       // 到达放物位：循环放入；失败保持持物、标记堵塞，下帧继续重试
       const t = this.entAtDrop();

@@ -84,8 +84,8 @@ class Drill extends Entity {
     this.status = '';
     this.working = true;
     drillEmit(this, dt);
-    // 采矿机运转环境音（限频避免音爆）
-    if (typeof playSfx === 'function' && G.settings.sound) {
+    // 采矿机运转环境音（仅屏内可见时播放，限频避免音爆）
+    if (typeof onScreen === 'function' && onScreen(this) && typeof playSfx === 'function' && G.settings.sound) {
       this._runSfxT = (this._runSfxT || 0) - dt;
       if (this._runSfxT <= 0) { this._runSfxT = 2.2; playSfx('machine-run'); }
     }

@@ -20,9 +20,9 @@ class Pump extends Entity {
     const take = Math.min(room, PUMP_RATE * dt);
     if (take > 0) { this.buf += take; this.working = true; }
     if (this.working) this.pulse = (this.pulse + dt * 1.6) % 1;
-    // 泵音效节流（约每 1.1 秒一次，避免连续刷音）
+    // 泵音效节流（仅屏内可见时播放，约每 1.1 秒一次，避免连续刷音）
     this._pumpSfxT = (this._pumpSfxT || 0) - dt;
-    if (this.working && this._pumpSfxT <= 0) {
+    if (this.working && this._pumpSfxT <= 0 && typeof onScreen === 'function' && onScreen(this)) {
       this._pumpSfxT = 1.1;
       if (typeof playSfx === 'function') playSfx('pump');
     }

@@ -63,8 +63,8 @@ class Assembler extends Entity {
       if (typeof spawnSpark === 'function' && Math.random() < dt * 1.2) {
         spawnSpark((this.x + 0.5 + (Math.random() - 0.5) * 0.7) * TILE, (this.y + 0.4) * TILE, { size: 1.2, life: 0.4, speed: 2 });
       }
-      // 运转环境音：低频“嗡嗡”（限频避免音爆）
-      if (typeof playSfx === 'function' && G.settings.sound) {
+      // 运转环境音：低频“嗡嗡”（仅屏内可见时播放，限频避免音爆）
+      if (typeof onScreen === 'function' && onScreen(this) && typeof playSfx === 'function' && G.settings.sound) {
         this._runSfxT = (this._runSfxT || 0) - dt;
         if (this._runSfxT <= 0) { this._runSfxT = 1.4; playSfx('machine-run'); }
       }
