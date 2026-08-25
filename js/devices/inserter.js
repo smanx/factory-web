@@ -201,7 +201,7 @@ class Inserter extends Entity {
       case 'lab':
         return isScience(item) && (t.packs[item] || 0) < 40;
       case 'underground':
-        return t.items.length < UG_CAP;
+        return t.items.length < UG_CAP * 2;   // 双列：每列 UG_CAP 件，两列共 2×UG_CAP
       case 'pipe':
       case 'pipe-to-ground':
       case 'pump':
