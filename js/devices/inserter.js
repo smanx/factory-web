@@ -59,16 +59,7 @@ class Inserter extends Entity {
     const e = entAt(x, y);
     return (e && !(e instanceof Inserter)) ? e : null;
   }
-  // 取物格传送带的“近侧车道”：机械臂从靠近自己一侧的车道取物（对齐《异星工厂》）。
-  pickBeltLane(s) {
-    if (!(s instanceof Belt)) return undefined;
-    const bx = s.x, by = s.y;
-    const dx = this.x - bx, dy = this.y - by;
-    const fdx = DX[s.dir], fdy = DY[s.dir];
-    const perp = [fdy, -fdx];
-    const d = dx * perp[0] + dy * perp[1];
-    return d > 0 ? 1 : 0;
-  }
+  // 取物：无论物品位于传送带的哪一条 lane（左线/右线），机械臂都可抓取。
   // 放物格传送带的“远侧车道”：机械臂把物品放到远离自己一侧的车道。
   // 传送带为双列（左右两线）时，机械臂侧放默认进入远离机械臂的那一线，
   // 避免物品都挤在机械臂所在的近侧线上。
@@ -86,8 +77,8 @@ class Inserter extends Entity {
     if (!s) return null;
     let it = null;
     if (s instanceof Belt) {
-      const lane = this.pickBeltLane(s);
-      const z = s.grabZone(this.filter || undefined, lane);
+      // 任意一线皆可抓取：不限定近侧 lane，任一线头部物品均视为可取源
+      const z = s.grabZone(this.filter || undefined);
       it = z ? z.item : null;
     } else if (this.filter && s.countOf) {
       // 过滤臂：直接探测源内是否存在过滤物（而非源的首个产出）
@@ -105,11 +96,11 @@ class Inserter extends Entity {
   }
   takeNFrom(s, item, n) {
     const got = [];
-    const lane = this.pickBeltLane(s);
     for (let i = 0; i < n; i++) {
       let it = null;
       if (s instanceof Belt) {
-        const z = s.grabZone(item, lane);
+        // 任意一线皆可抓取：不限定近侧 lane，跨越左右两线凑足所需数量
+        const z = s.grabZone(item);
         if (!z) break;
         s.items.splice(s.items.indexOf(z), 1);
         it = z.item;
@@ -123,7 +114,7 @@ class Inserter extends Entity {
   }
   takeSource(s) {
     if (s instanceof Belt) {
-      const z = s.grabZone(undefined, this.pickBeltLane(s));
+      const z = s.grabZone(undefined);
       if (!z) return null;
       s.items.splice(s.items.indexOf(z), 1);
       return z.item;
