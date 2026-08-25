@@ -1,5 +1,20 @@
 'use strict';
 
+// ===== 原地过滤（P0 优化）=====
+// 高频每帧清理（子弹/掉落/机器人等）避免每次 filter 分配新数组造成 GC 压力：
+// 仅当存在应移除项时才原地压缩，语义与 Array.prototype.filter 一致（保留顺序、只留保留项）。
+// 返回过滤后的数组；若全部存活则返回原数组引用（零分配）。
+function compactFilter(arr, keep) {
+  if (!arr || arr.length === 0) return arr;
+  let j = 0;
+  for (let i = 0; i < arr.length; i++) {
+    if (keep(arr[i])) arr[j++] = arr[i];
+  }
+  if (j === arr.length) return arr;      // 全存活，零分配
+  arr.length = j;                        // 原地截断，回收多余槽位
+  return arr;
+}
+
 // ===== 整数化空间网格 key（P1 优化）=====
 // 用单个 32 位整数编码 (x,y) 替代高频字符串拼接。范围 ±32767 内的瓦片坐标
 // 足够覆盖本游戏玩法（更大区域也可扩展到 ±2^15）。相对坐标偏移后可安全做位运算。
@@ -12,8 +27,12 @@ function dirFromVec(dx, dy) {
 
 // 实体增删会让邻居关系改变，进而影响附近传送带的输入侧判定。
 // 这里在 (x,y) 的 w×h 区域向外扩 2 格范围内，把命中的传送带缓存失效。
+// 该函数在 addEnt/removeEnt（拆/蓝图/建造高频）时被调用，为避免每次 new Set 造成 GC 压力，
+// 复用模块级去重 Set（P1 优化）：调用前 clear，遍历后与旧逻辑语义一致（同实体只处理一次）。
+let _beltSeenSet = new Set();
 function invalidateBeltInputNear(x, y, w, h) {
-  const seen = new Set();
+  const seen = _beltSeenSet;
+  seen.clear();
   for (let dy = -2; dy < h + 2; dy++)
     for (let dx = -2; dx < w + 2; dx++) {
       const t = entAt(x + dx, y + dy);
@@ -39,8 +58,10 @@ function ensureBucket(k) {
   return s;
 }
 // 返回覆盖 (x0,y0)-(x1,y1)（含）矩形区域的所有桶 key（去重）。
-function bucketKeysIn(x0, y0, x1, y1) {
-  const keys = [];
+// 热路径复用：传入 out 数组时直接回填（先清空），避免每帧分配新数组（GC 压力）。
+function bucketKeysIn(x0, y0, x1, y1, out) {
+  const keys = out || [];
+  keys.length = 0;
   const b0x = x0 >> 4, b0y = y0 >> 4, b1x = x1 >> 4, b1y = y1 >> 4;
   for (let by = b0y; by <= b1y; by++)
     for (let bx = b0x; bx <= b1x; bx++) keys.push(((bx + BUCK_OFF) * 8192) + (by + BUCK_OFF));
@@ -135,8 +156,10 @@ function neighborOnSideCell(e, side, cell) {
 
 // 遍历实体正交相邻格上的实体（去重，不含斜角）
 // 遍历给定桶集合内的实体（去重，跳过墓碑）。
-function forEachEntInBuckets(keys, fn) {
-  const seen = new Set();
+// 热路径复用：可选传入外部 seen Set，避免每帧/每次调用分配新 Set（GC 压力）。
+function forEachEntInBuckets(keys, fn, seen) {
+  if (!seen) seen = new Set();
+  else seen.clear();
   for (const k of keys) {
     const s = G.buckets.get(k);
     if (!s) continue;
@@ -217,6 +240,10 @@ class Entity {
 function damageBuilding(e, dmg) {
   if (!e || e._dead) return;
   if (e.maxhp <= 0) return;           // 不可损坏的实体（若有）
+  // 蜘蛛机器人装备护盾：优先消耗装备电网电力吸收伤害（对齐《异星工厂》能量护盾）
+  if (typeof e.spiderShieldAbsorb === 'function') dmg = e.spiderShieldAbsorb(dmg);
+  // 装甲车/坦克装备护盾：载具装有能量护盾时，消耗载具装备电网电力吸收伤害（蜘蛛机走上面的专属逻辑）
+  if (typeof e.spiderShieldAbsorb !== 'function' && typeof e.vehShieldAbsorb === 'function' && e.equipGrid && e.equipGrid.length) dmg = e.vehShieldAbsorb(dmg);
   e.hp = (e.hp === undefined ? e.maxhp : e.hp) - dmg;
   if (e.hp > 0) return e.hp;
   // HP 归零 → 摧毁

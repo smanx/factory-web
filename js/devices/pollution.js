@@ -39,6 +39,7 @@ const POLLUTION_SOURCES = {
   'centrifuge': 2,          // 离心机（铀矿处理，低污染）
   'nuclear-reactor': 10,    // 核反应堆（虽清洁但燃料处理与热量管理仍有微量排放）
   'locomotive': 4,          // 火车头（烧煤行驶）
+  'diesel-locomotive': 4,   // 内燃机车（烧燃料行驶，对齐原版：内燃机车同样有尾气）
   'burner-inserter': 0.4    // 燃料机械臂（烧煤，微量）
 };
 
@@ -87,7 +88,9 @@ function pollutionAggro(dt) {
   G.pollutionT = (G.pollutionT || 0) + dt;
   if (G.pollutionT < POLLUTION_MIN_WAVE_GAP) return;
   // 存在虫巢才可能被激怒（没有虫巢就无从进攻）
-  const spawners = G.enemies ? G.enemies.filter(e => e.kind === 'spawner' && !e.dead) : [];
+  // 性能优化：复用 combat2.js 中每帧缓存的存活巢穴列表 getSpawnerList()，
+  // 避免此处每帧 G.enemies.filter(...) 分配新数组造成 GC 压力（P0 优化）。
+  const spawners = (typeof getSpawnerList === 'function') ? getSpawnerList() : (G.enemies ? G.enemies.filter(e => e.kind === 'spawner' && !e.dead) : []);
   if (spawners.length === 0) return;
   G.pollutionT = 0;
   // 消耗部分污染（虫群集结吸收），避免无限连发

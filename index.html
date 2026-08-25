@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>工厂原型 Factory Proto</title>
-<link rel="stylesheet" href="css/style.css?v=23">
+<link rel="stylesheet" href="css/style.css?v=26">
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -66,36 +66,77 @@
       WASD 移动 · 左键建造/挖矿 · 右键拆除 · R 旋转 · F 拿取 ·
       中键/E 面板 · T 科技 · K/L 存读档
     </div>
+
+    <!-- 地图设置：开始新游戏前配置世界参数（对齐《异星工厂》地图生成器） -->
+    <div id="world-config-overlay" class="world-config-overlay hidden">
+      <div class="world-config-panel">
+        <div class="world-config-head">
+          <span class="world-config-title">🗺️ 地图设置</span>
+          <button id="world-config-close" class="world-config-close" title="关闭">✕</button>
+        </div>
+        <div class="world-config-body"></div>
+        <div class="world-config-foot">
+          <button id="world-config-ok" class="world-config-ok primary">▶ 开始游戏</button>
+        </div>
+      </div>
+    </div>
     <div class="start-hint sub">📱 手机/触屏：点按建造/开面板/移动 · 长按建筑弹操作盘（旋转/拆除/复制） · 拖动平移视角 · 双指捏合缩放 · 双击旋转/回中</div>
   </div>
 </div>
-<script src="js/data.js?v=37"></script>
-<script src="js/world.js?v=11"></script>
+<!-- 新手引导面板：首次新游戏时显示基本操作说明 -->
+<div id="tutorial-overlay" class="tutorial-overlay hidden">
+  <div class="tutorial-panel">
+    <div class="tutorial-title">🚀 欢迎来到工厂原型</div>
+    <div class="tutorial-sub">FACTORY PROTO — 复刻《异星工厂》</div>
+    <div class="tutorial-body">
+      <div class="tutorial-sec">目标</div>
+      <div>采集资源 → 建造工厂 → 自动化生产 → 发射火箭赢得游戏。</div>
+      <div class="tutorial-sec">基本操作</div>
+      <div>· <b>WASD</b> 移动 · <b>鼠标左键</b> 建造 / 挖矿 · <b>右键</b> 拆除</div>
+      <div>· <b>E</b> 背包 / 手搓 · <b>T</b> 科技研究 · <b>P</b> 统计 · <b>O</b> 设置</div>
+      <div>· <b>数字键 1-0</b> 选择快捷栏 · <b>R</b> 旋转 · <b>H/V</b> 翻转 · <b>F</b> 拿取 · <b>Q</b> 取消</div>
+      <div class="tutorial-sec">物流与建造</div>
+      <div>· <b>B</b> 蓝图框选 · <b>Alt+B</b> 蓝图库 · <b>Alt+D</b> 红图拆除 · <b>Alt+U</b> 绿图升级</div>
+      <div>· <b>Alt</b> 切换 ALT 模式（建筑配方/内容叠加） · <b>M</b> 小地图 · <b>N</b> 地图标记 · <b>Alt+N</b> 管理 · <b>Alt+H</b> 本说明</div>
+      <div class="tutorial-sec">上手流程</div>
+      <div>1. 手挖石头，合成<b>石炉</b>与<b>热能采矿机</b>，冶炼铁板/铜板</div>
+      <div>2. 铺设<b>采矿机 + 传送带 + 机械臂 + 组装机</b>自动化生产</div>
+      <div>3. <b>研究中心</b>放红瓶推进科技 → 抽水机+锅炉+蒸汽机发电</div>
+      <div>4. 石油 → 塑料 → 高级科技，一路冲向火箭发射</div>
+      <div class="tutorial-hint">触屏端：点按建造 / 长按弹操作盘 / 拖动平移 / 双指缩放</div>
+    </div>
+    <button id="btn-tutorial-close" class="tutorial-close">开始游戏 ▶</button>
+  </div>
+</div>
+<script src="js/data.js?v=61"></script>
+<script src="js/world-config.js?v=1"></script>
+<script src="js/world.js?v=13"></script>
 <script src="js/core/registry.js?v=7"></script>
-<script src="js/core/entity.js?v=9"></script>
+<script src="js/core/entity.js?v=13"></script>
 <script src="js/core/draw.js?v=10"></script>
 <script src="js/particles.js?v=1"></script>
-<script src="js/devices/belt.js?v=13"></script>
+<script src="js/devices/belt.js?v=14"></script>
 <script src="js/devices/splitter.js?v=10"></script>
 <script src="js/devices/underground.js?v=9"></script>
 <script src="js/devices/express-belt.js?v=13"></script>
-<script src="js/devices/inserter.js?v=13"></script>
-<script src="js/devices/burner-inserter.js?v=1"></script>
-<script src="js/devices/lamp.js?v=1"></script>
-<script src="js/devices/drill.js?v=14"></script>
-<script src="js/devices/electric-drill.js?v=10"></script>
-<script src="js/devices/pumpjack.js?v=8"></script>
-<script src="js/devices/furnace.js?v=12"></script>
-<script src="js/devices/electric-furnace.js?v=10"></script>
-<script src="js/devices/steel-furnace.js?v=11"></script>
-<script src="js/devices/assembler.js?v=23"></script>
+<script src="js/devices/inserter.js?v=16"></script>
+<script src="js/devices/burner-inserter.js?v=2"></script>
+<script src="js/devices/lamp.js?v=2"></script>
+<script src="js/devices/drill.js?v=16"></script>
+<script src="js/devices/electric-drill.js?v=11"></script>
+<script src="js/devices/pumpjack.js?v=10"></script>
+<script src="js/devices/furnace.js?v=14"></script>
+<script src="js/devices/electric-furnace.js?v=11"></script>
+<script src="js/devices/steel-furnace.js?v=12"></script>
+<script src="js/devices/assembler.js?v=24"></script>
 <script src="js/devices/assembler-mk2.js?v=10"></script>
 <script src="js/devices/assembler-3.js?v=17"></script>
 <script src="js/devices/beacon.js?v=4"></script>
-<script src="js/devices/chest.js?v=9"></script>
-<script src="js/devices/steel-chest.js?v=8"></script>
+<script src="js/devices/circuit.js?v=6"></script>
+<script src="js/devices/chest.js?v=11"></script>
+<script src="js/devices/steel-chest.js?v=10"></script>
 <script src="js/devices/lab.js?v=15"></script>
-<script src="js/devices/boiler.js?v=12"></script>
+<script src="js/devices/boiler.js?v=13"></script>
 <script src="js/devices/steam-engine.js?v=8"></script>
 <script src="js/devices/pump.js?v=10"></script>
 <script src="js/devices/pipe.js?v=8"></script>
@@ -103,36 +144,37 @@
 <script src="js/devices/pump-device.js?v=10"></script>
 <script src="js/devices/storage-tank.js?v=8"></script>
 <script src="js/devices/creative.js?v=9"></script>
-<script src="js/devices/refinery.js?v=14"></script>
-<script src="js/devices/chemical-plant.js?v=14"></script>
-<script src="js/devices/power-renewable.js?v=9"></script>
-<script src="js/devices/nuclear.js?v=4"></script>
+<script src="js/devices/refinery.js?v=17"></script>
+<script src="js/devices/chemical-plant.js?v=17"></script>
+<script src="js/devices/nuclear.js?v=7"></script>
 <script src="js/devices/passive-power.js?v=1"></script>
-<script src="js/devices/military.js?v=11"></script>
+<script src="js/devices/military.js?v=16"></script>
 <script src="js/devices/gate.js?v=1"></script>
-<script src="js/devices/combat2.js?v=19"></script>
-<script src="js/devices/pollution.js?v=1"></script>
-<script src="js/devices/equipment.js?v=4"></script>
+<script src="js/devices/combat2.js?v=33"></script>
+<script src="js/devices/pollution.js?v=3"></script>
+<script src="js/devices/weather.js?v=1"></script>
+<script src="js/devices/maptags.js?v=1"></script>
+<script src="js/devices/equipment.js?v=5"></script>
 <script src="js/devices/rocket.js?v=6"></script>
-<script src="js/devices/defense.js?v=3"></script>
-<script src="js/devices/logistics.js?v=6"></script>
+<script src="js/devices/defense.js?v=6"></script>
+<script src="js/devices/logistics.js?v=9"></script>
 <script src="js/devices/fishing.js?v=1"></script>
-<script src="js/devices/construction.js?v=4"></script>
-<script src="js/devices/railway.js?v=6"></script>
-<script src="js/devices/vehicle.js?v=9"></script>
-<script src="js/devices/circuit.js?v=3"></script>
+<script src="js/devices/construction.js?v=6"></script>
+<script src="js/devices/railway.js?v=16"></script>
+<script src="js/devices/vehicle.js?v=19"></script>
+<script src="js/devices/power-renewable.js?v=11"></script>
 <script src="js/devices/power-switch.js?v=2"></script>
 <script src="js/devices/substation.js?v=1"></script>
 <script src="js/devices/speaker.js?v=1"></script>
 <script src="js/core/power.js?v=10"></script>
-<script src="js/player.js?v=24"></script>
-<script src="js/ui.js?v=36"></script>
-<script src="js/menu.js?v=3"></script>
-<script src="js/render.js?v=33"></script>
+<script src="js/player.js?v=29"></script>
+<script src="js/ui.js?v=47"></script>
+<script src="js/menu.js?v=4"></script>
+<script src="js/render.js?v=40"></script>
 <script src="js/stats.js?v=14"></script>
 <script src="js/saves.js?v=3"></script>
-<script src="js/sfx.js?v=10"></script>
-<script src="js/touch.js?v=4"></script>
-<script src="js/main.js?v=43"></script>
+<script src="js/sfx.js?v=11"></script>
+<script src="js/touch.js?v=6"></script>
+<script src="js/main.js?v=57"></script>
 </body>
 </html>

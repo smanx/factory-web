@@ -1,5 +1,8 @@
 'use strict';
 
+// 共享空数组（避免战斗路径中每帧因 `G.enemies || []` 生成新字面量）
+const EMPTY_ARR = [];
+
 const G = {
   canvas: null,
   ctx: null,
@@ -62,6 +65,7 @@ const G = {
   bullets: [],
   combatRobots: [],
   lootDrops: undefined,   // 击杀敌人掉落的矿石（见 combat2.js dropEnemyLoot）
+  groundItems: undefined, // 玩家丢弃到地面的物品实体（见 player.js，供手动上料/传送带吸附）
 
   driving: null,       // 载具驾驶状态：{ ent: Car }，玩家进入驾驶时非空
   spawnT: 0,
@@ -69,9 +73,11 @@ const G = {
   playerHPmax: 100,
   playerFireT: 0,
   weapon: null,       // 当前选中的武器 id（player 持有）
+  screenFlash: 0,     // 全屏白光闪光强度（0~1，原子弹等大爆炸时触发，逐帧衰减）
   armor: null,        // 当前穿戴的护甲 id（light-armor / heavy-armor）
   gameWon: false,     // 是否已发射火箭赢得游戏
   repairPackUses: 0,  // 当前修理包剩余使用次数（用尽后消耗一个新修理包）
+  axeDura: 0,         // 当前手持开采工具（铁斧/钢斧）剩余耐久（用尽后消失，对齐《异星工厂》Axe）
   victoryT: 0,
   inMenu: true,       // 开始菜单显示中：游戏世界尚未初始化，loop 暂停渲染与更新
   deconstructMode: false,  // 触屏拆除模式：开启后点触建筑即可拆除（PC 右键拆除不受影响）
@@ -105,7 +111,7 @@ function loadSettings() {
 }
 
 function newGame() {
-  const seed = (Math.random() * 1e9) | 0;
+  const seed = (typeof resolveWorldSeed === 'function') ? resolveWorldSeed() : ((Math.random() * 1e9) | 0);
   G.world = genWorld(seed);
   // 新种子下地形变化，清空分块离屏缓存
   if (typeof clearTerrainCache === 'function') clearTerrainCache();
@@ -124,11 +130,16 @@ function newGame() {
   G.enemies = []; G.bullets = []; G.spawnT = 0;
   G.enemyProjectiles = [];
   G.evolution = 0;   // 敌人进化度（战斗开启时随时间/击杀增长）
+  // 敌人强度配置（对齐《异星工厂》新游戏敌人设置）：高难度开局即有一定初始进化度
+  if (typeof enemyConfig === 'function' && G && G.worldConfig && enemyConfig().initEvolution) {
+    G.evolution = enemyConfig().initEvolution;
+  }
   G.pollution = 0;    // 污染值（对齐《异星工厂》：工业排放污染激怒虫群）
   G.pollutionWaves = 0; G.pollutionT = 0; G.pollutionScanT = 0;
   G.combatRobots = [];
   G.aoeZones = [];        // 新游戏清空区域力场（毒/减速胶囊）
   G.groundFires = [];     // 新游戏清空地面火焰残留
+  G.acidPools = [];       // 新游戏清空喷吐虫酸液洼地残留
   G.driving = null;    // 新游戏清空驾驶状态
   G.craftQueue = [];   // 新游戏清空手搓队列
   G.logiRobots = [];
@@ -136,6 +147,7 @@ function newGame() {
   G.logiNetT = 0;
   G.logiRequest = {};   // 新游戏清空个人物流请求
   G.blueBook = [];      // 新游戏清空蓝图库
+  G.mapTags = [];       // 新游戏清空地图标记
   G.railTiles = new Set();
   G.trains = [];
   G.playerHP = 100; G.playerHPmax = 100;
@@ -149,6 +161,7 @@ function newGame() {
   // 重置累计时间与历史统计（新游戏从头开始，无历史）
   G.time = 0;
   lastPanelCheck = 0;
+  if (typeof initWeather === 'function') initWeather();  // 初始化天气（云层布局随世界种子确定性生成）
   if (typeof histReset === 'function') histReset();
   G.statsHistItem = null;
   G.statsItemTab = 'hist';
@@ -165,6 +178,7 @@ function newGame() {
   invAdd('transport-belt', 32); // 传送带
   invAdd('inserter', 4);        // 机械臂
   invAdd('coal', 8);
+  invAdd('iron-axe', 1);       // 铁斧（对齐《异星工厂》开局默认手持铁斧，砍树/手挖更快）
   // 测试用创造/虚空设备（创造箱/虚空箱/创造管道/虚空管道）不再默认发放：
   // 仅当在 Debug 模式中开启"无限资源"后才通过建造列表出现，正常游玩不可见。
 }
@@ -173,6 +187,7 @@ function serializeAll() {
   return {
     v: 1,
     seed: G.world.seed,
+    worldConfig: (typeof normalizeWorldConfig === 'function') ? normalizeWorldConfig(G.worldConfig) : G.worldConfig,
     world: {
       remaining: Array.from(G.world.remaining, ([k, v]) => {
         const i = k.indexOf(',');
@@ -192,6 +207,7 @@ function serializeAll() {
     })),
     gameWon: G.gameWon,
     repairPackUses: G.repairPackUses || 0,
+    axeDura: G.axeDura || 0,
     techDone: G.techDone,
     techProg: G.techProg,
     activeTech: G.activeTech,
@@ -205,7 +221,8 @@ function serializeAll() {
     hist: (typeof histSerialize === 'function') ? histSerialize() : null,
     constr: (typeof constrSerialize === 'function') ? constrSerialize() : null,
     equipment: (typeof equipmentSerialize === 'function') ? equipmentSerialize() : null,
-    blueBook: (G.blueBook || []).map(b => ({ name: b.name, minX: b.minX | 0, minY: b.minY | 0, ents: b.ents }))
+    blueBook: (G.blueBook || []).map(b => ({ name: b.name, minX: b.minX | 0, minY: b.minY | 0, ents: b.ents })),
+    mapTags: (typeof mapTagsSerialize === 'function') ? mapTagsSerialize() : (G.mapTags || []).slice()
   };
 }
 
@@ -249,6 +266,13 @@ async function loadGame(id) {
 }
 
 function applySave(d) {
+  // 恢复地图生成配置（对齐《异星工厂》：新游戏的世界参数随存档持久化）
+  if (typeof normalizeWorldConfig === 'function') {
+    const wc = normalizeWorldConfig(d.worldConfig);
+    // 用存档种子填充配置 seed（读档后不再用其重新生成，仅保留语义）
+    wc.seed = (d.seed && d.seed > 0) ? d.seed : wc.seed;
+    G.worldConfig = wc;
+  }
   G.world = genWorld(d.seed);
   G.world.remaining = new Map();
   if (d.world && Array.isArray(d.world.chunks)) {
@@ -312,6 +336,8 @@ function applySave(d) {
     }
   }
   G.repairPackUses = (typeof d.repairPackUses === 'number') ? d.repairPackUses : 0;
+  G.axeDura = (typeof d.axeDura === 'number') ? d.axeDura : 0;
+  if (typeof mapTagsDeserialize === 'function') mapTagsDeserialize(d.mapTags); else G.mapTags = [];
   G.combatRobots = [];
   G.driving = null;
   G.logiRobots = [];
@@ -323,6 +349,10 @@ function applySave(d) {
   const [sx, sy] = findSpawn();
   G.spawn = { x: sx, y: sy };
   G.techDone = d.techDone || {};
+  // 科技树新增科技迁移（对齐《异星工厂》进阶科技，保持旧档可用）
+  // 新版本把原可直接用/仅按核能门控的配方拆成独立进阶科技；
+  // 旧档已研究上游科技时自动补完新科技，避免已有产线因配方锁定而失效。
+  migrateNewTechs(G.techDone);
   G.techProg = d.techProg || {};
   G.activeTech = d.activeTech || null;
   // 恢复研究队列（过滤已完成/无效项）
@@ -353,6 +383,7 @@ function applySave(d) {
   }
   // 恢复游戏累计时间（历史统计的时间锚点；旧档无该字段则从 0 开始）
   if (typeof d.time === 'number' && isFinite(d.time)) G.time = d.time;
+  if (typeof initWeather === 'function') initWeather();  // 读档后按世界种子初始化天气
   // 恢复历史统计（把存档中的小时序列展开回环形缓冲；无历史则重置）
   if (typeof histReset === 'function') histReset();
   if (typeof histDeserialize === 'function' && d.hist) histDeserialize(d.hist);
@@ -620,6 +651,35 @@ function deconstructAt(tx, ty) {
   uiDirty = true;
 }
 
+// ===== 右键取物（对齐《异星工厂》：右键点击传送带/地下带取最前物品、点击机械臂取爪上物品） =====
+// 返回 true 表示已取到物品（此时不再执行拆除）。物品优先进背包，背包满则掉落到脚下地面。
+function rightClickPickupAt(tx, ty) {
+  const e = entAt(tx, ty);
+  if (!e || !withinReach(tx, ty)) return false;
+  let id = null;
+  if (e instanceof Belt && typeof e.takeItem === 'function') {
+    id = e.takeItem();
+  } else if (typeof e.takeItem === 'function' && (e.type === 'underground' || e.type === 'fast-underground-belt' || e.type === 'express-underground-belt')) {
+    id = e.takeItem();
+  } else if (e.holding && e.holdingCount > 0) {
+    // 机械臂爪上抓取的物品
+    id = e.holding;
+    e.holdingCount = (e.holdingCount || 1) - 1;
+    if (e.holdingCount <= 0) e.holding = null;
+  }
+  if (!id) return false;
+  if (!invAdd(id, 1)) {
+    // 背包已满（或堆叠达到上限）：掉落到脚下地面
+    if (typeof addGroundItem === 'function') {
+      const fx = Math.floor(G.player.x / TILE), fy = Math.floor(G.player.y / TILE);
+      addGroundItem(fx, fy, id, 1);
+    }
+  }
+  if (typeof playSfx === 'function') playSfx('loot');
+  uiDirty = true;
+  return true;
+}
+
 // ===== 拆除模式（触屏专用，PC 右键拆除不受影响） =====
 // 手机端无法使用鼠标右键，通过“拆除模式”开关替代：
 // 开启后，点触/左键点击建筑即可拆除单个建筑，长按可连续拆除。
@@ -809,6 +869,10 @@ function greenAreaAction(action) {
         ne.dir = dir;
         ne.applyDir();
         if (ne.items) ne.items = items;
+        // 分流器升级/降级时保留可编程分离器的过滤配置（对齐《异星工厂》Programmable splitter）
+        if (st && st.filter && typeof Splitter !== 'undefined' && ne instanceof Splitter) {
+          ne.filter = st.filter;
+        }
       }
       addEnt(ne);
       if (!infinite) {
@@ -993,6 +1057,17 @@ function blueBookRemove(i) {
   uiDirty = true;
 }
 
+// 重命名蓝图库中指定项（对齐《异星工厂》：蓝图库中可自由为蓝图命名）
+function blueBookRename(i, newName) {
+  if (!Array.isArray(G.blueBook) || i < 0 || i >= G.blueBook.length) return;
+  const old = G.blueBook[i].name;
+  const name = String(newName || '').trim();
+  if (!name) { toast('蓝图名称不能为空'); return; }
+  G.blueBook[i].name = name;
+  toast('已重命名蓝图：' + old + ' → ' + name);
+  uiDirty = true;
+}
+
 // 尝试进入面前的装甲车（F 键 / 交互）。成功返回 true。
 function tryEnterNearbyCar() {
   if (G.driving) return false;
@@ -1001,7 +1076,7 @@ function tryEnterNearbyCar() {
   const checks = [[px, py], [px + DX[G.player.dir], py + DY[G.player.dir]]];
   for (const [tx, ty] of checks) {
     const e = entAt(tx, ty);
-    if (e && (e.type === 'car' || e.type === 'tank') && typeof enterCar === 'function') { enterCar(e); return true; }
+    if (e && (e.type === 'car' || e.type === 'tank' || e.type === 'locomotive' || e.type === 'diesel-locomotive' || e.type === 'cargo-wagon' || e.type === 'fluid-wagon' || e.type === 'artillery-wagon') && typeof enterCar === 'function') { enterCar(e); return true; }
   }
   return false;
 }
@@ -1055,6 +1130,23 @@ function repairActionAt(tx, ty) {
 // 当前选中修理包（用于建造/点击优先触发修复）
 function hasRepairPackSelected() { return selItem() === 'repair-pack'; }
 
+// 使用峭壁炸药：选中峭壁炸药并点击峭壁格，炸毁该格峭壁（对齐《异星工厂》Cliff explosives）
+function hasCliffBlastSelected() { return selItem() === 'cliff-explosives'; }
+function cliffBlastAt(tx, ty) {
+  if (!withinReach(tx, ty)) { toast('距离太远'); return false; }
+  if (!isCliff(tx, ty)) { toast('这里没有峭壁'); return false; }
+  if (!invCount('cliff-explosives')) { toast('需要峭壁炸药'); return false; }
+  invTake('cliff-explosives', 1);
+  setTerrain(tx, ty, T_GRASS);
+  // 爆炸视觉 + 音效
+  if (typeof spawnSmoke === 'function') {
+    for (let i = 0; i < 6; i++) spawnSmoke(tx * TILE + TILE / 2 + (Math.random() - 0.5) * 22, ty * TILE + TILE / 2 + (Math.random() - 0.5) * 22, { life: 1.2, size: 8, color: '#b0a898' });
+  }
+  if (typeof playSfx === 'function') playSfx('explosion');
+  uiDirty = true;
+  return true;
+}
+
 function copySettings(e) {
   if (!e) return;
   const s = { type: e.type, dir: e.dir };
@@ -1080,6 +1172,13 @@ function pasteSettings(e) {
 }
 
 function rotateAction() {
+  // 驾驶火车时：R 反转车头方向（对齐《异星工厂》：驾驶列车按 R 掉头）
+  if (G.driving && G.driving.ent && typeof reverseTrain === 'function' &&
+      (G.driving.ent instanceof Locomotive || G.driving.ent instanceof CargoWagon) && G.driving.mode === 'drive') {
+    const tr = findTrainOfCar ? findTrainOfCar(G.driving.ent) : null;
+    if (tr) reverseTrain(tr);
+    return;
+  }
   // 蓝图粘贴中：旋转整个蓝图（对齐《异星工厂》R 键旋转蓝图）
   if (G.blueMode === 'paste' && G.blueprint) {
     G.blueRot = (G.blueRot + 1) % 4;
@@ -1162,10 +1261,41 @@ function flipAction(axis) {
 
 // ===== 开始菜单：新游戏 / 读取存档 =====
 // 游戏启动后先停留在开始菜单，由用户选择才开始/继续游戏。
+
+// 显示新手引导面板（首次新游戏时自动弹出；也可用 Alt+H 手动查看完整说明）
+function showTutorial() {
+  const ov = document.getElementById('tutorial-overlay');
+  if (ov) {
+    ov.classList.remove('hidden');
+    if (typeof playSfx === 'function') playSfx('click');
+  }
+}
+function hideTutorial() {
+  const ov = document.getElementById('tutorial-overlay');
+  if (ov) ov.classList.add('hidden');
+}
+function tutorialShownMark() {
+  G.settings.tutorialShown = true;
+  hideTutorial();
+  if (typeof saveSettings === 'function') saveSettings(); // 持久化已看标记
+}
+
+// 初始化新手引导：绑定“开始游戏”关闭按钮（供首次引导与 Alt+H 说明共用）
+function initTutorial() {
+  const btn = document.getElementById('btn-tutorial-close');
+  if (btn) {
+    btn.addEventListener('click', () => tutorialShownMark());
+  }
+  // 点击遮罩空白处也可关闭
+  const ov = document.getElementById('tutorial-overlay');
+  if (ov) ov.addEventListener('click', ev => { if (ev.target === ov) tutorialShownMark(); });
+}
+
 function startNewGame() {
   newGame();
   buildHotbar();
   enterGame();
+  if (!G.settings.tutorialShown) showTutorial();   // 首次新游戏：弹出新手引导
 }
 
 async function startFromSave() {
@@ -1252,8 +1382,23 @@ function bindInput() {
     else if (k === 't') G.panelMode === 'tech' ? closePanel() : openPanel('tech');
     else if (k === 'o') G.panelMode === 'set' ? closePanel() : openPanel('set');
     else if (k === 'm') { G.settings.minimap = !(G.settings.minimap !== false); toast(G.settings.minimap ? '小地图：开启' : '小地图：关闭'); }
+    // 地图标记（对齐《异星工厂》：N 放置地图标记，Alt+N 管理）
+    else if (ev.altKey && k === 'n') {
+      ev.preventDefault();
+      G.panelMode === 'maptags' ? closePanel() : openPanel('maptags');
+    }
+    else if (k === 'n') { if (typeof placeMapTag === 'function') placeMapTag(); }
+    // 操作说明（Alt+H）：随时查看完整快捷键指南
+    else if (ev.altKey && k === 'h') { ev.preventDefault(); if (typeof showTutorial === 'function') showTutorial(); }
     // 放电防御装备：C 键激活对周围敌人放电（对齐《异星工厂》Discharge defense）
     else if (k === 'c') { if (typeof activateDischargeDefense === 'function') activateDischargeDefense(); }
+    // ALT 模式（对齐《异星工厂》ALT 模式）：按 Alt 键切换建筑配方/内容叠加显示
+    else if (k === 'alt') {
+      ev.preventDefault();
+      G.settings.altMode = !(G.settings.altMode !== false);
+      saveSettings();
+      toast(G.settings.altMode ? 'ALT 模式：开（显示建筑配方/内容叠加）' : 'ALT 模式：关');
+    }
     else if (k === 'escape' || k === 'q') {
       if (G.driving) { if (typeof exitCar === 'function') exitCar(); }
       else if (G.blueMode) {
@@ -1263,9 +1408,15 @@ function bindInput() {
       } else if (G.panelMode) {
         closePanel();
       } else if (buildActive() || !G.cursorTile) {
-        G.sel = -1;
-        G.quickSel = null;
-        refreshHotbar();
+        // 手持普通物品时按 Q 丢弃 1 个到地面（保持手持，便于手动上料，对齐《异星工厂》）；
+        // 手持建筑/工具时 Q 仍为取消选择。
+        if (buildActive() && typeof dropHeldItemToGround === 'function' && dropHeldItemToGround()) {
+          // 已丢弃到地面，保持手持
+        } else {
+          G.sel = -1;
+          G.quickSel = null;
+          refreshHotbar();
+        }
       } else {
         const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
         const idx = e ? HOTBAR.indexOf(e.type) : -1;
@@ -1340,6 +1491,10 @@ function bindInput() {
       handleLeftDown();
     } else if (ev.button === 2) {
       if (ev.shiftKey && hovered) { copySettings(hovered); return; }
+      // 右键取物优先：传送带/地下带/机械臂（对齐《异星工厂》）
+      if (G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
+        if (rightClickPickupAt(G.cursorTile.tx, G.cursorTile.ty)) return;
+      }
       if (G.cursorTile) deconstructAt(G.cursorTile.tx, G.cursorTile.ty);
     } else if (ev.button === 1) {
       if (G.cursorTile) {
@@ -1382,6 +1537,15 @@ function bindInput() {
       const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
       if (e && isDamaged(e)) { repairActionAt(G.cursorTile.tx, G.cursorTile.ty); return; }
     }
+    // 手持蜘蛛遥控器点击地面 → 命令蜘蛛机器人移动
+    if (typeof selItem === 'function' && selItem() === 'spidertron-remote') { commandSpidertron(G.cursorTile.tx, G.cursorTile.ty); return; }
+    // 手持峭壁炸药点击峭壁 → 炸毁清除（对齐《异星工厂》Cliff explosives）
+    if (hasCliffBlastSelected() && isCliff(G.cursorTile.tx, G.cursorTile.ty)) { cliffBlastAt(G.cursorTile.tx, G.cursorTile.ty); return; }
+    // 手持红/绿电路线缆点击电路设备 → 切换其接入通道（对齐《异星工厂》Red/Green wire）
+    if (typeof wireToolSelected === 'function' && wireToolSelected() && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
+      const we = entAt(G.cursorTile.tx, G.cursorTile.ty);
+      if (we && applyWireToNode(we, wireToolSelected())) { toast((we.wireChan === 'both' ? '已恢复双通道接入' : '仅接入' + (we.wireChan === 'red' ? '红线' : '绿线') + '网络') + '（' + ITEMS[we.type].name + '）'); return; }
+    }
     if (buildActive()) return;
     const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
     if (e) openPanel('machine', e);
@@ -1389,10 +1553,25 @@ function bindInput() {
 }
 
 function handleLeftDown() {
+  // 手持蜘蛛遥控器点击地面 → 命令蜘蛛机器人移动到目标点（对齐《异星工厂》Spidertron remote）
+  if (typeof selItem === 'function' && selItem() === 'spidertron-remote' && G.cursorTile) {
+    commandSpidertron(G.cursorTile.tx, G.cursorTile.ty);
+    return;
+  }
   // 手持修理包点击受损建筑 → 修复（对齐《异星工厂》：左键维修）
   if (hasRepairPackSelected() && G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
     const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
     if (e && isDamaged(e)) { repairActionAt(G.cursorTile.tx, G.cursorTile.ty); return; }
+  }
+  // 手持峭壁炸药点击峭壁 → 炸毁清除（对齐《异星工厂》Cliff explosives）
+  if (hasCliffBlastSelected() && G.cursorTile && isCliff(G.cursorTile.tx, G.cursorTile.ty)) {
+    cliffBlastAt(G.cursorTile.tx, G.cursorTile.ty);
+    return;
+  }
+  // 手持红/绿电路线缆点击电路设备 → 切换其接入通道（对齐《异星工厂》Red/Green wire）
+  if (G.cursorTile && typeof wireToolSelected === 'function' && wireToolSelected() && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
+    const we = entAt(G.cursorTile.tx, G.cursorTile.ty);
+    if (we && applyWireToNode(we, wireToolSelected())) { toast((we.wireChan === 'both' ? '已恢复双通道接入' : '仅接入' + (we.wireChan === 'red' ? '红线' : '绿线') + '网络') + '（' + ITEMS[we.type].name + '）'); return; }
   }
   if (buildActive() && G.cursorTile) {
     tryPlaceAt(G.cursorTile.tx, G.cursorTile.ty);
@@ -1401,6 +1580,34 @@ function handleLeftDown() {
     // 无建造选中、点击水域 → 钓鱼（对齐《异星工厂》鼠标钓鱼）
     tryFishAt(G.cursorTile.tx, G.cursorTile.ty);
   }
+}
+
+// 触发全屏强光闪光（原子弹核爆等大爆炸用）：叠加白光，数值越大越亮
+function addScreenFlash(v) {
+  G.screenFlash = Math.max(G.screenFlash || 0, v);
+}
+
+// ===== 蜘蛛遥控器（对齐《异星工厂》Spidertron remote）=====
+// 手持遥控器点击地图：命令最近的蜘蛛机器人（优先当前驾驶的）自主移动到目标点。
+// 若当前在驾驶蜘蛛机器人，则退出驾驶，交由自主移动接管。
+function commandSpidertron(tx, ty) {
+  const px = G.player.x, py = G.player.y;
+  let best = null, bestD = Infinity;
+  for (const e of G.ents) {
+    if (e._dead || e.type !== 'spidertron') continue;
+    const d = Math.hypot((e.x + e.w / 2) * TILE - px, (e.y + e.h / 2) * TILE - py);
+    if (d < bestD) { best = e; bestD = d; }
+  }
+  if (!best) {
+    if (typeof toast === 'function') toast('未找到蜘蛛机器人，请先建造蜘蛛机器人');
+    return;
+  }
+  // 若正驾驶的是该蜘蛛，则退出驾驶
+  if (G.driving && G.driving.ent === best && typeof exitCar === 'function') exitCar();
+  best.remoteTarget = { x: tx, y: ty };
+  if (typeof toast === 'function') toast('蜘蛛机器人正在前往目标点…');
+  if (typeof playSfx === 'function') playSfx('click');
+  uiDirty = true;
 }
 
 function updateCursorTile(cx, cy) {
@@ -1450,14 +1657,31 @@ function loop(ts) {
       updateTouchMove(dt);
       updateHeldMouse(dt);
       updateMining(dt);
+      if (typeof updateGroundItems === 'function') updateGroundItems(dt);   // 地面物品（手动上料）拾取
       updateCraftQueue(dt);   // 手搓合成队列（按时间逐件制作）
       if (typeof updateFishing === 'function') updateFishing(dt);   // 钓鱼冷却
       if (typeof updatePersonalPower === 'function') updatePersonalPower(dt);   // 个人电网（装备件）
       if (typeof updateDischargeCooldown === 'function') updateDischargeCooldown(dt);   // 放电防御冷却
-      for (const e of G.ents) if (!e._dead && typeof e.update === 'function') e.update(dt);
+      for (const e of G.ents) {
+        // 性能优化：跳过继承基类空 update 的静态实体（储物箱/门/石墙/铁轨/火车车厢/信号灯/机器人港/物流箱/信号塔/电灯等），
+        // 其逻辑由独立系统（箱子存取/门开合/铁路调度/物流扫描/模块广播等）处理，无需每帧调用空函数。
+        // 调用基类空 update 与跳过完全等价，故不影响任何功能。
+        if (e._dead || typeof e.update !== 'function') continue;
+        if (e.update === Entity.prototype.update) continue;
+        e.update(dt);
+      }
       // 敌人/子弹系统（可在设置中开关战斗）
       if (G.settings.combat) {
+        if (typeof resetSpawnerCache === 'function') resetSpawnerCache();   // 每帧失效 spawner 列表缓存（P0 优化）
         spawnEnemies(dt);
+        // 性能优化：本帧存活敌人列表只计算一次，供子弹命中/战斗机器人/区域力场等复用，
+        // 避免每帧多处在 combat2.js 里各自 filter 生成全新数组（降低 GC 压力）。
+        // 复用数组而非每帧 new：先清空再用 for 循环回填，避免每帧分配新数组带来的 GC 压力。
+        if (!G._aliveEnemies) G._aliveEnemies = [];
+        const _ae = G._aliveEnemies;
+        _ae.length = 0;
+        const _src = G.enemies || EMPTY_ARR;
+        for (let i = 0; i < _src.length; i++) if (!_src[i].dead) _ae.push(_src[i]);
         if (typeof updateWaves === 'function') updateWaves(dt);
         if (typeof updatePollution === 'function') updatePollution(dt);   // 污染系统（对齐《异星工厂》)
         updateEnemies(dt);
@@ -1467,7 +1691,9 @@ function loop(ts) {
         updateCombatRobots(dt);
         updateAoeZones(dt);
         if (typeof updateGroundFires === 'function') updateGroundFires(dt);
+        if (typeof updateAcidPools === 'function') updateAcidPools(dt);
         if (typeof updatePersonalLaserDefense === 'function') updatePersonalLaserDefense(dt);
+        if (typeof updateCarFire === 'function') updateCarFire(dt);   // 车载机枪（对齐《异星工厂》Car）
         if (typeof updateTankFire === 'function') updateTankFire(dt);
         if (typeof updateLootDrops === 'function') updateLootDrops(dt);
       }
@@ -1481,6 +1707,10 @@ function loop(ts) {
       updateTrains(dt);
       if (typeof updateParticles === 'function') updateParticles(dt);
       updateCamera(dt);
+      // 全屏闪光衰减（原子弹核爆等触发的强光，随时间减弱）
+      if (G.screenFlash > 0) G.screenFlash = Math.max(0, G.screenFlash - dt * 1.6);
+      // 天气系统（动态云层 / 阴云，低开销）
+      if (typeof updateWeather === 'function') updateWeather(dt);
       // 环境氛围音（Web Audio 昼夜背景音）
       if (typeof ambientUpdate === 'function') ambientUpdate(dt);
     }
@@ -1517,6 +1747,7 @@ function boot() {
     ['joystick', () => initJoystick()],
     ['deconstruct', () => initDeconstructBtn()],
     ['tooltip', () => initTooltips()],
+    ['tutorial', () => initTutorial()],
     ['debug', () => buildDebug()],
     ['input', () => bindInput()]
   ];

@@ -14,6 +14,15 @@ function iconDataURL(id) {
   return u;
 }
 
+// 物品悬浮提示：名称|描述（含物品堆叠上限，对齐《异星工厂》stack_size）
+function itemTip(id, extra) {
+  const it = ITEMS[id];
+  const stack = (typeof stackSize === 'function') ? stackSize(id) : 100;
+  let t = it.name + '|' + it.desc + (stack ? '（最大堆叠 ' + stack + '）' : '');
+  if (extra) t += (extra[0] === '|' ? '' : '|') + extra;
+  return t;
+}
+
 function iconCanvas(id, size = 34) {
   const key = id + '_' + size;
   if (ICON_CACHE[key]) return ICON_CACHE[key];
@@ -44,7 +53,7 @@ function buildHotbar() {
     const slot = document.createElement('div');
     slot.className = 'slot' + (id ? '' : ' nilslot');
     slot.dataset.idx = i;
-    if (id) slot.dataset.tip = ITEMS[id].name + '|' + ITEMS[id].desc;
+    if (id) slot.dataset.tip = itemTip(id);
     else slot.dataset.tip = '空槽位|打开背包(E)，在快捷栏编辑器里点选槽位后点击任意物品即可放入';
     if (id) {
       const ic = iconCanvas(id).cloneNode();
@@ -85,11 +94,21 @@ function refreshHotbar() {
 function selectSlot(i) {
   // 选择快捷栏物品建造时退出触屏拆除模式，避免左键行为冲突
   if (G.deconstructMode) toggleDeconstructMode(false);
+  const prev = G.sel >= 0 ? (HOTBAR[G.sel] || null) : null;
   G.sel = (G.sel === i ? -1 : i);
   G.quickSel = null;
   // 选择武器：若该槽位是武器，则作为当前手持武器
   if (G.sel >= 0 && HOTBAR[G.sel]) setWeapon(HOTBAR[G.sel]);
   else if (G.sel < 0) setWeapon(null);
+  // 规划器（拆除/升级）选中：进入对应红图/绿图框选模式（对齐《异星工厂》Planner）
+  if (typeof toggleBlueprint === 'function') {
+    const cur = G.sel >= 0 ? (HOTBAR[G.sel] || null) : null;
+    if (cur === 'deconstruction-planner') { toggleBlueprint('red'); }
+    else if (cur === 'upgrade-planner') { toggleBlueprint('green'); }
+    else if (prev === 'deconstruction-planner' || prev === 'upgrade-planner') {
+      if (G.blueMode) cancelBlueprint();
+    }
+  }
   if (typeof playSfx === 'function') playSfx('select');
   refreshHotbar();
   closePanel(false);
@@ -172,6 +191,9 @@ function renderPanel(full) {
   } else if (G.panelMode === 'set') {
     title.textContent = '设置';
     renderSettingsAsync(body, st);
+  } else if (G.panelMode === 'maptags') {
+    title.textContent = '地图标记（Map Tags）';
+    body.innerHTML = (typeof mapTagsPanelHtml === 'function') ? mapTagsPanelHtml() : '<div class="dim">标记功能未加载</div>';
   } else if (G.panelMode === 'machine' && G.panelEnt) {
     title.textContent = ITEMS[G.panelEnt.type].name;
     // 机器面板：设备专属内容 + 底部通用操作区（旋转/水平翻转/垂直翻转/拆除，PC/手机端均可点击操作当前建筑）
@@ -222,7 +244,7 @@ function updateMachineLive() {
 }
 
 function chip(id, n) {
-  return '<span class="chip" data-itemid="' + id + '" data-tip="' + ITEMS[id].name + '|' + ITEMS[id].desc + '"><img src="' + iconDataURL(id) + '">' +
+  return '<span class="chip" data-itemid="' + id + '" data-tip="' + itemTip(id) + '"><img src="' + iconDataURL(id) + '">' +
     ITEMS[id].name + (n !== undefined ? ' ×' + n : '') + '</span>';
 }
 
@@ -245,7 +267,7 @@ function htmlInventory() {
     const n = invCount(bid);
     const canBuild = infinite || n > 0;
     h += '<button class="rcbtn"' + (canBuild ? '' : ' disabled style="opacity:.45"') +
-      ' data-itemid="' + bid + '" data-tip="' + ITEMS[bid].name + '|' + ITEMS[bid].desc + '">' +
+      ' data-itemid="' + bid + '" data-tip="' + itemTip(bid) + '">' +
       '<img src="' + iconDataURL(bid) + '">' + ITEMS[bid].name + (n > 0 ? ' ×' + n : (infinite ? ' ∞' : '')) + '</button>';
   }
   h += '</div>';
@@ -358,14 +380,14 @@ function htmlInventory() {
     const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
       Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') + ' ' + recipeDeviceName(rid)).toLowerCase();
     h += '<div class="recipe' + (unlocked ? '' : ' locked-recipe') + '" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
-    h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + ITEMS[outId].name + '|' + ITEMS[outId].desc + '" src="' + iconDataURL(outId) + '">';
+    h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + itemTip(outId) + '" src="' + iconDataURL(outId) + '">';
     h += '<div class="rmain"><div class="rname">' + ITEMS[Object.keys(rec.out)[0]].name +
       (rec.out[Object.keys(rec.out)[0]] > 1 ? ' ×' + rec.out[Object.keys(rec.out)[0]] : '') +
       '<span class="rdev">' + recipeDeviceName(rid) + '</span></div>';
     h += '<div class="ring">';
     for (const k in rec.inp) {
       const have = invCount(k);
-      h += '<span class="ing ' + (have >= rec.inp[k] ? '' : 'lack') + '" data-itemid="' + k + '" data-tip="' + ITEMS[k].name + '|' + ITEMS[k].desc + '">' +
+      h += '<span class="ing ' + (have >= rec.inp[k] ? '' : 'lack') + '" data-itemid="' + k + '" data-tip="' + itemTip(k) + '">' +
         '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + have + '/' + rec.inp[k] + '</span>';
     }
     h += '</div></div>';
@@ -386,12 +408,12 @@ function htmlInventory() {
     const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
       Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') + ' 化工厂').toLowerCase();
     h += '<div class="recipe chem' + (unlocked ? '' : ' locked-recipe') + '" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
-    h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + ITEMS[outId].name + '|' + ITEMS[outId].desc + '" src="' + iconDataURL(outId) + '">';
+    h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + itemTip(outId) + '" src="' + iconDataURL(outId) + '">';
     h += '<div class="rmain"><div class="rname">' + ITEMS[outId].name +
       (rec.out[outId] > 1 ? ' ×' + rec.out[outId] : '') + '<span class="rdev">化工厂</span></div>';
     h += '<div class="ring">';
     for (const k in rec.inp) {
-      h += '<span class="ing" data-itemid="' + k + '" data-tip="' + ITEMS[k].name + '|' + ITEMS[k].desc + '">' +
+      h += '<span class="ing" data-itemid="' + k + '" data-tip="' + itemTip(k) + '">' +
         '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + rec.inp[k] + '</span>';
     }
     h += '</div></div>';
@@ -407,16 +429,16 @@ function htmlInventory() {
     const searchKey = (rec.name + ' ' + Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') +
       ' ' + Object.keys(rec.out).map(k => ITEMS[k].name).join(' ') + ' 炼油厂').toLowerCase();
     h += '<div class="recipe chem' + (unlocked ? '' : ' locked-recipe') + '" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
-    h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + ITEMS[outId].name + '|' + ITEMS[outId].desc + '" src="' + iconDataURL(outId) + '">';
+    h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + itemTip(outId) + '" src="' + iconDataURL(outId) + '">';
     h += '<div class="rmain"><div class="rname">' + rec.name + '<span class="rdev">炼油厂</span></div>';
     h += '<div class="ring">';
     for (const k in rec.inp) {
-      h += '<span class="ing" data-itemid="' + k + '" data-tip="' + ITEMS[k].name + '|' + ITEMS[k].desc + '">' +
+      h += '<span class="ing" data-itemid="' + k + '" data-tip="' + itemTip(k) + '">' +
         '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + rec.inp[k] + '</span>';
     }
     h += '<span class="ing arrow">→</span>';
     for (const k in rec.out) {
-      h += '<span class="ing" data-itemid="' + k + '" data-tip="' + ITEMS[k].name + '|' + ITEMS[k].desc + '">' +
+      h += '<span class="ing" data-itemid="' + k + '" data-tip="' + itemTip(k) + '">' +
         '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + rec.out[k] + '</span>';
     }
     h += '</div></div>';
@@ -462,7 +484,7 @@ function fillLogiReqGrid(q) {
   for (const id of ids) {
     if (ql && !(ITEMS[id].name + ' ' + id).toLowerCase().includes(ql)) continue;
     const req = (G.logiRequest && G.logiRequest[id]) || 0;
-    h += '<button class="rcbtn' + (req > 0 ? ' lreq-on' : '') + '" data-lreqitem="' + id + '" data-tip="' + ITEMS[id].name + '|' + ITEMS[id].desc + (req > 0 ? '（已请求 ' + req + '）' : '') + '">' +
+    h += '<button class="rcbtn' + (req > 0 ? ' lreq-on' : '') + '" data-lreqitem="' + id + '" data-tip="' + itemTip(id) + (req > 0 ? '（已请求 ' + req + '）' : '') + '">' +
       '<img src="' + iconDataURL(id) + '">' + ITEMS[id].name + (req > 0 ? ' ✓' + req : '') + '</button>';
   }
   grid.innerHTML = h;
@@ -492,6 +514,7 @@ function htmlBlueBook() {
       '<div class="bb-main"><div class="bb-name">' + b.name + '</div>' +
       '<div class="dim">' + b.ents.length + ' 个建筑 · ' + typeNames + '</div></div>' +
       '<button data-bbuse="' + i + '">📋 粘贴</button>' +
+      '<button data-bbrename="' + i + '">✏️ 重命名</button>' +
       '<button data-bbdel="' + i + '" class="bb-del">🗑 删除</button>' +
       '</div>';
   }
@@ -583,7 +606,25 @@ function countStr(o) {
 // 机器面板：按设备类型查注册表分发，各设备的 html 定义在 js/devices/*.js
 function htmlMachine(e) {
   const panel = DEVICE_PANEL[e.type];
-  return (panel && panel.html) ? panel.html(e) : '<div class="dim">无信息</div>';
+  let h = (panel && panel.html) ? panel.html(e) : '<div class="dim">无信息</div>';
+  // 电路节点设备：追加「接入通道」设置（对齐《异星工厂》红/绿线缆，实现红绿信号物理隔离）
+  if (typeof isCircuitNodeEntity === 'function' && isCircuitNodeEntity(e)) {
+    const ch = e.wireChan || 'both';
+    h += '<div class="sec">电路接入通道</div>' +
+      '<div class="mrow"><span class="mlabel">接入</span><span class="mval">' +
+      (ch === 'both' ? '红 + 绿（双通）' : ch === 'red' ? '仅红线' : '仅绿线') +
+      '</span></div>' +
+      '<div class="circ-wire-row">' +
+        '<button data-wire="red" class="btn sm">接红线</button>' +
+        '<button data-wire="green" class="btn sm">接绿线</button>' +
+        '<button data-wire="both" class="btn sm">双通</button>' +
+      '</div>' +
+      '<div class="dim">' + (ch === 'both'
+        ? '当前同时接入红/绿网络，可感知两通道全部信号。'
+        : '当前仅接入' + (ch === 'red' ? '红线' : '绿线') + '网络，只感知该通道信号，与另一通道物理隔离。') +
+      '（也可手持对应线缆点击设备快速切换）</div>';
+  }
+  return h;
 }
 
 function row(label, val, liveKey) {
@@ -637,6 +678,13 @@ function initPanelEvents() {
     // 设备专属输入（如储物箱存量上限）优先交给设备自己的 onChange
     const panel = G.panelEnt && DEVICE_PANEL[G.panelEnt.type];
     if (panel && panel.onChange && panel.onChange(ev)) return;
+    // 车头调度“等待条件”下拉 / 秒数输入：与 click 分发一致，直接交给设备 onAction
+    const condCtrl = ev.target.closest && ev.target.closest('[data-act="sch-cond"], [data-act="sch-time"]');
+    if (condCtrl && panel && panel.onAction) {
+      const act = condCtrl.dataset.act;
+      panel.onAction(act, condCtrl);
+      return;
+    }
     // 历史页物品选择（datalist 下拉选中）
     const histFilter = ev.target.closest('[data-stat-hist-filter]');
     if (histFilter) {
@@ -714,6 +762,17 @@ function initPanelEvents() {
       renderPanel(false);
       return;
     }
+    // 电路节点面板：接入通道切换（对齐《异星工厂》红/绿线缆）
+    const wireBtn = ev.target.closest('[data-wire]');
+    if (wireBtn && G.panelEnt && typeof isCircuitNodeEntity === 'function' && isCircuitNodeEntity(G.panelEnt)) {
+      const w = wireBtn.dataset.wire;
+      if (w === 'red' || w === 'green' || w === 'both') {
+        G.panelEnt.wireChan = w;
+        if (typeof recomputeCircuit === 'function') recomputeCircuit();
+        renderPanel(false);
+      }
+      return;
+    }
     const armorEl = ev.target.closest('[data-armor]');
     if (armorEl && G.panelMode === 'inv') {
       const aid = armorEl.dataset.armor;
@@ -786,8 +845,28 @@ function initPanelEvents() {
       renderPanel(false);
       return;
     }
+    // 蓝图库：重命名蓝图（对齐《异星工厂》：自由命名蓝图）
+    const bbRen = ev.target.closest('[data-bbrename]');
+    if (bbRen && G.panelMode === 'bluebook') {
+      const i = +bbRen.dataset.bbrename;
+      const cur = (G.blueBook && G.blueBook[i]) ? G.blueBook[i].name : '';
+      const nn = window.prompt('输入蓝图新名称：', cur);
+      if (nn !== null && typeof blueBookRename === 'function') {
+        blueBookRename(i, nn);
+        renderPanel(false);
+      }
+      return;
+    }
     // 装备网格点击（安装/卸下个人装备件）
     if (typeof equipPanelClick === 'function' && equipPanelClick(ev.target)) {
+      return;
+    }
+    // 蜘蛛机器人装备网格点击
+    if (typeof spiderEquipPanelClick === 'function' && spiderEquipPanelClick(ev.target)) {
+      return;
+    }
+    // 装甲车/坦克装备网格点击
+    if (typeof vehEquipPanelClick === 'function' && vehEquipPanelClick(ev.target)) {
       return;
     }
     const hbSlot = ev.target.closest('[data-hbedit]');
@@ -864,16 +943,22 @@ function initPanelEvents() {
       }
       return;
     }
-    const btn = ev.target.closest('[data-action]');
+    const btn = ev.target.closest('[data-action], [data-act]');
     if (!btn) return;
-    const act = btn.dataset.action;
+    const act = btn.dataset.action || btn.dataset.act;
     const id = btn.dataset.id;
     // 设备专属动作（spref/flt/labfill 等）优先交给设备自己的 onAction
     const panel = G.panelEnt && DEVICE_PANEL[G.panelEnt.type];
     let handled = false;
     if (panel && panel.onAction) handled = !!panel.onAction(act, btn);
     if (!handled) {
-      if (act === 'use-grenade') {
+      if (act === 'tag-tp' || act === 'tag-del' || act === 'tag-rename') {
+        // 地图标记管理动作（传送/删除/重命名）
+        if (typeof mapTagsAction === 'function') {
+          mapTagsAction(act, id, { render: () => renderPanel(false) });
+        }
+      }
+      else if (act === 'use-grenade') {
         // 从背包投掷手雷/集束手雷：向玩家当前朝向投掷（目标点为玩家前方数格）
         if (typeof throwGrenade === 'function') {
           const type = btn.getAttribute('data-type') || 'grenade';
@@ -928,7 +1013,7 @@ function initPanelEvents() {
         const mch = G.panelEnt;
         if (mch && typeof mch.setRecipe === 'function') {
           // 科技门控：未解锁的配方不能在设备中选择
-          if (id !== 'kovarex' && !recipeUnlocked(id)) {
+          if (!recipeUnlocked(id)) {
             toast('需先研究「' + TECHS[recipeLockingTech(id)].name + '」才能生产' + ITEMS[Object.keys((RECIPES[id] || REFINERY_RECIPES[id] || CENTRIFUGE_RECIPES[id]).out)[0]].name);
           } else {
             mch.setRecipe(id);
@@ -941,7 +1026,7 @@ function initPanelEvents() {
         // 离心机等使用 data-action="rec" 选择配方（含科技门控）
         const mch = G.panelEnt;
         if (mch && typeof mch.setRecipe === 'function') {
-          if (id !== 'kovarex' && !recipeUnlocked(id)) {
+          if (!recipeUnlocked(id)) {
             toast('需先研究「' + TECHS[recipeLockingTech(id)].name + '」才能执行' + (CENTRIFUGE_RECIPES[id] ? CENTRIFUGE_RECIPES[id].name : id));
           } else {
             mch.setRecipe(id);
@@ -955,6 +1040,7 @@ function initPanelEvents() {
           // 固体燃料 / 煤存入对应燃料槽；其它设备若只认煤则回退到 feed 通用逻辑
           if (fid === 'coal') G.panelEnt.fuelCoal += n;
           else if (fid === 'solid-fuel' && 'fuelSolid' in G.panelEnt) G.panelEnt.fuelSolid += n;
+          else if (fid === 'rocket-fuel' && 'fuelRocket' in G.panelEnt) G.panelEnt.fuelRocket += n;
           else if ('giveItem' in G.panelEnt) { G.panelEnt.giveItem(fid); G.panelEnt.giveItem(fid); G.panelEnt.giveItem(fid); G.panelEnt.giveItem(fid); G.panelEnt.giveItem(fid); }
         }
       } else if (act === 'feed') {
@@ -965,6 +1051,8 @@ function initPanelEvents() {
         while (moved < have && mch.giveItem(id)) moved++;
         if (moved > 0) invTake(id, moved);
         else toast('放不进去了');
+        // 装入模块后整面板重渲染，刷新模块按钮数量与速率显示
+        if (moved > 0 && isModule(id)) { renderPanel(true); return; }
       } else if (act === 'takein') {
         const mch = G.panelEnt;
         if (btn.dataset.modules === '1') {
@@ -974,11 +1062,20 @@ function initPanelEvents() {
             delete mch.modules[k];
           }
           mch.prodBuf = 0;
+          renderPanel(true); return;
         } else {
           for (const k of Object.keys(mch.inp || {})) {
             invAdd(k, mch.inp[k]);
             delete mch.inp[k];
           }
+        }
+      } else if (act === 'trunk-take') {
+        // 载具储物箱：取出指定物品一件回背包（受背包堆叠上限约束）
+        const mch = G.panelEnt;
+        const id = btn.dataset.id;
+        if (mch && typeof mch.trunkTakeItemOf === 'function') {
+          const got = mch.trunkTakeItemOf(id);
+          if (got) { invAdd(got, 1); if (typeof playSfx === 'function') playSfx('pick'); }
         }
       } else if (act === 'takeout') {
         // "取出全部"：各设备在自己的文件里实现 takeAll()（默认清空 outp）
@@ -1057,6 +1154,8 @@ async function htmlSettings() {
   h += '<label class="setrow"><input type="checkbox" data-set="combat"' + (G.settings.combat ? ' checked' : '') + '> 战斗模式（敌人入侵，可用炮塔/石墙防御）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="virtualJoystick"' + (G.settings.virtualJoystick ? ' checked' : '') + '> 虚拟摇杆（手机/触屏移动）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="minimap"' + (G.settings.minimap !== false ? ' checked' : '') + '> 小地图（右下角显示已探索区域，M 键切换）</label>';
+  h += '<label class="setrow"><input type="checkbox" data-set="weather"' + (G.settings.weather !== false ? ' checked' : '') + '> 天气（动态云影 / 阴云氛围）</label>';
+  h += '<label class="setrow"><input type="checkbox" data-set="altMode"' + (G.settings.altMode ? ' checked' : '') + '> ALT 模式（建筑上显示配方/内容，Alt 键切换）</label>';
   h += '<div class="sec">音效</div>';
   h += '<label class="setrow"><input type="checkbox" data-set="sound"' + (G.settings.sound ? ' checked' : '') + '> 游戏音效（建造/拆除/射击/爆炸等）</label>';
   h += '<label class="setrow">音量 <input type="range" data-setvol="soundVol" min="0" max="1" step="0.05" value="' + (G.settings.soundVol != null ? G.settings.soundVol : 0.8) + '" style="width:120px;vertical-align:middle"></label>';
@@ -1194,6 +1293,15 @@ function updateHUD(dt, fps) {
   if (G.weapon && isWeapon(G.weapon)) {
     hud += '   🔫 ' + WEAPONS[G.weapon].name;
   }
+  // 手持开采工具：显示耐久度（对齐《异星工厂》Axe）
+  const _ax = (typeof currentAxe === 'function') ? currentAxe() : null;
+  if (_ax) {
+    const _max = (typeof AXE_DURABILITY === 'object' && AXE_DURABILITY[_ax]) ? AXE_DURABILITY[_ax] : 1;
+    const _d = (G.axeDura || 0);
+    const _pct = Math.max(0, Math.min(100, Math.round(_d / _max * 100)));
+    const _c = _pct > 30 ? '#57e389' : _pct > 10 ? '#ffd23c' : '#ff5b5b';
+    hud += '   <span style="color:' + _c + '" title="' + ITEMS[_ax].name + ' 耐久 ' + _d + '/' + _max + '">⛏ ' + ITEMS[_ax].name + ' ' + _pct + '%</span>';
+  }
   if (G.armor && isArmor(G.armor)) {
     hud += '   🛡 ' + ARMORS[G.armor].name;
     // 模块化护甲：显示个人电网状态（含装备件数量）
@@ -1207,7 +1315,12 @@ function updateHUD(dt, fps) {
     }
   }
   if (G.driving && G.driving.ent) {
-    hud += '   🚗 ' + (G.driving.ent instanceof Tank ? '坦克' : '装甲车') + '（E 下车）';
+    const de = G.driving.ent;
+    if (typeof Locomotive !== 'undefined' && (de instanceof Locomotive || de instanceof CargoWagon)) {
+      hud += '   🚂 ' + (de instanceof Locomotive ? '火车驾驶' : '乘坐车厢') + '（E 下车' + (de instanceof Locomotive && G.driving.mode === 'drive' ? '，W 前进 / S 后退 / R 反转' : '') + '）';
+    } else {
+      hud += '   🚗 ' + (de instanceof Tank ? '坦克' : '装甲车') + '（E 下车）';
+    }
   }
   // 手搓合成队列进度
   const cur = craftCurrent();

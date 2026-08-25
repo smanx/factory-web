@@ -21,6 +21,11 @@ const CONSTR_RANGE = 12;             // 个人机器人港 Mk1 工作范围（�
 const CONSTR_MAX_ACTIVE = 4;         // 个人机器人港 Mk1 同时最多在场施工的机器人数量
 const CONSTR_RANGE_MK2 = 20;         // 个人机器人港 II 工作范围（格）
 const CONSTR_MAX_ACTIVE_MK2 = 8;     // 个人机器人港 II 同时最多在场施工的机器人数量
+// 施工机器人修复受损建筑（对齐《异星工厂》：施工机器人自动修复基地建筑）
+const CONSTR_REPAIR_INTERVAL = 0.6;  // 每次修复动作的间隔（秒）
+const CONSTR_REPAIR_AMOUNT = 60;     // 每次修复动作恢复的 HP
+const CONSTR_REPAIR_USES = 5;        // 每个修理包可修复次数（与手动修理包一致）
+const CONSTR_REPAIR_SCAN_T = 0.5;    // 受损建筑扫描间隔（秒）
 
 // 根据已装备的个人机器人港版本返回 { range, maxActive }（对齐《异星工厂》Personal roboport Mk2：更大范围、更多机器人）
 function constrRoboportInfo() {
@@ -34,6 +39,7 @@ function ensureConstr() {
   if (!G.constrGhosts) G.constrGhosts = [];
   if (!G.deconMarks) G.deconMarks = [];
   if (!G.constrRobots) G.constrRobots = [];
+  if (G._constrRepairScanT === undefined) G._constrRepairScanT = 0;
 }
 // 是否拥有个人机器人港（装备中）
 function hasPersonalRoboport() { return !!G.personalRoboport; }
@@ -160,20 +166,36 @@ function markAreaForDecon(r) {
   return count;
 }
 
-// ===== 给指定幽灵施工：飞行/建造/落地 =====
+// 施工机器人任务目标中心坐标（供 toghost/repairing 飞行目标使用）。
+// 支持 build（幽灵）/ decon（拆除标记）/ repair（受损实体）三种任务。
+function constrJobCenter(r) {
+  const job = r.job;
+  if (!job) return [G.player.x, G.player.y];
+  if (job.kind === 'build' && job.ghost) {
+    return [(job.ghost.x + job.ghost.w / 2) * TILE, (job.ghost.y + job.ghost.h / 2) * TILE];
+  }
+  if (job.kind === 'decon' && job.mark) {
+    return [job.mark.x * TILE + TILE / 2, job.mark.y * TILE + TILE / 2];
+  }
+  if (job.kind === 'repair' && job.target) {
+    return [(job.target.x + job.target.w / 2) * TILE, (job.target.y + job.target.h / 2) * TILE];
+  }
+  return [G.player.x, G.player.y];
+}
+
+// 给指定幽灵施工 / 拆除 / 修复：飞行 → 执行 → 返航
 function updateConstrRobot(r, dt) {
   const px = G.player.x, py = G.player.y;
   if (r.state === 'idle') return;
 
   if (r.state === 'toghost' || r.state === 'returning') {
-    const targetX = (r.state === 'toghost' ? (r.job.ghost ? r.job.ghost.x * TILE + TILE / 2 : r.job.mark.x * TILE + TILE / 2) : px);
-    const targetY = (r.state === 'toghost' ? (r.job.ghost ? r.job.ghost.y * TILE + TILE / 2 : r.job.mark.y * TILE + TILE / 2) : py);
-    const dx = targetX - r.x, dy = targetY - r.y;
+    const [tx, ty] = (r.state === 'toghost') ? constrJobCenter(r) : [px, py];
+    const dx = tx - r.x, dy = ty - r.y;
     const dist = Math.hypot(dx, dy);
     const step = CONSTR_ROBOT_SPEED * robotSpeedMult() * TILE * dt;
     if (dist < 2) {
-      r.x = targetX; r.y = targetY;
-      if (r.state === 'toghost') r.state = 'building';
+      r.x = tx; r.y = ty;
+      if (r.state === 'toghost') r.state = (r.job.kind === 'repair') ? 'repairing' : 'building';
       else { r._dead = true; return; }
     } else {
       const m = Math.min(step, dist);
@@ -199,7 +221,48 @@ function updateConstrRobot(r, dt) {
       r.job = null;
       r.buildT = 0;
     }
+    return;
   }
+
+  // 修复中：逐步恢复受损建筑 HP，消耗背包中的修理包
+  if (r.state === 'repairing') {
+    const t = r.job && r.job.target;
+    // 目标消失或已满血：返航
+    if (!t || t._dead || !isDamaged(t)) { r._dead = true; return; }
+    // 背包无修理包：返航等待（下次有包再派新机器人）
+    if (invCount('repair-pack') <= 0 && (G.repairPackUses || 0) <= 0) { r._dead = true; return; }
+    r.buildT += dt;
+    if (r.buildT >= CONSTR_REPAIR_INTERVAL) {
+      r.buildT = 0;
+      if (repairByRobot(t)) {   // 每次修复消耗修理包使用次数
+        if (typeof makeSparkFx === 'function') makeSparkFx(t.x + t.w / 2, t.y + t.h / 2, t.w);
+        if (typeof playSfx === 'function') playSfx('repair');
+      }
+      if (!isDamaged(t)) { r._dead = true; return; }   // 修好了返航
+    }
+  }
+}
+
+// 由施工机器人修复一个受损建筑：消耗修理包（复用玩家修理包使用次数机制）。
+// 返回本次是否产生了实际修复（HP 增加）。
+function repairByRobot(e) {
+  if (!e || e._dead || !isDamaged(e)) return false;
+  // 消耗修理包使用次数（与手动修理包共用 G.repairPackUses，背包需持有修理包）
+  let uses = G.repairPackUses || 0;
+  if (uses <= 0) {
+    if (typeof invCount === 'function' && invCount('repair-pack') <= 0) return false;
+    uses = CONSTR_REPAIR_USES;
+    if (typeof invTake === 'function') invTake('repair-pack', 1);
+  }
+  const fixed = repairBuilding(e, CONSTR_REPAIR_AMOUNT);
+  if (fixed > 0) {
+    uses -= 1;
+    if (uses <= 0) uses = 0;
+    G.repairPackUses = uses;
+    if (typeof uiDirty !== 'undefined' && uiDirty !== undefined) uiDirty = true;
+    return true;
+  }
+  return false;
 }
 
 // 完成一个建造幽灵：落地真实实体
@@ -232,22 +295,25 @@ function updateConstruction(dt) {
   ensureConstr();
   // 没有个人机器人港则静默清理（保留幽灵等待下次装备？为符合直觉，直接清空幽灵与机器人）
   if (!hasPersonalRoboport()) {
-    G.constrGhosts = G.constrGhosts.filter(g => !g._dead);
-    G.deconMarks = G.deconMarks.filter(m => !m._dead);
-    if (G.constrRobots.some(r => !r._dead)) G.constrRobots = G.constrRobots.filter(r => r._dead);
+    // 单遍 compactFilter 原地清理（替代 .filter 每帧分配新数组），并修复原有误：原实现
+    // G.constrRobots.filter(r => r._dead) 误保留死亡机器人、丢弃存活机器人，此处改为保留存活。
+    G.constrGhosts = compactFilter(G.constrGhosts, g => !g._dead);
+    G.deconMarks = compactFilter(G.deconMarks, m => !m._dead);
+    G.constrRobots = compactFilter(G.constrRobots, r => !r._dead);
     return;
   }
-  // 清理墓碑
-  if (G.constrGhosts.some(g => g._dead)) G.constrGhosts = G.constrGhosts.filter(g => !g._dead);
-  if (G.deconMarks.some(m => m._dead)) G.deconMarks = G.deconMarks.filter(m => !m._dead);
-  if (G.constrRobots.some(r => r._dead)) G.constrRobots = G.constrRobots.filter(r => !r._dead);
+  // 清理墓碑：单遍 compactFilter（替代原 .some()+filter 双遍扫描，减少每帧遍历与分配）
+  G.constrGhosts = compactFilter(G.constrGhosts, g => !g._dead);
+  G.deconMarks = compactFilter(G.deconMarks, m => !m._dead);
+  G.constrRobots = compactFilter(G.constrRobots, r => !r._dead);
 
   // 更新现有机器人
   for (const r of G.constrRobots) updateConstrRobot(r, dt);
 
-  // 统计当前在施工的机器人数量
+  // 统计当前在施工的机器人数量（计数循环替代 filter().length，避免每帧分配新数组）
   const rInfo = constrRoboportInfo();
-  const activeCount = G.constrRobots.filter(r => !r._dead && r.state !== 'idle').length;
+  let activeCount = 0;
+  for (const r of G.constrRobots) if (!r._dead && r.state !== 'idle') activeCount++;
   if (activeCount >= rInfo.maxActive) return;
 
   // 找待施工幽灵（优先未在施工的）
@@ -301,6 +367,41 @@ function updateConstruction(dt) {
     G.constrRobots.push(r);
     return;
   }
+
+  // 找待修复的受损建筑（对齐《异星工厂》：施工机器人自动修复基地建筑）
+  // 背包须持有修理包才有修复能力；按扫描间隔节流以避免高频全量扫描。
+  const haveRepair = (invCount('repair-pack') > 0 || (G.repairPackUses || 0) > 0);
+  if (haveRepair) {
+    if (G._constrRepairScanT === undefined) G._constrRepairScanT = 0;
+    G._constrRepairScanT -= dt;
+    if (G._constrRepairScanT <= 0) {
+      G._constrRepairScanT = CONSTR_REPAIR_SCAN_T;
+      const pcx = Math.floor(G.player.x / TILE), pcy = Math.floor(G.player.y / TILE);
+      const keys = bucketKeysIn(pcx - rInfo.range, pcy - rInfo.range, pcx + rInfo.range, pcy + rInfo.range);
+      let repairTarget = null;
+      forEachEntInBuckets(keys, function(e) {
+        if (repairTarget) return;
+        if (!e || e._dead) return;
+        if (!isDamaged(e)) return;
+        // 中心点在个人机器人港范围内才可修复
+        const cx = e.x + e.w / 2 - pcx, cy = e.y + e.h / 2 - pcy;
+        if (cx * cx + cy * cy > rInfo.range * rInfo.range) return;
+        // 已有机器人在修复该实体则跳过
+        for (const rr of G.constrRobots) {
+          if (rr._dead || rr.state !== 'repairing') continue;
+          if (rr.job && rr.job.kind === 'repair' && rr.job.target === e) return;
+        }
+        repairTarget = e;
+      });
+      if (repairTarget) {
+        const r = new ConstrRobot(G.player.x, G.player.y);
+        r.state = 'toghost';
+        r.job = { kind: 'repair', target: repairTarget };
+        G.constrRobots.push(r);
+        return;
+      }
+    }
+  }
 }
 
 // 供 UI 查询：当前待施工幽灵数 / 待拆除数
@@ -352,8 +453,10 @@ function drawConstruction(ctx) {
     if (typeof onScreen === 'function' && !onScreen({ x: r.x / TILE, y: r.y / TILE, w: 1, h: 1 })) continue;
     // 朝向目标的角度
     let targetX = r.tx || r.x, targetY = r.ty || r.y;
-    if (r.job && r.job.ghost) { targetX = (r.job.ghost.x + r.job.ghost.w / 2) * TILE; targetY = (r.job.ghost.y + r.job.ghost.h / 2) * TILE; }
-    else if (r.job && r.job.mark) { targetX = r.job.mark.x * TILE + TILE / 2; targetY = r.job.mark.y * TILE + TILE / 2; }
+    if (r.job && r.job.kind !== 'returning') {
+      const [cjx, cjy] = constrJobCenter(r);
+      if (cjx !== G.player.x || cjy !== G.player.y) { targetX = cjx; targetY = cjy; }
+    }
     const robAng = Math.atan2(targetY - r.y, targetX - r.x);
     // 阴影
     ctx.fillStyle = 'rgba(0,0,0,.25)';
@@ -363,7 +466,7 @@ function drawConstruction(ctx) {
     ctx.save();
     ctx.translate(r.x, r.y);
     ctx.rotate(robAng);
-    ctx.fillStyle = '#d0a04a';
+    ctx.fillStyle = (r.state === 'repairing') ? '#8ac0e0' : '#d0a04a';
     ctx.beginPath();
     ctx.moveTo(8, 0); ctx.lineTo(-6, -5); ctx.lineTo(-3, 0); ctx.lineTo(-6, 5);
     ctx.closePath();
@@ -374,7 +477,7 @@ function drawConstruction(ctx) {
     ctx.fillStyle = '#e0e0a0';
     ctx.font = 'bold 9px system-ui';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('🔧', r.x + 6, r.y - 6);
+    ctx.fillText((r.state === 'repairing') ? '🛠' : '🔧', r.x + 6, r.y - 6);
   }
 }
 

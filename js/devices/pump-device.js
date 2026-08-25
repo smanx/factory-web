@@ -145,7 +145,7 @@ function fluidPumpPanelHtml(e) {
       '<option value="on"' + (e.circuitCond.enabled ? ' selected' : '') + '>启用条件</option>' +
     '</select>' +
     '<select id="p-ch" class="circ-op">' + channelSelect(e.circuitCond.channel) + '</select>' +
-    '<input type="text" id="p-sig" class="circ-siginv" value="' + (ITEMS[e.circuitCond.sig]?.name || e.circuitCond.sig) + '" placeholder="信号" autocomplete="off">' +
+    '<input type="text" id="p-sig" class="circ-siginv" value="' + (typeof signalDisplayName === 'function' ? signalDisplayName(e.circuitCond.sig) : (ITEMS[e.circuitCond.sig]?.name || e.circuitCond.sig)) + '" placeholder="信号" autocomplete="off">' +
     '<select id="p-op" class="circ-op">' + ['>', '<', '=', '!=', '>=', '<='].map(o => '<option value="' + o + '"' + (e.circuitCond.op === o ? ' selected' : '') + '>' + o + '</option>').join('') + '</select>' +
     '<input type="number" id="p-cnt" class="circ-cnt" value="' + e.circuitCond.count + '" min="-99999" max="99999">' +
     '<button data-action="p-cond">应用</button></div>';

@@ -18,7 +18,8 @@ function makePlayer(tx, ty) {
 
 function solidAtPx(px, py) {
   const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE);
-  return isWater(tx, ty);
+  // 玩家/载具碰撞：水与峭壁均不可通行（对齐《异星工厂》Cliff 阻隔移动）
+  return isWater(tx, ty) || isCliff(tx, ty);
 }
 
 function boxBlocked(cx, cy, r) {
@@ -112,15 +113,72 @@ function withinReach(tx, ty) {
 }
 
 function invAdd(id, n = 1) {
-  G.inv.set(id, (G.inv.get(id) || 0) + n);
-  if (typeof trackProd === 'function') trackProd(id, n);
+  // 物品堆叠上限（对齐《异星工厂》）：背包中每种物品不超过其最大堆叠数
+  const cap = (typeof stackSize === 'function') ? stackSize(id) : 100;
+  const cur = G.inv.get(id) || 0;
+  const addable = Math.max(0, Math.min(n, cap - cur));
+  if (addable <= 0) return 0;
+  G.inv.set(id, cur + addable);
+  if (typeof trackProd === 'function') trackProd(id, addable);
   uiDirty = true;
+  return addable;
 }
 
 function invCount(id) { return G.inv.get(id) || 0; }
 
 function selItem() { return G.sel >= 0 ? (HOTBAR[G.sel] || null) : (G.quickSel || null); }
 function buildActive() { return G.sel >= 0 || !!G.quickSel; }
+
+// ===== 开采工具（铁斧 / 钢斧，对齐《异星工厂》Iron axe / Steel axe） =====
+// 选中持有时手挖/砍树速度提升，且每次挖矿/砍树消耗耐久，耐久用尽后工具消失。
+const AXE_DURABILITY = { 'iron-axe': 300, 'steel-axe': 600 };   // 可挖矿次数
+const AXE_SPEED = { 'iron-axe': 1.5, 'steel-axe': 2 };          // 挖矿/砍树速度倍率
+// 当前手持的开采工具（无则返回 null）
+function currentAxe() {
+  const it = selItem();
+  return (it === 'iron-axe' || it === 'steel-axe') ? it : null;
+}
+// 是否为手持工具（非建筑、选中时不应阻断采矿/使用）
+function isToolItem(id) {
+  return id === 'iron-axe' || id === 'steel-axe' ||
+         id === 'deconstruction-planner' || id === 'upgrade-planner' ||
+         id === 'repair-pack' || id === 'cliff-explosives' || id === 'spidertron-remote';
+}
+// 当前开采工具的挖矿/砍树速度倍率（未持斧返回 1）
+function axeMineMult() {
+  const ax = currentAxe();
+  return ax ? (AXE_SPEED[ax] || 1) : 1;
+}
+// 挖矿/砍树后消耗当前手持斧头的耐久；用尽则移除该斧头
+function axeConsume() {
+  const ax = currentAxe();
+  if (!ax) return;
+  const max = AXE_DURABILITY[ax] || 1;
+  G.axeDura = (G.axeDura || 0) - 1;
+  if (G.axeDura <= 0) {
+    G.axeDura = 0;
+    // 移除一把当前手持的斧头
+    if (invTake(ax, 1)) {
+      // 若背包中已无剩余斧头，则自动取消选中，避免“幽灵斧”继续挖矿
+      if (invCount(ax) <= 0) {
+        G.sel = -1; G.quickSel = null; refreshHotbar();
+        if (typeof playSfx === 'function') playSfx('deny');
+        if (typeof toast === 'function') toast(ITEMS[ax].name + ' 耐久用尽');
+        return;
+      }
+      G.axeDura = max;   // 下一把斧头重置耐久
+      if (typeof playSfx === 'function') playSfx('deny');
+      if (typeof toast === 'function') toast(ITEMS[ax].name + ' 耐久用尽');
+      refreshHotbar();
+    } else {
+      // 没有多余斧头（理论上背包应已为空）
+      G.axeDura = max;
+      G.sel = -1; G.quickSel = null; refreshHotbar();
+    }
+  } else {
+    uiDirty = true;
+  }
+}
 
 function invTake(id, n = 1) {
   const c = invCount(id);
@@ -134,6 +192,16 @@ function invTake(id, n = 1) {
 function canCraft(rid) {
   const rec = RECIPES[rid];
   for (const k in rec.inp) if (invCount(k) < rec.inp[k]) return false;
+  return true;
+}
+
+// 是否有足够的背包空位容纳一次配方的全部产出（受物品堆叠上限约束）
+function hasCraftRoom(rid) {
+  const rec = RECIPES[rid];
+  for (const k in rec.out) {
+    if (FLUIDS.indexOf(k) >= 0) continue;          // 流体不入背包
+    if (invCount(k) + (rec.out[k] || 1) > stackSize(k)) return false;
+  }
   return true;
 }
 
@@ -162,7 +230,7 @@ function queueCraft(rid, times = 1) {
   const craftTime = (rec.time || 1) / Math.max(1, (G.dbg && G.dbg.asmMult) || 1);
   let queued = 0;
   for (let i = 0; i < times; i++) {
-    if (!canCraft(rid)) break;
+    if (!canCraft(rid) || !hasCraftRoom(rid)) break;
     for (const k in rec.inp) invTake(k, rec.inp[k]);
     if (!G.craftQueue) G.craftQueue = [];
     G.craftQueue.push({ rid, outId, time: craftTime, total: craftTime, done: 0 });
@@ -184,6 +252,9 @@ function updateCraftQueue(dt) {
   cur.done += dt;
   let completed = 0;
   while (cur && cur.done >= cur.time) {
+    // 背包已满（受物品堆叠上限约束）时暂停合成，避免产出丢失；
+    // 待腾出空间后继续（对齐《异星工厂》：背包满则停止手搓）。
+    if (!hasCraftRoom(cur.rid)) { cur.done = cur.time; break; }
     const over = cur.done - cur.time;
     for (const k in RECIPES[cur.rid].out) invAdd(k, RECIPES[cur.rid].out[k]);
     completed++;
@@ -213,7 +284,7 @@ function doCraft(rid, times = 1) {
   if (!isHandCraftable(rid)) return 0;
   let made = 0;
   for (let i = 0; i < times; i++) {
-    if (!canCraft(rid)) break;
+    if (!canCraft(rid) || !hasCraftRoom(rid)) break;
     for (const k in RECIPES[rid].inp) invTake(k, RECIPES[rid].inp[k]);
     for (const k in RECIPES[rid].out) invAdd(k, RECIPES[rid].out[k]);
     made++;
@@ -226,7 +297,8 @@ function updateMining(dt) {
   const p = G.player;
   // 载具驾驶中不能采矿
   if (G.driving && G.driving.ent && !G.driving.ent._dead) { p.mining = null; p.mineProg = 0; return; }
-  if (!G.mouseDown || buildActive() || !G.canvasActive) { p.mining = null; p.mineProg = 0; return; }
+  // 手持工具（如开采工具）选中时不阻断采矿；仅当真正在放置建筑时才阻断
+  if (!G.mouseDown || (buildActive() && !isToolItem(selItem())) || !G.canvasActive) { p.mining = null; p.mineProg = 0; return; }
   const t = G.cursorTile;
   if (!t) { p.mining = null; p.mineProg = 0; return; }
   const key = t.tx + ',' + t.ty;
@@ -235,7 +307,9 @@ function updateMining(dt) {
   const ti = getOreType(t.tx, t.ty);
   // 砍树：T_TREE 地形，按住可连续砍伐获得木材（对齐《异星工厂》）
   if (getTerrain(t.tx, t.ty) === T_TREE) {
-    p.mineProg += dt * ((G.dbg && G.dbg.mineMult) || 1) / (HAND_MINE_TIME * 1.5);
+    const axm = axeMineMult();
+    if (axm > 1 && !(G.axeDura > 0)) G.axeDura = AXE_DURABILITY[currentAxe()] || 0;
+    p.mineProg += dt * ((G.dbg && G.dbg.mineMult) || 1) * axm / (HAND_MINE_TIME * 1.5);
     if (p.mineProg >= 1) {
       p.mineProg -= 1;
       setTerrain(t.tx, t.ty, T_GRASS);
@@ -243,15 +317,19 @@ function updateMining(dt) {
       invalidateTerrainChunk(t.tx, t.ty);
       if (typeof playSfx === 'function') playSfx('mine');
       if (typeof toast === 'function') toast('+1 木材');
+      if (axm > 1) axeConsume();
     }
   } else if (((ti >= 0 && ti < ORES.length) || ti === ORE_URANIUM) && getOreAmt(t.tx, t.ty) > 0) {
-    p.mineProg += dt * ((G.dbg && G.dbg.mineMult) || 1) / HAND_MINE_TIME;
+    const axm = axeMineMult();
+    if (axm > 1 && !(G.axeDura > 0)) G.axeDura = AXE_DURABILITY[currentAxe()] || 0;
+    p.mineProg += dt * ((G.dbg && G.dbg.mineMult) || 1) * axm / HAND_MINE_TIME;
     if (p.mineProg >= 1) {
       p.mineProg -= 1;
       if (!G.settings.infiniteOre) consumeOre(t.tx, t.ty);
       const it = oreItemId(ti);
       invAdd(it);
       if (typeof playSfx === 'function') playSfx('mine');
+      if (axm > 1) axeConsume();
       // 手动采矿反馈去抖：累积到一定数量再提示一次，避免连挖时刷屏
       mineToastAcc++;
       if (mineToastAcc % 5 === 0 && typeof toast === 'function') {
@@ -261,6 +339,133 @@ function updateMining(dt) {
   } else {
     p.mineProg = 0;
   }
+}
+
+// ===== 玩家丢弃物品到地面（对齐《异星工厂》：按 Q 把手持普通物品放到地面/传送带）=====
+// G.groundItems：地面物品实体数组 { tx, ty, item, n, taken }
+// 用于玩家手动上料：物品落到地面后，可被传送带吸附带走、玩家走近拾取。
+
+function addGroundItem(tx, ty, item, n) {
+  if (!G.groundItems) G.groundItems = [];
+  // 同格同种物品自动合并（对齐《异星工厂》：地面同种物品堆叠）
+  for (const g of G.groundItems) {
+    if (!g.taken && g.tx === tx && g.ty === ty && g.item === item) { g.n += n; return; }
+  }
+  G.groundItems.push({ tx, ty, item, n, taken: false });
+}
+
+// 格子是否不可放置地面物品（水/峭壁/树/占用实体；传送带可承载故不视为阻挡）
+function groundTileBlocked(tx, ty) {
+  const t = getTerrain(tx, ty);
+  if (t === T_WATER || t === T_CLIFF || t === T_TREE) return true;
+  const e = entAt(tx, ty);
+  if (e && !(e instanceof Belt)) return true;   // 非传送带实体阻挡（传送带可承载物品）
+  return false;
+}
+
+// 手持物品是否为可丢弃到地面的普通物品（非建筑/工具/流体）
+function isGroundDroppable(id) {
+  if (!id || !ITEMS[id]) return false;
+  if (BUILD_DEFS[id]) return false;            // 建筑不丢，Q 用于取消选择
+  if (typeof isToolItem === 'function' && isToolItem(id)) return false;
+  if (FLUIDS.indexOf(id) >= 0) return false;   // 流体不可直接放置到地面
+  return true;
+}
+
+// 玩家按 Q 丢弃手持物品 1 个到前方地面（前方不可放则放脚下），保持手持便于连续上料
+function dropHeldItemToGround() {
+  const held = selItem();
+  if (!isGroundDroppable(held)) return false;
+  if (invCount(held) <= 0) return false;
+  let tx = Math.floor(G.player.x / TILE) + DX[G.player.dir];
+  let ty = Math.floor(G.player.y / TILE) + DY[G.player.dir];
+  if (groundTileBlocked(tx, ty)) { tx = Math.floor(G.player.x / TILE); ty = Math.floor(G.player.y / TILE); }
+  if (!invTake(held, 1)) return false;
+  addGroundItem(tx, ty, held, 1);
+  if (typeof playSfx === 'function') playSfx('loot');
+  uiDirty = true;
+  return true;
+}
+
+// ===== 设备切换配方时返还已投入原料（对齐《异星工厂》：切换配方返还残留物料） =====
+// 组装机/化工/炼油/离心机在切换或清除配方时，把已投入但未消耗的原料与已产出的
+// 成品返还到机器旁：固体掉落到旁边地面（addGroundItem，同格同种自动合并），
+// 流体尝试推回相连管道；无法推回管道时丢弃（微量损失，简化实现）。
+// 返回 { dropped, lostFluid } 供调用方决定提示。
+function returnMachineContents(e) {
+  if (!e) return { dropped: 0, lostFluid: false };
+  let dropped = 0, lostFluid = false;
+  // 选取机器旁第一个可放置地面物品的格子（前方优先，其次两侧、后方，最后机器自身格）
+  let fx = e.x, fy = e.y;
+  const cand = [];
+  cand.push([e.x + DX[e.dir], e.y + DY[e.dir]]);            // 前方
+  cand.push([e.x + DY[e.dir], e.y - DX[e.dir]]);            // 左侧
+  cand.push([e.x - DY[e.dir], e.y + DX[e.dir]]);            // 右侧
+  cand.push([e.x - DX[e.dir], e.y - DY[e.dir]]);            // 后方
+  for (const [cx, cy] of cand) {
+    if (!groundTileBlocked(cx, cy)) { fx = cx; fy = cy; break; }
+  }
+  const ret = (buff) => {
+    if (!buff) return;
+    for (const k in buff) {
+      const n = buff[k];
+      if (n <= 0) continue;
+      if (FLUIDS.indexOf(k) >= 0) {
+        // 流体：尝试推回机器四周相连管道
+        let left = n;
+        for (let i = 0; i < 4 && left > 0; i++) {
+          const nb = entAt(e.x + DX[i], e.y + DY[i]);
+          if (nb instanceof Pipe && nb.total() < PIPE_CAP) {
+            while (left > 0 && nb.total() < PIPE_CAP && nb.giveItem(k)) left--;
+          }
+        }
+        if (left > 0) lostFluid = true;
+      } else {
+        // 固体：掉落到机器旁地面
+        addGroundItem(fx, fy, k, n);
+        dropped += n;
+      }
+    }
+  };
+  ret(e.inp);
+  ret(e.outp);
+  e.inp = {}; e.outp = {};
+  if (dropped > 0 && typeof playSfx === 'function') playSfx('loot');
+  return { dropped, lostFluid };
+}
+
+// 每帧更新地面物品：玩家靠近自动拾取（传送带吸附由 Belt.update 处理）
+function updateGroundItems(dt) {
+  if (!G.groundItems || G.groundItems.length === 0) return;
+  const p = G.player;
+  const pickR = REACH_PX * 0.9;
+  for (const g of G.groundItems) {
+    if (g.taken) continue;
+    const gx = g.tx * TILE + TILE / 2, gy = g.ty * TILE + TILE / 2;
+    if (Math.hypot(gx - p.x, gy - p.y) < pickR) {
+      const got = invAdd(g.item, g.n);
+      if (got > 0) {
+        if (typeof playSfx === 'function') playSfx('loot');
+        g.n -= got;
+        if (g.n <= 0) g.taken = true;
+      }
+    }
+  }
+  if (G.groundItems.length) {
+    let hasTaken = false;
+    for (const g of G.groundItems) if (g.taken) { hasTaken = true; break; }
+    if (hasTaken) {
+      G.groundItems = compactFilter(G.groundItems, g => !g.taken);
+      if (G.groundItems.length === 0) G.groundItems = undefined;
+    }
+  }
+}
+
+// 传送带吸附：返回 (tx,ty) 格的地面物品（若未取走）；由 Belt.update 调用
+function groundItemForBelt(tx, ty) {
+  if (!G.groundItems) return null;
+  for (const g of G.groundItems) if (!g.taken && g.tx === tx && g.ty === ty) return g;
+  return null;
 }
 
 function findSpawn() {

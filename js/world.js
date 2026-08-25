@@ -21,7 +21,8 @@ const T_PATH = 3;       // 石砖路（玩家行走加速）
 const T_TREE = 4;       // 树木（可砍伐获得木材）
 const T_REF_CONCRETE = 5; // 精炼混凝土（玩家行走加速更快，对齐《异星工厂》Refined concrete）
 const T_HAZARD = 6;       // 警示混凝土（黑黄条纹装饰，行走加速同普通混凝土，对齐《异星工厂》Hazard concrete）
-function isWalkableTerrain(t) { return t !== T_WATER; }
+const T_CLIFF = 7;          // 峭壁（对齐《异星工厂》Cliff）：不可通行、不可建造的地形障碍，可用峭壁炸药清除
+function isWalkableTerrain(t) { return t !== T_WATER && t !== T_CLIFF; }
 // 地形是否“硬化”（混凝土/石砖路等铺装地）：玩家行走速度提升
 function isPaved(t) { return t === T_CONCRETE || t === T_PATH || t === T_REF_CONCRETE || t === T_HAZARD; }
 
@@ -131,7 +132,15 @@ function chunkLocalIdx(tx, ty) {
 function getChunk(cx, cy) {
   const k = cx + ',' + cy;
   let c = G.world.chunks.get(k);
-  if (!c) { c = genChunk(cx, cy); G.world.chunks.set(k, c); }
+  if (!c) {
+    c = genChunk(cx, cy);
+    // 地图边界（超出可探索范围，地图大小配置）返回 null → 用全水域的“边界块”填充，
+    // 表现地图边缘为不可通行的海洋（对齐《异星工厂》有限地图边界）。
+    if (!c) {
+      c = { cx, cy, terrain: new Uint8Array(CHUNK * CHUNK).fill(T_WATER), oreType: new Int8Array(CHUNK * CHUNK).fill(-1), oreAmt: new Float32Array(CHUNK * CHUNK) };
+    }
+    G.world.chunks.set(k, c);
+  }
   return c;
 }
 
@@ -168,15 +177,44 @@ function consumeOre(tx, ty) {
 }
 
 function isWater(tx, ty) { return getTerrain(tx, ty) === T_WATER; }
+function isCliff(tx, ty) { return getTerrain(tx, ty) === T_CLIFF; }
+
+// 平滑插值
+function lerp(a, b, t) { return a + (b - a) * t; }
+function smoothstep(t) { return t * t * (3 - 2 * t); }
+// 低频值噪声（0~1），用于生成蜿蜒的峭壁山脊线（确定性、随世界种子）
+function valueNoise(gx, gy) {
+  const ix = Math.floor(gx), iy = Math.floor(gy);
+  const fx = gx - ix, fy = gy - iy;
+  const v00 = hash2(ix, iy), v10 = hash2(ix + 1, iy), v01 = hash2(ix, iy + 1), v11 = hash2(ix + 1, iy + 1);
+  const sx = smoothstep(fx), sy = smoothstep(fy);
+  return lerp(lerp(v00, v10, sx), lerp(v01, v11, sx), sy);
+}
+// 判断世界坐标是否为峭壁（对齐《异星工厂》Cliff）：低频噪声零点附近的窄条带形成蜿蜒山脊。
+// 出生点附近不生成（避免堵住开局），越远越密集。
+function isCliffTile(gx, gy) {
+  const d = Math.hypot(gx, gy);
+  if (d < 24) return false;
+  const f = 8;                       // 低频
+  const n = valueNoise(gx / f, gy / f);
+  // 距原点越远条带越宽 → 峭壁更密集；取噪声 0.5 两侧的窄条带
+  const band = 0.03 + 0.025 * Math.min(1, (d - 24) / 250);
+  const v = n - 0.5;
+  if (Math.abs(v) > band * 0.5) return false;
+  // 让山脊呈断续的蜿蜒线（避免整片连成实心墙）
+  return hash2(gx * 3.1, gy * 7.7) > 0.28;
+}
 
 function isLake(tx, ty) {
   const cell = 13;
   const gx = Math.floor(tx / cell), gy = Math.floor(ty / cell);
+  // 水频率配置（对齐《异星工厂》地图生成器）：调整湖泊密度阈值（+bias 更多水体 / -bias 更少水体）
+  const bias = (typeof waterBias === 'function') ? waterBias() : 0;
   for (let ogx = gx - 1; ogx <= gx + 1; ogx++) {
     for (let ogy = gy - 1; ogy <= gy + 1; ogy++) {
       // 湖泊密度：阈值从 0.04 再降到 0.02，使全图水体数量在上次基础上再减半
       const h = hash2(ogx * 12.9898, ogy * 78.233);
-      if (h < 0.02) {
+      if (h < 0.02 + bias) {
         const px = (ogx + (hash2(ogx * 3.1, ogy * 7.7) * 0.7 + 0.15)) * cell;
         const py = (ogy + (hash2(ogx * 5.3, ogy * 1.9) * 0.7 + 0.15)) * cell;
         // 单个水体面积适当增大：半径从 3~7.5 提升到 5~11
@@ -301,17 +339,32 @@ function genChunk(cx, cy) {
     }
   }
 
+  // 峭壁（对齐《异星工厂》Cliff）：低频噪声生成蜿蜒山脊，阻挡通行与建造，可用峭壁炸药清除
+  for (let ly = 0; ly < CHUNK; ly++) {
+    for (let lx = 0; lx < CHUNK; lx++) {
+      const idx = ly * CHUNK + lx;
+      if (terrain[idx] !== T_GRASS) continue;
+      if (isCliffTile(ox + lx, oy + ly)) terrain[idx] = T_CLIFF;
+    }
+  }
+
   const cxn = cx * CHUNK + CHUNK / 2, cyn = cy * CHUNK + CHUNK / 2;
   const dist = Math.hypot(cxn, cyn);
+  // 地图大小限制（对齐《异星工厂》地图大小）：超出可探索范围的地块视为边界（不可生成）
+  if (typeof maxMapDist === 'function' && dist > maxMapDist()) return null;
   const scale = 1 + dist / 90;
+  // 资源频率/大小/丰富度配置（对齐《异星工厂》地图生成器）
+  const fq = (typeof frequencyMult === 'function') ? frequencyMult() : 1;
+  const sz = (typeof sizeMult === 'function') ? sizeMult() : 1;
+  const ri = (typeof richnessMult === 'function') ? richnessMult() : 1;
   // 矿物数量在上次基础上放大一倍（更密集的矿脉分布）
-  const count = (2 + Math.floor(rng() * 2)) * 2 + (dist > 60 && rng() < 0.6 ? 2 : 0);
+  const count = Math.max(1, Math.round(((2 + Math.floor(rng() * 2)) * 2 + (dist > 60 && rng() < 0.6 ? 2 : 0)) * fq));
 
   for (let n = 0; n < count; n++) {
     const ti = pickOreType(rng, dist);
     // 单个矿物体积面积放大一倍（更大的矿团）
-    const size = Math.max(5, Math.round((20 + rng() * 20) * Math.min(2.6, scale)));
-    const amt = (500 + rng() * 900) * scale;
+    const size = Math.max(5, Math.round((20 + rng() * 20) * Math.min(2.6, scale) * sz));
+    const amt = (500 + rng() * 900) * scale * ri;
     const sx = 1 + Math.floor(rng() * (CHUNK - 2));
     const sy = 1 + Math.floor(rng() * (CHUNK - 2));
     growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, size, amt, ti);
@@ -323,7 +376,7 @@ function genChunk(cx, cy) {
     const sx = 2 + Math.floor(rng() * (CHUNK - 4));
     const sy = 2 + Math.floor(rng() * (CHUNK - 4));
     // 原油矿床：隔几格一个，整体聚集（gap≈3 即每个油点相隔 3 格左右）
-    growOilField(terrain, oreType, oreAmt, rng, sx, sy, 4 + Math.floor(rng() * 5), 1500 + rng() * 2500, 3);
+    growOilField(terrain, oreType, oreAmt, rng, sx, sy, 4 + Math.floor(rng() * 5), (1500 + rng() * 2500) * ri, 3);
   }
 
   // 铀矿：距离较远处才生成（核能后期），越远越多，矿团适中
@@ -331,8 +384,8 @@ function genChunk(cx, cy) {
   if (rng() < uChance) {
     const sx = 2 + Math.floor(rng() * (CHUNK - 4));
     const sy = 2 + Math.floor(rng() * (CHUNK - 4));
-    const usz = Math.max(4, Math.round((10 + rng() * 12) * Math.min(2.2, scale)));
-    const uamt = (400 + rng() * 700) * scale;
+    const usz = Math.max(4, Math.round((10 + rng() * 12) * Math.min(2.2, scale) * sz));
+    const uamt = (400 + rng() * 700) * scale * ri;
     growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, usz, uamt, ORE_URANIUM);
   }
 

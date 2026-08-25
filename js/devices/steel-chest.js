@@ -7,7 +7,7 @@ class SteelChest extends Chest {
     const cap = this.limits[item];
     if (cap !== undefined && this.countOf(item) >= cap) return false;
     for (const s of this.slots)
-      if (s && s.item === item && s.count < 50) { s.count++; return true; }
+      if (s && s.item === item && s.count < stackSize(item)) { s.count++; return true; }
     if (this.slots.length >= 24) return false;
     this.slots.push({ item, count: 1 });
     return true;

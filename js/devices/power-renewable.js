@@ -14,7 +14,9 @@ function solarFactor() {
 class SolarPanel extends Entity {
   constructor(type, x, y) { super('solar-panel', x, y); this.powerOut = 0; }
   update(dt) {
-    this.powerOut = SOLAR_POWER * solarFactor();
+    // 天气（动态云层/阴云）会轻微遮蔽日照，降低太阳能出力
+    const wm = (typeof weatherSolarMult === 'function') ? weatherSolarMult() : 1;
+    this.powerOut = SOLAR_POWER * solarFactor() * wm;
     // 电力增量注册表同步：powerOut 变化后重新注册，确保被 updatePower 扫描到
     if (typeof regPowerEnt === 'function') regPowerEnt(this);
   }
@@ -22,14 +24,19 @@ class SolarPanel extends Entity {
 
 // ===== 蓄电器：储存电力，白天充电、夜间放电（对齐《异星工厂》Accumulator，占地 2×2）=====
 // 作为电网的“缓冲电池”：白天电网有盈余时充电，夜间/不足时放电补充。
+// 蓄电器也是电路节点：其储电量（0~100）以 signal-charge 信号输出到所连电路网络，
+// 可被功率开关/组合器/告警音箱读取，用于按电量自动化调度（对齐《异星工厂》蓄电器电路信号）。
 const ACCUM_CAP = 5000;            // 储电上限 5MJ（对齐《异星工厂》蓄电器，单位 kJ）
 const ACCUM_CHARGE_RATE = 300;     // 每秒充/放电速率上限（对齐《异星工厂》蓄电器 300kW）
-class Accumulator extends Entity {
+const ACCUM_CIRCUIT_RANGE = 7;     // 蓄电器电路连接范围（格，同小型电线杆），供组合器/功率开关读取其电量信号
+class Accumulator extends CircuitNode {
   constructor(type, x, y) {
     super('accumulator', x, y);
     this.stored = 0;               // 当前储电量
     this.powerOut = 0;             // 电网注入功率（放电时 >0），注册用
   }
+  // 蓄电器作为电路节点：连接范围取蓄电器自身范围（与附近的电线杆/组合器互联）
+  get range() { return ACCUM_CIRCUIT_RANGE; }
   update(dt) {
     // 电网盈余时充电；电网缺口时放电（受速率限制）
     if (G.power.prod > G.power.demand && this.stored < ACCUM_CAP) {

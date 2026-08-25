@@ -16,9 +16,44 @@ class Refinery extends Entity {
     this.crafting = false;
     this.prog = 0;
     this.working = false;
+    this.modules = {};  // 炼油厂可装 3 个模块（对齐《异星工厂》Oil refinery）
+    this.prodBuf = 0;   // 产能模块累积进度
+  }
+  moduleSlotCount() { return 3; } // 对齐《异星工厂》：炼油厂 3 槽
+  moduleSpeedMult() {
+    const mc = moduleCounts(this.modules);
+    const bb = (typeof beaconBonus === 'function') ? beaconBonus(this.x, this.y) : null;
+    if (bb) { mc.speed += bb.speed; mc.prod += bb.prod; mc.eff += bb.eff; }
+    return 1 + 0.4 * mc.speed - 0.1 * mc.prod - 0.03 * mc.eff;
+  }
+  applyProductivity(rec) {
+    const mc = moduleCounts(this.modules);
+    const bb = (typeof beaconBonus === 'function') ? beaconBonus(this.x, this.y) : null;
+    let nProd = mc.prod;
+    if (bb) nProd += bb.prod;
+    if (nProd <= 0) return 0;
+    const thr = moduleProdThreshold(this.modules);
+    this.prodBuf = (this.prodBuf || 0) + nProd;
+    if (this.prodBuf >= thr) {
+      this.prodBuf -= thr;
+      const mainOut = rec ? Object.keys(rec.out)[0] : null;
+      if (mainOut) { this.outp[mainOut] = (this.outp[mainOut] || 0) + 1; if (typeof trackProd === 'function') trackProd(mainOut, 1); }
+      return 1;
+    }
+    return 0;
+  }
+  modulePowerFactor() {
+    const mc = moduleCounts(this.modules);
+    const bb = (typeof beaconBonus === 'function') ? beaconBonus(this.x, this.y) : null;
+    if (bb) { mc.speed += bb.speed; mc.prod += bb.prod; mc.eff += bb.eff; }
+    const effMult = Math.max(0.2, 1 - 0.15 * mc.eff);
+    const powMult = 1 + (mc.speed * 0.25 + mc.prod * 0.25);
+    return powMult * effMult;
   }
   setRecipe(id) {
     if (this.recipe === id) return;
+    // 切换配方前返还已投入/已产出物料（对齐《异星工厂》：切换配方返还残留）
+    if (this.inp || this.outp) returnMachineContents(this);
     this.recipe = id || null;
     this.inp = {}; this.outp = {};
     this.crafting = false; this.prog = 0;
@@ -83,7 +118,7 @@ class Refinery extends Entity {
     if (this.crafting) {
       if (G.power.sat <= 0) return;
       this.working = true;
-      this.prog += dt * oilMult() * powerFactor();
+      this.prog += dt * oilMult() * this.moduleSpeedMult() * powerFactor();
       // 炼油厂运转：顶部低频排放蒸汽（画面优化）
       if (typeof spawnSteam === 'function' && Math.random() < dt * 0.9) {
         spawnSteam((this.x + 0.5 + (Math.random() - 0.5) * 0.6) * TILE, (this.y + 0.25) * TILE, { size: 3, life: 1.5 });
@@ -93,6 +128,7 @@ class Refinery extends Entity {
           this.outp[k] = (this.outp[k] || 0) + rec.out[k];
           if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
         }
+        this.applyProductivity(rec);
         this.crafting = false;
         this.prog = 0;
       }
@@ -126,6 +162,13 @@ class Refinery extends Entity {
     return REFINERY_INPUT_CELLS.map(cell => sideNeighborCell(this, 3, cell));
   }
   giveItem(item) {
+    if (isModule(item)) {
+      // 模块槽位限制（对齐《异星工厂》：炼油厂 3 槽）
+      if ((this.modules[item] || 0) >= this.moduleSlotCount()) return false;
+      this.modules[item] = (this.modules[item] || 0) + 1;
+      if (typeof playSfx === 'function') playSfx('module');
+      return true;
+    }
     if (!this.recipe) return false;
     const rec = REFINERY_RECIPES[this.recipe];
     if (!rec.inp[item]) return false;
@@ -151,24 +194,27 @@ class Refinery extends Entity {
     const list = [[this.type, 1]];
     for (const k in this.inp) list.push([k, this.inp[k]]);
     for (const k in this.outp) list.push([k, this.outp[k]]);
+    for (const k in this.modules) if (this.modules[k] > 0) list.push([k, this.modules[k]]);
     return list;
   }
   serialize() {
     const s = super.serialize();
     s.recipe = this.recipe; s.inp = this.inp; s.outp = this.outp;
     s.crafting = this.crafting; s.prog = this.prog;
+    s.modules = this.modules; s.prodBuf = this.prodBuf;
     return s;
   }
-  // 蓝图只保留配方配置，不复制内部原料/输出/进度
+  // 蓝图只保留配方配置与模块，不复制内部原料/输出/进度
   blueprint() {
     const s = super.blueprint();
-    s.recipe = this.recipe;
+    s.recipe = this.recipe; s.modules = this.modules;
     return s;
   }
   static restore(s) {
     const r = super.restore(s);
     r.recipe = s.recipe || null; r.inp = s.inp || {}; r.outp = s.outp || {};
     r.crafting = !!s.crafting; r.prog = s.prog || 0;
+    r.modules = s.modules || {}; r.prodBuf = s.prodBuf || 0;
     return r;
   }
 }
@@ -304,8 +350,10 @@ function drawPortIcon(ctx, px, py, s, side, off, fluid) {
 function refineryPanelHtml(e) {
   let h = row('当前配方', e.recipe ? REFINERY_RECIPES[e.recipe].name : '<span class="dim">未设置</span>');
   // 消耗/产出速率显示在面板靠前位置（当前配方之后）
-  h += machRateHtml(e.recipe ? REFINERY_RECIPES[e.recipe] : null, e.recipe ? oilMult() : 1);
+  h += machRateHtml(e.recipe ? REFINERY_RECIPES[e.recipe] : null, e.recipe ? oilMult() * e.moduleSpeedMult() : 1);
   h += row('电力', powerStatusLiveHtml(e), 'power');
+  // 模块槽位（对齐《异星工厂》：炼油厂可装 3 模块）
+  h += modulePanelSection(e);
   h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
   if (e.recipe)
     for (const k in REFINERY_RECIPES[e.recipe].inp) {
@@ -323,13 +371,19 @@ function refineryPanelHtml(e) {
     const r = REFINERY_RECIPES[rid];
     const outId = Object.keys(r.out)[0];
     const selCls = e.recipe === rid ? 'sel' : '';
-    h += '<button class="rcbtn ' + selCls + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-tip="' +
-      r.name + '|' + r.out[outId] + '个/次，耗时' + r.time + '秒">' +
-      '<img src="' + iconDataURL(outId) + '">' + r.name + '</button>';
+    // 科技门控：未解锁的炼油配方显示锁定（对齐《异星工厂》进阶原油加工/煤液化独立科技）
+    const unlocked = recipeUnlocked(rid);
+    const lockTech = recipeLockingTech(rid);
+    const lockCls = unlocked ? '' : ' locked-recipe';
+    const disabled = unlocked ? '' : ' disabled';
+    const lockNote = unlocked ? '' : ('🔒 需' + (lockTech ? TECHS[lockTech].name : '研究'));
+    h += '<button class="rcbtn ' + selCls + lockCls + '" ' + disabled + ' data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-tip="' +
+      r.name + '|' + (unlocked ? (r.out[outId] + '个/次，耗时' + r.time + '秒') : (lockNote + '')) + '">' +
+      '<img src="' + iconDataURL(outId) + '">' + r.name + (unlocked ? '' : ' 🔒') + '</button>';
   }
   h += '</div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
-  h += '<div class="dim">炼油厂吃电力，须先选配方。接口对齐格子：背面（上方）2个输入口分别在左数第2、4格，正面（下方）3个输出口分别在左数第1、3、5格（各口之间留 1 格间隔）。所需流体经背面输入口相邻管道自动吸入，流体产物自动经正面输出口排回管道；煤/方解石等固体原料机械臂可从任意方向抓取放入。中央配方 + 各接口流体图标会直接显示。</div>';
+  h += '<div class="dim">炼油厂吃电力，须先选配方。接口对齐格子：背面（上方）2个输入口分别在左数第2、4格，正面（下方）3个输出口分别在左数第1、3、5格（各口之间留 1 格间隔）。所需流体经背面输入口相邻管道自动吸入，流体产物自动经正面输出口排回管道；煤/方解石等固体原料机械臂可从任意方向抓取放入。可装 3 个模块（速度/产能/效率）并受信号塔加成。中央配方 + 各接口流体图标会直接显示。</div>';
   return h;
 }
 function refineryPanelLive(e, api) {

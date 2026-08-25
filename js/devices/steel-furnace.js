@@ -9,7 +9,11 @@ class SteelFurnace extends Furnace {
     this.cur = r;
     if (!r) { this.prog = 0; this.lit = false; return; }
     if (this.burnLeft <= 0) {
-      if (this.fuelSolid > 0) {
+      if (this.fuelRocket > 0) {
+        this.fuelRocket--;
+        if (typeof trackProd === 'function') trackProd('rocket-fuel', -1);
+        this.burnLeft += ROCKET_FUEL_ENERGY;
+      } else if (this.fuelSolid > 0) {
         this.fuelSolid--;
         if (typeof trackProd === 'function') trackProd('solid-fuel', -1);
         this.burnLeft += SOLID_FUEL_ENERGY;
@@ -34,6 +38,7 @@ class SteelFurnace extends Furnace {
     }
   }
   giveItem(item) {
+    if (item === 'rocket-fuel' && this.fuelRocket < 20) { this.fuelRocket++; return true; }
     if (item === 'coal' && this.fuelCoal < 20) { this.fuelCoal++; return true; }
     if (item === 'solid-fuel' && this.fuelSolid < 20) { this.fuelSolid++; return true; }
     for (const r of SMELTS)
@@ -88,9 +93,13 @@ function drawSteelFurnace(ctx, e, gx, gy, dir, alpha) {
 
 // ===== 面板：复用石炉面板（燃料/输入/输出/进度），但状态文案标注钢铁炉=====
 function steelFurnacePanelHtml(e) {
-  let h = row('燃料', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : '<span class="dim">无</span>', 'fuel');
+  let h = row('燃料', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '') + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : '<span class="dim">无</span>'), 'fuel');
   if (invCount('coal') > 0)
     h += '<button data-action="fuel" data-id="coal">加入 5 煤 (' + invCount('coal') + ')</button>';
+  if (invCount('solid-fuel') > 0)
+    h += '<button data-action="fuel" data-id="solid-fuel">加入 5 固体燃料 (' + invCount('solid-fuel') + ')</button>';
+  if (invCount('rocket-fuel') > 0)
+    h += '<button data-action="fuel" data-id="rocket-fuel">加入 5 火箭燃料 (' + invCount('rocket-fuel') + ')</button>';
   // 消耗/产出速率显示在面板靠前位置（燃料行之后）
   h += '<div id="mach-rate-block"></div>';
   h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
@@ -108,7 +117,7 @@ function steelFurnacePanelHtml(e) {
   return h;
 }
 function steelFurnacePanelLive(e, api) {
-  api.set('fuel', e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : dimSpan('无'));
+  api.set('fuel', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '') + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : dimSpan('无')));
   api.set('input', Object.keys(e.inp).length ? countStr(e.inp) : dimSpan('空'));
   api.set('output', Object.keys(e.outp).length ? countStr(e.outp) : dimSpan('空'));
   const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
@@ -122,7 +131,7 @@ function steelFurnacePanelLive(e, api) {
     if (rateEl.innerHTML !== html) rateEl.innerHTML = html;
   }
   if (e.lit) api.status('冶炼中（钢铁炉·高速）', 'ok');
-  else if (e.cur) api.status('已暂停：等待燃料（加入煤）', 'warn');
+  else if (e.cur) api.status('已暂停：等待燃料（加入煤/固体燃料/火箭燃料）', 'warn');
   else api.status('已暂停：待料（放入燃料和矿石）', 'warn');
 }
 function steelFurnaceTip(e) {

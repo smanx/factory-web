@@ -94,32 +94,113 @@ function makeSpawner() {
     const ang = Math.random() * Math.PI * 2;
     const tx = Math.round(px + Math.cos(ang) * dist);
     const ty = Math.round(py + Math.sin(ang) * dist);
-    if (!isWater(tx, ty) && !entAt(tx, ty)) {
-      return {
-        x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2,
-        hp: SPAWNER_HP, maxhp: SPAWNER_HP, dead: false, dir: 0,
-        type: 'spawner', kind: 'spawner', speed: 0, size: 13, dmg: 0,
-        color: '#5a3a8a', attackT: 0, fireT: 0
-      };
+    if ((!isWater(tx, ty) && !isCliff(tx, ty)) && !entAt(tx, ty)) {
+      return spawnerAt(tx, ty);
     }
   }
   return null;
 }
 
+// ===== 敌人基地扩张（对齐《异星工厂》Biter expansion）=====
+// 虫巢会周期性派出“扩张党”在远处建立新巢穴，世界中的敌人领地会随时间不断蔓延，
+// 比“巢穴不足才补位”更贴近原版：即使玩家清剿了某片巢穴，其它巢穴仍会向四周扩张。
+// 扩张会尽量避开玩家所在的出生区（距玩家过近不建），避免开局即被巢穴包围。
+const EXPAND_MIN_INTERVAL = 45;   // 最短扩张间隔（秒）
+const EXPAND_BASE_INTERVAL = 120; // 基础扩张间隔（秒）
+const EXPAND_RANGE_MIN = 9;       // 距父巢穴最近距离（格）
+const EXPAND_RANGE_MAX = 16;      // 距父巢穴最远距离（格）
+const EXPAND_PLAYER_GAP = 12;     // 扩张巢穴距玩家至少保持的格数
+// 总巢穴数量上限：随进化度略微放宽，但始终受控，避免无限扩张导致失衡
+function spawnerCapByEvo() {
+  const evo = evolutionFactor();
+  const base = G.techDone['advanced-combat'] ? 3 : SPAWNER_TARGET;
+  return base + (evo > 0.4 ? 1 : 0) + (evo > 0.8 ? 1 : 0);
+}
+// 在一个目标格生成巢穴（若该格可用）；不可用返回 null
+function spawnerAt(tx, ty) {
+  if (isWater(tx, ty) || isCliff(tx, ty) || entAt(tx, ty)) return null;
+  return {
+    x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2,
+    hp: SPAWNER_HP, maxhp: SPAWNER_HP, dead: false, dir: 0,
+    type: 'spawner', kind: 'spawner', speed: 0, size: 13, dmg: 0,
+    color: '#5a3a8a', attackT: 0, fireT: 0
+  };
+}
+// 尝试让某个巢穴向远处扩张出一个新巢穴，成功返回 true
+function expandFromSpawner(parent) {
+  const px = G.player.x / TILE, py = G.player.y / TILE;
+  const sx = Math.round(parent.x / TILE), sy = Math.round(parent.y / TILE);
+  // 尽量朝“远离玩家”的扇形方向扩张，但带一定随机性；同时保证新巢穴距玩家不近于 EXPAND_PLAYER_GAP
+  for (let i = 0; i < 16; i++) {
+    // 与父巢到玩家的连线夹角偏向远离玩家侧（±60°），偶尔也允许其他方向
+    const toPlayer = Math.atan2(py - sy, px - sx);
+    const spread = (Math.random() * 2 - 1) * 1.1; // 扇形宽
+    const ang = toPlayer + (Math.random() < 0.7 ? Math.PI + spread : Math.random() * Math.PI * 2);
+    const dist = EXPAND_RANGE_MIN + Math.random() * (EXPAND_RANGE_MAX - EXPAND_RANGE_MIN);
+    const tx = Math.round(sx + Math.cos(ang) * dist);
+    const ty = Math.round(sy + Math.sin(ang) * dist);
+    const pd = Math.hypot(tx - px, ty - py);
+    if (pd < EXPAND_PLAYER_GAP) continue;
+    const s = spawnerAt(tx, ty);
+    if (s) { G.enemies.push(s); return true; }
+  }
+  return false;
+}
+// 每帧推进扩张计时，到点且满足条件时触发一次扩张
+
+// 每帧懒计算并复用 spawner（巢穴）列表（P0 优化）：
+// updateExpansion / spawnEnemies / updateWaves 三处每帧各做一次
+// G.enemies.filter(...) 会分配新数组造成 GC 压力；改为每帧只算一次并复用同一数组。
+// 由主循环在每帧 combat 块开头调用 resetSpawnerCache() 使缓存失效。
+function resetSpawnerCache() { G._spawnerList = null; }
+function getSpawnerList() {
+  if (G._spawnerList) return G._spawnerList;
+  const list = [];
+  const src = G.enemies || EMPTY_ARR;
+  for (let i = 0; i < src.length; i++) if (src[i].kind === 'spawner' && !src[i].dead) list.push(src[i]);
+  G._spawnerList = list;
+  return list;
+}
+
+function updateExpansion(dt) {
+  if (!G.settings.combat) return;
+  if (!G.enemies) G.enemies = [];
+  const spawners = getSpawnerList();
+  if (spawners.length === 0) { G.expandT = 0; return; }
+  const cap = spawnerCapByEvo();
+  if (spawners.length >= cap) { G.expandT = 0; return; }
+  const evo = evolutionFactor();
+  const interval = Math.max(EXPAND_MIN_INTERVAL, EXPAND_BASE_INTERVAL * (1 - evo * 0.55));
+  G.expandT = (G.expandT || 0) + dt;
+  if (G.expandT < interval) return;
+  G.expandT = 0;
+  // 随机挑一个父巢穴扩张
+  const parent = spawners[(Math.random() * spawners.length) | 0];
+  if (parent && expandFromSpawner(parent)) {
+    if (typeof playSfx === 'function') playSfx('spawn');
+    // 轻微播报，让玩家感知领地蔓延
+    if (typeof toast === 'function') toast('⚠ 探测到虫巢向外扩张，出现新的巢穴');
+  }
+}
+
 function spawnEnemies(dt) {
   if (!G.enemies) G.enemies = [];
+  // 敌人强度配置（对齐《异星工厂》新游戏敌人设置）：和平模式不刷敌人
+  const ecfg = (typeof enemyConfig === 'function') ? enemyConfig() : { peaceful: false, spawnMult: 1 };
+  if (ecfg.peaceful) return;
   G.spawnT = (G.spawnT || 0) + dt;
-  // 敌人数量越多刷新越慢；火箭时代可允许更多敌人同时在场
-  const cap = G.techDone['advanced-combat'] ? 40 : 24;
+  // 敌人数量越多刷新越慢；火箭时代可允许更多敌人同时在场；高敌人强度提高上限
+  const cap = Math.round((G.techDone['advanced-combat'] ? 40 : 24) * ecfg.spawnMult);
   if (G.enemies.length >= cap) return;
-  // 维护巢穴数量：不足则在远处生成新巢穴
-  const spawners = G.enemies.filter(e => e.kind === 'spawner' && !e.dead);
-  const spawnerCap = G.techDone['advanced-combat'] ? 3 : SPAWNER_TARGET;
+  // 维护巢穴数量：不足则在远处生成新巢穴（初始布点由扩张系统接管后，这里仍保留保底补位）
+  const spawners = getSpawnerList();
+  const spawnerCap = spawnerCapByEvo();
   if (spawners.length < spawnerCap && G.spawnT > 3) {
     const s = makeSpawner();
     if (s) G.enemies.push(s);
   }
-  const interval = Math.max(3, 12 - Math.min(9, (G.enemies.length || 0) / 3));
+  // 高敌人强度 → 刷新更快（间隔缩短）
+  const interval = Math.max(3, 12 - Math.min(9, (G.enemies.length || 0) / 3)) / Math.max(0.4, ecfg.spawnMult);
   if (G.spawnT < interval) return;
   G.spawnT = 0;
   const px = G.player.x / TILE, py = G.player.y / TILE;
@@ -135,7 +216,7 @@ function spawnEnemies(dt) {
     for (let i = 0; i < 8; i++) {
       const cx2 = tx + Math.floor(Math.random() * 5) - 2;
       const cy2 = ty + Math.floor(Math.random() * 5) - 2;
-      if (!isWater(cx2, cy2) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
+      if ((!isWater(cx2, cy2) && !isCliff(cx2, cy2)) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
     }
   } else {
     // 兜底：无巢穴时（巢穴尚未生成或全部被摧毁）在玩家远处生成
@@ -146,7 +227,7 @@ function spawnEnemies(dt) {
     for (let i = 0; i < 8; i++) {
       const cx2 = tx + Math.floor(Math.random() * 5) - 2;
       const cy2 = ty + Math.floor(Math.random() * 5) - 2;
-      if (!isWater(cx2, cy2) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
+      if ((!isWater(cx2, cy2) && !isCliff(cx2, cy2)) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
     }
   }
   const t = pickEnemyType();
@@ -197,7 +278,7 @@ function updateWaves(dt) {
   if (!G.settings.combat) return;
   const evo = evolutionFactor();
   // 至少有一座巢穴、且进化度达到一定水平后才触发进攻波，避免开局就压垮玩家
-  const spawners = G.enemies ? G.enemies.filter(e => e.kind === 'spawner' && !e.dead) : [];
+  const spawners = getSpawnerList();
   if (spawners.length === 0 || evo < 0.06) return;
   G.waveT = (G.waveT || 0) + dt;
   if (G.waveT < waveInterval()) return;
@@ -262,6 +343,8 @@ function updateEnemies(dt) {
   if (!G.enemies) return;
   // 推进自然进化（战斗开启时）
   updateEvolution(dt);
+  // 推进虫巢扩张（对齐《异星工厂》Biter expansion：领地向外蔓延）
+  updateExpansion(dt);
   const p = G.player;
   const pR = 9;   // 玩家碰撞半径（格）
   for (const en of G.enemies) {
@@ -299,6 +382,8 @@ function updateEnemies(dt) {
         (G.enemyProjectiles || (G.enemyProjectiles = [])).push({
           x: en.x, y: en.y - en.size, tx: fireTarget.x, ty: fireTarget.y, speed: 3.2, dmg: en.dmg, t: 0,
           fire: fire, color: fire ? '#ff8a2a' : '#9ac04a',
+          // 普通喷吐虫的酸液命中地面会留下酸液洼地（对齐《异星工厂》Spitter acid）
+          acid: !fire,
           buildTarget: fireTarget !== p ? fireTarget : undefined
         });
       }
@@ -332,6 +417,8 @@ function updateEnemies(dt) {
         pr.hit = true;
         // 火球命中地面：留下燃烧火场（对齐《异星工厂》Fire entity）
         if (pr.fire && typeof spawnGroundFire === 'function') spawnGroundFire(pr.x, pr.y);
+        // 喷吐虫酸液命中：落点形成酸液洼地，对范围内持续腐蚀（对齐《异星工厂》Acid puddle）
+        if (pr.acid && typeof spawnAcidPool === 'function') spawnAcidPool(pr.x, pr.y);
         if (pr.buildTarget && pr.buildTarget._dead === false) {
           // 命中建筑：造成建筑伤害（火球附带灼烧）
           if (typeof damageBuilding === 'function') {
@@ -347,11 +434,11 @@ function updateEnemies(dt) {
       pr.x += (dx / d) * step;
       pr.y += (dy / d) * step;
     }
-    G.enemyProjectiles = G.enemyProjectiles.filter(pr => !pr.hit);
+    G.enemyProjectiles = compactFilter(G.enemyProjectiles, pr => !pr.hit);
   }
   // 击杀敌人推进战斗进化（含巢穴），提升进化度；被击杀的敌人掉落少量矿石（对齐《异星工厂》）
   let kills = 0;
-  G.enemies = G.enemies.filter(e => {
+  G.enemies = compactFilter(G.enemies, e => {
     if (e.dead) { kills++; dropEnemyLoot(e); return false; }
     return true;
   });
@@ -405,7 +492,7 @@ function updateLootDrops(dt) {
       d.picked = true;
     }
   }
-  G.lootDrops = G.lootDrops.filter(d => !d.picked && d.t < d.life);
+  G.lootDrops = compactFilter(G.lootDrops, d => !d.picked && d.t < d.life);
   if (G.lootDrops.length === 0) G.lootDrops = undefined;
 }
 
@@ -501,7 +588,12 @@ function updateBullets(dt) {
     // 火箭/手雷等范围爆炸：命中后延长存在时间以播放“冲击波扩散 + 火焰消散”动画（画面优化）
     if (b.splash && !b.hit && b.t >= b.life) {
       b.hit = true;
-      explodeDamage(b.tx, b.ty, b.splash, b.dmg);
+      // 纯冲击波环子弹（核爆特效用）只作视觉，不再重复伤害/特效
+      if (!b.waveOnly) {
+        explodeDamage(b.tx, b.ty, b.splash, b.dmg);
+        // 原子弹：核爆特效（蘑菇云 + 冲击波 + 强光 + 高温火球）
+        if (b.nuclear && typeof spawnNuclearExplosion === 'function') spawnNuclearExplosion(b.tx, b.ty);
+      }
       b.boomBig = true;
     }
     if ((b.splash || b.boomBig) && b.hit && b._boomT === undefined) {
@@ -512,18 +604,20 @@ function updateBullets(dt) {
     if (b._boomT !== undefined) b._boomT += dt;
     // 地雷爆炸特效：仅视觉短促闪光，无需额外伤害（已由 removeEnt 前引爆）
   }
-  G.bullets = G.bullets.filter(b => b.t < b.life);
+  G.bullets = compactFilter(G.bullets, b => b.t < b.life);
 }
 
 // ===== 玩家武器 =====
 // 武器数据：伤害、射速、弹药、弹种
 const WEAPONS = {
   'pistol':          { name: '手枪',   dmg: 10, rate: 0.3, ammo: 'magazine',        spread: 0.06, auto: false, range: 7, sfx: 'shoot' },
-  'submachine-gun':  { name: '冲锋枪', dmg: 7,  rate: 0.1, ammo: 'magazine',        spread: 0.12, auto: true,  range: 7, sfx: 'machine-gun' },
+  'submachine-gun':  { name: '冲锋枪', dmg: 7,  rate: 0.1, ammo: 'magazine', ammoTiers: ['magazine', 'piercing-rounds', 'uranium-rounds'], ammoDmg: { 'magazine': 7, 'piercing-rounds': 10, 'uranium-rounds': 16 }, spread: 0.12, auto: true,  range: 7, sfx: 'machine-gun' },
   'shotgun':         { name: '散弹枪', dmg: 6,  rate: 0.5, ammo: 'shotgun-shell', spread: 0.4,  auto: false, range: 6, pellets: 6, sfx: 'shotgun' },
   'combat-shotgun':  { name: '战斗散弹枪', dmg: 10, rate: 0.35, ammo: 'piercing-shotgun-shell', spread: 0.32, auto: false, range: 7, pellets: 8, sfx: 'shotgun' },
   'rocket-launcher': { name: '火箭筒', dmg: 35, rate: 1.1, ammo: 'rocket',          spread: 0.03, auto: false, range: 9, splash: 1.8, sfx: 'rocket' },
   'explosive-rocket-launcher': { name: '爆炸火箭筒', dmg: 60, rate: 1.3, ammo: 'explosive-rocket', spread: 0.05, auto: false, range: 9, splash: 3.2, sfx: 'rocket' },
+  // 原子弹（对齐《异星工厂》Atomic bomb）：火箭筒发射的终极核武器，命中引发超大范围核爆
+  'atomic-bomb': { name: '原子弹', dmg: 300, rate: 2.5, ammo: 'atomic-bomb', spread: 0.02, auto: false, range: 12, splash: 9, nuclear: true, sfx: 'rocket' },
   'grenade':         { name: '手雷',   dmg: 40, rate: 0.8, ammo: 'grenade',          spread: 0.05, auto: false, range: 6, splash: 2.5, sfx: 'throw' },
   'cluster-grenade': { name: '集束手雷', dmg: 80, rate: 1.0, ammo: 'cluster-grenade', spread: 0.05, auto: false, range: 6, splash: 4.5, sfx: 'throw' },
   'flamethrower':    { name: '火焰喷射器', dmg: 6, rate: 0.12, ammo: 'flamethrower-ammo', spread: 0.2, auto: true, range: 6, flame: true, sfx: 'flamethrower' },
@@ -559,18 +653,29 @@ function playerFire(tx, ty) {
     return;
   }
   const px = G.player.x, py = G.player.y;
-  // 弹药检查：火焰喷射器消耗石油气（流体），其余消耗物品
-  if (w.ammo === 'petroleum-gas') {
+  // 弹药检查：火焰喷射器消耗石油气（流体），其余消耗物品。
+  // 冲锋枪等支持弹药升级的武器，自动消耗玩家身上最优的弹药并套用对应伤害（对齐《异星工厂》）。
+  let ammoUsed = w.ammo;
+  if (w.ammoTiers && w.ammoTiers.length > 1) {
+    for (let i = w.ammoTiers.length - 1; i >= 0; i--) {
+      if (invCount(w.ammoTiers[i]) >= 1) { ammoUsed = w.ammoTiers[i]; break; }
+    }
+  }
+  if (ammoUsed === 'petroleum-gas') {
     if (invCount('petroleum-gas') < 1) return;
     invTake('petroleum-gas', 1);
   } else {
-    if (invCount(w.ammo) < 1) return;
-    invTake(w.ammo, 1);
+    if (invCount(ammoUsed) < 1) return;
+    invTake(ammoUsed, 1);
   }
   const baseAng = Math.atan2(ty - py, tx - px);
   const pellets = w.pellets || 1;
-  // 武器伤害无限科技倍率（对齐《异星工厂》Weapon damage research）
-  const dmg = Math.round(w.dmg * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1));
+  // 武器伤害无限科技倍率（对齐《异星工厂》Weapon damage research）+ 分类军事无限科技
+  const base = (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult(weaponDamageKind(id)) : 1);
+  // 弹药升级伤害：使用穿甲弹/铀弹时套用对应伤害，否则用武器基础伤害
+  let baseDmg = w.dmg;
+  if (w.ammoDmg && w.ammoDmg[ammoUsed]) baseDmg = w.ammoDmg[ammoUsed];
+  const dmg = Math.round(baseDmg * base);
   for (let i = 0; i < pellets; i++) {
     const a = baseAng + (Math.random() - 0.5) * 2 * w.spread;
     const dist = w.range * TILE;
@@ -580,7 +685,8 @@ function playerFire(tx, ty) {
       // 火箭弹：命中目标后范围爆炸
       (G.bullets || (G.bullets = [])).push({
         x: px, y: py, tx: tx2, ty: ty2, t: 0, life: 0.18,
-        splash: w.splash, dmg: dmg, kind: 'rocket'
+        splash: w.splash, dmg: dmg, kind: 'rocket',
+        nuclear: !!w.nuclear
       });
     } else if (w.flame) {
       (G.bullets || (G.bullets = [])).push({
@@ -598,6 +704,8 @@ function playerFire(tx, ty) {
 // 玩家开火更新：按住空格/左键对敌人持续射击
 function updatePlayerFire(dt) {
   if (!G.weapon || !G.settings.combat) return;
+  // 驾驶装甲车/坦克时：按住空格由车载机枪/主炮开火，不再用手持武器（对齐《异星工厂》：驾驶载具用载具武器）
+  if (G.driving && G.driving.ent && (G.driving.ent instanceof Car)) return;
   G.playerFireT -= dt;
   // 空格键开火（触屏可自行调用 playerFire 实现开火）
   const firing = !!G.keys[' '];
@@ -616,13 +724,14 @@ function updatePlayerFire(dt) {
     ty = G.player.y + Math.sin(a) * TILE * 3;
   }
   playerFire(tx, ty);
-  G.playerFireT = w.rate;
+  // 射击速度无限科技：射击间隔缩短，射速提升（对齐《异星工厂》Shooting speed）
+  G.playerFireT = (typeof shootingSpeedMult === 'function' ? w.rate / shootingSpeedMult() : w.rate);
 }
 // 玩家子弹命中敌人（沿子弹飞行路径检测）
 function updatePlayerBulletHits(dt) {
   if (!G.bullets) return;
-  // 性能优化：预先收集存活敌人列表（避免每颗子弹都遍历 dead 敌人）
-  const alive = (G.enemies || []).filter(e => !e.dead);
+  // 性能优化：复用主循环每帧缓存的存活敌人列表（避免重复 filter 分配数组）
+  const alive = G._aliveEnemies || (G.enemies || []).filter(e => !e.dead);
   if (alive.length === 0) return;
   for (const b of G.bullets) {
     if (b.hit || (b.kind !== 'bullet' && b.kind !== 'flame' && b.kind !== 'rocket')) continue;
@@ -664,6 +773,57 @@ function explodeDamage(cx, cy, radius, dmg) {
   if (typeof playSfx === 'function') playSfx('explosion');
 }
 
+// ===== 核爆特效（原子弹，对齐《异星工厂》Atomic bomb 的蘑菇云） =====
+// 生成蘑菇云烟柱、冲击波环与强光闪光，并在爆炸中心留下高温灼烧粒子。
+function spawnNuclearExplosion(cx, cy) {
+  // 蘑菇云烟柱：多条上飘的烟粒子，随高度扩散
+  const cols = ['#ffd27a', '#ff9a3a', '#d05a2a', '#7a4a3a', '#4a3a3a', '#9a9aa0'];
+  for (let i = 0; i < 60; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const sp = 1 + Math.random() * 4;
+    const hgt = (Math.random() * 4 + 1) * TILE;
+    if (typeof spawnSmoke === 'function') {
+      spawnSmoke(cx + Math.cos(a) * sp * 6, cy - hgt, {
+        life: 2.5 + Math.random() * 2,
+        size: 8 + Math.random() * 14,
+        vx: Math.cos(a) * sp * 2,
+        vy: -(3 + Math.random() * 5),
+        color: cols[(Math.random() * cols.length) | 0]
+      });
+    }
+  }
+  // 蘑菇云顶部圆盘（球形扩散）
+  for (let i = 0; i < 40; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = (Math.random() * 5 + 2) * TILE;
+    if (typeof spawnSmoke === 'function') {
+      spawnSmoke(cx + Math.cos(a) * r, cy - 4 * TILE - Math.random() * 2 * TILE, {
+        life: 2 + Math.random() * 2,
+        size: 10 + Math.random() * 16,
+        vx: Math.cos(a) * 1.5,
+        vy: -1 + Math.random(),
+        color: '#c87a4a'
+      });
+    }
+  }
+  // 高温火花：爆炸中心向外飞溅
+  for (let i = 0; i < 50; i++) {
+    if (typeof spawnSpark === 'function') spawnSpark(cx, cy, { speed: 5 + Math.random() * 8, life: 0.8, size: 3, color: '#ffe0a0' });
+  }
+  // 冲击波环标记：通过 G.bullets 插入一枚无伤害的“波环”子弹，仅用于渲染扩散冲击波
+  (G.bullets || (G.bullets = [])).push({
+    x: cx, y: cy, tx: cx, ty: cy, t: 0, life: 0.8, dmg: 0,
+    splash: 9, kind: 'nuclear-wave', _boomT: 0, _boomBase: 0, nuclear: true, waveOnly: true
+  });
+  // 强光闪屏
+  if (typeof addScreenFlash === 'function') addScreenFlash(0.9);
+  else if (G.screenFlash === undefined) G.screenFlash = 1;
+  else G.screenFlash = Math.max(G.screenFlash || 0, 1);
+  // 核爆轰鸣音效
+  if (typeof playSfx === 'function') playSfx('explosion');
+}
+
+
 // ===== 战斗机器人胶囊（对齐《异星工厂》Combat robots） =====
 // 玩家选择胶囊后按空格/点击投掷，落地释放战斗机器人：
 //  - defender（防御）：跟随玩家，自动攻击附近敌人，有续航时间
@@ -681,9 +841,19 @@ function throwCapsule(id, tx, ty) {
     if (typeof toast === 'function') toast('需要先研究「' + TECHS[TECH_REQ[id]].name + '」才能使用 ' + ITEMS[id].name);
     return false;
   }
+  // 追随机器人数量上限（对齐《异星工厂》Follower robot count）：默认 5，逐级 +2
+  // 战斗机器人胶囊在消耗前校验上限，避免满员时白白扣掉胶囊（毒/减速胶囊不受此限制）
+  if (CAPSULES[id] && !(id === 'poison-capsule' || id === 'slowdown-capsule')) {
+    if (!G.combatRobots) G.combatRobots = [];
+    const cap = 5 + 2 * ((G.techProg && G.techProg['follower-robot-count']) || 0);
+    if (G.combatRobots.length >= cap) {
+      if (typeof toast === 'function') toast('战斗机器人已达上限（' + cap + '，研究「追随机器人」可提升）');
+      uiDirty = true;
+      return false;
+    }
+  }
   invTake(id, 1);
   if (typeof playSfx === 'function') playSfx('deploy');
-  // 毒胶囊/减速胶囊：落地生成区域力场（不是战斗机器人）
   if (id === 'poison-capsule' || id === 'slowdown-capsule') {
     const kind = id === 'poison-capsule' ? 'poison' : 'slowdown';
     if (!G.aoeZones) G.aoeZones = [];
@@ -698,9 +868,11 @@ function throwCapsule(id, tx, ty) {
   }
   const c = CAPSULES[id];
   if (!G.combatRobots) G.combatRobots = [];
+  const cap = 5 + 2 * ((G.techProg && G.techProg['follower-robot-count']) || 0);
   // 一次投掷释放 2 只（destroyer 1 只）
   const n = id === 'destroyer-capsule' ? 1 : 2;
   for (let i = 0; i < n; i++) {
+    if (G.combatRobots.length >= cap) break;
     G.combatRobots.push({
       type: id, kind: id.replace('-capsule', ''),
       name: c.name, hp: c.hp, maxhp: c.hp, dmg: c.dmg, speed: c.speed,
@@ -717,7 +889,8 @@ function throwCapsule(id, tx, ty) {
 function updateCombatRobots(dt) {
   if (!G.combatRobots || G.combatRobots.length === 0) return;
   const p = G.player;
-  const enemies = (G.enemies || []).filter(e => !e.dead);
+  // 性能优化：复用主循环每帧缓存的存活敌人列表
+  const enemies = G._aliveEnemies || (G.enemies || []).filter(e => !e.dead);
   for (const r of G.combatRobots) {
     if (r.dead) continue;
     r.lifetime -= dt;
@@ -770,14 +943,15 @@ function updateCombatRobots(dt) {
       if (d < r.size + en.size + 4) { r.hp -= en.dmg * dt; }
     }
   }
-  G.combatRobots = G.combatRobots.filter(r => !r.dead);
+  G.combatRobots = compactFilter(G.combatRobots, r => !r.dead);
 }
 
 // ===== 区域力场（毒胶囊 / 减速胶囊）=====
 // 毒胶囊落地形成剧毒云雾，对范围内敌人持续伤害；减速胶囊形成减速力场，降低敌人移动速度。
 function updateAoeZones(dt) {
   if (!G.aoeZones || G.aoeZones.length === 0) return;
-  const alive = (G.enemies || []).filter(e => !e.dead);
+  // 性能优化：复用主循环每帧缓存的存活敌人列表
+  const alive = G._aliveEnemies || (G.enemies || []).filter(e => !e.dead);
   for (const z of G.aoeZones) {
     z.lifetime -= dt;
     if (z.lifetime <= 0) continue;
@@ -798,7 +972,7 @@ function updateAoeZones(dt) {
       z.playerSlow = Math.hypot(G.player.x - z.x, G.player.y - z.y) <= z.radius;
     }
   }
-  G.aoeZones = G.aoeZones.filter(z => z.lifetime > 0);
+  G.aoeZones = compactFilter(G.aoeZones, z => z.lifetime > 0);
 }
 // 供敌人移动逻辑调用：若敌人位于减速力场则返回减速系数（0.5 = 半速）
 function aoeSlowFactor(x, y) {
@@ -851,7 +1025,9 @@ class LaserTurret extends Entity {
     if (G.power.sat <= 0) return;
     const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
     let best = null, bestD = Infinity;
-    for (const en of (G.enemies || [])) {
+    // 性能优化：复用主循环每帧缓存的存活敌人列表（_aliveEnemies），避免重复 dead 判断遍历全数组
+    const enemies = G._aliveEnemies || (G.enemies || []);
+    for (const en of enemies) {
       if (!en || en.dead) continue;
       const ex = en.x / TILE, ey = en.y / TILE;
       const d = Math.hypot(ex - cx, ey - cy);
@@ -862,7 +1038,7 @@ class LaserTurret extends Entity {
     this.facing = Math.atan2(best.y - (this.y + this.h / 2) * TILE, best.x - (this.x + this.w / 2) * TILE);
     if (this.cooldown > 0) return;
     this.cooldown = LASER_FIRE_RATE;
-    best.hp -= Math.round(LASER_DMG * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1));
+    best.hp -= Math.round(LASER_DMG * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('energy') : 1));
     this.beamT = 0.15;
     (G.bullets || (G.bullets = [])).push({
       x: (this.x + this.w / 2) * TILE, y: (this.y + this.h / 2) * TILE,
@@ -937,15 +1113,15 @@ const FT_FLUID_CAP = 200;
 class FlamethrowerTurret extends Entity {
   constructor(type, x, y) {
     super('flamethrower-turret', x, y);
-    this.fluid = {};       // { 'petroleum-gas': n }
+    this.fluid = {};       // { 'light-oil': n }（对齐《异星工厂》：火焰炮塔以轻油为燃料）
     this.cooldown = 0;
     this.target = null;
     this.facing = 0;
   }
   giveItem(item) {
-    if (item === 'petroleum-gas') {
-      if ((this.fluid['petroleum-gas'] || 0) >= FT_FLUID_CAP) return false;
-      this.fluid['petroleum-gas'] = (this.fluid['petroleum-gas'] || 0) + 1;
+    if (item === 'light-oil') {
+      if ((this.fluid['light-oil'] || 0) >= FT_FLUID_CAP) return false;
+      this.fluid['light-oil'] = (this.fluid['light-oil'] || 0) + 1;
       return true;
     }
     return false;
@@ -958,10 +1134,10 @@ class FlamethrowerTurret extends Entity {
   }
   contents() { return [[this.type, 1]].concat(Object.keys(this.fluid).map(k => [k, this.fluid[k]])); }
   fluidPort() {
-    // 底部(南)一格接石油气
+    // 底部(南)一格接轻油（对齐《异星工厂》：火焰炮塔以轻油为燃料）
     const n = neighborOnSideCell(this, (1 + (this.dir | 0)) % 4, 0);
-    if (n instanceof Pipe && n.fluid['petroleum-gas'] > 0 && (this.fluid['petroleum-gas'] || 0) < FT_FLUID_CAP && n.takeItemOf('petroleum-gas')) {
-      this.fluid['petroleum-gas'] = (this.fluid['petroleum-gas'] || 0) + 1;
+    if (n instanceof Pipe && n.fluid['light-oil'] > 0 && (this.fluid['light-oil'] || 0) < FT_FLUID_CAP && n.takeItemOf('light-oil')) {
+      this.fluid['light-oil'] = (this.fluid['light-oil'] || 0) + 1;
     }
   }
   update(dt) {
@@ -969,10 +1145,12 @@ class FlamethrowerTurret extends Entity {
     this.target = null;
     this.fluidPort();
     if (G.power.sat <= 0) return;
-    if ((this.fluid['petroleum-gas'] || 0) <= 0) return;
+    if ((this.fluid['light-oil'] || 0) <= 0) return;
     const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
     let best = null, bestD = Infinity;
-    for (const en of (G.enemies || [])) {
+    // 性能优化：复用主循环每帧缓存的存活敌人列表（_aliveEnemies）
+    const enemies = G._aliveEnemies || (G.enemies || []);
+    for (const en of enemies) {
       if (!en || en.dead) continue;
       const ex = en.x / TILE, ey = en.y / TILE;
       const d = Math.hypot(ex - cx, ey - cy);
@@ -983,17 +1161,17 @@ class FlamethrowerTurret extends Entity {
     this.facing = Math.atan2(best.y - (this.y + this.h / 2) * TILE, best.x - (this.x + this.w / 2) * TILE);
     if (this.cooldown > 0) return;
     this.cooldown = FT_FIRE_RATE;
-    this.fluid['petroleum-gas']--;
-    if (this.fluid['petroleum-gas'] <= 0) delete this.fluid['petroleum-gas'];
+    this.fluid['light-oil']--;
+    if (this.fluid['light-oil'] <= 0) delete this.fluid['light-oil'];
     // 喷射火焰覆盖锥形范围
     const ang = this.facing;
-    for (const en of G.enemies) {
+    for (const en of enemies) {
       if (en.dead) continue;
       const dx = en.x - (this.x + this.w / 2) * TILE, dy = en.y - (this.y + this.h / 2) * TILE;
       const d = Math.hypot(dx, dy);
       if (d > FT_RANGE * TILE) continue;
       const da = Math.abs(normAng(Math.atan2(dy, dx) - ang));
-      if (da < 0.5) { en.hp -= Math.round(FT_DMG * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1)); if (en.hp <= 0) en.dead = true; }
+      if (da < 0.5) { en.hp -= Math.round(FT_DMG * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('fire') : 1)); if (en.hp <= 0) en.dead = true; }
     }
     (G.bullets || (G.bullets = [])).push({
       x: (this.x + this.w / 2) * TILE, y: (this.y + this.h / 2) * TILE,
@@ -1005,7 +1183,13 @@ class FlamethrowerTurret extends Entity {
   }
   powerDemand() { return 200; }
   serialize() { const s = super.serialize(); s.fluid = this.fluid; return s; }
-  static restore(s) { const t = super.restore(s); t.fluid = s.fluid || {}; return t; }
+  static restore(s) {
+    const t = super.restore(s);
+    t.fluid = s.fluid || {};
+    // 迁移旧存档：旧版火焰炮塔以石油气为燃料，读档时丢弃残留的石油气，避免遗留旧流体
+    if (t.fluid['petroleum-gas']) delete t.fluid['petroleum-gas'];
+    return t;
+  }
 }
 function normAng(a) { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; }
 function drawFlamethrowerTurret(ctx, e, gx, gy, dir, alpha) {
@@ -1034,7 +1218,7 @@ function drawFlamethrowerTurret(ctx, e, gx, gy, dir, alpha) {
     ctx.arc(e.target.x, e.target.y, 8 + Math.random() * 5, 0, 7);
     ctx.fill();
   }
-  const fl = (e.fluid && e.fluid['petroleum-gas']) || 0;
+  const fl = (e.fluid && e.fluid['light-oil']) || 0;
   if (fl > 0) {
     ctx.fillStyle = '#d0a04a';
     ctx.font = 'bold 10px system-ui';
@@ -1044,24 +1228,24 @@ function drawFlamethrowerTurret(ctx, e, gx, gy, dir, alpha) {
   ctx.globalAlpha = 1;
 }
 function flameTurretPanelHtml(e) {
-  let h = row('石油气', (e.fluid['petroleum-gas'] || 0) > 0 ? ((e.fluid['petroleum-gas'] || 0) + ' 单位') : '<span class="dim">空</span>', 'fluid');
-  const n = Math.min(invCount('petroleum-gas'), FT_FLUID_CAP - (e.fluid['petroleum-gas'] || 0));
-  if (n > 0) h += '<button data-action="feed" data-id="petroleum-gas">放入石油气 ×' + n + '</button>';
+  let h = row('轻油', (e.fluid['light-oil'] || 0) > 0 ? ((e.fluid['light-oil'] || 0) + ' 单位') : '<span class="dim">空</span>', 'fluid');
+  const n = Math.min(invCount('light-oil'), FT_FLUID_CAP - (e.fluid['light-oil'] || 0));
+  if (n > 0) h += '<button data-action="feed" data-id="light-oil">放入轻油 ×' + n + '</button>';
   h += '<div class="status"></div>';
-  h += '<div class="dim">火焰炮塔：消耗石油气喷射火焰，对锥形范围敌人造成持续灼烧伤害。可从底部输入口相邻管道自动吸入石油气（2×2）。</div>';
+  h += '<div class="dim">火焰炮塔：消耗轻油喷射火焰，对锥形范围敌人造成持续灼烧伤害。可从底部输入口相邻管道自动吸入轻油（2×2）。对齐《异星工厂》Flamethrower turret：以轻油为燃料。</div>';
   return h;
 }
 function flameTurretPanelLive(e, api) {
-  api.set('fluid', (e.fluid['petroleum-gas'] || 0) > 0 ? ((e.fluid['petroleum-gas'] || 0) + ' 单位') : dimSpan('空'));
-  const fl = e.fluid['petroleum-gas'] || 0;
+  api.set('fluid', (e.fluid['light-oil'] || 0) > 0 ? ((e.fluid['light-oil'] || 0) + ' 单位') : dimSpan('空'));
+  const fl = e.fluid['light-oil'] || 0;
   if (G.power.sat <= 0) api.status('已暂停：缺电', 'warn');
-  else if (fl <= 0) api.status('已暂停：缺石油气（管道或按钮放入）', 'warn');
+  else if (fl <= 0) api.status('已暂停：缺轻油（管道或按钮放入）', 'warn');
   else if (e.target) api.status('喷射中：灼烧敌人', 'ok');
   else api.status('待机：射程内无敌人', 'ok');
 }
 function flameTurretTip(e) {
   if (G.power.sat <= 0) return '缺电停摆';
-  if ((e.fluid['petroleum-gas'] || 0) <= 0) return '缺石油气';
+  if ((e.fluid['light-oil'] || 0) <= 0) return '缺轻油';
   return e.target ? '喷射中（火焰）' : '待机';
 }
 
@@ -1100,9 +1284,12 @@ function updateGroundFires(dt) {
     f.tickT -= dt;
     if (f.tickT <= 0) {
       f.tickT = GROUND_FIRE_TICK;
-      if (G.enemies) for (const en of G.enemies) {
-        if (en.dead || en.type === 'spawner') continue;
-        if (Math.hypot(en.x - cx, en.y - cy) <= TILE * 1.15) { en.hp -= GROUND_FIRE_DMG; if (en.hp <= 0) en.dead = true; }
+      // 性能优化：复用主循环缓存的存活敌人列表（G._aliveEnemies），避免全量遍历含已死敌人
+      const _alive = G._aliveEnemies || (G.enemies || EMPTY_ARR);
+      for (let i = 0; i < _alive.length; i++) {
+        const en = _alive[i];
+        if (!en || en.dead || en.type === 'spawner') continue;
+        if (Math.hypot(en.x - cx, en.y - cy) <= TILE * 1.15) { en.hp -= Math.round(GROUND_FIRE_DMG * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('fire') : 1)); if (en.hp <= 0) en.dead = true; }
       }
       // 玩家站在火焰上也受灼烧
       if (G.settings.combat && Math.hypot(G.player.x - cx, G.player.y - cy) <= TILE * 1.1) damagePlayer(GROUND_FIRE_DMG * 0.6);
@@ -1113,12 +1300,63 @@ function updateGroundFires(dt) {
     }
   }
   // 清理熄灭的火焰
-  G.groundFires = arr.filter(f => f.life > 0);
+  G.groundFires = compactFilter(arr, f => f.life > 0);
   // 有火焰燃烧时播放低频烈焰声（限频，避免音爆）
   if (G.groundFires.length > 0 && typeof playSfx === 'function') {
     G.burnSfxT = (G.burnSfxT || 0) - dt;
     if (G.burnSfxT <= 0) { G.burnSfxT = 0.9; playSfx('burn'); }
   }
+}
+
+// ===== 喷吐虫酸液洼地（对齐《异星工厂》：Spitter 远程酸液在落点形成酸液坑，对范围内持续伤害） =====
+// G.acidPools: [{ tx, ty, life, maxLife, tickT }]（同一瓦片只保留一个，新酸刷新）
+function ensureAcidPools() { if (!G.acidPools) G.acidPools = []; return G.acidPools; }
+
+const ACID_POOL_LIFE = 6.0;     // 单片酸液持续秒数
+const ACID_POOL_MAX = 120;      // 全图酸液瓦片上限（防爆量）
+const ACID_POOL_DMG = 7;        // 每 tick 腐蚀伤害
+const ACID_POOL_TICK = 0.5;     // 腐蚀 tick 间隔（秒）
+
+// 在世界坐标 wx,wy 所在瓦片生成/刷新酸液洼地（仅喷吐虫的酸液会留下）
+function spawnAcidPool(wx, wy) {
+  const tx = Math.floor(wx / TILE), ty = Math.floor(wy / TILE);
+  const arr = ensureAcidPools();
+  for (const f of arr) {
+    if (f.tx === tx && f.ty === ty) { f.life = ACID_POOL_LIFE; return; }  // 已有酸液：刷新时长
+  }
+  if (arr.length >= ACID_POOL_MAX) return;
+  arr.push({ tx, ty, life: ACID_POOL_LIFE, maxLife: ACID_POOL_LIFE, tickT: 0 });
+}
+
+// 每帧更新酸液洼地：计时、对站上的敌人（酸液也伤虫）与玩家造成腐蚀伤害
+function updateAcidPools(dt) {
+  const arr = G.acidPools;
+  if (!arr || arr.length === 0) return;
+  for (const f of arr) {
+    f.life -= dt;
+    if (f.life <= 0) continue;
+    const cx = f.tx * TILE + TILE / 2, cy = f.ty * TILE + TILE / 2;
+    f.tickT -= dt;
+    if (f.tickT <= 0) {
+      f.tickT = ACID_POOL_TICK;
+      // 酸液对范围内的敌人持续腐蚀（含虫巢，与火焰一致）
+      // 性能优化：复用主循环缓存的存活敌人列表（G._aliveEnemies），避免全量遍历含已死敌人
+      const _alive = G._aliveEnemies || (G.enemies || EMPTY_ARR);
+      for (let i = 0; i < _alive.length; i++) {
+        const en = _alive[i];
+        if (!en || en.dead) continue;
+        if (Math.hypot(en.x - cx, en.y - cy) <= TILE * 1.15) { en.hp -= ACID_POOL_DMG; if (en.hp <= 0) en.dead = true; }
+      }
+      // 玩家踩中酸液也受腐蚀
+      if (G.settings.combat && Math.hypot(G.player.x - cx, G.player.y - cy) <= TILE * 1.1) damagePlayer(ACID_POOL_DMG * 0.6);
+    }
+    // 酸液表面冒气泡（低频特效，避免爆量）
+    if (Math.random() < 0.25 && typeof spawnSmoke === 'function') {
+      spawnSmoke(cx + (Math.random() - 0.5) * TILE * 0.4, cy + (Math.random() - 0.5) * TILE * 0.4, { life: 0.7, size: 4, color: '#8ac04a', vx: (Math.random() - 0.5) * 0.2, vy: -(0.3 + Math.random() * 0.3) });
+    }
+  }
+  // 清理蒸发的酸液
+  G.acidPools = compactFilter(arr, f => f.life > 0);
 }
 
 // ===== 注册 =====
@@ -1127,7 +1365,7 @@ ENT_CLASSES['flamethrower-turret'] = FlamethrowerTurret;
 DEVICE_RENDER['laser-turret'] = drawLaserTurret;
 DEVICE_RENDER['flamethrower-turret'] = drawFlamethrowerTurret;
 DEVICE_STATUS['laser-turret'] = e => (G.power.sat <= 0 ? 'r' : (e.target ? 'g' : 'y'));
-DEVICE_STATUS['flamethrower-turret'] = e => (G.power.sat <= 0 ? 'r' : ((e.fluid['petroleum-gas'] || 0) <= 0 ? 'r' : (e.target ? 'g' : 'y')));
+DEVICE_STATUS['flamethrower-turret'] = e => (G.power.sat <= 0 ? 'r' : ((e.fluid['light-oil'] || 0) <= 0 ? 'r' : (e.target ? 'g' : 'y')));
 DEVICE_PANEL['laser-turret'] = { html: laserTurretPanelHtml, live: laserTurretPanelLive, tip: laserTurretTip };
 DEVICE_PANEL['flamethrower-turret'] = { html: flameTurretPanelHtml, live: flameTurretPanelLive, tip: flameTurretTip };
 DEVICE_DIR_ROTATE['laser-turret'] = true;

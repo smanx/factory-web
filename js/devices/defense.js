@@ -17,7 +17,7 @@ class LandMine extends Entity {
       if (en.dead) continue;
       if (Math.hypot(en.x - cx, en.y - cy) <= LANDMINE_TRIGGER * TILE) {
         // 引爆：范围伤害敌人
-        explodeDamage(cx, cy, LANDMINE_RADIUS, LANDMINE_DMG);
+        explodeDamage(cx, cy, LANDMINE_RADIUS, Math.round(LANDMINE_DMG * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('explosive') : 1)));
         // 爆炸特效
         (G.bullets || (G.bullets = [])).push({
           x: cx, y: cy, tx: cx, ty: cy, t: 0, life: 0.3, boom: true
@@ -59,7 +59,9 @@ function landMineTip() { return '地雷：敌人踏入时爆炸'; }
 // ===== 炮兵连（Artillery turret，占地 4×4）=====
 // 超远程防御建筑：消耗炮弹（artillery-shell）轰击视野极远处的敌人，
 // 命中造成超大范围爆炸伤害，是晚期基地防御的利器。
-const ARTILLERY_RANGE = 60;      // 射程（格），远超普通炮塔
+const ARTILLERY_RANGE = 60;      // 基础射程（格），远超普通炮塔；受「炮兵射程」无限科技加成
+// 当前有效射程（对齐《异星工厂》Artillery shell range：炮兵射程无限科技每级 +30%）
+function artilleryRange() { return Math.round(ARTILLERY_RANGE * (typeof artilleryRangeMult === 'function' ? artilleryRangeMult() : 1)); }
 const ARTILLERY_FIRE_RATE = 3;   // 两次射击间隔（秒）
 const ARTILLERY_DMG = 200;       // 爆炸伤害
 const ARTILLERY_RADIUS = 5;      // 爆炸范围（格）
@@ -103,19 +105,20 @@ class ArtilleryTurret extends Entity {
     for (const en of (G.enemies || [])) {
       if (!en || en.dead) continue;
       const d = Math.hypot(en.x / TILE - cx, en.y / TILE - cy);
-      if (d <= ARTILLERY_RANGE && d > 4 && d < bestD) { best = en; bestD = d; }
+      if (d <= artilleryRange() && d > 4 && d < bestD) { best = en; bestD = d; }
     }
     if (!best) return;
     this.target = best;
     this.facing = Math.atan2(best.y - cy * TILE, best.x - cx * TILE);
     if (this.shells <= 0 || this.cooldown > 0) return;
-    this.cooldown = ARTILLERY_FIRE_RATE;
+    // 炮兵炮弹射击速度无限科技：射速提升 → 射击间隔缩短
+    this.cooldown = ARTILLERY_FIRE_RATE / (typeof artilleryShootingSpeedMult === 'function' ? artilleryShootingSpeedMult() : 1);
     this.shells--;
     if (typeof playSfx === 'function') playSfx('artillery');
     // 炮弹出膛：以抛物弹道飞向目标（借用 bullet 系统，落地爆炸）
     (G.bullets || (G.bullets = [])).push({
       x: cx * TILE, y: cy * TILE, tx: best.x, ty: best.y, t: 0,
-      life: Math.max(0.3, bestD / 40), art: true, splash: ARTILLERY_RADIUS, dmg: Math.round(ARTILLERY_DMG * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1))
+      life: Math.max(0.3, bestD / 40), art: true, splash: ARTILLERY_RADIUS, dmg: Math.round(ARTILLERY_DMG * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('explosive') : 1))
     });
   }
   serialize() { const s = super.serialize(); s.shells = this.shells; return s; }
@@ -161,7 +164,7 @@ function artilleryPanelHtml(e) {
   if (n > 0) h += '<button data-action="feed" data-id="artillery-shell">放入炮弹 ×' + n + '</button>';
   if (e.shells > 0) h += '<button data-action="takeout" id="btn-art-takeout">取出全部炮弹</button>';
   h += '<div class="status"></div>';
-  h += '<div class="dim">炮兵连：射程 ' + ARTILLERY_RANGE + ' 格，消耗炮弹轰击超远距离敌人，命中造成 ' + ARTILLERY_DMG + ' 点大范围爆炸伤害（4×4）。晚期基地防御的利器。</div>';
+  h += '<div class="dim">炮兵连：射程 ' + artilleryRange() + ' 格（基础 ' + ARTILLERY_RANGE + '，受「炮兵射程」无限科技加成），消耗炮弹轰击超远距离敌人，命中造成 ' + ARTILLERY_DMG + ' 点大范围爆炸伤害（4×4）。晚期基地防御的利器。</div>';
   return h;
 }
 function artilleryPanelLive(e, api) {

@@ -76,17 +76,21 @@ function spawnSteam(wx, wy, opts) {
 function updateParticles(dt) {
   const arr = G.particles;
   if (!arr || !arr.length) return;
-  for (let i = arr.length - 1; i >= 0; i--) {
+  // 原地压缩：避免对已消亡粒子反复 splice 造成元素移动（对齐分支 compactFilter 优化方向）
+  let j = 0;
+  for (let i = 0; i < arr.length; i++) {
     const p = arr[i];
     p.life += dt;
-    if (p.life >= p.life0) { arr.splice(i, 1); continue; }
+    if (p.life >= p.life0) continue;              // 淘汰
     p.x += p.vx * dt;
     p.y += p.vy * dt;
     if (p.grav) p.vy += p.grav * dt;
     p.rot += (p.vr || 0) * dt;
     if (p.type === 'smoke') p.size += dt * 1.5;
     else if (p.type === 'steam') p.size += dt * 3;
+    arr[j++] = p;
   }
+  if (j < arr.length) arr.length = j;             // 截断，回收槽位
 }
 
 // 每帧渲染粒子（在世界坐标层调用，传入已变换的 ctx）

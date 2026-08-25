@@ -7,7 +7,25 @@ class Lab extends Entity {
     this.packs = {};
     this.t = 0;
     this.active = false;
+    this.modules = {};   // 研究中心可装模块（对齐《异星工厂》：产能/速度/效率模块）；产能模块让部分科研免费（减少科学包消耗）
+    this.prodBuf = 0;    // 产能模块累积进度
   }
+  // 模块速度倍率（对齐组装机：速度 +0.4/当量、产能 -0.1/当量、效率 -0.03/当量）
+  moduleSpeedMult() {
+    const mc = moduleCounts(this.modules);
+    return 1 + 0.4 * mc.speed - 0.1 * mc.prod - 0.03 * mc.eff;
+  }
+  // 每完成一次科研结算产能模块：返回是否“免费科研”（本次不消耗科学包）
+  applyProductivity() {
+    const mc = moduleCounts(this.modules);
+    if (mc.prod > 0) {
+      const thr = moduleProdThreshold(this.modules);
+      this.prodBuf = (this.prodBuf || 0) + mc.prod;
+      if (this.prodBuf >= thr) { this.prodBuf -= thr; return true; }
+    }
+    return false;
+  }
+  powerDemand() { return this.active ? POWER_USE['lab'] * (1 + (moduleCounts(this.modules).speed + moduleCounts(this.modules).prod) * 0.25) * Math.max(0.2, 1 - 0.15 * moduleCounts(this.modules).eff) : 0; }
   packCount(id) { return this.packs[id] || 0; }
   totalPacks() { let s = 0; for (const k in this.packs) s += this.packs[k]; return s; }
   // 返回任意一种有库存的科学包（供无限科技“消耗任何包”使用）
@@ -48,10 +66,11 @@ class Lab extends Entity {
       const any = this.peekAnyPack();
       if (!any) { this.t = 0; return; }   // 没有任何科学包则暂停
       this.active = true;
-      this.t += dt * powerFactor() * labSpeedMult();
+      this.t += dt * powerFactor() * labSpeedMult() * this.moduleSpeedMult();
       if (this.t >= LAB_TIME) {
         this.t -= LAB_TIME;
-        this.consumeAnyPack(1);
+        // 产能模块：达到阈值时本次科研免费（不消耗科学包）
+        if (!this.applyProductivity()) this.consumeAnyPack(1);
         G.techProg[tech] = (G.techProg[tech] || 0) + 1;   // 进度无限增长
         uiDirty = true;
       }
@@ -72,12 +91,15 @@ class Lab extends Entity {
     const need = list[done];
     if (!need || this.packCount(need) <= 0) { this.t = 0; return; }
     this.active = true;
-    this.t += dt * powerFactor() * labSpeedMult();
+    this.t += dt * powerFactor() * labSpeedMult() * this.moduleSpeedMult();
     if (this.t >= LAB_TIME) {
       this.t -= LAB_TIME;
-      this.packs[need]--;
-      if (typeof trackProd === 'function') trackProd(need, -1);
-      if (this.packs[need] <= 0) delete this.packs[need];
+      // 产能模块：达到阈值时本次科研免费（不消耗科学包）
+      if (!this.applyProductivity()) {
+        this.packs[need]--;
+        if (typeof trackProd === 'function') trackProd(need, -1);
+        if (this.packs[need] <= 0) delete this.packs[need];
+      }
       done++;
       G.techProg[tech] = done;
       uiDirty = true;
@@ -92,8 +114,13 @@ class Lab extends Entity {
       }
     }
   }
-  powerDemand() { return this.active ? POWER_USE['lab'] : 0; }
   giveItem(item) {
+    if (isModule(item)) {
+      if ((this.modules[item] || 0) >= 4) return false;
+      this.modules[item] = (this.modules[item] || 0) + 1;
+      if (typeof playSfx === 'function') playSfx('module');
+      return true;
+    }
     if (isScience(item) && this.packCount(item) < 40) { this.packs[item] = this.packCount(item) + 1; return true; }
     return false;
   }
@@ -117,23 +144,28 @@ class Lab extends Entity {
   contents() {
     const list = [[this.type, 1]];
     for (const k in this.packs) if (this.packs[k] > 0) list.push([k, this.packs[k]]);
+    for (const k in this.modules) if (this.modules[k] > 0) list.push([k, this.modules[k]]);
     return list;
   }
-  // 面板"取出全部"：退回所有科学包
+  // 面板"取出全部"：退回所有科学包与模块
   takeAll() {
     const rows = [];
     for (const k of Object.keys(this.packs)) { rows.push([k, this.packs[k]]); delete this.packs[k]; }
+    for (const k of Object.keys(this.modules)) if (this.modules[k] > 0) { rows.push([k, this.modules[k]]); delete this.modules[k]; }
+    this.prodBuf = 0;
     return rows;
   }
   serialize() {
     const s = super.serialize();
     s.packs = this.packs; s.t = this.t;
+    s.modules = this.modules || {}; s.prodBuf = this.prodBuf || 0;
     return s;
   }
   static restore(s) {
     const l = super.restore(s);
     l.packs = typeof s.packs === 'number' ? { 'science-pack': s.packs } : (s.packs || {});
     l.t = s.t || 0;
+    l.modules = s.modules || {}; l.prodBuf = s.prodBuf || 0;
     return l;
   }
 }
@@ -177,12 +209,23 @@ function labPanelHtml(e) {
     if (n > 0) h += '<button data-action="labfill" data-id="' + pk + '">放入 10 ' + ITEMS[pk].name + ' (' + n + ')</button>';
   }
   h += '<button data-action="takeout" id="btn-lab-takeout" style="display:none"></button>';
+  // 模块槽（对齐组装机面板）：可装产能/速度/效率模块，产能模块让部分科研免费
+  h += '<div class="dim" style="margin-top:4px">模块（产能/速度/效率）：</div>';
+  h += '<div class="modrow">';
+  const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3'];
+  for (const mid of order) {
+    if (!itemUnlocked(mid)) continue;
+    const n = Math.min(invCount(mid), 4 - (e.modules[mid] || 0));
+    if (n > 0) h += '<button data-action="labmod" data-id="' + mid + '">装入' + ITEMS[mid].name + ' ×' + n + '</button>';
+  }
+  if (Object.keys(e.modules).length > 0) h += '<button data-action="modtake">取出全部模块</button>';
+  h += '</div>';
   h += barHtml(0);
   h += '<div class="status"></div>';
   h += row('课题', '', 'techline');
   // 消耗速率：每 LAB_TIME 秒消耗 1 瓶科学包（按所选科技配方逐瓶消耗）
   h += machRateHtml({ inp: { 'science-pack': 1 }, out: {}, time: LAB_TIME }, 1);
-  h += '<div class="dim">研究中心按所选科技的配方顺序逐瓶消耗科学包；缺哪种包会暂停并提示。机械臂可自动喂包。</div>';
+  h += '<div class="dim">研究中心按所选科技的配方顺序逐瓶消耗科学包；缺哪种包会暂停并提示。机械臂可自动喂包。产能模块可让部分科研免费（对齐《异星工厂》）。</div>';
   return h;
 }
 function labPanelLive(e, api) {
@@ -228,6 +271,22 @@ function labOnAction(act, btn) {
     if (n <= 0) { toast('没有科学包'); return true; }
     invTake(pk, n);
     G.panelEnt.packs[pk] = (G.panelEnt.packs[pk] || 0) + n;
+    return true;
+  }
+  if (act === 'labmod') {
+    const mid = btn.dataset.id;
+    if (!mid || !G.panelEnt || (G.panelEnt.modules[mid] || 0) >= 4) return true;
+    if (invCount(mid) < 1) { toast('没有' + ITEMS[mid].name); return true; }
+    invTake(mid, 1);
+    G.panelEnt.modules[mid] = (G.panelEnt.modules[mid] || 0) + 1;
+    if (typeof playSfx === 'function') playSfx('module');
+    return true;
+  }
+  if (act === 'modtake') {
+    const e = G.panelEnt; if (!e) return true;
+    for (const k of Object.keys(e.modules)) if (e.modules[k] > 0) { invAdd(k, e.modules[k]); delete e.modules[k]; }
+    e.prodBuf = 0;
+    if (typeof playSfx === 'function') playSfx('craft');
     return true;
   }
   return false;

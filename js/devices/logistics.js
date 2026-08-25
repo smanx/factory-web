@@ -26,7 +26,7 @@ const ROBOT_MAX_CHARGE = 100;   // 满电
 const ROBOT_CHARGE_DRAIN = 2.2; // 每秒飞行耗电
 const ROBOT_CHARGE_RATE = 40;   // 回港每秒充电量
 const ROBOT_LOW_CHARGE = 20;    // 低于此值回家充电
-const ROBOT_CARRY = 3;          // 单次最多搬运同类物品数量
+const ROBOT_CARRY = 3;          // 单次最多搬运同类物品数量（基础值，可由「机器人容量」无限科技提升，见 robotCarryCap()）
 const ROBOT_NET_T = 0.5;        // 网络调度复算间隔
 const ROBOPORT_CAP = 50;        // 单机器人港最多容纳的机器人数量
 const ROBOPORT_POWER_IDLE = 40; // 机器人港基础耗电（kW）
@@ -90,7 +90,7 @@ class LogisticChest extends Entity {
   }
   giveItem(item) {
     for (const s of this.slots)
-      if (s && s.item === item && s.count < 50) { s.count++; return true; }
+      if (s && s.item === item && s.count < stackSize(item)) { s.count++; return true; }
     if (this.slots.length >= 12) return false;
     this.slots.push({ item, count: 1 });
     return true;
@@ -246,7 +246,7 @@ function retireExcessRobots(port) {
       if (excess <= 0) break;
     }
   }
-  if (G.logiRobots.some(r => r._dead)) G.logiRobots = G.logiRobots.filter(r => !r._dead);
+  G.logiRobots = compactFilter(G.logiRobots, r => !r._dead);   // 单遍 compactFilter 清理死亡机器人（P0 优化）
 }
 
 // 新增机器人实体（挂到某机器人港名下）
@@ -379,7 +379,7 @@ function assignTask(r) {
   if (!req) return;
 
   // 取货量不超过目标缺口、供应量与单次搬运上限（避免超出缺口导致物品丢失）
-  const takeN = Math.min(ROBOT_CARRY, req.deficitOf(best.item), best.e.countOf(best.item));
+  const takeN = Math.min(robotCarryCap(), req.deficitOf(best.item), best.e.countOf(best.item));
   if (takeN <= 0) return;
 
   // 指派
@@ -530,16 +530,28 @@ function updateLogistics(dt) {
   }
   // 更新所有机器人
   for (const r of G.logiRobots) updateRobot(r, dt);
-  // 清理死亡机器人
-  if (G.logiRobots.some(r => r._dead)) G.logiRobots = G.logiRobots.filter(r => !r._dead);
+  // 清理死亡机器人（单遍 compactFilter 原地清理，避免每帧分配新数组）
+  G.logiRobots = compactFilter(G.logiRobots, r => !r._dead);
   // 空闲且满电的机器人尝试接任务
   if (G.logiNet) {
-    for (const r of G.logiRobots) {
-      if (r._dead || r.state !== 'idle' || r.charge < ROBOT_MAX_CHARGE) continue;
-      // 优先回收玩家身上超出个人请求量的物品
-      if (assignRecycleTask(r)) break;
-      assignTask(r);
-      if (r.state !== 'idle') break;   // 每帧至多指派一个，避免瞬间把所有机器人派空
+    // 性能优化：网络无需求且无玩家回收任务时，跳过对全部机器人的空闲扫描，
+    // 避免无物流压力时每帧遍历所有机器人（降低空闲时的每帧开销，不改变指派行为）。
+    let hasWork = false;
+    if (G.logiRequest) {
+      for (const k in G.logiRequest) if (G.logiRequest[k] > 0) { hasWork = true; break; }
+    }
+    if (!hasWork) {
+      const dm = G.logiNet.demand;
+      if (dm) { for (const k in dm) if (dm[k] > 0) { hasWork = true; break; } }
+    }
+    if (hasWork) {
+      for (const r of G.logiRobots) {
+        if (r._dead || r.state !== 'idle' || r.charge < ROBOT_MAX_CHARGE) continue;
+        // 优先回收玩家身上超出个人请求量的物品
+        if (assignRecycleTask(r)) break;
+        assignTask(r);
+        if (r.state !== 'idle') break;   // 每帧至多指派一个，避免瞬间把所有机器人派空
+      }
     }
   }
 }
@@ -553,7 +565,7 @@ function assignRecycleTask(r) {
     if (want <= 0) continue;
     const excess = invCount(item) - want;
     if (excess <= 0) continue;
-    const takeN = Math.min(ROBOT_CARRY, excess);
+    const takeN = Math.min(robotCarryCap(), excess);
     if (takeN <= 0) continue;
     r.carry = { item, count: takeN };
     r.target = pt;

@@ -33,17 +33,27 @@
       });
     }
 
-    // 新游戏
+    // 新游戏：先弹出地图设置面板（对齐《异星工厂》新游戏地图生成器），确认后开始
     if (newBtn) {
       newBtn.addEventListener('click', function () {
-        if (typeof startNewGame === 'function') {
+        if (typeof openWorldConfigPanel === 'function') {
+          openWorldConfigPanel(function (cfg) {
+            if (typeof startNewGame === 'function') startNewGame();
+            else console.error('startNewGame 未定义');
+          });
+        } else if (typeof startNewGame === 'function') {
           startNewGame();
         } else {
-          // main.js 尚未就绪（正常情况不会发生）
           console.error('startNewGame 未定义');
         }
       });
     }
+
+    // 地图设置面板：关闭按钮
+    const wcClose = document.getElementById('world-config-close');
+    if (wcClose) wcClose.addEventListener('click', function () {
+      if (typeof closeWorldConfigPanel === 'function') closeWorldConfigPanel();
+    });
 
     // 读取存档：弹出存档列表弹层
     if (contBtn) {

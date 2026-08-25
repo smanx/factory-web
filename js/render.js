@@ -36,6 +36,11 @@ function screenToWorld(sx, sy) {
 let FRAME_BOUNDS = null;
 // 复用的包围盒缓冲：地形/网格等每帧只算一次，避免重复分配。
 let _B = {};
+// 渲染热路径复用缓冲区：桶 keys 数组与去重 Set，避免每帧多次分配（GC 压力）。
+// render() 与 drawLampLights() 内的 bucketKeysIn/forEachEntInBuckets 均为顺序非嵌套调用，
+// 可安全复用同一对缓冲区（每次调用前会自动 clear）。
+let _bucketKeysBuf = [];
+let _bucketSeenBuf = new Set();
 
 // ===== LOD 分级绘制 =====
 // 依据瓦片在屏幕上的像素尺寸（TILE * cam.z）决定绘制细节等级，
@@ -80,7 +85,8 @@ function render() {
   const keys = (G.buckets && G.buckets.size)
     ? bucketKeysIn(
         Math.floor(FRAME_BOUNDS.x1 / TILE) - BUCK, Math.floor(FRAME_BOUNDS.y1 / TILE) - BUCK,
-        Math.ceil(FRAME_BOUNDS.x0 / TILE) + BUCK, Math.ceil(FRAME_BOUNDS.y0 / TILE) + BUCK)
+        Math.ceil(FRAME_BOUNDS.x0 / TILE) + BUCK, Math.ceil(FRAME_BOUNDS.y0 / TILE) + BUCK,
+        _bucketKeysBuf)
     : null;
   const drawPass = (e, drawInserter) => {
     if (e._dead || !onScreen(e)) return;
@@ -88,12 +94,14 @@ function render() {
     drawEntity(ctx, e, e.x, e.y, e.dir, 1);
   };
   if (keys) {
-    forEachEntInBuckets(keys, e => drawPass(e, false));   // 普通设备（含传送带等）
-    forEachEntInBuckets(keys, e => drawPass(e, true));    // 机械臂置顶
+    forEachEntInBuckets(keys, e => drawPass(e, false), _bucketSeenBuf);   // 普通设备（含传送带等）
+    forEachEntInBuckets(keys, e => drawPass(e, true), _bucketSeenBuf);    // 机械臂置顶
   } else {
     for (const e of G.ents) drawPass(e, false);
     for (const e of G.ents) drawPass(e, true);
   }
+  // ALT 模式（对齐《异星工厂》）：在建筑上叠加显示当前配方/内容标签
+  if (G.settings.altMode) drawAltMode(ctx, keys, _bucketSeenBuf);
   drawGhost(ctx);
   drawBlueprintOverlay(ctx);
   drawHoverAndMining(ctx);
@@ -103,7 +111,9 @@ function render() {
   drawCombatRobots(ctx);
   drawAoeZones(ctx);
   drawGroundFires(ctx);
+  drawAcidPools(ctx);
   drawLootDrops(ctx);
+  if (typeof drawGroundItems === 'function') drawGroundItems(ctx);
   drawLogisticsRobots(ctx);
   if (typeof drawConstruction === 'function') drawConstruction(ctx);
   if (typeof drawParticles === 'function') drawParticles(ctx);
@@ -132,6 +142,23 @@ function render() {
     }
   }
 
+  // 全屏强光闪光（原子弹核爆触发）：叠加整屏白/橙光，随 G.screenFlash 强度衰减（屏幕坐标）
+  if (G.screenFlash > 0.01) {
+    const fs = Math.min(1, G.screenFlash);
+    // 白热核心
+    ctx.fillStyle = 'rgba(255,250,240,' + (fs * 0.85).toFixed(3) + ')';
+    ctx.fillRect(0, 0, W, H);
+    // 暖橙火光照亮
+    ctx.fillStyle = 'rgba(255,160,60,' + (fs * 0.4).toFixed(3) + ')';
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // 地图标记：在昼夜遮罩之上绘制世界中的标记（对齐《异星工厂》地图标签，夜间亦可见）
+  if (typeof drawMapTagsWorld === 'function') drawMapTagsWorld(ctx);
+
+  // 天气系统：动态云影覆盖层（低开销，不影响分块缓存）
+  if (typeof drawWeatherOverlay === 'function') drawWeatherOverlay(ctx, W, H);
+
   // 小地图（位于画布右下角）
   if (G.settings && G.settings.minimap !== false) drawMinimap(ctx);
 }
@@ -145,7 +172,8 @@ function drawLampLights(ctx, dark) {
   const keys = (G.buckets && G.buckets.size)
     ? bucketKeysIn(
         Math.floor(FRAME_BOUNDS.x1 / TILE) - 6, Math.floor(FRAME_BOUNDS.y1 / TILE) - 6,
-        Math.ceil(FRAME_BOUNDS.x0 / TILE) + 6, Math.ceil(FRAME_BOUNDS.y0 / TILE) + 6)
+        Math.ceil(FRAME_BOUNDS.x0 / TILE) + 6, Math.ceil(FRAME_BOUNDS.y0 / TILE) + 6,
+        _bucketKeysBuf)
     : null;
   const sx = (wx) => (wx - cam.px) * z + W / 2;
   const sy = (wy) => (wy - cam.py) * z + H / 2;
@@ -171,7 +199,7 @@ function drawLampLights(ctx, dark) {
       ctx.fill();
     }
   };
-  if (keys) forEachEntInBuckets(keys, punch);
+  if (keys) forEachEntInBuckets(keys, punch, _bucketSeenBuf);
   else for (const e of G.ents) punch(e);
   if (!first) ctx.restore();
   // 叠加暖色光晕（半透明黄色辉光，重新正常混合）
@@ -192,7 +220,7 @@ function drawLampLights(ctx, dark) {
       ctx.fill();
     }
   };
-  if (keys) forEachEntInBuckets(keys, glow);
+  if (keys) forEachEntInBuckets(keys, glow, _bucketSeenBuf);
   else for (const e of G.ents) glow(e);
   if (drewGlow) ctx.restore();
 }
@@ -304,6 +332,32 @@ function drawChunkTerrainInto(ctx, cx, cy) {
         }
         continue;
       }
+      if (t === T_CLIFF) {
+        // 峭壁（对齐《异星工厂》Cliff）：灰褐色岩体 + 岩缝，比周围地面略高
+        const v = hash2(tx, ty);
+        ctx.fillStyle = v > 0.5 ? '#6d6a63' : '#65625c';
+        ctx.fillRect(px, py, TILE, TILE);
+        // 岩体立体边缘（左上受光，右下背光）
+        ctx.fillStyle = 'rgba(255,255,255,.16)';
+        ctx.beginPath();
+        ctx.moveTo(px, py); ctx.lineTo(px + TILE, py); ctx.lineTo(px, py + TILE);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,0,.28)';
+        ctx.beginPath();
+        ctx.moveTo(px + TILE, py); ctx.lineTo(px + TILE, py + TILE); ctx.lineTo(px, py + TILE);
+        ctx.closePath(); ctx.fill();
+        // 岩缝与碎石
+        ctx.strokeStyle = 'rgba(30,28,24,.6)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(px + TILE * 0.3, py + TILE * 0.15); ctx.lineTo(px + TILE * 0.45, py + TILE * 0.5);
+        ctx.lineTo(px + TILE * 0.3, py + TILE * 0.85);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(140,136,126,.7)';
+        ctx.fillRect(px + TILE * 0.6, py + TILE * 0.35, 4, 4);
+        ctx.fillRect(px + TILE * 0.7, py + TILE * 0.65, 3, 3);
+        continue;
+      }
       const v = hash2(tx, ty);
       ctx.fillStyle = v > 0.62 ? '#4f7c3b' : v > 0.3 ? '#4a7538' : '#456f35';
       ctx.fillRect(px, py, TILE, TILE);
@@ -398,11 +452,22 @@ function drawTerrain(ctx) {
     }
   }
   // 矿点每帧实时绘制（随开采实时减少）
+  // 性能优化：同一行内按区块边界分段，只对每个区块 getChunk 一次，
+  // 且每瓦片只查一次 remaining（此前 if 条件与 drawOreDots 调用各查一次，字符串键重复分配）。
   for (let ty = ty0; ty <= ty1; ty++) {
+    const cy = Math.floor(ty / CHUNK);
+    const ly = ((ty % CHUNK) + CHUNK) % CHUNK;
+    let c = null, curCx = NaN;   // NaN 哨兵：保证首帧必取 chunk（-1 会与负坐标 chunk 索引冲突，导致 c 为 null 崩溃）
     for (let tx = tx0; tx <= tx1; tx++) {
-      const ti = getOreType(tx, ty);
-      if (ti >= 0 && getOreAmt(tx, ty) > 0)
-        drawOreDots(ctx, tx * TILE, ty * TILE, oreItemId(ti), getOreAmt(tx, ty), tx, ty);
+      const cx = Math.floor(tx / CHUNK);
+      if (cx !== curCx) { c = getChunk(cx, cy); curCx = cx; }
+      const lx = ((tx % CHUNK) + CHUNK) % CHUNK;
+      const idx = ly * CHUNK + lx;
+      const ti = c.oreType[idx];
+      if (ti < 0) continue;
+      const rem = G.world.remaining.get(tx + ',' + ty);
+      const amt = rem !== undefined ? rem : c.oreAmt[idx];
+      if (amt > 0) drawOreDots(ctx, tx * TILE, ty * TILE, oreItemId(ti), amt, tx, ty);
     }
   }
   // 动态水面波浪（画面优化）：在水域瓦片叠加缓缓流动的高光波纹
@@ -636,9 +701,143 @@ function drawEntity(ctx, e, gx, gy, dir, alpha) {
 }
 
 // 机械臂类型集合：绘制时置顶，永远显示在传送带/其他设备之上，不被遮挡。
-const IS_INSERTER = { inserter: true, 'long-inserter': true, 'filter-inserter': true, 'stack-inserter': true };
+const IS_INSERTER = { inserter: true, 'long-inserter': true, 'filter-inserter': true, 'stack-inserter': true, 'fast-inserter': true };
 
 const ghostCache = { type: null, ent: null };
+
+// ===== ALT 模式（对齐《异星工厂》ALT 模式）=====
+// 在建筑上叠加显示当前配方/内容标签，方便玩家快速总览产线：
+//  - 组装机/炼油厂/化工厂/离心机/火箭井：当前配方产出物
+//  - 研究中心：当前研究科技
+//  - 各类箱/货运车厢/载具储物箱：箱内主要物品
+//  - 带过滤的机械臂：过滤物品
+//  - 机枪炮塔/炮兵：弹药数量
+// 缓存复用：只对配方/内容发生变化的建筑重算标签（key 直接挂实体上），避免每帧字符串拼接。
+function _altLabelKey(e) {
+  const t = e.type;
+  if (e.recipe) return 'r:' + e.recipe;
+  if (t === 'lab') return 'lab:' + (G.activeTech || '');
+  if (t === 'rocket-silo') {
+    const inp = e.inp || {};
+    return 'rs:' + (inp.rocket || 0) + ':' + (inp.satellite || 0) + ':' + (e.launching ? 1 : 0);
+  }
+  if (t === 'gun-turret' || t === 'artillery-turret') {
+    // 避免 JSON.stringify 每帧分配；用弹药类型数+总数做轻量指纹
+    let n = 0, types = 0;
+    if (e.ammo) { for (const k in e.ammo) if (e.ammo[k] > 0) { n += e.ammo[k]; types++; } }
+    if (t === 'artillery-turret') n = (e.shells || 0);
+    return 'ammo:' + n + ':' + types;
+  }
+  if (e.slots) {
+    // 箱/车厢内容标签：拼接每槽物品+数量
+    let k = 'sl:';
+    for (const s of e.slots) if (s) k += s.item + ':' + s.count + ';';
+    return k;
+  }
+  if (t === 'car' || t === 'tank' || t === 'spidertron') {
+    const tr = e.trunk || {};
+    let k = 'tr:';
+    for (const id in tr) if (tr[id] > 0) k += id + ':' + tr[id] + ';';
+    return k;
+  }
+  if (e.filter) return 'f:' + e.filter;
+  return '';
+}
+function _altLabelText(e) {
+  const t = e.type;
+  // 带配方机器：配方产出物名
+  if (e.recipe) {
+    const rec = RECIPES[e.recipe] || REFINERY_RECIPES[e.recipe] || CENTRIFUGE_RECIPES[e.recipe];
+    if (!rec) return null;
+    const outs = Object.keys(rec.out || {});
+    if (!outs.length) return null;
+    const nm = outs.map(id => ITEMS[id] ? ITEMS[id].name : id).join('+');
+    return (rec.out[outs[0]] > 1 && Object.keys(rec.out).length === 1) ? (nm + ' ×' + rec.out[outs[0]]) : nm;
+  }
+  if (t === 'lab') {
+    if (!G.activeTech || !TECHS[G.activeTech]) return null;
+    return '研究 ' + TECHS[G.activeTech].name;
+  }
+  if (t === 'rocket-silo') {
+    const inp = e.inp || {};
+    if (e.launching) return '🚀 发射中…';
+    if ((inp.rocket || 0) > 0) return '火箭 ✓  ' + ((inp.satellite || 0) > 0 ? '卫星 ✓' : '待装卫星');
+    const need = (typeof SILO_ASSEMBLE === 'object' && SILO_ASSEMBLE) ? SILO_ASSEMBLE : null;
+    if (need) {
+      const miss = Object.keys(need).filter(k => (inp[k] || 0) < need[k]);
+      return miss.length ? ('组装中 ' + miss.map(k => (ITEMS[k] ? ITEMS[k].name : k)).join('/')) : '部件齐备';
+    }
+    return '火箭发射井';
+  }
+  if (t === 'gun-turret') {
+    const n = e.totalAmmo ? e.totalAmmo() : 0;
+    return n > 0 ? ('弹药 ' + n) : '空弹药';
+  }
+  if (t === 'artillery-turret') {
+    return (e.shells || 0) > 0 ? ('炮弹 ' + e.shells) : '空炮弹';
+  }
+  if (e.slots) {
+    // 箱/车厢：最多显示 3 种主要物品
+    const parts = [];
+    let shown = 0;
+    for (const s of e.slots) {
+      if (!s) continue;
+      parts.push((ITEMS[s.item] ? ITEMS[s.item].name : s.item) + (s.count > 1 ? '×' + s.count : ''));
+      if (++shown >= 3) break;
+    }
+    if (!shown) return null;
+    return parts.join(' ');
+  }
+  if (t === 'car' || t === 'tank' || t === 'spidertron') {
+    const tr = e.trunk || {};
+    const parts = [];
+    for (const id in tr) if (tr[id] > 0) parts.push((ITEMS[id] ? ITEMS[id].name : id) + '×' + tr[id]);
+    return parts.length ? parts.slice(0, 3).join(' ') : null;
+  }
+  if (e.filter) return '⇥ ' + (ITEMS[e.filter] ? ITEMS[e.filter].name : e.filter);
+  return null;
+}
+function drawAltMode(ctx, keys, seenBuf) {
+  const fontBase = Math.max(8, 10 * G.cam.z);
+  const lh = fontBase + 3;
+  const iter = e => {
+    if (e._dead || !onScreen(e)) return;
+    // 缓存复用：把上次计算的 key/text 直接挂在实体上，只有 key 变化才重算 text，
+    // 避免每帧为稳定内容重复字符串拼接与 ITEMS 查名（ALT 模式高频路径优化）。
+    const key = _altLabelKey(e);
+    if (!key) { if (e._altKey) { e._altKey = ''; e._altText = null; } return; }
+    let text;
+    if (e._altKey === key) {
+      text = e._altText;
+    } else {
+      text = _altLabelText(e);
+      e._altKey = key;
+      e._altText = text;
+    }
+    if (!text) return;
+    // 标签绘制在建筑顶部中央
+    const px = (e.x + e.w / 2) * TILE;
+    const py = e.y * TILE - 2;
+    ctx.save();
+    ctx.font = '600 ' + fontBase + 'px sans-serif';
+    const tw = ctx.measureText(text).width;
+    const pad = 3, bw = tw + pad * 2, bh = lh;
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = 'rgba(8,10,14,0.78)';
+    ctx.fillRect(px - bw / 2, py - bh, bw, bh);
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(px - bw / 2 + 0.5, py - bh + 0.5, bw - 1, bh - 1);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#f2f2f2';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, px, py - bh / 2 + 0.5);
+    ctx.restore();
+  };
+  if (keys) forEachEntInBuckets(keys, iter, seenBuf);
+  else for (const e of G.ents) iter(e);
+}
 
 function getGhostEnt(type) {
   if (ghostCache.type !== type) {
@@ -683,6 +882,8 @@ function canPlaceAt(type, tx, ty, dir) {
   for (let dy = 0; dy < eh; dy++)
     for (let dx = 0; dx < ew; dx++) {
       if (isWater(tx + dx, ty + dy)) return { ok: false };
+      // 峭壁阻挡建造（对齐《异星工厂》：峭壁需先用峭壁炸药清除）
+      if (getTerrain(tx + dx, ty + dy) === T_CLIFF) return { ok: false };
       // 树木阻挡建造（对齐《异星工厂》：需先砍树清空场地）
       if (getTerrain(tx + dx, ty + dy) === T_TREE) return { ok: false };
       if (entAt(tx + dx, ty + dy)) {
@@ -868,9 +1069,12 @@ function drawBullets(ctx) {
       ctx.lineWidth = b.art ? 3.5 : 2.5;
       ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
       if (t >= 1) {
-        const rad = (b.splash || 0) * TILE * (b.art ? 0.8 : 0.6) * (b.explosive ? 1.25 : 1);
+        const rad0 = (b.splash || 0) * TILE * (b.art ? 0.8 : 0.6) * (b.explosive ? 1.25 : 1);
+        // 原子弹核爆：超大范围蘑菇云冲击波环 + 高温火球（对齐《异星工厂》原子弹）
+        const rad = b.nuclear ? Math.max(rad0, 9 * TILE) : rad0;
+        const nucBoost = b.nuclear ? 1.8 : 1;
         // 爆炸推进进度：用 _boomT 让爆炸随时间膨胀/消散（画面优化：层次火球 + 冲击波环）
-        const boomDur = (b.art ? 0.6 : (b.explosive ? 0.5 : 0.35));
+        const boomDur = b.nuclear ? 0.9 : (b.art ? 0.6 : (b.explosive ? 0.5 : 0.35));
         const age = (b._boomT || 0);
         const prog = age > 0 ? Math.min(1, age / boomDur) : 1;
         const grow = 0.7 + 0.6 * prog;               // 冲击波扩散
@@ -878,9 +1082,9 @@ function drawBullets(ctx) {
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
         // 外层冲击波环（扩散+渐隐）
-        ctx.strokeStyle = 'rgba(255,220,160,' + (fade * 0.6).toFixed(2) + ')';
-        ctx.lineWidth = 4;
-        ctx.beginPath(); ctx.arc(b.tx, b.ty, rad * grow, 0, 7); ctx.stroke();
+        ctx.strokeStyle = 'rgba(' + (b.nuclear ? '255,240,200' : '255,220,160') + ',' + (fade * (b.nuclear ? 0.85 : 0.6)).toFixed(2) + ')';
+        ctx.lineWidth = b.nuclear ? 6 : 4;
+        ctx.beginPath(); ctx.arc(b.tx, b.ty, rad * grow * (b.nuclear ? 1.35 : 1), 0, 7); ctx.stroke();
         ctx.strokeStyle = 'rgba(255,150,70,' + (fade * 0.5).toFixed(2) + ')';
         ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(b.tx, b.ty, rad * grow * 1.15, 0, 7); ctx.stroke();
@@ -1033,6 +1237,38 @@ function drawGroundFires(ctx) {
   ctx.restore();
 }
 
+
+// 喷吐虫酸液洼地：半透明绿色腐蚀液面，随生命周期渐淡蒸发
+function drawAcidPools(ctx) {
+  if (!G.acidPools || G.acidPools.length === 0) return;
+  const cam = G.cam, z = cam.z;
+  const sx = (wx) => (wx - cam.px) * z + W / 2;
+  const sy = (wy) => (wy - cam.py) * z + H / 2;
+  for (const f of G.acidPools) {
+    if (f.life <= 0) continue;
+    const cx = sx(f.tx * TILE + TILE / 2), cy = sy(f.ty * TILE + TILE / 2);
+    const r = TILE * z * 0.62;
+    if (cx < -r || cx > W + r || cy < -r || cy > H + r) continue;
+    const lifeT = f.life / f.maxLife;
+    const a = Math.min(1, lifeT * 1.5);
+    const bubble = 0.85 + 0.15 * Math.sin(G.time * 8 + f.tx * 5 + f.ty * 11);
+    ctx.fillStyle = 'rgba(120,180,60,' + (0.4 * a).toFixed(3) + ')';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * bubble, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(180,230,110,' + (0.45 * a).toFixed(3) + ')';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.55 * bubble, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(90,150,50,' + (0.5 * a).toFixed(3) + ')';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * bubble, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
+
 // 击杀敌人掉落的地面矿石（见 combat2.js dropEnemyLoot）：小矿石图标带轻微上下浮动
 function drawLootDrops(ctx) {
   if (!G.lootDrops || G.lootDrops.length === 0) return;
@@ -1049,6 +1285,34 @@ function drawLootDrops(ctx) {
       ctx.strokeStyle = 'rgba(20,26,34,.6)';
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.arc(d.x, d.y + bob, 5, 0, 7); ctx.stroke();
+    }
+  }
+}
+
+// 玩家丢弃到地面的物品（见 player.js）：在格子中心绘制物品图标（可被传送带吸附/玩家拾取）
+function drawGroundItems(ctx) {
+  if (!G.groundItems || G.groundItems.length === 0) return;
+  for (const g of G.groundItems) {
+    if (g.taken || !ITEMS[g.item]) continue;
+    const cx = g.tx * TILE + TILE / 2;
+    const cy = g.ty * TILE + TILE / 2;
+    // 地面阴影
+    ctx.fillStyle = 'rgba(0,0,0,.18)';
+    ctx.beginPath(); ctx.ellipse(cx, cy + 6, 6, 3, 0, 0, 7); ctx.fill();
+    // 物品图标
+    if (typeof drawItemGlyph === 'function') {
+      drawItemGlyph(ctx, g.item, cx, cy, 14);
+    } else {
+      ctx.fillStyle = ITEMS[g.item].color;
+      ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 7); ctx.fill();
+    }
+    // 数量 > 1 时显示堆叠数
+    if (g.n > 1) {
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 9px system-ui';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(String(g.n), cx + 6, cy + 7);
     }
   }
 }
@@ -1254,6 +1518,7 @@ function drawMinimap(ctx) {
         : (t === T_REF_CONCRETE) ? 'rgba(165,168,176,0.85)'
         : (t === T_HAZARD) ? 'rgba(190,180,40,0.85)'
         : (t === T_PATH) ? 'rgba(150,140,130,0.85)'
+        : (t === T_CLIFF) ? 'rgba(100,96,88,0.9)'
         : 'rgba(52,78,50,0.9)';
       ctx.fillRect(px, py, z + 0.4, z + 0.4);
       // 矿脉标记
@@ -1266,6 +1531,8 @@ function drawMinimap(ctx) {
       }
     }
   }
+  // 地图标记：在小地图上绘制已探索范围内的标记
+  if (typeof drawMapTagsMinimap === 'function') drawMapTagsMinimap(ctx, cx, cy, z, pcx, pcy, x0, y0, size);
   ctx.restore();
   // 污染系统：在小地图叠加污染范围（红褐色）
   if (typeof drawPollutionMinimap === 'function') {

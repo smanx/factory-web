@@ -85,7 +85,9 @@ class GunTurret extends Entity {
     this.target = null;
     const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
     let best = null, bestD = Infinity;
-    for (const en of (G.enemies || [])) {
+    // 性能优化：复用主循环每帧缓存的存活敌人列表（_aliveEnemies），避免重复 dead 判断遍历全数组
+    const enemies = G._aliveEnemies || (G.enemies || []);
+    for (const en of enemies) {
       if (!en || en.dead) continue;
       const ex = en.x / TILE, ey = en.y / TILE;
       const d = Math.hypot(ex - cx, ey - cy);
@@ -98,7 +100,8 @@ class GunTurret extends Entity {
     let ammo = 0;
     for (const k of TURRET_AMMO_TYPES) ammo += this.ammoCount(k);
     if (ammo <= 0 || this.cooldown > 0) return;
-    this.cooldown = TURRET_FIRE_RATE;
+    // 射击速度无限科技：射击间隔缩短，射速提升（对齐《异星工厂》Shooting speed）
+    this.cooldown = (typeof shootingSpeedMult === 'function' ? TURRET_FIRE_RATE / shootingSpeedMult() : TURRET_FIRE_RATE);
     // 用弹药攻击：铀弹 > 穿甲弹 > 普通弹（对齐《异星工厂》：铀弹威力最高）
     const dmgMap = { 'uranium-rounds': 18, 'piercing-rounds': 10, 'magazine': 5 };
     let dmg = 5;
@@ -106,8 +109,8 @@ class GunTurret extends Entity {
       if (this.ammoCount(k) > 0) { this.ammo[k]--; dmg = dmgMap[k]; break; }
     }
     for (const k of TURRET_AMMO_TYPES) if (this.ammo[k] <= 0) delete this.ammo[k];
-    // 武器伤害无限科技倍率（对齐《异星工厂》Weapon damage research）
-    dmg = Math.round(dmg * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1));
+    // 武器伤害无限科技倍率（对齐《异星工厂》Weapon damage research）+ 分类军事无限科技（投射物）
+    dmg = Math.round(dmg * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('projectile') : 1));
     best.hp -= dmg;
     // 子弹特效
     (G.bullets || (G.bullets = [])).push({
@@ -199,7 +202,7 @@ function spawnEnemies(dt) {
     for (let i = 0; i < 8; i++) {
       const cx2 = tx + Math.floor(Math.random() * 5) - 2;
       const cy2 = ty + Math.floor(Math.random() * 5) - 2;
-      if (!isWater(cx2, cy2) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
+      if ((!isWater(cx2, cy2) && !isCliff(cx2, cy2)) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
     }
     G.enemies.push({ x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2, hp: 40, dead: false, dir: 0 });
   }
@@ -218,12 +221,12 @@ function updateEnemies(dt) {
     }
   }
   // 清理死亡敌人
-  G.enemies = G.enemies.filter(e => !e.dead);
+  G.enemies = compactFilter(G.enemies, e => !e.dead);
 }
 function updateBullets(dt) {
   if (!G.bullets) return;
   for (const b of G.bullets) { b.t += dt; }
-  G.bullets = G.bullets.filter(b => b.t < b.life);
+  G.bullets = compactFilter(G.bullets, b => b.t < b.life);
 }
 
 // ===== 注册 =====

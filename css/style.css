@@ -251,6 +251,9 @@ html, body {
 .mrow { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
 .mlabel { width: 70px; flex-shrink: 0; color: #8fa0b5; padding-top: 4px; }
 .mval { flex: 1; }
+.circ-wire-row { display: flex; gap: 6px; margin-bottom: 6px; }
+.btn.sm { flex: 1; padding: 5px 6px; font-size: 12px; background: #3a4657; color: #dfe6ee; border: 1px solid #4c5a70; border-radius: 5px; cursor: pointer; }
+.btn.sm:hover { background: #465570; border-color: #ffd23c; }
 
 .limitrow {
   display: flex;
@@ -526,6 +529,196 @@ html, body {
   animation: overlayFade .18s ease;
 }
 .load-save-overlay.hidden { display: none; }
+
+/* ===== 地图设置面板（对齐《异星工厂》新游戏地图生成器）===== */
+.world-config-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 225;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 9, 7, .68);
+  backdrop-filter: blur(3px);
+  animation: overlayFade .18s ease;
+}
+.world-config-overlay.hidden { display: none; }
+.world-config-panel {
+  width: min(440px, 92vw);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(16, 22, 18, .97);
+  border: 1px solid #3f5a48;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .7);
+  overflow: hidden;
+}
+.world-config-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: linear-gradient(180deg, #223027, #18241c);
+  border-bottom: 1px solid #33493a;
+}
+.world-config-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #eef6ee;
+  letter-spacing: 1px;
+}
+.world-config-close {
+  background: none;
+  border: none;
+  color: #8a9a90;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.world-config-close:hover { color: #ff9a8a; background: rgba(255, 90, 70, .12); }
+.world-config-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+.wcfg-field { margin-bottom: 12px; }
+.wcfg-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.wcfg-label {
+  font-size: 13px;
+  color: #cfe0d2;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.wcfg-opts { display: flex; gap: 6px; flex-wrap: wrap; }
+.wcfg-opt {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 8px;
+  background: #202b23;
+  color: #b8c8bc;
+  border: 1px solid #33473a;
+  cursor: pointer;
+  transition: all .15s;
+}
+.wcfg-opt:hover { border-color: #57b95c; color: #eef6ee; }
+.wcfg-opt.active {
+  background: linear-gradient(180deg, #3a7445, #235330);
+  border-color: #6fd17e;
+  color: #effff2;
+  box-shadow: 0 0 10px rgba(87, 185, 92, .25);
+}
+.wcfg-seedrow { display: flex; gap: 8px; margin-bottom: 6px; }
+.wcfg-seedrow input {
+  flex: 1;
+  padding: 7px 10px;
+  font-size: 13px;
+  border-radius: 8px;
+  background: #202b23;
+  color: #eef6ee;
+  border: 1px solid #33473a;
+  min-width: 0;
+}
+.wcfg-seedrow input:focus { outline: none; border-color: #57b95c; }
+.wcfg-desc { font-size: 11px; color: #74817a; line-height: 1.5; margin-bottom: 10px; }
+.world-config-foot {
+  padding: 14px 20px;
+  border-top: 1px solid #33493a;
+  background: #141c16;
+}
+.world-config-ok {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  border-radius: 10px;
+  border: 1px solid #6fd17e;
+  background: linear-gradient(180deg, #3a7445, #235330);
+  color: #effff2;
+  cursor: pointer;
+  box-shadow: 0 0 18px rgba(87, 185, 92, .25), 0 3px 0 #1b3a22;
+  transition: all .18s;
+}
+.world-config-ok:hover {
+  background: linear-gradient(180deg, #46905a, #2b6b3a);
+  box-shadow: 0 0 24px rgba(87, 185, 92, .5), 0 3px 0 #1b3a22;
+}
+
+/* ===== 新手引导面板 ===== */
+.tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 230;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 9, 7, .72);
+  backdrop-filter: blur(3px);
+  animation: overlayFade .18s ease;
+}
+.tutorial-overlay.hidden { display: none; }
+.tutorial-panel {
+  width: min(480px, 92vw);
+  max-height: 86vh;
+  overflow-y: auto;
+  background: #161b17;
+  border: 1px solid rgba(120, 190, 150, .35);
+  border-radius: 14px;
+  padding: 22px 26px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .55);
+}
+.tutorial-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #e8f2ea;
+}
+.tutorial-sub {
+  font-size: 12px;
+  color: #8fb89a;
+  letter-spacing: 1px;
+  margin-bottom: 14px;
+}
+.tutorial-body {
+  font-size: 13px;
+  color: #c3cec6;
+  line-height: 1.8;
+}
+.tutorial-body b { color: #ffd23c; }
+.tutorial-sec {
+  margin: 12px 0 4px;
+  font-weight: 700;
+  color: #7fd4a0;
+  border-bottom: 1px solid rgba(127, 212, 160, .18);
+  padding-bottom: 3px;
+}
+.tutorial-hint {
+  margin-top: 14px;
+  font-size: 12px;
+  color: #8fa89a;
+  background: rgba(127, 212, 160, .08);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+.tutorial-close {
+  margin-top: 16px;
+  width: 100%;
+  padding: 11px;
+  font-size: 15px;
+  font-weight: 700;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #3fa87e, #2f8a6a);
+  color: #eafff3;
+  cursor: pointer;
+}
+.tutorial-close:hover { filter: brightness(1.1); }
 @keyframes overlayFade {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -1331,3 +1524,10 @@ html, body {
 
 /* ===== 小地图（右下角） ===== */
 #hud-info { z-index: 5; }
+
+/* ===== 载具储物箱（trunk） ===== */
+.trunk-list { display: flex; flex-direction: column; gap: 4px; margin: 4px 0; }
+.trunk-item { display: flex; align-items: center; gap: 8px; padding: 4px 6px; background: rgba(20,26,22,.5); border: 1px solid #3a4a3a; border-radius: 6px; }
+.trunk-item img { width: 22px; height: 22px; border-radius: 4px; }
+.trunk-item span { flex: 1; color: #cfe0f0; font-size: 12px; }
+.trunk-item button { font-size: 11px; padding: 2px 8px; }

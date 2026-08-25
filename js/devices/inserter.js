@@ -17,6 +17,7 @@ class Inserter extends Entity {
     this.holding = null;
     this.holdingCount = 0;
     this.stackMax = 1;   // 堆叠臂改为 3
+    this.rotSpeed = 1;   // 旋转速度倍率：快速臂为 2，对齐《异星工厂》Fast inserter
     this.filter = null;  // 过滤臂：只抓该物品
     this.blocked = false;
     this.armAng = undefined;
@@ -119,6 +120,8 @@ class Inserter extends Entity {
       case 'stone-furnace':
       case 'steel-furnace':
         if (item === 'coal') return t.fuelCoal < 20;
+        if (item === 'solid-fuel') return (t.fuelSolid || 0) < 20;
+        if (item === 'rocket-fuel') return (t.fuelRocket || 0) < 20;
         return SMELTS.some(r => r.inp === item) && (t.inp[item] || 0) < 25;
       case 'electric-furnace':
         if (item === 'coal') return false;
@@ -132,15 +135,23 @@ class Inserter extends Entity {
         return !!rec.inp[item] && (t.inp[item] || 0) < 50;
       }
       case 'burner-drill':
-        return item === 'coal' && t.fuelCoal < 10;
+        if (item === 'coal') return t.fuelCoal < 10;
+        if (item === 'solid-fuel') return (t.fuelSolid || 0) < 10;
+        if (item === 'rocket-fuel') return (t.fuelRocket || 0) < 10;
+        return false;
       case 'burner-inserter':
-        return item === 'coal' && t.fuelCoal < 5;
+        if (item === 'coal') return t.fuelCoal < 5;
+        if (item === 'solid-fuel') return (t.fuelSolid || 0) < 5;
+        if (item === 'rocket-fuel') return (t.fuelRocket || 0) < 5;
+        return false;
       case 'electric-drill':
         return false;
       case 'offshore-pump':
         return false;
       case 'boiler':
         if (item === 'coal') return t.fuelCoal < 20;
+        if (item === 'solid-fuel') return (t.fuelSolid || 0) < 20;
+        if (item === 'rocket-fuel') return (t.fuelRocket || 0) < 20;
         return item === 'water' && t.water < WATER_CAP - 0.01;
       case 'lab':
         return isScience(item) && (t.packs[item] || 0) < 40;
@@ -157,9 +168,9 @@ class Inserter extends Entity {
       case 'refinery':
         return item === 'crude-oil' && (t.inp['crude-oil'] || 0) < 50;
       case 'storage-chest':
-        return t.slots.length < 12 || t.slots.some(s => s && s.item === item && s.count < 50);
+        return t.slots.length < 12 || t.slots.some(s => s && s.item === item && s.count < stackSize(item));
       case 'steel-chest':
-        return t.slots.length < 24 || t.slots.some(s => s && s.item === item && s.count < 50);
+        return t.slots.length < 24 || t.slots.some(s => s && s.item === item && s.count < stackSize(item));
       case 'void-chest':
         return true;   // 虚空箱：来者不拒，全部销毁
       case 'creative-chest':
@@ -188,7 +199,7 @@ class Inserter extends Entity {
     // 电路条件不满足时机械臂停转（保持当前姿态，不取放）
     if (!this.circuitEnabled()) { this.rotating = false; return; }
     if (this.armAng === undefined) this.armAng = this.pickAng();
-    const step = Math.PI * 4.4 * dt;
+    const step = Math.PI * 4.4 * (this.rotSpeed || 1) * dt;
     // 统一状态机：
     //  空手 -> 转向取物格 -> 到达后原子地“预览+校验+取走（可堆叠抓 N 个）”
     //  持物 -> 转向放物格 -> 到达后循环放入直到放空或目标拒收
@@ -267,6 +278,14 @@ class LongInserter extends Inserter {
   }
 }
 
+// 快速机械臂：旋转速度约为普通臂的 2 倍（对齐《异星工厂》Fast inserter），抓取效率更高
+class FastInserter extends Inserter {
+  constructor(type, x, y) {
+    super(type || 'fast-inserter', x, y);
+    this.rotSpeed = 2;
+  }
+}
+
 class FilterInserter extends Inserter {
   constructor(type, x, y) { super(type || 'filter-inserter', x, y); }
 }
@@ -308,7 +327,8 @@ function drawInserter(ctx, e, gx, gy, dir, alpha) {
   const ang = e.armAng !== undefined ? e.armAng : ((dir + 2) % 4) * Math.PI / 2;
   const tipx = cx + Math.cos(ang) * len;
   const tipy = cy + Math.sin(ang) * len;
-  ctx.strokeStyle = e.holding ? '#ffe066' : long ? '#e08a4a' : '#b9bec8';
+  const fast = e.type === 'fast-inserter';
+  ctx.strokeStyle = e.holding ? '#ffe066' : fast ? '#7ec850' : long ? '#e08a4a' : '#b9bec8';
   ctx.lineWidth = long ? 5 : 4;
   ctx.lineCap = 'round';
   ctx.beginPath();
@@ -437,7 +457,7 @@ function circuitPanelHtml(e, prefix) {
       '<option value="on"' + (c.enabled ? ' selected' : '') + '>启用条件</option>' +
     '</select>' +
     '<select id="' + prefix + '-ch" class="circ-op">' + (typeof channelSelect === 'function' ? channelSelect(c.channel) : '') + '</select>' +
-    '<input type="text" id="' + prefix + '-sig" class="circ-siginv" value="' + (ITEMS[c.sig]?.name || c.sig || '') + '" placeholder="信号" autocomplete="off">' +
+    '<input type="text" id="' + prefix + '-sig" class="circ-siginv" value="' + (typeof signalDisplayName === 'function' ? signalDisplayName(c.sig) : (ITEMS[c.sig]?.name || c.sig || '')) + '" placeholder="信号" autocomplete="off">' +
     '<select id="' + prefix + '-op" class="circ-op">' + ['>', '<', '=', '!=', '>=', '<='].map(o => '<option value="' + o + '"' + (c.op === o ? ' selected' : '') + '>' + o + '</option>').join('') + '</select>' +
     '<input type="number" id="' + prefix + '-cnt" class="circ-cnt" value="' + (c.count || 0) + '" min="-99999" max="99999">' +
     '<button data-action="cb-cond">应用</button></div>';
@@ -487,23 +507,28 @@ ENT_CLASSES['long-inserter'] = LongInserter;
 ENT_CLASSES['filter-inserter'] = FilterInserter;
 ENT_CLASSES['stack-inserter'] = StackInserter;
 ENT_CLASSES['stack-filter-inserter'] = StackFilterInserter;
+ENT_CLASSES['fast-inserter'] = FastInserter;
 DEVICE_RENDER['inserter'] = drawInserter;
 DEVICE_RENDER['long-inserter'] = drawInserter;
 DEVICE_RENDER['filter-inserter'] = drawInserter;
 DEVICE_RENDER['stack-inserter'] = drawInserter;
 DEVICE_RENDER['stack-filter-inserter'] = drawInserter;
+DEVICE_RENDER['fast-inserter'] = drawInserter;
 DEVICE_STATUS['inserter'] = inserterStatusFn;
 DEVICE_STATUS['long-inserter'] = inserterStatusFn;
 DEVICE_STATUS['filter-inserter'] = inserterStatusFn;
 DEVICE_STATUS['stack-inserter'] = inserterStatusFn;
 DEVICE_STATUS['stack-filter-inserter'] = inserterStatusFn;
+DEVICE_STATUS['fast-inserter'] = inserterStatusFn;
 DEVICE_PANEL['inserter'] = inserterPanel;
 DEVICE_PANEL['long-inserter'] = inserterPanel;
 DEVICE_PANEL['filter-inserter'] = filterInserterPanel;
 DEVICE_PANEL['stack-inserter'] = stackInserterPanel;
 DEVICE_PANEL['stack-filter-inserter'] = stackFilterInserterPanel;
+DEVICE_PANEL['fast-inserter'] = inserterPanel;
 DEVICE_DIR_ROTATE['inserter'] = true;
 DEVICE_DIR_ROTATE['long-inserter'] = true;
 DEVICE_DIR_ROTATE['filter-inserter'] = true;
 DEVICE_DIR_ROTATE['stack-inserter'] = true;
 DEVICE_DIR_ROTATE['stack-filter-inserter'] = true;
+DEVICE_DIR_ROTATE['fast-inserter'] = true;
