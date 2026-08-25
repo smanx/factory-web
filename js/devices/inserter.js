@@ -69,15 +69,17 @@ class Inserter extends Entity {
     const d = dx * perp[0] + dy * perp[1];
     return d > 0 ? 1 : 0;
   }
-  // 放物格传送带的“近侧车道”：机械臂把物品放到靠近自己一侧的车道（对齐《异星工厂》）。
+  // 放物格传送带的“远侧车道”：机械臂把物品放到远离自己一侧的车道。
+  // 传送带为双列（左右两线）时，机械臂侧放默认进入远离机械臂的那一线，
+  // 避免物品都挤在机械臂所在的近侧线上。
   dropBeltLane(t) {
     if (!(t instanceof Belt)) return 0;
     const bx = t.x, by = t.y;
     const dx = this.x - bx, dy = this.y - by;
     const fdx = DX[t.dir], fdy = DY[t.dir];
     const perp = [fdy, -fdx];
-    const d = dx * perp[0] + dy * perp[1];
-    return d > 0 ? 1 : 0;
+    const near = (dx * perp[0] + dy * perp[1]) > 0 ? 1 : 0;
+    return near === 1 ? 0 : 1;   // 远侧车道 = 近侧车道的对侧
   }
   // ===== 取物 =====
   peekSource(s) {
@@ -134,10 +136,19 @@ class Inserter extends Entity {
   canDropAt(t, item) {
     if (!t) return false;
     if (t instanceof Belt && !(t instanceof Splitter)) {
-      // 放物进入近侧车道：只检查该车道尾端空位（对齐《异星工厂》）
-      const lane = this.dropBeltLane(t);
+      const o = this.dropOffset();
+      const fromDir = dirFromVec(o.dx, o.dy);
+      const rel = ((fromDir - t.dir) % 4 + 4) % 4;
+      const isSide = rel === 1 || rel === 3;
       let back = Infinity;
-      for (const o of t.items) if (t.laneOf(o) === lane) back = Math.min(back, o.pos);
+      if (isSide) {
+        // 侧放：进入远侧车道，只检查该车道尾端空位
+        const lane = this.dropBeltLane(t);
+        for (const o of t.items) if (t.laneOf(o) === lane) back = Math.min(back, o.pos);
+      } else {
+        // 尾放：整带尾端有空位即可（两条车道交替装载）
+        for (const o of t.items) back = Math.min(back, o.pos);
+      }
       return back >= BELT_SPACING * 0.9;
     }
     switch (t.type) {
@@ -213,7 +224,12 @@ class Inserter extends Entity {
     if (!t || !this.holding) return false;
     if (t instanceof Belt && !(t instanceof Splitter)) {
       const o = this.dropOffset();
-      return t.acceptItem(this.holding, dirFromVec(o.dx, o.dy));
+      const fromDir = dirFromVec(o.dx, o.dy);
+      const rel = ((fromDir - t.dir) % 4 + 4) % 4;
+      const isSide = rel === 1 || rel === 3;
+      // 侧放进入远侧车道（laneHint 覆盖 acceptItem 的“近侧”默认）；尾放沿用交替装载
+      const lane = isSide ? this.dropBeltLane(t) : undefined;
+      return t.acceptItem(this.holding, fromDir, undefined, undefined, lane);
     }
     return t.giveItem(this.holding);
   }
