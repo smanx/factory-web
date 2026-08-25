@@ -1766,13 +1766,14 @@ function bindInput() {
       handleLeftDown();
     } else if (ev.button === 2) {
       if (ev.shiftKey && hovered) { copySettings(hovered); return; }
-      // 右键取物优先：传送带/地下带/机械臂（对齐《异星工厂》）。
+      // 右键取物优先：地下带/部分可逐个取物的设备（对齐《异星工厂》）。
       // 注意：传送带是流动的，若右键优先取物，移动中的传送带会不断补充导致永远取不完、
-      // 且拆除永远不触发（return 提前返回）。因此传送带不参与“右键取物”，右键直接整体拆除：
-      // 由 deconstructAt 一次性把带上全部物品移除并返还，再移除建筑本身（对齐《异星工厂》拆除）。
+      // 且拆除永远不触发（return 提前返回）。因此传送带不参与“右键取物”，右键直接整体拆除。
+      // 同理，机械臂爪上抓取的物品也应随拆除一次性返还，而不是逐件取走阻塞拆除：
+      // 由 deconstructAt 一次性把带上/爪上全部物品移除并返还，再移除建筑本身（对齐《异星工厂》拆除）。
       if (G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
         const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
-        if (!(e instanceof Belt) && rightClickPickupAt(G.cursorTile.tx, G.cursorTile.ty)) return;
+        if (!(e instanceof Belt) && !(e instanceof Inserter) && rightClickPickupAt(G.cursorTile.tx, G.cursorTile.ty)) return;
       }
       if (G.cursorTile) deconstructAt(G.cursorTile.tx, G.cursorTile.ty);
     } else if (ev.button === 1) {

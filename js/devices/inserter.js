@@ -293,7 +293,8 @@ class Inserter extends Entity {
   }
   contents() {
     const list = [[this.type, 1]];
-    if (this.holding) list.push([this.holding, 1]);
+    // 返还爪上抓取的物品：一次性返还全部数量（堆叠臂可能抓到多个）
+    if (this.holding && this.holdingCount > 0) list.push([this.holding, this.holdingCount || 1]);
     return list;
   }
   serialize() {
