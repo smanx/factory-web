@@ -1751,7 +1751,7 @@ const DBG_GIVE_GROUPS = [
   ]],
   ['板材·材料', [
     ['iron-plate', 200], ['copper-plate', 200], ['steel-plate', 100], ['stone-brick', 100],
-    ['iron-gear', 100], ['steel-gear', 100], ['iron-stick', 100], ['steel-stick', 100], ['copper-cable', 100],
+    ['iron-gear', 100], ['iron-stick', 100], ['steel-stick', 100], ['copper-cable', 100],
     ['plastic-bar', 100], ['wood', 100], ['concrete', 100], ['refined-concrete', 100],
     ['hazard-concrete', 100], ['stone-path', 100], ['landfill', 100]
   ]],
