@@ -120,6 +120,7 @@ class Inserter extends Entity {
       case 'stone-furnace':
       case 'steel-furnace':
         if (item === 'coal') return t.fuelCoal < 20;
+        if (item === 'wood') return (t.fuelWood || 0) < 20;
         if (item === 'solid-fuel') return (t.fuelSolid || 0) < 20;
         if (item === 'rocket-fuel') return (t.fuelRocket || 0) < 20;
         return SMELTS.some(r => r.inp === item) && (t.inp[item] || 0) < 25;
@@ -136,11 +137,13 @@ class Inserter extends Entity {
       }
       case 'burner-drill':
         if (item === 'coal') return t.fuelCoal < 10;
+        if (item === 'wood') return (t.fuelWood || 0) < 10;
         if (item === 'solid-fuel') return (t.fuelSolid || 0) < 10;
         if (item === 'rocket-fuel') return (t.fuelRocket || 0) < 10;
         return false;
       case 'burner-inserter':
         if (item === 'coal') return t.fuelCoal < 5;
+        if (item === 'wood') return (t.fuelWood || 0) < 5;
         if (item === 'solid-fuel') return (t.fuelSolid || 0) < 5;
         if (item === 'rocket-fuel') return (t.fuelRocket || 0) < 5;
         return false;
@@ -150,6 +153,7 @@ class Inserter extends Entity {
         return false;
       case 'boiler':
         if (item === 'coal') return t.fuelCoal < 20;
+        if (item === 'wood') return (t.fuelWood || 0) < 20;
         if (item === 'solid-fuel') return (t.fuelSolid || 0) < 20;
         if (item === 'rocket-fuel') return (t.fuelRocket || 0) < 20;
         return item === 'water' && t.water < WATER_CAP - 0.01;

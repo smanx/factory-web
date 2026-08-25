@@ -20,6 +20,7 @@ class Boiler extends Entity {
     this.fuelCoal = 0;
     this.fuelSolid = 0;
     this.fuelRocket = 0;
+    this.fuelWood = 0;
     this.burnLeft = 0;
     this.water = 0;      // 内部水箱：经左右两端水口双向进出、水位平衡
     this.steamBuf = 0;   // 蒸汽缓冲：经底边中间出汽口排向蒸汽机/管道
@@ -44,11 +45,12 @@ class Boiler extends Entity {
     // 蒸汽憋满则熄火省煤，被耗走后自动再点火；温度仅作显示，不限制产汽
     if (this.steamBuf >= WATER_CAP - 0.01) { this.lit = false; return; }
     // 只有既有水又有煤才点火；缺水时绝不空烧
-    if (this.burnLeft <= 0 && this.water > 0 && (this.fuelRocket > 0 || this.fuelSolid > 0 || this.fuelCoal > 0)) {
-      // 优先烧最高能量的火箭燃料，其次固体燃料，再次煤
+    if (this.burnLeft <= 0 && this.water > 0 && (this.fuelRocket > 0 || this.fuelSolid > 0 || this.fuelCoal > 0 || this.fuelWood > 0)) {
+      // 优先烧最高能量的火箭燃料，其次固体燃料，再次煤，最后木材
       if (this.fuelRocket > 0) { this.fuelRocket--; if (typeof trackProd === 'function') trackProd('rocket-fuel', -1); this.burnLeft += ROCKET_FUEL_ENERGY; }
       else if (this.fuelSolid > 0) { this.fuelSolid--; if (typeof trackProd === 'function') trackProd('solid-fuel', -1); this.burnLeft += SOLID_FUEL_ENERGY; }
-      else { this.fuelCoal--; if (typeof trackProd === 'function') trackProd('coal', -1); this.burnLeft += COAL_ENERGY; }
+      else if (this.fuelCoal > 0) { this.fuelCoal--; if (typeof trackProd === 'function') trackProd('coal', -1); this.burnLeft += COAL_ENERGY; }
+      else { this.fuelWood--; if (typeof trackProd === 'function') trackProd('wood', -1); this.burnLeft += WOOD_FUEL_ENERGY; }
     }
     if (this.burnLeft <= 0) { this.lit = false; return; }
     this.lit = true;
@@ -103,6 +105,7 @@ class Boiler extends Entity {
   giveItem(item) {
     if (item === 'rocket-fuel' && this.fuelRocket < 20) { this.fuelRocket++; return true; }
     if (item === 'coal' && this.fuelCoal < 20) { this.fuelCoal++; return true; }
+    if (item === 'wood' && this.fuelWood < 20) { this.fuelWood++; return true; }
     if (item === 'solid-fuel' && this.fuelSolid < 20) { this.fuelSolid++; return true; }
     if (item === 'water' && this.water < WATER_CAP - 0.01) { this.water = Math.min(WATER_CAP, this.water + 1); return true; }
     return false;
@@ -112,19 +115,20 @@ class Boiler extends Entity {
     if (this.fuelRocket > 0) list.push(['rocket-fuel', this.fuelRocket]);
     if (this.fuelSolid > 0) list.push(['solid-fuel', this.fuelSolid]);
     if (this.fuelCoal > 0) list.push(['coal', this.fuelCoal]);
+    if (this.fuelWood > 0) list.push(['wood', this.fuelWood]);
     if (this.water >= 1) list.push(['water', Math.floor(this.water)]);
     if (this.steamBuf >= 1) list.push(['steam', Math.floor(this.steamBuf)]);
     return list;
   }
   serialize() {
     const s = super.serialize();
-    s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket; s.burnLeft = this.burnLeft;
+    s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket; s.fuelWood = this.fuelWood; s.burnLeft = this.burnLeft;
     s.water = this.water; s.steamBuf = this.steamBuf; s.temp = this.temp;
     return s;
   }
   static restore(s) {
     const b = super.restore(s);
-    b.fuelCoal = s.fuelCoal || 0; b.fuelSolid = s.fuelSolid || 0; b.fuelRocket = s.fuelRocket || 0; b.burnLeft = s.burnLeft || 0;
+    b.fuelCoal = s.fuelCoal || 0; b.fuelSolid = s.fuelSolid || 0; b.fuelRocket = s.fuelRocket || 0; b.fuelWood = s.fuelWood || 0; b.burnLeft = s.burnLeft || 0;
     b.water = s.water || 0; b.steamBuf = s.steamBuf || 0; b.temp = s.temp || 0;
     return b;
   }
@@ -189,9 +193,11 @@ function drawBoiler(ctx, e, gx, gy, dir, alpha) {
 
 // ===== 面板 =====
 function boilerPanelHtml(e) {
-  let h = row('燃料', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '') + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : '<span class="dim">无</span>'), 'fuel');
+  let h = row('燃料', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '') + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) + ' ' : '') + (e.fuelWood > 0 ? chip('wood', e.fuelWood) : (e.fuelRocket <= 0 && e.fuelSolid <= 0 && e.fuelCoal <= 0 ? '<span class="dim">无</span>' : '')), 'fuel');
   if (invCount('coal') > 0)
     h += '<button data-action="fuel" data-id="coal">加 5 煤 (' + invCount('coal') + ')</button>';
+  if (invCount('wood') > 0)
+    h += '<button data-action="fuel" data-id="wood">加 5 木材 (' + invCount('wood') + ')</button>';
   if (invCount('solid-fuel') > 0)
     h += '<button data-action="fuel" data-id="solid-fuel">加 5 固体燃料 (' + invCount('solid-fuel') + ')</button>';
   if (invCount('rocket-fuel') > 0)
@@ -207,7 +213,7 @@ function boilerPanelHtml(e) {
   return h;
 }
 function boilerPanelLive(e, api) {
-  api.set('fuel', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '') + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : dimSpan('无')));
+  api.set('fuel', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '') + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) + ' ' : '') + (e.fuelWood > 0 ? chip('wood', e.fuelWood) : (e.fuelRocket <= 0 && e.fuelSolid <= 0 && e.fuelCoal <= 0 ? dimSpan('无') : '')));
   api.set('water', e.water >= 1 ? chip('water', Math.floor(e.water)) : dimSpan('空'));
   api.set('steam', e.steamBuf >= 1 ? chip('steam', Math.floor(e.steamBuf)) : dimSpan('空'));
   api.set('temp', Math.round(e.temp) + ' / ' + BOILER_TEMP_MAX + ' °C');

@@ -10,6 +10,7 @@ const BELT_SPACING = 0.25;
 const FAST_BELT_MULT = 2;    // 快速传送带 = 2× 基础（对齐《异星工厂》3.75 tiles/s）
 const EXPRESS_BELT_MULT = 3; // 极速传送带 = 3× 基础（对齐《异星工厂》5.625 tiles/s）
 const COAL_ENERGY = 12;
+const WOOD_FUEL_ENERGY = 3;   // 木材能量密度（约煤的 1/4），对齐《异星工厂》：原木可作低效燃料
 const SOLID_FUEL_ENERGY = 50;   // 固体燃料能量密度（对齐《异星工厂》：约 4 倍于煤），可作煤的替代燃料
 const ROCKET_FUEL_ENERGY = 500; // 火箭燃料能量密度（对齐《异星工厂》：约 10 倍于固体燃料、约 40 倍于煤），可燃烧燃料
 const NUCLEAR_FUEL_ENERGY = 2500; // 核燃料能量密度（对齐《异星工厂》：核燃料约 1.21GJ，约为火箭燃料 225MJ 的 5 倍多），可作载具/车头/锅炉等燃烧器的最高级燃料
@@ -1713,12 +1714,13 @@ function rrPath(x, px, py, w, h, r) {
 }
 
 // 判断某物品是否为可燃烧燃料（煤 / 固体燃料）。各烧煤设备以此判断能否加入燃料。
-function isBurnerFuel(item) { return item === 'coal' || item === 'solid-fuel' || item === 'rocket-fuel' || item === 'nuclear-fuel' || item === 'raw-fish'; }
+function isBurnerFuel(item) { return item === 'coal' || item === 'wood' || item === 'solid-fuel' || item === 'rocket-fuel' || item === 'nuclear-fuel' || item === 'raw-fish'; }
 function fuelEnergy(item) {
   if (item === 'nuclear-fuel') return NUCLEAR_FUEL_ENERGY;  // 核燃料能量密度最高（对齐《异星工厂》：核燃料远高于火箭燃料）
   if (item === 'rocket-fuel') return ROCKET_FUEL_ENERGY;
   if (item === 'solid-fuel') return SOLID_FUEL_ENERGY;
   if (item === 'raw-fish') return 4;  // 生鱼可作低效燃料（对齐《异星工厂》：鱼能烧，但能量很低）
+  if (item === 'wood') return WOOD_FUEL_ENERGY;  // 木材低效燃料（约煤的 1/4）
   return COAL_ENERGY;
 }
 

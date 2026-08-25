@@ -10,11 +10,12 @@ class BurnerInserter extends Inserter {
     this.fuelCoal = 0;
     this.fuelSolid = 0;
     this.fuelRocket = 0;
+    this.fuelWood = 0;
     this.burnLeft = 0;
     this._fuelT = 0;
   }
   // 有燃料才工作；缺煤时停摆
-  hasFuel() { return this.burnLeft > 0 || this.fuelRocket > 0 || this.fuelSolid > 0 || this.fuelCoal > 0; }
+  hasFuel() { return this.burnLeft > 0 || this.fuelRocket > 0 || this.fuelSolid > 0 || this.fuelCoal > 0 || this.fuelWood > 0; }
   // 燃料消耗：与普通臂同步率，仅在真正搬运时扣煤，闲置不耗煤
   consumeFuel(dt) {
     if (this.burnLeft > 0) { this.burnLeft -= dt * fuelConsumptionMult(); return; }
@@ -30,6 +31,10 @@ class BurnerInserter extends Inserter {
       this.fuelCoal--;
       if (typeof trackProd === 'function') trackProd('coal', -1);
       this.burnLeft = COAL_ENERGY;
+    } else if (this.fuelWood > 0) {
+      this.fuelWood--;
+      if (typeof trackProd === 'function') trackProd('wood', -1);
+      this.burnLeft = WOOD_FUEL_ENERGY;
     }
   }
   // 允许机械臂/玩家向它加煤
@@ -37,13 +42,15 @@ class BurnerInserter extends Inserter {
     if (item === 'rocket-fuel' && this.fuelRocket < 5) { this.fuelRocket++; return true; }
     if (item === 'solid-fuel' && this.fuelSolid < 5) { this.fuelSolid++; return true; }
     if (item === 'coal' && this.fuelCoal < 5) { this.fuelCoal++; return true; }
+    if (item === 'wood' && this.fuelWood < 5) { this.fuelWood++; return true; }
     return false;
   }
-  countOf(item) { return item === 'coal' ? this.fuelCoal : (item === 'solid-fuel' ? this.fuelSolid : (item === 'rocket-fuel' ? this.fuelRocket : 0)); }
+  countOf(item) { return item === 'coal' ? this.fuelCoal : (item === 'solid-fuel' ? this.fuelSolid : (item === 'rocket-fuel' ? this.fuelRocket : (item === 'wood' ? this.fuelWood : 0))); }
   takeItemOf(item) {
     if (item === 'coal' && this.fuelCoal > 0) { this.fuelCoal--; return 'coal'; }
     if (item === 'solid-fuel' && this.fuelSolid > 0) { this.fuelSolid--; return 'solid-fuel'; }
     if (item === 'rocket-fuel' && this.fuelRocket > 0) { this.fuelRocket--; return 'rocket-fuel'; }
+    if (item === 'wood' && this.fuelWood > 0) { this.fuelWood--; return 'wood'; }
     return null;
   }
   contents() {
@@ -51,6 +58,7 @@ class BurnerInserter extends Inserter {
     if (this.fuelRocket > 0) list.push(['rocket-fuel', this.fuelRocket]);
     if (this.fuelSolid > 0) list.push(['solid-fuel', this.fuelSolid]);
     if (this.fuelCoal > 0) list.push(['coal', this.fuelCoal]);
+    if (this.fuelWood > 0) list.push(['wood', this.fuelWood]);
     return list;
   }
   update(dt) {
@@ -72,6 +80,7 @@ class BurnerInserter extends Inserter {
     s.fuelCoal = this.fuelCoal;
     s.fuelSolid = this.fuelSolid;
     s.fuelRocket = this.fuelRocket;
+    s.fuelWood = this.fuelWood;
     s.burnLeft = this.burnLeft;
     return s;
   }
@@ -80,6 +89,7 @@ class BurnerInserter extends Inserter {
     i.fuelCoal = s.fuelCoal || 0;
     i.fuelSolid = s.fuelSolid || 0;
     i.fuelRocket = s.fuelRocket || 0;
+    i.fuelWood = s.fuelWood || 0;
     i.burnLeft = s.burnLeft || 0;
     return i;
   }
@@ -95,7 +105,7 @@ function drawBurnerInserter(ctx, e, gx, gy, dir, alpha) {
   // 底部燃料仓（橙色小槽）
   ctx.fillStyle = '#20242b';
   rr(ctx, px + 6, py + TILE - 10, TILE - 12, 6, 2); ctx.fill();
-  const pct = e.hasFuel() ? Math.min(1, (e.burnLeft + e.fuelCoal * 4 + e.fuelSolid * 4 + e.fuelRocket * 4) / 5) : 0;
+  const pct = e.hasFuel() ? Math.min(1, (e.burnLeft + e.fuelCoal * 4 + e.fuelSolid * 4 + e.fuelRocket * 4 + e.fuelWood) / 5) : 0;
   ctx.fillStyle = pct > 0 ? '#e8762c' : '#8a2c1c';
   rr(ctx, px + 7, py + TILE - 9, (TILE - 14) * pct, 4, 2); ctx.fill();
   if (!e.hasFuel()) {
@@ -108,15 +118,16 @@ function drawBurnerInserter(ctx, e, gx, gy, dir, alpha) {
 
 // ===== 面板 =====
 function burnerInserterPanelHtml(e) {
-  return row('燃料', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '') + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : '<span class="dim">无</span>'), 'fuel') +
+  return row('燃料', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '') + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) + ' ' : '') + (e.fuelWood > 0 ? chip('wood', e.fuelWood) : (e.fuelRocket <= 0 && e.fuelSolid <= 0 && e.fuelCoal <= 0 ? '<span class="dim">无</span>' : '')), 'fuel') +
     (invCount('coal') > 0 ? '<button data-action="fuel" data-id="coal">加 5 煤 (' + invCount('coal') + ')</button>' : '') +
+    (invCount('wood') > 0 ? '<button data-action="fuel" data-id="wood">加 5 木材 (' + invCount('wood') + ')</button>' : '') +
     (invCount('solid-fuel') > 0 ? '<button data-action="fuel" data-id="solid-fuel">加 5 固体燃料 (' + invCount('solid-fuel') + ')</button>' : '') +
     (invCount('rocket-fuel') > 0 ? '<button data-action="fuel" data-id="rocket-fuel">加 5 火箭燃料 (' + invCount('rocket-fuel') + ')</button>' : '') +
     '<div class="status"></div>' +
     '<div class="dim">燃料机械臂：烧煤驱动，无需电力，开局即可用。从臂体指向的一侧取货、放到箭头一侧。搬运时消耗煤，缺煤会停摆（1×1）。</div>';
 }
 function burnerInserterPanelLive(e, api) {
-  api.set('fuel', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '') + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) : dimSpan('无')));
+  api.set('fuel', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '') + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) + ' ' : '') + (e.fuelWood > 0 ? chip('wood', e.fuelWood) : (e.fuelRocket <= 0 && e.fuelSolid <= 0 && e.fuelCoal <= 0 ? dimSpan('无') : '')));
   if (!e.hasFuel()) { api.status('已暂停：缺燃料，加入煤/固体燃料/火箭燃料', 'warn'); return; }
   if (e.holding) {
     api.status(e.blocked ? '已暂停：放货格已满，卡住 ' + ITEMS[e.holding].name : '搬运中：' + ITEMS[e.holding].name, e.blocked ? 'warn' : 'ok');
