@@ -670,12 +670,30 @@ function updateTrainArtillery(tr, dt) {
 //   - 卸载：从列车车厢取出清单物品，存入车站旁 3×3 范围内的箱子；
 //   - 装载：从车站旁箱子取出清单物品，装入列车车厢。
 // 列车停靠期间持续装卸，装/卸完毕或超时后发车。
-class TrainStop extends Entity {
+// 继承 CircuitNode（CircuitNode 亦是 Entity 子类）：车站可接入电路网络，
+// 当有列车停靠本站时输出 signal-train 信号，供组合器/功率开关/告警音箱读取，
+// 实现按列车到站自动化的调度（对齐《异星工厂》Train stop 电路信号）。
+class TrainStop extends CircuitNode {
   constructor(type, x, y) {
     super(type, x, y);
     this.load = [];    // 要装入车厢的物品清单
     this.unload = [];  // 要从车厢卸出的物品清单
     this.name = '';    // 车站名（用于列车自动调度路线引用）
+  }
+  // 是否有列车停靠本站（车头停在车站所在格且处于停靠状态）
+  trainPresent() {
+    if (!G.trains || !G.trains.length) return false;
+    for (const tr of G.trains) {
+      if (!tr || !tr.cars || !tr.cars.length) continue;
+      const head = tr.cars[0];
+      if (!head || head._dead) continue;
+      if (head.x === this.x && head.y === this.y) return true;
+    }
+    return false;
+  }
+  // 电路信号输出：有列车停靠时输出 signal-train=1（对齐《异星工厂》车站列车信号）
+  outputCircuitSignals() {
+    return this.trainPresent() ? [{ sig: 'signal-train', count: 1 }] : [];
   }
   contents() {
     return [[this.type, 1]];
@@ -1555,6 +1573,7 @@ function trainStopPanelHtml(e) {
   h += '</div>';
   h += '<div class="status"></div>';
   h += '<div class="dim">放置：把车站放在铁轨上，车站旁（3×3）放储物箱。列车停靠时，自动把“卸载”物品从车厢卸入箱子、把“装载”物品从箱子装入车厢。对齐《异星工厂》火车车站装卸。</div>';
+  h += '<div class="dim">已接入电路网络：有列车停靠本站时输出 signal-train（车站列车信号）到所连网络，供组合器/功率开关/告警音箱读取，实现按列车到站自动化的调度（对齐《异星工厂》车站电路信号）。</div>';
   return h;
 }
 function trainStopPanelLive(e, api) {

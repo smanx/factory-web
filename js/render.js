@@ -1321,7 +1321,10 @@ function drawAcidPools(ctx) {
 // 击杀敌人掉落的地面矿石（见 combat2.js dropEnemyLoot）：小矿石图标带轻微上下浮动
 function drawLootDrops(ctx) {
   if (!G.lootDrops || G.lootDrops.length === 0) return;
+  // 视口剔除（P 优化）：只绘制屏幕范围内的掉落物，避免战后大量远处掉落每帧全量绘制。
+  const b = FRAME_BOUNDS;
   for (const d of G.lootDrops) {
+    if (b && (d.x < b.x1 || d.x > b.x0 || d.y < b.y1 || d.y > b.y0)) continue;
     const bob = Math.sin(G.time * 3 + d.x) * 1.5;
     // 地面阴影
     ctx.fillStyle = 'rgba(0,0,0,.18)';
@@ -1341,10 +1344,13 @@ function drawLootDrops(ctx) {
 // 玩家丢弃到地面的物品（见 player.js）：在格子中心绘制物品图标（可被传送带吸附/玩家拾取）
 function drawGroundItems(ctx) {
   if (!G.groundItems || G.groundItems.length === 0) return;
+  // 视口剔除（P 优化）：只绘制屏幕范围内的地面物品，避免大量远处堆积物品每帧全量 drawItemGlyph。
+  const b = FRAME_BOUNDS;
   for (const g of G.groundItems) {
     if (g.taken || !ITEMS[g.item]) continue;
     const cx = g.tx * TILE + TILE / 2;
     const cy = g.ty * TILE + TILE / 2;
+    if (b && (cx < b.x1 || cx > b.x0 || cy < b.y1 || cy > b.y0)) continue;
     // 地面阴影
     ctx.fillStyle = 'rgba(0,0,0,.18)';
     ctx.beginPath(); ctx.ellipse(cx, cy + 6, 6, 3, 0, 0, 7); ctx.fill();

@@ -139,6 +139,17 @@ function recomputeCircuit() {
       const pct = Math.round(Math.max(0, Math.min(1, (n.stored || 0) / ACCUM_CAP)) * 100);
       if (pct > 0) { addSignal(aggRed, 'signal-charge', pct); addSignal(aggGreen, 'signal-charge', pct); }
     }
+    // 1b2) 储液罐（StorageTank）：把罐内当前流体的存量以该流体为信号名输出到网络
+    //       （对齐《异星工厂》：储液罐可接入电路网络读取流体存量，实现按液位自动化的流量/产线调度）。
+    //       信号同时写入红线与绿线，便于任意通道读取；空罐输出 0 不产生信号。
+    for (const n of group) {
+      if (!(n instanceof StorageTank)) continue;
+      if (typeof n.storedFluid !== 'function') continue;
+      const f = n.storedFluid();
+      if (!f) continue;
+      const qty = n.countOf ? n.countOf(f) : 0;
+      if (qty > 0) { addSignal(aggRed, f, qty); addSignal(aggGreen, f, qty); }
+    }
     // 1c) 储物箱（Chest 家族：木箱/铁箱/钢箱）：把箱内每种物品的数量以该物品为信号名
     //     输出到网络（对齐《异星工厂》：箱子接入电路后可读取物品数量，实现按库存自动化）。
     //     信号同时写入红线与绿线，便于任意通道读取。
@@ -220,7 +231,8 @@ const VIRTUAL_SIGNALS = {
   'signal-everything': '全部信号',
   'signal-anything': '任一信号',
   'signal-count': '数量',
-  'signal-enemy': '敌人数量'
+  'signal-enemy': '敌人数量',
+  'signal-train': '车站列车信号'
 };
 // 判断某信号名是否为虚拟信号（各列表/输入框均识别）
 function isVirtualSignal(sig) { return Object.prototype.hasOwnProperty.call(VIRTUAL_SIGNALS, sig); }
