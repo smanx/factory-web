@@ -229,9 +229,7 @@ function isLake(tx, ty) {
 }
 
 function pickOreType(rng, dist) {
-  const roll = rng();
-  // 方解石较稀有，全图少量分布
-  if (roll < 0.05) return ORES.indexOf('calcite');
+  // 方解石为《太空时代》DLC 内容，不在地图生成中
   const r2 = rng();
   if (dist > 70) {
     if (r2 < 0.34) return ORES.indexOf('iron-ore');
@@ -370,8 +368,8 @@ function genChunk(cx, cy) {
     growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, size, amt, ti);
   }
 
-  // 原油矿床：越远越常见，储量更高
-  const oilChance = dist > 40 ? 0.55 : dist > 15 ? 0.28 : 0.06;
+  // 原油矿床：离角色稍远才生成（出生点周围只有石/铁/煤/铜矿），越远越常见、储量越高
+  const oilChance = dist > 60 ? 0.55 : dist > 25 ? 0.15 : 0;
   if (rng() < oilChance) {
     const sx = 2 + Math.floor(rng() * (CHUNK - 4));
     const sy = 2 + Math.floor(rng() * (CHUNK - 4));
@@ -379,8 +377,8 @@ function genChunk(cx, cy) {
     growOilField(terrain, oreType, oreAmt, rng, sx, sy, 4 + Math.floor(rng() * 5), (1500 + rng() * 2500) * ri, 3);
   }
 
-  // 铀矿：距离较远处才生成（核能后期），越远越多，矿团适中
-  const uChance = dist > 120 ? 0.4 : dist > 60 ? 0.18 : 0.04;
+  // 铀矿：距离较远才生成（核能后期，且离角色比原油更远），越远越多，矿团适中
+  const uChance = dist > 120 ? 0.4 : dist > 80 ? 0.15 : 0;
   if (rng() < uChance) {
     const sx = 2 + Math.floor(rng() * (CHUNK - 4));
     const sy = 2 + Math.floor(rng() * (CHUNK - 4));
@@ -396,15 +394,6 @@ function genChunk(cx, cy) {
       const si = sy * CHUNK + sx;
       if (terrain[si] === T_GRASS && oreType[si] < 0) {
         growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, 10, 900, ORES.indexOf('iron-ore'));
-        break;
-      }
-    }
-    // 出生点附近保证一小片原油，方便早期接触石油链
-    for (let attempt = 0; attempt < 8; attempt++) {
-      const sx = 3 + Math.floor(rng() * (CHUNK - 6)), sy = 3 + Math.floor(rng() * (CHUNK - 6));
-      const si = sy * CHUNK + sx;
-      if (terrain[si] === T_GRASS && oreType[si] < 0 && Math.hypot(sx - 6, sy - 6) > 4) {
-        growOilField(terrain, oreType, oreAmt, rng, sx, sy, 4, 2000, 3);
         break;
       }
     }

@@ -1577,6 +1577,15 @@ function bindInput() {
     if (buildActive()) return;
     const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
     if (e) openPanel('machine', e);
+    // 点击敌人 → 显示该敌人的简单介绍（对齐《异星工厂》：可查看敌对单位图鉴信息）
+    else {
+      const en = (typeof enemyAtTile === 'function') ? enemyAtTile(G.cursorTile.tx, G.cursorTile.ty) : null;
+      if (en) {
+        const d = ENEMY_TYPES[en.type];
+        const nm = d ? d.name : (en.kind === 'spawner' ? '虫巢' : '敌人');
+        toast(nm + '：' + ((typeof enemyDesc === 'function') ? enemyDesc(en) : '敌对单位'));
+      }
+    }
   });
 }
 

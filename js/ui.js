@@ -1360,6 +1360,27 @@ function updateHUD(dt, fps) {
   }
 }
 
+function enemyAtTile(tx, ty) {
+  const list = G.enemies || [];
+  for (let i = 0; i < list.length; i++) {
+    const en = list[i];
+    if (en.dead) continue;
+    // 敌人中心所在格，且按其体型（size）扩大判定到所占范围，鼠标指向其任意身体部分均能识别
+    const cx = Math.floor(en.x / TILE), cy = Math.floor(en.y / TILE);
+    const half = Math.max(0, Math.ceil((en.size || 6) / TILE) - 1);
+    if (Math.abs(tx - cx) <= half && Math.abs(ty - cy) <= half) return en;
+  }
+  return null;
+}
+
+// 敌人简要介绍：由类型属性生成（对齐《异星工厂》虫族图鉴感）
+function enemyDesc(en) {
+  const d = ENEMY_TYPES[en.type];
+  if (!d) return '敌对单位';
+  const kindTxt = en.kind === 'spawner' ? '虫巢' : (d.kind === 'ranged' ? '远程单位，会喷吐攻击' : '近战单位，会冲向并攻击建筑');
+  return kindTxt + '；生命 ' + (en.maxhp || d.hp) + '，攻击 ' + (en.dmg || d.dmg) + '。可点击攻击或建造炮塔防御。';
+}
+
 function mapTipAt(tx, ty) {
   // 显示详情时：鼠标移到某流体出入口图标上，优先显示该流体的具体名称
   if (G.showDetails) {
@@ -1385,6 +1406,14 @@ function mapTipAt(tx, ty) {
     }
     return ITEMS[e.type].name + '|' + extra;
   }
+  // 敌人生成在格子中央，悬停到其上时优先显示敌人具体名称（对齐《异星工厂》）
+  const enemy = enemyAtTile(tx, ty);
+  if (enemy) {
+    const d = ENEMY_TYPES[enemy.type];
+    const nm = d ? d.name : (enemy.kind === 'spawner' ? '虫巢' : '敌人');
+    return nm + '|点击查看详细说明';
+  }
+  if (getTerrain(tx, ty) === T_CLIFF) return '峭壁|不可通行、不可建造的地形障碍；可手持峭壁炸药点击清除';
   if (getTerrain(tx, ty) === T_WATER) return '水域|无法通行；可把抽水机放在这里取水';
   const ti = getOreType(tx, ty);
   if (ti >= 0 && getOreAmt(tx, ty) > 0) {

@@ -69,7 +69,7 @@ const ENGINE_STEAM_RATE = 0.6;   // 蒸汽机满功率耗汽（单位/秒）：1
 const ENGINE_STEAM_CAP = 10;     // 蒸汽机内部储汽上限
 
 const FLUIDS = ['water', 'steam', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas', 'lubricant', 'sulfuric-acid'];
-// 矿石索引：iron/copper/coal/stone/calcite = 0-4；原油 = 5（不进手挖矿表）；铀矿 = 6。
+// 矿石索引：iron/copper/coal/stone = 0-3；原油 = 5（不进手挖矿表）；铀矿 = 6。
 // ⚠️ 版本迁移：早期版本原油索引为 5，本次新增铀矿后改为 6，读档时对旧档做 5→6 重映射。
 const ORE_OIL = 5;                       // 原油矿床的 oreType 索引（不进手挖矿表）
 const ORE_URANIUM = 6;                   // 铀矿床的 oreType 索引
@@ -413,7 +413,7 @@ function fluidFromBarrelItem(item) {
   return null;
 }
 
-const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone', 'calcite'];  // 0-4；原油/铀矿用特殊索引（见 ORE_OIL/ORE_URANIUM）
+const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone'];  // 0-3；原油/铀矿用特殊索引（见 ORE_OIL/ORE_URANIUM）
 
 const SMELTS = [
   { id: 'iron-plate',   inp: 'iron-ore',   time: 3.2 },
