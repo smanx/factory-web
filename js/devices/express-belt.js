@@ -104,7 +104,8 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
     const lo = (o.lane === 1 ? 1 : -1);
     const perpX = laneOffset ? laneOffset[0] * lo * LANE_OFF : 0;
     const perpY = laneOffset ? laneOffset[1] * lo * LANE_OFF : 0;
-    // 与普通带一致：仅确实来自侧面的物品走侧面接入线；直通物品（side<0）沿主轴从背面进入
+    // 与普通带一致：仅确实来自侧面的物品走侧面接入线；直通物品（side<0）无需向中间靠拢，
+    // 首尾相接方向一致时全程保持车道偏移直接平移过去。
     const fromSide = inp.length > 0 && o.side !== undefined && o.side >= 0 && o.side < inp.length;
     if (o.pos < 0.5) {
       if (fromSide) {
@@ -113,9 +114,10 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
         const t = o.pos / 0.5;
         ix = inX + (cx - inX) * t + perpX * t; iy = inY + (cy - inY) * t + perpY * t;
       } else {
+        // 直通物品（首尾相接方向一致）：全程保持车道偏移直接平移，不向中间收拢
         const inX = cx - DX[dir] * step, inY = cy - DY[dir] * step;
         const t = o.pos / 0.5;
-        ix = inX + (cx - inX) * t + perpX * t; iy = inY + (cy - inY) * t + perpY * t;
+        ix = inX + (cx - inX) * t + perpX; iy = inY + (cy - inY) * t + perpY;
       }
     } else {
       const t = (o.pos - 0.5) / 0.5;

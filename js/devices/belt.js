@@ -434,8 +434,8 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
     const perpX = laneOffset ? laneOffset[0] * lo * LANE_OFF : 0;
     const perpY = laneOffset ? laneOffset[1] * lo * LANE_OFF : 0;
     // 前半段（pos<0.5）：从入口走到格心。仅“确实来自侧面”的物品走侧面接入线；
-    // 直通物品（side<0，从背面同向进来）及无侧面输入的普通带仍沿主轴从背面进入，
-    // 避免 T 型转角里直通方向的物品被错误画到侧面分支上。
+    // 直通物品（side<0，从背面同向进来，即首尾相接方向一致的直通连接）无需向中间靠拢，
+    // 全程保持各自车道偏移、直接平移过去；侧面进入的物品则从侧边向目标车道水平收拢。
     const fromSide = inp.length > 0 && o.side !== undefined && o.side >= 0 && o.side < inp.length;
     if (o.pos < 0.5) {
       if (fromSide) {
@@ -447,10 +447,11 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
         // 侧面进入的物品：随车道向目标车道水平收拢
         ix += perpX * t; iy += perpY * t;
       } else {
+        // 直通物品（首尾相接方向一致）：全程保持车道偏移直接平移，不向中间收拢
         const inX = cx - DX[dir] * step, inY = cy - DY[dir] * step; // 背面入口
         const t = o.pos / 0.5;
-        ix = inX + (cx - inX) * t + perpX * t;
-        iy = inY + (cy - inY) * t + perpY * t;
+        ix = inX + (cx - inX) * t + perpX;
+        iy = inY + (cy - inY) * t + perpY;
       }
     } else {
       // 后半段：从格心走到出口（侧面与直通物品共用）
