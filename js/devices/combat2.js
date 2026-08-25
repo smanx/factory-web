@@ -853,6 +853,8 @@ function damagePlayer(dmg) {
         G.enemies = []; G.enemyProjectiles = [];
         G.player.x = G.spawn.x * TILE + TILE / 2;
         G.player.y = G.spawn.y * TILE + TILE / 2;
+        // 复位相机 pan 偏移，避免出生点设备被挤出屏幕（与 respawnAtSpawn 保持一致）
+        if (G.cam.pan) { G.cam.pan.x = 0; G.cam.pan.y = 0; }
         G.cam.px = G.player.x; G.cam.py = G.player.y;
         G.playerHP = G.playerHPmax;
       }

@@ -406,6 +406,8 @@ function applySave(d) {
   if (typeof histDeserialize === 'function' && d.hist) histDeserialize(d.hist);
   G.statsHistItem = null;
   G.statsHistZoom = G.statsHistZoom || 3;
+  // 读档后回到存档点，清掉拖动 pan 偏移让相机居中于玩家
+  if (G.cam.pan) { G.cam.pan.x = 0; G.cam.pan.y = 0; }
   G.cam.px = G.player.x; G.cam.py = G.player.y;
   uiDirty = true;
 }
@@ -1544,6 +1546,9 @@ function respawnAtSpawn() {
   G.enemies = []; G.enemyProjectiles = [];
   G.player.x = G.spawn.x * TILE + TILE / 2;
   G.player.y = G.spawn.y * TILE + TILE / 2;
+  // 复位相机：清掉触屏拖动留下的 pan 偏移，否则相机中心会落在 player+pan 处
+  // （偏离出生点，导致玩家眼前的基地/设备被挤到屏幕外，看起来“全部不见了”）。
+  if (G.cam.pan) { G.cam.pan.x = 0; G.cam.pan.y = 0; }
   G.cam.px = G.player.x; G.cam.py = G.player.y;
   G.playerHP = G.playerHPmax;
   G.paused = false;
