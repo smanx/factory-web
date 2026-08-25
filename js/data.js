@@ -144,11 +144,11 @@ function stackSize(id) {
 }
 
 const ITEMS = {
-  'iron-ore':   { name: '铁矿石', color: '#8fa0b8', mark: 'Fe', desc: '基础矿物，放入石炉冶炼成铁板' },
+  'iron-ore':   { name: '铁矿石', color: '#6b8fd4', mark: 'Fe', desc: '基础矿物，放入石炉冶炼成铁板' },
   'copper-ore': { name: '铜矿石', color: '#d0793f', mark: 'Cu', desc: '基础矿物，放入石炉冶炼成铜板' },
   'coal':       { name: '煤',     color: '#3a3a42', mark: 'C',  desc: '燃料，供采矿机与石炉燃烧' },
   'solid-fuel': { name: '固体燃料', color: '#d08a3a', mark: 'SF', desc: '由石油气/轻油/重油在化工厂压制的致密燃料，能量约为煤的 4 倍，可作煤的高效替代品' },
-  'stone':      { name: '石头',   color: '#b3a685', mark: 'St', desc: '合成石炉的材料，可在熔炉烧成石砖' },
+  'stone':      { name: '石头',   color: '#d0b78a', mark: 'St', desc: '合成石炉的材料，可在熔炉烧成石砖' },
   'stone-brick': { name: '石砖',   color: '#b3a685', mark: 'Sb', desc: '由石头在熔炉烧制，可在组装机合成石墙' },
   'calcite':    { name: '方解石', color: '#e8e0d0', mark: 'Ca', desc: '矿物，用于炼油厂煤液化配方（太空时代）' },
   'iron-plate':   { name: '铁板',   color: '#ccd4de', mark: 'Fp', desc: '最常用的结构材料' },
