@@ -322,6 +322,49 @@ function growOilField(terrain, oreType, oreAmt, rng, sx, sy, count, amt, gap) {
   }
 }
 
+// 树木：像矿床一样成簇生长（聚集成一片片森林，而非散落单棵树）。
+// 以中心点为种子，用随机生长在草地上铺开一片连续树团，与矿床的聚团方式一致。
+function growForest(terrain, oreType, rng, sx, sy, size) {
+  // 若起点不可用（落在树/水/矿/边界格），向四周搜索最近的可行格；找不到则放弃本树团
+  if (sx < 0 || sy < 0 || sx >= CHUNK || sy >= CHUNK ||
+      terrain[sy * CHUNK + sx] !== T_GRASS || oreType[sy * CHUNK + sx] !== -1) {
+    let found = false;
+    for (let r = 1; r <= 8 && !found; r++) {
+      for (let dy = -r; dy <= r && !found; dy++) {
+        for (let dx = -r; dx <= r && !found; dx++) {
+          if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+          const x = sx + dx, y = sy + dy;
+          if (x < 0 || y < 0 || x >= CHUNK || y >= CHUNK) continue;
+          const idx = y * CHUNK + x;
+          if (terrain[idx] === T_GRASS && oreType[idx] === -1) { sx = x; sy = y; found = true; }
+        }
+      }
+    }
+    if (!found) return 0;
+  }
+  const queue = [[sx, sy]];
+  const seen = new Set([sx + ',' + sy]);
+  let placed = 0, guard = 0;
+  while (queue.length && placed < size && guard++ < size * 12) {
+    const [qx, qy] = queue.splice((rng() * queue.length) | 0, 1)[0];
+    if (qx < 0 || qy < 0 || qx >= CHUNK || qy >= CHUNK) continue;
+    const idx = qy * CHUNK + qx;
+    if (terrain[idx] !== T_GRASS) continue;   // 只在草地上长树
+    if (oreType[idx] !== -1) continue;        // 避开矿石/原油/铀矿
+    terrain[idx] = T_TREE;
+    placed++;
+    const dirs = shuffle([[1, 0], [-1, 0], [0, 1], [0, -1]], rng);
+    for (const [ddx, ddy] of dirs) {
+      if (rng() < 0.62) {
+        const nx = qx + ddx, ny = qy + ddy;
+        const k = nx + ',' + ny;
+        if (!seen.has(k)) { seen.add(k); queue.push([nx, ny]); }
+      }
+    }
+  }
+  return placed;
+}
+
 function genChunk(cx, cy) {
   const rng = mulberry32(chunkSeed(cx, cy));
   const terrain = new Uint8Array(CHUNK * CHUNK);
@@ -335,25 +378,22 @@ function genChunk(cx, cy) {
       terrain[ly * CHUNK + lx] = isLake(ox + lx, oy + ly) ? T_WATER : T_GRASS;
 
   // 树木（对齐《异星工厂》：森林与草地上的树可砍伐获得木）。
-  // 用噪声在草地上确定性撒点，树林成团分布；靠近出生点较少，越远越密集。
-  const seedR = mulberry32((chunkSeed(cx, cy) ^ 0x51ed270b) >>> 0);
-  for (let ly = 0; ly < CHUNK; ly++) {
-    for (let lx = 0; lx < CHUNK; lx++) {
-      const idx = ly * CHUNK + lx;
-      if (terrain[idx] !== T_GRASS) continue;
-      const gx = ox + lx, gy = oy + ly;
-      // 用 hash 造低频森林斑块，树在其中成群
-      const forest = hash2(Math.floor(gx / 5) * 7.13, Math.floor(gy / 5) * 3.71);
-      if (forest > 0.58) {
-        const dist = Math.hypot(gx, gy);
-        // 出生点附近稀疏，越远越密（对齐《异星工厂》出生点多为草地）
-        const dens = dist < 15 ? 0.18 : (dist < 40 ? 0.4 : (dist < 80 ? 0.62 : 0.8));
-        if (seedR() < dens) {
-          // 避免树生成在矿石/原油/铀矿格上
-          if (oreType[idx] < 0) terrain[idx] = T_TREE;
-        }
-      }
-    }
+  // 像矿床一样成簇聚集：以随机中心点为种子，用生长算法铺开一片片连续树团，
+  // 而非散落单棵树；靠近出生点树团较少较小，越远越密越大。
+  const forestRng = mulberry32((chunkSeed(cx, cy) ^ 0x51ed270b) >>> 0);
+  const fcX = ox + CHUNK / 2, fcY = oy + CHUNK / 2;
+  const fDist = Math.hypot(fcX, fcY);
+  // 每个区块可能生成的森林团数量：出生点附近较少（约 1/2 区块有），越远越多（最多约 3 团）
+  const forestProb = fDist < 15 ? 0.35 : fDist < 40 ? 0.6 : (fDist < 80 ? 0.85 : 1);
+  const forestCount = forestRng() < forestProb
+    ? 1 + Math.floor(forestRng() * (fDist < 40 ? 1.5 : 2.5))
+    : 0;
+  // 每团大小：出生点附近小簇，越远越大
+  const forestSize = Math.max(8, Math.round((18 + forestRng() * 24) * (1 + Math.min(2, fDist / 80))));
+  for (let f = 0; f < forestCount; f++) {
+    const fsx = Math.floor(forestRng() * CHUNK);
+    const fsy = Math.floor(forestRng() * CHUNK);
+    growForest(terrain, oreType, forestRng, fsx, fsy, forestSize);
   }
 
   const cxn = cx * CHUNK + CHUNK / 2, cyn = cy * CHUNK + CHUNK / 2;

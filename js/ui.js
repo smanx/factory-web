@@ -1341,11 +1341,11 @@ function updateHUD(dt, fps) {
   const el = document.getElementById('hud-info');
   const p = G.player;
   const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
-  let hud = fps + '   (' + tx + ',' + ty + ')';
+  let hud = '<span title="帧率 (FPS)">' + fps + '</span>   <span title="坐标 (' + tx + ',' + ty + ')">(' + tx + ',' + ty + ')</span>';
   if (G.settings.combat) {
     const hp = Math.max(0, Math.round(G.playerHP));
     const hpPct = G.playerHPmax > 0 ? hp / G.playerHPmax : 0;
-    hud += '   <span style="color:' + (hpPct > 0.5 ? '#57e389' : hpPct > 0.25 ? '#ffd23c' : '#ff5b5b') + '">♥ ' + hp + '/' + G.playerHPmax + '</span>';
+    hud += '   <span style="color:' + (hpPct > 0.5 ? '#57e389' : hpPct > 0.25 ? '#ffd23c' : '#ff5b5b') + '" title="生命值">♥ ' + hp + '/' + G.playerHPmax + '</span>';
     // 敌人进化度显示（对齐《异星工厂》Evolution factor）
     const evo = Math.round((G.evolution || 0) * 100);
     const evoColor = evo < 30 ? '#57e389' : evo < 60 ? '#ffd23c' : '#ff5b5b';
