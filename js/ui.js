@@ -1307,7 +1307,9 @@ function initPanelEvents() {
         if (mch && mch.takeAll) for (const [k, n] of mch.takeAll()) invAdd(k, n);
       } else if (act === 'tech') {
         // 前置科技校验：未满足前置的科技不能开始研究
-        if (G.techDone[id]) { toast('该科技已完成'); return; }
+        if (G.techDone[id] && !isInfiniteTech(id)) { toast('该科技已完成'); return; }
+        // 兼容旧档/调试解锁：无限科技即使曾被标记 done 也可重新无限研究，清掉错误的完成标记
+        if (isInfiniteTech(id)) delete G.techDone[id];
         if (techLocked(id)) {
           toast('需先研究：' + techMissingPrereqs(id).map(m => TECHS[m].name).join('、'));
           return;
@@ -2009,6 +2011,14 @@ function buildDebug() {
     ['完成研究', () => {
       const t = G.activeTech;
       if (!t) { toast('没有进行中的研究'); return; }
+      if (isInfiniteTech(t)) {
+        // 无限科技永不完成：完成一次视为 +1 级，可继续无限研究
+        G.techProg[t] = (G.techProg[t] || 0) + 1;
+        toast('无限科技 +1 级：' + TECHS[t].name + '（等级 ' + G.techProg[t] + '）');
+        G.activeTech = null;
+        renderPanel(false);
+        return;
+      }
       G.techProg[t] = techCostTotal(t);
       G.techDone[t] = true;
       toast('研究完成：' + TECHS[t].name);
@@ -2081,12 +2091,21 @@ function buildDebug() {
     }],
     ['新地图', () => { newGame(); closePanel(); toast('新地图已生成'); }],
     ['一键完成全部科技', () => {
+      let doneCnt = 0;
       for (const t in TECHS) {
+        if (isInfiniteTech(t)) {
+          // 无限科技永不完成：不标记 techDone，仅确保其“已解锁（techProg>0）”，
+          // 保留可继续无限研究（否则后续会被当已完成而无法再研究）。
+          if ((G.techProg[t] || 0) === 0) G.techProg[t] = 1;
+          delete G.techDone[t];
+          continue;
+        }
         G.techDone[t] = true;
         if (G.techProg[t] === undefined) G.techProg[t] = techCostTotal(t);
+        doneCnt++;
       }
       G.activeTech = null; G.techQueue = [];
-      toast('已解锁全部 ' + Object.keys(TECHS).length + ' 项科技');
+      toast('已解锁全部 ' + doneCnt + ' 项科技（无限科技可继续研究）');
       renderPanel(false);
     }],
     ['回满血', () => {

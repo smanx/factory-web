@@ -373,6 +373,8 @@ function applySave(d) {
   // 新版本把原可直接用/仅按核能门控的配方拆成独立进阶科技；
   // 旧档已研究上游科技时自动补完新科技，避免已有产线因配方锁定而失效。
   migrateNewTechs(G.techDone);
+  // 无限科技永不完成：读档时清除其被错误标记的“已完成”状态，保证仍可继续无限研究
+  for (const t in G.techDone) if (isInfiniteTech(t)) delete G.techDone[t];
   G.techProg = d.techProg || {};
   G.activeTech = d.activeTech || null;
   // 恢复研究队列（过滤已完成/无效项）
