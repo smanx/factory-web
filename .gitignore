@@ -13,3 +13,5 @@ test/
 
 # 依赖
 node_modules/
+package.json
+package-lock.json

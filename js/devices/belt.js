@@ -315,6 +315,34 @@ function beltCornerDir(e) {
   return inp[0];
 }
 
+// 判断是否为“梯形交汇”转角：转角出口通向一条直线传送带，且该直线带的另一端也有转角汇聚进来。
+// 此时两个转角与中间直线带构成梯形，若仍按弯曲圆弧绘制会在视觉上把直线带/另一转角覆盖住，
+// 因此转角应直接连到直线带上，不单独绘制圆弧。非梯形交汇（纯单转）则继续用弯曲圆弧。
+function beltCornerTrapezoid(e) {
+  if (!beltCornerDir(e)) return false;
+  const dir = e.dir;
+  // 出口必须是传送带（直线带或转角），作为梯形交汇的基准带
+  const nx = e.x + DX[dir], ny = e.y + DY[dir];
+  const nb = entAt(nx, ny);
+  if (!(nb instanceof Belt)) return false;
+  // 沿基准带方向走到其另一端
+  const runDir = nb.dir;
+  let x = nx, y = ny;
+  while (true) {
+    const fx = x + DX[runDir], fy = y + DY[runDir];
+    const f = entAt(fx, fy);
+    if (f instanceof Belt && f.dir === runDir) { x = fx; y = fy; continue; }
+    break;
+  }
+  // 基准带另一端之后若是一个转角、且把货送回这条带（出口反向）→ 构成梯形交汇
+  const far = entAt(x + DX[runDir], y + DY[runDir]);
+  if (far instanceof Belt && far.dir === ((runDir + 2) % 4)) {
+    const inp = beltInputSide(far);
+    if (inp.length === 1) return true;
+  }
+  return false;
+}
+
 // 绘制 90° 转角（弯曲圆弧带）。返回 true 表示已按转角绘制完成（含动效与物品）。
 // colors: { belt: 轨道底色, chev: 动效箭头色 }
 function drawBeltCorner(ctx, e, gx, gy, dir, alpha, colors) {
@@ -335,13 +363,6 @@ function drawBeltCorner(ctx, e, gx, gy, dir, alpha, colors) {
   const ccw = d < 0;
   // 轨道带：带宽 18 与直行带一致，中心线半径 = step（衔接相邻格边中心）
   const rIn = step - 9, rOut = step + 9, rC = step;
-
-  // 将转角带裁剪到本格子范围内：圆弧外侧原本会凸出并覆盖到相邻格子的传送带上，
-  // 裁剪后带子边缘在本格边界处保持平直，与相邻传送带边缘直接相连，互不覆盖。
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(px, py, TILE, TILE);
-  ctx.clip();
 
   // 轨道底色（圆环带）
   ctx.globalAlpha = alpha;
@@ -389,7 +410,6 @@ function drawBeltCorner(ctx, e, gx, gy, dir, alpha, colors) {
     itemFn(ctx, ix, iy, o.item);
   }
   ctx.globalAlpha = 1;
-  ctx.restore(); // 恢复裁剪，结束转角带绘制
   return true;
 }
 
@@ -454,8 +474,9 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
   const cx = px + TILE / 2, cy = py + TILE / 2;
   const inp = beltInputSide(e);
   const col = beltColors(e);
-  // 纯 90° 转角：直接以弯曲圆弧绘制，区分于 T 型转角
-  if (drawBeltCorner(ctx, e, gx, gy, dir, alpha, col)) {
+  // 纯 90° 转角：直接以弯曲圆弧绘制，区分于 T 型转角。
+  // 梯形交汇的转角例外——直接连到直线带（走下方直行带绘制），不再单独画圆弧。
+  if (!beltCornerTrapezoid(e) && drawBeltCorner(ctx, e, gx, gy, dir, alpha, col)) {
     drawBeltMark(ctx, e, gx, gy, alpha);
     return;
   }
