@@ -336,12 +336,14 @@ function drawBeltCorner(ctx, e, gx, gy, dir, alpha, colors) {
   // 轨道带：带宽 18 与直行带一致，中心线半径 = step（衔接相邻格边中心）
   const rIn = step - 9, rOut = step + 9, rC = step;
 
-  // 轨道底色（圆环带）——clip 到本格范围：转角圆弧只在所属格子内绘制，
-  // 让带子边缘与相邻直行带在格子边界直接相连，而不是让圆弧外凸覆盖到相邻传送带上。
+  // 将转角带裁剪到本格子范围内：圆弧外侧原本会凸出并覆盖到相邻格子的传送带上，
+  // 裁剪后带子边缘在本格边界处保持平直，与相邻传送带边缘直接相连，互不覆盖。
   ctx.save();
   ctx.beginPath();
   ctx.rect(px, py, TILE, TILE);
   ctx.clip();
+
+  // 轨道底色（圆环带）
   ctx.globalAlpha = alpha;
   ctx.fillStyle = colors.belt;
   ctx.strokeStyle = '#22252a';
@@ -387,7 +389,7 @@ function drawBeltCorner(ctx, e, gx, gy, dir, alpha, colors) {
     itemFn(ctx, ix, iy, o.item);
   }
   ctx.globalAlpha = 1;
-  ctx.restore();
+  ctx.restore(); // 恢复裁剪，结束转角带绘制
   return true;
 }
 
