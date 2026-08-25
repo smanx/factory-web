@@ -22,7 +22,8 @@ class Beacon extends Entity {
     return n > 0 ? BEACON_POWER : 0;   // 有模块才耗电
   }
   giveItem(item) {
-    if (!isModule(item)) return false;
+    // 对齐《异星工厂》：信号塔只能装速度模块，产能/效率模块无法放入信号塔。
+    if (!isModule(item) || moduleType(item) !== 'speed') return false;
     if (Object.values(this.modules).reduce((a, b) => a + b, 0) >= BEACON_MOD_SLOTS) return false;
     this.modules[item] = (this.modules[item] || 0) + 1;
     if (typeof playSfx === 'function') playSfx('module');
@@ -63,7 +64,18 @@ class Beacon extends Entity {
   }
   static restore(s) {
     const e = super.restore(s);
-    e.modules = s.modules || {};
+    // 信号塔只能装速度模块（对齐《异星工厂》：Beacon 仅接受速度模块）。
+    // 旧档若含非法模块（产能/效率），读档/粘贴时自动剔除并掉落到地面归还，不丢失。
+    e.modules = {};
+    if (s.modules) {
+      for (const k in s.modules) {
+        const n = s.modules[k] | 0;
+        if (n <= 0) continue;
+        if (moduleType(k) === 'speed') e.modules[k] = (e.modules[k] || 0) + n;
+        else if (typeof addGroundItem === 'function')
+          addGroundItem(Math.floor(e.x / TILE), Math.floor(e.y / TILE), k, n);
+      }
+    }
     return e;
   }
 }
@@ -147,8 +159,9 @@ function beaconPanelHtml(e) {
     const mc = moduleCounts(e.modules);
     const hasMod = Object.values(e.modules).reduce((a, b) => a + b, 0) > 0;
     h += row('模块', hasMod ?
-      '速度+' + mc.speed.toFixed(1) + ' 产能+' + mc.prod.toFixed(1) + ' 效率-' + mc.eff.toFixed(1) : '<span class="dim">无</span>', 'mod');
-    const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3'];
+      '速度+' + mc.speed.toFixed(1) : '<span class="dim">无</span>', 'mod');
+    // 信号塔只能装速度模块（对齐《异星工厂》：Beacon 仅接受速度模块）
+    const order = ['speed-module', 'speed-module-2', 'speed-module-3'];
     for (const mid of order) {
       if (!itemUnlocked(mid)) continue;
       const n = Math.min(invCount(mid), BEACON_MOD_SLOTS - Object.values(e.modules).reduce((a, b) => a + b, 0));
@@ -164,7 +177,7 @@ function beaconPanelLive(e, api) {
   const n = Object.values(e.modules).reduce((a, b) => a + b, 0);
   {
     const mc = moduleCounts(e.modules);
-    api.set('mod', n ? '速度+' + mc.speed.toFixed(1) + ' 产能+' + mc.prod.toFixed(1) + ' 效率-' + mc.eff.toFixed(1) : dimSpan('无'));
+    api.set('mod', n ? '速度+' + mc.speed.toFixed(1) : dimSpan('无'));
   }
   api.status(n > 0 ? '广播中：向周围生产建筑提供模块加成' : '无模块，空闲待机', n > 0 ? 'ok' : 'warn');
 }

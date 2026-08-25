@@ -10,6 +10,7 @@ declare -a scripts=(
   "tools/verify-stack-sizes.js"
   "tools/verify-belt-throughput.js"
   "tools/verify-data-integrity.js"
+  "tools/verify-beacon-modules.js"
 )
 
 fail=0
