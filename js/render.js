@@ -78,8 +78,8 @@ function render() {
   updateLOD();
   drawTerrain(ctx);
   drawGridIfBuilding(ctx);
-  // 污染系统可视化（对齐《异星工厂》：基地工业排放的红褐色污染云）
-  if (typeof drawPollution === 'function') drawPollution(ctx);
+  // 污染系统可视化：污染范围只显示在小地图上，不在主地图本体上绘制（见 drawPollutionMinimap）
+  // if (typeof drawPollution === 'function') drawPollution(ctx);
   // 空间分区（桶）索引：只遍历视口覆盖到的桶，避免对全量 G.ents 线性扫描（P0 优化）
   // 机械臂（Inserter 族）最后单独绘制在最上层，避免被传送带/其他设备遮挡。
   const keys = (G.buckets && G.buckets.size)
