@@ -3,7 +3,7 @@
 // ===== 管道：输送流体，相邻互连均压 =====
 class Pipe extends Entity {
   constructor(type, x, y) {
-    super('pipe', x, y);
+    super(type, x, y);
     this.fluid = {};
   }
   total() {
