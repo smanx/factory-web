@@ -379,25 +379,6 @@ function genChunk(cx, cy) {
     for (let lx = 0; lx < CHUNK; lx++)
       terrain[ly * CHUNK + lx] = isLake(ox + lx, oy + ly) ? T_WATER : T_GRASS;
 
-  // 树木（对齐《异星工厂》：森林与草地上的树可砍伐获得木）。
-  // 像矿床一样成簇聚集：以随机中心点为种子，用生长算法铺开一片片连续树团，
-  // 而非散落单棵树；靠近出生点树团较少较小，越远越密越大。
-  const forestRng = mulberry32((chunkSeed(cx, cy) ^ 0x51ed270b) >>> 0);
-  const fcX = ox + CHUNK / 2, fcY = oy + CHUNK / 2;
-  const fDist = Math.hypot(fcX, fcY);
-  // 每个区块可能生成的森林团数量：出生点附近较少（约 1/2 区块有），越远越多（最多约 3 团）
-  const forestProb = fDist < 15 ? 0.35 : fDist < 40 ? 0.6 : (fDist < 80 ? 0.85 : 1);
-  const forestCount = forestRng() < forestProb
-    ? 1 + Math.floor(forestRng() * (fDist < 40 ? 1.5 : 2.5))
-    : 0;
-  // 每团大小：出生点附近小簇，越远越大
-  const forestSize = Math.max(8, Math.round((18 + forestRng() * 24) * (1 + Math.min(2, fDist / 80))));
-  for (let f = 0; f < forestCount; f++) {
-    const fsx = Math.floor(forestRng() * CHUNK);
-    const fsy = Math.floor(forestRng() * CHUNK);
-    growForest(terrain, oreType, forestRng, fsx, fsy, forestSize);
-  }
-
   const cxn = cx * CHUNK + CHUNK / 2, cyn = cy * CHUNK + CHUNK / 2;
   const dist = Math.hypot(cxn, cyn);
   // 地图大小限制（对齐《异星工厂》地图大小）：超出可探索范围的地块视为边界（不可生成）
@@ -493,6 +474,27 @@ function genChunk(cx, cy) {
         if (isCliffTile(ox + lx, oy + ly)) terrain[idx] = T_CLIFF;
       }
     }
+  }
+
+  // 树木（对齐《异星工厂》：森林与草地上的树可砍伐获得木）。
+  // 像矿床一样成簇聚集：以随机中心点为种子，用生长算法铺开一片片连续树团，
+  // 而非散落单棵树；靠近出生点树团较少较小，越远越密越大。
+  // 放在矿床与峭壁生成之后：growForest 会跳过 oreType 非空的格子，
+  // 从而避免把树长在矿床/原油/铀矿的中间（与峭壁处理保持一致）。
+  const forestRng = mulberry32((chunkSeed(cx, cy) ^ 0x51ed270b) >>> 0);
+  const fcX = ox + CHUNK / 2, fcY = oy + CHUNK / 2;
+  const fDist = Math.hypot(fcX, fcY);
+  // 每个区块可能生成的森林团数量：出生点附近较少（约 1/2 区块有），越远越多（最多约 3 团）
+  const forestProb = fDist < 15 ? 0.35 : fDist < 40 ? 0.6 : (fDist < 80 ? 0.85 : 1);
+  const forestCount = forestRng() < forestProb
+    ? 1 + Math.floor(forestRng() * (fDist < 40 ? 1.5 : 2.5))
+    : 0;
+  // 每团大小：出生点附近小簇，越远越大
+  const forestSize = Math.max(8, Math.round((18 + forestRng() * 24) * (1 + Math.min(2, fDist / 80))));
+  for (let f = 0; f < forestCount; f++) {
+    const fsx = Math.floor(forestRng() * CHUNK);
+    const fsy = Math.floor(forestRng() * CHUNK);
+    growForest(terrain, oreType, forestRng, fsx, fsy, forestSize);
   }
 
   return { cx, cy, terrain, oreType, oreAmt };
