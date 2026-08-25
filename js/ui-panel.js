@@ -57,6 +57,12 @@ function initPanelEvents() {
       applySplitterFilterSearch(v);
     } else if (id === 'flt-search') {
       applyInserterFilterSearch(v);
+    } else if (id === 'ccsel-search') {
+      applyCreativeChestSearch(v);
+    } else if (id === 'cpsel-search') {
+      applyCreativePipeSearch(v);
+    } else if (id === 'cbsel-search') {
+      applyCreativeBeltSearch(v);
     } else if (target && target.matches && target.matches('[data-stat-hist-filter]')) {
       applyStatsHistFilter(v);
     }
