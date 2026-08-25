@@ -336,7 +336,12 @@ function drawBeltCorner(ctx, e, gx, gy, dir, alpha, colors) {
   // 轨道带：带宽 18 与直行带一致，中心线半径 = step（衔接相邻格边中心）
   const rIn = step - 9, rOut = step + 9, rC = step;
 
-  // 轨道底色（圆环带）
+  // 轨道底色（圆环带）——clip 到本格范围：转角圆弧只在所属格子内绘制，
+  // 让带子边缘与相邻直行带在格子边界直接相连，而不是让圆弧外凸覆盖到相邻传送带上。
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(px, py, TILE, TILE);
+  ctx.clip();
   ctx.globalAlpha = alpha;
   ctx.fillStyle = colors.belt;
   ctx.strokeStyle = '#22252a';
@@ -382,6 +387,7 @@ function drawBeltCorner(ctx, e, gx, gy, dir, alpha, colors) {
     itemFn(ctx, ix, iy, o.item);
   }
   ctx.globalAlpha = 1;
+  ctx.restore();
   return true;
 }
 
@@ -401,7 +407,12 @@ function drawBeltSideMerge(ctx, e, cx, cy, dir, s, step, alpha, col) {
   while (d < -Math.PI) d += 2 * Math.PI;
   const ccw = d < 0;
   const rIn = step - 9, rOut = step + 9, rC = step;
-  // 弧形轨道带（圆环段），颜色与主带一致，自然并入而非叠加矩形
+  // 弧形轨道带（圆环段），颜色与主带一致，自然并入而非叠加矩形。
+  // clip 到本格范围：汇入圆弧只在格子内连接带子边缘，不覆盖相邻传送带/主带。
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(cx - TILE / 2, cy - TILE / 2, TILE, TILE);
+  ctx.clip();
   ctx.globalAlpha = alpha;
   ctx.fillStyle = col.belt;
   ctx.strokeStyle = '#22252a';
@@ -430,6 +441,7 @@ function drawBeltSideMerge(ctx, e, cx, cy, dir, s, step, alpha, col) {
     ctx.restore();
   }
   ctx.globalAlpha = 1;
+  ctx.restore();
   return { CCx, CCy, aE, d, ccw, rC };
 }
 

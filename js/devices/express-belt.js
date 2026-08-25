@@ -74,26 +74,11 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
     ctx.fill();
   }
   ctx.restore();
-  // 侧面接入带：在主带箭头之后绘制，用带面色覆盖溢出的主轴箭头，
-  // 避免 T 型转角（双入单出）里侧面分支区域残留主方向箭头、造成流动“断开一小截”
-  for (const s of inp) strip(Math.atan2(s[1], s[0]), 0, step);
-  for (const s of inp) {
-    const sa = Math.atan2(s[1], s[0]);
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(sa);
-    ctx.beginPath();
-    ctx.rect(0, -TILE / 2 + 3, step, TILE - 6);
-    ctx.clip();
-    ctx.fillStyle = 'rgba(224,90,78,.9)';
-    for (let k = 0; k <= 2; k++) {
-      const xx = k * step - off;
-      if (xx < -3 || xx > step + 3) continue;
-      tri(ctx, xx + 3, -5, xx + 3, 5, xx - 3, 0);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
+  // 侧面接入带：用一段圆弧自然汇入主带（而非直矩形“搭”在主带之上），
+  // 与主带同色、同轮廓，平滑衔接且 clip 到本格不覆盖相邻带。
+  const sideArc = [];
+  for (const s of inp) sideArc.push(drawBeltSideMerge(ctx, e, cx, cy, dir, s, step, alpha, { belt: '#4a2a28', chev: 'rgba(224,90,78,.9)' }));
+
   const exitX = DX[dir] * step, exitY = DY[dir] * step;
   // 双列错位：物品沿各自车道流动（与普通带一致）
   const LANE_OFF = 7;
@@ -107,7 +92,19 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
     // 与普通带一致：仅确实来自侧面的物品走侧面接入线；直通物品（side<0）无需向中间靠拢，
     // 首尾相接方向一致时全程保持车道偏移直接平移过去。
     const fromSide = inp.length > 0 && o.side !== undefined && o.side >= 0 && o.side < inp.length;
-    if (o.pos < 0.5) {
+    const a = fromSide ? sideArc[o.side] : null;
+    if (a) {
+      // 侧面进入的物品沿接入圆弧走完整段，与弧形轨道一致；内/外弧决定车道位置
+      const s = inp[o.side];
+      const srcDir = dirIndexOf(-s[0], -s[1]);
+      const turnZ = DX[srcDir] * DY[dir] - DY[srcDir] * DX[dir];
+      const rightTurn = turnZ > 0;
+      const innerLane = rightTurn ? 0 : 1;
+      const laneR = a.rC + ((o.lane === innerLane ? -1 : 1) * 5);
+      const ang = a.aE + a.d * o.pos;
+      ix = cx + a.CCx + Math.cos(ang) * laneR;
+      iy = cy + a.CCy + Math.sin(ang) * laneR;
+    } else if (o.pos < 0.5) {
       if (fromSide) {
         const s = inp[o.side];
         const inX = cx + s[0] * step, inY = cy + s[1] * step;
