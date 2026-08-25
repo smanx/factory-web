@@ -522,7 +522,10 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
 
   // 侧面接入带：用一段圆弧自然汇入主带（而非直矩形“搭”在主带之上），
   // 与主带同色、同轮廓，平滑衔接；同时返回每个侧面的弧线参数供物品沿弧流动。
-  const sideArc = inp.length === 1 ? [drawBeltSideMerge(ctx, e, cx, cy, dir, inp[0], step, alpha, col)] : [];
+  const bx = e.x - DX[dir], by = e.y - DY[dir];
+  const backBelt = entAt(bx, by);
+  const hasBackInput = backBelt instanceof Belt && backBelt.dir === dir;
+  const sideArc = (inp.length === 1 && !hasBackInput) ? [drawBeltSideMerge(ctx, e, cx, cy, dir, inp[0], step, alpha, col)] : [];
 
   const exitX = DX[dir] * step, exitY = DY[dir] * step;
   // 双列错位：两条车道在行进方向垂直方向各偏移一半，物品沿各自车道流动

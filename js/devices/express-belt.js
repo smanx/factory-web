@@ -77,7 +77,10 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
   ctx.restore();
   // 侧面接入带：用一段圆弧自然汇入主带（而非直矩形"搭"在主带之上），
   // 与主带同色、同轮廓，平滑衔接且 clip 到本格不覆盖相邻带。
-  const sideArc = inp.length === 1 ? [drawBeltSideMerge(ctx, e, cx, cy, dir, inp[0], step, alpha, { belt: '#4a2a28', chev: 'rgba(224,90,78,.9)' })] : [];
+  const bx = e.x - DX[dir], by = e.y - DY[dir];
+  const backBelt = entAt(bx, by);
+  const hasBackInput = backBelt instanceof Belt && backBelt.dir === dir;
+  const sideArc = (inp.length === 1 && !hasBackInput) ? [drawBeltSideMerge(ctx, e, cx, cy, dir, inp[0], step, alpha, { belt: '#4a2a28', chev: 'rgba(224,90,78,.9)' })] : [];
 
   const exitX = DX[dir] * step, exitY = DY[dir] * step;
   // 双列错位：物品沿各自车道流动（与普通带一致）
