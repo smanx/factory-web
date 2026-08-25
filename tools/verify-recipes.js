@@ -161,16 +161,19 @@ check('长臂机械臂(1机械臂+1齿轮)',
   assertRecipeInput('long-inserter', 'inserter', 1) &&
   assertRecipeInput('long-inserter', 'iron-gear', 1) &&
   !getRecipeLine('long-inserter').includes('iron-plate'), true);
-// 过滤机械臂：基于机械臂（官方：1 inserter + 5 green-circuit，本项目简化）
-check('过滤机械臂基于机械臂', assertRecipeInput('filter-inserter', 'inserter', 1), true);
-// 堆叠机械臂：基于机械臂 + 齿轮
-check('堆叠机械臂基于机械臂+齿轮',
+// 过滤机械臂：官方 = 1 inserter + 5 electronic circuit
+check('过滤机械臂(1机械臂+5电路板)',
+  assertRecipeInput('filter-inserter', 'inserter', 1) &&
+  assertRecipeInput('filter-inserter', 'green-circuit', 5), true);
+// 堆叠机械臂：官方 = 1 inserter + 15 iron gear wheel
+check('堆叠机械臂(1机械臂+15齿轮)',
   assertRecipeInput('stack-inserter', 'inserter', 1) &&
-  assertRecipeInput('stack-inserter', 'iron-gear', 8), true);
-// 堆叠过滤机械臂：1 过滤 + 1 堆叠
+  assertRecipeInput('stack-inserter', 'iron-gear', 15), true);
+// 堆叠过滤机械臂：官方 = 1 filter + 1 stack（无额外部件）
 check('堆叠过滤机械臂(过滤+堆叠)',
   assertRecipeInput('stack-filter-inserter', 'filter-inserter', 1) &&
-  assertRecipeInput('stack-filter-inserter', 'stack-inserter', 1), true);
+  assertRecipeInput('stack-filter-inserter', 'stack-inserter', 1) &&
+  !getRecipeLine('stack-filter-inserter').includes('iron-gear'), true);
 
 // ---- 传送带族（对齐《异星工厂》官方 Wiki）----
 console.log('\n【传送带族配方对齐官方】');
@@ -180,12 +183,76 @@ check('传送带(1铁板+1齿轮→2条)',
   assertRecipeInput('transport-belt', 'iron-gear', 1) &&
   getRecipeLine('transport-belt').includes("'transport-belt': 2"), true);
 // 快速传送带：官方 = 1 传送带 + 1 齿轮 → 1 条
-check('快速传送带基于传送带+齿轮',
-  assertRecipeInput('fast-transport-belt', 'iron-gear', 1), true);
+check('快速传送带(1传送带+1齿轮)',
+  assertRecipeInput('fast-transport-belt', 'transport-belt', 1) &&
+  assertRecipeInput('fast-transport-belt', 'iron-gear', 1) &&
+  !getRecipeLine('fast-transport-belt').includes('iron-plate'), true);
 // 极速传送带：官方 = 1 快速带 + 5 齿轮 → 1 条
 check('极速传送带基于快速带+5齿轮',
   assertRecipeInput('express-transport-belt', 'fast-transport-belt', 1) &&
   assertRecipeInput('express-transport-belt', 'iron-gear', 5), true);
+// 分流器：官方 = 2 传送带 + 1 齿轮 + 4 铁杆 → 1
+check('分流器(2传送带+1齿轮+4铁杆)',
+  assertRecipeInput('splitter', 'transport-belt', 2) &&
+  assertRecipeInput('splitter', 'iron-gear', 1) &&
+  assertRecipeInput('splitter', 'iron-stick', 4), true);
+// 地下传送带：官方 = 2 传送带 + 2 齿轮 + 5 铁杆 → 2
+check('地下传送带(2传送带+2齿轮+5铁杆→2)',
+  assertRecipeInput('underground', 'transport-belt', 2) &&
+  assertRecipeInput('underground', 'iron-gear', 2) &&
+  assertRecipeInput('underground', 'iron-stick', 5) &&
+  getRecipeLine('underground').includes("'underground': 2"), true);
+// 快速地下传送带：官方 = 1 地下带 + 2 快带 + 2 齿轮 → 2
+check('快速地下传送带(1地下带+2快带+2齿轮→2)',
+  assertRecipeInput('fast-underground-belt', 'underground', 1) &&
+  assertRecipeInput('fast-underground-belt', 'fast-transport-belt', 2) &&
+  assertRecipeInput('fast-underground-belt', 'iron-gear', 2) &&
+  getRecipeLine('fast-underground-belt').includes("'fast-underground-belt': 2"), true);
+
+// ---- 组装机族 / 研究中心 / 电采矿机 / 铁箱 / 快速带（对齐《异星工厂》官方 Wiki）----
+console.log('\n【组装机族 / 研究中心 / 电采矿机 / 铁箱配方对齐官方】');
+// 组装机 I：官方 = 5 铁板 + 2 齿轮 + 2 电路板
+check('组装机I(5铁板+2齿轮+2电路板)',
+  assertRecipeInput('assembling-machine', 'iron-plate', 5) &&
+  assertRecipeInput('assembling-machine', 'iron-gear', 2) &&
+  assertRecipeInput('assembling-machine', 'green-circuit', 2), true);
+// 组装机 II：官方 = 2 组装机I + 2 钢板 + 2 齿轮 + 4 电路板
+check('组装机II(2组装机I+2钢板+2齿轮+4电路板)',
+  assertRecipeInput('assembling-machine-mk2', 'assembling-machine', 2) &&
+  assertRecipeInput('assembling-machine-mk2', 'steel-plate', 2) &&
+  assertRecipeInput('assembling-machine-mk2', 'iron-gear', 2) &&
+  assertRecipeInput('assembling-machine-mk2', 'green-circuit', 4), true);
+// 组装机 III：官方 = 2 组装机II + 4 钢板 + 4 齿轮 + 4 红板 + 4 处理器
+check('组装机III(2组装机II+4钢板+4齿轮+4红板+4处理器)',
+  assertRecipeInput('assembling-machine-3', 'assembling-machine-mk2', 2) &&
+  assertRecipeInput('assembling-machine-3', 'steel-plate', 4) &&
+  assertRecipeInput('assembling-machine-3', 'iron-gear', 4) &&
+  assertRecipeInput('assembling-machine-3', 'advanced-circuit', 4) &&
+  assertRecipeInput('assembling-machine-3', 'processing-unit', 4), true);
+// 研究中心：官方 = 10 齿轮 + 10 电路板 + 10 石头
+check('研究中心(10齿轮+10电路板+10石头)',
+  assertRecipeInput('lab', 'iron-gear', 10) &&
+  assertRecipeInput('lab', 'green-circuit', 10) &&
+  assertRecipeInput('lab', 'stone', 10), true);
+// 电采矿机：官方 = 8 铁板 + 3 齿轮 + 2 电路板
+check('电采矿机(8铁板+3齿轮+2电路板)',
+  assertRecipeInput('electric-drill', 'iron-plate', 8) &&
+  assertRecipeInput('electric-drill', 'iron-gear', 3) &&
+  assertRecipeInput('electric-drill', 'green-circuit', 2), true);
+// 铁箱：官方 = 8 铁板 → 1（独立配方，非木箱升级）
+check('铁箱(8铁板独立配方)',
+  assertRecipeInput('iron-chest', 'iron-plate', 8) &&
+  !getRecipeLine('iron-chest').includes('wooden-chest'), true);
+// 木箱：官方 = 2 木材 → 1
+check('木箱(2木材)',
+  assertRecipeInput('wooden-chest', 'wood', 2), true);
+// 钢箱：官方 = 8 钢板 → 1
+check('钢箱(8钢板)', assertRecipeInput('steel-chest', 'steel-plate', 8), true);
+// 修理包：官方 = 1 齿轮 + 2 铜板
+check('修理包(1齿轮+2铜板)',
+  assertRecipeInput('repair-pack', 'iron-gear', 1) &&
+  assertRecipeInput('repair-pack', 'copper-plate', 2), true);
+
 console.log('\n----------------------------------------');
 console.log('通过 ' + passCount + ' 项，失败 ' + failCount + ' 项');
 process.exit(failCount > 0 ? 1 : 0);

@@ -380,7 +380,7 @@ const ITEMS = {
   'wood': { name: '木材', color: '#8a6a3a', mark: 'W', desc: '由砍伐树木获得，是木质家具与修理包的原料，也可作低效燃料' },
   // ===== 基础储物箱（对齐《异星工厂》：木箱/铁箱/钢箱递进） =====
   'wooden-chest': { name: '木箱', color: '#a08050', desc: '最基础的储物箱，容量较小（16 格），开局即可合成。可接入电路网络输出箱内物品数量信号（对齐《异星工厂》）' },
-  'iron-chest': { name: '铁箱', color: '#b0b8c4', desc: '由木箱升级的储物箱，容量更大（32 格）。可接入电路网络输出箱内物品数量信号（对齐《异星工厂》）' },
+  'iron-chest': { name: '铁箱', color: '#b0b8c4', desc: '储物箱，容量比木箱更大（32 格）。可接入电路网络输出箱内物品数量信号（对齐《异星工厂》：8铁板→1铁箱）' },
   // ===== 修理包（对齐《异星工厂》Repair pack） =====
   'repair-pack': { name: '修理包', color: '#5aa0d0', desc: '选中后点击受损建筑可修复其耐久度。每个修理包有多次使用次数，损坏建筑恢复 HP' },
   // ===== 开采工具（对齐《异星工厂》Iron axe / Steel axe：手持加速手挖） =====
@@ -442,22 +442,22 @@ const RECIPES = {
   'burner-drill':       { time: 2,   inp: { 'iron-plate': 4, 'iron-gear': 2 },                   out: { 'burner-drill': 1 } },
   'stone-furnace':      { time: 0.5, inp: { 'stone': 5 },                                        out: { 'stone-furnace': 1 } },
   'storage-chest':      { time: 1,   inp: { 'iron-plate': 8 },                                   out: { 'storage-chest': 1 } },
-  'assembling-machine': { time: 2,   inp: { 'iron-plate': 5, 'iron-gear': 4, 'green-circuit': 3 }, out: { 'assembling-machine': 1 } },
-  'lab':                { time: 3,   inp: { 'iron-gear': 8, 'green-circuit': 8, 'stone': 10 },   out: { 'lab': 1 } },
-  'splitter':           { time: 1,   inp: { 'iron-plate': 4, 'iron-gear': 4, 'iron-stick': 2 },       out: { 'splitter': 1 } },
-  'underground':        { time: 1.5, inp: { 'iron-plate': 6, 'iron-gear': 4, 'iron-stick': 4 },       out: { 'underground': 1 } },
+  'assembling-machine': { time: 2,   inp: { 'iron-plate': 5, 'iron-gear': 2, 'green-circuit': 2 }, out: { 'assembling-machine': 1 } },  // 对齐官方：5铁板+2齿轮+2电路板
+  'lab':                { time: 3,   inp: { 'iron-gear': 10, 'green-circuit': 10, 'stone': 10 },   out: { 'lab': 1 } },  // 对齐官方：10齿轮+10电路板+10石头
+  'splitter':           { time: 1,   inp: { 'transport-belt': 2, 'iron-gear': 1, 'iron-stick': 4 },       out: { 'splitter': 1 } },  // 对齐官方：2传送带+1齿轮+4铁杆→1
+  'underground':        { time: 1.5, inp: { 'transport-belt': 2, 'iron-gear': 2, 'iron-stick': 5 },       out: { 'underground': 2 } },  // 对齐官方：2传送带+2齿轮+5铁杆→2
   'boiler':             { time: 1.5, inp: { 'stone': 5, 'iron-plate': 1 },                         out: { 'boiler': 1 } },
   'steam-engine':       { time: 2,   inp: { 'iron-plate': 2, 'iron-gear': 1, 'pipe': 1 },          out: { 'steam-engine': 1 } },
   'offshore-pump':      { time: 1,   inp: { 'iron-plate': 5, 'iron-gear': 1 },                     out: { 'offshore-pump': 1 } },
-  'electric-drill':     { time: 2,   inp: { 'iron-plate': 8, 'iron-gear': 3 },                     out: { 'electric-drill': 1 } },
+  'electric-drill':     { time: 2,   inp: { 'iron-plate': 8, 'iron-gear': 3, 'green-circuit': 2 },                     out: { 'electric-drill': 1 } },  // 对齐官方：8铁板+3齿轮+2电路板
   'electric-furnace':   { time: 2.5, inp: { 'iron-plate': 6, 'steel-plate': 2, 'iron-gear': 1, 'green-circuit': 2 }, out: { 'electric-furnace': 1 } },
-  'assembling-machine-mk2': { time: 3, inp: { 'steel-plate': 6, 'iron-gear': 4, 'green-circuit': 6 }, out: { 'assembling-machine-mk2': 1 } },
-  'fast-transport-belt': { time: 0.5, inp: { 'iron-plate': 2, 'iron-gear': 1 },                  out: { 'fast-transport-belt': 1 } },
-  'fast-underground-belt': { time: 1, inp: { 'underground': 1, 'iron-gear': 5 },                  out: { 'fast-underground-belt': 1 } },
+  'assembling-machine-mk2': { time: 3, inp: { 'assembling-machine': 2, 'steel-plate': 2, 'iron-gear': 2, 'green-circuit': 4 }, out: { 'assembling-machine-mk2': 1 } },  // 对齐官方：2组装机I+2钢板+2齿轮+4电路板
+  'fast-transport-belt': { time: 0.5, inp: { 'transport-belt': 1, 'iron-gear': 1 },                  out: { 'fast-transport-belt': 1 } },  // 对齐官方：1传送带+1齿轮→1
+  'fast-underground-belt': { time: 1, inp: { 'underground': 1, 'fast-transport-belt': 2, 'iron-gear': 2 },                  out: { 'fast-underground-belt': 2 } },  // 对齐官方：1地下带+2快带+2齿轮→2
   'priority-splitter': { time: 1,   inp: { 'splitter': 1, 'iron-gear': 1 },                       out: { 'priority-splitter': 1 } },
-  'filter-inserter':   { time: 1,   inp: { 'inserter': 1, 'green-circuit': 1 },                   out: { 'filter-inserter': 1 } },
-  'stack-inserter':    { time: 1.5, inp: { 'inserter': 1, 'iron-gear': 8 },                       out: { 'stack-inserter': 1 } },
-  'stack-filter-inserter': { time: 2, inp: { 'filter-inserter': 1, 'stack-inserter': 1, 'iron-gear': 4 }, out: { 'stack-filter-inserter': 1 } },
+  'filter-inserter':   { time: 1,   inp: { 'inserter': 1, 'green-circuit': 5 },                   out: { 'filter-inserter': 1 } },  // 对齐官方：1机械臂+5电路板
+  'stack-inserter':    { time: 1.5, inp: { 'inserter': 1, 'iron-gear': 15 },                       out: { 'stack-inserter': 1 } },  // 对齐官方：1机械臂+15齿轮
+  'stack-filter-inserter': { time: 2, inp: { 'filter-inserter': 1, 'stack-inserter': 1 }, out: { 'stack-filter-inserter': 1 } },  // 对齐官方：1过滤臂+1堆叠臂
   'green-science':     { time: 4,   inp: { 'transport-belt': 1, 'inserter': 1 },                  out: { 'green-science': 1 } },
   'blue-science':      { time: 8,   inp: { 'plastic-bar': 2, 'green-circuit': 2, 'copper-plate': 1 }, out: { 'blue-science': 1 } },
   'pipe':              { time: 0.5, inp: { 'iron-plate': 1 },                                     out: { 'pipe': 1 } },
@@ -472,7 +472,7 @@ const RECIPES = {
   'steel-chest':      { time: 1,   inp: { 'steel-plate': 8 }, out: { 'steel-chest': 1 } },
   // ===== 基础储物箱（木箱→铁箱→钢箱递进，对齐《异星工厂》） =====
   'wooden-chest':     { time: 0.5, inp: { 'wood': 2 }, out: { 'wooden-chest': 1 } },
-  'iron-chest':       { time: 1,   inp: { 'wooden-chest': 1, 'iron-plate': 4 }, out: { 'iron-chest': 1 } },
+  'iron-chest':       { time: 1,   inp: { 'iron-plate': 8 }, out: { 'iron-chest': 1 } },  // 对齐官方：8铁板→1铁箱
   // ===== 修理包（对齐《异星工厂》Repair pack） =====
   'repair-pack':      { time: 1,   inp: { 'iron-gear': 1, 'copper-plate': 2 }, out: { 'repair-pack': 1 } },
   // ===== 开采工具配方（对齐《异星工厂》Iron axe / Steel axe） =====
@@ -482,7 +482,7 @@ const RECIPES = {
   'deconstruction-planner': { time: 1, inp: { 'iron-plate': 1 }, out: { 'deconstruction-planner': 1 } },
   'upgrade-planner': { time: 1, inp: { 'iron-plate': 1, 'green-circuit': 1 }, out: { 'upgrade-planner': 1 } },
   'steel-furnace':    { time: 2,   inp: { 'steel-plate': 8, 'stone': 6 }, out: { 'steel-furnace': 1 } },
-  'assembling-machine-3': { time: 3, inp: { 'assembling-machine-mk2': 1, 'steel-plate': 8, 'iron-gear': 6, 'green-circuit': 8 }, out: { 'assembling-machine-3': 1 } },
+  'assembling-machine-3': { time: 3, inp: { 'assembling-machine-mk2': 2, 'steel-plate': 4, 'iron-gear': 4, 'advanced-circuit': 4, 'processing-unit': 4 }, out: { 'assembling-machine-3': 1 } },  // 对齐官方：2组装机II+4钢板+4齿轮+4红板+4处理器
   'pipe-to-ground':   { time: 1,   inp: { 'pipe': 10, 'iron-plate': 5 }, out: { 'pipe-to-ground': 1 } },
   'pump':             { time: 1,   inp: { 'iron-plate': 4, 'steel-plate': 2, 'green-circuit': 1 }, out: { 'pump': 1 } },
   'solar-panel':      { time: 5,   inp: { 'copper-plate': 5, 'steel-plate': 5, 'green-circuit': 5 }, out: { 'solar-panel': 1 } },
