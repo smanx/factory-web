@@ -418,7 +418,12 @@ function loop(ts) {
       refreshHotbar();
       if (G.panelMode === 'machine') updateMachineLive();
       if (G.panelMode === 'stats') updateStatsLive();
-      if (uiDirty && (G.panelMode === 'inv' || G.panelMode === 'tech')) renderPanel(false);
+      // 背包/科技面板：不做整面板 innerHTML 重建。整面板重建每帧生成上百个 DOM
+      // 节点（base64 图标、tooltip 等），打开背包后明显掉帧；且重建会销毁正在聚焦
+      // 的输入框，打断中文输入法并清空已输入内容。改用轻量计数刷新（不改 DOM 结构）。
+      // 整面板的重建只发生在打开面板或用户在面板内交互时（renderPanel）。
+      if (G.panelMode === 'inv' && !isPanelTyping()) updateInvLive();
+      else if (G.panelMode === 'tech' && !isPanelTyping()) renderPanel(false);
       uiDirty = false;
     }
     updateHUD(dt, Math.round(fpsSmooth));

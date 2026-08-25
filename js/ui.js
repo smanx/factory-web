@@ -223,6 +223,65 @@ function renderPanel(full) {
   if (G.panelMode !== 'set') body.scrollTop = st;
 }
 
+// 判断用户是否正在面板内的输入框输入（聚焦的文本输入框，或中文输入法组合中）。
+// 此时绝不能被整面板 innerHTML 重建打断（重建会销毁输入框、打断组合、清空已输入内容）。
+function isPanelTyping() {
+  const ae = document.activeElement;
+  if (!ae || ae.tagName !== 'INPUT') return false;
+  const body = document.getElementById('panel-body');
+  return !!(body && body.contains(ae));
+}
+
+// 背包面板轻量实时刷新：仅更新数量/可用性文本，不重建整个面板 DOM。
+// 原实现在游戏主循环里对 inv/tech 面板整块 renderPanel(false)，每帧重建上百个
+// DOM 节点（base64 图标、tooltip 等）导致打开背包后明显掉帧；且重建会销毁正在聚焦
+// 的输入框，打断中文输入法并清空已输入内容。改为只更新变化的计数文本，从而同时
+// 解决“打开背包掉帧”与“搜索框无法正常输入中文/被清空”两个问题。
+function updateInvLive() {
+  const body = document.getElementById('panel-body');
+  if (!body || G.panelMode !== 'inv') return;
+  const infinite = !!(G.dbg && G.dbg.infinite);
+  // 材料 chips：<span class="chip" data-itemid="ID"><img>名称 ×N</span>
+  // （排除物流请求/垃圾桶 chip，它们带 lreq-chip/trash-chip 类且有内嵌子元素）
+  body.querySelectorAll('.chips .chip[data-itemid]:not(.lreq-chip):not(.trash-chip)').forEach(el => {
+    const id = el.dataset.itemid;
+    if (!id || !ITEMS[id]) return;
+    const n = invCount(id);
+    const img = el.querySelector('img');
+    if (!img) return;
+    el.textContent = '';
+    el.appendChild(img);
+    el.appendChild(document.createTextNode(ITEMS[id].name + (n > 0 ? ' ×' + n : '')));
+  });
+  // 建造设备按钮：<button class="buildbtn" data-itemid="ID"><img>名称 ×N</button>
+  body.querySelectorAll('#build-dev-grid .buildbtn[data-itemid]').forEach(btn => {
+    const id = btn.dataset.itemid;
+    if (!id || !ITEMS[id]) return;
+    const n = invCount(id);
+    const can = infinite || n > 0;
+    btn.classList.toggle('disabled', !can);
+    btn.style.opacity = can ? '' : '.45';
+    const img = btn.querySelector('img');
+    if (!img) return;
+    btn.textContent = '';
+    btn.appendChild(img);
+    btn.appendChild(document.createTextNode(ITEMS[id].name + (infinite ? ' ∞' : (n > 0 ? ' ×' + n : ''))));
+  });
+  // 手搓配方原料可用性：<span class="ing" data-itemid="K" data-need="N">...名称 have/N</span>
+  body.querySelectorAll('#inv-recipes .ing[data-itemid][data-need]').forEach(el => {
+    const id = el.dataset.itemid;
+    const need = +el.dataset.need || 0;
+    if (!id || !ITEMS[id]) return;
+    const have = invCount(id);
+    el.classList.toggle('lack', have < need);
+    const img = el.querySelector('img');
+    if (!img) return;
+    el.textContent = '';
+    el.appendChild(img);
+    el.appendChild(document.createTextNode(ITEMS[id].name + ' ' + have + '/' + need));
+  });
+}
+
 function updateMachineLive() {
   if (G.panelMode !== 'machine' || !G.panelEnt) return;
   const e = G.panelEnt;
@@ -433,7 +492,7 @@ function htmlCraft() {
     h += '<div class="ring">';
     for (const k in rec.inp) {
       const have = invCount(k);
-      h += '<span class="ing ' + (have >= rec.inp[k] ? '' : 'lack') + '" data-itemid="' + k + '" data-tip="' + itemTip(k) + '">' +
+      h += '<span class="ing ' + (have >= rec.inp[k] ? '' : 'lack') + '" data-itemid="' + k + '" data-need="' + rec.inp[k] + '" data-tip="' + itemTip(k) + '">' +
         '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + have + '/' + rec.inp[k] + '</span>';
     }
     h += '</div></div>';
