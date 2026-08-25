@@ -1421,9 +1421,12 @@ async function saveListHtml() {
     const d = new Date(s.time);
     const time = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
     const tag = s.type === 'auto' ? '<span class="save-tag auto">自动</span>' : '<span class="save-tag user">用户</span>';
+    // 带稳定编号的名称（自动存档按槽位 #1/#2/#3，用户存档按递增 #N），覆盖后仍能辨认是哪个
+    const label = (s.type === 'auto' ? '自动存档 #' + (s.num || '?') : '用户存档 #' + (s.num || '?'));
+    const dispName = (s.type === 'user' && s.name) ? (label + '（' + s.name + '）') : label;
     h += '<div class="save-item">';
     h += '  <div class="save-item-top">';
-    h += '    <div class="save-item-info">' + tag + ' <span class="save-name">' + escHtml(s.name || '存档') + '</span></div>';
+    h += '    <div class="save-item-info">' + tag + ' <span class="save-name">' + escHtml(dispName) + '</span></div>';
     h += '    <div class="save-item-ops">';
     h += '      <button data-action="load-save" data-id="' + s.id + '" title="读取该存档">📂 读取</button>';
     h += '      <button data-action="overwrite-save" data-id="' + s.id + '" title="用当前进度覆盖该存档">💾 覆盖</button>';

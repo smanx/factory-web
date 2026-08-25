@@ -242,7 +242,10 @@ async function saveGame(id, name) {
   let res;
   if (id && await hasSave(id)) {
     res = await overwriteSave(id, data);
-    if (res) toast('已覆盖存档：' + (res.name || '存档'));
+    if (res) {
+      const numTag = res.num ? (res.type === 'auto' ? '自动存档 #' + res.num : '用户存档 #' + res.num) : (res.name || '存档');
+      toast('已覆盖存档：' + numTag);
+    }
     else toast('保存失败');
   } else {
     // 新建用户存档：最多只能有 MAX_USER_SAVES 个，超出则提示
@@ -251,7 +254,7 @@ async function saveGame(id, name) {
       return null;
     }
     res = await writeSave(data, 'user', id || null, name || '');
-    if (res) toast('已保存');
+    if (res) toast('已保存：用户存档 #' + (res.num || '?'));
     else toast('保存失败');
   }
   return res;
