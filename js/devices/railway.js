@@ -690,21 +690,47 @@ class TrainStop extends CircuitNode {
     this.load = [];    // 要装入车厢的物品清单
     this.unload = [];  // 要从车厢卸出的物品清单
     this.name = '';    // 车站名（用于列车自动调度路线引用）
+    this.readTrain = false;  // 是否把停靠列车所载物品/流体以信号输出到电路网络（对齐《异星工厂》车站“读取列车内容”）
   }
   // 是否有列车停靠本站（车头停在车站所在格且处于停靠状态）
   trainPresent() {
-    if (!G.trains || !G.trains.length) return false;
+    return this.parkedTrain() !== null;
+  }
+  // 返回停靠在本站的列车对象（车头停在车站所在格）；无则返回 null
+  parkedTrain() {
+    if (!G.trains || !G.trains.length) return null;
     for (const tr of G.trains) {
       if (!tr || !tr.cars || !tr.cars.length) continue;
       const head = tr.cars[0];
       if (!head || head._dead) continue;
-      if (head.x === this.x && head.y === this.y) return true;
+      if (head.x === this.x && head.y === this.y) return tr;
     }
-    return false;
+    return null;
   }
-  // 电路信号输出：有列车停靠时输出 signal-train=1（对齐《异星工厂》车站列车信号）
+  // 电路信号输出：有列车停靠时输出 signal-train=1（对齐《异星工厂》车站列车信号）；
+  // 开启“读取列车内容”后，额外把停靠列车所有车厢所载物品/流体以物品信号输出到网络（对齐《异星工厂》车站 Read train contents）。
   outputCircuitSignals() {
-    return this.trainPresent() ? [{ sig: 'signal-train', count: 1 }] : [];
+    const tr = this.parkedTrain();
+    if (!tr) return [];
+    const out = [{ sig: 'signal-train', count: 1 }];
+    if (!this.readTrain) return out;
+    if (!tr.cars || !tr.cars.length) return out;
+    for (const car of tr.cars) {
+      if (!car || car._dead) continue;
+      // 货运车厢：把每个槽位的物品汇总为信号（对齐原版：列车货物以物品信号输出）
+      if (car instanceof CargoWagon && typeof car.slots !== 'undefined' && car.slots) {
+        for (const st of car.slots) {
+          if (!st || !st.item || !st.count) continue;
+          const sig = { sig: st.item, count: st.count };
+          out.push(sig);
+        }
+      }
+      // 流体车厢：把所载流体以流体信号输出（对齐原版：流体车厢容量以流体信号输出）
+      if (car instanceof FluidWagon && car.fluid) {
+        out.push({ sig: car.fluid, count: car.amount });
+      }
+    }
+    return out;
   }
   contents() {
     return [[this.type, 1]];
@@ -725,6 +751,7 @@ class TrainStop extends CircuitNode {
   serialize() {
     const s = super.serialize();
     s.load = this.load; s.unload = this.unload; s.name = this.name;
+    s.readTrain = this.readTrain ? 1 : 0;
     return s;
   }
   static restore(s) {
@@ -732,6 +759,7 @@ class TrainStop extends CircuitNode {
     st.load = Array.isArray(s.load) ? s.load : [];
     st.unload = Array.isArray(s.unload) ? s.unload : [];
     st.name = s.name || '';
+    st.readTrain = !!s.readTrain;
     return st;
   }
 }
@@ -1592,6 +1620,10 @@ function trainStopPanelHtml(e) {
       (state ? '<b>[' + state + ']</b>' : '') + '<img src="' + iconDataURL(id) + '">' + ITEMS[id].name + '</button>';
   }
   h += '</div>';
+  h += '<div class="sec">电路选项</div>' +
+    '<div class="row"><button data-action="ts-readtrain" class="rcbtn ' + (e.readTrain ? 'sel' : '') + '">' +
+    (e.readTrain ? '✓ ' : '') + '读取列车内容（输出到电路网络）</button></div>' +
+    '<div class="dim">开启后，把停靠列车所有车厢所载物品与流体以物品信号输出到所连电路网络，供组合器/功率开关/告警音箱按列车载货量自动化调度（对齐《异星工厂》车站 Read train contents）。</div>';
   h += '<div class="status"></div>';
   h += '<div class="dim">放置：把车站放在铁轨上，车站旁（3×3）放储物箱。列车停靠时，自动把“卸载”物品从车厢卸入箱子、把“装载”物品从箱子装入车厢。对齐《异星工厂》火车车站装卸。</div>';
   h += '<div class="dim">已接入电路网络：有列车停靠本站时输出 signal-train（车站列车信号）到所连网络，供组合器/功率开关/告警音箱读取，实现按列车到站自动化的调度（对齐《异星工厂》车站电路信号）。</div>';
@@ -1604,11 +1636,18 @@ function trainStopPanelLive(e, api) {
   if (sched) parts.push('已纳入列车自动调度路线（蓝色光环标记）');
   if (n) parts.push('已配置 ' + n + ' 种装卸物品');
   else parts.push('未配置装卸（列车仅短暂停车）');
+  if (e.readTrain) parts.push('已开启读取列车内容');
   api.status(parts.join(' · '), (sched ? 'ok' : n ? 'ok' : 'warn'));
 }
 function trainStopOnAction(act, btn) {
   const st = G.panelEnt;
   if (!st || !(st instanceof TrainStop)) return false;
+  if (act === 'ts-readtrain') {
+    st.readTrain = !st.readTrain;
+    toast(st.readTrain ? '已开启：输出停靠列车内容信号到电路网络' : '已关闭读取列车内容');
+    uiDirty = true;
+    return true;
+  }
   if (act === 'ts-rename') {
     const inp = document.getElementById('ts-name');
     if (inp && inp.value.trim()) {
