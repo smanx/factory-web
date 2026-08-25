@@ -20,8 +20,8 @@ function makePlayer(tx, ty) {
 
 function solidAtPx(px, py) {
   const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE);
-  // 玩家/载具碰撞：水与峭壁均不可通行（对齐《异星工厂》Cliff 阻隔移动）
-  return isWater(tx, ty) || isCliff(tx, ty);
+  // 玩家/载具碰撞：水、峭壁与树木均不可通行（对齐《异星工厂》：树与 Cliff 均阻隔移动，需砍伐/清除才能通过）
+  return isWater(tx, ty) || isCliff(tx, ty) || isTree(tx, ty);
 }
 
 function boxBlocked(cx, cy, r) {

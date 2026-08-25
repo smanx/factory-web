@@ -178,6 +178,7 @@ function consumeOre(tx, ty) {
 
 function isWater(tx, ty) { return getTerrain(tx, ty) === T_WATER; }
 function isCliff(tx, ty) { return getTerrain(tx, ty) === T_CLIFF; }
+function isTree(tx, ty) { return getTerrain(tx, ty) === T_TREE; }
 
 // 平滑插值
 function lerp(a, b, t) { return a + (b - a) * t; }

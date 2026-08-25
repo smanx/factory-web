@@ -95,7 +95,7 @@ function makeSpawner() {
     const ang = Math.random() * Math.PI * 2;
     const tx = Math.round(px + Math.cos(ang) * dist);
     const ty = Math.round(py + Math.sin(ang) * dist);
-    if ((!isWater(tx, ty) && !isCliff(tx, ty)) && !entAt(tx, ty)) {
+    if ((!isWater(tx, ty) && !isCliff(tx, ty) && !isTree(tx, ty)) && !entAt(tx, ty)) {
       return spawnerAt(tx, ty);
     }
   }
@@ -124,7 +124,7 @@ const SPAWNER_FOOT = 2;   // 边长（格）
 function spawnerAreaFree(tx, ty) {
   for (let dy = 0; dy < SPAWNER_FOOT; dy++) {
     for (let dx = 0; dx < SPAWNER_FOOT; dx++) {
-      if (isWater(tx + dx, ty + dy) || isCliff(tx + dx, ty + dy) || entAt(tx + dx, ty + dy)) return false;
+      if (isWater(tx + dx, ty + dy) || isCliff(tx + dx, ty + dy) || isTree(tx + dx, ty + dy) || entAt(tx + dx, ty + dy)) return false;
     }
   }
   // 避免与其它虫巢的 2×2 占地重叠（虫巢不在 G.ents 网格中，需手动检查）
@@ -241,7 +241,7 @@ function spawnEnemies(dt) {
     for (let i = 0; i < 8; i++) {
       const cx2 = tx + Math.floor(Math.random() * 5) - 2;
       const cy2 = ty + Math.floor(Math.random() * 5) - 2;
-      if ((!isWater(cx2, cy2) && !isCliff(cx2, cy2)) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
+      if ((!isWater(cx2, cy2) && !isCliff(cx2, cy2) && !isTree(cx2, cy2)) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
     }
   } else {
     // 兜底：无巢穴时（巢穴尚未生成或全部被摧毁）在玩家远处生成
@@ -252,7 +252,7 @@ function spawnEnemies(dt) {
     for (let i = 0; i < 8; i++) {
       const cx2 = tx + Math.floor(Math.random() * 5) - 2;
       const cy2 = ty + Math.floor(Math.random() * 5) - 2;
-      if ((!isWater(cx2, cy2) && !isCliff(cx2, cy2)) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
+      if ((!isWater(cx2, cy2) && !isCliff(cx2, cy2) && !isTree(cx2, cy2)) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
     }
   }
   const t = pickEnemyType();
@@ -440,8 +440,7 @@ function wanderAroundHome(en, dt) {
     mx = en.wdir.x; my = en.wdir.y;
   }
   const slow = aoeSlowFactor(en.x, en.y);
-  en.x += mx * en.speed * 0.55 * dt * slow;
-  en.y += my * en.speed * 0.55 * dt * slow;
+  moveEnemy(en, mx, my, en.speed * 0.55 * dt * slow);
   // 游荡时更新朝向（用于敌人行走渲染），静止则保持原朝向
   if (mx !== 0 || my !== 0) {
     const a = Math.atan2(my, mx);
@@ -452,6 +451,20 @@ function wanderAroundHome(en, dt) {
 // 敌人/虫巢碰撞半径（像素）：虫子用其 size，虫巢按 2×2 占地边长一半计算（静态占地体积）。
 function enemyRadius(e) {
   return (e.kind === 'spawner' ? e.foot * TILE * 0.5 : e.size);
+}
+
+// 敌人是否会被树木阻挡（需求：树木也阻碍敌人移动，对齐玩家——树木不可穿越，需绕开）。
+function enemyTreeBlocked(px, py) {
+  return isTree(Math.floor(px / TILE), Math.floor(py / TILE));
+}
+
+// 敌人移动（含树木阻挡）：逐轴尝试移动，目标格为树木则该轴被挡住（避免斜向贴边穿树）。
+function moveEnemy(en, mx, my, dist) {
+  if (dist <= 0 || (mx === 0 && my === 0)) return;
+  const nx = en.x + mx * dist;
+  if (!enemyTreeBlocked(nx, en.y)) en.x = nx;
+  const ny = en.y + my * dist;
+  if (!enemyTreeBlocked(en.x, ny)) en.y = ny;
 }
 
 function updateEnemies(dt) {
@@ -493,11 +506,9 @@ function updateEnemies(dt) {
       if (d <= range) fireTarget = p;
       else fireTarget = findEnemyRangedTarget(en, range);
       if (d > range) {
-        en.x += (dx / d) * en.speed * dt * slow;
-        en.y += (dy / d) * en.speed * dt * slow;
+        moveEnemy(en, dx / d, dy / d, en.speed * dt * slow);
       } else if (d < keep) {
-        en.x -= (dx / d) * en.speed * dt * slow;
-        en.y -= (dy / d) * en.speed * dt * slow;
+        moveEnemy(en, -dx / d, -dy / d, en.speed * dt * slow);
       }
       // 吐痰（投射物）；喷火虫/巨型蠕虫吐火球（命中造成持续灼烧）
       if (en.fireT <= 0 && fireTarget) {
@@ -523,7 +534,7 @@ function updateEnemies(dt) {
           // 扑咬时短暂朝目标建筑前扑（视觉动作，对齐《异星工厂》Biter 扑咬姿态）
           const tdx = (target.x + target.w / 2 - en.x), tdy = (target.y + target.h / 2 - en.y);
           const td = Math.max(1, Math.hypot(tdx, tdy));
-          en.x += (tdx / td) * 5; en.y += (tdy / td) * 5;
+          moveEnemy(en, tdx / td, tdy / td, 5);
           if (typeof playSfx === 'function') playSfx('bite');
           if (typeof damageBuilding === 'function') damageBuilding(target, en.dmg);
         }
@@ -531,8 +542,7 @@ function updateEnemies(dt) {
       }
       // 冲向玩家，贴近后咬人
       if (d > 1.1) {
-        en.x += (dx / d) * en.speed * dt * slow;
-        en.y += (dy / d) * en.speed * dt * slow;
+        moveEnemy(en, dx / d, dy / d, en.speed * dt * slow);
       } else if (en.attackT <= 0) {
         en.attackT = 1.0;
         en.lungeT = 0.28;   // 扑咬玩家动作帧
@@ -565,9 +575,9 @@ function updateEnemies(dt) {
       if (d > 0 && d < minD) {
         const push = ((minD - d) / minD) * 26 * dt;
         const ux = dx / d, uy = dy / d;
-        // 虫巢不移动：只推动非虫巢一方，避免虫巢被虫子顶走
-        if (!aIsSpawner) { a.x -= ux * push; a.y -= uy * push; }
-        if (!bIsSpawner) { b.x += ux * push; b.y += uy * push; }
+        // 虫巢不移动：只推动非虫巢一方，避免虫巢被虫子顶走（且不把虫子顶进树木）
+        if (!aIsSpawner) moveEnemy(a, -ux, -uy, push);
+        if (!bIsSpawner) moveEnemy(b, ux, uy, push);
       }
     }
   }
