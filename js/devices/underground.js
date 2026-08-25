@@ -23,12 +23,12 @@ class Underground extends Entity {
     return null;
   }
   speedMult() { return this.type === 'fast-underground-belt' ? FAST_BELT_MULT : 1; }
-  // 与同档传送带完全一致的吞吐：地上传送带为双列（两条独立车道并行），
-  // 每列按 BELT_SPACING 间距各走一件，总吞吐 = 单列 × 2。地下带以单队列在隧道内
-  // 输送，为达到与地上双列带相同的总吞吐，发送间隔须为单列的一半：
-  //   间隔 = 间距 / (带速 × 2)
-  // 基础带：0.125 / (1.875 × 2) ≈ 0.0333s/件 → 30 items/s，与地上基础带一致（对齐《异星工厂》）。
-  ugInterval() { return BELT_SPACING / Math.max(0.05, beltSpeed() * this.speedMult() * 2); }
+  // 与同档传送带完全一致的双车道合计吞吐：面板/数值以「双车道总速度」计（基础带=15 件/秒）。
+  // 隧道内两条车道（lane0/lane1）各自独立推进，每车道吞吐 = 双车道合计的一半。
+  // 每车道发送一件的间隔：
+  //   间隔 = 2 × 间距 / 带速
+  // 基础带：0.25 / 1.875 ≈ 0.1333s/件 → 每车道 7.5、双车道合计 15 items/s，与地上基础带一致。
+  ugInterval() { return (2 * BELT_SPACING) / Math.max(0.05, beltSpeed() * this.speedMult()); }
   update(dt) {
     // 惰性调度（P0 优化）：入口/出口都空时无需每帧扫描
     if ((!this.items || !this.items.length) && (!this.outItems || !this.outItems.length)) return;
@@ -308,16 +308,15 @@ function undergroundPanelHtml(e) {
   else if (e.isExit()) txt = '【出口】接收后方隧道来货并向前输出（只与最近者配对，不再向更前方转送）。待发 ' + e.outItems.length;
   else txt = '【未配对】同向' + e.maxDist() + '格内没有另一座。仅作显示，不接收/不传送物品。缓存 ' + e.items.length + '/' + cap;
   return '<div class="dim">地下带' + txt + '。R 旋转方向。</div>' +
-    '<div class="dim">当前吞吐：<span data-live="speed">-</span>（件/秒，单侧车道）</div>' +
+    '<div class="dim">当前吞吐：<span data-live="speed">-</span>（件/秒，双车道合计）</div>' +
     '<div class="status"></div>';
 }
 function undergroundPanelLive(e, api) {
   const paired = e.isPaired();
   const cap = ugCap();
   const n = e.items.length + e.outItems.length;
-  // 地下带为双列独立输送：每条车道按单列间隔推进，面板显示单侧车道吞吐（件/秒）。
-  // 基础带 = beltSpeed/BELT_SPACING = 15 件/秒，与地上基础带面板一致（对齐《异星工厂》）。
-  const speed = (e.ugInterval ? 1 / e.ugInterval() : 0);
+  // 地下带面板显示「双车道合计吞吐」（件/秒），与地上传送带口径一致：基础带=15 件/秒。
+  const speed = (e.ugInterval ? 2 / e.ugInterval() : 0);
   api.set('speed', (Math.round(speed * 10) / 10) + '');
   if (!paired) api.status('仅显示：未配对（同向 ' + e.maxDist() + ' 格内无另一座地下带），不接收/不传送物品', 'warn');
   else if (e.outItems.length >= cap || e.items.length >= cap) api.status('已暂停：缓存已满，等待输出', 'warn');

@@ -60,7 +60,7 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
     ctx.restore();
   }
   const step = TILE / 2;
-  const off = ((G.time * beltSpeed() * e.speedMult() * TILE) % step + step) % step;
+  const off = ((G.time * beltSpeed() * e.speedMult() * TILE / 2) % step + step) % step;
   strip(dir * Math.PI / 2, -TILE / 2 + 2, TILE - 4);
   ctx.save();
   ctx.translate(cx, cy);
