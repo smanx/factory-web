@@ -181,6 +181,7 @@ function renderPanel(full) {
     applyInvRecipeFilter(G.invRecipeQ);
     applyBuildSearch(G.buildDevQ);
     if (typeof fillLogiReqGrid === 'function') fillLogiReqGrid(G.lreqQ || '');
+    if (typeof fillTrashGrid === 'function') fillTrashGrid(G.trashQ || '');
     if (keepFocusId) {
       const inp = document.getElementById(keepFocusId);
       if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
@@ -374,6 +375,27 @@ function htmlInventory() {
   h += '<input id="lreq-search" class="inv-search" type="text" placeholder="搜索物品（设置个人请求）" autocomplete="off">';
   h += '<div id="lreq-grid" class="recgrid"></div>';
   h += '</div>';
+  // ===== 个人垃圾桶（对齐《异星工厂》Trash slots）=====
+  // 玩家标记要“丢弃”的物品后，物流机器人会把这些物品全部带走存回网络（不受请求量影响）。
+  h += '<div class="sec">个人垃圾桶 <span class="dim">（物流机器人带走标记物品存回网络）</span></div>';
+  h += '<div class="logi-req" id="logi-trash">';
+  const trash = G.trashSlots || {};
+  const trashKeys = Object.keys(trash).filter(k => trash[k]);
+  if (!trashKeys.length) {
+    h += '<div class="dim" id="logi-trash-empty">点击下方物品标记为“丢弃”，物流机器人会自动把该物品从你身上带走。用于清理不想保留的杂物（对齐《异星工厂》垃圾桶）。</div>';
+  } else {
+    h += '<div class="dim" id="logi-trash-empty" style="display:none">点击下方物品标记为“丢弃”，物流机器人会自动把该物品从你身上带走。</div>';
+    h += '<div class="chips">';
+    for (const k of trashKeys) {
+      const have = invCount(k);
+      h += '<span class="chip trash-chip" data-tip="' + ITEMS[k].name + '|标记为丢弃，持有 ' + have + '。点击取消" data-trashclear="' + k + '"><img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' <span class="lreq-have">(' + have + ')</span> ×</span>';
+    }
+    h += '</div>';
+  }
+  h += '<div class="dim">标记丢弃：点击下方物品图标。取消：点击上方已标记的物品。</div>';
+  h += '<input id="trash-search" class="inv-search" type="text" placeholder="搜索物品（标记丢弃）" autocomplete="off">';
+  h += '<div id="trash-grid" class="recgrid"></div>';
+  h += '</div>';
   h += '<div class="sec">配方</div>';
   const q = (G.invRecipeQ || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   h += '<input id="inv-recipe-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off" value="' + q + '">';
@@ -518,6 +540,31 @@ function fillLogiReqGrid(q) {
     const req = (G.logiRequest && G.logiRequest[id]) || 0;
     h += '<button class="rcbtn' + (req > 0 ? ' lreq-on' : '') + '" data-lreqitem="' + id + '" data-tip="' + itemTip(id) + (req > 0 ? '（已请求 ' + req + '）' : '') + '">' +
       '<img src="' + iconDataURL(id) + '">' + ITEMS[id].name + (req > 0 ? ' ✓' + req : '') + '</button>';
+  }
+  grid.innerHTML = h;
+  if (!h) {
+    grid.innerHTML = '<div class="dim">没有匹配的物品</div>';
+  }
+}
+
+// 个人垃圾桶：填充可选物品网格并过滤（对齐《异星工厂》Trash slots）
+function fillTrashGrid(q) {
+  const grid = document.getElementById('trash-grid');
+  if (!grid) return;
+  const ql = (q || '').trim().toLowerCase();
+  const ids = Object.keys(ITEMS).filter(id => {
+    if (FLUIDS.indexOf(id) >= 0) return false;
+    if (id.indexOf('creative-') === 0 || id.indexOf('void-') === 0) return false;
+    if (id === 'passive-power') return false;
+    return true;
+  });
+  let h = '';
+  for (const id of ids) {
+    if (ql && !(ITEMS[id].name + ' ' + id).toLowerCase().includes(ql)) continue;
+    const on = (G.trashSlots && G.trashSlots[id]) ? true : false;
+    const have = invCount(id);
+    h += '<button class="rcbtn' + (on ? ' lreq-on trash-on' : '') + '" data-trashitem="' + id + '" data-tip="' + itemTip(id) + (on ? '（已标记丢弃）' : '') + (have > 0 ? '（持有 ' + have + '）' : '') + '">' +
+      '<img src="' + iconDataURL(id) + '">' + ITEMS[id].name + (on ? ' 🗑' : '') + (have > 0 ? ' <span class="lreq-have">(' + have + ')</span>' : '') + '</button>';
   }
   grid.innerHTML = h;
   if (!h) {
@@ -742,6 +789,9 @@ function initPanelEvents() {
     } else if (ev.target.id === 'lreq-search') {
       G.lreqQ = ev.target.value;
       if (typeof fillLogiReqGrid === 'function') fillLogiReqGrid(G.lreqQ);
+    } else if (ev.target.id === 'trash-search') {
+      G.trashQ = ev.target.value;
+      if (typeof fillTrashGrid === 'function') fillTrashGrid(G.trashQ);
     } else if (ev.target.id === 'asm-recipe-search') {
       applyAssemblerRecipeFilter(ev.target.value);
     } else if (ev.target.matches && ev.target.matches('[data-stat-hist-filter]')) {
@@ -863,6 +913,32 @@ function initPanelEvents() {
       } else {
         G.logiRequest[item] = Math.min(v, 10000);
         toast('已请求 ' + ITEMS[item].name + ' ×' + G.logiRequest[item] + '，物流机器人将自动送达');
+      }
+      renderPanel(false);
+      return;
+    }
+    // 个人垃圾桶：清除已标记丢弃的物品
+    const trashClear = ev.target.closest('[data-trashclear]');
+    if (trashClear && G.panelMode === 'inv') {
+      const item = trashClear.dataset.trashclear;
+      if (G.trashSlots && G.trashSlots[item]) {
+        delete G.trashSlots[item];
+        toast('已取消对 ' + ITEMS[item].name + ' 的丢弃标记');
+      }
+      renderPanel(false);
+      return;
+    }
+    // 个人垃圾桶：点击物品切换丢弃标记（对齐《异星工厂》Trash slots）
+    const trashPick = ev.target.closest('#trash-grid .rcbtn[data-trashitem]');
+    if (trashPick && G.panelMode === 'inv') {
+      const item = trashPick.dataset.trashitem;
+      if (!G.trashSlots) G.trashSlots = {};
+      if (G.trashSlots[item]) {
+        delete G.trashSlots[item];
+        toast('已取消对 ' + ITEMS[item].name + ' 的丢弃标记');
+      } else {
+        G.trashSlots[item] = true;
+        toast('已标记 ' + ITEMS[item].name + ' 为丢弃，物流机器人将自动带走');
       }
       renderPanel(false);
       return;
