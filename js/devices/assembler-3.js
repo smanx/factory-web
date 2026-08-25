@@ -9,6 +9,8 @@ class Assembler3 extends Assembler {
     this.portFlow();
     if (!this.recipe) { this.crafting = false; return; }
     if (G.power.sat <= 0) { this.crafting = false; return; }
+    // 电路条件不满足时暂停生产（对齐《异星工厂》：电路控制配方启停）
+    if (!this.circuitEnabled()) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
       // 速度：组装机 III 基础 1.25，远高于 I/II；叠加科技与电力饱和
@@ -138,9 +140,11 @@ function assembler3PanelHtml(e) {
   h += '<div class="dim" id="asm-recipe-empty" style="display:none"></div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
   h += '<div class="dim">组装机 III：吃电力、速度最高的组装机。选中后按 R 旋转朝向（流体入口在背部、固体产物经机械臂取走）。</div>';
+  h += circuitPanelHtml(e, 'am3');
   return h;
 }
 function assembler3PanelLive(e, api) {
+  if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) { api.status('已暂停：电路条件不满足', 'warn'); return; }
   api.set('power', powerStatusLiveHtml(e));
   api.set('input', Object.keys(e.inp).length ? countStr(e.inp) : dimSpan('空'));
   api.set('output', Object.keys(e.outp).length ? countStr(e.outp) : dimSpan('空'));
@@ -177,5 +181,5 @@ DEVICE_STATUS['assembling-machine-3'] = e => {
   if (s.consuming) return s.color;
   return e.recipe ? (e.crafting || e.prog > 0 ? 'g' : 'y') : 'r';
 };
-DEVICE_PANEL['assembling-machine-3'] = { html: assembler3PanelHtml, live: assembler3PanelLive, tip: assembler3Tip };
+DEVICE_PANEL['assembling-machine-3'] = { html: assembler3PanelHtml, live: assembler3PanelLive, tip: assembler3Tip, onAction: (a) => circuitPanelAction('am3', a) };
 DEVICE_DIR_ROTATE['assembling-machine-3'] = true;

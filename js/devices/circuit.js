@@ -151,6 +151,20 @@ function recomputeCircuit() {
         addSignal(aggGreen, st.item, st.count);
       }
     }
+    // 1d) 通用电路信号输出（对齐《异星工厂》：炮塔等设备可输出传感器信号到网络）。
+    //     任何实现 outputCircuitSignals() 方法的电路节点（如机枪/激光/火焰炮塔把射程内
+    //     敌人数量输出为信号）都会在此被收集并写入红/绿通道，供组合器/功率开关/告警音箱读取，
+    //     实现“敌人靠近自动切换电力 / 触发告警 / 调度防御”等自动化。
+    for (const n of group) {
+      if (typeof n.outputCircuitSignals !== 'function') continue;
+      const out = n.outputCircuitSignals();
+      if (!out || !out.length) continue;
+      for (const it of out) {
+        if (!it || !it.sig || !it.count) continue;
+        addSignal(aggRed, it.sig, it.count);
+        addSignal(aggGreen, it.sig, it.count);
+      }
+    }
     // 2) 运算/判断组合器：读取输入信号，计算后输出到指定通道（可级联）。
     //    输入信号遵循组合器的接入通道（wireChan）：'red' 仅读红线、'green' 仅读绿线、
     //    'both' 读红+绿合并（默认，向后兼容）。实现红绿信号物理隔离对齐《异星工厂》。
@@ -205,7 +219,8 @@ const VIRTUAL_SIGNALS = {
   'signal-each': '每个信号',
   'signal-everything': '全部信号',
   'signal-anything': '任一信号',
-  'signal-count': '数量'
+  'signal-count': '数量',
+  'signal-enemy': '敌人数量'
 };
 // 判断某信号名是否为虚拟信号（各列表/输入框均识别）
 function isVirtualSignal(sig) { return Object.prototype.hasOwnProperty.call(VIRTUAL_SIGNALS, sig); }

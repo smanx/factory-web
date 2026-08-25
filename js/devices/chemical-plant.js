@@ -25,6 +25,14 @@ class ChemicalPlant extends Entity {
     this.working = false;
     this.modules = {};  // 化工厂可装 3 个模块（对齐《异星工厂》Chemical plant）
     this.prodBuf = 0;   // 产能模块累积进度
+    // 电路控制（对齐《异星工厂》：生产建筑可接入电路网络，按信号条件启用/禁用配方）
+    this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
+  }
+  // 电路启停：未启用条件时恒工作；启用后仅当附近电路信号满足条件才生产
+  circuitEnabled() {
+    if (!this.circuitCond || !this.circuitCond.enabled) return true;
+    const sig = circuitSignalNear(this);
+    return circuitCondOk(sig, this.circuitCond);
   }
   moduleSlotCount() { return 3; } // 对齐《异星工厂》：化工厂 3 槽
   moduleSpeedMult() {
@@ -121,6 +129,8 @@ class ChemicalPlant extends Entity {
     const rec = this.recipe ? RECIPES[this.recipe] : null;
     if (!rec) { this.prog = 0; return; }
     this.portFlow();
+    // 电路条件不满足时暂停生产（对齐《异星工厂》：电路控制配方启停）
+    if (!this.circuitEnabled()) { this.crafting = false; return; }
     if (this.crafting) {
       if (G.power.sat <= 0) return;
       this.working = true;
@@ -188,12 +198,14 @@ class ChemicalPlant extends Entity {
     s.recipe = this.recipe; s.inp = this.inp; s.outp = this.outp;
     s.crafting = this.crafting; s.prog = this.prog;
     s.modules = this.modules; s.prodBuf = this.prodBuf;
+    if (this.circuitCond) s.circuitCond = this.circuitCond;
     return s;
   }
   // 蓝图只保留配方配置与模块，不复制内部原料/输出/进度
   blueprint() {
     const s = super.blueprint();
     s.recipe = this.recipe; s.modules = this.modules;
+    if (this.circuitCond) s.circuitCond = this.circuitCond;
     return s;
   }
   static restore(s) {
@@ -201,6 +213,7 @@ class ChemicalPlant extends Entity {
     c.recipe = s.recipe || null; c.inp = s.inp || {}; c.outp = s.outp || {};
     c.crafting = !!s.crafting; c.prog = s.prog || 0;
     c.modules = s.modules || {}; c.prodBuf = s.prodBuf || 0;
+    c.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
     return c;
   }
 }
@@ -353,9 +366,11 @@ function chemicalPlantPanelHtml(e) {
   h += '</div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
   h += '<div class="dim">化工厂吃电力，专攻流体化学配方：塑料=石油气+煤；重油可逐级裂解成轻油、石油气。接口对齐格子：底部2个输入口分别在左数第1、3格（第1种原料进左侧、第2种进右侧），顶部2个输出口分别在左数第1、3格，一格对应一个接口、位置随旋转不变。所需流体经底部输入口相邻管道自动吸入，流体产物自动经顶部输出口排回管道；煤/铁板等固体原料机械臂可从任意方向抓取放入。可装 3 个模块（速度/产能/效率）并受信号塔加成。</div>';
+  h += circuitPanelHtml(e, 'cp');
   return h;
 }
 function chemicalPlantPanelLive(e, api) {
+  if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) { api.status('已暂停：电路条件不满足', 'warn'); return; }
   api.set('power', powerStatusLiveHtml(e));
   api.set('input', Object.keys(e.inp).length ? countStr(e.inp) : dimSpan('空'));
   api.set('output', Object.keys(e.outp).length ? countStr(e.outp) : dimSpan('空'));
@@ -385,7 +400,7 @@ DEVICE_STATUS['chemical-plant'] = e => {
   if (s.consuming) return s.color;
   return e.recipe ? (e.crafting ? 'g' : (G.power.sat <= 0 && Object.keys(e.inp).length ? 'r' : 'y')) : 'r';
 };
-DEVICE_PANEL['chemical-plant'] = { html: chemicalPlantPanelHtml, live: chemicalPlantPanelLive, tip: chemicalPlantTip };
+DEVICE_PANEL['chemical-plant'] = { html: chemicalPlantPanelHtml, live: chemicalPlantPanelLive, tip: chemicalPlantTip, onAction: (a) => circuitPanelAction('cp', a) };
 // 化工厂四边均布流体口、本体对称，旋转仅记录朝向；选中/悬停后按 R 可直接旋转
 DEVICE_DIR_ROTATE['chemical-plant'] = true;
 // 显示详情时，各接口流体图标所在世界格 + 对应流体名（用于鼠标悬停显示流体名称）

@@ -1010,19 +1010,46 @@ function throwGrenade(tx, ty, type) {
 const LASER_RANGE = 9;
 const LASER_FIRE_RATE = 0.35;
 const LASER_DMG = 14;
-class LaserTurret extends Entity {
+class LaserTurret extends CircuitNode {
   constructor(type, x, y) {
     super('laser-turret', x, y);
     this.cooldown = 0;
     this.target = null;
     this.facing = 0;
     this.beamT = 0;
+    // 电路控制（对齐《异星工厂》：炮塔接入电路网络，可按信号启停火力）
+    this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
+  }
+  // 电路启停：未启用条件时恒工作；启用后仅当附近电路信号满足条件才开火
+  circuitEnabled() {
+    if (!this.circuitCond || !this.circuitCond.enabled) return true;
+    const sig = circuitSignalNear(this);
+    return circuitCondOk(sig, this.circuitCond);
+  }
+  // 射程内存活敌人数量（作为传感器信号输出到电路网络）
+  enemiesInRange() {
+    const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
+    const enemies = G._aliveEnemies || (G.enemies || []);
+    let n = 0;
+    for (const en of enemies) {
+      if (!en || en.dead) continue;
+      const d = Math.hypot(en.x / TILE - cx, en.y / TILE - cy);
+      if (d <= LASER_RANGE) n++;
+    }
+    return n;
+  }
+  outputCircuitSignals() {
+    const n = this.enemiesInRange();
+    if (n <= 0) return [];
+    return [{ sig: 'signal-enemy', count: n }];
   }
   update(dt) {
     this.cooldown -= dt;
     this.beamT = Math.max(0, this.beamT - dt);
     this.target = null;
     if (G.power.sat <= 0) return;
+    // 电路条件不满足时炮塔停火
+    if (!this.circuitEnabled()) return;
     const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
     let best = null, bestD = Infinity;
     // 性能优化：复用主循环每帧缓存的存活敌人列表（_aliveEnemies），避免重复 dead 判断遍历全数组
@@ -1048,8 +1075,8 @@ class LaserTurret extends Entity {
     if (best.hp <= 0) best.dead = true;
   }
   powerDemand() { return 180; }
-  serialize() { return super.serialize(); }
-  static restore(s) { return super.restore(s); }
+  serialize() { const s = super.serialize(); if (this.circuitCond) s.circuitCond = this.circuitCond; return s; }
+  static restore(s) { const e = super.restore(s); e.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 }; return e; }
 }
 function drawLaserTurret(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
@@ -1092,10 +1119,12 @@ function laserTurretPanelHtml(e) {
   let h = row('电力', powerStatusLiveHtml(e), 'power');
   h += '<div class="status"></div>';
   h += '<div class="dim">激光炮塔：吃电力自动发射激光攻击射程内（' + LASER_RANGE + ' 格）敌人，无需弹药，伤害高于机枪。供电不足时停止开火。配合石墙构筑防线（2×2）。</div>';
+  h += circuitPanelHtml(e, 'lt');
   return h;
 }
 function laserTurretPanelLive(e, api) {
   api.set('power', powerStatusLiveHtml(e));
+  if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) { api.status('已停火：电路条件不满足', 'warn'); return; }
   if (G.power.sat <= 0) api.status('已暂停：缺电', 'warn');
   else if (e.target) api.status('开火中：激光攻击敌人', 'ok');
   else api.status('待机：射程内无敌人', 'ok');
@@ -1110,13 +1139,38 @@ const FT_RANGE = 6;
 const FT_FIRE_RATE = 0.3;
 const FT_DMG = 8;
 const FT_FLUID_CAP = 200;
-class FlamethrowerTurret extends Entity {
+class FlamethrowerTurret extends CircuitNode {
   constructor(type, x, y) {
     super('flamethrower-turret', x, y);
     this.fluid = {};       // { 'light-oil': n }（对齐《异星工厂》：火焰炮塔以轻油为燃料）
     this.cooldown = 0;
     this.target = null;
     this.facing = 0;
+    // 电路控制（对齐《异星工厂》：炮塔接入电路网络，可按信号启停火力）
+    this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
+  }
+  // 电路启停：未启用条件时恒工作；启用后仅当附近电路信号满足条件才开火
+  circuitEnabled() {
+    if (!this.circuitCond || !this.circuitCond.enabled) return true;
+    const sig = circuitSignalNear(this);
+    return circuitCondOk(sig, this.circuitCond);
+  }
+  // 射程内存活敌人数量（作为传感器信号输出到电路网络）
+  enemiesInRange() {
+    const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
+    const enemies = G._aliveEnemies || (G.enemies || []);
+    let n = 0;
+    for (const en of enemies) {
+      if (!en || en.dead) continue;
+      const d = Math.hypot(en.x / TILE - cx, en.y / TILE - cy);
+      if (d <= FT_RANGE) n++;
+    }
+    return n;
+  }
+  outputCircuitSignals() {
+    const n = this.enemiesInRange();
+    if (n <= 0) return [];
+    return [{ sig: 'signal-enemy', count: n }];
   }
   giveItem(item) {
     if (item === 'light-oil') {
@@ -1146,6 +1200,8 @@ class FlamethrowerTurret extends Entity {
     this.fluidPort();
     if (G.power.sat <= 0) return;
     if ((this.fluid['light-oil'] || 0) <= 0) return;
+    // 电路条件不满足时炮塔停火
+    if (!this.circuitEnabled()) return;
     const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
     let best = null, bestD = Infinity;
     // 性能优化：复用主循环每帧缓存的存活敌人列表（_aliveEnemies）
@@ -1182,10 +1238,11 @@ class FlamethrowerTurret extends Entity {
     if (typeof playSfx === 'function') playSfx('flamethrower');
   }
   powerDemand() { return 200; }
-  serialize() { const s = super.serialize(); s.fluid = this.fluid; return s; }
+  serialize() { const s = super.serialize(); s.fluid = this.fluid; if (this.circuitCond) s.circuitCond = this.circuitCond; return s; }
   static restore(s) {
     const t = super.restore(s);
     t.fluid = s.fluid || {};
+    t.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
     // 迁移旧存档：旧版火焰炮塔以石油气为燃料，读档时丢弃残留的石油气，避免遗留旧流体
     if (t.fluid['petroleum-gas']) delete t.fluid['petroleum-gas'];
     return t;
@@ -1233,11 +1290,13 @@ function flameTurretPanelHtml(e) {
   if (n > 0) h += '<button data-action="feed" data-id="light-oil">放入轻油 ×' + n + '</button>';
   h += '<div class="status"></div>';
   h += '<div class="dim">火焰炮塔：消耗轻油喷射火焰，对锥形范围敌人造成持续灼烧伤害。可从底部输入口相邻管道自动吸入轻油（2×2）。对齐《异星工厂》Flamethrower turret：以轻油为燃料。</div>';
+  h += circuitPanelHtml(e, 'ft');
   return h;
 }
 function flameTurretPanelLive(e, api) {
   api.set('fluid', (e.fluid['light-oil'] || 0) > 0 ? ((e.fluid['light-oil'] || 0) + ' 单位') : dimSpan('空'));
   const fl = e.fluid['light-oil'] || 0;
+  if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) { api.status('已停火：电路条件不满足', 'warn'); return; }
   if (G.power.sat <= 0) api.status('已暂停：缺电', 'warn');
   else if (fl <= 0) api.status('已暂停：缺轻油（管道或按钮放入）', 'warn');
   else if (e.target) api.status('喷射中：灼烧敌人', 'ok');
@@ -1366,7 +1425,7 @@ DEVICE_RENDER['laser-turret'] = drawLaserTurret;
 DEVICE_RENDER['flamethrower-turret'] = drawFlamethrowerTurret;
 DEVICE_STATUS['laser-turret'] = e => (G.power.sat <= 0 ? 'r' : (e.target ? 'g' : 'y'));
 DEVICE_STATUS['flamethrower-turret'] = e => (G.power.sat <= 0 ? 'r' : ((e.fluid['light-oil'] || 0) <= 0 ? 'r' : (e.target ? 'g' : 'y')));
-DEVICE_PANEL['laser-turret'] = { html: laserTurretPanelHtml, live: laserTurretPanelLive, tip: laserTurretTip };
-DEVICE_PANEL['flamethrower-turret'] = { html: flameTurretPanelHtml, live: flameTurretPanelLive, tip: flameTurretTip };
+DEVICE_PANEL['laser-turret'] = { html: laserTurretPanelHtml, live: laserTurretPanelLive, tip: laserTurretTip, onAction: (a) => circuitPanelAction('lt', a) };
+DEVICE_PANEL['flamethrower-turret'] = { html: flameTurretPanelHtml, live: flameTurretPanelLive, tip: flameTurretTip, onAction: (a) => circuitPanelAction('ft', a) };
 DEVICE_DIR_ROTATE['laser-turret'] = true;
 DEVICE_DIR_ROTATE['flamethrower-turret'] = true;

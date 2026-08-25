@@ -34,6 +34,14 @@ class Centrifuge extends Entity {
     this.spin = 0;
     this.modules = {};       // 离心机可装 2 个模块（对齐《异星工厂》Centrifuge）
     this.prodBuf = 0;        // 产能模块累积进度
+    // 电路控制（对齐《异星工厂》：生产建筑可接入电路网络，按信号条件启用/禁用配方）
+    this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
+  }
+  // 电路启停：未启用条件时恒工作；启用后仅当附近电路信号满足条件才生产
+  circuitEnabled() {
+    if (!this.circuitCond || !this.circuitCond.enabled) return true;
+    const sig = circuitSignalNear(this);
+    return circuitCondOk(sig, this.circuitCond);
   }
   moduleSlotCount() { return 2; } // 对齐《异星工厂》：离心机 2 槽
   moduleSpeedMult() {
@@ -74,6 +82,8 @@ class Centrifuge extends Entity {
   update(dt) {
     if (!this.recipe) { this.crafting = false; return; }
     if (G.power.sat <= 0) { this.crafting = false; return; }
+    // 电路条件不满足时暂停生产（对齐《异星工厂》：电路控制配方启停）
+    if (!this.circuitEnabled()) { this.crafting = false; return; }
     const rec = this.recipeObj();
     if (!rec) { this.crafting = false; return; }
     if (this.crafting) {
@@ -146,17 +156,20 @@ class Centrifuge extends Entity {
     const s = super.serialize();
     s.recipe = this.recipe; s.inp = this.inp; s.outp = this.outp; s.prog = this.prog;
     s.modules = this.modules; s.prodBuf = this.prodBuf;
+    if (this.circuitCond) s.circuitCond = this.circuitCond;
     return s;
   }
   blueprint() {
     const s = super.blueprint();
     s.recipe = this.recipe; s.modules = this.modules;
+    if (this.circuitCond) s.circuitCond = this.circuitCond;
     return s;
   }
   static restore(s) {
     const c = super.restore(s);
     c.recipe = s.recipe || null; c.inp = s.inp || {}; c.outp = s.outp || {}; c.prog = s.prog || 0;
     c.modules = s.modules || {}; c.prodBuf = s.prodBuf || 0;
+    c.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
     return c;
   }
 }
@@ -212,9 +225,11 @@ function centrifugePanelHtml(e) {
   h += barHtml(0);
   h += '<div class="status"></div>';
   h += '<div class="dim">离心机：把铀矿分离成铀-235（小概率）/铀-238。铀-235 在组装机制成核燃料；也可用铀富集循环持续增产铀-235。原料由机械臂/传送带放入，产出由机械臂取出。可装 2 个模块（速度/产能/效率）并受信号塔加成。</div>';
+  h += circuitPanelHtml(e, 'cen');
   return h;
 }
 function centrifugePanelLive(e, api) {
+  if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) { api.status('已暂停：电路条件不满足', 'warn'); return; }
   api.set('power', powerStatusLiveHtml(e));
   let inp = '';
   for (const k in e.inp) if (e.inp[k] > 0) inp += chip(k, e.inp[k]);
@@ -820,7 +835,7 @@ function heatExchangerTip(e) {
 ENT_CLASSES['centrifuge'] = Centrifuge;
 DEVICE_RENDER['centrifuge'] = drawCentrifuge;
 DEVICE_STATUS['centrifuge'] = e => e.crafting ? 'g' : 'r';
-DEVICE_PANEL['centrifuge'] = { html: centrifugePanelHtml, live: centrifugePanelLive, tip: centrifugeTip };
+DEVICE_PANEL['centrifuge'] = { html: centrifugePanelHtml, live: centrifugePanelLive, tip: centrifugeTip, onAction: (a) => circuitPanelAction('cen', a) };
 
 ENT_CLASSES['nuclear-reactor'] = NuclearReactor;
 DEVICE_RENDER['nuclear-reactor'] = drawNuclearReactor;
