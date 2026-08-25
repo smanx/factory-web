@@ -85,10 +85,10 @@ function pickEnemyType() {
 const SPAWNER_HP = 260;          // 虫巢生命值
 const SPAWNER_TARGET = 2;        // 同时存在的巢穴目标数（高级战斗后 3）
 const SPAWNER_RANGE = 14;        // 巢穴生成敌人的距离（格）
-const ENEMY_AGGRO_RANGE = 8;     // 主角靠近该距离（格）内，聚集在虫巢周围的虫子主动攻击主角
-// 主角拉开到该距离（格）后，正在追踪的敌人才会停止追踪/攻击（迟滞：远大于触发距离，拉开才合理）
-const ENEMY_DEAGGRO_RANGE = 16;
-const ENEMY_LINGER_TIME = 2;     // 敌人停止追踪后原地短暂溜达的时长（秒），随后返回虫巢附近
+const ENEMY_AGGRO_RANGE = 8;     // 主角靠近该距离（格）内，聚集在虫巢周围的虫子主动攻击主角（触发追踪距离）
+// 主角拉开到该距离（格）后，正在追踪的敌人才会停止追踪/攻击（迟滞：为靠近触发距离的两倍，拉开才合理）
+const ENEMY_DEAGGRO_RANGE = ENEMY_AGGRO_RANGE * 2;   // 敌人丢失目标的距离 = 靠近触发距离 × 2
+const ENEMY_LINGER_TIME = 5;     // 敌人丢失目标后先原地游荡的时长（秒），随后返回虫巢点聚集
 
 function makeSpawner() {
   const px = G.player.x / TILE, py = G.player.y / TILE;
@@ -431,17 +431,16 @@ function isEnemyAggressive(en) {
   return G.pollution >= POLLUTION_WAVE_THRESHOLD;
 }
 
-// 默认行为：在所属虫巢周围聚集（不分散），不主动追击玩家。
-// 敌人会一直向虫巢中心聚拢，贴近后才小幅徘徊，形成贴在虫巢上的一团。
-// 若刚从追踪状态解除（en.lingerT>0），先原地短暂溜达，随后返回虫巢附近。
+// 默认行为：敌人不追击玩家时，在所属虫巢周围聚集，不主动攻击玩家/建筑。
+// 行为逻辑：
+//  - 刚从追踪状态解除（en.lingerT>0）：先原地游荡 ENEMY_LINGER_TIME 秒（需求：丢失目标后游荡 5 秒）；
+//  - 游荡结束后：返回所属虫巢，并聚在虫巢中心附近（需求：敌人在虫巢周围聚在一起、随时间越聚越多，不要分散）；
+//  - 无归属虫巢（home 为空）的敌人：继续在当前位置随机游荡，避免“丢失目标后停在原地不动”的 bug。
 function wanderAroundHome(en, dt) {
   en.wanderT = (en.wanderT || 0) - dt;
   const home = en.home;
-  if (!home) return;
-  const dx = home.x - en.x, dy = home.y - en.y;
-  const dist = Math.hypot(dx, dy);
   let mx = 0, my = 0;
-  // 刚从追踪状态解除：先原地短暂溜达（小幅徘徊），不急着回巢
+  // 刚从追踪状态解除：先原地游荡（小幅徘徊）ENEMY_LINGER_TIME 秒，不急着回巢
   if (en.lingerT > 0) {
     en.lingerT -= dt;
     if (en.wanderT <= 0) {
@@ -450,11 +449,11 @@ function wanderAroundHome(en, dt) {
       en.wdir = { x: Math.cos(a), y: Math.sin(a) };
     }
     if (en.wdir) { mx = en.wdir.x; my = en.wdir.y; }
-    const slow = aoeSlowFactor(en.x, en.y);
-    moveEnemy(en, mx, my, en.speed * 0.3 * dt * slow);
-  } else {
-    // 聚集行为（需求：敌人聚在虫巢周围，不分散）：
+  } else if (home) {
+    // 有归属虫巢：向虫巢中心聚集（需求：敌人聚在虫巢周围，不分散，随时间越聚越多）：
     // 离虫巢中心较远时始终朝虫巢聚拢，贴近虫巢中心后才做小幅徘徊保持聚集形态。
+    const dx = home.x - en.x, dy = home.y - en.y;
+    const dist = Math.hypot(dx, dy);
     const clusterR = 2.5 * TILE;   // 聚集半径（像素）：敌人贴着虫巢中心聚集成一团
     if (dist > clusterR) {
       // 离虫巢中心较远：朝虫巢中心聚拢，聚在一起而非散开
@@ -468,33 +467,42 @@ function wanderAroundHome(en, dt) {
     } else if (en.wdir) {
       mx = en.wdir.x; my = en.wdir.y;
     }
-    const slow = aoeSlowFactor(en.x, en.y);
-    moveEnemy(en, mx, my, en.speed * 0.55 * dt * slow);
+  } else {
+    // 无归属虫巢的敌人：在当前位置附近随机游荡，避免停在原地（修复丢失目标后停住不动的 bug）
+    if (en.wanderT <= 0) {
+      en.wanderT = 1 + Math.random() * 1.5;
+      const a = Math.random() * Math.PI * 2;
+      en.wdir = { x: Math.cos(a), y: Math.sin(a) };
+    }
+    if (en.wdir) { mx = en.wdir.x; my = en.wdir.y; }
   }
+  const slow = aoeSlowFactor(en.x, en.y);
+  const speedMul = en.lingerT > 0 ? 0.3 : 0.55;
+  moveEnemy(en, mx, my, en.speed * speedMul * dt * slow);
   // 游荡时更新朝向（用于敌人行走渲染），静止则保持原朝向
   if (mx !== 0 || my !== 0) {
     const a = Math.atan2(my, mx);
     en.dir = (a >= -Math.PI / 4 && a < Math.PI / 4) ? 0 : (a >= Math.PI / 4 && a < 3 * Math.PI / 4) ? 1 : (a >= -3 * Math.PI / 4 && a < -Math.PI / 4) ? 3 : 2;
   }
 }
-
 // 敌人/虫巢碰撞半径（像素）：虫子用其 size，虫巢按 2×2 占地边长一半计算（静态占地体积）。
 function enemyRadius(e) {
   return (e.kind === 'spawner' ? e.foot * TILE * 0.5 : e.size);
 }
 
-// 敌人是否会被树木阻挡（需求：树木也阻碍敌人移动，对齐玩家——树木不可穿越，需绕开）。
-function enemyTreeBlocked(px, py) {
-  return isTree(Math.floor(px / TILE), Math.floor(py / TILE));
+// 敌人是否会被地形阻挡（需求：树木与峭壁都阻碍敌人移动，对齐玩家——树木/峭壁不可穿越，需绕开）。
+function enemySolidBlocked(px, py) {
+  const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE);
+  return isTree(tx, ty) || isCliff(tx, ty);
 }
 
-// 敌人移动（含树木阻挡）：逐轴尝试移动，目标格为树木则该轴被挡住（避免斜向贴边穿树）。
+// 敌人移动（含树木/峭壁阻挡）：逐轴尝试移动，目标格为树木或峭壁则该轴被挡住（避免斜向贴边穿障）。
 function moveEnemy(en, mx, my, dist) {
   if (dist <= 0 || (mx === 0 && my === 0)) return;
   const nx = en.x + mx * dist;
-  if (!enemyTreeBlocked(nx, en.y)) en.x = nx;
+  if (!enemySolidBlocked(nx, en.y)) en.x = nx;
   const ny = en.y + my * dist;
-  if (!enemyTreeBlocked(en.x, ny)) en.y = ny;
+  if (!enemySolidBlocked(en.x, ny)) en.y = ny;
 }
 
 function updateEnemies(dt) {
