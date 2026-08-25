@@ -1766,9 +1766,13 @@ function bindInput() {
       handleLeftDown();
     } else if (ev.button === 2) {
       if (ev.shiftKey && hovered) { copySettings(hovered); return; }
-      // 右键取物优先：传送带/地下带/机械臂（对齐《异星工厂》）
+      // 右键取物优先：传送带/地下带/机械臂（对齐《异星工厂》）。
+      // 注意：传送带是流动的，若右键优先取物，移动中的传送带会不断补充导致永远取不完、
+      // 且拆除永远不触发（return 提前返回）。因此传送带不参与“右键取物”，右键直接整体拆除：
+      // 由 deconstructAt 一次性把带上全部物品移除并返还，再移除建筑本身（对齐《异星工厂》拆除）。
       if (G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
-        if (rightClickPickupAt(G.cursorTile.tx, G.cursorTile.ty)) return;
+        const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
+        if (!(e instanceof Belt) && rightClickPickupAt(G.cursorTile.tx, G.cursorTile.ty)) return;
       }
       if (G.cursorTile) deconstructAt(G.cursorTile.tx, G.cursorTile.ty);
     } else if (ev.button === 1) {
