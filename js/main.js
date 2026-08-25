@@ -1262,6 +1262,39 @@ function pickupAction() {
   uiDirty = true;
 }
 
+// ===== 全部拾取（对齐《异星工厂》：按住 Z 拾取范围内所有地面物品）=====
+// 官方 Factorio 默认快捷键 Z = Pick up items，一键收集玩家周围可触及范围内的全部散落物品
+// （地面掉落物）。拾取受背包堆叠上限约束，放不下的物品保留在原地，返回实际拾取总数。
+function pickupAllAction() {
+  if (!G.groundItems || G.groundItems.length === 0) return 0;
+  const p = G.player;
+  const pickR = REACH_PX;
+  const pickR2 = pickR * pickR;   // 用平方距离避免逐格开平方（与 updateGroundItems 语义一致）
+  let total = 0;
+  let anyPicked = false;
+  for (const g of G.groundItems) {
+    if (g.taken) continue;
+    const dx = g.tx * TILE + TILE / 2 - p.x, dy = g.ty * TILE + TILE / 2 - p.y;
+    if (dx * dx + dy * dy <= pickR2) {
+      const got = invAdd(g.item, g.n);
+      if (got > 0) {
+        g.n -= got;
+        total += got;
+        anyPicked = true;
+        if (g.n <= 0) g.taken = true;
+      }
+    }
+  }
+  if (anyPicked) {
+    if (typeof playSfx === 'function') playSfx('pickup');
+    G.groundItems = compactFilter(G.groundItems, g => !g.taken);
+    if (G.groundItems.length === 0) G.groundItems = undefined;
+    uiDirty = true;
+    if (typeof toast === 'function') toast('拾取 ' + total + ' 个物品' + (total === 0 ? '（背包已满）' : ''));
+  }
+  return total;
+}
+
 // 手持修理包点击受损建筑：消耗修理包使用次数修复建筑 HP（对齐《异星工厂》Repair pack）
 // 每个修理包最多修复 REPAIR_PACK_USES 次，用完后消耗该物品。
 const REPAIR_PACK_USES = 5;
@@ -1611,6 +1644,8 @@ function bindInput() {
     else if (k === 'h') flipAction('h');
     else if (k === 'v') flipAction('v');
     else if (k === 'f') { if (!tryEnterNearbyCar()) pickupAction(); }
+    // 全部拾取（对齐《异星工厂》：按住 Z 拾取范围内所有地面物品）
+    else if (k === 'z') { if (typeof pickupAllAction === 'function') pickupAllAction(); }
     else if (k === 'e') {
       if (G.driving) { if (typeof exitCar === 'function') exitCar(); }
       else if (G.panelMode === 'inv') closePanel();
