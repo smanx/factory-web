@@ -1004,14 +1004,41 @@ function drawEnemies(ctx) {
       ctx.fillStyle = '#ffe0a0';
       ctx.beginPath(); ctx.arc(en.x, en.y + bob - 3, 2, 0, 7); ctx.fill();
     } else {
-      ctx.beginPath();
-      ctx.arc(en.x, en.y + bob, size, 0, 7); ctx.fill(); ctx.stroke();
-      // 眼睛朝玩家
+      // 近战敌人：扑咬动画——攻击帧（lungeT>0）时朝玩家方向前扑并张开血盆大口
       const a = Math.atan2(G.player.y - en.y, G.player.x - en.x);
+      const lunge = (en.lungeT || 0) > 0 ? Math.min(1, (en.lungeT || 0) / 0.28) : 0;
+      const bx = en.x + Math.cos(a) * lunge * 7;   // 前扑位移
+      const by = en.y + bob + Math.sin(a) * lunge * 7;
+      // 扑咬时身体略微前倾放大
+      const biteScale = 1 + lunge * 0.12;
+      ctx.save();
+      ctx.translate(bx, by);
+      ctx.scale(biteScale, biteScale);
+      ctx.beginPath();
+      ctx.arc(0, 0, size, 0, 7); ctx.fill(); ctx.stroke();
+      // 眼睛朝玩家
       ctx.fillStyle = '#fff';
       ctx.beginPath();
-      ctx.arc(en.x + Math.cos(a) * size * 0.4, en.y + bob + Math.sin(a) * size * 0.4, 2.5, 0, 7);
+      ctx.arc(Math.cos(a) * size * 0.4, Math.sin(a) * size * 0.4, 2.5, 0, 7);
       ctx.fill();
+      ctx.fillStyle = '#1a1a2a';
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * size * 0.4, Math.sin(a) * size * 0.4, 1.2, 0, 7);
+      ctx.fill();
+      // 扑咬时张开大口（朝玩家的血盆大口/獠牙）
+      if (lunge > 0) {
+        ctx.fillStyle = '#e0402a';
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * size * 0.55, Math.sin(a) * size * 0.55, size * (0.32 + lunge * 0.15), 0, 7);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        for (let i = -1; i <= 1; i++) {
+          ctx.beginPath();
+          ctx.arc(Math.cos(a) * size * (0.7 + lunge * 0.1) + Math.sin(a) * i * 2.5, Math.sin(a) * size * (0.7 + lunge * 0.1) - Math.cos(a) * i * 2.5, 1.6, 0, 7);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
     }
     // 血条
     const w = 16;

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>工厂原型 Factory Proto</title>
-<link rel="stylesheet" href="css/style.css?v=26">
+<link rel="stylesheet" href="css/style.css?v=27">
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -109,6 +109,18 @@
     <button id="btn-tutorial-close" class="tutorial-close">开始游戏 ▶</button>
   </div>
 </div>
+<!-- 死亡结算菜单：玩家阵亡后选择 出生点复活 / 读取存档 / 重新开始（对齐《异星工厂》阵亡处理） -->
+<div id="death-overlay" class="death-overlay hidden">
+  <div class="death-panel">
+    <div class="death-title">💀 你阵亡了</div>
+    <div class="death-sub">你被虫群击败了……</div>
+    <div class="death-menu">
+      <button id="btn-death-respawn" class="death-btn primary">🔄 出生点复活</button>
+      <button id="btn-death-load" class="death-btn">📂 读取存档</button>
+      <button id="btn-death-restart" class="death-btn danger">↻ 重新开始游戏</button>
+    </div>
+  </div>
+</div>
 <script src="js/data.js?v=63"></script>
 <script src="js/world-config.js?v=1"></script>
 <script src="js/world.js?v=13"></script>
@@ -151,7 +163,7 @@
 <script src="js/devices/passive-power.js?v=1"></script>
 <script src="js/devices/military.js?v=18"></script>
 <script src="js/devices/gate.js?v=1"></script>
-<script src="js/devices/combat2.js?v=34"></script>
+<script src="js/devices/combat2.js?v=35"></script>
 <script src="js/devices/pollution.js?v=3"></script>
 <script src="js/devices/weather.js?v=1"></script>
 <script src="js/devices/maptags.js?v=1"></script>
@@ -169,13 +181,13 @@
 <script src="js/devices/speaker.js?v=1"></script>
 <script src="js/core/power.js?v=10"></script>
 <script src="js/player.js?v=29"></script>
-<script src="js/ui.js?v=47"></script>
+<script src="js/ui.js?v=48"></script>
 <script src="js/menu.js?v=4"></script>
-<script src="js/render.js?v=40"></script>
+<script src="js/render.js?v=41"></script>
 <script src="js/stats.js?v=14"></script>
 <script src="js/saves.js?v=3"></script>
-<script src="js/sfx.js?v=11"></script>
+<script src="js/sfx.js?v=12"></script>
 <script src="js/touch.js?v=6"></script>
-<script src="js/main.js?v=57"></script>
+<script src="js/main.js?v=58"></script>
 </body>
 </html>

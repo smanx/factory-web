@@ -135,7 +135,17 @@ const SFX = {
   // 坦克重炮开火：厚重“轰”重炮声（区别于普通火箭筒）
   'tank-cannon': { type: 'noise', dur: 0.5, vol: 0.32, f0: 120, f1: 35, slide: true },
   // 爆炸炮弹开火：比普通重炮更低沉浑厚、带低频轰鸣（对齐《异星工厂》爆炸炮弹的沉重发射感）
-  'tank-cannon-explosive': { type: 'noise', dur: 0.7, vol: 0.4, f0: 90, f1: 30, slide: true }
+  'tank-cannon-explosive': { type: 'noise', dur: 0.7, vol: 0.4, f0: 90, f1: 30, slide: true },
+  // 近战敌人撕咬：短促暴戾的低频啃咬（虫群咬合）
+  bite: { type: 'sawtooth', dur: 0.14, vol: 0.24, f0: 160, f1: 70, slide: true, arpeggio: [160, 120, 70] },
+  // 远程敌人喷吐：带黏液感的低沉“啐”声
+  spit: { type: 'noise', dur: 0.18, vol: 0.2, f0: 900, f1: 300, slide: true },
+  // 敌人低吼（警戒/进攻前）：压低沉稳的咆哮
+  growl: { type: 'sawtooth', dur: 0.35, vol: 0.14, f0: 90, f1: 60, slide: true, arpeggio: [90, 75, 60] },
+  // 主角受击：短促闷响（区别于护盾音，用于无盾直接掉血时）
+  hit: { type: 'noise', dur: 0.12, vol: 0.22, f0: 260, f1: 90, slide: true },
+  // 主角阵亡：低沉哀鸣下行音阶
+  'player-death': { type: 'sawtooth', dur: 1.2, vol: 0.26, f0: 260, f1: 55, slide: true, arpeggio: [260, 220, 174, 130, 82, 55] }
 };
 
 function sfxInit() {
@@ -442,20 +452,54 @@ function ambientUpdate(dt) {
 // 由 G.settings.music 独立开关控制（与游戏音效 sound 分开）。
 // 随 G.settings.soundVol 音量滑块调节整体音量，音乐音量更低、不喧宾夺主。
 // =============================================================
-let bgmNodes = null;   // { g, noteIdx, barT }
+let bgmNodes = null;   // { g, noteIdx, barT, barStep }
 
 // 背景音乐是否启用（独立开关，默认开启）
 function bgmEnabled() {
   return !!(G && G.settings && G.settings.music !== false);
 }
 
-// 配乐音阶（A 小调五声音阶，带工业氛围）：以 A4=440 为基准的降频音高
-const BGM_SCALE = [220.00, 246.94, 261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
-// 旋律片段（音阶下标，-1=休止），循环播放
-const BGM_MELODY = [0, 2, 3, 2, 4, 3, 2, 1, 0, 2, 4, 5, 4, 3, 2, 1, 3, 5, 6, 5, 4, 3, 4, 2, 0, 1, 2, 1, 0, -1, 0, -1];
-// 低音走位（每音符一个根音，作低音声部）
-const BGM_BASS = [0, 0, 1, 1, 0, 0, 2, 1, 0, 0, 1, 1, 2, 2, 1, 1, 0, 0, 1, 1, 2, 2, 1, 1, 0, 0, 1, 1, 0, 0, -1, 0];
-const BGM_NOTE_DUR = 0.30;   // 每音符时长（秒）
+// ===== 配乐数据（A 自然小调，Am–F–C–G 和弦进行，工业氛围的“工厂建成”感）=====
+// 音阶用 7 个音级（A3–G4，一个八度的 A 自然小调），不同声部用不同的八度偏移叠加
+const BGM_DEG = [220.00, 246.94, 261.63, 293.66, 329.63, 349.23, 392.00];   // A3,B3,C4,D4,E4,F4,G4
+// 每小节（16 拍）的和弦根音（音级下标）：Am(0) → F(5) → C(2) → G(6)
+const BGM_CHORD_ROOTS = [0, 5, 2, 6];
+const BGM_BARS = 4;             // 4 小节成一句
+const BGM_STEPS_PER_BAR = 16;   // 每小节步数
+const BGM_TOTAL = BGM_BARS * BGM_STEPS_PER_BAR;   // 64 步
+const BGM_NOTE_DUR = 0.30;      // 每步时长（秒），约 100 BPM
+
+// 旋律片段（音级下标，-1=休止）：围绕 Am–F–C–G 写作的温柔主题，结尾回落制造循环感
+const BGM_MELODY = [
+  0, -1, 2, 4, 3, 2, -1, 4, 5, -1, 5, 4, 3, 2, 3, -1,
+  5, -1, 5, 0, 6, 5, -1, 4, 2, -1, 3, 4, 5, 6, 4, -1,
+  2, -1, 2, 4, 6, 0, -1, 6, 5, -1, 5, 4, 3, 4, 3, -1,
+  6, -1, 6, 5, 4, 3, -1, 2, 0, -1, 2, 1, 0, -1, 0, -1
+];
+// 低音：每个和弦小节根音（低八度，奏得沉稳持久），其余步休止以留白
+function bgmBassSeq() {
+  const s = new Array(BGM_TOTAL).fill(-1);
+  for (let bar = 0; bar < BGM_BARS; bar++) {
+    const root = BGM_CHORD_ROOTS[bar];
+    for (let k = 0; k < BGM_STEPS_PER_BAR; k += 2) s[bar * BGM_STEPS_PER_BAR + k] = root;
+  }
+  return s;
+}
+const BGM_BASS = bgmBassSeq();
+// 和声/副旋律：每小节三度与五度交替，填出和弦色彩，营造纵深
+function bgmHarmSeq() {
+  const s = new Array(BGM_TOTAL).fill(-1);
+  for (let bar = 0; bar < BGM_BARS; bar++) {
+    const root = BGM_CHORD_ROOTS[bar];
+    const third = root + 2, fifth = root + 4;   // 三度、五度（自然小调音级）
+    for (let k = 0; k < BGM_STEPS_PER_BAR; k += 4) {
+      s[bar * BGM_STEPS_PER_BAR + k] = root;            // 根音（高八度声部）
+      s[bar * BGM_STEPS_PER_BAR + k + 2] = (k % 8 === 4 ? third : fifth);   // 三/五度交替
+    }
+  }
+  return s;
+}
+const BGM_HARM = bgmHarmSeq();
 
 // 惰性创建 BGM 输出节点
 function bgmEnsure() {
@@ -470,19 +514,26 @@ function bgmEnsure() {
   } catch (e) { bgmNodes = null; return false; }
 }
 
-// 播放单个 BGM 音符（旋律或低音）
-function bgmNote(noteIdx, dur, vol, type, bass) {
-  if (noteIdx < 0) return;   // 休止符
+// 播放单个 BGM 音符
+// mode: 'melody' | 'bass' | 'harm' | 'perc' —— 决定八度偏移与音色
+function bgmNote(deg, dur, vol, mode) {
   if (!AC || !bgmNodes || !bgmNodes.g) return;
+  if (deg < 0) return;   // 休止符
   const now = AC.currentTime;
   const gGain = AC.createGain();
-  const v = vol * ((G.settings.soundVol != null ? G.settings.soundVol : 1));
+  const baseVol = (G.settings.soundVol != null ? G.settings.soundVol : 1);
+  const v = vol * baseVol;
   gGain.gain.setValueAtTime(0.0001, now);
-  gGain.gain.exponentialRampToValueAtTime(v, now + 0.03);
+  gGain.gain.exponentialRampToValueAtTime(v, now + 0.02);
   gGain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
   const osc = AC.createOscillator();
+  let base = 0, type = 'triangle', oct = 1;
+  if (mode === 'bass') { oct = 0; type = 'sawtooth'; }
+  else if (mode === 'harm') { oct = 1; type = 'sine'; }          // 柔和的纯音铺底
+  else if (mode === 'perc') { base = 1200; type = 'square'; }    // 工业脉冲“嗒”
+  else { oct = 1; type = 'triangle'; }                           // melody：中高八度
+  if (mode !== 'perc') base = BGM_DEG[deg % 7] * Math.pow(2, oct);   // 按音级 + 八度取频
   osc.type = type;
-  const base = bass ? (BGM_SCALE[noteIdx % 4] / 2) : BGM_SCALE[noteIdx % BGM_SCALE.length];
   osc.frequency.setValueAtTime(base, now);
   osc.connect(gGain);
   gGain.connect(bgmNodes.g);
@@ -502,14 +553,23 @@ function bgmUpdate(dt) {
     return;
   }
   if (!bgmEnsure()) return;
-  const target = ((G.settings.soundVol != null ? G.settings.soundVol : 1)) * 0.12;
+  // 音量略高于旧版，让背景音乐清晰可闻，但不喧宾夺主
+  const target = ((G.settings.soundVol != null ? G.settings.soundVol : 1)) * 0.16;
   bgmNodes.g.gain.value += (target - bgmNodes.g.gain.value) * Math.min(1, dt * 2);
   bgmNodes.barT += dt;
   if (bgmNodes.barT >= BGM_NOTE_DUR) {
     bgmNodes.barT -= BGM_NOTE_DUR;
-    const idx = bgmNodes.noteIdx % BGM_MELODY.length;
-    bgmNote(BGM_MELODY[idx], BGM_NOTE_DUR * 1.25, 0.05, 'triangle', false);
-    bgmNote(BGM_BASS[idx], BGM_NOTE_DUR * 1.15, 0.06, 'sawtooth', true);
+    const idx = bgmNodes.noteIdx % BGM_TOTAL;
+    // 每步一个小节步号（用于节拍性点缀）
+    const stepInBar = idx % BGM_STEPS_PER_BAR;
+    // 主旋律（稍微拉长，听感更连贯）
+    if (BGM_MELODY[idx] >= 0) bgmNote(BGM_MELODY[idx], BGM_NOTE_DUR * 1.3, 0.07, 'melody');
+    // 和声铺底
+    if (BGM_HARM[idx] >= 0) bgmNote(BGM_HARM[idx], BGM_NOTE_DUR * 1.1, 0.045, 'harm');
+    // 低音
+    if (BGM_BASS[idx] >= 0) bgmNote(BGM_BASS[idx], BGM_NOTE_DUR * 1.15, 0.075, 'bass');
+    // 工业脉冲：每小节第 0/8 拍轻敲，像工厂节拍
+    if (stepInBar === 0 || stepInBar === 8) bgmNote(idx, BGM_NOTE_DUR * 0.5, 0.035, 'perc');
     bgmNodes.noteIdx++;
   }
 }

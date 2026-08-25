@@ -1367,7 +1367,10 @@ function enemyAtTile(tx, ty) {
     if (en.dead) continue;
     // 敌人中心所在格，且按其体型（size）扩大判定到所占范围，鼠标指向其任意身体部分均能识别
     const cx = Math.floor(en.x / TILE), cy = Math.floor(en.y / TILE);
-    const half = Math.max(0, Math.ceil((en.size || 6) / TILE) - 1);
+    // 虫巢为 2×2 占地（对齐《异星工厂》Enemy spawner footprint）：以中心所在格为中心，向四周各覆盖 1 格
+    let half;
+    if (en.kind === 'spawner') half = 1;
+    else half = Math.max(0, Math.ceil((en.size || 6) / TILE) - 1);
     if (Math.abs(tx - cx) <= half && Math.abs(ty - cy) <= half) return en;
   }
   return null;
@@ -1415,6 +1418,8 @@ function mapTipAt(tx, ty) {
   }
   if (getTerrain(tx, ty) === T_CLIFF) return '峭壁|不可通行、不可建造的地形障碍；可手持峭壁炸药点击清除';
   if (getTerrain(tx, ty) === T_WATER) return '水域|无法通行；可把抽水机放在这里取水';
+  // 树木：悬停显示树木信息（对齐《异星工厂》：树木是资源型地形，可砍伐）
+  if (getTerrain(tx, ty) === T_TREE) return '树木|可砍伐获得木材；手持斧头/开采工具按住左键砍伐，或直接在其上铺设建筑自动清理';
   const ti = getOreType(tx, ty);
   if (ti >= 0 && getOreAmt(tx, ty) > 0) {
     if (ti === ORE_OIL) return '原油矿床|储量 ' + Math.floor(getOreAmt(tx, ty)) + '，建造抽油机开采（吃电力）';

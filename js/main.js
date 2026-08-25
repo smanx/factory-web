@@ -1366,6 +1366,51 @@ function returnToMenu() {
   toast('已退出到主页面');
 }
 
+// ===== 死亡结算菜单（对齐《异星工厂》：阵亡后选择 出生点复活 / 读取存档 / 重新开始）=====
+// 玩家阵亡时由 combat2.damagePlayer 调用；暂停游戏并弹出死亡菜单。
+function showDeathMenu() {
+  const ov = document.getElementById('death-overlay');
+  if (ov) ov.classList.remove('hidden');
+  G.paused = true;   // 阵亡后暂停游戏世界，等待玩家选择
+  if (typeof playSfx === 'function') playSfx('player-death');
+}
+function hideDeathMenu() {
+  const ov = document.getElementById('death-overlay');
+  if (ov) ov.classList.add('hidden');
+}
+
+// 出生点复活：清空附近敌人，回到出生点并回满生命，继续游戏
+function respawnAtSpawn() {
+  hideDeathMenu();
+  G.enemies = []; G.enemyProjectiles = [];
+  G.player.x = G.spawn.x * TILE + TILE / 2;
+  G.player.y = G.spawn.y * TILE + TILE / 2;
+  G.cam.px = G.player.x; G.cam.py = G.player.y;
+  G.playerHP = G.playerHPmax;
+  G.paused = false;
+  if (typeof toast === 'function') toast('已在出生点复活');
+  uiDirty = true;
+}
+
+function initDeathMenu() {
+  const r = document.getElementById('btn-death-respawn');
+  const l = document.getElementById('btn-death-load');
+  const s = document.getElementById('btn-death-restart');
+  if (r) r.addEventListener('click', () => { if (typeof playSfx === 'function') playSfx('click'); respawnAtSpawn(); });
+  if (l) l.addEventListener('click', async () => {
+    if (typeof playSfx === 'function') playSfx('click');
+    hideDeathMenu();
+    // 读取最新存档继续（无存档则回退到出生点复活）
+    const ok = await startFromSave();
+    if (!ok) respawnAtSpawn();
+  });
+  if (s) s.addEventListener('click', () => {
+    if (typeof playSfx === 'function') playSfx('click');
+    hideDeathMenu();
+    startNewGame();   // 重新开始游戏（生成新世界）
+  });
+}
+
 function bindInput() {
   window.addEventListener('keydown', ev => {
     const k = ev.key.toLowerCase();
@@ -1790,6 +1835,7 @@ function boot() {
     ['tooltip', () => initTooltips()],
     ['tutorial', () => initTutorial()],
     ['debug', () => buildDebug()],
+    ['deathmenu', () => initDeathMenu()],
     ['input', () => bindInput()]
   ];
   for (const [name, fn] of steps) {

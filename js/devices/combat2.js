@@ -116,14 +116,35 @@ function spawnerCapByEvo() {
   const base = G.techDone['advanced-combat'] ? 3 : SPAWNER_TARGET;
   return base + (evo > 0.4 ? 1 : 0) + (evo > 0.8 ? 1 : 0);
 }
+// 虫巢占地：2×2 格（对齐《异星工厂》Enemy spawner 的 2×2 footprint）
+const SPAWNER_FOOT = 2;   // 边长（格）
+
+// 判断以 (tx,ty) 为左上角的 SPAWNER_FOOT×SPAWNER_FOOT 区域是否可用于放置虫巢
+function spawnerAreaFree(tx, ty) {
+  for (let dy = 0; dy < SPAWNER_FOOT; dy++) {
+    for (let dx = 0; dx < SPAWNER_FOOT; dx++) {
+      if (isWater(tx + dx, ty + dy) || isCliff(tx + dx, ty + dy) || entAt(tx + dx, ty + dy)) return false;
+    }
+  }
+  // 避免与其它虫巢的 2×2 占地重叠（虫巢不在 G.ents 网格中，需手动检查）
+  const src = G.enemies || EMPTY_ARR;
+  for (let i = 0; i < src.length; i++) {
+    const s = src[i];
+    if (s.dead || s.kind !== 'spawner') continue;
+    const scx = Math.floor(s.x / TILE), scy = Math.floor(s.y / TILE);
+    if (Math.abs(tx - scx) <= 1 && Math.abs(ty - scy) <= 1) return false;
+  }
+  return true;
+}
+
 // 在一个目标格生成巢穴（若该格可用）；不可用返回 null
 function spawnerAt(tx, ty) {
-  if (isWater(tx, ty) || isCliff(tx, ty) || entAt(tx, ty)) return null;
+  if (!spawnerAreaFree(tx, ty)) return null;
   return {
-    x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2,
+    x: (tx + (SPAWNER_FOOT - 1) / 2) * TILE, y: (ty + (SPAWNER_FOOT - 1) / 2) * TILE,
     hp: SPAWNER_HP, maxhp: SPAWNER_HP, dead: false, dir: 0,
-    type: 'spawner', kind: 'spawner', speed: 0, size: 13, dmg: 0,
-    color: '#5a3a8a', attackT: 0, fireT: 0
+    type: 'spawner', kind: 'spawner', speed: 0, size: SPAWNER_FOOT * TILE * 0.42, dmg: 0,
+    color: '#5a3a8a', attackT: 0, fireT: 0, foot: SPAWNER_FOOT
   };
 }
 // 尝试让某个巢穴向远处扩张出一个新巢穴，成功返回 true
@@ -353,6 +374,8 @@ function updateEnemies(dt) {
     if (en.kind === 'spawner') continue;
     en.attackT = (en.attackT || 0) - dt;
     en.fireT = (en.fireT || 0) - dt;
+    // 攻击动画计时：>0 时敌人处于“扑咬/喷吐”动作帧（供渲染表现），随时间衰减
+    en.lungeT = (en.lungeT || 0) - dt;
     // 兼容旧档敌人：补充默认字段
     if (en.speed === undefined) { en.speed = 22; en.size = 8; en.dmg = 5; en.kind = 'melee'; en.maxhp = en.hp || 40; if (!en.color) en.color = enemyColor(en.hp, en.maxhp); }
     // 减速力场（减速胶囊）：降低移动速度
@@ -378,6 +401,8 @@ function updateEnemies(dt) {
       // 吐痰（投射物）；喷火虫/巨型蠕虫吐火球（命中造成持续灼烧）
       if (en.fireT <= 0 && fireTarget) {
         en.fireT = isWorm ? (en.type === 'behemoth-worm' ? 2.6 : 2.2) : 1.6;
+        en.lungeT = 0.22;   // 喷吐动作帧
+        if (typeof playSfx === 'function') playSfx('spit');   // 远程敌人喷吐音效
         const fire = en.type === 'fire-spitter' || en.type === 'big-worm' || en.type === 'behemoth-worm';
         (G.enemyProjectiles || (G.enemyProjectiles = [])).push({
           x: en.x, y: en.y - en.size, tx: fireTarget.x, ty: fireTarget.y, speed: 3.2, dmg: en.dmg, t: 0,
@@ -393,6 +418,12 @@ function updateEnemies(dt) {
       if (target) {
         if (en.attackT <= 0) {
           en.attackT = 1.0;
+          en.lungeT = 0.28;   // 扑咬建筑动作帧
+          // 扑咬时短暂朝目标建筑前扑（视觉动作，对齐《异星工厂》Biter 扑咬姿态）
+          const tdx = (target.x + target.w / 2 - en.x), tdy = (target.y + target.h / 2 - en.y);
+          const td = Math.max(1, Math.hypot(tdx, tdy));
+          en.x += (tdx / td) * 5; en.y += (tdy / td) * 5;
+          if (typeof playSfx === 'function') playSfx('bite');
           if (typeof damageBuilding === 'function') damageBuilding(target, en.dmg);
         }
         continue;
@@ -403,7 +434,29 @@ function updateEnemies(dt) {
         en.y += (dy / d) * en.speed * dt * slow;
       } else if (en.attackT <= 0) {
         en.attackT = 1.0;
+        en.lungeT = 0.28;   // 扑咬玩家动作帧
+        if (typeof playSfx === 'function') playSfx('bite');
         if (G.settings.combat) damagePlayer(en.dmg);
+      }
+    }
+  }
+  // 敌人间斥力（对齐《异星工厂》：虫群列队前进时保持间距、不叠成一团）
+  // 轻量实现：对距离过近的存活敌人施加互斥位移，避免视觉堆叠与碰撞穿透。
+  const alive = G._aliveEnemies || G.enemies;
+  for (let i = 0; i < alive.length; i++) {
+    const a = alive[i];
+    if (a.dead || a.kind === 'spawner') continue;
+    for (let j = i + 1; j < alive.length; j++) {
+      const b = alive[j];
+      if (b.dead || b.kind === 'spawner') continue;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const d = Math.hypot(dx, dy);
+      const minD = (a.size + b.size) * 0.9 + 4;
+      if (d > 0 && d < minD) {
+        const push = ((minD - d) / minD) * 26 * dt;
+        const ux = dx / d, uy = dy / d;
+        a.x -= ux * push; a.y -= uy * push;
+        b.x += ux * push; b.y += uy * push;
       }
     }
   }
@@ -517,16 +570,24 @@ function damagePlayer(dmg) {
     if (dmg < before && typeof playSfx === 'function') playSfx('shield');
   }
   dmg = Math.max(0, dmg);
-  G.playerHP -= dmg;
-  if (G.playerHP <= 0) {
-    G.playerHP = 0;
-    // 玩家阵亡：清空附近敌人并重置于出生点，HP 回满
-    if (typeof toast === 'function') toast('你阵亡了！已回到出生点');
-    G.enemies = []; G.enemyProjectiles = [];
-    G.player.x = G.spawn.x * TILE + TILE / 2;
-    G.player.y = G.spawn.y * TILE + TILE / 2;
-    G.cam.px = G.player.x; G.cam.py = G.player.y;
-    G.playerHP = G.playerHPmax;
+  if (dmg > 0) {
+    G.playerHP -= dmg;
+    // 主角受击音效（真正扣血时播放；护盾完全吸收则无受击音）
+    if (typeof playSfx === 'function') playSfx('hit');
+    if (G.playerHP <= 0) {
+      G.playerHP = 0;
+      // 玩家阵亡：弹出死亡菜单供玩家选择（出生点复活 / 读取存档 / 重新开始），对齐《异星工厂》阵亡结算
+      if (typeof playSfx === 'function') playSfx('player-death');
+      if (typeof showDeathMenu === 'function') showDeathMenu();
+      else {
+        // 兜底：无死亡菜单时回退到原行为（回出生点回满）
+        G.enemies = []; G.enemyProjectiles = [];
+        G.player.x = G.spawn.x * TILE + TILE / 2;
+        G.player.y = G.spawn.y * TILE + TILE / 2;
+        G.cam.px = G.player.x; G.cam.py = G.player.y;
+        G.playerHP = G.playerHPmax;
+      }
+    }
   }
   uiDirty = true;
 }

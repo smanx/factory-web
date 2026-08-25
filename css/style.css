@@ -719,6 +719,55 @@ html, body {
   cursor: pointer;
 }
 .tutorial-close:hover { filter: brightness(1.1); }
+
+/* 死亡结算菜单：阵亡后选择 出生点复活 / 读取存档 / 重新开始 */
+.death-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 240;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 5, 5, .66);
+  backdrop-filter: blur(3px);
+  animation: overlayFade .2s ease;
+}
+.death-overlay.hidden { display: none; }
+.death-panel {
+  width: min(360px, 90vw);
+  text-align: center;
+  background: #1c1416;
+  border: 1px solid rgba(255, 90, 90, .4);
+  border-radius: 14px;
+  padding: 26px 24px;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, .6);
+}
+.death-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #ff6b6b;
+  text-shadow: 0 0 18px rgba(255, 80, 80, .5);
+}
+.death-sub {
+  font-size: 13px;
+  color: #a88686;
+  margin: 6px 0 18px;
+}
+.death-menu { display: flex; flex-direction: column; gap: 10px; }
+.death-btn {
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #2c2f36;
+  color: #e8edf4;
+  transition: filter .15s;
+}
+.death-btn:hover { filter: brightness(1.15); }
+.death-btn.primary { background: linear-gradient(135deg, #3fa87e, #2f8a6a); color: #eafff3; }
+.death-btn.danger { background: linear-gradient(135deg, #c04a4a, #9a3232); color: #ffecec; }
 @keyframes overlayFade {
   from { opacity: 0; }
   to { opacity: 1; }
