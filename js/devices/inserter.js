@@ -375,7 +375,7 @@ function drawInserter(ctx, e, gx, gy, dir, alpha) {
   const ang = e.armAng !== undefined ? e.armAng : ((dir + 2) % 4) * Math.PI / 2;
   const tipx = cx + Math.cos(ang) * len;
   const tipy = cy + Math.sin(ang) * len;
-  ctx.strokeStyle = e.holding ? '#ffe066' : inserterArmColor(e);
+  ctx.strokeStyle = inserterArmColor(e);
   ctx.lineWidth = long ? 5 : 4;
   ctx.lineCap = 'round';
   ctx.beginPath();
