@@ -13,6 +13,7 @@ class Splitter extends Belt {
     this.outToggle = false; // 轮流输出两个出口的切换开关（普通分流器 -1）
     this.filter = null; // 可编程分离器过滤：仅放行该物品，其余物品被挡在入口（对齐《异星工厂》Programmable splitter）
     this.outPref = type === 'priority-splitter' ? 1 : -1; // -1=两出口轮流输出，0/1=优先某侧
+    this._nextInLane = 0; // 无 laneHint 投放（机械臂/地面）的下一装载车道，供双线均衡
     this.applyDir();
   }
   applyDir() {
@@ -35,29 +36,35 @@ class Splitter extends Belt {
       const o = this.items[i];
       const lim = i === 0 ? 0.999 : Math.max(0, this.items[i - 1].pos - BELT_SPACING);
       if (o.pos < lim) o.pos = Math.min(o.pos + sp, lim);
-      // 轮流输出：物品到达中段时决定从哪个出口（顶部 lane0 / 底部 lane1）输出。
-      // 普通分流器（outPref=-1）两个出口轮流输出；优先级分流器优先走指定出口。
-      // A/B 车道（o.lane）保持不变，推给下游带时作为 laneHint 传递（A 进 A 出）。
-      if (o.pos >= 0.5 && o.outLane === undefined) {
-        if (this.outPref >= 0) {
-          o.outLane = this.outPref;
+      // 物品到达中段：确定输出端口 outPort 与输出车道 outLane。
+      //  - 输出车道 = 输入车道（o.lane 保持不变，对齐《异星工厂》：Splitters preserve the lanes）；
+      //  - 输出端口按 outPref 调度：普通分流器（-1）两输出口轮流交替；优先级分流器（0/1）优先指定口。
+      //  - 过滤分流器：设置了 filter 时，命中物品全走优先输出口、其余走另一口（对齐官方可编程分离器）。
+      if (o.pos >= 0.5 && o.outPort === undefined) {
+        o.outLane = o.lane; // lane 保持（A 进 A 出 / B 进 B 出）
+        if (this.filter) {
+          o.outPort = o.item === this.filter ? (this.outPref >= 0 ? this.outPref : 0) : (this.outPref >= 0 ? 1 - this.outPref : 1);
+        } else if (this.outPref >= 0) {
+          o.outPort = this.outPref;
         } else {
-          o.outLane = this.outToggle ? 1 : 0;
+          o.outPort = this.outToggle ? 1 : 0;
           this.outToggle = !this.outToggle;
         }
       }
-      if (o.pos >= 0.999 && o.outLane !== undefined) {
-        let ok = this.pushOut(o.item, o.outLane, o.lane);
+      if (o.pos >= 0.999 && o.outPort !== undefined) {
+        let ok = this.pushOut(o.item, o.outPort, o.outLane);
         if (!ok) {
-          // 当前出口拥堵时，尝试另一个出口疏通；A/B 车道仍保持 o.lane 不变。
-          const alt = 1 - o.outLane;
-          if (this.pushOut(o.item, alt, o.lane)) { o.outLane = alt; ok = true; }
+          // 当前输出口拥堵时，尝试另一个输出口疏通；A/B 车道仍保持 o.outLane 不变。
+          const alt = 1 - o.outPort;
+          if (this.pushOut(o.item, alt, o.outLane)) { o.outPort = alt; ok = true; }
         }
         if (ok) { this.items.splice(i, 1); i--; }
         else o.pos = 0.999;
       }
     }
   }
+  // 从某个输出口（port=0/1）把物品推给下游：输出车道 lane 作为 laneHint 传给下游传送带，
+  // 保证 A/B 车道在分流器 → 传送带 / 分流器串联时始终如一（对齐《异星工厂》lane 保持）。
   pushOut(item, port, lane) {
     const [ex, ey] = this.laneCenter(port);
     const tx = Math.floor((ex + DX[this.dir] * TILE) / TILE);
@@ -66,8 +73,6 @@ class Splitter extends Belt {
     if (!t) return false;
     if (t instanceof Belt && !(t instanceof Splitter)) {
       if (t.dir === ((this.dir + 2) % 4)) return false;
-      // 传入 o.lane 作为 laneHint：让下游传送带把物品放进与分流器 lane 一致的
-      // 那条车道（A 线进 A 线出、B 线进 B 线出），而不是当作尾部输入在两条车道间轮流装载。
       return t.acceptItem(item, this.dir, undefined, undefined, lane);
     }
     // 下游也是分流器：继续传递 laneHint，保证 A/B 车道在分流器串联时也不丢失
@@ -83,42 +88,44 @@ class Splitter extends Belt {
   // 供输入优先级 / 轮流输入调度使用：优先口有货时，非优先口暂缓放行，
   // 从而让“切换输入优先级”真正产生可见效果（对齐《异星工厂》分流器输入优先级）。
   _entrancePending(l) {
-    if (this.items.some(o => (o.inPos === undefined ? o.lane : o.inPos) === l && o.pos < BELT_SPACING)) return true;
+    if (this.items.some(o => o.inPort === l && o.pos < BELT_SPACING)) return true;
     const [lx, ly] = this.laneCenter(l);
     const tx = Math.floor((lx - DX[this.dir] * TILE) / TILE);
     const ty = Math.floor((ly - DY[this.dir] * TILE) / TILE);
     const inEnt = entAt(tx, ty);
     if (inEnt && inEnt.items && inEnt.items.length) {
-      // 入口传送带前端过半程的物品即将进入分流器
       for (const o of inEnt.items) if (o.pos >= 0.5) return true;
     }
     return false;
   }
+  // 由来源几何确定物品进入的物理输入口（上格=0 / 下格=1）：
+  // 直通输入按车道垂直位置，侧向输入按横向位置；无几何信息（机械臂/地面）返回 -1。
+  _geoPort(fromDir, sx, sy) {
+    const rel = ((fromDir - this.dir) % 4 + 4) % 4;
+    if (sx === undefined || sx === null) return -1;
+    if (rel === 0) {
+      const pv = this.laneVec();
+      const ccx = (this.x + this.w / 2) * TILE, ccy = (this.y + this.h / 2) * TILE;
+      const scx = (sx + 0.5) * TILE, scy = (sy + 0.5) * TILE;
+      return (scx - ccx) * pv[0] + (scy - ccy) * pv[1] > 0 ? 1 : 0;
+    } else if (rel !== 2) {
+      const fv = [DX[this.dir], DY[this.dir]];
+      const ccx = (this.x + this.w / 2) * TILE, ccy = (this.y + this.h / 2) * TILE;
+      const scx = (sx + 0.5) * TILE, scy = (sy + 0.5) * TILE;
+      return (scx - ccx) * fv[0] + (scy - ccy) * fv[1] > 0 ? 1 : 0;
+    }
+    return -1;
+  }
   acceptItem(item, fromDir, sx, sy, laneHint) {
     // 可编程分离器过滤：设置了过滤物且物品不匹配时，拒绝放行（物品停留在上游传送带）
     if (this.filter && item !== this.filter) return false;
-    const rel = ((fromDir - this.dir) % 4 + 4) % 4;
-    // 输入口（顶部 lane0 / 底部 lane1）由上游几何位置确定：
-    // 直通输入按车道垂直位置，侧向输入按横向位置；
-    // 无几何信息的投放（机械臂/地面）按输入优先级取起始输入口。
-    let geoPref = -1;
-    if (sx !== undefined && sx !== null) {
-      if (rel === 0) {
-        const pv = this.laneVec();
-        const ccx = (this.x + this.w / 2) * TILE, ccy = (this.y + this.h / 2) * TILE;
-        const scx = (sx + 0.5) * TILE, scy = (sy + 0.5) * TILE;
-        geoPref = (scx - ccx) * pv[0] + (scy - ccy) * pv[1] > 0 ? 1 : 0;
-      } else if (rel !== 2) {
-        const fv = [DX[this.dir], DY[this.dir]];
-        const ccx = (this.x + this.w / 2) * TILE, ccy = (this.y + this.h / 2) * TILE;
-        const scx = (sx + 0.5) * TILE, scy = (sy + 0.5) * TILE;
-        geoPref = (scx - ccx) * fv[0] + (scy - ccy) * fv[1] > 0 ? 1 : 0;
-      }
-    }
-    // 该物品应进入的物理输入口：带输入始终跟随其来源入口；
+    // 物品应进入的物理输入口 inPort：带输入始终跟随其来源入口几何；
     // 机械臂/地面等无几何信息的投放按输入优先级/轮流开关取起始口。
-    const entrance = (geoPref >= 0) ? geoPref : (this.inPref >= 0 ? this.inPref : (this.inToggle ? 1 : 0));
-    const lane = (laneHint !== undefined && laneHint !== null) ? (laneHint === 1 ? 1 : 0) : entrance;
+    const geoPort = this._geoPort(fromDir, sx, sy);
+    const inPort = geoPort >= 0 ? geoPort : (this.inPref >= 0 ? this.inPref : (this.inToggle ? 1 : 0));
+    // 进入车道 lane：直通带输入沿用 laneHint（A 进 A 出，官方 lane 保持）；
+    // 无 laneHint 的投放（机械臂/地面/侧向）取该输入口的起始车道，供双线各自装填。
+    const lane = (laneHint !== undefined && laneHint !== null) ? (laneHint === 1 ? 1 : 0) : (this._nextInLane || 0);
 
     // ---- 输入优先级 / 轮流输入调度（对带输入同样生效，解决“切优先级无反应”）----
     // inPref=-1（默认，轮流输入）：两输入口轮流放行。当“当班口”（inToggle）有货待进入时，
@@ -127,19 +134,22 @@ class Splitter extends Belt {
     //   优先口空置/通畅时非优先口照常进入，仅作溢出通道。
     if (this.inPref === -1) {
       // 轮流：非当班口仅在当班口无待进入物品时才放行
-      if (entrance !== this.inToggle && this._entrancePending(this.inToggle)) return false;
-    } else if (entrance !== this.inPref) {
+      if (inPort !== this.inToggle && this._entrancePending(this.inToggle)) return false;
+    } else if (inPort !== this.inPref) {
       // 优先：非优先口仅在优先口无待进入物品时才放行
       if (this._entrancePending(this.inPref)) return false;
     }
 
+    // 在目标输入口 inPort 的入口找空位放入（仅在该口腾空处，绝不串到另一输入口）
     for (let n = 0; n < 2; n++) {
-      const l = (entrance + n) % 2;
-      const blocked = this.items.some(o => o.inPos === l && o.pos < BELT_SPACING);
+      const p = (inPort + n) % 2;
+      const blocked = this.items.some(o => o.inPort === p && o.pos < BELT_SPACING);
       if (!blocked) {
-        this.items.push({ item, pos: 0, lane, inPos: l });
+        this.items.push({ item, pos: 0, inPort: p, lane });
         // 轮流输入：放行后切换当班口，使两输入口交替（默认行为）。
         if (this.inPref === -1) this.inToggle = 1 - this.inToggle;
+        // 无 laneHint 的投放：下一次用另一条车道装填，让双线均衡（对齐尾部输入交替装载）
+        if (laneHint === undefined || laneHint === null) this._nextInLane = 1 - lane;
         return true;
       }
     }
@@ -159,7 +169,7 @@ class Splitter extends Belt {
       outPref: this.outPref,
       inPref: this.inPref,
       filter: this.filter,
-      items: this.items.map(o => [o.item, +o.pos.toFixed(3), o.lane, o.outLane === undefined ? -1 : o.outLane, o.inPos === undefined ? o.lane : o.inPos])
+      items: this.items.map(o => [o.item, +o.pos.toFixed(3), o.lane, o.outPort === undefined ? -1 : o.outPort, o.inPort === undefined ? o.lane : o.inPort, o.outLane === undefined ? -1 : o.outLane])
     };
   }
   // 蓝图保留优先输出/输入配置，不复制传送带上的物品
@@ -177,11 +187,14 @@ class Splitter extends Belt {
     e.outPref = typeof s.outPref === 'number' ? s.outPref : (e.constructor === PrioritySplitter ? 1 : -1);
     e.inPref = typeof s.inPref === 'number' ? s.inPref : -1;
     e.filter = s.filter || null;
-    e.items = (s.items || []).map(a => ({
-      item: a[0], pos: a[1], lane: a[2] || 0,
-      inPos: a.length > 4 ? a[4] : (a[2] || 0),
-      outLane: a[3] >= 0 ? a[3] : undefined,
-    }));
+    e.items = (s.items || []).map(a => {
+      // 兼容旧档：旧格式 [item,pos,lane,outLane?,inPos?]，新格式 [item,pos,lane,outPort,inPort,outLane]
+      const old = a.length < 6;
+      const inPort = old ? (a.length > 4 ? a[4] : (a[2] || 0)) : (a[4] || 0);
+      const outPort = old ? (a[3] >= 0 ? a[3] : undefined) : (a[3] >= 0 ? a[3] : undefined);
+      const outLane = old ? undefined : (a[5] >= 0 ? a[5] : undefined);
+      return { item: a[0], pos: a[1], lane: a[2] || 0, inPort, outPort, outLane };
+    });
     return e;
   }
 }
@@ -289,9 +302,9 @@ function drawSplitterFlow(ctx, e, gx, gy, color, alpha) {
   for (let l = 0; l < 2; l++) {
     // 流入：入口接带 &&（入口传送带上有货 或 分流器内部有物品正从该入口流向中心）
     inFlow[l] = links.inp[l] && (splitterInputHasItem(e, l, gx, gy) ||
-      e.items.some(o => (o.inPos === undefined ? o.lane : o.inPos) === l && o.pos < 0.5));
+      e.items.some(o => o.inPort === l && o.pos < 0.5));
     // 流出：出口接带 && 分流器内部确有物品正在从该出口流向出口
-    outFlow[l] = links.out[l] && e.items.some(o => (o.outLane !== undefined ? o.outLane : o.lane) === l && o.pos >= 0.5);
+    outFlow[l] = links.out[l] && e.items.some(o => (o.outPort !== undefined ? o.outPort : o.inPort) === l && o.pos >= 0.5);
   }
   if (!inFlow[0] && !inFlow[1] && !outFlow[0] && !outFlow[1]) return;
   const cx = (gx + e.w / 2) * TILE, cy = (gy + e.h / 2) * TILE;
@@ -440,23 +453,37 @@ function drawSplitter(ctx, e, gx, gy, dir, alpha) {
     drawItemDot(ctx, cx, cy, e.filter);
   }
   const links = splitterLinks(e, gx, gy);
+  drawSplitterItems(ctx, e, gx, gy, cx, cy);
+  ctx.globalAlpha = 1;
+}
+
+// 分流器物品绘制（供普通/优先级/极速/快速分流器复用）：
+// 沿物品在分流器内部的 A/B 车道线绘制移动动画——
+//  - 入口双线进料（两入口 × 双线），物品沿各自车道线流入中心；
+//  - 出口双线出料（两出口 × 双线），物品沿各自车道线流出。
+// 入口/出口未接传送带时不绘制该口物品动画（物品不会凭空出现/消失）。
+// 物品进入口由 inPort（上格0/下格1）决定，输出口由 outPort 决定，
+// 车道由 lane（输入）与 outLane（输出）决定，A/B 车道保持不串（对齐《异星工厂》lane 保持）。
+function drawSplitterItems(ctx, e, gx, gy, cx, cy) {
+  const links = splitterLinks(e, gx, gy);
   for (const o of e.items) {
-    const outL = o.outLane !== undefined ? o.outLane : o.lane;
-    const inL = o.inPos !== undefined ? o.inPos : o.lane;
+    const inPort = o.inPort !== undefined ? o.inPort : o.lane;
+    const outPort = o.outPort !== undefined ? o.outPort : o.inPort;
+    const outLane = o.outLane !== undefined ? o.outLane : o.lane;
     // 入口未接传送带：不绘制该入口的物品移动动画（物品不会凭空从无带入口出现）；
     // 出口未接传送带：不绘制该出口的物品移动动画（物品不会凭空流向无带出口）。
-    if (o.pos <= 0.5 ? !links.inp[inL] : !links.out[outL]) continue;
+    if (o.pos <= 0.5 ? !links.inp[inPort] : !links.out[outPort]) continue;
     let ix, iy;
     if (o.pos <= 0.5) {
       // 入口双线进料：按 A/B 车道分别偏移，物品沿各自车道线流入（两入口 × 双线）
-      const [lx, ly] = splitterLaneEntryPoint(e, gx, gy, inL, o.lane === 1 ? 1 : 0);
+      const [lx, ly] = splitterLaneEntryPoint(e, gx, gy, inPort, o.lane === 1 ? 1 : 0);
       const inX = lx - DX[e.dir] * TILE / 2, inY = ly - DY[e.dir] * TILE / 2;
       const t = o.pos / 0.5;
       ix = inX + (cx - inX) * t;
       iy = inY + (cy - inY) * t;
     } else {
       // 出口双线出料：按 A/B 车道分别偏移，物品沿各自车道线流出（两出口 × 双线）
-      const [lx, ly] = splitterLaneExitPoint(e, gx, gy, outL, o.lane === 1 ? 1 : 0);
+      const [lx, ly] = splitterLaneExitPoint(e, gx, gy, outPort, outLane === 1 ? 1 : 0);
       const ox2 = lx + DX[e.dir] * TILE / 2, oy2 = ly + DY[e.dir] * TILE / 2;
       const t = (o.pos - 0.5) / 0.5;
       ix = cx + (ox2 - cx) * t;
@@ -464,7 +491,6 @@ function drawSplitter(ctx, e, gx, gy, dir, alpha) {
     }
     ((LOD && LOD.simple) ? drawItemDotLOD : drawItemDot)(ctx, ix, iy, o.item);
   }
-  ctx.globalAlpha = 1;
 }
 
 // ===== 面板 =====

@@ -1,17 +1,27 @@
 #!/usr/bin/env node
 'use strict';
 /**
- * 分流器输入优先级 / 轮流输入 验证脚本
- * ------------------------------------------------
- * 验证《异星工厂》分流器输入调度：
- *  - 默认（inPref=-1）：两个输入口轮流放行（公平交替，单口空置不饿死另一口）。
- *  - inPref=0/1（优先某口）：优先口有货时优先接纳，非优先口仅作溢出通道。
- * 回归目标：此前 inPref 只对无几何信息的投放（机械臂/地面）生效，带输入始终
- * 跟随来源入口几何位置，导致“切换输入优先之后没有任何反应”。本脚本验证修复后
- * 对带输入同样生效，切换 inPref 能产生可见的流量倾斜。
+ * 分流器 4 线物流模型验证脚本（对齐《异星工厂》Splitter）
+ * -----------------------------------------------------------------
+ * 官方机制依据（Factorio Wiki / Belt transport system）：
+ *   - Belts of all tiers have 2 lanes（每条传送带 2 条独立车道）
+ *   - Splitters preserve the lanes：穿过分流器，右车道物品不会移到左车道，反之亦然
+ *   - Splitters have two input belts and two output belts（两入两出）
+ *   - 单输入时均匀分配到两输出；一输出堵死则全部走另一输出
+ *   - 输入优先级：优先口有货时优先消耗，仅当优先口出现空隙才消费另一口
+ *   - 输出优先级：重定向所有物品到指定输出口，仅当指定口满才用另一口
+ *
+ * 验证点：
+ *   1. 输入车道保持（laneHint 贯通：A 进 A 出）
+ *   2. 默认轮流输入（两输入口交替放行，单口空置不饿死）
+ *   3. 输入优先级（inPref=0/1 对带双线输入真正生效）
+ *   4. 默认输出轮流（两输出口交替输出）
+ *   5. 输出优先级（outPref 重定向）
+ *   6. 输出 lane 保持（outLane = lane，穿过分流器不换道）
+ *   7. 渲染几何：每入口/出口双线对称（4 线模型）
  *
  * 运行：node tools/verify-splitter-input-priority.js （退出码 0 = 通过）
- * 零依赖：加载 core/entity.js / devices/belt.js / devices/splitter.js 做端到端模拟。
+ * 零依赖：加载 entity.js / belt.js / splitter.js 做端到端模拟。
  */
 const fs = require('fs');
 const path = require('path');
@@ -75,21 +85,33 @@ function check(name, cond, detail) {
   return cond;
 }
 
-// 测试：默认轮流输入 - 两输入带都载货，轮流放行两入口
+// ---- 测试 1：输入车道保持（laneHint 贯通）----
+// 从 top 入口直通（sx=2,sy=2 → port 0）传入 laneHint=1，物品应保留 lane=1。
+function testLanePreserveInput() {
+  const { sp } = setup();
+  sp.inPref = -1;
+  const ok = sp.acceptItem('iron-plate', 0, 2, 2, 1); // laneHint=1 → lane 1
+  if (!ok) { check('输入车道保持：laneHint=1 被接受', false, 'acceptItem 拒绝'); return false; }
+  const o = sp.items[0];
+  let r = check('输入车道保持：laneHint=1 进入 lane 1', o.lane === 1, 'lane=' + o.lane);
+  r = check('输入端口跟随来源（top→port0）', o.inPort === 0, 'inPort=' + o.inPort) && r;
+  // laneHint=0 → lane 0
+  sp.items = [];
+  sp.acceptItem('copper-plate', 0, 2, 2, 0);
+  r = check('输入车道保持：laneHint=0 进入 lane 0', sp.items[0].lane === 0, 'lane=' + sp.items[0].lane) && r;
+  return r;
+}
+
+// ---- 测试 2：默认轮流输入（两输入口交替放行）----
 function testAlternate() {
-  const { sp, inTop, inBot, outTop, outBot } = setup();
+  const { sp } = setup();
   sp.inPref = -1;
   sp.inToggle = 0;
-  // 让两条入口带持续有货（前端物品待进入），模拟满载
-  inTop.items = [{ item: 'iron-plate', pos: 0.99, lane: 0, side: -1 }];
-  inBot.items = [{ item: 'copper-plate', pos: 0.99, lane: 0, side: -1 }];
-  // 轮流输入：每轮清除已接纳物品（模拟物品前移腾空入口），再交替接纳两入口
   const inPosSeq = [];
-  for (let i = 0; i < 4; i++) {
-    // 当前当班口应被接纳
-    if (sp.acceptItem('iron-plate', 0, 2, 2, 0)) inPosSeq.push('top');
-    if (sp.acceptItem('copper-plate', 0, 2, 3, 0)) inPosSeq.push('bot');
-    sp.items = []; // 模拟物品已前移腾空，避免入口积压干扰调度判定
+  for (let i = 0; i < 6; i++) {
+    if (sp.acceptItem('iron-plate', 0, 2, 2, 0)) inPosSeq.push('top'); // top→port0
+    if (sp.acceptItem('copper-plate', 0, 2, 3, 0)) inPosSeq.push('bot'); // bot→port1
+    sp.items = []; // 模拟物品前移腾空入口
   }
   const topCount = inPosSeq.filter(x => x === 'top').length;
   const botCount = inPosSeq.filter(x => x === 'bot').length;
@@ -100,24 +122,22 @@ function testAlternate() {
   return ok;
 }
 
-// 测试：优先上方输入 - inPref=0 时，上方口有货则下方口被暂缓
+// ---- 测试 3：输入优先级（inPref=0 优先上方输入）----
 function testPriorityTop() {
-  const { sp, inTop, inBot, outTop, outBot } = setup();
+  const { sp, inTop, inBot } = setup();
   sp.inPref = 0;
-  // 上口有货（待进入），下口也有货
-  inTop.items = [{ item: 'iron-plate', pos: 0.99, lane: 0, side: -1 }];
-  inBot.items = [{ item: 'copper-plate', pos: 0.99, lane: 0, side: -1 }];
-  // 先让上口送一件（被接纳），再让下口尝试送（应被上口积压挡住，除非上口通畅）
-  sp.acceptItem('iron-plate', 0, 2, 2, 0); // 上口进一件
-  sp.items = []; // 腾空（模拟物品前移）
-  sp.acceptItem('iron-plate', 0, 2, 2, 0); // 上口再进一件（模拟持续）
-  const botAccepted = sp.acceptItem('copper-plate', 0, 2, 3, 0); // 下口尝试
-  // 上口持续有货时，下口应被暂缓
+  inTop.items = [{ item: 'iron-plate', pos: 0.99, lane: 0 }];
+  inBot.items = [{ item: 'copper-plate', pos: 0.99, lane: 0 }];
+  // 优先口（top/port0）持续有货时，非优先口（bot/port1）应被暂缓
+  sp.acceptItem('iron-plate', 0, 2, 2, 0); // top 进一件
+  sp.items = [];
+  sp.acceptItem('iron-plate', 0, 2, 2, 0); // top 再进（模拟持续）
+  const botAccepted = sp.acceptItem('copper-plate', 0, 2, 3, 0); // bot 尝试
   let ok = botAccepted === false;
   check('优先上方(inPref=0)：上方持续有货时，下方口暂缓', ok,
     '下口是否被暂缓=' + (botAccepted === false));
-  // 再验证：下口无上口积压后放行
-  sp.items = []; inTop.items = []; // 清空并让上口无货，模拟上口通畅
+  // 优先口通畅后，非优先口放行
+  sp.items = []; inTop.items = [];
   const botAccepted2 = sp.acceptItem('copper-plate', 0, 2, 3, 0);
   ok = ok && botAccepted2 === true;
   check('优先上方：上方通畅后，下方口正常放行（溢出通道）', botAccepted2 === true,
@@ -125,33 +145,32 @@ function testPriorityTop() {
   return ok;
 }
 
-// 测试：优先下方输入 - inPref=1 时，下方口优先
+// ---- 测试 4：输入优先级（inPref=1 优先下方输入）----
 function testPriorityBot() {
   const { sp, inTop, inBot } = setup();
   sp.inPref = 1;
-  inTop.items = [{ item: 'iron-plate', pos: 0.99, lane: 0, side: -1 }];
-  inBot.items = [{ item: 'copper-plate', pos: 0.99, lane: 0, side: -1 }];
-  sp.acceptItem('copper-plate', 0, 2, 3, 0); // 下口进一件
-  sp.acceptItem('copper-plate', 0, 2, 3, 0); // 下口再进一件
-  const topAccepted = sp.acceptItem('iron-plate', 0, 2, 2, 0); // 上口尝试
+  inTop.items = [{ item: 'iron-plate', pos: 0.99, lane: 0 }];
+  inBot.items = [{ item: 'copper-plate', pos: 0.99, lane: 0 }];
+  sp.acceptItem('copper-plate', 0, 2, 3, 0); // bot 进
+  sp.acceptItem('copper-plate', 0, 2, 3, 0); // bot 再进
+  const topAccepted = sp.acceptItem('iron-plate', 0, 2, 2, 0); // top 尝试
   let ok = topAccepted === false;
   check('优先下方(inPref=1)：下方持续有货时，上方口暂缓', ok,
     '上口是否被暂缓=' + (topAccepted === false));
   return ok;
 }
 
-// 测试：单口无货时，另一口不因轮流模式被饿死
+// ---- 测试 5：轮流模式单口满载不饿死另一口 ----
 function testSingleEntrance() {
   const { sp, inTop, inBot } = setup();
   sp.inPref = -1;
   sp.inToggle = 0;
-  inTop.items = [{ item: 'iron-plate', pos: 0.99, lane: 0, side: -1 }];
+  inTop.items = [{ item: 'iron-plate', pos: 0.99, lane: 0 }];
   inBot.items = []; // 下口无货
   let accepted = 0;
   for (let i = 0; i < 6; i++) {
-    // 只有上口有货：每次都应放行，不应因轮到下口而饿死
     if (sp.acceptItem('iron-plate', 0, 2, 2, 0)) accepted++;
-    sp.items = []; // 腾空（模拟物品前移）
+    sp.items = [];
   }
   let ok = accepted === 6;
   check('轮流模式单口满载：另一口无货时不影响该口吞吐', ok,
@@ -159,9 +178,75 @@ function testSingleEntrance() {
   return ok;
 }
 
-// —— 渲染几何：入口/出口“一个口对应两根物流线”双线对称性 ——
-// 回归目标：分流器内部物品流动动画必须体现“每入口/每出口各对应 A/B 两条线”，
-// 而非所有物品塌缩成一条线。验证 entry/exit 点的车道偏移对称且非零。
+// ---- 测试 6：输出 lane 保持（穿过分流器 A 进 A 出）----
+function testOutputLanePreserve() {
+  const { sp, outTop, outBot } = setup();
+  // 向分流器放一件 lane=1（B 线）物品，推进到出口触发输出决策
+  sp.items = [{ item: 'iron-plate', pos: 0.5, inPort: 0, lane: 1 }];
+  sp.outPref = -1;
+  sp.update(0.001);
+  const o = sp.items[0];
+  let r = check('输出 lane 保持：lane=1 物品 outLane=1', o.outLane === 1, 'outLane=' + o.outLane);
+  r = check('输出端口已分配（outPort 为 0 或 1）', o.outPort === 0 || o.outPort === 1, 'outPort=' + o.outPort) && r;
+  return r;
+}
+
+// ---- 测试 7：输出优先级（outPref=0 重定向到顶部输出口）----
+function testOutputPriority() {
+  const { sp } = setup();
+  sp.outPref = 0;
+  sp.items = [{ item: 'iron-plate', pos: 0.5, inPort: 0, lane: 0 }];
+  sp.update(0.001);
+  let r = check('输出优先级(outPref=0)：物品分配到输出口 0', sp.items[0].outPort === 0,
+    'outPort=' + sp.items[0].outPort);
+  // outPref=1
+  sp.items = [{ item: 'copper-plate', pos: 0.5, inPort: 0, lane: 0 }];
+  sp.outPref = 1;
+  sp.update(0.001);
+  r = check('输出优先级(outPref=1)：物品分配到输出口 1', sp.items[0].outPort === 1,
+    'outPort=' + sp.items[0].outPort) && r;
+  return r;
+}
+
+// ---- 测试 8：默认输出轮流（两出口交替）----
+function testOutputAlternate() {
+  const { sp } = setup();
+  sp.outPref = -1;
+  sp.outToggle = false;
+  const seq = [];
+  for (let i = 0; i < 6; i++) {
+    sp.items = [{ item: 'iron-plate', pos: 0.5, inPort: 0, lane: 0 }];
+    sp.update(0.001);
+    seq.push(sp.items[0].outPort);
+    sp.items = [];
+  }
+  const p0 = seq.filter(x => x === 0).length, p1 = seq.filter(x => x === 1).length;
+  const diff = Math.abs(p0 - p1);
+  let ok = diff <= 1 && p0 > 0 && p1 > 0;
+  check('默认输出轮流：两出口交替输出', ok, 'out0=' + p0 + ' out1=' + p1 + '（序列=' + seq.join(',') + '）');
+  return ok;
+}
+
+// ---- 测试 9：过滤分流器（可编程分离器）----
+function testFilter() {
+  const { sp } = setup();
+  sp.filter = 'iron-plate';
+  sp.outPref = 0;
+  // 命中过滤物 → 走输出口 0；未命中 → 走输出口 1
+  sp.items = [{ item: 'iron-plate', pos: 0.5, inPort: 0, lane: 0 }];
+  sp.update(0.001);
+  let r = check('过滤分流器：命中物品走优先输出口', sp.items[0].outPort === 0, 'outPort=' + sp.items[0].outPort);
+  sp.items = [{ item: 'copper-plate', pos: 0.5, inPort: 0, lane: 0 }];
+  sp.update(0.001);
+  r = check('过滤分流器：未命中物品走另一输出口', sp.items[0].outPort === 1, 'outPort=' + sp.items[0].outPort) && r;
+  // 入口过滤：未命中物品在入口被挡
+  sp.items = [];
+  const rejected = sp.acceptItem('copper-plate', 0, 2, 2, 0);
+  r = check('过滤分流器：未命中物品被挡在入口', rejected === false, '是否拒绝=' + (rejected === false)) && r;
+  return r;
+}
+
+// ---- 测试 10：渲染几何 4 线模型 ----
 const splitterLaneEntryPoint = vm.runInContext('splitterLaneEntryPoint', sandbox);
 const splitterLaneExitPoint = vm.runInContext('splitterLaneExitPoint', sandbox);
 const laneCenterAt = vm.runInContext('laneCenterAt', sandbox);
@@ -170,38 +255,51 @@ function testDualLineGeometry() {
   reset();
   const sp = new Splitter('splitter', 3, 2); sp.dir = 0; sp.applyDir();
   const gx = sp.x, gy = sp.y;
-  // 朝右(0)：p=[-DY[0],DX[0]]=[0,1]，车道垂直方向是 Y 轴。
-  const perp = [-DY[0], DX[0]];
+  const perp = [-DY[0], DX[0]]; // 朝右：车道垂直方向是 Y 轴
   let ok = true;
+  const absLines = [];
   for (let port = 0; port < 2; port++) {
     for (const [kind, fn] of [['入口', splitterLaneEntryPoint], ['出口', splitterLaneExitPoint]]) {
-      const [cpx, cpy] = laneCenterAt(sp, gx, gy, port); // 该口车道中心
-      const [a0x, a0y] = fn(sp, gx, gy, port, 0); // A 线（lane0）
-      const [a1x, a1y] = fn(sp, gx, gy, port, 1); // B 线（lane1）
-      // 双线相对该口车道中心在车道垂直方向对称分开（非零），否则动画塌缩成一条线
+      const [cpx, cpy] = laneCenterAt(sp, gx, gy, port);
+      const [a0x, a0y] = fn(sp, gx, gy, port, 0);
+      const [a1x, a1y] = fn(sp, gx, gy, port, 1);
       const d0 = (a0x - cpx) * perp[0] + (a0y - cpy) * perp[1];
       const d1 = (a1x - cpx) * perp[0] + (a1y - cpy) * perp[1];
       const sep = Math.abs(d1 - d0);
-      const sym = Math.abs(Math.abs(d0) - Math.abs(d1)) < 1e-6; // 两侧对称
+      const sym = Math.abs(Math.abs(d0) - Math.abs(d1)) < 1e-6;
+      // 绝对线位：分流器中心沿车道轴 + 端口偏移(TILE) + 端口内 lane 偏移
+      // 朝右(dir=0)时车道轴为 Y：center + (port-0.5)*TILE + (lane-0.5)*0.3*TILE
+      const cy = (gy + sp.h / 2) * TILE;
+      const portOff = (port - 0.5) * TILE;
+      absLines.push(cy + portOff + d0);
+      absLines.push(cy + portOff + d1);
       if (sep < 1 || !sym) {
         ok = false;
-        check(kind + port + ' 双线分离', false, 'sep=' + sep.toFixed(1) + ' d0=' + d0.toFixed(1) + ' d1=' + d1.toFixed(1));
+        check(kind + port + ' 双线分离', false, 'sep=' + sep.toFixed(1));
       } else {
         check(kind + port + ' A/B 双线分离且对称', true, '间距=' + sep.toFixed(1) + 'px（lane0=' + d0.toFixed(1) + ' lane1=' + d1.toFixed(1) + '）');
       }
     }
   }
-  // 入口与出口双线偏移量一致（A 线入口偏移==出口偏移），保证 A→A、B→B 视觉连续
-  const [ia0x, ia0y] = splitterLaneEntryPoint(sp, gx, gy, 0, 0);
-  const [oa0x, oa0y] = splitterLaneExitPoint(sp, gx, gy, 0, 0);
-  const di = (ia0x - (gx + sp.w / 2) * TILE) * perp[0] + (ia0y - (gy + sp.h / 2) * TILE) * perp[1];
-  const dof = (oa0x - (gx + sp.w / 2) * TILE) * perp[0] + (oa0y - (gy + sp.h / 2) * TILE) * perp[1];
-  check('入口/出口 A 线偏移一致（A 进 A 出连续）', Math.abs(di - dof) < 1e-6,
-    'in=' + di.toFixed(1) + ' out=' + dof.toFixed(1));
+  // 两入口 × 双线共 4 个互不重叠的绝对线位（构成 4 线模型）
+  const unique = new Set(absLines.map(v => v.toFixed(3))).size;
+  check('4 线模型：两入口 × 双线共 4 个互异绝对线位', unique === 4, 'unique=' + unique + '/4');
   return ok;
 }
 
-console.log('\n【分流器渲染几何：入口/出口双线对称】');
+console.log('\n【分流器 4 线物流模型】');
+testLanePreserveInput();
+console.log('\n【输入调度】');
+testAlternate();
+testPriorityTop();
+testPriorityBot();
+testSingleEntrance();
+console.log('\n【输出调度】');
+testOutputLanePreserve();
+testOutputPriority();
+testOutputAlternate();
+testFilter();
+console.log('\n【渲染几何】');
 testDualLineGeometry();
 console.log('\n----------------------------------------');
 console.log('通过 ' + pass + ' 项，失败 ' + fail + ' 项');
