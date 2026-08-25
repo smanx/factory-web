@@ -32,10 +32,18 @@ const ROBOPORT_CAP = 50;        // 单机器人港最多容纳的机器人数量
 const ROBOPORT_POWER_IDLE = 40; // 机器人港基础耗电（kW）
 
 // 机器人港实体
-class Roboport extends Entity {
+class Roboport extends CircuitNode {
   constructor(type, x, y) {
     super('roboport', x, y);
     this.roboCap = 0;   // 已投入的物流机器人数量（往港里塞 logistic-robot 增加）
+  }
+  // 电路网络信号输出（对齐《异星工厂》：机器人港可接入电路网络读取所在物流网络物资）。
+  // 把整个物流网络中供应箱/仓储箱内的每种物品总量以该物品为信号输出，
+  // 供组合器/功率开关/告警音箱读取，实现按网络库存的自动化调度。
+  outputCircuitSignals() {
+    const net = G.logiNet;
+    if (!net || !net.signals) return [];
+    return net.signals;   // 复用 scanNetwork 预计算好的信号缓存（性能优化）
   }
   giveItem(item) {
     if (item !== 'logistic-robot') return false;
@@ -354,6 +362,15 @@ function scanNetwork() {
 
   // 赋值给全局供调度使用
   G.logiNet = { supply, supplies, demand, requesters, ports };
+  // 预计算物流网络电路信号缓存（性能优化）：把网络各物品库存总量转成
+  // [{sig,count},...] 信号列表，供所有机器人港的 outputCircuitSignals 复用，
+  // 避免每个机器人港在电路重算时各自重复遍历 supply。
+  const sigList = [];
+  for (const item in supply) {
+    const c = supply[item];
+    if (c && c.total > 0) sigList.push({ sig: item, count: c.total });
+  }
+  G.logiNet.signals = sigList;
   return G.logiNet;
 }
 

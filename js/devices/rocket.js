@@ -16,13 +16,28 @@ const SILO_ASSEMBLE = {
 const SILO_CAP = 100;
 // 火箭产能（对齐《异星工厂》Rocket productivity）：每级降低火箭燃料与低密度结构部件需求（最低保留 1）。
 function siloPartNeed(k) { return (typeof rocketPartNeed === 'function') ? rocketPartNeed(k, SILO_ASSEMBLE[k]) : SILO_ASSEMBLE[k]; }
-class RocketSilo extends Entity {
+class RocketSilo extends CircuitNode {
   constructor(type, x, y) {
     super('rocket-silo', x, y);
     this.inp = {};           // 井内物品：组装部件 + 火箭本体 + 卫星
     this.launching = false;  // 发射倒计时中
     this.launchT = 0;
     this.launched = false;   // 已发射完成
+  }
+  // 电路网络信号输出（对齐《异星工厂》：火箭发射井可接入电路网络读取井内状态）。
+  // 输出信号：signal-rocket 火箭本体数量、signal-satellite 卫星数量、
+  // signal-rocket-parts 已就位组装部件数、signal-rocket-launch 发射倒计时标志。
+  outputCircuitSignals() {
+    const out = [];
+    const rocket = this.inp['rocket'] || 0;
+    const sat = this.inp['satellite'] || 0;
+    let parts = 0;
+    for (const k in SILO_ASSEMBLE) if ((this.inp[k] || 0) >= siloPartNeed(k)) parts++;
+    if (rocket > 0) out.push({ sig: 'signal-rocket', count: rocket });
+    if (sat > 0) out.push({ sig: 'signal-satellite', count: sat });
+    if (parts > 0) out.push({ sig: 'signal-rocket-parts', count: parts });
+    if (this.launching) out.push({ sig: 'signal-rocket-launch', count: 1 });
+    return out;
   }
   giveItem(item) {
     if (item !== 'rocket' && item !== 'satellite' && !SILO_ASSEMBLE[item]) return false;

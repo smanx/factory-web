@@ -232,7 +232,11 @@ const VIRTUAL_SIGNALS = {
   'signal-anything': '任一信号',
   'signal-count': '数量',
   'signal-enemy': '敌人数量',
-  'signal-train': '车站列车信号'
+  'signal-train': '车站列车信号',
+  'signal-rocket': '火箭本体',
+  'signal-satellite': '卫星',
+  'signal-rocket-parts': '火箭部件就绪',
+  'signal-rocket-launch': '火箭发射中'
 };
 // 判断某信号名是否为虚拟信号（各列表/输入框均识别）
 function isVirtualSignal(sig) { return Object.prototype.hasOwnProperty.call(VIRTUAL_SIGNALS, sig); }
