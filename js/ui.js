@@ -764,6 +764,12 @@ function initPanelEvents() {
       panel.onAction(act, condCtrl);
       return;
     }
+    // 车厢槽位过滤下拉（货运车厢）：交给设备 onAction 写入过滤槽
+    const wfSel = ev.target.closest && ev.target.closest('select.wf-sel');
+    if (wfSel && panel && panel.onAction) {
+      panel.onAction('wf-set', wfSel);
+      return;
+    }
     // 历史页物品选择（datalist 下拉选中）
     const histFilter = ev.target.closest('[data-stat-hist-filter]');
     if (histFilter) {
@@ -1540,9 +1546,9 @@ function enemyAtTile(tx, ty) {
     if (en.dead) continue;
     // 敌人中心所在格，且按其体型（size）扩大判定到所占范围，鼠标指向其任意身体部分均能识别
     const cx = Math.floor(en.x / TILE), cy = Math.floor(en.y / TILE);
-    // 虫巢为 2×2 占地（对齐《异星工厂》Enemy spawner footprint）：以中心所在格为中心，向四周各覆盖 1 格
+    // 虫巢为 SPAWNER_FOOT×SPAWNER_FOOT 占地：以中心所在格为中心，向四周各覆盖 foot/2 格
     let half;
-    if (en.kind === 'spawner') half = 1;
+    if (en.kind === 'spawner') half = Math.max(0, (en.foot || 4) / 2);
     else half = Math.max(0, Math.ceil((en.size || 6) / TILE) - 1);
     if (Math.abs(tx - cx) <= half && Math.abs(ty - cy) <= half) return en;
   }
