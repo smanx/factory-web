@@ -1017,6 +1017,12 @@ const TECH_REQ = {
   'assembling-machine-3': 'automation3',
   'stack-inserter': 'logistics3',
   'stack-filter-inserter': 'logistics3',
+  // ===== 机械臂进阶科技门控（对齐《异星工厂》科技树） =====
+  // 原版：快速机械臂需「自动化 II」；长臂/过滤机械臂需「物流 II」。
+  // 此前这三类机械臂开局即可用，现改为对应科技解锁，让物流/自动化节奏更贴近原版进阶曲线（旧档经迁移自动补完）。
+  'fast-inserter': 'automation2',
+  'long-inserter': 'logistics2',
+  'filter-inserter': 'logistics2',
   // ===== 基础中间件科技门控（对齐《异星工厂》科技树） =====
   'engine-unit': 'engine',          // 引擎单元：需「引擎技术」科技（对齐原版 Engine）
   'battery': 'battery',                // 电池：需「电池技术」科技（对齐原版 Battery）
@@ -1404,6 +1410,10 @@ function migrateNewTechs(techDone) {
   // 拆分后分别由「物流 III」与「自动化 III」门控，老玩家补完对应科技避免产线被锁死（对齐《异星工厂》Logistics 3 / Automation 3）。
   if (techDone['logistics2'] || techDone['express']) techDone['logistics3'] = true;
   if (techDone['automation2']) techDone['automation3'] = true;
+  // 兼容旧档：快速/长臂/过滤机械臂此前无科技门控，开局即可用；现分别由「自动化 II」「物流 II」门控，
+  // 老玩家可能已拥有对应产线，补完对应科技避免被锁死（对齐《异星工厂》Automation 2 / Logistics 2）。
+  if (techDone['automation']) techDone['automation2'] = true;
+  if (techDone['logistics']) techDone['logistics2'] = true;
   // 兼容旧档：效率模块此前由「模块工程」解锁，现拆分出「进阶材料处理」科技链；
   // 旧档已研究模块工程时补完对应进阶材料处理科技，保持科技树一致（功能本身仍兼容任一解锁）。
   if (techDone['modules']) techDone['advanced-material-processing'] = true;
