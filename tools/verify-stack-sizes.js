@@ -15,8 +15,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_PATH = path.join(__dirname, '..', 'js', 'data.js');
-const src = fs.readFileSync(DATA_PATH, 'utf8');
+const DATA_DIR = path.join(__dirname, '..', 'js');
+const src = fs.readFileSync(path.join(DATA_DIR, 'data-items.js'), 'utf8');
 
 let passCount = 0;
 let failCount = 0;

@@ -17,8 +17,11 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const DATA_PATH = path.join(__dirname, '..', 'js', 'data.js');
-const src = fs.readFileSync(DATA_PATH, 'utf8');
+const DATA_DIR = path.join(__dirname, '..', 'js');
+const src = fs.readFileSync(path.join(DATA_DIR, 'data.js'), 'utf8')
+  + '\n' + fs.readFileSync(path.join(DATA_DIR, 'data-items.js'), 'utf8')
+  + '\n' + fs.readFileSync(path.join(DATA_DIR, 'data-recipes.js'), 'utf8')
+  + '\n' + fs.readFileSync(path.join(DATA_DIR, 'data-buildings.js'), 'utf8');
 
 // ---- 在隔离沙箱中加载 data.js，导出所需数据表 ----
 const sandbox = { console, Math, JSON, Set, Map, Array, Object, String, Number, Boolean, Date, RegExp, parseInt, parseFloat };
