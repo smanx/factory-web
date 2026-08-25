@@ -139,6 +139,11 @@ function render() {
 // ===== 电灯照明：在黑暗遮罩上凿出光圈并叠加暖光 =====
 // 遍历视口内通电点亮的电灯，用 destination-out 把对应区域的黑暗削掉，
 // 再叠加一圈暖色光晕，使夜间基地可见。所有坐标转换为屏幕像素。
+// 优化：预渲染灯光纹理到离屏 Canvas，避免每盏灯创建渐变对象
+let _lampDarkCanvas = null;
+let _lampDarkSize = 0;
+let _lampGlowCanvas = null;
+let _lampGlowSize = 0;
 function drawLampLights(ctx, dark) {
   const cam = G.cam, z = cam.z;
   const rPx = 5 * TILE * z;            // 照亮半径转像素
@@ -149,6 +154,40 @@ function drawLampLights(ctx, dark) {
     : null;
   const sx = (wx) => (wx - cam.px) * z + W / 2;
   const sy = (wy) => (wy - cam.py) * z + H / 2;
+
+  // 预渲染灯光挖空纹理（尺寸随缩放变化时重建）
+  const rPxInt = Math.ceil(rPx);
+  if (!_lampDarkCanvas || _lampDarkSize !== rPxInt) {
+    _lampDarkSize = rPxInt;
+    const sz = rPxInt * 2 + 2;
+    _lampDarkCanvas = document.createElement('canvas');
+    _lampDarkCanvas.width = sz;
+    _lampDarkCanvas.height = sz;
+    const dc = _lampDarkCanvas.getContext('2d');
+    const g = dc.createRadialGradient(rPxInt + 1, rPxInt + 1, rPxInt * 0.12, rPxInt + 1, rPxInt + 1, rPxInt);
+    g.addColorStop(0, 'rgba(0,0,0,1)');
+    g.addColorStop(0.5, 'rgba(0,0,0,0.85)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    dc.fillStyle = g;
+    dc.fillRect(0, 0, sz, sz);
+  }
+
+  // 预渲染暖色光晕纹理
+  if (!_lampGlowCanvas || _lampGlowSize !== rPxInt) {
+    _lampGlowSize = rPxInt;
+    const sz = rPxInt * 2 + 2;
+    _lampGlowCanvas = document.createElement('canvas');
+    _lampGlowCanvas.width = sz;
+    _lampGlowCanvas.height = sz;
+    const gc = _lampGlowCanvas.getContext('2d');
+    const g = gc.createRadialGradient(rPxInt + 1, rPxInt + 1, 0, rPxInt + 1, rPxInt + 1, rPxInt);
+    g.addColorStop(0, 'rgba(255,246,178,0.5)');
+    g.addColorStop(0.4, 'rgba(255,220,120,0.22)');
+    g.addColorStop(1, 'rgba(255,200,90,0)');
+    gc.fillStyle = g;
+    gc.fillRect(0, 0, sz, sz);
+  }
+
   let first = true;
   const punch = (e) => {
     if (!e._dead && e.type === 'lamp' && e.shouldLight && e.shouldLight()) {
@@ -156,24 +195,19 @@ function drawLampLights(ctx, dark) {
       const cy = sy((e.y + 0.5) * TILE);
       if (cx < -rPx || cx > W + rPx || cy < -rPx || cy > H + rPx) return;
       if (first) {
-        // 切换到“挖空”模式：把暗罩下方内容显露出来（即减去黑暗）
+        // 切换到"挖空"模式：把暗罩下方内容显露出来（即减去黑暗）
         ctx.save();
         ctx.globalCompositeOperation = 'destination-out';
         first = false;
       }
-      const g = ctx.createRadialGradient(cx, cy, rPx * 0.12, cx, cy, rPx);
-      g.addColorStop(0, 'rgba(0,0,0,' + Math.min(1, dark * 2.4) + ')');
-      g.addColorStop(0.5, 'rgba(0,0,0,' + (dark * 0.85).toFixed(3) + ')');
-      g.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(cx, cy, rPx, 0, Math.PI * 2);
-      ctx.fill();
+      // 使用预渲染纹理 + globalAlpha 控制挖空强度
+      ctx.globalAlpha = Math.min(1, dark * 2.4);
+      ctx.drawImage(_lampDarkCanvas, cx - rPxInt - 1, cy - rPxInt - 1);
     }
   };
   if (keys) forEachEntInBuckets(keys, punch);
   else for (const e of G.ents) punch(e);
-  if (!first) ctx.restore();
+  if (!first) { ctx.globalAlpha = 1; ctx.restore(); }
   // 叠加暖色光晕（半透明黄色辉光，重新正常混合）
   let drewGlow = false;
   const glow = (e) => {
@@ -182,14 +216,8 @@ function drawLampLights(ctx, dark) {
       const cy = sy((e.y + 0.5) * TILE);
       if (cx < -rPx || cx > W + rPx || cy < -rPx || cy > H + rPx) return;
       if (!drewGlow) { ctx.save(); drewGlow = true; }
-      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rPx);
-      g.addColorStop(0, 'rgba(255,246,178,' + (0.5).toFixed(2) + ')');
-      g.addColorStop(0.4, 'rgba(255,220,120,' + (0.22).toFixed(2) + ')');
-      g.addColorStop(1, 'rgba(255,200,90,0)');
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(cx, cy, rPx, 0, Math.PI * 2);
-      ctx.fill();
+      // 使用预渲染纹理
+      ctx.drawImage(_lampGlowCanvas, cx - rPxInt - 1, cy - rPxInt - 1);
     }
   };
   if (keys) forEachEntInBuckets(keys, glow);
@@ -415,26 +443,39 @@ function drawTerrain(ctx) {
 function drawWaterAnimation(ctx, tx0, ty0, tx1, ty1) {
   if (!G || !G.time) return;
   const t = G.time;
+  // 预计算时间相关常量，避免内层循环重复计算
+  const t04 = t * 0.4;
+  const t032 = t * 0.32;
+  const t12 = t * 1.2;
+  const halfTILE = TILE * 0.5;
+  const r1 = TILE * 0.32;
+  const r2 = TILE * 0.2;
+  // 预计算固定角度常量（避免重复 Math.PI 乘法）
+  const arcStart1 = 0.62832;   // Math.PI * 0.2
+  const arcEnd1 = 5.02655;     // Math.PI * 1.6
+  const arcStart2 = 1.25664;   // Math.PI * 0.4
+  const arcEnd2 = 5.65487;     // Math.PI * 1.8
   for (let ty = ty0; ty <= ty1; ty++) {
     for (let tx = tx0; tx <= tx1; tx++) {
       if (getTerrain(tx, ty) !== T_WATER) continue;
       const px = tx * TILE, py = ty * TILE;
+      const cx = px + halfTILE, cy = py + halfTILE;
       // 缓慢漂移的高光波纹：位置随世界坐标与时间缓慢移动，随机错相避免整齐划一
       const phase = hash2(tx, ty) * 6.2832;
-      const driftX = Math.sin(t * 0.4 + phase) * 5;
-      const driftY = Math.cos(t * 0.32 + phase * 1.3) * 4;
+      const driftX = Math.sin(t04 + phase) * 5;
+      const driftY = Math.cos(t032 + phase * 1.3) * 4;
       // 主高光弧线（半透明白色，随波漂移）
-      const a = 0.12 + 0.08 * Math.sin(t * 1.2 + phase);
+      const a = 0.12 + 0.08 * Math.sin(t12 + phase);
       ctx.strokeStyle = 'rgba(190,220,245,' + a.toFixed(3) + ')';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.arc(px + TILE / 2 + driftX, py + TILE / 2 + driftY, TILE * 0.32, Math.PI * 0.2, Math.PI * 1.6);
+      ctx.arc(cx + driftX, cy + driftY, r1, arcStart1, arcEnd1);
       ctx.stroke();
       // 更浅的第二道副波纹
       ctx.strokeStyle = 'rgba(200,225,250,' + (a * 0.7).toFixed(3) + ')';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(px + TILE / 2 - driftX * 0.6, py + TILE / 2 - driftY * 0.6, TILE * 0.2, Math.PI * 0.4, Math.PI * 1.8);
+      ctx.arc(cx - driftX * 0.6, cy - driftY * 0.6, r2, arcStart2, arcEnd2);
       ctx.stroke();
     }
   }

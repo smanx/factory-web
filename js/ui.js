@@ -190,7 +190,8 @@ function renderPanel(full) {
 function updateMachineLive() {
   if (G.panelMode !== 'machine' || !G.panelEnt) return;
   const e = G.panelEnt;
-  if (!G.ents.includes(e)) { closePanel(); return; }
+  // 优化：使用 _dead 标志替代 O(n) 的 G.ents.includes() 线性扫描
+  if (e._dead) { closePanel(); return; }
   const body = document.getElementById('panel-body');
   let prog = 0, status = '', state = 'warn';
   const api = {

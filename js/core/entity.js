@@ -135,8 +135,11 @@ function neighborOnSideCell(e, side, cell) {
 
 // 遍历实体正交相邻格上的实体（去重，不含斜角）
 // 遍历给定桶集合内的实体（去重，跳过墓碑）。
+// 优化：复用 Set 避免每帧分配新对象（减少 GC 压力）
+const _forEachEntSeen = new Set();
 function forEachEntInBuckets(keys, fn) {
-  const seen = new Set();
+  const seen = _forEachEntSeen;
+  seen.clear();
   for (const k of keys) {
     const s = G.buckets.get(k);
     if (!s) continue;

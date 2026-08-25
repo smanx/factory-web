@@ -83,6 +83,10 @@ let lastPlaceKey = '';
 let lastPanelCheck = 0;
 let fpsSmooth = 60;
 
+// 实体更新优化：帧计数器与去重集合
+let _entUpdateFrame = 0;
+const _entUpdateSeen = new Set();
+
 // 存档由 js/saves.js 的多存档系统管理（自动存档 + 用户存档），不再使用单一键。
 // 保留旧键常量供首次升级时迁移（见 migrateLegacySave）。
 
@@ -112,6 +116,7 @@ function newGame() {
   G.grid = new Map();
   G.buckets = new Map();
   G.ents = [];
+  _entUpdateSeen.clear();  // 清空实体更新去重集合
   G.inv = new Map();
   G.techDone = {};
   G.techProg = {};
@@ -1452,7 +1457,39 @@ function loop(ts) {
       if (typeof updateFishing === 'function') updateFishing(dt);   // 钓鱼冷却
       if (typeof updatePersonalPower === 'function') updatePersonalPower(dt);   // 个人电网（装备件）
       if (typeof updateDischargeCooldown === 'function') updateDischargeCooldown(dt);   // 放电防御冷却
-      for (const e of G.ents) if (!e._dead && typeof e.update === 'function') e.update(dt);
+      // 实体更新优化：使用桶空间索引，只更新视口附近实体，远处实体降频更新
+      // 活跃区域：视口 + 周边 2 桶（32 格）范围内的实体每帧更新
+      // 远处实体每 4 帧更新一次（降低 CPU 开销，对长周期设备影响 <1%）
+      _entUpdateFrame = (_entUpdateFrame + 1) % 4;
+      if (G.buckets && G.buckets.size) {
+        const hw = (W / 2) / G.cam.z + BUCK * TILE;
+        const hh = (H / 2) / G.cam.z + BUCK * TILE;
+        const px = G.cam.px, py = G.cam.py;
+        const activeKeys = bucketKeysIn(
+          Math.floor((px - hw) / TILE), Math.floor((py - hh) / TILE),
+          Math.ceil((px + hw) / TILE), Math.ceil((py + hh) / TILE));
+        const seen = _entUpdateSeen;
+        seen.clear();
+        // 先更新活跃区域实体（每帧）
+        for (const k of activeKeys) {
+          const s = G.buckets.get(k);
+          if (!s) continue;
+          for (const e of s) {
+            if (e._dead || seen.has(e) || typeof e.update !== 'function') continue;
+            seen.add(e);
+            e.update(dt);
+          }
+        }
+        // 再更新远处实体（每 4 帧）
+        if (_entUpdateFrame === 0) {
+          for (const e of G.ents) {
+            if (e._dead || seen.has(e) || typeof e.update !== 'function') continue;
+            e.update(dt);
+          }
+        }
+      } else {
+        for (const e of G.ents) if (!e._dead && typeof e.update === 'function') e.update(dt);
+      }
       // 敌人/子弹系统（可在设置中开关战斗）
       if (G.settings.combat) {
         spawnEnemies(dt);

@@ -22,12 +22,23 @@ class Belt extends Entity {
     // （排序/邻居扫描/转移判定），空传送带完全无需每帧运行。
     if (!this.items || this.items.length === 0) return;
     const sp = beltSpeed() * this.speedMult() * dt;
-    this.items.sort((a, b) => b.pos - a.pos);
-    if (this.items.length && this.items[0].pos + sp >= 1) this.transferFront();
-    for (let i = 0; i < this.items.length; i++) {
-      const it = this.items[i];
+    // 优化：使用插入排序替代 Array.sort()，对近乎有序的数据更高效（O(n) vs O(n log n)）
+    // 物品每帧仅移动微小距离，数组几乎已排序，插入排序是最佳选择
+    const items = this.items;
+    for (let i = 1; i < items.length; i++) {
+      const key = items[i];
+      let j = i - 1;
+      while (j >= 0 && items[j].pos < key.pos) {
+        items[j + 1] = items[j];
+        j--;
+      }
+      items[j + 1] = key;
+    }
+    if (items.length && items[0].pos + sp >= 1) this.transferFront();
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
       let lim = 1;
-      if (i > 0) lim = Math.max(0, this.items[i - 1].pos - BELT_SPACING);
+      if (i > 0) lim = Math.max(0, items[i - 1].pos - BELT_SPACING);
       it.pos = Math.min(it.pos + sp, lim);
       if (it.pos < 0) it.pos = 0;
     }
