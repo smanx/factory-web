@@ -142,19 +142,11 @@ class Inserter extends Entity {
   canDropAt(t, item) {
     if (!t) return false;
     if (t instanceof Belt && !(t instanceof Splitter)) {
-      const o = this.dropOffset();
-      const fromDir = dirFromVec(o.dx, o.dy);
-      const rel = ((fromDir - t.dir) % 4 + 4) % 4;
-      const isSide = rel === 1 || rel === 3;
+      // 机械臂放传送带统一“只在一边放置”：投放侧由机械臂朝向（翻转）决定，
+      // 侧放/尾放一致，只检查该投放车道的尾端空位（不再两条车道轮流装载）。
+      const lane = this.dropBeltLane(t);
       let back = Infinity;
-      if (isSide) {
-        // 侧放：进入远侧车道，只检查该车道尾端空位
-        const lane = this.dropBeltLane(t);
-        for (const o of t.items) if (t.laneOf(o) === lane) back = Math.min(back, o.pos);
-      } else {
-        // 尾放：整带尾端有空位即可（两条车道交替装载）
-        for (const o of t.items) back = Math.min(back, o.pos);
-      }
+      for (const o of t.items) if (t.laneOf(o) === lane) back = Math.min(back, o.pos);
       return back >= BELT_SPACING * 0.9;
     }
     switch (t.type) {
@@ -231,10 +223,9 @@ class Inserter extends Entity {
     if (t instanceof Belt && !(t instanceof Splitter)) {
       const o = this.dropOffset();
       const fromDir = dirFromVec(o.dx, o.dy);
-      const rel = ((fromDir - t.dir) % 4 + 4) % 4;
-      const isSide = rel === 1 || rel === 3;
-      // 侧放进入远侧车道（laneHint 覆盖 acceptItem 的“近侧”默认）；尾放沿用交替装载
-      const lane = isSide ? this.dropBeltLane(t) : undefined;
+      // 机械臂放传送带统一“只在一边放置”：投放侧由机械臂朝向（翻转）决定，
+      // 侧放/尾放一致，固定进入该投放车道（laneHint 覆盖 acceptItem 默认），不再轮流。
+      const lane = this.dropBeltLane(t);
       return t.acceptItem(this.holding, fromDir, undefined, undefined, lane);
     }
     return t.giveItem(this.holding);
@@ -396,18 +387,14 @@ function drawInserter(ctx, e, gx, gy, dir, alpha) {
   ctx.globalAlpha = 1;
 }
 
-// 放物车道指示：在目标传送带上高亮显示机械臂会把物品放入哪一侧车道（远侧车道）。
-// 横向/竖向传送带都按“远侧车道”规则投放，旋转机械臂即可把物品转到另一侧；
+// 放物车道指示：在目标传送带上高亮显示机械臂会把物品放入哪一侧车道（投放侧）。
+// 横向/竖向传送带都按“投放侧”规则放置，侧放/尾放一致，翻转（旋转）机械臂即可把物品转到另一侧；
 // 这里用与臂体同色的脉冲三角标出投放侧，让“放到哪一边”一目了然。
 function drawDropLane(ctx, e) {
   if (!e.entAtDrop) return;
   const t = e.entAtDrop();
   if (!(t instanceof Belt) || t instanceof Splitter) return;
-  const o = e.dropOffset();
-  const fromDir = dirFromVec(o.dx, o.dy);
-  const rel = ((fromDir - t.dir) % 4 + 4) % 4;
-  // 仅“侧放”进入远侧车道；尾放为交替装载，不固定某一侧
-  if (!(rel === 1 || rel === 3)) return;
+  // 机械臂放传送带统一只在一边放置：投放侧由机械臂朝向决定（不再交替/轮流）
   const lane = e.dropBeltLane(t);
   // lane 1 位于行进方向右侧(+perp)，lane 0 位于左侧(-perp)
   const perp = [DY[t.dir], -DX[t.dir]];
@@ -419,7 +406,7 @@ function drawDropLane(ctx, e) {
   ctx.save();
   ctx.globalAlpha = Math.max(0.45, pulse);
   ctx.fillStyle = col;
-  // 三角：顶点朝带中心，底边在远侧车道上，标记“物品会投放到这一侧”
+  // 三角：顶点朝带中心，底边在投放车道上，标记“物品会投放到这一侧”
   const off = 7, h = 6, base = 9;
   const tx = cx + ox * off, ty = cy + oy * off;
   const tipX = cx + ox * (off + h), tipY = cy + oy * (off + h);
@@ -497,7 +484,7 @@ function inserterFilterSectionHtml(e, lead) {
   return h;
 }
 function inserterPanelHtml(e) {
-  return '<div class="dim">电力机械臂：严格单向搬运。从臂体指向的一侧（灰色圆点）取货，放到地面箭头/亮色箭头的一侧（物流方向）。侧放传送带时会把物品放到远离自己一侧的车道（目标带上会有一个同色脉冲三角标出投放侧），旋转机械臂即可把物品转到另一侧车道；横/竖传送带行为一致。双列传送带上优先抓取靠近自己一侧的车道，近侧无货时再取远侧。普通臂作用相邻格，加长臂作用第二格。R 旋转。</div>' +
+  return '<div class="dim">电力机械臂：严格单向搬运。从臂体指向的一侧（灰色圆点）取货，放到地面箭头/亮色箭头的一侧（物流方向）。放到传送带时只在一边放置（目标带上会有一个同色脉冲三角标出投放侧），翻转（R 旋转）机械臂即可把物品转到另一侧车道，横/竖传送带行为一致；侧放/尾放都固定投放一侧，不再两条车道轮流装。双列传送带上优先抓取靠近自己一侧的车道，近侧无货时再取远侧。普通臂作用相邻格，加长臂作用第二格。R 旋转。</div>' +
     inserterFilterSectionHtml(e, '<div class="dim">当前筛选：') +
     circuitPanelHtml(e, 'ins') + '<div class="status"></div>';
 }
