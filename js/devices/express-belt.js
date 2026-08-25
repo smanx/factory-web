@@ -42,8 +42,9 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const cx = px + TILE / 2, cy = py + TILE / 2;
   const inp = beltInputSide(e);
-  // 纯 90° 转角：以弯曲圆弧绘制，区分于 T 型转角（复用 belt.js 中的通用转角绘制）
-  if (drawBeltCorner(ctx, e, gx, gy, dir, alpha,
+  // 纯 90° 转角：以弯曲圆弧绘制，区分于 T 型转角（复用 belt.js 中的通用转角绘制）。
+  // 梯形交汇的转角例外——直接连到直线带，不单独画圆弧。
+  if (!beltCornerTrapezoid(e) && drawBeltCorner(ctx, e, gx, gy, dir, alpha,
     { belt: '#4a2a28', chev: 'rgba(224,90,78,.9)' })) return;
   ctx.globalAlpha = alpha;
   ctx.fillStyle = '#4a2a28';
