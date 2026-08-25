@@ -8,6 +8,32 @@ html, body {
   user-select: none;
 }
 
+/* ===== 统一滚动条（工业风，与游戏画面匹配） ===== */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track {
+  background: rgba(16, 21, 28, .75);
+  border-left: 1px solid rgba(60, 74, 90, .35);
+  border-radius: 5px;
+}
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #4a5868, #37424f);
+  border: 1px solid #5a6b80;
+  border-radius: 5px;
+  min-height: 36px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #e6c241, #ffd23c);
+  border-color: #ffe27a;
+}
+*::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, #ffd23c, #d9b437);
+  border-color: #fff0a8;
+}
+*::-webkit-scrollbar-corner { background: transparent; }
+
+/* Firefox：细滚动条 + 工业风配色 */
+* { scrollbar-width: thin; scrollbar-color: #4a5868 rgba(16, 21, 28, .75); }
+
 #game { display: block; position: absolute; inset: 0; cursor: crosshair; touch-action: none; }
 
 #hud-info {
@@ -140,10 +166,6 @@ html, body {
   color: #cdd6df;
   font-size: 13px;
 }
-
-#panel-body::-webkit-scrollbar { width: 8px; }
-#panel-body::-webkit-scrollbar-thumb { background: #37424f; border-radius: 4px; }
-#panel-body::-webkit-scrollbar-track { background: transparent; }
 
 .sec { margin: 10px 0 6px; font-weight: bold; color: #ffd23c; }
 
@@ -841,8 +863,6 @@ html, body {
   gap: 8px;
   min-height: 60px;
 }
-.load-save-list::-webkit-scrollbar { width: 8px; }
-.load-save-list::-webkit-scrollbar-thumb { background: #3f5a48; border-radius: 4px; }
 .load-save-empty {
   padding: 22px 10px;
   font-size: 13px;
@@ -1361,8 +1381,13 @@ html, body {
     /* 每行固定 5 个槽位：5×52px + 4×5px(gap) + 2×5px(padding) = 290px */
     width: 290px;
   }
-  #hotbar::-webkit-scrollbar { height: 4px; }
-  #hotbar::-webkit-scrollbar-thumb { background: rgba(120,140,160,.5); border-radius: 4px; }
+  #hotbar { scrollbar-width: thin; }
+  #hotbar::-webkit-scrollbar { height: 4px; width: 4px; }
+  #hotbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(90deg, #4a5868, #37424f);
+    border: none;
+    border-radius: 2px;
+  }
   .slot { width: 52px; height: 52px; }
   .slot .key { font-size: 12px; }
   .slot .cnt { font-size: 13px; }
