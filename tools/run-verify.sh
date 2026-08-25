@@ -11,6 +11,7 @@ declare -a scripts=(
   "tools/verify-belt-throughput.js"
   "tools/verify-data-integrity.js"
   "tools/verify-beacon-modules.js"
+  "tools/verify-nuclear.js"
 )
 
 fail=0

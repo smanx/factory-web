@@ -334,9 +334,9 @@ const ITEMS = {
   // ===== 核能（对齐《异星工厂》核动力）=====
   'uranium-ore':  { name: '铀矿石', color: '#7fd44a', mark: 'U', desc: '放射性矿物，距出生点较远处生成，须用电采矿机开采，离心机处理成铀' },
   'uranium-235': { name: '铀-235', color: '#9af07a', mark: 'U⁵', desc: '裂变同位素，由离心机处理铀矿小概率获得；是制造核燃料的关键' },
-  'uranium-238': { name: '铀-238', color: '#6aa84a', mark: 'U⁸', desc: '丰度同位素，由离心机处理铀矿大量获得，可参与富集循环' },
+  'uranium-238': { name: '铀-238', color: '#6aa84a', mark: 'U⁸', desc: '丰度同位素，由离心机处理铀矿大量获得，是核燃料棒的主料，也可参与富集循环与铀弹制造' },
   'nuclear-fuel': { name: '核燃料', color: '#9ae06a', mark: '☢', desc: '由铀-235制造的高能燃烧燃料，可作为载具/车头/锅炉等燃烧器的最高级燃料（能量约为火箭燃料 5 倍，对齐《异星工厂》Nuclear fuel）' },
-  'uranium-fuel-cell': { name: '铀燃料棒', color: '#7ad68a', mark: '棒', desc: '核反应堆的专用燃料棒，由铀-235压制而成（对齐《异星工厂》：反应堆消耗铀燃料棒而非核燃料）。点燃一根可持续燃烧并产出废燃料棒，可在离心机再生为铀-238，闭合核燃料循环' },
+  'uranium-fuel-cell': { name: '铀燃料棒', color: '#7ad68a', mark: '棒', desc: '核反应堆的专用燃料棒，由1铀-235+19铀-238压制而成（对齐《异星工厂》：反应堆消耗铀燃料棒而非核燃料）。点燃一根可持续燃烧并产出废燃料棒，可在离心机再生为铀-238，闭合核燃料循环' },
   'used-up-uranium-fuel-cell': { name: '废燃料棒', color: '#6a7a4a', mark: '废', desc: '核燃料燃尽的残棒，可在离心机再生为铀-238，闭合核燃料循环' },
   'centrifuge':   { name: '离心机', color: '#7a8a9a', desc: '把铀矿石分离成铀-235 / 铀-238；也可进行铀富集循环（Kovarex）（2×2，吃电力）' },
   'nuclear-reactor': { name: '核反应堆', color: '#4a8a5a', desc: '消耗铀燃料棒（或核燃料）产生巨量热量（5×5）。热量经导热管传导至热交换器，由热交换器把水烧成高温蒸汽，再供汽轮机发电（对齐《异星工厂》核能标准链路）' },
@@ -617,11 +617,11 @@ const RECIPES = {
   'logistic-chest-buffer': { time: 2, inp: { 'iron-plate': 6, 'steel-plate': 2, 'green-circuit': 3 },   out: { 'logistic-chest-buffer': 1 } },
   // ===== 核能配方 =====
   // 铀富集（Kovarex，离心机）：铀-238 在铀-235 催化下持续富集出更多铀-235（可自持循环）
-  'kovarex':           { time: 60, inp: { 'uranium-238': 40, 'uranium-235': 1 },                  out: { 'uranium-235': 1, 'uranium-238': 41 } },
+  'kovarex':           { time: 60, inp: { 'uranium-238': 40, 'uranium-235': 1 },                  out: { 'uranium-235': 2, 'uranium-238': 41 } },
   // 核燃料（组装机）：由铀-235 制成
   'nuclear-fuel':      { time: 10,  inp: { 'uranium-235': 1 },                                 out: { 'nuclear-fuel': 1 } },
-  // 铀燃料棒（对齐《异星工厂》：10 铀-235 → 1 燃料棒，组装机）：反应堆专用燃料，燃尽产废燃料棒
-  'uranium-fuel-cell': { time: 10,  inp: { 'uranium-235': 10 },                               out: { 'uranium-fuel-cell': 1 } },
+  // 铀燃料棒（对齐《异星工厂》：1 铀-235 + 19 铀-238 → 1 燃料棒，组装机）：反应堆专用燃料，燃尽产废燃料棒
+  'uranium-fuel-cell': { time: 10,  inp: { 'uranium-235': 1, 'uranium-238': 19 },            out: { 'uranium-fuel-cell': 1 } },
   // 离心机/反应堆/汽轮机（组装机制造）
   'centrifuge':        { time: 2,   inp: { 'iron-plate': 8, 'iron-gear': 4, 'green-circuit': 4 },                 out: { 'centrifuge': 1 } },
   'nuclear-reactor':   { time: 15,  inp: { 'steel-plate': 40, 'copper-plate': 20, 'battery': 5, 'centrifuge': 1 }, out: { 'nuclear-reactor': 1 } },
