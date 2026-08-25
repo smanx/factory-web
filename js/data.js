@@ -91,7 +91,7 @@ const VEHICLE_GRIDS = { car: 5, tank: 6 };
 
 const SCIENCE_PACKS = ['science-pack', 'green-science', 'blue-science', 'military-science', 'production-science-pack', 'utility-science-pack', 'space-science-pack'];
 function isScience(item) { return SCIENCE_PACKS.indexOf(item) >= 0; }
-const FILTER_CHOICES = ['iron-plate', 'copper-plate', 'steel-plate', 'iron-gear', 'iron-stick', 'steel-stick', 'copper-cable', 'green-circuit',
+const FILTER_CHOICES = ['iron-plate', 'copper-plate', 'steel-plate', 'iron-gear', 'steel-gear', 'iron-stick', 'steel-stick', 'copper-cable', 'green-circuit',
   'coal', 'solid-fuel', 'stone', 'plastic-bar', 'science-pack', 'green-science', 'blue-science', 'military-science',
   'production-science-pack', 'utility-science-pack', 'space-science-pack', 'flying-robot-frame',
   'magazine', 'piercing-rounds', 'uranium-rounds', 'uranium-cannon-shell', 'flamethrower-ammo', 'poison-capsule', 'slowdown-capsule', 'shotgun-shell', 'piercing-shotgun-shell', 'cluster-grenade', 'logistic-robot', 'construction-robot', 'uranium-235', 'uranium-238', 'nuclear-fuel', 'uranium-fuel-cell', 'used-up-uranium-fuel-cell', 'sulfur', 'raw-fish'].concat(FLUIDS);
@@ -154,6 +154,7 @@ const ITEMS = {
   'iron-plate':   { name: '铁板',   color: '#ccd4de', mark: 'Fp', desc: '最常用的结构材料' },
   'copper-plate': { name: '铜板',   color: '#e0975f', mark: 'Cp', desc: '用于拉制铜线' },
   'iron-gear':    { name: '铁齿轮', color: '#aab5c2', mark: 'G',  desc: '机械核心零件' },
+  'steel-gear':   { name: '钢齿轮', color: '#c7cdd6', mark: 'SG', desc: '高级机械核心零件，由铁齿轮与钢板锻造，用于高级生产/核能/军事建筑（对齐《异星工厂》Steel gear wheel）' },
   'iron-stick':   { name: '铁杆',   color: '#b8c0c8', mark: 'Is', desc: '细铁杆，用于分流器、地下带、铁轨与部分配方（对齐《异星工厂》）' },
   'steel-stick':  { name: '钢杆',   color: '#d0d6dc', mark: 'Ss', desc: '细钢杆，用于部分高级配方（对齐《异星工厂》）' },
   'copper-cable': { name: '铜线',   color: '#e8a06a', mark: 'W',  desc: '制造电路板的原料' },
@@ -429,6 +430,7 @@ const SMELTS = [
 const RECIPES = {
   'steel-plate':        { time: 16,  inp: { 'iron-plate': 2 },                                   out: { 'steel-plate': 1 } },
   'iron-gear':          { time: 0.5, inp: { 'iron-plate': 2 },                                   out: { 'iron-gear': 1 } },
+  'steel-gear':        { time: 1,   inp: { 'iron-gear': 1, 'steel-plate': 1 },                     out: { 'steel-gear': 1 } },
   'iron-stick':         { time: 0.5, inp: { 'iron-plate': 1 },                                   out: { 'iron-stick': 2 } },
   'steel-stick':        { time: 0.5, inp: { 'steel-plate': 1 },                                  out: { 'steel-stick': 2 } },
   'copper-cable':       { time: 0.5, inp: { 'copper-plate': 1 },                                 out: { 'copper-cable': 2 } },
@@ -450,14 +452,14 @@ const RECIPES = {
   'steam-engine':       { time: 2,   inp: { 'iron-plate': 2, 'iron-gear': 2, 'green-circuit': 2 }, out: { 'steam-engine': 1 } },
   'offshore-pump':      { time: 1,   inp: { 'iron-plate': 5, 'iron-gear': 2 },                     out: { 'offshore-pump': 1 } },
   'electric-drill':     { time: 2,   inp: { 'iron-plate': 8, 'iron-gear': 3 },                     out: { 'electric-drill': 1 } },
-  'electric-furnace':   { time: 2.5, inp: { 'iron-plate': 6, 'steel-plate': 2, 'green-circuit': 2 }, out: { 'electric-furnace': 1 } },
+  'electric-furnace':   { time: 2.5, inp: { 'iron-plate': 6, 'steel-plate': 2, 'steel-gear': 1, 'green-circuit': 2 }, out: { 'electric-furnace': 1 } },
   'assembling-machine-mk2': { time: 3, inp: { 'steel-plate': 6, 'iron-gear': 4, 'green-circuit': 6 }, out: { 'assembling-machine-mk2': 1 } },
   'fast-transport-belt': { time: 0.5, inp: { 'iron-plate': 2, 'iron-gear': 1 },                  out: { 'fast-transport-belt': 1 } },
   'fast-underground-belt': { time: 1, inp: { 'underground': 1, 'iron-gear': 5 },                  out: { 'fast-underground-belt': 1 } },
   'priority-splitter': { time: 1,   inp: { 'splitter': 1, 'iron-gear': 1 },                       out: { 'priority-splitter': 1 } },
   'filter-inserter':   { time: 1,   inp: { 'inserter': 1, 'green-circuit': 1 },                   out: { 'filter-inserter': 1 } },
-  'stack-inserter':    { time: 1.5, inp: { 'inserter': 1, 'iron-gear': 8 },                       out: { 'stack-inserter': 1 } },
-  'stack-filter-inserter': { time: 2, inp: { 'filter-inserter': 1, 'stack-inserter': 1, 'iron-gear': 4 }, out: { 'stack-filter-inserter': 1 } },
+  'stack-inserter':    { time: 1.5, inp: { 'inserter': 1, 'steel-gear': 8 },                       out: { 'stack-inserter': 1 } },
+  'stack-filter-inserter': { time: 2, inp: { 'filter-inserter': 1, 'stack-inserter': 1, 'steel-gear': 4 }, out: { 'stack-filter-inserter': 1 } },
   'green-science':     { time: 4,   inp: { 'transport-belt': 1, 'inserter': 1 },                  out: { 'green-science': 1 } },
   'blue-science':      { time: 8,   inp: { 'plastic-bar': 2, 'green-circuit': 2, 'copper-plate': 1 }, out: { 'blue-science': 1 } },
   'pipe':              { time: 0.5, inp: { 'iron-plate': 1 },                                     out: { 'pipe': 1 } },
@@ -482,7 +484,7 @@ const RECIPES = {
   'deconstruction-planner': { time: 1, inp: { 'iron-plate': 1 }, out: { 'deconstruction-planner': 1 } },
   'upgrade-planner': { time: 1, inp: { 'iron-plate': 1, 'green-circuit': 1 }, out: { 'upgrade-planner': 1 } },
   'steel-furnace':    { time: 2,   inp: { 'steel-plate': 8, 'stone': 6 }, out: { 'steel-furnace': 1 } },
-  'assembling-machine-3': { time: 3, inp: { 'assembling-machine-mk2': 1, 'steel-plate': 8, 'iron-gear': 6, 'green-circuit': 8 }, out: { 'assembling-machine-3': 1 } },
+  'assembling-machine-3': { time: 3, inp: { 'assembling-machine-mk2': 1, 'steel-plate': 8, 'steel-gear': 6, 'green-circuit': 8 }, out: { 'assembling-machine-3': 1 } },
   'pipe-to-ground':   { time: 1,   inp: { 'pipe': 10, 'iron-plate': 5 }, out: { 'pipe-to-ground': 1 } },
   'pump':             { time: 1,   inp: { 'iron-plate': 4, 'steel-plate': 2, 'green-circuit': 1 }, out: { 'pump': 1 } },
   'solar-panel':      { time: 5,   inp: { 'copper-plate': 5, 'steel-plate': 5, 'green-circuit': 5 }, out: { 'solar-panel': 1 } },
@@ -562,7 +564,7 @@ const RECIPES = {
   // 火焰弹药：轻油+重油在化工厂制成（对齐《异星工厂》Flamethrower ammo，化工厂配方）
   'flamethrower-ammo': { time: 2, inp: { 'light-oil': 2, 'heavy-oil': 1 },                        out: { 'flamethrower-ammo': 1 } },
   // ===== 军事炮塔扩充 =====
-  'laser-turret':      { time: 4,   inp: { 'steel-plate': 8, 'green-circuit': 10, 'battery': 2 },  out: { 'laser-turret': 1 } },
+  'laser-turret':      { time: 4,   inp: { 'steel-plate': 8, 'steel-gear': 4, 'green-circuit': 10, 'battery': 2 },  out: { 'laser-turret': 1 } },
   'flamethrower-turret': { time: 3, inp: { 'steel-plate': 8, 'iron-gear': 4, 'pipe': 4 },         out: { 'flamethrower-turret': 1 } },
   // ===== 模块系统 =====
   'speed-module':      { time: 2,   inp: { 'green-circuit': 4, 'advanced-circuit': 2 },            out: { 'speed-module': 1 } },
@@ -619,11 +621,11 @@ const RECIPES = {
   // 铀燃料棒（对齐《异星工厂》：10 铀-235 → 1 燃料棒，组装机）：反应堆专用燃料，燃尽产废燃料棒
   'uranium-fuel-cell': { time: 10,  inp: { 'uranium-235': 10 },                               out: { 'uranium-fuel-cell': 1 } },
   // 离心机/反应堆/汽轮机（组装机制造）
-  'centrifuge':        { time: 2,   inp: { 'iron-plate': 8, 'green-circuit': 4 },                 out: { 'centrifuge': 1 } },
+  'centrifuge':        { time: 2,   inp: { 'iron-plate': 8, 'steel-gear': 4, 'green-circuit': 4 },                 out: { 'centrifuge': 1 } },
   'nuclear-reactor':   { time: 15,  inp: { 'steel-plate': 40, 'copper-plate': 20, 'battery': 5, 'centrifuge': 1 }, out: { 'nuclear-reactor': 1 } },
-  'steam-turbine':     { time: 5,   inp: { 'steel-plate': 20, 'iron-gear': 8, 'copper-plate': 10 }, out: { 'steam-turbine': 1 } },
+  'steam-turbine':     { time: 5,   inp: { 'steel-plate': 20, 'steel-gear': 8, 'copper-plate': 10 }, out: { 'steam-turbine': 1 } },
   'heat-pipe':         { time: 1,   inp: { 'steel-plate': 4, 'copper-plate': 3 }, out: { 'heat-pipe': 1 } },
-  'heat-exchanger':    { time: 3,   inp: { 'steel-plate': 15, 'copper-plate': 15, 'pipe': 10 }, out: { 'heat-exchanger': 1 } },
+  'heat-exchanger':    { time: 3,   inp: { 'steel-plate': 15, 'steel-gear': 4, 'copper-plate': 15, 'pipe': 10 }, out: { 'heat-exchanger': 1 } },
   // ===== 电路网络配方 =====
   'small-electric-pole': { time: 0.5, inp: { 'iron-plate': 1, 'copper-plate': 1 },                   out: { 'small-electric-pole': 1 } },
   'substation':        { time: 2,   inp: { 'big-electric-pole': 2, 'steel-plate': 8, 'copper-plate': 8, 'processing-unit': 2 }, out: { 'substation': 1 } },
@@ -1477,7 +1479,8 @@ function drawItemGlyph(x, id, cx, cy, s) {
       x.fillRect(-r * 0.85, -r * 0.55, r * 1.7, r * 0.22);
       break;
     }
-    case 'iron-gear': {
+    case 'iron-gear':
+    case 'steel-gear': {
       x.fillStyle = col;
       x.beginPath();
       for (let i = 0; i < 16; i++) {

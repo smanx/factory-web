@@ -785,7 +785,9 @@ function updateLootDrops(dt) {
     d.y += d.vy * dt;
     if (d.y > (Math.floor(d.y / TILE) + 0.9) * TILE) d.y = (Math.floor(d.y / TILE) + 0.9) * TILE;
     // 玩家靠近自动拾取
-    if (Math.hypot(d.x - p.x, d.y - p.y) < pickR) {
+    // 性能优化：平方距离比较（避免每帧 sqrt），与 Math.hypot 数学等价
+    const _dx = d.x - p.x, _dy = d.y - p.y;
+    if (_dx * _dx + _dy * _dy < pickR * pickR) {
       invAdd(d.id, d.n || 1);
       if (typeof toast === 'function' && d.id === 'uranium-ore') toast('拾取 铀矿石');
       if (typeof playSfx === 'function') playSfx('loot');
@@ -1097,7 +1099,8 @@ function explodeDamage(cx, cy, radius, dmg) {
     }
   }
   // 爆炸也会伤害玩家自身（距离过近时）
-  if (Math.hypot(cx - G.player.x, cy - G.player.y) <= radius * TILE * 0.5) damagePlayer(dmg * 0.4);
+  // 性能优化：平方距离比较（与 Math.hypot 数学等价）
+  { const _bx = cx - G.player.x, _by = cy - G.player.y, _br = radius * TILE * 0.5; if (_bx*_bx + _by*_by <= _br*_br) damagePlayer(dmg * 0.4); }
   if (typeof playSfx === 'function') playSfx('explosion');
 }
 
@@ -1676,10 +1679,11 @@ function updateGroundFires(dt) {
       for (let i = 0; i < _alive.length; i++) {
         const en = _alive[i];
         if (!en || en.dead || en.type === 'spawner') continue;
-        if (Math.hypot(en.x - cx, en.y - cy) <= TILE * 1.15) { en.hp -= Math.round(GROUND_FIRE_DMG * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('fire') : 1)); if (en.hp <= 0) en.dead = true; }
+        // 性能优化：平方距离比较
+        { const _fx = en.x - cx, _fy = en.y - cy, _fr = TILE * 1.15; if (_fx*_fx + _fy*_fy <= _fr*_fr) { en.hp -= Math.round(GROUND_FIRE_DMG * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('fire') : 1)); if (en.hp <= 0) en.dead = true; } }
       }
       // 玩家站在火焰上也受灼烧
-      if (G.settings.combat && Math.hypot(G.player.x - cx, G.player.y - cy) <= TILE * 1.1) damagePlayer(GROUND_FIRE_DMG * 0.6);
+      if (G.settings.combat) { const _fp = G.player; const _fx2 = _fp.x - cx, _fy2 = _fp.y - cy, _fr2 = TILE * 1.1; if (_fx2*_fx2 + _fy2*_fy2 <= _fr2*_fr2) damagePlayer(GROUND_FIRE_DMG * 0.6); }
     }
     // 火焰燃烧时冒出零星火星/余烬（低频，避免爆量）
     if (Math.random() < 0.25 && typeof spawnSmoke === 'function') {
@@ -1732,10 +1736,11 @@ function updateAcidPools(dt) {
       for (let i = 0; i < _alive.length; i++) {
         const en = _alive[i];
         if (!en || en.dead) continue;
-        if (Math.hypot(en.x - cx, en.y - cy) <= TILE * 1.15) { en.hp -= ACID_POOL_DMG; if (en.hp <= 0) en.dead = true; }
+        // 性能优化：平方距离比较
+        { const _ax = en.x - cx, _ay = en.y - cy, _ar = TILE * 1.15; if (_ax*_ax + _ay*_ay <= _ar*_ar) { en.hp -= ACID_POOL_DMG; if (en.hp <= 0) en.dead = true; } }
       }
       // 玩家踩中酸液也受腐蚀
-      if (G.settings.combat && Math.hypot(G.player.x - cx, G.player.y - cy) <= TILE * 1.1) damagePlayer(ACID_POOL_DMG * 0.6);
+      if (G.settings.combat) { const _ap = G.player; const _ax2 = _ap.x - cx, _ay2 = _ap.y - cy, _ar2 = TILE * 1.1; if (_ax2*_ax2 + _ay2*_ay2 <= _ar2*_ar2) damagePlayer(ACID_POOL_DMG * 0.6); }
     }
     // 酸液表面冒气泡（低频特效，避免爆量）
     if (Math.random() < 0.25 && typeof spawnSmoke === 'function') {
