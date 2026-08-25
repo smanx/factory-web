@@ -1682,7 +1682,7 @@ function dbgSlider(body, label, key, min, max, step) {
   body.appendChild(row);
 }
 
-// ===== 调试面板可发放的资源清单（按类别分组，覆盖全部可获取材料/流体/弹药/科技包等）=====
+// ===== 调试面板可发放的资源清单（按类别分组，覆盖全部可获取材料/流体/弹药/科技包/建筑实体等）=====
 // 每组：[类别名, [[物品id, 发放数量], ...]]
 const DBG_GIVE_GROUPS = [
   ['矿石', [
@@ -1739,8 +1739,52 @@ const DBG_GIVE_GROUPS = [
     ['light-oil-barrel', 50], ['petroleum-gas-barrel', 50], ['lubricant-barrel', 50], ['sulfuric-acid-barrel', 50]
   ]],
   ['载具·建筑', [
-    ['car', 5], ['tank', 5], ['locomotive', 5], ['diesel-locomotive', 5], ['cargo-wagon', 5],
-    ['fluid-wagon', 5], ['artillery-wagon', 5], ['rail', 100], ['rail-signal', 50], ['rail-chain-signal', 50]
+    ['car', 5], ['tank', 5], ['spidertron', 5], ['locomotive', 5], ['diesel-locomotive', 5], ['cargo-wagon', 5],
+    ['fluid-wagon', 5], ['artillery-wagon', 5], ['train-stop', 5], ['rail', 100], ['rail-signal', 50], ['rail-chain-signal', 50]
+  ]],
+  ['物流·传送带', [
+    ['transport-belt', 100], ['fast-transport-belt', 100], ['express-transport-belt', 100],
+    ['splitter', 50], ['fast-splitter', 50], ['express-splitter', 50], ['priority-splitter', 50],
+    ['underground', 50], ['fast-underground-belt', 50], ['express-underground-belt', 50]
+  ]],
+  ['机械臂', [
+    ['burner-inserter', 50], ['inserter', 50], ['long-inserter', 50], ['fast-inserter', 50],
+    ['filter-inserter', 50], ['stack-inserter', 50], ['stack-filter-inserter', 50]
+  ]],
+  ['生产·建筑', [
+    ['burner-drill', 20], ['electric-drill', 20], ['pumpjack', 20],
+    ['stone-furnace', 20], ['steel-furnace', 20], ['electric-furnace', 20],
+    ['assembling-machine', 20], ['assembling-machine-mk2', 20], ['assembling-machine-3', 20],
+    ['chemical-plant', 20], ['refinery', 10], ['lab', 20], ['beacon', 10], ['radar', 10], ['rocket-silo', 5]
+  ]],
+  ['储物·物流', [
+    ['wooden-chest', 20], ['iron-chest', 20], ['storage-chest', 20], ['steel-chest', 20],
+    ['logistic-chest-passive', 20], ['logistic-chest-active', 20], ['logistic-chest-storage', 20],
+    ['logistic-chest-requester', 20], ['logistic-chest-buffer', 20], ['roboport', 10]
+  ]],
+  ['电力·能源', [
+    ['boiler', 20], ['steam-engine', 20], ['offshore-pump', 20],
+    ['solar-panel', 20], ['accumulator', 20], ['passive-power', 20],
+    ['small-electric-pole', 50], ['medium-electric-pole', 50], ['big-electric-pole', 50], ['substation', 20]
+  ]],
+  ['流体·管道', [
+    ['pipe', 100], ['pipe-to-ground', 50], ['pump', 20], ['storage-tank', 20]
+  ]],
+  ['防御·军事', [
+    ['stone-wall', 100], ['gate', 50], ['gun-turret', 20], ['laser-turret', 20],
+    ['flamethrower-turret', 20], ['artillery-turret', 10], ['land-mine', 50]
+  ]],
+  ['电路·信号', [
+    ['constant-combinator', 20], ['arithmetic-combinator', 20], ['decider-combinator', 20],
+    ['power-switch', 20], ['programmable-speaker', 20], ['lamp', 50]
+  ]],
+  ['核能·建筑', [
+    ['centrifuge', 10], ['nuclear-reactor', 5], ['steam-turbine', 20],
+    ['heat-pipe', 50], ['heat-exchanger', 20]
+  ]],
+  ['测试设备', [
+    ['creative-chest', 10], ['void-chest', 10], ['creative-belt', 10], ['void-belt', 10],
+    ['creative-pipe', 10], ['void-pipe', 10]
   ]]
 ];
 
