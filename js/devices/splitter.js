@@ -9,9 +9,8 @@ class Splitter extends Belt {
     super(type || 'splitter', x, y);
     this.items = [];
     this.inPref = 0;
-    this.outToggle = false;
     this.filter = null; // 可编程分离器过滤：仅放行该物品，其余物品被挡在入口（对齐《异星工厂》Programmable splitter）
-    this.outPref = type === 'priority-splitter' ? 1 : -1; // -1=均衡轮发，0/1=优先某侧
+    this.outPref = type === 'priority-splitter' ? 1 : -1; // -1=双线各自直通，0/1=优先某侧（渲染/拥堵倾向）
     this.applyDir();
   }
   applyDir() {
@@ -34,18 +33,17 @@ class Splitter extends Belt {
       const o = this.items[i];
       const lim = i === 0 ? 0.999 : Math.max(0, this.items[i - 1].pos - BELT_SPACING);
       if (o.pos < lim) o.pos = Math.min(o.pos + sp, lim);
+      // 双线各自直通：物品保持所在 lane——从左边（lane 0）进来的从左边输出，
+      // 从右边（lane 1）进来的从右边输出，不交叉（对齐《异星工厂》分流器）。
       if (o.pos >= 0.5 && o.outLane === undefined) {
-        if (this.outPref >= 0) {
-          o.outLane = this.outPref;
-        } else {
-          o.outLane = this.outToggle ? 1 : 0;
-          this.outToggle = !this.outToggle;
-        }
+        o.outLane = o.lane;
       }
       if (o.pos >= 0.999 && o.outLane !== undefined) {
         let ok = this.pushOut(o.item, o.outLane);
         if (!ok) {
-          const alt = 1 - o.outLane;
+          // 拥堵溢出：普通分流器溢到另一侧；优先级分流器优先向 outPref 指定侧疏通（仍保持 lane 作为默认）
+          let alt = 1 - o.outLane;
+          if (this.outPref >= 0 && this.outPref !== o.outLane) alt = this.outPref;
           if (this.pushOut(o.item, alt)) { o.outLane = alt; ok = true; }
         }
         if (ok) { this.items.splice(i, 1); i--; }
@@ -370,8 +368,8 @@ function drawSplitter(ctx, e, gx, gy, dir, alpha) {
 
 // ===== 面板 =====
 function splitterPanelHtml(e) {
-  const prefNames = { '-1': '均衡轮发', '0': '优先一侧', '1': '优先另一侧' };
-  let h = '<div class="dim">分流器：货物分向前方两侧；一边堵了自动走另一边。R 旋转方向。</div>';
+  const prefNames = { '-1': '左进左出', '0': '优先一侧', '1': '优先另一侧' };
+  let h = '<div class="dim">分流器：双线各自直通——物品从左边（lane 0）进来就从左边出去，从右边（lane 1）进来就从右边出去，不交叉；一边堵了自动走另一边。R 旋转方向。</div>';
   h += '<div class="mrow"><span class="mlabel">输出模式</span><span class="mval">';
   for (const v of [-1, 0, 1]) {
     h += '<button data-action="spref" data-v="' + v + '"' + (e.outPref === v ? ' style="border-color:#ffd23c;color:#ffd23c"' : '') + '>' + prefNames[v] + '</button> ';
@@ -426,7 +424,7 @@ function splitterPanelLive(e, api) {
 const splitterPanel = { html: splitterPanelHtml, onAction: splitterOnAction, live: splitterPanelLive, tip: splitterTip };
 function splitterTip(e) {
   if (e.filter) return '分流器：仅放行「' + ITEMS[e.filter].name + '」' + (e.outPref >= 0 ? '，优先一侧' : '');
-  return '分流器：分向前方两侧（R 旋转；点开面板可设过滤/优先级）';
+  return '分流器：双线各自直通，左进左出、右进右出（R 旋转；点开面板可设过滤）';
 }
 ENT_CLASSES['splitter'] = Splitter;
 ENT_CLASSES['priority-splitter'] = PrioritySplitter;
