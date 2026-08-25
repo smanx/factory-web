@@ -116,7 +116,7 @@ function techNeedList(tid) {
 // 未列出的物品使用默认 100。玩家背包/储物箱/载具等存储受此上限约束。
 const STACK_SIZES = {
   // 终局单体物品与载具：堆叠 1
-  'rocket': 1, 'satellite': 1, 'nuclear-reactor': 1, 'rocket-silo': 1,
+  'rocket': 1, 'rocket-part': 100, 'satellite': 1, 'nuclear-reactor': 1, 'rocket-silo': 1,
   'car': 1, 'tank': 1, 'spidertron': 1, 'locomotive': 1, 'diesel-locomotive': 1,
   'cargo-wagon': 1, 'fluid-wagon': 1, 'artillery-wagon': 1,
   'light-armor': 1, 'heavy-armor': 1, 'modular-armor': 1, 'power-armor': 1, 'power-armor-mk2': 1,
@@ -268,7 +268,8 @@ const ITEMS = {
   'low-density-structure': { name: '低密度结构', color: '#b0b8c0', desc: '轻质航空结构材料' },
   'rocket-fuel':     { name: '火箭燃料', color: '#d07a2a', desc: '火箭推进剂，用石油气+电引擎制造；同时也是能量最高的可燃烧燃料（约为固体燃料 10 倍、煤 40 倍），可投入锅炉/熔炉/采矿机/火车/载具使用（对齐《异星工厂》Rocket fuel）' },
   'rocket-control-unit': { name: '火箭控制单元', color: '#d04a4a', desc: '火箭的大脑，用处理器+高级电路板制造' },
-  'rocket':          { name: '火箭', color: '#c0c8d0', mark: '🚀', desc: '由火箭发射井集齐部件组装而成的完整火箭本体，放入卫星后可发射' },
+  'rocket-part':     { name: '火箭部件', color: '#a8b0c0', mark: '◈', desc: '火箭发射井逐件组装的中间部件（对齐《异星工厂》Rocket part），集齐后拼装出完整火箭；装产能模块可免费累积额外部件' },
+  'rocket':          { name: '火箭', color: '#c0c8d0', mark: '🚀', desc: '由火箭发射井集齐火箭部件组装而成的完整火箭本体，放入卫星后可发射' },
   'satellite':       { name: '卫星', color: '#c0c8d0', desc: '放入火箭发射井发射，赢得游戏' },
   'rocket-silo':     { name: '火箭发射井', color: '#7a6a5a', desc: '组装并发射火箭的终局建筑（5×5），放入卫星并填充火箭部件后发射。可接入电路网络输出井内火箭/卫星/部件就绪状态信号（对齐《异星工厂》火箭发射井电路信号）' },
   'radar':           { name: '雷达', color: '#5a8a8a', desc: '周期性扫描周围区域，点亮小地图/标记新探索区（3×3，吃电力）' },
