@@ -567,13 +567,16 @@ function splitterPanelHtml(e) {
   if (e.filter) h += '<div class="dim">过滤生效中：命中物品走优先侧，其余走另一侧。</div>';
   h += '<div class="mrow"><span class="mlabel">仅放行</span><span class="mval">' +
     (e.filter ? chip(e.filter) : '<span class="dim">全部放行</span>') + '</span></div>';
+  if (e.filter) h += '<div class="mrow"><span class="mval"><button data-action="sflt-clear">清除过滤（放行所有物品）</button></span></div>';
+  h += '<input id="sflt-search" class="inv-search" type="text" placeholder="搜索物品（输入名称）" autocomplete="off">';
+  h += '<div id="sflt-empty" class="dim" style="display:none"></div>';
   h += '<div class="recgrid">';
   for (const id of (typeof filterChoices === 'function' ? filterChoices() : FILTER_CHOICES)) {
-    h += '<button class="rcbtn ' + (e.filter === id ? 'sel' : '') + '" data-action="sflt" data-id="' + id + '" data-itemid="' + id + '">' +
-      '<img src="' + iconDataURL(id) + '">' + ITEMS[id].name + '</button>';
+    const name = ITEMS[id]?.name || id;
+    h += '<button class="rcbtn ' + (e.filter === id ? 'sel' : '') + '" data-action="sflt" data-id="' + id + '" data-itemid="' + id + '" data-search="' + (name + ' ' + id).toLowerCase() + '">' +
+      '<img src="' + iconDataURL(id) + '">' + name + '</button>';
   }
   h += '</div>';
-  if (e.filter) h += '<button data-action="sflt-clear">清除过滤（放行所有物品）</button>';
   h += '<div class="status"></div>';
   return h;
 }

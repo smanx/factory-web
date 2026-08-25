@@ -533,6 +533,42 @@ function applyBuildSearch(q) {
   }
 }
 
+// 分流器过滤搜索：按关键字过滤可编程分离器的物品选择列表
+function applySplitterFilterSearch(q) {
+  const body = document.getElementById('panel-body');
+  if (!body) return;
+  const ql = (q || '').trim().toLowerCase();
+  let shown = 0;
+  body.querySelectorAll('.recgrid .rcbtn[data-action="sflt"]').forEach(el => {
+    const hit = !ql || (el.dataset.search || '').includes(ql);
+    el.style.display = hit ? '' : 'none';
+    if (hit) shown++;
+  });
+  const emp = document.getElementById('sflt-empty');
+  if (emp) {
+    emp.textContent = ql ? '没有匹配「' + q.trim() + '」的物品' : '';
+    emp.style.display = (ql && !shown) ? '' : 'none';
+  }
+}
+
+// 过滤机械臂搜索：按关键字过滤过滤机械臂的物品选择列表
+function applyInserterFilterSearch(q) {
+  const body = document.getElementById('panel-body');
+  if (!body) return;
+  const ql = (q || '').trim().toLowerCase();
+  let shown = 0;
+  body.querySelectorAll('.recgrid .rcbtn[data-action="flt"]').forEach(el => {
+    const hit = !ql || (el.dataset.search || '').includes(ql);
+    el.style.display = hit ? '' : 'none';
+    if (hit) shown++;
+  });
+  const emp = document.getElementById('flt-empty');
+  if (emp) {
+    emp.textContent = ql ? '没有匹配「' + q.trim() + '」的物品' : '';
+    emp.style.display = (ql && !shown) ? '' : 'none';
+  }
+}
+
 // 个人物流请求：填充可选物品网格并过滤
 function fillLogiReqGrid(q) {
   const grid = document.getElementById('lreq-grid');
@@ -815,6 +851,10 @@ function initPanelEvents() {
       if (typeof fillTrashGrid === 'function') fillTrashGrid(G.trashQ);
     } else if (ev.target.id === 'asm-recipe-search') {
       applyAssemblerRecipeFilter(ev.target.value);
+    } else if (ev.target.id === 'sflt-search') {
+      applySplitterFilterSearch(ev.target.value);
+    } else if (ev.target.id === 'flt-search') {
+      applyInserterFilterSearch(ev.target.value);
     } else if (ev.target.matches && ev.target.matches('[data-stat-hist-filter]')) {
       applyStatsHistFilter(ev.target.value);
     }

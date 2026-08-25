@@ -448,13 +448,17 @@ function stackInserterPanelHtml(e) {
 function filterInserterPanelHtml(e) {
   let h = '<div class="dim">过滤机械臂：只抓取选中的物品，其余一律不碰。当前：' +
     (e.filter ? chip(e.filter) : '<span class="dim">未设置</span>') + '</div>';
-  h += '<div class="sec">选择过滤物</div><div class="recgrid">';
+  h += '<div class="sec">选择过滤物</div>';
+  if (e.filter) h += '<div class="mrow"><span class="mval"><button data-action="flt-clear">清除过滤（恢复普通抓取）</button></span></div>';
+  h += '<input id="flt-search" class="inv-search" type="text" placeholder="搜索物品（输入名称）" autocomplete="off">';
+  h += '<div id="flt-empty" class="dim" style="display:none"></div>';
+  h += '<div class="recgrid">';
   for (const id of (typeof filterChoices === 'function' ? filterChoices() : FILTER_CHOICES)) {
-    h += '<button class="rcbtn ' + (e.filter === id ? 'sel' : '') + '" data-action="flt" data-id="' + id + '" data-itemid="' + id + '">' +
-      '<img src="' + iconDataURL(id) + '">' + ITEMS[id].name + '</button>';
+    const name = ITEMS[id]?.name || id;
+    h += '<button class="rcbtn ' + (e.filter === id ? 'sel' : '') + '" data-action="flt" data-id="' + id + '" data-itemid="' + id + '" data-search="' + (name + ' ' + id).toLowerCase() + '">' +
+      '<img src="' + iconDataURL(id) + '">' + name + '</button>';
   }
   h += '</div>';
-  if (e.filter) h += '<button data-action="flt-clear">清除过滤（恢复普通抓取）</button>';
   h += circuitPanelHtml(e, 'ins');
   h += '<div class="status"></div>';
   return h;
@@ -543,13 +547,17 @@ function inserterStatusFn(e) {
 function stackFilterInserterPanelHtml(e) {
   let h = '<div class="dim">堆叠过滤机械臂：一次最多抓取 3 个「指定物品」再放下，装卸效率高且精确分类。当前：' +
     (e.filter ? chip(e.filter) : '<span class="dim">未设置</span>') + '</div>';
-  h += '<div class="sec">选择过滤物</div><div class="recgrid">';
+  h += '<div class="sec">选择过滤物</div>';
+  if (e.filter) h += '<div class="mrow"><span class="mval"><button data-action="flt-clear">清除过滤（恢复抓取任意物品）</button></span></div>';
+  h += '<input id="flt-search" class="inv-search" type="text" placeholder="搜索物品（输入名称）" autocomplete="off">';
+  h += '<div id="flt-empty" class="dim" style="display:none"></div>';
+  h += '<div class="recgrid">';
   for (const id of (typeof filterChoices === 'function' ? filterChoices() : FILTER_CHOICES)) {
-    h += '<button class="rcbtn ' + (e.filter === id ? 'sel' : '') + '" data-action="flt" data-id="' + id + '" data-itemid="' + id + '">' +
-      '<img src="' + iconDataURL(id) + '">' + ITEMS[id].name + '</button>';
+    const name = ITEMS[id]?.name || id;
+    h += '<button class="rcbtn ' + (e.filter === id ? 'sel' : '') + '" data-action="flt" data-id="' + id + '" data-itemid="' + id + '" data-search="' + (name + ' ' + id).toLowerCase() + '">' +
+      '<img src="' + iconDataURL(id) + '">' + name + '</button>';
   }
   h += '</div>';
-  if (e.filter) h += '<button data-action="flt-clear">清除过滤（恢复抓取任意物品）</button>';
   h += '<div class="status"></div>';
   return h;
 }
