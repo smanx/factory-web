@@ -146,6 +146,30 @@ class Inserter extends Entity {
     if (s.takeItem) return s.takeItem();
     return null;
   }
+  // 从源中选择一个「目标能接收」的物品来抓取（对齐《异星工厂》：机械臂不只会抓
+  // 传送带上最靠前的那一个，而会结合放货格（组装机等）的接收能力选品——若最靠前的
+  // 物品目标已满/不需要，则继续在传送带上探测其他可取物品，保证组装机需要的多种
+  // 原料都能被补齐，而不是只盯着一种导致另一种长期缺失）。
+  // 选品优先级：近侧 lane 优先、同 lane 内靠前（pos 大）优先；仍遵守过滤设置。
+  pickSourceForDrop(s, t) {
+    if (!s) return null;
+    if (s instanceof Belt) {
+      const near = this.pickBeltLane(s);
+      const cand = s.items
+        .filter(o => o.pos >= 0.2 && (!this.filter || o.item === this.filter))
+        .sort((a, b) => {
+          const na = a.lane === near ? 1 : 0;
+          const nb = b.lane === near ? 1 : 0;
+          if (na !== nb) return nb - na;      // 近侧 lane 优先
+          return b.pos - a.pos;                // 同 lane 靠前优先
+        });
+      for (const o of cand) if (this.canDropAt(t, o.item)) return o.item;
+      return null;
+    }
+    // 非传送带源：沿用原有探测，再校验目标是否接收
+    const it = this.peekSource(s);
+    return (it && this.canDropAt(t, it)) ? it : null;
+  }
   // ===== 放物 =====
   canDropAt(t, item) {
     if (!t) return false;
@@ -240,9 +264,7 @@ class Inserter extends Entity {
   }
   // 干跑：现在是否有活干（供 UI/其他系统查询）
   hasWork() {
-    const s = this.entAtPick();
-    const it = this.peekSource(s);
-    return !!(it && this.canDropAt(this.entAtDrop(), it));
+    return !!this.pickSourceForDrop(this.entAtPick(), this.entAtDrop());
   }
   update(dt) {
     // 电路条件不满足时机械臂停转（保持当前姿态，不取放）
@@ -272,10 +294,10 @@ class Inserter extends Entity {
       this._probeT = 0.15;
       // 到达取物位：一次性完成“看源、验目标、取走”，避免探测与执行之间的状态漂移
       const s = this.entAtPick();
-      const it = this.peekSource(s);
+      const t = this.entAtDrop();
+      const it = this.pickSourceForDrop(s, t);
       this.blocked = false;
-      if (!it) return;                       // 源为空：停在取物位等待
-      if (!this.canDropAt(this.entAtDrop(), it)) return; // 目标暂不收：等待
+      if (!it) return;                       // 无可取且目标能收的物品：停在取物位等待
       const want = Math.max(1, Math.min(this.capacity(), this.countSourceOf(s, it)));
       const got = this.takeNFrom(s, it, want);
       if (!got.length) return;
@@ -495,7 +517,7 @@ function inserterFilterSectionHtml(e, lead) {
   return h;
 }
 function inserterPanelHtml(e) {
-  return '<div class="dim">电力机械臂：严格单向搬运。从臂体指向的一侧（灰色圆点）取货，放到地面箭头/亮色箭头的一侧（物流方向）。放到传送带时只在一边放置（目标带上会有一个同色脉冲三角标出投放侧），翻转（R 旋转）机械臂即可把物品转到另一侧车道，横/竖传送带行为一致；侧放/尾放都固定投放一侧，不再两条车道轮流装。双列传送带上优先抓取靠近自己一侧的车道，近侧无货时再取远侧。普通臂作用相邻格，加长臂作用第二格。R 旋转。</div>' +
+  return '<div class="dim">电力机械臂：严格单向搬运。从臂体指向的一侧（灰色圆点）取货，放到地面箭头/亮色箭头的一侧（物流方向）。放到传送带时只在一边放置（目标带上会有一个同色脉冲三角标出投放侧），翻转（R 旋转）机械臂即可把物品转到另一侧车道，横/竖传送带行为一致；侧放/尾放都固定投放一侧，不再两条车道轮流装。双列传送带上优先抓取靠近自己一侧的车道，近侧无货时再取远侧；若最靠前的物品目标（组装机等）已满/不收，会继续在传送带上找其他目标能收的原料抓取，保证组装机需要的多种原料都能补齐。普通臂作用相邻格，加长臂作用第二格。R 旋转。</div>' +
     inserterFilterSectionHtml(e, '<div class="dim">当前筛选：') +
     circuitPanelHtml(e, 'ins') + '<div class="status"></div>';
 }
@@ -529,14 +551,20 @@ function inserterPanelLive(e, api) {
   }
   if (e.rotating) { api.status('工作中：转向取货格', 'ok'); return; }
   const s = e.entAtPick();
-  const it = e.peekSource(s);
+  const t = e.entAtDrop();
+  const it = e.pickSourceForDrop(s, t);
   if (!it) {
-    if (e.filter) api.status('已暂停：取货格没有「' + ITEMS[e.filter].name + '」', 'warn');
-    else api.status('已暂停：取货格无物品可取', 'warn');
+    // 无可取的、且目标能收的物品：区分“源无货”与“有货但放不下”两种提示
+    const src = e.peekSource(s);
+    if (!src) {
+      if (e.filter) api.status('已暂停：取货格没有「' + ITEMS[e.filter].name + '」', 'warn');
+      else api.status('已暂停：取货格无物品可取', 'warn');
+    } else {
+      api.status('已暂停：取货格物品均放不进目标（放货格已满）', 'warn');
+    }
     return;
   }
-  if (!e.canDropAt(e.entAtDrop(), it)) api.status('已暂停：放货格已满', 'warn');
-  else api.status('待机：等待取货格出现货物', 'ok');
+  api.status('待机：等待取货格出现货物', 'ok');
 }
 
 // ===== 电路控制面板（机械臂/传送带通用） =====

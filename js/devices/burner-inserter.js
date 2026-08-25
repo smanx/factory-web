@@ -141,10 +141,14 @@ function burnerInserterPanelLive(e, api) {
   }
   if (e.rotating) { api.status('工作中：转向取货格', 'ok'); return; }
   const s = e.entAtPick();
-  const it = e.peekSource(s);
-  if (!it) { api.status('已暂停：取货格无物品可取', 'warn'); return; }
-  if (!e.canDropAt(e.entAtDrop(), it)) api.status('已暂停：放货格已满', 'warn');
-  else api.status('待机：等待取货格出现货物', 'ok');
+  const t = e.entAtDrop();
+  const it = e.pickSourceForDrop(s, t);
+  if (!it) {
+    if (!e.peekSource(s)) api.status('已暂停：取货格无物品可取', 'warn');
+    else api.status('已暂停：取货格物品均放不进目标（放货格已满）', 'warn');
+    return;
+  }
+  api.status('待机：等待取货格出现货物', 'ok');
 }
 function burnerInserterTip(e) {
   if (!e.hasFuel()) return '热能机械臂：缺燃料停摆';
