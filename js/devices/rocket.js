@@ -14,6 +14,8 @@ const SILO_ASSEMBLE = {
   'low-density-structure': 10
 };
 const SILO_CAP = 100;
+// 火箭产能（对齐《异星工厂》Rocket productivity）：每级降低火箭燃料与低密度结构部件需求（最低保留 1）。
+function siloPartNeed(k) { return (typeof rocketPartNeed === 'function') ? rocketPartNeed(k, SILO_ASSEMBLE[k]) : SILO_ASSEMBLE[k]; }
 class RocketSilo extends Entity {
   constructor(type, x, y) {
     super('rocket-silo', x, y);
@@ -46,14 +48,14 @@ class RocketSilo extends Entity {
   }
   // 组装部件是否集齐（不含卫星/火箭本体）
   hasAssembleParts() {
-    for (const k in SILO_ASSEMBLE) if ((this.inp[k] || 0) < SILO_ASSEMBLE[k]) return false;
+    for (const k in SILO_ASSEMBLE) if ((this.inp[k] || 0) < siloPartNeed(k)) return false;
     return true;
   }
   assembleReady() {
     const out = {};
     for (const k in SILO_ASSEMBLE) {
       const have = this.inp[k] || 0;
-      out[k] = have >= SILO_ASSEMBLE[k];
+      out[k] = have >= siloPartNeed(k);
     }
     return out;
   }
@@ -68,7 +70,7 @@ class RocketSilo extends Entity {
       if (typeof toast === 'function') toast('火箭部件未集齐：需要 ' + assemblePartsNeededStr(this));
       return false;
     }
-    for (const k in SILO_ASSEMBLE) this.inp[k] -= SILO_ASSEMBLE[k];
+    for (const k in SILO_ASSEMBLE) this.inp[k] -= siloPartNeed(k);
     if ((this.inp['rocket'] || 0) <= 0) this.inp['rocket'] = 0;
     this.inp['rocket']++;
     if (typeof toast === 'function') toast('🛠️ 火箭组装完成！放入卫星即可发射');
@@ -117,7 +119,8 @@ function assemblePartsNeededStr(e) {
   const need = [];
   for (const k in SILO_ASSEMBLE) {
     const have = e.inp[k] || 0;
-    if (have < SILO_ASSEMBLE[k]) need.push(ITEMS[k].name + ' ×' + (SILO_ASSEMBLE[k] - have));
+    const needN = siloPartNeed(k);
+    if (have < needN) need.push(ITEMS[k].name + ' ×' + (needN - have));
   }
   return need.join('、');
 }
@@ -176,7 +179,7 @@ function drawRocketSilo(ctx, e, gx, gy, dir, alpha) {
   if (!e.hasRocket()) {
     for (const k of Object.keys(SILO_ASSEMBLE)) {
       const have = e.inp[k] || 0;
-      const need = SILO_ASSEMBLE[k];
+      const need = siloPartNeed(k);
       const ready = have >= need;
       ctx.fillStyle = ready ? '#57e389' : '#c0b090';
       ctx.fillText(ITEMS[k].name[0] + (have > need ? '✓' : (have > 0 ? String(Math.min(have, need)) : '')), bx, by);
@@ -201,7 +204,7 @@ function siloPanelHtml(e) {
     const ready = e.assembleReady();
     for (const k of Object.keys(SILO_ASSEMBLE)) {
       const have = e.inp[k] || 0;
-      const need = SILO_ASSEMBLE[k];
+      const need = siloPartNeed(k);
       h += row(ITEMS[k].name, (ready[k] ? '✓ ' : '') + have + '/' + need, k);
     }
     h += '<button data-action="assemble" id="btn-assemble" ' + (e.hasRocket() || !e.hasAssembleParts() ? 'disabled' : '') + '>🛠️ 组装火箭</button>';
@@ -229,7 +232,7 @@ function siloPanelLive(e, api) {
     const ready = e.assembleReady();
     for (const k of Object.keys(SILO_ASSEMBLE)) {
       const have = e.inp[k] || 0;
-      api.set(k, (ready[k] ? '✓ ' : '') + have + '/' + SILO_ASSEMBLE[k]);
+      api.set(k, (ready[k] ? '✓ ' : '') + have + '/' + siloPartNeed(k));
     }
   } else {
     const haveSat = e.inp['satellite'] || 0;

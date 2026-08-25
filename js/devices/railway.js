@@ -31,6 +31,11 @@ const WAGON_STACK = 100;       // 每槽容量
 // 铁路产能无限科技：每次研究提升货运车厢槽位容量 +2（对齐《异星工厂》Rail productivity）
 const RAIL_PRODUCTIVITY_SLOTS = 2; // 每级科技新增槽位数
 function wagonSlots() { return WAGON_SLOTS + (typeof G !== 'undefined' && G.techProg && G.techProg['rail-productivity'] ? G.techProg['rail-productivity'] * RAIL_PRODUCTIVITY_SLOTS : 0); }
+// 火车制动（对齐《异星工厂》Braking force 无限科技）：每级缩短停靠/让行等待时长，提升铁路吞吐。
+function trainBrakeWait() {
+  const base = TRAIN_STOP_WAIT;
+  return (typeof brakingForceMult === 'function' ? base * brakingForceMult() : base);
+}
 const TRAIN_STOP_WAIT = 1.6;   // 车站停车时长（秒）
 const SIGNAL_RANGE = 10;       // 信号灯检测前方列车距离（格）
 // 链式信号灯：连锁转发，检测前方区段整段是否畅通（距离更长），
@@ -90,8 +95,9 @@ function updateTrains(dt) {
     if (station) {
       // 停靠期间持续执行自动装卸；有装卸动作则延长停靠窗口，直至装/卸完成
       const acted = trainAutoLoadUnload(tr, station);
-      if (acted) tr.stopT = TRAIN_STOP_WAIT;
-      else if (!tr.stopT) tr.stopT = TRAIN_STOP_WAIT;
+      const bw = trainBrakeWait();
+      if (acted) tr.stopT = bw;
+      else if (!tr.stopT) tr.stopT = bw;
       tr.stopT -= dt;
       tr.wasStopped = true;
       continue;
@@ -915,8 +921,8 @@ function trainWaitMet(tr, arriveT) {
   if (cond === 'full') return trainCargoFull(tr);
   if (cond === 'empty') return trainCargoEmpty(tr);
   if (cond === 'time') return arriveT >= routeEntryTime(en);
-  // leave：默认“装卸后出发”——至少停留一个装卸窗口（对齐原固定停靠时长），保证装/卸能完成
-  return arriveT >= TRAIN_STOP_WAIT;
+  // leave：默认“装卸后出发”——至少停留一个装卸窗口（对齐原固定停靠时长），保证装/卸能完成；受火车制动科技缩短
+  return arriveT >= trainBrakeWait();
 }
 // 当前路线条目的等待条件描述（用于面板显示）
 function routeEntryCondLabel(en) {

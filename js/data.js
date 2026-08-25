@@ -1203,6 +1203,9 @@ const TECHS = {
   weapons:    { name: '单兵武器', cost: { 'military-science': 20 }, desc: '解锁手枪、冲锋枪、散弹枪（F 键或空格攻击）', req: ['military'] },
   military2:  { name: '军事科技 II', cost: { 'military-science': 30 }, desc: '解锁战斗散弹枪、火箭筒与穿甲散弹枪弹，强化单兵火力（对齐《异星工厂》Military 2）', req: ['weapons'] },
   'advanced-combat': { name: '高级战斗', cost: { 'military-science': 40, 'blue-science': 30 }, desc: '解锁坦克、重型护甲、蜘蛛机器人、炮兵连与战斗机器人胶囊，以及更强的远程敌人', req: ['military2', 'electronics'] },
+  // ==== 军事强化科技（对齐《异星工厂》Military 3 / Military 4：逐级强化机枪炮塔伤害）====
+  'military-3': { name: '军事科技 III', cost: { 'military-science': 40, 'blue-science': 30 }, desc: '机枪炮塔伤害 +40%（对齐《异星工厂》Military 3）', req: ['advanced-combat'] },
+  'military-4': { name: '军事科技 IV', cost: { 'military-science': 60, 'blue-science': 40, 'production-science-pack': 30 }, desc: '机枪炮塔伤害额外 +60%，解锁更强大的防御火力（对齐《异星工厂》Military 4）', req: ['military-3'] },
   explosives: { name: '爆炸物科技', cost: { 'military-science': 30 }, desc: '解锁爆炸火箭弹（更高威力与更大爆炸范围）与更多爆炸类弹药', req: ['advanced-combat'] },
   'laser-turrets': { name: '激光炮塔', cost: { 'military-science': 30, 'blue-science': 30 }, desc: '解锁激光炮塔，无需弹药、靠电力自动攻击（对齐《异星工厂》Laser turret 科技）', req: ['advanced-combat', 'battery'] },
   flamethrower: { name: '火焰科技', cost: { 'military-science': 30, 'blue-science': 30 }, desc: '解锁火焰喷射器、火焰炮塔与火焰弹药，喷射燃烧火焰造成持续灼烧（对齐《异星工厂》Flamethrower 科技）', req: ['advanced-combat', 'oil'] },
@@ -1252,6 +1255,10 @@ const TECHS = {
   'shooting-speed': { name: '射击速度', cost: { 'military-science': 40, 'blue-science': 30 }, infinite: true, desc: '无限科技：每次研究提升玩家枪械（手枪/冲锋枪/散弹枪/战斗散弹枪）与机枪炮塔的射击速度，射击间隔缩短 10%（对齐《异星工厂》Shooting speed 无限科技）', req: ['advanced-combat'] },
   'artillery-shell-range': { name: '炮兵射程', cost: { 'production-science-pack': 60, 'utility-science-pack': 60, 'military-science': 40 }, infinite: true, desc: '无限科技：每次研究提升炮兵连与炮兵车厢的射程 +30%，让远程火力覆盖更远（对齐《异星工厂》Artillery shell range 无限科技）', req: ['production', 'utility', 'advanced-combat'] },
   'rail-productivity': { name: '铁路产能', cost: { 'production-science-pack': 60, 'utility-science-pack': 60 }, infinite: true, desc: '无限科技：每次研究提升货运车厢槽位容量 +2，列车单趟装载更多货物（对齐《异星工厂》Rail productivity 无限科技）', req: ['production', 'utility', 'railways'] },
+  // ==== 火车制动（对齐《异星工厂》Braking force 无限科技：强化列车制动，缩短停靠/让行等待，提升铁路吞吐）====
+  'braking-force': { name: '火车制动', cost: { 'production-science-pack': 50, 'utility-science-pack': 40 }, infinite: true, desc: '无限科技：每次研究提升列车制动能力，车站停靠与信号灯让行的等待时间缩短 15%（对齐《异星工厂》Braking force 无限科技）', req: ['production', 'utility', 'railways'] },
+  // ==== 火箭产能（对齐《异星工厂》Rocket productivity：逐级降低火箭组装部件需求）====
+  'rocket-productivity': { name: '火箭产能', cost: { 'production-science-pack': 60, 'utility-science-pack': 40 }, desc: '逐级降低火箭组装所需的火箭燃料与低密度结构数量（每级各 -1，最低保留 1），让终局火箭冲刺更轻松（对齐《异星工厂》Rocket productivity）', req: ['rocket-science', 'production'] },
   'physical-projectile-damage': { name: '投射物伤害', cost: { 'space-science-pack': 80, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升玩家枪械与子弹（手枪/冲锋枪/散弹枪/机枪炮塔/车辆机炮等投射物）伤害 +10%（对齐《异星工厂》Physical projectile damage）', req: ['space-science', 'advanced-combat'] },
   'energy-weapons-damage': { name: '能量武器伤害', cost: { 'space-science-pack': 80, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升激光炮塔与个人激光防御等能量武器伤害 +10%（对齐《异星工厂》Energy weapons damage）', req: ['space-science', 'advanced-combat'] },
   'refined-flammables': { name: '燃烧伤害', cost: { 'space-science-pack': 80, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升火焰喷射器、火焰炮塔与地面火场等燃烧伤害 +10%（对齐《异星工厂》Refined flammables）', req: ['space-science', 'advanced-combat'] },
@@ -1768,4 +1775,26 @@ function shootingSpeedMult() {
 function artilleryRangeMult() {
   const lvl = (G.techProg && G.techProg['artillery-shell-range']) || 0;
   return 1 + 0.3 * lvl;
+}
+
+// 军事科技 III / IV 机枪炮塔伤害倍率（对齐《异星工厂》Military 3 / Military 4）：
+// 军事科技 III 使机枪炮塔伤害 +40%，军事科技 IV 额外 +60%（叠加）。
+function turretDamageMult() {
+  let m = 1;
+  if (G.techDone && G.techDone['military-3']) m *= 1.4;
+  if (G.techDone && G.techDone['military-4']) m *= 1.6;
+  return m;
+}
+// 火车制动（对齐《异星工厂》Braking force 无限科技）：每级让列车停靠/让行等待时间缩短 15%。
+function brakingForceMult() {
+  const lvl = (G.techProg && G.techProg['braking-force']) || 0;
+  return Math.pow(0.85, lvl);
+}
+// 火箭产能（对齐《异星工厂》Rocket productivity）：每级降低火箭组装部件需求。
+// 返回各部件当前所需数量（每级各 -1，最低保留 1）。lvl 为已研究等级。
+function rocketPartNeed(item, base) {
+  const lvl = (G.techProg && G.techProg['rocket-productivity']) || 0;
+  // 仅低密度结构与火箭燃料享受产能减免（对齐原版：产能作用于火箭燃料与低密度结构）
+  if (item !== 'low-density-structure' && item !== 'rocket-fuel') return base;
+  return Math.max(1, base - lvl);
 }
