@@ -96,7 +96,7 @@ class Belt extends Entity {
       this.items.splice(idx, 1);
       return true;
     }
-    if (nb instanceof Splitter && nb.giveItem(f.item)) {
+    if (nb instanceof Splitter && nb.acceptItem(f.item, this.dir, this.x, this.y, f.lane)) {
       this.items.splice(idx, 1);
       return true;
     }

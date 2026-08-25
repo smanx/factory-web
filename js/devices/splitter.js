@@ -41,10 +41,14 @@ class Splitter extends Belt {
       if (o.pos >= 0.999 && o.outLane !== undefined) {
         let ok = this.pushOut(o.item, o.outLane);
         if (!ok) {
-          // 拥堵溢出：普通分流器溢到另一侧；优先级分流器优先向 outPref 指定侧疏通（仍保持 lane 作为默认）
-          let alt = 1 - o.outLane;
-          if (this.outPref >= 0 && this.outPref !== o.outLane) alt = this.outPref;
-          if (this.pushOut(o.item, alt)) { o.outLane = alt; ok = true; }
+          // 拥堵溢出：仅“优先级分流器”（outPref>=0）允许溢到 outPref 指定侧疏通；
+          // 普通分流器（-1=双线各自直通）严格 lane 保持——lane 0 出口拥堵时物品原地等待，
+          // 绝不溢到 lane 1，否则“只有左线输入”的物品会被挤到右线输出（破坏 lane 保持）。
+          if (this.outPref >= 0) {
+            let alt = 1 - o.outLane;
+            if (this.outPref !== o.outLane) alt = this.outPref;
+            if (this.pushOut(o.item, alt)) { o.outLane = alt; ok = true; }
+          }
         }
         if (ok) { this.items.splice(i, 1); i--; }
         else o.pos = 0.999;
@@ -66,11 +70,21 @@ class Splitter extends Belt {
     if (!(t instanceof Underground)) return t.giveItem(item);
     return false;
   }
-  acceptItem(item, fromDir, sx, sy) {
+  acceptItem(item, fromDir, sx, sy, laneHint) {
     // 可编程分离器过滤：设置了过滤物且物品不匹配时，拒绝放行（物品停留在上游传送带）
     if (this.filter && item !== this.filter) return false;
     let pref = this.inPref;
     const rel = ((fromDir - this.dir) % 4 + 4) % 4;
+    // 直通输入（rel===0）：优先沿用上游传送带传来的 laneHint，实现 lane 保持（左进左出/右进右出）。
+    // 即便该 lane 尾部暂时堵塞，也拒绝（返回 false，物品留在上游等待），绝不回退到另一条 lane——
+    // 否则“只有左线输入”的物品会溢到右线输出，破坏 lane 保持语义。
+    if (rel === 0 && laneHint !== undefined && laneHint !== null) {
+      const l = laneHint === 1 ? 1 : 0;
+      const blocked = this.items.some(o => o.lane === l && o.pos < BELT_SPACING);
+      if (blocked) return false;
+      this.items.push({ item, pos: 0, lane: l });
+      return true;
+    }
     if (sx !== undefined && sx !== null && rel === 0) {
       const pv = this.laneVec();
       const ccx = (this.x + this.w / 2) * TILE, ccy = (this.y + this.h / 2) * TILE;
