@@ -62,7 +62,7 @@ class Boiler extends Entity {
       this._steamSfxT = 0.9;
       if (typeof playSfx === 'function') playSfx('steam');
     }
-    this.burnLeft -= dt;
+    this.burnLeft -= dt * fuelConsumptionMult();
     this.water = Math.max(0, this.water - BOILER_WATER_RATE * dt);
     this.steamBuf = Math.min(WATER_CAP, this.steamBuf + BOILER_WATER_RATE * dt);
     this.temp = Math.min(BOILER_TEMP_MAX, this.temp + BOILER_HEAT_RATE * dt);

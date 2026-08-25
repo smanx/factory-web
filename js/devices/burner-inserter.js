@@ -17,7 +17,7 @@ class BurnerInserter extends Inserter {
   hasFuel() { return this.burnLeft > 0 || this.fuelRocket > 0 || this.fuelSolid > 0 || this.fuelCoal > 0; }
   // 燃料消耗：与普通臂同步率，仅在真正搬运时扣煤，闲置不耗煤
   consumeFuel(dt) {
-    if (this.burnLeft > 0) { this.burnLeft -= dt; return; }
+    if (this.burnLeft > 0) { this.burnLeft -= dt * fuelConsumptionMult(); return; }
     if (this.fuelRocket > 0) {
       this.fuelRocket--;
       if (typeof trackProd === 'function') trackProd('rocket-fuel', -1);

@@ -179,7 +179,7 @@ function moveTrainToward(tr, tx, ty) {
   if (nd === null) return;
   head.x += DX[nd]; head.y += DY[nd]; head.dir = nd;
   removeEntFromGrid(head); addEntToGrid(head);
-  head.fuel -= LOCO_COAL_PER;
+  head.fuel -= LOCO_COAL_PER * fuelConsumptionMult();
   for (let i = 1; i < tr.cars.length; i++) {
     const car = tr.cars[i];
     removeEntFromGrid(car);
@@ -216,7 +216,7 @@ function moveTrain(tr) {
   // 移动车头到下一格
   head.x += DX[nd]; head.y += DY[nd]; head.dir = nd;
   removeEntFromGrid(head); addEntToGrid(head);
-  head.fuel -= LOCO_COAL_PER;
+  head.fuel -= LOCO_COAL_PER * fuelConsumptionMult();
   // 车厢依次占据前一节车的旧位置
   for (let i = 1; i < tr.cars.length; i++) {
     const car = tr.cars[i];
@@ -256,7 +256,7 @@ function moveTrainBack(tr) {
     c.x = oldPos[i].x + bx; c.y = oldPos[i].y + by;
     addEntToGrid(c);
   }
-  if (head.fuel != null) head.fuel -= LOCO_COAL_PER;
+  if (head.fuel != null) head.fuel -= LOCO_COAL_PER * fuelConsumptionMult();
   if (typeof playSfx === 'function') playSfx('train');
   return true;
 }

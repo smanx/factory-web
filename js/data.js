@@ -1249,6 +1249,7 @@ const TECHS = {
   'energy-weapons-damage': { name: '能量武器伤害', cost: { 'space-science-pack': 80, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升激光炮塔与个人激光防御等能量武器伤害 +10%（对齐《异星工厂》Energy weapons damage）', req: ['space-science', 'advanced-combat'] },
   'refined-flammables': { name: '燃烧伤害', cost: { 'space-science-pack': 80, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升火焰喷射器、火焰炮塔与地面火场等燃烧伤害 +10%（对齐《异星工厂》Refined flammables）', req: ['space-science', 'advanced-combat'] },
   'stronger-explosives': { name: '爆炸伤害', cost: { 'space-science-pack': 80, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升火箭筒/炮弹/手雷/炮兵/地雷/原子弹等爆炸类伤害 +10%（对齐《异星工厂》Stronger explosives）', req: ['space-science', 'explosives'] },
+  'fuel-efficiency': { name: '燃料效率', cost: { 'space-science-pack': 80, 'utility-science-pack': 40 }, infinite: true, desc: '无限科技：每次研究降低所有燃烧设备（锅炉/熔炉/矿机/燃料机械臂/车头/载具等）的燃料消耗约 9%，让每单位燃料更耐用（对齐《异星工厂》Fuel efficiency 无限科技），核燃料棒不受影响', req: ['space-science', 'utility'] },
   infinite:   { name: '无限科技', cost: {}, infinite: true, desc: '无限研究：消耗任意科学包，永不完成', req: [] }
 };
 
@@ -1699,6 +1700,20 @@ function miningProdMult() {
   m *= Math.pow(1.1, techLevel('space-mining-productivity'));
   return m;
 }
+// 燃料效率无限科技（对齐《异星工厂》Fuel efficiency）：每级降低所有燃烧设备燃料消耗约 9%。
+// 通过把每秒燃料能量消耗乘以 fuelConsumptionMult()（<1），让每单位燃料维持更久、更耐用。
+// 不影响核燃料棒（原版燃料效率不作用于核燃料燃烧时间）。
+function fuelEfficiencyLevel() {
+  if (!techResearched('fuel-efficiency')) return 0;
+  return techLevel('fuel-efficiency');
+}
+// 燃料消耗系数（<1 表示更省燃料）。每级消耗降至 1/1.1 ≈ 0.909，即省约 9%。
+function fuelConsumptionMult() {
+  const lvl = fuelEfficiencyLevel();
+  if (!lvl) return 1;
+  return 1 / Math.pow(1.1, lvl);
+}
+
 // 武器伤害无限科技倍率（对齐《异星工厂》Weapon damage）：每级 +10%，作用于玩家武器与炮塔
 function weaponDamageMult() {
   const lvl = (G.techProg && G.techProg['weapon-damage']) || 0;
