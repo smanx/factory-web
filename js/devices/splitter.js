@@ -257,6 +257,16 @@ function splitterLaneEntryPoint(e, gx, gy, inL, lane) {
   return [lx + p[0] * loff, ly + p[1] * loff];
 }
 
+// 某个输出口（outL=0/1）内 A/B 车道（lane=0/1）的“出点”世界坐标：
+// 在出口中心基础上沿车道方向再做小幅偏移，与入口双线对称，
+// 使“一个出口对应两根物流线”在动画里同样清晰可见（出口双线各自流出）。
+function splitterLaneExitPoint(e, gx, gy, outL, lane) {
+  const [lx, ly] = laneCenterAt(e, gx, gy, outL);
+  const p = [-DY[e.dir], DX[e.dir]];
+  const loff = (lane - 0.5) * TILE * 0.3;
+  return [lx + p[0] * loff, ly + p[1] * loff];
+}
+
 // 检查分流器某条 lane 的入口传送带上是否有物品（有货要流进来），从而驱动流入动画。
 // 入口传送带位于分流器后方沿 dir 反方向；只要带上有物品且方向朝向分流器，即视为“有货流入”。
 function splitterInputHasItem(e, l, gx, gy) {
@@ -304,14 +314,17 @@ function drawSplitterFlow(ctx, e, gx, gy, color, alpha) {
     ctx.restore();
   };
   // 输出侧：从中心流向各出口 lane（仅对出口接带且确有物品流出的 lane 绘制）
+  // 每个出口两条线（A/B 车道）各自绘制流向箭头，与入口双线对称，体现“一个出口对应两根物流线”。
   for (let l = 0; l < 2; l++) {
     if (!outFlow[l]) continue;
-    const [lx, ly] = laneCenterAt(e, gx, gy, l);
-    const ox = lx + dx * TILE / 2, oy = ly + dy * TILE / 2;
-    for (let k = 0; k <= 2; k++) {
-      const t = (k * step + offset) / step;
-      if (t > 1) continue;
-      drawArrow(cx + (ox - cx) * t, cy + (oy - cy) * t);
+    for (let ln = 0; ln < 2; ln++) {
+      const [lx, ly] = splitterLaneExitPoint(e, gx, gy, l, ln);
+      const ox = lx + dx * TILE / 2, oy = ly + dy * TILE / 2;
+      for (let k = 0; k <= 2; k++) {
+        const t = (k * step + offset) / step;
+        if (t > 1) continue;
+        drawArrow(cx + (ox - cx) * t, cy + (oy - cy) * t);
+      }
     }
   }
   // 输入侧：从各入口 lane 流向中心（仅对入口接带且确有物品流入的 lane 绘制）
@@ -442,7 +455,8 @@ function drawSplitter(ctx, e, gx, gy, dir, alpha) {
       ix = inX + (cx - inX) * t;
       iy = inY + (cy - inY) * t;
     } else {
-      const [lx, ly] = e.laneCenter(outL);
+      // 出口双线出料：按 A/B 车道分别偏移，物品沿各自车道线流出（两出口 × 双线）
+      const [lx, ly] = splitterLaneExitPoint(e, gx, gy, outL, o.lane === 1 ? 1 : 0);
       const ox2 = lx + DX[e.dir] * TILE / 2, oy2 = ly + DY[e.dir] * TILE / 2;
       const t = (o.pos - 0.5) / 0.5;
       ix = cx + (ox2 - cx) * t;
