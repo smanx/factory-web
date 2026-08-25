@@ -760,8 +760,11 @@ function drawEntity(ctx, e, gx, gy, dir, alpha) {
   }
 }
 
-// 不显示运行状态小点的设备：传送带分流器、地下传送带、水管（状态由图形本身表达）
+// 不显示运行状态小点的设备：各类传送带、传送带分流器、地下传送带、水管（状态由图形本身表达）
 const NO_STATUS_DOT = {
+  // 各类传送带（含创造/虚空传送带）不显示右上角状态小点
+  'transport-belt': true, 'fast-transport-belt': true, 'express-transport-belt': true,
+  'creative-belt': true, 'void-belt': true,
   // 传送带分流器
   'splitter': true, 'fast-splitter': true, 'express-splitter': true,
   // 地下传送带
