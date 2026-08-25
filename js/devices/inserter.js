@@ -344,6 +344,14 @@ class StackInserter extends Inserter {
 }
 
 // ===== 渲染 =====
+// 臂体配色：不同机械臂类型各有固定主色，箭头等物流标记与臂体颜色保持一致
+function inserterArmColor(e) {
+  return e.type === 'burner-inserter' ? '#7a7f87'
+    : e.type === 'fast-inserter' ? '#4f9fe8'
+    : e.type === 'long-inserter' ? '#e05a4e'
+    : e.type === 'stack-inserter' ? '#7ec850'
+    : '#e0b23c';
+}
 function drawInserter(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const cx = px + TILE / 2, cy = py + TILE / 2;
@@ -365,12 +373,7 @@ function drawInserter(ctx, e, gx, gy, dir, alpha) {
   const ang = e.armAng !== undefined ? e.armAng : ((dir + 2) % 4) * Math.PI / 2;
   const tipx = cx + Math.cos(ang) * len;
   const tipy = cy + Math.sin(ang) * len;
-  const armColor = e.type === 'burner-inserter' ? '#7a7f87'
-    : e.type === 'fast-inserter' ? '#4f9fe8'
-    : e.type === 'long-inserter' ? '#e05a4e'
-    : e.type === 'stack-inserter' ? '#7ec850'
-    : '#e0b23c';
-  ctx.strokeStyle = e.holding ? '#ffe066' : armColor;
+  ctx.strokeStyle = e.holding ? '#ffe066' : inserterArmColor(e);
   ctx.lineWidth = long ? 5 : 4;
   ctx.lineCap = 'round';
   ctx.beginPath();
@@ -413,8 +416,8 @@ function drawFlowMarks(ctx, e, cx, cy, dir) {
     ctx.stroke();
     ctx.restore();
   }
-  // 出口：物流方向，双箭头向外
-  const oc = dirColorNotch(dir);
+  // 出口：物流方向，双箭头向外（颜色与臂体一致，不随旋转方向改变）
+  const oc = inserterArmColor(e);
   chevron(dir, oc, pulse, 5);
   chevron(dir, oc, pulse * 0.45, 8.5);
   // 入口：取货方向，静态灰点
