@@ -503,17 +503,38 @@ function groundItemForBelt(tx, ty) {
   return null;
 }
 
+// 判断坐标是否可安全出生：必须是可通行的草地，且四邻中至少有一个可通行的邻格，
+// 避免出生即被水/峭壁团团围住而无法移动（修复“生成在水中央”bug）。
+function isSafeSpawn(tx, ty) {
+  if (getTerrain(tx, ty) !== T_GRASS) return false;
+  if (isWater(tx, ty) || isCliff(tx, ty)) return false;
+  for (let k = 0; k < 4; k++) {
+    const nt = getTerrain(tx + DX[k], ty + DY[k]);
+    if (nt !== T_WATER && nt !== T_CLIFF) return true;
+  }
+  return false;
+}
+
 function findSpawn() {
   let best = null, bestD = Infinity;
   const R = 22;
   for (let ty = -R; ty < R; ty++)
     for (let tx = -R; tx < R; tx++) {
-      if (getTerrain(tx, ty) !== T_GRASS) continue;
-      if (getOreType(tx, ty) !== ORES.indexOf('iron-ore')) continue;
-      if (isWater(tx + 1, ty) || isWater(tx - 1, ty) || isWater(tx, ty + 1) || isWater(tx, ty - 1)) continue;
+      if (!isSafeSpawn(tx, ty)) continue;
       const d = Math.hypot(tx, ty);
       if (d < bestD) { bestD = d; best = [tx, ty]; }
     }
-  if (!best) best = [4, 4];
-  return best;
+  // 出生点保证：从原点向外螺旋搜索第一个安全草地，避免兜底落到水里
+  if (!best) {
+    for (let r = 0; r <= R; r++) {
+      for (let ty = -r; ty <= r; ty++) {
+        for (let tx = -r; tx <= r; tx++) {
+          if (Math.max(Math.abs(tx), Math.abs(ty)) !== r) continue;
+          if (isSafeSpawn(tx, ty)) return [tx, ty];
+        }
+      }
+    }
+  }
+  if (best) return best;
+  return [0, 0];  // 理论不可达：原点区块保证出生点附近为草地
 }

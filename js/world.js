@@ -378,8 +378,10 @@ function genChunk(cx, cy) {
   const fq = (typeof frequencyMult === 'function') ? frequencyMult() : 1;
   const sz = (typeof sizeMult === 'function') ? sizeMult() : 1;
   const ri = (typeof richnessMult === 'function') ? richnessMult() : 1;
-  // 矿床数量：频率降低到原来的 1/5（更稀疏散布，矿床之间间隔更远）
-  const count = Math.max(1, Math.round((1 + Math.floor(rng() * 2) + (dist > 60 && rng() < 0.6 ? 1 : 0)) * fq / 5));
+  // 矿床数量：资源频率在当前基础上再降至 1/5（更稀疏散布）。
+  // 原为每区块约 1 个矿床，现改为平均约每 5 个区块才有 1 个矿床（保留越远越多趋势）。
+  const freqProb = 0.2 * fq * (1 + Math.min(0.5, dist / 200));
+  const count = rng() < freqProb ? 1 : 0;
   // 记录已放置的矿床中心与近似半径，用于保证矿床之间留有足够间隔
   const placed = [];
 
