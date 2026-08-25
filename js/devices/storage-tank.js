@@ -33,8 +33,9 @@ class StorageTank extends CircuitNode {
     const f = this.storedFluid();
     if (!f) return;
     const visited = new Set();
-    // 遍历储液罐全部边缘格子，向相邻下游设备的流体输入口供流（缓冲库容直接喂给加工设备）。
+    // 遍历储液罐可接管的对角接口格，仅向相邻下游设备的流体输入口供流（缓冲库容直接喂给加工设备）。
     // 储液罐作为缓冲只吸收管道灌入的流体并供给下游设备，不与管道双向搬运（避免来回震荡）。
+    // 与接管道一致：只在一对对角（北西↔南东）的接口格供流，另一对对角（北东↔南西）不可接也不供流。
     for (let gx = this.x; gx < this.x + this.w; gx++) {
       for (let gy = this.y; gy < this.y + this.h; gy++) {
         if (!this.isEdgeCell(gx, gy)) continue;
@@ -42,6 +43,8 @@ class StorageTank extends CircuitNode {
           if (!this.storedFluid()) return;
           const t = entAt(gx + dx, gy + dy);
           if (!t || t === this || visited.has(t)) continue;
+          // 仅允许在对角接口格向外供流（另一对对角为空不可接也不供流）
+          if (!this.isPortCell(gx + dx, gy + dy)) continue;
           const isFluidMach = (t instanceof Refinery) || (t instanceof ChemicalPlant) ||
             (t instanceof Assembler && t.acceptsFluid && t.acceptsFluid(f));
           if (!isFluidMach) continue;
