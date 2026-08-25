@@ -2014,17 +2014,17 @@ function buildDebug() {
       G.activeTech = null;
       renderPanel(false);
     }],
-    ['一键完成全部研究', () => {
-      // 一键完成所有研究：遍历整个科技/研究树，将每项标记为已完成并回满进度
+    ['一键回退所有研究', () => {
+      // 一键回退所有研究：遍历整个科技/研究树，将每项标记为未完成并清空研究进度
       let cnt = 0;
       for (const t in TECHS) {
         if (!TECHS[t]) continue;
-        G.techDone[t] = true;
-        if (G.techProg[t] === undefined) G.techProg[t] = techCostTotal(t);
+        G.techDone[t] = false;
+        delete G.techProg[t];
         cnt++;
       }
       G.activeTech = null; G.techQueue = [];
-      toast('已一键完成全部 ' + cnt + ' 项研究');
+      toast('已一键回退全部 ' + cnt + ' 项研究');
       renderPanel(false);
     }],
     ['回出生点', () => {
