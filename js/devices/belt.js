@@ -139,9 +139,14 @@ class Belt extends Entity {
       lane = isTail ? (this._nextTailLane || 0) : 0;
     }
 
-    // 首选车道上的空位查找；满则回退到另一车道（均衡余量）
+    // 车道选择已确定（lane）。对“已指定车道”的输入（直通 laneHint / 侧面 side）
+    // 严格只使用该车道，绝不让物品溢出到另一条车道（对齐《异星工厂》：两条线路相互独立，
+    // 侧面搭接的物品只走靠近源的那条边，另一条边保持空置）。
+    // 仅对“未指定车道的尾部输入”（机械臂/地面物品从带尾投放）保留回退，用于均衡装载。
+    const strictLane = (laneHint !== undefined && laneHint !== null) || isSide;
+    const laneTry = strictLane ? [lane] : [lane, 1 - lane];
     const candidates = isSide ? [0.45, 0] : [0, 0.45];
-    for (const l of [lane, 1 - lane]) {
+    for (const l of laneTry) {
       for (const p of candidates) {
         let ok = true;
         for (const o of this.items)
