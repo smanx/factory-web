@@ -748,24 +748,42 @@ function recipeDevice(id) {
 function recipeDeviceName(id) { return DEVICE_NAMES[recipeDevice(id)] || ''; }
 
 // 返回物品作为产物时对应的合成配方描述（用于 tooltip 展示），无配方返回 null。
+// 覆盖：熔炉冶炼（SMELTS）、组装机 / 化工厂 / 炼油厂 / 离心机等全部合成配方，
+// 并支持含流体输入/输出的配方（流体按名称展示）。
 function itemRecipeText(id) {
+  // 熔炉冶炼配方（铁板/铜板/钢板/石砖）
+  for (const s of SMELTS) {
+    if (s.id === id) {
+      const inpName = ITEMS[s.inp] ? ITEMS[s.inp].name : s.inp;
+      const inpCount = s.inCount || 1;
+      const outName = ITEMS[id] ? ITEMS[id].name : id;
+      const outCount = s.outCount || 1;
+      return '配方（熔炉）：' + inpName + (inpCount > 1 ? '×' + inpCount : '') +
+        ' → ' + outName + (outCount > 1 ? '×' + outCount : '');
+    }
+  }
+  // 查找该物品作为产物对应的配方，并定位其所属设备（含炼油/离心/化工等）
   let rec = RECIPES[id];
+  let devId = recipeDevice(id);
   let found = !!(rec && rec.inp);
   if (!found) {
-    const candidates = [REFINERY_RECIPES, CENTRIFUGE_RECIPES];
-    for (const table of candidates) {
+    const candidates = [
+      [REFINERY_RECIPES, 'refinery'],
+      [CENTRIFUGE_RECIPES, 'centrifuge'],
+      [RECIPES, 'assembling-machine']
+    ];
+    outer:
+    for (const [table, dev] of candidates) {
       for (const key in table) {
         const r = table[key];
-        if (r && r.out && r.out[id] !== undefined) { rec = r; found = true; break; }
+        if (r && r.out && r.out[id] !== undefined) { rec = r; devId = dev; found = true; break outer; }
       }
-      if (found) break;
     }
   }
   if (!found || !rec || !rec.inp) return null;
-  if (Object.keys(rec.inp).some(k => FLUIDS.indexOf(k) >= 0)) return null;
   const inpParts = Object.keys(rec.inp).map(k => (ITEMS[k] ? ITEMS[k].name : k) + "×" + rec.inp[k]);
   const outParts = Object.keys(rec.out).map(k => (ITEMS[k] ? ITEMS[k].name : k) + (rec.out[k] > 1 ? "×" + rec.out[k] : ""));
-  const dev = recipeDeviceName(id) || "组装机";
+  const dev = DEVICE_NAMES[devId] || "组装机";
   return "配方（" + dev + "）：" + inpParts.join(" + ") + " → " + outParts.join(" + ");
 }
 

@@ -177,7 +177,13 @@ function renderPanel(full) {
     const keepFocusId = document.activeElement &&
       (document.activeElement.id === 'inv-recipe-search' || document.activeElement.id === 'build-dev-search') ?
       document.activeElement.id : null;
-    body.innerHTML = htmlInventory();
+    // 背包两个 tab：默认「材料」、以及「合成」（手搓配方）
+    const invTab = G.invTab === 'craft' ? 'craft' : 'materials';
+    const tabBtn = t => '<button class="inv-tab' + (invTab === t ? ' active' : '') + '" data-inv-tab="' + t + '">' +
+      (t === 'craft' ? '🛠 合成' : '🎒 材料') + '</button>';
+    body.innerHTML = '<div class="inv-tabs">' + tabBtn('materials') + tabBtn('craft') + '</div>' +
+      '<div id="inv-tab-materials"' + (invTab === 'materials' ? '' : ' style="display:none"') + '>' + htmlInventory() + '</div>' +
+      '<div id="inv-tab-craft"' + (invTab === 'craft' ? '' : ' style="display:none"') + '>' + htmlCraft() + '</div>';
     applyInvRecipeFilter(G.invRecipeQ);
     applyBuildSearch(G.buildDevQ);
     if (typeof fillLogiReqGrid === 'function') fillLogiReqGrid(G.lreqQ || '');
@@ -396,7 +402,13 @@ function htmlInventory() {
   h += '<input id="trash-search" class="inv-search" type="text" placeholder="搜索物品（标记丢弃）" autocomplete="off">';
   h += '<div id="trash-grid" class="recgrid"></div>';
   h += '</div>';
-  h += '<div class="sec">配方</div>';
+  h += '<div class="hint">提示：开局先挖 5 个石头合成石炉，再挖煤；点击炉子打开面板，把煤和矿石放进去就能炼铁板/铜板。钢板用铁板×2 合成（石炉/电炉炼制更快）。塑料板等流体化学产物只能在化工厂生产（石油气经管道送入化工厂）。<br>建造：直接点击上方材料区里任何可建造的设备图标即可选中进入放置模式（优先占用空快捷栏槽位），不必依赖底部工具栏；R 旋转、Q 取消。建造支持覆盖：目标格已有建筑时会先拆除旧建筑（返还物资）再放置新建筑，但同一格不会叠加。</div>';
+  return h;
+}
+
+// 背包「合成页面」tab：独立渲染全部手搓/化工/炼油配方（对齐《异星工厂》手工制造）
+function htmlCraft() {
+  let h = '<div class="dim" style="margin-bottom:8px">在此手动制作物品（对齐《异星工厂》手工制造）。需要流体（石油气/水等）或离心机等高级工艺的配方，请使用对应机器生产。</div>';
   const q = (G.invRecipeQ || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   h += '<input id="inv-recipe-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off" value="' + q + '">';
   h += '<div id="inv-recipes">';
@@ -483,7 +495,6 @@ function htmlInventory() {
   }
   h += '</div>';
   h += '<div class="dim" id="inv-recipe-empty" style="display:none"></div>';
-  h += '<div class="hint">提示：开局先挖 5 个石头合成石炉，再挖煤；点击炉子打开面板，把煤和矿石放进去就能炼铁板/铜板。钢板用铁板×2 合成（石炉/电炉炼制更快）。塑料板等流体化学产物只能在化工厂生产（石油气经管道送入化工厂）。<br>建造：直接点击上方材料区里任何可建造的设备图标即可选中进入放置模式（优先占用空快捷栏槽位），不必依赖底部工具栏；R 旋转、Q 取消。建造支持覆盖：目标格已有建筑时会先拆除旧建筑（返还物资）再放置新建筑，但同一格不会叠加。</div>';
   return h;
 }
 
@@ -811,6 +822,13 @@ function initPanelEvents() {
     }
   });
   document.getElementById('panel-body').addEventListener('click', async ev => {
+    // 背包两个 tab 切换：材料 / 合成
+    const invTabBtn = ev.target.closest('[data-inv-tab]');
+    if (invTabBtn && G.panelMode === 'inv') {
+      G.invTab = invTabBtn.dataset.invTab;
+      renderPanel(true); // tab 内容不同，切到顶部展示新页面
+      return;
+    }
     const statTab = ev.target.closest('[data-stat-tab]');
     if (statTab) {
       G.statsTab = statTab.dataset.statTab;

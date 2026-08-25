@@ -164,6 +164,7 @@ function spreadPollutionField(dt) {
   if (typeof isTree !== 'function' || typeof getTerrain !== 'function') return absorbed;
   const treeWither = G.treeWither || (G.treeWither = new Map());
   const toRemove = [];
+  let treeDirty = false;   // 是否发生了树吸收（污染场内容变化），用于末尾统一失效质心缓存
   for (const [k, v] of G.pollutionField) {
     if (v < POLLUTION_TREE_ABSORB) continue;
     const i = k.indexOf(',');
@@ -173,9 +174,9 @@ function spreadPollutionField(dt) {
     const take = Math.min(v, POLLUTION_TREE_ABSORB);
     const nv = v - take;
     absorbed += take;
+    treeDirty = true;
     if (nv <= POLLUTION_TILE_MIN) toRemove.push(k);
     else G.pollutionField.set(k, nv);
-    _invalidateCentroid();
     // 累计枯萎进度
     const wk = tx + ',' + ty;
     const acc = (treeWither.get(wk) || 0) + take;
@@ -189,6 +190,7 @@ function spreadPollutionField(dt) {
     }
   }
   for (const k of toRemove) G.pollutionField.delete(k);
+  if (treeDirty) _invalidateCentroid();   // 统一一次失效质心缓存（等价于每棵树调用，减少冗余）
   return absorbed;
 }
 
