@@ -217,8 +217,9 @@ function spawnEnemies(dt) {
   const ecfg = (typeof enemyConfig === 'function') ? enemyConfig() : { peaceful: false, spawnMult: 1 };
   if (ecfg.none) return;
   G.spawnT = (G.spawnT || 0) + dt;
-  // 敌人数量越多刷新越慢；火箭时代可允许更多敌人同时在场；高敌人强度提高上限
-  const cap = Math.round((G.techDone['advanced-combat'] ? 40 : 24) * ecfg.spawnMult);
+  // 敌人数量越多刷新越慢；火箭时代可允许更多敌人同时在场；高敌人强度提高上限。
+  // 需求：敌人会随时间在虫巢越聚越多，故上限放宽以允许虫群持续集结累积。
+  const cap = Math.round((G.techDone['advanced-combat'] ? 80 : 48) * ecfg.spawnMult);
   if (G.enemies.length >= cap) return;
   // 维护巢穴数量：不足则在远处生成新巢穴（初始布点由扩张系统接管后，这里仍保留保底补位）
   const spawners = getSpawnerList();
@@ -237,7 +238,8 @@ function spawnEnemies(dt) {
   const src = spawners.length ? spawners[(Math.random() * spawners.length) | 0] : null;
   if (src) {
     const gx = Math.round(src.x / TILE), gy = Math.round(src.y / TILE);
-    const dist = 3 + Math.random() * 4;
+    // 敌人紧贴虫巢中心生成，聚集在一起（而非在虫巢外围随机散布成圈）
+    const dist = 0 + Math.random() * 1.5;
     const ang = Math.random() * Math.PI * 2;
     tx = Math.round(gx + Math.cos(ang) * dist);
     ty = Math.round(gy + Math.sin(ang) * dist);
@@ -429,14 +431,13 @@ function isEnemyAggressive(en) {
   return G.pollution >= POLLUTION_WAVE_THRESHOLD;
 }
 
-// 默认行为：在所属虫巢周围游荡（随机小幅徘徊），不主动追击玩家。
-// 每次徘徊计时到点后在虫巢附近换一个随机方向游走；超出虫巢半径则拉回。
+// 默认行为：在所属虫巢周围聚集（不分散），不主动追击玩家。
+// 敌人会一直向虫巢中心聚拢，贴近后才小幅徘徊，形成贴在虫巢上的一团。
 // 若刚从追踪状态解除（en.lingerT>0），先原地短暂溜达，随后返回虫巢附近。
 function wanderAroundHome(en, dt) {
   en.wanderT = (en.wanderT || 0) - dt;
   const home = en.home;
   if (!home) return;
-  const homeR = 6 * TILE;      // 虫巢周围游荡半径（像素）
   const dx = home.x - en.x, dy = home.y - en.y;
   const dist = Math.hypot(dx, dy);
   let mx = 0, my = 0;
@@ -452,15 +453,18 @@ function wanderAroundHome(en, dt) {
     const slow = aoeSlowFactor(en.x, en.y);
     moveEnemy(en, mx, my, en.speed * 0.3 * dt * slow);
   } else {
-    // 正常游荡：换方向或拉回虫巢
-    if (en.wanderT <= 0) {
-      en.wanderT = 1.5 + Math.random() * 2.5;   // 每 1.5~4 秒换一次方向
+    // 聚集行为（需求：敌人聚在虫巢周围，不分散）：
+    // 离虫巢中心较远时始终朝虫巢聚拢，贴近虫巢中心后才做小幅徘徊保持聚集形态。
+    const clusterR = 2.5 * TILE;   // 聚集半径（像素）：敌人贴着虫巢中心聚集成一团
+    if (dist > clusterR) {
+      // 离虫巢中心较远：朝虫巢中心聚拢，聚在一起而非散开
+      mx = dx / (dist || 1); my = dy / (dist || 1);
+    } else if (en.wanderT <= 0) {
+      // 已贴近虫巢中心：小幅徘徊，维持聚集的一团
+      en.wanderT = 0.8 + Math.random() * 1.2;
       const a = Math.random() * Math.PI * 2;
       en.wdir = { x: Math.cos(a), y: Math.sin(a) };
-    }
-    // 远离虫巢时拉回（含追踪解除、溜达结束后返回虫巢）；否则按当前游荡方向缓慢移动
-    if (dist > homeR) {
-      mx = dx / (dist || 1); my = dy / (dist || 1);
+      if (en.wdir) { mx = en.wdir.x; my = en.wdir.y; }
     } else if (en.wdir) {
       mx = en.wdir.x; my = en.wdir.y;
     }
