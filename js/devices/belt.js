@@ -134,11 +134,22 @@ class Belt extends Entity {
       // 1) 直线优先：背面存在直通输入时，直线方向先于侧面进入；
       //    直通有货待进入则侧面暂缓（return false，让直通先过）。
       if (haveBack && this._beltIncoming(this.x - DX[this.dir], this.y - DY[this.dir])) return false;
-      // 2) 两个相对侧面（无背面直通）：轮流进入。
-      //    若上次进入的也是本侧且对侧有货待进入，则让对侧先进（本侧暂缓）。
-      if (!haveBack && inp.length >= 2 && this._lastSideIn === side) {
-        const other = inp[1 - side];
-        if (other && this._beltIncoming(this.x + other[0], this.y + other[1])) return false;
+      // 2) 两个相对侧面（无背面直通）：方向感知优先。
+      //    对齐《异星工厂》双线交汇：当 1 号带 A、B 两线汇聚到 2 号带同一线且该线满载时，
+      //    优先让“接收带流向右侧”的输入进入——两侧输入分别对应接收带流向的左/右侧
+      //    （sides[0] 恒为流向右侧、sides[1] 为流向左侧），因此旋转接收带即可切换优先侧，
+      //    优先级随 2 号带流动方向改变，而不是盲目轮流。
+      //    - 优先侧（流向右侧）：对侧也有货且本侧刚进过时才让位（防饿死，保证对侧也有机会）。
+      //    - 非优先侧（流向左侧）：优先侧有货待进入时一律让位。
+      if (!haveBack && inp.length >= 2) {
+        const pref = 0; // sides[0] 恒为接收带流向右侧的输入
+        if (side === pref) {
+          const other = inp[1 - side];
+          if (other && this._beltIncoming(this.x + other[0], this.y + other[1]) && this._lastSideIn === side) return false;
+        } else {
+          const pri = inp[pref];
+          if (pri && this._beltIncoming(this.x + pri[0], this.y + pri[1])) return false;
+        }
       }
       this._lastSideIn = side;
     }
