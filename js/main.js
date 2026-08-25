@@ -473,7 +473,10 @@ function tryPlaceAt(tx, ty) {
   // 覆盖升级/降级：把带/地下带/分流器放到同族现有传送带上，直接覆盖当前连续的一段
   const target = entAt(tx, ty);
   if (target && canOverwriteWithBelt(type, target)) {
-    if (target instanceof Belt) {
+    // 1×1 的传送带才走「整段连续升级」；2 格分流器必须走单格覆盖替换：
+    // 否则 upgradeBeltSegment 会把分流器两个占地格当成两个独立实体处理，
+    // 导致重复创建错位实体、格子索引错乱（被覆盖建筑残留且无法移除，读档后恢复）。
+    if (target instanceof Belt && !(target instanceof Splitter)) {
       upgradeBeltSegment(tx, ty, type, infinite);   // 传送带：一键升级/降级整条连续带线
     } else {
       overwriteBeltTile(tx, ty, type, infinite);     // 地下带/分流器：单格覆盖
@@ -497,6 +500,11 @@ function tryPlaceAt(tx, ty) {
 function upgradeBeltSegment(tx, ty, type, infinite) {
   const oldType = entAt(tx, ty) ? entAt(tx, ty).type : null;
   if (!oldType || oldType === type) return;   // 同阶覆盖：不消耗、视为未改变
+  // 防御：仅允许 1×1 传送带参与整段连续升级。
+  // 多格实体的每个占地格若被当成独立带子处理会重复创建错位实体、破坏格子索引，
+  // 导致被覆盖建筑残留且无法移除（读档后才恢复）。分流器覆盖请走 overwriteBeltTile。
+  const _t = entAt(tx, ty);
+  if (_t && (_t.w * _t.h > 1 || _t instanceof Splitter)) return;
   const family = tierFamily(type);
   const oldFamily = tierFamily(oldType);
   if (!family || family !== oldFamily) return; // 非同族：不应走到这里

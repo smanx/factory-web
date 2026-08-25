@@ -205,6 +205,30 @@ function getSpawnerList() {
   return list;
 }
 
+// 敌人所属虫巢（home 记录的坐标）对应的虫巢是否仍存活（未被摧毁）。
+// 虫巢被摧毁后敌人才会知道原巢已不在，从而改投最近的其它在世虫巢（需求：找不到最开始的虫巢就返回最近的虫巢聚集）。
+function homeSpawnerExists(home) {
+  if (!home) return false;
+  const hcx = Math.round(home.x / TILE), hcy = Math.round(home.y / TILE);
+  const spawners = getSpawnerList();
+  for (const s of spawners) {
+    const scx = Math.floor(s.x / TILE), scy = Math.floor(s.y / TILE);
+    if (scx === hcx && scy === hcy) return true;
+  }
+  return false;
+}
+
+// 找距离 (x,y) 最近的在世虫巢；没有则返回 null。
+function nearestSpawner(x, y) {
+  const spawners = getSpawnerList();
+  let best = null, bestD = Infinity;
+  for (const s of spawners) {
+    const d = Math.hypot(s.x - x, s.y - y);
+    if (d < bestD) { bestD = d; best = s; }
+  }
+  return best;
+}
+
 function updateExpansion(dt) {
   if (!G.settings.combat) return;
   // “无”模式不生成虫巢（完全不刷敌人）
@@ -455,14 +479,27 @@ function isEnemyAggressive(en) {
 
 // 默认行为：敌人不追击玩家时，在所属虫巢周围聚集，不主动攻击玩家/建筑。
 // 行为逻辑：
-//  - 刚从追踪状态解除（en.lingerT>0）：先原地游荡 ENEMY_LINGER_TIME 秒（需求：丢失目标后游荡 5 秒）；
-//  - 游荡结束后：返回所属虫巢，并聚在虫巢中心附近（需求：敌人在虫巢周围聚在一起、随时间越聚越多，不要分散）；
-//  - 无归属虫巢（home 为空）的敌人：继续在当前位置随机游荡，避免“丢失目标后停在原地不动”的 bug。
+//  - 刚从追踪状态解除（en.lingerT>0）：先原地小范围游荡（来回游走）ENEMY_LINGER_TIME 秒（需求：丢失视野后游荡 5 秒）；
+//  - 游荡结束后：返回最开始的虫巢（en.home），并聚在虫巢中心附近（需求：敌人在虫巢周围聚在一起、随时间越聚越多，不要分散）；
+//  - 若最开始的虫巢已被摧毁（home 对应虫巢不存在），改投最近的其它在世虫巢，聚在其周围（需求：找不到最开始的虫巢就返回最近的虫巢聚集）；
+//  - 无归属虫巢（home 为空）的敌人：在当前位置附近随机游荡，避免“丢失目标后停在原地不动”的 bug。
+// 无论处于哪种形态，只要尚未持有方向（wdir），都先给一个随机方向，确保敌人永远有朝向、不会原地静止。
 function wanderAroundHome(en, dt) {
   en.wanderT = (en.wanderT || 0) - dt;
-  const home = en.home;
+  // 取回巢目标：若原虫巢已不存在，则就近改投最近的在世虫巢（并更新归属，便于后续按新巢判定污染激怒）。
+  let home = en.home;
+  if (home && !homeSpawnerExists(home)) {
+    const ns = nearestSpawner(en.x, en.y);
+    if (ns) {
+      home = { x: ns.x, y: ns.y };
+      en.home = home;
+    } else {
+      home = null;
+      en.home = null;
+    }
+  }
   let mx = 0, my = 0;
-  // 刚从追踪状态解除：先原地游荡（小幅徘徊）ENEMY_LINGER_TIME 秒，不急着回巢
+  // 刚从追踪状态解除：先原地小范围游荡（小幅徘徊）ENEMY_LINGER_TIME 秒，不急着回巢
   if (en.lingerT > 0) {
     en.lingerT -= dt;
     // 首次进入游荡立即给一个方向，避免 wanderT 尚未到期时 wdir 为空而停在原地不动
@@ -485,27 +522,31 @@ function wanderAroundHome(en, dt) {
     if (dist > clusterR) {
       // 离虫巢中心较远：朝虫巢中心聚拢，聚在一起而非散开
       mx = dx / (dist || 1); my = dy / (dist || 1);
-    } else if (en.wanderT <= 0) {
-      // 已贴近虫巢中心：小幅徘徊，维持聚集的一团
+    } else if (en.wanderT <= 0 || !en.wdir) {
+      // 已贴近虫巢中心：小幅徘徊，维持聚集的一团（wdir 为空时也立即补方向，避免静止）
       en.wanderT = 0.8 + Math.random() * 1.2;
       const a = Math.random() * Math.PI * 2;
       en.wdir = { x: Math.cos(a), y: Math.sin(a) };
-      if (en.wdir) { mx = en.wdir.x; my = en.wdir.y; }
-    } else if (en.wdir) {
+      mx = en.wdir.x; my = en.wdir.y;
+    } else {
       mx = en.wdir.x; my = en.wdir.y;
     }
   } else {
     // 无归属虫巢的敌人：在当前位置附近随机游荡，避免停在原地（修复丢失目标后停住不动的 bug）
-    if (en.wanderT <= 0) {
+    if (en.wanderT <= 0 || !en.wdir) {
       en.wanderT = 1 + Math.random() * 1.5;
       const a = Math.random() * Math.PI * 2;
       en.wdir = { x: Math.cos(a), y: Math.sin(a) };
     }
-    if (en.wdir) { mx = en.wdir.x; my = en.wdir.y; }
+    mx = en.wdir.x; my = en.wdir.y;
+    // 无巢敌人游荡时保持可重新激怒（无虫巢可归，丢失目标后不必永久停留在“回巢”状态）
+    en.returning = false;
   }
   const slow = aoeSlowFactor(en.x, en.y);
   const speedMul = en.lingerT > 0 ? 0.3 : 0.55;
-  moveEnemy(en, mx, my, en.speed * speedMul * dt * slow);
+  // 移动量按 TILE 缩放，与追踪移动（speed 单位为格/秒）保持一致：
+  // 此前方向是单位向量而 dist 未乘 TILE，导致游荡/回巢实际仅约 1 像素/秒，敌人看似原地不动。
+  moveEnemy(en, mx, my, en.speed * speedMul * dt * slow * TILE);
   // 游荡时更新朝向（用于敌人行走渲染），静止则保持原朝向
   if (mx !== 0 || my !== 0) {
     const a = Math.atan2(my, mx);
