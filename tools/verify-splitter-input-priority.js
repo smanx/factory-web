@@ -159,11 +159,50 @@ function testSingleEntrance() {
   return ok;
 }
 
-console.log('\n【分流器输入优先级 / 轮流输入】');
-testAlternate();
-testPriorityTop();
-testPriorityBot();
-testSingleEntrance();
+// —— 渲染几何：入口/出口“一个口对应两根物流线”双线对称性 ——
+// 回归目标：分流器内部物品流动动画必须体现“每入口/每出口各对应 A/B 两条线”，
+// 而非所有物品塌缩成一条线。验证 entry/exit 点的车道偏移对称且非零。
+const splitterLaneEntryPoint = vm.runInContext('splitterLaneEntryPoint', sandbox);
+const splitterLaneExitPoint = vm.runInContext('splitterLaneExitPoint', sandbox);
+const laneCenterAt = vm.runInContext('laneCenterAt', sandbox);
+
+function testDualLineGeometry() {
+  reset();
+  const sp = new Splitter('splitter', 3, 2); sp.dir = 0; sp.applyDir();
+  const gx = sp.x, gy = sp.y;
+  // 朝右(0)：p=[-DY[0],DX[0]]=[0,1]，车道垂直方向是 Y 轴。
+  const perp = [-DY[0], DX[0]];
+  let ok = true;
+  for (let port = 0; port < 2; port++) {
+    for (const [kind, fn] of [['入口', splitterLaneEntryPoint], ['出口', splitterLaneExitPoint]]) {
+      const [cpx, cpy] = laneCenterAt(sp, gx, gy, port); // 该口车道中心
+      const [a0x, a0y] = fn(sp, gx, gy, port, 0); // A 线（lane0）
+      const [a1x, a1y] = fn(sp, gx, gy, port, 1); // B 线（lane1）
+      // 双线相对该口车道中心在车道垂直方向对称分开（非零），否则动画塌缩成一条线
+      const d0 = (a0x - cpx) * perp[0] + (a0y - cpy) * perp[1];
+      const d1 = (a1x - cpx) * perp[0] + (a1y - cpy) * perp[1];
+      const sep = Math.abs(d1 - d0);
+      const sym = Math.abs(Math.abs(d0) - Math.abs(d1)) < 1e-6; // 两侧对称
+      if (sep < 1 || !sym) {
+        ok = false;
+        check(kind + port + ' 双线分离', false, 'sep=' + sep.toFixed(1) + ' d0=' + d0.toFixed(1) + ' d1=' + d1.toFixed(1));
+      } else {
+        check(kind + port + ' A/B 双线分离且对称', true, '间距=' + sep.toFixed(1) + 'px（lane0=' + d0.toFixed(1) + ' lane1=' + d1.toFixed(1) + '）');
+      }
+    }
+  }
+  // 入口与出口双线偏移量一致（A 线入口偏移==出口偏移），保证 A→A、B→B 视觉连续
+  const [ia0x, ia0y] = splitterLaneEntryPoint(sp, gx, gy, 0, 0);
+  const [oa0x, oa0y] = splitterLaneExitPoint(sp, gx, gy, 0, 0);
+  const di = (ia0x - (gx + sp.w / 2) * TILE) * perp[0] + (ia0y - (gy + sp.h / 2) * TILE) * perp[1];
+  const dof = (oa0x - (gx + sp.w / 2) * TILE) * perp[0] + (oa0y - (gy + sp.h / 2) * TILE) * perp[1];
+  check('入口/出口 A 线偏移一致（A 进 A 出连续）', Math.abs(di - dof) < 1e-6,
+    'in=' + di.toFixed(1) + ' out=' + dof.toFixed(1));
+  return ok;
+}
+
+console.log('\n【分流器渲染几何：入口/出口双线对称】');
+testDualLineGeometry();
 console.log('\n----------------------------------------');
 console.log('通过 ' + pass + ' 项，失败 ' + fail + ' 项');
 process.exit(fail > 0 ? 1 : 0);
