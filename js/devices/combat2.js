@@ -449,6 +449,11 @@ function wanderAroundHome(en, dt) {
   }
 }
 
+// 敌人/虫巢碰撞半径（像素）：虫子用其 size，虫巢按 2×2 占地边长一半计算（静态占地体积）。
+function enemyRadius(e) {
+  return (e.kind === 'spawner' ? e.foot * TILE * 0.5 : e.size);
+}
+
 function updateEnemies(dt) {
   if (!G.enemies) return;
   // 推进自然进化（战斗开启时）
@@ -540,23 +545,29 @@ function updateEnemies(dt) {
       }
     }
   }
-  // 敌人间斥力（对齐《异星工厂》：虫群列队前进时保持间距、不叠成一团）
-  // 轻量实现：对距离过近的存活敌人施加互斥位移，避免视觉堆叠与碰撞穿透。
+  // 敌人/虫巢碰撞分离（需求：虫子与虫子、虫子与虫巢都要有碰撞效果）
+  //  - 虫子与虫子互斥推开，保持间距不叠成一团（对齐《异星工厂》虫群列队）；
+  //  - 虫子与虫巢同样互斥，但虫巢为静态占地（kind==='spawner'），只推动虫子、自身不动。
   const alive = G._aliveEnemies || G.enemies;
   for (let i = 0; i < alive.length; i++) {
     const a = alive[i];
-    if (a.dead || a.kind === 'spawner') continue;
+    if (a.dead) continue;
+    const aIsSpawner = a.kind === 'spawner';
     for (let j = i + 1; j < alive.length; j++) {
       const b = alive[j];
-      if (b.dead || b.kind === 'spawner') continue;
+      if (b.dead) continue;
+      const bIsSpawner = b.kind === 'spawner';
+      // 虫巢之间无需处理（布点已保证互不重叠）；其余组合（虫-虫、虫-巢）均参与碰撞
+      if (aIsSpawner && bIsSpawner) continue;
       const dx = b.x - a.x, dy = b.y - a.y;
       const d = Math.hypot(dx, dy);
-      const minD = (a.size + b.size) * 0.9 + 4;
+      const minD = (enemyRadius(a) + enemyRadius(b)) * 0.9 + 4;
       if (d > 0 && d < minD) {
         const push = ((minD - d) / minD) * 26 * dt;
         const ux = dx / d, uy = dy / d;
-        a.x -= ux * push; a.y -= uy * push;
-        b.x += ux * push; b.y += uy * push;
+        // 虫巢不移动：只推动非虫巢一方，避免虫巢被虫子顶走
+        if (!aIsSpawner) { a.x -= ux * push; a.y -= uy * push; }
+        if (!bIsSpawner) { b.x += ux * push; b.y += uy * push; }
       }
     }
   }

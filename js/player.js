@@ -79,6 +79,38 @@ function updatePlayer(dt) {
   }
   // 传送带推动玩家（对齐《异星工厂》）：站上运转的传送带会被带动位移，除非穿戴传送带免疫装备
   updateBeltPush(dt);
+  // 玩家与敌人/虫巢相互碰撞（需求：主角、敌人和虫巢之间相互都要有碰撞效果）
+  playerEnemyCollision();
+}
+
+// 玩家与敌人/虫巢的实体碰撞分离（需求：主角、敌人和虫巢之间相互都要有碰撞效果）。
+// 玩家不能穿过敌人与虫巢；重叠时按双方碰撞半径互相推开。虫巢为静态占地（kind==='spawner'），
+// 只推玩家、自身不动；普通敌人会被推开，实现“相互碰撞”。
+function playerEnemyCollision() {
+  if (!G.settings || !G.settings.combat) return;
+  const p = G.player;
+  const src = G.enemies || EMPTY_ARR;
+  const pr = 9;   // 玩家碰撞半径（像素，与移动 boxBlocked 的 r 一致）
+  const r = 9;
+  for (let i = 0; i < src.length; i++) {
+    const e = src[i];
+    if (e.dead) continue;
+    const dx = p.x - e.x, dy = p.y - e.y;
+    const d = Math.hypot(dx, dy);
+    const er = (e.kind === 'spawner' ? e.foot * TILE * 0.5 : e.size);
+    const minD = pr + er;
+    if (d > 0 && d < minD) {
+      const push = (minD - d) * 0.5;
+      const ux = dx / d, uy = dy / d;
+      // 推动玩家（避开地形以免被挤入水/峭壁）
+      const px2 = p.x + ux * push;
+      if (!boxBlocked(px2, p.y, r)) p.x = px2;
+      const py2 = p.y + uy * push;
+      if (!boxBlocked(p.x, py2, r)) p.y = py2;
+      // 虫巢静态不动；普通敌人被推开，实现“相互碰撞”
+      if (e.kind !== 'spawner') { e.x -= ux * push; e.y -= uy * push; }
+    }
+  }
 }
 
 // ===== 传送带推动玩家（对齐《异星工厂》物理机制） =====
