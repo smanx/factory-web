@@ -1671,7 +1671,9 @@ function initTooltips() {
       const recipeEl = tip.querySelector('#tooltip-recipe');
       if (recipeEl) {
         recipeEl.textContent = parts[1] || '';
-        recipeEl.style.display = parts[1] ? '' : 'none';
+        // 注意：不能用 style.display=''，那会清掉内联样式并回退到 CSS 的 display:none，导致配方永远隐藏。
+        // 必须显式设为 block 才能覆盖样式表中的 display:none。
+        recipeEl.style.display = parts[1] ? 'block' : 'none';
       }
       tip.style.display = 'block';
       const r = tip.getBoundingClientRect();
