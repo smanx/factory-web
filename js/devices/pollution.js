@@ -18,11 +18,15 @@
 
 
 // ---- 污染常量（可调平衡） ----
-const POLLUTION_MAX = 2000;            // 污染值上限（此后不再无脑上涨）
-const POLLUTION_DECAY = 1.5;           // 每帧自然消散量（模拟扩散到大范围，防无限累积）
-const POLLUTION_WAVE_THRESHOLD = 520;  // 污染达到此值触发虫巢进攻波（首个阈值）
-const POLLUTION_AGGRO_PER_WAVE = 240;  // 每触发一波进攻波消耗的污染值（虫群被激怒吸收）
-const POLLUTION_MIN_WAVE_GAP = 12;     // 两次污染进攻波的最短间隔（秒）
+// 对齐《异星工厂》原版：污染并非无限累加的“资源条”，而是随排放增长、
+// 又随扩散持续消散的云。故全局污染值设较低上限、配较强自然消散，
+// 使其在“高污染源 → 快速累积触发激怒”与“低排放 → 缓慢回落”间保持动态平衡，
+// 避免污染无脑上涨到顶、虫巢过早全面激怒（原版开局很长一段时间污染都很低）。
+const POLLUTION_MAX = 1200;            // 污染值上限（低于原上限，防无脑上涨失衡）
+const POLLUTION_DECAY = 3.5;           // 每帧自然消散量（原版污染随扩散到大范围持续消散，故调大让污染更易回落）
+const POLLUTION_WAVE_THRESHOLD = 560;  // 污染达到此值触发虫巢进攻波（首个阈值，略高于消散量使需持续污染才能触发）
+const POLLUTION_AGGRO_PER_WAVE = 260;  // 每触发一波进攻波消耗的污染值（虫群被激怒吸收）
+const POLLUTION_MIN_WAVE_GAP = 18;     // 两次污染进攻波的最短间隔（秒，原版波次节奏更缓）
 const POLLUTION_SCAN_INTERVAL = 0.5;   // 污染源扫描间隔（秒，避免每帧全量遍历）
 
 // ===== 树木吸收污染（对齐《异星工厂》Pollution absorption）=====
@@ -46,27 +50,35 @@ const POLLUTION_FIELD_MAX_TILES = 6000; // 逐格污染场最大格数（超出�
 // 各设备的污染排放系数（每秒，单位：污染值/s）
 // 对齐《异星工厂》：污染主要来自采矿 / 冶炼 / 石油化工 / 烧煤发电。
 const POLLUTION_SOURCES = {
-  'burner-drill': 4,        // 热能采矿机（烧煤）
-  'electric-drill': 5,      // 电采矿机（采掘污染，略高于热能）
-  'pumpjack': 3,            // 抽油机（石油开采）
-  'stone-furnace': 3,       // 石炉（烧煤冶炼）
-  'steel-furnace': 5,       // 钢铁炉（烧煤冶炼，产能更高）
-  'electric-furnace': 6,    // 电炉（冶炼污染，功率更大）
-  'boiler': 6,              // 锅炉（烧煤发电）
-  'refinery': 8,            // 炼油厂（石油化工）
-  'chemical-plant': 7,      // 化工厂（石油化工）
-  'centrifuge': 2,          // 离心机（铀矿处理，低污染）
-  'nuclear-reactor': 10,    // 核反应堆（虽清洁但燃料处理与热量管理仍有微量排放）
-  'locomotive': 4,          // 火车头（烧煤行驶）
-  'diesel-locomotive': 4,   // 内燃机车（烧燃料行驶，对齐原版：内燃机车同样有尾气）
-  'burner-inserter': 0.4    // 燃料机械臂（烧煤，微量）
+  'burner-drill': 3,        // 热能采矿机（烧煤）
+  'electric-drill': 4,      // 电采矿机（采掘污染，略高于热能）
+  'pumpjack': 2,            // 抽油机（石油开采）
+  'stone-furnace': 2,       // 石炉（烧煤冶炼）
+  'steel-furnace': 4,       // 钢铁炉（烧煤冶炼，产能更高）
+  'electric-furnace': 5,    // 电炉（冶炼污染，功率更大）
+  'boiler': 4,              // 锅炉（烧煤发电）
+  'refinery': 6,            // 炼油厂（石油化工）
+  'chemical-plant': 5,      // 化工厂（石油化工）
+  'centrifuge': 1,          // 离心机（铀矿处理，低污染）
+  'nuclear-reactor': 7,     // 核反应堆（虽清洁但燃料处理与热量管理仍有微量排放）
+  'locomotive': 3,          // 火车头（烧煤行驶）
+  'diesel-locomotive': 3,   // 内燃机车（烧燃料行驶，对齐原版：内燃机车同样有尾气）
+  'burner-inserter': 0.3    // 燃料机械臂（烧煤，微量）
 };
 
 // 累加污染值（外部调用入口，钳制到上限）
+// 同时累计“总污染产生量”（G.pollutionProduced），用于驱动进化度
+// （对齐《异星工厂》：进化度的主要来源之一就是“产生污染”本身——
+// 你的工业活动越密集、排放大，虫群进化越快）。
 function pollute(amount) {
   if (!G || !G.settings || !G.settings.combat) return;
   if (!G.pollution) G.pollution = 0;
   G.pollution = Math.min(POLLUTION_MAX, G.pollution + (amount || 0));
+  if (amount > 0) {
+    G.pollutionProduced = (G.pollutionProduced || 0) + amount;
+    // 污染驱动进化：随污染产生量缓慢推进进化度（见 advancePollutionEvolution）
+    if (typeof advancePollutionEvolution === 'function') advancePollutionEvolution(amount);
+  }
 }
 
 // =============================================================
@@ -332,6 +344,7 @@ function pollutionSerialize() {
   const wither = G.treeWither ? Array.from(G.treeWither.entries()) : [];
   return {
     pollution: G.pollution || 0,
+    pollutionProduced: G.pollutionProduced || 0,
     pollutionWaves: G.pollutionWaves || 0,
     pollutionT: G.pollutionT || 0,
     field,
@@ -341,6 +354,7 @@ function pollutionSerialize() {
 // 读档恢复
 function pollutionRestore(d) {
   G.pollution = (d && typeof d.pollution === 'number') ? Math.min(POLLUTION_MAX, Math.max(0, d.pollution)) : 0;
+  G.pollutionProduced = (d && typeof d.pollutionProduced === 'number') ? d.pollutionProduced : 0;
   G.pollutionWaves = (d && typeof d.pollutionWaves === 'number') ? d.pollutionWaves : 0;
   G.pollutionT = (d && typeof d.pollutionT === 'number') ? d.pollutionT : 0;
   // 逐格污染场与树枯萎进度（对齐《异星工厂》污染场持久化）

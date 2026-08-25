@@ -24,13 +24,26 @@ const ENEMY_TYPES = {
 };
 
 // ===== 敌人进化度系统（对齐《异星工厂》Evolution factor） =====
-// 进化度 0~1，随时间（自然进化）与击杀敌人（战斗进化）而增长。
+// 进化度 0~1，原版由三大来源共同推进：
+//   1. 时间（自然进化，最慢）；
+//   2. 污染产生（工业活动越密集、排放大，虫群进化越快，为主来源）；
+//   3. 击杀敌人/摧毁巢穴（战斗进化）。
+// 三者速度都大幅调慢，避免开局短短几分钟就进化到高等级压垮玩家。
 // 进化度越高，刷出的敌人越强、越容易出现高级变种；同时敌人基础属性按进化度小幅增强。
-const EVOLUTION_TIME_RATE = 0.0015;   // 每秒自然进化增量（约 11 分钟到 1.0）
-const EVOLUTION_KILL_RATE = 0.012;    // 每击杀一个敌人进化增量（含巢穴）
+// 对齐原版：进化度不会随时间无脑涨满，而是随玩家“真正去搞工业/打架”才明显上升。
+const EVOLUTION_TIME_RATE = 0.00028;   // 每秒自然进化增量（约 60 分钟到 1.0，远慢于原 11 分钟）
+const EVOLUTION_KILL_RATE = 0.0035;    // 每击杀一个敌人进化增量（含巢穴，原 0.012 过快）
+const EVOLUTION_POLLUTION_RATE = 0.00012; // 每单位污染产生量对应的进化增量（约产生 8300 污染进化到 1.0）
 function evolutionFactor() { return G.evolution || 0; }
 function addEvolution(amount) {
   G.evolution = Math.min(1, (G.evolution || 0) + amount);
+}
+// 污染驱动进化：由污染产生量推进进化度（对齐《异星工厂》：污染是进化主来源）
+function advancePollutionEvolution(amount) {
+  if (!G || !G.settings || !G.settings.combat) return;
+  const ecfg = (typeof enemyConfig === 'function') ? enemyConfig() : { peaceful: false };
+  if (ecfg.none) return;   // “无”模式无敌人，无进化
+  addEvolution((amount || 0) * EVOLUTION_POLLUTION_RATE);
 }
 // 每帧推进自然进化（仅战斗开启时）
 function updateEvolution(dt) {
@@ -83,7 +96,7 @@ function pickEnemyType() {
 // 巢穴有生命值，可被武器攻击摧毁；摧毁后该区域不再刷怪。
 // 巢穴作为 G.enemies 中的一个特殊项（kind='spawner'）复用敌人渲染/伤害管线。
 const SPAWNER_HP = 260;          // 虫巢生命值
-const SPAWNER_TARGET = 2;        // 同时存在的巢穴目标数（高级战斗后 3）
+const SPAWNER_TARGET = 2;        // 同时存在的巢穴目标数（历史上用于巢穴上限，现由 spawnerCapByEvo() 动态计算取代，保留作参考）
 const SPAWNER_RANGE = 14;        // 巢穴生成敌人的距离（格）
 const ENEMY_AGGRO_RANGE = 8;     // 主角靠近该距离（格）内，聚集在虫巢周围的虫子主动攻击主角（触发追踪距离）
 // 主角拉开到该距离（格）后，正在追踪的敌人才会停止追踪/攻击（迟滞：为靠近触发距离的两倍，拉开才合理）
@@ -110,16 +123,18 @@ function makeSpawner() {
 // 虫巢会周期性派出“扩张党”在远处建立新巢穴，世界中的敌人领地会随时间不断蔓延，
 // 比“巢穴不足才补位”更贴近原版：即使玩家清剿了某片巢穴，其它巢穴仍会向四周扩张。
 // 扩张会尽量避开玩家所在的出生区（距玩家过近不建），避免开局即被巢穴包围。
-const EXPAND_MIN_INTERVAL = 45;   // 最短扩张间隔（秒）
-const EXPAND_BASE_INTERVAL = 120; // 基础扩张间隔（秒）
-const EXPAND_RANGE_MIN = 9;       // 距父巢穴最近距离（格）
-const EXPAND_RANGE_MAX = 16;      // 距父巢穴最远距离（格）
-const EXPAND_PLAYER_GAP = 12;     // 扩张巢穴距玩家至少保持的格数
-// 总巢穴数量上限：随进化度略微放宽，但始终受控，避免无限扩张导致失衡
+// 对齐《异星工厂》原版：虫巢扩张受“进化度”与“污染”共同影响——
+// 进化度越高、污染越重，扩张越频繁；前期几乎不扩张，避免开局就被巢穴包围。
+const EXPAND_MIN_INTERVAL = 90;    // 最短扩张间隔（秒，原 45）
+const EXPAND_BASE_INTERVAL = 300;  // 基础扩张间隔（秒，原 120，前期更难得扩张）
+const EXPAND_RANGE_MIN = 9;        // 距父巢穴最近距离（格）
+const EXPAND_RANGE_MAX = 16;       // 距父巢穴最远距离（格）
+const EXPAND_PLAYER_GAP = 14;      // 扩张巢穴距玩家至少保持的格数（原 12）
+// 总巢穴数量上限：随进化度略微放宽，但整体收紧（前期更少巢穴，进展更慢）
 function spawnerCapByEvo() {
   const evo = evolutionFactor();
-  const base = G.techDone['advanced-combat'] ? 3 : SPAWNER_TARGET;
-  return base + (evo > 0.4 ? 1 : 0) + (evo > 0.8 ? 1 : 0);
+  const base = G.techDone['advanced-combat'] ? 3 : 2;
+  return base + (evo > 0.45 ? 1 : 0) + (evo > 0.85 ? 1 : 0);
 }
 // 虫巢占地：4×4 格（对齐《异星工厂》Enemy spawner 的 footprint）
 const SPAWNER_FOOT = 4;   // 边长（格）
@@ -240,7 +255,10 @@ function updateExpansion(dt) {
   const cap = spawnerCapByEvo();
   if (spawners.length >= cap) { G.expandT = 0; return; }
   const evo = evolutionFactor();
-  const interval = Math.max(EXPAND_MIN_INTERVAL, EXPAND_BASE_INTERVAL * (1 - evo * 0.55));
+  // 扩张间隔受进化度与污染共同影响（对齐《异星工厂》：污染越重虫群越躁动、越爱扩张）。
+  // 污染因素取当前全局污染值占阈值比例（0~1+），参与缩短间隔；整体仍受基础间隔约束，前期不轻易扩张。
+  const pollutionRatio = Math.min(1.2, (G.pollution || 0) / POLLUTION_WAVE_THRESHOLD);
+  const interval = Math.max(EXPAND_MIN_INTERVAL, EXPAND_BASE_INTERVAL * (1 - evo * 0.55) * (1 - pollutionRatio * 0.3));
   G.expandT = (G.expandT || 0) + dt;
   if (G.expandT < interval) return;
   G.expandT = 0;
@@ -260,8 +278,9 @@ function spawnEnemies(dt) {
   if (ecfg.none) return;
   G.spawnT = (G.spawnT || 0) + dt;
   // 敌人数量越多刷新越慢；火箭时代可允许更多敌人同时在场；高敌人强度提高上限。
-  // 需求：敌人会随时间在虫巢越聚越多，故上限放宽以允许虫群持续集结累积。
-  const cap = Math.round((G.techDone['advanced-combat'] ? 80 : 48) * ecfg.spawnMult);
+  // 对齐《异星工厂》：敌人主要在虫巢周围聚集，整体受控而非无限膨胀（原版单图敌人有硬上限）。
+  // 故下调基数，让虫群集结更缓慢、进攻压力更循序渐进。
+  const cap = Math.round((G.techDone['advanced-combat'] ? 60 : 34) * ecfg.spawnMult);
   if (G.enemies.length >= cap) return;
   // 维护巢穴数量：不足则在远处生成新巢穴（初始布点由扩张系统接管后，这里仍保留保底补位）
   const spawners = getSpawnerList();
@@ -319,8 +338,8 @@ function spawnEnemies(dt) {
 // 巢穴随时间积攒“攻击性”，达到阈值后在巢穴附近集结一支成建制的进攻波，
 // 波内敌人锁定玩家基地/玩家，列队挺进，比散兵游勇更有压迫感。
 // 进攻波敌人带 wave:true 标记，波次刷出时跳过普通数量上限约束。
-const WAVE_BASE_INTERVAL = 90;        // 基础波次间隔（秒）
-const WAVE_MIN_INTERVAL = 35;         // 最短波次间隔（高级战斗/高进化后加速）
+const WAVE_BASE_INTERVAL = 130;        // 基础波次间隔（秒，原 90，节奏更缓，对齐原版进攻非高频）
+const WAVE_MIN_INTERVAL = 50;         // 最短波次间隔（高级战斗/高进化后加速）
 const WAVE_TIMER_KEY = 'waveT';       // 波次倒计时存于 G
 function waveInterval() {
   const evo = evolutionFactor();
