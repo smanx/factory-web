@@ -1,6 +1,9 @@
 'use strict';
 
 // ===== 传送带 =====
+// 性能优化：传送带物品排序的比较器提为模块级常量，避免每帧在 update 中重建闭包（降低 GC 压力）
+const _beltItemSortDesc = (a, b) => b.pos - a.pos;
+
 class Belt extends Entity {
   constructor(type, x, y) {
     super(type || 'transport-belt', x, y);
@@ -30,7 +33,7 @@ class Belt extends Entity {
     // （排序/邻居扫描/转移判定），空传送带完全无需每帧运行。
     if (!this.items || this.items.length === 0) return;
     const sp = beltSpeed() * this.speedMult() * dt;
-    this.items.sort((a, b) => b.pos - a.pos);
+    this.items.sort(_beltItemSortDesc);
     if (this.items.length && this.items[0].pos + sp >= 1) this.transferFront();
     for (let i = 0; i < this.items.length; i++) {
       const it = this.items[i];

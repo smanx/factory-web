@@ -1,6 +1,9 @@
 'use strict';
 
 // ===== 分流器（含优先级分流器）=====
+// 性能优化：分流器物品排序比较器提为模块级常量，避免每帧重建闭包（与传送带一致）
+const _splitterItemSortDesc = (a, b) => b.pos - a.pos;
+
 class Splitter extends Belt {
   constructor(type, x, y) {
     super(type || 'splitter', x, y);
@@ -26,7 +29,7 @@ class Splitter extends Belt {
     // 惰性调度（P0 优化）：空分流器无需每帧处理
     if (!this.items || this.items.length === 0) return;
     const sp = beltSpeed() * dt;
-    this.items.sort((a, b) => b.pos - a.pos);
+    this.items.sort(_splitterItemSortDesc);
     for (let i = 0; i < this.items.length; i++) {
       const o = this.items[i];
       const lim = i === 0 ? 0.999 : Math.max(0, this.items[i - 1].pos - BELT_SPACING);

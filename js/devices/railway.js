@@ -959,6 +959,23 @@ function routeEntryCond(en) {
 function routeEntryTime(en) {
   return (typeof en === 'object' && en && typeof en.time === 'number') ? en.time : 10;
 }
+// 路线条目的电路条件（cond==='circuit' 时使用）：{ enabled, channel, sig, op, count }
+function routeEntryCircuit(en) {
+  if (typeof en !== 'object' || !en) return null;
+  const c = en.circuit;
+  if (c && typeof c === 'object' && c.enabled) return c;
+  return null;
+}
+// 判断路线条目是否满足电路条件（在该站所在位置读取所连电路网络信号）
+function routeEntryCircuitMet(en) {
+  const c = routeEntryCircuit(en);
+  if (!c) return true;   // 未配置电路条件视为满足
+  const stopName = routeEntryName(en);
+  const stop = trainStopByName(stopName);
+  if (!stop) return true;   // 目标站不存在：回退为满足，避免列车永久滞留
+  const sig = circuitSignalNear(stop);
+  return circuitCondOk(sig, c);
+}
 // 找到路线中当前目标站点实体（按车站名）
 function scheduleTargetStop(tr) {
   if (!trainHasSchedule(tr)) return null;
@@ -978,6 +995,14 @@ function allTrainStopNames() {
     if (names.indexOf(n) < 0) names.push(n);
   }
   return names;
+}
+// 按车站名查找车站实体（同名校名取第一个；用于读取该站电路网络信号）
+function trainStopByName(name) {
+  for (const e of G.ents) {
+    if (e._dead || !(e instanceof TrainStop)) continue;
+    if (e.displayName() === name) return e;
+  }
+  return null;
 }
 
 // ===== 列车调度“等待条件”（对齐《异星工厂》Train stop wait conditions） =====
@@ -1017,6 +1042,8 @@ function trainWaitMet(tr, arriveT) {
   if (cond === 'full') return trainCargoFull(tr);
   if (cond === 'empty') return trainCargoEmpty(tr);
   if (cond === 'time') return arriveT >= routeEntryTime(en);
+  // 电路条件：等待至该站所连电路网络信号满足条件（对齐《异星工厂》Train stop circuit wait condition）
+  if (cond === 'circuit') return routeEntryCircuitMet(en);
   // leave：默认“装卸后出发”——至少停留一个装卸窗口（对齐原固定停靠时长），保证装/卸能完成；受火车制动科技缩短
   return arriveT >= trainBrakeWait();
 }
@@ -1026,6 +1053,14 @@ function routeEntryCondLabel(en) {
   if (c === 'full') return '满载后出发';
   if (c === 'empty') return '卸空后出发';
   if (c === 'time') return '停留 ' + routeEntryTime(en) + ' 秒';
+  if (c === 'circuit') {
+    const cc = en && en.circuit;
+    if (cc && cc.enabled) {
+      const nm = (typeof signalDisplayName === 'function') ? signalDisplayName(cc.sig) : (ITEMS[cc.sig] ? ITEMS[cc.sig].name : (cc.sig || ''));
+      return '电路条件：' + nm + ' ' + (cc.op || '>') + ' ' + (cc.count || 0);
+    }
+    return '电路条件';
+  }
   return '装卸后出发';
 }
 // 该车站是否被任一列车的自动调度路线引用（用于渲染调度光环标记）
@@ -1312,6 +1347,7 @@ function locoScheduleHtml(e) {
     const stopName = routeEntryName(en);
     const cond = routeEntryCond(en);
     const tm = routeEntryTime(en);
+    const cc = (en && en.circuit) || {};
     h += '<div class="row"><span>' + (i + 1) + '. ' + chip('train-stop') + ' ' + stopName + '</span>' +
       '<button data-act="sch-up" data-idx="' + i + '" title="上移">↑</button>' +
       '<button data-act="sch-down" data-idx="' + i + '" title="下移">↓</button>' +
@@ -1322,8 +1358,17 @@ function locoScheduleHtml(e) {
         '<option value="full"' + (cond === 'full' ? ' selected' : '') + '>满载后出发</option>' +
         '<option value="empty"' + (cond === 'empty' ? ' selected' : '') + '>卸空后出发</option>' +
         '<option value="time"' + (cond === 'time' ? ' selected' : '') + '>停留固定秒数</option>' +
+        '<option value="circuit"' + (cond === 'circuit' ? ' selected' : '') + '>电路条件（对齐异星工厂）</option>' +
       '</select>' +
       (cond === 'time' ? '<input type="number" min="1" max="120" value="' + tm + '" style="width:50px" data-act="sch-time" data-idx="' + i + '">秒' : '') +
+      (cond === 'circuit'
+        ? '<div class="row" style="padding-left:16px"><span class="dim">电路信号</span>' +
+          '<select data-act="sch-cch" data-idx="' + i + '">' + (typeof channelSelect === 'function' ? channelSelect(cc.channel || 'red') : '') + '</select>' +
+          '<input type="text" data-act="sch-csig" data-idx="' + i + '" value="' + (typeof signalDisplayName === 'function' ? signalDisplayName(cc.sig || 'iron-plate') : (ITEMS[cc.sig] ? ITEMS[cc.sig].name : (cc.sig || ''))) + '" placeholder="信号" style="width:70px" autocomplete="off">' +
+          '<select data-act="sch-cop" data-idx="' + i + '">' + ['>', '<', '=', '!=', '>=', '<='].map(o => '<option value="' + o + '"' + ((cc.op || '>') === o ? ' selected' : '') + '>' + o + '</option>').join('') + '</select>' +
+          '<input type="number" data-act="sch-ccnt" data-idx="' + i + '" value="' + (cc.count === undefined ? 1 : cc.count) + '" min="-99999" max="99999" style="width:60px"></div>' +
+          '<div class="row" style="padding-left:16px"><span class="dim">列车在该站等待至电路网络信号满足条件后发车；需在车站旁连接电线杆/组合器。</span></div>'
+        : '') +
       '</div>';
   }
   h += '</div>';
@@ -1383,24 +1428,7 @@ DEVICE_PANEL['locomotive'] = {
         uiDirty = true;
       }
     }
-    else if (btn === 'sch-cond') {
-      if (!mch.schedule || idx < 0 || idx >= mch.schedule.length) return true;
-      const en = mch.schedule[idx];
-      const enObj = (typeof en === 'object' && en) ? en : { stop: en, time: 10 };
-      enObj.cond = (e && e.value) || 'leave';
-      mch.schedule[idx] = enObj;
-      syncLocoSchedule(mch);
-      uiDirty = true;
-    }
-    else if (btn === 'sch-time') {
-      if (!mch.schedule || idx < 0 || idx >= mch.schedule.length) return true;
-      const en = mch.schedule[idx];
-      const enObj = (typeof en === 'object' && en) ? en : { stop: en, time: 10 };
-      enObj.time = Math.max(1, Math.min(120, (+((e && e.value) || 10))));
-      mch.schedule[idx] = enObj;
-      syncLocoSchedule(mch);
-      uiDirty = true;
-    }
+    else if (locoScheduleEntryAction(btn, e, idx, mch)) { /* handled by shared helper */ }
     else if (btn === 'sch-del' || btn === 'sch-up' || btn === 'sch-down') {
       if (!mch.schedule || idx < 0 || idx >= mch.schedule.length) return true;
       if (btn === 'sch-del') mch.schedule.splice(idx, 1);
@@ -1422,6 +1450,34 @@ function syncLocoSchedule(loco) {
       return;
     }
   }
+}
+
+// 调度路线条目统一动作处理（普通/内燃机车共用）：sch-cond / sch-time / sch-cch / sch-csig / sch-cop / sch-ccnt
+function locoScheduleEntryAction(btn, e, idx, mch) {
+  if (!mch.schedule || idx < 0 || idx >= mch.schedule.length) return false;
+  const en = mch.schedule[idx];
+  const enObj = (typeof en === 'object' && en) ? en : { stop: en, time: 10 };
+  mch.schedule[idx] = enObj;
+  if (btn === 'sch-cond') {
+    enObj.cond = (e && e.value) || 'leave';
+    // 切到电路条件时，若无电路配置则初始化默认（对齐异星工厂 wait condition 默认）
+    if (enObj.cond === 'circuit' && !(enObj.circuit && enObj.circuit.enabled)) {
+      enObj.circuit = { enabled: true, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
+    }
+  }
+  else if (btn === 'sch-time') enObj.time = Math.max(1, Math.min(120, (+((e && e.value) || 10))));
+  else if (btn === 'sch-cch') { if (!enObj.circuit) enObj.circuit = { enabled: true, channel: 'red', sig: 'iron-plate', op: '>', count: 1 }; enObj.circuit.channel = (e && e.value) || 'red'; }
+  else if (btn === 'sch-cop') { if (!enObj.circuit) enObj.circuit = { enabled: true, channel: 'red', sig: 'iron-plate', op: '>', count: 1 }; enObj.circuit.op = (e && e.value) || '>'; }
+  else if (btn === 'sch-ccnt') { if (!enObj.circuit) enObj.circuit = { enabled: true, channel: 'red', sig: 'iron-plate', op: '>', count: 1 }; enObj.circuit.count = Math.floor(Number((e && e.value))) || 0; }
+  else if (btn === 'sch-csig') {
+    if (!enObj.circuit) enObj.circuit = { enabled: true, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
+    const txt = (e && e.value) || '';
+    enObj.circuit.sig = (typeof resolveSignalName === 'function' ? resolveSignalName(txt) : txt) || enObj.circuit.sig;
+  }
+  else return false;
+  syncLocoSchedule(mch);
+  uiDirty = true;
+  return true;
 }
 
 // 内燃机车面板：复用调度路线，但不吃煤（只吃固体/火箭燃料）
@@ -1461,24 +1517,7 @@ DEVICE_PANEL['diesel-locomotive'] = {
         uiDirty = true;
       }
     }
-    else if (btn === 'sch-cond') {
-      if (!mch.schedule || idx < 0 || idx >= mch.schedule.length) return true;
-      const en = mch.schedule[idx];
-      const enObj = (typeof en === 'object' && en) ? en : { stop: en, time: 10 };
-      enObj.cond = (e && e.value) || 'leave';
-      mch.schedule[idx] = enObj;
-      syncLocoSchedule(mch);
-      uiDirty = true;
-    }
-    else if (btn === 'sch-time') {
-      if (!mch.schedule || idx < 0 || idx >= mch.schedule.length) return true;
-      const en = mch.schedule[idx];
-      const enObj = (typeof en === 'object' && en) ? en : { stop: en, time: 10 };
-      enObj.time = Math.max(1, Math.min(120, (+((e && e.value) || 10))));
-      mch.schedule[idx] = enObj;
-      syncLocoSchedule(mch);
-      uiDirty = true;
-    }
+    else if (locoScheduleEntryAction(btn, e, idx, mch)) { /* handled by shared helper */ }
     else if (btn === 'sch-del' || btn === 'sch-up' || btn === 'sch-down') {
       if (!mch.schedule || idx < 0 || idx >= mch.schedule.length) return true;
       if (btn === 'sch-del') mch.schedule.splice(idx, 1);
