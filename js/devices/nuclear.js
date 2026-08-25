@@ -340,7 +340,8 @@ class NuclearReactor extends Entity {
     return n;
   }
   giveItem(item) {
-    if (item === 'nuclear-fuel' && this.fuel < 5) { this.fuel++; return true; }
+    // 反应堆同时接受核燃料（向后兼容旧档）与铀燃料棒（对齐《异星工厂》：反应堆专用燃料），二者燃尽均产废燃料棒
+    if ((item === 'nuclear-fuel' || item === 'uranium-fuel-cell') && this.fuel < 5) { this.fuel++; return true; }
     return false;
   }
   peekItem() {
@@ -445,13 +446,15 @@ function reactorPanelHtml(e) {
   let h = row('核燃料', e.fuel > 0 ? chip('nuclear-fuel', e.fuel) : '<span class="dim">无</span>', 'fuel');
   if (invCount('nuclear-fuel') > 0)
     h += '<button data-action="fuel" data-id="nuclear-fuel">装入核燃料 (' + invCount('nuclear-fuel') + ')</button>';
+  if (invCount('uranium-fuel-cell') > 0)
+    h += '<button data-action="fuel" data-id="uranium-fuel-cell">装入铀燃料棒 (' + invCount('uranium-fuel-cell') + ')</button>';
   h += row('废燃料棒', '<span class="dim"></span>', 'spent');
   h += '<button data-action="takeout" id="btn-spent-takeout" style="display:none"></button>';
   h += row('热量缓存', '<span class="dim"></span>', 'heat');
   h += row('堆芯温度', '', 'temp');
   h += barHtml(0);
   h += '<div class="status"></div>';
-  h += '<div class="dim">核反应堆：消耗核燃料产生巨量热量，经底边橙口传给导热管，再由导热管把热量送到热交换器，由热交换器把水烧成高温蒸汽供汽轮机发电（对齐《异星工厂》核能标准链路）。燃尽的燃料会留下废燃料棒，可在离心机再生为铀-238，闭合核燃料循环。核能技术解锁。</div>';
+  h += '<div class="dim">核反应堆：消耗铀燃料棒（或核燃料）产生巨量热量，经底边橙口传给导热管，再由导热管把热量送到热交换器，由热交换器把水烧成高温蒸汽供汽轮机发电（对齐《异星工厂》核能标准链路）。燃尽的燃料会留下废燃料棒，可在离心机再生为铀-238，闭合核燃料循环。核能技术解锁。</div>';
   h += '<div class="dim">💡 相邻加成：并排摆放多座反应堆，每座相邻反应堆使输出 +100%（对齐《异星工厂》）。</div>';
   h += '<div class="dim">🔗 标准接法：反应堆→(导热管)→热交换器（接水管）→(蒸汽管)→汽轮机</div>';
   return h;
