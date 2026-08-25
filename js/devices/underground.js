@@ -44,19 +44,20 @@ class Underground extends Entity {
       }
       return;
     }
-    const mate = this.findMate();
-    // 只与离它最近的那一个配对：地下带只作为“入口”向前输送，当且仅当它
-    // 后方没有另一座同向同档地下带（即它是链的起点）。一旦后方已有配对，
-    // 它就是“出口”，把收到的货投向地面，而不再继续把货转给更前方的地下带，
-    // 从而避免 A→B→C 整条链一路把货送到最远的出口（对齐《异星工厂》配对逻辑）。
-    if (mate && !this.findBackMate()) {
-      // 入口：把本格收进 items 的货以及后方入口转来的 outItems 一并送往最近的前方出口，
-      // 绝不向地面带外溢，保证“进洞的货只能从出口出来”。
+    // 只与离它最近的那一个配对：入口 → 最近前方出口；出口 → 后方入口。
+    // 贪心交替配对：链上第1座是入口，第2座是出口，第3座是入口，第4座是出口……
+    // 通过 isEntrance()/isExit() 递归判定，确保每座出口的后方入口尚未被占用。
+    if (this.isEntrance()) {
+      const mate = this.findMate();
+      // 入口：把本格收进 items 的货送往最近的前方出口，
+      // 绝不向地面带外溢，保证"进洞的货只能从出口出来"。
       // 双列：两条车道（lane0/lane1）各自独立传输，每列按单列间隔 iv 推进，互不混合。
-      this._transferLane(mate, 0, iv);
-      this._transferLane(mate, 1, iv);
-    } else if (this.findBackMate()) {
-      // 出口：后方已有配对，把收到的货投向地面（前方带/设备），不再转给更前方。
+      if (mate) {
+        this._transferLane(mate, 0, iv);
+        this._transferLane(mate, 1, iv);
+      }
+    } else if (this.isExit()) {
+      // 出口：后方已有入口配对，把收到的货投向地面（前方带/设备），不再转给更前方。
       // 双列：两条车道各自独立喷射到地面带对应车道（左进左出/右进右出）。
       this._ejectLane(0, iv);
       this._ejectLane(1, iv);
@@ -114,10 +115,10 @@ class Underground extends Entity {
   }
   // 是否作为“出口”：后方已有同向同档地下带配对（无论前方是否还有更远的带）。
   // 出口把收到的货投向地面，不再向更前方的地下带转送（只与最近者配对）。
-  isExit() { return !!this.findBackMate(); }
+  isExit() { const back = this.findBackMate(); return back ? back.isEntrance() : false; }
   // 是否作为“入口”：前方有同向同档地下带配对，且后方没有配对（是链的起点）。
   // 入口把货送向最近的前方出口。
-  isEntrance() { return !this.findBackMate() && !!this.findMate(); }
+  isEntrance() { if (!this.findMate()) return false; const back = this.findBackMate(); return !back || !back.isEntrance(); }
   findBackMate() {
     for (let k = 1; k <= this.maxDist(); k++) {
       const nx = this.x - DX[this.dir] * k, ny = this.y - DY[this.dir] * k;
