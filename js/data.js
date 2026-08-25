@@ -463,7 +463,7 @@ const RECIPES = {
   'filter-inserter':   { time: 0.5, inp: { 'inserter': 1, 'green-circuit': 5 },                   out: { 'filter-inserter': 1 } },  // 对齐官方：1机械臂+5电路板
   'stack-inserter':    { time: 0.5, inp: { 'inserter': 1, 'iron-gear': 15 },                       out: { 'stack-inserter': 1 } },  // 对齐官方：1机械臂+15齿轮
   'stack-filter-inserter': { time: 0.5, inp: { 'filter-inserter': 1, 'stack-inserter': 1 }, out: { 'stack-filter-inserter': 1 } },  // 对齐官方：1过滤臂+1堆叠臂
-  'green-science':     { time: 4,   inp: { 'transport-belt': 1, 'inserter': 1 },                  out: { 'green-science': 1 } },
+  'green-science':     { time: 6,   inp: { 'transport-belt': 1, 'inserter': 1 },                  out: { 'green-science': 1 } },  // 对齐《异星工厂》物流科学包：1传送带+1机械臂，耗时 6s
   'blue-science':      { time: 8,   inp: { 'plastic-bar': 2, 'green-circuit': 2, 'copper-plate': 1 }, out: { 'blue-science': 1 } },
   'pipe':              { time: 0.5, inp: { 'iron-plate': 1 },                                     out: { 'pipe': 1 } },
   'pumpjack':          { time: 2.5, inp: { 'steel-plate': 4, 'iron-gear': 3, 'green-circuit': 2 }, out: { 'pumpjack': 1 } },
@@ -494,7 +494,7 @@ const RECIPES = {
   'pump':             { time: 1,   inp: { 'iron-plate': 4, 'steel-plate': 2, 'green-circuit': 1 }, out: { 'pump': 1 } },
   'solar-panel':      { time: 5,   inp: { 'copper-plate': 5, 'steel-plate': 5, 'green-circuit': 5 }, out: { 'solar-panel': 1 } },
   'accumulator':      { time: 3,   inp: { 'iron-plate': 2, 'copper-plate': 2, 'iron-gear': 2 }, out: { 'accumulator': 1 } },
-  'military-science': { time: 6,   inp: { 'grenade': 1, 'stone-wall': 1, 'piercing-rounds': 1 }, out: { 'military-science': 1 } },  // 对齐《异星工厂》：石墙+穿甲弹+手雷
+  'military-science': { time: 10,  inp: { 'grenade': 1, 'stone-wall': 1, 'piercing-rounds': 1 }, out: { 'military-science': 1 } },  // 对齐《异星工厂》军事科学包：石墙+穿甲弹+手雷，耗时 10s
   // ===== 后期科学包（对齐《异星工厂》7 色科学包）=====
   'flying-robot-frame': { time: 20, inp: { 'electric-engine': 1, 'battery': 2, 'steel-plate': 2, 'green-circuit': 3 }, out: { 'flying-robot-frame': 1 } },
   'production-science-pack': { time: 21, inp: { 'rail': 30, 'electric-furnace': 1, 'productivity-module': 1 }, out: { 'production-science-pack': 1 } },  // 对齐官方：30铁轨+1电炉+1产能模块

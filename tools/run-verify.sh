@@ -7,6 +7,7 @@ cd "$(dirname "$0")/.."
 
 declare -a scripts=(
   "tools/verify-recipes.js"
+  "tools/verify-science-packs.js"
   "tools/verify-stack-sizes.js"
   "tools/verify-belt-throughput.js"
   "tools/verify-data-integrity.js"
