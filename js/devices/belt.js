@@ -73,18 +73,23 @@ class Belt extends Entity {
     const nb = entAt(nx, ny);
     if (!nb) return false;
     if (nb instanceof Belt) {
+      // 是否为“纯 90° 转角”：下游带从侧面接入、背面无直行带。此时源带的左右两列
+      // 应各自映射到转角的内/外弧（车道号保持），对齐《异星工厂》弯道双列不交叉，
+      // 绝不能把两条源车道塌缩成一条（否则 A/B 两线物品会在弯道混叠、互相干扰）。
+      const isCorner = beltCornerDir(nb) !== null;
       if (!(nb instanceof Splitter)) {
         if (nb.dir === ((this.dir + 2) % 4)) return false;
-        // 直通转移沿用源车道；侧面交叉（横向搭接）则进入下游带“近侧车道”。
+        // 直通/纯转角沿用源车道；一般侧面交叉（横向搭接进直线带）则进入下游“近侧车道”。
         // 因此尾部空位检查也应对应物品实际进入的那条车道。
-        const targetLane = (nb.dir === this.dir) ? f.lane : sideOfLane(nb, this.dir);
+        const targetLane = (nb.dir === this.dir || isCorner) ? f.lane : sideOfLane(nb, this.dir);
         let back = Infinity;
         for (const o of nb.items) if (nb.laneOf(o) === targetLane) back = Math.min(back, o.pos);
         if (back < BELT_SPACING) return false;
       }
-      // 仅直通转移才沿用源车道号；侧面交叉不传 laneHint，交由下游按“近侧车道”
+      // 纯转角沿用源车道号传入 laneHint，让转角按内/外弧承接两条车道；
+      // 一般侧面交叉（横向搭接进直线带）不传 laneHint，交由下游按“近侧车道”
       // 判定，避免把 A 的车道号误当作 B 的车道号、把物品错放到 B 的远侧车道。
-      const laneHint = (nb.dir === this.dir) ? f.lane : undefined;
+      const laneHint = (nb.dir === this.dir || isCorner) ? f.lane : undefined;
       if (!nb.acceptItem(f.item, this.dir, this.x, this.y, laneHint)) return false;
       this.items.splice(idx, 1);
       return true;
@@ -350,12 +355,18 @@ function drawBeltCorner(ctx, e, gx, gy, dir, alpha, colors) {
     ctx.restore();
   }
 
-  // 物品沿圆弧行进（双列：外车道走外半径，内车道走内半径，对齐《异星工厂》弯道）
+  // 物品沿圆弧行进（双列：外/内弧，对齐《异星工厂》弯道）。
+  // lane 号是传送带材质本身的物理车道（右转为内/外互换、左转保持），
+  // 因此内/外弧归属取决于转弯方向：右转 lane0 走内弧、lane1 走外弧；
+  // 左转 lane0 走外弧、lane1 走内弧，与源带/出带的直行车道视觉连续。
+  const srcDir = dirIndexOf(-s[0], -s[1]);
+  const turnZ = DX[srcDir] * DY[dir] - DY[srcDir] * DX[dir]; // >0 右转，<0 左转
+  const rightTurn = turnZ > 0;
   const itemFn = (LOD && LOD.simple) ? drawItemDotLOD : drawItemDot;
   for (const o of e.items) {
     const ang = aE + d * o.pos;
-    // 外/内半径偏移：lane 走其所在半径，避免双列在弯道重叠
-    const laneR = rC + ((o.lane === 1 ? 1 : -1) * 5);
+    const innerLane = rightTurn ? 0 : 1; // 内弧所属车道（右转=0，左转=1）
+    const laneR = rC + ((o.lane === innerLane ? -1 : 1) * 5);
     const ix = cx + CCx + Math.cos(ang) * laneR, iy = cy + CCy + Math.sin(ang) * laneR;
     itemFn(ctx, ix, iy, o.item);
   }
