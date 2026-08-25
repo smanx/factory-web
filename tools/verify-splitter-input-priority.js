@@ -102,65 +102,70 @@ function testLanePreserveInput() {
   return r;
 }
 
-// ---- 测试 2：默认轮流输入（两输入口交替放行）----
+// ---- 测试 2：4 路输入完全独立同时工作 ----
 function testAlternate() {
   const { sp } = setup();
   sp.inPref = -1;
   sp.inToggle = 0;
+  // 新逻辑：4 路输入线完全独立同时工作，每路只检查自己的入口是否有空位
+  // 两个输入口 × 两条车道 = 4 路同时输入，不需要轮流
   const inPosSeq = [];
-  for (let i = 0; i < 6; i++) {
-    if (sp.acceptItem('iron-plate', 0, 2, 2, 0)) inPosSeq.push('top'); // top→port0
-    if (sp.acceptItem('copper-plate', 0, 2, 3, 0)) inPosSeq.push('bot'); // bot→port1
+  for (let i = 0; i < 4; i++) {
+    // 4 路同时尝试输入
+    const r0 = sp.acceptItem('iron-plate', 0, 2, 2, 0);   // port0 lane0
+    const r1 = sp.acceptItem('iron-plate', 0, 2, 2, 1);   // port0 lane1
+    const r2 = sp.acceptItem('copper-plate', 0, 2, 3, 0); // port1 lane0
+    const r3 = sp.acceptItem('copper-plate', 0, 2, 3, 1); // port1 lane1
+    if (r0) inPosSeq.push('p0l0');
+    if (r1) inPosSeq.push('p0l1');
+    if (r2) inPosSeq.push('p1l0');
+    if (r3) inPosSeq.push('p1l1');
     sp.items = []; // 模拟物品前移腾空入口
   }
-  const topCount = inPosSeq.filter(x => x === 'top').length;
-  const botCount = inPosSeq.filter(x => x === 'bot').length;
-  const diff = Math.abs(topCount - botCount);
-  let ok = diff <= 1 && topCount > 0 && botCount > 0;
-  check('默认轮流输入：两入口交替放行，无单口饿死', ok,
-    'top=' + topCount + ' bot=' + botCount + '（序列=' + inPosSeq.join(',') + '）');
+  const port0Count = inPosSeq.filter(x => x.startsWith('p0')).length;
+  const port1Count = inPosSeq.filter(x => x.startsWith('p1')).length;
+  // 4 路同时工作：每个输入口都有物品进入
+  let ok = port0Count > 0 && port1Count > 0;
+  check('4 路输入完全独立：两输入口均有物品进入', ok,
+    'port0=' + port0Count + ' port1=' + port1Count + '（序列=' + inPosSeq.join(',') + '）');
   return ok;
 }
 
-// ---- 测试 3：输入优先级（inPref=0 优先上方输入）----
+// ---- 测试 3：4 路输入完全独立（输入优先级不影响带输入）----
 function testPriorityTop() {
   const { sp, inTop, inBot } = setup();
-  sp.inPref = 0;
+  sp.inPref = 0; // 设置输入优先级，但不影响带输入（4路独立）
   inTop.items = [{ item: 'iron-plate', pos: 0.99, lane: 0 }];
   inBot.items = [{ item: 'copper-plate', pos: 0.99, lane: 0 }];
-  // 优先口（top/port0）持续有货时，非优先口（bot/port1）应被暂缓
-  sp.acceptItem('iron-plate', 0, 2, 2, 0); // top 进一件
-  sp.items = [];
-  sp.acceptItem('iron-plate', 0, 2, 2, 0); // top 再进（模拟持续）
-  const botAccepted = sp.acceptItem('copper-plate', 0, 2, 3, 0); // bot 尝试
-  let ok = botAccepted === false;
-  check('优先上方(inPref=0)：上方持续有货时，下方口暂缓', ok,
-    '下口是否被暂缓=' + (botAccepted === false));
-  // 优先口通畅后，非优先口放行
-  sp.items = []; inTop.items = [];
-  const botAccepted2 = sp.acceptItem('copper-plate', 0, 2, 3, 0);
-  ok = ok && botAccepted2 === true;
-  check('优先上方：上方通畅后，下方口正常放行（溢出通道）', botAccepted2 === true,
-    '下口是否放行=' + (botAccepted2 === true));
+  // 4 路同时输入：两个输入口的物品都能进入
+  sp.acceptItem('iron-plate', 0, 2, 2, 0); // port0 lane0
+  sp.acceptItem('copper-plate', 0, 2, 3, 0); // port1 lane0
+  const port0HasItem = sp.items.some(o => o.inPort === 0);
+  const port1HasItem = sp.items.some(o => o.inPort === 1);
+  let ok = port0HasItem && port1HasItem;
+  check('4 路输入独立：输入优先级不影响带输入，两口均有物品', ok,
+    'port0=' + port0HasItem + ' port1=' + port1HasItem);
   return ok;
 }
 
-// ---- 测试 4：输入优先级（inPref=1 优先下方输入）----
+// ---- 测试 4：4 路输入完全独立（反向优先级同样不影响）----
 function testPriorityBot() {
   const { sp, inTop, inBot } = setup();
   sp.inPref = 1;
   inTop.items = [{ item: 'iron-plate', pos: 0.99, lane: 0 }];
   inBot.items = [{ item: 'copper-plate', pos: 0.99, lane: 0 }];
-  sp.acceptItem('copper-plate', 0, 2, 3, 0); // bot 进
-  sp.acceptItem('copper-plate', 0, 2, 3, 0); // bot 再进
-  const topAccepted = sp.acceptItem('iron-plate', 0, 2, 2, 0); // top 尝试
-  let ok = topAccepted === false;
-  check('优先下方(inPref=1)：下方持续有货时，上方口暂缓', ok,
-    '上口是否被暂缓=' + (topAccepted === false));
+  // 4 路同时输入：两个输入口的物品都能进入
+  sp.acceptItem('iron-plate', 0, 2, 2, 0); // port0 lane0
+  sp.acceptItem('copper-plate', 0, 2, 3, 0); // port1 lane0
+  const port0HasItem = sp.items.some(o => o.inPort === 0);
+  const port1HasItem = sp.items.some(o => o.inPort === 1);
+  let ok = port0HasItem && port1HasItem;
+  check('4 路输入独立：反向优先级同样不影响带输入', ok,
+    'port0=' + port0HasItem + ' port1=' + port1HasItem);
   return ok;
 }
 
-// ---- 测试 5：轮流模式单口满载不饿死另一口 ----
+// ---- 测试 5：单口满载不影响另一口（4路独立）----
 function testSingleEntrance() {
   const { sp, inTop, inBot } = setup();
   sp.inPref = -1;
@@ -208,22 +213,33 @@ function testOutputPriority() {
   return r;
 }
 
-// ---- 测试 8：默认输出轮流（两出口交替）----
+// ---- 测试 8：默认输出轮流（两出口交替，A/B 两线同时走同一出口）----
 function testOutputAlternate() {
   const { sp } = setup();
   sp.outPref = -1;
   sp.outToggle = false;
   const seq = [];
-  for (let i = 0; i < 6; i++) {
-    sp.items = [{ item: 'iron-plate', pos: 0.5, inPort: 0, lane: 0 }];
+  for (let i = 0; i < 4; i++) {
+    // 每次同时放入 A 线和 B 线（模拟双线同时到达）
+    sp.items = [
+      { item: 'iron-plate', pos: 0.5, inPort: 0, lane: 0 },
+      { item: 'iron-plate', pos: 0.5, inPort: 0, lane: 1 },
+    ];
     sp.update(0.001);
-    seq.push(sp.items[0].outPort);
+    // 两条线应该走同一个出口
+    const ports = sp.items.map(o => o.outPort);
+    const samePort = ports[0] === ports[1];
+    seq.push(ports[0] + (samePort ? '=' : '≠') + ports[1]);
     sp.items = [];
   }
-  const p0 = seq.filter(x => x === 0).length, p1 = seq.filter(x => x === 1).length;
-  const diff = Math.abs(p0 - p1);
-  let ok = diff <= 1 && p0 > 0 && p1 > 0;
-  check('默认输出轮流：两出口交替输出', ok, 'out0=' + p0 + ' out1=' + p1 + '（序列=' + seq.join(',') + '）');
+  // 检查是否交替：第0次=port0，第1次=port1，第2次=port0，第3次=port1
+  const allSame = sp.items.length === 0;
+  let ok = seq[0].startsWith('0') && seq[1].startsWith('1') && seq[2].startsWith('0') && seq[3].startsWith('1');
+  // 至少检查 A/B 走同一出口
+  const lanesMatch = seq.every(s => s.includes('='));
+  ok = ok && lanesMatch;
+  check('默认输出轮流：A/B 两线同时走同一出口，交替切换', ok,
+    '（序列=' + seq.join(',') + '）');
   return ok;
 }
 

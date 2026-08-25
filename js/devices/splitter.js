@@ -10,7 +10,7 @@ class Splitter extends Belt {
     this.items = [];
     this.inPref = -1; // 输入优先级：-1=两入口轮流输入，0/1=优先某输入口（对齐《异星工厂》分流器输入优先级）
     this.inToggle = 0; // 轮流输入时的切换开关（inPref=-1 时交替放行两输入口，恒为 0/1）
-    this.outToggle = false; // 轮流输出两个出口的切换开关（普通分流器 -1）
+    this.outToggle = false; // 轮流输出：所有物品共享一个开关，全局轮流走两个出口
     this.filter = null; // 可编程分离器过滤：仅放行该物品，其余物品被挡在入口（对齐《异星工厂》Programmable splitter）
     this.outPref = type === 'priority-splitter' ? 1 : -1; // -1=两出口轮流输出，0/1=优先某侧
     this._nextInLane = 0; // 无 laneHint 投放（机械臂/地面）的下一装载车道，供双线均衡
@@ -32,14 +32,17 @@ class Splitter extends Belt {
     if (!this.items || this.items.length === 0) return;
     const sp = beltSpeed() * dt;
     this.items.sort(_splitterItemSortDesc);
+    // 按 输入口+车道 独立追踪前端位置：不同输入口的同名车道互不干扰，4 路完全独立
+    const front = {};
     for (let i = 0; i < this.items.length; i++) {
       const o = this.items[i];
-      const lim = i === 0 ? 0.999 : Math.max(0, this.items[i - 1].pos - BELT_SPACING);
+      const key = (o.inPort === 1 ? 1 : 0) + '_' + (o.lane === 1 ? 1 : 0);
+      const lim = front[key] === undefined ? 0.999 : Math.max(0, front[key] - BELT_SPACING);
       if (o.pos < lim) o.pos = Math.min(o.pos + sp, lim);
-      // 物品到达中段：确定输出端口 outPort 与输出车道 outLane。
-      //  - 输出车道 = 输入车道（o.lane 保持不变，对齐《异星工厂》：Splitters preserve the lanes）；
-      //  - 输出端口按 outPref 调度：普通分流器（-1）两输出口轮流交替；优先级分流器（0/1）优先指定口。
-      //  - 过滤分流器：设置了 filter 时，命中物品全走优先输出口、其余走另一口（对齐官方可编程分离器）。
+      front[key] = o.pos;
+    }
+    // 第一遍：为到达中段的物品分配输出端口（A/B 两线同时走同一出口）
+    for (const o of this.items) {
       if (o.pos >= 0.5 && o.outPort === undefined) {
         o.outLane = o.lane; // lane 保持（A 进 A 出 / B 进 B 出）
         if (this.filter) {
@@ -48,13 +51,24 @@ class Splitter extends Belt {
           o.outPort = this.outPref;
         } else {
           o.outPort = this.outToggle ? 1 : 0;
-          this.outToggle = !this.outToggle;
+          this._outBatchCount = (this._outBatchCount || 0) + 1;
         }
       }
+    }
+    // 轮流输出：每分配 2 个物品就切换到下一出口（A/B 各一个为一组）
+    if (this.outPref < 0 && !this.filter) {
+      if (this._outBatchCount >= 2) {
+        this.outToggle = !this.outToggle;
+        this._outBatchCount = 0;
+      }
+    }
+    // 第二遍：尝试将到达出口的物品推给下游
+    for (let i = 0; i < this.items.length; i++) {
+      const o = this.items[i];
       if (o.pos >= 0.999 && o.outPort !== undefined) {
+        // 车道严格保持：A线输入必须从A线输出，B线输入必须从B线输出，绝不串线
         let ok = this.pushOut(o.item, o.outPort, o.outLane);
         if (!ok) {
-          // 当前输出口拥堵时，尝试另一个输出口疏通；A/B 车道仍保持 o.outLane 不变。
           const alt = 1 - o.outPort;
           if (this.pushOut(o.item, alt, o.outLane)) { o.outPort = alt; ok = true; }
         }
@@ -82,21 +96,14 @@ class Splitter extends Belt {
     if (!(t instanceof Underground)) return t.giveItem(item);
     return false;
   }
-  // 判断某个输入口（0/1）当前是否有“待进入”的物品：
-  //  - 分流器内部已在该口积压（pos < BELT_SPACING）；
-  //  - 或该口的入口传送带上确有物品即将流向分流器（前端物品已过半程）。
-  // 供输入优先级 / 轮流输入调度使用：优先口有货时，非优先口暂缓放行，
-  // 从而让“切换输入优先级”真正产生可见效果（对齐《异星工厂》分流器输入优先级）。
+  // 判断某个输入口（0/1）的某条车道入口是否有物品阻塞（pos < BELT_SPACING）。
+  // 按车道独立检查：同一入口的 A/B 两线互不阻塞，对齐《异星工厂》分流器双线独立。
+  _entrancePendingPortLane(p, lane) {
+    return this.items.some(o => o.inPort === p && o.lane === lane && o.pos < BELT_SPACING);
+  }
+  // 某个输入口是否有任意车道阻塞（供轮流/优先级调度使用）
   _entrancePending(l) {
-    if (this.items.some(o => o.inPort === l && o.pos < BELT_SPACING)) return true;
-    const [lx, ly] = this.laneCenter(l);
-    const tx = Math.floor((lx - DX[this.dir] * TILE) / TILE);
-    const ty = Math.floor((ly - DY[this.dir] * TILE) / TILE);
-    const inEnt = entAt(tx, ty);
-    if (inEnt && inEnt.items && inEnt.items.length) {
-      for (const o of inEnt.items) if (o.pos >= 0.5) return true;
-    }
-    return false;
+    return this.items.some(o => o.inPort === l && o.pos < BELT_SPACING);
   }
   // 由来源几何确定物品进入的物理输入口（上格=0 / 下格=1）：
   // 直通输入按车道垂直位置，侧向输入按横向位置；无几何信息（机械臂/地面）返回 -1。
@@ -127,31 +134,14 @@ class Splitter extends Belt {
     // 无 laneHint 的投放（机械臂/地面/侧向）取该输入口的起始车道，供双线各自装填。
     const lane = (laneHint !== undefined && laneHint !== null) ? (laneHint === 1 ? 1 : 0) : (this._nextInLane || 0);
 
-    // ---- 输入优先级 / 轮流输入调度（对带输入同样生效，解决“切优先级无反应”）----
-    // inPref=-1（默认，轮流输入）：两输入口轮流放行。当“当班口”（inToggle）有货待进入时，
-    //   非当班口暂缓，让两入口公平交替，避免某口饿死；单口满载时另一口空置则不受影响。
-    // inPref=0/1（优先某输入口）：优先口有货待进入时，非优先口一律暂缓放行；
-    //   优先口空置/通畅时非优先口照常进入，仅作溢出通道。
-    if (this.inPref === -1) {
-      // 轮流：非当班口仅在当班口无待进入物品时才放行
-      if (inPort !== this.inToggle && this._entrancePending(this.inToggle)) return false;
-    } else if (inPort !== this.inPref) {
-      // 优先：非优先口仅在优先口无待进入物品时才放行
-      if (this._entrancePending(this.inPref)) return false;
-    }
-
-    // 在目标输入口 inPort 的入口找空位放入（仅在该口腾空处，绝不串到另一输入口）
-    for (let n = 0; n < 2; n++) {
-      const p = (inPort + n) % 2;
-      const blocked = this.items.some(o => o.inPort === p && o.pos < BELT_SPACING);
-      if (!blocked) {
-        this.items.push({ item, pos: 0, inPort: p, lane });
-        // 轮流输入：放行后切换当班口，使两输入口交替（默认行为）。
-        if (this.inPref === -1) this.inToggle = 1 - this.inToggle;
-        // 无 laneHint 的投放：下一次用另一条车道装填，让双线均衡（对齐尾部输入交替装载）
-        if (laneHint === undefined || laneHint === null) this._nextInLane = 1 - lane;
-        return true;
-      }
+    // 4 路输入线完全独立同时工作：每路只检查自己的入口是否有空位，
+    // 不管其他路是否有物品，有空位就放入。轮流/优先级仅作用于输出端。
+    const blocked = this.items.some(o => o.inPort === inPort && o.lane === lane && o.pos < BELT_SPACING);
+    if (!blocked) {
+      this.items.push({ item, pos: 0, inPort, lane });
+      // 无 laneHint 的投放：下一次用另一条车道装填，让双线均衡
+      if (laneHint === undefined || laneHint === null) this._nextInLane = 1 - lane;
+      return true;
     }
     return false;
   }
@@ -207,11 +197,163 @@ class PrioritySplitter extends Splitter {
 }
 
 // ===== 渲染 =====
-// 判断某格实体是否可作为“入口连接”：普通传送带（朝向一致）、地下带出口（朝向一致），
+
+// 分流器各档配色（供 drawSplitterBase 使用）
+const SPLITTER_COLORS = {
+  normal:  { base: '#4a4436', border: '#26221d', accent: 'rgba(224,178,60,.16)', chev: 'rgba(224,178,60,.8)', running: 'rgba(143,224,143,' },
+  fast:    { base: '#8a4a2a', border: '#4a2415', accent: 'rgba(240,150,80,.2)',  chev: 'rgba(240,150,80,.8)',  running: 'rgba(240,150,80,' },
+  express: { base: '#5a3028', border: '#2e1815', accent: 'rgba(224,90,78,.16)',  chev: 'rgba(224,90,78,.8)',   running: 'rgba(224,120,100,' },
+};
+
+// 统一分流器渲染（替代 drawSplitter / drawExpressSplitter / drawFastSplitter 三个重复函数）
+// colors: { base, border, accent, chev, running } 配色对象
+// opts: { glow } 可选额外效果（快速分流器中央脉动光晕）
+function drawSplitterBase(ctx, e, gx, gy, dir, alpha, colors, opts) {
+  ctx.globalAlpha = alpha;
+  const cx = (gx + e.w / 2) * TILE, cy = (gy + e.h / 2) * TILE;
+  const across = (dir % 2 === 1 ? e.w : e.h) * TILE;
+  const running = e.items.length > 0;
+
+  // --- 底盘 ---
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(dir * Math.PI / 2);
+  ctx.fillStyle = colors.base;
+  rr(ctx, -TILE / 2 + 2, -across / 2 + 2, TILE - 4, across - 4, 6);
+  ctx.fill();
+  ctx.strokeStyle = colors.border;
+  ctx.lineWidth = 2;
+  rr(ctx, -TILE / 2 + 2, -across / 2 + 2, TILE - 4, across - 4, 6);
+  ctx.stroke();
+
+  // --- 内部 X 交叉线（表示双入双出交叉路径）---
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(-TILE / 2 + 4, -across / 2 + 4, TILE - 8, across - 8);
+  ctx.clip();
+  ctx.strokeStyle = colors.accent;
+  ctx.lineWidth = 3.5;
+  for (const [x1, y1, x2, y2] of [[-14, -13, 0, 0], [-14, 13, 0, 0], [0, 0, 14, -13], [0, 0, 14, 13]]) {
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // --- 中央通道条 ---
+  ctx.fillStyle = 'rgba(0,0,0,.28)';
+  rr(ctx, -TILE * 0.2, -across / 2 + 3, TILE * 0.4, across - 6, 4);
+  ctx.fill();
+
+  // --- 流向指示箭头（放置时即可辨认物流方向）---
+  ctx.fillStyle = dirColorNotch(dir);
+  ctx.strokeStyle = 'rgba(0,0,0,.45)';
+  ctx.lineWidth = 1;
+  for (const ax of [-TILE * 0.26, TILE * 0.04]) {
+    ctx.beginPath();
+    ctx.moveTo(ax - 5, -7);
+    ctx.lineTo(ax - 5, 7);
+    ctx.lineTo(ax + 6, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // --- 运行状态边框 ---
+  if (running) {
+    // 判断是否输出端拥堵（用于状态颜色）
+    const stuck = e.items.some(o => o.pos >= 0.999);
+    if (stuck) {
+      // 拥堵：橙色闪烁
+      ctx.strokeStyle = 'rgba(240,150,80,' + (0.5 + 0.3 * Math.sin(G.time * 8)).toFixed(2) + ')';
+    } else if (e.filter) {
+      // 过滤模式：蓝色呼吸灯
+      ctx.strokeStyle = 'rgba(100,160,240,' + (0.45 + 0.25 * Math.sin(G.time * 6)).toFixed(2) + ')';
+    } else {
+      // 正常运行：沿用档位色呼吸灯
+      ctx.strokeStyle = colors.running + (0.45 + 0.25 * Math.sin(G.time * 6)).toFixed(2) + ')';
+    }
+    ctx.lineWidth = 2;
+    rr(ctx, -TILE / 2 + 2, -across / 2 + 2, TILE - 4, across - 4, 6);
+    ctx.stroke();
+  }
+
+  // --- 快速分流器专属：中央分流点脉动光晕 ---
+  if (opts && opts.glow && running) {
+    const pulse = 0.5 + 0.5 * Math.sin(G.time * 8);
+    ctx.fillStyle = 'rgba(240,170,90,' + (0.18 + 0.18 * pulse).toFixed(2) + ')';
+    ctx.beginPath();
+    ctx.arc(0, 0, 6 + pulse * 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+
+  // --- 流动箭头动画 ---
+  drawSplitterFlow(ctx, e, gx, gy, colors.chev, alpha);
+
+  // --- 输入优先级指示（入口侧：向内的大箭头）---
+  if (e.inPref !== undefined && e.inPref >= 0) {
+    const [lx, ly] = e.laneCenter(e.inPref);
+    ctx.save();
+    ctx.translate(lx, ly);
+    ctx.rotate(dir * Math.PI / 2);
+    // 绿色向下箭头指向入口中心（表示"优先从这边进"）
+    ctx.fillStyle = '#5fd45f';
+    ctx.strokeStyle = 'rgba(0,0,0,.5)';
+    ctx.lineWidth = 1.5;
+    tri(ctx, -TILE * 0.3, -7, -TILE * 0.3, 7, -TILE * 0.05, 0);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // --- 输出优先级指示（出口侧：向外的大箭头）---
+  if (e.outPref !== undefined && e.outPref >= 0) {
+    const [lx, ly] = e.laneCenter(e.outPref);
+    ctx.save();
+    ctx.translate(lx, ly);
+    ctx.rotate(dir * Math.PI / 2);
+    // 橙色向右箭头指向出口方向（表示"优先往这边出"）
+    ctx.fillStyle = '#e09040';
+    ctx.strokeStyle = 'rgba(0,0,0,.5)';
+    ctx.lineWidth = 1.5;
+    tri(ctx, TILE * 0.05, -7, TILE * 0.05, 7, TILE * 0.3, 0);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // --- 过滤物品图标（可编程分离器）---
+  if (e.filter && ITEMS[e.filter]) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.globalAlpha *= 0.92;
+    // 深色底圆
+    ctx.fillStyle = 'rgba(0,0,0,.55)';
+    ctx.beginPath();
+    ctx.arc(0, 0, TILE * 0.3, 0, 7);
+    ctx.fill();
+    // 发光边框（脉动）
+    const glowA = 0.6 + 0.4 * Math.sin(G.time * 5);
+    ctx.strokeStyle = 'rgba(100,180,255,' + glowA.toFixed(2) + ')';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+    drawItemDot(ctx, cx, cy, e.filter);
+  }
+
+  // --- 物品绘制 ---
+  drawSplitterItems(ctx, e, gx, gy, cx, cy);
+  ctx.globalAlpha = 1;
+}
+
+// 判断某格实体是否可作为"入口连接"：普通传送带（朝向一致）、地下带出口（朝向一致），
 // 或另一个分流器（视为连接的传送带）。
 // 注：分流器之间无论朝向如何都应视为已连接——因为分流器的 pushOut 会把物品
 // 无条件交给相邻的下游分流器（giveItem 不检查方向），物品确实能流过去，
-// 因此即使下游分流器朝向不同，也照样显示“入口流入 / 出口流出”动画。
+// 因此即使下游分流器朝向不同，也照样显示"入口流入 / 出口流出"动画。
 function isInletConnected(ent, dir) {
   if (!ent) return false;
   if (ent instanceof Belt && !(ent instanceof Splitter) && ent.dir === dir) return true;
@@ -358,103 +500,7 @@ function drawSplitterFlow(ctx, e, gx, gy, color, alpha) {
 }
 
 function drawSplitter(ctx, e, gx, gy, dir, alpha) {
-  ctx.globalAlpha = alpha;
-  const cx = (gx + e.w / 2) * TILE, cy = (gy + e.h / 2) * TILE;
-  const across = (dir % 2 === 1 ? e.w : e.h) * TILE;
-  const running = e.items.length > 0;
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(dir * Math.PI / 2);
-  ctx.fillStyle = '#4a4436';
-  rr(ctx, -TILE / 2 + 2, -across / 2 + 2, TILE - 4, across - 4, 6);
-  ctx.fill();
-  ctx.strokeStyle = '#26221d';
-  ctx.lineWidth = 2;
-  rr(ctx, -TILE / 2 + 2, -across / 2 + 2, TILE - 4, across - 4, 6);
-  ctx.stroke();
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(-TILE / 2 + 4, -across / 2 + 4, TILE - 8, across - 8);
-  ctx.clip();
-  ctx.strokeStyle = 'rgba(224,178,60,.16)';
-  ctx.lineWidth = 3.5;
-  for (const [x1, y1, x2, y2] of [[-14, -13, 0, 0], [-14, 13, 0, 0], [0, 0, 14, -13], [0, 0, 14, 13]]) {
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.stroke();
-  }
-  ctx.restore();
-  ctx.fillStyle = 'rgba(0,0,0,.28)';
-  rr(ctx, -TILE * 0.2, -across / 2 + 3, TILE * 0.4, across - 6, 4);
-  ctx.fill();
-  // 流向指示：亮色箭头指向输出方向（放置时即可辨认物流方向）
-  ctx.fillStyle = dirColorNotch(dir);
-  ctx.strokeStyle = 'rgba(0,0,0,.45)';
-  ctx.lineWidth = 1;
-  for (const ax of [-TILE * 0.26, TILE * 0.04]) {
-    ctx.beginPath();
-    ctx.moveTo(ax - 5, -7);
-    ctx.lineTo(ax - 5, 7);
-    ctx.lineTo(ax + 6, 0);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  }
-  if (running) {
-    ctx.strokeStyle = 'rgba(143,224,143,' + (0.45 + 0.25 * Math.sin(G.time * 6)).toFixed(2) + ')';
-    ctx.lineWidth = 2;
-    rr(ctx, -TILE / 2 + 2, -across / 2 + 2, TILE - 4, across - 4, 6);
-    ctx.stroke();
-  }
-  ctx.restore();
-  // 根据输入/输出传送带连接情况绘制流动箭头动画（双入双出交叉分流；单入单出直通）
-  drawSplitterFlow(ctx, e, gx, gy, 'rgba(224,178,60,.8)', alpha);
-  // 输入优先级指示：优先输入口一侧绘制指向内的黄色小箭头（inPref>=0）
-  if (e.inPref !== undefined && e.inPref >= 0) {
-    const [lx, ly] = e.laneCenter(e.inPref);
-    ctx.save();
-    ctx.translate(lx, ly);
-    ctx.rotate(dir * Math.PI / 2);
-    ctx.fillStyle = '#ffd23c';
-    tri(ctx, TILE * 0.14, -5, TILE * 0.14, 5, TILE * 0.3, 0);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,.4)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.restore();
-  }
-  if (e.outPref !== undefined && e.outPref >= 0) {
-    const [lx, ly] = e.laneCenter(e.outPref);
-    ctx.save();
-    ctx.translate(lx, ly);
-    ctx.rotate(dir * Math.PI / 2);
-    ctx.fillStyle = '#ffd23c';
-    tri(ctx, TILE * 0.14, -5, TILE * 0.14, 5, TILE * 0.3, 0);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,.4)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.restore();
-  }
-  // 可编程分离器：叠加过滤物品小图标（对齐《异星工厂》Programmable splitter 视觉提示）
-  if (e.filter && ITEMS[e.filter]) {
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.globalAlpha *= 0.9;
-    ctx.fillStyle = 'rgba(0,0,0,.5)';
-    ctx.beginPath();
-    ctx.arc(0, 0, TILE * 0.24, 0, 7);
-    ctx.fill();
-    ctx.strokeStyle = '#ffd23c';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    ctx.restore();
-    drawItemDot(ctx, cx, cy, e.filter);
-  }
-  const links = splitterLinks(e, gx, gy);
-  drawSplitterItems(ctx, e, gx, gy, cx, cy);
-  ctx.globalAlpha = 1;
+  drawSplitterBase(ctx, e, gx, gy, dir, alpha, SPLITTER_COLORS.normal, null);
 }
 
 // 分流器物品绘制（供普通/优先级/极速/快速分流器复用）：
@@ -500,19 +546,25 @@ function splitterPanelHtml(e) {
   let h = '<div class="dim">分流器：两入两出（每入口/出口各对应两根物流线，共 4 线）。输入可设轮流或优先某口；输出轮流或优先一侧，A/B 车道各自保持；一边堵了自动走另一边。R 旋转方向。</div>';
   h += '<div class="mrow"><span class="mlabel">输入模式</span><span class="mval">';
   for (const v of [-1, 0, 1]) {
-    h += '<button data-action="sinpref" data-v="' + v + '"' + (e.inPref === v ? ' style="border-color:#ffd23c;color:#ffd23c"' : '') + '>' + inPrefNames[v] + '</button> ';
+    h += '<button data-action="sinpref" data-v="' + v + '"' + (e.inPref === v ? ' style="border-color:#5fd45f;color:#5fd45f"' : '') + '>' + inPrefNames[v] + '</button> ';
   }
   h += '</span></div>';
   if (e.inPref === -1) h += '<div class="dim">轮流输入：两个输入口交替接纳，单口无货时另一口畅通不受影响。</div>';
-  else if (e.inPref >= 0) h += '<div class="dim">带黄色箭头的一侧为优先输入口；该口有货时优先接纳，另一口仅作溢出通道。</div>';
+  else if (e.inPref >= 0) h += '<div class="dim">带绿色箭头的一侧为优先输入口；该口有货时优先接纳，另一口仅作溢出通道。</div>';
   h += '<div class="mrow"><span class="mlabel">输出模式</span><span class="mval">';
-  for (const v of [-1, 0, 1]) {
-    h += '<button data-action="spref" data-v="' + v + '"' + (e.outPref === v ? ' style="border-color:#ffd23c;color:#ffd23c"' : '') + '>' + prefNames[v] + '</button> ';
+  if (e.filter) {
+    // 过滤模式下：输出优先级被过滤覆盖，显示为禁用状态
+    h += '<span class="dim" style="opacity:.5">过滤模式下不可用</span>';
+  } else {
+    for (const v of [-1, 0, 1]) {
+      h += '<button data-action="spref" data-v="' + v + '"' + (e.outPref === v ? ' style="border-color:#e09040;color:#e09040"' : '') + '>' + prefNames[v] + '</button> ';
+    }
   }
   h += '</span></div>';
-  if (e.outPref >= 0) h += '<div class="dim">带黄色箭头的一侧为优先输出道；堵住时自动溢出到另一侧。</div>';
+  if (!e.filter && e.outPref >= 0) h += '<div class="dim">带橙色箭头的一侧为优先输出道；堵住时自动溢出到另一侧。</div>';
   // 可编程分离器：物品过滤（对齐《异星工厂》Programmable splitter）
   h += '<div class="sec">过滤（可编程分离器）</div>';
+  if (e.filter) h += '<div class="dim">过滤生效中：命中物品走优先侧，其余走另一侧。</div>';
   h += '<div class="mrow"><span class="mlabel">仅放行</span><span class="mval">' +
     (e.filter ? chip(e.filter) : '<span class="dim">全部放行</span>') + '</span></div>';
   h += '<div class="recgrid">';
@@ -552,14 +604,16 @@ function splitterOnAction(act, btn) {
 }
 function splitterPanelLive(e, api) {
   if (e.filter) {
-    api.status('过滤中：仅放行「' + ITEMS[e.filter].name + '」', 'ok');
+    const stuck = e.items.some(o => o.pos >= 0.999);
+    api.status(stuck ? '过滤中：仅放行「' + ITEMS[e.filter].name + '」· 输出端拥堵' : '过滤中：仅放行「' + ITEMS[e.filter].name + '」· ' + e.items.length + ' 件在途', stuck ? 'warn' : 'ok');
     return;
   }
   const inMode = e.inPref >= 0 ? ('优先' + (e.inPref === 0 ? '上' : '下') + '口') : '轮流输入';
-  if (!e.items.length) { api.status(inMode + ' · 空闲（无物品）', 'ok'); return; }
+  const outMode = e.outPref >= 0 ? ('优先' + (e.outPref === 0 ? '左' : '右') + '出') : '轮流输出';
+  if (!e.items.length) { api.status(inMode + ' · ' + outMode + ' · 空闲', 'ok'); return; }
   // 出口拥堵：任一物品到达输出端却无法送出（停住）
   const stuck = e.items.some(o => o.pos >= 0.999);
-  api.status(stuck ? '已暂停：输出端拥堵，等待疏通' : inMode + ' · 分选中：' + e.items.length + ' 件在途', stuck ? 'warn' : 'ok');
+  api.status(stuck ? '已暂停：输出端拥堵' : inMode + ' · ' + outMode + ' · ' + e.items.length + ' 件在途', stuck ? 'warn' : 'ok');
 }
 const splitterPanel = { html: splitterPanelHtml, onAction: splitterOnAction, live: splitterPanelLive, tip: splitterTip };
 function splitterTip(e) {
