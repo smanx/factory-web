@@ -1083,6 +1083,31 @@ function initPanelEvents() {
       if (typeof playSfx === 'function') playSfx('click');  // 音量调节试听
       return;
     }
+    // 敌人强度切换：与开局地图设置一致，修改后立即生效（对齐《异星工厂》新游戏敌人设置）
+    const enemyBtn = ev.target.closest('[data-enemy-val]');
+    if (enemyBtn) {
+      const v = enemyBtn.getAttribute('data-enemy-val');
+      if (typeof normalizeWorldConfig === 'function' && typeof worldConfig === 'function' && typeof enemyConfig === 'function') {
+        // 重建配置：替换为归一化后的新对象以触发 world-config 派生缓存重建
+        const cfg = normalizeWorldConfig(G.worldConfig);
+        cfg.enemy = v;
+        G.worldConfig = cfg;
+        // 同步进化度到新强度的初始进化度，实现立即生效
+        if (typeof enemyConfig === 'function') {
+          const ecfg = enemyConfig();
+          if (ecfg && typeof ecfg.initEvolution === 'number') {
+            G.evolution = ecfg.initEvolution;
+            if (typeof G.evolution !== 'number' || !isFinite(G.evolution)) G.evolution = 0;
+          }
+          // 无敌人模式下清空在场敌人
+          if (ecfg && ecfg.none) { G.enemies = []; G.enemyProjectiles = []; G.bullets = []; }
+        }
+        if (typeof toast === 'function') toast('敌人强度已调整为「' + enemyBtn.textContent + '」');
+        const _sb = document.getElementById('panel-body');
+        if (_sb && typeof renderSettingsAsync === 'function') renderSettingsAsync(_sb, 0);
+        return;
+      }
+    }
     const setCb = ev.target.closest('[data-set]');
     if (setCb) {
       const key = setCb.dataset.set;
@@ -1313,6 +1338,15 @@ async function htmlSettings() {
   h += '<label class="setrow"><input type="checkbox" data-set="infiniteOre"' + (G.settings.infiniteOre ? ' checked' : '') + '> 无限矿脉（矿藏永不枯竭）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="autoSave"' + (G.settings.autoSave ? ' checked' : '') + '> 自动保存（每60秒）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="combat"' + (G.settings.combat ? ' checked' : '') + '> 战斗模式（敌人入侵，可用炮塔/石墙防御）</label>';
+  // 敌人强度：与开局地图设置的敌人选项一致，修改后立即生效（对齐《异星工厂》新游戏敌人设置）
+  const _wcEnemy = (typeof normalizeWorldConfig === 'function' && typeof WORLD_ENEMY_OPTIONS !== 'undefined')
+    ? normalizeWorldConfig(G.worldConfig).enemy : 'normal';
+  h += '<div class="wcfg-row" style="margin-top:10px"><div class="wcfg-label">敌人强度</div><div class="wcfg-opts">';
+  for (const _o of WORLD_ENEMY_OPTIONS) {
+    h += '<button type="button" class="wcfg-opt' + (_o.v === _wcEnemy ? ' active' : '') + '" data-enemy-val="' + _o.v + '">' + _o.name + '</button>';
+  }
+  h += '</div></div>';
+  h += '<div class="dim wcfg-desc">无 = 完全没有敌人；和平 = 敌人存在但不主动攻击；低/中/高 = 影响初始进化度与刷怪频率。修改后立即生效。</div>';
   h += '<label class="setrow"><input type="checkbox" data-set="virtualJoystick"' + (G.settings.virtualJoystick ? ' checked' : '') + '> 虚拟摇杆（手机/触屏移动）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="minimap"' + (G.settings.minimap !== false ? ' checked' : '') + '> 小地图（右下角显示已探索区域，M 键切换）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="weather"' + (G.settings.weather !== false ? ' checked' : '') + '> 天气（阴云氛围，阴天时整体略暗）</label>';
