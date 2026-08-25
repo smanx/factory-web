@@ -305,6 +305,25 @@ check('蓄电器(2铁板+2铜板+2齿轮)',
   assertRecipeInput('accumulator', 'iron-gear', 2) &&
   !getRecipeLine('accumulator').includes('green-circuit'), true);
 
+
+// ---- 后期科学包与火箭中间件配方对齐官方（本次数据修正）----
+console.log('\n【后期科学包 / 火箭中间件配方对齐官方】');
+// 产能科学包（紫瓶）：官方 = 30 铁轨 + 1 电炉 + 1 产能模块（craft 21s）
+check('产能科学包(30铁轨+1电炉+1产能模块)',
+  assertRecipeInput('production-science-pack', 'rail', 30) &&
+  assertRecipeInput('production-science-pack', 'electric-furnace', 1) &&
+  assertRecipeInput('production-science-pack', 'productivity-module', 1), true);
+// 低密度结构：官方 = 20 铜板 + 2 塑料板 + 2 钢板（craft 20s）
+check('低密度结构(20铜板+2塑料板+2钢板)',
+  assertRecipeInput('low-density-structure', 'copper-plate', 20) &&
+  assertRecipeInput('low-density-structure', 'plastic-bar', 2) &&
+  assertRecipeInput('low-density-structure', 'steel-plate', 2), true);
+// 实用科学包（黄瓶）：官方 = 1 处理器 + 1 飞行机器人框架 + 3 低密度结构
+check('实用科学包(1处理器+1飞行机器人框架+3低密度结构)',
+  assertRecipeInput('utility-science-pack', 'processing-unit', 1) &&
+  assertRecipeInput('utility-science-pack', 'flying-robot-frame', 1) &&
+  assertRecipeInput('utility-science-pack', 'low-density-structure', 3), true);
+
 console.log('\n----------------------------------------');
 console.log('通过 ' + passCount + ' 项，失败 ' + failCount + ' 项');
 process.exit(failCount > 0 ? 1 : 0);
