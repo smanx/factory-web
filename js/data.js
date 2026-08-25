@@ -329,8 +329,9 @@ const ITEMS = {
   'logistic-chest-storage': { name: '仓储箱', color: '#8a9a6a', desc: '物流箱：机器人把返还/多余货物收纳到这里，也可作为备用取货源。所有仓储箱共享存放' },
   'logistic-chest-buffer': { name: '缓冲箱', color: '#c8a05a', desc: '物流箱：介于需求箱与仓储箱之间——既按设定请求货物，又可向网络供应，作为中转缓冲（对齐《异星工厂》Buffer chest）' },
   'logistic-chest-requester': { name: '需求箱', color: '#5a8ad0', desc: '物流箱：在面板设置每种物品的需求量，物流机器人会自动从供应箱/仓储箱送货过来补足到目标数量' },
-  // ===== 钓鱼与生鱼（对齐《异星工厂》：水域可钓鱼，钓到生鱼） =====
-  'raw-fish': { name: '生鱼', color: '#8ab0c0', mark: '鱼', desc: '在水域边缘钓鱼获得的基础食物，可作为低效燃料使用；也可在背包中食用恢复生命值（对齐《异星工厂》：吃鱼治疗）' },
+  // ===== 钓鱼与生鱼（对齐《异星工厂》：需手持鱼竿在水域钓鱼，钓到生鱼） =====
+  'fishing-pole': { name: '钓鱼竿', color: '#a08050', mark: '钓', desc: '手持后在岸边点击水域即可抛竿钓鱼（对齐《异星工厂》Fishing pole）。由木材+铁杆制成，需研究「钓鱼」科技解锁' },
+  'raw-fish': { name: '生鱼', color: '#8ab0c0', mark: '鱼', desc: '在水域边缘用钓鱼竿钓获的基础食物，可作为低效燃料使用；也可在背包中食用恢复生命值（对齐《异星工厂》：吃鱼治疗）' },
   // ===== 核能（对齐《异星工厂》核动力）=====
   'uranium-ore':  { name: '铀矿石', color: '#7fd44a', mark: 'U', desc: '放射性矿物，距出生点较远处生成，须用电采矿机开采，离心机处理成铀' },
   'uranium-235': { name: '铀-235', color: '#9af07a', mark: 'U⁵', desc: '裂变同位素，由离心机处理铀矿小概率获得；是制造核燃料的关键' },
@@ -477,6 +478,8 @@ const RECIPES = {
   // ===== 基础储物箱（木箱→铁箱→钢箱递进，对齐《异星工厂》） =====
   'wooden-chest':     { time: 0.5, inp: { 'wood': 2 }, out: { 'wooden-chest': 1 } },
   'iron-chest':       { time: 1,   inp: { 'iron-plate': 8 }, out: { 'iron-chest': 1 } },  // 对齐官方：8铁板→1铁箱
+  // ===== 钓鱼竿（对齐《异星工厂》Fishing pole：1 木材 + 1 铁杆 → 1 鱼竿，需「钓鱼」科技） =====
+  'fishing-pole':     { time: 1,   inp: { 'wood': 1, 'iron-stick': 1 }, out: { 'fishing-pole': 1 } },
   // ===== 修理包（对齐《异星工厂》Repair pack） =====
   'repair-pack':      { time: 1,   inp: { 'iron-gear': 1, 'copper-plate': 2 }, out: { 'repair-pack': 1 } },
   // ===== 开采工具配方（对齐《异星工厂》Iron axe / Steel axe） =====
@@ -1030,6 +1033,7 @@ const TECH_REQ = {
   'battery': 'battery',                // 电池：需「电池技术」科技（对齐原版 Battery）
   'plastic-bar': 'plastic',           // 塑料板：需「塑料合成」科技（对齐原版 Plastics）
   'low-density-structure': 'rocket-science', // 低密度结构：需「火箭技术」（对齐原版 Rocket science）
+  'fishing-pole': 'fishing',            // 钓鱼竿：需「钓鱼」科技（对齐原版 Fishing）
   'solid-fuel': 'oil'                // 固体燃料：需「石油冶金」（对齐原版 Oil processing）
 };
 // ===== 核能科技门控 =====
@@ -1256,6 +1260,8 @@ let HOTBAR = DEFAULT_HOTBAR.slice();
 const TECHS = {
   // ==== 一级科技（红瓶，无前置） ====
   mining:     { name: '采矿业', cost: { 'science-pack': 10 }, desc: '采矿机速度 ×2', req: [] },
+  // ===== 钓鱼科技（对齐《异星工厂》Fishing：解锁钓鱼竿，可在水域钓获生鱼） =====
+  fishing:    { name: '钓鱼', cost: { 'science-pack': 10 }, desc: '解锁钓鱼竿，可在岸边水域抛竿钓获生鱼（对齐《异星工厂》Fishing 科技）', req: [] },
   logistics:  { name: '物流学', cost: { 'science-pack': 15 }, desc: '传送带速度 ×1.5', req: [] },
   automation: { name: '自动化', cost: { 'science-pack': 20 }, desc: '组装机速度 ×1.5', req: [] },
   // ==== 二级科技（绿瓶） ====
@@ -1430,6 +1436,9 @@ function migrateNewTechs(techDone) {
   // 老玩家补完对应科技避免产线被锁死（对齐《异星工厂》科技树）。
   if (techDone['electronics']) { techDone['advanced-electronics'] = true; techDone['advanced-electronics-2'] = true; techDone['electric-engine'] = true; }
   if (techDone['oil']) techDone['sulfur-processing'] = true;
+  // 兼容旧档：钓鱼此前无需鱼竿、直接点击水域即可；现改为需手持「钓鱼竿」+「钓鱼」科技。
+  // 老玩家此前本就能钓鱼，自动补完钓鱼科技以避免被锁死（对齐《异星工厂》Fishing 科技）。
+  techDone['fishing'] = true;
   return techDone;
 }
 

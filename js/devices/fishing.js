@@ -22,9 +22,19 @@ function canFishAt(tx, ty) {
   return (dx + dy === 1) || (dx === 1 && dy === 0) || (dx === 0 && dy === 1);
 }
 
+// 玩家当前是否手持钓鱼竿（对齐《异星工厂》：需手持鱼竿才能钓鱼）
+function hasFishingPoleSelected() {
+  return selItem() === 'fishing-pole';
+}
+
 // 尝试钓鱼：在 (tx,ty) 水域下钩。返回是否成功。
 function tryFishAt(tx, ty) {
   if (!isWater(tx, ty)) return false;
+  // 需手持钓鱼竿方可钓鱼（对齐《异星工厂》：玩家手持鱼竿点击水面钓鱼）
+  if (!hasFishingPoleSelected()) {
+    if (typeof toast === 'function') toast('请手持钓鱼竿并点击水域钓鱼');
+    return true;  // 已消费点击，避免误走
+  }
   if (FISH_COOLDOWN > 0) {
     if (typeof toast === 'function') toast('鱼还没上钩，稍等片刻…');
     return true;  // 已消费点击，避免误走
