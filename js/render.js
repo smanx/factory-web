@@ -1447,6 +1447,44 @@ function drawPlayer(ctx) {
     ctx.stroke();
   }
 
+  // ---- 自动刀具反击：近战虫贴身咬到主角时主角挥刀还击的动画 ----
+  // counterT>0 时，向 counterDir 方向快速挥出一记刀光（从举起到劈落），附带金属刀身。
+  if ((p.counterT || 0) > 0) {
+    const prog = 1 - Math.min(1, p.counterT / 0.34);        // 0→1 挥刀进度
+    const ca = p.counterDir;                                 // 攻击方向（弧度）
+    const a0 = ca - 1.0, a1 = ca + 1.0;                      // 起手 → 收势角度
+    const ang = a0 + (a1 - a0) * Math.min(1, prog * 1.4);    // 刀身当前角度
+    const rBase = 5, rTip = 15;                              // 刀柄到刀尖的半径
+    const hx2 = p.x + Math.cos(ca) * 2, hy2 = p.y + Math.sin(ca) * 2 - 3;  // 挥刀支点（身前）
+    // 刀光残影（挥刀弧线）
+    ctx.strokeStyle = 'rgba(230,240,255,0.35)';
+    ctx.lineWidth = 3.2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (let k = 0; k <= 8; k++) {
+      const aa = a0 + (a1 - a0) * k / 8 * Math.min(1, prog * 1.4);
+      const rr = rBase + (rTip - rBase) * k / 8;
+      const px2 = hx2 + Math.cos(aa) * rr, py2 = hy2 + Math.sin(aa) * rr;
+      if (k === 0) ctx.moveTo(px2, py2); else ctx.lineTo(px2, py2);
+    }
+    ctx.stroke();
+    // 金属刀身：从支点向刀尖延伸的亮银色刀刃
+    const tipX = hx2 + Math.cos(ang) * rTip, tipY = hy2 + Math.sin(ang) * rTip;
+    ctx.strokeStyle = '#e8f0ff';
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.moveTo(hx2 + Math.cos(ang) * rBase, hy2 + Math.sin(ang) * rBase);
+    ctx.lineTo(tipX, tipY);
+    ctx.stroke();
+    // 刀刃高光
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(hx2 + Math.cos(ang) * (rBase + 1), hy2 + Math.sin(ang) * (rBase + 1));
+    ctx.lineTo(tipX, tipY);
+    ctx.stroke();
+  }
+
   // ---- 头部：肤色圆，朝移动方向偏移 ----
   const hx = p.x, hy = p.y + bob - 9;
   ctx.fillStyle = '#ffe0b0';   // 更显年轻的亮肤色

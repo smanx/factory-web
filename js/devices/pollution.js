@@ -103,6 +103,9 @@ function scanPollutionSources(dt) {
 // 尝试用污染激怒虫巢：达到阈值且超过最短间隔时，触发一波强化进攻波
 function pollutionAggro(dt) {
   if (!G || !G.settings || !G.settings.combat) return;
+  // “无/和平”模式下污染不引发虫群进攻（和平模式敌人始终不主动攻击）
+  const ecfg = (typeof enemyConfig === 'function') ? enemyConfig() : { peaceful: false };
+  if (ecfg.none || ecfg.peaceful) return;
   if (!G.pollution || G.pollution < pollutionAggroThreshold()) return;
   G.pollutionT = (G.pollutionT || 0) + dt;
   if (G.pollutionT < POLLUTION_MIN_WAVE_GAP) return;

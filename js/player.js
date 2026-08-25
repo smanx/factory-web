@@ -12,7 +12,9 @@ function makePlayer(tx, ty) {
     mining: null,
     mineProg: 0,
     walkT: 0,
-    inVehicle: false   // 是否在载具驾驶中
+    inVehicle: false,   // 是否在载具驾驶中
+    counterT: 0,        // 自动刀具反击动画计时（>0 时渲染挥刀动作帧）
+    counterDir: 0       // 反击时面向的攻击方向（角度，弧度）
   };
 }
 
@@ -29,6 +31,8 @@ function boxBlocked(cx, cy, r) {
 
 function updatePlayer(dt) {
   const p = G.player;
+  // 自动刀具反击动画计时递减（>0 时渲染挥刀动作帧）
+  if (p.counterT > 0) p.counterT -= dt;
   // 玩家移动会点亮脚下区块（用于小地图）；限频避免每帧重算
   if (typeof markExplored === 'function') {
     if (!G._exploreT || G.time - G._exploreT > 0.5) {

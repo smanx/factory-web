@@ -144,6 +144,8 @@ const SFX = {
   growl: { type: 'sawtooth', dur: 0.35, vol: 0.14, f0: 90, f1: 60, slide: true, arpeggio: [90, 75, 60] },
   // 主角受击：短促闷响（区别于护盾音，用于无盾直接掉血时）
   hit: { type: 'noise', dur: 0.12, vol: 0.22, f0: 260, f1: 90, slide: true },
+  // 主角刀具自动还击：清脆的金属挥刀“嗖—铮”（近战虫贴身咬主角时自动反击）
+  knife: { type: 'square', dur: 0.14, vol: 0.2, f0: 900, f1: 1400, slide: true, arpeggio: [900, 1200, 1500] },
   // 主角阵亡：低沉哀鸣下行音阶
   'player-death': { type: 'sawtooth', dur: 1.2, vol: 0.26, f0: 260, f1: 55, slide: true, arpeggio: [260, 220, 174, 130, 82, 55] }
 };

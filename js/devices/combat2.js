@@ -185,6 +185,9 @@ function getSpawnerList() {
 
 function updateExpansion(dt) {
   if (!G.settings.combat) return;
+  // “无”模式不生成虫巢（完全不刷敌人）
+  const ecfg = (typeof enemyConfig === 'function') ? enemyConfig() : { peaceful: false };
+  if (ecfg.none) return;
   if (!G.enemies) G.enemies = [];
   const spawners = getSpawnerList();
   if (spawners.length === 0) { G.expandT = 0; return; }
@@ -206,9 +209,9 @@ function updateExpansion(dt) {
 
 function spawnEnemies(dt) {
   if (!G.enemies) G.enemies = [];
-  // 敌人强度配置（对齐《异星工厂》新游戏敌人设置）：和平模式不刷敌人
+  // 敌人强度配置（对齐《异星工厂》新游戏敌人设置）：“无”模式不刷敌人；和平模式会刷敌但由 AI 保证不进攻
   const ecfg = (typeof enemyConfig === 'function') ? enemyConfig() : { peaceful: false, spawnMult: 1 };
-  if (ecfg.peaceful) return;
+  if (ecfg.none) return;
   G.spawnT = (G.spawnT || 0) + dt;
   // 敌人数量越多刷新越慢；火箭时代可允许更多敌人同时在场；高敌人强度提高上限
   const cap = Math.round((G.techDone['advanced-combat'] ? 40 : 24) * ecfg.spawnMult);
@@ -253,11 +256,14 @@ function spawnEnemies(dt) {
   }
   const t = pickEnemyType();
   const def = scaledDef(ENEMY_TYPES[t]);
+  // 记录敌人所属虫巢（home）坐标：默认围绕其游荡，污染覆盖其虫巢后才转为进攻（对齐《异星工厂》）。
+  const home = src ? { x: src.x, y: src.y } : null;
   G.enemies.push({
     x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2,
     hp: def.hp, maxhp: def.hp, dead: false, dir: 0,
     type: t, kind: def.kind, speed: def.speed, size: def.size, dmg: def.dmg,
-    color: def.color, attackT: 0, fireT: 0
+    color: def.color, attackT: 0, fireT: 0,
+    home: home, wanderT: Math.random() * 2, aggro: false
   });
 }
 
@@ -295,12 +301,20 @@ function composeWave(px, py) {
   return group;
 }
 // 每帧更新波次计时，触发进攻波
+// 对齐《异星工厂》：进攻波由污染驱动——仅当至少一个虫巢被污染覆盖时才集结进攻，
+// 且“无”模式不刷敌人、“和平”模式不主动进攻。
 function updateWaves(dt) {
   if (!G.settings.combat) return;
+  const ecfg = (typeof enemyConfig === 'function') ? enemyConfig() : { peaceful: false };
+  if (ecfg.none || ecfg.peaceful) return;
   const evo = evolutionFactor();
   // 至少有一座巢穴、且进化度达到一定水平后才触发进攻波，避免开局就压垮玩家
   const spawners = getSpawnerList();
   if (spawners.length === 0 || evo < 0.06) return;
+  // 仅当有虫巢被污染覆盖时才可能触发进攻波（对齐《异星工厂》：无污染则虫子不进攻）
+  let polluted = false;
+  for (const s of spawners) { if (spawnerPolluted(s)) { polluted = true; break; } }
+  if (!polluted) return;
   G.waveT = (G.waveT || 0) + dt;
   if (G.waveT < waveInterval()) return;
   G.waveT = 0;
@@ -360,6 +374,74 @@ function findEnemyRangedTarget(en, range) {
   return best;
 }
 
+// ===== 敌人 AI（对齐《异星工厂》Biter 行为）=====
+// 原版 Biter/Spitter 正常模式：不会主动冲向玩家，而是在各自虫巢（Spawner）周围游荡、
+// 守护巢穴；只有当工业污染扩散并覆盖到该虫巢所在的区块时，虫群才会被激怒而发起进攻。
+// 本项目据此实现：敌人默认围绕所属虫巢游荡，仅在所属虫巢被污染覆盖时转为进攻状态。
+
+// 计算某虫巢是否被污染覆盖（对齐原版：污染云扩散到虫巢即激怒）。
+// 污染云以基地为圆心向外扩散，半径随污染值增大（与 drawPollution 的视觉半径一致）。
+function spawnerPolluted(s) {
+  if (!G || !G.settings || !G.settings.combat || !G.pollution) return false;
+  if (!s) return false;
+  const bx = (G.spawn ? G.spawn.x : 0) * TILE;
+  const by = (G.spawn ? G.spawn.y : 0) * TILE;
+  const radius = (12 + G.pollution / 30) * TILE;   // 污染云半径（像素），与 drawPollution 一致
+  const d = Math.hypot(s.x - bx, s.y - by);
+  // 污染值需达到激怒阈值且污染云覆盖到该虫巢
+  return d <= radius && G.pollution >= POLLUTION_WAVE_THRESHOLD;
+}
+
+// 判断单个敌人当前是否处于“进攻”状态（会主动攻击玩家/建筑）。
+// 逻辑（对齐《异星工厂》）：
+//   - 波次敌人（进攻波/污染激怒波）天然处于进攻状态；
+//   - 普通敌人默认不进攻，仅当所属虫巢被污染覆盖时才转为进攻；
+//   - 和平模式（peaceful）敌人永远不主动进攻，只会游荡。
+function isEnemyAggressive(en) {
+  // 战斗关闭/无敌人配置时始终不进攻
+  if (!G.settings.combat) return false;
+  const ecfg = (typeof enemyConfig === 'function') ? enemyConfig() : { peaceful: false };
+  if (ecfg.none) return false;               // “无”模式没有任何敌人
+  if (ecfg.peaceful) return false;           // “和平”模式敌人不主动攻击
+  if (en.wave) return true;                  // 进攻波敌人始终进攻
+  if (en.aggro) return true;                 // 已被标记为激怒（如遭攻击）
+  // 普通敌人：所属虫巢被污染覆盖则进攻
+  if (en.home) return spawnerPolluted({ x: en.home.x, y: en.home.y });
+  // 无归属虫巢的敌人（兜底）：以当前污染是否达阈值判断
+  return G.pollution >= POLLUTION_WAVE_THRESHOLD;
+}
+
+// 默认行为：在所属虫巢周围游荡（随机小幅徘徊），不主动追击玩家。
+// 每次徘徊计时到点后在虫巢附近换一个随机方向游走；超出虫巢半径则拉回。
+function wanderAroundHome(en, dt) {
+  en.wanderT = (en.wanderT || 0) - dt;
+  const home = en.home;
+  if (!home) return;
+  const homeR = 6 * TILE;      // 虫巢周围游荡半径（像素）
+  if (en.wanderT <= 0) {
+    en.wanderT = 1.5 + Math.random() * 2.5;   // 每 1.5~4 秒换一次方向
+    const a = Math.random() * Math.PI * 2;
+    en.wdir = { x: Math.cos(a), y: Math.sin(a) };
+  }
+  const dx = home.x - en.x, dy = home.y - en.y;
+  const dist = Math.hypot(dx, dy);
+  // 远离虫巢时拉回；否则按当前游荡方向缓慢移动
+  let mx = 0, my = 0;
+  if (dist > homeR) {
+    mx = dx / (dist || 1); my = dy / (dist || 1);
+  } else if (en.wdir) {
+    mx = en.wdir.x; my = en.wdir.y;
+  }
+  const slow = aoeSlowFactor(en.x, en.y);
+  en.x += mx * en.speed * 0.55 * dt * slow;
+  en.y += my * en.speed * 0.55 * dt * slow;
+  // 游荡时更新朝向（用于敌人行走渲染），静止则保持原朝向
+  if (mx !== 0 || my !== 0) {
+    const a = Math.atan2(my, mx);
+    en.dir = (a >= -Math.PI / 4 && a < Math.PI / 4) ? 0 : (a >= Math.PI / 4 && a < 3 * Math.PI / 4) ? 1 : (a >= -3 * Math.PI / 4 && a < -Math.PI / 4) ? 3 : 2;
+  }
+}
+
 function updateEnemies(dt) {
   if (!G.enemies) return;
   // 推进自然进化（战斗开启时）
@@ -380,6 +462,13 @@ function updateEnemies(dt) {
     if (en.speed === undefined) { en.speed = 22; en.size = 8; en.dmg = 5; en.kind = 'melee'; en.maxhp = en.hp || 40; if (!en.color) en.color = enemyColor(en.hp, en.maxhp); }
     // 减速力场（减速胶囊）：降低移动速度
     const slow = aoeSlowFactor(en.x, en.y);
+    // 敌人是否处于进攻状态（对齐《异星工厂》：默认围绕虫巢游荡，仅污染覆盖虫巢才进攻）
+    const aggressive = isEnemyAggressive(en);
+    if (!aggressive) {
+      // 非进攻状态：在所属虫巢周围游荡，不主动攻击玩家/建筑
+      wanderAroundHome(en, dt);
+      continue;
+    }
     const dx = p.x - en.x, dy = p.y - en.y;
     const d = Math.hypot(dx, dy) / TILE;   // 距离（格）
     if (en.kind === 'ranged') {
@@ -436,7 +525,11 @@ function updateEnemies(dt) {
         en.attackT = 1.0;
         en.lungeT = 0.28;   // 扑咬玩家动作帧
         if (typeof playSfx === 'function') playSfx('bite');
-        if (G.settings.combat) damagePlayer(en.dmg);
+        if (G.settings.combat) {
+          // 近战虫贴身咬玩家：主角自动用刀具还击（触发自动反击动画 + 音效）
+          if (typeof playerAutoCounter === 'function') playerAutoCounter(en);
+          damagePlayer(en.dmg);
+        }
       }
     }
   }
@@ -547,6 +640,24 @@ function updateLootDrops(dt) {
   }
   G.lootDrops = compactFilter(G.lootDrops, d => !d.picked && d.t < d.life);
   if (G.lootDrops.length === 0) G.lootDrops = undefined;
+}
+
+// 主角自动刀具反击：近战虫贴身咬到主角时，主角挥刀自动还击（对齐《异星工厂》玩家初始近战刀具）。
+// 触发挥刀动画（counterT，供渲染表现）+ 挥刀音效，并对咬击自己的敌人造成反击伤害。
+// 反击伤害随武器伤害科技（weaponDamageMult）增强，让玩家在后期也能有效贴身还击。
+function playerAutoCounter(en) {
+  const p = G.player;
+  if (!p || !en || en.dead) return;
+  // 反击动画/冷却：挥刀动画未结束前不再触发，避免连续无间隔挥刀
+  if (p.counterT > 0) return;
+  p.counterT = 0.34;   // 挥刀动画时长（秒）
+  p.counterDir = Math.atan2(en.y - p.y, en.x - p.x);   // 面向攻击者方向挥刀
+  // 反击伤害（基础刀具伤害；随武器伤害科技增强）
+  let dmg = 12;
+  if (typeof weaponDamageMult === 'function') dmg = Math.round(dmg * weaponDamageMult());
+  en.hp -= dmg;
+  if (en.hp <= 0) en.dead = true;
+  if (typeof playSfx === 'function') playSfx('knife');
 }
 
 function damagePlayer(dmg) {

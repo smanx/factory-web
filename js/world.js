@@ -337,12 +337,16 @@ function genChunk(cx, cy) {
     }
   }
 
-  // 峭壁（对齐《异星工厂》Cliff）：低频噪声生成蜿蜒山脊，阻挡通行与建造，可用峭壁炸药清除
-  for (let ly = 0; ly < CHUNK; ly++) {
-    for (let lx = 0; lx < CHUNK; lx++) {
-      const idx = ly * CHUNK + lx;
-      if (terrain[idx] !== T_GRASS) continue;
-      if (isCliffTile(ox + lx, oy + ly)) terrain[idx] = T_CLIFF;
+  // 峭壁（对齐《异星工厂》Cliff）：低频噪声生成蜿蜒山脊，阻挡通行与建造，可用峭壁炸药清除。
+  // 受地图设置「峭壁」开关控制：关闭时整个世界不生成峭壁。
+  const cliffEnabled = (typeof cliffOn === 'function') ? cliffOn() : true;
+  if (cliffEnabled) {
+    for (let ly = 0; ly < CHUNK; ly++) {
+      for (let lx = 0; lx < CHUNK; lx++) {
+        const idx = ly * CHUNK + lx;
+        if (terrain[idx] !== T_GRASS) continue;
+        if (isCliffTile(ox + lx, oy + ly)) terrain[idx] = T_CLIFF;
+      }
     }
   }
 
