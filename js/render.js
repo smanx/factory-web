@@ -752,12 +752,25 @@ function drawEntity(ctx, e, gx, gy, dir, alpha) {
     }
   }
   // 低 LOD 时跳过状态灯（像素太小看不清，省一次 path+fill）
-  if (alpha === 1 && !LOD.simple) {
+  // 传送带分流器、地下传送带与水管本身已用图形直观表达工作状态，不再叠加状态小点
+  if (alpha === 1 && !LOD.simple && !NO_STATUS_DOT[e.type]) {
     const sf = DEVICE_STATUS[e.type];
     const c = sf ? sf(e) : null;
     if (c) drawStatusDot(ctx, (gx + e.w) * TILE - 8, gy * TILE + 8, c);
   }
 }
+
+// 不显示运行状态小点的设备：传送带分流器、地下传送带、水管（状态由图形本身表达）
+const NO_STATUS_DOT = {
+  // 传送带分流器
+  'splitter': true, 'fast-splitter': true, 'express-splitter': true,
+  // 地下传送带
+  'underground': true, 'fast-underground-belt': true, 'express-underground-belt': true,
+  // 水管
+  'pipe': true, 'pipe-to-ground': true,
+  // 其他流体管路（核电传热管、创造/虚空管道）同样不显示状态小点
+  'heat-pipe': true, 'creative-pipe': true, 'void-pipe': true,
+};
 
 // 机械臂类型集合：绘制时置顶，永远显示在传送带/其他设备之上，不被遮挡。
 const IS_INSERTER = { inserter: true, 'long-inserter': true, 'stack-inserter': true, 'fast-inserter': true };
