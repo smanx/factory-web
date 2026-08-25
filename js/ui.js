@@ -764,6 +764,12 @@ function initPanelEvents() {
       panel.onAction(act, condCtrl);
       return;
     }
+    // 车厢槽位过滤下拉（货运车厢）：交给设备 onAction 写入过滤槽
+    const wfSel = ev.target.closest && ev.target.closest('select.wf-sel');
+    if (wfSel && panel && panel.onAction) {
+      panel.onAction('wf-set', wfSel);
+      return;
+    }
     // 历史页物品选择（datalist 下拉选中）
     const histFilter = ev.target.closest('[data-stat-hist-filter]');
     if (histFilter) {
