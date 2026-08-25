@@ -128,12 +128,13 @@ function assembler3PanelHtml(e) {
   for (const rid of Object.keys(RECIPES).filter(r => !isChemRecipe(r))) {
     const outId = Object.keys(RECIPES[rid].out)[0];
     const selCls = e.recipe === rid ? 'sel' : '';
-    // 鼠标悬停显示所需原料（异星工厂惯例）
+    // 鼠标悬停显示所需原料（异星工厂惯例）：名称与介绍为主标题，所需原料放入独立的 tooltip 配方区块
     const inpStr = Object.keys(RECIPES[rid].inp).map(k => ITEMS[k].name + '×' + RECIPES[rid].inp[k]).join('、');
     const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
       Object.keys(RECIPES[rid].inp).map(k => ITEMS[k].name).join(' ')).toLowerCase();
-    h += '<button class="rcbtn ' + selCls + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-rsearch="' + searchKey.replace(/"/g, '') + '" data-tip="' +
-      ITEMS[outId].name + '|' + RECIPES[rid].out[outId] + '个/次，耗时' + RECIPES[rid].time + '秒。所需原料：' + inpStr + '">' +
+    const tipMain = ITEMS[outId].name + '|' + RECIPES[rid].out[outId] + '个/次，耗时' + RECIPES[rid].time + '秒';
+    const tipRecipe = '所需原料：' + inpStr;
+    h += '<button class="rcbtn ' + selCls + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-rsearch="' + searchKey.replace(/"/g, '') + '" data-tip="' + tipMain + '||' + tipRecipe + '">' +
       '<img src="' + iconDataURL(outId) + '">' + ITEMS[outId].name + '</button>';
   }
   h += '</div>';
