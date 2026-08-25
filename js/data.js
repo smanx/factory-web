@@ -750,7 +750,24 @@ function recipeDevice(id) {
 }
 function recipeDeviceName(id) { return DEVICE_NAMES[recipeDevice(id)] || ''; }
 
-// 返回物品作为产物时对应的合成配方描述（用于 tooltip 展示），无配方返回 null。
+// 天然资源（非合成产出，需开采/采集获得），悬停时标明无配方原因
+const RAW_RESOURCES = ['iron-ore', 'copper-ore', 'coal', 'stone', 'uranium-ore', 'wood', 'raw-fish', 'calcite'];
+
+// 无配方物品：返回「无配方原因」文案（未知则写「无」）
+function itemNoRecipeReason(id) {
+  if (FLUIDS.indexOf(id) >= 0) return '流体，无法合成，需开采或生产获得';
+  if (RAW_RESOURCES.indexOf(id) >= 0) return '天然资源，无合成配方，需开采/采集获得';
+  if (id.indexOf('creative-') === 0 || id.indexOf('void-') === 0 || id === 'passive-power') return '测试物品，无合成配方';
+  if (id === 'rocket-part') return '由火箭发射井逐件组装获得，无手工配方';
+  if (id === 'space-science-pack') return '卫星发射后由火箭发射井产出，无合成配方';
+  if (id === 'used-up-uranium-fuel-cell') return '核燃料棒反应后的副产物，无法合成';
+  if (id === 'empty-barrel') return '由灌装机倒空流体桶后获得';
+  if (id.indexOf('-barrel') >= 0) return '由灌装机灌装对应流体获得';
+  return '无';
+}
+
+// 返回物品作为产物时对应的合成配方描述（用于 tooltip 展示）；
+// 有配方返回配方，无配方返回「无配方原因」（未知写「无」）。
 // 覆盖：熔炉冶炼（SMELTS）、组装机 / 化工厂 / 炼油厂 / 离心机等全部合成配方，
 // 并支持含流体输入/输出的配方（流体按名称展示）。
 function itemRecipeText(id) {
@@ -783,7 +800,7 @@ function itemRecipeText(id) {
       }
     }
   }
-  if (!found || !rec || !rec.inp) return null;
+  if (!found || !rec || !rec.inp) return itemNoRecipeReason(id);
   const inpParts = Object.keys(rec.inp).map(k => (ITEMS[k] ? ITEMS[k].name : k) + "×" + rec.inp[k]);
   const outParts = Object.keys(rec.out).map(k => (ITEMS[k] ? ITEMS[k].name : k) + (rec.out[k] > 1 ? "×" + rec.out[k] : ""));
   const dev = DEVICE_NAMES[devId] || "组装机";
