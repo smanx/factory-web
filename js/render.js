@@ -755,7 +755,7 @@ function drawEntity(ctx, e, gx, gy, dir, alpha) {
   if (alpha === 1 && !LOD.simple) {
     const sf = DEVICE_STATUS[e.type];
     const c = sf ? sf(e) : null;
-    if (c) drawStatusDot(ctx, (gx + e.w) * TILE - 8, gy + 8, c);
+    if (c) drawStatusDot(ctx, (gx + e.w) * TILE - 8, gy * TILE + 8, c);
   }
 }
 
