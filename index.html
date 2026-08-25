@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>工厂原型 Factory Proto</title>
-<link rel="stylesheet" href="css/style.css?v=31">
+<link rel="stylesheet" href="css/style.css?v=32">
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -43,9 +43,12 @@
 <div id="start-screen">
   <div class="start-bg"><canvas id="start-bg-canvas" class="start-bg-canvas"></canvas></div>
   <div class="start-box">
-    <div class="start-logo">
-      <div class="start-title">工厂原型</div>
-      <div class="start-sub">FACTORY PROTO</div>
+    <div class="start-box-head">
+      <div class="start-emblem" aria-hidden="true">⚙</div>
+      <div class="start-logo">
+        <div class="start-title">工厂原型</div>
+        <div class="start-sub">FACTORY PROTO</div>
+      </div>
     </div>
     <div class="start-menu">
       <button id="btn-new-game" class="start-btn primary">▶ 开始新游戏</button>
@@ -54,36 +57,37 @@
       <div id="start-save-info" class="start-save-info"></div>
     </div>
 
-    <!-- 读取存档：弹出存档列表弹层，可选指定存档或一键加载最新 -->
-    <div id="load-save-overlay" class="load-save-overlay hidden">
-      <div class="load-save-panel">
-        <div class="load-save-head">
-          <span class="load-save-title">📂 读取存档</span>
-          <button id="load-save-close" class="load-save-close" title="关闭">✕</button>
-        </div>
-        <button id="btn-load-newest" class="load-newest-btn">⚡ 一键加载最新存档</button>
-        <div id="load-save-list" class="load-save-list"></div>
-      </div>
-    </div>
     <div class="start-hint">
       WASD 移动 · 左键建造/挖矿 · 右键拆除 · R 旋转 · F 拿取 ·
       中键/E 面板 · T 科技 · K/L 存读档
     </div>
+    <div class="start-hint sub">📱 手机/触屏：点按建造/开面板/移动 · 长按建筑弹操作盘（旋转/拆除/复制） · 拖动平移视角 · 双指捏合缩放 · 双击旋转/回中</div>
+  </div>
 
-    <!-- 地图设置：开始新游戏前配置世界参数（对齐《异星工厂》地图生成器） -->
-    <div id="world-config-overlay" class="world-config-overlay hidden">
-      <div class="world-config-panel">
-        <div class="world-config-head">
-          <span class="world-config-title">🗺️ 地图设置</span>
-          <button id="world-config-close" class="world-config-close" title="关闭">✕</button>
-        </div>
-        <div class="world-config-body"></div>
-        <div class="world-config-foot">
-          <button id="world-config-ok" class="world-config-ok primary">▶ 开始游戏</button>
-        </div>
+  <!-- 读取存档：弹出存档列表弹层，可选指定存档或一键加载最新（置于卡片外，避免受卡片 backdrop-filter 影响定位） -->
+  <div id="load-save-overlay" class="load-save-overlay hidden">
+    <div class="load-save-panel">
+      <div class="load-save-head">
+        <span class="load-save-title">📂 读取存档</span>
+        <button id="load-save-close" class="load-save-close" title="关闭">✕</button>
+      </div>
+      <button id="btn-load-newest" class="load-newest-btn">⚡ 一键加载最新存档</button>
+      <div id="load-save-list" class="load-save-list"></div>
+    </div>
+  </div>
+
+  <!-- 地图设置：开始新游戏前配置世界参数（对齐《异星工厂》地图生成器） -->
+  <div id="world-config-overlay" class="world-config-overlay hidden">
+    <div class="world-config-panel">
+      <div class="world-config-head">
+        <span class="world-config-title">🗺️ 地图设置</span>
+        <button id="world-config-close" class="world-config-close" title="关闭">✕</button>
+      </div>
+      <div class="world-config-body"></div>
+      <div class="world-config-foot">
+        <button id="world-config-ok" class="world-config-ok primary">▶ 开始游戏</button>
       </div>
     </div>
-    <div class="start-hint sub">📱 手机/触屏：点按建造/开面板/移动 · 长按建筑弹操作盘（旋转/拆除/复制） · 拖动平移视角 · 双指捏合缩放 · 双击旋转/回中</div>
   </div>
 </div>
 <!-- 新手引导面板：首次新游戏时显示基本操作说明 -->
