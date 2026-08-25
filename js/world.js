@@ -244,6 +244,23 @@ function pickOreType(rng, dist) {
 }
 
 function growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, size, amt, ti) {
+  // 若起点不在可放置的草地上（如落在树/水/已占用格），向四周搜索最近的可行格；
+  // 找不到则放弃本矿床，避免生成 1 格残矿（占地面积过小，放不下采矿机）。
+  if (terrain[sy * CHUNK + sx] !== T_GRASS || oreType[sy * CHUNK + sx] !== -1) {
+    let found = false;
+    for (let r = 1; r <= 6 && !found; r++) {
+      for (let dy = -r; dy <= r && !found; dy++) {
+        for (let dx = -r; dx <= r && !found; dx++) {
+          if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+          const x = sx + dx, y = sy + dy;
+          if (x < 1 || y < 1 || x >= CHUNK - 1 || y >= CHUNK - 1) continue;
+          const idx = y * CHUNK + x;
+          if (terrain[idx] === T_GRASS && oreType[idx] === -1) { sx = x; sy = y; found = true; }
+        }
+      }
+    }
+    if (!found) return 0;
+  }
   const queue = [[sx, sy]];
   const seen = new Set([sx + ',' + sy]);
   let placed = 0, guard = 0;
@@ -265,6 +282,7 @@ function growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, size, amt, ti) {
       }
     }
   }
+  return placed;
 }
 
 // 原油矿床：与普通矿石（连续聚团）不同，油点需要“隔几格一个”，
@@ -359,17 +377,44 @@ function genChunk(cx, cy) {
   const fq = (typeof frequencyMult === 'function') ? frequencyMult() : 1;
   const sz = (typeof sizeMult === 'function') ? sizeMult() : 1;
   const ri = (typeof richnessMult === 'function') ? richnessMult() : 1;
-  // 矿物数量在上次基础上放大一倍（更密集的矿脉分布）
-  const count = Math.max(1, Math.round(((2 + Math.floor(rng() * 2)) * 2 + (dist > 60 && rng() < 0.6 ? 2 : 0)) * fq));
+  // 矿床数量：比之前更少（1~3 个/块），使矿床之间间隔更远、更稀疏，贴近原版分布
+  const count = Math.max(1, Math.round((1 + Math.floor(rng() * 2) + (dist > 60 && rng() < 0.6 ? 1 : 0)) * fq));
+  // 记录已放置的矿床中心与近似半径，用于保证矿床之间留有足够间隔
+  const placed = [];
 
   for (let n = 0; n < count; n++) {
     const ti = pickOreType(rng, dist);
-    // 单个矿物体积面积放大一倍（更大的矿团）
-    const size = Math.max(5, Math.round((20 + rng() * 20) * Math.min(2.6, scale) * sz));
+    // 单个矿床面积调大（更大的矿团，占地足够放下多台采矿机）
+    const size = Math.max(12, Math.round((40 + rng() * 40) * Math.min(2.2, scale) * sz));
+    // 由面积估算矿床近似半径（圆形面积 ≈ πr²）
+    const rad = Math.max(4, Math.sqrt(size / Math.PI) * 1.1);
     const amt = (500 + rng() * 900) * scale * ri;
-    const sx = 1 + Math.floor(rng() * (CHUNK - 2));
-    const sy = 1 + Math.floor(rng() * (CHUNK - 2));
-    growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, size, amt, ti);
+    // 找一个离已有矿床足够远的位置，确保矿床之间间隔较远；
+    // 若因地形（树/水）导致矿团过小，则换位置重试，保证每个矿床占地足够大。
+    const minPlaced = Math.max(15, Math.floor(size * 0.4));
+    const snapshot = new Int8Array(oreType); // 用于回滚过小的失败尝试
+    let placedCnt = 0, sx = -1, sy = -1;
+    for (let attempt = 0; attempt < 12; attempt++) {
+      sx = -1; sy = -1;
+      for (let it = 0; it < 40 && sx < 0; it++) {
+        const tx = 1 + Math.floor(rng() * (CHUNK - 2));
+        const ty = 1 + Math.floor(rng() * (CHUNK - 2));
+        let ok = true;
+        for (let p = 0; p < placed.length; p++) {
+          if (Math.hypot(placed[p].x - tx, placed[p].y - ty) < placed[p].rad + rad + 2) {
+            ok = false; break;
+          }
+        }
+        if (ok) { sx = tx; sy = ty; }
+      }
+      if (sx < 0) { sx = 1 + Math.floor(rng() * (CHUNK - 2)); sy = 1 + Math.floor(rng() * (CHUNK - 2)); }
+      placedCnt = growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, size, amt, ti);
+      if (placedCnt >= minPlaced) break;
+      // 过小则回滚本次尝试，换位置重来，避免留下 1 格残矿
+      oreType.set(snapshot);
+      placedCnt = 0;
+    }
+    if (placedCnt > 0) placed.push({ x: sx, y: sy, rad });
   }
 
   // 原油矿床：离角色稍远才生成（出生点周围只有石/铁/煤/铜矿），越远越常见、储量越高
@@ -386,7 +431,7 @@ function genChunk(cx, cy) {
   if (rng() < uChance) {
     const sx = 2 + Math.floor(rng() * (CHUNK - 4));
     const sy = 2 + Math.floor(rng() * (CHUNK - 4));
-    const usz = Math.max(4, Math.round((10 + rng() * 12) * Math.min(2.2, scale) * sz));
+    const usz = Math.max(8, Math.round((18 + rng() * 20) * Math.min(2.2, scale) * sz));
     const uamt = (400 + rng() * 700) * scale * ri;
     growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, usz, uamt, ORE_URANIUM);
   }
