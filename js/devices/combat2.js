@@ -85,6 +85,7 @@ function pickEnemyType() {
 const SPAWNER_HP = 260;          // 虫巢生命值
 const SPAWNER_TARGET = 2;        // 同时存在的巢穴目标数（高级战斗后 3）
 const SPAWNER_RANGE = 14;        // 巢穴生成敌人的距离（格）
+const ENEMY_AGGRO_RANGE = 8;     // 主角靠近该距离（格）内，聚集在虫巢周围的虫子主动攻击主角
 
 function makeSpawner() {
   const px = G.player.x / TILE, py = G.player.y / TILE;
@@ -396,6 +397,7 @@ function spawnerPolluted(s) {
 // 逻辑（对齐《异星工厂》）：
 //   - 波次敌人（进攻波/污染激怒波）天然处于进攻状态；
 //   - 普通敌人默认不进攻，仅当所属虫巢被污染覆盖时才转为进攻；
+//   - 主角靠近普通敌人（进入其激怒距离）时，即使虫巢未被污染也会主动扑向主角；
 //   - 和平模式（peaceful）敌人永远不主动进攻，只会游荡。
 function isEnemyAggressive(en) {
   // 战斗关闭/无敌人配置时始终不进攻
@@ -405,6 +407,11 @@ function isEnemyAggressive(en) {
   if (ecfg.peaceful) return false;           // “和平”模式敌人不主动攻击
   if (en.wave) return true;                  // 进攻波敌人始终进攻
   if (en.aggro) return true;                 // 已被标记为激怒（如遭攻击）
+  // 主角靠近该敌人时主动攻击：即使虫巢未被污染激怒，聚集在虫巢周围的虫子也会扑向近身的主角
+  if (G.player && en.x !== undefined && en.y !== undefined) {
+    const d = Math.hypot(G.player.x - en.x, G.player.y - en.y) / TILE;
+    if (d <= ENEMY_AGGRO_RANGE) return true;
+  }
   // 普通敌人：所属虫巢被污染覆盖则进攻
   if (en.home) return spawnerPolluted({ x: en.home.x, y: en.home.y });
   // 无归属虫巢的敌人（兜底）：以当前污染是否达阈值判断
