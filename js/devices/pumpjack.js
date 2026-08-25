@@ -10,13 +10,13 @@ class Pumpjack extends ElectricDrill {
   constructor(type, x, y) { super(type || 'pumpjack', x, y); this.yieldFactor = 1; }
   // 模块槽位数（对齐《异星工厂》：抽油机 2 槽）
   moduleSlotCount() { return 2; }
-  // 原油输出只从正面居中的那一个格子排出（一格一接口，对齐管道格子）
+  // 原油输出只从正面右侧角落的那一个格子排出（一格一接口，对齐管道格子）
+  // 从正中改为角落，便于把油管从设备角落接出
   frontTargets() {
-    const c = Math.floor(this.w / 2);   // 3x3 居中格 = 1
-    if (this.dir === 0) return [[this.x + this.w, this.y + c]];
-    if (this.dir === 2) return [[this.x - 1, this.y + c]];
-    if (this.dir === 1) return [[this.x + c, this.y + this.h]];
-    return [[this.x + c, this.y - 1]];
+    if (this.dir === 0) return [[this.x + this.w, this.y + this.h - 1]]; // 东：右下角
+    if (this.dir === 2) return [[this.x - 1, this.y]];                    // 西：左上角
+    if (this.dir === 1) return [[this.x, this.y + this.h]];               // 南：左下角
+    return [[this.x + this.w - 1, this.y - 1]];                           // 北：右上角
   }
   // 产量因子随抽取递减：yieldFactor 越低，抽取越慢（对齐《异星工厂》油井产量递减）
   machMult() {
