@@ -422,12 +422,12 @@ const ORES = ['iron-ore', 'copper-ore', 'coal', 'stone'];  // 0-3；原油/铀�
 const SMELTS = [
   { id: 'iron-plate',   inp: 'iron-ore',   time: 3.2 },
   { id: 'copper-plate', inp: 'copper-ore', time: 3.2 },
-  { id: 'steel-plate',  inp: 'iron-plate', inCount: 2, time: 16 },
-  { id: 'stone-brick',  inp: 'stone',      time: 3.2 }
+  { id: 'steel-plate',  inp: 'iron-plate', inCount: 5, time: 16 },
+  { id: 'stone-brick',  inp: 'stone',      inCount: 2, time: 3.2 }
 ];
 
 const RECIPES = {
-  'steel-plate':        { time: 16,  inp: { 'iron-plate': 2 },                                   out: { 'steel-plate': 1 } },
+  'steel-plate':        { time: 16,  inp: { 'iron-plate': 5 },                                   out: { 'steel-plate': 1 } },
   'iron-gear':          { time: 0.5, inp: { 'iron-plate': 2 },                                   out: { 'iron-gear': 1 } },
   'iron-stick':         { time: 0.5, inp: { 'iron-plate': 1 },                                   out: { 'iron-stick': 2 } },
   'steel-stick':        { time: 0.5, inp: { 'steel-plate': 1 },                                  out: { 'steel-stick': 2 } },
