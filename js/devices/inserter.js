@@ -392,7 +392,52 @@ function drawInserter(ctx, e, gx, gy, dir, alpha) {
   ctx.fillStyle = inserterArmColor(e);
   notch(ctx, px, py, dir);
   drawFlowMarks(ctx, e, cx, cy, dir);
+  drawDropLane(ctx, e);
   ctx.globalAlpha = 1;
+}
+
+// 放物车道指示：在目标传送带上高亮显示机械臂会把物品放入哪一侧车道（远侧车道）。
+// 横向/竖向传送带都按“远侧车道”规则投放，旋转机械臂即可把物品转到另一侧；
+// 这里用与臂体同色的脉冲三角标出投放侧，让“放到哪一边”一目了然。
+function drawDropLane(ctx, e) {
+  if (!e.entAtDrop) return;
+  const t = e.entAtDrop();
+  if (!(t instanceof Belt) || t instanceof Splitter) return;
+  const o = e.dropOffset();
+  const fromDir = dirFromVec(o.dx, o.dy);
+  const rel = ((fromDir - t.dir) % 4 + 4) % 4;
+  // 仅“侧放”进入远侧车道；尾放为交替装载，不固定某一侧
+  if (!(rel === 1 || rel === 3)) return;
+  const lane = e.dropBeltLane(t);
+  // lane 1 位于行进方向右侧(+perp)，lane 0 位于左侧(-perp)
+  const perp = [DY[t.dir], -DX[t.dir]];
+  const k = lane === 1 ? 1 : -1;
+  const ox = perp[0] * k, oy = perp[1] * k;
+  const cx = t.x * TILE + TILE / 2, cy = t.y * TILE + TILE / 2;
+  const col = inserterArmColor(e);
+  const pulse = 0.5 + 0.5 * Math.sin((G.time || 0) * 6);
+  ctx.save();
+  ctx.globalAlpha = Math.max(0.45, pulse);
+  ctx.fillStyle = col;
+  // 三角：顶点朝带中心，底边在远侧车道上，标记“物品会投放到这一侧”
+  const off = 7, h = 6, base = 9;
+  const tx = cx + ox * off, ty = cy + oy * off;
+  const tipX = cx + ox * (off + h), tipY = cy + oy * (off + h);
+  ctx.beginPath();
+  ctx.moveTo(tipX, tipY);
+  ctx.lineTo(tx - oy * base, ty + ox * base);
+  ctx.lineTo(tx + oy * base, ty - ox * base);
+  ctx.closePath();
+  ctx.fill();
+  // 车道侧再补一条短线段，强化方位感
+  ctx.strokeStyle = col;
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(tx - oy * (base - 2), ty + ox * (base - 2));
+  ctx.lineTo(tx + oy * (base - 2), ty - ox * (base - 2));
+  ctx.stroke();
+  ctx.restore();
 }
 
 // 物流方向标识：亮色脉冲大箭头 = 出料侧（与陷口同侧）；灰色小点 = 进料侧。
@@ -452,7 +497,7 @@ function inserterFilterSectionHtml(e, lead) {
   return h;
 }
 function inserterPanelHtml(e) {
-  return '<div class="dim">电力机械臂：严格单向搬运。从臂体指向的一侧（灰色圆点）取货，放到地面箭头/亮色箭头的一侧（物流方向）。双列传送带上优先抓取靠近自己一侧的车道，近侧无货时再取远侧。普通臂作用相邻格，加长臂作用第二格。R 旋转。</div>' +
+  return '<div class="dim">电力机械臂：严格单向搬运。从臂体指向的一侧（灰色圆点）取货，放到地面箭头/亮色箭头的一侧（物流方向）。侧放传送带时会把物品放到远离自己一侧的车道（目标带上会有一个同色脉冲三角标出投放侧），旋转机械臂即可把物品转到另一侧车道；横/竖传送带行为一致。双列传送带上优先抓取靠近自己一侧的车道，近侧无货时再取远侧。普通臂作用相邻格，加长臂作用第二格。R 旋转。</div>' +
     inserterFilterSectionHtml(e, '<div class="dim">当前筛选：') +
     circuitPanelHtml(e, 'ins') + '<div class="status"></div>';
 }
