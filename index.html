@@ -4,11 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>工厂原型 Factory Proto</title>
-<link rel="stylesheet" href="css/style.css?v=32">
+<link rel="stylesheet" href="css/style.css?v=33">
 </head>
 <body>
 <canvas id="game"></canvas>
 <div id="hud-info"></div>
+<div id="hud-modal" class="hidden">
+  <div id="hud-modal-head">
+    <span id="hud-modal-title"></span>
+    <button id="hud-modal-close" title="关闭">✕</button>
+  </div>
+  <div id="hud-modal-body"></div>
+</div>
 <div id="topright" class="collapsed">
   <button id="btn-menu-toggle" title="折叠/展开顶部菜单">☰</button>
   <div id="topright-menu">
@@ -173,13 +180,13 @@
 <script src="js/devices/military.js?v=18"></script>
 <script src="js/devices/gate.js?v=1"></script>
 <script src="js/devices/combat2.js?v=37"></script>
-<script src="js/devices/pollution.js?v=5"></script>
+<script src="js/devices/pollution.js?v=6"></script>
 <script src="js/devices/weather.js?v=1"></script>
 <script src="js/devices/maptags.js?v=1"></script>
 <script src="js/devices/equipment.js?v=5"></script>
 <script src="js/devices/rocket.js?v=10"></script>
 <script src="js/devices/defense.js?v=7"></script>
-<script src="js/devices/logistics.js?v=12"></script>
+<script src="js/devices/logistics.js?v=13"></script>
 <script src="js/devices/fishing.js?v=1"></script>
 <script src="js/devices/construction.js?v=6"></script>
 <script src="js/devices/railway.js?v=21"></script>
@@ -191,13 +198,13 @@
 <script src="js/core/power.js?v=10"></script>
 <script src="js/devices/achievements.js?v=1"></script>
 <script src="js/player.js?v=31"></script>
-<script src="js/ui.js?v=51"></script>
+<script src="js/ui.js?v=53"></script>
 <script src="js/menu.js?v=7"></script>
 <script src="js/render.js?v=43"></script>
 <script src="js/stats.js?v=15"></script>
 <script src="js/saves.js?v=3"></script>
 <script src="js/sfx.js?v=13"></script>
 <script src="js/touch.js?v=6"></script>
-<script src="js/main.js?v=62"></script>
+<script src="js/main.js?v=63"></script>
 </body>
 </html>

@@ -88,6 +88,7 @@ const SPAWNER_RANGE = 14;        // 巢穴生成敌人的距离（格）
 const ENEMY_AGGRO_RANGE = 8;     // 主角靠近该距离（格）内，聚集在虫巢周围的虫子主动攻击主角（触发追踪距离）
 // 主角拉开到该距离（格）后，正在追踪的敌人才会停止追踪/攻击（迟滞：为靠近触发距离的两倍，拉开才合理）
 const ENEMY_DEAGGRO_RANGE = ENEMY_AGGRO_RANGE * 2;   // 敌人丢失目标的距离 = 靠近触发距离 × 2
+const ENEMY_CHASE_GIVE_UP_RANGE = 22;   // 主角逃出该距离（格）后敌人放弃追击（即便虫巢被污染激怒），视为丢失目标回巢
 const ENEMY_LINGER_TIME = 5;     // 敌人丢失目标后先原地游荡的时长（秒），随后返回虫巢点聚集
 
 function makeSpawner() {
@@ -120,8 +121,8 @@ function spawnerCapByEvo() {
   const base = G.techDone['advanced-combat'] ? 3 : SPAWNER_TARGET;
   return base + (evo > 0.4 ? 1 : 0) + (evo > 0.8 ? 1 : 0);
 }
-// 虫巢占地：2×2 格（对齐《异星工厂》Enemy spawner 的 2×2 footprint）
-const SPAWNER_FOOT = 2;   // 边长（格）
+// 虫巢占地：4×4 格（对齐《异星工厂》Enemy spawner 的 footprint）
+const SPAWNER_FOOT = 4;   // 边长（格）
 
 // 判断以 (tx,ty) 为左上角的 SPAWNER_FOOT×SPAWNER_FOOT 区域是否可用于放置虫巢
 function spawnerAreaFree(tx, ty) {
@@ -130,15 +131,32 @@ function spawnerAreaFree(tx, ty) {
       if (isWater(tx + dx, ty + dy) || isCliff(tx + dx, ty + dy) || isTree(tx + dx, ty + dy) || entAt(tx + dx, ty + dy)) return false;
     }
   }
-  // 避免与其它虫巢的 2×2 占地重叠（虫巢不在 G.ents 网格中，需手动检查）
+  // 避免与其它虫巢占地重叠（虫巢不在 G.ents 网格中，需手动检查）
   const src = G.enemies || EMPTY_ARR;
   for (let i = 0; i < src.length; i++) {
     const s = src[i];
     if (s.dead || s.kind !== 'spawner') continue;
     const scx = Math.floor(s.x / TILE), scy = Math.floor(s.y / TILE);
-    if (Math.abs(tx - scx) <= 1 && Math.abs(ty - scy) <= 1) return false;
+    const h = SPAWNER_FOOT / 2;
+    // 两虫巢的占地矩形（各自覆盖 [中心±h) 格）是否重叠
+    if (tx < scx + h && tx + SPAWNER_FOOT > scx - h &&
+        ty < scy + h && ty + SPAWNER_FOOT > scy - h) return false;
   }
   return true;
+}
+
+// 判断目标格 (tx,ty) 是否落在任一虫巢的 SPAWNER_FOOT×SPAWNER_FOOT 占地内
+// （虫巢不在 G.ents 网格中，entAt 检测不到，需在此手动判断，供敌人生成时避开虫巢占地）
+function onSpawner(tx, ty) {
+  const src = G.enemies || EMPTY_ARR;
+  for (let i = 0; i < src.length; i++) {
+    const s = src[i];
+    if (s.dead || s.kind !== 'spawner') continue;
+    const scx = Math.floor(s.x / TILE), scy = Math.floor(s.y / TILE);
+    const h = SPAWNER_FOOT / 2;
+    if (tx >= scx - h && tx < scx + h && ty >= scy - h && ty < scy + h) return true;
+  }
+  return false;
 }
 
 // 在一个目标格生成巢穴（若该格可用）；不可用返回 null
@@ -238,15 +256,15 @@ function spawnEnemies(dt) {
   const src = spawners.length ? spawners[(Math.random() * spawners.length) | 0] : null;
   if (src) {
     const gx = Math.round(src.x / TILE), gy = Math.round(src.y / TILE);
-    // 敌人紧贴虫巢中心生成，聚集在一起（而非在虫巢外围随机散布成圈）
-    const dist = 0 + Math.random() * 1.5;
+    // 敌人环绕虫巢外围生成（避开虫巢 SPAWNER_FOOT×SPAWNER_FOOT 占地，避免重叠）
+    const dist = SPAWNER_FOOT / 2 + Math.random() * 1.5;
     const ang = Math.random() * Math.PI * 2;
     tx = Math.round(gx + Math.cos(ang) * dist);
     ty = Math.round(gy + Math.sin(ang) * dist);
     for (let i = 0; i < 8; i++) {
       const cx2 = tx + Math.floor(Math.random() * 5) - 2;
       const cy2 = ty + Math.floor(Math.random() * 5) - 2;
-      if ((!isWater(cx2, cy2) && !isCliff(cx2, cy2) && !isTree(cx2, cy2)) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
+      if ((!isWater(cx2, cy2) && !isCliff(cx2, cy2) && !isTree(cx2, cy2)) && !entAt(cx2, cy2) && !onSpawner(cx2, cy2)) { tx = cx2; ty = cy2; break; }
     }
   } else {
     // 兜底：无巢穴时（巢穴尚未生成或全部被摧毁）在玩家远处生成
@@ -257,7 +275,7 @@ function spawnEnemies(dt) {
     for (let i = 0; i < 8; i++) {
       const cx2 = tx + Math.floor(Math.random() * 5) - 2;
       const cy2 = ty + Math.floor(Math.random() * 5) - 2;
-      if ((!isWater(cx2, cy2) && !isCliff(cx2, cy2) && !isTree(cx2, cy2)) && !entAt(cx2, cy2)) { tx = cx2; ty = cy2; break; }
+      if ((!isWater(cx2, cy2) && !isCliff(cx2, cy2) && !isTree(cx2, cy2)) && !entAt(cx2, cy2) && !onSpawner(cx2, cy2)) { tx = cx2; ty = cy2; break; }
     }
   }
   const t = pickEnemyType();
@@ -412,6 +430,9 @@ function isEnemyAggressive(en) {
   if (ecfg.peaceful) return false;           // “和平”模式敌人不主动攻击
   if (en.wave) return true;                  // 进攻波敌人始终进攻
   if (en.aggro) return true;                 // 已被标记为激怒（如遭攻击）
+  // 正在“丢失目标回巢”流程中（lingerT>0 原地游荡 或 returning 正在返回虫巢）：
+  // 保持非进攻，不因污染/靠近再次激怒，直到回到虫巢聚集完毕，否则永远无法完成回巢（需求：丢失目标后先游荡再回巢聚集）。
+  if (en.returning || en.lingerT > 0) return false;
   // 主角靠近该敌人时主动攻击：即使虫巢未被污染激怒，聚集在虫巢周围的虫子也会扑向近身的主角
   if (G.player && en.x !== undefined && en.y !== undefined) {
     const d = Math.hypot(G.player.x - en.x, G.player.y - en.y) / TILE;
@@ -420,9 +441,10 @@ function isEnemyAggressive(en) {
     // 已经因靠近而追踪的敌人：需要拉开到更远的距离才会停止追踪（迟滞，避免紧贴阈值来回切换）
     if (en.chasing) {
       if (d <= ENEMY_DEAGGRO_RANGE) return true;
-      // 主角已拉开足够远，解除追踪；先短暂原地溜达，随后返回虫巢附近
+      // 主角已拉开足够远，解除追踪；先原地游荡 5 秒，随后返回虫巢附近聚集
       en.chasing = false;
       en.lingerT = ENEMY_LINGER_TIME;
+      en.returning = true;
     }
   }
   // 普通敌人：所属虫巢被污染覆盖则进攻
@@ -443,18 +465,23 @@ function wanderAroundHome(en, dt) {
   // 刚从追踪状态解除：先原地游荡（小幅徘徊）ENEMY_LINGER_TIME 秒，不急着回巢
   if (en.lingerT > 0) {
     en.lingerT -= dt;
-    if (en.wanderT <= 0) {
-      en.wanderT = 0.5 + Math.random() * 0.7;
+    // 首次进入游荡立即给一个方向，避免 wanderT 尚未到期时 wdir 为空而停在原地不动
+    if (!en.wdir || en.wanderT <= 0) {
+      en.wanderT = 0.4 + Math.random() * 0.5;
       const a = Math.random() * Math.PI * 2;
       en.wdir = { x: Math.cos(a), y: Math.sin(a) };
     }
-    if (en.wdir) { mx = en.wdir.x; my = en.wdir.y; }
+    mx = en.wdir.x; my = en.wdir.y;
   } else if (home) {
     // 有归属虫巢：向虫巢中心聚集（需求：敌人聚在虫巢周围，不分散，随时间越聚越多）：
     // 离虫巢中心较远时始终朝虫巢聚拢，贴近虫巢中心后才做小幅徘徊保持聚集形态。
     const dx = home.x - en.x, dy = home.y - en.y;
     const dist = Math.hypot(dx, dy);
     const clusterR = 2.5 * TILE;   // 聚集半径（像素）：敌人贴着虫巢中心聚集成一团
+    if (dist <= clusterR) {
+      // 已回到虫巢附近聚集完毕：结束“丢失目标回巢”流程，恢复正常（可再次被激怒/靠近时追击）
+      en.returning = false;
+    }
     if (dist > clusterR) {
       // 离虫巢中心较远：朝虫巢中心聚拢，聚在一起而非散开
       mx = dx / (dist || 1); my = dy / (dist || 1);
@@ -543,6 +570,14 @@ function updateEnemies(dt) {
       let fireTarget = null;
       if (d <= range) fireTarget = p;
       else fireTarget = findEnemyRangedTarget(en, range);
+      // 玩家已逃出最大追击距离且无建筑可打：放弃追击，视为丢失目标，回巢（原地游荡 5 秒后返回虫巢聚集）
+      if (!fireTarget && d > ENEMY_CHASE_GIVE_UP_RANGE) {
+        en.chasing = false;
+        en.lingerT = ENEMY_LINGER_TIME;
+        en.returning = true;
+        wanderAroundHome(en, dt);
+        continue;
+      }
       if (d > range) {
         moveEnemy(en, dx / d, dy / d, en.speed * dt * slow);
       } else if (d < keep) {
@@ -576,6 +611,14 @@ function updateEnemies(dt) {
           if (typeof playSfx === 'function') playSfx('bite');
           if (typeof damageBuilding === 'function') damageBuilding(target, en.dmg);
         }
+        continue;
+      }
+      // 主角已逃出最大追击距离：放弃追击，视为丢失目标，回巢（原地游荡 5 秒后返回虫巢聚集）
+      if (d > ENEMY_CHASE_GIVE_UP_RANGE) {
+        en.chasing = false;
+        en.lingerT = ENEMY_LINGER_TIME;
+        en.returning = true;
+        wanderAroundHome(en, dt);
         continue;
       }
       // 冲向玩家，贴近后咬人

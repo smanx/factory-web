@@ -79,18 +79,31 @@ function pollutionFieldGet(tx, ty) {
   if (!G.pollutionField) return 0;
   return G.pollutionField.get(tx + ',' + ty) || 0;
 }
+// 污染场质心缓存（性能优化）：质心是污染场的纯函数，渲染每帧都要读取；
+// 若每次全量遍历 Map（大场可达数千格）会浪费帧时间。改为缓存 + 脏标记：
+// 任何对污染场的增删改（pollutionFieldAdd / spreadPollutionField / 树吸收 / 读档）都会置脏，
+// 下次读取时惰性重算。语义与原先每次全量计算完全一致。
+let _centroidCache = null;
+let _centroidDirty = true;
+function _invalidateCentroid() { _centroidDirty = true; _centroidCache = null; }
 function pollutionFieldAdd(tx, ty, v) {
   if (!G.pollutionField) G.pollutionField = new Map();
   const k = tx + ',' + ty;
   let cur = G.pollutionField.get(k) || 0;
   cur = Math.min(POLLUTION_TILE_MAX, cur + v);
-  if (cur <= POLLUTION_TILE_MIN) { G.pollutionField.delete(k); return 0; }
+  if (cur <= POLLUTION_TILE_MIN) {
+    if (G.pollutionField.has(k)) { G.pollutionField.delete(k); _invalidateCentroid(); }
+    return 0;
+  }
   G.pollutionField.set(k, cur);
+  _invalidateCentroid();
   return cur;
 }
 // 污染场质心（用于把污染云绘制在实际受污染区域上空）
 function pollutionFieldCentroid() {
-  if (!G.pollutionField || G.pollutionField.size === 0) return null;
+  // 缓存命中：污染场未变则直接返回（避免每帧全量遍历，性能优化）
+  if (!_centroidDirty && _centroidCache) return _centroidCache;
+  if (!G.pollutionField || G.pollutionField.size === 0) { _centroidCache = null; _centroidDirty = true; return null; }
   let sx = 0, sy = 0, sw = 0, max = 0, mx = 0, my = 0;
   for (const [k, v] of G.pollutionField) {
     const i = k.indexOf(',');
@@ -99,7 +112,9 @@ function pollutionFieldCentroid() {
     if (v > max) { max = v; mx = tx; my = ty; }
   }
   // 用最高浓度格作为中心（比纯加权质心更贴合污染核心）
-  return { tx: sw > 0 ? sx / sw : mx, ty: sw > 0 ? sy / sw : my, weight: Math.min(1, sw / 400) };
+  _centroidCache = { tx: sw > 0 ? sx / sw : mx, ty: sw > 0 ? sy / sw : my, weight: Math.min(1, sw / 400) };
+  _centroidDirty = false;
+  return _centroidCache;
 }
 // 污染源向周围格排放污染（在 scanPollutionSources 内调用）
 function emitFieldPollution(tx, ty, amount) {
@@ -144,6 +159,7 @@ function spreadPollutionField(dt) {
     }
   }
   G.pollutionField = next;
+  _invalidateCentroid();
   // 2) 树吸收：对每棵位于污染场的树，从该格吸收污染并累计枯萎进度
   if (typeof isTree !== 'function' || typeof getTerrain !== 'function') return absorbed;
   const treeWither = G.treeWither || (G.treeWither = new Map());
@@ -159,6 +175,7 @@ function spreadPollutionField(dt) {
     absorbed += take;
     if (nv <= POLLUTION_TILE_MIN) toRemove.push(k);
     else G.pollutionField.set(k, nv);
+    _invalidateCentroid();
     // 累计枯萎进度
     const wk = tx + ',' + ty;
     const acc = (treeWither.get(wk) || 0) + take;
@@ -333,6 +350,7 @@ function pollutionRestore(d) {
   if (d && Array.isArray(d.wither) && d.wither.length) {
     G.treeWither = new Map(d.wither);
   }
+  _invalidateCentroid();
 }
 
 // =============================================================

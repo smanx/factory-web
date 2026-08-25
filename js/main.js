@@ -14,6 +14,7 @@ const G = {
   buckets: new Map(),   // 区块（桶）空间索引：bucketKey -> Set<Entity>（见 core/entity.js）
   inv: new Map(),
   logiRequest: {},   // 个人物流请求：item -> 目标数量（由物流机器人送达）
+  trashSlots: {},    // 个人垃圾桶（对齐《异星工厂》Trash slots）：item -> true（标记后由物流机器人带走存回网络）
   sel: -1,
   quickSel: null,
   ghostDir: 0,
@@ -149,6 +150,7 @@ function newGame() {
   G.logiNet = null;
   G.logiNetT = 0;
   G.logiRequest = {};   // 新游戏清空个人物流请求
+  G.trashSlots = {};     // 新游戏清空个人垃圾桶标记
   G.blueBook = [];      // 新游戏清空蓝图库
   G.mapTags = [];       // 新游戏清空地图标记
   if (typeof achInitStats === 'function') achInitStats();   // 新游戏清空成就状态
@@ -203,6 +205,7 @@ function serializeAll() {
     ents: G.ents.filter(e => !e._dead).map(e => e.serialize()),
     inv: Array.from(G.inv),
     logiRequest: Object.assign({}, G.logiRequest || {}),
+    trashSlots: Object.assign({}, G.trashSlots || {}),
     player: { x: G.player.x, y: G.player.y, hp: G.playerHP, weapon: G.weapon, armor: G.armor },
     evolution: G.evolution || 0,
     pollution: (typeof pollutionSerialize === 'function') ? pollutionSerialize() : null,
@@ -315,6 +318,11 @@ function applySave(d) {
   G.logiRequest = {};
   if (d.logiRequest && typeof d.logiRequest === 'object') {
     for (const k in d.logiRequest) if (ITEMS[k] && d.logiRequest[k] > 0) G.logiRequest[k] = d.logiRequest[k] | 0;
+  }
+  // 恢复个人垃圾桶标记（旧档无该字段则置空）
+  G.trashSlots = {};
+  if (d.trashSlots && typeof d.trashSlots === 'object') {
+    for (const k in d.trashSlots) if (ITEMS[k] && d.trashSlots[k]) G.trashSlots[k] = true;
   }
   G.craftQueue = Array.isArray(d.craftQueue)
     ? d.craftQueue.filter(q => RECIPES[q.rid] && isHandCraftable(q.rid)).map(q => ({
@@ -1847,6 +1855,7 @@ function boot() {
     ['joystick', () => initJoystick()],
     ['deconstruct', () => initDeconstructBtn()],
     ['tooltip', () => initTooltips()],
+    ['hudinfo', () => initHudInfo()],
     ['tutorial', () => initTutorial()],
     ['debug', () => buildDebug()],
     ['deathmenu', () => initDeathMenu()],

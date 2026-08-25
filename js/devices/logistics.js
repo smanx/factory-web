@@ -575,6 +575,10 @@ function updateLogistics(dt) {
     if (G.logiRequest) {
       for (const k in G.logiRequest) if (G.logiRequest[k] > 0) { hasWork = true; break; }
     }
+    // 个人垃圾桶标记有物品待回收也算作有工作（对齐《异星工厂》Trash slots）
+    if (!hasWork && G.trashSlots) {
+      for (const k in G.trashSlots) if (G.trashSlots[k] && invCount(k) > 0) { hasWork = true; break; }
+    }
     if (!hasWork) {
       const dm = G.logiNet.demand;
       if (dm) { for (const k in dm) if (dm[k] > 0) { hasWork = true; break; } }
@@ -591,10 +595,31 @@ function updateLogistics(dt) {
   }
 }
 
-// 回收玩家身上超出个人请求量的物品（对齐《异星工厂》：机器人带走多余物资存回网络）
+// 回收玩家身上的多余物资（对齐《异星工厂》：机器人带走多余物资存回网络）。
+// 分两类：
+//   1) 个人物流请求（logiRequest）：玩家身上超出请求量的部分被机器人带走；
+//   2) 个人垃圾桶（trashSlots）：玩家主动标记为“丢弃”的物品，机器人会全部带走（无视请求量）。
 function assignRecycleTask(r) {
   if (!G.logiRequest) return false;
   const pt = playerLogiTarget();
+  // 优先回收「个人垃圾桶」中标记的物品（对齐《异星工厂》Trash slots：标记即带走）
+  if (G.trashSlots) {
+    for (const item in G.trashSlots) {
+      if (!G.trashSlots[item]) continue;
+      const have = invCount(item);
+      if (have <= 0) continue;
+      const takeN = Math.min(robotCarryCap(), have);
+      if (takeN <= 0) continue;
+      r.carry = { item, count: takeN };
+      r.target = pt;
+      r.tx = (G.player ? G.player.x : 0);
+      r.ty = (G.player ? G.player.y : 0);
+      r.fromPlayer = true;
+      r.state = 'collecting';
+      return true;
+    }
+  }
+  // 其次回收「个人物流请求」超出部分（原有逻辑，保持语义不变）
   for (const item in G.logiRequest) {
     const want = G.logiRequest[item] || 0;
     if (want <= 0) continue;

@@ -483,13 +483,44 @@ class CargoWagon extends Entity {
   constructor(type, x, y) {
     super(type, x, y);
     this.slots = [];
+    // 过滤槽（对齐《异星工厂》Cargo wagon filter slots）：每个槽位可设置一个过滤物，
+    // 设置了过滤的槽只能装入该物品；未设过滤的空槽可装入任意物品。
+    // 索引与车厢槽位一一对应，避免混合装载错位。
+    this.filters = [];
+  }
+  slotFilter(i) { return (this.filters && this.filters[i]) || null; }
+  setSlotFilter(i, id) {
+    if (!this.filters) this.filters = [];
+    while (this.filters.length <= i) this.filters.push(null);
+    this.filters[i] = id || null;
+    // 若清空过滤且该槽已装入与过滤冲突的物品，则不改动已有货物（仅约束后续装入）
+  }
+  // 槽位是否允许装入 item：空槽看其过滤；非空槽允许继续堆叠同种物品
+  slotAccepts(i, item) {
+    const flt = this.slotFilter(i);
+    if (!flt) return true;                    // 未设过滤：允许任意物品
+    return flt === item;                      // 设了过滤：仅允许该物品
   }
   giveItem(item) {
     if (item === 'logistic-robot') return false;
-    for (const s of this.slots)
-      if (s && s.item === item && s.count < stackSize(item)) { s.count++; return true; }
-    if (this.slots.length >= wagonSlots()) return false;
-    this.slots.push({ item, count: 1 });
+    // 先尝试堆叠到已有同种物品的槽位（槽位必须允许该物品，通常同种即允许）
+    for (let i = 0; i < this.slots.length; i++) {
+      const s = this.slots[i];
+      if (s && s.item === item && s.count < stackSize(item) && this.slotAccepts(i, item)) { s.count++; return true; }
+    }
+    // 再寻找空槽：优先“设了过滤且匹配”的空槽，其次任意未设过滤的空槽；
+    // 被其他过滤占用的槽（设了过滤但指向别的物品）不可用。
+    const total = wagonSlots();
+    let filtered = -1, free = -1;
+    for (let i = 0; i < total; i++) {
+      if (this.slots[i]) continue;                 // 已占用
+      const flt = this.slotFilter(i);
+      if (flt === item && filtered < 0) filtered = i;
+      if (!flt && free < 0) free = i;
+    }
+    const idx = filtered >= 0 ? filtered : free;
+    if (idx < 0) return false;                     // 满或仅剩被其他过滤占用的槽
+    this.slots[idx] = { item, count: 1 };
     return true;
   }
   peekItem() {
@@ -527,16 +558,19 @@ class CargoWagon extends Entity {
   serialize() {
     const s = super.serialize();
     s.slots = this.slots.filter(Boolean);
+    if (this.filters && this.filters.length) s.filters = this.filters.map(f => f || null);
     return s;
   }
   blueprint() {
     const s = super.blueprint();
     s.slots = [];
+    if (this.filters && this.filters.length) s.filters = this.filters.map(f => f || null);
     return s;
   }
   static restore(s) {
     const e = super.restore(s);
     e.slots = (s.slots || []).map(x => ({ item: x.item, count: x.count }));
+    e.filters = (s.filters || []).map(f => f || null);
     return e;
   }
 }
@@ -550,6 +584,7 @@ class FluidWagon extends CargoWagon {
     this.slots = [];
     this.fluid = null;   // 当前装载的流体 id
     this.amount = 0;     // 已装流体量
+    this.fluidFilter = null; // 流体过滤（对齐《异星工厂》Fluid wagon 过滤）：设置后仅接受该流体
   }
   // 物品接口：流体车厢不存普通物品
   giveItem(item) { return false; }
@@ -562,8 +597,9 @@ class FluidWagon extends CargoWagon {
   // 流体接口：由泵/面板调用
   fluidContents() { return this.fluid ? { item: this.fluid, count: this.amount } : null; }
   fluidCapacity() { return FLUID_WAGON_CAP; }
-  // 向车厢注入流体；返回实际注入量
+  // 向车厢注入流体；返回实际注入量。若设置了流体过滤且与过滤不符则拒绝
   addFluid(fid, n) {
+    if (this.fluidFilter && fid !== this.fluidFilter) return 0;
     if (this.fluid && this.fluid !== fid) return 0;
     const room = FLUID_WAGON_CAP - this.amount;
     const take = Math.min(room, n);
@@ -584,18 +620,21 @@ class FluidWagon extends CargoWagon {
     const s = super.serialize();
     s.fluid = this.fluid;
     s.amount = this.amount;
+    if (this.fluidFilter) s.fluidFilter = this.fluidFilter;
     return s;
   }
   blueprint() {
     const s = super.blueprint();
     s.fluid = this.fluid;
     s.amount = this.amount;
+    if (this.fluidFilter) s.fluidFilter = this.fluidFilter;
     return s;
   }
   static restore(s) {
     const e = super.restore(s);
     e.fluid = s.fluid || null;
     e.amount = s.amount | 0;
+    e.fluidFilter = s.fluidFilter || null;
     return e;
   }
 }
@@ -1426,18 +1465,42 @@ DEVICE_PANEL['diesel-locomotive'] = {
 
 DEVICE_PANEL['cargo-wagon'] = {
   html(e) {
-    let h = '<div class="dim">货运车厢：挂在车头后随列车移动，最多 ' + wagonSlots() + ' 格各 ' + WAGON_STACK + ' 个。车站可用机械臂装卸。</div><div class="sec">货物</div><div class="rows">';
+    let h = '<div class="dim">货运车厢：挂在车头后随列车移动，最多 ' + wagonSlots() + ' 格各 ' + WAGON_STACK + ' 个。车站可用机械臂装卸。可为每个槽位设置<b>过滤物</b>（对齐《异星工厂》Cargo wagon 过滤槽），设置后该槽只能装入指定物品，便于分类运输。</div><div class="sec">货物</div><div class="rows">';
     if (!e.slots || !e.slots.length) h += '<div class="dim">车厢是空的</div>';
     else for (const s of e.slots) if (s) h += '<div class="row"><span>' + ITEMS[s.item].name + '</span><b>' + s.count + '</b><button data-act="take" data-id="' + s.item + '">取出1</button></div>';
-    return h + '</div>';
+    h += '</div>';
+    // 过滤槽设置：为前 wagonSlots() 个槽位提供过滤下拉
+    h += '<div class="sec">槽位过滤</div><div class="rows">';
+    const choices = (typeof filterChoices === 'function' ? filterChoices() : FILTER_CHOICES);
+    for (let i = 0; i < wagonSlots(); i++) {
+      const flt = e.slotFilter ? e.slotFilter(i) : null;
+      const cur = e.slots[i];
+      const occ = cur ? cur.item : null;
+      h += '<div class="row"><span>槽 ' + (i + 1) + (occ ? '（' + ITEMS[occ].name + ' ×' + cur.count + '）' : '（空）') + '</span>' +
+        '<select data-idx="' + i + '" class="wf-sel"><option value="">无过滤</option>' +
+        choices.map(c => '<option value="' + c + '"' + (flt === c ? ' selected' : '') + '>' + ITEMS[c].name + '</option>').join('') +
+        '</select></div>';
+    }
+    h += '</div>';
+    return h;
   },
   live() { return ''; },
   tip() { return 'g'; },
   onAction(btn, e) {
     const mch = G.panelEnt;
-    const id = btn && btn.dataset ? btn.dataset.id : null;
+    // 按钮/控件 DOM 元素在第二参（对齐本文件其它设备面板惯例）
+    const el = e || btn;   // 兼容直接传元素
+    const id = el && el.dataset ? el.dataset.id : null;
     if (btn === 'take' && id && mch.countOf(id) > 0) {
       const it = mch.takeItemOf(id); if (it) { invAdd(it); uiDirty = true; }
+      return true;
+    }
+    // 槽位过滤下拉变更（data-idx 在下拉元素上）
+    if (btn === 'wf-set' && el && mch) {
+      const idx = parseInt(el.dataset ? el.dataset.idx : -1, 10);
+      const val = el.value;
+      if (!isNaN(idx) && idx >= 0 && mch.setSlotFilter) { mch.setSlotFilter(idx, val || null); uiDirty = true; }
+      return true;
     }
     return true;
   }
@@ -1446,13 +1509,17 @@ DEVICE_PANEL['cargo-wagon'] = {
 DEVICE_PANEL['fluid-wagon'] = {
   html(e) {
     const fc = (typeof e.fluidContents === 'function') ? e.fluidContents() : null;
-    let h = '<div class="dim">流体车厢：挂在车头后随列车移动，可运输任意一种流体（容量 ' + FLUID_WAGON_CAP + '）。可用流体泵从侧边装卸，或面板手动加/取。</div><div class="sec">装载</div>';
+    let h = '<div class="dim">流体车厢：挂在车头后随列车移动，可运输任意一种流体（容量 ' + FLUID_WAGON_CAP + '）。可用流体泵从侧边装卸，或面板手动加/取。可设置<b>流体过滤</b>（对齐《异星工厂》Fluid wagon），设置后仅接受该流体，避免混装。</div><div class="sec">装载</div>';
     if (!fc || fc.count <= 0) h += '<div class="dim">车厢是空的</div>';
     else h += '<div class="row"><span>' + (ITEMS[fc.item] ? ITEMS[fc.item].name : fc.item) + '</span><b>' + fc.count + ' / ' + FLUID_WAGON_CAP + '</b></div>';
     // 手动装卸流体下拉
     const opts = FLUIDS.map(f => '<option value="' + f + '">' + (ITEMS[f] ? ITEMS[f].name : f) + '</option>').join('');
     h += '<div class="rows"><div class="row"><span>装载流体</span><select id="fw-fluid">' + opts + '</select>' +
-      '<button data-act="fw-add">加1000</button><button data-act="fw-take">取1000</button></div></div>';
+      '<button data-act="fw-add">加1000</button><button data-act="fw-take">取1000</button></div>';
+    // 流体过滤设置
+    const fltOpts = FLUIDS.map(f => '<option value="' + f + '"' + (e.fluidFilter === f ? ' selected' : '') + '>' + (ITEMS[f] ? ITEMS[f].name : f) + '</option>').join('');
+    h += '<div class="row"><span>流体过滤</span><select class="wf-sel" data-idx="ff"><option value="">无过滤</option>' + fltOpts + '</select></div>';
+    h += '</div>';
     return h;
   },
   live() { return ''; },
@@ -1474,7 +1541,14 @@ DEVICE_PANEL['fluid-wagon'] = {
       }
       return true;
     }
-    return false;
+    // 流体过滤下拉变更（复用 wf-sel 分发；DOM 元素在第二参）
+    if (btn === 'wf-set' && mch) {
+      const el = e || btn;
+      mch.fluidFilter = (el && el.value) ? el.value : null;
+      uiDirty = true;
+      return true;
+    }
+    return true;
   }
 };
 

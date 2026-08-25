@@ -181,6 +181,7 @@ function renderPanel(full) {
     applyInvRecipeFilter(G.invRecipeQ);
     applyBuildSearch(G.buildDevQ);
     if (typeof fillLogiReqGrid === 'function') fillLogiReqGrid(G.lreqQ || '');
+    if (typeof fillTrashGrid === 'function') fillTrashGrid(G.trashQ || '');
     if (keepFocusId) {
       const inp = document.getElementById(keepFocusId);
       if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
@@ -374,6 +375,27 @@ function htmlInventory() {
   h += '<input id="lreq-search" class="inv-search" type="text" placeholder="搜索物品（设置个人请求）" autocomplete="off">';
   h += '<div id="lreq-grid" class="recgrid"></div>';
   h += '</div>';
+  // ===== 个人垃圾桶（对齐《异星工厂》Trash slots）=====
+  // 玩家标记要“丢弃”的物品后，物流机器人会把这些物品全部带走存回网络（不受请求量影响）。
+  h += '<div class="sec">个人垃圾桶 <span class="dim">（物流机器人带走标记物品存回网络）</span></div>';
+  h += '<div class="logi-req" id="logi-trash">';
+  const trash = G.trashSlots || {};
+  const trashKeys = Object.keys(trash).filter(k => trash[k]);
+  if (!trashKeys.length) {
+    h += '<div class="dim" id="logi-trash-empty">点击下方物品标记为“丢弃”，物流机器人会自动把该物品从你身上带走。用于清理不想保留的杂物（对齐《异星工厂》垃圾桶）。</div>';
+  } else {
+    h += '<div class="dim" id="logi-trash-empty" style="display:none">点击下方物品标记为“丢弃”，物流机器人会自动把该物品从你身上带走。</div>';
+    h += '<div class="chips">';
+    for (const k of trashKeys) {
+      const have = invCount(k);
+      h += '<span class="chip trash-chip" data-tip="' + ITEMS[k].name + '|标记为丢弃，持有 ' + have + '。点击取消" data-trashclear="' + k + '"><img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' <span class="lreq-have">(' + have + ')</span> ×</span>';
+    }
+    h += '</div>';
+  }
+  h += '<div class="dim">标记丢弃：点击下方物品图标。取消：点击上方已标记的物品。</div>';
+  h += '<input id="trash-search" class="inv-search" type="text" placeholder="搜索物品（标记丢弃）" autocomplete="off">';
+  h += '<div id="trash-grid" class="recgrid"></div>';
+  h += '</div>';
   h += '<div class="sec">配方</div>';
   const q = (G.invRecipeQ || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   h += '<input id="inv-recipe-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off" value="' + q + '">';
@@ -518,6 +540,31 @@ function fillLogiReqGrid(q) {
     const req = (G.logiRequest && G.logiRequest[id]) || 0;
     h += '<button class="rcbtn' + (req > 0 ? ' lreq-on' : '') + '" data-lreqitem="' + id + '" data-tip="' + itemTip(id) + (req > 0 ? '（已请求 ' + req + '）' : '') + '">' +
       '<img src="' + iconDataURL(id) + '">' + ITEMS[id].name + (req > 0 ? ' ✓' + req : '') + '</button>';
+  }
+  grid.innerHTML = h;
+  if (!h) {
+    grid.innerHTML = '<div class="dim">没有匹配的物品</div>';
+  }
+}
+
+// 个人垃圾桶：填充可选物品网格并过滤（对齐《异星工厂》Trash slots）
+function fillTrashGrid(q) {
+  const grid = document.getElementById('trash-grid');
+  if (!grid) return;
+  const ql = (q || '').trim().toLowerCase();
+  const ids = Object.keys(ITEMS).filter(id => {
+    if (FLUIDS.indexOf(id) >= 0) return false;
+    if (id.indexOf('creative-') === 0 || id.indexOf('void-') === 0) return false;
+    if (id === 'passive-power') return false;
+    return true;
+  });
+  let h = '';
+  for (const id of ids) {
+    if (ql && !(ITEMS[id].name + ' ' + id).toLowerCase().includes(ql)) continue;
+    const on = (G.trashSlots && G.trashSlots[id]) ? true : false;
+    const have = invCount(id);
+    h += '<button class="rcbtn' + (on ? ' lreq-on trash-on' : '') + '" data-trashitem="' + id + '" data-tip="' + itemTip(id) + (on ? '（已标记丢弃）' : '') + (have > 0 ? '（持有 ' + have + '）' : '') + '">' +
+      '<img src="' + iconDataURL(id) + '">' + ITEMS[id].name + (on ? ' 🗑' : '') + (have > 0 ? ' <span class="lreq-have">(' + have + ')</span>' : '') + '</button>';
   }
   grid.innerHTML = h;
   if (!h) {
@@ -717,6 +764,12 @@ function initPanelEvents() {
       panel.onAction(act, condCtrl);
       return;
     }
+    // 车厢槽位过滤下拉（货运车厢）：交给设备 onAction 写入过滤槽
+    const wfSel = ev.target.closest && ev.target.closest('select.wf-sel');
+    if (wfSel && panel && panel.onAction) {
+      panel.onAction('wf-set', wfSel);
+      return;
+    }
     // 历史页物品选择（datalist 下拉选中）
     const histFilter = ev.target.closest('[data-stat-hist-filter]');
     if (histFilter) {
@@ -742,6 +795,9 @@ function initPanelEvents() {
     } else if (ev.target.id === 'lreq-search') {
       G.lreqQ = ev.target.value;
       if (typeof fillLogiReqGrid === 'function') fillLogiReqGrid(G.lreqQ);
+    } else if (ev.target.id === 'trash-search') {
+      G.trashQ = ev.target.value;
+      if (typeof fillTrashGrid === 'function') fillTrashGrid(G.trashQ);
     } else if (ev.target.id === 'asm-recipe-search') {
       applyAssemblerRecipeFilter(ev.target.value);
     } else if (ev.target.matches && ev.target.matches('[data-stat-hist-filter]')) {
@@ -863,6 +919,32 @@ function initPanelEvents() {
       } else {
         G.logiRequest[item] = Math.min(v, 10000);
         toast('已请求 ' + ITEMS[item].name + ' ×' + G.logiRequest[item] + '，物流机器人将自动送达');
+      }
+      renderPanel(false);
+      return;
+    }
+    // 个人垃圾桶：清除已标记丢弃的物品
+    const trashClear = ev.target.closest('[data-trashclear]');
+    if (trashClear && G.panelMode === 'inv') {
+      const item = trashClear.dataset.trashclear;
+      if (G.trashSlots && G.trashSlots[item]) {
+        delete G.trashSlots[item];
+        toast('已取消对 ' + ITEMS[item].name + ' 的丢弃标记');
+      }
+      renderPanel(false);
+      return;
+    }
+    // 个人垃圾桶：点击物品切换丢弃标记（对齐《异星工厂》Trash slots）
+    const trashPick = ev.target.closest('#trash-grid .rcbtn[data-trashitem]');
+    if (trashPick && G.panelMode === 'inv') {
+      const item = trashPick.dataset.trashitem;
+      if (!G.trashSlots) G.trashSlots = {};
+      if (G.trashSlots[item]) {
+        delete G.trashSlots[item];
+        toast('已取消对 ' + ITEMS[item].name + ' 的丢弃标记');
+      } else {
+        G.trashSlots[item] = true;
+        toast('已标记 ' + ITEMS[item].name + ' 为丢弃，物流机器人将自动带走');
       }
       renderPanel(false);
       return;
@@ -1341,15 +1423,16 @@ function updateHUD(dt, fps) {
   const el = document.getElementById('hud-info');
   const p = G.player;
   const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
-  let hud = '<span title="帧率 (FPS)">' + fps + '</span>   <span title="坐标 (' + tx + ',' + ty + ')">(' + tx + ',' + ty + ')</span>';
+  // HUD 信息项改为可点击：点击弹出详情弹框（替代原先的悬停 title 提示）
+  let hud = '<span class="hud-item" data-hud="fps">' + fps + '</span>   <span class="hud-item" data-hud="coord">(' + tx + ',' + ty + ')</span>';
   if (G.settings.combat) {
     const hp = Math.max(0, Math.round(G.playerHP));
     const hpPct = G.playerHPmax > 0 ? hp / G.playerHPmax : 0;
-    hud += '   <span style="color:' + (hpPct > 0.5 ? '#57e389' : hpPct > 0.25 ? '#ffd23c' : '#ff5b5b') + '" title="生命值">♥ ' + hp + '/' + G.playerHPmax + '</span>';
+    hud += '   <span class="hud-item" data-hud="hp" style="color:' + (hpPct > 0.5 ? '#57e389' : hpPct > 0.25 ? '#ffd23c' : '#ff5b5b') + '">♥ ' + hp + '/' + G.playerHPmax + '</span>';
     // 敌人进化度显示（对齐《异星工厂》Evolution factor）
     const evo = Math.round((G.evolution || 0) * 100);
     const evoColor = evo < 30 ? '#57e389' : evo < 60 ? '#ffd23c' : '#ff5b5b';
-    hud += '   <span style="color:' + evoColor + '" title="敌人进化度：随时间与击杀增长，越高敌人越强">⬆ ' + evo + '%</span>';
+    hud += '   <span class="hud-item" data-hud="evo" style="color:' + evoColor + '">⬆ ' + evo + '%</span>';
   }
   if (G.weapon && isWeapon(G.weapon)) {
     hud += '   🔫 ' + WEAPONS[G.weapon].name;
@@ -1361,7 +1444,7 @@ function updateHUD(dt, fps) {
     const _d = (G.axeDura || 0);
     const _pct = Math.max(0, Math.min(100, Math.round(_d / _max * 100)));
     const _c = _pct > 30 ? '#57e389' : _pct > 10 ? '#ffd23c' : '#ff5b5b';
-    hud += '   <span style="color:' + _c + '" title="' + ITEMS[_ax].name + ' 耐久 ' + _d + '/' + _max + '">⛏ ' + ITEMS[_ax].name + ' ' + _pct + '%</span>';
+    hud += '   <span class="hud-item" data-hud="axe" data-hud-axe="' + _ax + '" style="color:' + _c + '">⛏ ' + ITEMS[_ax].name + ' ' + _pct + '%</span>';
   }
   if (G.armor && isArmor(G.armor)) {
     hud += '   🛡 ' + ARMORS[G.armor].name;
@@ -1400,6 +1483,62 @@ function updateHUD(dt, fps) {
   }
 }
 
+// ===== HUD 详情弹框：点击 HUD 信息项弹出详情及描述（替代原先悬停 title 提示）=====
+function showHudInfo(key, el) {
+  const titleEl = document.getElementById('hud-modal-title');
+  const body = document.getElementById('hud-modal-body');
+  if (!titleEl || !body) return;
+  const tx = Math.floor(G.player.x / TILE), ty = Math.floor(G.player.y / TILE);
+  const hp = Math.max(0, Math.round(G.playerHP));
+  const evo = Math.round((G.evolution || 0) * 100);
+  let title = 'HUD 详情', desc = '', detail = '';
+  if (key === 'fps') {
+    title = '帧率 (FPS)';
+    desc = '每秒渲染的帧数，反映游戏运行流畅度。数值越高画面越流畅，过低则可能卡顿。';
+    detail = '当前帧率：' + (el ? el.textContent : '--') + ' FPS。<br>建议保持 30 FPS 以上以获流畅体验；若持续偏低，可尝试降低画质或关闭其他占资源的窗口。';
+  } else if (key === 'coord') {
+    title = '坐标 (x, y)';
+    desc = '玩家当前所处的地图格子坐标。X 为横向格子编号，Y 为纵向格子编号。';
+    detail = '当前坐标：(' + tx + ', ' + ty + ')。<br>坐标用于定位与记录位置，可在不同区域间往返时作为参照。';
+  } else if (key === 'hp') {
+    title = '生命值 (HP)';
+    desc = '玩家的当前生命值与最大生命值。受到敌人攻击会减少，生命值归零则死亡。';
+    detail = '当前生命值：' + hp + '/' + (G.playerHPmax || 0) + '。<br>生命过低时请尽快远离敌人，使用医疗包、急救箱或进入载具避险恢复。';
+  } else if (key === 'evo') {
+    title = '敌人进化度 (Evolution)';
+    desc = '随时间与击杀不断增长的敌人强度指标。进化度越高，刷出的敌人越强、越容易出现高级变种。';
+    detail = '当前进化度：' + evo + '%。<br>0~30%：敌人较弱；30~60%：中等；60%+：较强。<br>进化度达到 0.9 后解锁巨兽级（Behemoth）敌人（巨兽甲虫/吐痰虫/蠕虫，属性最强）。';
+  } else if (key === 'axe') {
+    const ax = el ? el.getAttribute('data-hud-axe') : null;
+    const nm = (ax && ITEMS[ax]) ? ITEMS[ax].name : (el ? el.textContent.replace(/⛏\s*/, '').split(' ')[0] : '开采工具');
+    const max = (ax && AXE_DURABILITY && AXE_DURABILITY[ax]) ? AXE_DURABILITY[ax] : 1;
+    const d = G.axeDura || 0;
+    title = nm + ' · 耐久度';
+    desc = '当前手持开采工具的耐久度。使用工具采集会消耗耐久，耐久归零则工具损坏失效。';
+    detail = nm + ' 耐久：' + d + ' / ' + max + '。<br>耐久耗尽后需重新制作或更换更耐久的工具（如铁斧、钢斧）以提升采集效率与寿命。';
+  }
+  titleEl.textContent = title;
+  body.innerHTML = '<div class="hud-desc">' + desc + '</div><div class="hud-detail">' + detail + '</div>';
+  document.getElementById('hud-modal').classList.remove('hidden');
+}
+
+function closeHudInfo() {
+  document.getElementById('hud-modal').classList.add('hidden');
+}
+
+function initHudInfo() {
+  document.addEventListener('click', ev => {
+    const item = ev.target && ev.target.closest ? ev.target.closest('#hud-info .hud-item') : null;
+    if (item) {
+      showHudInfo(item.getAttribute('data-hud'), item);
+      ev.stopPropagation();
+    } else if (ev.target && ev.target.id === 'hud-modal-close') {
+      closeHudInfo();
+      ev.stopPropagation();
+    }
+  });
+}
+
 function enemyAtTile(tx, ty) {
   const list = G.enemies || [];
   for (let i = 0; i < list.length; i++) {
@@ -1407,9 +1546,9 @@ function enemyAtTile(tx, ty) {
     if (en.dead) continue;
     // 敌人中心所在格，且按其体型（size）扩大判定到所占范围，鼠标指向其任意身体部分均能识别
     const cx = Math.floor(en.x / TILE), cy = Math.floor(en.y / TILE);
-    // 虫巢为 2×2 占地（对齐《异星工厂》Enemy spawner footprint）：以中心所在格为中心，向四周各覆盖 1 格
+    // 虫巢为 SPAWNER_FOOT×SPAWNER_FOOT 占地：以中心所在格为中心，向四周各覆盖 foot/2 格
     let half;
-    if (en.kind === 'spawner') half = 1;
+    if (en.kind === 'spawner') half = Math.max(0, (en.foot || 4) / 2);
     else half = Math.max(0, Math.ceil((en.size || 6) / TILE) - 1);
     if (Math.abs(tx - cx) <= half && Math.abs(ty - cy) <= half) return en;
   }
@@ -1720,6 +1859,27 @@ function buildDebug() {
       for (const e of G.ents.slice()) removeEnt(e);
       closePanel();
       toast('建筑已清空');
+    }],
+    ['移除当前区域峭壁', () => {
+      // 一键移除当前显示区域内的悬崖峭壁（对齐《异星工厂》峭壁清除，变回草地）
+      const b = (typeof viewBounds === 'function') ? viewBounds() : null;
+      if (!b) { toast('无法获取视口范围'); return; }
+      const minTx = Math.floor(Math.min(b.x0, b.x1) / TILE);
+      const maxTx = Math.floor(Math.max(b.x0, b.x1) / TILE);
+      const minTy = Math.floor(Math.min(b.y0, b.y1) / TILE);
+      const maxTy = Math.floor(Math.max(b.y0, b.y1) / TILE);
+      let cnt = 0;
+      for (let ty = minTy; ty <= maxTy; ty++) {
+        for (let tx = minTx; tx <= maxTx; tx++) {
+          if (getTerrain(tx, ty) === T_CLIFF) {
+            setTerrain(tx, ty, T_GRASS);
+            if (typeof invalidateTerrainChunk === 'function') invalidateTerrainChunk(tx, ty);
+            cnt++;
+          }
+        }
+      }
+      if (typeof uiDirty !== 'undefined') uiDirty = true;
+      toast(cnt ? ('已移除 ' + cnt + ' 格峭壁') : '当前显示区域没有峭壁');
     }],
     ['新地图', () => { newGame(); closePanel(); toast('新地图已生成'); }],
     ['一键完成全部科技', () => {

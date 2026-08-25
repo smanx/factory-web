@@ -47,6 +47,64 @@ html, body {
   pointer-events: none;
 }
 
+/* HUD 信息项：改为可点击（点击弹出详情弹框） */
+#hud-info .hud-item {
+  pointer-events: auto;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 1px 2px;
+  transition: background .15s;
+}
+#hud-info .hud-item:hover { background: rgba(255, 255, 255, .12); }
+
+/* HUD 详情弹框 */
+#hud-modal {
+  position: absolute;
+  top: 46px; left: 10px;
+  width: 320px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(16, 21, 28, .97);
+  border: 1px solid #3a4550;
+  border-radius: 10px;
+  overflow: hidden;
+  z-index: 60;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .5);
+}
+#hud-modal.hidden { display: none; }
+#hud-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 12px;
+  background: #232c38;
+  font-weight: bold;
+  color: #eaf1f8;
+}
+#hud-modal-close {
+  background: none; border: none;
+  color: #98a5b5; font-size: 15px;
+  cursor: pointer; padding: 2px 6px;
+}
+#hud-modal-close:hover { color: #fff; }
+#hud-modal-body {
+  overflow-y: auto;
+  min-height: 0;
+  padding: 12px 14px;
+  color: #cdd6df;
+  font-size: 13px;
+  line-height: 1.55;
+}
+#hud-modal-body .hud-desc { margin-bottom: 6px; }
+#hud-modal-body .hud-detail {
+  color: #7fd4a0;
+  font-size: 12px;
+  border-top: 1px solid #2a3340;
+  padding-top: 6px;
+  margin-top: 6px;
+}
+
 #topright {
   position: absolute;
   top: 10px; right: 10px;
@@ -212,6 +270,10 @@ html, body {
 .lreq-chip:hover { border-color: #ff5b5b; background: rgba(255,91,91,.15); }
 .lreq-have { color: #9ab8d0; font-size: 11px; }
 .lreq-on { border-color: #3a9a4a; box-shadow: 0 0 5px rgba(58,154,74,.4); }
+/* 个人垃圾桶（对齐《异星工厂》Trash slots）：与个人请求同排但在视觉上以橙红区分 */
+.trash-chip { border-color: #d06a3a; background: rgba(208,106,58,.14); cursor: pointer; }
+.trash-chip:hover { border-color: #ff5b5b; background: rgba(255,91,91,.16); }
+.trash-on { border-color: #d06a3a !important; box-shadow: 0 0 5px rgba(208,106,58,.5); }
 .logi-req { margin-bottom: 8px; }
 
 /* 蓝图库 */
