@@ -20,6 +20,9 @@ function itemTip(id, extra) {
   const stack = (typeof stackSize === 'function') ? stackSize(id) : 100;
   let t = it.name + '|' + it.desc + (stack ? '（最大堆叠 ' + stack + '）' : '');
   if (extra) t += (extra[0] === '|' ? '' : '|') + extra;
+  // 可合成物品：在 tooltip 末尾追加合成配方（需求：建造物品悬停显示配方）
+  const recipe = itemRecipeText(id);
+  if (recipe) t += '||' + recipe;
   return t;
 }
 
@@ -171,12 +174,15 @@ function renderPanel(full) {
   const st = full ? 0 : panelScrollTop();
   if (G.panelMode === 'inv') {
     title.textContent = '背包与手工制造';
-    const keepFocus = document.activeElement && document.activeElement.id === 'inv-recipe-search';
+    const keepFocusId = document.activeElement &&
+      (document.activeElement.id === 'inv-recipe-search' || document.activeElement.id === 'build-dev-search') ?
+      document.activeElement.id : null;
     body.innerHTML = htmlInventory();
     applyInvRecipeFilter(G.invRecipeQ);
+    applyBuildSearch(G.buildDevQ);
     if (typeof fillLogiReqGrid === 'function') fillLogiReqGrid(G.lreqQ || '');
-    if (keepFocus) {
-      const inp = document.getElementById('inv-recipe-search');
+    if (keepFocusId) {
+      const inp = document.getElementById(keepFocusId);
       if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
     }
   } else if (G.panelMode === 'tech') {
@@ -257,7 +263,10 @@ function htmlInventory() {
       (id ? '<img src="' + iconDataURL(id) + '">' : '<span>空</span>') + '</div>';
   }
   h += '</div><div class="dim">点一个槽位选中（黄框），再点击下面任意物品图标即可放入该槽位；再点一次同槽位清空。数字键 1-9/0 切换。</div>';
-  h += '<div class="sec">建造设备（点击直接选中放置）</div><div class="recgrid">';
+  h += '<div class="sec">建造设备（点击直接选中放置）</div>';
+  const bdq = (G.buildDevQ || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  h += '<input id="build-dev-search" class="inv-search" type="text" placeholder="搜索建造设备（输入名称）" autocomplete="off" value="' + bdq + '">';
+  h += '<div class="recgrid" id="build-dev-grid">';
   const infinite = !!(G.dbg && G.dbg.infinite);
   // 测试/应急设备（被动供电、创造/虚空箱、创造/虚空管道）仅在开启"无限资源"
   // Debug 模式后才会出现在建造列表；正常游玩不可见、不可获取。
@@ -266,11 +275,13 @@ function htmlInventory() {
     if (dbgOnlyDevices.has(bid) && !infinite) continue;
     const n = invCount(bid);
     const canBuild = infinite || n > 0;
-    h += '<button class="rcbtn"' + (canBuild ? '' : ' disabled style="opacity:.45"') +
-      ' data-itemid="' + bid + '" data-tip="' + itemTip(bid) + '">' +
+    const bsearch = (ITEMS[bid].name + ' ' + bid).toLowerCase();
+    h += '<button class="rcbtn buildbtn"' + (canBuild ? '' : ' disabled style="opacity:.45"') +
+      ' data-itemid="' + bid + '" data-buildsearch="' + bsearch.replace(/"/g, '') + '" data-tip="' + itemTip(bid) + '">' +
       '<img src="' + iconDataURL(bid) + '">' + ITEMS[bid].name + (n > 0 ? ' ×' + n : (infinite ? ' ∞' : '')) + '</button>';
   }
   h += '</div>';
+  h += '<div class="dim" id="build-dev-empty" style="display:none"></div>';
   h += '<div class="sec">护甲</div><div class="armor-row">';
   // 当前穿戴护甲展示与脱卸
   h += '<div class="armor-slot' + (G.armor ? ' equipped' : '') + '" data-tip="' + (G.armor ? (ITEMS[G.armor].name + '|当前穿戴的护甲，点击脱卸') : '未穿戴护甲|护甲可减少所受伤害') + '" data-armor="unequip">' +
@@ -464,6 +475,24 @@ function applyInvRecipeFilter(q) {
   const emp = document.getElementById('inv-recipe-empty');
   if (emp) {
     emp.textContent = ql ? '没有匹配「' + q.trim() + '」的配方' : '没有匹配的配方';
+    emp.style.display = shown ? 'none' : '';
+  }
+}
+
+// 背包「建造设备」列表：按关键字过滤建造设备按钮
+function applyBuildSearch(q) {
+  const body = document.getElementById('panel-body');
+  if (!body) return;
+  const ql = (q || '').trim().toLowerCase();
+  let shown = 0;
+  body.querySelectorAll('#build-dev-grid .buildbtn').forEach(el => {
+    const hit = !ql || el.dataset.buildsearch.includes(ql);
+    el.style.display = hit ? '' : 'none';
+    if (hit) shown++;
+  });
+  const emp = document.getElementById('build-dev-empty');
+  if (emp) {
+    emp.textContent = ql ? '没有匹配「' + q.trim() + '」的建造设备' : '没有匹配的建造设备';
     emp.style.display = shown ? 'none' : '';
   }
 }
@@ -704,6 +733,9 @@ function initPanelEvents() {
     if (ev.target.id === 'inv-recipe-search') {
       G.invRecipeQ = ev.target.value;
       applyInvRecipeFilter(G.invRecipeQ);
+    } else if (ev.target.id === 'build-dev-search') {
+      G.buildDevQ = ev.target.value;
+      applyBuildSearch(G.buildDevQ);
     } else if (ev.target.id === 'lreq-search') {
       G.lreqQ = ev.target.value;
       if (typeof fillLogiReqGrid === 'function') fillLogiReqGrid(G.lreqQ);
@@ -1443,9 +1475,15 @@ function initTooltips() {
     if (!text && ev.target === G.canvas && G.cursorTile)
       text = mapTipAt(G.cursorTile.tx, G.cursorTile.ty);
     if (text) {
-      const p = text.split('|');
+      const parts = text.split('||');
+      const p = parts[0].split('|');
       tip.querySelector('b').textContent = p[0] || '';
-      tip.querySelector('span').textContent = p[1] || '';
+      tip.querySelector('span').textContent = p.slice(1).join('|') || '';
+      const recipeEl = tip.querySelector('#tooltip-recipe');
+      if (recipeEl) {
+        recipeEl.textContent = parts[1] || '';
+        recipeEl.style.display = parts[1] ? '' : 'none';
+      }
       tip.style.display = 'block';
       const r = tip.getBoundingClientRect();
       let x = ev.clientX + 14, y = ev.clientY + 16;

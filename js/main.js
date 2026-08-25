@@ -35,6 +35,7 @@ const G = {
   spawn: { x: 0, y: 0 },
   hbArm: null,
   invRecipeQ: '',
+  buildDevQ: '',     // 背包「建造设备」列表的搜索关键字
   clipboard: null,
   blueprint: null,        // 蓝图数据：{ minX, minY, w, h, ents: [序列化实体...] }
   blueBook: [],           // 蓝图库：保存的多个蓝图 { name, minX, minY, ents }（对齐《异星工厂》蓝图库）

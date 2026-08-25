@@ -744,6 +744,28 @@ function recipeDevice(id) {
 }
 function recipeDeviceName(id) { return DEVICE_NAMES[recipeDevice(id)] || ''; }
 
+// 返回物品作为产物时对应的合成配方描述（用于 tooltip 展示），无配方返回 null。
+function itemRecipeText(id) {
+  let rec = RECIPES[id];
+  let found = !!(rec && rec.inp);
+  if (!found) {
+    const candidates = [REFINERY_RECIPES, CENTRIFUGE_RECIPES];
+    for (const table of candidates) {
+      for (const key in table) {
+        const r = table[key];
+        if (r && r.out && r.out[id] !== undefined) { rec = r; found = true; break; }
+      }
+      if (found) break;
+    }
+  }
+  if (!found || !rec || !rec.inp) return null;
+  if (Object.keys(rec.inp).some(k => FLUIDS.indexOf(k) >= 0)) return null;
+  const inpParts = Object.keys(rec.inp).map(k => (ITEMS[k] ? ITEMS[k].name : k) + "×" + rec.inp[k]);
+  const outParts = Object.keys(rec.out).map(k => (ITEMS[k] ? ITEMS[k].name : k) + (rec.out[k] > 1 ? "×" + rec.out[k] : ""));
+  const dev = recipeDeviceName(id) || "组装机";
+  return "配方（" + dev + "）：" + inpParts.join(" + ") + " → " + outParts.join(" + ");
+}
+
 const BUILD_DEFS = {
   'transport-belt':     { w: 1, h: 1, solid: false },
   'fast-transport-belt': { w: 1, h: 1, solid: false },
