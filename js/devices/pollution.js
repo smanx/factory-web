@@ -67,6 +67,25 @@ function pollutionAggroFactor() {
   return Math.min(1, (ratio - 0.5) / 0.7);        // 0.5倍→0，1.2倍→1
 }
 
+// 计算某设备的模块污染乘数（对齐《异星工厂》：效率模块减少污染、速度/产能模块增加污染）。
+// 计入设备自身装入的模块，以及附近信号塔（Beacon）广播的模块效果（含生效系数，与原版一致）。
+// 返回 ≥0 的乘数：效率模块（eff）每 1 点约 -30% 污染、速度模块（speed）每 1 点约 +50% 污染、
+// 产能模块（prod）每 1 点约 +60% 污染；钳制在 [0.05, 4] 避免归零/爆炸（对齐原版污染有下限）。
+function modulePollutionMult(e) {
+  if (!e) return 1;
+  const mc = moduleCounts(e.modules);
+  let speed = mc.speed, prod = mc.prod, eff = mc.eff;
+  // 并入信号塔广播的模块效果（效率/速度/产能模块经信号塔同样影响污染，对齐原版 Beacon）
+  if (typeof beaconBonus === 'function') {
+    const bb = beaconBonus(e.x, e.y);
+    if (bb) { speed += bb.speed; prod += bb.prod; eff += bb.eff; }
+  }
+  let m = 1 + 0.5 * speed + 0.6 * prod - 0.3 * eff;
+  if (m < 0.05) m = 0.05;
+  if (m > 4) m = 4;
+  return m;
+}
+
 // 扫描一次 G.ents 中所有正在工作的污染源，累加污染值
 function scanPollutionSources(dt) {
   if (!G.ents) return;
@@ -76,7 +95,7 @@ function scanPollutionSources(dt) {
     const rate = POLLUTION_SOURCES[e.type];
     if (!rate) continue;
     // 仅当设备处于工作/运行状态才排放（利用各设备统一的 working 字段）
-    if (e.working) total += rate;
+    if (e.working) total += rate * modulePollutionMult(e);
   }
   if (total > 0) pollute(total * dt);
 }

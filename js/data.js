@@ -248,16 +248,16 @@ const ITEMS = {
   'laser-turret':    { name: '激光炮塔', color: '#d04a5a', desc: '吃电力自动发射激光，无需弹药，射程更远（2×2）' },
   'flamethrower-turret': { name: '火焰炮塔', color: '#d07a2a', desc: '喷射火焰造成持续灼烧伤害，消耗轻油，范围杀伤（2×2）。对齐《异星工厂》Flamethrower turret：以轻油为燃料' },
   // ===== 模块系统（速度/产能/效率各 1-3 级，对齐《异星工厂》Module tiers） =====
-  'speed-module':    { name: '速度模块', color: '#4aa0d0', desc: '装入组装机/电炉/炼油厂等，提高生产速度（+40%），增加耗电' },
-  'speed-module-2':  { name: '速度模块 II', color: '#3a80b0', desc: '二级速度模块：提高生产速度（+80%），增加耗电。需模块工程 II' },
-  'speed-module-3':  { name: '速度模块 III', color: '#2a60a0', desc: '三级速度模块：大幅提高生产速度（+120%），增加耗电。需模块工程 III' },
-  'productivity-module': { name: '产能模块', color: '#57b95c', desc: '装入组装机/电炉等，生产时累积额外产出（每 30 个 +1 免费产出），降低速度并增加耗电' },
-  'productivity-module-2': { name: '产能模块 II', color: '#3a9a4a', desc: '二级产能模块：累积额外产出效率更高（每 20 个 +1 免费产出），降低速度并增加耗电。需模块工程 II' },
-  'productivity-module-3': { name: '产能模块 III', color: '#2a8a3a', desc: '三级产能模块：累积额外产出效率最高（每 15 个 +1 免费产出），降低速度并增加耗电。需模块工程 III' },
+  'speed-module':    { name: '速度模块', color: '#4aa0d0', desc: '装入组装机/电炉/炼油厂等，提高生产速度（+40%），增加耗电与污染排放（对齐《异星工厂》速度模块副作用）' },
+  'speed-module-2':  { name: '速度模块 II', color: '#3a80b0', desc: '二级速度模块：提高生产速度（+80%），增加耗电与污染排放。需模块工程 II' },
+  'speed-module-3':  { name: '速度模块 III', color: '#2a60a0', desc: '三级速度模块：大幅提高生产速度（+120%），增加耗电与污染排放。需模块工程 III' },
+  'productivity-module': { name: '产能模块', color: '#57b95c', desc: '装入组装机/电炉等，生产时累积额外产出（每 30 个 +1 免费产出），降低速度并增加耗电与污染排放' },
+  'productivity-module-2': { name: '产能模块 II', color: '#3a9a4a', desc: '二级产能模块：累积额外产出效率更高（每 20 个 +1 免费产出），降低速度并增加耗电与污染排放。需模块工程 II' },
+  'productivity-module-3': { name: '产能模块 III', color: '#2a8a3a', desc: '三级产能模块：累积额外产出效率最高（每 15 个 +1 免费产出），降低速度并增加耗电与污染排放。需模块工程 III' },
   'beacon':        { name: '信号塔', color: '#5a7a9a', desc: '模块中继塔（3×3，吃电力）：内装 2 个模块，向 9×9 范围内的生产建筑广播模块加成，效果约为信号塔内模块的 ' + '50%' + '。一座信号塔可服务多台生产设备' },
-  'efficiency-module': { name: '效率模块', color: '#8a7ae8', desc: '装入组装机/电炉等，大幅降低生产耗电（每级 -30% 用电，小幅度降速），节能环保' },
-  'efficiency-module-2': { name: '效率模块 II', color: '#6a5ac8', desc: '二级效率模块：更强降低生产耗电（-45% 用电），小幅度降速。需模块工程 II' },
-  'efficiency-module-3': { name: '效率模块 III', color: '#4a3aa8', desc: '三级效率模块：极强降低生产耗电（-60% 用电），小幅度降速。需模块工程 III' },
+  'efficiency-module': { name: '效率模块', color: '#8a7ae8', desc: '装入组装机/电炉等，大幅降低生产耗电（每级 -30% 用电）并减少污染排放（每级约 -30% 污染，对齐《异星工厂》效率模块环保），小幅度降速' },
+  'efficiency-module-2': { name: '效率模块 II', color: '#6a5ac8', desc: '二级效率模块：更强降低生产耗电（-45% 用电）并大幅减少污染排放（约 -45% 污染）。需模块工程 II' },
+  'efficiency-module-3': { name: '效率模块 III', color: '#4a3aa8', desc: '三级效率模块：极强降低生产耗电（-60% 用电）并极大幅减少污染排放（约 -60% 污染）。需模块工程 III' },
   // ===== 火箭发射（终局）=====
   'advanced-circuit':{ name: '高级电路板', color: '#d0608a', desc: '红板，中后期高级电子元件，用于产能模块与电引擎' },
   'engine-unit':     { name: '引擎单元', color: '#8a6a4a', desc: '基础机械动力单元' },
@@ -1052,6 +1052,13 @@ function moduleCounts(modules) {
   }
   return { speed, prod, eff };
 }
+// 模块污染影响标签（对齐《异星工厂》：速度/产能模块增污、效率模块减污）。
+// 供模块面板展示；与 pollution.js 的 modulePollutionMult 使用相同系数保持口径一致。
+function modulePollutionLabel(speed, prod, eff) {
+  const delta = speed * 0.5 + prod * 0.6 - eff * 0.3;
+  if (delta > 0) return '+' + delta.toFixed(1);
+  return delta.toFixed(1);
+}
 // 产能模块累计产出阈值：根据模块等级取最低阈值（更高等级阈值更小 → 产出更快）
 function moduleProdThreshold(modules) {
   let minT = 30;
@@ -1068,7 +1075,7 @@ function modulePanelSection(e) {
   const slot = (typeof e.moduleSlotCount === 'function') ? e.moduleSlotCount() : 4;
   const mc = moduleCounts(e.modules);
   const hasMod = Object.keys(e.modules).length > 0;
-  let h = row('模块', hasMod ? '速度+' + mc.speed.toFixed(1) + ' 产能+' + mc.prod.toFixed(1) + ' 效率-' + mc.eff.toFixed(1) : '<span class="dim">无</span>', 'mod');
+  let h = row('模块', hasMod ? '速度+' + mc.speed.toFixed(1) + ' 产能+' + mc.prod.toFixed(1) + ' 效率-' + mc.eff.toFixed(1) + ' 污染' + modulePollutionLabel(mc.speed, mc.prod, mc.eff) : '<span class="dim">无</span>', 'mod');
   for (const mid of Object.keys(e.modules)) if ((e.modules[mid] || 0) > 0) h += '<span class="dim">' + ITEMS[mid].name + ' x' + e.modules[mid] + '</span> ';
   const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3'];
   for (const mid of order) {
