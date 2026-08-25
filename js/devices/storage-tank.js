@@ -33,9 +33,8 @@ class StorageTank extends CircuitNode {
     const f = this.storedFluid();
     if (!f) return;
     const visited = new Set();
-    // 遍历储液罐可接管的对角接口格，仅向相邻下游设备的流体输入口供流（缓冲库容直接喂给加工设备）。
-    // 储液罐作为缓冲只吸收管道灌入的流体并供给下游设备，不与管道双向搬运（避免来回震荡）。
-    // 与接管道一致：只在一对对角（北西↔南东）的接口格供流，另一对对角（北东↔南西）不可接也不供流。
+    // 储液罐像管道一样互联互通：任一接口进，可从其他接口出。
+    // 只在一对对角（北西↔南东）的 4 个接口格与外界交换流体，另一对对角（北东↔南西）为空不可接。
     for (let gx = this.x; gx < this.x + this.w; gx++) {
       for (let gy = this.y; gy < this.y + this.h; gy++) {
         if (!this.isEdgeCell(gx, gy)) continue;
@@ -43,18 +42,53 @@ class StorageTank extends CircuitNode {
           if (!this.storedFluid()) return;
           const t = entAt(gx + dx, gy + dy);
           if (!t || t === this || visited.has(t)) continue;
-          // 仅允许在对角接口格向外供流（另一对对角为空不可接也不供流）
+          // 仅允许在对角接口格与外界交换流体（另一对对角为空不可接也不供流）
           if (!this.isPortCell(gx + dx, gy + dy)) continue;
-          const isFluidMach = (t instanceof Refinery) || (t instanceof ChemicalPlant) ||
-            (t instanceof Assembler && t.acceptsFluid && t.acceptsFluid(f));
-          if (!isFluidMach) continue;
-          // 仅当 (gx,gy) 命中该设备的某个流体输入口外侧相邻格时才供流（一格一接口）
-          const inCells = (t.fluidInputCells && t.fluidInputCells()) || [];
-          const hit = inCells.some(c => c[0] === gx && c[1] === gy);
-          if (hit && t.giveItem(f)) { this.takeItemOf(f); visited.add(t); }
+          if (t instanceof Pipe) {
+            // 罐与相邻管道双向平衡：罐把流体供给管道（管道也会把流体灌入罐内，二者自动趋平），
+            // 因此从任一接口进，可从其他接口经管道流出。
+            if (this._balanceWith(t, f)) visited.add(t);
+          } else if (t instanceof StorageTank) {
+            // 罐与相邻储液罐自动平衡（互为缓冲库容）
+            if (this._balanceWith(t, f)) visited.add(t);
+          } else {
+            const isFluidMach = (t instanceof Refinery) || (t instanceof ChemicalPlant) ||
+              (t instanceof Assembler && t.acceptsFluid && t.acceptsFluid(f));
+            if (!isFluidMach) continue;
+            // 仅当 (gx,gy) 命中该设备的某个流体输入口外侧相邻格时才供流（一格一接口）
+            const inCells = (t.fluidInputCells && t.fluidInputCells()) || [];
+            const hit = inCells.some(c => c[0] === gx && c[1] === gy);
+            if (hit && t.giveItem(f)) { this.takeItemOf(f); visited.add(t); }
+          }
         }
       }
     }
+  }
+  // 与相邻管道/储液罐按“液位比例”自动平衡：液位高的向液位低的流动，让整条流体网络趋平。
+  // 管道容量(PIPE_CAP)与罐容量(STORAGE_TANK_CAP)相差悬殊，故按比例而非绝对量平衡。
+  // 返回是否发生了流动（供 visited 去重用）。
+  _balanceWith(t, f) {
+    const capT = (t instanceof Pipe) ? PIPE_CAP : STORAGE_TANK_CAP;
+    const theirs = t.fluid[f] || 0;
+    // 防混液：目标已容纳别的流体时拒绝
+    if (t.total() - theirs > 0) return false;
+    // 目标已满：不再灌入
+    if (t.total() >= capT) return false;
+    const mine = this.fluid[f] || 0;
+    if (mine <= 0) return false;
+    // 按液位比例平衡，仅当本罐液位更高时才向目标流动
+    const ratioMine = mine / STORAGE_TANK_CAP;
+    const ratioTheirs = theirs / capT;
+    if (ratioMine <= ratioTheirs) return false;
+    // 期望目标液位 = 两液位均值，折算成目标应增的数量
+    const targetRatio = (ratioMine + ratioTheirs) / 2;
+    const targetAmount = Math.floor(targetRatio * capT);
+    const move = Math.min(targetAmount - theirs, mine, capT - t.total());
+    if (move <= 0) return false;
+    this.fluid[f] -= move;
+    if (this.fluid[f] <= 0) delete this.fluid[f];
+    t.fluid[f] = theirs + move;
+    return true;
   }
   giveItem(item) {
     if (FLUIDS.indexOf(item) < 0) return false;
@@ -173,7 +207,7 @@ function storageTankPanelHtml(e) {
   h += row('容量', e.total() + ' / ' + STORAGE_TANK_CAP, 'cap');
   if (Object.keys(agg).length) h += '<button data-action="takeout" id="btn-tank-takeout">取出全部 (' + e.total() + ')</button>';
   h += '<div class="status"></div>';
-  h += '<div class="dim">储液罐大容量缓冲（' + STORAGE_TANK_CAP + ' 单位），罐内只容纳单一液体/气体。一对对角（北西↔南东）的 4 个面各一只通用流体口，另一对对角为空不可接管：相邻管道会自动把流体灌入罐内，罐也会向相邻炼油厂/化工厂等输入口供料。出入口处会显示当前流体图标。</div>';
+  h += '<div class="dim">储液罐大容量缓冲（' + STORAGE_TANK_CAP + ' 单位），罐内只容纳单一液体/气体。罐像管道一样互联互通：一对对角（北西↔南东）的 4 个通用流体口可进可出，与相邻管道/储液罐按液位自动平衡，任一接口进、可从其他接口出，也能接其他管道或其他储液罐；同时向相邻炼油厂/化工厂等输入口供料。出入口处会显示当前流体图标。</div>';
   h += '<div class="dim">已接入电路网络：罐内流体存量以流体名（如水→water）作为信号输出到所连网络，供组合器/功率开关/机械臂等做按液位自动化（对齐《异星工厂》储液罐电路信号）。</div>';
   return h;
 }
