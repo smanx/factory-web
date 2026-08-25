@@ -314,7 +314,7 @@ class Inserter extends Entity {
   }
   contents() {
     const list = [[this.type, 1]];
-    if (this.holding) list.push([this.holding, 1]);
+    if (this.holding) list.push([this.holding, this.holdingCount || 1]);
     return list;
   }
   serialize() {

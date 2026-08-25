@@ -1798,7 +1798,7 @@ function bindInput() {
       // 因此也排除在“右键取物”之外，右键直接整体拆除（连同洞内/待发的全部物品一起返还）。
       if (G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
         const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
-        if (!(e instanceof Belt) && !(e instanceof Underground) && rightClickPickupAt(G.cursorTile.tx, G.cursorTile.ty)) return;
+        if (!(e instanceof Belt) && !(e instanceof Underground) && !(e instanceof Inserter) && rightClickPickupAt(G.cursorTile.tx, G.cursorTile.ty)) return;
       }
       if (G.cursorTile) deconstructAt(G.cursorTile.tx, G.cursorTile.ty);
     } else if (ev.button === 1) {
