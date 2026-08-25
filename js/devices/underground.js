@@ -157,12 +157,38 @@ class FastUnderground extends Underground {
 }
 
 // ===== 渲染 =====
+// 地下传送带各档配色（基础=黄，高速=红，极速=蓝；对齐传送带/分流器配色）
+function undergroundColors(e) {
+  const fast = e.type === 'fast-underground-belt';
+  const express = e.type === 'express-underground-belt';
+  if (express) {
+    return {
+      in:  { body: '#2e3a52', acc: '#5a9ae0', badge: '#3f78c8' },
+      out: { body: '#26344a', acc: '#6aa5e8', badge: '#3568b0' },
+      idle:{ body: '#2c3544', acc: '#4a6a92', badge: '#4a5a78' },
+    };
+  }
+  if (fast) {
+    return {
+      in:  { body: '#5a2a28', acc: '#e05a4e', badge: '#c04a3a' },
+      out: { body: '#4a302a', acc: '#e07060', badge: '#a84030' },
+      idle:{ body: '#3c4046', acc: '#9a6a60', badge: '#6a4a44' },
+    };
+  }
+  return {
+    in:  { body: '#4a4436', acc: '#e0b23c', badge: '#c9972e' },
+    out: { body: '#3f3c2c', acc: '#d4a230', badge: '#b0852a' },
+    idle:{ body: '#3c4046', acc: '#9a9a70', badge: '#6a6a50' },
+  };
+}
+
 function drawUnderground(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const cx = px + TILE / 2, cy = py + TILE / 2;
   const st = e.isEntrance() ? 'in' : (e.isExit() ? 'out' : 'idle');
-  const bodyCol = st === 'in' ? '#3f3552' : st === 'out' ? '#33405a' : '#3c4046';
-  const accCol = st === 'in' ? '#b39ddb' : st === 'out' ? '#90caf9' : '#9aa0a8';
+  const uc = undergroundColors(e);
+  const bodyCol = uc[st].body;
+  const accCol = uc[st].acc;
 
   ctx.globalAlpha = alpha;
   ctx.save();
@@ -212,7 +238,7 @@ function drawUnderground(ctx, e, gx, gy, dir, alpha) {
   ctx.restore();
 
   const badge = st === 'in' ? '入' : st === 'out' ? '出' : '—';
-  const bcol = st === 'in' ? '#7e4fb0' : st === 'out' ? '#3f78b8' : '#555b64';
+  const bcol = uc[st].badge;
   ctx.fillStyle = bcol;
   rr(ctx, px + 2, py + 2, 15, 13, 3);
   ctx.fill();

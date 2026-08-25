@@ -1,6 +1,6 @@
 'use strict';
 
-// ===== 分流器（含优先级分流器）=====
+// ===== 分流器 =====
 // 性能优化：分流器物品排序比较器提为模块级常量，避免每帧重建闭包（与传送带一致）
 const _splitterItemSortDesc = (a, b) => b.pos - a.pos;
 
@@ -12,7 +12,7 @@ class Splitter extends Belt {
     this.inToggle = 0; // 轮流输入时的切换开关（inPref=-1 时交替放行两输入口，恒为 0/1）
     this.outToggle = false; // 轮流输出：所有物品共享一个开关，全局轮流走两个出口
     this.filter = null; // 可编程分离器过滤：仅放行该物品，其余物品被挡在入口（对齐《异星工厂》Programmable splitter）
-    this.outPref = type === 'priority-splitter' ? 1 : -1; // -1=两出口轮流输出，0/1=优先某侧
+    this.outPref = -1; // -1=两出口轮流输出，0/1=优先某侧（面板可调）
     this._nextInLane = 0; // 无 laneHint 投放（机械臂/地面）的下一装载车道，供双线均衡
     this.applyDir();
   }
@@ -174,7 +174,7 @@ class Splitter extends Belt {
     const e = new this(s.type, s.x, s.y);
     e.dir = s.dir | 0;
     e.applyDir();
-    e.outPref = typeof s.outPref === 'number' ? s.outPref : (e.constructor === PrioritySplitter ? 1 : -1);
+    e.outPref = typeof s.outPref === 'number' ? s.outPref : -1;
     e.inPref = typeof s.inPref === 'number' ? s.inPref : -1;
     e.filter = s.filter || null;
     e.items = (s.items || []).map(a => {
@@ -189,20 +189,13 @@ class Splitter extends Belt {
   }
 }
 
-class PrioritySplitter extends Splitter {
-  constructor(type, x, y) {
-    super(type || 'priority-splitter', x, y);
-    this.outPref = 1;
-  }
-}
-
 // ===== 渲染 =====
 
 // 分流器各档配色（供 drawSplitterBase 使用）
 const SPLITTER_COLORS = {
   normal:  { base: '#4a4436', border: '#26221d', accent: 'rgba(224,178,60,.16)', chev: 'rgba(224,178,60,.8)', running: 'rgba(143,224,143,' },
-  fast:    { base: '#8a4a2a', border: '#4a2415', accent: 'rgba(240,150,80,.2)',  chev: 'rgba(240,150,80,.8)',  running: 'rgba(240,150,80,' },
-  express: { base: '#5a3028', border: '#2e1815', accent: 'rgba(224,90,78,.16)',  chev: 'rgba(224,90,78,.8)',   running: 'rgba(224,120,100,' },
+  fast:    { base: '#5a2a28', border: '#2e1815', accent: 'rgba(224,90,78,.2)',  chev: 'rgba(224,90,78,.8)',  running: 'rgba(224,90,78,' },
+  express: { base: '#2e3a52', border: '#1a2434', accent: 'rgba(90,150,230,.2)', chev: 'rgba(90,150,230,.8)', running: 'rgba(110,160,235,' },
 };
 
 // 统一分流器渲染（替代 drawSplitter / drawExpressSplitter / drawFastSplitter 三个重复函数）
@@ -282,7 +275,7 @@ function drawSplitterBase(ctx, e, gx, gy, dir, alpha, colors, opts) {
   // --- 快速分流器专属：中央分流点脉动光晕 ---
   if (opts && opts.glow && running) {
     const pulse = 0.5 + 0.5 * Math.sin(G.time * 8);
-    ctx.fillStyle = 'rgba(240,170,90,' + (0.18 + 0.18 * pulse).toFixed(2) + ')';
+    ctx.fillStyle = 'rgba(224,90,78,' + (0.18 + 0.18 * pulse).toFixed(2) + ')';
     ctx.beginPath();
     ctx.arc(0, 0, 6 + pulse * 3, 0, Math.PI * 2);
     ctx.fill();
@@ -625,10 +618,6 @@ function splitterTip(e) {
   return '分流器：两出口轮流输出，A/B 车道各自保持' + inInfo + '（R 旋转；点开面板可设输入/输出优先级与过滤）';
 }
 ENT_CLASSES['splitter'] = Splitter;
-ENT_CLASSES['priority-splitter'] = PrioritySplitter;
 DEVICE_RENDER['splitter'] = drawSplitter;
-DEVICE_RENDER['priority-splitter'] = drawSplitter;
 DEVICE_STATUS['splitter'] = splitterStatusFn;
-DEVICE_STATUS['priority-splitter'] = splitterStatusFn;
 DEVICE_PANEL['splitter'] = splitterPanel;
-DEVICE_PANEL['priority-splitter'] = splitterPanel;

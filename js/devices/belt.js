@@ -469,7 +469,7 @@ function drawBeltSideMerge(ctx, e, cx, cy, dir, s, step, alpha, col) {
 
 // 传送带配色解析：普通/快速带为黄橙系，创造带为绿色系，虚空带为暗红系（测试设备）。
 function beltColors(e) {
-  if (e.type === 'fast-transport-belt') return { belt: '#4a3a34', chev: 'rgba(226,102,54,.9)' };
+  if (e.type === 'fast-transport-belt') return { belt: '#4a2a28', chev: 'rgba(224,90,78,.9)' };
   if (e.type === 'creative-belt') return { belt: '#2e6b3a', chev: 'rgba(140,255,175,.9)' };
   if (e.type === 'void-belt') return { belt: '#3a2a28', chev: 'rgba(255,138,128,.9)' };
   return { belt: '#3a3f47', chev: 'rgba(224,178,60,.85)' };

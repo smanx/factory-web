@@ -1845,7 +1845,7 @@ const DBG_GIVE_GROUPS = [
   ]],
   ['物流·传送带', [
     ['transport-belt', 100], ['fast-transport-belt', 100], ['express-transport-belt', 100],
-    ['splitter', 50], ['fast-splitter', 50], ['express-splitter', 50], ['priority-splitter', 50],
+    ['splitter', 50], ['fast-splitter', 50], ['express-splitter', 50],
     ['underground', 50], ['fast-underground-belt', 50], ['express-underground-belt', 50]
   ]],
   ['机械臂', [

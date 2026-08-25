@@ -163,7 +163,7 @@ const ITEMS = {
   'copper-cable': { name: '铜线',   color: '#e8a06a', mark: 'W',  desc: '制造电路板的原料' },
   'green-circuit':{ name: '电路板', color: '#57b95c', mark: 'GC', desc: '自动化与科研的基础元件' },
   'science-pack': { name: '自动化科学包', color: '#d04848', mark: 'SP', desc: '红色科学包，初期的科研消耗品（自动化科学）' },
-  'transport-belt':    { name: '传送带', color: '#e0b23c', desc: '运输物品，R 旋转方向，可拖动铺设' },
+  'transport-belt':    { name: '基础传送带', color: '#e0b23c', desc: '运输物品，R 旋转方向，可拖动铺设' },
   'inserter':          { name: '机械臂', color: '#d8cf4e', desc: '严格单向：臂体侧取货、箭头侧放货（亮色箭头=物流方向）' },
   'burner-inserter':   { name: '燃料机械臂', color: '#c46a3a', desc: '烧煤驱动的机械臂，无需电力，开局即可用；需不断补充煤作燃料（对齐《异星工厂》Burner inserter）' },
   'long-inserter':     { name: '长臂机械臂', color: '#e08a4a', desc: '同机械臂，但取放都延伸到第二格' },
@@ -175,8 +175,8 @@ const ITEMS = {
   'lamp':              { name: '电灯', color: '#e8e4a0', desc: '耗电照明设备（1×1）：通电后在夜间照亮周围区域，让基地在黑暗中清晰可见。夜晚无电时熄灭' },
   'substation':        { name: '变电站', color: '#b0802a', desc: '超大型电线杆（4×4）：连接电力与电路网络，覆盖范围远大于普通电线杆（连接距离约 18 格），用于跨区域组网（对齐《异星工厂》Substation）' },
   'programmable-speaker': { name: '可编程音箱', color: '#a05ad0', desc: '电路网络设备（1×1）：读取所连网络的信号，可在面板设置告警条件与输出信号，满足条件时发光提示，用于信号监控与告警（对齐《异星工厂》Programmable speaker）' },
-  'splitter':          { name: '分流器', color: '#d98f3c', desc: '两入两出：物品轮流流向两个出口（A/B 车道各自保持不混合）；一边堵了自动走另一边。面板可设输入/输出优先级' },
-  'underground':       { name: '地下传送带', color: '#9a7fd6', desc: '同向摆两座（最远6格）自动配对：入口收货钻入地下，出口送回地面向前输出' },
+  'splitter':          { name: '基础分流器', color: '#e0b23c', desc: '两入两出：物品轮流流向两个出口（A/B 车道各自保持不混合）；一边堵了自动走另一边。面板可设输入/输出优先级，并自带筛选功能（指定只放行某物品）' },
+  'underground':       { name: '基础地下传送带', color: '#e0b23c', desc: '同向摆两座（最远6格）自动配对：入口收货钻入地下，出口送回地面向前输出' },
   'steel-plate':       { name: '钢板',   color: '#c9ced6', mark: 'S', desc: '电炉炼铁板产出的高级建材' },
   'boiler':            { name: '锅炉',   color: '#d0743a', desc: '烧煤+水产出蒸汽（3×2）：左右两端各一只蓝口水口，双向进出、水位互通平衡，可从一端进水另一端出、多台同排串联；底边中间白口=出汽口，向下接蒸汽机或蒸汽管道' },
   'steam-engine':      { name: '蒸汽机', color: '#8fb8d0', desc: '蒸汽发电（3×5）：上下两端各一只功能相同的通用汽口，蒸汽可从任意一端进入，多余蒸汽也可从另一端送出，支持首尾串联；供汽越足功率越高，满功率并入全图电网' },
@@ -186,13 +186,12 @@ const ITEMS = {
   'electric-drill':    { name: '电采矿机', color: '#4f7dd3', desc: '免燃料、吃电力开采，速度快于热能采矿机（3×3）' },
   'electric-furnace':  { name: '电炉',   color: '#3fa87e', desc: '免燃料、吃电力冶炼，速度更高，可出钢板（3×3）' },
   'assembling-machine-mk2': { name: '组装机 II', color: '#a05fd0', desc: '吃电力、速度更高的高级组装机（3×3）' },
-  'fast-transport-belt': { name: '快速传送带', color: '#f2c14e', desc: '速度约为普通带的 2 倍（对齐《异星工厂》）' },
-  'fast-underground-belt': { name: '快速地下传送带', color: '#b98ee0', desc: '同向配对距离最远 14 格，速度是快带标准' },
-  'express-transport-belt': { name: '极速传送带', color: '#e05a4e', desc: '速度约为普通带的 3 倍，物流终极档（对齐《异星工厂》）' },
-  'express-underground-belt': { name: '极速地下传送带', color: '#e07a6a', desc: '同向配对距离最远 20 格，速度是极速带标准' },
-  'express-splitter': { name: '极速分流器', color: '#e06048', desc: '同分流器，但吞吐与极速带一致，可输送最快物流' },
-  'fast-splitter':    { name: '快速分流器', color: '#d04a3a', desc: '同分流器，但吞吐与快速带一致，可输送更快的物流（对齐《异星工厂》Fast splitter）' },
-  'priority-splitter': { name: '优先级分流器', color: '#e07b2e', desc: '同分流器，但可通过面板指定优先把货推向一侧；另一侧仅作为溢出通道' },
+  'fast-transport-belt': { name: '高速传送带', color: '#e05a4e', desc: '速度约为基础带的 2 倍（对齐《异星工厂》）' },
+  'fast-underground-belt': { name: '高速地下传送带', color: '#e05a4e', desc: '同向配对距离最远 14 格，速度是高速带标准' },
+  'express-transport-belt': { name: '极速传送带', color: '#4f9fe8', desc: '速度约为基础带的 3 倍，物流终极档（对齐《异星工厂》）' },
+  'express-underground-belt': { name: '极速地下传送带', color: '#4f9fe8', desc: '同向配对距离最远 20 格，速度是极速带标准' },
+  'express-splitter': { name: '极速分流器', color: '#4f9fe8', desc: '同分流器，但吞吐与极速带一致，可输送最快物流' },
+  'fast-splitter':    { name: '高速分流器', color: '#e05a4e', desc: '同分流器，但吞吐与高速带一致，可输送更快的物流（对齐《异星工厂》Fast splitter）' },
   'filter-inserter':   { name: '过滤机械臂', color: '#58b8e8', desc: '同机械臂，可在面板指定只抓取某种物品' },
   'stack-inserter':    { name: '堆叠机械臂', color: '#e8e059', desc: '同机械臂，但可一次性抓取多达 3 个同种物品' },
   'stack-filter-inserter': { name: '堆叠过滤机械臂', color: '#d8e048', desc: '过滤与堆叠二合一：可一次抓取多达 3 个「指定物品」，装卸效率高且精确分类' },
@@ -440,6 +439,14 @@ const RECIPES = {
   'green-circuit':      { time: 0.5, inp: { 'iron-plate': 1, 'copper-cable': 3 },                out: { 'green-circuit': 1 } },
   'science-pack':       { time: 5,   inp: { 'copper-plate': 1, 'iron-gear': 1 },                 out: { 'science-pack': 1 } },
   'transport-belt':     { time: 0.5, inp: { 'iron-plate': 1, 'iron-gear': 1 },                   out: { 'transport-belt': 2 } },
+  'fast-transport-belt': { time: 0.5, inp: { 'transport-belt': 1, 'iron-gear': 1 },                  out: { 'fast-transport-belt': 1 } },  // 对齐官方：1传送带+1齿轮→1
+  'express-transport-belt': { time: 0.5, inp: { 'fast-transport-belt': 1, 'iron-gear': 5 }, out: { 'express-transport-belt': 1 } },
+  'underground':        { time: 1.5, inp: { 'transport-belt': 2, 'iron-gear': 2, 'iron-stick': 5 },       out: { 'underground': 2 } },  // 对齐官方：2传送带+2齿轮+5铁杆→2
+  'fast-underground-belt': { time: 1, inp: { 'underground': 1, 'fast-transport-belt': 2, 'iron-gear': 2 },                  out: { 'fast-underground-belt': 2 } },  // 对齐官方：1地下带+2快带+2齿轮→2
+  'express-underground-belt': { time: 1, inp: { 'fast-underground-belt': 1, 'iron-gear': 10 }, out: { 'express-underground-belt': 1 } },
+  'splitter':           { time: 1,   inp: { 'transport-belt': 2, 'iron-gear': 1, 'iron-stick': 4 },       out: { 'splitter': 1 } },  // 对齐官方：2传送带+1齿轮+4铁杆→1
+  'fast-splitter':   { time: 1, inp: { 'splitter': 1, 'iron-gear': 5 }, out: { 'fast-splitter': 1 } },
+  'express-splitter': { time: 1, inp: { 'fast-transport-belt': 4, 'iron-gear': 10 }, out: { 'express-splitter': 1 } },
   'inserter':           { time: 0.5, inp: { 'iron-plate': 1, 'iron-gear': 1, 'green-circuit': 1 }, out: { 'inserter': 1 } },
   'burner-inserter':    { time: 0.5, inp: { 'iron-plate': 1, 'iron-gear': 1 },                  out: { 'burner-inserter': 1 } },
   'long-inserter':      { time: 0.5, inp: { 'inserter': 1, 'iron-gear': 1 },                             out: { 'long-inserter': 1 } },
@@ -449,17 +456,12 @@ const RECIPES = {
   'storage-chest':      { time: 1,   inp: { 'iron-plate': 8 },                                   out: { 'storage-chest': 1 } },
   'assembling-machine': { time: 2,   inp: { 'iron-plate': 5, 'iron-gear': 2, 'green-circuit': 2 }, out: { 'assembling-machine': 1 } },  // 对齐官方：5铁板+2齿轮+2电路板
   'lab':                { time: 3,   inp: { 'iron-gear': 10, 'green-circuit': 10, 'stone': 10 },   out: { 'lab': 1 } },  // 对齐官方：10齿轮+10电路板+10石头
-  'splitter':           { time: 1,   inp: { 'transport-belt': 2, 'iron-gear': 1, 'iron-stick': 4 },       out: { 'splitter': 1 } },  // 对齐官方：2传送带+1齿轮+4铁杆→1
-  'underground':        { time: 1.5, inp: { 'transport-belt': 2, 'iron-gear': 2, 'iron-stick': 5 },       out: { 'underground': 2 } },  // 对齐官方：2传送带+2齿轮+5铁杆→2
   'boiler':             { time: 1.5, inp: { 'stone': 5, 'iron-plate': 1 },                         out: { 'boiler': 1 } },
   'steam-engine':       { time: 2,   inp: { 'iron-plate': 2, 'iron-gear': 1, 'pipe': 1 },          out: { 'steam-engine': 1 } },
   'offshore-pump':      { time: 1,   inp: { 'iron-plate': 5, 'iron-gear': 1 },                     out: { 'offshore-pump': 1 } },
   'electric-drill':     { time: 2,   inp: { 'iron-plate': 8, 'iron-gear': 3, 'green-circuit': 2 },                     out: { 'electric-drill': 1 } },  // 对齐官方：8铁板+3齿轮+2电路板
   'electric-furnace':   { time: 2.5, inp: { 'steel-plate': 8, 'iron-plate': 5, 'advanced-circuit': 3, 'stone-brick': 2 }, out: { 'electric-furnace': 1 } },
   'assembling-machine-mk2': { time: 3, inp: { 'assembling-machine': 2, 'steel-plate': 2, 'iron-gear': 2, 'green-circuit': 4 }, out: { 'assembling-machine-mk2': 1 } },  // 对齐官方：2组装机I+2钢板+2齿轮+4电路板
-  'fast-transport-belt': { time: 0.5, inp: { 'transport-belt': 1, 'iron-gear': 1 },                  out: { 'fast-transport-belt': 1 } },  // 对齐官方：1传送带+1齿轮→1
-  'fast-underground-belt': { time: 1, inp: { 'underground': 1, 'fast-transport-belt': 2, 'iron-gear': 2 },                  out: { 'fast-underground-belt': 2 } },  // 对齐官方：1地下带+2快带+2齿轮→2
-  'priority-splitter': { time: 1,   inp: { 'splitter': 1, 'iron-gear': 1 },                       out: { 'priority-splitter': 1 } },
   'filter-inserter':   { time: 0.5, inp: { 'inserter': 1, 'green-circuit': 5 },                   out: { 'filter-inserter': 1 } },  // 对齐官方：1机械臂+5电路板
   'stack-inserter':    { time: 0.5, inp: { 'inserter': 1, 'iron-gear': 15 },                       out: { 'stack-inserter': 1 } },  // 对齐官方：1机械臂+15齿轮
   'stack-filter-inserter': { time: 0.5, inp: { 'filter-inserter': 1, 'stack-inserter': 1 }, out: { 'stack-filter-inserter': 1 } },  // 对齐官方：1过滤臂+1堆叠臂
@@ -470,10 +472,6 @@ const RECIPES = {
   'refinery':          { time: 3,   inp: { 'steel-plate': 8, 'iron-gear': 4, 'pipe': 10, 'green-circuit': 5 },      out: { 'refinery': 1 } },
   'chemical-plant':    { time: 4,   inp: { 'steel-plate': 5, 'iron-gear': 5, 'pipe': 10, 'green-circuit': 5 }, out: { 'chemical-plant': 1 } },
   'storage-tank':      { time: 2,   inp: { 'steel-plate': 4, 'iron-gear': 2, 'pipe': 4 }, out: { 'storage-tank': 1 } },
-  'express-transport-belt': { time: 0.5, inp: { 'fast-transport-belt': 1, 'iron-gear': 5 }, out: { 'express-transport-belt': 1 } },
-  'express-underground-belt': { time: 1, inp: { 'fast-underground-belt': 1, 'iron-gear': 10 }, out: { 'express-underground-belt': 1 } },
-  'express-splitter': { time: 1, inp: { 'fast-transport-belt': 4, 'iron-gear': 10 }, out: { 'express-splitter': 1 } },
-  'fast-splitter':   { time: 1, inp: { 'splitter': 1, 'iron-gear': 5 }, out: { 'fast-splitter': 1 } },
   'steel-chest':      { time: 1,   inp: { 'steel-plate': 8 }, out: { 'steel-chest': 1 } },
   // ===== 基础储物箱（木箱→铁箱→钢箱递进，对齐《异星工厂》） =====
   'wooden-chest':     { time: 0.5, inp: { 'wood': 2 }, out: { 'wooden-chest': 1 } },
@@ -818,13 +816,12 @@ const BUILD_DEFS = {
   'transport-belt':     { w: 1, h: 1, solid: false },
   'fast-transport-belt': { w: 1, h: 1, solid: false },
   'express-transport-belt': { w: 1, h: 1, solid: false },
-  'splitter':           { w: 1, h: 2, solid: false, rotSwap: true },
-  'priority-splitter':  { w: 1, h: 2, solid: false, rotSwap: true },
-  'express-splitter':   { w: 1, h: 2, solid: false, rotSwap: true },
-  'fast-splitter':      { w: 1, h: 2, solid: false, rotSwap: true },
   'underground':        { w: 1, h: 1, solid: false },
   'fast-underground-belt': { w: 1, h: 1, solid: false },
   'express-underground-belt': { w: 1, h: 1, solid: false },
+  'splitter':           { w: 1, h: 2, solid: false, rotSwap: true },
+  'fast-splitter':      { w: 1, h: 2, solid: false, rotSwap: true },
+  'express-splitter':   { w: 1, h: 2, solid: false, rotSwap: true },
   'inserter':           { w: 1, h: 1, solid: true },
   'burner-inserter':    { w: 1, h: 1, solid: true },
   'lamp':               { w: 1, h: 1, solid: true },
@@ -916,7 +913,7 @@ const BUILD_DEFS = {
 // HP 归零即被摧毁。无线索设备（传送带/管道/电线等）也有 HP，但敌人优先攻击防御建筑。
 const BUILDING_HP = {
   'transport-belt': 60, 'fast-transport-belt': 100, 'express-transport-belt': 140,
-  'splitter': 80, 'priority-splitter': 100, 'express-splitter': 120, 'fast-splitter': 100,
+  'splitter': 80, 'express-splitter': 120, 'fast-splitter': 100,
   'underground': 60, 'fast-underground-belt': 100, 'express-underground-belt': 140,
   'inserter': 100, 'long-inserter': 100, 'filter-inserter': 100, 'stack-inserter': 100, 'stack-filter-inserter': 100, 'fast-inserter': 100,
   'burner-inserter': 100,

@@ -45,10 +45,10 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
   // 纯 90° 转角：以弯曲圆弧绘制，区分于 T 型转角（复用 belt.js 中的通用转角绘制）。
   // 梯形交汇的转角例外——直接连到直线带，不单独画圆弧。
   if (!beltCornerTrapezoid(e) && drawBeltCorner(ctx, e, gx, gy, dir, alpha,
-    { belt: '#4a2a28', chev: 'rgba(224,90,78,.9)' })) return;
+    { belt: '#2e3a52', chev: 'rgba(90,150,230,.9)' })) return;
   ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#4a2a28';
-  ctx.strokeStyle = '#2a1816';
+  ctx.fillStyle = '#2e3a52';
+  ctx.strokeStyle = '#1a2434';
   ctx.lineWidth = 2;
   function strip(angle, x0, len) {
     ctx.save();
@@ -68,7 +68,7 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
   ctx.beginPath();
   ctx.rect(-TILE / 2 + 3, -TILE / 2 + 3, TILE - 6, TILE - 6);
   ctx.clip();
-  ctx.fillStyle = 'rgba(224,90,78,.9)';
+  ctx.fillStyle = 'rgba(90,150,230,.9)';
   for (let k = -1; k <= 2; k++) {
     const xx = -step + k * step + off;
     tri(ctx, xx - 3, -5, xx - 3, 5, xx + 3, 0);
@@ -80,7 +80,7 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
   const bx = e.x - DX[dir], by = e.y - DY[dir];
   const backBelt = entAt(bx, by);
   const hasBackInput = backBelt instanceof Belt && backBelt.dir === dir;
-  const sideArc = (inp.length === 1 && !hasBackInput) ? [drawBeltSideMerge(ctx, e, cx, cy, dir, inp[0], step, alpha, { belt: '#4a2a28', chev: 'rgba(224,90,78,.9)' })] : [];
+  const sideArc = (inp.length === 1 && !hasBackInput) ? [drawBeltSideMerge(ctx, e, cx, cy, dir, inp[0], step, alpha, { belt: '#2e3a52', chev: 'rgba(90,150,230,.9)' })] : [];
 
   const exitX = DX[dir] * step, exitY = DY[dir] * step;
   // 双列错位：物品沿各自车道流动（与普通带一致）
@@ -132,8 +132,8 @@ function drawExpressUnderground(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const cx = px + TILE / 2, cy = py + TILE / 2;
   const st = e.isEntrance() ? 'in' : (e.isExit() ? 'out' : 'idle');
-  const bodyCol = st === 'in' ? '#5a2a26' : st === 'out' ? '#4a302a' : '#4a3030';
-  const accCol = st === 'in' ? '#e07a6a' : st === 'out' ? '#e08a7a' : '#b07068';
+  const bodyCol = st === 'in' ? '#2e3a52' : st === 'out' ? '#26344a' : '#2c3544';
+  const accCol = st === 'in' ? '#5a9ae0' : st === 'out' ? '#6aa5e8' : '#4a6a92';
   ctx.globalAlpha = alpha;
   ctx.save();
   ctx.translate(cx, cy);
@@ -176,7 +176,7 @@ function drawExpressUnderground(ctx, e, gx, gy, dir, alpha) {
   for (let i = 0; i < n; i++) ctx.fillRect(-9 + i * 3.4, 8, 2.4, 2.4);
   ctx.restore();
   const badge = st === 'in' ? '入' : st === 'out' ? '出' : '—';
-  const bcol = st === 'in' ? '#a04030' : st === 'out' ? '#8a4030' : '#6a5048';
+  const bcol = st === 'in' ? '#3f78c8' : st === 'out' ? '#3568b0' : '#4a5a78';
   ctx.fillStyle = bcol;
   rr(ctx, px + 2, py + 2, 15, 13, 3);
   ctx.fill();
