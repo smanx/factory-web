@@ -1662,7 +1662,14 @@ function loop(ts) {
       if (typeof updateFishing === 'function') updateFishing(dt);   // 钓鱼冷却
       if (typeof updatePersonalPower === 'function') updatePersonalPower(dt);   // 个人电网（装备件）
       if (typeof updateDischargeCooldown === 'function') updateDischargeCooldown(dt);   // 放电防御冷却
-      for (const e of G.ents) if (!e._dead && typeof e.update === 'function') e.update(dt);
+      for (const e of G.ents) {
+        // 性能优化：跳过继承基类空 update 的静态实体（储物箱/门/石墙/铁轨/火车车厢/信号灯/机器人港/物流箱/信号塔/电灯等），
+        // 其逻辑由独立系统（箱子存取/门开合/铁路调度/物流扫描/模块广播等）处理，无需每帧调用空函数。
+        // 调用基类空 update 与跳过完全等价，故不影响任何功能。
+        if (e._dead || typeof e.update !== 'function') continue;
+        if (e.update === Entity.prototype.update) continue;
+        e.update(dt);
+      }
       // 敌人/子弹系统（可在设置中开关战斗）
       if (G.settings.combat) {
         if (typeof resetSpawnerCache === 'function') resetSpawnerCache();   // 每帧失效 spawner 列表缓存（P0 优化）
