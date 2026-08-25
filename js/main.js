@@ -1855,6 +1855,7 @@ function boot() {
     ['joystick', () => initJoystick()],
     ['deconstruct', () => initDeconstructBtn()],
     ['tooltip', () => initTooltips()],
+    ['hudinfo', () => initHudInfo()],
     ['tutorial', () => initTutorial()],
     ['debug', () => buildDebug()],
     ['deathmenu', () => initDeathMenu()],

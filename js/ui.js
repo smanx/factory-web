@@ -1417,15 +1417,16 @@ function updateHUD(dt, fps) {
   const el = document.getElementById('hud-info');
   const p = G.player;
   const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
-  let hud = '<span title="帧率 (FPS)">' + fps + '</span>   <span title="坐标 (' + tx + ',' + ty + ')">(' + tx + ',' + ty + ')</span>';
+  // HUD 信息项改为可点击：点击弹出详情弹框（替代原先的悬停 title 提示）
+  let hud = '<span class="hud-item" data-hud="fps">' + fps + '</span>   <span class="hud-item" data-hud="coord">(' + tx + ',' + ty + ')</span>';
   if (G.settings.combat) {
     const hp = Math.max(0, Math.round(G.playerHP));
     const hpPct = G.playerHPmax > 0 ? hp / G.playerHPmax : 0;
-    hud += '   <span style="color:' + (hpPct > 0.5 ? '#57e389' : hpPct > 0.25 ? '#ffd23c' : '#ff5b5b') + '" title="生命值">♥ ' + hp + '/' + G.playerHPmax + '</span>';
+    hud += '   <span class="hud-item" data-hud="hp" style="color:' + (hpPct > 0.5 ? '#57e389' : hpPct > 0.25 ? '#ffd23c' : '#ff5b5b') + '">♥ ' + hp + '/' + G.playerHPmax + '</span>';
     // 敌人进化度显示（对齐《异星工厂》Evolution factor）
     const evo = Math.round((G.evolution || 0) * 100);
     const evoColor = evo < 30 ? '#57e389' : evo < 60 ? '#ffd23c' : '#ff5b5b';
-    hud += '   <span style="color:' + evoColor + '" title="敌人进化度：随时间与击杀增长，越高敌人越强">⬆ ' + evo + '%</span>';
+    hud += '   <span class="hud-item" data-hud="evo" style="color:' + evoColor + '">⬆ ' + evo + '%</span>';
   }
   if (G.weapon && isWeapon(G.weapon)) {
     hud += '   🔫 ' + WEAPONS[G.weapon].name;
@@ -1437,7 +1438,7 @@ function updateHUD(dt, fps) {
     const _d = (G.axeDura || 0);
     const _pct = Math.max(0, Math.min(100, Math.round(_d / _max * 100)));
     const _c = _pct > 30 ? '#57e389' : _pct > 10 ? '#ffd23c' : '#ff5b5b';
-    hud += '   <span style="color:' + _c + '" title="' + ITEMS[_ax].name + ' 耐久 ' + _d + '/' + _max + '">⛏ ' + ITEMS[_ax].name + ' ' + _pct + '%</span>';
+    hud += '   <span class="hud-item" data-hud="axe" data-hud-axe="' + _ax + '" style="color:' + _c + '">⛏ ' + ITEMS[_ax].name + ' ' + _pct + '%</span>';
   }
   if (G.armor && isArmor(G.armor)) {
     hud += '   🛡 ' + ARMORS[G.armor].name;
@@ -1474,6 +1475,62 @@ function updateHUD(dt, fps) {
   if (cc) {
     cc.onclick = () => { cancelCraftQueue(); toast('已取消制作（返还排队材料）'); };
   }
+}
+
+// ===== HUD 详情弹框：点击 HUD 信息项弹出详情及描述（替代原先悬停 title 提示）=====
+function showHudInfo(key, el) {
+  const titleEl = document.getElementById('hud-modal-title');
+  const body = document.getElementById('hud-modal-body');
+  if (!titleEl || !body) return;
+  const tx = Math.floor(G.player.x / TILE), ty = Math.floor(G.player.y / TILE);
+  const hp = Math.max(0, Math.round(G.playerHP));
+  const evo = Math.round((G.evolution || 0) * 100);
+  let title = 'HUD 详情', desc = '', detail = '';
+  if (key === 'fps') {
+    title = '帧率 (FPS)';
+    desc = '每秒渲染的帧数，反映游戏运行流畅度。数值越高画面越流畅，过低则可能卡顿。';
+    detail = '当前帧率：' + (el ? el.textContent : '--') + ' FPS。<br>建议保持 30 FPS 以上以获流畅体验；若持续偏低，可尝试降低画质或关闭其他占资源的窗口。';
+  } else if (key === 'coord') {
+    title = '坐标 (x, y)';
+    desc = '玩家当前所处的地图格子坐标。X 为横向格子编号，Y 为纵向格子编号。';
+    detail = '当前坐标：(' + tx + ', ' + ty + ')。<br>坐标用于定位与记录位置，可在不同区域间往返时作为参照。';
+  } else if (key === 'hp') {
+    title = '生命值 (HP)';
+    desc = '玩家的当前生命值与最大生命值。受到敌人攻击会减少，生命值归零则死亡。';
+    detail = '当前生命值：' + hp + '/' + (G.playerHPmax || 0) + '。<br>生命过低时请尽快远离敌人，使用医疗包、急救箱或进入载具避险恢复。';
+  } else if (key === 'evo') {
+    title = '敌人进化度 (Evolution)';
+    desc = '随时间与击杀不断增长的敌人强度指标。进化度越高，刷出的敌人越强、越容易出现高级变种。';
+    detail = '当前进化度：' + evo + '%。<br>0~30%：敌人较弱；30~60%：中等；60%+：较强。<br>进化度达到 0.9 后解锁巨兽级（Behemoth）敌人（巨兽甲虫/吐痰虫/蠕虫，属性最强）。';
+  } else if (key === 'axe') {
+    const ax = el ? el.getAttribute('data-hud-axe') : null;
+    const nm = (ax && ITEMS[ax]) ? ITEMS[ax].name : (el ? el.textContent.replace(/⛏\s*/, '').split(' ')[0] : '开采工具');
+    const max = (ax && AXE_DURABILITY && AXE_DURABILITY[ax]) ? AXE_DURABILITY[ax] : 1;
+    const d = G.axeDura || 0;
+    title = nm + ' · 耐久度';
+    desc = '当前手持开采工具的耐久度。使用工具采集会消耗耐久，耐久归零则工具损坏失效。';
+    detail = nm + ' 耐久：' + d + ' / ' + max + '。<br>耐久耗尽后需重新制作或更换更耐久的工具（如铁斧、钢斧）以提升采集效率与寿命。';
+  }
+  titleEl.textContent = title;
+  body.innerHTML = '<div class="hud-desc">' + desc + '</div><div class="hud-detail">' + detail + '</div>';
+  document.getElementById('hud-modal').classList.remove('hidden');
+}
+
+function closeHudInfo() {
+  document.getElementById('hud-modal').classList.add('hidden');
+}
+
+function initHudInfo() {
+  document.addEventListener('click', ev => {
+    const item = ev.target && ev.target.closest ? ev.target.closest('#hud-info .hud-item') : null;
+    if (item) {
+      showHudInfo(item.getAttribute('data-hud'), item);
+      ev.stopPropagation();
+    } else if (ev.target && ev.target.id === 'hud-modal-close') {
+      closeHudInfo();
+      ev.stopPropagation();
+    }
+  });
 }
 
 function enemyAtTile(tx, ty) {
