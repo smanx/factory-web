@@ -328,7 +328,7 @@ class LongInserter extends Inserter {
   }
 }
 
-// 快速机械臂：旋转速度约为普通臂的 2 倍（对齐《异星工厂》Fast inserter），抓取效率更高
+// 高速机械臂：旋转速度约为普通臂的 2 倍（对齐《异星工厂》Fast inserter），抓取效率更高
 class FastInserter extends Inserter {
   constructor(type, x, y) {
     super(type || 'fast-inserter', x, y);
@@ -336,22 +336,10 @@ class FastInserter extends Inserter {
   }
 }
 
-class FilterInserter extends Inserter {
-  constructor(type, x, y) { super(type || 'filter-inserter', x, y); }
-}
-
 class StackInserter extends Inserter {
   constructor(type, x, y) {
     super(type || 'stack-inserter', x, y);
     this.stackMax = 3;   // 一次最多抓取 3 个同种物品
-  }
-}
-
-// 堆叠过滤机械臂：过滤 + 堆叠二合一，一次最多抓取 3 个「指定物品」
-class StackFilterInserter extends Inserter {
-  constructor(type, x, y) {
-    super(type || 'stack-filter-inserter', x, y);
-    this.stackMax = 3;
   }
 }
 
@@ -366,7 +354,7 @@ function drawInserter(ctx, e, gx, gy, dir, alpha) {
   ctx.lineWidth = 2;
   ctx.stroke();
   const long = e.type === 'long-inserter';
-  if ((e.type === 'filter-inserter' || e.type === 'stack-filter-inserter') && e.filter) {
+  if (e.filter) {
     ctx.strokeStyle = '#58b8e8';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -377,8 +365,12 @@ function drawInserter(ctx, e, gx, gy, dir, alpha) {
   const ang = e.armAng !== undefined ? e.armAng : ((dir + 2) % 4) * Math.PI / 2;
   const tipx = cx + Math.cos(ang) * len;
   const tipy = cy + Math.sin(ang) * len;
-  const fast = e.type === 'fast-inserter';
-  ctx.strokeStyle = e.holding ? '#ffe066' : fast ? '#7ec850' : long ? '#e08a4a' : '#b9bec8';
+  const armColor = e.type === 'burner-inserter' ? '#7a7f87'
+    : e.type === 'fast-inserter' ? '#4f9fe8'
+    : e.type === 'long-inserter' ? '#e05a4e'
+    : e.type === 'stack-inserter' ? '#7ec850'
+    : '#e0b23c';
+  ctx.strokeStyle = e.holding ? '#ffe066' : armColor;
   ctx.lineWidth = long ? 5 : 4;
   ctx.lineCap = 'round';
   ctx.beginPath();
@@ -439,17 +431,12 @@ function drawFlowMarks(ctx, e, cx, cy, dir) {
 }
 
 // ===== 面板 =====
-function inserterPanelHtml(e) {
-  return '<div class="dim">机械臂：严格单向搬运。从臂体指向的一侧（灰色圆点）取货，放到地面箭头/亮色箭头的一侧（物流方向）。双列传送带上优先抓取靠近自己一侧的车道，近侧无货时再取远侧。普通臂作用相邻格，长臂作用第二格。R 旋转。</div>' + circuitPanelHtml(e, 'ins') + '<div class="status"></div>';
-}
-function stackInserterPanelHtml(e) {
-  return '<div class="dim">堆叠机械臂：一次最多抓取 3 个同种物品再放下，装卸效率约为普通臂的 3 倍。R 旋转。</div>' + circuitPanelHtml(e, 'ins') + '<div class="status"></div>';
-}
-function filterInserterPanelHtml(e) {
-  let h = '<div class="dim">过滤机械臂：只抓取选中的物品，其余一律不碰。当前：' +
-    (e.filter ? chip(e.filter) : '<span class="dim">未设置</span>') + '</div>';
-  h += '<div class="sec">选择过滤物</div>';
-  if (e.filter) h += '<div class="mrow"><span class="mval"><button data-action="flt-clear">清除过滤（恢复普通抓取）</button></span></div>';
+// 筛选功能：每台机械臂均自带（对齐需求「每个机械臂都自带筛选功能」）。
+// 在面板选择过滤物后，机械臂只抓取该物品，其余一律不碰；清除后恢复抓取任意物品。
+function inserterFilterSectionHtml(e, lead) {
+  let h = lead + (e.filter ? chip(e.filter) : '<span class="dim">未设置</span>') + '</div>';
+  h += '<div class="sec">筛选：只抓取该物品</div>';
+  if (e.filter) h += '<div class="mrow"><span class="mval"><button data-action="flt-clear">清除筛选（恢复抓取任意物品）</button></span></div>';
   h += '<input id="flt-search" class="inv-search" type="text" placeholder="搜索物品（输入名称）" autocomplete="off">';
   h += '<div id="flt-empty" class="dim" style="display:none"></div>';
   h += '<div class="recgrid">';
@@ -459,17 +446,25 @@ function filterInserterPanelHtml(e) {
       '<img src="' + iconDataURL(id) + '">' + name + '</button>';
   }
   h += '</div>';
-  h += circuitPanelHtml(e, 'ins');
-  h += '<div class="status"></div>';
   return h;
 }
-function filterInserterOnAction(act, btn) {
+function inserterPanelHtml(e) {
+  return '<div class="dim">电力机械臂：严格单向搬运。从臂体指向的一侧（灰色圆点）取货，放到地面箭头/亮色箭头的一侧（物流方向）。双列传送带上优先抓取靠近自己一侧的车道，近侧无货时再取远侧。普通臂作用相邻格，加长臂作用第二格。R 旋转。</div>' +
+    inserterFilterSectionHtml(e, '<div class="dim">当前筛选：') +
+    circuitPanelHtml(e, 'ins') + '<div class="status"></div>';
+}
+function stackInserterPanelHtml(e) {
+  return '<div class="dim">集装箱机械臂：一次最多抓取 3 个同种物品再放下，装卸效率约为普通臂的 3 倍。R 旋转。</div>' +
+    inserterFilterSectionHtml(e, '<div class="dim">当前筛选：') +
+    circuitPanelHtml(e, 'ins') + '<div class="status"></div>';
+}
+function inserterFilterOnAction(act, btn) {
   if (act === 'flt') {
-    if (G.panelEnt && (G.panelEnt instanceof FilterInserter || G.panelEnt instanceof StackFilterInserter)) G.panelEnt.filter = btn.dataset.id;
+    if (G.panelEnt instanceof Inserter) G.panelEnt.filter = btn.dataset.id;
     return true;
   }
   if (act === 'flt-clear') {
-    if (G.panelEnt && (G.panelEnt instanceof FilterInserter || G.panelEnt instanceof StackFilterInserter)) G.panelEnt.filter = null;
+    if (G.panelEnt instanceof Inserter) G.panelEnt.filter = null;
     return true;
   }
   return circuitPanelAction('ins', act);
@@ -544,55 +539,25 @@ function inserterStatusFn(e) {
   if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) return 'r';
   return e.holding ? (e.blocked ? 'y' : 'g') : (e.rotating ? 'g' : 'r');
 }
-function stackFilterInserterPanelHtml(e) {
-  let h = '<div class="dim">堆叠过滤机械臂：一次最多抓取 3 个「指定物品」再放下，装卸效率高且精确分类。当前：' +
-    (e.filter ? chip(e.filter) : '<span class="dim">未设置</span>') + '</div>';
-  h += '<div class="sec">选择过滤物</div>';
-  if (e.filter) h += '<div class="mrow"><span class="mval"><button data-action="flt-clear">清除过滤（恢复抓取任意物品）</button></span></div>';
-  h += '<input id="flt-search" class="inv-search" type="text" placeholder="搜索物品（输入名称）" autocomplete="off">';
-  h += '<div id="flt-empty" class="dim" style="display:none"></div>';
-  h += '<div class="recgrid">';
-  for (const id of (typeof filterChoices === 'function' ? filterChoices() : FILTER_CHOICES)) {
-    const name = ITEMS[id]?.name || id;
-    h += '<button class="rcbtn ' + (e.filter === id ? 'sel' : '') + '" data-action="flt" data-id="' + id + '" data-itemid="' + id + '" data-search="' + (name + ' ' + id).toLowerCase() + '">' +
-      '<img src="' + iconDataURL(id) + '">' + name + '</button>';
-  }
-  h += '</div>';
-  h += '<div class="status"></div>';
-  return h;
-}
-
-const inserterPanel = { html: inserterPanelHtml, live: inserterPanelLive, tip: inserterTip, onAction: (a) => circuitPanelAction('ins', a) };
-const stackInserterPanel = { html: stackInserterPanelHtml, live: inserterPanelLive, tip: inserterTip, onAction: (a) => circuitPanelAction('ins', a) };
-const filterInserterPanel = { html: filterInserterPanelHtml, onAction: filterInserterOnAction, live: inserterPanelLive, tip: inserterTip };
-const stackFilterInserterPanel = { html: stackFilterInserterPanelHtml, onAction: filterInserterOnAction, live: inserterPanelLive, tip: inserterTip };
+const inserterPanel = { html: inserterPanelHtml, live: inserterPanelLive, tip: inserterTip, onAction: inserterFilterOnAction };
+const stackInserterPanel = { html: stackInserterPanelHtml, live: inserterPanelLive, tip: inserterTip, onAction: inserterFilterOnAction };
 ENT_CLASSES['inserter'] = Inserter;
 ENT_CLASSES['long-inserter'] = LongInserter;
-ENT_CLASSES['filter-inserter'] = FilterInserter;
 ENT_CLASSES['stack-inserter'] = StackInserter;
-ENT_CLASSES['stack-filter-inserter'] = StackFilterInserter;
 ENT_CLASSES['fast-inserter'] = FastInserter;
 DEVICE_RENDER['inserter'] = drawInserter;
 DEVICE_RENDER['long-inserter'] = drawInserter;
-DEVICE_RENDER['filter-inserter'] = drawInserter;
 DEVICE_RENDER['stack-inserter'] = drawInserter;
-DEVICE_RENDER['stack-filter-inserter'] = drawInserter;
 DEVICE_RENDER['fast-inserter'] = drawInserter;
 DEVICE_STATUS['inserter'] = inserterStatusFn;
 DEVICE_STATUS['long-inserter'] = inserterStatusFn;
-DEVICE_STATUS['filter-inserter'] = inserterStatusFn;
 DEVICE_STATUS['stack-inserter'] = inserterStatusFn;
-DEVICE_STATUS['stack-filter-inserter'] = inserterStatusFn;
 DEVICE_STATUS['fast-inserter'] = inserterStatusFn;
 DEVICE_PANEL['inserter'] = inserterPanel;
 DEVICE_PANEL['long-inserter'] = inserterPanel;
-DEVICE_PANEL['filter-inserter'] = filterInserterPanel;
 DEVICE_PANEL['stack-inserter'] = stackInserterPanel;
-DEVICE_PANEL['stack-filter-inserter'] = stackFilterInserterPanel;
 DEVICE_PANEL['fast-inserter'] = inserterPanel;
 DEVICE_DIR_ROTATE['inserter'] = true;
 DEVICE_DIR_ROTATE['long-inserter'] = true;
-DEVICE_DIR_ROTATE['filter-inserter'] = true;
 DEVICE_DIR_ROTATE['stack-inserter'] = true;
-DEVICE_DIR_ROTATE['stack-filter-inserter'] = true;
 DEVICE_DIR_ROTATE['fast-inserter'] = true;

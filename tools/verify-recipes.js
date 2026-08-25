@@ -154,45 +154,33 @@ check('电动引擎(1引擎+2电路板+1润滑油)',
 
 // ---- 机械臂族（对齐《异星工厂》官方 Wiki）----
 console.log('\n【机械臂族配方对齐官方】');
-// 机械臂：1 铁板 + 1 齿轮 + 1 电路板
-check('机械臂(1铁板+1齿轮+1电路板)',
+// 电力机械臂：1 铁板 + 1 齿轮 + 1 电路板
+check('电力机械臂(1铁板+1齿轮+1电路板)',
   assertRecipeInput('inserter', 'iron-plate', 1) &&
   assertRecipeInput('inserter', 'iron-gear', 1) &&
   assertRecipeInput('inserter', 'green-circuit', 1), true);
-// 快速机械臂：1 机械臂 + 2 铁板（官方：1 inserter + 2 iron-plate）
-check('快速机械臂(1机械臂+2铁板)',
+// 高速机械臂：1 电力机械臂 + 2 铁板（官方：1 inserter + 2 iron-plate）
+check('高速机械臂(1电力机械臂+2铁板)',
   assertRecipeInput('fast-inserter', 'inserter', 1) &&
   assertRecipeInput('fast-inserter', 'iron-plate', 2), true);
-// 长臂机械臂：1 机械臂 + 1 齿轮（官方：1 inserter + 1 iron-gear-wheel）
-check('长臂机械臂(1机械臂+1齿轮)',
+// 加长机械臂：1 电力机械臂 + 1 齿轮（官方：1 inserter + 1 iron-gear-wheel）
+check('加长机械臂(1电力机械臂+1齿轮)',
   assertRecipeInput('long-inserter', 'inserter', 1) &&
   assertRecipeInput('long-inserter', 'iron-gear', 1) &&
   !getRecipeLine('long-inserter').includes('iron-plate'), true);
-// 过滤机械臂：官方 = 1 inserter + 5 electronic circuit
-check('过滤机械臂(1机械臂+5电路板)',
-  assertRecipeInput('filter-inserter', 'inserter', 1) &&
-  assertRecipeInput('filter-inserter', 'green-circuit', 5), true);
-// 堆叠机械臂：官方 = 1 inserter + 15 iron gear wheel
-check('堆叠机械臂(1机械臂+15齿轮)',
+// 集装箱机械臂：官方 = 1 inserter + 15 iron gear wheel
+check('集装箱机械臂(1机械臂+15齿轮)',
   assertRecipeInput('stack-inserter', 'inserter', 1) &&
   assertRecipeInput('stack-inserter', 'iron-gear', 15), true);
-// 堆叠过滤机械臂：官方 = 1 filter + 1 stack（无额外部件）
-check('堆叠过滤机械臂(过滤+堆叠)',
-  assertRecipeInput('stack-filter-inserter', 'filter-inserter', 1) &&
-  assertRecipeInput('stack-filter-inserter', 'stack-inserter', 1) &&
-  !getRecipeLine('stack-filter-inserter').includes('iron-gear'), true);
-
 // ---- 机械臂族配方耗时对齐官方（官方所有机械臂组装配方耗时均为 0.5s）----
 console.log('\n【机械臂族配方耗时对齐官方】');
-// 官方《异星工厂》Wiki：所有机械臂（含燃料/普通/长臂/快速/过滤/堆叠/堆叠过滤）
+// 官方《异星工厂》Wiki：所有机械臂（含热能/电力/加长/高速/集装箱）
 // 在组装机中的配方耗时（crafting time）均为 0.5 秒。
-check('普通机械臂耗时(0.5s)', getRecipeTime('inserter'), 0.5);
-check('燃料机械臂耗时(0.5s)', getRecipeTime('burner-inserter'), 0.5);
-check('长臂机械臂耗时(0.5s)', getRecipeTime('long-inserter'), 0.5);
-check('快速机械臂耗时(0.5s)', getRecipeTime('fast-inserter'), 0.5);
-check('过滤机械臂耗时(0.5s)', getRecipeTime('filter-inserter'), 0.5);
-check('堆叠机械臂耗时(0.5s)', getRecipeTime('stack-inserter'), 0.5);
-check('堆叠过滤机械臂耗时(0.5s)', getRecipeTime('stack-filter-inserter'), 0.5);
+check('电力机械臂耗时(0.5s)', getRecipeTime('inserter'), 0.5);
+check('热能机械臂耗时(0.5s)', getRecipeTime('burner-inserter'), 0.5);
+check('加长机械臂耗时(0.5s)', getRecipeTime('long-inserter'), 0.5);
+check('高速机械臂耗时(0.5s)', getRecipeTime('fast-inserter'), 0.5);
+check('集装箱机械臂耗时(0.5s)', getRecipeTime('stack-inserter'), 0.5);
 
 // ---- 传送带族（对齐《异星工厂》官方 Wiki）----
 console.log('\n【传送带族配方对齐官方】');

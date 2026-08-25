@@ -760,7 +760,7 @@ function drawEntity(ctx, e, gx, gy, dir, alpha) {
 }
 
 // 机械臂类型集合：绘制时置顶，永远显示在传送带/其他设备之上，不被遮挡。
-const IS_INSERTER = { inserter: true, 'long-inserter': true, 'filter-inserter': true, 'stack-inserter': true, 'fast-inserter': true };
+const IS_INSERTER = { inserter: true, 'long-inserter': true, 'stack-inserter': true, 'fast-inserter': true };
 
 const ghostCache = { type: null, ent: null };
 
