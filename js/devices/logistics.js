@@ -266,8 +266,20 @@ function spawnRobotAt(port) {
   return r;
 }
 
-// 确保每个机器人港拥有 roboCap 个机器人
+// 确保每个机器人港拥有 roboCap 个机器人。
+// 优先复用 scanNetwork 已收集的机器人港列表（G.logiNet.ports），避免对 G.ents 重复全量遍历（性能优化）。
 function ensurePortRobots() {
+  const ports = (G.logiNet && G.logiNet.ports) || null;
+  if (ports) {
+    for (const e of ports) {
+      if (e._dead) continue;
+      let mine = 0;
+      for (const r of G.logiRobots) if (r.home === e && !r._dead) mine++;
+      for (let i = mine; i < e.roboCap; i++) spawnRobotAt(e);
+    }
+    return;
+  }
+  // 兜底：尚无缓存时（如物流网络刚解锁、首次调度）再全量遍历一次
   for (const e of G.ents) {
     if (!(e instanceof Roboport) || e._dead) continue;
     let mine = 0;
@@ -525,8 +537,10 @@ function updateLogistics(dt) {
   G.logiNetT += dt;
   if (G.logiNetT >= ROBOT_NET_T) {
     G.logiNetT = 0;
-    ensurePortRobots();
+    // 性能优化：先 scanNetwork 收集机器人港列表到 G.logiNet.ports，
+    // ensurePortRobots 复用该缓存，避免对 G.ents 做两次全量遍历。
     scanNetwork();
+    ensurePortRobots();
   }
   // 更新所有机器人
   for (const r of G.logiRobots) updateRobot(r, dt);

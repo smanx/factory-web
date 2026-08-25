@@ -1387,13 +1387,16 @@ function enemyDesc(en) {
 function mapTipAt(tx, ty) {
   // 显示详情时：鼠标移到某流体出入口图标上，优先显示该流体的具体名称
   if (G.showDetails) {
-    for (const ent of G.ents) {
-      if (ent._dead) continue;
-      const fn = DEVICE_FLUID_ICONS[ent.type];
-      if (!fn) continue;
-      for (const ic of fn(ent)) {
-        if (ic.x === tx && ic.y === ty && ITEMS[ic.fluid]) {
-          return ITEMS[ic.fluid].name + '|' + ITEMS[ic.fluid].desc;
+    // 性能优化：仅检查光标所在格被占位的实体（entAt），替代遍历全部 G.ents 寻找流体图标。
+    // 流体接口图标都在实体自身占地格（含边缘端口格），故 entAt(tx,ty) 命中的实体即为原逻辑中唯一匹配者，行为一致。
+    const _fe = entAt(tx, ty);
+    if (_fe && !_fe._dead) {
+      const fn = DEVICE_FLUID_ICONS[_fe.type];
+      if (fn) {
+        for (const ic of fn(_fe)) {
+          if (ic.x === tx && ic.y === ty && ITEMS[ic.fluid]) {
+            return ITEMS[ic.fluid].name + '|' + ITEMS[ic.fluid].desc;
+          }
         }
       }
     }

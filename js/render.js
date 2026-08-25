@@ -716,6 +716,10 @@ const ghostCache = { type: null, ent: null };
 function _altLabelKey(e) {
   const t = e.type;
   if (e.recipe) return 'r:' + e.recipe;
+  if (t === 'train-stop') {
+    // 车站：以站名 + 装卸清单为指纹（对齐《异星工厂》ALT 模式显示车站装卸内容）
+    return 'st:' + (e.name || '') + ':' + (e.load || []).join(',') + ':' + (e.unload || []).join(',');
+  }
   if (t === 'lab') return 'lab:' + (G.activeTech || '');
   if (t === 'rocket-silo') {
     const inp = e.inp || {};
@@ -753,6 +757,15 @@ function _altLabelText(e) {
     if (!outs.length) return null;
     const nm = outs.map(id => ITEMS[id] ? ITEMS[id].name : id).join('+');
     return (rec.out[outs[0]] > 1 && Object.keys(rec.out).length === 1) ? (nm + ' ×' + rec.out[outs[0]]) : nm;
+  }
+  if (t === 'train-stop') {
+    // 车站：显示站名（如有）与装卸物品清单（对齐《异星工厂》ALT 模式）
+    const parts = [];
+    if (e.name) parts.push(e.name);
+    if ((e.load || []).length) parts.push('装 ' + e.load.map(id => (ITEMS[id] ? ITEMS[id].name : id)).join('/'));
+    if ((e.unload || []).length) parts.push('卸 ' + e.unload.map(id => (ITEMS[id] ? ITEMS[id].name : id)).join('/'));
+    if (!parts.length) return null;
+    return parts.join(' ');
   }
   if (t === 'lab') {
     if (!G.activeTech || !TECHS[G.activeTech]) return null;
