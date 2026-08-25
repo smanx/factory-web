@@ -348,7 +348,7 @@ function updateMining(dt) {
   const t = G.cursorTile;
   if (!t) { p.mining = null; p.mineProg = 0; return; }
   const key = t.tx + ',' + t.ty;
-  if (p.mining !== key) { p.mining = key; p.mineProg = 0; }
+  if (p.mining !== key) { p.mining = key; p.mineProg = 0; mineToastAcc = 0; } // 新一次手动采集从零计数
   if (!withinReach(t.tx, t.ty)) { p.mineProg = 0; return; }
   const ti = getOreType(t.tx, t.ty);
   // 砍树：T_TREE 地形，按住可连续砍伐获得木材（对齐《异星工厂》）
