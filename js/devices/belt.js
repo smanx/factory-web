@@ -84,17 +84,9 @@ class Belt extends Entity {
         // 直通/纯转角沿用源车道；一般侧面交叉（横向搭接进直线带）则进入下游“近侧车道”。
         // 因此尾部空位检查也应对应物品实际进入的那条车道。
         const targetLane = (nb.dir === this.dir || isCorner) ? f.lane : sideOfLane(nb, this.dir);
-        // 侧面交叉（横向搭接/纯转角）在目标车道被占满时，允许回退到另一条车道：
-        // 避免出现“下游 B 线满载、A 线空置，但侧面物品因目标车道(如 B 线)满而整体堵死”
-        // 的死局，使物品能流入空置的 A 线。直通（nb.dir===this.dir）仍严格保持源车道。
-        let laneOk = -1;
-        const tryLanes = (nb.dir === this.dir) ? [targetLane] : [targetLane, 1 - targetLane];
-        for (const tl of tryLanes) {
-          let back = Infinity;
-          for (const o of nb.items) if (nb.laneOf(o) === tl) back = Math.min(back, o.pos);
-          if (back >= BELT_SPACING) { laneOk = tl; break; }
-        }
-        if (laneOk < 0) return false;
+        let back = Infinity;
+        for (const o of nb.items) if (nb.laneOf(o) === targetLane) back = Math.min(back, o.pos);
+        if (back < BELT_SPACING) return false;
       }
       // 纯转角沿用源车道号传入 laneHint，让转角按内/外弧承接两条车道；
       // 一般侧面交叉（横向搭接进直线带）不传 laneHint，交由下游按“近侧车道”
@@ -181,10 +173,8 @@ class Belt extends Entity {
     // 严格只使用该车道，绝不让物品溢出到另一条车道（对齐《异星工厂》：两条线路相互独立，
     // 侧面搭接的物品只走靠近源的那条边，另一条边保持空置）。
     // 仅对“未指定车道的尾部输入”（机械臂/地面物品从带尾投放）保留回退，用于均衡装载。
-    // 例外：侧面交叉（含纯转角）在目标车道被占满时，允许回退到另一条车道，
-    // 避免“B 线满载、A 线空置”时侧面物品整体堵死，使其能流入空置的 A 线。
     const strictLane = (laneHint !== undefined && laneHint !== null) || isSide;
-    const laneTry = (isSide) ? [lane, 1 - lane] : (strictLane ? [lane] : [lane, 1 - lane]);
+    const laneTry = strictLane ? [lane] : [lane, 1 - lane];
     const candidates = isSide ? [0.45, 0] : [0, 0.45];
     for (const l of laneTry) {
       for (const p of candidates) {
