@@ -1372,6 +1372,26 @@ html, body {
   text-shadow: 0 0 6px rgba(255,210,60,.35);
 }
 
+/* 背包面板 tab：材料 / 合成 */
+.inv-tabs { display: flex; gap: 6px; margin: 2px 0 10px; }
+.inv-tab {
+  flex: 1;
+  padding: 7px 4px;
+  background: #20272f;
+  border: 1px solid #3a4657;
+  border-radius: 6px;
+  color: #cdd6df;
+  font-size: 13px;
+  cursor: pointer;
+}
+.inv-tab:hover { background: #2c3644; }
+.inv-tab.active {
+  background: #2c3a52;
+  border-color: #ffd23c;
+  color: #ffd23c;
+  font-weight: bold;
+}
+
 /* 设备面板二级 tab：消耗 / 生产 */
 .mach-tabs { display: flex; gap: 6px; margin: 8px 0; }
 .mach-tab {
