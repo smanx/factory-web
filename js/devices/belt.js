@@ -148,7 +148,7 @@ class Belt extends Entity {
           if (other && this._beltIncoming(this.x + other[0], this.y + other[1]) && this._lastSideIn === side) return false;
         } else {
           const pri = inp[pref];
-          if (pri && this._beltIncoming(this.x + pri[0], this.y + pri[1])) return false;
+          if (pri && this._beltIncoming(this.x + pri[0], this.y + pri[1]) && this._lastSideIn !== pref) return false;
         }
       }
       this._lastSideIn = side;
