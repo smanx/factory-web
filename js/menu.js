@@ -52,9 +52,16 @@
     const cX1 = Math.floor(halfX / CHUNK);
     const cY0 = Math.floor(-halfY / CHUNK);
     const cY1 = Math.floor(halfY / CHUNK);
+    // drawChunkTerrainInto 以 chunk 本地坐标(0..CHUNK*TILE)绘制（与游戏内离屏 chunk
+    // 画布一致），因此直接画到共享画布时须先按 chunk 的世界像素位置平移，否则所有
+    // chunk 都会重叠在屏幕右下 1/4，无法铺满全屏。
+    const CHUNK_PX = CHUNK * TILE;            // 单个 chunk 的像素尺寸
     for (let cy = cY0; cy <= cY1; cy++) {
       for (let cx = cX0; cx <= cX1; cx++) {
+        ctx.save();
+        ctx.translate(cx * CHUNK_PX, cy * CHUNK_PX);
         drawChunkTerrainInto(ctx, cx, cy);
+        ctx.restore();
       }
     }
     ctx.restore();
