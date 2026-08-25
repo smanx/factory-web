@@ -356,19 +356,6 @@ function genChunk(cx, cy) {
     }
   }
 
-  // 峭壁（对齐《异星工厂》Cliff）：低频噪声生成蜿蜒山脊，阻挡通行与建造，可用峭壁炸药清除。
-  // 受地图设置「峭壁」开关控制：关闭时整个世界不生成峭壁。
-  const cliffEnabled = (typeof cliffOn === 'function') ? cliffOn() : true;
-  if (cliffEnabled) {
-    for (let ly = 0; ly < CHUNK; ly++) {
-      for (let lx = 0; lx < CHUNK; lx++) {
-        const idx = ly * CHUNK + lx;
-        if (terrain[idx] !== T_GRASS) continue;
-        if (isCliffTile(ox + lx, oy + ly)) terrain[idx] = T_CLIFF;
-      }
-    }
-  }
-
   const cxn = cx * CHUNK + CHUNK / 2, cyn = cy * CHUNK + CHUNK / 2;
   const dist = Math.hypot(cxn, cyn);
   // 地图大小限制（对齐《异星工厂》地图大小）：超出可探索范围的地块视为边界（不可生成）
@@ -447,6 +434,21 @@ function genChunk(cx, cy) {
       if (terrain[si] === T_GRASS && oreType[si] < 0) {
         growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, 10, 900, ORES.indexOf('iron-ore'));
         break;
+      }
+    }
+  }
+
+  // 峭壁（对齐《异星工厂》Cliff）：低频噪声生成蜿蜒山脊，阻挡通行与建造，可用峭壁炸药清除。
+  // 受地图设置「峭壁」开关控制：关闭时整个世界不生成峭壁。
+  // 放在矿床生成之后：跳过已生成矿石的格子，避免在矿床中间出现悬崖峭壁割裂矿脉。
+  const cliffEnabled = (typeof cliffOn === 'function') ? cliffOn() : true;
+  if (cliffEnabled) {
+    for (let ly = 0; ly < CHUNK; ly++) {
+      for (let lx = 0; lx < CHUNK; lx++) {
+        const idx = ly * CHUNK + lx;
+        if (terrain[idx] !== T_GRASS) continue;
+        if (oreType[idx] >= 0) continue;   // 不覆盖矿石/原油/铀矿，保证矿床中间无峭壁
+        if (isCliffTile(ox + lx, oy + ly)) terrain[idx] = T_CLIFF;
       }
     }
   }
