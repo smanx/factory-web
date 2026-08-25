@@ -121,11 +121,15 @@ const STACK_SIZES = {
   'cargo-wagon': 1, 'fluid-wagon': 1, 'artillery-wagon': 1,
   'light-armor': 1, 'heavy-armor': 1, 'modular-armor': 1, 'power-armor': 1, 'power-armor-mk2': 1,
   'portable-fusion-reactor': 1, 'spidertron-remote': 1,
+  // 弹药单体：炮弹/原子弹堆叠 1（对齐原版 Cannon shell / Atomic bomb / Artillery shell stack=1）
+  'cannon-shell': 1, 'explosive-cannon-shell': 1, 'uranium-cannon-shell': 1, 'artillery-shell': 1, 'atomic-bomb': 1,
   // 原材料：堆叠 50
   'iron-ore': 50, 'copper-ore': 50, 'coal': 50, 'stone': 50, 'uranium-ore': 50,
-  'wood': 50, 'raw-fish': 20, 'stone-brick': 100, 'calcite': 50,
+  'wood': 100, 'raw-fish': 100, 'stone-brick': 100, 'calcite': 50,
   'sulfur': 50, 'uranium-235': 50, 'uranium-238': 50, 'nuclear-fuel': 1, 'uranium-fuel-cell': 1,
   'used-up-uranium-fuel-cell': 50,
+  // 固体燃料/火箭燃料/低密度结构：对齐原版 stack_size（固体燃料 50、火箭燃料 10、低密度结构 10）
+  'solid-fuel': 50, 'rocket-fuel': 10, 'low-density-structure': 10,
   // 流体桶（对齐原版 1 桶 = 1 堆叠）
   'empty-barrel': 10, 'water-barrel': 10, 'steam-barrel': 10, 'crude-oil-barrel': 10,
   'heavy-oil-barrel': 10, 'light-oil-barrel': 10, 'petroleum-gas-barrel': 10,
