@@ -465,7 +465,8 @@ function circuitPanelHtml(e, prefix) {
     '<select id="' + prefix + '-op" class="circ-op">' + ['>', '<', '=', '!=', '>=', '<='].map(o => '<option value="' + o + '"' + (c.op === o ? ' selected' : '') + '>' + o + '</option>').join('') + '</select>' +
     '<input type="number" id="' + prefix + '-cnt" class="circ-cnt" value="' + (c.count || 0) + '" min="-99999" max="99999">' +
     '<button data-action="cb-cond">应用</button></div>' +
-    '<label class="circ-readhand"><input type="checkbox" id="' + prefix + '-rh"' + (c.readHand ? ' checked' : '') + '> 读取手持物品（把机械臂爪上物品数量作为信号输出到电路网络）</label>';
+    '<label class="circ-readhand"><input type="checkbox" id="' + prefix + '-rh"' + (c.readHand ? ' checked' : '') + '> 读取手持物品（把机械臂爪上物品数量作为信号输出到电路网络）</label>' +
+    (prefix === 'belt' ? '<label class="circ-readhand"><input type="checkbox" id="' + prefix + '-rc"' + (c.circuitRead ? ' checked' : '') + '> 读取内容（把传送带上携带的每种物品数量作为信号输出到电路网络，对齐《异星工厂》Belt Read contents）</label>' : '');
   h += '<div class="dim">启用后，仅当所选电路信号满足条件时设备才工作（如铁板信号 ≥ 100 才运转）。</div>';
   return h;
 }
@@ -482,6 +483,8 @@ function circuitPanelAction(prefix, act) {
   c.count = Math.floor(Number(document.getElementById(prefix + '-cnt').value)) || 0;
   const rh = document.getElementById(prefix + '-rh');
   c.readHand = !!(rh && rh.checked);
+  const rc = document.getElementById(prefix + '-rc');
+  if (rc) c.circuitRead = !!(rc && rc.checked);
   uiDirty = true;
   return true;
 }

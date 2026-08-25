@@ -9,7 +9,7 @@ class Belt extends Entity {
     super(type || 'transport-belt', x, y);
     this.items = [];
     // 电路控制（对齐《异星工厂》：传送带接入电路网络，可按信号启停）
-    this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
+    this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1, circuitRead: false };
   }
   // 电路启停：未启用条件时恒运转；启用后仅当附近电路信号满足条件才送带
   circuitEnabled() {
@@ -140,6 +140,12 @@ class Belt extends Entity {
     this.items.splice(this.items.indexOf(best), 1);
     return best.item;
   }
+  // 带上携带的每种物品计数（供电路网络「读取内容」输出信号，对齐《异星工厂》Belt Read contents）
+  countsByItem() {
+    const agg = {};
+    for (const o of this.items) agg[o.item] = (agg[o.item] || 0) + 1;
+    return agg;
+  }
   contents() {
     const list = [[this.type, 1]];
     for (const o of this.items) list.push([o.item, 1]);
@@ -154,7 +160,7 @@ class Belt extends Entity {
   static restore(s) {
     const b = super.restore(s);
     b.items = (s.items || []).map(a => ({ item: a[0], pos: a[1], side: a.length > 2 ? a[2] : -1 }));
-    b.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
+    b.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1, circuitRead: false };
     return b;
   }
 }

@@ -133,6 +133,16 @@ function recomputeCircuit() {
     if (!ent._dead && ent.circuitCond && ent.circuitCond.readHand && ent.holding) readHandIns.push(ent);
   }
 
+  // 传送带「读取内容」（对齐《异星工厂》：Belt 可开启 Read contents，把带上携带的每种物品
+  // 数量作为信号输出到电路网络）。预收集开启 circuitRead 且带上确有物品的传送带（通常极少），
+  // 供各网络分组复用，避免每个分组/节点重复遍历全量 G.ents（性能优化，与 readHand 同模式）。
+  const readBeltList = [];
+  for (const ent of G.ents) {
+    if (ent._dead || !ent.circuitCond || !ent.circuitCond.circuitRead) continue;
+    if (typeof ent.countsByItem !== 'function' && !(ent.items && ent.items.length)) continue;
+    readBeltList.push(ent);
+  }
+
   for (const group of groups) {
     let aggRed = {};
     let aggGreen = {};
@@ -199,6 +209,34 @@ function recomputeCircuit() {
         if (d <= 2) {
           addSignal(aggRed, ent.holding, ent.holdingCount || 1);
           addSignal(aggGreen, ent.holding, ent.holdingCount || 1);
+        }
+      }
+    }
+    // 1f) 传送带「读取内容」（对齐《异星工厂》：Belt Read contents）。
+    //     仅当传送带开启 circuitRead 且带上确有物品时，把带上每种物品数量加入网络信号
+    //     （红线+绿线）。传送带需与任一电路节点相邻（d<=2，与 circuitSignalNear 判定一致）。
+    //     同一分组内多条节点与同一条带相邻时只计一次，避免重复累加（与 readHand 同语义）。
+    const beltCounted = new Set();
+    for (const n of group) {
+      if (!n || n._dead) continue;
+      const nx = n.cx(), ny = n.cy();
+      for (let i = 0; i < readBeltList.length; i++) {
+        const ent = readBeltList[i];
+        if (beltCounted.has(ent)) continue;
+        const d = Math.max(Math.abs(nx - (ent.x + ent.w / 2)), Math.abs(ny - (ent.y + ent.h / 2)));
+        if (d > 2) continue;
+        beltCounted.add(ent);
+        const agg = ent.countsByItem ? ent.countsByItem() : (ent.items || []);
+        const useAgg = {};
+        if (Array.isArray(agg)) {
+          for (const o of agg) useAgg[o.item] = (useAgg[o.item] || 0) + 1;
+        } else {
+          for (const k in agg) useAgg[k] = agg[k];
+        }
+        for (const it in useAgg) {
+          if (!useAgg[it]) continue;
+          addSignal(aggRed, it, useAgg[it]);
+          addSignal(aggGreen, it, useAgg[it]);
         }
       }
     }
