@@ -549,12 +549,21 @@ function drawOreDots(ctx, px, py, itemId, amt, tx, ty) {
 }
 
 // 辅助：把 #rrggbb 颜色转成 'r,g,b' 字符串（用于矿格底色半透明填充）
+// 性能优化：颜色值在运行期基本不变（ITEM 色表恒定），用缓存避免每帧对每个可见矿格重复 slice/parseInt。
+// 纯函数确定性缓存，不影响任何返回结果（仅加速）。
+const _hexRgbCache = {};
 function hexToRgb(hex) {
-  if (hex.charAt(0) === '#') hex = hex.slice(1);
-  if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
-  const n = parseInt(hex, 16);
-  if (isNaN(n)) return '128,128,128';
-  return ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255);
+  const c = _hexRgbCache[hex];
+  if (c !== undefined) return c;
+  let h = hex;
+  if (h.charAt(0) === '#') h = h.slice(1);
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  const n = parseInt(h, 16);
+  let out;
+  if (isNaN(n)) out = '128,128,128';
+  else out = ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255);
+  _hexRgbCache[hex] = out;
+  return out;
 }
 
 function drawGridIfBuilding(ctx) {

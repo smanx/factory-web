@@ -283,15 +283,15 @@ const ITEMS = {
   'destroyer-capsule': { name: '破坏机器人胶囊', color: '#d05a5a', desc: '投掷后释放破坏机器人：主动冲向并摧毁敌人，伤害更高（高级战斗解锁）' },
   // ===== 载具（对齐《异星工厂》Car）=====
   'car':               { name: '装甲车', color: '#8a6a3a', desc: '可驾驶的载具：靠近后按 E 进入驾驶（WASD 更快移动），消耗煤作燃料，E 下车。驾驶时按空格可发射车载机枪（消耗背包弹药），实现边驾驶边战斗（对齐《异星工厂》Car）。自带 ' + VEHICLE_GRIDS.car + '×' + VEHICLE_GRIDS.car + ' 载具装备网格与储物箱，可安装外骨骼等装备件' },
-  'tank':              { name: '坦克', color: '#4a6a3a', desc: '重型战斗载具：装甲更厚、速度较慢，可发射炮弹造成范围伤害。需高级战斗科技。自带 ' + VEHICLE_GRIDS.tank + '×' + VEHICLE_GRIDS.tank + ' 载具装备网格与储物箱' },
+  'tank':              { name: '坦克', color: '#4a6a3a', desc: '重型战斗载具：装甲更厚、速度较慢，可发射炮弹造成范围伤害。需军事科技 III。自带 ' + VEHICLE_GRIDS.tank + '×' + VEHICLE_GRIDS.tank + ' 载具装备网格与储物箱' },
   'cannon-shell':      { name: '炮弹', color: '#8a5a2a', desc: '坦克主炮的弹药，命中后造成范围爆炸伤害' },
   'explosive-cannon-shell': { name: '爆炸炮弹', color: '#d05a2a', desc: '装填高能爆炸物的重型炮弹：命中后造成更大范围、更高伤害的爆炸，供坦克主炮使用（对齐《异星工厂》Explosive cannon shell）' },
   'explosive-uranium-cannon-shell': { name: '铀爆炸炮弹', color: '#9ae07a', desc: '铀-238 制成的终极重型炮弹：兼具铀的穿透杀伤与爆炸的范围杀伤，是坦克最强弹药（对齐《异星工厂》Explosive uranium cannon shell）' },
   // ===== 护甲（对齐《异星工厂》Armor）=====
   'light-armor':       { name: '轻型护甲', color: '#8a8a72', desc: '基础护甲：减少 20% 所受伤害。穿在身上防御敌人' },
-  'heavy-armor':       { name: '重型护甲', color: '#6a6a5a', desc: '高级护甲：减少 45% 所受伤害。需高级战斗科技' },
+  'heavy-armor':       { name: '重型护甲', color: '#6a6a5a', desc: '高级护甲：减少 45% 所受伤害。需军事科技 III' },
   // ===== 终局载具与防御（对齐《异星工厂》Spidertron / Artillery / Landmine）=====
-  'spidertron':        { name: '蜘蛛机器人', color: '#7a6ad0', desc: '终极战斗载具：六足步行机，速度快、可发射导弹并配备车载自动炮塔，无视地形（跨越水/墙）（3×3）' },
+  'spidertron':        { name: '蜘蛛机器人', color: '#7a6ad0', desc: '终极战斗载具：六足步行机，速度快、可发射导弹并配备车载自动炮塔，无视地形（跨越水/墙）（3×3）。需军事科技 IV' },
   'spidertron-remote': { name: '蜘蛛遥控器', color: '#a08ae0', mark: '⌖', desc: '远程遥控蜘蛛机器人的手持设备：选中后点击地图任意位置，命令蜘蛛机器人自主移动到目标点并沿途自动开火（对齐《异星工厂》Spidertron remote）' },
   'land-mine':         { name: '地雷', color: '#8a7a5a', desc: '铺设在地面，敌人踏入时爆炸造成范围伤害。一次性消耗（1×1）' },
   'artillery-turret':  { name: '炮兵连', color: '#7a5a4a', desc: '超远程炮台：消耗炮弹轰击超远距离的敌人，是晚期基地防御的利器（4×4）' },
@@ -878,15 +878,15 @@ function buildingMaxHp(type) { return BUILDING_HP[type] || 100; }
 // ===== 科技解锁要求（建造/武器/模块）=====
 // 物品 -> 所需已完成科技 id。缺少科技时建造/使用会被拦截并提示。
 const TECH_REQ = {
-  'tank': 'advanced-combat',
-  'cannon-shell': 'advanced-combat',
-  'heavy-armor': 'advanced-combat',
-  'spidertron': 'advanced-combat',
-  'spidertron-remote': 'advanced-combat',   // 蜘蛛遥控器需高级战斗科技
+  'tank': 'military3',
+  'cannon-shell': 'military3',
+  'heavy-armor': 'military3',
+  'spidertron': 'military4',
+  'spidertron-remote': 'military4',   // 蜘蛛遥控器需军事科技 IV
   'land-mine': 'land-mine',
-  'artillery-turret': 'advanced-combat',
-  'artillery-shell': 'advanced-combat',
-  'artillery-wagon': 'advanced-combat',
+  'artillery-turret': 'military4',
+  'artillery-shell': 'military4',
+  'artillery-wagon': 'military4',
   'laser-turret': 'laser-turrets',
   'flamethrower-turret': 'flamethrower',
   'rocket-launcher': 'military2',
@@ -1202,10 +1202,9 @@ const TECHS = {
   military:   { name: '军事工程', cost: { 'military-science': 30 }, desc: '解锁机枪炮塔、石墙、弹药（防御体系）', req: [] },
   weapons:    { name: '单兵武器', cost: { 'military-science': 20 }, desc: '解锁手枪、冲锋枪、散弹枪（F 键或空格攻击）', req: ['military'] },
   military2:  { name: '军事科技 II', cost: { 'military-science': 30 }, desc: '解锁战斗散弹枪、火箭筒与穿甲散弹枪弹，强化单兵火力（对齐《异星工厂》Military 2）', req: ['weapons'] },
-  'advanced-combat': { name: '高级战斗', cost: { 'military-science': 40, 'blue-science': 30 }, desc: '解锁坦克、重型护甲、蜘蛛机器人、炮兵连与战斗机器人胶囊，以及更强的远程敌人', req: ['military2', 'electronics'] },
-  // ==== 军事强化科技（对齐《异星工厂》Military 3 / Military 4：逐级强化机枪炮塔伤害）====
-  'military-3': { name: '军事科技 III', cost: { 'military-science': 40, 'blue-science': 30 }, desc: '机枪炮塔伤害 +40%（对齐《异星工厂》Military 3）', req: ['advanced-combat'] },
-  'military-4': { name: '军事科技 IV', cost: { 'military-science': 60, 'blue-science': 40, 'production-science-pack': 30 }, desc: '机枪炮塔伤害额外 +60%，解锁更强大的防御火力（对齐《异星工厂》Military 4）', req: ['military-3'] },
+  military3:  { name: '军事科技 III', cost: { 'military-science': 40, 'blue-science': 30 }, desc: '解锁坦克、炮弹与重型护甲；机枪炮塔伤害 +40%（对齐《异星工厂》Military 3）', req: ['military2', 'electronics'] },
+  military4:  { name: '军事科技 IV', cost: { 'military-science': 60, 'blue-science': 40, 'production-science-pack': 30 }, desc: '解锁蜘蛛机器人、蜘蛛遥控器与炮兵系统；机枪炮塔伤害额外 +60%（对齐《异星工厂》Military 4）', req: ['military3', 'rocket-science'] },
+  'advanced-combat': { name: '高级战斗', cost: { 'military-science': 40, 'blue-science': 30 }, desc: '解锁战斗机器人胶囊、更强的远程敌人，以及激光/火焰炮塔、爆炸物、核能等高级科技的前置', req: ['military3'] },
   explosives: { name: '爆炸物科技', cost: { 'military-science': 30 }, desc: '解锁爆炸火箭弹（更高威力与更大爆炸范围）与更多爆炸类弹药', req: ['advanced-combat'] },
   'laser-turrets': { name: '激光炮塔', cost: { 'military-science': 30, 'blue-science': 30 }, desc: '解锁激光炮塔，无需弹药、靠电力自动攻击（对齐《异星工厂》Laser turret 科技）', req: ['advanced-combat', 'battery'] },
   flamethrower: { name: '火焰科技', cost: { 'military-science': 30, 'blue-science': 30 }, desc: '解锁火焰喷射器、火焰炮塔与火焰弹药，喷射燃烧火焰造成持续灼烧（对齐《异星工厂》Flamethrower 科技）', req: ['advanced-combat', 'oil'] },
@@ -1327,7 +1326,7 @@ function migrateNewTechs(techDone) {
     techDone['steel-processing'] = true;
   }
   if (techDone['oil']) techDone['fluid-handling'] = true;
-  if (techDone['advanced-combat']) techDone['combat-robotics'] = true;
+  if (techDone['advanced-combat']) { techDone['combat-robotics'] = true; techDone['military3'] = true; techDone['military4'] = true; }
   // 兼容旧档：堆叠机械臂/堆叠过滤臂此前无科技门控，组装机 III 此前开局可用；
   // 拆分后分别由「物流 III」与「自动化 III」门控，老玩家补完对应科技避免产线被锁死（对齐《异星工厂》Logistics 3 / Automation 3）。
   if (techDone['logistics2'] || techDone['express']) techDone['logistics3'] = true;
@@ -1781,8 +1780,8 @@ function artilleryRangeMult() {
 // 军事科技 III 使机枪炮塔伤害 +40%，军事科技 IV 额外 +60%（叠加）。
 function turretDamageMult() {
   let m = 1;
-  if (G.techDone && G.techDone['military-3']) m *= 1.4;
-  if (G.techDone && G.techDone['military-4']) m *= 1.6;
+  if (G.techDone && G.techDone['military3']) m *= 1.4;
+  if (G.techDone && G.techDone['military4']) m *= 1.6;
   return m;
 }
 // 火车制动（对齐《异星工厂》Braking force 无限科技）：每级让列车停靠/让行等待时间缩短 15%。
