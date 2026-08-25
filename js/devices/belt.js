@@ -75,12 +75,17 @@ class Belt extends Entity {
     if (nb instanceof Belt) {
       if (!(nb instanceof Splitter)) {
         if (nb.dir === ((this.dir + 2) % 4)) return false;
-        // 检查下游传送带对应车道尾端是否有空位（车道独立判定）
+        // 直通转移沿用源车道；侧面交叉（横向搭接）则进入下游带“近侧车道”。
+        // 因此尾部空位检查也应对应物品实际进入的那条车道。
+        const targetLane = (nb.dir === this.dir) ? f.lane : sideOfLane(nb, this.dir);
         let back = Infinity;
-        for (const o of nb.items) if (nb.laneOf(o) === f.lane) back = Math.min(back, o.pos);
+        for (const o of nb.items) if (nb.laneOf(o) === targetLane) back = Math.min(back, o.pos);
         if (back < BELT_SPACING) return false;
       }
-      if (!nb.acceptItem(f.item, this.dir, this.x, this.y, f.lane)) return false;
+      // 仅直通转移才沿用源车道号；侧面交叉不传 laneHint，交由下游按“近侧车道”
+      // 判定，避免把 A 的车道号误当作 B 的车道号、把物品错放到 B 的远侧车道。
+      const laneHint = (nb.dir === this.dir) ? f.lane : undefined;
+      if (!nb.acceptItem(f.item, this.dir, this.x, this.y, laneHint)) return false;
       this.items.splice(idx, 1);
       return true;
     }
