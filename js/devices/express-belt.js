@@ -239,6 +239,19 @@ function drawExpressSplitter(ctx, e, gx, gy, dir, alpha) {
   ctx.restore();
   // 极速分流器：根据输入/输出传送带连接情况绘制流动箭头动画（复用分流器通用绘制）
   drawSplitterFlow(ctx, e, gx, gy, 'rgba(224,90,78,.8)', alpha);
+  if (e.inPref !== undefined && e.inPref >= 0) {
+    const [lx, ly] = e.laneCenter(e.inPref);
+    ctx.save();
+    ctx.translate(lx, ly);
+    ctx.rotate(dir * Math.PI / 2);
+    ctx.fillStyle = '#ffd23c';
+    tri(ctx, TILE * 0.14, -5, TILE * 0.14, 5, TILE * 0.3, 0);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+  }
   if (e.outPref !== undefined && e.outPref >= 0) {
     const [lx, ly] = e.laneCenter(e.outPref);
     ctx.save();
@@ -338,6 +351,19 @@ function drawFastSplitter(ctx, e, gx, gy, dir, alpha) {
   }
   ctx.restore();
   drawSplitterFlow(ctx, e, gx, gy, 'rgba(240,150,80,.8)', alpha);
+  if (e.inPref !== undefined && e.inPref >= 0) {
+    const [lx, ly] = e.laneCenter(e.inPref);
+    ctx.save();
+    ctx.translate(lx, ly);
+    ctx.rotate(dir * Math.PI / 2);
+    ctx.fillStyle = '#ffd23c';
+    tri(ctx, TILE * 0.14, -5, TILE * 0.14, 5, TILE * 0.3, 0);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+  }
   if (e.outPref !== undefined && e.outPref >= 0) {
     const [lx, ly] = e.laneCenter(e.outPref);
     ctx.save();

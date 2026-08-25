@@ -8,7 +8,8 @@ class Splitter extends Belt {
   constructor(type, x, y) {
     super(type || 'splitter', x, y);
     this.items = [];
-    this.inPref = 0;
+    this.inPref = -1; // 输入优先级：-1=两入口轮流输入，0/1=优先某输入口（对齐《异星工厂》分流器输入优先级）
+    this.inToggle = false; // 轮流输入时的切换开关（inPref=-1 时交替放行两输入口）
     this.outToggle = false; // 轮流输出两个出口的切换开关（普通分流器 -1）
     this.filter = null; // 可编程分离器过滤：仅放行该物品，其余物品被挡在入口（对齐《异星工厂》Programmable splitter）
     this.outPref = type === 'priority-splitter' ? 1 : -1; // -1=两出口轮流输出，0/1=优先某侧
@@ -79,10 +80,11 @@ class Splitter extends Belt {
   acceptItem(item, fromDir, sx, sy, laneHint) {
     // 可编程分离器过滤：设置了过滤物且物品不匹配时，拒绝放行（物品停留在上游传送带）
     if (this.filter && item !== this.filter) return false;
-    let pref = this.inPref;
     const rel = ((fromDir - this.dir) % 4 + 4) % 4;
     // 输入口（顶部 lane0 / 底部 lane1）由上游几何位置确定：
-    // 直通输入按车道垂直位置，侧向输入按横向位置。
+    // 直通输入按车道垂直位置，侧向输入按横向位置；
+    // 无几何信息的投放（机械臂/地面）按输入优先级取起始输入口。
+    let pref = -1;
     if (sx !== undefined && sx !== null) {
       if (rel === 0) {
         const pv = this.laneVec();
@@ -96,15 +98,19 @@ class Splitter extends Belt {
         pref = (scx - ccx) * fv[0] + (scy - ccy) * fv[1] > 0 ? 1 : 0;
       }
     }
-    // 直通输入优先沿用上游 laneHint，保持物品所在 A/B 车道（A 进 A 出）；
-    // 即便该输入口尾部暂时堵塞也拒绝（物品留在上游等待），绝不回退到另一输入口。
+    // 输入优先级调度（对齐《异星工厂》分流器输入优先级）：
+    // - inPref=-1（默认，轮流输入）：两输入口交替放行，避免某口饿死；
+    // - inPref=0/1（优先某输入口）：优先输入口有空间时优先接纳，非优先口暂缓。
+    // 输入口（inPos）始终由物理进入口确定，优先级仅影响无几何信息投放时的起始口与轮流次序。
+    if (pref < 0) pref = this.inPref >= 0 ? this.inPref : (this.inToggle ? 1 : 0);
     const lane = (laneHint !== undefined && laneHint !== null) ? (laneHint === 1 ? 1 : 0) : pref;
     for (let n = 0; n < 2; n++) {
       const l = (pref + n) % 2;
       const blocked = this.items.some(o => o.inPos === l && o.pos < BELT_SPACING);
       if (!blocked) {
         this.items.push({ item, pos: 0, lane, inPos: l });
-        if (rel !== 0 && rel !== 2) this.inPref = 1 - this.inPref;
+        // 轮流输入：放行后切换，使两输入口交替（默认行为）。
+        if (this.inPref === -1) this.inToggle = 1 - this.inToggle;
         return true;
       }
     }
@@ -122,14 +128,16 @@ class Splitter extends Belt {
     return {
       type: this.type, x: this.x, y: this.y, dir: this.dir,
       outPref: this.outPref,
+      inPref: this.inPref,
       filter: this.filter,
       items: this.items.map(o => [o.item, +o.pos.toFixed(3), o.lane, o.outLane === undefined ? -1 : o.outLane, o.inPos === undefined ? o.lane : o.inPos])
     };
   }
-  // 蓝图保留优先输出配置，不复制传送带上的物品
+  // 蓝图保留优先输出/输入配置，不复制传送带上的物品
   blueprint() {
     const s = super.blueprint();
     s.outPref = this.outPref;
+    s.inPref = this.inPref;
     s.filter = this.filter;
     return s;
   }
@@ -138,6 +146,7 @@ class Splitter extends Belt {
     e.dir = s.dir | 0;
     e.applyDir();
     e.outPref = typeof s.outPref === 'number' ? s.outPref : (e.constructor === PrioritySplitter ? 1 : -1);
+    e.inPref = typeof s.inPref === 'number' ? s.inPref : -1;
     e.filter = s.filter || null;
     e.items = (s.items || []).map(a => ({
       item: a[0], pos: a[1], lane: a[2] || 0,
@@ -333,6 +342,20 @@ function drawSplitter(ctx, e, gx, gy, dir, alpha) {
   ctx.restore();
   // 根据输入/输出传送带连接情况绘制流动箭头动画（双入双出交叉分流；单入单出直通）
   drawSplitterFlow(ctx, e, gx, gy, 'rgba(224,178,60,.8)', alpha);
+  // 输入优先级指示：优先输入口一侧绘制指向内的黄色小箭头（inPref>=0）
+  if (e.inPref !== undefined && e.inPref >= 0) {
+    const [lx, ly] = e.laneCenter(e.inPref);
+    ctx.save();
+    ctx.translate(lx, ly);
+    ctx.rotate(dir * Math.PI / 2);
+    ctx.fillStyle = '#ffd23c';
+    tri(ctx, TILE * 0.14, -5, TILE * 0.14, 5, TILE * 0.3, 0);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+  }
   if (e.outPref !== undefined && e.outPref >= 0) {
     const [lx, ly] = e.laneCenter(e.outPref);
     ctx.save();
@@ -391,7 +414,14 @@ function drawSplitter(ctx, e, gx, gy, dir, alpha) {
 // ===== 面板 =====
 function splitterPanelHtml(e) {
   const prefNames = { '-1': '轮流两出口', '0': '优先一侧', '1': '优先另一侧' };
+  const inPrefNames = { '-1': '轮流输入', '0': '优先上方输入', '1': '优先下方输入' };
   let h = '<div class="dim">分流器：两入两出，物品轮流流向两个出口（A 线进仍 A 线出、B 线进仍 B 线出，车道不混合）；一边堵了自动走另一边。R 旋转方向。</div>';
+  h += '<div class="mrow"><span class="mlabel">输入模式</span><span class="mval">';
+  for (const v of [-1, 0, 1]) {
+    h += '<button data-action="sinpref" data-v="' + v + '"' + (e.inPref === v ? ' style="border-color:#ffd23c;color:#ffd23c"' : '') + '>' + inPrefNames[v] + '</button> ';
+  }
+  h += '</span></div>';
+  if (e.inPref >= 0) h += '<div class="dim">带黄色箭头的一侧为优先输入口，优先接纳该口物品。</div>';
   h += '<div class="mrow"><span class="mlabel">输出模式</span><span class="mval">';
   for (const v of [-1, 0, 1]) {
     h += '<button data-action="spref" data-v="' + v + '"' + (e.outPref === v ? ' style="border-color:#ffd23c;color:#ffd23c"' : '') + '>' + prefNames[v] + '</button> ';
@@ -419,6 +449,10 @@ function splitterStatusFn(e) {
   return e.items.some(o => o.pos >= 0.499) ? 'y' : 'g';
 }
 function splitterOnAction(act, btn) {
+  if (act === 'sinpref') {
+    if (G.panelEnt instanceof Splitter) G.panelEnt.inPref = parseInt(btn.dataset.v, 10);
+    return true;
+  }
   if (act === 'spref') {
     if (G.panelEnt instanceof Splitter) G.panelEnt.outPref = parseInt(btn.dataset.v, 10);
     return true;
@@ -445,8 +479,9 @@ function splitterPanelLive(e, api) {
 }
 const splitterPanel = { html: splitterPanelHtml, onAction: splitterOnAction, live: splitterPanelLive, tip: splitterTip };
 function splitterTip(e) {
-  if (e.filter) return '分流器：仅放行「' + ITEMS[e.filter].name + '」' + (e.outPref >= 0 ? '，优先一侧' : '');
-  return '分流器：两出口轮流输出，A/B 车道各自保持（R 旋转；点开面板可设过滤）';
+  const inInfo = e.inPref >= 0 ? '，优先某输入口' : (e.inPref === -1 ? '，轮流输入' : '');
+  if (e.filter) return '分流器：仅放行「' + ITEMS[e.filter].name + '」' + (e.outPref >= 0 ? '，优先一侧' : '') + inInfo;
+  return '分流器：两出口轮流输出，A/B 车道各自保持' + inInfo + '（R 旋转；点开面板可设输入/输出优先级与过滤）';
 }
 ENT_CLASSES['splitter'] = Splitter;
 ENT_CLASSES['priority-splitter'] = PrioritySplitter;
