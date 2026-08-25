@@ -15,6 +15,17 @@ const TANK_SHELL_CAP = 40;       // 内置炮弹容量
 const TANK_COLLIDE = 22;         // 坦克碰撞半径（比车大）
 const TANK_ARMOR = 0.55;         // 驾驶坦克时玩家所受伤害系数（55%）
 const TRUNK_SLOTS = 10;          // 载具储物箱槽位数（对齐《异星工厂》：汽车/坦克/蜘蛛机自带储物箱）
+// ===== 载具燃料显示辅助（对齐《异星工厂》燃料分级：核燃料 > 火箭燃料 > 固体燃料 > 煤）=====
+function vehicleFuelDisplay(e, cap) {
+  let s = '';
+  if ((e.fuelNuclear || 0) > 0) s += '核燃料 ' + e.fuelNuclear;
+  if ((e.fuelRocket || 0) > 0) s += (s ? ' + ' : '') + '火箭燃料 ' + e.fuelRocket;
+  if ((e.fuelSolid || 0) > 0) s += (s ? ' + ' : '') + '固体燃料 ' + e.fuelSolid;
+  if ((e.fuelCoal || 0) > 0) s += (s ? ' + ' : '') + '煤 ' + e.fuelCoal;
+  if (!s) s = '<span class="dim">空</span>';
+  return s + ' / ' + cap;
+}
+
 
 class Car extends Entity {
   constructor(type, x, y) {
@@ -22,6 +33,7 @@ class Car extends Entity {
     this.fuelCoal = 0;          // 内置煤量
     this.fuelSolid = 0;         // 内置固体燃料量
     this.fuelRocket = 0;        // 内置火箭燃料量（最高级燃料，优先烧）
+    this.fuelNuclear = 0;       // 内置核燃料量（终极燃料，最高级优先烧）
     this.dir = 0;               // 0东1南2西3北（车头朝向）
     this.trunk = {};            // 储物箱：{ 物品id: 数量 }（对齐《异星工厂》载具自带储物箱）
     // 载具装备网格（对齐《异星工厂》Vehicle equipment grid）：Car 5×5、Tank 6×6（蜘蛛机用自带的 4×4 网格）
@@ -50,9 +62,10 @@ class Car extends Entity {
   }
   trunkCountOf(item) { return this.trunk[item] || 0; }
   giveItem(item) {
-    if (item === 'rocket-fuel' && this.fuelCoal + this.fuelSolid + this.fuelRocket < (this.fuelCap || CAR_FUEL_CAP)) { this.fuelRocket++; return true; }
-    if (item === 'coal' && this.fuelCoal + this.fuelSolid + this.fuelRocket < (this.fuelCap || CAR_FUEL_CAP)) { this.fuelCoal++; return true; }
-    if (item === 'solid-fuel' && this.fuelCoal + this.fuelSolid + this.fuelRocket < (this.fuelCap || CAR_FUEL_CAP)) { this.fuelSolid++; return true; }
+    if (item === 'nuclear-fuel' && this.fuelCoal + this.fuelSolid + this.fuelRocket + (this.fuelNuclear||0) < (this.fuelCap || CAR_FUEL_CAP)) { this.fuelNuclear++; return true; }
+    if (item === 'rocket-fuel' && this.fuelCoal + this.fuelSolid + this.fuelRocket + (this.fuelNuclear||0) < (this.fuelCap || CAR_FUEL_CAP)) { this.fuelRocket++; return true; }
+    if (item === 'coal' && this.fuelCoal + this.fuelSolid + this.fuelRocket + (this.fuelNuclear||0) < (this.fuelCap || CAR_FUEL_CAP)) { this.fuelCoal++; return true; }
+    if (item === 'solid-fuel' && this.fuelCoal + this.fuelSolid + this.fuelRocket + (this.fuelNuclear||0) < (this.fuelCap || CAR_FUEL_CAP)) { this.fuelSolid++; return true; }
     // 其余物品放入储物箱
     return this.trunkGiveItem(item);
   }
@@ -61,17 +74,20 @@ class Car extends Entity {
   countOf(item) {
     if (item === 'coal') return this.fuelCoal;
     if (item === 'solid-fuel') return this.fuelSolid;
+    if (item === 'nuclear-fuel') return this.fuelNuclear;
     if (item === 'rocket-fuel') return this.fuelRocket;
     return this.trunkCountOf(item);
   }
   takeItemOf(item) {
     if (item === 'coal' && this.fuelCoal > 0) { this.fuelCoal--; return 'coal'; }
     if (item === 'solid-fuel' && this.fuelSolid > 0) { this.fuelSolid--; return 'solid-fuel'; }
+    if (item === 'nuclear-fuel' && this.fuelNuclear > 0) { this.fuelNuclear--; return 'nuclear-fuel'; }
     if (item === 'rocket-fuel' && this.fuelRocket > 0) { this.fuelRocket--; return 'rocket-fuel'; }
     return this.trunkTakeItemOf(item);
   }
   contents() {
     const list = [[this.type, 1]];
+    if (this.fuelNuclear > 0) list.push(['nuclear-fuel', this.fuelNuclear]);
     if (this.fuelRocket > 0) list.push(['rocket-fuel', this.fuelRocket]);
     if (this.fuelSolid > 0) list.push(['solid-fuel', this.fuelSolid]);
     if (this.fuelCoal > 0) list.push(['coal', this.fuelCoal]);
@@ -80,18 +96,20 @@ class Car extends Entity {
   }
   takeAll() {
     const rows = [];
+    if (this.fuelNuclear > 0) rows.push(['nuclear-fuel', this.fuelNuclear]);
     if (this.fuelRocket > 0) rows.push(['rocket-fuel', this.fuelRocket]);
     if (this.fuelSolid > 0) rows.push(['solid-fuel', this.fuelSolid]);
     if (this.fuelCoal > 0) rows.push(['coal', this.fuelCoal]);
     for (const k in this.trunk) if (this.trunk[k] > 0) rows.push([k, this.trunk[k]]);
-    this.fuelCoal = 0; this.fuelSolid = 0; this.fuelRocket = 0; this.trunk = {};
+    this.fuelCoal = 0; this.fuelSolid = 0; this.fuelRocket = 0; this.fuelNuclear = 0; this.trunk = {};
     return rows;
   }
   // 行驶时烧燃料：优先烧固体燃料（更耐用），其次烧煤
   // 受「燃料效率」无限科技影响：乘 fuelConsumptionMult()（<1）让每单位燃料更耐用
   burnFuel(n) {
     n *= fuelConsumptionMult();
-    if (this.fuelRocket > 0) this.fuelRocket = Math.max(0, this.fuelRocket - n);
+    if (this.fuelNuclear > 0) this.fuelNuclear = Math.max(0, this.fuelNuclear - n);
+    else if (this.fuelRocket > 0) this.fuelRocket = Math.max(0, this.fuelRocket - n);
     else if (this.fuelSolid > 0) this.fuelSolid = Math.max(0, this.fuelSolid - n);
     else this.fuelCoal = Math.max(0, this.fuelCoal - n);
   }
@@ -233,11 +251,11 @@ class Car extends Entity {
     this.equipEnergy -= absorb * 5;
     return Math.max(0, dmg - absorb);
   }
-  serialize() { const s = super.serialize(); s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket; if (Object.keys(this.trunk).length) s.trunk = this.trunk; if (this.equipGrid && this.equipGrid.length) s.carEquip = this.equipGrid; s.carEnergy = this.equipEnergy || 0; return s; }
-  blueprint() { const s = super.blueprint(); s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket; if (Object.keys(this.trunk).length) s.trunk = this.trunk; if (this.equipGrid && this.equipGrid.length) s.carEquip = this.equipGrid; s.carEnergy = this.equipEnergy || 0; return s; }
+  serialize() { const s = super.serialize(); s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket; s.fuelNuclear = this.fuelNuclear; if (Object.keys(this.trunk).length) s.trunk = this.trunk; if (this.equipGrid && this.equipGrid.length) s.carEquip = this.equipGrid; s.carEnergy = this.equipEnergy || 0; return s; }
+  blueprint() { const s = super.blueprint(); s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket; s.fuelNuclear = this.fuelNuclear; if (Object.keys(this.trunk).length) s.trunk = this.trunk; if (this.equipGrid && this.equipGrid.length) s.carEquip = this.equipGrid; s.carEnergy = this.equipEnergy || 0; return s; }
   static restore(s) {
     const c = super.restore(s);
-    c.fuelCoal = s.fuelCoal || 0; c.fuelSolid = s.fuelSolid || 0; c.fuelRocket = s.fuelRocket || 0;
+    c.fuelCoal = s.fuelCoal || 0; c.fuelSolid = s.fuelSolid || 0; c.fuelRocket = s.fuelRocket || 0; c.fuelNuclear = s.fuelNuclear || 0;
     c.trunk = s.trunk ? JSON.parse(JSON.stringify(s.trunk)) : {};
     c.equipGrid = s.carEquip ? JSON.parse(JSON.stringify(s.carEquip)) : [];
     c.equipEnergy = s.carEnergy || 0; c.equipEnergyMax = 0; c.equipEnergyProd = 0;
@@ -258,9 +276,10 @@ class Tank extends Car {
     this.fireT = 0;            // 主炮冷却计时
   }
   giveItem(item) {
-    if (item === 'rocket-fuel' && this.fuelCoal + this.fuelSolid + this.fuelRocket < TANK_FUEL_CAP) { this.fuelRocket++; return true; }
-    if (item === 'coal' && this.fuelCoal + this.fuelSolid + this.fuelRocket < TANK_FUEL_CAP) { this.fuelCoal++; return true; }
-    if (item === 'solid-fuel' && this.fuelCoal + this.fuelSolid + this.fuelRocket < TANK_FUEL_CAP) { this.fuelSolid++; return true; }
+    if (item === 'nuclear-fuel' && this.fuelCoal + this.fuelSolid + this.fuelRocket + (this.fuelNuclear||0) < TANK_FUEL_CAP) { this.fuelNuclear++; return true; }
+    if (item === 'rocket-fuel' && this.fuelCoal + this.fuelSolid + this.fuelRocket + (this.fuelNuclear||0) < TANK_FUEL_CAP) { this.fuelRocket++; return true; }
+    if (item === 'coal' && this.fuelCoal + this.fuelSolid + this.fuelRocket + (this.fuelNuclear||0) < TANK_FUEL_CAP) { this.fuelCoal++; return true; }
+    if (item === 'solid-fuel' && this.fuelCoal + this.fuelSolid + this.fuelRocket + (this.fuelNuclear||0) < TANK_FUEL_CAP) { this.fuelSolid++; return true; }
     if (item === 'cannon-shell' && this.shells < TANK_SHELL_CAP) { this.shells++; return true; }
     if (item === 'uranium-cannon-shell' && this.uShells < TANK_SHELL_CAP) { this.uShells++; return true; }
     if (item === 'explosive-cannon-shell' && this.eShells < TANK_SHELL_CAP) { this.eShells++; return true; }
@@ -271,6 +290,7 @@ class Tank extends Car {
   takeItemOf(item) {
     if (item === 'coal' && this.fuelCoal > 0) { this.fuelCoal--; return 'coal'; }
     if (item === 'solid-fuel' && this.fuelSolid > 0) { this.fuelSolid--; return 'solid-fuel'; }
+    if (item === 'nuclear-fuel' && this.fuelNuclear > 0) { this.fuelNuclear--; return 'nuclear-fuel'; }
     if (item === 'rocket-fuel' && this.fuelRocket > 0) { this.fuelRocket--; return 'rocket-fuel'; }
     if (item === 'cannon-shell' && this.shells > 0) { this.shells--; return 'cannon-shell'; }
     if (item === 'uranium-cannon-shell' && this.uShells > 0) { this.uShells--; return 'uranium-cannon-shell'; }
@@ -281,6 +301,7 @@ class Tank extends Car {
   countOf(item) {
     if (item === 'coal') return this.fuelCoal;
     if (item === 'solid-fuel') return this.fuelSolid;
+    if (item === 'nuclear-fuel') return this.fuelNuclear;
     if (item === 'rocket-fuel') return this.fuelRocket;
     if (item === 'cannon-shell') return this.shells;
     if (item === 'uranium-cannon-shell') return this.uShells;
@@ -290,6 +311,7 @@ class Tank extends Car {
   }
   contents() {
     const rows = [[this.type, 1]];
+    if (this.fuelNuclear > 0) rows.push(['nuclear-fuel', this.fuelNuclear]);
     if (this.fuelRocket > 0) rows.push(['rocket-fuel', this.fuelRocket]);
     if (this.fuelSolid > 0) rows.push(['solid-fuel', this.fuelSolid]);
     if (this.fuelCoal > 0) rows.push(['coal', this.fuelCoal]);
@@ -302,6 +324,7 @@ class Tank extends Car {
   }
   takeAll() {
     const rows = [];
+    if (this.fuelNuclear > 0) rows.push(['nuclear-fuel', this.fuelNuclear]);
     if (this.fuelRocket > 0) rows.push(['rocket-fuel', this.fuelRocket]);
     if (this.fuelSolid > 0) rows.push(['solid-fuel', this.fuelSolid]);
     if (this.fuelCoal > 0) rows.push(['coal', this.fuelCoal]);
@@ -310,7 +333,7 @@ class Tank extends Car {
     if (this.uShells > 0) rows.push(['uranium-cannon-shell', this.uShells]);
     if (this.shells > 0) rows.push(['cannon-shell', this.shells]);
     for (const k in this.trunk) if (this.trunk[k] > 0) rows.push([k, this.trunk[k]]);
-    this.fuelCoal = 0; this.fuelSolid = 0; this.fuelRocket = 0; this.shells = 0; this.uShells = 0; this.eShells = 0; this.euShells = 0; this.trunk = {};
+    this.fuelCoal = 0; this.fuelSolid = 0; this.fuelRocket = 0; this.fuelNuclear = 0; this.shells = 0; this.uShells = 0; this.eShells = 0; this.euShells = 0; this.trunk = {};
     return rows;
   }
   serialize() {
@@ -558,9 +581,10 @@ class Spidertron extends Tank {
     return dmg;
   }
   giveItem(item) {
-    if (item === 'rocket-fuel' && this.fuelCoal + this.fuelSolid + this.fuelRocket < SPIDER_FUEL_CAP) { this.fuelRocket++; return true; }
-    if (item === 'coal' && this.fuelCoal + this.fuelSolid + this.fuelRocket < SPIDER_FUEL_CAP) { this.fuelCoal++; return true; }
-    if (item === 'solid-fuel' && this.fuelCoal + this.fuelSolid + this.fuelRocket < SPIDER_FUEL_CAP) { this.fuelSolid++; return true; }
+    if (item === 'nuclear-fuel' && this.fuelCoal + this.fuelSolid + this.fuelRocket + (this.fuelNuclear||0) < SPIDER_FUEL_CAP) { this.fuelNuclear++; return true; }
+    if (item === 'rocket-fuel' && this.fuelCoal + this.fuelSolid + this.fuelRocket + (this.fuelNuclear||0) < SPIDER_FUEL_CAP) { this.fuelRocket++; return true; }
+    if (item === 'coal' && this.fuelCoal + this.fuelSolid + this.fuelRocket + (this.fuelNuclear||0) < SPIDER_FUEL_CAP) { this.fuelCoal++; return true; }
+    if (item === 'solid-fuel' && this.fuelCoal + this.fuelSolid + this.fuelRocket + (this.fuelNuclear||0) < SPIDER_FUEL_CAP) { this.fuelSolid++; return true; }
     if (item === 'rocket' && this.missiles < SPIDER_MISSILE_CAP) { this.missiles++; return true; }
     // 其余物品放入储物箱
     return this.trunkGiveItem(item);
@@ -647,7 +671,7 @@ class Spidertron extends Tank {
     // 到达目标格：停下并清除命令
     if (dist < TILE * 0.6) { this.remoteTarget = null; return; }
     // 燃料不足则无法移动
-    if (this.fuelCoal <= 0 && this.fuelSolid <= 0 && this.fuelRocket <= 0) return;
+    if (this.fuelCoal <= 0 && this.fuelSolid <= 0 && this.fuelRocket <= 0 && (this.fuelNuclear||0) <= 0) return;
     const speed = SPIDER_SPEED * this.spiderSpeedMult();
     const mx = dx / dist, my = dy / dist;
     // 更新朝向（东/南/西/北近似）
@@ -836,12 +860,14 @@ function spiderEquipPanelClick(el) {
 }
 
 function spiderPanelHtml(e) {
-  let h = row('燃料', (e.fuelRocket > 0 ? ('火箭燃料 ' + e.fuelRocket) : '') + (e.fuelRocket > 0 && (e.fuelSolid > 0 || e.fuelCoal > 0) ? ' + ' : '') + (e.fuelSolid > 0 ? ('固体燃料 ' + e.fuelSolid) : '') + ((e.fuelRocket > 0 || e.fuelSolid > 0) && e.fuelCoal > 0 ? ' + ' : '') + (e.fuelCoal > 0 ? ('煤 ' + e.fuelCoal) : '<span class="dim">空</span>') + ' / ' + SPIDER_FUEL_CAP, 'fuel');
+  let h = row('燃料', vehicleFuelDisplay(e, SPIDER_FUEL_CAP), 'fuel');
   h += row('导弹', e.missiles > 0 ? (e.missiles + ' / ' + SPIDER_MISSILE_CAP) : '<span class="dim">无</span>', 'missile');
-  const cf = Math.min(invCount('coal'), SPIDER_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket);
-  const csol = Math.min(invCount('solid-fuel'), SPIDER_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket);
-  const crk = Math.min(invCount('rocket-fuel'), SPIDER_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket);
+  const cf = Math.min(invCount('coal'), SPIDER_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
+  const csol = Math.min(invCount('solid-fuel'), SPIDER_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
+  const crk = Math.min(invCount('rocket-fuel'), SPIDER_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
+  const cnuc = Math.min(invCount('nuclear-fuel'), SPIDER_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
   const cr = Math.min(invCount('rocket'), SPIDER_MISSILE_CAP - e.missiles);
+  if (cnuc > 0) h += '<button data-action="feed" data-id="nuclear-fuel">放入核燃料 ×' + cnuc + '</button>';
   if (cf > 0) h += '<button data-action="feed" data-id="coal">放入煤 ×' + cf + '</button>';
   if (csol > 0) h += '<button data-action="feed" data-id="solid-fuel">放入固体燃料 ×' + csol + '</button>';
   if (crk > 0) h += '<button data-action="feed" data-id="rocket-fuel">放入火箭燃料 ×' + crk + '</button>';
@@ -854,18 +880,20 @@ function spiderPanelHtml(e) {
   return h;
 }
 function spiderPanelLive(e, api) {
-  api.set('fuel', (e.fuelRocket > 0 ? ('火箭燃料 ' + e.fuelRocket) : '') + (e.fuelRocket > 0 && (e.fuelSolid > 0 || e.fuelCoal > 0) ? ' + ' : '') + (e.fuelSolid > 0 ? ('固体燃料 ' + e.fuelSolid) : '') + ((e.fuelRocket > 0 || e.fuelSolid > 0) && e.fuelCoal > 0 ? ' + ' : '') + (e.fuelCoal > 0 ? ('煤 ' + e.fuelCoal) : dimSpan('空')) + ' / ' + SPIDER_FUEL_CAP);
+  api.set('fuel', vehicleFuelDisplay(e, SPIDER_FUEL_CAP));
   api.set('missile', e.missiles > 0 ? (e.missiles + ' / ' + SPIDER_MISSILE_CAP) : dimSpan('无'));
-  const cf = Math.min(invCount('coal'), SPIDER_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket);
-  const csol = Math.min(invCount('solid-fuel'), SPIDER_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket);
-  const crk = Math.min(invCount('rocket-fuel'), SPIDER_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket);
+  const cf = Math.min(invCount('coal'), SPIDER_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
+  const csol = Math.min(invCount('solid-fuel'), SPIDER_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
+  const crk = Math.min(invCount('rocket-fuel'), SPIDER_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
+  const cnuc = Math.min(invCount('nuclear-fuel'), SPIDER_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
   const cr = Math.min(invCount('rocket'), SPIDER_MISSILE_CAP - e.missiles);
+  api.toggle('button[data-action="feed"][data-id="nuclear-fuel"]', cnuc > 0, '放入核燃料 ×' + cnuc);
   api.toggle('button[data-action="feed"][data-id="coal"]', cf > 0, '放入煤 ×' + cf);
   api.toggle('button[data-action="feed"][data-id="solid-fuel"]', csol > 0, '放入固体燃料 ×' + csol);
   api.toggle('button[data-action="feed"][data-id="rocket-fuel"]', crk > 0, '放入火箭燃料 ×' + crk);
   api.toggle('button[data-action="feed"][data-id="rocket"]', cr > 0, '装填导弹 ×' + cr);
   if (G.driving && G.driving.ent === e) api.status('驾驶中（空格发射导弹，E 下车）', 'ok');
-  else if (e.fuelCoal <= 0 && e.fuelSolid <= 0 && e.fuelRocket <= 0) api.status('缺燃料：放入煤/固体燃料/火箭燃料后可驾驶', 'warn');
+  else if (e.fuelCoal <= 0 && e.fuelSolid <= 0 && e.fuelRocket <= 0 && (e.fuelNuclear||0) <= 0) api.status('缺燃料：放入煤/固体燃料/火箭燃料/核燃料后可驾驶', 'warn');
   else api.status('可驾驶', 'ok');
 }
 
@@ -991,7 +1019,7 @@ function updateDriving(dt) {
     }
     if (d.sfxT) d.sfxT -= dt;
     // 消耗燃料：燃料不足则无法移动
-    if (car.fuelCoal <= 0 && car.fuelSolid <= 0 && car.fuelRocket <= 0) {
+    if (car.fuelCoal <= 0 && car.fuelSolid <= 0 && car.fuelRocket <= 0 && (car.fuelNuclear||0) <= 0) {
       if (!d.warned) { d.warned = true; if (typeof toast === 'function') toast('燃料不足：' + (isSpider ? '蜘蛛机器人' : (isTank ? '坦克' : '装甲车')) + '需要煤/固体燃料/火箭燃料'); }
       // 玩家仍可下车（E）
       return;
@@ -1108,21 +1136,23 @@ function drawCar(ctx, e, gx, gy, dir, alpha) {
   ctx.fillRect(px + 6, py + TILE * 2 - 12, 8, 6);
   ctx.fillRect(px + TILE * 2 - 14, py + TILE * 2 - 12, 8, 6);
   // 燃料显示（火箭燃料>固体燃料>煤 优先计数）
-  const fl = (e.fuelRocket || 0) > 0 ? (e.fuelRocket || 0) : ((e.fuelSolid || 0) > 0 ? (e.fuelSolid || 0) : (e.fuelCoal || 0));
+  const fl = (e.fuelNuclear || 0) > 0 ? (e.fuelNuclear || 0) : ((e.fuelRocket || 0) > 0 ? (e.fuelRocket || 0) : ((e.fuelSolid || 0) > 0 ? (e.fuelSolid || 0) : (e.fuelCoal || 0)));
   if (fl > 0 || (G.driving && G.driving.ent === e)) {
     ctx.fillStyle = fl > 0 ? '#e8c85a' : '#ff5b5b';
     ctx.font = 'bold 10px system-ui';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText((e.fuelRocket > 0 ? '火 ' : (e.fuelSolid > 0 ? '燃 ' : '煤 ')) + fl, cx, py + TILE * 2 - 4);
+    ctx.fillText((e.fuelNuclear > 0 ? '核 ' : (e.fuelRocket > 0 ? '火 ' : (e.fuelSolid > 0 ? '燃 ' : '煤 '))) + fl, cx, py + TILE * 2 - 4);
   }
   ctx.globalAlpha = 1;
 }
 function carPanelHtml(e) {
   const cap = e.fuelCap || CAR_FUEL_CAP;
-  let h = row('燃料', (e.fuelRocket > 0 ? ('火箭燃料 ' + e.fuelRocket) : '') + (e.fuelRocket > 0 && (e.fuelSolid > 0 || e.fuelCoal > 0) ? ' + ' : '') + (e.fuelSolid > 0 ? ('固体燃料 ' + e.fuelSolid) : '') + ((e.fuelRocket > 0 || e.fuelSolid > 0) && e.fuelCoal > 0 ? ' + ' : '') + (e.fuelCoal > 0 ? ('煤 ' + e.fuelCoal) : '<span class="dim">空</span>') + ' / ' + cap, 'fuel');
-  const nc = Math.min(invCount('coal'), cap - e.fuelCoal - e.fuelSolid - e.fuelRocket);
-  const ns = Math.min(invCount('solid-fuel'), cap - e.fuelCoal - e.fuelSolid - e.fuelRocket);
-  const nrk = Math.min(invCount('rocket-fuel'), cap - e.fuelCoal - e.fuelSolid - e.fuelRocket);
+  let h = row('燃料', vehicleFuelDisplay(e, cap), 'fuel');
+  const nc = Math.min(invCount('coal'), cap - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
+  const ns = Math.min(invCount('solid-fuel'), cap - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
+  const nrk = Math.min(invCount('rocket-fuel'), cap - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
+  const nnuc = Math.min(invCount('nuclear-fuel'), cap - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
+  if (nnuc > 0) h += '<button data-action="feed" data-id="nuclear-fuel">放入核燃料 ×' + nnuc + '</button>';
   if (nc > 0) h += '<button data-action="feed" data-id="coal">放入煤 ×' + nc + '</button>';
   if (ns > 0) h += '<button data-action="feed" data-id="solid-fuel">放入固体燃料 ×' + ns + '</button>';
   if (nrk > 0) h += '<button data-action="feed" data-id="rocket-fuel">放入火箭燃料 ×' + nrk + '</button>';
@@ -1135,20 +1165,22 @@ function carPanelHtml(e) {
 }
 function carPanelLive(e, api) {
   const cap = e.fuelCap || CAR_FUEL_CAP;
-  api.set('fuel', (e.fuelRocket > 0 ? ('火箭燃料 ' + e.fuelRocket) : '') + (e.fuelRocket > 0 && (e.fuelSolid > 0 || e.fuelCoal > 0) ? ' + ' : '') + (e.fuelSolid > 0 ? ('固体燃料 ' + e.fuelSolid) : '') + ((e.fuelRocket > 0 || e.fuelSolid > 0) && e.fuelCoal > 0 ? ' + ' : '') + (e.fuelCoal > 0 ? ('煤 ' + e.fuelCoal) : dimSpan('空')) + ' / ' + cap);
-  const nc = Math.min(invCount('coal'), cap - e.fuelCoal - e.fuelSolid - e.fuelRocket);
-  const ns = Math.min(invCount('solid-fuel'), cap - e.fuelCoal - e.fuelSolid - e.fuelRocket);
-  const nrk = Math.min(invCount('rocket-fuel'), cap - e.fuelCoal - e.fuelSolid - e.fuelRocket);
+  api.set('fuel', vehicleFuelDisplay(e, cap));
+  const nc = Math.min(invCount('coal'), cap - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
+  const ns = Math.min(invCount('solid-fuel'), cap - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
+  const nrk = Math.min(invCount('rocket-fuel'), cap - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
+  const nnuc = Math.min(invCount('nuclear-fuel'), cap - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
+  api.toggle('button[data-action="feed"][data-id="nuclear-fuel"]', nnuc > 0, '放入核燃料 ×' + nnuc);
   api.toggle('button[data-action="feed"][data-id="coal"]', nc > 0, '放入煤 ×' + nc);
   api.toggle('button[data-action="feed"][data-id="solid-fuel"]', ns > 0, '放入固体燃料 ×' + ns);
   api.toggle('button[data-action="feed"][data-id="rocket-fuel"]', nrk > 0, '放入火箭燃料 ×' + nrk);
   if (G.driving && G.driving.ent === e) api.status('驾驶中（E 下车）', 'ok');
-  else if (e.fuelCoal <= 0 && e.fuelSolid <= 0 && e.fuelRocket <= 0) api.status('缺燃料：放入煤/固体燃料/火箭燃料后可驾驶', 'warn');
+  else if (e.fuelCoal <= 0 && e.fuelSolid <= 0 && e.fuelRocket <= 0 && (e.fuelNuclear||0) <= 0) api.status('缺燃料：放入煤/固体燃料/火箭燃料/核燃料后可驾驶', 'warn');
   else api.status('可驾驶', 'ok');
 }
 function carTip(e) {
   if (G.driving && G.driving.ent === e) return '驾驶中（E 下车）';
-  return '装甲车（煤 ' + (e.fuelCoal || 0) + (e.fuelSolid > 0 ? '，固体燃料 ' + e.fuelSolid : '') + (e.fuelRocket > 0 ? '，火箭燃料 ' + e.fuelRocket : '') + '），按 E 进入驾驶，空格发射车载机枪';
+  return '装甲车（煤 ' + (e.fuelCoal || 0) + (e.fuelSolid > 0 ? '，固体燃料 ' + e.fuelSolid : '') + (e.fuelRocket > 0 ? '，火箭燃料 ' + e.fuelRocket : '') + (e.fuelNuclear > 0 ? '，核燃料 ' + e.fuelNuclear : '') + '），按 E 进入驾驶，空格发射车载机枪';
 }
 function carOnAction(act) {
   if (act === 'drive') {
@@ -1196,7 +1228,7 @@ function drawTank(ctx, e, gx, gy, dir, alpha) {
   ctx.restore();
 }
 function tankPanelHtml(e) {
-  let h = row('燃料', (e.fuelRocket > 0 ? ('火箭燃料 ' + e.fuelRocket) : '') + (e.fuelRocket > 0 && (e.fuelSolid > 0 || e.fuelCoal > 0) ? ' + ' : '') + (e.fuelSolid > 0 ? ('固体燃料 ' + e.fuelSolid) : '') + ((e.fuelRocket > 0 || e.fuelSolid > 0) && e.fuelCoal > 0 ? ' + ' : '') + (e.fuelCoal > 0 ? ('煤 ' + e.fuelCoal) : '<span class="dim">空</span>') + ' / ' + TANK_FUEL_CAP, 'fuel');
+  let h = row('燃料', vehicleFuelDisplay(e, TANK_FUEL_CAP), 'fuel');
   const parts = [];
   if (e.euShells > 0) parts.push('铀爆弹 ' + e.euShells);
   if (e.eShells > 0) parts.push('爆炸弹 ' + e.eShells);
@@ -1204,15 +1236,17 @@ function tankPanelHtml(e) {
   if (e.shells > 0) parts.push('炮弹 ' + e.shells);
   const shellStr = parts.length ? parts.join(' + ') + ' / ' + TANK_SHELL_CAP : '<span class="dim">无</span>';
   h += row('炮弹', shellStr, 'shell');
-  const cf = Math.min(invCount('coal'), TANK_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket);
-  const csol = Math.min(invCount('solid-fuel'), TANK_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket);
-  const crk = Math.min(invCount('rocket-fuel'), TANK_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket);
+  const cf = Math.min(invCount('coal'), TANK_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
+  const csol = Math.min(invCount('solid-fuel'), TANK_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
+  const crk = Math.min(invCount('rocket-fuel'), TANK_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
+  const cnuc = Math.min(invCount('nuclear-fuel'), TANK_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
   const cs = Math.min(invCount('cannon-shell'), TANK_SHELL_CAP - e.shells);
   const cu = Math.min(invCount('uranium-cannon-shell'), TANK_SHELL_CAP - e.uShells);
   const ce = Math.min(invCount('explosive-cannon-shell'), TANK_SHELL_CAP - e.eShells);
   const ceu = Math.min(invCount('explosive-uranium-cannon-shell'), TANK_SHELL_CAP - e.euShells);
   if (cf > 0) h += '<button data-action="feed" data-id="coal">放入煤 ×' + cf + '</button>';
   if (csol > 0) h += '<button data-action="feed" data-id="solid-fuel">放入固体燃料 ×' + csol + '</button>';
+  if (cnuc > 0) h += '<button data-action="feed" data-id="nuclear-fuel">放入核燃料 ×' + cnuc + '</button>';
   if (crk > 0) h += '<button data-action="feed" data-id="rocket-fuel">放入火箭燃料 ×' + crk + '</button>';
   if (cs > 0) h += '<button data-action="feed" data-id="cannon-shell">装填炮弹 ×' + cs + '</button>';
   if (cu > 0) h += '<button data-action="feed" data-id="uranium-cannon-shell">装填铀炮弹 ×' + cu + '</button>';
@@ -1226,34 +1260,36 @@ function tankPanelHtml(e) {
   return h;
 }
 function tankPanelLive(e, api) {
-  api.set('fuel', (e.fuelRocket > 0 ? ('火箭燃料 ' + e.fuelRocket) : '') + (e.fuelRocket > 0 && (e.fuelSolid > 0 || e.fuelCoal > 0) ? ' + ' : '') + (e.fuelSolid > 0 ? ('固体燃料 ' + e.fuelSolid) : '') + ((e.fuelRocket > 0 || e.fuelSolid > 0) && e.fuelCoal > 0 ? ' + ' : '') + (e.fuelCoal > 0 ? ('煤 ' + e.fuelCoal) : dimSpan('空')) + ' / ' + TANK_FUEL_CAP);
+  api.set('fuel', vehicleFuelDisplay(e, TANK_FUEL_CAP));
   const parts = [];
   if (e.euShells > 0) parts.push('铀爆弹 ' + e.euShells);
   if (e.eShells > 0) parts.push('爆炸弹 ' + e.eShells);
   if (e.uShells > 0) parts.push('铀弹 ' + e.uShells);
   if (e.shells > 0) parts.push('炮弹 ' + e.shells);
   api.set('shell', parts.length ? parts.join(' + ') + ' / ' + TANK_SHELL_CAP : dimSpan('无'));
-  const cf = Math.min(invCount('coal'), TANK_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket);
-  const csol = Math.min(invCount('solid-fuel'), TANK_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket);
-  const crk = Math.min(invCount('rocket-fuel'), TANK_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket);
+  const cf = Math.min(invCount('coal'), TANK_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
+  const csol = Math.min(invCount('solid-fuel'), TANK_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
+  const crk = Math.min(invCount('rocket-fuel'), TANK_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
+  const cnuc = Math.min(invCount('nuclear-fuel'), TANK_FUEL_CAP - e.fuelCoal - e.fuelSolid - e.fuelRocket - (e.fuelNuclear||0));
   const cs = Math.min(invCount('cannon-shell'), TANK_SHELL_CAP - e.shells);
   const cu = Math.min(invCount('uranium-cannon-shell'), TANK_SHELL_CAP - e.uShells);
   const ce = Math.min(invCount('explosive-cannon-shell'), TANK_SHELL_CAP - e.eShells);
   const ceu = Math.min(invCount('explosive-uranium-cannon-shell'), TANK_SHELL_CAP - e.euShells);
   api.toggle('button[data-action="feed"][data-id="coal"]', cf > 0, '放入煤 ×' + cf);
   api.toggle('button[data-action="feed"][data-id="solid-fuel"]', csol > 0, '放入固体燃料 ×' + csol);
+  api.toggle('button[data-action="feed"][data-id="nuclear-fuel"]', cnuc > 0, '放入核燃料 ×' + cnuc);
   api.toggle('button[data-action="feed"][data-id="rocket-fuel"]', crk > 0, '放入火箭燃料 ×' + crk);
   api.toggle('button[data-action="feed"][data-id="cannon-shell"]', cs > 0, '装填炮弹 ×' + cs);
   api.toggle('button[data-action="feed"][data-id="uranium-cannon-shell"]', cu > 0, '装填铀炮弹 ×' + cu);
   api.toggle('button[data-action="feed"][data-id="explosive-cannon-shell"]', ce > 0, '装填爆炸炮弹 ×' + ce);
   api.toggle('button[data-action="feed"][data-id="explosive-uranium-cannon-shell"]', ceu > 0, '装填铀爆炸炮弹 ×' + ceu);
   if (G.driving && G.driving.ent === e) api.status('驾驶中（空格开炮，E 下车）', 'ok');
-  else if (e.fuelCoal <= 0 && e.fuelSolid <= 0 && e.fuelRocket <= 0) api.status('缺燃料：放入煤/固体燃料/火箭燃料后可驾驶', 'warn');
+  else if (e.fuelCoal <= 0 && e.fuelSolid <= 0 && e.fuelRocket <= 0 && (e.fuelNuclear||0) <= 0) api.status('缺燃料：放入煤/固体燃料/火箭燃料/核燃料后可驾驶', 'warn');
   else api.status('可驾驶', 'ok');
 }
 function tankTip(e) {
   if (G.driving && G.driving.ent === e) return '坦克驾驶中（空格开炮，E 下车）';
-  return '坦克（煤 ' + (e.fuelCoal || 0) + (e.fuelSolid > 0 ? '，固体燃料 ' + e.fuelSolid : '') + (e.fuelRocket > 0 ? '，火箭燃料 ' + e.fuelRocket : '') + ' · 炮弹 ' + (e.shells || 0) + (e.uShells > 0 ? ' + 铀弹 ' + e.uShells : '') + (e.eShells > 0 ? ' + 爆炸弹 ' + e.eShells : '') + (e.euShells > 0 ? ' + 铀爆弹 ' + e.euShells : '') + '），按 E 进入驾驶';
+  return '坦克（煤 ' + (e.fuelCoal || 0) + (e.fuelSolid > 0 ? '，固体燃料 ' + e.fuelSolid : '') + (e.fuelRocket > 0 ? '，火箭燃料 ' + e.fuelRocket : '') + (e.fuelNuclear > 0 ? '，核燃料 ' + e.fuelNuclear : '') + ' · 炮弹 ' + (e.shells || 0) + (e.uShells > 0 ? ' + 铀弹 ' + e.uShells : '') + (e.eShells > 0 ? ' + 爆炸弹 ' + e.eShells : '') + (e.euShells > 0 ? ' + 铀爆弹 ' + e.euShells : '') + '），按 E 进入驾驶';
 }
 function tankOnAction(act) {
   if (act === 'drive') {

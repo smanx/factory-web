@@ -11,7 +11,8 @@ const FAST_BELT_MULT = 2;    // 快速传送带 = 2× 基础（对齐《异星�
 const EXPRESS_BELT_MULT = 3; // 极速传送带 = 3× 基础（对齐《异星工厂》5.625 tiles/s）
 const COAL_ENERGY = 12;
 const SOLID_FUEL_ENERGY = 50;   // 固体燃料能量密度（对齐《异星工厂》：约 4 倍于煤），可作煤的替代燃料
-const ROCKET_FUEL_ENERGY = 500; // 火箭燃料能量密度（对齐《异星工厂》：约 10 倍于固体燃料、约 40 倍于煤），最高级可燃烧燃料
+const ROCKET_FUEL_ENERGY = 500; // 火箭燃料能量密度（对齐《异星工厂》：约 10 倍于固体燃料、约 40 倍于煤），可燃烧燃料
+const NUCLEAR_FUEL_ENERGY = 2500; // 核燃料能量密度（对齐《异星工厂》：核燃料约 1.21GJ，约为火箭燃料 225MJ 的 5 倍多），可作载具/车头/锅炉等燃烧器的最高级燃料
 const SELF_FUEL_MAX = 4;   // 热能采矿机燃料槽容量（对齐《异星工厂》：burner mining drill 16MJ/4MJ=4 个煤）
 const UNDERGROUND_MAX = 6;
 const FAST_UNDERGROUND_MAX = 14;
@@ -328,7 +329,7 @@ const ITEMS = {
   'uranium-ore':  { name: '铀矿石', color: '#7fd44a', mark: 'U', desc: '放射性矿物，距出生点较远处生成，须用电采矿机开采，离心机处理成铀' },
   'uranium-235': { name: '铀-235', color: '#9af07a', mark: 'U⁵', desc: '裂变同位素，由离心机处理铀矿小概率获得；是制造核燃料的关键' },
   'uranium-238': { name: '铀-238', color: '#6aa84a', mark: 'U⁸', desc: '丰度同位素，由离心机处理铀矿大量获得，可参与富集循环' },
-  'nuclear-fuel': { name: '核燃料', color: '#9ae06a', mark: '☢', desc: '核反应堆的燃料，由铀-235制造，可持续提供巨量高温蒸汽' },
+  'nuclear-fuel': { name: '核燃料', color: '#9ae06a', mark: '☢', desc: '核反应堆的燃料，由铀-235制造，可持续提供巨量高温蒸汽；也可作为载具/车头/锅炉等燃烧器的最高级燃料（能量约为火箭燃料 5 倍，对齐《异星工厂》Nuclear fuel）' },
   'used-up-uranium-fuel-cell': { name: '废燃料棒', color: '#6a7a4a', mark: '废', desc: '核燃料燃尽的残棒，可在离心机再生为铀-238，闭合核燃料循环' },
   'centrifuge':   { name: '离心机', color: '#7a8a9a', desc: '把铀矿石分离成铀-235 / 铀-238；也可进行铀富集循环（Kovarex）（2×2，吃电力）' },
   'nuclear-reactor': { name: '核反应堆', color: '#4a8a5a', desc: '消耗核燃料产生巨量热量（5×5）。热量经导热管传导至热交换器，由热交换器把水烧成高温蒸汽，再供汽轮机发电（对齐《异星工厂》核能标准链路）' },
@@ -938,11 +939,11 @@ const TECH_REQ = {
   'productivity-module-3': 'modules3',
   'efficiency-module-2': 'advanced-material-processing-2',
   'efficiency-module-3': 'advanced-material-processing-3',
-  'advanced-circuit': 'electronics',
-  'sulfur': 'oil',
-  'sulfuric-acid': 'oil',
-  'processing-unit': 'electronics',
-  'electric-engine': 'electronics',
+  'advanced-circuit': 'advanced-electronics',
+  'sulfur': 'sulfur-processing',
+  'sulfuric-acid': 'sulfur-processing',
+  'processing-unit': 'advanced-electronics-2',
+  'electric-engine': 'electric-engine',
   'radar': 'radar',
   'gate': 'military',
   'production-science-pack': 'production',
@@ -1132,6 +1133,10 @@ const RECIPE_TECH = {
 // 某些配方（如效率模块）既可被新拆分的进阶科技解锁，也可被旧「模块工程」科技解锁，
 // 用于保证旧存档兼容：只要满足其中任一科技即可解锁。
 const RECIPE_TECH_ANY = {
+  'advanced-electronics':     ['electronics', 'advanced-electronics'],
+  'advanced-electronics-2':   ['electronics', 'advanced-electronics-2'],
+  'electric-engine':         ['electronics', 'electric-engine'],
+  'sulfur-processing':       ['oil', 'sulfur-processing'],
   'advanced-material-processing':     ['modules', 'advanced-material-processing'],
   'advanced-material-processing-2':   ['modules2', 'advanced-material-processing-2'],
   'advanced-material-processing-3':   ['modules3', 'advanced-material-processing-3']
@@ -1233,7 +1238,11 @@ const TECHS = {
   'land-mine': { name: '地雷', cost: { 'military-science': 20 }, desc: '解锁地雷，铺设后敌人踏入即爆炸造成范围伤害（对齐《异星工厂》Landmines 科技）', req: ['military'] },
   'cluster-grenade': { name: '集束手雷', cost: { 'military-science': 30 }, desc: '解锁集束手雷，爆炸范围与威力远胜普通手雷（对齐《异星工厂》Cluster grenade 科技）', req: ['explosives'] },
   'uranium-ammo': { name: '铀弹', cost: { 'production-science-pack': 30, 'military-science': 30 }, desc: '解锁铀弹与铀炮弹，以铀-238 制成的高伤害弹药（对齐《异星工厂》Uranium ammo 科技）', req: ['nuclear'] },
-  electronics: { name: '电子学', cost: { 'blue-science': 40 }, desc: '解锁高级电路板、处理器（火箭链路的关键）', req: ['plastic', 'oil'] },
+  electronics: { name: '电子学', cost: { 'blue-science': 40 }, desc: '解锁电子电路与基础电子元件（火箭链路的关键）', req: ['plastic', 'oil'] },
+  'advanced-electronics': { name: '高级电子学', cost: { 'blue-science': 60 }, desc: '解锁高级电路板（对齐《异星工厂》Advanced electronics）', req: ['electronics'] },
+  'advanced-electronics-2': { name: '高级电子学 II', cost: { 'blue-science': 90 }, desc: '解锁处理器（蓝板）（对齐《异星工厂》Advanced electronics 2）', req: ['advanced-electronics', 'advanced-oil-processing'] },
+  'electric-engine': { name: '电动引擎', cost: { 'blue-science': 50 }, desc: '解锁电动引擎单元（对齐《异星工厂》Electric engine）', req: ['engine', 'advanced-electronics'] },
+  'sulfur-processing': { name: '硫磺处理', cost: { 'blue-science': 40 }, desc: '解锁硫磺与硫酸（对齐《异星工厂》Sulfur processing）', req: ['oil'] },
   'solar-energy': { name: '太阳能', cost: { 'blue-science': 30 }, desc: '解锁太阳能板，白天可采集阳光发电（对齐《异星工厂》Solar energy）', req: ['electric', 'electronics'] },
   'electric-energy-accumulators': { name: '蓄电器', cost: { 'blue-science': 30 }, desc: '解锁蓄电器，存储电力以在夜晚/低谷期为电网续供（对齐《异星工厂》Electric energy accumulators）', req: ['solar-energy'] },
   'steel-processing': { name: '炼钢科技', cost: { 'blue-science': 20 }, desc: '解锁钢炉与钢箱，提升冶炼效率与储物容量（对齐《异星工厂》Steel processing）', req: ['electric'] },
@@ -1362,6 +1371,11 @@ function migrateNewTechs(techDone) {
   // 老玩家可能已拥有对应产线，补完对应科技避免被锁死（对齐《异星工厂》科技树）。
   if (techDone['automation']) techDone['engine'] = true;
   if (techDone['oil']) { techDone['battery'] = true; techDone['plastic'] = true; }
+  // 兼容旧档：高级电路/处理器/电动引擎/硫磺此前由「电子学」/「石油冶金」直接解锁，
+  // 现拆分为独立进阶科技（高级电子学/高级电子学II/电动引擎/硫磺处理），
+  // 老玩家补完对应科技避免产线被锁死（对齐《异星工厂》科技树）。
+  if (techDone['electronics']) { techDone['advanced-electronics'] = true; techDone['advanced-electronics-2'] = true; techDone['electric-engine'] = true; }
+  if (techDone['oil']) techDone['sulfur-processing'] = true;
   return techDone;
 }
 
@@ -1699,8 +1713,9 @@ function rrPath(x, px, py, w, h, r) {
 }
 
 // 判断某物品是否为可燃烧燃料（煤 / 固体燃料）。各烧煤设备以此判断能否加入燃料。
-function isBurnerFuel(item) { return item === 'coal' || item === 'solid-fuel' || item === 'rocket-fuel' || item === 'raw-fish'; }
+function isBurnerFuel(item) { return item === 'coal' || item === 'solid-fuel' || item === 'rocket-fuel' || item === 'nuclear-fuel' || item === 'raw-fish'; }
 function fuelEnergy(item) {
+  if (item === 'nuclear-fuel') return NUCLEAR_FUEL_ENERGY;  // 核燃料能量密度最高（对齐《异星工厂》：核燃料远高于火箭燃料）
   if (item === 'rocket-fuel') return ROCKET_FUEL_ENERGY;
   if (item === 'solid-fuel') return SOLID_FUEL_ENERGY;
   if (item === 'raw-fish') return 4;  // 生鱼可作低效燃料（对齐《异星工厂》：鱼能烧，但能量很低）
