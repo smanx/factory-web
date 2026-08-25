@@ -378,15 +378,15 @@ function genChunk(cx, cy) {
   const fq = (typeof frequencyMult === 'function') ? frequencyMult() : 1;
   const sz = (typeof sizeMult === 'function') ? sizeMult() : 1;
   const ri = (typeof richnessMult === 'function') ? richnessMult() : 1;
-  // 矿床数量：比之前更少（1~3 个/块），使矿床之间间隔更远、更稀疏，贴近原版分布
-  const count = Math.max(1, Math.round((1 + Math.floor(rng() * 2) + (dist > 60 && rng() < 0.6 ? 1 : 0)) * fq));
+  // 矿床数量：频率降低到原来的 1/5（更稀疏散布，矿床之间间隔更远）
+  const count = Math.max(1, Math.round((1 + Math.floor(rng() * 2) + (dist > 60 && rng() < 0.6 ? 1 : 0)) * fq / 5));
   // 记录已放置的矿床中心与近似半径，用于保证矿床之间留有足够间隔
   const placed = [];
 
   for (let n = 0; n < count; n++) {
     const ti = pickOreType(rng, dist);
-    // 单个矿床面积调大（更大的矿团，占地足够放下多台采矿机）
-    const size = Math.max(12, Math.round((40 + rng() * 40) * Math.min(2.2, scale) * sz));
+    // 单个矿床面积提高到原来的 5 倍（更大的矿团，占地足够放下多台采矿机）
+    const size = Math.max(12, Math.round((40 + rng() * 40) * Math.min(2.2, scale) * sz * 5));
     // 由面积估算矿床近似半径（圆形面积 ≈ πr²）
     const rad = Math.max(4, Math.sqrt(size / Math.PI) * 1.1);
     const amt = (500 + rng() * 900) * scale * ri;
