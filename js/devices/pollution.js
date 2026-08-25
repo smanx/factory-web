@@ -16,6 +16,7 @@
 //     小地图同步显示污染范围，直观体现"污染扩散、激怒虫群"。
 // =============================================================
 
+
 // ---- 污染常量（可调平衡） ----
 const POLLUTION_MAX = 2000;            // 污染值上限（此后不再无脑上涨）
 const POLLUTION_DECAY = 1.5;           // 每帧自然消散量（模拟扩散到大范围，防无限累积）
@@ -23,6 +24,24 @@ const POLLUTION_WAVE_THRESHOLD = 520;  // 污染达到此值触发虫巢进攻�
 const POLLUTION_AGGRO_PER_WAVE = 240;  // 每触发一波进攻波消耗的污染值（虫群被激怒吸收）
 const POLLUTION_MIN_WAVE_GAP = 12;     // 两次污染进攻波的最短间隔（秒）
 const POLLUTION_SCAN_INTERVAL = 0.5;   // 污染源扫描间隔（秒，避免每帧全量遍历）
+
+// ===== 树木吸收污染（对齐《异星工厂》Pollution absorption）=====
+// 异星工厂中最具标志性的生态机制之一：污染作为一片云从污染源向外扩散，
+// 途中的树木会吸收污染（充当污染汇点）；被污染侵蚀过重的树木会枯萎消失。
+// 本作在保留全局污染值（驱动虫巢激怒）的同时，新增一块逐格污染场：
+//   - 污染源向周围格排放污染，污染随时间向相邻格扩散并自然衰减；
+//   - 树木从其所在格的污染场吸收污染（同时减少全局污染值，形成"保树减污"生态玩法）；
+//   - 树吸收足够多污染后会枯萎死亡（变成草地），与砍树一致地释放木材；
+//   - 污染云改为绘制在实际受污染的区域上空（而非固定以出生点为中心），直观体现扩散。
+const POLLUTION_EMIT_RADIUS = 3;       // 污染源向周围辐射污染场的半径（格）
+const POLLUTION_SPREAD_INTERVAL = 0.5; // 污染场扩散/衰减/树吸收的计算间隔（秒）
+const POLLUTION_TILE_MIN = 0.03;       // 低于此值的污染格将被移除（限制场大小，防无界增长）
+const POLLUTION_TILE_MAX = 200;        // 单格污染上限
+const POLLUTION_SPREAD_RATE = 0.30;    // 污染向相邻格扩散比例（每间隔向邻格送出本格污染的比例）
+const POLLUTION_TILE_DECAY = 0.08;     // 单格污染自然衰减比例（每间隔）
+const POLLUTION_TREE_ABSORB = 3.0;     // 每棵树每间隔从所在格吸收的污染量
+const POLLUTION_TREE_DIE = 60;         // 树累计吸收污染达到此量后枯萎死亡
+const POLLUTION_FIELD_MAX_TILES = 6000; // 逐格污染场最大格数（超出时加强衰减，防无界膨胀）
 
 // 各设备的污染排放系数（每秒，单位：污染值/s）
 // 对齐《异星工厂》：污染主要来自采矿 / 冶炼 / 石油化工 / 烧煤发电。
@@ -49,6 +68,113 @@ function pollute(amount) {
   if (!G.pollution) G.pollution = 0;
   G.pollution = Math.min(POLLUTION_MAX, G.pollution + (amount || 0));
 }
+
+// =============================================================
+// 逐格污染场（对齐《异星工厂》：污染以云的形式扩散，树木吸收污染）
+// G.pollutionField: Map<"tx,ty", value>——仅存有污染的格，值低于阈值即移除，
+// 因此场大小与"当前受污染区域"成正比，不会随世界无限膨胀。
+// G.treeWither: Map<"tx,ty", 累计吸收量>——记录每棵树已吸收的污染量，达到阈值即枯萎。
+// =============================================================
+function pollutionFieldGet(tx, ty) {
+  if (!G.pollutionField) return 0;
+  return G.pollutionField.get(tx + ',' + ty) || 0;
+}
+function pollutionFieldAdd(tx, ty, v) {
+  if (!G.pollutionField) G.pollutionField = new Map();
+  const k = tx + ',' + ty;
+  let cur = G.pollutionField.get(k) || 0;
+  cur = Math.min(POLLUTION_TILE_MAX, cur + v);
+  if (cur <= POLLUTION_TILE_MIN) { G.pollutionField.delete(k); return 0; }
+  G.pollutionField.set(k, cur);
+  return cur;
+}
+// 污染场质心（用于把污染云绘制在实际受污染区域上空）
+function pollutionFieldCentroid() {
+  if (!G.pollutionField || G.pollutionField.size === 0) return null;
+  let sx = 0, sy = 0, sw = 0, max = 0, mx = 0, my = 0;
+  for (const [k, v] of G.pollutionField) {
+    const i = k.indexOf(',');
+    const tx = +k.slice(0, i), ty = +k.slice(i + 1);
+    sx += tx * v; sy += ty * v; sw += v;
+    if (v > max) { max = v; mx = tx; my = ty; }
+  }
+  // 用最高浓度格作为中心（比纯加权质心更贴合污染核心）
+  return { tx: sw > 0 ? sx / sw : mx, ty: sw > 0 ? sy / sw : my, weight: Math.min(1, sw / 400) };
+}
+// 污染源向周围格排放污染（在 scanPollutionSources 内调用）
+function emitFieldPollution(tx, ty, amount) {
+  const r = POLLUTION_EMIT_RADIUS;
+  const per = amount / ((2 * r + 1) * (2 * r + 1));
+  if (per <= 0) return;
+  for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+    // 简单圆形衰减：离中心越远排放越少
+    const dist = Math.hypot(dx, dy);
+    if (dist > r) continue;
+    const w = 1 - dist / (r + 1);
+    pollutionFieldAdd(tx + dx, ty + dy, per * w);
+  }
+}
+// 污染场主更新：扩散 + 衰减 + 树吸收（固定间隔调用）
+// 返回本间隔树吸收掉、并已从全局污染值中扣除的总量。
+function spreadPollutionField(dt) {
+  if (!G.pollutionField || G.pollutionField.size === 0) return 0;
+  // 用当前键的快照遍历，避免迭代中增删冲突
+  const keys = Array.from(G.pollutionField.keys());
+  let absorbed = 0;
+  // 1) 扩散：向相邻格送出本格污染的一部分
+  const next = new Map();
+  const addTo = (k, v) => { if (v <= POLLUTION_TILE_MIN) return; next.set(k, Math.min(POLLUTION_TILE_MAX, (next.get(k) || 0) + v)); };
+  for (const k of keys) {
+    const v = G.pollutionField.get(k) || 0;
+    const i = k.indexOf(',');
+    const tx = +k.slice(0, i), ty = +k.slice(i + 1);
+    const send = v * POLLUTION_SPREAD_RATE;
+    const remain = v - send;
+    // 自然衰减；场过大时额外加强衰减（防止无界膨胀，保护性能）
+    let decay = POLLUTION_TILE_DECAY;
+    if (keys.length > POLLUTION_FIELD_MAX_TILES) decay += 0.04;
+    const after = remain * (1 - decay);
+    if (after > POLLUTION_TILE_MIN) addTo(k, after);
+    const perNeighbor = send / 4;
+    if (perNeighbor > POLLUTION_TILE_MIN) {
+      addTo(tx + 1 + ',' + ty, perNeighbor);
+      addTo(tx - 1 + ',' + ty, perNeighbor);
+      addTo(tx + ',' + (ty + 1), perNeighbor);
+      addTo(tx + ',' + (ty - 1), perNeighbor);
+    }
+  }
+  G.pollutionField = next;
+  // 2) 树吸收：对每棵位于污染场的树，从该格吸收污染并累计枯萎进度
+  if (typeof isTree !== 'function' || typeof getTerrain !== 'function') return absorbed;
+  const treeWither = G.treeWither || (G.treeWither = new Map());
+  const toRemove = [];
+  for (const [k, v] of G.pollutionField) {
+    if (v < POLLUTION_TREE_ABSORB) continue;
+    const i = k.indexOf(',');
+    const tx = +k.slice(0, i), ty = +k.slice(i + 1);
+    if (!isTree(tx, ty)) continue;
+    // 树吸收污染：本格污染减少，同时全局污染值也减少（保树减污）
+    const take = Math.min(v, POLLUTION_TREE_ABSORB);
+    const nv = v - take;
+    absorbed += take;
+    if (nv <= POLLUTION_TILE_MIN) toRemove.push(k);
+    else G.pollutionField.set(k, nv);
+    // 累计枯萎进度
+    const wk = tx + ',' + ty;
+    const acc = (treeWither.get(wk) || 0) + take;
+    treeWither.set(wk, acc);
+    if (acc >= POLLUTION_TREE_DIE) {
+      treeWither.delete(wk);
+      // 树被污染侵蚀枯萎死亡：变成草地（对齐《异星工厂》污染杀死树木）
+      setTerrain(tx, ty, 0 /* T_GRASS */);
+      if (typeof invalidateTerrainChunk === 'function') invalidateTerrainChunk(tx, ty);
+      if (typeof toast === 'function') toast('树木被污染侵蚀枯萎');
+    }
+  }
+  for (const k of toRemove) G.pollutionField.delete(k);
+  return absorbed;
+}
+
 
 // 计算当前污染激怒所需的阈值（随进化度与已触发波次递增，让后期更刺激）
 function pollutionAggroThreshold() {
@@ -86,7 +212,7 @@ function modulePollutionMult(e) {
   return m;
 }
 
-// 扫描一次 G.ents 中所有正在工作的污染源，累加污染值
+// 扫描一次 G.ents 中所有正在工作的污染源，累加污染值，并向逐格污染场排放
 function scanPollutionSources(dt) {
   if (!G.ents) return;
   let total = 0;
@@ -95,7 +221,14 @@ function scanPollutionSources(dt) {
     const rate = POLLUTION_SOURCES[e.type];
     if (!rate) continue;
     // 仅当设备处于工作/运行状态才排放（利用各设备统一的 working 字段）
-    if (e.working) total += rate * modulePollutionMult(e);
+    if (e.working) {
+      const m = modulePollutionMult(e);
+      total += rate * m;
+      // 向逐格污染场排放（对齐《异星工厂》：污染从污染源向外扩散）
+      if (typeof emitFieldPollution === 'function' && e.x !== undefined && e.y !== undefined) {
+        emitFieldPollution(Math.round(e.x), Math.round(e.y), rate * m * dt * 6.0);
+      }
+    }
   }
   if (total > 0) pollute(total * dt);
 }
@@ -147,6 +280,14 @@ function updatePollution(dt) {
   }
   // 自然消散（污染扩散到大范围）
   G.pollution = Math.max(0, G.pollution - POLLUTION_DECAY * dt);
+  // 逐格污染场更新（扩散 + 衰减 + 树吸收）：固定间隔，省开销
+  G.pollutionSpreadT = (G.pollutionSpreadT || 0) + dt;
+  if (G.pollutionSpreadT >= POLLUTION_SPREAD_INTERVAL) {
+    G.pollutionSpreadT = 0;
+    // 树木吸收污染会减少全局污染值（保树减污），但不会低于 0
+    const absorbed = spreadPollutionField(POLLUTION_SPREAD_INTERVAL);
+    if (absorbed > 0) G.pollution = Math.max(0, G.pollution - absorbed);
+  }
   // 污染弥漫的烟尘粒子（画面优化）：污染较重时基地上空持续冒烟
   if (G.pollution > 220 && typeof spawnSmoke === 'function' && G.spawn) {
     G.pollutionSmokeT = (G.pollutionSmokeT || 0) + dt;
@@ -166,12 +307,16 @@ function updatePollution(dt) {
   pollutionAggro(dt);
 }
 
-// 供序列化：当前污染相关状态
+// 供序列化：当前污染相关状态（含逐格污染场与树枯萎进度）
 function pollutionSerialize() {
+  const field = G.pollutionField ? Array.from(G.pollutionField.entries()) : [];
+  const wither = G.treeWither ? Array.from(G.treeWither.entries()) : [];
   return {
     pollution: G.pollution || 0,
     pollutionWaves: G.pollutionWaves || 0,
-    pollutionT: G.pollutionT || 0
+    pollutionT: G.pollutionT || 0,
+    field,
+    wither
   };
 }
 // 读档恢复
@@ -179,34 +324,49 @@ function pollutionRestore(d) {
   G.pollution = (d && typeof d.pollution === 'number') ? Math.min(POLLUTION_MAX, Math.max(0, d.pollution)) : 0;
   G.pollutionWaves = (d && typeof d.pollutionWaves === 'number') ? d.pollutionWaves : 0;
   G.pollutionT = (d && typeof d.pollutionT === 'number') ? d.pollutionT : 0;
+  // 逐格污染场与树枯萎进度（对齐《异星工厂》污染场持久化）
+  G.pollutionField = null;
+  G.treeWither = null;
+  if (d && Array.isArray(d.field) && d.field.length) {
+    G.pollutionField = new Map(d.field.filter(([, v]) => v > POLLUTION_TILE_MIN));
+  }
+  if (d && Array.isArray(d.wither) && d.wither.length) {
+    G.treeWither = new Map(d.wither);
+  }
 }
 
 // =============================================================
 // 污染可视化（在 render 中、实体绘制之后、昼夜遮罩之前调用）
-// 以基地（出生点）为中心绘制一层红褐色半透明污染云，浓度随污染值上升。
-// 使用叠加混合增强雾感；污染较轻时贴近地面，污染重时扩散更远更浓。
+// 优先把污染云绘制在实际受污染的区域上空（逐格污染场质心），体现"污染从污染源扩散"；
+// 无逐格污染场时回退为以基地（出生点）为中心。浓度随污染值上升。
 // =============================================================
 function drawPollution(ctx) {
   if (!G || !G.settings || !G.settings.combat) return;
-  if (!G.pollution || G.pollution < 8) return;   // 微量污染不明显
-  const p = G.pollution;
+  if (!G.pollution && !(G.pollutionField && G.pollutionField.size)) return;   // 无污染不绘制
+  const p = G.pollution || 0;
   const intensity = Math.min(1, p / 600);        // 0~1 污染浓度
-  // 以基地为污染中心（出生点附近），玩家视角能看到基地污染云
-  // 在 render 的世界变换上下文中调用，直接使用世界坐标（单位：像素/格×TILE）
-  const sx = (G.spawn ? G.spawn.x : 0) * TILE;
-  const sy = (G.spawn ? G.spawn.y : 0) * TILE;
-  // 污染云半径随污染值扩大（格）
-  const radius = (12 + p / 30) * TILE;
+  // 以逐格污染场质心为污染中心（对齐《异星工厂》：污染云随污染源位置扩散）
+  let cx, cy, radius;
+  const cent = (typeof pollutionFieldCentroid === 'function') ? pollutionFieldCentroid() : null;
+  if (cent) {
+    cx = cent.tx * TILE;
+    cy = cent.ty * TILE;
+    radius = (10 + Math.min(p, 400) / 22) * TILE;
+  } else {
+    cx = (G.spawn ? G.spawn.x : 0) * TILE;
+    cy = (G.spawn ? G.spawn.y : 0) * TILE;
+    radius = (12 + p / 30) * TILE;
+  }
   // 视口外剔除（用 FRAME_BOUNDS 快速判断，避免离屏绘制浪费）
   // FRAME_BOUNDS 为世界像素坐标：x0=右边界 x1=左边界 y0=下边界 y1=上边界
   if (typeof FRAME_BOUNDS === 'object' && FRAME_BOUNDS) {
-    if (sx + radius < FRAME_BOUNDS.x1 || sx - radius > FRAME_BOUNDS.x0 ||
-        sy + radius < FRAME_BOUNDS.y1 || sy - radius > FRAME_BOUNDS.y0) return;
+    if (cx + radius < FRAME_BOUNDS.x1 || cx - radius > FRAME_BOUNDS.x0 ||
+        cy + radius < FRAME_BOUNDS.y1 || cy - radius > FRAME_BOUNDS.y0) return;
   }
   ctx.save();
   ctx.globalCompositeOperation = 'source-over';
   // 多层径向渐变模拟雾状污染（外缘淡、中心浓）
-  const g = ctx.createRadialGradient(sx, sy, radius * 0.1, sx, sy, radius);
+  const g = ctx.createRadialGradient(cx, cy, radius * 0.1, cx, cy, radius);
   const a = 0.16 + intensity * 0.24;
   g.addColorStop(0, 'rgba(140,120,70,' + a.toFixed(3) + ')');
   g.addColorStop(0.45, 'rgba(150,120,70,' + (a * 0.7).toFixed(3) + ')');
@@ -214,7 +374,7 @@ function drawPollution(ctx) {
   g.addColorStop(1, 'rgba(150,125,75,0)');
   ctx.fillStyle = g;
   ctx.beginPath();
-  ctx.arc(sx, sy, radius, 0, Math.PI * 2);
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
@@ -223,19 +383,29 @@ function drawPollution(ctx) {
 // 参数：cx/cy 为污染中心在画布上的小地图坐标（像素），scale 为小地图瓦片缩放
 function drawPollutionMinimap(ctx, cx, cy, scale) {
   if (!G || !G.settings || !G.settings.combat) return;
-  if (!G.pollution || G.pollution < 8) return;
-  const p = G.pollution;
+  if (!G.pollution && !(G.pollutionField && G.pollutionField.size)) return;
+  const p = G.pollution || 0;
   const intensity = Math.min(1, p / 600);
-  const radius = (12 + p / 30) * scale;
+  // 小地图同样优先以逐格污染场质心为污染中心（对齐《异星工厂》污染云扩散）
+  let px, py, radius;
+  const cent = (typeof pollutionFieldCentroid === 'function') ? pollutionFieldCentroid() : null;
+  if (cent) {
+    px = cx + (cent.tx - (G.spawn ? G.spawn.x : 0)) * scale;
+    py = cy + (cent.ty - (G.spawn ? G.spawn.y : 0)) * scale;
+    radius = (10 + Math.min(p, 400) / 22) * scale;
+  } else {
+    px = cx; py = cy;
+    radius = (12 + p / 30) * scale;
+  }
   ctx.save();
-  const g = ctx.createRadialGradient(cx, cy, 1, cx, cy, radius);
+  const g = ctx.createRadialGradient(px, py, 1, px, py, radius);
   const a = 0.35 + intensity * 0.4;
   g.addColorStop(0, 'rgba(160,130,70,' + a.toFixed(3) + ')');
   g.addColorStop(0.6, 'rgba(160,130,70,' + (a * 0.6).toFixed(3) + ')');
   g.addColorStop(1, 'rgba(160,130,70,0)');
   ctx.fillStyle = g;
   ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.arc(px, py, radius, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }

@@ -137,7 +137,8 @@ function newGame() {
     G.evolution = enemyConfig().initEvolution;
   }
   G.pollution = 0;    // 污染值（对齐《异星工厂》：工业排放污染激怒虫群）
-  G.pollutionWaves = 0; G.pollutionT = 0; G.pollutionScanT = 0;
+  G.pollutionWaves = 0; G.pollutionT = 0; G.pollutionScanT = 0; G.pollutionSpreadT = 0;
+  G.pollutionField = null; G.treeWither = null;   // 逐格污染场与树枯萎进度（新游戏重置）
   G.combatRobots = [];
   G.aoeZones = [];        // 新游戏清空区域力场（毒/减速胶囊）
   G.groundFires = [];     // 新游戏清空地面火焰残留
