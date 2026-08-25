@@ -432,101 +432,168 @@ html, body {
 
 .start-box {
   position: relative;
-  width: 440px;
+  width: 460px;
   max-width: 92vw;
-  padding: 36px 40px 28px;
-  background: rgba(14, 19, 16, .92);
-  border: 1px solid #3f5a48;
-  border-radius: 18px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, .65), inset 0 0 0 1px rgba(255, 210, 60, .07);
+  padding: 34px 40px 26px;
+  /* 告别纯黑：深绿玻璃面板，让地图背景透出来，呈现“工业 HUD 面板”质感 */
+  background: linear-gradient(160deg, rgba(30, 48, 38, .88) 0%, rgba(20, 33, 26, .82) 55%, rgba(14, 22, 17, .86) 100%);
+  border: 1px solid rgba(111, 209, 126, .35);
+  border-radius: 20px;
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, .55),
+    0 4px 22px rgba(0, 0, 0, .35),
+    inset 0 1px 0 rgba(255, 255, 255, .08),
+    inset 0 0 42px rgba(87, 185, 92, .05);
+  backdrop-filter: blur(10px) saturate(1.15);
+  -webkit-backdrop-filter: blur(10px) saturate(1.15);
   text-align: center;
   animation: startPop .5s cubic-bezier(.2, .9, .3, 1.15);
+}
+/* 卡片顶部细高光描边：模拟金属面板折光 */
+.start-box::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 12%; right: 12%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 210, 80, .65), transparent);
+  border-radius: 2px;
+  pointer-events: none;
+}
+/* 卡片四角工业铆钉装饰 */
+.start-box::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 10px 10px, rgba(255, 255, 255, .16) 0 2px, transparent 2.5px),
+    radial-gradient(circle at calc(100% - 10px) 10px, rgba(255, 255, 255, .16) 0 2px, transparent 2.5px),
+    radial-gradient(circle at 10px calc(100% - 10px), rgba(255, 255, 255, .16) 0 2px, transparent 2.5px),
+    radial-gradient(circle at calc(100% - 10px) calc(100% - 10px), rgba(255, 255, 255, .16) 0 2px, transparent 2.5px);
+  pointer-events: none;
 }
 @keyframes startPop {
   from { opacity: 0; transform: translateY(22px) scale(.96); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.start-logo { margin-bottom: 26px; position: relative; }
+/* 头部：齿轮徽标 + 标题横排 */
+.start-box-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-bottom: 26px;
+  position: relative;
+}
+.start-box-head::after {
+  content: '';
+  position: absolute;
+  left: 15%; right: 15%;
+  bottom: -16px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(87, 185, 92, .55), transparent);
+}
+.start-emblem {
+  width: 58px;
+  height: 58px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  color: #7fe08e;
+  border: 2px solid rgba(111, 209, 126, .55);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(87, 185, 92, .25), rgba(12, 20, 15, .6));
+  box-shadow: 0 0 18px rgba(87, 185, 92, .3), inset 0 0 10px rgba(87, 185, 92, .15);
+  text-shadow: 0 0 8px rgba(127, 224, 142, .8);
+}
+.start-logo { position: relative; text-align: left; }
 .start-logo::after {
   content: '';
   display: block;
   width: 64px;
   height: 2px;
-  margin: 18px auto 0;
+  margin: 14px 0 0;
   background: linear-gradient(90deg, transparent, #57b95c, transparent);
   border-radius: 2px;
 }
 .start-title {
-  font-size: 48px;
+  font-size: 42px;
   font-weight: 800;
   letter-spacing: 6px;
-  color: #f6faf2;
-  text-shadow: 0 0 22px rgba(120, 200, 130, .5), 0 3px 0 #16231a, 0 6px 16px rgba(0, 0, 0, .6);
+  color: #f4faf2;
+  line-height: 1.05;
+  text-shadow: 0 0 22px rgba(120, 200, 130, .45), 0 2px 0 rgba(10, 18, 13, .7), 0 6px 16px rgba(0, 0, 0, .5);
 }
 .start-sub {
   margin-top: 6px;
   font-size: 12px;
-  letter-spacing: 9px;
-  color: #8fba96;
+  letter-spacing: 8px;
+  color: #9fd3a8;
   text-shadow: 0 1px 2px rgba(0, 0, 0, .5);
 }
 
-.start-menu { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+.start-menu { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
 
 .start-btn {
   padding: 15px 16px;
   font-size: 16px;
   font-weight: bold;
   letter-spacing: 2px;
-  background: linear-gradient(180deg, #2a352c, #1d2720);
   color: #eef6ee;
-  border: 1px solid #3f5a48;
+  border: 1px solid rgba(90, 120, 102, .7);
   border-radius: 11px;
   cursor: pointer;
   transition: all .18s;
-  box-shadow: 0 3px 0 rgba(0, 0, 0, .35);
+  background: linear-gradient(180deg, rgba(48, 66, 56, .85), rgba(30, 42, 34, .85));
+  box-shadow: 0 3px 0 rgba(0, 0, 0, .3), inset 0 1px 0 rgba(255, 255, 255, .06);
 }
 .start-btn:hover {
-  background: linear-gradient(180deg, #33453a, #263529);
+  background: linear-gradient(180deg, rgba(58, 82, 66, .9), rgba(40, 56, 45, .9));
   border-color: #57b95c;
-  box-shadow: 0 0 14px rgba(87, 185, 92, .3), 0 3px 0 rgba(0, 0, 0, .35);
+  box-shadow: 0 0 16px rgba(87, 185, 92, .35), 0 3px 0 rgba(0, 0, 0, .3);
   transform: translateY(-1px);
 }
 .start-btn:active {
   transform: translateY(0);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, .35);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .3);
 }
 .start-btn.primary {
-  background: linear-gradient(180deg, #3a7445, #235330);
-  border-color: #6fd17e;
+  background: linear-gradient(180deg, rgba(58, 116, 69, .95), rgba(35, 83, 48, .95));
+  border-color: rgba(111, 209, 126, .9);
   color: #effff2;
-  box-shadow: 0 0 18px rgba(87, 185, 92, .25), 0 3px 0 #1b3a22;
+  box-shadow: 0 0 20px rgba(87, 185, 92, .3), 0 3px 0 #16301d, inset 0 1px 0 rgba(255, 255, 255, .18);
 }
 .start-btn.primary:hover {
-  background: linear-gradient(180deg, #46905a, #2b6b3a);
-  box-shadow: 0 0 24px rgba(87, 185, 92, .5), 0 3px 0 #1b3a22;
+  background: linear-gradient(180deg, rgba(70, 144, 90, .95), rgba(43, 107, 58, .95));
+  box-shadow: 0 0 28px rgba(87, 185, 92, .55), 0 3px 0 #16301d;
 }
 
 .start-save-info {
   min-height: 18px;
   margin-top: 4px;
   font-size: 12px;
-  color: #7d8894;
+  color: #a9b6ae;
 }
 .start-save-info.has-save { color: #9fe0b2; }
 .start-save-info.no-save { color: #ff9a8a; }
 
 .start-hint {
   margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(87, 185, 92, .18);
   font-size: 12px;
-  color: #74817a;
+  color: #b4c1b8;
   line-height: 1.75;
 }
 .start-hint.sub {
-  margin-top: 8px;
+  margin-top: 10px;
+  padding-top: 0;
+  border-top: none;
   font-size: 12px;
-  color: #93a294;
+  color: #9fb0a4;
 }
 
 /* ===== 读取存档弹层 ===== */

@@ -487,25 +487,24 @@ function updateGroundItems(dt) {
   if (!G.groundItems || G.groundItems.length === 0) return;
   const p = G.player;
   const pickR = REACH_PX * 0.9;
+  const pickR2 = pickR * pickR;   // 用平方距离代替每帧 Math.hypot（避免逐格开平方），语义完全一致
+  let hasTaken = false;
   for (const g of G.groundItems) {
     if (g.taken) continue;
-    const gx = g.tx * TILE + TILE / 2, gy = g.ty * TILE + TILE / 2;
-    if (Math.hypot(gx - p.x, gy - p.y) < pickR) {
+    const dx = g.tx * TILE + TILE / 2 - p.x, dy = g.ty * TILE + TILE / 2 - p.y;
+    if (dx * dx + dy * dy < pickR2) {
       const got = invAdd(g.item, g.n);
       if (got > 0) {
         if (typeof playSfx === 'function') playSfx('loot');
         g.n -= got;
-        if (g.n <= 0) g.taken = true;
+        if (g.n <= 0) { g.taken = true; hasTaken = true; }
       }
     }
   }
-  if (G.groundItems.length) {
-    let hasTaken = false;
-    for (const g of G.groundItems) if (g.taken) { hasTaken = true; break; }
-    if (hasTaken) {
-      G.groundItems = compactFilter(G.groundItems, g => !g.taken);
-      if (G.groundItems.length === 0) G.groundItems = undefined;
-    }
+  // 仅在确实拾取过物品时（hasTaken）才压缩数组，避免无拾取时每帧二次遍历（热路径优化）
+  if (hasTaken && G.groundItems.length) {
+    G.groundItems = compactFilter(G.groundItems, g => !g.taken);
+    if (G.groundItems.length === 0) G.groundItems = undefined;
   }
 }
 
