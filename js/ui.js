@@ -2058,6 +2058,27 @@ function buildDebug() {
       if (typeof uiDirty !== 'undefined') uiDirty = true;
       toast(cnt ? ('已移除 ' + cnt + ' 格峭壁') : '当前显示区域没有峭壁');
     }],
+    ['移除当前视野内所有树木', () => {
+      // 一键移除当前显示区域内的所有树木（变回草地），对齐《异星工厂》树木清除
+      const b = (typeof viewBounds === 'function') ? viewBounds() : null;
+      if (!b) { toast('无法获取视口范围'); return; }
+      const minTx = Math.floor(Math.min(b.x0, b.x1) / TILE);
+      const maxTx = Math.floor(Math.max(b.x0, b.x1) / TILE);
+      const minTy = Math.floor(Math.min(b.y0, b.y1) / TILE);
+      const maxTy = Math.floor(Math.max(b.y0, b.y1) / TILE);
+      let cnt = 0;
+      for (let ty = minTy; ty <= maxTy; ty++) {
+        for (let tx = minTx; tx <= maxTx; tx++) {
+          if (getTerrain(tx, ty) === T_TREE) {
+            setTerrain(tx, ty, T_GRASS);
+            if (typeof invalidateTerrainChunk === 'function') invalidateTerrainChunk(tx, ty);
+            cnt++;
+          }
+        }
+      }
+      if (typeof uiDirty !== 'undefined') uiDirty = true;
+      toast(cnt ? ('已移除 ' + cnt + ' 棵树木') : '当前显示区域没有树木');
+    }],
     ['新地图', () => { newGame(); closePanel(); toast('新地图已生成'); }],
     ['一键完成全部科技', () => {
       for (const t in TECHS) {
