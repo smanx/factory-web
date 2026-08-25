@@ -916,11 +916,11 @@ const TECH_REQ = {
   'productivity-module-3': 'modules3',
   'efficiency-module-2': 'advanced-material-processing-2',
   'efficiency-module-3': 'advanced-material-processing-3',
-  'advanced-circuit': 'electronics',
-  'sulfur': 'oil',
-  'sulfuric-acid': 'oil',
-  'processing-unit': 'electronics',
-  'electric-engine': 'electronics',
+  'advanced-circuit': 'advanced-electronics',
+  'sulfur': 'sulfur-processing',
+  'sulfuric-acid': 'sulfur-processing',
+  'processing-unit': 'advanced-electronics-2',
+  'electric-engine': 'electric-engine',
   'radar': 'radar',
   'gate': 'military',
   'production-science-pack': 'production',
@@ -1103,6 +1103,10 @@ const RECIPE_TECH = {
 // 某些配方（如效率模块）既可被新拆分的进阶科技解锁，也可被旧「模块工程」科技解锁，
 // 用于保证旧存档兼容：只要满足其中任一科技即可解锁。
 const RECIPE_TECH_ANY = {
+  'advanced-electronics':     ['electronics', 'advanced-electronics'],
+  'advanced-electronics-2':   ['electronics', 'advanced-electronics-2'],
+  'electric-engine':         ['electronics', 'electric-engine'],
+  'sulfur-processing':       ['oil', 'sulfur-processing'],
   'advanced-material-processing':     ['modules', 'advanced-material-processing'],
   'advanced-material-processing-2':   ['modules2', 'advanced-material-processing-2'],
   'advanced-material-processing-3':   ['modules3', 'advanced-material-processing-3']
@@ -1202,7 +1206,11 @@ const TECHS = {
   'land-mine': { name: '地雷', cost: { 'military-science': 20 }, desc: '解锁地雷，铺设后敌人踏入即爆炸造成范围伤害（对齐《异星工厂》Landmines 科技）', req: ['military'] },
   'cluster-grenade': { name: '集束手雷', cost: { 'military-science': 30 }, desc: '解锁集束手雷，爆炸范围与威力远胜普通手雷（对齐《异星工厂》Cluster grenade 科技）', req: ['explosives'] },
   'uranium-ammo': { name: '铀弹', cost: { 'production-science-pack': 30, 'military-science': 30 }, desc: '解锁铀弹与铀炮弹，以铀-238 制成的高伤害弹药（对齐《异星工厂》Uranium ammo 科技）', req: ['nuclear'] },
-  electronics: { name: '电子学', cost: { 'blue-science': 40 }, desc: '解锁高级电路板、处理器（火箭链路的关键）', req: ['plastic', 'oil'] },
+  electronics: { name: '电子学', cost: { 'blue-science': 40 }, desc: '解锁电子电路与基础电子元件（火箭链路的关键）', req: ['plastic', 'oil'] },
+  'advanced-electronics': { name: '高级电子学', cost: { 'blue-science': 60 }, desc: '解锁高级电路板（对齐《异星工厂》Advanced electronics）', req: ['electronics'] },
+  'advanced-electronics-2': { name: '高级电子学 II', cost: { 'blue-science': 90 }, desc: '解锁处理器（蓝板）（对齐《异星工厂》Advanced electronics 2）', req: ['advanced-electronics', 'advanced-oil-processing'] },
+  'electric-engine': { name: '电动引擎', cost: { 'blue-science': 50 }, desc: '解锁电动引擎单元（对齐《异星工厂》Electric engine）', req: ['engine', 'advanced-electronics'] },
+  'sulfur-processing': { name: '硫磺处理', cost: { 'blue-science': 40 }, desc: '解锁硫磺与硫酸（对齐《异星工厂》Sulfur processing）', req: ['oil'] },
   'solar-energy': { name: '太阳能', cost: { 'blue-science': 30 }, desc: '解锁太阳能板，白天可采集阳光发电（对齐《异星工厂》Solar energy）', req: ['electric', 'electronics'] },
   'electric-energy-accumulators': { name: '蓄电器', cost: { 'blue-science': 30 }, desc: '解锁蓄电器，存储电力以在夜晚/低谷期为电网续供（对齐《异星工厂》Electric energy accumulators）', req: ['solar-energy'] },
   'steel-processing': { name: '炼钢科技', cost: { 'blue-science': 20 }, desc: '解锁钢炉与钢箱，提升冶炼效率与储物容量（对齐《异星工厂》Steel processing）', req: ['electric'] },
@@ -1326,6 +1334,11 @@ function migrateNewTechs(techDone) {
   // 老玩家可能已拥有对应产线，补完对应科技避免被锁死（对齐《异星工厂》科技树）。
   if (techDone['automation']) techDone['engine'] = true;
   if (techDone['oil']) { techDone['battery'] = true; techDone['plastic'] = true; }
+  // 兼容旧档：高级电路/处理器/电动引擎/硫磺此前由「电子学」/「石油冶金」直接解锁，
+  // 现拆分为独立进阶科技（高级电子学/高级电子学II/电动引擎/硫磺处理），
+  // 老玩家补完对应科技避免产线被锁死（对齐《异星工厂》科技树）。
+  if (techDone['electronics']) { techDone['advanced-electronics'] = true; techDone['advanced-electronics-2'] = true; techDone['electric-engine'] = true; }
+  if (techDone['oil']) techDone['sulfur-processing'] = true;
   return techDone;
 }
 
