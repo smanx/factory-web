@@ -385,6 +385,54 @@ function drawBeltCorner(ctx, e, gx, gy, dir, alpha, colors) {
   return true;
 }
 
+// 绘制 T 型转角中侧面接入带的自然连接段：让侧面带以一段圆弧平滑地汇入主带，
+// 而不是用直矩形“搭”在主带之上。s 为侧面输入方向（指向相邻带一侧，即邻带朝本格）。
+// 返回该侧面的内/外弧信息（laneInner 内弧所属车道号、CC/aE/d），供物品沿弧线流动复用。
+function drawBeltSideMerge(ctx, e, cx, cy, dir, s, step, alpha, col) {
+  const fdx = DX[dir], fdy = DY[dir];
+  // 圆弧圆心 = 侧面入口边与主带出口方向相交的格角点（与纯转角同源算法），
+  // 使侧面带从自身方向自然弯折、汇入主带流向，视觉上平滑衔接而非硬搭在主带上。
+  const CCx = (s[0] !== 0 ? s[0] : fdx) * step;
+  const CCy = (s[1] !== 0 ? s[1] : fdy) * step;
+  const aE = Math.atan2(s[1] * step - CCy, s[0] * step - CCx); // 侧面入口角
+  const aX = Math.atan2(fdy * step - CCy, fdx * step - CCx);   // 主带方向出口角
+  let d = aX - aE;
+  while (d > Math.PI) d -= 2 * Math.PI;
+  while (d < -Math.PI) d += 2 * Math.PI;
+  const ccw = d < 0;
+  const rIn = step - 9, rOut = step + 9, rC = step;
+  // 弧形轨道带（圆环段），颜色与主带一致，自然并入而非叠加矩形
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = col.belt;
+  ctx.strokeStyle = '#22252a';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx + CCx, cy + CCy, rOut, aE, aX, ccw);
+  ctx.arc(cx + CCx, cy + CCy, rIn, aX, aE, !ccw);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // 动效箭头沿弧（与主带速度同步），随带速前进
+  const off = ((G.time * beltSpeed() * (e.speedMult ? e.speedMult() : 1) * TILE) % step + step) % step;
+  const arcLen = rC * Math.abs(d);
+  ctx.fillStyle = col.chev;
+  for (let ap = off - step; ap <= arcLen + step; ap += step) {
+    if (ap < 0 || ap > arcLen) continue;
+    const ang = aE + d * (ap / arcLen);
+    const ax = cx + CCx + Math.cos(ang) * rC, ay = cy + CCy + Math.sin(ang) * rC;
+    const tAng = ccw ? Math.atan2(-Math.cos(ang), Math.sin(ang)) : Math.atan2(Math.cos(ang), -Math.sin(ang));
+    ctx.save();
+    ctx.translate(ax, ay);
+    ctx.rotate(tAng);
+    tri(ctx, -3, -5, -3, 5, 3, 0);
+    ctx.fill();
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+  return { CCx, CCy, aE, d, ccw, rC };
+}
+
 // 传送带配色解析：普通/快速带为黄橙系，创造带为绿色系，虚空带为暗红系（测试设备）。
 function beltColors(e) {
   if (e.type === 'fast-transport-belt') return { belt: '#4a3a34', chev: 'rgba(226,102,54,.9)' };
@@ -437,28 +485,10 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
   }
   ctx.restore();
 
-  // 侧面接入带：在主带箭头之后绘制，用带面色覆盖溢出的主轴箭头，
-  // 避免 T 型转角（双入单出）里侧面分支区域残留主方向箭头、造成流动“断开一小截”
-  for (const s of inp) strip(Math.atan2(s[1], s[0]), 0, step);
-
-  // 每个侧面输入各画一条接入带动效，两侧可同时“搭上去”
-  for (const s of inp) {
-    const sa = Math.atan2(s[1], s[0]);
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(sa);
-    ctx.beginPath();
-    ctx.rect(0, -TILE / 2 + 3, step, TILE - 6);
-    ctx.clip();
-    ctx.fillStyle = col.chev;
-    for (let k = 0; k <= 2; k++) {
-      const xx = k * step - off;
-      if (xx < -3 || xx > step + 3) continue;
-      tri(ctx, xx + 3, -5, xx + 3, 5, xx - 3, 0);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
+  // 侧面接入带：用一段圆弧自然汇入主带（而非直矩形“搭”在主带之上），
+  // 与主带同色、同轮廓，平滑衔接；同时返回每个侧面的弧线参数供物品沿弧流动。
+  const sideArc = [];
+  for (const s of inp) sideArc.push(drawBeltSideMerge(ctx, e, cx, cy, dir, s, step, alpha, col));
 
   const exitX = DX[dir] * step, exitY = DY[dir] * step;
   // 双列错位：两条车道在行进方向垂直方向各偏移一半，物品沿各自车道流动
@@ -474,9 +504,23 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
     const perpY = laneOffset ? laneOffset[1] * lo * LANE_OFF : 0;
     // 前半段（pos<0.5）：从入口走到格心。仅“确实来自侧面”的物品走侧面接入线；
     // 直通物品（side<0，从背面同向进来，即首尾相接方向一致的直通连接）无需向中间靠拢，
-    // 全程保持各自车道偏移、直接平移过去；侧面进入的物品则从侧边向目标车道水平收拢。
+    // 全程保持各自车道偏移、直接平移过去；侧面进入的物品沿接入圆弧自然弯折汇入主带。
     const fromSide = inp.length > 0 && o.side !== undefined && o.side >= 0 && o.side < inp.length;
-    if (o.pos < 0.5) {
+    const a = fromSide ? sideArc[o.side] : null;
+    if (a) {
+      // 侧面进入的物品沿接入圆弧走完整段（入口边 → 汇入主带方向 → 出口边），
+      // 与弧形轨道一致，不再直楞楞地斜穿格心、也避免直矩形“搭”在主带上；
+      // 内/外弧决定车道位置，平滑接续主带车道。
+      const s = inp[o.side];
+      const srcDir = dirIndexOf(-s[0], -s[1]);
+      const turnZ = DX[srcDir] * DY[dir] - DY[srcDir] * DX[dir]; // >0 右转，<0 左转
+      const rightTurn = turnZ > 0;
+      const innerLane = rightTurn ? 0 : 1; // 内弧所属车道（右转=0，左转=1），与纯转角一致
+      const laneR = a.rC + ((o.lane === innerLane ? -1 : 1) * 5);
+      const ang = a.aE + a.d * o.pos;
+      ix = cx + a.CCx + Math.cos(ang) * laneR;
+      iy = cy + a.CCy + Math.sin(ang) * laneR;
+    } else if (o.pos < 0.5) {
       if (fromSide) {
         const s = inp[o.side];
         const inX = cx + s[0] * step, inY = cy + s[1] * step;
@@ -493,7 +537,7 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
         iy = inY + (cy - inY) * t + perpY;
       }
     } else {
-      // 后半段：从格心走到出口（侧面与直通物品共用）
+      // 后半段：从格心走到出口（直通物品共用）
       const t = (o.pos - 0.5) / 0.5;
       ix = cx + exitX * t + perpX;
       iy = cy + exitY * t + perpY;
