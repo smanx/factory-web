@@ -95,9 +95,15 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
     ctx.restore();
   }
   const exitX = DX[dir] * step, exitY = DY[dir] * step;
+  // 双列错位：物品沿各自车道流动（与普通带一致）
+  const LANE_OFF = 7;
+  const laneOffset = e.items.length ? beltLaneOffset(e, 1) : null;
   const itemFn = (LOD && LOD.simple) ? drawItemDotLOD : drawItemDot;
   for (const o of e.items) {
     let ix, iy;
+    const lo = (o.lane === 1 ? 1 : -1);
+    const perpX = laneOffset ? laneOffset[0] * lo * LANE_OFF : 0;
+    const perpY = laneOffset ? laneOffset[1] * lo * LANE_OFF : 0;
     // 与普通带一致：仅确实来自侧面的物品走侧面接入线；直通物品（side<0）沿主轴从背面进入
     const fromSide = inp.length > 0 && o.side !== undefined && o.side >= 0 && o.side < inp.length;
     if (o.pos < 0.5) {
@@ -105,15 +111,15 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
         const s = inp[o.side];
         const inX = cx + s[0] * step, inY = cy + s[1] * step;
         const t = o.pos / 0.5;
-        ix = inX + (cx - inX) * t; iy = inY + (cy - inY) * t;
+        ix = inX + (cx - inX) * t + perpX * t; iy = inY + (cy - inY) * t + perpY * t;
       } else {
         const inX = cx - DX[dir] * step, inY = cy - DY[dir] * step;
         const t = o.pos / 0.5;
-        ix = inX + (cx - inX) * t; iy = inY + (cy - inY) * t;
+        ix = inX + (cx - inX) * t + perpX * t; iy = inY + (cy - inY) * t + perpY * t;
       }
     } else {
       const t = (o.pos - 0.5) / 0.5;
-      ix = cx + exitX * t; iy = cy + exitY * t;
+      ix = cx + exitX * t + perpX; iy = cy + exitY * t + perpY;
     }
     itemFn(ctx, ix, iy, o.item);
   }

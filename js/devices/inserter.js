@@ -59,12 +59,33 @@ class Inserter extends Entity {
     const e = entAt(x, y);
     return (e && !(e instanceof Inserter)) ? e : null;
   }
+  // 取物格传送带的“近侧车道”：机械臂从靠近自己一侧的车道取物（对齐《异星工厂》）。
+  pickBeltLane(s) {
+    if (!(s instanceof Belt)) return undefined;
+    const bx = s.x, by = s.y;
+    const dx = this.x - bx, dy = this.y - by;
+    const fdx = DX[s.dir], fdy = DY[s.dir];
+    const perp = [fdy, -fdx];
+    const d = dx * perp[0] + dy * perp[1];
+    return d > 0 ? 1 : 0;
+  }
+  // 放物格传送带的“近侧车道”：机械臂把物品放到靠近自己一侧的车道（对齐《异星工厂》）。
+  dropBeltLane(t) {
+    if (!(t instanceof Belt)) return 0;
+    const bx = t.x, by = t.y;
+    const dx = this.x - bx, dy = this.y - by;
+    const fdx = DX[t.dir], fdy = DY[t.dir];
+    const perp = [fdy, -fdx];
+    const d = dx * perp[0] + dy * perp[1];
+    return d > 0 ? 1 : 0;
+  }
   // ===== 取物 =====
   peekSource(s) {
     if (!s) return null;
     let it = null;
     if (s instanceof Belt) {
-      const z = s.grabZone(this.filter || undefined);
+      const lane = this.pickBeltLane(s);
+      const z = s.grabZone(this.filter || undefined, lane);
       it = z ? z.item : null;
     } else if (this.filter && s.countOf) {
       // 过滤臂：直接探测源内是否存在过滤物（而非源的首个产出）
@@ -82,10 +103,11 @@ class Inserter extends Entity {
   }
   takeNFrom(s, item, n) {
     const got = [];
+    const lane = this.pickBeltLane(s);
     for (let i = 0; i < n; i++) {
       let it = null;
       if (s instanceof Belt) {
-        const z = s.grabZone(item);
+        const z = s.grabZone(item, lane);
         if (!z) break;
         s.items.splice(s.items.indexOf(z), 1);
         it = z.item;
@@ -99,7 +121,7 @@ class Inserter extends Entity {
   }
   takeSource(s) {
     if (s instanceof Belt) {
-      const z = s.grabZone();
+      const z = s.grabZone(undefined, this.pickBeltLane(s));
       if (!z) return null;
       s.items.splice(s.items.indexOf(z), 1);
       return z.item;
@@ -112,8 +134,10 @@ class Inserter extends Entity {
   canDropAt(t, item) {
     if (!t) return false;
     if (t instanceof Belt && !(t instanceof Splitter)) {
+      // 放物进入近侧车道：只检查该车道尾端空位（对齐《异星工厂》）
+      const lane = this.dropBeltLane(t);
       let back = Infinity;
-      for (const o of t.items) back = Math.min(back, o.pos);
+      for (const o of t.items) if (t.laneOf(o) === lane) back = Math.min(back, o.pos);
       return back >= BELT_SPACING * 0.9;
     }
     switch (t.type) {

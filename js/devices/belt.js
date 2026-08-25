@@ -18,6 +18,9 @@ class Belt extends Entity {
     return circuitCondOk(sig, this.circuitCond);
   }
   speedMult() { return this.type === 'fast-transport-belt' ? FAST_BELT_MULT : 1; }
+  // 双列车道：传送带由左右两列独立车道组成（对齐《异星工厂》），
+  // 每条车道各自携带物品、互不占位。Lane 0 / Lane 1 指行进方向的左右列。
+  laneOf(o) { return o && o.lane === 1 ? 1 : 0; }
   update(dt) {
     // 电路条件不满足时传送带停转，带上物品原地冻结
     if (!this.circuitEnabled()) return;
@@ -33,34 +36,56 @@ class Belt extends Entity {
     // （排序/邻居扫描/转移判定），空传送带完全无需每帧运行。
     if (!this.items || this.items.length === 0) return;
     const sp = beltSpeed() * this.speedMult() * dt;
-    this.items.sort(_beltItemSortDesc);
-    if (this.items.length && this.items[0].pos + sp >= 1) this.transferFront();
-    for (let i = 0; i < this.items.length; i++) {
-      const it = this.items[i];
-      let lim = 1;
-      if (i > 0) lim = Math.max(0, this.items[i - 1].pos - BELT_SPACING);
-      it.pos = Math.min(it.pos + sp, lim);
-      if (it.pos < 0) it.pos = 0;
+    this._sp = sp;
+    // 每列车道各自推进：前端到达出口即转移到下一格对应车道
+    this.transferFront();
+    for (let lane = 0; lane < 2; lane++) {
+      const laneItems = [];
+      for (const o of this.items) if (this.laneOf(o) === lane) laneItems.push(o);
+      if (!laneItems.length) continue;
+      laneItems.sort(_beltItemSortDesc);
+      for (let i = 0; i < laneItems.length; i++) {
+        const it = laneItems[i];
+        let lim = 1;
+        if (i > 0) lim = Math.max(0, laneItems[i - 1].pos - BELT_SPACING);
+        it.pos = Math.min(it.pos + sp, lim);
+        if (it.pos < 0) it.pos = 0;
+      }
     }
   }
+  // 前端转移：两条车道的各自前端物品到达出口时，各自转移到下一格对应车道
   transferFront() {
-    const f = this.items[0];
+    const sp = this._sp || 0;
+    for (let lane = 0; lane < 2; lane++) {
+      let idx = -1, front = null;
+      for (let i = 0; i < this.items.length; i++) {
+        const o = this.items[i];
+        if (this.laneOf(o) !== lane) continue;
+        if (!front || o.pos > front.pos) { front = o; idx = i; }
+      }
+      if (!front || front.pos + sp < 1) continue;
+      this._transferOne(idx);
+    }
+  }
+  _transferOne(idx) {
+    const f = this.items[idx];
     const nx = this.x + DX[this.dir], ny = this.y + DY[this.dir];
     const nb = entAt(nx, ny);
     if (!nb) return false;
     if (nb instanceof Belt) {
       if (!(nb instanceof Splitter)) {
         if (nb.dir === ((this.dir + 2) % 4)) return false;
+        // 检查下游传送带对应车道尾端是否有空位（车道独立判定）
         let back = Infinity;
-        for (const o of nb.items) back = Math.min(back, o.pos);
+        for (const o of nb.items) if (nb.laneOf(o) === f.lane) back = Math.min(back, o.pos);
         if (back < BELT_SPACING) return false;
       }
-      if (!nb.acceptItem(f.item, this.dir, this.x, this.y)) return false;
-      this.items.shift();
+      if (!nb.acceptItem(f.item, this.dir, this.x, this.y, f.lane)) return false;
+      this.items.splice(idx, 1);
       return true;
     }
     if ((nb instanceof Underground || nb instanceof Splitter) && nb.giveItem(f.item)) {
-      this.items.shift();
+      this.items.splice(idx, 1);
       return true;
     }
     return false;
@@ -79,9 +104,10 @@ class Belt extends Entity {
     const nb = entAt(bx, by);
     return nb instanceof Belt && nb.dir === this.dir;
   }
-  acceptItem(item, fromDir) {
+  acceptItem(item, fromDir, sx, sy, laneHint) {
     const rel = (fromDir === undefined || fromDir === null) ? -1 : ((fromDir - this.dir) % 4 + 4) % 4;
     const isSide = rel === 1 || rel === 3;
+    const isTail = rel === 0;   // 尾部输入：与行进同向的直通带从带尾送入
     const side = isSide ? beltSideIndex(this, fromDir) : -1;
     const inp = beltInputSide(this);
     const haveBack = this._hasStraightBack();
@@ -100,21 +126,40 @@ class Belt extends Entity {
       this._lastSideIn = side;
     }
 
-    const candidates = [];
-    if (isSide) candidates.push(0.45);
-    candidates.push(0);
-    for (const p of candidates) {
-      let ok = true;
-      for (const o of this.items)
-        if (Math.abs(o.pos - p) < BELT_SPACING) { ok = false; break; }
-      if (ok) { this.items.push({ item, pos: p, side: isSide ? side : -1 }); return true; }
+    // —— 双列车道选择（对齐《异星工厂》）——
+    // 1) 直通转移：沿用源车道；
+    // 2) 侧面输入（机械臂/侧带）：进入近侧车道；
+    // 3) 尾部输入：交替车道，使两条车道均衡装载。
+    let lane;
+    if (laneHint !== undefined && laneHint !== null) {
+      lane = laneHint === 1 ? 1 : 0;
+    } else if (isSide) {
+      lane = sideOfLane(this, fromDir);
+    } else {
+      lane = isTail ? (this._nextTailLane || 0) : 0;
+    }
+
+    // 首选车道上的空位查找；满则回退到另一车道（均衡余量）
+    const candidates = isSide ? [0.45, 0] : [0, 0.45];
+    for (const l of [lane, 1 - lane]) {
+      for (const p of candidates) {
+        let ok = true;
+        for (const o of this.items)
+          if (this.laneOf(o) === l && Math.abs(o.pos - p) < BELT_SPACING) { ok = false; break; }
+        if (ok) {
+          this.items.push({ item, pos: p, lane: l, side: isSide ? side : -1 });
+          if (isTail && l === lane) this._nextTailLane = 1 - (this._nextTailLane || 0);
+          return true;
+        }
+      }
     }
     return false;
   }
-  grabZone(item) {
+  grabZone(item, lane) {
     let best = null;
     for (const o of this.items)
-      if (o.pos >= 0.2 && (!item || o.item === item) && (!best || o.pos > best.pos)) best = o;
+      if ((lane === undefined || lane === null || this.laneOf(o) === lane)
+        && o.pos >= 0.2 && (!item || o.item === item) && (!best || o.pos > best.pos)) best = o;
     return best;
   }
   countOf(item) {
@@ -153,13 +198,13 @@ class Belt extends Entity {
   }
   serialize() {
     const s = super.serialize();
-    s.items = this.items.map(o => [o.item, +o.pos.toFixed(3), o.side === undefined ? -1 : o.side]);
+    s.items = this.items.map(o => [o.item, +o.pos.toFixed(3), o.side === undefined ? -1 : o.side, o.lane === 1 ? 1 : 0]);
     if (this.circuitCond) s.circuitCond = this.circuitCond;
     return s;
   }
   static restore(s) {
     const b = super.restore(s);
-    b.items = (s.items || []).map(a => ({ item: a[0], pos: a[1], side: a.length > 2 ? a[2] : -1 }));
+    b.items = (s.items || []).map(a => ({ item: a[0], pos: a[1], side: a.length > 2 ? a[2] : -1, lane: a.length > 3 ? (a[3] === 1 ? 1 : 0) : 0 }));
     b.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1, circuitRead: false };
     return b;
   }
@@ -203,6 +248,25 @@ function beltSideIndex(e, fromDir) {
   const sx = -DX[fromDir], sy = -DY[fromDir];
   for (let i = 0; i < 2; i++) if (sides[i][0] === sx && sides[i][1] === sy) return i;
   return -1;
+}
+
+// 侧面输入（机械臂/侧带）进入的车道：物品进入近侧车道（对齐《异星工厂》）。
+// 返回 0 或 1，与渲染偏移（+perp 侧为 lane 1）保持一致。
+function sideOfLane(e, fromDir) {
+  const sx = -DX[fromDir], sy = -DY[fromDir];
+  const fdx = DX[e.dir], fdy = DY[e.dir];
+  const perp = [fdy, -fdx];
+  const d = sx * perp[0] + sy * perp[1];
+  return d > 0 ? 1 : 0;
+}
+
+// 车道垂直偏移向量（沿行进方向左侧为 lane 0、右侧为 lane 1）。
+// 用于渲染物品在两条车道上的水平错位。
+function beltLaneOffset(e, lane) {
+  const fdx = DX[e.dir], fdy = DY[e.dir];
+  // perp = [fdy, -fdx] 为行进方向右侧；lane 1 在右侧（+perp），lane 0 在左侧（-perp）
+  const k = lane === 1 ? 1 : -1;
+  return [fdy * k, -fdx * k];
 }
 
 // ===== 90° 转角渲染 =====
@@ -269,11 +333,13 @@ function drawBeltCorner(ctx, e, gx, gy, dir, alpha, colors) {
     ctx.restore();
   }
 
-  // 物品沿圆弧行进
+  // 物品沿圆弧行进（双列：外车道走外半径，内车道走内半径，对齐《异星工厂》弯道）
   const itemFn = (LOD && LOD.simple) ? drawItemDotLOD : drawItemDot;
   for (const o of e.items) {
     const ang = aE + d * o.pos;
-    const ix = cx + CCx + Math.cos(ang) * rC, iy = cy + CCy + Math.sin(ang) * rC;
+    // 外/内半径偏移：lane 走其所在半径，避免双列在弯道重叠
+    const laneR = rC + ((o.lane === 1 ? 1 : -1) * 5);
+    const ix = cx + CCx + Math.cos(ang) * laneR, iy = cy + CCy + Math.sin(ang) * laneR;
     itemFn(ctx, ix, iy, o.item);
   }
   ctx.globalAlpha = 1;
@@ -356,10 +422,17 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
   }
 
   const exitX = DX[dir] * step, exitY = DY[dir] * step;
+  // 双列错位：两条车道在行进方向垂直方向各偏移一半，物品沿各自车道流动
+  const LANE_OFF = 7;
+  const laneOffset = e.items.length ? beltLaneOffset(e, 1) : null;
   // 低 LOD：物品用色块直填，省去 clip+glyph 的昂贵路径绘制
   const itemFn = (LOD && LOD.simple) ? drawItemDotLOD : drawItemDot;
   for (const o of e.items) {
     let ix, iy;
+    // 该物品所属车道的垂直偏移（lane 0 在 -perp 侧，lane 1 在 +perp 侧）
+    const lo = (o.lane === 1 ? 1 : -1);
+    const perpX = laneOffset ? laneOffset[0] * lo * LANE_OFF : 0;
+    const perpY = laneOffset ? laneOffset[1] * lo * LANE_OFF : 0;
     // 前半段（pos<0.5）：从入口走到格心。仅“确实来自侧面”的物品走侧面接入线；
     // 直通物品（side<0，从背面同向进来）及无侧面输入的普通带仍沿主轴从背面进入，
     // 避免 T 型转角里直通方向的物品被错误画到侧面分支上。
@@ -371,17 +444,19 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
         const t = o.pos / 0.5;
         ix = inX + (cx - inX) * t;
         iy = inY + (cy - inY) * t;
+        // 侧面进入的物品：随车道向目标车道水平收拢
+        ix += perpX * t; iy += perpY * t;
       } else {
         const inX = cx - DX[dir] * step, inY = cy - DY[dir] * step; // 背面入口
         const t = o.pos / 0.5;
-        ix = inX + (cx - inX) * t;
-        iy = inY + (cy - inY) * t;
+        ix = inX + (cx - inX) * t + perpX * t;
+        iy = inY + (cy - inY) * t + perpY * t;
       }
     } else {
       // 后半段：从格心走到出口（侧面与直通物品共用）
       const t = (o.pos - 0.5) / 0.5;
-      ix = cx + exitX * t;
-      iy = cy + exitY * t;
+      ix = cx + exitX * t + perpX;
+      iy = cy + exitY * t + perpY;
     }
     itemFn(ctx, ix, iy, o.item);
   }
@@ -428,7 +503,7 @@ function drawBeltMark(ctx, e, gx, gy, alpha) {
 
 // ===== 注册 =====
 function beltPanelHtml(e) {
-  return '<div class="dim">传送带：物品沿箭头方向流动。R 旋转方向。靠近后按 F 拿取带上物品。</div>' +
+  return '<div class="dim">传送带：双列独立输送（对齐《异星工厂》左右两列），物品沿箭头方向流动。R 旋转方向。靠近后按 F 拿取带上物品。</div>' +
     '<div class="dim">当前速度：<span data-live="speed">-</span>（格/秒）</div>' +
     (typeof circuitPanelHtml === 'function' ? circuitPanelHtml(e, 'belt') : '') +
     '<div class="status"></div>';
