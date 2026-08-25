@@ -13,7 +13,7 @@
   // 生成临时世界并绘制到 .start-bg 的 canvas 上；绘制后恢复原世界，不影响真实游戏。
   function generateStartBackground() {
     const canvas = document.getElementById('start-bg-canvas');
-    if (!canvas || typeof G === 'undefined' || !G || typeof genWorld !== 'function') return;
+    if (!canvas || typeof G === 'undefined' || !G || typeof genWorld !== 'function' || typeof drawChunkTerrainInto !== 'function') return;
     const dpr = window.devicePixelRatio || 1;
     const W = canvas.clientWidth || window.innerWidth;
     const H = canvas.clientHeight || window.innerHeight;
@@ -37,28 +37,24 @@
     }
   }
 
-  // 将临时世界的地形瓦片缩放到铺满屏幕并绘制
+  // 将临时世界渲染成与游戏内一致的完整地图，铺满全屏：以世界原点（主角出生点）
+  // 为中心，复用游戏的地形分块绘制逻辑（含树木/峭壁/水面/混凝土等），瓦片缩放
+  // 与游戏完全一致（TILE=32），直接展示出主角刚进入游戏时看到的同款地图，不再缩小。
   function drawStartMapBackground(ctx, W, H) {
-    const RANGE = 64;                 // 从世界中心向外覆盖的半边长（格）
-    const N = RANGE * 2;              // 地图边长（格）
-    const scale = Math.min(W / N, H / N) * 1.05;
+    const TILE = 32;                          // 与游戏一致的瓦片像素
+    // 覆盖屏幕所需的世界范围（格），向外多取 2 格避免边缘空白
+    const halfX = Math.ceil(W / TILE / 2) + 2;
+    const halfY = Math.ceil(H / TILE / 2) + 2;
     ctx.save();
-    ctx.translate(W / 2, H / 2);
-    ctx.scale(scale, scale);
-    ctx.translate(-RANGE, -RANGE);
-
-    for (let ty = 0; ty < N; ty++) {
-      for (let tx = 0; tx < N; tx++) {
-        const gx = tx - RANGE, gy = ty - RANGE;
-        const t = getTerrain(gx, gy);
-        const v = hash2(gx, gy);
-        let c;
-        if (t === T_WATER) c = v > 0.5 ? '#265d8a' : '#28618f';
-        else if (t === T_CLIFF) c = v > 0.5 ? '#6d6a63' : '#65625c';
-        else if (t === T_TREE) c = v > 0.5 ? '#2f5a2c' : '#2b5529';
-        else c = v > 0.62 ? '#4f7c3b' : v > 0.3 ? '#4a7538' : '#456f35';
-        ctx.fillStyle = c;
-        ctx.fillRect(tx, ty, 1.02, 1.02);
+    ctx.translate(W / 2, H / 2);              // 世界原点(出生点)平移到屏幕中心
+    // 遍历覆盖可见范围的 chunk，复用游戏的地形分块绘制（含树木/峭壁/水面细节）
+    const cX0 = Math.floor(-halfX / CHUNK);
+    const cX1 = Math.floor(halfX / CHUNK);
+    const cY0 = Math.floor(-halfY / CHUNK);
+    const cY1 = Math.floor(halfY / CHUNK);
+    for (let cy = cY0; cy <= cY1; cy++) {
+      for (let cx = cX0; cx <= cX1; cx++) {
+        drawChunkTerrainInto(ctx, cx, cy);
       }
     }
     ctx.restore();
