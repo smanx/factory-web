@@ -59,7 +59,9 @@ class Splitter extends Belt {
     if (!t) return false;
     if (t instanceof Belt && !(t instanceof Splitter)) {
       if (t.dir === ((this.dir + 2) % 4)) return false;
-      return t.acceptItem(item, this.dir);
+      // 传入 lane 作为 laneHint：让下游传送带把物品放进与分流器输出 lane 一致的
+      // 那条车道（左进左出/右进右出），而不是当作尾部输入在两条车道间轮流装载。
+      return t.acceptItem(item, this.dir, undefined, undefined, lane);
     }
     if (!(t instanceof Underground)) return t.giveItem(item);
     return false;
