@@ -354,12 +354,38 @@ const PERF = {
   fps: 60,
   frameMs: 0,
   ents: 0,
+  activeEnts: 0,
+  staticEnts: 0,
+  updateMs: 0,          // 每帧所有活跃实体 update 的总耗时（逻辑帧开销），由 main loop 写入
+  logicTickMs: 0,       // 逻辑帧单帧耗时估算（update 耗时 + 调度/电力/物流等系统耗时）
   tiles: 0,
   cacheState: '—',
   cacheRebuildMs: 0,
   zoom: 1,
-  lodState: '—'
+  lodState: '—',
+  devices: []           // 按类型统计的设备，[ { type, name, n, active } ]，按数量降序
 };
+
+// 按设备类型统计实体数量，用于判断哪类设备对帧数/逻辑帧影响最大。
+// 活跃实体（有自定义 update，每帧执行逻辑）直接影响逻辑帧开销；
+// 静态实体（继承基类空 update）不逐帧跑逻辑，只影响渲染/内存。
+// 返回按数量降序的数组，只在每次统计时生成一次，供渲染层复用。
+function countDevices() {
+  const map = {};
+  let active = 0, staticN = 0;
+  for (const e of G.ents) {
+    if (e._dead) continue;
+    const activeN = (typeof e.update === 'function' && e.update !== Entity.prototype.update);
+    if (activeN) active++; else staticN++;
+    const k = e.type;
+    const rec = map[k];
+    if (rec) { rec.n++; if (activeN) rec.active++; }
+    else map[k] = { type: k, name: (ITEMS[k] && ITEMS[k].name) ? ITEMS[k].name : k, n: 1, active: activeN ? 1 : 0 };
+  }
+  const arr = Object.keys(map).map(k => map[k]);
+  arr.sort((a, b) => (b.n - a.n) || (a.name < b.name ? -1 : 1));
+  return { arr, active, staticN };
+}
 
 // 读取/刷新性能指标（每次渲染面板时调用）
 function refreshPerf() {
@@ -368,6 +394,10 @@ function refreshPerf() {
   // 只统计存活实体（墓碑惰性清理期间不计入已拆除的）
   PERF.ents = G.ents.filter(e => !e._dead).length;
   PERF.zoom = G.cam.z;
+  const dev = countDevices();
+  PERF.devices = dev.arr;
+  PERF.activeEnts = dev.active;
+  PERF.staticEnts = dev.staticN;
   PERF.lodState = (typeof LOD === 'object' && LOD) ? (LOD.simple ? '简化（瓦片 ' + LOD.tilePx.toFixed(1) + 'px < ' + LOD_SIMPLE_PX + 'px）' : '完整') : '—';
   if (typeof terrainCacheStats === 'object') {
     PERF.cacheState = terrainCacheStats.state || '—';
@@ -790,14 +820,31 @@ function htmlStatsPerf() {
   h += '<div class="stat-table">';
   h += row2('帧率 (FPS)', '<b data-live="pfps">' + PERF.fps + '</b>');
   h += row2('单帧耗时', '<span data-live="pframems">' + PERF.frameMs.toFixed(2) + ' ms</span>');
+  h += row2('逻辑帧耗时', '<span data-live="pupdate">' + (PERF.updateMs || 0).toFixed(2) + ' ms</span>');
   h += row2('实体数量', '<span data-live="pents">' + PERF.ents + '</span>');
+  h += row2('活跃实体', '<b data-live="pactive">' + PERF.activeEnts + '</b>');
+  h += row2('静态实体', '<span data-live="pstatic">' + PERF.staticEnts + '</span>');
   h += row2('地形格子数（已加载块）', '<span data-live="ptiles">' + PERF.tiles + ' 格（' + (G.world.chunks ? G.world.chunks.size : 0) + ' 块）</span>');
   h += row2('地形离屏缓存状态', '<span data-live="pcache">' + PERF.cacheState + '</span>');
   h += row2('地形缓存最近重建耗时', '<span data-live="pcachem">' + (PERF.cacheRebuildMs || 0).toFixed(1) + ' ms</span>');
   h += row2('缩放级别', '<span data-live="pzoom">×' + PERF.zoom.toFixed(2) + '</span>');
   h += row2('LOD 分级', '<span data-live="plod">' + PERF.lodState + '</span>');
   h += '</div>';
-  h += '<div class="dim">地形离屏缓存：地形绘到离屏画布，相机未大幅移动时直接整块贴图，避免逐格重算；缓存失效时会重建并记录耗时。</div>';
+  // 设备分布：按数量降序列出各类设备，判断哪类对帧数/逻辑帧影响最大
+  const devs = PERF.devices || [];
+  h += '<div class="sec">设备分布</div>';
+  h += '<div class="dim">活跃实体（每帧执行逻辑）直接决定逻辑帧开销；静态实体不逐帧跑逻辑，主要影响渲染与内存。以下按数量降序：</div>';
+  h += '<div class="stat-table" id="perf-devices">';
+  if (!devs.length) {
+    h += '<div class="dim">暂无设备。</div>';
+  } else {
+    for (const d of devs) {
+      const flag = d.active > 0 ? ' <span class="perf-act">活跃</span>' : '';
+      h += row2(d.name + flag, '<span data-live="pd-' + d.type + '">' + d.n + '</span>');
+    }
+  }
+  h += '</div>';
+  h += '<div class="dim">地形离屏缓存：地形绘到离屏画布，相机未大幅移动时直接整块贴图，避免逐格重算；缓存失效时会重建并记录耗时。逻辑帧耗时=每帧所有活跃实体 update 的总耗时（不含渲染）。</div>';
   return h;
 }
 
@@ -822,7 +869,10 @@ function statsListSig(tab) {
       s.consumers.map(c => c.e.type + '@' + c.e.x + ',' + c.e.y).join('|');
     return 'p:' + (G.statsPowerTab || 'prod') + ':' + sig;
   }
-  return 'f:';   // 性能页结构固定，只需增量更新数值
+  // 性能页：结构随设备类型集合变化（新增/移除某类设备时重建列表），否则仅增量更新数值
+  const devs = PERF.devices || [];
+  const devSig = devs.map(d => d.type + (d.active > 0 ? '*' : '')).join(',');
+  return 'f:' + devSig;
 }
 
 // 统计面板实时刷新：由 main loop 每 0.25s 调用一次。
@@ -878,11 +928,15 @@ function updateStatsLive() {
     refreshPerf();
     set('pfps', PERF.fps);
     set('pframems', PERF.frameMs.toFixed(2) + ' ms');
+    set('pupdate', (PERF.updateMs || 0).toFixed(2) + ' ms');
     set('pents', PERF.ents);
+    set('pactive', PERF.activeEnts);
+    set('pstatic', PERF.staticEnts);
     set('ptiles', PERF.tiles + ' 格（' + (G.world.chunks ? G.world.chunks.size : 0) + ' 块）');
     set('pcache', PERF.cacheState);
     set('pcachem', (PERF.cacheRebuildMs || 0).toFixed(1) + ' ms');
     set('pzoom', '×' + PERF.zoom.toFixed(2));
     set('plod', PERF.lodState);
+    for (const d of PERF.devices || []) set('pd-' + d.type, d.n);
   }
 }

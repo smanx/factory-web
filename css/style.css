@@ -1265,6 +1265,16 @@ html, body {
   border-bottom: 1px solid rgba(255,255,255,.1);
 }
 
+/* 性能页：活跃实体（每帧跑逻辑）标记 */
+.perf-act {
+  margin-left: 6px;
+  font-size: 11px;
+  color: #ffb454;
+  border: 1px solid rgba(255,180,84,.4);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+
 /* 配方归属设备标签 */
 .rdev {
   margin-left: 8px;
