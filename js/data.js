@@ -446,9 +446,9 @@ const RECIPES = {
   'lab':                { time: 3,   inp: { 'iron-gear': 8, 'green-circuit': 8, 'stone': 10 },   out: { 'lab': 1 } },
   'splitter':           { time: 1,   inp: { 'iron-plate': 4, 'iron-gear': 4, 'iron-stick': 2 },       out: { 'splitter': 1 } },
   'underground':        { time: 1.5, inp: { 'iron-plate': 6, 'iron-gear': 4, 'iron-stick': 4 },       out: { 'underground': 1 } },
-  'boiler':             { time: 1.5, inp: { 'stone': 4, 'iron-plate': 2 },                         out: { 'boiler': 1 } },
-  'steam-engine':       { time: 2,   inp: { 'iron-plate': 2, 'iron-gear': 2, 'green-circuit': 2 }, out: { 'steam-engine': 1 } },
-  'offshore-pump':      { time: 1,   inp: { 'iron-plate': 5, 'iron-gear': 2 },                     out: { 'offshore-pump': 1 } },
+  'boiler':             { time: 1.5, inp: { 'stone': 5, 'iron-plate': 1 },                         out: { 'boiler': 1 } },
+  'steam-engine':       { time: 2,   inp: { 'iron-plate': 2, 'iron-gear': 1, 'pipe': 1 },          out: { 'steam-engine': 1 } },
+  'offshore-pump':      { time: 1,   inp: { 'iron-plate': 5, 'iron-gear': 1 },                     out: { 'offshore-pump': 1 } },
   'electric-drill':     { time: 2,   inp: { 'iron-plate': 8, 'iron-gear': 3 },                     out: { 'electric-drill': 1 } },
   'electric-furnace':   { time: 2.5, inp: { 'iron-plate': 6, 'steel-plate': 2, 'iron-gear': 1, 'green-circuit': 2 }, out: { 'electric-furnace': 1 } },
   'assembling-machine-mk2': { time: 3, inp: { 'steel-plate': 6, 'iron-gear': 4, 'green-circuit': 6 }, out: { 'assembling-machine-mk2': 1 } },
@@ -493,7 +493,7 @@ const RECIPES = {
   'production-science-pack': { time: 21, inp: { 'rail': 1, 'electric-furnace': 1, 'productivity-module': 1 }, out: { 'production-science-pack': 1 } },
   'utility-science-pack': { time: 21, inp: { 'processing-unit': 1, 'flying-robot-frame': 1, 'low-density-structure': 3 }, out: { 'utility-science-pack': 1 } },
   // 空间科学包：卫星发射后由火箭发射井产出（非合成配方，见 rocket.js 发射逻辑）
-  'gun-turret':       { time: 3,   inp: { 'iron-plate': 8, 'iron-gear': 4, 'copper-plate': 2 }, out: { 'gun-turret': 1 } },
+  'gun-turret':       { time: 3,   inp: { 'iron-plate': 10, 'iron-gear': 4, 'copper-plate': 2 }, out: { 'gun-turret': 1 } },
   'stone-wall':       { time: 0.5, inp: { 'stone-brick': 2 }, out: { 'stone-wall': 1 } },
   'gate':             { time: 1,   inp: { 'stone-brick': 4, 'steel-plate': 2 }, out: { 'gate': 1 } },
   'magazine':         { time: 0.5, inp: { 'iron-plate': 1 }, out: { 'magazine': 4 } },
@@ -578,14 +578,14 @@ const RECIPES = {
   // ===== 火箭链路中间件 =====
   'advanced-circuit':  { time: 6,   inp: { 'green-circuit': 2, 'plastic-bar': 2, 'copper-cable': 4 }, out: { 'advanced-circuit': 1 } },
   'engine-unit':       { time: 10,  inp: { 'steel-plate': 1, 'iron-gear': 1, 'pipe': 2 },           out: { 'engine-unit': 1 } },
-  'electric-engine':   { time: 10,  inp: { 'engine-unit': 1, 'green-circuit': 2, 'lubricant': 2 }, out: { 'electric-engine': 1 } },
+  'electric-engine':   { time: 10,  inp: { 'engine-unit': 1, 'green-circuit': 2, 'lubricant': 1 }, out: { 'electric-engine': 1 } },
   'processing-unit':   { time: 10,  inp: { 'advanced-circuit': 2, 'green-circuit': 20, 'copper-cable': 4 }, out: { 'processing-unit': 1 } },
   'low-density-structure': { time: 20, inp: { 'copper-plate': 20, 'plastic-bar': 5, 'steel-plate': 2 }, out: { 'low-density-structure': 1 } },
   'rocket-fuel':       { time: 8,   inp: { 'solid-fuel': 10, 'light-oil': 10, 'electric-engine': 1 }, out: { 'rocket-fuel': 1 } },
   'rocket-control-unit': { time: 15, inp: { 'processing-unit': 1, 'advanced-circuit': 3 },          out: { 'rocket-control-unit': 1 } },
   'satellite':         { time: 10,  inp: { 'rocket-control-unit': 1, 'low-density-structure': 100, 'processing-unit': 1, 'solar-panel': 1 }, out: { 'satellite': 1 } },
   'rocket-silo':       { time: 20,  inp: { 'steel-plate': 50, 'engine-unit': 20, 'processing-unit': 20, 'green-circuit': 50 }, out: { 'rocket-silo': 1 } },
-  'radar':             { time: 2,   inp: { 'iron-plate': 6, 'steel-plate': 2, 'green-circuit': 2 }, out: { 'radar': 1 } },
+  'radar':             { time: 2,   inp: { 'iron-plate': 5, 'steel-plate': 2, 'green-circuit': 4 }, out: { 'radar': 1 } },
   // 爆炸物（火箭弹/手雷专用）
   'explosive':         { time: 2,   inp: { 'coal': 2, 'petroleum-gas': 1 },                        out: { 'explosive': 1 } },
   // 电池（激光炮塔/卫星），对齐《异星工厂》：硫酸 + 铁板 + 铜板

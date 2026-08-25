@@ -85,7 +85,7 @@ function hasInput(recSrc, item, count) {
 // 按行提取单个配方（每个配方在一行内）
 function getRecipeLine(key) {
   const lines = recTable.split('\n');
-  const line = lines.find(l => new RegExp("'" + key + "'\\s*:").test(l));
+  const line = lines.find(l => new RegExp("^\\s*'" + key + "'\\s*:").test(l));
   return line || '';
 }
 
@@ -114,6 +114,33 @@ check('EXPRESS_BELT_MULT 极速带倍数', hasConst('EXPRESS_BELT_MULT', '3'), t
 check('POWER_PER_ENGINE 蒸汽机功率(kW)', hasConst('POWER_PER_ENGINE', '900'), true);
 check('POWER_PER_TURBINE 汽轮机功率(kW)', hasConst('POWER_PER_TURBINE', '5800'), true);
 check('COAL_ENERGY 煤能量', hasConst('COAL_ENERGY', '12'), true);
+
+// ---- 建筑配方（对齐《异星工厂》官方 Wiki：锅炉/蒸汽机/抽水机/机枪炮塔/雷达）----
+console.log('\n【建筑配方对齐官方】');
+function assertRecipeInput(key, item, count) {
+  const line = getRecipeLine(key);
+  return line.includes("'" + item + "': " + count);
+}
+check('锅炉(5石+1铁板)', assertRecipeInput('boiler', 'stone', 5) && assertRecipeInput('boiler', 'iron-plate', 1), true);
+check('蒸汽机(2铁板+1齿轮+1管道)',
+  assertRecipeInput('steam-engine', 'iron-plate', 2) &&
+  assertRecipeInput('steam-engine', 'iron-gear', 1) &&
+  assertRecipeInput('steam-engine', 'pipe', 1), true);
+check('蒸汽机不含电路板(官方无)', !getRecipeLine('steam-engine').includes('green-circuit'), true);
+check('抽水机(5铁板+1齿轮)', assertRecipeInput('offshore-pump', 'iron-plate', 5) && assertRecipeInput('offshore-pump', 'iron-gear', 1), true);
+check('机枪炮塔(10铁板+4齿轮+2铜板)',
+  assertRecipeInput('gun-turret', 'iron-plate', 10) &&
+  assertRecipeInput('gun-turret', 'iron-gear', 4) &&
+  assertRecipeInput('gun-turret', 'copper-plate', 2), true);
+check('雷达(5铁板+4电路板+2钢板)',
+  assertRecipeInput('radar', 'iron-plate', 5) &&
+  assertRecipeInput('radar', 'green-circuit', 4) &&
+  assertRecipeInput('radar', 'steel-plate', 2), true);
+// 电动引擎：1 引擎单元 + 2 电路板 + 1 润滑油（官方 = 1 润滑油）
+check('电动引擎(1引擎+2电路板+1润滑油)',
+  assertRecipeInput('electric-engine', 'engine-unit', 1) &&
+  assertRecipeInput('electric-engine', 'green-circuit', 2) &&
+  assertRecipeInput('electric-engine', 'lubricant', 1), true);
 
 console.log('\n----------------------------------------');
 console.log('通过 ' + passCount + ' 项，失败 ' + failCount + ' 项');
