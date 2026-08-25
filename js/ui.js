@@ -834,28 +834,44 @@ function initPanelEvents() {
     rd.readAsText(f);
   });
   document.getElementById('panel-close').addEventListener('click', () => closePanel());
-  document.getElementById('panel-body').addEventListener('input', ev => {
-    if (ev.target.id === 'inv-recipe-search') {
-      G.invRecipeQ = ev.target.value;
+  // 中文输入法组合状态：组合拼音期间（composition）会触发 input 事件，
+  // 此刻 value 还是未组合成汉字的拼音，若直接按它过滤会让结果变成拼音匹配并干扰输入法，
+  // 因此组合期间跳过 input 过滤，仅在 compositionend（组合完成）后应用一次搜索。
+  let imeComposing = false;
+  // 根据输入框类型应用搜索过滤（供 input / compositionend 共用）
+  function applyPanelSearch(v, id, target) {
+    if (id === 'inv-recipe-search') {
+      G.invRecipeQ = v;
       applyInvRecipeFilter(G.invRecipeQ);
-    } else if (ev.target.id === 'build-dev-search') {
-      G.buildDevQ = ev.target.value;
+    } else if (id === 'build-dev-search') {
+      G.buildDevQ = v;
       applyBuildSearch(G.buildDevQ);
-    } else if (ev.target.id === 'lreq-search') {
-      G.lreqQ = ev.target.value;
+    } else if (id === 'lreq-search') {
+      G.lreqQ = v;
       if (typeof fillLogiReqGrid === 'function') fillLogiReqGrid(G.lreqQ);
-    } else if (ev.target.id === 'trash-search') {
-      G.trashQ = ev.target.value;
+    } else if (id === 'trash-search') {
+      G.trashQ = v;
       if (typeof fillTrashGrid === 'function') fillTrashGrid(G.trashQ);
-    } else if (ev.target.id === 'asm-recipe-search') {
-      applyAssemblerRecipeFilter(ev.target.value);
-    } else if (ev.target.id === 'sflt-search') {
-      applySplitterFilterSearch(ev.target.value);
-    } else if (ev.target.id === 'flt-search') {
-      applyInserterFilterSearch(ev.target.value);
-    } else if (ev.target.matches && ev.target.matches('[data-stat-hist-filter]')) {
-      applyStatsHistFilter(ev.target.value);
+    } else if (id === 'asm-recipe-search') {
+      applyAssemblerRecipeFilter(v);
+    } else if (id === 'sflt-search') {
+      applySplitterFilterSearch(v);
+    } else if (id === 'flt-search') {
+      applyInserterFilterSearch(v);
+    } else if (target && target.matches && target.matches('[data-stat-hist-filter]')) {
+      applyStatsHistFilter(v);
     }
+  }
+  document.getElementById('panel-body').addEventListener('compositionstart', ev => {
+    imeComposing = true;
+  });
+  document.getElementById('panel-body').addEventListener('compositionend', ev => {
+    imeComposing = false;
+    applyPanelSearch(ev.target.value, ev.target.id, ev.target);
+  });
+  document.getElementById('panel-body').addEventListener('input', ev => {
+    if (imeComposing) return; // 中文组合中，跳过，避免按拼音过滤/打断输入法
+    applyPanelSearch(ev.target.value, ev.target.id, ev.target);
   });
   document.getElementById('panel-body').addEventListener('keydown', ev => {
     if (ev.target.matches && ev.target.matches('[data-stat-hist-filter]') && ev.key === 'Enter') {
