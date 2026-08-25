@@ -89,9 +89,9 @@ const ENEMY_AGGRO_RANGE = 8;     // 主角靠近该距离（格）内，聚集�
 
 function makeSpawner() {
   const px = G.player.x / TILE, py = G.player.y / TILE;
-  // 在玩家远处（16~26 格）生成巢穴，尽量避开水面/建筑
+  // 在玩家远处（22~32 格）生成巢穴，尽量避开水面/建筑
   for (let i = 0; i < 12; i++) {
-    const dist = 16 + Math.random() * 10;
+    const dist = 22 + Math.random() * 10;
     const ang = Math.random() * Math.PI * 2;
     const tx = Math.round(px + Math.cos(ang) * dist);
     const ty = Math.round(py + Math.sin(ang) * dist);
