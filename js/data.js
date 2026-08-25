@@ -439,10 +439,10 @@ const RECIPES = {
   'green-circuit':      { time: 0.5, inp: { 'iron-plate': 1, 'copper-cable': 3 },                out: { 'green-circuit': 1 } },
   'science-pack':       { time: 5,   inp: { 'copper-plate': 1, 'iron-gear': 1 },                 out: { 'science-pack': 1 } },
   'transport-belt':     { time: 0.5, inp: { 'iron-plate': 1, 'iron-gear': 1 },                   out: { 'transport-belt': 2 } },
-  'inserter':           { time: 1,   inp: { 'iron-plate': 1, 'iron-gear': 1, 'green-circuit': 1 }, out: { 'inserter': 1 } },
+  'inserter':           { time: 0.5, inp: { 'iron-plate': 1, 'iron-gear': 1, 'green-circuit': 1 }, out: { 'inserter': 1 } },
   'burner-inserter':    { time: 0.5, inp: { 'iron-plate': 1, 'iron-gear': 1 },                  out: { 'burner-inserter': 1 } },
-  'long-inserter':      { time: 1,   inp: { 'inserter': 1, 'iron-gear': 1 },                             out: { 'long-inserter': 1 } },
-  'fast-inserter':     { time: 1,   inp: { 'inserter': 1, 'iron-plate': 2 },                             out: { 'fast-inserter': 1 } },
+  'long-inserter':      { time: 0.5, inp: { 'inserter': 1, 'iron-gear': 1 },                             out: { 'long-inserter': 1 } },
+  'fast-inserter':     { time: 0.5, inp: { 'inserter': 1, 'iron-plate': 2 },                             out: { 'fast-inserter': 1 } },
   'burner-drill':       { time: 2,   inp: { 'iron-plate': 4, 'iron-gear': 2 },                   out: { 'burner-drill': 1 } },
   'stone-furnace':      { time: 0.5, inp: { 'stone': 5 },                                        out: { 'stone-furnace': 1 } },
   'storage-chest':      { time: 1,   inp: { 'iron-plate': 8 },                                   out: { 'storage-chest': 1 } },
@@ -459,9 +459,9 @@ const RECIPES = {
   'fast-transport-belt': { time: 0.5, inp: { 'transport-belt': 1, 'iron-gear': 1 },                  out: { 'fast-transport-belt': 1 } },  // 对齐官方：1传送带+1齿轮→1
   'fast-underground-belt': { time: 1, inp: { 'underground': 1, 'fast-transport-belt': 2, 'iron-gear': 2 },                  out: { 'fast-underground-belt': 2 } },  // 对齐官方：1地下带+2快带+2齿轮→2
   'priority-splitter': { time: 1,   inp: { 'splitter': 1, 'iron-gear': 1 },                       out: { 'priority-splitter': 1 } },
-  'filter-inserter':   { time: 1,   inp: { 'inserter': 1, 'green-circuit': 5 },                   out: { 'filter-inserter': 1 } },  // 对齐官方：1机械臂+5电路板
-  'stack-inserter':    { time: 1.5, inp: { 'inserter': 1, 'iron-gear': 15 },                       out: { 'stack-inserter': 1 } },  // 对齐官方：1机械臂+15齿轮
-  'stack-filter-inserter': { time: 2, inp: { 'filter-inserter': 1, 'stack-inserter': 1 }, out: { 'stack-filter-inserter': 1 } },  // 对齐官方：1过滤臂+1堆叠臂
+  'filter-inserter':   { time: 0.5, inp: { 'inserter': 1, 'green-circuit': 5 },                   out: { 'filter-inserter': 1 } },  // 对齐官方：1机械臂+5电路板
+  'stack-inserter':    { time: 0.5, inp: { 'inserter': 1, 'iron-gear': 15 },                       out: { 'stack-inserter': 1 } },  // 对齐官方：1机械臂+15齿轮
+  'stack-filter-inserter': { time: 0.5, inp: { 'filter-inserter': 1, 'stack-inserter': 1 }, out: { 'stack-filter-inserter': 1 } },  // 对齐官方：1过滤臂+1堆叠臂
   'green-science':     { time: 4,   inp: { 'transport-belt': 1, 'inserter': 1 },                  out: { 'green-science': 1 } },
   'blue-science':      { time: 8,   inp: { 'plastic-bar': 2, 'green-circuit': 2, 'copper-plate': 1 }, out: { 'blue-science': 1 } },
   'pipe':              { time: 0.5, inp: { 'iron-plate': 1 },                                     out: { 'pipe': 1 } },

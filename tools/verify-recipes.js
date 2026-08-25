@@ -89,6 +89,13 @@ function getRecipeLine(key) {
   return line || '';
 }
 
+// 提取单个配方的组装配方耗时（time 字段，数值部分）
+function getRecipeTime(key) {
+  const line = getRecipeLine(key);
+  const m = line.match(/time:\s*([0-9.]+)/);
+  return m ? parseFloat(m[1]) : null;
+}
+
 // 铜线：1 铜板 → 2 铜线
 const cableRec = getRecipeLine('copper-cable');
 check('铜线(1铜→2线)', cableRec.includes("'copper-plate': 1") && cableRec.includes("'copper-cable': 2"), true);
@@ -174,6 +181,18 @@ check('堆叠过滤机械臂(过滤+堆叠)',
   assertRecipeInput('stack-filter-inserter', 'filter-inserter', 1) &&
   assertRecipeInput('stack-filter-inserter', 'stack-inserter', 1) &&
   !getRecipeLine('stack-filter-inserter').includes('iron-gear'), true);
+
+// ---- 机械臂族配方耗时对齐官方（官方所有机械臂组装配方耗时均为 0.5s）----
+console.log('\n【机械臂族配方耗时对齐官方】');
+// 官方《异星工厂》Wiki：所有机械臂（含燃料/普通/长臂/快速/过滤/堆叠/堆叠过滤）
+// 在组装机中的配方耗时（crafting time）均为 0.5 秒。
+check('普通机械臂耗时(0.5s)', getRecipeTime('inserter'), 0.5);
+check('燃料机械臂耗时(0.5s)', getRecipeTime('burner-inserter'), 0.5);
+check('长臂机械臂耗时(0.5s)', getRecipeTime('long-inserter'), 0.5);
+check('快速机械臂耗时(0.5s)', getRecipeTime('fast-inserter'), 0.5);
+check('过滤机械臂耗时(0.5s)', getRecipeTime('filter-inserter'), 0.5);
+check('堆叠机械臂耗时(0.5s)', getRecipeTime('stack-inserter'), 0.5);
+check('堆叠过滤机械臂耗时(0.5s)', getRecipeTime('stack-filter-inserter'), 0.5);
 
 // ---- 传送带族（对齐《异星工厂》官方 Wiki）----
 console.log('\n【传送带族配方对齐官方】');
