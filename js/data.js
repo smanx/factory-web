@@ -6,7 +6,7 @@ const DX = [1, 0, -1, 0];
 const DY = [0, 1, 0, -1];
 
 const BELT_SPEED = 1.875;   // 基础传送带速度（格/秒），对齐《异星工厂》1.875 tiles/s
-const BELT_SPACING = 0.25;
+const BELT_SPACING = 0.125; // 物品间隔（格）对齐《异星工厂》0.125=1/8 格/件，每列 8 件/格 → 基础带速 1.875 下每列吞吐 15 items/s
 const FAST_BELT_MULT = 2;    // 快速传送带 = 2× 基础（对齐《异星工厂》3.75 tiles/s）
 const EXPRESS_BELT_MULT = 3; // 极速传送带 = 3× 基础（对齐《异星工厂》5.625 tiles/s）
 const COAL_ENERGY = 12;

@@ -109,6 +109,8 @@ function hasConst(name, val) {
   return m ? (m[1].trim() === String(val)) : false;
 }
 check('BELT_SPEED 基础带速', hasConst('BELT_SPEED', '1.875'), true);
+// 官方传送带物品间隔 0.125 格（1/8 格/件），每列 8 件/格 → 基础带速 1.875 下每列吞吐 15 items/s
+check('BELT_SPACING 物品间隔=0.125(官方)', hasConst('BELT_SPACING', '0.125'), true);
 check('FAST_BELT_MULT 快速带倍数', hasConst('FAST_BELT_MULT', '2'), true);
 check('EXPRESS_BELT_MULT 极速带倍数', hasConst('EXPRESS_BELT_MULT', '3'), true);
 check('POWER_PER_ENGINE 蒸汽机功率(kW)', hasConst('POWER_PER_ENGINE', '900'), true);

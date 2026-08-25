@@ -359,7 +359,7 @@ class CreativeBelt extends Belt {
       // 从尾部（pos=0）起补货：一次只补一个空位，后续帧持续补满整条带
       // 双列：两条车道各自补满，交替向 lane 0 / lane 1 补充（对齐《异星工厂》双列）
       for (let lane = 0; lane < 2; lane++) {
-        for (const p of [0, BELT_SPACING, BELT_SPACING * 2, BELT_SPACING * 3]) {
+        for (let k = 0; k < Math.ceil(1 / BELT_SPACING); k++) { const p = k * BELT_SPACING;
           if (this.items.some(o => this.laneOf(o) === lane && Math.abs(o.pos - p) < BELT_SPACING - 0.001)) continue;
           this.items.push({ item: this.selected, pos: p, lane: lane, side: -1 });
           break;
