@@ -96,10 +96,10 @@ class StorageTank extends CircuitNode {
 // 北·左上角、西·左上角（北西对角）、南·右下角、东·右下角（南东对角）；
 // 另一对对角（北东↔南西）为空，不可接管。可进可出。
 const TANK_PORTS = [
-  { side: 3, color: PORT_FLUID, off: -1, cells: [0] },  // 北·左上角（北西对角）
-  { side: 2, color: PORT_FLUID, off: -1, cells: [0] },  // 西·左上角（北西对角）
-  { side: 1, color: PORT_FLUID, off: 1, cells: [2] },   // 南·右下角（南东对角）
-  { side: 0, color: PORT_FLUID, off: 1, cells: [2] }    // 东·右下角（南东对角）
+  { side: 3, color: PORT_FLUID, off: -1, iconOff: -1, cells: [0] },  // 北·左上角（北西对角）
+  { side: 2, color: PORT_FLUID, off: 1, iconOff: -1, cells: [0] },   // 西·左上角（北西对角）
+  { side: 1, color: PORT_FLUID, off: -1, iconOff: 1, cells: [2] },   // 南·右下角（南东对角）
+  { side: 0, color: PORT_FLUID, off: 1, iconOff: 1, cells: [2] }     // 东·右下角（南东对角）
 ];
 // 当前罐内流体（若有）：用于"显示详情"时在接口处画流体图标
 function tankFluid(e) { return e.storedFluid ? e.storedFluid() : null; }
@@ -135,6 +135,19 @@ function drawStorageTank(ctx, e, gx, gy, dir, alpha) {
     ctx.fillStyle = 'rgba(30,36,44,.35)';
     rr(ctx, px + 12, py + s * 0.62, s - 24, s * 0.18, 5); ctx.fill();
   }
+  // 液位圆环：围绕罐体的圆环，弧长随储液量百分比变化，颜色随流体颜色
+  const tankLevel = Math.max(0, Math.min(1, total / STORAGE_TANK_CAP));
+  const ringCx = px + s / 2, ringCy = py + s / 2, ringR = s * 0.46;
+  ctx.lineWidth = 3.5;
+  ctx.strokeStyle = 'rgba(30,36,44,.55)';   // 底环（空环）
+  ctx.beginPath();
+  ctx.arc(ringCx, ringCy, ringR, 0, Math.PI * 2); ctx.stroke();
+  if (tankLevel > 0) {
+    ctx.lineWidth = 4.5;
+    ctx.strokeStyle = f ? ITEMS[f].color : '#8a97a6';  // 颜色随流体
+    ctx.beginPath();
+    ctx.arc(ringCx, ringCy, ringR, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * tankLevel); ctx.stroke();
+  }
   // 流体出入口凸缘（一对对角的 4 个面各一口，位置随旋转跟随）
   drawRotatablePorts(ctx, e, px, py, s, TANK_PORTS);
   // 接口图标默认显示详情：在出入口处画当前流体图标
@@ -142,10 +155,10 @@ function drawStorageTank(ctx, e, gx, gy, dir, alpha) {
     const fl = tankFluid(e);
     if (fl) {
       const d = e.dir | 0;
-      // 沿 4 个接口各画一只当前流体图标（side 随旋转跟随，off 为沿边偏移）
+      // 沿 4 个接口各画一只当前流体图标（side 随旋转跟随，iconOff 为沿边偏移）
       for (const p of TANK_PORTS) {
         const sd = (p.side + d) % 4;
-        drawPortIcon(ctx, px, py, s, sd, p.off, fl);
+        drawPortIcon(ctx, px, py, s, sd, p.iconOff, fl);
       }
     }
   }
