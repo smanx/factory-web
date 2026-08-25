@@ -1,6 +1,6 @@
 'use strict';
 
-// ===== 储液罐（对齐《异星工厂》Storage Tank）：大容量缓冲、单一流体、东西两侧各一个通用流体口 =====
+// ===== 储液罐（对齐《异星工厂》Storage Tank）：大容量缓冲、单一流体、四个对角角位各一个通用流体口 =====
 // 占地 3×3；容量 STORAGE_TANK_CAP；罐内只容纳一种流体（液体/气体均可）；
 // 相邻管道会自动把流体灌入罐内，罐也会把流体供给相邻下游设备的输入口，作为缓冲库容。
 // 继承 CircuitNode（CircuitNode 亦是 Entity 子类）：储液罐可接入电路网络，
@@ -78,11 +78,13 @@ class StorageTank extends CircuitNode {
 }
 
 // ===== 渲染 =====
-// 储液罐（3×3）东西两侧各一只通用流体口，落在沿边中间格(格1)，可进可出
-const TANK_PORT_CELLS = [1];
+// 储液罐（3×3）四个对角角位各一只通用流体口（东上/东下、西上/西下），可进可出
+const TANK_PORT_CELLS = [0, 2];
 const TANK_PORTS = [
-  { side: 0, color: PORT_FLUID, off: 0, cells: [1] },  // 东·中间格
-  { side: 2, color: PORT_FLUID, off: 0, cells: [1] }   // 西·中间格
+  { side: 0, color: PORT_FLUID, off: -1, cells: [0] },  // 东·上角（北东角）
+  { side: 0, color: PORT_FLUID, off: 1, cells: [2] },   // 东·下角（南东角）
+  { side: 2, color: PORT_FLUID, off: -1, cells: [0] },  // 西·上角（北西角）
+  { side: 2, color: PORT_FLUID, off: 1, cells: [2] }    // 西·下角（南西角）
 ];
 // 当前罐内流体（若有）：用于"显示详情"时在接口处画流体图标
 function tankFluid(e) { return e.storedFluid ? e.storedFluid() : null; }
@@ -118,7 +120,7 @@ function drawStorageTank(ctx, e, gx, gy, dir, alpha) {
     ctx.fillStyle = 'rgba(30,36,44,.35)';
     rr(ctx, px + 12, py + s * 0.62, s - 24, s * 0.18, 5); ctx.fill();
   }
-  // 流体出入口凸缘（东/西各一口，位置随旋转跟随）
+  // 流体出入口凸缘（四个对角角位各一口，位置随旋转跟随）
   drawRotatablePorts(ctx, e, px, py, s, TANK_PORTS);
   // 接口图标默认显示详情：在出入口处画当前流体图标
   if (portLabelVisible()) {
@@ -126,7 +128,7 @@ function drawStorageTank(ctx, e, gx, gy, dir, alpha) {
     for (const cell of TANK_PORT_CELLS) {
       const fl = tankFluid(e);
       if (!fl) continue;
-      // 东西两侧各画一只当前流体图标（东 side 0 / 西 side 2）
+      // 四个对角各画一只当前流体图标（东 side 0 / 西 side 2 的上角与下角）
       drawPortIcon(ctx, px, py, s, (0 + d) % 4, cell - 1, fl);
       drawPortIcon(ctx, px, py, s, (2 + d) % 4, cell - 1, fl);
     }
@@ -142,7 +144,7 @@ function storageTankPanelHtml(e) {
   h += row('容量', e.total() + ' / ' + STORAGE_TANK_CAP, 'cap');
   if (Object.keys(agg).length) h += '<button data-action="takeout" id="btn-tank-takeout">取出全部 (' + e.total() + ')</button>';
   h += '<div class="status"></div>';
-  h += '<div class="dim">储液罐大容量缓冲（' + STORAGE_TANK_CAP + ' 单位），罐内只容纳单一液体/气体。东西两侧各一只通用流体口：相邻管道会自动把流体灌入罐内，罐也会向相邻炼油厂/化工厂等输入口供料。出入口处会显示当前流体图标。</div>';
+  h += '<div class="dim">储液罐大容量缓冲（' + STORAGE_TANK_CAP + ' 单位），罐内只容纳单一液体/气体。四个对角角位各一只通用流体口：相邻管道会自动把流体灌入罐内，罐也会向相邻炼油厂/化工厂等输入口供料。出入口处会显示当前流体图标。</div>';
   h += '<div class="dim">已接入电路网络：罐内流体存量以流体名（如水→water）作为信号输出到所连网络，供组合器/功率开关/机械臂等做按液位自动化（对齐《异星工厂》储液罐电路信号）。</div>';
   return h;
 }
@@ -169,7 +171,7 @@ ENT_CLASSES['storage-tank'] = StorageTank;
 DEVICE_RENDER['storage-tank'] = drawStorageTank;
 DEVICE_STATUS['storage-tank'] = e => e.total() > 0 ? 'g' : 'r';
 DEVICE_PANEL['storage-tank'] = { html: storageTankPanelHtml, live: storageTankPanelLive, tip: storageTankTip };
-// 显示详情时，东西两侧接口流体图标所在世界格 + 当前存储流体名（用于鼠标悬停显示流体名称）
+// 显示详情时，四个对角角位接口流体图标所在世界格 + 当前存储流体名（用于鼠标悬停显示流体名称）
 DEVICE_FLUID_ICONS['storage-tank'] = e => {
   const f = tankFluid(e);
   if (!f) return [];
