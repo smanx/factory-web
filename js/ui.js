@@ -1523,12 +1523,89 @@ function dbgSlider(body, label, key, min, max, step) {
   body.appendChild(row);
 }
 
+// ===== 调试面板可发放的资源清单（按类别分组，覆盖全部可获取材料/流体/弹药/科技包等）=====
+// 每组：[类别名, [[物品id, 发放数量], ...]]
+const DBG_GIVE_GROUPS = [
+  ['矿石', [
+    ['iron-ore', 100], ['copper-ore', 100], ['coal', 100], ['stone', 100],
+    ['uranium-ore', 100], ['calcite', 100], ['raw-fish', 20]
+  ]],
+  ['板材·材料', [
+    ['iron-plate', 200], ['copper-plate', 200], ['steel-plate', 100], ['stone-brick', 100],
+    ['iron-gear', 100], ['iron-stick', 100], ['steel-stick', 100], ['copper-cable', 100],
+    ['plastic-bar', 100], ['wood', 100], ['concrete', 100], ['refined-concrete', 100],
+    ['hazard-concrete', 100], ['stone-path', 100], ['landfill', 100]
+  ]],
+  ['电路·元件', [
+    ['green-circuit', 100], ['red-wire', 100], ['green-wire', 100],
+    ['advanced-circuit', 100], ['processing-unit', 100], ['engine-unit', 50], ['electric-engine', 50]
+  ]],
+  ['燃料', [
+    ['solid-fuel', 100], ['battery', 100], ['nuclear-fuel', 20], ['used-up-uranium-fuel-cell', 20]
+  ]],
+  ['科学包', [
+    ['science-pack', 50], ['green-science', 50], ['blue-science', 50],
+    ['military-science', 50], ['production-science-pack', 50], ['utility-science-pack', 50],
+    ['space-science-pack', 50]
+  ]],
+  ['流体', [
+    ['water', 500], ['steam', 500], ['crude-oil', 500], ['heavy-oil', 500],
+    ['light-oil', 500], ['petroleum-gas', 500], ['lubricant', 500], ['sulfuric-acid', 500],
+    ['sulfur', 100]
+  ]],
+  ['弹药·武器', [
+    ['magazine', 100], ['piercing-rounds', 100], ['uranium-rounds', 100],
+    ['shotgun-shell', 100], ['piercing-shotgun-shell', 100], ['flamethrower-ammo', 100],
+    ['rocket', 50], ['explosive-rocket', 50], ['cannon-shell', 50], ['explosive-cannon-shell', 50],
+    ['explosive-uranium-cannon-shell', 50], ['artillery-shell', 20], ['uranium-cannon-shell', 50],
+    ['grenade', 50], ['cluster-grenade', 50], ['poison-capsule', 50], ['slowdown-capsule', 50],
+    ['land-mine', 50], ['explosive', 100], ['cliff-explosives', 50]
+  ]],
+  ['模块', [
+    ['speed-module', 50], ['speed-module-2', 50], ['speed-module-3', 50],
+    ['productivity-module', 50], ['productivity-module-2', 50], ['productivity-module-3', 50],
+    ['efficiency-module', 50], ['efficiency-module-2', 50], ['efficiency-module-3', 50]
+  ]],
+  ['核能', [
+    ['uranium-235', 20], ['uranium-238', 100], ['uranium-cannon-shell', 50],
+    ['atomic-bomb', 5], ['nuclear-fuel', 20]
+  ]],
+  ['装备·机器人', [
+    ['repair-pack', 50], ['iron-axe', 5], ['steel-axe', 5], ['light-armor', 5], ['heavy-armor', 5],
+    ['logistic-robot', 20], ['construction-robot', 20], ['flying-robot-frame', 20],
+    ['defender-capsule', 20], ['distractor-capsule', 20], ['destroyer-capsule', 20]
+  ]],
+  ['桶装流体', [
+    ['water-barrel', 50], ['steam-barrel', 50], ['crude-oil-barrel', 50], ['heavy-oil-barrel', 50],
+    ['light-oil-barrel', 50], ['petroleum-gas-barrel', 50], ['lubricant-barrel', 50], ['sulfuric-acid-barrel', 50]
+  ]],
+  ['载具·建筑', [
+    ['car', 5], ['tank', 5], ['locomotive', 5], ['diesel-locomotive', 5], ['cargo-wagon', 5],
+    ['fluid-wagon', 5], ['artillery-wagon', 5], ['rail', 100], ['rail-signal', 50], ['rail-chain-signal', 50]
+  ]]
+];
+
+const DBG_BTN_POS_KEY = 'factory_dbg_btn_pos';
+
 function buildDebug() {
   const btn = document.getElementById('dbg-btn');
   const panel = document.getElementById('dbg-panel');
   // 仅当 URL 参数含 debug=1 时才显示 debug 按钮
   btn.style.display = G.debugEnabled ? 'flex' : 'none';
   if (!G.debugEnabled) { panel.style.display = 'none'; return; }
+  // 恢复上次拖拽保存的按钮位置（记录屏幕坐标，跨启动保留）
+  try {
+    const saved = localStorage.getItem(DBG_BTN_POS_KEY);
+    if (saved) {
+      const p = JSON.parse(saved);
+      if (typeof p.left === 'number' && typeof p.top === 'number') {
+        btn.style.left = Math.max(4, Math.min(innerWidth - 50, p.left)) + 'px';
+        btn.style.top = Math.max(4, Math.min(innerHeight - 50, p.top)) + 'px';
+        btn.style.right = 'auto';
+        btn.style.bottom = 'auto';
+      }
+    }
+  } catch (e) {}
   panel.innerHTML = '<div class="dhead"><span>开发者调试</span><button id="dbg-x">✕</button></div>';
   const body = document.createElement('div');
   body.className = 'dbody';
@@ -1545,26 +1622,66 @@ function buildDebug() {
   sec1.className = 'dsec';
   sec1.textContent = '发放资源';
   body.appendChild(sec1);
+
+  // 搜索筛选框：输入关键词实时过滤资源按钮
+  const searchRow = document.createElement('div');
+  searchRow.className = 'dsearch';
+  const searchInp = document.createElement('input');
+  searchInp.type = 'text';
+  searchInp.placeholder = '🔍 搜索资源（名称/类别）…';
+  searchRow.appendChild(searchInp);
+  body.appendChild(searchRow);
+
   const grid1 = document.createElement('div');
   grid1.className = 'dgrid';
-  for (const [txt, id, n] of [
-    ['+100铁板', 'iron-plate', 100], ['+100铜板', 'copper-plate', 100],
-    ['+100煤', 'coal', 100], ['+100石头', 'stone', 100],
-    ['+50齿轮', 'iron-gear', 50], ['+50电路', 'green-circuit', 50],
-    ['+20科学包', 'science-pack', 20], ['+20绿包', 'green-science', 20],
-    ['+20蓝包', 'blue-science', 20], ['+20灰包', 'military-science', 20],
-    ['+20紫包', 'production-science-pack', 20], ['+20黄包', 'utility-science-pack', 20], ['+50塑料', 'plastic-bar', 50],
-    ['+50弹药', 'magazine', 50], ['+50穿甲弹', 'piercing-rounds', 50], ['+5铁箱', 'steel-chest', 5],
-    ['+50原油', 'crude-oil', 50], ['+50水', 'water', 50], ['+50蒸汽', 'steam', 50]
-  ]) {
-    const b = document.createElement('button');
-    b.textContent = txt;
-    b.dataset.giveid = id;
-    b.dataset.given = n;
-    b.addEventListener('click', () => { invAdd(id, n); toast('+ ' + n + ' ' + ITEMS[id].name); });
-    grid1.appendChild(b);
-  }
   body.appendChild(grid1);
+
+  // 渲染资源按钮到 grid1；kw 为空显示全部（含分组标题）
+  function renderGiveGrid(kw) {
+    grid1.innerHTML = '';
+    const q = (kw || '').trim().toLowerCase();
+    let any = false;
+    for (const [cat, list] of DBG_GIVE_GROUPS) {
+      const matched = q ? list.filter(([id]) => {
+        const it = ITEMS[id];
+        return (it && it.name && it.name.toLowerCase().indexOf(q) >= 0) || id.indexOf(q) >= 0;
+      }) : list;
+      if (!matched.length) continue;
+      any = true;
+      const head = document.createElement('div');
+      head.className = 'dgroup';
+      head.textContent = cat;
+      grid1.appendChild(head);
+      for (const [id, n] of matched) {
+        const it = ITEMS[id];
+        const b = document.createElement('button');
+        b.textContent = (it ? it.name : id) + ' +' + n;
+        b.title = (it && it.desc) ? it.desc : id;
+        b.addEventListener('click', () => { invAdd(id, n); toast('+ ' + n + ' ' + (it ? it.name : id)); refreshHotbar(); });
+        grid1.appendChild(b);
+      }
+    }
+    if (!any) {
+      const none = document.createElement('div');
+      none.className = 'dnone';
+      none.textContent = '无匹配资源';
+      grid1.appendChild(none);
+    }
+  }
+  searchInp.addEventListener('input', () => renderGiveGrid(searchInp.value));
+  renderGiveGrid('');
+
+  // 一键发放全部资源（便于快速搭建设置好测试环境）
+  const giveAllBtn = document.createElement('button');
+  giveAllBtn.textContent = '一键发放全部资源';
+  giveAllBtn.className = 'dgiveall';
+  giveAllBtn.addEventListener('click', () => {
+    let cnt = 0;
+    for (const [, list] of DBG_GIVE_GROUPS) for (const [id, n] of list) { invAdd(id, n); cnt++; }
+    toast('已发放 ' + cnt + ' 种资源');
+    refreshHotbar();
+  });
+  body.appendChild(giveAllBtn);
 
   const sec2 = document.createElement('div');
   sec2.className = 'dsec';
@@ -1630,6 +1747,56 @@ function buildDebug() {
       G.settings.combat = !G.settings.combat;
       if (!G.settings.combat) { G.enemies = []; G.bullets = []; G.enemyProjectiles = []; }
       toast('战斗模式：' + (G.settings.combat ? '开启' : '关闭'));
+    }],
+    ['一键完成全部科技', () => {
+      for (const t in TECHS) {
+        G.techDone[t] = true;
+        if (G.techProg[t] === undefined) G.techProg[t] = techCostTotal(t);
+      }
+      G.activeTech = null; G.techQueue = [];
+      toast('已解锁全部 ' + Object.keys(TECHS).length + ' 项科技');
+      renderPanel(false);
+    }],
+    ['回满血', () => {
+      G.playerHP = G.playerHPmax;
+      toast('生命值已恢复满');
+    }],
+    ['清除污染', () => {
+      if (typeof pollutionRestore === 'function') pollutionRestore({ pollution: 0 });
+      else G.pollution = 0;
+      toast('污染已清零');
+    }],
+    ['清空敌人', () => {
+      G.enemies = []; G.bullets = []; G.enemyProjectiles = [];
+      toast('已清空全部敌人与弹幕');
+    }],
+    ['在面前刷一批敌人', () => {
+      if (!G.settings.combat) { toast('请先开启战斗模式'); return; }
+      if (typeof pickEnemyType === 'function' && typeof scaledDef === 'function' && ENEMY_TYPES) {
+        for (let i = 0; i < 8; i++) {
+          const t = pickEnemyType();
+          const def = scaledDef(ENEMY_TYPES[t]);
+          const px = G.player.x / TILE, py = G.player.y / TILE;
+          const ang = Math.random() * Math.PI * 2;
+          const dist = 6 + Math.random() * 4;
+          const tx = Math.round(px + Math.cos(ang) * dist);
+          const ty = Math.round(py + Math.sin(ang) * dist);
+          G.enemies.push({
+            x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2,
+            hp: def.hp, maxhp: def.hp, dead: false, dir: 0,
+            type: t, kind: def.kind, speed: def.speed, size: def.size, dmg: def.dmg,
+            color: def.color, attackT: 0, fireT: 0
+          });
+        }
+        toast('已在周围生成 8 只敌人');
+      } else { toast('战斗系统不可用'); }
+    }],
+    ['日夜切换', () => {
+      const cycle = (typeof DAY_CYCLE === 'number') ? DAY_CYCLE : 60;
+      const ph = ((G.time / cycle) % 1 + 1) % 1;
+      // 白天相位(0.5 无暗遮罩)与深夜相位(0.0 全暗)之间切换
+      G.time = Math.floor(G.time / cycle) * cycle + cycle * (ph > 0.5 ? 0.02 : 0.5);
+      toast('时间已切换');
     }]
   ];
   for (const [txt, fn] of acts) {
@@ -1670,7 +1837,15 @@ function buildDebug() {
     }
   }
   function endDebugDrag() {
-    if (drag) suppressClick = drag.moved;
+    if (drag) {
+      suppressClick = drag.moved;
+      // 记录拖拽后的最终位置（仅当确实移动过），跨启动恢复到上次位置
+      if (drag.moved) {
+        try {
+          localStorage.setItem(DBG_BTN_POS_KEY, JSON.stringify({ left: btn.offsetLeft, top: btn.offsetTop }));
+        } catch (e) {}
+      }
+    }
     drag = null;
   }
   btn.addEventListener('mousedown', ev => {

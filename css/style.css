@@ -991,6 +991,51 @@ html, body {
 }
 .dgrid button:hover { background: #3a4657; }
 
+/* 调试面板-资源发放：搜索框、分组标题、无结果提示、一键发放 */
+.dsearch { margin: 4px 0 8px; }
+.dsearch input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 5px 8px;
+  background: #1e2733;
+  border: 1px solid #46536a;
+  color: #dfe6ee;
+  border-radius: 5px;
+  font-size: 12px;
+  outline: none;
+}
+.dsearch input:focus { border-color: #b06ccf; }
+.dsearch input::placeholder { color: #6a7686; }
+.dgroup {
+  grid-column: 1 / -1;
+  margin: 6px 0 2px;
+  padding: 2px 0;
+  color: #8fe08f;
+  font-size: 11px;
+  font-weight: bold;
+  border-bottom: 1px dashed #3a4657;
+}
+.dnone {
+  grid-column: 1 / -1;
+  color: #98a5b5;
+  text-align: center;
+  padding: 8px 0;
+}
+.dgiveall {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px 4px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #1e2733;
+  background: #8fe08f;
+  border: 1px solid #5ab85a;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.dgiveall:hover { background: #a6eaa6; }
+
 .hbedit { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
 
 .hbslot {
