@@ -389,7 +389,7 @@ function drawInserter(ctx, e, gx, gy, dir, alpha) {
     ctx.textBaseline = 'middle';
     ctx.fillText('×' + e.holdingCount, tipx, tipy - 9);
   }
-  ctx.fillStyle = dirColorNotch(dir);
+  ctx.fillStyle = inserterArmColor(e);
   notch(ctx, px, py, dir);
   drawFlowMarks(ctx, e, cx, cy, dir);
   ctx.globalAlpha = 1;
