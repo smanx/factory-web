@@ -147,31 +147,12 @@ function drawStorageTank(ctx, e, gx, gy, dir, alpha) {
   ctx.strokeStyle = '#3a4656';
   ctx.lineWidth = 3;
   rr(ctx, px + 3, py + 3, s - 6, s - 6, 9); ctx.stroke();
-  // 顶部圆盖
-  ctx.fillStyle = '#6d8096';
-  ctx.beginPath();
-  ctx.arc(px + s / 2, py + 14, s * 0.16, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#3a4656';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  // 罐内流体液位
+  // 罐内流体液位：由中央液体环显示，不再绘制中心矩形
   const f = e.storedFluid ? e.storedFluid() : null;
   const total = e.total ? e.total() : 0;
-  if (f) {
-    const level = Math.max(0.08, Math.min(0.82, total / STORAGE_TANK_CAP));
-    const fillH = (s - 24) * level;
-    ctx.fillStyle = ITEMS[f].color;
-    rr(ctx, px + 12, py + s - 12 - fillH, s - 24, fillH, 6); ctx.fill();
-    // 液面高光
-    ctx.fillStyle = 'rgba(255,255,255,.18)';
-    rr(ctx, px + 12, py + s - 12 - fillH, s - 24, 4, 2); ctx.fill();
-  } else {
-    ctx.fillStyle = 'rgba(30,36,44,.35)';
-    rr(ctx, px + 12, py + s * 0.62, s - 24, s * 0.18, 5); ctx.fill();
-  }
-  // 液位圆环：围绕罐体的圆环，弧长随储液量百分比变化，颜色随流体颜色
+  // 液体环：显示在设备中央，直径较小，弧长随储液量百分比变化，颜色随流体颜色
   const tankLevel = Math.max(0, Math.min(1, total / STORAGE_TANK_CAP));
-  const ringCx = px + s / 2, ringCy = py + s / 2, ringR = s * 0.46;
+  const ringCx = px + s / 2, ringCy = py + s / 2, ringR = s * 0.22;
   ctx.lineWidth = 3.5;
   ctx.strokeStyle = 'rgba(30,36,44,.55)';   // 底环（空环）
   ctx.beginPath();
