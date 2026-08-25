@@ -22,6 +22,7 @@ function trainMoveTime(head) {
 const LOCO_FUEL = 400;         // 单格煤提供的燃料量（一格跑多格）
 const LOCO_SOLID_FUEL = 1600;  // 单格固体燃料提供的燃料量（约为煤的 4 倍）
 const LOCO_ROCKET_FUEL = 16000; // 单格火箭燃料提供的燃料量（约为固体燃料的 10 倍，对齐《异星工厂》Rocket fuel）
+const LOCO_NUCLEAR_FUEL = 80000; // 单格核燃料提供的燃料量（约为火箭燃料的 5 倍，对齐《异星工厂》Nuclear fuel 为最高级车头燃料）
 const LOCO_WOOD_FUEL = 100;    // 单格木材提供的燃料量（低效燃料，约为煤的 1/4，对齐《异星工厂》木可烧）
 const LOCO_MAX_FUEL = 4000;    // 车头燃料能量池上限
 const LOCO_MAX_UNITS = 10;     // 车头燃料槽可存燃料个数（煤/固体燃料合计）
@@ -367,21 +368,24 @@ class Locomotive extends Entity {
     this.fuelCoal = 0;   // 存煤个数
     this.fuelSolid = 0;  // 存固体燃料个数
     this.fuelRocket = 0; // 存火箭燃料个数（最高级燃料，优先烧）
+    this.fuelNuclear = 0; // 存核燃料个数（终极燃料，最高级优先烧）
     this.fuelWood = 0;   // 存木材个数（低效燃料，对齐《异星工厂》：车头可用木材烧）
     this.schedule = [];  // 自动调度路线：车站名数组（列车按此顺序循环行驶装卸）
   }
   giveItem(item) {
+    if (item === 'nuclear-fuel' && this._fuelCount() < LOCO_MAX_UNITS) { this.fuelNuclear++; return true; }
     if (item === 'rocket-fuel' && this._fuelCount() < LOCO_MAX_UNITS) { this.fuelRocket++; return true; }
     if (item === 'coal' && this._fuelCount() < LOCO_MAX_UNITS) { this.fuelCoal++; return true; }
     if (item === 'solid-fuel' && this._fuelCount() < LOCO_MAX_UNITS) { this.fuelSolid++; return true; }
     if (item === 'wood' && this._fuelCount() < LOCO_MAX_UNITS) { this.fuelWood++; return true; }
     return false;
   }
-  _fuelCount() { return (this.fuelCoal || 0) + (this.fuelSolid || 0) + (this.fuelRocket || 0) + (this.fuelWood || 0); }
-  // 能量池不足时从燃料槽取一单位填充（优先火箭燃料，其次固体燃料/煤，最后木材）
+  _fuelCount() { return (this.fuelCoal || 0) + (this.fuelSolid || 0) + (this.fuelRocket || 0) + (this.fuelNuclear || 0) + (this.fuelWood || 0); }
+  // 能量池不足时从燃料槽取一单位填充（优先核燃料，其次火箭燃料，再固体燃料/煤，最后木材）
   refuel() {
     if (this.fuel >= LOCO_FUEL) return;
-    if (this.fuelRocket > 0) { this.fuelRocket--; this.fuel = Math.min(LOCO_MAX_FUEL, this.fuel + LOCO_ROCKET_FUEL); }
+    if (this.fuelNuclear > 0) { this.fuelNuclear--; this.fuel = Math.min(LOCO_MAX_FUEL, this.fuel + LOCO_NUCLEAR_FUEL); }
+    else if (this.fuelRocket > 0) { this.fuelRocket--; this.fuel = Math.min(LOCO_MAX_FUEL, this.fuel + LOCO_ROCKET_FUEL); }
     else if (this.fuelSolid > 0) { this.fuelSolid--; this.fuel = Math.min(LOCO_MAX_FUEL, this.fuel + LOCO_SOLID_FUEL); }
     else if (this.fuelCoal > 0) { this.fuelCoal--; this.fuel = Math.min(LOCO_MAX_FUEL, this.fuel + LOCO_FUEL); }
     else if (this.fuelWood > 0) { this.fuelWood--; this.fuel = Math.min(LOCO_MAX_FUEL, this.fuel + LOCO_WOOD_FUEL); }
@@ -389,6 +393,7 @@ class Locomotive extends Entity {
   countOf(item) {
     if (item === 'coal') return this.fuelCoal;
     if (item === 'solid-fuel') return this.fuelSolid;
+    if (item === 'nuclear-fuel') return this.fuelNuclear;
     if (item === 'rocket-fuel') return this.fuelRocket;
     if (item === 'wood') return this.fuelWood;
     return 0;
@@ -396,12 +401,14 @@ class Locomotive extends Entity {
   takeItemOf(item) {
     if (item === 'coal' && this.fuelCoal > 0) { this.fuelCoal--; return 'coal'; }
     if (item === 'solid-fuel' && this.fuelSolid > 0) { this.fuelSolid--; return 'solid-fuel'; }
+    if (item === 'nuclear-fuel' && this.fuelNuclear > 0) { this.fuelNuclear--; return 'nuclear-fuel'; }
     if (item === 'rocket-fuel' && this.fuelRocket > 0) { this.fuelRocket--; return 'rocket-fuel'; }
     if (item === 'wood' && this.fuelWood > 0) { this.fuelWood--; return 'wood'; }
     return null;
   }
   contents() {
     const list = [[this.type, 1]];
+    if (this.fuelNuclear > 0) list.push(['nuclear-fuel', this.fuelNuclear]);
     if (this.fuelRocket > 0) list.push(['rocket-fuel', this.fuelRocket]);
     if (this.fuelSolid > 0) list.push(['solid-fuel', this.fuelSolid]);
     if (this.fuelCoal > 0) list.push(['coal', this.fuelCoal]);
@@ -410,19 +417,19 @@ class Locomotive extends Entity {
   }
   serialize() {
     const s = super.serialize();
-    s.fuel = this.fuel; s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket; s.fuelWood = this.fuelWood;
+    s.fuel = this.fuel; s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket; s.fuelNuclear = this.fuelNuclear; s.fuelWood = this.fuelWood;
     s.schedule = this.schedule;
     return s;
   }
   blueprint() {
     const s = super.blueprint();
-    s.fuel = this.fuel; s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket; s.fuelWood = this.fuelWood;
+    s.fuel = this.fuel; s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket; s.fuelNuclear = this.fuelNuclear; s.fuelWood = this.fuelWood;
     s.schedule = this.schedule;
     return s;
   }
   static restore(s) {
     const e = super.restore(s);
-    e.fuel = s.fuel | 0; e.fuelCoal = s.fuelCoal | 0; e.fuelSolid = s.fuelSolid | 0; e.fuelRocket = s.fuelRocket | 0; e.fuelWood = s.fuelWood | 0;
+    e.fuel = s.fuel | 0; e.fuelCoal = s.fuelCoal | 0; e.fuelSolid = s.fuelSolid | 0; e.fuelRocket = s.fuelRocket | 0; e.fuelNuclear = s.fuelNuclear | 0; e.fuelWood = s.fuelWood | 0;
     e.schedule = Array.isArray(s.schedule) ? s.schedule.slice() : [];
     return e;
   }
@@ -437,24 +444,28 @@ class DieselLocomotive extends Locomotive {
   }
   giveItem(item) {
     // 内燃机车只吃固体燃料与火箭燃料（对齐《异星工厂》：内燃机车不使用煤）
-    const total = this.fuelCoal + this.fuelSolid + this.fuelRocket;
+    const total = this.fuelCoal + this.fuelSolid + this.fuelRocket + (this.fuelNuclear || 0);
+    if (item === 'nuclear-fuel' && total < LOCO_MAX_UNITS) { this.fuelNuclear++; return true; }
     if (item === 'rocket-fuel' && total < LOCO_MAX_UNITS) { this.fuelRocket++; return true; }
     if (item === 'solid-fuel' && total < LOCO_MAX_UNITS) { this.fuelSolid++; return true; }
     return false;
   }
   refuel() {
     if (this.fuel >= LOCO_FUEL) return;
-    if (this.fuelRocket > 0) { this.fuelRocket--; this.fuel = Math.min(LOCO_MAX_FUEL, this.fuel + LOCO_ROCKET_FUEL); }
+    if (this.fuelNuclear > 0) { this.fuelNuclear--; this.fuel = Math.min(LOCO_MAX_FUEL, this.fuel + LOCO_NUCLEAR_FUEL); }
+    else if (this.fuelRocket > 0) { this.fuelRocket--; this.fuel = Math.min(LOCO_MAX_FUEL, this.fuel + LOCO_ROCKET_FUEL); }
     else if (this.fuelSolid > 0) { this.fuelSolid--; this.fuel = Math.min(LOCO_MAX_FUEL, this.fuel + LOCO_SOLID_FUEL); }
     // 内燃机车不吃煤，fuelCoal 恒为 0，不会走到煤分支
   }
   takeItemOf(item) {
     if (item === 'solid-fuel' && this.fuelSolid > 0) { this.fuelSolid--; return 'solid-fuel'; }
+    if (item === 'nuclear-fuel' && this.fuelNuclear > 0) { this.fuelNuclear--; return 'nuclear-fuel'; }
     if (item === 'rocket-fuel' && this.fuelRocket > 0) { this.fuelRocket--; return 'rocket-fuel'; }
     return null;
   }
   contents() {
     const list = [[this.type, 1]];
+    if (this.fuelNuclear > 0) list.push(['nuclear-fuel', this.fuelNuclear]);
     if (this.fuelRocket > 0) list.push(['rocket-fuel', this.fuelRocket]);
     if (this.fuelSolid > 0) list.push(['solid-fuel', this.fuelSolid]);
     return list;
@@ -1244,6 +1255,9 @@ DEVICE_PANEL['locomotive'] = {
       (invCount('rocket-fuel') > 0 || (e.fuelRocket || 0) > 0
         ? '<div class="row"><span>火箭燃料</span><b>' + (e.fuelRocket || 0) + '</b><button data-act="putrocket">+1</button><button data-act="takerocket">取出</button></div>'
         : '') +
+      (invCount('nuclear-fuel') > 0 || (e.fuelNuclear || 0) > 0
+        ? '<div class="row"><span>核燃料</span><b>' + (e.fuelNuclear || 0) + '</b><button data-act="putnuclear">+1</button><button data-act="takenuclear">取出</button></div>'
+        : '') +
       (invCount('wood') > 0 || (e.fuelWood || 0) > 0
         ? '<div class="row"><span>木材</span><b>' + (e.fuelWood || 0) + '</b><button data-act="putwood">+1</button><button data-act="takewood">取出</button></div>'
         : '') +
@@ -1260,6 +1274,8 @@ DEVICE_PANEL['locomotive'] = {
     else if (btn === 'takesolid') { const it = mch.takeItemOf('solid-fuel'); if (it) { invAdd(it); toast('已取出固体燃料'); uiDirty = true; } }
     else if (btn === 'putrocket' && invCount('rocket-fuel') > 0) { mch.giveItem('rocket-fuel'); invTake('rocket-fuel', 1); toast('已加火箭燃料'); uiDirty = true; }
     else if (btn === 'takerocket') { const it = mch.takeItemOf('rocket-fuel'); if (it) { invAdd(it); toast('已取出火箭燃料'); uiDirty = true; } }
+    else if (btn === 'putnuclear' && invCount('nuclear-fuel') > 0) { mch.giveItem('nuclear-fuel'); invTake('nuclear-fuel', 1); toast('已加核燃料'); uiDirty = true; }
+    else if (btn === 'takenuclear') { const it = mch.takeItemOf('nuclear-fuel'); if (it) { invAdd(it); toast('已取出核燃料'); uiDirty = true; } }
     else if (btn === 'putwood' && invCount('wood') > 0) { mch.giveItem('wood'); invTake('wood', 1); toast('已加木材'); uiDirty = true; }
     else if (btn === 'takewood') { const it = mch.takeItemOf('wood'); if (it) { invAdd(it); toast('已取出木材'); uiDirty = true; } }
     else if (btn === 'sch-add-btn') {
@@ -1318,13 +1334,16 @@ function syncLocoSchedule(loco) {
 // 内燃机车面板：复用调度路线，但不吃煤（只吃固体/火箭燃料）
 DEVICE_PANEL['diesel-locomotive'] = {
   html(e) {
-    return '<div class="dim">内燃机车：进阶车头，速度约为烧煤车头的 1.5 倍。只吃固体燃料/火箭燃料（不吃煤，对齐《异星工厂》内燃机车）。可挂接货运车厢。</div>' +
+    return '<div class="dim">内燃机车：进阶车头，速度约为烧煤车头的 1.5 倍。只吃固体燃料/火箭燃料/核燃料（不吃煤，对齐《异星工厂》内燃机车）。可挂接货运车厢。</div>' +
       '<div class="sec">燃料</div><div class="rows">' +
       (invCount('solid-fuel') > 0 || (e.fuelSolid || 0) > 0
         ? '<div class="row"><span>固体燃料</span><b>' + (e.fuelSolid || 0) + '</b><button data-act="putsolid">+1</button><button data-act="takesolid">取出</button></div>'
         : '') +
       (invCount('rocket-fuel') > 0 || (e.fuelRocket || 0) > 0
         ? '<div class="row"><span>火箭燃料</span><b>' + (e.fuelRocket || 0) + '</b><button data-act="putrocket">+1</button><button data-act="takerocket">取出</button></div>'
+        : '') +
+      (invCount('nuclear-fuel') > 0 || (e.fuelNuclear || 0) > 0
+        ? '<div class="row"><span>核燃料</span><b>' + (e.fuelNuclear || 0) + '</b><button data-act="putnuclear">+1</button><button data-act="takenuclear">取出</button></div>'
         : '') +
       '</div>' + locoScheduleHtml(e);
   },
@@ -1337,6 +1356,8 @@ DEVICE_PANEL['diesel-locomotive'] = {
     else if (btn === 'takesolid') { const it = mch.takeItemOf('solid-fuel'); if (it) { invAdd(it); toast('已取出固体燃料'); uiDirty = true; } }
     else if (btn === 'putrocket' && invCount('rocket-fuel') > 0) { mch.giveItem('rocket-fuel'); invTake('rocket-fuel', 1); toast('已加火箭燃料'); uiDirty = true; }
     else if (btn === 'takerocket') { const it = mch.takeItemOf('rocket-fuel'); if (it) { invAdd(it); toast('已取出火箭燃料'); uiDirty = true; } }
+    else if (btn === 'putnuclear' && invCount('nuclear-fuel') > 0) { mch.giveItem('nuclear-fuel'); invTake('nuclear-fuel', 1); toast('已加核燃料'); uiDirty = true; }
+    else if (btn === 'takenuclear') { const it = mch.takeItemOf('nuclear-fuel'); if (it) { invAdd(it); toast('已取出核燃料'); uiDirty = true; } }
     else if (btn === 'sch-add-btn') {
       const sel = document.getElementById('sch-add');
       if (sel && sel.value) {

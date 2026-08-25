@@ -54,7 +54,11 @@ function collectCircuitNodes() {
 // circuitSignalNear（被传送带/机械臂/电灯/流体泵/铁路信号灯每帧调用）复用该缓存，
 // 避免每次调用都全量遍历 G.ents（高设备密度下显著降低帧开销）。
 let _circuitNodesCache = null;
+// 电路网络代际计数（性能优化）：网络每 recompute 一次 +1。设备每帧调用 circuitSignalNear 时，
+// 以其最近一次读取的代际缓存信号（O(1)）代替重新遍历全部节点（O(n)），网络未变化时不重算。
+let _circuitGen = 0;
 function cacheCircuitNodes(nodes) { _circuitNodesCache = nodes; }
+function currentCircuitGen() { return _circuitGen; }
 function getCachedCircuitNodes() { return _circuitNodesCache || (_circuitNodesCache = collectCircuitNodes()); }
 
 // 重建单个节点的连线（同色通道均连接到范围内其它节点）
@@ -122,6 +126,13 @@ function recomputeCircuit() {
     groups.push(group);
   }
 
+  // 机械臂「读取手持物品」：预收集开启了 readHand 的机械臂（通常极少），供各网络分组
+  // 复用，避免每个分组/节点重复遍历全量 G.ents（性能优化，对齐《异星工厂》）。
+  const readHandIns = [];
+  for (const ent of G.ents) {
+    if (!ent._dead && ent.circuitCond && ent.circuitCond.readHand && ent.holding) readHandIns.push(ent);
+  }
+
   for (const group of groups) {
     let aggRed = {};
     let aggGreen = {};
@@ -149,6 +160,21 @@ function recomputeCircuit() {
         if (!st || !st.item || !st.count) continue;
         addSignal(aggRed, st.item, st.count);
         addSignal(aggGreen, st.item, st.count);
+      }
+    }
+    // 1d) 机械臂「读取手持物品」（对齐《异星工厂》：机械臂把爪上物品数量输出到电路网络）。
+    //     仅当机械臂开启 readHand 且正抓着物品时，把该物品数量加入网络信号（红线+绿线）。
+    //     机械臂需与任一电路节点相邻（d<=2，与 circuitSignalNear 判定一致）。
+    for (const n of group) {
+      if (!n || n._dead) continue;
+      const nx = n.cx(), ny = n.cy();
+      for (let i = 0; i < readHandIns.length; i++) {
+        const ent = readHandIns[i];
+        const d = Math.max(Math.abs(nx - (ent.x + ent.w / 2)), Math.abs(ny - (ent.y + ent.h / 2)));
+        if (d <= 2) {
+          addSignal(aggRed, ent.holding, ent.holdingCount || 1);
+          addSignal(aggGreen, ent.holding, ent.holdingCount || 1);
+        }
       }
     }
     // 2) 运算/判断组合器：读取输入信号，计算后输出到指定通道（可级联）。
@@ -184,6 +210,8 @@ function recomputeCircuit() {
       else                           { n.netRed = aggRed;   n.netGreen = aggGreen; }
     }
   }
+  // 网络已重算，代际 +1，令各设备下次 circuitSignalNear 重新缓存（O(1) 命中缓存）
+  _circuitGen++;
 }
 
 // ===== 常量组合器 =====
@@ -696,6 +724,10 @@ function wireToolSelected() {
 // 供其它设备（如流体泵）读取某实体周围电路网络的红/绿信号。
 // 返回 { red:{}, green:{} }；若无可读取的节点则返回 null。
 function circuitSignalNear(e) {
+  // 性能优化：设备每帧调用（传送带/机械臂/电灯/流体泵/铁路信号灯），网络仅每 0.25s 重算。
+  // 缓存最近一次读取的代际与结果，网络未变化时直接复用（O(1)），避免每帧全量遍历电路节点。
+  const cache = e._circSig;
+  if (cache && cache.gen === _circuitGen) return cache.value;
   const nodes = getCachedCircuitNodes();
   let best = null, bestD = 1e9;
   for (const n of nodes) {
@@ -703,8 +735,9 @@ function circuitSignalNear(e) {
     const d = Math.max(Math.abs(n.cx() - (e.x + e.w / 2)), Math.abs(n.cy() - (e.y + e.h / 2)));
     if (d <= 2 && d < bestD) { bestD = d; best = n; }
   }
-  if (!best) return null;
-  return { red: best.netRed || {}, green: best.netGreen || {} };
+  const value = best ? { red: best.netRed || {}, green: best.netGreen || {} } : null;
+  e._circSig = { gen: _circuitGen, value };
+  return value;
 }
 
 // 通用电路启用条件判定：cond = { channel:'red'|'green', sig, op, count, enabled }

@@ -21,8 +21,8 @@ class Inserter extends Entity {
     this.filter = null;  // 过滤臂：只抓该物品
     this.blocked = false;
     this.armAng = undefined;
-    // 电路控制（对齐《异星工厂》：机械臂接入电路网络，可按信号启停）
-    this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
+    // 电路控制（对齐《异星工厂》：机械臂接入电路网络，可按信号启停，并可把爪上物品输出到电路网络）
+    this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1, readHand: false };
   }
   // 电路启停：未启用条件时恒工作；启用后仅当附近电路信号满足条件才运转
   circuitEnabled() {
@@ -460,7 +460,8 @@ function circuitPanelHtml(e, prefix) {
     '<input type="text" id="' + prefix + '-sig" class="circ-siginv" value="' + (typeof signalDisplayName === 'function' ? signalDisplayName(c.sig) : (ITEMS[c.sig]?.name || c.sig || '')) + '" placeholder="信号" autocomplete="off">' +
     '<select id="' + prefix + '-op" class="circ-op">' + ['>', '<', '=', '!=', '>=', '<='].map(o => '<option value="' + o + '"' + (c.op === o ? ' selected' : '') + '>' + o + '</option>').join('') + '</select>' +
     '<input type="number" id="' + prefix + '-cnt" class="circ-cnt" value="' + (c.count || 0) + '" min="-99999" max="99999">' +
-    '<button data-action="cb-cond">应用</button></div>';
+    '<button data-action="cb-cond">应用</button></div>' +
+    '<label class="circ-readhand"><input type="checkbox" id="' + prefix + '-rh"' + (c.readHand ? ' checked' : '') + '> 读取手持物品（把机械臂爪上物品数量作为信号输出到电路网络）</label>';
   h += '<div class="dim">启用后，仅当所选电路信号满足条件时设备才工作（如铁板信号 ≥ 100 才运转）。</div>';
   return h;
 }
@@ -475,6 +476,8 @@ function circuitPanelAction(prefix, act) {
   c.sig = (typeof resolveSignalName === 'function' ? resolveSignalName(document.getElementById(prefix + '-sig').value) : document.getElementById(prefix + '-sig').value) || c.sig;
   c.op = document.getElementById(prefix + '-op').value;
   c.count = Math.floor(Number(document.getElementById(prefix + '-cnt').value)) || 0;
+  const rh = document.getElementById(prefix + '-rh');
+  c.readHand = !!(rh && rh.checked);
   uiDirty = true;
   return true;
 }
