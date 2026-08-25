@@ -423,6 +423,16 @@ html, body {
   opacity: .97;
 }
 
+/* 用游戏地图生成功能随机生成的地图背景（canvas） */
+.start-bg-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: .55;
+  mix-blend-mode: normal;
+}
+
 /* 背景浮动光点，提升氛围感 */
 .start-bg::before,
 .start-bg::after {

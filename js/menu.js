@@ -8,6 +8,65 @@
 (function () {
   // 存档由 js/saves.js 的多存档系统管理，此处仅检测是否存在任意存档。
 
+  // ===== 用游戏地图生成功能随机生成一张地图作为开始菜单背景 =====
+  // 复用游戏的地图生成逻辑（genWorld/genChunk/getTerrain），以一个随机种子
+  // 生成临时世界并绘制到 .start-bg 的 canvas 上；绘制后恢复原世界，不影响真实游戏。
+  function generateStartBackground() {
+    const canvas = document.getElementById('start-bg-canvas');
+    if (!canvas || typeof G === 'undefined' || !G || typeof genWorld !== 'function') return;
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.clientWidth || window.innerWidth;
+    const H = canvas.clientHeight || window.innerHeight;
+    canvas.width = Math.max(1, Math.round(W * dpr));
+    canvas.height = Math.max(1, Math.round(H * dpr));
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
+
+    // 保存并临时替换世界：用随机种子生成一个仅供背景展示的临时地图
+    const prevWorld = G.world;
+    const prevWC = G.worldConfig;
+    try {
+      G.worldConfig = null;                 // 使用默认世界配置（随机种子）
+      G.world = genWorld((Math.random() * 1e9) | 0);
+      drawStartMapBackground(ctx, W, H);
+    } finally {
+      G.world = prevWorld;
+      G.worldConfig = prevWC;
+    }
+  }
+
+  // 将临时世界的地形瓦片缩放到铺满屏幕并绘制
+  function drawStartMapBackground(ctx, W, H) {
+    const RANGE = 64;                 // 从世界中心向外覆盖的半边长（格）
+    const N = RANGE * 2;              // 地图边长（格）
+    const scale = Math.min(W / N, H / N) * 1.05;
+    ctx.save();
+    ctx.translate(W / 2, H / 2);
+    ctx.scale(scale, scale);
+    ctx.translate(-RANGE, -RANGE);
+
+    for (let ty = 0; ty < N; ty++) {
+      for (let tx = 0; tx < N; tx++) {
+        const gx = tx - RANGE, gy = ty - RANGE;
+        const t = getTerrain(gx, gy);
+        const v = hash2(gx, gy);
+        let c;
+        if (t === T_WATER) c = v > 0.5 ? '#265d8a' : '#28618f';
+        else if (t === T_CLIFF) c = v > 0.5 ? '#6d6a63' : '#65625c';
+        else if (t === T_TREE) c = v > 0.5 ? '#2f5a2c' : '#2b5529';
+        else c = v > 0.62 ? '#4f7c3b' : v > 0.3 ? '#4a7538' : '#456f35';
+        ctx.fillStyle = c;
+        ctx.fillRect(tx, ty, 1.02, 1.02);
+      }
+    }
+    ctx.restore();
+  }
+
+  // 暴露给外部（main.js 返回菜单时）刷新背景，进入主菜单后每次随机生成新地图
+  window.refreshStartBackground = generateStartBackground;
+
   function initStartMenu() {
     const screen = document.getElementById('start-screen');
     if (!screen) return;
@@ -186,9 +245,17 @@
     })();
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initStartMenu);
-  } else {
+  function initStart() {
     initStartMenu();
+    // 生成随机地图背景（复用游戏地图生成功能）
+    generateStartBackground();
+    // 窗口尺寸变化时重绘背景，保持铺满
+    window.addEventListener('resize', function () { generateStartBackground(); });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initStart);
+  } else {
+    initStart();
   }
 })();

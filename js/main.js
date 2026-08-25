@@ -1370,6 +1370,8 @@ function returnToMenu() {
   }
   if (typeof playSfx === 'function') playSfx('click');
   toast('已退出到主页面');
+  // 回到主菜单时随机生成一张新地图作为背景（复用游戏地图生成功能）
+  if (typeof refreshStartBackground === 'function') refreshStartBackground();
 }
 
 // ===== 死亡结算菜单（对齐《异星工厂》：阵亡后选择 出生点复活 / 读取存档 / 重新开始）=====
