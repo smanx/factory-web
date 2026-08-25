@@ -59,7 +59,18 @@ class Inserter extends Entity {
     const e = entAt(x, y);
     return (e && !(e instanceof Inserter)) ? e : null;
   }
-  // 取物：无论物品位于传送带的哪一条 lane（左线/右线），机械臂都可抓取。
+  // 取物格传送带的“近侧车道”：机械臂优先从靠近自己一侧的车道取物（对齐《异星工厂》）。
+  // 返回 0/1（行进方向左/右列），供 grabZone 优先抓取近侧 lane；
+  // 若近侧 lane 无货则回退到任意 lane，保证远侧物品也能被取到。
+  pickBeltLane(s) {
+    if (!(s instanceof Belt)) return undefined;
+    const bx = s.x, by = s.y;
+    const dx = this.x - bx, dy = this.y - by;
+    const fdx = DX[s.dir], fdy = DY[s.dir];
+    const perp = [fdy, -fdx];
+    const d = dx * perp[0] + dy * perp[1];
+    return d > 0 ? 1 : 0;
+  }
   // 放物格传送带的“远侧车道”：机械臂把物品放到远离自己一侧的车道。
   // 传送带为双列（左右两线）时，机械臂侧放默认进入远离机械臂的那一线，
   // 避免物品都挤在机械臂所在的近侧线上。
@@ -77,8 +88,9 @@ class Inserter extends Entity {
     if (!s) return null;
     let it = null;
     if (s instanceof Belt) {
-      // 任意一线皆可抓取：不限定近侧 lane，任一线头部物品均视为可取源
-      const z = s.grabZone(this.filter || undefined);
+      // 优先抓取靠近机械臂一侧的 lane；近侧无货时回退到任意 lane（远侧仍可取到）
+      let z = s.grabZone(this.filter || undefined, this.pickBeltLane(s));
+      if (!z) z = s.grabZone(this.filter || undefined);
       it = z ? z.item : null;
     } else if (this.filter && s.countOf) {
       // 过滤臂：直接探测源内是否存在过滤物（而非源的首个产出）
@@ -99,8 +111,9 @@ class Inserter extends Entity {
     for (let i = 0; i < n; i++) {
       let it = null;
       if (s instanceof Belt) {
-        // 任意一线皆可抓取：不限定近侧 lane，跨越左右两线凑足所需数量
-        const z = s.grabZone(item);
+        // 优先抓取近侧 lane；近侧无货时回退到任意 lane，跨越左右两线凑足所需数量
+        let z = s.grabZone(item, this.pickBeltLane(s));
+        if (!z) z = s.grabZone(item);
         if (!z) break;
         s.items.splice(s.items.indexOf(z), 1);
         it = z.item;
@@ -114,7 +127,9 @@ class Inserter extends Entity {
   }
   takeSource(s) {
     if (s instanceof Belt) {
-      const z = s.grabZone(undefined);
+      // 优先抓取近侧 lane；近侧无货时回退到任意 lane
+      let z = s.grabZone(undefined, this.pickBeltLane(s));
+      if (!z) z = s.grabZone(undefined);
       if (!z) return null;
       s.items.splice(s.items.indexOf(z), 1);
       return z.item;
@@ -425,7 +440,7 @@ function drawFlowMarks(ctx, e, cx, cy, dir) {
 
 // ===== 面板 =====
 function inserterPanelHtml(e) {
-  return '<div class="dim">机械臂：严格单向搬运。从臂体指向的一侧（灰色圆点）取货，放到地面箭头/亮色箭头的一侧（物流方向）。普通臂作用相邻格，长臂作用第二格。R 旋转。</div>' + circuitPanelHtml(e, 'ins') + '<div class="status"></div>';
+  return '<div class="dim">机械臂：严格单向搬运。从臂体指向的一侧（灰色圆点）取货，放到地面箭头/亮色箭头的一侧（物流方向）。双列传送带上优先抓取靠近自己一侧的车道，近侧无货时再取远侧。普通臂作用相邻格，长臂作用第二格。R 旋转。</div>' + circuitPanelHtml(e, 'ins') + '<div class="status"></div>';
 }
 function stackInserterPanelHtml(e) {
   return '<div class="dim">堆叠机械臂：一次最多抓取 3 个同种物品再放下，装卸效率约为普通臂的 3 倍。R 旋转。</div>' + circuitPanelHtml(e, 'ins') + '<div class="status"></div>';
@@ -457,7 +472,7 @@ function filterInserterOnAction(act, btn) {
 }
 // 悬浮提示（普通/长臂/过滤/堆叠共用）
 function inserterTip(e) {
-  return e.holding ? ('搬运 ' + ITEMS[e.holding].name + '，8格取放') : '待机：周围8格取放（优先背面取、正面放）';
+  return e.holding ? ('搬运 ' + ITEMS[e.holding].name + '，8格取放') : '待机：周围8格取放（优先近侧车道、取背面放正面）';
 }
 // 面板实时状态：工作中或暂停原因
 function inserterPanelLive(e, api) {
