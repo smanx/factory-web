@@ -77,8 +77,7 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
   ctx.restore();
   // 侧面接入带：用一段圆弧自然汇入主带（而非直矩形"搭"在主带之上），
   // 与主带同色、同轮廓，平滑衔接且 clip 到本格不覆盖相邻带。
-  const sideArc = [];
-  for (const s of inp) sideArc.push(drawBeltSideMerge(ctx, e, cx, cy, dir, s, step, alpha, { belt: '#4a2a28', chev: 'rgba(224,90,78,.9)' }));
+  const sideArc = inp.length === 1 ? [drawBeltSideMerge(ctx, e, cx, cy, dir, inp[0], step, alpha, { belt: '#4a2a28', chev: 'rgba(224,90,78,.9)' })] : [];
 
   const exitX = DX[dir] * step, exitY = DY[dir] * step;
   // 双列错位：物品沿各自车道流动（与普通带一致）
@@ -93,7 +92,7 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
     // 与普通带一致：仅确实来自侧面的物品走侧面接入线；直通物品（side<0）无需向中间靠拢，
     // 首尾相接方向一致时全程保持车道偏移直接平移过去。
     const fromSide = inp.length > 0 && o.side !== undefined && o.side >= 0 && o.side < inp.length;
-    const a = fromSide ? sideArc[o.side] : null;
+    const a = fromSide && sideArc.length > 0 ? sideArc[o.side] : null;
     if (a) {
       // 侧面进入的物品沿接入圆弧走完整段，与弧形轨道一致；内/外弧决定车道位置
       const s = inp[o.side];

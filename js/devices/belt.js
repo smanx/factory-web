@@ -522,8 +522,7 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
 
   // 侧面接入带：用一段圆弧自然汇入主带（而非直矩形“搭”在主带之上），
   // 与主带同色、同轮廓，平滑衔接；同时返回每个侧面的弧线参数供物品沿弧流动。
-  const sideArc = [];
-  for (const s of inp) sideArc.push(drawBeltSideMerge(ctx, e, cx, cy, dir, s, step, alpha, col));
+  const sideArc = inp.length === 1 ? [drawBeltSideMerge(ctx, e, cx, cy, dir, inp[0], step, alpha, col)] : [];
 
   const exitX = DX[dir] * step, exitY = DY[dir] * step;
   // 双列错位：两条车道在行进方向垂直方向各偏移一半，物品沿各自车道流动
@@ -541,7 +540,7 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
     // 直通物品（side<0，从背面同向进来，即首尾相接方向一致的直通连接）无需向中间靠拢，
     // 全程保持各自车道偏移、直接平移过去；侧面进入的物品沿接入圆弧自然弯折汇入主带。
     const fromSide = inp.length > 0 && o.side !== undefined && o.side >= 0 && o.side < inp.length;
-    const a = fromSide ? sideArc[o.side] : null;
+    const a = fromSide && sideArc.length > 0 ? sideArc[o.side] : null;
     if (a) {
       // 侧面进入的物品沿接入圆弧走完整段（入口边 → 汇入主带方向 → 出口边），
       // 与弧形轨道一致，不再直楞楞地斜穿格心、也避免直矩形“搭”在主带上；
