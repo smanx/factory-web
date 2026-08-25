@@ -1,6 +1,6 @@
 'use strict';
 
-// ===== 储液罐（对齐《异星工厂》Storage Tank）：大容量缓冲、单一流体、四个对角角位各一个通用流体口 =====
+// ===== 储液罐（对齐《异星工厂》Storage Tank）：大容量缓冲、单一流体、一对对角共 4 个通用流体口 =====
 // 占地 3×3；容量 STORAGE_TANK_CAP；罐内只容纳一种流体（液体/气体均可）；
 // 相邻管道会自动把流体灌入罐内，罐也会把流体供给相邻下游设备的输入口，作为缓冲库容。
 // 继承 CircuitNode（CircuitNode 亦是 Entity 子类）：储液罐可接入电路网络，
@@ -17,6 +17,17 @@ class StorageTank extends CircuitNode {
   isEdgeCell(x, y) {
     return x >= this.x && x < this.x + this.w && y >= this.y && y < this.y + this.h &&
       (x === this.x || x === this.x + this.w - 1 || y === this.y || y === this.y + this.h - 1);
+  }
+  // 判断世界格 (wx,wy) 是否为储液罐“可接管”的对角接口所在的外部相邻格。
+  // 只有一对对角（北西↔南东）的 4 个面可接管道，另一对对角（北东↔南西）为空不可接。
+  // 用于限制管道/泵只在接口对角处接入与灌入流体。
+  isPortCell(wx, wy) {
+    const isPort = (side, cell) => {
+      const nb = sideNeighborCell(this, side, cell);
+      return nb[0] === wx && nb[1] === wy;
+    };
+    // 北·左上角(side3,cell0)、西·左上角(side2,cell0)、南·右下角(side1,cell2)、东·右下角(side0,cell2)
+    return isPort(3, 0) || isPort(2, 0) || isPort(1, 2) || isPort(0, 2);
   }
   update(dt) {
     const f = this.storedFluid();
@@ -78,13 +89,14 @@ class StorageTank extends CircuitNode {
 }
 
 // ===== 渲染 =====
-// 储液罐（3×3）四个对角角位各一只通用流体口（东上/东下、西上/西下），可进可出
-const TANK_PORT_CELLS = [0, 2];
+// 储液罐（3×3）只在一对对角（北西↔南东）的 4 个面各设一只通用流体口：
+// 北·左上角、西·左上角（北西对角）、南·右下角、东·右下角（南东对角）；
+// 另一对对角（北东↔南西）为空，不可接管。可进可出。
 const TANK_PORTS = [
-  { side: 0, color: PORT_FLUID, off: -1, cells: [0] },  // 东·上角（北东角）
-  { side: 0, color: PORT_FLUID, off: 1, cells: [2] },   // 东·下角（南东角）
-  { side: 2, color: PORT_FLUID, off: -1, cells: [0] },  // 西·上角（北西角）
-  { side: 2, color: PORT_FLUID, off: 1, cells: [2] }    // 西·下角（南西角）
+  { side: 3, color: PORT_FLUID, off: -1, cells: [0] },  // 北·左上角（北西对角）
+  { side: 2, color: PORT_FLUID, off: -1, cells: [0] },  // 西·左上角（北西对角）
+  { side: 1, color: PORT_FLUID, off: 1, cells: [2] },   // 南·右下角（南东对角）
+  { side: 0, color: PORT_FLUID, off: 1, cells: [2] }    // 东·右下角（南东对角）
 ];
 // 当前罐内流体（若有）：用于"显示详情"时在接口处画流体图标
 function tankFluid(e) { return e.storedFluid ? e.storedFluid() : null; }
@@ -120,17 +132,18 @@ function drawStorageTank(ctx, e, gx, gy, dir, alpha) {
     ctx.fillStyle = 'rgba(30,36,44,.35)';
     rr(ctx, px + 12, py + s * 0.62, s - 24, s * 0.18, 5); ctx.fill();
   }
-  // 流体出入口凸缘（四个对角角位各一口，位置随旋转跟随）
+  // 流体出入口凸缘（一对对角的 4 个面各一口，位置随旋转跟随）
   drawRotatablePorts(ctx, e, px, py, s, TANK_PORTS);
   // 接口图标默认显示详情：在出入口处画当前流体图标
   if (portLabelVisible()) {
-    const d = e.dir | 0;
-    for (const cell of TANK_PORT_CELLS) {
-      const fl = tankFluid(e);
-      if (!fl) continue;
-      // 四个对角各画一只当前流体图标（东 side 0 / 西 side 2 的上角与下角）
-      drawPortIcon(ctx, px, py, s, (0 + d) % 4, cell - 1, fl);
-      drawPortIcon(ctx, px, py, s, (2 + d) % 4, cell - 1, fl);
+    const fl = tankFluid(e);
+    if (fl) {
+      const d = e.dir | 0;
+      // 沿 4 个接口各画一只当前流体图标（side 随旋转跟随，off 为沿边偏移）
+      for (const p of TANK_PORTS) {
+        const sd = (p.side + d) % 4;
+        drawPortIcon(ctx, px, py, s, sd, p.off, fl);
+      }
     }
   }
   ctx.globalAlpha = 1;
@@ -144,7 +157,7 @@ function storageTankPanelHtml(e) {
   h += row('容量', e.total() + ' / ' + STORAGE_TANK_CAP, 'cap');
   if (Object.keys(agg).length) h += '<button data-action="takeout" id="btn-tank-takeout">取出全部 (' + e.total() + ')</button>';
   h += '<div class="status"></div>';
-  h += '<div class="dim">储液罐大容量缓冲（' + STORAGE_TANK_CAP + ' 单位），罐内只容纳单一液体/气体。四个对角角位各一只通用流体口：相邻管道会自动把流体灌入罐内，罐也会向相邻炼油厂/化工厂等输入口供料。出入口处会显示当前流体图标。</div>';
+  h += '<div class="dim">储液罐大容量缓冲（' + STORAGE_TANK_CAP + ' 单位），罐内只容纳单一液体/气体。一对对角（北西↔南东）的 4 个面各一只通用流体口，另一对对角为空不可接管：相邻管道会自动把流体灌入罐内，罐也会向相邻炼油厂/化工厂等输入口供料。出入口处会显示当前流体图标。</div>';
   h += '<div class="dim">已接入电路网络：罐内流体存量以流体名（如水→water）作为信号输出到所连网络，供组合器/功率开关/机械臂等做按液位自动化（对齐《异星工厂》储液罐电路信号）。</div>';
   return h;
 }
@@ -171,14 +184,14 @@ ENT_CLASSES['storage-tank'] = StorageTank;
 DEVICE_RENDER['storage-tank'] = drawStorageTank;
 DEVICE_STATUS['storage-tank'] = e => e.total() > 0 ? 'g' : 'r';
 DEVICE_PANEL['storage-tank'] = { html: storageTankPanelHtml, live: storageTankPanelLive, tip: storageTankTip };
-// 显示详情时，四个对角角位接口流体图标所在世界格 + 当前存储流体名（用于鼠标悬停显示流体名称）
+// 显示详情时，一对对角接口流体图标所在世界格 + 当前存储流体名（用于鼠标悬停显示流体名称）
 DEVICE_FLUID_ICONS['storage-tank'] = e => {
   const f = tankFluid(e);
   if (!f) return [];
   const icons = [];
-  for (const cell of TANK_PORT_CELLS) {
-    icons.push({ x: fluidIconCell(e, 0, cell)[0], y: fluidIconCell(e, 0, cell)[1], fluid: f });
-    icons.push({ x: fluidIconCell(e, 2, cell)[0], y: fluidIconCell(e, 2, cell)[1], fluid: f });
+  for (const p of TANK_PORTS) {
+    const cell = p.cells[0];
+    icons.push({ x: fluidIconCell(e, p.side, cell)[0], y: fluidIconCell(e, p.side, cell)[1], fluid: f });
   }
   return icons;
 };
