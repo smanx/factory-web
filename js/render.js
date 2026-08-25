@@ -119,8 +119,8 @@ function render() {
   if (typeof drawParticles === 'function') drawParticles(ctx);
   ctx.restore();
 
-  // 昼夜黑暗遮罩：夜晚整个世界变暗（由 solarFactor 推算），夜视仪可抵消
-  if (typeof solarFactor === 'function' && typeof hasNightVision === 'function') {
+  // 昼夜黑暗遮罩：夜晚整个世界变暗（由 solarFactor 推算），夜视仪可抵消；设置中"日照光照"可整体开关
+  if (typeof solarFactor === 'function' && typeof hasNightVision === 'function' && (G.settings.daylight !== false)) {
     const ph = ((G.time / DAY_CYCLE) % 1 + 1) % 1;
     let dark = 0;
     let ambientTint = null;
