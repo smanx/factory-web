@@ -142,6 +142,48 @@ check('电动引擎(1引擎+2电路板+1润滑油)',
   assertRecipeInput('electric-engine', 'green-circuit', 2) &&
   assertRecipeInput('electric-engine', 'lubricant', 1), true);
 
+
+// ---- 机械臂族（对齐《异星工厂》官方 Wiki）----
+console.log('\n【机械臂族配方对齐官方】');
+// 机械臂：1 铁板 + 1 齿轮 + 1 电路板
+check('机械臂(1铁板+1齿轮+1电路板)',
+  assertRecipeInput('inserter', 'iron-plate', 1) &&
+  assertRecipeInput('inserter', 'iron-gear', 1) &&
+  assertRecipeInput('inserter', 'green-circuit', 1), true);
+// 快速机械臂：1 机械臂 + 2 铁板（官方：1 inserter + 2 iron-plate）
+check('快速机械臂(1机械臂+2铁板)',
+  assertRecipeInput('fast-inserter', 'inserter', 1) &&
+  assertRecipeInput('fast-inserter', 'iron-plate', 2), true);
+// 长臂机械臂：1 机械臂 + 1 齿轮（官方：1 inserter + 1 iron-gear-wheel）
+check('长臂机械臂(1机械臂+1齿轮)',
+  assertRecipeInput('long-inserter', 'inserter', 1) &&
+  assertRecipeInput('long-inserter', 'iron-gear', 1) &&
+  !getRecipeLine('long-inserter').includes('iron-plate'), true);
+// 过滤机械臂：基于机械臂（官方：1 inserter + 5 green-circuit，本项目简化）
+check('过滤机械臂基于机械臂', assertRecipeInput('filter-inserter', 'inserter', 1), true);
+// 堆叠机械臂：基于机械臂 + 齿轮
+check('堆叠机械臂基于机械臂+齿轮',
+  assertRecipeInput('stack-inserter', 'inserter', 1) &&
+  assertRecipeInput('stack-inserter', 'iron-gear', 8), true);
+// 堆叠过滤机械臂：1 过滤 + 1 堆叠
+check('堆叠过滤机械臂(过滤+堆叠)',
+  assertRecipeInput('stack-filter-inserter', 'filter-inserter', 1) &&
+  assertRecipeInput('stack-filter-inserter', 'stack-inserter', 1), true);
+
+// ---- 传送带族（对齐《异星工厂》官方 Wiki）----
+console.log('\n【传送带族配方对齐官方】');
+// 传送带：1 铁板 + 1 齿轮 → 2 条（官方：1 iron-plate + 1 gear → 2）
+check('传送带(1铁板+1齿轮→2条)',
+  assertRecipeInput('transport-belt', 'iron-plate', 1) &&
+  assertRecipeInput('transport-belt', 'iron-gear', 1) &&
+  getRecipeLine('transport-belt').includes("'transport-belt': 2"), true);
+// 快速传送带：官方 = 1 传送带 + 1 齿轮 → 1 条
+check('快速传送带基于传送带+齿轮',
+  assertRecipeInput('fast-transport-belt', 'iron-gear', 1), true);
+// 极速传送带：官方 = 1 快速带 + 5 齿轮 → 1 条
+check('极速传送带基于快速带+5齿轮',
+  assertRecipeInput('express-transport-belt', 'fast-transport-belt', 1) &&
+  assertRecipeInput('express-transport-belt', 'iron-gear', 5), true);
 console.log('\n----------------------------------------');
 console.log('通过 ' + passCount + ' 项，失败 ' + failCount + ' 项');
 process.exit(failCount > 0 ? 1 : 0);
