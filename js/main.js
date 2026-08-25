@@ -29,7 +29,7 @@ const G = {
   mouseDown: false,
   canvasActive: false,
   time: 0,
-  dbg: { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1, infinite: false, farReach: false },
+  dbg: { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1, infinite: false, farReach: false, noclip: false },
   // 是否开启开发者调试（仅当 URL 参数含 debug=1 时为 true）
   debugEnabled: new URLSearchParams(window.location.search).get('debug') === '1',
   spawn: { x: 0, y: 0 },
@@ -382,7 +382,7 @@ function applySave(d) {
     if (typeof refreshDebugPanel === 'function') refreshDebugPanel();
   } else {
     // debug 未开启：重置为默认值，确保读档含 debug 的数据也不生效
-    Object.assign(G.dbg, { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1, infinite: false, farReach: false });
+    Object.assign(G.dbg, { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1, infinite: false, farReach: false, noclip: false });
   }
   if (Array.isArray(d.hotbar)) {
     HOTBAR = d.hotbar.slice(0, 10);

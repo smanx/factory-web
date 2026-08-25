@@ -1619,6 +1619,167 @@ function buildDebug() {
   dbgSlider(body, '采矿机速度', 'drillMult', 0.25, 5, 0.25);
   dbgSlider(body, '组装机速度', 'asmMult', 0.25, 5, 0.25);
 
+  // ---- 操作区域（含“开关”与“动作”两个子区，置于“发放资源”之上） ----
+  const opSec = document.createElement('div');
+  opSec.className = 'dsec';
+  opSec.textContent = '操作';
+  body.appendChild(opSec);
+
+  // 子区一：开关（全部以勾选方式展示）
+  const swSec = document.createElement('div');
+  swSec.className = 'dsec-sub';
+  swSec.textContent = '开关';
+  body.appendChild(swSec);
+  const swList = document.createElement('div');
+  swList.className = 'dswlist';
+  const switches = [
+    {
+      key: 'infinite', label: '无限资源', dataKey: 'dbgSwitch',
+      on() { toast('无限资源模式已开启：建造不消耗原料，可直接建造测试箱（创造/虚空）与测试管道（创造/虚空）'); refreshHotbar(); },
+      off() { toast('无限资源模式已关闭'); refreshHotbar(); }
+    },
+    {
+      key: 'farReach', label: '无限交互距离', dataKey: 'dbgSwitch',
+      on() { toast('无限交互距离已开启：可对任意远的格子交互/建造'); },
+      off() { toast('无限交互距离已关闭'); }
+    },
+    {
+      key: 'noclip', label: '主角无视碰撞', dataKey: 'dbgSwitch',
+      on() { toast('主角无视碰撞已开启：可穿过水/峭壁/树木等障碍'); },
+      off() { toast('主角无视碰撞已关闭'); }
+    },
+    {
+      key: 'combat', label: '切换战斗', dataKey: 'dbgSwitch', source: 'settings',
+      on() { toast('战斗模式：开启'); },
+      off() { G.enemies = []; G.bullets = []; G.enemyProjectiles = []; toast('战斗模式：关闭'); }
+    }
+  ];
+  for (const sw of switches) {
+    const row = document.createElement('label');
+    row.className = 'dsw';
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.dataset[sw.dataKey] = sw.key;
+    const val = sw.source === 'settings' ? !!G.settings[sw.key] : !!G.dbg[sw.key];
+    box.checked = val;
+    box.addEventListener('change', () => {
+      const on = box.checked;
+      if (sw.source === 'settings') {
+        G.settings[sw.key] = on;
+      } else {
+        G.dbg[sw.key] = on;
+      }
+      (on ? sw.on : sw.off)();
+    });
+    row.appendChild(box);
+    const span = document.createElement('span');
+    span.textContent = sw.label;
+    row.appendChild(span);
+    swList.appendChild(row);
+  }
+  body.appendChild(swList);
+
+  // 子区二：动作（一次性操作按钮）
+  const opSubSec = document.createElement('div');
+  opSubSec.className = 'dsec-sub';
+  opSubSec.textContent = '动作';
+  body.appendChild(opSubSec);
+  const grid2 = document.createElement('div');
+  grid2.className = 'dgrid';
+  const acts = [
+    ['一键重置所有功能', () => {
+      Object.assign(G.dbg, { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1, infinite: false, farReach: false, noclip: false });
+      G.settings.combat = false;
+      if (!G.settings.combat) { G.enemies = []; G.bullets = []; G.enemyProjectiles = []; }
+      buildDebug();
+      panel.style.display = 'block';
+      refreshHotbar();
+      toast('所有调试功能已重置为默认值');
+    }],
+    ['重置速度', () => {
+      Object.assign(G.dbg, { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1 });
+      buildDebug();
+      panel.style.display = 'block';
+      toast('所有速度已重置为 1x');
+    }],
+    ['完成研究', () => {
+      const t = G.activeTech;
+      if (!t) { toast('没有进行中的研究'); return; }
+      G.techProg[t] = techCostTotal(t);
+      G.techDone[t] = true;
+      toast('研究完成：' + TECHS[t].name);
+      G.activeTech = null;
+      renderPanel(false);
+    }],
+    ['回出生点', () => {
+      G.player.x = G.spawn.x * TILE + TILE / 2;
+      G.player.y = G.spawn.y * TILE + TILE / 2;
+    }],
+    ['清空建筑', () => {
+      for (const e of G.ents.slice()) removeEnt(e);
+      closePanel();
+      toast('建筑已清空');
+    }],
+    ['新地图', () => { newGame(); closePanel(); toast('新地图已生成'); }],
+    ['一键完成全部科技', () => {
+      for (const t in TECHS) {
+        G.techDone[t] = true;
+        if (G.techProg[t] === undefined) G.techProg[t] = techCostTotal(t);
+      }
+      G.activeTech = null; G.techQueue = [];
+      toast('已解锁全部 ' + Object.keys(TECHS).length + ' 项科技');
+      renderPanel(false);
+    }],
+    ['回满血', () => {
+      G.playerHP = G.playerHPmax;
+      toast('生命值已恢复满');
+    }],
+    ['清除污染', () => {
+      if (typeof pollutionRestore === 'function') pollutionRestore({ pollution: 0 });
+      else G.pollution = 0;
+      toast('污染已清零');
+    }],
+    ['清空敌人', () => {
+      G.enemies = []; G.bullets = []; G.enemyProjectiles = [];
+      toast('已清空全部敌人与弹幕');
+    }],
+    ['在面前刷一批敌人', () => {
+      if (!G.settings.combat) { toast('请先开启战斗模式'); return; }
+      if (typeof pickEnemyType === 'function' && typeof scaledDef === 'function' && ENEMY_TYPES) {
+        for (let i = 0; i < 8; i++) {
+          const t = pickEnemyType();
+          const def = scaledDef(ENEMY_TYPES[t]);
+          const px = G.player.x / TILE, py = G.player.y / TILE;
+          const ang = Math.random() * Math.PI * 2;
+          const dist = 6 + Math.random() * 4;
+          const tx = Math.round(px + Math.cos(ang) * dist);
+          const ty = Math.round(py + Math.sin(ang) * dist);
+          G.enemies.push({
+            x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2,
+            hp: def.hp, maxhp: def.hp, dead: false, dir: 0,
+            type: t, kind: def.kind, speed: def.speed, size: def.size, dmg: def.dmg,
+            color: def.color, attackT: 0, fireT: 0
+          });
+        }
+        toast('已在周围生成 8 只敌人');
+      } else { toast('战斗系统不可用'); }
+    }],
+    ['日夜切换', () => {
+      const cycle = (typeof DAY_CYCLE === 'number') ? DAY_CYCLE : 60;
+      const ph = ((G.time / cycle) % 1 + 1) % 1;
+      G.time = Math.floor(G.time / cycle) * cycle + cycle * (ph > 0.5 ? 0.02 : 0.5);
+      toast('时间已切换');
+    }]
+  ];
+  for (const [txt, fn] of acts) {
+    const b = document.createElement('button');
+    b.textContent = txt;
+    b.dataset.dbgact = txt;
+    b.addEventListener('click', fn);
+    grid2.appendChild(b);
+  }
+  body.appendChild(grid2);
+
   const sec1 = document.createElement('div');
   sec1.className = 'dsec';
   sec1.textContent = '发放资源';
@@ -1683,131 +1844,6 @@ function buildDebug() {
     refreshHotbar();
   });
   body.appendChild(giveAllBtn);
-
-  const sec2 = document.createElement('div');
-  sec2.className = 'dsec';
-  sec2.textContent = '操作';
-  body.appendChild(sec2);
-  const grid2 = document.createElement('div');
-  grid2.className = 'dgrid';
-  const acts = [
-    ['一键重置所有功能', () => {
-      Object.assign(G.dbg, { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1, infinite: false, farReach: false });
-      buildDebug();
-      panel.style.display = 'block';
-      refreshHotbar();
-      toast('所有调试功能已重置为默认值');
-    }],
-    ['重置速度', () => {
-      Object.assign(G.dbg, { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1 });
-      buildDebug();
-      panel.style.display = 'block';
-      toast('所有速度已重置为 1x');
-    }],
-    ['无限资源：' + (G.dbg.infinite ? '开' : '关'), () => {
-      G.dbg.infinite = !G.dbg.infinite;
-      if (G.dbg.infinite) {
-        toast('无限资源模式已开启：建造不消耗原料，可直接建造测试箱（创造/虚空）与测试管道（创造/虚空）');
-      } else {
-        toast('无限资源模式已关闭');
-      }
-      buildDebug();
-      panel.style.display = 'block';
-      refreshHotbar();
-    }],
-    ['无限交互距离：' + (G.dbg.farReach ? '开' : '关'), () => {
-      G.dbg.farReach = !G.dbg.farReach;
-      if (G.dbg.farReach) {
-        toast('无限交互距离已开启：可对任意远的格子交互/建造');
-      } else {
-        toast('无限交互距离已关闭');
-      }
-      buildDebug();
-      panel.style.display = 'block';
-    }],
-    ['完成研究', () => {
-      const t = G.activeTech;
-      if (!t) { toast('没有进行中的研究'); return; }
-      G.techProg[t] = techCostTotal(t);
-      G.techDone[t] = true;
-      toast('研究完成：' + TECHS[t].name);
-      G.activeTech = null;
-      renderPanel(false);
-    }],
-    ['回出生点', () => {
-      G.player.x = G.spawn.x * TILE + TILE / 2;
-      G.player.y = G.spawn.y * TILE + TILE / 2;
-    }],
-    ['清空建筑', () => {
-      for (const e of G.ents.slice()) removeEnt(e);
-      closePanel();
-      toast('建筑已清空');
-    }],
-    ['新地图', () => { newGame(); closePanel(); toast('新地图已生成'); }],
-    ['切换战斗', () => {
-      G.settings.combat = !G.settings.combat;
-      if (!G.settings.combat) { G.enemies = []; G.bullets = []; G.enemyProjectiles = []; }
-      toast('战斗模式：' + (G.settings.combat ? '开启' : '关闭'));
-    }],
-    ['一键完成全部科技', () => {
-      for (const t in TECHS) {
-        G.techDone[t] = true;
-        if (G.techProg[t] === undefined) G.techProg[t] = techCostTotal(t);
-      }
-      G.activeTech = null; G.techQueue = [];
-      toast('已解锁全部 ' + Object.keys(TECHS).length + ' 项科技');
-      renderPanel(false);
-    }],
-    ['回满血', () => {
-      G.playerHP = G.playerHPmax;
-      toast('生命值已恢复满');
-    }],
-    ['清除污染', () => {
-      if (typeof pollutionRestore === 'function') pollutionRestore({ pollution: 0 });
-      else G.pollution = 0;
-      toast('污染已清零');
-    }],
-    ['清空敌人', () => {
-      G.enemies = []; G.bullets = []; G.enemyProjectiles = [];
-      toast('已清空全部敌人与弹幕');
-    }],
-    ['在面前刷一批敌人', () => {
-      if (!G.settings.combat) { toast('请先开启战斗模式'); return; }
-      if (typeof pickEnemyType === 'function' && typeof scaledDef === 'function' && ENEMY_TYPES) {
-        for (let i = 0; i < 8; i++) {
-          const t = pickEnemyType();
-          const def = scaledDef(ENEMY_TYPES[t]);
-          const px = G.player.x / TILE, py = G.player.y / TILE;
-          const ang = Math.random() * Math.PI * 2;
-          const dist = 6 + Math.random() * 4;
-          const tx = Math.round(px + Math.cos(ang) * dist);
-          const ty = Math.round(py + Math.sin(ang) * dist);
-          G.enemies.push({
-            x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2,
-            hp: def.hp, maxhp: def.hp, dead: false, dir: 0,
-            type: t, kind: def.kind, speed: def.speed, size: def.size, dmg: def.dmg,
-            color: def.color, attackT: 0, fireT: 0
-          });
-        }
-        toast('已在周围生成 8 只敌人');
-      } else { toast('战斗系统不可用'); }
-    }],
-    ['日夜切换', () => {
-      const cycle = (typeof DAY_CYCLE === 'number') ? DAY_CYCLE : 60;
-      const ph = ((G.time / cycle) % 1 + 1) % 1;
-      // 白天相位(0.5 无暗遮罩)与深夜相位(0.0 全暗)之间切换
-      G.time = Math.floor(G.time / cycle) * cycle + cycle * (ph > 0.5 ? 0.02 : 0.5);
-      toast('时间已切换');
-    }]
-  ];
-  for (const [txt, fn] of acts) {
-    const b = document.createElement('button');
-    b.textContent = txt;
-    b.dataset.dbgact = txt;
-    b.addEventListener('click', fn);
-    grid2.appendChild(b);
-  }
-  body.appendChild(grid2);
 
   document.getElementById('dbg-x').addEventListener('click', () => { panel.style.display = 'none'; });
 
@@ -1903,18 +1939,11 @@ function refreshDebugPanel() {
       if (val) val.textContent = G.dbg[key] + 'x';
     }
   });
-  // 更新开关按钮（无限资源 / 无限交互距离）文本
-  panel.querySelectorAll('button[data-dbgact]').forEach(b => {
-    const act = b.dataset.dbgact;
-    if (act.indexOf('无限资源：') === 0) {
-      const txt = '无限资源：' + (G.dbg.infinite ? '开' : '关');
-      b.textContent = txt;
-      b.dataset.dbgact = txt;
-    } else if (act.indexOf('无限交互距离：') === 0) {
-      const txt = '无限交互距离：' + (G.dbg.farReach ? '开' : '关');
-      b.textContent = txt;
-      b.dataset.dbgact = txt;
-    }
+  // 更新开关勾选框（无限资源 / 无限交互距离 / 主角无视碰撞 / 切换战斗）
+  panel.querySelectorAll('input[data-dbg-switch]').forEach(box => {
+    const key = box.dataset.dbgSwitch;
+    if (key === 'combat') box.checked = !!G.settings.combat;
+    else if (G.dbg[key] !== undefined) box.checked = !!G.dbg[key];
   });
 }
 

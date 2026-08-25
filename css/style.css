@@ -960,6 +960,11 @@ html, body {
 .drow input[type=range] { width: 100%; accent-color: #b06ccf; }
 
 .dsec { margin: 10px 0 5px; color: #c9a6ff; font-weight: bold; }
+.dsec-sub { margin: 8px 0 4px; color: #9fb6cc; font-weight: bold; font-size: 11px; }
+.dswlist { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
+.dsw { display: flex; align-items: center; gap: 6px; padding: 3px 6px; background: #2a3340; border: 1px solid #46536a; border-radius: 5px; cursor: pointer; color: #dfe6ee; }
+.dsw input[type=checkbox] { accent-color: #b06ccf; margin: 0; }
+.dsw:hover { background: #3a4657; }
 .dgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
 .dgrid button {
   font-size: 11px;

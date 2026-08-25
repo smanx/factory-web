@@ -31,6 +31,8 @@ function solidAtPx(px, py) {
 }
 
 function boxBlocked(cx, cy, r) {
+  // 开发者调试：主角无视碰撞（穿越水/峭壁/树木等障碍）
+  if (G.dbg && G.dbg.noclip) return false;
   return solidAtPx(cx - r, cy - r) || solidAtPx(cx + r, cy - r) ||
          solidAtPx(cx - r, cy + r) || solidAtPx(cx + r, cy + r);
 }
