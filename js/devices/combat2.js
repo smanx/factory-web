@@ -86,6 +86,9 @@ const SPAWNER_HP = 260;          // 虫巢生命值
 const SPAWNER_TARGET = 2;        // 同时存在的巢穴目标数（高级战斗后 3）
 const SPAWNER_RANGE = 14;        // 巢穴生成敌人的距离（格）
 const ENEMY_AGGRO_RANGE = 8;     // 主角靠近该距离（格）内，聚集在虫巢周围的虫子主动攻击主角
+// 主角拉开到该距离（格）后，正在追踪的敌人才会停止追踪/攻击（迟滞：远大于触发距离，拉开才合理）
+const ENEMY_DEAGGRO_RANGE = 16;
+const ENEMY_LINGER_TIME = 2;     // 敌人停止追踪后原地短暂溜达的时长（秒），随后返回虫巢附近
 
 function makeSpawner() {
   const px = G.player.x / TILE, py = G.player.y / TILE;
@@ -410,7 +413,15 @@ function isEnemyAggressive(en) {
   // 主角靠近该敌人时主动攻击：即使虫巢未被污染激怒，聚集在虫巢周围的虫子也会扑向近身的主角
   if (G.player && en.x !== undefined && en.y !== undefined) {
     const d = Math.hypot(G.player.x - en.x, G.player.y - en.y) / TILE;
-    if (d <= ENEMY_AGGRO_RANGE) return true;
+    // 触发攻击：主角进入激怒距离，敌人开始追踪主角
+    if (d <= ENEMY_AGGRO_RANGE) { en.chasing = true; return true; }
+    // 已经因靠近而追踪的敌人：需要拉开到更远的距离才会停止追踪（迟滞，避免紧贴阈值来回切换）
+    if (en.chasing) {
+      if (d <= ENEMY_DEAGGRO_RANGE) return true;
+      // 主角已拉开足够远，解除追踪；先短暂原地溜达，随后返回虫巢附近
+      en.chasing = false;
+      en.lingerT = ENEMY_LINGER_TIME;
+    }
   }
   // 普通敌人：所属虫巢被污染覆盖则进攻
   if (en.home) return spawnerPolluted({ x: en.home.x, y: en.home.y });
@@ -420,27 +431,42 @@ function isEnemyAggressive(en) {
 
 // 默认行为：在所属虫巢周围游荡（随机小幅徘徊），不主动追击玩家。
 // 每次徘徊计时到点后在虫巢附近换一个随机方向游走；超出虫巢半径则拉回。
+// 若刚从追踪状态解除（en.lingerT>0），先原地短暂溜达，随后返回虫巢附近。
 function wanderAroundHome(en, dt) {
   en.wanderT = (en.wanderT || 0) - dt;
   const home = en.home;
   if (!home) return;
   const homeR = 6 * TILE;      // 虫巢周围游荡半径（像素）
-  if (en.wanderT <= 0) {
-    en.wanderT = 1.5 + Math.random() * 2.5;   // 每 1.5~4 秒换一次方向
-    const a = Math.random() * Math.PI * 2;
-    en.wdir = { x: Math.cos(a), y: Math.sin(a) };
-  }
   const dx = home.x - en.x, dy = home.y - en.y;
   const dist = Math.hypot(dx, dy);
-  // 远离虫巢时拉回；否则按当前游荡方向缓慢移动
   let mx = 0, my = 0;
-  if (dist > homeR) {
-    mx = dx / (dist || 1); my = dy / (dist || 1);
-  } else if (en.wdir) {
-    mx = en.wdir.x; my = en.wdir.y;
+  // 刚从追踪状态解除：先原地短暂溜达（小幅徘徊），不急着回巢
+  if (en.lingerT > 0) {
+    en.lingerT -= dt;
+    if (en.wanderT <= 0) {
+      en.wanderT = 0.5 + Math.random() * 0.7;
+      const a = Math.random() * Math.PI * 2;
+      en.wdir = { x: Math.cos(a), y: Math.sin(a) };
+    }
+    if (en.wdir) { mx = en.wdir.x; my = en.wdir.y; }
+    const slow = aoeSlowFactor(en.x, en.y);
+    moveEnemy(en, mx, my, en.speed * 0.3 * dt * slow);
+  } else {
+    // 正常游荡：换方向或拉回虫巢
+    if (en.wanderT <= 0) {
+      en.wanderT = 1.5 + Math.random() * 2.5;   // 每 1.5~4 秒换一次方向
+      const a = Math.random() * Math.PI * 2;
+      en.wdir = { x: Math.cos(a), y: Math.sin(a) };
+    }
+    // 远离虫巢时拉回（含追踪解除、溜达结束后返回虫巢）；否则按当前游荡方向缓慢移动
+    if (dist > homeR) {
+      mx = dx / (dist || 1); my = dy / (dist || 1);
+    } else if (en.wdir) {
+      mx = en.wdir.x; my = en.wdir.y;
+    }
+    const slow = aoeSlowFactor(en.x, en.y);
+    moveEnemy(en, mx, my, en.speed * 0.55 * dt * slow);
   }
-  const slow = aoeSlowFactor(en.x, en.y);
-  moveEnemy(en, mx, my, en.speed * 0.55 * dt * slow);
   // 游荡时更新朝向（用于敌人行走渲染），静止则保持原朝向
   if (mx !== 0 || my !== 0) {
     const a = Math.atan2(my, mx);
