@@ -19,12 +19,17 @@ class Inserter extends Entity {
     this.stackMax = 1;   // 堆叠臂改为 3
     this.rotSpeed = 1;   // 旋转速度倍率：快速臂为 2，对齐《异星工厂》Fast inserter
     this.filter = null;  // 过滤臂：只抓该物品
+    // 投放/取货侧翻转位：机械臂翻转（R 旋转 / V/H 镜像）后切换，使夹取传送带的边换一边。
+    // 默认 false=取近侧/放远侧；翻转后 true=取远侧/放近侧。
+    this.sideFlip = false;
     this.blocked = false;
     this.armAng = undefined;
     // 电路控制（对齐《异星工厂》：机械臂接入电路网络，可按信号启停，并可把爪上物品输出到电路网络）
     this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1, readHand: false };
   }
   // 电路启停：未启用条件时恒工作；启用后仅当附近电路信号满足条件才运转
+  // 翻转/旋转机械臂时切换取放侧，使夹取传送带的边（lane）换一边。
+  onRotate() { this.sideFlip = !this.sideFlip; }
   circuitEnabled() {
     if (!this.circuitCond || !this.circuitCond.enabled) return true;
     const sig = circuitSignalNear(this);
@@ -69,11 +74,13 @@ class Inserter extends Entity {
     const fdx = DX[s.dir], fdy = DY[s.dir];
     const perp = [fdy, -fdx];
     const d = dx * perp[0] + dy * perp[1];
-    return d > 0 ? 1 : 0;
+    const near = d > 0 ? 1 : 0;
+    // 默认优先取近侧 lane；翻转（sideFlip）后换到远侧 lane（夹取边换一边）。
+    return this.sideFlip ? (near === 1 ? 0 : 1) : near;
   }
   // 放物格传送带的“远侧车道”：机械臂把物品放到远离自己一侧的车道。
   // 传送带为双列（左右两线）时，机械臂侧放默认进入远离机械臂的那一线，
-  // 避免物品都挤在机械臂所在的近侧线上。
+  // 避免物品都挤在机械臂所在的近侧线上。翻转（sideFlip）后换到近侧车道（投放边换一边）。
   dropBeltLane(t) {
     if (!(t instanceof Belt)) return 0;
     const bx = t.x, by = t.y;
@@ -81,7 +88,8 @@ class Inserter extends Entity {
     const fdx = DX[t.dir], fdy = DY[t.dir];
     const perp = [fdy, -fdx];
     const near = (dx * perp[0] + dy * perp[1]) > 0 ? 1 : 0;
-    return near === 1 ? 0 : 1;   // 远侧车道 = 近侧车道的对侧
+    const far = near === 1 ? 0 : 1;   // 远侧车道 = 近侧车道的对侧
+    return this.sideFlip ? near : far;
   }
   // ===== 取物 =====
   peekSource(s) {
@@ -293,6 +301,7 @@ class Inserter extends Entity {
     s.holdingCount = this.holdingCount || 1;
     if (this.filter) s.filter = this.filter;
     if (this.circuitCond) s.circuitCond = this.circuitCond;
+    if (this.sideFlip) s.sideFlip = true;
     return s;
   }
   // 蓝图只保留过滤器与电路配置，不复制爪上抓取的物品
@@ -300,6 +309,7 @@ class Inserter extends Entity {
     const s = super.blueprint();
     if (this.filter) s.filter = this.filter;
     if (this.circuitCond) s.circuitCond = this.circuitCond;
+    if (this.sideFlip) s.sideFlip = true;
     return s;
   }
   static restore(s) {
@@ -308,6 +318,7 @@ class Inserter extends Entity {
     i.holdingCount = s.holding ? (s.holdingCount || 1) : 0;
     i.filter = s.filter || null;
     i.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
+    i.sideFlip = !!s.sideFlip;
     return i;
   }
 }
