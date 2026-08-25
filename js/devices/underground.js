@@ -21,8 +21,12 @@ class Underground extends Entity {
     return null;
   }
   speedMult() { return this.type === 'fast-underground-belt' ? FAST_BELT_MULT : 1; }
-  // 与同档传送带完全一致的吞吐：每 BELT_SPACING 格一个物品 → 间隔 = 间距/带速
-  ugInterval() { return BELT_SPACING / Math.max(0.05, beltSpeed() * this.speedMult()); }
+  // 与同档传送带完全一致的吞吐：地上传送带为双列（两条独立车道并行），
+  // 每列按 BELT_SPACING 间距各走一件，总吞吐 = 单列 × 2。地下带以单队列在隧道内
+  // 输送，为达到与地上双列带相同的总吞吐，发送间隔须为单列的一半：
+  //   间隔 = 间距 / (带速 × 2)
+  // 基础带：0.125 / (1.875 × 2) ≈ 0.0333s/件 → 30 items/s，与地上基础带一致（对齐《异星工厂》）。
+  ugInterval() { return BELT_SPACING / Math.max(0.05, beltSpeed() * this.speedMult() * 2); }
   update(dt) {
     // 惰性调度（P0 优化）：入口/出口都空时无需每帧扫描
     if ((!this.items || !this.items.length) && (!this.outItems || !this.outItems.length)) return;

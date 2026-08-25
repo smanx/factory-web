@@ -625,15 +625,17 @@ function drawBeltMark(ctx, e, gx, gy, alpha) {
 // ===== 注册 =====
 function beltPanelHtml(e) {
   return '<div class="dim">传送带：双列独立输送（对齐《异星工厂》左右两列），物品沿箭头方向流动。R 旋转方向。靠近后按 F 拿取带上物品。</div>' +
-    '<div class="dim">当前速度：<span data-live="speed">-</span>（格/秒）</div>' +
+    '<div class="dim">当前吞吐：<span data-live="speed">-</span>（件/秒，单侧车道）</div>' +
     (typeof circuitPanelHtml === 'function' ? circuitPanelHtml(e, 'belt') : '') +
     '<div class="status"></div>';
 }
 function beltPanelLive(e, api) {
   if (!e.circuitEnabled()) { api.status('已停止：电路条件不满足', 'warn'); return; }
   const mult = e.speedMult ? e.speedMult() : 1;
-  const speed = beltSpeed() * mult;
-  api.set('speed', speed.toFixed(speed >= 10 ? 1 : 2));
+  // 对齐《异星工厂》：面板显示的传送带速度为「单侧车道吞吐」（件/秒）。
+  // 每车道每格可容纳 1/BELT_SPACING 件，乘以带速即每秒吞吐：基础带 8×1.875=15 件/秒。
+  const speed = (1 / BELT_SPACING) * beltSpeed() * mult;
+  api.set('speed', (Math.round(speed * 10) / 10) + '');
   const agg = {};
   for (const o of e.items) agg[o.item] = (agg[o.item] || 0) + 1;
   if (e.items.length) api.status('输送中：' + Object.keys(agg).map(k => ITEMS[k].name + '×' + agg[k]).join('、'), 'ok');
