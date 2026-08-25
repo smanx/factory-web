@@ -39,6 +39,8 @@ class Pipe extends Entity {
           }
         } else if (t instanceof StorageTank) {
           // 管道把流体灌入储液罐（罐空或同种流体且未满时才能灌入）
+          // 仅允许在对角接口格接入（另一对对角为空不可接管）
+          if (t.isPortCell && !t.isPortCell(this.x, this.y)) continue;
           if (t.giveItem(k)) this.fluid[k]--;
         } else if ((t instanceof Refinery) || (t instanceof ChemicalPlant) ||
                     (t instanceof Assembler && t.acceptsFluid(k))) {
@@ -103,7 +105,8 @@ function drawPipe(ctx, e, gx, gy, dir, alpha) {
     const nb = entAt(gx + dx, gy + dy);
     if (nb instanceof Pipe || nb instanceof Refinery || nb instanceof Pumpjack ||
         nb instanceof Boiler || nb instanceof Pump || nb instanceof SteamEngine ||
-        nb instanceof ChemicalPlant || nb instanceof Assembler || nb instanceof StorageTank ||
+        nb instanceof ChemicalPlant || nb instanceof Assembler ||
+        (nb instanceof StorageTank && (!nb.isPortCell || nb.isPortCell(gx, gy))) ||
         nb instanceof PipeToGround || nb instanceof FluidPump) {
       ctx.beginPath();
       ctx.moveTo(cx, cy);

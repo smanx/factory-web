@@ -204,8 +204,11 @@
 
       const info = document.createElement('div');
       info.className = 'load-save-item-info';
+      // 显示稳定编号（自动存档按槽位 #1/#2/#3，用户存档按递增 #N）
+      const label = (s.type === 'auto' ? '自动存档 #' + (s.num || '?') : '用户存档 #' + (s.num || '?'));
+      const dispName = (s.type === 'user' && s.name) ? (label + '（' + s.name + '）') : label;
       info.innerHTML =
-        '<div class="load-save-item-name">' + escHtml(s.name || '存档') + '</div>' +
+        '<div class="load-save-item-name">' + escHtml(dispName) + '</div>' +
         '<div class="load-save-item-meta">' + time + ' · ' + escHtml(s.sizeText || '') + '</div>';
 
       const tag = document.createElement('span');

@@ -19,12 +19,17 @@ class Inserter extends Entity {
     this.stackMax = 1;   // 堆叠臂改为 3
     this.rotSpeed = 1;   // 旋转速度倍率：快速臂为 2，对齐《异星工厂》Fast inserter
     this.filter = null;  // 过滤臂：只抓该物品
+    // 投放/取货侧翻转位：机械臂翻转（R 旋转 / V/H 镜像）后切换，使夹取传送带的边换一边。
+    // 默认 false=取近侧/放远侧；翻转后 true=取远侧/放近侧。
+    this.sideFlip = false;
     this.blocked = false;
     this.armAng = undefined;
     // 电路控制（对齐《异星工厂》：机械臂接入电路网络，可按信号启停，并可把爪上物品输出到电路网络）
     this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1, readHand: false };
   }
   // 电路启停：未启用条件时恒工作；启用后仅当附近电路信号满足条件才运转
+  // 翻转/旋转机械臂时切换取放侧，使夹取传送带的边（lane）换一边。
+  onRotate() { this.sideFlip = !this.sideFlip; }
   circuitEnabled() {
     if (!this.circuitCond || !this.circuitCond.enabled) return true;
     const sig = circuitSignalNear(this);
@@ -69,11 +74,13 @@ class Inserter extends Entity {
     const fdx = DX[s.dir], fdy = DY[s.dir];
     const perp = [fdy, -fdx];
     const d = dx * perp[0] + dy * perp[1];
-    return d > 0 ? 1 : 0;
+    const near = d > 0 ? 1 : 0;
+    // 默认优先取近侧 lane；翻转（sideFlip）后换到远侧 lane（夹取边换一边）。
+    return this.sideFlip ? (near === 1 ? 0 : 1) : near;
   }
   // 放物格传送带的“远侧车道”：机械臂把物品放到远离自己一侧的车道。
   // 传送带为双列（左右两线）时，机械臂侧放默认进入远离机械臂的那一线，
-  // 避免物品都挤在机械臂所在的近侧线上。
+  // 避免物品都挤在机械臂所在的近侧线上。翻转（sideFlip）后换到近侧车道（投放边换一边）。
   dropBeltLane(t) {
     if (!(t instanceof Belt)) return 0;
     const bx = t.x, by = t.y;
@@ -81,7 +88,8 @@ class Inserter extends Entity {
     const fdx = DX[t.dir], fdy = DY[t.dir];
     const perp = [fdy, -fdx];
     const near = (dx * perp[0] + dy * perp[1]) > 0 ? 1 : 0;
-    return near === 1 ? 0 : 1;   // 远侧车道 = 近侧车道的对侧
+    const far = near === 1 ? 0 : 1;   // 远侧车道 = 近侧车道的对侧
+    return this.sideFlip ? near : far;
   }
   // ===== 取物 =====
   peekSource(s) {
@@ -138,23 +146,39 @@ class Inserter extends Entity {
     if (s.takeItem) return s.takeItem();
     return null;
   }
+  // 从源中选择一个「目标能接收」的物品来抓取（对齐《异星工厂》：机械臂不只会抓
+  // 传送带上最靠前的那一个，而会结合放货格（组装机等）的接收能力选品——若最靠前的
+  // 物品目标已满/不需要，则继续在传送带上探测其他可取物品，保证组装机需要的多种
+  // 原料都能被补齐，而不是只盯着一种导致另一种长期缺失）。
+  // 选品优先级：近侧 lane 优先、同 lane 内靠前（pos 大）优先；仍遵守过滤设置。
+  pickSourceForDrop(s, t) {
+    if (!s) return null;
+    if (s instanceof Belt) {
+      const near = this.pickBeltLane(s);
+      const cand = s.items
+        .filter(o => o.pos >= 0.2 && (!this.filter || o.item === this.filter))
+        .sort((a, b) => {
+          const na = a.lane === near ? 1 : 0;
+          const nb = b.lane === near ? 1 : 0;
+          if (na !== nb) return nb - na;      // 近侧 lane 优先
+          return b.pos - a.pos;                // 同 lane 靠前优先
+        });
+      for (const o of cand) if (this.canDropAt(t, o.item)) return o.item;
+      return null;
+    }
+    // 非传送带源：沿用原有探测，再校验目标是否接收
+    const it = this.peekSource(s);
+    return (it && this.canDropAt(t, it)) ? it : null;
+  }
   // ===== 放物 =====
   canDropAt(t, item) {
     if (!t) return false;
     if (t instanceof Belt && !(t instanceof Splitter)) {
-      const o = this.dropOffset();
-      const fromDir = dirFromVec(o.dx, o.dy);
-      const rel = ((fromDir - t.dir) % 4 + 4) % 4;
-      const isSide = rel === 1 || rel === 3;
+      // 机械臂放传送带统一“只在一边放置”：投放侧由机械臂朝向（翻转）决定，
+      // 侧放/尾放一致，只检查该投放车道的尾端空位（不再两条车道轮流装载）。
+      const lane = this.dropBeltLane(t);
       let back = Infinity;
-      if (isSide) {
-        // 侧放：进入远侧车道，只检查该车道尾端空位
-        const lane = this.dropBeltLane(t);
-        for (const o of t.items) if (t.laneOf(o) === lane) back = Math.min(back, o.pos);
-      } else {
-        // 尾放：整带尾端有空位即可（两条车道交替装载）
-        for (const o of t.items) back = Math.min(back, o.pos);
-      }
+      for (const o of t.items) if (t.laneOf(o) === lane) back = Math.min(back, o.pos);
       return back >= BELT_SPACING * 0.9;
     }
     switch (t.type) {
@@ -201,7 +225,7 @@ class Inserter extends Entity {
       case 'lab':
         return isScience(item) && (t.packs[item] || 0) < 40;
       case 'underground':
-        return t.items.length < UG_CAP;
+        return t.items.length < UG_CAP * 2;   // 双列：每列 UG_CAP 件，两列共 2×UG_CAP
       case 'pipe':
       case 'pipe-to-ground':
       case 'pump':
@@ -231,19 +255,16 @@ class Inserter extends Entity {
     if (t instanceof Belt && !(t instanceof Splitter)) {
       const o = this.dropOffset();
       const fromDir = dirFromVec(o.dx, o.dy);
-      const rel = ((fromDir - t.dir) % 4 + 4) % 4;
-      const isSide = rel === 1 || rel === 3;
-      // 侧放进入远侧车道（laneHint 覆盖 acceptItem 的“近侧”默认）；尾放沿用交替装载
-      const lane = isSide ? this.dropBeltLane(t) : undefined;
+      // 机械臂放传送带统一“只在一边放置”：投放侧由机械臂朝向（翻转）决定，
+      // 侧放/尾放一致，固定进入该投放车道（laneHint 覆盖 acceptItem 默认），不再轮流。
+      const lane = this.dropBeltLane(t);
       return t.acceptItem(this.holding, fromDir, undefined, undefined, lane);
     }
     return t.giveItem(this.holding);
   }
   // 干跑：现在是否有活干（供 UI/其他系统查询）
   hasWork() {
-    const s = this.entAtPick();
-    const it = this.peekSource(s);
-    return !!(it && this.canDropAt(this.entAtDrop(), it));
+    return !!this.pickSourceForDrop(this.entAtPick(), this.entAtDrop());
   }
   update(dt) {
     // 电路条件不满足时机械臂停转（保持当前姿态，不取放）
@@ -273,16 +294,16 @@ class Inserter extends Entity {
       this._probeT = 0.15;
       // 到达取物位：一次性完成“看源、验目标、取走”，避免探测与执行之间的状态漂移
       const s = this.entAtPick();
-      const it = this.peekSource(s);
+      const t = this.entAtDrop();
+      const it = this.pickSourceForDrop(s, t);
       this.blocked = false;
-      if (!it) return;                       // 源为空：停在取物位等待
-      if (!this.canDropAt(this.entAtDrop(), it)) return; // 目标暂不收：等待
+      if (!it) return;                       // 无可取且目标能收的物品：停在取物位等待
       const want = Math.max(1, Math.min(this.capacity(), this.countSourceOf(s, it)));
       const got = this.takeNFrom(s, it, want);
       if (!got.length) return;
       this.holding = it;
       this.holdingCount = got.length;
-      if (typeof playSfx === 'function') playSfx('inserter');
+      if (typeof onScreen === 'function' && onScreen(this) && typeof playSfx === 'function') playSfx('inserter');
     } else {
       // 到达放物位：循环放入；失败保持持物、标记堵塞，下帧继续重试
       const t = this.entAtDrop();
@@ -303,6 +324,7 @@ class Inserter extends Entity {
     s.holdingCount = this.holdingCount || 1;
     if (this.filter) s.filter = this.filter;
     if (this.circuitCond) s.circuitCond = this.circuitCond;
+    if (this.sideFlip) s.sideFlip = true;
     return s;
   }
   // 蓝图只保留过滤器与电路配置，不复制爪上抓取的物品
@@ -310,6 +332,7 @@ class Inserter extends Entity {
     const s = super.blueprint();
     if (this.filter) s.filter = this.filter;
     if (this.circuitCond) s.circuitCond = this.circuitCond;
+    if (this.sideFlip) s.sideFlip = true;
     return s;
   }
   static restore(s) {
@@ -318,6 +341,7 @@ class Inserter extends Entity {
     i.holdingCount = s.holding ? (s.holdingCount || 1) : 0;
     i.filter = s.filter || null;
     i.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
+    i.sideFlip = !!s.sideFlip;
     return i;
   }
 }
@@ -329,16 +353,12 @@ class LongInserter extends Inserter {
   }
 }
 
-// 快速机械臂：旋转速度约为普通臂的 2 倍（对齐《异星工厂》Fast inserter），抓取效率更高
+// 高速机械臂：旋转速度约为普通臂的 2 倍（对齐《异星工厂》Fast inserter），抓取效率更高
 class FastInserter extends Inserter {
   constructor(type, x, y) {
     super(type || 'fast-inserter', x, y);
     this.rotSpeed = 2;
   }
-}
-
-class FilterInserter extends Inserter {
-  constructor(type, x, y) { super(type || 'filter-inserter', x, y); }
 }
 
 class StackInserter extends Inserter {
@@ -348,15 +368,15 @@ class StackInserter extends Inserter {
   }
 }
 
-// 堆叠过滤机械臂：过滤 + 堆叠二合一，一次最多抓取 3 个「指定物品」
-class StackFilterInserter extends Inserter {
-  constructor(type, x, y) {
-    super(type || 'stack-filter-inserter', x, y);
-    this.stackMax = 3;
-  }
-}
-
 // ===== 渲染 =====
+// 臂体配色：不同机械臂类型各有固定主色，箭头等物流标记与臂体颜色保持一致
+function inserterArmColor(e) {
+  return e.type === 'burner-inserter' ? '#7a7f87'
+    : e.type === 'fast-inserter' ? '#4f9fe8'
+    : e.type === 'long-inserter' ? '#e05a4e'
+    : e.type === 'stack-inserter' ? '#7ec850'
+    : '#e0b23c';
+}
 function drawInserter(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const cx = px + TILE / 2, cy = py + TILE / 2;
@@ -367,7 +387,7 @@ function drawInserter(ctx, e, gx, gy, dir, alpha) {
   ctx.lineWidth = 2;
   ctx.stroke();
   const long = e.type === 'long-inserter';
-  if ((e.type === 'filter-inserter' || e.type === 'stack-filter-inserter') && e.filter) {
+  if (e.filter) {
     ctx.strokeStyle = '#58b8e8';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -378,8 +398,7 @@ function drawInserter(ctx, e, gx, gy, dir, alpha) {
   const ang = e.armAng !== undefined ? e.armAng : ((dir + 2) % 4) * Math.PI / 2;
   const tipx = cx + Math.cos(ang) * len;
   const tipy = cy + Math.sin(ang) * len;
-  const fast = e.type === 'fast-inserter';
-  ctx.strokeStyle = e.holding ? '#ffe066' : fast ? '#7ec850' : long ? '#e08a4a' : '#b9bec8';
+  ctx.strokeStyle = inserterArmColor(e);
   ctx.lineWidth = long ? 5 : 4;
   ctx.lineCap = 'round';
   ctx.beginPath();
@@ -395,10 +414,51 @@ function drawInserter(ctx, e, gx, gy, dir, alpha) {
     ctx.textBaseline = 'middle';
     ctx.fillText('×' + e.holdingCount, tipx, tipy - 9);
   }
-  ctx.fillStyle = dirColorNotch(dir);
+  ctx.fillStyle = inserterArmColor(e);
   notch(ctx, px, py, dir);
   drawFlowMarks(ctx, e, cx, cy, dir);
+  drawDropLane(ctx, e);
   ctx.globalAlpha = 1;
+}
+
+// 放物车道指示：在目标传送带上高亮显示机械臂会把物品放入哪一侧车道（投放侧）。
+// 横向/竖向传送带都按“投放侧”规则放置，侧放/尾放一致，翻转（旋转）机械臂即可把物品转到另一侧；
+// 这里用与臂体同色的脉冲三角标出投放侧，让“放到哪一边”一目了然。
+function drawDropLane(ctx, e) {
+  if (!e.entAtDrop) return;
+  const t = e.entAtDrop();
+  if (!(t instanceof Belt) || t instanceof Splitter) return;
+  // 机械臂放传送带统一只在一边放置：投放侧由机械臂朝向决定（不再交替/轮流）
+  const lane = e.dropBeltLane(t);
+  // lane 1 位于行进方向右侧(+perp)，lane 0 位于左侧(-perp)
+  const perp = [DY[t.dir], -DX[t.dir]];
+  const k = lane === 1 ? 1 : -1;
+  const ox = perp[0] * k, oy = perp[1] * k;
+  const cx = t.x * TILE + TILE / 2, cy = t.y * TILE + TILE / 2;
+  const col = inserterArmColor(e);
+  const pulse = 0.5 + 0.5 * Math.sin((G.time || 0) * 6);
+  ctx.save();
+  ctx.globalAlpha = Math.max(0.45, pulse);
+  ctx.fillStyle = col;
+  // 三角：顶点朝带中心，底边在投放车道上，标记“物品会投放到这一侧”
+  const off = 7, h = 6, base = 9;
+  const tx = cx + ox * off, ty = cy + oy * off;
+  const tipX = cx + ox * (off + h), tipY = cy + oy * (off + h);
+  ctx.beginPath();
+  ctx.moveTo(tipX, tipY);
+  ctx.lineTo(tx - oy * base, ty + ox * base);
+  ctx.lineTo(tx + oy * base, ty - ox * base);
+  ctx.closePath();
+  ctx.fill();
+  // 车道侧再补一条短线段，强化方位感
+  ctx.strokeStyle = col;
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(tx - oy * (base - 2), ty + ox * (base - 2));
+  ctx.lineTo(tx + oy * (base - 2), ty - ox * (base - 2));
+  ctx.stroke();
+  ctx.restore();
 }
 
 // 物流方向标识：亮色脉冲大箭头 = 出料侧（与陷口同侧）；灰色小点 = 进料侧。
@@ -422,8 +482,8 @@ function drawFlowMarks(ctx, e, cx, cy, dir) {
     ctx.stroke();
     ctx.restore();
   }
-  // 出口：物流方向，双箭头向外
-  const oc = dirColorNotch(dir);
+  // 出口：物流方向，双箭头向外（颜色与臂体一致，不随旋转方向改变）
+  const oc = inserterArmColor(e);
   chevron(dir, oc, pulse, 5);
   chevron(dir, oc, pulse * 0.45, 8.5);
   // 入口：取货方向，静态灰点
@@ -440,17 +500,12 @@ function drawFlowMarks(ctx, e, cx, cy, dir) {
 }
 
 // ===== 面板 =====
-function inserterPanelHtml(e) {
-  return '<div class="dim">机械臂：严格单向搬运。从臂体指向的一侧（灰色圆点）取货，放到地面箭头/亮色箭头的一侧（物流方向）。双列传送带上优先抓取靠近自己一侧的车道，近侧无货时再取远侧。普通臂作用相邻格，长臂作用第二格。R 旋转。</div>' + circuitPanelHtml(e, 'ins') + '<div class="status"></div>';
-}
-function stackInserterPanelHtml(e) {
-  return '<div class="dim">堆叠机械臂：一次最多抓取 3 个同种物品再放下，装卸效率约为普通臂的 3 倍。R 旋转。</div>' + circuitPanelHtml(e, 'ins') + '<div class="status"></div>';
-}
-function filterInserterPanelHtml(e) {
-  let h = '<div class="dim">过滤机械臂：只抓取选中的物品，其余一律不碰。当前：' +
-    (e.filter ? chip(e.filter) : '<span class="dim">未设置</span>') + '</div>';
-  h += '<div class="sec">选择过滤物</div>';
-  if (e.filter) h += '<div class="mrow"><span class="mval"><button data-action="flt-clear">清除过滤（恢复普通抓取）</button></span></div>';
+// 筛选功能：每台机械臂均自带（对齐需求「每个机械臂都自带筛选功能」）。
+// 在面板选择过滤物后，机械臂只抓取该物品，其余一律不碰；清除后恢复抓取任意物品。
+function inserterFilterSectionHtml(e, lead) {
+  let h = lead + (e.filter ? chip(e.filter) : '<span class="dim">未设置</span>') + '</div>';
+  h += '<div class="sec">筛选：只抓取该物品</div>';
+  if (e.filter) h += '<div class="mrow"><span class="mval"><button data-action="flt-clear">清除筛选（恢复抓取任意物品）</button></span></div>';
   h += '<input id="flt-search" class="inv-search" type="text" placeholder="搜索物品（输入名称）" autocomplete="off">';
   h += '<div id="flt-empty" class="dim" style="display:none"></div>';
   h += '<div class="recgrid">';
@@ -460,17 +515,25 @@ function filterInserterPanelHtml(e) {
       '<img src="' + iconDataURL(id) + '">' + name + '</button>';
   }
   h += '</div>';
-  h += circuitPanelHtml(e, 'ins');
-  h += '<div class="status"></div>';
   return h;
 }
-function filterInserterOnAction(act, btn) {
+function inserterPanelHtml(e) {
+  return '<div class="dim">电力机械臂：严格单向搬运。从臂体指向的一侧（灰色圆点）取货，放到地面箭头/亮色箭头的一侧（物流方向）。放到传送带时只在一边放置（目标带上会有一个同色脉冲三角标出投放侧），翻转（R 旋转）机械臂即可把物品转到另一侧车道，横/竖传送带行为一致；侧放/尾放都固定投放一侧，不再两条车道轮流装。双列传送带上优先抓取靠近自己一侧的车道，近侧无货时再取远侧；若最靠前的物品目标（组装机等）已满/不收，会继续在传送带上找其他目标能收的原料抓取，保证组装机需要的多种原料都能补齐。普通臂作用相邻格，加长臂作用第二格。R 旋转。</div>' +
+    inserterFilterSectionHtml(e, '<div class="dim">当前筛选：') +
+    circuitPanelHtml(e, 'ins') + '<div class="status"></div>';
+}
+function stackInserterPanelHtml(e) {
+  return '<div class="dim">集装箱机械臂：一次最多抓取 3 个同种物品再放下，装卸效率约为普通臂的 3 倍。R 旋转。</div>' +
+    inserterFilterSectionHtml(e, '<div class="dim">当前筛选：') +
+    circuitPanelHtml(e, 'ins') + '<div class="status"></div>';
+}
+function inserterFilterOnAction(act, btn) {
   if (act === 'flt') {
-    if (G.panelEnt && (G.panelEnt instanceof FilterInserter || G.panelEnt instanceof StackFilterInserter)) G.panelEnt.filter = btn.dataset.id;
+    if (G.panelEnt instanceof Inserter) G.panelEnt.filter = btn.dataset.id;
     return true;
   }
   if (act === 'flt-clear') {
-    if (G.panelEnt && (G.panelEnt instanceof FilterInserter || G.panelEnt instanceof StackFilterInserter)) G.panelEnt.filter = null;
+    if (G.panelEnt instanceof Inserter) G.panelEnt.filter = null;
     return true;
   }
   return circuitPanelAction('ins', act);
@@ -489,14 +552,20 @@ function inserterPanelLive(e, api) {
   }
   if (e.rotating) { api.status('工作中：转向取货格', 'ok'); return; }
   const s = e.entAtPick();
-  const it = e.peekSource(s);
+  const t = e.entAtDrop();
+  const it = e.pickSourceForDrop(s, t);
   if (!it) {
-    if (e.filter) api.status('已暂停：取货格没有「' + ITEMS[e.filter].name + '」', 'warn');
-    else api.status('已暂停：取货格无物品可取', 'warn');
+    // 无可取的、且目标能收的物品：区分“源无货”与“有货但放不下”两种提示
+    const src = e.peekSource(s);
+    if (!src) {
+      if (e.filter) api.status('已暂停：取货格没有「' + ITEMS[e.filter].name + '」', 'warn');
+      else api.status('已暂停：取货格无物品可取', 'warn');
+    } else {
+      api.status('已暂停：取货格物品均放不进目标（放货格已满）', 'warn');
+    }
     return;
   }
-  if (!e.canDropAt(e.entAtDrop(), it)) api.status('已暂停：放货格已满', 'warn');
-  else api.status('待机：等待取货格出现货物', 'ok');
+  api.status('待机：等待取货格出现货物', 'ok');
 }
 
 // ===== 电路控制面板（机械臂/传送带通用） =====
@@ -545,55 +614,25 @@ function inserterStatusFn(e) {
   if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) return 'r';
   return e.holding ? (e.blocked ? 'y' : 'g') : (e.rotating ? 'g' : 'r');
 }
-function stackFilterInserterPanelHtml(e) {
-  let h = '<div class="dim">堆叠过滤机械臂：一次最多抓取 3 个「指定物品」再放下，装卸效率高且精确分类。当前：' +
-    (e.filter ? chip(e.filter) : '<span class="dim">未设置</span>') + '</div>';
-  h += '<div class="sec">选择过滤物</div>';
-  if (e.filter) h += '<div class="mrow"><span class="mval"><button data-action="flt-clear">清除过滤（恢复抓取任意物品）</button></span></div>';
-  h += '<input id="flt-search" class="inv-search" type="text" placeholder="搜索物品（输入名称）" autocomplete="off">';
-  h += '<div id="flt-empty" class="dim" style="display:none"></div>';
-  h += '<div class="recgrid">';
-  for (const id of (typeof filterChoices === 'function' ? filterChoices() : FILTER_CHOICES)) {
-    const name = ITEMS[id]?.name || id;
-    h += '<button class="rcbtn ' + (e.filter === id ? 'sel' : '') + '" data-action="flt" data-id="' + id + '" data-itemid="' + id + '" data-search="' + (name + ' ' + id).toLowerCase() + '">' +
-      '<img src="' + iconDataURL(id) + '">' + name + '</button>';
-  }
-  h += '</div>';
-  h += '<div class="status"></div>';
-  return h;
-}
-
-const inserterPanel = { html: inserterPanelHtml, live: inserterPanelLive, tip: inserterTip, onAction: (a) => circuitPanelAction('ins', a) };
-const stackInserterPanel = { html: stackInserterPanelHtml, live: inserterPanelLive, tip: inserterTip, onAction: (a) => circuitPanelAction('ins', a) };
-const filterInserterPanel = { html: filterInserterPanelHtml, onAction: filterInserterOnAction, live: inserterPanelLive, tip: inserterTip };
-const stackFilterInserterPanel = { html: stackFilterInserterPanelHtml, onAction: filterInserterOnAction, live: inserterPanelLive, tip: inserterTip };
+const inserterPanel = { html: inserterPanelHtml, live: inserterPanelLive, tip: inserterTip, onAction: inserterFilterOnAction };
+const stackInserterPanel = { html: stackInserterPanelHtml, live: inserterPanelLive, tip: inserterTip, onAction: inserterFilterOnAction };
 ENT_CLASSES['inserter'] = Inserter;
 ENT_CLASSES['long-inserter'] = LongInserter;
-ENT_CLASSES['filter-inserter'] = FilterInserter;
 ENT_CLASSES['stack-inserter'] = StackInserter;
-ENT_CLASSES['stack-filter-inserter'] = StackFilterInserter;
 ENT_CLASSES['fast-inserter'] = FastInserter;
 DEVICE_RENDER['inserter'] = drawInserter;
 DEVICE_RENDER['long-inserter'] = drawInserter;
-DEVICE_RENDER['filter-inserter'] = drawInserter;
 DEVICE_RENDER['stack-inserter'] = drawInserter;
-DEVICE_RENDER['stack-filter-inserter'] = drawInserter;
 DEVICE_RENDER['fast-inserter'] = drawInserter;
 DEVICE_STATUS['inserter'] = inserterStatusFn;
 DEVICE_STATUS['long-inserter'] = inserterStatusFn;
-DEVICE_STATUS['filter-inserter'] = inserterStatusFn;
 DEVICE_STATUS['stack-inserter'] = inserterStatusFn;
-DEVICE_STATUS['stack-filter-inserter'] = inserterStatusFn;
 DEVICE_STATUS['fast-inserter'] = inserterStatusFn;
 DEVICE_PANEL['inserter'] = inserterPanel;
 DEVICE_PANEL['long-inserter'] = inserterPanel;
-DEVICE_PANEL['filter-inserter'] = filterInserterPanel;
 DEVICE_PANEL['stack-inserter'] = stackInserterPanel;
-DEVICE_PANEL['stack-filter-inserter'] = stackFilterInserterPanel;
 DEVICE_PANEL['fast-inserter'] = inserterPanel;
 DEVICE_DIR_ROTATE['inserter'] = true;
 DEVICE_DIR_ROTATE['long-inserter'] = true;
-DEVICE_DIR_ROTATE['filter-inserter'] = true;
 DEVICE_DIR_ROTATE['stack-inserter'] = true;
-DEVICE_DIR_ROTATE['stack-filter-inserter'] = true;
 DEVICE_DIR_ROTATE['fast-inserter'] = true;

@@ -41,6 +41,8 @@ class FluidPump extends Entity {
             this.fluid[k]--; n--; transferred++;
           }
         } else if (front instanceof StorageTank || front instanceof Boiler) {
+          // 泵向储液罐灌入：仅允许在对角接口格接入（另一对对角为空不可接管）
+          if (front instanceof StorageTank && front.isPortCell && !front.isPortCell(this.x, this.y)) break;
           while (n > 0 && this.fluid[k] > 0 && front.giveItem(k)) { this.fluid[k]--; n--; transferred++; }
         } else if (front instanceof Refinery || front instanceof ChemicalPlant ||
                    (front instanceof Assembler && front.acceptsFluid(k))) {
@@ -48,7 +50,7 @@ class FluidPump extends Entity {
           while (n > 0 && this.fluid[k] > 0 && front.giveItem(k)) { this.fluid[k]--; n--; transferred++; }
         }
       }
-      if (transferred > 0 && typeof playSfx === 'function') playSfx('pump');
+      if (transferred > 0 && typeof onScreen === 'function' && onScreen(this) && typeof playSfx === 'function') playSfx('pump');
     }
     for (const k of Object.keys(this.fluid)) if (!(this.fluid[k] > 0)) delete this.fluid[k];
   }

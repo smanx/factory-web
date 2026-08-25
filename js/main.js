@@ -242,7 +242,10 @@ async function saveGame(id, name) {
   let res;
   if (id && await hasSave(id)) {
     res = await overwriteSave(id, data);
-    if (res) toast('已覆盖存档：' + (res.name || '存档'));
+    if (res) {
+      const numTag = res.num ? (res.type === 'auto' ? '自动存档 #' + res.num : '用户存档 #' + res.num) : (res.name || '存档');
+      toast('已覆盖存档：' + numTag);
+    }
     else toast('保存失败');
   } else {
     // 新建用户存档：最多只能有 MAX_USER_SAVES 个，超出则提示
@@ -251,7 +254,7 @@ async function saveGame(id, name) {
       return null;
     }
     res = await writeSave(data, 'user', id || null, name || '');
-    if (res) toast('已保存');
+    if (res) toast('已保存：用户存档 #' + (res.num || '?'));
     else toast('保存失败');
   }
   return res;
@@ -370,6 +373,8 @@ function applySave(d) {
   // 新版本把原可直接用/仅按核能门控的配方拆成独立进阶科技；
   // 旧档已研究上游科技时自动补完新科技，避免已有产线因配方锁定而失效。
   migrateNewTechs(G.techDone);
+  // 无限科技永不完成：读档时清除其被错误标记的“已完成”状态，保证仍可继续无限研究
+  for (const t in G.techDone) if (isInfiniteTech(t)) delete G.techDone[t];
   G.techProg = d.techProg || {};
   G.activeTech = d.activeTech || null;
   // 恢复研究队列（过滤已完成/无效项）
@@ -485,6 +490,25 @@ function tryPlaceAt(tx, ty) {
     }
     return;
   }
+  // 分流器/地下带等多格实体：若新实体的「非光标分格」也覆盖了同族多格实体
+  // （例如横向分流器覆盖纵向分流器时，光标落在空白格、仅另一半叠在旧分流器上），
+  // 上面的 cursor 格判定会因 entAt(tx,ty) 为空而走不到覆盖分支，从而直接新建叠加，
+  // 造成旧分流器未移除、新分流器只叠一半（bug）。这里扫一遍新实体占地格补上覆盖。
+  const _def = BUILD_DEFS[type];
+  let _ew = _def.w, _eh = _def.h;
+  if (_def.rotSwap && (G.ghostDir % 2 === 1)) { _ew = _def.h; _eh = _def.w; }
+  if (_ew > 1 || _eh > 1) {
+    for (let dy = 0; dy < _eh; dy++) {
+      for (let dx = 0; dx < _ew; dx++) {
+        if (dx === 0 && dy === 0) continue; // 光标格已在上面处理过
+        const e = entAt(tx + dx, ty + dy);
+        if (e && canOverwriteWithBelt(type, e) && !(e instanceof Belt && !(e instanceof Splitter))) {
+          overwriteBeltTile(tx + dx, ty + dy, type, infinite);
+          return;
+        }
+      }
+    }
+  }
   const cls = ENT_CLASSES[type];
   const e = new cls(type, tx, ty);
   e.dir = G.ghostDir;
@@ -573,7 +597,10 @@ function overwriteBeltTile(tx, ty, type, infinite) {
   }
   removeEnt(old);
   const cls = ENT_CLASSES[type];
-  const ne = new cls(type, tx, ty);
+  // 新实体放在旧实体的原点 (old.x, old.y)，而非传入的 (tx,ty)：
+  // 否则光标落在 2 格分流器的第二格时，会以第二格为原点导致整体平移一格、
+  // 半边空出半边残留（覆盖错位）。保持 dir 沿用旧方向，占地与旧实体一致。
+  const ne = new cls(type, old.x, old.y);
   ne.dir = dir;
   ne.applyDir();
   if (ne.items) ne.items = items;
@@ -685,13 +712,13 @@ function deconstructAt(tx, ty) {
 
 // ===== 右键取物（对齐《异星工厂》：右键点击传送带/地下带取最前物品、点击机械臂取爪上物品） =====
 // 返回 true 表示已取到物品（此时不再执行拆除）。物品优先进背包，背包满则掉落到脚下地面。
+// 注意：传送带与地下传送带是流动的，若右键优先取物会永远取不完、且拆除永不触发，
+// 因此二者都不走“右键取物”，由调用方排除后直接整体拆除（见右键处理处）。
 function rightClickPickupAt(tx, ty) {
   const e = entAt(tx, ty);
   if (!e || !withinReach(tx, ty)) return false;
   let id = null;
   if (e instanceof Belt && typeof e.takeItem === 'function') {
-    id = e.takeItem();
-  } else if (typeof e.takeItem === 'function' && (e.type === 'underground' || e.type === 'fast-underground-belt' || e.type === 'express-underground-belt')) {
     id = e.takeItem();
   } else if (e.holding && e.holdingCount > 0) {
     // 机械臂爪上抓取的物品
@@ -727,10 +754,7 @@ function toggleDeconstructMode(on) {
     G.sel = -1;
     G.quickSel = null;
     refreshHotbar();
-    updateDeconstructBtn();
     toast('拆除模式：点触建筑即可拆除，再次点击按钮或按 Q/Esc 退出');
-  } else {
-    updateDeconstructBtn();
   }
   uiDirty = true;
 }
@@ -1768,12 +1792,15 @@ function bindInput() {
       if (ev.shiftKey && hovered) { copySettings(hovered); return; }
       // 右键取物优先：地下带/部分可逐个取物的设备（对齐《异星工厂》）。
       // 注意：传送带是流动的，若右键优先取物，移动中的传送带会不断补充导致永远取不完、
-      // 且拆除永远不触发（return 提前返回）。因此传送带不参与“右键取物”，右键直接整体拆除。
+      // 且拆除永远不触发（return 提前返回）。因此传送带不参与“右键取物”，右键直接整体拆除：
+      // 由 deconstructAt 一次性把带上全部物品移除并返还，再移除建筑本身（对齐《异星工厂》拆除）。
+      // 地下传送带同理：它在运行时也是流动的，若先取物则同样永远取不完、拆除永不触发，
+      // 因此也排除在“右键取物”之外，右键直接整体拆除（连同洞内/待发的全部物品一起返还）。
       // 同理，机械臂爪上抓取的物品也应随拆除一次性返还，而不是逐件取走阻塞拆除：
       // 由 deconstructAt 一次性把带上/爪上全部物品移除并返还，再移除建筑本身（对齐《异星工厂》拆除）。
       if (G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
         const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
-        if (!(e instanceof Belt) && !(e instanceof Inserter) && rightClickPickupAt(G.cursorTile.tx, G.cursorTile.ty)) return;
+        if (!(e instanceof Belt) && !(e instanceof Underground) && !(e instanceof Inserter) && rightClickPickupAt(G.cursorTile.tx, G.cursorTile.ty)) return;
       }
       if (G.cursorTile) deconstructAt(G.cursorTile.tx, G.cursorTile.ty);
     } else if (ev.button === 1) {
@@ -2049,7 +2076,6 @@ function boot() {
     ['topbtn', () => initTopButtons()],
     ['panel', () => initPanelEvents()],
     ['joystick', () => initJoystick()],
-    ['deconstruct', () => initDeconstructBtn()],
     ['tooltip', () => initTooltips()],
     ['hudinfo', () => initHudInfo()],
     ['tutorial', () => initTutorial()],

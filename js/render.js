@@ -752,15 +752,34 @@ function drawEntity(ctx, e, gx, gy, dir, alpha) {
     }
   }
   // 低 LOD 时跳过状态灯（像素太小看不清，省一次 path+fill）
-  if (alpha === 1 && !LOD.simple) {
+  // 传送带分流器、地下传送带与水管本身已用图形直观表达工作状态，不再叠加状态小点
+  if (alpha === 1 && !LOD.simple && !NO_STATUS_DOT[e.type]) {
     const sf = DEVICE_STATUS[e.type];
     const c = sf ? sf(e) : null;
-    if (c) drawStatusDot(ctx, (gx + e.w) * TILE - 8, gy + 8, c);
+    if (c) drawStatusDot(ctx, (gx + e.w) * TILE - 8, gy * TILE + 8, c);
   }
 }
 
+// 不显示运行状态小点的设备：各类传送带、传送带分流器、地下传送带、水管（状态由图形本身表达）
+const NO_STATUS_DOT = {
+  // 各类传送带（含创造/虚空传送带）不显示右上角状态小点
+  'transport-belt': true, 'fast-transport-belt': true, 'express-transport-belt': true,
+  'creative-belt': true, 'void-belt': true,
+  // 传送带分流器
+  'splitter': true, 'fast-splitter': true, 'express-splitter': true,
+  // 地下传送带
+  'underground': true, 'fast-underground-belt': true, 'express-underground-belt': true,
+  // 水管
+  'pipe': true, 'pipe-to-ground': true,
+  // 其他流体管路（核电传热管、创造/虚空管道）同样不显示状态小点
+  'heat-pipe': true, 'creative-pipe': true, 'void-pipe': true,
+  // 机械臂（电力/加长/高速/集装箱/热能）运行状态由臂体与动画直观表达，不显示状态小点
+  'inserter': true, 'long-inserter': true, 'stack-inserter': true, 'fast-inserter': true,
+  'burner-inserter': true,
+};
+
 // 机械臂类型集合：绘制时置顶，永远显示在传送带/其他设备之上，不被遮挡。
-const IS_INSERTER = { inserter: true, 'long-inserter': true, 'filter-inserter': true, 'stack-inserter': true, 'fast-inserter': true };
+const IS_INSERTER = { inserter: true, 'long-inserter': true, 'stack-inserter': true, 'fast-inserter': true };
 
 const ghostCache = { type: null, ent: null };
 
@@ -806,100 +825,102 @@ function _altLabelKey(e) {
   if (e.filter) return 'f:' + e.filter;
   return '';
 }
-function _altLabelText(e) {
+// ALT 模式（图标版）：把建筑当前配方/内容映射为一组物品图标（配方的产出物 / 材料 / 物品），
+// 供 drawAltMode 在建筑顶部叠加绘制图标，取代原来的文本标签（需求：切换详情只显示图标）。
+function _altLabelIcons(e) {
   const t = e.type;
-  // 带配方机器：配方产出物名
+  // 带配方机器：配方产出物图标
   if (e.recipe) {
     const rec = RECIPES[e.recipe] || REFINERY_RECIPES[e.recipe] || CENTRIFUGE_RECIPES[e.recipe];
-    if (!rec) return null;
+    if (!rec) return [];
     const outs = Object.keys(rec.out || {});
-    if (!outs.length) return null;
-    const nm = outs.map(id => ITEMS[id] ? ITEMS[id].name : id).join('+');
-    return (rec.out[outs[0]] > 1 && Object.keys(rec.out).length === 1) ? (nm + ' ×' + rec.out[outs[0]]) : nm;
+    return outs.slice(0, 3);
   }
   if (t === 'train-stop') {
-    // 车站：显示站名（如有）与装卸物品清单（对齐《异星工厂》ALT 模式）
-    const parts = [];
-    if (e.name) parts.push(e.name);
-    if ((e.load || []).length) parts.push('装 ' + e.load.map(id => (ITEMS[id] ? ITEMS[id].name : id)).join('/'));
-    if ((e.unload || []).length) parts.push('卸 ' + e.unload.map(id => (ITEMS[id] ? ITEMS[id].name : id)).join('/'));
-    if (!parts.length) return null;
-    return parts.join(' ');
+    // 车站：装卸物品图标（去重）
+    const ids = [];
+    const push = arr => { for (const id of arr) if (ITEMS[id] && ids.indexOf(id) < 0) ids.push(id); };
+    if ((e.load || []).length) push(e.load);
+    if ((e.unload || []).length) push(e.unload);
+    return ids.slice(0, 3);
   }
   if (t === 'lab') {
-    if (!G.activeTech || !TECHS[G.activeTech]) return null;
-    return '研究 ' + TECHS[G.activeTech].name;
+    // 实验室：当前研究科技消耗的科研瓶图标（材料图标）
+    if (!G.activeTech || !TECHS[G.activeTech]) return [];
+    const ids = Object.keys(TECHS[G.activeTech].cost || {});
+    return ids.slice(0, 3);
   }
   if (t === 'rocket-silo') {
     const inp = e.inp || {};
-    if (e.launching) return '🚀 发射中…';
-    if ((e.parts || 0) >= (typeof ROCKET_PARTS === 'number' ? ROCKET_PARTS : 1)) return '火箭 ✓  ' + ((inp.satellite || 0) > 0 ? '卫星 ✓' : '待装卫星');
-    return '火箭部件 ' + (e.parts || 0) + '/' + (typeof ROCKET_PARTS === 'number' ? ROCKET_PARTS : 1);
+    const ids = [];
+    if ((inp.satellite || 0) > 0) ids.push('satellite');
+    if ((e.parts || 0) > 0) ids.push('rocket-part');
+    return ids;
   }
   if (t === 'gun-turret') {
-    const n = e.totalAmmo ? e.totalAmmo() : 0;
-    return n > 0 ? ('弹药 ' + n) : '空弹药';
+    const ids = [];
+    if (e.ammo) for (const k in e.ammo) if (e.ammo[k] > 0 && ITEMS[k] && ids.indexOf(k) < 0) ids.push(k);
+    return ids.slice(0, 3);
   }
   if (t === 'artillery-turret') {
-    return (e.shells || 0) > 0 ? ('炮弹 ' + e.shells) : '空炮弹';
+    return (e.shells || 0) > 0 ? ['artillery-shell'] : [];
   }
   if (e.slots) {
-    // 箱/车厢：最多显示 3 种主要物品
-    const parts = [];
-    let shown = 0;
-    for (const s of e.slots) {
-      if (!s) continue;
-      parts.push((ITEMS[s.item] ? ITEMS[s.item].name : s.item) + (s.count > 1 ? '×' + s.count : ''));
-      if (++shown >= 3) break;
-    }
-    if (!shown) return null;
-    return parts.join(' ');
+    // 箱/车厢：箱内主要物品图标（最多 3 种）
+    const ids = [];
+    for (const s of e.slots) if (s && s.item && ids.indexOf(s.item) < 0) ids.push(s.item);
+    return ids.slice(0, 3);
   }
   if (t === 'car' || t === 'tank' || t === 'spidertron') {
     const tr = e.trunk || {};
-    const parts = [];
-    for (const id in tr) if (tr[id] > 0) parts.push((ITEMS[id] ? ITEMS[id].name : id) + '×' + tr[id]);
-    return parts.length ? parts.slice(0, 3).join(' ') : null;
+    const ids = [];
+    for (const id in tr) if (tr[id] > 0 && ids.indexOf(id) < 0) ids.push(id);
+    return ids.slice(0, 3);
   }
-  if (e.filter) return '⇥ ' + (ITEMS[e.filter] ? ITEMS[e.filter].name : e.filter);
-  return null;
+  if (e.filter && ITEMS[e.filter]) return [e.filter];
+  return [];
 }
 function drawAltMode(ctx, keys, seenBuf) {
-  const fontBase = Math.max(8, 10 * G.cam.z);
-  const lh = fontBase + 3;
+  // ALT 模式改为在建筑顶部叠加一排物品图标（配方产出物 / 材料 / 物品），不再显示文本标签。
+  const iconSize = Math.max(9, 12 * G.cam.z);
+  const gap = Math.max(2, iconSize * 0.25);
+  const pad = 3;
   const iter = e => {
     if (e._dead || !onScreen(e)) return;
-    // 缓存复用：把上次计算的 key/text 直接挂在实体上，只有 key 变化才重算 text，
-    // 避免每帧为稳定内容重复字符串拼接与 ITEMS 查名（ALT 模式高频路径优化）。
+    // 缓存复用：把上次计算的 key/icons 直接挂在实体上，只有 key 变化才重算 icons，
+    // 避免每帧为稳定内容重复查表（ALT 模式高频路径优化）。
     const key = _altLabelKey(e);
-    if (!key) { if (e._altKey) { e._altKey = ''; e._altText = null; } return; }
-    let text;
+    if (!key) { if (e._altKey) { e._altKey = ''; e._altIcons = null; } return; }
+    let icons;
     if (e._altKey === key) {
-      text = e._altText;
+      icons = e._altIcons;
     } else {
-      text = _altLabelText(e);
+      icons = _altLabelIcons(e);
       e._altKey = key;
-      e._altText = text;
+      e._altIcons = icons;
     }
-    if (!text) return;
-    // 标签绘制在建筑顶部中央
+    if (!icons || !icons.length) return;
+    // 图标排绘制在建筑顶部中央
+    const n = icons.length;
+    const bw = n * iconSize + (n - 1) * gap + pad * 2;
+    const bh = iconSize + pad * 2;
     const px = (e.x + e.w / 2) * TILE;
     const py = e.y * TILE - 2;
+    const x0 = px - bw / 2;
+    const y0 = py - bh;
     ctx.save();
-    ctx.font = '600 ' + fontBase + 'px sans-serif';
-    const tw = ctx.measureText(text).width;
-    const pad = 3, bw = tw + pad * 2, bh = lh;
     ctx.globalAlpha = 0.85;
     ctx.fillStyle = 'rgba(8,10,14,0.78)';
-    ctx.fillRect(px - bw / 2, py - bh, bw, bh);
+    ctx.fillRect(x0, y0, bw, bh);
     ctx.strokeStyle = 'rgba(255,255,255,0.22)';
     ctx.lineWidth = 1;
-    ctx.strokeRect(px - bw / 2 + 0.5, py - bh + 0.5, bw - 1, bh - 1);
+    ctx.strokeRect(x0 + 0.5, y0 + 0.5, bw - 1, bh - 1);
     ctx.globalAlpha = 1;
-    ctx.fillStyle = '#f2f2f2';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(text, px, py - bh / 2 + 0.5);
+    for (let i = 0; i < n; i++) {
+      const cx = x0 + pad + iconSize / 2 + i * (iconSize + gap);
+      const cy = y0 + pad + iconSize / 2;
+      drawItemGlyph(ctx, icons[i], cx, cy, iconSize);
+    }
     ctx.restore();
   };
   if (keys) forEachEntInBuckets(keys, iter, seenBuf);

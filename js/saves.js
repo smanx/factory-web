@@ -156,14 +156,32 @@ async function listAllSaves() {
       id,
       name: s.name || (s.type === 'auto' ? '自动存档' : '用户存档'),
       type: s.type || 'user',
+      num: s.num || 0,
       time: s.time || 0,
       seed: s.seed || 0,
       sizeBytes: size,
       sizeText: formatSize(size)
     });
   }
+  // 为旧版用户存档（无 num）补充一个稳定展示编号：按创建时间（id 内时间戳）排序分配
+  const userList = arr.filter(a => a.type === 'user');
+  const existingNums = new Set(userList.filter(a => a.num > 0).map(a => a.num));
+  let nextFree = 1;
+  const assignNum = () => { while (existingNums.has(nextFree)) nextFree++; return nextFree++; };
+  userList
+    .filter(a => a.num <= 0)
+    .sort((a, b) => idCreateTime(a.id) - idCreateTime(b.id))
+    .forEach(a => { a.num = assignNum(); });
   arr.sort((a, b) => (b.time || 0) - (a.time || 0));
   return arr;
+}
+
+// 从用户存档 id（user-<timestamp>-<rand>）解析创建时间戳，用于旧档稳定编号排序
+function idCreateTime(id) {
+  const m = String(id).match(/^user-([0-9a-z]+)-/);
+  if (!m) return 0;
+  const t = parseInt(m[1], 36);
+  return isNaN(t) ? 0 : t;
 }
 
 // 是否有任何存档
@@ -217,18 +235,33 @@ async function writeSave(data, type, id, name) {
       saveId = makeUserSaveId();
     }
   }
+  // 稳定编号：自动存档取槽位号（auto-0 → 1），用户存档新建时取递增序号，覆盖时保持原序号
+  let num = reg[saveId] && typeof reg[saveId].num === 'number' ? reg[saveId].num : 0;
+  if (type === 'auto') {
+    const slotIdx = parseInt(String(saveId).split('-')[1], 10);
+    num = (isNaN(slotIdx) ? 0 : slotIdx) + 1;
+  } else if (!reg[saveId]) {
+    // 新建用户存档：取当前所有用户存档的最大编号 +1
+    let max = 0;
+    for (const k of Object.keys(reg)) {
+      const o = reg[k];
+      if (o && o.type === 'user' && typeof o.num === 'number' && o.num > max) max = o.num;
+    }
+    num = max + 1;
+  }
   const now = Date.now();
   reg[saveId] = {
     id: saveId,
     type,
     name: (type === 'user' && name) ? String(name) : (type === 'auto' ? '自动存档' : ''),
+    num: num,
     time: now,
     seed: data.seed || 0,
     data: data
   };
   const ok = await storeSaveRegistry(reg);
   if (!ok) return null;
-  return { id: saveId, type, name: reg[saveId].name, time: now };
+  return { id: saveId, type, name: reg[saveId].name, num, time: now };
 }
 
 // 覆盖写入某个 id（必须已存在）
@@ -238,9 +271,10 @@ async function overwriteSave(id, data) {
   reg[id].time = Date.now();
   reg[id].seed = data.seed || reg[id].seed;
   reg[id].data = data;
+  // 覆盖时保持原编号（num），便于区分覆盖的是哪一个
   const ok = await storeSaveRegistry(reg);
   if (!ok) return null;
-  return { id, type: reg[id].type, name: reg[id].name, time: reg[id].time };
+  return { id, type: reg[id].type, name: reg[id].name, num: reg[id].num, time: reg[id].time };
 }
 
 // 删除存档，返回是否成功

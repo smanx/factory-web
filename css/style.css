@@ -1473,30 +1473,6 @@ html, body {
   transition: transform .05s linear;
 }
 
-/* ===== 拆除模式按钮（触屏专用，替代手机右键） ===== */
-#deconstruct-btn {
-  position: absolute;
-  bottom: 82px;
-  right: 16px;
-  z-index: 60;
-  padding: 10px 16px;
-  font-size: 14px;
-  font-weight: bold;
-  color: #fff;
-  background: rgba(30, 36, 44, .72);
-  border: 2px solid #7f93ad;
-  border-radius: 10px;
-  cursor: pointer;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, .4);
-  display: block;
-}
-#deconstruct-btn.active {
-  background: rgba(120, 30, 30, .9);
-  border-color: #ff5b5b;
-  box-shadow: 0 0 12px rgba(255, 91, 91, .5);
-}
-#deconstruct-btn.hidden { display: none; }
-
 /* 建筑面板内的“拆除”按钮（PC/手机端通用）：红色破坏性操作样式 */
 #panel button.deconstruct-btn-inline {
   width: 100%;

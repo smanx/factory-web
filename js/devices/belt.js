@@ -35,7 +35,9 @@ class Belt extends Entity {
     // 惰性调度（P0 优化）：空带没有任何可移动物品，跳过真实更新
     // （排序/邻居扫描/转移判定），空传送带完全无需每帧运行。
     if (!this.items || this.items.length === 0) return;
-    const sp = beltSpeed() * this.speedMult() * dt;
+    // 双车道合计吞吐口径：两条车道并行但面板/数值以「双车道总速度」计（基础带=15 件/秒）。
+    // 因此单车道移动速度须为带速的一半（基础带 1.875/2=0.9375 格/秒 → 单列 7.5、双列 15 件/秒）。
+    const sp = beltSpeed() * this.speedMult() * dt / 2;
     this._sp = sp;
     // 每列车道各自推进：前端到达出口即转移到下一格对应车道
     this.transferFront();
@@ -133,7 +135,20 @@ class Belt extends Entity {
     if (isSide && (haveBack || inp.length >= 2)) {
       // 1) 直线优先：背面存在直通输入时，直线方向先于侧面进入；
       //    直通有货待进入则侧面暂缓（return false，让直通先过）。
-      if (haveBack && this._beltIncoming(this.x - DX[this.dir], this.y - DY[this.dir])) return false;
+      //    但若直通货物因目标车道满载无法进入本带，不应阻止侧面输入流向空闲车道。
+      if (haveBack && this._beltIncoming(this.x - DX[this.dir], this.y - DY[this.dir])) {
+        const backBelt = entAt(this.x - DX[this.dir], this.y - DY[this.dir]);
+        let backBlocked = true;
+        if (backBelt instanceof Belt && backBelt.items) {
+          for (const o of backBelt.items) {
+            if (o.pos < 0.5) continue;
+            let space = Infinity;
+            for (const bi of this.items) if (this.laneOf(bi) === o.lane) space = Math.min(space, bi.pos);
+            if (space >= BELT_SPACING) { backBlocked = false; break; }
+          }
+        }
+        if (backBlocked) return false;
+      }
       // 2) 两个相对侧面（无背面直通）：方向感知优先。
       //    对齐《异星工厂》双线交汇：当 1 号带 A、B 两线汇聚到 2 号带同一线且该线满载时，
       //    优先让“接收带流向右侧”的输入进入——两侧输入分别对应接收带流向的左/右侧
@@ -377,7 +392,7 @@ function drawBeltCorner(ctx, e, gx, gy, dir, alpha, colors) {
   ctx.stroke();
 
   // 动效箭头沿弧（随带速前进）
-  const off = ((G.time * beltSpeed() * (e.speedMult ? e.speedMult() : 1) * TILE) % step + step) % step;
+  const off = ((G.time * beltSpeed() * (e.speedMult ? e.speedMult() : 1) * TILE / 2) % step + step) % step;
   const arcLen = rC * Math.abs(d);
   ctx.fillStyle = colors.chev;
   for (let ap = off - step; ap <= arcLen + step; ap += step) {
@@ -447,7 +462,7 @@ function drawBeltSideMerge(ctx, e, cx, cy, dir, s, step, alpha, col) {
   ctx.stroke();
 
   // 动效箭头沿弧（与主带速度同步），随带速前进
-  const off = ((G.time * beltSpeed() * (e.speedMult ? e.speedMult() : 1) * TILE) % step + step) % step;
+  const off = ((G.time * beltSpeed() * (e.speedMult ? e.speedMult() : 1) * TILE / 2) % step + step) % step;
   const arcLen = rC * Math.abs(d);
   ctx.fillStyle = col.chev;
   for (let ap = off - step; ap <= arcLen + step; ap += step) {
@@ -469,7 +484,7 @@ function drawBeltSideMerge(ctx, e, cx, cy, dir, s, step, alpha, col) {
 
 // 传送带配色解析：普通/快速带为黄橙系，创造带为绿色系，虚空带为暗红系（测试设备）。
 function beltColors(e) {
-  if (e.type === 'fast-transport-belt') return { belt: '#4a3a34', chev: 'rgba(226,102,54,.9)' };
+  if (e.type === 'fast-transport-belt') return { belt: '#4a2a28', chev: 'rgba(224,90,78,.9)' };
   if (e.type === 'creative-belt') return { belt: '#2e6b3a', chev: 'rgba(140,255,175,.9)' };
   if (e.type === 'void-belt') return { belt: '#3a2a28', chev: 'rgba(255,138,128,.9)' };
   return { belt: '#3a3f47', chev: 'rgba(224,178,60,.85)' };
@@ -502,7 +517,7 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
   }
 
   const step = TILE / 2;
-  const off = ((G.time * beltSpeed() * (e.speedMult ? e.speedMult() : 1) * TILE) % step + step) % step;
+  const off = ((G.time * beltSpeed() * (e.speedMult ? e.speedMult() : 1) * TILE / 2) % step + step) % step;
 
   strip(dir * Math.PI / 2, -TILE / 2 + 2, TILE - 4);
 
@@ -625,15 +640,18 @@ function drawBeltMark(ctx, e, gx, gy, alpha) {
 // ===== 注册 =====
 function beltPanelHtml(e) {
   return '<div class="dim">传送带：双列独立输送（对齐《异星工厂》左右两列），物品沿箭头方向流动。R 旋转方向。靠近后按 F 拿取带上物品。</div>' +
-    '<div class="dim">当前速度：<span data-live="speed">-</span>（格/秒）</div>' +
+    '<div class="dim">当前吞吐：<span data-live="speed">-</span>（件/秒，双车道合计）</div>' +
     (typeof circuitPanelHtml === 'function' ? circuitPanelHtml(e, 'belt') : '') +
     '<div class="status"></div>';
 }
 function beltPanelLive(e, api) {
   if (!e.circuitEnabled()) { api.status('已停止：电路条件不满足', 'warn'); return; }
   const mult = e.speedMult ? e.speedMult() : 1;
-  const speed = beltSpeed() * mult;
-  api.set('speed', speed.toFixed(speed >= 10 ? 1 : 2));
+  // 面板显示的传送带速度为「双车道合计吞吐」（件/秒）：基础带=15 件/秒。
+  // 物体驱动已按带速/2 推进（单列 7.5 件/秒），双列合计即 beltSpeed/BELT_SPACING：
+  // 基础带 1.875/0.125=15 件/秒、快速带 30、极速带 45。
+  const speed = (1 / BELT_SPACING) * beltSpeed() * mult;
+  api.set('speed', (Math.round(speed * 10) / 10) + '');
   const agg = {};
   for (const o of e.items) agg[o.item] = (agg[o.item] || 0) + 1;
   if (e.items.length) api.status('输送中：' + Object.keys(agg).map(k => ITEMS[k].name + '×' + agg[k]).join('、'), 'ok');

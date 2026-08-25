@@ -221,7 +221,7 @@ function furnacePanelLive(e, api) {
   api.toggle('#btn-takeout', n > 0, '取回全部输出 (' + n + ')');
   api.prog(e.prog * 100);
   // 当前冶炼项的消耗/产出速率（石炉×1、电炉×2，对齐《异星工厂》crafting-speed）
-  const rateEl = body.querySelector('#mach-rate-block');
+  const rateEl = document.getElementById('mach-rate-block');
   if (rateEl) {
     const mult = eFurn ? 2 * e.moduleSpeedMult() : 1;
     const rec = e.cur ? { time: e.cur.time, inp: { [e.cur.inp]: e.cur.inCount || 1 }, out: { [e.cur.id]: 1 } } : null;

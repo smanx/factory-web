@@ -6,7 +6,7 @@ const DX = [1, 0, -1, 0];
 const DY = [0, 1, 0, -1];
 
 const BELT_SPEED = 1.875;   // 基础传送带速度（格/秒），对齐《异星工厂》1.875 tiles/s
-const BELT_SPACING = 0.125; // 物品间隔（格）对齐《异星工厂》0.125=1/8 格/件，每列 8 件/格 → 基础带速 1.875 下每列吞吐 15 items/s
+const BELT_SPACING = 0.125; // 物品间隔（格）0.125=1/8 格/件，每列 8 件/格；以「双车道合计」计 → 基础带双车道合计 15 items/s（每车道 7.5）
 const FAST_BELT_MULT = 2;    // 快速传送带 = 2× 基础（对齐《异星工厂》3.75 tiles/s）
 const EXPRESS_BELT_MULT = 3; // 极速传送带 = 3× 基础（对齐《异星工厂》5.625 tiles/s）
 const COAL_ENERGY = 12;
@@ -18,7 +18,7 @@ const SELF_FUEL_MAX = 4;   // 热能采矿机燃料槽容量（对齐《异星�
 const UNDERGROUND_MAX = 6;
 const FAST_UNDERGROUND_MAX = 14;
 const EXPRESS_UNDERGROUND_MAX = 20;
-const UG_CAP = 8;
+const UG_CAP = 8;  // 地下带每列缓存容量（双列，两列共 2×UG_CAP 件），对齐传送带每列每格 8 件
 const DRILL_TIME = 1.0;
 const HAND_MINE_TIME = 0.45;
 const REACH_TILES = 5.5;
@@ -163,10 +163,10 @@ const ITEMS = {
   'copper-cable': { name: '铜线',   color: '#e8a06a', mark: 'W',  desc: '制造电路板的原料' },
   'green-circuit':{ name: '电路板', color: '#57b95c', mark: 'GC', desc: '自动化与科研的基础元件' },
   'science-pack': { name: '自动化科学包', color: '#d04848', mark: 'SP', desc: '红色科学包，初期的科研消耗品（自动化科学）' },
-  'transport-belt':    { name: '传送带', color: '#e0b23c', desc: '运输物品，R 旋转方向，可拖动铺设' },
-  'inserter':          { name: '机械臂', color: '#d8cf4e', desc: '严格单向：臂体侧取货、箭头侧放货（亮色箭头=物流方向）' },
-  'burner-inserter':   { name: '燃料机械臂', color: '#c46a3a', desc: '烧煤驱动的机械臂，无需电力，开局即可用；需不断补充煤作燃料（对齐《异星工厂》Burner inserter）' },
-  'long-inserter':     { name: '长臂机械臂', color: '#e08a4a', desc: '同机械臂，但取放都延伸到第二格' },
+  'transport-belt':    { name: '基础传送带', color: '#e0b23c', desc: '运输物品，R 旋转方向，可拖动铺设' },
+  'inserter':          { name: '电力机械臂', color: '#e0b23c', desc: '严格单向：臂体侧取货、箭头侧放货（亮色箭头=物流方向），需电力驱动' },
+  'burner-inserter':   { name: '热能机械臂', color: '#7a7f87', desc: '烧煤驱动的机械臂，无需电力，开局即可用；需不断补充煤作燃料（对齐《异星工厂》Burner inserter）' },
+  'long-inserter':     { name: '加长机械臂', color: '#e05a4e', desc: '同电力机械臂，但取放都延伸到第二格' },
   'burner-drill':      { name: '热能采矿机', color: '#c46a3a', desc: '放在矿上自动开采，产出朝向前方，需煤' },
   'stone-furnace':     { name: '石炉',   color: '#9c9486', desc: '把矿石冶炼成板材，需煤作燃料' },
   'assembling-machine':{ name: '组装机', color: '#6f86c9', desc: '设置配方后自动生产（3×3）' },
@@ -175,8 +175,8 @@ const ITEMS = {
   'lamp':              { name: '电灯', color: '#e8e4a0', desc: '耗电照明设备（1×1）：通电后在夜间照亮周围区域，让基地在黑暗中清晰可见。夜晚无电时熄灭' },
   'substation':        { name: '变电站', color: '#b0802a', desc: '超大型电线杆（4×4）：连接电力与电路网络，覆盖范围远大于普通电线杆（连接距离约 18 格），用于跨区域组网（对齐《异星工厂》Substation）' },
   'programmable-speaker': { name: '可编程音箱', color: '#a05ad0', desc: '电路网络设备（1×1）：读取所连网络的信号，可在面板设置告警条件与输出信号，满足条件时发光提示，用于信号监控与告警（对齐《异星工厂》Programmable speaker）' },
-  'splitter':          { name: '分流器', color: '#d98f3c', desc: '两入两出：物品轮流流向两个出口（A/B 车道各自保持不混合）；一边堵了自动走另一边。面板可设输入/输出优先级' },
-  'underground':       { name: '地下传送带', color: '#9a7fd6', desc: '同向摆两座（最远6格）自动配对：入口收货钻入地下，出口送回地面向前输出' },
+  'splitter':          { name: '基础分流器', color: '#e0b23c', desc: '两入两出：物品轮流流向两个出口（A/B 车道各自保持不混合）；一边堵了自动走另一边。面板可设输入/输出优先级，并自带筛选功能（指定只放行某物品）' },
+  'underground':       { name: '基础地下传送带', color: '#e0b23c', desc: '同向摆两座（最远6格）自动配对：入口收货钻入地下，出口送回地面向前输出' },
   'steel-plate':       { name: '钢板',   color: '#c9ced6', mark: 'S', desc: '电炉炼铁板产出的高级建材' },
   'boiler':            { name: '锅炉',   color: '#d0743a', desc: '烧煤+水产出蒸汽（3×2）：左右两端各一只蓝口水口，双向进出、水位互通平衡，可从一端进水另一端出、多台同排串联；底边中间白口=出汽口，向下接蒸汽机或蒸汽管道' },
   'steam-engine':      { name: '蒸汽机', color: '#8fb8d0', desc: '蒸汽发电（3×5）：上下两端各一只功能相同的通用汽口，蒸汽可从任意一端进入，多余蒸汽也可从另一端送出，支持首尾串联；供汽越足功率越高，满功率并入全图电网' },
@@ -186,17 +186,14 @@ const ITEMS = {
   'electric-drill':    { name: '电采矿机', color: '#4f7dd3', desc: '免燃料、吃电力开采，速度快于热能采矿机（3×3）' },
   'electric-furnace':  { name: '电炉',   color: '#3fa87e', desc: '免燃料、吃电力冶炼，速度更高，可出钢板（3×3）' },
   'assembling-machine-mk2': { name: '组装机 II', color: '#a05fd0', desc: '吃电力、速度更高的高级组装机（3×3）' },
-  'fast-transport-belt': { name: '快速传送带', color: '#f2c14e', desc: '速度约为普通带的 2 倍（对齐《异星工厂》）' },
-  'fast-underground-belt': { name: '快速地下传送带', color: '#b98ee0', desc: '同向配对距离最远 14 格，速度是快带标准' },
-  'express-transport-belt': { name: '极速传送带', color: '#e05a4e', desc: '速度约为普通带的 3 倍，物流终极档（对齐《异星工厂》）' },
-  'express-underground-belt': { name: '极速地下传送带', color: '#e07a6a', desc: '同向配对距离最远 20 格，速度是极速带标准' },
-  'express-splitter': { name: '极速分流器', color: '#e06048', desc: '同分流器，但吞吐与极速带一致，可输送最快物流' },
-  'fast-splitter':    { name: '快速分流器', color: '#d04a3a', desc: '同分流器，但吞吐与快速带一致，可输送更快的物流（对齐《异星工厂》Fast splitter）' },
-  'priority-splitter': { name: '优先级分流器', color: '#e07b2e', desc: '同分流器，但可通过面板指定优先把货推向一侧；另一侧仅作为溢出通道' },
-  'filter-inserter':   { name: '过滤机械臂', color: '#58b8e8', desc: '同机械臂，可在面板指定只抓取某种物品' },
-  'stack-inserter':    { name: '堆叠机械臂', color: '#e8e059', desc: '同机械臂，但可一次性抓取多达 3 个同种物品' },
-  'stack-filter-inserter': { name: '堆叠过滤机械臂', color: '#d8e048', desc: '过滤与堆叠二合一：可一次抓取多达 3 个「指定物品」，装卸效率高且精确分类' },
-  'fast-inserter':     { name: '快速机械臂', color: '#7ec850', desc: '比普通机械臂抓取更快（旋转速度约为其 2 倍），介于普通与过滤/堆叠臂之间（对齐《异星工厂》Fast inserter）' },
+  'fast-transport-belt': { name: '高速传送带', color: '#e05a4e', desc: '速度约为基础带的 2 倍（对齐《异星工厂》）' },
+  'fast-underground-belt': { name: '高速地下传送带', color: '#e05a4e', desc: '同向配对距离最远 14 格，速度是高速带标准' },
+  'express-transport-belt': { name: '极速传送带', color: '#4f9fe8', desc: '速度约为基础带的 3 倍，物流终极档（对齐《异星工厂》）' },
+  'express-underground-belt': { name: '极速地下传送带', color: '#4f9fe8', desc: '同向配对距离最远 20 格，速度是极速带标准' },
+  'express-splitter': { name: '极速分流器', color: '#4f9fe8', desc: '同分流器，但吞吐与极速带一致，可输送最快物流' },
+  'fast-splitter':    { name: '高速分流器', color: '#e05a4e', desc: '同分流器，但吞吐与高速带一致，可输送更快的物流（对齐《异星工厂》Fast splitter）' },
+  'stack-inserter':    { name: '集装箱机械臂', color: '#7ec850', desc: '同电力机械臂，但可一次性抓取多达 3 个同种物品（对齐《异星工厂》Stack inserter）' },
+  'fast-inserter':     { name: '高速机械臂', color: '#4f9fe8', desc: '比普通机械臂抓取更快（旋转速度约为其 2 倍）（对齐《异星工厂》Fast inserter）' },
   'steel-chest':       { name: '钢箱', color: '#9aa4b0', desc: '比储物箱容量更大的钢铁储物箱（24 格）。可接入电路网络输出箱内物品数量信号（对齐《异星工厂》）' },
   'creative-chest':    { name: '创造箱', color: '#3e8f4a', mark: '∞', desc: '测试设备：无限生成选定物品，点开面板选择要生成的物品，机械臂可无限取走' },
   'void-chest':        { name: '虚空箱', color: '#4a3430', mark: '×', desc: '测试设备：无限销毁任何存入的物品，放进去即刻消失' },
@@ -210,7 +207,7 @@ const ITEMS = {
   'pipe':              { name: '管道', color: '#6a5f52', desc: '输送流体（水/蒸汽/原油/重轻油/石油气），相邻互连，容量 40' },
   'pipe-to-ground':    { name: '地下管道', color: '#8a7a6a', desc: '同向摆两座（最远 10 格）自动配对，从地下穿行流体，可跨过传送带/管道' },
   'pump':              { name: '流体泵', color: '#5aa0a8', desc: '从背侧吸入流体、向前侧加压泵出，单向输送、提速吞吐（1×1）' },
-  'storage-tank':      { name: '储液罐', color: '#7d95a8', desc: '大容量存储任意一种液体/气体（3×3，容量 ' + STORAGE_TANK_CAP + '）。东西两侧各一只通用流体口，可进可出；罐内只能容纳单一流体。相邻管道会自动把流体灌入罐内，罐也会向相邻炼油厂/化工厂等输入口供料，作为缓冲库容使用' },
+  'storage-tank':      { name: '储液罐', color: '#7d95a8', desc: '大容量存储任意一种液体/气体（3×3，容量 ' + STORAGE_TANK_CAP + '）。只有一对对角（北西↔南东）的 4 个面可接管道，另一对对角为空不可接；罐内只能容纳单一流体。相邻管道会自动把流体灌入罐内，罐也会从该对角接口向相邻炼油厂/化工厂等输入口供料，作为缓冲库容使用' },
   'creative-pipe':     { name: '创造管道', color: '#3e8f4a', mark: '∞', desc: '测试设备：无限生成选定的流体，点开面板选择要生成的流体，源源不断灌入相邻管道/储液罐' },
   'void-pipe':         { name: '虚空管道', color: '#6a3a3a', mark: '×', desc: '测试设备：无限销毁流经的流体，相邻管道会把流体持续排入这里销毁' },
   'creative-belt':     { name: '创造传送带', color: '#3e8f4a', mark: '∞', desc: '测试设备：点开面板选择要生成的物品，带上无限产出该物品并随带流动，机械臂/玩家可无限取走（传送带）' },
@@ -440,6 +437,14 @@ const RECIPES = {
   'green-circuit':      { time: 0.5, inp: { 'iron-plate': 1, 'copper-cable': 3 },                out: { 'green-circuit': 1 } },
   'science-pack':       { time: 5,   inp: { 'copper-plate': 1, 'iron-gear': 1 },                 out: { 'science-pack': 1 } },
   'transport-belt':     { time: 0.5, inp: { 'iron-plate': 1, 'iron-gear': 1 },                   out: { 'transport-belt': 2 } },
+  'fast-transport-belt': { time: 0.5, inp: { 'transport-belt': 1, 'iron-gear': 1 },                  out: { 'fast-transport-belt': 1 } },  // 对齐官方：1传送带+1齿轮→1
+  'express-transport-belt': { time: 0.5, inp: { 'fast-transport-belt': 1, 'iron-gear': 5 }, out: { 'express-transport-belt': 1 } },
+  'underground':        { time: 1.5, inp: { 'transport-belt': 2, 'iron-gear': 2, 'iron-stick': 5 },       out: { 'underground': 2 } },  // 对齐官方：2传送带+2齿轮+5铁杆→2
+  'fast-underground-belt': { time: 1, inp: { 'underground': 1, 'fast-transport-belt': 2, 'iron-gear': 2 },                  out: { 'fast-underground-belt': 2 } },  // 对齐官方：1地下带+2快带+2齿轮→2
+  'express-underground-belt': { time: 1, inp: { 'fast-underground-belt': 1, 'iron-gear': 10 }, out: { 'express-underground-belt': 1 } },
+  'splitter':           { time: 1,   inp: { 'transport-belt': 2, 'iron-gear': 1, 'iron-stick': 4 },       out: { 'splitter': 1 } },  // 对齐官方：2传送带+1齿轮+4铁杆→1
+  'fast-splitter':   { time: 1, inp: { 'splitter': 1, 'iron-gear': 5 }, out: { 'fast-splitter': 1 } },
+  'express-splitter': { time: 1, inp: { 'fast-transport-belt': 4, 'iron-gear': 10 }, out: { 'express-splitter': 1 } },
   'inserter':           { time: 0.5, inp: { 'iron-plate': 1, 'iron-gear': 1, 'green-circuit': 1 }, out: { 'inserter': 1 } },
   'burner-inserter':    { time: 0.5, inp: { 'iron-plate': 1, 'iron-gear': 1 },                  out: { 'burner-inserter': 1 } },
   'long-inserter':      { time: 0.5, inp: { 'inserter': 1, 'iron-gear': 1 },                             out: { 'long-inserter': 1 } },
@@ -449,20 +454,13 @@ const RECIPES = {
   'storage-chest':      { time: 1,   inp: { 'iron-plate': 8 },                                   out: { 'storage-chest': 1 } },
   'assembling-machine': { time: 2,   inp: { 'iron-plate': 5, 'iron-gear': 2, 'green-circuit': 2 }, out: { 'assembling-machine': 1 } },  // 对齐官方：5铁板+2齿轮+2电路板
   'lab':                { time: 3,   inp: { 'iron-gear': 10, 'green-circuit': 10, 'stone': 10 },   out: { 'lab': 1 } },  // 对齐官方：10齿轮+10电路板+10石头
-  'splitter':           { time: 1,   inp: { 'transport-belt': 2, 'iron-gear': 1, 'iron-stick': 4 },       out: { 'splitter': 1 } },  // 对齐官方：2传送带+1齿轮+4铁杆→1
-  'underground':        { time: 1.5, inp: { 'transport-belt': 2, 'iron-gear': 2, 'iron-stick': 5 },       out: { 'underground': 2 } },  // 对齐官方：2传送带+2齿轮+5铁杆→2
   'boiler':             { time: 1.5, inp: { 'stone': 5, 'iron-plate': 1 },                         out: { 'boiler': 1 } },
   'steam-engine':       { time: 2,   inp: { 'iron-plate': 2, 'iron-gear': 1, 'pipe': 1 },          out: { 'steam-engine': 1 } },
   'offshore-pump':      { time: 1,   inp: { 'iron-plate': 5, 'iron-gear': 1 },                     out: { 'offshore-pump': 1 } },
   'electric-drill':     { time: 2,   inp: { 'iron-plate': 8, 'iron-gear': 3, 'green-circuit': 2 },                     out: { 'electric-drill': 1 } },  // 对齐官方：8铁板+3齿轮+2电路板
   'electric-furnace':   { time: 2.5, inp: { 'steel-plate': 8, 'iron-plate': 5, 'advanced-circuit': 3, 'stone-brick': 2 }, out: { 'electric-furnace': 1 } },
   'assembling-machine-mk2': { time: 3, inp: { 'assembling-machine': 2, 'steel-plate': 2, 'iron-gear': 2, 'green-circuit': 4 }, out: { 'assembling-machine-mk2': 1 } },  // 对齐官方：2组装机I+2钢板+2齿轮+4电路板
-  'fast-transport-belt': { time: 0.5, inp: { 'transport-belt': 1, 'iron-gear': 1 },                  out: { 'fast-transport-belt': 1 } },  // 对齐官方：1传送带+1齿轮→1
-  'fast-underground-belt': { time: 1, inp: { 'underground': 1, 'fast-transport-belt': 2, 'iron-gear': 2 },                  out: { 'fast-underground-belt': 2 } },  // 对齐官方：1地下带+2快带+2齿轮→2
-  'priority-splitter': { time: 1,   inp: { 'splitter': 1, 'iron-gear': 1 },                       out: { 'priority-splitter': 1 } },
-  'filter-inserter':   { time: 0.5, inp: { 'inserter': 1, 'green-circuit': 5 },                   out: { 'filter-inserter': 1 } },  // 对齐官方：1机械臂+5电路板
   'stack-inserter':    { time: 0.5, inp: { 'inserter': 1, 'iron-gear': 15 },                       out: { 'stack-inserter': 1 } },  // 对齐官方：1机械臂+15齿轮
-  'stack-filter-inserter': { time: 0.5, inp: { 'filter-inserter': 1, 'stack-inserter': 1 }, out: { 'stack-filter-inserter': 1 } },  // 对齐官方：1过滤臂+1堆叠臂
   'green-science':     { time: 6,   inp: { 'transport-belt': 1, 'inserter': 1 },                  out: { 'green-science': 1 } },  // 对齐《异星工厂》物流科学包：1传送带+1机械臂，耗时 6s
   'blue-science':      { time: 8,   inp: { 'plastic-bar': 2, 'green-circuit': 2, 'copper-plate': 1 }, out: { 'blue-science': 1 } },
   'pipe':              { time: 0.5, inp: { 'iron-plate': 1 },                                     out: { 'pipe': 1 } },
@@ -470,10 +468,6 @@ const RECIPES = {
   'refinery':          { time: 3,   inp: { 'steel-plate': 8, 'iron-gear': 4, 'pipe': 10, 'green-circuit': 5 },      out: { 'refinery': 1 } },
   'chemical-plant':    { time: 4,   inp: { 'steel-plate': 5, 'iron-gear': 5, 'pipe': 10, 'green-circuit': 5 }, out: { 'chemical-plant': 1 } },
   'storage-tank':      { time: 2,   inp: { 'steel-plate': 4, 'iron-gear': 2, 'pipe': 4 }, out: { 'storage-tank': 1 } },
-  'express-transport-belt': { time: 0.5, inp: { 'fast-transport-belt': 1, 'iron-gear': 5 }, out: { 'express-transport-belt': 1 } },
-  'express-underground-belt': { time: 1, inp: { 'fast-underground-belt': 1, 'iron-gear': 10 }, out: { 'express-underground-belt': 1 } },
-  'express-splitter': { time: 1, inp: { 'fast-transport-belt': 4, 'iron-gear': 10 }, out: { 'express-splitter': 1 } },
-  'fast-splitter':   { time: 1, inp: { 'splitter': 1, 'iron-gear': 5 }, out: { 'fast-splitter': 1 } },
   'steel-chest':      { time: 1,   inp: { 'steel-plate': 8 }, out: { 'steel-chest': 1 } },
   // ===== 基础储物箱（木箱→铁箱→钢箱递进，对齐《异星工厂》） =====
   'wooden-chest':     { time: 0.5, inp: { 'wood': 2 }, out: { 'wooden-chest': 1 } },
@@ -687,9 +681,9 @@ const RECIPES = {
   RECIPES['empty-barrel'] = { time: 1, inp: { 'steel-plate': 1 }, out: { 'empty-barrel': 1 } };
 })();
 
-// ===== 过滤/需求可选物品全集（对齐《异星工厂》：过滤机械臂、物流需求箱可筛选任意可生产物品）=====
+// ===== 筛选/需求可选物品全集（对齐《异星工厂》：机械臂筛选、物流需求箱可筛选任意可生产物品）=====
 // FILTER_CHOICES 为基础静态清单；此处动态补全所有“可通过配方/冶炼/离心/炼油生产、或可建造/可收集”
-// 的物品，保证过滤机械臂与需求箱能选到任意中间件/终局物品（高级电路板、处理器、电池、引擎、火箭部件等）。
+// 的物品，保证机械臂筛选与需求箱能选到任意中间件/终局物品（高级电路板、处理器、电池、引擎、火箭部件等）。
 let _filterChoicesCache = null;
 function filterChoices() {
   if (_filterChoicesCache) return _filterChoicesCache;
@@ -818,21 +812,18 @@ const BUILD_DEFS = {
   'transport-belt':     { w: 1, h: 1, solid: false },
   'fast-transport-belt': { w: 1, h: 1, solid: false },
   'express-transport-belt': { w: 1, h: 1, solid: false },
-  'splitter':           { w: 1, h: 2, solid: false, rotSwap: true },
-  'priority-splitter':  { w: 1, h: 2, solid: false, rotSwap: true },
-  'express-splitter':   { w: 1, h: 2, solid: false, rotSwap: true },
-  'fast-splitter':      { w: 1, h: 2, solid: false, rotSwap: true },
   'underground':        { w: 1, h: 1, solid: false },
   'fast-underground-belt': { w: 1, h: 1, solid: false },
   'express-underground-belt': { w: 1, h: 1, solid: false },
+  'splitter':           { w: 1, h: 2, solid: false, rotSwap: true },
+  'fast-splitter':      { w: 1, h: 2, solid: false, rotSwap: true },
+  'express-splitter':   { w: 1, h: 2, solid: false, rotSwap: true },
   'inserter':           { w: 1, h: 1, solid: true },
   'burner-inserter':    { w: 1, h: 1, solid: true },
   'lamp':               { w: 1, h: 1, solid: true },
   'programmable-speaker': { w: 1, h: 1, solid: true },
   'long-inserter':      { w: 1, h: 1, solid: true },
-  'filter-inserter':    { w: 1, h: 1, solid: true },
   'stack-inserter':     { w: 1, h: 1, solid: true },
-  'stack-filter-inserter': { w: 1, h: 1, solid: true },
   'fast-inserter':      { w: 1, h: 1, solid: true },
   'burner-drill':       { w: 2, h: 2, solid: true },
   'stone-furnace':      { w: 2, h: 2, solid: true },
@@ -916,9 +907,9 @@ const BUILD_DEFS = {
 // HP 归零即被摧毁。无线索设备（传送带/管道/电线等）也有 HP，但敌人优先攻击防御建筑。
 const BUILDING_HP = {
   'transport-belt': 60, 'fast-transport-belt': 100, 'express-transport-belt': 140,
-  'splitter': 80, 'priority-splitter': 100, 'express-splitter': 120, 'fast-splitter': 100,
+  'splitter': 80, 'express-splitter': 120, 'fast-splitter': 100,
   'underground': 60, 'fast-underground-belt': 100, 'express-underground-belt': 140,
-  'inserter': 100, 'long-inserter': 100, 'filter-inserter': 100, 'stack-inserter': 100, 'stack-filter-inserter': 100, 'fast-inserter': 100,
+  'inserter': 100, 'long-inserter': 100, 'stack-inserter': 100, 'fast-inserter': 100,
   'burner-inserter': 100,
   'burner-drill': 300, 'electric-drill': 300, 'pumpjack': 400,
   'stone-furnace': 200, 'steel-furnace': 200, 'electric-furnace': 300,
@@ -1018,16 +1009,14 @@ const TECH_REQ = {
   // 传送带免疫/放电防御装备科技门控（对齐《异星工厂》装备科技线）
   'belt-immunity-equipment': 'armor-modular',
   'discharge-defense': 'armor-power',
-  // ===== 组装机 / 堆叠机械臂科技门控（对齐《异星工厂》Automation 3 / Logistics 3） =====
+  // ===== 组装机 / 集装箱机械臂科技门控（对齐《异星工厂》Automation 3 / Logistics 3） =====
   'assembling-machine-3': 'automation3',
   'stack-inserter': 'logistics3',
-  'stack-filter-inserter': 'logistics3',
   // ===== 机械臂进阶科技门控（对齐《异星工厂》科技树） =====
-  // 原版：快速机械臂需「自动化 II」；长臂/过滤机械臂需「物流 II」。
-  // 此前这三类机械臂开局即可用，现改为对应科技解锁，让物流/自动化节奏更贴近原版进阶曲线（旧档经迁移自动补完）。
+  // 原版：高速机械臂需「自动化 II」；加长机械臂需「物流 II」。
+  // 此前这两类机械臂开局即可用，现改为对应科技解锁，让物流/自动化节奏更贴近原版进阶曲线（旧档经迁移自动补完）。
   'fast-inserter': 'automation2',
   'long-inserter': 'logistics2',
-  'filter-inserter': 'logistics2',
   // ===== 基础中间件科技门控（对齐《异星工厂》科技树） =====
   'engine-unit': 'engine',          // 引擎单元：需「引擎技术」科技（对齐原版 Engine）
   'battery': 'battery',                // 电池：需「电池技术」科技（对齐原版 Battery）
@@ -1262,11 +1251,11 @@ const TECHS = {
   mining:     { name: '采矿业', cost: { 'science-pack': 10 }, desc: '采矿机速度 ×2', req: [] },
   // ===== 钓鱼科技（对齐《异星工厂》Fishing：解锁钓鱼竿，可在水域钓获生鱼） =====
   fishing:    { name: '钓鱼', cost: { 'science-pack': 10 }, desc: '解锁钓鱼竿，可在岸边水域抛竿钓获生鱼（对齐《异星工厂》Fishing 科技）', req: [] },
-  logistics:  { name: '物流学', cost: { 'science-pack': 15 }, desc: '传送带速度 ×1.5', req: [] },
+  logistics:  { name: '物流学', cost: { 'science-pack': 15 }, desc: '物流前置科技：解锁铁路等进阶物流科技（对齐《异星工厂》Logistics）', req: [] },
   automation: { name: '自动化', cost: { 'science-pack': 20 }, desc: '组装机速度 ×1.5', req: [] },
   // ==== 二级科技（绿瓶） ====
-  logistics2: { name: '物流 II', cost: { 'green-science': 25 }, desc: '传送带速度额外 ×1.2（与物流学叠加）', req: ['logistics'] },
-  logistics3: { name: '物流 III', cost: { 'green-science': 40, 'blue-science': 30 }, desc: '解锁堆叠机械臂与堆叠过滤机械臂，可一次抓取多达 3 个同种物品，装卸效率极高（对齐《异星工厂》Logistics 3）', req: ['logistics2'] },
+  logistics2: { name: '物流 II', cost: { 'green-science': 25 }, desc: '解锁加长机械臂与极速物流、物流网络等进阶物流（对齐《异星工厂》Logistics 2）', req: ['logistics'] },
+  logistics3: { name: '物流 III', cost: { 'green-science': 40, 'blue-science': 30 }, desc: '解锁集装箱机械臂，可一次抓取多达 3 个同种物品，装卸效率极高（对齐《异星工厂》Logistics 3）', req: ['logistics2'] },
   electric:   { name: '电力工程', cost: { 'green-science': 15 }, desc: '电炉 / 电采矿机速度 ×1.2', req: ['automation'] },
   oil:        { name: '石油冶金', cost: { 'green-science': 30 }, desc: '炼油厂 / 抽油机速度 ×1.5', req: [] },
   railways:    { name: '铁路技术', cost: { 'green-science': 30 }, desc: '解锁铁轨、火车头、货运车厢与车站，构建铁路物流', req: ['logistics'] },
@@ -1325,7 +1314,7 @@ const TECHS = {
   utility: { name: '实用科技', cost: { 'utility-science-pack': 60 }, desc: '解锁飞行机器人框架、施工机器人，完善机器人网络', req: ['logistics-network', 'worker-robot-speed'] },
   'research-speed': { name: '科研速度', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：科研速度每级 +50%，可无限叠加（对齐《异星工厂》Research speed 无限科技）', req: ['utility'] },
   'kovarex-enrichment': { name: '铀富集', cost: { 'production-science-pack': 60, 'utility-science-pack': 40 }, desc: '解锁 Kovarex 富集循环：用铀-238 在铀-235 催化下持续富集出更多铀-235，可自持循环（对齐《异星工厂》Kovarex enrichment process）', req: ['nuclear', 'production'] },
-  'inserter-capacity': { name: '机械臂容量', cost: { 'production-science-pack': 50, 'utility-science-pack': 30 }, infinite: true, desc: '无限科技：每次研究让堆叠机械臂单次抓取数量 +1（对齐《异星工厂》Inserter capacity bonus）', req: ['production', 'utility'] },
+  'inserter-capacity': { name: '机械臂容量', cost: { 'production-science-pack': 50, 'utility-science-pack': 30 }, infinite: true, desc: '无限科技：每次研究让集装箱机械臂单次抓取数量 +1（对齐《异星工厂》Inserter capacity bonus）', req: ['production', 'utility'] },
   // ==== 终局装备科技（对齐《异星工厂》Modular armor / Power armor 科技链）====
   'armor-modular': { name: '模块化护甲', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, desc: '解锁模块化护甲与基础个人装备（个人太阳能板 / 个人电池 / 夜视仪），装备网格中可安装外骨骼等装备件', req: ['production', 'utility'] },
   'armor-power': { name: '强力装甲', cost: { 'utility-science-pack': 80 }, desc: '解锁强力装甲（更大装备网格）与外骨骼、个人激光防御等高级装备件', req: ['armor-modular'] },
@@ -1349,7 +1338,7 @@ const TECHS = {
   'energy-weapons-damage': { name: '能量武器伤害', cost: { 'space-science-pack': 80, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升激光炮塔与个人激光防御等能量武器伤害 +10%（对齐《异星工厂》Energy weapons damage）', req: ['space-science', 'advanced-combat'] },
   'refined-flammables': { name: '燃烧伤害', cost: { 'space-science-pack': 80, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升火焰喷射器、火焰炮塔与地面火场等燃烧伤害 +10%（对齐《异星工厂》Refined flammables）', req: ['space-science', 'advanced-combat'] },
   'stronger-explosives': { name: '爆炸伤害', cost: { 'space-science-pack': 80, 'military-science': 50 }, infinite: true, desc: '无限科技：每次研究提升火箭筒/炮弹/手雷/炮兵/地雷/原子弹等爆炸类伤害 +10%（对齐《异星工厂》Stronger explosives）', req: ['space-science', 'explosives'] },
-  'fuel-efficiency': { name: '燃料效率', cost: { 'space-science-pack': 80, 'utility-science-pack': 40 }, infinite: true, desc: '无限科技：每次研究降低所有燃烧设备（锅炉/熔炉/矿机/燃料机械臂/车头/载具等）的燃料消耗约 9%，让每单位燃料更耐用（对齐《异星工厂》Fuel efficiency 无限科技），核燃料棒不受影响', req: ['space-science', 'utility'] },
+  'fuel-efficiency': { name: '燃料效率', cost: { 'space-science-pack': 80, 'utility-science-pack': 40 }, infinite: true, desc: '无限科技：每次研究降低所有燃烧设备（锅炉/熔炉/矿机/热能机械臂/车头/载具等）的燃料消耗约 9%，让每单位燃料更耐用（对齐《异星工厂》Fuel efficiency 无限科技），核燃料棒不受影响', req: ['space-science', 'utility'] },
   infinite:   { name: '无限科技', cost: {}, infinite: true, desc: '无限研究：消耗任意科学包，永不完成', req: [] }
 };
 
@@ -1414,11 +1403,11 @@ function migrateNewTechs(techDone) {
   }
   if (techDone['oil']) techDone['fluid-handling'] = true;
   if (techDone['advanced-combat']) { techDone['combat-robotics'] = true; techDone['military3'] = true; techDone['military4'] = true; }
-  // 兼容旧档：堆叠机械臂/堆叠过滤臂此前无科技门控，组装机 III 此前开局可用；
+  // 兼容旧档：集装箱机械臂此前无科技门控，组装机 III 此前开局可用；
   // 拆分后分别由「物流 III」与「自动化 III」门控，老玩家补完对应科技避免产线被锁死（对齐《异星工厂》Logistics 3 / Automation 3）。
   if (techDone['logistics2'] || techDone['express']) techDone['logistics3'] = true;
   if (techDone['automation2']) techDone['automation3'] = true;
-  // 兼容旧档：快速/长臂/过滤机械臂此前无科技门控，开局即可用；现分别由「自动化 II」「物流 II」门控，
+  // 兼容旧档：高速/加长机械臂此前无科技门控，开局即可用；现分别由「自动化 II」「物流 II」门控，
   // 老玩家可能已拥有对应产线，补完对应科技避免被锁死（对齐《异星工厂》Automation 2 / Logistics 2）。
   if (techDone['automation']) techDone['automation2'] = true;
   if (techDone['logistics']) techDone['logistics2'] = true;
@@ -1787,7 +1776,9 @@ function fuelEnergy(item) {
 }
 
 function beltSpeed()  {
-  return BELT_SPEED * (G.techDone.logistics ? 1.5 : 1) * (G.techDone.logistics2 ? 1.2 : 1) * (G.techDone.logistics3 ? 1.2 : 1) * ((G.dbg && G.dbg.beltMult) || 1);
+  // 面板/数值以「双车道合计吞吐」计：基础传送带双车道合计 15 items/s（每车道 7.5），
+  // 不会随任何科技升级而提升；更快的物流由更高级的传送带种类（快速带/极速带）提供。
+  return BELT_SPEED * ((G.dbg && G.dbg.beltMult) || 1);
 }
 function drillMult()  { return (G.techDone.mining ? 2 : 1) * ((G.dbg && G.dbg.drillMult) || 1); }
 function asmMult()    { return (G.techDone.automation ? 1.5 : 1) * (G.techDone.automation2 ? 1.2 : 1) * ((G.dbg && G.dbg.asmMult) || 1); }

@@ -1,6 +1,6 @@
 'use strict';
 
-// ===== 燃料机械臂 Burner Inserter（对齐《异星工厂》Burner inserter）=====
+// ===== 热能机械臂 Burner Inserter（对齐《异星工厂》Burner inserter）=====
 // 烧煤驱动的机械臂：无需电力，开局即可用。与普通机械臂一样严格单向取放，
 // 但工作时需要持续消耗煤作燃料（像热能采矿机）。无煤时停摆。
 // 可放入组装机/石炉/采矿机等邻格设备取放物品，也可从燃料箱/机械臂供煤。
@@ -95,7 +95,7 @@ class BurnerInserter extends Inserter {
   }
 }
 
-// ===== 渲染：燃料机械臂带小燃料仓与橙色臂体 =====
+// ===== 渲染：热能机械臂带小燃料仓与黑灰臂体（主配色黑灰） =====
 function drawBurnerInserter(ctx, e, gx, gy, dir, alpha) {
   // 复用普通机械臂臂体绘制，但用烧煤配色 + 燃料槽
   drawInserter(ctx, e, gx, gy, dir, alpha);
@@ -124,7 +124,13 @@ function burnerInserterPanelHtml(e) {
     (invCount('solid-fuel') > 0 ? '<button data-action="fuel" data-id="solid-fuel">加 5 固体燃料 (' + invCount('solid-fuel') + ')</button>' : '') +
     (invCount('rocket-fuel') > 0 ? '<button data-action="fuel" data-id="rocket-fuel">加 5 火箭燃料 (' + invCount('rocket-fuel') + ')</button>' : '') +
     '<div class="status"></div>' +
-    '<div class="dim">燃料机械臂：烧煤驱动，无需电力，开局即可用。从臂体指向的一侧取货、放到箭头一侧。搬运时消耗煤，缺煤会停摆（1×1）。</div>';
+    inserterFilterSectionHtml(e, '<div class="dim">当前筛选：') +
+    '<div class="dim">热能机械臂：烧煤驱动，无需电力，开局即可用。从臂体指向的一侧取货、放到箭头一侧。搬运时消耗煤，缺煤会停摆（1×1）。</div>';
+}
+function burnerInserterOnAction(act, btn) {
+  if (act === 'flt') { if (G.panelEnt instanceof Inserter) G.panelEnt.filter = btn.dataset.id; return true; }
+  if (act === 'flt-clear') { if (G.panelEnt instanceof Inserter) G.panelEnt.filter = null; return true; }
+  return false; // 其余（fuel 等）交给全局分发
 }
 function burnerInserterPanelLive(e, api) {
   api.set('fuel', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '') + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) + ' ' : '') + (e.fuelWood > 0 ? chip('wood', e.fuelWood) : (e.fuelRocket <= 0 && e.fuelSolid <= 0 && e.fuelCoal <= 0 ? dimSpan('无') : '')));
@@ -135,18 +141,22 @@ function burnerInserterPanelLive(e, api) {
   }
   if (e.rotating) { api.status('工作中：转向取货格', 'ok'); return; }
   const s = e.entAtPick();
-  const it = e.peekSource(s);
-  if (!it) { api.status('已暂停：取货格无物品可取', 'warn'); return; }
-  if (!e.canDropAt(e.entAtDrop(), it)) api.status('已暂停：放货格已满', 'warn');
-  else api.status('待机：等待取货格出现货物', 'ok');
+  const t = e.entAtDrop();
+  const it = e.pickSourceForDrop(s, t);
+  if (!it) {
+    if (!e.peekSource(s)) api.status('已暂停：取货格无物品可取', 'warn');
+    else api.status('已暂停：取货格物品均放不进目标（放货格已满）', 'warn');
+    return;
+  }
+  api.status('待机：等待取货格出现货物', 'ok');
 }
 function burnerInserterTip(e) {
-  if (!e.hasFuel()) return '燃料机械臂：缺燃料停摆';
-  return e.holding ? ('搬运 ' + ITEMS[e.holding].name) : '燃料机械臂：待机';
+  if (!e.hasFuel()) return '热能机械臂：缺燃料停摆';
+  return e.holding ? ('搬运 ' + ITEMS[e.holding].name) : '热能机械臂：待机';
 }
 
 // ===== 注册 =====
-const burnerInserterPanel = { html: burnerInserterPanelHtml, live: burnerInserterPanelLive, tip: burnerInserterTip };
+const burnerInserterPanel = { html: burnerInserterPanelHtml, live: burnerInserterPanelLive, tip: burnerInserterTip, onAction: burnerInserterOnAction };
 ENT_CLASSES['burner-inserter'] = BurnerInserter;
 DEVICE_RENDER['burner-inserter'] = drawBurnerInserter;
 DEVICE_STATUS['burner-inserter'] = e => e.holding || e.rotating ? (e.blocked ? 'y' : 'g') : (e.hasFuel() ? 'r' : 'r');

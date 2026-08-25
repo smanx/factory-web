@@ -84,8 +84,8 @@ class Drill extends Entity {
     this.status = '';
     this.working = true;
     drillEmit(this, dt);
-    // 采矿机运转环境音（限频避免音爆）
-    if (typeof playSfx === 'function' && G.settings.sound) {
+    // 采矿机运转环境音（仅屏内可见时播放，限频避免音爆）
+    if (typeof onScreen === 'function' && onScreen(this) && typeof playSfx === 'function' && G.settings.sound) {
       this._runSfxT = (this._runSfxT || 0) - dt;
       if (this._runSfxT <= 0) { this._runSfxT = 2.2; playSfx('machine-run'); }
     }
@@ -316,7 +316,7 @@ function drillPanelLive(e, api) {
   api.toggle('#btn-drill-takeout', e.buf > 0, '取回缓存 (' + e.buf + ')');
   api.prog(e.working ? e.prog / DRILL_TIME * 100 : 0);
   // 开采速率：每秒产矿量 = 1 / DRILL_TIME × 采矿科技 × 机型倍率（电钻×电学、抽油×石油科技）
-  const rateEl = body.querySelector('#mach-rate-block');
+  const rateEl = document.getElementById('mach-rate-block');
   if (rateEl) {
     const o = e.oreTile();
     const item = o ? e.mineItem(o) : (e.bufItem || null);
@@ -330,7 +330,7 @@ function drillPanelLive(e, api) {
   else if (!e.working) api.status('待机：产出朝' + ['东', '南', '西', '北'][e.dir], 'ok');
   else api.status('开采中：产出朝' + ['东', '南', '西', '北'][e.dir], 'ok');
   // 矿脉剩余储量显示（对齐《异星工厂》：矿脉储量有限、会逐渐采空，便于规划迁移）
-  const oreRemainEl = body.querySelector('#drill-ore-remain');
+  const oreRemainEl = document.getElementById('drill-ore-remain');
   if (oreRemainEl) {
     let oreRemain = 0, oreFound = false;
     for (let dy = 0; dy < e.h; dy++)

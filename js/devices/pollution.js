@@ -63,7 +63,7 @@ const POLLUTION_SOURCES = {
   'nuclear-reactor': 7,     // 核反应堆（虽清洁但燃料处理与热量管理仍有微量排放）
   'locomotive': 3,          // 火车头（烧煤行驶）
   'diesel-locomotive': 3,   // 内燃机车（烧燃料行驶，对齐原版：内燃机车同样有尾气）
-  'burner-inserter': 0.3    // 燃料机械臂（烧煤，微量）
+  'burner-inserter': 0.3    // 热能机械臂（烧煤，微量）
 };
 
 // 累加污染值（外部调用入口，钳制到上限）

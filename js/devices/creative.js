@@ -184,7 +184,8 @@ function drawCreativePipe(ctx, e, gx, gy, dir, alpha) {
     const nb = entAt(gx + dx, gy + dy);
     if (nb instanceof Pipe || nb instanceof Refinery || nb instanceof Pumpjack ||
         nb instanceof Boiler || nb instanceof Pump || nb instanceof SteamEngine ||
-        nb instanceof ChemicalPlant || nb instanceof Assembler || nb instanceof StorageTank ||
+        nb instanceof ChemicalPlant || nb instanceof Assembler ||
+        (nb instanceof StorageTank && (!nb.isPortCell || nb.isPortCell(gx, gy))) ||
         nb instanceof PipeToGround || nb instanceof FluidPump || nb instanceof CreativePipe || nb instanceof VoidPipe) {
       ctx.beginPath();
       ctx.moveTo(cx, cy);
@@ -226,7 +227,8 @@ function drawVoidPipe(ctx, e, gx, gy, dir, alpha) {
     const nb = entAt(gx + dx, gy + dy);
     if (nb instanceof Pipe || nb instanceof Refinery || nb instanceof Pumpjack ||
         nb instanceof Boiler || nb instanceof Pump || nb instanceof SteamEngine ||
-        nb instanceof ChemicalPlant || nb instanceof Assembler || nb instanceof StorageTank ||
+        nb instanceof ChemicalPlant || nb instanceof Assembler ||
+        (nb instanceof StorageTank && (!nb.isPortCell || nb.isPortCell(gx, gy))) ||
         nb instanceof PipeToGround || nb instanceof FluidPump || nb instanceof CreativePipe || nb instanceof VoidPipe) {
       ctx.beginPath();
       ctx.moveTo(cx, cy);

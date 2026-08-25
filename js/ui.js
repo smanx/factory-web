@@ -151,7 +151,6 @@ function openPanel(mode, ent) {
   G.panelEnt = ent || null;
   document.getElementById('panel').style.display = 'flex';
   renderPanel(true);
-  updateDeconstructBtn();
 }
 
 function closePanel(hide = true) {
@@ -159,7 +158,6 @@ function closePanel(hide = true) {
   G.panelEnt = null;
   G.invRecipeQ = '';
   if (hide) document.getElementById('panel').style.display = 'none';
-  updateDeconstructBtn();
 }
 
 function panelScrollTop() {
@@ -551,7 +549,7 @@ function applySplitterFilterSearch(q) {
   }
 }
 
-// 过滤机械臂搜索：按关键字过滤过滤机械臂的物品选择列表
+// 机械臂筛选搜索：按关键字过滤机械臂筛选的物品选择列表
 function applyInserterFilterSearch(q) {
   const body = document.getElementById('panel-body');
   if (!body) return;
@@ -1309,7 +1307,9 @@ function initPanelEvents() {
         if (mch && mch.takeAll) for (const [k, n] of mch.takeAll()) invAdd(k, n);
       } else if (act === 'tech') {
         // 前置科技校验：未满足前置的科技不能开始研究
-        if (G.techDone[id]) { toast('该科技已完成'); return; }
+        if (G.techDone[id] && !isInfiniteTech(id)) { toast('该科技已完成'); return; }
+        // 兼容旧档/调试解锁：无限科技即使曾被标记 done 也可重新无限研究，清掉错误的完成标记
+        if (isInfiniteTech(id)) delete G.techDone[id];
         if (techLocked(id)) {
           toast('需先研究：' + techMissingPrereqs(id).map(m => TECHS[m].name).join('、'));
           return;
@@ -1423,9 +1423,12 @@ async function saveListHtml() {
     const d = new Date(s.time);
     const time = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
     const tag = s.type === 'auto' ? '<span class="save-tag auto">自动</span>' : '<span class="save-tag user">用户</span>';
+    // 带稳定编号的名称（自动存档按槽位 #1/#2/#3，用户存档按递增 #N），覆盖后仍能辨认是哪个
+    const label = (s.type === 'auto' ? '自动存档 #' + (s.num || '?') : '用户存档 #' + (s.num || '?'));
+    const dispName = (s.type === 'user' && s.name) ? (label + '（' + s.name + '）') : label;
     h += '<div class="save-item">';
     h += '  <div class="save-item-top">';
-    h += '    <div class="save-item-info">' + tag + ' <span class="save-name">' + escHtml(s.name || '存档') + '</span></div>';
+    h += '    <div class="save-item-info">' + tag + ' <span class="save-name">' + escHtml(dispName) + '</span></div>';
     h += '    <div class="save-item-ops">';
     h += '      <button data-action="load-save" data-id="' + s.id + '" title="读取该存档">📂 读取</button>';
     h += '      <button data-action="overwrite-save" data-id="' + s.id + '" title="用当前进度覆盖该存档">💾 覆盖</button>';
@@ -1845,12 +1848,12 @@ const DBG_GIVE_GROUPS = [
   ]],
   ['物流·传送带', [
     ['transport-belt', 100], ['fast-transport-belt', 100], ['express-transport-belt', 100],
-    ['splitter', 50], ['fast-splitter', 50], ['express-splitter', 50], ['priority-splitter', 50],
+    ['splitter', 50], ['fast-splitter', 50], ['express-splitter', 50],
     ['underground', 50], ['fast-underground-belt', 50], ['express-underground-belt', 50]
   ]],
   ['机械臂', [
     ['burner-inserter', 50], ['inserter', 50], ['long-inserter', 50], ['fast-inserter', 50],
-    ['filter-inserter', 50], ['stack-inserter', 50], ['stack-filter-inserter', 50]
+    ['stack-inserter', 50]
   ]],
   ['生产·建筑', [
     ['burner-drill', 20], ['electric-drill', 20], ['pumpjack', 20],
@@ -2008,10 +2011,31 @@ function buildDebug() {
     ['完成研究', () => {
       const t = G.activeTech;
       if (!t) { toast('没有进行中的研究'); return; }
+      if (isInfiniteTech(t)) {
+        // 无限科技永不完成：完成一次视为 +1 级，可继续无限研究
+        G.techProg[t] = (G.techProg[t] || 0) + 1;
+        toast('无限科技 +1 级：' + TECHS[t].name + '（等级 ' + G.techProg[t] + '）');
+        G.activeTech = null;
+        renderPanel(false);
+        return;
+      }
       G.techProg[t] = techCostTotal(t);
       G.techDone[t] = true;
       toast('研究完成：' + TECHS[t].name);
       G.activeTech = null;
+      renderPanel(false);
+    }],
+    ['一键回退所有研究', () => {
+      // 一键回退所有研究：遍历整个科技/研究树，将每项标记为未完成并清空研究进度
+      let cnt = 0;
+      for (const t in TECHS) {
+        if (!TECHS[t]) continue;
+        G.techDone[t] = false;
+        delete G.techProg[t];
+        cnt++;
+      }
+      G.activeTech = null; G.techQueue = [];
+      toast('已一键回退全部 ' + cnt + ' 项研究');
       renderPanel(false);
     }],
     ['回出生点', () => {
@@ -2044,14 +2068,44 @@ function buildDebug() {
       if (typeof uiDirty !== 'undefined') uiDirty = true;
       toast(cnt ? ('已移除 ' + cnt + ' 格峭壁') : '当前显示区域没有峭壁');
     }],
+    ['移除当前视野内所有树木', () => {
+      // 一键移除当前显示区域内的所有树木（变回草地），对齐《异星工厂》树木清除
+      const b = (typeof viewBounds === 'function') ? viewBounds() : null;
+      if (!b) { toast('无法获取视口范围'); return; }
+      const minTx = Math.floor(Math.min(b.x0, b.x1) / TILE);
+      const maxTx = Math.floor(Math.max(b.x0, b.x1) / TILE);
+      const minTy = Math.floor(Math.min(b.y0, b.y1) / TILE);
+      const maxTy = Math.floor(Math.max(b.y0, b.y1) / TILE);
+      let cnt = 0;
+      for (let ty = minTy; ty <= maxTy; ty++) {
+        for (let tx = minTx; tx <= maxTx; tx++) {
+          if (getTerrain(tx, ty) === T_TREE) {
+            setTerrain(tx, ty, T_GRASS);
+            if (typeof invalidateTerrainChunk === 'function') invalidateTerrainChunk(tx, ty);
+            cnt++;
+          }
+        }
+      }
+      if (typeof uiDirty !== 'undefined') uiDirty = true;
+      toast(cnt ? ('已移除 ' + cnt + ' 棵树木') : '当前显示区域没有树木');
+    }],
     ['新地图', () => { newGame(); closePanel(); toast('新地图已生成'); }],
     ['一键完成全部科技', () => {
+      let doneCnt = 0;
       for (const t in TECHS) {
+        if (isInfiniteTech(t)) {
+          // 无限科技永不完成：不标记 techDone，仅确保其“已解锁（techProg>0）”，
+          // 保留可继续无限研究（否则后续会被当已完成而无法再研究）。
+          if ((G.techProg[t] || 0) === 0) G.techProg[t] = 1;
+          delete G.techDone[t];
+          continue;
+        }
         G.techDone[t] = true;
         if (G.techProg[t] === undefined) G.techProg[t] = techCostTotal(t);
+        doneCnt++;
       }
       G.activeTech = null; G.techQueue = [];
-      toast('已解锁全部 ' + Object.keys(TECHS).length + ' 项科技');
+      toast('已解锁全部 ' + doneCnt + ' 项科技（无限科技可继续研究）');
       renderPanel(false);
     }],
     ['回满血', () => {
@@ -2274,29 +2328,6 @@ function refreshDebugPanel() {
 // ===== 虚拟摇杆（手机/触屏移动） =====
 // 摇杆状态存于 G.joystick；仅在开启"虚拟摇杆"设置且设备为触屏时显示。
 // 拖拽摇杆把位移量归一化为 [-1,1] 的 dx/dy，供 updatePlayer 叠加到移动方向。
-// ===== 拆除模式按钮（触屏专用，替代手机端无法使用的右键） =====
-// 触屏设备才显示该按钮。为避免一直显示干扰操作，仅当用户“选择了某个建筑”
-//（即打开该建筑的机器面板，G.panelEnt 指向该建筑）时才显示；
-// 若已进入拆除模式则保持可见以便退出。点击进入/退出拆除模式，进入后点触建筑即可拆除。
-function updateDeconstructBtn() {
-  const el = document.getElementById('deconstruct-btn');
-  if (!el) return;
-  const touchCapable = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-  if (!touchCapable) { el.classList.add('hidden'); return; }
-  // 拆除模式中保持按钮可见以便退出；否则仅当用户选中了某个建筑时才显示
-  const show = G.deconstructMode || !!G.panelEnt;
-  if (!show) { el.classList.add('hidden'); return; }
-  el.classList.remove('hidden');
-  el.classList.toggle('active', !!G.deconstructMode);
-}
-
-function initDeconstructBtn() {
-  const el = document.getElementById('deconstruct-btn');
-  if (!el) return;
-  el.addEventListener('click', () => toggleDeconstructMode());
-  updateDeconstructBtn();
-}
-
 function updateJoystickVisibility() {
   const el = document.getElementById('joystick');
   if (!el) return;

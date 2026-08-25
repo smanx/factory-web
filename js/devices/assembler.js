@@ -63,8 +63,8 @@ class Assembler extends Entity {
       if (typeof spawnSpark === 'function' && Math.random() < dt * 1.2) {
         spawnSpark((this.x + 0.5 + (Math.random() - 0.5) * 0.7) * TILE, (this.y + 0.4) * TILE, { size: 1.2, life: 0.4, speed: 2 });
       }
-      // 运转环境音：低频“嗡嗡”（限频避免音爆）
-      if (typeof playSfx === 'function' && G.settings.sound) {
+      // 运转环境音：低频“嗡嗡”（仅屏内可见时播放，限频避免音爆）
+      if (typeof onScreen === 'function' && onScreen(this) && typeof playSfx === 'function' && G.settings.sound) {
         this._runSfxT = (this._runSfxT || 0) - dt;
         if (this._runSfxT <= 0) { this._runSfxT = 1.4; playSfx('machine-run'); }
       }
@@ -297,12 +297,13 @@ function assemblerPanelHtml(e) {
     const unlocked = recipeUnlocked(rid);
     const lockTech = recipeLockingTech(rid);
     const selCls = e.recipe === rid ? 'sel' : '';
-    // 鼠标悬停显示所需原料（异星工厂惯例）
+    // 鼠标悬停显示所需原料（异星工厂惯例）：名称与介绍为主标题，所需原料放入独立的 tooltip 配方区块
     const inpStr = Object.keys(RECIPES[rid].inp).map(k => ITEMS[k].name + '×' + RECIPES[rid].inp[k]).join('、');
     const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
       Object.keys(RECIPES[rid].inp).map(k => ITEMS[k].name).join(' ')).toLowerCase();
-    h += '<button class="rcbtn ' + selCls + (unlocked ? '' : ' locked') + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-rsearch="' + searchKey.replace(/"/g, '') + '" data-tip="' +
-      ITEMS[outId].name + '|' + RECIPES[rid].out[outId] + '个/次，耗时' + RECIPES[rid].time + '秒。所需原料：' + inpStr + (unlocked ? '' : '。未解锁：需先研究「' + TECHS[lockTech].name + '」') + '" ' + (unlocked ? '' : 'disabled') + '>' +
+    const tipMain = ITEMS[outId].name + '|' + RECIPES[rid].out[outId] + '个/次，耗时' + RECIPES[rid].time + '秒' + (unlocked ? '' : '。未解锁：需先研究「' + TECHS[lockTech].name + '」');
+    const tipRecipe = '所需原料：' + inpStr;
+    h += '<button class="rcbtn ' + selCls + (unlocked ? '' : ' locked') + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-rsearch="' + searchKey.replace(/"/g, '') + '" data-tip="' + tipMain + '||' + tipRecipe + '" ' + (unlocked ? '' : 'disabled') + '>' +
       '<img src="' + iconDataURL(outId) + '">' + ITEMS[outId].name + (unlocked ? '' : '<br><small>🔒' + TECHS[lockTech].name + '</small>') + '</button>';
   }
   h += '</div>';

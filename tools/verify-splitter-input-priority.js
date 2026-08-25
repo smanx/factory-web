@@ -41,7 +41,6 @@ const sandbox = {
   BUILD_DEFS: {
     'transport-belt': { w: 1, h: 1, solid: true },
     'splitter': { w: 1, h: 2, solid: false, rotSwap: true },
-    'priority-splitter': { w: 1, h: 2, solid: false, rotSwap: true },
   },
   ITEMS: { 'iron-plate': { name: '铁板' }, 'copper-plate': { name: '铜板' } },
   Underground: class Underground {}, Splitter: class Splitter {},
