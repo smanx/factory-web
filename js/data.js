@@ -1251,10 +1251,10 @@ const TECHS = {
   mining:     { name: '采矿业', cost: { 'science-pack': 10 }, desc: '采矿机速度 ×2', req: [] },
   // ===== 钓鱼科技（对齐《异星工厂》Fishing：解锁钓鱼竿，可在水域钓获生鱼） =====
   fishing:    { name: '钓鱼', cost: { 'science-pack': 10 }, desc: '解锁钓鱼竿，可在岸边水域抛竿钓获生鱼（对齐《异星工厂》Fishing 科技）', req: [] },
-  logistics:  { name: '物流学', cost: { 'science-pack': 15 }, desc: '传送带速度 ×1.5', req: [] },
+  logistics:  { name: '物流学', cost: { 'science-pack': 15 }, desc: '物流前置科技：解锁铁路等进阶物流科技（对齐《异星工厂》Logistics）', req: [] },
   automation: { name: '自动化', cost: { 'science-pack': 20 }, desc: '组装机速度 ×1.5', req: [] },
   // ==== 二级科技（绿瓶） ====
-  logistics2: { name: '物流 II', cost: { 'green-science': 25 }, desc: '传送带速度额外 ×1.2（与物流学叠加）', req: ['logistics'] },
+  logistics2: { name: '物流 II', cost: { 'green-science': 25 }, desc: '解锁加长机械臂与极速物流、物流网络等进阶物流（对齐《异星工厂》Logistics 2）', req: ['logistics'] },
   logistics3: { name: '物流 III', cost: { 'green-science': 40, 'blue-science': 30 }, desc: '解锁集装箱机械臂，可一次抓取多达 3 个同种物品，装卸效率极高（对齐《异星工厂》Logistics 3）', req: ['logistics2'] },
   electric:   { name: '电力工程', cost: { 'green-science': 15 }, desc: '电炉 / 电采矿机速度 ×1.2', req: ['automation'] },
   oil:        { name: '石油冶金', cost: { 'green-science': 30 }, desc: '炼油厂 / 抽油机速度 ×1.5', req: [] },
@@ -1776,7 +1776,9 @@ function fuelEnergy(item) {
 }
 
 function beltSpeed()  {
-  return BELT_SPEED * (G.techDone.logistics ? 1.5 : 1) * (G.techDone.logistics2 ? 1.2 : 1) * (G.techDone.logistics3 ? 1.2 : 1) * ((G.dbg && G.dbg.beltMult) || 1);
+  // 对齐《异星工厂》：基础传送带速度为固定值 1.875 tiles/s（每列吞吐 15 items/s），
+  // 不会随任何科技升级而提升；更快的物流由更高级的传送带种类（快速带/极速带）提供。
+  return BELT_SPEED * ((G.dbg && G.dbg.beltMult) || 1);
 }
 function drillMult()  { return (G.techDone.mining ? 2 : 1) * ((G.dbg && G.dbg.drillMult) || 1); }
 function asmMult()    { return (G.techDone.automation ? 1.5 : 1) * (G.techDone.automation2 ? 1.2 : 1) * ((G.dbg && G.dbg.asmMult) || 1); }
