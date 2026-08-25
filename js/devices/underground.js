@@ -260,11 +260,16 @@ function undergroundPanelHtml(e) {
   if (e.isEntrance()) txt = '【入口】货物钻入地下送往最近的前方出口。缓存 ' + e.items.length + '/' + UG_CAP + '，待发 ' + e.outItems.length;
   else if (e.isExit()) txt = '【出口】接收后方隧道来货并向前输出（只与最近者配对，不再向更前方转送）。待发 ' + e.outItems.length;
   else txt = '【未配对】同向' + e.maxDist() + '格内没有另一座。仅作显示，不接收/不传送物品。缓存 ' + e.items.length + '/' + UG_CAP;
-  return '<div class="dim">地下带' + txt + '。R 旋转方向。</div><div class="status"></div>';
+  return '<div class="dim">地下带' + txt + '。R 旋转方向。</div>' +
+    '<div class="dim">当前吞吐：<span data-live="speed">-</span>（件/秒，单侧车道）</div>' +
+    '<div class="status"></div>';
 }
 function undergroundPanelLive(e, api) {
   const paired = e.isPaired();
   const n = e.items.length + e.outItems.length;
+  const mult = e.speedMult ? e.speedMult() : 1;
+  const speed = (1 / BELT_SPACING) * beltSpeed() * mult;
+  api.set('speed', (Math.round(speed * 10) / 10) + '');
   if (!paired) api.status('仅显示：未配对（同向 ' + e.maxDist() + ' 格内无另一座地下带），不接收/不传送物品', 'warn');
   else if (e.outItems.length >= UG_CAP || e.items.length >= UG_CAP) api.status('已暂停：缓存已满，等待输出', 'warn');
   else if (n > 0) api.status('输送中：' + n + ' 件在途', 'ok');

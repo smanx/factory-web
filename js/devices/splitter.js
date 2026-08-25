@@ -538,6 +538,7 @@ function splitterPanelHtml(e) {
   const prefNames = { '-1': '轮流两出口', '0': '优先一侧', '1': '优先另一侧' };
   const inPrefNames = { '-1': '轮流输入', '0': '优先上方输入', '1': '优先下方输入' };
   let h = '<div class="dim">分流器：两入两出（每入口/出口各对应两根物流线，共 4 线）。输入可设轮流或优先某口；输出轮流或优先一侧，A/B 车道各自保持；一边堵了自动走另一边。R 旋转方向。</div>';
+  h += '<div class="dim">当前吞吐：<span data-live="speed">-</span>（件/秒，单侧车道）</div>';
   h += '<div class="mrow"><span class="mlabel">输入模式</span><span class="mval">';
   for (const v of [-1, 0, 1]) {
     h += '<button data-action="sinpref" data-v="' + v + '"' + (e.inPref === v ? ' style="border-color:#5fd45f;color:#5fd45f"' : '') + '>' + inPrefNames[v] + '</button> ';
@@ -600,6 +601,9 @@ function splitterOnAction(act, btn) {
   return false;
 }
 function splitterPanelLive(e, api) {
+  const mult = e.speedMult ? e.speedMult() : 1;
+  const speed = (1 / BELT_SPACING) * beltSpeed() * mult;
+  api.set('speed', (Math.round(speed * 10) / 10) + '');
   if (e.filter) {
     const stuck = e.items.some(o => o.pos >= 0.999);
     api.status(stuck ? '过滤中：仅放行「' + ITEMS[e.filter].name + '」· 输出端拥堵' : '过滤中：仅放行「' + ITEMS[e.filter].name + '」· ' + e.items.length + ' 件在途', stuck ? 'warn' : 'ok');
