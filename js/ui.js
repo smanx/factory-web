@@ -1647,7 +1647,7 @@ function initTooltips() {
       const recipeEl = tip.querySelector('#tooltip-recipe');
       if (recipeEl) {
         recipeEl.textContent = parts[1] || '';
-        recipeEl.style.display = parts[1] ? '' : 'none';
+        recipeEl.style.display = parts[1] ? 'block' : 'none';
       }
       tip.style.display = 'block';
       const r = tip.getBoundingClientRect();
