@@ -174,6 +174,8 @@ function consumeOre(tx, ty) {
   const amt = getOreAmt(tx, ty);
   if (amt <= 0) return;
   G.world.remaining.set(key, amt - 1);
+  // 性能优化：矿量变化后把该 chunk 的矿点离屏缓存标记为脏，下一帧重绘矿点（避免每帧全量重绘）
+  if (typeof markOreChunkDirty === 'function') markOreChunkDirty(tx, ty);
 }
 
 function isWater(tx, ty) { return getTerrain(tx, ty) === T_WATER; }

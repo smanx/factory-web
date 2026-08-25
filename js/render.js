@@ -248,9 +248,11 @@ function onScreen(e) {
 // ===== 地形分块离屏缓存（P1 优化）=====
 // 每个 32×32 chunk 渲到一张 1024×1024 离屏 canvas，按 LRU 缓存（上限 ~16 张）。
 // 相机平移只额外补渲染新出现的 chunk，可见 chunk 直接整张 drawImage blit，
-// 把 8000 次逐格 fillRect 降为几次 blit。矿点随开采变化，仍每帧实时绘制在缓存之上。
+// 把 8000 次逐格 fillRect 降为几次 blit。矿点另行使用独立的每-chunk 离屏缓存（见下方 oreChunkCache），
+// 仅当矿量变化（consumeOre）时重绘，避免每帧全量重绘矿点。
 const terrainCacheStats = { state: '未启用', rebuildMs: 0, lastRebuild: 0, hits: 0, misses: 0, cached: 0 };
 const TERRAIN_CHUNK_LRU_MAX = 16;   // 分块离屏缓存上限（张）
+const ORE_CHUNK_LRU_MAX = 64;        // 矿点离屏缓存上限（张）：矿点重建较贵，留更大缓存降低平移时重建频率
 const TERRAIN_CHUNK_PX = CHUNK * TILE;   // 1024
 const terrainChunkCache = new Map();   // 'cx,cy' -> { canvas, last }
 terrainChunkCache._seq = 0;   // LRU 时钟序号
@@ -428,6 +430,58 @@ function clearTerrainCache() {
   terrainCacheStats.hits = 0;
   terrainCacheStats.misses = 0;
   terrainCacheStats.cached = 0;
+  if (oreChunkCache) oreChunkCache.clear();
+}
+
+// ===== 矿点离屏缓存（性能优化）=====
+// 矿点渲染（底色 + 高光圆点，每个矿格多次 canvas 绘制）是随基地规模增长的主要每帧开销。
+// 把每个 chunk 的矿点预渲染到离屏画布，仅当矿量变化（consumeOre）时将该 chunk 标记为脏并重绘，
+// 未被开采的 chunk 直接复用缓存画布，大幅减少每帧 canvas 操作与字符串键分配。
+const oreChunkCache = new Map();   // 'cx,cy' -> { canvas, dirty, last }
+oreChunkCache._seq = 0;   // LRU 时钟序号
+// 矿量变化后标记所在 chunk 的矿点缓存为脏（下一帧重绘）。
+function markOreChunkDirty(tx, ty) {
+  if (!oreChunkCache) return;
+  const key = Math.floor(tx / CHUNK) + ',' + Math.floor(ty / CHUNK);
+  const e = oreChunkCache.get(key);
+  if (e) e.dirty = true;   // 未缓存则无需标记（首次获取时按未缓存处理）
+}
+// 构建某 chunk 的矿点缓存：把该 chunk 内所有矿点预渲染进离屏画布。
+function buildOreChunk(cx, cy) {
+  const c = getChunk(cx, cy);
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = TERRAIN_CHUNK_PX;
+  const cctx = cv.getContext('2d');
+  const ox = cx * CHUNK, oy = cy * CHUNK;
+  for (let dy = 0; dy < CHUNK; dy++) {
+    for (let dx = 0; dx < CHUNK; dx++) {
+      const idx = dy * CHUNK + dx;
+      const ti = c.oreType[idx];
+      if (ti < 0) continue;
+      const tx = ox + dx, ty = oy + dy;
+      const rem = G.world.remaining.get(tx + ',' + ty);
+      const amt = rem !== undefined ? rem : c.oreAmt[idx];
+      if (amt > 0) drawOreDots(cctx, dx * TILE, dy * TILE, oreItemId(ti), amt, tx, ty);
+    }
+  }
+  return cv;
+}
+// 获取某 chunk 的矿点缓存画布；脏或未缓存时重建。
+function oreChunkCanvas(cx, cy) {
+  const key = cx + ',' + cy;
+  let e = oreChunkCache.get(key);
+  if (e && e.canvas && !e.dirty) { e.last = ++oreChunkCache._seq; return e.canvas; }
+  const cv = buildOreChunk(cx, cy);
+  oreChunkCache.set(key, { canvas: cv, dirty: false, last: ++oreChunkCache._seq });
+  // LRU 淘汰：与地形缓存同理，避免探索地图增大时缓存无限膨胀（上限可配，默认同地形缓存上限）
+  if (oreChunkCache.size > ORE_CHUNK_LRU_MAX) {
+    let oldestKey = null, oldest = Infinity;
+    for (const [k, v] of oreChunkCache) {
+      if (v.last < oldest) { oldest = v.last; oldestKey = k; }
+    }
+    if (oldestKey) oreChunkCache.delete(oldestKey);
+  }
+  return cv;
 }
 
 function drawTerrain(ctx) {
@@ -451,23 +505,19 @@ function drawTerrain(ctx) {
       ctx.drawImage(c, sx, sy, ex - dx, ey - dy, dx, dy, ex - dx, ey - dy);
     }
   }
-  // 矿点每帧实时绘制（随开采实时减少）
-  // 性能优化：同一行内按区块边界分段，只对每个区块 getChunk 一次，
-  // 且每瓦片只查一次 remaining（此前 if 条件与 drawOreDots 调用各查一次，字符串键重复分配）。
-  for (let ty = ty0; ty <= ty1; ty++) {
-    const cy = Math.floor(ty / CHUNK);
-    const ly = ((ty % CHUNK) + CHUNK) % CHUNK;
-    let c = null, curCx = NaN;   // NaN 哨兵：保证首帧必取 chunk（-1 会与负坐标 chunk 索引冲突，导致 c 为 null 崩溃）
-    for (let tx = tx0; tx <= tx1; tx++) {
-      const cx = Math.floor(tx / CHUNK);
-      if (cx !== curCx) { c = getChunk(cx, cy); curCx = cx; }
-      const lx = ((tx % CHUNK) + CHUNK) % CHUNK;
-      const idx = ly * CHUNK + lx;
-      const ti = c.oreType[idx];
-      if (ti < 0) continue;
-      const rem = G.world.remaining.get(tx + ',' + ty);
-      const amt = rem !== undefined ? rem : c.oreAmt[idx];
-      if (amt > 0) drawOreDots(ctx, tx * TILE, ty * TILE, oreItemId(ti), amt, tx, ty);
+  // 矿点渲染（性能优化）：改为每 chunk 一张离屏缓存画布，仅矿量变化（consumeOre）时重绘该 chunk。
+  // 未开采的 chunk 直接复用缓存，避免每帧对每个矿格执行多次 canvas 绘制与字符串键分配。
+  // 与原地实时绘制语义完全一致（数据源同为 getOreAmt / remaining 与 oreAmt，仅绘制时机改为“脏时重建”）。
+  for (let cy = cY0; cy <= cY1; cy++) {
+    for (let cx = cX0; cx <= cX1; cx++) {
+      const oc = oreChunkCanvas(cx, cy);
+      const sx = Math.max(cx * CHUNK, tx0) * TILE - cx * TERRAIN_CHUNK_PX;
+      const sy = Math.max(cy * CHUNK, ty0) * TILE - cy * TERRAIN_CHUNK_PX;
+      const dx = Math.max(cx * CHUNK, tx0) * TILE;
+      const dy = Math.max(cy * CHUNK, ty0) * TILE;
+      const ex = Math.min((cx + 1) * CHUNK - 1, tx1) * TILE + TILE;
+      const ey = Math.min((cy + 1) * CHUNK - 1, ty1) * TILE + TILE;
+      ctx.drawImage(oc, sx, sy, ex - dx, ey - dy, dx, dy, ex - dx, ey - dy);
     }
   }
   // 动态水面波浪（画面优化）：在水域瓦片叠加缓缓流动的高光波纹
@@ -719,7 +769,7 @@ function _altLabelKey(e) {
   if (t === 'lab') return 'lab:' + (G.activeTech || '');
   if (t === 'rocket-silo') {
     const inp = e.inp || {};
-    return 'rs:' + (inp.rocket || 0) + ':' + (inp.satellite || 0) + ':' + (e.launching ? 1 : 0);
+    return 'rs:' + (e.parts || 0) + ':' + (inp.satellite || 0) + ':' + (e.launching ? 1 : 0);
   }
   if (t === 'gun-turret' || t === 'artillery-turret') {
     // 避免 JSON.stringify 每帧分配；用弹药类型数+总数做轻量指纹
@@ -761,13 +811,8 @@ function _altLabelText(e) {
   if (t === 'rocket-silo') {
     const inp = e.inp || {};
     if (e.launching) return '🚀 发射中…';
-    if ((inp.rocket || 0) > 0) return '火箭 ✓  ' + ((inp.satellite || 0) > 0 ? '卫星 ✓' : '待装卫星');
-    const need = (typeof SILO_ASSEMBLE === 'object' && SILO_ASSEMBLE) ? SILO_ASSEMBLE : null;
-    if (need) {
-      const miss = Object.keys(need).filter(k => (inp[k] || 0) < need[k]);
-      return miss.length ? ('组装中 ' + miss.map(k => (ITEMS[k] ? ITEMS[k].name : k)).join('/')) : '部件齐备';
-    }
-    return '火箭发射井';
+    if ((e.parts || 0) >= (typeof ROCKET_PARTS === 'number' ? ROCKET_PARTS : 1)) return '火箭 ✓  ' + ((inp.satellite || 0) > 0 ? '卫星 ✓' : '待装卫星');
+    return '火箭部件 ' + (e.parts || 0) + '/' + (typeof ROCKET_PARTS === 'number' ? ROCKET_PARTS : 1);
   }
   if (t === 'gun-turret') {
     const n = e.totalAmmo ? e.totalAmmo() : 0;
