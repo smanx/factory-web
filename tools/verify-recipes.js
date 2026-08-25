@@ -253,6 +253,39 @@ check('修理包(1齿轮+2铜板)',
   assertRecipeInput('repair-pack', 'iron-gear', 1) &&
   assertRecipeInput('repair-pack', 'copper-plate', 2), true);
 
+// ---- 生产建筑/电力建筑配方对齐官方（本次数据修正）----
+console.log('\n【生产/电力建筑配方对齐官方】');
+// 电炉：官方 = 8 钢板 + 5 铁板 + 3 高级电路板 + 2 石砖
+check('电炉(8钢板+5铁板+3高级电路板+2石砖)',
+  assertRecipeInput('electric-furnace', 'steel-plate', 8) &&
+  assertRecipeInput('electric-furnace', 'iron-plate', 5) &&
+  assertRecipeInput('electric-furnace', 'advanced-circuit', 3) &&
+  assertRecipeInput('electric-furnace', 'stone-brick', 2), true);
+// 化工厂：官方 = 5 钢板 + 5 齿轮 + 5 电路板 + 10 管道
+check('化工厂(5钢板+5齿轮+5电路板+10管道)',
+  assertRecipeInput('chemical-plant', 'steel-plate', 5) &&
+  assertRecipeInput('chemical-plant', 'iron-gear', 5) &&
+  assertRecipeInput('chemical-plant', 'green-circuit', 5) &&
+  assertRecipeInput('chemical-plant', 'pipe', 10), true);
+// 炼油厂：官方 = 8 钢板 + 4 齿轮 + 10 管道 + 5 电路板
+check('炼油厂(8钢板+4齿轮+10管道+5电路板)',
+  assertRecipeInput('refinery', 'steel-plate', 8) &&
+  assertRecipeInput('refinery', 'iron-gear', 4) &&
+  assertRecipeInput('refinery', 'pipe', 10) &&
+  assertRecipeInput('refinery', 'green-circuit', 5), true);
+// 变电站：官方 = 2 大型电线杆 + 2 钢板 + 8 铜板 + 2 处理器
+check('变电站(2大型电线杆+2钢板+8铜板+2处理器)',
+  assertRecipeInput('substation', 'big-electric-pole', 2) &&
+  assertRecipeInput('substation', 'steel-plate', 2) &&
+  assertRecipeInput('substation', 'copper-plate', 8) &&
+  assertRecipeInput('substation', 'processing-unit', 2), true);
+// 蓄电器：官方 = 2 铁板 + 2 铜板 + 2 齿轮（非电路板）
+check('蓄电器(2铁板+2铜板+2齿轮)',
+  assertRecipeInput('accumulator', 'iron-plate', 2) &&
+  assertRecipeInput('accumulator', 'copper-plate', 2) &&
+  assertRecipeInput('accumulator', 'iron-gear', 2) &&
+  !getRecipeLine('accumulator').includes('green-circuit'), true);
+
 console.log('\n----------------------------------------');
 console.log('通过 ' + passCount + ' 项，失败 ' + failCount + ' 项');
 process.exit(failCount > 0 ? 1 : 0);

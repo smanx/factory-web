@@ -454,7 +454,7 @@ const RECIPES = {
   'steam-engine':       { time: 2,   inp: { 'iron-plate': 2, 'iron-gear': 1, 'pipe': 1 },          out: { 'steam-engine': 1 } },
   'offshore-pump':      { time: 1,   inp: { 'iron-plate': 5, 'iron-gear': 1 },                     out: { 'offshore-pump': 1 } },
   'electric-drill':     { time: 2,   inp: { 'iron-plate': 8, 'iron-gear': 3, 'green-circuit': 2 },                     out: { 'electric-drill': 1 } },  // 对齐官方：8铁板+3齿轮+2电路板
-  'electric-furnace':   { time: 2.5, inp: { 'iron-plate': 6, 'steel-plate': 2, 'iron-gear': 1, 'green-circuit': 2 }, out: { 'electric-furnace': 1 } },
+  'electric-furnace':   { time: 2.5, inp: { 'steel-plate': 8, 'iron-plate': 5, 'advanced-circuit': 3, 'stone-brick': 2 }, out: { 'electric-furnace': 1 } },
   'assembling-machine-mk2': { time: 3, inp: { 'assembling-machine': 2, 'steel-plate': 2, 'iron-gear': 2, 'green-circuit': 4 }, out: { 'assembling-machine-mk2': 1 } },  // 对齐官方：2组装机I+2钢板+2齿轮+4电路板
   'fast-transport-belt': { time: 0.5, inp: { 'transport-belt': 1, 'iron-gear': 1 },                  out: { 'fast-transport-belt': 1 } },  // 对齐官方：1传送带+1齿轮→1
   'fast-underground-belt': { time: 1, inp: { 'underground': 1, 'fast-transport-belt': 2, 'iron-gear': 2 },                  out: { 'fast-underground-belt': 2 } },  // 对齐官方：1地下带+2快带+2齿轮→2
@@ -466,8 +466,8 @@ const RECIPES = {
   'blue-science':      { time: 8,   inp: { 'plastic-bar': 2, 'green-circuit': 2, 'copper-plate': 1 }, out: { 'blue-science': 1 } },
   'pipe':              { time: 0.5, inp: { 'iron-plate': 1 },                                     out: { 'pipe': 1 } },
   'pumpjack':          { time: 2.5, inp: { 'steel-plate': 4, 'iron-gear': 3, 'green-circuit': 2 }, out: { 'pumpjack': 1 } },
-  'refinery':          { time: 3,   inp: { 'steel-plate': 8, 'pipe': 6, 'green-circuit': 5 },      out: { 'refinery': 1 } },
-  'chemical-plant':    { time: 4,   inp: { 'steel-plate': 10, 'iron-gear': 10, 'pipe': 10, 'green-circuit': 5 }, out: { 'chemical-plant': 1 } },
+  'refinery':          { time: 3,   inp: { 'steel-plate': 8, 'iron-gear': 4, 'pipe': 10, 'green-circuit': 5 },      out: { 'refinery': 1 } },
+  'chemical-plant':    { time: 4,   inp: { 'steel-plate': 5, 'iron-gear': 5, 'pipe': 10, 'green-circuit': 5 }, out: { 'chemical-plant': 1 } },
   'storage-tank':      { time: 2,   inp: { 'steel-plate': 4, 'iron-gear': 2, 'pipe': 4 }, out: { 'storage-tank': 1 } },
   'express-transport-belt': { time: 0.5, inp: { 'fast-transport-belt': 1, 'iron-gear': 5 }, out: { 'express-transport-belt': 1 } },
   'express-underground-belt': { time: 1, inp: { 'fast-underground-belt': 1, 'iron-gear': 10 }, out: { 'express-underground-belt': 1 } },
@@ -490,7 +490,7 @@ const RECIPES = {
   'pipe-to-ground':   { time: 1,   inp: { 'pipe': 10, 'iron-plate': 5 }, out: { 'pipe-to-ground': 1 } },
   'pump':             { time: 1,   inp: { 'iron-plate': 4, 'steel-plate': 2, 'green-circuit': 1 }, out: { 'pump': 1 } },
   'solar-panel':      { time: 5,   inp: { 'copper-plate': 5, 'steel-plate': 5, 'green-circuit': 5 }, out: { 'solar-panel': 1 } },
-  'accumulator':      { time: 3,   inp: { 'iron-plate': 2, 'copper-plate': 2, 'green-circuit': 2 }, out: { 'accumulator': 1 } },
+  'accumulator':      { time: 3,   inp: { 'iron-plate': 2, 'copper-plate': 2, 'iron-gear': 2 }, out: { 'accumulator': 1 } },
   'military-science': { time: 6,   inp: { 'grenade': 1, 'stone-wall': 1, 'piercing-rounds': 1 }, out: { 'military-science': 1 } },  // 对齐《异星工厂》：石墙+穿甲弹+手雷
   // ===== 后期科学包（对齐《异星工厂》7 色科学包）=====
   'flying-robot-frame': { time: 20, inp: { 'electric-engine': 1, 'battery': 2, 'steel-plate': 2, 'green-circuit': 3 }, out: { 'flying-robot-frame': 1 } },
@@ -630,7 +630,7 @@ const RECIPES = {
   'heat-exchanger':    { time: 3,   inp: { 'steel-plate': 15, 'iron-gear': 4, 'copper-plate': 15, 'pipe': 10 }, out: { 'heat-exchanger': 1 } },
   // ===== 电路网络配方 =====
   'small-electric-pole': { time: 0.5, inp: { 'iron-plate': 1, 'copper-plate': 1 },                   out: { 'small-electric-pole': 1 } },
-  'substation':        { time: 2,   inp: { 'big-electric-pole': 2, 'steel-plate': 8, 'copper-plate': 8, 'processing-unit': 2 }, out: { 'substation': 1 } },
+  'substation':        { time: 2,   inp: { 'big-electric-pole': 2, 'steel-plate': 2, 'copper-plate': 8, 'processing-unit': 2 }, out: { 'substation': 1 } },
   'programmable-speaker': { time: 1.5, inp: { 'iron-plate': 3, 'green-circuit': 3, 'advanced-circuit': 1, 'copper-cable': 4 }, out: { 'programmable-speaker': 1 } },
   'lamp':              { time: 0.5, inp: { 'iron-plate': 1, 'copper-cable': 2 },                   out: { 'lamp': 1 } },
   'medium-electric-pole': { time: 1,  inp: { 'iron-plate': 3, 'copper-plate': 2, 'iron-gear': 1 },   out: { 'medium-electric-pole': 1 } },
