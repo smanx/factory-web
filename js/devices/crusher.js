@@ -5,6 +5,13 @@
 // 官方 crafting_speed=1、module_slots=2、max_health=350、energy_usage=540kW。
 // 官方为太空平台专属（surface_conditions gravity=0），此处适配为地面设备；
 // 专用于小行星碎块（金属/碳质/氧化星块）的粉碎加工。
+// 配方主产出 id（确定性配方取 out 首项；概率配方取概率最高产物，供面板/提示/渲染展示）
+function crusherMainOut(rec) {
+  if (!rec) return null;
+  if (rec.prob) return Object.keys(rec.prob).sort((a, b) => rec.prob[b] - rec.prob[a])[0];
+  return Object.keys(rec.out)[0];
+}
+
 class Crusher extends Assembler {
   constructor(type, x, y) {
     super('crusher', x, y);
@@ -24,9 +31,20 @@ class Crusher extends Assembler {
         if (this._runSfxT <= 0) { this._runSfxT = 1.4; playSfx('machine-run'); }
       }
       if (this.prog >= rec.time) {
-        for (const k in rec.out) {
-          emitQuality(this, this.outp, k, rec.out[k]);
-          if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
+        if (rec.prob) {
+          // 概率产出（星块再处理）：按官方 shared_probability 随机转换为一种星块
+          let r = Math.random();
+          let chosen = null;
+          for (const k in rec.prob) {
+            r -= rec.prob[k];
+            if (r < 0) { chosen = k; break; }
+          }
+          if (chosen) { emitQuality(this, this.outp, chosen, 1); if (typeof trackProd === 'function') trackProd(chosen, 1); }
+        } else {
+          for (const k in rec.out) {
+            emitQuality(this, this.outp, k, rec.out[k]);
+            if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
+          }
         }
         this.applyProductivity(rec);
         this.crafting = false;
@@ -35,7 +53,13 @@ class Crusher extends Assembler {
       return;
     }
     for (const k in rec.inp) if ((this.inp[k] || 0) < rec.inp[k]) return;
-    for (const k in rec.out) if ((this.outp[k] || 0) + rec.out[k] > 50) return;
+    if (rec.prob) {
+      let total = 0;
+      for (const k in this.outp) total += this.outp[k];
+      if (total >= 50) return;
+    } else {
+      for (const k in rec.out) if ((this.outp[k] || 0) + rec.out[k] > 50) return;
+    }
     for (const k in rec.inp) {
       this.inp[k] -= rec.inp[k];
       if (typeof trackProd === 'function') trackProd(k, -rec.inp[k]);
@@ -83,7 +107,7 @@ function drawCrusher(ctx, e, gx, gy, dir, alpha) {
   ctx.fillStyle = '#4a4037';
   ctx.fillRect(px + 14, py + sh - 14, s - 28, 8);
   if (e.recipe) {
-    const outId = Object.keys(RECIPES[e.recipe].out)[0];
+    const outId = crusherMainOut(RECIPES[e.recipe]);
     drawRecipeIconCell(ctx, px + s / 2, py + sh / 2 - 4, outId);
     const pct = e.crafting ? Math.min(1, e.prog / RECIPES[e.recipe].time) : 0;
     if (pct > 0) {
@@ -107,7 +131,7 @@ function drawCrusher(ctx, e, gx, gy, dir, alpha) {
 
 // ===== 面板：复用组装机面板，仅列出破碎配方 =====
 function crusherPanelHtml(e) {
-  let h = row('当前配方', e.recipe ? ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name : '<span class="dim">未设置</span>');
+  let h = row('当前配方', e.recipe ? ITEMS[crusherMainOut(RECIPES[e.recipe])].name : '<span class="dim">未设置</span>');
   h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? asmMult() * ((GAME_DATA.deviceStats?.[e.type]?.craftingSpeed ?? 1.0) / 0.5) * elecMachMult() : 1);
   h += row('电力', powerStatusLiveHtml(e), 'power');
   h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
@@ -141,12 +165,13 @@ function crusherPanelHtml(e) {
   h += '<input id="asm-recipe-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off" value="">';
   h += '<div class="recgrid">';
   for (const rid of Object.keys(RECIPES).filter(r => isCrusherRecipe(r))) {
-    const outId = Object.keys(RECIPES[rid].out)[0];
+    const outId = crusherMainOut(RECIPES[rid]);
     const selCls = e.recipe === rid ? 'sel' : '';
     const inpStr = Object.keys(RECIPES[rid].inp).map(k => ITEMS[k].name + '×' + RECIPES[rid].inp[k]).join('、');
     const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
       Object.keys(RECIPES[rid].inp).map(k => ITEMS[k].name).join(' ')).toLowerCase();
-    const tipMain = ITEMS[outId].name + '|' + RECIPES[rid].out[outId] + '个/次，耗时' + RECIPES[rid].time + '秒';
+    const outAmt = RECIPES[rid].prob ? ('概率 ' + (RECIPES[rid].prob[outId] * 100) + '%') : (RECIPES[rid].out[outId] + '个/次');
+    const tipMain = ITEMS[outId].name + '|' + outAmt + '，耗时' + RECIPES[rid].time + '秒';
     const tipRecipe = '所需原料：' + inpStr;
     h += '<button class="rcbtn ' + selCls + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-rsearch="' + searchKey.replace(/"/g, '') + '" data-tip="' + tipMain + '||' + tipRecipe + '">' +
       '<img src="' + iconDataURL(outId) + '">' + ITEMS[outId].name + '</button>';
@@ -172,16 +197,23 @@ function crusherPanelLive(e, api) {
   api.toggle('#btn-takeout', n > 0, '取回全部输出 (' + n + ')');
   api.prog(e.recipe && e.crafting ? e.prog / RECIPES[e.recipe].time * 100 : 0, e.recipe ? RECIPES[e.recipe].time : 0);
   if (!e.recipe) { api.status('未设置配方，点击下方选择', 'warn'); return; }
-  if (e.crafting) { api.status('生产中：' + ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name, 'ok'); return; }
+  if (e.crafting) { api.status('生产中：' + ITEMS[crusherMainOut(RECIPES[e.recipe])].name, 'ok'); return; }
   if (G.power.sat <= 0) { api.status('已暂停：缺电', 'bad'); return; }
-  for (const k in RECIPES[e.recipe].out)
-    if ((e.outp[k] || 0) + RECIPES[e.recipe].out[k] > 50) { api.status('已暂停：输出已满（' + ITEMS[k].name + '）', 'warn'); return; }
+  {
+    const rcp = RECIPES[e.recipe];
+    if (rcp.prob) {
+      let total = 0; for (const k in e.outp) total += e.outp[k];
+      if (total >= 50) { api.status('已暂停：输出已满（概率配方，货柜已满）', 'warn'); return; }
+    } else {
+      for (const k in rcp.out) if ((e.outp[k] || 0) + rcp.out[k] > 50) { api.status('已暂停：输出已满（' + ITEMS[k].name + '）', 'warn'); return; }
+    }
+  }
   const missing = Object.keys(RECIPES[e.recipe].inp).filter(k => (e.inp[k] || 0) < RECIPES[e.recipe].inp[k]);
   if (missing.length) { api.status('已暂停：缺少原料 ' + missing.map(k => ITEMS[k].name).join('、'), 'warn'); return; }
   api.status('已暂停：等待材料就绪', 'warn');
 }
 function crusherTip(e) {
-  const base = e.recipe ? ('生产 ' + ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name) : '未设置配方，点击打开面板';
+  const base = e.recipe ? ('生产 ' + ITEMS[crusherMainOut(RECIPES[e.recipe])].name) : '未设置配方，点击打开面板';
   const s = powerStatusOf(e);
   if (s.consuming && s.sat < 1) return base + '；' + (s.sat > 0 ? '电量不足' + Math.round(s.sat * 100) + '%' : '缺电停摆');
   return base;

@@ -280,7 +280,14 @@ const RECIPE_TECH = {
   'crack-light':  'advanced-oil-processing',
   'crack-gas':    'advanced-oil-processing',
   'coal-liquefaction': 'coal-liquefaction',
-  'kovarex': 'kovarex-enrichment'
+  'kovarex': 'kovarex-enrichment',
+  // 太空时代 小行星进阶加工：进阶粉碎 / 星块再处理统一由「太空材料加工」科技解锁（对齐官方进阶星块加工科技链）
+  'advanced-metallic-asteroid-crushing': 'asteroid-processing',
+  'advanced-carbonic-asteroid-crushing': 'asteroid-processing',
+  'advanced-oxide-asteroid-crushing': 'asteroid-processing',
+  'metallic-asteroid-reprocessing': 'asteroid-processing',
+  'carbonic-asteroid-reprocessing': 'asteroid-processing',
+  'oxide-asteroid-reprocessing': 'asteroid-processing'
 };
 // ===== 任一科技解锁（对齐《异星工厂》科技树）=====
 // 某些配方（如效率模块）既可被新拆分的进阶科技解锁，也可被旧「模块工程」科技解锁，

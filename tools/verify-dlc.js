@@ -13,7 +13,7 @@ const code = fs.readFileSync(ROOT + '/js/data.generated.js', 'utf8')
   + fs.readFileSync(ROOT + '/js/data-tech-tree.js', 'utf8')
   + '\n;globalThis.__GAME_DATA=GAME_DATA;globalThis.__ITEMS=ITEMS;globalThis.__RECIPES=RECIPES;'
   + 'globalThis.__TECHS=TECHS;globalThis.__SMELTS=SMELTS;globalThis.__recipeDevice=recipeDevice;'
-  + 'globalThis.__itemTechReq=itemTechReq;globalThis.__itemRecipeText=itemRecipeText;';
+  + 'globalThis.__itemTechReq=itemTechReq;globalThis.__itemRecipeText=itemRecipeText;globalThis.__recipeTechReq=recipeTechReq;';
 const ctx = { console, localStorage: { getItem: () => null, setItem: () => {} } };
 ctx.window = ctx; ctx.G = { settings: { language: 'zh' }, power: { sat: 1 }, techDone: {} };
 ctx.globalThis = ctx;
@@ -133,6 +133,31 @@ ok(ctx.__recipeDevice('metallic-asteroid-crushing') === 'crusher', '星块粉碎
 ok(ctx.__recipeDevice('oxide-asteroid-crushing') === 'crusher', '氧化星块粉碎 → 破碎机');
 ok(ctx.__itemTechReq('crusher') === 'asteroid-processing', '破碎机需「太空材料加工」科技');
 ok(ctx.__itemTechReq('metallic-asteroid-chunk') === 'asteroid-processing', '金属星块需「太空材料加工」科技');
+// ---- 进阶星块加工（高级粉碎 + 再处理，官方数值）----
+console.log('\n【进阶星块加工（高级粉碎/再处理）数据】');
+for (const [rid, desc] of [
+  ['advanced-metallic-asteroid-crushing', '高级金属星块粉碎（官方 5s，铁矿石10+铜矿石4）'],
+  ['advanced-carbonic-asteroid-crushing', '高级碳质星块粉碎（官方 5s，碳5+硫磺2）'],
+  ['advanced-oxide-asteroid-crushing', '高级氧化星块粉碎（官方 5s，冰3+方解石2）'],
+]) {
+  ok(!!RP[rid], rid + ' 配方已注册（' + desc + '）');
+  ok(Object.keys(RP[rid].inp).every(k => k in IT), rid + ' 配方引用物品均存在');
+  ok(Object.keys(RP[rid].out).every(k => k in IT), rid + ' 产出物品均存在');
+  ok(ctx.__recipeDevice(rid) === 'crusher', rid + ' → 破碎机');
+  ok(ctx.__recipeTechReq(rid) === 'asteroid-processing', rid + ' 需「太空材料加工」科技');
+}
+for (const [rid, desc] of [
+  ['metallic-asteroid-reprocessing', '金属星块再处理（官方 2s，概率40/20/20）'],
+  ['carbonic-asteroid-reprocessing', '碳质星块再处理（官方 2s，概率40/20/20）'],
+  ['oxide-asteroid-reprocessing', '氧化星块再处理（官方 1s，概率40/20/20）'],
+]) {
+  ok(!!RP[rid], rid + ' 配方已注册（' + desc + '）');
+  ok(!!RP[rid].prob, rid + ' 使用概率产出模型（对齐官方 shared_probability）');
+  ok(Object.keys(RP[rid].prob).every(k => k in IT), rid + ' 概率产出物品均存在');
+  ok(ctx.__recipeDevice(rid) === 'crusher', rid + ' → 破碎机');
+  ok(ctx.__recipeTechReq(rid) === 'asteroid-processing', rid + ' 需「太空材料加工」科技');
+}
+
 
 console.log('\n【品质系统（Quality DLC）数据】');
 for (const k of ['quality-module', 'quality-module-2', 'quality-module-3']) {

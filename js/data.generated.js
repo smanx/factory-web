@@ -3293,6 +3293,30 @@ const GAME_DATA = {
    "zh": "氧化星岩粉碎",
    "en": "Oxide asteroid crushing"
   },
+  "advanced-metallic-asteroid-crushing": {
+   "zh": "高级金属星岩粉碎",
+   "en": "Advanced metallic asteroid crushing"
+  },
+  "advanced-carbonic-asteroid-crushing": {
+   "zh": "高级碳质星岩粉碎",
+   "en": "Advanced carbonic asteroid crushing"
+  },
+  "advanced-oxide-asteroid-crushing": {
+   "zh": "高级氧化星岩粉碎",
+   "en": "Advanced oxide asteroid crushing"
+  },
+  "metallic-asteroid-reprocessing": {
+   "zh": "金属星岩再处理",
+   "en": "Metallic asteroid reprocessing"
+  },
+  "carbonic-asteroid-reprocessing": {
+   "zh": "碳质星岩再处理",
+   "en": "Carbonic asteroid reprocessing"
+  },
+  "oxide-asteroid-reprocessing": {
+   "zh": "氧化星岩再处理",
+   "en": "Oxide asteroid reprocessing"
+  },
   "ice-melting": {
    "zh": "融冰",
    "en": "Ice melting"

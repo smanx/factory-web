@@ -210,6 +210,14 @@ const RECIPES = {
   'carbonic-asteroid-crushing': { time: 2, inp: { 'carbonic-asteroid-chunk': 1 }, out: { 'carbon': 10 } },
   // 氧化星块粉碎：氧化星块×1 → 冰×5（官方 2s，30% 概率返还星块）
   'oxide-asteroid-crushing': { time: 2, inp: { 'oxide-asteroid-chunk': 1 }, out: { 'ice': 5 } },
+  // 进阶粉碎（官方 advanced-*-asteroid-crushing 5s，产出更丰富的基础资源；此处沿用纯确定性产出简化）
+  'advanced-metallic-asteroid-crushing': { time: 5, inp: { 'metallic-asteroid-chunk': 1 }, out: { 'iron-ore': 10, 'copper-ore': 4 } },
+  'advanced-carbonic-asteroid-crushing': { time: 5, inp: { 'carbonic-asteroid-chunk': 1 }, out: { 'carbon': 5, 'sulfur': 2 } },
+  'advanced-oxide-asteroid-crushing': { time: 5, inp: { 'oxide-asteroid-chunk': 1 }, out: { 'ice': 3, 'calcite': 2 } },
+  // 星块再处理（官方 *-asteroid-reprocessing：把一种星块随机转换为三种星块，概率模型对齐官方 shared_probability）
+  'metallic-asteroid-reprocessing': { time: 2, inp: { 'metallic-asteroid-chunk': 1 }, prob: { 'metallic-asteroid-chunk': 0.4, 'carbonic-asteroid-chunk': 0.2, 'oxide-asteroid-chunk': 0.2 } },
+  'carbonic-asteroid-reprocessing': { time: 2, inp: { 'carbonic-asteroid-chunk': 1 }, prob: { 'carbonic-asteroid-chunk': 0.4, 'metallic-asteroid-chunk': 0.2, 'oxide-asteroid-chunk': 0.2 } },
+  'oxide-asteroid-reprocessing': { time: 1, inp: { 'oxide-asteroid-chunk': 1 }, prob: { 'oxide-asteroid-chunk': 0.4, 'metallic-asteroid-chunk': 0.2, 'carbonic-asteroid-chunk': 0.2 } },
   // 冰熔化：冰 → 水（官方 ice-melting 0.5s，此处适配熔炉/锅炉链，供氧化链循环）
   'ice-melting': { time: 0.5, inp: { 'ice': 1 }, out: { 'water': 100 } },
   // 硫酸：硫磺 + 水 + 铁板 → 硫酸（原版 1s，数量简化）
@@ -374,7 +382,10 @@ function isElectroRecipe(id) { return ELECTRO_RECIPES.indexOf(id) >= 0; }
 const BIOCHAMBER_RECIPES = ['yumako-mash', 'bioflux', 'nutrients-from-bioflux', 'biosulfur', 'agricultural-science-pack', 'biochamber'];
 function isBiochamberRecipe(id) { return BIOCHAMBER_RECIPES.indexOf(id) >= 0; }
 // 破碎机专属配方（太空时代小行星碎块加工）：金属/碳质/氧化星块粉碎 + 破碎机本体 + 冰熔化
-const CRUSHER_RECIPES = ['metallic-asteroid-crushing', 'carbonic-asteroid-crushing', 'oxide-asteroid-crushing', 'crusher', 'ice-melting'];
+const CRUSHER_RECIPES = ['metallic-asteroid-crushing', 'carbonic-asteroid-crushing', 'oxide-asteroid-crushing',
+  'advanced-metallic-asteroid-crushing', 'advanced-carbonic-asteroid-crushing', 'advanced-oxide-asteroid-crushing',
+  'metallic-asteroid-reprocessing', 'carbonic-asteroid-reprocessing', 'oxide-asteroid-reprocessing',
+  'crusher', 'ice-melting'];
 function isCrusherRecipe(id) { return CRUSHER_RECIPES.indexOf(id) >= 0; }
 function recipeDevice(id) {
   if (GAME_DATA.recipeDevice && GAME_DATA.recipeDevice[id]) return GAME_DATA.recipeDevice[id];

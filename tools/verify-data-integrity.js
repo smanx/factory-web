@@ -69,6 +69,9 @@ const dynamicKeys = new Set([
   'biosulfur',              // 生化炉配方：变质物+生物结晶→硫磺（产物键≠配方键）
   'metallic-asteroid-crushing', 'carbonic-asteroid-crushing', 'oxide-asteroid-crushing', // 破碎机配方：星块粉碎（产物键≠配方键）
   'ice-melting',            // 破碎机配方：冰→水（产物为流体，无独立物品键）
+  // 进阶星块加工（产物键≠配方键，产物为已有基础资源/星块）
+  'advanced-metallic-asteroid-crushing', 'advanced-carbonic-asteroid-crushing', 'advanced-oxide-asteroid-crushing',
+  'metallic-asteroid-reprocessing', 'carbonic-asteroid-reprocessing', 'oxide-asteroid-reprocessing',
 ]);
 for (const rid in RECIPES) {
   if (rid.startsWith('fill-') || rid.startsWith('empty-')) continue; // 动态桶配方
