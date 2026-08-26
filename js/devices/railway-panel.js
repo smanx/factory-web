@@ -322,8 +322,13 @@ removeEnt = function (e) {
 
 function afterRailAdd(e) {
   ensureRailGlobals();
-  if (e instanceof Rail) registerRail(e.x, e.y);
-  else if (e instanceof Locomotive || e instanceof CargoWagon) {
+  if (e instanceof Rail) {
+    registerRail(e.x, e.y);
+    // 高架轨道：标记该格为「已架高」（有桥墩支撑），供渲染高架层
+    if (e instanceof ElevatedRail) registerSupport(e.x, e.y);
+  } else if (e instanceof RailSupport) {
+    registerSupport(e.x, e.y);
+  } else if (e instanceof Locomotive || e instanceof CargoWagon) {
     // 车头/车厢放置：加入列车编组
     if (!e._inTrain) {
       addTrainCar(e, e.x, e.y);
@@ -333,8 +338,12 @@ function afterRailAdd(e) {
 }
 
 function beforeRailRemove(e) {
-  if (e instanceof Rail) unregisterRail(e.x, e.y);
-  else if (e instanceof Locomotive || e instanceof CargoWagon) {
+  if (e instanceof Rail) {
+    unregisterRail(e.x, e.y);
+    if (e instanceof ElevatedRail) unregisterSupport(e.x, e.y);
+  } else if (e instanceof RailSupport) {
+    unregisterSupport(e.x, e.y);
+  } else if (e instanceof Locomotive || e instanceof CargoWagon) {
     removeTrainCar(e);
     e._inTrain = false;
   }
@@ -350,6 +359,8 @@ ENT_CLASSES['artillery-wagon'] = ArtilleryWagon;
 ENT_CLASSES['train-stop'] = TrainStop;
 ENT_CLASSES['rail-signal'] = RailSignal;
 ENT_CLASSES['rail-chain-signal'] = RailChainSignal;
+ENT_CLASSES['rail-support'] = RailSupport;
+ENT_CLASSES['rail-ramp'] = ElevatedRail;
 
 // R 键可旋转车头（决定行进方向）
 DEVICE_DIR_ROTATE['locomotive'] = true;
@@ -373,6 +384,26 @@ DEVICE_PLACE['rail-signal'] = (type, tx, ty) => {
 DEVICE_PLACE['rail-chain-signal'] = (type, tx, ty) => {
   const c = railConnAt(tx, ty);
   return (c.E || c.S || c.W || c.N) ? { ok: true } : { ok: false };
+};
+// 高架铁轨（Elevated Rails DLC）：
+// 桥墩 rail-support：可铺设在陆地或水面（跨越水域铺设支撑），仅需所在格无实体/可触及。
+// 高架轨道 rail-ramp：同样可在陆地/水面铺设（自动在其下方生成桥墩支撑），并接入 railTiles 供列车行驶。
+DEVICE_PLACE['rail-support'] = (type, tx, ty, dir, ew, eh) => {
+  for (let dy = 0; dy < eh; dy++)
+    for (let dx = 0; dx < ew; dx++) {
+      if (entAt(tx + dx, ty + dy)) return { ok: false };
+      if (!withinReach(tx + dx, ty + dy)) return { ok: false };
+    }
+  return { ok: true };   // 允许水面/峭壁/树木（桥墩可在水上铺设）
+};
+DEVICE_PLACE['rail-ramp'] = (type, tx, ty, dir, ew, eh) => {
+  for (let dy = 0; dy < eh; dy++)
+    for (let dx = 0; dx < ew; dx++) {
+      // 高架轨道可直接铺设在水面/陆地等任意空地（自带桥墩支撑）
+      if (entAt(tx + dx, ty + dy)) return { ok: false };
+      if (!withinReach(tx + dx, ty + dy)) return { ok: false };
+    }
+  return { ok: true };
 };
 
 // 读档后重建列车编组（由 main.js applySave 末尾调用）

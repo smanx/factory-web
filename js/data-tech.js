@@ -147,6 +147,9 @@ for (const id of RAIL_ITEMS) if (!TECH_REQ[id]) TECH_REQ[id] = 'railways';
 TECH_REQ['diesel-locomotive'] = 'railways'; // 基础解锁为 railways，额外电子学前置由配方所用材料自动约束
 if (!TECH_REQ['rail-signal']) TECH_REQ['rail-signal'] = 'rail-signals';
 if (!TECH_REQ['rail-chain-signal']) TECH_REQ['rail-chain-signal'] = 'rail-signals';
+// 高架铁轨（Elevated Rails DLC）：高架桥墩与高架铁轨需「高架铁轨」科技解锁（对齐官方：前置混凝土+产能科研包）
+TECH_REQ['rail-support'] = 'elevated-rail';
+TECH_REQ['rail-ramp'] = 'elevated-rail';
 // ===== 物流机器人网络 =====
 const LOGISTIC_ITEMS = ['roboport', 'logistic-robot', 'passive-provider-chest', 'active-provider-chest', 'storage-chest', 'requester-chest', 'buffer-chest'];
 // 物流箱科技门控：所有物流设备需先研究「物流网络」

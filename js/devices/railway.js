@@ -366,6 +366,30 @@ class Rail extends Entity {
 function registerRail(x, y) { G.railTiles.add(x + ',' + y); }
 function unregisterRail(x, y) { G.railTiles.delete(x + ',' + y); }
 
+// ===== 高架铁轨（Elevated Rails DLC：桥墩 rail-support + 高架轨道 rail-ramp）=====
+// 高架铁轨复用 G.railTiles 网络（列车可在其上行驶），但可跨越水域/障碍铺设；
+// rail-ramp 放置时会自动在其下方铺设 rail-support 桥墩作支撑。
+function ensureElevatedGlobals() { if (!G.elevatedSupports) G.elevatedSupports = new Set(); }
+
+// 桥墩：可铺设在陆地/水面，作为高架铁轨的支撑
+class RailSupport extends Entity {
+  constructor(type, x, y) { super(type, x, y); }
+  giveItem(item) { return false; }
+  contents() { return [[this.type, 1]]; }
+}
+// 高架轨道：复用 railTiles 网络，供列车跨越水域/障碍
+class ElevatedRail extends Rail {
+  constructor(type, x, y) {
+    super(type, x, y);
+    this.elevated = true;
+  }
+  giveItem(item) { return false; }
+  contents() { return [[this.type, 1]]; }
+}
+function registerSupport(x, y) { ensureElevatedGlobals(); G.elevatedSupports.add(x + ',' + y); }
+function unregisterSupport(x, y) { if (G.elevatedSupports) G.elevatedSupports.delete(x + ',' + y); }
+function supportHas(x, y) { ensureElevatedGlobals(); return G.elevatedSupports.has(x + ',' + y); }
+
 // ===== 车头 Locomotive =====
 class Locomotive extends Entity {
   constructor(type, x, y) {

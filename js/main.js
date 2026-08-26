@@ -152,6 +152,7 @@ function newGame() {
   G.mapTags = [];       // 新游戏清空地图标记
   if (typeof achInitStats === 'function') achInitStats();   // 新游戏清空成就状态
   G.railTiles = new Set();
+  G.elevatedSupports = new Set();
   G.trains = [];
   G.playerHP = PLAYER_BASE_MAX_HP; G.playerHPmax = PLAYER_BASE_MAX_HP;
   G.weapon = null;

@@ -78,7 +78,17 @@
 > - 配方：官方 processing-unit 6 + steel 20 + gear 40 + concrete 20（能耗 3s，此处对齐）。
 > - 科技：新增「回收科技」（需电磁科研包+utility），解锁回收机；数据校验并入 verify-dlc。
 
-- [ ] **高架铁轨**（Elevated Rails）：高架桥墩 + 高架轨道铺设
+- [x] **高架铁轨**（Elevated Rails）：高架桥墩 + 高架轨道铺设
+
+> 已落地说明（本 PR 增量）：
+> - 物品：`rail-support`（堆叠 20）/ `rail-ramp`（堆叠 10）已接入，堆叠/命名/血量均来自
+>   GAME_DATA（factorio-data 官方：桥墩 max_health 1000、高架轨道 max_health 2000）。
+> - 配方：官方 rail-support = 精炼混凝土 20 + 钢板 10；rail-ramp = 精炼混凝土 100 + 铁轨 8 + 钢板 10，
+>   数据由 GAME_DATA 桥接，未单独维护数值表。
+> - 玩法：桥墩 rail-support 与高架轨道 rail-ramp 均可直接在陆地/水面铺设（跨越水域/障碍），
+>   高架轨道复用 railTiles 网络，列车可在其上正常行驶；高架轨道以加高亮色渲染体现高架层。
+> - 科技：新增「高架铁轨」科技（前置混凝土+产能科研包），解锁桥墩与高架轨道；
+>   数据校验并入 verify-dlc（15 项）。
 
 ### 阶段四：太空时代行星（高风险，大改）
 - [ ] 行星切换（Nauvis / Vulcanus / Gleba / Fulgora / Aquilo）

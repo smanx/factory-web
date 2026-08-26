@@ -154,6 +154,8 @@ const GAME_DATA = {
   "train-stop": 10,
   "rail-signal": 50,
   "rail-chain-signal": 50,
+  "rail-support": 20,
+  "rail-ramp": 10,
   "sulfur": 50,
   "carbon": 50,
   "carbon-fiber": 100,
@@ -307,6 +309,8 @@ const GAME_DATA = {
   "train-stop": 250,
   "rail-signal": 100,
   "rail-chain-signal": 100,
+  "rail-support": 1000,
+  "rail-ramp": 2000,
   "car": 450,
   "tank": 2000,
   "spidertron": 3000,
@@ -2958,6 +2962,14 @@ const GAME_DATA = {
   "rail-chain-signal": {
    "zh": "联锁铁路信号",
    "en": "Rail chain signal"
+  },
+  "rail-support": {
+   "zh": "铁路支架",
+   "en": "Rail support"
+  },
+  "rail-ramp": {
+   "zh": "铁路斜坡",
+   "en": "Rail ramp"
   },
   "lubricant": {
    "zh": "润滑油",

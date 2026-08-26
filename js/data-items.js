@@ -211,6 +211,9 @@ const ITEMS = {
   'train-stop':        { name: '车站', color: '#5a8ac0', desc: '火车停靠站：列车行驶到车站所在铁轨即停车，便于机械臂/传送带装卸货物' },
   'rail-signal':       { name: '铁路信号灯', color: '#e04a4a', desc: '放在铁轨旁，指示前方区段是否被列车占用，用于多列火车防追尾（1×1）' },
   'rail-chain-signal': { name: '铁路链式信号灯', color: '#e0a04a', desc: '放在铁轨旁，连锁转发前方信号灯状态：只有当前方区段整段畅通时才放行，防止列车在复杂交叉口内停车堵塞（1×1，对齐《异星工厂》Rail chain signal）' },
+  // ===== 高架铁轨（Elevated Rails DLC，数据来自 factorio-data 官方）=====
+  'rail-support': { name: '高架桥墩', color: '#8a8a90', desc: '高架铁轨的支撑桥墩，铺设在陆地/水面（1×1，吃电力无）。在高架桥墩上可铺设高架铁轨，让列车跨越水域与障碍（对齐《异星工厂》Elevated Rails：Rail support，堆叠 20）' },
+  'rail-ramp': { name: '高架铁轨', color: '#6a6a78', mark: '⤴', desc: '高架铁轨规划器：在高架桥墩上铺设，让列车在高架层行驶，可跨越水域、建筑物等地面障碍。由精炼混凝土+铁轨+钢板制成（对齐《异星工厂》Elevated Rails：Rail ramp，堆叠 10）' },
   // ===== 润滑油 =====
   'lubricant':         { name: '润滑油', color: '#d8c020', mark: 'Lub', desc: '流体，由化工厂用重油加工得到，用于制造电动引擎等高级部件' },
   // ===== 硫磺/硫酸（对齐《异星工厂》Sulfur & Sulfuric acid 化工链）=====

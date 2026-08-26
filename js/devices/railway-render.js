@@ -32,6 +32,54 @@ DEVICE_RENDER['rail'] = function (ctx, e, gx, gy, dir, alpha) {
 };
 
 // ===== 车头渲染 =====
+// ===== 高架铁轨（Elevated Rails DLC）=====
+// 桥墩：灰色水泥支柱
+DEVICE_RENDER['rail-support'] = function (ctx, e, gx, gy, dir, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  // 桥墩柱身（居中，略高于地面）
+  ctx.fillStyle = '#6a6a70';
+  ctx.fillRect(gx + TILE * 0.3, gy + TILE * 0.3, TILE * 0.4, TILE * 0.4);
+  ctx.strokeStyle = '#8a8a92'; ctx.lineWidth = 2;
+  ctx.strokeRect(gx + TILE * 0.3, gy + TILE * 0.3, TILE * 0.4, TILE * 0.4);
+  // 顶部承台
+  ctx.fillStyle = '#7a7a84';
+  ctx.fillRect(gx + TILE * 0.18, gy + TILE * 0.16, TILE * 0.64, TILE * 0.2);
+  ctx.restore();
+};
+// 高架轨道：ElevatedRail 与普通铁轨共享 railTiles 渲染，但加高并显示桥墩支撑提示
+DEVICE_RENDER['rail-ramp'] = function (ctx, e, gx, gy, dir, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  // 地面底层（高架轨道下方）
+  ctx.fillStyle = 'rgba(90,90,100,0.55)';
+  ctx.fillRect(gx, gy, TILE, TILE);
+  const c = railConnAt(e.x, e.y);
+  // 高架轨道梁（加高显示，更粗更亮，体现高架层）
+  ctx.strokeStyle = '#b0b0c0';
+  ctx.lineWidth = TILE * 0.28;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  if (c.E || c.W) {
+    const x1 = c.E ? gx + TILE : gx + TILE / 2;
+    const x2 = c.W ? gx : gx + TILE / 2;
+    ctx.moveTo(x2, gy + TILE / 2); ctx.lineTo(x1, gy + TILE / 2);
+  }
+  if (c.N || c.S) {
+    const y1 = c.S ? gy + TILE : gy + TILE / 2;
+    const y2 = c.N ? gy : gy + TILE / 2;
+    ctx.moveTo(gx + TILE / 2, y2); ctx.lineTo(gx + TILE / 2, y1);
+  }
+  ctx.stroke();
+  // 高架枕木
+  ctx.fillStyle = '#8a8a98';
+  if (c.E || c.W) { ctx.fillRect(gx + TILE * 0.42, gy + TILE * 0.12, TILE * 0.16, TILE * 0.76); }
+  if (c.N || c.S) { ctx.fillRect(gx + TILE * 0.12, gy + TILE * 0.42, TILE * 0.76, TILE * 0.16); }
+  // 高架标志（Alt 叠加由 render-entity 覆盖）
+  ctx.restore();
+};
+
+// ===== 车头渲染 =====
 DEVICE_RENDER['locomotive'] = function (ctx, e, gx, gy, dir, alpha) {
   ctx.save();
   ctx.globalAlpha = alpha;

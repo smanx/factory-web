@@ -67,6 +67,8 @@ const KEEP_MANUAL_RECIPES = new Set([
   'yumako-mash', 'bioflux', 'nutrients-from-bioflux', 'biosulfur', 'agricultural-science-pack', 'biochamber',
   // ===== 太空时代 小行星碎块加工（破碎机专属配方，适配地面）=====
   'crusher', 'metallic-asteroid-crushing', 'carbonic-asteroid-crushing', 'oxide-asteroid-crushing', 'ice-melting',
+  // ===== 高架铁轨（Elevated Rails DLC，官方配方：精炼混凝土+铁轨+钢板）=====
+  'rail-support', 'rail-ramp',
 ]);
 
 // ================= 小工具 =================

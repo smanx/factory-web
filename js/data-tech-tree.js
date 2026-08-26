@@ -15,6 +15,7 @@ const TECHS = {
   oil:        { name: '石油冶金', cost: { 'logistic-science-pack': 30 }, desc: '炼油厂 / 抽油机速度 ×1.5', req: [] },
   railways:    { name: '铁路技术', cost: { 'logistic-science-pack': 30 }, desc: '解锁铁轨、火车头、货运车厢与车站，构建铁路物流', req: ['logistics'] },
   'rail-signals': { name: '铁路信号', cost: { 'chemical-science-pack': 30 }, desc: '解锁铁路信号灯，允许多列火车安全同网行驶', req: ['railways'] },
+  'elevated-rail': { name: '高架铁轨', cost: { 'production-science-pack': 30, 'chemical-science-pack': 30 }, desc: '解锁高架桥墩与高架铁轨：在高架桥墩上铺设高架铁轨，让列车跨越水域与地面障碍，拓展铁路网地形适应性（对齐《异星工厂》Elevated Rails 科技，前置混凝土+产能科研包）', req: ['concrete', 'production'] },
   plastic:    { name: '塑料合成', cost: { 'logistic-science-pack': 20 }, desc: '解锁塑料板制造；化工厂生产塑料耗时缩短 ✓（绿色科研的核心支付项，对齐《异星工厂》Plastics）', req: ['oil'] },
   engine:     { name: '引擎技术', cost: { 'logistic-science-pack': 30 }, desc: '解锁引擎单元制造，是载具、电动引擎与重型机械的核心动力部件（对齐《异星工厂》Engine 科技）', req: ['automation'] },
   barrel:     { name: '流体处理', cost: { 'chemical-science-pack': 50 }, desc: '解锁空桶与流体桶装配方，可把流体灌入桶中经物流网络/传送带/火车运输，实现流体走物流链', req: ['oil', 'electronics'] },

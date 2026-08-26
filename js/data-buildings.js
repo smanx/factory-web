@@ -76,6 +76,8 @@ const BUILD_DEFS = {
   'train-stop':         { w: 1, h: 1, solid: true },
   'rail-signal':        { w: 1, h: 1, solid: true },
   'rail-chain-signal':  { w: 1, h: 1, solid: true },
+  'rail-support':       { w: 1, h: 1, solid: true },
+  'rail-ramp':          { w: 1, h: 1, solid: false },
   'car':                { w: 2, h: 2, solid: true, rotSwap: true },
   'tank':               { w: 3, h: 3, solid: true, rotSwap: true },
   'spidertron':         { w: 3, h: 3, solid: true, rotSwap: true },
@@ -151,6 +153,8 @@ const BUILDING_HP = {
   'small-lamp': 100, 'programmable-speaker': 150,
   // 铁路（官方 rail 200 / locomotive 1000 / 车厢 600 / train-stop 250 / 信号灯 100）
   'rail': 200, 'locomotive': 1000, 'diesel-locomotive': 1000, 'cargo-wagon': 600, 'fluid-wagon': 600, 'artillery-wagon': 600, 'train-stop': 250, 'rail-signal': 100, 'rail-chain-signal': 100,
+  // 高架铁轨（Elevated Rails 官方 max_health：rail-support 1000 / rail-ramp 2000 / 高架轨道 200）
+  'rail-support': 1000, 'rail-ramp': 2000,
   // 载具（官方 car 450 / tank 2000 / spidertron 400）
   'car': 450, 'tank': 2000, 'spidertron': 400, 'land-mine': 15
 };

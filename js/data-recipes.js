@@ -89,6 +89,9 @@ const RECIPES = {
   'train-stop':        { time: 0.5, inp: { 'electronic-circuit': 5, 'iron-plate': 6, 'iron-stick': 6, 'steel-plate': 3 }, out: { 'train-stop': 1 } },
   'rail-signal':        { time: 0.5, inp: { 'electronic-circuit': 1, 'iron-plate': 5 }, out: { 'rail-signal': 1 } },
   'rail-chain-signal':        { time: 0.5, inp: { 'electronic-circuit': 1, 'iron-plate': 5 }, out: { 'rail-chain-signal': 1 } },
+  // ===== 高架铁轨（Elevated Rails DLC，数据来自 factorio-data 官方配方）=====
+  'rail-support':        { time: 1, inp: { 'refined-concrete': 20, 'steel-plate': 10 }, out: { 'rail-support': 1 } },
+  'rail-ramp':           { time: 2, inp: { 'refined-concrete': 100, 'rail': 8, 'steel-plate': 10 }, out: { 'rail-ramp': 1 } },
   // ===== 载具（对齐《异星工厂》Car，需引擎单元）=====
   'car':        { time: 2, inp: { 'engine-unit': 8, 'iron-plate': 20, 'steel-plate': 5 }, out: { 'car': 1 } },
   'tank':        { time: 5, inp: { 'advanced-circuit': 10, 'engine-unit': 32, 'iron-gear-wheel': 15, 'steel-plate': 50 }, out: { 'tank': 1 } },
