@@ -169,6 +169,11 @@ const GAME_DATA = {
   "electromagnetic-science-pack": 200,
   "electromagnetic-plant": 20,
   "recycler": 20,
+  "tungsten-ore": 50,
+  "tungsten-plate": 50,
+  "tungsten-carbide": 50,
+  "metallurgic-science-pack": 200,
+  "foundry": 20,
   "yumako": 50,
   "yumako-seed": 10,
   "yumako-mash": 100,
@@ -278,6 +283,7 @@ const GAME_DATA = {
   "recycler": 300,
   "biochamber": 300,
   "crusher": 350,
+  "foundry": 350,
   "beacon": 200,
   "wooden-chest": 100,
   "iron-chest": 200,
@@ -352,6 +358,7 @@ const GAME_DATA = {
   "recycler": 180,
   "biochamber": 500,
   "crusher": 540,
+  "foundry": 2500,
   "beacon": 480,
   "lab": 60,
   "offshore-pump": 60,
@@ -463,6 +470,10 @@ const GAME_DATA = {
   "crusher": {
    "craftingSpeed": 1,
    "moduleSlots": 2
+  },
+  "foundry": {
+   "craftingSpeed": 4,
+   "moduleSlots": 4
   }
  },
  "recipe": {
@@ -3076,6 +3087,26 @@ const GAME_DATA = {
    "zh": "回收机",
    "en": "Recycler"
   },
+  "tungsten-ore": {
+   "zh": "钨矿",
+   "en": "Tungsten ore"
+  },
+  "tungsten-plate": {
+   "zh": "钨板",
+   "en": "Tungsten plate"
+  },
+  "tungsten-carbide": {
+   "zh": "碳化钨",
+   "en": "Tungsten carbide"
+  },
+  "metallurgic-science-pack": {
+   "zh": "冶金科技包（橙瓶）",
+   "en": "Metallurgic science pack"
+  },
+  "foundry": {
+   "zh": "铸造厂",
+   "en": "Foundry"
+  },
   "yumako": {
    "zh": "玉玛果",
    "en": "Yumako"
@@ -3771,6 +3802,10 @@ const GAME_DATA = {
   "crusher": {
    "w": 2,
    "h": 3
+  },
+  "foundry": {
+   "w": 5,
+   "h": 5
   }
  },
  "steamPower": {

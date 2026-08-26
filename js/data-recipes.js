@@ -195,6 +195,17 @@ const RECIPES = {
   'electromagnetic-plant': { time: 10, inp: { 'steel-plate': 50, 'processing-unit': 50, 'refined-concrete': 50, 'superconductor': 20 }, out: { 'electromagnetic-plant': 1 } },
   // 回收机：处理器 + 钢板 + 齿轮 + 混凝土 → 回收机（官方 energy_required=3s，此处对齐，10s）
   'recycler': { time: 10, inp: { 'processing-unit': 6, 'steel-plate': 20, 'iron-gear-wheel': 40, 'concrete': 20 }, out: { 'recycler': 1 } },
+  // ===== 太空时代 Vulcanus 铸造/钨材料链（官方配方依赖熔融铁/火山熔岩等星球专属资源，此处适配基础资源）=====
+  // 钨矿石：石头 + 煤 → 钨矿石×2（官方 tungsten-ore 为 Vulcanus 天然矿脉，此处适配为铸造厂从基础矿石还原，12s）
+  'tungsten-ore': { time: 12, inp: { 'stone': 4, 'coal': 2 }, out: { 'tungsten-ore': 2 } },
+  // 钨板：钨矿石 → 钨板（官方 tungsten-plate 为熔炼配方 energy_required=6.4s，由铸造厂熔炼，此处对齐时间）
+  'tungsten-plate': { time: 6.4, inp: { 'tungsten-ore': 1 }, out: { 'tungsten-plate': 1 } },
+  // 碳化钨：钨板 + 碳 → 碳化钨（官方 tungsten-carbide 4s，由铸造厂制得，此处适配）
+  'tungsten-carbide': { time: 4, inp: { 'tungsten-plate': 2, 'carbon': 1 }, out: { 'tungsten-carbide': 1 } },
+  // 冶金科研包：钨板 + 碳化钨 + 电路板 → 冶金科研包（官方 metallurgic-science-pack 6s，此处适配）
+  'metallurgic-science-pack': { time: 6, inp: { 'tungsten-plate': 2, 'tungsten-carbide': 1, 'electronic-circuit': 2 }, out: { 'metallurgic-science-pack': 1 } },
+  // 铸造厂：钢板 + 处理器 + 钢筋混凝土 + 电炉 → 铸造厂（官方需熔融铁+碳化钨，此处适配基础资源，10s）
+  'foundry': { time: 10, inp: { 'steel-plate': 50, 'processing-unit': 50, 'refined-concrete': 50, 'electric-furnace': 4 }, out: { 'foundry': 1 } },
   // ===== 太空时代 农业/Gleba 生物质材料链（官方数值参考，见 GAME_DATA）=====
   // 雅玛果泥：雅玛果 → 果泥×2（官方 yumako-processing 1s，2 果泥 + 概率种子）
   'yumako-mash': { time: 1, inp: { 'yumako': 1 }, out: { 'yumako-mash': 2 } },
@@ -382,7 +393,8 @@ const DEVICE_NAMES = {
   'centrifuge': '离心机',
   'electromagnetic-plant': '电磁工厂',
   'biochamber': '生化炉',
-  'crusher': '破碎机'
+  'crusher': '破碎机',
+  'foundry': '铸造厂'
 };
 // 电磁工厂专属配方（太空时代电磁产品）：超导体 / 电磁科研包 / 电磁工厂本体
 const ELECTRO_RECIPES = ['superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant'];
@@ -396,11 +408,15 @@ const CRUSHER_RECIPES = ['metallic-asteroid-crushing', 'carbonic-asteroid-crushi
   'metallic-asteroid-reprocessing', 'carbonic-asteroid-reprocessing', 'oxide-asteroid-reprocessing',
   'crusher', 'ice-melting'];
 function isCrusherRecipe(id) { return CRUSHER_RECIPES.indexOf(id) >= 0; }
+// 铸造厂专属配方（太空时代 Vulcanus 冶金产品）：钨板 / 碳化钨 / 冶金科研包 / 铸造厂本体
+const FOUNDRY_RECIPES = ['tungsten-ore', 'tungsten-plate', 'tungsten-carbide', 'metallurgic-science-pack', 'foundry'];
+function isFoundryRecipe(id) { return FOUNDRY_RECIPES.indexOf(id) >= 0; }
 function recipeDevice(id) {
   if (GAME_DATA.recipeDevice && GAME_DATA.recipeDevice[id]) return GAME_DATA.recipeDevice[id];
   if (isElectroRecipe(id)) return 'electromagnetic-plant';
   if (isBiochamberRecipe(id)) return 'biochamber';
   if (isCrusherRecipe(id)) return 'crusher';
+  if (isFoundryRecipe(id)) return 'foundry';
   if (isRefineryRecipe(id)) return 'oil-refinery';
   if (isChemRecipe(id)) return 'chemical-plant';
   if (isCentrifugeRecipe(id)) return 'centrifuge';

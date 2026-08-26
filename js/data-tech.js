@@ -40,6 +40,12 @@ const TECH_REQ = {
   'electromagnetic-science-pack': 'electromagnetics',
   'electromagnetic-plant': 'electromagnetics',
   'recycler': 'recycling',   // 回收机需「回收科技」（对齐《异星工厂》Recycling）
+  // ===== 太空时代 Vulcanus 铸造/冶金材料链（统一由「冶金学」科技解锁）=====
+  'tungsten-ore': 'metallurgy',
+  'tungsten-plate': 'metallurgy',
+  'tungsten-carbide': 'metallurgy',
+  'metallurgic-science-pack': 'metallurgy',
+  'foundry': 'metallurgy',
   // ===== 太空时代 农业/Gleba 生物质链（统一由「农业科技」解锁）=====
   'yumako': 'agriculture',
   'yumako-mash': 'agriculture',

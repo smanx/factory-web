@@ -232,6 +232,12 @@ const ITEMS = {
   'electromagnetic-science-pack': { name: '电磁科研包', color: '#5a5ae8', mark: 'ESP', desc: '太空时代紫色科研包，由超导体+蓄电器+电路板在电磁工厂制得，解锁太空时代高级科技（对齐《异星工厂》Space Age）' },
   'electromagnetic-plant': { name: '电磁工厂', color: '#4a7ad8', desc: '太空时代高级生产建筑（4×4，吃电力）：比组装机 III 更快、模块槽更多，专用于生产超导体等电磁产品（对齐《异星工厂》Space Age，数据来自 GAME_DATA）' },
   'recycler': { name: '回收机', color: '#8a8f99', desc: '太空时代回收建筑（2×4，吃电力）：把可回收物品还原成其配方原料的 25%（每项至少 1 个），用于处理生产过剩与劣质品（对齐《异星工厂》Space Age 回收机，数据来自 GAME_DATA）' },
+  // ===== 太空时代 Vulcanus 铸造/钨材料链（数据来自 factorio-data 官方，见 GAME_DATA）=====
+  'tungsten-ore': { name: '钨矿石', color: '#6a6a72', mark: 'W', desc: '太空时代 Vulcanus 星球金属矿石，须用铸造厂冶炼成钨板（对齐《异星工厂》Space Age Tungsten ore，堆叠 50）' },
+  'tungsten-plate': { name: '钨板', color: '#9a9aa8', mark: 'Wp', desc: '太空时代高密度金属板，由钨矿石在铸造厂熔炼制得，是高级装备与超速带的核心原料（对齐《异星工厂》Space Age Tungsten plate）' },
+  'tungsten-carbide': { name: '碳化钨', color: '#8a8a9a', mark: 'Wc', desc: '太空时代超硬合金，由钨板+碳在铸造厂制得，用于制造冶金科研包与高级工业设备（对齐《异星工厂》Space Age Tungsten carbide）' },
+  'metallurgic-science-pack': { name: '冶金科研包', color: '#d08040', mark: 'MSP', desc: '太空时代橙色科研包，由钨板+碳化钨在铸造厂制得，解锁太空时代冶金科技（对齐《异星工厂》Space Age Metallurgic science pack）' },
+  'foundry': { name: '铸造厂', color: '#c88040', desc: '太空时代高级熔炼生产建筑（4×4，吃电力）：比电炉/组装机更快的熔炼速度、模块槽更多，专用于冶炼钨/金属与生产冶金产品（对齐《异星工厂》Space Age Foundry，数据来自 GAME_DATA）' },
   // ===== 太空时代 农业/Gleba 生物质材料链（数据来自 factorio-data 官方，见 GAME_DATA）=====
   'yumako': { name: '玉玛果', color: '#d8a020', mark: 'Ym', desc: '太空时代 Gleba 星球作物，用于生物质加工，可制成果泥（对齐《异星工厂》Space Age Yumako，堆叠 50）' },
   'yumako-seed': { name: '玉玛果种子', color: '#c88020', mark: 'Ys', desc: '太空时代 Gleba 作物种子，用于种植雅玛果（对齐《异星工厂》Space Age Yumako seed，堆叠 10）' },

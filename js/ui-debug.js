@@ -93,7 +93,8 @@ const DBG_GIVE_GROUPS = [
     ['burner-mining-drill', 20], ['electric-mining-drill', 20], ['big-mining-drill', 20], ['pumpjack', 20],
     ['stone-furnace', 20], ['steel-furnace', 20], ['electric-furnace', 20],
     ['assembling-machine-1', 20], ['assembling-machine-2', 20], ['assembling-machine-3', 20],
-    ['chemical-plant', 20], ['oil-refinery', 10], ['lab', 20], ['beacon', 10], ['radar', 10], ['rocket-silo', 5]
+    ['chemical-plant', 20], ['oil-refinery', 10], ['lab', 20], ['beacon', 10], ['radar', 10], ['rocket-silo', 5],
+    ['foundry', 20], ['electromagnetic-plant', 20], ['biochamber', 20], ['crusher', 20]
   ]],
   ['储物·物流', [
     ['wooden-chest', 20], ['iron-chest', 20], ['steel-chest', 20],

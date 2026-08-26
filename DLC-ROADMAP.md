@@ -121,6 +121,21 @@
 >   数据校验并入 verify-dlc（13 项）。
 >   数据校验并入 verify-dlc（15 项）。
 
+- [x] **铸造厂 + 钨材料链（Space Age Foundry + Tungsten，Vulcanus）**：高级熔炼建筑 + 钨/冶金材料链
+
+> 已落地说明（本 PR 增量）：
+> - 物品/设备：`foundry`（铸造厂）已接入，堆叠/命名/占地/血量/功耗/制造速度/模块槽全部来自
+>   GAME_DATA（factorio-data 官方：堆叠 20、占地 5×5、血量 350、功耗 2500kW、crafting_speed 4、模块槽 4）。
+> - 钨材料链：`tungsten-ore`（钨矿石，堆叠 50）/ `tungsten-plate`（钨板，堆叠 50）/ `tungsten-carbide`（碳化钨，堆叠 50）/
+>   `metallurgic-science-pack`（冶金科研包，堆叠 200），堆叠/命名全部来自 GAME_DATA（factorio-data 官方）。
+> - 配方：官方配方依赖熔融铁/火山熔岩等 Vulcanus 星球专属资源，项目暂无行星系统，故适配为基础资源
+>   （钨矿石=石头+煤、钨板=钨矿石、碳化钨=钨板+碳、冶金科研包=钨板+碳化钨+电路板、铸造厂=钢板+处理器+钢筋混凝土+电炉），
+>   配方键保留官方名，产出物/耗时参考官方，数据单源（堆叠/命名/占地/功耗/速度来自 GAME_DATA）。
+> - 玩法：铸造厂作为熔炼第 4 档完整接入组装机行为（模块/电路/旋转），5×5 大占地、crafting_speed 4 更快，
+>   专用于钨/冶金产品链，由「冶金学」科技解锁。
+> - 科技：新增「冶金学」科技（需空间科技），解锁钨材料链与铸造厂；
+>   数据校验并入 verify-dlc（新增 20 项）。
+
 ### 阶段三.5：基础电路网络补齐（Display panel + Selector combinator）
 - [x] **显示屏（display-panel）**：官方 base 电路设备（1×1），堆叠 10 / 血量 50 / 配方 1 铁板+1 电路板，
       数据全部来自 GAME_DATA（data.generated.js 官方）。读取所连网络信号并以文字显示在面板上，

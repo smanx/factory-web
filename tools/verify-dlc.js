@@ -81,6 +81,35 @@ ok(GD.recipe['selector-combinator'] && GD.recipe['selector-combinator'].inp['adv
 ok(!!IT['selector-combinator'], 'selector-combinator 物品已注册');
 ok(ctx.__itemTechReq('selector-combinator') === 'circuit-network', 'selector-combinator 需「电路网络」科技');
 
+
+// ===== 铸造厂 + 钨材料链（Vulcanus）数据校验 =====
+console.log('\n【铸造厂 + 钨材料链（Vulcanus）数据】');
+ok(GD.stackSize['foundry'] === 20, 'foundry 堆叠来自官方 (=20)');
+ok(GD.names['foundry'] && GD.names['foundry'].en === 'Foundry', 'foundry 官方命名已收录 (Foundry)');
+ok(GD.footprint['foundry'] && GD.footprint['foundry'].w === 5 && GD.footprint['foundry'].h === 5, '占地 5×5（官方 selection_box ±2.5）');
+ok(GD.buildingHp['foundry'] === 350, '血量=350（官方 max_health）');
+ok(GD.powerUse['foundry'] === 2500, '功耗=2500kW（官方 energy_usage）');
+ok(GD.deviceStats['foundry'] && GD.deviceStats['foundry'].craftingSpeed === 4, '制造速度=4（官方 crafting_speed）');
+ok(GD.deviceStats['foundry'] && GD.deviceStats['foundry'].moduleSlots === 4, '模块槽=4（官方 module_slots）');
+for (const id of ['tungsten-ore','tungsten-plate','tungsten-carbide','metallurgic-science-pack']) {
+  ok(!!GD.stackSize[id], id + ' 堆叠来自官方 (=50/' + GD.stackSize[id] + ')');
+  ok(!!GD.names[id], id + ' 官方命名已收录 (' + (GD.names[id] ? GD.names[id].zh : '?') + ')');
+}
+for (const rid of ['tungsten-ore','tungsten-plate','tungsten-carbide','metallurgic-science-pack','foundry']) {
+  ok(!!RP[rid], rid + ' 配方已注册（官方熔炼链适配基础资源）');
+  ok(Object.keys(RP[rid].inp).every(k => k in IT), rid + ' 配方引用物品均存在');
+}
+ok(ctx.__recipeDevice('tungsten-plate') === 'foundry', '钨板 → 铸造厂');
+ok(ctx.__recipeDevice('tungsten-carbide') === 'foundry', '碳化钨 → 铸造厂');
+ok(ctx.__recipeDevice('metallurgic-science-pack') === 'foundry', '冶金科研包 → 铸造厂');
+ok(ctx.__recipeDevice('foundry') === 'foundry', '铸造厂本体 → 铸造厂');
+for (const id of ['tungsten-ore','tungsten-plate','tungsten-carbide','metallurgic-science-pack','foundry']) {
+  ok(!!IT[id], id + ' 物品已注册');
+}
+ok(ctx.__itemTechReq('tungsten-carbide') === 'metallurgy', '碳化钨需「冶金学」科技');
+ok(ctx.__itemTechReq('foundry') === 'metallurgy', '铸造厂需「冶金学」科技');
+ok(!!TS['metallurgy'], '「冶金学」科技已注册');
+ok(!Object.keys(TS['metallurgy'].cost).includes('metallurgic-science-pack'), '「冶金学」科技不含冶金科研包（避免循环依赖）');
 console.log('\n' + (fail === 0 ? '✅ DLC 数据校验全部通过（' + pass + ' 项）' : '❌ 失败 ' + fail + ' 项'));
 // ===== 回收机（Recycler）数据校验 =====
 console.log('\n【回收机设备数据（官方）】');
@@ -263,5 +292,34 @@ ok(GD.recipe['selector-combinator'] && GD.recipe['selector-combinator'].inp['adv
 ok(!!IT['selector-combinator'], 'selector-combinator 物品已注册');
 ok(ctx.__itemTechReq('selector-combinator') === 'circuit-network', 'selector-combinator 需「电路网络」科技');
 
+
+// ===== 铸造厂 + 钨材料链（Vulcanus）数据校验 =====
+console.log('\n【铸造厂 + 钨材料链（Vulcanus）数据】');
+ok(GD.stackSize['foundry'] === 20, 'foundry 堆叠来自官方 (=20)');
+ok(GD.names['foundry'] && GD.names['foundry'].en === 'Foundry', 'foundry 官方命名已收录 (Foundry)');
+ok(GD.footprint['foundry'] && GD.footprint['foundry'].w === 5 && GD.footprint['foundry'].h === 5, '占地 5×5（官方 selection_box ±2.5）');
+ok(GD.buildingHp['foundry'] === 350, '血量=350（官方 max_health）');
+ok(GD.powerUse['foundry'] === 2500, '功耗=2500kW（官方 energy_usage）');
+ok(GD.deviceStats['foundry'] && GD.deviceStats['foundry'].craftingSpeed === 4, '制造速度=4（官方 crafting_speed）');
+ok(GD.deviceStats['foundry'] && GD.deviceStats['foundry'].moduleSlots === 4, '模块槽=4（官方 module_slots）');
+for (const id of ['tungsten-ore','tungsten-plate','tungsten-carbide','metallurgic-science-pack']) {
+  ok(!!GD.stackSize[id], id + ' 堆叠来自官方 (=50/' + GD.stackSize[id] + ')');
+  ok(!!GD.names[id], id + ' 官方命名已收录 (' + (GD.names[id] ? GD.names[id].zh : '?') + ')');
+}
+for (const rid of ['tungsten-ore','tungsten-plate','tungsten-carbide','metallurgic-science-pack','foundry']) {
+  ok(!!RP[rid], rid + ' 配方已注册（官方熔炼链适配基础资源）');
+  ok(Object.keys(RP[rid].inp).every(k => k in IT), rid + ' 配方引用物品均存在');
+}
+ok(ctx.__recipeDevice('tungsten-plate') === 'foundry', '钨板 → 铸造厂');
+ok(ctx.__recipeDevice('tungsten-carbide') === 'foundry', '碳化钨 → 铸造厂');
+ok(ctx.__recipeDevice('metallurgic-science-pack') === 'foundry', '冶金科研包 → 铸造厂');
+ok(ctx.__recipeDevice('foundry') === 'foundry', '铸造厂本体 → 铸造厂');
+for (const id of ['tungsten-ore','tungsten-plate','tungsten-carbide','metallurgic-science-pack','foundry']) {
+  ok(!!IT[id], id + ' 物品已注册');
+}
+ok(ctx.__itemTechReq('tungsten-carbide') === 'metallurgy', '碳化钨需「冶金学」科技');
+ok(ctx.__itemTechReq('foundry') === 'metallurgy', '铸造厂需「冶金学」科技');
+ok(!!TS['metallurgy'], '「冶金学」科技已注册');
+ok(!Object.keys(TS['metallurgy'].cost).includes('metallurgic-science-pack'), '「冶金学」科技不含冶金科研包（避免循环依赖）');
 console.log('\n' + (fail === 0 ? '✅ DLC 数据校验全部通过（' + pass + ' 项）' : '❌ 失败 ' + fail + ' 项'));
 process.exit(fail === 0 ? 0 : 1);

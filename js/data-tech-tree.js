@@ -84,6 +84,7 @@ const TECHS = {
   'space-science': { name: '空间科技', cost: { 'space-science-pack': 50, 'utility-science-pack': 50 }, desc: '解锁空间科学科研体系，允许用空间科学包研究终极科技（科研速度/采矿产能等）', req: ['utility', 'rocket-science'] },
   'turbo-logistics': { name: '超速物流', cost: { 'space-science-pack': 100, 'production-science-pack': 100 }, desc: '太空时代超速物流：解锁超速传送带/地下带/分流器（4 档带，速度 7.5 格/s，为普通带 4 倍），物流终极档（对齐《异星工厂》Space Age Turbo transport belt，需先建立太空科研体系）', req: ['space-science', 'express'] },
   'electromagnetics': { name: '电磁学', cost: { 'space-science-pack': 100, 'utility-science-pack': 100 }, desc: '太空时代电磁学：解锁碳纤维/锂/锂板/超导体材料链与电磁工厂、电磁科研包（对齐《异星工厂》Space Age 电磁科学），需先建立空间科学体系', req: ['space-science'] },
+  'metallurgy': { name: '冶金学', cost: { 'space-science-pack': 100, 'utility-science-pack': 100 }, desc: '太空时代冶金学：解锁钨矿石/钨板/碳化钨材料链与铸造厂、冶金科研包（对齐《异星工厂》Space Age 冶金科学），需先建立空间科学体系', req: ['space-science'] },
   'recycling': { name: '回收科技', cost: { 'electromagnetic-science-pack': 100, 'utility-science-pack': 100 }, desc: '解锁回收机：把物品还原成其配方原料的 25%，用于处理生产过剩与回收高级材料（对齐《异星工厂》Recycling 科技，需电磁科研）', req: ['electromagnetics'] },
   'agriculture': { name: '农业科技', cost: { 'space-science-pack': 100, 'utility-science-pack': 100 }, desc: '太空时代农业：解锁雅玛果泥/生物流/营养素/生物硫磺生物质材料链与生化炉、农业科研包（对齐《异星工厂》Space Age 农业科学），需先建立太空科研体系', req: ['space-science'] },
   'asteroid-processing': { name: '太空材料加工', cost: { 'space-science-pack': 100, 'utility-science-pack': 100 }, desc: '太空时代小行星材料加工：解锁破碎机与小行星碎块（金属/碳质/氧化星块）的粉碎加工，可把星块还原为铁矿石/碳/冰等基础资源（对齐《异星工厂》Space Age 破碎机/小行星加工），需先建立太空科研体系', req: ['space-science'] },
