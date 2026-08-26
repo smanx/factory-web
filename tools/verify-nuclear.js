@@ -94,6 +94,7 @@ checkNum('核燃料棒产出(1)', ufc && ufc.out['uranium-fuel-cell'], 1);
 console.log('\n【核燃料（组装机）对齐官方】');
 const nf = findRecipeObj('RECIPES', 'nuclear-fuel');
 checkNum('核燃料耗时(10s)', nf && nf.time, 10);
+checkNum('核燃料消耗火箭燃料(1)', nf && nf.inp['rocket-fuel'], 1);
 checkNum('核燃料消耗铀-235(1)', nf && nf.inp['uranium-235'], 1);
 checkNum('核燃料产出(1)', nf && nf.out['nuclear-fuel'], 1);
 
