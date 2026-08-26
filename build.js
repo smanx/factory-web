@@ -1,6 +1,7 @@
 const esbuild = require('esbuild');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const ROOT = __dirname;
 const DIST = path.join(ROOT, 'dist');
@@ -29,6 +30,11 @@ function concatScripts() {
   }).join('\n\n');
 }
 
+// ── 计算内容哈希（取前 8 位） ──
+function contentHash(content) {
+  return crypto.createHash('md5').update(content).digest('hex').slice(0, 8);
+}
+
 // ── 清空并创建目标目录 ──
 function cleanDist() {
   if (fs.existsSync(DIST)) {
@@ -39,13 +45,13 @@ function cleanDist() {
 }
 
 // ── 生成 dist/index.html ──
-function generateDistHtml() {
+function generateDistHtml(bundleName) {
   const distHtml = html
     .replace(/<link\s+rel="preload"\s+as="script"\s+href="[^"]+"\s*>\n?/g, '')
     .replace(/<script\s+src="[^"]+"[^>]*><\/script>\n?/g, '')
     .replace(
       '</body>',
-      `  <script src="bundle.js"></script>\n</body>`
+      `  <script src="${bundleName}"></script>\n</body>`
     );
   fs.writeFileSync(path.join(DIST, 'index.html'), distHtml);
 }
@@ -71,9 +77,11 @@ async function main() {
     // 初始构建
     let content = concatScripts();
     let result = await esbuild.transform(content, { sourcefile: 'bundle.js', logLevel: 'info' });
-    fs.writeFileSync(path.join(DIST, 'bundle.js'), result.code);
-    if (result.map) fs.writeFileSync(path.join(DIST, 'bundle.js.map'), result.map);
-    generateDistHtml();
+    let bundleHash = contentHash(result.code);
+    let bundleName = `bundle.${bundleHash}.js`;
+    fs.writeFileSync(path.join(DIST, bundleName), result.code);
+    if (result.map) fs.writeFileSync(path.join(DIST, `${bundleName}.map`), result.map);
+    generateDistHtml(bundleName);
     copyStatic();
 
     // watch 重建：监听源文件变化，重建 bundle.js
@@ -83,11 +91,18 @@ async function main() {
       if (rebuilding) return;
       rebuilding = true;
       try {
+        // 删除旧的带哈希的 bundle 文件
+        const oldBundles = fs.readdirSync(DIST).filter(f => /^bundle\.[a-f0-9]+\.js(.map)?$/.test(f));
+        for (const f of oldBundles) fs.unlinkSync(path.join(DIST, f));
+
         content = concatScripts();
         result = await esbuild.transform(content, { sourcefile: 'bundle.js', logLevel: 'info' });
-        fs.writeFileSync(path.join(DIST, 'bundle.js'), result.code);
-        if (result.map) fs.writeFileSync(path.join(DIST, 'bundle.js.map'), result.map);
-        console.log(`[${new Date().toLocaleTimeString()}] Rebuilt bundle.js`);
+        bundleHash = contentHash(result.code);
+        bundleName = `bundle.${bundleHash}.js`;
+        fs.writeFileSync(path.join(DIST, bundleName), result.code);
+        if (result.map) fs.writeFileSync(path.join(DIST, `${bundleName}.map`), result.map);
+        generateDistHtml(bundleName);
+        console.log(`[${new Date().toLocaleTimeString()}] Rebuilt ${bundleName}`);
       } catch (e) {
         console.error('Rebuild error:', e.message);
       }
@@ -135,7 +150,7 @@ async function main() {
       logLevel: 'info',
     });
     await ctx.watch();
-    generateDistHtml();
+    generateDistHtml('bundle.js');
     copyStatic();
     console.log(`\n Watching for changes... (Ctrl+C to stop)`);
     console.log(`  Output: dist/bundle.js\n`);
@@ -149,17 +164,16 @@ async function main() {
       sourcefile: 'bundle.js',
       logLevel: 'info',
     });
-    // 手动写入 bundle.js
-    fs.writeFileSync(path.join(DIST, 'bundle.js'), result.code);
-    // 写入 sourcemap（如果有）
+    const bundleName = `bundle.${contentHash(result.code)}.js`;
+    fs.writeFileSync(path.join(DIST, bundleName), result.code);
     if (result.map) {
-      fs.writeFileSync(path.join(DIST, 'bundle.js.map'), result.map);
+      fs.writeFileSync(path.join(DIST, `${bundleName}.map`), result.map);
     }
-    generateDistHtml();
+    generateDistHtml(bundleName);
     copyStatic();
-    const size = (fs.statSync(path.join(DIST, 'bundle.js')).size / 1024).toFixed(1);
+    const size = (fs.statSync(path.join(DIST, bundleName)).size / 1024).toFixed(1);
     console.log(`\n Build complete → dist/`);
-    console.log(`  bundle.js  (${size} KB${shouldMinify ? ' minified' : ''})`);
+    console.log(`  ${bundleName}  (${size} KB${shouldMinify ? ' minified' : ''})`);
   }
 }
 
