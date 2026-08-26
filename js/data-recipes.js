@@ -186,8 +186,8 @@ const RECIPES = {
   'logistic-chest-buffer': { time: 2, inp: { 'iron-plate': 6, 'steel-plate': 2, 'green-circuit': 3 },   out: { 'logistic-chest-buffer': 1 } },
   // ===== 核能配方 =====
   // 铀增殖处理（Kovarex，离心机）：铀-235 催化下把铀-238 富集成更多铀-235（可自持循环）
-  // 40 铀-235 + 5 铀-238 → 41 铀-235 + 2 铀-238（净增产 1 铀-235，消耗 3 铀-238），960s
-  'kovarex':           { time: 960, inp: { 'uranium-235': 40, 'uranium-238': 5 },                  out: { 'uranium-235': 41, 'uranium-238': 2 } },
+  // 40 铀-235 + 5 铀-238 → 41 铀-235 + 2 铀-238（净增产 1 铀-235，消耗 3 铀-238），60s
+  'kovarex':           { time: 60, inp: { 'uranium-235': 40, 'uranium-238': 5 },                  out: { 'uranium-235': 41, 'uranium-238': 2 } },
   // 核燃料（组装机）：由铀-235 制成
   'nuclear-fuel':      { time: 10,  inp: { 'uranium-235': 1 },                                 out: { 'nuclear-fuel': 1 } },
   // 铀燃料棒（对齐《异星工厂》：1 铀-235 + 19 铀-238 → 1 燃料棒，组装机）：反应堆专用燃料，燃尽产废燃料棒
