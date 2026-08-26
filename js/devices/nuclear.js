@@ -768,10 +768,14 @@ class HeatExchanger extends Entity {
   }
   // 从相邻导热管/反应堆吸热（导热管/反应堆会主动送热，这里也做被动吸收兜底）
   heatFlow(dt) {
+    const pHT = rotCell(this, this.def.w >> 1, -1); // 热交换接口外侧：默认长边(0)中心上方
     forEachNeighborEnt(this, n => {
       if (n._dead) return;
       const isSrc = (n instanceof HeatPipe) || (n instanceof NuclearReactor);
       if (!isSrc) return;
+      // 热交换接口在顶边长边：只接收顶边相邻导热管/反应堆传来的热量
+      const covers = (a, cx, cy) => cx >= a.x && cx < a.x + a.w && cy >= a.y && cy < a.y + a.h;
+      if (!covers(n, pHT.x, pHT.y)) return;
       if (n.heatBuf < 0.5 || this.heatBuf >= HEAT_EXCHANGER_CAP - 0.01) return;
       const want = Math.min(HEAT_PIPE_TRANSFER * dt, n.heatBuf, HEAT_EXCHANGER_CAP - this.heatBuf);
       if (want <= 0) return;
@@ -855,7 +859,23 @@ function drawHeatExchanger(ctx, e, gx, gy, dir, alpha) {
   const pWL = rotCell(e, 0, 1);
   const pWR = rotCell(e, e.def.w - 1, 1);
   const pS = rotCell(e, e.def.w >> 1, e.def.h - 1);
+  const pHt = rotCell(e, e.def.w >> 1, 0); // 热交换接口：默认长边(0)中心（顶边）
   const cD = TILE / 2 - 1; // 端口凸缘贴合设备内部边缘
+  // 热交换接口（顶边长边靠边画一条黄色线）——接收导热管热量
+  const ht = rotSide(3, e.dir); // 顶边方向
+  ctx.strokeStyle = '#ffd23a';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  if (ht === 3 || ht === 1) {
+    // 横向（北/南边）：沿 x 方向画线
+    ctx.moveTo(pHt.x * TILE + TILE * 0.3, pHt.y * TILE + (ht === 3 ? 3 : TILE - 3));
+    ctx.lineTo(pHt.x * TILE + TILE * 0.7, pHt.y * TILE + (ht === 3 ? 3 : TILE - 3));
+  } else {
+    // 纵向（西/东边）：沿 y 方向画线
+    ctx.moveTo(pHt.x * TILE + (ht === 2 ? 3 : TILE - 3), pHt.y * TILE + TILE * 0.3);
+    ctx.lineTo(pHt.x * TILE + (ht === 2 ? 3 : TILE - 3), pHt.y * TILE + TILE * 0.7);
+  }
+  ctx.stroke();
   // 蒸汽输出波纹（运行中，画在出汽口外）
   if (e.active) {
     ctx.fillStyle = 'rgba(210,235,255,.8)';
@@ -879,7 +899,7 @@ function heatExchangerPanelHtml(e) {
     row('水', '<span class="dim"></span>', 'water') +
     row('蒸汽缓存', '<span class="dim"></span>', 'steam') +
     '<div class="status"></div>' +
-    '<div class="dim">热交换器：顶面/侧面接收导热管传来的热量，左右短边两个蓝口接水管进水（互通），长边(3)中心白口送出高温蒸汽到汽轮机窄边(3)中部。核能技术解锁。</div>' +
+    '<div class="dim">热交换器：顶边长边黄色接口接收导热管热量，左右短边两个蓝口接水管进水（互通），长边(3)中心白口送出高温蒸汽到汽轮机窄边(3)中部。核能技术解锁。</div>' +
     '<div class="dim">🔗 标准接法：反应堆→(导热管)→热交换器（接水管）→(蒸汽管)→汽轮机</div>';
 }
 function heatExchangerPanelLive(e, api) {
