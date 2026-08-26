@@ -246,14 +246,14 @@ class FlamethrowerTurret extends CircuitNode {
 function normAng(a) { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; }
 function drawFlamethrowerTurret(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
-  const s = TILE * e.w;
+  const s = TILE * e.w, sh = TILE * e.h;
   ctx.globalAlpha = alpha;
   ctx.fillStyle = '#6a4a3a';
-  rr(ctx, px + 4, py + 4, s - 8, s - 8, 8); ctx.fill();
+  rr(ctx, px + 4, py + 4, s - 8, sh - 8, 8); ctx.fill();
   ctx.strokeStyle = '#463028';
   ctx.lineWidth = 3;
-  rr(ctx, px + 4, py + 4, s - 8, s - 8, 8); ctx.stroke();
-  const cx = px + s / 2, cy = py + s / 2;
+  rr(ctx, px + 4, py + 4, s - 8, sh - 8, 8); ctx.stroke();
+  const cx = px + s / 2, cy = py + sh / 2;
   const ang = e.target ? e.facing : -Math.PI / 2;
   ctx.save();
   ctx.translate(cx, cy);
@@ -284,7 +284,7 @@ function flameTurretPanelHtml(e) {
   const n = Math.min(invCount('light-oil'), FT_FLUID_CAP - (e.fluid['light-oil'] || 0));
   if (n > 0) h += '<button data-action="feed" data-id="light-oil">放入轻油 ×' + n + '</button>';
   h += '<div class="status"></div>';
-  h += '<div class="dim">火焰炮塔：消耗轻油喷射火焰，对锥形范围敌人造成持续灼烧伤害。可从底部输入口相邻管道自动吸入轻油（2×2）。对齐《异星工厂》Flamethrower turret：以轻油为燃料。</div>';
+  h += '<div class="dim">火焰炮塔：消耗轻油喷射火焰，对锥形范围敌人造成持续灼烧伤害。可从底部输入口相邻管道自动吸入轻油（2×3）。对齐《异星工厂》Flamethrower turret：以轻油为燃料。</div>';
   h += circuitPanelHtml(e, 'ft');
   return h;
 }

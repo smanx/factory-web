@@ -191,7 +191,7 @@ function artilleryPanelHtml(e) {
   if (n > 0) h += '<button data-action="feed" data-id="artillery-shell">放入炮弹 ×' + n + '</button>';
   if (e.shells > 0) h += '<button data-action="takeout" id="btn-art-takeout">取出全部炮弹</button>';
   h += '<div class="status"></div>';
-  h += '<div class="dim">炮兵连：射程 ' + artilleryRange() + ' 格（基础 ' + ARTILLERY_RANGE + '，受「炮兵射程」无限科技加成），消耗炮弹轰击超远距离敌人，命中造成 ' + ARTILLERY_DMG + ' 点大范围爆炸伤害（4×4）。晚期基地防御的利器。</div>';
+  h += '<div class="dim">炮兵连：射程 ' + artilleryRange() + ' 格（基础 ' + ARTILLERY_RANGE + '，受「炮兵射程」无限科技加成），消耗炮弹轰击超远距离敌人，命中造成 ' + ARTILLERY_DMG + ' 点大范围爆炸伤害（3×3）。晚期基地防御的利器。</div>';
   h += circuitPanelHtml(e, 'at');
   return h;
 }

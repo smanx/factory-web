@@ -48,7 +48,7 @@ const BUILD_DEFS = {
   'passive-power':      { w: 2, h: 2, solid: true },
   'gun-turret':         { w: 2, h: 2, solid: true },
   'laser-turret':       { w: 2, h: 2, solid: true },
-  'flamethrower-turret':{ w: 2, h: 2, solid: true },
+  'flamethrower-turret':{ w: 2, h: 3, solid: true },  // 官方 collision_box ±0.72×±1.2 → 2×3
   'rocket-silo':        { w: 5, h: 5, solid: true },
   'radar':              { w: 3, h: 3, solid: true },
   'stone-wall':         { w: 1, h: 1, solid: true },
@@ -77,7 +77,7 @@ const BUILD_DEFS = {
   'tank':               { w: 3, h: 3, solid: true, rotSwap: true },
   'spidertron':         { w: 3, h: 3, solid: true, rotSwap: true },
   'land-mine':          { w: 1, h: 1, solid: false },
-  'artillery-turret':   { w: 4, h: 4, solid: true },
+  'artillery-turret':   { w: 3, h: 3, solid: true },  // 官方 collision_box ±1.2 → 3×3
   'logistic-chest-passive': { w: 1, h: 1, solid: true },
   'logistic-chest-active':  { w: 1, h: 1, solid: true },
   'logistic-chest-storage': { w: 1, h: 1, solid: true },
