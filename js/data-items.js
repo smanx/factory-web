@@ -13,7 +13,7 @@ const STACK_SIZES = {
   'car': 1, 'tank': 1, 'spidertron': 1, 'diesel-locomotive': 1,
   'locomotive': 5, 'cargo-wagon': 5, 'fluid-wagon': 5, 'artillery-wagon': 5,  // 车厢/车头官方 5
   'light-armor': 1, 'heavy-armor': 1, 'modular-armor': 1, 'power-armor': 1, 'power-armor-mk2': 1,
-  'portable-fusion-reactor': 20, 'spidertron-remote': 1,  // 便携聚变堆官方 20
+  'fusion-reactor-equipment': 20, 'spidertron-remote': 1,  // 便携聚变堆官方 20
   // 弹药：官方 stack（cannon-shell=100、atomic-bomb=10、artillery-shell=1）
   'cannon-shell': 100, 'explosive-cannon-shell': 100, 'uranium-cannon-shell': 100, 'artillery-shell': 1, 'atomic-bomb': 10,
   // 原材料：堆叠 50
@@ -24,12 +24,12 @@ const STACK_SIZES = {
   // 固体燃料/火箭燃料/低密度结构：对齐原版 stack_size（固体燃料 50、火箭燃料 10、低密度结构 10）
   'solid-fuel': 50, 'rocket-fuel': 10, 'low-density-structure': 10,
   // 流体桶（对齐原版 1 桶 = 1 堆叠）
-  'empty-barrel': 10, 'water-barrel': 10, 'steam-barrel': 10, 'crude-oil-barrel': 10,
+  'barrel': 10, 'water-barrel': 10, 'steam-barrel': 10, 'crude-oil-barrel': 10,
   'heavy-oil-barrel': 10, 'light-oil-barrel': 10, 'petroleum-gas-barrel': 10,
   'lubricant-barrel': 10, 'sulfuric-acid-barrel': 10,
   // 科学包：堆叠 200（对齐原版）
-  'science-pack': 200, 'green-science': 200, 'blue-science': 200,
-  'military-science': 200, 'production-science-pack': 200, 'utility-science-pack': 200,
+  'automation-science-pack': 200, 'logistic-science-pack': 200, 'chemical-science-pack': 200,
+  'military-science-pack': 200, 'production-science-pack': 200, 'utility-science-pack': 200,
   'space-science-pack': 200,
   // 基础建材与管线：堆叠 100
   'concrete': 100, 'refined-concrete': 100, 'hazard-concrete': 100, 'stone-path': 100, 'landfill': 100
@@ -50,48 +50,47 @@ const ITEMS = {
   'calcite':    { name: '方解石', color: '#e8e0d0', mark: 'Ca', desc: '矿物，用于炼油厂煤液化配方（太空时代）' },
   'iron-plate':   { name: '铁板',   color: '#ccd4de', mark: 'Fp', desc: '最常用的结构材料' },
   'copper-plate': { name: '铜板',   color: '#e0975f', mark: 'Cp', desc: '用于拉制铜线' },
-  'iron-gear':    { name: '齿轮',   color: '#aab5c2', mark: 'G',  desc: '机械核心零件（对齐《异星工厂》Iron gear wheel）' },
+  'iron-gear-wheel':    { name: '齿轮',   color: '#aab5c2', mark: 'G',  desc: '机械核心零件（对齐《异星工厂》Iron gear wheel）' },
   'iron-stick':   { name: '铁杆',   color: '#b8c0c8', mark: 'Is', desc: '细铁杆，用于分流器、地下带、铁轨与部分配方（对齐《异星工厂》）' },
   'steel-stick':  { name: '钢杆',   color: '#d0d6dc', mark: 'Ss', desc: '细钢杆，用于部分高级配方（对齐《异星工厂》）' },
   'copper-cable': { name: '铜线',   color: '#e8a06a', mark: 'W',  desc: '制造电路板的原料' },
-  'green-circuit':{ name: '电路板', color: '#57b95c', mark: 'GC', desc: '自动化与科研的基础元件' },
-  'science-pack': { name: '自动化科学包', color: '#d04848', mark: 'SP', desc: '红色科学包，初期的科研消耗品（自动化科学）' },
+  'electronic-circuit':{ name: '电路板', color: '#57b95c', mark: 'GC', desc: '自动化与科研的基础元件' },
+  'automation-science-pack': { name: '自动化科学包', color: '#d04848', mark: 'SP', desc: '红色科学包，初期的科研消耗品（自动化科学）' },
   'transport-belt':    { name: '基础传送带', color: '#e0b23c', desc: '运输物品，R 旋转方向，可拖动铺设' },
   'inserter':          { name: '电力机械臂', color: '#e0b23c', desc: '严格单向：臂体侧取货、箭头侧放货（亮色箭头=物流方向），需电力驱动' },
   'burner-inserter':   { name: '热能机械臂', color: '#7a7f87', desc: '烧煤驱动的机械臂，无需电力，开局即可用；需不断补充煤作燃料（对齐《异星工厂》Burner inserter）' },
-  'long-inserter':     { name: '加长机械臂', color: '#e05a4e', desc: '同电力机械臂，但取放都延伸到第二格' },
-  'burner-drill':      { name: '热能采矿机', color: '#c46a3a', desc: '放在矿上自动开采，产出朝向前方，需煤' },
+  'long-handed-inserter':     { name: '加长机械臂', color: '#e05a4e', desc: '同电力机械臂，但取放都延伸到第二格' },
+  'burner-mining-drill':      { name: '热能采矿机', color: '#c46a3a', desc: '放在矿上自动开采，产出朝向前方，需煤' },
   'stone-furnace':     { name: '石炉',   color: '#9c9486', desc: '把矿石冶炼成板材，需煤作燃料' },
-  'assembling-machine':{ name: '组装机', color: '#6f86c9', desc: '设置配方后自动生产（3×3）' },
-  'storage-chest':     { name: '储物箱', color: '#8a6a45', desc: '存放物资，配合机械臂自动装卸。可接入电路网络：把箱内每种物品数量作为信号输出，供组合器/机械臂/传送带做按库存自动化（对齐《异星工厂》）' },
+  'assembling-machine-1':{ name: '组装机', color: '#6f86c9', desc: '设置配方后自动生产（3×3）' },
   'lab':               { name: '研究中心', color: '#4aa8a0', desc: '消耗科学包推进所选科技（3×3）' },
-  'lamp':              { name: '电灯', color: '#e8e4a0', desc: '耗电照明设备（1×1）：通电后在夜间照亮周围区域，让基地在黑暗中清晰可见。夜晚无电时熄灭' },
+  'small-lamp':              { name: '电灯', color: '#e8e4a0', desc: '耗电照明设备（1×1）：通电后在夜间照亮周围区域，让基地在黑暗中清晰可见。夜晚无电时熄灭' },
   'substation':        { name: '变电站', color: '#b0802a', desc: '超大型电线杆（4×4）：连接电力与电路网络，覆盖范围远大于普通电线杆（连接距离约 18 格），用于跨区域组网（对齐《异星工厂》Substation）' },
   'programmable-speaker': { name: '可编程音箱', color: '#a05ad0', desc: '电路网络设备（1×1）：读取所连网络的信号，可在面板设置告警条件与输出信号，满足条件时发光提示，用于信号监控与告警（对齐《异星工厂》Programmable speaker）' },
   'splitter':          { name: '基础分流器', color: '#e0b23c', desc: '两入两出：物品轮流流向两个出口（A/B 车道各自保持不混合）；一边堵了自动走另一边。面板可设输入/输出优先级，并自带筛选功能（指定只放行某物品）' },
-  'underground':       { name: '基础地下传送带', color: '#e0b23c', desc: '同向摆两座（最远6格）自动配对：入口收货钻入地下，出口送回地面向前输出' },
+  'underground-belt':       { name: '基础地下传送带', color: '#e0b23c', desc: '同向摆两座（最远6格）自动配对：入口收货钻入地下，出口送回地面向前输出' },
   'steel-plate':       { name: '钢板',   color: '#c9ced6', mark: 'S', desc: '电炉炼铁板产出的高级建材' },
   'boiler':            { name: '锅炉',   color: '#d0743a', desc: '烧煤+水产出蒸汽（3×2）：左右两端各一只蓝口水口，双向进出、水位互通平衡，可从一端进水另一端出、多台同排串联；底边中间白口=出汽口，向下接蒸汽机或蒸汽管道' },
   'steam-engine':      { name: '蒸汽机', color: '#8fb8d0', desc: '蒸汽发电（3×5）：上下两端各一只功能相同的通用汽口，蒸汽可从任意一端进入，多余蒸汽也可从另一端送出，支持首尾串联；供汽越足功率越高，满功率并入全图电网' },
   'offshore-pump':     { name: '抽水机', color: '#3f9fc0', mark: 'P', desc: '必须放在水面上，免电力无限抽水；产出朝箭头方向，指向锅炉左端/右端的蓝口水口可直接供水，或接管道（2×1）' },
   'water':             { name: '水',     color: '#4a90d9', mark: 'H₂O', desc: '流体，由抽水机从水域抽取，经管道或锅炉两端水口送入锅炉烧成蒸汽' },
   'steam':             { name: '蒸汽',   color: '#c8d4dc', mark: '汽', desc: '流体，锅炉烧水所得；经锅炉出汽口或蒸汽管道送往蒸汽机发电' },
-  'electric-drill':    { name: '电采矿机', color: '#4f7dd3', desc: '免燃料、吃电力开采，速度快于热能采矿机（3×3）' },
+  'electric-mining-drill':    { name: '电采矿机', color: '#4f7dd3', desc: '免燃料、吃电力开采，速度快于热能采矿机（3×3）' },
   'electric-furnace':  { name: '电炉',   color: '#3fa87e', desc: '免燃料、吃电力冶炼，速度更高，可出钢板（3×3）' },
-  'assembling-machine-mk2': { name: '组装机 II', color: '#a05fd0', desc: '吃电力、速度更高的高级组装机（3×3）' },
+  'assembling-machine-2': { name: '组装机 II', color: '#a05fd0', desc: '吃电力、速度更高的高级组装机（3×3）' },
   'fast-transport-belt': { name: '高速传送带', color: '#e05a4e', desc: '速度约为基础带的 2 倍（对齐《异星工厂》）' },
   'fast-underground-belt': { name: '高速地下传送带', color: '#e05a4e', desc: '同向配对距离最远 14 格，速度是高速带标准' },
   'express-transport-belt': { name: '极速传送带', color: '#4f9fe8', desc: '速度约为基础带的 3 倍，物流终极档（对齐《异星工厂》）' },
   'express-underground-belt': { name: '极速地下传送带', color: '#4f9fe8', desc: '同向配对距离最远 20 格，速度是极速带标准' },
   'express-splitter': { name: '极速分流器', color: '#4f9fe8', desc: '同分流器，但吞吐与极速带一致，可输送最快物流' },
   'fast-splitter':    { name: '高速分流器', color: '#e05a4e', desc: '同分流器，但吞吐与高速带一致，可输送更快的物流（对齐《异星工厂》Fast splitter）' },
-  'stack-inserter':    { name: '集装箱机械臂', color: '#7ec850', desc: '同电力机械臂，但可一次性抓取多达 3 个同种物品（对齐《异星工厂》Stack inserter）' },
+  'bulk-inserter':    { name: '集装箱机械臂', color: '#7ec850', desc: '同电力机械臂，但可一次性抓取多达 3 个同种物品（对齐《异星工厂》Stack inserter）' },
   'fast-inserter':     { name: '高速机械臂', color: '#4f9fe8', desc: '比普通机械臂抓取更快（旋转速度约为其 2 倍）（对齐《异星工厂》Fast inserter）' },
   'steel-chest':       { name: '钢箱', color: '#9aa4b0', desc: '比储物箱容量更大的钢铁储物箱（24 格）。可接入电路网络输出箱内物品数量信号（对齐《异星工厂》）' },
   'creative-chest':    { name: '创造箱', color: '#3e8f4a', mark: '∞', desc: '测试设备：无限生成选定物品，点开面板选择要生成的物品，机械臂可无限取走' },
   'void-chest':        { name: '虚空箱', color: '#4a3430', mark: '×', desc: '测试设备：无限销毁任何存入的物品，放进去即刻消失' },
-  'green-science':     { name: '物流科学包', color: '#6fd06f', mark: 'GS', desc: '绿色科学包，解锁二级科技（物流/石油等的钥匙）' },
-  'blue-science':      { name: '化工科学包', color: '#4f9fe8', mark: 'BS', desc: '蓝色科学包，依赖石油与塑料的高级科研包' },
+  'logistic-science-pack':     { name: '物流科学包', color: '#6fd06f', mark: 'GS', desc: '绿色科学包，解锁二级科技（物流/石油等的钥匙）' },
+  'chemical-science-pack':      { name: '化工科学包', color: '#4f9fe8', mark: 'BS', desc: '蓝色科学包，依赖石油与塑料的高级科研包' },
   'crude-oil':         { name: '原油', color: '#2a2418', mark: 'Oil', desc: '流体，用抽油机开采，经管道输送' },
   'heavy-oil':         { name: '重油', color: '#5a3a1e', mark: 'HO', desc: '炼油副产物，常作为润滑油等原料' },
   'light-oil':         { name: '轻油', color: '#8a5a22', mark: 'LO', desc: '炼油副产物，可继续加工成石油气' },
@@ -111,13 +110,13 @@ const ITEMS = {
   'passive-power':     { name: '被动供电设备', color: '#e0b23c', mark: '⚡', desc: '被动应急供电：电网电量不足时一次性供出剩余所有电兜底（2×2），仅无限资源模式可建造' },
   'steel-furnace':     { name: '钢铁炉', color: '#8b95a3', desc: '烧煤冶炼，速度高于石炉（2×2）' },
   'assembling-machine-3': { name: '组装机 III', color: '#7a58c8', desc: '吃电力、速度最高的组装机（3×3）' },
-  'military-science':  { name: '军事科学包', color: '#b0b0b0', mark: 'MS', desc: '灰色科学包，解锁军事科技（炮塔/墙壁/弹药等）' },
+  'military-science-pack':  { name: '军事科学包', color: '#b0b0b0', mark: 'MS', desc: '灰色科学包，解锁军事科技（炮塔/墙壁/弹药等）' },
   'gun-turret':        { name: '机枪炮塔', color: '#5a5a66', desc: '自动攻击进入射程的敌人，需装入弹药（2×2）' },
   'stone-wall':        { name: '石墙', color: '#8d8578', desc: '防御障碍，阻挡敌人与玩家通行（1×1）' },
   'gate':              { name: '门', color: '#7a7468', desc: '可开合的入口：玩家靠近自动打开、离开自动关闭，敌人无法通过（1×1），与石墙搭配构建防线' },
-  'magazine':          { name: '弹药匣', color: '#b08a4a', desc: '机枪炮塔的标准弹药' },
-  'piercing-rounds':   { name: '穿甲弹', color: '#b05a4a', desc: '比普通弹药威力更高的穿甲弹药' },
-  'refinery':          { name: '炼油厂', color: '#b06a3e', desc: '把原油炼成重油/轻油/石油气，或煤液化（5×5，吃电力，需选配方）。背面2输入、正面3输出' },
+  'firearm-magazine':          { name: '弹药匣', color: '#b08a4a', desc: '机枪炮塔的标准弹药' },
+  'piercing-rounds-magazine':   { name: '穿甲弹', color: '#b05a4a', desc: '比普通弹药威力更高的穿甲弹药' },
+  'oil-refinery':          { name: '炼油厂', color: '#b06a3e', desc: '把原油炼成重油/轻油/石油气，或煤液化（5×5，吃电力，需选配方）。背面2输入、正面3输出' },
   'chemical-plant':    { name: '化工厂', color: '#7d9464', desc: '流体化学加工厂：石油气+煤→塑料，重油/轻油裂解（3×3，吃电力）。底部2输入、顶部2输出，成对固定；固体原料机械臂任意方向放入' },
   // ===== 玩家武器与弹药（战斗体系扩充） =====
   'pistol':          { name: '手枪',   color: '#8a8f9a', desc: '基础随身武器。选中后按空格或对敌人点击开火，消耗弹药匣' },
@@ -130,11 +129,11 @@ const ITEMS = {
   'rocket-launcher': { name: '火箭筒', color: '#5a7a4a', desc: '发射火箭弹造成范围爆炸伤害' },
   'explosive-rocket-launcher': { name: '爆炸火箭筒', color: '#c05a2a', desc: '发射爆炸火箭弹，爆炸范围与伤害远超普通火箭筒（对齐《异星工厂》Explosive rocket launcher）' },
   'grenade':         { name: '手雷',   color: '#4a7a3a', desc: '投掷爆炸物，对范围敌人造成伤害，可在背包直接使用' },
-  'rocket-ammo':      { name: '火箭弹', color: '#7a5a4a', desc: '火箭筒的弹药，爆炸造成范围伤害' },
+  'rocket':      { name: '火箭弹', color: '#7a5a4a', desc: '火箭筒的弹药，爆炸造成范围伤害' },
   'explosive-rocket':{ name: '爆炸火箭弹', color: '#c05a2a', desc: '装填高能爆炸物的重型火箭弹，命中后爆炸范围与伤害远超普通火箭弹，供爆炸火箭筒使用（对齐《异星工厂》Explosive rocket）' },
   'flamethrower':    { name: '火焰喷射器', color: '#a05a2a', desc: '喷射燃烧的火焰，造成持续灼烧伤害，消耗火焰弹药（由化工厂用轻油/重油制造）' },
   'flamethrower-ammo': { name: '火焰弹药', color: '#d06a2a', desc: '火焰喷射器的专用燃料，由化工厂用轻油+重油制成，能量密度高（对齐《异星工厂》Flamethrower ammo）' },
-  'uranium-rounds':  { name: '铀弹', color: '#9af07a', desc: '铀-238 制成的穿甲弹药，威力远超穿甲弹，供冲锋枪与机枪炮塔使用（对齐《异星工厂》Uranium rounds）' },
+  'uranium-rounds-magazine':  { name: '铀弹', color: '#9af07a', desc: '铀-238 制成的穿甲弹药，威力远超穿甲弹，供冲锋枪与机枪炮塔使用（对齐《异星工厂》Uranium rounds）' },
   'atomic-bomb': { name: '原子弹', color: '#a8e0c0', mark: '☢', desc: '终极核武器：由铀-235 制成，火箭筒发射，落地引发超大范围核爆，对成片敌人造成毁灭性打击（对齐《异星工厂》Atomic bomb）' },
 
   'uranium-cannon-shell': { name: '铀炮弹', color: '#9af07a', desc: '铀-238 制成的重型炮弹，威力远超普通炮弹，供坦克主炮使用（对齐《异星工厂》Uranium cannon shell）' },
@@ -157,17 +156,17 @@ const ITEMS = {
   // ===== 火箭发射（终局）=====
   'advanced-circuit':{ name: '高级电路板', color: '#d0608a', desc: '红板，中后期高级电子元件，用于产能模块与电引擎' },
   'engine-unit':     { name: '引擎单元', color: '#8a6a4a', desc: '基础机械动力单元' },
-  'electric-engine': { name: '电动引擎', color: '#7a9a6a', desc: '高级动力单元，用于火箭燃料' },
+  'electric-engine-unit': { name: '电动引擎', color: '#7a9a6a', desc: '高级动力单元，用于火箭燃料' },
   'processing-unit': { name: '处理器', color: '#5a8ad0', desc: '蓝板，最先进电子元件，用于火箭控制单元' },
   'low-density-structure': { name: '低密度结构', color: '#b0b8c0', desc: '轻质航空结构材料' },
   'rocket-fuel':     { name: '火箭燃料', color: '#d07a2a', desc: '火箭推进剂，用石油气+电引擎制造；同时也是能量最高的可燃烧燃料（约为固体燃料 10 倍、煤 40 倍），可投入锅炉/熔炉/采矿机/火车/载具使用（对齐《异星工厂》Rocket fuel）' },
   'rocket-control-unit': { name: '火箭控制单元', color: '#d04a4a', desc: '火箭的大脑，用处理器+高级电路板制造' },
   'rocket-part':     { name: '火箭部件', color: '#a8b0c0', mark: '◈', desc: '火箭发射井逐件组装的中间部件（对齐《异星工厂》Rocket part），集齐后拼装出完整火箭；装产能模块可免费累积额外部件' },
-  'rocket':          { name: '火箭', color: '#c0c8d0', mark: '🚀', desc: '由火箭发射井集齐火箭部件组装而成的完整火箭本体，放入卫星后可发射' },
+  'rocket-body':     { name: '火箭', color: '#c0c8d0', mark: '🚀', desc: '由火箭发射井集齐火箭部件组装而成的完整火箭本体，放入卫星后可发射' },
   'satellite':       { name: '卫星', color: '#c0c8d0', desc: '放入火箭发射井发射，赢得游戏' },
   'rocket-silo':     { name: '火箭发射井', color: '#7a6a5a', desc: '组装并发射火箭的终局建筑（5×5），放入卫星并填充火箭部件后发射。可接入电路网络输出井内火箭/卫星/部件就绪状态信号（对齐《异星工厂》火箭发射井电路信号）' },
   'radar':           { name: '雷达', color: '#5a8a8a', desc: '周期性扫描周围区域，点亮小地图/标记新探索区（3×3，吃电力）' },
-  'explosive':       { name: '爆炸物', color: '#d05a2a', desc: '由煤和石油气制造的高能化合物，用于火箭弹' },
+  'explosives':       { name: '爆炸物', color: '#d05a2a', desc: '由煤和石油气制造的高能化合物，用于火箭弹' },
   'cliff-explosives': { name: '峭壁炸药', color: '#8a7a5a', desc: '选中后点击峭壁即可将其炸毁清除，开辟地形通途（对齐《异星工厂》Cliff explosives）' },
   'battery':         { name: '电池', color: '#d0c04a', desc: '储能元件，用于激光炮塔与卫星' },
   // ===== 后期科学包与飞行机器人框架（对齐《异星工厂》7 色科学包）=====
@@ -213,13 +212,13 @@ const ITEMS = {
   'roboport':          { name: '机器人港', color: '#3a8a8a', desc: '物流机器人的基地与充电站（4×4，吃电力）。把物流机器人放入机器人港后自动调度，机器人往返供应箱与需求箱搬运货物，电量低时回到机器人港充电。可接入电路网络输出整个物流网络各物品库存总量信号（对齐《异星工厂》机器人港电路信号）' },
   'logistic-robot':    { name: '物流机器人', color: '#4aa0d0', desc: '飞行机器人，放入机器人港后自动在供应箱/需求箱之间搬运物资，消耗电量，需回港充电' },
   'construction-robot':{ name: '施工机器人', color: '#d0a04a', desc: '飞行机器人，装备个人机器人港后，可自动按蓝图/红图施工：建造蓝图中的建筑、拆除标记的建筑，消耗背包物资' },
-  'personal-roboport':{ name: '个人机器人港', color: '#7a9a4a', desc: '个人装备：装备后提供施工机器人工作范围（12 格、最多 4 台在场），蓝图粘贴自动由施工机器人建造（需背包中拥有施工机器人）' },
-  'personal-roboport-mk2':{ name: '个人机器人港 II', color: '#5a8ac0', desc: '进阶个人装备：装备后提供更大施工机器人工作范围（20 格、最多 8 台在场），蓝图粘贴自动由施工机器人建造（对齐《异星工厂》Personal roboport Mk2）' },
-  'logistic-chest-passive': { name: '被动供应箱', color: '#c9a84a', desc: '物流箱：可手动/机械臂存入货物，物流机器人会从箱中取货送往需求箱；也能接收机器人返还的货物' },
-  'logistic-chest-active':  { name: '主动供应箱', color: '#d0743a', desc: '物流箱：机器人优先从此取货供应网络；多出的货物机器人会收纳到这里，适合作为原料集散点' },
-  'logistic-chest-storage': { name: '仓储箱', color: '#8a9a6a', desc: '物流箱：机器人把返还/多余货物收纳到这里，也可作为备用取货源。所有仓储箱共享存放' },
-  'logistic-chest-buffer': { name: '缓冲箱', color: '#c8a05a', desc: '物流箱：介于需求箱与仓储箱之间——既按设定请求货物，又可向网络供应，作为中转缓冲（对齐《异星工厂》Buffer chest）' },
-  'logistic-chest-requester': { name: '需求箱', color: '#5a8ad0', desc: '物流箱：在面板设置每种物品的需求量，物流机器人会自动从供应箱/仓储箱送货过来补足到目标数量' },
+  'personal-roboport-equipment':{ name: '个人机器人港', color: '#7a9a4a', desc: '个人装备：装备后提供施工机器人工作范围（12 格、最多 4 台在场），蓝图粘贴自动由施工机器人建造（需背包中拥有施工机器人）' },
+  'personal-roboport-mk2-equipment':{ name: '个人机器人港 II', color: '#5a8ac0', desc: '进阶个人装备：装备后提供更大施工机器人工作范围（20 格、最多 8 台在场），蓝图粘贴自动由施工机器人建造（对齐《异星工厂》Personal roboport Mk2）' },
+  'passive-provider-chest': { name: '被动供应箱', color: '#c9a84a', desc: '物流箱：可手动/机械臂存入货物，物流机器人会从箱中取货送往需求箱；也能接收机器人返还的货物' },
+  'active-provider-chest':  { name: '主动供应箱', color: '#d0743a', desc: '物流箱：机器人优先从此取货供应网络；多出的货物机器人会收纳到这里，适合作为原料集散点' },
+  'storage-chest': { name: '仓储箱', color: '#8a9a6a', desc: '物流箱：机器人把返还/多余货物收纳到这里，也可作为备用取货源。所有仓储箱共享存放' },
+  'buffer-chest': { name: '缓冲箱', color: '#c8a05a', desc: '物流箱：介于需求箱与仓储箱之间——既按设定请求货物，又可向网络供应，作为中转缓冲（对齐《异星工厂》Buffer chest）' },
+  'requester-chest': { name: '需求箱', color: '#5a8ad0', desc: '物流箱：在面板设置每种物品的需求量，物流机器人会自动从供应箱/仓储箱送货过来补足到目标数量' },
   // ===== 钓鱼与生鱼（对齐《异星工厂》：需手持鱼竿在水域钓鱼，钓到生鱼） =====
   'fishing-pole': { name: '钓鱼竿', color: '#a08050', mark: '钓', desc: '手持后在岸边点击水域即可抛竿钓鱼（对齐《异星工厂》Fishing pole）。由木材+铁杆制成，需研究「钓鱼」科技解锁' },
   'raw-fish': { name: '生鱼', color: '#8ab0c0', mark: '鱼', desc: '在水域边缘用钓鱼竿钓获的基础食物，可作为低效燃料使用；也可在背包中食用恢复生命值（对齐《异星工厂》：吃鱼治疗）' },
@@ -257,21 +256,21 @@ const ITEMS = {
   'power-armor':    { name: '强力装甲', color: '#5a7aa8', desc: '高级模块化护甲：减伤 45%，自带 7×7 装备网格，更多插槽安装个人装备' },
   'power-armor-mk2':{ name: '强力装甲 II', color: '#5a5aa8', desc: '顶级模块化护甲：减伤 55%，自带 8×8 装备网格，容纳最强个人装备组合' },
   // ---- 个人装备件（装入护甲网格生效） ----
-  'portable-solar-panel': { name: '个人太阳能板', color: '#4aa0d0', desc: '装备件（1×1）：白天为个人电网发电，为外骨骼/激光防御等装备供能' },
+  'solar-panel-equipment': { name: '个人太阳能板', color: '#4aa0d0', desc: '装备件（1×1）：白天为个人电网发电，为外骨骼/激光防御等装备供能' },
   'portable-solar-panel-mk2': { name: '个人太阳能板 II', color: '#3a80c0', desc: '装备件（1×1）：更高功率的个人太阳能板，为个人电网提供更多电力' },
-  'portable-fusion-reactor': { name: '便携聚变反应堆', color: '#8ae0a0', desc: '装备件（4×4）：无惧昼夜、持续大功率发电，个人电网的终极电源' },
-  'personal-battery': { name: '个人电池', color: '#d0c04a', desc: '装备件（2×2）：存储个人电力，白天/发电盈余时充电，供装备随时调用' },
-  'personal-battery-mk2': { name: '个人电池 II', color: '#c0a030', desc: '装备件（2×2）：更大储电量的个人电池' },
-  'exoskeleton':    { name: '外骨骼', color: '#8a7a5a', desc: '装备件（2×2）：穿戴后大幅提升玩家移动速度，每个 +40%（叠加）' },
-  'nightvision':    { name: '夜视仪', color: '#5aa05a', desc: '装备件（1×1）：夜间增强视野，使夜晚如同白昼（对齐《异星工厂》Night vision）' },
-  'personal-laser-defense': { name: '个人激光防御', color: '#d04a5a', desc: '装备件（1×1）：自动攻击进入射程的敌人，消耗个人电力，每个激光器各自独立开火' },
+  'fusion-reactor-equipment': { name: '便携聚变反应堆', color: '#8ae0a0', desc: '装备件（4×4）：无惧昼夜、持续大功率发电，个人电网的终极电源' },
+  'battery-equipment': { name: '个人电池', color: '#d0c04a', desc: '装备件（2×2）：存储个人电力，白天/发电盈余时充电，供装备随时调用' },
+  'battery-mk2-equipment': { name: '个人电池 II', color: '#c0a030', desc: '装备件（2×2）：更大储电量的个人电池' },
+  'exoskeleton-equipment':    { name: '外骨骼', color: '#8a7a5a', desc: '装备件（2×2）：穿戴后大幅提升玩家移动速度，每个 +40%（叠加）' },
+  'night-vision-equipment':    { name: '夜视仪', color: '#5aa05a', desc: '装备件（1×1）：夜间增强视野，使夜晚如同白昼（对齐《异星工厂》Night vision）' },
+  'personal-laser-defense-equipment': { name: '个人激光防御', color: '#d04a5a', desc: '装备件（1×1）：自动攻击进入射程的敌人，消耗个人电力，每个激光器各自独立开火' },
   // ===== 能量护盾（对齐《异星工厂》Energy shield：受击时消耗个人电力吸收伤害） =====
-  'energy-shield':   { name: '能量护盾', color: '#4ac0d0', desc: '装备件（2×2）：受击时优先消耗个人电网电力生成护盾吸收伤害（每件最多吸收 200 伤害），电力不足时护盾失效、按原伤害扣血' },
-  'energy-shield-mk2': { name: '能量护盾 II', color: '#3aa0e0', desc: '装备件（2×2）：更强大的能量护盾（每件最多吸收 400 伤害），受击时优先消耗个人电网电力吸收伤害（对齐《异星工厂》Energy shield MK2）' },
+  'energy-shield-equipment':   { name: '能量护盾', color: '#4ac0d0', desc: '装备件（2×2）：受击时优先消耗个人电网电力生成护盾吸收伤害（每件最多吸收 200 伤害），电力不足时护盾失效、按原伤害扣血' },
+  'energy-shield-mk2-equipment': { name: '能量护盾 II', color: '#3aa0e0', desc: '装备件（2×2）：更强大的能量护盾（每件最多吸收 400 伤害），受击时优先消耗个人电网电力吸收伤害（对齐《异星工厂》Energy shield MK2）' },
   // ===== 传送带免疫装备（对齐《异星工厂》Belt immunity equipment：站上传送带不再被推动） =====
   'belt-immunity-equipment': { name: '传送带免疫', color: '#8a6ac0', desc: '装备件（1×1）：穿戴后玩家站上传送带不再被带动位移，可稳定在带上站立/作业（对齐《异星工厂》Belt immunity equipment）' },
   // ===== 放电防御装备（对齐《异星工厂》Discharge defense：主动对周围敌人释放电击） =====
-  'discharge-defense': { name: '放电防御', color: '#7ac0e0', desc: '装备件（3×3）：手动激活（面板/快捷键）后对以玩家为中心的大范围内所有敌人释放连锁电击，造成高额伤害并大幅消耗个人电网电力。电力不足时无法激活（对齐《异星工厂》Discharge defense equipment）' },
+  'discharge-defense-equipment': { name: '放电防御', color: '#7ac0e0', desc: '装备件（3×3）：手动激活（面板/快捷键）后对以玩家为中心的大范围内所有敌人释放连锁电击，造成高额伤害并大幅消耗个人电网电力。电力不足时无法激活（对齐《异星工厂》Discharge defense equipment）' },
   // ===== 地形树木与木材（对齐《异星工厂》：树可砍伐获得木） =====
   'wood': { name: '木材', color: '#8a6a3a', mark: 'W', desc: '由砍伐树木获得，是木质家具与修理包的原料，也可作低效燃料' },
   // ===== 基础储物箱（对齐《异星工厂》：木箱/铁箱/钢箱递进） =====
@@ -288,7 +287,7 @@ const ITEMS = {
   // ===== 空间科学包（对齐《异星工厂》Space science pack，火箭发射产出） =====
   'space-science-pack': { name: '空间科学包', color: '#d0d0e0', mark: 'SC', desc: '由卫星成功发射后获得的高级科学包，用于终局无限科研（科研速度/采矿产能等）' },
   // ===== 流体桶装系统（对齐《异星工厂》Barrel system） =====
-  'empty-barrel': { name: '空桶', color: '#9aa0aa', mark: '桶', desc: '可盛装流体的金属桶（1×1）。把空桶放进组装机并接好流体管道，选桶装配方即可把流体灌入桶中；装满的桶可用传送带/机械臂/物流机器人/火车运输，实现流体走物流网络；再把满桶放回组装机选倒空配方，即可把流体倒回管道' },
+  'barrel': { name: '空桶', color: '#9aa0aa', mark: '桶', desc: '可盛装流体的金属桶（1×1）。把空桶放进组装机并接好流体管道，选桶装配方即可把流体灌入桶中；装满的桶可用传送带/机械臂/物流机器人/火车运输，实现流体走物流网络；再把满桶放回组装机选倒空配方，即可把流体倒回管道' },
   'water-barrel':          { name: '桶装水',   color: '#4a90d9', mark: '桶', desc: '盛满水的桶，可经物流网络运输，倒空后获得空桶' },
   'steam-barrel':          { name: '桶装蒸汽', color: '#c8d4dc', mark: '桶', desc: '盛满蒸汽的桶，可经物流网络运输，倒空后获得空桶' },
   'crude-oil-barrel':      { name: '桶装原油', color: '#2a2418', mark: '桶', desc: '盛满原油的桶，可经物流网络运输，倒空后获得空桶' },
@@ -308,7 +307,7 @@ const BARREL_CAP = 50;  // 每桶盛装流体量（对齐《异星工厂》Barre
 // 由流体 id 取对应桶物品 id；非桶装流体返回 null
 function barrelItemId(fluid) { return BARREL_FLUIDS.indexOf(fluid) >= 0 ? fluid + '-barrel' : null; }
 function fluidFromBarrelItem(item) {
-  if (item === 'empty-barrel') return null;
+  if (item === 'barrel') return null;
   for (const f of BARREL_FLUIDS) if (f + '-barrel' === item) return f;
   return null;
 }
@@ -324,7 +323,7 @@ const SMELTS = [
 
 // ===== 官方堆叠数据桥接（GAME_DATA 由 factorio-data 现场生成，见 tools/generate-game-data.js）=====
 // 与《异星工厂》官方完全一致：官方 stack_size 覆盖手工值（含 rocket/cargo-wagon/等，
-// 官方 rocket=100、cargo-wagon=5、portable-fusion-reactor=20、cannon-shell=100）。
+// 官方 rocket=100、cargo-wagon=5、fusion-reactor-equipment=20、cannon-shell=100）。
 for (const k in (GAME_DATA.stackSize || {})) {
   STACK_SIZES[k] = GAME_DATA.stackSize[k];
 }

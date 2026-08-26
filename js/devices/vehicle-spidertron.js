@@ -87,7 +87,7 @@ class Spidertron extends Tank {
     }
     // 便携聚变反应堆全天候发电；个人太阳能板仅白天发电
     let solar = 0;
-    for (const e of this.equipGrid) if (e.id === 'portable-solar-panel' || e.id === 'portable-solar-panel-mk2') solar += EQUIPMENT[e.id].powerOut;
+    for (const e of this.equipGrid) if (e.id === 'solar-panel-equipment' || e.id === 'portable-solar-panel-mk2') solar += EQUIPMENT[e.id].powerOut;
     const isDay = typeof isDaytime === 'function' ? isDaytime() : true;
     const totalProd = (prod - solar) + (isDay ? solar : 0);
     this.equipEnergyProd = totalProd;
@@ -106,12 +106,12 @@ class Spidertron extends Tank {
     // 发电充能
     this.equipEnergy = Math.min(this.equipEnergyMax, this.equipEnergy + this.equipEnergyProd * dt);
     // 个人激光防御：自动攻击射程内敌人（消耗装备电力）
-    const laserN = this.spiderEquipCount('personal-laser-defense');
+    const laserN = this.spiderEquipCount('personal-laser-defense-equipment');
     if (laserN > 0 && G.settings.combat && G.enemies && G.enemies.length > 0) {
       this.spiderLaserT = (this.spiderLaserT || 0) - dt;
       if (this.spiderLaserT <= 0) {
         const cx = this.x * TILE + TILE * this.w / 2, cy = this.y * TILE + TILE * this.h / 2;
-        const range = EQUIPMENT['personal-laser-defense'].laser * TILE;
+        const range = EQUIPMENT['personal-laser-defense-equipment'].laser * TILE;
         let target = null, bestD = Infinity;
         for (const en of G.enemies) {
           if (!en || en.dead) continue;
@@ -130,14 +130,14 @@ class Spidertron extends Tank {
   }
   // 外骨骼速度加成（×）
   spiderSpeedMult() {
-    const n = this.spiderEquipCount('exoskeleton');
+    const n = this.spiderEquipCount('exoskeleton-equipment');
     return 1 + n * 0.4;
   }
   // 装备护盾：吸收载具所受伤害（返回剩余伤害）
   spiderShieldAbsorb(dmg) {
-    const shieldN = this.spiderEquipCount('energy-shield') + this.spiderEquipCount('energy-shield-mk2') * 2;
+    const shieldN = this.spiderEquipCount('energy-shield-equipment') + this.spiderEquipCount('energy-shield-mk2-equipment') * 2;
     if (shieldN <= 0) return dmg;
-    const per = EQUIPMENT['energy-shield'].shield;
+    const per = EQUIPMENT['energy-shield-equipment'].shield;
     // 简单模型：每次受击最多吸收 shield 量（按护盾总数），电力充足时吸收
     if (this.spiderDrainEnergy(per)) {
       const absorbed = Math.min(dmg, per);
@@ -205,7 +205,7 @@ class Spidertron extends Tank {
     const tx2 = px + Math.cos(a) * dist, ty2 = py + Math.sin(a) * dist;
     (G.bullets || (G.bullets = [])).push({
       x: px, y: py, tx: tx2, ty: ty2, t: 0, life: 0.3,
-      splash: 3.5, dmg: Math.round(70 * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('explosive') : 1)), kind: 'rocket', tank: true
+      splash: 3.5, dmg: Math.round(70 * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('explosives') : 1)), kind: 'rocket', tank: true
     });
     this.fireT = 0.9;
     uiDirty = true;

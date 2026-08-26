@@ -131,12 +131,12 @@ class Car extends Entity {
   fireMachineGun(tx, ty) {
     // 弹药检查：优先穿甲弹（威力更高），其次普通弹药匣（对齐《异星工厂》优先级）
     let use = null;
-    if (typeof invCount === 'function' && invCount('piercing-rounds') > 0) use = 'piercing-rounds';
-    else if (typeof invCount === 'function' && invCount('magazine') > 0) use = 'magazine';
+    if (typeof invCount === 'function' && invCount('piercing-rounds-magazine') > 0) use = 'piercing-rounds-magazine';
+    else if (typeof invCount === 'function' && invCount('firearm-magazine') > 0) use = 'firearm-magazine';
     if (!use) return false;
     if (typeof invTake === 'function') invTake(use, 1);
     // 车载机枪伤害：穿甲弹强于普通弹（对齐原版）；叠加通用武器伤害与投射物伤害无限科技
-    const base = 8 * (use === 'piercing-rounds' ? 1.6 : 1) *
+    const base = 8 * (use === 'piercing-rounds-magazine' ? 1.6 : 1) *
       (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) *
       (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('projectile') : 1);
     const px = this.x * TILE + TILE * this.w / 2, py = this.y * TILE + TILE * this.h / 2;
@@ -209,7 +209,7 @@ class Car extends Entity {
       if (def.powerCap) cap += def.powerCap;
     }
     let solar = 0;
-    for (const e of (this.equipGrid || [])) if (e.id === 'portable-solar-panel' || e.id === 'portable-solar-panel-mk2') solar += EQUIPMENT[e.id].powerOut;
+    for (const e of (this.equipGrid || [])) if (e.id === 'solar-panel-equipment' || e.id === 'portable-solar-panel-mk2') solar += EQUIPMENT[e.id].powerOut;
     const isDay = typeof isDaytime === 'function' ? isDaytime() : true;
     this.equipEnergyProd = (prod - solar) + (isDay ? solar : 0);
     this.equipEnergyMax = cap;
@@ -225,7 +225,7 @@ class Car extends Entity {
     this.vehRecomputePower();
     this.equipEnergy = Math.min(this.equipEnergyMax, this.equipEnergy + this.equipEnergyProd * dt);
     // 个人激光防御：自动攻击射程内敌人
-    const laserN = this.vehEquipCount('personal-laser-defense');
+    const laserN = this.vehEquipCount('personal-laser-defense-equipment');
     if (laserN > 0 && G.settings.combat && G.enemies && G.enemies.length > 0) {
       this.vehLaserT = (this.vehLaserT || 0) - dt;
       if (this.vehLaserT <= 0) {
@@ -234,7 +234,7 @@ class Car extends Entity {
         for (const en of G.enemies) {
           if (!en || en.dead) continue;
           const d = Math.hypot(en.x - cx, en.y - cy);
-          if (d <= EQUIPMENT['personal-laser-defense'].laser * TILE && d < bestD) { best = en; bestD = d; }
+          if (d <= EQUIPMENT['personal-laser-defense-equipment'].laser * TILE && d < bestD) { best = en; bestD = d; }
         }
         if (best && this.vehDrainEnergy(SPIDER_LASER_COST)) {
           best.hp -= SPIDER_LASER_DMG;
@@ -248,11 +248,11 @@ class Car extends Entity {
   }
   // 外骨骼速度加成：每个 +40% 叠加
   vehSpeedMult() {
-    return 1 + this.vehEquipCount('exoskeleton') * 0.4;
+    return 1 + this.vehEquipCount('exoskeleton-equipment') * 0.4;
   }
   // 护盾吸收（对齐《异星工厂》：载具装备护盾受击时消耗装备电网电力吸收伤害）
   vehShieldAbsorb(dmg) {
-    const cap = (this.vehEquipCount('energy-shield') * 200) + (this.vehEquipCount('energy-shield-mk2') * 400);
+    const cap = (this.vehEquipCount('energy-shield-equipment') * 200) + (this.vehEquipCount('energy-shield-mk2-equipment') * 400);
     if (cap <= 0 || this.equipEnergy <= 0 || dmg <= 0) return dmg;
     const absorb = Math.min(dmg, cap, this.equipEnergy / 5);
     if (absorb <= 0) return dmg;
@@ -383,9 +383,9 @@ class Tank extends Car {
     else if (this.uShells > 0) { use = 'uShells'; }
     this[use]--;
     // 威力与爆炸范围分级（对齐《异星工厂》Cannon shell / Explosive cannon shell / Uranium / Explosive uranium）
-    const dmg = Math.round((use === 'euShells' ? 160 : (use === 'eShells' ? 110 : (use === 'uShells' ? 100 : 60))) * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('explosive') : 1));
+    const dmg = Math.round((use === 'euShells' ? 160 : (use === 'eShells' ? 110 : (use === 'uShells' ? 100 : 60))) * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('explosives') : 1));
     const splash = use === 'euShells' ? 5 : (use === 'eShells' ? 4.5 : (use === 'uShells' ? 4 : 3));
-    const explosive = (use === 'eShells' || use === 'euShells');   // 爆炸系弹药：命中即引爆，特效更华丽
+    const explosives = (use === 'eShells' || use === 'euShells');   // 爆炸系弹药：命中即引爆，特效更华丽
     const px = this.x * TILE + TILE * this.w / 2, py = this.y * TILE + TILE * this.h / 2;
     const dist = 10 * TILE;
     const a = Math.atan2(ty - py, tx - px);
@@ -393,14 +393,14 @@ class Tank extends Car {
     (G.bullets || (G.bullets = [])).push({
       x: px, y: py, tx: tx2, ty: ty2, t: 0, life: 0.22,
       splash: splash, dmg: dmg, kind: 'rocket', tank: true,
-      explosive: explosive   // 爆炸系炮弹：命中时触发增强版爆炸特效与音效
+      explosives: explosives   // 爆炸系炮弹：命中时触发增强版爆炸特效与音效
     });
     this.fireT = 0.9;
     uiDirty = true;
     // 坦克重炮：厚重主炮音；爆炸系炮弹发射音更沉；蜘蛛机器人发射导弹用较轻的火箭音
     if (typeof playSfx === 'function') {
       if (this instanceof Spidertron) playSfx('rocket');
-      else if (explosive) playSfx('tank-cannon-explosive');
+      else if (explosives) playSfx('tank-cannon-explosive');
       else playSfx('tank-cannon');
     }
     return true;

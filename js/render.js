@@ -179,7 +179,7 @@ function drawLampLights(ctx, dark) {
   const sy = (wy) => (wy - cam.py) * z + H / 2;
   let first = true;
   const punch = (e) => {
-    if (!e._dead && e.type === 'lamp' && e.shouldLight && e.shouldLight()) {
+    if (!e._dead && e.type === 'small-lamp' && e.shouldLight && e.shouldLight()) {
       const cx = sx((e.x + 0.5) * TILE);
       const cy = sy((e.y + 0.5) * TILE);
       if (cx < -rPx || cx > W + rPx || cy < -rPx || cy > H + rPx) return;
@@ -205,7 +205,7 @@ function drawLampLights(ctx, dark) {
   // 叠加暖色光晕（半透明黄色辉光，重新正常混合）
   let drewGlow = false;
   const glow = (e) => {
-    if (!e._dead && e.type === 'lamp' && e.shouldLight && e.shouldLight()) {
+    if (!e._dead && e.type === 'small-lamp' && e.shouldLight && e.shouldLight()) {
       const cx = sx((e.x + 0.5) * TILE);
       const cy = sy((e.y + 0.5) * TILE);
       if (cx < -rPx || cx > W + rPx || cy < -rPx || cy > H + rPx) return;

@@ -3,7 +3,7 @@
 // ===== 组装机：设置配方后自动生产 =====
 class Assembler extends Entity {
   constructor(type, x, y) {
-    super(type || 'assembling-machine', x, y);
+    super(type || 'assembling-machine-1', x, y);
     this.recipe = null;
     this.inp = {};
     this.outp = {};
@@ -127,7 +127,7 @@ class Assembler extends Entity {
     const effMult = Math.max(0.2, 1 - 0.15 * mc.eff);
     // 速度/产能模块增加耗电（按当量比例）
     const powMult = 1 + (mc.speed * 0.25 + mc.prod * 0.25);
-    return POWER_USE['assembling-machine'] * powMult * effMult;
+    return POWER_USE['assembling-machine-1'] * powMult * effMult;
   }
   setRecipe(id) {
     if (this.recipe === id) return;
@@ -207,7 +207,7 @@ function drawAssembler(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const s = TILE * e.w;
   const sh = TILE * e.h;
-  const mk2 = e.type === 'assembling-machine-mk2';
+  const mk2 = e.type === 'assembling-machine-2';
   const bodyC = mk2 ? '#6b4d8f' : '#4d5f8f';
   const lineC = mk2 ? '#3c2a52' : '#2e3a5c';
   const innerC = mk2 ? '#4c3a66' : '#3a486e';
@@ -255,7 +255,7 @@ function drawAssembler(ctx, e, gx, gy, dir, alpha) {
 function assemblerPanelHtml(e) {
   let h = row('当前配方', e.recipe ? ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name : '<span class="dim">未设置</span>');
   // 组装机 II 速度为 I 的 1.5 倍（官方 crafting_speed 0.75/0.5），并受电学科技加成
-  const asmM = e.type === 'assembling-machine-mk2' ? asmMult() * ((GAME_DATA.deviceStats?.[e.type]?.craftingSpeed ?? 0.75) / 0.5) * elecMachMult() : asmMult();
+  const asmM = e.type === 'assembling-machine-2' ? asmMult() * ((GAME_DATA.deviceStats?.[e.type]?.craftingSpeed ?? 0.75) / 0.5) * elecMachMult() : asmMult();
   // 消耗/产出速率显示在面板靠前位置（当前配方之后）
   h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? asmM : 1);
   // 吃电机型（组装机 II）显示当前耗电状态与是否电量不足
@@ -353,9 +353,9 @@ function assemblerTip(e) {
 }
 
 // ===== 注册 =====
-ENT_CLASSES['assembling-machine'] = Assembler;
-DEVICE_RENDER['assembling-machine'] = drawAssembler;
-DEVICE_RENDER['assembling-machine-mk2'] = drawAssembler;
+ENT_CLASSES['assembling-machine-1'] = Assembler;
+DEVICE_RENDER['assembling-machine-1'] = drawAssembler;
+DEVICE_RENDER['assembling-machine-2'] = drawAssembler;
 function assemblerStatusFn(e) {
   // 吃电机型（组装机 II）：正在耗电时按供电状态显灯（电量不足黄灯、缺电停摆红灯）
   if (typeof e.powerDemand === 'function') {
@@ -364,11 +364,11 @@ function assemblerStatusFn(e) {
   }
   return e.recipe ? (e.crafting || e.prog > 0 ? 'g' : 'y') : 'r';
 }
-DEVICE_STATUS['assembling-machine'] = assemblerStatusFn;
-DEVICE_STATUS['assembling-machine-mk2'] = assemblerStatusFn;
+DEVICE_STATUS['assembling-machine-1'] = assemblerStatusFn;
+DEVICE_STATUS['assembling-machine-2'] = assemblerStatusFn;
 const assemblerPanel = { html: assemblerPanelHtml, live: assemblerPanelLive, tip: assemblerTip, onAction: (a) => circuitPanelAction('am', a) };
-DEVICE_PANEL['assembling-machine'] = assemblerPanel;
-DEVICE_PANEL['assembling-machine-mk2'] = assemblerPanel;
+DEVICE_PANEL['assembling-machine-1'] = assemblerPanel;
+DEVICE_PANEL['assembling-machine-2'] = assemblerPanel;
 // 组装机 I/II 均可旋转朝向；旋转改变流体入口/出口所在侧（背部入口、前部出口）
-DEVICE_DIR_ROTATE['assembling-machine'] = true;
-DEVICE_DIR_ROTATE['assembling-machine-mk2'] = true;
+DEVICE_DIR_ROTATE['assembling-machine-1'] = true;
+DEVICE_DIR_ROTATE['assembling-machine-2'] = true;

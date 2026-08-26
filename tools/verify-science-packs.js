@@ -63,16 +63,16 @@ function noOtherInput(line, items) {
 console.log('\n【科学包配方输入对齐官方】');
 
 // 自动化科学包（红）：1 铁齿轮 + 1 铜板
-const red = getRecipeLine('science-pack');
-check('红瓶(1齿轮+1铜板)', hasInput(red, 'iron-gear', 1) && hasInput(red, 'copper-plate', 1) && noOtherInput(red, ['iron-gear','copper-plate']), '当前配方原料异常');
+const red = getRecipeLine('automation-science-pack');
+check('红瓶(1齿轮+1铜板)', hasInput(red, 'iron-gear-wheel', 1) && hasInput(red, 'copper-plate', 1) && noOtherInput(red, ['iron-gear-wheel','copper-plate']), '当前配方原料异常');
 
 // 物流科学包（绿）：1 传送带 + 1 机械臂
-const green = getRecipeLine('green-science');
+const green = getRecipeLine('logistic-science-pack');
 check('绿瓶(1传送带+1机械臂)', hasInput(green, 'transport-belt', 1) && hasInput(green, 'inserter', 1) && noOtherInput(green, ['transport-belt','inserter']), '当前配方原料异常');
 
 // 军事科学包（灰）：2 石墙 + 1 穿甲弹匣 + 1 手雷（对齐官方）
-const gray = getRecipeLine('military-science');
-check('灰瓶(2石墙+1穿甲弹+1手雷)', hasInput(gray, 'stone-wall', 2) && hasInput(gray, 'piercing-rounds', 1) && hasInput(gray, 'grenade', 1) && noOtherInput(gray, ['stone-wall','piercing-rounds','grenade']), '当前配方原料异常');
+const gray = getRecipeLine('military-science-pack');
+check('灰瓶(2石墙+1穿甲弹+1手雷)', hasInput(gray, 'stone-wall', 2) && hasInput(gray, 'piercing-rounds-magazine', 1) && hasInput(gray, 'grenade', 1) && noOtherInput(gray, ['stone-wall','piercing-rounds-magazine','grenade']), '当前配方原料异常');
 
 // 产能科学包（紫）：30 铁轨 + 1 电炉 + 1 产能模块
 const purple = getRecipeLine('production-science-pack');
@@ -83,15 +83,15 @@ const yellow = getRecipeLine('utility-science-pack');
 check('黄瓶(1框架+3低密度+2处理器)', hasInput(yellow, 'flying-robot-frame', 1) && hasInput(yellow, 'low-density-structure', 3) && hasInput(yellow, 'processing-unit', 2) && noOtherInput(yellow, ['flying-robot-frame','low-density-structure','processing-unit']), '当前配方原料异常');
 
 console.log('\n【科学包组装配方耗时对齐官方】');
-check('红瓶耗时(5s)', getRecipeTime('science-pack'), 5);
-check('绿瓶耗时(6s)', getRecipeTime('green-science'), 6);
-check('灰瓶耗时(10s)', getRecipeTime('military-science'), 10);
+check('红瓶耗时(5s)', getRecipeTime('automation-science-pack'), 5);
+check('绿瓶耗时(6s)', getRecipeTime('logistic-science-pack'), 6);
+check('灰瓶耗时(10s)', getRecipeTime('military-science-pack'), 10);
 check('紫瓶耗时(21s)', getRecipeTime('production-science-pack'), 21);
 check('黄瓶耗时(21s)', getRecipeTime('utility-science-pack'), 21);
 // 蓝瓶（化工科学包）官方为 1高级电路板+2引擎单元+3硫磺、24s。
 // 本项目为保持科技树无环（electronics 需蓝瓶），采用旧版配方，
 // 故此处仅校验其存在，不强制原料/耗时（避免循环依赖，见 README 说明）。
-check('蓝瓶配方已定义', getRecipeLine('blue-science').length > 0, '蓝瓶配方缺失');
+check('蓝瓶配方已定义', getRecipeLine('chemical-science-pack').length > 0, '蓝瓶配方缺失');
 // 空间科学包由火箭发射产出，非合成配方，不校验。
 
 console.log('\n----------------------------------------');

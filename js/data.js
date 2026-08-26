@@ -16,7 +16,7 @@ const ROCKET_FUEL_ENERGY = 500; // 火箭燃料能量密度（对齐《异星工
 const NUCLEAR_FUEL_ENERGY = 2500; // 核燃料能量密度（对齐《异星工厂》：核燃料约 1.21GJ，约为火箭燃料 225MJ 的 5 倍多），可作载具/车头/锅炉等燃烧器的最高级燃料
 const SELF_FUEL_MAX = 4;   // 热能采矿机燃料槽容量（对齐《异星工厂》：burner mining drill 16MJ/4MJ=4 个煤）
 const DRILL_BUFFER_CAP = 20; // 采矿机矿物输出缓冲上限（对齐《异星工厂》：采矿机内置 20 格输出缓冲）
-const UNDERGROUND_MAX = GAME_DATA.undergroundDist?.underground ?? 6;
+const UNDERGROUND_MAX = GAME_DATA.undergroundDist?.['underground-belt'] ?? 6;
 const FAST_UNDERGROUND_MAX = GAME_DATA.undergroundDist?.['fast-underground-belt'] ?? 14;
 const EXPRESS_UNDERGROUND_MAX = GAME_DATA.undergroundDist?.['express-underground-belt'] ?? 20;
 const UG_CAP = 8;  // 地下带每列缓存容量（双列，两列共 2×UG_CAP 件），对齐传送带每列每格 8 件
@@ -71,13 +71,13 @@ const HEAT_PIPE_MIN_GLOW_TEMP = GAME_DATA.heat?.heatPipeMinGlowTemp ?? 350; // �
 const HEAT_EXCHANGER_ENERGY_PER_STEAM = 20;// 热交换器每产 1 单位蒸汽需消耗热量(MJ)，满产(2单位/s)恰好消耗反应堆 40MW 热功率
 const HEAT_EXCHANGER_STEAM_RATE = 2.0;     // 热交换器满功率产汽速率（单位/秒）
 const POWER_USE = {
-  'electric-drill': 90,          // 电采矿机
+  'electric-mining-drill': 90,          // 电采矿机
   'electric-furnace': 180,       // 电炉
-  'assembling-machine': 75,      // 组装机 I
-  'assembling-machine-mk2': 150, // 组装机 II
+  'assembling-machine-1': 75,      // 组装机 I
+  'assembling-machine-2': 150, // 组装机 II
   'assembling-machine-3': 375,   // 组装机 III
   'pumpjack': 90,                // 抽油机
-  'refinery': 420,               // 炼油厂
+  'oil-refinery': 420,               // 炼油厂
   'chemical-plant': 210,         // 化工厂
   'centrifuge': 350,             // 离心机（官方 energy_usage 350kW）
   'lab': 60                      // 研究中心
@@ -112,12 +112,12 @@ const FLUID_WAGON_CAP = GAME_DATA.fluidCapacity?.fluidWagon ?? 2500;   // 流体
 // 载具可安装个人装备件（外骨骼加速、太阳能板/聚变堆供能、电池储电、夜视/传送带免疫等）
 const VEHICLE_GRIDS = { car: 5, tank: 6 };
 
-const SCIENCE_PACKS = ['science-pack', 'green-science', 'blue-science', 'military-science', 'production-science-pack', 'utility-science-pack', 'space-science-pack'];
+const SCIENCE_PACKS = ['automation-science-pack', 'logistic-science-pack', 'chemical-science-pack', 'military-science-pack', 'production-science-pack', 'utility-science-pack', 'space-science-pack'];
 function isScience(item) { return SCIENCE_PACKS.indexOf(item) >= 0; }
-const FILTER_CHOICES = ['iron-plate', 'copper-plate', 'steel-plate', 'iron-gear', 'iron-stick', 'steel-stick', 'copper-cable', 'green-circuit',
-  'coal', 'solid-fuel', 'stone', 'plastic-bar', 'science-pack', 'green-science', 'blue-science', 'military-science',
+const FILTER_CHOICES = ['iron-plate', 'copper-plate', 'steel-plate', 'iron-gear-wheel', 'iron-stick', 'steel-stick', 'copper-cable', 'electronic-circuit',
+  'coal', 'solid-fuel', 'stone', 'plastic-bar', 'automation-science-pack', 'logistic-science-pack', 'chemical-science-pack', 'military-science-pack',
   'production-science-pack', 'utility-science-pack', 'space-science-pack', 'flying-robot-frame',
-  'magazine', 'piercing-rounds', 'uranium-rounds', 'uranium-cannon-shell', 'flamethrower-ammo', 'poison-capsule', 'slowdown-capsule', 'shotgun-shell', 'piercing-shotgun-shell', 'cluster-grenade', 'logistic-robot', 'construction-robot', 'uranium-235', 'uranium-238', 'nuclear-fuel', 'uranium-fuel-cell', 'depleted-uranium-fuel-cell', 'sulfur', 'carbon', 'raw-fish'].concat(FLUIDS);
+  'firearm-magazine', 'piercing-rounds-magazine', 'uranium-rounds-magazine', 'uranium-cannon-shell', 'flamethrower-ammo', 'poison-capsule', 'slowdown-capsule', 'shotgun-shell', 'piercing-shotgun-shell', 'cluster-grenade', 'logistic-robot', 'construction-robot', 'uranium-235', 'uranium-238', 'nuclear-fuel', 'uranium-fuel-cell', 'depleted-uranium-fuel-cell', 'sulfur', 'carbon', 'raw-fish'].concat(FLUIDS);
 function techPacks(tid) { return (TECHS && TECHS[tid] && TECHS[tid].cost) || {}; }
 function techCostTotal(tid) {
   let s = 0;

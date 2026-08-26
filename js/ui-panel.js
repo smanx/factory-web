@@ -178,8 +178,8 @@ function initPanelEvents() {
       // 判断点击的是 Mk1 还是 Mk2 装备按钮
       const wantMk2 = roboEl.getAttribute('data-roboport') === 'toggle2';
       // 科技门控检查
-      if (!itemUnlocked(wantMk2 ? 'personal-roboport-mk2' : 'personal-roboport')) {
-        const tid = wantMk2 ? 'personal-roboport-mk2' : 'personal-roboport';
+      if (!itemUnlocked(wantMk2 ? 'personal-roboport-mk2-equipment' : 'personal-roboport-equipment')) {
+        const tid = wantMk2 ? 'personal-roboport-mk2-equipment' : 'personal-roboport-equipment';
         toast('需要先研究「' + TECHS[TECH_REQ[tid]].name + '」才能装备');
         renderPanel(false);
         return;

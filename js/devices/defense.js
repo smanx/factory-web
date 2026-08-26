@@ -17,7 +17,7 @@ class LandMine extends Entity {
       if (en.dead) continue;
       if (Math.hypot(en.x - cx, en.y - cy) <= LANDMINE_TRIGGER * TILE) {
         // 引爆：范围伤害敌人
-        explodeDamage(cx, cy, LANDMINE_RADIUS, Math.round(LANDMINE_DMG * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('explosive') : 1)));
+        explodeDamage(cx, cy, LANDMINE_RADIUS, Math.round(LANDMINE_DMG * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('explosives') : 1)));
         // 爆炸特效
         (G.bullets || (G.bullets = [])).push({
           x: cx, y: cy, tx: cx, ty: cy, t: 0, life: 0.3, boom: true
@@ -145,7 +145,7 @@ class ArtilleryTurret extends CircuitNode {
     // 炮弹出膛：以抛物弹道飞向目标（借用 bullet 系统，落地爆炸）
     (G.bullets || (G.bullets = [])).push({
       x: cx * TILE, y: cy * TILE, tx: best.x, ty: best.y, t: 0,
-      life: Math.max(0.3, bestD / 40), art: true, splash: ARTILLERY_RADIUS, dmg: Math.round(ARTILLERY_DMG * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('explosive') : 1))
+      life: Math.max(0.3, bestD / 40), art: true, splash: ARTILLERY_RADIUS, dmg: Math.round(ARTILLERY_DMG * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('explosives') : 1))
     });
   }
   serialize() { const s = super.serialize(); s.shells = this.shells; if (this.circuitCond) s.circuitCond = this.circuitCond; return s; }

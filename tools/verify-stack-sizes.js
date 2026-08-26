@@ -94,17 +94,17 @@ check('炮兵车厢', 'artillery-wagon', 5);
 
 // ---- 科学包（官方 stack=200）----
 console.log('\n【科学包堆叠=200（官方）】');
-check('红色科学包', 'science-pack', 200);
-check('绿色科学包', 'green-science', 200);
-check('蓝色科学包', 'blue-science', 200);
-check('军事科学包', 'military-science', 200);
+check('红色科学包', 'automation-science-pack', 200);
+check('绿色科学包', 'logistic-science-pack', 200);
+check('蓝色科学包', 'chemical-science-pack', 200);
+check('军事科学包', 'military-science-pack', 200);
 check('产能科学包', 'production-science-pack', 200);
 check('实用科学包', 'utility-science-pack', 200);
 check('空间科学包', 'space-science-pack', 200);
 
 // ---- 流体桶（官方 stack=10）----
 console.log('\n【流体桶堆叠=10（官方）】');
-check('空桶', 'empty-barrel', 10);
+check('空桶', 'barrel', 10);
 check('原油桶', 'crude-oil-barrel', 10);
 
 console.log('\n----------------------------------------');

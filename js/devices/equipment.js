@@ -15,21 +15,21 @@
 // size: 占用网格的行×列；powerOut: 发电(kW)；powerCap: 储电(kJ)；speed: 速度加成(每件)；
 // laser: 个人激光防御射程(格)；night: 夜视(布尔)。
 const EQUIPMENT = {
-  'portable-solar-panel':     { name: '个人太阳能板',      size: 1, powerOut: 30,  desc: '白天 30kW' },
+  'solar-panel-equipment':     { name: '个人太阳能板',      size: 1, powerOut: 30,  desc: '白天 30kW' },
   'portable-solar-panel-mk2': { name: '个人太阳能板 II',   size: 1, powerOut: 60,  desc: '白天 60kW' },
-  'portable-fusion-reactor':  { name: '便携聚变反应堆',    size: 4, powerOut: 750, desc: '全天候 750kW' },
-  'personal-battery':         { name: '个人电池',          size: 2, powerCap: 10000, desc: '储电 10MJ' },
-  'personal-battery-mk2':     { name: '个人电池 II',       size: 2, powerCap: 20000, desc: '储电 20MJ' },
-  'exoskeleton':              { name: '外骨骼',            size: 2, speed: 0.4, desc: '移动速度 +40%' },
-  'nightvision':              { name: '夜视仪',            size: 1, night: true, desc: '夜间如白昼' },
-  'personal-laser-defense':   { name: '个人激光防御',      size: 1, laser: 9, desc: '射程 9 格' },
+  'fusion-reactor-equipment':  { name: '便携聚变反应堆',    size: 4, powerOut: 750, desc: '全天候 750kW' },
+  'battery-equipment':         { name: '个人电池',          size: 2, powerCap: 10000, desc: '储电 10MJ' },
+  'battery-mk2-equipment':     { name: '个人电池 II',       size: 2, powerCap: 20000, desc: '储电 20MJ' },
+  'exoskeleton-equipment':              { name: '外骨骼',            size: 2, speed: 0.4, desc: '移动速度 +40%' },
+  'night-vision-equipment':              { name: '夜视仪',            size: 1, night: true, desc: '夜间如白昼' },
+  'personal-laser-defense-equipment':   { name: '个人激光防御',      size: 1, laser: 9, desc: '射程 9 格' },
   // 能量护盾：受击时优先消耗个人电网电力生成护盾吸收伤害（shield: 每件护盾吸收上限）
-  'energy-shield':            { name: '能量护盾',          size: 2, shield: 200, desc: '吸收 200 伤害' },
-  'energy-shield-mk2':        { name: '能量护盾 II',       size: 2, shield: 400, desc: '吸收 400 伤害' },
+  'energy-shield-equipment':            { name: '能量护盾',          size: 2, shield: 200, desc: '吸收 200 伤害' },
+  'energy-shield-mk2-equipment':        { name: '能量护盾 II',       size: 2, shield: 400, desc: '吸收 400 伤害' },
   // 传送带免疫：站上传送带不再被带动位移
   'belt-immunity-equipment':  { name: '传送带免疫',        size: 1, beltImmune: true, desc: '传送带推动免疫' },
   // 放电防御：手动激活对周围敌人释放连锁电击，消耗个人电网电力
-  'discharge-defense':        { name: '放电防御',          size: 3, discharge: true, desc: '主动放电打击周围敌人' }
+  'discharge-defense-equipment':        { name: '放电防御',          size: 3, discharge: true, desc: '主动放电打击周围敌人' }
 };
 // 官方装备参数桥接（GAME_DATA.equipment 由 factorio-data 现场生成，见 tools/generate-game-data.js）。
 // 仅覆盖官方有对应数据的数值字段（发电/储电/护盾/速度/射程/放电范围冷却）；
@@ -139,7 +139,7 @@ function recomputePersonalPower() {
     if (!def) continue;
     if (def.powerOut) {
       // 太阳能板随昼夜发电；聚变堆全天候满发
-      const f = (e.id === 'portable-solar-panel' || e.id === 'portable-solar-panel-mk2')
+      const f = (e.id === 'solar-panel-equipment' || e.id === 'portable-solar-panel-mk2')
         ? (typeof solarFactor === 'function' ? solarFactor() : 1)
         : 1;
       prod += def.powerOut * f;
@@ -208,13 +208,13 @@ function applyShieldAbsorb(dmg) {
 // ===== 装备效果接入 =====
 // 外骨骼速度加成：每个 +speed（叠加），作用于玩家移动速度。
 function equipmentSpeedMult() {
-  const n = equipCount('exoskeleton');
-  return 1 + n * (EQUIPMENT['exoskeleton'].speed ?? 0.4);
+  const n = equipCount('exoskeleton-equipment');
+  return 1 + n * (EQUIPMENT['exoskeleton-equipment'].speed ?? 0.4);
 }
 
 // 夜视：当前是否启用夜视（夜间提亮）。
 function hasNightVision() {
-  return equipCount('nightvision') > 0;
+  return equipCount('night-vision-equipment') > 0;
 }
 
 // 个人激光防御：自动攻击进入射程的敌人，消耗个人电力（每发约 800 能量单位）。
@@ -224,13 +224,13 @@ const PERSONAL_LASER_RATE = 0.6;   // 每个激光器开火间隔（秒）
 
 // 每帧更新个人激光防御（战斗开启且有激光器时）。返回是否发射了激光。
 function updatePersonalLaserDefense(dt) {
-  const n = equipCount('personal-laser-defense');
+  const n = equipCount('personal-laser-defense-equipment');
   if (n <= 0 || !G.settings.combat || !G.enemies || G.enemies.length === 0) return false;
   if (!G.personalLaserT) G.personalLaserT = 0;
   G.personalLaserT -= dt;
   if (G.personalLaserT > 0) return false;
   // 找射程内最近的敌人
-  const range = EQUIPMENT['personal-laser-defense'].laser * TILE;
+  const range = EQUIPMENT['personal-laser-defense-equipment'].laser * TILE;
   let target = null, bestD = Infinity;
   for (const en of G.enemies) {
     if (en.dead) continue;
@@ -264,14 +264,14 @@ function hasBeltImmunity() {
 // ===== 放电防御装备（对齐《异星工厂》Discharge defense） =====
 // 手动激活（按快捷键或点击装备）后，以玩家为中心的大范围内所有敌人被连锁电击，
 // 造成高额伤害并消耗个人电网电力。电力不足时无法激活。
-const DISCHARGE_RANGE = GAME_DATA.equipment?.['discharge-defense']?.dischargeRange ?? 12;   // 电击半径（格，官方 attack_parameters.range 10）
+const DISCHARGE_RANGE = GAME_DATA.equipment?.['discharge-defense-equipment']?.dischargeRange ?? 12;   // 电击半径（格，官方 attack_parameters.range 10）
 const DISCHARGE_DMG = 100;          // 每个敌人受到的伤害
 const DISCHARGE_COST = 5000;        // 每次激活耗电（与个人电池 10MJ 量级匹配）
-const DISCHARGE_COOLDOWN = GAME_DATA.equipment?.['discharge-defense']?.dischargeCooldown ?? 2; // 激活冷却（秒，官方 cooldown 150tick=2.5s）
+const DISCHARGE_COOLDOWN = GAME_DATA.equipment?.['discharge-defense-equipment']?.dischargeCooldown ?? 2; // 激活冷却（秒，官方 cooldown 150tick=2.5s）
 
 // 玩家是否已装备放电防御（用于快捷键判定）
 function hasDischargeDefense() {
-  return equipCount('discharge-defense') > 0;
+  return equipCount('discharge-defense-equipment') > 0;
 }
 
 // 激活放电防御：对周围敌人造成连锁电击。返回是否成功激活。

@@ -68,7 +68,7 @@ function drawItemGlyph(x, id, cx, cy, s) {
       x.fillRect(-r * 0.85, -r * 0.55, r * 1.7, r * 0.22);
       break;
     }
-    case 'iron-gear': {
+    case 'iron-gear-wheel': {
       x.fillStyle = col;
       x.beginPath();
       for (let i = 0; i < 16; i++) {
@@ -97,7 +97,7 @@ function drawItemGlyph(x, id, cx, cy, s) {
       x.stroke();
       break;
     }
-    case 'green-circuit': {
+    case 'electronic-circuit': {
       x.fillStyle = col;
       x.fillRect(-r * 0.72, -r * 0.62, r * 1.44, r * 1.24);
       x.strokeStyle = '#123c16';
@@ -108,10 +108,10 @@ function drawItemGlyph(x, id, cx, cy, s) {
       x.stroke();
       break;
     }
-    case 'science-pack':
-    case 'green-science':
-    case 'blue-science':
-    case 'military-science':
+    case 'automation-science-pack':
+    case 'logistic-science-pack':
+    case 'chemical-science-pack':
+    case 'military-science-pack':
     case 'production-science-pack':
     case 'utility-science-pack': {
       x.fillStyle = '#e8ecf2';
@@ -144,7 +144,7 @@ function drawItemGlyph(x, id, cx, cy, s) {
       break;
     }
     // ===== 流体桶（对齐《异星工厂》Barrel）：金属桶身 + 顶部环口 + 流体色带 =====
-    case 'empty-barrel':
+    case 'barrel':
     case 'water-barrel':
     case 'steam-barrel':
     case 'crude-oil-barrel':
@@ -244,8 +244,8 @@ function drawItemGlyph(x, id, cx, cy, s) {
       x.beginPath(); x.arc(r * 0.85, r * 0.3, s * 0.07, 0, 7); x.fill();
       break;
     }
-    case 'personal-roboport':
-    case 'personal-roboport-mk2': {
+    case 'personal-roboport-equipment':
+    case 'personal-roboport-mk2-equipment': {
       // 机器人港：带雷达天线的方形基座
       x.fillStyle = col;
       rrPath(x, -r * 0.8, -r * 0.65, r * 1.6, r * 1.3, s * 0.1);
@@ -264,7 +264,7 @@ function drawItemGlyph(x, id, cx, cy, s) {
       x.arc(0, -r * 0.98, r * 0.1, 0, 7);
       x.fill();
       // 中部圆盘（机器人进出港标识）
-      x.fillStyle = (id === 'personal-roboport-mk2') ? '#d04a5a' : '#b8c0a0';
+      x.fillStyle = (id === 'personal-roboport-mk2-equipment') ? '#d04a5a' : '#b8c0a0';
       x.beginPath();
       x.arc(0, -r * 0.1, r * 0.32, 0, 7);
       x.fill();
@@ -405,25 +405,25 @@ function weaponDamageMult() {
 }
 // 分类军事无限科技倍率（对齐《异星工厂》Military research 无限科技）：
 // 在通用武器伤害之上再按武器类别叠加（投射物/能量/燃烧/爆炸）。
-// kind: 'projectile' | 'energy' | 'fire' | 'explosive'
+// kind: 'projectile' | 'energy' | 'fire' | 'explosives'
 function weaponCategoryMult(kind) {
-  const map = { projectile: 'physical-projectile-damage', energy: 'energy-weapons-damage', fire: 'refined-flammables', explosive: 'stronger-explosives' };
+  const map = { projectile: 'physical-projectile-damage', energy: 'energy-weapons-damage', fire: 'refined-flammables', explosives: 'stronger-explosives' };
   const tid = map[kind];
   if (!tid) return 1;
   const lvl = (G.techProg && G.techProg[tid]) || 0;
   return 1 + 0.1 * lvl;
 }
-// 根据武器/设备 id 返回其伤害分类（projectile/energy/fire/explosive），用于套用分类军事无限科技。
+// 根据武器/设备 id 返回其伤害分类（projectile/energy/fire/explosives），用于套用分类军事无限科技。
 function weaponDamageKind(id) {
   if (!id) return 'projectile';
   // 枪械类投射物
-  if (/pistol|submachine|shotgun|magazine|rounds|cannon|turret(?!-laser)|machine/.test(id)) return 'projectile';
+  if (/pistol|submachine|shotgun|firearm-magazine|rounds|cannon|turret(?!-laser)|machine/.test(id)) return 'projectile';
   // 能量武器
   if (/laser/.test(id)) return 'energy';
   // 燃烧类
   if (/flame|fire|flammable/.test(id)) return 'fire';
   // 爆炸类
-  if (/rocket|grenade|explosive|bomb|artillery|land-mine|shell|mine/.test(id)) return 'explosive';
+  if (/rocket|grenade|explosives|bomb|artillery|land-mine|shell|mine/.test(id)) return 'explosives';
   return 'projectile';
 }
 // 机器人容量（对齐《异星工厂》Worker robot cargo size 无限科技）：物流/施工机器人单次搬运量基础 3，每级 +2。

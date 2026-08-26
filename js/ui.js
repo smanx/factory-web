@@ -399,10 +399,10 @@ function htmlInventory() {
   // 个人机器人港装备（施工机器人）
   if (typeof hasPersonalRoboport === 'function') {
     const equippedPR = hasPersonalRoboport();
-    const prType = G && G.personalRoboport === 'mk2' ? 'personal-roboport-mk2' : 'personal-roboport';
-    const prCount = invCount('personal-roboport');
-    const pr2Count = invCount('personal-roboport-mk2');
-    const showType = equippedPR ? prType : (pr2Count > 0 ? 'personal-roboport-mk2' : 'personal-roboport');
+    const prType = G && G.personalRoboport === 'mk2' ? 'personal-roboport-mk2-equipment' : 'personal-roboport-equipment';
+    const prCount = invCount('personal-roboport-equipment');
+    const pr2Count = invCount('personal-roboport-mk2-equipment');
+    const showType = equippedPR ? prType : (pr2Count > 0 ? 'personal-roboport-mk2-equipment' : 'personal-roboport-equipment');
     const shown = ITEMS[showType];
     const rInfo = typeof constrRoboportInfo === 'function' ? constrRoboportInfo() : null;
     h += '<div class="sec">装备（施工）</div><div class="armor-row">';
@@ -410,12 +410,12 @@ function htmlInventory() {
       (equippedPR ? '<img src="' + iconDataURL(prType) + '"><b>已装备</b>' : '<span>🔧 未装备</span>') + '</div>';
     // Mk1 装备按钮
     h += '<button class="rcbtn armor-eq' + (!equippedPR && prCount > 0 ? '' : ' disabled') + '" data-roboport="toggle"' +
-      ' data-tip="' + ITEMS['personal-roboport'].name + '|' + ITEMS['personal-roboport'].desc + '">' +
-      '<img src="' + iconDataURL('personal-roboport') + '">' + ITEMS['personal-roboport'].name + (G && G.personalRoboport === true ? ' ✔' : (prCount > 0 ? ' ×' + prCount : '')) + '</button>';
+      ' data-tip="' + ITEMS['personal-roboport-equipment'].name + '|' + ITEMS['personal-roboport-equipment'].desc + '">' +
+      '<img src="' + iconDataURL('personal-roboport-equipment') + '">' + ITEMS['personal-roboport-equipment'].name + (G && G.personalRoboport === true ? ' ✔' : (prCount > 0 ? ' ×' + prCount : '')) + '</button>';
     // Mk2 装备按钮
     h += '<button class="rcbtn armor-eq' + (!equippedPR && pr2Count > 0 ? '' : ' disabled') + '" data-roboport="toggle2"' +
-      ' data-tip="' + ITEMS['personal-roboport-mk2'].name + '|' + ITEMS['personal-roboport-mk2'].desc + '">' +
-      '<img src="' + iconDataURL('personal-roboport-mk2') + '">' + ITEMS['personal-roboport-mk2'].name + (G && G.personalRoboport === 'mk2' ? ' ✔' : (pr2Count > 0 ? ' ×' + pr2Count : '')) + '</button>';
+      ' data-tip="' + ITEMS['personal-roboport-mk2-equipment'].name + '|' + ITEMS['personal-roboport-mk2-equipment'].desc + '">' +
+      '<img src="' + iconDataURL('personal-roboport-mk2-equipment') + '">' + ITEMS['personal-roboport-mk2-equipment'].name + (G && G.personalRoboport === 'mk2' ? ' ✔' : (pr2Count > 0 ? ' ×' + pr2Count : '')) + '</button>';
     h += '</div><div class="dim">装备个人机器人港 + 背包携带施工机器人后，蓝图粘贴自动生成建造幽灵、红图框选生成拆除标记，由施工机器人自动施工/拆除。' +
       (rInfo ? '当前工作范围 <b>' + rInfo.range + '</b> 格、最多 <b>' + rInfo.maxActive + '</b> 台机器人同时施工（II 型更大更强）。' : '') + '</div>';
   }

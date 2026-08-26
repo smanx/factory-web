@@ -33,13 +33,13 @@ function stoneWallTip() { return '石墙：阻挡敌人通行'; }
 // ===== 机枪炮塔（对齐《异星工厂》Gun turret，占地 2×2）=====
 // 需装入弹药（弹药匣/穿甲弹/铀弹），自动攻击射程内敌人。
 // 弹药等级列表：优先级从高到低（威力从大到小）。集中定义避免各处硬编码重复。
-const TURRET_AMMO_TYPES = ['uranium-rounds', 'piercing-rounds', 'magazine'];
+const TURRET_AMMO_TYPES = ['uranium-rounds-magazine', 'piercing-rounds-magazine', 'firearm-magazine'];
 const TURRET_RANGE = GAME_DATA.turret?.['gun-turret']?.range ?? 6;       // 射程（格，官方 attack_parameters.range 18）
 const TURRET_FIRE_RATE = GAME_DATA.turret?.['gun-turret']?.fireRate ?? 0.3; // 两次射击间隔（秒，官方 cooldown 6tick=0.1s）
 class GunTurret extends CircuitNode {
   constructor(type, x, y) {
     super('gun-turret', x, y);
-    this.ammo = {};      // { 'magazine': n, 'piercing-rounds': n, 'uranium-rounds': n }
+    this.ammo = {};      // { 'firearm-magazine': n, 'piercing-rounds-magazine': n, 'uranium-rounds-magazine': n }
     this.cooldown = 0;
     this.target = null;
     this.facing = 0;
@@ -132,11 +132,11 @@ class GunTurret extends CircuitNode {
     this.cooldown = (typeof shootingSpeedMult === 'function' ? TURRET_FIRE_RATE / shootingSpeedMult() : TURRET_FIRE_RATE);
     // 用弹药攻击：铀弹 > 穿甲弹 > 普通弹（伤害取官方 ammo_type 弹药伤害）
     const dmgMap = {
-      'uranium-rounds': GAME_DATA.ammoDamage?.['uranium-rounds'] ?? 18,
-      'piercing-rounds': GAME_DATA.ammoDamage?.['piercing-rounds'] ?? 10,
-      'magazine': GAME_DATA.ammoDamage?.['magazine'] ?? 5
+      'uranium-rounds-magazine': GAME_DATA.ammoDamage?.['uranium-rounds-magazine'] ?? 18,
+      'piercing-rounds-magazine': GAME_DATA.ammoDamage?.['piercing-rounds-magazine'] ?? 10,
+      'firearm-magazine': GAME_DATA.ammoDamage?.['firearm-magazine'] ?? 5
     };
-    let dmg = GAME_DATA.ammoDamage?.['magazine'] ?? 5;
+    let dmg = GAME_DATA.ammoDamage?.['firearm-magazine'] ?? 5;
     for (const k of TURRET_AMMO_TYPES) {
       if (this.ammoCount(k) > 0) { this.ammo[k]--; dmg = dmgMap[k]; break; }
     }

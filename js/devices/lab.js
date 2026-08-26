@@ -169,7 +169,7 @@ class Lab extends Entity {
   }
   static restore(s) {
     const l = super.restore(s);
-    l.packs = typeof s.packs === 'number' ? { 'science-pack': s.packs } : (s.packs || {});
+    l.packs = typeof s.packs === 'number' ? { 'automation-science-pack': s.packs } : (s.packs || {});
     l.t = s.t || 0;
     l.modules = s.modules || {}; l.prodBuf = s.prodBuf || 0;
     return l;
@@ -226,7 +226,7 @@ function labPanelHtml(e) {
   h += '<div class="status"></div>';
   h += row('课题', '', 'techline');
   // 消耗速率：每 LAB_TIME 秒消耗 1 瓶科学包（按所选科技配方逐瓶消耗）
-  h += machRateHtml({ inp: { 'science-pack': 1 }, out: {}, time: LAB_TIME }, 1);
+  h += machRateHtml({ inp: { 'automation-science-pack': 1 }, out: {}, time: LAB_TIME }, 1);
   h += '<div class="dim">研究中心按所选科技的配方顺序逐瓶消耗科学包；缺哪种包会暂停并提示。机械臂可自动喂包。产能模块可让部分科研免费（对齐《异星工厂》）。</div>';
   return h;
 }
@@ -268,7 +268,7 @@ function labTip(e) {
 }
 function labOnAction(act, btn) {
   if (act === 'labfill') {
-    const pk = btn.dataset.id || 'science-pack';
+    const pk = btn.dataset.id || 'automation-science-pack';
     const n = Math.min(10, invCount(pk));
     if (n <= 0) { toast('没有科学包'); return true; }
     invTake(pk, n);

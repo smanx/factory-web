@@ -11,7 +11,7 @@
  *   1. 蒸汽机/汽轮机功率与耗汽率（官方 generator effectivity × fluid_usage_per_tick）
  *   2. 机械臂旋转/伸缩速度相对倍率（官方 inserter rotation_speed）
  *   3. 抽水机产水率（官方 offshore-pump pumping_speed）
- *   4. 离心机功耗（官方 assembling-machine centrifuge energy_usage）
+ *   4. 离心机功耗（官方 assembling-machine-1 centrifuge energy_usage）
  *   5. 锅炉目标温度（官方 boiler target_temperature）
  *
  * 运行：node tools/verify-data-alignment.js
@@ -86,8 +86,8 @@ const perType = (GAME_DATA.inserterStats && GAME_DATA.inserterStats.perType) || 
 const rot = (t) => perType[t] && perType[t].rotationSpeed;
 if (rot('inserter')) {
   check('快速臂相对倍率=官方0.04/0.014', Math.round(rot('fast-inserter') / rot('inserter') * 1000) / 1000, 2.857, 0.01);
-  check('堆叠臂相对倍率=官方0.04/0.014', Math.round(rot('stack-inserter') / rot('inserter') * 1000) / 1000, 2.857, 0.01);
-  check('长臂相对倍率=官方0.02/0.014', Math.round(rot('long-inserter') / rot('inserter') * 1000) / 1000, 1.429, 0.01);
+  check('堆叠臂相对倍率=官方0.04/0.014', Math.round(rot('bulk-inserter') / rot('inserter') * 1000) / 1000, 2.857, 0.01);
+  check('长臂相对倍率=官方0.02/0.014', Math.round(rot('long-handed-inserter') / rot('inserter') * 1000) / 1000, 1.429, 0.01);
 }
 
 console.log('');

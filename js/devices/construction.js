@@ -55,15 +55,15 @@ function canUseConstruction() {
 // wantMk2：点击 Mk2 按钮时强制装备 Mk2；否则若持有 Mk2 优先装备 Mk2（对齐《异星工厂》：机器人港可升级换代）
 function togglePersonalRoboport(wantMk2) {
   if (hasPersonalRoboport()) {
-    const id = (G.personalRoboport === 'mk2') ? 'personal-roboport-mk2' : 'personal-roboport';
+    const id = (G.personalRoboport === 'mk2') ? 'personal-roboport-mk2-equipment' : 'personal-roboport-equipment';
     invAdd(id, 1);
     G.personalRoboport = false;
     if (typeof playSfx === 'function') playSfx('unequip');
     if (typeof toast === 'function') toast('已卸下' + ITEMS[id].name);
   } else {
-    const haveMk2 = invCount('personal-roboport-mk2') > 0;
-    const useMk2 = (wantMk2 === true) ? (invCount('personal-roboport-mk2') > 0) : (haveMk2 && invCount('personal-roboport') < 1);
-    const id = useMk2 ? 'personal-roboport-mk2' : 'personal-roboport';
+    const haveMk2 = invCount('personal-roboport-mk2-equipment') > 0;
+    const useMk2 = (wantMk2 === true) ? (invCount('personal-roboport-mk2-equipment') > 0) : (haveMk2 && invCount('personal-roboport-equipment') < 1);
+    const id = useMk2 ? 'personal-roboport-mk2-equipment' : 'personal-roboport-equipment';
     if (invCount(id) < 1) { if (typeof toast === 'function') toast('背包里没有' + ITEMS[id].name); return; }
     invTake(id, 1);
     G.personalRoboport = useMk2 ? 'mk2' : true;

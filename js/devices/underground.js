@@ -3,7 +3,7 @@
 // ===== 地下传送带（含快速版）=====
 class Underground extends Entity {
   constructor(type, x, y) {
-    super(type || 'underground', x, y);
+    super(type || 'underground-belt', x, y);
     this.items = [];
     this.outItems = [];
     // 双列（对齐《异星工厂》）：隧道内两条独立车道各用一套累积计时器推进，互不混合。
@@ -335,13 +335,13 @@ function undergroundStatusFn(e) {
   }
   return 'r';
 }
-ENT_CLASSES['underground'] = Underground;
+ENT_CLASSES['underground-belt'] = Underground;
 ENT_CLASSES['fast-underground-belt'] = FastUnderground;
-DEVICE_RENDER['underground'] = drawUnderground;
+DEVICE_RENDER['underground-belt'] = drawUnderground;
 DEVICE_RENDER['fast-underground-belt'] = drawUnderground;
-DEVICE_STATUS['underground'] = undergroundStatusFn;
+DEVICE_STATUS['underground-belt'] = undergroundStatusFn;
 DEVICE_STATUS['fast-underground-belt'] = undergroundStatusFn;
-DEVICE_PANEL['underground'] = { html: undergroundPanelHtml, live: undergroundPanelLive };
+DEVICE_PANEL['underground-belt'] = { html: undergroundPanelHtml, live: undergroundPanelLive };
 DEVICE_PANEL['fast-underground-belt'] = { html: undergroundPanelHtml, live: undergroundPanelLive };
-DEVICE_DIR_ROTATE['underground'] = true;
+DEVICE_DIR_ROTATE['underground-belt'] = true;
 DEVICE_DIR_ROTATE['fast-underground-belt'] = true;

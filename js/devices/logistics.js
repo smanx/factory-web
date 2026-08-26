@@ -15,11 +15,11 @@
 
 // ===== 常量 =====
 const LOGI_CHEST_KINDS = {
-  'logistic-chest-passive': 'passive',
-  'logistic-chest-active': 'active',
-  'logistic-chest-storage': 'storage',
-  'logistic-chest-requester': 'requester',
-  'logistic-chest-buffer': 'buffer'
+  'passive-provider-chest': 'passive',
+  'active-provider-chest': 'active',
+  'storage-chest': 'storage',
+  'requester-chest': 'requester',
+  'buffer-chest': 'buffer'
 };
 const ROBOT_SPEED = GAME_DATA.robotSpeed?.logistic ?? 3.0;  // 物流机器人飞行速度（格/秒，官方 logistic-robot speed 0.05×60=3.0）
 const ROBOT_MAX_CHARGE = 100;   // 满电
@@ -168,20 +168,20 @@ class LogisticChest extends Entity {
 
 // 被动供应箱：机器人可取货，也接收返还
 class LogisticPassive extends LogisticChest {
-  constructor(type, x, y) { super('logistic-chest-passive', x, y); }
+  constructor(type, x, y) { super('passive-provider-chest', x, y); }
 }
 // 主动供应箱：机器人优先取货，收纳过剩
 class LogisticActive extends LogisticChest {
-  constructor(type, x, y) { super('logistic-chest-active', x, y); }
+  constructor(type, x, y) { super('active-provider-chest', x, y); }
 }
 // 仓储箱：机器人收纳返还/多余货物，也可作备用取货源
 class LogisticStorage extends LogisticChest {
-  constructor(type, x, y) { super('logistic-chest-storage', x, y); }
+  constructor(type, x, y) { super('storage-chest', x, y); }
 }
 // 需求箱：设置每种物品需求量，机器人自动送货补足
 class LogisticRequester extends LogisticChest {
   constructor(type, x, y) {
-    super('logistic-chest-requester', x, y);
+    super('requester-chest', x, y);
     this.requests = {};   // item -> 目标数量
   }
   // 需求缺口：目标量 - 当前存量
@@ -205,7 +205,7 @@ class LogisticRequester extends LogisticChest {
 // 既按设定请求货物（如需求箱），又向物流网络供应（如仓储箱），作为中转缓冲
 class LogisticBuffer extends LogisticChest {
   constructor(type, x, y) {
-    super('logistic-chest-buffer', x, y);
+    super('buffer-chest', x, y);
     this.requests = {};   // item -> 目标数量
   }
   // 需求缺口：目标量 - 当前存量
@@ -895,21 +895,21 @@ DEVICE_PANEL['roboport'] = {
   }
 };
 
-ENT_CLASSES['logistic-chest-passive'] = LogisticPassive;
-ENT_CLASSES['logistic-chest-active'] = LogisticActive;
-ENT_CLASSES['logistic-chest-storage'] = LogisticStorage;
-ENT_CLASSES['logistic-chest-requester'] = LogisticRequester;
-ENT_CLASSES['logistic-chest-buffer'] = LogisticBuffer;
-DEVICE_RENDER['logistic-chest-passive'] = drawLogiPassive;
-DEVICE_DIR_ROTATE['logistic-chest-passive'] = true; // 支持旋转
-DEVICE_RENDER['logistic-chest-active'] = drawLogiActive;
-DEVICE_DIR_ROTATE['logistic-chest-active'] = true; // 支持旋转
-DEVICE_RENDER['logistic-chest-storage'] = drawLogiStorage;
-DEVICE_DIR_ROTATE['logistic-chest-storage'] = true; // 支持旋转
-DEVICE_RENDER['logistic-chest-requester'] = drawLogiRequester;
-DEVICE_DIR_ROTATE['logistic-chest-requester'] = true; // 支持旋转
-DEVICE_RENDER['logistic-chest-buffer'] = drawLogiBuffer;
-DEVICE_DIR_ROTATE['logistic-chest-buffer'] = true; // 支持旋转
+ENT_CLASSES['passive-provider-chest'] = LogisticPassive;
+ENT_CLASSES['active-provider-chest'] = LogisticActive;
+ENT_CLASSES['storage-chest'] = LogisticStorage;
+ENT_CLASSES['requester-chest'] = LogisticRequester;
+ENT_CLASSES['buffer-chest'] = LogisticBuffer;
+DEVICE_RENDER['passive-provider-chest'] = drawLogiPassive;
+DEVICE_DIR_ROTATE['passive-provider-chest'] = true; // 支持旋转
+DEVICE_RENDER['active-provider-chest'] = drawLogiActive;
+DEVICE_DIR_ROTATE['active-provider-chest'] = true; // 支持旋转
+DEVICE_RENDER['storage-chest'] = drawLogiStorage;
+DEVICE_DIR_ROTATE['storage-chest'] = true; // 支持旋转
+DEVICE_RENDER['requester-chest'] = drawLogiRequester;
+DEVICE_DIR_ROTATE['requester-chest'] = true; // 支持旋转
+DEVICE_RENDER['buffer-chest'] = drawLogiBuffer;
+DEVICE_DIR_ROTATE['buffer-chest'] = true; // 支持旋转
 for (const t of Object.keys(LOGI_CHEST_KINDS)) {
   DEVICE_PANEL[t] = { html: logiChestPanelHtml, live: logiChestPanelLive, tip: logiChestTip, onAction: logiChestOnAction, onChange: logiRequesterOnChange };
 }

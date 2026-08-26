@@ -102,10 +102,10 @@ function getRecipeTime(key) {
 const cableRec = getRecipeLine('copper-cable');
 check('铜线(1铜→2线)', cableRec.includes("'copper-plate': 1") && cableRec.includes("'copper-cable': 2"), true);
 // 齿轮：2 铁板 → 1 齿轮
-const gearRec = getRecipeLine('iron-gear');
+const gearRec = getRecipeLine('iron-gear-wheel');
 check('齿轮(2铁→1齿)', gearRec.includes("'iron-plate': 2"), true);
 // 电路板：1 铁板 + 3 铜线 → 1
-const gc = getRecipeLine('green-circuit');
+const gc = getRecipeLine('electronic-circuit');
 check('电路板(1铁+3线)', gc.includes("'iron-plate': 1") && gc.includes("'copper-cable': 3"), true);
 // 铁杆：1 铁板 → 2 铁杆
 const stick = getRecipeLine('iron-stick');
@@ -143,24 +143,24 @@ function assertRecipeInput(key, item, count) {
 }
 check('锅炉(0.5s+4管道+1石炉)', assertRecipeInput('boiler', 'pipe', 4) && assertRecipeInput('boiler', 'stone-furnace', 1), true);
 check('蒸汽机(0.5s+8齿轮+10铁板+5管道)',
-  assertRecipeInput('steam-engine', 'iron-gear', 8) &&
+  assertRecipeInput('steam-engine', 'iron-gear-wheel', 8) &&
   assertRecipeInput('steam-engine', 'iron-plate', 10) &&
   assertRecipeInput('steam-engine', 'pipe', 5), true);
-check('蒸汽机不含电路板(官方无)', !getRecipeLine('steam-engine').includes('green-circuit'), true);
-check('抽水机(0.5s+2齿轮+3管道)', assertRecipeInput('offshore-pump', 'iron-gear', 2) && assertRecipeInput('offshore-pump', 'pipe', 3), true);
+check('蒸汽机不含电路板(官方无)', !getRecipeLine('steam-engine').includes('electronic-circuit'), true);
+check('抽水机(0.5s+2齿轮+3管道)', assertRecipeInput('offshore-pump', 'iron-gear-wheel', 2) && assertRecipeInput('offshore-pump', 'pipe', 3), true);
 check('机枪炮塔(8s+10铜板+10齿轮+20铁板)',
   assertRecipeInput('gun-turret', 'copper-plate', 10) &&
-  assertRecipeInput('gun-turret', 'iron-gear', 10) &&
+  assertRecipeInput('gun-turret', 'iron-gear-wheel', 10) &&
   assertRecipeInput('gun-turret', 'iron-plate', 20), true);
 check('雷达(0.5s+5电路板+5齿轮+10铁板)',
-  assertRecipeInput('radar', 'green-circuit', 5) &&
-  assertRecipeInput('radar', 'iron-gear', 5) &&
+  assertRecipeInput('radar', 'electronic-circuit', 5) &&
+  assertRecipeInput('radar', 'iron-gear-wheel', 5) &&
   assertRecipeInput('radar', 'iron-plate', 10), true);
 // 电动引擎：1 引擎单元 + 2 电路板 + 15 润滑油（官方 = 15 润滑油）
 check('电动引擎(1引擎+2电路板+15润滑油)',
-  assertRecipeInput('electric-engine', 'engine-unit', 1) &&
-  assertRecipeInput('electric-engine', 'green-circuit', 2) &&
-  assertRecipeInput('electric-engine', 'lubricant', 15), true);
+  assertRecipeInput('electric-engine-unit', 'engine-unit', 1) &&
+  assertRecipeInput('electric-engine-unit', 'electronic-circuit', 2) &&
+  assertRecipeInput('electric-engine-unit', 'lubricant', 15), true);
 
 
 // ---- 机械臂族（对齐《异星工厂》官方 Wiki）----
@@ -168,89 +168,89 @@ console.log('\n【机械臂族配方对齐官方】');
 // 电力机械臂：1 铁板 + 1 齿轮 + 1 电路板
 check('电力机械臂(1铁板+1齿轮+1电路板)',
   assertRecipeInput('inserter', 'iron-plate', 1) &&
-  assertRecipeInput('inserter', 'iron-gear', 1) &&
-  assertRecipeInput('inserter', 'green-circuit', 1), true);
+  assertRecipeInput('inserter', 'iron-gear-wheel', 1) &&
+  assertRecipeInput('inserter', 'electronic-circuit', 1), true);
 // 高速机械臂：1 电力机械臂 + 2 铁板（官方：1 inserter + 2 iron-plate）
 check('高速机械臂(1电力机械臂+2铁板)',
   assertRecipeInput('fast-inserter', 'inserter', 1) &&
   assertRecipeInput('fast-inserter', 'iron-plate', 2), true);
 // 加长机械臂：1 电力机械臂 + 1 齿轮（官方：1 inserter + 1 iron-gear-wheel）
 check('加长机械臂(1电力机械臂+1齿轮)',
-  assertRecipeInput('long-inserter', 'inserter', 1) &&
-  assertRecipeInput('long-inserter', 'iron-gear', 1) &&
-  !getRecipeLine('long-inserter').includes('iron-plate'), true);
+  assertRecipeInput('long-handed-inserter', 'inserter', 1) &&
+  assertRecipeInput('long-handed-inserter', 'iron-gear-wheel', 1) &&
+  !getRecipeLine('long-handed-inserter').includes('iron-plate'), true);
 // 集装箱机械臂：官方 = 1 处理器（官方 0.5s + 1 processing unit）
 check('集装箱机械臂(1处理器)',
-  assertRecipeInput('stack-inserter', 'processing-unit', 1), true);
+  assertRecipeInput('bulk-inserter', 'processing-unit', 1), true);
 // ---- 机械臂族配方耗时对齐官方（官方所有机械臂组装配方耗时均为 0.5s）----
 console.log('\n【机械臂族配方耗时对齐官方】');
 // 官方《异星工厂》Wiki：所有机械臂（含热能/电力/加长/高速/集装箱）
 // 在组装机中的配方耗时（crafting time）均为 0.5 秒。
 check('电力机械臂耗时(0.5s)', getRecipeTime('inserter'), 0.5);
 check('热能机械臂耗时(0.5s)', getRecipeTime('burner-inserter'), 0.5);
-check('加长机械臂耗时(0.5s)', getRecipeTime('long-inserter'), 0.5);
+check('加长机械臂耗时(0.5s)', getRecipeTime('long-handed-inserter'), 0.5);
 check('高速机械臂耗时(0.5s)', getRecipeTime('fast-inserter'), 0.5);
-check('集装箱机械臂耗时(0.5s)', getRecipeTime('stack-inserter'), 0.5);
+check('集装箱机械臂耗时(0.5s)', getRecipeTime('bulk-inserter'), 0.5);
 
 // ---- 传送带族（对齐《异星工厂》官方 Wiki）----
 console.log('\n【传送带族配方对齐官方】');
 // 传送带：1 铁板 + 1 齿轮 → 2 条（官方：1 iron-plate + 1 gear → 2）
 check('传送带(1铁板+1齿轮→2条)',
   assertRecipeInput('transport-belt', 'iron-plate', 1) &&
-  assertRecipeInput('transport-belt', 'iron-gear', 1) &&
+  assertRecipeInput('transport-belt', 'iron-gear-wheel', 1) &&
   getRecipeLine('transport-belt').includes("'transport-belt': 2"), true);
 // 快速传送带：官方 = 1 传送带 + 5 齿轮
 check('快速传送带(1传送带+5齿轮)',
   assertRecipeInput('fast-transport-belt', 'transport-belt', 1) &&
-  assertRecipeInput('fast-transport-belt', 'iron-gear', 5), true);
+  assertRecipeInput('fast-transport-belt', 'iron-gear-wheel', 5), true);
 // 极速传送带：官方 = 1 快速带 + 10 齿轮 + 20 润滑油
 check('极速传送带(1快速带+10齿轮+20润滑油)',
   assertRecipeInput('express-transport-belt', 'fast-transport-belt', 1) &&
-  assertRecipeInput('express-transport-belt', 'iron-gear', 10) &&
+  assertRecipeInput('express-transport-belt', 'iron-gear-wheel', 10) &&
   assertRecipeInput('express-transport-belt', 'lubricant', 20), true);
 // 分流器：官方 = 5 电路板 + 5 铁板 + 4 传送带 → 1
 check('分流器(5电路板+5铁板+4传送带)',
-  assertRecipeInput('splitter', 'green-circuit', 5) &&
+  assertRecipeInput('splitter', 'electronic-circuit', 5) &&
   assertRecipeInput('splitter', 'iron-plate', 5) &&
   assertRecipeInput('splitter', 'transport-belt', 4), true);
 // 地下传送带：官方 = 10 铁板 + 5 传送带 → 2
 check('地下传送带(10铁板+5传送带→2)',
-  assertRecipeInput('underground', 'iron-plate', 10) &&
-  assertRecipeInput('underground', 'transport-belt', 5) &&
-  getRecipeLine('underground').includes("'underground': 2"), true);
+  assertRecipeInput('underground-belt', 'iron-plate', 10) &&
+  assertRecipeInput('underground-belt', 'transport-belt', 5) &&
+  getRecipeLine('underground-belt').includes("'underground-belt': 2"), true);
 // 快速地下传送带：官方 = 40 齿轮 + 2 地下带 → 2
 check('快速地下传送带(40齿轮+2地下带→2)',
-  assertRecipeInput('fast-underground-belt', 'iron-gear', 40) &&
-  assertRecipeInput('fast-underground-belt', 'underground', 2) &&
+  assertRecipeInput('fast-underground-belt', 'iron-gear-wheel', 40) &&
+  assertRecipeInput('fast-underground-belt', 'underground-belt', 2) &&
   getRecipeLine('fast-underground-belt').includes("'fast-underground-belt': 2"), true);
 
 // ---- 组装机族 / 研究中心 / 电采矿机 / 铁箱 / 快速带（对齐《异星工厂》官方 Wiki）----
 console.log('\n【组装机族 / 研究中心 / 电采矿机 / 铁箱配方对齐官方】');
 // 组装机 I：官方 = 0.5s + 3 电路板 + 5 齿轮 + 9 铁板
 check('组装机I(3电路板+5齿轮+9铁板)',
-  assertRecipeInput('assembling-machine', 'green-circuit', 3) &&
-  assertRecipeInput('assembling-machine', 'iron-gear', 5) &&
-  assertRecipeInput('assembling-machine', 'iron-plate', 9), true);
+  assertRecipeInput('assembling-machine-1', 'electronic-circuit', 3) &&
+  assertRecipeInput('assembling-machine-1', 'iron-gear-wheel', 5) &&
+  assertRecipeInput('assembling-machine-1', 'iron-plate', 9), true);
 // 组装机 II：官方 = 0.5s + 1 组装机I + 3 电路板 + 5 齿轮 + 2 钢板
 check('组装机II(1组装机I+3电路板+5齿轮+2钢板)',
-  assertRecipeInput('assembling-machine-mk2', 'assembling-machine', 1) &&
-  assertRecipeInput('assembling-machine-mk2', 'green-circuit', 3) &&
-  assertRecipeInput('assembling-machine-mk2', 'iron-gear', 5) &&
-  assertRecipeInput('assembling-machine-mk2', 'steel-plate', 2), true);
+  assertRecipeInput('assembling-machine-2', 'assembling-machine-1', 1) &&
+  assertRecipeInput('assembling-machine-2', 'electronic-circuit', 3) &&
+  assertRecipeInput('assembling-machine-2', 'iron-gear-wheel', 5) &&
+  assertRecipeInput('assembling-machine-2', 'steel-plate', 2), true);
 // 组装机 III：官方 = 0.5s + 2 组装机II + 4 速度模块
 check('组装机III(2组装机II+4速度模块)',
-  assertRecipeInput('assembling-machine-3', 'assembling-machine-mk2', 2) &&
+  assertRecipeInput('assembling-machine-3', 'assembling-machine-2', 2) &&
   assertRecipeInput('assembling-machine-3', 'speed-module', 4), true);
 // 研究中心：官方 = 2s + 10 电路板 + 10 齿轮 + 4 传送带
 check('研究中心(10电路板+10齿轮+4传送带)',
-  assertRecipeInput('lab', 'green-circuit', 10) &&
-  assertRecipeInput('lab', 'iron-gear', 10) &&
+  assertRecipeInput('lab', 'electronic-circuit', 10) &&
+  assertRecipeInput('lab', 'iron-gear-wheel', 10) &&
   assertRecipeInput('lab', 'transport-belt', 4), true);
 // 电采矿机：官方 = 2s + 3 电路板 + 5 齿轮 + 10 铁板
 check('电采矿机(3电路板+5齿轮+10铁板)',
-  assertRecipeInput('electric-drill', 'green-circuit', 3) &&
-  assertRecipeInput('electric-drill', 'iron-gear', 5) &&
-  assertRecipeInput('electric-drill', 'iron-plate', 10), true);
+  assertRecipeInput('electric-mining-drill', 'electronic-circuit', 3) &&
+  assertRecipeInput('electric-mining-drill', 'iron-gear-wheel', 5) &&
+  assertRecipeInput('electric-mining-drill', 'iron-plate', 10), true);
 // 铁箱：官方 = 8 铁板 → 1（独立配方，非木箱升级）
 check('铁箱(8铁板独立配方)',
   assertRecipeInput('iron-chest', 'iron-plate', 8) &&
@@ -262,8 +262,8 @@ check('木箱(2木材)',
 check('钢箱(8钢板)', assertRecipeInput('steel-chest', 'steel-plate', 8), true);
 // 修理包：官方 = 0.5s + 2 电路板 + 2 齿轮
 check('修理包(2电路板+2齿轮)',
-  assertRecipeInput('repair-pack', 'green-circuit', 2) &&
-  assertRecipeInput('repair-pack', 'iron-gear', 2), true);
+  assertRecipeInput('repair-pack', 'electronic-circuit', 2) &&
+  assertRecipeInput('repair-pack', 'iron-gear-wheel', 2), true);
 
 // ---- 生产建筑/电力建筑配方对齐官方（本次数据修正）----
 console.log('\n【生产/电力建筑配方对齐官方】');
@@ -274,17 +274,17 @@ check('电炉(5高级电路板+10钢板+10石砖)',
   assertRecipeInput('electric-furnace', 'stone-brick', 10), true);
 // 化工厂：官方 = 5s + 5 电路板 + 5 齿轮 + 5 管道 + 5 钢板
 check('化工厂(5电路板+5齿轮+5管道+5钢板)',
-  assertRecipeInput('chemical-plant', 'green-circuit', 5) &&
-  assertRecipeInput('chemical-plant', 'iron-gear', 5) &&
+  assertRecipeInput('chemical-plant', 'electronic-circuit', 5) &&
+  assertRecipeInput('chemical-plant', 'iron-gear-wheel', 5) &&
   assertRecipeInput('chemical-plant', 'pipe', 5) &&
   assertRecipeInput('chemical-plant', 'steel-plate', 5), true);
 // 炼油厂：官方 = 8s + 10 电路板 + 10 齿轮 + 10 管道 + 15 钢板 + 10 石砖
 check('炼油厂(10电路板+10齿轮+10管道+15钢板+10石砖)',
-  assertRecipeInput('refinery', 'green-circuit', 10) &&
-  assertRecipeInput('refinery', 'iron-gear', 10) &&
-  assertRecipeInput('refinery', 'pipe', 10) &&
-  assertRecipeInput('refinery', 'steel-plate', 15) &&
-  assertRecipeInput('refinery', 'stone-brick', 10), true);
+  assertRecipeInput('oil-refinery', 'electronic-circuit', 10) &&
+  assertRecipeInput('oil-refinery', 'iron-gear-wheel', 10) &&
+  assertRecipeInput('oil-refinery', 'pipe', 10) &&
+  assertRecipeInput('oil-refinery', 'steel-plate', 15) &&
+  assertRecipeInput('oil-refinery', 'stone-brick', 10), true);
 // 变电站：官方 = 0.5s + 5 高级电路板 + 6 铜线 + 10 钢板
 check('变电站(5高级电路板+6铜线+10钢板)',
   assertRecipeInput('substation', 'advanced-circuit', 5) &&

@@ -69,7 +69,7 @@ function setup() {
   // 近侧 lane1 铁板(pos0.9 靠前)，远侧 lane0 铜板(pos0.8)
   belt.items.push({ item: 'iron-plate', pos: 0.9, lane: 1, side: -1 });
   belt.items.push({ item: 'copper-plate', pos: 0.8, lane: 0, side: -1 });
-  const t = { type: 'assembling-machine', recipe: 'x' };
+  const t = { type: 'assembling-machine-1', recipe: 'x' };
   ins.canDropAt = (tt, item) => item === 'copper-plate'; // 铁板已满不收，只收铜板
   const it = ins.pickSourceForDrop(belt, t);
   ok(it === 'copper-plate',
@@ -81,7 +81,7 @@ function setup() {
   const { belt, ins } = setup();
   belt.items.push({ item: 'iron-plate', pos: 0.9, lane: 1, side: -1 });   // 近侧+靠前
   belt.items.push({ item: 'copper-plate', pos: 0.8, lane: 0, side: -1 }); // 远侧
-  const t = { type: 'assembling-machine', recipe: 'x' };
+  const t = { type: 'assembling-machine-1', recipe: 'x' };
   ins.canDropAt = (tt, item) => item === 'iron-plate' || item === 'copper-plate';
   const it = ins.pickSourceForDrop(belt, t);
   ok(it === 'iron-plate', '两种都收时优先近侧 lane 靠前的铁板');
@@ -93,7 +93,7 @@ function setup() {
   ins.filter = 'copper-plate';
   belt.items.push({ item: 'iron-plate', pos: 0.9, lane: 1, side: -1 });   // 近侧非过滤物
   belt.items.push({ item: 'copper-plate', pos: 0.8, lane: 0, side: -1 }); // 远侧过滤物
-  const t = { type: 'assembling-machine', recipe: 'x' };
+  const t = { type: 'assembling-machine-1', recipe: 'x' };
   ins.canDropAt = (tt, item) => true;
   const it = ins.pickSourceForDrop(belt, t);
   ok(it === 'copper-plate', '过滤臂跨越 lane 仍只选过滤物');
@@ -104,7 +104,7 @@ function setup() {
   const { belt, ins } = setup();
   belt.items.push({ item: 'iron-plate', pos: 0.9, lane: 1, side: -1 });
   belt.items.push({ item: 'copper-plate', pos: 0.8, lane: 0, side: -1 });
-  const t = { type: 'assembling-machine', recipe: 'x' };
+  const t = { type: 'assembling-machine-1', recipe: 'x' };
   ins.canDropAt = (tt, item) => false;   // 目标什么都不收
   const it = ins.pickSourceForDrop(belt, t);
   ok(it === null, '目标不收任何物品时不取物（返回 null）');

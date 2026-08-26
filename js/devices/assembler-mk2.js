@@ -2,7 +2,7 @@
 
 // ===== 组装机 II：吃电力、速度更高的高级组装机 =====
 class AssemblerMK2 extends Assembler {
-  constructor(type, x, y) { super('assembling-machine-mk2', x, y); }
+  constructor(type, x, y) { super('assembling-machine-2', x, y); }
   update(dt) {
     this.portFlow();
     if (!this.recipe) { this.crafting = false; return; }
@@ -32,8 +32,8 @@ class AssemblerMK2 extends Assembler {
     this.crafting = true;
     this.prog = 0;
   }
-  powerDemand() { return this.recipe ? POWER_USE['assembling-machine-mk2'] : 0; }
+  powerDemand() { return this.recipe ? POWER_USE['assembling-machine-2'] : 0; }
 }
 
 // ===== 注册 =====
-ENT_CLASSES['assembling-machine-mk2'] = AssemblerMK2;
+ENT_CLASSES['assembling-machine-2'] = AssemblerMK2;

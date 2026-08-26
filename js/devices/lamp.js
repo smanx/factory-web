@@ -7,7 +7,7 @@
 const LAMP_POWER = 5;        // 电灯夜间功耗 5kW（对齐《异星工厂》约 5kW）
 const LAMP_RADIUS = 5;       // 照亮半径（格）
 class Lamp extends Entity {
-  constructor(type, x, y) { super('lamp', x, y); }
+  constructor(type, x, y) { super('small-lamp', x, y); }
   // 电路条件是否满足（未启用条件则恒满足）
   circuitOk() {
     if (!this.circuitCond || !this.circuitCond.enabled) return true;
@@ -76,7 +76,7 @@ function drawLamp(ctx, e, gx, gy, dir, alpha) {
 function lampPanelHtml(e) {
   return row('状态', '<span class="dim"></span>', 'st') +
     '<div class="status"></div>' +
-    (typeof circuitPanelHtml === 'function' ? circuitPanelHtml(e || { circuitCond: null }, 'lamp') : '') +
+    (typeof circuitPanelHtml === 'function' ? circuitPanelHtml(e || { circuitCond: null }, 'small-lamp') : '') +
     '<div class="dim">电灯：夜间通电时点亮，照亮周围 ' + LAMP_RADIUS + ' 格，让基地在黑暗中清晰可见。白天不耗电。断电或供电不足时熄灭。可在电路控制中设置启用条件，仅当电路信号满足时才点亮（1×1，需电力工程科技）。</div>';
 }
 function lampPanelLive(e, api) {
@@ -96,9 +96,9 @@ function lampTip(e) {
 }
 
 // ===== 注册 =====
-const lampPanel = { html: lampPanelHtml, live: lampPanelLive, tip: lampTip, onAction: (a) => (typeof circuitPanelAction === 'function' ? circuitPanelAction('lamp', a) : false) };
-ENT_CLASSES['lamp'] = Lamp;
-DEVICE_RENDER['lamp'] = drawLamp;
-DEVICE_DIR_ROTATE['lamp'] = true; // 支持旋转
-DEVICE_STATUS['lamp'] = e => e.circuitOk() ? (e.shouldLight() ? 'g' : (nightPhase() ? 'y' : 'r')) : 'r';
-DEVICE_PANEL['lamp'] = lampPanel;
+const lampPanel = { html: lampPanelHtml, live: lampPanelLive, tip: lampTip, onAction: (a) => (typeof circuitPanelAction === 'function' ? circuitPanelAction('small-lamp', a) : false) };
+ENT_CLASSES['small-lamp'] = Lamp;
+DEVICE_RENDER['small-lamp'] = drawLamp;
+DEVICE_DIR_ROTATE['small-lamp'] = true; // 支持旋转
+DEVICE_STATUS['small-lamp'] = e => e.circuitOk() ? (e.shouldLight() ? 'g' : (nightPhase() ? 'y' : 'r')) : 'r';
+DEVICE_PANEL['small-lamp'] = lampPanel;

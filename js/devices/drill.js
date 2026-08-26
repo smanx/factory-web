@@ -16,7 +16,7 @@ function drillEmit(e, dt) {
 // ===== 热能采矿机（采矿业基类；电采矿机/抽油机继承自 ElectricDrill）=====
 class Drill extends Entity {
   constructor(type, x, y) {
-    super(type || 'burner-drill', x, y);
+    super(type || 'burner-mining-drill', x, y);
     this.fuelCoal = 0;
     this.fuelSolid = 0;
     this.fuelRocket = 0;
@@ -213,7 +213,7 @@ function drawDrill(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const s = TILE * e.w;
   const sh = TILE * e.h;
-  const electric = e.type === 'electric-drill' || e.type === 'pumpjack';
+  const electric = e.type === 'electric-mining-drill' || e.type === 'pumpjack';
   const pump = e.type === 'pumpjack';
   const bodyC = pump ? '#2f5a56' : electric ? '#3b5a8c' : '#6e4630';
   const bodyC2 = pump ? '#3d726d' : electric ? '#4d6ea8' : '#8a5a3e';
@@ -431,23 +431,23 @@ function drillTip(e) {
 }
 
 // ===== 注册（渲染/面板/提示对三类采矿机统一注册）=====
-ENT_CLASSES['burner-drill'] = Drill;
-DEVICE_RENDER['burner-drill'] = drawDrill;
-DEVICE_RENDER['electric-drill'] = drawDrill;
+ENT_CLASSES['burner-mining-drill'] = Drill;
+DEVICE_RENDER['burner-mining-drill'] = drawDrill;
+DEVICE_RENDER['electric-mining-drill'] = drawDrill;
 DEVICE_RENDER['pumpjack'] = drawDrill;
-DEVICE_STATUS['burner-drill'] = e => e.working ? 'g' : 'r';
+DEVICE_STATUS['burner-mining-drill'] = e => e.working ? 'g' : 'r';
 // 电采矿机/抽油机：正在耗电且电量不足（sat<1）时亮黄灯提示；未耗电时按是否工作显红/绿
 function electricDrillStatus(e) {
   const s = powerStatusOf(e);
   return s.consuming ? s.color : (e.working ? 'g' : 'r');
 }
-DEVICE_STATUS['electric-drill'] = electricDrillStatus;
+DEVICE_STATUS['electric-mining-drill'] = electricDrillStatus;
 DEVICE_STATUS['pumpjack'] = electricDrillStatus;
 const drillPanel = { html: drillPanelHtml, live: drillPanelLive, tip: drillTip };
-DEVICE_PANEL['burner-drill'] = drillPanel;
-DEVICE_PANEL['electric-drill'] = drillPanel;
+DEVICE_PANEL['burner-mining-drill'] = drillPanel;
+DEVICE_PANEL['electric-mining-drill'] = drillPanel;
 DEVICE_PANEL['pumpjack'] = drillPanel;
-DEVICE_PLACE['burner-drill'] = drillNeedsOre;
-DEVICE_DIR_ROTATE['burner-drill'] = true;
-DEVICE_DIR_ROTATE['electric-drill'] = true;
+DEVICE_PLACE['burner-mining-drill'] = drillNeedsOre;
+DEVICE_DIR_ROTATE['burner-mining-drill'] = true;
+DEVICE_DIR_ROTATE['electric-mining-drill'] = true;
 DEVICE_DIR_ROTATE['pumpjack'] = true;

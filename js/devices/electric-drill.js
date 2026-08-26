@@ -7,7 +7,7 @@ const ELECTRIC_DRILL_ACID_MAX = 100;   // 电采矿机内置硫酸缓冲上限
 
 class ElectricDrill extends Drill {
   constructor(type, x, y) {
-    super(type || 'electric-drill', x, y);
+    super(type || 'electric-mining-drill', x, y);
     this.modules = {};   // { 'speed-module': n, 'productivity-module': n }（对齐《异星工厂》模块槽）
     this.prodBuf = 0;    // 产能模块累积进度
     this.acid = 0;       // 内置硫酸缓冲：采集铀矿时的原料（由管道接入）
@@ -171,9 +171,9 @@ class ElectricDrill extends Drill {
     const powMult = 1 + (mc.speed * 0.25 + mc.prod * 0.25);
     return powMult * effMult;
   }
-  powerDemand() { return (this.oreTile() && this.buf < DRILL_BUFFER_CAP) ? POWER_USE['electric-drill'] * this.modulePowerFactor() : 0; }
+  powerDemand() { return (this.oreTile() && this.buf < DRILL_BUFFER_CAP) ? POWER_USE['electric-mining-drill'] * this.modulePowerFactor() : 0; }
 }
 
 // ===== 注册 =====
-ENT_CLASSES['electric-drill'] = ElectricDrill;
-DEVICE_PLACE['electric-drill'] = DEVICE_PLACE['burner-drill'];
+ENT_CLASSES['electric-mining-drill'] = ElectricDrill;
+DEVICE_PLACE['electric-mining-drill'] = DEVICE_PLACE['burner-mining-drill'];

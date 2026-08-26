@@ -215,8 +215,8 @@ class Inserter extends Entity {
       case 'electric-furnace':
         if (item === 'coal') return false;
         return SMELTS.some(r => r.inp === item) && (t.inp[item] || 0) < 25;
-      case 'assembling-machine':
-      case 'assembling-machine-mk2':
+      case 'assembling-machine-1':
+      case 'assembling-machine-2':
       case 'assembling-machine-3':
       case 'chemical-plant': {
         if (!t.recipe) return false;
@@ -228,7 +228,7 @@ class Inserter extends Entity {
         const rec = t.recipeObj();
         return !!rec.inp[item] && (t.inp[item] || 0) < 50;
       }
-      case 'burner-drill':
+      case 'burner-mining-drill':
         if (item === 'coal') return t.fuelCoal < 10;
         if (item === 'wood') return (t.fuelWood || 0) < 10;
         if (item === 'solid-fuel') return (t.fuelSolid || 0) < 10;
@@ -240,7 +240,7 @@ class Inserter extends Entity {
         if (item === 'solid-fuel') return (t.fuelSolid || 0) < 5;
         if (item === 'rocket-fuel') return (t.fuelRocket || 0) < 5;
         return false;
-      case 'electric-drill':
+      case 'electric-mining-drill':
         return false;
       case 'offshore-pump':
         return false;
@@ -255,7 +255,7 @@ class Inserter extends Entity {
         return item === 'uranium-fuel-cell' && t.fuel < 5;
       case 'lab':
         return isScience(item) && (t.packs[item] || 0) < 40;
-      case 'underground':
+      case 'underground-belt':
         return t.items.length < UG_CAP * 2;   // 双列：每列 UG_CAP 件，两列共 2×UG_CAP
       case 'pipe':
       case 'pipe-to-ground':
@@ -265,7 +265,7 @@ class Inserter extends Entity {
         return FLUIDS.indexOf(item) >= 0;   // 虚空管道：接受任意流体后销毁
       case 'creative-pipe':
         return false;  // 创造管道：只产不收
-      case 'refinery':
+      case 'oil-refinery':
         return item === 'crude-oil' && (t.inp['crude-oil'] || 0) < 50;
       case 'storage-chest':
         return t.slots.length < 12 || t.slots.some(s => s && s.item === item && s.count < stackSize(item));
@@ -276,7 +276,7 @@ class Inserter extends Entity {
       case 'creative-chest':
         return false;  // 创造箱：只产不收
       case 'gun-turret':
-        return (item === 'magazine' || item === 'piercing-rounds') && t.ammoCount(item) < 40;
+        return (item === 'firearm-magazine' || item === 'piercing-rounds-magazine') && t.ammoCount(item) < 40;
       default:
         return false;
     }
@@ -379,7 +379,7 @@ class Inserter extends Entity {
 
 class LongInserter extends Inserter {
   constructor(type, x, y) {
-    super(type || 'long-inserter', x, y);
+    super(type || 'long-handed-inserter', x, y);
     this.reach = 2;   // 几何、行为与普通臂完全一致，只是触及第二格
   }
 }
@@ -390,7 +390,7 @@ class FastInserter extends Inserter {
 }
 
 class StackInserter extends Inserter {
-  constructor(type, x, y) { super(type || 'stack-inserter', x, y); }
+  constructor(type, x, y) { super(type || 'bulk-inserter', x, y); }
 }
 
 // ===== 渲染 =====
@@ -398,8 +398,8 @@ class StackInserter extends Inserter {
 function inserterArmColor(e) {
   return e.type === 'burner-inserter' ? '#7a7f87'
     : e.type === 'fast-inserter' ? '#4f9fe8'
-    : e.type === 'long-inserter' ? '#e05a4e'
-    : e.type === 'stack-inserter' ? '#7ec850'
+    : e.type === 'long-handed-inserter' ? '#e05a4e'
+    : e.type === 'bulk-inserter' ? '#7ec850'
     : '#e0b23c';
 }
 function drawInserter(ctx, e, gx, gy, dir, alpha) {
@@ -411,7 +411,7 @@ function drawInserter(ctx, e, gx, gy, dir, alpha) {
   ctx.strokeStyle = '#22252a';
   ctx.lineWidth = 2;
   ctx.stroke();
-  const long = e.type === 'long-inserter';
+  const long = e.type === 'long-handed-inserter';
   if (e.filter) {
     ctx.strokeStyle = '#58b8e8';
     ctx.lineWidth = 2;
@@ -642,22 +642,22 @@ function inserterStatusFn(e) {
 const inserterPanel = { html: inserterPanelHtml, live: inserterPanelLive, tip: inserterTip, onAction: inserterFilterOnAction };
 const stackInserterPanel = { html: stackInserterPanelHtml, live: inserterPanelLive, tip: inserterTip, onAction: inserterFilterOnAction };
 ENT_CLASSES['inserter'] = Inserter;
-ENT_CLASSES['long-inserter'] = LongInserter;
-ENT_CLASSES['stack-inserter'] = StackInserter;
+ENT_CLASSES['long-handed-inserter'] = LongInserter;
+ENT_CLASSES['bulk-inserter'] = StackInserter;
 ENT_CLASSES['fast-inserter'] = FastInserter;
 DEVICE_RENDER['inserter'] = drawInserter;
-DEVICE_RENDER['long-inserter'] = drawInserter;
-DEVICE_RENDER['stack-inserter'] = drawInserter;
+DEVICE_RENDER['long-handed-inserter'] = drawInserter;
+DEVICE_RENDER['bulk-inserter'] = drawInserter;
 DEVICE_RENDER['fast-inserter'] = drawInserter;
 DEVICE_STATUS['inserter'] = inserterStatusFn;
-DEVICE_STATUS['long-inserter'] = inserterStatusFn;
-DEVICE_STATUS['stack-inserter'] = inserterStatusFn;
+DEVICE_STATUS['long-handed-inserter'] = inserterStatusFn;
+DEVICE_STATUS['bulk-inserter'] = inserterStatusFn;
 DEVICE_STATUS['fast-inserter'] = inserterStatusFn;
 DEVICE_PANEL['inserter'] = inserterPanel;
-DEVICE_PANEL['long-inserter'] = inserterPanel;
-DEVICE_PANEL['stack-inserter'] = stackInserterPanel;
+DEVICE_PANEL['long-handed-inserter'] = inserterPanel;
+DEVICE_PANEL['bulk-inserter'] = stackInserterPanel;
 DEVICE_PANEL['fast-inserter'] = inserterPanel;
 DEVICE_DIR_ROTATE['inserter'] = true;
-DEVICE_DIR_ROTATE['long-inserter'] = true;
-DEVICE_DIR_ROTATE['stack-inserter'] = true;
+DEVICE_DIR_ROTATE['long-handed-inserter'] = true;
+DEVICE_DIR_ROTATE['bulk-inserter'] = true;
 DEVICE_DIR_ROTATE['fast-inserter'] = true;

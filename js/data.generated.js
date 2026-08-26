@@ -29,42 +29,42 @@ const GAME_DATA = {
   "calcite": 50,
   "iron-plate": 100,
   "copper-plate": 100,
-  "iron-gear": 100,
+  "iron-gear-wheel": 100,
   "iron-stick": 100,
   "copper-cable": 200,
-  "green-circuit": 200,
-  "science-pack": 200,
+  "electronic-circuit": 200,
+  "automation-science-pack": 200,
   "transport-belt": 100,
   "inserter": 50,
   "burner-inserter": 50,
-  "long-inserter": 50,
-  "burner-drill": 50,
+  "long-handed-inserter": 50,
+  "burner-mining-drill": 50,
   "stone-furnace": 50,
-  "assembling-machine": 50,
-  "storage-chest": 50,
+  "assembling-machine-1": 50,
   "lab": 10,
-  "lamp": 50,
+  "small-lamp": 50,
   "substation": 50,
   "programmable-speaker": 10,
   "splitter": 50,
-  "underground": 50,
+  "underground-belt": 50,
   "steel-plate": 100,
   "boiler": 50,
   "steam-engine": 10,
   "offshore-pump": 20,
-  "electric-drill": 50,
+  "electric-mining-drill": 50,
   "electric-furnace": 50,
-  "assembling-machine-mk2": 50,
+  "assembling-machine-2": 50,
   "fast-transport-belt": 100,
   "fast-underground-belt": 50,
   "express-transport-belt": 100,
   "express-underground-belt": 50,
   "express-splitter": 50,
   "fast-splitter": 50,
-  "stack-inserter": 50,
+  "bulk-inserter": 50,
   "fast-inserter": 50,
   "steel-chest": 50,
-  "green-science": 200,
+  "logistic-science-pack": 200,
+  "chemical-science-pack": 200,
   "plastic-bar": 100,
   "pipe": 100,
   "pipe-to-ground": 50,
@@ -75,13 +75,13 @@ const GAME_DATA = {
   "accumulator": 50,
   "steel-furnace": 50,
   "assembling-machine-3": 50,
-  "military-science": 200,
+  "military-science-pack": 200,
   "gun-turret": 50,
   "stone-wall": 100,
   "gate": 50,
-  "magazine": 100,
-  "piercing-rounds": 100,
-  "refinery": 10,
+  "firearm-magazine": 100,
+  "piercing-rounds-magazine": 100,
+  "oil-refinery": 10,
   "chemical-plant": 10,
   "pistol": 5,
   "submachine-gun": 5,
@@ -92,11 +92,11 @@ const GAME_DATA = {
   "cluster-grenade": 100,
   "rocket-launcher": 5,
   "grenade": 100,
-  "rocket-ammo": 100,
+  "rocket": 100,
   "explosive-rocket": 100,
   "flamethrower": 5,
   "flamethrower-ammo": 100,
-  "uranium-rounds": 100,
+  "uranium-rounds-magazine": 100,
   "atomic-bomb": 10,
   "uranium-cannon-shell": 100,
   "poison-capsule": 100,
@@ -115,15 +115,14 @@ const GAME_DATA = {
   "efficiency-module-3": 50,
   "advanced-circuit": 200,
   "engine-unit": 50,
-  "electric-engine": 50,
+  "electric-engine-unit": 50,
   "processing-unit": 100,
   "low-density-structure": 50,
   "rocket-fuel": 20,
   "rocket-part": 5,
-  "rocket": 100,
   "rocket-silo": 1,
   "radar": 50,
-  "explosive": 50,
+  "explosives": 50,
   "cliff-explosives": 20,
   "battery": 200,
   "flying-robot-frame": 50,
@@ -157,13 +156,13 @@ const GAME_DATA = {
   "roboport": 10,
   "logistic-robot": 50,
   "construction-robot": 50,
-  "personal-roboport": 20,
-  "personal-roboport-mk2": 20,
-  "logistic-chest-passive": 50,
-  "logistic-chest-active": 50,
-  "logistic-chest-storage": 50,
-  "logistic-chest-buffer": 50,
-  "logistic-chest-requester": 50,
+  "personal-roboport-equipment": 20,
+  "personal-roboport-mk2-equipment": 20,
+  "passive-provider-chest": 50,
+  "active-provider-chest": 50,
+  "storage-chest": 50,
+  "buffer-chest": 50,
+  "requester-chest": 50,
   "raw-fish": 100,
   "uranium-ore": 50,
   "uranium-235": 100,
@@ -192,17 +191,17 @@ const GAME_DATA = {
   "modular-armor": 1,
   "power-armor": 1,
   "power-armor-mk2": 1,
-  "portable-solar-panel": 20,
-  "portable-fusion-reactor": 20,
-  "personal-battery": 20,
-  "personal-battery-mk2": 20,
-  "exoskeleton": 20,
-  "nightvision": 20,
-  "personal-laser-defense": 20,
-  "energy-shield": 20,
-  "energy-shield-mk2": 20,
+  "solar-panel-equipment": 20,
+  "fusion-reactor-equipment": 20,
+  "battery-equipment": 20,
+  "battery-mk2-equipment": 20,
+  "exoskeleton-equipment": 20,
+  "night-vision-equipment": 20,
+  "personal-laser-defense-equipment": 20,
+  "energy-shield-equipment": 20,
+  "energy-shield-mk2-equipment": 20,
   "belt-immunity-equipment": 20,
-  "discharge-defense": 20,
+  "discharge-defense-equipment": 20,
   "wood": 100,
   "wooden-chest": 50,
   "iron-chest": 50,
@@ -210,7 +209,7 @@ const GAME_DATA = {
   "deconstruction-planner": 1,
   "upgrade-planner": 1,
   "space-science-pack": 200,
-  "empty-barrel": 10,
+  "barrel": 10,
   "water-barrel": 10,
   "crude-oil-barrel": 10,
   "heavy-oil-barrel": 10,
@@ -223,7 +222,7 @@ const GAME_DATA = {
   "transport-belt": 150,
   "fast-transport-belt": 160,
   "express-transport-belt": 170,
-  "underground": 150,
+  "underground-belt": 150,
   "fast-underground-belt": 160,
   "express-underground-belt": 170,
   "splitter": 170,
@@ -231,18 +230,17 @@ const GAME_DATA = {
   "express-splitter": 190,
   "inserter": 150,
   "burner-inserter": 100,
-  "lamp": 100,
+  "small-lamp": 100,
   "programmable-speaker": 150,
-  "long-inserter": 160,
-  "stack-inserter": 160,
+  "long-handed-inserter": 160,
+  "bulk-inserter": 160,
   "fast-inserter": 150,
-  "burner-drill": 150,
+  "burner-mining-drill": 150,
   "stone-furnace": 200,
   "steel-furnace": 300,
-  "assembling-machine": 300,
+  "assembling-machine-1": 300,
   "assembling-machine-3": 400,
   "beacon": 200,
-  "storage-chest": 350,
   "wooden-chest": 100,
   "iron-chest": 200,
   "steel-chest": 350,
@@ -250,9 +248,9 @@ const GAME_DATA = {
   "boiler": 200,
   "steam-engine": 400,
   "offshore-pump": 150,
-  "electric-drill": 300,
+  "electric-mining-drill": 300,
   "electric-furnace": 350,
-  "assembling-machine-mk2": 350,
+  "assembling-machine-2": 350,
   "pipe": 100,
   "pipe-to-ground": 150,
   "pump": 180,
@@ -266,7 +264,7 @@ const GAME_DATA = {
   "stone-wall": 350,
   "gate": 350,
   "pumpjack": 200,
-  "refinery": 350,
+  "oil-refinery": 350,
   "chemical-plant": 300,
   "storage-tank": 500,
   "centrifuge": 350,
@@ -287,11 +285,11 @@ const GAME_DATA = {
   "spidertron": 3000,
   "land-mine": 15,
   "artillery-turret": 2000,
-  "logistic-chest-passive": 350,
-  "logistic-chest-active": 350,
-  "logistic-chest-storage": 350,
-  "logistic-chest-requester": 350,
-  "logistic-chest-buffer": 350,
+  "passive-provider-chest": 350,
+  "active-provider-chest": 350,
+  "storage-chest": 350,
+  "requester-chest": 350,
+  "buffer-chest": 350,
   "small-electric-pole": 100,
   "medium-electric-pole": 100,
   "big-electric-pole": 150,
@@ -302,31 +300,31 @@ const GAME_DATA = {
   "substation": 200
  },
  "powerUse": {
-  "burner-drill": 150,
+  "burner-mining-drill": 150,
   "stone-furnace": 90,
   "steel-furnace": 90,
-  "assembling-machine": 75,
+  "assembling-machine-1": 75,
   "assembling-machine-3": 375,
   "beacon": 480,
   "lab": 60,
   "offshore-pump": 60,
-  "electric-drill": 90,
+  "electric-mining-drill": 90,
   "electric-furnace": 180,
-  "assembling-machine-mk2": 150,
+  "assembling-machine-2": 150,
   "pump": 29,
   "rocket-silo": 250,
   "radar": 300,
   "pumpjack": 90,
-  "refinery": 420,
+  "oil-refinery": 420,
   "chemical-plant": 210,
   "centrifuge": 350,
   "roboport": 50
  },
  "deviceStats": {
-  "assembling-machine": {
+  "assembling-machine-1": {
    "craftingSpeed": 0.5
   },
-  "assembling-machine-mk2": {
+  "assembling-machine-2": {
    "craftingSpeed": 0.75,
    "moduleSlots": 2
   },
@@ -344,11 +342,11 @@ const GAME_DATA = {
   "stone-furnace": {
    "craftingSpeed": 1
   },
-  "electric-drill": {
+  "electric-mining-drill": {
    "moduleSlots": 3,
    "miningSpeed": 0.5
   },
-  "burner-drill": {
+  "burner-mining-drill": {
    "miningSpeed": 0.25
   },
   "pumpjack": {
@@ -371,7 +369,7 @@ const GAME_DATA = {
   "express-transport-belt": {
    "beltSpeed": 5.625
   },
-  "underground": {
+  "underground-belt": {
    "beltSpeed": 1.875
   },
   "fast-underground-belt": {
@@ -380,7 +378,7 @@ const GAME_DATA = {
   "express-underground-belt": {
    "beltSpeed": 5.625
   },
-  "refinery": {
+  "oil-refinery": {
    "craftingSpeed": 1,
    "moduleSlots": 3
   },
@@ -403,13 +401,13 @@ const GAME_DATA = {
     "steel-plate": 1
    }
   },
-  "iron-gear": {
+  "iron-gear-wheel": {
    "time": 0.5,
    "inp": {
     "iron-plate": 2
    },
    "out": {
-    "iron-gear": 1
+    "iron-gear-wheel": 1
    }
   },
   "iron-stick": {
@@ -430,31 +428,31 @@ const GAME_DATA = {
     "copper-cable": 2
    }
   },
-  "green-circuit": {
+  "electronic-circuit": {
    "time": 0.5,
    "inp": {
     "iron-plate": 1,
     "copper-cable": 3
    },
    "out": {
-    "green-circuit": 1
+    "electronic-circuit": 1
    }
   },
-  "science-pack": {
+  "automation-science-pack": {
    "time": 5,
    "inp": {
     "copper-plate": 1,
-    "iron-gear": 1
+    "iron-gear-wheel": 1
    },
    "out": {
-    "science-pack": 1
+    "automation-science-pack": 1
    }
   },
   "transport-belt": {
    "time": 0.5,
    "inp": {
     "iron-plate": 1,
-    "iron-gear": 1
+    "iron-gear-wheel": 1
    },
    "out": {
     "transport-belt": 2
@@ -463,7 +461,7 @@ const GAME_DATA = {
   "fast-transport-belt": {
    "time": 0.5,
    "inp": {
-    "iron-gear": 5,
+    "iron-gear-wheel": 5,
     "transport-belt": 1
    },
    "out": {
@@ -473,7 +471,7 @@ const GAME_DATA = {
   "express-transport-belt": {
    "time": 0.5,
    "inp": {
-    "iron-gear": 10,
+    "iron-gear-wheel": 10,
     "fast-transport-belt": 1,
     "lubricant": 20
    },
@@ -481,21 +479,21 @@ const GAME_DATA = {
     "express-transport-belt": 1
    }
   },
-  "underground": {
+  "underground-belt": {
    "time": 1,
    "inp": {
     "iron-plate": 10,
     "transport-belt": 5
    },
    "out": {
-    "underground": 2
+    "underground-belt": 2
    }
   },
   "fast-underground-belt": {
    "time": 2,
    "inp": {
-    "iron-gear": 40,
-    "underground": 2
+    "iron-gear-wheel": 40,
+    "underground-belt": 2
    },
    "out": {
     "fast-underground-belt": 2
@@ -504,7 +502,7 @@ const GAME_DATA = {
   "express-underground-belt": {
    "time": 2,
    "inp": {
-    "iron-gear": 80,
+    "iron-gear-wheel": 80,
     "fast-underground-belt": 2,
     "lubricant": 40
    },
@@ -515,7 +513,7 @@ const GAME_DATA = {
   "splitter": {
    "time": 1,
    "inp": {
-    "green-circuit": 5,
+    "electronic-circuit": 5,
     "iron-plate": 5,
     "transport-belt": 4
    },
@@ -527,8 +525,8 @@ const GAME_DATA = {
    "time": 2,
    "inp": {
     "splitter": 1,
-    "iron-gear": 10,
-    "green-circuit": 10
+    "iron-gear-wheel": 10,
+    "electronic-circuit": 10
    },
    "out": {
     "fast-splitter": 1
@@ -538,7 +536,7 @@ const GAME_DATA = {
    "time": 2,
    "inp": {
     "fast-splitter": 1,
-    "iron-gear": 10,
+    "iron-gear-wheel": 10,
     "advanced-circuit": 10,
     "lubricant": 80
    },
@@ -549,8 +547,8 @@ const GAME_DATA = {
   "inserter": {
    "time": 0.5,
    "inp": {
-    "green-circuit": 1,
-    "iron-gear": 1,
+    "electronic-circuit": 1,
+    "iron-gear-wheel": 1,
     "iron-plate": 1
    },
    "out": {
@@ -561,27 +559,27 @@ const GAME_DATA = {
    "time": 0.5,
    "inp": {
     "iron-plate": 1,
-    "iron-gear": 1
+    "iron-gear-wheel": 1
    },
    "out": {
     "burner-inserter": 1
    }
   },
-  "long-inserter": {
+  "long-handed-inserter": {
    "time": 0.5,
    "inp": {
-    "iron-gear": 1,
+    "iron-gear-wheel": 1,
     "iron-plate": 1,
     "inserter": 1
    },
    "out": {
-    "long-inserter": 1
+    "long-handed-inserter": 1
    }
   },
   "fast-inserter": {
    "time": 0.5,
    "inp": {
-    "green-circuit": 2,
+    "electronic-circuit": 2,
     "iron-plate": 2,
     "inserter": 1
    },
@@ -589,15 +587,15 @@ const GAME_DATA = {
     "fast-inserter": 1
    }
   },
-  "burner-drill": {
+  "burner-mining-drill": {
    "time": 2,
    "inp": {
-    "iron-gear": 3,
+    "iron-gear-wheel": 3,
     "stone-furnace": 1,
     "iron-plate": 3
    },
    "out": {
-    "burner-drill": 1
+    "burner-mining-drill": 1
    }
   },
   "stone-furnace": {
@@ -609,22 +607,22 @@ const GAME_DATA = {
     "stone-furnace": 1
    }
   },
-  "assembling-machine": {
+  "assembling-machine-1": {
    "time": 0.5,
    "inp": {
-    "green-circuit": 3,
-    "iron-gear": 5,
+    "electronic-circuit": 3,
+    "iron-gear-wheel": 5,
     "iron-plate": 9
    },
    "out": {
-    "assembling-machine": 1
+    "assembling-machine-1": 1
    }
   },
   "lab": {
    "time": 2,
    "inp": {
-    "green-circuit": 10,
-    "iron-gear": 10,
+    "electronic-circuit": 10,
+    "iron-gear-wheel": 10,
     "transport-belt": 4
    },
    "out": {
@@ -644,7 +642,7 @@ const GAME_DATA = {
   "steam-engine": {
    "time": 0.5,
    "inp": {
-    "iron-gear": 8,
+    "iron-gear-wheel": 8,
     "pipe": 5,
     "iron-plate": 10
    },
@@ -656,21 +654,21 @@ const GAME_DATA = {
    "time": 0.5,
    "inp": {
     "pipe": 3,
-    "iron-gear": 2
+    "iron-gear-wheel": 2
    },
    "out": {
     "offshore-pump": 1
    }
   },
-  "electric-drill": {
+  "electric-mining-drill": {
    "time": 2,
    "inp": {
-    "green-circuit": 3,
-    "iron-gear": 5,
+    "electronic-circuit": 3,
+    "iron-gear-wheel": 5,
     "iron-plate": 10
    },
    "out": {
-    "electric-drill": 1
+    "electric-mining-drill": 1
    }
   },
   "electric-furnace": {
@@ -684,38 +682,38 @@ const GAME_DATA = {
     "electric-furnace": 1
    }
   },
-  "assembling-machine-mk2": {
+  "assembling-machine-2": {
    "time": 0.5,
    "inp": {
     "steel-plate": 2,
-    "green-circuit": 3,
-    "iron-gear": 5,
-    "assembling-machine": 1
+    "electronic-circuit": 3,
+    "iron-gear-wheel": 5,
+    "assembling-machine-1": 1
    },
    "out": {
-    "assembling-machine-mk2": 1
+    "assembling-machine-2": 1
    }
   },
-  "stack-inserter": {
+  "bulk-inserter": {
    "time": 0.5,
    "inp": {
-    "iron-gear": 15,
-    "green-circuit": 15,
+    "iron-gear-wheel": 15,
+    "electronic-circuit": 15,
     "advanced-circuit": 1,
     "fast-inserter": 1
    },
    "out": {
-    "stack-inserter": 1
+    "bulk-inserter": 1
    }
   },
-  "green-science": {
+  "logistic-science-pack": {
    "time": 6,
    "inp": {
     "inserter": 1,
     "transport-belt": 1
    },
    "out": {
-    "green-science": 1
+    "logistic-science-pack": 1
    }
   },
   "pipe": {
@@ -731,33 +729,33 @@ const GAME_DATA = {
    "time": 5,
    "inp": {
     "steel-plate": 5,
-    "iron-gear": 10,
-    "green-circuit": 5,
+    "iron-gear-wheel": 10,
+    "electronic-circuit": 5,
     "pipe": 10
    },
    "out": {
     "pumpjack": 1
    }
   },
-  "refinery": {
+  "oil-refinery": {
    "time": 8,
    "inp": {
     "steel-plate": 15,
-    "iron-gear": 10,
+    "iron-gear-wheel": 10,
     "stone-brick": 10,
-    "green-circuit": 10,
+    "electronic-circuit": 10,
     "pipe": 10
    },
    "out": {
-    "refinery": 1
+    "oil-refinery": 1
    }
   },
   "chemical-plant": {
    "time": 5,
    "inp": {
     "steel-plate": 5,
-    "iron-gear": 5,
-    "green-circuit": 5,
+    "iron-gear-wheel": 5,
+    "electronic-circuit": 5,
     "pipe": 5
    },
    "out": {
@@ -804,8 +802,8 @@ const GAME_DATA = {
   "repair-pack": {
    "time": 0.5,
    "inp": {
-    "green-circuit": 2,
-    "iron-gear": 2
+    "electronic-circuit": 2,
+    "iron-gear-wheel": 2
    },
    "out": {
     "repair-pack": 1
@@ -824,7 +822,7 @@ const GAME_DATA = {
   "assembling-machine-3": {
    "time": 0.5,
    "inp": {
-    "assembling-machine-mk2": 2,
+    "assembling-machine-2": 2,
     "speed-module": 4
    },
    "out": {
@@ -856,7 +854,7 @@ const GAME_DATA = {
    "time": 10,
    "inp": {
     "steel-plate": 5,
-    "green-circuit": 15,
+    "electronic-circuit": 15,
     "copper-plate": 5
    },
    "out": {
@@ -873,24 +871,24 @@ const GAME_DATA = {
     "accumulator": 1
    }
   },
-  "military-science": {
+  "military-science-pack": {
    "time": 10,
    "inp": {
-    "piercing-rounds": 1,
+    "piercing-rounds-magazine": 1,
     "grenade": 1,
     "stone-wall": 2
    },
    "out": {
-    "military-science": 2
+    "military-science-pack": 2
    }
   },
   "flying-robot-frame": {
    "time": 20,
    "inp": {
-    "electric-engine": 1,
+    "electric-engine-unit": 1,
     "battery": 2,
     "steel-plate": 1,
-    "green-circuit": 3
+    "electronic-circuit": 3
    },
    "out": {
     "flying-robot-frame": 1
@@ -921,7 +919,7 @@ const GAME_DATA = {
   "gun-turret": {
    "time": 8,
    "inp": {
-    "iron-gear": 10,
+    "iron-gear-wheel": 10,
     "copper-plate": 10,
     "iron-plate": 20
    },
@@ -943,30 +941,30 @@ const GAME_DATA = {
    "inp": {
     "stone-wall": 1,
     "steel-plate": 2,
-    "green-circuit": 2
+    "electronic-circuit": 2
    },
    "out": {
     "gate": 1
    }
   },
-  "magazine": {
+  "firearm-magazine": {
    "time": 1,
    "inp": {
     "iron-plate": 4
    },
    "out": {
-    "magazine": 1
+    "firearm-magazine": 1
    }
   },
-  "piercing-rounds": {
+  "piercing-rounds-magazine": {
    "time": 6,
    "inp": {
-    "magazine": 2,
+    "firearm-magazine": 2,
     "steel-plate": 1,
     "copper-plate": 2
    },
    "out": {
-    "piercing-rounds": 2
+    "piercing-rounds-magazine": 2
    }
   },
   "plastic-bar": {
@@ -1050,7 +1048,7 @@ const GAME_DATA = {
    "time": 4,
    "inp": {
     "engine-unit": 20,
-    "green-circuit": 10,
+    "electronic-circuit": 10,
     "steel-plate": 30
    },
    "out": {
@@ -1060,7 +1058,7 @@ const GAME_DATA = {
   "cargo-wagon": {
    "time": 1,
    "inp": {
-    "iron-gear": 10,
+    "iron-gear-wheel": 10,
     "iron-plate": 20,
     "steel-plate": 20
    },
@@ -1071,7 +1069,7 @@ const GAME_DATA = {
   "fluid-wagon": {
    "time": 1.5,
    "inp": {
-    "iron-gear": 10,
+    "iron-gear-wheel": 10,
     "steel-plate": 16,
     "pipe": 8,
     "storage-tank": 1
@@ -1083,7 +1081,7 @@ const GAME_DATA = {
   "train-stop": {
    "time": 0.5,
    "inp": {
-    "green-circuit": 5,
+    "electronic-circuit": 5,
     "iron-plate": 6,
     "iron-stick": 6,
     "steel-plate": 3
@@ -1095,7 +1093,7 @@ const GAME_DATA = {
   "rail-signal": {
    "time": 0.5,
    "inp": {
-    "green-circuit": 1,
+    "electronic-circuit": 1,
     "iron-plate": 5
    },
    "out": {
@@ -1105,7 +1103,7 @@ const GAME_DATA = {
   "rail-chain-signal": {
    "time": 0.5,
    "inp": {
-    "green-circuit": 1,
+    "electronic-circuit": 1,
     "iron-plate": 5
    },
    "out": {
@@ -1128,7 +1126,7 @@ const GAME_DATA = {
    "inp": {
     "engine-unit": 32,
     "steel-plate": 50,
-    "iron-gear": 15,
+    "iron-gear-wheel": 15,
     "advanced-circuit": 10
    },
    "out": {
@@ -1140,7 +1138,7 @@ const GAME_DATA = {
    "inp": {
     "steel-plate": 2,
     "plastic-bar": 2,
-    "explosive": 1
+    "explosives": 1
    },
    "out": {
     "cannon-shell": 1
@@ -1151,7 +1149,7 @@ const GAME_DATA = {
    "inp": {
     "steel-plate": 2,
     "plastic-bar": 2,
-    "explosive": 2
+    "explosives": 2
    },
    "out": {
     "explosive-cannon-shell": 1
@@ -1190,7 +1188,7 @@ const GAME_DATA = {
    "time": 5,
    "inp": {
     "steel-plate": 1,
-    "explosive": 2
+    "explosives": 2
    },
    "out": {
     "land-mine": 4
@@ -1209,7 +1207,7 @@ const GAME_DATA = {
   "submachine-gun": {
    "time": 10,
    "inp": {
-    "iron-gear": 10,
+    "iron-gear-wheel": 10,
     "copper-plate": 5,
     "iron-plate": 10
    },
@@ -1221,7 +1219,7 @@ const GAME_DATA = {
    "time": 10,
    "inp": {
     "iron-plate": 15,
-    "iron-gear": 5,
+    "iron-gear-wheel": 5,
     "copper-plate": 10,
     "wood": 5
    },
@@ -1233,8 +1231,8 @@ const GAME_DATA = {
    "time": 10,
    "inp": {
     "iron-plate": 5,
-    "iron-gear": 5,
-    "green-circuit": 5
+    "iron-gear-wheel": 5,
+    "electronic-circuit": 5
    },
    "out": {
     "rocket-launcher": 1
@@ -1254,7 +1252,7 @@ const GAME_DATA = {
    "time": 8,
    "inp": {
     "grenade": 7,
-    "explosive": 5,
+    "explosives": 5,
     "steel-plate": 5
    },
    "out": {
@@ -1286,7 +1284,7 @@ const GAME_DATA = {
    "time": 10,
    "inp": {
     "steel-plate": 15,
-    "iron-gear": 5,
+    "iron-gear-wheel": 5,
     "copper-plate": 10,
     "wood": 10
    },
@@ -1294,21 +1292,21 @@ const GAME_DATA = {
     "combat-shotgun": 1
    }
   },
-  "rocket-ammo": {
+  "rocket": {
    "time": 4,
    "inp": {
-    "explosive": 1,
+    "explosives": 1,
     "iron-plate": 2
    },
    "out": {
-    "rocket-ammo": 1
+    "rocket": 1
    }
   },
   "explosive-rocket": {
    "time": 8,
    "inp": {
-    "rocket-ammo": 1,
-    "explosive": 2
+    "rocket": 1,
+    "explosives": 2
    },
    "out": {
     "explosive-rocket": 1
@@ -1318,7 +1316,7 @@ const GAME_DATA = {
    "time": 50,
    "inp": {
     "processing-unit": 10,
-    "explosive": 10,
+    "explosives": 10,
     "uranium-235": 100
    },
    "out": {
@@ -1329,20 +1327,20 @@ const GAME_DATA = {
    "time": 10,
    "inp": {
     "steel-plate": 5,
-    "iron-gear": 10
+    "iron-gear-wheel": 10
    },
    "out": {
     "flamethrower": 1
    }
   },
-  "uranium-rounds": {
+  "uranium-rounds-magazine": {
    "time": 10,
    "inp": {
-    "piercing-rounds": 1,
+    "piercing-rounds-magazine": 1,
     "uranium-238": 1
    },
    "out": {
-    "uranium-rounds": 1
+    "uranium-rounds-magazine": 1
    }
   },
   "uranium-cannon-shell": {
@@ -1359,7 +1357,7 @@ const GAME_DATA = {
    "time": 8,
    "inp": {
     "steel-plate": 3,
-    "green-circuit": 3,
+    "electronic-circuit": 3,
     "coal": 10
    },
    "out": {
@@ -1370,7 +1368,7 @@ const GAME_DATA = {
    "time": 8,
    "inp": {
     "steel-plate": 2,
-    "green-circuit": 2,
+    "electronic-circuit": 2,
     "coal": 5
    },
    "out": {
@@ -1391,7 +1389,7 @@ const GAME_DATA = {
    "time": 20,
    "inp": {
     "steel-plate": 20,
-    "green-circuit": 20,
+    "electronic-circuit": 20,
     "battery": 12
    },
    "out": {
@@ -1402,7 +1400,7 @@ const GAME_DATA = {
    "time": 20,
    "inp": {
     "steel-plate": 30,
-    "iron-gear": 15,
+    "iron-gear-wheel": 15,
     "pipe": 10,
     "engine-unit": 5
    },
@@ -1414,7 +1412,7 @@ const GAME_DATA = {
    "time": 15,
    "inp": {
     "advanced-circuit": 5,
-    "green-circuit": 5
+    "electronic-circuit": 5
    },
    "out": {
     "speed-module": 1
@@ -1435,7 +1433,7 @@ const GAME_DATA = {
    "time": 15,
    "inp": {
     "advanced-circuit": 5,
-    "green-circuit": 5
+    "electronic-circuit": 5
    },
    "out": {
     "productivity-module": 1
@@ -1456,7 +1454,7 @@ const GAME_DATA = {
    "time": 15,
    "inp": {
     "advanced-circuit": 5,
-    "green-circuit": 5
+    "electronic-circuit": 5
    },
    "out": {
     "efficiency-module": 1
@@ -1476,7 +1474,7 @@ const GAME_DATA = {
   "beacon": {
    "time": 15,
    "inp": {
-    "green-circuit": 20,
+    "electronic-circuit": 20,
     "advanced-circuit": 20,
     "steel-plate": 10,
     "copper-cable": 10
@@ -1488,7 +1486,7 @@ const GAME_DATA = {
   "advanced-circuit": {
    "time": 6,
    "inp": {
-    "green-circuit": 2,
+    "electronic-circuit": 2,
     "plastic-bar": 2,
     "copper-cable": 4
    },
@@ -1500,28 +1498,28 @@ const GAME_DATA = {
    "time": 10,
    "inp": {
     "steel-plate": 1,
-    "iron-gear": 1,
+    "iron-gear-wheel": 1,
     "pipe": 2
    },
    "out": {
     "engine-unit": 1
    }
   },
-  "electric-engine": {
+  "electric-engine-unit": {
    "time": 10,
    "inp": {
     "engine-unit": 1,
     "lubricant": 15,
-    "green-circuit": 2
+    "electronic-circuit": 2
    },
    "out": {
-    "electric-engine": 1
+    "electric-engine-unit": 1
    }
   },
   "processing-unit": {
    "time": 10,
    "inp": {
-    "green-circuit": 20,
+    "electronic-circuit": 20,
     "advanced-circuit": 2,
     "sulfuric-acid": 5
    },
@@ -1557,7 +1555,7 @@ const GAME_DATA = {
     "concrete": 1000,
     "pipe": 100,
     "processing-unit": 200,
-    "electric-engine": 200
+    "electric-engine-unit": 200
    },
    "out": {
     "rocket-silo": 1
@@ -1566,15 +1564,15 @@ const GAME_DATA = {
   "radar": {
    "time": 0.5,
    "inp": {
-    "green-circuit": 5,
-    "iron-gear": 5,
+    "electronic-circuit": 5,
+    "iron-gear-wheel": 5,
     "iron-plate": 10
    },
    "out": {
     "radar": 1
    }
   },
-  "explosive": {
+  "explosives": {
    "time": 4,
    "inp": {
     "sulfur": 1,
@@ -1582,7 +1580,7 @@ const GAME_DATA = {
     "water": 10
    },
    "out": {
-    "explosive": 2
+    "explosives": 2
    }
   },
   "battery": {
@@ -1630,9 +1628,9 @@ const GAME_DATA = {
   "defender-capsule": {
    "time": 8,
    "inp": {
-    "piercing-rounds": 3,
-    "green-circuit": 3,
-    "iron-gear": 3
+    "piercing-rounds-magazine": 3,
+    "electronic-circuit": 3,
+    "iron-gear-wheel": 3
    },
    "out": {
     "defender-capsule": 1
@@ -1663,7 +1661,7 @@ const GAME_DATA = {
    "time": 5,
    "inp": {
     "steel-plate": 45,
-    "iron-gear": 45,
+    "iron-gear-wheel": 45,
     "advanced-circuit": 45
    },
    "out": {
@@ -1684,77 +1682,66 @@ const GAME_DATA = {
    "time": 0.5,
    "inp": {
     "flying-robot-frame": 1,
-    "green-circuit": 2
+    "electronic-circuit": 2
    },
    "out": {
     "construction-robot": 1
    }
   },
-  "personal-roboport": {
+  "personal-roboport-equipment": {
    "time": 10,
    "inp": {
     "advanced-circuit": 10,
-    "iron-gear": 40,
+    "iron-gear-wheel": 40,
     "steel-plate": 20,
     "battery": 45
    },
    "out": {
-    "personal-roboport": 1
+    "personal-roboport-equipment": 1
    }
   },
-  "logistic-chest-passive": {
+  "passive-provider-chest": {
    "time": 0.5,
    "inp": {
     "steel-chest": 1,
-    "green-circuit": 3,
+    "electronic-circuit": 3,
     "advanced-circuit": 1
    },
    "out": {
-    "logistic-chest-passive": 1
+    "passive-provider-chest": 1
    }
   },
-  "logistic-chest-active": {
+  "active-provider-chest": {
    "time": 0.5,
    "inp": {
     "steel-chest": 1,
-    "green-circuit": 3,
+    "electronic-circuit": 3,
     "advanced-circuit": 1
    },
    "out": {
-    "logistic-chest-active": 1
+    "active-provider-chest": 1
    }
   },
-  "logistic-chest-storage": {
+  "requester-chest": {
    "time": 0.5,
    "inp": {
     "steel-chest": 1,
-    "green-circuit": 3,
+    "electronic-circuit": 3,
     "advanced-circuit": 1
    },
    "out": {
-    "logistic-chest-storage": 1
+    "requester-chest": 1
    }
   },
-  "logistic-chest-requester": {
+  "buffer-chest": {
    "time": 0.5,
    "inp": {
     "steel-chest": 1,
-    "green-circuit": 3,
+    "electronic-circuit": 3,
     "advanced-circuit": 1
    },
    "out": {
-    "logistic-chest-requester": 1
-   }
-  },
-  "logistic-chest-buffer": {
-   "time": 0.5,
-   "inp": {
-    "steel-chest": 1,
-    "green-circuit": 3,
-    "advanced-circuit": 1
-   },
-   "out": {
-    "logistic-chest-buffer": 1
+    "buffer-chest": 1
    }
   },
   "kovarex": {
@@ -1795,7 +1782,7 @@ const GAME_DATA = {
     "concrete": 100,
     "steel-plate": 50,
     "advanced-circuit": 100,
-    "iron-gear": 100
+    "iron-gear-wheel": 100
    },
    "out": {
     "centrifuge": 1
@@ -1816,7 +1803,7 @@ const GAME_DATA = {
   "steam-turbine": {
    "time": 3,
    "inp": {
-    "iron-gear": 50,
+    "iron-gear-wheel": 50,
     "copper-plate": 50,
     "pipe": 20
    },
@@ -1872,21 +1859,21 @@ const GAME_DATA = {
     "iron-plate": 3,
     "iron-stick": 4,
     "copper-cable": 5,
-    "green-circuit": 4
+    "electronic-circuit": 4
    },
    "out": {
     "programmable-speaker": 1
    }
   },
-  "lamp": {
+  "small-lamp": {
    "time": 0.5,
    "inp": {
-    "green-circuit": 1,
+    "electronic-circuit": 1,
     "copper-cable": 3,
     "iron-plate": 1
    },
    "out": {
-    "lamp": 1
+    "small-lamp": 1
    }
   },
   "medium-electric-pole": {
@@ -1915,7 +1902,7 @@ const GAME_DATA = {
    "time": 0.5,
    "inp": {
     "copper-cable": 5,
-    "green-circuit": 2
+    "electronic-circuit": 2
    },
    "out": {
     "constant-combinator": 1
@@ -1925,7 +1912,7 @@ const GAME_DATA = {
    "time": 0.5,
    "inp": {
     "copper-cable": 5,
-    "green-circuit": 5
+    "electronic-circuit": 5
    },
    "out": {
     "arithmetic-combinator": 1
@@ -1935,7 +1922,7 @@ const GAME_DATA = {
    "time": 0.5,
    "inp": {
     "copper-cable": 5,
-    "green-circuit": 5
+    "electronic-circuit": 5
    },
    "out": {
     "decider-combinator": 1
@@ -1946,7 +1933,7 @@ const GAME_DATA = {
    "inp": {
     "iron-plate": 5,
     "copper-cable": 5,
-    "green-circuit": 2
+    "electronic-circuit": 2
    },
    "out": {
     "power-switch": 1
@@ -2007,7 +1994,7 @@ const GAME_DATA = {
    "time": 20,
    "inp": {
     "processing-unit": 40,
-    "electric-engine": 20,
+    "electric-engine-unit": 20,
     "steel-plate": 40
    },
    "out": {
@@ -2020,14 +2007,14 @@ const GAME_DATA = {
     "efficiency-module": 100,
     "speed-module": 100,
     "processing-unit": 60,
-    "electric-engine": 40,
+    "electric-engine-unit": 40,
     "low-density-structure": 30
    },
    "out": {
     "power-armor-mk2": 1
    }
   },
-  "portable-solar-panel": {
+  "solar-panel-equipment": {
    "time": 10,
    "inp": {
     "solar-panel": 1,
@@ -2035,52 +2022,52 @@ const GAME_DATA = {
     "steel-plate": 5
    },
    "out": {
-    "portable-solar-panel": 1
+    "solar-panel-equipment": 1
    }
   },
-  "personal-battery": {
+  "battery-equipment": {
    "time": 10,
    "inp": {
     "battery": 5,
     "steel-plate": 10
    },
    "out": {
-    "personal-battery": 1
+    "battery-equipment": 1
    }
   },
-  "personal-battery-mk2": {
+  "battery-mk2-equipment": {
    "time": 10,
    "inp": {
-    "personal-battery": 10,
+    "battery-equipment": 10,
     "processing-unit": 15,
     "low-density-structure": 5
    },
    "out": {
-    "personal-battery-mk2": 1
+    "battery-mk2-equipment": 1
    }
   },
-  "exoskeleton": {
+  "exoskeleton-equipment": {
    "time": 10,
    "inp": {
     "processing-unit": 10,
-    "electric-engine": 30,
+    "electric-engine-unit": 30,
     "steel-plate": 20
    },
    "out": {
-    "exoskeleton": 1
+    "exoskeleton-equipment": 1
    }
   },
-  "nightvision": {
+  "night-vision-equipment": {
    "time": 10,
    "inp": {
     "advanced-circuit": 5,
     "steel-plate": 10
    },
    "out": {
-    "nightvision": 1
+    "night-vision-equipment": 1
    }
   },
-  "personal-laser-defense": {
+  "personal-laser-defense-equipment": {
    "time": 10,
    "inp": {
     "processing-unit": 20,
@@ -2088,28 +2075,28 @@ const GAME_DATA = {
     "laser-turret": 5
    },
    "out": {
-    "personal-laser-defense": 1
+    "personal-laser-defense-equipment": 1
    }
   },
-  "energy-shield": {
+  "energy-shield-equipment": {
    "time": 10,
    "inp": {
     "advanced-circuit": 5,
     "steel-plate": 10
    },
    "out": {
-    "energy-shield": 1
+    "energy-shield-equipment": 1
    }
   },
-  "energy-shield-mk2": {
+  "energy-shield-mk2-equipment": {
    "time": 10,
    "inp": {
-    "energy-shield": 10,
+    "energy-shield-equipment": 10,
     "processing-unit": 5,
     "low-density-structure": 5
    },
    "out": {
-    "energy-shield-mk2": 1
+    "energy-shield-mk2-equipment": 1
    }
   },
   "belt-immunity-equipment": {
@@ -2122,7 +2109,7 @@ const GAME_DATA = {
     "belt-immunity-equipment": 1
    }
   },
-  "discharge-defense": {
+  "discharge-defense-equipment": {
    "time": 10,
    "inp": {
     "processing-unit": 5,
@@ -2130,66 +2117,66 @@ const GAME_DATA = {
     "laser-turret": 10
    },
    "out": {
-    "discharge-defense": 1
+    "discharge-defense-equipment": 1
    }
   }
  },
  "recipeDevice": {
-  "steel-plate": "assembling-machine",
-  "iron-gear": "assembling-machine",
-  "iron-stick": "assembling-machine",
-  "copper-cable": "assembling-machine",
-  "green-circuit": "assembling-machine",
-  "science-pack": "assembling-machine",
-  "transport-belt": "assembling-machine",
-  "fast-transport-belt": "assembling-machine",
-  "express-transport-belt": "assembling-machine",
-  "underground": "assembling-machine",
-  "fast-underground-belt": "assembling-machine",
-  "express-underground-belt": "assembling-machine",
-  "splitter": "assembling-machine",
-  "fast-splitter": "assembling-machine",
-  "express-splitter": "assembling-machine",
-  "inserter": "assembling-machine",
-  "burner-inserter": "assembling-machine",
-  "long-inserter": "assembling-machine",
-  "fast-inserter": "assembling-machine",
-  "burner-drill": "assembling-machine",
-  "stone-furnace": "assembling-machine",
-  "assembling-machine": "assembling-machine",
-  "lab": "assembling-machine",
-  "boiler": "assembling-machine",
-  "steam-engine": "assembling-machine",
-  "offshore-pump": "assembling-machine",
-  "electric-drill": "assembling-machine",
-  "electric-furnace": "assembling-machine",
-  "assembling-machine-mk2": "assembling-machine",
-  "stack-inserter": "assembling-machine",
-  "green-science": "assembling-machine",
-  "pipe": "assembling-machine",
-  "pumpjack": "assembling-machine",
-  "refinery": "assembling-machine",
-  "chemical-plant": "assembling-machine",
-  "storage-tank": "assembling-machine",
-  "steel-chest": "assembling-machine",
-  "wooden-chest": "assembling-machine",
-  "iron-chest": "assembling-machine",
-  "repair-pack": "assembling-machine",
-  "steel-furnace": "assembling-machine",
-  "assembling-machine-3": "assembling-machine",
-  "pipe-to-ground": "assembling-machine",
-  "pump": "assembling-machine",
-  "solar-panel": "assembling-machine",
-  "accumulator": "assembling-machine",
-  "military-science": "assembling-machine",
-  "flying-robot-frame": "assembling-machine",
-  "production-science-pack": "assembling-machine",
-  "utility-science-pack": "assembling-machine",
-  "gun-turret": "assembling-machine",
-  "stone-wall": "assembling-machine",
-  "gate": "assembling-machine",
-  "magazine": "assembling-machine",
-  "piercing-rounds": "assembling-machine",
+  "steel-plate": "assembling-machine-1",
+  "iron-gear-wheel": "assembling-machine-1",
+  "iron-stick": "assembling-machine-1",
+  "copper-cable": "assembling-machine-1",
+  "electronic-circuit": "assembling-machine-1",
+  "automation-science-pack": "assembling-machine-1",
+  "transport-belt": "assembling-machine-1",
+  "fast-transport-belt": "assembling-machine-1",
+  "express-transport-belt": "assembling-machine-1",
+  "underground-belt": "assembling-machine-1",
+  "fast-underground-belt": "assembling-machine-1",
+  "express-underground-belt": "assembling-machine-1",
+  "splitter": "assembling-machine-1",
+  "fast-splitter": "assembling-machine-1",
+  "express-splitter": "assembling-machine-1",
+  "inserter": "assembling-machine-1",
+  "burner-inserter": "assembling-machine-1",
+  "long-handed-inserter": "assembling-machine-1",
+  "fast-inserter": "assembling-machine-1",
+  "burner-mining-drill": "assembling-machine-1",
+  "stone-furnace": "assembling-machine-1",
+  "assembling-machine-1": "assembling-machine-1",
+  "lab": "assembling-machine-1",
+  "boiler": "assembling-machine-1",
+  "steam-engine": "assembling-machine-1",
+  "offshore-pump": "assembling-machine-1",
+  "electric-mining-drill": "assembling-machine-1",
+  "electric-furnace": "assembling-machine-1",
+  "assembling-machine-2": "assembling-machine-1",
+  "bulk-inserter": "assembling-machine-1",
+  "logistic-science-pack": "assembling-machine-1",
+  "pipe": "assembling-machine-1",
+  "pumpjack": "assembling-machine-1",
+  "oil-refinery": "assembling-machine-1",
+  "chemical-plant": "assembling-machine-1",
+  "storage-tank": "assembling-machine-1",
+  "steel-chest": "assembling-machine-1",
+  "wooden-chest": "assembling-machine-1",
+  "iron-chest": "assembling-machine-1",
+  "repair-pack": "assembling-machine-1",
+  "steel-furnace": "assembling-machine-1",
+  "assembling-machine-3": "assembling-machine-1",
+  "pipe-to-ground": "assembling-machine-1",
+  "pump": "assembling-machine-1",
+  "solar-panel": "assembling-machine-1",
+  "accumulator": "assembling-machine-1",
+  "military-science-pack": "assembling-machine-1",
+  "flying-robot-frame": "assembling-machine-1",
+  "production-science-pack": "assembling-machine-1",
+  "utility-science-pack": "assembling-machine-1",
+  "gun-turret": "assembling-machine-1",
+  "stone-wall": "assembling-machine-1",
+  "gate": "assembling-machine-1",
+  "firearm-magazine": "assembling-machine-1",
+  "piercing-rounds-magazine": "assembling-machine-1",
   "plastic-bar": "chemical-plant",
   "crack-light": "chemical-plant",
   "crack-gas": "chemical-plant",
@@ -2197,108 +2184,107 @@ const GAME_DATA = {
   "solid-fuel": "chemical-plant",
   "solid-fuel-light-oil": "chemical-plant",
   "solid-fuel-heavy-oil": "chemical-plant",
-  "rail": "assembling-machine",
-  "locomotive": "assembling-machine",
-  "cargo-wagon": "assembling-machine",
-  "fluid-wagon": "assembling-machine",
-  "train-stop": "assembling-machine",
-  "rail-signal": "assembling-machine",
-  "rail-chain-signal": "assembling-machine",
-  "car": "assembling-machine",
-  "tank": "assembling-machine",
-  "cannon-shell": "assembling-machine",
-  "explosive-cannon-shell": "assembling-machine",
-  "explosive-uranium-cannon-shell": "assembling-machine",
-  "light-armor": "assembling-machine",
-  "heavy-armor": "assembling-machine",
-  "land-mine": "assembling-machine",
-  "pistol": "assembling-machine",
-  "submachine-gun": "assembling-machine",
-  "shotgun": "assembling-machine",
-  "rocket-launcher": "assembling-machine",
-  "grenade": "assembling-machine",
-  "cluster-grenade": "assembling-machine",
-  "shotgun-shell": "assembling-machine",
-  "piercing-shotgun-shell": "assembling-machine",
-  "combat-shotgun": "assembling-machine",
-  "rocket-ammo": "assembling-machine",
-  "explosive-rocket": "assembling-machine",
-  "atomic-bomb": "assembling-machine",
-  "flamethrower": "assembling-machine",
-  "uranium-rounds": "assembling-machine",
-  "uranium-cannon-shell": "assembling-machine",
-  "poison-capsule": "assembling-machine",
-  "slowdown-capsule": "assembling-machine",
+  "rail": "assembling-machine-1",
+  "locomotive": "assembling-machine-1",
+  "cargo-wagon": "assembling-machine-1",
+  "fluid-wagon": "assembling-machine-1",
+  "train-stop": "assembling-machine-1",
+  "rail-signal": "assembling-machine-1",
+  "rail-chain-signal": "assembling-machine-1",
+  "car": "assembling-machine-1",
+  "tank": "assembling-machine-1",
+  "cannon-shell": "assembling-machine-1",
+  "explosive-cannon-shell": "assembling-machine-1",
+  "explosive-uranium-cannon-shell": "assembling-machine-1",
+  "light-armor": "assembling-machine-1",
+  "heavy-armor": "assembling-machine-1",
+  "land-mine": "assembling-machine-1",
+  "pistol": "assembling-machine-1",
+  "submachine-gun": "assembling-machine-1",
+  "shotgun": "assembling-machine-1",
+  "rocket-launcher": "assembling-machine-1",
+  "grenade": "assembling-machine-1",
+  "cluster-grenade": "assembling-machine-1",
+  "shotgun-shell": "assembling-machine-1",
+  "piercing-shotgun-shell": "assembling-machine-1",
+  "combat-shotgun": "assembling-machine-1",
+  "rocket": "assembling-machine-1",
+  "explosive-rocket": "assembling-machine-1",
+  "atomic-bomb": "assembling-machine-1",
+  "flamethrower": "assembling-machine-1",
+  "uranium-rounds-magazine": "assembling-machine-1",
+  "uranium-cannon-shell": "assembling-machine-1",
+  "poison-capsule": "assembling-machine-1",
+  "slowdown-capsule": "assembling-machine-1",
   "flamethrower-ammo": "chemical-plant",
-  "laser-turret": "assembling-machine",
-  "flamethrower-turret": "assembling-machine",
-  "speed-module": "assembling-machine",
-  "speed-module-2": "assembling-machine",
-  "productivity-module": "assembling-machine",
-  "productivity-module-2": "assembling-machine",
-  "efficiency-module": "assembling-machine",
-  "efficiency-module-2": "assembling-machine",
-  "beacon": "assembling-machine",
-  "advanced-circuit": "assembling-machine",
-  "engine-unit": "assembling-machine",
-  "electric-engine": "assembling-machine",
-  "processing-unit": "assembling-machine",
-  "low-density-structure": "assembling-machine",
-  "rocket-fuel": "assembling-machine",
-  "rocket-silo": "assembling-machine",
-  "radar": "assembling-machine",
-  "explosive": "chemical-plant",
+  "laser-turret": "assembling-machine-1",
+  "flamethrower-turret": "assembling-machine-1",
+  "speed-module": "assembling-machine-1",
+  "speed-module-2": "assembling-machine-1",
+  "productivity-module": "assembling-machine-1",
+  "productivity-module-2": "assembling-machine-1",
+  "efficiency-module": "assembling-machine-1",
+  "efficiency-module-2": "assembling-machine-1",
+  "beacon": "assembling-machine-1",
+  "advanced-circuit": "assembling-machine-1",
+  "engine-unit": "assembling-machine-1",
+  "electric-engine-unit": "assembling-machine-1",
+  "processing-unit": "assembling-machine-1",
+  "low-density-structure": "assembling-machine-1",
+  "rocket-fuel": "assembling-machine-1",
+  "rocket-silo": "assembling-machine-1",
+  "radar": "assembling-machine-1",
+  "explosives": "chemical-plant",
   "battery": "chemical-plant",
   "sulfur": "chemical-plant",
   "carbon": "chemical-plant",
   "sulfuric-acid": "chemical-plant",
-  "defender-capsule": "assembling-machine",
-  "distractor-capsule": "assembling-machine",
-  "destroyer-capsule": "assembling-machine",
-  "roboport": "assembling-machine",
-  "logistic-robot": "assembling-machine",
-  "construction-robot": "assembling-machine",
-  "personal-roboport": "assembling-machine",
-  "logistic-chest-passive": "assembling-machine",
-  "logistic-chest-active": "assembling-machine",
-  "logistic-chest-storage": "assembling-machine",
-  "logistic-chest-requester": "assembling-machine",
-  "logistic-chest-buffer": "assembling-machine",
+  "defender-capsule": "assembling-machine-1",
+  "distractor-capsule": "assembling-machine-1",
+  "destroyer-capsule": "assembling-machine-1",
+  "roboport": "assembling-machine-1",
+  "logistic-robot": "assembling-machine-1",
+  "construction-robot": "assembling-machine-1",
+  "personal-roboport-equipment": "assembling-machine-1",
+  "passive-provider-chest": "assembling-machine-1",
+  "active-provider-chest": "assembling-machine-1",
+  "requester-chest": "assembling-machine-1",
+  "buffer-chest": "assembling-machine-1",
   "kovarex": "centrifuge",
   "nuclear-fuel": "centrifuge",
-  "uranium-fuel-cell": "assembling-machine",
-  "centrifuge": "assembling-machine",
-  "nuclear-reactor": "assembling-machine",
-  "steam-turbine": "assembling-machine",
-  "heat-pipe": "assembling-machine",
-  "heat-exchanger": "assembling-machine",
-  "small-electric-pole": "assembling-machine",
-  "substation": "assembling-machine",
-  "programmable-speaker": "assembling-machine",
-  "lamp": "assembling-machine",
-  "medium-electric-pole": "assembling-machine",
-  "big-electric-pole": "assembling-machine",
-  "constant-combinator": "assembling-machine",
-  "arithmetic-combinator": "assembling-machine",
-  "decider-combinator": "assembling-machine",
-  "power-switch": "assembling-machine",
-  "concrete": "assembling-machine",
-  "refined-concrete": "assembling-machine",
-  "hazard-concrete": "assembling-machine",
-  "landfill": "assembling-machine",
-  "modular-armor": "assembling-machine",
-  "power-armor": "assembling-machine",
-  "power-armor-mk2": "assembling-machine",
-  "portable-solar-panel": "assembling-machine",
-  "personal-battery": "assembling-machine",
-  "personal-battery-mk2": "assembling-machine",
-  "exoskeleton": "assembling-machine",
-  "nightvision": "assembling-machine",
-  "personal-laser-defense": "assembling-machine",
-  "energy-shield": "assembling-machine",
-  "energy-shield-mk2": "assembling-machine",
-  "belt-immunity-equipment": "assembling-machine",
-  "discharge-defense": "assembling-machine"
+  "uranium-fuel-cell": "assembling-machine-1",
+  "centrifuge": "assembling-machine-1",
+  "nuclear-reactor": "assembling-machine-1",
+  "steam-turbine": "assembling-machine-1",
+  "heat-pipe": "assembling-machine-1",
+  "heat-exchanger": "assembling-machine-1",
+  "small-electric-pole": "assembling-machine-1",
+  "substation": "assembling-machine-1",
+  "programmable-speaker": "assembling-machine-1",
+  "small-lamp": "assembling-machine-1",
+  "medium-electric-pole": "assembling-machine-1",
+  "big-electric-pole": "assembling-machine-1",
+  "constant-combinator": "assembling-machine-1",
+  "arithmetic-combinator": "assembling-machine-1",
+  "decider-combinator": "assembling-machine-1",
+  "power-switch": "assembling-machine-1",
+  "concrete": "assembling-machine-1",
+  "refined-concrete": "assembling-machine-1",
+  "hazard-concrete": "assembling-machine-1",
+  "landfill": "assembling-machine-1",
+  "modular-armor": "assembling-machine-1",
+  "power-armor": "assembling-machine-1",
+  "power-armor-mk2": "assembling-machine-1",
+  "solar-panel-equipment": "assembling-machine-1",
+  "battery-equipment": "assembling-machine-1",
+  "battery-mk2-equipment": "assembling-machine-1",
+  "exoskeleton-equipment": "assembling-machine-1",
+  "night-vision-equipment": "assembling-machine-1",
+  "personal-laser-defense-equipment": "assembling-machine-1",
+  "energy-shield-equipment": "assembling-machine-1",
+  "energy-shield-mk2-equipment": "assembling-machine-1",
+  "belt-immunity-equipment": "assembling-machine-1",
+  "discharge-defense-equipment": "assembling-machine-1"
  },
  "names": {
   "iron-ore": {
@@ -2337,7 +2323,7 @@ const GAME_DATA = {
    "zh": "铜板",
    "en": "Copper plate"
   },
-  "iron-gear": {
+  "iron-gear-wheel": {
    "zh": "铁齿轮",
    "en": "Iron gear wheel"
   },
@@ -2349,11 +2335,11 @@ const GAME_DATA = {
    "zh": "铜缆",
    "en": "Copper cable"
   },
-  "green-circuit": {
+  "electronic-circuit": {
    "zh": "电路板",
    "en": "Electronic circuit"
   },
-  "science-pack": {
+  "automation-science-pack": {
    "zh": "机自科技包（红瓶）",
    "en": "Automation science pack"
   },
@@ -2369,11 +2355,11 @@ const GAME_DATA = {
    "zh": "热能机械臂",
    "en": "Burner inserter"
   },
-  "long-inserter": {
+  "long-handed-inserter": {
    "zh": "加长机械臂",
    "en": "Long-handed inserter"
   },
-  "burner-drill": {
+  "burner-mining-drill": {
    "zh": "热能采矿机",
    "en": "Burner mining drill"
   },
@@ -2381,19 +2367,15 @@ const GAME_DATA = {
    "zh": "石炉",
    "en": "Stone furnace"
   },
-  "assembling-machine": {
+  "assembling-machine-1": {
    "zh": "组装机1型",
    "en": "Assembling machine 1"
-  },
-  "storage-chest": {
-   "zh": "被动存货箱（黄箱）",
-   "en": "Storage chest"
   },
   "lab": {
    "zh": "研究中心",
    "en": "Lab"
   },
-  "lamp": {
+  "small-lamp": {
    "zh": "照明灯",
    "en": "Lamp"
   },
@@ -2409,7 +2391,7 @@ const GAME_DATA = {
    "zh": "基础分流器",
    "en": "Splitter"
   },
-  "underground": {
+  "underground-belt": {
    "zh": "基础地下传送带",
    "en": "Underground belt"
   },
@@ -2437,7 +2419,7 @@ const GAME_DATA = {
    "zh": "蒸汽",
    "en": "Steam"
   },
-  "electric-drill": {
+  "electric-mining-drill": {
    "zh": "电力采矿机",
    "en": "Electric mining drill"
   },
@@ -2445,7 +2427,7 @@ const GAME_DATA = {
    "zh": "电炉",
    "en": "Electric furnace"
   },
-  "assembling-machine-mk2": {
+  "assembling-machine-2": {
    "zh": "组装机2型",
    "en": "Assembling machine 2"
   },
@@ -2473,7 +2455,7 @@ const GAME_DATA = {
    "zh": "高速分流器",
    "en": "Fast splitter"
   },
-  "stack-inserter": {
+  "bulk-inserter": {
    "zh": "集装机械臂",
    "en": "Bulk inserter"
   },
@@ -2485,9 +2467,13 @@ const GAME_DATA = {
    "zh": "钢箱",
    "en": "Steel chest"
   },
-  "green-science": {
+  "logistic-science-pack": {
    "zh": "物流科技包（绿瓶）",
    "en": "Logistic science pack"
+  },
+  "chemical-science-pack": {
+   "zh": "化工科技包（蓝瓶）",
+   "en": "Chemical science pack"
   },
   "crude-oil": {
    "zh": "原油",
@@ -2545,7 +2531,7 @@ const GAME_DATA = {
    "zh": "组装机3型",
    "en": "Assembling machine 3"
   },
-  "military-science": {
+  "military-science-pack": {
    "zh": "军备科技包（灰瓶）",
    "en": "Military science pack"
   },
@@ -2561,15 +2547,15 @@ const GAME_DATA = {
    "zh": "闸门",
    "en": "Gate"
   },
-  "magazine": {
+  "firearm-magazine": {
    "zh": "标准弹匣",
    "en": "Firearm magazine"
   },
-  "piercing-rounds": {
+  "piercing-rounds-magazine": {
    "zh": "穿甲弹匣",
    "en": "Piercing rounds magazine"
   },
-  "refinery": {
+  "oil-refinery": {
    "zh": "炼油厂",
    "en": "Oil refinery"
   },
@@ -2613,7 +2599,7 @@ const GAME_DATA = {
    "zh": "标准手雷",
    "en": "Grenade"
   },
-  "rocket-ammo": {
+  "rocket": {
    "zh": "火箭弹",
    "en": "Rocket"
   },
@@ -2629,7 +2615,7 @@ const GAME_DATA = {
    "zh": "油料储罐",
    "en": "Flamethrower ammo"
   },
-  "uranium-rounds": {
+  "uranium-rounds-magazine": {
    "zh": "贫铀弹匣",
    "en": "Uranium rounds magazine"
   },
@@ -2705,7 +2691,7 @@ const GAME_DATA = {
    "zh": "内燃机",
    "en": "Engine unit"
   },
-  "electric-engine": {
+  "electric-engine-unit": {
    "zh": "电动机",
    "en": "Electric engine unit"
   },
@@ -2725,10 +2711,6 @@ const GAME_DATA = {
    "zh": "火箭组件",
    "en": "Rocket part"
   },
-  "rocket": {
-   "zh": "火箭弹",
-   "en": "Rocket"
-  },
   "satellite": {
    "zh": "卫星",
    "en": "Satellite"
@@ -2741,7 +2723,7 @@ const GAME_DATA = {
    "zh": "雷达",
    "en": "Radar"
   },
-  "explosive": {
+  "explosives": {
    "zh": "炸药",
    "en": "Explosives"
   },
@@ -2885,23 +2867,23 @@ const GAME_DATA = {
    "zh": "建设机器人",
    "en": "Construction robot"
   },
-  "logistic-chest-passive": {
+  "passive-provider-chest": {
    "zh": "被动供货箱（红箱）",
    "en": "Passive provider chest"
   },
-  "logistic-chest-active": {
+  "active-provider-chest": {
    "zh": "主动供货箱（紫箱）",
    "en": "Active provider chest"
   },
-  "logistic-chest-storage": {
+  "storage-chest": {
    "zh": "被动存货箱（黄箱）",
    "en": "Storage chest"
   },
-  "logistic-chest-buffer": {
+  "buffer-chest": {
    "zh": "主动存货箱（绿箱）",
    "en": "Buffer chest"
   },
-  "logistic-chest-requester": {
+  "requester-chest": {
    "zh": "优先集货箱（蓝箱）",
    "en": "Requester chest"
   },
@@ -3049,7 +3031,7 @@ const GAME_DATA = {
    "zh": "太空科技包（白瓶）",
    "en": "Space science pack"
   },
-  "empty-barrel": {
+  "barrel": {
    "zh": "空桶",
    "en": "Barrel"
   },
@@ -3109,7 +3091,7 @@ const GAME_DATA = {
   }
  },
  "undergroundDist": {
-  "underground": 5,
+  "underground-belt": 5,
   "fast-underground-belt": 7,
   "express-underground-belt": 9
  },
@@ -3141,40 +3123,40 @@ const GAME_DATA = {
   }
  },
  "ammoDamage": {
-  "magazine": 5,
-  "piercing-rounds": 8,
-  "uranium-rounds": 24
+  "firearm-magazine": 5,
+  "piercing-rounds-magazine": 8,
+  "uranium-rounds-magazine": 24
  },
  "radar": {
   "range": 14,
   "power": 300
  },
  "equipment": {
-  "portable-solar-panel": {
+  "solar-panel-equipment": {
    "powerOut": 30
   },
-  "portable-fusion-reactor": {
+  "fusion-reactor-equipment": {
    "powerOut": 2500
   },
-  "personal-battery": {
+  "battery-equipment": {
    "powerCap": 20000
   },
-  "personal-battery-mk2": {
+  "battery-mk2-equipment": {
    "powerCap": 100000
   },
-  "energy-shield": {
+  "energy-shield-equipment": {
    "shield": 50
   },
-  "energy-shield-mk2": {
+  "energy-shield-mk2-equipment": {
    "shield": 150
   },
-  "exoskeleton": {
+  "exoskeleton-equipment": {
    "speed": 0.3
   },
-  "personal-laser-defense": {
+  "personal-laser-defense-equipment": {
    "laser": 15
   },
-  "discharge-defense": {
+  "discharge-defense-equipment": {
    "discharge": true,
    "dischargeRange": 10,
    "dischargeCooldown": 2.5
@@ -3204,7 +3186,7 @@ const GAME_DATA = {
    "w": 1,
    "h": 1
   },
-  "underground": {
+  "underground-belt": {
    "w": 1,
    "h": 1
   },
@@ -3236,7 +3218,7 @@ const GAME_DATA = {
    "w": 1,
    "h": 1
   },
-  "long-inserter": {
+  "long-handed-inserter": {
    "w": 1,
    "h": 1
   },
@@ -3244,15 +3226,15 @@ const GAME_DATA = {
    "w": 1,
    "h": 1
   },
-  "stack-inserter": {
+  "bulk-inserter": {
    "w": 1,
    "h": 1
   },
-  "burner-drill": {
+  "burner-mining-drill": {
    "w": 2,
    "h": 2
   },
-  "electric-drill": {
+  "electric-mining-drill": {
    "w": 3,
    "h": 3
   },
@@ -3272,11 +3254,11 @@ const GAME_DATA = {
    "w": 3,
    "h": 3
   },
-  "assembling-machine": {
+  "assembling-machine-1": {
    "w": 3,
    "h": 3
   },
-  "assembling-machine-mk2": {
+  "assembling-machine-2": {
    "w": 3,
    "h": 3
   },
@@ -3284,7 +3266,7 @@ const GAME_DATA = {
    "w": 3,
    "h": 3
   },
-  "refinery": {
+  "oil-refinery": {
    "w": 5,
    "h": 5
   },
@@ -3444,7 +3426,7 @@ const GAME_DATA = {
     "rotationSpeed": 0.014,
     "extensionSpeed": 0.035
    },
-   "long-inserter": {
+   "long-handed-inserter": {
     "rotationSpeed": 0.02,
     "extensionSpeed": 0.05
    },
@@ -3452,7 +3434,7 @@ const GAME_DATA = {
     "rotationSpeed": 0.04,
     "extensionSpeed": 0.1
    },
-   "stack-inserter": {
+   "bulk-inserter": {
     "rotationSpeed": 0.04,
     "extensionSpeed": 0.1
    },

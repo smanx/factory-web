@@ -29,46 +29,8 @@ const raw = require('./convert-data.js');
 // 未列出的视为同名（项目 ID 即官方原型名）。
 // 物品/实体改名：用于 stackSize / max_health / energy_usage / 配方物品名 的翻译。
 const ITEM_MAP = {
-  'iron-gear': 'iron-gear-wheel',
-  'green-circuit': 'electronic-circuit',
-  'science-pack': 'automation-science-pack',
-  'green-science': 'logistic-science-pack',
-  'military-science': 'military-science-pack',
-  'assembling-machine': 'assembling-machine-1',
-  'assembling-machine-mk2': 'assembling-machine-2',
-  'underground': 'underground-belt',
-  'burner-drill': 'burner-mining-drill',
-  'electric-drill': 'electric-mining-drill',
-  'refinery': 'oil-refinery',
-  'lamp': 'small-lamp',
-  'long-inserter': 'long-handed-inserter',
-  'empty-barrel': 'barrel',
-  'explosive': 'explosives',
-  'electric-engine': 'electric-engine-unit',
-  'magazine': 'firearm-magazine',
-  'piercing-rounds': 'piercing-rounds-magazine',
-  'uranium-rounds': 'uranium-rounds-magazine',
-  'rocket-ammo': 'rocket',
-  'logistic-chest-passive': 'passive-provider-chest',
-  'logistic-chest-active': 'active-provider-chest',
-  'logistic-chest-storage': 'storage-chest',
-  'logistic-chest-requester': 'requester-chest',
-  'logistic-chest-buffer': 'buffer-chest',
-  // 装备（官方 equipment 类型，命名不同）
-  'portable-solar-panel': 'solar-panel-equipment',
-  'personal-battery': 'battery-equipment',
-  'portable-fusion-reactor': 'fusion-reactor-equipment',
-  'exoskeleton': 'exoskeleton-equipment',
-  'nightvision': 'night-vision-equipment',
-  'energy-shield': 'energy-shield-equipment',
-  'energy-shield-mk2': 'energy-shield-mk2-equipment',
-  'personal-laser-defense': 'personal-laser-defense-equipment',
-  'discharge-defense': 'discharge-defense-equipment',
-  'personal-roboport': 'personal-roboport-equipment',
-  // 2.0 改名 / 官方名不同
-  'stack-inserter': 'bulk-inserter',
-  'personal-battery-mk2': 'battery-mk2-equipment',
-  'personal-roboport-mk2': 'personal-roboport-mk2-equipment',
+  // 项目物品 ID 现已与官方一致（对齐《异星工厂》官方命名），无需额外映射。
+  // 唯一例外：装备类物品（官方为 equipment 类型，命名同 item 原型），此处留空由同名兜底。
 };
 // 官方 → 项目（用于把官方配方里的物品名翻译回项目 ID）
 const REV_ITEM = {};
@@ -76,30 +38,7 @@ for (const [p, o] of Object.entries(ITEM_MAP)) REV_ITEM[o] = p;
 
 // 配方键改名（项目配方键 → 官方配方名）。未列出的视为同名。
 const RECIPE_MAP = {
-  'green-circuit': 'electronic-circuit',
-  'science-pack': 'automation-science-pack',
-  'green-science': 'logistic-science-pack',
-  'military-science': 'military-science-pack',
-  'assembling-machine': 'assembling-machine-1',
-  'assembling-machine-mk2': 'assembling-machine-2',
-  'underground': 'underground-belt',
-  'burner-drill': 'burner-mining-drill',
-  'electric-drill': 'electric-mining-drill',
-  'refinery': 'oil-refinery',
-  'lamp': 'small-lamp',
-  'long-inserter': 'long-handed-inserter',
-  'empty-barrel': 'empty-barrel',
-  'explosive': 'explosives',
-  'electric-engine': 'electric-engine-unit',
-  'magazine': 'firearm-magazine',
-  'piercing-rounds': 'piercing-rounds-magazine',
-  'uranium-rounds': 'uranium-rounds-magazine',
-  'rocket-ammo': 'rocket',
-  'logistic-chest-passive': 'passive-provider-chest',
-  'logistic-chest-active': 'active-provider-chest',
-  'logistic-chest-storage': 'storage-chest',
-  'logistic-chest-requester': 'requester-chest',
-  'logistic-chest-buffer': 'buffer-chest',
+  // 项目配方键与官方同名（对齐官方命名），仅保留少数项目自定键 → 官方配方名。
   // 炼油 / 化工 / 离心
   'basic-oil': 'basic-oil-processing',
   'advanced-oil': 'advanced-oil-processing',
@@ -108,37 +47,20 @@ const RECIPE_MAP = {
   'crack-gas': 'light-oil-cracking',
   'solid-fuel-light-oil': 'solid-fuel-from-light-oil',
   'solid-fuel-heavy-oil': 'solid-fuel-from-heavy-oil',
-  'uranium-processing': 'uranium-processing',
-  // 装备配方
-  'portable-solar-panel': 'solar-panel-equipment',
-  'personal-battery': 'battery-equipment',
-  'portable-fusion-reactor': 'fusion-reactor-equipment',
-  'exoskeleton': 'exoskeleton-equipment',
-  'nightvision': 'night-vision-equipment',
-  'energy-shield': 'energy-shield-equipment',
-  'energy-shield-mk2': 'energy-shield-mk2-equipment',
-  'personal-laser-defense': 'personal-laser-defense-equipment',
-  'discharge-defense': 'discharge-defense-equipment',
-  'personal-roboport': 'personal-roboport-equipment',
-  // 2.0 改名 / 官方名不同
-  'iron-gear': 'iron-gear-wheel',
   'solid-fuel': 'solid-fuel-from-petroleum-gas',
-  'stack-inserter': 'bulk-inserter',
+  'uranium-processing': 'uranium-processing',
   'kovarex': 'kovarex-enrichment-process',
-  'personal-battery-mk2': 'battery-mk2-equipment',
-  'personal-roboport-mk2': 'personal-roboport-mk2-equipment',
 };
-
 // ===== 保留手工的配方（项目自定 / 故意用旧版，不允许自动覆盖）=====
 // 即使官方有同名或映射配方，也保持手工值。例：storage-chest 在官方 2.0 是物流箱
 // （自动会错用 logistic-chest-storage 配方），必须手工；模块 3 级官方用太空材料，项目简化。
 const KEEP_MANUAL_RECIPES = new Set([
-  'steel-stick', 'blue-science', 'fishing-pole', 'iron-axe', 'steel-axe',
+  'steel-stick', 'chemical-science-pack', 'fishing-pole', 'iron-axe', 'steel-axe',
   'deconstruction-planner', 'upgrade-planner', 'diesel-locomotive', 'spidertron-remote',
   'explosive-rocket-launcher', 'rocket-control-unit', 'satellite', 'red-wire', 'green-wire',
   'stone-path', 'portable-solar-panel-mk2', 'storage-chest',
   'artillery-wagon', 'artillery-turret', 'artillery-shell', 'spidertron',
-  'speed-module-3', 'productivity-module-3', 'efficiency-module-3', 'portable-fusion-reactor',
+  'speed-module-3', 'productivity-module-3', 'efficiency-module-3', 'fusion-reactor-equipment',
   'cliff-explosives',
 ]);
 
@@ -293,7 +215,7 @@ function extractRecipe(officialRecipe) {
 
 // 官方 recipe category → 项目设备
 const DEVICE_BY_CATEGORY = {
-  'oil-processing': 'refinery',
+  'oil-processing': 'oil-refinery',
   'chemistry': 'chemical-plant',
   'centrifuging': 'centrifuge',
 };
@@ -301,9 +223,9 @@ function deviceFor(officialRecipe) {
   const cats = officialRecipe.categories || {};
   const list = [];
   for (const k of Object.keys(cats)) list.push(cats[k]);
-  if (list.length === 0) return 'assembling-machine';
+  if (list.length === 0) return 'assembling-machine-1';
   for (const c of list) if (DEVICE_BY_CATEGORY[c]) return DEVICE_BY_CATEGORY[c];
-  return 'assembling-machine';
+  return 'assembling-machine-1';
 }
 
 // ================= 官方多语言命名（data/*/locale/{en,zh-CN}/*.cfg） =================
@@ -433,24 +355,24 @@ for (const id of projectBuildings) {
 // 项目自定/模型不同（抽油机基础速率、信号塔效果系数、机械臂简化模型、
 // 地下带距离、分流器、创意/虚空带等）保持手工，不在下表。
 const DEVICE_STATS_SOURCES = {
-  'assembling-machine': ['assembling-machine', 'assembling-machine-1'],
-  'assembling-machine-mk2': ['assembling-machine', 'assembling-machine-2'],
+  'assembling-machine-1': ['assembling-machine', 'assembling-machine-1'],
+  'assembling-machine-2': ['assembling-machine', 'assembling-machine-2'],
   'assembling-machine-3': ['assembling-machine', 'assembling-machine-3'],
   'electric-furnace': ['furnace', 'electric-furnace'],
   'steel-furnace': ['furnace', 'steel-furnace'],
   'stone-furnace': ['furnace', 'stone-furnace'],
-  'electric-drill': ['mining-drill', 'electric-mining-drill'],
-  'burner-drill': ['mining-drill', 'burner-mining-drill'],
+  'electric-mining-drill': ['mining-drill', 'electric-mining-drill'],
+  'burner-mining-drill': ['mining-drill', 'burner-mining-drill'],
   'pumpjack': ['mining-drill', 'pumpjack'],
   'lab': ['lab', 'lab'],
   'beacon': ['beacon', 'beacon'],
   'transport-belt': ['transport-belt', 'transport-belt'],
   'fast-transport-belt': ['transport-belt', 'fast-transport-belt'],
   'express-transport-belt': ['transport-belt', 'express-transport-belt'],
-  'underground': ['underground-belt', 'underground-belt'],
+  'underground-belt': ['underground-belt', 'underground-belt'],
   'fast-underground-belt': ['underground-belt', 'fast-underground-belt'],
   'express-underground-belt': ['underground-belt', 'express-underground-belt'],
-  'refinery': ['assembling-machine', 'oil-refinery'],
+  'oil-refinery': ['assembling-machine', 'oil-refinery'],
   'chemical-plant': ['assembling-machine', 'chemical-plant'],
   'centrifuge': ['assembling-machine', 'centrifuge'],
 };
@@ -471,7 +393,7 @@ for (const [pid, [rtype, oname]] of Object.entries(DEVICE_STATS_SOURCES)) {
 // 现按用户要求以官方为准。max_distance 为“最远配对数/距离”，直接采用官方数值。
 const undergroundDist = {};
 for (const [pid, [rtype, oname]] of Object.entries({
-  'underground': ['underground-belt', 'underground-belt'],
+  'underground-belt': ['underground-belt', 'underground-belt'],
   'fast-underground-belt': ['underground-belt', 'fast-underground-belt'],
   'express-underground-belt': ['underground-belt', 'express-underground-belt'],
 })) {
@@ -554,9 +476,9 @@ function findAmmoDamage(ammoProto) {
 }
 const ammoDamage = {};
 for (const [pid, oid] of Object.entries({
-  'magazine': 'firearm-magazine',
-  'piercing-rounds': 'piercing-rounds-magazine',
-  'uranium-rounds': 'uranium-rounds-magazine',
+  'firearm-magazine': 'firearm-magazine',
+  'piercing-rounds-magazine': 'piercing-rounds-magazine',
+  'uranium-rounds-magazine': 'uranium-rounds-magazine',
 })) {
   const proto = raw.ammo && raw.ammo[oid];
   if (proto) { const dmg = findAmmoDamage(proto); if (dmg !== null) ammoDamage[pid] = dmg; }
@@ -584,24 +506,24 @@ const radar = {};
 const equipment = {};
 {
   const sp = raw['solar-panel-equipment'] && raw['solar-panel-equipment']['solar-panel-equipment'];
-  if (sp) { const kw = parseKiloWatt(sp.power); if (kw !== null) equipment['portable-solar-panel'] = { powerOut: kw }; }
+  if (sp) { const kw = parseKiloWatt(sp.power); if (kw !== null) equipment['solar-panel-equipment'] = { powerOut: kw }; }
   const fr = raw['generator-equipment'] && raw['generator-equipment']['fusion-reactor-equipment'];
-  if (fr) { const kw = parseKiloWatt(fr.power); if (kw !== null) equipment['portable-fusion-reactor'] = { powerOut: kw }; }
+  if (fr) { const kw = parseKiloWatt(fr.power); if (kw !== null) equipment['fusion-reactor-equipment'] = { powerOut: kw }; }
   const b1 = raw['battery-equipment'] && raw['battery-equipment']['battery-equipment'];
-  if (b1 && b1.energy_source) { const cap = parseEnergyKJ(b1.energy_source.buffer_capacity); if (cap !== null) equipment['personal-battery'] = { powerCap: cap }; }
+  if (b1 && b1.energy_source) { const cap = parseEnergyKJ(b1.energy_source.buffer_capacity); if (cap !== null) equipment['battery-equipment'] = { powerCap: cap }; }
   const b2 = raw['battery-equipment'] && raw['battery-equipment']['battery-mk2-equipment'];
-  if (b2 && b2.energy_source) { const cap = parseEnergyKJ(b2.energy_source.buffer_capacity); if (cap !== null) equipment['personal-battery-mk2'] = { powerCap: cap }; }
+  if (b2 && b2.energy_source) { const cap = parseEnergyKJ(b2.energy_source.buffer_capacity); if (cap !== null) equipment['battery-mk2-equipment'] = { powerCap: cap }; }
   const s1 = raw['energy-shield-equipment'] && raw['energy-shield-equipment']['energy-shield-equipment'];
-  if (s1 && typeof s1.max_shield_value === 'number') equipment['energy-shield'] = { shield: s1.max_shield_value };
+  if (s1 && typeof s1.max_shield_value === 'number') equipment['energy-shield-equipment'] = { shield: s1.max_shield_value };
   const s2 = raw['energy-shield-equipment'] && raw['energy-shield-equipment']['energy-shield-mk2-equipment'];
-  if (s2 && typeof s2.max_shield_value === 'number') equipment['energy-shield-mk2'] = { shield: s2.max_shield_value };
+  if (s2 && typeof s2.max_shield_value === 'number') equipment['energy-shield-mk2-equipment'] = { shield: s2.max_shield_value };
   const ex = raw['movement-bonus-equipment'] && raw['movement-bonus-equipment']['exoskeleton-equipment'];
-  if (ex && typeof ex.movement_bonus === 'number') equipment['exoskeleton'] = { speed: ex.movement_bonus };
+  if (ex && typeof ex.movement_bonus === 'number') equipment['exoskeleton-equipment'] = { speed: ex.movement_bonus };
   const pld = raw['active-defense-equipment'] && raw['active-defense-equipment']['personal-laser-defense-equipment'];
-  if (pld && pld.attack_parameters && typeof pld.attack_parameters.range === 'number') equipment['personal-laser-defense'] = { laser: pld.attack_parameters.range };
+  if (pld && pld.attack_parameters && typeof pld.attack_parameters.range === 'number') equipment['personal-laser-defense-equipment'] = { laser: pld.attack_parameters.range };
   const dd = raw['active-defense-equipment'] && raw['active-defense-equipment']['discharge-defense-equipment'];
   if (dd && dd.attack_parameters) {
-    equipment['discharge-defense'] = {
+    equipment['discharge-defense-equipment'] = {
       discharge: true,
       dischargeRange: dd.attack_parameters.range,
       dischargeCooldown: Math.round(dd.attack_parameters.cooldown / 60 * 10) / 10,
@@ -666,9 +588,9 @@ const inserterStats = {};
 // 堆叠=bulk-inserter(2.0)、热能=burner-inserter。供机械臂旋转/抓取行为桥接（见 devices/inserter.js）。
 const INSERTER_SOURCES = {
   'inserter': 'inserter',
-  'long-inserter': 'long-handed-inserter',
+  'long-handed-inserter': 'long-handed-inserter',
   'fast-inserter': 'fast-inserter',
-  'stack-inserter': 'bulk-inserter',
+  'bulk-inserter': 'bulk-inserter',
   'burner-inserter': 'burner-inserter',
 };
 {
@@ -719,7 +641,7 @@ const FOOTPRINT_SOURCES = {
   'transport-belt': ['transport-belt', 'transport-belt'],
   'fast-transport-belt': ['transport-belt', 'fast-transport-belt'],
   'express-transport-belt': ['transport-belt', 'express-transport-belt'],
-  'underground': ['underground-belt', 'underground-belt'],
+  'underground-belt': ['underground-belt', 'underground-belt'],
   'fast-underground-belt': ['underground-belt', 'fast-underground-belt'],
   'express-underground-belt': ['underground-belt', 'express-underground-belt'],
   'splitter': ['splitter', 'splitter'],
@@ -727,19 +649,19 @@ const FOOTPRINT_SOURCES = {
   'express-splitter': ['splitter', 'express-splitter'],
   'inserter': ['inserter', 'inserter'],
   'burner-inserter': ['inserter', 'burner-inserter'],
-  'long-inserter': ['inserter', 'long-handed-inserter'],
+  'long-handed-inserter': ['inserter', 'long-handed-inserter'],
   'fast-inserter': ['inserter', 'fast-inserter'],
-  'stack-inserter': ['inserter', 'bulk-inserter'],
-  'burner-drill': ['mining-drill', 'burner-mining-drill'],
-  'electric-drill': ['mining-drill', 'electric-mining-drill'],
+  'bulk-inserter': ['inserter', 'bulk-inserter'],
+  'burner-mining-drill': ['mining-drill', 'burner-mining-drill'],
+  'electric-mining-drill': ['mining-drill', 'electric-mining-drill'],
   'pumpjack': ['mining-drill', 'pumpjack'],
   'stone-furnace': ['furnace', 'stone-furnace'],
   'steel-furnace': ['furnace', 'steel-furnace'],
   'electric-furnace': ['furnace', 'electric-furnace'],
-  'assembling-machine': ['assembling-machine', 'assembling-machine-1'],
-  'assembling-machine-mk2': ['assembling-machine', 'assembling-machine-2'],
+  'assembling-machine-1': ['assembling-machine', 'assembling-machine-1'],
+  'assembling-machine-2': ['assembling-machine', 'assembling-machine-2'],
   'assembling-machine-3': ['assembling-machine', 'assembling-machine-3'],
-  'refinery': ['assembling-machine', 'oil-refinery'],
+  'oil-refinery': ['assembling-machine', 'oil-refinery'],
   'chemical-plant': ['assembling-machine', 'chemical-plant'],
   'centrifuge': ['assembling-machine', 'centrifuge'],
   'beacon': ['beacon', 'beacon'],

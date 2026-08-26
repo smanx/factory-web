@@ -176,7 +176,7 @@ function newGame() {
   G.spawn = { x: sx, y: sy };
   G.cam.px = G.player.x;
   G.cam.py = G.player.y;
-  invAdd('burner-drill', 1);   // 热能采矿机
+  invAdd('burner-mining-drill', 1);   // 热能采矿机
   invAdd('stone-furnace', 1);  // 石炉
   invAdd('transport-belt', 32); // 传送带
   invAdd('inserter', 4);        // 机械臂
@@ -310,7 +310,70 @@ function migrateLegacyEntityLayout(e) {
   }
 }
 
+
 function applySave(d) {
+  // ===== 物品/配方 ID 官方命名迁移 =====
+  // 旧档使用项目自定 ID，现已全部对齐《异星工厂》官方命名。读档时把旧 ID 递归翻译为新官方名。
+  // 旧档旧 ID → 新官方 ID（与 tools/generate-game-data.js 的命名对齐保持一致）。
+  const ID_MIGRATE = {
+    'iron-gear': 'iron-gear-wheel',
+    'green-circuit': 'electronic-circuit',
+    'science-pack': 'automation-science-pack',
+    'green-science': 'logistic-science-pack',
+    'military-science': 'military-science-pack',
+    'blue-science': 'chemical-science-pack',
+    'assembling-machine': 'assembling-machine-1',
+    'assembling-machine-mk2': 'assembling-machine-2',
+    'underground': 'underground-belt',
+    'burner-drill': 'burner-mining-drill',
+    'electric-drill': 'electric-mining-drill',
+    'refinery': 'oil-refinery',
+    'lamp': 'small-lamp',
+    'long-inserter': 'long-handed-inserter',
+    'empty-barrel': 'barrel',
+    'explosive': 'explosives',
+    'electric-engine': 'electric-engine-unit',
+    'magazine': 'firearm-magazine',
+    'piercing-rounds': 'piercing-rounds-magazine',
+    'uranium-rounds': 'uranium-rounds-magazine',
+    'rocket-ammo': 'rocket',
+    'stack-inserter': 'bulk-inserter',
+    'logistic-chest-passive': 'passive-provider-chest',
+    'logistic-chest-active': 'active-provider-chest',
+    'logistic-chest-storage': 'storage-chest',
+    'logistic-chest-requester': 'requester-chest',
+    'logistic-chest-buffer': 'buffer-chest',
+    'portable-solar-panel': 'solar-panel-equipment',
+    'personal-battery': 'battery-equipment',
+    'portable-fusion-reactor': 'fusion-reactor-equipment',
+    'exoskeleton': 'exoskeleton-equipment',
+    'nightvision': 'night-vision-equipment',
+    'energy-shield': 'energy-shield-equipment',
+    'energy-shield-mk2': 'energy-shield-mk2-equipment',
+    'personal-laser-defense': 'personal-laser-defense-equipment',
+    'discharge-defense': 'discharge-defense-equipment',
+    'personal-roboport': 'personal-roboport-equipment',
+    'personal-battery-mk2': 'battery-mk2-equipment',
+    'personal-roboport-mk2': 'personal-roboport-mk2-equipment',
+    // 旧版基础储物箱（官方无此物品，basic 存储用铁/钢/木箱）→ 并入钢箱
+    'storage-chest': 'steel-chest',
+  };
+  // 递归迁移：把对象/数组里出现的所有旧 ID 字符串键/值换成新 ID
+  function migrateIds(obj) {
+    if (Array.isArray(obj)) { for (let i = 0; i < obj.length; i++) obj[i] = migrateIds(obj[i]); return obj; }
+    if (obj && typeof obj === 'object') {
+      for (const k of Object.keys(obj)) {
+        const nk = ID_MIGRATE[k] || k;
+        if (nk !== k) { obj[nk] = migrateIds(obj[k]); delete obj[k]; }
+        else obj[k] = migrateIds(obj[k]);
+      }
+      return obj;
+    }
+    if (typeof obj === 'string') return ID_MIGRATE[obj] || obj;
+    return obj;
+  }
+  if (d) migrateIds(d);
+
   // 恢复地图生成配置（对齐《异星工厂》：新游戏的世界参数随存档持久化）
   if (typeof normalizeWorldConfig === 'function') {
     const wc = normalizeWorldConfig(d.worldConfig);
@@ -665,7 +728,7 @@ function overwriteBeltTile(tx, ty, type, infinite) {
 
 // 传送带类型 → 对应的地下传送带类型
 const BELT_TO_UG = {
-  'transport-belt': 'underground',
+  'transport-belt': 'underground-belt',
   'fast-transport-belt': 'fast-underground-belt',
   'express-transport-belt': 'express-underground-belt'
 };

@@ -21,7 +21,7 @@ const TECH_REQ = {
   'defender-capsule': 'weapons',
   'distractor-capsule': 'weapons',
   // 终局战斗弹药与胶囊（对齐《异星工厂》）：铀弹需核能科技（铀-238 依赖），毒/减速胶囊与火焰弹药需高级战斗
-  'uranium-rounds': 'uranium-ammo',
+  'uranium-rounds-magazine': 'uranium-ammo',
   'atomic-bomb': 'atomic-bomb',   // 原子弹需独立「原子弹科技」（对齐原版，需核能+火箭基础上进阶研究）
   'uranium-cannon-shell': 'uranium-ammo',
   'poison-capsule': 'advanced-combat',
@@ -45,7 +45,7 @@ const TECH_REQ = {
   'sulfur': 'sulfur-processing',
   'sulfuric-acid': 'sulfur-processing',
   'processing-unit': 'advanced-electronics-2',
-  'electric-engine': 'electric-engine',
+  'electric-engine-unit': 'electric-engine-unit',
   'radar': 'radar',
   'gate': 'military',
   'production-science-pack': 'production',
@@ -53,34 +53,34 @@ const TECH_REQ = {
   'utility-science-pack': 'utility',
   'flying-robot-frame': 'utility',
   'construction-robot': 'utility',
-  'personal-roboport': 'utility',
-  'personal-roboport-mk2': 'armor-power-mk2',
+  'personal-roboport-equipment': 'utility',
+  'personal-roboport-mk2-equipment': 'armor-power-mk2',
   // ===== 模块化护甲与个人装备科技门控 =====
   'modular-armor': 'armor-modular',
   'power-armor': 'armor-power',
   'power-armor-mk2': 'armor-power-mk2',
-  'portable-solar-panel': 'armor-modular',
+  'solar-panel-equipment': 'armor-modular',
   'portable-solar-panel-mk2': 'armor-modular',
-  'personal-battery': 'armor-modular',
-  'personal-battery-mk2': 'armor-modular',
-  'exoskeleton': 'armor-power',
-  'nightvision': 'armor-modular',
-  'personal-laser-defense': 'armor-power',
-  'portable-fusion-reactor': 'armor-power-mk2',
+  'battery-equipment': 'armor-modular',
+  'battery-mk2-equipment': 'armor-modular',
+  'exoskeleton-equipment': 'armor-power',
+  'night-vision-equipment': 'armor-modular',
+  'personal-laser-defense-equipment': 'armor-power',
+  'fusion-reactor-equipment': 'armor-power-mk2',
   // 能量护盾：I 型需强力装甲科技，II 型需终极强力装甲 II 科技（对齐《异星工厂》Energy shield 科技线）
-  'energy-shield': 'armor-power',
-  'energy-shield-mk2': 'armor-power-mk2',
+  'energy-shield-equipment': 'armor-power',
+  'energy-shield-mk2-equipment': 'armor-power-mk2',
   // 传送带免疫/放电防御装备科技门控（对齐《异星工厂》装备科技线）
   'belt-immunity-equipment': 'armor-modular',
-  'discharge-defense': 'armor-power',
+  'discharge-defense-equipment': 'armor-power',
   // ===== 组装机 / 集装箱机械臂科技门控（对齐《异星工厂》Automation 3 / Logistics 3） =====
   'assembling-machine-3': 'automation3',
-  'stack-inserter': 'logistics3',
+  'bulk-inserter': 'logistics3',
   // ===== 机械臂进阶科技门控（对齐《异星工厂》科技树） =====
   // 原版：高速机械臂需「自动化 II」；加长机械臂需「物流 II」。
   // 此前这两类机械臂开局即可用，现改为对应科技解锁，让物流/自动化节奏更贴近原版进阶曲线（旧档经迁移自动补完）。
   'fast-inserter': 'automation2',
-  'long-inserter': 'logistics2',
+  'long-handed-inserter': 'logistics2',
   // ===== 基础中间件科技门控（对齐《异星工厂》科技树） =====
   'engine-unit': 'engine',          // 引擎单元：需「引擎技术」科技（对齐原版 Engine）
   'battery': 'battery',                // 电池：需「电池技术」科技（对齐原版 Battery）
@@ -112,7 +112,7 @@ TECH_REQ['pump'] = 'fluid-handling';
 // 战斗机器人：三种战斗机器人胶囊需战斗机器人科技解锁（对齐《异星工厂》Combat robotics）
 for (const id of ['defender-capsule', 'distractor-capsule', 'destroyer-capsule']) TECH_REQ[id] = 'combat-robotics';
 // ===== 流体桶装科技门控（对齐《异星工厂》：桶装需流体处理科技） =====
-TECH_REQ['empty-barrel'] = 'barrel';
+TECH_REQ['barrel'] = 'barrel';
 for (const f of BARREL_FLUIDS) TECH_REQ[f + '-barrel'] = 'barrel';
 // ===== 铁路科技门控 =====
 const RAIL_ITEMS = ['rail', 'locomotive', 'cargo-wagon', 'train-stop', 'fluid-wagon', 'diesel-locomotive'];
@@ -122,14 +122,14 @@ TECH_REQ['diesel-locomotive'] = 'railways'; // 基础解锁为 railways，额外
 if (!TECH_REQ['rail-signal']) TECH_REQ['rail-signal'] = 'rail-signals';
 if (!TECH_REQ['rail-chain-signal']) TECH_REQ['rail-chain-signal'] = 'rail-signals';
 // ===== 物流机器人网络 =====
-const LOGISTIC_ITEMS = ['roboport', 'logistic-robot', 'logistic-chest-passive', 'logistic-chest-active', 'logistic-chest-storage', 'logistic-chest-requester', 'logistic-chest-buffer'];
+const LOGISTIC_ITEMS = ['roboport', 'logistic-robot', 'passive-provider-chest', 'active-provider-chest', 'storage-chest', 'requester-chest', 'buffer-chest'];
 // 物流箱科技门控：所有物流设备需先研究「物流网络」
 for (const id of LOGISTIC_ITEMS) if (!TECH_REQ[id]) TECH_REQ[id] = 'logistics-network';
 // ===== 电路网络科技门控 =====
 const CIRCUIT_ITEMS = ['small-electric-pole', 'medium-electric-pole', 'big-electric-pole', 'constant-combinator', 'arithmetic-combinator', 'decider-combinator', 'substation', 'programmable-speaker', 'power-switch', 'red-wire', 'green-wire'];
 for (const id of CIRCUIT_ITEMS) if (!TECH_REQ[id]) TECH_REQ[id] = 'circuit-network';
 // 电灯：需电力工程科技解锁（对齐《异星工厂》灯由电力工程解锁）
-TECH_REQ['lamp'] = 'electric';
+TECH_REQ['small-lamp'] = 'electric';
 // 玩家武器所需科技（用于选择武器时拦截）
 const WEAPON_TECH_REQ = {
   'atomic-bomb': 'atomic-bomb',   // 原子弹需独立「原子弹科技」
@@ -248,7 +248,7 @@ const RECIPE_TECH = {
 const RECIPE_TECH_ANY = {
   'advanced-electronics':     ['electronics', 'advanced-electronics'],
   'advanced-electronics-2':   ['electronics', 'advanced-electronics-2'],
-  'electric-engine':         ['electronics', 'electric-engine'],
+  'electric-engine-unit':         ['electronics', 'electric-engine-unit'],
   'sulfur-processing':       ['oil', 'sulfur-processing'],
   'advanced-material-processing':     ['modules', 'advanced-material-processing'],
   'advanced-material-processing-2':   ['modules2', 'advanced-material-processing-2'],
@@ -291,10 +291,10 @@ function recipeLockingTech(rid) {
 // ===== 传送带阶级链（对齐《异星工厂》物流升级）=====
 // 普通带 → 快速带 → 极速带。用于 R 旋转、覆盖升级/降级、绿图批量升级等。
 const BELT_TIERS = ['transport-belt', 'fast-transport-belt', 'express-transport-belt'];
-const UNDERGROUND_TIERS = ['underground', 'fast-underground-belt', 'express-underground-belt'];
+const UNDERGROUND_TIERS = ['underground-belt', 'fast-underground-belt', 'express-underground-belt'];
 const SPLITTER_TIERS = ['splitter', 'fast-splitter', 'express-splitter'];
 // 组装机阶级链（对齐《异星工厂》组装机 I/II/III）：绿图批量升级/降级也支持组装机
-const ASSEMBLER_TIERS = ['assembling-machine', 'assembling-machine-mk2', 'assembling-machine-3'];
+const ASSEMBLER_TIERS = ['assembling-machine-1', 'assembling-machine-2', 'assembling-machine-3'];
 // 合并为“可升级物流链”查表：type -> 高一阶 / 低一阶（无则返回 null）
 const TIER_NEXT = {};
 const TIER_PREV = {};
@@ -313,6 +313,6 @@ function tierFamily(type) { return TIER_FAMILY[type] || null; }
 // 判断两种物流类型是否属于同一升级链（可互相覆盖升级/降级）
 function sameTierFamily(a, b) { return !!tierFamily(a) && tierFamily(a) === tierFamily(b); }
 
-const DEFAULT_HOTBAR = ['transport-belt', 'splitter', 'underground', 'inserter', 'long-inserter', 'burner-drill', 'stone-furnace', 'assembling-machine', 'storage-chest', 'lab'];
+const DEFAULT_HOTBAR = ['transport-belt', 'splitter', 'underground-belt', 'inserter', 'long-handed-inserter', 'burner-mining-drill', 'stone-furnace', 'assembling-machine-1', 'steel-chest', 'lab'];
 let HOTBAR = DEFAULT_HOTBAR.slice();
 

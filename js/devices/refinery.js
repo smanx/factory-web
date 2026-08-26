@@ -9,14 +9,14 @@
 const REFINERY_BUF_CAP = 100;
 class Refinery extends Entity {
   constructor(type, x, y) {
-    super('refinery', x, y);
+    super('oil-refinery', x, y);
     this.recipe = null;
     this.inp = {};   // 已吸入/放入的原料（流体与固体都在此缓冲）
     this.outp = {};  // 产物缓冲（流体）
     this.crafting = false;
     this.prog = 0;
     this.working = false;
-    this.modules = {};  // 炼油厂可装 3 个模块（对齐《异星工厂》Oil refinery）
+    this.modules = {};  // 炼油厂可装 3 个模块（对齐《异星工厂》Oil oil-refinery）
     this.prodBuf = 0;   // 产能模块累积进度
     // 电路控制（对齐《异星工厂》：生产建筑可接入电路网络，按信号条件启用/禁用配方）
     this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
@@ -199,7 +199,7 @@ class Refinery extends Entity {
     if ((this.outp[item] || 0) > 0) { this.outp[item]--; if (this.outp[item] <= 0) delete this.outp[item]; return item; }
     return null;
   }
-  powerDemand() { return this.recipe ? POWER_USE['refinery'] : 0; }
+  powerDemand() { return this.recipe ? POWER_USE['oil-refinery'] : 0; }
   contents() {
     const list = [[this.type, 1]];
     for (const k in this.inp) list.push([k, this.inp[k]]);
@@ -391,19 +391,19 @@ function refineryTip(e) {
 }
 
 // ===== 注册 =====
-ENT_CLASSES['refinery'] = Refinery;
-DEVICE_RENDER['refinery'] = drawRefinery;
+ENT_CLASSES['oil-refinery'] = Refinery;
+DEVICE_RENDER['oil-refinery'] = drawRefinery;
 // 炼油厂：正在耗电时按供电状态显灯（电量不足黄灯、缺电停摆红灯）；未耗电时按原逻辑
-DEVICE_STATUS['refinery'] = e => {
+DEVICE_STATUS['oil-refinery'] = e => {
   const s = powerStatusOf(e);
   if (s.consuming) return s.color;
   return e.recipe ? (e.crafting ? 'g' : (G.power.sat <= 0 && Object.keys(e.inp).length ? 'r' : 'y')) : 'r';
 };
-DEVICE_PANEL['refinery'] = { html: refineryPanelHtml, live: refineryPanelLive, tip: refineryTip, onAction: (a) => circuitPanelAction('rf', a) };
+DEVICE_PANEL['oil-refinery'] = { html: refineryPanelHtml, live: refineryPanelLive, tip: refineryTip, onAction: (a) => circuitPanelAction('rf', a) };
 // 炼油厂四边均布流体口、本体对称，旋转仅记录朝向；选中/悬停后按 R 可直接旋转
-DEVICE_DIR_ROTATE['refinery'] = true;
+DEVICE_DIR_ROTATE['oil-refinery'] = true;
 // 显示详情时，各接口流体图标所在世界格 + 对应流体名（用于鼠标悬停显示流体名称）
-DEVICE_FLUID_ICONS['refinery'] = e => {
+DEVICE_FLUID_ICONS['oil-refinery'] = e => {
   const icons = [];
   for (const cell of REFINERY_INPUT_CELLS) {
     const f = refineryInputFluid(e, cell);

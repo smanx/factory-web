@@ -6,7 +6,7 @@
 // （对齐《异星工厂》：储物箱可通过电路网络读取物品数量，实现按库存自动化）。
 class Chest extends CircuitNode {
   constructor(type, x, y) {
-    super('storage-chest', x, y);
+    super('iron-chest', x, y);
     this.slots = [];
     this.limits = {};
   }
@@ -166,12 +166,6 @@ function chestOnChange(ev) {
   }
   return true;
 }
-
-// ===== 注册 =====
-ENT_CLASSES['storage-chest'] = Chest;
-DEVICE_RENDER['storage-chest'] = drawChest;
-DEVICE_DIR_ROTATE['storage-chest'] = true; // 支持旋转
-DEVICE_PANEL['storage-chest'] = { html: chestPanelHtml, live: chestPanelLive, tip: chestTip, onAction: chestOnAction, onChange: chestOnChange };
 
 // ===== 木箱（对齐《异星工厂》Wooden chest，占地 1×1，容量较小 16 格）=====
 class WoodenChest extends Chest {

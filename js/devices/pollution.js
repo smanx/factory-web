@@ -50,14 +50,14 @@ const POLLUTION_FIELD_MAX_TILES = 6000; // 逐格污染场最大格数（超出�
 // 各设备的污染排放系数（每秒，单位：污染值/s）
 // 对齐《异星工厂》：污染主要来自采矿 / 冶炼 / 石油化工 / 烧煤发电。
 const POLLUTION_SOURCES = {
-  'burner-drill': 3,        // 热能采矿机（烧煤）
-  'electric-drill': 4,      // 电采矿机（采掘污染，略高于热能）
+  'burner-mining-drill': 3,        // 热能采矿机（烧煤）
+  'electric-mining-drill': 4,      // 电采矿机（采掘污染，略高于热能）
   'pumpjack': 2,            // 抽油机（石油开采）
   'stone-furnace': 2,       // 石炉（烧煤冶炼）
   'steel-furnace': 4,       // 钢铁炉（烧煤冶炼，产能更高）
   'electric-furnace': 5,    // 电炉（冶炼污染，功率更大）
   'boiler': 4,              // 锅炉（烧煤发电）
-  'refinery': 6,            // 炼油厂（石油化工）
+  'oil-refinery': 6,            // 炼油厂（石油化工）
   'chemical-plant': 5,      // 化工厂（石油化工）
   'centrifuge': 1,          // 离心机（铀浓缩处理，低污染）
   'nuclear-reactor': 7,     // 核反应堆（虽清洁但燃料处理与热量管理仍有微量排放）

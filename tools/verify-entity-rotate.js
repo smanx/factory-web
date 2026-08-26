@@ -36,7 +36,7 @@ const BUILD_DEFS = {
   'transport-belt':      { w: 1, h: 1, solid: false },
   'fast-transport-belt': { w: 1, h: 1, solid: false },
   'express-transport-belt': { w: 1, h: 1, solid: false },
-  'underground':         { w: 1, h: 1, solid: false },
+  'underground-belt':         { w: 1, h: 1, solid: false },
   'fast-underground-belt': { w: 1, h: 1, solid: false },
   'express-underground-belt': { w: 1, h: 1, solid: false },
   'splitter':            { w: 1, h: 2, solid: false, rotSwap: true },
@@ -46,16 +46,16 @@ const BUILD_DEFS = {
   'steam-engine':        { w: 3, h: 5, solid: true, rotSwap: true },
   'inserter':            { w: 1, h: 1, solid: true },
   'burner-inserter':     { w: 1, h: 1, solid: true },
-  'long-inserter':       { w: 1, h: 1, solid: true },
-  'stack-inserter':      { w: 1, h: 1, solid: true },
+  'long-handed-inserter':       { w: 1, h: 1, solid: true },
+  'bulk-inserter':      { w: 1, h: 1, solid: true },
   'fast-inserter':       { w: 1, h: 1, solid: true },
   'wooden-chest':        { w: 1, h: 1, solid: true },
 };
 // 放置后可直接旋转本体的设备（R/V/H 生效），其余建筑仅幽灵阶段可旋转
 const DEVICE_DIR_ROTATE = {};
 ['transport-belt','fast-transport-belt','express-transport-belt',
- 'underground','fast-underground-belt','express-underground-belt',
- 'inserter','burner-inserter','long-inserter','stack-inserter','fast-inserter']
+ 'underground-belt','fast-underground-belt','express-underground-belt',
+ 'inserter','burner-inserter','long-handed-inserter','bulk-inserter','fast-inserter']
   .forEach(t => { DEVICE_DIR_ROTATE[t] = true; });
 
 const sandbox = {
@@ -111,14 +111,14 @@ vm.runInContext(
 
 const clsFor = {
   'transport-belt': 'Belt', 'fast-transport-belt': 'Belt', 'express-transport-belt': 'Belt',
-  'underground': 'Underground', 'fast-underground-belt': 'Underground', 'express-underground-belt': 'Underground',
+  'underground-belt': 'Underground', 'fast-underground-belt': 'Underground', 'express-underground-belt': 'Underground',
   'splitter': 'Splitter',
-  'inserter': 'Inserter', 'burner-inserter': 'Inserter', 'long-inserter': 'Inserter',
-  'stack-inserter': 'Inserter', 'fast-inserter': 'Inserter',
+  'inserter': 'Inserter', 'burner-inserter': 'Inserter', 'long-handed-inserter': 'Inserter',
+  'bulk-inserter': 'Inserter', 'fast-inserter': 'Inserter',
 };
 const entities = ['transport-belt', 'fast-transport-belt', 'express-transport-belt',
-  'underground', 'fast-underground-belt', 'express-underground-belt',
-  'inserter', 'burner-inserter', 'long-inserter', 'stack-inserter', 'fast-inserter'];
+  'underground-belt', 'fast-underground-belt', 'express-underground-belt',
+  'inserter', 'burner-inserter', 'long-handed-inserter', 'bulk-inserter', 'fast-inserter'];
 
 // ===== 一、幽灵阶段：所有建筑可 R 旋转、V/H 翻转 =====
 // 场景：幽灵建造某个建筑（未放置），鼠标指向空白处，按 R/V/H 应旋转/翻转 ghostDir

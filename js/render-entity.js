@@ -85,7 +85,7 @@ const DEVICE_RUN_INFO = {
   'stone-furnace': e => (e.lit && e.cur && e.prog > 0) ? { pct: e.prog, total: e.cur.time } : null,
   'steel-furnace': e => (e.lit && e.cur && e.prog > 0) ? { pct: e.prog, total: e.cur.time } : null,
   'electric-furnace': e => (e.lit && e.cur && e.prog > 0) ? { pct: e.prog, total: e.cur.time } : null,
-  'refinery': e => {
+  'oil-refinery': e => {
     if (!e.crafting || !e.recipe) return null;
     const rec = REFINERY_RECIPES[e.recipe];
     if (!rec || !rec.time) return null;
@@ -120,18 +120,18 @@ const NO_STATUS_DOT = {
   // 传送带分流器
   'splitter': true, 'fast-splitter': true, 'express-splitter': true,
   // 地下传送带
-  'underground': true, 'fast-underground-belt': true, 'express-underground-belt': true,
+  'underground-belt': true, 'fast-underground-belt': true, 'express-underground-belt': true,
   // 水管
   'pipe': true, 'pipe-to-ground': true,
   // 其他流体管路（核电传热管、创造/虚空管道）同样不显示状态小点
   'heat-pipe': true, 'creative-pipe': true, 'void-pipe': true,
   // 机械臂（电力/加长/高速/集装箱/热能）运行状态由臂体与动画直观表达，不显示状态小点
-  'inserter': true, 'long-inserter': true, 'stack-inserter': true, 'fast-inserter': true,
+  'inserter': true, 'long-handed-inserter': true, 'bulk-inserter': true, 'fast-inserter': true,
   'burner-inserter': true,
 };
 
 // 机械臂类型集合：绘制时置顶，永远显示在传送带/其他设备之上，不被遮挡。
-const IS_INSERTER = { inserter: true, 'long-inserter': true, 'stack-inserter': true, 'fast-inserter': true };
+const IS_INSERTER = { inserter: true, 'long-handed-inserter': true, 'bulk-inserter': true, 'fast-inserter': true };
 
 const ghostCache = { type: null, ent: null };
 
@@ -536,12 +536,12 @@ function drawBullets(ctx) {
       ctx.lineWidth = b.art ? 3.5 : 2.5;
       ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
       if (t >= 1) {
-        const rad0 = (b.splash || 0) * TILE * (b.art ? 0.8 : 0.6) * (b.explosive ? 1.25 : 1);
+        const rad0 = (b.splash || 0) * TILE * (b.art ? 0.8 : 0.6) * (b.explosives ? 1.25 : 1);
         // 原子弹核爆：超大范围蘑菇云冲击波环 + 高温火球（对齐《异星工厂》原子弹）
         const rad = b.nuclear ? Math.max(rad0, 9 * TILE) : rad0;
         const nucBoost = b.nuclear ? 1.8 : 1;
         // 爆炸推进进度：用 _boomT 让爆炸随时间膨胀/消散（画面优化：层次火球 + 冲击波环）
-        const boomDur = b.nuclear ? 0.9 : (b.art ? 0.6 : (b.explosive ? 0.5 : 0.35));
+        const boomDur = b.nuclear ? 0.9 : (b.art ? 0.6 : (b.explosives ? 0.5 : 0.35));
         const age = (b._boomT || 0);
         const prog = age > 0 ? Math.min(1, age / boomDur) : 1;
         const grow = 0.7 + 0.6 * prog;               // 冲击波扩散
@@ -563,7 +563,7 @@ function drawBullets(ctx) {
         ctx.fillStyle = 'rgba(255,255,230,' + (0.85 * fade).toFixed(2) + ')';
         ctx.beginPath(); ctx.arc(b.tx, b.ty, rad * 0.22, 0, 7); ctx.fill();
         // 爆炸系弹药（爆炸炮弹/铀爆炸炮弹）增强特效：灼热橙芯 + 外圈飞散火星（画面优化）
-        if (b.explosive) {
+        if (b.explosives) {
           ctx.fillStyle = 'rgba(255,190,80,' + (0.7 * fade).toFixed(2) + ')';
           ctx.beginPath(); ctx.arc(b.tx, b.ty, rad * 0.42, 0, 7); ctx.fill();
           ctx.fillStyle = 'rgba(255,120,40,' + (0.6 * fade).toFixed(2) + ')';

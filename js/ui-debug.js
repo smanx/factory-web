@@ -29,20 +29,20 @@ const DBG_GIVE_GROUPS = [
   ]],
   ['板材·材料', [
     ['iron-plate', 200], ['copper-plate', 200], ['steel-plate', 100], ['stone-brick', 100],
-    ['iron-gear', 100], ['iron-stick', 100], ['steel-stick', 100], ['copper-cable', 100],
+    ['iron-gear-wheel', 100], ['iron-stick', 100], ['steel-stick', 100], ['copper-cable', 100],
     ['plastic-bar', 100], ['wood', 100], ['concrete', 100], ['refined-concrete', 100],
     ['hazard-concrete', 100], ['stone-path', 100], ['landfill', 100]
   ]],
   ['电路·元件', [
-    ['green-circuit', 100], ['red-wire', 100], ['green-wire', 100],
-    ['advanced-circuit', 100], ['processing-unit', 100], ['engine-unit', 50], ['electric-engine', 50]
+    ['electronic-circuit', 100], ['red-wire', 100], ['green-wire', 100],
+    ['advanced-circuit', 100], ['processing-unit', 100], ['engine-unit', 50], ['electric-engine-unit', 50]
   ]],
   ['燃料', [
     ['solid-fuel', 100], ['battery', 100], ['nuclear-fuel', 20], ['depleted-uranium-fuel-cell', 20]
   ]],
   ['科学包', [
-    ['science-pack', 50], ['green-science', 50], ['blue-science', 50],
-    ['military-science', 50], ['production-science-pack', 50], ['utility-science-pack', 50],
+    ['automation-science-pack', 50], ['logistic-science-pack', 50], ['chemical-science-pack', 50],
+    ['military-science-pack', 50], ['production-science-pack', 50], ['utility-science-pack', 50],
     ['space-science-pack', 50]
   ]],
   ['流体', [
@@ -51,12 +51,12 @@ const DBG_GIVE_GROUPS = [
     ['sulfur', 100]
   ]],
   ['弹药·武器', [
-    ['magazine', 100], ['piercing-rounds', 100], ['uranium-rounds', 100],
+    ['firearm-magazine', 100], ['piercing-rounds-magazine', 100], ['uranium-rounds-magazine', 100],
     ['shotgun-shell', 100], ['piercing-shotgun-shell', 100], ['flamethrower-ammo', 100],
-    ['rocket-ammo', 50], ['explosive-rocket', 50], ['cannon-shell', 50], ['explosive-cannon-shell', 50],
+    ['rocket', 50], ['explosive-rocket', 50], ['cannon-shell', 50], ['explosive-cannon-shell', 50],
     ['explosive-uranium-cannon-shell', 50], ['artillery-shell', 20], ['uranium-cannon-shell', 50],
     ['grenade', 50], ['cluster-grenade', 50], ['poison-capsule', 50], ['slowdown-capsule', 50],
-    ['land-mine', 50], ['explosive', 100], ['cliff-explosives', 50]
+    ['land-mine', 50], ['explosives', 100], ['cliff-explosives', 50]
   ]],
   ['模块', [
     ['speed-module', 50], ['speed-module-2', 50], ['speed-module-3', 50],
@@ -83,22 +83,22 @@ const DBG_GIVE_GROUPS = [
   ['物流·传送带', [
     ['transport-belt', 100], ['fast-transport-belt', 100], ['express-transport-belt', 100],
     ['splitter', 50], ['fast-splitter', 50], ['express-splitter', 50],
-    ['underground', 50], ['fast-underground-belt', 50], ['express-underground-belt', 50]
+    ['underground-belt', 50], ['fast-underground-belt', 50], ['express-underground-belt', 50]
   ]],
   ['机械臂', [
-    ['burner-inserter', 50], ['inserter', 50], ['long-inserter', 50], ['fast-inserter', 50],
-    ['stack-inserter', 50]
+    ['burner-inserter', 50], ['inserter', 50], ['long-handed-inserter', 50], ['fast-inserter', 50],
+    ['bulk-inserter', 50]
   ]],
   ['生产·建筑', [
-    ['burner-drill', 20], ['electric-drill', 20], ['pumpjack', 20],
+    ['burner-mining-drill', 20], ['electric-mining-drill', 20], ['pumpjack', 20],
     ['stone-furnace', 20], ['steel-furnace', 20], ['electric-furnace', 20],
-    ['assembling-machine', 20], ['assembling-machine-mk2', 20], ['assembling-machine-3', 20],
-    ['chemical-plant', 20], ['refinery', 10], ['lab', 20], ['beacon', 10], ['radar', 10], ['rocket-silo', 5]
+    ['assembling-machine-1', 20], ['assembling-machine-2', 20], ['assembling-machine-3', 20],
+    ['chemical-plant', 20], ['oil-refinery', 10], ['lab', 20], ['beacon', 10], ['radar', 10], ['rocket-silo', 5]
   ]],
   ['储物·物流', [
-    ['wooden-chest', 20], ['iron-chest', 20], ['storage-chest', 20], ['steel-chest', 20],
-    ['logistic-chest-passive', 20], ['logistic-chest-active', 20], ['logistic-chest-storage', 20],
-    ['logistic-chest-requester', 20], ['logistic-chest-buffer', 20], ['roboport', 10]
+    ['wooden-chest', 20], ['iron-chest', 20], ['steel-chest', 20],
+    ['passive-provider-chest', 20], ['active-provider-chest', 20], ['storage-chest', 20],
+    ['requester-chest', 20], ['buffer-chest', 20], ['roboport', 10]
   ]],
   ['电力·能源', [
     ['boiler', 20], ['steam-engine', 20], ['offshore-pump', 20],
@@ -114,7 +114,7 @@ const DBG_GIVE_GROUPS = [
   ]],
   ['电路·信号', [
     ['constant-combinator', 20], ['arithmetic-combinator', 20], ['decider-combinator', 20],
-    ['power-switch', 20], ['programmable-speaker', 20], ['lamp', 50]
+    ['power-switch', 20], ['programmable-speaker', 20], ['small-lamp', 50]
   ]],
   ['核能·建筑', [
     ['centrifuge', 10], ['nuclear-reactor', 5], ['steam-turbine', 20],

@@ -189,8 +189,8 @@ class RocketSilo extends CircuitNode {
     const t = super.restore(s);
     t.inp = s.inp || {}; t.parts = s.parts || 0; t.modules = s.modules || {}; t.prodBuf = s.prodBuf || 0;
     t.launching = !!s.launching; t.launchT = s.launchT || 0; t.launched = !!s.launched; t.launchCount = s.launchCount || (s.launched ? 1 : 0);
-    // 旧档迁移：旧版火箭井直接存 inp.rocket（已组装出火箭本体），换算为已集齐火箭部件
-    if (t.parts <= 0 && (t.inp['rocket'] || 0) > 0) { t.parts = ROCKET_PARTS; delete t.inp['rocket']; }
+    // 旧档迁移：旧版火箭井直接存 inp.rocket-body（已组装出火箭本体），换算为已集齐火箭部件
+    if (t.parts <= 0 && (t.inp['rocket-body'] || 0) > 0) { t.parts = ROCKET_PARTS; delete t.inp['rocket-body']; }
     return t;
   }
 }
@@ -302,7 +302,7 @@ function siloPanelHtml(e) {
   } else {
     // 阶段②：放入卫星发射
     h += '<div class="sec">火箭已组装完成（阶段 2/2）</div>';
-    h += row(ITEMS['rocket'].name, '✓ 就绪', 'rocket');
+    h += row(ITEMS['rocket-body'].name, '✓ 就绪', 'rocket-body');
     const haveSat = e.inp['satellite'] || 0;
     h += row(ITEMS['satellite'].name, (haveSat > 0 ? '✓ ' : '') + haveSat + '/1', 'satellite');
     h += '<button data-action="feed" data-id="satellite" ' + (haveSat > 0 ? 'disabled' : '') + '>放入卫星</button>';
@@ -330,7 +330,7 @@ function siloPanelLive(e, api) {
     }
   } else {
     const haveSat = e.inp['satellite'] || 0;
-    api.set('rocket', '✓ 就绪');
+    api.set('rocket-body', '✓ 就绪');
     api.set('satellite', (haveSat > 0 ? '✓ ' : '') + haveSat + '/1');
     const feedBtn = document.querySelector('[data-action="feed"][data-id="satellite"]');
     if (feedBtn) feedBtn.disabled = haveSat > 0;

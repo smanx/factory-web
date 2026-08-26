@@ -78,7 +78,7 @@ console.log('\n【疑似缺失配方的中间件（零冗余）】');
 // 特殊游戏逻辑产出、非合成配方的物品（由建筑/机制产出，合法无组装配方）
 const specialOutput = new Set([
   'rocket-part',                  // 火箭发射井逐件组装
-  'rocket',                       // 火箭发射井拼装完整火箭
+  'rocket-body',                  // 火箭发射井拼装完整火箭（非合成物品，由发射井组装）
   'space-science-pack',           // 火箭发射后产出
   'depleted-uranium-fuel-cell',   // 反应堆燃尽核燃料棒
   'wood', 'raw-wood',             // 砍树获得
