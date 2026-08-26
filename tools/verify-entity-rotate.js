@@ -1,0 +1,195 @@
+#!/usr/bin/env node
+'use strict';
+/**
+ * 建筑旋转/翻转语义验证脚本
+ * ------------------------------------------------
+ * 验证《异星工厂》建筑旋转/翻转规则：
+ *   - 所有建筑在建造时（选择后、放下前，即幽灵预览阶段）均可按住 R 旋转、
+ *     V/H 翻转（通过 ghostDir 生效，包括放置后不可旋转的建筑如箱子）。
+ *   - 传送带、机械臂、地下传送带等物流设备在放置之后仍可按 R 旋转、V/H 翻转。
+ *   - 非方形设备（rotSwap，如分流器）旋转/翻转后占地宽高正确交换。
+ *
+ * 运行：node tools/verify-entity-rotate.js （退出码 0 = 通过）
+ * 零依赖：加载 entity.js / belt.js / underground.js / inserter.js / splitter.js
+ *         与 main-actions.js 的 rotateAction / flipAction 做端到端模拟。
+ */
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
+
+const SRC = path.join(__dirname, '..', 'js');
+const load = (p) => fs.readFileSync(path.join(SRC, p), 'utf8');
+
+const TILE = 32, BELT_SPEED = 1.875, BELT_SPACING = 0.125;
+const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
+
+const G = {
+  grid: new Map(), ents: [], buckets: new Map(), techProg: {}, techDone: {}, time: 0, dbg: {},
+  ghostDir: 0, cursorTile: null, sel: 0, quickSel: null, driving: null,
+  blueMode: null, blueRot: 0, blueFlipH: false, blueFlipV: false,
+};
+const entKey = (x, y) => ((x + 32768) << 16) | (y + 32768);
+const entAt = (x, y) => G.grid.get(entKey(x, y));
+
+// 覆盖到的物流设备与普通建筑定义
+const BUILD_DEFS = {
+  'transport-belt':      { w: 1, h: 1, solid: false },
+  'fast-transport-belt': { w: 1, h: 1, solid: false },
+  'express-transport-belt': { w: 1, h: 1, solid: false },
+  'underground':         { w: 1, h: 1, solid: false },
+  'fast-underground-belt': { w: 1, h: 1, solid: false },
+  'express-underground-belt': { w: 1, h: 1, solid: false },
+  'splitter':            { w: 1, h: 2, solid: false, rotSwap: true },
+  'inserter':            { w: 1, h: 1, solid: true },
+  'burner-inserter':     { w: 1, h: 1, solid: true },
+  'long-inserter':       { w: 1, h: 1, solid: true },
+  'stack-inserter':      { w: 1, h: 1, solid: true },
+  'fast-inserter':       { w: 1, h: 1, solid: true },
+  'wooden-chest':        { w: 1, h: 1, solid: true },
+};
+// 放置后可直接旋转本体的设备（R/V/H 生效），其余建筑仅幽灵阶段可旋转
+const DEVICE_DIR_ROTATE = {};
+['transport-belt','fast-transport-belt','express-transport-belt',
+ 'underground','fast-underground-belt','express-underground-belt',
+ 'inserter','burner-inserter','long-inserter','stack-inserter','fast-inserter']
+  .forEach(t => { DEVICE_DIR_ROTATE[t] = true; });
+
+const sandbox = {
+  console, TILE, BELT_SPEED, BELT_SPACING, DX, DY, G, entAt, entKey,
+  BUILD_DEFS, DEVICE_DIR_ROTATE,
+  ITEMS: {},
+  Underground: class Underground {}, Splitter: class Splitter {},
+  Belt: class Belt {}, Entity: class Entity {},
+  buildingMaxHp: () => 100,
+  beltSpeed: () => BELT_SPEED,
+  groundItemForBelt: () => null,
+  circuitSignalNear: () => ({}),
+  circuitCondOk: () => true,
+  playSfx: () => {},
+  toast: () => {},
+  withinReach: () => true,
+  invalidateBeltInputNear: () => {},
+  pumpCanFace: () => true,
+  ENT_CLASSES: {}, DEVICE_RENDER: {}, DEVICE_STATUS: {}, DEVICE_PANEL: {}, DEVICE_PLACE: {},
+  window: {}, setTimeout, clearTimeout, setInterval, clearInterval,
+};
+sandbox.globalThis = sandbox;
+vm.createContext(sandbox);
+
+// 供被加载脚本访问 sandbox 内全局（const 绑定在 vm 词法作用域，需通过 globalThis 透出）
+const prefix = [
+  'const G=globalThis.G;', 'const ITEMS=globalThis.ITEMS;',
+  'const BUILD_DEFS=globalThis.BUILD_DEFS;', 'const DEVICE_DIR_ROTATE=globalThis.DEVICE_DIR_ROTATE;',
+].join(' ');
+
+let pass = 0, fail = 0;
+function ok(c, n) { if (c) { pass++; console.log('  ✅ ' + n); } else { fail++; console.log('  ❌ ' + n); } }
+
+function fresh() {
+  G.grid = new Map(); G.ents = []; G.ghostDir = 0; G.cursorTile = null;
+}
+
+function addEnt(e) { G.ents.push(e); G.grid.set(entKey(e.x, e.y), e); }
+
+// 加载游戏核心逻辑
+vm.runInContext(
+  prefix
+  + load('core/entity.js') + '\n'
+  + load('devices/belt.js') + '\n'
+  + load('devices/underground.js') + '\n'
+  + load('devices/inserter.js') + '\n'
+  + load('devices/burner-inserter.js') + '\n'
+  + load('devices/splitter.js') + '\n'
+  + load('main-actions.js'),
+  sandbox, { filename: 'main-actions.js' }
+);
+
+const clsFor = {
+  'transport-belt': 'Belt', 'fast-transport-belt': 'Belt', 'express-transport-belt': 'Belt',
+  'underground': 'Underground', 'fast-underground-belt': 'Underground', 'express-underground-belt': 'Underground',
+  'splitter': 'Splitter',
+  'inserter': 'Inserter', 'burner-inserter': 'Inserter', 'long-inserter': 'Inserter',
+  'stack-inserter': 'Inserter', 'fast-inserter': 'Inserter',
+};
+const entities = ['transport-belt', 'fast-transport-belt', 'express-transport-belt',
+  'underground', 'fast-underground-belt', 'express-underground-belt',
+  'inserter', 'burner-inserter', 'long-inserter', 'stack-inserter', 'fast-inserter'];
+
+// ===== 一、幽灵阶段：所有建筑可 R 旋转、V/H 翻转 =====
+// 场景：幽灵建造某个建筑（未放置），鼠标指向空白处，按 R/V/H 应旋转/翻转 ghostDir
+console.log('\n【幽灵阶段旋转/翻转】');
+fresh();
+vm.runInContext(`(function(){
+  G.cursorTile = {tx: 50, ty: 50};
+  G.ghostDir = 0;
+  rotateAction();  // R: 0 -> 1
+  __g1 = G.ghostDir;
+  flipAction('v'); // V: 1 -> 3
+  __g2 = G.ghostDir;
+  flipAction('h'); // H: 3 -> 3（水平翻转只交换东西，南北不变）
+  __g3 = G.ghostDir;
+  rotateAction();  // R: 3 -> 0
+  __g4 = G.ghostDir;
+})()`, sandbox);
+ok(sandbox.__g1 === 1, `幽灵 R 旋转 0→${sandbox.__g1}（期望 1）`);
+ok(sandbox.__g2 === 3, `幽灵 V 翻转 1→${sandbox.__g2}（期望 3）`);
+ok(sandbox.__g3 === 3, `幽灵 H 翻转对南北方向 ${sandbox.__g3}（期望 3，东西互兑）`);
+ok(sandbox.__g4 === 0, `幽灵 R 再旋转 3→${sandbox.__g4}（期望 0）`);
+
+// 场景：幽灵建造时鼠标指向已放置的不可旋转建筑（箱子），R/V/H 仍应作用于幽灵而非实体
+fresh();
+vm.runInContext(`(function(){
+  const e = {type:'wooden-chest', x:5, y:5, w:1, h:1, dir:0};
+  G.grid.set(entKey(5,5), e); G.ents.push(e);
+  G.cursorTile = {tx:5, ty:5};
+  G.ghostDir = 0;
+  rotateAction();  // 箱子不可旋转 -> 旋转幽灵
+  __g1 = G.ghostDir;
+  G.ghostDir = 0;
+  flipAction('v'); // V: 0 -> 0（垂直翻转只交换南北）
+  __g2 = G.ghostDir;
+})()`, sandbox);
+ok(sandbox.__g1 === 1, `幽灵建造指向箱子时 R 旋转幽灵 0→${sandbox.__g1}（期望 1）`);
+ok(sandbox.__g2 === 0, `幽灵建造指向箱子时 V 翻转幽灵 0→${sandbox.__g2}（期望 0，垂直只换南北）`);
+
+// ===== 二、放置后：传送带/机械臂/地下传送带仍可 R 旋转、V/H 翻转 =====
+console.log('\n【物流设备放置后旋转/翻转】');
+for (const t of entities) {
+  fresh();
+  vm.runInContext(`(function(){
+    const e = new ${clsFor[t]}('${t}', 5, 5);
+    e.dir = 0; G.grid.set(entKey(5,5), e); G.ents.push(e);
+    G.cursorTile = {tx:5, ty:5};
+    rotateAction();  // 0 -> 1
+    __r1 = e.dir;
+    flipAction('v'); // 1 -> 3
+    __r2 = e.dir;
+    flipAction('h'); // 3 -> 3（水平只交换东西）
+    __r3 = e.dir;
+    rotateAction();  // 3 -> 0
+    __r4 = e.dir;
+  })()`, sandbox);
+  ok(sandbox.__r1 === 1, `${t} 放置后 R 旋转 0→${sandbox.__r1}（期望 1）`);
+  ok(sandbox.__r2 === 3, `${t} 放置后 V 翻转 1→${sandbox.__r2}（期望 3）`);
+  ok(sandbox.__r3 === 3, `${t} 放置后 H 翻转 ${sandbox.__r3}（期望 3，东西互兑）`);
+  ok(sandbox.__r4 === 0, `${t} 放置后再 R 旋转 3→${sandbox.__r4}（期望 0）`);
+}
+
+// ===== 三、非方形 rotSwap 设备（分流器）放置后旋转/翻转占地正确交换 =====
+console.log('\n【rotSwap 非方形设备占地交换】');
+fresh();
+vm.runInContext(`(function(){
+  const sp = new Splitter('splitter', 5, 5);
+  sp.dir = 0; sp.w = 1; sp.h = 2;
+  G.grid.set(entKey(5,5), sp); G.ents.push(sp);
+  G.cursorTile = {tx:5, ty:5};
+  rotateAction();  // 0 -> 1，宽高交换
+  __w1 = sp.w; __h1 = sp.h; __d1 = sp.dir;
+})()`, sandbox);
+ok(sandbox.__d1 === 1 && sandbox.__w1 === 2 && sandbox.__h1 === 1,
+  `分流器 R 旋转 dir=${sandbox.__d1} w=${sandbox.__w1} h=${sandbox.__h1}（期望 dir=1 w=2 h=1）`);
+
+console.log('\n----------------------------------------');
+console.log(`通过 ${pass} 项，失败 ${fail} 项`);
+if (fail) { console.log('❌ 存在失败断言'); process.exit(1); }
+console.log('✅ 建筑旋转/翻转语义正确');
