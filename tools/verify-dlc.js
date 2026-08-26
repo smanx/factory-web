@@ -64,6 +64,23 @@ console.log('\n【保留 6 个创造/虚空物品】');
 const cv = Object.keys(IT).filter(k => k.indexOf('creative-') === 0 || k.indexOf('void-') === 0);
 ok(cv.length === 6, '创造/虚空物品数 = 6（实际 ' + cv.length + '）：' + cv.join(', '));
 
+
+
+// ===== 电路新设备（display-panel / selector-combinator）数据校验 =====
+console.log('\n【电路新设备（Display panel / Selector combinator）数据】');
+ok(GD.stackSize['display-panel'] === 10, 'display-panel 堆叠来自官方 (=10)');
+ok(GD.names['display-panel'] && GD.names['display-panel'].en === 'Display panel', 'display-panel 官方命名已收录 (Display panel)');
+ok(GD.buildingHp['display-panel'] === 50, 'display-panel 血量=50（官方 max_health）');
+ok(GD.recipe['display-panel'] && GD.recipe['display-panel'].inp['electronic-circuit'] === 1, 'display-panel 配方官方（1 电路板 + 1 铁板）');
+ok(!!IT['display-panel'], 'display-panel 物品已注册');
+ok(ctx.__itemTechReq('display-panel') === 'circuit-network', 'display-panel 需「电路网络」科技');
+ok(GD.stackSize['selector-combinator'] === 50, 'selector-combinator 堆叠来自官方 (=50)');
+ok(GD.names['selector-combinator'] && GD.names['selector-combinator'].en === 'Selector combinator', 'selector-combinator 官方命名已收录 (Selector combinator)');
+ok(GD.buildingHp['selector-combinator'] === 150, 'selector-combinator 血量=150（官方 max_health）');
+ok(GD.recipe['selector-combinator'] && GD.recipe['selector-combinator'].inp['advanced-circuit'] === 2, 'selector-combinator 配方官方（2 高级电路 + 5 判断组合器）');
+ok(!!IT['selector-combinator'], 'selector-combinator 物品已注册');
+ok(ctx.__itemTechReq('selector-combinator') === 'circuit-network', 'selector-combinator 需「电路网络」科技');
+
 console.log('\n' + (fail === 0 ? '✅ DLC 数据校验全部通过（' + pass + ' 项）' : '❌ 失败 ' + fail + ' 项'));
 // ===== 回收机（Recycler）数据校验 =====
 console.log('\n【回收机设备数据（官方）】');
@@ -229,5 +246,22 @@ ok(!!IT['big-mining-drill'], 'big-mining-drill 物品已注册');
 ok(ctx.__itemTechReq('big-mining-drill') === 'big-mining-drill', '大型采矿机需「大型采矿机」科技');
 ok(!!TS['big-mining-drill'], '「大型采矿机」科技已注册');
 ok(!!GD.dlc && GD.dlc.items && GD.dlc.items['big-mining-drill'], 'GAME_DATA.dlc.items.big-mining-drill 已暴露');
+
+
+// ===== 电路新设备（display-panel / selector-combinator）数据校验 =====
+console.log('\n【电路新设备（Display panel / Selector combinator）数据】');
+ok(GD.stackSize['display-panel'] === 10, 'display-panel 堆叠来自官方 (=10)');
+ok(GD.names['display-panel'] && GD.names['display-panel'].en === 'Display panel', 'display-panel 官方命名已收录 (Display panel)');
+ok(GD.buildingHp['display-panel'] === 50, 'display-panel 血量=50（官方 max_health）');
+ok(GD.recipe['display-panel'] && GD.recipe['display-panel'].inp['electronic-circuit'] === 1, 'display-panel 配方官方（1 电路板 + 1 铁板）');
+ok(!!IT['display-panel'], 'display-panel 物品已注册');
+ok(ctx.__itemTechReq('display-panel') === 'circuit-network', 'display-panel 需「电路网络」科技');
+ok(GD.stackSize['selector-combinator'] === 50, 'selector-combinator 堆叠来自官方 (=50)');
+ok(GD.names['selector-combinator'] && GD.names['selector-combinator'].en === 'Selector combinator', 'selector-combinator 官方命名已收录 (Selector combinator)');
+ok(GD.buildingHp['selector-combinator'] === 150, 'selector-combinator 血量=150（官方 max_health）');
+ok(GD.recipe['selector-combinator'] && GD.recipe['selector-combinator'].inp['advanced-circuit'] === 2, 'selector-combinator 配方官方（2 高级电路 + 5 判断组合器）');
+ok(!!IT['selector-combinator'], 'selector-combinator 物品已注册');
+ok(ctx.__itemTechReq('selector-combinator') === 'circuit-network', 'selector-combinator 需「电路网络」科技');
+
 console.log('\n' + (fail === 0 ? '✅ DLC 数据校验全部通过（' + pass + ' 项）' : '❌ 失败 ' + fail + ' 项'));
 process.exit(fail === 0 ? 0 : 1);

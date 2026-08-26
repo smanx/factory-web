@@ -156,7 +156,7 @@ const LOGISTIC_ITEMS = ['roboport', 'logistic-robot', 'passive-provider-chest', 
 // 物流箱科技门控：所有物流设备需先研究「物流网络」
 for (const id of LOGISTIC_ITEMS) if (!TECH_REQ[id]) TECH_REQ[id] = 'logistics-network';
 // ===== 电路网络科技门控 =====
-const CIRCUIT_ITEMS = ['small-electric-pole', 'medium-electric-pole', 'big-electric-pole', 'constant-combinator', 'arithmetic-combinator', 'decider-combinator', 'substation', 'programmable-speaker', 'power-switch', 'red-wire', 'green-wire'];
+const CIRCUIT_ITEMS = ['small-electric-pole', 'medium-electric-pole', 'big-electric-pole', 'constant-combinator', 'arithmetic-combinator', 'decider-combinator', 'selector-combinator', 'display-panel', 'substation', 'programmable-speaker', 'power-switch', 'red-wire', 'green-wire'];
 for (const id of CIRCUIT_ITEMS) if (!TECH_REQ[id]) TECH_REQ[id] = 'circuit-network';
 // 电灯：需电力工程科技解锁（对齐《异星工厂》灯由电力工程解锁）
 TECH_REQ['small-lamp'] = 'electric';

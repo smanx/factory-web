@@ -99,6 +99,8 @@ const BUILD_DEFS = {
   'constant-combinator': { w: 1, h: 1, solid: true },
   'arithmetic-combinator': { w: 1, h: 1, solid: true },
   'decider-combinator': { w: 1, h: 1, solid: true },
+  'selector-combinator': { w: 1, h: 1, solid: true },
+  'display-panel': { w: 1, h: 1, solid: true },
   'power-switch':      { w: 1, h: 1, solid: true },
   'substation':        { w: 2, h: 2, solid: true }   // 官方 collision_box ±0.7 → 2×2
 };
@@ -152,6 +154,7 @@ const BUILDING_HP = {
   'small-electric-pole': 100, 'medium-electric-pole': 100, 'big-electric-pole': 150, 'substation': 200,
   // 组合器（官方 constant 120 / arithmetic 150 / decider 150 / power-switch 200）
   'constant-combinator': 120, 'arithmetic-combinator': 150, 'decider-combinator': 150,
+  'selector-combinator': 150, 'display-panel': 50,
   'power-switch': 200,
   // 照明与告警（官方 small-lamp 100 / programmable-speaker 150）
   'small-lamp': 100, 'programmable-speaker': 150,
@@ -186,6 +189,7 @@ const FOOTPRINT_OVERRIDE = {
   'offshore-pump': { w: 2, h: 1 },
   'pump': { w: 1, h: 1 },
   'arithmetic-combinator': { w: 1, h: 1 }, 'decider-combinator': { w: 1, h: 1 },
+  'selector-combinator': { w: 1, h: 1 }, 'display-panel': { w: 1, h: 1 },
   'power-switch': { w: 1, h: 1 },
 };
 for (const k in (GAME_DATA.footprint || {})) {

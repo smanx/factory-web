@@ -716,6 +716,8 @@ const FOOTPRINT_SOURCES = {
   'constant-combinator': ['constant-combinator', 'constant-combinator'],
   'arithmetic-combinator': ['arithmetic-combinator', 'arithmetic-combinator'],
   'decider-combinator': ['decider-combinator', 'decider-combinator'],
+  'selector-combinator': ['selector-combinator', 'selector-combinator'],  // 官方 selection_box ±0.5×±1 → 1×2（项目 1×1 覆盖）
+  'display-panel': ['display-panel', 'display-panel'],  // 官方 selection_box ±0.5×0.5 → 1×1
   'power-switch': ['power-switch', 'power-switch'],
   'programmable-speaker': ['programmable-speaker', 'programmable-speaker'],
   'land-mine': ['land-mine', 'land-mine'],

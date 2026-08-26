@@ -210,6 +210,8 @@ const GAME_DATA = {
   "constant-combinator": 50,
   "arithmetic-combinator": 50,
   "decider-combinator": 50,
+  "selector-combinator": 50,
+  "display-panel": 10,
   "power-switch": 10,
   "red-wire": 1,
   "green-wire": 1,
@@ -335,6 +337,8 @@ const GAME_DATA = {
   "constant-combinator": 120,
   "arithmetic-combinator": 150,
   "decider-combinator": 150,
+  "selector-combinator": 150,
+  "display-panel": 50,
   "power-switch": 200,
   "substation": 200
  },
@@ -2054,6 +2058,26 @@ const GAME_DATA = {
     "decider-combinator": 1
    }
   },
+  "selector-combinator": {
+   "time": 0.5,
+   "inp": {
+    "advanced-circuit": 2,
+    "decider-combinator": 5
+   },
+   "out": {
+    "selector-combinator": 1
+   }
+  },
+  "display-panel": {
+   "time": 0.5,
+   "inp": {
+    "iron-plate": 1,
+    "electronic-circuit": 1
+   },
+   "out": {
+    "display-panel": 1
+   }
+  },
   "power-switch": {
    "time": 2,
    "inp": {
@@ -2398,6 +2422,8 @@ const GAME_DATA = {
   "constant-combinator": "assembling-machine-1",
   "arithmetic-combinator": "assembling-machine-1",
   "decider-combinator": "assembling-machine-1",
+  "selector-combinator": "assembling-machine-1",
+  "display-panel": "assembling-machine-1",
   "power-switch": "assembling-machine-1",
   "concrete": "assembling-machine-1",
   "refined-concrete": "assembling-machine-1",
@@ -3206,6 +3232,14 @@ const GAME_DATA = {
    "zh": "判断运算器",
    "en": "Decider combinator"
   },
+  "selector-combinator": {
+   "zh": "选择运算器",
+   "en": "Selector combinator"
+  },
+  "display-panel": {
+   "zh": "显示器",
+   "en": "Display panel"
+  },
   "power-switch": {
    "zh": "电闸",
    "en": "Power switch"
@@ -3699,6 +3733,14 @@ const GAME_DATA = {
    "h": 2
   },
   "decider-combinator": {
+   "w": 1,
+   "h": 2
+  },
+  "selector-combinator": {
+   "w": 1,
+   "h": 2
+  },
+  "display-panel": {
    "w": 1,
    "h": 2
   },

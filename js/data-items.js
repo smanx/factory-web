@@ -280,6 +280,8 @@ const ITEMS = {
   'constant-combinator': { name: '常量组合器', color: '#4a7ac0', desc: '电路设备：面板设置若干常量信号，持续输出到所连网络（1×1）。可指定输出到红线或绿线' },
   'arithmetic-combinator': { name: '运算组合器', color: '#4a9ac0', desc: '电路设备：读取网络输入信号，做加减乘除运算后输出结果信号（1×1）' },
   'decider-combinator': { name: '判断组合器', color: '#4ac0a0', desc: '电路设备：按条件（如 信号 > 10）判断，满足时输出指定信号；可做“非”逻辑（1×1）' },
+  'selector-combinator': { name: '选择组合器', color: '#4a70c0', desc: '电路设备（1×1）：按索引/随机/堆叠等模式从网络信号中选出目标信号并输出其值；可输出红/绿信号、游戏内时钟（对齐《异星工厂》Selector combinator）' },
+  'display-panel': { name: '显示屏', color: '#d8d8e8', desc: '电路设备（1×1）：读取所连网络的信号，以文字形式显示在面板上（对齐《异星工厂》Display panel）' },
   // ===== 功率开关（对齐《异星工厂》Power switch，电路控制断电）=====
   'power-switch': { name: '功率开关', color: '#c06040', desc: '电路设备（1×1）：接入电路网络，按面板设定的条件判断是否切断电网供电。条件满足时强制全图断电（甩负荷保护），不满足时正常供电，用于按燃料/电量等信号自动调度电力（对齐《异星工厂》Power switch）' },
   'red-wire': { name: '红电路线缆', color: '#e05a4a', mark: 'R', desc: '手持后点击任意电路设备，可把该设备切换为「仅接入红线网络」（再点切回自动双通）。同一区域内仅用红线连接的设备构成独立的红线网络，实现红绿信号物理隔离（对齐《异星工厂》Red wire）' },

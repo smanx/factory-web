@@ -121,6 +121,16 @@
 >   数据校验并入 verify-dlc（13 项）。
 >   数据校验并入 verify-dlc（15 项）。
 
+### 阶段三.5：基础电路网络补齐（Display panel + Selector combinator）
+- [x] **显示屏（display-panel）**：官方 base 电路设备（1×1），堆叠 10 / 血量 50 / 配方 1 铁板+1 电路板，
+      数据全部来自 GAME_DATA（data.generated.js 官方）。读取所连网络信号并以文字显示在面板上，
+      支持配置固定文本行 / 信号值行；未配置时默认列出全部网络信号。由「电路网络」科技解锁。
+- [x] **选择组合器（selector-combinator）**：官方 base 电路设备（1×1），堆叠 50 / 血量 150 /
+      配方 2 高级电路+5 判断组合器，数据全部来自 GAME_DATA。支持「按索引 / 随机 / 数值最大 / 游戏时钟」
+      四种模式从网络信号中选出目标信号并输出其值（官方 Selector combinator 的 index/random/stack/
+      game-tick 行为）。由「电路网络」科技解锁。
+- 数据校验并入 verify-dlc（12 项）。
+
 ### 阶段四：太空时代行星（高风险，大改）
 - [ ] 行星切换（Nauvis / Vulcanus / Gleba / Fulgora / Aquilo）
 - [ ] 轨道平台 / 太空货运

@@ -263,6 +263,16 @@ function recomputeCircuit() {
             else addSignal(aggRed, it.sig, it.count);
           }
         }
+      } else if (n instanceof SelectorCombinator) {
+        const out = n.compute(input);
+        if (out) {
+          for (const it of out) {
+            if (it && it.sig && it.count) {
+              if (n.channel === 'green') addSignal(aggGreen, it.sig, it.count);
+              else addSignal(aggRed, it.sig, it.count);
+            }
+          }
+        }
       }
     }
     // 3) 写回各节点（按接入通道隔离：'red' 只读红线、'green' 只读绿线、'both' 双通）
@@ -302,7 +312,10 @@ const VIRTUAL_SIGNALS = {
   'signal-rocket': '火箭本体',
   'signal-satellite': '卫星',
   'signal-rocket-parts': '火箭部件就绪',
-  'signal-rocket-launch': '火箭发射中'
+  'signal-rocket-launch': '火箭发射中',
+  'signal-T': '游戏时钟tick',
+  'signal-D': '游戏天数',
+  'signal-L': '昼夜长度'
 };
 // 判断某信号名是否为虚拟信号（各列表/输入框均识别）
 function isVirtualSignal(sig) { return Object.prototype.hasOwnProperty.call(VIRTUAL_SIGNALS, sig); }
@@ -465,6 +478,103 @@ class DeciderCombinator extends CircuitNode {
   }
 }
 
+// ===== 选择组合器（Selector combinator，对齐《异星工厂》）=====
+// 模式 mode：'index'（按索引选第N个信号）/ 'random'（随机选一个信号）/ 'stack'（选数值最大的信号）
+//   / 'game'（输出游戏内时钟信号 signal-T 游戏tick / signal-D 游戏天 / signal-L 昼夜长度）。
+// 输出通道 channel：'red'|'green'。对齐《异星工厂》：选择组合器从网络信号中挑出目标信号并输出其数值。
+class SelectorCombinator extends CircuitNode {
+  constructor(type, x, y) {
+    super('selector-combinator', x, y);
+    this.mode = 'index';      // index|random|stack|game
+    this.index = 1;           // index 模式：选第 N 个信号（按信号名升序）
+    this.channel = 'red';
+  }
+  // 从输入信号中按模式挑选输出信号 [{sig,count}]
+  compute(input) {
+    const real = {};
+    for (const k in input) if (!isVirtualSignal(k) && input[k]) real[k] = input[k];
+    // game 模式：输出游戏时钟虚拟信号
+    if (this.mode === 'game') {
+      // 游戏时钟（对齐《异星工厂》Selector combinator 的 game-tick / day / day-length 信号）
+      const g = (G && typeof G.time === 'number') ? G.time : 0;
+      const dayLen = (typeof DAY_CYCLE === 'number' && DAY_CYCLE > 0) ? DAY_CYCLE * 60 : 3600; // 每昼夜 tick 数
+      const day = Math.floor(g / dayLen);
+      const out = [
+        { sig: 'signal-T', count: Math.floor(g) },
+        { sig: 'signal-D', count: day },
+        { sig: 'signal-L', count: dayLen }
+      ];
+      return out;
+    }
+    const keys = Object.keys(real).sort();
+    if (!keys.length) return [];
+    if (this.mode === 'random') {
+      const pick = keys[Math.floor(Math.random() * keys.length)];
+      return [{ sig: pick, count: real[pick] }];
+    }
+    if (this.mode === 'stack') {
+      let best = keys[0], bv = real[keys[0]];
+      for (const k of keys) if (real[k] > bv) { best = k; bv = real[k]; }
+      return [{ sig: best, count: bv }];
+    }
+    // index 模式：选第 this.index 个（1-based，越界时取最后一个/循环）
+    const idx = Math.max(1, this.index || 1);
+    const pick = keys[(idx - 1) % keys.length];
+    return [{ sig: pick, count: real[pick] }];
+  }
+  serialize() {
+    const s = super.serialize();
+    s.mode = this.mode; s.index = this.index; s.channel = this.channel;
+    return s;
+  }
+  static restore(s) {
+    const e = super.restore(s);
+    e.mode = s.mode || 'index'; e.index = s.index || 1; e.channel = s.channel || 'red';
+    return e;
+  }
+}
+
+// ===== 显示屏（Display panel，对齐《异星工厂》）=====
+// 读取所连网络的信号，以文字形式显示在面板上。支持多行显示，每行显示一个信号或指定文本。
+class DisplayPanel extends CircuitNode {
+  constructor(type, x, y) {
+    super('display-panel', x, y);
+    this.lines = [];          // [{text, sig}] 显示行：text=固定文本 或 sig=读取该信号值
+    this.showAlways = false;  // true=离线也显示，false=仅在接入网络时显示
+  }
+  // 供 UI 读取的显示内容
+  renderLines() {
+    const input = this.netRed || {};
+    const out = [];
+    if (this.lines.length) {
+      for (const ln of this.lines) {
+        if (ln.sig) {
+          const v = input[ln.sig] || 0;
+          out.push({ text: (ITEMS[ln.sig] && ITEMS[ln.sig].name) || ln.sig, value: v });
+        } else {
+          out.push({ text: ln.text || '', value: null });
+        }
+      }
+    } else {
+      // 无配置时：默认显示全部网络信号
+      for (const k in input) if (!isVirtualSignal(k) && input[k]) {
+        out.push({ text: (ITEMS[k] && ITEMS[k].name) || k, value: input[k] });
+      }
+    }
+    return out;
+  }
+  serialize() {
+    const s = super.serialize();
+    s.lines = this.lines; s.showAlways = this.showAlways;
+    return s;
+  }
+  static restore(s) {
+    const e = super.restore(s);
+    e.lines = s.lines || []; e.showAlways = !!s.showAlways;
+    return e;
+  }
+}
+
 // ===== 渲染：电线杆 =====
 const POLE_COLORS = {
   'small-electric-pole': ['#8a5a2a', '#6b4420'],
@@ -515,6 +625,37 @@ function drawCombinator(ctx, e, gx, gy, dir, alpha) {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const label = e instanceof ConstantCombinator ? '≡' : e instanceof ArithmeticCombinator ? '∑' : '≷';
   ctx.fillText(label, px + TILE / 2, py + TILE / 2);
+  ctx.globalAlpha = 1;
+  drawCircuitWires(ctx, e);
+}
+
+// 渲染：显示屏（Display panel，对齐《异星工厂》）
+function drawDisplayPanel(ctx, e, gx, gy, dir, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  const s = TILE * (e.w || 1);
+  ctx.globalAlpha = alpha;
+  // 深色外壳
+  ctx.fillStyle = '#23262c';
+  rr(ctx, px + 3, py + 3, s - 6, s - 6, 6); ctx.fill();
+  ctx.strokeStyle = '#4a4f5a';
+  ctx.lineWidth = 2;
+  rr(ctx, px + 3, py + 3, s - 6, s - 6, 6); ctx.stroke();
+  // 屏幕（绿字）——有网络信号时亮起
+  const active = (e.netRed && Object.keys(e.netRed).length) || (e.netGreen && Object.keys(e.netGreen).length);
+  ctx.fillStyle = active ? '#1a3a2a' : '#12161a';
+  rr(ctx, px + 8, py + 8, s - 16, s - 16, 4); ctx.fill();
+  if (active) {
+    const lines = e.renderLines ? e.renderLines() : [];
+    ctx.fillStyle = '#5ae08a';
+    ctx.font = 'bold 10px system-ui';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    const n = Math.min(lines.length, 3);
+    for (let i = 0; i < n; i++) {
+      const ln = lines[i];
+      const txt = ln.value != null ? (ln.text + ' ' + ln.value) : (ln.text || '');
+      ctx.fillText(txt.slice(0, 12), px + 10, py + 8 + (s - 16) * (i + 0.5) / n);
+    }
+  }
   ctx.globalAlpha = 1;
   drawCircuitWires(ctx, e);
 }
@@ -728,6 +869,100 @@ const deciderPanel = {
   tip: e => '判断组合器：条件判断输出'
 };
 
+// ===== 面板：选择组合器 =====
+const SEL_MODES = { 'index': '按索引', 'random': '随机', 'stack': '数值最大', 'game': '游戏时钟' };
+function selectorPanelHtml(e) {
+  let h = row('类型', '选择组合器 · 从网络信号选目标信号', 'kind');
+  h += '<div class="sec">选择设置</div>';
+  h += '<div class="circ-add">模式 ' +
+    '<select id="s-mode" class="circ-op">' + Object.entries(SEL_MODES).map(([k, v]) => '<option value="' + k + '"' + (e.mode === k ? ' selected' : '') + '>' + v + '</option>').join('') + '</select>' +
+    (e.mode === 'index' ? ' 索引 <input type="number" id="s-index" class="circ-cnt" value="' + e.index + '" min="1">' : '') +
+    ' 到 <select id="s-ch" class="circ-op">' + channelSelect(e.channel) + '</select>' +
+    '<button data-action="s-apply">应用</button></div>';
+  h += '<div class="status"></div>';
+  h += '<div class="dim">按索引：选信号名升序第 N 个信号并输出其值；随机：随机选一个信号；数值最大：选值最大的信号；游戏时钟：输出游戏 tick/天数/昼夜长度。</div>';
+  return h;
+}
+function selectorPanelLive(e, api) {
+  api.status('模式=' + (SEL_MODES[e.mode] || e.mode) + (e.mode === 'index' ? ' 索引' + e.index : '') + ' → ' + (e.channel === 'green' ? '绿线' : '红线'), 'ok');
+}
+function selectorPanelAction(action, el) {
+  const e = G.panelEnt;
+  if (action === 's-apply') {
+    e.mode = document.getElementById('s-mode').value;
+    const idxEl = document.getElementById('s-index');
+    if (idxEl) e.index = Math.max(1, Math.floor(Number(idxEl.value)) || 1);
+    e.channel = document.getElementById('s-ch').value;
+    uiDirty = true;
+    return true;
+  }
+  return false;
+}
+const selectorPanel = {
+  html: selectorPanelHtml,
+  live: selectorPanelLive,
+  onAction: selectorPanelAction,
+  tip: e => '选择组合器：按索引/随机/最大值/时钟选择信号'
+};
+
+// ===== 面板：显示屏 =====
+function displayPanelHtml(e) {
+  let h = row('类型', '显示屏 · 显示网络信号', 'kind');
+  h += '<div class="sec">显示内容</div>';
+  h += '<div id="dp-lines">' + displayLinesHtml(e) + '</div>';
+  h += '<div class="circ-add"><input type="text" id="dp-sig" class="circ-siginv" placeholder="输入物品信号名" autocomplete="off" list="vsig-list">' +
+    '<button data-action="dp-add">添加信号行</button></div>';
+  h += '<div class="circ-add"><input type="text" id="dp-text" class="circ-siginv" placeholder="固定文本" autocomplete="off">' +
+    '<button data-action="dp-addtext">添加文本行</button></div>';
+  h += '<datalist id="vsig-list">' + vsigOptionsHtml() + '</datalist>';
+  h += '<div class="status"></div>';
+  h += '<div class="dim">每行显示一个信号的值或固定文本；不配置时默认列出全部网络信号。</div>';
+  return h;
+}
+function displayLinesHtml(e) {
+  if (!e.lines || !e.lines.length) return '<span class="dim">（未配置，默认显示全部网络信号）</span>';
+  return e.lines.map((ln, i) => '<div class="circ-sig">' +
+    (ln.sig ? ('<span class="csig">' + ((ITEMS[ln.sig] && ITEMS[ln.sig].name) || ln.sig) + '</span>') : ('<span class="csig">' + (ln.text || '') + '</span>')) +
+    ' <button data-action="dp-del" data-idx="' + i + '">✕</button></div>').join('');
+}
+function displayPanelLive(e, api) {
+  api.set('dp-lines', displayLinesHtml(e));
+  const rows = e.renderLines ? e.renderLines() : [];
+  api.status('显示 ' + rows.length + ' 行', 'ok');
+}
+function displayPanelAction(action, el) {
+  const e = G.panelEnt;
+  if (action === 'dp-add') {
+    const sig = resolveSignalName(document.getElementById('dp-sig').value);
+    if (!sig) { toast('找不到该信号'); return true; }
+    if (!e.lines) e.lines = [];
+    e.lines.push({ sig });
+    document.getElementById('dp-sig').value = '';
+    uiDirty = true;
+    return true;
+  } else if (action === 'dp-addtext') {
+    const t = document.getElementById('dp-text').value;
+    if (!e.lines) e.lines = [];
+    e.lines.push({ text: t });
+    document.getElementById('dp-text').value = '';
+    uiDirty = true;
+    return true;
+  } else if (action === 'dp-del') {
+    const idx = Number(el.dataset.idx);
+    if (e.lines && e.lines[idx]) e.lines.splice(idx, 1);
+    uiDirty = true;
+    return true;
+  }
+  return false;
+}
+const displayPanel = {
+  html: displayPanelHtml,
+  live: displayPanelLive,
+  onAction: displayPanelAction,
+  tip: e => '显示屏：文字显示网络信号'
+};
+
+
 // 把用户输入（物品名或 id / 虚拟信号）解析为信号名（物品 id 或虚拟信号 id）
 function resolveSignalName(text) {
   const q = (text || '').trim().toLowerCase();
@@ -765,6 +1000,8 @@ DEVICE_STATUS['big-electric-pole'] = e => (e.red && e.red.size) ? 'g' : 'y';
 ENT_CLASSES['constant-combinator'] = ConstantCombinator;
 ENT_CLASSES['arithmetic-combinator'] = ArithmeticCombinator;
 ENT_CLASSES['decider-combinator'] = DeciderCombinator;
+ENT_CLASSES['selector-combinator'] = SelectorCombinator;
+ENT_CLASSES['display-panel'] = DisplayPanel;
 DEVICE_RENDER['constant-combinator'] = drawCombinator;
 DEVICE_DIR_ROTATE['constant-combinator'] = true; // 支持旋转
 DEVICE_RENDER['arithmetic-combinator'] = drawCombinator;
@@ -777,6 +1014,14 @@ DEVICE_STATUS['decider-combinator'] = e => Object.keys(e.netGreen).length ? 'g' 
 DEVICE_PANEL['constant-combinator'] = constantPanel;
 DEVICE_PANEL['arithmetic-combinator'] = arithPanel;
 DEVICE_PANEL['decider-combinator'] = deciderPanel;
+DEVICE_RENDER['selector-combinator'] = drawCombinator;
+DEVICE_DIR_ROTATE['selector-combinator'] = true; // 支持旋转
+DEVICE_RENDER['display-panel'] = drawDisplayPanel;
+DEVICE_DIR_ROTATE['display-panel'] = true; // 支持旋转
+DEVICE_STATUS['selector-combinator'] = e => Object.keys(e.netRed).length + Object.keys(e.netGreen).length ? 'g' : 'y';
+DEVICE_STATUS['display-panel'] = e => Object.keys(e.netRed).length + Object.keys(e.netGreen).length ? 'g' : 'y';
+DEVICE_PANEL['selector-combinator'] = selectorPanel;
+DEVICE_PANEL['display-panel'] = displayPanel;
 
 // ===== 红/绿电路线缆（对齐《异星工厂》Red/Green wire）=====
 // 手持红/绿线缆点击电路设备，切换其接入通道（red/green/both），实现红绿信号物理隔离。

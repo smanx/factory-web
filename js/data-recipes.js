@@ -270,6 +270,8 @@ const RECIPES = {
   'constant-combinator':        { time: 0.5, inp: { 'copper-cable': 5, 'electronic-circuit': 2 }, out: { 'constant-combinator': 1 } },
   'arithmetic-combinator':        { time: 0.5, inp: { 'copper-cable': 5, 'electronic-circuit': 5 }, out: { 'arithmetic-combinator': 1 } },
   'decider-combinator':        { time: 0.5, inp: { 'copper-cable': 5, 'electronic-circuit': 5 }, out: { 'decider-combinator': 1 } },
+  'selector-combinator':        { time: 0.5, inp: { 'advanced-circuit': 2, 'decider-combinator': 5 }, out: { 'selector-combinator': 1 } },  // 官方：2 高级电路 + 5 判断组合器
+  'display-panel':              { time: 0.5, inp: { 'iron-plate': 1, 'electronic-circuit': 1 }, out: { 'display-panel': 1 } },  // 官方：1 铁板 + 1 电路板
   // 功率开关（对齐《异星工厂》Power switch）：铁板 + 电路板 + 铜线
   'power-switch':        { time: 2, inp: { 'copper-cable': 5, 'electronic-circuit': 2, 'iron-plate': 5 }, out: { 'power-switch': 1 } },
   // 红/绿电路线缆（对齐《异星工厂》：用铜线+电路板制成，用于手动区分接入红/绿网络）
