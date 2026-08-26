@@ -183,6 +183,7 @@ function drawCreativePipe(ctx, e, gx, gy, dir, alpha) {
   for (const [dx, dy] of PIPE_DIRS) {
     const nb = entAt(gx + dx, gy + dy);
     if (nb instanceof Pipe || nb instanceof Refinery || nb instanceof Pumpjack ||
+        nb instanceof ElectricDrill ||
         nb instanceof Boiler || nb instanceof Pump || nb instanceof SteamEngine ||
         nb instanceof ChemicalPlant || nb instanceof Assembler ||
         (nb instanceof StorageTank && (!nb.isPortCell || nb.isPortCell(gx, gy))) ||
@@ -226,6 +227,7 @@ function drawVoidPipe(ctx, e, gx, gy, dir, alpha) {
   for (const [dx, dy] of PIPE_DIRS) {
     const nb = entAt(gx + dx, gy + dy);
     if (nb instanceof Pipe || nb instanceof Refinery || nb instanceof Pumpjack ||
+        nb instanceof ElectricDrill ||
         nb instanceof Boiler || nb instanceof Pump || nb instanceof SteamEngine ||
         nb instanceof ChemicalPlant || nb instanceof Assembler ||
         (nb instanceof StorageTank && (!nb.isPortCell || nb.isPortCell(gx, gy))) ||

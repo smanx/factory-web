@@ -250,6 +250,12 @@ function drawDrill(ctx, e, gx, gy, dir, alpha) {
   if (pump) {
     drawPort(ctx, px + s / 2, py + s / 2, dir, PORT_OUTPUT, true, s / (2 * TILE), s / 2);
   }
+  // 电采矿机硫酸接入口：除矿物出口方向外，其余 3 个方向的正中间均可接入管道（输入绿）
+  if (electric && !pump) {
+    for (const sd of [(dir + 1) % 4, (dir + 2) % 4, (dir + 3) % 4]) {
+      drawPort(ctx, px + s / 2, py + s / 2, sd, PORT_INPUT, false, 0, s / 2);
+    }
+  }
   ctx.globalAlpha = 1;
 }
 
@@ -299,6 +305,7 @@ function drillPanelHtml(e) {
       if (n > 0) h += '<button data-action="feed" data-id="' + mid + '">装入' + ITEMS[mid].name + ' ×' + n + '</button>';
     }
     if (hasMod) h += '<button data-action="takein" data-modules="1">取出全部模块</button>';
+    h += row('硫酸', '<span class="dim"></span>', 'acid');
   }
   h += row('矿物缓存', '<span class="dim"></span>', 'buffer');
   h += '<button data-action="takeout" id="btn-drill-takeout" style="display:none"></button>';
@@ -312,6 +319,8 @@ function drillPanelLive(e, api) {
   const eDrill = e instanceof ElectricDrill;
   if (eDrill) api.set('power', powerStatusLiveHtml(e));
   if (!eDrill) api.set('fuel', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '') + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) + ' ' : '') + (e.fuelWood > 0 ? chip('wood', e.fuelWood) : (e.fuelRocket <= 0 && e.fuelSolid <= 0 && e.fuelCoal <= 0 ? dimSpan('无') : '')));
+  // 硫酸缓冲显示：铀矿采集的原料（管道接入）
+  if (eDrill) api.set('acid', (e.acid || 0) > 0 ? chip('sulfuric-acid', e.acid) : dimSpan('无'));
   api.set('buffer', e.buf > 0 && e.bufItem ? chip(e.bufItem, e.buf) : dimSpan('空'));
   api.toggle('#btn-drill-takeout', e.buf > 0, '取回缓存 (' + e.buf + ')');
   api.prog(e.working ? e.prog / DRILL_TIME * 100 : 0);
@@ -370,6 +379,15 @@ function drillTip(e) {
   if (e instanceof ElectricDrill) {
     const s = powerStatusOf(e);
     if (s.consuming && s.sat < 1) tip += '；' + (s.sat > 0 ? '电量不足' + Math.round(s.sat * 100) + '%' : '缺电停摆');
+    // 铀矿采集需接入硫酸：提示剩余量与管道接入方向
+    let hasUranium = false;
+    for (let dy = 0; dy < e.h; dy++)
+      for (let dx = 0; dx < e.w; dx++) {
+        if (getOreType(e.x + dx, e.y + dy) === ORE_URANIUM && getOreAmt(e.x + dx, e.y + dy) > 0) hasUranium = true;
+      }
+    if (hasUranium) {
+      tip += '；铀矿需硫酸' + ((e.acid || 0) > 0 ? '（硫酸×' + e.acid + '）' : '（缺硫酸，无法开采）');
+    }
   }
   return tip;
 }

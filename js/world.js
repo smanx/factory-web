@@ -201,11 +201,13 @@ function isCliffTile(gx, gy) {
   const f = 8;                       // 低频
   const n = valueNoise(gx / f, gy / f);
   // 距原点越远条带越宽 → 峭壁更密集；取噪声 0.5 两侧的窄条带
-  const band = 0.03 + 0.025 * Math.min(1, (d - 24) / 250);
+  // 密度改为原来的 1/3：条带整体宽度缩小到三分之一
+  const band = (0.03 + 0.025 * Math.min(1, (d - 24) / 250)) / 3;
   const v = n - 0.5;
   if (Math.abs(v) > band * 0.5) return false;
-  // 让山脊呈断续的蜿蜒线（避免整片连成实心墙）
-  return hash2(gx * 3.1, gy * 7.7) > 0.28;
+  // 峭壁成片出现：用粗粒度低频噪声取代逐格随机断裂，让山脊成片/成线出现，
+  // 而非散落成孤立单块；且沿用同样的 0.28 阈值，密度恰好为原来的 1/3。
+  return valueNoise(gx / 13, gy / 13) > 0.28;
 }
 
 function isLake(tx, ty) {

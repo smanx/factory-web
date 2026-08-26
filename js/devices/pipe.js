@@ -43,7 +43,8 @@ class Pipe extends Entity {
           if (t.isPortCell && !t.isPortCell(this.x, this.y)) continue;
           if (t.giveItem(k)) this.fluid[k]--;
         } else if ((t instanceof Refinery) || (t instanceof ChemicalPlant) ||
-                    (t instanceof Assembler && t.acceptsFluid(k))) {
+                    (t instanceof Assembler && t.acceptsFluid(k)) ||
+                    (t instanceof ElectricDrill)) {
           // 仅允许在设备的输入接口格子上注入（一格一接口），机械臂等非管道来源不受限
           if (t.isFluidInlet && !t.isFluidInlet(this.x, this.y)) continue;
           if (t.giveItem(k)) this.fluid[k]--;
@@ -104,6 +105,7 @@ function drawPipe(ctx, e, gx, gy, dir, alpha) {
   for (const [dx, dy] of PIPE_DIRS) {
     const nb = entAt(gx + dx, gy + dy);
     if (nb instanceof Pipe || nb instanceof Refinery || nb instanceof Pumpjack ||
+        nb instanceof ElectricDrill ||
         nb instanceof Boiler || nb instanceof Pump || nb instanceof SteamEngine ||
         nb instanceof ChemicalPlant || nb instanceof Assembler ||
         (nb instanceof StorageTank && (!nb.isPortCell || nb.isPortCell(gx, gy))) ||
