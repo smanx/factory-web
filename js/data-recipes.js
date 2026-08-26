@@ -26,7 +26,7 @@ const RECIPES = {
   'storage-chest':      { time: 1,   inp: { 'iron-plate': 8 },                                   out: { 'storage-chest': 1 } },
   'assembling-machine': { time: 2,   inp: { 'iron-plate': 5, 'iron-gear': 2, 'green-circuit': 2 }, out: { 'assembling-machine': 1 } },  // 对齐官方：5铁板+2齿轮+2电路板
   'lab':                { time: 3,   inp: { 'iron-gear': 10, 'green-circuit': 10, 'stone': 10 },   out: { 'lab': 1 } },  // 对齐官方：10齿轮+10电路板+10石头
-  'boiler':             { time: 1.5, inp: { 'stone': 5, 'iron-plate': 1 },                         out: { 'boiler': 1 } },
+  'boiler':             { time: 1.5, inp: { 'stone': 5, 'pipe': 1 },                            out: { 'boiler': 1 } },  // 对齐官方：5 石头 + 1 管道
   'steam-engine':       { time: 2,   inp: { 'iron-plate': 2, 'iron-gear': 1, 'pipe': 1 },          out: { 'steam-engine': 1 } },
   'offshore-pump':      { time: 1,   inp: { 'iron-plate': 5, 'iron-gear': 1 },                     out: { 'offshore-pump': 1 } },
   'electric-drill':     { time: 2,   inp: { 'iron-plate': 8, 'iron-gear': 3, 'green-circuit': 2 },                     out: { 'electric-drill': 1 } },  // 对齐官方：8铁板+3齿轮+2电路板
@@ -82,7 +82,7 @@ const RECIPES = {
   'solid-fuel-heavy-oil': { time: 2, inp: { 'heavy-oil': 10 },                                   out: { 'solid-fuel': 1 } },
   // ===== 铁路系统（火车） =====
   'rail':              { time: 0.5, inp: { 'iron-plate': 1, 'stone': 1, 'iron-stick': 1 },          out: { 'rail': 2 } },
-  'locomotive':        { time: 4,   inp: { 'iron-plate': 16, 'steel-plate': 6, 'iron-gear': 8, 'green-circuit': 4 }, out: { 'locomotive': 1 } },
+  'locomotive':        { time: 4,   inp: { 'engine-unit': 1, 'steel-plate': 10, 'iron-gear': 5, 'green-circuit': 5 }, out: { 'locomotive': 1 } },  // 对齐官方：1引擎+10钢板+5齿轮+5电路板
   'diesel-locomotive': { time: 5,   inp: { 'engine-unit': 20, 'steel-plate': 10, 'processing-unit': 5 },        out: { 'diesel-locomotive': 1 } },
   'cargo-wagon':       { time: 3,   inp: { 'iron-plate': 12, 'steel-plate': 6, 'iron-gear': 6 },  out: { 'cargo-wagon': 1 } },
   'fluid-wagon':       { time: 3,   inp: { 'iron-plate': 8, 'steel-plate': 6, 'pipe': 8 },        out: { 'fluid-wagon': 1 } },

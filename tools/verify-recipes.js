@@ -132,7 +132,7 @@ function assertRecipeInput(key, item, count) {
   const line = getRecipeLine(key);
   return line.includes("'" + item + "': " + count);
 }
-check('锅炉(5石+1铁板)', assertRecipeInput('boiler', 'stone', 5) && assertRecipeInput('boiler', 'iron-plate', 1), true);
+check('锅炉(5石+1管道)', assertRecipeInput('boiler', 'stone', 5) && assertRecipeInput('boiler', 'pipe', 1), true);
 check('蒸汽机(2铁板+1齿轮+1管道)',
   assertRecipeInput('steam-engine', 'iron-plate', 2) &&
   assertRecipeInput('steam-engine', 'iron-gear', 1) &&
