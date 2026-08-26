@@ -39,7 +39,7 @@ class Pumpjack extends ElectricDrill {
     }
     return 'crude-oil';
   }
-  powerDemand() { return (this.oreTile() && this.buf < 20) ? POWER_USE['pumpjack'] * this.modulePowerFactor() : 0; }
+  powerDemand() { return (this.oreTile() && this.buf < DRILL_BUFFER_CAP) ? POWER_USE['pumpjack'] * this.modulePowerFactor() : 0; }
   serialize() {
     const s = super.serialize();
     if (this.yieldFactor !== undefined && this.yieldFactor < 1) s.yield = Math.round(this.yieldFactor * 100) / 100;
