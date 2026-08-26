@@ -20,11 +20,15 @@ class Pumpjack extends ElectricDrill {
     return [[this.x + this.w - 1, this.y - 1]];                           // 北：右上角
   }
   // 产量因子随抽取递减：yieldFactor 越低，抽取越慢（对齐《异星工厂》油井产量递减）。
-  // 生产速度 = 基础速度 10 × 原油井产量因子：产量 100%（yieldFactor=1）时 = 10 原油/秒，
-  // 产量减至 20% 时 = 2 原油/秒；若产量 200% 则 = 20 原油/秒（随油井出产率线性缩放）。
+  // 生产速度 = 基础速度 10 × 原油井产量因子 × 油井出产率：
+  // 出产率 100%（yieldFactor=1）时 = 10 原油/秒，产量减至 20% 时 = 2 原油/秒；
+  // 若油井出产率 200% 则 = 20 原油/秒（随油井出产率线性缩放）。
   machMult() {
     if (this.yieldFactor === undefined) this.yieldFactor = 1;
-    return this.yieldFactor * PUMPJACK_BASE_RATE;
+    // 油井出产率：旧档/未存出产率的油井默认 100%
+    const o = this.oreTile();
+    const rate = o ? getOilRate(o[0], o[1]) : 1;
+    return this.yieldFactor * PUMPJACK_BASE_RATE * rate;
   }
   oreTile() {
     for (let dy = 0; dy < this.h; dy++)

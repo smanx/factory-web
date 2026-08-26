@@ -64,13 +64,19 @@ function tileExplored(tx, ty) {
 function encodeChunkData(c) {
   let t = '', o = '';
   const a = [];
+  const or = [];
   for (let i = 0; i < CHUNK * CHUNK; i++) {
     t += c.terrain[i];
     const ti = c.oreType[i];
     o += ti < 0 ? '.' : String(ti);
     if (ti >= 0) a.push(Math.round(c.oreAmt[i]));
+    // 原油井出产率：仅 ORE_OIL 格子有值，其余不存（读档默认 1）
+    if (ti === ORE_OIL && c.oilRate) {
+      const r = c.oilRate[i];
+      or.push(r > 0 ? Math.round(r * 100) / 100 : 1);
+    }
   }
-  return { cx: c.cx, cy: c.cy, t, o, a };
+  return { cx: c.cx, cy: c.cy, t, o, a, or: or.length ? or : undefined };
 }
 
 // 字符→数字 查找表（避免每字符都做 charCodeAt-48），读档批量解码用（P2 优化）
@@ -87,8 +93,9 @@ function decodeChunkData(d) {
   const terrain = new Uint8Array(N);
   const oreType = new Int8Array(N);
   const oreAmt = new Float32Array(N);
-  const t = d.t, o = d.o, a = d.a, lut = _chunkDigitLUT;
-  let ai = 0, i = 0;
+  const oilRate = new Float32Array(N);
+  const t = d.t, o = d.o, a = d.a, or = d.or, lut = _chunkDigitLUT;
+  let ai = 0, oi = 0, i = 0;
   // 每轮处理 4 格（若 N 为 4 的倍数则可完整展开；否则兜底补足）
   for (; i + 4 <= N; i += 4) {
     terrain[i] = lut[t.charCodeAt(i)];
@@ -97,24 +104,24 @@ function decodeChunkData(d) {
     terrain[i + 3] = lut[t.charCodeAt(i + 3)];
     let ch = o.charCodeAt(i);
     oreType[i] = ch === 46 ? -1 : lut[ch];
-    if (ch !== 46) oreAmt[i] = a[ai++] || 0;
+    if (ch !== 46) { oreAmt[i] = a[ai++] || 0; if (oreType[i] === ORE_OIL && or) oilRate[i] = or[oi++] || 1; }
     ch = o.charCodeAt(i + 1);
     oreType[i + 1] = ch === 46 ? -1 : lut[ch];
-    if (ch !== 46) oreAmt[i + 1] = a[ai++] || 0;
+    if (ch !== 46) { oreAmt[i + 1] = a[ai++] || 0; if (oreType[i + 1] === ORE_OIL && or) oilRate[i + 1] = or[oi++] || 1; }
     ch = o.charCodeAt(i + 2);
     oreType[i + 2] = ch === 46 ? -1 : lut[ch];
-    if (ch !== 46) oreAmt[i + 2] = a[ai++] || 0;
+    if (ch !== 46) { oreAmt[i + 2] = a[ai++] || 0; if (oreType[i + 2] === ORE_OIL && or) oilRate[i + 2] = or[oi++] || 1; }
     ch = o.charCodeAt(i + 3);
     oreType[i + 3] = ch === 46 ? -1 : lut[ch];
-    if (ch !== 46) oreAmt[i + 3] = a[ai++] || 0;
+    if (ch !== 46) { oreAmt[i + 3] = a[ai++] || 0; if (oreType[i + 3] === ORE_OIL && or) oilRate[i + 3] = or[oi++] || 1; }
   }
   for (; i < N; i++) {
     terrain[i] = lut[t.charCodeAt(i)];
     const ch = o.charCodeAt(i);
     oreType[i] = ch === 46 ? -1 : lut[ch];
-    if (ch !== 46) oreAmt[i] = a[ai++] || 0;
+    if (ch !== 46) { oreAmt[i] = a[ai++] || 0; if (oreType[i] === ORE_OIL && or) oilRate[i] = or[oi++] || 1; }
   }
-  return { cx: d.cx | 0, cy: d.cy | 0, terrain, oreType, oreAmt };
+  return { cx: d.cx | 0, cy: d.cy | 0, terrain, oreType, oreAmt, oilRate };
 }
 
 function chunkSeed(cx, cy) {
@@ -137,7 +144,7 @@ function getChunk(cx, cy) {
     // 地图边界（超出可探索范围，地图大小配置）返回 null → 用全水域的“边界块”填充，
     // 表现地图边缘为不可通行的海洋（对齐《异星工厂》有限地图边界）。
     if (!c) {
-      c = { cx, cy, terrain: new Uint8Array(CHUNK * CHUNK).fill(T_WATER), oreType: new Int8Array(CHUNK * CHUNK).fill(-1), oreAmt: new Float32Array(CHUNK * CHUNK) };
+      c = { cx, cy, terrain: new Uint8Array(CHUNK * CHUNK).fill(T_WATER), oreType: new Int8Array(CHUNK * CHUNK).fill(-1), oreAmt: new Float32Array(CHUNK * CHUNK), oilRate: new Float32Array(CHUNK * CHUNK) };
     }
     G.world.chunks.set(k, c);
   }
@@ -157,6 +164,14 @@ function setTerrain(tx, ty, value) {
 function getOreType(tx, ty) {
   const c = getChunk(Math.floor(tx / CHUNK), Math.floor(ty / CHUNK));
   return c.oreType[chunkLocalIdx(tx, ty)];
+}
+
+// 原油井出产率（原油/秒的缩放系数）：返回该格油井的出产率。
+// 旧档/未生成出产率的油井返回默认 1（100%）。
+function getOilRate(tx, ty) {
+  const c = getChunk(Math.floor(tx / CHUNK), Math.floor(ty / CHUNK));
+  const r = c.oilRate ? c.oilRate[chunkLocalIdx(tx, ty)] : 0;
+  return (r > 0) ? r : 1; // 默认 100%
 }
 
 function baseOreAmt(tx, ty) {
@@ -292,7 +307,8 @@ function growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, size, amt, ti) {
 
 // 原油矿床：与普通矿石（连续聚团）不同，油点需要“隔几格一个”，
 // 但整体围绕矿床中心聚集在一起（散布成一片油区，而非一整块实心矿团）。
-function growOilField(terrain, oreType, oreAmt, rng, sx, sy, count, amt, gap) {
+// 每个油点带独立“出产率”oilRate（0.5~2.0），抽油机生产速度随油井出产率线性缩放。
+function growOilField(terrain, oreType, oreAmt, oilRate, rng, sx, sy, count, amt, gap) {
   const placed = [[sx, sy]];
   let done = 0, guard = 0;
   const isOk = (x, y) => {
@@ -309,6 +325,7 @@ function growOilField(terrain, oreType, oreAmt, rng, sx, sy, count, amt, gap) {
   // 首点放上
   oreType[sy * CHUNK + sx] = ORE_OIL;
   oreAmt[sy * CHUNK + sx] = amt * (0.7 + rng() * 0.6);
+  if (oilRate) oilRate[sy * CHUNK + sx] = 0.5 + rng() * 1.5; // 出产率 50%~200%
   done++;
   while (done < count && guard++ < count * 20) {
     const base = placed[(rng() * placed.length) | 0];
@@ -320,6 +337,7 @@ function growOilField(terrain, oreType, oreAmt, rng, sx, sy, count, amt, gap) {
     if (isOk(nx, ny)) {
       oreType[ny * CHUNK + nx] = ORE_OIL;
       oreAmt[ny * CHUNK + nx] = amt * (0.7 + rng() * 0.6);
+      if (oilRate) oilRate[ny * CHUNK + nx] = 0.5 + rng() * 1.5; // 出产率 50%~200%
       placed.push([nx, ny]);
       done++;
     }
@@ -375,6 +393,8 @@ function genChunk(cx, cy) {
   const oreType = new Int8Array(CHUNK * CHUNK);
   oreType.fill(-1);
   const oreAmt = new Float32Array(CHUNK * CHUNK);
+  // 原油井出产率（0.5~2.0）：仅 ORE_OIL 格子有效，未赋值格子读档/生成时默认 1（100%）。
+  const oilRate = new Float32Array(CHUNK * CHUNK);
 
   const ox = cx * CHUNK, oy = cy * CHUNK;
   for (let ly = 0; ly < CHUNK; ly++)
@@ -438,7 +458,7 @@ function genChunk(cx, cy) {
     const sx = 2 + Math.floor(rng() * (CHUNK - 4));
     const sy = 2 + Math.floor(rng() * (CHUNK - 4));
     // 原油矿床：隔几格一个，整体聚集（gap≈3 即每个油点相隔 3 格左右）
-    growOilField(terrain, oreType, oreAmt, rng, sx, sy, 4 + Math.floor(rng() * 5), (1500 + rng() * 2500) * ri, 3);
+    growOilField(terrain, oreType, oreAmt, oilRate, rng, sx, sy, 4 + Math.floor(rng() * 5), (1500 + rng() * 2500) * ri, 3);
   }
 
   // 铀矿：距离较远才生成（核能后期，且离角色比原油更远），越远越多，矿团适中
@@ -499,7 +519,7 @@ function genChunk(cx, cy) {
     growForest(terrain, oreType, forestRng, fsx, fsy, forestSize);
   }
 
-  return { cx, cy, terrain, oreType, oreAmt };
+  return { cx, cy, terrain, oreType, oreAmt, oilRate };
 }
 
 function shuffle(arr, rng) {
