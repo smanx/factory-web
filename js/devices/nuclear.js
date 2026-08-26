@@ -347,7 +347,7 @@ class NuclearReactor extends Entity {
     const neighbors = this.neighborCount();
     const rate = REACTOR_HEAT_RATE * (1 + neighbors); // 每秒产热量（远超锅炉产能）
     this.heatBuf = Math.min(REACTOR_HEAT_CAP, this.heatBuf + rate * dt);
-    this.temp = Math.min(200, this.temp + 20 * (1 + neighbors * 0.5) * dt);
+    this.temp = Math.min(1000, this.temp + 20 * (1 + neighbors * 0.5) * dt); // 最高温度 1000°C（对齐《异星工厂》官方）
   }
   // 热量传导：把热量输送给相邻的导热管/热交换器（从更热的流向更冷的）
   heatFlow(dt) {
@@ -505,8 +505,8 @@ function reactorPanelLive(e, api) {
   api.set('spent', e.spent > 0 ? chip('used-up-uranium-fuel-cell', e.spent) : dimSpan('无'));
   api.toggle('#btn-spent-takeout', e.spent > 0, '取回废燃料棒 (' + e.spent + ')');
   api.set('heat', e.heatBuf >= 1 ? chip('heat-pipe', Math.floor(e.heatBuf)) : dimSpan('空'));
-  api.set('temp', Math.round(e.temp) + ' / 200 °C');
-  api.prog(Math.min(100, e.temp / 200 * 100));
+  api.set('temp', Math.round(e.temp) + ' / 1000 °C');
+  api.prog(Math.min(100, e.temp / 1000 * 100));
   if (e.heatBuf >= REACTOR_HEAT_CAP - 0.01) api.status('已暂停：热量满，等待导热管/热交换器消耗', 'warn');
   else if (e.burning) api.status('运行中：产出热量', 'ok');
   else if (e.fuel <= 0 && e.burnLeft <= 0) api.status('已暂停：无铀燃料棒', 'bad');
