@@ -188,7 +188,7 @@ function newGame() {
 
 function serializeAll() {
   return {
-    v: 1,
+    v: 2, // 存档布局版本：v2 起含核能设备占地迁移后的布局；旧档(v<2)读档时做占地迁移（见 applySave）
     seed: G.world.seed,
     worldConfig: (typeof normalizeWorldConfig === 'function') ? normalizeWorldConfig(G.worldConfig) : G.worldConfig,
     world: {
@@ -273,6 +273,35 @@ async function loadGame(id) {
   return true;
 }
 
+// 旧档布局迁移：本版热交换器 3×1→2×3、汽轮机 3×3→5×3（占地变大）。
+// 读旧档（布局版本 <2）时，这两个尺寸变化的设备按新尺寸占地会与相邻实体在 G.grid 中
+// 互相覆盖，导致“既选不中又删不掉、却仍显示在地图上”。此处在读档时把它们平移到
+// 不与相邻实体重叠的位置，保证可正常选中/拆除。仅对旧档生效，新档（已迁移）不受影响。
+const LAYOUT_MIGRATE_TYPES = { 'heat-exchanger': true, 'steam-turbine': true };
+
+// 判断实体 e 以 (x, y) 为左上角是否与 G.grid 中已注册实体重叠
+function entityOverlaps(e, x, y) {
+  for (let dy = 0; dy < e.h; dy++)
+    for (let dx = 0; dx < e.w; dx++)
+      if (G.grid.has(entKey(x + dx, y + dy))) return true;
+  return false;
+}
+
+// 重叠消解：若实体 e 当前占地与相邻实体重叠，沿“先保持原位、再就近纵向/横向”的顺序
+// 试探平移，找到第一个不重叠的位置并更新 e.x/e.y。若四周都被占满则保持原位。
+function migrateLegacyEntityLayout(e) {
+  if (!entityOverlaps(e, e.x, e.y)) return;
+  // 试探位移：优先保持 x、上下就近，再左右、再更远
+  const cands = [
+    [0, -1], [0, 1], [0, -2], [0, 2], [-1, 0], [1, 0], [0, -3], [0, 3],
+    [0, -4], [0, 4], [-2, 0], [2, 0], [0, -5], [0, 5], [-1, -1], [1, -1], [-1, 1], [1, 1]
+  ];
+  for (const [dx, dy] of cands) {
+    const nx = e.x + dx, ny = e.y + dy;
+    if (!entityOverlaps(e, nx, ny)) { e.x = nx; e.y = ny; return; }
+  }
+}
+
 function applySave(d) {
   // 恢复地图生成配置（对齐《异星工厂》：新游戏的世界参数随存档持久化）
   if (typeof normalizeWorldConfig === 'function') {
@@ -308,10 +337,18 @@ function applySave(d) {
   if (Array.isArray(d.world && d.world.explored)) G.world.explored = new Set(d.world.explored);
   else if (!G.world.explored) G.world.explored = new Set();
   if (typeof resetPowerReg === 'function') resetPowerReg();
+  // 旧档（布局版本 <2）兼容：此前热交换器占地 3×1、汽轮机 3×3，本版改为
+  // 热交换器 2×3、汽轮机 5×3。旧档按旧尺寸摆放，读档后按新尺寸占地会与相邻设备
+  // 在 G.grid 中互相覆盖，导致实体“既选不中又删不掉、却仍显示在地图上”。
+  // 故读旧档时对这两个尺寸变化的设备做重叠消解：平移至不与相邻实体重叠的位置，
+  // 保证可正常选中/拆除（幂等，新档已迁移过则不再处理）。
+  const legacyLayout = !(d.v >= 2);
   for (const s of d.ents) {
     const cls = ENT_CLASSES[s.type];
     if (!cls) continue;
-    addEnt(cls.restore(s));
+    const e = cls.restore(s);
+    if (legacyLayout && LAYOUT_MIGRATE_TYPES[s.type]) migrateLegacyEntityLayout(e);
+    addEnt(e);
   }
   G.inv = new Map(d.inv);
   // 恢复个人物流请求（旧档无该字段则置空）
