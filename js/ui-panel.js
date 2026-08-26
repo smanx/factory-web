@@ -453,7 +453,17 @@ function initPanelEvents() {
         renderPanel(false);
       }
       else if (act === 'exp-save') { downloadSave(); }
-      else if (act === 'imp-save') { document.getElementById('imp-file').click(); }
+      else if (act === 'imp-save') {
+        // 尽早打日志：确认按钮点击被正确分发，且隐藏的文件输入框确实存在于 DOM
+        const impFile = document.getElementById('imp-file');
+        console.log('[存档导入] 点击了“从文件导入存档”按钮，imp-file 元素 =', impFile);
+        if (!impFile) {
+          console.error('[存档导入] 未找到 #imp-file 输入框，无法打开文件选择框');
+          toast('导入失败：未找到文件输入框');
+        } else {
+          impFile.click();
+        }
+      }
       else if (act === 'quit-to-menu') { if (typeof returnToMenu === 'function') returnToMenu(); }
       else if (act === 'craft') {
         const n = +(btn.dataset.mult || 1);
