@@ -657,12 +657,34 @@ const robotSpeed = {};
   if (cr && typeof cr.speed === 'number') robotSpeed.construction = Math.round(cr.speed * 60 * 1000) / 1000;
 }
 const inserterStats = {};
+// 官方机械臂 rotation_speed / extension_speed（rad/tick）与抓取堆叠（inserter_stack_size_override）。
+// 项目各臂类型 → 官方原型名：普通=inserter、长臂=long-handed-inserter、快速=fast-inserter、
+// 堆叠=bulk-inserter(2.0)、热能=burner-inserter。供机械臂旋转/抓取行为桥接（见 devices/inserter.js）。
+const INSERTER_SOURCES = {
+  'inserter': 'inserter',
+  'long-inserter': 'long-handed-inserter',
+  'fast-inserter': 'fast-inserter',
+  'stack-inserter': 'bulk-inserter',
+  'burner-inserter': 'burner-inserter',
+};
 {
   const ins = raw.inserter && raw.inserter.inserter;
   if (ins) {
     if (typeof ins.rotation_speed === 'number') inserterStats.rotationSpeed = ins.rotation_speed;
     if (typeof ins.extension_speed === 'number') inserterStats.extensionSpeed = ins.extension_speed;
   }
+  // 每个机械臂类型的官方旋转/伸缩速度（rad/tick）与堆叠抓取上限
+  const perType = {};
+  for (const [pid, oname] of Object.entries(INSERTER_SOURCES)) {
+    const p = raw.inserter && raw.inserter[oname];
+    if (!p || typeof p !== 'object') continue;
+    const row = {};
+    if (typeof p.rotation_speed === 'number') row.rotationSpeed = p.rotation_speed;
+    if (typeof p.extension_speed === 'number') row.extensionSpeed = p.extension_speed;
+    if (typeof p.inserter_stack_size_override === 'number') row.stack = p.inserter_stack_size_override;
+    if (Object.keys(row).length) perType[pid] = row;
+  }
+  if (Object.keys(perType).length) inserterStats.perType = perType;
 }
 
 // ---- 锅炉 / 蒸汽机 / 汽轮机（官方参数）----
@@ -674,6 +696,7 @@ const steamPower = {};
   const b = raw.boiler && raw.boiler.boiler;
   const bc = b && parsePowerMW(b.energy_consumption);
   if (bc !== null) steamPower.boilerPower = bc;
+  if (b && typeof b.target_temperature === 'number') steamPower.boilerTargetTemp = b.target_temperature;
   const e = raw.generator && raw.generator['steam-engine'];
   if (e) {
     if (typeof e.fluid_usage_per_tick === 'number') steamPower.engineRate = e.fluid_usage_per_tick * 60;

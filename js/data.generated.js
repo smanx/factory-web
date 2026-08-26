@@ -3409,6 +3409,7 @@ const GAME_DATA = {
  },
  "steamPower": {
   "boilerPower": 1.8,
+  "boilerTargetTemp": 165,
   "engineRate": 30,
   "effectivity": 1,
   "turbineRate": 60
@@ -3419,6 +3420,28 @@ const GAME_DATA = {
  },
  "inserterStats": {
   "rotationSpeed": 0.014,
-  "extensionSpeed": 0.035
+  "extensionSpeed": 0.035,
+  "perType": {
+   "inserter": {
+    "rotationSpeed": 0.014,
+    "extensionSpeed": 0.035
+   },
+   "long-inserter": {
+    "rotationSpeed": 0.02,
+    "extensionSpeed": 0.05
+   },
+   "fast-inserter": {
+    "rotationSpeed": 0.04,
+    "extensionSpeed": 0.1
+   },
+   "stack-inserter": {
+    "rotationSpeed": 0.04,
+    "extensionSpeed": 0.1
+   },
+   "burner-inserter": {
+    "rotationSpeed": 0.013,
+    "extensionSpeed": 0.035
+   }
+  }
  }
 };

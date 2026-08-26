@@ -22,6 +22,7 @@ declare -a scripts=(
   "tools/verify-save-rotate.js"
   "tools/verify-save-layout-migrate.js"
   "tools/verify-oil-rate.js"
+  "tools/verify-data-alignment.js"
 )
 
 fail=0

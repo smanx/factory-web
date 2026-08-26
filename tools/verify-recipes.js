@@ -132,7 +132,7 @@ check('BELT_SPACING 物品间隔=0.125(官方)', hasConst('BELT_SPACING', '0.125
 check('FAST_BELT_MULT 快速带倍数', _fMult !== null && Math.abs(_fMult - 2) < 1e-9, true);
 check('EXPRESS_BELT_MULT 极速带倍数', _eMult !== null && Math.abs(_eMult - 3) < 1e-9, true);
 check('POWER_PER_ENGINE 蒸汽机功率(kW)', hasConst('POWER_PER_ENGINE', '900'), true);
-check('POWER_PER_TURBINE 汽轮机功率(kW)', hasConst('POWER_PER_TURBINE', '5800'), true);
+check('POWER_PER_TURBINE 汽轮机功率(kW)', hasConst('POWER_PER_TURBINE', '5820'), true);  // 官方 5.82MW
 check('COAL_ENERGY 煤能量', hasConst('COAL_ENERGY', '12'), true);
 
 // ---- 建筑配方（对齐《异星工厂》官方 Wiki：锅炉/蒸汽机/抽水机/机枪炮塔/雷达）----

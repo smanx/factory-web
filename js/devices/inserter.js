@@ -10,14 +10,37 @@ function approachAng(a, t, step) {
   const m = Math.min(Math.abs(d), step);
   return a + Math.sign(d) * m;
 }
+
+// ===== 官方机械臂参数桥接（GAME_DATA 由 factorio-data 现场生成）=====
+// 官方 rotation_speed 相对倍率（rad/tick）用于旋转速度；inserter_stack_size_override 用于堆叠抓取上限。
+// 游戏采用简化的角速度模型：基础机械臂 rotSpeed=1，其余类型按官方 rotation_speed 相对普通臂的比例放大，
+// 使各机械臂的相对性能与《异星工厂》官方一致。
+function inserterRotMult(type) {
+  if (typeof GAME_DATA === 'undefined' || !GAME_DATA.inserterStats || !GAME_DATA.inserterStats.perType) return 1;
+  const base = GAME_DATA.inserterStats.perType['inserter'] && GAME_DATA.inserterStats.perType['inserter'].rotationSpeed;
+  const cur = GAME_DATA.inserterStats.perType[type];
+  if (typeof base === 'number' && cur && typeof cur.rotationSpeed === 'number') {
+    const m = Math.round(cur.rotationSpeed / base * 1000) / 1000;
+    if (m > 0) return m;
+  }
+  return 1;
+}
+function inserterStackMax(type) {
+  if (typeof GAME_DATA === 'undefined' || !GAME_DATA.inserterStats || !GAME_DATA.inserterStats.perType) return 1;
+  const cur = GAME_DATA.inserterStats.perType[type];
+  if (cur && typeof cur.stack === 'number') return cur.stack;
+  return 1;
+}
+
 class Inserter extends Entity {
   constructor(type, x, y) {
     super(type || 'inserter', x, y);
     this.reach = 1;      // 触及距离（格），长臂子类改为 2
     this.holding = null;
     this.holdingCount = 0;
-    this.stackMax = 1;   // 堆叠臂改为 3
-    this.rotSpeed = 1;   // 旋转速度倍率：快速臂为 2，对齐《异星工厂》Fast inserter
+    const itype = type || 'inserter';
+    this.stackMax = inserterStackMax(itype);  // 官方 inserter_stack_size_override（普通臂 1 / 堆叠臂 3）
+    this.rotSpeed = inserterRotMult(itype);   // 官方 rotation_speed 相对倍率（快速/堆叠臂 ≈ 2.857×）
     this.filter = null;  // 过滤臂：只抓该物品
     // 投放/取货侧翻转位：机械臂翻转（R 旋转 / V/H 镜像）后切换，使夹取传送带的边换一边。
     // 默认 false=取近侧/放远侧；翻转后 true=取远侧/放近侧。
@@ -361,19 +384,13 @@ class LongInserter extends Inserter {
   }
 }
 
-// 高速机械臂：旋转速度约为普通臂的 2 倍（对齐《异星工厂》Fast inserter），抓取效率更高
+// 高速/堆叠机械臂：旋转速度与抓取堆叠由官方数据桥接（见 inserterRotMult/inserterStackMax）
 class FastInserter extends Inserter {
-  constructor(type, x, y) {
-    super(type || 'fast-inserter', x, y);
-    this.rotSpeed = 2;
-  }
+  constructor(type, x, y) { super(type || 'fast-inserter', x, y); }
 }
 
 class StackInserter extends Inserter {
-  constructor(type, x, y) {
-    super(type || 'stack-inserter', x, y);
-    this.stackMax = 3;   // 一次最多抓取 3 个同种物品
-  }
+  constructor(type, x, y) { super(type || 'stack-inserter', x, y); }
 }
 
 // ===== 渲染 =====

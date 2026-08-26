@@ -37,7 +37,7 @@ const REACH_PX = REACH_TILES * TILE;
 const LAB_TIME = 1; // 研究中心每瓶科学包耗时（秒）
 // 功率数值对齐《异星工厂》(Factorio) 官方 Wiki（单位 kW）
 const POWER_PER_ENGINE = 900;   // 蒸汽机满功率输出
-const POWER_PER_TURBINE = 5800; // 汽轮机满功率输出（对齐《异星工厂》5.8MW）
+const POWER_PER_TURBINE = 5820; // 汽轮机满功率输出（官方 effectivity1 × 60/s × (500-15)°C × 200J = 5.82MW）
 const CENTRIFUGE_POWER = 350;   // 离心机功耗 kW（对齐《异星工厂》350kW）
 // ===== 核能（对齐《异星工厂》核动力）=====
 // 核反应堆：消耗核燃料 + 水 → 产出高温蒸汽；汽轮机以远高于蒸汽机的功率发电。
@@ -88,7 +88,7 @@ const WATER_CAP = 20;            // 锅炉/抽水机内部储水上限（兼作�
 const BOILER_WATER_RATE = 1.2;   // 锅炉每秒耗水（1:1 转为蒸汽输出）
 const BOILER_HEAT_RATE = 30;     // 锅炉每秒升温（°C，耗煤+水时）
 const BOILER_COOL_RATE = 2;      // 锅炉每秒自然降温（°C）
-const BOILER_TEMP_MAX = 100;     // 温度达标线
+const BOILER_TEMP_MAX = GAME_DATA.steamPower?.boilerTargetTemp ?? 165;  // 锅炉目标温度（官方 boiler target_temperature=165°C）
 const PUMP_RATE = GAME_DATA.fluidCapacity?.pumpRate ?? 20;  // 抽水机每秒产水（官方 offshore-pump pumping_speed=20）
 const ENGINE_STEAM_RATE = 0.6;   // 蒸汽机满功率耗汽（单位/秒）：1 台锅炉可带 2 台蒸汽机
 const ENGINE_STEAM_CAP = 10;     // 蒸汽机内部储汽上限
