@@ -245,6 +245,9 @@ class Entity {
   static restore(s) {
     const e = new this(s.type, s.x, s.y);
     e.dir = s.dir | 0;
+    // 按方向校正占地宽高（对 rotSwap 类设备如热交换器/汽轮机/锅炉/蒸汽机/分流器/抽水机，
+    // 旋转后宽高需随 dir 交换；否则读档后旋转状态会复原/错乱）。幂等，对普通设备无副作用。
+    e.applyDir();
     if (typeof s.hp === 'number' && s.hp > 0 && s.hp < e.maxhp) e.hp = s.hp;
     return e;
   }

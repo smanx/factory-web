@@ -19,6 +19,7 @@ declare -a scripts=(
   "tools/verify-inserter-side-flip.js"
   "tools/verify-splitter-input-priority.js"
   "tools/verify-entity-rotate.js"
+  "tools/verify-save-rotate.js"
 )
 
 fail=0
