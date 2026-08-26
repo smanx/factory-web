@@ -11,6 +11,7 @@ const shouldWatch = args.includes('--watch');
 const shouldDev = args.includes('--dev');
 const portIdx = args.indexOf('--port');
 const devPort = portIdx !== -1 ? parseInt(args[portIdx + 1], 10) : 8094;
+const TAG_NAME = process.env.TAG_NAME || '';
 
 // ── 1. 从 index.html 提取 <script> 标签的文件路径（保持顺序） ──
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
@@ -33,6 +34,11 @@ function concatScripts() {
 // ── 计算内容哈希（取前 8 位） ──
 function contentHash(content) {
   return crypto.createHash('md5').update(content).digest('hex').slice(0, 8);
+}
+
+// ── 生成 bundle 文件名（hash + tag 后缀） ──
+function makeBundleName(hash) {
+  return TAG_NAME ? `bundle.${hash}-${TAG_NAME}.js` : `bundle.${hash}.js`;
 }
 
 // ── 清空并创建目标目录 ──
@@ -78,7 +84,7 @@ async function main() {
     let content = concatScripts();
     let result = await esbuild.transform(content, { sourcefile: 'bundle.js', logLevel: 'info' });
     let bundleHash = contentHash(result.code);
-    let bundleName = `bundle.${bundleHash}.js`;
+    let bundleName = makeBundleName(bundleHash);
     fs.writeFileSync(path.join(DIST, bundleName), result.code);
     if (result.map) fs.writeFileSync(path.join(DIST, `${bundleName}.map`), result.map);
     generateDistHtml(bundleName);
@@ -92,13 +98,13 @@ async function main() {
       rebuilding = true;
       try {
         // 删除旧的带哈希的 bundle 文件
-        const oldBundles = fs.readdirSync(DIST).filter(f => /^bundle\.[a-f0-9]+\.js(.map)?$/.test(f));
+        const oldBundles = fs.readdirSync(DIST).filter(f => /^bundle\.[a-f0-9]+(-[^\s]+)?\.js(.map)?$/.test(f));
         for (const f of oldBundles) fs.unlinkSync(path.join(DIST, f));
 
         content = concatScripts();
         result = await esbuild.transform(content, { sourcefile: 'bundle.js', logLevel: 'info' });
         bundleHash = contentHash(result.code);
-        bundleName = `bundle.${bundleHash}.js`;
+        bundleName = makeBundleName(bundleHash);
         fs.writeFileSync(path.join(DIST, bundleName), result.code);
         if (result.map) fs.writeFileSync(path.join(DIST, `${bundleName}.map`), result.map);
         generateDistHtml(bundleName);
@@ -164,7 +170,7 @@ async function main() {
       sourcefile: 'bundle.js',
       logLevel: 'info',
     });
-    const bundleName = `bundle.${contentHash(result.code)}.js`;
+    const bundleName = makeBundleName(contentHash(result.code));
     fs.writeFileSync(path.join(DIST, bundleName), result.code);
     if (result.map) {
       fs.writeFileSync(path.join(DIST, `${bundleName}.map`), result.map);
