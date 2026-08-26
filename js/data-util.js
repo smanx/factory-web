@@ -1,6 +1,6 @@
 'use strict';
 
-const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: true, combat: false, capDPR: true, lowRes: false, virtualJoystick: false, minimap: true, sound: true, soundVol: 0.8, altMode: true, weather: false, daylight: true, music: true };  // sound:音效开关 soundVol:音量0~1  altMode:ALT模式(建筑配方/内容叠加显示)
+const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: true, combat: false, capDPR: true, lowRes: false, virtualJoystick: true, minimap: true, sound: true, soundVol: 0.8, altMode: true, weather: false, daylight: false, music: true };  // sound:音效开关 soundVol:音量0~1  altMode:ALT模式(建筑配方/内容叠加显示)
 const SETTINGS_KEY = 'factory-settings-v1';
 
 function drawItemGlyph(x, id, cx, cy, s) {
