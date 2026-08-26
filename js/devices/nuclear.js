@@ -477,9 +477,10 @@ function drawNuclearReactor(ctx, e, gx, gy, dir, alpha) {
   rr(ctx, px + 12, py + h - 22, w - 24, 6, 3); ctx.fill();
   ctx.fillStyle = wPct > 0 ? '#d98a3a' : '#6a5a3a';
   rr(ctx, px + 12, py + h - 22, (w - 24) * wPct, 6, 3); ctx.fill();
-  // 热量传输示意（橙色，与导热管对接）
+  // 热量传输示意（橙色，与导热管对接）：画在设备底部内部靠边缘处
   const midx = px + (w >> 1), midRow = py + TILE * (e.h - 1);
-  drawPort(ctx, midx, py + h, 1, PORT_STEAM, true, 0, TILE);
+  const cD = TILE / 2 - 1;
+  drawPort(ctx, midx, midRow + TILE / 2, 1, PORT_STEAM, true, 0, cD);
   ctx.fillStyle = '#eaf6ea';
   ctx.font = 'bold 13px system-ui';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';

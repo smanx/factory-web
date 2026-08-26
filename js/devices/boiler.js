@@ -190,15 +190,15 @@ function drawBoiler(ctx, e, gx, gy, dir, alpha) {
   ctx.textAlign = 'right';
   ctx.fillStyle = tp >= 1 ? '#7fe08f' : tp > 0 ? '#ffd23c' : '#8a93a0';
   ctx.fillText(Math.round(e.temp || 0) + '°C', px + w - 8, py + 14);
-  // 水口（蓝，双向互通）：左右两端下格侧边；汽口（白，只出）：底边中间（随 dir 旋转）
-  const pL = rotCell(e, -1, 1), pR = rotCell(e, e.def.w, 1), pS = rotCell(e, e.def.w >> 1, e.def.h);
+  // 水口（蓝，双向互通）与汽口（白，只出）统一画在设备内部靠边缘处（随 dir 旋转）
+  const pL = rotCell(e, 0, 1), pR = rotCell(e, e.def.w - 1, 1), pS = rotCell(e, e.def.w >> 1, e.def.h - 1);
   const _d = e.dir | 0;
-  // 水口朝外为 +1 格方向；左/右水口内部端朝内侧
+  const cD = TILE / 2 - 1; // 端口凸缘贴合设备内部边缘
   const _wSide = rotSide(2, _d); // 左水口朝西
   const _eSide = rotSide(0, _d); // 右水口朝东
-  drawPort(ctx, pL.x * TILE + TILE / 2, pL.y * TILE + TILE / 2, _wSide, PORT_WATER, false, 0, TILE, 'water', 'both');
-  drawPort(ctx, pR.x * TILE + TILE / 2, pR.y * TILE + TILE / 2, _eSide, PORT_WATER, false, 0, TILE, 'water', 'both');
-  drawPort(ctx, pS.x * TILE + TILE / 2, pS.y * TILE + TILE / 2, rotSide(1, _d), PORT_STEAM, true, 0, TILE, 'steam', 'out');
+  drawPort(ctx, pL.x * TILE + TILE / 2, pL.y * TILE + TILE / 2, _wSide, PORT_WATER, false, 0, cD, 'water', 'both');
+  drawPort(ctx, pR.x * TILE + TILE / 2, pR.y * TILE + TILE / 2, _eSide, PORT_WATER, false, 0, cD, 'water', 'both');
+  drawPort(ctx, pS.x * TILE + TILE / 2, pS.y * TILE + TILE / 2, rotSide(1, _d), PORT_STEAM, true, 0, cD, 'steam', 'out');
   ctx.globalAlpha = 1;
 }
 
