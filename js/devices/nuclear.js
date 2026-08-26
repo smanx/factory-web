@@ -625,8 +625,9 @@ function drawSteamTurbine(ctx, e, gx, gy, dir, alpha) {
   ctx.font = 'bold 10px system-ui';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText((e.powerOut || 0).toFixed(0) + ' kW', cx, py + h * 0.8);
-  // 窄边(3)中部汽口：左侧中部接蒸汽（与热交换器长边中部用管道对接）
-  drawPort(ctx, px, py + h * 0.5, 2, PORT_STEAM, true, 0, TILE);
+  // 窄边(3)中部汽口：左右两侧中部各一只管道出入口，蒸汽可进可出，支持多台汽轮机串接
+  drawPort(ctx, px, py + h * 0.5, 2, ITEMS['steam'].color, true, 0, TILE);
+  drawPort(ctx, px + w, py + h * 0.5, 0, ITEMS['steam'].color, true, 0, TILE);
   ctx.globalAlpha = 1;
 }
 function turbinePanelHtml(e) {
@@ -654,7 +655,7 @@ class HeatPipe extends Entity {
   constructor(type, x, y) {
     super('heat-pipe', x, y);
     this.heatBuf = 0;
-    this.cool = 0.05; // 每秒散热（热量沿路衰减）
+    this.cool = 0.01; // 每秒散热（热量沿路衰减，很小：长链导热几乎无损耗，避免“传不远”）
   }
   heatCap() { return HEAT_PIPE_CAP; }
   update(dt) {
@@ -846,9 +847,9 @@ function drawHeatExchanger(ctx, e, gx, gy, dir, alpha) {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('☁', px + w + 4, py + h * 0.5);
   }
-  // 进水口（左侧中部蓝）与出汽口（长边(3)右侧中部白）
-  drawPort(ctx, px, py + h * 0.5, 2, PORT_WATER, false, 0, TILE);
-  drawPort(ctx, px + w, py + h * 0.5, 0, PORT_STEAM, true, 0, TILE);
+  // 进水口（左侧中部，水色）与出汽口（长边(3)右侧中部，蒸汽色）
+  drawPort(ctx, px, py + h * 0.5, 2, ITEMS['water'].color, false, 0, TILE);
+  drawPort(ctx, px + w, py + h * 0.5, 0, ITEMS['steam'].color, true, 0, TILE);
   ctx.fillStyle = '#ffe0b0';
   ctx.font = 'bold 9px system-ui';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
