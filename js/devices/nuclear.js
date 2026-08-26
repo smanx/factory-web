@@ -529,6 +529,7 @@ class SteamTurbine extends Entity {
     this.powerOut = 0;
     this.steamBuf = 0;
   }
+  applyDir() { if (this.dir % 2 === 1) { this.w = this.def.h; this.h = this.def.w; } }
   update(dt) {
     this.portFlow();
     const want = TURBINE_STEAM_RATE * dt;
@@ -542,14 +543,15 @@ class SteamTurbine extends Entity {
     if (this.on) this.spin += dt * 10 * (0.35 + 0.65 * this.outMult);
     if (typeof regPowerEnt === 'function') regPowerEnt(this);
   }
-  // 窄边(3)中部汽口：左/右侧中部接热交换器出汽口或蒸汽管道
+  // 窄边(3)中部汽口：左/右侧中部接热交换器出汽口或蒸汽管道（随 dir 旋转）
   portFlow() {
     const covers = (n, cx, cy) => cx >= n.x && cx < n.x + n.w && cy >= n.y && cy < n.y + n.h;
-    const midY = this.y + (this.h >> 1); // 3 高窄边的中行
+    // 默认朝向(0，宽5×高3)下左/右窄边中部的汽口，随 dir 旋转
+    const pL = rotCell(this, -1, 1);
+    const pR = rotCell(this, this.def.w, 1);
     forEachNeighborEnt(this, n => {
-      // 左侧中部 / 右侧中部端口
-      const leftPort = covers(n, this.x - 1, midY);
-      const rightPort = covers(n, this.x + this.w, midY);
+      const leftPort = covers(n, pL.x, pL.y);
+      const rightPort = covers(n, pR.x, pR.y);
       const port = leftPort || rightPort;
       if (n instanceof Pipe) {
         if (!port) return;
@@ -625,8 +627,11 @@ function drawSteamTurbine(ctx, e, gx, gy, dir, alpha) {
   ctx.font = 'bold 10px system-ui';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText((e.powerOut || 0).toFixed(0) + ' kW', cx, py + h * 0.8);
-  // 窄边(3)中部汽口：左侧中部接蒸汽（与热交换器长边中部用管道对接）
-  drawPort(ctx, px, py + h * 0.5, 2, PORT_STEAM, true, 0, TILE);
+  // 窄边(3)中部汽口：左右两侧中部各一只管道出入口，蒸汽可进可出，支持多台汽轮机串接（随 dir 旋转）
+  const pL = rotCell(e, -1, 1);
+  const pR = rotCell(e, e.def.w, 1);
+  drawPort(ctx, pL.x * TILE + TILE / 2, pL.y * TILE + TILE / 2, rotSide(2, e.dir), ITEMS['steam'].color, true, 0, TILE);
+  drawPort(ctx, pR.x * TILE + TILE / 2, pR.y * TILE + TILE / 2, rotSide(0, e.dir), ITEMS['steam'].color, true, 0, TILE);
   ctx.globalAlpha = 1;
 }
 function turbinePanelHtml(e) {
@@ -654,7 +659,7 @@ class HeatPipe extends Entity {
   constructor(type, x, y) {
     super('heat-pipe', x, y);
     this.heatBuf = 0;
-    this.cool = 0.05; // 每秒散热（热量沿路衰减）
+    this.cool = 0.01; // 每秒散热（热量沿路衰减，很小：长链导热几乎无损耗，避免“传不远”）
   }
   heatCap() { return HEAT_PIPE_CAP; }
   update(dt) {
@@ -739,17 +744,17 @@ class HeatExchanger extends Entity {
     this.steamBuf = 0;    // 高温蒸汽缓冲（长边(3)中部出汽口）
     this.active = false;
   }
+  applyDir() { if (this.dir % 2 === 1) { this.w = this.def.h; this.h = this.def.w; } }
   heatCap() { return HEAT_EXCHANGER_CAP; }
-  // 进水口：左侧面中部接管道（右侧中部为出汽口）
+  // 进水口：左侧面中部接管道（右侧中部为出汽口），随 dir 旋转
   acceptsPumpFeed(cx, cy, fromDir) {
-    const midY = this.y + (this.h >> 1);
-    if (cy !== midY) return false;
-    if (cx === this.x) return fromDir === 0;
-    return false;
+    const p = rotCell(this, -1, 1);
+    if (cy !== p.y || cx !== p.x) return false;
+    return fromDir === rotSide(2, this.dir);
   }
   isWaterPortCell(cx, cy) {
-    const midY = this.y + (this.h >> 1);
-    return cy === midY && cx === this.x - 1;
+    const p = rotCell(this, -1, 1);
+    return cy === p.y && cx === p.x;
   }
   update(dt) {
     this.active = false;
@@ -769,14 +774,15 @@ class HeatExchanger extends Entity {
       this.heatBuf = Math.min(HEAT_EXCHANGER_CAP, this.heatBuf + want);
     });
   }
-  // 端口物流：侧面进水（水口）、长边(3)中部出汽
+  // 端口物流：侧面进水（水口）、长边(3)中部出汽（随 dir 旋转）
   portFlow(dt) {
     const covers = (n, cx, cy) => cx >= n.x && cx < n.x + n.w && cy >= n.y && cy < n.y + n.h;
-    const midY = this.y + (this.h >> 1); // 3 高长边的中行
+    const pW = rotCell(this, -1, 1); // 进水口：默认左窄边中部
+    const pS = rotCell(this, this.def.w, 1); // 出汽口：默认右窄边中部
     forEachNeighborEnt(this, n => {
-      const wPort = covers(n, this.x - 1, midY);
+      const wPort = covers(n, pW.x, pW.y);
       // 出汽口：长边(3)右侧中部（与汽轮机窄边(3)中部对接）
-      const sPort = covers(n, this.x + this.w, midY);
+      const sPort = covers(n, pS.x, pS.y);
       if (n instanceof Pipe) {
         if (wPort) {
           const pw = n.fluid['water'] || 0;
@@ -839,16 +845,20 @@ function drawHeatExchanger(ctx, e, gx, gy, dir, alpha) {
   // 换热芯（温度越高越亮，竖直 2×3 布局）
   ctx.fillStyle = hp > 0.05 ? '#e8a14a' : '#7a6a58';
   rr(ctx, px + TILE * 0.5, py + 6, TILE * 0.8, h - 12, 3); ctx.fill();
-  // 蒸汽输出波纹（运行中）
+  // 进水口（左侧中部蓝）与出汽口（长边(3)右侧中部白），随 dir 旋转
+  const pW = rotCell(e, -1, 1);
+  const pS = rotCell(e, e.def.w, 1);
+  // 蒸汽输出波纹（运行中，画在出汽口外）
   if (e.active) {
     ctx.fillStyle = 'rgba(210,235,255,.8)';
     ctx.font = 'bold 12px system-ui';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('☁', px + w + 4, py + h * 0.5);
+    const _s0 = rotSide(0, e.dir);
+    ctx.fillText('☁', pS.x * TILE + TILE / 2 + (_s0 === 0 ? TILE / 2 : _s0 === 2 ? -TILE / 2 : 0), pS.y * TILE + TILE / 2 + (_s0 === 1 ? TILE / 2 : _s0 === 3 ? -TILE / 2 : 0));
   }
-  // 进水口（左侧中部蓝）与出汽口（长边(3)右侧中部白）
-  drawPort(ctx, px, py + h * 0.5, 2, PORT_WATER, false, 0, TILE);
-  drawPort(ctx, px + w, py + h * 0.5, 0, PORT_STEAM, true, 0, TILE);
+  // 进水口（左侧中部，水色）与出汽口（长边(3)右侧中部，蒸汽色），随 dir 旋转
+  drawPort(ctx, pW.x * TILE + TILE / 2, pW.y * TILE + TILE / 2, rotSide(2, e.dir), ITEMS['water'].color, false, 0, TILE);
+  drawPort(ctx, pS.x * TILE + TILE / 2, pS.y * TILE + TILE / 2, rotSide(0, e.dir), ITEMS['steam'].color, true, 0, TILE);
   ctx.fillStyle = '#ffe0b0';
   ctx.font = 'bold 9px system-ui';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';

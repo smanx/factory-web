@@ -10,6 +10,7 @@ class SteamEngine extends Entity {
     this.powerOut = 0;  // 当前输出功率
     this.steamBuf = 0;  // 内部储汽：两端汽口均可进出蒸汽，支持首尾串联
   }
+  applyDir() { if (this.dir % 2 === 1) { this.w = this.def.h; this.h = this.def.w; } }
   update(dt) {
     this.portFlow();
     const want = ENGINE_STEAM_RATE * dt;
@@ -25,12 +26,13 @@ class SteamEngine extends Entity {
     if (typeof regPowerEnt === 'function') regPowerEnt(this);
   }
   // 端口物流：上下两端各一只功能相同的汽口——蒸汽可从任意一端进入，
-  // 多余蒸汽也可从另一端送出；与端对端的相邻蒸汽机均衡串汽
+  // 多余蒸汽也可从另一端送出；与端对端的相邻蒸汽机均衡串汽（随 dir 旋转）
   portFlow() {
     const covers = (n, cx, cy) => cx >= n.x && cx < n.x + n.w && cy >= n.y && cy < n.y + n.h;
-    const midX = this.x + (this.w >> 1);
+    const pN = rotCell(this, this.def.w >> 1, -1);
+    const pS = rotCell(this, this.def.w >> 1, this.def.h);
     forEachNeighborEnt(this, n => {
-      const endPort = covers(n, midX, this.y - 1) || covers(n, midX, this.y + this.h);
+      const endPort = covers(n, pN.x, pN.y) || covers(n, pS.x, pS.y);
       if (n instanceof Pipe) {
         if (!endPort) return;   // 只经两端汽口交换
         if (this.steamBuf < ENGINE_STEAM_CAP - 0.01 && (n.fluid['steam'] || 0) >= 1) {
@@ -40,7 +42,9 @@ class SteamEngine extends Entity {
       } else if (n instanceof SteamEngine) {
         // 需要端口相对：我占其任一端汽口格，且其占我的任一端汽口格
         const mine = endPort;
-        const theirs = covers(this, n.x + (n.w >> 1), n.y - 1) || covers(this, n.x + (n.w >> 1), n.y + n.h);
+        const nN = rotCell(n, n.def.w >> 1, -1);
+        const nS = rotCell(n, n.def.w >> 1, n.def.h);
+        const theirs = covers(this, nN.x, nN.y) || covers(this, nS.x, nS.y);
         if (!(mine && theirs)) return;
         if (this.steamBuf >= n.steamBuf + 1 && n.steamBuf < ENGINE_STEAM_CAP - 0.01) { this.steamBuf--; n.steamBuf++; }
         else if (n.steamBuf >= this.steamBuf + 1 && this.steamBuf < ENGINE_STEAM_CAP - 0.01) { n.steamBuf--; this.steamBuf++; }
@@ -75,7 +79,7 @@ class SteamEngine extends Entity {
 // ===== 渲染 =====
 function drawSteamEngine(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
-  const w = TILE * 3, h = TILE * 5;
+  const w = TILE * e.w, h = TILE * e.h;
   const om = Math.max(0, Math.min(1, e.outMult || 0));
   ctx.globalAlpha = alpha;
   ctx.fillStyle = '#5d7790';
@@ -119,9 +123,12 @@ function drawSteamEngine(ctx, e, gx, gy, dir, alpha) {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   if (e.on) ctx.fillText('+' + (e.powerOut || 0).toFixed(1), px + w / 2, py + h - 14);
   else ctx.fillText('蒸汽机', px + w / 2, py + h - 14);
-  // 两端通用汽口：任意一端均可进出蒸汽
-  drawPort(ctx, px + w / 2, py + h / 2, 3, PORT_STEAM, false, 0, h / 2);
-  drawPort(ctx, px + w / 2, py + h / 2, 1, PORT_STEAM, false, 0, h / 2);
+  // 两端通用汽口：任意一端均可进出蒸汽（随 dir 旋转）
+  const pN = rotCell(e, e.def.w >> 1, -1);
+  const pS = rotCell(e, e.def.w >> 1, e.def.h);
+  const _d = e.dir | 0;
+  drawPort(ctx, pN.x * TILE + TILE / 2, pN.y * TILE + TILE / 2, rotSide(3, _d), PORT_STEAM, false, 0, TILE);
+  drawPort(ctx, pS.x * TILE + TILE / 2, pS.y * TILE + TILE / 2, rotSide(1, _d), PORT_STEAM, false, 0, TILE);
   ctx.globalAlpha = 1;
 }
 
