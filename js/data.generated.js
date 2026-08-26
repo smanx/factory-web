@@ -17,6 +17,7 @@
 //   equipment[装备] = { powerOut | powerCap(kJ) | shield | speed | laser | dischargeRange/Cooldown }
 //   heat = { reactorMaxTemp, reactorSpecificHeat, reactorMaxTransfer, heatPipeMaxTemp, heatPipeMinGlowTemp,
 //           heatPipeSpecificHeat, heatPipeMaxTransfer, reactorHeatRate(MW) }, roboportPower(kW)
+//   footprint[building] = { w, h }（占地面积格数，官方 selection_box）
 const GAME_DATA = {
  "stackSize": {
   "iron-ore": 50,
@@ -3171,5 +3172,245 @@ const GAME_DATA = {
   "heatPipeMaxTransfer": 1000,
   "reactorHeatRate": 40
  },
- "roboportPower": 50
+ "roboportPower": 50,
+ "footprint": {
+  "transport-belt": {
+   "w": 1,
+   "h": 1
+  },
+  "fast-transport-belt": {
+   "w": 1,
+   "h": 1
+  },
+  "express-transport-belt": {
+   "w": 1,
+   "h": 1
+  },
+  "underground": {
+   "w": 1,
+   "h": 1
+  },
+  "fast-underground-belt": {
+   "w": 1,
+   "h": 1
+  },
+  "express-underground-belt": {
+   "w": 1,
+   "h": 1
+  },
+  "splitter": {
+   "w": 2,
+   "h": 1
+  },
+  "fast-splitter": {
+   "w": 2,
+   "h": 1
+  },
+  "express-splitter": {
+   "w": 2,
+   "h": 1
+  },
+  "inserter": {
+   "w": 1,
+   "h": 1
+  },
+  "burner-inserter": {
+   "w": 1,
+   "h": 1
+  },
+  "long-inserter": {
+   "w": 1,
+   "h": 1
+  },
+  "fast-inserter": {
+   "w": 1,
+   "h": 1
+  },
+  "stack-inserter": {
+   "w": 1,
+   "h": 1
+  },
+  "burner-drill": {
+   "w": 2,
+   "h": 2
+  },
+  "electric-drill": {
+   "w": 3,
+   "h": 3
+  },
+  "pumpjack": {
+   "w": 3,
+   "h": 3
+  },
+  "stone-furnace": {
+   "w": 2,
+   "h": 2
+  },
+  "steel-furnace": {
+   "w": 2,
+   "h": 2
+  },
+  "electric-furnace": {
+   "w": 3,
+   "h": 3
+  },
+  "assembling-machine": {
+   "w": 3,
+   "h": 3
+  },
+  "assembling-machine-mk2": {
+   "w": 3,
+   "h": 3
+  },
+  "assembling-machine-3": {
+   "w": 3,
+   "h": 3
+  },
+  "refinery": {
+   "w": 5,
+   "h": 5
+  },
+  "chemical-plant": {
+   "w": 3,
+   "h": 3
+  },
+  "centrifuge": {
+   "w": 3,
+   "h": 3
+  },
+  "beacon": {
+   "w": 3,
+   "h": 3
+  },
+  "lab": {
+   "w": 3,
+   "h": 3
+  },
+  "boiler": {
+   "w": 3,
+   "h": 2
+  },
+  "steam-engine": {
+   "w": 3,
+   "h": 5
+  },
+  "steam-turbine": {
+   "w": 3,
+   "h": 5
+  },
+  "heat-exchanger": {
+   "w": 3,
+   "h": 2
+  },
+  "offshore-pump": {
+   "w": 2,
+   "h": 2
+  },
+  "pipe": {
+   "w": 1,
+   "h": 1
+  },
+  "pipe-to-ground": {
+   "w": 1,
+   "h": 1
+  },
+  "pump": {
+   "w": 1,
+   "h": 2
+  },
+  "storage-tank": {
+   "w": 3,
+   "h": 3
+  },
+  "solar-panel": {
+   "w": 3,
+   "h": 3
+  },
+  "accumulator": {
+   "w": 2,
+   "h": 2
+  },
+  "radar": {
+   "w": 3,
+   "h": 3
+  },
+  "roboport": {
+   "w": 4,
+   "h": 4
+  },
+  "nuclear-reactor": {
+   "w": 5,
+   "h": 5
+  },
+  "heat-pipe": {
+   "w": 1,
+   "h": 1
+  },
+  "gun-turret": {
+   "w": 2,
+   "h": 2
+  },
+  "laser-turret": {
+   "w": 2,
+   "h": 2
+  },
+  "flamethrower-turret": {
+   "w": 2,
+   "h": 3
+  },
+  "stone-wall": {
+   "w": 1,
+   "h": 1
+  },
+  "gate": {
+   "w": 1,
+   "h": 1
+  },
+  "small-electric-pole": {
+   "w": 1,
+   "h": 1
+  },
+  "medium-electric-pole": {
+   "w": 1,
+   "h": 1
+  },
+  "big-electric-pole": {
+   "w": 2,
+   "h": 2
+  },
+  "substation": {
+   "w": 2,
+   "h": 2
+  },
+  "constant-combinator": {
+   "w": 1,
+   "h": 1
+  },
+  "arithmetic-combinator": {
+   "w": 1,
+   "h": 2
+  },
+  "decider-combinator": {
+   "w": 1,
+   "h": 2
+  },
+  "power-switch": {
+   "w": 2,
+   "h": 2
+  },
+  "programmable-speaker": {
+   "w": 1,
+   "h": 1
+  },
+  "land-mine": {
+   "w": 1,
+   "h": 1
+  }
+ },
+ "steamPower": {
+  "boilerPower": 1.8,
+  "engineRate": 30,
+  "effectivity": 1,
+  "turbineRate": 60
+ }
 };

@@ -18,7 +18,8 @@ const path = require('path');
 const vm = require('vm');
 
 const DATA_DIR = path.join(__dirname, '..', 'js');
-const src = fs.readFileSync(path.join(DATA_DIR, 'data.js'), 'utf8')
+const src = fs.readFileSync(path.join(DATA_DIR, 'data.generated.js'), 'utf8')
+  + '\n' + fs.readFileSync(path.join(DATA_DIR, 'data.js'), 'utf8')
   + '\n' + fs.readFileSync(path.join(DATA_DIR, 'data-items.js'), 'utf8')
   + '\n' + fs.readFileSync(path.join(DATA_DIR, 'data-recipes.js'), 'utf8')
   + '\n' + fs.readFileSync(path.join(DATA_DIR, 'data-buildings.js'), 'utf8');

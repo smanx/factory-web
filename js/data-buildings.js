@@ -159,3 +159,23 @@ function postPlaceRotatable(type) { return true; }
 for (const k in (GAME_DATA.buildingHp || {})) {
   if (typeof BUILDING_HP[k] !== 'number') BUILDING_HP[k] = GAME_DATA.buildingHp[k];
 }
+
+// ===== 官方建筑占地桥接（GAME_DATA.footprint 由 factorio-data 现场生成）=====
+// 占地 w/h（格）默认来自官方 selection_box（GAME_DATA.footprint）。
+// 以下为项目有意简化/旋转模型，与官方 selection_box 不同，保持手工值：
+//   - 分流器：游戏内按 1×2 竖放建模（官方 2×1 横放）
+//   - 抽水机：游戏内 2×1（官方 2×2，含底部管线位）
+//   - 泵 / 运算组合器 / 功率开关：游戏内 1×1（官方 selection_box 含管线伸出）
+// 其余建筑占地一律采用官方数据，保证与《异星工厂》一致。
+const FOOTPRINT_OVERRIDE = {
+  'splitter': { w: 1, h: 2 }, 'fast-splitter': { w: 1, h: 2 }, 'express-splitter': { w: 1, h: 2 },
+  'offshore-pump': { w: 2, h: 1 },
+  'pump': { w: 1, h: 1 },
+  'arithmetic-combinator': { w: 1, h: 1 }, 'decider-combinator': { w: 1, h: 1 },
+  'power-switch': { w: 1, h: 1 },
+};
+for (const k in (GAME_DATA.footprint || {})) {
+  const ov = FOOTPRINT_OVERRIDE[k];
+  if (ov) { BUILD_DEFS[k] = Object.assign(BUILD_DEFS[k] || {}, ov); }
+  else if (BUILD_DEFS[k]) { BUILD_DEFS[k].w = GAME_DATA.footprint[k].w; BUILD_DEFS[k].h = GAME_DATA.footprint[k].h; }
+}

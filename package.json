@@ -13,7 +13,8 @@
     "build:minify": "node build.js --minify"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0"
+    "esbuild": "^0.25.0",
+    "fengari": "^0.1.5"
   },
   "allowScripts": {
     "esbuild@0.25.12": true

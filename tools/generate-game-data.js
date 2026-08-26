@@ -642,6 +642,105 @@ const roboportPower = (() => {
   return kw;
 })();
 
+
+
+// ---- 锅炉 / 蒸汽机 / 汽轮机（官方参数）----
+// boilerPower：锅炉最大热输入 energy_consumption（MW，官方 1.8MW）；
+// engineRate / turbineRate：蒸汽机/汽轮机满功率耗汽率 fluid_usage_per_tick（官方 0.5 / 1 → ×60=30/60 单位/秒）；
+// effectivity：能量转换效率（官方 1）。
+const steamPower = {};
+{
+  const b = raw.boiler && raw.boiler.boiler;
+  const bc = b && parsePowerMW(b.energy_consumption);
+  if (bc !== null) steamPower.boilerPower = bc;
+  const e = raw.generator && raw.generator['steam-engine'];
+  if (e) {
+    if (typeof e.fluid_usage_per_tick === 'number') steamPower.engineRate = e.fluid_usage_per_tick * 60;
+    if (typeof e.effectivity === 'number') steamPower.effectivity = e.effectivity;
+  }
+  const t = raw.generator && raw.generator['steam-turbine'];
+  if (t && typeof t.fluid_usage_per_tick === 'number') steamPower.turbineRate = t.fluid_usage_per_tick * 60;
+}
+
+// ---- 设备占地面积（格，官方 selection_box）----
+// 项目建筑 id → [官方 raw 类型, 官方原型名]。占地 = selection_box 的右界减左界（格）。
+// 官方 2.0 类型变更：gun-turret=ammo-turret、laser-turret=electric-turret、
+// flamethrower-turret=fluid-turret、nuclear-reactor=reactor、steam-engine=generator、
+// steam-turbine=generator、heat-exchanger=boiler。创意/虚空物品官方无实体 → 保持手工。
+const FOOTPRINT_SOURCES = {
+  'transport-belt': ['transport-belt', 'transport-belt'],
+  'fast-transport-belt': ['transport-belt', 'fast-transport-belt'],
+  'express-transport-belt': ['transport-belt', 'express-transport-belt'],
+  'underground': ['underground-belt', 'underground-belt'],
+  'fast-underground-belt': ['underground-belt', 'fast-underground-belt'],
+  'express-underground-belt': ['underground-belt', 'express-underground-belt'],
+  'splitter': ['splitter', 'splitter'],
+  'fast-splitter': ['splitter', 'fast-splitter'],
+  'express-splitter': ['splitter', 'express-splitter'],
+  'inserter': ['inserter', 'inserter'],
+  'burner-inserter': ['inserter', 'burner-inserter'],
+  'long-inserter': ['inserter', 'long-handed-inserter'],
+  'fast-inserter': ['inserter', 'fast-inserter'],
+  'stack-inserter': ['inserter', 'bulk-inserter'],
+  'burner-drill': ['mining-drill', 'burner-mining-drill'],
+  'electric-drill': ['mining-drill', 'electric-mining-drill'],
+  'pumpjack': ['mining-drill', 'pumpjack'],
+  'stone-furnace': ['furnace', 'stone-furnace'],
+  'steel-furnace': ['furnace', 'steel-furnace'],
+  'electric-furnace': ['furnace', 'electric-furnace'],
+  'assembling-machine': ['assembling-machine', 'assembling-machine-1'],
+  'assembling-machine-mk2': ['assembling-machine', 'assembling-machine-2'],
+  'assembling-machine-3': ['assembling-machine', 'assembling-machine-3'],
+  'refinery': ['assembling-machine', 'oil-refinery'],
+  'chemical-plant': ['assembling-machine', 'chemical-plant'],
+  'centrifuge': ['assembling-machine', 'centrifuge'],
+  'beacon': ['beacon', 'beacon'],
+  'lab': ['lab', 'lab'],
+  'boiler': ['boiler', 'boiler'],
+  'steam-engine': ['generator', 'steam-engine'],
+  'steam-turbine': ['generator', 'steam-turbine'],
+  'heat-exchanger': ['boiler', 'heat-exchanger'],
+  'offshore-pump': ['offshore-pump', 'offshore-pump'],
+  'pipe': ['pipe', 'pipe'],
+  'pipe-to-ground': ['pipe-to-ground', 'pipe-to-ground'],
+  'pump': ['pump', 'pump'],
+  'storage-tank': ['storage-tank', 'storage-tank'],
+  'solar-panel': ['solar-panel', 'solar-panel'],
+  'accumulator': ['accumulator', 'accumulator'],
+  'radar': ['radar', 'radar'],
+  'roboport': ['roboport', 'roboport'],
+  'nuclear-reactor': ['reactor', 'nuclear-reactor'],
+  'heat-pipe': ['heat-pipe', 'heat-pipe'],
+  'gun-turret': ['ammo-turret', 'gun-turret'],
+  'laser-turret': ['electric-turret', 'laser-turret'],
+  'flamethrower-turret': ['fluid-turret', 'flamethrower-turret'],
+  'stone-wall': ['wall', 'stone-wall'],
+  'gate': ['gate', 'gate'],
+  'small-electric-pole': ['electric-pole', 'small-electric-pole'],
+  'medium-electric-pole': ['electric-pole', 'medium-electric-pole'],
+  'big-electric-pole': ['electric-pole', 'big-electric-pole'],
+  'substation': ['electric-pole', 'substation'],
+  'constant-combinator': ['constant-combinator', 'constant-combinator'],
+  'arithmetic-combinator': ['arithmetic-combinator', 'arithmetic-combinator'],
+  'decider-combinator': ['decider-combinator', 'decider-combinator'],
+  'power-switch': ['power-switch', 'power-switch'],
+  'programmable-speaker': ['programmable-speaker', 'programmable-speaker'],
+  'land-mine': ['land-mine', 'land-mine'],
+};
+// 官方 selection_box 为实体占用的格数（局部坐标跨度，单位格）。
+// 占地格数 = max(1, ceil(跨度))；部分实体（机械臂/电线杆/熔炉等）官方跨度<1 或非整数，
+// 按 Factorio 惯例仍占整格（如机械臂 1×1、石炉 2×2）。
+const footprint = {};
+const gridFootprint = (extent) => Math.max(1, Math.ceil(extent - 0.001));
+for (const [pid, [rtype, oname]] of Object.entries(FOOTPRINT_SOURCES)) {
+  const proto = raw[rtype] && raw[rtype][oname];
+  const sel = proto && proto.selection_box;
+  if (!sel || !sel['1'] || !sel['2']) continue;
+  const w = gridFootprint(sel['2']['1'] - sel['1']['1']);
+  const h = gridFootprint(sel['2']['2'] - sel['1']['2']);
+  if (w > 0 && h > 0) footprint[pid] = { w, h };
+}
+
 // ---- 汇总新增字段进 GAME_DATA（undefined 字段由 JSON 序列化自动剔除）----
 Object.assign(GAME_DATA, {
   undergroundDist,
@@ -654,6 +753,8 @@ Object.assign(GAME_DATA, {
   equipment,
   heat,
   roboportPower,
+  footprint,
+  steamPower,
 });
 
 // ---- recipe ----
@@ -789,6 +890,7 @@ const header = [
   '//   equipment[装备] = { powerOut | powerCap(kJ) | shield | speed | laser | dischargeRange/Cooldown }',
   '//   heat = { reactorMaxTemp, reactorSpecificHeat, reactorMaxTransfer, heatPipeMaxTemp, heatPipeMinGlowTemp,',
   '//           heatPipeSpecificHeat, heatPipeMaxTransfer, reactorHeatRate(MW) }, roboportPower(kW)',
+  '//   footprint[building] = { w, h }（占地面积格数，官方 selection_box）',
   'const GAME_DATA = ' + JSON.stringify(GAME_DATA, null, 1) + ';',
   '',
 ].join('\n');

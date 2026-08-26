@@ -89,7 +89,7 @@ const BOILER_WATER_RATE = 1.2;   // 锅炉每秒耗水（1:1 转为蒸汽输出�
 const BOILER_HEAT_RATE = 30;     // 锅炉每秒升温（°C，耗煤+水时）
 const BOILER_COOL_RATE = 2;      // 锅炉每秒自然降温（°C）
 const BOILER_TEMP_MAX = 100;     // 温度达标线
-const PUMP_RATE = 6;             // 抽水机每秒产水
+const PUMP_RATE = GAME_DATA.fluidCapacity?.pumpRate ?? 20;  // 抽水机每秒产水（官方 offshore-pump pumping_speed=20）
 const ENGINE_STEAM_RATE = 0.6;   // 蒸汽机满功率耗汽（单位/秒）：1 台锅炉可带 2 台蒸汽机
 const ENGINE_STEAM_CAP = 10;     // 蒸汽机内部储汽上限
 
