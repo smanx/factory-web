@@ -5,13 +5,33 @@ function escHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;',
 
 // ===== 存档文件 gzip 压缩 / 解压（使用浏览器原生 CompressionStream / DecompressionStream） =====
 
+// 把 ReadableStream 完整读入 Uint8Array（兼容性更稳，规避个别浏览器 Response(stream).arrayBuffer() 的已知问题）
+async function readStreamToBytes(stream) {
+  const reader = stream.getReader();
+  const chunks = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    total += value.length;
+  }
+  const buf = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) { buf.set(c, off); off += c.length; }
+  return buf;
+}
+
 // gzip 压缩：将字符串压缩为 Uint8Array
 async function gzipCompress(text) {
   if (typeof CompressionStream === 'undefined') {
     throw new Error('当前浏览器不支持 gzip 压缩，请升级浏览器后重试');
   }
+  if (typeof Blob.prototype.stream !== 'function') {
+    throw new Error('当前浏览器不支持流式压缩，请升级浏览器后重试');
+  }
   const stream = new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+  return await readStreamToBytes(stream);
 }
 
 // gzip 解压：将 Uint8Array 解压为字符串
@@ -19,8 +39,11 @@ async function gzipDecompress(bytes) {
   if (typeof DecompressionStream === 'undefined') {
     throw new Error('当前浏览器不支持 gzip 解压，请升级浏览器后重试');
   }
+  if (typeof Blob.prototype.stream !== 'function') {
+    throw new Error('当前浏览器不支持流式解压，请升级浏览器后重试');
+  }
   const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-  const buf = await new Response(stream).arrayBuffer();
+  const buf = await readStreamToBytes(stream);
   return new TextDecoder('utf-8').decode(buf);
 }
 

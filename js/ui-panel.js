@@ -28,10 +28,15 @@ function initPanelEvents() {
     const f = ev.target.files[0];
     if (!f) return;
     const rd = new FileReader();
-    rd.onload = () => {
+    rd.onload = async () => {
       // 导入后重置 input 值，保证再次选择同一文件也能触发 change
       ev.target.value = '';
-      importSaveFile(rd.result);
+      try {
+        await importSaveFile(rd.result);
+      } catch (err) {
+        // 兜底：避免未处理的 Promise rejection 导致导入后毫无反馈
+        toast('导入失败：' + err.message);
+      }
     };
     rd.onerror = () => toast('读取文件失败');
     rd.readAsArrayBuffer(f);
