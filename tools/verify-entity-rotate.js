@@ -195,7 +195,7 @@ ok(sandbox.__d1 === 1 && sandbox.__w1 === 2 && sandbox.__h1 === 1,
 console.log('\n【非方形端口随 dir 旋转】');
 const rotateDefs = {
   'heat-exchanger': { w: 2, h: 3, ports: [
-      ['水口', -1, 1], ['汽口', 2, 1]
+      ['左水口', -1, 1], ['右水口', 2, 1], ['汽口', 1, 3]
   ]},
   'steam-turbine': { w: 5, h: 3, ports: [
       ['左汽口', -1, 1], ['右汽口', 5, 1]
