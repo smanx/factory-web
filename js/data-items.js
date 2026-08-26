@@ -322,9 +322,9 @@ const SMELTS = [
 ];
 
 // ===== 官方堆叠数据桥接（GAME_DATA 由 factorio-data 现场生成，见 tools/generate-game-data.js）=====
-// 手工 STACK_SIZES 优先，缺失的用官方值补缺（如 rocket/cargo-wagon/portable-fusion-reactor/cannon-shell
-// 的 1 堆叠是项目故意保留，不会被覆盖）。
+// 与《异星工厂》官方完全一致：官方 stack_size 覆盖手工值（含 rocket/cargo-wagon/等，
+// 官方 rocket=100、cargo-wagon=5、portable-fusion-reactor=20、cannon-shell=100）。
 for (const k in (GAME_DATA.stackSize || {})) {
-  if (typeof STACK_SIZES[k] !== 'number') STACK_SIZES[k] = GAME_DATA.stackSize[k];
+  STACK_SIZES[k] = GAME_DATA.stackSize[k];
 }
 
