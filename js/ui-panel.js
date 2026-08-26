@@ -97,6 +97,11 @@ function initPanelEvents() {
     }
   });
   document.getElementById('panel-body').addEventListener('click', async ev => {
+    // 供“从文件导入存档”使用：打开原生文件选择框后若立刻 renderPanel 重建
+    // innerHTML，会销毁与选择框绑定的 #imp-file 元素，导致选完文件后 change 事件
+    // 触发在已脱离 DOM 的旧元素上、不再冒泡到 panel-body，导入“毫无反应”。
+    // 故打开文件选择框后跳过本次尾部的 renderPanel(false)。
+    let skipPanelRender = false;
     // 背包两个 tab 切换：材料 / 合成
     const invTabBtn = ev.target.closest('[data-inv-tab]');
     if (invTabBtn && G.panelMode === 'inv') {
@@ -462,6 +467,9 @@ function initPanelEvents() {
           toast('导入失败：未找到文件输入框');
         } else {
           impFile.click();
+          // 打开原生文件选择框后，本次不再重建面板，避免销毁与选择框绑定的 #imp-file 元素
+          // （重建后 change 事件会触发在已脱离 DOM 的旧元素上，无法冒泡到 panel-body）。
+          skipPanelRender = true;
         }
       }
       else if (act === 'quit-to-menu') { if (typeof returnToMenu === 'function') returnToMenu(); }
@@ -603,7 +611,9 @@ function initPanelEvents() {
         }
       }
     }
-    renderPanel(false);
+    if (!skipPanelRender) {
+      renderPanel(false);
+    }
     refreshHotbar();
   });
 }
