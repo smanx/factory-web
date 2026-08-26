@@ -123,12 +123,13 @@ function drawSteamEngine(ctx, e, gx, gy, dir, alpha) {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   if (e.on) ctx.fillText('+' + (e.powerOut || 0).toFixed(1), px + w / 2, py + h - 14);
   else ctx.fillText('蒸汽机', px + w / 2, py + h - 14);
-  // 两端通用汽口：任意一端均可进出蒸汽（随 dir 旋转）
-  const pN = rotCell(e, e.def.w >> 1, -1);
-  const pS = rotCell(e, e.def.w >> 1, e.def.h);
+  // 两端通用汽口：任意一端均可进出蒸汽（随 dir 旋转），画在设备内部靠边缘处
+  const pN = rotCell(e, e.def.w >> 1, 0);
+  const pS = rotCell(e, e.def.w >> 1, e.def.h - 1);
   const _d = e.dir | 0;
-  drawPort(ctx, pN.x * TILE + TILE / 2, pN.y * TILE + TILE / 2, rotSide(3, _d), PORT_STEAM, false, 0, TILE, 'steam', 'both');
-  drawPort(ctx, pS.x * TILE + TILE / 2, pS.y * TILE + TILE / 2, rotSide(1, _d), PORT_STEAM, false, 0, TILE, 'steam', 'both');
+  const cD = TILE / 2 - 1; // 端口凸缘贴合设备内部边缘
+  drawPort(ctx, pN.x * TILE + TILE / 2, pN.y * TILE + TILE / 2, rotSide(3, _d), PORT_STEAM, false, 0, cD, 'steam', 'both');
+  drawPort(ctx, pS.x * TILE + TILE / 2, pS.y * TILE + TILE / 2, rotSide(1, _d), PORT_STEAM, false, 0, cD, 'steam', 'both');
   ctx.globalAlpha = 1;
 }
 
