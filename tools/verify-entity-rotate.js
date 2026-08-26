@@ -41,7 +41,7 @@ const BUILD_DEFS = {
   'express-underground-belt': { w: 1, h: 1, solid: false },
   'splitter':            { w: 1, h: 2, solid: false, rotSwap: true },
   'steam-turbine':       { w: 5, h: 3, solid: true, rotSwap: true },
-  'heat-exchanger':      { w: 2, h: 3, solid: true, rotSwap: true },
+  'heat-exchanger':      { w: 3, h: 2, solid: true, rotSwap: true },
   'boiler':              { w: 3, h: 2, solid: true, rotSwap: true },
   'steam-engine':        { w: 3, h: 5, solid: true, rotSwap: true },
   'inserter':            { w: 1, h: 1, solid: true },
@@ -195,12 +195,12 @@ ok(sandbox.__d1 === 1 && sandbox.__w1 === 2 && sandbox.__h1 === 1,
   `分流器 R 旋转 dir=${sandbox.__d1} w=${sandbox.__w1} h=${sandbox.__h1}（期望 dir=1 w=2 h=1）`);
 
 // ===== 四、核能/蒸汽等非方形设备也可旋转/翻转，端口随 dir 旋转 =====
-// 热交换器(2×3)、汽轮机(5×3)、锅炉(3×2)、蒸汽机(3×5) 均标记 rotSwap，
+// 热交换器(3×2)、汽轮机(5×3)、锅炉(3×2)、蒸汽机(3×5) 均标记 rotSwap，
 // 旋转后占地交换且端口格正确跟随。用 rotCell 校验端口格在 4 个方向的落点。
 console.log('\n【非方形端口随 dir 旋转】');
 const rotateDefs = {
-  'heat-exchanger': { w: 2, h: 3, ports: [
-      ['上水口', 1, -1], ['下水口', 1, 3], ['汽口', 2, 1]
+  'heat-exchanger': { w: 3, h: 2, ports: [
+      ['左水口', -1, 1], ['右水口', 3, 1], ['汽口', 1, -1]
   ]},
   'steam-turbine': { w: 5, h: 3, ports: [
       ['左汽口', -1, 1], ['右汽口', 5, 1]
@@ -256,7 +256,7 @@ for (const t in rotateDefs) {
 // 锅炉/蒸汽机/汽轮机/热交换器放置后按 R/V/H 不应旋转本体，而是作用于幽灵；
 // 而非固定管道口的 rotSwap 设备（分流器）放置后仍可旋转。
 console.log('\n【固定管道口建筑放置后不可旋转】');
-const fixedPipeDefs = { 'boiler': [3, 2], 'steam-engine': [3, 5], 'steam-turbine': [5, 3], 'heat-exchanger': [2, 3] };
+const fixedPipeDefs = { 'boiler': [3, 2], 'steam-engine': [3, 5], 'steam-turbine': [5, 3], 'heat-exchanger': [3, 2] };
 for (const t in fixedPipeDefs) {
   fresh();
   vm.runInContext(`(function(){
