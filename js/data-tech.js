@@ -87,7 +87,13 @@ const TECH_REQ = {
   'plastic-bar': 'plastic',           // 塑料板：需「塑料合成」科技（对齐原版 Plastics）
   'low-density-structure': 'rocket-science', // 低密度结构：需「火箭技术」（对齐原版 Rocket science）
   'fishing-pole': 'fishing',            // 钓鱼竿：需「钓鱼」科技（对齐原版 Fishing）
-  'solid-fuel': 'oil'                // 固体燃料：需「石油冶金」（对齐原版 Oil processing）
+  'solid-fuel': 'oil',               // 固体燃料：需「石油冶金」（对齐原版 Oil processing）
+  // ===== 补齐官方缺失科技门控（对齐《异星工厂》科技树） =====
+  'steel-axe': 'steel-axe',            // 钢斧：需「钢斧」科技（对齐原版 Steel axe）
+  'concrete': 'concrete',              // 混凝土：需「混凝土」科技（对齐原版 Concrete）
+  'refined-concrete': 'concrete',      // 精炼混凝土：需「混凝土」科技
+  'hazard-concrete': 'concrete',       // 警示混凝土：需「混凝土」科技
+  'landfill': 'landfill'               // 填海料：需「填海」科技（对齐原版 Landfill）
 };
 // ===== 核能科技门控 =====
 for (const id of ['centrifuge', 'nuclear-reactor', 'steam-turbine', 'heat-pipe', 'heat-exchanger', 'uranium-235', 'uranium-238', 'nuclear-fuel', 'uranium-fuel-cell']) {
