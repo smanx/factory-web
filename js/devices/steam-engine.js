@@ -127,8 +127,8 @@ function drawSteamEngine(ctx, e, gx, gy, dir, alpha) {
   const pN = rotCell(e, e.def.w >> 1, -1);
   const pS = rotCell(e, e.def.w >> 1, e.def.h);
   const _d = e.dir | 0;
-  drawPort(ctx, pN.x * TILE + TILE / 2, pN.y * TILE + TILE / 2, rotSide(3, _d), PORT_STEAM, false, 0, TILE);
-  drawPort(ctx, pS.x * TILE + TILE / 2, pS.y * TILE + TILE / 2, rotSide(1, _d), PORT_STEAM, false, 0, TILE);
+  drawPort(ctx, pN.x * TILE + TILE / 2, pN.y * TILE + TILE / 2, rotSide(3, _d), PORT_STEAM, false, 0, TILE, 'steam', 'both');
+  drawPort(ctx, pS.x * TILE + TILE / 2, pS.y * TILE + TILE / 2, rotSide(1, _d), PORT_STEAM, false, 0, TILE, 'steam', 'both');
   ctx.globalAlpha = 1;
 }
 

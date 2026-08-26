@@ -631,8 +631,8 @@ function drawSteamTurbine(ctx, e, gx, gy, dir, alpha) {
   const pL = rotCell(e, 0, 1);
   const pR = rotCell(e, e.def.w - 1, 1);
   const cD = TILE / 2 - 1; // 端口凸缘贴合设备内部边缘
-  drawPort(ctx, pL.x * TILE + TILE / 2, pL.y * TILE + TILE / 2, rotSide(2, e.dir), ITEMS['steam'].color, true, 0, cD);
-  drawPort(ctx, pR.x * TILE + TILE / 2, pR.y * TILE + TILE / 2, rotSide(0, e.dir), ITEMS['steam'].color, true, 0, cD);
+  drawPort(ctx, pL.x * TILE + TILE / 2, pL.y * TILE + TILE / 2, rotSide(2, e.dir), ITEMS['steam'].color, true, 0, cD, 'steam', 'both');
+  drawPort(ctx, pR.x * TILE + TILE / 2, pR.y * TILE + TILE / 2, rotSide(0, e.dir), ITEMS['steam'].color, true, 0, cD, 'steam', 'both');
   ctx.globalAlpha = 1;
 }
 function turbinePanelHtml(e) {
@@ -864,9 +864,9 @@ function drawHeatExchanger(ctx, e, gx, gy, dir, alpha) {
     ctx.fillText('☁', pS.x * TILE + TILE / 2 + (_s0 === 0 ? TILE / 2 : _s0 === 2 ? -TILE / 2 : 0), pS.y * TILE + TILE / 2 + (_s0 === 1 ? TILE / 2 : _s0 === 3 ? -TILE / 2 : 0));
   }
   // 进水口（左右短边中部，水色）与出汽口（长边(3)中心，蒸汽色），画在设备内部边缘
-  drawPort(ctx, pWL.x * TILE + TILE / 2, pWL.y * TILE + TILE / 2, rotSide(2, e.dir), ITEMS['water'].color, false, 0, cD);
-  drawPort(ctx, pWR.x * TILE + TILE / 2, pWR.y * TILE + TILE / 2, rotSide(0, e.dir), ITEMS['water'].color, false, 0, cD);
-  drawPort(ctx, pS.x * TILE + TILE / 2, pS.y * TILE + TILE / 2, rotSide(1, e.dir), ITEMS['steam'].color, true, 0, cD);
+  drawPort(ctx, pWL.x * TILE + TILE / 2, pWL.y * TILE + TILE / 2, rotSide(2, e.dir), ITEMS['water'].color, false, 0, cD, 'water', 'both');
+  drawPort(ctx, pWR.x * TILE + TILE / 2, pWR.y * TILE + TILE / 2, rotSide(0, e.dir), ITEMS['water'].color, false, 0, cD, 'water', 'both');
+  drawPort(ctx, pS.x * TILE + TILE / 2, pS.y * TILE + TILE / 2, rotSide(1, e.dir), ITEMS['steam'].color, true, 0, cD, 'steam', 'out');
   ctx.fillStyle = '#ffe0b0';
   ctx.font = 'bold 9px system-ui';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';

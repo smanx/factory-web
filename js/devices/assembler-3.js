@@ -81,9 +81,10 @@ function drawAssembler3(ctx, e, gx, gy, dir, alpha) {
   }
   const fr = e.fluidRecipe ? e.fluidRecipe() : null;
   const pcx = px + s / 2, pcy = py + s / 2;
-  if (fr && fr.fin.length) drawPort(ctx, pcx, pcy, (dir + 2) % 4, ITEMS[fr.fin[0]].color, false, 0, TILE);
-  else drawPort(ctx, pcx, pcy, (dir + 2) % 4, PORT_FLUID, false, 0, TILE);
-  if (fr && fr.fout.length) drawPort(ctx, pcx, pcy, dir, ITEMS[fr.fout[0]].color, true, 0, TILE);
+  const fin = (fr && fr.fin.length) ? fr.fin[0] : null;
+  const fout = (fr && fr.fout.length) ? fr.fout[0] : null;
+  drawPort(ctx, pcx, pcy, (dir + 2) % 4, fin ? ITEMS[fin].color : PORT_FLUID, false, 0, TILE, fin || null, 'in');
+  drawPort(ctx, pcx, pcy, dir, fout ? ITEMS[fout].color : PORT_FLUID, true, 0, TILE, fout || null, 'out');
   ctx.globalAlpha = 1;
 }
 

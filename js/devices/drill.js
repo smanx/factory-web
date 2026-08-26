@@ -271,12 +271,12 @@ function drawDrill(ctx, e, gx, gy, dir, alpha) {
   }
   // 抽油机原油输出口：对齐正面右侧角落的那一个格子（一格一接口），颜色用输出橙红、带箭头
   if (pump) {
-    drawPort(ctx, px + s / 2, py + s / 2, dir, PORT_OUTPUT, true, s / (2 * TILE), s / 2);
+    drawPort(ctx, px + s / 2, py + s / 2, dir, PORT_OUTPUT, true, s / (2 * TILE), s / 2, 'crude-oil', 'out');
   }
   // 电采矿机硫酸接入口：除矿物出口方向外，其余 3 个方向的正中间均可接入管道（输入绿）
   if (electric && !pump) {
     for (const sd of [(dir + 1) % 4, (dir + 2) % 4, (dir + 3) % 4]) {
-      drawPort(ctx, px + s / 2, py + s / 2, sd, PORT_INPUT, false, 0, s / 2);
+      drawPort(ctx, px + s / 2, py + s / 2, sd, PORT_INPUT, false, 0, s / 2, 'sulfuric-acid', 'in');
     }
   }
   ctx.globalAlpha = 1;

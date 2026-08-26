@@ -224,10 +224,10 @@ class ChemicalPlant extends Entity {
 const CHEM_INPUT_CELLS = [0, 2];   // 底部输入口所在格（沿边 0基，左输入=格0，右输入=格2）
 const CHEM_OUTPUT_CELLS = [0, 2];  // 顶部输出口所在格（沿边 0基）
 const CHEM_PORTS = [
-  { side: 1, color: PORT_INPUT, arrow: true, off: 1, cells: [0] },    // 南·输入格0（左侧）
-  { side: 1, color: PORT_INPUT, arrow: true, off: -1, cells: [2] },   // 南·输入格2（右侧）
-  { side: 3, color: PORT_OUTPUT, off: -1, cells: [0] },               // 北·输出格0
-  { side: 3, color: PORT_OUTPUT, off: 1, cells: [2] }                 // 北·输出格2
+  { side: 1, color: PORT_INPUT, arrow: true, off: 1, cells: [0], fluid: e => chemInputFluid(e, 0), flow: 'in' },    // 南·输入格0（左侧）
+  { side: 1, color: PORT_INPUT, arrow: true, off: -1, cells: [2], fluid: e => chemInputFluid(e, 2), flow: 'in' },   // 南·输入格2（右侧）
+  { side: 3, color: PORT_OUTPUT, off: -1, cells: [0], fluid: e => chemOutputFluid(e, 0), flow: 'out' },             // 北·输出格0
+  { side: 3, color: PORT_OUTPUT, off: 1, cells: [2], fluid: e => chemOutputFluid(e, 2), flow: 'out' }               // 北·输出格2
 ];
 // 当前配方下各输入口对应流体：用于“显示详情”时在接口处画图标
 // 化工厂 3×3，中心格=1；配方第1种流体进左侧(格0)，第2种进右侧(格2)
@@ -309,23 +309,6 @@ function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
   // 每个接口对齐一个格子（一格一接口）：输入/输出口分别落在沿边第0、2格；左右输入有讲究：
   // 配方第1种流体原料进左侧输入口，第2种进右侧输入口
   drawRotatablePorts(ctx, e, px, py, s, CHEM_PORTS);
-  const cd = e.dir | 0;
-  // 接口图标默认显示详情：各口只画流体/气体图标，不再显示文字标签
-  if (portLabelVisible()) {
-    const inSide = (1 + cd) % 4, outSide = (3 + cd) % 4;
-    // 输入口（底部）：沿边偏移 = 格号 - 中心格(1)
-    for (const cell of CHEM_INPUT_CELLS) {
-      const f = chemInputFluid(e, cell);
-      if (!f) continue;
-      drawPortIcon(ctx, px, py, s, inSide, cell - 1, f);
-    }
-    // 输出口（顶部）：沿边偏移 = 格号 - 中心格(1)
-    for (const cell of CHEM_OUTPUT_CELLS) {
-      const f = chemOutputFluid(e, cell);
-      if (!f) continue;
-      drawPortIcon(ctx, px, py, s, outSide, cell - 1, f);
-    }
-  }
   ctx.globalAlpha = 1;
 }
 
