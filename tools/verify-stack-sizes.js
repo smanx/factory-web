@@ -69,24 +69,28 @@ console.log('\n【火箭燃料/低密度结构堆叠=10（官方）】');
 check('火箭燃料', 'rocket-fuel', 10);
 check('低密度结构', 'low-density-structure', 10);
 
-// ---- 弹药（官方 stack=1）----
-console.log('\n【炮弹/原子弹堆叠=1（官方）】');
-check('普通炮弹', 'cannon-shell', 1);
-check('爆炸炮弹', 'explosive-cannon-shell', 1);
-check('铀炮弹', 'uranium-cannon-shell', 1);
+// ---- 弹药（对齐官方 stack：cannon-shell=100、atomic-bomb=10、artillery-shell=1）----
+console.log('\n【炮弹/原子弹堆叠（官方）】');
+check('普通炮弹', 'cannon-shell', 100);
+check('爆炸炮弹', 'explosive-cannon-shell', 100);
+check('铀炮弹', 'uranium-cannon-shell', 100);
 check('炮兵炮弹', 'artillery-shell', 1);
-check('原子弹', 'atomic-bomb', 1);
+check('原子弹', 'atomic-bomb', 10);
 
-// ---- 终局单体/载具（官方 stack=1）----
-console.log('\n【终局单体/载具堆叠=1（官方）】');
+// ---- 终局单体/载具（对齐官方 stack：车厢/车头=5、反应堆=10、火箭发射井=1）----
+console.log('\n【终局单体/载具堆叠（官方）】');
 check('火箭', 'rocket', 1);
 check('卫星', 'satellite', 1);
-check('核反应堆', 'nuclear-reactor', 1);
+check('核反应堆', 'nuclear-reactor', 10);
 check('汽车', 'car', 1);
 check('坦克', 'tank', 1);
 check('蜘蛛机器人', 'spidertron', 1);
 check('核燃料', 'nuclear-fuel', 1);
 check('火箭发射井', 'rocket-silo', 1);
+check('车头', 'locomotive', 5);
+check('货运车厢', 'cargo-wagon', 5);
+check('流体车厢', 'fluid-wagon', 5);
+check('炮兵车厢', 'artillery-wagon', 5);
 
 // ---- 科学包（官方 stack=200）----
 console.log('\n【科学包堆叠=200（官方）】');

@@ -131,9 +131,9 @@ function techNeedList(tid) {
 }
 
 // ===== 官方功耗数据桥接（GAME_DATA 由 factorio-data 现场生成，见 tools/generate-game-data.js）=====
-// 手工 POWER_USE 优先，缺失的用官方 energy_usage 补缺（单位 kW）。
+// 与《异星工厂》官方完全一致：官方 energy_usage 覆盖手工值（单位 kW）。
 for (const k in (GAME_DATA.powerUse || {})) {
-  if (typeof POWER_USE[k] !== 'number') POWER_USE[k] = GAME_DATA.powerUse[k];
+  if (typeof GAME_DATA.powerUse[k] === 'number' && GAME_DATA.powerUse[k] > 0) POWER_USE[k] = GAME_DATA.powerUse[k];
 }
 
 // ===== 官方带速桥接（deviceStats.beltSpeed 已换算为格/秒；快带/极速倍率 = 官方速度比）=====

@@ -155,9 +155,9 @@ function buildingMaxHp(type) { return BUILDING_HP[type] || 100; }
 function postPlaceRotatable(type) { return true; }
 
 // ===== 官方建筑血量数据桥接（GAME_DATA 由 factorio-data 现场生成，见 tools/generate-game-data.js）=====
-// 手工 BUILDING_HP 优先，缺失的用官方值补缺。
+// 与《异星工厂》官方完全一致：官方 max_health 覆盖手工值。
 for (const k in (GAME_DATA.buildingHp || {})) {
-  if (typeof BUILDING_HP[k] !== 'number') BUILDING_HP[k] = GAME_DATA.buildingHp[k];
+  if (typeof GAME_DATA.buildingHp[k] === 'number' && GAME_DATA.buildingHp[k] > 0) BUILDING_HP[k] = GAME_DATA.buildingHp[k];
 }
 
 // ===== 官方建筑占地桥接（GAME_DATA.footprint 由 factorio-data 现场生成）=====

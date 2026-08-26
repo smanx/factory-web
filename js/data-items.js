@@ -8,14 +8,14 @@
 //   - 科学包 = 200（对齐原版各色科学包 stack_size=200）
 // 未列出的物品使用默认 100。玩家背包/储物箱/载具等存储受此上限约束。
 const STACK_SIZES = {
-  // 终局单体物品与载具：堆叠 1
-  'rocket': 1, 'rocket-part': 100, 'satellite': 1, 'nuclear-reactor': 1, 'rocket-silo': 1,
-  'car': 1, 'tank': 1, 'spidertron': 1, 'locomotive': 1, 'diesel-locomotive': 1,
-  'cargo-wagon': 1, 'fluid-wagon': 1, 'artillery-wagon': 1,
+  // 终局单体物品与载具：堆叠 1（rocket=官方 rocket 物品 stack=100，见下方桥接）
+  'rocket': 1, 'rocket-part': 100, 'satellite': 1, 'nuclear-reactor': 10, 'rocket-silo': 1,  // nuclear-reactor 官方 10
+  'car': 1, 'tank': 1, 'spidertron': 1, 'diesel-locomotive': 1,
+  'locomotive': 5, 'cargo-wagon': 5, 'fluid-wagon': 5, 'artillery-wagon': 5,  // 车厢/车头官方 5
   'light-armor': 1, 'heavy-armor': 1, 'modular-armor': 1, 'power-armor': 1, 'power-armor-mk2': 1,
-  'portable-fusion-reactor': 1, 'spidertron-remote': 1,
-  // 弹药单体：炮弹/原子弹堆叠 1（对齐原版 Cannon shell / Atomic bomb / Artillery shell stack=1）
-  'cannon-shell': 1, 'explosive-cannon-shell': 1, 'uranium-cannon-shell': 1, 'artillery-shell': 1, 'atomic-bomb': 1,
+  'portable-fusion-reactor': 20, 'spidertron-remote': 1,  // 便携聚变堆官方 20
+  // 弹药：官方 stack（cannon-shell=100、atomic-bomb=10、artillery-shell=1）
+  'cannon-shell': 100, 'explosive-cannon-shell': 100, 'uranium-cannon-shell': 100, 'artillery-shell': 1, 'atomic-bomb': 10,
   // 原材料：堆叠 50
   'iron-ore': 50, 'copper-ore': 50, 'coal': 50, 'stone': 50, 'uranium-ore': 50,
   'wood': 100, 'raw-fish': 100, 'stone-brick': 100, 'calcite': 50,
