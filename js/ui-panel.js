@@ -28,9 +28,13 @@ function initPanelEvents() {
     const f = ev.target.files[0];
     if (!f) return;
     const rd = new FileReader();
-    rd.onload = () => importSaveText(rd.result);
+    rd.onload = () => {
+      // 导入后重置 input 值，保证再次选择同一文件也能触发 change
+      ev.target.value = '';
+      importSaveFile(rd.result);
+    };
     rd.onerror = () => toast('读取文件失败');
-    rd.readAsText(f);
+    rd.readAsArrayBuffer(f);
   });
   document.getElementById('panel-close').addEventListener('click', () => closePanel());
   // 中文输入法组合状态：组合拼音期间（composition）会触发 input 事件，
@@ -625,7 +629,7 @@ async function htmlSettings() {
   h += '<button data-action="quick-load">读取最新存档</button>';
   h += '<button data-action="exp-save">导出存档到文件</button> ';
   h += '<button data-action="imp-save">从文件导入存档</button>';
-  h += '<input type="file" id="imp-file" accept=".json,application/json" style="display:none">';
+  h += '<input type="file" id="imp-file" accept=".json,.gz,.json.gz,application/json,application/gzip" style="display:none">';
   h += '<div class="hint">自动存档保留最近 3 个（旧的自动覆盖）；用户可自行新建/覆盖/读取/删除存档。</div>';
   h += await saveListHtml();
   h += '<div class="sec">退出</div>';
