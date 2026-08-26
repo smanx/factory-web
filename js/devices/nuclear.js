@@ -477,10 +477,22 @@ function drawNuclearReactor(ctx, e, gx, gy, dir, alpha) {
   rr(ctx, px + 12, py + h - 22, w - 24, 6, 3); ctx.fill();
   ctx.fillStyle = wPct > 0 ? '#d98a3a' : '#6a5a3a';
   rr(ctx, px + 12, py + h - 22, (w - 24) * wPct, 6, 3); ctx.fill();
-  // 热量传输示意（橙色，与导热管对接）：画在设备底部内部靠边缘处
-  const midx = px + (w >> 1), midRow = py + TILE * (e.h - 1);
-  const cD = TILE / 2 - 1;
-  drawPort(ctx, midx, midRow + TILE / 2, 1, PORT_STEAM, true, 0, cD);
+  // 热量出口（底部中间，黄色线标注，与热交换器热交换接口同款样式）——输出热量给相邻导热管/热交换器
+  const pHt = rotCell(e, e.w >> 1, e.h - 1);   // 底部中间内部格（热量出口）
+  const ht = rotSide(1, e.dir);                // 下边(南)方向
+  ctx.strokeStyle = '#ffd23a';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  if (ht === 3 || ht === 1) {
+    // 横向（北/南边）：沿 x 方向画线
+    ctx.moveTo(pHt.x * TILE + TILE * 0.3, pHt.y * TILE + (ht === 3 ? 3 : TILE - 3));
+    ctx.lineTo(pHt.x * TILE + TILE * 0.7, pHt.y * TILE + (ht === 3 ? 3 : TILE - 3));
+  } else {
+    // 纵向（西/东边）：沿 y 方向画线
+    ctx.moveTo(pHt.x * TILE + (ht === 2 ? 3 : TILE - 3), pHt.y * TILE + TILE * 0.3);
+    ctx.lineTo(pHt.x * TILE + (ht === 2 ? 3 : TILE - 3), pHt.y * TILE + TILE * 0.7);
+  }
+  ctx.stroke();
   ctx.fillStyle = '#eaf6ea';
   ctx.font = 'bold 13px system-ui';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -497,7 +509,7 @@ function reactorPanelHtml(e) {
   h += row('堆芯温度', '', 'temp');
   h += barHtml(0);
   h += '<div class="status"></div>';
-  h += '<div class="dim">核反应堆：消耗铀燃料棒产生巨量热量，经底边橙口传给导热管，再由导热管把热量送到热交换器，由热交换器把水烧成高温蒸汽供汽轮机发电（对齐《异星工厂》核能标准链路，反应堆仅消耗铀燃料棒而非核燃料）。燃尽的燃料会留下贫化铀燃料棒，可在离心机再生为铀-238，闭合核燃料循环。核能技术解锁。</div>';
+  h += '<div class="dim">核反应堆：消耗铀燃料棒产生巨量热量，经底边(南)黄色热量出口传给导热管，再由导热管把热量送到热交换器，由热交换器把水烧成高温蒸汽供汽轮机发电（对齐《异星工厂》核能标准链路，反应堆仅消耗铀燃料棒而非核燃料）。燃尽的燃料会留下贫化铀燃料棒，可在离心机再生为铀-238，闭合核燃料循环。核能技术解锁。</div>';
   h += '<div class="dim">💡 相邻加成：并排摆放多座反应堆，每座相邻反应堆使输出 +100%（对齐《异星工厂》）。</div>';
   h += '<div class="dim">🔗 标准接法：反应堆→(导热管)→热交换器（接水管）→(蒸汽管)→汽轮机</div>';
   return h;
