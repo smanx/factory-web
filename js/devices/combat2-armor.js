@@ -83,7 +83,7 @@ const WEAPONS = {
   'submachine-gun':  { name: '冲锋枪', dmg: 7,  rate: 0.1, ammo: 'magazine', ammoTiers: ['magazine', 'piercing-rounds', 'uranium-rounds'], ammoDmg: { 'magazine': 7, 'piercing-rounds': 10, 'uranium-rounds': 16 }, spread: 0.12, auto: true,  range: 7, sfx: 'machine-gun' },
   'shotgun':         { name: '散弹枪', dmg: 6,  rate: 0.5, ammo: 'shotgun-shell', spread: 0.4,  auto: false, range: 6, pellets: 6, sfx: 'shotgun' },
   'combat-shotgun':  { name: '战斗散弹枪', dmg: 10, rate: 0.35, ammo: 'piercing-shotgun-shell', spread: 0.32, auto: false, range: 7, pellets: 8, sfx: 'shotgun' },
-  'rocket-launcher': { name: '火箭筒', dmg: 35, rate: 1.1, ammo: 'rocket',          spread: 0.03, auto: false, range: 9, splash: 1.8, sfx: 'rocket' },
+  'rocket-launcher': { name: '火箭筒', dmg: 35, rate: 1.1, ammo: 'rocket-ammo',          spread: 0.03, auto: false, range: 9, splash: 1.8, sfx: 'rocket' },
   'explosive-rocket-launcher': { name: '爆炸火箭筒', dmg: 60, rate: 1.3, ammo: 'explosive-rocket', spread: 0.05, auto: false, range: 9, splash: 3.2, sfx: 'rocket' },
   // 原子弹（对齐《异星工厂》Atomic bomb）：火箭筒发射的终极核武器，命中引发超大范围核爆
   'atomic-bomb': { name: '原子弹', dmg: 300, rate: 2.5, ammo: 'atomic-bomb', spread: 0.02, auto: false, range: 12, splash: 9, nuclear: true, sfx: 'rocket' },

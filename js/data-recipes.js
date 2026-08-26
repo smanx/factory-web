@@ -119,10 +119,10 @@ const RECIPES = {
   'shotgun-shell':     { time: 1,   inp: { 'iron-plate': 2, 'copper-plate': 2 },                   out: { 'shotgun-shell': 2 } },
   'piercing-shotgun-shell': { time: 2, inp: { 'shotgun-shell': 1, 'copper-plate': 2, 'steel-plate': 1 }, out: { 'piercing-shotgun-shell': 1 } },
   'combat-shotgun':    { time: 3,   inp: { 'steel-plate': 6, 'iron-gear': 4, 'advanced-circuit': 2 }, out: { 'combat-shotgun': 1 } },
-  'rocket':            { time: 1,   inp: { 'explosive': 1, 'iron-plate': 2 },                      out: { 'rocket': 1 } },
-  'explosive-rocket':  { time: 1.5, inp: { 'rocket': 1, 'explosive': 2, 'steel-plate': 2 },        out: { 'explosive-rocket': 1 } },
-  // 原子弹（对齐《异星工厂》Atomic bomb）：铀-235 + 火箭 + 爆炸物 + 处理器 → 终极核武器
-  'atomic-bomb':  { time: 30, inp: { 'uranium-235': 1, 'rocket': 1, 'explosive': 2, 'processing-unit': 2 }, out: { 'atomic-bomb': 1 } },
+  'rocket-ammo':      { time: 1,   inp: { 'explosive': 1, 'iron-plate': 2 },                      out: { 'rocket-ammo': 1 } },
+  'explosive-rocket':  { time: 1.5, inp: { 'rocket-ammo': 1, 'explosive': 2, 'steel-plate': 2 },        out: { 'explosive-rocket': 1 } },
+  // 原子弹（对齐《异星工厂》Atomic bomb）：铀-235 + 火箭弹 + 爆炸物 + 处理器 → 终极核武器
+  'atomic-bomb':  { time: 30, inp: { 'uranium-235': 1, 'rocket-ammo': 1, 'explosive': 2, 'processing-unit': 2 }, out: { 'atomic-bomb': 1 } },
   'flamethrower':      { time: 2,   inp: { 'steel-plate': 8, 'iron-gear': 4 },                     out: { 'flamethrower': 1 } },
   // ===== 终局战斗弹药与胶囊（对齐《异星工厂》Uranium ammo / Capsules）=====
   // 铀弹：铀-238 + 穿甲弹 → 高伤害穿甲弹药（供冲锋枪/机枪炮塔）

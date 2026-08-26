@@ -130,7 +130,7 @@ const ITEMS = {
   'rocket-launcher': { name: '火箭筒', color: '#5a7a4a', desc: '发射火箭弹造成范围爆炸伤害' },
   'explosive-rocket-launcher': { name: '爆炸火箭筒', color: '#c05a2a', desc: '发射爆炸火箭弹，爆炸范围与伤害远超普通火箭筒（对齐《异星工厂》Explosive rocket launcher）' },
   'grenade':         { name: '手雷',   color: '#4a7a3a', desc: '投掷爆炸物，对范围敌人造成伤害，可在背包直接使用' },
-  'rocket':          { name: '火箭弹', color: '#7a5a4a', desc: '火箭筒的弹药，爆炸造成范围伤害' },
+  'rocket-ammo':      { name: '火箭弹', color: '#7a5a4a', desc: '火箭筒的弹药，爆炸造成范围伤害' },
   'explosive-rocket':{ name: '爆炸火箭弹', color: '#c05a2a', desc: '装填高能爆炸物的重型火箭弹，命中后爆炸范围与伤害远超普通火箭弹，供爆炸火箭筒使用（对齐《异星工厂》Explosive rocket）' },
   'flamethrower':    { name: '火焰喷射器', color: '#a05a2a', desc: '喷射燃烧的火焰，造成持续灼烧伤害，消耗火焰弹药（由化工厂用轻油/重油制造）' },
   'flamethrower-ammo': { name: '火焰弹药', color: '#d06a2a', desc: '火焰喷射器的专用燃料，由化工厂用轻油+重油制成，能量密度高（对齐《异星工厂》Flamethrower ammo）' },

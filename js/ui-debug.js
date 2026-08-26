@@ -53,7 +53,7 @@ const DBG_GIVE_GROUPS = [
   ['弹药·武器', [
     ['magazine', 100], ['piercing-rounds', 100], ['uranium-rounds', 100],
     ['shotgun-shell', 100], ['piercing-shotgun-shell', 100], ['flamethrower-ammo', 100],
-    ['rocket', 50], ['explosive-rocket', 50], ['cannon-shell', 50], ['explosive-cannon-shell', 50],
+    ['rocket-ammo', 50], ['explosive-rocket', 50], ['cannon-shell', 50], ['explosive-cannon-shell', 50],
     ['explosive-uranium-cannon-shell', 50], ['artillery-shell', 20], ['uranium-cannon-shell', 50],
     ['grenade', 50], ['cluster-grenade', 50], ['poison-capsule', 50], ['slowdown-capsule', 50],
     ['land-mine', 50], ['explosive', 100], ['cliff-explosives', 50]
