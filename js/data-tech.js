@@ -48,6 +48,12 @@ const TECH_REQ = {
   'spoilage': 'agriculture',
   'agricultural-science-pack': 'agriculture',
   'biochamber': 'agriculture',
+  // ===== 太空时代 小行星碎块加工链（统一由「太空材料加工」科技解锁）=====
+  'crusher': 'asteroid-processing',
+  'metallic-asteroid-chunk': 'asteroid-processing',
+  'carbonic-asteroid-chunk': 'asteroid-processing',
+  'oxide-asteroid-chunk': 'asteroid-processing',
+  'ice': 'asteroid-processing',
   'speed-module': 'modules',
   'productivity-module': 'modules',
   'efficiency-module': 'advanced-material-processing',

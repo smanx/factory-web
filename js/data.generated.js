@@ -168,6 +168,11 @@ const GAME_DATA = {
   "spoilage": 200,
   "agricultural-science-pack": 200,
   "biochamber": 20,
+  "crusher": 10,
+  "metallic-asteroid-chunk": 1,
+  "carbonic-asteroid-chunk": 1,
+  "oxide-asteroid-chunk": 1,
+  "ice": 50,
   "roboport": 10,
   "logistic-robot": 50,
   "construction-robot": 50,
@@ -258,6 +263,7 @@ const GAME_DATA = {
   "electromagnetic-plant": 350,
   "recycler": 300,
   "biochamber": 300,
+  "crusher": 350,
   "beacon": 200,
   "wooden-chest": 100,
   "iron-chest": 200,
@@ -326,6 +332,7 @@ const GAME_DATA = {
   "electromagnetic-plant": 2000,
   "recycler": 180,
   "biochamber": 500,
+  "crusher": 540,
   "beacon": 480,
   "lab": 60,
   "offshore-pump": 60,
@@ -422,6 +429,10 @@ const GAME_DATA = {
   "biochamber": {
    "craftingSpeed": 2,
    "moduleSlots": 4
+  },
+  "crusher": {
+   "craftingSpeed": 1,
+   "moduleSlots": 2
   }
  },
  "recipe": {
@@ -2973,6 +2984,26 @@ const GAME_DATA = {
    "zh": "生物室",
    "en": "Biochamber"
   },
+  "crusher": {
+   "zh": "破碎机",
+   "en": "Crusher"
+  },
+  "metallic-asteroid-chunk": {
+   "zh": "金属星块",
+   "en": "Metallic asteroid chunk"
+  },
+  "carbonic-asteroid-chunk": {
+   "zh": "碳质星块",
+   "en": "Carbonic asteroid chunk"
+  },
+  "oxide-asteroid-chunk": {
+   "zh": "氧化星块",
+   "en": "Oxide asteroid chunk"
+  },
+  "ice": {
+   "zh": "冰",
+   "en": "Ice"
+  },
   "roboport": {
    "zh": "机器人指令平台",
    "en": "Roboport"
@@ -3186,6 +3217,22 @@ const GAME_DATA = {
   "biosulfur": {
    "zh": "生物硫磺",
    "en": "Biosulfur"
+  },
+  "metallic-asteroid-crushing": {
+   "zh": "金属星岩粉碎",
+   "en": "Metallic asteroid crushing"
+  },
+  "carbonic-asteroid-crushing": {
+   "zh": "碳质星岩粉碎",
+   "en": "Carbonic asteroid crushing"
+  },
+  "oxide-asteroid-crushing": {
+   "zh": "氧化星岩粉碎",
+   "en": "Oxide asteroid crushing"
+  },
+  "ice-melting": {
+   "zh": "融冰",
+   "en": "Ice melting"
   },
   "kovarex": {
    "zh": "铀增殖处理",
@@ -3542,6 +3589,10 @@ const GAME_DATA = {
   },
   "biochamber": {
    "w": 3,
+   "h": 3
+  },
+  "crusher": {
+   "w": 2,
    "h": 3
   }
  },

@@ -25,6 +25,7 @@ const BUILD_DEFS = {
   'electromagnetic-plant': { w: 4, h: 4, solid: true },  // 太空时代电磁工厂（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±2 → 4×4）
   'recycler': { w: 2, h: 4, solid: true },  // 太空时代回收机（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±0.9×±1.85 → 2×4）
   'biochamber': { w: 3, h: 3, solid: true },  // 太空时代生化炉（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±1.5 → 3×3）
+  'crusher': { w: 2, h: 3, solid: true },  // 太空时代破碎机（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±1×±1.5 → 2×3）
   'beacon':             { w: 3, h: 3, solid: true },
   'wooden-chest':       { w: 1, h: 1, solid: true },
   'iron-chest':         { w: 1, h: 1, solid: true },
@@ -118,6 +119,7 @@ const BUILDING_HP = {
   'assembling-machine-1': 300, 'assembling-machine-2': 350, 'assembling-machine-3': 400, 'beacon': 200,
   'recycler': 300,  // 回收机官方 max_health=300（由 GAME_DATA 桥接）
   'biochamber': 300,  // 生化炉官方 max_health=300（由 GAME_DATA 桥接）
+  'crusher': 350,  // 破碎机官方 max_health=350（由 GAME_DATA 桥接）
   // 储物箱（官方 wooden 100 / iron 200 / steel 350）
   'wooden-chest': 100, 'iron-chest': 200, 'steel-chest': 350,
   'creative-chest': 350, 'void-chest': 350,

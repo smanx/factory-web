@@ -81,6 +81,7 @@ const TECHS = {
   'electromagnetics': { name: '电磁学', cost: { 'space-science-pack': 100, 'utility-science-pack': 100 }, desc: '太空时代电磁学：解锁碳纤维/锂/锂板/超导体材料链与电磁工厂、电磁科研包（对齐《异星工厂》Space Age 电磁科学），需先建立空间科学体系', req: ['space-science'] },
   'recycling': { name: '回收科技', cost: { 'electromagnetic-science-pack': 100, 'utility-science-pack': 100 }, desc: '解锁回收机：把物品还原成其配方原料的 25%，用于处理生产过剩与回收高级材料（对齐《异星工厂》Recycling 科技，需电磁科研）', req: ['electromagnetics'] },
   'agriculture': { name: '农业科技', cost: { 'space-science-pack': 100, 'utility-science-pack': 100 }, desc: '太空时代农业：解锁雅玛果泥/生物流/营养素/生物硫磺生物质材料链与生化炉、农业科研包（对齐《异星工厂》Space Age 农业科学），需先建立太空科研体系', req: ['space-science'] },
+  'asteroid-processing': { name: '太空材料加工', cost: { 'space-science-pack': 100, 'utility-science-pack': 100 }, desc: '太空时代小行星材料加工：解锁破碎机与小行星碎块（金属/碳质/氧化星块）的粉碎加工，可把星块还原为铁矿石/碳/冰等基础资源（对齐《异星工厂》Space Age 破碎机/小行星加工），需先建立太空科研体系', req: ['space-science'] },
   'space-research-speed': { name: '空间科研速度', cost: { 'space-science-pack': 100 }, infinite: true, desc: '无限科技：每次研究科研速度 +20%（对齐《异星工厂》Research speed 无限科技）', req: ['space-science'] },
   'space-mining-productivity': { name: '空间采矿产能', cost: { 'space-science-pack': 100 }, infinite: true, desc: '无限科技：每次研究采矿产能 +10%（对齐《异星工厂》Mining productivity 无限科技）', req: ['space-science'] },
   'weapon-damage': { name: '武器伤害', cost: { 'space-science-pack': 100, 'military-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究提升所有武器与炮塔伤害 +10%（对齐《异星工厂》Weapon damage 无限科技），让科技军备在终局持续成长', req: ['space-science', 'advanced-combat'] },

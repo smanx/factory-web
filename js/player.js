@@ -366,7 +366,7 @@ function updateMining(dt) {
       if (typeof toast === 'function') toast('+1 木材');
       if (axm > 1) axeConsume();
     }
-  } else if (((ti >= 0 && ti < ORES.length) || ti === ORE_URANIUM) && getOreAmt(t.tx, t.ty) > 0) {
+  } else if (((ti >= 0 && ti < ORES.length) || ti === ORE_URANIUM || ti === ORE_ASTEROID) && getOreAmt(t.tx, t.ty) > 0) {
     const axm = axeMineMult();
     if (axm > 1 && !(G.axeDura > 0)) G.axeDura = AXE_DURABILITY[currentAxe()] || 0;
     p.mineProg += dt * ((G.dbg && G.dbg.mineMult) || 1) * axm / HAND_MINE_TIME;

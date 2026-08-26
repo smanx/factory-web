@@ -385,7 +385,7 @@ function drawHoverAndMining(ctx) {
   if (p.mining) {
     const [mx, my] = p.mining.split(',').map(Number);
     const ti = getOreType(mx, my);
-    if ((ti >= 0 && ti < ORES.length) || ti === ORE_URANIUM) {
+    if ((ti >= 0 && ti < ORES.length) || ti === ORE_URANIUM || ti === ORE_ASTEROID) {
       ctx.strokeStyle = '#fff';
       ctx.lineWidth = 3;
       ctx.beginPath();

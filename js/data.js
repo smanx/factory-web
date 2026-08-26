@@ -25,7 +25,7 @@ const DRILL_TIME = 1.0;
 //   普通矿（铁/铜/煤/石）mining_time = 2s；铀矿 mining_time = 4s。
 // 实际每采 1 个矿耗时 = 该矿石采矿时间 ÷ 采矿机速度（热能 0.25 / 电 0.5）。
 const ORE_MINING_TIME = {
-  'iron-ore': 2.0, 'copper-ore': 2.0, 'coal': 2.0, 'stone': 2.0, 'uranium-ore': 4.0
+  'iron-ore': 2.0, 'copper-ore': 2.0, 'coal': 2.0, 'stone': 2.0, 'uranium-ore': 4.0, 'metallic-asteroid-chunk': 2.0, 'carbonic-asteroid-chunk': 2.0, 'oxide-asteroid-chunk': 2.0
 };
 function oreMiningTime(item) {
   const t = ORE_MINING_TIME[item];
@@ -98,10 +98,28 @@ const FLUIDS = ['water', 'steam', 'crude-oil', 'heavy-oil', 'light-oil', 'petrol
 // ⚠️ 版本迁移：早期版本原油索引为 5，本次新增铀矿后改为 6，读档时对旧档做 5→6 重映射。
 const ORE_OIL = 5;                       // 原油矿床的 oreType 索引（不进手挖矿表）
 const ORE_URANIUM = 6;                   // 铀矿床的 oreType 索引
+const ORE_ASTEROID = 7;                  // 小行星碎块矿床的 oreType 索引（太空时代，随机出金属/碳质/氧化星块）
 function oreItemId(ti) {
   if (ti === ORE_OIL) return 'crude-oil';
   if (ti === ORE_URANIUM) return 'uranium-ore';
+  if (ti === ORE_ASTEROID) return randomAsteroidChunk();
   return ORES[ti];
+}
+// 随机返回一种小行星碎块（金属/碳质/氧化），破碎机可粉碎加工
+function randomAsteroidChunk() {
+  const r = Math.random();
+  if (r < 0.4) return 'metallic-asteroid-chunk';
+  if (r < 0.7) return 'carbonic-asteroid-chunk';
+  return 'oxide-asteroid-chunk';
+}
+// 按矿点坐标确定性返回一种小行星碎块：同一矿点始终产出同一种星块，
+// 避免采矿机缓冲内混入多种星块类型（破碎机/传送带以单类型处理）。
+function asteroidChunkFor(tx, ty) {
+  const h = ((tx * 374761393 + ty * 668265263) ^ (tx * ty)) >>> 0;
+  const r = h % 100 / 100;
+  if (r < 0.4) return 'metallic-asteroid-chunk';
+  if (r < 0.7) return 'carbonic-asteroid-chunk';
+  return 'oxide-asteroid-chunk';
 }
 const PIPE_CAP = GAME_DATA.fluidCapacity?.pipeVolume ?? 100;   // 管道容量（官方 pipe fluid_box.volume=100，由 GAME_DATA 桥接）
 const PIPE_FLOW = 3;

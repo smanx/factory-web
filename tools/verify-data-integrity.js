@@ -67,6 +67,8 @@ const dynamicKeys = new Set([
   'solid-fuel-light-oil', 'solid-fuel-heavy-oil', // 同种固体燃料的变体配方
   'nutrients-from-bioflux', // 生化炉配方：果泥→营养素（产物键≠配方键）
   'biosulfur',              // 生化炉配方：变质物+生物结晶→硫磺（产物键≠配方键）
+  'metallic-asteroid-crushing', 'carbonic-asteroid-crushing', 'oxide-asteroid-crushing', // 破碎机配方：星块粉碎（产物键≠配方键）
+  'ice-melting',            // 破碎机配方：冰→水（产物为流体，无独立物品键）
 ]);
 for (const rid in RECIPES) {
   if (rid.startsWith('fill-') || rid.startsWith('empty-')) continue; // 动态桶配方

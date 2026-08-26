@@ -30,7 +30,7 @@ class Drill extends Entity {
     this.spin = 0;
   }
   // 可开采的矿石索引：普通矿 0-4 + 铀矿 6（原油 5 由抽油机专用）。
-  minableOreType(ti) { return (ti >= 0 && ti < ORES.length) || ti === ORE_URANIUM; }
+  minableOreType(ti) { return (ti >= 0 && ti < ORES.length) || ti === ORE_URANIUM || ti === ORE_ASTEROID; }
   oreTile() {
     for (let dy = 0; dy < this.h; dy++)
       for (let dx = 0; dx < this.w; dx++) {
@@ -40,7 +40,12 @@ class Drill extends Entity {
       }
     return null;
   }
-  mineItem(o) { return oreItemId(getOreType(o[0], o[1])); }
+  mineItem(o) {
+    const ti = getOreType(o[0], o[1]);
+    // 小行星碎块矿床：按矿点坐标确定性返回同一种星块（金属/碳质/氧化），保证采矿机缓冲单类型
+    if (ti === ORE_ASTEROID) return asteroidChunkFor(o[0], o[1]);
+    return oreItemId(ti);
+  }
   // 当前矿石的采矿时间（对齐《异星工厂》每种资源独立 mining_time）：无矿时用默认 DRILL_TIME。
   oreTime() {
     const o = this.oreTile();
@@ -303,7 +308,7 @@ function drillNeedsOre(type, tx, ty, dir, ew, eh) {
   for (let dy = 0; dy < eh && !hasOre; dy++)
     for (let dx = 0; dx < ew && !hasOre; dx++) {
       const ti = getOreType(tx + dx, ty + dy);
-      if ((ti >= 0 && ti < ORES.length) || ti === ORE_URANIUM) hasOre = true;
+      if ((ti >= 0 && ti < ORES.length) || ti === ORE_URANIUM || ti === ORE_ASTEROID) hasOre = true;
     }
   return hasOre ? null : { ok: false };
 }

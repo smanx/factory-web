@@ -471,6 +471,17 @@ function genChunk(cx, cy) {
     growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, usz, uamt, ORE_URANIUM);
   }
 
+  // 小行星碎块矿床：太空时代终局资源，距离比铀矿更远才生成，越远越多，矿团适中
+  // （官方小行星碎块来自太空，此处适配为遥远地面矿床，供破碎机加工）
+  const aChance = dist > 200 ? 0.35 : dist > 150 ? 0.12 : 0;
+  if (rng() < aChance) {
+    const sx = 2 + Math.floor(rng() * (CHUNK - 4));
+    const sy = 2 + Math.floor(rng() * (CHUNK - 4));
+    const asz = Math.max(6, Math.round((12 + rng() * 16) * Math.min(2.2, scale) * sz));
+    const aamt = (300 + rng() * 600) * scale * ri;
+    growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, asz, aamt, ORE_ASTEROID);
+  }
+
   // 出生点保证：原点上一定有一片小型铁矿起步
   if (cx === 0 && cy === 0) {
     for (let attempt = 0; attempt < 8; attempt++) {

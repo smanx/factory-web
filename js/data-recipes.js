@@ -194,6 +194,17 @@ const RECIPES = {
   'agricultural-science-pack': { time: 4, inp: { 'bioflux': 1, 'spoilage': 2 }, out: { 'agricultural-science-pack': 1 } },
   // 生化炉：钢板 + 电路板 + 齿轮 + 混凝土 → 生化炉（官方需生物质，此处适配基础资源）
   'biochamber': { time: 10, inp: { 'steel-plate': 50, 'electronic-circuit': 50, 'iron-gear-wheel': 40, 'concrete': 20 }, out: { 'biochamber': 1 } },
+  // ===== 太空时代 小行星碎块加工链（破碎机配方，官方数值参考，见 GAME_DATA）=====
+  // 破碎机本体：低密度结构 + 钢板 + 电动引擎 → 破碎机（官方 energy_required=10s，此处对齐 10s）
+  'crusher': { time: 10, inp: { 'low-density-structure': 20, 'steel-plate': 10, 'electric-engine-unit': 10 }, out: { 'crusher': 1 } },
+  // 金属星块粉碎：金属星块×1 → 铁矿石×20（官方 2s，30% 概率返还星块）
+  'metallic-asteroid-crushing': { time: 2, inp: { 'metallic-asteroid-chunk': 1 }, out: { 'iron-ore': 20 } },
+  // 碳质星块粉碎：碳质星块×1 → 碳×10（官方 2s，30% 概率返还星块）
+  'carbonic-asteroid-crushing': { time: 2, inp: { 'carbonic-asteroid-chunk': 1 }, out: { 'carbon': 10 } },
+  // 氧化星块粉碎：氧化星块×1 → 冰×5（官方 2s，30% 概率返还星块）
+  'oxide-asteroid-crushing': { time: 2, inp: { 'oxide-asteroid-chunk': 1 }, out: { 'ice': 5 } },
+  // 冰熔化：冰 → 水（官方 ice-melting 0.5s，此处适配熔炉/锅炉链，供氧化链循环）
+  'ice-melting': { time: 0.5, inp: { 'ice': 1 }, out: { 'water': 100 } },
   // 硫酸：硫磺 + 水 + 铁板 → 硫酸（原版 1s，数量简化）
   // 硫酸：硫磺 + 水 + 铁板 → 硫酸（原版 1s，数量简化）
   'sulfuric-acid':        { time: 1, inp: { 'iron-plate': 1, 'sulfur': 5, 'water': 100 }, out: { 'sulfuric-acid': 50 } },
@@ -346,7 +357,8 @@ const DEVICE_NAMES = {
   'oil-refinery': '炼油厂',
   'centrifuge': '离心机',
   'electromagnetic-plant': '电磁工厂',
-  'biochamber': '生化炉'
+  'biochamber': '生化炉',
+  'crusher': '破碎机'
 };
 // 电磁工厂专属配方（太空时代电磁产品）：超导体 / 电磁科研包 / 电磁工厂本体
 const ELECTRO_RECIPES = ['superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant'];
@@ -354,10 +366,14 @@ function isElectroRecipe(id) { return ELECTRO_RECIPES.indexOf(id) >= 0; }
 // 生化炉专属配方（太空时代生物产品）：果泥 / 生物流 / 营养素 / 生物硫磺 / 农业科研包 / 生化炉本体
 const BIOCHAMBER_RECIPES = ['yumako-mash', 'bioflux', 'nutrients-from-bioflux', 'biosulfur', 'agricultural-science-pack', 'biochamber'];
 function isBiochamberRecipe(id) { return BIOCHAMBER_RECIPES.indexOf(id) >= 0; }
+// 破碎机专属配方（太空时代小行星碎块加工）：金属/碳质/氧化星块粉碎 + 破碎机本体 + 冰熔化
+const CRUSHER_RECIPES = ['metallic-asteroid-crushing', 'carbonic-asteroid-crushing', 'oxide-asteroid-crushing', 'crusher', 'ice-melting'];
+function isCrusherRecipe(id) { return CRUSHER_RECIPES.indexOf(id) >= 0; }
 function recipeDevice(id) {
   if (GAME_DATA.recipeDevice && GAME_DATA.recipeDevice[id]) return GAME_DATA.recipeDevice[id];
   if (isElectroRecipe(id)) return 'electromagnetic-plant';
   if (isBiochamberRecipe(id)) return 'biochamber';
+  if (isCrusherRecipe(id)) return 'crusher';
   if (isRefineryRecipe(id)) return 'oil-refinery';
   if (isChemRecipe(id)) return 'chemical-plant';
   if (isCentrifugeRecipe(id)) return 'centrifuge';
