@@ -2,9 +2,10 @@
 
 // ===== 抽油机：吃电力开采原油矿床（对齐《异星工厂》：油井产量随抽取递减） =====
 // 产量因子 yieldFactor 随每次抽取递减（从 1.0 降到最低 PUMPJACK_MIN_YIELD），
-// 越抽越慢，模拟油井枯竭；生产速度 = machMult() * yieldFactor。
+// 越抽越慢，模拟油井枯竭；生产速度 = 基础速度 10 × 产量因子。
 const PUMPJACK_MIN_YIELD = 0.2;        // 最低产量因子（对齐《异星工厂》：降到原始值 20% 后不再下降）
 const PUMPJACK_YIELD_DECAY = 0.005;    // 每次抽取递减量（每产 1 桶油递减 0.005，产 160 桶后降到 20%）
+const PUMPJACK_BASE_RATE = 10;         // 抽油机基础速度（原油/秒）：油井产量 100% 时 = 10 原油/秒（默认原为 1）
 
 class Pumpjack extends ElectricDrill {
   constructor(type, x, y) { super(type || 'pumpjack', x, y); this.yieldFactor = 1; }
@@ -18,10 +19,12 @@ class Pumpjack extends ElectricDrill {
     if (this.dir === 1) return [[this.x, this.y + this.h]];               // 南：左下角
     return [[this.x + this.w - 1, this.y - 1]];                           // 北：右上角
   }
-  // 产量因子随抽取递减：yieldFactor 越低，抽取越慢（对齐《异星工厂》油井产量递减）
+  // 产量因子随抽取递减：yieldFactor 越低，抽取越慢（对齐《异星工厂》油井产量递减）。
+  // 生产速度 = 基础速度 10 × 原油井产量因子：产量 100%（yieldFactor=1）时 = 10 原油/秒，
+  // 产量减至 20% 时 = 2 原油/秒；若产量 200% 则 = 20 原油/秒（随油井出产率线性缩放）。
   machMult() {
     if (this.yieldFactor === undefined) this.yieldFactor = 1;
-    return this.yieldFactor;
+    return this.yieldFactor * PUMPJACK_BASE_RATE;
   }
   oreTile() {
     for (let dy = 0; dy < this.h; dy++)
