@@ -22,7 +22,7 @@ function reactorEmit(e, dt) {
 // 汽轮机复用蒸汽机的“蒸汽 → 电力”模型，但功率与耗汽量远高。
 
 // ===================== 离心机（2×2，吃电力）=====================
-// 处理铀矿：10 铀矿 → 1 铀-235 + 9 铀-238；或执行 Kovarex 富集循环。
+// 铀浓缩处理：10 铀矿 → 概率 0.7% 铀-235 / 99.3% 铀-238；或执行 Kovarex 铀增殖循环。
 class Centrifuge extends Entity {
   constructor(type, x, y) {
     super(type || 'centrifuge', x, y);
@@ -60,7 +60,8 @@ class Centrifuge extends Entity {
     this.prodBuf = (this.prodBuf || 0) + nProd;
     if (this.prodBuf >= thr) {
       this.prodBuf -= thr;
-      const mainOut = rec ? Object.keys(rec.out)[0] : null;
+      // 主产出：普通配方取 out 首项；概率配方（铀浓缩）取概率最高的产物（铀-238）
+      const mainOut = rec ? (rec.prob ? Object.keys(rec.prob).sort((a, b) => rec.prob[b] - rec.prob[a])[0] : Object.keys(rec.out)[0]) : null;
       if (mainOut) { this.outp[mainOut] = (this.outp[mainOut] || 0) + 1; if (typeof trackProd === 'function') trackProd(mainOut, 1); }
       return 1;
     }
@@ -90,9 +91,22 @@ class Centrifuge extends Entity {
       this.prog += dt * 1 * this.moduleSpeedMult() * powerFactor();
       this.spin += dt * 10;
       if (this.prog >= rec.time) {
-        for (const k in rec.out) {
-          this.outp[k] = (this.outp[k] || 0) + rec.out[k];
-          if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
+        if (rec.prob) {
+          // 概率产出（铀浓缩）：按概率随机产出 1 件铀（0.7% 铀-235，99.3% 铀-238）
+          let r = Math.random();
+          let chosen = null;
+          for (const k in rec.prob) {
+            r -= rec.prob[k];
+            if (r < 0) { chosen = k; break; }
+          }
+          if (!chosen) chosen = Object.keys(rec.prob)[0];
+          this.outp[chosen] = (this.outp[chosen] || 0) + 1;
+          if (typeof trackProd === 'function') trackProd(chosen, 1);
+        } else {
+          for (const k in rec.out) {
+            this.outp[k] = (this.outp[k] || 0) + rec.out[k];
+            if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
+          }
         }
         this.applyProductivity(rec);
         this.crafting = false;
@@ -102,7 +116,14 @@ class Centrifuge extends Entity {
     }
     // 原料不足则等
     for (const k in rec.inp) if ((this.inp[k] || 0) < rec.inp[k]) return;
-    for (const k in rec.out) if ((this.outp[k] || 0) + rec.out[k] > 50) return;
+    // 产出容量检查：普通配方按各项独立容量；概率配方（每周期只产 1 件）按总容量
+    if (rec.prob) {
+      let total = 0;
+      for (const k in this.outp) total += this.outp[k];
+      if (total >= 50) return;
+    } else {
+      for (const k in rec.out) if ((this.outp[k] || 0) + rec.out[k] > 50) return;
+    }
     for (const k in rec.inp) {
       this.inp[k] -= rec.inp[k];
       if (typeof trackProd === 'function') trackProd(k, -rec.inp[k]);
@@ -213,10 +234,10 @@ function centrifugePanelHtml(e) {
     const r = CENTRIFUGE_RECIPES[rid];
     h += '<button data-action="rec" data-id="' + rid + '" class="' + (cur === rid ? 'on' : '') + '">' + r.name + '</button>';
   }
-  // 铀增值处理(Kovarex)：需「铀富集」科技解锁（对齐《异星工厂》Kovarex enrichment process）
+  // 铀增殖处理(Kovarex)：需「铀富集」科技解锁（对齐《异星工厂》Kovarex enrichment process）
   const kovUnlocked = recipeUnlocked('kovarex');
   const kovLock = recipeLockingTech('kovarex');
-  h += '<button data-action="rec" data-id="kovarex" class="' + (cur === 'kovarex' ? 'on' : '') + (kovUnlocked ? '' : ' locked-recipe') + '" ' + (kovUnlocked ? '' : 'disabled') + ' title="' + (kovUnlocked ? '铀增值处理：持续增产铀-235' : ('🔒 需先研究「' + (kovLock ? TECHS[kovLock].name : '研究') + '」')) + '">铀增值处理(Kovarex)' + (kovUnlocked ? '' : ' 🔒') + '</button>';
+  h += '<button data-action="rec" data-id="kovarex" class="' + (cur === 'kovarex' ? 'on' : '') + (kovUnlocked ? '' : ' locked-recipe') + '" ' + (kovUnlocked ? '' : 'disabled') + ' title="' + (kovUnlocked ? '铀增殖：持续增产铀-235' : ('🔒 需先研究「' + (kovLock ? TECHS[kovLock].name : '研究') + '」')) + '">铀增殖(Kovarex)' + (kovUnlocked ? '' : ' 🔒') + '</button>';
   // 模块槽位（对齐《异星工厂》：离心机可装 2 模块）
   h += modulePanelSection(e);
   h += row('原料', '<span class="dim"></span>', 'inp');
@@ -224,7 +245,7 @@ function centrifugePanelHtml(e) {
   h += row('电力', powerStatusLiveHtml(e), 'power');
   h += barHtml(0);
   h += '<div class="status"></div>';
-  h += '<div class="dim">离心机：把铀矿分离成铀-235（小概率）/铀-238。铀-235 在组装机制成核燃料；也可用铀增值处理持续增产铀-235。原料由机械臂/传送带放入，产出由机械臂取出。可装 2 个模块（速度/产能/效率）并受信号塔加成。</div>';
+  h += '<div class="dim">离心机：铀浓缩把铀矿分离成铀-235（0.7%）/铀-238（99.3%）。铀-235 在组装机制成核燃料；也可用铀增殖循环持续增产铀-235。原料由机械臂/传送带放入，产出由机械臂取出。可装 2 个模块（速度/产能/效率）并受信号塔加成。</div>';
   h += circuitPanelHtml(e, 'cen');
   return h;
 }
@@ -251,7 +272,7 @@ function centrifugePanelLive(e, api) {
 function centrifugeTip(e) {
   if (!e.recipe) return '未选择配方';
   if (e.crafting) return '处理中 ' + Math.round((e.prog / e.recipeObj().time) * 100) + '%';
-  return e.recipe === 'kovarex' ? '铀增值处理（等待原料）' : '铀浓缩处理（等待原料）';
+  return e.recipe === 'kovarex' ? '铀增殖循环（等待原料）' : '铀浓缩处理（等待原料）';
 }
 
 // ===================== 核反应堆（5×5，吃核燃料+水）=====================

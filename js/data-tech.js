@@ -253,7 +253,7 @@ function recipeTechReq(rid) {
   if (RECIPE_TECH[rid]) return RECIPE_TECH[rid];
   const rec = RECIPES[rid] || REFINERY_RECIPES[rid] || CENTRIFUGE_RECIPES[rid];
   if (!rec) return null;
-  const outKeys = Object.keys(rec.out || {});
+  const outKeys = Object.keys(rec.out || rec.prob || {});
   if (!outKeys.length) return null;
   return itemTechReq(outKeys[0]);
 }
