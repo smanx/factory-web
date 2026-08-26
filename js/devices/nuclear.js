@@ -248,7 +248,7 @@ function centrifugePanelHtml(e) {
     for (const k in curRec.inp) h += '<div class="mach-rate">' + chip(k, curRec.inp[k]) + '</div>';
     h += '<div class="dim">' + (curRec.prob ? '概率产出（每周期随机 1 件）：' : '产出：') + '</div>';
     if (curRec.prob) {
-      for (const k in curRec.prob) h += '<div class="mach-rate">' + chip(k) + '（' + (curRec.prob[k] * 100) + '%）</div>';
+      for (const k in curRec.prob) h += '<div class="mach-rate">' + chip(k) + '（' + (curRec.prob[k] * 100).toFixed(2) + '%）</div>';
     } else {
       for (const k in curRec.out) h += '<div class="mach-rate">' + chip(k, curRec.out[k]) + '</div>';
     }
