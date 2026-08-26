@@ -32,4 +32,5 @@ jobs:
           git checkout -b dist
           git add -A
           git commit -m "deploy: $(date +'%Y-%m-%d %H:%M:%S')"
+          git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
           git push -f origin dist
