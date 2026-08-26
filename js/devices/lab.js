@@ -15,7 +15,7 @@ class Lab extends Entity {
   // 模块速度倍率（对齐组装机：速度 +0.4/当量、产能 -0.1/当量、效率 -0.03/当量）
   moduleSpeedMult() {
     const mc = moduleCounts(this.modules);
-    return 1 + 0.4 * mc.speed - 0.1 * mc.prod - 0.03 * mc.eff;
+    return 1 + 0.4 * mc.speed - 0.1 * mc.prod - 0.03 * mc.eff - mc.qualityPenalty;
   }
   // 每完成一次科研结算产能模块：返回是否“免费科研”（本次不消耗科学包）
   applyProductivity() {
@@ -214,7 +214,7 @@ function labPanelHtml(e) {
   // 模块槽（对齐组装机面板）：可装产能/速度/效率模块，产能模块让部分科研免费
   h += '<div class="dim" style="margin-top:4px">模块（产能/速度/效率）：</div>';
   h += '<div class="modrow">';
-  const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3'];
+  const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3', 'quality-module', 'quality-module-2', 'quality-module-3'];
   for (const mid of order) {
     if (!itemUnlocked(mid)) continue;
     const n = Math.min(invCount(mid), e.moduleSlotCount() - (e.modules[mid] || 0));

@@ -57,7 +57,8 @@ class Assembler extends Entity {
     if (!this.circuitEnabled()) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
-      this.prog += dt * asmMult() * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 0.5) * this.moduleSpeedMult() * powerFactor();
+      const qMult = (typeof qualityMult === 'function' && this.quality) ? qualityMult(this.quality) : 1;
+      this.prog += dt * asmMult() * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 0.5) * this.moduleSpeedMult() * powerFactor() * qMult;
       this.spin += dt * 4;
       // 工业氛围：组装机运转时低频迸出细碎火花（画面优化）
       if (typeof spawnSpark === 'function' && Math.random() < dt * 1.2) {
@@ -70,7 +71,7 @@ class Assembler extends Entity {
       }
       if (this.prog >= rec.time) {
         for (const k in rec.out) {
-          this.outp[k] = (this.outp[k] || 0) + rec.out[k];
+          emitQuality(this, this.outp, k, rec.out[k]);
           if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
         }
         this.applyProductivity(rec);
@@ -99,7 +100,7 @@ class Assembler extends Entity {
     // 信号塔广播的额外模块加成（本机模块槽外额外叠加）
     const bb = (typeof beaconBonus === 'function') ? beaconBonus(this.x, this.y) : null;
     if (bb) { mc.speed += bb.speed; mc.prod += bb.prod; mc.eff += bb.eff; }
-    return 1 + 0.4 * mc.speed - 0.1 * mc.prod - 0.03 * mc.eff;
+    return 1 + 0.4 * mc.speed - 0.1 * mc.prod - 0.03 * mc.eff - mc.qualityPenalty;
   }
   // 每次生产后结算产能模块：返回额外主产物数量
   applyProductivity(rec) {
@@ -273,11 +274,11 @@ function assemblerPanelHtml(e) {
     const mc = moduleCounts(e.modules);
     const hasMod = (Object.keys(e.modules).length > 0);
     h += row('模块', hasMod ?
-      '速度+' + mc.speed.toFixed(1) + ' 产能+' + mc.prod.toFixed(1) + ' 效率-' + mc.eff.toFixed(1) : '<span class="dim">无</span>', 'mod');
+      '速度+' + mc.speed.toFixed(1) + ' 产能+' + mc.prod.toFixed(1) + ' 效率-' + mc.eff.toFixed(1) + ' 品质+' + (mc.quality*100).toFixed(1) + '%' : '<span class="dim">无</span>', 'mod');
     for (const mid of Object.keys(e.modules)) {
       if ((e.modules[mid] || 0) > 0) h += '<span class="dim">' + ITEMS[mid].name + ' ×' + e.modules[mid] + '</span> ';
     }
-    const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3'];
+    const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3', 'quality-module', 'quality-module-2', 'quality-module-3'];
     for (const mid of order) {
       if (!itemUnlocked(mid)) continue;
       const n = Math.min(invCount(mid), e.moduleSlotCount() - (e.modules[mid] || 0));
@@ -372,3 +373,25 @@ DEVICE_PANEL['assembling-machine-2'] = assemblerPanel;
 // 组装机 I/II 均可旋转朝向；旋转改变流体入口/出口所在侧（背部入口、前部出口）
 DEVICE_DIR_ROTATE['assembling-machine-1'] = true;
 DEVICE_DIR_ROTATE['assembling-machine-2'] = true;
+
+// ===== 品质产出（对齐《异星工厂》Quality DLC）=====
+// 设备含品质模块时，每次产出每个单位有 chance 概率升级为更高品质（罕见/稀有/史诗/传说）。
+// 品质物品以 `item~quality` 键存储于输出缓存，取走/机械臂搬运时按带品质键处理。
+function emitQuality(e, outp, itemId, count) {
+  // 仅对可受益于品质的物品（建筑/装备，已在 ITEMS 预生成品质变体）施加品质升级；
+  // 普通材料（铁板/电路板等）不产生品质变体，保持常规产出，避免出现无法显示的品质物品。
+  const eligible = (typeof QUALITY_ELIGIBLE_ITEMS !== 'undefined' && QUALITY_ELIGIBLE_ITEMS.has(itemId));
+  const chance = eligible ? moduleQualityChance(e.modules) : 0;
+  // 信号塔广播的品质加成（信号塔模块槽装品质模块同样广播）
+  const bb = (typeof beaconBonus === 'function') ? beaconBonus(e.x, e.y) : null;
+  const totalChance = chance + (bb ? bb.quality || 0 : 0);
+  if (totalChance <= 0) {
+    outp[itemId] = (outp[itemId] || 0) + count;
+    return;
+  }
+  for (let i = 0; i < count; i++) {
+    const q = rollQualityUpgrade('normal', totalChance);
+    const tagged = tagQuality(itemId, q);
+    outp[tagged] = (outp[tagged] || 0) + 1;
+  }
+}

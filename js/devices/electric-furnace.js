@@ -11,7 +11,7 @@ class ElectricFurnace extends Furnace {
     const mc = moduleCounts(this.modules);
     const bb = (typeof beaconBonus === 'function') ? beaconBonus(this.x, this.y) : null;
     if (bb) { mc.speed += bb.speed; mc.prod += bb.prod; mc.eff += bb.eff; }
-    return 1 + 0.4 * mc.speed - 0.1 * mc.prod - 0.03 * mc.eff;
+    return 1 + 0.4 * mc.speed - 0.1 * mc.prod - 0.03 * mc.eff - mc.qualityPenalty;
   }
   // 产能模块结算：每次冶炼产出累积进度，达到阈值免费多产 1 个主产物
   applyProductivity(rec) {
@@ -46,13 +46,13 @@ class ElectricFurnace extends Furnace {
     if (G.power.sat <= 0) { this.lit = false; return; }
     this.lit = true;
     furnaceEmit(this, dt);
-    this.prog += dt / r.time * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 2) * this.moduleSpeedMult() * powerFactor();
+    this.prog += dt / r.time * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 2) * this.moduleSpeedMult() * powerFactor() * (this.quality ? qualityMult(this.quality) : 1);
     if (this.prog >= 1) {
       this.prog -= 1;
       this.inp[r.inp] = (this.inp[r.inp] || 0) - (r.inCount || 1);
       if (typeof trackProd === 'function') trackProd(r.inp, -(r.inCount || 1));
       if (this.inp[r.inp] <= 0) delete this.inp[r.inp];
-      this.outp[r.id] = (this.outp[r.id] || 0) + 1;
+      emitQuality(this, this.outp, r.id, 1);
       if (typeof trackProd === 'function') trackProd(r.id, 1);
       this.applyProductivity(r);
     }

@@ -48,7 +48,7 @@ class Centrifuge extends Entity {
     const mc = moduleCounts(this.modules);
     const bb = (typeof beaconBonus === 'function') ? beaconBonus(this.x, this.y) : null;
     if (bb) { mc.speed += bb.speed; mc.prod += bb.prod; mc.eff += bb.eff; }
-    return 1 + 0.4 * mc.speed - 0.1 * mc.prod - 0.03 * mc.eff;
+    return 1 + 0.4 * mc.speed - 0.1 * mc.prod - 0.03 * mc.eff - mc.qualityPenalty;
   }
   applyProductivity(rec) {
     const mc = moduleCounts(this.modules);

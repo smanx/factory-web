@@ -32,7 +32,7 @@ class Refinery extends Entity {
     const mc = moduleCounts(this.modules);
     const bb = (typeof beaconBonus === 'function') ? beaconBonus(this.x, this.y) : null;
     if (bb) { mc.speed += bb.speed; mc.prod += bb.prod; mc.eff += bb.eff; }
-    return 1 + 0.4 * mc.speed - 0.1 * mc.prod - 0.03 * mc.eff;
+    return 1 + 0.4 * mc.speed - 0.1 * mc.prod - 0.03 * mc.eff - mc.qualityPenalty;
   }
   applyProductivity(rec) {
     const mc = moduleCounts(this.modules);
@@ -128,14 +128,14 @@ class Refinery extends Entity {
     if (this.crafting) {
       if (G.power.sat <= 0) return;
       this.working = true;
-      this.prog += dt * oilMult() * this.moduleSpeedMult() * powerFactor();
+      this.prog += dt * oilMult() * this.moduleSpeedMult() * powerFactor() * (this.quality ? qualityMult(this.quality) : 1);
       // 炼油厂运转：顶部低频排放蒸汽（画面优化）
       if (typeof spawnSteam === 'function' && Math.random() < dt * 0.9) {
         spawnSteam((this.x + 0.5 + (Math.random() - 0.5) * 0.6) * TILE, (this.y + 0.25) * TILE, { size: 3, life: 1.5 });
       }
       if (this.prog >= rec.time) {
         for (const k in rec.out) {
-          this.outp[k] = (this.outp[k] || 0) + rec.out[k];
+          emitQuality(this, this.outp, k, rec.out[k]);
           if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
         }
         this.applyProductivity(rec);

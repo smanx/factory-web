@@ -113,6 +113,9 @@ const GAME_DATA = {
   "efficiency-module": 50,
   "efficiency-module-2": 50,
   "efficiency-module-3": 50,
+  "quality-module": 50,
+  "quality-module-2": 50,
+  "quality-module-3": 50,
   "advanced-circuit": 200,
   "engine-unit": 50,
   "electric-engine-unit": 50,
@@ -1515,6 +1518,39 @@ const GAME_DATA = {
     "efficiency-module-2": 1
    }
   },
+  "quality-module": {
+   "time": 15,
+   "inp": {
+    "electronic-circuit": 5,
+    "advanced-circuit": 5
+   },
+   "out": {
+    "quality-module": 1
+   }
+  },
+  "quality-module-2": {
+   "time": 30,
+   "inp": {
+    "quality-module": 4,
+    "advanced-circuit": 5,
+    "processing-unit": 5
+   },
+   "out": {
+    "quality-module-2": 1
+   }
+  },
+  "quality-module-3": {
+   "time": 60,
+   "inp": {
+    "quality-module-2": 4,
+    "advanced-circuit": 5,
+    "processing-unit": 5,
+    "superconductor": 1
+   },
+   "out": {
+    "quality-module-3": 1
+   }
+  },
   "beacon": {
    "time": 15,
    "inp": {
@@ -2292,6 +2328,9 @@ const GAME_DATA = {
   "productivity-module-2": "assembling-machine-1",
   "efficiency-module": "assembling-machine-1",
   "efficiency-module-2": "assembling-machine-1",
+  "quality-module": "assembling-machine-1",
+  "quality-module-2": "assembling-machine-1",
+  "quality-module-3": "assembling-machine-1",
   "beacon": "assembling-machine-1",
   "advanced-circuit": "assembling-machine-1",
   "engine-unit": "assembling-machine-1",
@@ -2751,6 +2790,18 @@ const GAME_DATA = {
   "efficiency-module-3": {
    "zh": "节能插件 3",
    "en": "Efficiency module 3"
+  },
+  "quality-module": {
+   "zh": "品质插件",
+   "en": "Quality module"
+  },
+  "quality-module-2": {
+   "zh": "品质插件 2",
+   "en": "Quality module 2"
+  },
+  "quality-module-3": {
+   "zh": "品质插件 3",
+   "en": "Quality module 3"
   },
   "advanced-circuit": {
    "zh": "集成电路",
@@ -3818,5 +3869,66 @@ const GAME_DATA = {
    "dummy-elevated-straight-rail",
    "elevated-straight-rail"
   ]
- }
+ },
+ "qualityModules": {
+  "quality-module": {
+   "quality": 0.01,
+   "speedPenalty": 0.05
+  },
+  "quality-module-2": {
+   "quality": 0.02,
+   "speedPenalty": 0.05
+  },
+  "quality-module-3": {
+   "quality": 0.025,
+   "speedPenalty": 0.05
+  }
+ },
+ "qualityTiers": [
+  {
+   "id": "normal",
+   "level": 0,
+   "color": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "id": "uncommon",
+   "level": 1,
+   "color": [
+    43,
+    165,
+    61
+   ]
+  },
+  {
+   "id": "rare",
+   "level": 2,
+   "color": [
+    25,
+    104,
+    178
+   ]
+  },
+  {
+   "id": "epic",
+   "level": 3,
+   "color": [
+    137,
+    0,
+    178
+   ]
+  },
+  {
+   "id": "legendary",
+   "level": 5,
+   "color": [
+    178,
+    104,
+    0
+   ]
+  }
+ ]
 };

@@ -39,7 +39,7 @@ class ChemicalPlant extends Entity {
     const mc = moduleCounts(this.modules);
     const bb = (typeof beaconBonus === 'function') ? beaconBonus(this.x, this.y) : null;
     if (bb) { mc.speed += bb.speed; mc.prod += bb.prod; mc.eff += bb.eff; }
-    return 1 + 0.4 * mc.speed - 0.1 * mc.prod - 0.03 * mc.eff;
+    return 1 + 0.4 * mc.speed - 0.1 * mc.prod - 0.03 * mc.eff - mc.qualityPenalty;
   }
   applyProductivity(rec) {
     const mc = moduleCounts(this.modules);
@@ -135,10 +135,10 @@ class ChemicalPlant extends Entity {
       if (G.power.sat <= 0) return;
       this.working = true;
       chemPlantEmit(this, dt);
-      this.prog += dt * chemMult() * oilMult() * this.moduleSpeedMult() * powerFactor();
+      this.prog += dt * chemMult() * oilMult() * this.moduleSpeedMult() * powerFactor() * (this.quality ? qualityMult(this.quality) : 1);
       if (this.prog >= rec.time) {
         for (const k in rec.out) {
-          this.outp[k] = (this.outp[k] || 0) + rec.out[k];
+          emitQuality(this, this.outp, k, rec.out[k]);
           if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
         }
         this.applyProductivity(rec);

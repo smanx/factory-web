@@ -51,7 +51,7 @@ class ElectricDrill extends Drill {
     const mc = moduleCounts(this.modules);
     const bb = (typeof beaconBonus === 'function') ? beaconBonus(this.x, this.y) : null;
     if (bb) { mc.speed += bb.speed; mc.prod += bb.prod; mc.eff += bb.eff; }
-    return 1 + 0.4 * mc.speed - 0.1 * mc.prod - 0.03 * mc.eff;
+    return 1 + 0.4 * mc.speed - 0.1 * mc.prod - 0.03 * mc.eff - mc.qualityPenalty;
   }
   // 产能模块结算：每次采出矿石累积进度，达到阈值免费多产 1 个（对齐《异星工厂》Mining productivity 模块化）
   applyProductivity() {

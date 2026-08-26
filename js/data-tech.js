@@ -63,6 +63,10 @@ const TECH_REQ = {
   'productivity-module-3': 'modules3',
   'efficiency-module-2': 'advanced-material-processing-2',
   'efficiency-module-3': 'advanced-material-processing-3',
+  // 品质模块（对齐《异星工厂》Quality DLC：品质学科技解锁）
+  'quality-module': 'quality',
+  'quality-module-2': 'quality-2',
+  'quality-module-3': 'quality-3',
   'advanced-circuit': 'advanced-electronics',
   'sulfur': 'sulfur-processing',
   'sulfuric-acid': 'sulfur-processing',
@@ -191,15 +195,19 @@ const MODULE_VARIANTS = {
   'productivity-module-3':{ tier: 3, type: 'prod',  prod: 2,   power: 1.2, prodThreshold: 15 },
   'efficiency-module':    { tier: 1, type: 'eff',   eff: 1,   power: 0 },
   'efficiency-module-2':  { tier: 2, type: 'eff',   eff: 1.5, power: 0 },
-  'efficiency-module-3':  { tier: 3, type: 'eff',   eff: 2,   power: 0 }
+  'efficiency-module-3':  { tier: 3, type: 'eff',   eff: 2,   power: 0 },
+  // 品质模块（对齐《异星工厂》Quality DLC：品质加成/速度惩罚来自 GAME_DATA.qualityModules 单源）
+  'quality-module':    { tier: 1, type: 'quality', quality: (GAME_DATA.qualityModules?.['quality-module']?.quality ?? 0.01), speedPenalty: (GAME_DATA.qualityModules?.['quality-module']?.speedPenalty ?? 0.05) },
+  'quality-module-2':  { tier: 2, type: 'quality', quality: (GAME_DATA.qualityModules?.['quality-module-2']?.quality ?? 0.02), speedPenalty: (GAME_DATA.qualityModules?.['quality-module-2']?.speedPenalty ?? 0.05) },
+  'quality-module-3':  { tier: 3, type: 'quality', quality: (GAME_DATA.qualityModules?.['quality-module-3']?.quality ?? 0.025), speedPenalty: (GAME_DATA.qualityModules?.['quality-module-3']?.speedPenalty ?? 0.05) }
 };
 function isModule(id) { return !!MODULE_VARIANTS[id]; }
 function moduleType(id) { const v = MODULE_VARIANTS[id]; return v ? v.type : null; }
 // 统计某设备 modules 表中速度/产能/效率模块的加权当量。
 // modules 形如 { 'speed-module': 2, 'productivity-module-2': 1, ... }
 function moduleCounts(modules) {
-  let speed = 0, prod = 0, eff = 0;
-  if (!modules) return { speed, prod, eff };
+  let speed = 0, prod = 0, eff = 0, quality = 0;
+  if (!modules) return { speed, prod, eff, quality };
   for (const id in modules) {
     const v = MODULE_VARIANTS[id];
     if (!v) continue;
@@ -207,8 +215,15 @@ function moduleCounts(modules) {
     if (v.type === 'speed') speed += v.speed * n;
     else if (v.type === 'prod') prod += v.prod * n;
     else if (v.type === 'eff') eff += v.eff * n;
+    else if (v.type === 'quality') quality += v.quality * n;
   }
-  return { speed, prod, eff };
+  // 品质模块速度惩罚（官方 speed=-0.05/级），用于各类设备 moduleSpeedMult 折算
+  let qualityPenalty = 0;
+  if (modules) for (const id in modules) {
+    const v = MODULE_VARIANTS[id];
+    if (v && v.type === 'quality' && (modules[id] || 0) > 0) qualityPenalty += v.speedPenalty * (modules[id] || 0);
+  }
+  return { speed, prod, eff, quality, qualityPenalty };
 }
 // 模块污染影响标签（对齐《异星工厂》：速度/产能模块增污、效率模块减污）。
 // 供模块面板展示；与 pollution.js 的 modulePollutionMult 使用相同系数保持口径一致。
@@ -233,9 +248,9 @@ function modulePanelSection(e) {
   const slot = (typeof e.moduleSlotCount === 'function') ? e.moduleSlotCount() : 4;
   const mc = moduleCounts(e.modules);
   const hasMod = Object.keys(e.modules).length > 0;
-  let h = row('模块', hasMod ? '速度+' + mc.speed.toFixed(1) + ' 产能+' + mc.prod.toFixed(1) + ' 效率-' + mc.eff.toFixed(1) + ' 污染' + modulePollutionLabel(mc.speed, mc.prod, mc.eff) : '<span class="dim">无</span>', 'mod');
+  let h = row('模块', hasMod ? '速度+' + mc.speed.toFixed(1) + ' 产能+' + mc.prod.toFixed(1) + ' 效率-' + mc.eff.toFixed(1) + ' 品质+' + (mc.quality * 100).toFixed(1) + '%' + ' 污染' + modulePollutionLabel(mc.speed, mc.prod, mc.eff) : '<span class="dim">无</span>', 'mod');
   for (const mid of Object.keys(e.modules)) if ((e.modules[mid] || 0) > 0) h += '<span class="dim">' + ITEMS[mid].name + ' x' + e.modules[mid] + '</span> ';
-  const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3'];
+  const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3', 'quality-module', 'quality-module-2', 'quality-module-3'];
   for (const mid of order) {
     if (!itemUnlocked(mid)) continue;
     const n = Math.min(invCount(mid), slot - (e.modules[mid] || 0));
@@ -338,3 +353,53 @@ function sameTierFamily(a, b) { return !!tierFamily(a) && tierFamily(a) === tier
 const DEFAULT_HOTBAR = ['transport-belt', 'splitter', 'underground-belt', 'inserter', 'long-handed-inserter', 'burner-mining-drill', 'stone-furnace', 'assembling-machine-1', 'steel-chest', 'lab'];
 let HOTBAR = DEFAULT_HOTBAR.slice();
 
+
+// ===== 品质系统（对齐《异星工厂》Quality DLC：6 级品质） =====
+// 品质等级定义（官方 quality 原型：normal/uncommon/rare/epic/legendary，含 quality-unknown 占位）。
+// 每级对应一个提升比例，用于装备/建筑在更高品质下的数值加成（官方无统一公式，此处按
+// 等级线性折衷：normal=1.0、uncommon=1.1、rare=1.2、epic=1.3、legendary=1.5）。
+const QUALITY_TIERS = [
+  { id: 'normal',    name: '普通',   color: '#d0d0d0', mult: 1.0 },
+  { id: 'uncommon',  name: '罕见',   color: '#2ba53d', mult: 1.1 },
+  { id: 'rare',      name: '稀有',   color: '#1968b2', mult: 1.2 },
+  { id: 'epic',      name: '史诗',   color: '#8900b2', mult: 1.3 },
+  { id: 'legendary', name: '传说',   color: '#b26800', mult: 1.5 },
+];
+const QUALITY_INDEX = { normal: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
+// 物品的品质后缀标记：`item~quality`。无后缀视为 normal 品质。
+const QUALITY_SEP = '~';
+// 解析物品 id，返回 { base, quality }；normal 返回 { base: id, quality: 'normal' }
+function splitQuality(id) {
+  const i = id.indexOf(QUALITY_SEP);
+  if (i < 0) return { base: id, quality: 'normal' };
+  return { base: id.slice(0, i), quality: id.slice(i + 1) };
+}
+// 给物品 id 打品质后缀（normal 不加后缀）
+function tagQuality(id, quality) {
+  if (!quality || quality === 'normal') return id;
+  return id + QUALITY_SEP + quality;
+}
+// 返回某设备模块的品质加成总和（%）
+function moduleQualityChance(modules) {
+  const mc = moduleCounts(modules);
+  return mc.quality;
+}
+// 依据品质加成，掷一次品质升级：返回升级后的品质 id（未升级返回原品质）
+// 品质模块提供 chance 概率进入“升级池”，升级池内按等级逐级累计概率（官方链式概率，此处简化）。
+function rollQualityUpgrade(currentQuality, chance) {
+  if (chance <= 0) return currentQuality;
+  const cur = QUALITY_INDEX[currentQuality] || 0;
+  // 逐级尝试升级：每级成功概率 = chance（品质加成），最高到 legendary
+  for (let lvl = cur; lvl < QUALITY_TIERS.length - 1; lvl++) {
+    if (Math.random() < chance) {
+      // 连续升级（链式概率，官方 chain_probability=0.1 简化取 chance）
+      return QUALITY_TIERS[lvl + 1].id;
+    }
+  }
+  return currentQuality;
+}
+// 品质对数值的加成倍率（用于建筑速度/装备强度等）
+function qualityMult(quality) {
+  const q = QUALITY_INDEX[quality] || 0;
+  return QUALITY_TIERS[q].mult;
+}

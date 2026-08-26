@@ -16,7 +16,7 @@ class ElectromagneticPlant extends Assembler {
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
       // 速度：电磁工厂基础 2.0（GAME_DATA.deviceStats.craftingSpeed），远高于组装机 III
-      this.prog += dt * asmMult() * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 2.0) * this.moduleSpeedMult() * powerFactor();
+      this.prog += dt * asmMult() * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 2.0) * this.moduleSpeedMult() * powerFactor() * (this.quality ? qualityMult(this.quality) : 1);
       this.spin += dt * 4;
       if (typeof onScreen === 'function' && onScreen(this) && typeof playSfx === 'function' && G.settings.sound) {
         this._runSfxT = (this._runSfxT || 0) - dt;
@@ -24,7 +24,7 @@ class ElectromagneticPlant extends Assembler {
       }
       if (this.prog >= rec.time) {
         for (const k in rec.out) {
-          this.outp[k] = (this.outp[k] || 0) + rec.out[k];
+          emitQuality(this, this.outp, k, rec.out[k]);
           if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
         }
         this.applyProductivity(rec);
@@ -107,11 +107,11 @@ function electroPanelHtml(e) {
     const mc = moduleCounts(e.modules);
     const hasMod = (Object.keys(e.modules).length > 0);
     h += row('模块', hasMod ?
-      '速度+' + mc.speed.toFixed(1) + ' 产能+' + mc.prod.toFixed(1) + ' 效率-' + mc.eff.toFixed(1) : '<span class="dim">无</span>', 'mod');
+      '速度+' + mc.speed.toFixed(1) + ' 产能+' + mc.prod.toFixed(1) + ' 效率-' + mc.eff.toFixed(1) + ' 品质+' + (mc.quality*100).toFixed(1) + '%' : '<span class="dim">无</span>', 'mod');
     for (const mid of Object.keys(e.modules)) {
       if ((e.modules[mid] || 0) > 0) h += '<span class="dim">' + ITEMS[mid].name + ' ×' + e.modules[mid] + '</span> ';
     }
-    const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3'];
+    const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3', 'quality-module', 'quality-module-2', 'quality-module-3'];
     for (const mid of order) {
       if (!itemUnlocked(mid)) continue;
       const n = Math.min(invCount(mid), e.moduleSlotCount() - (e.modules[mid] || 0));

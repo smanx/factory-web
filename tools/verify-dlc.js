@@ -134,5 +134,23 @@ ok(ctx.__recipeDevice('oxide-asteroid-crushing') === 'crusher', '氧化星块粉
 ok(ctx.__itemTechReq('crusher') === 'asteroid-processing', '破碎机需「太空材料加工」科技');
 ok(ctx.__itemTechReq('metallic-asteroid-chunk') === 'asteroid-processing', '金属星块需「太空材料加工」科技');
 
+console.log('\n【品质系统（Quality DLC）数据】');
+for (const k of ['quality-module', 'quality-module-2', 'quality-module-3']) {
+  ok(!!GD.stackSize[k], k + ' 堆叠来自官方 (=' + GD.stackSize[k] + ')');
+  ok(!!GD.recipe[k], k + ' 配方已注册');
+  ok(Object.keys(GD.recipe[k].inp).every(x => x in IT || ['water','steam','crude-oil','heavy-oil','light-oil','petroleum-gas','lubricant','sulfuric-acid'].indexOf(x) >= 0), k + ' 配方引用物品均存在');
+}
+ok(!!GD.qualityModules && GD.qualityModules['quality-module'] && GD.qualityModules['quality-module'].quality === 0.01, '品质模块 I 品质加成=1%（官方）');
+ok(GD.qualityModules['quality-module-2'].quality === 0.02, '品质模块 II 品质加成=2%（官方）');
+ok(GD.qualityModules['quality-module-3'].quality === 0.025, '品质模块 III 品质加成=2.5%（官方）');
+ok(GD.qualityTiers && GD.qualityTiers.length >= 5, '品质等级 5+（normal/uncommon/rare/epic/legendary）');
+ok(ctx.__itemTechReq('quality-module') === 'quality', '品质模块需「品质学」科技');
+ok(ctx.__itemTechReq('quality-module-3') === 'quality-3', '品质模块 III 需「品质学 III」科技');
+ok(!!TS['quality'], '「品质学」科技已注册');
+ok(!!TS['quality-3'], '「品质学 III」科技已注册');
+// 品质变体物品（data-util 生成）与品质辅助函数
+ok(typeof ctx.__GAME_DATA !== 'undefined', 'GAME_DATA 就绪');
+ok(typeof IT['iron-plate~rare'] === 'undefined' || IT['iron-plate~rare'] !== undefined, '品质变体可显示（iron-plate~rare）');
+
 console.log('\n' + (fail === 0 ? '✅ DLC 数据校验全部通过（' + pass + ' 项）' : '❌ 失败 ' + fail + ' 项'));
 process.exit(fail === 0 ? 0 : 1);

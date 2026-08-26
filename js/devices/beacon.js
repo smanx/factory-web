@@ -93,11 +93,11 @@ let _beaconCache = null;
 let _beaconCacheKeys = 0;
 function clearBeaconBonusCache() { _beaconCache = null; _beaconCacheKeys = 0; }
 function beaconBonus(x, y) {
-  if (!G.techDone.production) return { speed: 0, prod: 0, eff: 0 };
+  if (!G.techDone.production) return { speed: 0, prod: 0, eff: 0, quality: 0 };
   // 缓存命中：同一帧内同一坐标直接返回已算结果
   const key = x + ',' + y;
   if (_beaconCache && _beaconCache[key]) return _beaconCache[key];
-  let speed = 0, prod = 0, eff = 0;
+  let speed = 0, prod = 0, eff = 0, quality = 0;
   // 在 9×9 范围内查找信号塔（按桶索引加速）
   const keys = bucketKeysIn(x - BEACON_RANGE, y - BEACON_RANGE, x + BEACON_RANGE, y + BEACON_RANGE);
   forEachEntInBuckets(keys, e => {
@@ -109,9 +109,10 @@ function beaconBonus(x, y) {
       speed += bc.speed * BEACON_MODULE_EFF;
       prod += bc.prod * BEACON_MODULE_EFF;
       eff += bc.eff * BEACON_MODULE_EFF;
+      quality += bc.quality * BEACON_MODULE_EFF;
     }
   });
-  const res = { speed, prod, eff };
+  const res = { speed, prod, eff, quality };
   // 写入缓存（懒初始化，避免每帧创建空 Map；用对象按坐标缓存，超阈值时整帧清空防内存膨胀）
   if (!_beaconCache) _beaconCache = {};
   _beaconCache[key] = res;

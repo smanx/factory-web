@@ -480,3 +480,40 @@ for (const id in ITEMS) {
     configurable: true
   });
 }
+
+// ===== 品质物品变体（对齐《异星工厂》Quality DLC）=====
+// 品质模块产出 `item~quality`（罕见/稀有/史诗/传说）。为让各处读 ITEMS[id].name/color 正常显示，
+// 此处（data-util.js，晚于 data-items/data-buildings 加载）为所有可建造/可装备物品预生成各品质变体条目。
+(function qualityVariantGen() {
+  const qTiers = (typeof GAME_DATA !== 'undefined' && GAME_DATA.qualityTiers) || [];
+  const qNames = { normal: '普通', uncommon: '罕见', rare: '稀有', epic: '史诗', legendary: '传说' };
+  const qNamesEn = { normal: '', uncommon: 'Uncommon ', rare: 'Rare ', epic: 'Epic ', legendary: 'Legendary ' };
+  const qColors = { uncommon: '#2ba53d', rare: '#1968b2', epic: '#8900b2', legendary: '#b26800' };
+  const qColorOf = (q) => {
+    const t = qTiers.find(x => x.id === q);
+    if (t && t.color && t.color.length >= 3) return 'rgb(' + t.color[0] + ',' + t.color[1] + ',' + t.color[2] + ')';
+    return qColors[q] || '#d0d0d0';
+  };
+  const qualityTargets = new Set(Object.keys(BUILD_DEFS || {}));
+  globalThis.QUALITY_ELIGIBLE_ITEMS = qualityTargets;
+  if (typeof EQUIPMENT !== 'undefined') for (const k in EQUIPMENT) qualityTargets.add(k);
+  for (const baseId of qualityTargets) {
+    const base = ITEMS[baseId];
+    if (!base) continue;
+    for (const q of ['uncommon', 'rare', 'epic', 'legendary']) {
+      const vid = baseId + '~' + q;
+      if (ITEMS[vid]) continue;
+      const manual = (G.settings && G.settings.language === 'en') ? (qNamesEn[q] + base.name) : (qNames[q] + base.name);
+      const descBase = base.desc || '';
+      ITEMS[vid] = {
+        name: manual,
+        color: qColorOf(q),
+        desc: descBase + '（' + qNames[q] + '品质：属性更强）',
+        mark: base.mark,
+        _quality: q,
+        _base: baseId,
+        _qualityVariant: true,
+      };
+    }
+  }
+})();

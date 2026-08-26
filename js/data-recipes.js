@@ -146,6 +146,10 @@ const RECIPES = {
   'efficiency-module':        { time: 15, inp: { 'advanced-circuit': 5, 'electronic-circuit': 5 }, out: { 'efficiency-module': 1 } },
   'efficiency-module-2':        { time: 30, inp: { 'advanced-circuit': 5, 'efficiency-module': 4, 'processing-unit': 5 }, out: { 'efficiency-module-2': 1 } },
   'efficiency-module-3':        { time: 60, inp: { 'advanced-circuit': 5, 'efficiency-module-2': 4, 'processing-unit': 5 }, out: { 'efficiency-module-3': 1 } },
+  // 品质模块（对齐《异星工厂》Quality DLC：品质模块官方配方与耗时）
+  'quality-module':        { time: 15, inp: { 'electronic-circuit': 5, 'advanced-circuit': 5 }, out: { 'quality-module': 1 } },
+  'quality-module-2':        { time: 30, inp: { 'quality-module': 4, 'advanced-circuit': 5, 'processing-unit': 5 }, out: { 'quality-module-2': 1 } },
+  'quality-module-3':        { time: 60, inp: { 'quality-module-2': 4, 'advanced-circuit': 5, 'processing-unit': 5 }, out: { 'quality-module-3': 1 } },
   'beacon':        { time: 15, inp: { 'advanced-circuit': 20, 'copper-cable': 10, 'electronic-circuit': 20, 'steel-plate': 10 }, out: { 'beacon': 1 } },
   // ===== 火箭链路中间件 =====
   'advanced-circuit':  { time: 6,   inp: { 'electronic-circuit': 2, 'plastic-bar': 2, 'copper-cable': 4 }, out: { 'advanced-circuit': 1 } },

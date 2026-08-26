@@ -748,6 +748,36 @@ if (raw.recycler) dlc.recycler = Object.keys(raw.recycler);
 // 高架铁轨
 dlc.elevatedRails = Object.keys(raw['elevated-straight-rail'] || {});
 
+// ---- 品质系统数据（Quality DLC：品质模块效果 / 品质等级）----
+// qualityModules[id] = { quality(加成), speedPenalty(速度惩罚) }，官方 quality 原型。
+// qualityTiers = [{ id, level, color }]（官方 quality 原型，normal 为默认 0 级）。
+const qualityModules = {};
+const qualityTiers = [];
+{
+  const qmSrc = {
+    'quality-module': 'quality-module',
+    'quality-module-2': 'quality-module-2',
+    'quality-module-3': 'quality-module-3',
+  };
+  for (const [pid, oname] of Object.entries(qmSrc)) {
+    const m = raw.module && raw.module[oname];
+    if (m && m.effect) {
+      qualityModules[pid] = {
+        quality: (typeof m.effect.quality === 'number') ? m.effect.quality : 0,
+        speedPenalty: (typeof m.effect.speed === 'number') ? -m.effect.speed : 0.05,
+      };
+    }
+  }
+  // 官方品质等级（quality 原型：uncommon/rare/epic/legendary，normal 为 0 级默认）
+  if (raw.quality) {
+    const order = ['normal', 'uncommon', 'rare', 'epic', 'legendary'];
+    for (const name of order) {
+      const q = raw.quality[name];
+      if (q) qualityTiers.push({ id: name, level: q.level || 0, color: q.color ? [q.color['1']||0, q.color['2']||0, q.color['3']||0] : null });
+    }
+  }
+}
+
 // ---- 汇总新增字段进 GAME_DATA（undefined 字段由 JSON 序列化自动剔除）----
 Object.assign(GAME_DATA, {
   undergroundDist,
@@ -765,6 +795,8 @@ Object.assign(GAME_DATA, {
   robotSpeed,
   inserterStats,
   dlc,
+  qualityModules,
+  qualityTiers,
 });
 
 // ---- recipe ----

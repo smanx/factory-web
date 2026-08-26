@@ -552,9 +552,13 @@ function placeGround(type, tx, ty, infinite) {
 }
 
 function tryPlaceAt(tx, ty) {
-  const type = selItem();
-  if (!type) return;
+  const rawSel = selItem();
+  if (!rawSel) return;
   const infinite = !!(G.dbg && G.dbg.infinite);
+  // 品质物品：`item~quality` 由品质模块产出。放置时剥离品质后缀取基础类型，并把品质写入实体
+  const sq = (typeof splitQuality === 'function') ? splitQuality(rawSel) : { base: rawSel, quality: 'normal' };
+  const type = sq.base;
+  const placeQuality = sq.quality;
   // 地面铺设（混凝土/石砖路/填海等）：不创建实体，直接修改地形（需优先于 BUILD_DEFS 守卫判定）
   if (type === 'concrete' || type === 'refined-concrete' || type === 'hazard-concrete' || type === 'stone-path' || type === 'landfill') {
     placeGround(type, tx, ty, infinite);
@@ -568,7 +572,9 @@ function tryPlaceAt(tx, ty) {
     return;
   }
   // 无限资源模式：建造不消耗原料，且可直接放置测试用创造/虚空箱与管道（无需背包里拥有）
-  if (!infinite && invCount(type) < 1) {
+  // 品质物品须检查实际持有的带品质物品（背包里是 `item~quality`），基础类型未必有库存
+  const needId = (placeQuality && placeQuality !== 'normal') ? rawSel : type;
+  if (!infinite && invCount(needId) < 1) {
     toast('背包里没有' + ITEMS[type].name + '了');
     if (typeof playSfx === 'function') playSfx('deny');
     G.sel = -1;
@@ -623,8 +629,10 @@ function tryPlaceAt(tx, ty) {
   const e = new cls(type, tx, ty);
   e.dir = G.ghostDir;
   e.applyDir();
+  // 品质建筑：记录品质等级（normal 不记），后续设备速度/强度按品质加成
+  if (placeQuality && placeQuality !== 'normal') e.quality = placeQuality;
   addEnt(e);
-  if (!infinite) invTake(type, 1);
+  if (!infinite) invTake(needId, 1);
   // 成就：建造计数（对齐《异星工厂》建造成就）
   if (typeof achEnsureStats === 'function') { achEnsureStats(); G.achStats.builds++; checkAchievements(); }
   if (typeof playSfx === 'function') playSfx('build');

@@ -36,7 +36,9 @@ const STACK_SIZES = {
   'military-science-pack': 200, 'production-science-pack': 200, 'utility-science-pack': 200,
   'space-science-pack': 200,
   // 基础建材与管线：堆叠 100
-  'concrete': 100, 'refined-concrete': 100, 'hazard-concrete': 100, 'stone-path': 100, 'landfill': 100
+  'concrete': 100, 'refined-concrete': 100, 'hazard-concrete': 100, 'stone-path': 100, 'landfill': 100,
+  // 品质模块（对齐《异星工厂》Quality DLC：quality-module 官方 stack=50）
+  'quality-module': 50, 'quality-module-2': 50, 'quality-module-3': 50
 };
 // 返回某物品的最大堆叠数（未特别指定则默认 100，对齐原版多数物品）
 function stackSize(id) {
@@ -157,6 +159,9 @@ const ITEMS = {
   'efficiency-module': { name: '效率模块', color: '#8a7ae8', desc: '装入组装机/电炉等，大幅降低生产耗电（每级 -30% 用电）并减少污染排放（每级约 -30% 污染，对齐《异星工厂》效率模块环保），小幅度降速' },
   'efficiency-module-2': { name: '效率模块 II', color: '#6a5ac8', desc: '二级效率模块：更强降低生产耗电（-45% 用电）并大幅减少污染排放（约 -45% 污染）。需模块工程 II' },
   'efficiency-module-3': { name: '效率模块 III', color: '#4a3aa8', desc: '三级效率模块：极强降低生产耗电（-60% 用电）并极大幅减少污染排放（约 -60% 污染）。需模块工程 III' },
+  'quality-module':    { name: '品质模块', color: '#d0a040', mark: 'Q', desc: '装入组装机/电炉/炼油厂等，生产时有概率产出更高品质的物品（对齐《异星工厂》Quality DLC：品质+1%，速度-5%）' },
+  'quality-module-2':  { name: '品质模块 II', color: '#c08020', mark: 'Q2', desc: '二级品质模块：更高概率产出高品质物品（品质+2%，速度-5%）。需品质学 II' },
+  'quality-module-3':  { name: '品质模块 III', color: '#b06010', mark: 'Q3', desc: '三级品质模块：极高概率产出高品质物品（品质+2.5%，速度-5%）。需品质学 III' },
   // ===== 火箭发射（终局）=====
   'advanced-circuit':{ name: '高级电路板', color: '#d0608a', desc: '红板，中后期高级电子元件，用于产能模块与电引擎' },
   'engine-unit':     { name: '引擎单元', color: '#8a6a4a', desc: '基础机械动力单元' },
@@ -356,4 +361,3 @@ const SMELTS = [
 for (const k in (GAME_DATA.stackSize || {})) {
   STACK_SIZES[k] = GAME_DATA.stackSize[k];
 }
-
