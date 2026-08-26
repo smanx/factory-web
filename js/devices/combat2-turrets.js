@@ -2,8 +2,8 @@
 
 // ===== 激光炮塔 =====
 // 吃电力、无需弹药、射程更远（对齐《异星工厂》Laser turret）
-const LASER_RANGE = 9;
-const LASER_FIRE_RATE = 0.35;
+const LASER_RANGE = GAME_DATA.turret?.['laser-turret']?.range ?? 9;       // 射程（格，官方 attack_parameters.range 24）
+const LASER_FIRE_RATE = GAME_DATA.turret?.['laser-turret']?.fireRate ?? 0.35; // 两次射击间隔（秒，官方 cooldown 40tick=0.667s）
 const LASER_DMG = 14;
 class LaserTurret extends CircuitNode {
   constructor(type, x, y) {
@@ -124,8 +124,8 @@ function laserTurretTip(e) {
 
 // ===== 火焰炮塔 =====
 // 喷射火焰造成持续灼烧，消耗石油气，范围杀伤（对齐《异星工厂》Flamethrower turret）
-const FT_RANGE = 6;
-const FT_FIRE_RATE = 0.3;
+const FT_RANGE = GAME_DATA.turret?.['flamethrower-turret']?.range ?? 6;   // 射程（格，官方 attack_parameters.range 30）
+const FT_FIRE_RATE = GAME_DATA.turret?.['flamethrower-turret']?.fireRate ?? 0.3; // 两次喷射间隔（秒，官方 cooldown 4tick=0.067s）
 const FT_DMG = 8;
 const FT_FLUID_CAP = 200;
 class FlamethrowerTurret extends CircuitNode {

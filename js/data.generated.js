@@ -10,6 +10,13 @@
 //   deviceStats[id] = { craftingSpeed, moduleSlots, miningSpeed, beltSpeed(格/s), beaconEffectivity }
 //   names[id] = { zh, en }（物品/建筑/流体官方命名，供中英文切换，见 data-util.js localizedName）
 //   recipeNames[rid] = { zh, en }（配方官方命名，供炼油/离心机面板切换）
+//   其余设备行为参数（官方接入，见对应设备文件 GAME_DATA.xxx?.[..] ?? 兜底）：
+//   undergroundDist[带] = 地下带最大距离(格), renewable = { solarPower, accumCap, accumChargeRate }
+//   fluidCapacity = { storageTank, fluidWagon, pumpRate }, beaconRange = 信号塔半径(格)
+//   turret[塔] = { range, fireRate(秒) }, ammoDamage[弹药] = 伤害, radar = { range, power(kW) }
+//   equipment[装备] = { powerOut | powerCap(kJ) | shield | speed | laser | dischargeRange/Cooldown }
+//   heat = { reactorMaxTemp, reactorSpecificHeat, reactorMaxTransfer, heatPipeMaxTemp, heatPipeMinGlowTemp,
+//           heatPipeSpecificHeat, heatPipeMaxTransfer, reactorHeatRate(MW) }, roboportPower(kW)
 const GAME_DATA = {
  "stackSize": {
   "iron-ore": 50,
@@ -3083,5 +3090,86 @@ const GAME_DATA = {
    "zh": "乏燃料后处理",
    "en": "Nuclear fuel reprocessing"
   }
- }
+ },
+ "undergroundDist": {
+  "underground": 5,
+  "fast-underground-belt": 7,
+  "express-underground-belt": 9
+ },
+ "renewable": {
+  "solarPower": 60,
+  "accumCap": 5000,
+  "accumChargeRate": 300
+ },
+ "fluidCapacity": {
+  "storageTank": 25000,
+  "fluidWagon": 50000,
+  "pumpRate": 20
+ },
+ "beaconRange": 3,
+ "turret": {
+  "gun-turret": {
+   "range": 18,
+   "fireRate": 0.1
+  },
+  "laser-turret": {
+   "range": 24,
+   "fireRate": 0.667
+  },
+  "flamethrower-turret": {
+   "range": 30,
+   "fireRate": 0.067
+  }
+ },
+ "ammoDamage": {
+  "magazine": 5,
+  "piercing-rounds": 8,
+  "uranium-rounds": 24
+ },
+ "radar": {
+  "range": 14,
+  "power": 300
+ },
+ "equipment": {
+  "portable-solar-panel": {
+   "powerOut": 30
+  },
+  "portable-fusion-reactor": {
+   "powerOut": 2500
+  },
+  "personal-battery": {
+   "powerCap": 20000
+  },
+  "personal-battery-mk2": {
+   "powerCap": 100000
+  },
+  "energy-shield": {
+   "shield": 50
+  },
+  "energy-shield-mk2": {
+   "shield": 150
+  },
+  "exoskeleton": {
+   "speed": 0.3
+  },
+  "personal-laser-defense": {
+   "laser": 15
+  },
+  "discharge-defense": {
+   "discharge": true,
+   "dischargeRange": 10,
+   "dischargeCooldown": 2.5
+  }
+ },
+ "heat": {
+  "reactorMaxTemp": 1000,
+  "reactorSpecificHeat": 10,
+  "reactorMaxTransfer": 10000,
+  "heatPipeMaxTemp": 1000,
+  "heatPipeMinGlowTemp": 350,
+  "heatPipeSpecificHeat": 1,
+  "heatPipeMaxTransfer": 1000,
+  "reactorHeatRate": 40
+ },
+ "roboportPower": 50
 };

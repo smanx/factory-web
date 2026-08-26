@@ -421,7 +421,7 @@ class Radar extends Entity {
     }
     if (typeof markExplored === 'function') markExplored(cx, cy, RADAR_RANGE);
   }
-  powerDemand() { return 30; }
+  powerDemand() { return GAME_DATA.radar?.power ?? 30; } // 官方雷达 energy_usage 300kW
   serialize() { return super.serialize(); }
   static restore(s) { return super.restore(s); }
 }

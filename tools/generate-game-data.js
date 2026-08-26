@@ -209,6 +209,45 @@ function parseKiloWatt(str) {
   if (m[2].toUpperCase() === 'W') return v / 1000;
   return v * 1000; // MW
 }
+// 解析能量字符串 → kJ 数值（"5MJ"→5000、"20MJ"→20000、"8GJ"→8000000）
+function parseEnergyKJ(str) {
+  if (typeof str !== 'string') return null;
+  const m = /^([\d.]+)\s*([A-Za-z]+)$/.exec(str.trim());
+  if (!m) return null;
+  const v = parseFloat(m[1]);
+  const u = m[2].toUpperCase();
+  if (u === 'J') return v / 1000;
+  if (u === 'KJ') return v;
+  if (u === 'MJ') return v * 1000;
+  if (u === 'GJ') return v * 1000000;
+  return null;
+}
+// 解析能量字符串 → MJ 数值（"10MJ"→10、"1MJ"→1、"8GJ"→8000）
+function parseEnergyMJ(str) {
+  if (typeof str !== 'string') return null;
+  const m = /^([\d.]+)\s*([A-Za-z]+)$/.exec(str.trim());
+  if (!m) return null;
+  const v = parseFloat(m[1]);
+  const u = m[2].toUpperCase();
+  if (u === 'J') return v / 1e6;
+  if (u === 'KJ') return v / 1000;
+  if (u === 'MJ') return v;
+  if (u === 'GJ') return v * 1000;
+  return null;
+}
+// 解析功率字符串 → MW 数值（"1GW"→1000、"10GW"→10000、"2MW"→2）
+function parsePowerMW(str) {
+  if (typeof str !== 'string') return null;
+  const m = /^([\d.]+)\s*([A-Za-z]+)$/.exec(str.trim());
+  if (!m) return null;
+  const v = parseFloat(m[1]);
+  const u = m[2].toUpperCase();
+  if (u === 'W') return v / 1e6;
+  if (u === 'KW') return v / 1000;
+  if (u === 'MW') return v;
+  if (u === 'GW') return v * 1000;
+  return null;
+}
 
 // ================= 配方提取 =================
 // 官方 recipe 结构：ingredients/results 是 {"1":{type,name,amount},...}
@@ -427,6 +466,196 @@ for (const [pid, [rtype, oname]] of Object.entries(DEVICE_STATS_SOURCES)) {
   if (Object.keys(ds).length) GAME_DATA.deviceStats[pid] = ds;
 }
 
+// ---- 地下带最大距离（格）----
+// 官方 2.0 改小了地下带距离（基础 5 / 快速 7 / 极速 9），项目原先用 1.x 值（6/14/20），
+// 现按用户要求以官方为准。max_distance 为“最远配对数/距离”，直接采用官方数值。
+const undergroundDist = {};
+for (const [pid, [rtype, oname]] of Object.entries({
+  'underground': ['underground-belt', 'underground-belt'],
+  'fast-underground-belt': ['underground-belt', 'fast-underground-belt'],
+  'express-underground-belt': ['underground-belt', 'express-underground-belt'],
+})) {
+  const proto = raw[rtype] && raw[rtype][oname];
+  if (proto && typeof proto.max_distance === 'number') undergroundDist[pid] = proto.max_distance;
+}
+
+// ---- 太阳能板 / 蓄电器 ----
+// solarPower：production "60kW" → 60（kW）；accumCap：energy_source.buffer_capacity "5MJ" → 5000（kJ）；
+// accumChargeRate：energy_source.input_flow_limit "300kW" → 300（kW，充/放电速率上限）。
+const renewable = {};
+{
+  const sp = raw['solar-panel'] && raw['solar-panel']['solar-panel'];
+  if (sp) { const kw = parseKiloWatt(sp.production); if (kw !== null) renewable.solarPower = kw; }
+  const acc = raw.accumulator && raw.accumulator.accumulator;
+  if (acc && acc.energy_source) {
+    const cap = parseEnergyKJ(acc.energy_source.buffer_capacity);
+    if (cap !== null) renewable.accumCap = cap;
+    const chg = parseKiloWatt(acc.energy_source.input_flow_limit);
+    if (chg !== null) renewable.accumChargeRate = chg;
+  }
+}
+
+// ---- 流体容量 / 抽水机 ----
+// storageTank：fluid_box.volume（官方 2.0 储液罐 25000）；fluidWagon：capacity（官方 2.0 流体车厢 50000）；
+// pumpRate：pumping_speed（官方 2.0 抽水机 20）。
+const fluidCapacity = {};
+{
+  const st = raw['storage-tank'] && raw['storage-tank']['storage-tank'];
+  if (st && st.fluid_box && typeof st.fluid_box.volume === 'number') fluidCapacity.storageTank = st.fluid_box.volume;
+  const fw = raw['fluid-wagon'] && raw['fluid-wagon']['fluid-wagon'];
+  if (fw && typeof fw.capacity === 'number') fluidCapacity.fluidWagon = fw.capacity;
+  const op = raw['offshore-pump'] && raw['offshore-pump']['offshore-pump'];
+  if (op && typeof op.pumping_speed === 'number') fluidCapacity.pumpRate = op.pumping_speed;
+}
+
+// ---- 信号塔影响半径（格）----
+// 官方 2.0 supply_area_distance=3（项目原先用 1.x 的 4）。moduleSlots/powerUse 已由 deviceStats/powerUse 接入。
+const beaconRange = raw.beacon && raw.beacon.beacon && typeof raw.beacon.beacon.supply_area_distance === 'number'
+  ? raw.beacon.beacon.supply_area_distance : undefined;
+
+// ---- 炮塔 / 弹药伤害 ----
+// 2.0 官方类型：gun-turret=ammo-turret、laser-turret=electric-turret、flamethrower-turret=fluid-turret。
+// attack_parameters.cooldown 单位为 tick，÷60 → 秒（两次射击间隔）。官方数据未提供伤害/能耗 → 保持手工。
+const turret = {};
+{
+  const g = raw['ammo-turret'] && raw['ammo-turret']['gun-turret'];
+  if (g && g.attack_parameters) turret['gun-turret'] = {
+    range: g.attack_parameters.range,
+    fireRate: Math.round(g.attack_parameters.cooldown / 60 * 1000) / 1000,
+  };
+  const l = raw['electric-turret'] && raw['electric-turret']['laser-turret'];
+  if (l && l.attack_parameters) turret['laser-turret'] = {
+    range: l.attack_parameters.range,
+    fireRate: Math.round(l.attack_parameters.cooldown / 60 * 1000) / 1000,
+  };
+  const f = raw['fluid-turret'] && raw['fluid-turret']['flamethrower-turret'];
+  if (f && f.attack_parameters) turret['flamethrower-turret'] = {
+    range: f.attack_parameters.range,
+    fireRate: Math.round(f.attack_parameters.cooldown / 60 * 1000) / 1000,
+  };
+}
+// 弹药伤害：遍历 ammo_type.action（2.0 结构可能是 {"1":{...}} 或直接对象），找 damage effect 的 amount。
+function findAmmoDamage(ammoProto) {
+  const stack = [ammoProto && ammoProto.ammo_type && ammoProto.ammo_type.action];
+  while (stack.length) {
+    const cur = stack.pop();
+    if (!cur || typeof cur !== 'object') continue;
+    if (cur.type === 'damage' && cur.damage && typeof cur.damage.amount === 'number') return cur.damage.amount;
+    for (const k of Object.keys(cur)) {
+      const v = cur[k];
+      if (v && typeof v === 'object') stack.push(v);
+    }
+  }
+  return null;
+}
+const ammoDamage = {};
+for (const [pid, oid] of Object.entries({
+  'magazine': 'firearm-magazine',
+  'piercing-rounds': 'piercing-rounds-magazine',
+  'uranium-rounds': 'uranium-rounds-magazine',
+})) {
+  const proto = raw.ammo && raw.ammo[oid];
+  if (proto) { const dmg = findAmmoDamage(proto); if (dmg !== null) ammoDamage[pid] = dmg; }
+}
+
+// ---- 雷达 ----
+// range：max_distance_of_sector_revealed（官方 14）；power：energy_usage（官方 300kW）。
+// 扫描间隔(RADAR_SWEEP)与每扇区能量是官方自定义节奏，项目采用自定义 2.5s 节奏 → 保持手工。
+const radar = {};
+{
+  const r = raw.radar && raw.radar.radar;
+  if (r) {
+    if (typeof r.max_distance_of_sector_revealed === 'number') radar.range = r.max_distance_of_sector_revealed;
+    const eu = parseKiloWatt(r.energy_usage);
+    if (eu !== null) radar.power = eu;
+  }
+}
+
+// ---- 个人装备（装备网格） ----
+// 官方类型：solar-panel-equipment / generator-equipment / battery-equipment /
+// energy-shield-equipment / movement-bonus-equipment / active-defense-equipment。
+// powerOut=power(kW)、powerCap=energy_source.buffer_capacity(→kJ)、shield=max_shield_value、
+// speed=movement_bonus、laser/放电范围=attack_parameters.range、放电冷却=cooldown(tick→s)。
+// 项目特有装备（portable-solar-panel-mk2 等）官方无对应 → 保持手工。
+const equipment = {};
+{
+  const sp = raw['solar-panel-equipment'] && raw['solar-panel-equipment']['solar-panel-equipment'];
+  if (sp) { const kw = parseKiloWatt(sp.power); if (kw !== null) equipment['portable-solar-panel'] = { powerOut: kw }; }
+  const fr = raw['generator-equipment'] && raw['generator-equipment']['fusion-reactor-equipment'];
+  if (fr) { const kw = parseKiloWatt(fr.power); if (kw !== null) equipment['portable-fusion-reactor'] = { powerOut: kw }; }
+  const b1 = raw['battery-equipment'] && raw['battery-equipment']['battery-equipment'];
+  if (b1 && b1.energy_source) { const cap = parseEnergyKJ(b1.energy_source.buffer_capacity); if (cap !== null) equipment['personal-battery'] = { powerCap: cap }; }
+  const b2 = raw['battery-equipment'] && raw['battery-equipment']['battery-mk2-equipment'];
+  if (b2 && b2.energy_source) { const cap = parseEnergyKJ(b2.energy_source.buffer_capacity); if (cap !== null) equipment['personal-battery-mk2'] = { powerCap: cap }; }
+  const s1 = raw['energy-shield-equipment'] && raw['energy-shield-equipment']['energy-shield-equipment'];
+  if (s1 && typeof s1.max_shield_value === 'number') equipment['energy-shield'] = { shield: s1.max_shield_value };
+  const s2 = raw['energy-shield-equipment'] && raw['energy-shield-equipment']['energy-shield-mk2-equipment'];
+  if (s2 && typeof s2.max_shield_value === 'number') equipment['energy-shield-mk2'] = { shield: s2.max_shield_value };
+  const ex = raw['movement-bonus-equipment'] && raw['movement-bonus-equipment']['exoskeleton-equipment'];
+  if (ex && typeof ex.movement_bonus === 'number') equipment['exoskeleton'] = { speed: ex.movement_bonus };
+  const pld = raw['active-defense-equipment'] && raw['active-defense-equipment']['personal-laser-defense-equipment'];
+  if (pld && pld.attack_parameters && typeof pld.attack_parameters.range === 'number') equipment['personal-laser-defense'] = { laser: pld.attack_parameters.range };
+  const dd = raw['active-defense-equipment'] && raw['active-defense-equipment']['discharge-defense-equipment'];
+  if (dd && dd.attack_parameters) {
+    equipment['discharge-defense'] = {
+      discharge: true,
+      dischargeRange: dd.attack_parameters.range,
+      dischargeCooldown: Math.round(dd.attack_parameters.cooldown / 60 * 10) / 10,
+    };
+  }
+}
+
+// ---- 核能热量链路（反应堆 / 导热管） ----
+// 官方 heat_buffer：specific_heat("10MJ"/"1MJ")、max_transfer("10GW"/"1GW")、max_temperature=1000、
+// minimum_glow_temperature=350。热交换器在本数据集中为简化的 boiler 型（无 heat_buffer）→ 保持手工。
+// reactorHeatRate：核燃料棒 8GJ / 官方燃烧 200s = 40MW。
+const heat = {};
+{
+  const r = raw.reactor && raw.reactor['nuclear-reactor'];
+  if (r && r.heat_buffer) {
+    if (typeof r.heat_buffer.max_temperature === 'number') heat.reactorMaxTemp = r.heat_buffer.max_temperature;
+    const sh = parseEnergyMJ(r.heat_buffer.specific_heat);
+    if (sh !== null) heat.reactorSpecificHeat = sh;
+    const mt = parsePowerMW(r.heat_buffer.max_transfer);
+    if (mt !== null) heat.reactorMaxTransfer = mt;
+  }
+  const hp = raw['heat-pipe'] && raw['heat-pipe']['heat-pipe'];
+  if (hp && hp.heat_buffer) {
+    if (typeof hp.heat_buffer.max_temperature === 'number') heat.heatPipeMaxTemp = hp.heat_buffer.max_temperature;
+    if (typeof hp.heat_buffer.minimum_glow_temperature === 'number') heat.heatPipeMinGlowTemp = hp.heat_buffer.minimum_glow_temperature;
+    const sh = parseEnergyMJ(hp.heat_buffer.specific_heat);
+    if (sh !== null) heat.heatPipeSpecificHeat = sh;
+    const mt = parsePowerMW(hp.heat_buffer.max_transfer);
+    if (mt !== null) heat.heatPipeMaxTransfer = mt;
+  }
+  const fuel = raw.item && raw.item['uranium-fuel-cell'];
+  if (fuel) {
+    const g = parseEnergyMJ(fuel.fuel_value);
+    if (g !== null) heat.reactorHeatRate = Math.round(g / 200 * 10) / 10; // 8GJ/200s = 40MW
+  }
+}
+
+// ---- 机器人港基础耗电（kW，官方 energy_usage 50kW）----
+const roboportPower = (() => {
+  const rp = raw.roboport && raw.roboport.roboport;
+  const kw = rp && parseKiloWatt(rp.energy_usage);
+  return kw;
+})();
+
+// ---- 汇总新增字段进 GAME_DATA（undefined 字段由 JSON 序列化自动剔除）----
+Object.assign(GAME_DATA, {
+  undergroundDist,
+  renewable,
+  fluidCapacity,
+  beaconRange,
+  turret,
+  ammoDamage,
+  radar,
+  equipment,
+  heat,
+  roboportPower,
+});
+
 // ---- recipe ----
 const skipDetails = {}; // rid → 原因
 for (const rid of projectRecipes) {
@@ -473,6 +702,19 @@ function report() {
   console.log('\n-- 设备行为参数 deviceStats（官方已接入）--');
   console.log(Object.keys(GAME_DATA.deviceStats).length ? Object.keys(GAME_DATA.deviceStats).join(', ') : '（无）');
   console.log('deviceStats 手工保留（项目自定/模型不同，未接入）：抽油机基础速率、信号塔效果系数、机械臂简化模型、地下带距离、分流器、创意/虚空带');
+  console.log('\n-- 扩展设备参数（官方已接入，见 GAME_DATA 新字段）--');
+  console.log('地下带距离 undergroundDist: ' + JSON.stringify(GAME_DATA.undergroundDist));
+  console.log('太阳能/蓄电器 renewable: ' + JSON.stringify(GAME_DATA.renewable));
+  console.log('流体容量/抽水机 fluidCapacity: ' + JSON.stringify(GAME_DATA.fluidCapacity));
+  console.log('信号塔半径 beaconRange: ' + JSON.stringify(GAME_DATA.beaconRange));
+  console.log('炮塔 turret: ' + JSON.stringify(GAME_DATA.turret));
+  console.log('弹药伤害 ammoDamage: ' + JSON.stringify(GAME_DATA.ammoDamage));
+  console.log('雷达 radar: ' + JSON.stringify(GAME_DATA.radar));
+  console.log('个人装备 equipment: ' + JSON.stringify(GAME_DATA.equipment));
+  console.log('热量链路 heat: ' + JSON.stringify(GAME_DATA.heat));
+  console.log('机器人港功耗 roboportPower: ' + JSON.stringify(GAME_DATA.roboportPower));
+  console.log('扩展参数手工保留（官方无此字段/项目简化模型）：汽轮机/锅炉/蒸汽机产汽模型、机器人速度与电量刻度、机器人港容量、',
+    '武器/装甲战斗平衡表、燃料能量(项目相对刻度)、载具装备网格、热交换器热量参数、雷达扫描节奏');
   console.log('\n-- 官方多语言命名 names（物品/建筑/流体，中英对照已接入）--');
   console.log(Object.keys(GAME_NAMES).length + ' 条；配方名 recipeNames ' + Object.keys(RECIPE_NAMES).length + ' 条');
 
@@ -540,9 +782,16 @@ const header = [
   '//   deviceStats[id] = { craftingSpeed, moduleSlots, miningSpeed, beltSpeed(格/s), beaconEffectivity }',
   '//   names[id] = { zh, en }（物品/建筑/流体官方命名，供中英文切换，见 data-util.js localizedName）',
   '//   recipeNames[rid] = { zh, en }（配方官方命名，供炼油/离心机面板切换）',
+  '//   其余设备行为参数（官方接入，见对应设备文件 GAME_DATA.xxx?.[..] ?? 兜底）：',
+  '//   undergroundDist[带] = 地下带最大距离(格), renewable = { solarPower, accumCap, accumChargeRate }',
+  '//   fluidCapacity = { storageTank, fluidWagon, pumpRate }, beaconRange = 信号塔半径(格)',
+  '//   turret[塔] = { range, fireRate(秒) }, ammoDamage[弹药] = 伤害, radar = { range, power(kW) }',
+  '//   equipment[装备] = { powerOut | powerCap(kJ) | shield | speed | laser | dischargeRange/Cooldown }',
+  '//   heat = { reactorMaxTemp, reactorSpecificHeat, reactorMaxTransfer, heatPipeMaxTemp, heatPipeMinGlowTemp,',
+  '//           heatPipeSpecificHeat, heatPipeMaxTransfer, reactorHeatRate(MW) }, roboportPower(kW)',
   'const GAME_DATA = ' + JSON.stringify(GAME_DATA, null, 1) + ';',
   '',
 ].join('\n');
 
 fs.writeFileSync(OUT_FILE, header);
-console.log('OK: 已生成 ' + path.relative(ROOT, OUT_FILE) + ' (配方 ' + Object.keys(GAME_DATA.recipe).length + ' 条, 堆叠 ' + Object.keys(GAME_DATA.stackSize).length + ' 条, 血量 ' + Object.keys(GAME_DATA.buildingHp).length + ' 条, 功耗 ' + Object.keys(GAME_DATA.powerUse).length + ' 条, 设备参数 ' + Object.keys(GAME_DATA.deviceStats).length + ' 条, 命名 ' + Object.keys(GAME_DATA.names).length + ' 条, 配方名 ' + Object.keys(GAME_DATA.recipeNames).length + ' 条)');
+console.log('OK: 已生成 ' + path.relative(ROOT, OUT_FILE) + ' (配方 ' + Object.keys(GAME_DATA.recipe).length + ' 条, 堆叠 ' + Object.keys(GAME_DATA.stackSize).length + ' 条, 血量 ' + Object.keys(GAME_DATA.buildingHp).length + ' 条, 功耗 ' + Object.keys(GAME_DATA.powerUse).length + ' 条, 设备参数 ' + Object.keys(GAME_DATA.deviceStats).length + ' 条, 命名 ' + Object.keys(GAME_DATA.names).length + ' 条, 配方名 ' + Object.keys(GAME_DATA.recipeNames).length + ' 条, 地下带 ' + Object.keys(GAME_DATA.undergroundDist).length + ' 条, 可再生 ' + (GAME_DATA.renewable ? Object.keys(GAME_DATA.renewable).length : 0) + ' 项, 流体容量 ' + (GAME_DATA.fluidCapacity ? Object.keys(GAME_DATA.fluidCapacity).length : 0) + ' 项, 炮塔 ' + Object.keys(GAME_DATA.turret).length + ' 座, 弹药伤害 ' + Object.keys(GAME_DATA.ammoDamage).length + ' 种, 雷达 ' + (GAME_DATA.radar ? Object.keys(GAME_DATA.radar).length : 0) + ' 项, 装备 ' + Object.keys(GAME_DATA.equipment).length + ' 件, 热量 ' + (GAME_DATA.heat ? Object.keys(GAME_DATA.heat).length : 0) + ' 项)');

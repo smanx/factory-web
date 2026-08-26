@@ -31,6 +31,24 @@ const EQUIPMENT = {
   // 放电防御：手动激活对周围敌人释放连锁电击，消耗个人电网电力
   'discharge-defense':        { name: '放电防御',          size: 3, discharge: true, desc: '主动放电打击周围敌人' }
 };
+// 官方装备参数桥接（GAME_DATA.equipment 由 factorio-data 现场生成，见 tools/generate-game-data.js）。
+// 仅覆盖官方有对应数据的数值字段（发电/储电/护盾/速度/射程/放电范围冷却）；
+// 显示描述 desc、装备尺寸 size 及项目特有装备（portable-solar-panel-mk2 等）保持手工。
+{
+  const g = GAME_DATA.equipment || {};
+  for (const eid of Object.keys(EQUIPMENT)) {
+    const src = g[eid], def = EQUIPMENT[eid];
+    if (!src || !def) continue;
+    if (src.powerOut !== undefined) def.powerOut = src.powerOut;
+    if (src.powerCap !== undefined) def.powerCap = src.powerCap;
+    if (src.shield !== undefined) def.shield = src.shield;
+    if (src.speed !== undefined) def.speed = src.speed;
+    if (src.laser !== undefined) def.laser = src.laser;
+    if (src.discharge !== undefined) def.discharge = src.discharge;
+    if (src.dischargeRange !== undefined) def.dischargeRange = src.dischargeRange;
+    if (src.dischargeCooldown !== undefined) def.dischargeCooldown = src.dischargeCooldown;
+  }
+}
 function isEquipment(id) { return !!EQUIPMENT[id]; }
 
 // 确保个人电网/装备状态初始化
@@ -188,10 +206,10 @@ function applyShieldAbsorb(dmg) {
 }
 
 // ===== 装备效果接入 =====
-// 外骨骼速度加成：每个 +40%（叠加），作用于玩家移动速度。
+// 外骨骼速度加成：每个 +speed（叠加），作用于玩家移动速度。
 function equipmentSpeedMult() {
   const n = equipCount('exoskeleton');
-  return 1 + n * 0.4;
+  return 1 + n * (EQUIPMENT['exoskeleton'].speed ?? 0.4);
 }
 
 // 夜视：当前是否启用夜视（夜间提亮）。
@@ -246,10 +264,10 @@ function hasBeltImmunity() {
 // ===== 放电防御装备（对齐《异星工厂》Discharge defense） =====
 // 手动激活（按快捷键或点击装备）后，以玩家为中心的大范围内所有敌人被连锁电击，
 // 造成高额伤害并消耗个人电网电力。电力不足时无法激活。
-const DISCHARGE_RANGE = 12;         // 电击半径（格）
+const DISCHARGE_RANGE = GAME_DATA.equipment?.['discharge-defense']?.dischargeRange ?? 12;   // 电击半径（格，官方 attack_parameters.range 10）
 const DISCHARGE_DMG = 100;          // 每个敌人受到的伤害
 const DISCHARGE_COST = 5000;        // 每次激活耗电（与个人电池 10MJ 量级匹配）
-const DISCHARGE_COOLDOWN = 2;       // 激活冷却（秒），避免连续按键刷屏
+const DISCHARGE_COOLDOWN = GAME_DATA.equipment?.['discharge-defense']?.dischargeCooldown ?? 2; // 激活冷却（秒，官方 cooldown 150tick=2.5s）
 
 // 玩家是否已装备放电防御（用于快捷键判定）
 function hasDischargeDefense() {

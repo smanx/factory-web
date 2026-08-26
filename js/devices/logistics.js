@@ -29,7 +29,7 @@ const ROBOT_LOW_CHARGE = 20;    // 低于此值回家充电
 const ROBOT_CARRY = 3;          // 单次最多搬运同类物品数量（基础值，可由「机器人容量」无限科技提升，见 robotCarryCap()）
 const ROBOT_NET_T = 0.5;        // 网络调度复算间隔
 const ROBOPORT_CAP = 50;        // 单机器人港最多容纳的机器人数量
-const ROBOPORT_POWER_IDLE = 40; // 机器人港基础耗电（kW）
+const ROBOPORT_POWER_IDLE = GAME_DATA.roboportPower ?? 40; // 机器人港基础耗电（kW，官方 energy_usage 50kW）
 
 // 机器人港实体
 class Roboport extends CircuitNode {

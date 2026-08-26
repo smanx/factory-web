@@ -2,7 +2,7 @@
 
 // ===== 太阳能板：白天无燃料发电（对齐《异星工厂》Solar panel，占地 2×2）=====
 // 加入白天/黑夜时间周期，白天满发、夜晚零发，并入全图电网（作为 powerOut 正项）。
-const SOLAR_POWER = 60;             // 满日照功率（对齐《异星工厂》太阳能板 60kW）
+const SOLAR_POWER = GAME_DATA.renewable?.solarPower ?? 60;   // 满日照功率（官方太阳能板 60kW）
 const DAY_CYCLE = 60;               // 一昼夜时长（秒）
 function solarFactor() {
   // 用 G.time 模拟昼夜：0.25（黎明）→0.5（正午）→0.75（黄昏）→1（深夜）
@@ -26,8 +26,8 @@ class SolarPanel extends Entity {
 // 作为电网的“缓冲电池”：白天电网有盈余时充电，夜间/不足时放电补充。
 // 蓄电器也是电路节点：其储电量（0~100）以 signal-charge 信号输出到所连电路网络，
 // 可被功率开关/组合器/告警音箱读取，用于按电量自动化调度（对齐《异星工厂》蓄电器电路信号）。
-const ACCUM_CAP = 5000;            // 储电上限 5MJ（对齐《异星工厂》蓄电器，单位 kJ）
-const ACCUM_CHARGE_RATE = 300;     // 每秒充/放电速率上限（对齐《异星工厂》蓄电器 300kW）
+const ACCUM_CAP = GAME_DATA.renewable?.accumCap ?? 5000;            // 储电上限 5MJ（官方蓄电器，单位 kJ）
+const ACCUM_CHARGE_RATE = GAME_DATA.renewable?.accumChargeRate ?? 300; // 每秒充/放电速率上限（官方 300kW）
 const ACCUM_CIRCUIT_RANGE = 7;     // 蓄电器电路连接范围（格，同小型电线杆），供组合器/功率开关读取其电量信号
 class Accumulator extends CircuitNode {
   constructor(type, x, y) {

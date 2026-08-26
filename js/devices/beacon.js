@@ -6,7 +6,7 @@
 // 消耗电力；需「产能科技（production）」解锁。
 
 // 常量（对齐《异星工厂》Beacon）
-const BEACON_RANGE = 4;          // 影响半径（格），即 9×9 范围
+const BEACON_RANGE = GAME_DATA.beaconRange ?? 4; // 影响半径（格），官方 2.0 supply_area_distance=3
 const BEACON_MOD_SLOTS = GAME_DATA.deviceStats?.['beacon']?.moduleSlots ?? 2; // 信号塔模块槽位数（官方 module_slots=2）
 const BEACON_POWER = GAME_DATA.powerUse?.['beacon'] ?? 480;  // 信号塔基础耗电（kW，官方 energy_usage 480kW）
 // 信号塔模块生效系数：项目沿用《异星工厂》1.x 的"效果减半"模型（=0.5）。
