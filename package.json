@@ -4,6 +4,10 @@
   "private": true,
   "description": "工厂原型 - Factorio clone in browser",
   "scripts": {
+    "serve": "npx http-server -p 8094 -c-1",
+    "serve:dist": "cd dist & npx http-server -p 8094 -c-1",
+    "dev": "node build.js --dev --port 8094",
+    "watch": "node build.js --watch",
     "build": "node build.js",
     "build:minify": "node build.js --minify"
   },

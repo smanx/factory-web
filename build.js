@@ -4,7 +4,12 @@ const path = require('path');
 
 const ROOT = __dirname;
 const DIST = path.join(ROOT, 'dist');
-const shouldMinify = process.argv.includes('--minify');
+const args = process.argv.slice(2);
+const shouldMinify = args.includes('--minify');
+const shouldWatch = args.includes('--watch');
+const shouldDev = args.includes('--dev');
+const portIdx = args.indexOf('--port');
+const devPort = portIdx !== -1 ? parseInt(args[portIdx + 1], 10) : 8094;
 
 // ── 1. 从 index.html 提取 <script> 标签的文件路径（保持顺序） ──
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
@@ -12,68 +17,153 @@ const scriptRe = /<script\s+src="([^"]+)"[^>]*><\/script>/g;
 const scripts = [];
 let m;
 while ((m = scriptRe.exec(html)) !== null) {
-  const raw = m[1];
-  const file = raw.split('?')[0]; // 去掉 ?v=N 缓存参数
-  scripts.push(file);
+  scripts.push(m[1].split('?')[0]);
 }
 console.log(`Found ${scripts.length} script entries`);
 
-// ── 2. 生成临时入口文件 dist/_entry.js ──
-fs.mkdirSync(DIST, { recursive: true });
+// ── 拼接所有 JS 文件内容 ──
+function concatScripts() {
+  return scripts.map(f => {
+    const filePath = path.join(ROOT, f);
+    return `// ===== ${f} =====\n${fs.readFileSync(filePath, 'utf8')}`;
+  }).join('\n\n');
+}
 
-const entryLines = scripts.map(f => `import '${path.join(ROOT, f).replace(/\\/g, '/')}';`);
-const entryPath = path.join(DIST, '_entry.js');
-fs.writeFileSync(entryPath, entryLines.join('\n') + '\n');
+// ── 清空并创建目标目录 ──
+function cleanDist() {
+  if (fs.existsSync(DIST)) {
+    fs.rmSync(DIST, { recursive: true, force: true });
+    console.log('Cleaned dist/');
+  }
+  fs.mkdirSync(DIST, { recursive: true });
+}
 
-// ── 3. esbuild 打包 ──
-esbuild.buildSync({
-  entryPoints: [entryPath],
-  absWorkingDir: ROOT,
-  bundle: true,
-  outfile: path.join(DIST, 'bundle.js'),
-  format: 'iife',
-  minify: shouldMinify,
-  sourcemap: !shouldMinify,
-  logLevel: 'info',
+// ── 生成 dist/index.html ──
+function generateDistHtml() {
+  const distHtml = html
+    .replace(/<link\s+rel="preload"\s+as="script"\s+href="[^"]+"\s*>\n?/g, '')
+    .replace(/<script\s+src="[^"]+"[^>]*><\/script>\n?/g, '')
+    .replace(
+      '</body>',
+      `  <script src="bundle.js"></script>\n</body>`
+    );
+  fs.writeFileSync(path.join(DIST, 'index.html'), distHtml);
+}
+
+// ── 复制静态资源 ──
+function copyStatic() {
+  const files = ['css/style.css', 'favicon.ico', 'manifest.json', 'robots.txt'];
+  for (const f of files) {
+    const src = path.join(ROOT, f);
+    const dest = path.join(DIST, f);
+    if (fs.existsSync(src)) {
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.copyFileSync(src, dest);
+    }
+  }
+}
+
+// ── 执行模式 ──
+async function main() {
+  if (shouldDev) {
+    // dev 模式：拼接 + transform 构建，watch 重建，serve 提供
+    cleanDist();
+    // 初始构建
+    let content = concatScripts();
+    let result = await esbuild.transform(content, { sourcefile: 'bundle.js', logLevel: 'info' });
+    fs.writeFileSync(path.join(DIST, 'bundle.js'), result.code);
+    if (result.map) fs.writeFileSync(path.join(DIST, 'bundle.js.map'), result.map);
+    generateDistHtml();
+    copyStatic();
+
+    // watch 重建：监听源文件变化，重建 bundle.js
+    const watchFiles = scripts.map(f => path.join(ROOT, f));
+    let rebuilding = false;
+    const rebuild = async () => {
+      if (rebuilding) return;
+      rebuilding = true;
+      try {
+        content = concatScripts();
+        result = await esbuild.transform(content, { sourcefile: 'bundle.js', logLevel: 'info' });
+        fs.writeFileSync(path.join(DIST, 'bundle.js'), result.code);
+        if (result.map) fs.writeFileSync(path.join(DIST, 'bundle.js.map'), result.map);
+        console.log(`[${new Date().toLocaleTimeString()}] Rebuilt bundle.js`);
+      } catch (e) {
+        console.error('Rebuild error:', e.message);
+      }
+      rebuilding = false;
+    };
+    for (const f of watchFiles) {
+      fs.watch(f, () => rebuild());
+    }
+
+    // 启动 HTTP 服务器
+    const http = require('http');
+    const mimeTypes = {
+      '.html': 'text/html', '.js': 'application/javascript',
+      '.css': 'text/css', '.ico': 'image/x-icon',
+      '.json': 'application/json', '.png': 'image/png',
+    };
+    const server = http.createServer((req, res) => {
+      const url = new URL(req.url, `http://${req.headers.host}`);
+      let filePath = path.join(DIST, decodeURIComponent(url.pathname));
+      if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
+        filePath = path.join(filePath, 'index.html');
+      }
+      if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+        const ext = path.extname(filePath);
+        res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
+        fs.createReadStream(filePath).pipe(res);
+      } else {
+        res.writeHead(404); res.end('Not Found');
+      }
+    });
+    server.listen(devPort, '0.0.0.0', () => {
+      const addr = server.address();
+      const host = ['0.0.0.0', '::'].includes(addr.address) ? '127.0.0.1' : addr.address;
+      console.log(`\n Dev server running at http://${host}:${addr.port}/`);
+      console.log(`  Watching ${scripts.length} files for changes... (Ctrl+C to stop)\n`);
+    });
+  } else if (shouldWatch) {
+    cleanDist();
+    const content = concatScripts();
+    const ctx = await esbuild.context({
+      stdin: { contents: content, resolveDir: ROOT, loader: 'js' },
+      bundle: false,
+      write: false,
+      format: 'iife',
+      logLevel: 'info',
+    });
+    await ctx.watch();
+    generateDistHtml();
+    copyStatic();
+    console.log(`\n Watching for changes... (Ctrl+C to stop)`);
+    console.log(`  Output: dist/bundle.js\n`);
+  } else {
+    // 一次性构建：拼接 + esbuild transform 压缩
+    cleanDist();
+    const content = concatScripts();
+    const result = await esbuild.transform(content, {
+      minify: shouldMinify,
+      sourcemap: shouldMinify ? false : 'external',
+      sourcefile: 'bundle.js',
+      logLevel: 'info',
+    });
+    // 手动写入 bundle.js
+    fs.writeFileSync(path.join(DIST, 'bundle.js'), result.code);
+    // 写入 sourcemap（如果有）
+    if (result.map) {
+      fs.writeFileSync(path.join(DIST, 'bundle.js.map'), result.map);
+    }
+    generateDistHtml();
+    copyStatic();
+    const size = (fs.statSync(path.join(DIST, 'bundle.js')).size / 1024).toFixed(1);
+    console.log(`\n Build complete → dist/`);
+    console.log(`  bundle.js  (${size} KB${shouldMinify ? ' minified' : ''})`);
+  }
+}
+
+main().catch(err => {
+  console.error(err);
+  process.exit(1);
 });
-
-// 清理临时入口
-fs.unlinkSync(entryPath);
-
-// ── 4. 生成 dist/index.html（替换 script 标签） ──
-const distHtml = html.replace(
-  /<script\s+src="[^"]+"[^>]*><\/script>\n?/g,
-  ''
-).replace(
-  '</body>',
-  `  <script src="bundle.js"></script>\n</body>`
-);
-fs.writeFileSync(path.join(DIST, 'index.html'), distHtml);
-
-// ── 5. 复制静态资源 ──
-const staticFiles = [
-  'css/style.css',
-  'favicon.ico',
-];
-for (const f of staticFiles) {
-  const src = path.join(ROOT, f);
-  const dest = path.join(DIST, f);
-  if (fs.existsSync(src)) {
-    fs.mkdirSync(path.dirname(dest), { recursive: true });
-    fs.copyFileSync(src, dest);
-    console.log(`Copied ${f}`);
-  }
-}
-
-// ── 6. 复制其他可能需要的文件（如 manifest.json 等） ──
-const extraFiles = ['manifest.json', 'robots.txt'];
-for (const f of extraFiles) {
-  const src = path.join(ROOT, f);
-  if (fs.existsSync(src)) {
-    fs.copyFileSync(src, path.join(DIST, f));
-    console.log(`Copied ${f}`);
-  }
-}
-
-console.log(`\nBuild complete → dist/`);
-console.log(`  bundle.js  (${(fs.statSync(path.join(DIST, 'bundle.js')).size / 1024).toFixed(1)} KB${shouldMinify ? ' minified' : ''})`);
