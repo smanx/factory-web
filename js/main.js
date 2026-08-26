@@ -287,18 +287,26 @@ function entityOverlaps(e, x, y) {
   return false;
 }
 
-// 重叠消解：若实体 e 当前占地与相邻实体重叠，沿“先保持原位、再就近纵向/横向”的顺序
-// 试探平移，找到第一个不重叠的位置并更新 e.x/e.y。若四周都被占满则保持原位。
+// 重叠消解：若实体 e 当前占地与相邻实体重叠，从原点出发按“由近及远、环形扩散”的顺序
+// 试探平移，找到第一个不与任何已注册实体重叠的位置并更新 e.x/e.y。
+// 采用环形扩散而非固定候选表：旧档在尺寸变化后（热交换器 3×1→2×3、汽轮机 3×3→5×3）
+// 占地变大，密集型布局下固定候选格可能全部被占满，导致无法找到空位而残留重叠实体
+// （“既选不中又删不掉、却仍显示在地图上”的幻影建筑）。环形扩散保证只要存在空位就能找到。
 function migrateLegacyEntityLayout(e) {
   if (!entityOverlaps(e, e.x, e.y)) return;
-  // 试探位移：优先保持 x、上下就近，再左右、再更远
-  const cands = [
-    [0, -1], [0, 1], [0, -2], [0, 2], [-1, 0], [1, 0], [0, -3], [0, 3],
-    [0, -4], [0, 4], [-2, 0], [2, 0], [0, -5], [0, 5], [-1, -1], [1, -1], [-1, 1], [1, 1]
-  ];
-  for (const [dx, dy] of cands) {
-    const nx = e.x + dx, ny = e.y + dy;
-    if (!entityOverlaps(e, nx, ny)) { e.x = nx; e.y = ny; return; }
+  // 从半径 1 逐圈向外扩散，每圈只扫外边界格（避免重复探测内圈），半径上限 10 格
+  const R = 10;
+  for (let r = 1; r <= R; r++) {
+    // 上/下边
+    for (let dx = -r; dx <= r; dx++) {
+      if (!entityOverlaps(e, e.x + dx, e.y - r)) { e.x += dx; e.y -= r; return; }
+      if (!entityOverlaps(e, e.x + dx, e.y + r)) { e.x += dx; e.y += r; return; }
+    }
+    // 左/右边（跳过四角，避免重复）
+    for (let dy = -r + 1; dy <= r - 1; dy++) {
+      if (!entityOverlaps(e, e.x - r, e.y + dy)) { e.x -= r; e.y += dy; return; }
+      if (!entityOverlaps(e, e.x + r, e.y + dy)) { e.x += r; e.y += dy; return; }
+    }
   }
 }
 
@@ -337,17 +345,18 @@ function applySave(d) {
   if (Array.isArray(d.world && d.world.explored)) G.world.explored = new Set(d.world.explored);
   else if (!G.world.explored) G.world.explored = new Set();
   if (typeof resetPowerReg === 'function') resetPowerReg();
-  // 旧档（布局版本 <2）兼容：此前热交换器占地 3×1、汽轮机 3×3，本版改为
-  // 热交换器 2×3、汽轮机 5×3。旧档按旧尺寸摆放，读档后按新尺寸占地会与相邻设备
-  // 在 G.grid 中互相覆盖，导致实体“既选不中又删不掉、却仍显示在地图上”。
-  // 故读旧档时对这两个尺寸变化的设备做重叠消解：平移至不与相邻实体重叠的位置，
-  // 保证可正常选中/拆除（幂等，新档已迁移过则不再处理）。
-  const legacyLayout = !(d.v >= 2);
+  // 占地尺寸兼容：此前热交换器占地 3×1、汽轮机 3×3，本版改为 2×3、5×3。
+  // 旧档按旧尺寸摆放，读档后按新尺寸占地会与相邻设备在 G.grid 中互相覆盖，
+  // 导致实体“既选不中又删不掉、却仍显示在地图上”。故对所有版本存档读档时
+  // 对这两个尺寸敏感的设备做重叠消解：仅当重叠才平移，未重叠的保持原位（幂等）。
   for (const s of d.ents) {
     const cls = ENT_CLASSES[s.type];
     if (!cls) continue;
     const e = cls.restore(s);
-    if (legacyLayout && LAYOUT_MIGRATE_TYPES[s.type]) migrateLegacyEntityLayout(e);
+    // 对所有版本存档都做占地重叠消解：仅当实体按当前尺寸占地与相邻实体重叠时才会平移
+    // （幂等，未重叠的实体保持原位）。旧档（布局版本<2）因尺寸变化必然重叠故需要迁移；
+    // 新档若曾被旧版迁移算法误留下重叠幻影，也会在此一并清除，保证可正常选中/拆除。
+    if (LAYOUT_MIGRATE_TYPES[s.type]) migrateLegacyEntityLayout(e);
     addEnt(e);
   }
   G.inv = new Map(d.inv);

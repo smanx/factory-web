@@ -574,6 +574,8 @@ function initPanelEvents() {
         // 面板操作区：旋转 / 水平翻转 / 垂直翻转当前选中的建筑（复用蓝图变换的方向算法）
         const mch = G.panelEnt;
         if (mch && G.ents.includes(mch) && BUILD_DEFS[mch.type]) {
+          // 固定管道口建筑（锅炉/蒸汽机/汽轮机/热交换器）放置后不可旋转/翻转
+          if (!postPlaceRotatable(mch.type)) { toast('该建筑放置后不可旋转/翻转'); return; }
           const nd = act === 'panel-rotate' ? (mch.dir + 1) % 4 : flipDir(mch.dir, act === 'panel-flip-h' ? 'h' : 'v');
           if (nd === mch.dir && act !== 'panel-rotate') { toast('该建筑已处于该朝向'); }
           // 非方形设备（分流器类）：旋转/翻转后脚印变化，需重挂网格

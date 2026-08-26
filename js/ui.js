@@ -211,12 +211,14 @@ function renderPanel(full) {
   } else if (G.panelMode === 'machine' && G.panelEnt) {
     title.textContent = ITEMS[G.panelEnt.type].name;
     // 机器面板：设备专属内容 + 底部通用操作区（旋转/水平翻转/垂直翻转/拆除，PC/手机端均可点击操作当前建筑）
+    // 固定管道口建筑（锅炉/蒸汽机/汽轮机/热交换器）放置后不可旋转/翻转，隐藏旋转/翻转按钮
+    const canRot = postPlaceRotatable(G.panelEnt.type);
     body.innerHTML = htmlMachine(G.panelEnt) +
       '<div class="sec">操作</div>' +
       '<div class="panel-op-row">' +
-        '<button data-action="panel-rotate" class="panel-op-btn" title="顺时针旋转 90°（R）">⟳ 旋转</button>' +
-        '<button data-action="panel-flip-h" class="panel-op-btn" title="水平翻转（H）">⇋ 水平翻转</button>' +
-        '<button data-action="panel-flip-v" class="panel-op-btn" title="垂直翻转（V）">⇵ 垂直翻转</button>' +
+        (canRot ? '<button data-action="panel-rotate" class="panel-op-btn" title="顺时针旋转 90°（R）">⟳ 旋转</button>' : '') +
+        (canRot ? '<button data-action="panel-flip-h" class="panel-op-btn" title="水平翻转（H）">⇋ 水平翻转</button>' : '') +
+        (canRot ? '<button data-action="panel-flip-v" class="panel-op-btn" title="垂直翻转（V）">⇵ 垂直翻转</button>' : '') +
       '</div>' +
       '<button data-action="panel-deconstruct" class="deconstruct-btn-inline">✖ 拆除该建筑</button>';
   }

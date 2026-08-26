@@ -48,8 +48,8 @@ function touchActionsForEnt(e) {
     actions.push({ key: 'take', icon: '✋', label: '拿起', color: '#e0b94a',
       run: () => pickupEnt(e) });
   }
-  // 旋转 / 翻转：有朝向的设备
-  if (DEVICE_DIR_ROTATE[e.type] || BUILD_DEFS[e.type].rotSwap) {
+  // 旋转 / 翻转：有朝向的设备（固定管道口建筑如锅炉/蒸汽机/汽轮机/热交换器放置后不可旋转）
+  if (postPlaceRotatable(e.type) && (DEVICE_DIR_ROTATE[e.type] || BUILD_DEFS[e.type].rotSwap)) {
     actions.push({ key: 'rotate', icon: '⟳', label: '旋转', color: '#57e389',
       run: () => rotateEnt(e) });
   }
@@ -70,13 +70,15 @@ function pickupEnt(e) {
   uiDirty = true;
 }
 
-// 旋转指定建筑
+// 旋转指定建筑（返回是否实际旋转，供调用方判断）
 function rotateEnt(e) {
   const def = BUILD_DEFS[e.type];
-  if (!def) return;
+  if (!def) return false;
+  // 固定管道口建筑（锅炉/蒸汽机/汽轮机/热交换器）放置后不可直接旋转
+  if (!postPlaceRotatable(e.type)) { toast('该建筑放置后不可旋转，请在放置前旋转'); return false; }
   if (def.rotSwap) {
     const nd = (e.dir + 1) % 4;
-    if (e.type === 'offshore-pump' && !pumpCanFace(e, nd)) { toast('抽水机无法朝该方向旋转：必须仍压在水面上'); return; }
+    if (e.type === 'offshore-pump' && !pumpCanFace(e, nd)) { toast('抽水机无法朝该方向旋转：必须仍压在水面上'); return false; }
     removeEnt(e);
     e.dir = nd;
     e.applyDir();
@@ -86,10 +88,11 @@ function rotateEnt(e) {
     invalidateBeltInputNear(e.x, e.y, e.w, e.h);
     if (typeof e.onRotate === 'function') e.onRotate();
   } else {
-    return;
+    return false;
   }
   if (G.panelEnt === e) renderPanel(false);
   uiDirty = true;
+  return true;
 }
 
 // ============================================================================
@@ -544,8 +547,7 @@ function handleDoubleTap() {
   // 双击建筑 → 旋转
   if (e && BUILD_DEFS[e.type]) {
     if (G.panelMode === 'machine' && G.panelEnt === e) closePanel();
-    rotateEnt(e);
-    toast('已旋转 ' + ITEMS[e.type].name);
+    if (rotateEnt(e)) toast('已旋转 ' + ITEMS[e.type].name);
     return;
   }
   // 双击空地（选中物品）→ 旋转放置朝向

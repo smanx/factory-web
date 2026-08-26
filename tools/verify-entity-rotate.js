@@ -40,6 +40,10 @@ const BUILD_DEFS = {
   'fast-underground-belt': { w: 1, h: 1, solid: false },
   'express-underground-belt': { w: 1, h: 1, solid: false },
   'splitter':            { w: 1, h: 2, solid: false, rotSwap: true },
+  'steam-turbine':       { w: 5, h: 3, solid: true, rotSwap: true },
+  'heat-exchanger':      { w: 2, h: 3, solid: true, rotSwap: true },
+  'boiler':              { w: 3, h: 2, solid: true, rotSwap: true },
+  'steam-engine':        { w: 3, h: 5, solid: true, rotSwap: true },
   'inserter':            { w: 1, h: 1, solid: true },
   'burner-inserter':     { w: 1, h: 1, solid: true },
   'long-inserter':       { w: 1, h: 1, solid: true },
@@ -57,6 +61,7 @@ const DEVICE_DIR_ROTATE = {};
 const sandbox = {
   console, TILE, BELT_SPEED, BELT_SPACING, DX, DY, G, entAt, entKey,
   BUILD_DEFS, DEVICE_DIR_ROTATE,
+  postPlaceRotatable: (t) => !(t === 'boiler' || t === 'steam-engine' || t === 'steam-turbine' || t === 'heat-exchanger'),
   ITEMS: {},
   Underground: class Underground {}, Splitter: class Splitter {},
   Belt: class Belt {}, Entity: class Entity {},
@@ -246,6 +251,38 @@ for (const t in rotateDefs) {
   const re = new RegExp("'" + t + "'\\s*:\\s*\\{[^}]*rotSwap:\\s*true");
   ok(re.test(bdSrc), `${t} 已标记 rotSwap（建造时可旋转/翻转）`);
 }
+
+// ===== 五、固定管道口建筑放置后不可直接旋转（仅幽灵阶段可旋转） =====
+// 锅炉/蒸汽机/汽轮机/热交换器放置后按 R/V/H 不应旋转本体，而是作用于幽灵；
+// 而非固定管道口的 rotSwap 设备（分流器）放置后仍可旋转。
+console.log('\n【固定管道口建筑放置后不可旋转】');
+const fixedPipeDefs = { 'boiler': [3, 2], 'steam-engine': [3, 5], 'steam-turbine': [5, 3], 'heat-exchanger': [2, 3] };
+for (const t in fixedPipeDefs) {
+  fresh();
+  vm.runInContext(`(function(){
+    const e = { type: '${t}', x: 5, y: 5, dir: 0, w: ${fixedPipeDefs[t][0]}, h: ${fixedPipeDefs[t][1]},
+                def: { w: ${fixedPipeDefs[t][0]}, h: ${fixedPipeDefs[t][1]}, rotSwap: true } };
+    G.grid.set(entKey(5,5), e); G.ents.push(e);
+    G.cursorTile = {tx:5, ty:5};
+    G.ghostDir = 0;
+    rotateAction(); // 指向已放置的固定管道口建筑，R 应作用于幽灵而非本体
+    __d = e.dir; __gw = G.ghostDir;
+  })()`, sandbox);
+  ok(sandbox.__d === 0 && sandbox.__gw === 1,
+    `${t} 放置后按 R 不旋转本体(dir=${sandbox.__d})，而旋转幽灵(dir=${sandbox.__gw})`);
+}
+// 分流器（非固定管道口 rotSwap）放置后仍可直接旋转
+fresh();
+vm.runInContext(`(function(){
+  const sp = new Splitter('splitter', 5, 5);
+  sp.dir = 0; sp.w = 1; sp.h = 2;
+  G.grid.set(entKey(5,5), sp); G.ents.push(sp);
+  G.cursorTile = {tx:5, ty:5};
+  rotateAction();
+  __d = sp.dir; __w = sp.w; __h = sp.h;
+})()`, sandbox);
+ok(sandbox.__d === 1 && sandbox.__w === 2 && sandbox.__h === 1,
+  `分流器（非固定管道口）放置后按 R 仍可旋转 dir=${sandbox.__d} w=${sandbox.__w} h=${sandbox.__h}`);
 
 console.log('\n----------------------------------------');
 console.log(`通过 ${pass} 项，失败 ${fail} 项`);

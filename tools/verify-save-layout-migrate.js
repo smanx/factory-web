@@ -133,6 +133,33 @@ for (const s of fresh) {
   ok(e.x === s.x && e.y === s.y, `不重叠时 ${s.type}@(${s.x},${s.y}) 保持原位（不被误移动）`);
 }
 
+console.log('\n【密集型旧档布局：不残留幻影】');
+// 回归：旧版迁移用固定候选格，密集型布局（热交换器 2×3 多行密集、汽轮机 5×3 网格）下
+// 候选格会被占满导致找不到空位，残留重叠实体 → “选不中删不掉却仍显示”的幻影。
+// 新版改用环形扩散，必须保证迁移后每个实体占地都与其它实体不重叠、全部可选中。
+function allSelectable() {
+  let bad = 0;
+  for (const e of G.ents) {
+    for (let dy = 0; dy < e.h; dy++)
+      for (let dx = 0; dx < e.w; dx++)
+        if (entAt(e.x + dx, e.y + dy) !== e) bad++;
+  }
+  return bad;
+}
+// 密集型：4 行 × 5 列旧 3×1 热交换器 + 下方 3×3 汽轮机
+const dense = [];
+for (let row = 0; row < 4; row++) for (let col = 0; col < 5; col++) dense.push({ type: 'heat-exchanger', x: 10 + col * 3, y: 20 + row, dir: 0 });
+for (let col = 0; col < 5; col++) dense.push({ type: 'steam-turbine', x: 10 + col * 3, y: 24, dir: 0 });
+loadLegacySave(dense);
+ok(allSelectable() === 0, '密集型热交换器 2D 布局迁移后无重叠幻影（全部可选中）');
+
+// 密集型：汽轮机 3×3 网格 + 热交换器行
+const dense2 = [];
+for (let ty = 20; ty < 27; ty += 3) for (let tx = 10; tx < 19; tx += 3) dense2.push({ type: 'steam-turbine', x: tx, y: ty, dir: 0 });
+for (let tx = 10; tx < 22; tx += 3) dense2.push({ type: 'heat-exchanger', x: tx, y: 19, dir: 0 });
+loadLegacySave(dense2);
+ok(allSelectable() === 0, '密集型汽轮机网格 + 热交换器迁移后无重叠幻影（全部可选中）');
+
 console.log('\n----------------------------------------');
 console.log(`通过 ${pass} 项，失败 ${fail} 项`);
 if (fail) { console.log('❌ 存在失败断言'); process.exit(1); }
