@@ -644,6 +644,27 @@ const roboportPower = (() => {
 
 
 
+
+// ---- 机器人 / 机械臂（官方参数）----
+// robotSpeed：物流/施工机器人飞行速度 speed（官方单位=格/tick，×60 → 格/秒）；
+//   logistic-robot 0.05 → 3.0，construction-robot 0.06 → 3.6。
+// inserterSpeed：机械臂旋转/伸缩速度 rotation_speed / extension_speed（官方，单位 转/tick 与 格/tick）。
+const robotSpeed = {};
+{
+  const lr = raw['logistic-robot'] && raw['logistic-robot']['logistic-robot'];
+  if (lr && typeof lr.speed === 'number') robotSpeed.logistic = Math.round(lr.speed * 60 * 1000) / 1000;
+  const cr = raw['construction-robot'] && raw['construction-robot']['construction-robot'];
+  if (cr && typeof cr.speed === 'number') robotSpeed.construction = Math.round(cr.speed * 60 * 1000) / 1000;
+}
+const inserterStats = {};
+{
+  const ins = raw.inserter && raw.inserter.inserter;
+  if (ins) {
+    if (typeof ins.rotation_speed === 'number') inserterStats.rotationSpeed = ins.rotation_speed;
+    if (typeof ins.extension_speed === 'number') inserterStats.extensionSpeed = ins.extension_speed;
+  }
+}
+
 // ---- 锅炉 / 蒸汽机 / 汽轮机（官方参数）----
 // boilerPower：锅炉最大热输入 energy_consumption（MW，官方 1.8MW）；
 // engineRate / turbineRate：蒸汽机/汽轮机满功率耗汽率 fluid_usage_per_tick（官方 0.5 / 1 → ×60=30/60 单位/秒）；
@@ -755,6 +776,8 @@ Object.assign(GAME_DATA, {
   roboportPower,
   footprint,
   steamPower,
+  robotSpeed,
+  inserterStats,
 });
 
 // ---- recipe ----

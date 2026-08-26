@@ -21,7 +21,7 @@ const LOGI_CHEST_KINDS = {
   'logistic-chest-requester': 'requester',
   'logistic-chest-buffer': 'buffer'
 };
-const ROBOT_SPEED = 5.2;        // 物流机器人飞行速度（格/秒），对齐异星工厂快于玩家
+const ROBOT_SPEED = GAME_DATA.robotSpeed?.logistic ?? 3.0;  // 物流机器人飞行速度（格/秒，官方 logistic-robot speed 0.05×60=3.0）
 const ROBOT_MAX_CHARGE = 100;   // 满电
 const ROBOT_CHARGE_DRAIN = 2.2; // 每秒飞行耗电
 const ROBOT_CHARGE_RATE = 40;   // 回港每秒充电量

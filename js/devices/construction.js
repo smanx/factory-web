@@ -15,7 +15,7 @@
 //   - 无个人机器人港或背包无施工机器人时，蓝图仍按原逻辑直接粘贴。
 
 // ===== 常量 =====
-const CONSTR_ROBOT_SPEED = 5.2;      // 施工机器人飞行速度（格/秒）
+const CONSTR_ROBOT_SPEED = GAME_DATA.robotSpeed?.construction ?? 3.6;  // 施工机器人飞行速度（格/秒，官方 construction-robot speed 0.06×60=3.6）
 const CONSTR_BUILD_TIME = 1.0;       // 单格建造耗时（秒）
 const CONSTR_RANGE = 12;             // 个人机器人港 Mk1 工作范围（格，含玩家所在格）
 const CONSTR_MAX_ACTIVE = 4;         // 个人机器人港 Mk1 同时最多在场施工的机器人数量

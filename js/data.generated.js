@@ -3412,5 +3412,13 @@ const GAME_DATA = {
   "engineRate": 30,
   "effectivity": 1,
   "turbineRate": 60
+ },
+ "robotSpeed": {
+  "logistic": 3,
+  "construction": 3.6
+ },
+ "inserterStats": {
+  "rotationSpeed": 0.014,
+  "extensionSpeed": 0.035
  }
 };
