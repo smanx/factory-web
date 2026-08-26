@@ -23,6 +23,7 @@ const BUILD_DEFS = {
   'assembling-machine-1': { w: 3, h: 3, solid: true },
   'assembling-machine-3': { w: 3, h: 3, solid: true },
   'electromagnetic-plant': { w: 4, h: 4, solid: true },  // 太空时代电磁工厂（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±2 → 4×4）
+  'recycler': { w: 2, h: 4, solid: true },  // 太空时代回收机（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±0.9×±1.85 → 2×4）
   'beacon':             { w: 3, h: 3, solid: true },
   'wooden-chest':       { w: 1, h: 1, solid: true },
   'iron-chest':         { w: 1, h: 1, solid: true },
@@ -114,6 +115,7 @@ const BUILDING_HP = {
   'stone-furnace': 200, 'steel-furnace': 300, 'electric-furnace': 350,
   // 组装机（官方 AM1 300 / AM2 350 / AM3 400 / beacon 200）
   'assembling-machine-1': 300, 'assembling-machine-2': 350, 'assembling-machine-3': 400, 'beacon': 200,
+  'recycler': 300,  // 回收机官方 max_health=300（由 GAME_DATA 桥接）
   // 储物箱（官方 wooden 100 / iron 200 / steel 350）
   'wooden-chest': 100, 'iron-chest': 200, 'steel-chest': 350,
   'creative-chest': 350, 'void-chest': 350,

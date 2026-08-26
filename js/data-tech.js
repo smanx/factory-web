@@ -39,6 +39,7 @@ const TECH_REQ = {
   'superconductor': 'electromagnetics',
   'electromagnetic-science-pack': 'electromagnetics',
   'electromagnetic-plant': 'electromagnetics',
+  'recycler': 'recycling',   // 回收机需「回收科技」（对齐《异星工厂》Recycling）
   'speed-module': 'modules',
   'productivity-module': 'modules',
   'efficiency-module': 'advanced-material-processing',

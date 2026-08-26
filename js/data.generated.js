@@ -159,6 +159,7 @@ const GAME_DATA = {
   "superconductor": 200,
   "electromagnetic-science-pack": 200,
   "electromagnetic-plant": 20,
+  "recycler": 20,
   "roboport": 10,
   "logistic-robot": 50,
   "construction-robot": 50,
@@ -247,6 +248,7 @@ const GAME_DATA = {
   "assembling-machine-1": 300,
   "assembling-machine-3": 400,
   "electromagnetic-plant": 350,
+  "recycler": 300,
   "beacon": 200,
   "wooden-chest": 100,
   "iron-chest": 200,
@@ -313,6 +315,7 @@ const GAME_DATA = {
   "assembling-machine-1": 75,
   "assembling-machine-3": 375,
   "electromagnetic-plant": 2000,
+  "recycler": 180,
   "beacon": 480,
   "lab": 60,
   "offshore-pump": 60,
@@ -401,6 +404,10 @@ const GAME_DATA = {
   "electromagnetic-plant": {
    "craftingSpeed": 2,
    "moduleSlots": 5
+  },
+  "recycler": {
+   "craftingSpeed": 0.5,
+   "moduleSlots": 4
   }
  },
  "recipe": {
@@ -1626,6 +1633,18 @@ const GAME_DATA = {
     "carbon": 1
    }
   },
+  "recycler": {
+   "time": 3,
+   "inp": {
+    "processing-unit": 6,
+    "steel-plate": 20,
+    "iron-gear-wheel": 40,
+    "concrete": 20
+   },
+   "out": {
+    "recycler": 1
+   }
+  },
   "sulfuric-acid": {
    "time": 1,
    "inp": {
@@ -2261,6 +2280,7 @@ const GAME_DATA = {
   "battery": "chemical-plant",
   "sulfur": "chemical-plant",
   "carbon": "chemical-plant",
+  "recycler": "assembling-machine-1",
   "sulfuric-acid": "chemical-plant",
   "defender-capsule": "assembling-machine-1",
   "distractor-capsule": "assembling-machine-1",
@@ -2903,6 +2923,10 @@ const GAME_DATA = {
    "zh": "电磁工厂",
    "en": "Electromagnetic plant"
   },
+  "recycler": {
+   "zh": "回收机",
+   "en": "Recycler"
+  },
   "roboport": {
    "zh": "机器人指令平台",
    "en": "Roboport"
@@ -3456,6 +3480,10 @@ const GAME_DATA = {
   },
   "electromagnetic-plant": {
    "w": 4,
+   "h": 4
+  },
+  "recycler": {
+   "w": 2,
    "h": 4
   }
  },

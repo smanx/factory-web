@@ -378,6 +378,7 @@ const DEVICE_STATS_SOURCES = {
   'chemical-plant': ['assembling-machine', 'chemical-plant'],
   'centrifuge': ['assembling-machine', 'centrifuge'],
   'electromagnetic-plant': ['assembling-machine', 'electromagnetic-plant'],  // 太空时代电磁工厂：crafting_speed=2, module_slots=5
+  'recycler': ['furnace', 'recycler'],  // 回收机：crafting_speed=0.5, module_slots=4
 };
 for (const [pid, [rtype, oname]] of Object.entries(DEVICE_STATS_SOURCES)) {
   const proto = raw[rtype] && raw[rtype][oname];
@@ -700,6 +701,7 @@ const FOOTPRINT_SOURCES = {
   'programmable-speaker': ['programmable-speaker', 'programmable-speaker'],
   'land-mine': ['land-mine', 'land-mine'],
   'electromagnetic-plant': ['assembling-machine', 'electromagnetic-plant'],  // 太空时代电磁工厂（space-age 装配机原型）
+  'recycler': ['furnace', 'recycler'],  // 回收机（recycler DLC，官方 furnace 原型）
 };
 // 官方 selection_box 为实体占用的格数（局部坐标跨度，单位格）。
 // 占地格数 = max(1, ceil(跨度))；部分实体（机械臂/电线杆/熔炉等）官方跨度<1 或非整数，

@@ -179,6 +179,9 @@ const RECIPES = {
   'electromagnetic-science-pack': { time: 10, inp: { 'superconductor': 2, 'accumulator': 1, 'electronic-circuit': 2 }, out: { 'electromagnetic-science-pack': 1 } },
   // 电磁工厂：钢板 + 处理器 + 钢筋混凝土 + 超导体 → 电磁工厂（官方需钬板，此处适配，10s）
   'electromagnetic-plant': { time: 10, inp: { 'steel-plate': 50, 'processing-unit': 50, 'refined-concrete': 50, 'superconductor': 20 }, out: { 'electromagnetic-plant': 1 } },
+  // 回收机：处理器 + 钢板 + 齿轮 + 混凝土 → 回收机（官方 energy_required=3s，此处对齐，10s）
+  'recycler': { time: 10, inp: { 'processing-unit': 6, 'steel-plate': 20, 'iron-gear-wheel': 40, 'concrete': 20 }, out: { 'recycler': 1 } },
+  // 硫酸：硫磺 + 水 + 铁板 → 硫酸（原版 1s，数量简化）
   // 硫酸：硫磺 + 水 + 铁板 → 硫酸（原版 1s，数量简化）
   'sulfuric-acid':        { time: 1, inp: { 'iron-plate': 1, 'sulfur': 5, 'water': 100 }, out: { 'sulfuric-acid': 50 } },
   // ===== 战斗机器人胶囊配方（对齐《异星工厂》Capsules）=====

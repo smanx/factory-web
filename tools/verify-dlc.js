@@ -65,4 +65,20 @@ const cv = Object.keys(IT).filter(k => k.indexOf('creative-') === 0 || k.indexOf
 ok(cv.length === 6, '创造/虚空物品数 = 6（实际 ' + cv.length + '）：' + cv.join(', '));
 
 console.log('\n' + (fail === 0 ? '✅ DLC 数据校验全部通过（' + pass + ' 项）' : '❌ 失败 ' + fail + ' 项'));
+// ===== 回收机（Recycler）数据校验 =====
+console.log('\n【回收机设备数据（官方）】');
+ok(!!GD.stackSize['recycler'], 'recycler 堆叠来自官方 (=20)');
+ok(!!GD.names['recycler'], 'recycler 官方命名已收录 (' + (GD.names['recycler'] ? GD.names['recycler'].zh : '?') + ')');
+ok(GD.footprint['recycler'] && GD.footprint['recycler'].w === 2 && GD.footprint['recycler'].h === 4, '占地 2×4（官方 selection_box ±0.9×±1.85）');
+ok(GD.buildingHp['recycler'] === 300, '血量=300（官方 max_health）');
+ok(GD.powerUse['recycler'] === 180, '功耗=180kW（官方 energy_usage）');
+ok(GD.deviceStats['recycler'] && GD.deviceStats['recycler'].craftingSpeed === 0.5, '制造速度=0.5（官方 crafting_speed）');
+ok(GD.deviceStats['recycler'].moduleSlots === 4, '模块槽=4（官方 module_slots）');
+ok(!!RP['recycler'], '回收机配方已注册（官方 processing-unit 6 + steel 20 + gear 40 + concrete 20）');
+ok(Object.keys(RP['recycler'].inp).every(k => k in IT || ['water','steam','crude-oil','heavy-oil','light-oil','petroleum-gas','lubricant','sulfuric-acid'].indexOf(k) >= 0), '回收机配方引用物品均存在');
+ok(ctx.__itemTechReq('recycler') === 'recycling', '回收机需「回收科技」');
+ok(!!TS['recycling'], '「回收科技」已注册');
+ok(!!TS['recycling'].cost['electromagnetic-science-pack'], '「回收科技」需电磁科研包（对齐官方 Recycling）');
+
+console.log('\n' + (fail === 0 ? '✅ DLC 数据校验全部通过（' + pass + ' 项）' : '❌ 失败 ' + fail + ' 项'));
 process.exit(fail === 0 ? 0 : 1);
