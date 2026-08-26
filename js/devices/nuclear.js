@@ -213,10 +213,10 @@ function centrifugePanelHtml(e) {
     const r = CENTRIFUGE_RECIPES[rid];
     h += '<button data-action="rec" data-id="' + rid + '" class="' + (cur === rid ? 'on' : '') + '">' + r.name + '</button>';
   }
-  // 铀富集(Kovarex)：需「铀富集」科技解锁（对齐《异星工厂》Kovarex enrichment process）
+  // 铀增值处理(Kovarex)：需「铀富集」科技解锁（对齐《异星工厂》Kovarex enrichment process）
   const kovUnlocked = recipeUnlocked('kovarex');
   const kovLock = recipeLockingTech('kovarex');
-  h += '<button data-action="rec" data-id="kovarex" class="' + (cur === 'kovarex' ? 'on' : '') + (kovUnlocked ? '' : ' locked-recipe') + '" ' + (kovUnlocked ? '' : 'disabled') + ' title="' + (kovUnlocked ? '铀富集：持续增产铀-235' : ('🔒 需先研究「' + (kovLock ? TECHS[kovLock].name : '研究') + '」')) + '">铀富集(Kovarex)' + (kovUnlocked ? '' : ' 🔒') + '</button>';
+  h += '<button data-action="rec" data-id="kovarex" class="' + (cur === 'kovarex' ? 'on' : '') + (kovUnlocked ? '' : ' locked-recipe') + '" ' + (kovUnlocked ? '' : 'disabled') + ' title="' + (kovUnlocked ? '铀增值处理：持续增产铀-235' : ('🔒 需先研究「' + (kovLock ? TECHS[kovLock].name : '研究') + '」')) + '">铀增值处理(Kovarex)' + (kovUnlocked ? '' : ' 🔒') + '</button>';
   // 模块槽位（对齐《异星工厂》：离心机可装 2 模块）
   h += modulePanelSection(e);
   h += row('原料', '<span class="dim"></span>', 'inp');
@@ -224,7 +224,7 @@ function centrifugePanelHtml(e) {
   h += row('电力', powerStatusLiveHtml(e), 'power');
   h += barHtml(0);
   h += '<div class="status"></div>';
-  h += '<div class="dim">离心机：把铀矿分离成铀-235（小概率）/铀-238。铀-235 在组装机制成核燃料；也可用铀富集循环持续增产铀-235。原料由机械臂/传送带放入，产出由机械臂取出。可装 2 个模块（速度/产能/效率）并受信号塔加成。</div>';
+  h += '<div class="dim">离心机：把铀矿分离成铀-235（小概率）/铀-238。铀-235 在组装机制成核燃料；也可用铀增值处理持续增产铀-235。原料由机械臂/传送带放入，产出由机械臂取出。可装 2 个模块（速度/产能/效率）并受信号塔加成。</div>';
   h += circuitPanelHtml(e, 'cen');
   return h;
 }
@@ -251,7 +251,7 @@ function centrifugePanelLive(e, api) {
 function centrifugeTip(e) {
   if (!e.recipe) return '未选择配方';
   if (e.crafting) return '处理中 ' + Math.round((e.prog / e.recipeObj().time) * 100) + '%';
-  return e.recipe === 'kovarex' ? '铀富集循环（等待原料）' : '铀矿处理（等待原料）';
+  return e.recipe === 'kovarex' ? '铀增值处理（等待原料）' : '铀浓缩处理（等待原料）';
 }
 
 // ===================== 核反应堆（5×5，吃核燃料+水）=====================

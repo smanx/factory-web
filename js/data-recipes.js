@@ -298,12 +298,12 @@ const REFINERY_RECIPE_IDS = Object.keys(REFINERY_RECIPES);
 function isRefineryRecipe(id) { return REFINERY_RECIPES[id] !== undefined; }
 
 // ===== 离心机配方（对齐《异星工厂》Centrifuge）=====
-// 铀矿处理：10 铀矿石 → 小概率 1 铀-235 + 大量铀-238
+// 铀浓缩处理：10 铀矿石 → 小概率 1 铀-235 + 大量铀-238
 // Kovarex 富集循环由通用配方表 RECIPES['kovarex'] 承载（也由离心机执行）。
 const CENTRIFUGE_RECIPES = {
-  'uranium-processing': { name: '铀矿处理', time: 12, inp: { 'uranium-ore': 10 }, out: { 'uranium-235': 1, 'uranium-238': 9 } },
+  'uranium-processing': { name: '铀浓缩处理', time: 12, inp: { 'uranium-ore': 10 }, out: { 'uranium-235': 1, 'uranium-238': 9 } },
   // 废燃料棒再生（对齐《异星工厂》Nuclear fuel reprocessing）：5 根废棒 → 3 铀-238，闭合核燃料循环
-  'used-fuel-reprocessing': { name: '核燃料再生', time: 12, inp: { 'used-up-uranium-fuel-cell': 5 }, out: { 'uranium-238': 3 } }
+  'used-fuel-reprocessing': { name: '乏燃料后处理', time: 12, inp: { 'used-up-uranium-fuel-cell': 5 }, out: { 'uranium-238': 3 } }
 };
 function isCentrifugeRecipe(id) { return CENTRIFUGE_RECIPES[id] !== undefined || id === 'kovarex'; }
 
