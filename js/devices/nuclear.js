@@ -517,8 +517,9 @@ function reactorTip(e) {
   return (e.fuel <= 0 && e.burnLeft <= 0) ? '无铀燃料棒' : '待机';
 }
 
-// ===================== 汽轮机（3×3，耗蒸汽→发电）=====================
+// ===================== 汽轮机（5×3，耗蒸汽→发电）=====================
 // 复用蒸汽机的“蒸汽→电力”模型，但功率与耗汽量远高（对齐《异星工厂》5.8MW）。
+// 窄边(3)中部设管道出口：接蒸汽（来自热交换器/蒸汽管道），与热交换器长边(3)中部用管道对接。
 class SteamTurbine extends Entity {
   constructor(type, x, y) {
     super('steam-turbine', x, y);
@@ -541,26 +542,27 @@ class SteamTurbine extends Entity {
     if (this.on) this.spin += dt * 10 * (0.35 + 0.65 * this.outMult);
     if (typeof regPowerEnt === 'function') regPowerEnt(this);
   }
-  // 顶部/底部汽口：从上方反应堆出汽格、或相邻汽轮机/蒸汽管道取蒸汽
+  // 窄边(3)中部汽口：左/右侧中部接热交换器出汽口或蒸汽管道
   portFlow() {
     const covers = (n, cx, cy) => cx >= n.x && cx < n.x + n.w && cy >= n.y && cy < n.y + n.h;
-    const midX = this.x + (this.w >> 1);
+    const midY = this.y + (this.h >> 1); // 3 高窄边的中行
     forEachNeighborEnt(this, n => {
-      // 顶部格：接反应堆底边出汽口；底部格：接管道/汽轮机串接
-      const topPort = covers(n, midX, this.y - 1);
-      const botPort = covers(n, midX, this.y + this.h);
+      // 左侧中部 / 右侧中部端口
+      const leftPort = covers(n, this.x - 1, midY);
+      const rightPort = covers(n, this.x + this.w, midY);
+      const port = leftPort || rightPort;
       if (n instanceof Pipe) {
-        if (!(topPort || botPort)) return;
+        if (!port) return;
         if (this.steamBuf < TURBINE_STEAM_CAP - 0.01 && (n.fluid['steam'] || 0) >= 1) {
           n.takeItemOf('steam'); this.steamBuf++;
         }
       } else if (n instanceof SteamTurbine) {
-        if (!(topPort || botPort)) return;
+        if (!port) return;
         if (this.steamBuf >= n.steamBuf + 1 && n.steamBuf < TURBINE_STEAM_CAP - 0.01) { this.steamBuf--; n.steamBuf++; }
         else if (n.steamBuf >= this.steamBuf + 1 && this.steamBuf < TURBINE_STEAM_CAP - 0.01) { n.steamBuf--; this.steamBuf++; }
       } else if (n instanceof HeatExchanger) {
-        // 热交换器底边出汽口正对汽轮机顶部：直接受汽
-        if (topPort && this.steamBuf < TURBINE_STEAM_CAP - 0.01 && n.steamBuf >= 1) { n.steamBuf--; this.steamBuf++; }
+        // 热交换器长边(3)中部出汽口正对汽轮机窄边(3)中部：直接受汽
+        if (port && this.steamBuf < TURBINE_STEAM_CAP - 0.01 && n.steamBuf >= 1) { n.steamBuf--; this.steamBuf++; }
       }
     });
   }
@@ -598,13 +600,13 @@ function drawSteamTurbine(ctx, e, gx, gy, dir, alpha) {
   ctx.strokeStyle = '#3c4a58';
   ctx.lineWidth = 3;
   rr(ctx, px + 3, py + 3, w - 6, h - 6, 8); ctx.stroke();
-  // 旋转叶片
+  // 旋转叶片（居中）
   const cx = px + w / 2, cy = py + h * 0.42;
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(e.spin || 0);
   ctx.fillStyle = om > 0 ? '#cfe0f0' : '#7d8894';
-  gearShape(ctx, 0, 0, w * 0.22, w * 0.1, 12);
+  gearShape(ctx, 0, 0, TILE * 1.1, TILE * 0.5, 12);
   ctx.fill();
   ctx.restore();
   // 叶片转速示意
@@ -614,7 +616,7 @@ function drawSteamTurbine(ctx, e, gx, gy, dir, alpha) {
     for (let i = 0; i < 4; i++) {
       const t = ((G.time * 4 * om) + i / 4) % 1;
       ctx.beginPath();
-      ctx.arc(cx, cy, w * 0.32, t * Math.PI * 2 - 0.2, t * Math.PI * 2 + 0.2);
+      ctx.arc(cx, cy, TILE * 1.6, t * Math.PI * 2 - 0.2, t * Math.PI * 2 + 0.2);
       ctx.stroke();
     }
   }
@@ -623,15 +625,15 @@ function drawSteamTurbine(ctx, e, gx, gy, dir, alpha) {
   ctx.font = 'bold 10px system-ui';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText((e.powerOut || 0).toFixed(0) + ' kW', cx, py + h * 0.8);
-  // 底部汽口
-  drawPort(ctx, cx, py + h, 1, PORT_STEAM, true, 0, TILE);
+  // 窄边(3)中部汽口：左侧中部接蒸汽（与热交换器长边中部用管道对接）
+  drawPort(ctx, px, py + h * 0.5, 2, PORT_STEAM, true, 0, TILE);
   ctx.globalAlpha = 1;
 }
 function turbinePanelHtml(e) {
   return row('功率输出', '<span class="dim"></span>', 'power') +
     row('蒸汽缓存', '<span class="dim"></span>', 'steam') +
     '<div class="status"></div>' +
-    '<div class="dim">汽轮机：底边汽口接入高温蒸汽（来自热交换器/蒸汽管道），以远高于蒸汽机的功率发电。核能技术解锁。</div>';
+    '<div class="dim">汽轮机：窄边(3)中部汽口接入高温蒸汽（来自热交换器长边(3)中部/蒸汽管道），以远高于蒸汽机的功率发电。核能技术解锁。</div>';
 }
 function turbinePanelLive(e, api) {
   api.set('power', '+' + (e.powerOut || 0).toFixed(0) + ' kW');
@@ -642,7 +644,7 @@ function turbinePanelLive(e, api) {
 }
 function turbineTip(e) {
   return e.on ? '发电中 ' + (e.powerOut || 0).toFixed(0) + ' kW'
-    : e.steamBuf < 0.5 ? '无高温蒸汽（检查底部汽口/管道）' : '待机';
+    : e.steamBuf < 0.5 ? '无高温蒸汽（检查窄边中部汽口/管道）' : '待机';
 }
 
 // ===================== 导热管 Heat Pipe（1×1）=====================
@@ -726,26 +728,28 @@ function heatPipeTip(e) {
   return (e.heatBuf || 0) > 0.5 ? '导热管（存热 ' + Math.floor(e.heatBuf) + '）' : '导热管（待机）';
 }
 
-// ===================== 热交换器 Heat Exchanger（3×1）=====================
+// ===================== 热交换器 Heat Exchanger（2×3）=====================
 // 对齐《异星工厂》Heat exchanger：消耗导热管传来的热量 + 水 → 产出高温蒸汽供汽轮机。
+// 长边(3)中部设出汽口，与汽轮机窄边(3)中部用管道对接。
 class HeatExchanger extends Entity {
   constructor(type, x, y) {
     super('heat-exchanger', x, y);
     this.heatBuf = 0;
     this.water = 0;       // 内部水箱（侧面进水口）
-    this.steamBuf = 0;    // 高温蒸汽缓冲（底边出汽口）
+    this.steamBuf = 0;    // 高温蒸汽缓冲（长边(3)中部出汽口）
     this.active = false;
   }
   heatCap() { return HEAT_EXCHANGER_CAP; }
-  // 进水口：左端/右端侧面接管道
+  // 进水口：左侧面中部接管道（右侧中部为出汽口）
   acceptsPumpFeed(cx, cy, fromDir) {
-    if (cy !== this.y) return false;
+    const midY = this.y + (this.h >> 1);
+    if (cy !== midY) return false;
     if (cx === this.x) return fromDir === 0;
-    if (cx === this.x + this.w - 1) return fromDir === 2;
     return false;
   }
   isWaterPortCell(cx, cy) {
-    return cy === this.y && (cx === this.x - 1 || cx === this.x + this.w);
+    const midY = this.y + (this.h >> 1);
+    return cy === midY && cx === this.x - 1;
   }
   update(dt) {
     this.active = false;
@@ -765,12 +769,14 @@ class HeatExchanger extends Entity {
       this.heatBuf = Math.min(HEAT_EXCHANGER_CAP, this.heatBuf + want);
     });
   }
-  // 端口物流：侧面进水（水口）、底边出汽
+  // 端口物流：侧面进水（水口）、长边(3)中部出汽
   portFlow(dt) {
     const covers = (n, cx, cy) => cx >= n.x && cx < n.x + n.w && cy >= n.y && cy < n.y + n.h;
+    const midY = this.y + (this.h >> 1); // 3 高长边的中行
     forEachNeighborEnt(this, n => {
-      const wPort = covers(n, this.x - 1, this.y) || covers(n, this.x + this.w, this.y);
-      const sPort = covers(n, this.x + (this.w >> 1), this.y + 1);
+      const wPort = covers(n, this.x - 1, midY);
+      // 出汽口：长边(3)右侧中部（与汽轮机窄边(3)中部对接）
+      const sPort = covers(n, this.x + this.w, midY);
       if (n instanceof Pipe) {
         if (wPort) {
           const pw = n.fluid['water'] || 0;
@@ -830,24 +836,23 @@ function drawHeatExchanger(ctx, e, gx, gy, dir, alpha) {
   ctx.strokeStyle = '#33261c';
   ctx.lineWidth = 3;
   rr(ctx, px + 2, py + 2, w - 4, h - 4, 6); ctx.stroke();
-  // 换热芯（温度越高越亮）
+  // 换热芯（温度越高越亮，竖直 2×3 布局）
   ctx.fillStyle = hp > 0.05 ? '#e8a14a' : '#7a6a58';
-  rr(ctx, px + 6, py + 8, w - 12, TILE * 0.5, 3); ctx.fill();
+  rr(ctx, px + TILE * 0.5, py + 6, TILE * 0.8, h - 12, 3); ctx.fill();
   // 蒸汽输出波纹（运行中）
   if (e.active) {
-    ctx.fillStyle = 'rgba(210,235,255,' + (0.4 + Math.sin(G.time * 8) * 0.3).toFixed(2) + ')';
+    ctx.fillStyle = 'rgba(210,235,255,.8)';
     ctx.font = 'bold 12px system-ui';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('☁', px + w / 2, py + 4);
+    ctx.fillText('☁', px + w + 4, py + h * 0.5);
   }
-  // 进水口（两侧蓝）与出汽口（底边白）
-  drawPort(ctx, px + TILE, py + TILE, 2, PORT_WATER, false, 0, TILE);
-  drawPort(ctx, px + w - TILE, py + TILE, 0, PORT_WATER, false, 0, TILE);
-  drawPort(ctx, px + w / 2, py + h, 1, PORT_STEAM, true, 0, TILE);
+  // 进水口（左侧中部蓝）与出汽口（长边(3)右侧中部白）
+  drawPort(ctx, px, py + h * 0.5, 2, PORT_WATER, false, 0, TILE);
+  drawPort(ctx, px + w, py + h * 0.5, 0, PORT_STEAM, true, 0, TILE);
   ctx.fillStyle = '#ffe0b0';
-  ctx.font = 'bold 10px system-ui';
+  ctx.font = 'bold 9px system-ui';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('热交换器', px + w / 2, py + h - 6);
+  ctx.fillText('热交换器', px + w / 2, py + h * 0.5);
   ctx.globalAlpha = 1;
 }
 function heatExchangerPanelHtml(e) {
@@ -855,7 +860,7 @@ function heatExchangerPanelHtml(e) {
     row('水', '<span class="dim"></span>', 'water') +
     row('蒸汽缓存', '<span class="dim"></span>', 'steam') +
     '<div class="status"></div>' +
-    '<div class="dim">热交换器：顶面/侧面接收导热管传来的热量，侧面蓝口接水管进水，底边白口送出高温蒸汽到汽轮机。核能技术解锁。</div>' +
+    '<div class="dim">热交换器：顶面/侧面接收导热管传来的热量，侧面蓝口接水管进水，长边(3)中部白口送出高温蒸汽到汽轮机窄边(3)中部。核能技术解锁。</div>' +
     '<div class="dim">🔗 标准接法：反应堆→(导热管)→热交换器（接水管）→(蒸汽管)→汽轮机</div>';
 }
 function heatExchangerPanelLive(e, api) {
