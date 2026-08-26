@@ -76,43 +76,31 @@ async function downloadSave() {
 // 从文件导入存档：支持 gzip 压缩文件，兼容旧的纯 JSON 文件（未压缩则直接导入）
 async function importSaveFile(arrayBuffer) {
   try {
-    console.log('[存档导入] 开始读取文件，字节数 =', arrayBuffer ? arrayBuffer.byteLength : 0);
     const bytes = new Uint8Array(arrayBuffer);
-    console.log('[存档导入] 检测文件格式，isGzip =', isGzip(bytes));
     let text;
     if (isGzip(bytes)) {
       // 压缩文件：先解压再导入
       text = await gzipDecompress(bytes);
-      console.log('[存档导入] gzip 解压成功，解压后文本长度 =', text.length);
     } else {
       // 非压缩文件：兼容旧版本直接导入
       text = new TextDecoder('utf-8').decode(bytes);
-      console.log('[存档导入] 非压缩文件，按 UTF-8 文本解码成功，文本长度 =', text.length);
     }
-    console.log('[存档导入] 即将解析文本，前 100 字符 =', text.slice(0, 100));
     importSaveText(text);
-    console.log('[存档导入] 解析并应用完成');
   } catch (err) {
-    console.error('[存档导入] 导入文件失败:', err);
     toast('导入失败：' + err.message);
   }
 }
 
 function importSaveText(text) {
   try {
-    console.log('[存档导入] 开始 JSON 解析...');
     const d = JSON.parse(text);
     if (!d || d.v !== 1) {
-      console.warn('[存档导入] 格式不正确：d =', d, '，v 字段 =', d && d.v);
       throw new Error('格式不正确');
     }
-    console.log('[存档导入] JSON 解析成功，存档 v =', d.v);
     applySave(d);
-    console.log('[存档导入] 存档应用成功');
     closePanel();
     toast('导入成功');
   } catch (err) {
-    console.error('[存档导入] 导入失败:', err);
     toast('导入失败：' + err.message);
   }
 }
