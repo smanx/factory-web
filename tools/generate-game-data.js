@@ -506,6 +506,10 @@ const fluidCapacity = {};
   if (fw && typeof fw.capacity === 'number') fluidCapacity.fluidWagon = fw.capacity;
   const op = raw['offshore-pump'] && raw['offshore-pump']['offshore-pump'];
   if (op && typeof op.pumping_speed === 'number') fluidCapacity.pumpRate = op.pumping_speed;
+  const pp = raw.pipe && raw.pipe.pipe;
+  if (pp && pp.fluid_box && typeof pp.fluid_box.volume === 'number') fluidCapacity.pipeVolume = pp.fluid_box.volume;
+  const pt = raw['pipe-to-ground'] && raw['pipe-to-ground']['pipe-to-ground'];
+  if (pt && pt.fluid_box && typeof pt.fluid_box.volume === 'number') fluidCapacity.pipeToGroundVolume = pt.fluid_box.volume;
 }
 
 // ---- 信号塔影响半径（格）----
@@ -931,7 +935,7 @@ const header = [
   '//   recipeNames[rid] = { zh, en }（配方官方命名，供炼油/离心机面板切换）',
   '//   其余设备行为参数（官方接入，见对应设备文件 GAME_DATA.xxx?.[..] ?? 兜底）：',
   '//   undergroundDist[带] = 地下带最大距离(格), renewable = { solarPower, accumCap, accumChargeRate }',
-  '//   fluidCapacity = { storageTank, fluidWagon, pumpRate }, beaconRange = 信号塔半径(格)',
+  '//   fluidCapacity = { storageTank, fluidWagon, pumpRate, pipeVolume, pipeToGroundVolume }, beaconRange = 信号塔半径(格)',
   '//   turret[塔] = { range, fireRate(秒) }, ammoDamage[弹药] = 伤害, radar = { range, power(kW) }',
   '//   equipment[装备] = { powerOut | powerCap(kJ) | shield | speed | laser | dischargeRange/Cooldown }',
   '//   heat = { reactorMaxTemp, reactorSpecificHeat, reactorMaxTransfer, heatPipeMaxTemp, heatPipeMinGlowTemp,',

@@ -103,7 +103,7 @@ function oreItemId(ti) {
   if (ti === ORE_URANIUM) return 'uranium-ore';
   return ORES[ti];
 }
-const PIPE_CAP = 40;
+const PIPE_CAP = GAME_DATA.fluidCapacity?.pipeVolume ?? 100;   // 管道容量（官方 pipe fluid_box.volume=100，由 GAME_DATA 桥接）
 const PIPE_FLOW = 3;
 // 储液罐（对齐《异星工厂》Storage Tank）：占地 3×3、容量大、只存单一流体，东西两侧各一个通用流体口
 const STORAGE_TANK_CAP = GAME_DATA.fluidCapacity?.storageTank ?? 2500; // 储液罐容量（官方 25000）

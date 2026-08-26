@@ -12,7 +12,7 @@
 //   recipeNames[rid] = { zh, en }（配方官方命名，供炼油/离心机面板切换）
 //   其余设备行为参数（官方接入，见对应设备文件 GAME_DATA.xxx?.[..] ?? 兜底）：
 //   undergroundDist[带] = 地下带最大距离(格), renewable = { solarPower, accumCap, accumChargeRate }
-//   fluidCapacity = { storageTank, fluidWagon, pumpRate }, beaconRange = 信号塔半径(格)
+//   fluidCapacity = { storageTank, fluidWagon, pumpRate, pipeVolume, pipeToGroundVolume }, beaconRange = 信号塔半径(格)
 //   turret[塔] = { range, fireRate(秒) }, ammoDamage[弹药] = 伤害, radar = { range, power(kW) }
 //   equipment[装备] = { powerOut | powerCap(kJ) | shield | speed | laser | dischargeRange/Cooldown }
 //   heat = { reactorMaxTemp, reactorSpecificHeat, reactorMaxTransfer, heatPipeMaxTemp, heatPipeMinGlowTemp,
@@ -3105,7 +3105,9 @@ const GAME_DATA = {
  "fluidCapacity": {
   "storageTank": 25000,
   "fluidWagon": 50000,
-  "pumpRate": 20
+  "pumpRate": 20,
+  "pipeVolume": 100,
+  "pipeToGroundVolume": 100
  },
  "beaconRange": 3,
  "turret": {
