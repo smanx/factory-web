@@ -150,11 +150,6 @@ const BUILDING_HP = {
 };
 function buildingMaxHp(type) { return BUILDING_HP[type] || 100; }
 
-// ===== 固定管道口建筑 =====
-// 这类建筑（锅炉/蒸汽机/汽轮机/热交换器）的管道出入口是固定在设备本体上的：
-// 旋转时只旋转设备本身，管道口随设备一起转动，不能单独旋转管道口。
-// 与《异星工厂》一致，它们在放置之后就不能再直接旋转了，只能在放置前（幽灵预览阶段）旋转/翻转。
-const FIXED_PIPE_PORT_BUILDINGS = {
-  'boiler': true, 'steam-engine': true, 'steam-turbine': true, 'heat-exchanger': true
-};
-function postPlaceRotatable(type) { return !FIXED_PIPE_PORT_BUILDINGS[type]; }
+// 所有建筑统一支持旋转与翻转（含锅炉/蒸汽机/汽轮机/热交换器等固定管道口建筑）。
+// 旋转时设备本身与管道口随方向一起转动。
+function postPlaceRotatable(type) { return true; }

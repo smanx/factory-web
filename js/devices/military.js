@@ -265,6 +265,7 @@ ENT_CLASSES['gun-turret'] = GunTurret;
 ENT_CLASSES['stone-wall'] = StoneWall;
 DEVICE_RENDER['gun-turret'] = drawGunTurret;
 DEVICE_RENDER['stone-wall'] = drawStoneWall;
+DEVICE_DIR_ROTATE['stone-wall'] = true; // 支持旋转
 DEVICE_STATUS['gun-turret'] = e => e.totalAmmo() > 0 ? (e.target ? 'g' : 'r') : 'r';
 DEVICE_STATUS['stone-wall'] = () => null;
 DEVICE_PANEL['gun-turret'] = { html: gunTurretPanelHtml, live: gunTurretPanelLive, tip: gunTurretTip, onAction: (a) => circuitPanelAction('gt', a) };

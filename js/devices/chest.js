@@ -170,6 +170,7 @@ function chestOnChange(ev) {
 // ===== 注册 =====
 ENT_CLASSES['storage-chest'] = Chest;
 DEVICE_RENDER['storage-chest'] = drawChest;
+DEVICE_DIR_ROTATE['storage-chest'] = true; // 支持旋转
 DEVICE_PANEL['storage-chest'] = { html: chestPanelHtml, live: chestPanelLive, tip: chestTip, onAction: chestOnAction, onChange: chestOnChange };
 
 // ===== 木箱（对齐《异星工厂》Wooden chest，占地 1×1，容量较小 16 格）=====
@@ -224,6 +225,7 @@ function woodenChestTip(e) {
 }
 ENT_CLASSES['wooden-chest'] = WoodenChest;
 DEVICE_RENDER['wooden-chest'] = drawWoodenChest;
+DEVICE_DIR_ROTATE['wooden-chest'] = true; // 支持旋转
 DEVICE_PANEL['wooden-chest'] = { html: woodenChestPanelHtml, live: woodenChestPanelLive, tip: woodenChestTip, onAction: chestOnAction, onChange: chestOnChange };
 
 // ===== 铁箱（对齐《异星工厂》Iron chest，占地 1×1，容量 32 格，比木箱大、比钢箱小）=====
@@ -278,4 +280,5 @@ function ironChestTip(e) {
 }
 ENT_CLASSES['iron-chest'] = IronChest;
 DEVICE_RENDER['iron-chest'] = drawIronChest;
+DEVICE_DIR_ROTATE['iron-chest'] = true; // 支持旋转
 DEVICE_PANEL['iron-chest'] = { html: ironChestPanelHtml, live: ironChestPanelLive, tip: ironChestTip, onAction: chestOnAction, onChange: chestOnChange };

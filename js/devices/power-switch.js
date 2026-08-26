@@ -153,5 +153,6 @@ function powerSwitchTip(e) {
 const powerSwitchPanel = { html: powerSwitchPanelHtml, onAction: powerSwitchOnAction, onChange: powerSwitchOnChange, live: powerSwitchPanelLive, tip: powerSwitchTip };
 ENT_CLASSES['power-switch'] = PowerSwitch;
 DEVICE_RENDER['power-switch'] = drawPowerSwitch;
+DEVICE_DIR_ROTATE['power-switch'] = true; // 支持旋转
 DEVICE_STATUS['power-switch'] = e => e.isTripped() ? 'r' : 'g';
 DEVICE_PANEL['power-switch'] = powerSwitchPanel;

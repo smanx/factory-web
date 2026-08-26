@@ -753,8 +753,11 @@ ENT_CLASSES['small-electric-pole'] = CircuitNode;
 ENT_CLASSES['medium-electric-pole'] = CircuitNode;
 ENT_CLASSES['big-electric-pole'] = CircuitNode;
 DEVICE_RENDER['small-electric-pole'] = drawCircuitPole;
+DEVICE_DIR_ROTATE['small-electric-pole'] = true; // 支持旋转
 DEVICE_RENDER['medium-electric-pole'] = drawCircuitPole;
+DEVICE_DIR_ROTATE['medium-electric-pole'] = true; // 支持旋转
 DEVICE_RENDER['big-electric-pole'] = drawCircuitPole;
+DEVICE_DIR_ROTATE['big-electric-pole'] = true; // 支持旋转
 DEVICE_STATUS['small-electric-pole'] = e => (e.red && e.red.size) ? 'g' : 'y';
 DEVICE_STATUS['medium-electric-pole'] = e => (e.red && e.red.size) ? 'g' : 'y';
 DEVICE_STATUS['big-electric-pole'] = e => (e.red && e.red.size) ? 'g' : 'y';
@@ -763,8 +766,11 @@ ENT_CLASSES['constant-combinator'] = ConstantCombinator;
 ENT_CLASSES['arithmetic-combinator'] = ArithmeticCombinator;
 ENT_CLASSES['decider-combinator'] = DeciderCombinator;
 DEVICE_RENDER['constant-combinator'] = drawCombinator;
+DEVICE_DIR_ROTATE['constant-combinator'] = true; // 支持旋转
 DEVICE_RENDER['arithmetic-combinator'] = drawCombinator;
+DEVICE_DIR_ROTATE['arithmetic-combinator'] = true; // 支持旋转
 DEVICE_RENDER['decider-combinator'] = drawCombinator;
+DEVICE_DIR_ROTATE['decider-combinator'] = true; // 支持旋转
 DEVICE_STATUS['constant-combinator'] = e => Object.keys(e.netRed).length + Object.keys(e.netGreen).length ? 'g' : 'y';
 DEVICE_STATUS['arithmetic-combinator'] = e => Object.keys(e.netRed).length ? 'g' : 'y';
 DEVICE_STATUS['decider-combinator'] = e => Object.keys(e.netGreen).length ? 'g' : 'y';

@@ -283,13 +283,9 @@ function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
       ctx.arc(px + s / 2, py + s / 2, 24, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2);
       ctx.stroke();
     }
-  } else {
-    ctx.fillStyle = 'rgba(255,255,255,.6)';
-    if (!(LOD && LOD.simple)) {
-      ctx.font = 'bold 11px system-ui';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('无配方', px + s / 2, py + s / 2);
-    }
+  } else if (!(LOD && LOD.simple)) {
+    // 未选配方：显示默认齿轮图标（不再显示中文）
+    drawRecipePlaceholder(ctx, px + s / 2, py + s / 2, s * 0.5);
   }
   let bx = px + 14;
   for (const id of ['plastic-bar', 'light-oil', 'petroleum-gas']) {
@@ -301,10 +297,6 @@ function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
     rr(ctx, bx, py + s - 18, 18 * Math.min(1, n / 16), 7, 2); ctx.fill();
     bx += 24;
   }
-  ctx.font = 'bold 11px system-ui';
-  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#eef4e4';
-  ctx.fillText('化工厂', px + 8, py + s - 10);
   // ===== 流体出入口标注（对齐《异星工厂》化工厂：2输入口在底部、2输出口在顶部，固定成对，位置随旋转） =====
   // 每个接口对齐一个格子（一格一接口）：输入/输出口分别落在沿边第0、2格；左右输入有讲究：
   // 配方第1种流体原料进左侧输入口，第2种进右侧输入口

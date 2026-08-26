@@ -221,10 +221,16 @@ function drawCentrifuge(ctx, e, gx, gy, dir, alpha) {
     ctx.arc(cx, cy, s * 0.3, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2);
     ctx.stroke();
   }
-  ctx.fillStyle = '#dff0ff';
-  ctx.font = 'bold ' + Math.max(9, Math.round(s * 0.12)) + 'px system-ui';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('离心', cx, py + 12);
+  // 中央显示当前配方图标；未选配方时显示默认齿轮占位（不再显示中文）
+  if (e.recipe && e.recipeObj) {
+    const rec = e.recipeObj();
+    if (rec) {
+      const outId = rec.prob ? Object.keys(rec.prob).sort((a, b) => rec.prob[b] - rec.prob[a])[0] : Object.keys(rec.out)[0];
+      if (outId) drawRecipeIconCell(ctx, cx, cy, outId);
+    }
+  } else if (!(LOD && LOD.simple)) {
+    drawRecipePlaceholder(ctx, cx, cy, s * 0.5);
+  }
   ctx.globalAlpha = 1;
 }
 function centrifugePanelHtml(e) {
@@ -350,14 +356,13 @@ class NuclearReactor extends Entity {
     // 堆芯温度：达到 1000°C 后不再上升，但燃烧期间保持高温（对齐《异星工厂》官方最高温度 1000°C）
     this.temp = Math.min(1000, this.temp + 20 * (1 + neighbors * 0.5) * dt);
   }
-  // 热量传导：把热量输送给相邻的导热管/热交换器（从更热的流向更冷的）
+  // 热量传导：把热量输送给相邻的导热管/热交换器（从更热的流向更冷的，四向均可）
   heatFlow(dt) {
     if (this.heatBuf < 0.01) return;
     forEachNeighborEnt(this, n => {
       if (n._dead) return;
       const isHeatSink = (n instanceof HeatPipe) || (n instanceof HeatExchanger);
       if (!isHeatSink) return;
-      // 仅相邻导热管/热交换器
       if (this.heatBuf < 0.5) return;
       const cap = n.heatCap ? n.heatCap() : HEAT_PIPE_CAP;
       if (n.heatBuf >= cap - 0.01) return;
@@ -493,10 +498,6 @@ function drawNuclearReactor(ctx, e, gx, gy, dir, alpha) {
     ctx.lineTo(pHt.x * TILE + (ht === 2 ? 3 : TILE - 3), pHt.y * TILE + TILE * 0.7);
   }
   ctx.stroke();
-  ctx.fillStyle = '#eaf6ea';
-  ctx.font = 'bold 13px system-ui';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('核反应堆', px + w / 2, py + 14);
   ctx.globalAlpha = 1;
 }
 function reactorPanelHtml(e) {
@@ -738,10 +739,6 @@ function drawHeatPipe(ctx, e, gx, gy, dir, alpha) {
     ctx.arc(px + s / 2, py + s / 2, s * 0.22, 0, 7);
     ctx.stroke();
   }
-  ctx.fillStyle = hp > 0.4 ? '#ffe0b0' : '#b8a888';
-  ctx.font = 'bold 9px system-ui';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('导', px + s / 2, py + s / 2);
   ctx.globalAlpha = 1;
 }
 function heatPipeTip(e) {
@@ -912,10 +909,6 @@ function drawHeatExchanger(ctx, e, gx, gy, dir, alpha) {
   drawPort(ctx, pWL.x * TILE + TILE / 2, pWL.y * TILE + TILE / 2, rotSide(2, e.dir), ITEMS['water'].color, false, 0, cD, 'water', 'both');
   drawPort(ctx, pWR.x * TILE + TILE / 2, pWR.y * TILE + TILE / 2, rotSide(0, e.dir), ITEMS['water'].color, false, 0, cD, 'water', 'both');
   drawPort(ctx, pS.x * TILE + TILE / 2, pS.y * TILE + TILE / 2, rotSide(3, e.dir), ITEMS['steam'].color, true, 0, cD, 'steam', 'out');
-  ctx.fillStyle = '#ffe0b0';
-  ctx.font = 'bold 9px system-ui';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('热交换器', px + w / 2, py + h * 0.5);
   ctx.globalAlpha = 1;
 }
 function heatExchangerPanelHtml(e) {
@@ -947,11 +940,13 @@ ENT_CLASSES['centrifuge'] = Centrifuge;
 DEVICE_RENDER['centrifuge'] = drawCentrifuge;
 DEVICE_STATUS['centrifuge'] = e => e.crafting ? 'g' : 'r';
 DEVICE_PANEL['centrifuge'] = { html: centrifugePanelHtml, live: centrifugePanelLive, tip: centrifugeTip, onAction: (a) => circuitPanelAction('cen', a) };
+DEVICE_DIR_ROTATE['centrifuge'] = true; // 离心机支持旋转
 
 ENT_CLASSES['nuclear-reactor'] = NuclearReactor;
 DEVICE_RENDER['nuclear-reactor'] = drawNuclearReactor;
 DEVICE_STATUS['nuclear-reactor'] = e => e.burning ? 'g' : 'r';
 DEVICE_PANEL['nuclear-reactor'] = { html: reactorPanelHtml, live: reactorPanelLive, tip: reactorTip };
+DEVICE_DIR_ROTATE['nuclear-reactor'] = true; // 核反应堆支持旋转
 
 ENT_CLASSES['steam-turbine'] = SteamTurbine;
 DEVICE_RENDER['steam-turbine'] = drawSteamTurbine;
@@ -962,6 +957,7 @@ ENT_CLASSES['heat-pipe'] = HeatPipe;
 DEVICE_RENDER['heat-pipe'] = drawHeatPipe;
 DEVICE_STATUS['heat-pipe'] = e => (e.heatBuf || 0) > 0.5 ? 'g' : 'r';
 DEVICE_PANEL['heat-pipe'] = { html: () => row('热量', '<span class="dim"></span>', 'heat') + '<div class="status"></div>' + '<div class="dim">导热管：把核反应堆产生的热量传导到热交换器，可多根串联成导热线路。核能技术解锁。</div>', live: (e, api) => api.set('heat', e.heatBuf >= 1 ? chip('heat-pipe', Math.floor(e.heatBuf)) : dimSpan('空')), tip: heatPipeTip };
+DEVICE_DIR_ROTATE['heat-pipe'] = true; // 导热管支持旋转
 
 ENT_CLASSES['heat-exchanger'] = HeatExchanger;
 DEVICE_RENDER['heat-exchanger'] = drawHeatExchanger;

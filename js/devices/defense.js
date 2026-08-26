@@ -212,7 +212,9 @@ function artilleryTip(e) {
 ENT_CLASSES['land-mine'] = LandMine;
 ENT_CLASSES['artillery-turret'] = ArtilleryTurret;
 DEVICE_RENDER['land-mine'] = drawLandMine;
+DEVICE_DIR_ROTATE['land-mine'] = true; // 支持旋转
 DEVICE_RENDER['artillery-turret'] = drawArtillery;
+DEVICE_DIR_ROTATE['artillery-turret'] = true; // 支持旋转
 DEVICE_STATUS['land-mine'] = () => null;
 DEVICE_STATUS['artillery-turret'] = e => e.shells > 0 ? (e.target ? 'g' : 'y') : 'r';
 DEVICE_PANEL['land-mine'] = { html: landMinePanelHtml, live: landMinePanelLive, tip: landMineTip };

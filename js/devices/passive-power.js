@@ -87,5 +87,6 @@ function passivePowerTip(e) {
 // ===== 注册 =====
 ENT_CLASSES['passive-power'] = PassivePower;
 DEVICE_RENDER['passive-power'] = drawPassivePower;
+DEVICE_DIR_ROTATE['passive-power'] = true; // 支持旋转
 DEVICE_STATUS['passive-power'] = e => (e.stored || 0) > 0 ? 'g' : 'y';
 DEVICE_PANEL['passive-power'] = { html: passivePowerPanelHtml, live: passivePowerPanelLive, tip: passivePowerTip };

@@ -168,5 +168,6 @@ function pipeTip(e) {
 // ===== 注册 =====
 ENT_CLASSES['pipe'] = Pipe;
 DEVICE_RENDER['pipe'] = drawPipe;
+DEVICE_DIR_ROTATE['pipe'] = true; // 支持旋转
 DEVICE_STATUS['pipe'] = e => e.total() > 0 ? 'g' : 'r';
 DEVICE_PANEL['pipe'] = { html: pipePanelHtml, live: pipePanelLive, tip: pipeTip };

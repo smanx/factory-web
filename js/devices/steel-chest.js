@@ -76,4 +76,5 @@ function steelChestTip(e) {
 // ===== 注册 =====
 ENT_CLASSES['steel-chest'] = SteelChest;
 DEVICE_RENDER['steel-chest'] = drawSteelChest;
+DEVICE_DIR_ROTATE['steel-chest'] = true; // 支持旋转
 DEVICE_PANEL['steel-chest'] = { html: steelChestPanelHtml, live: steelChestPanelLive, tip: steelChestTip, onAction: chestOnAction, onChange: chestOnChange };

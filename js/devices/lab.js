@@ -198,10 +198,6 @@ function drawLab(ctx, e, gx, gy, dir, alpha) {
     ctx.arc(px + s / 2 + 5, py + s / 2 - 2 - bb, 2, 0, 7);
     ctx.fill();
   }
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 10px system-ui';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('研究中心', px + s / 2, py + s - 14);
   ctx.globalAlpha = 1;
 }
 
@@ -299,6 +295,7 @@ function labOnAction(act, btn) {
 // ===== 注册 =====
 ENT_CLASSES['lab'] = Lab;
 DEVICE_RENDER['lab'] = drawLab;
+DEVICE_DIR_ROTATE['lab'] = true; // 支持旋转
 DEVICE_STATUS['lab'] = e => {
   if (!G.activeTech || G.techDone[G.activeTech]) return e.totalPacks() > 0 ? 'y' : 'r';
   return e.totalPacks() > 0 ? (e.packCount(e.nextNeed()) > 0 ? 'g' : 'y') : 'r';

@@ -58,5 +58,6 @@ function substationTip(e) {
 const substationPanel = { html: substationPanelHtml, live: substationPanelLive, tip: substationTip };
 ENT_CLASSES['substation'] = Substation;
 DEVICE_RENDER['substation'] = drawSubstation;
+DEVICE_DIR_ROTATE['substation'] = true; // 支持旋转
 DEVICE_STATUS['substation'] = e => (e.red && e.red.size) ? 'g' : 'y';
 DEVICE_PANEL['substation'] = substationPanel;

@@ -122,7 +122,6 @@ function drawSteamEngine(ctx, e, gx, gy, dir, alpha) {
   ctx.font = 'bold 10px system-ui';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   if (e.on) ctx.fillText('+' + (e.powerOut || 0).toFixed(1), px + w / 2, py + h - 14);
-  else ctx.fillText('蒸汽机', px + w / 2, py + h - 14);
   // 两端通用汽口：任意一端均可进出蒸汽（随 dir 旋转），画在设备内部靠边缘处
   const pN = rotCell(e, e.def.w >> 1, 0);
   const pS = rotCell(e, e.def.w >> 1, e.def.h - 1);

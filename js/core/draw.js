@@ -118,6 +118,19 @@ function drawRecipeIconCell(ctx, x, y, item) {
   drawItemDot(ctx, x, y, item, Math.round(TILE * 0.46));
 }
 
+// 未选配方时的默认图标：一个中性的灰色齿轮占位（不再显示中文“无配方”）
+function drawRecipePlaceholder(ctx, x, y, size) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = 'rgba(255,255,255,.38)';
+  ctx.strokeStyle = 'rgba(255,255,255,.55)';
+  ctx.lineWidth = 2;
+  gearShape(ctx, 0, 0, (size || 26) * 0.42, (size || 26) * 0.3, 7);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
 // 设备内部管道口统一显示：默认画灰色小圈；ALT 详情时在小圈上叠加流体图标，
 // 并在旁边用蓝色小箭头标注流向（in=向设备内、out=向设备外、both=双向互通）。
 // side 0东1南2西3北；(cx,cy)=实体中心像素；dist=中心到该边距离；

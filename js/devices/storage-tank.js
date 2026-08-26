@@ -202,6 +202,7 @@ function storageTankTip(e) {
 // ===== 注册 =====
 ENT_CLASSES['storage-tank'] = StorageTank;
 DEVICE_RENDER['storage-tank'] = drawStorageTank;
+DEVICE_DIR_ROTATE['storage-tank'] = true; // 支持旋转
 DEVICE_STATUS['storage-tank'] = e => e.total() > 0 ? 'g' : 'r';
 DEVICE_PANEL['storage-tank'] = { html: storageTankPanelHtml, live: storageTankPanelLive, tip: storageTankTip };
 // 显示详情时，一对对角接口流体图标所在世界格 + 当前存储流体名（用于鼠标悬停显示流体名称）

@@ -190,5 +190,6 @@ const beaconPanel = { html: beaconPanelHtml, live: beaconPanelLive, tip: beaconT
 // ===== 注册 =====
 ENT_CLASSES['beacon'] = Beacon;
 DEVICE_RENDER['beacon'] = drawBeacon;
+DEVICE_DIR_ROTATE['beacon'] = true; // 支持旋转
 DEVICE_STATUS['beacon'] = e => Object.values(e.modules).reduce((a, b) => a + b, 0) > 0 ? 'g' : 'r';
 DEVICE_PANEL['beacon'] = beaconPanel;

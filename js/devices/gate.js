@@ -66,5 +66,6 @@ const gatePanel = { html: gatePanelHtml, live: gatePanelLive, tip: gateTip };
 // ===== 注册 =====
 ENT_CLASSES['gate'] = Gate;
 DEVICE_RENDER['gate'] = drawGate;
+DEVICE_DIR_ROTATE['gate'] = true; // 支持旋转
 DEVICE_STATUS['gate'] = e => gateOpen(e) ? 'g' : 'r';
 DEVICE_PANEL['gate'] = gatePanel;

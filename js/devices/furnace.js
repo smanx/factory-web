@@ -251,7 +251,9 @@ function furnaceTip(e) {
 // ===== 注册 =====
 ENT_CLASSES['stone-furnace'] = Furnace;
 DEVICE_RENDER['stone-furnace'] = drawFurnace;
+DEVICE_DIR_ROTATE['stone-furnace'] = true; // 支持旋转
 DEVICE_RENDER['electric-furnace'] = drawFurnace;
+DEVICE_DIR_ROTATE['electric-furnace'] = true; // 支持旋转
 // 石炉：无配方时黄灯（等燃料），电炉：无配方时红灯
 DEVICE_STATUS['stone-furnace'] = e => e.lit ? (e.cur ? 'g' : 'y') : 'r';
 // 电炉：正在耗电且电量不足（sat<1）时亮黄灯提示；缺电停摆时红灯；未耗电时按是否冶炼显红/绿

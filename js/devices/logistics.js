@@ -858,6 +858,7 @@ function roboportTip(e) {
 // ===== 注册 =====
 ENT_CLASSES['roboport'] = Roboport;
 DEVICE_RENDER['roboport'] = drawRoboport;
+DEVICE_DIR_ROTATE['roboport'] = true; // 支持旋转
 DEVICE_PANEL['roboport'] = {
   html: e => {
     let h = row('机器人', e.roboCap + ' 台', 'robo');
@@ -900,10 +901,15 @@ ENT_CLASSES['logistic-chest-storage'] = LogisticStorage;
 ENT_CLASSES['logistic-chest-requester'] = LogisticRequester;
 ENT_CLASSES['logistic-chest-buffer'] = LogisticBuffer;
 DEVICE_RENDER['logistic-chest-passive'] = drawLogiPassive;
+DEVICE_DIR_ROTATE['logistic-chest-passive'] = true; // 支持旋转
 DEVICE_RENDER['logistic-chest-active'] = drawLogiActive;
+DEVICE_DIR_ROTATE['logistic-chest-active'] = true; // 支持旋转
 DEVICE_RENDER['logistic-chest-storage'] = drawLogiStorage;
+DEVICE_DIR_ROTATE['logistic-chest-storage'] = true; // 支持旋转
 DEVICE_RENDER['logistic-chest-requester'] = drawLogiRequester;
+DEVICE_DIR_ROTATE['logistic-chest-requester'] = true; // 支持旋转
 DEVICE_RENDER['logistic-chest-buffer'] = drawLogiBuffer;
+DEVICE_DIR_ROTATE['logistic-chest-buffer'] = true; // 支持旋转
 for (const t of Object.keys(LOGI_CHEST_KINDS)) {
   DEVICE_PANEL[t] = { html: logiChestPanelHtml, live: logiChestPanelLive, tip: logiChestTip, onAction: logiChestOnAction, onChange: logiRequesterOnChange };
 }

@@ -126,10 +126,6 @@ function drawFluidPump(ctx, e, gx, gy, dir, alpha) {
   }
   ctx.fillStyle = dirColorNotch(dir);
   notch(ctx, px, py, dir);
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 9px system-ui';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('泵', cx, cy + 13);
   ctx.globalAlpha = 1;
 }
 

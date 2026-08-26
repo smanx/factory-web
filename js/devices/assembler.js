@@ -234,13 +234,9 @@ function drawAssembler(ctx, e, gx, gy, dir, alpha) {
       ctx.arc(px + s / 2, py + s / 2, 24, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2);
       ctx.stroke();
     }
-  } else {
-    if (!(LOD && LOD.simple)) {
-      ctx.fillStyle = 'rgba(255,255,255,.6)';
-      ctx.font = 'bold 11px system-ui';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('无配方', px + s / 2, py + s / 2 + 30);
-    }
+  } else if (!(LOD && LOD.simple)) {
+    // 未选配方：显示默认齿轮图标（不再显示中文）
+    drawRecipePlaceholder(ctx, px + s / 2, py + s / 2, s * 0.5);
   }
   const fr = e.fluidRecipe ? e.fluidRecipe() : null;
   const pcx = px + s / 2, pcy = py + s / 2;

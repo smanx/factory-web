@@ -132,5 +132,6 @@ function speakerTip(e) {
 const speakerPanel = { html: speakerPanelHtml, onAction: speakerOnAction, onChange: speakerOnChange, live: speakerPanelLive, tip: speakerTip };
 ENT_CLASSES['programmable-speaker'] = ProgrammableSpeaker;
 DEVICE_RENDER['programmable-speaker'] = drawSpeaker;
+DEVICE_DIR_ROTATE['programmable-speaker'] = true; // 支持旋转
 DEVICE_STATUS['programmable-speaker'] = e => e.isActive() ? 'y' : 'g';
 DEVICE_PANEL['programmable-speaker'] = speakerPanel;

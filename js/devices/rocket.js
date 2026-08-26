@@ -259,24 +259,27 @@ function drawRocketSilo(ctx, e, gx, gy, dir, alpha) {
   if (!e.hasRocket()) {
     // 显示部件进度 + 当前原料齐备状态
     ctx.fillStyle = '#ffd23c';
-    ctx.fillText('部件 ' + e.parts + '/' + ROCKET_PARTS, bx, by);
+    ctx.fillText(e.parts + '/' + ROCKET_PARTS, bx, by);
     bx += 12;
     for (const k of Object.keys(SILO_ASSEMBLE)) {
       const have = e.inp[k] || 0;
       const need = siloPartNeed(k);
       const ready = have >= need;
+      // 用物品颜色小点标识部件（不再显示中文）
+      ctx.fillStyle = ITEMS[k] ? ITEMS[k].color : '#c0b090';
+      ctx.beginPath(); ctx.arc(bx - 4, by, 3, 0, 7); ctx.fill();
       ctx.fillStyle = ready ? '#57e389' : '#c0b090';
-      ctx.fillText(ITEMS[k].name[0] + (have > need ? '✓' : (have > 0 ? String(Math.min(have, need)) : '')), bx, by);
+      ctx.fillText(have > need ? '✓' : (have > 0 ? String(Math.min(have, need)) : ''), bx, by);
       bx += 12;
     }
   } else {
     ctx.fillStyle = (e.inp['satellite'] || 0) > 0 ? '#57e389' : '#c0b090';
-    ctx.fillText('卫星' + ((e.inp['satellite'] || 0) > 0 ? '✓' : ''), bx, by);
+    ctx.fillText('🛰' + ((e.inp['satellite'] || 0) > 0 ? '✓' : ''), bx, by);
   }
   if (e.launching) {
     ctx.fillStyle = '#ffd23c';
     ctx.textAlign = 'center';
-    ctx.fillText('发射中 ' + Math.ceil(10 - e.launchT) + 's', cx, cy - 50);
+    ctx.fillText('🚀 ' + Math.ceil(10 - e.launchT) + 's', cx, cy - 50);
   }
   ctx.globalAlpha = 1;
 }
@@ -439,10 +442,6 @@ function drawRadar(ctx, e, gx, gy, dir, alpha) {
   ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(ang) * s * 0.32, cy + Math.sin(ang) * s * 0.32); ctx.stroke();
   ctx.fillStyle = '#9ab0b0';
   ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 7); ctx.fill();
-  ctx.fillStyle = '#cfe8e8';
-  ctx.font = 'bold 11px system-ui';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('雷达', cx, cy + s * 0.4);
   ctx.globalAlpha = 1;
 }
 function radarPanelHtml(e) {

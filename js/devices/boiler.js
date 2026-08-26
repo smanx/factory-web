@@ -183,10 +183,6 @@ function drawBoiler(ctx, e, gx, gy, dir, alpha) {
       ctx.fill();
     }
   }
-  ctx.font = 'bold 11px system-ui';
-  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#f4e9d8';
-  ctx.fillText('锅炉', px + 8, py + 14);
   ctx.textAlign = 'right';
   ctx.fillStyle = tp >= 1 ? '#7fe08f' : tp > 0 ? '#ffd23c' : '#8a93a0';
   ctx.fillText(Math.round(e.temp || 0) + '°C', px + w - 8, py + 14);

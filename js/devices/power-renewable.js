@@ -150,7 +150,9 @@ function accumulatorTip(e) {
 ENT_CLASSES['solar-panel'] = SolarPanel;
 ENT_CLASSES['accumulator'] = Accumulator;
 DEVICE_RENDER['solar-panel'] = drawSolarPanel;
+DEVICE_DIR_ROTATE['solar-panel'] = true; // 支持旋转
 DEVICE_RENDER['accumulator'] = drawAccumulator;
+DEVICE_DIR_ROTATE['accumulator'] = true; // 支持旋转
 DEVICE_STATUS['solar-panel'] = e => solarFactor() > 0.02 ? 'g' : 'r';
 DEVICE_STATUS['accumulator'] = e => (e.stored || 0) > 0 ? 'g' : 'r';
 DEVICE_PANEL['solar-panel'] = { html: solarPanelPanelHtml, live: solarPanelPanelLive, tip: solarPanelTip };

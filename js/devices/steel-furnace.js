@@ -89,10 +89,6 @@ function drawSteelFurnace(ctx, e, gx, gy, dir, alpha) {
   rr(ctx, px + 10, py + s - 12, s - 20, 5, 2); ctx.fill();
   ctx.fillStyle = fuelPct > 0 ? '#e8762c' : '#c33';
   rr(ctx, px + 10, py + s - 12, (s - 20) * fuelPct, 5, 2); ctx.fill();
-  ctx.font = 'bold 10px system-ui';
-  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#f0f4fa';
-  ctx.fillText('钢铁炉', px + 8, py + s - 18);
   ctx.globalAlpha = 1;
 }
 
@@ -148,5 +144,6 @@ function steelFurnaceTip(e) {
 // ===== 注册 =====
 ENT_CLASSES['steel-furnace'] = SteelFurnace;
 DEVICE_RENDER['steel-furnace'] = drawSteelFurnace;
+DEVICE_DIR_ROTATE['steel-furnace'] = true; // 支持旋转
 DEVICE_STATUS['steel-furnace'] = e => e.lit ? (e.cur ? 'g' : 'y') : 'r';
 DEVICE_PANEL['steel-furnace'] = { html: steelFurnacePanelHtml, live: steelFurnacePanelLive, tip: steelFurnaceTip };

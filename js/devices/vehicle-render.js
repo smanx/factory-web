@@ -38,10 +38,14 @@ function drawCar(ctx, e, gx, gy, dir, alpha) {
   // 燃料显示（火箭燃料>固体燃料>煤 优先计数）
   const fl = (e.fuelNuclear || 0) > 0 ? (e.fuelNuclear || 0) : ((e.fuelRocket || 0) > 0 ? (e.fuelRocket || 0) : ((e.fuelSolid || 0) > 0 ? (e.fuelSolid || 0) : (e.fuelCoal || 0)));
   if (fl > 0 || (G.driving && G.driving.ent === e)) {
+    // 燃料余量：小圆点 + 数字（不再显示中文燃料类型）
+    const fcol = e.fuelNuclear > 0 ? '#8ff0d0' : e.fuelRocket > 0 ? '#ff9a5a' : e.fuelSolid > 0 ? '#ffd23c' : '#8a8a8a';
+    ctx.fillStyle = fcol;
+    ctx.beginPath(); ctx.arc(cx - 6, py + TILE * 2 - 4, 3, 0, 7); ctx.fill();
     ctx.fillStyle = fl > 0 ? '#e8c85a' : '#ff5b5b';
     ctx.font = 'bold 10px system-ui';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText((e.fuelNuclear > 0 ? '核 ' : (e.fuelRocket > 0 ? '火 ' : (e.fuelSolid > 0 ? '燃 ' : '煤 '))) + fl, cx, py + TILE * 2 - 4);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(fl), cx, py + TILE * 2 - 4);
   }
   ctx.globalAlpha = 1;
 }

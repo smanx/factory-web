@@ -99,5 +99,6 @@ function lampTip(e) {
 const lampPanel = { html: lampPanelHtml, live: lampPanelLive, tip: lampTip, onAction: (a) => (typeof circuitPanelAction === 'function' ? circuitPanelAction('lamp', a) : false) };
 ENT_CLASSES['lamp'] = Lamp;
 DEVICE_RENDER['lamp'] = drawLamp;
+DEVICE_DIR_ROTATE['lamp'] = true; // 支持旋转
 DEVICE_STATUS['lamp'] = e => e.circuitOk() ? (e.shouldLight() ? 'g' : (nightPhase() ? 'y' : 'r')) : 'r';
 DEVICE_PANEL['lamp'] = lampPanel;

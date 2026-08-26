@@ -102,12 +102,6 @@ function drawLaserTurret(ctx, e, gx, gy, dir, alpha) {
     ctx.lineTo(e.target.x, e.target.y);
     ctx.stroke();
   }
-  ctx.fillStyle = 'rgba(255,255,255,.7)';
-  if (!(LOD && LOD.simple)) {
-    ctx.font = 'bold 10px system-ui';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('激光', cx, cy + 20);
-  }
   ctx.globalAlpha = 1;
 }
 function laserTurretPanelHtml(e) {
@@ -272,10 +266,12 @@ function drawFlamethrowerTurret(ctx, e, gx, gy, dir, alpha) {
   }
   const fl = (e.fluid && e.fluid['light-oil']) || 0;
   if (fl > 0) {
+    // 轻油余量：橙色小点 + 数字（不再显示中文“油”）
     ctx.fillStyle = '#d0a04a';
+    ctx.beginPath(); ctx.arc(cx - 6, cy + 22, 3, 0, 7); ctx.fill();
     ctx.font = 'bold 10px system-ui';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('油:' + fl, cx, cy + 22);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(fl), cx, cy + 22);
   }
   ctx.globalAlpha = 1;
 }

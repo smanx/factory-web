@@ -244,3 +244,11 @@ DEVICE_STATUS['rail-signal'] = railSignalStatus;
 DEVICE_STATUS['rail-chain-signal'] = railSignalStatus;
 
 // ===== 面板 =====
+
+// 铁路设备统一支持旋转
+DEVICE_DIR_ROTATE['rail'] = true;
+DEVICE_DIR_ROTATE['cargo-wagon'] = true;
+DEVICE_DIR_ROTATE['artillery-wagon'] = true;
+DEVICE_DIR_ROTATE['train-stop'] = true;
+DEVICE_DIR_ROTATE['rail-signal'] = true;
+DEVICE_DIR_ROTATE['rail-chain-signal'] = true;

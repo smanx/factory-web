@@ -295,17 +295,9 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
     if (e.recipe) {
       const outId = Object.keys(REFINERY_RECIPES[e.recipe].out)[0];
       drawRecipeIconCell(ctx, cxp, cyp, outId);
-      if (portLabelVisible()) {
-        ctx.fillStyle = 'rgba(255,255,255,.85)';
-        ctx.font = 'bold 12px system-ui';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(REFINERY_RECIPES[e.recipe].name, cxp, cyp + s * 0.17);
-      }
-    } else if (portLabelVisible()) {
-      ctx.fillStyle = 'rgba(255,255,255,.6)';
-      ctx.font = 'bold 11px system-ui';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('无配方', cxp, cyp);
+    } else if (!(LOD && LOD.simple)) {
+      // 未选配方：显示默认图标（不再显示中文）
+      drawRecipePlaceholder(ctx, cxp, cyp, s * 0.5);
     }
   }
   let bx = px + 14;
@@ -320,10 +312,11 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
     bx += 24;
   }
   if (!e.working && e.recipe && refineryMissingInput(e) && !(LOD && LOD.simple)) {
-    ctx.fillStyle = 'rgba(255,255,255,.55)';
-    ctx.font = 'bold 11px system-ui';
+    // 缺原料：显示感叹号警示（不再显示中文）
+    ctx.fillStyle = '#ffb04a';
+    ctx.font = 'bold 16px system-ui';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('缺原料', px + s / 2, py + s * 0.72);
+    ctx.fillText('!', px + s / 2, py + s * 0.72);
   }
   // ===== 流体出入口标注（对齐《异星工厂》：入口绿、出口橙红，位置随旋转） =====
   // 布局：每个接口对齐到对应的格子（一格一接口）：背面(上方=北)2个输入口落在格1/格3，正面(下方=南)3个输出口落在格0/格2/格4（各留 1 格间隔）
