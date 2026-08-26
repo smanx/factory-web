@@ -220,9 +220,9 @@ function drawAltMode(ctx, keys, seenBuf) {
     const bw = n * iconSize + (n - 1) * gap + pad * 2;
     const bh = iconSize + pad * 2;
     const px = (e.x + e.w / 2) * TILE;
-    const py = e.y * TILE - 2;
+    const py = (e.y + e.h / 2) * TILE;
     const x0 = px - bw / 2;
-    const y0 = py - bh;
+    const y0 = py - bh / 2;
     ctx.save();
     ctx.globalAlpha = 0.85;
     ctx.fillStyle = 'rgba(8,10,14,0.78)';
