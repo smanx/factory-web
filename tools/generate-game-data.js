@@ -711,6 +711,30 @@ for (const [pid, [rtype, oname]] of Object.entries(FOOTPRINT_SOURCES)) {
   if (w > 0 && h > 0) footprint[pid] = { w, h };
 }
 
+
+// ---- DLC 数据总览（Space Age / Quality / Elevated Rails / Recycler）----
+// 列出 factorio-data 2.1.17 中 DLC 相关的可用物品与配方（官方名），供后续功能开发引用。
+// DLC 识别：Space Age 特色物品（电磁/锂/超导/小行星/浆果/氟酮等）、Quality 品质、高架铁轨、回收机。
+const dlcItemKeywords = ['electromagnetic','lithium','superconductor','asteroid','yumako','bioflux',
+  'fluoroketone','promethium','carbon','metallic','oxide','quality','recycler','capture-robot',
+  'agricultural','lightning','thruster','cargo-pod','landing-pad','space-platform'];
+const dlc = {
+  version: '2.1.17',
+  items: {},
+  recipes: {},
+  quality: Object.keys(raw.quality || {}),
+};
+for (const n of Object.keys(raw.item || {})) {
+  if (dlcItemKeywords.some(k => n.includes(k))) dlc.items[n] = { stack: raw.item[n].stack_size };
+}
+for (const n of Object.keys(raw.recipe || {})) {
+  if (dlcItemKeywords.some(k => n.includes(k))) dlc.recipes[n] = true;
+}
+// 回收机实体
+if (raw.recycler) dlc.recycler = Object.keys(raw.recycler);
+// 高架铁轨
+dlc.elevatedRails = Object.keys(raw['elevated-straight-rail'] || {});
+
 // ---- 汇总新增字段进 GAME_DATA（undefined 字段由 JSON 序列化自动剔除）----
 Object.assign(GAME_DATA, {
   undergroundDist,
@@ -727,6 +751,7 @@ Object.assign(GAME_DATA, {
   steamPower,
   robotSpeed,
   inserterStats,
+  dlc,
 });
 
 // ---- recipe ----

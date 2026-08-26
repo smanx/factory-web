@@ -3443,5 +3443,191 @@ const GAME_DATA = {
     "extensionSpeed": 0.035
    }
   }
+ },
+ "dlc": {
+  "version": "2.1.17",
+  "items": {
+   "cargo-landing-pad": {
+    "stack": 1
+   },
+   "recycler": {
+    "stack": 20
+   },
+   "space-platform-foundation": {
+    "stack": 100
+   },
+   "agricultural-science-pack": {
+    "stack": 200
+   },
+   "electromagnetic-science-pack": {
+    "stack": 200
+   },
+   "promethium-science-pack": {
+    "stack": 200
+   },
+   "landing-pad-unloading-bay": {
+    "stack": 10
+   },
+   "metallic-asteroid-chunk": {
+    "stack": 1
+   },
+   "carbonic-asteroid-chunk": {
+    "stack": 1
+   },
+   "oxide-asteroid-chunk": {
+    "stack": 1
+   },
+   "promethium-asteroid-chunk": {
+    "stack": 1
+   },
+   "asteroid-collector": {
+    "stack": 10
+   },
+   "thruster": {
+    "stack": 10
+   },
+   "carbon": {
+    "stack": 50
+   },
+   "yumako-seed": {
+    "stack": 10
+   },
+   "artificial-yumako-soil": {
+    "stack": 100
+   },
+   "overgrowth-yumako-soil": {
+    "stack": 100
+   },
+   "agricultural-tower": {
+    "stack": 20
+   },
+   "carbon-fiber": {
+    "stack": 100
+   },
+   "lithium": {
+    "stack": 50
+   },
+   "lithium-plate": {
+    "stack": 100
+   },
+   "lightning-rod": {
+    "stack": 50
+   },
+   "lightning-collector": {
+    "stack": 20
+   },
+   "electromagnetic-plant": {
+    "stack": 20
+   },
+   "superconductor": {
+    "stack": 200
+   },
+   "space-platform-hub": {
+    "stack": 1
+   },
+   "fluoroketone-cold-barrel": {
+    "stack": 10
+   },
+   "fluoroketone-hot-barrel": {
+    "stack": 10
+   }
+  },
+  "recipes": {
+   "cargo-landing-pad": true,
+   "quality-module": true,
+   "quality-module-2": true,
+   "quality-module-3": true,
+   "recycler": true,
+   "yumako-processing": true,
+   "artificial-yumako-soil": true,
+   "overgrowth-yumako-soil": true,
+   "nutrients-from-yumako-mash": true,
+   "nutrients-from-bioflux": true,
+   "bioflux": true,
+   "carbon-fiber": true,
+   "space-platform-foundation": true,
+   "space-platform-starter-pack": true,
+   "landing-pad-unloading-bay": true,
+   "asteroid-collector": true,
+   "thruster": true,
+   "agricultural-science-pack": true,
+   "electromagnetic-science-pack": true,
+   "metallic-asteroid-crushing": true,
+   "carbonic-asteroid-crushing": true,
+   "oxide-asteroid-crushing": true,
+   "advanced-metallic-asteroid-crushing": true,
+   "advanced-carbonic-asteroid-crushing": true,
+   "advanced-oxide-asteroid-crushing": true,
+   "metallic-asteroid-reprocessing": true,
+   "carbonic-asteroid-reprocessing": true,
+   "oxide-asteroid-reprocessing": true,
+   "thruster-fuel": true,
+   "thruster-oxidizer": true,
+   "advanced-thruster-fuel": true,
+   "advanced-thruster-oxidizer": true,
+   "carbon": true,
+   "agricultural-tower": true,
+   "capture-robot-rocket": true,
+   "lightning-rod": true,
+   "electromagnetic-plant": true,
+   "superconductor": true,
+   "lightning-collector": true,
+   "lithium": true,
+   "lithium-plate": true,
+   "fluoroketone": true,
+   "fluoroketone-cooling": true,
+   "promethium-science-pack": true,
+   "fluoroketone-cold-barrel": true,
+   "empty-fluoroketone-cold-barrel": true,
+   "fluoroketone-hot-barrel": true,
+   "empty-fluoroketone-hot-barrel": true,
+   "cargo-landing-pad-recycling": true,
+   "quality-module-recycling": true,
+   "quality-module-2-recycling": true,
+   "quality-module-3-recycling": true,
+   "recycler-recycling": true,
+   "artificial-yumako-soil-recycling": true,
+   "overgrowth-yumako-soil-recycling": true,
+   "space-platform-foundation-recycling": true,
+   "landing-pad-unloading-bay-recycling": true,
+   "asteroid-collector-recycling": true,
+   "thruster-recycling": true,
+   "agricultural-tower-recycling": true,
+   "capture-robot-rocket-recycling": true,
+   "lightning-rod-recycling": true,
+   "electromagnetic-plant-recycling": true,
+   "lightning-collector-recycling": true,
+   "fluoroketone-cold-barrel-recycling": true,
+   "fluoroketone-hot-barrel-recycling": true,
+   "agricultural-science-pack-recycling": true,
+   "electromagnetic-science-pack-recycling": true,
+   "promethium-science-pack-recycling": true,
+   "metallic-asteroid-chunk-recycling": true,
+   "carbonic-asteroid-chunk-recycling": true,
+   "oxide-asteroid-chunk-recycling": true,
+   "promethium-asteroid-chunk-recycling": true,
+   "carbon-recycling": true,
+   "yumako-seed-recycling": true,
+   "carbon-fiber-recycling": true,
+   "lithium-recycling": true,
+   "lithium-plate-recycling": true,
+   "superconductor-recycling": true,
+   "space-platform-hub-recycling": true,
+   "yumako-recycling": true,
+   "yumako-mash-recycling": true,
+   "bioflux-recycling": true
+  },
+  "quality": [
+   "quality-unknown",
+   "normal",
+   "uncommon",
+   "rare",
+   "epic",
+   "legendary"
+  ],
+  "elevatedRails": [
+   "dummy-elevated-straight-rail",
+   "elevated-straight-rail"
+  ]
  }
 };
