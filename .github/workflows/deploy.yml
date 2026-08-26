@@ -27,6 +27,8 @@ jobs:
         run: |
           cd dist
           git init
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
           git checkout -b dist
           git add -A
           git commit -m "deploy: $(date +'%Y-%m-%d %H:%M:%S')"
