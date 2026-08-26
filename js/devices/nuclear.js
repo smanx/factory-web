@@ -16,7 +16,7 @@ function reactorEmit(e, dt) {
 
 // ===== 核能发电体系（对齐《异星工厂》核动力）=====
 // 完整链路：铀矿（远处生成）→ 电采矿机开采 → 离心机处理成铀-235/238
-//   → 铀-235 组装成核燃料 → 核反应堆（耗核燃料+水）产出高温蒸汽
+//   → 铀-235 组装成铀燃料棒 → 核反应堆（耗铀燃料棒）产出热量
 //   → 汽轮机（远高于蒸汽机的功率）发电。
 // 反应堆复用锅炉的“水 → 蒸汽”管道模型（底边出汽口接管道/汽轮机），
 // 汽轮机复用蒸汽机的“蒸汽 → 电力”模型，但功率与耗汽量远高。
@@ -297,13 +297,13 @@ function centrifugeTip(e) {
   return (nm || '配方') + '（等待原料）';
 }
 
-// ===================== 核反应堆（5×5，吃核燃料+水）=====================
-// 复用锅炉的“水→蒸汽”模型：核燃料燃烧把水加热成高温蒸汽，经底边出汽口排出。
+// ===================== 核反应堆（5×5，吃铀燃料棒）=====================
+// 复用锅炉的“水→蒸汽”模型：铀燃料棒燃烧把水加热成高温蒸汽，经底边出汽口排出。
 // 产汽能力远超锅炉：同耗水量下产出更多蒸汽，供多台汽轮机满载。
 class NuclearReactor extends Entity {
   constructor(type, x, y) {
     super('nuclear-reactor', x, y);
-    this.fuel = 0;          // 核燃料组数（燃料槽）
+    this.fuel = 0;          // 铀燃料棒组数（燃料槽）
     this.burnLeft = 0;      // 当前燃料剩余燃烧秒数
     this.heatBuf = 0;       // 内部热量缓冲（对齐《异星工厂》：反应堆产生热量，经导热管传导）
     this.temp = 0;          // 堆芯温度（显示用）
@@ -332,8 +332,8 @@ class NuclearReactor extends Entity {
     if (this.heatBuf >= REACTOR_HEAT_CAP - 0.01) { this.lit = false; return; }
     if (this.burnLeft <= 0 && this.fuel > 0) {
       this.fuel--;
-      if (typeof trackProd === 'function') trackProd('nuclear-fuel', -1);
-      // 燃尽一根核燃料 → 产生一根废燃料棒（核燃料循环闭环）
+      if (typeof trackProd === 'function') trackProd('uranium-fuel-cell', -1);
+      // 燃尽一根铀燃料棒 → 产生一根废燃料棒（核燃料循环闭环）
       this.spent++;
       if (typeof trackProd === 'function') trackProd('used-up-uranium-fuel-cell', 1);
       this.burnLeft += REACTOR_FUEL_ENERGY;
@@ -383,8 +383,8 @@ class NuclearReactor extends Entity {
     return n;
   }
   giveItem(item) {
-    // 反应堆同时接受核燃料（向后兼容旧档）与铀燃料棒（对齐《异星工厂》：反应堆专用燃料），二者燃尽均产废燃料棒
-    if ((item === 'nuclear-fuel' || item === 'uranium-fuel-cell') && this.fuel < 5) { this.fuel++; return true; }
+    // 反应堆仅接受铀燃料棒（对齐《异星工厂》：反应堆消耗 Uranium fuel cell 而非 Nuclear fuel）
+    if (item === 'uranium-fuel-cell' && this.fuel < 5) { this.fuel++; return true; }
     return false;
   }
   peekItem() {
@@ -408,7 +408,7 @@ class NuclearReactor extends Entity {
   }
   contents() {
     const list = [[this.type, 1]];
-    if (this.fuel > 0) list.push(['nuclear-fuel', this.fuel]);
+    if (this.fuel > 0) list.push(['uranium-fuel-cell', this.fuel]);
     if (this.spent > 0) list.push(['used-up-uranium-fuel-cell', this.spent]);
     return list;
   }
@@ -486,9 +486,7 @@ function drawNuclearReactor(ctx, e, gx, gy, dir, alpha) {
   ctx.globalAlpha = 1;
 }
 function reactorPanelHtml(e) {
-  let h = row('核燃料', e.fuel > 0 ? chip('nuclear-fuel', e.fuel) : '<span class="dim">无</span>', 'fuel');
-  if (invCount('nuclear-fuel') > 0)
-    h += '<button data-action="fuel" data-id="nuclear-fuel">装入核燃料 (' + invCount('nuclear-fuel') + ')</button>';
+  let h = row('铀燃料棒', e.fuel > 0 ? chip('uranium-fuel-cell', e.fuel) : '<span class="dim">无</span>', 'fuel');
   if (invCount('uranium-fuel-cell') > 0)
     h += '<button data-action="fuel" data-id="uranium-fuel-cell">装入铀燃料棒 (' + invCount('uranium-fuel-cell') + ')</button>';
   h += row('废燃料棒', '<span class="dim"></span>', 'spent');
@@ -497,13 +495,13 @@ function reactorPanelHtml(e) {
   h += row('堆芯温度', '', 'temp');
   h += barHtml(0);
   h += '<div class="status"></div>';
-  h += '<div class="dim">核反应堆：消耗铀燃料棒（或核燃料）产生巨量热量，经底边橙口传给导热管，再由导热管把热量送到热交换器，由热交换器把水烧成高温蒸汽供汽轮机发电（对齐《异星工厂》核能标准链路）。燃尽的燃料会留下废燃料棒，可在离心机再生为铀-238，闭合核燃料循环。核能技术解锁。</div>';
+  h += '<div class="dim">核反应堆：消耗铀燃料棒产生巨量热量，经底边橙口传给导热管，再由导热管把热量送到热交换器，由热交换器把水烧成高温蒸汽供汽轮机发电（对齐《异星工厂》核能标准链路，反应堆仅消耗铀燃料棒而非核燃料）。燃尽的燃料会留下废燃料棒，可在离心机再生为铀-238，闭合核燃料循环。核能技术解锁。</div>';
   h += '<div class="dim">💡 相邻加成：并排摆放多座反应堆，每座相邻反应堆使输出 +100%（对齐《异星工厂》）。</div>';
   h += '<div class="dim">🔗 标准接法：反应堆→(导热管)→热交换器（接水管）→(蒸汽管)→汽轮机</div>';
   return h;
 }
 function reactorPanelLive(e, api) {
-  api.set('fuel', e.fuel > 0 ? chip('nuclear-fuel', e.fuel) : dimSpan('无'));
+  api.set('fuel', e.fuel > 0 ? chip('uranium-fuel-cell', e.fuel) : dimSpan('无'));
   api.set('spent', e.spent > 0 ? chip('used-up-uranium-fuel-cell', e.spent) : dimSpan('无'));
   api.toggle('#btn-spent-takeout', e.spent > 0, '取回废燃料棒 (' + e.spent + ')');
   api.set('heat', e.heatBuf >= 1 ? chip('heat-pipe', Math.floor(e.heatBuf)) : dimSpan('空'));
@@ -511,13 +509,13 @@ function reactorPanelLive(e, api) {
   api.prog(Math.min(100, e.temp / 200 * 100));
   if (e.heatBuf >= REACTOR_HEAT_CAP - 0.01) api.status('已暂停：热量满，等待导热管/热交换器消耗', 'warn');
   else if (e.burning) api.status('运行中：产出热量', 'ok');
-  else if (e.fuel <= 0 && e.burnLeft <= 0) api.status('已暂停：无核燃料', 'bad');
+  else if (e.fuel <= 0 && e.burnLeft <= 0) api.status('已暂停：无铀燃料棒', 'bad');
   else api.status('已暂停：待机', 'warn');
 }
 function reactorTip(e) {
   return e.burning ? '运行中 ' + Math.round(e.temp) + '°C（存热' + Math.floor(e.heatBuf || 0) + '）'
     : e.heatBuf >= REACTOR_HEAT_CAP - 0.01 ? '热量满·等待导热管消耗'
-    : (e.fuel <= 0 && e.burnLeft <= 0) ? '无核燃料' : '待机';
+    : (e.fuel <= 0 && e.burnLeft <= 0) ? '无铀燃料棒' : '待机';
 }
 
 // ===================== 汽轮机（3×3，耗蒸汽→发电）=====================
