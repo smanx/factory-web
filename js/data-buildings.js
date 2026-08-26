@@ -60,9 +60,9 @@ const BUILD_DEFS = {
   // ===== 核能建筑 =====
   'centrifuge':         { w: 2, h: 2, solid: true },
   'nuclear-reactor':    { w: 5, h: 5, solid: true },
-  'steam-turbine':      { w: 3, h: 3, solid: true },
+  'steam-turbine':      { w: 5, h: 3, solid: true },
   'heat-pipe':          { w: 1, h: 1, solid: true },
-  'heat-exchanger':     { w: 3, h: 1, solid: true },
+  'heat-exchanger':     { w: 2, h: 3, solid: true },
   'roboport':           { w: 4, h: 4, solid: true },
   'rail':               { w: 1, h: 1, solid: false },
   'locomotive':         { w: 1, h: 1, solid: true },
