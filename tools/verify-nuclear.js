@@ -72,7 +72,7 @@ checkNum('铀浓缩处理概率铀-238(99.3%)', up && up.prob['uranium-238'], 0.
 
 console.log('\n【铀增殖处理 Kovarex（离心机）】');
 const kov = findRecipeObj('RECIPES', 'kovarex');
-checkNum('Kovarex 耗时(960s)', kov && kov.time, 960);
+checkNum('Kovarex 耗时(60s)', kov && kov.time, 60);
 checkNum('Kovarex 消耗铀-235(40)', kov && kov.inp['uranium-235'], 40);
 checkNum('Kovarex 消耗铀-238(5)', kov && kov.inp['uranium-238'], 5);
 checkNum('Kovarex 产出铀-235(41,净增产1)', kov && kov.out['uranium-235'], 41);

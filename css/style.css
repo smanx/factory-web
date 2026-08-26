@@ -377,6 +377,7 @@ html, body {
   margin: 6px 0;
 }
 .bar i { display: block; height: 100%; background: linear-gradient(90deg, #57b95c, #8fe08f); transition: width .2s; }
+.bar-time { font-size: 12px; color: #9fd8a0; margin: 2px 0 4px; font-family: monospace; }
 
 .status { color: #ffd23c; margin-top: 4px; }
 .status.ok { color: #57e389; }

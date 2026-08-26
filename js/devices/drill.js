@@ -331,7 +331,7 @@ function drillPanelLive(e, api) {
   if (eDrill) api.set('acid', (e.acid || 0) > 0 ? chip('sulfuric-acid', e.acid) : dimSpan('无'));
   api.set('buffer', e.buf > 0 && e.bufItem ? chip(e.bufItem, e.buf) : dimSpan('空'));
   api.toggle('#btn-drill-takeout', e.buf > 0, '取回缓存 (' + e.buf + ')');
-  api.prog(e.working ? e.prog / e.oreTime() * 100 : 0);
+  api.prog(e.working ? e.prog / e.oreTime() * 100 : 0, e.oreTime());
   // 开采速率：每秒产矿量 = 1 / 该矿石采矿时间 × 采矿科技 × 机型倍率（电钻×电学、抽油×石油科技）
   const rateEl = document.getElementById('mach-rate-block');
   if (rateEl) {

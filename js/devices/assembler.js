@@ -325,7 +325,7 @@ function assemblerPanelLive(e, api) {
   }
   const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
   api.toggle('#btn-takeout', n > 0, '取回全部输出 (' + n + ')');
-  api.prog(e.recipe && e.crafting ? e.prog / RECIPES[e.recipe].time * 100 : 0);
+  api.prog(e.recipe && e.crafting ? e.prog / RECIPES[e.recipe].time * 100 : 0, e.recipe ? RECIPES[e.recipe].time : 0);
   // 状态：工作中或暂停原因（异星工厂惯例：缺料/输出满/缺电）
   if (!e.recipe) { api.status('未设置配方，点击下方选择', 'warn'); return; }
   if (e.crafting) { api.status('生产中：' + ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name, 'ok'); return; }
