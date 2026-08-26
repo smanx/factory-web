@@ -451,7 +451,8 @@ html, body {
 #tooltip {
   position: fixed;
   display: none;
-  z-index: 80;
+  /* tooltip 需显示在最上层（如背包、各类面板之上），故使用极高的 z-index */
+  z-index: 9999;
   background: rgba(12, 16, 22, .96);
   border: 1px solid #46536a;
   border-radius: 6px;
