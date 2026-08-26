@@ -190,8 +190,8 @@ const RECIPES = {
   'kovarex':           { time: 60,  inp: { 'uranium-235': 40, 'uranium-238': 5 },                  out: { 'uranium-235': 41, 'uranium-238': 2 } },
   // 核燃料（组装机，对齐《异星工厂》：1 火箭燃料 + 1 铀-235 → 1 核燃料）：火箭燃料 + 铀-235 制成
   'nuclear-fuel':      { time: 10,  inp: { 'rocket-fuel': 1, 'uranium-235': 1 },               out: { 'nuclear-fuel': 1 } },
-  // 铀燃料棒（对齐《异星工厂》：1 铀-235 + 19 铀-238 → 10 燃料棒，组装机）：反应堆专用燃料，燃尽产废燃料棒
-  'uranium-fuel-cell': { time: 10,  inp: { 'uranium-235': 1, 'uranium-238': 19 },            out: { 'uranium-fuel-cell': 10 } },
+  // 铀燃料棒（对齐《异星工厂》：10 铁板 + 1 铀-235 + 19 铀-238 → 10 燃料棒，组装机）：反应堆专用燃料，燃尽产废燃料棒
+  'uranium-fuel-cell': { time: 10,  inp: { 'iron-plate': 10, 'uranium-235': 1, 'uranium-238': 19 }, out: { 'uranium-fuel-cell': 10 } },
   // 离心机/反应堆/汽轮机（组装机制造）
   'centrifuge':        { time: 2,   inp: { 'iron-plate': 8, 'iron-gear': 4, 'green-circuit': 4 },                 out: { 'centrifuge': 1 } },
   'nuclear-reactor':   { time: 15,  inp: { 'steel-plate': 40, 'copper-plate': 20, 'battery': 5, 'centrifuge': 1 }, out: { 'nuclear-reactor': 1 } },

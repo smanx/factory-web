@@ -87,6 +87,7 @@ checkNum('乏燃料后处理产出铀-238(3)', fr && fr.out['uranium-238'], 3);
 console.log('\n【核燃料棒（组装机）对齐官方】');
 const ufc = findRecipeObj('RECIPES', 'uranium-fuel-cell');
 checkNum('核燃料棒耗时(10s)', ufc && ufc.time, 10);
+checkNum('核燃料棒消耗铁板(10)', ufc && ufc.inp['iron-plate'], 10);
 checkNum('核燃料棒消耗铀-235(1)', ufc && ufc.inp['uranium-235'], 1);
 checkNum('核燃料棒消耗铀-238(19)', ufc && ufc.inp['uranium-238'], 19);
 checkNum('核燃料棒产出(10)', ufc && ufc.out['uranium-fuel-cell'], 10);
