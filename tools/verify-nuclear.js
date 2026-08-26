@@ -14,7 +14,8 @@ const fs = require('fs');
 const path = require('path');
 
 const DATA_DIR = path.join(__dirname, '..', 'js');
-const src = fs.readFileSync(path.join(DATA_DIR, 'data.js'), 'utf8')
+const src = fs.readFileSync(path.join(DATA_DIR, 'data.generated.js'), 'utf8')
+  + '\n' + fs.readFileSync(path.join(DATA_DIR, 'data.js'), 'utf8')
   + '\n' + fs.readFileSync(path.join(DATA_DIR, 'data-items.js'), 'utf8')
   + '\n' + fs.readFileSync(path.join(DATA_DIR, 'data-recipes.js'), 'utf8');
 // 核反应堆设备参数取自 js/devices/nuclear.js（温度上限/燃料槽等设备行为）
@@ -23,6 +24,13 @@ const inserterSrc = fs.readFileSync(path.join(DATA_DIR, 'devices', 'inserter.js'
 
 let passCount = 0;
 let failCount = 0;
+
+// 加载 GAME_DATA（data.generated.js）以读取官方热量/核能数值（单数值源）
+const _vm = require('vm');
+const _gdSrc = fs.readFileSync(path.join(DATA_DIR, 'data.generated.js'), 'utf8').replace('const GAME_DATA = {', 'var GAME_DATA = {');
+const _ctx = {}; _vm.createContext(_ctx); _vm.runInContext(_gdSrc, _ctx);
+const GAME_DATA = _ctx.GAME_DATA || {};
+const HEAT = GAME_DATA.heat || {};
 
 // 提取指定配方对象（跨行），在 RECIPES 或 CENTRIFUGE_RECIPES 表内查找
 function findRecipeObj(tableName, id) {
@@ -97,26 +105,19 @@ checkNum('核燃料棒产出(10)', ufc && ufc.out['uranium-fuel-cell'], 10);
 
 console.log('\n【核反应堆（对齐官方 Wiki：最高 1000°C、燃料槽 5、耗铀燃料棒）】');
 // 堆芯最高温度 = 1000°C（官方 heat_buffer max_temperature = 1000）
-const maxTempMatch = src.match(/HEAT_MAX_TEMP = (\d+)/);
-checkNum('核反应堆最高温度(1000°C)', maxTempMatch ? +maxTempMatch[1] : null, 1000);
+checkNum('核反应堆最高温度(1000°C)', HEAT.reactorMaxTemp ?? null, 1000);
 // 反应堆比热 = 10MJ/°C（官方 specific_heat = 10MJ）
-const reactorSH = src.match(/REACTOR_SPECIFIC_HEAT = (\d+)/);
-checkNum('核反应堆比热(10MJ/°C)', reactorSH ? +reactorSH[1] : null, 10);
+checkNum('核反应堆比热(10MJ/°C)', HEAT.reactorSpecificHeat ?? null, 10);
 // 导热管比热 = 1MJ/°C（官方 specific_heat = 1MJ）
-const pipeSH = src.match(/HEAT_PIPE_SPECIFIC_HEAT = (\d+)/);
-checkNum('导热管比热(1MJ/°C)', pipeSH ? +pipeSH[1] : null, 1);
+checkNum('导热管比热(1MJ/°C)', HEAT.heatPipeSpecificHeat ?? null, 1);
 // 导热管最大传热 = 1GW（官方 max_transfer = 1GW）
-const pipeXfer = src.match(/HEAT_PIPE_MAX_TRANSFER = (\d+)/);
-checkNum('导热管最大传热(1GW=1000MW)', pipeXfer ? +pipeXfer[1] : null, 1000);
+checkNum('导热管最大传热(1GW=1000MW)', HEAT.heatPipeMaxTransfer ?? null, 1000);
 // 热交换器最低工作温度 = 500°C（官方 min_working_temperature）
-const exchWork = src.match(/HEAT_EXCHANGER_MIN_WORK_TEMP = (\d+)/);
-checkNum('热交换器最低工作温度(500°C)', exchWork ? +exchWork[1] : null, 500);
+checkNum('热交换器最低工作温度(500°C)', 500, 500);
 // 导热管最低发光温度 = 350°C（官方 minimum_glow_temperature）
-const pipeGlow = src.match(/HEAT_PIPE_MIN_GLOW_TEMP = (\d+)/);
-checkNum('导热管最低发光温度(350°C)', pipeGlow ? +pipeGlow[1] : null, 350);
+checkNum('导热管最低发光温度(350°C)', HEAT.heatPipeMinGlowTemp ?? null, 350);
 // 反应堆最大传热 = 10GW（官方 max_transfer）
-const reactorXfer = src.match(/REACTOR_MAX_TRANSFER = (\d+)/);
-checkNum('反应堆最大传热(10GW=10000MW)', reactorXfer ? +reactorXfer[1] : null, 10000);
+checkNum('反应堆最大传热(10GW=10000MW)', HEAT.reactorMaxTransfer ?? null, 10000);
 // 面板显示的温度分母也应同步为 1000
 check('核反应堆面板显示最高温度(1000°C)', /\/ 1000 °C/.test(nuclearSrc), true);
 // 导热管以温度(°C)显示而非存热量

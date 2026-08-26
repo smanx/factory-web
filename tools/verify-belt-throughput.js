@@ -28,15 +28,20 @@ function approx(name, actual, expected, tol) {
   else { fail++; console.log('  ❌ ' + name + ' = ' + actual.toFixed(3) + '（期望 ' + expected + '，容差 ' + tol + '）'); }
 }
 
+// 带速取自 GAME_DATA.deviceStats（由 factorio-data 现场生成，唯一数值源）
 function getConst(name) {
   const m = src.match(new RegExp('const\\s+' + name + '\\s*=\\s*([^;\\n]+);'));
   return m ? m[1].trim() : null;
 }
+const _gd = fs.readFileSync(path.join(__dirname, '..', 'js', 'data.generated.js'), 'utf8').replace('const GAME_DATA = {', 'var GAME_DATA = {');
+const _vm = require('vm'); const _ctx = {}; _vm.createContext(_ctx); _vm.runInContext(_gd, _ctx);
+const _DS = (_ctx.GAME_DATA && _ctx.GAME_DATA.deviceStats) || {};
+const _belt = _DS['transport-belt'], _fast = _DS['fast-transport-belt'], _expr = _DS['express-transport-belt'];
 
-const BELT_SPEED = parseFloat(getConst('BELT_SPEED'));
-const BELT_SPACING = parseFloat(getConst('BELT_SPACING'));
-const FAST_BELT_MULT = parseFloat(getConst('FAST_BELT_MULT'));
-const EXPRESS_BELT_MULT = parseFloat(getConst('EXPRESS_BELT_MULT'));
+const BELT_SPEED = (_belt && typeof _belt.beltSpeed === 'number') ? _belt.beltSpeed : parseFloat(getConst('BELT_SPEED'));
+const BELT_SPACING = parseFloat(getConst('BELT_SPACING')) || 0.125;
+const FAST_BELT_MULT = (_belt && _fast && _belt.beltSpeed > 0 && typeof _fast.beltSpeed === 'number') ? _fast.beltSpeed / _belt.beltSpeed : parseFloat(getConst('FAST_BELT_MULT'));
+const EXPRESS_BELT_MULT = (_belt && _expr && _belt.beltSpeed > 0 && typeof _expr.beltSpeed === 'number') ? _expr.beltSpeed / _belt.beltSpeed : parseFloat(getConst('EXPRESS_BELT_MULT'));
 
 console.log('\n【官方参数一致性】');
 check('BELT_SPEED = 1.875', BELT_SPEED, 1.875);

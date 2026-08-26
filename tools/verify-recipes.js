@@ -114,14 +114,23 @@ check('铁杆(1铁→2杆)', stick.includes("'iron-plate': 1"), true);
 // ---- 官方核心参数 ----
 console.log('\n【关键物理/数值参数对齐官方】');
 function hasConst(name, val) {
-  const m = src.match(new RegExp('const\\s+' + name + '\\s*=\\s*([^;\\n]+);'));
+  const m = src.match(new RegExp('(?:const|let)\\s+' + name + '\\s*=\\s*([^;\\n]+);'));
   return m ? (m[1].trim() === String(val)) : false;
 }
-check('BELT_SPEED 基础带速', hasConst('BELT_SPEED', '1.875'), true);
+// 带速取自 GAME_DATA.deviceStats（唯一数值源）
+const _vm = require('vm');
+const _gd = fs.readFileSync(path.join(DATA_DIR, 'data.generated.js'), 'utf8').replace('const GAME_DATA = {', 'var GAME_DATA = {');
+const _ctx = {}; _vm.createContext(_ctx); _vm.runInContext(_gd, _ctx);
+const _DS = (_ctx.GAME_DATA && _ctx.GAME_DATA.deviceStats) || {};
+const _belt = _DS['transport-belt'], _fast = _DS['fast-transport-belt'], _expr = _DS['express-transport-belt'];
+const _beltOK = _belt && typeof _belt.beltSpeed === 'number';
+const _fMult = _beltOK && _fast && _belt.beltSpeed > 0 && typeof _fast.beltSpeed === 'number' ? _fast.beltSpeed / _belt.beltSpeed : null;
+const _eMult = _beltOK && _expr && _belt.beltSpeed > 0 && typeof _expr.beltSpeed === 'number' ? _expr.beltSpeed / _belt.beltSpeed : null;
+check('BELT_SPEED 基础带速', _beltOK && Math.abs(_belt.beltSpeed - 1.875) < 1e-9, true);
 // 传送带物品间隔 0.125 格（1/8 格/件），每列 8 件/格；以「双车道合计」计 → 基础带双车道合计 15 items/s
 check('BELT_SPACING 物品间隔=0.125(官方)', hasConst('BELT_SPACING', '0.125'), true);
-check('FAST_BELT_MULT 快速带倍数', hasConst('FAST_BELT_MULT', '2'), true);
-check('EXPRESS_BELT_MULT 极速带倍数', hasConst('EXPRESS_BELT_MULT', '3'), true);
+check('FAST_BELT_MULT 快速带倍数', _fMult !== null && Math.abs(_fMult - 2) < 1e-9, true);
+check('EXPRESS_BELT_MULT 极速带倍数', _eMult !== null && Math.abs(_eMult - 3) < 1e-9, true);
 check('POWER_PER_ENGINE 蒸汽机功率(kW)', hasConst('POWER_PER_ENGINE', '900'), true);
 check('POWER_PER_TURBINE 汽轮机功率(kW)', hasConst('POWER_PER_TURBINE', '5800'), true);
 check('COAL_ENERGY 煤能量', hasConst('COAL_ENERGY', '12'), true);

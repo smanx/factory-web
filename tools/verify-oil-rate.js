@@ -17,7 +17,7 @@ const path = require('path');
 const vm = require('vm');
 
 const DATA_DIR = path.join(__dirname, '..', 'js');
-const files = ['data.js', 'data-items.js', 'world.js'];
+const files = ['data.generated.js', 'data.js', 'data-items.js', 'world.js'];
 let src = '';
 for (const f of files) src += fs.readFileSync(path.join(DATA_DIR, f), 'utf8') + '\n';
 
