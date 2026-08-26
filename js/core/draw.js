@@ -118,26 +118,53 @@ function drawRecipeIconCell(ctx, x, y, item) {
   drawItemDot(ctx, x, y, item, Math.round(TILE * 0.46));
 }
 
-// 流体端口凸缘：side 0东1南2西3北；(cx,cy)=实体中心像素；dist=中心到该边距离；
-// off=沿边偏移（±0.5 为半格）；arrow=出流方向箭头
-function drawPort(ctx, cx, cy, side, color, arrow, off, dist) {
+// 设备内部管道口统一显示：默认画灰色小圈；ALT 详情时在小圈上叠加流体图标，
+// 并在旁边用蓝色小箭头标注流向（in=向设备内、out=向设备外、both=双向互通）。
+// side 0东1南2西3北；(cx,cy)=实体中心像素；dist=中心到该边距离；
+// off=沿边偏移（±0.5 为半格）；fluid=端口允许的流体（ALT 时画图标）；flow=流向
+function drawPort(ctx, cx, cy, side, color, arrow, off, dist, fluid, flow) {
   if (!dist) dist = TILE;
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(side * Math.PI / 2);
   if (off) ctx.translate(0, off * TILE);
-  ctx.fillStyle = '#20242b';
-  rr(ctx, dist - 9, -7, 10, 14, 3); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,.4)';
-  ctx.lineWidth = 1.5;
-  rr(ctx, dist - 9, -7, 10, 14, 3); ctx.stroke();
-  ctx.fillStyle = color;
-  rr(ctx, dist - 7, -4.5, 6.5, 9, 2); ctx.fill();
-  if (arrow) {
-    ctx.fillStyle = color;
-    tri(ctx, dist - 13, -5, dist - 13, 5, dist - 20, 0);
-    ctx.fill();
+  const pcx = dist - 9;              // 灰色小圈中心（设备内部边缘）
+  const r = 6;
+  // 灰色小圈（默认状态统一显示）
+  ctx.fillStyle = '#3c424a';
+  ctx.beginPath(); ctx.arc(pcx, 0, r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.5)';
+  ctx.lineWidth = 1.3;
+  ctx.beginPath(); ctx.arc(pcx, 0, r, 0, Math.PI * 2); ctx.stroke();
+  // ALT 详情：在小圈上叠加流体图标，并在旁边用小蓝色箭头标注流向
+  if (portDetailsVisible()) {
+    if (fluid && ITEMS[fluid]) drawItemGlyph(ctx, fluid, pcx, 0, r * 1.2);
+    const blue = '#4aa4ff';
+    const f = flow || (arrow ? 'out' : 'both');   // 兼容：未显式给流向时按 arrow 推断
+    if (f === 'both') {
+      drawFlowArrow(ctx, pcx + 6, 0, false, blue);   // 指向设备外
+      drawFlowArrow(ctx, pcx - 6, 0, true, blue);    // 指向设备内
+    } else if (f === 'out') {
+      drawFlowArrow(ctx, pcx + 6, 0, false, blue);   // 指向设备外
+    } else if (f === 'in') {
+      drawFlowArrow(ctx, pcx - 6, 0, true, blue);    // 指向设备内
+    }
   }
+  ctx.restore();
+}
+
+// 小蓝色流向箭头：inward=true 指向设备内，false 指向设备外
+function drawFlowArrow(ctx, x, y, inward, blue) {
+  ctx.fillStyle = blue;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(inward ? Math.PI : 0);
+  ctx.beginPath();
+  ctx.moveTo(3.4, 0);
+  ctx.lineTo(-2.4, -2.6);
+  ctx.lineTo(-2.4, 2.6);
+  ctx.closePath();
+  ctx.fill();
   ctx.restore();
 }
 
@@ -171,7 +198,7 @@ function drawFluidPorts(ctx, e, px, py, s, { inputs, outputs }) {
 }
 
 // 旋转流体设备：端口位置随 dir 一起旋转。
-// ports: [{ side, color, arrow }]，side 为 dir=0 时的基准方向（0东1南2西3北）；
+// ports: [{ side, color, arrow, off, fluid, flow }]，side 为 dir=0 时的基准方向（0东1南2西3北）；
 // 实际绘制方向 = (side + dir) % 4。
 function drawRotatablePorts(ctx, e, px, py, s, ports) {
   const cxp = px + s / 2, cyp = py + s / 2, half = s / 2;
@@ -180,13 +207,19 @@ function drawRotatablePorts(ctx, e, px, py, s, ports) {
   if (LOD && LOD.simple) return;
   for (const p of ports) {
     const sd = (p.side + dir) % 4;
-    drawPort(ctx, cxp, cyp, sd, p.color, p.arrow, p.off, half);
+    const fluid = (typeof p.fluid === 'function') ? p.fluid(e) : p.fluid;
+    drawPort(ctx, cxp, cyp, sd, p.color, p.arrow, p.off, half, fluid, p.flow);
   }
 }
 
-// 是否显示流体接口用途标签（默认显示详情）
+// 是否显示管道口详情（流体图标 + 流向箭头）：对齐《异星工厂》ALT 模式，按 ALT 切换
+function portDetailsVisible() {
+  return !!(G && G.settings.altMode !== false);
+}
+
+// 是否显示流体接口用途标签（跟随 ALT 详情模式）
 function portLabelVisible() {
-  return !!(G && G.showDetails);
+  return portDetailsVisible();
 }
 
 // 计算设备某流体接口图标所在的世界格坐标（用于鼠标悬停显示流体名称）。

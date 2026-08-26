@@ -196,9 +196,9 @@ function drawBoiler(ctx, e, gx, gy, dir, alpha) {
   // 水口朝外为 +1 格方向；左/右水口内部端朝内侧
   const _wSide = rotSide(2, _d); // 左水口朝西
   const _eSide = rotSide(0, _d); // 右水口朝东
-  drawPort(ctx, pL.x * TILE + TILE / 2, pL.y * TILE + TILE / 2, _wSide, PORT_WATER, false, 0, TILE);
-  drawPort(ctx, pR.x * TILE + TILE / 2, pR.y * TILE + TILE / 2, _eSide, PORT_WATER, false, 0, TILE);
-  drawPort(ctx, pS.x * TILE + TILE / 2, pS.y * TILE + TILE / 2, rotSide(1, _d), PORT_STEAM, true, 0, TILE);
+  drawPort(ctx, pL.x * TILE + TILE / 2, pL.y * TILE + TILE / 2, _wSide, PORT_WATER, false, 0, TILE, 'water', 'both');
+  drawPort(ctx, pR.x * TILE + TILE / 2, pR.y * TILE + TILE / 2, _eSide, PORT_WATER, false, 0, TILE, 'water', 'both');
+  drawPort(ctx, pS.x * TILE + TILE / 2, pS.y * TILE + TILE / 2, rotSide(1, _d), PORT_STEAM, true, 0, TILE, 'steam', 'out');
   ctx.globalAlpha = 1;
 }
 
