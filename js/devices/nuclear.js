@@ -483,30 +483,40 @@ function drawNuclearReactor(ctx, e, gx, gy, dir, alpha) {
   ctx.fillStyle = wPct > 0 ? '#d98a3a' : '#6a5a3a';
   rr(ctx, px + 12, py + h - 22, (w - 24) * wPct, 6, 3); ctx.fill();
   // 热量出口（黄色线标注，与热交换器热交换接口同款样式）
-  // 对齐官方 heat_buffer.connections：核反应堆四边（北/东/南/西）均布热交换接口，
-  // 每边沿整条边（两角+中部各一连接点）可向四个方向接导热管/热交换器传导热量。
+  // 对齐官方 heat_buffer.connections：核反应堆四边（北/东/南/西）各 3 个热交换接口，
+  // 5 格边中仅第 1/3/5 格（相对中心 -2/0/+2）有接口，而非整条边均布。
   ctx.strokeStyle = '#ffd23a';
   ctx.lineWidth = 3;
+  const cRx = px + w / 2, cRy = py + h / 2;   // 反应堆中心
+  const hC = [ -2 * TILE, 0, 2 * TILE ];      // 每条边 3 个连接点（相对中心）
   // 上边（北）
-  ctx.beginPath();
-  ctx.moveTo(px + 4, py + 3);
-  ctx.lineTo(px + w - 4, py + 3);
-  ctx.stroke();
+  for (const dx of hC) {
+    ctx.beginPath();
+    ctx.moveTo(cRx + dx - TILE * 0.22, py + 3);
+    ctx.lineTo(cRx + dx + TILE * 0.22, py + 3);
+    ctx.stroke();
+  }
   // 下边（南）
-  ctx.beginPath();
-  ctx.moveTo(px + 4, py + h - 3);
-  ctx.lineTo(px + w - 4, py + h - 3);
-  ctx.stroke();
+  for (const dx of hC) {
+    ctx.beginPath();
+    ctx.moveTo(cRx + dx - TILE * 0.22, py + h - 3);
+    ctx.lineTo(cRx + dx + TILE * 0.22, py + h - 3);
+    ctx.stroke();
+  }
   // 左边（西）
-  ctx.beginPath();
-  ctx.moveTo(px + 3, py + 4);
-  ctx.lineTo(px + 3, py + h - 4);
-  ctx.stroke();
+  for (const dy of hC) {
+    ctx.beginPath();
+    ctx.moveTo(px + 3, cRy + dy - TILE * 0.22);
+    ctx.lineTo(px + 3, cRy + dy + TILE * 0.22);
+    ctx.stroke();
+  }
   // 右边（东）
-  ctx.beginPath();
-  ctx.moveTo(px + w - 3, py + 4);
-  ctx.lineTo(px + w - 3, py + h - 4);
-  ctx.stroke();
+  for (const dy of hC) {
+    ctx.beginPath();
+    ctx.moveTo(px + w - 3, cRy + dy - TILE * 0.22);
+    ctx.lineTo(px + w - 3, cRy + dy + TILE * 0.22);
+    ctx.stroke();
+  }
   ctx.globalAlpha = 1;
 }
 function reactorPanelHtml(e) {
@@ -519,7 +529,7 @@ function reactorPanelHtml(e) {
   h += row('堆芯温度', '', 'temp');
   h += barHtml(0);
   h += '<div class="status"></div>';
-  h += '<div class="dim">核反应堆：消耗铀燃料棒产生巨量热量，经四边（北/东/南/西）黄色热量接口传给导热管（对齐官方 heat_buffer.connections，四边均可向导热管/热交换器传热），再由导热管把热量送到热交换器，由热交换器把水烧成高温蒸汽供汽轮机发电（对齐《异星工厂》核能标准链路，反应堆仅消耗铀燃料棒而非核燃料）。燃尽的燃料会留下贫化铀燃料棒，可在离心机再生为铀-238，闭合核燃料循环。核能技术解锁。</div>';
+  h += '<div class="dim">核反应堆：消耗铀燃料棒产生巨量热量，经四边（北/东/南/西）黄色热量接口传给导热管（对齐官方 heat_buffer.connections，每条 5 格边仅中间 3 格有热交换接口，非整条边均布，可向导热管/热交换器传热），再由导热管把热量送到热交换器，由热交换器把水烧成高温蒸汽供汽轮机发电（对齐《异星工厂》核能标准链路，反应堆仅消耗铀燃料棒而非核燃料）。燃尽的燃料会留下贫化铀燃料棒，可在离心机再生为铀-238，闭合核燃料循环。核能技术解锁。</div>';
   h += '<div class="dim">💡 相邻加成：并排摆放多座反应堆，每座相邻反应堆使输出 +100%（对齐《异星工厂》）。</div>';
   h += '<div class="dim">🔗 标准接法：反应堆→(导热管)→热交换器（接水管）→(蒸汽管)→汽轮机</div>';
   return h;
