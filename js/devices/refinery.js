@@ -326,7 +326,7 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
 
 // ===== 面板 =====
 function refineryPanelHtml(e) {
-  let h = row('当前配方', e.recipe ? REFINERY_RECIPES[e.recipe].name : '<span class="dim">未设置</span>');
+  let h = row('当前配方', e.recipe ? localizedName(e.recipe, REFINERY_RECIPES[e.recipe].name) : '<span class="dim">未设置</span>');
   // 消耗/产出速率显示在面板靠前位置（当前配方之后）
   h += machRateHtml(e.recipe ? REFINERY_RECIPES[e.recipe] : null, e.recipe ? oilMult() * e.moduleSpeedMult() : 1);
   h += row('电力', powerStatusLiveHtml(e), 'power');

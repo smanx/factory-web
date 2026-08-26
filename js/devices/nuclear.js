@@ -263,7 +263,7 @@ function centrifugePanelLive(e, api) {
   // 当前配方信息（耗时/原料/产出，含概率配方）：动态填充，随配方切换实时刷新
   const curRec = e.recipeObj && e.recipeObj();
   if (curRec) {
-    const curNm = CENTRIFUGE_RECIPES[e.recipe] ? CENTRIFUGE_RECIPES[e.recipe].name : (e.recipe === 'kovarex' ? '铀增殖处理' : '');
+    const curNm = CENTRIFUGE_RECIPES[e.recipe] ? localizedName(e.recipe, CENTRIFUGE_RECIPES[e.recipe].name) : (e.recipe === 'kovarex' ? localizedName('kovarex', '铀增殖处理') : '');
     let info = '<div class="sec">当前配方 · ' + curNm + '</div>';
     info += '<div class="dim">每周期耗时 ' + curRec.time + ' 秒</div>';
     info += '<div class="dim">所需原料：</div>';
@@ -299,7 +299,7 @@ function centrifugePanelLive(e, api) {
 function centrifugeTip(e) {
   if (!e.recipe) return '未选择配方';
   if (e.crafting) return '处理中 ' + Math.round((e.prog / e.recipeObj().time) * 100) + '%';
-  const nm = e.recipe === 'kovarex' ? '铀增殖处理' : (CENTRIFUGE_RECIPES[e.recipe] ? CENTRIFUGE_RECIPES[e.recipe].name : '');
+  const nm = e.recipe === 'kovarex' ? localizedName('kovarex', '铀增殖处理') : (CENTRIFUGE_RECIPES[e.recipe] ? localizedName(e.recipe, CENTRIFUGE_RECIPES[e.recipe].name) : '');
   return (nm || '配方') + '（等待原料）';
 }
 

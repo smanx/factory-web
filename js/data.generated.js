@@ -8,6 +8,8 @@
 //   recipeDevice[key] = 组装机/化工厂/炼油厂/离心机
 //   stackSize[item] = 最大堆叠,  buildingHp[building] = 血量,  powerUse[building] = 功耗kW
 //   deviceStats[id] = { craftingSpeed, moduleSlots, miningSpeed, beltSpeed(格/s), beaconEffectivity }
+//   names[id] = { zh, en }（物品/建筑/流体官方命名，供中英文切换，见 data-util.js localizedName）
+//   recipeNames[rid] = { zh, en }（配方官方命名，供炼油/离心机面板切换）
 const GAME_DATA = {
  "stackSize": {
   "iron-ore": 50,
@@ -2277,5 +2279,809 @@ const GAME_DATA = {
   "energy-shield-mk2": "assembling-machine",
   "belt-immunity-equipment": "assembling-machine",
   "discharge-defense": "assembling-machine"
+ },
+ "names": {
+  "iron-ore": {
+   "zh": "铁矿",
+   "en": "Iron ore"
+  },
+  "copper-ore": {
+   "zh": "铜矿",
+   "en": "Copper ore"
+  },
+  "coal": {
+   "zh": "煤矿",
+   "en": "Coal"
+  },
+  "solid-fuel": {
+   "zh": "固体燃料",
+   "en": "Solid fuel"
+  },
+  "stone": {
+   "zh": "石矿",
+   "en": "Stone"
+  },
+  "stone-brick": {
+   "zh": "石砖",
+   "en": "Stone brick"
+  },
+  "calcite": {
+   "zh": "方解石",
+   "en": "Calcite"
+  },
+  "iron-plate": {
+   "zh": "铁板",
+   "en": "Iron plate"
+  },
+  "copper-plate": {
+   "zh": "铜板",
+   "en": "Copper plate"
+  },
+  "iron-gear": {
+   "zh": "铁齿轮",
+   "en": "Iron gear wheel"
+  },
+  "iron-stick": {
+   "zh": "铁棒",
+   "en": "Iron stick"
+  },
+  "copper-cable": {
+   "zh": "铜缆",
+   "en": "Copper cable"
+  },
+  "green-circuit": {
+   "zh": "电路板",
+   "en": "Electronic circuit"
+  },
+  "science-pack": {
+   "zh": "机自科技包（红瓶）",
+   "en": "Automation science pack"
+  },
+  "transport-belt": {
+   "zh": "基础传送带",
+   "en": "Transport belt"
+  },
+  "inserter": {
+   "zh": "电力机械臂",
+   "en": "Inserter"
+  },
+  "burner-inserter": {
+   "zh": "热能机械臂",
+   "en": "Burner inserter"
+  },
+  "long-inserter": {
+   "zh": "加长机械臂",
+   "en": "Long-handed inserter"
+  },
+  "burner-drill": {
+   "zh": "热能采矿机",
+   "en": "Burner mining drill"
+  },
+  "stone-furnace": {
+   "zh": "石炉",
+   "en": "Stone furnace"
+  },
+  "assembling-machine": {
+   "zh": "组装机1型",
+   "en": "Assembling machine 1"
+  },
+  "storage-chest": {
+   "zh": "被动存货箱（黄箱）",
+   "en": "Storage chest"
+  },
+  "lab": {
+   "zh": "研究中心",
+   "en": "Lab"
+  },
+  "lamp": {
+   "zh": "照明灯",
+   "en": "Lamp"
+  },
+  "substation": {
+   "zh": "广域配电站",
+   "en": "Substation"
+  },
+  "programmable-speaker": {
+   "zh": "程控扬声器",
+   "en": "Programmable speaker"
+  },
+  "splitter": {
+   "zh": "基础分流器",
+   "en": "Splitter"
+  },
+  "underground": {
+   "zh": "基础地下传送带",
+   "en": "Underground belt"
+  },
+  "steel-plate": {
+   "zh": "钢材",
+   "en": "Steel plate"
+  },
+  "boiler": {
+   "zh": "锅炉",
+   "en": "Boiler"
+  },
+  "steam-engine": {
+   "zh": "蒸汽机",
+   "en": "Steam engine"
+  },
+  "offshore-pump": {
+   "zh": "抽取泵",
+   "en": "Offshore pump"
+  },
+  "water": {
+   "zh": "水",
+   "en": "Water"
+  },
+  "steam": {
+   "zh": "蒸汽",
+   "en": "Steam"
+  },
+  "electric-drill": {
+   "zh": "电力采矿机",
+   "en": "Electric mining drill"
+  },
+  "electric-furnace": {
+   "zh": "电炉",
+   "en": "Electric furnace"
+  },
+  "assembling-machine-mk2": {
+   "zh": "组装机2型",
+   "en": "Assembling machine 2"
+  },
+  "fast-transport-belt": {
+   "zh": "高速传送带",
+   "en": "Fast transport belt"
+  },
+  "fast-underground-belt": {
+   "zh": "高速地下传送带",
+   "en": "Fast underground belt"
+  },
+  "express-transport-belt": {
+   "zh": "极速传送带",
+   "en": "Express transport belt"
+  },
+  "express-underground-belt": {
+   "zh": "极速地下传送带",
+   "en": "Express underground belt"
+  },
+  "express-splitter": {
+   "zh": "极速分流器",
+   "en": "Express splitter"
+  },
+  "fast-splitter": {
+   "zh": "高速分流器",
+   "en": "Fast splitter"
+  },
+  "stack-inserter": {
+   "zh": "集装机械臂",
+   "en": "Bulk inserter"
+  },
+  "fast-inserter": {
+   "zh": "高速机械臂",
+   "en": "Fast inserter"
+  },
+  "steel-chest": {
+   "zh": "钢箱",
+   "en": "Steel chest"
+  },
+  "green-science": {
+   "zh": "物流科技包（绿瓶）",
+   "en": "Logistic science pack"
+  },
+  "crude-oil": {
+   "zh": "原油",
+   "en": "Crude oil"
+  },
+  "heavy-oil": {
+   "zh": "重油",
+   "en": "Heavy oil"
+  },
+  "light-oil": {
+   "zh": "轻油",
+   "en": "Light oil"
+  },
+  "petroleum-gas": {
+   "zh": "石油气",
+   "en": "Petroleum gas"
+  },
+  "plastic-bar": {
+   "zh": "塑料",
+   "en": "Plastic bar"
+  },
+  "pipe": {
+   "zh": "管道",
+   "en": "Pipe"
+  },
+  "pipe-to-ground": {
+   "zh": "地下管道",
+   "en": "Pipe to ground"
+  },
+  "pump": {
+   "zh": "管道泵",
+   "en": "Pump"
+  },
+  "storage-tank": {
+   "zh": "储液罐",
+   "en": "Storage tank"
+  },
+  "pumpjack": {
+   "zh": "抽油机",
+   "en": "Pumpjack"
+  },
+  "solar-panel": {
+   "zh": "太阳能板",
+   "en": "Solar panel"
+  },
+  "accumulator": {
+   "zh": "蓄电器",
+   "en": "Accumulator"
+  },
+  "steel-furnace": {
+   "zh": "钢炉",
+   "en": "Steel furnace"
+  },
+  "assembling-machine-3": {
+   "zh": "组装机3型",
+   "en": "Assembling machine 3"
+  },
+  "military-science": {
+   "zh": "军备科技包（灰瓶）",
+   "en": "Military science pack"
+  },
+  "gun-turret": {
+   "zh": "机枪炮塔",
+   "en": "Gun turret"
+  },
+  "stone-wall": {
+   "zh": "墙壁",
+   "en": "Wall"
+  },
+  "gate": {
+   "zh": "闸门",
+   "en": "Gate"
+  },
+  "magazine": {
+   "zh": "标准弹匣",
+   "en": "Firearm magazine"
+  },
+  "piercing-rounds": {
+   "zh": "穿甲弹匣",
+   "en": "Piercing rounds magazine"
+  },
+  "refinery": {
+   "zh": "炼油厂",
+   "en": "Oil refinery"
+  },
+  "chemical-plant": {
+   "zh": "化工厂",
+   "en": "Chemical plant"
+  },
+  "pistol": {
+   "zh": "手枪",
+   "en": "Pistol"
+  },
+  "submachine-gun": {
+   "zh": "冲锋枪",
+   "en": "Submachine gun"
+  },
+  "shotgun": {
+   "zh": "霰弹枪",
+   "en": "Shotgun"
+  },
+  "combat-shotgun": {
+   "zh": "冲锋霰弹枪",
+   "en": "Combat shotgun"
+  },
+  "shotgun-shell": {
+   "zh": "霰弹",
+   "en": "Shotgun shells"
+  },
+  "piercing-shotgun-shell": {
+   "zh": "穿甲霰弹",
+   "en": "Piercing shotgun shells"
+  },
+  "cluster-grenade": {
+   "zh": "集束手雷",
+   "en": "Cluster grenade"
+  },
+  "rocket-launcher": {
+   "zh": "火箭筒",
+   "en": "Rocket launcher"
+  },
+  "grenade": {
+   "zh": "标准手雷",
+   "en": "Grenade"
+  },
+  "rocket-ammo": {
+   "zh": "火箭弹",
+   "en": "Rocket"
+  },
+  "explosive-rocket": {
+   "zh": "爆破火箭弹",
+   "en": "Explosive rocket"
+  },
+  "flamethrower": {
+   "zh": "火焰喷射器",
+   "en": "Flamethrower"
+  },
+  "flamethrower-ammo": {
+   "zh": "油料储罐",
+   "en": "Flamethrower ammo"
+  },
+  "uranium-rounds": {
+   "zh": "贫铀弹匣",
+   "en": "Uranium rounds magazine"
+  },
+  "atomic-bomb": {
+   "zh": "原子弹",
+   "en": "Atomic bomb"
+  },
+  "uranium-cannon-shell": {
+   "zh": "贫铀炮弹",
+   "en": "Uranium cannon shell"
+  },
+  "poison-capsule": {
+   "zh": "剧毒胶囊",
+   "en": "Poison capsule"
+  },
+  "slowdown-capsule": {
+   "zh": "减速胶囊",
+   "en": "Slowdown capsule"
+  },
+  "laser-turret": {
+   "zh": "激光炮塔",
+   "en": "Laser turret"
+  },
+  "flamethrower-turret": {
+   "zh": "火焰炮塔",
+   "en": "Flamethrower turret"
+  },
+  "speed-module": {
+   "zh": "速度插件",
+   "en": "Speed module"
+  },
+  "speed-module-2": {
+   "zh": "速度插件 2",
+   "en": "Speed module 2"
+  },
+  "speed-module-3": {
+   "zh": "速度插件 3",
+   "en": "Speed module 3"
+  },
+  "productivity-module": {
+   "zh": "产能插件",
+   "en": "Productivity module"
+  },
+  "productivity-module-2": {
+   "zh": "产能插件 2",
+   "en": "Productivity module 2"
+  },
+  "productivity-module-3": {
+   "zh": "产能插件 3",
+   "en": "Productivity module 3"
+  },
+  "beacon": {
+   "zh": "插件效果分享塔",
+   "en": "Beacon"
+  },
+  "efficiency-module": {
+   "zh": "节能插件",
+   "en": "Efficiency module"
+  },
+  "efficiency-module-2": {
+   "zh": "节能插件 2",
+   "en": "Efficiency module 2"
+  },
+  "efficiency-module-3": {
+   "zh": "节能插件 3",
+   "en": "Efficiency module 3"
+  },
+  "advanced-circuit": {
+   "zh": "集成电路",
+   "en": "Advanced circuit"
+  },
+  "engine-unit": {
+   "zh": "内燃机",
+   "en": "Engine unit"
+  },
+  "electric-engine": {
+   "zh": "电动机",
+   "en": "Electric engine unit"
+  },
+  "processing-unit": {
+   "zh": "处理器",
+   "en": "Processing unit"
+  },
+  "low-density-structure": {
+   "zh": "轻质框架",
+   "en": "Low density structure"
+  },
+  "rocket-fuel": {
+   "zh": "火箭燃料",
+   "en": "Rocket fuel"
+  },
+  "rocket-part": {
+   "zh": "火箭组件",
+   "en": "Rocket part"
+  },
+  "rocket": {
+   "zh": "火箭弹",
+   "en": "Rocket"
+  },
+  "satellite": {
+   "zh": "卫星",
+   "en": "Satellite"
+  },
+  "rocket-silo": {
+   "zh": "火箭发射井",
+   "en": "Rocket silo"
+  },
+  "radar": {
+   "zh": "雷达",
+   "en": "Radar"
+  },
+  "explosive": {
+   "zh": "炸药",
+   "en": "Explosives"
+  },
+  "cliff-explosives": {
+   "zh": "悬崖炸药",
+   "en": "Cliff explosives"
+  },
+  "battery": {
+   "zh": "电池",
+   "en": "Battery"
+  },
+  "flying-robot-frame": {
+   "zh": "机器人构架",
+   "en": "Flying robot frame"
+  },
+  "production-science-pack": {
+   "zh": "生产科技包（紫瓶）",
+   "en": "Production science pack"
+  },
+  "utility-science-pack": {
+   "zh": "效能科技包（黄瓶）",
+   "en": "Utility science pack"
+  },
+  "defender-capsule": {
+   "zh": "防御无人机胶囊",
+   "en": "Defender capsule"
+  },
+  "distractor-capsule": {
+   "zh": "掩护无人机胶囊",
+   "en": "Distractor capsule"
+  },
+  "destroyer-capsule": {
+   "zh": "进攻无人机胶囊",
+   "en": "Destroyer capsule"
+  },
+  "car": {
+   "zh": "汽车",
+   "en": "Car"
+  },
+  "tank": {
+   "zh": "坦克",
+   "en": "Tank"
+  },
+  "cannon-shell": {
+   "zh": "标准炮弹",
+   "en": "Cannon shell"
+  },
+  "explosive-cannon-shell": {
+   "zh": "爆破炮弹",
+   "en": "Explosive cannon shell"
+  },
+  "explosive-uranium-cannon-shell": {
+   "zh": "爆破贫铀炮弹",
+   "en": "Explosive uranium cannon shell"
+  },
+  "light-armor": {
+   "zh": "轻型装甲",
+   "en": "Light armor"
+  },
+  "heavy-armor": {
+   "zh": "重型装甲",
+   "en": "Heavy armor"
+  },
+  "spidertron": {
+   "zh": "蜘蛛机甲",
+   "en": "Spidertron"
+  },
+  "spidertron-remote": {
+   "zh": "蜘蛛机甲遥控器",
+   "en": "Spidertron remote"
+  },
+  "land-mine": {
+   "zh": "地雷",
+   "en": "Land mine"
+  },
+  "artillery-turret": {
+   "zh": "重炮炮塔",
+   "en": "Artillery turret"
+  },
+  "artillery-shell": {
+   "zh": "重炮炮弹",
+   "en": "Artillery shell"
+  },
+  "rail": {
+   "zh": "铁轨",
+   "en": "Rail"
+  },
+  "locomotive": {
+   "zh": "内燃机车",
+   "en": "Locomotive"
+  },
+  "cargo-wagon": {
+   "zh": "货运车厢",
+   "en": "Cargo wagon"
+  },
+  "fluid-wagon": {
+   "zh": "液罐车厢",
+   "en": "Fluid wagon"
+  },
+  "artillery-wagon": {
+   "zh": "重炮车厢",
+   "en": "Artillery wagon"
+  },
+  "train-stop": {
+   "zh": "车站",
+   "en": "Train stop"
+  },
+  "rail-signal": {
+   "zh": "常规铁路信号",
+   "en": "Rail signal"
+  },
+  "rail-chain-signal": {
+   "zh": "联锁铁路信号",
+   "en": "Rail chain signal"
+  },
+  "lubricant": {
+   "zh": "润滑油",
+   "en": "Lubricant"
+  },
+  "sulfur": {
+   "zh": "硫磺",
+   "en": "Sulfur"
+  },
+  "sulfuric-acid": {
+   "zh": "硫酸",
+   "en": "Sulfuric acid"
+  },
+  "roboport": {
+   "zh": "机器人指令平台",
+   "en": "Roboport"
+  },
+  "logistic-robot": {
+   "zh": "物流机器人",
+   "en": "Logistic robot"
+  },
+  "construction-robot": {
+   "zh": "建设机器人",
+   "en": "Construction robot"
+  },
+  "logistic-chest-passive": {
+   "zh": "被动供货箱（红箱）",
+   "en": "Passive provider chest"
+  },
+  "logistic-chest-active": {
+   "zh": "主动供货箱（紫箱）",
+   "en": "Active provider chest"
+  },
+  "logistic-chest-storage": {
+   "zh": "被动存货箱（黄箱）",
+   "en": "Storage chest"
+  },
+  "logistic-chest-buffer": {
+   "zh": "主动存货箱（绿箱）",
+   "en": "Buffer chest"
+  },
+  "logistic-chest-requester": {
+   "zh": "优先集货箱（蓝箱）",
+   "en": "Requester chest"
+  },
+  "raw-fish": {
+   "zh": "鲜鱼",
+   "en": "Raw fish"
+  },
+  "uranium-ore": {
+   "zh": "铀矿",
+   "en": "Uranium ore"
+  },
+  "uranium-235": {
+   "zh": "铀-235",
+   "en": "Uranium-235"
+  },
+  "uranium-238": {
+   "zh": "铀-238",
+   "en": "Uranium-238"
+  },
+  "nuclear-fuel": {
+   "zh": "核能燃料",
+   "en": "Nuclear fuel"
+  },
+  "uranium-fuel-cell": {
+   "zh": "铀燃料棒",
+   "en": "Uranium fuel cell"
+  },
+  "depleted-uranium-fuel-cell": {
+   "zh": "贫铀燃料棒",
+   "en": "Depleted uranium fuel cell"
+  },
+  "centrifuge": {
+   "zh": "离心机",
+   "en": "Centrifuge"
+  },
+  "nuclear-reactor": {
+   "zh": "核反应堆",
+   "en": "Nuclear reactor"
+  },
+  "steam-turbine": {
+   "zh": "汽轮机",
+   "en": "Steam turbine"
+  },
+  "heat-pipe": {
+   "zh": "热管",
+   "en": "Heat pipe"
+  },
+  "heat-exchanger": {
+   "zh": "换热器",
+   "en": "Heat exchanger"
+  },
+  "small-electric-pole": {
+   "zh": "小型电线杆",
+   "en": "Small electric pole"
+  },
+  "medium-electric-pole": {
+   "zh": "中型电线杆",
+   "en": "Medium electric pole"
+  },
+  "big-electric-pole": {
+   "zh": "远程输电塔",
+   "en": "Big electric pole"
+  },
+  "constant-combinator": {
+   "zh": "常量运算器",
+   "en": "Constant combinator"
+  },
+  "arithmetic-combinator": {
+   "zh": "算术运算器",
+   "en": "Arithmetic combinator"
+  },
+  "decider-combinator": {
+   "zh": "判断运算器",
+   "en": "Decider combinator"
+  },
+  "power-switch": {
+   "zh": "电闸",
+   "en": "Power switch"
+  },
+  "red-wire": {
+   "zh": "红线",
+   "en": "Red wire"
+  },
+  "green-wire": {
+   "zh": "绿线",
+   "en": "Green wire"
+  },
+  "concrete": {
+   "zh": "标准混凝土",
+   "en": "Concrete"
+  },
+  "refined-concrete": {
+   "zh": "钢筋混凝土",
+   "en": "Refined concrete"
+  },
+  "hazard-concrete": {
+   "zh": "标准混凝土（标识）",
+   "en": "Hazard concrete"
+  },
+  "landfill": {
+   "zh": "填埋材料",
+   "en": "Landfill"
+  },
+  "modular-armor": {
+   "zh": "模块装甲",
+   "en": "Modular armor"
+  },
+  "power-armor": {
+   "zh": "能量装甲",
+   "en": "Power armor"
+  },
+  "power-armor-mk2": {
+   "zh": "能量装甲 MK2",
+   "en": "Power armor MK2"
+  },
+  "belt-immunity-equipment": {
+   "zh": "锚定模块",
+   "en": "Belt immunity equipment"
+  },
+  "wood": {
+   "zh": "木材",
+   "en": "Wood"
+  },
+  "wooden-chest": {
+   "zh": "木箱",
+   "en": "Wooden chest"
+  },
+  "iron-chest": {
+   "zh": "铁箱",
+   "en": "Iron chest"
+  },
+  "repair-pack": {
+   "zh": "修理包",
+   "en": "Repair pack"
+  },
+  "deconstruction-planner": {
+   "zh": "红图（拆除规划）",
+   "en": "Deconstruction planner"
+  },
+  "upgrade-planner": {
+   "zh": "绿图（升级规划）",
+   "en": "Upgrade planner"
+  },
+  "space-science-pack": {
+   "zh": "太空科技包（白瓶）",
+   "en": "Space science pack"
+  },
+  "empty-barrel": {
+   "zh": "空桶",
+   "en": "Barrel"
+  },
+  "crude-oil-barrel": {
+   "zh": "原油桶",
+   "en": "Crude oil barrel"
+  }
+ },
+ "recipeNames": {
+  "crack-light": {
+   "zh": "重油裂解",
+   "en": "Heavy oil cracking to light oil"
+  },
+  "crack-gas": {
+   "zh": "轻油裂解",
+   "en": "Light oil cracking to petroleum gas"
+  },
+  "solid-fuel": {
+   "zh": "石油气制固体燃料",
+   "en": "Solid fuel from petroleum gas"
+  },
+  "solid-fuel-light-oil": {
+   "zh": "轻油制固体燃料",
+   "en": "Solid fuel from light oil"
+  },
+  "solid-fuel-heavy-oil": {
+   "zh": "重油制固体燃料",
+   "en": "Solid fuel from heavy oil"
+  },
+  "kovarex": {
+   "zh": "铀增殖处理",
+   "en": "Kovarex enrichment process"
+  },
+  "basic-oil": {
+   "zh": "基础原油处理",
+   "en": "Basic oil processing"
+  },
+  "advanced-oil": {
+   "zh": "高等原油处理",
+   "en": "Advanced oil processing"
+  },
+  "coal-liquefaction": {
+   "zh": "煤炭液化",
+   "en": "Coal liquefaction"
+  },
+  "simple-coal": {
+   "zh": "简易煤炭液化",
+   "en": "Simple coal liquefaction"
+  },
+  "uranium-processing": {
+   "zh": "铀浓缩处理",
+   "en": "Uranium processing"
+  },
+  "nuclear-fuel-reprocessing": {
+   "zh": "乏燃料后处理",
+   "en": "Nuclear fuel reprocessing"
+  }
  }
 };

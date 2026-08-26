@@ -381,6 +381,17 @@ function initPanelEvents() {
         return;
       }
     }
+    // 数据语言切换（中文/English）：修改后立即生效，物品/建筑/配方等命名随设置切换
+    const langBtn = ev.target.closest('[data-setlang]');
+    if (langBtn) {
+      G.settings.language = langBtn.dataset.setlang;
+      saveSettings();
+      uiDirty = true;
+      const _sb = document.getElementById('panel-body');
+      if (_sb && typeof renderSettingsAsync === 'function') renderSettingsAsync(_sb, 0);
+      if (typeof toast === 'function') toast(G.settings.language === 'en' ? '语言已切换为 English' : '语言已切换为中文');
+      return;
+    }
     const setCb = ev.target.closest('[data-set]');
     if (setCb) {
       const key = setCb.dataset.set;
@@ -496,7 +507,7 @@ function initPanelEvents() {
         const mch = G.panelEnt;
         if (mch && typeof mch.setRecipe === 'function') {
           if (!recipeUnlocked(id)) {
-            toast('需先研究「' + TECHS[recipeLockingTech(id)].name + '」才能执行' + (CENTRIFUGE_RECIPES[id] ? CENTRIFUGE_RECIPES[id].name : id));
+            toast('需先研究「' + TECHS[recipeLockingTech(id)].name + '」才能执行' + (CENTRIFUGE_RECIPES[id] ? localizedName(id, CENTRIFUGE_RECIPES[id].name) : id));
           } else {
             mch.setRecipe(id);
           }
@@ -625,6 +636,12 @@ async function renderSettingsAsync(body, st) {
 
 async function htmlSettings() {
   let h = '<div class="sec">游戏设置</div>';
+  h += '<div class="sec">语言 / Language</div>';
+  h += '<div class="wcfg-row"><div class="wcfg-label">数据语言</div><div class="wcfg-opts">';
+  h += '<button type="button" class="wcfg-opt' + (G.settings.language !== 'en' ? ' active' : '') + '" data-setlang="zh">中文</button>';
+  h += '<button type="button" class="wcfg-opt' + (G.settings.language === 'en' ? ' active' : '') + '" data-setlang="en">English</button>';
+  h += '</div></div>';
+  h += '<div class="dim wcfg-desc">切换物品/建筑/配方等数据名称的语言，修改后立即生效。</div>';
   h += '<label class="setrow"><input type="checkbox" data-set="infiniteOre"' + (G.settings.infiniteOre ? ' checked' : '') + '> 无限矿脉（矿藏永不枯竭）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="autoSave"' + (G.settings.autoSave ? ' checked' : '') + '> 自动保存（每60秒）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="combat"' + (G.settings.combat ? ' checked' : '') + '> 战斗模式（敌人入侵，可用炮塔/石墙防御）</label>';

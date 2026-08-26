@@ -1,7 +1,17 @@
 'use strict';
 
-const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: true, combat: false, capDPR: true, lowRes: false, virtualJoystick: false, minimap: true, sound: true, soundVol: 0.8, altMode: true, weather: false, daylight: false, music: true };  // sound:音效开关 soundVol:音量0~1  altMode:ALT模式(建筑配方/内容叠加显示)
+const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: true, combat: false, capDPR: true, lowRes: false, virtualJoystick: false, minimap: true, sound: true, soundVol: 0.8, altMode: true, weather: false, daylight: false, music: true, language: 'zh' };  // sound:音效开关 soundVol:音量0~1  altMode:ALT模式(建筑配方/内容叠加显示)  language:界面数据语言('zh'中文/'en'English)
 const SETTINGS_KEY = 'factory-settings-v1';
+
+// ===== 多语言名称（官方 locale 数据，见 GAME_DATA.names / GAME_DATA.recipeNames）=====
+// 按设置 G.settings.language 返回物品/建筑/流体/配方的官方中文或英文名；
+// 未收录官方名的项目自定物品回到手工中文名 manual。所有显示点经 ITEMS[id].name 读取，自动生效。
+function localizedName(id, manual) {
+  const lang = (typeof G !== 'undefined' && G.settings && G.settings.language === 'en') ? 'en' : 'zh';
+  const n = (GAME_DATA.names && GAME_DATA.names[id]) || (GAME_DATA.recipeNames && GAME_DATA.recipeNames[id]);
+  if (n && n[lang]) return n[lang];
+  return manual || id;
+}
 
 function drawItemGlyph(x, id, cx, cy, s) {
   const col = ITEMS[id].color;
@@ -457,4 +467,16 @@ function rocketPartNeed(item, base) {
   // 仅低密度结构与火箭燃料享受产能减免（对齐原版：产能作用于火箭燃料与低密度结构）
   if (item !== 'low-density-structure' && item !== 'rocket-fuel') return base;
   return Math.max(1, base - lvl);
+}
+
+// ===== 官方多语言命名桥接（GAME_DATA.names / recipeNames 由 factorio-data locale 现场生成）=====
+// 把每个 ITEMS[id].name 替换为 getter：按设置 G.settings.language 返回官方中文/英文名，
+// 未收录官方名时回退到手工中文名。面板/提示/ALT/合成列表等所有读 ITEMS[id].name 处自动中英切换。
+// 在此处（data-util.js 末尾）安装，晚于 data-items.js 等文件，其加载期读取的仍是手工名，无副作用。
+for (const id in ITEMS) {
+  const manual = ITEMS[id].name;
+  Object.defineProperty(ITEMS[id], 'name', {
+    get() { return localizedName(id, manual); },
+    configurable: true
+  });
 }

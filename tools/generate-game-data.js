@@ -19,6 +19,7 @@ const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
 const OUT_FILE = path.join(ROOT, 'js', 'data.generated.js');
+const DATA_DIR = path.join(ROOT, 'data');
 const REPORT = process.argv.includes('--report');
 
 // 现场转换 factorio-data → data.raw 的 JS 对象（内存，不生成中间文件）
@@ -167,6 +168,9 @@ function extractObjectKeys(file, objName) {
 const projectItems = extractObjectKeys(path.join(ROOT, 'js', 'data-items.js'), 'ITEMS');
 const projectRecipes = extractObjectKeys(path.join(ROOT, 'js', 'data-recipes.js'), 'RECIPES');
 const projectBuildings = extractObjectKeys(path.join(ROOT, 'js', 'data-buildings.js'), 'BUILD_DEFS');
+// 独立配方表（炼油厂/离心机面板专用，不在 RECIPES 中）
+const projectRefRecipes = extractObjectKeys(path.join(ROOT, 'js', 'data-recipes.js'), 'REFINERY_RECIPES');
+const projectCentRecipes = extractObjectKeys(path.join(ROOT, 'js', 'data-recipes.js'), 'CENTRIFUGE_RECIPES');
 
 // 官方全部原型名 → 原型（用于查找物品/实体）
 const officialNames = new Map();
@@ -263,6 +267,82 @@ function deviceFor(officialRecipe) {
   return 'assembling-machine';
 }
 
+// ================= 官方多语言命名（data/*/locale/{en,zh-CN}/*.cfg） =================
+// 官方命名（物品/实体/配方/流体）经项目 ID 映射后写入 GAME_DATA.names / GAME_DATA.recipeNames，
+// 供设置内中英文切换使用（见 js/data-util.js 的 localizedName）。
+// 段优先级：item-name > entity-name > recipe-name > fluid-name（同名时前者优先）。
+const LOCALE_SECTIONS = ['item-name', 'entity-name', 'recipe-name', 'fluid-name'];
+// 解析单个 .cfg：返回 { section: { key: value } }（只保留上述段，跳过 [段头]/空行/无=行）
+function parseLocaleFile(file) {
+  const out = {};
+  let sec = null;
+  for (const raw of fs.readFileSync(file, 'utf8').split('\n')) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (line[0] === '[') {
+      const m = /^\[([^\]]+)\]$/.exec(line);
+      sec = m ? m[1] : null;
+      continue;
+    }
+    if (!sec || !LOCALE_SECTIONS.includes(sec)) continue;
+    const eq = line.indexOf('=');
+    if (eq <= 0) continue;
+    const key = line.slice(0, eq).trim();
+    const val = line.slice(eq + 1).trim();
+    if (!key || !val) continue;
+    (out[sec] = out[sec] || {})[key] = val;
+  }
+  return out;
+}
+// localeBySection[段][官方名] = { zh, en }（多 mod / 多文件合并，后读覆盖前读）
+const localeBySection = {};
+if (fs.existsSync(DATA_DIR)) {
+  for (const mod of fs.readdirSync(DATA_DIR)) {
+    const mpath = path.join(DATA_DIR, mod);
+    const ldir = path.join(mpath, 'locale');
+    if (!fs.statSync(mpath).isDirectory() || !fs.existsSync(ldir)) continue;
+    for (const langDir of fs.readdirSync(ldir)) {
+      const lang = langDir === 'zh-CN' ? 'zh' : (langDir === 'en' ? 'en' : null);
+      if (!lang) continue;
+      const lpath = path.join(ldir, langDir);
+      if (!fs.statSync(lpath).isDirectory()) continue;
+      for (const f of fs.readdirSync(lpath)) {
+        if (!f.endsWith('.cfg')) continue;
+        const parsed = parseLocaleFile(path.join(lpath, f));
+        for (const sec of LOCALE_SECTIONS) {
+          if (!parsed[sec]) continue;
+          localeBySection[sec] = localeBySection[sec] || {};
+          for (const [k, v] of Object.entries(parsed[sec])) {
+            const e = localeBySection[sec][k] = localeBySection[sec][k] || {};
+            e[lang] = v;
+          }
+        }
+      }
+    }
+  }
+}
+// 官方名 → { zh, en }（按段优先级取首个中英齐全的条目）
+function officialLocale(oid) {
+  for (const sec of LOCALE_SECTIONS) {
+    const t = localeBySection[sec] && localeBySection[sec][oid];
+    if (t && t.zh && t.en) return t;
+  }
+  return null;
+}
+// 项目物品/建筑/流体：项目 ID → { zh, en }
+const GAME_NAMES = {};
+for (const id of projectItems) {
+  const t = officialLocale(toOfficialName(id));
+  if (t) GAME_NAMES[id] = { zh: t.zh, en: t.en };
+}
+// 项目配方：配方键 → { zh, en }（含炼油/离心机独立配方表，供面板配方名切换）
+const RECIPE_NAMES = {};
+for (const rid of new Set([...projectRecipes, ...projectRefRecipes, ...projectCentRecipes])) {
+  const oname = RECIPE_MAP[rid] || rid;
+  const t = localeBySection['recipe-name'] && localeBySection['recipe-name'][oname];
+  if (t && t.zh && t.en) RECIPE_NAMES[rid] = { zh: t.zh, en: t.en };
+}
+
 // ================= 生成 GAME_DATA =================
 const GAME_DATA = {
   stackSize: {},
@@ -271,6 +351,8 @@ const GAME_DATA = {
   deviceStats: {},
   recipe: {},
   recipeDevice: {},
+  names: GAME_NAMES,
+  recipeNames: RECIPE_NAMES,
 };
 
 const log = {
@@ -391,6 +473,8 @@ function report() {
   console.log('\n-- 设备行为参数 deviceStats（官方已接入）--');
   console.log(Object.keys(GAME_DATA.deviceStats).length ? Object.keys(GAME_DATA.deviceStats).join(', ') : '（无）');
   console.log('deviceStats 手工保留（项目自定/模型不同，未接入）：抽油机基础速率、信号塔效果系数、机械臂简化模型、地下带距离、分流器、创意/虚空带');
+  console.log('\n-- 官方多语言命名 names（物品/建筑/流体，中英对照已接入）--');
+  console.log(Object.keys(GAME_NAMES).length + ' 条；配方名 recipeNames ' + Object.keys(RECIPE_NAMES).length + ' 条');
 
   console.log('\n==== 与手工表差异 ====');
   // 对比 stackSize
@@ -454,9 +538,11 @@ const header = [
   '//   recipeDevice[key] = 组装机/化工厂/炼油厂/离心机',
   '//   stackSize[item] = 最大堆叠,  buildingHp[building] = 血量,  powerUse[building] = 功耗kW',
   '//   deviceStats[id] = { craftingSpeed, moduleSlots, miningSpeed, beltSpeed(格/s), beaconEffectivity }',
+  '//   names[id] = { zh, en }（物品/建筑/流体官方命名，供中英文切换，见 data-util.js localizedName）',
+  '//   recipeNames[rid] = { zh, en }（配方官方命名，供炼油/离心机面板切换）',
   'const GAME_DATA = ' + JSON.stringify(GAME_DATA, null, 1) + ';',
   '',
 ].join('\n');
 
 fs.writeFileSync(OUT_FILE, header);
-console.log('OK: 已生成 ' + path.relative(ROOT, OUT_FILE) + ' (配方 ' + Object.keys(GAME_DATA.recipe).length + ' 条, 堆叠 ' + Object.keys(GAME_DATA.stackSize).length + ' 条, 血量 ' + Object.keys(GAME_DATA.buildingHp).length + ' 条, 功耗 ' + Object.keys(GAME_DATA.powerUse).length + ' 条, 设备参数 ' + Object.keys(GAME_DATA.deviceStats).length + ' 条)');
+console.log('OK: 已生成 ' + path.relative(ROOT, OUT_FILE) + ' (配方 ' + Object.keys(GAME_DATA.recipe).length + ' 条, 堆叠 ' + Object.keys(GAME_DATA.stackSize).length + ' 条, 血量 ' + Object.keys(GAME_DATA.buildingHp).length + ' 条, 功耗 ' + Object.keys(GAME_DATA.powerUse).length + ' 条, 设备参数 ' + Object.keys(GAME_DATA.deviceStats).length + ' 条, 命名 ' + Object.keys(GAME_DATA.names).length + ' 条, 配方名 ' + Object.keys(GAME_DATA.recipeNames).length + ' 条)');
