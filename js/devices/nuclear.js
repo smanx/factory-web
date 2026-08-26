@@ -237,22 +237,10 @@ function centrifugePanelHtml(e) {
   // 铀增殖处理(Kovarex)：需「铀富集」科技解锁（对齐《异星工厂》Kovarex enrichment process）
   const kovUnlocked = recipeUnlocked('kovarex');
   const kovLock = recipeLockingTech('kovarex');
-  h += '<button data-action="rec" data-id="kovarex" class="' + (cur === 'kovarex' ? 'on' : '') + (kovUnlocked ? '' : ' locked-recipe') + '" ' + (kovUnlocked ? '' : 'disabled') + ' title="' + (kovUnlocked ? '铀增殖：持续增产铀-235' : ('🔒 需先研究「' + (kovLock ? TECHS[kovLock].name : '研究') + '」')) + '">铀增殖(Kovarex)' + (kovUnlocked ? '' : ' 🔒') + '</button>';
-  // 当前配方内容：随配方切换同步展示该配方的原料需求与产出（含概率配方）
-  const curRec = e.recipeObj && e.recipeObj();
-  if (curRec) {
-    const curName = CENTRIFUGE_RECIPES[cur] ? CENTRIFUGE_RECIPES[cur].name : (cur === 'kovarex' ? '铀增殖(Kovarex)' : '');
-    h += '<div class="sec">当前配方 · ' + curName + '</div>';
-    h += '<div class="dim">每周期耗时 ' + curRec.time + ' 秒</div>';
-    h += '<div class="dim">所需原料：</div>';
-    for (const k in curRec.inp) h += '<div class="mach-rate">' + chip(k, curRec.inp[k]) + '</div>';
-    h += '<div class="dim">' + (curRec.prob ? '概率产出（每周期随机 1 件）：' : '产出：') + '</div>';
-    if (curRec.prob) {
-      for (const k in curRec.prob) h += '<div class="mach-rate">' + chip(k) + '（' + (curRec.prob[k] * 100) + '%）</div>';
-    } else {
-      for (const k in curRec.out) h += '<div class="mach-rate">' + chip(k, curRec.out[k]) + '</div>';
-    }
-  }
+  h += '<button data-action="rec" data-id="kovarex" class="' + (cur === 'kovarex' ? 'on' : '') + (kovUnlocked ? '' : ' locked-recipe') + '" ' + (kovUnlocked ? '' : 'disabled') + ' title="' + (kovUnlocked ? '铀增殖：持续增产铀-235' : ('🔒 需先研究「' + (kovLock ? TECHS[kovLock].name : '研究') + '」')) + '">铀增殖处理' + (kovUnlocked ? '' : ' 🔒') + '</button>';
+  // 当前配方内容：随配方切换同步展示该配方的原料需求与产出（含概率配方）。
+  // 用 data-live 容器承载，由 centrifugePanelLive 动态填充，确保切换配方后面板同步刷新。
+  h += '<div data-live="rec-info"></div>';
   // 模块槽位（对齐《异星工厂》：离心机可装 2 模块）
   h += modulePanelSection(e);
   h += row('原料', '<span class="dim"></span>', 'inp');
@@ -266,6 +254,24 @@ function centrifugePanelHtml(e) {
 }
 function centrifugePanelLive(e, api) {
   if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) { api.status('已暂停：电路条件不满足', 'warn'); return; }
+  // 当前配方信息（耗时/原料/产出，含概率配方）：动态填充，随配方切换实时刷新
+  const curRec = e.recipeObj && e.recipeObj();
+  if (curRec) {
+    const curNm = CENTRIFUGE_RECIPES[e.recipe] ? CENTRIFUGE_RECIPES[e.recipe].name : (e.recipe === 'kovarex' ? '铀增殖处理' : '');
+    let info = '<div class="sec">当前配方 · ' + curNm + '</div>';
+    info += '<div class="dim">每周期耗时 ' + curRec.time + ' 秒</div>';
+    info += '<div class="dim">所需原料：</div>';
+    for (const k in curRec.inp) info += '<div class="mach-rate">' + chip(k, curRec.inp[k]) + '</div>';
+    info += '<div class="dim">' + (curRec.prob ? '概率产出（每周期随机 1 件）：' : '产出：') + '</div>';
+    if (curRec.prob) {
+      for (const k in curRec.prob) info += '<div class="mach-rate">' + chip(k) + '（' + (curRec.prob[k] * 100).toFixed(2) + '%）</div>';
+    } else {
+      for (const k in curRec.out) info += '<div class="mach-rate">' + chip(k, curRec.out[k]) + '</div>';
+    }
+    api.set('rec-info', info);
+  } else {
+    api.set('rec-info', '');
+  }
   api.set('power', powerStatusLiveHtml(e));
   let inp = '';
   for (const k in e.inp) if (e.inp[k] > 0) inp += chip(k, e.inp[k]);
@@ -287,7 +293,7 @@ function centrifugePanelLive(e, api) {
 function centrifugeTip(e) {
   if (!e.recipe) return '未选择配方';
   if (e.crafting) return '处理中 ' + Math.round((e.prog / e.recipeObj().time) * 100) + '%';
-  const nm = e.recipe === 'kovarex' ? '铀增殖(Kovarex)' : (CENTRIFUGE_RECIPES[e.recipe] ? CENTRIFUGE_RECIPES[e.recipe].name : '');
+  const nm = e.recipe === 'kovarex' ? '铀增殖处理' : (CENTRIFUGE_RECIPES[e.recipe] ? CENTRIFUGE_RECIPES[e.recipe].name : '');
   return (nm || '配方') + '（等待原料）';
 }
 
