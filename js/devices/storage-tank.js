@@ -53,7 +53,8 @@ class StorageTank extends CircuitNode {
             if (this._balanceWith(t, f)) visited.add(t);
           } else {
             const isFluidMach = (t instanceof Refinery) || (t instanceof ChemicalPlant) ||
-              (t instanceof Assembler && t.acceptsFluid && t.acceptsFluid(f));
+              (t instanceof Assembler && t.acceptsFluid && t.acceptsFluid(f)) ||
+              (t instanceof ElectricDrill);
             if (!isFluidMach) continue;
             // 仅当 (gx,gy) 命中该设备的某个流体输入口外侧相邻格时才供流（一格一接口）
             const inCells = (t.fluidInputCells && t.fluidInputCells()) || [];

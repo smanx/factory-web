@@ -2,11 +2,30 @@
 
 // ===== 电采矿机：免燃料、吃电力 =====
 // 对齐《异星工厂》：电采矿机可装 3 个模块（速度/产能/效率），并受信号塔（Beacon）广播加成。
+// 采集铀矿必须接入硫酸：铀矿需以硫酸为原料，无硫酸时无法开采（对齐《异星工厂》电采矿机/离心机硫酸原料）。
+const ELECTRIC_DRILL_ACID_MAX = 100;   // 电采矿机内置硫酸缓冲上限
+
 class ElectricDrill extends Drill {
   constructor(type, x, y) {
     super(type || 'electric-drill', x, y);
     this.modules = {};   // { 'speed-module': n, 'productivity-module': n }（对齐《异星工厂》模块槽）
     this.prodBuf = 0;    // 产能模块累积进度
+    this.acid = 0;       // 内置硫酸缓冲：采集铀矿时的原料（由管道接入）
+  }
+  // 铀矿采集需要硫酸作为原料：无硫酸时无法开采铀矿。
+  needAcid(o) { return !!(o && getOreType(o[0], o[1]) === ORE_URANIUM); }
+  // 管道接入点：除矿物出口方向外，其余 3 个方向的正中间一格均可接入管道（3x3 采矿机）。
+  isFluidInlet(x, y) {
+    for (const s of [(this.dir + 1) % 4, (this.dir + 2) % 4, (this.dir + 3) % 4]) {
+      const p = neighborOnSideCell(this, s, 1);
+      if (p && p.x === x && p.y === y) return true;
+    }
+    return false;
+  }
+  // 各管道接入点外侧相邻格的世界坐标（供悬停/详情提示命中判断）
+  fluidInputCells() {
+    return [(this.dir + 1) % 4, (this.dir + 2) % 4, (this.dir + 3) % 4]
+      .map(s => sideNeighborCell(this, s, 1));
   }
   machMult() { return 0.5; } // 电采矿机 mining-speed 0.5（对齐《异星工厂》）
   // 模块槽位数（对齐《异星工厂》：电采矿机 3 槽）
@@ -42,6 +61,8 @@ class ElectricDrill extends Drill {
     if (!o) { this.status = '无矿'; this.spin = 0; return; }
     if (this.buf >= 20) { this.status = '缓存已满'; this.spin = 0; return; }
     if (G.power.sat <= 0) { this.status = '缺电'; this.spin = 0; return; }
+    // 铀矿需硫酸作为原料：未接入硫酸（缓冲为空）时无法开采铀矿
+    if (this.needAcid(o) && (this.acid || 0) <= 0) { this.status = '缺硫酸'; this.spin = 0; return; }
     this.status = '';
     this.working = true;
     drillEmit(this, dt);
@@ -52,6 +73,8 @@ class ElectricDrill extends Drill {
       this.prog -= DRILL_TIME;
       if (!G.settings.infiniteOre) consumeOre(o[0], o[1]);
       const mined = this.mineItem(o);
+      // 开采铀矿每产 1 单位消耗 1 份硫酸（作为原料）
+      if (mined === 'uranium-ore' && (this.acid || 0) > 0) this.acid--;
       // 采矿产能科技：按比例累积免费额外产出（对齐《异星工厂》Mining productivity）
       if (this.prodAccum === undefined) this.prodAccum = 0;
       this.prodAccum += (miningProdMult() - 1);
@@ -71,6 +94,11 @@ class ElectricDrill extends Drill {
       if (typeof playSfx === 'function') playSfx('module');
       return true;
     }
+    // 管道接入硫酸：存入内置硫酸缓冲（采集铀矿的原料）
+    if (item === 'sulfuric-acid' && (this.acid || 0) < ELECTRIC_DRILL_ACID_MAX) {
+      this.acid = (this.acid || 0) + 1;
+      return true;
+    }
     return false;
   }
   // contents：矿物/燃料（基类）基础上追加模块（用于拆除/蓝图掉落返还）
@@ -84,6 +112,7 @@ class ElectricDrill extends Drill {
     const s = super.serialize();
     s.modules = this.modules;
     s.prodBuf = this.prodBuf;
+    if (this.acid || 0) s.acid = this.acid;
     return s;
   }
   blueprint() {
@@ -95,6 +124,7 @@ class ElectricDrill extends Drill {
     const e = super.restore(s);
     e.modules = s.modules || {};
     e.prodBuf = s.prodBuf || 0;
+    e.acid = s.acid || 0;
     return e;
   }
   // 模块耗电：速度/产能模块增加耗电，效率模块降低耗电（对齐《异星工厂》模块耗电特性）

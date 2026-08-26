@@ -45,7 +45,8 @@ class FluidPump extends Entity {
           if (front instanceof StorageTank && front.isPortCell && !front.isPortCell(this.x, this.y)) break;
           while (n > 0 && this.fluid[k] > 0 && front.giveItem(k)) { this.fluid[k]--; n--; transferred++; }
         } else if (front instanceof Refinery || front instanceof ChemicalPlant ||
-                   (front instanceof Assembler && front.acceptsFluid(k))) {
+                   (front instanceof Assembler && front.acceptsFluid(k)) ||
+                   front instanceof ElectricDrill) {
           if (front.isFluidInlet && !front.isFluidInlet(this.x, this.y)) break;
           while (n > 0 && this.fluid[k] > 0 && front.giveItem(k)) { this.fluid[k]--; n--; transferred++; }
         }
