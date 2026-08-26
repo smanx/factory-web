@@ -13,7 +13,7 @@
   // 生成临时世界并绘制到 .start-bg 的 canvas 上；绘制后恢复原世界，不影响真实游戏。
   function generateStartBackground() {
     const canvas = document.getElementById('start-bg-canvas');
-    if (!canvas || typeof G === 'undefined' || !G || typeof genWorld !== 'function' || typeof drawChunkTerrainInto !== 'function') return;
+    if (!canvas || typeof G === 'undefined' || !G || typeof genWorld !== 'function' || typeof drawChunkTerrainInto !== 'function') return false;
     const dpr = window.devicePixelRatio || 1;
     const W = canvas.clientWidth || window.innerWidth;
     const H = canvas.clientHeight || window.innerHeight;
@@ -35,6 +35,7 @@
       G.world = prevWorld;
       G.worldConfig = prevWC;
     }
+    return true;
   }
 
   // 将临时世界渲染成与游戏内一致的完整地图，铺满全屏：以世界原点（主角出生点）
@@ -254,12 +255,26 @@
   function initStart() {
     initStartMenu();
     // 生成随机地图背景（复用游戏地图生成功能）
-    generateStartBackground();
+    // 关键路径下背景依赖（world.js/render.js/main.js）可能尚未加载（G/genWorld/
+    // drawChunkTerrainInto 未就绪），generateStartBackground 会跳过并返回 false；
+    // 此时延迟到 window load（全部脚本就绪）后再补渲染一次，保证主菜单仍有动态地图背景。
+    let bgReady = false;
+    try { bgReady = generateStartBackground(); } catch (e) { bgReady = false; }
+    if (!bgReady) {
+      window.addEventListener('load', function () {
+        try { generateStartBackground(); } catch (e) { /* 忽略 */ }
+      });
+    }
     // 窗口尺寸变化时重绘背景，保持铺满
     window.addEventListener('resize', function () { generateStartBackground(); });
   }
 
-  if (document.readyState === 'loading') {
+  // 关键路径启动：menu.js 作为同步脚本置于 body 末尾，此时开始菜单 DOM 已解析完毕。
+  // 直接同步执行 initStart（不再等待 DOMContentLoaded，DOMContentLoaded 会被其余 defer 脚本
+  // 阻塞，导致菜单可交互时间推迟到“全部脚本就绪”）。菜单按钮事件由此尽可能早地完成绑定。
+  if (document.getElementById('start-screen')) {
+    initStart();
+  } else if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initStart);
   } else {
     initStart();

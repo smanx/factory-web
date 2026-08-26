@@ -6,6 +6,12 @@
 <title>工厂原型 Factory Proto</title>
 <link rel="icon" type="image/x-icon" href="favicon.ico">
 <link rel="stylesheet" href="css/style.css?v=34">
+<!-- 关键路径脚本预加载：提前发起请求，压缩首屏瀑布间距（菜单 → 读档最小依赖集） -->
+<link rel="preload" as="script" href="js/data.js?v=77">
+<link rel="preload" as="script" href="js/saves.js?v=3">
+<link rel="preload" as="script" href="js/world-config.js?v=3">
+<link rel="preload" as="script" href="js/main-menu.js?v=1">
+<link rel="preload" as="script" href="js/menu.js?v=7">
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -137,99 +143,104 @@
     </div>
   </div>
 </div>
+<!-- ===== 关键路径：开始菜单 → 读档 最小依赖集（同步加载，尽早可交互）=====
+     这里仅含菜单渲染/读档列表直接依赖的脚本；其余 88 个脚本以 defer 方式
+     在菜单渲染后并行加载，点“开始游戏”前全部就绪。 -->
 <script src="js/data.js?v=77"></script>
-<script src="js/data-items.js?v=1"></script>
-<script src="js/data-recipes.js?v=1"></script>
-<script src="js/data-buildings.js?v=1"></script>
-<script src="js/data-tech.js?v=1"></script>
-<script src="js/data-tech-tree.js?v=1"></script>
-<script src="js/data-util.js?v=1"></script>
-<script src="js/world-config.js?v=3"></script>
-<script src="js/world.js?v=15"></script>
-<script src="js/core/registry.js?v=7"></script>
-<script src="js/core/entity.js?v=13"></script>
-<script src="js/core/draw.js?v=10"></script>
-<script src="js/particles.js?v=1"></script>
-<script src="js/devices/belt.js?v=16"></script>
-<script src="js/devices/splitter.js?v=15"></script>
-<script src="js/devices/underground.js?v=9"></script>
-<script src="js/devices/express-belt.js?v=16"></script>
-<script src="js/devices/inserter.js?v=22"></script>
-<script src="js/devices/burner-inserter.js?v=5"></script>
-<script src="js/devices/lamp.js?v=2"></script>
-<script src="js/devices/drill.js?v=19"></script>
-<script src="js/devices/electric-drill.js?v=11"></script>
-<script src="js/devices/pumpjack.js?v=10"></script>
-<script src="js/devices/furnace.js?v=16"></script>
-<script src="js/devices/electric-furnace.js?v=11"></script>
-<script src="js/devices/steel-furnace.js?v=14"></script>
-<script src="js/devices/assembler.js?v=26"></script>
-<script src="js/devices/assembler-mk2.js?v=10"></script>
-<script src="js/devices/assembler-3.js?v=18"></script>
-<script src="js/devices/beacon.js?v=5"></script>
-<script src="js/devices/circuit.js?v=11"></script>
-<script src="js/devices/chest.js?v=11"></script>
-<script src="js/devices/steel-chest.js?v=10"></script>
-<script src="js/devices/lab.js?v=16"></script>
-<script src="js/devices/boiler.js?v=16"></script>
-<script src="js/devices/steam-engine.js?v=8"></script>
-<script src="js/devices/pump.js?v=11"></script>
-<script src="js/devices/pipe.js?v=8"></script>
-<script src="js/devices/pipe-ground.js?v=8"></script>
-<script src="js/devices/pump-device.js?v=11"></script>
-<script src="js/devices/storage-tank.js?v=9"></script>
-<script src="js/devices/creative.js?v=11"></script>
-<script src="js/devices/refinery.js?v=18"></script>
-<script src="js/devices/chemical-plant.js?v=18"></script>
-<script src="js/devices/nuclear.js?v=9"></script>
-<script src="js/devices/passive-power.js?v=1"></script>
-<script src="js/devices/military.js?v=18"></script>
-<script src="js/devices/gate.js?v=1"></script>
-<script src="js/devices/combat2.js?v=38"></script>
-<script src="js/devices/combat2-armor.js?v=1"></script>
-<script src="js/devices/combat2-turrets.js?v=1"></script>
-<script src="js/devices/pollution.js?v=6"></script>
-<script src="js/devices/weather.js?v=1"></script>
-<script src="js/devices/maptags.js?v=1"></script>
-<script src="js/devices/equipment.js?v=5"></script>
-<script src="js/devices/rocket.js?v=10"></script>
-<script src="js/devices/defense.js?v=7"></script>
-<script src="js/devices/logistics.js?v=13"></script>
-<script src="js/devices/fishing.js?v=2"></script>
-<script src="js/devices/construction.js?v=6"></script>
-<script src="js/devices/railway.js?v=23"></script>
-<script src="js/devices/railway-trainstop.js?v=1"></script>
-<script src="js/devices/railway-render.js?v=1"></script>
-<script src="js/devices/railway-panel.js?v=1"></script>
-<script src="js/devices/vehicle.js?v=22"></script>
-<script src="js/devices/vehicle-spidertron.js?v=1"></script>
-<script src="js/devices/vehicle-drive.js?v=1"></script>
-<script src="js/devices/vehicle-render.js?v=1"></script>
-<script src="js/devices/power-renewable.js?v=11"></script>
-<script src="js/devices/power-switch.js?v=2"></script>
-<script src="js/devices/substation.js?v=1"></script>
-<script src="js/devices/speaker.js?v=1"></script>
-<script src="js/core/power.js?v=10"></script>
-<script src="js/devices/achievements.js?v=1"></script>
-<script src="js/player.js?v=31"></script>
-<script src="js/ui.js?v=59"></script>
-<script src="js/ui-panel.js?v=1"></script>
-<script src="js/ui-hud.js?v=1"></script>
-<script src="js/ui-debug.js?v=1"></script>
-<script src="js/ui-joystick.js?v=1"></script>
-<script src="js/menu.js?v=7"></script>
-<script src="js/render.js?v=44"></script>
-<script src="js/render-entity.js?v=1"></script>
-<script src="js/render-player.js?v=1"></script>
-<script src="js/render-minimap.js?v=1"></script>
-<script src="js/stats.js?v=15"></script>
 <script src="js/saves.js?v=3"></script>
-<script src="js/sfx.js?v=13"></script>
-<script src="js/touch.js?v=6"></script>
-<script src="js/blueprint.js?v=1"></script>
-<script src="js/main.js?v=67"></script>
-<script src="js/main-actions.js?v=1"></script>
+<script src="js/world-config.js?v=3"></script>
 <script src="js/main-menu.js?v=1"></script>
-<script src="js/main-input.js?v=2"></script>
+<script src="js/menu.js?v=7"></script>
+
+<!-- ===== 非关键脚本：defer 并行加载（保持文档顺序，依赖链不变）===== -->
+<script src="js/data-items.js?v=1" defer></script>
+<script src="js/data-recipes.js?v=1" defer></script>
+<script src="js/data-buildings.js?v=1" defer></script>
+<script src="js/data-tech.js?v=1" defer></script>
+<script src="js/data-tech-tree.js?v=1" defer></script>
+<script src="js/data-util.js?v=1" defer></script>
+<script src="js/world.js?v=15" defer></script>
+<script src="js/core/registry.js?v=7" defer></script>
+<script src="js/core/entity.js?v=13" defer></script>
+<script src="js/core/draw.js?v=10" defer></script>
+<script src="js/particles.js?v=1" defer></script>
+<script src="js/devices/belt.js?v=16" defer></script>
+<script src="js/devices/splitter.js?v=15" defer></script>
+<script src="js/devices/underground.js?v=9" defer></script>
+<script src="js/devices/express-belt.js?v=16" defer></script>
+<script src="js/devices/inserter.js?v=22" defer></script>
+<script src="js/devices/burner-inserter.js?v=5" defer></script>
+<script src="js/devices/lamp.js?v=2" defer></script>
+<script src="js/devices/drill.js?v=19" defer></script>
+<script src="js/devices/electric-drill.js?v=11" defer></script>
+<script src="js/devices/pumpjack.js?v=10" defer></script>
+<script src="js/devices/furnace.js?v=16" defer></script>
+<script src="js/devices/electric-furnace.js?v=11" defer></script>
+<script src="js/devices/steel-furnace.js?v=14" defer></script>
+<script src="js/devices/assembler.js?v=26" defer></script>
+<script src="js/devices/assembler-mk2.js?v=10" defer></script>
+<script src="js/devices/assembler-3.js?v=18" defer></script>
+<script src="js/devices/beacon.js?v=5" defer></script>
+<script src="js/devices/circuit.js?v=11" defer></script>
+<script src="js/devices/chest.js?v=11" defer></script>
+<script src="js/devices/steel-chest.js?v=10" defer></script>
+<script src="js/devices/lab.js?v=16" defer></script>
+<script src="js/devices/boiler.js?v=16" defer></script>
+<script src="js/devices/steam-engine.js?v=8" defer></script>
+<script src="js/devices/pump.js?v=11" defer></script>
+<script src="js/devices/pipe.js?v=8" defer></script>
+<script src="js/devices/pipe-ground.js?v=8" defer></script>
+<script src="js/devices/pump-device.js?v=11" defer></script>
+<script src="js/devices/storage-tank.js?v=9" defer></script>
+<script src="js/devices/creative.js?v=11" defer></script>
+<script src="js/devices/refinery.js?v=18" defer></script>
+<script src="js/devices/chemical-plant.js?v=18" defer></script>
+<script src="js/devices/nuclear.js?v=9" defer></script>
+<script src="js/devices/passive-power.js?v=1" defer></script>
+<script src="js/devices/military.js?v=18" defer></script>
+<script src="js/devices/gate.js?v=1" defer></script>
+<script src="js/devices/combat2.js?v=38" defer></script>
+<script src="js/devices/combat2-armor.js?v=1" defer></script>
+<script src="js/devices/combat2-turrets.js?v=1" defer></script>
+<script src="js/devices/pollution.js?v=6" defer></script>
+<script src="js/devices/weather.js?v=1" defer></script>
+<script src="js/devices/maptags.js?v=1" defer></script>
+<script src="js/devices/equipment.js?v=5" defer></script>
+<script src="js/devices/rocket.js?v=10" defer></script>
+<script src="js/devices/defense.js?v=7" defer></script>
+<script src="js/devices/logistics.js?v=13" defer></script>
+<script src="js/devices/fishing.js?v=2" defer></script>
+<script src="js/devices/construction.js?v=6" defer></script>
+<script src="js/devices/railway.js?v=23" defer></script>
+<script src="js/devices/railway-trainstop.js?v=1" defer></script>
+<script src="js/devices/railway-render.js?v=1" defer></script>
+<script src="js/devices/railway-panel.js?v=1" defer></script>
+<script src="js/devices/vehicle.js?v=22" defer></script>
+<script src="js/devices/vehicle-spidertron.js?v=1" defer></script>
+<script src="js/devices/vehicle-drive.js?v=1" defer></script>
+<script src="js/devices/vehicle-render.js?v=1" defer></script>
+<script src="js/devices/power-renewable.js?v=11" defer></script>
+<script src="js/devices/power-switch.js?v=2" defer></script>
+<script src="js/devices/substation.js?v=1" defer></script>
+<script src="js/devices/speaker.js?v=1" defer></script>
+<script src="js/core/power.js?v=10" defer></script>
+<script src="js/devices/achievements.js?v=1" defer></script>
+<script src="js/player.js?v=31" defer></script>
+<script src="js/ui.js?v=59" defer></script>
+<script src="js/ui-panel.js?v=1" defer></script>
+<script src="js/ui-hud.js?v=1" defer></script>
+<script src="js/ui-debug.js?v=1" defer></script>
+<script src="js/ui-joystick.js?v=1" defer></script>
+<script src="js/render.js?v=44" defer></script>
+<script src="js/render-entity.js?v=1" defer></script>
+<script src="js/render-player.js?v=1" defer></script>
+<script src="js/render-minimap.js?v=1" defer></script>
+<script src="js/stats.js?v=15" defer></script>
+<script src="js/sfx.js?v=13" defer></script>
+<script src="js/touch.js?v=6" defer></script>
+<script src="js/blueprint.js?v=1" defer></script>
+<script src="js/main.js?v=67" defer></script>
+<script src="js/main-actions.js?v=1" defer></script>
+<script src="js/main-input.js?v=2" defer></script>
 </body>
 </html>
