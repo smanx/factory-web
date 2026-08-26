@@ -76,7 +76,7 @@ class ElectricDrill extends Drill {
     if (this.buf > 0) this.tryOutput();
     const o = this.oreTile();
     if (!o) { this.status = '无矿'; this.spin = 0; return; }
-    if (this.buf >= 20) { this.status = '缓存已满'; this.spin = 0; return; }
+    if (this.buf >= DRILL_BUFFER_CAP) { this.status = '缓存已满'; this.spin = 0; return; }
     if (G.power.sat <= 0) { this.status = '缺电'; this.spin = 0; return; }
     // 铀矿需硫酸作为原料：未接入硫酸（缓冲为空）时无法开采铀矿
     if (this.needAcid(o) && (this.acid || 0) <= 0) { this.status = '缺硫酸'; this.spin = 0; return; }
@@ -99,8 +99,25 @@ class ElectricDrill extends Drill {
       const bonus = Math.floor(this.prodAccum);
       if (bonus > 0) this.prodAccum -= bonus;
       this.bufItem = mined;
-      this.buf += 1 + bonus + this.applyProductivity();
-      if (typeof trackProd === 'function') trackProd(mined, 1 + bonus);
+      // 实采的 1 个矿必定入缓冲（到此处 buf < 上限，必有空位）；免费额外产出受缓冲容量限制，
+      // 放不下的回存 prodAccum / prodBuf，避免高采矿产能科技一次性撑爆缓冲（此前会直接缓存 1000+ 并卡死）
+      let added = 1;
+      const space = DRILL_BUFFER_CAP - this.buf - 1;
+      if (bonus > 0) {
+        const bonusAdd = Math.min(bonus, Math.max(0, space));
+        this.prodAccum += (bonus - bonusAdd);
+        this.buf += 1 + bonusAdd;
+        added += bonusAdd;
+      } else {
+        this.buf += 1;
+      }
+      const prodBonus = this.applyProductivity();
+      if (prodBonus > 0) {
+        const prodSpace = DRILL_BUFFER_CAP - this.buf;
+        if (prodSpace > 0) { this.buf += Math.min(prodBonus, prodSpace); added += Math.min(prodBonus, prodSpace); }
+        else { this.prodBuf = (this.prodBuf || 0) + moduleProdThreshold(this.modules); } // 缓冲无空位时回存，等腾出后再产出
+      }
+      if (typeof trackProd === 'function') trackProd(mined, added);
       this.tryOutput();
     }
   }
@@ -154,7 +171,7 @@ class ElectricDrill extends Drill {
     const powMult = 1 + (mc.speed * 0.25 + mc.prod * 0.25);
     return powMult * effMult;
   }
-  powerDemand() { return (this.oreTile() && this.buf < 20) ? POWER_USE['electric-drill'] * this.modulePowerFactor() : 0; }
+  powerDemand() { return (this.oreTile() && this.buf < DRILL_BUFFER_CAP) ? POWER_USE['electric-drill'] * this.modulePowerFactor() : 0; }
 }
 
 // ===== 注册 =====

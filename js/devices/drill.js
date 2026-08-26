@@ -66,7 +66,7 @@ class Drill extends Entity {
     if (this.buf > 0) this.tryOutput();
     const o = this.oreTile();
     if (!o) { this.status = '无矿'; this.spin = 0; return; }
-    if (this.buf >= 20) { this.status = '缓存已满'; this.spin = 0; return; }
+    if (this.buf >= DRILL_BUFFER_CAP) { this.status = '缓存已满'; this.spin = 0; return; }
     if (this.burnLeft <= 0) {
       if (this.fuelRocket > 0) {
         this.fuelRocket--;
@@ -111,11 +111,26 @@ class Drill extends Entity {
       if (bonus > 0) this.prodAccum -= bonus;
       if (mined === 'coal' && this.fuelCoal < SELF_FUEL_MAX) {
         this.fuelCoal++;   // 采到的煤直接进燃料仓自用
-        if (bonus > 0) { this.bufItem = mined; this.buf += bonus; if (typeof trackProd === 'function') trackProd(mined, bonus); }
+        if (bonus > 0) {
+          // 免费额外产出受缓冲容量限制：放得下的入缓冲，放不下的回存 prodAccum 后续再产出
+          const bonusAdd = Math.min(bonus, Math.max(0, DRILL_BUFFER_CAP - this.buf));
+          this.prodAccum += (bonus - bonusAdd);
+          if (bonusAdd > 0) { this.bufItem = mined; this.buf += bonusAdd; if (typeof trackProd === 'function') trackProd(mined, bonusAdd); }
+        }
       } else {
         this.bufItem = mined;
-        this.buf += 1 + bonus;
-        if (typeof trackProd === 'function') trackProd(mined, 1 + bonus);
+        // 实采的 1 个矿必定入缓冲（到此处 buf < 上限，必有空位）；免费额外产出受缓冲容量限制
+        let added = 1;
+        if (bonus > 0) {
+          const space = DRILL_BUFFER_CAP - this.buf - 1;
+          const bonusAdd = Math.min(bonus, Math.max(0, space));
+          this.prodAccum += (bonus - bonusAdd);
+          this.buf += 1 + bonusAdd;
+          added += bonusAdd;
+        } else {
+          this.buf += 1;
+        }
+        if (typeof trackProd === 'function') trackProd(mined, added);
       }
       this.tryOutput();
     }
@@ -331,7 +346,7 @@ function drillPanelLive(e, api) {
   if (eDrill) api.set('acid', (e.acid || 0) > 0 ? chip('sulfuric-acid', e.acid) : dimSpan('无'));
   api.set('buffer', e.buf > 0 && e.bufItem ? chip(e.bufItem, e.buf) : dimSpan('空'));
   api.toggle('#btn-drill-takeout', e.buf > 0, '取回缓存 (' + e.buf + ')');
-  api.prog(e.working ? e.prog / e.oreTime() * 100 : 0);
+  api.prog(e.working ? e.prog / e.oreTime() * 100 : 0, e.oreTime());
   // 开采速率：每秒产矿量 = 1 / 该矿石采矿时间 × 采矿科技 × 机型倍率（电钻×电学、抽油×石油科技）
   const rateEl = document.getElementById('mach-rate-block');
   if (rateEl) {

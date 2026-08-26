@@ -407,7 +407,7 @@ function refineryPanelLive(e, api) {
   api.set('output', Object.keys(e.outp).length ? countStr(e.outp) : dimSpan('空'));
   const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
   api.toggle('#btn-takeout', n > 0, '取回全部产物 (' + n + ')');
-  api.prog(e.recipe && e.crafting ? e.prog / REFINERY_RECIPES[e.recipe].time * 100 : 0);
+  api.prog(e.recipe && e.crafting ? e.prog / REFINERY_RECIPES[e.recipe].time * 100 : 0, e.recipe ? REFINERY_RECIPES[e.recipe].time : 0);
   if (!e.recipe) api.status('已暂停：未设置配方，点击下方选择', 'warn');
   else if (e.crafting) api.status('精炼中', 'ok');
   else if (G.power.sat <= 0) api.status('已暂停：缺电', 'bad');

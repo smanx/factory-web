@@ -129,7 +129,7 @@ function steelFurnacePanelLive(e, api) {
   api.set('output', Object.keys(e.outp).length ? countStr(e.outp) : dimSpan('空'));
   const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
   api.toggle('#btn-takeout', n > 0, '取回全部输出 (' + n + ')');
-  api.prog(e.prog * 100);
+  api.prog(e.prog * 100, e.cur ? e.cur.time : 0);
   // 当前冶炼项的消耗/产出速率（钢铁炉×2）
   const rateEl = document.getElementById('mach-rate-block');
   if (rateEl) {

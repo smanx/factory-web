@@ -227,6 +227,9 @@ class Inserter extends Entity {
         if (item === 'solid-fuel') return (t.fuelSolid || 0) < 20;
         if (item === 'rocket-fuel') return (t.fuelRocket || 0) < 20;
         return item === 'water' && t.water < WATER_CAP - 0.01;
+      case 'nuclear-reactor':
+        // 核反应堆：仅接受铀燃料棒（对齐《异星工厂》：反应堆消耗 Uranium fuel cell 而非 Nuclear fuel），燃料槽最多 5 根
+        return item === 'uranium-fuel-cell' && t.fuel < 5;
       case 'lab':
         return isScience(item) && (t.packs[item] || 0) < 40;
       case 'underground':
