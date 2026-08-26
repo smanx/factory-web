@@ -73,6 +73,43 @@ function drawEntity(ctx, e, gx, gy, dir, alpha) {
     const c = sf ? sf(e) : null;
     if (c) drawStatusDot(ctx, (gx + e.w) * TILE - 8, gy * TILE + 8, c);
   }
+  // 运行计时器（环形 loading）：为「没有自身环形进度显示」但存在运行时长的设备，
+  // 在设备上方绘制一个环形计时圈，实时显示当前这一轮生产的剩余进度。
+  if (alpha === 1 && !LOD.simple) drawRunRing(ctx, e, gx, gy);
+}
+
+// 无环形显示的加工设备运行信息：返回 { pct(0-1), total(秒) } 表示设备当前这一轮
+// 加工的完成比例与总耗时；返回 null 表示不在运行（不绘制环形计时器）。
+// 已有自身环形进度显示（组装机/化工厂/离心机/钻机）的设备不在此表内，不重复叠加。
+const DEVICE_RUN_INFO = {
+  'stone-furnace': e => (e.lit && e.cur && e.prog > 0) ? { pct: e.prog, total: e.cur.time } : null,
+  'steel-furnace': e => (e.lit && e.cur && e.prog > 0) ? { pct: e.prog, total: e.cur.time } : null,
+  'electric-furnace': e => (e.lit && e.cur && e.prog > 0) ? { pct: e.prog, total: e.cur.time } : null,
+  'refinery': e => {
+    if (!e.crafting || !e.recipe) return null;
+    const rec = REFINERY_RECIPES[e.recipe];
+    if (!rec || !rec.time) return null;
+    return { pct: Math.min(1, Math.max(0, (e.prog || 0) / rec.time)), total: rec.time };
+  },
+  'lab': e => e.active ? { pct: Math.min(1, Math.max(0, (e.t || 0) / LAB_TIME)), total: LAB_TIME } : null,
+};
+
+// 在设备上方绘制环形 loading 计时器：背景圆 + 当前进度弧。
+function drawRunRing(ctx, e, gx, gy) {
+  const info = DEVICE_RUN_INFO[e.type];
+  if (!info) return;
+  const r = info(e);
+  if (!r || !(r.pct > 0)) return;
+  const px = gx * TILE, py = gy * TILE;
+  const cx = px + (e.w * TILE) / 2;
+  const cy = py - 9;                       // 设备上方
+  const rad = 7;
+  ctx.strokeStyle = 'rgba(15,20,26,.55)';
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = '#8fe08f';
+  ctx.lineWidth = 2.6;
+  ctx.beginPath(); ctx.arc(cx, cy, rad, -Math.PI / 2, -Math.PI / 2 + r.pct * Math.PI * 2); ctx.stroke();
 }
 
 // 不显示运行状态小点的设备：各类传送带、传送带分流器、地下传送带、水管（状态由图形本身表达）

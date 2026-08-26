@@ -287,7 +287,7 @@ function updateMachineLive() {
   const e = G.panelEnt;
   if (!G.ents.includes(e)) { closePanel(); return; }
   const body = document.getElementById('panel-body');
-  let prog = 0, status = '', state = 'warn';
+  let prog = 0, status = '', state = 'warn', runTotal = 0;
   const api = {
     set: (k, v) => {
       const el = body.querySelector('[data-live="' + k + '"]');
@@ -300,7 +300,9 @@ function updateMachineLive() {
       el.style.display = '';
       if (txt && el.textContent !== txt) el.textContent = txt;
     },
-    prog: v => { prog = v; },
+    // prog(pct, total)：pct 为进度百分比(0-100)，total 为当前这一轮加工的总时长(秒)。
+    // 传入 total 后，面板 loading 会额外显示总时长与剩余时长。
+    prog: (v, t) => { prog = v; runTotal = (t && t > 0) ? t : 0; },
     // status(text, kind)：kind 取 'ok'(工作)/'warn'(暂停·需留意)/'bad'(故障)，用于区分颜色
     status: (s, k) => { status = s; if (k) state = k; }
   };
@@ -308,6 +310,24 @@ function updateMachineLive() {
   if (panel && panel.live) panel.live(e, api);
   const bar = body.querySelector('.bar i');
   if (bar) bar.style.width = Math.max(0, Math.min(100, prog)) + '%';
+  // 面板 loading 运行时显示总时长与剩余时长（仅当设备通过 api.prog 提供了总时长）
+  const barEl = body.querySelector('.bar');
+  let timeEl = body.querySelector('.bar-time');
+  if (runTotal > 0 && prog > 0) {
+    if (!timeEl) {
+      timeEl = document.createElement('div');
+      timeEl.className = 'bar-time';
+      if (barEl) {
+        if (barEl.nextSibling) barEl.parentNode.insertBefore(timeEl, barEl.nextSibling);
+        else barEl.parentNode.appendChild(timeEl);
+      }
+    }
+    const remain = Math.max(0, runTotal * (1 - Math.min(100, prog) / 100));
+    const txt = '总时长 ' + runTotal.toFixed(1) + 's · 剩余 ' + remain.toFixed(1) + 's';
+    if (timeEl.textContent !== txt) timeEl.textContent = txt;
+  } else if (timeEl) {
+    timeEl.textContent = '';
+  }
   const stEl = body.querySelector('.status');
   if (stEl && status) {
     if (stEl.textContent !== status) stEl.textContent = status;

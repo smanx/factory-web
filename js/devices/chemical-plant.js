@@ -376,7 +376,7 @@ function chemicalPlantPanelLive(e, api) {
   api.set('output', Object.keys(e.outp).length ? countStr(e.outp) : dimSpan('空'));
   const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
   api.toggle('#btn-takeout', n > 0, '取回全部产物 (' + n + ')');
-  api.prog(e.recipe && e.crafting ? e.prog / RECIPES[e.recipe].time * 100 : 0);
+  api.prog(e.recipe && e.crafting ? e.prog / RECIPES[e.recipe].time * 100 : 0, e.recipe ? RECIPES[e.recipe].time : 0);
   api.status(!e.recipe ? '已暂停：未设置配方，点击下方选择'
     : e.crafting ? '加工中（流体产物自动排入相邻管道）'
     : G.power.sat <= 0 ? '已暂停：缺电'

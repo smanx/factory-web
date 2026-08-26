@@ -251,7 +251,7 @@ function labPanelLive(e, api) {
     } else {
       api.set('techline', TECHS[tech].name + '（' + doneN + '/' + techCostTotal(tech) + '，下一瓶：' +
         (need ? ITEMS[need].name : '—') + '）');
-      api.prog(doneN / techCostTotal(tech) * 100);
+      api.prog(doneN / techCostTotal(tech) * 100, techCostTotal(tech) * LAB_TIME);
       // 状态：研究中或暂停原因
       if (need && e.packCount(need) <= 0) api.status('已暂停：缺少科学包「' + ITEMS[need].name + '」', 'warn');
       else if (!need) api.status('已暂停：待按配方顺序放入科学包', 'warn');

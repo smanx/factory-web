@@ -287,7 +287,7 @@ function centrifugePanelLive(e, api) {
     for (const k in rec.inp) if ((e.inp[k] || 0) < rec.inp[k]) { missing = ITEMS[k].name; break; }
     api.status(missing ? ('原料不足：' + missing) : '已就绪', missing ? 'warn' : 'ok');
   }
-  if (rec && e.crafting) api.prog(e.prog / rec.time * 100);
+  if (rec && e.crafting) api.prog(e.prog / rec.time * 100, rec.time);
   else api.prog(0);
 }
 function centrifugeTip(e) {
