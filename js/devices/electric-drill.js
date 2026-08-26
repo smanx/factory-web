@@ -23,9 +23,25 @@ class ElectricDrill extends Drill {
     return false;
   }
   // 各管道接入点外侧相邻格的世界坐标（供悬停/详情提示命中判断）
+  // 接入点固定取除出口方向外 3 向正中间格：基准(sideNeighborCell 的 dir=0 基准)为 1/2/3，由 sideNeighborCell 随 dir 旋转。
   fluidInputCells() {
-    return [(this.dir + 1) % 4, (this.dir + 2) % 4, (this.dir + 3) % 4]
-      .map(s => sideNeighborCell(this, s, 1));
+    return [1, 2, 3].map(s => sideNeighborCell(this, s, 1));
+  }
+  // 电采矿机间管道互通：相邻两台电采矿机的管道接入点（除出口方向外 3 向正中间格）对接时
+  // （即一台的接入格外侧相邻格正好落在另一台的接入格上），硫酸缓冲相互均分，
+  // 使接入任一台的硫酸能沿整个管网传导到所有对接的采矿机。
+  shareAcid() {
+    const sides = [(this.dir + 1) % 4, (this.dir + 2) % 4, (this.dir + 3) % 4];
+    for (const s of sides) {
+      const nb = neighborOnSideCell(this, s, 1);
+      if (nb && nb !== this && nb instanceof ElectricDrill && nb.isFluidInlet(this.x, this.y)) {
+        const a = this.acid || 0, b = nb.acid || 0;
+        const sum = a + b;
+        const half = Math.floor(sum / 2);
+        this.acid = half;
+        nb.acid = sum - half;
+      }
+    }
   }
   machMult() { return 0.5; } // 电采矿机 mining-speed 0.5（对齐《异星工厂》）
   // 模块槽位数（对齐《异星工厂》：电采矿机 3 槽）
@@ -55,6 +71,7 @@ class ElectricDrill extends Drill {
   }
   update(dt) {
     this.working = false;
+    this.shareAcid(); // 与相邻对接的电采矿机互通硫酸缓冲
     if (this.bufN === undefined) this.bufN = 0;
     if (this.buf > 0) this.tryOutput();
     const o = this.oreTile();
