@@ -27,21 +27,18 @@ function initPanelEvents() {
     if (ev.target.id !== 'imp-file') return;
     const f = ev.target.files[0];
     if (!f) return;
-    console.log('[存档导入] 已选择文件:', f.name, '大小 =', f.size, 'bytes');
     const rd = new FileReader();
     rd.onload = async () => {
-      console.log('[存档导入] FileReader 读取完成，结果 byteLength =', rd.result ? rd.result.byteLength : 0);
       // 导入后重置 input 值，保证再次选择同一文件也能触发 change
       ev.target.value = '';
       try {
         await importSaveFile(rd.result);
       } catch (err) {
         // 兜底：避免未处理的 Promise rejection 导致导入后毫无反馈
-        console.error('[存档导入] 读取/导入过程异常:', err);
         toast('导入失败：' + err.message);
       }
     };
-    rd.onerror = () => { console.error('[存档导入] FileReader 读取文件失败'); toast('读取文件失败'); };
+    rd.onerror = () => { toast('读取文件失败'); };
     rd.readAsArrayBuffer(f);
   });
   document.getElementById('panel-close').addEventListener('click', () => closePanel());
@@ -459,11 +456,8 @@ function initPanelEvents() {
       }
       else if (act === 'exp-save') { downloadSave(); }
       else if (act === 'imp-save') {
-        // 尽早打日志：确认按钮点击被正确分发，且隐藏的文件输入框确实存在于 DOM
         const impFile = document.getElementById('imp-file');
-        console.log('[存档导入] 点击了“从文件导入存档”按钮，imp-file 元素 =', impFile);
         if (!impFile) {
-          console.error('[存档导入] 未找到 #imp-file 输入框，无法打开文件选择框');
           toast('导入失败：未找到文件输入框');
         } else {
           impFile.click();
