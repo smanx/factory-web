@@ -458,7 +458,8 @@ function initPanelEvents() {
         if (mch && typeof mch.setRecipe === 'function') {
           // 科技门控：未解锁的配方不能在设备中选择
           if (!recipeUnlocked(id)) {
-            toast('需先研究「' + TECHS[recipeLockingTech(id)].name + '」才能生产' + ITEMS[Object.keys((RECIPES[id] || REFINERY_RECIPES[id] || CENTRIFUGE_RECIPES[id]).out)[0]].name);
+            const r = RECIPES[id] || REFINERY_RECIPES[id] || CENTRIFUGE_RECIPES[id];
+            toast('需先研究「' + TECHS[recipeLockingTech(id)].name + '」才能生产' + ITEMS[Object.keys(r.out || r.prob || {})[0]].name);
           } else {
             mch.setRecipe(id);
           }

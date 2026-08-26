@@ -45,9 +45,11 @@ function findRecipeObj(tableName, id) {
   const time = (seg.match(/time:\s*([0-9.]+)/) || [])[1];
   const inp = {};
   const out = {};
+  const prob = {};
   (seg.match(/inp:\s*\{(.*?)\}/s) || [])[1]?.replace(/'([a-z0-9-]+)':\s*([0-9.]+)/g, (_, k, v) => { inp[k] = +v; return ''; });
   (seg.match(/out:\s*\{(.*?)\}/s) || [])[1]?.replace(/'([a-z0-9-]+)':\s*([0-9.]+)/g, (_, k, v) => { out[k] = +v; return ''; });
-  return { id, time: time ? +time : null, inp, out };
+  (seg.match(/prob:\s*\{(.*?)\}/s) || [])[1]?.replace(/'([a-z0-9-]+)':\s*([0-9.]+)/g, (_, k, v) => { prob[k] = +v; return ''; });
+  return { id, time: time ? +time : null, inp, out, prob };
 }
 
 function check(name, actual, expected) {
@@ -61,26 +63,26 @@ function checkNum(name, actual, expected) {
   else { failCount++; console.log('  ❌ ' + name + ' = ' + actual + '（期望 ' + expected + '）'); }
 }
 
-console.log('\n【铀矿处理（离心机）对齐官方】');
+console.log('\n【铀浓缩处理（离心机）】');
 const up = findRecipeObj('CENTRIFUGE_RECIPES', 'uranium-processing');
-checkNum('铀矿处理耗时(12s)', up && up.time, 12);
-checkNum('铀矿处理消耗铀矿(10)', up && up.inp['uranium-ore'], 10);
-checkNum('铀矿处理产出铀-235(1)', up && up.out['uranium-235'], 1);
-checkNum('铀矿处理产出铀-238(9)', up && up.out['uranium-238'], 9);
+checkNum('铀浓缩处理耗时(12s)', up && up.time, 12);
+checkNum('铀浓缩处理消耗铀矿(10)', up && up.inp['uranium-ore'], 10);
+checkNum('铀浓缩处理概率铀-235(0.7%)', up && up.prob['uranium-235'], 0.007);
+checkNum('铀浓缩处理概率铀-238(99.3%)', up && up.prob['uranium-238'], 0.993);
 
-console.log('\n【Kovarex 富集（离心机）对齐官方】');
+console.log('\n【铀增殖处理 Kovarex（离心机）】');
 const kov = findRecipeObj('RECIPES', 'kovarex');
-checkNum('Kovarex 耗时(60s)', kov && kov.time, 60);
-checkNum('Kovarex 消耗铀-238(40)', kov && kov.inp['uranium-238'], 40);
-checkNum('Kovarex 消耗铀-235(1)', kov && kov.inp['uranium-235'], 1);
-checkNum('Kovarex 产出铀-235(2,净增产1)', kov && kov.out['uranium-235'], 2);
-checkNum('Kovarex 产出铀-238(41)', kov && kov.out['uranium-238'], 41);
+checkNum('Kovarex 耗时(960s)', kov && kov.time, 960);
+checkNum('Kovarex 消耗铀-235(40)', kov && kov.inp['uranium-235'], 40);
+checkNum('Kovarex 消耗铀-238(5)', kov && kov.inp['uranium-238'], 5);
+checkNum('Kovarex 产出铀-235(41,净增产1)', kov && kov.out['uranium-235'], 41);
+checkNum('Kovarex 产出铀-238(2)', kov && kov.out['uranium-238'], 2);
 
-console.log('\n【废燃料再生（离心机）对齐官方】');
+console.log('\n【乏燃料后处理（离心机）】');
 const fr = findRecipeObj('CENTRIFUGE_RECIPES', 'used-fuel-reprocessing');
-checkNum('废燃料再生耗时(12s)', fr && fr.time, 12);
-checkNum('废燃料再生消耗废棒(5)', fr && fr.inp['used-up-uranium-fuel-cell'], 5);
-checkNum('废燃料再生产出铀-238(3)', fr && fr.out['uranium-238'], 3);
+checkNum('乏燃料后处理耗时(60s)', fr && fr.time, 60);
+checkNum('乏燃料后处理消耗废棒(5)', fr && fr.inp['used-up-uranium-fuel-cell'], 5);
+checkNum('乏燃料后处理产出铀-238(3)', fr && fr.out['uranium-238'], 3);
 
 console.log('\n【核燃料棒（组装机）对齐官方】');
 const ufc = findRecipeObj('RECIPES', 'uranium-fuel-cell');

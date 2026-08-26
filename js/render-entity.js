@@ -148,7 +148,7 @@ function _altLabelIcons(e) {
   if (e.recipe) {
     const rec = RECIPES[e.recipe] || REFINERY_RECIPES[e.recipe] || CENTRIFUGE_RECIPES[e.recipe];
     if (!rec) return [];
-    const outs = Object.keys(rec.out || {});
+    const outs = Object.keys(rec.out || rec.prob || {});
     return outs.slice(0, 3);
   }
   if (t === 'train-stop') {

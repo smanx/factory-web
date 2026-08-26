@@ -185,8 +185,9 @@ const RECIPES = {
   // 缓冲物流箱（对齐《异星工厂》Buffer chest 0.17+）：兼具请求与供应能力
   'logistic-chest-buffer': { time: 2, inp: { 'iron-plate': 6, 'steel-plate': 2, 'green-circuit': 3 },   out: { 'logistic-chest-buffer': 1 } },
   // ===== 核能配方 =====
-  // 铀富集（Kovarex，离心机）：铀-238 在铀-235 催化下持续富集出更多铀-235（可自持循环）
-  'kovarex':           { time: 60, inp: { 'uranium-238': 40, 'uranium-235': 1 },                  out: { 'uranium-235': 2, 'uranium-238': 41 } },
+  // 铀增殖处理（Kovarex，离心机）：铀-235 催化下把铀-238 富集成更多铀-235（可自持循环）
+  // 40 铀-235 + 5 铀-238 → 41 铀-235 + 2 铀-238（净增产 1 铀-235，消耗 3 铀-238），960s
+  'kovarex':           { time: 960, inp: { 'uranium-235': 40, 'uranium-238': 5 },                  out: { 'uranium-235': 41, 'uranium-238': 2 } },
   // 核燃料（组装机）：由铀-235 制成
   'nuclear-fuel':      { time: 10,  inp: { 'uranium-235': 1 },                                 out: { 'nuclear-fuel': 1 } },
   // 铀燃料棒（对齐《异星工厂》：1 铀-235 + 19 铀-238 → 1 燃料棒，组装机）：反应堆专用燃料，燃尽产废燃料棒
@@ -261,7 +262,7 @@ function filterChoices() {
   if (_filterChoicesCache) return _filterChoicesCache;
   const set = new Set(FILTER_CHOICES);
   // 收集所有配方/炼油/离心配方中的输入输出
-  const addRec = (rec) => { if (!rec) return; for (const k in rec.inp) set.add(k); for (const k in rec.out) set.add(k); };
+  const addRec = (rec) => { if (!rec) return; for (const k in rec.inp) set.add(k); for (const k in (rec.out || rec.prob || {})) set.add(k); };
   for (const rid in RECIPES) addRec(RECIPES[rid]);
   for (const rid in REFINERY_RECIPES) addRec(REFINERY_RECIPES[rid]);
   for (const rid in CENTRIFUGE_RECIPES) addRec(CENTRIFUGE_RECIPES[rid]);
@@ -298,12 +299,13 @@ const REFINERY_RECIPE_IDS = Object.keys(REFINERY_RECIPES);
 function isRefineryRecipe(id) { return REFINERY_RECIPES[id] !== undefined; }
 
 // ===== 离心机配方（对齐《异星工厂》Centrifuge）=====
-// 铀浓缩处理：10 铀矿石 → 小概率 1 铀-235 + 大量铀-238
-// Kovarex 富集循环由通用配方表 RECIPES['kovarex'] 承载（也由离心机执行）。
+// 铀浓缩处理：10 铀矿石 → 概率产出 1 件铀（0.7% 铀-235，99.3% 铀-238），12s
+//   概率用 prob 字段表达（离心机按概率随机产出 1 件），与确定性 out 配方区分。
+// Kovarex 富集循环（铀增殖处理）由通用配方表 RECIPES['kovarex'] 承载（也由离心机执行）。
 const CENTRIFUGE_RECIPES = {
-  'uranium-processing': { name: '铀浓缩处理', time: 12, inp: { 'uranium-ore': 10 }, out: { 'uranium-235': 1, 'uranium-238': 9 } },
-  // 废燃料棒再生（对齐《异星工厂》Nuclear fuel reprocessing）：5 根废棒 → 3 铀-238，闭合核燃料循环
-  'used-fuel-reprocessing': { name: '乏燃料后处理', time: 12, inp: { 'used-up-uranium-fuel-cell': 5 }, out: { 'uranium-238': 3 } }
+  'uranium-processing': { name: '铀浓缩处理', time: 12, inp: { 'uranium-ore': 10 }, prob: { 'uranium-235': 0.007, 'uranium-238': 0.993 } },
+  // 乏燃料后处理（对齐《异星工厂》Nuclear fuel reprocessing）：5 根废燃料棒 → 3 铀-238，60s，闭合核燃料循环
+  'used-fuel-reprocessing': { name: '乏燃料后处理', time: 60, inp: { 'used-up-uranium-fuel-cell': 5 }, out: { 'uranium-238': 3 } }
 };
 function isCentrifugeRecipe(id) { return CENTRIFUGE_RECIPES[id] !== undefined || id === 'kovarex'; }
 
@@ -369,13 +371,15 @@ function itemRecipeText(id) {
     for (const [table, dev] of candidates) {
       for (const key in table) {
         const r = table[key];
-        if (r && r.out && r.out[id] !== undefined) { rec = r; devId = dev; found = true; break outer; }
+        if (r && ((r.out && r.out[id] !== undefined) || (r.prob && r.prob[id] !== undefined))) { rec = r; devId = dev; found = true; break outer; }
       }
     }
   }
   if (!found || !rec || !rec.inp) return itemNoRecipeReason(id);
   const inpParts = Object.keys(rec.inp).map(k => (ITEMS[k] ? ITEMS[k].name : k) + "×" + rec.inp[k]);
-  const outParts = Object.keys(rec.out).map(k => (ITEMS[k] ? ITEMS[k].name : k) + (rec.out[k] > 1 ? "×" + rec.out[k] : ""));
+  const outParts = rec.prob
+    ? Object.keys(rec.prob).map(k => (ITEMS[k] ? ITEMS[k].name : k) + "（" + (rec.prob[k] * 100) + "%）")
+    : Object.keys(rec.out).map(k => (ITEMS[k] ? ITEMS[k].name : k) + (rec.out[k] > 1 ? "×" + rec.out[k] : ""));
   const dev = DEVICE_NAMES[devId] || "组装机";
   return "配方（" + dev + "）：" + inpParts.join(" + ") + " → " + outParts.join(" + ");
 }

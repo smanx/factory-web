@@ -200,6 +200,11 @@ class Inserter extends Entity {
         const rec = RECIPES[t.recipe];
         return !!rec.inp[item] && (t.inp[item] || 0) < 50;
       }
+      case 'centrifuge': {
+        if (!t.recipe) return false;
+        const rec = t.recipeObj();
+        return !!rec.inp[item] && (t.inp[item] || 0) < 50;
+      }
       case 'burner-drill':
         if (item === 'coal') return t.fuelCoal < 10;
         if (item === 'wood') return (t.fuelWood || 0) < 10;
