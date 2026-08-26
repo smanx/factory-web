@@ -245,15 +245,18 @@ function drawDrill(ctx, e, gx, gy, dir, alpha) {
     ctx.arc(cx, cy, 19, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2);
     ctx.stroke();
   }
-  ctx.fillStyle = dirColorNotch(dir);
-  for (const m of [-11, 11]) {
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(dir * Math.PI / 2);
-    ctx.translate(s / 2 - 12, m);
-    tri(ctx, 0, -4, 0, 4, 8, 0);
-    ctx.fill();
-    ctx.restore();
+  // 抽油机不画正面的两个方向指示箭头（去掉某一边中间的两个箭头），其余采矿机保留
+  if (!pump) {
+    ctx.fillStyle = dirColorNotch(dir);
+    for (const m of [-11, 11]) {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(dir * Math.PI / 2);
+      ctx.translate(s / 2 - 12, m);
+      tri(ctx, 0, -4, 0, 4, 8, 0);
+      ctx.fill();
+      ctx.restore();
+    }
   }
   if (!electric) {
     const fuelPct = Math.min(1, e.burnLeft / COAL_ENERGY);
@@ -269,9 +272,9 @@ function drawDrill(ctx, e, gx, gy, dir, alpha) {
     ctx.fillStyle = '#ffd23c';
     ctx.fillRect(px + s - 14, py + 8, 5, 5);
   }
-  // 抽油机原油输出口：对齐正面右侧角落的那一个格子（一格一接口），颜色用输出橙红、带箭头
+  // 抽油机原油输出口：显示在设备内部正面正中（不再画在角落），颜色用输出橙红、不带外流箭头
   if (pump) {
-    drawPort(ctx, px + s / 2, py + s / 2, dir, PORT_OUTPUT, true, s / (2 * TILE), s / 2, 'crude-oil', 'out');
+    drawPort(ctx, px + s / 2, py + s / 2, dir, PORT_OUTPUT, false, 0, s / 2, 'crude-oil', 'none');
   }
   // 电采矿机硫酸接入口：除矿物出口方向外，其余 3 个方向的正中间均可接入管道（输入绿）
   if (electric && !pump) {
