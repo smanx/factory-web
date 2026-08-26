@@ -325,11 +325,10 @@ class NuclearReactor extends Entity {
   }
   update(dt) {
     this.burning = false;
-    this.temp = Math.max(0, this.temp - 1 * dt);
     // 向相邻导热管/热交换器传导热量
     this.heatFlow(dt);
-    // 热量憋满则暂停；被导热管消耗后自动恢复
-    if (this.heatBuf >= REACTOR_HEAT_CAP - 0.01) { this.lit = false; return; }
+    // 消耗燃料：只要还有燃料棒，反应堆就一直以固定速率燃烧，无视热量是否存满
+    // （对齐《异星工厂》：核反应堆无视电网负载与温度，每个燃料棒总会在 200 秒内燃尽，不会因热量满而暂停）
     if (this.burnLeft <= 0 && this.fuel > 0) {
       this.fuel--;
       if (typeof trackProd === 'function') trackProd('uranium-fuel-cell', -1);
@@ -346,8 +345,10 @@ class NuclearReactor extends Entity {
     // 核反应堆相邻加成（对齐《异星工厂》：每个相邻反应堆使输出 +100%，鼓励多堆并排布局）
     const neighbors = this.neighborCount();
     const rate = REACTOR_HEAT_RATE * (1 + neighbors); // 每秒产热量（远超锅炉产能）
+    // 热量缓存封顶：多余的热量在缓存满后白白流失，反应堆不停烧、不省燃料（对齐官方热容上限）
     this.heatBuf = Math.min(REACTOR_HEAT_CAP, this.heatBuf + rate * dt);
-    this.temp = Math.min(1000, this.temp + 20 * (1 + neighbors * 0.5) * dt); // 最高温度 1000°C（对齐《异星工厂》官方）
+    // 堆芯温度：达到 1000°C 后不再上升，但燃烧期间保持高温（对齐《异星工厂》官方最高温度 1000°C）
+    this.temp = Math.min(1000, this.temp + 20 * (1 + neighbors * 0.5) * dt);
   }
   // 热量传导：把热量输送给相邻的导热管/热交换器（从更热的流向更冷的）
   heatFlow(dt) {
@@ -507,15 +508,13 @@ function reactorPanelLive(e, api) {
   api.set('heat', e.heatBuf >= 1 ? chip('heat-pipe', Math.floor(e.heatBuf)) : dimSpan('空'));
   api.set('temp', Math.round(e.temp) + ' / 1000 °C');
   api.prog(Math.min(100, e.temp / 1000 * 100));
-  if (e.heatBuf >= REACTOR_HEAT_CAP - 0.01) api.status('已暂停：热量满，等待导热管/热交换器消耗', 'warn');
-  else if (e.burning) api.status('运行中：产出热量', 'ok');
+  if (e.burning) api.status('运行中：产出热量' + (e.heatBuf >= REACTOR_HEAT_CAP - 0.01 ? '（热量已存满，多余流失）' : ''), 'ok');
   else if (e.fuel <= 0 && e.burnLeft <= 0) api.status('已暂停：无铀燃料棒', 'bad');
   else api.status('已暂停：待机', 'warn');
 }
 function reactorTip(e) {
-  return e.burning ? '运行中 ' + Math.round(e.temp) + '°C（存热' + Math.floor(e.heatBuf || 0) + '）'
-    : e.heatBuf >= REACTOR_HEAT_CAP - 0.01 ? '热量满·等待导热管消耗'
-    : (e.fuel <= 0 && e.burnLeft <= 0) ? '无铀燃料棒' : '待机';
+  if (e.burning) return '运行中 ' + Math.round(e.temp) + '°C（存热' + Math.floor(e.heatBuf || 0) + '）';
+  return (e.fuel <= 0 && e.burnLeft <= 0) ? '无铀燃料棒' : '待机';
 }
 
 // ===================== 汽轮机（3×3，耗蒸汽→发电）=====================
@@ -883,7 +882,7 @@ DEVICE_PANEL['centrifuge'] = { html: centrifugePanelHtml, live: centrifugePanelL
 
 ENT_CLASSES['nuclear-reactor'] = NuclearReactor;
 DEVICE_RENDER['nuclear-reactor'] = drawNuclearReactor;
-DEVICE_STATUS['nuclear-reactor'] = e => e.burning ? 'g' : (e.heatBuf >= REACTOR_HEAT_CAP - 0.01 ? 'y' : 'r');
+DEVICE_STATUS['nuclear-reactor'] = e => e.burning ? 'g' : 'r';
 DEVICE_PANEL['nuclear-reactor'] = { html: reactorPanelHtml, live: reactorPanelLive, tip: reactorTip };
 
 ENT_CLASSES['steam-turbine'] = SteamTurbine;
