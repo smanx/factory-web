@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Build and Deploy
 
 on:
   push:
@@ -6,16 +6,10 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
+  contents: write
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -27,18 +21,13 @@ jobs:
 
       - run: npm ci
 
-      - run: npm run build
+      - run: npm run build:minify
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Push dist to dist branch
+        run: |
+          cd dist
+          git init
+          git checkout -b dist
+          git add -A
+          git commit -m "deploy: $(date +'%Y-%m-%d %H:%M:%S')"
+          git push -f origin dist
