@@ -17,6 +17,9 @@ const DATA_DIR = path.join(__dirname, '..', 'js');
 const src = fs.readFileSync(path.join(DATA_DIR, 'data.js'), 'utf8')
   + '\n' + fs.readFileSync(path.join(DATA_DIR, 'data-items.js'), 'utf8')
   + '\n' + fs.readFileSync(path.join(DATA_DIR, 'data-recipes.js'), 'utf8');
+// 核反应堆设备参数取自 js/devices/nuclear.js（温度上限/燃料槽等设备行为）
+const nuclearSrc = fs.readFileSync(path.join(DATA_DIR, 'devices', 'nuclear.js'), 'utf8');
+const inserterSrc = fs.readFileSync(path.join(DATA_DIR, 'devices', 'inserter.js'), 'utf8');
 
 let passCount = 0;
 let failCount = 0;
@@ -91,6 +94,21 @@ checkNum('核燃料棒消耗铁板(10)', ufc && ufc.inp['iron-plate'], 10);
 checkNum('核燃料棒消耗铀-235(1)', ufc && ufc.inp['uranium-235'], 1);
 checkNum('核燃料棒消耗铀-238(19)', ufc && ufc.inp['uranium-238'], 19);
 checkNum('核燃料棒产出(10)', ufc && ufc.out['uranium-fuel-cell'], 10);
+
+console.log('\n【核反应堆（对齐官方 Wiki：最高 1000°C、燃料槽 5、耗铀燃料棒）】');
+// 堆芯最高温度 = 1000°C（官方：最高温度 1000 °C）
+const tempMatch = nuclearSrc.match(/this\.temp = Math\.min\((\d+),/);
+checkNum('核反应堆最高温度(1000°C)', tempMatch ? +tempMatch[1] : null, 1000);
+// 面板显示的温度分母也应同步为 1000
+check('核反应堆面板显示最高温度(1000°C)', /\/ 1000 °C/.test(nuclearSrc), true);
+// 燃料槽容量 = 5（官方：反应堆可装 5 根燃料棒）
+const fuelCapMatch = nuclearSrc.match(/item === 'uranium-fuel-cell' && this\.fuel < (\d+)/);
+checkNum('核反应堆燃料槽容量(5)', fuelCapMatch ? +fuelCapMatch[1] : null, 5);
+// 反应堆仅接受铀燃料棒（官方：消耗 Uranium fuel cell 而非 Nuclear fuel）
+check('核反应堆仅接受铀燃料棒(不接受核燃料)', /item === 'uranium-fuel-cell' && this\.fuel < \d+/.test(nuclearSrc), true);
+check('核反应堆不再接受核燃料(nuclear-fuel)', !/item === 'nuclear-fuel'\|\|/.test(nuclearSrc), true);
+// 机械臂可往核反应堆投入铀燃料棒（canDropAt 含 nuclear-reactor 分支）
+check('机械臂可为核反应堆投放铀燃料棒', /case 'nuclear-reactor':/.test(inserterSrc) && /item === 'uranium-fuel-cell'/.test(inserterSrc), true);
 
 console.log('\n【核燃料（组装机）对齐官方】');
 const nf = findRecipeObj('RECIPES', 'nuclear-fuel');
