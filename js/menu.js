@@ -149,6 +149,29 @@
       });
     }
 
+    // 从文件读取存档：点击按钮弹出文件选择器，读取选中的 .json 存档文件并直接加载进入游戏
+    const fileBtn = document.getElementById('btn-load-from-file');
+    const fileInput = document.getElementById('load-save-file');
+    if (fileBtn && fileInput) {
+      fileBtn.addEventListener('click', function () {
+        if (typeof playSfx === 'function') playSfx('click');
+        fileInput.click();
+      });
+      fileInput.addEventListener('change', function () {
+        const f = fileInput.files[0];
+        if (!f) return;
+        const rd = new FileReader();
+        rd.onload = function () {
+          importSaveFromFile(rd.result);
+        };
+        rd.onerror = function () {
+          toast('读取文件失败');
+        };
+        rd.readAsArrayBuffer(f);   // 二进制读取：兼容 gzip 压缩存档与旧版纯 JSON
+        fileInput.value = '';   // 允许再次选择同一文件
+      });
+    }
+
     // 开始菜单“成就”按钮：打开成就面板（对齐《异星工厂》成就系统）
     const startAchBtn = document.getElementById('btn-start-ach');
     if (startAchBtn) {
@@ -163,6 +186,30 @@
     screen.addEventListener('keydown', function (e) {
       if (e.key === ' ' || e.key === 'Tab') e.preventDefault();
     });
+  }
+
+  // 从文件读取存档：解析 .json / .json.gz 存档文件（支持 gzip 压缩与旧版纯 JSON）
+  // 并直接进入游戏（供开始菜单“从文件读取存档”按钮使用，复用 enterFromSave 进入游戏）
+  async function importSaveFromFile(arrayBuffer) {
+    try {
+      const bytes = new Uint8Array(arrayBuffer);
+      let text;
+      // 优先复用 ui-hud.js 提供的 gzip 检测/解压（运行时均已加载完成）
+      if (typeof isGzip === 'function' && isGzip(bytes)) {
+        text = await gzipDecompress(bytes);
+      } else {
+        text = new TextDecoder('utf-8').decode(bytes);
+      }
+      const d = JSON.parse(text);
+      if (!d || d.v !== 1) throw new Error('格式不正确');
+      if (typeof enterFromSave === 'function') {
+        enterFromSave(d, '已从文件读档');
+      } else {
+        throw new Error('读档函数未定义');
+      }
+    } catch (err) {
+      toast('从文件读档失败：' + err.message);
+    }
   }
 
   // 打开读取存档弹层并渲染存档列表
