@@ -96,11 +96,31 @@ checkNum('核燃料棒消耗铀-238(19)', ufc && ufc.inp['uranium-238'], 19);
 checkNum('核燃料棒产出(10)', ufc && ufc.out['uranium-fuel-cell'], 10);
 
 console.log('\n【核反应堆（对齐官方 Wiki：最高 1000°C、燃料槽 5、耗铀燃料棒）】');
-// 堆芯最高温度 = 1000°C（官方：最高温度 1000 °C）
-const tempMatch = nuclearSrc.match(/this\.temp = Math\.min\((\d+),/);
-checkNum('核反应堆最高温度(1000°C)', tempMatch ? +tempMatch[1] : null, 1000);
+// 堆芯最高温度 = 1000°C（官方 heat_buffer max_temperature = 1000）
+const maxTempMatch = src.match(/HEAT_MAX_TEMP = (\d+)/);
+checkNum('核反应堆最高温度(1000°C)', maxTempMatch ? +maxTempMatch[1] : null, 1000);
+// 反应堆比热 = 10MJ/°C（官方 specific_heat = 10MJ）
+const reactorSH = src.match(/REACTOR_SPECIFIC_HEAT = (\d+)/);
+checkNum('核反应堆比热(10MJ/°C)', reactorSH ? +reactorSH[1] : null, 10);
+// 导热管比热 = 1MJ/°C（官方 specific_heat = 1MJ）
+const pipeSH = src.match(/HEAT_PIPE_SPECIFIC_HEAT = (\d+)/);
+checkNum('导热管比热(1MJ/°C)', pipeSH ? +pipeSH[1] : null, 1);
+// 导热管最大传热 = 1GW（官方 max_transfer = 1GW）
+const pipeXfer = src.match(/HEAT_PIPE_MAX_TRANSFER = (\d+)/);
+checkNum('导热管最大传热(1GW=1000MW)', pipeXfer ? +pipeXfer[1] : null, 1000);
+// 热交换器最低工作温度 = 500°C（官方 min_working_temperature）
+const exchWork = src.match(/HEAT_EXCHANGER_MIN_WORK_TEMP = (\d+)/);
+checkNum('热交换器最低工作温度(500°C)', exchWork ? +exchWork[1] : null, 500);
+// 导热管最低发光温度 = 350°C（官方 minimum_glow_temperature）
+const pipeGlow = src.match(/HEAT_PIPE_MIN_GLOW_TEMP = (\d+)/);
+checkNum('导热管最低发光温度(350°C)', pipeGlow ? +pipeGlow[1] : null, 350);
+// 反应堆最大传热 = 10GW（官方 max_transfer）
+const reactorXfer = src.match(/REACTOR_MAX_TRANSFER = (\d+)/);
+checkNum('反应堆最大传热(10GW=10000MW)', reactorXfer ? +reactorXfer[1] : null, 10000);
 // 面板显示的温度分母也应同步为 1000
 check('核反应堆面板显示最高温度(1000°C)', /\/ 1000 °C/.test(nuclearSrc), true);
+// 导热管以温度(°C)显示而非存热量
+check('导热管按温度显示(°C)', /heatPipeTip/.test(nuclearSrc) && /Math\.round\(t\) \+ '°C'/.test(nuclearSrc), true);
 // 燃料槽容量 = 5（官方：反应堆可装 5 根燃料棒）
 const fuelCapMatch = nuclearSrc.match(/item === 'uranium-fuel-cell' && this\.fuel < (\d+)/);
 checkNum('核反应堆燃料槽容量(5)', fuelCapMatch ? +fuelCapMatch[1] : null, 5);

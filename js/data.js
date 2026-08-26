@@ -52,12 +52,24 @@ const URANIUM_CENTRIFUGE_KOVAREX_TIME = 60; // Kovarex 富集耗时（秒）
 // ===== 核能热量链路（反应堆 → 导热管 → 热交换器 → 高温蒸汽 → 汽轮机）=====
 // 引入“热量(heat)”概念：反应堆不直接产蒸汽，而是产热量；热量经导热管传导，
 // 在热交换器处把水烧成高温蒸汽，再供汽轮机发电（对齐《异星工厂》核能标准链路）。
-const REACTOR_HEAT_RATE = 6.0;     // 反应堆每秒产热量（单位/秒）
-const REACTOR_HEAT_CAP = 60;       // 反应堆内部热量缓冲（相当于原蒸汽缓冲）
-const HEAT_PIPE_CAP = 12;          // 导热管内部热量缓冲
-const HEAT_PIPE_TRANSFER = 60.0;   // 导热管每秒向相邻导热管/热交换器传导的热量上限（远大于反应堆产热，使热量能快速贯通长链导热线路，避免“传不远”）
-const HEAT_EXCHANGER_CAP = 12;     // 热交换器内部热量缓冲
-const HEAT_EXCHANGER_STEAM_RATE = 2.0; // 热交换器满功率耗热量→产蒸汽速率（单位/秒）
+// ---------------------------------------------------------------------------
+// 热量模型对齐 factorio-data 官方 Heat buffer：
+//   - heat_buffer 以能量(J/MJ)存储，温度 = 能量 / 比热(specific_heat)；
+//   - 相邻 heat connection 按温度差传导，从高温流向低温，速率受双方较小 max_transfer 限制；
+//   - 官方数值：导热管 max_temperature=1000, specific_heat=1MJ, max_transfer=1GW；
+//     反应堆 specific_heat=10MJ, max_transfer=10GW；热交换器 specific_heat=1MJ, max_transfer=2GW。
+const HEAT_MAX_TEMP = 1000;                // 所有 heat buffer 最高温度 1000°C（官方 max_temperature）
+const REACTOR_SPECIFIC_HEAT = 10;          // 反应堆比热 10MJ/°C（官方）
+const HEAT_PIPE_SPECIFIC_HEAT = 1;         // 导热管比热 1MJ/°C（官方）
+const HEAT_EXCHANGER_SPECIFIC_HEAT = 1;    // 热交换器比热 1MJ/°C（官方）
+const REACTOR_MAX_TRANSFER = 10000;        // 反应堆最大传热 10GW=10000MW（官方 max_transfer）
+const HEAT_PIPE_MAX_TRANSFER = 1000;       // 导热管最大传热 1GW=1000MW（官方 max_transfer）
+const HEAT_EXCHANGER_MAX_TRANSFER = 2000;  // 热交换器最大传热 2GW=2000MW（官方 max_transfer）
+const REACTOR_HEAT_RATE = 40;              // 反应堆热功率 40MW（铀燃料棒 8GJ / 200s，官方）
+const HEAT_EXCHANGER_MIN_WORK_TEMP = 500;  // 热交换器最低工作温度 500°C（官方 min_working_temperature）
+const HEAT_PIPE_MIN_GLOW_TEMP = 350;       // 导热管/热设备最低发光温度 350°C（官方 minimum_glow_temperature）
+const HEAT_EXCHANGER_ENERGY_PER_STEAM = 20;// 热交换器每产 1 单位蒸汽需消耗热量(MJ)，满产(2单位/s)恰好消耗反应堆 40MW 热功率
+const HEAT_EXCHANGER_STEAM_RATE = 2.0;     // 热交换器满功率产汽速率（单位/秒）
 const POWER_USE = {
   'electric-drill': 90,          // 电采矿机
   'electric-furnace': 180,       // 电炉
