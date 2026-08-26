@@ -35,7 +35,7 @@ vm.createContext(sandbox);
 
 const prefix = 'const G=globalThis.G; const TILE=globalThis.TILE;';
 vm.runInContext(
-  prefix + '\n' + load('core/entity.js') + '\n' + load('data-buildings.js')
+  prefix + '\n' + load('data.generated.js') + '\n' + load('core/entity.js') + '\n' + load('data-buildings.js')
   + '\nglobalThis.Entity = Entity;',
   sandbox, { filename: 'entity.js' }
 );
