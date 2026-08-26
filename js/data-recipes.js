@@ -318,6 +318,7 @@ const DEVICE_NAMES = {
   'centrifuge': '离心机'
 };
 function recipeDevice(id) {
+  if (GAME_DATA.recipeDevice && GAME_DATA.recipeDevice[id]) return GAME_DATA.recipeDevice[id];
   if (isRefineryRecipe(id)) return 'refinery';
   if (isChemRecipe(id)) return 'chemical-plant';
   if (isCentrifugeRecipe(id)) return 'centrifuge';
@@ -383,4 +384,9 @@ function itemRecipeText(id) {
   const dev = DEVICE_NAMES[devId] || "组装机";
   return "配方（" + dev + "）：" + inpParts.join(" + ") + " → " + outParts.join(" + ");
 }
+
+// ===== 官方配方数据桥接（GAME_DATA 由 factorio-data 现场生成，见 tools/generate-game-data.js）=====
+// 唯一数值源 = factorio-data；此处在文件末尾把自动生成配方合并进 RECIPES（自动覆盖手工同名键，
+// 未生成的键（保留手工 / 官方无 / 引用未知物品）保持手工值不变）。
+for (const k in GAME_DATA.recipe) RECIPES[k] = GAME_DATA.recipe[k];
 

@@ -34,7 +34,7 @@ class ChemicalPlant extends Entity {
     const sig = circuitSignalNear(this);
     return circuitCondOk(sig, this.circuitCond);
   }
-  moduleSlotCount() { return 3; } // 对齐《异星工厂》：化工厂 3 槽
+  moduleSlotCount() { return GAME_DATA.deviceStats?.[this.type]?.moduleSlots ?? 3; } // 对齐《异星工厂》官方 module_slots：化工厂 3 槽
   moduleSpeedMult() {
     const mc = moduleCounts(this.modules);
     const bb = (typeof beaconBonus === 'function') ? beaconBonus(this.x, this.y) : null;

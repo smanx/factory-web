@@ -4,8 +4,8 @@
 // 对齐《异星工厂》：电炉可装 2 个模块（速度/产能/效率），并受信号塔（Beacon）广播加成。
 class ElectricFurnace extends Furnace {
   constructor(type, x, y) { super('electric-furnace', x, y); this.modules = {}; this.prodBuf = 0; }
-  // 模块槽位数（对齐《异星工厂》：电炉 2 槽）
-  moduleSlotCount() { return 2; }
+  // 模块槽位数（对齐《异星工厂》官方 module_slots：电炉 2 槽）
+  moduleSlotCount() { return GAME_DATA.deviceStats?.[this.type]?.moduleSlots ?? 2; }
   // 模块速度倍率：速度模块加速、产能/效率模块小降速；叠加信号塔广播加成
   moduleSpeedMult() {
     const mc = moduleCounts(this.modules);
@@ -46,7 +46,7 @@ class ElectricFurnace extends Furnace {
     if (G.power.sat <= 0) { this.lit = false; return; }
     this.lit = true;
     furnaceEmit(this, dt);
-    this.prog += dt / r.time * 2 * this.moduleSpeedMult() * powerFactor();
+    this.prog += dt / r.time * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 2) * this.moduleSpeedMult() * powerFactor();
     if (this.prog >= 1) {
       this.prog -= 1;
       this.inp[r.inp] = (this.inp[r.inp] || 0) - (r.inCount || 1);

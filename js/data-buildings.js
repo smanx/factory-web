@@ -153,3 +153,9 @@ function buildingMaxHp(type) { return BUILDING_HP[type] || 100; }
 // 所有建筑统一支持旋转与翻转（含锅炉/蒸汽机/汽轮机/热交换器等固定管道口建筑）。
 // 旋转时设备本身与管道口随方向一起转动。
 function postPlaceRotatable(type) { return true; }
+
+// ===== 官方建筑血量数据桥接（GAME_DATA 由 factorio-data 现场生成，见 tools/generate-game-data.js）=====
+// 手工 BUILDING_HP 优先，缺失的用官方值补缺。
+for (const k in (GAME_DATA.buildingHp || {})) {
+  if (typeof BUILDING_HP[k] !== 'number') BUILDING_HP[k] = GAME_DATA.buildingHp[k];
+}

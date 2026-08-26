@@ -7,9 +7,12 @@
 
 // 常量（对齐《异星工厂》Beacon）
 const BEACON_RANGE = 4;          // 影响半径（格），即 9×9 范围
-const BEACON_MOD_SLOTS = 2;      // 信号塔模块槽位数
-const BEACON_POWER = 480;        // 信号塔基础耗电（kW）
-const BEACON_MODULE_EFF = 0.5;   // 信号塔模块生效系数（对齐异星工厂：信号塔内模块效果减半）
+const BEACON_MOD_SLOTS = GAME_DATA.deviceStats?.['beacon']?.moduleSlots ?? 2; // 信号塔模块槽位数（官方 module_slots=2）
+const BEACON_POWER = GAME_DATA.powerUse?.['beacon'] ?? 480;  // 信号塔基础耗电（kW，官方 energy_usage 480kW）
+// 信号塔模块生效系数：项目沿用《异星工厂》1.x 的"效果减半"模型（=0.5）。
+// 官方 2.0 改为 distribution_effectivity=1.5 + 按每台被服务机器递减（beacon_counter=same_type），
+// 与项目"单塔向范围内多台广播"的简化模型语义不同，故保持手工 0.5，不直接套用 2.0 数值。
+const BEACON_MODULE_EFF = 0.5;
 
 // 信号塔实体
 class Beacon extends Entity {

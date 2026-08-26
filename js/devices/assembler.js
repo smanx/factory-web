@@ -57,7 +57,7 @@ class Assembler extends Entity {
     if (!this.circuitEnabled()) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
-      this.prog += dt * asmMult() * 0.5 * this.moduleSpeedMult() * powerFactor();
+      this.prog += dt * asmMult() * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 0.5) * this.moduleSpeedMult() * powerFactor();
       this.spin += dt * 4;
       // 工业氛围：组装机运转时低频迸出细碎火花（画面优化）
       if (typeof spawnSpark === 'function' && Math.random() < dt * 1.2) {
@@ -90,6 +90,9 @@ class Assembler extends Entity {
     this.crafting = true;
     this.prog = 0;
   }
+  // 模块槽位数（对齐《异星工厂》官方 module_slots）：组装机 II=2、III=4；
+  // I 型官方 0 槽但项目允许装模块 → 无官方值时回退 4（保持历史行为）。
+  moduleSlotCount() { return GAME_DATA.deviceStats?.[this.type]?.moduleSlots ?? 4; }
   // 模块速度倍率（速度模块加速，产能/效率模块小降速）
   moduleSpeedMult() {
     const mc = moduleCounts(this.modules);
@@ -136,7 +139,7 @@ class Assembler extends Entity {
   }
   giveItem(item) {
     if (isModule(item)) {
-      if ((this.modules[item] || 0) >= 4) return false;
+      if ((this.modules[item] || 0) >= this.moduleSlotCount()) return false;
       this.modules[item] = (this.modules[item] || 0) + 1;
       if (typeof playSfx === 'function') playSfx('module');
       return true;
@@ -251,8 +254,8 @@ function drawAssembler(ctx, e, gx, gy, dir, alpha) {
 // ===== 面板 =====
 function assemblerPanelHtml(e) {
   let h = row('当前配方', e.recipe ? ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name : '<span class="dim">未设置</span>');
-  // 组装机 II 速度为 I 的 1.5 倍，并受电学科技加成
-  const asmM = e.type === 'assembling-machine-mk2' ? asmMult() * 1.5 * elecMachMult() : asmMult();
+  // 组装机 II 速度为 I 的 1.5 倍（官方 crafting_speed 0.75/0.5），并受电学科技加成
+  const asmM = e.type === 'assembling-machine-mk2' ? asmMult() * ((GAME_DATA.deviceStats?.[e.type]?.craftingSpeed ?? 0.75) / 0.5) * elecMachMult() : asmMult();
   // 消耗/产出速率显示在面板靠前位置（当前配方之后）
   h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? asmM : 1);
   // 吃电机型（组装机 II）显示当前耗电状态与是否电量不足
@@ -277,7 +280,7 @@ function assemblerPanelHtml(e) {
     const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3'];
     for (const mid of order) {
       if (!itemUnlocked(mid)) continue;
-      const n = Math.min(invCount(mid), 4 - (e.modules[mid] || 0));
+      const n = Math.min(invCount(mid), e.moduleSlotCount() - (e.modules[mid] || 0));
       if (n > 0) h += '<button data-action="feed" data-id="' + mid + '">装入' + ITEMS[mid].name + ' ×' + n + '</button>';
     }
     if (hasMod) h += '<button data-action="takein" data-modules="1">取出全部模块</button>';

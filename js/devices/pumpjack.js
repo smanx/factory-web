@@ -9,8 +9,8 @@ const PUMPJACK_BASE_RATE = 10;         // 抽油机基础速度（原油/秒）�
 
 class Pumpjack extends ElectricDrill {
   constructor(type, x, y) { super(type || 'pumpjack', x, y); this.yieldFactor = 1; }
-  // 模块槽位数（对齐《异星工厂》：抽油机 2 槽）
-  moduleSlotCount() { return 2; }
+  // 模块槽位数（对齐《异星工厂》官方 module_slots：抽油机 2 槽）
+  moduleSlotCount() { return GAME_DATA.deviceStats?.[this.type]?.moduleSlots ?? 2; }
   // 原油输出只从正面右侧角落的那一个格子排出（一格一接口，对齐管道格子）
   // 从正中改为角落，便于把油管从设备角落接出
   frontTargets() {

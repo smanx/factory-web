@@ -4,6 +4,7 @@
   "private": true,
   "description": "工厂原型 - Factorio clone in browser",
   "scripts": {
+    "data": "node tools/generate-game-data.js",
     "serve": "npx http-server -p 8094 -c-1",
     "serve:dist": "cd dist & npx http-server -p 8094 -c-1",
     "dev": "node build.js --dev --port 8094",

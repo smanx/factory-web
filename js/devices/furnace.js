@@ -220,10 +220,10 @@ function furnacePanelLive(e, api) {
   const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
   api.toggle('#btn-takeout', n > 0, '取回全部输出 (' + n + ')');
   api.prog(e.prog * 100, e.cur ? e.cur.time : 0);
-  // 当前冶炼项的消耗/产出速率（石炉×1、电炉×2，对齐《异星工厂》crafting-speed）
+  // 当前冶炼项的消耗/产出速率（石炉×1、电炉×官方 crafting_speed=2，对齐《异星工厂》crafting-speed）
   const rateEl = document.getElementById('mach-rate-block');
   if (rateEl) {
-    const mult = eFurn ? 2 * e.moduleSpeedMult() : 1;
+    const mult = eFurn ? (GAME_DATA.deviceStats?.[e.type]?.craftingSpeed ?? 2) * e.moduleSpeedMult() : 1;
     const rec = e.cur ? { time: e.cur.time, inp: { [e.cur.inp]: e.cur.inCount || 1 }, out: { [e.cur.id]: 1 } } : null;
     const html = rec ? machRateHtml(rec, mult) : '';
     if (rateEl.innerHTML !== html) rateEl.innerHTML = html;

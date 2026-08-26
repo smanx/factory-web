@@ -9,7 +9,7 @@ class AssemblerMK2 extends Assembler {
     if (G.power.sat <= 0) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
-      this.prog += dt * asmMult() * 0.75 * this.moduleSpeedMult() * powerFactor();
+      this.prog += dt * asmMult() * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 0.75) * this.moduleSpeedMult() * powerFactor();
       this.spin += dt * 4;
       if (this.prog >= rec.time) {
         for (const k in rec.out) {

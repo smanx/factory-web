@@ -43,9 +43,9 @@ class ElectricDrill extends Drill {
       }
     }
   }
-  machMult() { return 0.5; } // 电采矿机 mining-speed 0.5（对齐《异星工厂》）
-  // 模块槽位数（对齐《异星工厂》：电采矿机 3 槽）
-  moduleSlotCount() { return 3; }
+  machMult() { return GAME_DATA.deviceStats?.[this.type]?.miningSpeed ?? 0.5; } // 电采矿机 mining-speed 0.5（对齐《异星工厂》官方 mining_speed）
+  // 模块槽位数（对齐《异星工厂》官方 module_slots：电采矿机 3 槽）
+  moduleSlotCount() { return GAME_DATA.deviceStats?.[this.type]?.moduleSlots ?? 3; }
   // 模块速度倍率：速度模块加速、产能/效率模块小降速；叠加信号塔广播的模块加成
   moduleSpeedMult() {
     const mc = moduleCounts(this.modules);

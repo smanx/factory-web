@@ -31,7 +31,7 @@ class SteelFurnace extends Furnace {
     this.lit = true;
     this.burnLeft -= dt * fuelConsumptionMult();
     furnaceEmit(this, dt);
-    this.prog += dt / r.time * 2;
+    this.prog += dt / r.time * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 2);
     if (this.prog >= 1) {
       this.prog -= 1;
       this.inp[r.inp] = (this.inp[r.inp] || 0) - (r.inCount || 1);
@@ -126,11 +126,11 @@ function steelFurnacePanelLive(e, api) {
   const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
   api.toggle('#btn-takeout', n > 0, '取回全部输出 (' + n + ')');
   api.prog(e.prog * 100, e.cur ? e.cur.time : 0);
-  // 当前冶炼项的消耗/产出速率（钢铁炉×2）
+  // 当前冶炼项的消耗/产出速率（钢铁炉×官方 crafting_speed=2）
   const rateEl = document.getElementById('mach-rate-block');
   if (rateEl) {
     const rec = e.cur ? { time: e.cur.time, inp: { [e.cur.inp]: e.cur.inCount || 1 }, out: { [e.cur.id]: 1 } } : null;
-    const html = rec ? machRateHtml(rec, 2) : '';
+    const html = rec ? machRateHtml(rec, GAME_DATA.deviceStats?.[e.type]?.craftingSpeed ?? 2) : '';
     if (rateEl.innerHTML !== html) rateEl.innerHTML = html;
   }
   if (e.lit) api.status('冶炼中（钢铁炉·高速）', 'ok');

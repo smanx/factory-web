@@ -14,7 +14,7 @@ class Assembler3 extends Assembler {
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
       // 速度：组装机 III 基础 1.25，远高于 I/II；叠加科技与电力饱和
-      this.prog += dt * asmMult() * 1.25 * this.moduleSpeedMult() * powerFactor();
+      this.prog += dt * asmMult() * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 1.25) * this.moduleSpeedMult() * powerFactor();
       this.spin += dt * 4;
       if (this.prog >= rec.time) {
         for (const k in rec.out) {
@@ -87,8 +87,8 @@ function drawAssembler3(ctx, e, gx, gy, dir, alpha) {
 // ===== 面板：复用组装机面板（配方选择/输入/输出/进度）=====
 function assembler3PanelHtml(e) {
   let h = row('当前配方', e.recipe ? ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name : '<span class="dim">未设置</span>');
-  // 消耗/产出速率显示在面板靠前位置（当前配方之后）
-  h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? asmMult() * 1.25 * 1.5 * elecMachMult() : 1);
+  // 消耗/产出速率显示在面板靠前位置（当前配方之后）：组装机 III 速度为 I 的 2.5 倍（官方 crafting_speed 1.25/0.5），并受电学科技加成
+  h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? asmMult() * ((GAME_DATA.deviceStats?.[e.type]?.craftingSpeed ?? 1.25) / 0.5) * elecMachMult() : 1);
   h += row('电力', powerStatusLiveHtml(e), 'power');
   h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
   if (e.recipe)
@@ -110,7 +110,7 @@ function assembler3PanelHtml(e) {
     const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3'];
     for (const mid of order) {
       if (!itemUnlocked(mid)) continue;
-      const n = Math.min(invCount(mid), 4 - (e.modules[mid] || 0));
+      const n = Math.min(invCount(mid), e.moduleSlotCount() - (e.modules[mid] || 0));
       if (n > 0) h += '<button data-action="feed" data-id="' + mid + '">装入' + ITEMS[mid].name + ' ×' + n + '</button>';
     }
     if (hasMod) h += '<button data-action="takein" data-modules="1">取出全部模块</button>';

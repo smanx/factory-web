@@ -10,6 +10,8 @@ class Lab extends Entity {
     this.modules = {};   // 研究中心可装模块（对齐《异星工厂》：产能/速度/效率模块）；产能模块让部分科研免费（减少科学包消耗）
     this.prodBuf = 0;    // 产能模块累积进度
   }
+  // 模块槽位数（对齐《异星工厂》官方 module_slots：研究中心 2 槽）
+  moduleSlotCount() { return GAME_DATA.deviceStats?.[this.type]?.moduleSlots ?? 2; }
   // 模块速度倍率（对齐组装机：速度 +0.4/当量、产能 -0.1/当量、效率 -0.03/当量）
   moduleSpeedMult() {
     const mc = moduleCounts(this.modules);
@@ -120,7 +122,7 @@ class Lab extends Entity {
   }
   giveItem(item) {
     if (isModule(item)) {
-      if ((this.modules[item] || 0) >= 4) return false;
+      if ((this.modules[item] || 0) >= this.moduleSlotCount()) return false;
       this.modules[item] = (this.modules[item] || 0) + 1;
       if (typeof playSfx === 'function') playSfx('module');
       return true;
@@ -215,7 +217,7 @@ function labPanelHtml(e) {
   const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3'];
   for (const mid of order) {
     if (!itemUnlocked(mid)) continue;
-    const n = Math.min(invCount(mid), 4 - (e.modules[mid] || 0));
+    const n = Math.min(invCount(mid), e.moduleSlotCount() - (e.modules[mid] || 0));
     if (n > 0) h += '<button data-action="labmod" data-id="' + mid + '">装入' + ITEMS[mid].name + ' ×' + n + '</button>';
   }
   if (Object.keys(e.modules).length > 0) h += '<button data-action="modtake">取出全部模块</button>';
@@ -275,7 +277,7 @@ function labOnAction(act, btn) {
   }
   if (act === 'labmod') {
     const mid = btn.dataset.id;
-    if (!mid || !G.panelEnt || (G.panelEnt.modules[mid] || 0) >= 4) return true;
+    if (!mid || !G.panelEnt || (G.panelEnt.modules[mid] || 0) >= G.panelEnt.moduleSlotCount()) return true;
     if (invCount(mid) < 1) { toast('没有' + ITEMS[mid].name); return true; }
     invTake(mid, 1);
     G.panelEnt.modules[mid] = (G.panelEnt.modules[mid] || 0) + 1;

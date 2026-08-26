@@ -97,8 +97,8 @@ class Drill extends Entity {
     }
     this.burnLeft -= dt * fuelConsumptionMult();
     this.spin += dt * 6;
-    // 热能采矿机 mining-speed 0.25（对齐《异星工厂》）；每采 1 个矿需累计到该矿石的采矿时间
-    this.prog += dt * drillMult() * 0.25;
+    // 热能采矿机 mining-speed 0.25（对齐《异星工厂》官方 mining_speed）；每采 1 个矿需累计到该矿石的采矿时间
+    this.prog += dt * drillMult() * (GAME_DATA.deviceStats?.[this.type]?.miningSpeed ?? 0.25);
     const mt = this.oreTime(); // 当前矿石的采矿时间（铁/铜/煤/石 2s、铀矿 4s，对齐《异星工厂》mining_time）
     if (this.prog >= mt) {
       this.prog -= mt;
@@ -367,7 +367,7 @@ function drillPanelLive(e, api) {
   if (rateEl) {
     const o = e.oreTile();
     const item = o ? e.mineItem(o) : (e.bufItem || null);
-    const mult = e instanceof ElectricDrill ? drillMult() * e.machMult() * e.moduleSpeedMult() : drillMult() * 0.25;
+    const mult = e instanceof ElectricDrill ? drillMult() * e.machMult() * e.moduleSpeedMult() : drillMult() * (GAME_DATA.deviceStats?.[e.type]?.miningSpeed ?? 0.25);
     const rec = item ? { time: oreMiningTime(item), inp: {}, out: { [item]: 1 } } : null;
     const html = rec ? machRateHtml(rec, mult) : '';
     if (rateEl.innerHTML !== html) rateEl.innerHTML = html;

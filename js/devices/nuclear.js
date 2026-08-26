@@ -43,7 +43,7 @@ class Centrifuge extends Entity {
     const sig = circuitSignalNear(this);
     return circuitCondOk(sig, this.circuitCond);
   }
-  moduleSlotCount() { return 2; } // 对齐《异星工厂》：离心机 2 槽
+  moduleSlotCount() { return GAME_DATA.deviceStats?.[this.type]?.moduleSlots ?? 2; } // 对齐《异星工厂》官方 module_slots：离心机 2 槽
   moduleSpeedMult() {
     const mc = moduleCounts(this.modules);
     const bb = (typeof beaconBonus === 'function') ? beaconBonus(this.x, this.y) : null;
