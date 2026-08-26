@@ -189,6 +189,8 @@ html, body {
 #panel {
   position: absolute;
   top: 54px; right: 10px;
+  /* 启动页（#start-screen z-index:200）点击“成就”时打开的面板需显示在其之上，故高于 200 */
+  z-index: 210;
   width: 400px;
   max-height: calc(100vh - 140px);
   display: none;
@@ -986,6 +988,25 @@ html, body {
 .load-newest-btn:hover {
   background: linear-gradient(180deg, #3a7445, #276035);
   box-shadow: 0 0 16px rgba(87, 185, 92, .4);
+}
+
+.load-file-btn {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  background: linear-gradient(180deg, #2a3340, #1e2630);
+  color: #dfe6ee;
+  border: 1px solid #46536a;
+  border-radius: 10px;
+  cursor: pointer;
+  margin-bottom: 12px;
+  transition: all .18s;
+}
+.load-file-btn:hover {
+  background: linear-gradient(180deg, #3a4657, #2a3340);
+  box-shadow: 0 0 12px rgba(100, 130, 180, .35);
 }
 
 .load-save-list {
