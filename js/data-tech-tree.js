@@ -56,7 +56,7 @@ const TECHS = {
   'advanced-material-processing-2': { name: '进阶材料处理 II', cost: { 'production-science-pack': 50, 'blue-science': 30 }, desc: '解锁效率模块 II（更强降耗）。对齐《异星工厂》Advanced material processing 2', req: ['advanced-material-processing', 'production'] },
   'advanced-material-processing-3': { name: '进阶材料处理 III', cost: { 'production-science-pack': 80, 'utility-science-pack': 60 }, desc: '解锁效率模块 III（极强降耗）。对齐《异星工厂》Advanced material processing 3', req: ['advanced-material-processing-2', 'utility'] },
   'logistics-network': { name: '物流网络', cost: { 'blue-science': 50 }, desc: '解锁机器人港、四类物流箱与物流机器人，构建自动化物流网络', req: ['logistics2', 'electronics'] },
-  nuclear:    { name: '核能技术', cost: { 'blue-science': 60, 'military-science': 40 }, desc: '解锁离心机（铀矿处理）、核反应堆与汽轮机，构建核能发电体系', req: ['electronics', 'advanced-combat'] },
+  nuclear:    { name: '核能技术', cost: { 'blue-science': 60, 'military-science': 40 }, desc: '解锁离心机（铀浓缩处理）、核反应堆与汽轮机，构建核能发电体系', req: ['electronics', 'advanced-combat'] },
   'atomic-bomb': { name: '原子弹科技', cost: { 'blue-science': 80, 'military-science': 80 }, desc: '解锁终极核武器原子弹：由铀-235+火箭+爆炸物制成，落地引发超大范围核爆（对齐《异星工厂》Atomic bomb 独立科技）', req: ['nuclear', 'rocket-science'] },
   'circuit-network': { name: '电路网络', cost: { 'blue-science': 40 }, desc: '解锁电线杆与组合器（常量/运算/判断），构建电路网络，实现信号逻辑控制；含超大型变电站与可编程音箱（告警）', req: ['electronics'] },
   deep:       { name: '重工蓝图', cost: { 'blue-science': 50 }, desc: '蓝包终技：科研总进度获取 +20%', req: ['automation2', 'express'] },

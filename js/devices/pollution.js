@@ -59,7 +59,7 @@ const POLLUTION_SOURCES = {
   'boiler': 4,              // 锅炉（烧煤发电）
   'refinery': 6,            // 炼油厂（石油化工）
   'chemical-plant': 5,      // 化工厂（石油化工）
-  'centrifuge': 1,          // 离心机（铀矿处理，低污染）
+  'centrifuge': 1,          // 离心机（铀浓缩处理，低污染）
   'nuclear-reactor': 7,     // 核反应堆（虽清洁但燃料处理与热量管理仍有微量排放）
   'locomotive': 3,          // 火车头（烧煤行驶）
   'diesel-locomotive': 3,   // 内燃机车（烧燃料行驶，对齐原版：内燃机车同样有尾气）
