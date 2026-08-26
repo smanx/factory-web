@@ -112,12 +112,12 @@ const FLUID_WAGON_CAP = GAME_DATA.fluidCapacity?.fluidWagon ?? 2500;   // 流体
 // 载具可安装个人装备件（外骨骼加速、太阳能板/聚变堆供能、电池储电、夜视/传送带免疫等）
 const VEHICLE_GRIDS = { car: 5, tank: 6 };
 
-const SCIENCE_PACKS = ['automation-science-pack', 'logistic-science-pack', 'chemical-science-pack', 'military-science-pack', 'production-science-pack', 'utility-science-pack', 'space-science-pack', 'electromagnetic-science-pack'];
+const SCIENCE_PACKS = ['automation-science-pack', 'logistic-science-pack', 'chemical-science-pack', 'military-science-pack', 'production-science-pack', 'utility-science-pack', 'space-science-pack', 'electromagnetic-science-pack', 'agricultural-science-pack'];
 function isScience(item) { return SCIENCE_PACKS.indexOf(item) >= 0; }
 const FILTER_CHOICES = ['iron-plate', 'copper-plate', 'steel-plate', 'iron-gear-wheel', 'iron-stick', 'steel-stick', 'copper-cable', 'electronic-circuit',
   'coal', 'solid-fuel', 'stone', 'plastic-bar', 'automation-science-pack', 'logistic-science-pack', 'chemical-science-pack', 'military-science-pack',
   'production-science-pack', 'utility-science-pack', 'space-science-pack', 'flying-robot-frame',
-  'firearm-magazine', 'piercing-rounds-magazine', 'uranium-rounds-magazine', 'uranium-cannon-shell', 'flamethrower-ammo', 'poison-capsule', 'slowdown-capsule', 'shotgun-shell', 'piercing-shotgun-shell', 'cluster-grenade', 'logistic-robot', 'construction-robot', 'uranium-235', 'uranium-238', 'nuclear-fuel', 'uranium-fuel-cell', 'depleted-uranium-fuel-cell', 'sulfur', 'carbon', 'raw-fish'].concat(FLUIDS);
+  'firearm-magazine', 'piercing-rounds-magazine', 'uranium-rounds-magazine', 'uranium-cannon-shell', 'flamethrower-ammo', 'poison-capsule', 'slowdown-capsule', 'shotgun-shell', 'piercing-shotgun-shell', 'cluster-grenade', 'logistic-robot', 'construction-robot', 'uranium-235', 'uranium-238', 'nuclear-fuel', 'uranium-fuel-cell', 'depleted-uranium-fuel-cell', 'sulfur', 'carbon', 'raw-fish', 'yumako', 'yumako-mash', 'bioflux', 'nutrients', 'spoilage', 'agricultural-science-pack'].concat(FLUIDS);
 function techPacks(tid) { return (TECHS && TECHS[tid] && TECHS[tid].cost) || {}; }
 function techCostTotal(tid) {
   let s = 0;

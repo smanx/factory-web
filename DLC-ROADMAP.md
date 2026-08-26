@@ -32,7 +32,8 @@
 - [x] 碳纤维 / 锂 / 锂板 / 超导体 / 电磁工厂（Electromagnetic plant）材料链
 - [x] 电磁科研包（electromagnetic-science-pack）及配套「电磁学」科技
 - [ ] 太空平台产物（小行星碎块 → 碳化铁 / 氧化铁 / 金属铁）
-- [ ] 石炭 / 生物质 / 浆果（Gleba 基础链）
+- [x] 生物质材料链与农业科研包（Gleba 基础链）：玉玛果 / 玉玛果泥 / 生物结晶 / 营养素 /
+      变质物 / 生化炉（Biochamber）/ 农业科研包（agricultural-science-pack）及「农业科技」
 
 > 已落地说明（本 PR 增量）：
 > - 物品：`carbon-fiber` / `lithium` / `lithium-plate` / `superconductor` /
@@ -45,6 +46,16 @@
 >   配方键仍在 RECIPES、产出物与耗时参考官方。
 > - 科技：新增「电磁学」科技（需 space-science+utility）统一解锁本材料链，
 >   电磁科研包由电磁工厂产出，可被研究所消耗。
+>
+> 生物质材料链（本 PR 增量）：
+> - 物品：`yumako` / `yumako-mash` / `bioflux` / `nutrients` / `spoilage` /
+>   `agricultural-science-pack` 已接入，堆叠/命名均来自 GAME_DATA（factorio-data 官方）。
+> - 生化炉设备：占地 3×3、血量 300、功耗 500kW、制造速度 2.0、模块槽 4，
+>   全部数值来自 GAME_DATA（官方 biochamber），未单独维护数值表。
+> - 配方：玉玛果→玉玛果泥、玉玛果泥→生物结晶、玉玛果泥→营养素、变质物+生物结晶→硫磺、
+>   生物结晶→农业科研包、生化炉本体；产出物/耗时参考官方，配方键保留官方名。
+> - 科技：新增「农业科技」（需 space-science+utility）解锁本材料链，
+>   农业科研包由生化炉产出，可被研究所消耗。
 
 ### 阶段三：核心 DLC 机制（中风险）
 - [ ] **品质系统**：品质等级 + 品质模块 + 品质合成（6 级）

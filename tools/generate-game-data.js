@@ -64,6 +64,7 @@ const KEEP_MANUAL_RECIPES = new Set([
   'cliff-explosives',
   // ===== 太空时代 Space Age 手工适配配方（官方配方依赖星球专属资源，此处适配基础资源）=====
   'carbon-fiber', 'lithium', 'lithium-plate', 'superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant',
+  'yumako-mash', 'bioflux', 'nutrients-from-bioflux', 'biosulfur', 'agricultural-science-pack', 'biochamber',
 ]);
 
 // ================= 小工具 =================
@@ -379,6 +380,7 @@ const DEVICE_STATS_SOURCES = {
   'centrifuge': ['assembling-machine', 'centrifuge'],
   'electromagnetic-plant': ['assembling-machine', 'electromagnetic-plant'],  // 太空时代电磁工厂：crafting_speed=2, module_slots=5
   'recycler': ['furnace', 'recycler'],  // 回收机：crafting_speed=0.5, module_slots=4
+  'biochamber': ['assembling-machine', 'biochamber'],  // 太空时代生化炉：crafting_speed=2, module_slots=4
 };
 for (const [pid, [rtype, oname]] of Object.entries(DEVICE_STATS_SOURCES)) {
   const proto = raw[rtype] && raw[rtype][oname];
@@ -702,6 +704,7 @@ const FOOTPRINT_SOURCES = {
   'land-mine': ['land-mine', 'land-mine'],
   'electromagnetic-plant': ['assembling-machine', 'electromagnetic-plant'],  // 太空时代电磁工厂（space-age 装配机原型）
   'recycler': ['furnace', 'recycler'],  // 回收机（recycler DLC，官方 furnace 原型）
+  'biochamber': ['assembling-machine', 'biochamber'],  // 太空时代生化炉（space-age 装配机原型，3×3）
 };
 // 官方 selection_box 为实体占用的格数（局部坐标跨度，单位格）。
 // 占地格数 = max(1, ceil(跨度))；部分实体（机械臂/电线杆/熔炉等）官方跨度<1 或非整数，

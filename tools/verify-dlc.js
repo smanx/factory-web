@@ -80,5 +80,31 @@ ok(ctx.__itemTechReq('recycler') === 'recycling', '回收机需「回收科技�
 ok(!!TS['recycling'], '「回收科技」已注册');
 ok(!!TS['recycling'].cost['electromagnetic-science-pack'], '「回收科技」需电磁科研包（对齐官方 Recycling）');
 
+// ===== 生化炉（Biochamber）数据校验 =====
+console.log('\n【生化炉设备数据（官方）】');
+ok(!!GD.stackSize['biochamber'], 'biochamber 堆叠来自官方 (=20)');
+ok(!!GD.names['biochamber'], 'biochamber 官方命名已收录 (' + (GD.names['biochamber'] ? GD.names['biochamber'].zh : '?') + ')');
+ok(GD.footprint['biochamber'] && GD.footprint['biochamber'].w === 3 && GD.footprint['biochamber'].h === 3, '占地 3×3（官方 selection_box ±1.5）');
+ok(GD.buildingHp['biochamber'] === 300, '血量=300（官方 max_health）');
+ok(GD.powerUse['biochamber'] === 500, '功耗=500kW（官方 energy_usage）');
+ok(GD.deviceStats['biochamber'] && GD.deviceStats['biochamber'].craftingSpeed === 2, '制造速度=2（官方 crafting_speed）');
+ok(GD.deviceStats['biochamber'].moduleSlots === 4, '模块槽=4（官方 module_slots）');
+ok(ctx.__recipeDevice('agricultural-science-pack') === 'biochamber', '农业科技包 → 生化炉');
+ok(!!RP['biochamber'], '生化炉配方已注册');
+ok(Object.keys(RP['biochamber'].inp).every(k => k in IT), '生化炉配方引用物品均存在');
+ok(ctx.__itemTechReq('biochamber') === 'agriculture', '生化炉需「农业科技」');
+ok(!!TS['agriculture'], '「农业科技」已注册');
+
+console.log('\n【生物质材料链（Gleba）数据】');
+for (const k of ['yumako', 'yumako-mash', 'bioflux', 'nutrients', 'spoilage', 'agricultural-science-pack']) {
+  ok(!!GD.stackSize[k], k + ' 堆叠来自官方 (=' + GD.stackSize[k] + ')');
+  ok(!!GD.names[k], k + ' 官方命名已收录 (' + (GD.names[k] ? GD.names[k].zh : '?') + ')');
+}
+ok(!!RP['yumako-mash'], '玉玛果泥配方已注册');
+ok(!!RP['bioflux'], '生物结晶配方已注册');
+ok(!!RP['agricultural-science-pack'], '农业科技包配方已注册');
+ok(!!IT['agricultural-science-pack'], '农业科技包物品已注册');
+ok(ctx.__itemTechReq('agricultural-science-pack') === 'agriculture', '农业科技包需「农业科技」');
+
 console.log('\n' + (fail === 0 ? '✅ DLC 数据校验全部通过（' + pass + ' 项）' : '❌ 失败 ' + fail + ' 项'));
 process.exit(fail === 0 ? 0 : 1);

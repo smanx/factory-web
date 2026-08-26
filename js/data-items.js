@@ -217,6 +217,15 @@ const ITEMS = {
   'electromagnetic-science-pack': { name: '电磁科研包', color: '#5a5ae8', mark: 'ESP', desc: '太空时代紫色科研包，由超导体+蓄电器+电路板在电磁工厂制得，解锁太空时代高级科技（对齐《异星工厂》Space Age）' },
   'electromagnetic-plant': { name: '电磁工厂', color: '#4a7ad8', desc: '太空时代高级生产建筑（4×4，吃电力）：比组装机 III 更快、模块槽更多，专用于生产超导体等电磁产品（对齐《异星工厂》Space Age，数据来自 GAME_DATA）' },
   'recycler': { name: '回收机', color: '#8a8f99', desc: '太空时代回收建筑（2×4，吃电力）：把可回收物品还原成其配方原料的 25%（每项至少 1 个），用于处理生产过剩与劣质品（对齐《异星工厂》Space Age 回收机，数据来自 GAME_DATA）' },
+  // ===== 太空时代 农业/Gleba 生物质材料链（数据来自 factorio-data 官方，见 GAME_DATA）=====
+  'yumako': { name: '玉玛果', color: '#d8a020', mark: 'Ym', desc: '太空时代 Gleba 星球作物，用于生物质加工，可制成果泥（对齐《异星工厂》Space Age Yumako，堆叠 50）' },
+  'yumako-seed': { name: '玉玛果种子', color: '#c88020', mark: 'Ys', desc: '太空时代 Gleba 作物种子，用于种植雅玛果（对齐《异星工厂》Space Age Yumako seed，堆叠 10）' },
+  'yumako-mash': { name: '玉玛果泥', color: '#e0a030', mark: 'Ymh', desc: '太空时代生物质中间产物，由雅玛果加工制得，用于制造生物流与生物质（对齐《异星工厂》Space Age Yumako mash，堆叠 100）' },
+  'bioflux': { name: '生物结晶', color: '#40b880', mark: 'Bf', desc: '太空时代高级生物质产物，由果泥+胶质在生化炉制得，是农业科研包与生物质的高级原料（对齐《异星工厂》Space Age Bioflux，堆叠 100）' },
+  'nutrients': { name: '营养素', color: '#70a850', mark: 'Nt', desc: '太空时代生物燃料，由雅玛果泥在生化炉制得，用作生化炉的生物质燃料（对齐《异星工厂》Space Age Nutrients，堆叠 100）' },
+  'spoilage': { name: '变质物', color: '#8a7a50', mark: 'Sp', desc: '太空时代生物质副产物，用于制造生物硫磺等（对齐《异星工厂》Space Age Spoilage，堆叠 200）' },
+  'agricultural-science-pack': { name: '农业科技包', color: '#a8d84a', mark: 'ASP', desc: '太空时代黄色科研包，由生物流在生化炉制得，解锁太空时代农业/生物科技（对齐《异星工厂》Space Age Agricultural science pack，堆叠 200）' },
+  'biochamber': { name: '生物室', color: '#4aa86a', desc: '太空时代生物生产建筑（3×3，吃电力）：专用于生产生物质产品（果泥/生物流/营养素/农业科研包等），比组装机更快（对齐《异星工厂》Space Age 生化炉，数据来自 GAME_DATA）' },
   // ===== 物流机器人网络 =====
   'roboport':          { name: '机器人港', color: '#3a8a8a', desc: '物流机器人的基地与充电站（4×4，吃电力）。把物流机器人放入机器人港后自动调度，机器人往返供应箱与需求箱搬运货物，电量低时回到机器人港充电。可接入电路网络输出整个物流网络各物品库存总量信号（对齐《异星工厂》机器人港电路信号）' },
   'logistic-robot':    { name: '物流机器人', color: '#4aa0d0', desc: '飞行机器人，放入机器人港后自动在供应箱/需求箱之间搬运物资，消耗电量，需回港充电' },

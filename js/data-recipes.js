@@ -181,6 +181,19 @@ const RECIPES = {
   'electromagnetic-plant': { time: 10, inp: { 'steel-plate': 50, 'processing-unit': 50, 'refined-concrete': 50, 'superconductor': 20 }, out: { 'electromagnetic-plant': 1 } },
   // 回收机：处理器 + 钢板 + 齿轮 + 混凝土 → 回收机（官方 energy_required=3s，此处对齐，10s）
   'recycler': { time: 10, inp: { 'processing-unit': 6, 'steel-plate': 20, 'iron-gear-wheel': 40, 'concrete': 20 }, out: { 'recycler': 1 } },
+  // ===== 太空时代 农业/Gleba 生物质材料链（官方数值参考，见 GAME_DATA）=====
+  // 雅玛果泥：雅玛果 → 果泥×2（官方 yumako-processing 1s，2 果泥 + 概率种子）
+  'yumako-mash': { time: 1, inp: { 'yumako': 1 }, out: { 'yumako-mash': 2 } },
+  // 生物流：果泥×15 → 生物流×4（官方 bioflux 6s，需胶质，此处适配为仅果泥）
+  'bioflux': { time: 6, inp: { 'yumako-mash': 15 }, out: { 'bioflux': 4 } },
+  // 营养素：果泥×4 → 营养素×6（官方 nutrients-from-yumako-mash 2s）
+  'nutrients-from-bioflux': { time: 2, inp: { 'yumako-mash': 4 }, out: { 'nutrients': 6 } },
+  // 生物硫磺：腐败物×5 + 生物流×1 → 硫磺×2（官方 biosulfur 2s）
+  'biosulfur': { time: 2, inp: { 'spoilage': 5, 'bioflux': 1 }, out: { 'sulfur': 2 } },
+  // 农业科研包：生物流×1 + 五足虫蛋×1 → 农业科研包×1（官方 agricultural-science-pack 4s，此处适配为生物流+腐败物）
+  'agricultural-science-pack': { time: 4, inp: { 'bioflux': 1, 'spoilage': 2 }, out: { 'agricultural-science-pack': 1 } },
+  // 生化炉：钢板 + 电路板 + 齿轮 + 混凝土 → 生化炉（官方需生物质，此处适配基础资源）
+  'biochamber': { time: 10, inp: { 'steel-plate': 50, 'electronic-circuit': 50, 'iron-gear-wheel': 40, 'concrete': 20 }, out: { 'biochamber': 1 } },
   // 硫酸：硫磺 + 水 + 铁板 → 硫酸（原版 1s，数量简化）
   // 硫酸：硫磺 + 水 + 铁板 → 硫酸（原版 1s，数量简化）
   'sulfuric-acid':        { time: 1, inp: { 'iron-plate': 1, 'sulfur': 5, 'water': 100 }, out: { 'sulfuric-acid': 50 } },
@@ -332,14 +345,19 @@ const DEVICE_NAMES = {
   'chemical-plant': '化工厂',
   'oil-refinery': '炼油厂',
   'centrifuge': '离心机',
-  'electromagnetic-plant': '电磁工厂'
+  'electromagnetic-plant': '电磁工厂',
+  'biochamber': '生化炉'
 };
 // 电磁工厂专属配方（太空时代电磁产品）：超导体 / 电磁科研包 / 电磁工厂本体
 const ELECTRO_RECIPES = ['superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant'];
 function isElectroRecipe(id) { return ELECTRO_RECIPES.indexOf(id) >= 0; }
+// 生化炉专属配方（太空时代生物产品）：果泥 / 生物流 / 营养素 / 生物硫磺 / 农业科研包 / 生化炉本体
+const BIOCHAMBER_RECIPES = ['yumako-mash', 'bioflux', 'nutrients-from-bioflux', 'biosulfur', 'agricultural-science-pack', 'biochamber'];
+function isBiochamberRecipe(id) { return BIOCHAMBER_RECIPES.indexOf(id) >= 0; }
 function recipeDevice(id) {
   if (GAME_DATA.recipeDevice && GAME_DATA.recipeDevice[id]) return GAME_DATA.recipeDevice[id];
   if (isElectroRecipe(id)) return 'electromagnetic-plant';
+  if (isBiochamberRecipe(id)) return 'biochamber';
   if (isRefineryRecipe(id)) return 'oil-refinery';
   if (isChemRecipe(id)) return 'chemical-plant';
   if (isCentrifugeRecipe(id)) return 'centrifuge';

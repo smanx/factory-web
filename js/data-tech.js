@@ -40,6 +40,14 @@ const TECH_REQ = {
   'electromagnetic-science-pack': 'electromagnetics',
   'electromagnetic-plant': 'electromagnetics',
   'recycler': 'recycling',   // 回收机需「回收科技」（对齐《异星工厂》Recycling）
+  // ===== 太空时代 农业/Gleba 生物质链（统一由「农业科技」解锁）=====
+  'yumako': 'agriculture',
+  'yumako-mash': 'agriculture',
+  'bioflux': 'agriculture',
+  'nutrients': 'agriculture',
+  'spoilage': 'agriculture',
+  'agricultural-science-pack': 'agriculture',
+  'biochamber': 'agriculture',
   'speed-module': 'modules',
   'productivity-module': 'modules',
   'efficiency-module': 'advanced-material-processing',

@@ -160,6 +160,14 @@ const GAME_DATA = {
   "electromagnetic-science-pack": 200,
   "electromagnetic-plant": 20,
   "recycler": 20,
+  "yumako": 50,
+  "yumako-seed": 10,
+  "yumako-mash": 100,
+  "bioflux": 100,
+  "nutrients": 100,
+  "spoilage": 200,
+  "agricultural-science-pack": 200,
+  "biochamber": 20,
   "roboport": 10,
   "logistic-robot": 50,
   "construction-robot": 50,
@@ -249,6 +257,7 @@ const GAME_DATA = {
   "assembling-machine-3": 400,
   "electromagnetic-plant": 350,
   "recycler": 300,
+  "biochamber": 300,
   "beacon": 200,
   "wooden-chest": 100,
   "iron-chest": 200,
@@ -316,6 +325,7 @@ const GAME_DATA = {
   "assembling-machine-3": 375,
   "electromagnetic-plant": 2000,
   "recycler": 180,
+  "biochamber": 500,
   "beacon": 480,
   "lab": 60,
   "offshore-pump": 60,
@@ -407,6 +417,10 @@ const GAME_DATA = {
   },
   "recycler": {
    "craftingSpeed": 0.5,
+   "moduleSlots": 4
+  },
+  "biochamber": {
+   "craftingSpeed": 2,
    "moduleSlots": 4
   }
  },
@@ -2927,6 +2941,38 @@ const GAME_DATA = {
    "zh": "回收机",
    "en": "Recycler"
   },
+  "yumako": {
+   "zh": "玉玛果",
+   "en": "Yumako"
+  },
+  "yumako-seed": {
+   "zh": "玉玛果种子",
+   "en": "Yumako seed"
+  },
+  "yumako-mash": {
+   "zh": "玉玛果泥",
+   "en": "Yumako mash"
+  },
+  "bioflux": {
+   "zh": "生物结晶",
+   "en": "Bioflux"
+  },
+  "nutrients": {
+   "zh": "营养素",
+   "en": "Nutrients"
+  },
+  "spoilage": {
+   "zh": "变质物",
+   "en": "Spoilage"
+  },
+  "agricultural-science-pack": {
+   "zh": "农业科技包（草瓶）",
+   "en": "Agricultural science pack"
+  },
+  "biochamber": {
+   "zh": "生物室",
+   "en": "Biochamber"
+  },
   "roboport": {
    "zh": "机器人指令平台",
    "en": "Roboport"
@@ -3132,6 +3178,14 @@ const GAME_DATA = {
   "solid-fuel-heavy-oil": {
    "zh": "重油制固体燃料",
    "en": "Solid fuel from heavy oil"
+  },
+  "nutrients-from-bioflux": {
+   "zh": "生物结晶制营养素",
+   "en": "Nutrients from bioflux"
+  },
+  "biosulfur": {
+   "zh": "生物硫磺",
+   "en": "Biosulfur"
   },
   "kovarex": {
    "zh": "铀增殖处理",
@@ -3485,6 +3539,10 @@ const GAME_DATA = {
   "recycler": {
    "w": 2,
    "h": 4
+  },
+  "biochamber": {
+   "w": 3,
+   "h": 3
   }
  },
  "steamPower": {
