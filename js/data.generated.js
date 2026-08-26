@@ -153,6 +153,12 @@ const GAME_DATA = {
   "rail-chain-signal": 50,
   "sulfur": 50,
   "carbon": 50,
+  "carbon-fiber": 100,
+  "lithium": 50,
+  "lithium-plate": 100,
+  "superconductor": 200,
+  "electromagnetic-science-pack": 200,
+  "electromagnetic-plant": 20,
   "roboport": 10,
   "logistic-robot": 50,
   "construction-robot": 50,
@@ -240,6 +246,7 @@ const GAME_DATA = {
   "steel-furnace": 300,
   "assembling-machine-1": 300,
   "assembling-machine-3": 400,
+  "electromagnetic-plant": 350,
   "beacon": 200,
   "wooden-chest": 100,
   "iron-chest": 200,
@@ -305,6 +312,7 @@ const GAME_DATA = {
   "steel-furnace": 90,
   "assembling-machine-1": 75,
   "assembling-machine-3": 375,
+  "electromagnetic-plant": 2000,
   "beacon": 480,
   "lab": 60,
   "offshore-pump": 60,
@@ -389,6 +397,10 @@ const GAME_DATA = {
   "centrifuge": {
    "craftingSpeed": 1,
    "moduleSlots": 2
+  },
+  "electromagnetic-plant": {
+   "craftingSpeed": 2,
+   "moduleSlots": 5
   }
  },
  "recipe": {
@@ -1700,6 +1712,17 @@ const GAME_DATA = {
     "personal-roboport-equipment": 1
    }
   },
+  "personal-roboport-mk2-equipment": {
+   "time": 20,
+   "inp": {
+    "personal-roboport-equipment": 5,
+    "processing-unit": 50,
+    "superconductor": 50
+   },
+   "out": {
+    "personal-roboport-mk2-equipment": 1
+   }
+  },
   "passive-provider-chest": {
    "time": 0.5,
    "inp": {
@@ -2246,6 +2269,7 @@ const GAME_DATA = {
   "logistic-robot": "assembling-machine-1",
   "construction-robot": "assembling-machine-1",
   "personal-roboport-equipment": "assembling-machine-1",
+  "personal-roboport-mk2-equipment": "assembling-machine-1",
   "passive-provider-chest": "assembling-machine-1",
   "active-provider-chest": "assembling-machine-1",
   "requester-chest": "assembling-machine-1",
@@ -2855,6 +2879,30 @@ const GAME_DATA = {
    "zh": "碳",
    "en": "Carbon"
   },
+  "carbon-fiber": {
+   "zh": "碳纤维",
+   "en": "Carbon fiber"
+  },
+  "lithium": {
+   "zh": "锂",
+   "en": "Lithium"
+  },
+  "lithium-plate": {
+   "zh": "锂板",
+   "en": "Lithium plate"
+  },
+  "superconductor": {
+   "zh": "超导体",
+   "en": "Superconductor"
+  },
+  "electromagnetic-science-pack": {
+   "zh": "电磁科技包（粉瓶）",
+   "en": "Electromagnetic science pack"
+  },
+  "electromagnetic-plant": {
+   "zh": "电磁工厂",
+   "en": "Electromagnetic plant"
+  },
   "roboport": {
    "zh": "机器人指令平台",
    "en": "Roboport"
@@ -3405,6 +3453,10 @@ const GAME_DATA = {
   "land-mine": {
    "w": 1,
    "h": 1
+  },
+  "electromagnetic-plant": {
+   "w": 4,
+   "h": 4
   }
  },
  "steamPower": {

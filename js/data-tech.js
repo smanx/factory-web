@@ -32,6 +32,13 @@ const TECH_REQ = {
   'satellite': 'rocket-science',
   'rocket-control-unit': 'rocket-science',
   'rocket-fuel': 'rocket-science',
+  // ===== 太空时代 Space Age 电磁学材料链（对齐《异星工厂》Space Age，统一由「电磁学」科技解锁）=====
+  'carbon-fiber': 'electromagnetics',
+  'lithium': 'electromagnetics',
+  'lithium-plate': 'electromagnetics',
+  'superconductor': 'electromagnetics',
+  'electromagnetic-science-pack': 'electromagnetics',
+  'electromagnetic-plant': 'electromagnetics',
   'speed-module': 'modules',
   'productivity-module': 'modules',
   'efficiency-module': 'advanced-material-processing',

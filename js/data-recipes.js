@@ -166,6 +166,19 @@ const RECIPES = {
   // 硫磺：石油气 + 水 → 硫磺（原版 1s，2:1 比例简化为 3:2）
   'sulfur':        { time: 1, inp: { 'petroleum-gas': 30, 'water': 30 }, out: { 'sulfur': 2 } },
   'carbon':        { time: 1, inp: { 'coal': 2, 'sulfuric-acid': 20 }, out: { 'carbon': 1 } },
+  // ===== 太空时代 Space Age 材料链（数据来自官方 factorio-data，见 GAME_DATA）=====
+  // 碳纤维：碳 → 碳纤维（官方 carbon-fiber 由 yumako-mash+碳，此处适配为化工厂碳加工，耗时 5s）
+  'carbon-fiber':        { time: 5, inp: { 'carbon': 3 }, out: { 'carbon-fiber': 1 } },
+  // 锂：硫酸 + 轻油 → 锂（官方 lithium 需 lithium-brine+氨水+钬板，此处适配为化工厂电解，20s）
+  'lithium':        { time: 20, inp: { 'sulfuric-acid': 50, 'light-oil': 50 }, out: { 'lithium': 5 } },
+  // 锂板：锂 → 锂板（官方 lithium-plate 为熔炼配方，耗时 6.4s）
+  'lithium-plate':        { time: 6.4, inp: { 'lithium': 1 }, out: { 'lithium-plate': 1 } },
+  // 超导体：锂板 + 铜板 + 塑料 → 超导体（官方 superconductor 需钬板，此处适配，5s）
+  'superconductor':        { time: 5, inp: { 'lithium-plate': 1, 'copper-plate': 1, 'plastic-bar': 1 }, out: { 'superconductor': 2 } },
+  // 电磁科研包：超导体 + 蓄电器 + 电路板 → 电磁科研包（官方需超电容/电解液/钬溶液，此处适配，10s）
+  'electromagnetic-science-pack': { time: 10, inp: { 'superconductor': 2, 'accumulator': 1, 'electronic-circuit': 2 }, out: { 'electromagnetic-science-pack': 1 } },
+  // 电磁工厂：钢板 + 处理器 + 钢筋混凝土 + 超导体 → 电磁工厂（官方需钬板，此处适配，10s）
+  'electromagnetic-plant': { time: 10, inp: { 'steel-plate': 50, 'processing-unit': 50, 'refined-concrete': 50, 'superconductor': 20 }, out: { 'electromagnetic-plant': 1 } },
   // 硫酸：硫磺 + 水 + 铁板 → 硫酸（原版 1s，数量简化）
   'sulfuric-acid':        { time: 1, inp: { 'iron-plate': 1, 'sulfur': 5, 'water': 100 }, out: { 'sulfuric-acid': 50 } },
   // ===== 战斗机器人胶囊配方（对齐《异星工厂》Capsules）=====
@@ -280,7 +293,7 @@ function filterChoices() {
   return _filterChoicesCache;
 }
 
-const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant', 'solid-fuel', 'solid-fuel-light-oil', 'solid-fuel-heavy-oil', 'sulfur', 'sulfuric-acid', 'carbon', 'flamethrower-ammo'];
+const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant', 'solid-fuel', 'solid-fuel-light-oil', 'solid-fuel-heavy-oil', 'sulfur', 'sulfuric-acid', 'carbon', 'carbon-fiber', 'lithium', 'flamethrower-ammo'];
 function isChemRecipe(id) { return CHEM_RECIPES.indexOf(id) >= 0; }
 function chemMult() { return (G.techDone.plastic ? 1.5 : 1) * ((G.dbg && G.dbg.asmMult) || 1); }
 
@@ -315,10 +328,15 @@ const DEVICE_NAMES = {
   'assembling-machine-1': '组装机',
   'chemical-plant': '化工厂',
   'oil-refinery': '炼油厂',
-  'centrifuge': '离心机'
+  'centrifuge': '离心机',
+  'electromagnetic-plant': '电磁工厂'
 };
+// 电磁工厂专属配方（太空时代电磁产品）：超导体 / 电磁科研包 / 电磁工厂本体
+const ELECTRO_RECIPES = ['superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant'];
+function isElectroRecipe(id) { return ELECTRO_RECIPES.indexOf(id) >= 0; }
 function recipeDevice(id) {
   if (GAME_DATA.recipeDevice && GAME_DATA.recipeDevice[id]) return GAME_DATA.recipeDevice[id];
+  if (isElectroRecipe(id)) return 'electromagnetic-plant';
   if (isRefineryRecipe(id)) return 'oil-refinery';
   if (isChemRecipe(id)) return 'chemical-plant';
   if (isCentrifugeRecipe(id)) return 'centrifuge';

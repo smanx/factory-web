@@ -25,13 +25,26 @@
 
 ### 阶段一：数据层（基础，已完成 ID 对齐）
 - [x] 子模块更新 + 数据单源化
-- [ ] 在 GAME_DATA 暴露 DLC 可用物品/配方清单（供后续功能引用）
+- [x] 在 GAME_DATA 暴露 DLC 可用物品/配方清单，并把 Space Age 材料链物品/配方/设备
+  完整提取进 GAME_DATA 主表（stackSize/names/footprint/buildingHp/powerUse/deviceStats）
 
 ### 阶段二：Space Age 基础材料链（低风险，先落地）
-- [ ] 锂 / 锂板 / 超导体 / 电磁工厂（Electromagnetic plant）
-- [ ] 电磁科研包（electromagnetic-science-pack）及配套科技
+- [x] 碳纤维 / 锂 / 锂板 / 超导体 / 电磁工厂（Electromagnetic plant）材料链
+- [x] 电磁科研包（electromagnetic-science-pack）及配套「电磁学」科技
 - [ ] 太空平台产物（小行星碎块 → 碳化铁 / 氧化铁 / 金属铁）
 - [ ] 石炭 / 生物质 / 浆果（Gleba 基础链）
+
+> 已落地说明（本 PR 增量）：
+> - 物品：`carbon-fiber` / `lithium` / `lithium-plate` / `superconductor` /
+>   `electromagnetic-science-pack` / `electromagnetic-plant` 已接入，堆叠/命名均来自
+>   GAME_DATA（factorio-data 官方）。
+> - 电磁工厂设备：占地 4×4、血量 350、功耗 2000kW、制造速度 2.0、模块槽 5，
+>   全部数值来自 GAME_DATA.deviceStats/footprint/buildingHp/powerUse，未单独维护数值表。
+> - 配方适配：官方配方依赖星球专属资源（钬板/锂卤水/氨水/氟酮等），当前项目尚未实现
+>   行星系统，故将材料链配方适配为可用基础资源合成（如锂=硫酸+轻油），
+>   配方键仍在 RECIPES、产出物与耗时参考官方。
+> - 科技：新增「电磁学」科技（需 space-science+utility）统一解锁本材料链，
+>   电磁科研包由电磁工厂产出，可被研究所消耗。
 
 ### 阶段三：核心 DLC 机制（中风险）
 - [ ] **品质系统**：品质等级 + 品质模块 + 品质合成（6 级）

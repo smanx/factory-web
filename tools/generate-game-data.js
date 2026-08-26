@@ -62,6 +62,8 @@ const KEEP_MANUAL_RECIPES = new Set([
   'artillery-wagon', 'artillery-turret', 'artillery-shell', 'spidertron',
   'speed-module-3', 'productivity-module-3', 'efficiency-module-3', 'fusion-reactor-equipment',
   'cliff-explosives',
+  // ===== 太空时代 Space Age 手工适配配方（官方配方依赖星球专属资源，此处适配基础资源）=====
+  'carbon-fiber', 'lithium', 'lithium-plate', 'superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant',
 ]);
 
 // ================= 小工具 =================
@@ -375,6 +377,7 @@ const DEVICE_STATS_SOURCES = {
   'oil-refinery': ['assembling-machine', 'oil-refinery'],
   'chemical-plant': ['assembling-machine', 'chemical-plant'],
   'centrifuge': ['assembling-machine', 'centrifuge'],
+  'electromagnetic-plant': ['assembling-machine', 'electromagnetic-plant'],  // 太空时代电磁工厂：crafting_speed=2, module_slots=5
 };
 for (const [pid, [rtype, oname]] of Object.entries(DEVICE_STATS_SOURCES)) {
   const proto = raw[rtype] && raw[rtype][oname];
@@ -696,6 +699,7 @@ const FOOTPRINT_SOURCES = {
   'power-switch': ['power-switch', 'power-switch'],
   'programmable-speaker': ['programmable-speaker', 'programmable-speaker'],
   'land-mine': ['land-mine', 'land-mine'],
+  'electromagnetic-plant': ['assembling-machine', 'electromagnetic-plant'],  // 太空时代电磁工厂（space-age 装配机原型）
 };
 // 官方 selection_box 为实体占用的格数（局部坐标跨度，单位格）。
 // 占地格数 = max(1, ceil(跨度))；部分实体（机械臂/电线杆/熔炉等）官方跨度<1 或非整数，

@@ -78,6 +78,7 @@ const TECHS = {
   'armor-power-mk2': { name: '强力装甲 II', cost: { 'utility-science-pack': 120 }, desc: '解锁终极强力装甲 II 与便携聚变反应堆，个人电网获得终极动力', req: ['armor-power', 'nuclear'] },
   // ==== 空间科技（火箭发射后，用空间科学包推进终极无限科研）====
   'space-science': { name: '空间科技', cost: { 'space-science-pack': 50, 'utility-science-pack': 50 }, desc: '解锁空间科学科研体系，允许用空间科学包研究终极科技（科研速度/采矿产能等）', req: ['utility', 'rocket-science'] },
+  'electromagnetics': { name: '电磁学', cost: { 'space-science-pack': 100, 'utility-science-pack': 100 }, desc: '太空时代电磁学：解锁碳纤维/锂/锂板/超导体材料链与电磁工厂、电磁科研包（对齐《异星工厂》Space Age 电磁科学），需先建立空间科学体系', req: ['space-science'] },
   'space-research-speed': { name: '空间科研速度', cost: { 'space-science-pack': 100 }, infinite: true, desc: '无限科技：每次研究科研速度 +20%（对齐《异星工厂》Research speed 无限科技）', req: ['space-science'] },
   'space-mining-productivity': { name: '空间采矿产能', cost: { 'space-science-pack': 100 }, infinite: true, desc: '无限科技：每次研究采矿产能 +10%（对齐《异星工厂》Mining productivity 无限科技）', req: ['space-science'] },
   'weapon-damage': { name: '武器伤害', cost: { 'space-science-pack': 100, 'military-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究提升所有武器与炮塔伤害 +10%（对齐《异星工厂》Weapon damage 无限科技），让科技军备在终局持续成长', req: ['space-science', 'advanced-combat'] },

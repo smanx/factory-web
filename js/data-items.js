@@ -208,6 +208,13 @@ const ITEMS = {
   'sulfur':            { name: '硫磺', color: '#d8d020', mark: 'S', desc: '黄色粉末，由石油气+水在化工厂制得，是制造硫酸的原料' },
   'sulfuric-acid':     { name: '硫酸', color: '#c8c030', mark: 'H₂SO₄', desc: '强腐蚀性流体，由硫磺+水+铁板在化工厂制得，用于制造电池、激光炮塔与火箭卫星等高级装备' },
   'carbon': { name: '碳', color: '#2a2a2a', mark: 'C', desc: '太空时代基础碳材料，由煤+硫酸在化工厂制得，用于制造碳纤维与硬质合金等高级材料（对齐《异星工厂》Space Age）' },
+  // ===== 太空时代 Space Age 材料链（数据来自 factorio-data 官方，见 GAME_DATA）=====
+  'carbon-fiber': { name: '碳纤维', color: '#7a7a8a', mark: 'CF', desc: '太空时代复合材料，由碳在化工厂制得，用于制造先进装备与科研产物（对齐《异星工厂》Space Age）' },
+  'lithium': { name: '锂', color: '#d8d8e8', mark: 'Li', desc: '太空时代金属，由硫酸+轻油在化工厂电解制得，冶炼成锂板用于高级科研（对齐《异星工厂》Space Age）' },
+  'lithium-plate': { name: '锂板', color: '#c8c8e0', mark: 'Lp', desc: '太空时代高能材料，由锂在电炉冶炼制成，是电磁科研与高级装备的核心原料（对齐《异星工厂》Space Age）' },
+  'superconductor': { name: '超导体', color: '#5a8ae8', mark: 'Sc', desc: '太空时代导电材料，由锂板+铜板+塑料在组装机/电磁工厂制得，用于制造电磁科研包与先进电力设备（对齐《异星工厂》Space Age）' },
+  'electromagnetic-science-pack': { name: '电磁科研包', color: '#5a5ae8', mark: 'ESP', desc: '太空时代紫色科研包，由超导体+蓄电器+电路板在电磁工厂制得，解锁太空时代高级科技（对齐《异星工厂》Space Age）' },
+  'electromagnetic-plant': { name: '电磁工厂', color: '#4a7ad8', desc: '太空时代高级生产建筑（4×4，吃电力）：比组装机 III 更快、模块槽更多，专用于生产超导体等电磁产品（对齐《异星工厂》Space Age，数据来自 GAME_DATA）' },
   // ===== 物流机器人网络 =====
   'roboport':          { name: '机器人港', color: '#3a8a8a', desc: '物流机器人的基地与充电站（4×4，吃电力）。把物流机器人放入机器人港后自动调度，机器人往返供应箱与需求箱搬运货物，电量低时回到机器人港充电。可接入电路网络输出整个物流网络各物品库存总量信号（对齐《异星工厂》机器人港电路信号）' },
   'logistic-robot':    { name: '物流机器人', color: '#4aa0d0', desc: '飞行机器人，放入机器人港后自动在供应箱/需求箱之间搬运物资，消耗电量，需回港充电' },
@@ -318,7 +325,9 @@ const SMELTS = [
   { id: 'iron-plate',   inp: 'iron-ore',   time: 3.2 },
   { id: 'copper-plate', inp: 'copper-ore', time: 3.2 },
   { id: 'steel-plate',  inp: 'iron-plate', inCount: 5, time: 16 },
-  { id: 'stone-brick',  inp: 'stone',      inCount: 2, time: 3.2 }
+  { id: 'stone-brick',  inp: 'stone',      inCount: 2, time: 3.2 },
+  // 太空时代：锂板（官方 lithium-plate 熔炼配方，由电炉冶炼锂，耗时 6.4s）
+  { id: 'lithium-plate', inp: 'lithium',   time: 6.4 }
 ];
 
 // ===== 官方堆叠数据桥接（GAME_DATA 由 factorio-data 现场生成，见 tools/generate-game-data.js）=====
