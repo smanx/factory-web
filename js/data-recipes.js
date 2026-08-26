@@ -190,7 +190,7 @@ const RECIPES = {
   'kovarex':           { time: 60,  inp: { 'uranium-235': 40, 'uranium-238': 5 },                  out: { 'uranium-235': 41, 'uranium-238': 2 } },
   // 核燃料（组装机，对齐《异星工厂》：1 火箭燃料 + 1 铀-235 → 1 核燃料）：火箭燃料 + 铀-235 制成
   'nuclear-fuel':        { time: 90, inp: { 'rocket-fuel': 1, 'uranium-235': 1 }, out: { 'nuclear-fuel': 1 } },
-  // 铀燃料棒（对齐《异星工厂》：10 铁板 + 1 铀-235 + 19 铀-238 → 10 燃料棒，组装机）：反应堆专用燃料，燃尽产废燃料棒
+  // 铀燃料棒（对齐《异星工厂》：10 铁板 + 1 铀-235 + 19 铀-238 → 10 燃料棒，组装机）：反应堆专用燃料，燃尽产贫化铀燃料棒
   'uranium-fuel-cell': { time: 10,  inp: { 'iron-plate': 10, 'uranium-235': 1, 'uranium-238': 19 }, out: { 'uranium-fuel-cell': 10 } },
   // 离心机/反应堆/汽轮机（组装机制造）
   'centrifuge':        { time: 4, inp: { 'advanced-circuit': 100, 'concrete': 100, 'iron-gear': 100, 'steel-plate': 50 }, out: { 'centrifuge': 1 } },
@@ -304,8 +304,8 @@ function isRefineryRecipe(id) { return REFINERY_RECIPES[id] !== undefined; }
 // Kovarex 富集循环（铀增殖处理）由通用配方表 RECIPES['kovarex'] 承载（也由离心机执行）。
 const CENTRIFUGE_RECIPES = {
   'uranium-processing': { name: '铀浓缩处理', time: 12, inp: { 'uranium-ore': 10 }, prob: { 'uranium-235': 0.007, 'uranium-238': 0.993 } },
-  // 乏燃料后处理（对齐《异星工厂》Nuclear fuel reprocessing）：5 根废燃料棒 → 3 铀-238，60s，闭合核燃料循环
-  'used-fuel-reprocessing': { name: '乏燃料后处理', time: 60, inp: { 'used-up-uranium-fuel-cell': 5 }, out: { 'uranium-238': 3 } }
+  // 核燃料后处理（对齐《异星工厂》Nuclear fuel reprocessing）：5 根贫化铀燃料棒 → 3 铀-238，60s，闭合核燃料循环
+  'nuclear-fuel-reprocessing': { name: '核燃料后处理', time: 60, inp: { 'depleted-uranium-fuel-cell': 5 }, out: { 'uranium-238': 3 } }
 };
 function isCentrifugeRecipe(id) { return CENTRIFUGE_RECIPES[id] !== undefined || id === 'kovarex'; }
 
@@ -335,7 +335,7 @@ function itemNoRecipeReason(id) {
   if (id.indexOf('creative-') === 0 || id.indexOf('void-') === 0 || id === 'passive-power') return '测试物品，无合成配方';
   if (id === 'rocket-part') return '由火箭发射井逐件组装获得，无手工配方';
   if (id === 'space-science-pack') return '卫星发射后由火箭发射井产出，无合成配方';
-  if (id === 'used-up-uranium-fuel-cell') return '核燃料棒反应后的副产物，无法合成';
+  if (id === 'depleted-uranium-fuel-cell') return '核燃料棒反应后的副产物，无法合成';
   if (id === 'empty-barrel') return '由灌装机倒空流体桶后获得';
   if (id.indexOf('-barrel') >= 0) return '由灌装机灌装对应流体获得';
   return '无';

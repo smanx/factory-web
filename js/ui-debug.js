@@ -38,7 +38,7 @@ const DBG_GIVE_GROUPS = [
     ['advanced-circuit', 100], ['processing-unit', 100], ['engine-unit', 50], ['electric-engine', 50]
   ]],
   ['燃料', [
-    ['solid-fuel', 100], ['battery', 100], ['nuclear-fuel', 20], ['used-up-uranium-fuel-cell', 20]
+    ['solid-fuel', 100], ['battery', 100], ['nuclear-fuel', 20], ['depleted-uranium-fuel-cell', 20]
   ]],
   ['科学包', [
     ['science-pack', 50], ['green-science', 50], ['blue-science', 50],

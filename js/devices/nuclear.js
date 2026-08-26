@@ -309,7 +309,7 @@ class NuclearReactor extends Entity {
     this.temp = 0;          // 堆芯温度（显示用）
     this.burning = false;
     this.lit = false;
-    this.spent = 0;         // 已燃尽的废燃料棒（可被机械臂取走再生成铀-238）
+    this.spent = 0;         // 已燃尽的贫化铀燃料棒（可被机械臂取走再生成铀-238）
   }
   // 两侧水口（保留兼容旧布局：热交换器独立进水，反应堆本身不再耗水）
   isWaterPortCell(cx, cy) {
@@ -332,9 +332,9 @@ class NuclearReactor extends Entity {
     if (this.burnLeft <= 0 && this.fuel > 0) {
       this.fuel--;
       if (typeof trackProd === 'function') trackProd('uranium-fuel-cell', -1);
-      // 燃尽一根铀燃料棒 → 产生一根废燃料棒（核燃料循环闭环）
+      // 燃尽一根铀燃料棒 → 产生一根贫化铀燃料棒（核燃料循环闭环）
       this.spent++;
-      if (typeof trackProd === 'function') trackProd('used-up-uranium-fuel-cell', 1);
+      if (typeof trackProd === 'function') trackProd('depleted-uranium-fuel-cell', 1);
       this.burnLeft += REACTOR_FUEL_ENERGY;
     }
     if (this.burnLeft <= 0) { this.lit = false; return; }
@@ -389,28 +389,28 @@ class NuclearReactor extends Entity {
     return false;
   }
   peekItem() {
-    if (this.spent > 0) return 'used-up-uranium-fuel-cell';
+    if (this.spent > 0) return 'depleted-uranium-fuel-cell';
     return null;
   }
   takeItem() {
-    if (this.spent > 0) { this.spent--; return 'used-up-uranium-fuel-cell'; }
+    if (this.spent > 0) { this.spent--; return 'depleted-uranium-fuel-cell'; }
     return null;
   }
-  countOf(item) { return item === 'used-up-uranium-fuel-cell' ? this.spent : 0; }
+  countOf(item) { return item === 'depleted-uranium-fuel-cell' ? this.spent : 0; }
   takeItemOf(item) {
-    if (item === 'used-up-uranium-fuel-cell' && this.spent > 0) { this.spent--; return item; }
+    if (item === 'depleted-uranium-fuel-cell' && this.spent > 0) { this.spent--; return item; }
     return null;
   }
-  // 面板“取回全部”：退回废燃料棒（核燃料不参与）
+  // 面板“取回全部”：退回贫化铀燃料棒（核燃料不参与）
   takeAll() {
     const rows = [];
-    if (this.spent > 0) { rows.push(['used-up-uranium-fuel-cell', this.spent]); this.spent = 0; }
+    if (this.spent > 0) { rows.push(['depleted-uranium-fuel-cell', this.spent]); this.spent = 0; }
     return rows;
   }
   contents() {
     const list = [[this.type, 1]];
     if (this.fuel > 0) list.push(['uranium-fuel-cell', this.fuel]);
-    if (this.spent > 0) list.push(['used-up-uranium-fuel-cell', this.spent]);
+    if (this.spent > 0) list.push(['depleted-uranium-fuel-cell', this.spent]);
     return list;
   }
   serialize() {
@@ -491,21 +491,21 @@ function reactorPanelHtml(e) {
   let h = row('铀燃料棒', e.fuel > 0 ? chip('uranium-fuel-cell', e.fuel) : '<span class="dim">无</span>', 'fuel');
   if (invCount('uranium-fuel-cell') > 0)
     h += '<button data-action="fuel" data-id="uranium-fuel-cell">装入铀燃料棒 (' + invCount('uranium-fuel-cell') + ')</button>';
-  h += row('废燃料棒', '<span class="dim"></span>', 'spent');
+  h += row('贫化铀燃料棒', '<span class="dim"></span>', 'spent');
   h += '<button data-action="takeout" id="btn-spent-takeout" style="display:none"></button>';
   h += row('热量缓存', '<span class="dim"></span>', 'heat');
   h += row('堆芯温度', '', 'temp');
   h += barHtml(0);
   h += '<div class="status"></div>';
-  h += '<div class="dim">核反应堆：消耗铀燃料棒产生巨量热量，经底边橙口传给导热管，再由导热管把热量送到热交换器，由热交换器把水烧成高温蒸汽供汽轮机发电（对齐《异星工厂》核能标准链路，反应堆仅消耗铀燃料棒而非核燃料）。燃尽的燃料会留下废燃料棒，可在离心机再生为铀-238，闭合核燃料循环。核能技术解锁。</div>';
+  h += '<div class="dim">核反应堆：消耗铀燃料棒产生巨量热量，经底边橙口传给导热管，再由导热管把热量送到热交换器，由热交换器把水烧成高温蒸汽供汽轮机发电（对齐《异星工厂》核能标准链路，反应堆仅消耗铀燃料棒而非核燃料）。燃尽的燃料会留下贫化铀燃料棒，可在离心机再生为铀-238，闭合核燃料循环。核能技术解锁。</div>';
   h += '<div class="dim">💡 相邻加成：并排摆放多座反应堆，每座相邻反应堆使输出 +100%（对齐《异星工厂》）。</div>';
   h += '<div class="dim">🔗 标准接法：反应堆→(导热管)→热交换器（接水管）→(蒸汽管)→汽轮机</div>';
   return h;
 }
 function reactorPanelLive(e, api) {
   api.set('fuel', e.fuel > 0 ? chip('uranium-fuel-cell', e.fuel) : dimSpan('无'));
-  api.set('spent', e.spent > 0 ? chip('used-up-uranium-fuel-cell', e.spent) : dimSpan('无'));
-  api.toggle('#btn-spent-takeout', e.spent > 0, '取回废燃料棒 (' + e.spent + ')');
+  api.set('spent', e.spent > 0 ? chip('depleted-uranium-fuel-cell', e.spent) : dimSpan('无'));
+  api.toggle('#btn-spent-takeout', e.spent > 0, '取回贫化铀燃料棒 (' + e.spent + ')');
   api.set('heat', e.heatBuf >= 1 ? chip('heat-pipe', Math.floor(e.heatBuf)) : dimSpan('空'));
   api.set('temp', Math.round(e.temp) + ' / 1000 °C');
   api.prog(Math.min(100, e.temp / 1000 * 100));
@@ -544,16 +544,16 @@ class SteamTurbine extends Entity {
     if (this.on) this.spin += dt * 10 * (0.35 + 0.65 * this.outMult);
     if (typeof regPowerEnt === 'function') regPowerEnt(this);
   }
-  // 窄边(3)中部汽口：左/右侧中部接蒸汽管道（热交换器上边出汽口经蒸汽管送入，随 dir 旋转）
+  // 窄边(3)中部汽口：上/下两端中部各一只通用汽口，蒸汽可从任一端进入发电（对齐官方：蒸汽入口在南北两侧，随 dir 旋转）
   portFlow() {
     const covers = (n, cx, cy) => cx >= n.x && cx < n.x + n.w && cy >= n.y && cy < n.y + n.h;
-    // 默认朝向(0，宽5×高3)下左/右窄边中部的汽口，随 dir 旋转
-    const pL = rotCell(this, -1, 1);
-    const pR = rotCell(this, this.def.w, 1);
+    // 默认朝向(0，宽3×高5)下上/下两端中部汽口，随 dir 旋转
+    const pN = rotCell(this, this.def.w >> 1, -1);
+    const pS = rotCell(this, this.def.w >> 1, this.def.h);
     forEachNeighborEnt(this, n => {
-      const leftPort = covers(n, pL.x, pL.y);
-      const rightPort = covers(n, pR.x, pR.y);
-      const port = leftPort || rightPort;
+      const topPort = covers(n, pN.x, pN.y);
+      const bottomPort = covers(n, pS.x, pS.y);
+      const port = topPort || bottomPort;
       if (n instanceof Pipe) {
         if (!port) return;
         if (this.steamBuf < TURBINE_STEAM_CAP - 0.01 && (n.fluid['steam'] || 0) >= 1) {
@@ -628,19 +628,20 @@ function drawSteamTurbine(ctx, e, gx, gy, dir, alpha) {
   ctx.font = 'bold 10px system-ui';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText((e.powerOut || 0).toFixed(0) + ' kW', cx, py + h * 0.8);
-  // 窄边(3)中部汽口：左右两侧中部各一只管道出入口，蒸汽可进可出，支持多台汽轮机串接（随 dir 旋转，画在设备内部边缘）
-  const pL = rotCell(e, 0, 1);
-  const pR = rotCell(e, e.def.w - 1, 1);
+  // 窄边(3)中部汽口：上/下两端中部各一只通用汽口，蒸汽可进可出，支持多台汽轮机串接（对齐官方：蒸汽入口在南北两侧，随 dir 旋转，画在设备内部边缘）
+  const pN = rotCell(e, e.def.w >> 1, 0);
+  const pS = rotCell(e, e.def.w >> 1, e.def.h - 1);
+  const _d = e.dir | 0;
   const cD = TILE / 2 - 1; // 端口凸缘贴合设备内部边缘
-  drawPort(ctx, pL.x * TILE + TILE / 2, pL.y * TILE + TILE / 2, rotSide(2, e.dir), ITEMS['steam'].color, true, 0, cD, 'steam', 'both');
-  drawPort(ctx, pR.x * TILE + TILE / 2, pR.y * TILE + TILE / 2, rotSide(0, e.dir), ITEMS['steam'].color, true, 0, cD, 'steam', 'both');
+  drawPort(ctx, pN.x * TILE + TILE / 2, pN.y * TILE + TILE / 2, rotSide(3, _d), ITEMS['steam'].color, true, 0, cD, 'steam', 'both');
+  drawPort(ctx, pS.x * TILE + TILE / 2, pS.y * TILE + TILE / 2, rotSide(1, _d), ITEMS['steam'].color, true, 0, cD, 'steam', 'both');
   ctx.globalAlpha = 1;
 }
 function turbinePanelHtml(e) {
   return row('功率输出', '<span class="dim"></span>', 'power') +
     row('蒸汽缓存', '<span class="dim"></span>', 'steam') +
     '<div class="status"></div>' +
-    '<div class="dim">汽轮机：窄边(3)中部汽口接入高温蒸汽（来自热交换器上边(北)出汽口/蒸汽管道），以远高于蒸汽机的功率发电。核能技术解锁。</div>';
+    '<div class="dim">汽轮机：上/下两端中部汽口接入高温蒸汽（来自热交换器上边(北)出汽口/蒸汽管道），以远高于蒸汽机的功率发电。核能技术解锁。</div>';
 }
 function turbinePanelLive(e, api) {
   api.set('power', '+' + (e.powerOut || 0).toFixed(0) + ' kW');
@@ -651,7 +652,7 @@ function turbinePanelLive(e, api) {
 }
 function turbineTip(e) {
   return e.on ? '发电中 ' + (e.powerOut || 0).toFixed(0) + ' kW'
-    : e.steamBuf < 0.5 ? '无高温蒸汽（检查窄边中部汽口/管道）' : '待机';
+    : e.steamBuf < 0.5 ? '无高温蒸汽（检查上/下两端中部汽口/管道）' : '待机';
 }
 
 // ===================== 导热管 Heat Pipe（1×1）=====================

@@ -81,11 +81,11 @@ checkNum('Kovarex 消耗铀-238(5)', kov && kov.inp['uranium-238'], 5);
 checkNum('Kovarex 产出铀-235(41,净增产1)', kov && kov.out['uranium-235'], 41);
 checkNum('Kovarex 产出铀-238(2)', kov && kov.out['uranium-238'], 2);
 
-console.log('\n【乏燃料后处理（离心机）】');
-const fr = findRecipeObj('CENTRIFUGE_RECIPES', 'used-fuel-reprocessing');
-checkNum('乏燃料后处理耗时(60s)', fr && fr.time, 60);
-checkNum('乏燃料后处理消耗废棒(5)', fr && fr.inp['used-up-uranium-fuel-cell'], 5);
-checkNum('乏燃料后处理产出铀-238(3)', fr && fr.out['uranium-238'], 3);
+console.log('\n【核燃料后处理（离心机）】');
+const fr = findRecipeObj('CENTRIFUGE_RECIPES', 'nuclear-fuel-reprocessing');
+checkNum('核燃料后处理耗时(60s)', fr && fr.time, 60);
+checkNum('核燃料后处理消耗贫化铀燃料棒(5)', fr && fr.inp['depleted-uranium-fuel-cell'], 5);
+checkNum('核燃料后处理产出铀-238(3)', fr && fr.out['uranium-238'], 3);
 
 console.log('\n【核燃料棒（组装机）对齐官方】');
 const ufc = findRecipeObj('RECIPES', 'uranium-fuel-cell');

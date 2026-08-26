@@ -79,7 +79,7 @@ const specialOutput = new Set([
   'rocket-part',                  // 火箭发射井逐件组装
   'rocket',                       // 火箭发射井拼装完整火箭
   'space-science-pack',           // 火箭发射后产出
-  'used-up-uranium-fuel-cell',    // 反应堆燃尽核燃料棒
+  'depleted-uranium-fuel-cell',   // 反应堆燃尽核燃料棒
   'wood', 'raw-wood',             // 砍树获得
   'raw-fish',                     // 捕鱼获得
 ]);

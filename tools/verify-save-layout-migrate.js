@@ -110,11 +110,11 @@ for (const e of ents) {
   ok(bad === 0, `${e.type}@(${e.x},${e.y}) w=${e.w} h=${e.h} 迁移后全部格子可选中`);
 }
 
-// 迁移后实体占地符合新 def（热交换器 3×2 / 汽轮机 5×3）
+// 迁移后实体占地符合新 def（热交换器 3×2 / 汽轮机 3×5）
 const he = ents.filter(e => e.type === 'heat-exchanger');
 ok(he.length === 2 && he.every(e => e.w === 3 && e.h === 2), '旧档热交换器迁移后占地为 3×2');
 const st = ents.filter(e => e.type === 'steam-turbine');
-ok(st.length === 1 && st[0].w === 5 && st[0].h === 3, '旧档汽轮机迁移后占地为 5×3');
+ok(st.length === 1 && st[0].w === 3 && st[0].h === 5, '旧档汽轮机迁移后占地为 3×5');
 
 // 汽轮机应被下移（避开热交换器向下扩展），不再与热交换器重叠
 ok(st[0].y >= 22, '汽轮机被下移以避开热交换器新占地');

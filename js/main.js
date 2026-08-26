@@ -273,8 +273,8 @@ async function loadGame(id) {
   return true;
 }
 
-// 旧档布局迁移：本版热交换器 3×1→3×2、汽轮机 3×3→5×3（占地变大）。
-// 读旧档（布局版本 <2）时，这两个尺寸变化的设备按新尺寸占地会与相邻实体在 G.grid 中
+// 旧档布局迁移：本版热交换器 3×1→3×2、汽轮机 3×3→3×5（占地变大/方向修正）。
+// 读旧档（布局版本 <2）时，这些尺寸变化的设备按新尺寸占地会与相邻实体在 G.grid 中
 // 互相覆盖，导致“既选不中又删不掉、却仍显示在地图上”。此处在读档时把它们平移到
 // 不与相邻实体重叠的位置，保证可正常选中/拆除。仅对旧档生效，新档（已迁移）不受影响。
 const LAYOUT_MIGRATE_TYPES = { 'heat-exchanger': true, 'steam-turbine': true };
@@ -345,7 +345,7 @@ function applySave(d) {
   if (Array.isArray(d.world && d.world.explored)) G.world.explored = new Set(d.world.explored);
   else if (!G.world.explored) G.world.explored = new Set();
   if (typeof resetPowerReg === 'function') resetPowerReg();
-  // 占地尺寸兼容：此前热交换器占地 3×1、汽轮机 3×3，本版改为 3×2、5×3。
+  // 占地尺寸兼容：此前热交换器占地 3×1、汽轮机 3×3，本版改为 3×2、3×5。
   // 旧档按旧尺寸摆放，读档后按新尺寸占地会与相邻设备在 G.grid 中互相覆盖，
   // 导致实体“既选不中又删不掉、却仍显示在地图上”。故对所有版本存档读档时
   // 对这两个尺寸敏感的设备做重叠消解：仅当重叠才平移，未重叠的保持原位（幂等）。
@@ -360,6 +360,11 @@ function applySave(d) {
     addEnt(e);
   }
   G.inv = new Map(d.inv);
+  // 物品 ID 重命名迁移：官方命名贫化铀燃料棒（depleted-uranium-fuel-cell），旧档用废燃料棒（used-up-uranium-fuel-cell）
+  if (G.inv.has('used-up-uranium-fuel-cell')) {
+    G.inv.set('depleted-uranium-fuel-cell', (G.inv.get('depleted-uranium-fuel-cell') || 0) + G.inv.get('used-up-uranium-fuel-cell'));
+    G.inv.delete('used-up-uranium-fuel-cell');
+  }
   // 恢复个人物流请求（旧档无该字段则置空）
   G.logiRequest = {};
   if (d.logiRequest && typeof d.logiRequest === 'object') {

@@ -40,7 +40,7 @@ const BUILD_DEFS = {
   'fast-underground-belt': { w: 1, h: 1, solid: false },
   'express-underground-belt': { w: 1, h: 1, solid: false },
   'splitter':            { w: 1, h: 2, solid: false, rotSwap: true },
-  'steam-turbine':       { w: 5, h: 3, solid: true, rotSwap: true },
+  'steam-turbine':       { w: 3, h: 5, solid: true, rotSwap: true },
   'heat-exchanger':      { w: 3, h: 2, solid: true, rotSwap: true },
   'boiler':              { w: 3, h: 2, solid: true, rotSwap: true },
   'steam-engine':        { w: 3, h: 5, solid: true, rotSwap: true },
@@ -202,8 +202,8 @@ const rotateDefs = {
   'heat-exchanger': { w: 3, h: 2, ports: [
       ['左水口', -1, 1], ['右水口', 3, 1], ['汽口', 1, -1]
   ]},
-  'steam-turbine': { w: 5, h: 3, ports: [
-      ['左汽口', -1, 1], ['右汽口', 5, 1]
+  'steam-turbine': { w: 3, h: 5, ports: [
+      ['上汽口', 1, -1], ['下汽口', 1, 5]
   ]},
   'boiler': { w: 3, h: 2, ports: [
       ['左水口', -1, 1], ['右水口', 3, 1], ['底汽口', 1, 2]
@@ -256,7 +256,7 @@ for (const t in rotateDefs) {
 // 锅炉/蒸汽机/汽轮机/热交换器放置后按 R/V/H 不应旋转本体，而是作用于幽灵；
 // 而非固定管道口的 rotSwap 设备（分流器）放置后仍可旋转。
 console.log('\n【固定管道口建筑放置后不可旋转】');
-const fixedPipeDefs = { 'boiler': [3, 2], 'steam-engine': [3, 5], 'steam-turbine': [5, 3], 'heat-exchanger': [3, 2] };
+const fixedPipeDefs = { 'boiler': [3, 2], 'steam-engine': [3, 5], 'steam-turbine': [3, 5], 'heat-exchanger': [3, 2] };
 for (const t in fixedPipeDefs) {
   fresh();
   vm.runInContext(`(function(){

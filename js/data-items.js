@@ -20,7 +20,7 @@ const STACK_SIZES = {
   'iron-ore': 50, 'copper-ore': 50, 'coal': 50, 'stone': 50, 'uranium-ore': 50,
   'wood': 100, 'raw-fish': 100, 'stone-brick': 100, 'calcite': 50,
   'sulfur': 50, 'uranium-235': 50, 'uranium-238': 50, 'nuclear-fuel': 1, 'uranium-fuel-cell': 1,
-  'used-up-uranium-fuel-cell': 50,
+  'depleted-uranium-fuel-cell': 50,
   // 固体燃料/火箭燃料/低密度结构：对齐原版 stack_size（固体燃料 50、火箭燃料 10、低密度结构 10）
   'solid-fuel': 50, 'rocket-fuel': 10, 'low-density-structure': 10,
   // 流体桶（对齐原版 1 桶 = 1 堆叠）
@@ -227,11 +227,11 @@ const ITEMS = {
   'uranium-235': { name: '铀-235', color: '#9af07a', mark: 'U⁵', desc: '裂变同位素，由离心机处理铀矿小概率获得；是制造核燃料的关键' },
   'uranium-238': { name: '铀-238', color: '#6aa84a', mark: 'U⁸', desc: '丰度同位素，由离心机处理铀矿大量获得，是核燃料棒的主料，也可参与富集循环与铀弹制造' },
   'nuclear-fuel': { name: '核燃料', color: '#9ae06a', mark: '☢', desc: '由铀-235制造的高能燃烧燃料，可作为载具/车头/锅炉等燃烧器的最高级燃料（能量约为火箭燃料 5 倍，对齐《异星工厂》Nuclear fuel）' },
-  'uranium-fuel-cell': { name: '铀燃料棒', color: '#7ad68a', mark: '棒', desc: '核反应堆的专用燃料棒，由10铁板+1铀-235+19铀-238压制出10根（对齐《异星工厂》：反应堆消耗铀燃料棒而非核燃料）。点燃一根可持续燃烧并产出废燃料棒，可在离心机再生为铀-238，闭合核燃料循环' },
-  'used-up-uranium-fuel-cell': { name: '废燃料棒', color: '#6a7a4a', mark: '废', desc: '铀燃料棒燃尽的残棒，可在离心机再生为铀-238，闭合核燃料循环' },
-  'centrifuge':   { name: '离心机', color: '#7a8a9a', desc: '把铀矿石分离成铀-235 / 铀-238；也可进行铀增值处理（Kovarex）（2×2，吃电力）' },
+  'uranium-fuel-cell': { name: '铀燃料棒', color: '#7ad68a', mark: '棒', desc: '核反应堆的专用燃料棒，由10铁板+1铀-235+19铀-238压制出10根（对齐《异星工厂》：反应堆消耗铀燃料棒而非核燃料）。点燃一根可持续燃烧并产出贫化铀燃料棒，可在离心机再生为铀-238，闭合核燃料循环' },
+  'depleted-uranium-fuel-cell': { name: '贫化铀燃料棒', color: '#6a7a4a', mark: '废', desc: '铀燃料棒燃尽的残棒（对齐官方命名 depleted-uranium-fuel-cell），可在离心机再生为铀-238，闭合核燃料循环' },
+  'centrifuge':   { name: '离心机', color: '#7a8a9a', desc: '把铀矿石分离成铀-235 / 铀-238；也可进行铀增值处理（Kovarex）（3×3，吃电力）' },
   'nuclear-reactor': { name: '核反应堆', color: '#4a8a5a', desc: '消耗铀燃料棒产生巨量热量（5×5）。热量经导热管传导至热交换器，由热交换器把水烧成高温蒸汽，再供汽轮机发电（对齐《异星工厂》核能标准链路，反应堆仅消耗铀燃料棒而非核燃料）' },
-  'steam-turbine': { name: '汽轮机', color: '#8fb8d0', desc: '消耗高温蒸汽发电，功率远高于蒸汽机（5×3）。窄边(3)中部左右两侧各有一管道出入口，蒸汽可进可出，支持多台汽轮机串接；与热交换器上边(北)出汽口用蒸汽管对接' },
+  'steam-turbine': { name: '汽轮机', color: '#8fb8d0', desc: '消耗高温蒸汽发电，功率远高于蒸汽机（3×5，对齐官方）。上/下两端中部各有一管道出入口，蒸汽可进可出，支持多台汽轮机串接；与热交换器上边(北)出汽口用蒸汽管对接' },
   'heat-pipe':    { name: '导热管', color: '#d98a3a', desc: '核能的传热设备（1×1）：把核反应堆产生的热量传导到热交换器，可多根串联、沿路传输（对齐《异星工厂》Heat pipe）' },
   'heat-exchanger': { name: '热交换器', color: '#a06a4a', desc: '核能的水→蒸汽转换设备（3×2，对齐《异星工厂》Heat exchanger 真实结构）：下边(南)热交换接口接收导热管热量，左右两侧各一水口进水（互通，多台水口可直接对口串接），上边(北)中间出高温蒸汽供汽轮机发电' },
   // ===== 电路网络（对齐《异星工厂》Circuit Network）=====

@@ -38,7 +38,7 @@ const LAB_TIME = 1; // 研究中心每瓶科学包耗时（秒）
 // 功率数值对齐《异星工厂》(Factorio) 官方 Wiki（单位 kW）
 const POWER_PER_ENGINE = 900;   // 蒸汽机满功率输出
 const POWER_PER_TURBINE = 5800; // 汽轮机满功率输出（对齐《异星工厂》5.8MW）
-const CENTRIFUGE_POWER = 75;    // 离心机功耗 kW（对齐《异星工厂》）
+const CENTRIFUGE_POWER = 350;   // 离心机功耗 kW（对齐《异星工厂》350kW）
 // ===== 核能（对齐《异星工厂》核动力）=====
 // 核反应堆：消耗核燃料 + 水 → 产出高温蒸汽；汽轮机以远高于蒸汽机的功率发电。
 const REACTOR_POWER = 40000;    // 反应堆热功率 40MW（对齐官方）；简化：直接折算成产汽能力
@@ -67,7 +67,7 @@ const POWER_USE = {
   'pumpjack': 90,                // 抽油机
   'refinery': 420,               // 炼油厂
   'chemical-plant': 210,         // 化工厂
-  'centrifuge': 75,              // 离心机
+  'centrifuge': 350,             // 离心机（官方 energy_usage 350kW）
   'lab': 60                      // 研究中心
 };
 
@@ -105,7 +105,7 @@ function isScience(item) { return SCIENCE_PACKS.indexOf(item) >= 0; }
 const FILTER_CHOICES = ['iron-plate', 'copper-plate', 'steel-plate', 'iron-gear', 'iron-stick', 'steel-stick', 'copper-cable', 'green-circuit',
   'coal', 'solid-fuel', 'stone', 'plastic-bar', 'science-pack', 'green-science', 'blue-science', 'military-science',
   'production-science-pack', 'utility-science-pack', 'space-science-pack', 'flying-robot-frame',
-  'magazine', 'piercing-rounds', 'uranium-rounds', 'uranium-cannon-shell', 'flamethrower-ammo', 'poison-capsule', 'slowdown-capsule', 'shotgun-shell', 'piercing-shotgun-shell', 'cluster-grenade', 'logistic-robot', 'construction-robot', 'uranium-235', 'uranium-238', 'nuclear-fuel', 'uranium-fuel-cell', 'used-up-uranium-fuel-cell', 'sulfur', 'raw-fish'].concat(FLUIDS);
+  'magazine', 'piercing-rounds', 'uranium-rounds', 'uranium-cannon-shell', 'flamethrower-ammo', 'poison-capsule', 'slowdown-capsule', 'shotgun-shell', 'piercing-shotgun-shell', 'cluster-grenade', 'logistic-robot', 'construction-robot', 'uranium-235', 'uranium-238', 'nuclear-fuel', 'uranium-fuel-cell', 'depleted-uranium-fuel-cell', 'sulfur', 'raw-fish'].concat(FLUIDS);
 function techPacks(tid) { return (TECHS && TECHS[tid] && TECHS[tid].cost) || {}; }
 function techCostTotal(tid) {
   let s = 0;
