@@ -153,6 +153,7 @@ const GAME_DATA = {
   "rail-signal": 50,
   "rail-chain-signal": 50,
   "sulfur": 50,
+  "carbon": 50,
   "roboport": 10,
   "logistic-robot": 50,
   "construction-robot": 50,
@@ -1605,6 +1606,16 @@ const GAME_DATA = {
     "sulfur": 2
    }
   },
+  "carbon": {
+   "time": 1,
+   "inp": {
+    "coal": 2,
+    "sulfuric-acid": 20
+   },
+   "out": {
+    "carbon": 1
+   }
+  },
   "sulfuric-acid": {
    "time": 1,
    "inp": {
@@ -2239,6 +2250,7 @@ const GAME_DATA = {
   "explosive": "chemical-plant",
   "battery": "chemical-plant",
   "sulfur": "chemical-plant",
+  "carbon": "chemical-plant",
   "sulfuric-acid": "chemical-plant",
   "defender-capsule": "assembling-machine",
   "distractor-capsule": "assembling-machine",
@@ -2856,6 +2868,10 @@ const GAME_DATA = {
   "sulfuric-acid": {
    "zh": "硫酸",
    "en": "Sulfuric acid"
+  },
+  "carbon": {
+   "zh": "碳",
+   "en": "Carbon"
   },
   "roboport": {
    "zh": "机器人指令平台",
