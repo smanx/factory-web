@@ -802,6 +802,15 @@ class HeatExchanger extends Entity {
           else if (this.water >= 1 && pw < PIPE_CAP && this.water > 0) { n.giveItem('water'); this.water--; }
         }
         if (sPort && this.steamBuf >= 1 && n.total() < PIPE_CAP && n.giveItem('steam')) this.steamBuf--;
+      } else if (n instanceof HeatExchanger) {
+        // 两台热交换器水口直接对接：互通水位（同排对口串接，无需中间管道）
+        if (wPort) {
+          if (this.water >= n.water + 1 && n.water < WATER_CAP - 0.01) {
+            this.water--; n.water = Math.min(WATER_CAP, n.water + 1);
+          } else if (n.water >= this.water + 1 && this.water < WATER_CAP - 0.01) {
+            n.water--; this.water = Math.min(WATER_CAP, this.water + 1);
+          }
+        }
       } else if (n instanceof SteamTurbine) {
         if (sPort && this.steamBuf >= 1 && n.steamBuf < TURBINE_STEAM_CAP - 0.01) { this.steamBuf--; n.steamBuf++; }
       }
@@ -901,7 +910,7 @@ function heatExchangerPanelHtml(e) {
     row('水', '<span class="dim"></span>', 'water') +
     row('蒸汽缓存', '<span class="dim"></span>', 'steam') +
     '<div class="status"></div>' +
-    '<div class="dim">热交换器：下边(南)黄色接口接收导热管热量，左右两侧两个蓝口接水管进水（互通），上边(北)中间白口送出高温蒸汽到汽轮机。核能技术解锁。</div>' +
+    '<div class="dim">热交换器：下边(南)黄色接口接收导热管热量，左右两侧两个蓝口接水管进水（互通，多台水口可直接对口串接），上边(北)中间白口送出高温蒸汽到汽轮机。核能技术解锁。</div>' +
     '<div class="dim">🔗 标准接法：反应堆→(导热管)→热交换器（接水管）→(蒸汽管)→汽轮机</div>';
 }
 function heatExchangerPanelLive(e, api) {

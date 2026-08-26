@@ -107,7 +107,7 @@ function drawPipe(ctx, e, gx, gy, dir, alpha) {
     if (nb instanceof Pipe || nb instanceof Refinery || nb instanceof Pumpjack ||
         nb instanceof ElectricDrill ||
         nb instanceof Boiler || nb instanceof Pump || nb instanceof SteamEngine ||
-        nb instanceof ChemicalPlant || nb instanceof Assembler ||
+        nb instanceof ChemicalPlant || nb instanceof Assembler || nb instanceof HeatExchanger ||
         (nb instanceof StorageTank && (!nb.isPortCell || nb.isPortCell(gx, gy))) ||
         nb instanceof PipeToGround || nb instanceof FluidPump) {
       ctx.beginPath();
@@ -158,9 +158,11 @@ function pipePanelLive(e, api) {
 function pipeTip(e) {
   const agg = {};
   for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
-  return Object.keys(agg).length
-    ? ('流体 ' + Object.keys(agg).map(k => ITEMS[k].name + '×' + agg[k]).join('、') + '，按F拿取')
+  const allowed = FLUIDS.map(k => ITEMS[k].name).join('、');
+  const cur = Object.keys(agg).length
+    ? '当前含 ' + Object.keys(agg).map(k => ITEMS[k].name + '×' + agg[k]).join('、') + '，按F拿取'
     : '空管';
+  return '可输送流体：' + allowed + '。' + cur;
 }
 
 // ===== 注册 =====
