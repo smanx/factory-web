@@ -221,3 +221,191 @@ DEVICE_PANEL['express-splitter'] = expressSplitterPanel;
 DEVICE_PANEL['fast-splitter'] = expressSplitterPanel;
 DEVICE_DIR_ROTATE['express-underground-belt'] = true;
 DEVICE_DIR_ROTATE['express-transport-belt'] = true;
+
+// ===== 超速物流三件套（太空时代 Space Age 4 档带，对齐《异星工厂》Turbo belt）=====
+// 速度约为基础带的 4 倍（TURBO_BELT_MULT），为物流终极档（7.5 格/s）。
+
+// ===== 超速传送带 =====
+class TurboBelt extends Belt {
+  constructor(type, x, y) { super(type || 'turbo-transport-belt', x, y); }
+  speedMult() { return TURBO_BELT_MULT; }
+}
+
+// ===== 超速地下传送带 =====
+class TurboUnderground extends Underground {
+  constructor(type, x, y) { super(type || 'turbo-underground-belt', x, y); }
+  maxDist() { return TURBO_UNDERGROUND_MAX; }
+  speedMult() { return TURBO_BELT_MULT; }
+}
+
+// ===== 超速分流器 =====
+class TurboSplitter extends Splitter {
+  constructor(type, x, y) { super(type || 'turbo-splitter', x, y); }
+  speedMult() { return TURBO_BELT_MULT; }
+}
+
+// ===== 渲染（复用同档绘制，仅换深绿色配色，体现太空时代）=====
+function drawTurboBelt(ctx, e, gx, gy, dir, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  const cx = px + TILE / 2, cy = py + TILE / 2;
+  const inp = beltInputSide(e);
+  if (!beltCornerTrapezoid(e) && drawBeltCorner(ctx, e, gx, gy, dir, alpha,
+    { belt: '#2f4a33', chev: 'rgba(90,180,120,.9)' })) return;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#2f4a33';
+  ctx.strokeStyle = '#18261b';
+  ctx.lineWidth = 2;
+  function strip(angle, x0, len) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(angle);
+    rr(ctx, x0, -9, len, 18, 4);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+  const step = TILE / 2;
+  const off = ((G.time * beltSpeed() * e.speedMult() * TILE / 2) % step + step) % step;
+  strip(dir * Math.PI / 2, -TILE / 2 + 2, TILE - 4);
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(dir * Math.PI / 2);
+  ctx.beginPath();
+  ctx.rect(-TILE / 2 + 3, -TILE / 2 + 3, TILE - 6, TILE - 6);
+  ctx.clip();
+  ctx.fillStyle = 'rgba(90,180,120,.9)';
+  for (let k = -1; k <= 2; k++) {
+    const xx = -step + k * step + off;
+    tri(ctx, xx - 3, -5, xx - 3, 5, xx + 3, 0);
+    ctx.fill();
+  }
+  ctx.restore();
+  const bx = e.x - DX[dir], by = e.y - DY[dir];
+  const backBelt = entAt(bx, by);
+  const hasBackInput = backBelt instanceof Belt && backBelt.dir === dir;
+  const sideArc = (inp.length === 1 && !hasBackInput) ? [drawBeltSideMerge(ctx, e, cx, cy, dir, inp[0], step, alpha, { belt: '#2f4a33', chev: 'rgba(90,180,120,.9)' })] : [];
+
+  const exitX = DX[dir] * step, exitY = DY[dir] * step;
+  const LANE_OFF = 7;
+  const laneOffset = e.items.length ? beltLaneOffset(e, 1) : null;
+  const itemFn = (LOD && LOD.simple) ? drawItemDotLOD : drawItemDot;
+  for (const o of e.items) {
+    let ix, iy;
+    const lo = (o.lane === 1 ? 1 : -1);
+    const perpX = laneOffset ? laneOffset[0] * lo * LANE_OFF : 0;
+    const perpY = laneOffset ? laneOffset[1] * lo * LANE_OFF : 0;
+    const fromSide = inp.length > 0 && o.side !== undefined && o.side >= 0 && o.side < inp.length;
+    const a = fromSide && sideArc.length > 0 ? sideArc[o.side] : null;
+    if (a) {
+      const s = inp[o.side];
+      const srcDir = dirIndexOf(-s[0], -s[1]);
+      const turnZ = DX[srcDir] * DY[dir] - DY[srcDir] * DX[dir];
+      const rightTurn = turnZ > 0;
+      const innerLane = rightTurn ? 0 : 1;
+      const laneR = a.rC + ((o.lane === innerLane ? -1 : 1) * 5);
+      const ang = a.aE + a.d * o.pos;
+      ix = cx + a.CCx + Math.cos(ang) * laneR;
+      iy = cy + a.CCy + Math.sin(ang) * laneR;
+    } else if (o.pos < 0.5) {
+      if (fromSide) {
+        const s = inp[o.side];
+        const inX = cx + s[0] * step, inY = cy + s[1] * step;
+        const t = o.pos / 0.5;
+        ix = inX + (cx - inX) * t + perpX * t; iy = inY + (cy - inY) * t + perpY * t;
+      } else {
+        const inX = cx - DX[dir] * step, inY = cy - DY[dir] * step;
+        const t = o.pos / 0.5;
+        ix = inX + (cx - inX) * t + perpX; iy = inY + (cy - inY) * t + perpY;
+      }
+    } else {
+      const t = (o.pos - 0.5) / 0.5;
+      ix = cx + exitX * t + perpX; iy = cy + exitY * t + perpY;
+    }
+    itemFn(ctx, ix, iy, o.item);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawTurboUnderground(ctx, e, gx, gy, dir, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  const cx = px + TILE / 2, cy = py + TILE / 2;
+  const st = e.isEntrance() ? 'in' : (e.isExit() ? 'out' : 'idle');
+  const bodyCol = st === 'in' ? '#2f4a33' : st === 'out' ? '#263c2a' : '#2c3a2e';
+  const accCol = st === 'in' ? '#5ab878' : st === 'out' ? '#6ac888' : '#4a8a5a';
+  ctx.globalAlpha = alpha;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(dir * Math.PI / 2);
+  ctx.fillStyle = bodyCol;
+  rr(ctx, -14, -11, 28, 22, 5);
+  ctx.fill();
+  if (st === 'idle') ctx.setLineDash([4, 3]);
+  ctx.strokeStyle = accCol;
+  ctx.lineWidth = 2;
+  rr(ctx, -14, -11, 28, 22, 5);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle = accCol;
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-9, 0);
+  ctx.lineTo(2, 0);
+  ctx.stroke();
+  ctx.fillStyle = accCol;
+  tri(ctx, 0, -5, 0, 5, 9, 0);
+  ctx.fill();
+  if (st !== 'idle') {
+    ctx.fillStyle = accCol;
+    for (let k = 0; k < 3; k++) {
+      const t = ((G.time * 0.9) + k / 3) % 1;
+      let dx2, a;
+      if (st === 'in') { dx2 = -11 + t * 10; a = t < 0.7 ? 0.95 : Math.max(0, (1 - t) * 3.3); }
+      else { dx2 = -1 + t * 10; a = t < 0.3 ? t * 3.3 : 0.95; }
+      ctx.globalAlpha = alpha * a;
+      ctx.beginPath();
+      ctx.arc(dx2, 0, 2.4, 0, 7);
+      ctx.fill();
+    }
+    ctx.globalAlpha = alpha;
+  }
+  const n = Math.min(e.items.length + e.outItems.length, 6);
+  ctx.fillStyle = 'rgba(255,255,255,.7)';
+  for (let i = 0; i < n; i++) ctx.fillRect(-9 + i * 3.4, 8, 2.4, 2.4);
+  ctx.restore();
+  const badge = st === 'in' ? '入' : st === 'out' ? '出' : '—';
+  const bcol = st === 'in' ? '#3f8a58' : st === 'out' ? '#35784c' : '#4a6a54';
+  ctx.fillStyle = bcol;
+  rr(ctx, px + 2, py + 2, 15, 13, 3);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 9px system-ui';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(badge, px + 9.5, py + 9);
+  ctx.globalAlpha = 1;
+}
+
+function drawTurboSplitter(ctx, e, gx, gy, dir, alpha) {
+  drawSplitterBase(ctx, e, gx, gy, dir, alpha, SPLITTER_COLORS.turbo, { glow: true });
+}
+
+// ===== 面板（复用极速带/地下带/分流器面板）=====
+const turboBeltPanel = { html: beltPanelHtml, live: beltPanelLive, tip: beltTip, onAction: (a) => (typeof circuitPanelAction === 'function' ? circuitPanelAction('belt', a) : false) };
+const turboUndergroundPanel = { html: undergroundPanelHtml, live: undergroundPanelLive };
+const turboSplitterPanel = { html: splitterPanelHtml, onAction: splitterOnAction, live: splitterPanelLive };
+
+// ===== 注册 =====
+ENT_CLASSES['turbo-transport-belt'] = TurboBelt;
+ENT_CLASSES['turbo-underground-belt'] = TurboUnderground;
+ENT_CLASSES['turbo-splitter'] = TurboSplitter;
+DEVICE_RENDER['turbo-transport-belt'] = drawTurboBelt;
+DEVICE_RENDER['turbo-underground-belt'] = drawTurboUnderground;
+DEVICE_RENDER['turbo-splitter'] = drawTurboSplitter;
+DEVICE_STATUS['turbo-transport-belt'] = e => e.items.length ? 'g' : 'r';
+DEVICE_STATUS['turbo-underground-belt'] = undergroundStatusFn;
+DEVICE_STATUS['turbo-splitter'] = splitterStatusFn;
+DEVICE_PANEL['turbo-transport-belt'] = turboBeltPanel;
+DEVICE_PANEL['turbo-underground-belt'] = turboUndergroundPanel;
+DEVICE_PANEL['turbo-splitter'] = turboSplitterPanel;
+DEVICE_DIR_ROTATE['turbo-underground-belt'] = true;
+DEVICE_DIR_ROTATE['turbo-transport-belt'] = true;

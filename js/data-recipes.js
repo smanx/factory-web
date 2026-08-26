@@ -17,6 +17,12 @@ const RECIPES = {
   'splitter':        { time: 1, inp: { 'electronic-circuit': 5, 'iron-plate': 5, 'transport-belt': 4 }, out: { 'splitter': 1 } },
   'fast-splitter':        { time: 2, inp: { 'electronic-circuit': 10, 'iron-gear-wheel': 10, 'splitter': 1 }, out: { 'fast-splitter': 1 } },
   'express-splitter':        { time: 2, inp: { 'advanced-circuit': 10, 'fast-splitter': 1, 'iron-gear-wheel': 10, 'lubricant': 80 }, out: { 'express-splitter': 1 } },
+  // ===== 超速物流（太空时代 Space Age 4 档带，对齐《异星工厂》Turbo belt）=====
+  // 官方配方依赖钨板(tungsten-plate，Vulcanus 资源)，项目尚未实现行星系统，
+  // 故适配为可用高级材料（钢板+高级电路+塑料等）合成，产出物/耗时参考官方。
+  'turbo-transport-belt': { time: 0.5, inp: { 'express-transport-belt': 1, 'steel-plate': 5, 'plastic-bar': 5, 'lubricant': 20 }, out: { 'turbo-transport-belt': 1 } },
+  'turbo-underground-belt': { time: 2, inp: { 'express-underground-belt': 2, 'steel-plate': 40, 'plastic-bar': 20, 'lubricant': 40 }, out: { 'turbo-underground-belt': 2 } },
+  'turbo-splitter':        { time: 2, inp: { 'express-splitter': 1, 'steel-plate': 15, 'processing-unit': 2, 'lubricant': 80 }, out: { 'turbo-splitter': 1 } },
   'inserter':           { time: 0.5, inp: { 'iron-plate': 1, 'iron-gear-wheel': 1, 'electronic-circuit': 1 }, out: { 'inserter': 1 } },
   'burner-inserter':    { time: 0.5, inp: { 'iron-plate': 1, 'iron-gear-wheel': 1 },                  out: { 'burner-inserter': 1 } },
   'long-handed-inserter':      { time: 0.5, inp: { 'inserter': 1, 'iron-gear-wheel': 1 },                             out: { 'long-handed-inserter': 1 } },

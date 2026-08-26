@@ -4,12 +4,15 @@ const BUILD_DEFS = {
   'transport-belt':     { w: 1, h: 1, solid: false },
   'fast-transport-belt': { w: 1, h: 1, solid: false },
   'express-transport-belt': { w: 1, h: 1, solid: false },
+  'turbo-transport-belt':    { w: 1, h: 1, solid: false },
   'underground-belt':        { w: 1, h: 1, solid: false },
   'fast-underground-belt': { w: 1, h: 1, solid: false },
   'express-underground-belt': { w: 1, h: 1, solid: false },
+  'turbo-underground-belt':  { w: 1, h: 1, solid: false },
   'splitter':           { w: 1, h: 2, solid: false, rotSwap: true },
   'fast-splitter':      { w: 1, h: 2, solid: false, rotSwap: true },
   'express-splitter':   { w: 1, h: 2, solid: false, rotSwap: true },
+  'turbo-splitter':     { w: 1, h: 2, solid: false, rotSwap: true },
   'inserter':           { w: 1, h: 1, solid: true },
   'burner-inserter':    { w: 1, h: 1, solid: true },
   'small-lamp':               { w: 1, h: 1, solid: true },
@@ -105,11 +108,11 @@ const BUILD_DEFS = {
 // 数值已按 factorio-data 2.1.16 官方 max_health 逐项对齐。
 const BUILDING_HP = {
   // 传送带族（官方 transport-belt 150 / fast 160 / express 170）
-  'transport-belt': 150, 'fast-transport-belt': 160, 'express-transport-belt': 170,
-  // 分流器族（官方 splitter 170 / fast 180 / express 190）
-  'splitter': 170, 'express-splitter': 190, 'fast-splitter': 180,
-  // 地下带族（官方 underground-belt 150 / fast 160 / express 170）
-  'underground-belt': 150, 'fast-underground-belt': 160, 'express-underground-belt': 170,
+  'transport-belt': 150, 'fast-transport-belt': 160, 'express-transport-belt': 170, 'turbo-transport-belt': 170,
+  // 分流器族（官方 splitter 170 / fast 180 / express 190 / turbo 190）
+  'splitter': 170, 'express-splitter': 190, 'fast-splitter': 180, 'turbo-splitter': 190,
+  // 地下带族（官方 underground-belt 150 / fast 160 / express 170 / turbo 170）
+  'underground-belt': 150, 'fast-underground-belt': 160, 'express-underground-belt': 170, 'turbo-underground-belt': 170,
   // 机械臂族（官方 inserter 150 / fast 150 / long 160 / bulk 160 / burner 100）
   'inserter': 150, 'long-handed-inserter': 160, 'bulk-inserter': 160, 'fast-inserter': 150,
   'burner-inserter': 100,
@@ -178,7 +181,7 @@ for (const k in (GAME_DATA.buildingHp || {})) {
 //   - 泵 / 运算组合器 / 功率开关：游戏内 1×1（官方 selection_box 含管线伸出）
 // 其余建筑占地一律采用官方数据，保证与《异星工厂》一致。
 const FOOTPRINT_OVERRIDE = {
-  'splitter': { w: 1, h: 2 }, 'fast-splitter': { w: 1, h: 2 }, 'express-splitter': { w: 1, h: 2 },
+  'splitter': { w: 1, h: 2 }, 'fast-splitter': { w: 1, h: 2 }, 'express-splitter': { w: 1, h: 2 }, 'turbo-splitter': { w: 1, h: 2 },
   'offshore-pump': { w: 2, h: 1 },
   'pump': { w: 1, h: 1 },
   'arithmetic-combinator': { w: 1, h: 1 }, 'decider-combinator': { w: 1, h: 1 },

@@ -72,6 +72,8 @@ const KEEP_MANUAL_RECIPES = new Set([
   'metallic-asteroid-reprocessing', 'carbonic-asteroid-reprocessing', 'oxide-asteroid-reprocessing',
   // ===== 高架铁轨（Elevated Rails DLC，官方配方：精炼混凝土+铁轨+钢板）=====
   'rail-support', 'rail-ramp',
+  // ===== 超速物流（太空时代 Turbo belt，官方配方依赖钨板，此处适配基础资源）=====
+  'turbo-transport-belt', 'turbo-underground-belt', 'turbo-splitter',
 ]);
 
 // ================= 小工具 =================
@@ -379,9 +381,11 @@ const DEVICE_STATS_SOURCES = {
   'transport-belt': ['transport-belt', 'transport-belt'],
   'fast-transport-belt': ['transport-belt', 'fast-transport-belt'],
   'express-transport-belt': ['transport-belt', 'express-transport-belt'],
+  'turbo-transport-belt': ['transport-belt', 'turbo-transport-belt'],  // 太空时代4档带（速度7.5格/s）
   'underground-belt': ['underground-belt', 'underground-belt'],
   'fast-underground-belt': ['underground-belt', 'fast-underground-belt'],
   'express-underground-belt': ['underground-belt', 'express-underground-belt'],
+  'turbo-underground-belt': ['underground-belt', 'turbo-underground-belt'],  // 太空时代4档地下带
   'oil-refinery': ['assembling-machine', 'oil-refinery'],
   'chemical-plant': ['assembling-machine', 'chemical-plant'],
   'centrifuge': ['assembling-machine', 'centrifuge'],
@@ -410,6 +414,7 @@ for (const [pid, [rtype, oname]] of Object.entries({
   'underground-belt': ['underground-belt', 'underground-belt'],
   'fast-underground-belt': ['underground-belt', 'fast-underground-belt'],
   'express-underground-belt': ['underground-belt', 'express-underground-belt'],
+  'turbo-underground-belt': ['underground-belt', 'turbo-underground-belt'],  // 太空时代4档地下带（max_distance 11）
 })) {
   const proto = raw[rtype] && raw[rtype][oname];
   if (proto && typeof proto.max_distance === 'number') undergroundDist[pid] = proto.max_distance;
@@ -655,9 +660,11 @@ const FOOTPRINT_SOURCES = {
   'transport-belt': ['transport-belt', 'transport-belt'],
   'fast-transport-belt': ['transport-belt', 'fast-transport-belt'],
   'express-transport-belt': ['transport-belt', 'express-transport-belt'],
+  'turbo-transport-belt': ['transport-belt', 'turbo-transport-belt'],  // 太空时代4档带（速度7.5格/s）
   'underground-belt': ['underground-belt', 'underground-belt'],
   'fast-underground-belt': ['underground-belt', 'fast-underground-belt'],
   'express-underground-belt': ['underground-belt', 'express-underground-belt'],
+  'turbo-underground-belt': ['underground-belt', 'turbo-underground-belt'],  // 太空时代4档地下带
   'splitter': ['splitter', 'splitter'],
   'fast-splitter': ['splitter', 'fast-splitter'],
   'express-splitter': ['splitter', 'express-splitter'],

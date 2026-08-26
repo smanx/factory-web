@@ -287,7 +287,11 @@ const RECIPE_TECH = {
   'advanced-oxide-asteroid-crushing': 'asteroid-processing',
   'metallic-asteroid-reprocessing': 'asteroid-processing',
   'carbonic-asteroid-reprocessing': 'asteroid-processing',
-  'oxide-asteroid-reprocessing': 'asteroid-processing'
+  'oxide-asteroid-reprocessing': 'asteroid-processing',
+  // 太空时代 超速物流（Turbo belt，对齐官方 Space Age Turbo transport belt 科技）
+  'turbo-transport-belt': 'turbo-logistics',
+  'turbo-underground-belt': 'turbo-logistics',
+  'turbo-splitter': 'turbo-logistics'
 };
 // ===== 任一科技解锁（对齐《异星工厂》科技树）=====
 // 某些配方（如效率模块）既可被新拆分的进阶科技解锁，也可被旧「模块工程」科技解锁，
@@ -337,9 +341,9 @@ function recipeLockingTech(rid) {
 
 // ===== 传送带阶级链（对齐《异星工厂》物流升级）=====
 // 普通带 → 快速带 → 极速带。用于 R 旋转、覆盖升级/降级、绿图批量升级等。
-const BELT_TIERS = ['transport-belt', 'fast-transport-belt', 'express-transport-belt'];
-const UNDERGROUND_TIERS = ['underground-belt', 'fast-underground-belt', 'express-underground-belt'];
-const SPLITTER_TIERS = ['splitter', 'fast-splitter', 'express-splitter'];
+const BELT_TIERS = ['transport-belt', 'fast-transport-belt', 'express-transport-belt', 'turbo-transport-belt'];
+const UNDERGROUND_TIERS = ['underground-belt', 'fast-underground-belt', 'express-underground-belt', 'turbo-underground-belt'];
+const SPLITTER_TIERS = ['splitter', 'fast-splitter', 'express-splitter', 'turbo-splitter'];
 // 组装机阶级链（对齐《异星工厂》组装机 I/II/III）：绿图批量升级/降级也支持组装机
 const ASSEMBLER_TIERS = ['assembling-machine-1', 'assembling-machine-2', 'assembling-machine-3'];
 // 合并为“可升级物流链”查表：type -> 高一阶 / 低一阶（无则返回 null）

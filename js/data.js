@@ -9,6 +9,7 @@ let BELT_SPEED = 1.875;   // 基础传送带速度（格/秒），对齐《异�
 const BELT_SPACING = 0.125; // 物品间隔（格）0.125=1/8 格/件，每列 8 件/格；以「双车道合计」计 → 基础带双车道合计 15 items/s（每车道 7.5）
 let FAST_BELT_MULT = 2;    // 快速传送带 = 2× 基础（对齐《异星工厂》3.75 tiles/s，由 GAME_DATA 桥接）
 let EXPRESS_BELT_MULT = 3; // 极速传送带 = 3× 基础（对齐《异星工厂》5.625 tiles/s，由 GAME_DATA 桥接）
+let TURBO_BELT_MULT = 4;   // 超速传送带 = 4× 基础（太空时代 7.5 tiles/s，官方 speed 0.125，由 GAME_DATA 桥接）
 const COAL_ENERGY = 12;
 const WOOD_FUEL_ENERGY = 3;   // 木材能量密度（约煤的 1/4），对齐《异星工厂》：原木可作低效燃料
 const SOLID_FUEL_ENERGY = 50;   // 固体燃料能量密度（对齐《异星工厂》：约 4 倍于煤），可作煤的替代燃料
@@ -19,6 +20,7 @@ const DRILL_BUFFER_CAP = 20; // 采矿机矿物输出缓冲上限（对齐《异
 const UNDERGROUND_MAX = GAME_DATA.undergroundDist?.['underground-belt'] ?? 6;
 const FAST_UNDERGROUND_MAX = GAME_DATA.undergroundDist?.['fast-underground-belt'] ?? 14;
 const EXPRESS_UNDERGROUND_MAX = GAME_DATA.undergroundDist?.['express-underground-belt'] ?? 20;
+const TURBO_UNDERGROUND_MAX = GAME_DATA.undergroundDist?.['turbo-underground-belt'] ?? 11;
 const UG_CAP = 8;  // 地下带每列缓存容量（双列，两列共 2×UG_CAP 件），对齐传送带每列每格 8 件
 const DRILL_TIME = 1.0;
 // 各矿石的采矿时间（秒，采 1 个矿所需基础时间），对齐《异星工厂》每种资源独立的 mining_time：
@@ -157,9 +159,10 @@ for (const k in (GAME_DATA.powerUse || {})) {
 // ===== 官方带速桥接（deviceStats.beltSpeed 已换算为格/秒；快带/极速倍率 = 官方速度比）=====
 {
   const ds = GAME_DATA.deviceStats || {};
-  const b = ds['transport-belt'], f = ds['fast-transport-belt'], e = ds['express-transport-belt'];
+  const b = ds['transport-belt'], f = ds['fast-transport-belt'], e = ds['express-transport-belt'], t = ds['turbo-transport-belt'];
   if (b && typeof b.beltSpeed === 'number') BELT_SPEED = b.beltSpeed;
   if (b && f && b.beltSpeed > 0 && typeof f.beltSpeed === 'number') FAST_BELT_MULT = f.beltSpeed / b.beltSpeed;
   if (b && e && b.beltSpeed > 0 && typeof e.beltSpeed === 'number') EXPRESS_BELT_MULT = e.beltSpeed / b.beltSpeed;
+  if (b && t && b.beltSpeed > 0 && typeof t.beltSpeed === 'number') TURBO_BELT_MULT = t.beltSpeed / b.beltSpeed;
 }
 

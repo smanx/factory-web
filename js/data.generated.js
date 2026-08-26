@@ -59,6 +59,9 @@ const GAME_DATA = {
   "express-transport-belt": 100,
   "express-underground-belt": 50,
   "express-splitter": 50,
+  "turbo-transport-belt": 100,
+  "turbo-underground-belt": 50,
+  "turbo-splitter": 50,
   "fast-splitter": 50,
   "bulk-inserter": 50,
   "fast-inserter": 50,
@@ -247,12 +250,15 @@ const GAME_DATA = {
   "transport-belt": 150,
   "fast-transport-belt": 160,
   "express-transport-belt": 170,
+  "turbo-transport-belt": 170,
   "underground-belt": 150,
   "fast-underground-belt": 160,
   "express-underground-belt": 170,
+  "turbo-underground-belt": 170,
   "splitter": 170,
   "fast-splitter": 180,
   "express-splitter": 190,
+  "turbo-splitter": 190,
   "inserter": 150,
   "burner-inserter": 100,
   "small-lamp": 100,
@@ -404,6 +410,9 @@ const GAME_DATA = {
   "express-transport-belt": {
    "beltSpeed": 5.625
   },
+  "turbo-transport-belt": {
+   "beltSpeed": 7.5
+  },
   "underground-belt": {
    "beltSpeed": 1.875
   },
@@ -412,6 +421,9 @@ const GAME_DATA = {
   },
   "express-underground-belt": {
    "beltSpeed": 5.625
+  },
+  "turbo-underground-belt": {
+   "beltSpeed": 7.5
   },
   "oil-refinery": {
    "craftingSpeed": 1,
@@ -2563,6 +2575,18 @@ const GAME_DATA = {
    "zh": "极速分流器",
    "en": "Express splitter"
   },
+  "turbo-transport-belt": {
+   "zh": "超速传送带",
+   "en": "Turbo transport belt"
+  },
+  "turbo-underground-belt": {
+   "zh": "超速地下传送带",
+   "en": "Turbo underground belt"
+  },
+  "turbo-splitter": {
+   "zh": "超速分流器",
+   "en": "Turbo splitter"
+  },
   "fast-splitter": {
    "zh": "高速分流器",
    "en": "Fast splitter"
@@ -3353,7 +3377,8 @@ const GAME_DATA = {
  "undergroundDist": {
   "underground-belt": 5,
   "fast-underground-belt": 7,
-  "express-underground-belt": 9
+  "express-underground-belt": 9,
+  "turbo-underground-belt": 11
  },
  "renewable": {
   "solarPower": 60,
@@ -3446,6 +3471,10 @@ const GAME_DATA = {
    "w": 1,
    "h": 1
   },
+  "turbo-transport-belt": {
+   "w": 1,
+   "h": 1
+  },
   "underground-belt": {
    "w": 1,
    "h": 1
@@ -3455,6 +3484,10 @@ const GAME_DATA = {
    "h": 1
   },
   "express-underground-belt": {
+   "w": 1,
+   "h": 1
+  },
+  "turbo-underground-belt": {
    "w": 1,
    "h": 1
   },

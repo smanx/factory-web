@@ -739,12 +739,14 @@ function overwriteBeltTile(tx, ty, type, infinite) {
 const BELT_TO_UG = {
   'transport-belt': 'underground-belt',
   'fast-transport-belt': 'fast-underground-belt',
-  'express-transport-belt': 'express-underground-belt'
+  'express-transport-belt': 'express-underground-belt',
+  'turbo-transport-belt': 'turbo-underground-belt'
 };
 
 function ugMaxDist(ugType) {
   return ugType === 'fast-underground-belt' ? FAST_UNDERGROUND_MAX
     : ugType === 'express-underground-belt' ? EXPRESS_UNDERGROUND_MAX
+    : ugType === 'turbo-underground-belt' ? TURBO_UNDERGROUND_MAX
     : UNDERGROUND_MAX;
 }
 

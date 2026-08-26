@@ -196,6 +196,8 @@ const SPLITTER_COLORS = {
   normal:  { base: '#4a4436', border: '#26221d', accent: 'rgba(224,178,60,.16)', chev: 'rgba(224,178,60,.8)', running: 'rgba(143,224,143,' },
   fast:    { base: '#5a2a28', border: '#2e1815', accent: 'rgba(224,90,78,.2)',  chev: 'rgba(224,90,78,.8)',  running: 'rgba(224,90,78,' },
   express: { base: '#2e3a52', border: '#1a2434', accent: 'rgba(90,150,230,.2)', chev: 'rgba(90,150,230,.8)', running: 'rgba(110,160,235,' },
+  // 太空时代 4 档（Turbo splitter，对齐《异星工厂》Turbo splitter：深绿色系）
+  turbo:   { base: '#2f4a33', border: '#18261b', accent: 'rgba(90,180,120,.22)', chev: 'rgba(90,180,120,.8)', running: 'rgba(110,200,140,' },
 };
 
 // 统一分流器渲染（替代 drawSplitter / drawExpressSplitter / drawFastSplitter 三个重复函数）
