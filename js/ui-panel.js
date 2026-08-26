@@ -28,9 +28,18 @@ function initPanelEvents() {
     const f = ev.target.files[0];
     if (!f) return;
     const rd = new FileReader();
-    rd.onload = () => importSaveText(rd.result);
-    rd.onerror = () => toast('读取文件失败');
-    rd.readAsText(f);
+    rd.onload = async () => {
+      // 导入后重置 input 值，保证再次选择同一文件也能触发 change
+      ev.target.value = '';
+      try {
+        await importSaveFile(rd.result);
+      } catch (err) {
+        // 兜底：避免未处理的 Promise rejection 导致导入后毫无反馈
+        toast('导入失败：' + err.message);
+      }
+    };
+    rd.onerror = () => { toast('读取文件失败'); };
+    rd.readAsArrayBuffer(f);
   });
   document.getElementById('panel-close').addEventListener('click', () => closePanel());
   // 中文输入法组合状态：组合拼音期间（composition）会触发 input 事件，
@@ -85,6 +94,11 @@ function initPanelEvents() {
     }
   });
   document.getElementById('panel-body').addEventListener('click', async ev => {
+    // 供“从文件导入存档”使用：打开原生文件选择框后若立刻 renderPanel 重建
+    // innerHTML，会销毁与选择框绑定的 #imp-file 元素，导致选完文件后 change 事件
+    // 触发在已脱离 DOM 的旧元素上、不再冒泡到 panel-body，导入“毫无反应”。
+    // 故打开文件选择框后跳过本次尾部的 renderPanel(false)。
+    let skipPanelRender = false;
     // 背包两个 tab 切换：材料 / 合成
     const invTabBtn = ev.target.closest('[data-inv-tab]');
     if (invTabBtn && G.panelMode === 'inv') {
@@ -441,7 +455,17 @@ function initPanelEvents() {
         renderPanel(false);
       }
       else if (act === 'exp-save') { downloadSave(); }
-      else if (act === 'imp-save') { document.getElementById('imp-file').click(); }
+      else if (act === 'imp-save') {
+        const impFile = document.getElementById('imp-file');
+        if (!impFile) {
+          toast('导入失败：未找到文件输入框');
+        } else {
+          impFile.click();
+          // 打开原生文件选择框后，本次不再重建面板，避免销毁与选择框绑定的 #imp-file 元素
+          // （重建后 change 事件会触发在已脱离 DOM 的旧元素上，无法冒泡到 panel-body）。
+          skipPanelRender = true;
+        }
+      }
       else if (act === 'quit-to-menu') { if (typeof returnToMenu === 'function') returnToMenu(); }
       else if (act === 'craft') {
         const n = +(btn.dataset.mult || 1);
@@ -581,7 +605,9 @@ function initPanelEvents() {
         }
       }
     }
-    renderPanel(false);
+    if (!skipPanelRender) {
+      renderPanel(false);
+    }
     refreshHotbar();
   });
 }
@@ -625,7 +651,7 @@ async function htmlSettings() {
   h += '<button data-action="quick-load">读取最新存档</button>';
   h += '<button data-action="exp-save">导出存档到文件</button> ';
   h += '<button data-action="imp-save">从文件导入存档</button>';
-  h += '<input type="file" id="imp-file" accept=".json,application/json" style="display:none">';
+  h += '<input type="file" id="imp-file" accept=".json,.gz,.json.gz,application/json,application/gzip" style="display:none">';
   h += '<div class="hint">自动存档保留最近 3 个（旧的自动覆盖）；用户可自行新建/覆盖/读取/删除存档。</div>';
   h += await saveListHtml();
   h += '<div class="sec">退出</div>';

@@ -3,27 +3,100 @@
 function pad2(n) { return (n < 10 ? '0' : '') + n; }
 function escHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
-function downloadSave() {
+// ===== 存档文件 gzip 压缩 / 解压（使用浏览器原生 CompressionStream / DecompressionStream） =====
+
+// 把 ReadableStream 完整读入 Uint8Array（兼容性更稳，规避个别浏览器 Response(stream).arrayBuffer() 的已知问题）
+async function readStreamToBytes(stream) {
+  const reader = stream.getReader();
+  const chunks = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    total += value.length;
+  }
+  const buf = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) { buf.set(c, off); off += c.length; }
+  return buf;
+}
+
+// gzip 压缩：将字符串压缩为 Uint8Array
+async function gzipCompress(text) {
+  if (typeof CompressionStream === 'undefined') {
+    throw new Error('当前浏览器不支持 gzip 压缩，请升级浏览器后重试');
+  }
+  if (typeof Blob.prototype.stream !== 'function') {
+    throw new Error('当前浏览器不支持流式压缩，请升级浏览器后重试');
+  }
+  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'));
+  return await readStreamToBytes(stream);
+}
+
+// gzip 解压：将 Uint8Array 解压为字符串
+async function gzipDecompress(bytes) {
+  if (typeof DecompressionStream === 'undefined') {
+    throw new Error('当前浏览器不支持 gzip 解压，请升级浏览器后重试');
+  }
+  if (typeof Blob.prototype.stream !== 'function') {
+    throw new Error('当前浏览器不支持流式解压，请升级浏览器后重试');
+  }
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+  const buf = await readStreamToBytes(stream);
+  return new TextDecoder('utf-8').decode(buf);
+}
+
+// 判断字节数组是否为 gzip 文件（依据 gzip 魔数 1f 8b）
+function isGzip(bytes) {
+  return !!(bytes && bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b);
+}
+
+// 导出存档到文件：先 gzip 压缩再导出，减小文件体积
+async function downloadSave() {
   try {
     const data = JSON.stringify(serializeAll());
-    const blob = new Blob([data], { type: 'application/json' });
+    console.log('[存档导出] 序列化完成，文本长度 =', data.length);
+    const bytes = await gzipCompress(data);
+    console.log('[存档导出] gzip 压缩完成，压缩后大小 =', bytes.length, 'bytes');
+    const blob = new Blob([bytes], { type: 'application/gzip' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'factory-save-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json';
+    a.download = 'factory-save-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json.gz';
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1500);
-    toast('存档已导出');
+    toast('存档已导出（gzip 压缩）');
   } catch (err) {
     toast('导出失败：' + err.message);
+  }
+}
+
+// 从文件导入存档：支持 gzip 压缩文件，兼容旧的纯 JSON 文件（未压缩则直接导入）
+async function importSaveFile(arrayBuffer) {
+  try {
+    const bytes = new Uint8Array(arrayBuffer);
+    let text;
+    if (isGzip(bytes)) {
+      // 压缩文件：先解压再导入
+      text = await gzipDecompress(bytes);
+    } else {
+      // 非压缩文件：兼容旧版本直接导入
+      text = new TextDecoder('utf-8').decode(bytes);
+    }
+    importSaveText(text);
+  } catch (err) {
+    toast('导入失败：' + err.message);
   }
 }
 
 function importSaveText(text) {
   try {
     const d = JSON.parse(text);
-    if (!d || d.v !== 1) throw new Error('格式不正确');
+    if (!d || d.v !== 1) {
+      throw new Error('格式不正确');
+    }
     applySave(d);
     closePanel();
     toast('导入成功');
