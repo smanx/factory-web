@@ -28,14 +28,17 @@ class Boiler extends Entity {
     this.burning = false; // 正在耗煤+水产汽
     this.lit = false;     // 炉火可见（有燃料在烧）
   }
-  // 两端水口外侧格：左端格左边 (x-1,y+1) & 右端格右边 (x+w,y+1)（随本体固定，朝向无关）
-  isWaterPortCell(cx, cy) { return cy === this.y + this.h - 1 && (cx === this.x - 1 || cx === this.x + this.w); }
+  applyDir() { if (this.dir % 2 === 1) { this.w = this.def.h; this.h = this.def.w; } }
+  // 两端水口外侧格：左端格左边 & 右端格右边（随 dir 旋转）
+  isWaterPortCell(cx, cy) {
+    const pL = rotCell(this, -1, 1), pR = rotCell(this, this.def.w, 1);
+    return (cy === pL.y && cx === pL.x) || (cy === pR.y && cx === pR.x);
+  }
   // 抽水机直供：指向两端格子且从水口一侧射入（左端←西来水，右端←东来水）
   acceptsPumpFeed(cx, cy, fromDir) {
-    const r = this.y + this.h - 1;
-    if (cy !== r) return false;
-    if (cx === this.x) return fromDir === 0;
-    if (cx === this.x + this.w - 1) return fromDir === 2;
+    const pL = rotCell(this, -1, 1), pR = rotCell(this, this.def.w, 1);
+    if (cx === pL.x && cy === pL.y) return fromDir === rotSide(2, this.dir);
+    if (cx === pR.x && cy === pR.y) return fromDir === rotSide(0, this.dir);
     return false;
   }
   update(dt) {
@@ -73,13 +76,14 @@ class Boiler extends Entity {
     this.temp = Math.min(BOILER_TEMP_MAX, this.temp + BOILER_HEAT_RATE * dt);
   }
   // 端口物流：两端水口如一段互通管道——双向进出、水位平衡（同排锅炉对口串接、
-  // 管道一侧进另一侧出）；底边中间汽口向正对格的蒸汽机及管道排汽
+  // 管道一侧进另一侧出）；底边中间汽口向正对格的蒸汽机及管道排汽（随 dir 旋转）
   portFlow() {
     const covers = (n, cx, cy) => cx >= n.x && cx < n.x + n.w && cy >= n.y && cy < n.y + n.h;
-    const wRow = this.y + this.h - 1;
+    const pL = rotCell(this, -1, 1), pR = rotCell(this, this.def.w, 1);
+    const pS = rotCell(this, this.def.w >> 1, this.def.h);
     forEachNeighborEnt(this, n => {
-      const wPort = covers(n, this.x - 1, wRow) || covers(n, this.x + this.w, wRow);
-      const sPort = covers(n, this.x + (this.w >> 1), this.y + this.h);
+      const wPort = covers(n, pL.x, pL.y) || covers(n, pR.x, pR.y);
+      const sPort = covers(n, pS.x, pS.y);
       if (n instanceof Boiler) {
         if (wPort && n.y === this.y) {
           if (this.water >= n.water + 1 && n.water < WATER_CAP - 0.01) {
@@ -140,7 +144,7 @@ class Boiler extends Entity {
 // ===== 渲染 =====
 function drawBoiler(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
-  const w = TILE * 3, h = TILE * 2;
+  const w = TILE * e.w, h = TILE * e.h;
   ctx.globalAlpha = alpha;
   ctx.fillStyle = '#8a6a45';
   rr(ctx, px + 3, py + 3, w - 6, h - 6, 8); ctx.fill();
@@ -186,11 +190,15 @@ function drawBoiler(ctx, e, gx, gy, dir, alpha) {
   ctx.textAlign = 'right';
   ctx.fillStyle = tp >= 1 ? '#7fe08f' : tp > 0 ? '#ffd23c' : '#8a93a0';
   ctx.fillText(Math.round(e.temp || 0) + '°C', px + w - 8, py + 14);
-  // 水口（蓝，双向互通）：左右两端下格侧边；汽口（白，只出）：底边中间
-  const cx = px + TILE * 1.5, cy = py + TILE;
-  drawPort(ctx, cx, cy, 2, PORT_WATER, false, -0.5, TILE);
-  drawPort(ctx, cx, cy, 0, PORT_WATER, false, 0.5, TILE);
-  drawPort(ctx, cx, cy, 1, PORT_STEAM, true, 0, TILE);
+  // 水口（蓝，双向互通）：左右两端下格侧边；汽口（白，只出）：底边中间（随 dir 旋转）
+  const pL = rotCell(e, -1, 1), pR = rotCell(e, e.def.w, 1), pS = rotCell(e, e.def.w >> 1, e.def.h);
+  const _d = e.dir | 0;
+  // 水口朝外为 +1 格方向；左/右水口内部端朝内侧
+  const _wSide = rotSide(2, _d); // 左水口朝西
+  const _eSide = rotSide(0, _d); // 右水口朝东
+  drawPort(ctx, pL.x * TILE + TILE / 2, pL.y * TILE + TILE / 2, _wSide, PORT_WATER, false, 0, TILE);
+  drawPort(ctx, pR.x * TILE + TILE / 2, pR.y * TILE + TILE / 2, _eSide, PORT_WATER, false, 0, TILE);
+  drawPort(ctx, pS.x * TILE + TILE / 2, pS.y * TILE + TILE / 2, rotSide(1, _d), PORT_STEAM, true, 0, TILE);
   ctx.globalAlpha = 1;
 }
 

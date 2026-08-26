@@ -114,6 +114,24 @@ const PIPE_DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const SIDE_VEC = { 0: [1, 0], 1: [0, 1], 2: [-1, 0], 3: [0, -1] };
 function sideVec(side, dir) { return SIDE_VEC[(side + (dir | 0)) % 4]; }
 
+// 端口格旋转辅助：非方形设备（如热交换器/汽轮机/锅炉/蒸汽机）在建造时可旋转/翻转，
+// 其端口（进水口/出汽口等）必须随 dir 一起旋转才能保持正确朝向。
+// 传入默认朝向(0)下、相对占地(w0×h0)的局部格 (lx, ly)（可为负/越界以表示贴边的外部口），
+// 返回经实体当前 dir 旋转后的世界格 {x, y}。0东 1南 2西 3北，旋转 90° 顺时针。
+function rotCell(e, lx, ly) {
+  const d = (e.dir | 0) % 4;
+  const x = e.x, y = e.y;
+  const w0 = e.def.w, h0 = e.def.h;
+  switch (d) {
+    case 0: return { x: x + lx, y: y + ly };
+    case 1: return { x: x + (h0 - 1 - ly), y: y + lx };
+    case 2: return { x: x + (w0 - 1 - lx), y: y + (h0 - 1 - ly) };
+    default: return { x: x + ly, y: y + (w0 - 1 - lx) };
+  }
+}
+// 端口朝向(默认 side0)经 dir 旋转后的世界朝向
+function rotSide(side0, dir) { return ((side0 + (dir | 0)) % 4 + 4) % 4; }
+
 // 获取实体某一世界方向(side)整条边上的相邻实体（去重、不含自身）
 // half 可选 'L'/'R'：仅返回该边前半/后半（沿边方向），南/北边即世界左侧/右侧
 function neighborsOnSide(e, side, half) {

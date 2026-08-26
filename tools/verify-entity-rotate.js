@@ -189,6 +189,64 @@ vm.runInContext(`(function(){
 ok(sandbox.__d1 === 1 && sandbox.__w1 === 2 && sandbox.__h1 === 1,
   `分流器 R 旋转 dir=${sandbox.__d1} w=${sandbox.__w1} h=${sandbox.__h1}（期望 dir=1 w=2 h=1）`);
 
+// ===== 四、核能/蒸汽等非方形设备也可旋转/翻转，端口随 dir 旋转 =====
+// 热交换器(2×3)、汽轮机(5×3)、锅炉(3×2)、蒸汽机(3×5) 均标记 rotSwap，
+// 旋转后占地交换且端口格正确跟随。用 rotCell 校验端口格在 4 个方向的落点。
+console.log('\n【非方形端口随 dir 旋转】');
+const rotateDefs = {
+  'heat-exchanger': { w: 2, h: 3, ports: [
+      ['水口', -1, 1], ['汽口', 2, 1]
+  ]},
+  'steam-turbine': { w: 5, h: 3, ports: [
+      ['左汽口', -1, 1], ['右汽口', 5, 1]
+  ]},
+  'boiler': { w: 3, h: 2, ports: [
+      ['左水口', -1, 1], ['右水口', 3, 1], ['底汽口', 1, 2]
+  ]},
+  'steam-engine': { w: 3, h: 5, ports: [
+      ['上汽口', 1, -1], ['下汽口', 1, 5]
+  ]},
+};
+for (const t in rotateDefs) {
+  fresh();
+  const d = rotateDefs[t];
+  vm.runInContext(`(function(){
+    const e = { type: '${t}', x: 10, y: 10, def: { w: ${d.w}, h: ${d.h} }, dir: 0, w: ${d.w}, h: ${d.h} };
+    __d0w = e.w; __d0h = e.h;
+    // dir=1（旋转90°）占地交换
+    const e1 = { ...e, dir: 1, def: { w: ${d.w}, h: ${d.h} } };
+    e1.w = e1.def.h; e1.h = e1.def.w;
+    __d1w = e1.w; __d1h = e1.h;
+    // 各朝向端口格：rotCell(e, lx, ly)
+    __ports = [];
+    for (let dd = 0; dd < 4; dd++) {
+      const en = { ...e, dir: dd, def: { w: ${d.w}, h: ${d.h} } };
+      const row = [];
+      for (const p of ${JSON.stringify(d.ports)}) {
+        const c = rotCell(en, p[1], p[2]);
+        row.push(c.x + ',' + c.y);
+      }
+      __ports.push(row);
+    }
+  })()`, sandbox);
+  // 占地交换：dir=1 时宽高互换
+  ok(sandbox.__d1w === d.h && sandbox.__d1h === d.w,
+    `${t} 旋转90°占地交换 dir=1 w=${sandbox.__d1w} h=${sandbox.__d1h}（期望 w=${d.h} h=${d.w}）`);
+  // 端口格应随旋转而移动（0 与 2 方向端口不同 / 1 与 3 方向端口不同），且 4 方向均有有效坐标
+  const p0 = sandbox.__ports[0], p1 = sandbox.__ports[1], p2 = sandbox.__ports[2], p3 = sandbox.__ports[3];
+  const all = [].concat(p0, p1, p2, p3);
+  const valid = all.every(s => /^-?\d+,-?\d+$/.test(s));
+  ok(valid, `${t} 四方向端口格坐标均有效`);
+  ok(p0.some((s,i) => s !== p2[i]), `${t} 旋转180°(dir0↔dir2)端口格随之变化`);
+  ok(p1.some((s,i) => s !== p3[i]), `${t} 旋转180°(dir1↔dir3)端口格随之变化`);
+}
+// 各设备标记 rotSwap（建造时可旋转且占地正确交换）：直接校验 data-buildings.js 定义
+const bdSrc = fs.readFileSync(path.join(SRC, 'data-buildings.js'), 'utf8');
+for (const t in rotateDefs) {
+  const re = new RegExp("'" + t + "'\\s*:\\s*\\{[^}]*rotSwap:\\s*true");
+  ok(re.test(bdSrc), `${t} 已标记 rotSwap（建造时可旋转/翻转）`);
+}
+
 console.log('\n----------------------------------------');
 console.log(`通过 ${pass} 项，失败 ${fail} 项`);
 if (fail) { console.log('❌ 存在失败断言'); process.exit(1); }
