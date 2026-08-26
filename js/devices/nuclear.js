@@ -237,11 +237,11 @@ function centrifugePanelHtml(e) {
   // 铀增殖处理(Kovarex)：需「铀富集」科技解锁（对齐《异星工厂》Kovarex enrichment process）
   const kovUnlocked = recipeUnlocked('kovarex');
   const kovLock = recipeLockingTech('kovarex');
-  h += '<button data-action="rec" data-id="kovarex" class="' + (cur === 'kovarex' ? 'on' : '') + (kovUnlocked ? '' : ' locked-recipe') + '" ' + (kovUnlocked ? '' : 'disabled') + ' title="' + (kovUnlocked ? '铀增殖：持续增产铀-235' : ('🔒 需先研究「' + (kovLock ? TECHS[kovLock].name : '研究') + '」')) + '">铀增殖(Kovarex)' + (kovUnlocked ? '' : ' 🔒') + '</button>';
+  h += '<button data-action="rec" data-id="kovarex" class="' + (cur === 'kovarex' ? 'on' : '') + (kovUnlocked ? '' : ' locked-recipe') + '" ' + (kovUnlocked ? '' : 'disabled') + ' title="' + (kovUnlocked ? '铀增殖：持续增产铀-235' : ('🔒 需先研究「' + (kovLock ? TECHS[kovLock].name : '研究') + '」')) + '">铀增殖处理' + (kovUnlocked ? '' : ' 🔒') + '</button>';
   // 当前配方内容：随配方切换同步展示该配方的原料需求与产出（含概率配方）
   const curRec = e.recipeObj && e.recipeObj();
   if (curRec) {
-    const curName = CENTRIFUGE_RECIPES[cur] ? CENTRIFUGE_RECIPES[cur].name : (cur === 'kovarex' ? '铀增殖(Kovarex)' : '');
+    const curName = CENTRIFUGE_RECIPES[cur] ? CENTRIFUGE_RECIPES[cur].name : (cur === 'kovarex' ? '铀增殖处理' : '');
     h += '<div class="sec">当前配方 · ' + curName + '</div>';
     h += '<div class="dim">每周期耗时 ' + curRec.time + ' 秒</div>';
     h += '<div class="dim">所需原料：</div>';
@@ -287,7 +287,7 @@ function centrifugePanelLive(e, api) {
 function centrifugeTip(e) {
   if (!e.recipe) return '未选择配方';
   if (e.crafting) return '处理中 ' + Math.round((e.prog / e.recipeObj().time) * 100) + '%';
-  const nm = e.recipe === 'kovarex' ? '铀增殖(Kovarex)' : (CENTRIFUGE_RECIPES[e.recipe] ? CENTRIFUGE_RECIPES[e.recipe].name : '');
+  const nm = e.recipe === 'kovarex' ? '铀增殖处理' : (CENTRIFUGE_RECIPES[e.recipe] ? CENTRIFUGE_RECIPES[e.recipe].name : '');
   return (nm || '配方') + '（等待原料）';
 }
 
