@@ -13,5 +13,6 @@ test/
 
 # 依赖
 node_modules/
-package.json
-package-lock.json
+
+# 构建产物
+dist/
