@@ -376,6 +376,7 @@ const DEVICE_STATS_SOURCES = {
   'electric-mining-drill': ['mining-drill', 'electric-mining-drill'],
   'burner-mining-drill': ['mining-drill', 'burner-mining-drill'],
   'pumpjack': ['mining-drill', 'pumpjack'],
+  'big-mining-drill': ['mining-drill', 'big-mining-drill'],  // 太空时代大型采矿钻机：mining_speed=2.5, module_slots=4
   'lab': ['lab', 'lab'],
   'beacon': ['beacon', 'beacon'],
   'transport-belt': ['transport-belt', 'transport-belt'],
@@ -676,6 +677,7 @@ const FOOTPRINT_SOURCES = {
   'burner-mining-drill': ['mining-drill', 'burner-mining-drill'],
   'electric-mining-drill': ['mining-drill', 'electric-mining-drill'],
   'pumpjack': ['mining-drill', 'pumpjack'],
+  'big-mining-drill': ['mining-drill', 'big-mining-drill'],  // 太空时代大型采矿钻机：mining_speed=2.5, module_slots=4
   'stone-furnace': ['furnace', 'stone-furnace'],
   'steel-furnace': ['furnace', 'steel-furnace'],
   'electric-furnace': ['furnace', 'electric-furnace'],
@@ -742,7 +744,7 @@ for (const [pid, [rtype, oname]] of Object.entries(FOOTPRINT_SOURCES)) {
 // DLC 识别：Space Age 特色物品（电磁/锂/超导/小行星/浆果/氟酮等）、Quality 品质、高架铁轨、回收机。
 const dlcItemKeywords = ['electromagnetic','lithium','superconductor','asteroid','yumako','bioflux',
   'fluoroketone','promethium','carbon','metallic','oxide','quality','recycler','capture-robot',
-  'agricultural','lightning','thruster','cargo-pod','landing-pad','space-platform'];
+  'agricultural','lightning','thruster','cargo-pod','landing-pad','space-platform','big-mining'];
 const dlc = {
   version: '2.1.17',
   items: {},

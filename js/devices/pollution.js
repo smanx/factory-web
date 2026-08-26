@@ -52,6 +52,7 @@ const POLLUTION_FIELD_MAX_TILES = 6000; // 逐格污染场最大格数（超出�
 const POLLUTION_SOURCES = {
   'burner-mining-drill': 3,        // 热能采矿机（烧煤）
   'electric-mining-drill': 4,      // 电采矿机（采掘污染，略高于热能）
+  'big-mining-drill': 6,        // 大型采矿机（太空时代，更大更快，采掘污染更高）
   'pumpjack': 2,            // 抽油机（石油开采）
   'stone-furnace': 2,       // 石炉（烧煤冶炼）
   'steel-furnace': 4,       // 钢铁炉（烧煤冶炼，产能更高）

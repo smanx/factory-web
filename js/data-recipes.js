@@ -35,6 +35,7 @@ const RECIPES = {
   'steam-engine':        { time: 0.5, inp: { 'iron-gear-wheel': 8, 'iron-plate': 10, 'pipe': 5 }, out: { 'steam-engine': 1 } },
   'offshore-pump':        { time: 0.5, inp: { 'iron-gear-wheel': 2, 'pipe': 3 }, out: { 'offshore-pump': 1 } },
   'electric-mining-drill':        { time: 2, inp: { 'electronic-circuit': 3, 'iron-gear-wheel': 5, 'iron-plate': 10 }, out: { 'electric-mining-drill': 1 } },
+  'big-mining-drill':        { time: 30, inp: { 'electric-mining-drill': 1, 'advanced-circuit': 10, 'electric-engine-unit': 10, 'steel-plate': 50, 'refined-concrete': 20 }, out: { 'big-mining-drill': 1 } },  // 太空时代大型采矿机（官方配方依赖熔融铁/钨碳化物=行星资源，适配为基础资源；产出物/耗时 30s 参考官方）
   'electric-furnace':        { time: 5, inp: { 'advanced-circuit': 5, 'steel-plate': 10, 'stone-brick': 10 }, out: { 'electric-furnace': 1 } },
   'assembling-machine-2':        { time: 0.5, inp: { 'assembling-machine-1': 1, 'electronic-circuit': 3, 'iron-gear-wheel': 5, 'steel-plate': 2 }, out: { 'assembling-machine-2': 1 } },
   'bulk-inserter':        { time: 0.5, inp: { 'processing-unit': 1 }, out: { 'bulk-inserter': 1 } },

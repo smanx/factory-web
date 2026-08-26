@@ -52,6 +52,7 @@ const GAME_DATA = {
   "steam-engine": 10,
   "offshore-pump": 20,
   "electric-mining-drill": 50,
+  "big-mining-drill": 20,
   "electric-furnace": 50,
   "assembling-machine-2": 50,
   "fast-transport-belt": 100,
@@ -284,6 +285,7 @@ const GAME_DATA = {
   "steam-engine": 400,
   "offshore-pump": 150,
   "electric-mining-drill": 300,
+  "big-mining-drill": 300,
   "electric-furnace": 350,
   "assembling-machine-2": 350,
   "pipe": 100,
@@ -350,6 +352,7 @@ const GAME_DATA = {
   "lab": 60,
   "offshore-pump": 60,
   "electric-mining-drill": 90,
+  "big-mining-drill": 300,
   "electric-furnace": 180,
   "assembling-machine-2": 150,
   "pump": 29,
@@ -393,6 +396,10 @@ const GAME_DATA = {
   "pumpjack": {
    "moduleSlots": 2,
    "miningSpeed": 1
+  },
+  "big-mining-drill": {
+   "moduleSlots": 4,
+   "miningSpeed": 2.5
   },
   "lab": {
    "moduleSlots": 2
@@ -2547,6 +2554,10 @@ const GAME_DATA = {
    "zh": "电力采矿机",
    "en": "Electric mining drill"
   },
+  "big-mining-drill": {
+   "zh": "大型采矿机",
+   "en": "Big mining drill"
+  },
   "electric-furnace": {
    "zh": "电炉",
    "en": "Electric furnace"
@@ -3535,6 +3546,10 @@ const GAME_DATA = {
    "w": 3,
    "h": 3
   },
+  "big-mining-drill": {
+   "w": 5,
+   "h": 5
+  },
   "stone-furnace": {
    "w": 2,
    "h": 2
@@ -3798,6 +3813,9 @@ const GAME_DATA = {
    "carbon": {
     "stack": 50
    },
+   "big-mining-drill": {
+    "stack": 20
+   },
    "yumako-seed": {
     "stack": 10
    },
@@ -3875,6 +3893,7 @@ const GAME_DATA = {
    "advanced-thruster-fuel": true,
    "advanced-thruster-oxidizer": true,
    "carbon": true,
+   "big-mining-drill": true,
    "agricultural-tower": true,
    "capture-robot-rocket": true,
    "lightning-rod": true,
@@ -3901,6 +3920,7 @@ const GAME_DATA = {
    "landing-pad-unloading-bay-recycling": true,
    "asteroid-collector-recycling": true,
    "thruster-recycling": true,
+   "big-mining-drill-recycling": true,
    "agricultural-tower-recycling": true,
    "capture-robot-rocket-recycling": true,
    "lightning-rod-recycling": true,

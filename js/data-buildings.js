@@ -40,6 +40,7 @@ const BUILD_DEFS = {
   'steam-engine':       { w: 3, h: 5, solid: true, rotSwap: true },
   'offshore-pump':      { w: 2, h: 1, solid: true, rotSwap: true },
   'electric-mining-drill':     { w: 3, h: 3, solid: true },
+  'big-mining-drill':         { w: 5, h: 5, solid: true },  // 太空时代大型采矿钻机（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±2.35 → 5×5）
   'electric-furnace':   { w: 3, h: 3, solid: true },
   'assembling-machine-2': { w: 3, h: 3, solid: true },
   'pipe':               { w: 1, h: 1, solid: true },

@@ -82,6 +82,7 @@ const ITEMS = {
   'water':             { name: '水',     color: '#4a90d9', mark: 'H₂O', desc: '流体，由抽水机从水域抽取，经管道或锅炉两端水口送入锅炉烧成蒸汽' },
   'steam':             { name: '蒸汽',   color: '#c8d4dc', mark: '汽', desc: '流体，锅炉烧水所得；经锅炉出汽口或蒸汽管道送往蒸汽机发电' },
   'electric-mining-drill':    { name: '电采矿机', color: '#4f7dd3', desc: '免燃料、吃电力开采，速度快于热能采矿机（3×3）' },
+  'big-mining-drill':         { name: '大型采矿机', color: '#4f7dd3', desc: '一款更大更猛的采矿机，具备更广的采矿范围，并可开采更坚硬的矿石（5×5，mining_speed 2.5，官方 Space Age Big mining drill）' },
   'electric-furnace':  { name: '电炉',   color: '#3fa87e', desc: '免燃料、吃电力冶炼，速度更高，可出钢板（3×3）' },
   'assembling-machine-2': { name: '组装机 II', color: '#a05fd0', desc: '吃电力、速度更高的高级组装机（3×3）' },
   'fast-transport-belt': { name: '高速传送带', color: '#e05a4e', desc: '速度约为基础带的 2 倍（对齐《异星工厂》）' },

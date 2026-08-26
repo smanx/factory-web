@@ -241,6 +241,7 @@ class Inserter extends Entity {
         if (item === 'rocket-fuel') return (t.fuelRocket || 0) < 5;
         return false;
       case 'electric-mining-drill':
+      case 'big-mining-drill':
         return false;
       case 'offshore-pump':
         return false;

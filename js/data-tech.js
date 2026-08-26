@@ -50,6 +50,7 @@ const TECH_REQ = {
   'biochamber': 'agriculture',
   // ===== 太空时代 小行星碎块加工链（统一由「太空材料加工」科技解锁）=====
   'crusher': 'asteroid-processing',
+  'big-mining-drill': 'big-mining-drill',  // 大型采矿机需「大型采矿机」科技（对齐《异星工厂》Space Age Big mining drill 科技）
   'metallic-asteroid-chunk': 'asteroid-processing',
   'carbonic-asteroid-chunk': 'asteroid-processing',
   'oxide-asteroid-chunk': 'asteroid-processing',

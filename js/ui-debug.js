@@ -90,7 +90,7 @@ const DBG_GIVE_GROUPS = [
     ['bulk-inserter', 50]
   ]],
   ['生产·建筑', [
-    ['burner-mining-drill', 20], ['electric-mining-drill', 20], ['pumpjack', 20],
+    ['burner-mining-drill', 20], ['electric-mining-drill', 20], ['big-mining-drill', 20], ['pumpjack', 20],
     ['stone-furnace', 20], ['steel-furnace', 20], ['electric-furnace', 20],
     ['assembling-machine-1', 20], ['assembling-machine-2', 20], ['assembling-machine-3', 20],
     ['chemical-plant', 20], ['oil-refinery', 10], ['lab', 20], ['beacon', 10], ['radar', 10], ['rocket-silo', 5]
