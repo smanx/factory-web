@@ -67,10 +67,11 @@ class ElectricDrill extends Drill {
     this.working = true;
     drillEmit(this, dt);
     this.spin += dt * 6;
-    // 采矿速度 = 采矿科技 × 机型倍率 × 模块倍率（对齐《异星工厂》：电采矿机模块影响采矿速度）
+    // 采矿速度 = 采矿科技 × 机型倍率 × 模块倍率（对齐《异星工厂》：电采矿机模块影响采矿速度）；每采 1 个矿需累计到该矿石的采矿时间
     this.prog += dt * drillMult() * this.machMult() * this.moduleSpeedMult() * powerFactor();
-    if (this.prog >= DRILL_TIME) {
-      this.prog -= DRILL_TIME;
+    const mt = this.oreTime(); // 当前矿石的采矿时间（铁/铜/煤/石 2s、铀矿 4s，对齐《异星工厂》mining_time）
+    if (this.prog >= mt) {
+      this.prog -= mt;
       if (!G.settings.infiniteOre) consumeOre(o[0], o[1]);
       const mined = this.mineItem(o);
       // 开采铀矿每产 1 单位消耗 1 份硫酸（作为原料）

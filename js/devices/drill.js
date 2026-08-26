@@ -41,6 +41,12 @@ class Drill extends Entity {
     return null;
   }
   mineItem(o) { return oreItemId(getOreType(o[0], o[1])); }
+  // 当前矿石的采矿时间（对齐《异星工厂》每种资源独立 mining_time）：无矿时用默认 DRILL_TIME。
+  oreTime() {
+    const o = this.oreTile();
+    if (!o) return DRILL_TIME;
+    return oreMiningTime(this.mineItem(o));
+  }
   frontTargets() {
     const res = [];
     if (this.dir === 0) for (let dy = 0; dy < this.h; dy++) res.push([this.x + this.w, this.y + dy]);
@@ -91,9 +97,11 @@ class Drill extends Entity {
     }
     this.burnLeft -= dt * fuelConsumptionMult();
     this.spin += dt * 6;
-    this.prog += dt * drillMult() * 0.25; // 热能采矿机 mining-speed 0.25（对齐《异星工厂》）
-    if (this.prog >= DRILL_TIME) {
-      this.prog -= DRILL_TIME;
+    // 热能采矿机 mining-speed 0.25（对齐《异星工厂》）；每采 1 个矿需累计到该矿石的采矿时间
+    this.prog += dt * drillMult() * 0.25;
+    const mt = this.oreTime(); // 当前矿石的采矿时间（铁/铜/煤/石 2s、铀矿 4s，对齐《异星工厂》mining_time）
+    if (this.prog >= mt) {
+      this.prog -= mt;
       if (!G.settings.infiniteOre) consumeOre(o[0], o[1]);
       const mined = this.mineItem(o);
       // 采矿产能科技：按比例累积免费额外产出（对齐《异星工厂》Mining productivity）
@@ -214,7 +222,7 @@ function drawDrill(ctx, e, gx, gy, dir, alpha) {
   gearShape(ctx, 0, 0, 13, 8.5, 7);
   ctx.fill();
   ctx.restore();
-  const pct = Math.min(1, (e.prog || 0) / DRILL_TIME);
+  const pct = Math.min(1, (e.prog || 0) / e.oreTime());
   if (pct > 0 && e.working) {
     ctx.strokeStyle = 'rgba(143,224,143,.9)';
     ctx.lineWidth = 3;
@@ -323,14 +331,14 @@ function drillPanelLive(e, api) {
   if (eDrill) api.set('acid', (e.acid || 0) > 0 ? chip('sulfuric-acid', e.acid) : dimSpan('无'));
   api.set('buffer', e.buf > 0 && e.bufItem ? chip(e.bufItem, e.buf) : dimSpan('空'));
   api.toggle('#btn-drill-takeout', e.buf > 0, '取回缓存 (' + e.buf + ')');
-  api.prog(e.working ? e.prog / DRILL_TIME * 100 : 0);
-  // 开采速率：每秒产矿量 = 1 / DRILL_TIME × 采矿科技 × 机型倍率（电钻×电学、抽油×石油科技）
+  api.prog(e.working ? e.prog / e.oreTime() * 100 : 0);
+  // 开采速率：每秒产矿量 = 1 / 该矿石采矿时间 × 采矿科技 × 机型倍率（电钻×电学、抽油×石油科技）
   const rateEl = document.getElementById('mach-rate-block');
   if (rateEl) {
     const o = e.oreTile();
     const item = o ? e.mineItem(o) : (e.bufItem || null);
     const mult = e instanceof ElectricDrill ? drillMult() * e.machMult() * e.moduleSpeedMult() : drillMult() * 0.25;
-    const rec = item ? { time: DRILL_TIME, inp: {}, out: { [item]: 1 } } : null;
+    const rec = item ? { time: oreMiningTime(item), inp: {}, out: { [item]: 1 } } : null;
     const html = rec ? machRateHtml(rec, mult) : '';
     if (rateEl.innerHTML !== html) rateEl.innerHTML = html;
   }

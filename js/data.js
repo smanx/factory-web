@@ -20,6 +20,16 @@ const FAST_UNDERGROUND_MAX = 14;
 const EXPRESS_UNDERGROUND_MAX = 20;
 const UG_CAP = 8;  // 地下带每列缓存容量（双列，两列共 2×UG_CAP 件），对齐传送带每列每格 8 件
 const DRILL_TIME = 1.0;
+// 各矿石的采矿时间（秒，采 1 个矿所需基础时间），对齐《异星工厂》每种资源独立的 mining_time：
+//   普通矿（铁/铜/煤/石）mining_time = 2s；铀矿 mining_time = 4s。
+// 实际每采 1 个矿耗时 = 该矿石采矿时间 ÷ 采矿机速度（热能 0.25 / 电 0.5）。
+const ORE_MINING_TIME = {
+  'iron-ore': 2.0, 'copper-ore': 2.0, 'coal': 2.0, 'stone': 2.0, 'uranium-ore': 4.0
+};
+function oreMiningTime(item) {
+  const t = ORE_MINING_TIME[item];
+  return (typeof t === 'number' && t > 0) ? t : DRILL_TIME;
+}
 const HAND_MINE_TIME = 0.45;
 const REACH_TILES = 5.5;
 const REACH_PX = REACH_TILES * TILE;
