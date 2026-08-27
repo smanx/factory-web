@@ -14,7 +14,7 @@
 // ===== 装备件定义 =====
 // size: 占用网格的行×列；powerOut: 发电(kW)；powerCap: 储电(kJ)；speed: 速度加成(每件)；
 // laser: 个人激光防御射程(格)；night: 夜视(布尔)。
-const EQUIPMENT = {
+globalThis.EQUIPMENT = {
   'solar-panel-equipment':     { name: '个人太阳能板',      size: 1, powerOut: 30,  desc: '白天 30kW' },
   'fusion-reactor-equipment':  { name: '便携聚变反应堆',    size: 4, powerOut: 750, desc: '全天候 750kW' },
   'battery-equipment':         { name: '个人电池',          size: 2, powerCap: 10000, desc: '储电 10MJ' },

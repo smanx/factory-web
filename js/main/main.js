@@ -3,7 +3,7 @@
 // 共享空数组（避免战斗路径中每帧因 `G.enemies || []` 生成新字面量）
 const EMPTY_ARR = [];
 
-const G = {
+var G = {
   canvas: null,
   ctx: null,
   cam: { px: 0, py: 0, z: 1, pan: { x: 0, y: 0 } },
