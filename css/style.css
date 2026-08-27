@@ -461,35 +461,33 @@ html, body {
   min-height: 0;
   overflow: hidden;
 }
-/* 背包面板顶部工具栏：玩家 / 物流 / 制作 三个 tab 公用，共用一个标题，三列同时展示不切换 */
+/* 背包弹框不显示顶部标题文字（需求），仅保留右上角关闭按钮 */
+#panel.inv-wide #panel-title { display: none; }
+/* 背包面板顶部标题栏：玩家 / 物流 / 制作 三个分区连成整体、不可点击、内容靠左。
+   该标题栏同时是面板的拖拽手柄（cursor:move），按住可拖动整个弹框。 */
 .inv-tabs {
   display: flex;
-  gap: 6px;
-  padding: 8px 10px 0;
+  align-items: center;
+  padding: 8px 12px;
   background: #1a222c;
   border-bottom: 1px solid #3a4550;
   flex-shrink: 0;
+  cursor: move;
+  user-select: none;
 }
 .inv-tab {
-  flex: 1;
-  padding: 9px 10px;
-  font-size: 15px;
+  padding: 4px 14px;
+  font-size: 14px;
   font-weight: bold;
-  color: #aeb9c7;
-  background: transparent;
-  border: 1px solid transparent;
-  border-bottom: 3px solid transparent;
-  border-radius: 6px 6px 0 0;
-  cursor: pointer;
-  text-align: center;
-  transition: color .15s, background .15s;
-}
-.inv-tab:hover { color: #fff; background: rgba(255,255,255,.06); }
-.inv-tab.active {
   color: #ffe08a;
-  background: #232c38;
-  border-color: #3a4550;
-  border-bottom-color: #ffd23c;
+  cursor: default;
+  text-align: left;
+  user-select: none;
+}
+.inv-tab + .inv-tab::before {
+  content: ' / ';
+  color: #5f6b78;
+  font-weight: normal;
 }
 /* 玩家背包固定 10 列 / 行（对齐官方有限背包展示） */
 #inv-items {
@@ -502,12 +500,14 @@ html, body {
   align-items: stretch;
   flex: 1;
   min-height: 0;
+  /* 窗口过窄、整个弹框空间不足时，三列一起横向滚动，而非各自压缩/截断 */
+  overflow-x: auto;
 }
 .inv-col {
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-width: 0;
+  min-width: 340px;
   background: rgba(255, 255, 255, .02);
   border: 1px solid rgba(255, 255, 255, .06);
   border-radius: 8px;
@@ -634,18 +634,15 @@ html, body {
 .logi-switch.recycle[data-on="1"] .sw-dot { background: #ffa85c; border-color: #ffc08a; box-shadow: 0 0 6px rgba(255,168,92,.6); }
 .logi-switch:hover { border-color: #7f93ad; }
 
-/* 物流格子网格：每行 10 格 */
+/* 物流格子网格：每行 10 格，格子大小与背包一致（32px） */
 .logi-grid {
   display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  gap: 3px; margin-bottom: 4px;
-  max-width: 300px;
+  grid-template-columns: repeat(10, 32px);
+  gap: 4px; margin-bottom: 4px;
 }
 .logi-cell {
   position: relative;
-  aspect-ratio: 1 / 1;
-  width: 100%; height: auto;
-  min-width: 22px; min-height: 22px;
+  width: 32px; height: 32px;
   border-radius: 3px;
   border: 1px solid #37424f;
   background: #222b35;

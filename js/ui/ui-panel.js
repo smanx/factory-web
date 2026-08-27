@@ -101,15 +101,6 @@ function initPanelEvents() {
     // 触发在已脱离 DOM 的旧元素上、不再冒泡到 panel-body，导入“毫无反应”。
     // 故打开文件选择框后跳过本次尾部的 renderPanel(false)。
     let skipPanelRender = false;
-    // 背包顶部三个 tab（玩家 / 物流 / 制作）公用工具栏，三列同时展示，点击不切换
-    // （默认都显示）。仅作视觉高亮反馈，不重新渲染、不改变内容。
-    const invTabBtn = ev.target.closest('[data-inv-tab]');
-    if (invTabBtn && G.panelMode === 'inv') {
-      const tabs = document.querySelectorAll('#panel-body .inv-tabs .inv-tab');
-      tabs.forEach(b => b.classList.remove('active'));
-      invTabBtn.classList.add('active');
-      return;
-    }
     // 制作栏 5 个 Tab 切换（物流/生产/中间产品/太空/武器）
     const craftTabBtn = ev.target.closest('#inv-recipe-tabs .craft-tab[data-tab]');
     if (craftTabBtn && G.panelMode === 'inv') {

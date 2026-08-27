@@ -340,23 +340,22 @@ function renderPanel(full) {
   if (!G.panelMode) { document.getElementById('panel').style.display = 'none'; return; }
   const st = full ? 0 : panelScrollTop();
   if (G.panelMode === 'inv') {
-    title.textContent = '背包与手工制造';
+    // 顶部面板标题去掉（需求：不显示），仅保留右上角关闭按钮；由 CSS #panel.inv-wide #panel-title 隐藏。
+    title.textContent = '';
     const keepFocusId = document.activeElement &&
       (document.activeElement.id === 'inv-recipe-search' || document.activeElement.id === 'inv-item-search') ?
       document.activeElement.id : null;
-    // 背包面板：三个 tab（玩家 / 物流 / 制作）公用一个顶部工具栏，并共用一个标题显示名称。
-    // 三列同时显示在界面左、中、右（玩家=左、物流=中、制作=右），默认全部展示，点击 tab 不需切换。
+    // 背包面板：玩家 / 物流 / 制作 三个分区共用一个顶部标题栏（不可点击、整体连排、左对齐）。
+    // 该标题栏同时也是面板的拖拽手柄：按住可拖动整个弹框，可拖到窗口外。
     if (!_invTabCache['craft']) _invTabCache['craft'] = htmlCraft();
     const craftHtml = _invTabCache['craft'];
     const matHtml = htmlInventory();
     const logiHtml = htmlLogistics();
-    const tabBtn = (key, label) =>
-      '<button class="inv-tab" data-inv-tab="' + key + '">' + label + '</button>';
     body.innerHTML =
-      '<div class="inv-tabs">' +
-        tabBtn('inv', '🎒 玩家') +
-        tabBtn('logi', '📦 物流') +
-        tabBtn('craft', '🛠 制作') +
+      '<div class="inv-tabs" id="inv-tabs">' +
+        '<span class="inv-tab">🎒 玩家</span>' +
+        '<span class="inv-tab">📦 物流</span>' +
+        '<span class="inv-tab">🛠 制作</span>' +
       '</div>' +
       '<div class="inv-layout">' +
         '<div class="inv-col inv-col-left" id="inv-col-left">' +
@@ -371,6 +370,9 @@ function renderPanel(full) {
       '</div>';
     applyInvRecipeFilter(G.invRecipeQ);
     applyInvItemSearch(G.invItemQ);
+    // 用背包分区标题栏作为拖拽手柄（不可点击、连成整体），可拖动整个弹框到窗口外。
+    const invTabsBar = document.getElementById('inv-tabs');
+    if (invTabsBar) makeTitleDraggable(document.getElementById('panel'), invTabsBar);
     if (keepFocusId) {
       const inp = document.getElementById(keepFocusId);
       if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
@@ -1347,18 +1349,20 @@ function machRateHtml(rec, mult) {
 function statusLine(txt) {
   return '<div class="status">' + txt + '</div>';
 }
-
-
 // ===== 通用弹框标题拖拽 =====
-// 让所有带标题栏的弹框面板支持“点中标题拖动”：在屏幕内自由移动面板。
-// panel：面板根元素；head：可拖拽的标题栏元素（头部内部按钮如关闭按钮除外）。
-// 支持面板内容重建后重新传入新的 head 重新绑定；drag 状态挂在 panel 上，跨重建共享。
+// 让所有带标题栏的弹框面板支持“点中标题拖动”：可自由移动面板（允许拖到窗口外，
+// 但保留一部分可见便于拖回）。panel：面板根元素；head：可拖拽的标题栏元素
+// （头部内部按钮如关闭按钮除外）。支持面板内容重建后重新传入新的 head 重新绑定，
+// 重复调用会先解绑旧 head，再绑定新 head；drag 状态挂在 panel 上，跨重建共享。
 function makeTitleDraggable(panel, head) {
   if (!panel || !head) return;
-  panel._dragHead = head;
   if (!panel._drag) panel._drag = null;
 
-  // 将面板切换到 left/top 定位（取消 transform 居中），并按当前屏幕位置放置
+  // 若已绑定过旧 head，先解绑，再绑定新 head
+  if (panel._dragHead && panel._dragHead !== head) {
+    panel._dragHead.removeEventListener('mousedown', panel._dragDown);
+  }
+
   function snapToRect() {
     const r = panel.getBoundingClientRect();
     panel.style.left = r.left + 'px';
@@ -1376,8 +1380,10 @@ function makeTitleDraggable(panel, head) {
       const w = panel.offsetWidth, h = panel.offsetHeight;
       let nl = d.ox + (cx - d.sx);
       let nt = d.oy + (cy - d.sy);
-      nl = Math.max(0, Math.min(innerWidth - w, nl));
-      nt = Math.max(0, Math.min(innerHeight - h, nt));
+      // 允许拖出窗口，但保留 40px 可见，防止完全拖丢、无法拖回
+      const margin = 40;
+      nl = Math.max(margin - w, Math.min(innerWidth - margin, nl));
+      nt = Math.max(margin - h, Math.min(innerHeight - margin, nt));
       panel.style.left = nl + 'px';
       panel.style.top = nt + 'px';
     }
@@ -1393,7 +1399,8 @@ function makeTitleDraggable(panel, head) {
     panel._drag = { ox: r.left, oy: r.top, sx: ev.clientX, sy: ev.clientY, moved: false };
     ev.preventDefault();
   }
-  // 头部可能被重建（如 debug 面板），每次绑定到当前 head 上
+  panel._dragDown = onHeadDown;
+  panel._dragHead = head;
   head.addEventListener('mousedown', onHeadDown);
 
   // 全局 move/up 只绑定一次，复用同一份 drag 状态（挂在 panel._drag 上）
