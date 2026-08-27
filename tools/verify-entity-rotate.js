@@ -105,7 +105,7 @@ vm.runInContext(
   + load('devices/inserter.js') + '\n'
   + load('devices/burner-inserter.js') + '\n'
   + load('devices/splitter.js') + '\n'
-  + load('main-actions.js'),
+  + load('main/main-actions.js'),
   sandbox, { filename: 'main-actions.js' }
 );
 
@@ -246,7 +246,7 @@ for (const t in rotateDefs) {
   ok(p1.some((s,i) => s !== p3[i]), `${t} 旋转180°(dir1↔dir3)端口格随之变化`);
 }
 // 各设备标记 rotSwap（建造时可旋转且占地正确交换）：直接校验 data-buildings.js 定义
-const bdSrc = fs.readFileSync(path.join(SRC, 'data-buildings.js'), 'utf8');
+const bdSrc = fs.readFileSync(path.join(SRC, 'data', 'data-buildings.js'), 'utf8');
 for (const t in rotateDefs) {
   const re = new RegExp("'" + t + "'\\s*:\\s*\\{[^}]*rotSwap:\\s*true");
   ok(re.test(bdSrc), `${t} 已标记 rotSwap（建造时可旋转/翻转）`);

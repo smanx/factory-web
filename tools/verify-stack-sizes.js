@@ -20,7 +20,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const DATA_DIR = path.join(__dirname, '..', 'js');
+const DATA_DIR = path.join(__dirname, '..', 'js', 'data');
 // 按浏览器加载顺序：data.generated.js → data.js → data-items.js（见 index.html）
 const gd = fs.readFileSync(path.join(DATA_DIR, 'data.generated.js'), 'utf8');
 const datajs = fs.readFileSync(path.join(DATA_DIR, 'data.js'), 'utf8');

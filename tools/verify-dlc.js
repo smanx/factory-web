@@ -4,13 +4,13 @@
 // 且与官方数值一致；电磁工厂设备数据正确。
 const fs = require('fs'), vm = require('vm');
 const ROOT = __dirname + '/..';
-const code = fs.readFileSync(ROOT + '/js/data.generated.js', 'utf8')
-  + fs.readFileSync(ROOT + '/js/data.js', 'utf8')
-  + fs.readFileSync(ROOT + '/js/data-items.js', 'utf8')
-  + fs.readFileSync(ROOT + '/js/data-recipes.js', 'utf8')
-  + fs.readFileSync(ROOT + '/js/data-buildings.js', 'utf8')
-  + fs.readFileSync(ROOT + '/js/data-tech.js', 'utf8')
-  + fs.readFileSync(ROOT + '/js/data-tech-tree.js', 'utf8')
+const code = fs.readFileSync(ROOT + '/js/data/data.generated.js', 'utf8')
+  + fs.readFileSync(ROOT + '/js/data/data.js', 'utf8')
+  + fs.readFileSync(ROOT + '/js/data/data-items.js', 'utf8')
+  + fs.readFileSync(ROOT + '/js/data/data-recipes.js', 'utf8')
+  + fs.readFileSync(ROOT + '/js/data/data-buildings.js', 'utf8')
+  + fs.readFileSync(ROOT + '/js/data/data-tech.js', 'utf8')
+  + fs.readFileSync(ROOT + '/js/data/data-tech-tree.js', 'utf8')
   + '\n;globalThis.__GAME_DATA=GAME_DATA;globalThis.__ITEMS=ITEMS;globalThis.__RECIPES=RECIPES;'
   + 'globalThis.__TECHS=TECHS;globalThis.__SMELTS=SMELTS;globalThis.__recipeDevice=recipeDevice;'
   + 'globalThis.__itemTechReq=itemTechReq;globalThis.__itemRecipeText=itemRecipeText;globalThis.__recipeTechReq=recipeTechReq;';
@@ -710,7 +710,7 @@ ok(!!TS['fulgora'], '「富尔戈拉电磁」科技已注册');
 console.log('\n【行星系统 PLANETS（Space Age 五行星）】');
 // 在隔离 vm 中加载 world-config.js，校验行星定义（定义/资源画像/地表色调）
 (function () {
-  const wcCode = fs.readFileSync(ROOT + '/js/world-config.js', 'utf8');
+  const wcCode = fs.readFileSync(ROOT + '/js/game/world-config.js', 'utf8');
   const ctx2 = { console, localStorage: { getItem: () => null, setItem: () => {} }, Math, Date, Infinity, NaN };
   ctx2.window = ctx2; ctx2.G = { settings: { language: 'zh' }, worldConfig: { planet: 'nauvis', seed: 1 } };
   ctx2.globalThis = ctx2;
@@ -743,11 +743,11 @@ console.log('\n【行星系统 PLANETS（Space Age 五行星）】');
 console.log('\n【火箭货舱太空货运 ROCKET CARGO】');
 // 在隔离 vm 中加载 rocket.js 依赖，校验 cargo 排除逻辑与货舱序列化
 (function () {
-  const code = fs.readFileSync(ROOT + '/js/data.generated.js', 'utf8')
-    + '\n' + fs.readFileSync(ROOT + '/js/data.js', 'utf8')
-    + '\n' + fs.readFileSync(ROOT + '/js/data-items.js', 'utf8')
-    + '\n' + fs.readFileSync(ROOT + '/js/data-recipes.js', 'utf8')
-    + '\n' + fs.readFileSync(ROOT + '/js/data-tech.js', 'utf8');
+  const code = fs.readFileSync(ROOT + '/js/data/data.generated.js', 'utf8')
+    + '\n' + fs.readFileSync(ROOT + '/js/data/data.js', 'utf8')
+    + '\n' + fs.readFileSync(ROOT + '/js/data/data-items.js', 'utf8')
+    + '\n' + fs.readFileSync(ROOT + '/js/data/data-recipes.js', 'utf8')
+    + '\n' + fs.readFileSync(ROOT + '/js/data/data-tech.js', 'utf8');
   const ctx3 = { console, Math, JSON, Set, Map, Array, Object, String, Number, Boolean, Date, RegExp, parseInt, parseFloat };
   ctx3.G = { techDone: {}, inv: new Map(), ents: {}, power: { sat: 100 } };
   ctx3.global = ctx3;

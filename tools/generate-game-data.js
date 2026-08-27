@@ -18,7 +18,7 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
-const OUT_FILE = path.join(ROOT, 'js', 'data.generated.js');
+const OUT_FILE = path.join(ROOT, 'js', 'data', 'data.generated.js');
 const DATA_DIR = path.join(ROOT, 'data');
 const REPORT = process.argv.includes('--report');
 
@@ -96,12 +96,12 @@ function extractObjectKeys(file, objName) {
   return keys;
 }
 
-const projectItems = extractObjectKeys(path.join(ROOT, 'js', 'data-items.js'), 'ITEMS');
-const projectRecipes = extractObjectKeys(path.join(ROOT, 'js', 'data-recipes.js'), 'RECIPES');
-const projectBuildings = extractObjectKeys(path.join(ROOT, 'js', 'data-buildings.js'), 'BUILD_DEFS');
+const projectItems = extractObjectKeys(path.join(ROOT, 'js', 'data', 'data-items.js'), 'ITEMS');
+const projectRecipes = extractObjectKeys(path.join(ROOT, 'js', 'data', 'data-recipes.js'), 'RECIPES');
+const projectBuildings = extractObjectKeys(path.join(ROOT, 'js', 'data', 'data-buildings.js'), 'BUILD_DEFS');
 // 独立配方表（炼油厂/离心机面板专用，不在 RECIPES 中）
-const projectRefRecipes = extractObjectKeys(path.join(ROOT, 'js', 'data-recipes.js'), 'REFINERY_RECIPES');
-const projectCentRecipes = extractObjectKeys(path.join(ROOT, 'js', 'data-recipes.js'), 'CENTRIFUGE_RECIPES');
+const projectRefRecipes = extractObjectKeys(path.join(ROOT, 'js', 'data', 'data-recipes.js'), 'REFINERY_RECIPES');
+const projectCentRecipes = extractObjectKeys(path.join(ROOT, 'js', 'data', 'data-recipes.js'), 'CENTRIFUGE_RECIPES');
 
 // 官方全部原型名 → 原型（用于查找物品/实体）
 const officialNames = new Map();
@@ -1062,7 +1062,7 @@ function report() {
 
   console.log('\n==== 与手工表差异 ====');
   // 对比 stackSize
-  const s = fs.readFileSync(path.join(ROOT, 'js', 'data-items.js'), 'utf8');
+  const s = fs.readFileSync(path.join(ROOT, 'js', 'data', 'data-items.js'), 'utf8');
   const sm = /const STACK_SIZES = \{([\s\S]*?)\n\};/.exec(s);
   const manualStack = {};
   if (sm) {
@@ -1078,7 +1078,7 @@ function report() {
   console.log('stackSize 差异: ' + (stackDiff.length ? stackDiff.join(', ') : '（与官方一致）'));
 
   // 对比 recipe（vm 解析手工 RECIPES 字面量逐条 diff，发现 storage-chest 类语义冲突）
-  const rr = fs.readFileSync(path.join(ROOT, 'js', 'data-recipes.js'), 'utf8');
+  const rr = fs.readFileSync(path.join(ROOT, 'js', 'data', 'data-recipes.js'), 'utf8');
   const rm = /const RECIPES = \{([\s\S]*?)\n\};/.exec(rr);
   let manualRecipes = {};
   if (rm) {

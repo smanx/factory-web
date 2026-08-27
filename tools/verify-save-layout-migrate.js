@@ -35,7 +35,7 @@ vm.createContext(sandbox);
 
 const prefix = 'const G=globalThis.G; const TILE=globalThis.TILE;';
 vm.runInContext(
-  prefix + '\n' + load('data.generated.js') + '\n' + load('core/entity.js') + '\n' + load('data-buildings.js')
+  prefix + '\n' + load('data/data.generated.js') + '\n' + load('core/entity.js') + '\n' + load('data/data-buildings.js')
   + '\nglobalThis.Entity = Entity;',
   sandbox, { filename: 'entity.js' }
 );
@@ -53,7 +53,7 @@ globalThis.SteamTurbine = SteamTurbine;
 `, sandbox);
 
 // 从 js/main.js 读取并求值：复刻布局迁移函数（LAYOUT_MIGRATE_TYPES / entityOverlaps / migrateLegacyEntityLayout）
-const mainJs = load('main.js');
+const mainJs = load('main/main.js');
 const extract = (re) => { const m = mainJs.match(re); return m ? m[1] : null; };
 const migrateTypesSrc = extract(/(const LAYOUT_MIGRATE_TYPES = \{.*?\};)/s);
 const overlapsSrc = extract(/(function entityOverlaps[\s\S]*?\n\})/);

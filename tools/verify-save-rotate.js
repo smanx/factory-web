@@ -34,8 +34,8 @@ const prefix = 'const G=globalThis.G; const TILE=globalThis.TILE;';
 
 // 加载真实数据定义与实体基类
 vm.runInContext(
-  prefix + '\n' + load('data.generated.js') + '\n' + load('core/entity.js') + '\n'
-  + load('data-buildings.js'),
+  prefix + '\n' + load('data/data.generated.js') + '\n' + load('core/entity.js') + '\n'
+  + load('data/data-buildings.js'),
   sandbox, { filename: 'entity.js' }
 );
 

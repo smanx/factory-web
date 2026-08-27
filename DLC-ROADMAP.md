@@ -3,7 +3,7 @@
 本项目以《异星工厂》web 复刻为目标，factorio-data 子模块已更新到 **2.1.17**（含全部 DLC：
 `Space Age` / `Quality` / `Elevated Rails` / `Recycler`）。`tools/convert-data.js` 现场加载
 全部 DLC 的 Lua 数据（raw + locale），`tools/generate-game-data.js` 已从中抽取官方数值并生成
-`js/data.generated.js`（唯一数值源）。
+`js/data/data.generated.js`（唯一数值源）。
 
 ## 已接入（本 PR 完成）
 - factorio-data 子模块 → 2.1.17
