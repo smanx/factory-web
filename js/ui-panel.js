@@ -389,6 +389,25 @@ function initPanelEvents() {
       }
       return;
     }
+    // 研究面板：分类筛选 tab
+    const techCatBtn = ev.target.closest('[data-techcat]');
+    if (techCatBtn && G.panelMode === 'tech') {
+      G.techCatFilter = techCatBtn.dataset.techcat;
+      renderPanel(false);
+      return;
+    }
+    // 研究面板：点击树图节点 → 滚动定位到左边栏对应科技并高亮
+    const techNode = ev.target.closest('[data-tid]');
+    if (techNode && G.panelMode === 'tech') {
+      const tid = techNode.dataset.tid;
+      const item = document.querySelector('#tech-col-list .recipe.tech[data-techid="' + tid + '"]');
+      if (item) {
+        item.scrollIntoView({ block: 'nearest' });
+        item.classList.add('tech-flash');
+        setTimeout(() => item.classList.remove('tech-flash'), 1200);
+      }
+      return;
+    }
     const btn = ev.target.closest('[data-action], [data-act]');
     if (!btn) return;
     const act = btn.dataset.action || btn.dataset.act;

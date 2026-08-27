@@ -204,3 +204,51 @@ function migrateNewTechs(techDone) {
   return techDone;
 }
 
+
+// ===== 科技分类与触发式标记（对齐《异星工厂》科技清单 tech-report.md）=====
+// cat：科技所属模块分组（base 基础 / quality 品质 / space-age 太空时代）。
+// trigger：触发式科技——无需在研究中心研究，由玩家执行特定操作（建造/发射/探索/发现星球等）后自动解锁。
+// 研究中心只研究 trigger 为 false 的科技；触发式科技在满足触发条件时自动计入已完成（techResearched 判定）。
+const TECH_CAT = {
+  base: { name: '基础科技', icon: '⚙️' },
+  quality: { name: '品质科技', icon: '💎' },
+  'space-age': { name: '太空时代', icon: '🚀' }
+};
+// 默认基础分类；太空时代/品质按清单覆盖
+for (const tid in TECHS) {
+  if (!TECHS[tid].cat) TECHS[tid].cat = 'base';
+}
+// 品质模块链 → quality
+for (const tid of ['quality', 'quality-2', 'quality-3']) TECHS[tid].cat = 'quality';
+// 太空时代科技 → space-age（依据 tech-report.md 的 space-age 模块）
+const SPACE_AGE_TECHS = [
+  'space-science', 'turbo-logistics', 'electromagnetics', 'metallurgy', 'recycling',
+  'agriculture', 'asteroid-processing', 'big-mining-drill', 'heating-tower', 'biolab',
+  'lightning', 'space-thruster', 'space-platform', 'space-research-speed',
+  'space-mining-productivity', 'weapon-damage', 'follower-robot-count',
+  'worker-robot-cargo-size', 'artillery-shooting-speed', 'artillery-shell-range',
+  'rail-productivity', 'braking-force', 'rocket-productivity', 'physical-projectile-damage',
+  'energy-weapons-damage', 'refined-flammables', 'stronger-explosives', 'fuel-efficiency',
+  'shooting-speed', 'worker-robot-speed', 'inserter-capacity', 'research-speed'
+];
+for (const tid of SPACE_AGE_TECHS) if (TECHS[tid]) TECHS[tid].cat = 'space-age';
+
+// 触发式科技：官方为玩家操作自动解锁，无需研究中心研究。
+// 依据 tech-report.md「无成本(触发式)」清单映射到当前科技树。
+// 触发式科技在 UI 中显示「⚡ 触发式」徽标与触发条件说明。
+const TRIGGER_TECHS = {
+  'space-science': '发射火箭并建立空间科学体系后自动解锁',
+  'space-platform': '建立空间平台（空间平台地基/中枢）后自动解锁',
+  'electromagnetics': '发现富尔戈拉星（Fulgora）后自动解锁',
+  'metallurgy': '发现沃卡努斯星（Vulcanus）后自动解锁',
+  'agriculture': '发现格莱巴星（Gleba）后自动解锁',
+  'recycling': '在富尔戈拉星建立回收体系后自动解锁',
+  'big-mining-drill': '进入太空时代后自动解锁大型采矿机',
+  'heating-tower': '发现阿奎洛星（Aquilo）后自动解锁供热塔'
+};
+for (const tid in TRIGGER_TECHS) if (TECHS[tid]) {
+  TECHS[tid].trigger = true;
+  TECHS[tid].triggerDesc = TRIGGER_TECHS[tid];
+}
+// 判断科技是否为触发式（官方由操作自动解锁，当前版本仍可按需研究）。
+function techTriggered(tid) { return !!(TECHS[tid] && TECHS[tid].trigger); }

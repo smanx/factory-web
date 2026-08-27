@@ -279,6 +279,8 @@ function openPanel(mode, ent) {
   G.panelEnt = ent || null;
   // 背包弹框居中加宽显示（三列布局），其余面板保持右上角小窗
   document.getElementById('panel').classList.toggle('inv-wide', mode === 'inv');
+  // 研究面板加宽双栏布局（左=研究列表，右=研究树图）
+  document.getElementById('panel').classList.toggle('tech-wide', mode === 'tech');
   document.getElementById('panel').style.display = 'flex';
   renderPanel(true);
 }
@@ -877,9 +879,124 @@ function applyAssemblerRecipeFilter(q) {
   }
 }
 
-function htmlTech() {
-  let h = '';
-  // 研究队列展示（对齐《异星工厂》Research queue）
+// ===== 研究面板：左=研究列表，右=研究树图 =====
+// 依据 tech-report.md（官方 277 科技清单）重新设计研究面板：
+//   · 左边栏：按模块分组的研究列表（触发式 / 研究中心式科技一目了然），支持分类筛选
+//   · 右边栏：研究树图——每个科技一个节点（图标+名称），用连接线展示前置依赖关系
+
+// 计算科技树的分层布局：按前置链最长深度分层（列），供 SVG 树图排版。
+// 返回 { tiers: [[tid,...], ...], pos: {tid:{col,row}} }
+function techTreeLayout() {
+  // 计算每个科技的最长前置深度（root 深度 0）
+  const depth = {};
+  const visit = (tid, stack) => {
+    if (depth[tid] !== undefined) return depth[tid];
+    const t = TECHS[tid];
+    let d = 0;
+    for (const r of (t && t.req) || []) {
+      if (stack.includes(r)) continue; // 防环
+      d = Math.max(d, visit(r, stack.concat(tid)) + 1);
+    }
+    depth[tid] = d;
+    return d;
+  };
+  for (const tid in TECHS) visit(tid, []);
+  // 按层分组
+  const tiers = {};
+  let maxDepth = 0;
+  for (const tid in depth) {
+    const d = depth[tid];
+    if (!tiers[d]) tiers[d] = [];
+    tiers[d].push(tid);
+    if (d > maxDepth) maxDepth = d;
+  }
+  // 每层内按名称排序（稳定）
+  const tierArr = [];
+  for (let d = 0; d <= maxDepth; d++) {
+    if (tiers[d]) tiers[d].sort((a,b)=>TECHS[a].name.localeCompare(TECHS[b].name,'zh'));
+    tierArr.push(tiers[d] || []);
+  }
+  // 分配行号：同层自上而下编号，用于 SVG 纵向排布
+  const pos = {};
+  for (let col = 0; col < tierArr.length; col++) {
+    tierArr[col].forEach((tid, row) => { pos[tid] = { col, row }; });
+  }
+  return { tiers: tierArr, pos, maxDepth };
+}
+
+// 生成研究树图 SVG：节点（图标+名称）+ 前置连接线
+function htmlTechTree() {
+  const { tiers, pos, maxDepth } = techTreeLayout();
+  const NODE_W = 118, NODE_H = 34, GAP_X = 36, GAP_Y = 12;
+  const colW = NODE_W + GAP_X;
+  const rowH = NODE_H + GAP_Y;
+  // 画布尺寸
+  const W = (maxDepth + 1) * colW + 10;
+  let maxRows = 1;
+  for (const tl of tiers) if (tl.length > maxRows) maxRows = tl.length;
+  const H = maxRows * rowH + 10;
+
+  // 收集连接线（父→子）
+  const lines = [];
+  for (const tid in TECHS) {
+    const t = TECHS[tid];
+    for (const r of (t.req || [])) {
+      if (pos[r] && pos[tid]) {
+        const p = pos[r], c = pos[tid];
+        // 只在父列 < 子列 时画线（同列则忽略，避免重叠）
+        lines.push({ from: r, to: tid, pc: p.col, pr: p.row, cc: c.col, cr: c.row });
+      }
+    }
+  }
+  const cx = (c) => c * colW + NODE_W / 2 + 5;
+  const cy = (r) => r * rowH + NODE_H / 2 + 5;
+  let lineSvg = '';
+  for (const ln of lines) {
+    const x1 = cx(ln.pc) + NODE_W / 2, y1 = cy(ln.pr);
+    const x2 = cx(ln.cc) - NODE_W / 2, y2 = cy(ln.cr);
+    const mx = (x1 + x2) / 2;
+    // 贝塞尔曲线：横向平滑连接
+    lineSvg += '<path d="M ' + x1 + ' ' + y1 + ' C ' + mx + ' ' + y1 + ', ' + mx + ' ' + y2 + ', ' + x2 + ' ' + y2 +
+      '" fill="none" stroke="#3a4550" stroke-width="1.4" class="tech-edge"></path>';
+  }
+
+  // 节点
+  let nodeSvg = '';
+  for (const tid in pos) {
+    const p = pos[tid];
+    const t = TECHS[tid];
+    const done = techResearched(tid);
+    const locked = !done && techLocked(tid);
+    const active = G.activeTech === tid;
+    const inQueue = !!(G.techQueue && G.techQueue.indexOf(tid) >= 0);
+    let cls = 'tech-node';
+    if (done) cls += ' done';
+    else if (locked) cls += ' locked';
+    if (active) cls += ' active';
+    if (inQueue && !active) cls += ' queued';
+    const badge = t.trigger ? '⚡' : (isInfiniteTech(tid) ? '∞' : '');
+    const x = p.col * colW + 5, y = p.row * rowH + 5;
+    nodeSvg += '<g class="' + cls + '" transform="translate(' + x + ',' + y + ')" data-tid="' + tid + '">' +
+      '<rect class="tech-node-bg" x="0" y="0" width="' + NODE_W + '" height="' + NODE_H + '" rx="6"></rect>' +
+      (badge ? '<text x="7" y="12" font-size="11" class="tech-badge">' + badge + '</text>' : '') +
+      '<text x="' + (badge ? 20 : 7) + '" y="21" font-size="10.5" class="tech-node-text">' + t.name + '</text>' +
+      '</g>';
+  }
+  return '<svg class="tech-tree-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMinYMin meet">' +
+    lineSvg + nodeSvg + '</svg>';
+}
+
+// 生成左边栏研究列表
+function htmlTechList() {
+  // 分类筛选 tab
+  const cats = ['all', 'base', 'quality', 'space-age'];
+  const catName = { all: '全部', base: TECH_CAT.base.name, quality: TECH_CAT.quality.name, 'space-age': TECH_CAT['space-age'].name };
+  const cur = G.techCatFilter || 'all';
+  let h = '<div class="tech-tabs">';
+  for (const c of cats) h += '<button data-techcat="' + c + '" class="tech-tab' + (cur===c?' active':'') + '">' + catName[c] + '</button>';
+  h += '</div>';
+
+  // 研究队列（对齐官方 Research queue）
   if (G.techQueue && G.techQueue.length) {
     h += '<div class="sec">研究队列（' + G.techQueue.length + ' 项）</div><div class="chips">';
     G.techQueue.forEach((qid, i) => {
@@ -889,50 +1006,69 @@ function htmlTech() {
     });
     h += '</div>';
   }
-  for (const tid in TECHS) {
-    const t = TECHS[tid];
-    const done = G.techDone[tid];
-    const locked = !done && techLocked(tid);
-    const missing = techMissingPrereqs(tid);
-    const prog = G.techProg[tid] || 0;
-    const total = techCostTotal(tid);
-    const costChips = [];
-    for (const pk in t.cost) costChips.push(ITEMS[pk].name + '×' + t.cost[pk]);
-    h += '<div class="recipe tech ' + (done ? 'done' : '') + (locked ? ' locked' : '') + '">';
-    h += '<div class="rmain"><div class="rname">' + t.name + (locked ? ' <span class="lock-tag">🔒</span>' : '') + '</div><div class="dim">' + t.desc + '</div>';
-    if (isInfiniteTech(tid)) {
-      // 无限科技：进度无限，永不完成，消耗任意科学包
-      h += '<div class="bar"><i style="width:100%"></i></div>';
-      h += '<div class="dim">' + (done ? '已完成' :
-        '无限研究 · 已消耗 ' + prog + ' 瓶 · 消耗任意科学包') + '</div>';
-    } else {
-      h += '<div class="bar"><i style="width:' + Math.min(100, prog / total * 100) + '%"></i></div>';
-      h += '<div class="dim">' + (done ? '已完成' :
-        prog + ' / ' + total + '（' + costChips.join(' + ') + '）') + '</div>';
-    }
-    h += '</div>';
-    // 按钮作为 .recipe 的直接子元素（在 .rmain 外部），配合 .recipe 的 space-between 布局将其置于最右侧
-    if (!done && !isInfiniteTech(tid)) {
-      if (locked) {
-        h += '<button disabled title="需先研究：' + missing.map(m => TECHS[m].name).join('、') + '">需先研究 ' + missing.map(m => TECHS[m].name).join('+') + '</button>';
+
+  // 按模块分组遍历
+  for (const catKey of ['base', 'quality', 'space-age']) {
+    if (cur !== 'all' && cur !== catKey) continue;
+    const cmeta = TECH_CAT[catKey];
+    h += '<div class="tech-cat-head">' + cmeta.icon + ' ' + cmeta.name + '</div>';
+    for (const tid in TECHS) {
+      const t = TECHS[tid];
+      if (t.cat !== catKey) continue;
+      const done = techResearched(tid);
+      const locked = !done && techLocked(tid);
+      const missing = techMissingPrereqs(tid);
+      const prog = G.techProg[tid] || 0;
+      const total = techCostTotal(tid);
+      const costChips = [];
+      for (const pk in t.cost) costChips.push(ITEMS[pk].name + '×' + t.cost[pk]);
+      h += '<div class="recipe tech ' + (done ? 'done' : '') + (locked ? ' locked' : '') + (t.trigger ? ' trigger' : '') + '" data-techcat="' + catKey + '" data-techid="' + tid + '">';
+      h += '<div class="rmain"><div class="rname">' + t.name +
+        (t.trigger ? ' <span class="trig-badge" title="触发式：' + t.triggerDesc + '">⚡ 触发式</span>' : '') +
+        (locked ? ' <span class="lock-tag">🔒</span>' : '') +
+        (isInfiniteTech(tid) ? ' <span class="inf-badge">∞</span>' : '') + '</div><div class="dim">' + t.desc + '</div>';
+      if (t.trigger) {
+        // 触发式科技：官方为操作自动解锁，当前版本仍需研究；展示触发条件提示
+        h += '<div class="dim trig-desc">⚡ ' + t.triggerDesc + '</div>';
+      } else if (isInfiniteTech(tid)) {
+        h += '<div class="bar"><i style="width:100%"></i></div>';
+        h += '<div class="dim">' + (done ? '已完成' : '无限研究 · 已消耗 ' + prog + ' 瓶 · 消耗任意科学包') + '</div>';
       } else {
+        h += '<div class="bar"><i style="width:' + Math.min(100, prog / total * 100) + '%"></i></div>';
+        h += '<div class="dim">' + (done ? '已完成' : prog + ' / ' + total + '（' + costChips.join(' + ') + '）') + '</div>';
+      }
+      h += '</div>';
+      // 操作按钮
+      if (!done && !isInfiniteTech(tid)) {
+        if (locked) {
+          h += '<button disabled title="需先研究：' + missing.map(m => TECHS[m].name).join('、') + '">🔒</button>';
+        } else {
+          const inQueue = !!(G.techQueue && G.techQueue.indexOf(tid) >= 0);
+          h += (G.activeTech === tid)
+            ? '<button data-action="tech-cancel" data-id="' + tid + '">取消</button>'
+            : (inQueue ? '<button disabled>排队</button>' : '<button data-action="tech" data-id="' + tid + '">研究</button>');
+        }
+      } else if (isInfiniteTech(tid)) {
         const inQueue = !!(G.techQueue && G.techQueue.indexOf(tid) >= 0);
         h += (G.activeTech === tid)
-          ? '<button data-action="tech-cancel" data-id="' + tid + '">取消</button>'
-          : (inQueue ? '<button disabled>排队中</button>' : '<button data-action="tech" data-id="' + tid + '">研究</button>');
+          ? '<button data-action="tech-cancel" data-id="' + tid + '">停止</button>'
+          : (inQueue ? '<button disabled>排队</button>' : '<button data-action="tech" data-id="' + tid + '">研究</button>');
       }
-    } else if (isInfiniteTech(tid)) {
-      // 无限科技始终可选（重复研究也继续，永不完成）
-      const inQueue = !!(G.techQueue && G.techQueue.indexOf(tid) >= 0);
-      h += (G.activeTech === tid)
-        ? '<button data-action="tech-cancel" data-id="' + tid + '">停止</button>'
-        : (inQueue ? '<button disabled>排队中</button>' : '<button data-action="tech" data-id="' + tid + '">研究</button>');
+      h += '</div>';
     }
-    // 关闭 .recipe.tech 条目，保证各科技条目平级而非互相嵌套
-    h += '</div>';
   }
-  h += '<div class="hint">建造研究中心，放入科学包后选择课题；研究中心按配方顺序逐瓶消耗（红→绿→蓝→灰）。机械臂可自动喂包。自动化科学包（红）=齿轮+铜板；物流科学包（绿）=传送带+机械臂；化工科学包（蓝）=塑料+电路板+铜板（需打通石油链）；军事科学包（灰）=弹药匣+石墙+穿甲弹（解锁极速物流与军事工程）。「无限科技」为无限研究：只要中心里有任意科学包就会被持续消耗、永不完成。</div>';
+  h += '<div class="hint">建造研究中心，放入科学包后选择课题研究；触发式科技⚡由玩家执行对应操作后自动解锁，无需研究。红色研究列表中的课题由「研究中心」研究，前置依赖见右测研究树。无限科技∞消耗任意科学包、永不完成。</div>';
   return h;
+}
+
+function htmlTech() {
+  return '<div class="tech-layout">' +
+    '<div class="tech-col tech-col-list" id="tech-col-list">' + htmlTechList() + '</div>' +
+    '<div class="tech-col tech-col-tree" id="tech-col-tree">' +
+      '<div class="sec">研究树</div>' +
+      '<div class="tech-tree-wrap">' + htmlTechTree() + '</div>' +
+    '</div>' +
+  '</div>';
 }
 
 function countStr(o) {

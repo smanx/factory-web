@@ -1935,3 +1935,80 @@ html, body {
 .ach-name { font-weight: bold; color: #dfe6ee; font-size: 13px; }
 .ach-item.done .ach-name { color: #ffd23c; }
 .ach-desc { color: #8a95a3; font-size: 12px; margin-top: 2px; line-height: 1.4; }
+
+/* ===== 研究面板：双栏布局（左=研究列表，右=研究树图）===== */
+#panel.tech-wide {
+  width: 1180px;
+  max-width: calc(100vw - 32px);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  max-height: calc(100vh - 32px);
+}
+#panel.tech-wide #panel-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.tech-layout {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+}
+.tech-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.tech-col-list { flex: 1.05; }
+.tech-col-tree { flex: 1.6; }
+.tech-col-list, .tech-col-tree { padding: 10px 12px; overflow-y: auto; min-height: 0; }
+/* 分类筛选 tab */
+.tech-tabs { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+.tech-tab {
+  background: #232c38; border: 1px solid #3a4550; color: #cdd6df;
+  padding: 4px 12px; border-radius: 14px; cursor: pointer; font-size: 12px;
+}
+.tech-tab.active { background: #3a6a4a; color: #fff; border-color: #5a9a6a; }
+.tech-cat-head {
+  margin: 14px 0 8px; font-weight: bold; color: #ffe08a;
+  border-bottom: 1px solid rgba(255,224,138,.2); padding-bottom: 4px; font-size: 13px;
+}
+/* 触发式 / 无限徽标 */
+.trig-badge {
+  color: #ffd23c; font-size: 10px; background: rgba(255,210,60,.12);
+  border: 1px solid rgba(255,210,60,.4); border-radius: 8px; padding: 0 5px; margin-left: 4px;
+}
+.inf-badge { color: #c9a6ff; font-size: 10px; margin-left: 4px; }
+.trig-desc { color: #ffd23c; font-style: italic; }
+.trig-ok { color: #6cd06c; font-weight: bold; align-self: center; padding-right: 6px; }
+/* 研究树图 */
+.tech-tree-wrap { flex: 1; overflow: auto; min-height: 0; }
+.tech-tree-svg { width: 100%; height: auto; min-width: 700px; background: rgba(0,0,0,.15); border-radius: 6px; }
+.tech-node { cursor: pointer; }
+.tech-node-bg {
+  fill: rgba(30,38,48,.95); stroke: #3a4550; stroke-width: 1.2;
+  transition: all .15s;
+}
+.tech-node.done .tech-node-bg { stroke: #5a9a6a; fill: rgba(40,70,50,.7); }
+.tech-node.locked .tech-node-bg { stroke: #555; fill: rgba(20,24,30,.85); opacity: .6; }
+.tech-node.active .tech-node-bg { stroke: #ffd23c; stroke-width: 2; }
+.tech-node.queued .tech-node-bg { stroke: #7aa7ff; stroke-dasharray: 4 3; }
+.tech-node:hover .tech-node-bg { stroke: #ffd23c; }
+.tech-node-text { fill: #eaf1f8; font-family: inherit; }
+.tech-node.locked .tech-node-text { fill: #9aa; }
+.tech-node.done .tech-node-text { fill: #c8e6c8; }
+.tech-badge { fill: #ffd23c; font-weight: bold; }
+/* 连接线 hover 高亮 */
+.tech-edge { transition: stroke .15s; }
+.tech-node:hover ~ .tech-edge, .tech-node:hover + g .tech-edge { stroke: #ffd23c; }
+/* 列表点击闪烁定位 */
+.tech-flash { animation: techFlash 1.2s ease; }
+@keyframes techFlash { 0%,100% { background: transparent; } 40% { background: rgba(255,210,60,.25); } }
