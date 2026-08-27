@@ -152,7 +152,7 @@ function buildHotbar() {
     key.className = 'key';
     key.textContent = i === 9 ? '0' : i + 1;
     slot.appendChild(key);
-    slot.addEventListener('click', () => selectSlot(i));
+    slot.addEventListener('click', () => onHotbarClick(i));
     hb.appendChild(slot);
   });
   refreshHotbar();
@@ -168,6 +168,32 @@ function refreshHotbar() {
     slot.classList.toggle('active', G.sel === i);
     slot.classList.toggle('empty', !!id && !infinite && invCount(id) <= 0);
   });
+}
+
+// 快捷栏槽位点击：若鼠标正持有从背包选中的物品（quickSel），则执行“放入/交换”操作；
+// 否则退化为普通的选择/取消该槽位（selectSlot）。
+function onHotbarClick(i) {
+  const held = G.quickSel;
+  if (held && ITEMS[held]) {
+    const slotItem = HOTBAR[i];
+    if (!slotItem) {
+      // 空槽位：把鼠标物品放入该槽位，且鼠标仍选中该物品（选中状态不变）
+      HOTBAR[i] = held;
+      toast('已放入快捷栏槽位 ' + (i === 9 ? 0 : i + 1) + '，仍选中 ' + ITEMS[held].name);
+    } else {
+      // 有物品：不替换槽位，而是把鼠标选中的物品换成快捷栏的这个物品
+      // （原鼠标物品放回背包；快捷栏槽位保持不变）
+      G.sel = i;
+      G.quickSel = null;
+      if (typeof setWeapon === 'function') setWeapon(slotItem);
+      toast('鼠标选中换成 ' + ITEMS[slotItem].name + '（' + ITEMS[held].name + ' 已放回背包）');
+    }
+    if (typeof playSfx === 'function') playSfx('select');
+    buildHotbar();
+    uiDirty = true;
+    return;
+  }
+  selectSlot(i);
 }
 
 function selectSlot(i) {
@@ -490,7 +516,7 @@ function htmlInventory() {
     h += '</div><div class="dim">装备个人机器人港 + 背包携带施工机器人后，蓝图粘贴自动生成建造幽灵、红图框选生成拆除标记，由施工机器人自动施工/拆除。' +
       (rInfo ? '当前工作范围 <b>' + rInfo.range + '</b> 格、最多 <b>' + rInfo.maxActive + '</b> 台机器人同时施工（II 型更大更强）。' : '') + '</div>';
   }
-  h += '<div class="sec">拥有的物品（点击建筑设备可直接建造；点击普通物品放入快捷栏，去地图上建造无反应）</div>';
+  h += '<div class="sec">拥有的物品（点击任意物品选中：设备点地图可直接建造；材料点地图无法建造。选中后可点底部快捷栏放入，Q/E 取消）</div>';
   const iq = (G.invItemQ || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   h += '<input id="inv-item-search" class="inv-search" type="text" placeholder="搜索物品（输入名称）" autocomplete="off" value="' + iq + '">';
   h += '<div class="chips" id="inv-items">';
@@ -512,7 +538,7 @@ function htmlInventory() {
   }
   if (!any) h += '<span class="dim">空空如也，去地图上按住左键挖矿吧（铁矿/铜矿/煤/石头）</span>';
   h += '</div>';
-  h += '<div class="hint">提示：开局先挖 5 个石头合成石炉，再挖煤；点击炉子打开面板，把煤和矿石放进去就能炼铁板/铜板。钢板用铁板×2 合成（石炉/电炉炼制更快）。塑料板等流体化学产物只能在化工厂生产（石油气经管道送入化工厂）。<br>建造：直接点击上方「拥有的物品」列表里任何可建造的设备图标即可选中进入放置模式（优先占用空快捷栏槽位），不必依赖底部工具栏；R 旋转、Q 取消。建造支持覆盖：目标格已有建筑时会先拆除旧建筑（返还物资）再放置新建筑，但同一格不会叠加。</div>';
+  h += '<div class="hint">提示：开局先挖 5 个石头合成石炉，再挖煤；点击炉子打开面板，把煤和矿石放进去就能炼铁板/铜板。钢板用铁板×2 合成（石炉/电炉炼制更快）。塑料板等流体化学产物只能在化工厂生产（石油气经管道送入化工厂）。<br>选中：点击「拥有的物品」里任意物品即选中，选中后背包不自动关闭，按 E/Q 或右上角 X 关闭后选中保留。设备点地图直接建造；材料点地图无法建造。把选中物品点到底部快捷栏：空槽直接放入（鼠标仍选中），有物品则不替换、改为选中该槽物品。R 旋转、Q 取消。建造支持覆盖：目标格已有建筑时会先拆除旧建筑（返还物资）再放置新建筑，但同一格不会叠加。</div>';
   return h;
 }
 

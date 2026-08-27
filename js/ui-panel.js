@@ -321,33 +321,11 @@ function initPanelEvents() {
     }
     if (itEl && G.panelMode === 'inv' && !itEl.dataset.action) {
       const iid = itEl.dataset.itemid;
-      // 地面物品（混凝土/石砖路/填海等）虽非建筑实体，但同样可选中放入快捷栏以铺设
-      const isGroundItem = iid === 'concrete' || iid === 'refined-concrete' || iid === 'hazard-concrete' || iid === 'stone-path' || iid === 'landfill' || iid === 'artificial-yumako-soil' || iid === 'overgrowth-yumako-soil';
-      if (BUILD_DEFS[iid] || isGroundItem) {
-        const idx = HOTBAR.indexOf(iid);
-        if (idx >= 0) {
-          G.sel = idx;
-          G.quickSel = null;
-          refreshHotbar();
-        } else {
-          const empty = HOTBAR.indexOf(null);
-          if (empty >= 0) {
-            HOTBAR[empty] = iid;
-            G.sel = empty;
-            G.quickSel = null;
-            buildHotbar();
-            toast('已放入快捷栏槽位 ' + (empty === 9 ? 0 : empty + 1) + ' 并选中');
-          } else {
-            G.sel = -1;
-            G.quickSel = iid;
-            toast('已直接选中 ' + ITEMS[iid].name + '（快捷栏已满，Q 取消）');
-          }
-        }
-        G.ghostDir = 0;
-        closePanel();
-        uiDirty = true;
-        return;
-      }
+      // 任意物品（设备/材料/工具）均可被鼠标选中，选中后不关闭背包：
+      // 设备点击地图可直接建造；材料/工具点击地图无法建造。
+      // 用户可通过快捷键（E/Q）或右上角“X”关闭背包，选中状态保留。
+      selectInventoryItem(iid);
+      return;
     }
     const setVol = ev.target.closest('[data-setvol]');
     if (setVol) {
@@ -707,4 +685,29 @@ async function saveListHtml() {
   }
   h += '</div>';
   return h;
+}
+
+// 背包物品点击：把任意物品（设备/材料/工具）放入鼠标选中状态。
+// 设备点击地图可直接建造；材料/工具点击地图无法建造（由 tryPlaceAt 内部拦截）。
+// 选中后不关闭背包，用户通过快捷键(E/Q)或右上角“X”关闭后选中状态保留。
+function selectInventoryItem(iid) {
+  if (!ITEMS[iid]) return;
+  const idx = HOTBAR.indexOf(iid);
+  if (idx >= 0) {
+    // 该物品已在快捷栏 → 直接选中对应槽位
+    G.sel = idx;
+    G.quickSel = null;
+    refreshHotbar();
+  } else {
+    // 物品不在快捷栏 → 用 quickSel 临时持握（不占用快捷栏槽位）
+    G.sel = -1;
+    G.quickSel = iid;
+    refreshHotbar();
+  }
+  G.ghostDir = 0;
+  uiDirty = true;
+  if (typeof setWeapon === 'function') setWeapon(iid);
+  if (typeof playSfx === 'function') playSfx('select');
+  const buildable = !!BUILD_DEFS[iid];
+  toast('已选中 ' + ITEMS[iid].name + (buildable ? '，点击地图直接建造（Q 取消）' : '，材料无法在地图建造，可点底部快捷栏放入'));
 }
