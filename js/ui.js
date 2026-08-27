@@ -133,7 +133,7 @@ function buildHotbar() {
     slot.className = 'slot' + (id ? '' : ' nilslot');
     slot.dataset.idx = i;
     if (id) slot.dataset.tip = itemTip(id);
-    else slot.dataset.tip = '空槽位|打开背包(E)，选中任意物品后用鼠标中键可设置该槽位';
+    else slot.dataset.tip = '空槽位|打开背包(E)，选中任意物品后点击空槽位或鼠标中键即可把该物品放入，放置幽灵继续选中';
     if (id) {
       const ic = iconCanvas(id).cloneNode();
       ic.getContext('2d').drawImage(iconCanvas(id), 0, 0);
@@ -177,9 +177,20 @@ function refreshHotbar() {
   });
 }
 
-// 快捷栏槽位点击：直接切换鼠标放置幽灵为该槽位物品。
+// 快捷栏槽位点击：若鼠标持握放置幽灵且点击空槽位，直接把该物品放入空槽位，
+// 且放置幽灵不消失、继续选中（可继续放入其他空槽位）；否则切换鼠标放置幽灵为该槽位物品。
 // 快捷栏无选中效果：点击只让鼠标幽灵显示该物品，不高亮/不选中快捷栏槽位。
 function onHotbarClick(i) {
+  const held = G.quickSel;
+  if (held && ITEMS[held] && !HOTBAR[i]) {
+    // 空槽位：把鼠标持握的放置幽灵物品直接放入，且幽灵不消失、继续选中
+    HOTBAR[i] = held;
+    toast('已放入快捷栏槽位 ' + (i === 9 ? 0 : i + 1) + '：' + ITEMS[held].name + '（放置幽灵继续选中，可继续放入其他空槽位）');
+    if (typeof playSfx === 'function') playSfx('select');
+    buildHotbar();
+    uiDirty = true;
+    return;
+  }
   selectSlot(i);
 }
 
@@ -530,7 +541,7 @@ function htmlInventory() {
     h += '</div><div class="dim">装备个人机器人港 + 背包携带施工机器人后，蓝图粘贴自动生成建造幽灵、红图框选生成拆除标记，由施工机器人自动施工/拆除。' +
       (rInfo ? '当前工作范围 <b>' + rInfo.range + '</b> 格、最多 <b>' + rInfo.maxActive + '</b> 台机器人同时施工（II 型更大更强）。' : '') + '</div>';
   }
-  h += '<div class="sec">拥有的物品（点击任意物品选中：设备点地图可直接建造；材料/工具鼠标显示物品幽灵。鼠标中键点底部快捷栏槽位可设置/清空，Q/E 取消）</div>';
+  h += '<div class="sec">拥有的物品（点击任意物品选中：设备点地图可直接建造；材料/工具鼠标显示物品幽灵。鼠标中键点底部快捷栏槽位可设置/清空；点击空槽位可直接放入选中物品且放置幽灵继续选中，Q/E 取消）</div>';
   const iq = (G.invItemQ || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   h += '<input id="inv-item-search" class="inv-search" type="text" placeholder="搜索物品（输入名称）" autocomplete="off" value="' + iq + '">';
   h += '<div class="chips" id="inv-items">';
