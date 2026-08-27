@@ -197,6 +197,7 @@ const GAME_DATA = {
   "metallic-asteroid-chunk": 1,
   "carbonic-asteroid-chunk": 1,
   "oxide-asteroid-chunk": 1,
+  "promethium-asteroid-chunk": 1,
   "ice": 50,
   "space-platform-foundation": 100,
   "space-platform-hub": 1,
@@ -268,6 +269,7 @@ const GAME_DATA = {
   "deconstruction-planner": 1,
   "upgrade-planner": 1,
   "space-science-pack": 200,
+  "promethium-science-pack": 200,
   "barrel": 10,
   "water-barrel": 10,
   "crude-oil-barrel": 10,
@@ -3410,6 +3412,10 @@ const GAME_DATA = {
    "zh": "氧化星块",
    "en": "Oxide asteroid chunk"
   },
+  "promethium-asteroid-chunk": {
+   "zh": "钷素星块",
+   "en": "Promethium asteroid chunk"
+  },
   "ice": {
    "zh": "冰",
    "en": "Ice"
@@ -3697,6 +3703,10 @@ const GAME_DATA = {
   "space-science-pack": {
    "zh": "太空科技包（白瓶）",
    "en": "Space science pack"
+  },
+  "promethium-science-pack": {
+   "zh": "钷素科技包（黑瓶）",
+   "en": "Promethium science pack"
   },
   "barrel": {
    "zh": "空桶",

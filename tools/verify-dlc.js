@@ -591,4 +591,25 @@ ok(ctx.__itemTechReq('fusion-generator') === 'fusion-power', '聚变发电机需
 ok(ctx.__itemTechReq('fusion-power-cell') === 'fusion-power', '聚变燃料棒需「聚变能源」科技');
 ok(!!TS['fusion-power'], '「聚变能源」科技已注册');
 ok((TS['fusion-power'].req || []).indexOf('space-platform') >= 0, '「聚变能源」科技前置含「空间平台」');
+// ===== 钷素科研包（Promethium science pack，Space Age 终局科学包）数据校验 =====
+console.log('\n【钷素科研包 promethium-science-pack 数据】');
+// 物品/堆叠/命名来自官方
+ok(!!IT['promethium-science-pack'], 'promethium-science-pack 物品已注册');
+ok(GD.stackSize['promethium-science-pack'] === 200, 'promethium-science-pack 堆叠来自官方 (=200)');
+ok(GD.names['promethium-science-pack'] && GD.names['promethium-science-pack'].en === 'Promethium science pack', 'promethium-science-pack 官方命名已收录 (Promethium science pack)');
+// 钷素星块：物品/堆叠/命名来自官方
+ok(!!IT['promethium-asteroid-chunk'], 'promethium-asteroid-chunk 物品已注册');
+ok(GD.stackSize['promethium-asteroid-chunk'] === 1, 'promethium-asteroid-chunk 堆叠来自官方 (=1)');
+ok(GD.names['promethium-asteroid-chunk'] && GD.names['promethium-asteroid-chunk'].en === 'Promethium asteroid chunk', 'promethium-asteroid-chunk 官方命名已收录 (Promethium asteroid chunk)');
+// 配方（官方：25钷素星块+1量子处理器+10五足虫蛋→10，5s；此处适配为超导体/生物结晶，耗时对齐官方 5s）
+ok(!!RP['promethium-science-pack'], 'promethium-science-pack 配方已注册');
+ok(RP['promethium-science-pack'].inp['promethium-asteroid-chunk'] === 25 && RP['promethium-science-pack'].inp['superconductor'] === 1 && RP['promethium-science-pack'].inp['bioflux'] === 10, '钷素科研包配方=25钷素星块+1超导体+10生物结晶（官方 25+1+10 适配）');
+ok(RP['promethium-science-pack'].out['promethium-science-pack'] === 10 && RP['promethium-science-pack'].time === 5, '钷素科研包产出 10、5s（官方）');
+ok(Object.keys(RP['promethium-science-pack'].inp).every(k => k in IT), 'promethium-science-pack 配方引用物品均存在');
+// 配方设备：电磁工厂（官方 cryogenics 低温工厂，此处适配为电磁工厂生产钷素科研包）
+ok(ctx.__recipeDevice('promethium-science-pack') === 'electromagnetic-plant', '钷素科研包由电磁工厂制得');
+// 科技门控：钷素科研科技
+ok(ctx.__recipeTechReq('promethium-science-pack') === 'promethium-science', '钷素科研包需「钷素科研」科技');
+ok(!!TS['promethium-science'], '钷素科研 科技已注册');
+
 process.exit(fail === 0 ? 0 : 1);
