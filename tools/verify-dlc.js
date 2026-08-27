@@ -538,4 +538,24 @@ ok(Object.keys(RP['cargo-bay'].inp).every(k => k in IT), 'cargo-bay 配方引用
 // 科技门控：由火箭科技解锁
 ok(ctx.__itemTechReq('cargo-bay') === 'rocket-science', '物流扩展舱需「火箭技术」科技');
 
+// ===== 物流卸载舱（landing-pad-unloading-bay，Space Age 官方建筑：Cargo unloading bay）数据校验 =====
+console.log('\n【物流卸载舱 landing-pad-unloading-bay 数据】');
+// 物品/堆叠/命名来自官方
+ok(!!IT['landing-pad-unloading-bay'], 'landing-pad-unloading-bay 物品已注册');
+ok(GD.stackSize['landing-pad-unloading-bay'] === 10, 'landing-pad-unloading-bay 堆叠来自官方 (=10)');
+ok(GD.names['landing-pad-unloading-bay'] && GD.names['landing-pad-unloading-bay'].en === 'Landing pad unloading bay', 'landing-pad-unloading-bay 官方命名已收录 (Landing pad unloading bay)');
+// 占地/血量/扩展槽位/卸载距离来自官方
+ok(GD.footprint['landing-pad-unloading-bay'] && GD.footprint['landing-pad-unloading-bay'].w === 4 && GD.footprint['landing-pad-unloading-bay'].h === 5, '物流卸载舱 占地 4×5（官方 selection_box {{-2,-3},{2,2}}）');
+ok(GD.buildingHp['landing-pad-unloading-bay'] === 1000, '物流卸载舱 血量=1000（官方 max_health）');
+ok(GD.cargoUnloadingBay && GD.cargoUnloadingBay.inventorySizeBonus === 20, '物流卸载舱 扩展槽位 20（官方 inventory_size_bonus）');
+ok(GD.cargoUnloadingBay && GD.cargoUnloadingBay.allowUnloading === true, '物流卸载舱 allow_unloading=true（官方）');
+ok(GD.cargoUnloadingBay && GD.cargoUnloadingBay.unloadingDistance === 59, '物流卸载舱 卸载距离 59（官方 max-cargo-bay-unloading-distance）');
+// 配方（官方：1扩展舱+4钢箱+15电引擎+8处理器，10s）
+ok(!!RP['landing-pad-unloading-bay'], 'landing-pad-unloading-bay 配方已注册');
+ok(RP['landing-pad-unloading-bay'].inp['cargo-bay'] === 1 && RP['landing-pad-unloading-bay'].inp['steel-chest'] === 4 && RP['landing-pad-unloading-bay'].inp['electric-engine-unit'] === 15 && RP['landing-pad-unloading-bay'].inp['processing-unit'] === 8, '卸载舱配方=1扩展舱+4钢箱+15电引擎+8处理器（官方）');
+ok(RP['landing-pad-unloading-bay'].out['landing-pad-unloading-bay'] === 1 && RP['landing-pad-unloading-bay'].time === 10, '卸载舱产出 1、10s（官方）');
+ok(Object.keys(RP['landing-pad-unloading-bay'].inp).every(k => k in IT), 'landing-pad-unloading-bay 配方引用物品均存在');
+// 科技门控：由火箭科技解锁
+ok(ctx.__itemTechReq('landing-pad-unloading-bay') === 'rocket-science', '物流卸载舱需「火箭技术」科技');
+
 process.exit(fail === 0 ? 0 : 1);

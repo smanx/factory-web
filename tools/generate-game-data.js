@@ -549,6 +549,27 @@ const cargoBay = {};
     if (typeof r.inventory_size_bonus === 'number') cargoBay.inventorySizeBonus = r.inventory_size_bonus;
   }
 }
+// ---- 物流接驳站卸载舱 landing-pad-unloading-bay（Space Age，官方 cargo-bay 原型）----
+// 官方 Cargo unloading bay：允许从太空平台向接驳站卸载货物（allow_unloading=true），
+// 自身亦提供 inventory_size_bonus（官方 20）扩展槽位。科技解锁时附带
+// max-cargo-bay-unloading-distance（官方 59）。此处单源暴露官方数值。
+const cargoUnloadingBay = {};
+{
+  const r = raw['cargo-bay'] && raw['cargo-bay']['landing-pad-unloading-bay'];
+  if (r) {
+    if (typeof r.inventory_size_bonus === 'number') cargoUnloadingBay.inventorySizeBonus = r.inventory_size_bonus;
+    if (typeof r.allow_unloading === 'boolean') cargoUnloadingBay.allowUnloading = r.allow_unloading;
+  }
+  const t = raw['technology'] && raw['technology']['landing-pad-unloading-bay'];
+  if (t && t.effects) {
+    // convert-data 会把数组转成 {1:{...},2:{...}} 索引对象，统一遍历其值
+    for (const k of Object.keys(t.effects)) {
+      const ef = t.effects[k];
+      if (ef && ef.type === 'max-cargo-bay-unloading-distance' && typeof ef.modifier === 'number')
+        cargoUnloadingBay.unloadingDistance = ef.modifier;
+    }
+  }
+}
 
 // ---- 个人装备（装备网格） ----
 // 官方类型：solar-panel-equipment / generator-equipment / battery-equipment /
@@ -784,6 +805,7 @@ const FOOTPRINT_SOURCES = {
   'radar': ['radar', 'radar'],
   'cargo-landing-pad': ['cargo-landing-pad', 'cargo-landing-pad'],  // 物流接驳站：官方 selection_box ±4 → 8×8
   'cargo-bay': ['cargo-bay', 'cargo-bay'],  // 物流接驳站扩展舱：官方 selection_box ±2 → 4×4
+  'landing-pad-unloading-bay': ['cargo-bay', 'landing-pad-unloading-bay'],  // 物流接驳站卸载舱：官方 cargo-bay 原型 selection_box {{-2,-3},{2,2}} → 4×5
   'roboport': ['roboport', 'roboport'],
   'nuclear-reactor': ['reactor', 'nuclear-reactor'],
   'heat-pipe': ['heat-pipe', 'heat-pipe'],
@@ -899,6 +921,7 @@ Object.assign(GAME_DATA, {
   radar,
   cargoLandingPad,
   cargoBay,
+  cargoUnloadingBay,
   equipment,
   heat,
   lightning,
@@ -1048,6 +1071,8 @@ const header = [
   '//           heatPipeSpecificHeat, heatPipeMaxTransfer, reactorHeatRate(MW),',
   '//           heatingTowerRate(MW), heatingTowerEffectivity, heatingTowerMaxTemp,',
   '//           heatingTowerSpecificHeat, heatingTowerMaxTransfer }, roboportPower(kW)',
+  '//   cargoLandingPad = { inventorySize, radarRange }, cargoBay = { inventorySizeBonus }（物流接驳站/扩展舱）',
+  '//   cargoUnloadingBay = { inventorySizeBonus, allowUnloading, unloadingDistance }（物流卸载舱）',
   '//   footprint[building] = { w, h }（占地面积格数，官方 selection_box）',
   'const GAME_DATA = ' + JSON.stringify(GAME_DATA, null, 1) + ';',
   '',

@@ -259,6 +259,19 @@
 >   可接入电路网络输出箱内货物信号。数据全部来自 GAME_DATA（占地/血量/堆叠/扩展槽位/命名）。
 > - 配方：官方 20钢板+20低密度结构+5处理器（10s）；由「火箭技术」科技解锁（与接驳站同科技）。
 > - 校验：verify-dlc 新增物流扩展舱校验（11 项），全量 18 个校验脚本通过，构建通过。
+- [x] **物流卸载舱（landing-pad-unloading-bay，Space Age 官方 Cargo unloading bay）**：接驳站卸载舱（本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - 物品/建筑：`landing-pad-unloading-bay`（物流卸载舱，4×5）已接入，堆叠 10 / 占地 4×5
+>   （官方 cargo-bay 原型 selection_box {{-2,-3},{2,2}}）/ 血量 1000 / 扩展槽位 20（官方 inventory_size_bonus）/
+>   allow_unloading=true / 卸载距离 59（官方 max-cargo-bay-unloading-distance），
+>   全部数据来自 GAME_DATA（factorio-data 官方，新增 `GAME_DATA.cargoUnloadingBay` 单源：
+>   inventorySizeBonus / allowUnloading / unloadingDistance），未单独维护数值表。
+> - 玩法：官方 Cargo unloading bay 允许从太空平台向接驳站卸载货物，自身亦为物流接驳站的扩展存储舱——
+>   紧邻接驳站铺设时为接驳站增加 inventory_size_bonus（官方 20）额外存储槽位；本身亦为 20 格独立存储容器，
+>   可接入电路网络输出箱内货物信号。数据全部来自 GAME_DATA（占地/血量/堆叠/扩展槽位/命名/卸载距离）。
+> - 配方：官方 1扩展舱+4钢箱+15电引擎+8处理器（10s）；由「火箭技术」科技解锁（与接驳站/扩展舱同科技）。
+> - 校验：verify-dlc 新增物流卸载舱校验（13 项），全量 18 个校验脚本通过，构建通过。
 - [ ] 轨道平台 / 太空货运（行星间货物调度 / 空间平台遥测）
 
 ### 阶段五：数值/体验精修

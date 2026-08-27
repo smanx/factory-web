@@ -25,8 +25,8 @@ class CargoLandingPad extends CircuitNode {
     if (typeof G !== 'undefined' && G.ents) {
       for (const k in G.ents) {
         const e = G.ents[k];
-        if (!e || e.type !== 'cargo-bay' || !e.w || !e.h) continue;
-        // 相邻判定：扩展舱与接驳站矩形相邻（不重叠且任一边接触）
+        if (!e || (e.type !== 'cargo-bay' && e.type !== 'landing-pad-unloading-bay') || !e.w || !e.h) continue;
+        // 相邻判定：扩展舱/卸载舱与接驳站矩形相邻（不重叠且任一边接触）
         const cx1 = e.x, cy1 = e.y, cx2 = e.x + e.w, cy2 = e.y + e.h;
         const px1 = this.x, py1 = this.y, px2 = this.x + this.w, py2 = this.y + this.h;
         const touch = (cx1 === px2 || cx2 === px1 || cy1 === py2 || cy2 === py1) &&
