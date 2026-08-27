@@ -309,6 +309,10 @@ const RECIPES = {
   'nutrients-from-fish': { time: 2, inp: { 'raw-fish': 1 }, out: { 'nutrients': 20 } },
   // 五足虫卵繁殖：五足虫卵×1 + 营养素×30 + 水×60 → 五足虫卵×2（官方 pentapod-egg 15s，生化炉生物繁殖，对齐官方配方）
   'pentapod-egg': { time: 15, inp: { 'pentapod-egg': 1, 'nutrients': 30, 'water': 60 }, out: { 'pentapod-egg': 2 } },
+  // 果冻制火箭燃料（官方 rocket-fuel-from-jelly 10s：30 水 + 30 果冻 + 2 生物流 → 1 火箭燃料，生化炉 organic 配方，Gleba 无油行星的火箭燃料替代）
+  'rocket-fuel-from-jelly': { time: 10, inp: { 'water': 30, 'jelly': 30, 'bioflux': 2 }, out: { 'rocket-fuel': 1 } },
+  // 氨制固体燃料（官方 solid-fuel-from-ammonia 0.5s：15 氨 + 6 原油 → 1 固体燃料，化工厂 chemistry 配方，Aquilo 低温燃料链）
+  'solid-fuel-from-ammonia': { time: 0.5, inp: { 'ammonia': 15, 'crude-oil': 6 }, out: { 'solid-fuel': 1 } },
   // ===== 太空时代 捕获者火箭弹 + 虫巢孵化器（Captive biter spawner，官方数值，数据单源化）=====
   // 捕获者火箭弹：飞行机器人骨架+钢板+生物流+处理器（官方 capture-robot-rocket 配方，用于捕获虫巢）
   'capture-robot-rocket': { time: 10, inp: { 'flying-robot-frame': 1, 'steel-plate': 2, 'bioflux': 20, 'processing-unit': 2 }, out: { 'capture-robot-rocket': 1 } },
@@ -527,7 +531,7 @@ function filterChoices() {
   return _filterChoicesCache;
 }
 
-const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant', 'solid-fuel', 'solid-fuel-light-oil', 'solid-fuel-heavy-oil', 'sulfur', 'sulfuric-acid', 'carbon', 'carbon-fiber', 'lithium', 'lithium-brine', 'ammoniacal-solution', 'ammoniacal-solution-separation', 'thruster-fuel', 'thruster-oxidizer', 'advanced-thruster-fuel', 'advanced-thruster-oxidizer', 'flamethrower-ammo', 'holmium-solution', 'coal-synthesis'];
+const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant', 'solid-fuel', 'solid-fuel-light-oil', 'solid-fuel-heavy-oil', 'sulfur', 'sulfuric-acid', 'carbon', 'carbon-fiber', 'lithium', 'lithium-brine', 'ammoniacal-solution', 'ammoniacal-solution-separation', 'thruster-fuel', 'thruster-oxidizer', 'advanced-thruster-fuel', 'advanced-thruster-oxidizer', 'flamethrower-ammo', 'holmium-solution', 'coal-synthesis', 'solid-fuel-from-ammonia'];
 function isChemRecipe(id) { return CHEM_RECIPES.indexOf(id) >= 0; }
 function chemMult() { return (G.techDone.plastic ? 1.5 : 1) * ((G.dbg && G.dbg.asmMult) || 1); }
 
@@ -575,7 +579,7 @@ const DEVICE_NAMES = {
 const ELECTRO_RECIPES = ['superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant', 'promethium-science-pack', 'holmium-ore', 'holmium-solution', 'holmium-plate', 'supercapacitor', 'electrolyte', 'teslagun', 'tesla-ammo', 'tesla-turret', 'railgun-turret'];
 function isElectroRecipe(id) { return ELECTRO_RECIPES.indexOf(id) >= 0; }
 // 生化炉专属配方（太空时代生物产品）：果泥 / 生物流 / 营养素 / 生物硫磺 / 农业科研包 / 生化炉本体
-const BIOCHAMBER_RECIPES = ['yumako-mash', 'bioflux', 'nutrients-from-bioflux', 'nutrients-from-spoilage', 'burnt-spoilage', 'biosulfur', 'bioplastic', 'biolubricant', 'agricultural-science-pack', 'biochamber', 'jellynut-processing', 'biter-egg', 'nutrients-from-biter-egg', 'pentapod-egg', 'fish-breeding', 'nutrients-from-fish', 'iron-bacteria', 'copper-bacteria', 'iron-bacteria-cultivation', 'copper-bacteria-cultivation', 'iron-plate-from-iron-bacteria', 'copper-plate-from-copper-bacteria'];
+const BIOCHAMBER_RECIPES = ['yumako-mash', 'bioflux', 'nutrients-from-bioflux', 'nutrients-from-spoilage', 'burnt-spoilage', 'biosulfur', 'bioplastic', 'biolubricant', 'agricultural-science-pack', 'biochamber', 'jellynut-processing', 'biter-egg', 'nutrients-from-biter-egg', 'pentapod-egg', 'fish-breeding', 'nutrients-from-fish', 'rocket-fuel-from-jelly', 'iron-bacteria', 'copper-bacteria', 'iron-bacteria-cultivation', 'copper-bacteria-cultivation', 'iron-plate-from-iron-bacteria', 'copper-plate-from-copper-bacteria'];
 function isBiochamberRecipe(id) { return BIOCHAMBER_RECIPES.indexOf(id) >= 0; }
 // 破碎机专属配方（太空时代小行星碎块加工）：金属/碳质/氧化星块粉碎 + 破碎机本体 + 冰熔化
 const CRUSHER_RECIPES = ['metallic-asteroid-crushing', 'carbonic-asteroid-crushing', 'oxide-asteroid-crushing',

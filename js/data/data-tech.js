@@ -385,6 +385,8 @@ const RECIPE_TECH = {
   'fish-breeding': 'agriculture',
   'nutrients-from-fish': 'agriculture',
   'coal-synthesis': 'agriculture',
+  'rocket-fuel-from-jelly': 'agriculture',  // 果冻制火箭燃料（Gleba 生物质配方，由「农业科技」解锁）
+  'solid-fuel-from-ammonia': 'cryogenics',  // 氨制固体燃料（Aquilo 低温学链，由「低温学」科技解锁）
   'turbo-underground-belt': 'turbo-logistics',
   'turbo-splitter': 'turbo-logistics',
   // ===== 装载机 Loader（对齐《异星工厂》Loader，web 复刻开放官方隐藏物流设备）=====

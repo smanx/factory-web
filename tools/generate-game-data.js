@@ -251,7 +251,7 @@ const DLC_DEVICE_RECIPES = {
   'biosulfur': 'biochamber', 'bioplastic': 'biochamber', 'biolubricant': 'biochamber',
   'agricultural-science-pack': 'biochamber', 'biochamber': 'biochamber',
   'jellynut-processing': 'biochamber', 'biter-egg': 'biochamber', 'nutrients-from-biter-egg': 'biochamber',
-  'fish-breeding': 'biochamber', 'nutrients-from-fish': 'biochamber',
+  'fish-breeding': 'biochamber', 'nutrients-from-fish': 'biochamber', 'rocket-fuel-from-jelly': 'biochamber',
   'iron-bacteria': 'biochamber', 'copper-bacteria': 'biochamber', 'iron-bacteria-cultivation': 'biochamber', 'copper-bacteria-cultivation': 'biochamber',
   'pentapod-egg': 'biochamber',
   'carbon-fiber': 'biochamber',

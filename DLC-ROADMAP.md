@@ -871,3 +871,21 @@
 > - 五足虫高抗激光（官方 50~80%），经 enemyResistMult 作用于激光炮塔/个人激光防御。
 > - 新增 pentapod-egg（五足虫卵，官方堆叠 20）物品，击杀五足虫有概率掉落（越强掉卵概率越高）+ 变质物。
 > - 校验：verify-dlc 新增五足虫数据校验（11 项），全量 18 个校验脚本通过。
+
+### 阶段五：太空时代燃料替代链（Jelly rocket fuel / Ammonia solid fuel，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **配方**（官方数值，全部数据单源化，来自 data.generated.js）：
+>   - `rocket-fuel-from-jelly`（果冻制火箭燃料）：30 水 + 30 果冻 + 2 生物流 → 1 火箭燃料（10s，官方
+>     rocket-fuel-from-jelly 配方，生化炉 organic 配方，Gleba 无油行星的火箭燃料替代来源）
+>   - `solid-fuel-from-ammonia`（氨制固体燃料）：15 氨 + 6 原油 → 1 固体燃料（0.5s，官方 solid-fuel-from-ammonia
+>     配方，化工厂 chemistry 配方，Aquilo 低温燃料链）
+> - **燃料支持**：`pentapod-egg`（五足虫卵）加入 `isBurnerFuel` / `fuelEnergy`（官方 fuel_value 5MJ，
+>   弱效生物质燃料，与生鱼相近，可投入锅炉/熔炉/采矿机等燃烧器）。
+> - **设备归属**：果冻制火箭燃料 → 生化炉（BIOCHAMBER_RECIPES 注册，官方 organic 配方）；
+>   氨制固体燃料 → 化工厂（CHEM_RECIPES 注册，官方 chemistry 配方）。
+> - **科技**：果冻制火箭燃料由「农业科技」解锁（RECIPE_TECH 配方级门控）；氨制固体燃料由「低温学」科技解锁。
+> - **玩法**：补全太空时代燃料替代链——果冻制火箭燃料让无油星球（Gleba）可自产火箭燃料，
+>   氨制固体燃料补全 Aquilo 低温燃料链，为各行星提供多样化的燃料来源。
+> - **校验**：verify-dlc 新增果冻制火箭燃料/氨制固体燃料校验（10 项），verify-data-integrity 配方键
+>   映射补充 2 项动态键，全量 18 个校验脚本通过，`node build.js` 构建通过。

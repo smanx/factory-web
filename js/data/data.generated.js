@@ -2614,6 +2614,27 @@ const GAME_DATA = {
     "pentapod-egg": 2
    }
   },
+  "rocket-fuel-from-jelly": {
+   "time": 10,
+   "inp": {
+    "water": 30,
+    "jelly": 30,
+    "bioflux": 2
+   },
+   "out": {
+    "rocket-fuel": 1
+   }
+  },
+  "solid-fuel-from-ammonia": {
+   "time": 0.5,
+   "inp": {
+    "ammonia": 15,
+    "crude-oil": 6
+   },
+   "out": {
+    "solid-fuel": 1
+   }
+  },
   "capture-robot-rocket": {
    "time": 10,
    "inp": {
@@ -3740,6 +3761,8 @@ const GAME_DATA = {
   "fish-breeding": "biochamber",
   "nutrients-from-fish": "biochamber",
   "pentapod-egg": "biochamber",
+  "rocket-fuel-from-jelly": "biochamber",
+  "solid-fuel-from-ammonia": "chemical-plant",
   "capture-robot-rocket": "assembling-machine-1",
   "captive-biter-spawner": "assembling-machine-1",
   "iron-bacteria": "biochamber",
@@ -5149,6 +5172,14 @@ const GAME_DATA = {
   "nutrients-from-fish": {
    "zh": "鲜鱼制营养素",
    "en": "Nutrients from fish"
+  },
+  "rocket-fuel-from-jelly": {
+   "zh": "果冻制火箭燃料",
+   "en": "Rocket fuel from jelly"
+  },
+  "solid-fuel-from-ammonia": {
+   "zh": "氨制固体燃料",
+   "en": "Solid fuel from ammonia"
   },
   "iron-bacteria": {
    "zh": "铁细菌",

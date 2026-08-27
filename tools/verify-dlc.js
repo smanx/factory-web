@@ -396,6 +396,18 @@ ok(ctx.__recipeDevice('fish-breeding') === 'biochamber', '养鱼 → 生化炉�
 ok(RP['nutrients-from-fish'].inp['raw-fish'] === 1 && RP['nutrients-from-fish'].out['nutrients'] === 20, '鱼制营养素=1生鱼→20营养素（官方）');
 ok(RP['nutrients-from-fish'].time === 2, '鱼制营养素耗时=2s（官方）');
 ok(ctx.__recipeDevice('nutrients-from-fish') === 'biochamber', '鱼制营养素 → 生化炉（官方 organic）');
+// 果冻制火箭燃料（rocket-fuel-from-jelly）：30 水 + 30 果冻 + 2 生物流 → 1 火箭燃料（官方 10s，生化炉 organic）
+ok(RP['rocket-fuel-from-jelly'].inp['water'] === 30 && RP['rocket-fuel-from-jelly'].inp['jelly'] === 30 && RP['rocket-fuel-from-jelly'].inp['bioflux'] === 2, '果冻制火箭燃料=30水+30果冻+2生物流（官方）');
+ok(RP['rocket-fuel-from-jelly'].out['rocket-fuel'] === 1, '果冻制火箭燃料产出 1 火箭燃料（官方）');
+ok(RP['rocket-fuel-from-jelly'].time === 10, '果冻制火箭燃料耗时=10s（官方）');
+ok(ctx.__recipeDevice('rocket-fuel-from-jelly') === 'biochamber', '果冻制火箭燃料 → 生化炉（官方 organic）');
+ok(ctx.__recipeTechReq('rocket-fuel-from-jelly') === 'agriculture', '果冻制火箭燃料需「农业科技」');
+// 氨制固体燃料（solid-fuel-from-ammonia）：15 氨 + 6 原油 → 1 固体燃料（官方 0.5s，化工厂 chemistry）
+ok(RP['solid-fuel-from-ammonia'].inp['ammonia'] === 15 && RP['solid-fuel-from-ammonia'].inp['crude-oil'] === 6, '氨制固体燃料=15氨+6原油（官方）');
+ok(RP['solid-fuel-from-ammonia'].out['solid-fuel'] === 1, '氨制固体燃料产出 1 固体燃料（官方）');
+ok(RP['solid-fuel-from-ammonia'].time === 0.5, '氨制固体燃料耗时=0.5s（官方）');
+ok(ctx.__recipeDevice('solid-fuel-from-ammonia') === 'chemical-plant', '氨制固体燃料 → 化工厂（官方 chemistry）');
+ok(ctx.__recipeTechReq('solid-fuel-from-ammonia') === 'cryogenics', '氨制固体燃料需「低温学」科技');
 // 煤合成（coal-synthesis）：5 碳 + 1 硫磺 + 10 水 → 1 煤（官方 2s，化工厂）
 ok(RP['coal-synthesis'].inp['carbon'] === 5 && RP['coal-synthesis'].inp['sulfur'] === 1 && RP['coal-synthesis'].inp['water'] === 10, '煤合成=5碳+1硫磺+10水（官方）');
 ok(RP['coal-synthesis'].out['coal'] === 1, '煤合成产出 1 煤（官方）');
