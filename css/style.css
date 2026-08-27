@@ -197,6 +197,9 @@ html, body {
   overflow: hidden;
 }
 .qb-slot .qb-ic { width: 100%; height: 100%; display: block; object-fit: cover; border-radius: 3px; }
+/* 放上物品后：去除边框，让图标占满整个格子 */
+.qb-slot:has(.qb-ic) { border: 0; }
+.qb-slot:has(.qb-ic) .qb-ic { border-radius: 0; }
 .qb-slot .qb-empty {
   font-size: 10px;
   color: rgba(255, 255, 255, .25);
@@ -251,7 +254,8 @@ html, body {
   overflow: hidden;
   pointer-events: auto;
 }
-.cq-slot img { width: 100%; height: 100%; display: block; object-fit: cover; border-radius: 3px; }
+.cq-slot:has(img) { border: 0; }
+.cq-slot img { width: 100%; height: 100%; display: block; object-fit: cover; border-radius: 0; }
 /* 队首当前在制项：蓝色描边 + 旋转 loading 圆环 */
 .cq-slot.cq-working { border-color: #7fd4a0; }
 .cq-slot.cq-working::after {
@@ -289,7 +293,9 @@ html, body {
   opacity: .95;
 }
 
-.slot img, .slot canvas { width: 100%; height: 100%; display: block; border-radius: 3px; }
+.slot img, .slot canvas { width: 100%; height: 100%; display: block; border-radius: 0; }
+/* 放上物品后：去除边框，让图标占满整个格子 */
+.slot:has(canvas), .slot:has(img) { border: 0; }
 .slot:hover { border-color: #7f93ad; }
 .slot.active { border-color: #ffd23c; box-shadow: 0 0 8px rgba(255, 210, 60, .5); }
 .slot.empty { filter: grayscale(.9) brightness(.55); }
@@ -327,7 +333,8 @@ html, body {
 .inv-slot:hover { border-color: #7f93ad; }
 .inv-slot.empty { background: rgba(34, 43, 53, .45); border-style: dashed; cursor: default; }
 .inv-slot.hidden { display: none; }
-.inv-slot img { width: 100%; height: 100%; display: block; border-radius: 3px; object-fit: cover; }
+.inv-slot:has(img) { border: 0; }
+.inv-slot img { width: 100%; height: 100%; display: block; border-radius: 0; object-fit: cover; }
 /* 物品数量角标：右下角 */
 .inv-slot .cnt {
   position: absolute;
