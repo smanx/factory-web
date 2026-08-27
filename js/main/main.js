@@ -625,7 +625,7 @@ function applySave(d) {
 }
 
 // 地面铺设：混凝土/石砖路铺在草地上，填海把水面填成草地，雅玛果土壤铺在草地上（太空时代农业）
-const PAVE_TILE = { 'concrete': T_CONCRETE, 'refined-concrete': T_REF_CONCRETE, 'hazard-concrete': T_HAZARD, 'refined-hazard-concrete': T_REF_HAZARD, 'stone-path': T_PATH };
+const PAVE_TILE = { 'concrete': T_CONCRETE, 'refined-concrete': T_REF_CONCRETE, 'hazard-concrete': T_HAZARD, 'refined-hazard-concrete': T_REF_HAZARD, 'stone-path': T_PATH, 'foundation': T_FOUNDATION, 'ice-platform': T_ICE_PLATFORM };
 const SOIL_TILE = { 'artificial-yumako-soil': T_YUMAKO_SOIL, 'overgrowth-yumako-soil': T_OVERGROWTH_YUMAKO_SOIL, 'artificial-jellynut-soil': T_JELLYNUT_SOIL, 'overgrowth-jellynut-soil': T_OVERGROWTH_JELLYNUT_SOIL };
 function placeGround(type, tx, ty, infinite) {
   const t = getTerrain(tx, ty);
@@ -668,7 +668,7 @@ function tryPlaceAt(tx, ty) {
   const type = sq.base;
   const placeQuality = sq.quality;
   // 地面铺设（混凝土/石砖路/填海等）：不创建实体，直接修改地形（需优先于 BUILD_DEFS 守卫判定）
-  if (type === 'concrete' || type === 'refined-concrete' || type === 'hazard-concrete' || type === 'stone-path' || type === 'landfill' || SOIL_TILE[type] !== undefined) {
+  if (type === 'concrete' || type === 'refined-concrete' || type === 'hazard-concrete' || type === 'stone-path' || type === 'landfill' || type === 'foundation' || type === 'ice-platform' || SOIL_TILE[type] !== undefined) {
     placeGround(type, tx, ty, infinite);
     return;
   }

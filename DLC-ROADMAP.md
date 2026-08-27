@@ -708,4 +708,3 @@
 >   GAME_DATA 单源提取 stackSize/names/recipe/recipeDevice。
 > - **校验**：verify-dlc 新增五足虫卵链校验（13 项），verify-data-integrity 配方键映射补充 1 项动态键，
 >   全量 18 个校验脚本通过，`node build.js` 构建通过。
-

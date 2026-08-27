@@ -298,7 +298,7 @@ function assemblerPanelHtml(e) {
   h += '<div class="sec">选择配方</div>';
   h += '<input id="asm-recipe-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off" value="">';
   h += '<div class="recgrid">';
-  for (const rid of Object.keys(RECIPES).filter(r => !isChemRecipe(r) && !isCentrifugeRecipe(r) && !isAgricultureTowerRecipe(r) && !isCryogenicRecipe(r))) {
+  for (const rid of Object.keys(RECIPES).filter(r => !isChemRecipe(r) && !isCentrifugeRecipe(r) && !isAgricultureTowerRecipe(r) && !isCryoRecipe(r))) {
     const outId = Object.keys(RECIPES[rid].out)[0];
     const unlocked = recipeUnlocked(rid);
     const lockTech = recipeLockingTech(rid);
