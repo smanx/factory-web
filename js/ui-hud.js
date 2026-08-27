@@ -219,11 +219,18 @@ function renderCraftQueue() {
     const cnt = qs.filter(x => x === outId).length;
     html += '<div class="' + cls + '" data-itemid="' + outId + '"' +
       ' data-tip="' + nm + (idx === 0 ? '（制作中）' : '（排队中）') + '·点击取消制作">' +
-      '<img src="' + iconDataURL(outId, 16) + '">' +
+      '<img src="' + iconDataURL(outId, 32) + '">' +
       (cnt > 1 ? '<span class="cq-cnt">×' + cnt + '</span>' : '') +
       '</div>';
   });
   if (box.innerHTML !== html) box.innerHTML = html;
+  // 队首在制项的 loading 圆环由倒计时进度（done/total）驱动旋转，不持续匀速转圈
+  const cur = G.craftQueue[0];
+  const work = box.querySelector('.cq-working');
+  if (work && cur && cur.total > 0) {
+    const prog = Math.min(1, Math.max(0, cur.done / cur.total));
+    work.style.setProperty('--cq-progress', prog);
+  }
   // 点击任一队列图标即取消整个制作队列（返还排队材料）
   Array.prototype.forEach.call(box.querySelectorAll('.cq-slot'), slot => {
     slot.onclick = () => { cancelCraftQueue(); toast('已取消制作（返还排队材料）'); };

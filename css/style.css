@@ -184,7 +184,7 @@ html, body {
 .qb-row { display: flex; gap: 3px; }
 .qb-slot {
   position: relative;
-  width: 16px; height: 16px;
+  width: 32px; height: 32px;
   flex-shrink: 0;
   border-radius: 3px;
   border: 1px solid #3a4550;
@@ -226,8 +226,8 @@ html, body {
 #craft-queue {
   position: absolute;
   bottom: 12px;
-  /* 快捷栏（2行×4格，16px格 + 3px间距/4px内边距）右缘 ≈ 93px，再留 8px 间距 */
-  left: 101px;
+  /* 快捷栏（2行×4格，32px格 + 3px间距/4px内边距）右缘 ≈ 157px，再留 8px 间距 */
+  left: 165px;
   display: none;
   flex-direction: row;
   align-items: center;
@@ -240,7 +240,7 @@ html, body {
 }
 .cq-slot {
   position: relative;
-  width: 16px; height: 16px;
+  width: 32px; height: 32px;
   flex-shrink: 0;
   border-radius: 3px;
   border: 1px solid #3a4550;
@@ -262,10 +262,11 @@ html, body {
   border: 1px solid transparent;
   border-top-color: #7fd4a0;
   border-right-color: #7fd4a0;
-  animation: cqSpin .8s linear infinite;
+  /* 旋转角度由 JS 依据合成倒计时进度（done/total）推进，而非持续匀速转圈 */
+  transform: rotate(calc(var(--cq-progress, 0) * 360deg));
+  transition: transform .1s linear;
   pointer-events: none;
 }
-@keyframes cqSpin { to { transform: rotate(360deg); } }
 /* 排队（尚未开始）项：半透明 + 少量堆叠数量角标 */
 .cq-slot.cq-queued { opacity: .75; }
 .cq-slot .cq-cnt {
@@ -280,7 +281,7 @@ html, body {
 
 .slot {
   position: relative;
-  width: 16px; height: 16px;
+  width: 32px; height: 32px;
   flex-shrink: 0;
   border-radius: 3px;
   border: 1px solid #3a4550;
@@ -311,12 +312,12 @@ html, body {
 
 .inv-slots {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 16px);
+  grid-template-columns: repeat(auto-fill, 32px);
   gap: 4px;
 }
 .inv-slot {
   position: relative;
-  width: 16px; height: 16px;
+  width: 32px; height: 32px;
   border-radius: 3px;
   border: 1px solid #37424f;
   background: #222b35;
@@ -1794,11 +1795,11 @@ html, body {
     border: none;
     border-radius: 2px;
   }
-  .slot { width: 16px; height: 16px; }
+  .slot { width: 32px; height: 32px; }
   .slot .key { font-size: 6px; }
   .slot .cnt { font-size: 7px; }
   /* 手机端：背包格子沿用统一 16px 小格，多列自适应 */
-  .inv-slots { grid-template-columns: repeat(auto-fill, 16px); }
+  .inv-slots { grid-template-columns: repeat(auto-fill, 32px); }
   .inv-slot .cnt { font-size: 7px; }
 
   /* 绿图操作栏放大 */
@@ -1815,13 +1816,13 @@ html, body {
   /* 左下角战斗快捷栏：手机端缩小槽位，避免遮挡 */
   #quickbar { bottom: 12px; left: 12px; gap: 3px; padding: 3px; }
   #quickbar .qb-row { gap: 3px; }
-  #quickbar .qb-slot { width: 16px; height: 16px; }
+  #quickbar .qb-slot { width: 32px; height: 32px; }
   #quickbar .qb-empty { font-size: 8px; }
   #quickbar .qb-cnt { font-size: 7px; }
 
   /* 手机端合成队列：跟随快捷栏尺寸，缩小槽位 */
-  #craft-queue { bottom: 12px; left: 96px; gap: 3px; padding: 3px; }
-  #craft-queue .cq-slot { width: 16px; height: 16px; }
+  #craft-queue { bottom: 12px; left: 163px; gap: 3px; padding: 3px; }
+  #craft-queue .cq-slot { width: 32px; height: 32px; }
 }
 
 /* 超窄屏（如竖屏手机）进一步压缩顶部按钮，避免溢出 */
