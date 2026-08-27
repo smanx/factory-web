@@ -20,30 +20,15 @@ function drawItemGlyph(x, id, cx, cy, s) {
   x.save();
   x.translate(cx, cy);
   // emoji 图标优先：所有配置了 emoji 字段的物品一律使用 emoji 渲染
+  // 直接渲染 emoji 原图：不绘制边框、底框与高光/阴影蒙层，保证 emoji 清晰可见。
   const _emoji = ITEMS[id].emoji;
   if (_emoji) {
-    const eb = r * 0.86;
-    const eg = x.createLinearGradient(-eb, -eb, eb, eb);
-    eg.addColorStop(0, lightenColor(col, 0.45));
-    eg.addColorStop(1, darkenColor(col, 0.38));
-    x.fillStyle = eg;
-    rrPath(x, -eb, -eb, eb * 2, eb * 2, eb * 0.34);
-    x.fill();
-    x.strokeStyle = darkenColor(col, 0.55);
-    x.lineWidth = Math.max(1, s * 0.045);
-    x.stroke();
-    x.fillStyle = 'rgba(255,255,255,.22)';
-    rrPath(x, -eb + s * 0.08, -eb + s * 0.08, eb * 2 - s * 0.16, eb * 0.62, eb * 0.28);
-    x.fill();
-    x.fillStyle = 'rgba(0,0,0,.16)';
-    rrPath(x, -eb + s * 0.08, eb - eb * 0.5, eb * 2 - s * 0.16, eb * 0.42, eb * 0.22);
-    x.fill();
-    x.font = Math.round(eb * 1.15) + 'px "Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",system-ui';
+    const eb = r * 0.92;
+    x.font = Math.round(eb * 1.4) + 'px "Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",system-ui';
     x.textAlign = 'center';
     x.textBaseline = 'middle';
+    x.fillStyle = '#fff';
     x.fillText(_emoji, 0, 1);
-    x.fillStyle = 'rgba(255,255,255,.1)';
-    x.fillRect(-eb * 0.7, eb * 0.6, eb * 1.4, Math.max(1, s * 0.05));
     x.restore();
     return;
   }
