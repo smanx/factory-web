@@ -2841,6 +2841,140 @@ const GAME_DATA = {
     "cryogenic-plant": 1
    }
   },
+  "iron-ore-melting": {
+   "time": 32,
+   "inp": {
+    "iron-ore": 50,
+    "calcite": 1
+   },
+   "out": {
+    "molten-iron": 500
+   }
+  },
+  "copper-ore-melting": {
+   "time": 32,
+   "inp": {
+    "copper-ore": 50,
+    "calcite": 1
+   },
+   "out": {
+    "molten-copper": 500
+   }
+  },
+  "casting-iron": {
+   "time": 3.2,
+   "inp": {
+    "molten-iron": 20
+   },
+   "out": {
+    "iron-plate": 2
+   }
+  },
+  "casting-steel": {
+   "time": 3.2,
+   "inp": {
+    "molten-iron": 30
+   },
+   "out": {
+    "steel-plate": 1
+   }
+  },
+  "casting-copper": {
+   "time": 3.2,
+   "inp": {
+    "molten-copper": 20
+   },
+   "out": {
+    "copper-plate": 2
+   }
+  },
+  "casting-iron-gear-wheel": {
+   "time": 1,
+   "inp": {
+    "molten-iron": 10
+   },
+   "out": {
+    "iron-gear-wheel": 1
+   }
+  },
+  "casting-iron-stick": {
+   "time": 1,
+   "inp": {
+    "molten-iron": 20
+   },
+   "out": {
+    "iron-stick": 4
+   }
+  },
+  "casting-pipe": {
+   "time": 1,
+   "inp": {
+    "molten-iron": 10
+   },
+   "out": {
+    "pipe": 1
+   }
+  },
+  "casting-pipe-to-ground": {
+   "time": 1,
+   "inp": {
+    "molten-iron": 50,
+    "pipe": 10
+   },
+   "out": {
+    "pipe-to-ground": 2
+   }
+  },
+  "casting-low-density-structure": {
+   "time": 15,
+   "inp": {
+    "molten-iron": 80,
+    "molten-copper": 250,
+    "plastic-bar": 5
+   },
+   "out": {
+    "low-density-structure": 1
+   }
+  },
+  "casting-copper-cable": {
+   "time": 1,
+   "inp": {
+    "molten-copper": 5
+   },
+   "out": {
+    "copper-cable": 2
+   }
+  },
+  "concrete-from-molten-iron": {
+   "time": 10,
+   "inp": {
+    "molten-iron": 20,
+    "water": 100,
+    "stone-brick": 5
+   },
+   "out": {
+    "concrete": 10
+   }
+  },
+  "steam-condensation": {
+   "time": 1,
+   "inp": {
+    "steam": 1000
+   },
+   "out": {
+    "water": 90
+   }
+  },
+  "acid-neutralisation": {
+   "time": 0.5,
+   "inp": {
+    "calcite": 1,
+    "sulfuric-acid": 100
+   },
+   "out": {
+    "steam": 1000
+   }
+  },
   "quantum-processor": {
    "time": 30,
    "inp": {
@@ -3782,6 +3916,20 @@ const GAME_DATA = {
   "promethium-science-pack": "electromagnetic-plant",
   "cryogenic-science-pack": "cryogenic-plant",
   "cryogenic-plant": "cryogenic-plant",
+  "iron-ore-melting": "foundry",
+  "copper-ore-melting": "foundry",
+  "casting-iron": "foundry",
+  "casting-steel": "foundry",
+  "casting-copper": "foundry",
+  "casting-iron-gear-wheel": "foundry",
+  "casting-iron-stick": "foundry",
+  "casting-pipe": "foundry",
+  "casting-pipe-to-ground": "foundry",
+  "casting-low-density-structure": "foundry",
+  "casting-copper-cable": "foundry",
+  "concrete-from-molten-iron": "foundry",
+  "steam-condensation": "chemical-plant",
+  "acid-neutralisation": "chemical-plant",
   "quantum-processor": "assembling-machine-1",
   "railgun": "assembling-machine-1",
   "ice-melting": "crusher",
@@ -5236,6 +5384,62 @@ const GAME_DATA = {
   "ammoniacal-solution-separation": {
    "zh": "氨溶液分离",
    "en": "Ammoniacal solution separation"
+  },
+  "iron-ore-melting": {
+   "zh": "铁矿制熔融铁",
+   "en": "Iron ore melting"
+  },
+  "copper-ore-melting": {
+   "zh": "铜矿制熔融铜",
+   "en": "Copper ore melting"
+  },
+  "casting-iron": {
+   "zh": "浇铸铁",
+   "en": "Casting iron"
+  },
+  "casting-steel": {
+   "zh": "浇铸钢",
+   "en": "Casting steel"
+  },
+  "casting-copper": {
+   "zh": "浇铸铜",
+   "en": "Casting copper"
+  },
+  "casting-iron-gear-wheel": {
+   "zh": "浇铸铁齿轮",
+   "en": "Casting iron gear wheel"
+  },
+  "casting-iron-stick": {
+   "zh": "浇铸铁棒",
+   "en": "Casting iron stick"
+  },
+  "casting-pipe": {
+   "zh": "浇铸管道",
+   "en": "Casting pipe"
+  },
+  "casting-pipe-to-ground": {
+   "zh": "浇铸地下管道",
+   "en": "Casting pipe to ground"
+  },
+  "casting-low-density-structure": {
+   "zh": "浇铸轻质框架",
+   "en": "Casting low density structure"
+  },
+  "casting-copper-cable": {
+   "zh": "浇铸铜缆",
+   "en": "Casting copper cable"
+  },
+  "concrete-from-molten-iron": {
+   "zh": "熔融铁制混凝土",
+   "en": "Concrete from molten iron"
+  },
+  "steam-condensation": {
+   "zh": "蒸汽冷凝",
+   "en": "Steam condensation"
+  },
+  "acid-neutralisation": {
+   "zh": "酸中和",
+   "en": "Acid neutralisation"
   },
   "molten-iron-from-lava": {
    "zh": "岩浆制熔融铁",

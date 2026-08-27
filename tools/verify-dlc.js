@@ -996,10 +996,49 @@ ok(!!TS['cryogenics'], '「低温学」科技已注册');
 ok(TS['cryogenics'].req && TS['cryogenics'].req.indexOf('electromagnetics') >= 0, '低温学前置含「电磁学」');
 const cryoRec2 = RP['cryogenic-science-pack'];
 ok(cryoRec2 && cryoRec2.inp['ice'] === 3 && cryoRec2.inp['lithium-plate'] === 1 && cryoRec2.inp['fluoroketone-cold'] === 6 && cryoRec2.out && cryoRec2.out['fluoroketone-hot'] === 3, '低温科研包配方=冰3+锂板1+氟酮冷6→1+氟酮热3（官方）');
-console.log('\n【熔融金属 / 废料回收（数据来自 GAME_DATA）】');
+console.log('\n【熔融金属铸造链 / 废料回收（数据来自 GAME_DATA）】');
 ok(!!GD.names['molten-iron'] && !!GD.names['molten-copper'], '熔融铁/熔融铜官方命名已收录');
-ok(ctx.__recipeDevice('molten-iron') === 'foundry', '熔融铁 → 铸造厂');
-ok(ctx.__recipeDevice('molten-copper') === 'foundry', '熔融铜 → 铸造厂');
+// 熔炼：官方 iron-ore-melting / copper-ore-melting（50 矿 + 1 方解石 → 500 熔融，32s）
+const iom = RP['iron-ore-melting'];
+ok(!!iom, 'iron-ore-melting 配方已注册（官方铁矿熔炼）');
+ok(iom && iom.time === 32 && iom.inp['iron-ore'] === 50 && iom.inp['calcite'] === 1 && iom.out['molten-iron'] === 500, 'iron-ore-melting=50铁矿+1方解石→500熔融铁，32s（官方）');
+const com = RP['copper-ore-melting'];
+ok(!!com, 'copper-ore-melting 配方已注册（官方铜矿熔炼）');
+ok(com && com.time === 32 && com.inp['copper-ore'] === 50 && com.inp['calcite'] === 1 && com.out['molten-copper'] === 500, 'copper-ore-melting=50铜矿+1方解石→500熔融铜，32s（官方）');
+// 浇铸链：官方 casting-*
+const castMap = {
+  'casting-iron': [20, 'molten-iron', 'iron-plate', 2, 3.2],
+  'casting-steel': [30, 'molten-iron', 'steel-plate', 1, 3.2],
+  'casting-copper': [20, 'molten-copper', 'copper-plate', 2, 3.2],
+  'casting-iron-gear-wheel': [10, 'molten-iron', 'iron-gear-wheel', 1, 1],
+  'casting-iron-stick': [20, 'molten-iron', 'iron-stick', 4, 1],
+  'casting-pipe': [10, 'molten-iron', 'pipe', 1, 1],
+  'casting-copper-cable': [5, 'molten-copper', 'copper-cable', 2, 1],
+};
+for (const [rid, [amt, fin, fout, cnt, t]] of Object.entries(castMap)) {
+  const rec = RP[rid];
+  ok(!!rec, rid + ' 配方已注册（官方铸造）');
+  ok(rec && rec.time === t && rec.inp[fin] === amt && rec.out[fout] === cnt, rid + '=' + amt + fin + '→' + cnt + fout + '，' + t + 's（官方）');
+  ok(ctx.__recipeDevice(rid) === 'foundry', rid + ' → 铸造厂');
+}
+// 浇铸地下管道 / 低密度结构 / 混凝土
+const cptg = RP['casting-pipe-to-ground'];
+ok(!!cptg && cptg.time === 1 && cptg.inp['molten-iron'] === 50 && cptg.inp['pipe'] === 10 && cptg.out['pipe-to-ground'] === 2, 'casting-pipe-to-ground=50熔融铁+10管道→2地下管道，1s（官方）');
+const clds = RP['casting-low-density-structure'];
+ok(!!clds && clds.time === 15 && clds.inp['molten-iron'] === 80 && clds.inp['molten-copper'] === 250 && clds.inp['plastic-bar'] === 5 && clds.out['low-density-structure'] === 1, 'casting-low-density-structure=80熔融铁+250熔融铜+5塑料→1低密度结构，15s（官方）');
+const ccon = RP['concrete-from-molten-iron'];
+ok(!!ccon && ccon.time === 10 && ccon.inp['molten-iron'] === 20 && ccon.inp['water'] === 100 && ccon.inp['stone-brick'] === 5 && ccon.out['concrete'] === 10, 'concrete-from-molten-iron=20熔融铁+100水+5石砖→10混凝土，10s（官方）');
+for (const rid of ['iron-ore-melting','copper-ore-melting','casting-iron','casting-steel','casting-copper','casting-iron-gear-wheel','casting-iron-stick','casting-pipe','casting-pipe-to-ground','casting-low-density-structure','casting-copper-cable','concrete-from-molten-iron']) {
+  ok(ctx.__recipeDevice(rid) === 'foundry', rid + ' → 铸造厂');
+  ok(ctx.__itemTechReq(rid) === 'molten-metal', rid + ' 需「熔融金属」科技');
+}
+// 蒸汽冷凝 / 酸中和（官方 steam-condensation / acid-neutralisation）
+const scond = RP['steam-condensation'];
+ok(!!scond && scond.time === 1 && scond.inp['steam'] === 1000 && scond.out['water'] === 90, 'steam-condensation=1000蒸汽→90水，1s（官方）');
+const aneu = RP['acid-neutralisation'];
+ok(!!aneu && aneu.time === 0.5 && aneu.inp['calcite'] === 1 && aneu.inp['sulfuric-acid'] === 100 && aneu.out['steam'] === 1000, 'acid-neutralisation=1方解石+100硫酸→1000蒸汽，0.5s（官方）');
+ok(ctx.__recipeDevice('steam-condensation') === 'chemical-plant', '蒸汽冷凝 → 化工厂');
+ok(ctx.__recipeDevice('acid-neutralisation') === 'chemical-plant', '酸中和 → 化工厂');
 ok(!!GD.names['scrap'], '废料官方命名已收录');
 ok(GD.stackSize['scrap'] === 50, '废料堆叠=50（官方）');
 ok(!!RP['recycle-scrap'], '废料回收配方已注册');

@@ -907,3 +907,33 @@
 > **审计结论**：本轮对本项目「数据对齐全量核验」——物品/配方/设备 ID 与命名全部对齐《异星工厂》官方
 > （factorio-data 2.1.17），多余物品已移除（仅保留 6 个创造/虚空物品 + 官方卫星 satellite + 内部火箭组装
 > 表示 rocket-body），各项数据（占地/功耗/速度/堆叠/配方/命名）均来自 data.generated.js 单源，未单独维护数值表。
+
+### 阶段五.1：太空时代熔融金属铸造链（Foundry Casting，Vulcanus 冶金，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **熔炼配方**（官方数值，数据单源化，来自 data.generated.js）：
+>   - `iron-ore-melting`（铁矿制熔融铁）：50 铁矿 + 1 方解石 → 500 熔融铁（32s，官方 iron-ore-melting，
+>     铸造厂 metallurgy）；替代原简化 `molten-iron` 配方（4s/20矿）为官方精确值。
+>   - `copper-ore-melting`（铜矿制熔融铜）：50 铜矿 + 1 方解石 → 500 熔融铜（32s，官方 copper-ore-melting）。
+> - **浇铸配方**（官方 casting-* 全链，铸造厂）：
+>   - `casting-iron`：20 熔融铁 → 2 铁板（3.2s）
+>   - `casting-steel`：30 熔融铁 → 1 钢板（3.2s）
+>   - `casting-copper`：20 熔融铜 → 2 铜板（3.2s）
+>   - `casting-iron-gear-wheel`：10 熔融铁 → 1 齿轮（1s）
+>   - `casting-iron-stick`：20 熔融铁 → 4 铁杆（1s）
+>   - `casting-pipe`：10 熔融铁 → 1 管道（1s）
+>   - `casting-pipe-to-ground`：50 熔融铁 + 10 管道 → 2 地下管道（1s）
+>   - `casting-low-density-structure`：80 熔融铁 + 250 熔融铜 + 5 塑料 → 1 低密度结构（15s）
+>   - `casting-copper-cable`：5 熔融铜 → 2 铜线（1s）
+>   - `concrete-from-molten-iron`：20 熔融铁 + 100 水 + 5 石砖 → 10 混凝土（10s）
+> - **辅助流体配方**（官方 chemistry/cryogenics 双类别）：
+>   - `steam-condensation`：1000 蒸汽 → 90 水（1s，化工厂）
+>   - `acid-neutralisation`：1 方解石 + 100 硫酸 → 1000 蒸汽（0.5s，化工厂）
+> - **设备归属**：全部铸造/熔炼配方注册进 FOUNDRY_RECIPES（铸造厂配方面板可见，官方 metallurgy 类别），
+>   steam-condensation/acid-neutralisation 注册进 CHEM_RECIPES（化工厂）。
+> - **科技**：全部铸造/熔炼配方由「熔融金属」科技解锁（RECIPE_TECH 配方级门控，需冶金学）；
+>   蒸汽冷凝/酸中和由「低温学」科技解锁。
+> - **数据单源**：配方数值/配方名（浇铸铁/Iron ore melting 等）均来自 data.generated.js
+>   （factorio-data 官方 locale），生成脚本 DLC_DEVICE_RECIPES 补齐铸造/化工厂设备归属。
+> - **校验**：verify-dlc 新增铸造链校验（14 项熔炼/浇铸/蒸汽冷凝/酸中和数值 + 设备归属 + 科技门控），
+>   verify-data-integrity 配方键动态映射补充 14 项，全量 18 个校验脚本通过，`node build.js` 构建通过。

@@ -372,11 +372,35 @@ const RECIPES = {
   'lithium-brine': { time: 5, inp: { 'water': 50, 'calcite': 5 }, out: { 'lithium-brine': 50 } },
   // 低温工厂：钢板 + 处理器 + 导热管 + 聚变燃料棒 → 低温工厂（官方需低温合金，此处适配高级材料，10s）
   'cryogenic-plant': { time: 10, inp: { 'steel-plate': 30, 'processing-unit': 20, 'heat-pipe': 20, 'fusion-power-cell': 1 }, out: { 'cryogenic-plant': 1 } },
-  // ===== 太空时代 熔融金属流体（Vulcanus 铸造厂，数据来自 factorio-data 官方）=====
-  // 熔融铁：铁矿 + 方解石 → 熔融铁（官方 molten-iron 4s：铁矿+方解石，铸造厂）
-  'molten-iron': { time: 4, inp: { 'iron-ore': 20, 'calcite': 5 }, out: { 'molten-iron': 100 } },
-  // 熔融铜：铜矿 + 方解石 → 熔融铜（官方 molten-copper 4s）
-  'molten-copper': { time: 4, inp: { 'copper-ore': 20, 'calcite': 5 }, out: { 'molten-copper': 100 } },
+  // ===== 太空时代 熔融金属铸造链（Vulcanus 铸造厂，数据来自 factorio-data 官方）=====
+  // 铁矿熔炼：50 铁矿 + 1 方解石 → 500 熔融铁（官方 iron-ore-melting 32s，铸造厂 metallurgy）
+  'iron-ore-melting': { time: 32, inp: { 'iron-ore': 50, 'calcite': 1 }, out: { 'molten-iron': 500 } },
+  // 铜矿熔炼：50 铜矿 + 1 方解石 → 500 熔融铜（官方 copper-ore-melting 32s，铸造厂 metallurgy）
+  'copper-ore-melting': { time: 32, inp: { 'copper-ore': 50, 'calcite': 1 }, out: { 'molten-copper': 500 } },
+  // 浇铸铁板：20 熔融铁 → 2 铁板（官方 casting-iron 3.2s，铸造厂 metallurgy）
+  'casting-iron': { time: 3.2, inp: { 'molten-iron': 20 }, out: { 'iron-plate': 2 } },
+  // 浇铸钢板：30 熔融铁 → 1 钢板（官方 casting-steel 3.2s，铸造厂 metallurgy）
+  'casting-steel': { time: 3.2, inp: { 'molten-iron': 30 }, out: { 'steel-plate': 1 } },
+  // 浇铸铜板：20 熔融铜 → 2 铜板（官方 casting-copper 3.2s，铸造厂 metallurgy）
+  'casting-copper': { time: 3.2, inp: { 'molten-copper': 20 }, out: { 'copper-plate': 2 } },
+  // 浇铸齿轮：10 熔融铁 → 1 齿轮（官方 casting-iron-gear-wheel 1s，铸造厂 metallurgy）
+  'casting-iron-gear-wheel': { time: 1, inp: { 'molten-iron': 10 }, out: { 'iron-gear-wheel': 1 } },
+  // 浇铸铁杆：20 熔融铁 → 4 铁杆（官方 casting-iron-stick 1s，铸造厂 metallurgy）
+  'casting-iron-stick': { time: 1, inp: { 'molten-iron': 20 }, out: { 'iron-stick': 4 } },
+  // 浇铸管道：10 熔融铁 → 1 管道（官方 casting-pipe 1s，铸造厂 metallurgy）
+  'casting-pipe': { time: 1, inp: { 'molten-iron': 10 }, out: { 'pipe': 1 } },
+  // 浇铸地下管道：50 熔融铁 + 10 管道 → 2 地下管道（官方 casting-pipe-to-ground 1s，铸造厂 metallurgy）
+  'casting-pipe-to-ground': { time: 1, inp: { 'molten-iron': 50, 'pipe': 10 }, out: { 'pipe-to-ground': 2 } },
+  // 浇铸低密度结构：80 熔融铁 + 250 熔融铜 + 5 塑料 → 1 低密度结构（官方 casting-low-density-structure 15s，铸造厂 metallurgy）
+  'casting-low-density-structure': { time: 15, inp: { 'molten-iron': 80, 'molten-copper': 250, 'plastic-bar': 5 }, out: { 'low-density-structure': 1 } },
+  // 浇铸铜线：5 熔融铜 → 2 铜线（官方 casting-copper-cable 1s，铸造厂 metallurgy）
+  'casting-copper-cable': { time: 1, inp: { 'molten-copper': 5 }, out: { 'copper-cable': 2 } },
+  // 熔融铁制混凝土：20 熔融铁 + 100 水 + 5 石砖 → 10 混凝土（官方 concrete-from-molten-iron 10s，铸造厂 metallurgy）
+  'concrete-from-molten-iron': { time: 10, inp: { 'molten-iron': 20, 'water': 100, 'stone-brick': 5 }, out: { 'concrete': 10 } },
+  // 蒸汽冷凝：1000 蒸汽 → 90 水（官方 steam-condensation 1s，化工厂 chemistry / 低温工厂 cryogenics）
+  'steam-condensation': { time: 1, inp: { 'steam': 1000 }, out: { 'water': 90 } },
+  // 酸中和：1 方解石 + 100 硫酸 → 1000 蒸汽（官方 acid-neutralisation 0.5s，化工厂 chemistry / 低温工厂 cryogenics）
+  'acid-neutralisation': { time: 0.5, inp: { 'calcite': 1, 'sulfuric-acid': 100 }, out: { 'steam': 1000 } },
   // 岩浆：石头 + 方解石 → 岩浆（官方 lava 由 Vulcanus 岩浆海抽取，此处适配为铸造厂高温熔岩）
   'lava': { time: 5, inp: { 'stone': 10, 'calcite': 5 }, out: { 'lava': 500 } },
   // 岩浆制熔融铁：岩浆 + 方解石 → 熔融铁 + 石头（官方 molten-iron-from-lava 16s：500 岩浆 + 1 方解石 → 250 熔融铁 + 10 石头，铸造厂）
@@ -531,7 +555,7 @@ function filterChoices() {
   return _filterChoicesCache;
 }
 
-const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant', 'solid-fuel', 'solid-fuel-light-oil', 'solid-fuel-heavy-oil', 'sulfur', 'sulfuric-acid', 'carbon', 'carbon-fiber', 'lithium', 'lithium-brine', 'ammoniacal-solution', 'ammoniacal-solution-separation', 'thruster-fuel', 'thruster-oxidizer', 'advanced-thruster-fuel', 'advanced-thruster-oxidizer', 'flamethrower-ammo', 'holmium-solution', 'coal-synthesis', 'solid-fuel-from-ammonia'];
+const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant', 'solid-fuel', 'solid-fuel-light-oil', 'solid-fuel-heavy-oil', 'sulfur', 'sulfuric-acid', 'carbon', 'carbon-fiber', 'lithium', 'lithium-brine', 'ammoniacal-solution', 'ammoniacal-solution-separation', 'thruster-fuel', 'thruster-oxidizer', 'advanced-thruster-fuel', 'advanced-thruster-oxidizer', 'flamethrower-ammo', 'holmium-solution', 'coal-synthesis', 'solid-fuel-from-ammonia', 'steam-condensation', 'acid-neutralisation'];
 function isChemRecipe(id) { return CHEM_RECIPES.indexOf(id) >= 0; }
 function chemMult() { return (G.techDone.plastic ? 1.5 : 1) * ((G.dbg && G.dbg.asmMult) || 1); }
 
@@ -588,7 +612,7 @@ const CRUSHER_RECIPES = ['metallic-asteroid-crushing', 'carbonic-asteroid-crushi
   'crusher', 'ice-melting'];
 function isCrusherRecipe(id) { return CRUSHER_RECIPES.indexOf(id) >= 0; }
 // 铸造厂专属配方（太空时代 Vulcanus 冶金产品）：钨板 / 碳化钨 / 冶金科研包 / 铸造厂本体
-const FOUNDRY_RECIPES = ['tungsten-ore', 'tungsten-plate', 'tungsten-carbide', 'metallurgic-science-pack', 'foundry', 'molten-iron', 'molten-copper', 'lava', 'molten-iron-from-lava', 'molten-copper-from-lava'];
+const FOUNDRY_RECIPES = ['tungsten-ore', 'tungsten-plate', 'tungsten-carbide', 'metallurgic-science-pack', 'foundry', 'iron-ore-melting', 'copper-ore-melting', 'casting-iron', 'casting-steel', 'casting-copper', 'casting-iron-gear-wheel', 'casting-iron-stick', 'casting-pipe', 'casting-pipe-to-ground', 'casting-low-density-structure', 'casting-copper-cable', 'concrete-from-molten-iron', 'lava', 'molten-iron-from-lava', 'molten-copper-from-lava'];
 function isFoundryRecipe(id) { return FOUNDRY_RECIPES.indexOf(id) >= 0; }
 // 农业塔专属种植配方（太空时代 Gleba 作物种植）：玉玛果种植 + 农业塔本体
 const AGRICULTURE_TOWER_RECIPES = ['yumako-growing', 'jellynut-growing'];
