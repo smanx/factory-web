@@ -1055,25 +1055,36 @@ const ITEM_GROUP_OVERRIDE = {
   'stone-path': 'logistics',
 };
 const itemGroup = {};
+// 二级分组：物品 → 官方 item-subgroup（仅 5 大 Tab 内），供背包合成列表在 Tab 内继续分组的单源数据。
+const itemSubgroup = {};
+// 官方顺序：subgroup 在 group 内的 order、物品在 subgroup 内的 order（官方制作栏排序，配方无 order 时按主产物 order）。
+const subgroupOrder = {};
+for (const sg of Object.values(raw['item-subgroup'] || {})) {
+  if (sg && typeof sg === 'object' && sg.name && typeof sg.order === 'string') subgroupOrder[sg.name] = sg.order;
+}
+const itemOrder = {};
 for (const pid of projectItems) {
   const oid = toOfficialName(pid);
   // 优先兜底
   if (ITEM_GROUP_OVERRIDE[pid]) { itemGroup[pid] = ITEM_GROUP_OVERRIDE[pid]; continue; }
   // 从官方原型取 subgroup
   let subgroup = null;
+  let order = null;
   const it = raw.item && raw.item[oid];
-  if (it && it.subgroup) subgroup = it.subgroup;
+  if (it && it.subgroup) { subgroup = it.subgroup; order = it.order; }
   else {
     // 实体类（装备/载具/炮塔等）在各自原型带 subgroup
     for (const tbl of Object.values(raw)) {
-      if (tbl && tbl[oid] && typeof tbl[oid] === 'object' && tbl[oid].subgroup) {
-        subgroup = tbl[oid].subgroup;
-        break;
-      }
+      const o = tbl && tbl[oid];
+      if (o && typeof o === 'object' && o.subgroup) { subgroup = o.subgroup; order = o.order; break; }
     }
   }
   const g = subgroup ? itemGroupMap[subgroup] : null;
-  if (g && CRAFT_TABS.includes(g)) itemGroup[pid] = g;
+  if (g && CRAFT_TABS.includes(g)) {
+    itemGroup[pid] = g;
+    if (subgroup) itemSubgroup[pid] = subgroup;
+    if (typeof order === 'string') itemOrder[pid] = order;
+  }
   // 其余（流体/环境/信号等非 5 大 Tab）不写入，由前端按无归类兜底处理
 }
 
@@ -1190,6 +1201,9 @@ Object.assign(GAME_DATA, {
   qualityModules,
   qualityTiers,
   itemGroup,
+  itemSubgroup,
+  subgroupOrder,
+  itemOrder,
   pollution,
   enemy,
 });
@@ -1322,6 +1336,9 @@ const header = [
   '//   deviceStats[id] = { craftingSpeed, moduleSlots, miningSpeed, beltSpeed(格/s), beaconEffectivity }',
   '//   names[id] = { zh, en }（物品/建筑/流体官方命名，供中英文切换，见 data-util.js localizedName）',
   '//   recipeNames[rid] = { zh, en }（配方官方命名，供炼油/离心机面板切换）',
+  '//   itemGroup[item] = 制作栏 5 Tab（物流/生产/中间产品/太空/武器）',
+  '//   itemSubgroup[item] = item-group 内二级分组（官方 item-subgroup）',
+  '//   subgroupOrder[subgroup] = subgroup 在 group 内官方顺序,  itemOrder[item] = 物品在 subgroup 内官方顺序',
   '//   其余设备行为参数（官方接入，见对应设备文件 GAME_DATA.xxx?.[..] ?? 兜底）：',
   '//   undergroundDist[带] = 地下带最大距离(格), renewable = { solarPower, accumCap, accumChargeRate }',
   '//   fluidCapacity = { storageTank, fluidWagon, pumpRate, pipeVolume, pipeToGroundVolume }, beaconRange = 信号塔半径(格)',

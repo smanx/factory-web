@@ -378,10 +378,18 @@ html, body {
 /* 背包制作栏（合成 tab）：与玩家背包一致的「格子 + 图标」网格。
    左键点击图标制作 1 个，右键点击制作 5 个；右下角角标显示当前可制作次数。 */
 .craft-grid {
+  display: block;
   margin-top: 4px;
-  /* 制作区网格按内容自适应列数：物品少时收起空列，最多铺满 10 格宽 */
-  grid-template-columns: repeat(auto-fit, 32px);
   max-width: 382px;
+}
+/* 二级分组：每组独立网格、固定 10 列/行，分组之间留空距（不显示分组名，同游戏原版制作栏样式） */
+.craft-subgroup {
+  display: grid;
+  grid-template-columns: repeat(10, 32px);
+  gap: 4px;
+}
+.craft-subgroup + .craft-subgroup {
+  margin-top: 10px;
 }
 .craft-slot { cursor: pointer; }
 .craft-slot.locked { filter: grayscale(.75) brightness(.7); cursor: not-allowed; }

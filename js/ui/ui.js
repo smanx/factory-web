@@ -785,23 +785,49 @@ function htmlCraft() {
       '<span class="cnt">' + n + '</span></button>';
   }
   h += '</div>';
-  // 每个 Tab 一个配方网格
+  // 每个 Tab 一个配方网格；Tab 内再按官方二级分组（item-subgroup）分组渲染。
+  // 分组顺序按官方 subgroupOrder、组内物品按官方 itemOrder（与原始数据一致）；
+  // 每个分组独立成行、每行固定 10 格，分组之间留空距（不显示分组名，同游戏原版制作栏样式）。
   for (const tab of CRAFT_TABS) {
     const items = perTab[tab] || [];
     const on = tab === activeTab ? '' : ' style="display:none"';
-    h += '<div id="inv-recipes-' + tab + '" class="inv-slots craft-grid" data-tab="' + tab + '"' + on + '>';
-    for (const { rid, outId } of items) {
-      const unlocked = recipeUnlocked(rid);
-      const lockTech = recipeLockingTech(rid);
-      const rec = RECIPES[rid];
-      const cnt = unlocked ? craftMaxCount(rid) : 0;
-      const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
-        Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') + ' ' + recipeDeviceName(rid)).toLowerCase();
-      h += '<div class="inv-slot craft-slot' + (unlocked ? '' : ' locked') + '" data-action="craft" data-id="' + rid + '" data-mult="1" data-craftable="' + cnt + '" data-rsearch="' + searchKey.replace(/"/g, '') + '" data-tip="' + itemTip(outId) + '">' +
-        '<img src="' + iconDataURL(outId, 16) + '">' +
-        '<span class="cnt" data-cnt>' + cnt + '</span>' +
-        (unlocked ? '' : '<span class="craft-lock" title="需先研究：' + TECHS[lockTech].name + '">🔒</span>') +
-        '</div>';
+    const groups = new Map();
+    for (const it of items) {
+      const sg = (GAME_DATA.itemSubgroup && GAME_DATA.itemSubgroup[it.outId]) || '';
+      if (!groups.has(sg)) groups.set(sg, []);
+      groups.get(sg).push(it);
+    }
+    const sgList = Array.from(groups.keys()).sort((a, b) => {
+      const A = (GAME_DATA.subgroupOrder && GAME_DATA.subgroupOrder[a]) || '\uffff';
+      const B = (GAME_DATA.subgroupOrder && GAME_DATA.subgroupOrder[b]) || '\uffff';
+      if (A !== B) return A < B ? -1 : 1;
+      return a < b ? -1 : a > b ? 1 : 0;
+    });
+    h += '<div id="inv-recipes-' + tab + '" class="craft-grid" data-tab="' + tab + '"' + on + '>';
+    for (const sg of sgList) {
+      const list = groups.get(sg).slice().sort((x, y) => {
+        const A = (GAME_DATA.itemOrder && GAME_DATA.itemOrder[x.outId]) || '';
+        const B = (GAME_DATA.itemOrder && GAME_DATA.itemOrder[y.outId]) || '';
+        if (A && B) return A < B ? -1 : A > B ? 1 : 0;
+        if (A) return -1;
+        if (B) return 1;
+        return 0; // 稳定排序：无官方顺序的兜底保留 data-recipes 原始顺序
+      });
+      h += '<div class="craft-subgroup inv-slots">';
+      for (const { rid, outId } of list) {
+        const unlocked = recipeUnlocked(rid);
+        const lockTech = recipeLockingTech(rid);
+        const rec = RECIPES[rid];
+        const cnt = unlocked ? craftMaxCount(rid) : 0;
+        const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
+          Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') + ' ' + recipeDeviceName(rid)).toLowerCase();
+        h += '<div class="inv-slot craft-slot' + (unlocked ? '' : ' locked') + '" data-action="craft" data-id="' + rid + '" data-mult="1" data-craftable="' + cnt + '" data-rsearch="' + searchKey.replace(/"/g, '') + '" data-tip="' + itemTip(outId) + '">' +
+          '<img src="' + iconDataURL(outId, 16) + '">' +
+          '<span class="cnt" data-cnt>' + cnt + '</span>' +
+          (unlocked ? '' : '<span class="craft-lock" title="需先研究：' + TECHS[lockTech].name + '">🔒</span>') +
+          '</div>';
+      }
+      h += '</div>';
     }
     h += '</div>';
   }
@@ -838,12 +864,18 @@ function applyInvRecipeFilter(q) {
       el.style.display = hit ? '' : 'none';
       if (hit) shown++;
     });
+    // 搜索时隐藏没有任何可见槽位的二级分组（空分组留白不显示）
+    activeGrid.querySelectorAll('.craft-subgroup').forEach(g => {
+      g.style.display = g.querySelectorAll('.craft-slot').length &&
+        Array.from(g.querySelectorAll('.craft-slot')).some(el => el.style.display !== 'none') ? '' : 'none';
+    });
   }
   // 隐藏其它 Tab 的槽（保持干净），避免跨 Tab 误判
   for (const t of CRAFT_TABS) {
     if (t === activeTab) continue;
     const grid = body.querySelector('#inv-recipes-' + t);
     if (grid) grid.querySelectorAll('.craft-slot').forEach(el => { el.style.display = ''; });
+    if (grid) grid.querySelectorAll('.craft-subgroup').forEach(g => { g.style.display = ''; });
   }
   const emp = document.getElementById('inv-recipe-empty');
   if (emp) {
