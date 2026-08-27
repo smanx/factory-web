@@ -769,6 +769,7 @@ const INSERTER_SOURCES = {
   'long-handed-inserter': 'long-handed-inserter',
   'fast-inserter': 'fast-inserter',
   'bulk-inserter': 'bulk-inserter',
+  'stack-inserter': 'stack-inserter',
   'burner-inserter': 'burner-inserter',
 };
 {
@@ -786,6 +787,9 @@ const INSERTER_SOURCES = {
     if (typeof p.rotation_speed === 'number') row.rotationSpeed = p.rotation_speed;
     if (typeof p.extension_speed === 'number') row.extensionSpeed = p.extension_speed;
     if (typeof p.inserter_stack_size_override === 'number') row.stack = p.inserter_stack_size_override;
+    else if (typeof p.stack_size_bonus === 'number') row.stack = p.stack_size_bonus;
+    else if (typeof p.max_belt_stack_size === 'number') row.stack = p.max_belt_stack_size;
+    else if (typeof p.bulk === 'boolean' && p.bulk) row.stack = 3; // 官方 bulk=true 集装箱机械臂抓取整堆（项目按 3 建模，堆叠臂再+1=4）
     if (Object.keys(row).length) perType[pid] = row;
   }
   if (Object.keys(perType).length) inserterStats.perType = perType;

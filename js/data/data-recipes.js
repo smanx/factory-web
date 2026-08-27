@@ -39,6 +39,7 @@ const RECIPES = {
   'electric-furnace':        { time: 5, inp: { 'advanced-circuit': 5, 'steel-plate': 10, 'stone-brick': 10 }, out: { 'electric-furnace': 1 } },
   'assembling-machine-2':        { time: 0.5, inp: { 'assembling-machine-1': 1, 'electronic-circuit': 3, 'iron-gear-wheel': 5, 'steel-plate': 2 }, out: { 'assembling-machine-2': 1 } },
   'bulk-inserter':        { time: 0.5, inp: { 'processing-unit': 1 }, out: { 'bulk-inserter': 1 } },
+  'stack-inserter':       { time: 0.5, inp: { 'bulk-inserter': 1, 'processing-unit': 1, 'carbon-fiber': 2, 'jelly': 10 }, out: { 'stack-inserter': 1 } },  // 太空时代堆叠机械臂（官方 Space Age 配方，数据经 GAME_DATA 单源）
   'logistic-science-pack':     { time: 6,   inp: { 'transport-belt': 1, 'inserter': 1 },                  out: { 'logistic-science-pack': 1 } },  // 对齐《异星工厂》物流科学包：1传送带+1机械臂，耗时 6s
   'chemical-science-pack':      { time: 8,   inp: { 'plastic-bar': 2, 'electronic-circuit': 2, 'copper-plate': 1 }, out: { 'chemical-science-pack': 1 } },  // 项目为保持科技树无环采用旧版配方（见 README）
   'pipe':              { time: 0.5, inp: { 'iron-plate': 1 },                                     out: { 'pipe': 1 } },

@@ -108,6 +108,7 @@ const ITEMS = {
   'turbo-splitter': { name: '超速分流器', color: '#5a7a5a', desc: '同分流器，但吞吐与超速带一致，可输送最快物流（太空时代 Space Age，对齐《异星工厂》Turbo splitter）' },
   'fast-splitter':    { name: '高速分流器', color: '#e05a4e', desc: '同分流器，但吞吐与高速带一致，可输送更快的物流（对齐《异星工厂》Fast splitter）' },
   'bulk-inserter':    { name: '集装箱机械臂', color: '#7ec850', desc: '同电力机械臂，但可一次性抓取多达 3 个同种物品（对齐《异星工厂》Stack inserter）' },
+  'stack-inserter':  { name: '堆叠机械臂', color: '#8ae05a', desc: '太空时代高级机械臂（对齐《异星工厂》Stack inserter）：一次抓取 4 个同种物品并分层叠放传送带，带 5 个过滤槽，由集装箱机械臂升级而来（官方配方 1 集装箱机械臂+1 处理器+2 碳纤维+10 果冻→1，0.5s）' },
   'fast-inserter':     { name: '高速机械臂', color: '#4f9fe8', desc: '比普通机械臂抓取更快（旋转速度约为其 2 倍）（对齐《异星工厂》Fast inserter）' },
   'steel-chest':       { name: '钢箱', color: '#9aa4b0', desc: '比储物箱容量更大的钢铁储物箱（24 格）。可接入电路网络输出箱内物品数量信号（对齐《异星工厂》）' },
   'creative-chest':    { name: '创造箱', color: '#3e8f4a', mark: '∞', desc: '测试设备：无限生成选定物品，点开面板选择要生成的物品，机械臂可无限取走' },

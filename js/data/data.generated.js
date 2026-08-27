@@ -70,6 +70,7 @@ const GAME_DATA = {
   "turbo-splitter": 50,
   "fast-splitter": 50,
   "bulk-inserter": 50,
+  "stack-inserter": 50,
   "fast-inserter": 50,
   "steel-chest": 50,
   "logistic-science-pack": 200,
@@ -327,6 +328,7 @@ const GAME_DATA = {
   "long-handed-inserter": 160,
   "bulk-inserter": 160,
   "fast-inserter": 150,
+  "stack-inserter": 160,
   "burner-mining-drill": 150,
   "stone-furnace": 200,
   "steel-furnace": 300,
@@ -918,6 +920,18 @@ const GAME_DATA = {
    },
    "out": {
     "bulk-inserter": 1
+   }
+  },
+  "stack-inserter": {
+   "time": 0.5,
+   "inp": {
+    "bulk-inserter": 1,
+    "processing-unit": 1,
+    "carbon-fiber": 2,
+    "jelly": 10
+   },
+   "out": {
+    "stack-inserter": 1
    }
   },
   "logistic-science-pack": {
@@ -3374,6 +3388,7 @@ const GAME_DATA = {
   "electric-furnace": "assembling-machine-1",
   "assembling-machine-2": "assembling-machine-1",
   "bulk-inserter": "assembling-machine-1",
+  "stack-inserter": "assembling-machine-1",
   "logistic-science-pack": "assembling-machine-1",
   "pipe": "assembling-machine-1",
   "pumpjack": "assembling-machine-1",
@@ -3791,6 +3806,10 @@ const GAME_DATA = {
   "bulk-inserter": {
    "zh": "集装机械臂",
    "en": "Bulk inserter"
+  },
+  "stack-inserter": {
+   "zh": "堆叠机械臂",
+   "en": "Stack inserter"
   },
   "fast-inserter": {
    "zh": "高速机械臂",
@@ -5418,7 +5437,13 @@ const GAME_DATA = {
    },
    "bulk-inserter": {
     "rotationSpeed": 0.04,
-    "extensionSpeed": 0.1
+    "extensionSpeed": 0.1,
+    "stack": 3
+   },
+   "stack-inserter": {
+    "rotationSpeed": 0.04,
+    "extensionSpeed": 0.1,
+    "stack": 4
    },
    "burner-inserter": {
     "rotationSpeed": 0.013,
