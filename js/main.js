@@ -189,6 +189,9 @@ function newGame() {
   invAdd('transport-belt', 32); // 传送带
   invAdd('inserter', 4);        // 机械臂
   invAdd('coal', 8);
+  // 初始装备（对齐《异星工厂》：手枪为游戏初始装备，铁斧为近战工具）
+  invAdd('pistol', 1);
+  invAdd('iron-axe', 1);
   // 测试用创造/虚空设备（创造箱/虚空箱/创造管道/虚空管道）不再默认发放：
   // 仅当在 Debug 模式中开启"无限资源"后才通过建造列表出现，正常游玩不可见。
 }

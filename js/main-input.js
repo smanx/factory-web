@@ -19,6 +19,11 @@ function bindInput() {
     G.keys[k] = true;
     if (k >= '1' && k <= '9') selectSlot(+k - 1);
     else if (k === '0') selectSlot(9);
+    // 攻击选中目标（对齐《异星工厂》快捷键）：Shift+空格 对鼠标选中的目标开火（强制攻击）
+    else if (k === ' ' && ev.shiftKey && !ev.ctrlKey && !ev.altKey) {
+      ev.preventDefault();
+      if (typeof attackSelectedTarget === 'function') attackSelectedTarget();
+    }
     else if (k === 'tab') { ev.preventDefault(); G.panelMode === 'inv' ? closePanel() : openPanel('inv'); }
     // 统计/蓝图/红图/绿图快捷键（对齐《异星工厂》：P 统计、B 蓝图、Alt+D 红图、Alt+U 绿图）
     else if (k === 'p') G.panelMode === 'stats' ? closePanel() : openPanel('stats');
@@ -54,8 +59,9 @@ function bindInput() {
     else if (k === 'n') { if (typeof placeMapTag === 'function') placeMapTag(); }
     // 操作说明（Alt+H）：随时查看完整快捷键指南
     else if (ev.altKey && k === 'h') { ev.preventDefault(); if (typeof showTutorial === 'function') showTutorial(); }
-    // 放电防御装备：C 键激活对周围敌人放电（对齐《异星工厂》Discharge defense）
-    else if (k === 'c') { if (typeof activateDischargeDefense === 'function') activateDischargeDefense(); }
+    // C 键：循环切换工具栏中已装备的武器（新默认快捷键）
+    // （原放电防御装备的激活改由装备面板/其它按键触发，不再占用 C 键）
+    else if (k === 'c') { if (typeof cycleWeapon === 'function') cycleWeapon(); }
     // ALT 模式（对齐《异星工厂》ALT 模式）：按 Alt 键切换建筑配方/内容叠加显示
     else if (k === 'alt') {
       ev.preventDefault();
