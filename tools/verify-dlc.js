@@ -1237,9 +1237,6 @@ for (const r of ['lithium-brine', 'ammoniacal-solution', 'ammoniacal-solution-se
   ok(inpOk && outOk, r + ' 配方引用的物品均存在');
 }
 
-
-process.exit(fail === 0 ? 0 : 1);
-
 console.log('\n【太空时代 Gleba 五足虫敌人（Pentapod）数据校验】');
 {
   // GAME_DATA.enemy 从 factorio-data 官方 unit/spider-unit 单源生成
@@ -1263,6 +1260,33 @@ console.log('\n【太空时代 Gleba 五足虫敌人（Pentapod）数据校验�
   const penCount = Object.keys(pen).filter(k => k.indexOf('pentapod') >= 0).length;
   ok(penCount >= 9, 'GAME_DATA.enemy 五足虫数量 >= 9（实际 ' + penCount + '）');
 }
+
+console.log('\n【太空时代空间平台地基（space-platform-foundation）数据校验】');
+{
+  // 官方物品数据单源
+  ok(!!GD.stackSize['space-platform-foundation'] && GD.stackSize['space-platform-foundation'] === 100, 'space-platform-foundation 堆叠来自官方 (=100)');
+  ok(!!GD.names['space-platform-foundation'] && !!GD.names['space-platform-foundation'].en, 'space-platform-foundation 官方命名已收录 (' + (GD.names['space-platform-foundation'] ? GD.names['space-platform-foundation'].en : '?') + ')');
+  // 物品已注册
+  ok(!!IT['space-platform-foundation'], 'space-platform-foundation 物品已注册');
+  // 配方已注册（官方配方，数据单源）
+  ok(!!RP['space-platform-foundation'], 'space-platform-foundation 配方已注册');
+  // 官方配方数值（官方 space-platform-foundation = 20 钢板 + 20 铜线，10s）
+  ok(RP['space-platform-foundation'] && RP['space-platform-foundation'].time === 10, 'space-platform-foundation 耗时=10s（官方）');
+  ok(RP['space-platform-foundation'] && RP['space-platform-foundation'].inp['steel-plate'] === 20 && RP['space-platform-foundation'].inp['copper-cable'] === 20, 'space-platform-foundation 配方=20钢板+20铜线（官方）');
+  ok(RP['space-platform-foundation'] && RP['space-platform-foundation'].out['space-platform-foundation'] === 1, 'space-platform-foundation 产出 1（官方）');
+  // 科技门控（由「空间平台」解锁）
+  ok(ctx.__itemTechReq('space-platform-foundation') === 'space-platform', 'space-platform-foundation 需「空间平台」科技');
+  // 地面瓦片落地（PAVE_TILE 可铺设）
+  const mainSrc = fs.readFileSync(ROOT + '/js/main/main.js', 'utf8');
+  ok(mainSrc.indexOf("'space-platform-foundation': T_SPACE_PLATFORM") >= 0, 'space-platform-foundation 已入 PAVE_TILE（可铺设瓦片）');
+  // 地形渲染 / 小地图 / 蓝图均已落地
+  ok(fs.readFileSync(ROOT + '/js/game/world.js', 'utf8').indexOf('T_SPACE_PLATFORM = 14') >= 0, 'T_SPACE_PLATFORM 地形类型已定义（=14）');
+  ok(fs.readFileSync(ROOT + '/js/render/render.js', 'utf8').indexOf("t === T_SPACE_PLATFORM") >= 0, 'T_SPACE_PLATFORM 渲染分支已接入');
+  ok(fs.readFileSync(ROOT + '/js/render/render-minimap.js', 'utf8').indexOf("T_SPACE_PLATFORM") >= 0, 'T_SPACE_PLATFORM 小地图配色已接入');
+  ok(fs.readFileSync(ROOT + '/js/game/blueprint.js', 'utf8').indexOf("'14': 'space-platform-foundation'") >= 0, '蓝图 TILE_IDS 已接入（地砖记录/粘贴）');
+}
+
+
 
 
 process.exit(fail === 0 ? 0 : 1);

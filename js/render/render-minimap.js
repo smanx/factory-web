@@ -45,6 +45,7 @@ function drawMinimap(ctx) {
         : (t === T_OVERGROWTH_JELLYNUT_SOIL) ? 'rgba(100,52,78,0.9)'
         : (t === T_FOUNDATION) ? 'rgba(124,132,144,0.9)'
         : (t === T_ICE_PLATFORM) ? 'rgba(184,212,232,0.9)'
+        : (t === T_SPACE_PLATFORM) ? 'rgba(110,112,120,0.9)'
         : 'rgba(52,78,50,0.9)';
       ctx.fillRect(px, py, z + 0.4, z + 0.4);
       // 矿脉标记

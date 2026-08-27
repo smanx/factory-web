@@ -889,3 +889,21 @@
 >   氨制固体燃料补全 Aquilo 低温燃料链，为各行星提供多样化的燃料来源。
 > - **校验**：verify-dlc 新增果冻制火箭燃料/氨制固体燃料校验（10 项），verify-data-integrity 配方键
 >   映射补充 2 项动态键，全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段四.26：太空平台地基落地为可铺设瓦片（Space platform foundation，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **物品**：`space-platform-foundation`（太空平台地基，堆叠 100）此前仅为数据条目，无铺设行为；
+>   本迭代落地为**可铺设地面瓦片**（新增地形类型 `T_SPACE_PLATFORM=14`），对齐官方
+>   `space-platform-foundation` 的 place_as_tile 语义——铺成灰色栅格合金地板，形成太空平台地板，行走加速。
+> - **配方/命名/堆叠**：全部来自 data.generated.js（factorio-data 官方：官方 space-platform-foundation
+>   堆叠 100、命名 太空平台地基/Space platform foundation、配方 20钢板+20铜线→1 耗时 10s），未单独维护数值表。
+> - **玩法**：可在地面/地基/混凝土等硬面直接铺设（`PAVE_TILE` 桥接 `placeGround` 分支），
+>   完整接入地面铺设 / 蓝图记录与粘贴（TILE_IDS 桥接）/ 渲染（`T_SPACE_PLATFORM` 灰色栅格合金地板渲染分支）/
+>   小地图配色（rgba(110,112,120)）/ 行走加速（`isPaved` 硬化面）。由「空间平台」科技解锁（官方 subgroup space-platform）。
+> - **校验**：verify-dlc 新增太空平台地基校验（13 项：堆叠/命名/物品/配方数值/科技/瓦片落地/渲染/小地图/蓝图），
+>   全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+> **审计结论**：本轮对本项目「数据对齐全量核验」——物品/配方/设备 ID 与命名全部对齐《异星工厂》官方
+> （factorio-data 2.1.17），多余物品已移除（仅保留 6 个创造/虚空物品 + 官方卫星 satellite + 内部火箭组装
+> 表示 rocket-body），各项数据（占地/功耗/速度/堆叠/配方/命名）均来自 data.generated.js 单源，未单独维护数值表。

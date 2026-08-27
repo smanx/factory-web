@@ -420,6 +420,29 @@ function drawChunkTerrainInto(ctx, cx, cy) {
         ctx.fillRect(px + 3, py + 3, TILE / 2 - 2, TILE / 3);
         continue;
       }
+      if (t === T_SPACE_PLATFORM) {
+        // 太空平台地基（官方 Space platform foundation）：灰色栅格合金地板，十字梁+中点铆钉，行走加速
+        const v = hash2(tx, ty);
+        ctx.fillStyle = v > 0.5 ? '#6e7078' : '#686a72';
+        ctx.fillRect(px, py, TILE, TILE);
+        ctx.strokeStyle = 'rgba(50,52,60,.7)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
+        // 十字合金梁
+        ctx.strokeStyle = 'rgba(44,46,54,.6)';
+        ctx.beginPath();
+        ctx.moveTo(px + TILE / 2, py); ctx.lineTo(px + TILE / 2, py + TILE);
+        ctx.moveTo(px, py + TILE / 2); ctx.lineTo(px + TILE, py + TILE / 2);
+        ctx.stroke();
+        // 中点铆钉
+        ctx.fillStyle = 'rgba(150,152,160,.55)';
+        ctx.fillRect(px + TILE / 2 - 1, py + TILE / 2 - 1, 2, 2);
+        // 栅格点阵（边缘小孔）
+        ctx.fillStyle = 'rgba(120,122,132,.5)';
+        ctx.fillRect(px + 6, py + 6, 1, 1); ctx.fillRect(px + TILE - 7, py + 6, 1, 1);
+        ctx.fillRect(px + 6, py + TILE - 7, 1, 1); ctx.fillRect(px + TILE - 7, py + TILE - 7, 1, 1);
+        continue;
+      }
 
       if (t === T_YUMAKO_SOIL) {
         // 人工雅玛果土壤（太空时代 Gleba 农业）：深褐松软壤土，点缀碎草与土粒
