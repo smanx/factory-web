@@ -321,6 +321,62 @@ check('实用科学包(1飞行框架+3低密度+2处理器)',
   assertRecipeInput('utility-science-pack', 'low-density-structure', 3) &&
   assertRecipeInput('utility-science-pack', 'processing-unit', 2), true);
 
+
+// ---- 配方源码与官方一致性（DLC 单源化守门人）----
+// 校验手工 RECIPES 中能被 GAME_DATA（factorio-data 官方）覆盖的 DLC 配方，
+// 其源码值是否与官方一致（time + 原料 + 产出）。
+// 目的：防止未来新增/修改 DLC 配方时，源码里引入与官方不一致的「第二套数值」。
+console.log('\n【DLC 配方源码与官方一致性（data.generated.js 单源）】');
+try {
+  const fs2 = require('fs');
+  const gdCode = fs2.readFileSync(path.join(__dirname, '..', 'js', 'data', 'data.generated.js'), 'utf8')
+    .replace('const GAME_DATA =', 'var GAME_DATA =') + '\n; GAME_DATA;';
+  const GAME_DATA = eval(gdCode);
+  const recTable = src.slice(src.indexOf('const RECIPES = {'), src.indexOf('\n};', src.indexOf('const RECIPES = {')));
+  let dlcDiff = 0; let dlcChecked = 0;
+  const normInp = (r) => JSON.stringify(Object.keys(r.inp||{}).sort().map(k=>k+':'+r.inp[k]));
+  const normOut = (r) => { const o=r.out||r.prob||{}; return JSON.stringify(Object.keys(o).sort().map(k=>k+':'+o[k])); };
+  // 官方 Space Age / 2.0 DLC 配方（人工登记，逐一对比源码与官方）
+  const dlcIds = ['carbon-fiber','superconductor','electromagnetic-plant','holmium-plate','supercapacitor',
+    'tesla-ammo','tesla-turret','railgun-turret','tungsten-plate','tungsten-carbide','metallurgic-science-pack',
+    'foundry','bioflux','overgrowth-yumako-soil','jellynut-processing','biter-egg','metallic-asteroid-crushing',
+    'carbonic-asteroid-crushing','oxide-asteroid-crushing','advanced-metallic-asteroid-crushing',
+    'advanced-carbonic-asteroid-crushing','advanced-oxide-asteroid-crushing','cryogenic-science-pack',
+    'cryogenic-plant','quantum-processor','railgun','ice-melting','fusion-power-cell','fusion-reactor',
+    'fusion-generator','lightning-collector','fusion-reactor-equipment','fission-reactor-equipment','mech-armor',
+    'electromagnetic-science-pack'];
+  for (const rid of dlcIds) {
+    const auto = GAME_DATA.recipe[rid];
+    const em = recTable.match(new RegExp("'" + rid + "'\\s*:\\s*\\{", 'm'));
+    if (!auto || !em) continue; // 无官方 或 源码无定义
+    dlcChecked++;
+    // 提取源码单行配方并解析
+    const line = recTable.split('\n').find(l => new RegExp("^\\s*'" + rid + "'\\s*:\\s*\\{").test(l));
+    if (!line) continue;
+    const timeM = line.match(/time:\s*([\d.]+)/);
+    const manualTime = timeM ? parseFloat(timeM[1]) : undefined;
+    // 提取 inp 与 out（源码为单行对象）
+    let manualInp=null, manualOut=null;
+    const inpM = line.match(/inp:\s*(\{[^}]*\})/);
+    const outM = line.match(/out:\s*(\{[^}]*\})/);
+    const probM = line.match(/prob:\s*(\{[^}]*\})/);
+    try { if (inpM) manualInp = Function('return ' + inpM[1])(); } catch(e){}
+    try { if (outM) manualOut = Function('return ' + outM[1])(); } catch(e){}
+    try { if (probM) manualOut = Function('return ' + probM[1])(); } catch(e){}
+    const okTime = manualTime === auto.time;
+    const okInp = manualInp && normInp({inp:manualInp}) === normInp(auto);
+    const okOut = manualOut && normOut({out:manualOut}) === normOut(auto);
+    if (!okTime || !okInp || !okOut) {
+      dlcDiff++;
+      if (dlcDiff <= 12) console.log('  ❌ ' + rid + ' 源码≠官方 (time:' + okTime + ' inp:' + okInp + ' out:' + okOut + ')');
+    }
+  }
+  check('DLC 配方源码与官方一致（' + dlcChecked + ' 条比对）', dlcDiff, 0);
+} catch (e) {
+  check('DLC 配方单源校验可运行', false, true);
+  console.log('  (校验跳过: ' + e.message + ')');
+}
+
 console.log('\n----------------------------------------');
 console.log('通过 ' + passCount + ' 项，失败 ' + failCount + ' 项');
 process.exit(failCount > 0 ? 1 : 0);

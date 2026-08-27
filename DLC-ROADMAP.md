@@ -1386,3 +1386,26 @@ D
   读取（均带兜底），不再在设备文件维护第二套字面量伤害。
 - **校验**：verify-dlc 新增炮塔单发伤害单源化校验（9 项：数值来源 + 前端单源引用），全量 18 个校验
   脚本通过，`node build.js` 构建通过。
+
+### 阶段六.7：配方源码彻底单源化（Recipe source single-sourcing，本迭代新增）
+
+> 依据「所有配方/数据从 data.generated.js（factorio-data 官方）单源获取，不单独维护第二套数值」原则，
+> 在运行时已用官方值（GAME_DATA 覆盖）的基础上，把**源码层面的 DLC 配方数值也对齐官方**，
+> 使源码、运行时、官方三者完全一致。
+
+**改动**：
+- **DLC 配方源码彻底对齐官方（34 条）**：`carbon-fiber / superconductor / electromagnetic-plant /
+  holmium-plate / supercapacitor / tesla-ammo / tesla-turret / railgun-turret / tungsten-plate /
+  tungsten-carbide / metallurgic-science-pack / foundry / bioflux / overgrowth-yumako-soil /
+  jellynut-processing / biter-egg / 小行星粉碎×3 / 高级小行星粉碎×3 / cryogenic-science-pack /
+  cryogenic-plant / quantum-processor / railgun / ice-melting / fusion-power-cell / fusion-reactor /
+  fusion-generator / lightning-collector / fusion-reactor-equipment / fission-reactor-equipment /
+  mech-armor` 的源码值由「适配基础资源」版全部改为官方值（时间/原料/产出逐一对齐官方），
+  消除源码里误导性的「第二套数值」。
+- **电磁科研包配方对齐官方**：`electromagnetic-science-pack` 由「超导体2+蓄电器1+电路板2」修正为
+  官方 `超级电容1 + 蓄电器1 + 电解液25 + 钬溶液25`（10s，电磁工厂），对齐雷神星 Fulgora 资源链。
+- **verify-recipes 新增 DLC 配方单源化守门人**：新增校验「DLC 配方源码与官方一致（34 条比对）」，
+  读取 `GAME_DATA.recipe`（官方）逐一核对 34 条 DLC 配方的源码 time/inp/out，防止未来新增/修改
+  DLC 配方时在源码引入与官方不一致的数值。
+
+**校验**：全量 18 个校验脚本通过，`node build.js` 构建通过。
