@@ -14,6 +14,14 @@ function resize() {
   G.canvas.style.width = W + 'px';
   G.canvas.style.height = H + 'px';
   G.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // 放置幽灵顶层画布：与主画布同尺寸同步缩放，保证幽灵可绘制在所有界面上方
+  if (G.ghostCv) {
+    G.ghostCv.width = W * dpr;
+    G.ghostCv.height = H * dpr;
+    G.ghostCv.style.width = W + 'px';
+    G.ghostCv.style.height = H + 'px';
+    G.ghostCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
 }
 
 function updateCamera(dt) {

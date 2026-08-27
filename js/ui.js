@@ -153,6 +153,12 @@ function buildHotbar() {
     key.textContent = i === 9 ? '0' : i + 1;
     slot.appendChild(key);
     slot.addEventListener('click', () => onHotbarClick(i));
+    // 鼠标中键：鼠标持握幽灵物品时把它设为该槽位；否则清空该槽位
+    slot.addEventListener('auxclick', ev => {
+      if (ev.button !== 1) return;
+      ev.preventDefault();
+      onHotbarMidClick(i);
+    });
     hb.appendChild(slot);
   });
   refreshHotbar();
@@ -194,6 +200,26 @@ function onHotbarClick(i) {
     return;
   }
   selectSlot(i);
+}
+
+// 快捷栏槽位中键：鼠标持握放置幽灵（快捷栏选中槽位或背包选中的物品）时，
+// 直接把它设为该槽位；否则清空该快捷栏槽位。
+function onHotbarMidClick(i) {
+  const held = G.quickSel || (G.sel >= 0 ? (HOTBAR[G.sel] || null) : null);
+  if (held && ITEMS[held]) {
+    // 鼠标持握幽灵物品：设为该快捷栏槽位
+    HOTBAR[i] = held;
+    toast('已设置快捷栏槽位 ' + (i === 9 ? 0 : i + 1) + '：' + ITEMS[held].name);
+    if (typeof playSfx === 'function') playSfx('select');
+  } else {
+    // 无幽灵：清空该快捷栏槽位
+    HOTBAR[i] = null;
+    if (G.sel === i) { G.sel = -1; if (typeof setWeapon === 'function') setWeapon(null); }
+    toast('已清空快捷栏槽位 ' + (i === 9 ? 0 : i + 1));
+    if (typeof playSfx === 'function') playSfx('select');
+  }
+  buildHotbar();
+  uiDirty = true;
 }
 
 function selectSlot(i) {
