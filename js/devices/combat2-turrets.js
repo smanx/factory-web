@@ -5,6 +5,14 @@
 const LASER_RANGE = GAME_DATA.turret?.['laser-turret']?.range ?? 9;       // 射程（格，官方 attack_parameters.range 24）
 const LASER_FIRE_RATE = GAME_DATA.turret?.['laser-turret']?.fireRate ?? 0.35; // 两次射击间隔（秒，官方 cooldown 40tick=0.667s）
 const LASER_DMG = 14;
+
+// 炮塔耗电单源化：powerDraw 来自 GAME_DATA.turret[塔].powerDraw（官方 energy_source.input_flow_limit，
+// 经 tools/generate-game-data.js 单源生成）。gun/rocket 吃弹药、flamethrower 吃油 → powerDraw=0（不吃电）。
+function turretPowerDraw(id) {
+  try { return (typeof GAME_DATA !== 'undefined' && GAME_DATA.turret && GAME_DATA.turret[id]) ? GAME_DATA.turret[id].powerDraw : 0; }
+  catch (e) { return 0; }
+}
+
 class LaserTurret extends CircuitNode {
   constructor(type, x, y) {
     super('laser-turret', x, y);
@@ -69,7 +77,7 @@ class LaserTurret extends CircuitNode {
     if (typeof playSfx === 'function') playSfx('laser');
     if (best.hp <= 0) best.dead = true;
   }
-  powerDemand() { return 180; }
+  powerDemand() { return this.cooldown > 0 ? turretPowerDraw('laser-turret') : 0; }
   serialize() { const s = super.serialize(); if (this.circuitCond) s.circuitCond = this.circuitCond; return s; }
   static restore(s) { const e = super.restore(s); e.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 }; return e; }
 }
@@ -226,7 +234,7 @@ class FlamethrowerTurret extends CircuitNode {
     if (typeof spawnGroundFire === 'function') spawnGroundFire(best.x, best.y);
     if (typeof playSfx === 'function') playSfx('flamethrower');
   }
-  powerDemand() { return 200; }
+  powerDemand() { return turretPowerDraw('rocket-turret'); }
   serialize() { const s = super.serialize(); s.fluid = this.fluid; if (this.circuitCond) s.circuitCond = this.circuitCond; return s; }
   static restore(s) {
     const t = super.restore(s);
@@ -498,7 +506,7 @@ class TeslaTurret extends CircuitNode {
     });
     if (typeof playSfx === 'function') playSfx('laser');
   }
-  powerDemand() { return 1800; }
+  powerDemand() { return this.cooldown > 0 ? turretPowerDraw('tesla-turret') : 0; }
   serialize() { const s = super.serialize(); if (this.circuitCond) s.circuitCond = this.circuitCond; return s; }
   static restore(s) { const e = super.restore(s); e.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 }; return e; }
 }
@@ -812,7 +820,7 @@ class RailgunTurret extends CircuitNode {
     });
     if (typeof playSfx === 'function') playSfx('machine-gun');
   }
-  powerDemand() { return 5000; }
+  powerDemand() { return this.cooldown > 0 ? turretPowerDraw('railgun-turret') : 0; }
   serialize() { const s = super.serialize(); s.ammo = this.ammo; if (this.circuitCond) s.circuitCond = this.circuitCond; return s; }
   static restore(s) { const t = super.restore(s); t.ammo = s.ammo || 0; t.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 }; return t; }
 }

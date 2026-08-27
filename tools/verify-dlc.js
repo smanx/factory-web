@@ -1132,6 +1132,16 @@ ok(GD.turret['rocket-turret'] && GD.turret['rocket-turret'].range === 36, 'rocke
 ok(GD.turret['rocket-turret'] && GD.turret['rocket-turret'].fireRate === 2, 'rocket-turret 冷却=2s（官方 cooldown 120tick）');
 ok(GD.turret['railgun-turret'] && GD.turret['railgun-turret'].range === 40, 'railgun-turret 射程=40（官方 attack_parameters.range）');
 ok(GD.ammoDamage['railgun-ammo'] === 10000, 'railgun-ammo 伤害=官方 amount 10000');
+console.log('\n【炮塔耗电单源化（GAME_DATA.turret[塔].powerDraw 官方 energy_source.input_flow_limit）】');
+ok(GD.turret['laser-turret'] && GD.turret['laser-turret'].powerDraw === 9600, 'laser-turret 射击耗电=9600kW（官方 input_flow_limit 9600kW）');
+ok(GD.turret['laser-turret'] && GD.turret['laser-turret'].drain === 24, 'laser-turret 空载待机=24kW（官方 drain 24kW）');
+ok(GD.turret['tesla-turret'] && GD.turret['tesla-turret'].powerDraw === 7000, 'tesla-turret 射击耗电=7000kW（官方 input_flow_limit 7MW）');
+ok(GD.turret['tesla-turret'] && GD.turret['tesla-turret'].drain === 1000, 'tesla-turret 空载待机=1000kW（官方 drain 1MW）');
+ok(GD.turret['railgun-turret'] && GD.turret['railgun-turret'].powerDraw === 10000, 'railgun-turret 射击耗电=10000kW（官方 input_flow_limit 10MW）');
+ok(GD.turret['gun-turret'] && GD.turret['gun-turret'].powerDraw === 0, 'gun-turret 吃弹药不吃电（powerDraw=0）');
+ok(GD.turret['rocket-turret'] && GD.turret['rocket-turret'].powerDraw === 0, 'rocket-turret 吃弹药不吃电（powerDraw=0）');
+ok(GD.turret['flamethrower-turret'] && GD.turret['flamethrower-turret'].powerDraw === 0, 'flamethrower-turret 吃油不吃电（powerDraw=0）');
+
 console.log('\n【火箭炮塔 / 磁轨炮塔配方与设备归属】');
 ok(!!RP['rocket-turret'], 'rocket-turret 配方已注册');
 ok(!!RP['railgun-turret'], 'railgun-turret 配方已注册');

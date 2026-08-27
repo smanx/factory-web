@@ -5636,27 +5636,36 @@ const GAME_DATA = {
  "turret": {
   "gun-turret": {
    "range": 18,
-   "fireRate": 0.1
+   "fireRate": 0.1,
+   "powerDraw": 0
   },
   "laser-turret": {
    "range": 24,
-   "fireRate": 0.667
+   "fireRate": 0.667,
+   "powerDraw": 9600,
+   "drain": 24
   },
   "flamethrower-turret": {
    "range": 30,
-   "fireRate": 0.067
+   "fireRate": 0.067,
+   "powerDraw": 0
   },
   "tesla-turret": {
    "range": 30,
-   "fireRate": 2
+   "fireRate": 2,
+   "powerDraw": 7000,
+   "drain": 1000
   },
   "rocket-turret": {
    "range": 36,
-   "fireRate": 2
+   "fireRate": 2,
+   "powerDraw": 0
   },
   "railgun-turret": {
    "range": 40,
-   "fireRate": 2.833
+   "fireRate": 2.833,
+   "powerDraw": 10000,
+   "drain": null
   }
  },
  "ammoDamage": {

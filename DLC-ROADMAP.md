@@ -1348,3 +1348,23 @@ D
 >   + data.js 从 GAME_DATA.fuelEnergy 读取」的「单源」检查（2 项），全量 18 个校验脚本通过，
 >   `node build.js` 构建通过。
 > - **数据单源**：燃料能量数值全部来自 data.generated.js，未在数据文件单独维护第二套数值表。
+
+### 阶段六.7：炮塔耗电单源化（Turret power draw single-sourcing，本迭代新增）
+
+> 依据「所有数据从 data.generated.js（factorio-data 官方单源）获取，设备不维护第二套数值」原则，
+> 把此前硬编码在 `js/devices/combat2-turrets.js` 中的炮塔耗电（激光 180 / 火焰 200 / 特斯拉 1800 /
+> 磁轨 5000 kW）统一改为从 `GAME_DATA.turret[塔].powerDraw` 单源读取。
+
+- **生成脚本**（tools/generate-game-data.js）：`GAME_DATA.turret` 新增 `powerDraw`（射击最大吸电，
+  取官方 electric-turret `energy_source.input_flow_limit`，经 `parseKiloWatt` 转 kW）与 `drain`
+  （空载待机，取官方 `energy_source.drain`）；`parseKiloWatt` 扩展支持 MW/GW（"7MW"→7000、"10MW"→10000）。
+  ammo/fluid 炮塔（gun/rocket/flamethrower）吃弹药/油、不吃电，powerDraw=0。
+- **官方数值**（factorio-data 单源）：
+  - laser-turret：powerDraw=9600kW（官方 input_flow_limit 9600kW）、drain=24kW（官方）
+  - tesla-turret：powerDraw=7000kW（官方 7MW）、drain=1000kW（官方 1MW）
+  - railgun-turret：powerDraw=10000kW（官方 10MW）
+  - gun/rocket/flamethrower-turret：powerDraw=0（官方无电网）
+- **设备侧**（combat2-turrets.js）：新增 `turretPowerDraw(id)` 单源读取函数；激光/特斯拉/磁轨炮塔
+  `powerDemand()` 在射击冷却（cooldown>0）期间返回官方 powerDraw、闲置返回 0（对齐官方「炮塔有内部
+  缓冲、射击时才大电流补给」）；火焰炮塔改回不吃电（官方 fluid-turret 无电网，吃油）。
+- **校验**：verify-dlc 新增炮塔耗电单源化校验（8 项），全量 18 个校验脚本通过，`node build.js` 构建通过。
