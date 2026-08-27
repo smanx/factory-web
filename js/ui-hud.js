@@ -219,7 +219,7 @@ function renderCraftQueue() {
     const cnt = qs.filter(x => x === outId).length;
     html += '<div class="' + cls + '" data-itemid="' + outId + '"' +
       ' data-tip="' + nm + (idx === 0 ? '（制作中）' : '（排队中）') + '·点击取消制作">' +
-      '<img src="' + iconDataURL(outId) + '">' +
+      '<img src="' + iconDataURL(outId, 16) + '">' +
       (cnt > 1 ? '<span class="cq-cnt">×' + cnt + '</span>' : '') +
       '</div>';
   });

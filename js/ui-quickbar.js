@@ -47,7 +47,7 @@ function qbMakeSlot(dataTip) {
 // 角色图标槽（第1行第1格）：点击打开角色/装备界面
 function qbCharSlot() {
   const el = qbMakeSlot('角色|点击打开角色与装备界面');
-  el.innerHTML = '<span class="qb-ic" style="font-size:26px;line-height:1">🧑‍🚀</span>';
+  el.innerHTML = '<span class="qb-empty">🧑‍🚀</span>';
   el.addEventListener('click', () => {
     if (typeof openPanel === 'function') {
       if (G.panelMode === 'inv') closePanel(); else openPanel('inv');
@@ -135,7 +135,7 @@ function renderQuickbarSlots() {
       if (w) {
         const img = document.createElement('img');
         img.className = 'qb-ic';
-        if (typeof iconCanvas === 'function') img.src = iconCanvas(w).toDataURL();
+        if (typeof iconCanvas === 'function') img.src = iconCanvas(w, 16).toDataURL();
         else img.alt = ITEMS[w].name || w;
         el.appendChild(img);
         el.classList.toggle('active', G.weapon === w);
@@ -154,7 +154,7 @@ function renderQuickbarSlots() {
       if (a) {
         const img = document.createElement('img');
         img.className = 'qb-ic';
-        if (typeof iconCanvas === 'function') img.src = iconCanvas(a).toDataURL();
+        if (typeof iconCanvas === 'function') img.src = iconCanvas(a, 16).toDataURL();
         const name = document.createElement('span');
         name.className = 'qb-name';
         name.textContent = ITEMS[a].name;
@@ -172,14 +172,14 @@ function renderQuickbarSlots() {
       if (ammo) {
         const img = document.createElement('img');
         img.className = 'qb-ic';
-        if (typeof iconCanvas === 'function') img.src = iconCanvas(ammo).toDataURL();
+        if (typeof iconCanvas === 'function') img.src = iconCanvas(ammo, 16).toDataURL();
         else img.alt = ITEMS[ammo].name || ammo;
         el.appendChild(img);
         const cnt = document.createElement('span');
         cnt.className = 'qb-cnt';
         el.appendChild(cnt);
       } else {
-        el.innerHTML = '<span class="qb-empty" style="font-size:14px">·</span>';
+        el.innerHTML = '<span class="qb-empty">·</span>';
       }
     });
   }

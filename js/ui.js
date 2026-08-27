@@ -78,11 +78,13 @@ function staticItemIdList() {
   });
 }
 
-function iconDataURL(id) {
-  let u = URL_CACHE[id];
+function iconDataURL(id, size) {
+  const sz = size || 34;
+  const key = id + '_' + sz;
+  let u = URL_CACHE[key];
   if (!u) {
-    u = iconCanvas(id, 34).toDataURL();
-    URL_CACHE[id] = u;
+    u = iconCanvas(id, sz).toDataURL();
+    URL_CACHE[key] = u;
   }
   return u;
 }
@@ -113,11 +115,13 @@ function iconCanvas(id, size = 34) {
   c.width = c.height = size;
   const x = c.getContext('2d');
   const it = ITEMS[id];
+  const pad = Math.max(1, size * 0.06);
+  const lw = Math.max(1, size * 0.07);
   x.fillStyle = '#20242b';
-  rr(x, 1, 1, size - 2, size - 2, 6);
+  rr(x, pad, pad, size - pad * 2, size - pad * 2, Math.max(2, size * 0.16));
   x.fill();
   x.strokeStyle = it.color;
-  x.lineWidth = 2;
+  x.lineWidth = lw;
   x.stroke();
   x.fillStyle = it.color;
   drawItemGlyph(x, id, size / 2, size / 2, size * 0.72);
@@ -139,8 +143,8 @@ function buildHotbar() {
     if (id) slot.dataset.tip = itemTip(id);
     else slot.dataset.tip = '空槽位|打开背包(E)，选中任意物品后点击空槽位或鼠标中键即可把该物品放入，放置幽灵继续选中';
     if (id) {
-      const ic = iconCanvas(id).cloneNode();
-      ic.getContext('2d').drawImage(iconCanvas(id), 0, 0);
+      const ic = iconCanvas(id, 16).cloneNode();
+      ic.getContext('2d').drawImage(iconCanvas(id, 16), 0, 0);
       slot.appendChild(ic);
     } else {
       const emp = document.createElement('span');
@@ -597,7 +601,7 @@ function htmlInvSlots() {
         use = '<button class="slot-use" data-action="eat-fish" data-type="' + id + '" title="食用' + ITEMS[id].name + '（恢复 20 生命值）">🐟</button>';
       }
       h += '<div class="inv-slot' + (hit ? '' : ' hidden') + '" data-itemid="' + id + '" data-tip="' + itemTip(id) + '" data-itemsearch="' + search + '">' +
-        '<img src="' + iconDataURL(id) + '">' +
+        '<img src="' + iconDataURL(id, 16) + '">' +
         '<span class="cnt" data-cnt="' + id + '">' + n + '</span>' +
         use + '</div>';
     } else {

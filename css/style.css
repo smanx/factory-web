@@ -161,8 +161,8 @@ html, body {
   position: absolute;
   bottom: 12px; left: 50%;
   transform: translateX(-50%);
-  display: flex; gap: 6px;
-  padding: 6px;
+  display: flex; gap: 3px;
+  padding: 4px;
   background: rgba(10, 14, 18, .65);
   border-radius: 10px;
 }
@@ -175,19 +175,19 @@ html, body {
   /* 默认隐藏：仅进入游戏后由 enterGame 显示（主页面/开始菜单不显示） */
   display: none;
   flex-direction: column;
-  gap: 6px;
-  padding: 6px;
+  gap: 3px;
+  padding: 4px;
   background: rgba(10, 14, 18, .65);
   border-radius: 10px;
   z-index: 900;
 }
-.qb-row { display: flex; gap: 6px; }
+.qb-row { display: flex; gap: 3px; }
 .qb-slot {
   position: relative;
-  width: 36px; height: 36px;
+  width: 16px; height: 16px;
   flex-shrink: 0;
-  border-radius: 6px;
-  border: 2px solid #3a4550;
+  border-radius: 3px;
+  border: 1px solid #3a4550;
   cursor: pointer;
   opacity: .95;
   background: #222b35;
@@ -196,26 +196,24 @@ html, body {
   justify-content: center;
   overflow: hidden;
 }
-.qb-slot:hover { border-color: #7f93ad; }
-.qb-slot.active { border-color: #ffd23c; box-shadow: 0 0 8px rgba(255, 210, 60, .5); }
-.qb-slot .qb-ic { width: 100%; height: 100%; display: block; object-fit: cover; border-radius: 6px; }
+.qb-slot .qb-ic { width: 100%; height: 100%; display: block; object-fit: cover; border-radius: 3px; }
 .qb-slot .qb-empty {
-  font-size: 18px;
+  font-size: 10px;
   color: rgba(255, 255, 255, .25);
   line-height: 1;
 }
 .qb-slot .qb-cnt {
   position: absolute;
   right: 2px; bottom: 1px;
-  font-size: 11px; font-weight: bold;
+  font-size: 7px; font-weight: bold;
   color: #fff;
   text-shadow: 0 1px 2px #000;
   pointer-events: none;
 }
 .qb-slot .qb-name {
   position: absolute;
-  left: 2px; bottom: 1px;
-  font-size: 9px;
+  left: 1px; bottom: 0;
+  font-size: 6px;
   color: rgba(255, 255, 255, .55);
   text-shadow: 0 1px 2px #000;
   pointer-events: none;
@@ -228,13 +226,13 @@ html, body {
 #craft-queue {
   position: absolute;
   bottom: 12px;
-  /* 快捷栏（2行×4格，36px格 + 6px间距/内边距）右缘 ≈ 186px，再留 8px 间距 */
-  left: 194px;
+  /* 快捷栏（2行×4格，16px格 + 3px间距/4px内边距）右缘 ≈ 93px，再留 8px 间距 */
+  left: 101px;
   display: none;
   flex-direction: row;
   align-items: center;
-  gap: 6px;
-  padding: 6px;
+  gap: 3px;
+  padding: 4px;
   background: rgba(10, 14, 18, .65);
   border-radius: 10px;
   z-index: 900;
@@ -242,10 +240,10 @@ html, body {
 }
 .cq-slot {
   position: relative;
-  width: 36px; height: 36px;
+  width: 16px; height: 16px;
   flex-shrink: 0;
-  border-radius: 6px;
-  border: 2px solid #3a4550;
+  border-radius: 3px;
+  border: 1px solid #3a4550;
   background: #222b35;
   display: flex;
   align-items: center;
@@ -253,15 +251,15 @@ html, body {
   overflow: hidden;
   pointer-events: auto;
 }
-.cq-slot img { width: 100%; height: 100%; display: block; object-fit: cover; border-radius: 6px; }
+.cq-slot img { width: 100%; height: 100%; display: block; object-fit: cover; border-radius: 3px; }
 /* 队首当前在制项：蓝色描边 + 旋转 loading 圆环 */
 .cq-slot.cq-working { border-color: #7fd4a0; }
 .cq-slot.cq-working::after {
   content: "";
   position: absolute;
-  inset: 3px;
+  inset: 2px;
   border-radius: 50%;
-  border: 2px solid transparent;
+  border: 1px solid transparent;
   border-top-color: #7fd4a0;
   border-right-color: #7fd4a0;
   animation: cqSpin .8s linear infinite;
@@ -272,8 +270,8 @@ html, body {
 .cq-slot.cq-queued { opacity: .75; }
 .cq-slot .cq-cnt {
   position: absolute;
-  right: 2px; bottom: 1px;
-  font-size: 11px; font-weight: bold;
+  right: 1px; bottom: 0;
+  font-size: 7px; font-weight: bold;
   color: #fff;
   text-shadow: 0 1px 2px #000;
   pointer-events: none;
@@ -282,44 +280,44 @@ html, body {
 
 .slot {
   position: relative;
-  width: 36px; height: 36px;
+  width: 16px; height: 16px;
   flex-shrink: 0;
-  border-radius: 6px;
-  border: 2px solid #3a4550;
+  border-radius: 3px;
+  border: 1px solid #3a4550;
   cursor: pointer;
   opacity: .95;
 }
 
-.slot img, .slot canvas { width: 100%; height: 100%; display: block; border-radius: 6px; }
+.slot img, .slot canvas { width: 100%; height: 100%; display: block; border-radius: 3px; }
 .slot:hover { border-color: #7f93ad; }
 .slot.active { border-color: #ffd23c; box-shadow: 0 0 8px rgba(255, 210, 60, .5); }
 .slot.empty { filter: grayscale(.9) brightness(.55); }
 
 .slot .cnt {
   position: absolute;
-  right: 3px; bottom: 1px;
-  font-size: 11px; font-weight: bold;
+  right: 1px; bottom: 0;
+  font-size: 7px; font-weight: bold;
   color: #fff;
   text-shadow: 0 1px 2px #000;
 }
 
 .slot .key {
   position: absolute;
-  left: 3px; top: 1px;
-  font-size: 10px;
+  left: 1px; top: 0;
+  font-size: 6px;
   color: rgba(255, 255, 255, .75);
   text-shadow: 0 1px 2px #000;
 }
 
 .inv-slots {
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 5px;
+  grid-template-columns: repeat(auto-fill, 16px);
+  gap: 4px;
 }
 .inv-slot {
   position: relative;
-  aspect-ratio: 1;
-  border-radius: 6px;
+  width: 16px; height: 16px;
+  border-radius: 3px;
   border: 1px solid #37424f;
   background: #222b35;
   cursor: pointer;
@@ -328,16 +326,16 @@ html, body {
 .inv-slot:hover { border-color: #7f93ad; }
 .inv-slot.empty { background: rgba(34, 43, 53, .45); border-style: dashed; cursor: default; }
 .inv-slot.hidden { display: none; }
-.inv-slot img { width: 100%; height: 100%; display: block; border-radius: 4px; object-fit: cover; }
+.inv-slot img { width: 100%; height: 100%; display: block; border-radius: 3px; object-fit: cover; }
 /* 物品数量角标：右下角 */
 .inv-slot .cnt {
   position: absolute;
-  right: 1px; bottom: 0;
-  font-size: 11px; font-weight: bold;
+  right: 0; bottom: 0;
+  font-size: 7px; font-weight: bold;
   color: #fff;
   text-shadow: 0 1px 2px #000;
   pointer-events: none;
-  line-height: 1.1;
+  line-height: 1;
 }
 /* 手雷/生鱼快捷使用角标 */
 .inv-slot .slot-use {
@@ -1416,7 +1414,7 @@ html, body {
 .dgiveall:hover { background: #a6eaa6; }
 
 .nilslot { opacity: .55; }
-.nilmark { font-size: 11px; color: #7d8894; }
+.nilmark { font-size: 7px; color: #7d8894; line-height: 1; }
 
 .setrow {
   display: flex;
@@ -1786,8 +1784,8 @@ html, body {
     max-width: calc(100vw - 24px);
     flex-wrap: wrap;
     justify-content: center;
-    /* 每行固定 5 个槽位：5×36px + 4×5px(gap) + 2×5px(padding) = 210px */
-    width: 210px;
+    /* 每行固定 5 个槽位：5×16px + 4×3px(gap) + 2×4px(padding) = 100px */
+    width: 100px;
   }
   #hotbar { scrollbar-width: thin; }
   #hotbar::-webkit-scrollbar { height: 4px; width: 4px; }
@@ -1796,12 +1794,12 @@ html, body {
     border: none;
     border-radius: 2px;
   }
-  .slot { width: 36px; height: 36px; }
-  .slot .key { font-size: 12px; }
-  .slot .cnt { font-size: 13px; }
-  /* 手机端：背包格子改用 6 列网格，避免格子过小 */
-  .inv-slots { grid-template-columns: repeat(6, 1fr); }
-  .inv-slot .cnt { font-size: 12px; }
+  .slot { width: 16px; height: 16px; }
+  .slot .key { font-size: 6px; }
+  .slot .cnt { font-size: 7px; }
+  /* 手机端：背包格子沿用统一 16px 小格，多列自适应 */
+  .inv-slots { grid-template-columns: repeat(auto-fill, 16px); }
+  .inv-slot .cnt { font-size: 7px; }
 
   /* 绿图操作栏放大 */
   #greenbar { font-size: 15px; padding: 10px 16px; }
@@ -1815,15 +1813,15 @@ html, body {
   .joystick { bottom: 200px; }
 
   /* 左下角战斗快捷栏：手机端缩小槽位，避免遮挡 */
-  #quickbar { bottom: 12px; left: 12px; gap: 4px; padding: 4px; }
-  #quickbar .qb-row { gap: 4px; }
-  #quickbar .qb-slot { width: 36px; height: 36px; }
-  #quickbar .qb-empty { font-size: 16px; }
-  #quickbar .qb-cnt { font-size: 10px; }
+  #quickbar { bottom: 12px; left: 12px; gap: 3px; padding: 3px; }
+  #quickbar .qb-row { gap: 3px; }
+  #quickbar .qb-slot { width: 16px; height: 16px; }
+  #quickbar .qb-empty { font-size: 8px; }
+  #quickbar .qb-cnt { font-size: 7px; }
 
   /* 手机端合成队列：跟随快捷栏尺寸，缩小槽位 */
-  #craft-queue { bottom: 12px; left: 192px; gap: 4px; padding: 4px; }
-  #craft-queue .cq-slot { width: 32px; height: 32px; }
+  #craft-queue { bottom: 12px; left: 96px; gap: 3px; padding: 3px; }
+  #craft-queue .cq-slot { width: 16px; height: 16px; }
 }
 
 /* 超窄屏（如竖屏手机）进一步压缩顶部按钮，避免溢出 */
