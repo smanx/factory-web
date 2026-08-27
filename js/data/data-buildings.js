@@ -19,8 +19,8 @@ const BUILD_DEFS = {
   'programmable-speaker': { w: 1, h: 1, solid: true },
   'long-handed-inserter':      { w: 1, h: 1, solid: true },
   'bulk-inserter':     { w: 1, h: 1, solid: true },
-  'stack-inserter':    { w: 1, h: 1, solid: true },
   'fast-inserter':      { w: 1, h: 1, solid: true },
+  'stack-inserter':   { w: 1, h: 1, solid: true },  // 太空时代堆叠机械臂（官方 selection_box ±0.5 → 1×1，数据由 GAME_DATA.footprint 桥接）
   'burner-mining-drill':       { w: 2, h: 2, solid: true },
   'stone-furnace':      { w: 2, h: 2, solid: true },
   'steel-furnace':      { w: 2, h: 2, solid: true },

@@ -8,7 +8,7 @@ const MINIMAP_ZOOM = 2.2;           // 每瓦片像素（越大多看得越细�
 const MINIMAP_VIEW = Math.ceil(MINIMAP_SIZE / MINIMAP_ZOOM / 2); // 半边长覆盖瓦片数
 function drawMinimap(ctx) {
   const size = MINIMAP_SIZE;
-  const pad = 10;
+  const pad = 0;
   const x0 = W - size - pad, y0 = pad; // 小地图移至上（右）角显示
   const pcx = G.player.x / TILE, pcy = G.player.y / TILE;
   // 背景框

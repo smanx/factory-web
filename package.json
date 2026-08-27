@@ -6,8 +6,8 @@
   "scripts": {
     "data": "node tools/generate-game-data.js",
     "serve": "npx http-server -p 8094 -c-1",
+    "dev": "node build.js --dev --port 8095",
     "serve:dist": "cd dist & npx http-server -p 8094 -c-1",
-    "dev": "node build.js --dev --port 8094",
     "watch": "node build.js --watch",
     "build": "node build.js",
     "build:minify": "node build.js --minify"

@@ -48,6 +48,7 @@ const BUILD_DEFS = {
   'burner-inserter':     { w: 1, h: 1, solid: true },
   'long-handed-inserter':       { w: 1, h: 1, solid: true },
   'bulk-inserter':      { w: 1, h: 1, solid: true },
+  'stack-inserter':    { w: 1, h: 1, solid: true },
   'fast-inserter':       { w: 1, h: 1, solid: true },
   'wooden-chest':        { w: 1, h: 1, solid: true },
 };

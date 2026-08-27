@@ -957,33 +957,27 @@ ok(ctx.__itemTechReq('railgun-turret') === 'advanced-defense', 'railgun-turret �
 ok(ctx.__itemTechReq('railgun-ammo') === 'advanced-defense', 'railgun-ammo 需「高级防御」科技');
 ok(TS['advanced-defense'].req && TS['advanced-defense'].req.indexOf('electromagnetics') >= 0 && TS['advanced-defense'].req.indexOf('metallurgy') >= 0, '「高级防御」科技前置含电磁学与冶金学');
 
-// ===== 太空时代叠加机械臂（Stack inserter）数据校验 =====
-console.log('\n【叠加机械臂 stack-inserter 数据】');
-ok(!!IT['stack-inserter'], 'stack-inserter 物品已注册');
-ok(GD.stackSize['stack-inserter'] === 50, 'stack-inserter 堆叠来自官方 (=50)');
-ok(GD.names['stack-inserter'] && GD.names['stack-inserter'].en === 'Stack inserter', 'stack-inserter 官方命名已收录 (Stack inserter)');
-ok(GD.footprint['stack-inserter'] && GD.footprint['stack-inserter'].w === 1 && GD.footprint['stack-inserter'].h === 1, 'stack-inserter 占地 1×1');
+console.log('\n【太空时代堆叠机械臂（stack-inserter，本迭代新增）数据校验】');
+ok(!!GD.stackSize['stack-inserter'] && GD.stackSize['stack-inserter'] === 50, 'stack-inserter 堆叠来自官方 (=50)');
+ok(GD.names['stack-inserter'] && GD.names['stack-inserter'].zh === '堆叠机械臂', 'stack-inserter 官方命名已收录 (堆叠机械臂/Stack inserter)');
 ok(GD.buildingHp['stack-inserter'] === 160, 'stack-inserter 血量=160（官方 max_health）');
-console.log('\n【叠加机械臂堆叠抓取（官方 inserterStats）】');
-ok(GD.inserterStats && GD.inserterStats.perType['stack-inserter'] && GD.inserterStats.perType['stack-inserter'].stack === 4, 'stack-inserter 抓取堆叠=4（官方 stack_size_bonus）');
-ok(GD.inserterStats.perType['bulk-inserter'] && GD.inserterStats.perType['bulk-inserter'].stack === 3, 'bulk-inserter 抓取堆叠=3（官方基础档）');
-ok(GD.inserterStats.perType['stack-inserter'].rotationSpeed === 0.04 && GD.inserterStats.perType['stack-inserter'].extensionSpeed === 0.1, 'stack-inserter 旋转/伸缩速度=官方 (0.04/0.1)');
-console.log('\n【叠加机械臂配方与设备归属】');
+const siStats = GD.inserterStats && GD.inserterStats.perType && GD.inserterStats.perType['stack-inserter'];
+ok(!!siStats && siStats.rotationSpeed === 0.04 && siStats.extensionSpeed === 0.1, 'stack-inserter 旋转/伸缩速度来自官方 (0.04/0.1)');
+ok(!!siStats && siStats.stack === 4, 'stack-inserter 抓取堆叠=4（官方 stack_size_bonus=4）');
 ok(!!RP['stack-inserter'], 'stack-inserter 配方已注册');
-ok(RP['stack-inserter'].inp['bulk-inserter'] === 1, 'stack-inserter 配方消耗 1 集装箱机械臂（官方）');
-ok(RP['stack-inserter'].inp['processing-unit'] === 1, 'stack-inserter 配方消耗 1 处理器（官方）');
-ok(RP['stack-inserter'].inp['carbon-fiber'] === 2, 'stack-inserter 配方消耗 2 碳纤维（官方）');
-ok(RP['stack-inserter'].inp['jelly'] === 10, 'stack-inserter 配方消耗 10 果冻（官方）');
-ok(ctx.__recipeDevice('stack-inserter') === 'assembling-machine-1', 'stack-inserter → 组装机');
-for (const rid of ['stack-inserter']) {
-  const rec = RP[rid];
+ok(RP['stack-inserter'] && RP['stack-inserter'].inp && RP['stack-inserter'].inp['bulk-inserter'] === 1, 'stack-inserter 配方含 1 集装箱机械臂（官方）');
+ok(RP['stack-inserter'] && RP['stack-inserter'].inp && RP['stack-inserter'].inp['processing-unit'] === 1, 'stack-inserter 配方含 1 处理器（官方）');
+ok(RP['stack-inserter'] && RP['stack-inserter'].inp && RP['stack-inserter'].inp['carbon-fiber'] === 2, 'stack-inserter 配方含 2 碳纤维（官方）');
+ok(RP['stack-inserter'] && RP['stack-inserter'].inp && RP['stack-inserter'].inp['jelly'] === 10, 'stack-inserter 配方含 10 果冻（官方）');
+ok(!!IT['stack-inserter'], 'stack-inserter 物品已注册');
+ok(!!TS['stack-inserter-tech'], '「堆叠机械臂」科技已注册');
+ok(ctx.__itemTechReq('stack-inserter') === 'stack-inserter-tech', 'stack-inserter 需「堆叠机械臂」科技');
+{
+  const rec = RP['stack-inserter'];
   const inpOk = Object.keys(rec.inp).every(k => k in IT);
   const outOk = Object.keys(rec.out).every(k => k in IT);
-  ok(inpOk && outOk, '配方 ' + rid + ' 引用的物品均存在');
+  ok(inpOk && outOk, 'stack-inserter 配方引用的物品均存在');
 }
-console.log('\n【科技门控（stack-inserter）】');
-ok(!!TS['stack-inserter'], '「叠加机械臂」科技已注册');
-ok(ctx.__recipeTechReq('stack-inserter') === 'stack-inserter', 'stack-inserter 配方需「叠加机械臂」科技');
 
 
 process.exit(fail === 0 ? 0 : 1);

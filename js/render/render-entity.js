@@ -126,12 +126,12 @@ const NO_STATUS_DOT = {
   // 其他流体管路（核电传热管、创造/虚空管道）同样不显示状态小点
   'heat-pipe': true, 'creative-pipe': true, 'void-pipe': true,
   // 机械臂（电力/加长/高速/集装箱/热能）运行状态由臂体与动画直观表达，不显示状态小点
-  'inserter': true, 'long-handed-inserter': true, 'bulk-inserter': true, 'stack-inserter': true, 'fast-inserter': true,
-  'burner-inserter': true,
+  'inserter': true, 'long-handed-inserter': true, 'bulk-inserter': true, 'fast-inserter': true,
+  'stack-inserter': true, 'burner-inserter': true,
 };
 
 // 机械臂类型集合：绘制时置顶，永远显示在传送带/其他设备之上，不被遮挡。
-const IS_INSERTER = { inserter: true, 'long-handed-inserter': true, 'bulk-inserter': true, 'stack-inserter': true, 'fast-inserter': true };
+const IS_INSERTER = { inserter: true, 'long-handed-inserter': true, 'bulk-inserter': true, 'fast-inserter': true, 'stack-inserter': true };
 
 const ghostCache = { type: null, ent: null };
 
