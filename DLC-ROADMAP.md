@@ -639,3 +639,24 @@
 > - **校验**：verify-dlc 新增装载机校验（4 级 × 6 + 配方 4 + 科技 3 = 31 项），
 >   全量 18 个校验脚本通过，`node build.js` 构建通过。
 >   全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段四.19：Factorio 2.0 流体阀门（One-way / Overflow / Top-up valve，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **物品/设备**：`one-way-valve`（单向阀）/ `overflow-valve`（溢出阀）/ `top-up-valve`（补给阀）已接入，
+>   堆叠(=10) / 血量(=100) / 占地(1×1) / 中英命名（单向阀/One-way valve、溢流阀/Overflow valve、补充阀/Top-up valve）
+>   全部来自 GAME_DATA（factorio-data 官方 valve 原型：selection_box ±0.5、max_health 100、fluid_box.volume 100），
+>   未单独维护数值表。
+> - **生成脚本**：FOOTPRINT_SOURCES 新增三阀官方 valve 原型 selection_box 桥接（→ 1×1）；
+>   官方 stack/hp/命名由 data.generated.js 自动提取。
+> - **玩法**（对齐《异星工厂》2.0 阀门的 flow_direction / mode / threshold 语义，官方 flow_rate 20）：
+>   - 单向阀（one-way）：只允许流体沿箭头方向（背侧→前侧）单向流动，反向截止，防止管道回流。
+>   - 溢出阀（overflow）：仅当入口侧流体压力超过阈值（官方 threshold=0.8，即缓冲 80%）时才允许流体
+>     外溢到下游，实现「优先自用、满则外溢」的优先供给。
+>   - 补给阀（top-up）：仅当出口侧流体压力低于阈值（官方 threshold=0.5）时才从入口侧补给，
+>     用于维持储液罐/下游管道液位。
+> - **配方**：官方 2.0 阀门由流体处理科技解锁（data 中阀门为隐藏原型无独立配方，此处适配为管道+铁/钢板配方，
+>   耗时参考官方），配方键保留官方名；数据单源（占地/血量/堆叠/命名来自 GAME_DATA）。
+> - **科技**：三阀统一由「流体处理」科技解锁（与泵/地下管道一致，官方 fluid-handling）。
+> - **校验**：verify-dlc 新增流体阀门校验（27 项），全量 18 个校验脚本通过，`node build.js` 构建通过。
+

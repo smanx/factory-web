@@ -67,6 +67,9 @@ const RECIPES = {
   'assembling-machine-3':        { time: 0.5, inp: { 'assembling-machine-2': 2, 'speed-module': 4 }, out: { 'assembling-machine-3': 1 } },
   'pipe-to-ground':        { time: 0.5, inp: { 'iron-plate': 5, 'pipe': 10 }, out: { 'pipe-to-ground': 2 } },
   'pump':        { time: 2, inp: { 'engine-unit': 1, 'pipe': 1, 'steel-plate': 1 }, out: { 'pump': 1 } },
+  'one-way-valve':   { time: 1, inp: { 'pipe': 4, 'iron-plate': 4 }, out: { 'one-way-valve': 2 } },  // Factorio 2.0 单向阀（官方流体处理科技解锁）
+  'overflow-valve':  { time: 1, inp: { 'pipe': 4, 'steel-plate': 2, 'iron-plate': 2 }, out: { 'overflow-valve': 2 } },  // Factorio 2.0 溢出阀
+  'top-up-valve':    { time: 1, inp: { 'pipe': 4, 'steel-plate': 2, 'iron-plate': 2 }, out: { 'top-up-valve': 2 } },  // Factorio 2.0 补给阀
   'solar-panel':        { time: 10, inp: { 'copper-plate': 5, 'electronic-circuit': 15, 'steel-plate': 5 }, out: { 'solar-panel': 1 } },
   'accumulator':        { time: 10, inp: { 'battery': 5, 'iron-plate': 2 }, out: { 'accumulator': 1 } },
   'military-science-pack':        { time: 10, inp: { 'grenade': 1, 'stone-wall': 2, 'piercing-rounds-magazine': 1 }, out: { 'military-science-pack': 2 } },  // 对齐官方：2石墙+1穿甲弹+1手雷 → 2
