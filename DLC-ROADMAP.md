@@ -396,6 +396,9 @@
   未单独维护数值表。
 - **设备**：`cryogenic-plant`（低温工厂）：占地 5×5（官方 selection_box）、血量 350、功耗 1500kW、
   制造速度 2、模块槽 8，全部来自 GAME_DATA（deviceStats/footprint/buildingHp/powerUse），复用化工厂流体组装机行为。
+- **流体桶（本增量）**：补齐太空时代氟酮桶——`fluoroketone-cold-barrel`（桶装氟酮（冷））/ `fluoroketone-hot-barrel`（桶装氟酮（热）），
+  堆叠 10（官方 stack），纳入 `BARREL_FLUIDS` 桶装体系（空桶+50 氟酮→满桶、满桶→空桶+50 氟酮，组装机装配方），
+  由「流体处理」科技解锁，补全 DLC 物品清单中最后 2 个官方桶装物品。
 - **配方**：氨=水+硫酸（3s）；氟=氨+方解石（2s）；氟酮冷=氟+氨+碳（3s）；氟酮热=氟酮冷（2s）；
   低温科研包=氟酮热+超导体+锂板+钷素星块（6s，官方 cryogenic-science-pack）；低温工厂本体（10s）。
   配方键保留官方名，数据单源，由「低温学」科技解锁。

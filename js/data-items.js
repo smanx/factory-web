@@ -34,6 +34,7 @@ const STACK_SIZES = {
   'barrel': 10, 'water-barrel': 10, 'crude-oil-barrel': 10,
   'heavy-oil-barrel': 10, 'light-oil-barrel': 10, 'petroleum-gas-barrel': 10,
   'lubricant-barrel': 10, 'sulfuric-acid-barrel': 10,
+  'fluoroketone-cold-barrel': 10, 'fluoroketone-hot-barrel': 10,  // 太空时代氟酮桶（官方 stack=10）
   // 科学包：堆叠 200（对齐原版）
   'automation-science-pack': 200, 'logistic-science-pack': 200, 'chemical-science-pack': 200,
   'military-science-pack': 200, 'production-science-pack': 200, 'utility-science-pack': 200,
@@ -402,13 +403,15 @@ const ITEMS = {
   'petroleum-gas-barrel':  { name: '桶装石油气', color: '#c9a84a', mark: '桶', desc: '盛满石油气的桶，可经物流网络运输，倒空后获得空桶' },
   'lubricant-barrel':      { name: '桶装润滑油', color: '#d8c020', mark: '桶', desc: '盛满润滑油的桶，可经物流网络运输，倒空后获得空桶' },
   'sulfuric-acid-barrel':  { name: '桶装硫酸', color: '#c8c030', mark: '桶', desc: '盛满硫酸的桶，可经物流网络运输，倒空后获得空桶' },
+  'fluoroketone-cold-barrel': { name: '桶装氟酮（冷）', color: '#80c8d8', mark: '桶', desc: '盛满冷态氟酮的桶（官方 Fluoroketone cold barrel），可经物流网络运输，倒空后获得空桶' },
+  'fluoroketone-hot-barrel':  { name: '桶装氟酮（热）', color: '#e0a060', mark: '桶', desc: '盛满热态氟酮的桶（官方 Fluoroketone hot barrel），可经物流网络运输，倒空后获得空桶' },
 };
 
 // ===== 食用生鱼回血（对齐《异星工厂》：吃鱼治疗） =====
 const FISH_HEAL = 20;  // 食用一条生鱼恢复的生命值
 
 // ===== 可桶装的流体（对齐《异星工厂》：所有流体均可桶装，蒸汽亦可） =====
-const BARREL_FLUIDS = ['water', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas', 'lubricant', 'sulfuric-acid'];
+const BARREL_FLUIDS = ['water', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas', 'lubricant', 'sulfuric-acid', 'fluoroketone-cold', 'fluoroketone-hot'];
 const BARREL_CAP = 50;  // 每桶盛装流体量（对齐《异星工厂》Barrel 容量）
 // 由流体 id 取对应桶物品 id；非桶装流体返回 null
 function barrelItemId(fluid) { return BARREL_FLUIDS.indexOf(fluid) >= 0 ? fluid + '-barrel' : null; }

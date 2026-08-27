@@ -294,7 +294,9 @@ const GAME_DATA = {
   "light-oil-barrel": 10,
   "petroleum-gas-barrel": 10,
   "lubricant-barrel": 10,
-  "sulfuric-acid-barrel": 10
+  "sulfuric-acid-barrel": 10,
+  "fluoroketone-cold-barrel": 10,
+  "fluoroketone-hot-barrel": 10
  },
  "buildingHp": {
   "transport-belt": 150,

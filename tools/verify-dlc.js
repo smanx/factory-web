@@ -64,6 +64,18 @@ console.log('\n【保留 6 个创造/虚空物品】');
 const cv = Object.keys(IT).filter(k => k.indexOf('creative-') === 0 || k.indexOf('void-') === 0);
 ok(cv.length === 6, '创造/虚空物品数 = 6（实际 ' + cv.length + '）：' + cv.join(', '));
 
+console.log('\n【太空时代氟酮桶（Fluoroketone barrels）】');
+for (const b of ['fluoroketone-cold-barrel', 'fluoroketone-hot-barrel']) {
+  ok(!!GD.stackSize[b] && GD.stackSize[b] === 10, b + ' 堆叠来自官方 (=10)');
+  ok(!!IT[b], b + ' 物品已注册');
+}
+ok(!!RP['fill-fluoroketone-cold-barrel'] && RP['fill-fluoroketone-cold-barrel'].inp['fluoroketone-cold'] === 50, '氟酮（冷）桶装配方=空桶+50氟酮（冷）');
+ok(!!RP['empty-fluoroketone-cold-barrel'] && RP['empty-fluoroketone-cold-barrel'].inp['fluoroketone-cold-barrel'] === 1, '氟酮（冷）倒空配方=满桶→空桶+50氟酮');
+ok(!!RP['fill-fluoroketone-hot-barrel'] && RP['fill-fluoroketone-hot-barrel'].inp['fluoroketone-hot'] === 50, '氟酮（热）桶装配方=空桶+50氟酮（热）');
+ok(ctx.__itemTechReq('fluoroketone-cold-barrel') === 'barrel', '氟酮（冷）桶需「流体处理」科技');
+ok(ctx.__itemTechReq('fluoroketone-hot-barrel') === 'barrel', '氟酮（热）桶需「流体处理」科技');
+
+
 
 
 // ===== 电路新设备（display-panel / selector-combinator）数据校验 =====
