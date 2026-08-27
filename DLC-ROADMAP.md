@@ -995,7 +995,21 @@
 >   全量 18 个校验脚本通过，`node build.js` 构建通过。
 
 
-### 阶段五.4：Gleba 雅玛果加工对齐官方（含种子自持，本迭代新增）
+### 阶段五.4：污染排放数据单源化（官方 emissions_per_minute 桥接，本迭代新增）
+
+- [x] **污染排放数据单源化**：原 `js/devices/pollution.js` 中的手工 `POLLUTION_SOURCES` 数值表
+      被移除，改为从 `GAME_DATA.pollution`（factorio-data 官方 `energy_source.emissions_per_minute.pollution`，
+      污染/分）读取各污染源排放，满足「所有数据均从 data.generated.js 获取、不为设备单独维护一套数据」。
+- [x] 生成脚本新增 `GAME_DATA.pollution`：官方桥接 锅炉 30 / 电采矿机 10 / 大型采矿机 40 / 抽油机 10 /
+      石炉 2 / 钢铁炉 4 / 电炉 1 / 炼油厂 6 / 化工厂 4 / 离心机 4 / 热能采矿机 12（每分排放）。
+- [x] 污染系统新增 `pollutionRateFor(type)`：把官方「污染/分」按全局 `POLLUTION_RATE_SCALE` 折算为
+      本项目简化模型的「污染/秒」，使各污染源**相对比例与官方一致**（锅炉/大型采矿机为主要污染源，
+      电炉官方仅 1/分、近清洁）。核反应堆/火车头/热能机械臂在官方 raw 无数值型排放
+      （核堆官方零排放），保留项目自定的微量兜底值。
+- [x] 校验并入 verify-dlc（新增 9 项）：断言 `GAME_DATA.pollution` 各官方排放值、pollution.js 已移除
+      手工数值表、改从 GAME_DATA.pollution 读取。全量 18 个校验脚本通过，构建通过。
+
+### 阶段五.4b：Gleba 雅玛果加工对齐官方（含种子自持，本迭代新增）
 
 > 已落地说明（本迭代增量）：
 > 依据「所有物品/配方数据与《异星工厂》官方一致」原则，将项目 `yumako-mash`（玉玛果泥）配方
@@ -1010,6 +1024,27 @@
 >   运行时仍以 `GAME_DATA.recipe` 官方单源为准。
 > - **守门人**：`verify-dlc` 新增玉玛果加工产出种子/果泥/耗时 1s 三项校验，
 >   防止后续改动破坏官方一致性；全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+
+### 阶段四.30：行星资源差异化落地（祝融星钨矿 / 雷神星钬矿天然矿脉，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> 依据「所有数据与《异星工厂》官方一致」原则，落地**行星专属天然矿脉**（路线图阶段六方向一）——
+> 让 Space Age 两种行星专属金属矿不再仅靠合成配方，而是按官方设定在各自母星**自然生成矿脉**，可被采矿机/手挖直接开采：
+> - **祝融星 Vulcanus → 钨矿 tungsten-ore**（官方 tungsten-ore 天然矿脉）：在祝融星中远距离自然生成矿团，
+>   供铸造厂冶炼钨板（tungsten-plate）→ 碳化钨（tungsten-carbide）的官方钨链直接采矿。
+> - **雷神星 Fulgora → 钬矿 holmium-ore**（官方 holmium-ore 天然矿脉）：在雷神星中远距离自然生成矿团，
+>   供电磁工厂精炼钬液/钬板的官方钬链直接采矿。
+> - **其它星球不生成天然矿脉**（Nauvis/Gleba/Aquilo 的 tungsten/holmium 丰度=0），仍保留现有合成配方兜底，
+>   保证任意星球可继续造出钨/钬（不破坏既有存档与玩法推进）。
+> - **数据单源**：矿石索引（ORE_TUNGSTEN=8 / ORE_HOLMIUM=9）、oreItemId() / isOreType() 集中判断、
+>   采矿时间（官方 mining_time=2s）均在 data.js 维护；堆叠（=50）与命名来自 GAME_DATA（factorio-data 官方）；
+>   行星资源画像（world-config.js PLANET_RESOURCES 新增 tungsten/holmium 丰度）按官方星球设定。
+> - **玩法**：采矿机（钻机/电矿机/大矿机）与玩家手挖自动识别并开采钨/钬矿脉（isOreType 统一接入 drill/player/render），
+>   矿格渲染复用 oreItemId(ti) 读取官方物品色。由现有「冶金学」「富尔戈拉电磁」科技链消费。
+> - **校验**：verify-dlc 新增行星专属矿藏校验（18 项：物品/堆叠/索引/映射/采矿时间/行星画像/世界生成/采矿/渲染），
+>   全量 18 个校验脚本通过，node build.js 构建通过（含 headless 世界生成验证：祝融星出钨不出钬、雷神星出钬不出钨、新地星均不出）。
+
 
 ### 阶段六：后续开发计划（迭代方向）
 
@@ -1120,3 +1155,28 @@
 >   verify-dlc 校验全部改为官方键 `nutrients-from-yumako-mash`。
 > - **校验**：verify-dlc 新增营养素链校验（配方注册/数值 4s/命名/设备/科技/移除非官方键），
 >   全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段六.4：炼油/离心机配方数据单源化（本迭代新增）
+
+> 依据「所有配方数据从 data.generated.js（factorio-data 官方）获取，设备不单独维护第二套数值」原则，
+> 把此前硬编码在 data-recipes.js 的炼油厂（REFINERY_RECIPES）与离心机（CENTRIFUGE_RECIPES）
+> 配方表改为从 GAME_DATA.recipe 单源覆盖，并修正其中与官方不一致的数值。
+>
+> **改动**：
+> - **generate-game-data.js**：配方抽取循环由 `projectRecipes`（组装机 RECIPES）扩展为
+>   `RECIPES + REFINERY_RECIPES + CENTRIFUGE_RECIPES` 全集，把 6 条炼油/离心机配方
+>   （basic-oil / advanced-oil / coal-liquefaction / simple-coal / uranium-processing /
+>   nuclear-fuel-reprocessing）也写入 GAME_DATA.recipe，并按官方 crafting category 路由
+>   到 oil-refinery / centrifuge（`recipeDevice`）。
+> - **data-recipes.js**：文件末尾把 GAME_DATA.recipe 合并进 RECIPES 时**跳过炼油/离心机键**，
+>   避免混入组装机表；并新增独立桥接块，把 GAME_DATA.recipe 数值 `Object.assign` 回
+>   `REFINERY_RECIPES` / `CENTRIFUGE_RECIPES`（保留 name 显示名，覆盖 time/inp/out/prob）。
+> - **修正数值**（原手工表与官方不一致）：
+>   - `simple-coal-liquefaction`：`10煤+25方解石 → 50重油` 修正为官方
+>     **`10煤 + 2方解石 + 25硫酸 → 50重油`**（5s）。方解石用量 25→2，并补上硫酸原料。
+>   - 其余 5 条（basic/advanced-oil、coal-liquefaction、uranium-processing、
+>     nuclear-fuel-reprocessing）原值与官方一致，经单源确认无变化。
+> - **校验**：verify-dlc 新增「炼油/离心机配方单源化」校验（9 项：6 条官方数值 + 2 项不混入
+>   组装机 RECIPES + 1 项 data-recipes.js 单源读取），全量 18 个校验脚本通过，`node build.js` 构建通过。
+> - **数据单源**：炼油/离心机配方数值全部来自 data.generated.js（factorio-data 官方），
+>   未单独维护第二套数值表。

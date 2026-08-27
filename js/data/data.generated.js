@@ -25,6 +25,7 @@
 //   cargoLandingPad = { inventorySize, radarRange }, cargoBay = { inventorySizeBonus }（物流接驳站/扩展舱）
 //   cargoUnloadingBay = { inventorySizeBonus, allowUnloading, unloadingDistance }（物流卸载舱）
 //   footprint[building] = { w, h }（占地面积格数，官方 selection_box）
+//   pollution[building] = 官方每分排放（emissions_per_minute.pollution，污染/分），供污染系统单源读取
 const GAME_DATA = {
  "stackSize": {
   "iron-ore": 50,
@@ -3731,6 +3732,70 @@ const GAME_DATA = {
    "out": {
     "discharge-defense-equipment": 1
    }
+  },
+  "basic-oil": {
+   "time": 5,
+   "inp": {
+    "crude-oil": 100
+   },
+   "out": {
+    "petroleum-gas": 45
+   }
+  },
+  "advanced-oil": {
+   "time": 5,
+   "inp": {
+    "water": 50,
+    "crude-oil": 100
+   },
+   "out": {
+    "heavy-oil": 25,
+    "light-oil": 45,
+    "petroleum-gas": 55
+   }
+  },
+  "coal-liquefaction": {
+   "time": 5,
+   "inp": {
+    "coal": 10,
+    "heavy-oil": 25,
+    "steam": 50
+   },
+   "out": {
+    "heavy-oil": 90,
+    "light-oil": 20,
+    "petroleum-gas": 10
+   }
+  },
+  "simple-coal": {
+   "time": 5,
+   "inp": {
+    "coal": 10,
+    "calcite": 2,
+    "sulfuric-acid": 25
+   },
+   "out": {
+    "heavy-oil": 50
+   }
+  },
+  "uranium-processing": {
+   "time": 12,
+   "inp": {
+    "uranium-ore": 10
+   },
+   "prob": {
+    "uranium-235": 0.007,
+    "uranium-238": 0.993
+   }
+  },
+  "nuclear-fuel-reprocessing": {
+   "time": 60,
+   "inp": {
+    "depleted-uranium-fuel-cell": 5
+   },
+   "out": {
+    "uranium-238": 3
+   }
   }
  },
  "recipeDevice": {
@@ -4025,7 +4090,13 @@ const GAME_DATA = {
   "fission-reactor-equipment": "assembling-machine-1",
   "toolbelt-equipment": "assembling-machine-1",
   "mech-armor": "assembling-machine-1",
-  "discharge-defense-equipment": "assembling-machine-1"
+  "discharge-defense-equipment": "assembling-machine-1",
+  "basic-oil": "oil-refinery",
+  "advanced-oil": "oil-refinery",
+  "coal-liquefaction": "oil-refinery",
+  "simple-coal": "oil-refinery",
+  "uranium-processing": "centrifuge",
+  "nuclear-fuel-reprocessing": "centrifuge"
  },
  "names": {
   "iron-ore": {
@@ -7390,10 +7461,7 @@ const GAME_DATA = {
   "boiler": 30,
   "oil-refinery": 6,
   "chemical-plant": 4,
-  "centrifuge": 4,
-  "nuclear-reactor": 7,
-  "burner-inserter": 0.3,
-  "locomotive": 3
+  "centrifuge": 4
  },
  "enemy": {
   "small-wriggler-pentapod": {

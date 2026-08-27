@@ -47,21 +47,24 @@ const POLLUTION_TREE_ABSORB = 3.0;     // 每棵树每间隔从所在格吸收�
 const POLLUTION_TREE_DIE = 60;         // 树累计吸收污染达到此量后枯萎死亡
 const POLLUTION_FIELD_MAX_TILES = 6000; // 逐格污染场最大格数（超出时加强衰减，防无界膨胀）
 
-// 各设备的污染排放系数（每秒，单位：污染值/s）
-// 数据单源化：来自 GAME_DATA.pollution（data.generated.js，factorio-data 官方
-// `energy_source.emissions_per_minute.pollution`），未单独维护数值表。
-// 官方 emissions_per_minute 为每分钟排放量，项目以「/s 简化值」接入全局污染模型，
-// 直接采用官方数值（石炉 2 / 钢炉 4 / 炼油 6 等与官方一致）。
-// 官方无直接 emissions_per_minute、但项目有污染来源的设备（核反应堆/热能机械臂/火车头），
-// 由 generate-game-data.js 的 POLLUTION_MANUAL 兜底（官方经其它机制建模，无独立 emissions 字段）。
-const POLLUTION_SOURCES = (typeof GAME_DATA === 'object' && GAME_DATA.pollution)
-  ? Object.assign({}, GAME_DATA.pollution)
-  : {
-      'burner-mining-drill': 12, 'electric-mining-drill': 10, 'big-mining-drill': 40,
-      'pumpjack': 10, 'stone-furnace': 2, 'steel-furnace': 4, 'electric-furnace': 1,
-      'boiler': 30, 'oil-refinery': 6, 'chemical-plant': 4, 'centrifuge': 4,
-      'nuclear-reactor': 7, 'locomotive': 3, 'burner-inserter': 0.3,
-    };
+// 污染排放系数（每秒，单位：污染值/s）——数据单源化
+// 来源 = GAME_DATA.pollution（factorio-data 官方 emissions_per_minute.pollution，污染/分）。
+// 官方单位为「每分」，本项目为简化的全局污染模型，故按 POLLUTION_RATE_SCALE 折算为每秒，
+// 使相对比例与官方一致（锅炉/大型采矿机为主要污染源，电炉官方仅 1/分、近清洁）。
+// 核反应堆/火车头/热能机械臂在官方 raw 无 emissions_per_minute（核堆官方零排放、
+// 火车头/热能机械臂无数值型排放），故保持项目自定的微量兜底值。
+const POLLUTION_RATE_SCALE = 8; // 官方「污染/分」→ 本模型「污染/s」的全局折算系数
+function pollutionRateFor(type) {
+  const perMin = (GAME_DATA && GAME_DATA.pollution && GAME_DATA.pollution[type]);
+  if (typeof perMin === 'number') return perMin / 60 * POLLUTION_RATE_SCALE;
+  // 官方无数值型排放的设备：微量兜底
+  const FALLBACK = {
+    'nuclear-reactor': 0.8,   // 核反应堆：官方零排放，项目保留微量（燃料处理/热量管理）
+    'locomotive': 0.4,        // 火车头：烧煤行驶微量
+    'burner-inserter': 0.05,  // 热能机械臂：烧煤微量
+  };
+  return FALLBACK[type] || 0;
+}
 
 // 累加污染值（外部调用入口，钳制到上限）
 // 同时累计“总污染产生量”（G.pollutionProduced），用于驱动进化度
@@ -246,7 +249,7 @@ function scanPollutionSources(dt) {
   let total = 0;
   for (const e of G.ents) {
     if (e._dead || !e.type) continue;
-    const rate = POLLUTION_SOURCES[e.type];
+    const rate = pollutionRateFor(e.type);
     if (!rate) continue;
     // 仅当设备处于工作/运行状态才排放（利用各设备统一的 working 字段）
     if (e.working) {

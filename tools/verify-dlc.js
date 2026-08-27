@@ -16,13 +16,17 @@ const code = fs.readFileSync(ROOT + '/js/data/data.generated.js', 'utf8')
   + '\n;globalThis.__GAME_DATA=GAME_DATA;globalThis.__ITEMS=ITEMS;globalThis.__RECIPES=RECIPES;'
   + 'globalThis.__TECHS=TECHS;globalThis.__SMELTS=SMELTS;globalThis.__recipeDevice=recipeDevice;'
   + 'globalThis.__itemTechReq=itemTechReq;globalThis.__itemRecipeText=itemRecipeText;globalThis.__recipeTechReq=recipeTechReq;'
-  + 'globalThis.__BUILD_DEFS=BUILD_DEFS;';
+  + 'globalThis.__BUILD_DEFS=BUILD_DEFS;'
+  + 'globalThis.__ORE_TUNGSTEN=ORE_TUNGSTEN;globalThis.__ORE_HOLMIUM=ORE_HOLMIUM;'
+  + 'globalThis.__oreItemId=oreItemId;globalThis.__isOreType=isOreType;globalThis.__oreMiningTime=oreMiningTime;';
 const ctx = { console, localStorage: { getItem: () => null, setItem: () => {} } };
 ctx.window = ctx; ctx.G = { settings: { language: 'zh' }, power: { sat: 1 }, techDone: {} };
 ctx.globalThis = ctx;
 vm.createContext(ctx);
 vm.runInContext(code, ctx);
 const GD = ctx.__GAME_DATA, IT = ctx.__ITEMS, RP = ctx.__RECIPES, TS = ctx.__TECHS;
+const ORE_TUNGSTEN = ctx.__ORE_TUNGSTEN, ORE_HOLMIUM = ctx.__ORE_HOLMIUM;
+const oreItemId = ctx.__oreItemId, isOreType = ctx.__isOreType, oreMiningTime = ctx.__oreMiningTime;
 
 let pass = 0, fail = 0;
 function ok(cond, msg) { if (cond) { pass++; console.log('  ✅ ' + msg); } else { fail++; console.log('  ❌ ' + msg); } }
@@ -1395,6 +1399,22 @@ console.log('\n【氨制火箭燃料（ammonia-rocket-fuel）数据校验】');
 }
 
 
+console.log('\n【污染排放数据单源化（来自 GAME_DATA.pollution，官方 emissions_per_minute）】');
+{
+  const pollSrc = fs.readFileSync(ROOT + '/js/devices/pollution.js', 'utf8');
+  // 官方污染/分数值已单源进 GAME_DATA.pollution
+  ok(GD.pollution && GD.pollution['boiler'] === 30, '锅炉官方每分排放=30（GAME_DATA.pollution 单源）');
+  ok(GD.pollution && GD.pollution['electric-mining-drill'] === 10, '电采矿机官方每分排放=10');
+  ok(GD.pollution && GD.pollution['big-mining-drill'] === 40, '大型采矿机官方每分排放=40');
+  ok(GD.pollution && GD.pollution['stone-furnace'] === 2, '石炉官方每分排放=2');
+  ok(GD.pollution && GD.pollution['electric-furnace'] === 1, '电炉官方每分排放=1（近清洁）');
+  ok(GD.pollution && GD.pollution['oil-refinery'] === 6, '炼油厂官方每分排放=6');
+  // 污染系统改为从 GAME_DATA.pollution 读取（不再单独维护每设备数值表）
+  ok(pollSrc.indexOf('POLLUTION_SOURCES = {') < 0, 'pollution.js 已移除手工 POLLUTION_SOURCES 数值表');
+  ok(pollSrc.indexOf('GAME_DATA.pollution') >= 0, 'pollution.js 从 GAME_DATA.pollution 读取排放（数据单源）');
+  ok(pollSrc.indexOf('pollutionRateFor') >= 0, 'pollution.js 有 pollutionRateFor 折算函数（官方/分→本模型/秒）');
+}
+
 // ===== 太空时代 健康无限科技（Health，本迭代新增）数据校验 =====
 console.log('\n【健康无限科技（Health，Space Age）数据校验】');
 ok(!!TS['health'], '健康科技已注册');
@@ -1404,6 +1424,7 @@ ok(!!TS['health'].req && TS['health'].req.indexOf('space-science') >= 0, '健康
 ok(!!TS['health'].req && TS['health'].req.indexOf('utility') >= 0, '健康科技前置含实用科技');
 ok(!!TS['health'].req && TS['health'].req.indexOf('military4') >= 0, '健康科技前置含军事科技 IV');
 ok(TS['health'].cat === 'space-age', '健康科技归入太空时代分类');
+
 
 
 
@@ -1427,6 +1448,83 @@ ok(!!GD.pollution && GD.pollution['locomotive'] === 3, 'locomotive 污染排放=
 const pollutionJs = fs.readFileSync(ROOT + '/js/devices/pollution.js', 'utf8');
 ok(pollutionJs.includes('GAME_DATA.pollution'), 'pollution.js 从 GAME_DATA.pollution 单源读取（非硬编码）');
 ok(!/POLLUTION_SOURCES = \{[^}]*'stone-furnace': 2,[^}]*\}/.test(pollutionJs) || pollutionJs.includes('GAME_DATA.pollution'), 'pollution.js 污染数值已单源化');
+
+
+
+// ===== 炼油/离心机配方单源化校验（本迭代新增）=====
+// 校验 REFINERY_RECIPES / CENTRIFUGE_RECIPES 数值来自 GAME_DATA.recipe（factorio-data 官方），
+// 且配方键不混入 RECIPES 组装机表。
+console.log('\n【炼油/离心机配方单源化（GAME_DATA.recipe 官方）】');
+// 运行时经 vm 加载，获取独立面板表与 RECIPES
+const recSrc = fs.readFileSync(ROOT + '/js/data/data.generated.js', 'utf8')
+  + '\n' + fs.readFileSync(ROOT + '/js/data/data.js', 'utf8')
+  + '\n' + fs.readFileSync(ROOT + '/js/data/data-items.js', 'utf8')
+  + '\n' + fs.readFileSync(ROOT + '/js/data/data-recipes.js', 'utf8');
+const rsandbox = { console, Math, JSON, Set, Map, Array, Object, String, Number, Boolean, Date, RegExp, parseInt, parseFloat, G: { techDone: {}, dbg: null } };
+rsandbox.global = rsandbox;
+vm.createContext(rsandbox);
+vm.runInContext(recSrc + ';globalThis.__RR=REFINERY_RECIPES;globalThis.__CR=CENTRIFUGE_RECIPES;globalThis.__R=RECIPES;', rsandbox);
+const RRF = rsandbox.__RR, CRF = rsandbox.__CR, RECIPES_F = rsandbox.__R;
+// simple-coal-liquefaction 官方 = 10煤+2方解石+25硫酸 → 50重油（5s）
+const sc = RRF['simple-coal'];
+ok(sc && sc.time === 5 && sc.inp['coal'] === 10 && sc.inp['calcite'] === 2 && sc.inp['sulfuric-acid'] === 25 && sc.out['heavy-oil'] === 50,
+  'simple-coal-liquefaction=10煤+2方解石+25硫酸→50重油（5s，官方）');
+// basic-oil-processing 官方 = 100原油 → 45石油气（5s）
+const bo = RRF['basic-oil'];
+ok(bo && bo.time === 5 && bo.inp['crude-oil'] === 100 && bo.out['petroleum-gas'] === 45, 'basic-oil-processing=100原油→45石油气（5s，官方）');
+// advanced-oil-processing 官方 = 100原油+50水 → 25重+45轻+55气（5s）
+const ao = RRF['advanced-oil'];
+ok(ao && ao.time === 5 && ao.inp['crude-oil'] === 100 && ao.inp['water'] === 50 && ao.out['heavy-oil'] === 25 && ao.out['light-oil'] === 45 && ao.out['petroleum-gas'] === 55, 'advanced-oil-processing=100原油+50水→25重+45轻+55气（5s，官方）');
+// coal-liquefaction 官方 = 10煤+25重油+50蒸汽 → 90重+20轻+10气（5s）
+const cl = RRF['coal-liquefaction'];
+ok(cl && cl.time === 5 && cl.inp['coal'] === 10 && cl.inp['heavy-oil'] === 25 && cl.inp['steam'] === 50 && cl.out['heavy-oil'] === 90 && cl.out['light-oil'] === 20 && cl.out['petroleum-gas'] === 10, 'coal-liquefaction=10煤+25重油+50蒸汽→90重+20轻+10气（5s，官方）');
+// uranium-processing 官方 = 10铀矿 → 概率铀-235/铀-238（12s）
+const up = CRF['uranium-processing'];
+ok(up && up.time === 12 && up.inp['uranium-ore'] === 10 && up.prob['uranium-235'] === 0.007 && up.prob['uranium-238'] === 0.993, 'uranium-processing=10铀矿→铀-235 0.7%/铀-238 99.3%（12s，官方）');
+// nuclear-fuel-reprocessing 官方 = 5贫化燃料棒 → 3铀-238（60s）
+const nr = CRF['nuclear-fuel-reprocessing'];
+ok(nr && nr.time === 60 && nr.inp['depleted-uranium-fuel-cell'] === 5 && nr.out['uranium-238'] === 3, 'nuclear-fuel-reprocessing=5贫化燃料棒→3铀-238（60s，官方）');
+// 炼油/离心机配方不得混入 RECIPES 组装机表
+ok(!('simple-coal' in RECIPES_F) && !('uranium-processing' in RECIPES_F) && !('basic-oil' in RECIPES_F), '炼油/离心机配方不混入组装机 RECIPES 表');
+ok(!('coal-liquefaction' in RECIPES_F) && !('nuclear-fuel-reprocessing' in RECIPES_F), '煤液化/后处理不混入组装机 RECIPES 表');
+// 数据单源：data-recipes.js 应通过 GAME_DATA.recipe 覆盖炼油/离心表
+const recJs = fs.readFileSync(ROOT + '/js/data/data-recipes.js', 'utf8');
+ok(recJs.includes("REFINERY_RECIPES[k] !== undefined || CENTRIFUGE_RECIPES[k] !== undefined"), 'data-recipes.js 炼油/离心配方从 GAME_DATA.recipe 单源覆盖');
+
+
+
+console.log('\n【行星专属矿藏（祝融星钨矿 / 雷神星钬矿）数据校验】');
+{
+  // 矿石物品注册 + 官方堆叠
+  ok(!!IT['tungsten-ore'], 'tungsten-ore 物品已注册（祝融星钨矿）');
+  ok(!!IT['holmium-ore'], 'holmium-ore 物品已注册（雷神星钬矿）');
+  ok(GD.stackSize['tungsten-ore'] === 50, 'tungsten-ore 堆叠来自官方 (=50)');
+  ok(GD.stackSize['holmium-ore'] === 50, 'holmium-ore 堆叠来自官方 (=50)');
+  // 新矿石索引 + oreItemId 映射（data.js 单源）
+  ok(typeof ORE_TUNGSTEN === 'number' && typeof ORE_HOLMIUM === 'number', 'ORE_TUNGSTEN / ORE_HOLMIUM 索引已定义（data.js）');
+  ok(oreItemId(ORE_TUNGSTEN) === 'tungsten-ore', 'oreItemId(ORE_TUNGSTEN) = tungsten-ore');
+  ok(oreItemId(ORE_HOLMIUM) === 'holmium-ore', 'oreItemId(ORE_HOLMIUM) = holmium-ore');
+  ok(isOreType(ORE_TUNGSTEN) && isOreType(ORE_HOLMIUM), 'isOreType() 识别钨/钬矿脉格');
+  // 采矿时间已接入（官方 mining_time=2）
+  ok(oreMiningTime('tungsten-ore') === 2, 'tungsten-ore 采矿时间=2s（官方）');
+  ok(oreMiningTime('holmium-ore') === 2, 'holmium-ore 采矿时间=2s（官方）');
+  // 行星资源画像（world-config.js）：祝融星有钨、雷神星有钬
+  const wc = fs.readFileSync(ROOT + '/js/game/world-config.js', 'utf8');
+  ok(wc.indexOf("vulcanus: {") >= 0 && wc.indexOf("tungsten: 1.4") >= 0, '祝融星 Vulcanus 资源画像含钨矿（tungsten:1.4）');
+  ok(wc.indexOf("fulgora:") >= 0 && wc.indexOf("holmium: 1.6") >= 0, '雷神星 Fulgora 资源画像含钬矿（holmium:1.6）');
+  ok(wc.indexOf("nauvis:") >= 0 && wc.indexOf("tungsten: 0") >= 0, '新地星 Nauvis 无钨/钬天然矿（tungsten:0）');
+  // 世界生成逻辑已接入（world.js）
+  const wj = fs.readFileSync(ROOT + '/js/game/world.js', 'utf8');
+  ok(wj.indexOf("ORE_TUNGSTEN") >= 0 && wj.indexOf("tungsten") >= 0, 'world.js 已接入祝融星钨矿天然生成');
+  ok(wj.indexOf("ORE_HOLMIUM") >= 0 && wj.indexOf("holmium") >= 0, 'world.js 已接入雷神星钬矿天然生成');
+  // 采矿/手挖/渲染识别新矿脉（isOreType 集中判断）
+  const drillSrc = fs.readFileSync(ROOT + '/js/devices/drill.js', 'utf8');
+  const playerSrc = fs.readFileSync(ROOT + '/js/game/player.js', 'utf8');
+  const renEnt = fs.readFileSync(ROOT + '/js/render/render-entity.js', 'utf8');
+  ok(drillSrc.indexOf("isOreType(ti)") >= 0, '采矿机 minableOreType 用 isOreType 识别钨/钬矿');
+  ok(playerSrc.indexOf("isOreType(ti)") >= 0, '玩家手挖用 isOreType 识别钨/钬矿');
+  ok(renEnt.indexOf("isOreType(ti)") >= 0, '渲染用 isOreType 识别钨/钬矿开采圈');
+}
 
 
 process.exit(fail === 0 ? 0 : 1);

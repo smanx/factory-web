@@ -563,6 +563,29 @@ const turret = {};
     fireRate: Math.round(rg.attack_parameters.cooldown / 60 * 1000) / 1000,
   };
 }
+
+// 污染排放（官方 emissions_per_minute.pollution，单位：污染/分钟）。
+// 来源 = 官方 energy_source.emissions_per_minute.pollution（factorio-data 单源）。
+// 注：核反应堆/火车头/热能机械臂在官方 raw 无 emissions_per_minute（核堆官方零排放、
+//     火车头/热能机械臂无数值型排放），故不进本表，污染系统对这些设备保持项目自定微量值。
+const pollution = {};
+{
+  const POLLUTION_SOURCES_OFFICIAL = [
+    ['mining-drill', 'burner-mining-drill'], ['mining-drill', 'electric-mining-drill'],
+    ['mining-drill', 'big-mining-drill'],    ['mining-drill', 'pumpjack'],
+    ['furnace', 'stone-furnace'],            ['furnace', 'steel-furnace'],
+    ['furnace', 'electric-furnace'],         ['boiler', 'boiler'],
+    ['assembling-machine', 'oil-refinery'],  ['assembling-machine', 'chemical-plant'],
+    ['assembling-machine', 'centrifuge'],
+  ];
+  for (const [rtype, name] of POLLUTION_SOURCES_OFFICIAL) {
+    const proto = raw[rtype] && raw[rtype][name];
+    const em = proto && proto.energy_source && proto.energy_source.emissions_per_minute
+      && proto.energy_source.emissions_per_minute.pollution;
+    if (typeof em === 'number') pollution[name] = em;
+  }
+}
+
 // 弹药伤害：遍历 ammo_type.action（2.0 结构可能是 {"1":{...}} 或直接对象），找 damage effect 的 amount。
 function findAmmoDamage(ammoProto) {
   const stack = [ammoProto && ammoProto.ammo_type && ammoProto.ammo_type.action];
@@ -1088,42 +1111,6 @@ for (const pid of projectItems) {
   // 其余（流体/环境/信号等非 5 大 Tab）不写入，由前端按无归类兜底处理
 }
 
-// ================= 污染排放单源化（对齐《异星工厂》Pollution） =================
-// 从 factorio-data 官方实体原型提取 `energy_source.emissions_per_minute.pollution`，
-// 作为各设备的污染排放源数据写入 GAME_DATA.pollution，使污染排放不再在设备侧硬编码。
-// 官方 emissions_per_minute 为每分钟污染排放量；项目以「/s 简化值」接入全局污染模型，
-// 直接采用官方数值（与石炉 2 / 钢炉 4 / 炼油 6 等官方 emissions_per_minute 一致）。
-// 以下设备官方 energy_source 无直接 emissions_per_minute（污染经其它机制建模），
-// 保留项目既有手工值作为兜底（见 POLLUTION_SOURCES_MANUAL）。
-const POLLUTION_ENTITY_SOURCES = {
-  'burner-mining-drill': ['mining-drill', 'burner-mining-drill'],
-  'electric-mining-drill': ['mining-drill', 'electric-mining-drill'],
-  'big-mining-drill': ['mining-drill', 'big-mining-drill'],
-  'pumpjack': ['mining-drill', 'pumpjack'],
-  'stone-furnace': ['furnace', 'stone-furnace'],
-  'steel-furnace': ['furnace', 'steel-furnace'],
-  'electric-furnace': ['furnace', 'electric-furnace'],
-  'boiler': ['boiler', 'boiler'],
-  'oil-refinery': ['assembling-machine', 'oil-refinery'],
-  'chemical-plant': ['assembling-machine', 'chemical-plant'],
-  'centrifuge': ['assembling-machine', 'centrifuge'],
-};
-// 官方无直接 emissions_per_minute、但项目有污染来源的设备（污染经其它机制建模）：
-// 核反应堆（热量/燃料后处理微量排放）、热能机械臂、火车头。
-const POLLUTION_MANUAL = { 'nuclear-reactor': 7, 'burner-inserter': 0.3, 'locomotive': 3 };
-const pollution = {};
-{
-  for (const [pid, [rtype, oname]] of Object.entries(POLLUTION_ENTITY_SOURCES)) {
-    const proto = raw[rtype] && raw[rtype][oname];
-    const es = proto && proto.energy_source;
-    const v = es && es.emissions_per_minute && es.emissions_per_minute.pollution;
-    if (typeof v === 'number') pollution[pid] = v;
-    else if (POLLUTION_MANUAL[pid] !== undefined) pollution[pid] = POLLUTION_MANUAL[pid];
-  }
-  for (const [pid, v] of Object.entries(POLLUTION_MANUAL)) {
-    if (pollution[pid] === undefined) pollution[pid] = v;
-  }
-}
 
 // ================= 敌人（Gleba 五足虫）单源化 =================
 // 从 factorio-data 官方 unit / spider-unit 原型提取太空时代五足虫（Pentapod）敌方数据。
@@ -1210,7 +1197,10 @@ Object.assign(GAME_DATA, {
 
 // ---- recipe ----
 const skipDetails = {}; // rid → 原因
-for (const rid of projectRecipes) {
+// 遍历全部配方表（RECIPES + REFINERY_RECIPES + CENTRIFUGE_RECIPES），
+// 让炼油/离心机配方也同 RECIPES 一样从官方数据单源化（见 data-recipes.js 末尾桥接）。
+const ALL_RECIPE_IDS = new Set([...projectRecipes, ...projectRefRecipes, ...projectCentRecipes]);
+for (const rid of ALL_RECIPE_IDS) {
   if (KEEP_MANUAL_RECIPES.has(rid)) {
     log.keptManual.push(rid);
     skipDetails[rid] = '保留手工（项目自定/旧版，见 KEEP_MANUAL_RECIPES）';
@@ -1265,6 +1255,7 @@ function report() {
   console.log('个人装备 equipment: ' + JSON.stringify(GAME_DATA.equipment));
   console.log('热量链路 heat: ' + JSON.stringify(GAME_DATA.heat));
   console.log('避雷系统 lightning: ' + JSON.stringify(GAME_DATA.lightning));
+  console.log('污染排放 pollution: ' + JSON.stringify(GAME_DATA.pollution));
   console.log('机器人港功耗 roboportPower: ' + JSON.stringify(GAME_DATA.roboportPower));
   console.log('Gleba 五足虫敌人 enemy: ' + Object.keys(GAME_DATA.enemy||{}).length + ' 种');
   console.log('扩展参数手工保留（官方无此字段/项目简化模型）：汽轮机/锅炉/蒸汽机产汽模型、机器人速度与电量刻度、机器人港容量、',
@@ -1351,6 +1342,7 @@ const header = [
   '//   cargoLandingPad = { inventorySize, radarRange }, cargoBay = { inventorySizeBonus }（物流接驳站/扩展舱）',
   '//   cargoUnloadingBay = { inventorySizeBonus, allowUnloading, unloadingDistance }（物流卸载舱）',
   '//   footprint[building] = { w, h }（占地面积格数，官方 selection_box）',
+  '//   pollution[building] = 官方每分排放（emissions_per_minute.pollution，污染/分），供污染系统单源读取',
   'const GAME_DATA = ' + JSON.stringify(GAME_DATA, null, 1) + ';',
   '',
 ].join('\n');
