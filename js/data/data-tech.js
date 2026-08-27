@@ -214,6 +214,10 @@ TECH_REQ['steel-chest'] = 'steel-processing';
 // 地下管道：地下管道与流体泵需地下管道科技解锁（对齐《异星工厂》Fluid handling）
 TECH_REQ['pipe-to-ground'] = 'fluid-handling';
 TECH_REQ['pump'] = 'fluid-handling';
+// Factorio 2.0 流体阀门：由流体处理科技解锁（与泵/地下管道一致，官方 fluid-handling）
+TECH_REQ['one-way-valve'] = 'fluid-handling';
+TECH_REQ['overflow-valve'] = 'fluid-handling';
+TECH_REQ['top-up-valve'] = 'fluid-handling';
 // 战斗机器人：三种战斗机器人胶囊需战斗机器人科技解锁（对齐《异星工厂》Combat robotics）
 for (const id of ['defender-capsule', 'distractor-capsule', 'destroyer-capsule']) TECH_REQ[id] = 'combat-robotics';
 // ===== 流体桶装科技门控（对齐《异星工厂》：桶装需流体处理科技） =====

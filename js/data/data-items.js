@@ -48,6 +48,8 @@ const STACK_SIZES = {
   'railgun': 1, 'mech-armor': 1,  // 轨道炮/机械装甲官方 stack=1
   'battery-mk3-equipment': 20, 'fission-reactor-equipment': 20, 'toolbelt-equipment': 20,  // 个人装备官方 stack=20
   // 基础建材与管线：堆叠 100
+  // 流体阀门（Factorio 2.0）：官方 stack=10
+  'one-way-valve': 10, 'overflow-valve': 10, 'top-up-valve': 10,
   'concrete': 100, 'refined-concrete': 100, 'hazard-concrete': 100, 'refined-hazard-concrete': 100, 'stone-path': 100, 'landfill': 100,
   // 品质模块（对齐《异星工厂》Quality DLC：quality-module 官方 stack=50）
   'quality-module': 50, 'quality-module-2': 50, 'quality-module-3': 50,
@@ -130,6 +132,9 @@ const ITEMS = {
   'pipe':              { name: '管道', color: '#6a5f52', desc: '输送流体（水/蒸汽/原油/重轻油/石油气），相邻互连，容量 40' },
   'pipe-to-ground':    { name: '地下管道', color: '#8a7a6a', desc: '同向摆两座（最远 10 格）自动配对，从地下穿行流体，可跨过传送带/管道' },
   'pump':              { name: '流体泵', color: '#5aa0a8', desc: '从背侧吸入流体、向前侧加压泵出，单向输送、提速吞吐（1×1）' },
+  'one-way-valve':   { name: '单向阀', color: '#7a6a5a', desc: '流体阀门（1×1，对齐《异星工厂》2.0 One-way valve）：只允许流体沿箭头方向单向流动，反向截止，用于防止管道回流' },
+  'overflow-valve':  { name: '溢出阀', color: '#8a7a5a', desc: '流体阀门（1×1，对齐《异星工厂》2.0 Overflow valve）：仅当入口侧流体压力超过阈值（80%）时才允许流体流向出口侧，实现优先供给' },
+  'top-up-valve':    { name: '补给阀', color: '#6a8a7a', desc: '流体阀门（1×1，对齐《异星工厂》2.0 Top-up valve）：仅当出口侧流体压力低于阈值（20%）时才允许流体从入口侧补给，用于维持储液罐液位' },
   'storage-tank':      { name: '储液罐', color: '#7d95a8', desc: '大容量存储任意一种液体/气体（3×3，容量 ' + STORAGE_TANK_CAP + '）。只有一对对角（北西↔南东）的 4 个面可接管道，另一对对角为空不可接；罐内只能容纳单一流体。相邻管道会自动把流体灌入罐内，罐也会从该对角接口向相邻炼油厂/化工厂等输入口供料，作为缓冲库容使用' },
   'creative-pipe':     { name: '创造管道', color: '#3e8f4a', mark: '∞', desc: '测试设备：无限生成选定的流体，点开面板选择要生成的流体，源源不断灌入相邻管道/储液罐' },
   'void-pipe':         { name: '虚空管道', color: '#6a3a3a', mark: '×', desc: '测试设备：无限销毁流经的流体，相邻管道会把流体持续排入这里销毁' },

@@ -60,6 +60,9 @@ const BUILD_DEFS = {
   'void-belt':          { w: 1, h: 1, solid: false },
   'pipe-to-ground':     { w: 1, h: 1, solid: true },
   'pump':               { w: 1, h: 1, solid: true },
+  'one-way-valve':      { w: 1, h: 1, solid: true },  // Factorio 2.0 流体阀门（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±0.5 → 1×1）
+  'overflow-valve':     { w: 1, h: 1, solid: true },  // Factorio 2.0 溢出阀（官方 selection_box ±0.5 → 1×1）
+  'top-up-valve':       { w: 1, h: 1, solid: true },  // Factorio 2.0 补给阀（官方 selection_box ±0.5 → 1×1）
   'solar-panel':        { w: 3, h: 3, solid: true },  // 官方 collision_box ±1.35 → 3×3
   'accumulator':        { w: 2, h: 2, solid: true },
   'gun-turret':         { w: 2, h: 2, solid: true },
