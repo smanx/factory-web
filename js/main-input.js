@@ -88,15 +88,12 @@ function bindInput() {
       } else if (G.panelMode) {
         closePanel();
       } else if (buildActive() || !G.cursorTile) {
-        // 手持普通物品时按 Q 丢弃 1 个到地面（保持手持，便于手动上料，对齐《异星工厂》）；
-        // 手持建筑/工具时 Q 仍为取消选择。
-        if (buildActive() && typeof dropHeldItemToGround === 'function' && dropHeldItemToGround()) {
-          // 已丢弃到地面，保持手持
-        } else {
-          G.sel = -1;
-          G.quickSel = null;
-          refreshHotbar();
-        }
+        // 按 Q 取消当前选中/放置幽灵（对齐《异星工厂》Q 取消选择）。
+        // 无论建筑还是材料/工具，按 Q 都清除选中并取消放置幽灵：
+        // 修复材料放置幽灵按 Q 无反应（此前材料会被“丢弃到地面”而非取消幽灵）。
+        G.sel = -1;
+        G.quickSel = null;
+        refreshHotbar();
       } else {
         const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
         // 选中建筑：统一用 quickSel（快捷栏无选中效果），鼠标直接显示放置幽灵
@@ -121,6 +118,12 @@ function bindInput() {
     if (G.blueSelecting && G.cursorTile) {
       G.blueEnd = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
     }
+  });
+  // 放置幽灵需与鼠标同层级、显示在背包面板/底部工具栏等界面上方：
+  // 在 window 上监听鼠标移动，保证鼠标悬停在面板/工具栏上时 cursorTile 持续更新，
+  // 从而使放置幽灵始终跟随鼠标并绘制在最上层（幽灵画布 pointer-events:none，不挡交互）。
+  window.addEventListener('mousemove', ev => {
+    updateCursorTile(ev.clientX, ev.clientY);
   });
   // 触屏手势交互：由 js/touch.js 的 touchInit() 统一注册（点按/长按操作盘/拖动平移/攒合缩放等）
   touchInit();

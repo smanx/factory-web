@@ -324,6 +324,9 @@ html, body {
 }
 
 .chip img { width: 22px; height: 22px; border-radius: 4px; }
+/* 背包面板左列「玩家背包」物品：悬浮时显示指针，与中间物流区一致（物流区 .rcbtn/.lreq-chip 均为 pointer） */
+#inv-items .chip { cursor: pointer; }
+#inv-items .chip:hover { border-color: #7f93ad; background: #2a3340; }
 .usebtn {
   font-size: 11px; padding: 3px 8px; border-radius: 6px;
   background: rgba(255,210,60,.15); border: 1px solid #d0a04a; color: #ffe08a; cursor: pointer;
