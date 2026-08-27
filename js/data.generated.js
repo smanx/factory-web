@@ -193,6 +193,11 @@ const GAME_DATA = {
   "carbonic-asteroid-chunk": 1,
   "oxide-asteroid-chunk": 1,
   "ice": 50,
+  "space-platform-foundation": 100,
+  "space-platform-hub": 1,
+  "thruster": 10,
+  "asteroid-collector": 10,
+  "space-platform-starter-pack": 1,
   "roboport": 10,
   "logistic-robot": 50,
   "construction-robot": 50,
@@ -331,6 +336,9 @@ const GAME_DATA = {
   "heating-tower": 500,
   "lightning-rod": 100,
   "lightning-collector": 200,
+  "space-platform-hub": 5000,
+  "thruster": 300,
+  "asteroid-collector": 300,
   "roboport": 500,
   "locomotive": 1000,
   "cargo-wagon": 600,
@@ -1795,6 +1803,49 @@ const GAME_DATA = {
     "thruster-oxidizer": 1500
    }
   },
+  "space-platform-foundation": {
+   "time": 10,
+   "inp": {
+    "steel-plate": 20,
+    "copper-cable": 20
+   },
+   "out": {
+    "space-platform-foundation": 1
+   }
+  },
+  "space-platform-starter-pack": {
+   "time": 60,
+   "inp": {
+    "space-platform-foundation": 60,
+    "steel-plate": 20,
+    "processing-unit": 20
+   },
+   "out": {
+    "space-platform-starter-pack": 1
+   }
+  },
+  "thruster": {
+   "time": 10,
+   "inp": {
+    "steel-plate": 10,
+    "processing-unit": 10,
+    "electric-engine-unit": 5
+   },
+   "out": {
+    "thruster": 1
+   }
+  },
+  "asteroid-collector": {
+   "time": 10,
+   "inp": {
+    "low-density-structure": 20,
+    "electric-engine-unit": 8,
+    "processing-unit": 5
+   },
+   "out": {
+    "asteroid-collector": 1
+   }
+  },
   "recycler": {
    "time": 3,
    "inp": {
@@ -2502,6 +2553,10 @@ const GAME_DATA = {
   "thruster-oxidizer": "chemical-plant",
   "advanced-thruster-fuel": "chemical-plant",
   "advanced-thruster-oxidizer": "chemical-plant",
+  "space-platform-foundation": "space-platform-hub",
+  "space-platform-starter-pack": "space-platform-hub",
+  "thruster": "assembling-machine-1",
+  "asteroid-collector": "assembling-machine-1",
   "recycler": "assembling-machine-1",
   "artificial-yumako-soil": "assembling-machine-1",
   "sulfuric-acid": "chemical-plant",
@@ -3286,6 +3341,26 @@ const GAME_DATA = {
    "zh": "冰",
    "en": "Ice"
   },
+  "space-platform-foundation": {
+   "zh": "太空平台基座",
+   "en": "Space platform foundation"
+  },
+  "space-platform-hub": {
+   "zh": "太空平台枢纽",
+   "en": "Space platform hub"
+  },
+  "thruster": {
+   "zh": "推进器",
+   "en": "Thruster"
+  },
+  "asteroid-collector": {
+   "zh": "星岩抓取臂",
+   "en": "Asteroid collector"
+  },
+  "space-platform-starter-pack": {
+   "zh": "太空平台启动包",
+   "en": "Space platform starter pack"
+  },
   "roboport": {
    "zh": "机器人指令平台",
    "en": "Roboport"
@@ -4038,6 +4113,18 @@ const GAME_DATA = {
   "lightning-collector": {
    "w": 2,
    "h": 2
+  },
+  "space-platform-hub": {
+   "w": 8,
+   "h": 8
+  },
+  "thruster": {
+   "w": 4,
+   "h": 8
+  },
+  "asteroid-collector": {
+   "w": 3,
+   "h": 3
   }
  },
  "steamPower": {

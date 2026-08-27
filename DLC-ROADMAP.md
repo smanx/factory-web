@@ -216,8 +216,25 @@
 > - 用途：作为太空平台/推进器（thruster）的基础推进流体，供后续轨道平台系统使用。
 > - 校验：verify-dlc 新增太空推进链校验（23 项），全量 18 个校验脚本通过，构建通过。
 - [ ] 行星切换（Nauvis / Vulcanus / Gleba / Fulgora / Aquilo）
-- [ ] 轨道平台 / 太空货运
 - [ ] 各行星专属资源与科技
+- [ ] 行星切换（Nauvis / Vulcanus / Gleba / Fulgora / Aquilo）
+- [ ] 各行星专属资源与科技
+
+### 阶段四.7：空间平台系统（Space Platform，本迭代新增）
+- [x] **空间平台地基 / 中枢 / 推进器 / 小行星收集器**：太空时代空间平台体系
+
+> 已落地说明（本迭代增量）：
+> - 物品：`space-platform-foundation`（太空平台地基，堆叠 100）/ `space-platform-hub`（空间平台中枢，8×8）/
+>   `thruster`（推进器，4×8）/ `asteroid-collector`（小行星收集器，3×3）/ `space-platform-starter-pack`（起始包），
+>   堆叠 / 命名 / 占地 / 血量全部来自 GAME_DATA（factorio-data 官方 selection_box / max_health / stack_size），未单独维护数值表。
+> - 空间平台中枢：8×8 组装机变体生产建筑，专用于生产平台地基（官方 20钢板+20铜线→1，10s）、起始包、中枢本体；
+>   数据经 GAME_DATA.footprint/buildingHp 桥接（官方 max_health 5000）。
+> - 推进器：4×8 发电设备，燃烧推进器燃料 + 推进器氧化剂（官方双流体输入 thruster-fuel/oxidizer）产生电能
+>   （满功率 8MW 适配简化模型），需管道同时输入两种推进流体；官方配方 10钢板+10处理器+5电动机（10s）。
+> - 小行星收集器：3×3 设备，在轨道上持续收集小行星碎块（金属/碳质/氧化，官方小行星随机分布），
+>   供破碎机粉碎加工；官方配方 20低密+8电动机+5处理器（10s）。
+> - 科技：新增「空间平台」科技（space-platform，需太空推进+空间科研），解锁平台体系；数据校验并入 verify-dlc（36 项）。
+- [ ] 轨道平台 / 太空货运
 
 ### 阶段五：数值/体验精修
 - [ ] 各 DLC 建筑占地/功耗/速度逐一桥接 data.generated.js

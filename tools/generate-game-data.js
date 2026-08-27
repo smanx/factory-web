@@ -57,7 +57,7 @@ const RECIPE_MAP = {
 const KEEP_MANUAL_RECIPES = new Set([
   'chemical-science-pack',
   'deconstruction-planner', 'upgrade-planner', 'diesel-locomotive', 'spidertron-remote',
-  'explosive-rocket-launcher', 'rocket-control-unit', 'satellite', 'red-wire', 'green-wire',
+  'satellite', 'red-wire', 'green-wire',
   'stone-path', 'portable-solar-panel-mk2', 'storage-chest',
   'artillery-wagon', 'artillery-turret', 'artillery-shell', 'spidertron',
   'speed-module-3', 'productivity-module-3', 'efficiency-module-3', 'fusion-reactor-equipment',
@@ -244,6 +244,8 @@ function deviceFor(officialRecipe) {
   for (const c of list) if (DEVICE_BY_CATEGORY[c]) return DEVICE_BY_CATEGORY[c];
   return 'assembling-machine-1';
 }
+// 空间平台中枢专属配方（Space Platform 设备，官方 crafting 类别但须在空间平台中枢生产）
+const HUB_RECIPE_IDS = new Set(['space-platform-foundation', 'space-platform-starter-pack', 'space-platform-hub']);
 
 // ================= 官方多语言命名（data/*/locale/{en,zh-CN}/*.cfg） =================
 // 官方命名（物品/实体/配方/流体）经项目 ID 映射后写入 GAME_DATA.names / GAME_DATA.recipeNames，
@@ -788,6 +790,10 @@ const FOOTPRINT_SOURCES = {
   'biolab': ['lab', 'biolab'],  // 太空时代生物实验室（Gleba）：官方 lab 原型 selection_box ±2.5×±2.5 → 5×5
   'lightning-rod': ['lightning-attractor', 'lightning-rod'],  // 太空时代避雷针（Fulgora）：官方 selection_box ±0.5 → 1×1
   'lightning-collector': ['lightning-attractor', 'lightning-collector'],  // 太空时代避雷收集器（Fulgora）：官方 selection_box ±1 → 2×2
+  // ===== 太空时代 空间平台系统（Space Platform，官方 selection_box）=====
+  'space-platform-hub': ['space-platform-hub', 'space-platform-hub'],  // 官方 selection_box ±4 → 8×8
+  'thruster': ['thruster', 'thruster'],  // 官方 selection_box {{-2,-2.5},{2,5.5}} → 4×8
+  'asteroid-collector': ['asteroid-collector', 'asteroid-collector'],  // 官方 selection_box
 };
 // 官方 selection_box 为实体占用的格数（局部坐标跨度，单位格）。
 // 占地格数 = max(1, ceil(跨度))；部分实体（机械臂/电线杆/熔炉等）官方跨度<1 或非整数，
@@ -902,7 +908,7 @@ for (const rid of projectRecipes) {
     continue;
   }
   GAME_DATA.recipe[rid] = rec;
-  GAME_DATA.recipeDevice[rid] = deviceFor(or);
+  GAME_DATA.recipeDevice[rid] = HUB_RECIPE_IDS.has(rid) ? 'space-platform-hub' : deviceFor(or);
 }
 
 // ================= 报告 =================

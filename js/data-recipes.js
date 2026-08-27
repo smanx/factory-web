@@ -117,7 +117,6 @@ const RECIPES = {
   'submachine-gun':        { time: 10, inp: { 'copper-plate': 5, 'iron-gear-wheel': 10, 'iron-plate': 10 }, out: { 'submachine-gun': 1 } },
   'shotgun':        { time: 10, inp: { 'copper-plate': 10, 'iron-gear-wheel': 5, 'iron-plate': 15, 'wood': 5 }, out: { 'shotgun': 1 } },
   'rocket-launcher':        { time: 10, inp: { 'electronic-circuit': 5, 'iron-gear-wheel': 5, 'iron-plate': 5 }, out: { 'rocket-launcher': 1 } },
-  'explosive-rocket-launcher': { time: 4, inp: { 'rocket-launcher': 1, 'steel-plate': 6, 'explosives': 4 }, out: { 'explosive-rocket-launcher': 1 } },
   'grenade':        { time: 8, inp: { 'coal': 10, 'iron-plate': 5 }, out: { 'grenade': 1 } },
   // 集束手雷（对齐《异星工厂》Cluster grenade）：更强爆炸范围
   'cluster-grenade':        { time: 8, inp: { 'explosives': 5, 'grenade': 7, 'steel-plate': 5 }, out: { 'cluster-grenade': 1 } },
@@ -165,7 +164,6 @@ const RECIPES = {
   'processing-unit':        { time: 10, inp: { 'electronic-circuit': 20, 'advanced-circuit': 2, 'sulfuric-acid': 5 }, out: { 'processing-unit': 1 } },
   'low-density-structure':        { time: 15, inp: { 'copper-plate': 20, 'steel-plate': 2, 'plastic-bar': 5 }, out: { 'low-density-structure': 1 } },
   'rocket-fuel':        { time: 15, inp: { 'light-oil': 10, 'solid-fuel': 10 }, out: { 'rocket-fuel': 1 } },
-  'rocket-control-unit':        { time: 30, inp: { 'processing-unit': 1, 'speed-module': 1 }, out: { 'rocket-control-unit': 1 } },
   'satellite':        { time: 5, inp: { 'accumulator': 100, 'low-density-structure': 100, 'processing-unit': 100, 'radar': 5, 'rocket-fuel': 50, 'solar-panel': 100 }, out: { 'satellite': 1 } },
   'rocket-silo':        { time: 30, inp: { 'concrete': 1000, 'electric-engine-unit': 200, 'pipe': 100, 'processing-unit': 200, 'steel-plate': 1000 }, out: { 'rocket-silo': 1 } },
   'radar':        { time: 0.5, inp: { 'electronic-circuit': 5, 'iron-gear-wheel': 5, 'iron-plate': 10 }, out: { 'radar': 1 } },
@@ -186,6 +184,17 @@ const RECIPES = {
   'advanced-thruster-fuel': { time: 10, inp: { 'carbon': 2, 'calcite': 1, 'water': 100 }, out: { 'thruster-fuel': 1500 } },
   // 高级推进器氧化剂：铁矿 + 方解石 + 水 → 推进器氧化剂（官方 advanced-thruster-oxidizer 10s，2铁矿+1方解石+100水→1500流体，化工厂生产）
   'advanced-thruster-oxidizer': { time: 10, inp: { 'iron-ore': 2, 'calcite': 1, 'water': 100 }, out: { 'thruster-oxidizer': 1500 } },
+  // ===== 太空时代 空间平台系统（Space Platform，官方数据）=====
+  // 空间平台地基：钢板 + 铜线 → 地基（官方 space-platform-foundation 10s，20钢板+20铜线→1）
+  'space-platform-foundation': { time: 10, inp: { 'steel-plate': 20, 'copper-cable': 20 }, out: { 'space-platform-foundation': 1 } },
+  // 空间平台起始包：地基 + 钢板 + 处理器 → 起始包（官方 space-platform-starter-pack 60s，60地基+20钢板+20处理器→1）
+  'space-platform-starter-pack': { time: 60, inp: { 'space-platform-foundation': 60, 'steel-plate': 20, 'processing-unit': 20 }, out: { 'space-platform-starter-pack': 1 } },
+  // 空间平台中枢：地基 + 钢板 + 处理器 → 中枢（官方中枢由起始包在太空展开，此处适配为地面组装，60s）
+  'space-platform-hub': { time: 60, inp: { 'space-platform-foundation': 100, 'steel-plate': 50, 'processing-unit': 50 }, out: { 'space-platform-hub': 1 } },
+  // 推进器：钢板 + 处理器 + 电动机 → 推进器（官方 thruster 10s，10钢板+10处理器+5电动机→1）
+  'thruster': { time: 10, inp: { 'steel-plate': 10, 'processing-unit': 10, 'electric-engine-unit': 5 }, out: { 'thruster': 1 } },
+  // 小行星收集器：低密度结构 + 电动机 + 处理器 → 收集器（官方 asteroid-collector 10s，20低密+8电动机+5处理器→1）
+  'asteroid-collector': { time: 10, inp: { 'low-density-structure': 20, 'electric-engine-unit': 8, 'processing-unit': 5 }, out: { 'asteroid-collector': 1 } },
   // ===== 太空时代 Space Age 材料链（数据来自官方 factorio-data，见 GAME_DATA）=====
   // 碳纤维：碳 → 碳纤维（官方 carbon-fiber 由 yumako-mash+碳，此处适配为化工厂碳加工，耗时 5s）
   'carbon-fiber':        { time: 5, inp: { 'carbon': 3 }, out: { 'carbon-fiber': 1 } },
@@ -416,7 +425,8 @@ const DEVICE_NAMES = {
   'biochamber': '生化炉',
   'crusher': '破碎机',
   'foundry': '铸造厂',
-  'agricultural-tower': '农业塔'
+  'agricultural-tower': '农业塔',
+  'space-platform-hub': '空间平台中枢'
 };
 // 电磁工厂专属配方（太空时代电磁产品）：超导体 / 电磁科研包 / 电磁工厂本体
 const ELECTRO_RECIPES = ['superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant'];
@@ -436,6 +446,9 @@ function isFoundryRecipe(id) { return FOUNDRY_RECIPES.indexOf(id) >= 0; }
 // 农业塔专属种植配方（太空时代 Gleba 作物种植）：玉玛果种植 + 农业塔本体
 const AGRICULTURE_TOWER_RECIPES = ['yumako-growing'];
 function isAgricultureTowerRecipe(id) { return AGRICULTURE_TOWER_RECIPES.indexOf(id) >= 0; }
+// 空间平台中枢专属配方（太空时代空间平台产品）：地基 / 起始包 / 中枢本体
+const HUB_RECIPES = ['space-platform-foundation', 'space-platform-starter-pack', 'space-platform-hub'];
+function isHubRecipe(id) { return HUB_RECIPES.indexOf(id) >= 0; }
 function recipeDevice(id) {
   if (GAME_DATA.recipeDevice && GAME_DATA.recipeDevice[id]) return GAME_DATA.recipeDevice[id];
   if (isElectroRecipe(id)) return 'electromagnetic-plant';
@@ -443,6 +456,7 @@ function recipeDevice(id) {
   if (isCrusherRecipe(id)) return 'crusher';
   if (isFoundryRecipe(id)) return 'foundry';
   if (isAgricultureTowerRecipe(id)) return 'agricultural-tower';
+  if (isHubRecipe(id)) return 'space-platform-hub';
   if (isRefineryRecipe(id)) return 'oil-refinery';
   if (isChemRecipe(id)) return 'chemical-plant';
   if (isCentrifugeRecipe(id)) return 'centrifuge';

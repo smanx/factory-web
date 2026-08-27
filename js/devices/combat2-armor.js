@@ -83,8 +83,7 @@ const WEAPONS = {
   'submachine-gun':  { name: '冲锋枪', dmg: 7,  rate: 0.1, ammo: 'firearm-magazine', ammoTiers: ['firearm-magazine', 'piercing-rounds-magazine', 'uranium-rounds-magazine'], ammoDmg: { 'firearm-magazine': 7, 'piercing-rounds-magazine': 10, 'uranium-rounds-magazine': 16 }, spread: 0.12, auto: true,  range: 7, sfx: 'machine-gun' },
   'shotgun':         { name: '散弹枪', dmg: 6,  rate: 0.5, ammo: 'shotgun-shell', spread: 0.4,  auto: false, range: 6, pellets: 6, sfx: 'shotgun' },
   'combat-shotgun':  { name: '战斗散弹枪', dmg: 10, rate: 0.35, ammo: 'piercing-shotgun-shell', spread: 0.32, auto: false, range: 7, pellets: 8, sfx: 'shotgun' },
-  'rocket-launcher': { name: '火箭筒', dmg: 35, rate: 1.1, ammo: 'rocket',          spread: 0.03, auto: false, range: 9, splash: 1.8, sfx: 'rocket' },
-  'explosive-rocket-launcher': { name: '爆炸火箭筒', dmg: 60, rate: 1.3, ammo: 'explosive-rocket', spread: 0.05, auto: false, range: 9, splash: 3.2, sfx: 'rocket' },
+  'rocket-launcher': { name: '火箭筒', dmg: 35, rate: 1.1, ammo: 'rocket', ammoTiers: ['rocket', 'explosive-rocket'], ammoDmg: { 'rocket': 35, 'explosive-rocket': 60 }, splashAmmo: { 'rocket': 1.8, 'explosive-rocket': 3.2 }, spread: 0.03, auto: false, range: 9, splash: 1.8, sfx: 'rocket' },
   // 原子弹（对齐《异星工厂》Atomic bomb）：火箭筒发射的终极核武器，命中引发超大范围核爆
   'atomic-bomb': { name: '原子弹', dmg: 300, rate: 2.5, ammo: 'atomic-bomb', spread: 0.02, auto: false, range: 12, splash: 9, nuclear: true, sfx: 'rocket' },
   'grenade':         { name: '手雷',   dmg: 40, rate: 0.8, ammo: 'grenade',          spread: 0.05, auto: false, range: 6, splash: 2.5, sfx: 'throw' },
@@ -154,7 +153,7 @@ function playerFire(tx, ty) {
       // 火箭弹：命中目标后范围爆炸
       (G.bullets || (G.bullets = [])).push({
         x: px, y: py, tx: tx2, ty: ty2, t: 0, life: 0.18,
-        splash: w.splash, dmg: dmg, kind: 'rocket',
+        splash: (w.splashAmmo && w.splashAmmo[ammoUsed]) || w.splash, dmg: dmg, kind: 'rocket',
         nuclear: !!w.nuclear
       });
     } else if (w.flame) {
