@@ -280,12 +280,19 @@ function refreshToastOpacity() {
 }
 
 function openPanel(mode, ent) {
+  // 配方设备：无配方时先弹出配方选择面板；已有配方则直接进入交互面板
+  if (mode === 'machine' && ent && isRecipeDevice(ent) && !ent.recipe) {
+    mode = 'machinerecipe';
+    G.recipeSel = null;
+  }
   G.panelMode = mode;
   G.panelEnt = ent || null;
   // 背包弹框居中加宽显示（三列布局），其余面板保持右上角小窗
   document.getElementById('panel').classList.toggle('inv-wide', mode === 'inv');
   // 研究面板加宽双栏布局（左=研究列表，右=研究树图）
   document.getElementById('panel').classList.toggle('tech-wide', mode === 'tech');
+  // 配方设备的交互面板：居中加宽双栏布局（左=背包，右=设备交互）
+  document.getElementById('panel').classList.toggle('machine-wide', mode === 'machine' && !!ent && isRecipeDevice(ent));
   document.getElementById('panel').style.display = 'flex';
   renderPanel(true);
 }
@@ -294,6 +301,7 @@ function closePanel(hide = true) {
   G.panelMode = null;
   G.panelEnt = null;
   G.invRecipeQ = '';
+  G.recipeSel = null;
   if (hide) document.getElementById('panel').style.display = 'none';
 }
 
@@ -363,19 +371,27 @@ function renderPanel(full) {
   } else if (G.panelMode === 'maptags') {
     title.textContent = '地图标记（Map Tags）';
     body.innerHTML = (typeof mapTagsPanelHtml === 'function') ? mapTagsPanelHtml() : '<div class="dim">标记功能未加载</div>';
+  } else if (G.panelMode === 'machinerecipe' && G.panelEnt) {
+    // 配方设备的配方选择面板：先选配方，点右下角「确认」后进入交互面板
+    title.textContent = ITEMS[G.panelEnt.type].name + ' · 选择配方';
+    body.innerHTML = recipeSelectPanelHtml(G.panelEnt);
   } else if (G.panelMode === 'machine' && G.panelEnt) {
     title.textContent = ITEMS[G.panelEnt.type].name;
-    // 机器面板：设备专属内容 + 底部通用操作区（旋转/水平翻转/垂直翻转/拆除，PC/手机端均可点击操作当前建筑）
-    // 固定管道口建筑（锅炉/蒸汽机/汽轮机/热交换器）放置后不可旋转/翻转，隐藏旋转/翻转按钮
-    const canRot = postPlaceRotatable(G.panelEnt.type);
-    body.innerHTML = htmlMachine(G.panelEnt) +
-      '<div class="sec">操作</div>' +
-      '<div class="panel-op-row">' +
-        (canRot ? '<button data-action="panel-rotate" class="panel-op-btn" title="顺时针旋转 90°（R）">⟳ 旋转</button>' : '') +
-        (canRot ? '<button data-action="panel-flip-h" class="panel-op-btn" title="水平翻转（H）">⇋ 水平翻转</button>' : '') +
-        (canRot ? '<button data-action="panel-flip-v" class="panel-op-btn" title="垂直翻转（V）">⇵ 垂直翻转</button>' : '') +
-      '</div>' +
-      '<button data-action="panel-deconstruct" class="deconstruct-btn-inline">✖ 拆除该建筑</button>';
+    if (isRecipeDevice(G.panelEnt)) {
+      // 配方设备：重新设计的双栏交互面板（左=背包，右=设备交互信息）
+      body.innerHTML = recipeMachineLayoutHtml(G.panelEnt);
+    } else {
+      // 普通设备：设备专属内容 + 底部通用操作区（旋转/水平翻转/垂直翻转/拆除）
+      const canRot = postPlaceRotatable(G.panelEnt.type);
+      body.innerHTML = htmlMachine(G.panelEnt) +
+        '<div class="sec">操作</div>' +
+        '<div class="panel-op-row">' +
+          (canRot ? '<button data-action="panel-rotate" class="panel-op-btn" title="顺时针旋转 90°（R）">⟳ 旋转</button>' : '') +
+          (canRot ? '<button data-action="panel-flip-h" class="panel-op-btn" title="水平翻转（H）">⇋ 水平翻转</button>' : '') +
+          (canRot ? '<button data-action="panel-flip-v" class="panel-op-btn" title="垂直翻转（V）">⇵ 垂直翻转</button>' : '') +
+        '</div>' +
+        '<button data-action="panel-deconstruct" class="deconstruct-btn-inline">✖ 拆除该建筑</button>';
+    }
   }
   if (G.panelMode !== 'set') body.scrollTop = st;
 }
@@ -456,8 +472,13 @@ function updateMachineLive() {
     // status(text, kind)：kind 取 'ok'(工作)/'warn'(暂停·需留意)/'bad'(故障)，用于区分颜色
     status: (s, k) => { status = s; if (k) state = k; }
   };
-  const panel = DEVICE_PANEL[e.type];
-  if (panel && panel.live) panel.live(e, api);
+  // 配方设备：使用重新设计的交互面板，按自身逻辑刷新原料/产品/进度
+  if (isRecipeDevice(e)) {
+    updateRecipeMachineLive(e, body, api);
+  } else {
+    const panel = DEVICE_PANEL[e.type];
+    if (panel && panel.live) panel.live(e, api);
+  }
   const bar = body.querySelector('.bar i');
   if (bar) bar.style.width = Math.max(0, Math.min(100, prog)) + '%';
   // 面板 loading 运行时显示总时长与剩余时长（仅当设备通过 api.prog 提供了总时长）
@@ -484,6 +505,47 @@ function updateMachineLive() {
     const wantCls = 'status ' + (state || 'warn');
     if (stEl.className !== wantCls) stEl.className = wantCls;
   }
+}
+
+// 配方设备交互面板的实时刷新（原料/产品数量 + 进度 + 状态）
+function updateRecipeMachineLive(e, body, api) {
+  const info = recipeDeviceInfo(e);
+  const rec = e.recipe ? info.getRec(e.recipe) : null;
+  // 原料数量
+  if (rec) {
+    let inp = '';
+    for (const k in rec.inp) {
+      const cur = e.inp[k] || 0;
+      const need = rec.inp[k];
+      inp += '<div class="mch-io-slot' + (cur >= need ? ' full' : '') + '" data-action="feed-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|配方需 ' + need + '，当前 ' + cur + '。点击放入（或先选左侧物品再点击此槽放入该物品）">' +
+        '<img src="' + iconDataURL(k) + '"><span class="mch-io-n">' + cur + '/' + need + '</span></div>';
+    }
+    api.set('mch-inp', inp);
+    // 产品数量
+    let out = '';
+    const outMap = rec.out || {};
+    const probMap = rec.prob || {};
+    const outKeys = Object.keys(outMap).length ? Object.keys(outMap) : Object.keys(probMap);
+    for (const k of outKeys) {
+      const cur = e.outp[k] || 0;
+      const extra = outMap[k] ? ('×' + outMap[k]) : (probMap[k] ? '（' + Math.round(probMap[k] * 10000) / 100 + '%）' : '');
+      out += '<div class="mch-io-slot" data-action="take-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|' + (outMap[k] ? ('每周期 ' + outMap[k] + ' 件，点击取回 1 件') : '概率产出，点击取回') + '（当前 ' + cur + '）">' +
+        '<img src="' + iconDataURL(k) + '"><span class="mch-io-n">' + cur + (extra ? ' ' + extra : '') + '</span></div>';
+    }
+    api.set('mch-out', out);
+  }
+  // 进度与状态
+  const pct = (rec && e.crafting) ? (e.prog / rec.time * 100) : 0;
+  api.prog(pct, rec ? rec.time : 0);
+  if (!rec) { api.status('未设置配方，点击「切换配方」选择', 'warn'); return; }
+  if (e.crafting) { api.status('生产中：' + info.name(e.recipe), 'ok'); return; }
+  const needsPower = typeof e.powerDemand === 'function' && e.powerDemand() > 0;
+  if (needsPower && G.power.sat <= 0) { api.status('已暂停：缺电', 'bad'); return; }
+  // 检查原料是否满足
+  let missing = null;
+  for (const k in rec.inp) if ((e.inp[k] || 0) < rec.inp[k]) { missing = k; break; }
+  if (missing) { api.status('已暂停：缺少原料 ' + ITEMS[missing].name, 'warn'); return; }
+  api.status('已就绪，等待开始生产', 'ok');
 }
 
 function chip(id, n, iconOnly) {
@@ -1076,6 +1138,166 @@ function row(label, val, liveKey) {
 function barHtml(pct) {
   pct = Math.max(0, Math.min(100, pct || 0));
   return '<div class="bar"><i style="width:' + pct + '%"></i></div>';
+}
+
+// 是否为“需选择配方”的设备：具备 setRecipe 的配方设备
+function isRecipeDevice(e) {
+  return !!(e && typeof e.setRecipe === 'function');
+}
+
+// 返回配方设备可选的配方清单与配方读取函数
+// returns { list: [recipeId], getRec(id)->recipe|null, name(id)->displayName }
+function recipeDeviceInfo(e) {
+  const type = e.type;
+  if (type === 'oil-refinery') {
+    return {
+      list: REFINERY_RECIPE_IDS,
+      getRec: id => REFINERY_RECIPES[id] || null,
+      name: id => (REFINERY_RECIPES[id] ? localizedName(id, REFINERY_RECIPES[id].name) : id)
+    };
+  }
+  if (type === 'chemical-plant') {
+    return {
+      list: CHEM_RECIPES,
+      getRec: id => RECIPES[id] || null,
+      name: id => (RECIPES[id] ? ITEMS[Object.keys(RECIPES[id].out)[0]].name : id)
+    };
+  }
+  if (type === 'centrifuge') {
+    const ids = Object.keys(CENTRIFUGE_RECIPES);
+    if (ids.indexOf('kovarex') < 0) ids.push('kovarex');
+    return {
+      list: ids,
+      getRec: id => (id === 'kovarex' ? RECIPES['kovarex'] : CENTRIFUGE_RECIPES[id] || null),
+      name: id => (id === 'kovarex' ? '铀增殖处理' : (CENTRIFUGE_RECIPES[id] ? localizedName(id, CENTRIFUGE_RECIPES[id].name) : id))
+    };
+  }
+  // 组装机（及默认）：普通可制造配方，排除化工/离心/农业塔专属
+  return {
+    list: Object.keys(RECIPES).filter(r => !isChemRecipe(r) && !isCentrifugeRecipe(r) && !isAgricultureTowerRecipe(r)),
+    getRec: id => RECIPES[id] || null,
+    name: id => (RECIPES[id] ? ITEMS[Object.keys(RECIPES[id].out)[0]].name : id)
+  };
+}
+
+// 单个配方的展示主图标 id（含概率配方取概率项、常规配方取 out 首项）
+function recipeMainIcon(rec, info, rid) {
+  if (rec && rec.prob) {
+    const keys = Object.keys(rec.prob);
+    return keys[0];
+  }
+  if (rec && rec.out) {
+    const keys = Object.keys(rec.out);
+    return keys[0];
+  }
+  const r = info.getRec(rid);
+  if (r && r.out) return Object.keys(r.out)[0];
+  if (r && r.prob) return Object.keys(r.prob)[0];
+  return null;
+}
+
+// 配方选择面板：配方网格 + 右下角确认按钮
+function recipeSelectPanelHtml(e) {
+  const info = recipeDeviceInfo(e);
+  let h = '<div class="sec">点击选择配方（勾选后点右下角「确认」设置）</div>';
+  h += '<input id="rcp-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off">';
+  h += '<div class="recgrid" id="rcp-grid">' + recipeSelectGridHtml(e, info, '') + '</div>';
+  h += '<div class="rcp-confirm-row">';
+  h += '<button data-action="recipe-clear">清除配方</button>';
+  h += '<button data-action="recipe-confirm" class="rcp-confirm" data-id="' + (G.recipeSel || '') + '"' + (G.recipeSel ? '' : ' disabled') + '>确认设置 ✓</button>';
+  h += '</div>';
+  h += '<div class="dim">提示：未设置配方时无法生产。确认后进入设备交互面板，可放入原料、取走产物，也可随时「切换配方」。</div>';
+  return h;
+}
+
+// 配方选择网格（供配方选择面板与搜索过滤共用）
+function recipeSelectGridHtml(e, info, q) {
+  q = (q || '').toLowerCase();
+  let h = '';
+  for (const rid of info.list) {
+    const r = info.getRec(rid);
+    if (!r) continue;
+    const outId = recipeMainIcon(r, info, rid);
+    const name = info.name(rid);
+    const unlocked = recipeUnlocked(rid);
+    const lockTech = recipeLockingTech(rid);
+    const selCls = (G.recipeSel === rid) ? 'sel' : '';
+    // 原料/产出 tooltip
+    let inpStr = '';
+    if (r.inp) inpStr = Object.keys(r.inp).map(k => ITEMS[k].name + '×' + r.inp[k]).join('、');
+    let outStr = '';
+    if (r.out) outStr = Object.keys(r.out).map(k => ITEMS[k].name + '×' + r.out[k]).join('、');
+    else if (r.prob) outStr = Object.keys(r.prob).map(k => ITEMS[k].name + '（' + Math.round(r.prob[k] * 10000) / 100 + '%）').join('、');
+    const searchKey = (name + ' ' + rid + ' ' + (inpStr || '') + ' ' + (outStr || '')).toLowerCase();
+    if (q && searchKey.indexOf(q) < 0) continue;
+    const tipMain = name + '|每周期耗时 ' + r.time + ' 秒' + (unlocked ? '' : '。未解锁：需先研究「' + (lockTech ? TECHS[lockTech].name : '对应科技') + '」');
+    const tipRecipe = (inpStr ? '所需原料：' + inpStr : '') + (outStr ? '（产出：' + outStr + '）' : '');
+    h += '<button class="rcbtn ' + selCls + (unlocked ? '' : ' locked') + '" data-action="pickrecipe" data-id="' + rid + '" data-itemid="' + (outId || '') + '"' +
+      ' data-tip="' + tipMain + '||' + tipRecipe + '"' + (unlocked ? '' : ' disabled') + '>' +
+      (outId ? '<img src="' + iconDataURL(outId) + '">' : '') + name + (unlocked ? '' : '<br><small>🔒' + (lockTech ? TECHS[lockTech].name : '') + '</small>') + '</button>';
+  }
+  return h;
+}
+
+// 配方设备交互面板：左=背包，右=设备交互信息
+function recipeMachineLayoutHtml(e) {
+  const info = recipeDeviceInfo(e);
+  const rec = e.recipe ? info.getRec(e.recipe) : null;
+  const left = htmlInventory();
+  const right = recipeMachineRightHtml(e, info, rec);
+  return '<div class="inv-layout machine-layout">' +
+    '<div class="inv-col inv-col-left" id="inv-col-left"><div class="inv-col-head">🎒 玩家背包</div>' +
+    '<div class="inv-col-body" id="inv-mat">' + left + '</div></div>' +
+    '<div class="inv-col inv-col-right" id="inv-col-right"><div class="inv-col-head">⚙ ' + ITEMS[e.type].name + ' 交互</div>' +
+    '<div class="inv-col-body">' + right + '</div></div>' +
+  '</div>';
+}
+
+// 右侧设备交互信息：配方名 + 原料/进度/产品单行图标 + 切换配方按钮 + 操作说明
+function recipeMachineRightHtml(e, info, rec) {
+  let h = '';
+  // 当前配方标题 + 切换配方按钮
+  h += '<div class="sec mch-recipe-head">当前配方：<b>' + (rec ? info.name(e.recipe) : '<span class="dim">未设置</span>') + '</b>' +
+    '<button data-action="switch-recipe" class="btn sm" title="返回配方选择面板">⇄ 切换配方</button></div>';
+  if (!rec) {
+    h += '<div class="dim">请点击「切换配方」选择配方后即可生产。</div>';
+    return h;
+  }
+  // 原料 + 进度条 + 产品 单行（横向排布）
+  h += '<div class="mch-flow">';
+  // 原料区
+  h += '<div class="mch-side mch-inp"><div class="mch-side-title">原料</div><div class="mch-inp-row" data-live="mch-inp">';
+  for (const k in rec.inp) {
+    const cur = e.inp[k] || 0;
+    h += '<div class="mch-io-slot" data-action="feed-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|配方需 ' + rec.inp[k] + '，当前 ' + cur + '。点击放入（或先选左侧物品再点击此槽放入该物品）">' +
+      '<img src="' + iconDataURL(k) + '"><span class="mch-io-n">' + cur + '/' + rec.inp[k] + '</span></div>';
+  }
+  h += '</div></div>';
+  // 进度条
+  h += '<div class="mch-prog"><div class="bar"><i></i></div><div class="bar-time"></div><div class="status"></div></div>';
+  // 产品区
+  h += '<div class="mch-side mch-out"><div class="mch-side-title">产品</div><div class="mch-out-row" data-live="mch-out">';
+  if (rec.out) {
+    for (const k in rec.out) {
+      const cur = e.outp[k] || 0;
+      h += '<div class="mch-io-slot" data-action="take-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|点击取回 1 件（当前 ' + cur + '）">' +
+        '<img src="' + iconDataURL(k) + '"><span class="mch-io-n">' + cur + '</span></div>';
+    }
+  } else if (rec.prob) {
+    for (const k in rec.prob) {
+      const cur = e.outp[k] || 0;
+      h += '<div class="mch-io-slot" data-action="take-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|概率产出（' + Math.round(rec.prob[k] * 10000) / 100 + '%），点击取回（当前 ' + cur + '）">' +
+        '<img src="' + iconDataURL(k) + '"><span class="mch-io-n">' + cur + '</span></div>';
+    }
+  }
+  h += '</div></div>';
+  h += '</div>';
+  // 操作说明
+  h += '<div class="dim mch-help">左栏为你的背包：点击物品选中并显示放置幽灵；先选中背包物品再点击右侧「原料」槽即可把该物品放入设备；点击「产品」图标可把产物取回背包。原料/产品均可通过传送带与机械臂自动进出。</div>';
+  // 电力状态与速率
+  if (typeof e.powerDemand === 'function') h += row('电力', powerStatusLiveHtml(e), 'power');
+  h += machRateHtml(rec, e.crafting && typeof e.moduleSpeedMult === 'function' ? e.moduleSpeedMult() : 1);
+  return h;
 }
 
 // 设备面板的“消耗速率 / 产出速率”：按配方 time 折算每秒消耗/产出速率（单位/秒），

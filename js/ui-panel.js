@@ -62,6 +62,12 @@ function initPanelEvents() {
       if (typeof fillTrashGrid === 'function') fillTrashGrid(G.trashQ);
     } else if (id === 'asm-recipe-search') {
       applyAssemblerRecipeFilter(v);
+    } else if (id === 'rcp-search') {
+      // 配方选择面板：按关键词过滤配方网格
+      const grid = document.getElementById('rcp-grid');
+      if (grid && G.panelMode === 'machinerecipe' && G.panelEnt) {
+        grid.innerHTML = recipeSelectGridHtml(G.panelEnt, recipeDeviceInfo(G.panelEnt), v);
+      }
     } else if (id === 'sflt-search') {
       applySplitterFilterSearch(v);
     } else if (id === 'flt-search') {
@@ -302,7 +308,9 @@ function initPanelEvents() {
       return;
     }
     const itEl = ev.target.closest('[data-itemid]');
-    if (itEl && G.panelMode === 'inv' && !itEl.dataset.action) {
+    // 在背包面板，或配方设备交互面板的左栏背包中，点击物品可选中并显示放置幽灵
+    const isRecipeMachine = G.panelMode === 'machine' && G.panelEnt && isRecipeDevice(G.panelEnt);
+    if (itEl && (G.panelMode === 'inv' || isRecipeMachine) && !itEl.dataset.action) {
       const iid = itEl.dataset.itemid;
       // 任意物品（设备/材料/工具）均可被鼠标选中，选中后不关闭背包：
       // 设备点击地图可直接建造；材料/工具点击地图无法建造。
@@ -491,6 +499,69 @@ function initPanelEvents() {
           } else {
             mch.setRecipe(id);
           }
+        }
+      } else if (act === 'pickrecipe') {
+        // 配方选择面板：点击配方仅高亮（不立即设置），点右下角「确认」后才设置
+        if (recipeUnlocked(id)) {
+          G.recipeSel = (G.recipeSel === id) ? null : id;
+          // 更新确认按钮可用性与所选配方
+          const conf = document.querySelector('[data-action="recipe-confirm"]');
+          if (conf) {
+            conf.dataset.id = G.recipeSel || '';
+            if (G.recipeSel) { conf.removeAttribute('disabled'); } else { conf.setAttribute('disabled', 'disabled'); }
+          }
+        } else {
+          toast('需先研究「' + TECHS[recipeLockingTech(id)].name + '」才能生产该配方');
+        }
+        renderPanel(false);
+      } else if (act === 'recipe-confirm') {
+        // 配方选择面板右下角「确认设置」：设置配方并进入设备交互面板
+        const mch = G.panelEnt;
+        if (mch && typeof mch.setRecipe === 'function' && id) {
+          mch.setRecipe(id);
+          G.recipeSel = null;
+          openPanel('machine', mch);
+        }
+      } else if (act === 'switch-recipe') {
+        // 交互面板「切换配方」：返回配方选择面板，预选中当前配方
+        const mch = G.panelEnt;
+        if (mch) {
+          G.recipeSel = mch.recipe || null;
+          openPanel('machinerecipe', mch);
+        }
+      } else if (act === 'feed-slot') {
+        // 点击右侧「原料」槽放入物品：优先放入已选中的物品；否则从背包放入该原料
+        const mch = G.panelEnt;
+        if (!mch || typeof mch.giveItem !== 'function') return;
+        const info = recipeDeviceInfo(mch);
+        const rec = mch.recipe ? info.getRec(mch.recipe) : null;
+        if (!rec) return;
+        // 若左侧已选中某个背包物品且是该配方原料，则放入该选中物品
+        const heldItem = (typeof selItem === 'function') ? selItem() : null;
+        let target = id;
+        if (heldItem && rec.inp[heldItem]) target = heldItem;
+        // 放入（优先流体经管道，仅处理可手动放入的固体）
+        if (FLUIDS.indexOf(target) >= 0) { toast(ITEMS[target].name + ' 为流体，请通过管道接入'); return; }
+        if (!rec.inp[target]) { toast('该物品不是当前配方原料'); return; }
+        const have = invCount(target);
+        if (have <= 0) { toast('背包中没有' + ITEMS[target].name); return; }
+        // 逐个放入直至背包取完或设备缓存满（giveItem 满时返回 false）
+        let moved = 0;
+        while (moved < have && mch.giveItem(target)) moved++;
+        if (moved > 0) { invTake(target, moved); if (typeof playSfx === 'function') playSfx('click'); }
+        else toast('放不进去了');
+      } else if (act === 'take-slot') {
+        // 点击右侧「产品」图标：把该产物取回背包 1 件
+        const mch = G.panelEnt;
+        if (!mch) return;
+        let got = null;
+        if (typeof mch.takeItemOf === 'function') got = mch.takeItemOf(id);
+        else if (typeof mch.takeItem === 'function') got = mch.takeItem();
+        if (got) {
+          invAdd(got, 1);
+          if (typeof playSfx === 'function') playSfx('pick');
+        } else {
+          toast('暂无' + ITEMS[id].name + '可取出');
         }
       } else if (act === 'fuel') {
         const fid = btn.dataset.id || 'coal';
