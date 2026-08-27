@@ -692,3 +692,25 @@
 > - **科技**：统一由「低温学」科技解锁（RECIPE_TECH 配方级门控，官方 foundation/ice-platform 属 Aquilo/
 >   Vulcanus 星球地形，需低温学（氟酮冷/氨）前置）；归入「物流」制作 Tab（官方 terrain subgroup）。
 > - **校验**：verify-dlc 新增地面瓦片校验（17 项），全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段四.22：手动遥控器（Artillery targeting remote / Discharge defense remote，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **物品**：`artillery-targeting-remote`（重炮瞄准遥控器，堆叠 1）/ `discharge-defense-remote`（放电防御遥控器，堆叠 1），
+>   堆叠 / 中英命名全部来自 GAME_DATA（factorio-data 官方：Artillery targeting remote / Discharge defense remote），
+>   未单独维护数值表（生成脚本从官方 item 原型自动提取 stack_size 与 locale 命名）。
+> - **授予机制**（对齐官方 spawnable shortcut 遥控器）：官方两款遥控器由科技解锁后经快捷栏「spawn-item」自动授予，
+>   非组装配方产出。本项目对齐此机制——研究「军事科技 IV」（military4，官方 artillery 科技）后自动授予
+>   重炮瞄准遥控器；研究「装甲电力」（armor-power，官方 discharge-defense-equipment 科技）后自动授予放电防御遥控器。
+>   授权逻辑集中在 `grantTechUnlockItems(tech)`（lab.js 研究完成时调用），item→tech 映射单点维护。
+> - **玩法**：
+>   - **重炮瞄准遥控器**（对齐官方 artillery-remote capsule_action）：手持后点击地图任意位置，
+>     自动锁定落点附近（5 格内）最近敌人，否则直接轰击落点；选择最近的炮兵连（artillery-turret）或
+>     炮兵车厢（artillery-wagon，需有炮弹）向其发射炮弹，命中造成官方大范围爆炸（ARTILLERY_RADIUS 5 格）。
+>     实现手动炮兵瞄准，为炮兵连/炮兵车厢补齐「指定坐标开火」的官方玩法。
+>   - **放电防御遥控器**（对齐官方 equipment-remote capsule_action）：手持后点击地图任意位置，
+>     远程触发放电防御装备（需先安装放电防御 equipment 且个人电网电力充足），对玩家周围敌人释放连锁电击。
+> - **数据单源**：两款遥控器为手持工具（isToolItem 桥接），非可建造/可组装配方物品；
+>   堆叠/命名来自 data.generated.js（factorio-data 官方），未单独维护数值表。
+> - **校验**：verify-data-integrity 把两款遥控器加入「特殊产出（非合成）」白名单；
+>   全量 18 个校验脚本通过，`node build.js` 构建通过。

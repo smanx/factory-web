@@ -20,7 +20,7 @@ const STACK_SIZES = {
   'car': 1, 'tank': 1, 'spidertron': 1,
   'locomotive': 5, 'cargo-wagon': 5, 'fluid-wagon': 5, 'artillery-wagon': 5,  // 车厢/车头官方 5
   'light-armor': 1, 'heavy-armor': 1, 'modular-armor': 1, 'power-armor': 1, 'power-armor-mk2': 1,
-  'fusion-reactor-equipment': 20, 'spidertron-remote': 1,  // 便携聚变堆官方 20
+  'fusion-reactor-equipment': 20, 'spidertron-remote': 1, 'artillery-targeting-remote': 1, 'discharge-defense-remote': 1,  // 便携聚变堆官方 20；重炮瞄准遥控器/放电防御遥控器官方 stack=1
   // 弹药：官方 stack（cannon-shell=100、atomic-bomb=10、artillery-shell=1）
   'cannon-shell': 100, 'explosive-cannon-shell': 100, 'uranium-cannon-shell': 100, 'artillery-shell': 1, 'atomic-bomb': 10,
   // 原材料：堆叠 50
@@ -231,6 +231,7 @@ const ITEMS = {
   'land-mine':         { name: '地雷', color: '#8a7a5a', desc: '铺设在地面，敌人踏入时爆炸造成范围伤害。一次性消耗（1×1）' },
   'artillery-turret':  { name: '炮兵连', color: '#7a5a4a', desc: '超远程炮台：消耗炮弹轰击超远距离的敌人，是晚期基地防御的利器（4×4）' },
   'artillery-shell':   { name: '炮弹（炮兵）', color: '#8a5a3a', desc: '炮兵连的弹药，命中后造成超大范围爆炸伤害' },
+  'artillery-targeting-remote': { name: '重炮瞄准遥控器', color: '#8a5a4a', mark: '⌖', desc: '手持设备：选中后点击地图任意位置，命令最近炮兵连/炮兵车厢向该处发射炮弹（自动锁定落点附近最近敌人），实现手动炮兵瞄准（对齐《异星工厂》Artillery targeting remote，数据来自 GAME_DATA）' },
   // ===== 铁路系统（火车） =====
   'rail':              { name: '铁轨', color: '#6a6a70', desc: '铺设铁轨形成铁路网，火车沿轨道行驶。与相邻铁轨自动连通，可拐弯（1×1）' },
   'locomotive':        { name: '火车头', color: '#d04a3a', desc: '烧煤驱动的机车，在铁轨上行驶。煤装入后自动前进；可挂接货运车厢组成列车' },
@@ -396,6 +397,7 @@ const ITEMS = {
   'belt-immunity-equipment': { name: '传送带免疫', color: '#8a6ac0', desc: '装备件（1×1）：穿戴后玩家站上传送带不再被带动位移，可稳定在带上站立/作业（对齐《异星工厂》Belt immunity equipment）' },
   // ===== 放电防御装备（对齐《异星工厂》Discharge defense：主动对周围敌人释放电击） =====
   'discharge-defense-equipment': { name: '放电防御', color: '#7ac0e0', desc: '装备件（3×3）：手动激活（面板/快捷键）后对以玩家为中心的大范围内所有敌人释放连锁电击，造成高额伤害并大幅消耗个人电网电力。电力不足时无法激活（对齐《异星工厂》Discharge defense equipment）' },
+  'discharge-defense-remote':    { name: '放电防御遥控器', color: '#7ac0e0', mark: '⚡', desc: '手持设备：选中后点击地图任意位置，远程触发放电防御装备对周围敌人释放连锁电击（对齐《异星工厂》Discharge defense remote，数据来自 GAME_DATA）' },
   // ===== 地形树木与木材（对齐《异星工厂》：树可砍伐获得木） =====
   'wood': { name: '木材', color: '#8a6a3a', mark: 'W', desc: '由砍伐树木获得，是木质家具与修理包的原料，也可作低效燃料' },
   // ===== 基础储物箱（对齐《异星工厂》：木箱/铁箱/钢箱递进） =====
