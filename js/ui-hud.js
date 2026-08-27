@@ -188,15 +188,6 @@ function updateHUD(dt, fps) {
   if (G.weapon && isWeapon(G.weapon)) {
     hud += '   🔫 ' + WEAPONS[G.weapon].name;
   }
-  // 手持开采工具：显示耐久度（对齐《异星工厂》Axe）
-  const _ax = (typeof currentAxe === 'function') ? currentAxe() : null;
-  if (_ax) {
-    const _max = (typeof AXE_DURABILITY === 'object' && AXE_DURABILITY[_ax]) ? AXE_DURABILITY[_ax] : 1;
-    const _d = (G.axeDura || 0);
-    const _pct = Math.max(0, Math.min(100, Math.round(_d / _max * 100)));
-    const _c = _pct > 30 ? '#57e389' : _pct > 10 ? '#ffd23c' : '#ff5b5b';
-    hud += '   <span class="hud-item" data-hud="axe" data-hud-axe="' + _ax + '" style="color:' + _c + '">⛏ ' + ITEMS[_ax].name + ' ' + _pct + '%</span>';
-  }
   if (G.armor && isArmor(G.armor)) {
     hud += '   🛡 ' + ARMORS[G.armor].name;
     // 模块化护甲：显示个人电网状态（含装备件数量）
@@ -259,14 +250,6 @@ function showHudInfo(key, el) {
     title = '敌人进化度 (Evolution)';
     desc = '随时间与击杀不断增长的敌人强度指标。进化度越高，刷出的敌人越强、越容易出现高级变种。';
     detail = '当前进化度：' + evo + '%。<br>0~30%：敌人较弱；30~60%：中等；60%+：较强。<br>进化度达到 0.9 后解锁巨兽级（Behemoth）敌人（巨兽甲虫/吐痰虫/蠕虫，属性最强）。';
-  } else if (key === 'axe') {
-    const ax = el ? el.getAttribute('data-hud-axe') : null;
-    const nm = (ax && ITEMS[ax]) ? ITEMS[ax].name : (el ? el.textContent.replace(/⛏\s*/, '').split(' ')[0] : '开采工具');
-    const max = (ax && AXE_DURABILITY && AXE_DURABILITY[ax]) ? AXE_DURABILITY[ax] : 1;
-    const d = G.axeDura || 0;
-    title = nm + ' · 耐久度';
-    desc = '当前手持开采工具的耐久度。使用工具采集会消耗耐久，耐久归零则工具损坏失效。';
-    detail = nm + ' 耐久：' + d + ' / ' + max + '。<br>耐久耗尽后需重新制作或更换更耐久的工具（如铁斧、钢斧）以提升采集效率与寿命。';
   }
   titleEl.textContent = title;
   body.innerHTML = '<div class="hud-desc">' + desc + '</div><div class="hud-detail">' + detail + '</div>';

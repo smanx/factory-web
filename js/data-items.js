@@ -28,7 +28,7 @@ const STACK_SIZES = {
   // 固体燃料/火箭燃料/低密度结构：对齐原版 stack_size（固体燃料 50、火箭燃料 10、低密度结构 10）
   'solid-fuel': 50, 'rocket-fuel': 10, 'low-density-structure': 10,
   // 流体桶（对齐原版 1 桶 = 1 堆叠）
-  'barrel': 10, 'water-barrel': 10, 'steam-barrel': 10, 'crude-oil-barrel': 10,
+  'barrel': 10, 'water-barrel': 10, 'crude-oil-barrel': 10,
   'heavy-oil-barrel': 10, 'light-oil-barrel': 10, 'petroleum-gas-barrel': 10,
   'lubricant-barrel': 10, 'sulfuric-acid-barrel': 10,
   // 科学包：堆叠 200（对齐原版）
@@ -58,7 +58,6 @@ const ITEMS = {
   'copper-plate': { name: '铜板',   color: '#e0975f', mark: 'Cp', desc: '用于拉制铜线' },
   'iron-gear-wheel':    { name: '齿轮',   color: '#aab5c2', mark: 'G',  desc: '机械核心零件（对齐《异星工厂》Iron gear wheel）' },
   'iron-stick':   { name: '铁杆',   color: '#b8c0c8', mark: 'Is', desc: '细铁杆，用于分流器、地下带、铁轨与部分配方（对齐《异星工厂》）' },
-  'steel-stick':  { name: '钢杆',   color: '#d0d6dc', mark: 'Ss', desc: '细钢杆，用于部分高级配方（对齐《异星工厂》）' },
   'copper-cable': { name: '铜线',   color: '#e8a06a', mark: 'W',  desc: '制造电路板的原料' },
   'electronic-circuit':{ name: '电路板', color: '#57b95c', mark: 'GC', desc: '自动化与科研的基础元件' },
   'automation-science-pack': { name: '自动化科学包', color: '#d04848', mark: 'SP', desc: '红色科学包，初期的科研消耗品（自动化科学）' },
@@ -270,7 +269,6 @@ const ITEMS = {
   'buffer-chest': { name: '缓冲箱', color: '#c8a05a', desc: '物流箱：介于需求箱与仓储箱之间——既按设定请求货物，又可向网络供应，作为中转缓冲（对齐《异星工厂》Buffer chest）' },
   'requester-chest': { name: '需求箱', color: '#5a8ad0', desc: '物流箱：在面板设置每种物品的需求量，物流机器人会自动从供应箱/仓储箱送货过来补足到目标数量' },
   // ===== 钓鱼与生鱼（对齐《异星工厂》：需手持鱼竿在水域钓鱼，钓到生鱼） =====
-  'fishing-pole': { name: '钓鱼竿', color: '#a08050', mark: '钓', desc: '手持后在岸边点击水域即可抛竿钓鱼（对齐《异星工厂》Fishing pole）。由木材+铁杆制成，需研究「钓鱼」科技解锁' },
   'raw-fish': { name: '生鱼', color: '#8ab0c0', mark: '鱼', desc: '在水域边缘用钓鱼竿钓获的基础食物，可作为低效燃料使用；也可在背包中食用恢复生命值（对齐《异星工厂》：吃鱼治疗）' },
   // ===== 核能（对齐《异星工厂》核动力）=====
   'uranium-ore':  { name: '铀矿石', color: '#7fd44a', mark: 'U', desc: '放射性矿物，距出生点较远处生成，须用电采矿机开采，离心机处理成铀' },
@@ -334,8 +332,6 @@ const ITEMS = {
   // ===== 修理包（对齐《异星工厂》Repair pack） =====
   'repair-pack': { name: '修理包', color: '#5aa0d0', desc: '选中后点击受损建筑可修复其耐久度。每个修理包有多次使用次数，损坏建筑恢复 HP' },
   // ===== 开采工具（对齐《异星工厂》Iron axe / Steel axe：手持加速手挖） =====
-  'iron-axe':  { name: '铁斧', color: '#b8c0c8', mark: '斧', desc: '基础开采工具：选中持有时手挖/砍树速度提升（约 x1.5）。有耐久度，挖矿会逐渐损耗，用尽后消失' },
-  'steel-axe': { name: '钢斧', color: '#d0d6dc', mark: '钢', desc: '高级开采工具：选中持有时手挖/砍树速度提升（约 x2），比铁斧更耐用。耐久用尽后消失（对齐《异星工厂》Steel axe）' },
   // ===== 规划器（对齐《异星工厂》Deconstruction planner / Upgrade planner） =====
   'deconstruction-planner': { name: '拆除规划器', color: '#d04848', mark: '拆', desc: '手持规划器：选中后进入红图框选模式，框选一块区域即可批量拆除其中的建筑（装备个人机器人港后改由施工机器人拆除）。对齐《异星工厂》Deconstruction planner' },
   'upgrade-planner': { name: '升级规划器', color: '#57b95c', mark: '升', desc: '手持规划器：选中后进入绿图框选模式，框选一块区域后可批量升级/降级其中的建筑。对齐《异星工厂》Upgrade planner' },
@@ -344,7 +340,6 @@ const ITEMS = {
   // ===== 流体桶装系统（对齐《异星工厂》Barrel system） =====
   'barrel': { name: '空桶', color: '#9aa0aa', mark: '桶', desc: '可盛装流体的金属桶（1×1）。把空桶放进组装机并接好流体管道，选桶装配方即可把流体灌入桶中；装满的桶可用传送带/机械臂/物流机器人/火车运输，实现流体走物流网络；再把满桶放回组装机选倒空配方，即可把流体倒回管道' },
   'water-barrel':          { name: '桶装水',   color: '#4a90d9', mark: '桶', desc: '盛满水的桶，可经物流网络运输，倒空后获得空桶' },
-  'steam-barrel':          { name: '桶装蒸汽', color: '#c8d4dc', mark: '桶', desc: '盛满蒸汽的桶，可经物流网络运输，倒空后获得空桶' },
   'crude-oil-barrel':      { name: '桶装原油', color: '#2a2418', mark: '桶', desc: '盛满原油的桶，可经物流网络运输，倒空后获得空桶' },
   'heavy-oil-barrel':      { name: '桶装重油', color: '#5a3a1e', mark: '桶', desc: '盛满重油的桶，可经物流网络运输，倒空后获得空桶' },
   'light-oil-barrel':      { name: '桶装轻油', color: '#8a5a22', mark: '桶', desc: '盛满轻油的桶，可经物流网络运输，倒空后获得空桶' },
@@ -359,7 +354,7 @@ const ITEMS = {
 const FISH_HEAL = 20;  // 食用一条生鱼恢复的生命值
 
 // ===== 可桶装的流体（对齐《异星工厂》：所有流体均可桶装，蒸汽亦可） =====
-const BARREL_FLUIDS = ['water', 'steam', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas', 'lubricant', 'sulfuric-acid', 'thruster-fuel', 'thruster-oxidizer'];
+const BARREL_FLUIDS = ['water', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas', 'lubricant', 'sulfuric-acid', 'thruster-fuel', 'thruster-oxidizer'];
 const BARREL_CAP = 50;  // 每桶盛装流体量（对齐《异星工厂》Barrel 容量）
 // 由流体 id 取对应桶物品 id；非桶装流体返回 null
 function barrelItemId(fluid) { return BARREL_FLUIDS.indexOf(fluid) >= 0 ? fluid + '-barrel' : null; }

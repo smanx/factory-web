@@ -3,8 +3,6 @@
 const TECHS = {
   // ==== 一级科技（红瓶，无前置） ====
   mining:     { name: '采矿业', cost: { 'automation-science-pack': 10 }, desc: '采矿机速度 ×2', req: [] },
-  // ===== 钓鱼科技（对齐《异星工厂》Fishing：解锁钓鱼竿，可在水域钓获生鱼） =====
-  fishing:    { name: '钓鱼', cost: { 'automation-science-pack': 10 }, desc: '解锁钓鱼竿，可在岸边水域抛竿钓获生鱼（对齐《异星工厂》Fishing 科技）', req: [] },
   logistics:  { name: '物流学', cost: { 'automation-science-pack': 15 }, desc: '物流前置科技：解锁铁路等进阶物流科技（对齐《异星工厂》Logistics）', req: [] },
   automation: { name: '自动化', cost: { 'automation-science-pack': 20 }, desc: '组装机速度 ×1.5', req: [] },
   // ==== 二级科技（绿瓶） ====
@@ -47,7 +45,6 @@ const TECHS = {
   'solar-energy': { name: '太阳能', cost: { 'chemical-science-pack': 30 }, desc: '解锁太阳能板，白天可采集阳光发电（对齐《异星工厂》Solar energy）', req: ['electric', 'electronics'] },
   'electric-energy-accumulators': { name: '蓄电器', cost: { 'chemical-science-pack': 30 }, desc: '解锁蓄电器，存储电力以在夜晚/低谷期为电网续供（对齐《异星工厂》Electric energy accumulators）', req: ['solar-energy'] },
   'steel-processing': { name: '炼钢科技', cost: { 'chemical-science-pack': 20 }, desc: '解锁钢炉与钢箱，提升冶炼效率与储物容量（对齐《异星工厂》Steel processing）', req: ['electric'] },
-  'steel-axe': { name: '钢斧', cost: { 'chemical-science-pack': 30 }, desc: '解锁钢斧：比铁斧更耐用的开采/砍树工具，手挖/砍树速度显著提升（对齐《异星工厂》Steel axe）', req: ['steel-processing'] },
   concrete: { name: '混凝土', cost: { 'chemical-science-pack': 50 }, desc: '解锁混凝土、精炼混凝土与警示混凝土地砖：铺设后加速玩家行走，并可填海造地（对齐《异星工厂》Concrete）', req: ['steel-processing', 'automation2'] },
   'fluid-handling': { name: '地下管道', cost: { 'logistic-science-pack': 20 }, desc: '解锁地下管道与流体泵，可跨格输送流体并提升管道网络吞吐（对齐《异星工厂》Fluid handling）', req: ['oil'] },
   battery:    { name: '电池技术', cost: { 'chemical-science-pack': 30 }, desc: '解锁电池制造，用于激光炮塔、卫星与机器人（对齐《异星工厂》Battery 科技）', req: ['oil'] },
@@ -199,12 +196,8 @@ function migrateNewTechs(techDone) {
   // 老玩家补完对应科技避免产线被锁死（对齐《异星工厂》科技树）。
   if (techDone['electronics']) { techDone['advanced-electronics'] = true; techDone['advanced-electronics-2'] = true; techDone['electric-engine-unit'] = true; }
   if (techDone['oil']) techDone['sulfur-processing'] = true;
-  // 兼容旧档：钓鱼此前无需鱼竿、直接点击水域即可；现改为需手持「钓鱼竿」+「钓鱼」科技。
-  // 老玩家此前本就能钓鱼，自动补完钓鱼科技以避免被锁死（对齐《异星工厂》Fishing 科技）。
-  techDone['fishing'] = true;
-  // 兼容旧档：混凝土/填海/钢斧此前不受科技门控，老玩家可能已拥有对应产线；
-  // 现拆分为独立科技（对齐《异星工厂》Concrete/Landfill/Steel axe），旧档按已解锁的上游补完，避免被锁死。
-  if (techDone['steel-processing']) techDone['steel-axe'] = true;
+  // 兼容旧档：混凝土/填海此前不受科技门控，老玩家可能已拥有对应产线；
+  // 现拆分为独立科技（对齐《异星工厂》Concrete/Landfill），旧档按已解锁的上游补完，避免被锁死。
   if (techDone['steel-processing'] && techDone['automation2']) techDone['concrete'] = true;
   if (techDone['logistics']) techDone['landfill'] = true;
   return techDone;

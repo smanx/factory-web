@@ -146,7 +146,6 @@ function drawItemGlyph(x, id, cx, cy, s) {
     // ===== 流体桶（对齐《异星工厂》Barrel）：金属桶身 + 顶部环口 + 流体色带 =====
     case 'barrel':
     case 'water-barrel':
-    case 'steam-barrel':
     case 'crude-oil-barrel':
     case 'heavy-oil-barrel':
     case 'light-oil-barrel':
@@ -271,30 +270,6 @@ function drawItemGlyph(x, id, cx, cy, s) {
       x.strokeStyle = dark;
       x.lineWidth = Math.max(1, s * 0.04);
       x.stroke();
-      break;
-    }
-    // ===== 开采工具（铁斧 / 钢斧，对齐《异星工厂》Axe） =====
-    case 'iron-axe':
-    case 'steel-axe': {
-      const steel = id === 'steel-axe';
-      // 木柄
-      x.fillStyle = '#8a6a3a';
-      x.fillRect(-r * 0.06, -r * 0.95, r * 0.2, r * 1.9);
-      // 斧刃
-      x.fillStyle = steel ? '#e0e6ec' : '#b8c0c8';
-      x.beginPath();
-      x.moveTo(r * 0.05, -r * 0.95);
-      x.arc(r * 0.5, -r * 0.5, r * 0.62, -Math.PI / 2, Math.PI / 2);
-      x.lineTo(r * 0.05, r * 0.15);
-      x.closePath();
-      x.fill();
-      x.fillStyle = 'rgba(255,255,255,.45)';
-      x.beginPath();
-      x.moveTo(r * 0.05, -r * 0.95);
-      x.arc(r * 0.5, -r * 0.5, r * 0.62, -Math.PI / 2, 0);
-      x.lineTo(r * 0.05, -r * 0.2);
-      x.closePath();
-      x.fill();
       break;
     }
     // ===== 规划器（拆除/升级，对齐《异星工厂》Planner） =====

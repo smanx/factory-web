@@ -4,7 +4,6 @@ const RECIPES = {
   'steel-plate':        { time: 16,  inp: { 'iron-plate': 5 },                                   out: { 'steel-plate': 1 } },
   'iron-gear-wheel':          { time: 0.5, inp: { 'iron-plate': 2 },                                   out: { 'iron-gear-wheel': 1 } },
   'iron-stick':         { time: 0.5, inp: { 'iron-plate': 1 },                                   out: { 'iron-stick': 2 } },
-  'steel-stick':        { time: 0.5, inp: { 'steel-plate': 1 },                                  out: { 'steel-stick': 2 } },
   'copper-cable':       { time: 0.5, inp: { 'copper-plate': 1 },                                 out: { 'copper-cable': 2 } },
   'electronic-circuit':      { time: 0.5, inp: { 'iron-plate': 1, 'copper-cable': 3 },                out: { 'electronic-circuit': 1 } },
   'automation-science-pack':       { time: 5,   inp: { 'copper-plate': 1, 'iron-gear-wheel': 1 },                 out: { 'automation-science-pack': 1 } },
@@ -52,12 +51,9 @@ const RECIPES = {
   'wooden-chest':     { time: 0.5, inp: { 'wood': 2 }, out: { 'wooden-chest': 1 } },
   'iron-chest':        { time: 0.5, inp: { 'iron-plate': 8 }, out: { 'iron-chest': 1 } },
   // ===== 钓鱼竿（对齐《异星工厂》Fishing pole：1 木材 + 1 铁杆 → 1 鱼竿，需「钓鱼」科技） =====
-  'fishing-pole':     { time: 1,   inp: { 'wood': 1, 'iron-stick': 1 }, out: { 'fishing-pole': 1 } },
   // ===== 修理包（对齐《异星工厂》Repair pack） =====
   'repair-pack':        { time: 0.5, inp: { 'electronic-circuit': 2, 'iron-gear-wheel': 2 }, out: { 'repair-pack': 1 } },
   // ===== 开采工具配方（对齐《异星工厂》Iron axe / Steel axe） =====
-  'iron-axe':  { time: 1.5, inp: { 'iron-plate': 2, 'iron-stick': 2 }, out: { 'iron-axe': 1 } },
-  'steel-axe': { time: 3,   inp: { 'steel-plate': 2, 'iron-stick': 2 }, out: { 'steel-axe': 1 } },
   // ===== 规划器配方（对齐《异星工厂》Deconstruction planner / Upgrade planner） =====
   'deconstruction-planner': { time: 1, inp: { 'iron-plate': 1 }, out: { 'deconstruction-planner': 1 } },
   'upgrade-planner': { time: 1, inp: { 'iron-plate': 1, 'electronic-circuit': 1 }, out: { 'upgrade-planner': 1 } },
