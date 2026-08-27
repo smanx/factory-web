@@ -457,11 +457,13 @@ function rrPath(x, px, py, w, h, r) {
 // 判断某物品是否为可燃烧燃料（煤 / 固体燃料）。各烧煤设备以此判断能否加入燃料。
 function isBurnerFuel(item) { return item === 'coal' || item === 'wood' || item === 'solid-fuel' || item === 'rocket-fuel' || item === 'nuclear-fuel' || item === 'raw-fish' || item === 'pentapod-egg'; }
 function fuelEnergy(item) {
+  // 数据单源：优先取 GAME_DATA.fuelEnergy（data.generated.js，含弱效生物质燃料），
+  // 其余常用燃料由 data.js 常量（亦来自 GAME_DATA.fuelEnergy）提供。
+  const fe = GAME_DATA && GAME_DATA.fuelEnergy && GAME_DATA.fuelEnergy[item];
+  if (typeof fe === 'number') return fe;
   if (item === 'nuclear-fuel') return NUCLEAR_FUEL_ENERGY;  // 核燃料能量密度最高（对齐《异星工厂》：核燃料远高于火箭燃料）
   if (item === 'rocket-fuel') return ROCKET_FUEL_ENERGY;
   if (item === 'solid-fuel') return SOLID_FUEL_ENERGY;
-  if (item === 'pentapod-egg') return 5;  // 五足虫卵可作燃料（官方 fuel_value 5MJ，与生鱼相近的弱效生物质燃料）
-  if (item === 'raw-fish') return 4;  // 生鱼可作低效燃料（对齐《异星工厂》：鱼能烧，但能量很低）
   if (item === 'wood') return WOOD_FUEL_ENERGY;  // 木材低效燃料（约煤的 1/4）
   return COAL_ENERGY;
 }
@@ -477,9 +479,11 @@ function elecMachMult() { return (G.techDone.electric ? 1.2 : 1); }
 function oilMult()    { return (G.techDone.oil ? 1.5 : 1); }
 // 科研速度倍率（对齐《异星工厂》Research speed 无限科技）：普通科研速度 ×1.5，
 // 空间科研速度无限科技每级再 ×1.2，可无限叠加。
+// 科研产能（Research productivity）无限科技：每级让每瓶科学包产生的研究进度 +10%（对齐官方）。
 function labSpeedMult() {
   let m = (techResearched('research-speed') ? 1.5 : 1);
   m *= Math.pow(1.2, techLevel('space-research-speed'));
+  m *= Math.pow(1.1, techLevel('research-productivity'));
   return m;
 }
 // 机器人速度倍率（对齐《异星工厂》Worker robot speed 无限科技）：每级 ×1.5 叠加。

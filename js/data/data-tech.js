@@ -393,6 +393,7 @@ const RECIPE_TECH = {
   'turbo-transport-belt': 'turbo-logistics',
   // 太空时代 Gleba 变质物回收（官方 Nutrients from spoilage / Burnt spoilage 配方，生化炉 organic，
   // 与其它生物质链统一由「农业科技」解锁）
+  'nutrients-from-bioflux': 'agriculture',
   'nutrients-from-spoilage': 'agriculture',
   'burnt-spoilage': 'agriculture',
   'bioplastic': 'agriculture',

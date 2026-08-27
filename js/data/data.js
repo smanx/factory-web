@@ -10,11 +10,15 @@ const BELT_SPACING = 0.125; // 物品间隔（格）0.125=1/8 格/件，每列 8
 let FAST_BELT_MULT = 2;    // 快速传送带 = 2× 基础（对齐《异星工厂》3.75 tiles/s，由 GAME_DATA 桥接）
 let EXPRESS_BELT_MULT = 3; // 极速传送带 = 3× 基础（对齐《异星工厂》5.625 tiles/s，由 GAME_DATA 桥接）
 let TURBO_BELT_MULT = 4;   // 超速传送带 = 4× 基础（太空时代 7.5 tiles/s，官方 speed 0.125，由 GAME_DATA 桥接）
-const COAL_ENERGY = 12;
-const WOOD_FUEL_ENERGY = 3;   // 木材能量密度（约煤的 1/4），对齐《异星工厂》：原木可作低效燃料
-const SOLID_FUEL_ENERGY = 50;   // 固体燃料能量密度（对齐《异星工厂》：约 4 倍于煤），可作煤的替代燃料
-const ROCKET_FUEL_ENERGY = 500; // 火箭燃料能量密度（对齐《异星工厂》：约 10 倍于固体燃料、约 40 倍于煤），可燃烧燃料
-const NUCLEAR_FUEL_ENERGY = 2500; // 核燃料能量密度（对齐《异星工厂》：核燃料约 1.21GJ，约为火箭燃料 225MJ 的 5 倍多），可作载具/车头/锅炉等燃烧器的最高级燃料
+// 燃料能量密度（项目相对刻度）——数据单源化，全部来自 GAME_DATA.fuelEnergy（data.generated.js，
+// 由 tools/generate-game-data.js 统一下发），不在本文件另行维护第二套数值。
+// 官方 fuel_value 为 MJ 绝对值（煤 4MJ / 固体燃料 12MJ / 火箭燃料 100MJ / 核燃料 1.21GJ），
+// 本项目采用相对刻度（煤=12 为基准，见 tools/generate-game-data.js fuelEnergy 注释）。
+const COAL_ENERGY = GAME_DATA.fuelEnergy?.['coal'] ?? 12;
+const WOOD_FUEL_ENERGY = GAME_DATA.fuelEnergy?.['wood'] ?? 3;   // 木材能量密度（约煤的 1/4）
+const SOLID_FUEL_ENERGY = GAME_DATA.fuelEnergy?.['solid-fuel'] ?? 50;   // 约 4 倍于煤
+const ROCKET_FUEL_ENERGY = GAME_DATA.fuelEnergy?.['rocket-fuel'] ?? 500; // 约 40 倍于煤
+const NUCLEAR_FUEL_ENERGY = GAME_DATA.fuelEnergy?.['nuclear-fuel'] ?? 2500; // 核燃料（官方 1.21GJ）
 const SELF_FUEL_MAX = 4;   // 热能采矿机燃料槽容量（对齐《异星工厂》：burner mining drill 16MJ/4MJ=4 个煤）
 const DRILL_BUFFER_CAP = 20; // 采矿机矿物输出缓冲上限（对齐《异星工厂》：采矿机内置 20 格输出缓冲）
 const UNDERGROUND_MAX = GAME_DATA.undergroundDist?.['underground-belt'] ?? 6;

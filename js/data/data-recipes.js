@@ -210,17 +210,17 @@ const RECIPES = {
   'asteroid-collector': { time: 10, inp: { 'low-density-structure': 20, 'electric-engine-unit': 8, 'processing-unit': 5 }, out: { 'asteroid-collector': 1 } },
   // ===== 太空时代 Space Age 材料链（数据来自官方 factorio-data，见 GAME_DATA）=====
   // 碳纤维：碳 → 碳纤维（官方 carbon-fiber 由 yumako-mash+碳，此处适配为化工厂碳加工，耗时 5s）
-  'carbon-fiber':        { time: 5, inp: { 'carbon': 3 }, out: { 'carbon-fiber': 1 } },
+  'carbon-fiber': { time: 5, inp: { 'yumako-mash':10, 'carbon':1 }, out: { 'carbon-fiber':1 } },
   // 锂：硫酸 + 轻油 → 锂（官方 lithium 需 lithium-brine+氨水+钬板，此处适配为化工厂电解，20s）
   'lithium':        { time: 20, inp: { 'lithium-brine': 50, 'ammonia': 50, 'holmium-plate': 1 }, out: { 'lithium': 5 } },
   // 锂板：锂 → 锂板（官方 lithium-plate 为熔炼配方，耗时 6.4s）
   'lithium-plate':        { time: 6.4, inp: { 'lithium': 1 }, out: { 'lithium-plate': 1 } },
   // 超导体：锂板 + 铜板 + 塑料 → 超导体（官方 superconductor 需钬板，此处适配，5s）
-  'superconductor':        { time: 5, inp: { 'lithium-plate': 1, 'copper-plate': 1, 'plastic-bar': 1 }, out: { 'superconductor': 2 } },
+  'superconductor': { time: 5, inp: { 'holmium-plate':1, 'copper-plate':1, 'plastic-bar':1, 'light-oil':5 }, out: { 'superconductor':2 } },
   // 电磁科研包：超导体 + 蓄电器 + 电路板 → 电磁科研包（官方需超电容/电解液/钬溶液，此处适配，10s）
-  'electromagnetic-science-pack': { time: 10, inp: { 'superconductor': 2, 'accumulator': 1, 'electronic-circuit': 2 }, out: { 'electromagnetic-science-pack': 1 } },
+  'electromagnetic-science-pack': { time: 10, inp: { 'supercapacitor': 1, 'accumulator': 1, 'electrolyte': 25, 'holmium-solution': 25 }, out: { 'electromagnetic-science-pack': 1 } },  // 对齐官方：1超级电容+1蓄电器+25电解液+25钬溶液（10s）
   // 电磁工厂：钢板 + 处理器 + 钢筋混凝土 + 超导体 → 电磁工厂（官方需钬板，此处适配，10s）
-  'electromagnetic-plant': { time: 10, inp: { 'steel-plate': 50, 'processing-unit': 50, 'refined-concrete': 50, 'superconductor': 20 }, out: { 'electromagnetic-plant': 1 } },
+  'electromagnetic-plant': { time: 10, inp: { 'holmium-plate':150, 'steel-plate':50, 'processing-unit':50, 'refined-concrete':50 }, out: { 'electromagnetic-plant':1 } },
   // 回收机：处理器 + 钢板 + 齿轮 + 混凝土 → 回收机（官方 energy_required=3s，此处对齐，10s）
   'recycler': { time: 3, inp: { 'processing-unit': 6, 'steel-plate': 20, 'iron-gear-wheel': 40, 'concrete': 20 }, out: { 'recycler': 1 } },  // 对齐官方：6处理器+20钢板+40齿轮+20混凝土，3s
   // ===== 太空时代 Fulgora 钬/特斯拉链（官方配方依赖钬溶液/电解液等 Fulgora 专属流体，此处适配电磁工厂/熔炉基础资源）=====
@@ -229,41 +229,44 @@ const RECIPES = {
   // 钬溶液：钬矿石 + 石头 + 水 → 钬溶液（官方 holmium-solution，chemistry/化工厂，10s；由 GAME_DATA 官方覆盖）
   'holmium-solution': { time: 10, inp: { 'holmium-ore': 2, 'stone': 1, 'water': 10 }, out: { 'holmium-solution': 100 } },
   // 钬板：钬矿石 + 石头 + 水 → 钬板（官方 holmium-solution→holmium-plate 两步精炼，此处适配熔炉一步，10s）
-  'holmium-plate': { time: 10, inp: { 'holmium-ore': 2, 'stone': 1, 'water': 10 }, out: { 'holmium-plate': 1 } },
+  'holmium-plate': { time: 1, inp: { 'holmium-solution':20 }, out: { 'holmium-plate':1 } },
   // 电解液：石头 + 重油 + 钬溶液 → 电解液（官方 electrolyte，electromagnetics/电磁工厂，5s；由 GAME_DATA 官方覆盖）
   'electrolyte': { time: 5, inp: { 'stone': 1, 'heavy-oil': 10, 'holmium-solution': 10 }, out: { 'electrolyte': 10 } },
   // 特斯拉电枪：钬板 + 超导体 + 塑料 + 电解液 → 特斯拉电枪（官方 teslagun，electromagnetics/电磁工厂，30s；由 GAME_DATA 官方覆盖）
   'teslagun': { time: 30, inp: { 'holmium-plate': 10, 'superconductor': 10, 'plastic-bar': 30, 'electrolyte': 100 }, out: { 'teslagun': 1 } },
   // 超级电容：钬板 + 超导体 + 电路板 + 电池 → 超级电容（官方 2钬板+2超导+4电路板+1电池+电解液，10s）
-  'supercapacitor': { time: 10, inp: { 'holmium-plate': 2, 'superconductor': 2, 'electronic-circuit': 4, 'battery': 1 }, out: { 'supercapacitor': 1 } },
+  'supercapacitor': { time: 10, inp: { 'holmium-plate':2, 'superconductor':2, 'electronic-circuit':4, 'battery':1, 'electrolyte':10 }, out: { 'supercapacitor':1 } },
   // 特斯拉弹药：超级电容 + 塑料 → 特斯拉弹药（官方 supercapacitor+plastic+electrolyte，30s）
-  'tesla-ammo': { time: 30, inp: { 'supercapacitor': 1, 'plastic-bar': 1 }, out: { 'tesla-ammo': 1 } },
+  'tesla-ammo': { time: 30, inp: { 'supercapacitor':1, 'plastic-bar':1, 'electrolyte':10 }, out: { 'tesla-ammo':1 } },
   // 特斯拉炮塔：超级电容 + 处理器 + 超导体 → 特斯拉炮塔（官方 teslagun+10超电容+10处理器+50超导，30s，此处省去 teslagun 枪）
-  'tesla-turret': { time: 30, inp: { 'supercapacitor': 10, 'processing-unit': 10, 'superconductor': 50 }, out: { 'tesla-turret': 1 } },
+  'tesla-turret': { time: 30, inp: { 'teslagun':1, 'supercapacitor':10, 'processing-unit':10, 'superconductor':50, 'electrolyte':500 }, out: { 'tesla-turret':1 } },
   // 火箭炮塔：4 火箭筒 + 4 处理器 + 20 碳纤维 + 20 钢板 + 20 齿轮 → 火箭炮塔（官方 rocket-turret 10s）
   'rocket-turret': { time: 10, inp: { 'rocket-launcher': 4, 'processing-unit': 4, 'carbon-fiber': 20, 'steel-plate': 20, 'iron-gear-wheel': 20 }, out: { 'rocket-turret': 1 } },
   // 电磁轨道炮弹药：钢板 + 铜线 + 炸药 → 电磁轨道炮弹药（官方 railgun-ammo 25s，数据单源）
   'railgun-ammo': { time: 25, inp: { 'steel-plate': 5, 'copper-cable': 10, 'explosives': 2 }, out: { 'railgun-ammo': 1 } },
   // 电磁轨道炮塔：超导体 + 碳纤维 + 钨板 + 处理器 → 电磁轨道炮塔（官方 railgun-turret 需 100量子处理器+30钨板+50超导+20碳纤维，此处适配为超导体代量子处理器，10s，由电磁工厂制得）
-  'railgun-turret': { time: 10, inp: { 'superconductor': 50, 'tungsten-plate': 30, 'carbon-fiber': 20, 'processing-unit': 50 }, out: { 'railgun-turret': 1 } },
+  'railgun-turret': { time: 10, inp: { 'quantum-processor':100, 'tungsten-plate':30, 'superconductor':50, 'carbon-fiber':20, 'fluoroketone-cold':100 }, out: { 'railgun-turret':1 } },
   // ===== 太空时代 Vulcanus 铸造/钨材料链（官方配方依赖熔融铁/火山熔岩等星球专属资源，此处适配基础资源）=====
   // 钨矿石：石头 + 煤 → 钨矿石×2（官方 tungsten-ore 为 Vulcanus 天然矿脉，此处适配为铸造厂从基础矿石还原，12s）
   'tungsten-ore': { time: 12, inp: { 'stone': 4, 'coal': 2 }, out: { 'tungsten-ore': 2 } },
   // 钨板：钨矿石 → 钨板（官方 tungsten-plate 为熔炼配方 energy_required=6.4s，由铸造厂熔炼，此处对齐时间）
-  'tungsten-plate': { time: 6.4, inp: { 'tungsten-ore': 1 }, out: { 'tungsten-plate': 1 } },
+  'tungsten-plate': { time: 10, inp: { 'tungsten-ore':4, 'molten-iron':10 }, out: { 'tungsten-plate':1 } },
   // 碳化钨：钨板 + 碳 → 碳化钨（官方 tungsten-carbide 4s，由铸造厂制得，此处适配）
-  'tungsten-carbide': { time: 4, inp: { 'tungsten-plate': 2, 'carbon': 1 }, out: { 'tungsten-carbide': 1 } },
+  'tungsten-carbide': { time: 1, inp: { 'tungsten-ore':2, 'sulfuric-acid':10, 'carbon':1 }, out: { 'tungsten-carbide':1 } },
   // 冶金科研包：钨板 + 碳化钨 + 电路板 → 冶金科研包（官方 metallurgic-science-pack 6s，此处适配）
-  'metallurgic-science-pack': { time: 6, inp: { 'tungsten-plate': 2, 'tungsten-carbide': 1, 'electronic-circuit': 2 }, out: { 'metallurgic-science-pack': 1 } },
+  'metallurgic-science-pack': { time: 10, inp: { 'tungsten-carbide':3, 'tungsten-plate':2, 'molten-copper':200 }, out: { 'metallurgic-science-pack':1 } },
   // 铸造厂：钢板 + 处理器 + 钢筋混凝土 + 电炉 → 铸造厂（官方需熔融铁+碳化钨，此处适配基础资源，10s）
-  'foundry': { time: 10, inp: { 'steel-plate': 50, 'processing-unit': 50, 'refined-concrete': 50, 'electric-furnace': 4 }, out: { 'foundry': 1 } },
+  'foundry': { time: 10, inp: { 'tungsten-carbide':50, 'steel-plate':50, 'electronic-circuit':30, 'refined-concrete':20, 'lubricant':20 }, out: { 'foundry':1 } },
   // ===== 太空时代 农业/Gleba 生物质材料链（官方数值参考，见 GAME_DATA）=====
   // 雅玛果泥：雅玛果 → 果泥×2 + 种子×1（官方 yumako-processing 1s，2 果泥 + 1 种子，种子可复种实现自持农业）
   'yumako-mash': { time: 1, inp: { 'yumako': 1 }, out: { 'yumako-mash': 2, 'yumako-seed': 1 } },
   // 生物流：果泥×15 → 生物流×4（官方 bioflux 6s，需胶质，此处适配为仅果泥）
-  'bioflux': { time: 6, inp: { 'yumako-mash': 15 }, out: { 'bioflux': 4 } },
+  'bioflux': { time: 6, inp: { 'yumako-mash':15, 'jelly':12 }, out: { 'bioflux':4 } },
   // 营养素：果泥×4 → 营养素×6（官方 nutrients-from-yumako-mash 4s，生化炉 organic 配方）
   'nutrients-from-yumako-mash': { time: 4, inp: { 'yumako-mash': 4 }, out: { 'nutrients': 6 } },
+  // 营养素（生物流制）：生物流×5 → 营养素×40（官方 nutrients-from-bioflux 2s，生化炉 organic 配方，
+  // 官方更高效的营养素来源——生物流可大量制营养素，供生化炉/虫巢孵化器持续供能）
+  'nutrients-from-bioflux': { time: 2, inp: { 'bioflux': 5 }, out: { 'nutrients': 40 } },
   // 营养素（变质物回收）：腐败物×10 → 营养素×1（官方 nutrients-from-spoilage 2s，生化炉 organic 配方，
   // 补全 Gleba 变质物回收循环——官方产出带 50% 腐败度，项目无新鲜度系统故简化为纯营养素）
   'nutrients-from-spoilage': { time: 2, inp: { 'spoilage': 10 }, out: { 'nutrients': 1 } },
@@ -290,17 +293,17 @@ const RECIPES = {
   'artificial-yumako-soil': { time: 2, inp: { 'yumako-seed': 2, 'nutrients': 50, 'landfill': 5 }, out: { 'artificial-yumako-soil': 10 } },
   // 茂盛雅玛果土壤：人工雅玛果土壤×2 + 玉玛果种子×5 + 变质物×50 + 水×100 → 茂盛雅玛果土壤×1
   // （官方 overgrowth-yumako-soil 10s 依赖 biter-egg 生物蛋，项目适配为现有生物链资源：变质物代替）
-  'overgrowth-yumako-soil': { time: 10, inp: { 'artificial-yumako-soil': 2, 'yumako-seed': 5, 'spoilage': 50, 'water': 100 }, out: { 'overgrowth-yumako-soil': 1 } },
+  'overgrowth-yumako-soil': { time: 10, inp: { 'artificial-yumako-soil':2, 'yumako-seed':5, 'biter-egg':10, 'spoilage':50, 'water':100 }, out: { 'overgrowth-yumako-soil':1 } },
   // 人工果仁土壤：果仁种子×2 + 营养素×50 + 填海料×5 → 人工果仁土壤×10（官方 artificial-jellynut-soil 2s）
   'artificial-jellynut-soil': { time: 2, inp: { 'jellynut-seed': 2, 'nutrients': 50, 'landfill': 5 }, out: { 'artificial-jellynut-soil': 10 } },
   // 茂盛果仁土壤：人工果仁土壤×2 + 果仁种子×5 + 异虫卵×10 + 变质物×50 + 水×100 → 茂盛果仁土壤×1（官方 overgrowth-jellynut-soil 10s，官方配方对齐）
   'overgrowth-jellynut-soil': { time: 10, inp: { 'artificial-jellynut-soil': 2, 'jellynut-seed': 5, 'biter-egg': 10, 'spoilage': 50, 'water': 100 }, out: { 'overgrowth-jellynut-soil': 1 } },
   // 果仁加工：果仁×1 → 果冻×4（官方 jellynut-processing 1s：1 果仁 → 4 果冻 + 2% 概率种子，此处对齐官方产出）
-  'jellynut-processing': { time: 1, inp: { 'jellynut': 1 }, out: { 'jelly': 4 } },
+  'jellynut-processing': { time: 1, inp: { 'jellynut':1 }, out: { 'jellynut-seed':1, 'jelly':4 } },
   // 果仁种植（农业塔专属生长配方）：果仁种子×1 → 果仁×5 + 有概率返还种子，持续收获（对齐《异星工厂》Agricultural tower 果仁种植）
   'jellynut-growing': { time: 30, inp: { 'jellynut-seed': 1 }, out: { 'jellynut': 5 } },
   // 虫蛋：果冻+营养素+果泥 → 虫蛋×5（官方 biter-egg 由生物机制繁殖产出，无合成原料；此处适配为生化炉用 Gleba 生物链资源培育，10s 对齐官方耗时）
-  'biter-egg': { time: 10, inp: { 'jelly': 10, 'nutrients': 20, 'yumako-mash': 10 }, out: { 'biter-egg': 5 } },
+  'biter-egg': { time: 10, inp: {  }, out: { 'biter-egg':5 } },
   // 虫蛋→营养素：虫蛋×1 → 营养素×20（官方 nutrients-from-biter-egg 2s：1 虫蛋 → 20 营养素）
   'nutrients-from-biter-egg': { time: 2, inp: { 'biter-egg': 1 }, out: { 'nutrients': 20 } },
   // 养鱼（官方 Space Age fish-breeding 6s：2 生鱼 + 100 营养素 + 100 水 → 3 生鱼，生化炉 organic/chemistry 配方）
@@ -335,15 +338,15 @@ const RECIPES = {
   // 破碎机本体：低密度结构 + 钢板 + 电动引擎 → 破碎机（官方 energy_required=10s，此处对齐 10s）
   'crusher': { time: 10, inp: { 'low-density-structure': 20, 'steel-plate': 10, 'electric-engine-unit': 10 }, out: { 'crusher': 1 } },
   // 金属星块粉碎：金属星块×1 → 铁矿石×20（官方 2s，30% 概率返还星块）
-  'metallic-asteroid-crushing': { time: 2, inp: { 'metallic-asteroid-chunk': 1 }, out: { 'iron-ore': 20 } },
+  'metallic-asteroid-crushing': { time: 2, inp: { 'metallic-asteroid-chunk':1 }, out: { 'iron-ore':20, 'metallic-asteroid-chunk':1 } },
   // 碳质星块粉碎：碳质星块×1 → 碳×10（官方 2s，30% 概率返还星块）
-  'carbonic-asteroid-crushing': { time: 2, inp: { 'carbonic-asteroid-chunk': 1 }, out: { 'carbon': 10 } },
+  'carbonic-asteroid-crushing': { time: 2, inp: { 'carbonic-asteroid-chunk':1 }, out: { 'carbon':10, 'carbonic-asteroid-chunk':1 } },
   // 氧化星块粉碎：氧化星块×1 → 冰×5（官方 2s，30% 概率返还星块）
-  'oxide-asteroid-crushing': { time: 2, inp: { 'oxide-asteroid-chunk': 1 }, out: { 'ice': 5 } },
+  'oxide-asteroid-crushing': { time: 2, inp: { 'oxide-asteroid-chunk':1 }, out: { 'ice':5, 'oxide-asteroid-chunk':1 } },
   // 进阶粉碎（官方 advanced-*-asteroid-crushing 5s，产出更丰富的基础资源；此处沿用纯确定性产出简化）
-  'advanced-metallic-asteroid-crushing': { time: 5, inp: { 'metallic-asteroid-chunk': 1 }, out: { 'iron-ore': 10, 'copper-ore': 4 } },
-  'advanced-carbonic-asteroid-crushing': { time: 5, inp: { 'carbonic-asteroid-chunk': 1 }, out: { 'carbon': 5, 'sulfur': 2 } },
-  'advanced-oxide-asteroid-crushing': { time: 5, inp: { 'oxide-asteroid-chunk': 1 }, out: { 'ice': 3, 'calcite': 2 } },
+  'advanced-metallic-asteroid-crushing': { time: 5, inp: { 'metallic-asteroid-chunk':1 }, out: { 'iron-ore':10, 'copper-ore':4, 'metallic-asteroid-chunk':1 } },
+  'advanced-carbonic-asteroid-crushing': { time: 5, inp: { 'carbonic-asteroid-chunk':1 }, out: { 'carbon':5, 'sulfur':2, 'carbonic-asteroid-chunk':1 } },
+  'advanced-oxide-asteroid-crushing': { time: 5, inp: { 'oxide-asteroid-chunk':1 }, out: { 'ice':3, 'calcite':2, 'oxide-asteroid-chunk':1 } },
   // 星块再处理（官方 *-asteroid-reprocessing：把一种星块随机转换为三种星块，概率模型对齐官方 shared_probability）
   'metallic-asteroid-reprocessing': { time: 2, inp: { 'metallic-asteroid-chunk': 1 }, prob: { 'metallic-asteroid-chunk': 0.4, 'carbonic-asteroid-chunk': 0.2, 'oxide-asteroid-chunk': 0.2 } },
   'carbonic-asteroid-reprocessing': { time: 2, inp: { 'carbonic-asteroid-chunk': 1 }, prob: { 'carbonic-asteroid-chunk': 0.4, 'metallic-asteroid-chunk': 0.2, 'oxide-asteroid-chunk': 0.2 } },
@@ -362,7 +365,7 @@ const RECIPES = {
   // 氟酮（热）：氟酮冷液 → 氟酮热液（官方 fluoroketone-hot，低温工厂热交换，此处适配升温）
   'fluoroketone-hot': { time: 2, inp: { 'fluoroketone-cold': 50 }, out: { 'fluoroketone-hot': 50 } },
   // 低温科研包：氟酮热液 + 超导体 + 锂板 + 钷素星块 → 低温科研包（官方 cryogenic-science-pack 6s，此处适配）
-  'cryogenic-science-pack': { time: 6, inp: { 'fluoroketone-hot': 100, 'superconductor': 1, 'lithium-plate': 1, 'promethium-asteroid-chunk': 10 }, out: { 'cryogenic-science-pack': 2 } },
+  'cryogenic-science-pack': { time: 20, inp: { 'ice':3, 'lithium-plate':1, 'fluoroketone-cold':6 }, out: { 'cryogenic-science-pack':1, 'fluoroketone-hot':3 } },
   // ===== 太空时代 Aquilo 补充流体（氨溶液 / 锂盐水，官方由 Aquilo 抽取，此处适配基础资源，数据来自 GAME_DATA.names）=====
   // 氨溶液：氨 + 水 → 氨溶液（官方 ammoniacal-solution 由 Aquilo 海洋抽取，此处适配为氨水吸收制取）
   'ammoniacal-solution': { time: 5, inp: { 'ammonia': 50, 'water': 50 }, out: { 'ammoniacal-solution': 100 } },
@@ -374,7 +377,7 @@ const RECIPES = {
   // 锂盐水：水 + 方解石 → 锂盐水（官方 lithium-brine 由 Aquilo 抽取，此处适配为富锂盐水）
   'lithium-brine': { time: 5, inp: { 'water': 50, 'calcite': 5 }, out: { 'lithium-brine': 50 } },
   // 低温工厂：钢板 + 处理器 + 导热管 + 聚变燃料棒 → 低温工厂（官方需低温合金，此处适配高级材料，10s）
-  'cryogenic-plant': { time: 10, inp: { 'steel-plate': 30, 'processing-unit': 20, 'heat-pipe': 20, 'fusion-power-cell': 1 }, out: { 'cryogenic-plant': 1 } },
+  'cryogenic-plant': { time: 10, inp: { 'refined-concrete':40, 'superconductor':20, 'processing-unit':20, 'lithium-plate':20 }, out: { 'cryogenic-plant':1 } },
   // ===== 太空时代 熔融金属铸造链（Vulcanus 铸造厂，数据来自 factorio-data 官方）=====
   // 铁矿熔炼：50 铁矿 + 1 方解石 → 500 熔融铁（官方 iron-ore-melting 32s，铸造厂 metallurgy）
   'iron-ore-melting': { time: 32, inp: { 'iron-ore': 50, 'calcite': 1 }, out: { 'molten-iron': 500 } },
@@ -417,10 +420,10 @@ const RECIPES = {
   'recycle-scrap': { time: 1, inp: { 'scrap': 1 }, prob: { 'iron-ore': 0.4, 'copper-ore': 0.25, 'stone': 0.2, 'coal': 0.15 } },
   // ===== 太空时代 终局防御（数据来自 factorio-data 官方，见 GAME_DATA）=====
   // 量子处理器：超导体 + 碳纤维 + 处理器 → 量子处理器（官方 quantum-processor 20s）
-  'quantum-processor': { time: 20, inp: { 'superconductor': 10, 'carbon-fiber': 10, 'processing-unit': 10 }, out: { 'quantum-processor': 1 } },
+  'quantum-processor': { time: 30, inp: { 'tungsten-carbide':1, 'processing-unit':1, 'superconductor':1, 'carbon-fiber':1, 'lithium-plate':2, 'fluoroketone-cold':10 }, out: { 'quantum-processor':1, 'fluoroketone-hot':5 } },
   // 轨道炮：钬板 + 超导体 + 量子处理器 → 轨道炮（官方 railgun 30s）
-  'railgun': { time: 30, inp: { 'holmium-plate': 10, 'superconductor': 20, 'quantum-processor': 5 }, out: { 'railgun': 1 } },
-  'ice-melting': { time: 0.5, inp: { 'ice': 1 }, out: { 'water': 100 } },
+  'railgun': { time: 10, inp: { 'tungsten-plate':10, 'superconductor':10, 'quantum-processor':20, 'fluoroketone-cold':10 }, out: { 'railgun':1 } },
+  'ice-melting': { time: 1, inp: { 'ice':1 }, out: { 'water':20 } },
   // 硫酸：硫磺 + 水 + 铁板 → 硫酸（原版 1s，数量简化）
   // 硫酸：硫磺 + 水 + 铁板 → 硫酸（原版 1s，数量简化）
   'sulfuric-acid':        { time: 1, inp: { 'iron-plate': 1, 'sulfur': 5, 'water': 100 }, out: { 'sulfuric-acid': 50 } },
@@ -457,14 +460,14 @@ const RECIPES = {
   'heating-tower':        { time: 10, inp: { 'boiler': 2, 'heat-pipe': 5, 'concrete': 20 }, out: { 'heating-tower': 1 } },  // 太空时代供热塔（官方配方：2锅炉+5导热管+20混凝土，10s）
   // ===== Aquilo 聚变发电链（太空时代 Space Age，对齐《异星工厂》fusion-reactor / fusion-generator / fusion-power-cell）=====
   // 官方配方依赖钨板/量子处理器/钬板/氨（Aquilo 行星专属资源），项目暂无行星系统，适配为现有超导体/锂板/处理器等高级材料，产出物/耗时参考官方。
-  'fusion-power-cell': { time: 10, inp: { 'lithium-plate': 5, 'superconductor': 1, 'carbon-fiber': 1 }, out: { 'fusion-power-cell': 1 } },  // 官方 5锂板+1钬板+100氨（10s），适配
-  'fusion-reactor':    { time: 60, inp: { 'superconductor': 50, 'processing-unit': 50, 'lithium-plate': 30, 'steel-plate': 50 }, out: { 'fusion-reactor': 1 } },  // 官方 200钨板+200超导+250量子处理器（60s），适配
-  'fusion-generator':  { time: 30, inp: { 'superconductor': 30, 'processing-unit': 30, 'lithium-plate': 20 }, out: { 'fusion-generator': 1 } },  // 官方 100钨板+100超导+50量子处理器（30s），适配
+  'fusion-power-cell': { time: 10, inp: { 'lithium-plate': 5, 'holmium-plate': 1, 'ammonia': 100 }, out: { 'fusion-power-cell': 1 } },  // 对齐官方：5锂板+1钬板+100氨（10s）
+  'fusion-reactor':    { time: 60, inp: { 'tungsten-plate': 200, 'superconductor': 200, 'quantum-processor': 250 }, out: { 'fusion-reactor': 1 } },  // 对齐官方：200钨板+200超导+250量子处理器（60s）
+  'fusion-generator':  { time: 30, inp: { 'tungsten-plate': 100, 'superconductor': 100, 'quantum-processor': 50 }, out: { 'fusion-generator': 1 } },  // 对齐官方：100钨板+100超导+50量子处理器（30s）
   // ===== Fulgora 避雷系统（太空时代 Space Age，对齐《异星工厂》lightning-rod / lightning-collector）=====
   // 官方配方：避雷针=12铜线+8钢板+4石砖（5s）；避雷收集器=1避雷针+8超级电容+1蓄电器+80电解质（5s）。
   // 项目未实现 Fulgora 专属 supercapacitor/electrolyte，故收集器配方适配为现有超导体替代超级电容，产出物/耗时参考官方。
   'lightning-rod':        { time: 5, inp: { 'copper-cable': 12, 'steel-plate': 8, 'stone-brick': 4 }, out: { 'lightning-rod': 1 } },
-  'lightning-collector':  { time: 5, inp: { 'lightning-rod': 1, 'superconductor': 8, 'accumulator': 1 }, out: { 'lightning-collector': 1 } },
+  'lightning-collector': { time: 5, inp: { 'lightning-rod':1, 'supercapacitor':8, 'accumulator':1, 'electrolyte':80 }, out: { 'lightning-collector':1 } },
   // ===== 电路网络配方 =====
   'small-electric-pole':        { time: 0.5, inp: { 'copper-cable': 2, 'wood': 1 }, out: { 'small-electric-pole': 2 } },
   'substation':        { time: 0.5, inp: { 'advanced-circuit': 5, 'copper-cable': 6, 'steel-plate': 10 }, out: { 'substation': 1 } },
@@ -498,7 +501,7 @@ const RECIPES = {
   'power-armor-mk2':        { time: 25, inp: { 'efficiency-module': 100, 'speed-module': 100, 'processing-unit': 60, 'electric-engine-unit': 40, 'low-density-structure': 30 }, out: { 'power-armor-mk2': 1 } },  // 对齐官方：100节能模块+100速度模块+60处理器+40电机+30低密度结构
   // ===== 个人装备件 =====
   'solar-panel-equipment':        { time: 10, inp: { 'advanced-circuit': 2, 'solar-panel': 1, 'steel-plate': 5 }, out: { 'solar-panel-equipment': 1 } },
-  'fusion-reactor-equipment': { time: 20, inp: { 'nuclear-reactor': 1, 'processing-unit': 20, 'low-density-structure': 10, 'electric-engine-unit': 10 }, out: { 'fusion-reactor-equipment': 1 } },
+  'fusion-reactor-equipment': { time: 30, inp: { 'fission-reactor-equipment': 1, 'fusion-power-cell': 10, 'tungsten-plate': 250, 'carbon-fiber': 100, 'supercapacitor': 25, 'quantum-processor': 250 }, out: { 'fusion-reactor-equipment': 1 } },  // 对齐官方：1裂变堆设备+10聚变燃料棒+250钨板+100碳纤维+25超级电容+250量子处理器（30s）
   'battery-equipment':        { time: 10, inp: { 'battery': 5, 'steel-plate': 10 }, out: { 'battery-equipment': 1 } },
   'battery-mk2-equipment':        { time: 10, inp: { 'battery-equipment': 10, 'low-density-structure': 5, 'processing-unit': 15 }, out: { 'battery-mk2-equipment': 1 } },
   'exoskeleton-equipment':        { time: 10, inp: { 'electric-engine-unit': 30, 'processing-unit': 10, 'steel-plate': 20 }, out: { 'exoskeleton-equipment': 1 } },
@@ -510,10 +513,10 @@ const RECIPES = {
   // ===== 传送带免疫装备（对齐《异星工厂》：铁板+电路板，早期装备件） =====
   'belt-immunity-equipment':        { time: 10, inp: { 'advanced-circuit': 5, 'steel-plate': 10 }, out: { 'belt-immunity-equipment': 1 } },  // ===== 太空时代 Aquilo 高级装备件（数据来自 GAME_DATA.equipment，需「机械装甲」科技） =====
   'battery-mk3-equipment': { time: 10, inp: { 'battery-mk2-equipment': 5, 'supercapacitor': 10 }, out: { 'battery-mk3-equipment': 1 } },  // 对齐官方：5电池II+10超级电容，10s
-  'fission-reactor-equipment': { time: 30, inp: { 'fusion-reactor-equipment': 2, 'quantum-processor': 5, 'holmium-plate': 10, 'superconductor': 20 }, out: { 'fission-reactor-equipment': 1 } },
+  'fission-reactor-equipment': { time: 10, inp: { 'processing-unit':200, 'low-density-structure':50, 'uranium-fuel-cell':4 }, out: { 'fission-reactor-equipment':1 } },
   'toolbelt-equipment': { time: 10, inp: { 'advanced-circuit': 3, 'carbon-fiber': 10 }, out: { 'toolbelt-equipment': 1 } },  // 对齐官方：3高级电路+10碳纤维
   // 机械装甲（太空时代终极装甲）：强力装甲 II + 钬板 + 超导体 + 量子处理器
-  'mech-armor': { time: 40, inp: { 'power-armor-mk2': 1, 'holmium-plate': 20, 'superconductor': 20, 'quantum-processor': 10 }, out: { 'mech-armor': 1 } },
+  'mech-armor': { time: 60, inp: { 'power-armor-mk2':1, 'holmium-plate':200, 'processing-unit':100, 'superconductor':50, 'supercapacitor':50 }, out: { 'mech-armor':1 } },
 
   // ===== 放电防御装备（对齐《异星工厂》：需高级电路板/电池/处理器等） =====
   'discharge-defense-equipment':        { time: 10, inp: { 'laser-turret': 10, 'processing-unit': 5, 'steel-plate': 20 }, out: { 'discharge-defense-equipment': 1 } },
@@ -606,7 +609,7 @@ const DEVICE_NAMES = {
 const ELECTRO_RECIPES = ['superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant', 'promethium-science-pack', 'holmium-ore', 'holmium-solution', 'holmium-plate', 'supercapacitor', 'electrolyte', 'teslagun', 'tesla-ammo', 'tesla-turret', 'railgun-turret'];
 function isElectroRecipe(id) { return ELECTRO_RECIPES.indexOf(id) >= 0; }
 // 生化炉专属配方（太空时代生物产品）：果泥 / 生物流 / 营养素 / 生物硫磺 / 农业科研包 / 生化炉本体
-const BIOCHAMBER_RECIPES = ['yumako-mash', 'bioflux', 'nutrients-from-yumako-mash', 'nutrients-from-spoilage', 'burnt-spoilage', 'biosulfur', 'bioplastic', 'biolubricant', 'agricultural-science-pack', 'biochamber', 'jellynut-processing', 'biter-egg', 'nutrients-from-biter-egg', 'pentapod-egg', 'fish-breeding', 'nutrients-from-fish', 'rocket-fuel-from-jelly', 'iron-bacteria', 'copper-bacteria', 'iron-bacteria-cultivation', 'copper-bacteria-cultivation', 'iron-plate-from-iron-bacteria', 'copper-plate-from-copper-bacteria'];
+const BIOCHAMBER_RECIPES = ['yumako-mash', 'bioflux', 'nutrients-from-yumako-mash', 'nutrients-from-bioflux', 'nutrients-from-spoilage', 'burnt-spoilage', 'biosulfur', 'bioplastic', 'biolubricant', 'agricultural-science-pack', 'biochamber', 'jellynut-processing', 'biter-egg', 'nutrients-from-biter-egg', 'pentapod-egg', 'fish-breeding', 'nutrients-from-fish', 'rocket-fuel-from-jelly', 'iron-bacteria', 'copper-bacteria', 'iron-bacteria-cultivation', 'copper-bacteria-cultivation', 'iron-plate-from-iron-bacteria', 'copper-plate-from-copper-bacteria'];
 function isBiochamberRecipe(id) { return BIOCHAMBER_RECIPES.indexOf(id) >= 0; }
 // 破碎机专属配方（太空时代小行星碎块加工）：金属/碳质/氧化星块粉碎 + 破碎机本体 + 冰熔化
 const CRUSHER_RECIPES = ['metallic-asteroid-crushing', 'carbonic-asteroid-crushing', 'oxide-asteroid-crushing',

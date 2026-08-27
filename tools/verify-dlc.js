@@ -397,7 +397,15 @@ for (const rid of ['nutrients-from-yumako-mash']) {
 }
 ok(RP['nutrients-from-yumako-mash'].inp['yumako-mash'] === 4 && RP['nutrients-from-yumako-mash'].out['nutrients'] === 6, '果泥→营养素=4果泥→6营养素（官方 nutrients-from-yumako-mash）');
 ok(RP['nutrients-from-yumako-mash'].time === 4, '果泥→营养素耗时=4s（官方）');
-ok(!RP['nutrients-from-bioflux'], '已移除非官方配方键 nutrients-from-bioflux');
+// 营养素（生物流制）：官方 nutrients-from-bioflux 配方（5 生物流 → 40 营养素，2s，生化炉 organic）
+// 此前项目误把该官方键用于「4 果泥→6 营养素」配方（已改名回官方 nutrients-from-yumako-mash）；
+// 现正式接入官方 nutrients-from-bioflux 配方本身，作为生物流→营养素的高效来源。
+ok(!!RP['nutrients-from-bioflux'], 'nutrients-from-bioflux 配方已注册（官方生物流→营养素）');
+ok(RP['nutrients-from-bioflux'].inp['bioflux'] === 5 && RP['nutrients-from-bioflux'].out['nutrients'] === 40, '生物流→营养素=5生物流→40营养素（官方 nutrients-from-bioflux）');
+ok(RP['nutrients-from-bioflux'].time === 2, '生物流→营养素耗时=2s（官方）');
+ok(!!GD.recipeNames['nutrients-from-bioflux'], 'nutrients-from-bioflux 官方配方命名已收录 (' + (GD.recipeNames['nutrients-from-bioflux'] ? GD.recipeNames['nutrients-from-bioflux'].zh : '?') + ')');
+ok(ctx.__recipeDevice('nutrients-from-bioflux') === 'biochamber', 'nutrients-from-bioflux → 生化炉（官方 organic）');
+ok(ctx.__recipeTechReq('nutrients-from-bioflux') === 'agriculture', 'nutrients-from-bioflux 需「农业科技」');
 
 // ===== 太空时代 养鱼 + 鱼制营养素 + 煤合成（Fish breeding / Nutrients from fish / Coal synthesis，本迭代新增）数据校验 =====
 console.log('\n【养鱼 + 鱼制营养素 + 煤合成（Space Age）数据校验】');
@@ -1124,6 +1132,30 @@ ok(GD.turret['rocket-turret'] && GD.turret['rocket-turret'].range === 36, 'rocke
 ok(GD.turret['rocket-turret'] && GD.turret['rocket-turret'].fireRate === 2, 'rocket-turret 冷却=2s（官方 cooldown 120tick）');
 ok(GD.turret['railgun-turret'] && GD.turret['railgun-turret'].range === 40, 'railgun-turret 射程=40（官方 attack_parameters.range）');
 ok(GD.ammoDamage['railgun-ammo'] === 10000, 'railgun-ammo 伤害=官方 amount 10000');
+console.log('\n【炮塔耗电单源化（GAME_DATA.turret[塔].powerDraw 官方 energy_source.input_flow_limit）】');
+ok(GD.turret['laser-turret'] && GD.turret['laser-turret'].powerDraw === 9600, 'laser-turret 射击耗电=9600kW（官方 input_flow_limit 9600kW）');
+ok(GD.turret['laser-turret'] && GD.turret['laser-turret'].drain === 24, 'laser-turret 空载待机=24kW（官方 drain 24kW）');
+ok(GD.turret['tesla-turret'] && GD.turret['tesla-turret'].powerDraw === 7000, 'tesla-turret 射击耗电=7000kW（官方 input_flow_limit 7MW）');
+ok(GD.turret['tesla-turret'] && GD.turret['tesla-turret'].drain === 1000, 'tesla-turret 空载待机=1000kW（官方 drain 1MW）');
+ok(GD.turret['railgun-turret'] && GD.turret['railgun-turret'].powerDraw === 10000, 'railgun-turret 射击耗电=10000kW（官方 input_flow_limit 10MW）');
+ok(GD.turret['gun-turret'] && GD.turret['gun-turret'].powerDraw === 0, 'gun-turret 吃弹药不吃电（powerDraw=0）');
+ok(GD.turret['rocket-turret'] && GD.turret['rocket-turret'].powerDraw === 0, 'rocket-turret 吃弹药不吃电（powerDraw=0）');
+ok(GD.turret['flamethrower-turret'] && GD.turret['flamethrower-turret'].powerDraw === 0, 'flamethrower-turret 吃油不吃电（powerDraw=0）');
+
+console.log('\n【炮塔单发伤害单源化（GAME_DATA.turret[塔].damage / ammoDamage，data.generated.js 单源）】');
+ok(GD.turret['laser-turret'] && GD.turret['laser-turret'].damage === 14, 'laser-turret 单发伤害=14（data.generated.js 单源，官方 laser-beam 参考）');
+ok(GD.turret['flamethrower-turret'] && GD.turret['flamethrower-turret'].damage === 8, 'flamethrower-turret 单发伤害=8（data.generated.js 单源，官方 flamethrower-fire-stream 参考）');
+ok(GD.turret['tesla-turret'] && GD.turret['tesla-turret'].damage === 30, 'tesla-turret 单发伤害=30（data.generated.js 单源，官方 chain-tesla-turret-beam 参考）');
+ok(GD.ammoDamage['rocket'] === 35, 'rocket 单发伤害=35（data.generated.js 单源，官方 projectile rocket 参考）');
+ok(GD.ammoDamage['explosive-rocket'] === 60, 'explosive-rocket 单发伤害=60（data.generated.js 单源，官方 projectile explosive-rocket 参考）');
+// 前端 combat2-turrets.js 应引用 GAME_DATA（而非硬编码字面量）
+const c2t = fs.readFileSync(ROOT + '/js/devices/combat2-turrets.js', 'utf8');
+ok(c2t.includes("GAME_DATA.turret?.['laser-turret']?.damage"), 'combat2-turrets 激光伤害从 GAME_DATA.turret 单源读取');
+ok(c2t.includes("GAME_DATA.turret?.['flamethrower-turret']?.damage"), 'combat2-turrets 火焰伤害从 GAME_DATA.turret 单源读取');
+ok(c2t.includes("GAME_DATA.turret?.['tesla-turret']?.damage"), 'combat2-turrets 特斯拉伤害从 GAME_DATA.turret 单源读取');
+ok(c2t.includes("GAME_DATA.ammoDamage?.['rocket']"), 'combat2-turrets 火箭伤害从 GAME_DATA.ammoDamage 单源读取');
+ok(c2t.includes("GAME_DATA.ammoDamage?.['explosive-rocket']"), 'combat2-turrets 爆炸火箭伤害从 GAME_DATA.ammoDamage 单源读取');
+
 console.log('\n【火箭炮塔 / 磁轨炮塔配方与设备归属】');
 ok(!!RP['rocket-turret'], 'rocket-turret 配方已注册');
 ok(!!RP['railgun-turret'], 'railgun-turret 配方已注册');
@@ -1457,6 +1489,20 @@ ok(!!TS['health'].req && TS['health'].req.indexOf('space-science') >= 0, '健康
 ok(!!TS['health'].req && TS['health'].req.indexOf('utility') >= 0, '健康科技前置含实用科技');
 ok(!!TS['health'].req && TS['health'].req.indexOf('military4') >= 0, '健康科技前置含军事科技 IV');
 ok(TS['health'].cat === 'space-age', '健康科技归入太空时代分类');
+
+
+// ===== 太空时代 科研产能无限科技（Research productivity，本迭代新增）数据校验 =====
+console.log('\n【科研产能无限科技（Research productivity，Space Age）数据校验】');
+ok(!!TS['research-productivity'], '科研产能科技已注册');
+ok(TS['research-productivity'].infinite === true, '科研产能为无限科技（官方 infinite）');
+ok(!!TS['research-productivity'].req && TS['research-productivity'].req.indexOf('space-science') >= 0, '科研产能前置含空间科技');
+ok(!!TS['research-productivity'].req && TS['research-productivity'].req.indexOf('utility') >= 0, '科研产能前置含实用科技');
+ok(TS['research-productivity'].cat === 'space-age', '科研产能归入太空时代分类');
+// 科研产能倍率接入 labSpeedMult（data-util.js）：每级 ×1.1
+{
+  const utilSrc = fs.readFileSync(ROOT + '/js/data/data-util.js', 'utf8');
+  ok(utilSrc.indexOf("Math.pow(1.1, techLevel('research-productivity'))") >= 0, 'labSpeedMult 已接入科研产能倍率（每级 ×1.1）');
+}
 
 
 

@@ -1288,3 +1288,124 @@ D
 - **校验**：verify-dlc 新增「官方回收配方」校验（recycler.js 单源读取 + 抽样 6 物品的
   耗时/产出逐项核对 + 条数合理），全量 18 个校验脚本通过，`node build.js` 构建通过。
 
+
+### 阶段五.5：生物流制营养素配方接入官方（Nutrients from bioflux，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> 依据「所有配方数据与《异星工厂》官方一致」原则，补全官方 Space Age **生物流制营养素**配方
+> （`nutrients-from-bioflux`）——此前该官方键被项目误用于「4 果泥→6 营养素」配方
+> （阶段六.3 已把该配方改名回官方 `nutrients-from-yumako-mash`），而官方 `nutrients-from-bioflux`
+> 配方本身（**5 生物流 → 40 营养素，2s**）一直缺失。现正式接入：
+> - **配方**（官方数值，数据单源化，来自 data.generated.js）：`nutrients-from-bioflux` =
+>   **5 生物流 → 40 营养素（2s）**，生化炉 organic 配方，官方高效营养素来源
+>   （5 生物流制 40 营养素，远高于 4 果泥→6 营养素，供生化炉/虫巢孵化器持续供能）。
+> - **设备归属**：生化炉（DLC_DEVICE_RECIPES 新增 `nutrients-from-bioflux` → biochamber，
+>   GAME_DATA.recipeDevice 单源）。
+> - **配方命名**：`生物结晶制营养素 / Nutrients from bioflux`，来自 GAME_DATA.recipeNames
+>   （factorio-data 官方 space-age locale）。
+> - **科技**：由「农业科技」解锁（RECIPE_TECH 配方级门控，与其它生化炉生物质配方一致）。
+> - **校验**：verify-dlc 新增生物流制营养素校验（配方注册/数值 5→40/耗时 2s/命名/设备/科技），
+>   并把 verify-data-integrity 的 `nutrients-from-bioflux` 加入动态键（产物键≠配方键）；
+>   移除原「已移除非官方配方键 nutrients-from-bioflux」反向断言（该键现为合法官方配方）。
+>   全量 18 个校验脚本通过，`node build.js` 构建通过。
+### 阶段六.5：科研产能无限科技（Research productivity，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **科技**：新增「科研产能」无限科技（`research-productivity`，官方 Space Age Research
+>   productivity 无限科技）。每次研究提升科研产能 +10%（对齐官方 research-productivity，
+>   每瓶科学包产生的研究进度 +10%），让终局无限科研更高效推进。
+> - **数据单源**：科技定义在 data-tech-tree.js（无限科技，需空间科技+实用科技前置），
+>   效果经 `labSpeedMult()`（data-util.js）单源接入——每级让科研进度倍率再 ×1.1，
+>   与既有科研速度（research-speed ×1.5、space-research-speed ×1.2/级）独立叠加，
+>   未单独维护数值表。
+> - **玩法**：研究「科研产能」后，研究中心产出的科研进度每级 +10%，与科研速度科技
+>   相互叠加，让终局无限科技链（采矿产能/武器伤害/健康等）的推进更快。
+> - **前置**：空间科技 + 实用科技（官方 research-productivity 需 space-science 前置），
+>   成本用空间科学包 + 实用科学包。
+> - **校验**：verify-dlc 新增「科研产能」校验（科技注册/无限/前置/太空分类/labSpeedMult
+>   接入），全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+
+### 阶段六.6：燃料能量密度单源化（Burner fuel energy single-sourcing，本迭代新增）
+
+> 依据「所有数据从 data.generated.js（factorio-data 官方单源）获取，设备不维护第二套数值」原则，
+> 把此前硬编码在 `js/data/data.js` 的燃料能量密度（煤/木材/固体燃料/火箭燃料/核燃料）与
+> `data-util.js fuelEnergy()` 中的弱效生物质燃料（生鱼/五足虫卵）兜底值，统一写入
+> `GAME_DATA.fuelEnergy`（data.generated.js 统一下发），使 burner 设备（锅炉/熔炉/热能采矿机/
+> 火车头/热能机械臂等）的燃料能量全部单源读取，不再在数据文件里单独维护。
+>
+> **改动**：
+> - **generate-game-data.js**：新增 `GAME_DATA.fuelEnergy`（项目相对刻度）：
+>   `coal=12`（基准，官方 4MJ）、`wood=3`（官方 2MJ）、`solid-fuel=50`（官方 12MJ）、
+>   `rocket-fuel=500`（官方 100MJ）、`nuclear-fuel=2500`（官方 1.21GJ）、
+>   `raw-fish=4`、`pentapod-egg=5`（官方 5MJ，弱效生物质燃料）。官方 fuel_value 为 MJ 绝对值，
+>   本项目沿用相对刻度（见 fuelEnergy 注释），统一经 data.generated.js 下发。
+> - **data.js**：`COAL_ENERGY / WOOD_FUEL_ENERGY / SOLID_FUEL_ENERGY / ROCKET_FUEL_ENERGY /
+>   NUCLEAR_FUEL_ENERGY` 由字面量改为从 `GAME_DATA.fuelEnergy` 读取（带兜底）。
+> - **data-util.js**：`fuelEnergy()` 优先读取 `GAME_DATA.fuelEnergy[item]`，不再单独维护
+>   生鱼/五足虫卵兜底。
+> - **校验**：verify-recipes 将 `COAL_ENERGY=12` 的「字面量」检查改为「GAME_DATA.fuelEnergy.coal=12
+>   + data.js 从 GAME_DATA.fuelEnergy 读取」的「单源」检查（2 项），全量 18 个校验脚本通过，
+>   `node build.js` 构建通过。
+> - **数据单源**：燃料能量数值全部来自 data.generated.js，未在数据文件单独维护第二套数值表。
+
+### 阶段六.7：炮塔耗电单源化（Turret power draw single-sourcing，本迭代新增）
+
+> 依据「所有数据从 data.generated.js（factorio-data 官方单源）获取，设备不维护第二套数值」原则，
+> 把此前硬编码在 `js/devices/combat2-turrets.js` 中的炮塔耗电（激光 180 / 火焰 200 / 特斯拉 1800 /
+> 磁轨 5000 kW）统一改为从 `GAME_DATA.turret[塔].powerDraw` 单源读取。
+
+- **生成脚本**（tools/generate-game-data.js）：`GAME_DATA.turret` 新增 `powerDraw`（射击最大吸电，
+  取官方 electric-turret `energy_source.input_flow_limit`，经 `parseKiloWatt` 转 kW）与 `drain`
+  （空载待机，取官方 `energy_source.drain`）；`parseKiloWatt` 扩展支持 MW/GW（"7MW"→7000、"10MW"→10000）。
+  ammo/fluid 炮塔（gun/rocket/flamethrower）吃弹药/油、不吃电，powerDraw=0。
+- **官方数值**（factorio-data 单源）：
+  - laser-turret：powerDraw=9600kW（官方 input_flow_limit 9600kW）、drain=24kW（官方）
+  - tesla-turret：powerDraw=7000kW（官方 7MW）、drain=1000kW（官方 1MW）
+  - railgun-turret：powerDraw=10000kW（官方 10MW）
+  - gun/rocket/flamethrower-turret：powerDraw=0（官方无电网）
+- **设备侧**（combat2-turrets.js）：新增 `turretPowerDraw(id)` 单源读取函数；激光/特斯拉/磁轨炮塔
+  `powerDemand()` 在射击冷却（cooldown>0）期间返回官方 powerDraw、闲置返回 0（对齐官方「炮塔有内部
+  缓冲、射击时才大电流补给」）；火焰炮塔改回不吃电（官方 fluid-turret 无电网，吃油）。
+- **校验**：verify-dlc 新增炮塔耗电单源化校验（8 项），全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段六.8：炮塔单发伤害单源化（Turret per-shot damage single-sourcing，本迭代新增）
+
+> 依据「所有数据从 data.generated.js（factorio-data 官方单源）获取，设备不维护第二套数值」原则，
+> 把此前硬编码在 `js/devices/combat2-turrets.js` 中的炮塔单发伤害（激光 14 / 火焰 8 / 特斯拉 30 /
+> 火箭 35 / 爆炸火箭 60）统一改为从 `GAME_DATA` 单源读取，完成上一轮「炮塔耗电单源化」的伤害侧收口。
+
+- **生成脚本**（tools/generate-game-data.js）：
+  - `GAME_DATA.turret` 为激光/火焰/特斯拉炮塔新增 `damage` 单发伤害字段（项目简化口径，官方参考：
+    laser-beam 逐 tick 10、flamethrower-fire-stream 逐 tick 3、chain-tesla-turret-beam 120）。
+  - `GAME_DATA.ammoDamage` 新增 `rocket`（官方 projectile rocket 单发 200）、`explosive-rocket`
+    （官方 projectile explosive-rocket 直击 50 + 范围 100）两项弹药单发伤害，沿用项目既有简化口径
+    （35 / 60），不改变战斗平衡，数据统一经 data.generated.js 下发。
+- **设备侧**（combat2-turrets.js）：`LASER_DMG / FT_DMG / TESLA_DMG` 改为从
+  `GAME_DATA.turret[塔].damage` 读取；`ROCKET_AMMO_DMG` 改为从 `GAME_DATA.ammoDamage['rocket'/'explosive-rocket']`
+  读取（均带兜底），不再在设备文件维护第二套字面量伤害。
+- **校验**：verify-dlc 新增炮塔单发伤害单源化校验（9 项：数值来源 + 前端单源引用），全量 18 个校验
+  脚本通过，`node build.js` 构建通过。
+
+### 阶段六.7：配方源码彻底单源化（Recipe source single-sourcing，本迭代新增）
+
+> 依据「所有配方/数据从 data.generated.js（factorio-data 官方）单源获取，不单独维护第二套数值」原则，
+> 在运行时已用官方值（GAME_DATA 覆盖）的基础上，把**源码层面的 DLC 配方数值也对齐官方**，
+> 使源码、运行时、官方三者完全一致。
+
+**改动**：
+- **DLC 配方源码彻底对齐官方（34 条）**：`carbon-fiber / superconductor / electromagnetic-plant /
+  holmium-plate / supercapacitor / tesla-ammo / tesla-turret / railgun-turret / tungsten-plate /
+  tungsten-carbide / metallurgic-science-pack / foundry / bioflux / overgrowth-yumako-soil /
+  jellynut-processing / biter-egg / 小行星粉碎×3 / 高级小行星粉碎×3 / cryogenic-science-pack /
+  cryogenic-plant / quantum-processor / railgun / ice-melting / fusion-power-cell / fusion-reactor /
+  fusion-generator / lightning-collector / fusion-reactor-equipment / fission-reactor-equipment /
+  mech-armor` 的源码值由「适配基础资源」版全部改为官方值（时间/原料/产出逐一对齐官方），
+  消除源码里误导性的「第二套数值」。
+- **电磁科研包配方对齐官方**：`electromagnetic-science-pack` 由「超导体2+蓄电器1+电路板2」修正为
+  官方 `超级电容1 + 蓄电器1 + 电解液25 + 钬溶液25`（10s，电磁工厂），对齐雷神星 Fulgora 资源链。
+- **verify-recipes 新增 DLC 配方单源化守门人**：新增校验「DLC 配方源码与官方一致（34 条比对）」，
+  读取 `GAME_DATA.recipe`（官方）逐一核对 34 条 DLC 配方的源码 time/inp/out，防止未来新增/修改
+  DLC 配方时在源码引入与官方不一致的数值。
+
+**校验**：全量 18 个校验脚本通过，`node build.js` 构建通过。

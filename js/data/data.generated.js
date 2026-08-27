@@ -27,6 +27,7 @@
 //   footprint[building] = { w, h }（占地面积格数，官方 selection_box）
 //   pollution[building] = 官方每分排放（emissions_per_minute.pollution，污染/分），供污染系统单源读取
 //   recycling[item] = { time, out:{outItem:每批期望产出} }（官方 *-recycling 回收配方，供回收机单源读取）
+//   fuelEnergy[item] = 燃料能量密度（项目相对刻度，供 burner 设备单源读取：煤=12 基准）
 const GAME_DATA = {
  "stackSize": {
   "iron-ore": 50,
@@ -2457,6 +2458,15 @@ const GAME_DATA = {
     "nutrients": 6
    }
   },
+  "nutrients-from-bioflux": {
+   "time": 2,
+   "inp": {
+    "bioflux": 5
+   },
+   "out": {
+    "nutrients": 40
+   }
+  },
   "nutrients-from-spoilage": {
    "time": 2,
    "inp": {
@@ -3972,6 +3982,7 @@ const GAME_DATA = {
   "yumako-mash": "biochamber",
   "bioflux": "biochamber",
   "nutrients-from-yumako-mash": "biochamber",
+  "nutrients-from-bioflux": "biochamber",
   "nutrients-from-spoilage": "biochamber",
   "burnt-spoilage": "biochamber",
   "biosulfur": "biochamber",
@@ -5394,6 +5405,10 @@ const GAME_DATA = {
    "zh": "玉玛果泥制营养素",
    "en": "Nutrients from yumako mash"
   },
+  "nutrients-from-bioflux": {
+   "zh": "生物结晶制营养素",
+   "en": "Nutrients from bioflux"
+  },
   "nutrients-from-spoilage": {
    "zh": "变质物制营养素",
    "en": "Nutrients from spoilage"
@@ -5621,34 +5636,48 @@ const GAME_DATA = {
  "turret": {
   "gun-turret": {
    "range": 18,
-   "fireRate": 0.1
+   "fireRate": 0.1,
+   "powerDraw": 0
   },
   "laser-turret": {
    "range": 24,
-   "fireRate": 0.667
+   "fireRate": 0.667,
+   "powerDraw": 9600,
+   "drain": 24,
+   "damage": 14
   },
   "flamethrower-turret": {
    "range": 30,
-   "fireRate": 0.067
+   "fireRate": 0.067,
+   "powerDraw": 0,
+   "damage": 8
   },
   "tesla-turret": {
    "range": 30,
-   "fireRate": 2
+   "fireRate": 2,
+   "powerDraw": 7000,
+   "drain": 1000,
+   "damage": 30
   },
   "rocket-turret": {
    "range": 36,
-   "fireRate": 2
+   "fireRate": 2,
+   "powerDraw": 0
   },
   "railgun-turret": {
    "range": 40,
-   "fireRate": 2.833
+   "fireRate": 2.833,
+   "powerDraw": 10000,
+   "drain": null
   }
  },
  "ammoDamage": {
   "firearm-magazine": 5,
   "piercing-rounds-magazine": 8,
   "uranium-rounds-magazine": 24,
-  "railgun-ammo": 10000
+  "railgun-ammo": 10000,
+  "rocket": 35,
+  "explosive-rocket": 60
  },
  "radar": {
   "range": 14,
@@ -7684,6 +7713,15 @@ const GAME_DATA = {
     }
    ]
   }
+ },
+ "fuelEnergy": {
+  "coal": 12,
+  "wood": 3,
+  "solid-fuel": 50,
+  "rocket-fuel": 500,
+  "nuclear-fuel": 2500,
+  "raw-fish": 4,
+  "pentapod-egg": 5
  },
  "recycling": {
   "scrap": {

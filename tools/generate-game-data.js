@@ -135,15 +135,18 @@ function toOfficialName(projectId) {
   return ITEM_MAP[projectId] || projectId;
 }
 
-// 解析官方 energy_usage 字符串 → kW 数值（"90kW" / "1.2MW" / "420kW"）
+// 解析官方功率字符串 → kW 数值（"90kW"→90 / "1.2MW"→1200 / "420kW"→420 / "10MW"→10000 / "1GW"→1e6）
 function parseKiloWatt(str) {
   if (typeof str !== 'string') return null;
-  const m = /^([\d.]+)\s*(k?W|W)$/i.exec(str.trim());
+  const m = /^([\d.]+)\s*([A-Za-z]+)$/i.exec(str.trim());
   if (!m) return null;
   const v = parseFloat(m[1]);
-  if (m[2].toUpperCase() === 'KW') return v;
-  if (m[2].toUpperCase() === 'W') return v / 1000;
-  return v * 1000; // MW
+  const u = m[2].toUpperCase();
+  if (u === 'W') return v / 1000;
+  if (u === 'KW') return v;
+  if (u === 'MW') return v * 1000;
+  if (u === 'GW') return v * 1000000;
+  return null;
 }
 // 解析能量字符串 → kJ 数值（"5MJ"→5000、"20MJ"→20000、"8GJ"→8000000）
 function parseEnergyKJ(str) {
@@ -250,7 +253,7 @@ const HUB_RECIPE_IDS = new Set(['space-platform-foundation', 'space-platform-sta
 // 此处显式映射到项目专属设备，使 recipeDevice 正确。运行时会优先取 GAME_DATA.recipeDevice。
 const DLC_DEVICE_RECIPES = {
   // 生化炉 biochamber（Space Age organic）
-  'yumako-mash': 'biochamber', 'bioflux': 'biochamber', 'nutrients-from-yumako-mash': 'biochamber', 'nutrients-from-spoilage': 'biochamber', 'burnt-spoilage': 'biochamber',
+  'yumako-mash': 'biochamber', 'bioflux': 'biochamber', 'nutrients-from-yumako-mash': 'biochamber', 'nutrients-from-bioflux': 'biochamber', 'nutrients-from-spoilage': 'biochamber', 'burnt-spoilage': 'biochamber',
   'biosulfur': 'biochamber', 'bioplastic': 'biochamber', 'biolubricant': 'biochamber',
   'agricultural-science-pack': 'biochamber', 'biochamber': 'biochamber',
   'jellynut-processing': 'biochamber', 'biter-egg': 'biochamber', 'nutrients-from-biter-egg': 'biochamber',
@@ -526,41 +529,63 @@ const beaconRange = raw.beacon && raw.beacon.beacon && typeof raw.beacon.beacon.
 
 // ---- 炮塔 / 弹药伤害 ----
 // 2.0 官方类型：gun-turret=ammo-turret、laser-turret=electric-turret、flamethrower-turret=fluid-turret。
-// attack_parameters.cooldown 单位为 tick，÷60 → 秒（两次射击间隔）。官方数据未提供伤害/能耗 → 保持手工。
+// attack_parameters.cooldown 单位为 tick，÷60 → 秒（两次射击间隔）。官方数据未提供伤害 → 保持手工。
+// 能耗单源化（本迭代）：electric-turret 的 powerDraw（射击最大吸电）取官方
+//   energy_source.input_flow_limit（"9600kW"→9600、"7MW"→7000、"10MW"→10000，parseKiloWatt→kW），
+//   drain（待机空载）取官方 energy_source.drain（"24kW"→24、"1MW"→1000）。
+//   ammo/fluid 炮塔（gun/rocket/flamethrower）不吃电（rocket 吃弹药、flamethrower 吃油），powerDraw=0。
+// 炮塔基础数据（射程/冷却/耗电/单发伤害）——全部来自 data.generated.js 单源。
+// 说明：射程/冷却/耗电取官方 factorio-data（attack_parameters.range/cooldown、
+//      energy_source.input_flow_limit/drain）；damage 为「单发基准伤害」。
+//      官方 laser/tesla/flamethrower 为逐 tick 光束/流伤害，项目按「单发伤害」口径
+//      单源化（数值沿用项目既有简化口径，见 combat2-turrets.js），rocket/explosive-rocket
+//      取官方 projectile 单发伤害（200/50），供弹药伤害 ammoDamage 单源读取。
 const turret = {};
 {
   const g = raw['ammo-turret'] && raw['ammo-turret']['gun-turret'];
   if (g && g.attack_parameters) turret['gun-turret'] = {
     range: g.attack_parameters.range,
     fireRate: Math.round(g.attack_parameters.cooldown / 60 * 1000) / 1000,
+    powerDraw: 0,
   };
   const l = raw['electric-turret'] && raw['electric-turret']['laser-turret'];
   if (l && l.attack_parameters) turret['laser-turret'] = {
     range: l.attack_parameters.range,
     fireRate: Math.round(l.attack_parameters.cooldown / 60 * 1000) / 1000,
+    powerDraw: parseKiloWatt(l.energy_source && l.energy_source.input_flow_limit),
+    drain: parseKiloWatt(l.energy_source && l.energy_source.drain),
+    damage: 14,   // 单发激光伤害（项目简化口径，官方 laser-beam 逐 tick 10）
   };
   const f = raw['fluid-turret'] && raw['fluid-turret']['flamethrower-turret'];
   if (f && f.attack_parameters) turret['flamethrower-turret'] = {
     range: f.attack_parameters.range,
     fireRate: Math.round(f.attack_parameters.cooldown / 60 * 1000) / 1000,
+    powerDraw: 0,
+    damage: 8,    // 单发火焰伤害（项目简化口径，官方 flamethrower-fire-stream 逐 tick 3）
   };
   // 太空时代特斯拉炮塔（Fulgora，Space Age 官方 electric-turret 原型）：射程 30、cooldown 120tick=2s
   const t = raw['electric-turret'] && raw['electric-turret']['tesla-turret'];
   if (t && t.attack_parameters) turret['tesla-turret'] = {
     range: t.attack_parameters.range,
     fireRate: Math.round(t.attack_parameters.cooldown / 60 * 1000) / 1000,
+    powerDraw: parseKiloWatt(t.energy_source && t.energy_source.input_flow_limit),
+    drain: parseKiloWatt(t.energy_source && t.energy_source.drain),
+    damage: 30,   // 首目标电弧伤害（项目简化口径，官方 chain-tesla-turret-beam 120）
   };
   // 太空时代火箭炮塔（Space Age 官方 ammo-turret 原型）：射程 36、cooldown 120tick=2s、最小射程 15
   const rt = raw['ammo-turret'] && raw['ammo-turret']['rocket-turret'];
   if (rt && rt.attack_parameters) turret['rocket-turret'] = {
     range: rt.attack_parameters.range,
     fireRate: Math.round(rt.attack_parameters.cooldown / 60 * 1000) / 1000,
+    powerDraw: 0,
   };
   // 太空时代电磁轨道炮塔（Space Age 官方 ammo-turret 原型）：射程 40、cooldown 170tick≈2.833s、最小射程 3.5
   const rg = raw['ammo-turret'] && raw['ammo-turret']['railgun-turret'];
   if (rg && rg.attack_parameters) turret['railgun-turret'] = {
     range: rg.attack_parameters.range,
     fireRate: Math.round(rg.attack_parameters.cooldown / 60 * 1000) / 1000,
+    powerDraw: parseKiloWatt(rg.energy_source && rg.energy_source.input_flow_limit),
+    drain: parseKiloWatt(rg.energy_source && rg.energy_source.drain),
   };
 }
 
@@ -619,6 +644,10 @@ for (const [pid, oid] of Object.entries({
   const proto = raw.ammo && raw.ammo[oid];
   if (proto) { const dmg = findAmmoDamage(proto); if (dmg !== null) ammoDamage[pid] = dmg; }
 }
+// 火箭炮塔弹药：官方 projectile rocket 单发 200 / explosive-rocket 直击 50+范围 100（explosive 面积型更强），
+// 项目按既有「单发基准伤害」简化口径单源下发（见 combat2-turrets.js），不改变既有战斗平衡。
+ammoDamage['rocket'] = 35;
+ammoDamage['explosive-rocket'] = 60;
 
 // ---- 雷达 ----
 // range：max_distance_of_sector_revealed（官方 14）；power：energy_usage（官方 300kW）。
@@ -1178,6 +1207,22 @@ const enemy = {};
   }
 }
 
+// ---- 燃料能量密度（burner 设备用，项目相对刻度）----
+// 各可燃烧燃料的能量密度，供锅炉/熔炉/热能采矿机/火车头/热能机械臂等 burner 设备读取。
+// 官方 data.raw 的 fuel_value 为 MJ 绝对值（如煤 4MJ、固体燃料 12MJ、火箭燃料 100MJ、
+// 核燃料 1.21GJ），本项目采用简化的「相对刻度」燃料值（煤=12 为基准），故此处保持项目相对
+// 值（见 data.js COAL_ENERGY 等），统一经 data.generated.js 单源下发，避免在设备文件里
+// 单独维护第二套数值。核燃料 2500 约 = 官方 1.21GJ 折算；五足虫卵 5 / 生鱼 4 为弱效生物质燃料。
+const fuelEnergy = {
+  'coal': 12,             // 煤（基准，官方 4MJ）
+  'wood': 3,              // 木材（约煤 1/4，官方 2MJ）
+  'solid-fuel': 50,       // 固体燃料（约 4× 煤，官方 12MJ）
+  'rocket-fuel': 500,     // 火箭燃料（约 40× 煤，官方 100MJ）
+  'nuclear-fuel': 2500,   // 核燃料（官方 1.21GJ，约 300× 煤）
+  'raw-fish': 4,          // 生鱼（弱效生物质燃料）
+  'pentapod-egg': 5,      // 五足虫卵（官方 5MJ）
+};
+
 // ---- 汇总新增字段进 GAME_DATA（undefined 字段由 JSON 序列化自动剔除）----
 Object.assign(GAME_DATA, {
   undergroundDist,
@@ -1207,6 +1252,7 @@ Object.assign(GAME_DATA, {
   itemOrder,
   pollution,
   enemy,
+  fuelEnergy,
 });
 
 // ---- recipe ----
@@ -1394,6 +1440,7 @@ const header = [
   '//   footprint[building] = { w, h }（占地面积格数，官方 selection_box）',
   '//   pollution[building] = 官方每分排放（emissions_per_minute.pollution，污染/分），供污染系统单源读取',
   '//   recycling[item] = { time, out:{outItem:每批期望产出} }（官方 *-recycling 回收配方，供回收机单源读取）',
+  '//   fuelEnergy[item] = 燃料能量密度（项目相对刻度，供 burner 设备单源读取：煤=12 基准）',
   'const GAME_DATA = ' + JSON.stringify(GAME_DATA, null, 1) + ';',
   '',
 ].join('\n');
