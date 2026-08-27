@@ -723,3 +723,15 @@
 > - **科技**：由「农业科技」解锁（RECIPE_TECH 配方级门控，官方 tree-seeding 需农业科研包前置，
 >   对齐项目农业科技）；树种子归入「中间产品」制作 Tab（官方 item-group）。
 > - **校验**：verify-dlc 新增树木播种校验（9 项），全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段四.23：太空时代地形配方设备归属修正（Foundation / Ice platform，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **数据对齐修正**：`foundation`（平台基座）/ `ice-platform`（冰面平台）为太空时代低温学流体配方
+>   （foundation=4钨板+4锂板+4碳纤维+20石+20氟酮冷、ice-platform=400氨水+50冰，各 30s），
+>   官方 crafting category 为 cryogenics，须由**低温工厂（cryogenic-plant）**生产。
+>   此前 `DLC_DEVICE_RECIPES` 未收录这两条，生成脚本 fallback 误归为组装机（assembling-machine-1），
+>   现于 generate-game-data.js 的低温工厂映射中补全两配方 → cryogenic-plant，并重新生成 data.generated.js。
+> - **玩法**：修复后平台基座/冰面平台由低温工厂制得（对齐官方低温学链），与「低温学」科技解锁逻辑一致。
+> - **数据单源**：配方数值/耗时/命名仍全部来自 data.generated.js（factorio-data 官方），未单独维护数值表。
+> - **校验**：verify-dlc 的「foundation/ice-platform → 低温工厂」断言通过，全量 18 个校验脚本通过，`node build.js` 构建通过。
