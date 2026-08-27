@@ -725,6 +725,22 @@ for (const bid of ['space-platform-hub', 'thruster', 'asteroid-collector']) {
   ok(!!IT[bid], bid + ' 物品已注册');
 }
 
+// ===== 空间平台枢纽轨道货运（Space Platform Hub Cargo）数据校验 =====
+console.log('\n【空间平台枢纽轨道货运（Hub Cargo）数据】');
+const spSrc = fs.readFileSync(ROOT + '/js/devices/space-platform.js', 'utf8');
+ok(spSrc.includes('hubDispatchCargo'), '平台枢纽轨道货运 hubDispatchCargo 已实现');
+ok(/class SpacePlatformHub extends Assembler[\s\S]*?this\.cargo = \{\}/.test(spSrc), '空间平台中枢含平台货舱 cargo 存储');
+ok(/giveItem\(item\)[\s\S]*?this\.cargo/.test(spSrc), '中枢 giveItem 支持货舱装载（非配方物品入货舱）');
+ok(spSrc.includes('takeCargoItemOf'), '中枢 takeCargoItemOf 取货舱物品已实现');
+ok(spSrc.includes('hubCargoCap'), '中枢 hubCargoCap 货舱容量已实现');
+ok(spSrc.includes('s.cargo = this.cargo'), '中枢货舱随存档序列化');
+ok(spSrc.includes('e.cargo = s.cargo'), '中枢货舱读档恢复');
+ok(spSrc.includes('hub-cargo-dispatch'), '面板含「派发货物到目标星球」');
+ok(spSrc.includes('hub-cargo-load'), '面板含「装入货舱」');
+ok(spSrc.includes('G.orbitalCargo[target]'), '派发复用行星间货运队列 G.orbitalCargo');
+const uiPanelSrc = fs.readFileSync(ROOT + '/js/ui/ui-panel.js', 'utf8');
+ok(uiPanelSrc.includes('hub-cargo-dispatch') && uiPanelSrc.includes('hubDispatchCargo'), 'ui-panel 已接入平台货舱派发动作');
+
 // ===== 物流接驳站（cargo-landing-pad，官方 base 建筑）数据校验 =====
 console.log('\n【物流接驳站 cargo-landing-pad 数据】');
 // 物品/堆叠/命名来自官方

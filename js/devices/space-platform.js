@@ -148,6 +148,8 @@ class AsteroidCollector extends Entity {
 class SpacePlatformHub extends Assembler {
   constructor(type, x, y) {
     super('space-platform-hub', x, y);
+    this.cargo = {};        // 平台货舱：物品 → 数量（轨道货运）
+    this.cargoTarget = null; // 货运目标星球（dispatch 后清空）
   }
   update(dt) {
     this.portFlow();
@@ -186,6 +188,94 @@ class SpacePlatformHub extends Assembler {
   }
   moduleSlotCount() { return GAME_DATA.deviceStats?.[this.type]?.moduleSlots ?? 5; }
   powerDemand() { return this.recipe ? POWER_USE['space-platform-hub'] || 0 : 0; }
+  // 平台货舱（轨道货运）：物品 → 数量，最大容量对齐官方 Cargo 语义（此处适配 50 槽）
+  hubCargoCap() { return 50; }
+  // 往平台货舱装货（物品若非当前配方原料/模块，则入货舱；机械臂/传送带可自动送入）
+  giveItem(item) {
+    if (isModule(item)) {
+      if ((this.modules[item] || 0) >= this.moduleSlotCount()) return false;
+      this.modules[item] = (this.modules[item] || 0) + 1;
+      if (typeof playSfx === 'function') playSfx('module');
+      return true;
+    }
+    // 当前配方所需原料优先进入输入缓存
+    if (this.recipe && RECIPES[this.recipe] && RECIPES[this.recipe].inp[item]) {
+      const rec = RECIPES[this.recipe];
+      if ((this.inp[item] || 0) >= rec.inp[item] * 2) return false;
+      this.inp[item] = (this.inp[item] || 0) + 1;
+      return true;
+    }
+    // 否则进入平台货舱（轨道货运）
+    const total = Object.values(this.cargo).reduce((a, b) => a + b, 0);
+    if (total >= this.hubCargoCap()) return false;
+    this.cargo[item] = (this.cargo[item] || 0) + 1;
+    return true;
+  }
+  peekItem() {
+    // 优先取配方输出
+    for (const k in this.outp) if (this.outp[k] > 0) return k;
+    return null;
+  }
+  takeItem() {
+    for (const k in this.outp) {
+      if (this.outp[k] > 0) { this.outp[k]--; if (this.outp[k] <= 0) delete this.outp[k]; return k; }
+    }
+    return null;
+  }
+  countOf(item) { return this.outp[item] || 0; }
+  takeItemOf(item) {
+    if ((this.outp[item] || 0) > 0) { this.outp[item]--; if (this.outp[item] <= 0) delete this.outp[item]; return item; }
+    return null;
+  }
+  takeCargoItemOf(item) {
+    if ((this.cargo[item] || 0) > 0) { this.cargo[item]--; if (this.cargo[item] <= 0) delete this.cargo[item]; return item; }
+    return null;
+  }
+  cargoTotal() { return Object.values(this.cargo).reduce((a, b) => a + b, 0); }
+  serialize() {
+    const s = super.serialize();
+    s.cargo = this.cargo || {};
+    s.cargoTarget = this.cargoTarget || null;
+    return s;
+  }
+  blueprint() {
+    const s = super.blueprint();
+    return s;
+  }
+  static restore(s) {
+    const e = super.restore(s);
+    e.cargo = s.cargo || {};
+    e.cargoTarget = s.cargoTarget || null;
+    return e;
+  }
+}
+
+
+// ===== 空间平台枢纽轨道货运（Space Age 平台货运）=====
+// 平台中枢可作为轨道货运枢纽：把平台货舱内的货物派发到目标星球轨道，
+// 复用火箭发射的行星间货运队列 G.orbitalCargo[planet]，玩家抵达该星球后自动交付。
+function hubDispatchCargo(e, target) {
+  if (!e || typeof e.cargo !== 'object') return 0;
+  const keys = Object.keys(e.cargo).filter(k => (e.cargo[k] || 0) > 0);
+  if (!keys.length) { if (typeof toast === 'function') toast('平台货舱为空，无可派发货物'); return 0; }
+  if (!target || target === (typeof planetId === 'function' ? planetId() : 'nauvis')) {
+    if (typeof toast === 'function') toast('请选择目标星球（不能派发到当前星球）');
+    return 0;
+  }
+  if (!G.orbitalCargo) G.orbitalCargo = {};
+  if (!G.orbitalCargo[target]) G.orbitalCargo[target] = {};
+  let dispatched = 0;
+  for (const k of keys) {
+    const n = e.cargo[k] || 0;
+    G.orbitalCargo[target][k] = (G.orbitalCargo[target][k] || 0) + n;
+    dispatched += n;
+    delete e.cargo[k];
+  }
+  if (typeof toast === 'function') {
+    const nm = (typeof planetOption === 'function' && planetOption(target)) ? planetOption(target).name : target;
+    toast('🚀 平台货物已派发到' + nm + '轨道：' + dispatched + ' 件（抵达后自动交付）');
+  }
+  return dispatched;
 }
 
 // ===== 渲染：空间平台中枢（蓝灰平台风格）=====
@@ -332,9 +422,39 @@ function hubPanelHtml(e) {
   h += '</div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
   h += '<div class="dim">空间平台中枢：太空时代空间平台核心（8×8），专用于生产平台地基与起始包，是轨道物流的中枢。选中后按 R 旋转朝向。</div>';
+
+  // ===== 平台货舱 / 轨道货运 =====
+  {
+    const cargoTotal = e.cargoTotal ? e.cargoTotal() : 0;
+    h += '<div class="sec">平台货舱（轨道货运）</div>';
+    h += row('货舱', cargoTotal + ' / ' + (e.hubCargoCap ? e.hubCargoCap() : 50), 'output');
+    const ckeys = Object.keys(e.cargo || {}).filter(k => (e.cargo[k] || 0) > 0);
+    if (ckeys.length) {
+      for (const k of ckeys) {
+        h += '<div class="row">' + (ITEMS[k] ? ITEMS[k].name : k) + ' ×' + e.cargo[k] +
+          ' <button data-action="hub-cargo-take" data-id="' + k + '">取出</button></div>';
+      }
+    } else {
+      h += '<div class="dim">货舱为空：可把平台产物或任意物品装入，派发到其它星球轨道。</div>';
+    }
+    // 装载当前选中物品（点击左栏背包物品后）
+    h += '<div class="dim">先点击左栏背包物品，再点「装入货舱」。</div>';
+    h += '<button data-action="hub-cargo-load" data-id="__held__">装入货舱（选中物品 ×1）</button>';
+    // 目标星球
+    const curPlanet = (typeof planetId === 'function') ? planetId() : 'nauvis';
+    h += '<div class="row">目标星球 <select data-action="hub-cargo-target" style="margin:2px 0 6px;max-width:100%">';
+    for (const po of (typeof PLANET_OPTIONS !== 'undefined' ? PLANET_OPTIONS : [])) {
+      if (po.v === curPlanet) continue;
+      const sel = e.cargoTarget === po.v ? ' selected' : '';
+      h += '<option value="' + po.v + '"' + sel + '>' + po.name + '</option>';
+    }
+    h += '</select></div>';
+    h += '<button data-action="hub-cargo-dispatch">🚀 派发货物到目标星球</button>';
+  }
   h += circuitPanelHtml(e, 'hub');
   return h;
 }
+
 function hubPanelLive(e, api) {
   if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) { api.status('已暂停：电路条件不满足', 'warn'); return; }
   api.set('power', powerStatusLiveHtml(e));

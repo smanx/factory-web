@@ -691,6 +691,40 @@ function initPanelEvents() {
         else toast('放不进去了');
         // 装入模块后整面板重渲染，刷新模块按钮数量与速率显示
         if (moved > 0 && isModule(id)) { renderPanel(true); return; }
+      } else if (act === 'hub-cargo-load') {
+        // 平台枢纽货舱：把当前选中物品装入货舱（轨道货运）
+        const hub = G.panelEnt;
+        if (!hub || typeof hub.giveItem !== 'function' || typeof hub.cargo !== 'object') return;
+        const held = (typeof selItem === 'function') ? selItem() : null;
+        if (!held) { toast('请先在左栏背包中选中要装入的物品'); return; }
+        if (invCount(held) <= 0) { toast('背包中没有' + (ITEMS[held] ? ITEMS[held].name : held)); return; }
+        // 平台货舱不接受流体/模块（模块走模块槽、流体走管道）
+        if ((typeof FLUIDS !== 'undefined' && FLUIDS.indexOf(held) >= 0) || (typeof isModule === 'function' && isModule(held))) { toast('货舱只存实体物品'); return; }
+        if (hub.giveItem(held)) { invTake(held, 1); if (typeof playSfx === 'function') playSfx('pick'); }
+        else toast('货舱已满');
+        if (typeof updateMachineLive === 'function') updateMachineLive();
+        else renderPanel(false);
+      } else if (act === 'hub-cargo-take') {
+        // 平台货舱：取出指定物品 1 件回背包
+        const hub = G.panelEnt;
+        if (!hub || typeof hub.takeCargoItemOf !== 'function') return;
+        if (hub.takeCargoItemOf(id)) { invAdd(id, 1); if (typeof playSfx === 'function') playSfx('pick'); }
+        else toast('货舱没有' + (ITEMS[id] ? ITEMS[id].name : id));
+        if (typeof updateMachineLive === 'function') updateMachineLive();
+        else renderPanel(false);
+      } else if (act === 'hub-cargo-target') {
+        // 平台货舱：记录目标星球选择（用于派发）
+        const hub = G.panelEnt;
+        if (hub) { hub.cargoTarget = btn.value || null; }
+      } else if (act === 'hub-cargo-dispatch') {
+        // 平台货舱：把货舱货物派发到目标星球轨道（复用行星间货运队列）
+        const hub = G.panelEnt;
+        if (!hub || typeof hubDispatchCargo !== 'function') return;
+        const tgt = (hub.cargoTarget) || (btn.dataset && btn.dataset.target) || null;
+        if (hubDispatchCargo(hub, tgt) > 0) {
+          if (typeof updateMachineLive === 'function') updateMachineLive();
+          else renderPanel(false);
+        }
       } else if (act === 'takein') {
         const mch = G.panelEnt;
         if (btn.dataset.modules === '1') {
