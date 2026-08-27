@@ -408,7 +408,7 @@ function updateInvLive() {
     }
     el.textContent = '';
     el.appendChild(img);
-    el.appendChild(document.createTextNode(ITEMS[id].name + (n > 0 ? ' ×' + n : '')));
+    el.appendChild(document.createTextNode(n > 0 ? ' ×' + n : '')); // 背包物品仅显示图标（名称悬浮显示）
   });
   // 手搓配方原料可用性：<span class="ing" data-itemid="K" data-need="N">...名称 have/N</span>
   body.querySelectorAll('#inv-recipes .ing[data-itemid][data-need]').forEach(el => {
@@ -479,10 +479,10 @@ function updateMachineLive() {
   }
 }
 
-function chip(id, n) {
+function chip(id, n, iconOnly) {
   return '<span class="chip" data-itemid="' + id + '" data-tip="' + itemTip(id) + '" data-itemsearch="' +
     (ITEMS[id].name + ' ' + id).toLowerCase().replace(/"/g, '') + '"><img src="' + iconDataURL(id) + '">' +
-    ITEMS[id].name + (n !== undefined ? ' ×' + n : '') + '</span>';
+    (iconOnly ? (n !== undefined ? ' ×' + n : '') : ITEMS[id].name + (n !== undefined ? ' ×' + n : '')) + '</span>';
 }
 
 function htmlInventory() {
@@ -550,7 +550,7 @@ function htmlInventory() {
   for (const id in ITEMS) {
     const n = invCount(id);
     if (n > 0) {
-      h += chip(id, n);
+      h += chip(id, n, true); // 背包物品仅显示图标，名称悬浮显示
       // 手雷/集束手雷可在背包中直接投掷（对齐《异星工厂》投掷物）
       if (id === 'grenade' || id === 'cluster-grenade') {
         h += '<button class="usebtn" data-action="use-grenade" data-type="' + id + '" title="投掷' + ITEMS[id].name + '（向当前朝向投掷，造成范围爆炸）">💣 投掷</button>';
