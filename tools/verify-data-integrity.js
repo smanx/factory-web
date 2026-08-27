@@ -157,6 +157,26 @@ const buildNoRecipe = Object.keys(BUILD_DEFS).filter(id => {
 check('可建造建筑均有配方（例外=' + buildNoRecipe.length + '）', buildNoRecipe.length === 0,
   buildNoRecipe.length ? JSON.stringify(buildNoRecipe) : '');
 
+
+// ---- 6) 物品 ID 与官方对齐（零非官方物品，仅保留 6 个创造/虚空测试物品 + 显式白名单内部件）----
+console.log('\n【物品 ID 对齐官方（factorio-data 原型名，零冗余）】');
+const raw = require('./convert-data.js');
+const officialNameSet = new Set();
+for (const [type, tbl] of Object.entries(raw)) {
+  if (typeof tbl !== 'object' || !tbl) continue;
+  for (const name of Object.keys(tbl)) officialNameSet.add(name);
+}
+// 6 个创造/虚空测试物品（Debug 面板发放，非生存物品，官方无对应，允许保留）
+const creativeVoid = new Set(['creative-chest','void-chest','creative-pipe','void-pipe','creative-belt','void-belt']);
+// 显式白名单：项目内部表示/官方 locale 条目（非官方原型名但属官方概念）
+//   rocket-body   —— 火箭发射井内部组装表示（对应官方 rocket-part 组装流程）
+//   satellite     —— 官方卫星（locale 有官方条目，2.0 为火箭载荷）
+const allowInternal = new Set(['rocket-body', 'satellite']);
+const nonOfficial = Object.keys(ITEMS).filter(id =>
+  !creativeVoid.has(id) && !officialNameSet.has(id) && !allowInternal.has(id));
+check('非创造/虚空物品均使用官方原型名（非官方=' + nonOfficial.length + '）', nonOfficial.length === 0,
+  nonOfficial.length ? JSON.stringify(nonOfficial) : '');
+
 console.log('\n----------------------------------------');
 console.log('通过 ' + passCount + ' 项，失败 ' + failCount + ' 项');
 process.exit(failCount === 0 ? 0 : 1);
