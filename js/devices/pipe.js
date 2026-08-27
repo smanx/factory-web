@@ -110,7 +110,7 @@ function drawPipe(ctx, e, gx, gy, dir, alpha) {
         nb instanceof ChemicalPlant || nb instanceof Assembler || nb instanceof HeatExchanger ||
         (nb instanceof StorageTank && (!nb.isPortCell || nb.isPortCell(gx, gy))) ||
         nb instanceof PipeToGround || nb instanceof FluidPump ||
-        nb.type === 'one-way-valve' || nb.type === 'overflow-valve' || nb.type === 'top-up-valve') {
+        (nb && (nb.type === 'one-way-valve' || nb.type === 'overflow-valve' || nb.type === 'top-up-valve'))) {
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.lineTo(cx + dx * TILE / 2, cy + dy * TILE / 2);
