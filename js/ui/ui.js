@@ -620,63 +620,13 @@ function htmlInvSlots() {
 }
 
 function htmlInventory() {
-  let h = '<div class="sec">护甲</div><div class="armor-row">';
-  // 当前穿戴护甲展示与脱卸
-  h += '<div class="armor-slot' + (G.armor ? ' equipped' : '') + '" data-tip="' + (G.armor ? (ITEMS[G.armor].name + '|当前穿戴的护甲，点击脱卸') : '未穿戴护甲|护甲可减少所受伤害') + '" data-armor="unequip">' +
-    (G.armor ? '<img src="' + iconDataURL(G.armor) + '"><b>' + ITEMS[G.armor].name + '</b>' : '<span>🛡 未穿戴</span>') + '</div>';
-  // 可装备的护甲列表（含模块化护甲）
-  for (const aid of ['light-armor', 'heavy-armor', 'modular-armor', 'power-armor', 'power-armor-mk2']) {
-    const n = invCount(aid);
-    const equipped = G.armor === aid;
-    const can = n > 0 && !equipped;
-    const tip = ITEMS[aid].desc + (ARMORS[aid].grid ? '（装备网格 ' + ARMORS[aid].grid + '×' + ARMORS[aid].grid + '）' : '');
-    h += '<button class="rcbtn armor-eq' + (can ? '' : ' disabled') + '" data-armor="' + aid + '"' +
-      ' data-tip="' + ITEMS[aid].name + '|' + tip + '">' +
-      '<img src="' + iconDataURL(aid) + '">' + ITEMS[aid].name + (equipped ? ' ✔' : (n > 0 ? ' ×' + n : '')) + '</button>';
-  }
-  h += '</div><div class="dim">护甲可减少所受伤害。点击下方护甲图标即可装备（需在背包中拥有），再次点击已穿戴护甲可脱卸。模块化护甲自带装备网格，可在网格中安装个人装备件。</div>';
-  // 装备网格（当前穿戴的模块化护甲）
-  if (G.armor && ARMORS[G.armor] && ARMORS[G.armor].grid) {
-    h += '<div class="sec">装备网格（' + G.armor + ' ' + ARMORS[G.armor].grid + '×' + ARMORS[G.armor].grid + '）</div>';
-    if (typeof equipGridHtml === 'function') h += equipGridHtml();
-    else h += '<div class="dim">（装备网格组件未加载）</div>';
-  }
-  // 个人电网状态（模块化护甲时展示）
-  if (G.armor && ARMORS[G.armor] && ARMORS[G.armor].grid && typeof equipPowerHtml === 'function') {
-    h += equipPowerHtml();
-  }
-  // 个人机器人港装备（施工机器人）
-  if (typeof hasPersonalRoboport === 'function') {
-    const equippedPR = hasPersonalRoboport();
-    const prType = G && G.personalRoboport === 'mk2' ? 'personal-roboport-mk2-equipment' : 'personal-roboport-equipment';
-    const prCount = invCount('personal-roboport-equipment');
-    const pr2Count = invCount('personal-roboport-mk2-equipment');
-    const showType = equippedPR ? prType : (pr2Count > 0 ? 'personal-roboport-mk2-equipment' : 'personal-roboport-equipment');
-    const shown = ITEMS[showType];
-    const rInfo = typeof constrRoboportInfo === 'function' ? constrRoboportInfo() : null;
-    h += '<div class="sec">装备（施工）</div><div class="armor-row">';
-    h += '<div class="armor-slot' + (equippedPR ? ' equipped' : '') + '" data-tip="' + shown.name + '|' + shown.desc + '" data-roboport="toggle">' +
-      (equippedPR ? '<img src="' + iconDataURL(prType) + '"><b>已装备</b>' : '<span>🔧 未装备</span>') + '</div>';
-    // Mk1 装备按钮
-    h += '<button class="rcbtn armor-eq' + (!equippedPR && prCount > 0 ? '' : ' disabled') + '" data-roboport="toggle"' +
-      ' data-tip="' + ITEMS['personal-roboport-equipment'].name + '|' + ITEMS['personal-roboport-equipment'].desc + '">' +
-      '<img src="' + iconDataURL('personal-roboport-equipment') + '">' + ITEMS['personal-roboport-equipment'].name + (G && G.personalRoboport === true ? ' ✔' : (prCount > 0 ? ' ×' + prCount : '')) + '</button>';
-    // Mk2 装备按钮
-    h += '<button class="rcbtn armor-eq' + (!equippedPR && pr2Count > 0 ? '' : ' disabled') + '" data-roboport="toggle2"' +
-      ' data-tip="' + ITEMS['personal-roboport-mk2-equipment'].name + '|' + ITEMS['personal-roboport-mk2-equipment'].desc + '">' +
-      '<img src="' + iconDataURL('personal-roboport-mk2-equipment') + '">' + ITEMS['personal-roboport-mk2-equipment'].name + (G && G.personalRoboport === 'mk2' ? ' ✔' : (pr2Count > 0 ? ' ×' + pr2Count : '')) + '</button>';
-    h += '</div><div class="dim">装备个人机器人港 + 背包携带施工机器人后，蓝图粘贴自动生成建造幽灵、红图框选生成拆除标记，由施工机器人自动施工/拆除。' +
-      (rInfo ? '当前工作范围 <b>' + rInfo.range + '</b> 格、最多 <b>' + rInfo.maxActive + '</b> 台机器人同时施工（II 型更大更强）。' : '') + '</div>';
-  }
-  h += '<div class="sec">背包（' + INV_SLOT_COUNT + ' 格，对齐《异星工厂》有限背包。点击任意物品选中：设备点地图可直接建造；材料点地图无法建造。选中后可点底部快捷栏放入，Q/E 取消）</div>';
+  let h = '<div class="sec">背包（' + INV_SLOT_COUNT + ' 格，对齐《异星工厂》有限背包。点击任意物品选中：设备点地图可直接建造；材料点地图无法建造。选中后可点底部快捷栏放入，Q/E 取消）</div>';
   const iq = (G.invItemQ || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   h += '<input id="inv-item-search" class="inv-search" type="text" placeholder="搜索物品（输入名称）" autocomplete="off" value="' + iq + '">';
   h += htmlInvSlots();
   return h;
 }
 
-// 物流区域（对齐《异星工厂》Personal logistic request + Trash slots）：
-// 中间区域，玩家设置物流请求量 / 标记丢弃物品，由物流机器人自动配送或带走。
 function htmlLogistics() {
   let h = '<div class="sec">个人物流请求 <span class="dim">（需物流网络科技 + 机器人港）</span></div>';
   h += '<div class="logi-req" id="logi-req">';
