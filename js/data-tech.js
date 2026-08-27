@@ -142,6 +142,7 @@ const TECH_REQ = {
   'concrete': 'concrete',              // 混凝土：需「混凝土」科技（对齐原版 Concrete）
   'refined-concrete': 'concrete',      // 精炼混凝土：需「混凝土」科技
   'hazard-concrete': 'concrete',       // 警示混凝土：需「混凝土」科技
+  'refined-hazard-concrete': 'concrete',   // 精炼警示混凝土：需「混凝土」科技
   'landfill': 'landfill'               // 填海料：需「填海」科技（对齐原版 Landfill）
 };
 // ===== 核能科技门控 =====

@@ -31,7 +31,7 @@ const DBG_GIVE_GROUPS = [
     ['iron-plate', 200], ['copper-plate', 200], ['steel-plate', 100], ['stone-brick', 100],
     ['iron-gear-wheel', 100], ['iron-stick', 100], ['copper-cable', 100],
     ['plastic-bar', 100], ['wood', 100], ['concrete', 100], ['refined-concrete', 100],
-    ['hazard-concrete', 100], ['stone-path', 100], ['landfill', 100], ['artificial-yumako-soil', 100], ['overgrowth-yumako-soil', 100]
+    ['hazard-concrete', 100], ['refined-hazard-concrete', 100], ['stone-path', 100], ['landfill', 100], ['artificial-yumako-soil', 100], ['overgrowth-yumako-soil', 100]
   ]],
   ['电路·元件', [
     ['electronic-circuit', 100], ['red-wire', 100], ['green-wire', 100],
@@ -103,7 +103,6 @@ const DBG_GIVE_GROUPS = [
   ]],
   ['电力·能源', [
     ['boiler', 20], ['steam-engine', 20], ['offshore-pump', 20],
-    ['solar-panel', 20], ['accumulator', 20], ['passive-power', 20],
     ['small-electric-pole', 50], ['medium-electric-pole', 50], ['big-electric-pole', 50], ['substation', 20]
   ]],
   ['流体·管道', [

@@ -325,6 +325,37 @@ function drawChunkTerrainInto(ctx, cx, cy) {
         ctx.closePath(); ctx.fill();
         continue;
       }
+      if (t === T_REF_HAZARD) {
+        // 精炼警示混凝土：精炼混凝土底（更亮）+黑黄警示条纹，行走加速更快
+        const v = hash2(tx, ty);
+        ctx.fillStyle = v > 0.5 ? '#b8b020' : '#b0aa1e';
+        ctx.fillRect(px, py, TILE, TILE);
+        ctx.strokeStyle = 'rgba(70,72,80,.55)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
+        // 十字石板缝
+        ctx.strokeStyle = 'rgba(60,62,70,.4)';
+        ctx.beginPath();
+        ctx.moveTo(px + TILE / 2, py); ctx.lineTo(px + TILE / 2, py + TILE);
+        ctx.moveTo(px, py + TILE / 2); ctx.lineTo(px + TILE, py + TILE / 2);
+        ctx.stroke();
+        // 黑黄斜向条纹
+        ctx.fillStyle = 'rgba(30,30,34,.8)';
+        const bw = TILE / 2.4;
+        ctx.beginPath();
+        ctx.moveTo(px, py + bw); ctx.lineTo(px + bw, py); ctx.lineTo(px, py);
+        ctx.closePath(); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(px + TILE, py + bw); ctx.lineTo(px + TILE - bw, py); ctx.lineTo(px + TILE, py);
+        ctx.closePath(); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(px, py + TILE - bw); ctx.lineTo(px + bw, py + TILE); ctx.lineTo(px, py + TILE);
+        ctx.closePath(); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(px + TILE, py + TILE - bw); ctx.lineTo(px + TILE - bw, py + TILE); ctx.lineTo(px + TILE, py + TILE);
+        ctx.closePath(); ctx.fill();
+        continue;
+      }
       if (t === T_PATH) {
         const v = hash2(tx, ty);
         ctx.fillStyle = v > 0.5 ? '#a49c94' : '#9c948c';

@@ -322,6 +322,7 @@ const RECIPES = {
   'concrete':        { time: 10, inp: { 'iron-ore': 1, 'stone-brick': 5, 'water': 100 }, out: { 'concrete': 10 } },
   'refined-concrete':        { time: 15, inp: { 'concrete': 20, 'iron-stick': 8, 'steel-plate': 1, 'water': 100 }, out: { 'refined-concrete': 10 } },
   'hazard-concrete':        { time: 0.25, inp: { 'concrete': 10 }, out: { 'hazard-concrete': 10 } },
+  'refined-hazard-concrete':{ time: 0.25, inp: { 'refined-concrete': 10 }, out: { 'refined-hazard-concrete': 10 } },
   'stone-path':        { time: 0.5, inp: { 'stone-brick': 2 },                                      out: { 'stone-path': 4 } },
   'landfill':        { time: 0.5, inp: { 'stone': 50 }, out: { 'landfill': 1 } },
   // ===== 模块化护甲（对齐《异星工厂》Modular armor）=====
@@ -471,7 +472,7 @@ const RAW_RESOURCES = ['iron-ore', 'copper-ore', 'coal', 'stone', 'uranium-ore',
 function itemNoRecipeReason(id) {
   if (FLUIDS.indexOf(id) >= 0) return '流体，无法合成，需开采或生产获得';
   if (RAW_RESOURCES.indexOf(id) >= 0) return '天然资源，无合成配方，需开采/采集获得';
-  if (id.indexOf('creative-') === 0 || id.indexOf('void-') === 0 || id === 'passive-power') return '测试物品，无合成配方';
+  if (id.indexOf('creative-') === 0 || id.indexOf('void-') === 0 ) return '测试物品，无合成配方';
   if (id === 'rocket-part') return '由火箭发射井逐件组装获得，无手工配方';
   if (id === 'space-science-pack') return '卫星发射后由火箭发射井产出，无合成配方';
   if (id === 'depleted-uranium-fuel-cell') return '核燃料棒反应后的副产物，无法合成';

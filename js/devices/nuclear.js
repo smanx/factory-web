@@ -783,6 +783,7 @@ function drawHeatPipe(ctx, e, gx, gy, dir, alpha) {
   // 管道尺寸：比原实现更细，观感更接近细管道
   const R = 7;      // 管体外半径（原 11，调细）
   const rIn = 3.5;  // 导热芯半径（原 6.5，调细）
+  const BORDER_W = 0.75; // 外圈边框线宽（原 1.5，改为 1/2）
 
   // 连线端点取相邻格中心，让相邻格的管段在连接处完全重合、无缝衔接
   const cnP = [cx, cy - TILE];
@@ -834,16 +835,32 @@ function drawHeatPipe(ctx, e, gx, gy, dir, alpha) {
     ctx.arc(cx, cy, R, 0, 7);
     ctx.fill();
   }
-  // ---- 外壳描边（连续路径，避免每格各自描边导致连接处出现环痕）----
+  // ---- 外壳描边（外圈边框）：只在导热管自由端绘制，连接处不显示外圈边框，
+  //      使相邻导热管在连接处融为一体、不再被边框切割；线宽已按需求减半（原 1.5 → 0.75）----
   ctx.strokeStyle = '#1c1710';
-  ctx.lineWidth = 1.5;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
+  ctx.lineWidth = BORDER_W;
   for (const s of segs) {
-    ctx.beginPath();
-    ctx.moveTo(s[0], s[1]);
-    ctx.lineTo(s[2], s[3]);
-    ctx.stroke();
+    for (const end of [[s[0], s[1]], [s[2], s[3]]]) {
+      const ex = end[0], ey = end[1];
+      // 判断该端点是否为"自由端"（未连接方向），连接处/路口不画外圈边框
+      let freeEnd;
+      if (ex === cx && ey === cy) {
+        freeEnd = false;                      // 本格中心：连接处
+      } else if (ex < cx) {
+        freeEnd = !cw;                        // 西向
+      } else if (ex > cx) {
+        freeEnd = !ce;                        // 东向
+      } else if (ey < cy) {
+        freeEnd = !cn;                        // 北向
+      } else {
+        freeEnd = !cs;                        // 南向
+      }
+      if (freeEnd) {
+        ctx.beginPath();
+        ctx.arc(ex, ey, R, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
   }
   // ---- 内芯导热管（达到发光温度才发热变亮）----
   ctx.strokeStyle = glow ? '#e8a14a' : '#5a5245';
