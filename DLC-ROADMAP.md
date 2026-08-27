@@ -556,3 +556,21 @@
 >   设备归属经 DLC_DEVICE_RECIPES 路由生化炉，未单独维护数值表。
 > - 校验：verify-dlc 新增变质物回收链校验（8 项），verify-data-integrity 配方键映射补充 2 项动态键，
 >   全量 18 个校验脚本通过，构建通过。
+
+### 阶段四.16：太空时代堆叠机械臂（Space Age Stack inserter，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **物品/设备**：`stack-inserter`（堆叠机械臂，官方 Space Age Stack inserter）已接入，堆叠(=50) /
+>   血量(=160) / 命名（堆叠机械臂/Stack inserter）全部来自 GAME_DATA（factorio-data 官方），
+>   未单独维护数值表。
+> - **机械臂参数单源化**：生成脚本 `inserterStats` 新增 `stack_size_bonus` 与 `bulk=true` 兜底——
+>   stack-inserter 抓取堆叠 = 4（官方 `stack_size_bonus=4`）、旋转/伸缩速度 0.04/0.1（官方 rotation_speed/extension_speed）；
+>   同时顺带修正集装箱机械臂 `bulk-inserter` 的抓取堆叠单源（官方 `bulk=true` → 3），二者相对倍率均来自官方。
+> - **配方**：官方 Space Age 配方 = 1 集装箱机械臂 + 1 处理器 + 2 碳纤维 + 10 果冻 → 1（0.5s），
+>   由 GAME_DATA 单源自动生成（组装机装配方），未手工维护数值表。
+> - **玩法**：堆叠机械臂为太空时代物流终极机械臂——一次抓取 4 个同种物品并分层叠放传送带（官方
+>   `stack_size_bonus=4`、`filter_count=5` 过滤槽），由集装箱机械臂升级而来，复用完整机械臂链路
+>   （电路网络/过滤/旋转翻转/信号塔），物流吞吐比集装箱机械臂更高。
+> - **科技**：新增「堆叠机械臂」科技（stack-inserter-tech，需物流 III+电磁学，官方前置 logistics3+碳纤维，
+>   此处适配为物流 III+电磁学），解锁堆叠机械臂；数据校验并入 verify-dlc（新增 14 项），
+>   全量 18 个校验脚本通过，`node build.js` 构建通过。

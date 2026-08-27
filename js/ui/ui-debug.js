@@ -87,7 +87,7 @@ const DBG_GIVE_GROUPS = [
   ]],
   ['机械臂', [
     ['burner-inserter', 50], ['inserter', 50], ['long-handed-inserter', 50], ['fast-inserter', 50],
-    ['bulk-inserter', 50]
+    ['bulk-inserter', 50], ['stack-inserter', 50]
   ]],
   ['生产·建筑', [
     ['burner-mining-drill', 20], ['electric-mining-drill', 20], ['big-mining-drill', 20], ['pumpjack', 20],

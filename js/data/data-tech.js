@@ -156,6 +156,7 @@ const TECH_REQ = {
   // ===== 组装机 / 集装箱机械臂科技门控（对齐《异星工厂》Automation 3 / Logistics 3） =====
   'assembling-machine-3': 'automation3',
   'bulk-inserter': 'logistics3',
+  'stack-inserter': 'stack-inserter-tech',
   // ===== 机械臂进阶科技门控（对齐《异星工厂》科技树） =====
   // 原版：高速机械臂需「自动化 II」；加长机械臂需「物流 II」。
   // 此前这两类机械臂开局即可用，现改为对应科技解锁，让物流/自动化节奏更贴近原版进阶曲线（旧档经迁移自动补完）。
