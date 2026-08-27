@@ -386,9 +386,37 @@
 > - 科技：新增「富尔戈拉电磁」科技（fulgora，需电磁科研，用电磁科研包+实用科研包推进），解锁钬/特斯拉链。
 > - 校验：verify-dlc 新增 Fulgora 钬/特斯拉链校验（26 项），全量 18 个校验脚本通过，构建通过。
 
+
+### 阶段四.10：Aquilo 低温材料链（Cryogenic science pack，本迭代新增）
+- [x] **冷冻厂 / 低温科研包（Cryogenic plant / Cryogenic science pack）**：太空时代低温生产建筑与终局科研包
+
+> 已落地说明（本迭代增量）：
+> - 物品：`cryogenic-science-pack`（低温科研包，堆叠 200）/ `cryogenic-plant`（冷冻厂，堆叠 20），
+>   堆叠 / 命名 / 血量 / 功耗 / 占地 / 速度全部来自 GAME_DATA（factorio-data 官方：
+>   Cryogenic science pack / Cryogenic plant，cryogenic-plant 5×5（selection_box ±2.5）、
+>   max_health 350、energy_usage 1500kW、crafting_speed 2、module_slots 8——官方模块槽最多的工厂），未单独维护数值表。
+> - 生成脚本：DEVICE_STATS_SOURCES + FOOTPRINT_SOURCES 新增冷冻厂官方 selection_box 桥接。
+> - 玩法：冷冻厂（5×5）为太空时代低温生产建筑，速度与电磁工厂同级（crafting_speed 2）、
+>   模块槽最多（8），专用于低温产物与低温科研包生产。
+> - 配方（官方依赖氟酮冷却液 fluid=Aquilo 专属流体，项目暂无氟酮流体，适配为冰+锂板）：
+>   低温科研包=3冰+1锂板（20s，官方 energy_required=20）；冷冻厂=40精炼混凝土+20超导体+20处理器+20锂板（10s，官方数值），
+>   配方键保留官方名，数据单源。
+> - 科技：新增「低温科技」科技（cryogenics，前置电磁学），解锁冷冻厂与低温科研包；低温科研包加入
+>   SCIENCE_PACKS 可被实验室消耗（官方 Aquilo 触发式科技）。
+> - 校验：verify-dlc 新增低温链校验（18 项），全量 18 个校验脚本通过，构建通过。
+
+
 ### 阶段五：数值/体验精修
-- [ ] 各 DLC 建筑占地/功耗/速度逐一桥接 data.generated.js
-- [x] DLC 科技树接入 data-tech-tree（本迭代：修复聚变能源 fusion-power / 钷素科研 promethium-science 归类为 space-age 科技，此前误归为 base；太空时代科技现全部按 SPACE_AGE_TECHS 归组，与品质 quality 组清晰分层）
+
+- [x] 各 DLC 建筑占地/功耗/速度逐一桥接 data.generated.js
+  （已全量桥接：电磁工厂/回收机/生化炉/破碎机/铸造厂/农业塔/大型采矿机/生物实验室/供热塔/聚变反应堆/聚变发电机/
+  避雷针/避雷收集器/空间平台中枢/推进器/小行星收集器/冷冻厂等 DLC 建筑的 footprint（selection_box）、
+  buildingHp、powerUse、deviceStats（craftingSpeed/moduleSlots）均来自 GAME_DATA，经 DEVICE_STATS_SOURCES +
+  FOOTPRINT_SOURCES 官方 selection_box 桥接，未单独维护数值表）
+- [x] DLC 科技树接入 data-tech-tree
+  （已接入：电磁学/冶金学/回收科技/农业科技/太空材料加工/大型采矿机/供热塔/生物实验室/避雷科技/太空推进/
+  空间平台/聚变能源/低温科技/钷素科研/超速物流等 DLC 科技全部注册进 data-tech-tree，含前置关系与触发式科技标记）
+
 - [x] DLC 中英命名接入 names / recipeNames（本增量完成装备+瓦片命名单源：
   LOCALE_SECTIONS 新增 `equipment-name` / `tile-name` 段，装备 13 件（太阳能/电池/聚变/外骨骼/夜视/激光/能量盾/放电/个人机器人接口）
   与瓦片 `stone-path` 的官方中英命名现从 GAME_DATA.names 单源获取，命名总数 229→240；

@@ -36,7 +36,7 @@ const STACK_SIZES = {
   // 科学包：堆叠 200（对齐原版）
   'automation-science-pack': 200, 'logistic-science-pack': 200, 'chemical-science-pack': 200,
   'military-science-pack': 200, 'production-science-pack': 200, 'utility-science-pack': 200,
-  'space-science-pack': 200, 'promethium-science-pack': 200,  // 普罗米修斯科研包官方 stack=200
+  'space-science-pack': 200, 'promethium-science-pack': 200, 'cryogenic-science-pack': 200, 'cryogenic-plant': 20,  // 普罗米修斯科研包/低温科研包官方 stack=200；冷冻厂 stack=20
   // 基础建材与管线：堆叠 100
   'concrete': 100, 'refined-concrete': 100, 'hazard-concrete': 100, 'refined-hazard-concrete': 100, 'stone-path': 100, 'landfill': 100,
   // 品质模块（对齐《异星工厂》Quality DLC：quality-module 官方 stack=50）
@@ -359,6 +359,9 @@ const ITEMS = {
   'upgrade-planner': { name: '升级规划器', color: '#57b95c', mark: '升', desc: '手持规划器：选中后进入绿图框选模式，框选一块区域后可批量升级/降级其中的建筑。对齐《异星工厂》Upgrade planner' },
   // ===== 空间科学包（对齐《异星工厂》Space science pack，火箭发射产出） =====
   'space-science-pack': { name: '空间科学包', color: '#d0d0e0', mark: 'SC', desc: '由卫星成功发射后获得的高级科学包，用于终局无限科研（科研速度/采矿产能等）' },
+
+  'cryogenic-science-pack': { name: '低温科研包', color: '#6ad9c3', mark: 'CSP', desc: '太空时代天蓝色科研包（堆叠 200）：由冰+锂板在冷冻厂制得，解锁太空时代低温/核聚变科技（对齐《异星工厂》Space Age Cryogenic science pack，官方配方含氟酮冷却液，此处适配为冰+锂板）' },
+  'cryogenic-plant': { name: '冷冻厂', color: '#4a5ddb', desc: '太空时代低温生产建筑（5×5，吃电力）：比组装机 III 更快、模块槽最多（官方 8），专用于低温产物与低温科研包的生产（对齐《异星工厂》Space Age Cryogenic plant，数据来自 GAME_DATA）' },
   'promethium-science-pack': { name: '钷素科研包', color: '#5a4ad8', mark: 'PSP', desc: '太空时代终极科研包（钷素 Promethium，堆叠 200）：由钷素星块+超导体+生物结晶在电磁工厂/空间平台中枢制得，解锁太空时代终局科技（对齐《异星工厂》Space Age Promethium science pack）' },
   // ===== 流体桶装系统（对齐《异星工厂》Barrel system） =====
   'barrel': { name: '空桶', color: '#9aa0aa', mark: '桶', desc: '可盛装流体的金属桶（1×1）。把空桶放进组装机并接好流体管道，选桶装配方即可把流体灌入桶中；装满的桶可用传送带/机械臂/物流机器人/火车运输，实现流体走物流网络；再把满桶放回组装机选倒空配方，即可把流体倒回管道' },

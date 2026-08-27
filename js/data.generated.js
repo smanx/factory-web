@@ -274,6 +274,8 @@ const GAME_DATA = {
   "deconstruction-planner": 1,
   "upgrade-planner": 1,
   "space-science-pack": 200,
+  "cryogenic-science-pack": 200,
+  "cryogenic-plant": 20,
   "promethium-science-pack": 200,
   "barrel": 10,
   "water-barrel": 10,
@@ -315,6 +317,7 @@ const GAME_DATA = {
   "crusher": 350,
   "foundry": 350,
   "agricultural-tower": 500,
+  "cryogenic-plant": 350,
   "beacon": 200,
   "wooden-chest": 100,
   "iron-chest": 200,
@@ -404,6 +407,7 @@ const GAME_DATA = {
   "crusher": 540,
   "foundry": 2500,
   "agricultural-tower": 100,
+  "cryogenic-plant": 1500,
   "beacon": 480,
   "lab": 60,
   "biolab": 300,
@@ -521,6 +525,10 @@ const GAME_DATA = {
   "foundry": {
    "craftingSpeed": 4,
    "moduleSlots": 4
+  },
+  "cryogenic-plant": {
+   "craftingSpeed": 2,
+   "moduleSlots": 8
   },
   "biolab": {
    "moduleSlots": 4,
@@ -3730,6 +3738,14 @@ const GAME_DATA = {
    "zh": "太空科技包（白瓶）",
    "en": "Space science pack"
   },
+  "cryogenic-science-pack": {
+   "zh": "低温科技包（靛瓶）",
+   "en": "Cryogenic science pack"
+  },
+  "cryogenic-plant": {
+   "zh": "低温工厂",
+   "en": "Cryogenic plant"
+  },
   "promethium-science-pack": {
    "zh": "钷素科技包（黑瓶）",
    "en": "Promethium science pack"
@@ -4252,6 +4268,10 @@ const GAME_DATA = {
    "h": 3
   },
   "foundry": {
+   "w": 5,
+   "h": 5
+  },
+  "cryogenic-plant": {
    "w": 5,
    "h": 5
   },

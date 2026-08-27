@@ -104,6 +104,11 @@ check('冶金瓶在SCIENCE_PACKS', /'metallurgic-science-pack'/.test(src), '未�
 check('钷素瓶已定义', getRecipeLine('promethium-science-pack').length > 0, '钷素瓶配方缺失');
 check('钷素瓶耗时(5s)', getRecipeTime('promethium-science-pack'), 5);
 check('钷素瓶在SCIENCE_PACKS', /'promethium-science-pack'/.test(src), '未加入实验室消耗列表');
+// 低温科研包（Aquilo Cryogenic）：冰3+锂板1 → 1（20s，适配官方数值），须可被实验室消耗
+check('低温瓶已定义', getRecipeLine('cryogenic-science-pack').length > 0, '低温瓶配方缺失');
+check('低温瓶耗时(20s)', getRecipeTime('cryogenic-science-pack'), 20);
+check('低温瓶在SCIENCE_PACKS', /'cryogenic-science-pack'/.test(src), '未加入实验室消耗列表');
+
 
 console.log('\n----------------------------------------');
 console.log('通过 ' + passCount + ' 项，失败 ' + failCount + ' 项');

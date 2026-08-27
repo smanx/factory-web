@@ -77,6 +77,8 @@ const KEEP_MANUAL_RECIPES = new Set([
   'turbo-transport-belt', 'turbo-underground-belt', 'turbo-splitter',
   // ===== 太空时代 Vulcanus 铸造/冶金材料链（官方配方依赖熔融铁等星球资源，此处适配基础资源）=====
   'tungsten-ore', 'tungsten-plate', 'tungsten-carbide', 'metallurgic-science-pack', 'foundry',
+  // ===== 太空时代 Aquilo 低温材料链（冷冻厂配方，官方配方依赖氟酮冷却液流体，此处适配冰+锂板）=====
+  'cryogenic-science-pack', 'cryogenic-plant',
   // ===== 太空时代 生物实验室（Gleba biolab：官方配方依赖 biter-egg/capture-robot-rocket=生物星球资源，此处适配现有生物链资源）=====
   'biolab',
 ]);
@@ -402,6 +404,7 @@ const DEVICE_STATS_SOURCES = {
   'biochamber': ['assembling-machine', 'biochamber'],  // 太空时代生化炉：crafting_speed=2, module_slots=4
   'crusher': ['assembling-machine', 'crusher'],  // 太空时代破碎机：crafting_speed=1, module_slots=2
   'foundry': ['assembling-machine', 'foundry'],  // 太空时代铸造厂（Vulcanus）：crafting_speed=4, module_slots=4
+  'cryogenic-plant': ['assembling-machine', 'cryogenic-plant'],  // 太空时代冷冻厂（Aquilo）：crafting_speed=2, module_slots=8
   'agricultural-tower': ['agricultural-tower', 'agricultural-tower'],  // 太空时代农业塔（Gleba）：种植建筑，energy_usage=100kW
   'biolab': ['lab', 'biolab'],  // 太空时代生物实验室（Gleba）：官方 researching_speed=2、module_slots=4
 };
@@ -839,6 +842,7 @@ const FOOTPRINT_SOURCES = {
   'biochamber': ['assembling-machine', 'biochamber'],  // 太空时代生化炉（space-age 装配机原型，3×3）
   'crusher': ['assembling-machine', 'crusher'],  // 太空时代破碎机（space-age 装配机原型，selection_box ±1×±1.5 → 2×3）
   'foundry': ['assembling-machine', 'foundry'],  // 太空时代铸造厂（space-age 装配机原型，selection_box ±2.5×±2.5 → 5×5）
+  'cryogenic-plant': ['assembling-machine', 'cryogenic-plant'],  // 太空时代冷冻厂（space-age 装配机原型，selection_box ±2.5×±2.5 → 5×5）
   'agricultural-tower': ['agricultural-tower', 'agricultural-tower'],  // 太空时代农业塔（Gleba）：官方 selection_box ±1.5×±1.5 → 3×3
   'heating-tower': ['reactor', 'heating-tower'],  // 太空时代供热塔（Aquilo）：官方 reactor 原型 selection_box ±1.5×±1.5 → 3×3
   'biolab': ['lab', 'biolab'],  // 太空时代生物实验室（Gleba）：官方 lab 原型 selection_box ±2.5×±2.5 → 5×5

@@ -772,5 +772,34 @@ console.log('\n【行星间货物调度 INTERPLANETARY CARGO】');
   console.log('  （行星间货物调度校验 6 项）');
 })();
 
+// ===== 低温材料链（Cryogenic science pack，Space Age Aquilo 终局科研包）数据校验 =====
+console.log('\n【低温科研包 cryogenic-science-pack / 冷冻厂 cryogenic-plant 数据】');
+ok(!!IT['cryogenic-science-pack'], 'cryogenic-science-pack 物品已注册');
+ok(GD.stackSize['cryogenic-science-pack'] === 200, 'cryogenic-science-pack 堆叠来自官方 (=200)');
+ok(GD.names['cryogenic-science-pack'] && GD.names['cryogenic-science-pack'].en === 'Cryogenic science pack', 'cryogenic-science-pack 官方命名已收录 (Cryogenic science pack)');
+ok(!!GD.stackSize['cryogenic-plant'], 'cryogenic-plant 堆叠来自官方 (=20)');
+ok(GD.names['cryogenic-plant'] && GD.names['cryogenic-plant'].en === 'Cryogenic plant', 'cryogenic-plant 官方命名已收录 (Cryogenic plant)');
+console.log('\n【冷冻厂设备数据（官方）】');
+ok(GD.footprint['cryogenic-plant'] && GD.footprint['cryogenic-plant'].w === 5 && GD.footprint['cryogenic-plant'].h === 5, '占地 5×5（官方 selection_box ±2.5）');
+ok(GD.buildingHp['cryogenic-plant'] === 350, '血量=350（官方 max_health）');
+ok(GD.powerUse['cryogenic-plant'] === 1500, '功耗=1500kW（官方 energy_usage）');
+ok(GD.deviceStats['cryogenic-plant'] && GD.deviceStats['cryogenic-plant'].craftingSpeed === 2, '制造速度=2（官方 crafting_speed）');
+ok(GD.deviceStats['cryogenic-plant'].moduleSlots === 8, '模块槽=8（官方 module_slots）');
+console.log('\n【低温科研包配方与设备归属】');
+ok(!!RP['cryogenic-science-pack'], 'cryogenic-science-pack 配方已注册');
+ok(ctx.__recipeDevice('cryogenic-science-pack') === 'cryogenic-plant', '低温科研包 → 冷冻厂');
+ok(ctx.__recipeDevice('cryogenic-plant') === 'cryogenic-plant', '冷冻厂本体 → 冷冻厂配方');
+const cryoRec = RP['cryogenic-science-pack'];
+ok(cryoRec && cryoRec.inp['ice'] === 3 && cryoRec.inp['lithium-plate'] === 1, '低温科研包配方=3冰+1锂板（官方 3冰+1锂板+氟酮冷却液 适配）');
+ok(cryoRec && cryoRec.time === 20, '低温科研包产出 20s（官方 energy_required=20）');
+ok(Object.keys(cryoRec.inp).every(k => k in IT || ['water','steam','crude-oil','heavy-oil','light-oil','petroleum-gas','lubricant','sulfuric-acid'].indexOf(k) >= 0), '低温科研包配方引用物品均存在');
+console.log('\n【科技门控（低温科技 cryogenics）】');
+ok(ctx.__itemTechReq('cryogenic-science-pack') === 'cryogenics', '低温科研包需「低温科技」');
+ok(ctx.__itemTechReq('cryogenic-plant') === 'cryogenics', '冷冻厂需「低温科技」');
+ok(!!TS['cryogenics'], '「低温科技」已注册');
+ok(ctx.__itemTechReq('cryogenic-science-pack') && TS['cryogenics'].req && TS['cryogenics'].req.indexOf('electromagnetics') >= 0, '低温科技前置含「电磁学」');
+ok(ctx.isScience && ctx.isScience('cryogenic-science-pack'), '低温科研包为可消耗科研包');
+
+
 process.exit(fail === 0 ? 0 : 1);
 

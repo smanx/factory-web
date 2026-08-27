@@ -31,6 +31,7 @@ const BUILD_DEFS = {
   'crusher': { w: 2, h: 3, solid: true },  // 太空时代破碎机（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±1×±1.5 → 2×3）
   'foundry': { w: 5, h: 5, solid: true },  // 太空时代铸造厂（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±2.5 → 5×5）
   'agricultural-tower': { w: 3, h: 3, solid: true },  // 太空时代农业塔（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±1.5 → 3×3）
+  'cryogenic-plant': { w: 5, h: 5, solid: true },  // 太空时代冷冻厂（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±2.5 → 5×5）
   'beacon':             { w: 3, h: 3, solid: true },
   'wooden-chest':       { w: 1, h: 1, solid: true },
   'iron-chest':         { w: 1, h: 1, solid: true },

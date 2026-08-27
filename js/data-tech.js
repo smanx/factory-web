@@ -94,6 +94,9 @@ const TECH_REQ = {
   'fusion-reactor': 'fusion-power',
   'fusion-generator': 'fusion-power',
   'fusion-power-cell': 'fusion-power',
+  // ===== Aquilo 低温材料链（对齐《异星工厂》Space Age Cryogenic 科技：冷冻厂 + 低温科研包）=====
+  'cryogenic-plant': 'cryogenics',
+  'cryogenic-science-pack': 'cryogenics',
   'efficiency-module': 'advanced-material-processing',
   'speed-module-2': 'modules2',
   'speed-module-3': 'modules3',
