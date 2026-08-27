@@ -59,11 +59,9 @@ function initPanelEvents() {
     } else if (id === 'asm-recipe-search') {
       applyAssemblerRecipeFilter(v);
     } else if (id === 'rcp-search') {
-      // 配方选择面板：按关键词过滤配方网格
-      const grid = document.getElementById('rcp-grid');
-      if (grid && G.panelMode === 'machinerecipe' && G.panelEnt) {
-        grid.innerHTML = recipeSelectGridHtml(G.panelEnt, recipeDeviceInfo(G.panelEnt), v);
-      }
+      // 配方选择面板：记录搜索词，按关键词过滤当前 Tab 的配方网格
+      G.rcpQ = v;
+      applyRcpFilter(v);
     } else if (id === 'sflt-search') {
       applySplitterFilterSearch(v);
     } else if (id === 'flt-search') {
@@ -105,6 +103,12 @@ function initPanelEvents() {
     const craftTabBtn = ev.target.closest('#inv-recipe-tabs .craft-tab[data-tab]');
     if (craftTabBtn && G.panelMode === 'inv') {
       switchCraftTab(craftTabBtn.dataset.tab);
+      return;
+    }
+    // 配方选择面板 5 个 Tab 切换
+    const rcpTabBtn = ev.target.closest('#rcp-tabs .craft-tab[data-tab]');
+    if (rcpTabBtn && G.panelMode === 'machinerecipe') {
+      switchRcpTab(rcpTabBtn.dataset.tab);
       return;
     }
     const statTab = ev.target.closest('[data-stat-tab]');
@@ -506,7 +510,17 @@ function initPanelEvents() {
         }
       } else if (act === 'recipe-clear') {
         const mch = G.panelEnt;
-        if (mch && typeof mch.setRecipe === 'function') mch.setRecipe(null);
+        if (mch && typeof mch.setRecipe === 'function') {
+          mch.setRecipe(null);
+          // 若当前在设备交互面板，清除配方后重新弹出选择配方页面
+          if (G.panelMode === 'machine') {
+            G.recipeSel = null;
+            G.rcpTab = 'logistics';
+            G.rcpQ = '';
+            openPanel('machinerecipe', mch);
+            return;
+          }
+        }
       } else if (act === 'rec') {
         // 离心机等使用 data-action="rec" 选择配方（含科技门控）
         const mch = G.panelEnt;
@@ -589,6 +603,38 @@ function initPanelEvents() {
         } else {
           toast('暂无' + ITEMS[id].name + '可取出');
         }
+      } else if (act === 'mod-take') {
+        // 点击模块插槽：取出该模块到背包
+        const mch = G.panelEnt;
+        if (!mch || !mch.modules || (mch.modules[id] || 0) <= 0) { toast('该槽位没有模块'); return; }
+        invAdd(id, 1);
+        mch.modules[id]--;
+        if (mch.modules[id] <= 0) delete mch.modules[id];
+        mch.prodBuf = 0;
+        if (typeof playSfx === 'function') playSfx('pick');
+        renderPanel(false);
+      } else if (act === 'mod-put') {
+        // 点击空模块插槽：从背包放入模块（选取背包中可用的模块）
+        const mch = G.panelEnt;
+        if (!mch || typeof mch.giveItem !== 'function') return;
+        const slotN = (typeof mch.moduleSlotCount === 'function') ? mch.moduleSlotCount() : 4;
+        const used = Object.values(mch.modules || {}).reduce((a, b) => a + b, 0);
+        if (used >= slotN) { toast('模块插槽已满'); return; }
+        // 查找背包中可用的模块类型
+        const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3', 'quality-module', 'quality-module-2', 'quality-module-3'];
+        let found = false;
+        for (const mid of order) {
+          if (!itemUnlocked(mid)) continue;
+          const have = invCount(mid);
+          if (have > 0 && mch.giveItem(mid)) {
+            invTake(mid, 1);
+            if (typeof playSfx === 'function') playSfx('module');
+            found = true;
+            break;
+          }
+        }
+        if (!found) toast('背包中没有可用的模块');
+        renderPanel(false);
       } else if (act === 'chest-put') {
         // 储物箱「存入选中物品」：把当前选中的背包物品全部放入箱子
         const chest = G.panelEnt;

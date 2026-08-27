@@ -2258,3 +2258,64 @@ html, body {
 .chest-slot img { width: 32px; height: 32px; image-rendering: pixelated; }
 .chest-slot-n { font-size: 12px; color: #ffe08a; margin-top: 2px; }
 #btn-chest-put { margin-bottom: 10px; }
+
+/* 模块插槽：图形化展示设备模块槽位（组装机等） */
+.mod-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0;
+}
+.mod-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 60px;
+  background: rgba(0,0,0,.25);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all .15s;
+  padding: 4px;
+  text-align: center;
+}
+.mod-slot:hover { border-color: #ffd23c; background: rgba(255,210,60,.08); }
+.mod-slot.empty { border-style: dashed; border-color: rgba(255,255,255,.25); }
+.mod-slot.empty:hover { border-color: #ffd23c; }
+.mod-slot.filled { border-color: rgba(87,185,92,.5); }
+.mod-slot.filled:hover { border-color: #57b95c; background: rgba(87,185,92,.1); }
+.mod-slot img { width: 30px; height: 30px; border-radius: 4px; }
+.mod-slot-plus {
+  font-size: 22px;
+  color: rgba(255,255,255,.35);
+  line-height: 1;
+}
+.mod-slot-n {
+  font-size: 9px;
+  color: #9fb2c4;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.mod-status {
+  font-size: 11px;
+  color: #cdd6df;
+  margin: 4px 0;
+}
+.mod-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0;
+}
+.mod-buttons .btn.sm {
+  font-size: 11px;
+  padding: 2px 6px;
+}
+
+/* 配方设备交互面板：当前配方行按钮靠右显示 */
+.mch-recipe-head .btn.sm { flex: 0 0 auto; }

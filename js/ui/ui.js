@@ -324,6 +324,8 @@ function closePanel(hide = true) {
   G.panelEnt = null;
   G.invRecipeQ = '';
   G.recipeSel = null;
+  G.rcpTab = null;
+  G.rcpQ = '';
   if (hide) document.getElementById('panel').style.display = 'none';
   // 关闭设置面板后恢复游戏（对应 openPanel 中打开设置时的自动暂停）
   if (wasSettings) G.paused = false;
@@ -558,7 +560,7 @@ function updateRecipeMachineLive(e, body, api) {
   // 进度与状态
   const pct = (rec && e.crafting) ? (e.prog / rec.time * 100) : 0;
   api.prog(pct, rec ? rec.time : 0);
-  if (!rec) { api.status('未设置配方，点击「切换配方」选择', 'warn'); return; }
+  if (!rec) { api.status('未设置配方，点击「清除配方」选择', 'warn'); return; }
   if (e.crafting) { api.status('生产中：' + info.name(e.recipe), 'ok'); return; }
   const needsPower = typeof e.powerDemand === 'function' && e.powerDemand() > 0;
   if (needsPower && G.power.sat <= 0) { api.status('已暂停：缺电', 'bad'); return; }
@@ -1207,30 +1209,60 @@ function recipeMainIcon(rec, info, rid) {
   return null;
 }
 
-// 配方选择面板：配方网格 + 右下角确认按钮
+// 配方选择面板：5 个 Tab 分类（参考背包「制作」面板）+ 右下角确认按钮
 function recipeSelectPanelHtml(e) {
   const info = recipeDeviceInfo(e);
-  let h = '<div class="rcp-scroll">';
-  h += '<div class="sec">点击选择配方（勾选后点右下角「确认」设置）</div>';
-  h += '<input id="rcp-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off">';
-  h += '<div class="inv-slots" id="rcp-grid">' + recipeSelectGridHtml(e, info, '') + '</div>';
-  h += '</div>';
-  h += '<div class="rcp-confirm-row">';
-  h += '<button data-action="recipe-clear">清除配方</button>';
-  h += '<button data-action="recipe-confirm" class="rcp-confirm" data-id="' + (G.recipeSel || '') + '"' + (G.recipeSel ? '' : ' disabled') + '>确认设置 ✓</button>';
-  h += '</div>';
-  h += '<div class="dim">提示：未设置配方时无法生产。确认后进入设备交互面板，可放入原料、取走产物，也可随时「切换配方」。</div>';
-  return h;
-}
-
-// 配方选择网格（供配方选择面板与搜索过滤共用）
-function recipeSelectGridHtml(e, info, q) {
-  q = (q || '').toLowerCase();
-  let h = '';
+  const activeTab = G.rcpTab && CRAFT_TABS.indexOf(G.rcpTab) >= 0 ? G.rcpTab : 'logistics';
+  const perTab = { logistics: [], production: [], 'intermediate-products': [], space: [], combat: [] };
   for (const rid of info.list) {
     const r = info.getRec(rid);
     if (!r) continue;
     const outId = recipeMainIcon(r, info, rid);
+    if (!outId) continue;
+    const tab = (GAME_DATA.itemGroup && GAME_DATA.itemGroup[outId]) || 'logistics';
+    perTab[tab] = perTab[tab] || [];
+    perTab[tab].push({ rid, r, outId });
+  }
+  let h = '<div class="rcp-scroll">';
+  h += '<div class="sec">点击选择配方（勾选后点右下角「确认」设置）</div>';
+  h += '<input id="rcp-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off" value="' + (G.rcpQ || '') + '">';
+  // 5 个 Tab 栏
+  h += '<div class="craft-tabs" id="rcp-tabs">';
+  for (const tab of CRAFT_TABS) {
+    const n = (perTab[tab] || []).length;
+    const on = tab === activeTab ? ' active' : '';
+    const label = CRAFT_TAB_LABEL[tab];
+    h += '<button type="button" class="craft-tab' + on + '" data-tab="' + tab + '">' +
+      '<span class="tab-icon">' + label.icon + '</span>' +
+      '<span class="tab-label">' + label.text + '</span>' +
+      '<span class="cnt">' + n + '</span></button>';
+  }
+  h += '</div>';
+  // 每个 Tab 一个配方网格
+  for (const tab of CRAFT_TABS) {
+    const items = perTab[tab] || [];
+    const on = tab === activeTab ? '' : ' style="display:none"';
+    h += '<div id="rcp-grid-' + tab + '" data-tab="' + tab + '"' + on + '>' +
+      '<div class="inv-slots">' + recipeSelectGridHtmlForTab(e, info, items, '') + '</div>' +
+      '</div>';
+  }
+  h += '<div class="dim" id="rcp-empty" style="display:none"></div>';
+  h += '</div>';
+  // 确认行
+  h += '<div class="rcp-confirm-row">';
+  h += '<button data-action="recipe-clear">清除配方</button>';
+  h += '<button data-action="recipe-confirm" class="rcp-confirm" data-id="' + (G.recipeSel || '') + '"' + (G.recipeSel ? '' : ' disabled') + '>确认设置 ✓</button>';
+  h += '</div>';
+  h += '<div class="dim">提示：未设置配方时无法生产。确认后进入设备交互面板，可放入原料、取走产物，也可随时清除并重新选择配方。</div>';
+  return h;
+}
+
+// 配方选择网格（单个 Tab 的配方槽），供配方选择面板与搜索过滤共用
+function recipeSelectGridHtmlForTab(e, info, items, q) {
+  q = (q || '').toLowerCase();
+  let h = '';
+  for (const { rid, r, outId } of items) {
+    if (!r) continue;
     const name = info.name(rid);
     const unlocked = recipeUnlocked(rid);
     const lockTech = recipeLockingTech(rid);
@@ -1246,12 +1278,55 @@ function recipeSelectGridHtml(e, info, q) {
     const tipMain = name + '|每周期耗时 ' + r.time + ' 秒' + (unlocked ? '' : '。未解锁：需先研究「' + (lockTech ? TECHS[lockTech].name : '对应科技') + '」');
     const tipRecipe = (inpStr ? '所需原料：' + inpStr : '') + (outStr ? '（产出：' + outStr + '）' : '');
     h += '<div class="inv-slot rcp-slot' + selCls + (unlocked ? '' : ' locked') + '" data-action="pickrecipe" data-id="' + rid + '" data-itemid="' + (outId || '') + '"' +
-      ' data-tip="' + tipMain + '||' + tipRecipe + '"' + (unlocked ? '' : ' data-locked="1"') + '>' +
+      ' data-tip="' + tipMain + '||' + tipRecipe + '"' + (unlocked ? '' : ' data-locked="1"') + ' data-rsearch="' + searchKey.replace(/"/g, '') + '">' +
       (outId ? '<img src="' + iconDataURL(outId, 16) + '">' : '') +
       (unlocked ? '' : '<span class="craft-lock" title="需先研究：' + (lockTech ? TECHS[lockTech].name : '对应科技') + '">🔒</span>') +
       '</div>';
   }
   return h;
+}
+
+// 配方选择 Tab 切换：显示/隐藏对应配方网格
+function switchRcpTab(tab) {
+  const body = document.getElementById('panel-body');
+  if (!body) return;
+  if (CRAFT_TABS.indexOf(tab) < 0) tab = 'logistics';
+  G.rcpTab = tab;
+  const tabs = body.querySelectorAll('#rcp-tabs .craft-tab');
+  for (const t of tabs) t.classList.toggle('active', t.dataset.tab === tab);
+  for (const t of CRAFT_TABS) {
+    const grid = body.querySelector('#rcp-grid-' + t);
+    if (grid) grid.style.display = (t === tab) ? '' : 'none';
+  }
+  applyRcpFilter(G.rcpQ || '');
+}
+
+// 配方选择面板搜索过滤：仅过滤当前 Tab 的配方槽
+function applyRcpFilter(q) {
+  const body = document.getElementById('panel-body');
+  if (!body) return;
+  const ql = (q || '').trim().toLowerCase();
+  const activeTab = G.rcpTab && CRAFT_TABS.indexOf(G.rcpTab) >= 0 ? G.rcpTab : 'logistics';
+  let shown = 0;
+  const activeGrid = body.querySelector('#rcp-grid-' + activeTab);
+  if (activeGrid) {
+    activeGrid.querySelectorAll('.rcp-slot').forEach(el => {
+      const hit = !ql || (el.dataset.rsearch || '').includes(ql);
+      el.style.display = hit ? '' : 'none';
+      if (hit) shown++;
+    });
+  }
+  for (const t of CRAFT_TABS) {
+    if (t === activeTab) continue;
+    const grid = body.querySelector('#rcp-grid-' + t);
+    if (grid) grid.querySelectorAll('.rcp-slot').forEach(el => { el.style.display = ''; });
+  }
+  // 空状态提示：当前 Tab 无匹配配方时显示
+  const emp = body.querySelector('#rcp-empty');
+  if (emp) {
+    emp.textContent = ql ? '没有匹配「' + q.trim() + '」的配方' : '没有匹配的配方';
+    emp.style.display = shown ? 'none' : '';
+  }
 }
 
 // 配方设备交互面板：左=背包，右=设备交互信息
@@ -1268,14 +1343,18 @@ function recipeMachineLayoutHtml(e) {
   '</div>';
 }
 
-// 右侧设备交互信息：配方名 + 原料/进度/产品单行图标 + 切换配方按钮 + 操作说明
+// 右侧设备交互信息：配方名 + 原料/进度/产品单行图标 + 清除配方按钮 + 模块插槽 + 操作说明
 function recipeMachineRightHtml(e, info, rec) {
   let h = '';
-  // 当前配方标题 + 切换配方按钮
+  // 当前配方标题 + 清除配方按钮（靠右显示）
   h += '<div class="sec mch-recipe-head">当前配方：<b>' + (rec ? info.name(e.recipe) : '<span class="dim">未设置</span>') + '</b>' +
-    '<button data-action="switch-recipe" class="btn sm" title="返回配方选择面板">⇄ 切换配方</button></div>';
+    '<button data-action="recipe-clear" class="btn sm" title="清除当前配方并重新选择">✕ 清除配方</button></div>';
   if (!rec) {
-    h += '<div class="dim">请点击「切换配方」选择配方后即可生产。</div>';
+    h += '<div class="dim">请点击「清除配方」选择配方后即可生产。</div>';
+    // 未设置配方时也显示模块插槽，便于提前装好模块
+    h += moduleSlotSectionHtml(e);
+    // 电力状态与速率
+    if (typeof e.powerDemand === 'function') h += row('电力', powerStatusLiveHtml(e), 'power');
     return h;
   }
   // 原料 + 进度条 + 产品 单行（横向排布）
@@ -1309,9 +1388,63 @@ function recipeMachineRightHtml(e, info, rec) {
   h += '</div>';
   // 操作说明
   h += '<div class="dim mch-help">左栏为你的背包：先选中背包物品再点击右侧「原料」槽即可放入该物品；在「原料」槽上右键（或点其左上角 −）取回 1 件到背包；点击「产品」图标可把产物取回背包。原料/产品均可通过传送带与机械臂自动进出。</div>';
+  // 模块插槽：图形化展示设备模块槽位，可点击放入/取出模块
+  h += moduleSlotSectionHtml(e);
   // 电力状态与速率
   if (typeof e.powerDemand === 'function') h += row('电力', powerStatusLiveHtml(e), 'power');
   h += machRateHtml(rec, e.crafting && typeof e.moduleSpeedMult === 'function' ? e.moduleSpeedMult() : 1);
+  return h;
+}
+
+// 设备模块插槽区域：图形化展示 N 个插槽，已装模块显示图标，空槽显示 "+"；
+// 点击空槽可放入背包中的模块，点击已装模块可取出到背包。
+function moduleSlotSectionHtml(e) {
+  const slotN = (typeof e.moduleSlotCount === 'function') ? e.moduleSlotCount() : 4;
+  const mods = e.modules || {};
+  const slotItems = [];
+  for (const mid in mods) {
+    if ((mods[mid] || 0) > 0) for (let i = 0; i < mods[mid]; i++) slotItems.push(mid);
+  }
+  // 组装已装模块列表
+  let h = '<div class="sec">模块插槽（' + slotN + ' 个）</div>';
+  h += '<div class="mod-slots">';
+  for (let i = 0; i < slotN; i++) {
+    const mid = slotItems[i];
+    if (mid) {
+      h += '<div class="mod-slot filled" data-action="mod-take" data-id="' + mid + '" data-tip="' + ITEMS[mid].name + '|点击取出到背包">' +
+        '<img src="' + iconDataURL(mid, 16) + '">' +
+        '<span class="mod-slot-n">' + ITEMS[mid].name + '</span></div>';
+    } else {
+      h += '<div class="mod-slot empty" data-action="mod-put" data-index="' + i + '" data-tip="点击从背包放入模块">' +
+        '<span class="mod-slot-plus">+</span></div>';
+    }
+  }
+  h += '</div>';
+  // 装入模块按钮（可点选）
+  const mc = moduleCounts(mods);
+  const hasMod = Object.keys(mods).length > 0;
+  if (hasMod) {
+    h += '<div class="mod-status">速度+' + mc.speed.toFixed(1) + ' 产能+' + mc.prod.toFixed(1) +
+      ' 效率-' + mc.eff.toFixed(1) + ' 品质+' + (mc.quality * 100).toFixed(1) + '%</div>';
+    h += '<button data-action="takein" data-modules="1" class="btn sm">取出全部模块</button>';
+  }
+  // 背包中有可装入的模块时显示装入按钮
+  const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3', 'quality-module', 'quality-module-2', 'quality-module-3'];
+  let hasAvailable = false;
+  for (const mid of order) {
+    if (!itemUnlocked(mid)) continue;
+    const n = Math.min(invCount(mid), slotN - (mods[mid] || 0));
+    if (n > 0) { hasAvailable = true; break; }
+  }
+  if (hasAvailable) {
+    h += '<div class="mod-buttons">';
+    for (const mid of order) {
+      if (!itemUnlocked(mid)) continue;
+      const n = Math.min(invCount(mid), slotN - (mods[mid] || 0));
+      if (n > 0) h += '<button data-action="feed" data-id="' + mid + '" class="btn sm">装入' + ITEMS[mid].name + ' ×' + n + '</button>';
+    }
+    h += '</div>';
+  }
   return h;
 }
 
