@@ -33,6 +33,7 @@ var G = {
   keys: {},
   showDetails: true,
   mouseDown: false,
+  mouseRightDown: false,
   canvasActive: false,
   time: 0,
   dbg: { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1, infinite: false, farReach: false, noclip: false },

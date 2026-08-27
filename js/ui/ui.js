@@ -619,7 +619,7 @@ function htmlInvSlots() {
   }
   h += '</div>';
   if (owned.length === 0) {
-    h += '<div class="dim" style="margin-top:6px">空空如也，去地图上按住左键挖矿吧（铁矿/铜矿/煤/石头）</div>';
+    h += '<div class="dim" style="margin-top:6px">空空如也，去地图上按住右键挖矿吧（铁矿/铜矿/煤/石头）</div>';
   }
   h += '</div>';
   return h;
