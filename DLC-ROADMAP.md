@@ -333,7 +333,11 @@
 >   发射后货舱自动清空。货舱随存档持久化（serialize/restore），旧档自动兼容（无货舱字段视为空）。
 > - **数据单源**：不新增任何数值表，货舱容量为玩法常量（CARGO_CAP），货物判断复用现有 ITEMS/FLUIDS/isModule。
 > - 校验：verify-dlc 新增火箭货舱排除逻辑校验（7 项），全量 18 个校验脚本通过，构建通过。
-- [ ] 轨道平台 / 太空货运（行星间货物调度 / 空间平台遥测，火箭货物发射已落地，剩余为行星间调度交互）
+- [x] **行星间货物调度（Interplanetary cargo dispatch，本迭代新增）**：火箭货舱新增「📮 目标星球」选择器——目标星球与当前星球相同则降落到本星物流接驳站（原逻辑），
+   不同则把货物送入该星球轨道队列 `G.orbitalCargo[planet]`，玩家星际旅行抵达该星球后由 `deliverOrbitalCargo` 交付
+   （接驳站优先接收，否则入背包），实现行星间物资调度（对齐《异星工厂》：火箭把货物送往目标星球轨道）；
+   轨道队列随存档持久化（serialize/restore），火箭面板显示在途轨道货物清单；数据不新增数值表，行星名来自 PLANET_OPTIONS。
+   - 数据单源：货物路由复用现有 CARGO_CAP/ITEMS，不新增维护表；校验并入 verify-dlc（新增 6 项）。
 
 ### 阶段四.8：钷素科研包（Promethium science pack，Space Age 终局科学包，本迭代新增）
 - [x] **钷素科研包 + 钷素星块（Promethium science pack / asteroid chunk）**：太空时代终极科学包
@@ -383,9 +387,8 @@
 > - 校验：verify-dlc 新增 Fulgora 钬/特斯拉链校验（26 项），全量 18 个校验脚本通过，构建通过。
 
 ### 阶段五：数值/体验精修
-### 阶段五：数值/体验精修
 - [ ] 各 DLC 建筑占地/功耗/速度逐一桥接 data.generated.js
-- [ ] DLC 科技树接入 data-tech-tree
+- [x] DLC 科技树接入 data-tech-tree（本迭代：修复聚变能源 fusion-power / 钷素科研 promethium-science 归类为 space-age 科技，此前误归为 base；太空时代科技现全部按 SPACE_AGE_TECHS 归组，与品质 quality 组清晰分层）
 - [x] DLC 中英命名接入 names / recipeNames（本增量完成装备+瓦片命名单源：
   LOCALE_SECTIONS 新增 `equipment-name` / `tile-name` 段，装备 13 件（太阳能/电池/聚变/外骨骼/夜视/激光/能量盾/放电/个人机器人接口）
   与瓦片 `stone-path` 的官方中英命名现从 GAME_DATA.names 单源获取，命名总数 229→240；

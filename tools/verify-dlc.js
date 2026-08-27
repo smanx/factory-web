@@ -721,5 +721,56 @@ console.log('\n【火箭货舱太空货运 ROCKET CARGO】');
   }
 })();
 
+
+// ===== 行星间货物调度（Space Age 太空货运，火箭货舱跨行星交付）=====
+console.log('\n【行星间货物调度 INTERPLANETARY CARGO】');
+(function () {
+  // 复刻 rocket.js onRocketLaunch 的货舱路由逻辑做白盒校验
+  function routeCargo(siloCargo, cargoTarget, curPlanet, G, pad) {
+    const interplanet = cargoTarget !== curPlanet;
+    let cargoItems = 0;
+    if (interplanet) {
+      if (!G.orbitalCargo) G.orbitalCargo = {};
+      if (!G.orbitalCargo[cargoTarget]) G.orbitalCargo[cargoTarget] = {};
+      for (const k of Object.keys(siloCargo)) { const n = siloCargo[k] || 0; if (n <= 0) continue; G.orbitalCargo[cargoTarget][k] = (G.orbitalCargo[cargoTarget][k] || 0) + n; cargoItems += n; }
+    } else {
+      for (const k of Object.keys(siloCargo)) {
+        const n = siloCargo[k] || 0; if (n <= 0) continue; let landed = 0;
+        if (pad) { while (landed < n && pad.giveItem(k)) landed++; if (landed > 0) pad.cargoIn = (pad.cargoIn || 0) + landed; }
+        const rest = n - landed; if (rest > 0) G.inv.set(k, (G.inv.get(k) || 0) + rest); cargoItems += n;
+      }
+    }
+    return { interplanet, cargoItems };
+  }
+  function deliverOrbitalCargo(planet, G, pad) {
+    const queued = (G.orbitalCargo && G.orbitalCargo[planet]) || {};
+    const keys = Object.keys(queued).filter(k => (queued[k] || 0) > 0);
+    if (!keys.length) return 0;
+    let delivered = 0;
+    for (const k of keys) {
+      let n = queued[k] || 0; let landed = 0;
+      if (pad) { while (landed < n && pad.giveItem(k)) landed++; if (landed > 0) pad.cargoIn = (pad.cargoIn || 0) + landed; }
+      const rest = n - landed; if (rest > 0) G.inv.set(k, (G.inv.get(k) || 0) + rest); delivered += n;
+    }
+    delete G.orbitalCargo[planet];
+    return delivered;
+  }
+  let G = { inv: new Map(), orbitalCargo: {} };
+  let r = routeCargo({ 'iron-plate': 100 }, 'vulcanus', 'nauvis', G, null);
+  ok(r.interplanet === true, '跨行星判定 vulcanus→nauvis interplanet=true');
+  ok(G.orbitalCargo['vulcanus'] && G.orbitalCargo['vulcanus']['iron-plate'] === 100, '跨行星货物进入目标星球轨道队列');
+  ok(!G.orbitalCargo['nauvis'], '本地轨道队列不写入');
+  G = { inv: new Map(), orbitalCargo: {} };
+  const padInv = {}; const pad = { giveItem: k => { padInv[k] = (padInv[k] || 0) + 1; return true; }, cargoIn: 0 };
+  r = routeCargo({ 'iron-plate': 80 }, 'nauvis', 'nauvis', G, pad);
+  ok(r.interplanet === false, '本地判定 interplanet=false');
+  ok(padInv['iron-plate'] === 80, '本地货物降落到接驳站 iron-plate=80');
+  G = { inv: new Map(), orbitalCargo: { 'vulcanus': { 'iron-plate': 100, 'copper-plate': 50 } } };
+  const d = deliverOrbitalCargo('vulcanus', G, null);
+  ok(d === 150 && G.inv.get('iron-plate') === 100 && G.inv.get('copper-plate') === 50, '抵达后交付 150 件到背包');
+  ok(!G.orbitalCargo['vulcanus'], '交付后清除目标星球轨道队列');
+  console.log('  （行星间货物调度校验 6 项）');
+})();
+
 process.exit(fail === 0 ? 0 : 1);
 

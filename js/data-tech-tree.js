@@ -227,7 +227,7 @@ for (const tid of ['quality', 'quality-2', 'quality-3']) TECHS[tid].cat = 'quali
 const SPACE_AGE_TECHS = [
   'space-science', 'turbo-logistics', 'electromagnetics', 'metallurgy', 'recycling',
   'agriculture', 'asteroid-processing', 'big-mining-drill', 'heating-tower', 'biolab',
-  'lightning', 'fulgora', 'space-thruster', 'space-platform', 'space-research-speed',
+  'lightning', 'fulgora', 'space-thruster', 'space-platform', 'fusion-power', 'promethium-science', 'space-research-speed',
   'space-mining-productivity', 'weapon-damage', 'follower-robot-count',
   'worker-robot-cargo-size', 'artillery-shooting-speed', 'artillery-shell-range',
   'rail-productivity', 'braking-force', 'rocket-productivity', 'physical-projectile-damage',

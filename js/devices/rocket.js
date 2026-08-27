@@ -216,12 +216,12 @@ class RocketSilo extends CircuitNode {
     const s = super.serialize();
     s.inp = this.inp; s.parts = this.parts; s.modules = this.modules; s.prodBuf = this.prodBuf;
     s.launching = this.launching; s.launchT = this.launchT; s.launched = this.launched; s.launchCount = this.launchCount || 0;
-    s.cargo = this.cargo;
+    s.cargo = this.cargo; s.cargoTarget = this.cargoTarget || null;
     return s;
   }
   static restore(s) {
     const t = super.restore(s);
-    t.inp = s.inp || {}; t.parts = s.parts || 0; t.modules = s.modules || {}; t.prodBuf = s.prodBuf || 0; t.cargo = s.cargo || {};
+    t.inp = s.inp || {}; t.parts = s.parts || 0; t.modules = s.modules || {}; t.prodBuf = s.prodBuf || 0; t.cargo = s.cargo || {}; t.cargoTarget = s.cargoTarget || null;
     t.launching = !!s.launching; t.launchT = s.launchT || 0; t.launched = !!s.launched; t.launchCount = s.launchCount || (s.launched ? 1 : 0);
     // 旧档迁移：旧版火箭井直接存 inp.rocket-body（已组装出火箭本体），换算为已集齐火箭部件
     if (t.parts <= 0 && (t.inp['rocket-body'] || 0) > 0) { t.parts = ROCKET_PARTS; delete t.inp['rocket-body']; }
@@ -343,6 +343,30 @@ function siloPanelHtml(e) {
     // 火箭货舱（太空货运）：把任意物品装入火箭，随发射降落到物流接驳站
     h += '<div class="sec">🚀 火箭货舱（太空货运）</div>';
     const cargoKeys = Object.keys(e.cargo || {});
+    // 目标星球选择（行星间货物调度）：把货物送往目标星球轨道，抵达后交付；默认当前星球=本地降落
+    const curPlanet = (typeof planetId === 'function') ? planetId() : 'nauvis';
+    const tgt = e.cargoTarget || curPlanet;
+    let targetSel = '<select data-action="cargo-target" style="margin:4px 0 6px;max-width:100%">';
+    const planetOpts = (typeof PLANET_OPTIONS !== 'undefined') ? PLANET_OPTIONS : [{ v: 'nauvis', name: '新地星' }];
+    for (const po of planetOpts) {
+      const cur = (po.v === curPlanet);
+      targetSel += '<option value="' + po.v + '"' + (po.v === tgt ? ' selected' : '') + '>' +
+        (cur ? '🛰️ ' : '🌍 ') + po.name + (cur ? '（本地）' : '') + '</option>';
+    }
+    targetSel += '</select>';
+    h += '<div class="dim" style="margin-top:2px">📮 目标星球：' + targetSel + '</div>';
+    // 显示目标星球轨道中的在途货物（行星间调度）
+    if ((G.orbitalCargo && G.orbitalCargo[tgt]) || null) {
+      const ocKeys = Object.keys(G.orbitalCargo[tgt]).filter(k => (G.orbitalCargo[tgt][k] || 0) > 0);
+      if (ocKeys.length) {
+        const ocRows = ocKeys.map(k => {
+          const ic = (ITEMS[k] && ITEMS[k].color) ? '<span class="chip" style="background:' + ITEMS[k].color + '">' + (ITEMS[k].mark || '') + '</span> ' : '';
+          return '<span>' + ic + (ITEMS[k] ? ITEMS[k].name : k) + ' ×' + G.orbitalCargo[tgt][k] + '</span>';
+        }).join('  ');
+        const tgtName = (typeof planetOption === 'function' && planetOption(tgt)) ? planetOption(tgt).name : tgt;
+        h += '<div class="dim" style="margin-top:3px;color:#7fd07f">🛬 在途轨道货物（抵达' + tgtName + '后交付）：' + ocRows + '</div>';
+      }
+    }
     if (cargoKeys.length) {
       const crows = cargoKeys.map(k => {
         const cnt = e.cargo[k] || 0;
@@ -352,7 +376,7 @@ function siloPanelHtml(e) {
       }).join('');
       h += '<div class="rcbody">' + crows + '</div>';
     } else {
-      h += '<div class="dim">货舱为空。发射时货舱内物品将随火箭降落到物流接驳站（cargo-landing-pad），实现地面→轨道的物资运输。</div>';
+      h += '<div class="dim">货舱为空。装入货物后随火箭发射：目标星球与当前星球相同则降落到本星物流接驳站，不同则送往目标星球轨道、抵达后交付。</div>';
     }
     // 从背包装入货物：列出玩家背包中可运输的物品，点击即装入一批
     h += '<div class="dim" style="margin-top:4px">从背包装入货物（点击物品装入 1 堆，随火箭发射降落到物流接驳站）：</div>';
@@ -445,28 +469,49 @@ function onRocketLaunch(silo) {
     if (typeof trackProd === 'function') trackProd('space-science-pack', spaceGain);
     if (typeof toast === 'function') toast('🛰️ 卫星发射成功，获得 +' + spaceGain + ' 空间科学包！');
   }
-  // ===== 火箭货舱货物降落（太空货运）=====
-  // 玩家装入火箭货舱的物品随火箭一起发射，降落到物流接驳站（若有），否则返回背包。
-  // 对齐《异星工厂》：火箭发射可把货物送到轨道/接驳站，实现地面→轨道的物资运输。
+  // ===== 火箭货舱货物降落（太空货运 / 行星间调度）=====
+  // 玩家装入火箭货舱的物品随火箭一起发射。
+  // 目标星球与当前星球相同 → 降落到本星物流接驳站（否则返回背包）；
+  // 目标星球不同 → 送入该星球轨道队列 G.orbitalCargo[planet]，玩家星际旅行抵达后交付
+  // （对齐《异星工厂》：火箭可把货物送到目标星球轨道，实现行星间物资调度）。
+  const curPlanet2 = (typeof planetId === 'function') ? planetId() : 'nauvis';
+  const cargoTarget = (silo && silo.cargoTarget) || curPlanet2;
+  const interplanet = cargoTarget !== curPlanet2;
   const siloCargo = (silo && silo.cargo) || {};
   let cargoItems = 0;
-  for (const k of Object.keys(siloCargo)) {
-    const n = siloCargo[k] || 0;
-    if (n <= 0) continue;
-    let landed = 0;
-    if (pad) {
-      while (landed < n && pad.giveItem(k)) landed++;
-      if (landed > 0) pad.cargoIn = (pad.cargoIn || 0) + landed;
+  if (interplanet) {
+    // 行星间调度：装入目标星球轨道队列
+    if (!G.orbitalCargo) G.orbitalCargo = {};
+    if (!G.orbitalCargo[cargoTarget]) G.orbitalCargo[cargoTarget] = {};
+    for (const k of Object.keys(siloCargo)) {
+      const n = siloCargo[k] || 0;
+      if (n <= 0) continue;
+      G.orbitalCargo[cargoTarget][k] = (G.orbitalCargo[cargoTarget][k] || 0) + n;
+      cargoItems += n;
     }
-    // 接驳站装不下的（或没有接驳站）返回背包
-    const rest = n - landed;
-    if (rest > 0) invAdd(k, rest);
-    if (typeof trackProd === 'function') trackProd(k, landed);
-    cargoItems += n;
+  } else {
+    // 本地降落：降落到物流接驳站（若有），否则返回背包
+    for (const k of Object.keys(siloCargo)) {
+      const n = siloCargo[k] || 0;
+      if (n <= 0) continue;
+      let landed = 0;
+      if (pad) {
+        while (landed < n && pad.giveItem(k)) landed++;
+        if (landed > 0) pad.cargoIn = (pad.cargoIn || 0) + landed;
+      }
+      // 接驳站装不下的（或没有接驳站）返回背包
+      const rest = n - landed;
+      if (rest > 0) invAdd(k, rest);
+      if (typeof trackProd === 'function') trackProd(k, landed);
+      cargoItems += n;
+    }
   }
-  if (silo) silo.cargo = {};
+  if (silo) { silo.cargo = {}; silo.cargoTarget = null; }
   if (cargoItems > 0) {
-    if (pad && typeof toast === 'function') toast('📦 火箭货舱 ' + cargoItems + ' 件货物已降落至物流接驳站！');
+    if (interplanet) {
+      const tname = (typeof planetOption === 'function' && planetOption(cargoTarget)) ? planetOption(cargoTarget).name : cargoTarget;
+      if (typeof toast === 'function') toast('📦 火箭货舱 ' + cargoItems + ' 件货物已送往' + tname + ' 轨道，抵达后交付');
+    } else if (pad && typeof toast === 'function') toast('📦 火箭货舱 ' + cargoItems + ' 件货物已降落至物流接驳站！');
     else if (typeof toast === 'function') toast('📦 火箭货舱 ' + cargoItems + ' 件货物已随火箭返回');
   }
   if (first) {
@@ -580,6 +625,7 @@ DEVICE_PANEL['rocket-silo'] = {
   onAction: (act, btn) => {
     const mch = G.panelEnt;
     if (mch instanceof RocketSilo) {
+      if (act === 'cargo-target') { mch.cargoTarget = btn.value; renderPanel(false); return true; }
       if (act === 'assemble') { mch.tryAssemble(); renderPanel(false); return true; }
       if (act === 'launch') { mch.tryLaunch(); renderPanel(false); return true; }
       if (act === 'cargo-feed') {
@@ -597,3 +643,34 @@ DEVICE_PANEL['rocket-silo'] = {
 DEVICE_PANEL['radar'] = { html: radarPanelHtml, live: radarPanelLive, tip: radarTip };
 DEVICE_DIR_ROTATE['rocket-silo'] = true;
 DEVICE_DIR_ROTATE['radar'] = true;
+
+// ===== 行星间货物调度交付（Space Age 太空货运）=====
+// 火箭发射时若货舱目标星球 ≠ 当前星球，货物进入该星球的轨道队列 G.orbitalCargo[planet]。
+// 玩家星际旅行抵达该星球时，交付函数把队列中的货物降落到物流接驳站（若有），
+// 否则直接送进玩家背包——实现行星间物资调度（对齐《异星工厂》：火箭把货物送到目标星球轨道）。
+function deliverOrbitalCargo(planet) {
+  const queued = (G.orbitalCargo && G.orbitalCargo[planet]) || {};
+  const keys = Object.keys(queued).filter(k => (queued[k] || 0) > 0);
+  if (!keys.length) return 0;
+  const pad = findCargoLandingPad();
+  let delivered = 0;
+  for (const k of keys) {
+    let n = queued[k] || 0;
+    if (n <= 0) continue;
+    let landed = 0;
+    if (pad) {
+      while (landed < n && pad.giveItem(k)) landed++;
+      if (landed > 0) pad.cargoIn = (pad.cargoIn || 0) + landed;
+    }
+    const rest = n - landed;
+    if (rest > 0) invAdd(k, rest);
+    if (typeof trackProd === 'function') trackProd(k, landed);
+    delivered += n;
+  }
+  delete G.orbitalCargo[planet];
+  if (delivered > 0 && typeof toast === 'function') {
+    const name = (typeof planetOption === 'function' && planetOption(planet)) ? planetOption(planet).name : planet;
+    toast('📦 行星间货物已送达' + name + '：' + delivered + ' 件' + (pad ? '降落至物流接驳站' : '已入背包'));
+  }
+  return delivered;
+}

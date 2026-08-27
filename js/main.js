@@ -42,6 +42,7 @@ const G = {
   blueprint: null,        // 蓝图数据：{ minX, minY, w, h, ents: [序列化实体...] }
   blueBook: [],           // 蓝图库：保存的多个蓝图 { name, minX, minY, ents }（对齐《异星工厂》蓝图库）
   blueMode: null,         // 'blue' | 'red' | 'paste'（框选/删除/粘贴蓝图）
+  orbitalCargo: {},       // 行星间货物调度：目标星球 -> { 物品 -> 数量 }（火箭发射送往目标星球，抵达后交付）
   blueStart: null,        // 框选起点瓦片
   blueEnd: null,          // 框选终点瓦片
   blueSelecting: false,   // 正在拖拽框选
@@ -154,6 +155,7 @@ function newGame() {
   G.logiRequest = {};   // 新游戏清空个人物流请求
   G.trashSlots = {};     // 新游戏清空个人垃圾桶标记
   G.blueBook = [];      // 新游戏清空蓝图库
+  G.orbitalCargo = {}; // 行星间货物调度：目标星球 -> { 物品 -> 数量 }（火箭发射送往目标星球，抵达后交付）
   G.mapTags = [];       // 新游戏清空地图标记
   if (typeof achInitStats === 'function') achInitStats();   // 新游戏清空成就状态
   G.railTiles = new Set();
@@ -248,6 +250,8 @@ function travelToPlanet(planet, opts) {
   // 恢复背包/科技/物流请求/蓝图库
   G.inv = inv;
   G.techDone = techDone; G.techProg = techProg; G.activeTech = activeTech; G.techQueue = techQueue;
+  // 交付已送达本星球的行星间货物（火箭发射送往目标星球，抵达后降落）
+  if (typeof deliverOrbitalCargo === 'function') deliverOrbitalCargo(planet);
   G.logiRequest = logiRequest; G.trashSlots = trashSlots; G.blueBook = blueBook;
   if (typeof constrRestore === 'function') constrRestore(null);
   if (typeof equipmentRestore === 'function') equipmentRestore(null);
@@ -292,6 +296,7 @@ function serializeAll() {
     hist: (typeof histSerialize === 'function') ? histSerialize() : null,
     constr: (typeof constrSerialize === 'function') ? constrSerialize() : null,
     equipment: (typeof equipmentSerialize === 'function') ? equipmentSerialize() : null,
+    orbitalCargo: Object.assign({}, G.orbitalCargo || {}),
     blueBook: (G.blueBook || []).map(b => ({ name: b.name, minX: b.minX | 0, minY: b.minY | 0, ents: b.ents, tiles: Array.isArray(b.tiles) ? b.tiles : [] })),
     mapTags: (typeof mapTagsSerialize === 'function') ? mapTagsSerialize() : (G.mapTags || []).slice(),
     achievements: (typeof achievementsSerialize === 'function') ? achievementsSerialize() : null
@@ -538,6 +543,8 @@ function applySave(d) {
     }
   }
   G.repairPackUses = (typeof d.repairPackUses === 'number') ? d.repairPackUses : 0;
+  // 恢复行星间货物调度队列（旧档无该字段则置空）
+  G.orbitalCargo = (d.orbitalCargo && typeof d.orbitalCargo === 'object') ? d.orbitalCargo : {};
   if (typeof mapTagsDeserialize === 'function') mapTagsDeserialize(d.mapTags); else G.mapTags = [];
   if (typeof achievementsRestore === 'function') achievementsRestore(d.achievements); else if (typeof achInitStats === 'function') achInitStats();
   G.combatRobots = [];
