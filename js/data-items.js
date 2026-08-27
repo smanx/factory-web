@@ -9,7 +9,7 @@
 // 未列出的物品使用默认 100。玩家背包/储物箱/载具等存储受此上限约束。
 const STACK_SIZES = {
   // 终局单体物品与载具：堆叠 1（rocket=官方 rocket 物品 stack=100，见下方桥接）
-  'rocket': 1, 'rocket-part': 100, 'satellite': 1, 'nuclear-reactor': 10, 'rocket-silo': 1, 'cargo-landing-pad': 1, 'cargo-bay': 10, 'landing-pad-unloading-bay': 10,  // nuclear-reactor 官方 10；cargo-landing-pad 官方 stack=1；cargo-bay/landing-pad-unloading-bay 官方 stack=10
+  'satellite': 1, 'nuclear-reactor': 10, 'rocket-silo': 1, 'cargo-landing-pad': 1, 'cargo-bay': 10, 'landing-pad-unloading-bay': 10,  // nuclear-reactor 官方 10；cargo-landing-pad 官方 stack=1；cargo-bay/landing-pad-unloading-bay 官方 stack=10；rocket(官方火箭弹)=100、rocket-part=5 由 GAME_DATA 桥接
   'recycler': 20,  // 回收机官方 stack=20（由 GAME_DATA 桥接）
   'tesla-turret': 10,  // 特斯拉炮塔官方 stack=10（由 GAME_DATA 桥接）
   'rocket-turret': 10, 'railgun-turret': 10, 'railgun-ammo': 10,  // 火箭/电磁轨道炮塔官方 stack=10；电磁轨道炮弹药官方 stack=10（由 GAME_DATA 桥接）
@@ -26,10 +26,10 @@ const STACK_SIZES = {
   // 原材料：堆叠 50
   'iron-ore': 50, 'copper-ore': 50, 'coal': 50, 'stone': 50, 'uranium-ore': 50,
   'wood': 100, 'raw-fish': 100, 'stone-brick': 100, 'calcite': 50,
-  'sulfur': 50, 'carbon': 50, 'uranium-235': 50, 'uranium-238': 50, 'nuclear-fuel': 1, 'uranium-fuel-cell': 1,
+  'sulfur': 50, 'carbon': 50, 'nuclear-fuel': 1,  // uranium-235/238 官方 stack=100、uranium-fuel-cell 官方 stack=50，均由 GAME_DATA 桥接
   'depleted-uranium-fuel-cell': 50,
-  // 固体燃料/火箭燃料/低密度结构：对齐原版 stack_size（固体燃料 50、火箭燃料 10、低密度结构 10）
-  'solid-fuel': 50, 'rocket-fuel': 10, 'low-density-structure': 10,
+  // 固体燃料官方 stack=50；火箭燃料/低密度结构官方 stack=20/50，由 GAME_DATA 桥接
+  'solid-fuel': 50,  // 火箭燃料 stack=20、低密度结构 stack=50，均由 GAME_DATA 桥接
   // 流体桶（对齐原版 1 桶 = 1 堆叠）
   'barrel': 10, 'water-barrel': 10, 'crude-oil-barrel': 10,
   'heavy-oil-barrel': 10, 'light-oil-barrel': 10, 'petroleum-gas-barrel': 10,
