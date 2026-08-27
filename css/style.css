@@ -224,9 +224,9 @@ html, body {
 
 .slot {
   position: relative;
-  width: 46px; height: 46px;
+  width: 36px; height: 36px;
   flex-shrink: 0;
-  border-radius: 8px;
+  border-radius: 6px;
   border: 2px solid #3a4550;
   cursor: pointer;
   opacity: .95;
@@ -1728,8 +1728,8 @@ html, body {
     max-width: calc(100vw - 24px);
     flex-wrap: wrap;
     justify-content: center;
-    /* 每行固定 5 个槽位：5×52px + 4×5px(gap) + 2×5px(padding) = 290px */
-    width: 290px;
+    /* 每行固定 5 个槽位：5×36px + 4×5px(gap) + 2×5px(padding) = 210px */
+    width: 210px;
   }
   #hotbar { scrollbar-width: thin; }
   #hotbar::-webkit-scrollbar { height: 4px; width: 4px; }
@@ -1738,7 +1738,7 @@ html, body {
     border: none;
     border-radius: 2px;
   }
-  .slot { width: 52px; height: 52px; }
+  .slot { width: 36px; height: 36px; }
   .slot .key { font-size: 12px; }
   .slot .cnt { font-size: 13px; }
   /* 手机端：背包格子改用 6 列网格，避免格子过小 */
