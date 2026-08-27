@@ -638,8 +638,8 @@ function inserterMachineRowsHtml(e) {
     '<div class="asm3-status-text status" data-live="ins-status"></div></div>';
   // 第二行：机械臂（设备）图标
   h += '<div class="ins-machine"><canvas class="ins-cv" width="96" height="96"></canvas></div>';
-  // 第三行：当前抓取的物品
-  h += '<div class="ins-held"><span class="ins-held-label">当前抓取</span><span class="ins-held-val" data-live="ins-held">空手</span></div>';
+  // 第三行：当前抓取的物品（图标显示在标题旁边，可点击放入背包）
+  h += '<div class="ins-held"><span class="ins-held-label">当前抓取</span><span class="ins-held-val" data-live="ins-held" data-action="ins-grab" title="点击将此物品放入背包">空手</span></div>';
   // 第四行：筛选功能（未启用时开关与格子仍显示，仅不可交互）
   h += '<div class="ins-sec">' +
     '<div class="ins-check-row">' + insCheckBtn(e.filterOn, 'flt-on') + '<span class="ins-label">启用筛选</span></div>' +
@@ -695,6 +695,18 @@ function inserterFilterOnAction(act, btn) {
     return r();
   }
   if (act === 'stack-on') { e.pickStack = (e.pickStack > 0) ? 0 : (e.capacity() || 1); return r(); }
+  // 点击爪上当前抓取的物品 → 进入「抓取状态」：不直接入背包。
+  // 物品从爪上取走并暂存在 G.armGrab，之后点击背包空格即放入背包（对齐背包点击物品的抓取体验）。
+  if (act === 'ins-grab') {
+    if (!e.holding) return true;
+    const heldName = (ITEMS[e.holding] && ITEMS[e.holding].name) ? ITEMS[e.holding].name : e.holding;
+    const n = e.holdingCount > 0 ? e.holdingCount : 1;
+    G.armGrab = { id: e.holding, count: n, ent: e };
+    e.holding = null; e.holdingCount = 0; e.blocked = false;
+    if (typeof toast === 'function') toast('已拿起 ' + heldName + '（共 ' + n + ' 个），点击背包空格放入');
+    if (typeof playSfx === 'function') playSfx('select');
+    return r();
+  }
   if (act === 'flt-stack') {
     const v = Math.floor(Number(btn.value));
     e.pickStack = Math.max(1, Math.min(e.capacity(), v));
@@ -720,9 +732,21 @@ function inserterTip(e) {
 // 面板实时状态：工作中或暂停原因 + 机械臂图标/当前抓取物品刷新
 function inserterPanelLive(e, api, body) {
   if (body) { const cv = body.querySelector('.ins-cv'); if (cv) drawInserterIcon(e, cv); }
-  api.set('ins-held', e.holding
-    ? ((ITEMS[e.holding] ? '<img class="ins-held-icon" src="' + iconDataURL(e.holding) + '">' + ITEMS[e.holding].name : e.holding) + (e.holdingCount > 1 ? ' ×' + e.holdingCount : ''))
-    : '空手');
+  // 抓取状态：物品已从爪上拿起、暂存于 G.armGrab，待点击背包空格放入。
+  const grab = (G.armGrab && G.armGrab.ent === e) ? G.armGrab : null;
+  api.set('ins-held', grab
+    ? (ITEMS[grab.id]
+        ? '<img class="ins-held-icon grabbed" src="' + iconDataURL(grab.id) + '" alt="' + ITEMS[grab.id].name + '">' +
+          (grab.count > 1 ? '<span class="ins-held-cnt">×' + grab.count + '</span>' : '') +
+          '<span class="ins-held-tag">在手中</span>'
+        : grab.id)
+    : (e.holding
+        ? (ITEMS[e.holding]
+            ? '<img class="ins-held-icon" src="' + iconDataURL(e.holding) + '" alt="' + ITEMS[e.holding].name + '">' +
+              (e.holdingCount > 1 ? '<span class="ins-held-cnt">×' + e.holdingCount + '</span>' : '')
+            : e.holding)
+        : '空手'));
+  if (grab) { api.status('已拿起 ' + (ITEMS[grab.id]?.name || grab.id) + '，点击背包空格放入', 'ok'); return; }
   if (!e.circuitEnabled()) { api.status('已停止：电路条件不满足', 'warn'); return; }
   if (e.holding) {
     if (e.blocked) api.status('已暂停：放货格已满，卡住 ' + ITEMS[e.holding].name, 'warn');

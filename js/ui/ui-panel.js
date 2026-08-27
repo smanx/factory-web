@@ -329,12 +329,27 @@ function initPanelEvents() {
     if (typeof vehEquipPanelClick === 'function' && vehEquipPanelClick(ev.target)) {
       return;
     }
+    // 机械臂爪上取下的物品（G.armGrab 抓取状态）→ 点击背包空格放入背包
+    if (G.armGrab && ev.target.closest && (ev.target.closest('.inv-slot.empty') || ev.target.closest('#inv-items .inv-slots'))) {
+      const g = G.armGrab;
+      const added = (typeof invAdd === 'function') ? invAdd(g.id, g.count) : 0;
+      if (added > 0) {
+        const left = g.count - added;
+        if (left > 0) G.armGrab.count = left;
+        else G.armGrab = null;
+        if (typeof playSfx === 'function') playSfx('pick');
+        if (typeof toast === 'function') toast('已放入背包：' + (ITEMS[g.id]?.name || g.id) + ' ×' + added);
+      } else {
+        if (typeof toast === 'function') toast('背包已满，放不进去了');
+      }
+      renderPanel(false);
+      return;
+    }
     const itEl = ev.target.closest('[data-itemid]');
-    // 在背包面板、配方设备交互面板、或储物箱双栏面板的左栏背包中，
-    // 点击物品可选中并显示放置幽灵（储物箱中选中后可存入箱子）
-    const isRecipeMachine = G.panelMode === 'machine' && G.panelEnt && isRecipeDevice(G.panelEnt);
-    const isChestPanel = G.panelMode === 'machine' && G.panelEnt && isChestEntity(G.panelEnt);
-    if (itEl && (G.panelMode === 'inv' || isRecipeMachine || isChestPanel) && !itEl.dataset.action) {
+    // 在背包面板、或任意设备交互面板（组装机/机械臂/储物箱等）左栏背包中，
+    // 点击物品可选中并显示放置幽灵：设备可点击地图直接建造，材料/工具跟随鼠标（储物箱中选中后可存入箱子）。
+    // 右栏设备操作区的可交互控件都带 data-action，故用 !itEl.dataset.action 排除。
+    if (itEl && (G.panelMode === 'inv' || (G.panelMode === 'machine' && G.panelEnt)) && !itEl.dataset.action) {
       const iid = itEl.dataset.itemid;
       // 任意物品（设备/材料/工具）均可被鼠标选中，选中后不关闭背包：
       // 设备点击地图可直接建造；材料/工具点击地图无法建造。

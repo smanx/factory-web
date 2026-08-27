@@ -343,6 +343,16 @@ function closePanel(hide = true) {
   const wasSettings = G.panelMode === 'set';
   G.panelMode = null;
   G.panelEnt = null;
+  // 关闭面板时若仍有机械臂爪上取下的物品在「抓取状态」，归还到对应机械臂爪上，避免物品凭空消失
+  if (G.armGrab) {
+    const g = G.armGrab;
+    if (g.ent && !g.ent.holding) {
+      g.ent.holding = g.id;
+      g.ent.holdingCount = g.count;
+      g.ent.blocked = false;
+    }
+    G.armGrab = null;
+  }
   G.invRecipeQ = '';
   G.recipeSel = null;
   G.rcpTab = null;

@@ -1538,7 +1538,7 @@ html, body {
   color: #fff;
   font-weight: bold;
   font-size: 13px;
-  display: flex;
+  display: none; /* 默认隐藏，仅当 URL 含 debug=1 时由 buildDebug 显示 */
   align-items: center;
   justify-content: center;
   cursor: grab;
@@ -2613,14 +2613,24 @@ html, body {
 .ins-machine canvas { display: block; width: 96px; height: 96px; }
 /* 当前抓取物品行 */
 .ins-held {
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: center; justify-content: flex-start;
   gap: 8px; padding: 8px 12px;
   background: #2a2a2a; border: 1px solid #444; border-radius: 6px;
   font-size: 12px; color: #ddd;
 }
 .ins-held .ins-held-label { color: #98a5b5; font-size: 12px; }
-.ins-held .ins-held-val { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; }
+.ins-held .ins-held-val { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; cursor: pointer; }
+.ins-held .ins-held-val:hover { color: #fff; }
 .ins-held .ins-held-icon { width: 20px; height: 20px; object-fit: contain; }
+/* 当前抓取物品：图标带边框（含「在手中」抓取状态） */
+.ins-held .ins-held-icon {
+  border: 1px solid #5a8fc0; border-radius: 3px;
+  box-shadow: 0 0 0 1px rgba(90,143,192,.25) inset;
+  padding: 1px; box-sizing: content-box;
+}
+.ins-held .ins-held-icon.grabbed { border-color: #2ecc71; box-shadow: 0 0 0 1px #2ecc71 inset; }
+.ins-held .ins-held-cnt { font-size: 11px; color: #ffd479; }
+.ins-held .ins-held-tag { font-size: 11px; color: #2ecc71; font-weight: 600; }
 /* 通用小节容器 */
 .ins-sec {
   padding: 10px 12px;
