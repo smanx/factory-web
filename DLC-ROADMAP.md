@@ -704,3 +704,24 @@
 >   会导致组装机/低温工厂配方网格运行时 ReferenceError；现低温工厂正确展示氨/氟酮/平台基座/冰面平台配方，
 >   组装机正确排除低温配方）。
 > - **校验**：verify-dlc 新增地形校验（11 项），全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+
+### 阶段四.23：植树造林链（Space Age Tree seeding，本迭代新增）
+
+（Space Age Tree seeding，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **物品**：`tree-seed`（树种子，堆叠 10）已接入，堆叠 / 中英命名（树种子/Tree seed）均来自
+>   GAME_DATA（factorio-data 官方 Space Age item 原型 stack_size=10），未单独维护数值表。
+> - **配方**（官方 tree-seed 配方，组装机装配方，数据单源化）：`tree-seed`：2 木材 → 1 树种（2s，
+>   官方 Space Age tree-seed 配方，组装机装配方）。
+> - **玩法**：补全植树造林玩法（对齐《异星工厂》Space Age Tree seeding）——手持树种子点击草地，
+>   可直接把草地长成一棵树（树为地形瓦片 T_TREE，可砍伐获木材、吸收污染）；用于绿化荒原、
+>   恢复生态、补种被砍伐/被污染枯死的树木。
+> - **科技**：新增「植树造林」科技（tree-seeding，官方前置 agricultural-science-pack，此处适配为
+>   前置「农业科技」+空间科技），解锁 tree-seed 配方（RECIPE_TECH 配方级门控）。
+> - **交互**：`main.js` 新增 `plantTree()`——树种子走地面放置分支，只能种在无建筑草地上（对齐官方
+>   place_as_tile 条件），种下后消耗 1 个树种子、把该格设为 T_TREE。
+> - **数据单源**：堆叠/命名/配方均来自 data.generated.js（factorio-data 现场生成），未单独维护数值表。
+> - **校验**：verify-dlc 新增植树造林链校验（14 项），verify-stack-sizes 补充树种子堆叠=10，
+>   verify-data-integrity 堆叠总数 155→156，全量 18 个校验脚本通过，`node build.js` 构建通过。

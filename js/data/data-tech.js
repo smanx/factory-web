@@ -83,6 +83,8 @@ const TECH_REQ = {
   'iron-bacteria': 'agriculture',
   'copper-bacteria': 'agriculture',
   'overgrowth-jellynut-soil': 'agriculture',
+  // ===== 植树造林（对齐《异星工厂》Space Age Tree seeding：官方 tree-seeding 科技解锁 tree-seed 树种）=====
+  'tree-seed': 'tree-seeding',
   'biolab': 'biolab',  // 生物实验室（Gleba）：需「生物实验室」科技（官方 Biolab 科技，前置农业科技），科研速度 2 倍
   // ===== 太空时代 小行星碎块加工链（统一由「太空材料加工」科技解锁）=====
   'crusher': 'asteroid-processing',
@@ -404,7 +406,9 @@ const RECIPE_TECH = {
   'mech-armor': 'mech-armor',
   'battery-mk3-equipment': 'mech-armor',
   'fission-reactor-equipment': 'mech-armor',
-  'toolbelt-equipment': 'mech-armor'
+  'toolbelt-equipment': 'mech-armor',
+  // ===== 植树造林（对齐《异星工厂》Space Age Tree seeding：官方 tree-seeding 科技解锁 tree-seed 树种配方）=====
+  'tree-seed': 'tree-seeding'
 
 };
 // ===== 任一科技解锁（对齐《异星工厂》科技树）=====

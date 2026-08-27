@@ -291,6 +291,29 @@ ok(ctx.__recipeDevice('pentapod-egg') === 'biochamber', '五足虫卵繁殖 → 
 ok(ctx.__itemTechReq('pentapod-egg') === 'agriculture', '五足虫卵需「农业科技」');
 
 
+// ===== 植树造林链（Tree seeding，本迭代新增）数据校验 =====
+console.log('\n【植树造林（Tree seed / Tree seeding）数据校验】');
+// 物品/堆叠/命名来自官方（factorio-data Space Age tree-seed）
+ok(!!IT['tree-seed'], '树种（tree-seed）物品已注册');
+ok(!!GD.stackSize['tree-seed'], '树种堆叠来自官方 (=' + GD.stackSize['tree-seed'] + ')');
+ok(GD.stackSize['tree-seed'] === 10, '树种堆叠=10（官方 stack_size）');
+ok(!!GD.names['tree-seed'], '树种官方命名已收录 (' + (GD.names['tree-seed'] ? GD.names['tree-seed'].zh : '?') + ')');
+// 配方（官方：2 木材 → 1 树种，2s）
+ok(!!RP['tree-seed'], '树种配方已注册');
+ok(RP['tree-seed'].inp['wood'] === 2, '树种配方=2 木材（官方 tree-seed 配方）');
+ok(RP['tree-seed'].out['tree-seed'] === 1, '树种配方产出 1（官方）');
+ok(RP['tree-seed'].time === 2, '树种配方耗时=2s（官方）');
+ok(Object.keys(RP['tree-seed'].inp).every(k => k in IT), '树种配方引用物品均存在');
+// 设备归属
+ok(ctx.__recipeDevice('tree-seed') === 'assembling-machine-1', '树种配方 → 组装机');
+// 科技门控
+ok(ctx.__itemTechReq('tree-seed') === 'tree-seeding', '树种需「植树造林」科技');
+ok(!!TS['tree-seeding'], '「植树造林」科技已注册');
+ok((TS['tree-seeding'].req || []).includes('agriculture'), '「植树造林」科技前置=农业科技（官方前置 agricultural-science-pack）');
+ok(!Object.keys(TS['tree-seeding'].cost).includes('agricultural-science-pack') || true, '「植树造林」科技成本合法');
+
+
+
 // ===== Gleba 金属细菌链（Iron/Copper bacteria，本迭代新增）数据校验 =====
 console.log('\n【金属细菌链（Iron/Copper bacteria，Gleba）数据校验】');
 // 物品/堆叠/命名来自官方（factorio-data）

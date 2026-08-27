@@ -659,6 +659,21 @@ function placeGround(type, tx, ty, infinite) {
   refreshHotbar();
 }
 
+
+// 植树造林：把树种播在草地上，长成一棵树（对齐《异星工厂》Space Age Tree seeding）
+// 树为地形瓦片 T_TREE（可砍伐获木材，吸收污染）。只能种在无建筑的草地上。
+function plantTree(tx, ty, infinite) {
+  const t = getTerrain(tx, ty);
+  if (t === T_TREE) { toast('这里已经有树了'); if (typeof playSfx === 'function') playSfx('deny'); return; }
+  if (t !== T_GRASS) { toast('树种只能种在草地上'); if (typeof playSfx === 'function') playSfx('deny'); return; }
+  if (entAt(tx, ty)) { toast('地面有建筑，无法种树'); if (typeof playSfx === 'function') playSfx('deny'); return; }
+  setTerrain(tx, ty, T_TREE);
+  if (typeof invalidateTerrainChunk === 'function') invalidateTerrainChunk(tx, ty);
+  if (!infinite) invTake('tree-seed', 1);
+  if (typeof playSfx === 'function') playSfx('build');
+  refreshHotbar();
+}
+
 function tryPlaceAt(tx, ty) {
   const rawSel = selItem();
   if (!rawSel) return;
@@ -670,6 +685,11 @@ function tryPlaceAt(tx, ty) {
   // 地面铺设（混凝土/石砖路/填海等）：不创建实体，直接修改地形（需优先于 BUILD_DEFS 守卫判定）
   if (type === 'concrete' || type === 'refined-concrete' || type === 'hazard-concrete' || type === 'stone-path' || type === 'landfill' || type === 'foundation' || type === 'ice-platform' || SOIL_TILE[type] !== undefined) {
     placeGround(type, tx, ty, infinite);
+    return;
+  }
+  // 树种（植树造林）：不创建实体，直接把草地长成一棵树（对齐《异星工厂》Space Age Tree seeding）
+  if (type === 'tree-seed') {
+    plantTree(tx, ty, infinite);
     return;
   }
   // 非可建造物品（如修理包）不触发建造
