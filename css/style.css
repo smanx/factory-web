@@ -2067,7 +2067,10 @@ html, body {
   overflow: hidden;
 }
 #panel.machine-wide .inv-layout.machine-layout { gap: 12px; }
-#panel.machine-wide .inv-col-right { flex: 1.2; }
+/* 交互面板左栏背包：左栏按与普通背包左列相同比例分配宽度，使背包图标与
+   正常玩家背包中的图标大小一致（此前左:右=1.15:1.2 令左栏过宽，图标偏大） */
+#panel.machine-wide .machine-layout .inv-col-left  { flex: 1; }
+#panel.machine-wide .machine-layout .inv-col-right { flex: 2; }
 
 /* 配方设备右侧交互信息 */
 .mch-recipe-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
