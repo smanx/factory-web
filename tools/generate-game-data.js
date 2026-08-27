@@ -1075,6 +1075,43 @@ for (const pid of projectItems) {
   // 其余（流体/环境/信号等非 5 大 Tab）不写入，由前端按无归类兜底处理
 }
 
+// ================= 污染排放单源化（对齐《异星工厂》Pollution） =================
+// 从 factorio-data 官方实体原型提取 `energy_source.emissions_per_minute.pollution`，
+// 作为各设备的污染排放源数据写入 GAME_DATA.pollution，使污染排放不再在设备侧硬编码。
+// 官方 emissions_per_minute 为每分钟污染排放量；项目以「/s 简化值」接入全局污染模型，
+// 直接采用官方数值（与石炉 2 / 钢炉 4 / 炼油 6 等官方 emissions_per_minute 一致）。
+// 以下设备官方 energy_source 无直接 emissions_per_minute（污染经其它机制建模），
+// 保留项目既有手工值作为兜底（见 POLLUTION_SOURCES_MANUAL）。
+const POLLUTION_ENTITY_SOURCES = {
+  'burner-mining-drill': ['mining-drill', 'burner-mining-drill'],
+  'electric-mining-drill': ['mining-drill', 'electric-mining-drill'],
+  'big-mining-drill': ['mining-drill', 'big-mining-drill'],
+  'pumpjack': ['mining-drill', 'pumpjack'],
+  'stone-furnace': ['furnace', 'stone-furnace'],
+  'steel-furnace': ['furnace', 'steel-furnace'],
+  'electric-furnace': ['furnace', 'electric-furnace'],
+  'boiler': ['boiler', 'boiler'],
+  'oil-refinery': ['assembling-machine', 'oil-refinery'],
+  'chemical-plant': ['assembling-machine', 'chemical-plant'],
+  'centrifuge': ['assembling-machine', 'centrifuge'],
+};
+// 官方无直接 emissions_per_minute、但项目有污染来源的设备（污染经其它机制建模）：
+// 核反应堆（热量/燃料后处理微量排放）、热能机械臂、火车头。
+const POLLUTION_MANUAL = { 'nuclear-reactor': 7, 'burner-inserter': 0.3, 'locomotive': 3 };
+const pollution = {};
+{
+  for (const [pid, [rtype, oname]] of Object.entries(POLLUTION_ENTITY_SOURCES)) {
+    const proto = raw[rtype] && raw[rtype][oname];
+    const es = proto && proto.energy_source;
+    const v = es && es.emissions_per_minute && es.emissions_per_minute.pollution;
+    if (typeof v === 'number') pollution[pid] = v;
+    else if (POLLUTION_MANUAL[pid] !== undefined) pollution[pid] = POLLUTION_MANUAL[pid];
+  }
+  for (const [pid, v] of Object.entries(POLLUTION_MANUAL)) {
+    if (pollution[pid] === undefined) pollution[pid] = v;
+  }
+}
+
 // ================= 敌人（Gleba 五足虫）单源化 =================
 // 从 factorio-data 官方 unit / spider-unit 原型提取太空时代五足虫（Pentapod）敌方数据。
 // 官方数值：max_health、movement_speed（格/tick）、attack_parameters（射程/冷却/伤害倍率/类型）。
@@ -1151,6 +1188,7 @@ Object.assign(GAME_DATA, {
   qualityModules,
   qualityTiers,
   itemGroup,
+  pollution,
   enemy,
 });
 
@@ -1299,4 +1337,4 @@ const header = [
 ].join('\n');
 
 fs.writeFileSync(OUT_FILE, header);
-console.log('OK: 已生成 ' + path.relative(ROOT, OUT_FILE) + ' (配方 ' + Object.keys(GAME_DATA.recipe).length + ' 条, 堆叠 ' + Object.keys(GAME_DATA.stackSize).length + ' 条, 血量 ' + Object.keys(GAME_DATA.buildingHp).length + ' 条, 功耗 ' + Object.keys(GAME_DATA.powerUse).length + ' 条, 设备参数 ' + Object.keys(GAME_DATA.deviceStats).length + ' 条, 命名 ' + Object.keys(GAME_DATA.names).length + ' 条, 配方名 ' + Object.keys(GAME_DATA.recipeNames).length + ' 条, 地下带 ' + Object.keys(GAME_DATA.undergroundDist).length + ' 条, 可再生 ' + (GAME_DATA.renewable ? Object.keys(GAME_DATA.renewable).length : 0) + ' 项, 流体容量 ' + (GAME_DATA.fluidCapacity ? Object.keys(GAME_DATA.fluidCapacity).length : 0) + ' 项, 炮塔 ' + Object.keys(GAME_DATA.turret).length + ' 座, 弹药伤害 ' + Object.keys(GAME_DATA.ammoDamage).length + ' 种, 雷达 ' + (GAME_DATA.radar ? Object.keys(GAME_DATA.radar).length : 0) + ' 项, 装备 ' + Object.keys(GAME_DATA.equipment).length + ' 件, 热量 ' + (GAME_DATA.heat ? Object.keys(GAME_DATA.heat).length : 0) + ' 项)');
+console.log('OK: 已生成 ' + path.relative(ROOT, OUT_FILE) + ' (配方 ' + Object.keys(GAME_DATA.recipe).length + ' 条, 堆叠 ' + Object.keys(GAME_DATA.stackSize).length + ' 条, 血量 ' + Object.keys(GAME_DATA.buildingHp).length + ' 条, 功耗 ' + Object.keys(GAME_DATA.powerUse).length + ' 条, 设备参数 ' + Object.keys(GAME_DATA.deviceStats).length + ' 条, 命名 ' + Object.keys(GAME_DATA.names).length + ' 条, 配方名 ' + Object.keys(GAME_DATA.recipeNames).length + ' 条, 地下带 ' + Object.keys(GAME_DATA.undergroundDist).length + ' 条, 可再生 ' + (GAME_DATA.renewable ? Object.keys(GAME_DATA.renewable).length : 0) + ' 项, 流体容量 ' + (GAME_DATA.fluidCapacity ? Object.keys(GAME_DATA.fluidCapacity).length : 0) + ' 项, 炮塔 ' + Object.keys(GAME_DATA.turret).length + ' 座, 弹药伤害 ' + Object.keys(GAME_DATA.ammoDamage).length + ' 种, 雷达 ' + (GAME_DATA.radar ? Object.keys(GAME_DATA.radar).length : 0) + ' 项, 装备 ' + Object.keys(GAME_DATA.equipment).length + ' 件, 热量 ' + (GAME_DATA.heat ? Object.keys(GAME_DATA.heat).length : 0) + ' 项, 污染排放 ' + Object.keys(GAME_DATA.pollution || {}).length + ' 项)');

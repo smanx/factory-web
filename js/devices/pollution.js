@@ -48,23 +48,20 @@ const POLLUTION_TREE_DIE = 60;         // 树累计吸收污染达到此量后�
 const POLLUTION_FIELD_MAX_TILES = 6000; // 逐格污染场最大格数（超出时加强衰减，防无界膨胀）
 
 // 各设备的污染排放系数（每秒，单位：污染值/s）
-// 对齐《异星工厂》：污染主要来自采矿 / 冶炼 / 石油化工 / 烧煤发电。
-const POLLUTION_SOURCES = {
-  'burner-mining-drill': 3,        // 热能采矿机（烧煤）
-  'electric-mining-drill': 4,      // 电采矿机（采掘污染，略高于热能）
-  'big-mining-drill': 6,        // 大型采矿机（太空时代，更大更快，采掘污染更高）
-  'pumpjack': 2,            // 抽油机（石油开采）
-  'stone-furnace': 2,       // 石炉（烧煤冶炼）
-  'steel-furnace': 4,       // 钢铁炉（烧煤冶炼，产能更高）
-  'electric-furnace': 5,    // 电炉（冶炼污染，功率更大）
-  'boiler': 4,              // 锅炉（烧煤发电）
-  'oil-refinery': 6,            // 炼油厂（石油化工）
-  'chemical-plant': 5,      // 化工厂（石油化工）
-  'centrifuge': 1,          // 离心机（铀浓缩处理，低污染）
-  'nuclear-reactor': 7,     // 核反应堆（虽清洁但燃料处理与热量管理仍有微量排放）
-  'locomotive': 3,          // 火车头（烧煤行驶）
-  'burner-inserter': 0.3    // 热能机械臂（烧煤，微量）
-};
+// 数据单源化：来自 GAME_DATA.pollution（data.generated.js，factorio-data 官方
+// `energy_source.emissions_per_minute.pollution`），未单独维护数值表。
+// 官方 emissions_per_minute 为每分钟排放量，项目以「/s 简化值」接入全局污染模型，
+// 直接采用官方数值（石炉 2 / 钢炉 4 / 炼油 6 等与官方一致）。
+// 官方无直接 emissions_per_minute、但项目有污染来源的设备（核反应堆/热能机械臂/火车头），
+// 由 generate-game-data.js 的 POLLUTION_MANUAL 兜底（官方经其它机制建模，无独立 emissions 字段）。
+const POLLUTION_SOURCES = (typeof GAME_DATA === 'object' && GAME_DATA.pollution)
+  ? Object.assign({}, GAME_DATA.pollution)
+  : {
+      'burner-mining-drill': 12, 'electric-mining-drill': 10, 'big-mining-drill': 40,
+      'pumpjack': 10, 'stone-furnace': 2, 'steel-furnace': 4, 'electric-furnace': 1,
+      'boiler': 30, 'oil-refinery': 6, 'chemical-plant': 4, 'centrifuge': 4,
+      'nuclear-reactor': 7, 'locomotive': 3, 'burner-inserter': 0.3,
+    };
 
 // 累加污染值（外部调用入口，钳制到上限）
 // 同时累计“总污染产生量”（G.pollutionProduced），用于驱动进化度

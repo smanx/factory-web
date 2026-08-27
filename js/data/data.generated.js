@@ -6642,6 +6642,22 @@ const GAME_DATA = {
   "fluoroketone-cold-barrel": "intermediate-products",
   "fluoroketone-hot-barrel": "intermediate-products"
  },
+ "pollution": {
+  "burner-mining-drill": 12,
+  "electric-mining-drill": 10,
+  "big-mining-drill": 40,
+  "pumpjack": 10,
+  "stone-furnace": 2,
+  "steel-furnace": 4,
+  "electric-furnace": 1,
+  "boiler": 30,
+  "oil-refinery": 6,
+  "chemical-plant": 4,
+  "centrifuge": 4,
+  "nuclear-reactor": 7,
+  "burner-inserter": 0.3,
+  "locomotive": 3
+ },
  "enemy": {
   "small-wriggler-pentapod": {
    "hp": 100,

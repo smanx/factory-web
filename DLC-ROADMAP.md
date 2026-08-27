@@ -1084,3 +1084,23 @@
 >   提高；每次研究即时刷新 `G.playerHPmax`（lab.js 研究完成时同步）。前置：空间科技 + 农业科技
 >   （官方 agricultural-science-pack 前置）+ 实用科技 + 军事科技 IV；成本用空间/农业/实用/军事科学包。
 > - **校验**：verify-dlc 新增健康科技校验（7 项），全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段六.2：污染排放单源化（Pollution emission single-sourcing，本迭代新增）
+
+> 依据「所有数据/参数从 data.generated.js 单源获取，不单独维护第二套数值」原则，
+> 把污染系统各污染源设备的排放系数从设备侧硬编码升级为官方数据单源化：
+
+- **数据单源**：`tools/generate-game-data.js` 新增 `GAME_DATA.pollution`——从 factorio-data 官方
+  实体原型 `energy_source.emissions_per_minute.pollution` 现场提取各污染源设备的排放量，
+  写入 data.generated.js。官方 `emissions_per_minute` 为每分钟排放量，项目以「/s 简化值」
+  接入全局污染模型，直接采用官方数值（石炉 2 / 钢炉 4 / 炼油 6 / 锅炉 30 / 热能采矿机 12 等
+  与官方完全一致），未单独维护数值表。
+- **覆盖设备**：热能采矿机 12 / 电采矿机 10 / 大型采矿机 40 / 抽油机 10 / 石炉 2 / 钢炉 4 /
+  电炉 1 / 锅炉 30 / 炼油厂 6 / 化工厂 4 / 离心机 4（全部官方 emissions_per_minute）。
+- **官方无直接 emissions_per_minute 的设备**（核反应堆 / 热能机械臂 / 火车头，官方经其它机制
+  建模污染，energy_source 无独立 emissions 字段）：由 `POLLUTION_MANUAL` 兜底（7 / 0.3 / 3），
+  在 generate-game-data.js 中与官方项一并写入 GAME_DATA.pollution。
+- **前端**：`js/devices/pollution.js` 的 `POLLUTION_SOURCES` 改为读取 `GAME_DATA.pollution`
+  （官方优先，兜底数组仅在 GAME_DATA 缺失时生效），设备侧不再硬编码污染数值表。
+- **校验**：verify-dlc 新增「污染排放单源化」校验（16 项：11 个官方数值 + 3 个兜底 + 前端单源读取），
+  全量 18 个校验脚本通过，`node build.js` 构建通过。

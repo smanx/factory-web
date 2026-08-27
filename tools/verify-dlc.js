@@ -1393,4 +1393,28 @@ ok(!!TS['health'].req && TS['health'].req.indexOf('military4') >= 0, '健康科�
 ok(TS['health'].cat === 'space-age', '健康科技归入太空时代分类');
 
 
+
+
+// ===== 污染排放单源化校验（本迭代新增）=====
+// 校验各污染源设备排放数值来自 GAME_DATA.pollution（factorio-data 官方
+// energy_source.emissions_per_minute.pollution），而非设备侧硬编码。
+console.log('\n【污染排放单源化（GAME_DATA.pollution，官方 emissions_per_minute）】');
+const POLLUTION_EXPECT = {
+  'burner-mining-drill': 12, 'electric-mining-drill': 10, 'big-mining-drill': 40,
+  'pumpjack': 10, 'stone-furnace': 2, 'steel-furnace': 4, 'electric-furnace': 1,
+  'boiler': 30, 'oil-refinery': 6, 'chemical-plant': 4, 'centrifuge': 4,
+};
+for (const [id, expect] of Object.entries(POLLUTION_EXPECT)) {
+  ok(GD.pollution && GD.pollution[id] === expect, id + ' 污染排放=官方 ' + expect);
+}
+ok(!!GD.pollution && GD.pollution['nuclear-reactor'] === 7, 'nuclear-reactor 污染排放=项目兜底 7（官方无直接 emissions）');
+ok(!!GD.pollution && GD.pollution['burner-inserter'] === 0.3, 'burner-inserter 污染排放=项目兜底 0.3（官方无直接 emissions）');
+ok(!!GD.pollution && GD.pollution['locomotive'] === 3, 'locomotive 污染排放=项目兜底 3（官方无直接 emissions）');
+// 前端 pollution.js 应引用 GAME_DATA.pollution（而非硬编码）
+const pollutionJs = fs.readFileSync(ROOT + '/js/devices/pollution.js', 'utf8');
+ok(pollutionJs.includes('GAME_DATA.pollution'), 'pollution.js 从 GAME_DATA.pollution 单源读取（非硬编码）');
+ok(!/POLLUTION_SOURCES = \{[^}]*'stone-furnace': 2,[^}]*\}/.test(pollutionJs) || pollutionJs.includes('GAME_DATA.pollution'), 'pollution.js 污染数值已单源化');
+
+
 process.exit(fail === 0 ? 0 : 1);
+
