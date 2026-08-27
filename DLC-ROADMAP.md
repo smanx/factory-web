@@ -176,6 +176,22 @@
 ### 阶段四：太空时代行星（高风险，大改）
 - [x] **供热塔（Aquilo Heating tower）**：3×3 燃烧式供热设备，数据全部来自 GAME_DATA.heat（官方 consumption 40MW × effectivity 2.5 → 产热 100MW、specific_heat 5MJ/°C、max_transfer 10GW），达到最高温仍持续燃烧，经四边热量接口向导热管传导（官方 heat_buffer.connections）。配方：2锅炉+5导热管+20混凝土（10s）。由「供热塔」科技解锁。
 - [x] **生物实验室（Gleba Biolab）**：5×5 高级研究中心，数据全部来自 GAME_DATA（官方 researching_speed=2、module_slots=4、功耗 300kW、血量 350、占地 5×5），科研速度 2 倍。配方：1实验室+10生物流+25精炼混凝土+3铀-235（官方依赖 biter-egg/capture-robot-rocket=生物星球资源，适配为现有生物链资源）。由「生物实验室」科技解锁（前置农业科技）。
+### 阶段四.5：太空推进链（Space Age Thruster fuel/oxidizer，本迭代新增）
+- [x] **推进器燃料 / 氧化剂（Thruster fuel / oxidizer）**：太空时代化工厂流体链
+
+> 已落地说明（本迭代增量）：
+> - 流体物品：`thruster-fuel`（推进器燃料）/ `thruster-oxidizer`（推进器氧化剂）已接入，
+>   中英命名来自 GAME_DATA.names（factorio-data 官方 fluid-name：推进器燃料/Thruster fuel、
+>   推进器氧化剂/Thruster oxidizer），并已加入 FLUIDS / BARREL_FLUIDS（支持管道流动与桶装运输）。
+> - 配方（官方数据，化工厂 chemical-plant 化学类别配方，数据单源化）：
+>   - `thruster-fuel`：2碳+10水→75流体（2s）
+>   - `thruster-oxidizer`：2铁矿+10水→75流体（2s）
+>   - `advanced-thruster-fuel`：2碳+1方解石+100水→1500流体（10s，配方名 高级推进器燃料/Advanced thruster fuel）
+>   - `advanced-thruster-oxidizer`：2铁矿+1方解石+100水→1500流体（10s，配方名 高级推进器氧化剂/Advanced thruster oxidizer）
+>   - 高级配方官方依赖 calcite 方解石（Vulcanus 资源，项目已有方解石矿物），产出 1500 单位大宗流体。
+> - 科技：新增「太空推进」科技（space-thruster，需电磁学+空间科技），解锁推进燃料/氧化剂链。
+> - 用途：作为太空平台/推进器（thruster）的基础推进流体，供后续轨道平台系统使用。
+> - 校验：verify-dlc 新增太空推进链校验（23 项），全量 18 个校验脚本通过，构建通过。
 - [ ] 行星切换（Nauvis / Vulcanus / Gleba / Fulgora / Aquilo）
 - [ ] 轨道平台 / 太空货运
 - [ ] 各行星专属资源与科技

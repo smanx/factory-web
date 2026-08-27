@@ -5,6 +5,16 @@ let uiDirty = true;
 const ICON_CACHE = {};
 const URL_CACHE = {};
 
+// 背包面板 tab HTML 缓存：仅首次生成并缓存「材料 / 合成」两个 tab 的 innerHTML，
+// 打开背包或切换 tab 时直接复用，避免每次都重建数百个 DOM 节点（尤其合成页的
+// 大量配方）导致明显卡顿。动态数量由 updateInvLive 每帧轻量刷新保持准确；
+// 当物品/科技等状态变更时通过 _invalidateInvCache() 清除缓存强制重建。
+let _invTabCache = { materials: null, craft: null };
+function _invalidateInvCache() {
+  _invTabCache.materials = null;
+  _invTabCache.craft = null;
+}
+
 function iconDataURL(id) {
   let u = URL_CACHE[id];
   if (!u) {
@@ -179,9 +189,29 @@ function renderPanel(full) {
     const invTab = G.invTab === 'craft' ? 'craft' : 'materials';
     const tabBtn = t => '<button class="inv-tab' + (invTab === t ? ' active' : '') + '" data-inv-tab="' + t + '">' +
       (t === 'craft' ? '🛠 合成' : '🎒 材料') + '</button>';
+    // 性能优化：
+    // 1) 惰性生成 tab —— 只生成当前激活的 tab，未激活 tab 等切换过去时才生成，
+    //    避免每次打开背包都一次性重建「材料 + 合成」两份大段 DOM（原先首次打开
+    //    卡 2 秒、此后每次打开小卡，主要由合成页数百条配方反复生成导致）。
+    // 2) 复用缓存 —— 「合成」页内容重（数百条配方），首次生成后缓存复用；其动态
+    //    数量由 updateInvLive 每帧轻量刷新，物品/科技变化时 _invalidateInvCache()
+    //    清缓存强制重建（见主循环 hook）。「材料」页含快捷栏编辑、护甲、物流请求、
+    //    垃圾桶等交互变更的区块，这些不随 updateInvLive 刷新，故每次打开都重新生成，
+    //    保证状态始终准确（其体积远小于合成页，成本可控）。
+    // 只生成当前激活 tab 的 HTML；未激活 tab 留空占位，待切换过去时才生成。
+    let matHtml = '', craftHtml = '';
+    if (invTab === 'materials') {
+      matHtml = htmlInventory();
+      // 复用缓存的合成页（未生成过则为空，切到合成页时才生成）
+      craftHtml = _invTabCache['craft'] || '';
+    } else {
+      if (!_invTabCache['craft']) _invTabCache['craft'] = htmlCraft();
+      craftHtml = _invTabCache['craft'];
+      // 材料页含交互变更区块，切换回来时再重新生成，故此处留空
+    }
     body.innerHTML = '<div class="inv-tabs">' + tabBtn('materials') + tabBtn('craft') + '</div>' +
-      '<div id="inv-tab-materials"' + (invTab === 'materials' ? '' : ' style="display:none"') + '>' + htmlInventory() + '</div>' +
-      '<div id="inv-tab-craft"' + (invTab === 'craft' ? '' : ' style="display:none"') + '>' + htmlCraft() + '</div>';
+      '<div id="inv-tab-materials"' + (invTab === 'materials' ? '' : ' style="display:none"') + '>' + matHtml + '</div>' +
+      '<div id="inv-tab-craft"' + (invTab === 'craft' ? '' : ' style="display:none"') + '>' + craftHtml + '</div>';
     applyInvRecipeFilter(G.invRecipeQ);
     applyBuildSearch(G.buildDevQ);
     if (typeof fillLogiReqGrid === 'function') fillLogiReqGrid(G.lreqQ || '');

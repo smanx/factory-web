@@ -419,5 +419,31 @@ ok(ctx.__itemTechReq('biolab') === 'biolab', '生物实验室需「生物实验�
 ok(TS['biolab'].req.includes('agriculture'), '「生物实验室」科技前置包含农业科技');
 ok(!Object.keys(TS['biolab'].cost).includes('biolab'), '「生物实验室」科技配方不含生物实验室本体（避免循环依赖）');
 
+// ===== 太空推进链（Space Age Thruster fuel/oxidizer，本迭代新增）数据校验 =====
+console.log('\n【太空推进链（Thruster fuel/oxidizer）数据】');
+ok(GD.names['thruster-fuel'] && GD.names['thruster-fuel'].en === 'Thruster fuel', 'thruster-fuel 官方命名已收录 (Thruster fuel)');
+ok(GD.names['thruster-oxidizer'] && GD.names['thruster-oxidizer'].en === 'Thruster oxidizer', 'thruster-oxidizer 官方命名已收录 (Thruster oxidizer)');
+ok(GD.recipeNames['advanced-thruster-fuel'] && GD.recipeNames['advanced-thruster-fuel'].en === 'Advanced thruster fuel', '高级推进器燃料配方官方命名已收录');
+ok(GD.recipeNames['advanced-thruster-oxidizer'] && GD.recipeNames['advanced-thruster-oxidizer'].en === 'Advanced thruster oxidizer', '高级推进器氧化剂配方官方命名已收录');
+ok(!!RP['thruster-fuel'], 'thruster-fuel 配方已注册');
+ok(!!RP['thruster-oxidizer'], 'thruster-oxidizer 配方已注册');
+ok(!!RP['advanced-thruster-fuel'], 'advanced-thruster-fuel 配方已注册');
+ok(!!RP['advanced-thruster-oxidizer'], 'advanced-thruster-oxidizer 配方已注册');
+// 官方数据：thruster-fuel = 2碳+10水→75流体（2s）；thruster-oxidizer = 2铁矿+10水→75流体（2s）
+ok(RP['thruster-fuel'].inp.carbon === 2 && RP['thruster-fuel'].inp.water === 10, 'thruster-fuel 配方=2碳+10水（官方）');
+ok(RP['thruster-fuel'].out['thruster-fuel'] === 75 && RP['thruster-fuel'].time === 2, 'thruster-fuel 产出 75 流体、2s（官方）');
+ok(RP['thruster-oxidizer'].inp['iron-ore'] === 2 && RP['thruster-oxidizer'].inp.water === 10, 'thruster-oxidizer 配方=2铁矿+10水（官方）');
+ok(RP['thruster-oxidizer'].out['thruster-oxidizer'] === 75 && RP['thruster-oxidizer'].time === 2, 'thruster-oxidizer 产出 75 流体、2s（官方）');
+ok(RP['advanced-thruster-fuel'].inp.calcite === 1 && RP['advanced-thruster-fuel'].out['thruster-fuel'] === 1500, '高级推进器燃料=碳+方解石+水→1500（官方）');
+ok(RP['advanced-thruster-oxidizer'].out['thruster-oxidizer'] === 1500 && RP['advanced-thruster-oxidizer'].time === 10, '高级推进器氧化剂→1500、10s（官方）');
+ok(Object.keys(RP['thruster-fuel'].inp).every(k => k in IT), 'thruster-fuel 配方引用物品均存在');
+ok(Object.keys(RP['advanced-thruster-oxidizer'].inp).every(k => k in IT), '高级推进器氧化剂配方引用物品均存在');
+ok(!!IT['thruster-fuel'], 'thruster-fuel 流体物品已注册');
+ok(!!IT['thruster-oxidizer'], 'thruster-oxidizer 流体物品已注册');
+ok(!!TS['space-thruster'], '「太空推进」科技已注册');
+ok(ctx.__itemTechReq('thruster-fuel') === 'space-thruster', '推进器燃料需「太空推进」科技');
+ok(ctx.__itemTechReq('thruster-oxidizer') === 'space-thruster', '推进器氧化剂需「太空推进」科技');
+ok(ctx.__itemTechReq('advanced-thruster-fuel') === 'space-thruster', '高级推进器燃料需「太空推进」科技');
+ok(!Object.keys(TS['space-thruster'].cost).includes('thruster-fuel'), '「太空推进」科技配方不含推进器燃料（避免循环依赖）');
 console.log('\n' + (fail === 0 ? '✅ DLC 数据校验全部通过（' + pass + ' 项）' : '❌ 失败 ' + fail + ' 项'));
 process.exit(fail === 0 ? 0 : 1);

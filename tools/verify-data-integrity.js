@@ -73,6 +73,7 @@ const dynamicKeys = new Set([
   'advanced-metallic-asteroid-crushing', 'advanced-carbonic-asteroid-crushing', 'advanced-oxide-asteroid-crushing',
   'metallic-asteroid-reprocessing', 'carbonic-asteroid-reprocessing', 'oxide-asteroid-reprocessing',
   'yumako-growing', // 农业塔种植配方：种子→玉玛果（产物键≠配方键）
+  'advanced-thruster-fuel', 'advanced-thruster-oxidizer', // 太空推进高级配方：产物为推进器燃料/氧化剂流体（产物键≠配方键）
 ]);
 for (const rid in RECIPES) {
   if (rid.startsWith('fill-') || rid.startsWith('empty-')) continue; // 动态桶配方

@@ -181,6 +181,15 @@ const RECIPES = {
   // 硫磺：石油气 + 水 → 硫磺（原版 1s，2:1 比例简化为 3:2）
   'sulfur':        { time: 1, inp: { 'petroleum-gas': 30, 'water': 30 }, out: { 'sulfur': 2 } },
   'carbon':        { time: 1, inp: { 'coal': 2, 'sulfuric-acid': 20 }, out: { 'carbon': 1 } },
+  // ===== 太空推进链（Space Age Thruster fuel/oxidizer，官方数据，化工厂化学配方）=====
+  // 推进器燃料：碳 + 水 → 推进器燃料（官方 thruster-fuel 2s，2碳+10水→75流体，化学类别，化工厂生产）
+  'thruster-fuel': { time: 2, inp: { 'carbon': 2, 'water': 10 }, out: { 'thruster-fuel': 75 } },
+  // 推进器氧化剂：铁矿 + 水 → 推进器氧化剂（官方 thruster-oxidizer 2s，2铁矿+10水→75流体，化工厂生产）
+  'thruster-oxidizer': { time: 2, inp: { 'iron-ore': 2, 'water': 10 }, out: { 'thruster-oxidizer': 75 } },
+  // 高级推进器燃料：碳 + 方解石 + 水 → 推进器燃料（官方 advanced-thruster-fuel 10s，2碳+1方解石+100水→1500流体，化工厂生产）
+  'advanced-thruster-fuel': { time: 10, inp: { 'carbon': 2, 'calcite': 1, 'water': 100 }, out: { 'thruster-fuel': 1500 } },
+  // 高级推进器氧化剂：铁矿 + 方解石 + 水 → 推进器氧化剂（官方 advanced-thruster-oxidizer 10s，2铁矿+1方解石+100水→1500流体，化工厂生产）
+  'advanced-thruster-oxidizer': { time: 10, inp: { 'iron-ore': 2, 'calcite': 1, 'water': 100 }, out: { 'thruster-oxidizer': 1500 } },
   // ===== 太空时代 Space Age 材料链（数据来自官方 factorio-data，见 GAME_DATA）=====
   // 碳纤维：碳 → 碳纤维（官方 carbon-fiber 由 yumako-mash+碳，此处适配为化工厂碳加工，耗时 5s）
   'carbon-fiber':        { time: 5, inp: { 'carbon': 3 }, out: { 'carbon-fiber': 1 } },
@@ -366,7 +375,7 @@ function filterChoices() {
   return _filterChoicesCache;
 }
 
-const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant', 'solid-fuel', 'solid-fuel-light-oil', 'solid-fuel-heavy-oil', 'sulfur', 'sulfuric-acid', 'carbon', 'carbon-fiber', 'lithium', 'flamethrower-ammo'];
+const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant', 'solid-fuel', 'solid-fuel-light-oil', 'solid-fuel-heavy-oil', 'sulfur', 'sulfuric-acid', 'carbon', 'carbon-fiber', 'lithium', 'thruster-fuel', 'thruster-oxidizer', 'advanced-thruster-fuel', 'advanced-thruster-oxidizer', 'flamethrower-ammo'];
 function isChemRecipe(id) { return CHEM_RECIPES.indexOf(id) >= 0; }
 function chemMult() { return (G.techDone.plastic ? 1.5 : 1) * ((G.dbg && G.dbg.asmMult) || 1); }
 
