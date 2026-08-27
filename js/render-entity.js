@@ -295,12 +295,38 @@ function mouseOverMap() {
   return !!(el && el === G.canvas);
 }
 
+// 背包格子像素尺寸缓存：在背包面板打开/尺寸变化时重置，避免每帧重复测量 DOM。
+let _ghostSlotSize = 0;
+// 返回背包格子的像素边长（宽=高，aspect-ratio:1）。面板未打开或测量失败时回退默认值。
+function ghostSlotSize() {
+  if (_ghostSlotSize) return _ghostSlotSize;
+  const el = document.querySelector('#inv-items .inv-slot');
+  if (el) {
+    const sz = el.getBoundingClientRect().width;
+    if (sz > 0) { _ghostSlotSize = sz; return sz; }
+  }
+  return 52;   // 面板未打开等场景的回退值（与移动端 .slot 尺寸一致）
+}
+
+// 在顶层画布上应用与主画布一致的世界坐标变换（相机平移+缩放）。返回是否已入栈需恢复。
+function ghostWorldTransform(g) {
+  if (g === G.ghostCtx) {
+    g.save();
+    g.translate(W / 2, H / 2);
+    g.scale(G.cam.z, G.cam.z);
+    g.translate(-G.cam.px, -G.cam.py);
+    return true;
+  }
+  return false;
+}
+
 // 放置幽灵绘制在专用顶层画布（#ghost-layer）上，层级高于所有界面（含背包面板）。
-// 每帧先清空顶层画布，再套用与主画布一致的世界坐标变换后绘制。
-// 显示逻辑分两种：
-// 1. 放置幽灵：仅当鼠标移动到地图上且当前物品为可建造设备时，按占地格绘制实体幽灵；
-// 2. 物品小图标：其他情况（鼠标在面板/工具栏上，或物品为材料/工具）一律绘制物品小图标幽灵；
-//    同时选中设备时在屏幕右下角显示其数量。
+// 每帧先清空顶层画布，再按选中物品与鼠标位置绘制。显示逻辑分三种：
+// 1. 放置幽灵：鼠标在地图上且物品为可建造设备 → 按占地格绘制实体幽灵；
+// 2. 物品小图标（地图上）：鼠标在地图上但物品为材料/工具 → 在光标所在格绘制物品图标；
+// 3. 物品小图标（UI 上）：鼠标在背包面板/工具栏等界面 → 在屏幕坐标跟随鼠标绘制物品图标，
+//    大小与背包格子保持一致。
+// 同时选中设备时在屏幕右下角显示其数量徽标。
 function drawGhost(ctx) {
   const g = (G && G.ghostCtx) || ctx;   // 顶层画布优先，回退到主画布
   if (g !== ctx) g.clearRect(0, 0, W, H); // 仅清空顶层画布，不清主画布
@@ -309,19 +335,11 @@ function drawGhost(ctx) {
   const type = selItem();
   if (!type || !ITEMS[type]) return;
   const def = BUILD_DEFS[type];
-  // 顶层画布需自行应用与主画布相同的世界坐标变换（相机平移+缩放）
-  const worlded = (g !== ctx);
-  if (worlded) {
-    g.save();
-    g.translate(W / 2, H / 2);
-    g.scale(G.cam.z, G.cam.z);
-    g.translate(-G.cam.px, -G.cam.py);
-  }
-  // 仅当鼠标位于地图上且当前物品为可建造设备时，才显示放置幽灵（实体幽灵+占地框）；
-  // 其他情况一律显示物品小图标幽灵（跟随鼠标）。
-  const showPlaceGhost = def && mouseOverMap();
+  const overMap = mouseOverMap();
+  const showPlaceGhost = def && overMap;
   if (showPlaceGhost) {
-    // 设备：在光标所在格绘制实体幽灵 + 占地框
+    // 设备：鼠标在地图上 → 在光标所在格绘制实体幽灵 + 占地框
+    const worlded = ghostWorldTransform(g);
     let ew = def.w, eh = def.h;
     if (def.rotSwap && (G.ghostDir % 2 === 1)) { ew = def.h; eh = def.w; }
     // 不允许覆盖建造：目标格已有实体时判定为红色不可放置，与建造行为一致。
@@ -335,8 +353,10 @@ function drawGhost(ctx) {
     g.strokeStyle = chk.ok ? 'rgba(140,255,140,.9)' : 'rgba(255,110,110,.9)';
     g.lineWidth = 2 / G.cam.z;
     g.strokeRect(G.cursorTile.tx * TILE, G.cursorTile.ty * TILE, ew * TILE, eh * TILE);
-  } else {
-    // 材料/工具等（或设备但鼠标不在地图上）：在光标所在格绘制物品小图标幽灵（跟随鼠标）
+    if (worlded) g.restore();
+  } else if (overMap) {
+    // 材料/工具等：鼠标在地图上 → 在光标所在格绘制物品图标幽灵（跟随鼠标所在格）
+    const worlded = ghostWorldTransform(g);
     const cx = (G.cursorTile.tx + 0.5) * TILE;
     const cy = (G.cursorTile.ty + 0.5) * TILE;
     g.globalAlpha = 0.6;
@@ -345,8 +365,24 @@ function drawGhost(ctx) {
     g.strokeStyle = 'rgba(255,255,255,.45)';
     g.lineWidth = 2 / G.cam.z;
     g.strokeRect(G.cursorTile.tx * TILE + 1, G.cursorTile.ty * TILE + 1, TILE - 2, TILE - 2);
+    if (worlded) g.restore();
+  } else {
+    // 鼠标在背包面板/工具栏等 UI 上：屏幕坐标跟随鼠标绘制物品图标，大小与背包格子一致。
+    // 此时不套用世界坐标变换，直接以 CSS 像素（ghostCtx 已按 DPR 缩放）绘制。
+    const slot = ghostSlotSize();
+    const ms = G.mouseScreen || { x: W / 2, y: H / 2 };
+    g.save();
+    g.globalAlpha = 0.9;
+    g.fillStyle = 'rgba(10,14,18,.72)';
+    if (g.roundRect) g.roundRect(ms.x - slot / 2, ms.y - slot / 2, slot, slot, 6);
+    else g.rect(ms.x - slot / 2, ms.y - slot / 2, slot, slot);
+    g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.55)';
+    g.lineWidth = 1.5;
+    g.stroke();
+    drawItemGlyph(g, type, ms.x, ms.y, slot * 0.72);
+    g.restore();
   }
-  if (worlded) g.restore();
   // 屏幕右下角显示当前选中设备的数量（设备始终显示；材料/工具不显示数量徽标）
   if (def) drawDeviceCountBadge(g);
 }

@@ -22,6 +22,8 @@ function resize() {
     G.ghostCv.style.height = H + 'px';
     G.ghostCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
+  // 画布尺寸变化后，背包格子像素尺寸需重新测量
+  if (typeof _ghostSlotSize !== 'undefined') _ghostSlotSize = 0;
 }
 
 function updateCamera(dt) {
