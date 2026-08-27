@@ -29,9 +29,10 @@ const T_JELLYNUT_SOIL = 10;      // 人工果仁土壤（太空时代 Gleba 农�
 const T_OVERGROWTH_JELLYNUT_SOIL = 11; // 茂盛果仁土壤（太空时代 Gleba 农业）：更肥沃的果仁种植土壤，可走行
 const T_ICE_PLATFORM = 12;   // 冰面平台（太空时代 Aquilo）：玄冥星冰原地表，可走行
 const T_FOUNDATION = 13;    // 平台基座（太空时代 Space platform）：空间平台走行地板，可走行
+const T_SPACE_PLATFORM = 14; // 太空平台地基（太空时代 Space platform foundation 地面瓦片）：灰色栅格合金地板，铺设成太空平台地板，行走加速（对齐官方 Space platform foundation）
 function isWalkableTerrain(t) { return t !== T_WATER && t !== T_CLIFF; }
 // 地形是否“硬化”（混凝土/石砖路等铺装地）：玩家行走速度提升
-function isPaved(t) { return t === T_CONCRETE || t === T_PATH || t === T_REF_CONCRETE || t === T_HAZARD || t === T_REF_HAZARD || t === T_FOUNDATION || t === T_ICE_PLATFORM; }
+function isPaved(t) { return t === T_CONCRETE || t === T_PATH || t === T_REF_CONCRETE || t === T_HAZARD || t === T_REF_HAZARD || t === T_FOUNDATION || t === T_ICE_PLATFORM || t === T_SPACE_PLATFORM; }
 
 // ===== 无限分块世界 =====
 // 世界由 32×32 块按需确定性生成。矿量稀疏存储：only remaining（被采过且

@@ -704,6 +704,36 @@ function drawBullets(ctx) {
     } else if (b.kind === 'flame') {
       ctx.fillStyle = 'rgba(255,' + (120 + Math.random() * 60 | 0) + ',40,' + (1 - t).toFixed(2) + ')';
       ctx.beginPath(); ctx.arc(cx, cy, 6 + Math.random() * 5, 0, 7); ctx.fill();
+    } else if (b.kind === 'railgun') {
+      // 轨道炮（磁轨炮弹）：细长亮蓝贯穿光束（对齐《异星工厂》Railgun 直线光束）
+      const a = (1 - t);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = 'rgba(120,180,255,' + (a * 0.4).toFixed(2) + ')';
+      ctx.lineWidth = 7;
+      ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
+      ctx.strokeStyle = 'rgba(190,225,255,' + (a * 0.95).toFixed(2) + ')';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,' + (a * 0.8).toFixed(2) + ')';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
+      ctx.restore();
+    } else if (b.kind === 'tesla') {
+      // 特斯拉电枪/炮塔：蓝紫连锁电弧（折线抖动，增强电击感）
+      const a = (1 - t);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = 'rgba(120,180,255,' + (a * 0.5).toFixed(2) + ')';
+      ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
+      ctx.strokeStyle = 'rgba(190,220,255,' + (a * 0.9).toFixed(2) + ')';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,' + (a * 0.8).toFixed(2) + ')';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(cx, cy); ctx.stroke();
+      ctx.restore();
     } else if (b.splash || b.art) {
       // 火箭/手雷/炮兵炮弹：轨迹 + 命中爆炸圈
       ctx.strokeStyle = b.art ? 'rgba(255,140,90,' + (1 - t).toFixed(2) + ')' : 'rgba(255,200,120,' + (1 - t).toFixed(2) + ')';

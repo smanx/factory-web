@@ -996,10 +996,49 @@ ok(!!TS['cryogenics'], '「低温学」科技已注册');
 ok(TS['cryogenics'].req && TS['cryogenics'].req.indexOf('electromagnetics') >= 0, '低温学前置含「电磁学」');
 const cryoRec2 = RP['cryogenic-science-pack'];
 ok(cryoRec2 && cryoRec2.inp['ice'] === 3 && cryoRec2.inp['lithium-plate'] === 1 && cryoRec2.inp['fluoroketone-cold'] === 6 && cryoRec2.out && cryoRec2.out['fluoroketone-hot'] === 3, '低温科研包配方=冰3+锂板1+氟酮冷6→1+氟酮热3（官方）');
-console.log('\n【熔融金属 / 废料回收（数据来自 GAME_DATA）】');
+console.log('\n【熔融金属铸造链 / 废料回收（数据来自 GAME_DATA）】');
 ok(!!GD.names['molten-iron'] && !!GD.names['molten-copper'], '熔融铁/熔融铜官方命名已收录');
-ok(ctx.__recipeDevice('molten-iron') === 'foundry', '熔融铁 → 铸造厂');
-ok(ctx.__recipeDevice('molten-copper') === 'foundry', '熔融铜 → 铸造厂');
+// 熔炼：官方 iron-ore-melting / copper-ore-melting（50 矿 + 1 方解石 → 500 熔融，32s）
+const iom = RP['iron-ore-melting'];
+ok(!!iom, 'iron-ore-melting 配方已注册（官方铁矿熔炼）');
+ok(iom && iom.time === 32 && iom.inp['iron-ore'] === 50 && iom.inp['calcite'] === 1 && iom.out['molten-iron'] === 500, 'iron-ore-melting=50铁矿+1方解石→500熔融铁，32s（官方）');
+const com = RP['copper-ore-melting'];
+ok(!!com, 'copper-ore-melting 配方已注册（官方铜矿熔炼）');
+ok(com && com.time === 32 && com.inp['copper-ore'] === 50 && com.inp['calcite'] === 1 && com.out['molten-copper'] === 500, 'copper-ore-melting=50铜矿+1方解石→500熔融铜，32s（官方）');
+// 浇铸链：官方 casting-*
+const castMap = {
+  'casting-iron': [20, 'molten-iron', 'iron-plate', 2, 3.2],
+  'casting-steel': [30, 'molten-iron', 'steel-plate', 1, 3.2],
+  'casting-copper': [20, 'molten-copper', 'copper-plate', 2, 3.2],
+  'casting-iron-gear-wheel': [10, 'molten-iron', 'iron-gear-wheel', 1, 1],
+  'casting-iron-stick': [20, 'molten-iron', 'iron-stick', 4, 1],
+  'casting-pipe': [10, 'molten-iron', 'pipe', 1, 1],
+  'casting-copper-cable': [5, 'molten-copper', 'copper-cable', 2, 1],
+};
+for (const [rid, [amt, fin, fout, cnt, t]] of Object.entries(castMap)) {
+  const rec = RP[rid];
+  ok(!!rec, rid + ' 配方已注册（官方铸造）');
+  ok(rec && rec.time === t && rec.inp[fin] === amt && rec.out[fout] === cnt, rid + '=' + amt + fin + '→' + cnt + fout + '，' + t + 's（官方）');
+  ok(ctx.__recipeDevice(rid) === 'foundry', rid + ' → 铸造厂');
+}
+// 浇铸地下管道 / 低密度结构 / 混凝土
+const cptg = RP['casting-pipe-to-ground'];
+ok(!!cptg && cptg.time === 1 && cptg.inp['molten-iron'] === 50 && cptg.inp['pipe'] === 10 && cptg.out['pipe-to-ground'] === 2, 'casting-pipe-to-ground=50熔融铁+10管道→2地下管道，1s（官方）');
+const clds = RP['casting-low-density-structure'];
+ok(!!clds && clds.time === 15 && clds.inp['molten-iron'] === 80 && clds.inp['molten-copper'] === 250 && clds.inp['plastic-bar'] === 5 && clds.out['low-density-structure'] === 1, 'casting-low-density-structure=80熔融铁+250熔融铜+5塑料→1低密度结构，15s（官方）');
+const ccon = RP['concrete-from-molten-iron'];
+ok(!!ccon && ccon.time === 10 && ccon.inp['molten-iron'] === 20 && ccon.inp['water'] === 100 && ccon.inp['stone-brick'] === 5 && ccon.out['concrete'] === 10, 'concrete-from-molten-iron=20熔融铁+100水+5石砖→10混凝土，10s（官方）');
+for (const rid of ['iron-ore-melting','copper-ore-melting','casting-iron','casting-steel','casting-copper','casting-iron-gear-wheel','casting-iron-stick','casting-pipe','casting-pipe-to-ground','casting-low-density-structure','casting-copper-cable','concrete-from-molten-iron']) {
+  ok(ctx.__recipeDevice(rid) === 'foundry', rid + ' → 铸造厂');
+  ok(ctx.__itemTechReq(rid) === 'molten-metal', rid + ' 需「熔融金属」科技');
+}
+// 蒸汽冷凝 / 酸中和（官方 steam-condensation / acid-neutralisation）
+const scond = RP['steam-condensation'];
+ok(!!scond && scond.time === 1 && scond.inp['steam'] === 1000 && scond.out['water'] === 90, 'steam-condensation=1000蒸汽→90水，1s（官方）');
+const aneu = RP['acid-neutralisation'];
+ok(!!aneu && aneu.time === 0.5 && aneu.inp['calcite'] === 1 && aneu.inp['sulfuric-acid'] === 100 && aneu.out['steam'] === 1000, 'acid-neutralisation=1方解石+100硫酸→1000蒸汽，0.5s（官方）');
+ok(ctx.__recipeDevice('steam-condensation') === 'chemical-plant', '蒸汽冷凝 → 化工厂');
+ok(ctx.__recipeDevice('acid-neutralisation') === 'chemical-plant', '酸中和 → 化工厂');
 ok(!!GD.names['scrap'], '废料官方命名已收录');
 ok(GD.stackSize['scrap'] === 50, '废料堆叠=50（官方）');
 ok(!!RP['recycle-scrap'], '废料回收配方已注册');
@@ -1237,9 +1276,6 @@ for (const r of ['lithium-brine', 'ammoniacal-solution', 'ammoniacal-solution-se
   ok(inpOk && outOk, r + ' 配方引用的物品均存在');
 }
 
-
-process.exit(fail === 0 ? 0 : 1);
-
 console.log('\n【太空时代 Gleba 五足虫敌人（Pentapod）数据校验】');
 {
   // GAME_DATA.enemy 从 factorio-data 官方 unit/spider-unit 单源生成
@@ -1262,6 +1298,84 @@ console.log('\n【太空时代 Gleba 五足虫敌人（Pentapod）数据校验�
   // 保底：数据源数量
   const penCount = Object.keys(pen).filter(k => k.indexOf('pentapod') >= 0).length;
   ok(penCount >= 9, 'GAME_DATA.enemy 五足虫数量 >= 9（实际 ' + penCount + '）');
+}
+
+console.log('\n【太空时代空间平台地基（space-platform-foundation）数据校验】');
+{
+  // 官方物品数据单源
+  ok(!!GD.stackSize['space-platform-foundation'] && GD.stackSize['space-platform-foundation'] === 100, 'space-platform-foundation 堆叠来自官方 (=100)');
+  ok(!!GD.names['space-platform-foundation'] && !!GD.names['space-platform-foundation'].en, 'space-platform-foundation 官方命名已收录 (' + (GD.names['space-platform-foundation'] ? GD.names['space-platform-foundation'].en : '?') + ')');
+  // 物品已注册
+  ok(!!IT['space-platform-foundation'], 'space-platform-foundation 物品已注册');
+  // 配方已注册（官方配方，数据单源）
+  ok(!!RP['space-platform-foundation'], 'space-platform-foundation 配方已注册');
+  // 官方配方数值（官方 space-platform-foundation = 20 钢板 + 20 铜线，10s）
+  ok(RP['space-platform-foundation'] && RP['space-platform-foundation'].time === 10, 'space-platform-foundation 耗时=10s（官方）');
+  ok(RP['space-platform-foundation'] && RP['space-platform-foundation'].inp['steel-plate'] === 20 && RP['space-platform-foundation'].inp['copper-cable'] === 20, 'space-platform-foundation 配方=20钢板+20铜线（官方）');
+  ok(RP['space-platform-foundation'] && RP['space-platform-foundation'].out['space-platform-foundation'] === 1, 'space-platform-foundation 产出 1（官方）');
+  // 科技门控（由「空间平台」解锁）
+  ok(ctx.__itemTechReq('space-platform-foundation') === 'space-platform', 'space-platform-foundation 需「空间平台」科技');
+  // 地面瓦片落地（PAVE_TILE 可铺设）
+  const mainSrc = fs.readFileSync(ROOT + '/js/main/main.js', 'utf8');
+  ok(mainSrc.indexOf("'space-platform-foundation': T_SPACE_PLATFORM") >= 0, 'space-platform-foundation 已入 PAVE_TILE（可铺设瓦片）');
+  // 地形渲染 / 小地图 / 蓝图均已落地
+  ok(fs.readFileSync(ROOT + '/js/game/world.js', 'utf8').indexOf('T_SPACE_PLATFORM = 14') >= 0, 'T_SPACE_PLATFORM 地形类型已定义（=14）');
+  ok(fs.readFileSync(ROOT + '/js/render/render.js', 'utf8').indexOf("t === T_SPACE_PLATFORM") >= 0, 'T_SPACE_PLATFORM 渲染分支已接入');
+  ok(fs.readFileSync(ROOT + '/js/render/render-minimap.js', 'utf8').indexOf("T_SPACE_PLATFORM") >= 0, 'T_SPACE_PLATFORM 小地图配色已接入');
+  ok(fs.readFileSync(ROOT + '/js/game/blueprint.js', 'utf8').indexOf("'14': 'space-platform-foundation'") >= 0, '蓝图 TILE_IDS 已接入（地砖记录/粘贴）');
+}
+
+
+
+
+console.log('\n【太空时代手持武器（railgun 轨道炮 / teslagun 特斯拉电枪）数据校验】');
+{
+  // 加载手持武器表 WEAPONS（combat2-armor.js）到 VM
+  const armorSrc = fs.readFileSync(ROOT + '/js/devices/combat2-armor.js', 'utf8');
+  // 抽取 WEAPONS 对象（平衡括号扫描）
+  const wm = /const\s+WEAPONS\s*=\s*\{/.exec(armorSrc);
+  let wobjStart = armorSrc.indexOf('{', wm.index), wDepth = 0, wj = wobjStart;
+  for (; wj < armorSrc.length; wj++) { const c = armorSrc[wj]; if (c === '{') wDepth++; else if (c === '}') { wDepth--; if (wDepth === 0) break; } }
+  const WEAPONS = Function('return ' + armorSrc.slice(wobjStart, wj + 1))();
+  // 物品/弹药/配方/科技 均已接入
+  ok(!!IT['railgun'], 'railgun 物品已注册（官方轨道炮）');
+  ok(!!IT['teslagun'], 'teslagun 物品已注册（官方特斯拉电枪）');
+  ok(!!IT['railgun-ammo'], 'railgun-ammo 弹药已注册');
+  ok(!!IT['tesla-ammo'], 'tesla-ammo 弹药已注册');
+  ok(!!RP['railgun'] && !!RP['railgun-ammo'], 'railgun 及其弹药配方已注册');
+  ok(!!RP['teslagun'] && !!RP['tesla-ammo'], 'teslagun 及其弹药配方已注册');
+  // 手持武器已注册进 WEAPONS
+  ok(!!WEAPONS['railgun'] && WEAPONS['railgun'].railgun === true, 'railgun 已注册为手持武器（直线贯穿）');
+  ok(!!WEAPONS['teslagun'] && WEAPONS['teslagun'].tesla === true, 'teslagun 已注册为手持武器（电弧连锁）');
+  ok(WEAPONS['railgun'] && WEAPONS['railgun'].ammo === 'railgun-ammo', 'railgun 弹药=railgun-ammo');
+  ok(WEAPONS['teslagun'] && WEAPONS['teslagun'].ammo === 'tesla-ammo', 'teslagun 弹药=tesla-ammo');
+  // 数值来自 GAME_DATA / 官方
+  ok(GD.stackSize['railgun'] === 1, 'railgun 堆叠来自官方 (=1)');
+  ok(GD.names['railgun'] && GD.names['railgun'].en === 'Railgun', 'railgun 官方命名已收录 (Railgun)');
+  ok(GD.names['teslagun'] && GD.names['teslagun'].en === 'Tesla gun', 'teslagun 官方命名已收录 (Tesla gun)');
+  // 科技门控
+  ok(ctx.__itemTechReq('railgun') === 'railgun-defense', 'railgun 需「轨道炮防御」科技');
+  ok(ctx.__itemTechReq('teslagun') === 'fulgora', 'teslagun 需「富尔戈拉电磁」科技');
+  // 渲染分支已接入
+  const renSrc = fs.readFileSync(ROOT + '/js/render/render-entity.js', 'utf8');
+  ok(renSrc.indexOf("b.kind === 'railgun'") >= 0, 'railgun 贯穿光束渲染分支已接入');
+  ok(renSrc.indexOf("b.kind === 'tesla'") >= 0, 'tesla 电弧渲染分支已接入');
+}
+
+
+console.log('\n【氨制火箭燃料（ammonia-rocket-fuel）数据校验】');
+{
+  ok(!!RP['ammonia-rocket-fuel'], 'ammonia-rocket-fuel 配方已注册');
+  ok(RP['ammonia-rocket-fuel'] && RP['ammonia-rocket-fuel'].time === 10, 'ammonia-rocket-fuel 耗时=10s（官方）');
+  ok(RP['ammonia-rocket-fuel'] && RP['ammonia-rocket-fuel'].inp['solid-fuel'] === 10 && RP['ammonia-rocket-fuel'].inp['water'] === 50 && RP['ammonia-rocket-fuel'].inp['ammonia'] === 500, 'ammonia-rocket-fuel 配方=10固燃+50水+500氨（官方）');
+  ok(RP['ammonia-rocket-fuel'] && RP['ammonia-rocket-fuel'].out['rocket-fuel'] === 1, 'ammonia-rocket-fuel 产出=1 火箭燃料（官方）');
+  ok(!!GD.recipeNames['ammonia-rocket-fuel'] && GD.recipeNames['ammonia-rocket-fuel'].en === 'Ammonia rocket fuel', 'ammonia-rocket-fuel 官方配方名 (Ammonia rocket fuel)');
+  ok(ctx.__recipeDevice('ammonia-rocket-fuel') === 'chemical-plant', 'ammonia-rocket-fuel 配方 → 化工厂（官方 chemistry）');
+  ok(ctx.__itemTechReq('ammonia-rocket-fuel') === 'cryogenics', 'ammonia-rocket-fuel 需「低温学」科技');
+  const rec = RP['ammonia-rocket-fuel'];
+  const inpOk = rec && Object.keys(rec.inp).every(x => x in IT || ['water'].indexOf(x) >= 0);
+  const outOk = rec && Object.keys(rec.out).every(x => x in IT);
+  ok(inpOk && outOk, 'ammonia-rocket-fuel 配方引用的物品均存在');
 }
 
 

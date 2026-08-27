@@ -97,9 +97,15 @@ const WEAPONS = {
   'defender-capsule':   { name: '防御机器人',   dmg: 0, rate: 0.8, ammo: 'defender-capsule',   spread: 0, auto: false, range: 6, capsule: 'defender' },
   'distractor-capsule': { name: '干扰机器人',   dmg: 0, rate: 0.8, ammo: 'distractor-capsule', spread: 0, auto: false, range: 6, capsule: 'distractor' },
   'destroyer-capsule':  { name: '破坏机器人',   dmg: 0, rate: 0.8, ammo: 'destroyer-capsule',  spread: 0, auto: false, range: 6, capsule: 'destroyer' },
+  // 轨道炮（官方 Space Age Railgun）：太空时代终极单兵武器，发射磁轨炮弹沿直线贯穿多个敌人造成巨额伤害
+  'railgun': { name: '轨道炮', dmg: 500, rate: 2.0, ammo: 'railgun-ammo', spread: 0.01, auto: false, range: 40, railgun: true, sfx: 'machine-gun' },
+  // 特斯拉电枪（官方 Space Age Tesla gun）：Fulgora 电能武器，发射电弧在目标间连锁跳跃并逐跳递减伤害
+  'teslagun': { name: '特斯拉电枪', dmg: 30, rate: 1.0, ammo: 'tesla-ammo', spread: 0.01, auto: true, range: 24, tesla: true, sfx: 'laser' },
 };
 function isWeapon(id) { return !!WEAPONS[id]; }
 function isCapsuleWeapon(id) { return !!(WEAPONS[id] && WEAPONS[id].capsule); }
+// 角度归一化（把任意弧度规整到 [-π,π]），供轨道炮直线判定使用
+function weaponNormAng(a) { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; }
 // 设置当前手持武器（带科技/物品存在校验）
 function setWeapon(id) {
   if (!id) { G.weapon = null; uiDirty = true; return; }
@@ -230,6 +236,66 @@ function playerFire(tx, ty) {
   // 武器固有伤害加成（如战斗散弹枪 +20% 伤害）
   if (w.dmgBonus) baseDmg = Math.round(baseDmg * (1 + w.dmgBonus));
   const dmg = Math.round(baseDmg * base);
+  // 轨道炮（官方 Railgun）：沿射向直线贯穿多个敌人（对齐官方 railgun-ammo 直线穿透高伤）
+  if (w.railgun) {
+    const ang = baseAng;
+    const enemies = G._aliveEnemies || (G.enemies || []);
+    const railRange = w.range * TILE;
+    for (const en of enemies) {
+      if (!en || en.dead) continue;
+      const dx = en.x - px, dy = en.y - py;
+      const d = Math.hypot(dx, dy);
+      if (d > railRange) continue;
+      const da = Math.abs(weaponNormAng(Math.atan2(dy, dx) - ang));
+      if (da < 0.08) { en.hp -= dmg; if (en.hp <= 0) en.dead = true; }
+    }
+    // 直线光束特效
+    (G.bullets || (G.bullets = [])).push({
+      x: px, y: py, tx: px + Math.cos(ang) * railRange, ty: py + Math.sin(ang) * railRange,
+      t: 0, life: 0.12, dmg: 0, kind: 'railgun'
+    });
+    if (typeof playSfx === 'function') playSfx(w.sfx || 'machine-gun');
+    uiDirty = true;
+    return;
+  }
+  // 特斯拉电枪（官方 Tesla gun）：电弧在目标间连锁跳跃，逐跳递减伤害
+  if (w.tesla) {
+    const enemies = G._aliveEnemies || (G.enemies || []);
+    const teslaRange = w.range * TILE;
+    // 射程内最近的敌人作首目标
+    let best = null, bestD = Infinity;
+    for (const en of enemies) {
+      if (!en || en.dead) continue;
+      const d = Math.hypot(en.x - px, en.y - py);
+      if (d <= teslaRange && d < bestD) { best = en; bestD = d; }
+    }
+    if (best) {
+      const chain = [];
+      let cur = best;
+      const hit = new Set();
+      let cd = dmg;
+      for (let i = 0; i < 5 && cur; i++) {
+        hit.add(cur);
+        chain.push({ x: cur.x, y: cur.y });
+        cur.hp -= Math.round(cd);
+        if (cur.hp <= 0) cur.dead = true;
+        cd *= 0.8;
+        let nxt = null, nxtD = Infinity;
+        for (const en of enemies) {
+          if (!en || en.dead || hit.has(en)) continue;
+          const d = Math.hypot(en.x - cur.x, en.y - cur.y);
+          if (d <= TILE * 10 && d < nxtD) { nxt = en; nxtD = d; }
+        }
+        cur = nxt;
+      }
+      (G.bullets || (G.bullets = [])).push({
+        x: px, y: py, tx: best.x, ty: best.y, t: 0, life: 0.1, dmg: 0, kind: 'tesla'
+      });
+    }
+    if (typeof playSfx === 'function') playSfx(w.sfx || 'laser');
+    uiDirty = true;
+    return;
+  }
   for (let i = 0; i < pellets; i++) {
     const a = baseAng + (Math.random() - 0.5) * 2 * w.spread;
     const dist = w.range * TILE;

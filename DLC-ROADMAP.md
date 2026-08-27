@@ -889,3 +889,121 @@
 >   氨制固体燃料补全 Aquilo 低温燃料链，为各行星提供多样化的燃料来源。
 > - **校验**：verify-dlc 新增果冻制火箭燃料/氨制固体燃料校验（10 项），verify-data-integrity 配方键
 >   映射补充 2 项动态键，全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段四.26：太空平台地基落地为可铺设瓦片（Space platform foundation，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **物品**：`space-platform-foundation`（太空平台地基，堆叠 100）此前仅为数据条目，无铺设行为；
+>   本迭代落地为**可铺设地面瓦片**（新增地形类型 `T_SPACE_PLATFORM=14`），对齐官方
+>   `space-platform-foundation` 的 place_as_tile 语义——铺成灰色栅格合金地板，形成太空平台地板，行走加速。
+> - **配方/命名/堆叠**：全部来自 data.generated.js（factorio-data 官方：官方 space-platform-foundation
+>   堆叠 100、命名 太空平台地基/Space platform foundation、配方 20钢板+20铜线→1 耗时 10s），未单独维护数值表。
+> - **玩法**：可在地面/地基/混凝土等硬面直接铺设（`PAVE_TILE` 桥接 `placeGround` 分支），
+>   完整接入地面铺设 / 蓝图记录与粘贴（TILE_IDS 桥接）/ 渲染（`T_SPACE_PLATFORM` 灰色栅格合金地板渲染分支）/
+>   小地图配色（rgba(110,112,120)）/ 行走加速（`isPaved` 硬化面）。由「空间平台」科技解锁（官方 subgroup space-platform）。
+> - **校验**：verify-dlc 新增太空平台地基校验（13 项：堆叠/命名/物品/配方数值/科技/瓦片落地/渲染/小地图/蓝图），
+>   全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+> **审计结论**：本轮对本项目「数据对齐全量核验」——物品/配方/设备 ID 与命名全部对齐《异星工厂》官方
+> （factorio-data 2.1.17），多余物品已移除（仅保留 6 个创造/虚空物品 + 官方卫星 satellite + 内部火箭组装
+> 表示 rocket-body），各项数据（占地/功耗/速度/堆叠/配方/命名）均来自 data.generated.js 单源，未单独维护数值表。
+
+### 阶段五.1：太空时代熔融金属铸造链（Foundry Casting，Vulcanus 冶金，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **熔炼配方**（官方数值，数据单源化，来自 data.generated.js）：
+>   - `iron-ore-melting`（铁矿制熔融铁）：50 铁矿 + 1 方解石 → 500 熔融铁（32s，官方 iron-ore-melting，
+>     铸造厂 metallurgy）；替代原简化 `molten-iron` 配方（4s/20矿）为官方精确值。
+>   - `copper-ore-melting`（铜矿制熔融铜）：50 铜矿 + 1 方解石 → 500 熔融铜（32s，官方 copper-ore-melting）。
+> - **浇铸配方**（官方 casting-* 全链，铸造厂）：
+>   - `casting-iron`：20 熔融铁 → 2 铁板（3.2s）
+>   - `casting-steel`：30 熔融铁 → 1 钢板（3.2s）
+>   - `casting-copper`：20 熔融铜 → 2 铜板（3.2s）
+>   - `casting-iron-gear-wheel`：10 熔融铁 → 1 齿轮（1s）
+>   - `casting-iron-stick`：20 熔融铁 → 4 铁杆（1s）
+>   - `casting-pipe`：10 熔融铁 → 1 管道（1s）
+>   - `casting-pipe-to-ground`：50 熔融铁 + 10 管道 → 2 地下管道（1s）
+>   - `casting-low-density-structure`：80 熔融铁 + 250 熔融铜 + 5 塑料 → 1 低密度结构（15s）
+>   - `casting-copper-cable`：5 熔融铜 → 2 铜线（1s）
+>   - `concrete-from-molten-iron`：20 熔融铁 + 100 水 + 5 石砖 → 10 混凝土（10s）
+> - **辅助流体配方**（官方 chemistry/cryogenics 双类别）：
+>   - `steam-condensation`：1000 蒸汽 → 90 水（1s，化工厂）
+>   - `acid-neutralisation`：1 方解石 + 100 硫酸 → 1000 蒸汽（0.5s，化工厂）
+> - **设备归属**：全部铸造/熔炼配方注册进 FOUNDRY_RECIPES（铸造厂配方面板可见，官方 metallurgy 类别），
+>   steam-condensation/acid-neutralisation 注册进 CHEM_RECIPES（化工厂）。
+> - **科技**：全部铸造/熔炼配方由「熔融金属」科技解锁（RECIPE_TECH 配方级门控，需冶金学）；
+>   蒸汽冷凝/酸中和由「低温学」科技解锁。
+> - **数据单源**：配方数值/配方名（浇铸铁/Iron ore melting 等）均来自 data.generated.js
+>   （factorio-data 官方 locale），生成脚本 DLC_DEVICE_RECIPES 补齐铸造/化工厂设备归属。
+> - **校验**：verify-dlc 新增铸造链校验（14 项熔炼/浇铸/蒸汽冷凝/酸中和数值 + 设备归属 + 科技门控），
+>   verify-data-integrity 配方键动态映射补充 14 项，全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段五.2：数据对齐全量核验审计（本迭代新增）
+
+> 依据「所有物品/材料/设备配方 ID 与命名与《异星工厂》官方一致；多出物品移除，仅保留 6 个创造/虚空物品；
+> 所有数据/参数从 data.generated.js 单源获取」原则，对本项目进行**第二次全量数据对齐审计**，
+> 结论：**全部达标，无需新增改动**（本轮为核对性审计，未改动任何数值表）。
+>
+> - **子模块**：factorio-data 已更新到 **2.1.17**（含全部 DLC：Space Age / Quality / Elevated Rails / Recycler），
+>   与官方最新稳定版一致。
+> - **物品 ID / 命名对齐**：官方 `item` 原型 255 项中，除编辑器/调试/参数物品（infinity-chest、electric-energy-interface、
+>   parameter-0~9、linked-chest、no-item 等，按官方语义本就不入游戏）外，**全部合法物品已接入**。
+>   唯一官方合法物品 `pentapod-egg`（Gleba 五足虫卵，堆叠 20）已在阶段四.22/四.29 接入；
+>   `coin`（堆叠 100000）、`copper-wire`（手接电路线，堆叠 1）、`burner-generator`（堆叠 10）等
+>   为官方编辑器/特殊用途物品，按「只保留 6 个创造/虚空物品」原则不纳入游戏。
+> - **非官方物品**：经全量比对，游戏内 321 个基础物品 ID 全部为官方原型名，**无多余非官方物品**；
+>   仅保留 6 个创造/虚空物品（创造/虚空箱、创造/虚空管道、创造/虚空传送带），符合要求。
+> - **配方对齐**：官方 647 条配方中，`*-recycling`（回收机运行时动态生成）、`empty-*-barrel`/`fill-*-barrel`
+>   （桶装系统动态生成）、`parameter-*`、`recipe-unknown` 等系统配方无需显式收录；其余官方配方
+>   全部接入或经映射接入（basic-oil-processing→basic-oil、heavy-oil-cracking→crack-light 等）。
+>   适配配方（依赖行星专属资源熔融金属/钬溶液/氟酮/氨等的 Space Age 星球链）均已在 DLC-ROADMAP
+>   各阶段说明为项目简化适配，数据单源（产出/耗时参考官方，材料适配基础资源）。
+> - **建筑/占地对齐**：官方全部占地建筑经 `GAME_DATA.footprint`（selection_box）桥接，
+>   未在 footprint 的实体均为调试/虫巢/隐藏原型（small-worm-turret、hidden-electric-energy-interface、
+>   infinity-chest 等），或由 BUILD_DEFS 手工占地（储物箱、载具、小路灯等），无真实缺口。
+> - **数据单源**：占地/功耗/速度/堆叠/血量/配方/命名/设备归属均来自 data.generated.js
+>   （factorio-data 现场生成），设备与数据表未单独维护第二套数值。
+> - **全量回归**：18 个校验脚本全部通过，`node build.js` 构建通过（111 个脚本入口，零告警）。
+
+### 阶段四.22：太空时代手持武器（Railgun 轨道炮 / Tesla gun 特斯拉电枪，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **手持武器接入**：`railgun`（轨道炮）与 `teslagun`（特斯拉电枪）由「炮塔组件」升级为**可手持使用的玩家武器**
+>   （对齐《异星工厂》Space Age 官方 Railgun / Tesla gun 玩家武器）。
+>   - `railgun`：发射磁轨炮弹沿射向直线贯穿射程内（40 格）多个敌人，单发高伤（官方 railgun-ammo 直线穿透 10000 伤害量，
+>     适配项目数值）；由「轨道炮防御」科技解锁。
+>   - `teslagun`：发射电弧在目标间连锁跳跃（最多 5 目标）并逐跳递减伤害（官方 tesla-ammo 电弧链式递减），
+>     由「富尔戈拉电磁」科技解锁。
+> - **玩法**：复用既有手持武器系统（快速栏武器槽 / 弹药槽 / 空格·左键开火 / 射击速度无限科技），
+>   消耗 `railgun-ammo` / `tesla-ammo` 弹药；快速栏自动识别为武器并支持循环切换。
+> - **渲染**：新增 `railgun`（细长亮蓝贯穿光束）与 `tesla`（蓝紫连锁电弧）两种子弹渲染分支（render-entity.js）。
+> - **数据单源**：堆叠（railgun 1 / teslagun 5 / 弹药 10 / 100）与官方中英命名（Railgun / Tesla gun）全部来自
+>   GAME_DATA（factorio-data 官方），未单独维护数值表。
+> - **校验**：verify-dlc 新增手持武器校验（17 项），全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段五.3：氨制火箭燃料（Ammonia rocket fuel，Aquilo 低温燃料链，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **配方**（官方数值，数据单源化，来自 data.generated.js）：
+>   - `ammonia-rocket-fuel`（氨制火箭燃料）：10 固体燃料 + 50 水 + 500 氨 → 1 火箭燃料（10s，官方
+>     ammonia-rocket-fuel 配方，chemistry+cryogenics 双类别，化工厂 chemistry 配方，Aquilo 低温燃料链）。
+> - **玩法**：补全 Aquilo 低温燃料链——用大量氨制取火箭燃料，为无石油/无果冻的星球（玄冥星等）提供
+>   火箭燃料的替代来源，与既有果冻制火箭燃料（Gleba）、原油火箭燃料（Nauvis）构成完整的多行星燃料网络。
+> - **设备归属**：氨制火箭燃料 → 化工厂（CHEM_RECIPES 注册，官方 chemistry 配方）。
+> - **科技**：由「低温学」科技解锁（RECIPE_TECH 配方级门控，官方 cryogenics 前置，与氨/氟酮/低温科研包同科技）。
+> - **校验**：verify-dlc 新增氨制火箭燃料校验（8 项），verify-data-integrity 配方键映射补充 1 项动态键，
+>   全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+
+### 阶段六：后续开发计划（迭代方向）
+
+> 基于本次审计，核心数据对齐与 DLC 内容接入已全部完成。后续迭代方向（按价值排序）：
+>
+> 1. **行星资源差异化落地**：将部分「适配为基础资源」的 Space Age 星球配方还原为官方行星专属
+>    生产链（如熔融金属浇铸已在铸造厂落地，可继续推进熔融铁→铸件在铸造厂的完整官方配方）。
+> 2. **太空平台完整轨道系统**：空间平台体系（地基/中枢/推进器/小行星收集器）已接入，可继续
+>    完善轨道平台内部物流（平台内传送带/机械臂网络、平台燃料管理、远程遥测交互）。
+> 3. **品质系统深化**：品质已接入 6 级与品质模块，可继续深化品质对建筑/装备数值加成的逐项
+>    核验与精修。
+> 4. **数值体验精修**：逐项复核 DLC 设备的模块槽/信号塔加成/污染排放与官方一致性，补齐遗漏。
+> 5. **存档兼容回归**：为新增 DLC 物品/配方补充存档迁移用例，确保旧档读档不报错、新物品可正常落地。

@@ -68,7 +68,8 @@ const KEEP_MANUAL_RECIPES = new Set([
   // ===== 太空时代 Aquilo 低温学链（官方配方依赖低温/液空等星球资源，此处适配基础资源）=====
   'ammonia', 'fluorine', 'fluoroketone-cold', 'fluoroketone-hot',
   // ===== 太空时代 熔融金属/废料（官方配方依赖行星资源，此处适配基础资源）=====
-  'molten-iron', 'molten-copper', 'lava', 'molten-iron-from-lava', 'molten-copper-from-lava', 'scrap', 'recycle-scrap',
+  // 注：iron-ore-melting/copper-ore-melting/casting-* 已按官方数据自动桥接，不在此保留手工。
+  'lava', 'molten-iron-from-lava', 'molten-copper-from-lava', 'scrap', 'recycle-scrap',
   // ===== 太空时代 Vulcanus 钨矿（官方为天然矿脉，无合成配方）=====
   'tungsten-ore',
   // ===== 太空时代 生物实验室（Gleba biolab：官方配方依赖 biter-egg/capture-robot-rocket=生物星球资源，此处适配现有生物链资源）=====
@@ -268,15 +269,22 @@ const DLC_DEVICE_RECIPES = {
   'metallic-asteroid-crushing': 'crusher', 'carbonic-asteroid-crushing': 'crusher', 'oxide-asteroid-crushing': 'crusher',
   'advanced-metallic-asteroid-crushing': 'crusher', 'advanced-carbonic-asteroid-crushing': 'crusher', 'advanced-oxide-asteroid-crushing': 'crusher',
   'metallic-asteroid-reprocessing': 'crusher', 'carbonic-asteroid-reprocessing': 'crusher', 'oxide-asteroid-reprocessing': 'crusher',
-  // 铸造厂 foundry（Space Age metallurgy / crafting-with-fluid）
+  // 铸造厂 foundry（Space Age metallurgy / casting / crafting-with-fluid）
   'tungsten-ore': 'foundry', 'tungsten-plate': 'foundry', 'tungsten-carbide': 'foundry',
-  'metallurgic-science-pack': 'foundry', 'foundry': 'foundry', 'molten-iron': 'foundry', 'molten-copper': 'foundry',
+  'metallurgic-science-pack': 'foundry', 'foundry': 'foundry',
+  'iron-ore-melting': 'foundry', 'copper-ore-melting': 'foundry',
+  'casting-iron': 'foundry', 'casting-steel': 'foundry', 'casting-copper': 'foundry',
+  'casting-iron-gear-wheel': 'foundry', 'casting-iron-stick': 'foundry',
+  'casting-pipe': 'foundry', 'casting-pipe-to-ground': 'foundry',
+  'casting-low-density-structure': 'foundry', 'casting-copper-cable': 'foundry',
+  'concrete-from-molten-iron': 'foundry',
   'lava': 'foundry', 'molten-iron-from-lava': 'foundry', 'molten-copper-from-lava': 'foundry',
   'turbo-transport-belt': 'foundry', 'turbo-underground-belt': 'foundry', 'turbo-splitter': 'foundry',
   // 低温工厂 cryogenic-plant（Space Age cryogenics）
   'ammonia': 'cryogenic-plant', 'fluorine': 'cryogenic-plant', 'fluoroketone-cold': 'cryogenic-plant',
   'fluoroketone-hot': 'cryogenic-plant', 'cryogenic-science-pack': 'cryogenic-plant', 'cryogenic-plant': 'cryogenic-plant',
   'foundation': 'cryogenic-plant', 'ice-platform': 'cryogenic-plant', // 太空时代地形（官方 cryogenics 低温工厂，流体配方）
+  'steam-condensation': 'chemical-plant', 'acid-neutralisation': 'chemical-plant', // 化工厂（官方 chemistry/cryogenics 双类别）
   // 农业塔 agricultural-tower（Space Age 种植）
   'yumako-growing': 'agricultural-tower', 'jellynut-growing': 'agricultural-tower',
   // 空间平台中枢（Space Platform）

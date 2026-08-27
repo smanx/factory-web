@@ -85,9 +85,18 @@ const dynamicKeys = new Set([
   'coal-synthesis', // 煤合成配方：碳+硫磺+水→煤（产物键≠配方键）
   'rocket-fuel-from-jelly', // 果冻制火箭燃料配方：水+果冻+生物流→火箭燃料（产物键≠配方键）
   'solid-fuel-from-ammonia', // 氨制固体燃料配方：氨+原油→固体燃料（产物键≠配方键）
+  'ammonia-rocket-fuel', // 氨制火箭燃料配方：固燃+水+氨→火箭燃料（产物键≠配方键）
   'biolubricant', // 生化炉配方：果冻→润滑油（产物键≠配方键，产物为润滑油流体）
   'ammoniacal-solution-separation', // 氨溶液分离配方：氨溶液→冰+氨（产物键≠配方键，产物为流体）
   'molten-iron-from-lava', 'molten-copper-from-lava', // 岩浆炼熔融金属配方：岩浆→熔融铁/铜+石头（产物键≠配方键，产物为流体）
+  // ===== 太空时代熔融金属铸造链（Vulcanus 铸造厂，产物键≠配方键）=====
+  'iron-ore-melting', 'copper-ore-melting', // 熔炼配方：矿→熔融铁/铜流体（产物为流体）
+  'casting-iron', 'casting-steel', 'casting-copper', // 浇铸配方：熔融→铁板/钢板/铜板（产物键≠配方键）
+  'casting-iron-gear-wheel', 'casting-iron-stick', 'casting-pipe', 'casting-pipe-to-ground', // 浇铸齿轮/铁杆/管道/地下管道（产物键≠配方键）
+  'casting-low-density-structure', // 浇铸低密度结构（产物键≠配方键）
+  'casting-copper-cable', // 浇铸铜线（产物键≠配方键）
+  'concrete-from-molten-iron', // 熔融铁制混凝土（产物键≠配方键）
+  'steam-condensation', 'acid-neutralisation', // 蒸汽冷凝→水 / 酸中和→蒸汽（产物为流体）
 ]);
 for (const rid in RECIPES) {
   if (rid.startsWith('fill-') || rid.startsWith('empty-')) continue; // 动态桶配方
