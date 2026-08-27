@@ -34,7 +34,6 @@ const G = {
   // 是否开启开发者调试（仅当 URL 参数含 debug=1 时为 true）
   debugEnabled: new URLSearchParams(window.location.search).get('debug') === '1',
   spawn: { x: 0, y: 0 },
-  hbArm: null,
   invRecipeQ: '',
   invItemQ: '',     // 背包「拥有的物品」列表的搜索关键字
   invTab: 'materials', // 背包两个 tab：'materials' 材料（默认）/ 'craft' 合成

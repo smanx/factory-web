@@ -690,8 +690,6 @@ function hexToRgb(hex) {
 
 function drawGridIfBuilding(ctx) {
   if (!buildActive() && !G.panelEnt) return;
-  // 材料等不可建造物品（无 BUILD_DEFS）不显示建造网格
-  if (buildActive() && !G.panelEnt && typeof selItem === 'function' && selItem() && !BUILD_DEFS[selItem()]) return;
   const b = viewBounds(_B);
   const tx0 = Math.floor(b.x1 / TILE);
   const ty0 = Math.floor(b.y1 / TILE);

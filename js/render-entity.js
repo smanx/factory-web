@@ -289,21 +289,15 @@ function getGhostEnt(type) {
 
 // 放置幽灵绘制在专用顶层画布（#ghost-layer）上，层级高于所有界面（含背包面板）。
 // 每帧先清空顶层画布，再套用与主画布一致的世界坐标变换后绘制。
+// 无论选中建筑物还是材料/工具，鼠标都显示放置幽灵：建筑按占地格绘制实体幽灵，
+// 材料/工具等不可建造物品则在光标所在格绘制物品图标幽灵。
 function drawGhost(ctx) {
   const g = (G && G.ghostCtx) || ctx;   // 顶层画布优先，回退到主画布
   if (g !== ctx) g.clearRect(0, 0, W, H); // 仅清空顶层画布，不清主画布
   if (!buildActive() || !G.cursorTile || !G.canvasActive) return;
   const type = selItem();
-  if (!type) return;
+  if (!type || !ITEMS[type]) return;
   const def = BUILD_DEFS[type];
-  if (!def) return; // 材料等不可建造物品不显示放置幽灵
-  let ew = def.w, eh = def.h;
-  if (def.rotSwap && (G.ghostDir % 2 === 1)) { ew = def.h; eh = def.w; }
-  // 不允许覆盖建造：目标格已有实体时判定为红色不可放置，与建造行为一致。
-  const chk = canPlaceAt(type, G.cursorTile.tx, G.cursorTile.ty, G.ghostDir);
-  const tmp = getGhostEnt(type);
-  tmp.dir = G.ghostDir;
-  tmp.w = ew; tmp.h = eh;
   // 顶层画布需自行应用与主画布相同的世界坐标变换（相机平移+缩放）
   const worlded = (g !== ctx);
   if (worlded) {
@@ -312,12 +306,32 @@ function drawGhost(ctx) {
     g.scale(G.cam.z, G.cam.z);
     g.translate(-G.cam.px, -G.cam.py);
   }
-  drawEntity(g, tmp, G.cursorTile.tx, G.cursorTile.ty, G.ghostDir, 0.55);
-  g.fillStyle = chk.ok ? 'rgba(120,220,120,.18)' : 'rgba(230,80,80,.22)';
-  g.fillRect(G.cursorTile.tx * TILE, G.cursorTile.ty * TILE, ew * TILE, eh * TILE);
-  g.strokeStyle = chk.ok ? 'rgba(140,255,140,.9)' : 'rgba(255,110,110,.9)';
-  g.lineWidth = 2 / G.cam.z;
-  g.strokeRect(G.cursorTile.tx * TILE, G.cursorTile.ty * TILE, ew * TILE, eh * TILE);
+  if (def) {
+    // 建筑物：在光标所在格绘制实体幽灵 + 占地框
+    let ew = def.w, eh = def.h;
+    if (def.rotSwap && (G.ghostDir % 2 === 1)) { ew = def.h; eh = def.w; }
+    // 不允许覆盖建造：目标格已有实体时判定为红色不可放置，与建造行为一致。
+    const chk = canPlaceAt(type, G.cursorTile.tx, G.cursorTile.ty, G.ghostDir);
+    const tmp = getGhostEnt(type);
+    tmp.dir = G.ghostDir;
+    tmp.w = ew; tmp.h = eh;
+    drawEntity(g, tmp, G.cursorTile.tx, G.cursorTile.ty, G.ghostDir, 0.55);
+    g.fillStyle = chk.ok ? 'rgba(120,220,120,.18)' : 'rgba(230,80,80,.22)';
+    g.fillRect(G.cursorTile.tx * TILE, G.cursorTile.ty * TILE, ew * TILE, eh * TILE);
+    g.strokeStyle = chk.ok ? 'rgba(140,255,140,.9)' : 'rgba(255,110,110,.9)';
+    g.lineWidth = 2 / G.cam.z;
+    g.strokeRect(G.cursorTile.tx * TILE, G.cursorTile.ty * TILE, ew * TILE, eh * TILE);
+  } else {
+    // 材料/工具等不可建造物品：在光标所在格绘制物品图标幽灵（跟随鼠标）
+    const cx = (G.cursorTile.tx + 0.5) * TILE;
+    const cy = (G.cursorTile.ty + 0.5) * TILE;
+    g.globalAlpha = 0.6;
+    drawItemGlyph(g, type, cx, cy, TILE * 0.7);
+    g.globalAlpha = 1;
+    g.strokeStyle = 'rgba(255,255,255,.45)';
+    g.lineWidth = 2 / G.cam.z;
+    g.strokeRect(G.cursorTile.tx * TILE + 1, G.cursorTile.ty * TILE + 1, TILE - 2, TILE - 2);
+  }
   if (worlded) g.restore();
 }
 
