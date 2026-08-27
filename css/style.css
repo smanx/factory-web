@@ -179,7 +179,6 @@ html, body {
   padding: 4px;
   background: rgba(10, 14, 18, .65);
   border-radius: 10px;
-  z-index: 900;
 }
 .qb-row { display: flex; gap: 3px; }
 .qb-slot {
