@@ -910,17 +910,17 @@ function techTreeLayout() {
   return { tiers: tierArr, pos, maxDepth };
 }
 
-// 生成研究树图 SVG：节点（图标+名称）+ 前置连接线
+// 生成研究树图 SVG：节点（图标+名称）+ 前置连接线（竖向展示：前置在上、后继在下）
 function htmlTechTree() {
   const { tiers, pos, maxDepth } = techTreeLayout();
   const NODE_W = 118, NODE_H = 34, GAP_X = 36, GAP_Y = 12;
   const colW = NODE_W + GAP_X;
   const rowH = NODE_H + GAP_Y;
-  // 画布尺寸
-  const W = (maxDepth + 1) * colW + 10;
-  let maxRows = 1;
+  // 竖向展示：把「层(深度)」映射到纵向（行），把「同层节点序号」映射到横向（列）
+  let maxRows = 1;      // 同层最多节点数 → 横向列数
   for (const tl of tiers) if (tl.length > maxRows) maxRows = tl.length;
-  const H = maxRows * rowH + 10;
+  const W = maxRows * colW + 10;          // 宽度由同层最多节点决定
+  const H = (maxDepth + 1) * rowH + 10;   // 高度由层数（深度+1）决定
 
   // 收集连接线（父→子）
   const lines = [];
@@ -929,20 +929,22 @@ function htmlTechTree() {
     for (const r of (t.req || [])) {
       if (pos[r] && pos[tid]) {
         const p = pos[r], c = pos[tid];
-        // 只在父列 < 子列 时画线（同列则忽略，避免重叠）
+        // 只在父层 < 子层 时画线（同层则忽略，避免重叠）
         lines.push({ from: r, to: tid, pc: p.col, pr: p.row, cc: c.col, cr: c.row });
       }
     }
   }
-  const cx = (c) => c * colW + NODE_W / 2 + 5;
-  const cy = (r) => r * rowH + NODE_H / 2 + 5;
+  // 竖向坐标系：x 由「同层序号 row」决定，y 由「深度 col」决定
+  const cx = (r) => r * colW + NODE_W / 2 + 5;
+  const cy = (c) => c * rowH + NODE_H / 2 + 5;
   let lineSvg = '';
   for (const ln of lines) {
-    const x1 = cx(ln.pc) + NODE_W / 2, y1 = cy(ln.pr);
-    const x2 = cx(ln.cc) - NODE_W / 2, y2 = cy(ln.cr);
-    const mx = (x1 + x2) / 2;
-    // 贝塞尔曲线：横向平滑连接
-    lineSvg += '<path d="M ' + x1 + ' ' + y1 + ' C ' + mx + ' ' + y1 + ', ' + mx + ' ' + y2 + ', ' + x2 + ' ' + y2 +
+    // 父节点（前置）应位于上方（深度更小，cy 更小）
+    const x1 = cx(ln.pr), y1 = cy(ln.pc) + NODE_H / 2;
+    const x2 = cx(ln.cr), y2 = cy(ln.cc) - NODE_H / 2;
+    const my = (y1 + y2) / 2;
+    // 贝塞尔曲线：纵向平滑连接（先向下再向下）
+    lineSvg += '<path d="M ' + x1 + ' ' + y1 + ' C ' + x1 + ' ' + my + ', ' + x2 + ' ' + my + ', ' + x2 + ' ' + y2 +
       '" fill="none" stroke="#3a4550" stroke-width="1.4" class="tech-edge"></path>';
   }
 
@@ -961,7 +963,7 @@ function htmlTechTree() {
     if (active) cls += ' active';
     if (inQueue && !active) cls += ' queued';
     const badge = t.trigger ? '⚡' : (isInfiniteTech(tid) ? '∞' : '');
-    const x = p.col * colW + 5, y = p.row * rowH + 5;
+    const x = p.row * colW + 5, y = p.col * rowH + 5;
     nodeSvg += '<g class="' + cls + '" transform="translate(' + x + ',' + y + ')" data-tid="' + tid + '">' +
       '<rect class="tech-node-bg" x="0" y="0" width="' + NODE_W + '" height="' + NODE_H + '" rx="6"></rect>' +
       (badge ? '<text x="7" y="12" font-size="11" class="tech-badge">' + badge + '</text>' : '') +
