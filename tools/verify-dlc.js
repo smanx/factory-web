@@ -13,7 +13,8 @@ const code = fs.readFileSync(ROOT + '/js/data/data.generated.js', 'utf8')
   + fs.readFileSync(ROOT + '/js/data/data-tech-tree.js', 'utf8')
   + '\n;globalThis.__GAME_DATA=GAME_DATA;globalThis.__ITEMS=ITEMS;globalThis.__RECIPES=RECIPES;'
   + 'globalThis.__TECHS=TECHS;globalThis.__SMELTS=SMELTS;globalThis.__recipeDevice=recipeDevice;'
-  + 'globalThis.__itemTechReq=itemTechReq;globalThis.__itemRecipeText=itemRecipeText;globalThis.__recipeTechReq=recipeTechReq;';
+  + 'globalThis.__itemTechReq=itemTechReq;globalThis.__itemRecipeText=itemRecipeText;globalThis.__recipeTechReq=recipeTechReq;'
+  + 'globalThis.__BUILD_DEFS=BUILD_DEFS;';
 const ctx = { console, localStorage: { getItem: () => null, setItem: () => {} } };
 ctx.window = ctx; ctx.G = { settings: { language: 'zh' }, power: { sat: 1 }, techDone: {} };
 ctx.globalThis = ctx;
@@ -1026,6 +1027,33 @@ ok(ctx.__itemTechReq('captive-biter-spawner') === 'captive-biter-spawner', 'capt
   const outOk = Object.keys(rec.out).every(k => k in IT);
   ok(inpOk && outOk, 'captive-biter-spawner 配方引用的物品均存在');
 }
+
+
+console.log('\n【Factorio 2.0 流体阀门（one-way/overflow/top-up valve）数据校验】');
+{
+  const vdefs = ['one-way-valve', 'overflow-valve', 'top-up-valve'];
+  for (const k of vdefs) {
+    ok(!!GD.stackSize[k] && GD.stackSize[k] === 10, k + ' 堆叠来自官方 (=10)');
+    ok(!!GD.names[k], k + ' 官方命名已收录 (' + (GD.names[k] ? GD.names[k].en : '?') + ')');
+    ok(GD.buildingHp[k] === 100, k + ' 血量=100（官方 max_health）');
+    ok(GD.footprint[k] && GD.footprint[k].w === 1 && GD.footprint[k].h === 1, k + ' 占地 1×1（官方 selection_box）');
+    ok(!!IT[k], k + ' 物品已注册');
+    ok(!!RP[k], k + ' 配方已注册');
+    ok(ctx.__itemTechReq(k) === 'fluid-handling', k + ' 需「流体处理」科技');
+  }
+  // 配方原料/产物均为已注册物品
+  for (const k of vdefs) {
+    const rec = RP[k];
+    const inpOk = rec && Object.keys(rec.inp).every(x => x in IT);
+    const outOk = rec && Object.keys(rec.out).every(x => x in IT);
+    ok(inpOk && outOk, k + ' 配方引用的物品均存在');
+  }
+  // 官方数据桥接：模式/阈值/流速经 GAME_DATA 单源（手工适配设备文件引用官方 valve 原型）
+  ok(!!ctx.__BUILD_DEFS['one-way-valve'] && ctx.__BUILD_DEFS['one-way-valve'].w === 1, 'one-way-valve 已入 BUILD_DEFS（1×1）');
+  ok(!!ctx.__BUILD_DEFS['overflow-valve'] && ctx.__BUILD_DEFS['overflow-valve'].w === 1, 'overflow-valve 已入 BUILD_DEFS（1×1）');
+  ok(!!ctx.__BUILD_DEFS['top-up-valve'] && ctx.__BUILD_DEFS['top-up-valve'].w === 1, 'top-up-valve 已入 BUILD_DEFS（1×1）');
+}
+
 
 
 process.exit(fail === 0 ? 0 : 1);

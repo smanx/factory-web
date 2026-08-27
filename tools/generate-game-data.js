@@ -876,6 +876,9 @@ const FOOTPRINT_SOURCES = {
   'pipe-to-ground': ['pipe-to-ground', 'pipe-to-ground'],
   'pump': ['pump', 'pump'],
   'storage-tank': ['storage-tank', 'storage-tank'],
+  'one-way-valve': ['valve', 'one-way-valve'],  // Factorio 2.0 单向阀：官方 valve 原型 selection_box ±0.5 → 1×1
+  'overflow-valve': ['valve', 'overflow-valve'],  // Factorio 2.0 溢出阀
+  'top-up-valve': ['valve', 'top-up-valve'],  // Factorio 2.0 补给阀
   'solar-panel': ['solar-panel', 'solar-panel'],
   'accumulator': ['accumulator', 'accumulator'],
   'radar': ['radar', 'radar'],

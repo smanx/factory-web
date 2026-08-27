@@ -83,6 +83,9 @@ const GAME_DATA = {
   "pipe": 100,
   "pipe-to-ground": 50,
   "pump": 50,
+  "one-way-valve": 10,
+  "overflow-valve": 10,
+  "top-up-valve": 10,
   "storage-tank": 50,
   "pumpjack": 20,
   "solar-panel": 50,
@@ -368,6 +371,9 @@ const GAME_DATA = {
   "pipe": 100,
   "pipe-to-ground": 150,
   "pump": 180,
+  "one-way-valve": 100,
+  "overflow-valve": 100,
+  "top-up-valve": 100,
   "solar-panel": 200,
   "accumulator": 150,
   "gun-turret": 400,
@@ -3976,6 +3982,18 @@ const GAME_DATA = {
    "zh": "管道泵",
    "en": "Pump"
   },
+  "one-way-valve": {
+   "zh": "单向阀",
+   "en": "One-way valve"
+  },
+  "overflow-valve": {
+   "zh": "溢流阀",
+   "en": "Overflow valve"
+  },
+  "top-up-valve": {
+   "zh": "补充阀",
+   "en": "Top-up valve"
+  },
   "storage-tank": {
    "zh": "储液罐",
    "en": "Storage tank"
@@ -5367,6 +5385,18 @@ const GAME_DATA = {
   "storage-tank": {
    "w": 3,
    "h": 3
+  },
+  "one-way-valve": {
+   "w": 1,
+   "h": 1
+  },
+  "overflow-valve": {
+   "w": 1,
+   "h": 1
+  },
+  "top-up-valve": {
+   "w": 1,
+   "h": 1
   },
   "solar-panel": {
    "w": 3,
