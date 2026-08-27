@@ -77,6 +77,8 @@ const KEEP_MANUAL_RECIPES = new Set([
   'turbo-transport-belt', 'turbo-underground-belt', 'turbo-splitter',
   // ===== 太空时代 Vulcanus 铸造/冶金材料链（官方配方依赖熔融铁等星球资源，此处适配基础资源）=====
   'tungsten-ore', 'tungsten-plate', 'tungsten-carbide', 'metallurgic-science-pack', 'foundry',
+  // ===== 太空时代 生物实验室（Gleba biolab：官方配方依赖 biter-egg/capture-robot-rocket=生物星球资源，此处适配现有生物链资源）=====
+  'biolab',
 ]);
 
 // ================= 小工具 =================
@@ -399,6 +401,7 @@ const DEVICE_STATS_SOURCES = {
   'crusher': ['assembling-machine', 'crusher'],  // 太空时代破碎机：crafting_speed=1, module_slots=2
   'foundry': ['assembling-machine', 'foundry'],  // 太空时代铸造厂（Vulcanus）：crafting_speed=4, module_slots=4
   'agricultural-tower': ['agricultural-tower', 'agricultural-tower'],  // 太空时代农业塔（Gleba）：种植建筑，energy_usage=100kW
+  'biolab': ['lab', 'biolab'],  // 太空时代生物实验室（Gleba）：官方 researching_speed=2、module_slots=4
 };
 for (const [pid, [rtype, oname]] of Object.entries(DEVICE_STATS_SOURCES)) {
   const proto = raw[rtype] && raw[rtype][oname];
@@ -409,6 +412,7 @@ for (const [pid, [rtype, oname]] of Object.entries(DEVICE_STATS_SOURCES)) {
   if (typeof proto.mining_speed === 'number') ds.miningSpeed = proto.mining_speed;
   if (typeof proto.speed === 'number') ds.beltSpeed = Math.round(proto.speed * 60 * 1000) / 1000; // 官方 speed 单位=格/tick，×60 → 格/秒
   if (typeof proto.distribution_effectivity === 'number') ds.beaconEffectivity = proto.distribution_effectivity;
+  if (typeof proto.researching_speed === 'number') ds.researchingSpeed = proto.researching_speed; // 生物实验室 biolab：官方 researching_speed=2（2 倍科研速度）
   if (Object.keys(ds).length) GAME_DATA.deviceStats[pid] = ds;
 }
 
@@ -584,6 +588,23 @@ const heat = {};
     const g = parseEnergyMJ(fuel.fuel_value);
     if (g !== null) heat.reactorHeatRate = Math.round(g / 200 * 10) / 10; // 8GJ/200s = 40MW
   }
+  // 太空时代供热塔（Aquilo heating-tower）：官方 reactor 原型，燃烧化学燃料产热。
+  // 产热 = consumption × effectivity（官方 consumption=40MW、effectivity=2.5 → 100MW，高于核反应堆 40MW）。
+  // heat_buffer: specific_heat=5MJ/°C、max_transfer=10GW、max_temperature=1000（官方）。
+  const ht = raw.reactor && raw.reactor['heating-tower'];
+  if (ht) {
+    const c = ht.consumption && parsePowerMW(ht.consumption);
+    if (c !== null) heat.heatingTowerRate = c;  // 燃料消耗率(MW)
+    const eff = ht.energy_source && ht.energy_source.effectivity;
+    if (typeof eff === 'number') heat.heatingTowerEffectivity = eff;  // 官方 2.5
+    if (ht.heat_buffer) {
+      if (typeof ht.heat_buffer.max_temperature === 'number') heat.heatingTowerMaxTemp = ht.heat_buffer.max_temperature;
+      const sh = parseEnergyMJ(ht.heat_buffer.specific_heat);
+      if (sh !== null) heat.heatingTowerSpecificHeat = sh;
+      const mt = parsePowerMW(ht.heat_buffer.max_transfer);
+      if (mt !== null) heat.heatingTowerMaxTransfer = mt;
+    }
+  }
 }
 
 // ---- 机器人港基础耗电（kW，官方 energy_usage 50kW）----
@@ -732,6 +753,8 @@ const FOOTPRINT_SOURCES = {
   'crusher': ['assembling-machine', 'crusher'],  // 太空时代破碎机（space-age 装配机原型，selection_box ±1×±1.5 → 2×3）
   'foundry': ['assembling-machine', 'foundry'],  // 太空时代铸造厂（space-age 装配机原型，selection_box ±2.5×±2.5 → 5×5）
   'agricultural-tower': ['agricultural-tower', 'agricultural-tower'],  // 太空时代农业塔（Gleba）：官方 selection_box ±1.5×±1.5 → 3×3
+  'heating-tower': ['reactor', 'heating-tower'],  // 太空时代供热塔（Aquilo）：官方 reactor 原型 selection_box ±1.5×±1.5 → 3×3
+  'biolab': ['lab', 'biolab'],  // 太空时代生物实验室（Gleba）：官方 lab 原型 selection_box ±2.5×±2.5 → 5×5
 };
 // 官方 selection_box 为实体占用的格数（局部坐标跨度，单位格）。
 // 占地格数 = max(1, ceil(跨度))；部分实体（机械臂/电线杆/熔炉等）官方跨度<1 或非整数，
@@ -955,7 +978,9 @@ const header = [
   '//   turret[塔] = { range, fireRate(秒) }, ammoDamage[弹药] = 伤害, radar = { range, power(kW) }',
   '//   equipment[装备] = { powerOut | powerCap(kJ) | shield | speed | laser | dischargeRange/Cooldown }',
   '//   heat = { reactorMaxTemp, reactorSpecificHeat, reactorMaxTransfer, heatPipeMaxTemp, heatPipeMinGlowTemp,',
-  '//           heatPipeSpecificHeat, heatPipeMaxTransfer, reactorHeatRate(MW) }, roboportPower(kW)',
+  '//           heatPipeSpecificHeat, heatPipeMaxTransfer, reactorHeatRate(MW),',
+  '//           heatingTowerRate(MW), heatingTowerEffectivity, heatingTowerMaxTemp,',
+  '//           heatingTowerSpecificHeat, heatingTowerMaxTransfer }, roboportPower(kW)',
   '//   footprint[building] = { w, h }（占地面积格数，官方 selection_box）',
   'const GAME_DATA = ' + JSON.stringify(GAME_DATA, null, 1) + ';',
   '',

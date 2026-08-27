@@ -72,6 +72,12 @@ const HEAT_EXCHANGER_MIN_WORK_TEMP = 500;  // 热交换器最低工作温度 500
 const HEAT_PIPE_MIN_GLOW_TEMP = GAME_DATA.heat?.heatPipeMinGlowTemp ?? 350; // 导热管/热设备最低发光温度 350°C（官方 minimum_glow_temperature）
 const HEAT_EXCHANGER_ENERGY_PER_STEAM = 20;// 热交换器每产 1 单位蒸汽需消耗热量(MJ)，满产(2单位/s)恰好消耗反应堆 40MW 热功率
 const HEAT_EXCHANGER_STEAM_RATE = 2.0;     // 热交换器满功率产汽速率（单位/秒）
+// 太空时代供热塔（heating-tower，Aquilo）：官方 reactor 原型，燃烧化学燃料产热，数据来自 GAME_DATA.heat。
+// 产热 = 燃料消耗率 × 效比（官方 consumption=40MW、effectivity=2.5 → 100MW，高于核反应堆 40MW）。
+const HEATING_TOWER_RATE = GAME_DATA.heat?.heatingTowerRate ?? 40;             // 燃料消耗率 40MW（官方 consumption）
+const HEATING_TOWER_EFFECTIVITY = GAME_DATA.heat?.heatingTowerEffectivity ?? 2.5; // 热效比 2.5（官方 effectivity）
+const HEATING_TOWER_SPECIFIC_HEAT = GAME_DATA.heat?.heatingTowerSpecificHeat ?? 5; // 比热 5MJ/°C（官方 heat_buffer specific_heat）
+const HEATING_TOWER_MAX_TRANSFER = GAME_DATA.heat?.heatingTowerMaxTransfer ?? 10000; // 最大传热 10GW（官方 max_transfer）
 const POWER_USE = {
   'electric-mining-drill': 90,          // 电采矿机
   'electric-furnace': 180,       // 电炉

@@ -70,6 +70,7 @@ const ITEMS = {
   'stone-furnace':     { name: '石炉',   color: '#9c9486', desc: '把矿石冶炼成板材，需煤作燃料' },
   'assembling-machine-1':{ name: '组装机', color: '#6f86c9', desc: '设置配方后自动生产（3×3）' },
   'lab':               { name: '研究中心', color: '#4aa8a0', desc: '消耗科学包推进所选科技（3×3）' },
+  'biolab':            { name: '生物实验室', color: '#4aa8a0', desc: '太空时代生物实验室（5×5，吃电力）：比普通研究中心快 2 倍、模块槽更多，可研究全部太空时代科技（对齐《异星工厂》Space Age 生物实验室，数据来自 GAME_DATA）' },
   'small-lamp':              { name: '电灯', color: '#e8e4a0', desc: '耗电照明设备（1×1）：通电后在夜间照亮周围区域，让基地在黑暗中清晰可见。夜晚无电时熄灭' },
   'substation':        { name: '变电站', color: '#b0802a', desc: '超大型电线杆（4×4）：连接电力与电路网络，覆盖范围远大于普通电线杆（连接距离约 18 格），用于跨区域组网（对齐《异星工厂》Substation）' },
   'programmable-speaker': { name: '可编程音箱', color: '#a05ad0', desc: '电路网络设备（1×1）：读取所连网络的信号，可在面板设置告警条件与输出信号，满足条件时发光提示，用于信号监控与告警（对齐《异星工厂》Programmable speaker）' },
@@ -280,6 +281,7 @@ const ITEMS = {
   'steam-turbine': { name: '汽轮机', color: '#8fb8d0', desc: '消耗高温蒸汽发电，功率远高于蒸汽机（3×5，对齐官方）。上/下两端中部各有一管道出入口，蒸汽可进可出，支持多台汽轮机串接；与热交换器上边(北)出汽口用蒸汽管对接' },
   'heat-pipe':    { name: '导热管', color: '#d98a3a', desc: '核能的传热设备（1×1）：把核反应堆产生的热量传导到热交换器，可多根串联、沿路传输（对齐《异星工厂》Heat pipe）' },
   'heat-exchanger': { name: '热交换器', color: '#a06a4a', desc: '核能的水→蒸汽转换设备（3×2，对齐《异星工厂》Heat exchanger 真实结构）：下边(南)热交换接口接收导热管热量，左右两侧各一水口进水（互通，多台水口可直接对口串接），上边(北)中间出高温蒸汽供汽轮机发电' },
+  'heating-tower': { name: '供热塔', color: '#d98a3a', desc: '太空时代供热塔（3×3，燃烧式）：高效燃烧化学燃料（煤/固体燃料/火箭燃料）产生巨量热量（100MW，官方 consumption 40MW × effectivity 2.5），经导热管传导，达到最高温仍持续燃烧（对齐《异星工厂》Space Age 供热塔，数据来自 GAME_DATA）' },
   // ===== 电路网络（对齐《异星工厂》Circuit Network）=====
   'small-electric-pole': { name: '小型电线杆', color: '#8a5a2a', desc: '电线杆：铺设后与附近电线杆自动连线，构成电路网络（1×1，连接距离 7 格）。红/绿线可独立传输信号' },
   'medium-electric-pole': { name: '中型电线杆', color: '#a06a2a', desc: '电线杆：连接距离更远（9 格），构成更大范围的电路网络（2×2）' },

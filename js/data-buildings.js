@@ -38,6 +38,7 @@ const BUILD_DEFS = {
   'creative-chest':     { w: 1, h: 1, solid: true },
   'void-chest':         { w: 1, h: 1, solid: true },
   'lab':                { w: 3, h: 3, solid: true },
+  'biolab':             { w: 5, h: 5, solid: true },  // 太空时代生物实验室（Gleba）：占地由 GAME_DATA.footprint 桥接，官方 selection_box ±2.5 → 5×5
   'boiler':             { w: 3, h: 2, solid: true, rotSwap: true },
   'steam-engine':       { w: 3, h: 5, solid: true, rotSwap: true },
   'offshore-pump':      { w: 2, h: 1, solid: true, rotSwap: true },
@@ -72,6 +73,7 @@ const BUILD_DEFS = {
   'steam-turbine':      { w: 3, h: 5, solid: true, rotSwap: true },  // 官方 collision_box ±1.25×±2.35 → 3×5
   'heat-pipe':          { w: 1, h: 1, solid: true },
   'heat-exchanger':     { w: 3, h: 2, solid: true, rotSwap: true },
+  'heating-tower':      { w: 3, h: 3, solid: true },  // 太空时代供热塔（Aquilo）：占地由 GAME_DATA.footprint 桥接，官方 selection_box ±1.5 → 3×3
   'roboport':           { w: 4, h: 4, solid: true },
   'rail':               { w: 1, h: 1, solid: false },
   'locomotive':         { w: 1, h: 1, solid: true },

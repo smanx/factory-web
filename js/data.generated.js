@@ -16,7 +16,9 @@
 //   turret[塔] = { range, fireRate(秒) }, ammoDamage[弹药] = 伤害, radar = { range, power(kW) }
 //   equipment[装备] = { powerOut | powerCap(kJ) | shield | speed | laser | dischargeRange/Cooldown }
 //   heat = { reactorMaxTemp, reactorSpecificHeat, reactorMaxTransfer, heatPipeMaxTemp, heatPipeMinGlowTemp,
-//           heatPipeSpecificHeat, heatPipeMaxTransfer, reactorHeatRate(MW) }, roboportPower(kW)
+//           heatPipeSpecificHeat, heatPipeMaxTransfer, reactorHeatRate(MW),
+//           heatingTowerRate(MW), heatingTowerEffectivity, heatingTowerMaxTemp,
+//           heatingTowerSpecificHeat, heatingTowerMaxTransfer }, roboportPower(kW)
 //   footprint[building] = { w, h }（占地面积格数，官方 selection_box）
 const GAME_DATA = {
  "stackSize": {
@@ -42,6 +44,7 @@ const GAME_DATA = {
   "stone-furnace": 50,
   "assembling-machine-1": 50,
   "lab": 10,
+  "biolab": 5,
   "small-lamp": 50,
   "substation": 50,
   "programmable-speaker": 10,
@@ -210,6 +213,7 @@ const GAME_DATA = {
   "steam-turbine": 10,
   "heat-pipe": 50,
   "heat-exchanger": 50,
+  "heating-tower": 20,
   "small-electric-pole": 50,
   "medium-electric-pole": 50,
   "big-electric-pole": 50,
@@ -291,6 +295,7 @@ const GAME_DATA = {
   "iron-chest": 200,
   "steel-chest": 350,
   "lab": 150,
+  "biolab": 350,
   "boiler": 200,
   "steam-engine": 400,
   "offshore-pump": 150,
@@ -319,6 +324,7 @@ const GAME_DATA = {
   "steam-turbine": 300,
   "heat-pipe": 200,
   "heat-exchanger": 200,
+  "heating-tower": 500,
   "roboport": 500,
   "locomotive": 1000,
   "cargo-wagon": 600,
@@ -364,6 +370,7 @@ const GAME_DATA = {
   "agricultural-tower": 100,
   "beacon": 480,
   "lab": 60,
+  "biolab": 300,
   "offshore-pump": 60,
   "electric-mining-drill": 90,
   "big-mining-drill": 300,
@@ -416,7 +423,8 @@ const GAME_DATA = {
    "miningSpeed": 2.5
   },
   "lab": {
-   "moduleSlots": 2
+   "moduleSlots": 2,
+   "researchingSpeed": 1
   },
   "beacon": {
    "moduleSlots": 2,
@@ -477,6 +485,10 @@ const GAME_DATA = {
   "foundry": {
    "craftingSpeed": 4,
    "moduleSlots": 4
+  },
+  "biolab": {
+   "moduleSlots": 4,
+   "researchingSpeed": 2
   }
  },
  "recipe": {
@@ -1976,6 +1988,17 @@ const GAME_DATA = {
     "heat-exchanger": 1
    }
   },
+  "heating-tower": {
+   "time": 10,
+   "inp": {
+    "boiler": 2,
+    "heat-pipe": 5,
+    "concrete": 20
+   },
+   "out": {
+    "heating-tower": 1
+   }
+  },
   "small-electric-pole": {
    "time": 0.5,
    "inp": {
@@ -2427,6 +2450,7 @@ const GAME_DATA = {
   "steam-turbine": "assembling-machine-1",
   "heat-pipe": "assembling-machine-1",
   "heat-exchanger": "assembling-machine-1",
+  "heating-tower": "assembling-machine-1",
   "small-electric-pole": "assembling-machine-1",
   "substation": "assembling-machine-1",
   "programmable-speaker": "assembling-machine-1",
@@ -2545,6 +2569,10 @@ const GAME_DATA = {
   "lab": {
    "zh": "研究中心",
    "en": "Lab"
+  },
+  "biolab": {
+   "zh": "生物研究中心",
+   "en": "Biolab"
   },
   "small-lamp": {
    "zh": "照明灯",
@@ -3246,6 +3274,10 @@ const GAME_DATA = {
    "zh": "换热器",
    "en": "Heat exchanger"
   },
+  "heating-tower": {
+   "zh": "供热塔",
+   "en": "Heating tower"
+  },
   "small-electric-pole": {
    "zh": "小型电线杆",
    "en": "Small electric pole"
@@ -3538,7 +3570,12 @@ const GAME_DATA = {
   "heatPipeMinGlowTemp": 350,
   "heatPipeSpecificHeat": 1,
   "heatPipeMaxTransfer": 1000,
-  "reactorHeatRate": 40
+  "reactorHeatRate": 40,
+  "heatingTowerRate": 40,
+  "heatingTowerEffectivity": 2.5,
+  "heatingTowerMaxTemp": 1000,
+  "heatingTowerSpecificHeat": 5,
+  "heatingTowerMaxTransfer": 10000
  },
  "roboportPower": 50,
  "footprint": {
@@ -3817,6 +3854,14 @@ const GAME_DATA = {
   "agricultural-tower": {
    "w": 3,
    "h": 3
+  },
+  "heating-tower": {
+   "w": 3,
+   "h": 3
+  },
+  "biolab": {
+   "w": 5,
+   "h": 5
   }
  },
  "steamPower": {

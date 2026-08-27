@@ -56,9 +56,11 @@ const TECH_REQ = {
   'biochamber': 'agriculture',
   'agricultural-tower': 'agriculture',
   'yumako-seed': 'agriculture',
+  'biolab': 'biolab',  // 生物实验室（Gleba）：需「生物实验室」科技（官方 Biolab 科技，前置农业科技），科研速度 2 倍
   // ===== 太空时代 小行星碎块加工链（统一由「太空材料加工」科技解锁）=====
   'crusher': 'asteroid-processing',
   'big-mining-drill': 'big-mining-drill',  // 大型采矿机需「大型采矿机」科技（对齐《异星工厂》Space Age Big mining drill 科技）
+  'heating-tower': 'heating-tower',  // 供热塔（Aquilo）：需「供热塔」科技（官方 Heating 科技，燃烧化学燃料产热）
   'metallic-asteroid-chunk': 'asteroid-processing',
   'carbonic-asteroid-chunk': 'asteroid-processing',
   'oxide-asteroid-chunk': 'asteroid-processing',

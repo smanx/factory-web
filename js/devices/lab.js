@@ -3,7 +3,7 @@
 // ===== 研究中心：消耗科学包推进所选科技 =====
 class Lab extends Entity {
   constructor(type, x, y) {
-    super('lab', x, y);
+    super(type || 'lab', x, y);   // biolab（生物实验室，Gleba）：官方 researching_speed=2、module_slots=4，数据经 GAME_DATA 桥接
     this.packs = {};
     this.t = 0;
     this.active = false;
@@ -27,7 +27,9 @@ class Lab extends Entity {
     }
     return false;
   }
-  powerDemand() { return this.active ? POWER_USE['lab'] * (1 + (moduleCounts(this.modules).speed + moduleCounts(this.modules).prod) * 0.25) * Math.max(0.2, 1 - 0.15 * moduleCounts(this.modules).eff) : 0; }
+  powerDemand() { return this.active ? (POWER_USE[this.type] || POWER_USE['lab']) * (1 + (moduleCounts(this.modules).speed + moduleCounts(this.modules).prod) * 0.25) * Math.max(0.2, 1 - 0.15 * moduleCounts(this.modules).eff) : 0; }
+  // 设备自身科研速度倍率（官方 researching_speed：研究中心=1、生物实验室 biolab=2）
+  researchSpeedMult() { return GAME_DATA.deviceStats?.[this.type]?.researchingSpeed ?? 1; }
   packCount(id) { return this.packs[id] || 0; }
   totalPacks() { let s = 0; for (const k in this.packs) s += this.packs[k]; return s; }
   // 返回任意一种有库存的科学包（供无限科技“消耗任何包”使用）
@@ -68,7 +70,7 @@ class Lab extends Entity {
       const any = this.peekAnyPack();
       if (!any) { this.t = 0; return; }   // 没有任何科学包则暂停
       this.active = true;
-      this.t += dt * powerFactor() * labSpeedMult() * this.moduleSpeedMult();
+      this.t += dt * powerFactor() * labSpeedMult() * this.moduleSpeedMult() * this.researchSpeedMult();
       if (this.t >= LAB_TIME) {
         this.t -= LAB_TIME;
         // 产能模块：达到阈值时本次科研免费（不消耗科学包）
@@ -95,7 +97,7 @@ class Lab extends Entity {
     const need = list[done];
     if (!need || this.packCount(need) <= 0) { this.t = 0; return; }
     this.active = true;
-    this.t += dt * powerFactor() * labSpeedMult() * this.moduleSpeedMult();
+    this.t += dt * powerFactor() * labSpeedMult() * this.moduleSpeedMult() * this.researchSpeedMult();
     if (this.t >= LAB_TIME) {
       this.t -= LAB_TIME;
       // 产能模块：达到阈值时本次科研免费（不消耗科学包）
@@ -179,25 +181,25 @@ class Lab extends Entity {
 // ===== 渲染 =====
 function drawLab(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
-  const s = TILE * 3;
+  const w = TILE * e.w, h = TILE * e.h;   // 支持 lab（3×3）与 biolab（5×5，生物实验室）
   ctx.globalAlpha = alpha;
   ctx.fillStyle = '#37807a';
-  rr(ctx, px + 3, py + 3, s - 6, s - 6, 7); ctx.fill();
+  rr(ctx, px + 3, py + 3, w - 6, h - 6, 7); ctx.fill();
   ctx.strokeStyle = '#1e4a46';
   ctx.lineWidth = 3;
-  rr(ctx, px + 3, py + 3, s - 6, s - 6, 7); ctx.stroke();
+  rr(ctx, px + 3, py + 3, w - 6, h - 6, 7); ctx.stroke();
   ctx.fillStyle = '#245c57';
-  rr(ctx, px + 10, py + 10, s - 20, s - 20, 5); ctx.fill();
+  rr(ctx, px + 10, py + 10, w - 20, h - 20, 5); ctx.fill();
   ctx.fillStyle = e.active ? '#8ff0e0' : '#4a8f86';
   ctx.beginPath();
-  ctx.arc(px + s / 2, py + s / 2, 12, 0, 7);
+  ctx.arc(px + w / 2, py + h / 2, 12, 0, 7);
   ctx.fill();
   if (e.active) {
     const bb = Math.sin(G.time * 8 + px) * 3;
     ctx.fillStyle = 'rgba(255,255,255,.7)';
     ctx.beginPath();
-    ctx.arc(px + s / 2 - 4, py + s / 2 - 4 + bb, 2.5, 0, 7);
-    ctx.arc(px + s / 2 + 5, py + s / 2 - 2 - bb, 2, 0, 7);
+    ctx.arc(px + w / 2 - 4, py + h / 2 - 4 + bb, 2.5, 0, 7);
+    ctx.arc(px + w / 2 + 5, py + h / 2 - 2 - bb, 2, 0, 7);
     ctx.fill();
   }
   ctx.globalAlpha = 1;
@@ -303,3 +305,10 @@ DEVICE_STATUS['lab'] = e => {
   return e.totalPacks() > 0 ? (e.packCount(e.nextNeed()) > 0 ? 'g' : 'y') : 'r';
 };
 DEVICE_PANEL['lab'] = { html: labPanelHtml, live: labPanelLive, tip: labTip, onAction: labOnAction };
+
+// ===== 生物实验室（biolab，Gleba）注册：复用 Lab 类，仅科研速度 2 倍、模块槽 4、占地 5×5 =====
+ENT_CLASSES['biolab'] = Lab;
+DEVICE_RENDER['biolab'] = drawLab;
+DEVICE_DIR_ROTATE['biolab'] = true;
+DEVICE_STATUS['biolab'] = DEVICE_STATUS['lab'];
+DEVICE_PANEL['biolab'] = { html: labPanelHtml, live: labPanelLive, tip: labTip, onAction: labOnAction };

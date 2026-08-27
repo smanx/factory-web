@@ -31,6 +31,7 @@ const RECIPES = {
   'stone-furnace':      { time: 0.5, inp: { 'stone': 5 },                                        out: { 'stone-furnace': 1 } },
   'assembling-machine-1':        { time: 0.5, inp: { 'electronic-circuit': 3, 'iron-gear-wheel': 5, 'iron-plate': 9 }, out: { 'assembling-machine-1': 1 } },
   'lab':        { time: 2, inp: { 'electronic-circuit': 10, 'iron-gear-wheel': 10, 'transport-belt': 4 }, out: { 'lab': 1 } },
+  'biolab':        { time: 10, inp: { 'lab': 1, 'bioflux': 10, 'refined-concrete': 25, 'uranium-235': 3 }, out: { 'biolab': 1 } },  // 太空时代生物实验室（官方配方依赖 biter-egg/capture-robot-rocket=生物星球资源，适配为项目现有生物链资源；耗时 10s 参考官方）
   'boiler':        { time: 0.5, inp: { 'pipe': 4, 'stone-furnace': 1 }, out: { 'boiler': 1 } },
   'steam-engine':        { time: 0.5, inp: { 'iron-gear-wheel': 8, 'iron-plate': 10, 'pipe': 5 }, out: { 'steam-engine': 1 } },
   'offshore-pump':        { time: 0.5, inp: { 'iron-gear-wheel': 2, 'pipe': 3 }, out: { 'offshore-pump': 1 } },
@@ -275,6 +276,7 @@ const RECIPES = {
   'steam-turbine':        { time: 3, inp: { 'copper-plate': 50, 'iron-gear-wheel': 50, 'pipe': 20 }, out: { 'steam-turbine': 1 } },
   'heat-pipe':        { time: 1, inp: { 'copper-plate': 20, 'steel-plate': 10 }, out: { 'heat-pipe': 1 } },
   'heat-exchanger':        { time: 3, inp: { 'copper-plate': 100, 'pipe': 10, 'steel-plate': 10 }, out: { 'heat-exchanger': 1 } },
+  'heating-tower':        { time: 10, inp: { 'boiler': 2, 'heat-pipe': 5, 'concrete': 20 }, out: { 'heating-tower': 1 } },  // 太空时代供热塔（官方配方：2锅炉+5导热管+20混凝土，10s）
   // ===== 电路网络配方 =====
   'small-electric-pole':        { time: 0.5, inp: { 'copper-cable': 2, 'wood': 1 }, out: { 'small-electric-pole': 2 } },
   'substation':        { time: 0.5, inp: { 'advanced-circuit': 5, 'copper-cable': 6, 'steel-plate': 10 }, out: { 'substation': 1 } },

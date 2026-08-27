@@ -336,5 +336,38 @@ ok(ctx.__itemTechReq('tungsten-carbide') === 'metallurgy', '碳化钨需「冶�
 ok(ctx.__itemTechReq('foundry') === 'metallurgy', '铸造厂需「冶金学」科技');
 ok(!!TS['metallurgy'], '「冶金学」科技已注册');
 ok(!Object.keys(TS['metallurgy'].cost).includes('metallurgic-science-pack'), '「冶金学」科技不含冶金科研包（避免循环依赖）');
+// ===== 供热塔 + 生物实验室（本迭代新增）数据校验 =====
+console.log('\n【供热塔 heating-tower（Aquilo）数据】');
+ok(GD.stackSize['heating-tower'] === 20, 'heating-tower 堆叠来自官方 (=20)');
+ok(GD.names['heating-tower'] && GD.names['heating-tower'].en === 'Heating tower', 'heating-tower 官方命名已收录 (Heating tower)');
+ok(GD.footprint['heating-tower'] && GD.footprint['heating-tower'].w === 3 && GD.footprint['heating-tower'].h === 3, '占地 3×3（官方 selection_box ±1.5）');
+ok(GD.buildingHp['heating-tower'] === 500, '血量=500（官方 max_health）');
+ok(GD.heat.heatingTowerRate === 40, '供热塔燃料消耗率=40MW（官方 consumption）');
+ok(GD.heat.heatingTowerEffectivity === 2.5, '供热塔热效比=2.5（官方 effectivity）');
+ok(GD.heat.heatingTowerSpecificHeat === 5, '供热塔比热=5MJ/°C（官方 heat_buffer）');
+ok(GD.heat.heatingTowerMaxTransfer === 10000, '供热塔最大传热=10GW（官方 max_transfer）');
+ok(!!RP['heating-tower'], 'heating-tower 配方已注册');
+ok(Object.keys(RP['heating-tower'].inp).every(k => k in IT), 'heating-tower 配方引用物品均存在');
+ok(!!IT['heating-tower'], 'heating-tower 物品已注册');
+ok(!!TS['heating-tower'], '「供热塔」科技已注册');
+ok(ctx.__itemTechReq('heating-tower') === 'heating-tower', '供热塔需「供热塔」科技');
+ok(!Object.keys(TS['heating-tower'].cost).includes('heating-tower'), '「供热塔」科技配方不含供热塔本体（避免循环依赖）');
+
+console.log('\n【生物实验室 biolab（Gleba）数据】');
+ok(GD.stackSize['biolab'] === 5, 'biolab 堆叠来自官方 (=5)');
+ok(GD.names['biolab'] && GD.names['biolab'].en === 'Biolab', 'biolab 官方命名已收录 (Biolab)');
+ok(GD.footprint['biolab'] && GD.footprint['biolab'].w === 5 && GD.footprint['biolab'].h === 5, '占地 5×5（官方 selection_box ±2.5）');
+ok(GD.buildingHp['biolab'] === 350, '血量=350（官方 max_health）');
+ok(GD.powerUse['biolab'] === 300, '功耗=300kW（官方 energy_usage）');
+ok(GD.deviceStats['biolab'] && GD.deviceStats['biolab'].moduleSlots === 4, '模块槽=4（官方 module_slots）');
+ok(GD.deviceStats['biolab'] && GD.deviceStats['biolab'].researchingSpeed === 2, '科研速度=2（官方 researching_speed）');
+ok(!!RP['biolab'], 'biolab 配方已注册');
+ok(Object.keys(RP['biolab'].inp).every(k => k in IT), 'biolab 配方引用物品均存在');
+ok(!!IT['biolab'], 'biolab 物品已注册');
+ok(!!TS['biolab'], '「生物实验室」科技已注册');
+ok(ctx.__itemTechReq('biolab') === 'biolab', '生物实验室需「生物实验室」科技');
+ok(TS['biolab'].req.includes('agriculture'), '「生物实验室」科技前置包含农业科技');
+ok(!Object.keys(TS['biolab'].cost).includes('biolab'), '「生物实验室」科技配方不含生物实验室本体（避免循环依赖）');
+
 console.log('\n' + (fail === 0 ? '✅ DLC 数据校验全部通过（' + pass + ' 项）' : '❌ 失败 ' + fail + ' 项'));
 process.exit(fail === 0 ? 0 : 1);
