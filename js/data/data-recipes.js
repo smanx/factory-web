@@ -17,11 +17,11 @@ const RECIPES = {
   'fast-splitter':        { time: 2, inp: { 'electronic-circuit': 10, 'iron-gear-wheel': 10, 'splitter': 1 }, out: { 'fast-splitter': 1 } },
   'express-splitter':        { time: 2, inp: { 'advanced-circuit': 10, 'fast-splitter': 1, 'iron-gear-wheel': 10, 'lubricant': 80 }, out: { 'express-splitter': 1 } },
   // ===== 超速物流（太空时代 Space Age 4 档带，对齐《异星工厂》Turbo belt）=====
-  // 官方配方依赖钨板(tungsten-plate，Vulcanus 资源)，项目尚未实现行星系统，
-  // 故适配为可用高级材料（钢板+高级电路+塑料等）合成，产出物/耗时参考官方。
-  'turbo-transport-belt': { time: 0.5, inp: { 'express-transport-belt': 1, 'steel-plate': 5, 'plastic-bar': 5, 'lubricant': 20 }, out: { 'turbo-transport-belt': 1 } },
-  'turbo-underground-belt': { time: 2, inp: { 'express-underground-belt': 2, 'steel-plate': 40, 'plastic-bar': 20, 'lubricant': 40 }, out: { 'turbo-underground-belt': 2 } },
-  'turbo-splitter':        { time: 2, inp: { 'express-splitter': 1, 'steel-plate': 15, 'processing-unit': 2, 'lubricant': 80 }, out: { 'turbo-splitter': 1 } },
+  // 官方配方对齐：超速带族依赖钨板(tungsten-plate，Vulcanus 资源，项目已接入铸造厂钨链)，
+  // 故对齐官方配方用钨板替代此前适配的钢板+塑料，耗时/产出与官方一致（数据经 GAME_DATA 单源核对）。
+  'turbo-transport-belt': { time: 0.5, inp: { 'express-transport-belt': 1, 'tungsten-plate': 5, 'lubricant': 20 }, out: { 'turbo-transport-belt': 1 } },
+  'turbo-underground-belt': { time: 2, inp: { 'express-underground-belt': 2, 'tungsten-plate': 40, 'lubricant': 40 }, out: { 'turbo-underground-belt': 2 } },
+  'turbo-splitter':        { time: 2, inp: { 'express-splitter': 1, 'tungsten-plate': 15, 'processing-unit': 2, 'lubricant': 80 }, out: { 'turbo-splitter': 1 } },
   // ===== 装载机 Loader（对齐《异星工厂》Loader，官方配方，经 GAME_DATA 桥接）=====
   'loader':             { time: 1, inp: { 'inserter': 5, 'electronic-circuit': 5, 'iron-gear-wheel': 5, 'iron-plate': 5, 'transport-belt': 5 }, out: { 'loader': 1 } },
   'fast-loader':        { time: 3, inp: { 'fast-transport-belt': 5, 'loader': 1 }, out: { 'fast-loader': 1 } },
