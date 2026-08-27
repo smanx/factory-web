@@ -220,9 +220,9 @@ function showHudInfo(key, el) {
   let title = 'HUD 详情', desc = '', detail = '';
   if (key === 'fps') {
     title = '帧率 / 更新率 (FPS / UPS)';
-    desc = 'FPS 为每秒渲染帧数，反映画面流畅度；UPS 为每秒世界更新次数。两者越接近、数值越高，游戏运行越流畅。';
+    desc = 'FPS 为每秒渲染帧数，反映画面流畅度；UPS 为每秒实际执行的逻辑更新次数。推进游戏速度（调试面板的变量 timeScale）会使 UPS 上升。';
     const t = el ? el.textContent : '-- / --';
-    detail = '当前 FPS / UPS：' + t + '。<br>建议保持 30 以上以获流畅体验；若 FPS 明显低于 UPS，说明渲染成为瓶颈，可尝试降低画质或关闭其他占资源的窗口。';
+    detail = '当前 FPS / UPS：' + t + '。<br>建议保持 30 以上以获流畅体验；UPS 受每秒最多补跑次数（MAX_TICK_STEPS）与渲染帧率上限约束。';
   } else if (key === 'hp') {
     title = '生命值 (HP)';
     desc = '玩家的当前生命值与最大生命值。受到敌人攻击会减少，生命值归零则死亡。';

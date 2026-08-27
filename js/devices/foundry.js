@@ -179,3 +179,5 @@ DEVICE_STATUS['foundry'] = e => {
 };
 DEVICE_PANEL['foundry'] = { html: foundryPanelHtml, live: foundryPanelLive, tip: foundryTip, onAction: (a) => circuitPanelAction('fd', a) };
 DEVICE_DIR_ROTATE['foundry'] = true;
+// 显示详情时，各接口图标所在世界格 + 对应流体名（用于鼠标悬停显示流体名称）
+DEVICE_FLUID_ICONS['foundry'] = e => fluidIconFinFout(e, e.x * TILE + TILE * e.w / 2, e.y * TILE + TILE * e.h / 2);

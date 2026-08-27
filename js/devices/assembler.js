@@ -373,6 +373,10 @@ DEVICE_PANEL['assembling-machine-2'] = assemblerPanel;
 // 组装机 I/II 均可旋转朝向；旋转改变流体入口/出口所在侧（背部入口、前部出口）
 DEVICE_DIR_ROTATE['assembling-machine-1'] = true;
 DEVICE_DIR_ROTATE['assembling-machine-2'] = true;
+// 显示详情时，各接口图标所在世界格 + 对应流体名（用于鼠标悬停显示流体名称）
+const assemblerFluidIcons = e => fluidIconFinFout(e, e.x * TILE + TILE * e.w / 2, e.y * TILE + TILE * e.h / 2);
+DEVICE_FLUID_ICONS['assembling-machine-1'] = assemblerFluidIcons;
+DEVICE_FLUID_ICONS['assembling-machine-2'] = assemblerFluidIcons;
 
 // ===== 品质产出（对齐《异星工厂》Quality DLC）=====
 // 设备含品质模块时，每次产出每个单位有 chance 概率升级为更高品质（罕见/稀有/史诗/传说）。

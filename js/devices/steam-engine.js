@@ -162,3 +162,12 @@ DEVICE_RENDER['steam-engine'] = drawSteamEngine;
 DEVICE_STATUS['steam-engine'] = e => e.on ? 'g' : ((e.steamBuf || 0) > 0 ? 'y' : 'r');
 DEVICE_PANEL['steam-engine'] = { html: steamEnginePanelHtml, live: steamEnginePanelLive, tip: steamEngineTip };
 DEVICE_DIR_ROTATE['steam-engine'] = true;
+// 显示详情时，各接口图标所在世界格 + 对应流体名（用于鼠标悬停显示流体名称）
+DEVICE_FLUID_ICONS['steam-engine'] = e => {
+  const pN = rotCell(e, e.def.w >> 1, 0);
+  const pS = rotCell(e, e.def.w >> 1, e.def.h - 1);
+  return [
+    { x: pN.x, y: pN.y, fluid: 'steam' },
+    { x: pS.x, y: pS.y, fluid: 'steam' }
+  ];
+};

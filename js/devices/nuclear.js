@@ -1124,6 +1124,15 @@ ENT_CLASSES['steam-turbine'] = SteamTurbine;
 DEVICE_RENDER['steam-turbine'] = drawSteamTurbine;
 DEVICE_STATUS['steam-turbine'] = e => e.on ? 'g' : 'r';
 DEVICE_PANEL['steam-turbine'] = { html: turbinePanelHtml, live: turbinePanelLive, tip: turbineTip };
+// 显示详情时，各接口图标所在世界格 + 对应流体名（用于鼠标悬停显示流体名称）
+DEVICE_FLUID_ICONS['steam-turbine'] = e => {
+  const pN = rotCell(e, e.def.w >> 1, 0);
+  const pS = rotCell(e, e.def.w >> 1, e.def.h - 1);
+  return [
+    { x: pN.x, y: pN.y, fluid: 'steam' },
+    { x: pS.x, y: pS.y, fluid: 'steam' }
+  ];
+};
 
 ENT_CLASSES['heat-pipe'] = HeatPipe;
 DEVICE_RENDER['heat-pipe'] = drawHeatPipe;
@@ -1135,3 +1144,14 @@ ENT_CLASSES['heat-exchanger'] = HeatExchanger;
 DEVICE_RENDER['heat-exchanger'] = drawHeatExchanger;
 DEVICE_STATUS['heat-exchanger'] = e => e.active ? 'g' : (e.temperature() >= HEAT_EXCHANGER_MIN_WORK_TEMP ? 'y' : 'r');
 DEVICE_PANEL['heat-exchanger'] = { html: heatExchangerPanelHtml, live: heatExchangerPanelLive, tip: heatExchangerTip };
+// 显示详情时，各接口图标所在世界格 + 对应流体名（用于鼠标悬停显示流体名称）
+DEVICE_FLUID_ICONS['heat-exchanger'] = e => {
+  const pWL = rotCell(e, 0, 1);
+  const pWR = rotCell(e, e.def.w - 1, 1);
+  const pS = rotCell(e, e.def.w >> 1, 0);
+  return [
+    { x: pWL.x, y: pWL.y, fluid: 'water' },
+    { x: pWR.x, y: pWR.y, fluid: 'water' },
+    { x: pS.x, y: pS.y, fluid: 'steam' }
+  ];
+};

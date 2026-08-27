@@ -181,3 +181,5 @@ DEVICE_STATUS['assembling-machine-3'] = e => {
 };
 DEVICE_PANEL['assembling-machine-3'] = { html: assembler3PanelHtml, live: assembler3PanelLive, tip: assembler3Tip, onAction: (a) => circuitPanelAction('am3', a) };
 DEVICE_DIR_ROTATE['assembling-machine-3'] = true;
+// 显示详情时，各接口图标所在世界格 + 对应流体名（用于鼠标悬停显示流体名称）
+DEVICE_FLUID_ICONS['assembling-machine-3'] = e => fluidIconFinFout(e, e.x * TILE + TILE * e.w / 2, e.y * TILE + TILE * e.h / 2);
