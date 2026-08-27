@@ -208,6 +208,8 @@ function updateHUD(dt, fps, ups) {
   if (cc) {
     cc.onclick = () => { cancelCraftQueue(); toast('已取消制作（返还排队材料）'); };
   }
+  // 实时刷新左下角战斗快捷栏（弹药数量等）
+  if (typeof refreshQuickbar === 'function') refreshQuickbar();
 }
 
 // ===== HUD 详情弹框：点击 HUD 信息项弹出详情及描述（替代原先悬停 title 提示）=====

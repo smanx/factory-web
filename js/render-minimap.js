@@ -9,7 +9,7 @@ const MINIMAP_VIEW = Math.ceil(MINIMAP_SIZE / MINIMAP_ZOOM / 2); // 半边长覆
 function drawMinimap(ctx) {
   const size = MINIMAP_SIZE;
   const pad = 10;
-  const x0 = W - size - pad, y0 = H - size - pad;
+  const x0 = W - size - pad, y0 = pad; // 小地图移至上（右）角显示
   const pcx = G.player.x / TILE, pcy = G.player.y / TILE;
   // 背景框
   ctx.fillStyle = 'rgba(8,12,10,0.78)';

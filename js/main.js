@@ -288,6 +288,7 @@ function serializeAll() {
     activeTech: G.activeTech,
     techQueue: G.techQueue || [],
     hotbar: HOTBAR.slice(),
+    quickbar: (typeof qbSerialize === 'function') ? qbSerialize() : null,
     settings: Object.assign({}, G.settings),
     dbg: Object.assign({}, G.dbg),
     // 游戏累计时间（秒）：用于历史统计分桶的时间锚点，读档后延续
@@ -592,6 +593,7 @@ function applySave(d) {
     while (HOTBAR.length < 10) HOTBAR.push(null);
     buildHotbar();
   }
+  if (typeof qbApply === 'function') qbApply(d.quickbar || null);
   // 恢复游戏累计时间（历史统计的时间锚点；旧档无该字段则从 0 开始）
   if (typeof d.time === 'number' && isFinite(d.time)) G.time = d.time;
   if (typeof initWeather === 'function') initWeather();  // 读档后按世界种子初始化天气

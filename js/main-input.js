@@ -528,6 +528,7 @@ function boot() {
     ['topbtn', () => initTopButtons()],
     ['panel', () => initPanelEvents()],
     ['joystick', () => initJoystick()],
+    ['quickbar', () => initQuickbar()],
     ['tooltip', () => initTooltips()],
     ['hudinfo', () => initHudInfo()],
     ['tutorial', () => initTutorial()],
