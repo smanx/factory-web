@@ -996,6 +996,26 @@ let _fltTab = 'logistics';
 let _fltQ = '';
 let _fltComposing = false;
 
+// 二级分组的中文名（官方 item-subgroup id → 中文）。未收录的兜底返回可读英文标题。
+function fltSubgroupLabel(sg) {
+  const M = {
+    'raw-resource': '原料', 'raw-material': '板材·原料', 'solid-raw-material': '固体原料',
+    'terrain': '地形', 'vulcanus-processes': '沃库纳工艺', 'gleba-processes': '格列巴工艺',
+    'intermediate-product': '中间产品', 'intermediate': '中间产品', 'liquid': '液体', 'fluid': '液体',
+    'science-pack': '科技包', 'belt': '传送带', 'inserter': '机械臂', 'logistics': '物流',
+    'storage': '存储', 'energy-pipe-distribution': '管道·电网', 'energy': '发电',
+    'extraction-machine': '采集设备', 'smelting-machine': '冶炼设备', 'production-machine': '生产设备',
+    'circuit-network': '电路网络', 'signal': '信号', 'constant': '常量',
+    'train-system': '列车', 'rail': '轨道', 'logistic-chest': '物流箱', 'drone': '无人机',
+    'turret': '炮塔', 'defensive-structure': '防御建筑', 'combat': '武器', 'ammo': '弹药',
+    'gun': '枪械', 'capsule': '胶囊', 'module': '插件', 'equipment': '装备',
+    'energy-logistics': '能量·物流', 'armor': '装甲', 'space-pack': '太空包裹',
+    'space-platform': '太空平台', 'astroid': '小行星', 'mining-product': '矿物产物',
+    'products': '产物', 'fuel': '燃料', 'tool': '工具'
+  };
+  return M[sg] || sg.replace(/-/g, ' ');
+}
+
 // 把所有可选筛选物品按 5 大分组归类（物品组别取自 factorio-data 的 itemGroup）
 function filterChooserGroups() {
   const perTab = { logistics: [], production: [], 'intermediate-products': [], space: [], combat: [] };
@@ -1027,14 +1047,29 @@ function filterChooserPanelHtml() {
   for (const tab of CRAFT_TABS) {
     const on = tab === _fltTab ? '' : ' style="display:none"';
     const items = perTab[tab] || [];
-    let grid = '';
+    // Tab 内再按官方二级分组（item-subgroup）归类，组序按 subgroupOrder、组内按 itemOrder（与制作栏一致）
+    const groups = new Map();
     for (const id of items) {
-      const name = (ITEMS[id] && ITEMS[id].name) ? ITEMS[id].name : id;
-      const already = (e && e.filters && e.filters.indexOf(id) >= 0);
-      grid += '<button type="button" class="flt-item' + (already ? ' sel' : '') + '" data-act="flt-choose" data-id="' + id + '" data-idx="' + (_fltCtx ? _fltCtx.idx : 0) + '"' +
-        ' data-rsearch="' + (name + ' ' + id).toLowerCase() + '"' +
-        (already ? ' title="已在筛选列表中"' : '') + '>' +
-        '<img src="' + iconDataURL(id) + '"><span>' + name + '</span></button>';
+      const sg = (GAME_DATA.itemSubgroup && GAME_DATA.itemSubgroup[id]) || '';
+      if (!groups.has(sg)) groups.set(sg, []);
+      groups.get(sg).push(id);
+    }
+    const sgList = Array.from(groups.keys()).sort(officialSubgroupCompare);
+    let grid = '';
+    for (const sg of sgList) {
+      const list = groups.get(sg).slice().sort((x, y) => officialItemCompare(x, y));
+      grid += '<div class="flt-subgroup">' +
+        (sg ? '<div class="flt-sg-label">' + fltSubgroupLabel(sg) + '</div>' : '');
+      for (const id of list) {
+        const name = (ITEMS[id] && ITEMS[id].name) ? ITEMS[id].name : id;
+        const already = (e && e.filters && e.filters.indexOf(id) >= 0);
+        grid += '<button type="button" class="flt-item' + (already ? ' sel' : '') + '" data-act="flt-choose" data-id="' + id + '" data-idx="' + (_fltCtx ? _fltCtx.idx : 0) + '"' +
+          ' data-rsearch="' + (name + ' ' + id).toLowerCase() + '"' +
+          ' data-tip="' + itemTip(id) + '"' +
+          (already ? ' title="已在筛选列表中"' : '') + '>' +
+          '<img src="' + iconDataURL(id) + '"><span>' + name + '</span></button>';
+      }
+      grid += '</div>';
     }
     h += '<div class="flt-grid" data-tab="' + tab + '"' + on + '>' + grid + '</div>';
   }
@@ -1093,6 +1128,11 @@ function applyFltSearch(q) {
       const hit = !ql || (it.dataset.rsearch || '').includes(ql);
       it.style.display = hit ? '' : 'none';
       if (hit) cnt++;
+    }
+    // 搜索时隐藏没有任何可见物品的二级分组（保持分组紧凑）
+    for (const grp of grid.querySelectorAll('.flt-subgroup')) {
+      grp.style.display = Array.from(grp.querySelectorAll('.flt-item'))
+        .some(el => el.style.display !== 'none') ? '' : 'none';
     }
     shown = cnt;
   }

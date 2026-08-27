@@ -2759,9 +2759,18 @@ html, body {
 .flt-modal .inv-search { width: 100%; }
 .flt-modal #flt-tabs .craft-tab { flex: 0 0 auto; }
 .flt-grid {
+  display: flex; flex-direction: column; gap: 12px; margin: 8px 0;
+}
+/* 每个二级分组：分组标题占一整行，各项图标每行最多 10 个、超出换行（对齐组装机配方选择弹框） */
+.flt-subgroup {
   display: grid;
-  grid-template-columns: repeat(10, 32px);
-  gap: 4px; margin: 8px 0;
+  grid-template-columns: repeat(10, 34px);
+  gap: 4px;
+}
+.flt-sg-label {
+  grid-column: 1 / -1;
+  font-size: 12px; color: #98a5b5; font-weight: 600;
+  padding: 2px 0 1px; border-bottom: 1px solid #2c3540; margin-bottom: 2px;
 }
 .flt-item {
   width: 32px; height: 32px; padding: 0;
