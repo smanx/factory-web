@@ -301,7 +301,22 @@ for (const rid of ['iron-bacteria', 'copper-bacteria', 'iron-bacteria-cultivatio
 ok(ctx.__itemTechReq('iron-bacteria') === 'agriculture', '铁细菌需「农业科技」');
 ok(ctx.__itemTechReq('copper-bacteria') === 'agriculture', '铜细菌需「农业科技」');
 
-// ===== 破碎机（Crusher）数据校验 =====
+// ===== Gleba 变质物回收链（Nutrients from spoilage / Burnt spoilage，本迭代新增）数据校验 =====
+console.log('\n【变质物回收链（Spoilage recycling，Gleba）数据校验】');
+for (const rid of ['nutrients-from-spoilage', 'burnt-spoilage']) {
+  ok(!!RP[rid], rid + ' 配方已注册');
+  ok(Object.keys(RP[rid].inp).every(k => k in IT), rid + ' 配方引用物品均存在');
+  ok(!!GD.recipeNames[rid], rid + ' 官方配方命名已收录 (' + (GD.recipeNames[rid] ? GD.recipeNames[rid].zh : '?') + ')');
+}
+ok(RP['nutrients-from-spoilage'].inp['spoilage'] === 10 && RP['nutrients-from-spoilage'].out['nutrients'] === 1, '变质物→营养素=10腐败物→1营养素（官方）');
+ok(RP['nutrients-from-spoilage'].time === 2, '变质物→营养素耗时=2s（官方）');
+ok(RP['burnt-spoilage'].inp['spoilage'] === 6 && RP['burnt-spoilage'].out['carbon'] === 1, '燃烧变质物=6腐败物→1碳（官方）');
+ok(RP['burnt-spoilage'].time === 12, '燃烧变质物耗时=12s（官方）');
+ok(ctx.__recipeDevice('nutrients-from-spoilage') === 'biochamber', '变质物→营养素 → 生化炉');
+ok(ctx.__recipeDevice('burnt-spoilage') === 'biochamber', '燃烧变质物 → 生化炉');
+ok(ctx.__recipeTechReq('nutrients-from-spoilage') === 'agriculture', '变质物→营养素需「农业科技」');
+ok(ctx.__recipeTechReq('burnt-spoilage') === 'agriculture', '燃烧变质物需「农业科技」');
+
 console.log('\n【破碎机设备数据（官方）】');
 ok(!!GD.stackSize['crusher'], 'crusher 堆叠来自官方 (=10)');
 ok(!!GD.names['crusher'], 'crusher 官方命名已收录 (' + (GD.names['crusher'] ? GD.names['crusher'].zh : '?') + ')');

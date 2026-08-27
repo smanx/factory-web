@@ -2335,6 +2335,24 @@ const GAME_DATA = {
     "nutrients": 40
    }
   },
+  "nutrients-from-spoilage": {
+   "time": 2,
+   "inp": {
+    "spoilage": 10
+   },
+   "out": {
+    "nutrients": 1
+   }
+  },
+  "burnt-spoilage": {
+   "time": 12,
+   "inp": {
+    "spoilage": 6
+   },
+   "out": {
+    "carbon": 1
+   }
+  },
   "biosulfur": {
    "time": 2,
    "inp": {
@@ -3487,6 +3505,8 @@ const GAME_DATA = {
   "foundry": "foundry",
   "bioflux": "biochamber",
   "nutrients-from-bioflux": "biochamber",
+  "nutrients-from-spoilage": "biochamber",
+  "burnt-spoilage": "biochamber",
   "biosulfur": "biochamber",
   "agricultural-tower": "assembling-machine-1",
   "artificial-yumako-soil": "assembling-machine-1",
@@ -4789,6 +4809,14 @@ const GAME_DATA = {
   "nutrients-from-bioflux": {
    "zh": "生物结晶制营养素",
    "en": "Nutrients from bioflux"
+  },
+  "nutrients-from-spoilage": {
+   "zh": "变质物制营养素",
+   "en": "Nutrients from spoilage"
+  },
+  "burnt-spoilage": {
+   "zh": "燃烧变质物",
+   "en": "Burnt spoilage"
   },
   "biosulfur": {
    "zh": "生物硫磺",

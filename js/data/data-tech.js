@@ -363,6 +363,10 @@ const RECIPE_TECH = {
   'oxide-asteroid-reprocessing': 'asteroid-processing',
   // 太空时代 超速物流（Turbo belt，对齐官方 Space Age Turbo transport belt 科技）
   'turbo-transport-belt': 'turbo-logistics',
+  // 太空时代 Gleba 变质物回收（官方 Nutrients from spoilage / Burnt spoilage 配方，生化炉 organic，
+  // 与其它生物质链统一由「农业科技」解锁）
+  'nutrients-from-spoilage': 'agriculture',
+  'burnt-spoilage': 'agriculture',
   'turbo-underground-belt': 'turbo-logistics',
   'turbo-splitter': 'turbo-logistics',
   // 太空时代 钷素科研包（官方 Promethium science pack 科技，由钷素星块+超导体+生物结晶在电磁工厂制得）
