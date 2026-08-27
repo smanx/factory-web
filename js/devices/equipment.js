@@ -16,7 +16,6 @@
 // laser: 个人激光防御射程(格)；night: 夜视(布尔)。
 const EQUIPMENT = {
   'solar-panel-equipment':     { name: '个人太阳能板',      size: 1, powerOut: 30,  desc: '白天 30kW' },
-  'portable-solar-panel-mk2': { name: '个人太阳能板 II',   size: 1, powerOut: 60,  desc: '白天 60kW' },
   'fusion-reactor-equipment':  { name: '便携聚变反应堆',    size: 4, powerOut: 750, desc: '全天候 750kW' },
   'battery-equipment':         { name: '个人电池',          size: 2, powerCap: 10000, desc: '储电 10MJ' },
   'battery-mk2-equipment':     { name: '个人电池 II',       size: 2, powerCap: 20000, desc: '储电 20MJ' },
@@ -33,7 +32,7 @@ const EQUIPMENT = {
 };
 // 官方装备参数桥接（GAME_DATA.equipment 由 factorio-data 现场生成，见 tools/generate-game-data.js）。
 // 仅覆盖官方有对应数据的数值字段（发电/储电/护盾/速度/射程/放电范围冷却）；
-// 显示描述 desc、装备尺寸 size 及项目特有装备（portable-solar-panel-mk2 等）保持手工。
+// 显示描述 desc、装备尺寸 size 及项目特有装备保持手工。
 {
   const g = GAME_DATA.equipment || {};
   for (const eid of Object.keys(EQUIPMENT)) {
@@ -139,7 +138,7 @@ function recomputePersonalPower() {
     if (!def) continue;
     if (def.powerOut) {
       // 太阳能板随昼夜发电；聚变堆全天候满发
-      const f = (e.id === 'solar-panel-equipment' || e.id === 'portable-solar-panel-mk2')
+      const f = (e.id === 'solar-panel-equipment')
         ? (typeof solarFactor === 'function' ? solarFactor() : 1)
         : 1;
       prod += def.powerOut * f;

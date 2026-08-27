@@ -15,7 +15,7 @@ const STACK_SIZES = {
   'crusher': 10,  // 破碎机官方 stack=10（由 GAME_DATA 桥接）
   'metallic-asteroid-chunk': 1, 'carbonic-asteroid-chunk': 1, 'oxide-asteroid-chunk': 1, 'promethium-asteroid-chunk': 1,  // 小行星碎块官方 stack=1
   'ice': 50,  // 冰官方 stack=50
-  'car': 1, 'tank': 1, 'spidertron': 1, 'diesel-locomotive': 1,
+  'car': 1, 'tank': 1, 'spidertron': 1,
   'locomotive': 5, 'cargo-wagon': 5, 'fluid-wagon': 5, 'artillery-wagon': 5,  // 车厢/车头官方 5
   'light-armor': 1, 'heavy-armor': 1, 'modular-armor': 1, 'power-armor': 1, 'power-armor-mk2': 1,
   'fusion-reactor-equipment': 20, 'spidertron-remote': 1,  // 便携聚变堆官方 20
@@ -211,7 +211,6 @@ const ITEMS = {
   // ===== 铁路系统（火车） =====
   'rail':              { name: '铁轨', color: '#6a6a70', desc: '铺设铁轨形成铁路网，火车沿轨道行驶。与相邻铁轨自动连通，可拐弯（1×1）' },
   'locomotive':        { name: '火车头', color: '#d04a3a', desc: '烧煤驱动的机车，在铁轨上行驶。煤装入后自动前进；可挂接货运车厢组成列车' },
-  'diesel-locomotive': { name: '内燃机车', color: '#3f7fc0', mark: 'DL', desc: '进阶机车：速度约为烧煤车头的 1.5 倍，吃固体燃料/火箭燃料更高效。需铁路技术+电子学解锁（对齐《异星工厂》Diesel locomotive）' },
   'cargo-wagon':       { name: '货运车厢', color: '#8a6a4a', desc: '货车厢，挂在火车头后沿铁轨随行，最多存放 10 种物品各 100 个（研究「铁路产能」可提升槽位）。车站可用机械臂装卸' },
   'fluid-wagon':       { name: '流体车厢', color: '#4a90c0', desc: '罐车车厢，挂在车头后沿铁轨随行，可运输任意一种流体（容量 ' + FLUID_WAGON_CAP + '）。车站可用泵从侧边装卸流体' },
   'artillery-wagon':   { name: '炮兵车厢', color: '#8a5a3a', desc: '挂载于列车的远程炮兵：列车行驶/停靠期间自动轰击射程内远处敌人，命中造成大范围爆炸，内装炮兵炮弹（对齐《异星工厂》Artillery wagon）' },
@@ -327,7 +326,6 @@ const ITEMS = {
   'power-armor-mk2':{ name: '强力装甲 II', color: '#5a5aa8', desc: '顶级模块化护甲：减伤 55%，自带 8×8 装备网格，容纳最强个人装备组合' },
   // ---- 个人装备件（装入护甲网格生效） ----
   'solar-panel-equipment': { name: '个人太阳能板', color: '#4aa0d0', desc: '装备件（1×1）：白天为个人电网发电，为外骨骼/激光防御等装备供能' },
-  'portable-solar-panel-mk2': { name: '个人太阳能板 II', color: '#3a80c0', desc: '装备件（1×1）：更高功率的个人太阳能板，为个人电网提供更多电力' },
   'fusion-reactor-equipment': { name: '便携聚变反应堆', color: '#8ae0a0', desc: '装备件（4×4）：无惧昼夜、持续大功率发电，个人电网的终极电源' },
   'battery-equipment': { name: '个人电池', color: '#d0c04a', desc: '装备件（2×2）：存储个人电力，白天/发电盈余时充电，供装备随时调用' },
   'battery-mk2-equipment': { name: '个人电池 II', color: '#c0a030', desc: '装备件（2×2）：更大储电量的个人电池' },
@@ -364,15 +362,13 @@ const ITEMS = {
   'petroleum-gas-barrel':  { name: '桶装石油气', color: '#c9a84a', mark: '桶', desc: '盛满石油气的桶，可经物流网络运输，倒空后获得空桶' },
   'lubricant-barrel':      { name: '桶装润滑油', color: '#d8c020', mark: '桶', desc: '盛满润滑油的桶，可经物流网络运输，倒空后获得空桶' },
   'sulfuric-acid-barrel':  { name: '桶装硫酸', color: '#c8c030', mark: '桶', desc: '盛满硫酸的桶，可经物流网络运输，倒空后获得空桶' },
-  'thruster-fuel-barrel':      { name: '桶装推进器燃料', color: '#e03020', mark: '桶', desc: '盛满推进器燃料的桶，可经物流网络运输，倒空后获得空桶' },
-  'thruster-oxidizer-barrel':  { name: '桶装推进器氧化剂', color: '#1565ca', mark: '桶', desc: '盛满推进器氧化剂的桶，可经物流网络运输，倒空后获得空桶' }
 };
 
 // ===== 食用生鱼回血（对齐《异星工厂》：吃鱼治疗） =====
 const FISH_HEAL = 20;  // 食用一条生鱼恢复的生命值
 
 // ===== 可桶装的流体（对齐《异星工厂》：所有流体均可桶装，蒸汽亦可） =====
-const BARREL_FLUIDS = ['water', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas', 'lubricant', 'sulfuric-acid', 'thruster-fuel', 'thruster-oxidizer'];
+const BARREL_FLUIDS = ['water', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas', 'lubricant', 'sulfuric-acid'];
 const BARREL_CAP = 50;  // 每桶盛装流体量（对齐《异星工厂》Barrel 容量）
 // 由流体 id 取对应桶物品 id；非桶装流体返回 null
 function barrelItemId(fluid) { return BARREL_FLUIDS.indexOf(fluid) >= 0 ? fluid + '-barrel' : null; }

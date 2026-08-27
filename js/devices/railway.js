@@ -14,10 +14,9 @@
 
 // ===== 常量 =====
 const TRAIN_SPEED = 0.35;      // 列车每格移动耗时（秒），慢于传送带但运量大（蒸汽车头）
-const DIESEL_SPEED = 0.24;     // 内燃机车每格移动耗时（秒），约为蒸汽车头的 1.45 倍速（对齐《异星工厂》Diesel locomotive 更快）
-// 按车头类型返回每格移动耗时：内燃机车更快，其余为蒸汽车头标准速度。
+// 按车头类型返回每格移动耗时：蒸汽车头标准速度。
 function trainMoveTime(head) {
-  return (head && head.type === 'diesel-locomotive') ? DIESEL_SPEED : TRAIN_SPEED;
+  return TRAIN_SPEED;
 }
 const LOCO_FUEL = 400;         // 单格煤提供的燃料量（一格跑多格）
 const LOCO_SOLID_FUEL = 1600;  // 单格固体燃料提供的燃料量（约为煤的 4 倍）
@@ -462,43 +461,6 @@ class Locomotive extends Entity {
     e.fuel = s.fuel | 0; e.fuelCoal = s.fuelCoal | 0; e.fuelSolid = s.fuelSolid | 0; e.fuelRocket = s.fuelRocket | 0; e.fuelNuclear = s.fuelNuclear | 0; e.fuelWood = s.fuelWood | 0;
     e.schedule = Array.isArray(s.schedule) ? s.schedule.slice() : [];
     return e;
-  }
-}
-
-// ===== 内燃机车 DieselLocomotive（对齐《异星工厂》Diesel locomotive） =====
-// 进阶机车：速度更快（trainMoveTime 取 DIESEL_SPEED），吃固体燃料/火箭燃料（不吃煤，对齐原版内燃机车）。
-class DieselLocomotive extends Locomotive {
-  constructor(type, x, y) {
-    super(type, x, y);
-    this.fuelCoal = 0; // 内燃机车不吃煤（原版内燃机车烧液体/固体燃料），煤槽始终为空
-  }
-  giveItem(item) {
-    // 内燃机车只吃固体燃料与火箭燃料（对齐《异星工厂》：内燃机车不使用煤）
-    const total = this.fuelCoal + this.fuelSolid + this.fuelRocket + (this.fuelNuclear || 0);
-    if (item === 'nuclear-fuel' && total < LOCO_MAX_UNITS) { this.fuelNuclear++; return true; }
-    if (item === 'rocket-fuel' && total < LOCO_MAX_UNITS) { this.fuelRocket++; return true; }
-    if (item === 'solid-fuel' && total < LOCO_MAX_UNITS) { this.fuelSolid++; return true; }
-    return false;
-  }
-  refuel() {
-    if (this.fuel >= LOCO_FUEL) return;
-    if (this.fuelNuclear > 0) { this.fuelNuclear--; this.fuel = Math.min(LOCO_MAX_FUEL, this.fuel + LOCO_NUCLEAR_FUEL); }
-    else if (this.fuelRocket > 0) { this.fuelRocket--; this.fuel = Math.min(LOCO_MAX_FUEL, this.fuel + LOCO_ROCKET_FUEL); }
-    else if (this.fuelSolid > 0) { this.fuelSolid--; this.fuel = Math.min(LOCO_MAX_FUEL, this.fuel + LOCO_SOLID_FUEL); }
-    // 内燃机车不吃煤，fuelCoal 恒为 0，不会走到煤分支
-  }
-  takeItemOf(item) {
-    if (item === 'solid-fuel' && this.fuelSolid > 0) { this.fuelSolid--; return 'solid-fuel'; }
-    if (item === 'nuclear-fuel' && this.fuelNuclear > 0) { this.fuelNuclear--; return 'nuclear-fuel'; }
-    if (item === 'rocket-fuel' && this.fuelRocket > 0) { this.fuelRocket--; return 'rocket-fuel'; }
-    return null;
-  }
-  contents() {
-    const list = [[this.type, 1]];
-    if (this.fuelNuclear > 0) list.push(['nuclear-fuel', this.fuelNuclear]);
-    if (this.fuelRocket > 0) list.push(['rocket-fuel', this.fuelRocket]);
-    if (this.fuelSolid > 0) list.push(['solid-fuel', this.fuelSolid]);
-    return list;
   }
 }
 

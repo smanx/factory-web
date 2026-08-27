@@ -150,54 +150,7 @@ function locoScheduleEntryAction(btn, e, idx, mch) {
 }
 
 // 内燃机车面板：复用调度路线，但不吃煤（只吃固体/火箭燃料）
-DEVICE_PANEL['diesel-locomotive'] = {
-  html(e) {
-    return '<div class="dim">内燃机车：进阶车头，速度约为烧煤车头的 1.5 倍。只吃固体燃料/火箭燃料/核燃料（不吃煤，对齐《异星工厂》内燃机车）。可挂接货运车厢。</div>' +
-      '<div class="sec">燃料</div><div class="rows">' +
-      (invCount('solid-fuel') > 0 || (e.fuelSolid || 0) > 0
-        ? '<div class="row"><span>固体燃料</span><b>' + (e.fuelSolid || 0) + '</b><button data-act="putsolid">+1</button><button data-act="takesolid">取出</button></div>'
-        : '') +
-      (invCount('rocket-fuel') > 0 || (e.fuelRocket || 0) > 0
-        ? '<div class="row"><span>火箭燃料</span><b>' + (e.fuelRocket || 0) + '</b><button data-act="putrocket">+1</button><button data-act="takerocket">取出</button></div>'
-        : '') +
-      (invCount('nuclear-fuel') > 0 || (e.fuelNuclear || 0) > 0
-        ? '<div class="row"><span>核燃料</span><b>' + (e.fuelNuclear || 0) + '</b><button data-act="putnuclear">+1</button><button data-act="takenuclear">取出</button></div>'
-        : '') +
-      '</div>' + locoScheduleHtml(e);
-  },
-  live() { return ''; },
-  tip() { return 'g'; },
-  onAction(btn, e) {
-    const mch = G.panelEnt;
-    const idx = +((e && e.dataset && e.dataset.idx) || -1);
-    if (btn === 'putsolid' && invCount('solid-fuel') > 0) { mch.giveItem('solid-fuel'); invTake('solid-fuel', 1); toast('已加固体燃料'); uiDirty = true; }
-    else if (btn === 'takesolid') { const it = mch.takeItemOf('solid-fuel'); if (it) { invAdd(it); toast('已取出固体燃料'); uiDirty = true; } }
-    else if (btn === 'putrocket' && invCount('rocket-fuel') > 0) { mch.giveItem('rocket-fuel'); invTake('rocket-fuel', 1); toast('已加火箭燃料'); uiDirty = true; }
-    else if (btn === 'takerocket') { const it = mch.takeItemOf('rocket-fuel'); if (it) { invAdd(it); toast('已取出火箭燃料'); uiDirty = true; } }
-    else if (btn === 'putnuclear' && invCount('nuclear-fuel') > 0) { mch.giveItem('nuclear-fuel'); invTake('nuclear-fuel', 1); toast('已加核燃料'); uiDirty = true; }
-    else if (btn === 'takenuclear') { const it = mch.takeItemOf('nuclear-fuel'); if (it) { invAdd(it); toast('已取出核燃料'); uiDirty = true; } }
-    else if (btn === 'sch-add-btn') {
-      const sel = document.getElementById('sch-add');
-      if (sel && sel.value) {
-        mch.schedule = mch.schedule || [];
-        mch.schedule.push({ stop: sel.value, cond: 'leave', time: 10 });
-        syncLocoSchedule(mch);
-        toast('已把车站「' + sel.value + '」加入路线');
-        uiDirty = true;
-      }
-    }
-    else if (locoScheduleEntryAction(btn, e, idx, mch)) { /* handled by shared helper */ }
-    else if (btn === 'sch-del' || btn === 'sch-up' || btn === 'sch-down') {
-      if (!mch.schedule || idx < 0 || idx >= mch.schedule.length) return true;
-      if (btn === 'sch-del') mch.schedule.splice(idx, 1);
-      else if (btn === 'sch-up' && idx > 0) { const t = mch.schedule[idx]; mch.schedule[idx] = mch.schedule[idx - 1]; mch.schedule[idx - 1] = t; }
-      else if (btn === 'sch-down' && idx < mch.schedule.length - 1) { const t = mch.schedule[idx]; mch.schedule[idx] = mch.schedule[idx + 1]; mch.schedule[idx + 1] = t; }
-      syncLocoSchedule(mch);
-      uiDirty = true;
-    }
-    return true;
-  }
-};
+
 
 DEVICE_PANEL['cargo-wagon'] = {
   html(e) {
@@ -352,7 +305,6 @@ function beforeRailRemove(e) {
 // ===== 实体注册 =====
 ENT_CLASSES['rail'] = Rail;
 ENT_CLASSES['locomotive'] = Locomotive;
-ENT_CLASSES['diesel-locomotive'] = DieselLocomotive;
 ENT_CLASSES['cargo-wagon'] = CargoWagon;
 ENT_CLASSES['fluid-wagon'] = FluidWagon;
 ENT_CLASSES['artillery-wagon'] = ArtilleryWagon;
@@ -364,13 +316,11 @@ ENT_CLASSES['rail-ramp'] = ElevatedRail;
 
 // R 键可旋转车头（决定行进方向）
 DEVICE_DIR_ROTATE['locomotive'] = true;
-DEVICE_DIR_ROTATE['diesel-locomotive'] = true;
 DEVICE_DIR_ROTATE['fluid-wagon'] = true;
 
 // 放置规则
 DEVICE_PLACE['rail'] = null;   // 铁轨放任何空地
 DEVICE_PLACE['locomotive'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true } : { ok: false };
-DEVICE_PLACE['diesel-locomotive'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true } : { ok: false };
 DEVICE_PLACE['cargo-wagon'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true } : { ok: false };
 DEVICE_PLACE['fluid-wagon'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true } : { ok: false };
 DEVICE_PLACE['artillery-wagon'] = (type, tx, ty) => railHas(tx, ty) ? { ok: true } : { ok: false };
