@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          # factorio-data 是 git 子模块（verify-data-integrity 用它解析官方 Lua 数据），必须显式检出
+          submodules: recursive
 
       - name: Use Node.js
         uses: actions/setup-node@v4
