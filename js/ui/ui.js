@@ -1659,17 +1659,14 @@ function recipeMachineRightHtml(e, info, rec) {
   h += '<div class="sec mch-recipe-head">当前配方：<b>' + (rec ? info.name(e.recipe) : '<span class="dim">未设置</span>') + '</b>' +
     '<button data-action="recipe-clear" class="btn sm" title="清除当前配方并重新选择">✕ 清除配方</button></div>';
   if (!rec) {
-    h += '<div class="dim">请点击「清除配方」选择配方后即可生产。</div>';
     // 未设置配方时也显示模块插槽，便于提前装好模块
     h += moduleSlotSectionHtml(e, true);
-    // 电力状态与速率
-    if (typeof e.powerDemand === 'function') h += row('电力', powerStatusLiveHtml(e), 'power');
     return h;
   }
   // 原料 + 进度条 + 产品 单行（横向排布）
   h += '<div class="mch-flow">';
   // 原料区
-  h += '<div class="mch-side mch-inp"><div class="mch-side-title">原料</div><div class="mch-inp-row" data-live="mch-inp">';
+  h += '<div class="mch-side mch-inp"><div class="mch-inp-row" data-live="mch-inp">';
   for (const k in rec.inp) {
     const cur = e.inp[k] || 0;
     h += '<div class="mch-io-slot' + (cur >= rec.inp[k] ? ' full' : '') + '" data-action="feed-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|配方需 ' + rec.inp[k] + '，当前 ' + cur + '。左键放入，右键取出（或先选左侧物品再点击此槽放入该物品）">' +
@@ -1679,7 +1676,7 @@ function recipeMachineRightHtml(e, info, rec) {
   // 进度条
   h += '<div class="mch-prog"><div class="bar"><i></i></div><div class="bar-time"></div><div class="status"></div></div>';
   // 产品区
-  h += '<div class="mch-side mch-out"><div class="mch-side-title">产品</div><div class="mch-out-row" data-live="mch-out">';
+  h += '<div class="mch-side mch-out"><div class="mch-out-row" data-live="mch-out">';
   if (rec.out) {
     for (const k in rec.out) {
       const cur = e.outp[k] || 0;
@@ -1695,13 +1692,8 @@ function recipeMachineRightHtml(e, info, rec) {
   }
   h += '</div></div>';
   h += '</div>';
-  // 操作说明
-  h += '<div class="dim mch-help">左栏为你的背包：先选中背包物品再点击右侧「原料」槽即可放入该物品；在「原料」槽上右键（或点其左上角 −）取回 1 件到背包；点击「产品」图标可把产物取回背包。原料/产品均可通过传送带与机械臂自动进出。</div>';
   // 模块插槽：图形化展示设备模块槽位，可点击放入/取出模块（与组装机一致，不显示标题）
   h += moduleSlotSectionHtml(e, true);
-  // 电力状态与速率
-  if (typeof e.powerDemand === 'function') h += row('电力', powerStatusLiveHtml(e), 'power');
-  h += machRateHtml(rec, e.crafting && typeof e.moduleSpeedMult === 'function' ? e.moduleSpeedMult() : 1);
   return h;
 }
 
