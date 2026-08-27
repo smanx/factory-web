@@ -767,3 +767,31 @@
 > - **科技**：统一由「低温学」科技解锁（RECIPE_TECH 配方级门控，官方 foundation/ice-platform 属 Aquilo/
 >   Vulcanus 星球地形，需低温学（氟酮冷/氨）前置）；归入「物流」制作 Tab（官方 terrain subgroup）。
 > - **校验**：verify-dlc 新增地面瓦片校验（17 项），全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+
+### 阶段四.25：太空时代补充流体链（lithium-brine / ammoniacal-solution / lava / fusion-plasma，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **流体补齐**：补全《异星工厂》太空时代缺失的 4 种官方流体——`lithium-brine`（锂盐水/Lithium brine）、
+>   `ammoniacal-solution`（氨溶液/Ammoniacal solution）、`lava`（岩浆/Lava）、`fusion-plasma`（等离子体/Plasma），
+>   中英命名全部来自 GAME_DATA.names（factorio-data 官方 space-age locale），并已加入 `FLUIDS` / `ITEMS`，
+>   支持管道流动与流体配方输入输出。
+> - **锂配方对齐官方**：`lithium` 由「硫酸+轻油」适配配方改为官方锂配方——**锂盐水×50 + 氨×50 + 钬板×1 → 锂×5（20s）**
+>   （官方 lithium，chemistry/cryogenics，Aquilo 化学链），产出/耗时与官方完全一致，数据单源化。
+> - **锂盐水（lithium-brine）**：官方由 Aquilo 海洋抽取（无合成配方），此处适配为基础资源制取
+>   （水50+方解石5 → 锂盐水50，5s，化工厂），作为锂冶炼的官方原料。
+> - **氨溶液（ammoniacal-solution）**：官方由 Aquilo 海洋抽取，此处适配为氨水吸收
+>   （氨50+水50 → 氨溶液100，5s，化工厂）；并接入官方 `ammoniacal-solution-separation` 分离配方
+>   （50 氨溶液 → 5 冰 + 50 氨，1s，官方 chemistry/cryogenics），补全氨溶液→冰/氨回收链。
+> - **岩浆（lava）**：官方由 Vulcanus 岩浆海抽取（无合成配方），此处适配为铸造厂高温熔岩
+>   （石头10+方解石5 → 岩浆500，5s）；并接入官方 `molten-iron-from-lava` / `molten-copper-from-lava`
+>   配方（500 岩浆 + 1 方解石 → 250 熔融铁/铜 + 石头，16s，官方 metallurgy），为铸造厂新增
+>   「岩浆→熔融金属」官方冶炼路径（与矿石+方解石路径并列）。
+> - **等离子体（fusion-plasma）**：官方聚变发电链工作流体（聚变反应堆产、发电机耗），
+>   项目聚变系统采用热量传导模型（反应堆→导热管→发电机），故 plasma 仅注册为官方流体并收录官方命名，
+>   暂不介入现有聚变热量模型（留待后续聚变流体化迭代）。
+> - **数据单源**：4 种流体的命名来自 GAME_DATA.names；`ammoniacal-solution-separation`、`molten-iron-from-lava`、
+>   `molten-copper-from-lava` 官方配方由 data.generated.js 单源生成（经 DLC_DEVICE_RECIPES 路由化工厂/铸造厂）；
+>   锂盐水/氨溶液/岩浆为项目适配（官方无合成配方=星球抽取），与既有适配模式一致，未单独维护数值表。
+> - **校验**：verify-dlc 新增补充流体链校验（22 项），verify-data-integrity 配方键映射补充 3 项动态键，
+>   全量 18 个校验脚本通过，`node build.js` 构建通过。

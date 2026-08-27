@@ -60,7 +60,7 @@ const KEEP_MANUAL_RECIPES = new Set([
   'satellite', 'red-wire', 'green-wire',
   'stone-path', 'storage-chest',
   // ===== 太空时代 Space Age 手工适配配方（官方配方依赖星球专属资源，此处适配基础资源）=====
-  'lithium', 'electromagnetic-science-pack',
+  'lithium', 'lithium-brine', 'ammoniacal-solution', 'ammoniacal-solution-separation', 'electromagnetic-science-pack',
   'yumako-mash', 'agricultural-science-pack', 'biochamber',
   'yumako-growing', 'jellynut-growing',
   // 太空时代 Gleba 金属细菌链：细菌→板还原配方为项目适配（官方无此合成，Gleba 用细菌还原成熔融金属再铸板），保留手工
@@ -68,7 +68,7 @@ const KEEP_MANUAL_RECIPES = new Set([
   // ===== 太空时代 Aquilo 低温学链（官方配方依赖低温/液空等星球资源，此处适配基础资源）=====
   'ammonia', 'fluorine', 'fluoroketone-cold', 'fluoroketone-hot',
   // ===== 太空时代 熔融金属/废料（官方配方依赖行星资源，此处适配基础资源）=====
-  'molten-iron', 'molten-copper', 'scrap', 'recycle-scrap',
+  'molten-iron', 'molten-copper', 'lava', 'molten-iron-from-lava', 'molten-copper-from-lava', 'scrap', 'recycle-scrap',
   // ===== 太空时代 Vulcanus 钨矿（官方为天然矿脉，无合成配方）=====
   'tungsten-ore',
   // ===== 太空时代 生物实验室（Gleba biolab：官方配方依赖 biter-egg/capture-robot-rocket=生物星球资源，此处适配现有生物链资源）=====
@@ -270,6 +270,7 @@ const DLC_DEVICE_RECIPES = {
   // 铸造厂 foundry（Space Age metallurgy / crafting-with-fluid）
   'tungsten-ore': 'foundry', 'tungsten-plate': 'foundry', 'tungsten-carbide': 'foundry',
   'metallurgic-science-pack': 'foundry', 'foundry': 'foundry', 'molten-iron': 'foundry', 'molten-copper': 'foundry',
+  'lava': 'foundry', 'molten-iron-from-lava': 'foundry', 'molten-copper-from-lava': 'foundry',
   'turbo-transport-belt': 'foundry', 'turbo-underground-belt': 'foundry', 'turbo-splitter': 'foundry',
   // 低温工厂 cryogenic-plant（Space Age cryogenics）
   'ammonia': 'cryogenic-plant', 'fluorine': 'cryogenic-plant', 'fluoroketone-cold': 'cryogenic-plant',

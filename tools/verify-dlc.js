@@ -1153,4 +1153,37 @@ console.log('\n【太空时代地面瓦片（foundation / ice-platform）数据�
 }
 
 
+
+console.log('【太空时代补充流体链（lithium-brine / ammoniacal-solution / lava，本迭代新增）数据校验】');
+ok(!!GD.names['lithium-brine'], 'lithium-brine 官方命名已收录 (Lithium brine/锂盐水)');
+ok(!!GD.names['ammoniacal-solution'], 'ammoniacal-solution 官方命名已收录 (Ammoniacal solution/氨溶液)');
+ok(!!GD.names['lava'], 'lava 官方命名已收录 (Lava/岩浆)');
+ok(!!GD.names['fusion-plasma'], 'fusion-plasma 官方命名已收录 (Plasma/等离子体)');
+// 流体注册进 FLUIDS / ITEMS
+ok(!!IT['lithium-brine'] && !!IT['ammoniacal-solution'] && !!IT['lava'], '补充流体已注册进 ITEMS');
+// 锂配方对齐官方：锂盐水+氨+钬板 → 锂（官方 lithium 20s，chemistry/cryogenics）
+ok(RP['lithium'] && RP['lithium'].inp['lithium-brine'] === 50 && RP['lithium'].inp['ammonia'] === 50 && RP['lithium'].inp['holmium-plate'] === 1, '锂配方对齐官方：锂盐水50+氨50+钬板1 → 锂5（20s）');
+ok(RP['lithium'] && RP['lithium'].out['lithium'] === 5 && RP['lithium'].time === 20, '锂配方产出 5 锂 / 耗时 20s（官方）');
+ok(ctx.__recipeDevice('lithium') === 'chemical-plant', '锂 → 化工厂');
+// 锂盐水生产配方
+ok(RP['lithium-brine'] && RP['lithium-brine'].out['lithium-brine'] > 0, 'lithium-brine 生产配方已注册');
+ok(ctx.__recipeDevice('lithium-brine') === 'chemical-plant', '锂盐水 → 化工厂');
+// 氨溶液链：生产 + 分离（官方 ammoniacal-solution-separation 1s：50 氨溶液 → 5 冰 + 50 氨）
+ok(RP['ammoniacal-solution'] && RP['ammoniacal-solution'].out['ammoniacal-solution'] > 0, 'ammoniacal-solution 生产配方已注册');
+ok(RP['ammoniacal-solution-separation'] && RP['ammoniacal-solution-separation'].time === 1 && RP['ammoniacal-solution-separation'].inp['ammoniacal-solution'] === 50 && RP['ammoniacal-solution-separation'].out['ice'] === 5 && RP['ammoniacal-solution-separation'].out['ammonia'] === 50, '氨溶液分离配方官方：50 氨溶液 → 5 冰 + 50 氨（1s）');
+ok(ctx.__recipeDevice('ammoniacal-solution') === 'chemical-plant' && ctx.__recipeDevice('ammoniacal-solution-separation') === 'chemical-plant', '氨溶液/分离 → 化工厂');
+// 岩浆 → 熔融金属（官方 molten-*-from-lava 16s：500 岩浆 + 1 方解石 → 250 熔融金属 + 石，铸造厂）
+ok(RP['lava'] && RP['lava'].out['lava'] > 0, 'lava 生产配方已注册');
+ok(RP['molten-iron-from-lava'] && RP['molten-iron-from-lava'].time === 16 && RP['molten-iron-from-lava'].inp['lava'] === 500 && RP['molten-iron-from-lava'].inp['calcite'] === 1 && RP['molten-iron-from-lava'].out['molten-iron'] === 250 && RP['molten-iron-from-lava'].out['stone'] === 10, '岩浆制熔融铁配方官方：500 岩浆+1 方解石 → 250 熔融铁+10 石（16s）');
+ok(RP['molten-copper-from-lava'] && RP['molten-copper-from-lava'].time === 16 && RP['molten-copper-from-lava'].inp['lava'] === 500 && RP['molten-copper-from-lava'].inp['calcite'] === 1 && RP['molten-copper-from-lava'].out['molten-copper'] === 250 && RP['molten-copper-from-lava'].out['stone'] === 15, '岩浆制熔融铜配方官方：500 岩浆+1 方解石 → 250 熔融铜+15 石（16s）');
+ok(ctx.__recipeDevice('molten-iron-from-lava') === 'foundry' && ctx.__recipeDevice('molten-copper-from-lava') === 'foundry' && ctx.__recipeDevice('lava') === 'foundry', '岩浆/岩浆制熔融金属 → 铸造厂');
+// 配方引用的物品均存在
+for (const r of ['lithium-brine', 'ammoniacal-solution', 'ammoniacal-solution-separation', 'lava', 'molten-iron-from-lava', 'molten-copper-from-lava']) {
+  const rec = RP[r];
+  const inpOk = rec && Object.keys(rec.inp).every(x => x in IT);
+  const outOk = rec && Object.keys(rec.out).every(x => x in IT);
+  ok(inpOk && outOk, r + ' 配方引用的物品均存在');
+}
+
+
 process.exit(fail === 0 ? 0 : 1);

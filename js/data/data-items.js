@@ -257,10 +257,14 @@ const ITEMS = {
   'fluorine': { name: '氟', color: '#c0e0a0', mark: '氟', desc: '太空时代低温流体：由氨+方解石在低温工厂电解制得（官方 Fluorine），用于制造氟酮（对齐《异星工厂》Space Age，数据来自 GAME_DATA.names）' },
   'fluoroketone-cold': { name: '氟酮（冷）', color: '#a0d8e8', mark: 'FK', desc: '太空时代低温流体：由氟+氨+碳在低温工厂制得的冷态氟酮（官方 Fluoroketone Cold），是低温科研包的核心原料（对齐《异星工厂》Space Age，数据来自 GAME_DATA.names）' },
   'fluoroketone-hot': { name: '氟酮（热）', color: '#f0a060', mark: 'FK', desc: '太空时代低温流体：由冷态氟酮在低温工厂加热制得的热态氟酮（官方 Fluoroketone Hot），用于低温科研包合成（对齐《异星工厂》Space Age，数据来自 GAME_DATA.names）' },
+  'ammoniacal-solution': { name: '氨溶液', color: '#a8c8b8', mark: 'AS', desc: '太空时代 Aquilo 流体：由氨+水在化工厂制得的氨溶液（官方 Ammoniacal solution，官方由 Aquilo 海洋抽取），分离可得冰与氨（对齐《异星工厂》Space Age，数据来自 GAME_DATA.names）' },
+  'lithium-brine': { name: '锂盐水', color: '#b8d0b8', mark: 'LB', desc: '太空时代 Aquilo 流体：富含锂的盐水（官方 Lithium brine，官方由 Aquilo 抽取），是锂冶炼的官方原料（对齐《异星工厂》Space Age，数据来自 GAME_DATA.names）' },
+  'lava': { name: '岩浆', color: '#e87830', mark: 'Lv', desc: '太空时代 Vulcanus 流体：火山岩浆（官方 Lava，官方由 Vulcanus 岩浆海抽取），在铸造厂中加方解石可炼成熔融铁/铜（对齐《异星工厂》Space Age，数据来自 GAME_DATA.names）' },
+  'fusion-plasma': { name: '等离子体', color: '#c060e8', mark: 'Pl', desc: '太空时代 Aquilo 流体：聚变反应堆产生的超高温等离子体（官方 Plasma，仅在聚变反应堆与发电机间传输），是聚变发电链的工作介质（对齐《异星工厂》Space Age，数据来自 GAME_DATA.names）' },
   // ===== 太空时代 Vulcanus 熔融金属流体（数据来自 factorio-data 官方 fluid-name）=====
   // ===== 太空时代 Space Age 材料链（数据来自 factorio-data 官方，见 GAME_DATA）=====
   'carbon-fiber': { name: '碳纤维', color: '#7a7a8a', mark: 'CF', desc: '太空时代复合材料，由碳在化工厂制得，用于制造先进装备与科研产物（对齐《异星工厂》Space Age）' },
-  'lithium': { name: '锂', color: '#d8d8e8', mark: 'Li', desc: '太空时代金属，由硫酸+轻油在化工厂电解制得，冶炼成锂板用于高级科研（对齐《异星工厂》Space Age）' },
+  'lithium': { name: '锂', color: '#d8d8e8', mark: 'Li', desc: '太空时代金属，由锂盐水+氨+钬板在化工厂制得（官方 Lithium 配方：锂盐水+氨+钬板→锂，Aquilo 化学/低温学），冶炼成锂板用于高级科研（对齐《异星工厂》Space Age）' },
   'lithium-plate': { name: '锂板', color: '#c8c8e0', mark: 'Lp', desc: '太空时代高能材料，由锂在电炉冶炼制成，是电磁科研与高级装备的核心原料（对齐《异星工厂》Space Age）' },
   'superconductor': { name: '超导体', color: '#5a8ae8', mark: 'Sc', desc: '太空时代导电材料，由锂板+铜板+塑料在组装机/电磁工厂制得，用于制造电磁科研包与先进电力设备（对齐《异星工厂》Space Age）' },
   'electromagnetic-science-pack': { name: '电磁科研包', color: '#5a5ae8', mark: 'ESP', desc: '太空时代紫色科研包，由超导体+蓄电器+电路板在电磁工厂制得，解锁太空时代高级科技（对齐《异星工厂》Space Age）' },

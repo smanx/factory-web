@@ -4470,6 +4470,22 @@ const GAME_DATA = {
    "zh": "氟酮（热）",
    "en": "Fluoroketone (Hot)"
   },
+  "ammoniacal-solution": {
+   "zh": "氨溶液",
+   "en": "Ammoniacal solution"
+  },
+  "lithium-brine": {
+   "zh": "锂盐水",
+   "en": "Lithium brine"
+  },
+  "lava": {
+   "zh": "岩浆",
+   "en": "Lava"
+  },
+  "fusion-plasma": {
+   "zh": "等离子体",
+   "en": "Plasma"
+  },
   "carbon-fiber": {
    "zh": "碳纤维",
    "en": "Carbon fiber"
@@ -5139,6 +5155,18 @@ const GAME_DATA = {
   "oxide-asteroid-reprocessing": {
    "zh": "氧化星岩再处理",
    "en": "Oxide asteroid reprocessing"
+  },
+  "ammoniacal-solution-separation": {
+   "zh": "氨溶液分离",
+   "en": "Ammoniacal solution separation"
+  },
+  "molten-iron-from-lava": {
+   "zh": "岩浆制熔融铁",
+   "en": "Molten iron from lava"
+  },
+  "molten-copper-from-lava": {
+   "zh": "岩浆制熔融铜",
+   "en": "Molten copper from lava"
   },
   "ice-melting": {
    "zh": "融冰",

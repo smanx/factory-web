@@ -81,6 +81,8 @@ const dynamicKeys = new Set([
   'nutrients-from-spoilage', 'burnt-spoilage', // Gleba 变质物回收配方：变质物→营养素/碳（产物键≠配方键）
   'bioplastic', // 生化炉配方：生物流+果泥→塑料（产物键≠配方键，产物为塑料）
   'biolubricant', // 生化炉配方：果冻→润滑油（产物键≠配方键，产物为润滑油流体）
+  'ammoniacal-solution-separation', // 氨溶液分离配方：氨溶液→冰+氨（产物键≠配方键，产物为流体）
+  'molten-iron-from-lava', 'molten-copper-from-lava', // 岩浆炼熔融金属配方：岩浆→熔融铁/铜+石头（产物键≠配方键，产物为流体）
 ]);
 for (const rid in RECIPES) {
   if (rid.startsWith('fill-') || rid.startsWith('empty-')) continue; // 动态桶配方

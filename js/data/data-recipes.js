@@ -212,7 +212,7 @@ const RECIPES = {
   // 碳纤维：碳 → 碳纤维（官方 carbon-fiber 由 yumako-mash+碳，此处适配为化工厂碳加工，耗时 5s）
   'carbon-fiber':        { time: 5, inp: { 'carbon': 3 }, out: { 'carbon-fiber': 1 } },
   // 锂：硫酸 + 轻油 → 锂（官方 lithium 需 lithium-brine+氨水+钬板，此处适配为化工厂电解，20s）
-  'lithium':        { time: 20, inp: { 'sulfuric-acid': 50, 'light-oil': 50 }, out: { 'lithium': 5 } },
+  'lithium':        { time: 20, inp: { 'lithium-brine': 50, 'ammonia': 50, 'holmium-plate': 1 }, out: { 'lithium': 5 } },
   // 锂板：锂 → 锂板（官方 lithium-plate 为熔炼配方，耗时 6.4s）
   'lithium-plate':        { time: 6.4, inp: { 'lithium': 1 }, out: { 'lithium-plate': 1 } },
   // 超导体：锂板 + 铜板 + 塑料 → 超导体（官方 superconductor 需钬板，此处适配，5s）
@@ -352,6 +352,13 @@ const RECIPES = {
   'fluoroketone-hot': { time: 2, inp: { 'fluoroketone-cold': 50 }, out: { 'fluoroketone-hot': 50 } },
   // 低温科研包：氟酮热液 + 超导体 + 锂板 + 钷素星块 → 低温科研包（官方 cryogenic-science-pack 6s，此处适配）
   'cryogenic-science-pack': { time: 6, inp: { 'fluoroketone-hot': 100, 'superconductor': 1, 'lithium-plate': 1, 'promethium-asteroid-chunk': 10 }, out: { 'cryogenic-science-pack': 2 } },
+  // ===== 太空时代 Aquilo 补充流体（氨溶液 / 锂盐水，官方由 Aquilo 抽取，此处适配基础资源，数据来自 GAME_DATA.names）=====
+  // 氨溶液：氨 + 水 → 氨溶液（官方 ammoniacal-solution 由 Aquilo 海洋抽取，此处适配为氨水吸收制取）
+  'ammoniacal-solution': { time: 5, inp: { 'ammonia': 50, 'water': 50 }, out: { 'ammoniacal-solution': 100 } },
+  // 氨溶液分离：氨溶液 → 冰 + 氨（官方 ammoniacal-solution-separation 1s：50 氨溶液 → 5 冰 + 50 氨，低温/化工）
+  'ammoniacal-solution-separation': { time: 1, inp: { 'ammoniacal-solution': 50 }, out: { 'ice': 5, 'ammonia': 50 } },
+  // 锂盐水：水 + 方解石 → 锂盐水（官方 lithium-brine 由 Aquilo 抽取，此处适配为富锂盐水）
+  'lithium-brine': { time: 5, inp: { 'water': 50, 'calcite': 5 }, out: { 'lithium-brine': 50 } },
   // 低温工厂：钢板 + 处理器 + 导热管 + 聚变燃料棒 → 低温工厂（官方需低温合金，此处适配高级材料，10s）
   'cryogenic-plant': { time: 10, inp: { 'steel-plate': 30, 'processing-unit': 20, 'heat-pipe': 20, 'fusion-power-cell': 1 }, out: { 'cryogenic-plant': 1 } },
   // ===== 太空时代 熔融金属流体（Vulcanus 铸造厂，数据来自 factorio-data 官方）=====
@@ -359,6 +366,12 @@ const RECIPES = {
   'molten-iron': { time: 4, inp: { 'iron-ore': 20, 'calcite': 5 }, out: { 'molten-iron': 100 } },
   // 熔融铜：铜矿 + 方解石 → 熔融铜（官方 molten-copper 4s）
   'molten-copper': { time: 4, inp: { 'copper-ore': 20, 'calcite': 5 }, out: { 'molten-copper': 100 } },
+  // 岩浆：石头 + 方解石 → 岩浆（官方 lava 由 Vulcanus 岩浆海抽取，此处适配为铸造厂高温熔岩）
+  'lava': { time: 5, inp: { 'stone': 10, 'calcite': 5 }, out: { 'lava': 500 } },
+  // 岩浆制熔融铁：岩浆 + 方解石 → 熔融铁 + 石头（官方 molten-iron-from-lava 16s：500 岩浆 + 1 方解石 → 250 熔融铁 + 10 石头，铸造厂）
+  'molten-iron-from-lava': { time: 16, inp: { 'lava': 500, 'calcite': 1 }, out: { 'molten-iron': 250, 'stone': 10 } },
+  // 岩浆制熔融铜：岩浆 + 方解石 → 熔融铜 + 石头（官方 molten-copper-from-lava 16s：500 岩浆 + 1 方解石 → 250 熔融铜 + 15 石头，铸造厂）
+  'molten-copper-from-lava': { time: 16, inp: { 'lava': 500, 'calcite': 1 }, out: { 'molten-copper': 250, 'stone': 15 } },
   // ===== 太空时代 Fulgora 废料回收（数据来自 factorio-data 官方）=====
   // 废料：由回收机回收或人工产出（此处可由铁板+铜板等合成模拟，供回收链闭环）
   'scrap': { time: 2, inp: { 'iron-plate': 2, 'copper-plate': 1, 'stone': 1 }, out: { 'scrap': 4 } },
@@ -507,7 +520,7 @@ function filterChoices() {
   return _filterChoicesCache;
 }
 
-const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant', 'solid-fuel', 'solid-fuel-light-oil', 'solid-fuel-heavy-oil', 'sulfur', 'sulfuric-acid', 'carbon', 'carbon-fiber', 'lithium', 'thruster-fuel', 'thruster-oxidizer', 'advanced-thruster-fuel', 'advanced-thruster-oxidizer', 'flamethrower-ammo', 'holmium-solution'];
+const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant', 'solid-fuel', 'solid-fuel-light-oil', 'solid-fuel-heavy-oil', 'sulfur', 'sulfuric-acid', 'carbon', 'carbon-fiber', 'lithium', 'lithium-brine', 'ammoniacal-solution', 'ammoniacal-solution-separation', 'thruster-fuel', 'thruster-oxidizer', 'advanced-thruster-fuel', 'advanced-thruster-oxidizer', 'flamethrower-ammo', 'holmium-solution'];
 function isChemRecipe(id) { return CHEM_RECIPES.indexOf(id) >= 0; }
 function chemMult() { return (G.techDone.plastic ? 1.5 : 1) * ((G.dbg && G.dbg.asmMult) || 1); }
 
@@ -564,7 +577,7 @@ const CRUSHER_RECIPES = ['metallic-asteroid-crushing', 'carbonic-asteroid-crushi
   'crusher', 'ice-melting'];
 function isCrusherRecipe(id) { return CRUSHER_RECIPES.indexOf(id) >= 0; }
 // 铸造厂专属配方（太空时代 Vulcanus 冶金产品）：钨板 / 碳化钨 / 冶金科研包 / 铸造厂本体
-const FOUNDRY_RECIPES = ['tungsten-ore', 'tungsten-plate', 'tungsten-carbide', 'metallurgic-science-pack', 'foundry', 'molten-iron', 'molten-copper'];
+const FOUNDRY_RECIPES = ['tungsten-ore', 'tungsten-plate', 'tungsten-carbide', 'metallurgic-science-pack', 'foundry', 'molten-iron', 'molten-copper', 'lava', 'molten-iron-from-lava', 'molten-copper-from-lava'];
 function isFoundryRecipe(id) { return FOUNDRY_RECIPES.indexOf(id) >= 0; }
 // 农业塔专属种植配方（太空时代 Gleba 作物种植）：玉玛果种植 + 农业塔本体
 const AGRICULTURE_TOWER_RECIPES = ['yumako-growing', 'jellynut-growing'];
