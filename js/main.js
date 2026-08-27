@@ -25,6 +25,7 @@ const G = {
   panelMode: null,
   panelEnt: null,
   cursorTile: null,
+  mouseScreen: null,   // 最近一次鼠标屏幕坐标 {x, y}，用于判断鼠标是否位于地图画布上
   keys: {},
   showDetails: true,
   mouseDown: false,

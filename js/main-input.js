@@ -308,6 +308,8 @@ function updateCursorTile(cx, cy) {
   const [wx, wy] = screenToWorld(cx, cy);
   const tx = Math.floor(wx / TILE), ty = Math.floor(wy / TILE);
   G.cursorTile = { tx, ty };
+  // 记录最近一次鼠标屏幕坐标，供放置幽灵逻辑判断鼠标是否位于地图画布上
+  G.mouseScreen = { x: cx, y: cy };
 }
 
 function updateHeldMouse(dt) {

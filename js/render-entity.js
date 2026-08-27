@@ -287,10 +287,20 @@ function getGhostEnt(type) {
   return ghostCache.ent;
 }
 
+// 鼠标是否位于游戏地图画布上（而非悬浮在背包面板/底部工具栏等 UI 之上）。
+// 顶层幽灵画布 pointer-events:none，elementFromPoint 会命中其下的 #game 画布或 UI 元素。
+function mouseOverMap() {
+  if (!G.mouseScreen) return false;
+  const el = document.elementFromPoint(G.mouseScreen.x, G.mouseScreen.y);
+  return !!(el && el === G.canvas);
+}
+
 // 放置幽灵绘制在专用顶层画布（#ghost-layer）上，层级高于所有界面（含背包面板）。
 // 每帧先清空顶层画布，再套用与主画布一致的世界坐标变换后绘制。
-// 无论选中建筑物还是材料/工具，鼠标都显示放置幽灵：建筑按占地格绘制实体幽灵，
-// 材料/工具等不可建造物品则在光标所在格绘制物品图标幽灵。
+// 显示逻辑分两种：
+// 1. 放置幽灵：仅当鼠标移动到地图上且当前物品为可建造设备时，按占地格绘制实体幽灵；
+// 2. 物品小图标：其他情况（鼠标在面板/工具栏上，或物品为材料/工具）一律绘制物品小图标幽灵；
+//    同时选中设备时在屏幕右下角显示其数量。
 function drawGhost(ctx) {
   const g = (G && G.ghostCtx) || ctx;   // 顶层画布优先，回退到主画布
   if (g !== ctx) g.clearRect(0, 0, W, H); // 仅清空顶层画布，不清主画布
@@ -307,8 +317,11 @@ function drawGhost(ctx) {
     g.scale(G.cam.z, G.cam.z);
     g.translate(-G.cam.px, -G.cam.py);
   }
-  if (def) {
-    // 建筑物：在光标所在格绘制实体幽灵 + 占地框
+  // 仅当鼠标位于地图上且当前物品为可建造设备时，才显示放置幽灵（实体幽灵+占地框）；
+  // 其他情况一律显示物品小图标幽灵（跟随鼠标）。
+  const showPlaceGhost = def && mouseOverMap();
+  if (showPlaceGhost) {
+    // 设备：在光标所在格绘制实体幽灵 + 占地框
     let ew = def.w, eh = def.h;
     if (def.rotSwap && (G.ghostDir % 2 === 1)) { ew = def.h; eh = def.w; }
     // 不允许覆盖建造：目标格已有实体时判定为红色不可放置，与建造行为一致。
@@ -323,7 +336,7 @@ function drawGhost(ctx) {
     g.lineWidth = 2 / G.cam.z;
     g.strokeRect(G.cursorTile.tx * TILE, G.cursorTile.ty * TILE, ew * TILE, eh * TILE);
   } else {
-    // 材料/工具等不可建造物品：在光标所在格绘制物品图标幽灵（跟随鼠标）
+    // 材料/工具等（或设备但鼠标不在地图上）：在光标所在格绘制物品小图标幽灵（跟随鼠标）
     const cx = (G.cursorTile.tx + 0.5) * TILE;
     const cy = (G.cursorTile.ty + 0.5) * TILE;
     g.globalAlpha = 0.6;
@@ -334,6 +347,34 @@ function drawGhost(ctx) {
     g.strokeRect(G.cursorTile.tx * TILE + 1, G.cursorTile.ty * TILE + 1, TILE - 2, TILE - 2);
   }
   if (worlded) g.restore();
+  // 屏幕右下角显示当前选中设备的数量（设备始终显示；材料/工具不显示数量徽标）
+  if (def) drawDeviceCountBadge(g);
+}
+
+// 屏幕右下角绘制当前选中设备的数量徽标（物品图标 + ×数量）
+function drawDeviceCountBadge(g) {
+  const type = selItem();
+  if (!type) return;
+  const cnt = invCount(type);
+  const size = 34;
+  const margin = 16;
+  const bx = W - margin - size;
+  const by = H - margin - size - 2;
+  g.save();
+  g.globalAlpha = 0.92;
+  g.fillStyle = 'rgba(10,14,18,.72)';
+  g.beginPath();
+  if (g.roundRect) g.roundRect(bx - 5, by - 5, size + 10, size + 24, 7);
+  else g.rect(bx - 5, by - 5, size + 10, size + 24);
+  g.fill();
+  drawItemGlyph(g, type, bx + size / 2, by + size / 2 - 2, size * 0.68);
+  g.globalAlpha = 1;
+  g.fillStyle = '#fff';
+  g.font = 'bold 13px sans-serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'alphabetic';
+  g.fillText('×' + cnt, bx + size / 2, by + size + 13);
+  g.restore();
 }
 
 // 放置校验：默认规则（不能压水/已有实体/超出触及范围）+ 设备自定义规则
