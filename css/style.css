@@ -446,7 +446,7 @@ html, body {
 }
 /* 背包面板：居中加宽，三列布局（左=玩家背包，中=物流，右=制作） */
 #panel.inv-wide {
-  width: 1080px;
+  width: 1200px;
   max-width: 100vw;
   /* 底部预留快捷栏高度（底部快捷栏约 80px），避免背包面板遮挡快捷栏工具栏 */
   top: auto;
@@ -516,6 +516,17 @@ html, body {
 .inv-col-left  { flex: 1.15; }
 .inv-col-mid   { flex: .95; }
 .inv-col-right { flex: 1.3; }
+/* 背包面板（玩家 / 物流 / 制作 三列）：三个区域固定为刚好 10 格宽，不拉伸填充空白。
+   窗口不足时三列一起横向滚动。machine-layout（机器/箱子交互面板）不受影响。 */
+.inv-layout:not(.machine-layout) {
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+.inv-layout:not(.machine-layout) .inv-col {
+  flex: 0 0 auto;
+  width: 382px; /* 10 格宽（32px*10 + 4px*9）+ 内边距 24px + 边框 2px */
+  min-width: 0;
+}
 .inv-col-head {
   padding: 8px 10px;
   font-weight: bold;
