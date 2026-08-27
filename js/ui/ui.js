@@ -579,11 +579,17 @@ function updateRecipeMachineLive(e, body, api) {
     }
     api.set('mch-out', out);
   }
-  // 配方名称（原料头部实时刷新）
+  // 配方名称与图标（对齐组装机：实时刷新配方头部）
   const rnameEl = body.querySelector('[data-live="mch-rname"]');
-  if (rnameEl && rec) {
-    const nm = info.name(e.recipe);
+  if (rnameEl) {
+    const nm = rec ? info.name(e.recipe) : '未设置配方';
     if (rnameEl.textContent !== nm) rnameEl.textContent = nm;
+  }
+  const riconEl = body.querySelector('[data-live="mch-ricon"]');
+  if (riconEl) {
+    const outId = rec ? recipeMainIcon(rec, info, e.recipe) : null;
+    const html = outId ? '<img src="' + iconDataURL(outId) + '">' : '';
+    if (riconEl.innerHTML !== html) riconEl.innerHTML = html;
   }
   // 进度与状态
   const pct = (rec && e.crafting) ? (e.prog / rec.time * 100) : 0;
@@ -1682,27 +1688,31 @@ function drawAssemblerIcon(e, cv) {
 function recipeMachineRightHtml(e, info, rec) {
   let h = '';
   // 顶部状态区（组装机风格：状态点 + 状态文字，实时刷新）
-  h += '<div class="mch-status asm3-status">' +
+  h += '<div class="asm3-status">' +
     '<div class="asm3-status-dot" data-live="mch-dot"></div>' +
     '<div class="asm3-status-text status" data-live="mch-status"></div></div>';
-  // 当前配方标题 + 清除配方按钮（靠右显示，位于头部）
-  h += '<div class="sec mch-recipe-head">当前配方：<b>' + (rec ? info.name(e.recipe) : '<span class="dim">未设置</span>') + '</b>' +
-    '<button data-action="recipe-clear" class="btn sm" title="清除当前配方并重新选择">✕ 清除配方</button></div>';
+  // 配方显示区（完全对齐组装机：.asm3-recipe 容器包含配方名 + 进度条行 + 模块插槽）
+  h += '<div class="asm3-recipe">';
+  // 第一行：配方图标 + 配方名称 + 清除按钮（组装机 asm3-recipe-head 样式）
+  let ric = '';
+  if (rec) {
+    const mchOutId = recipeMainIcon(rec, info, e.recipe);
+    if (mchOutId) ric = '<img src="' + iconDataURL(mchOutId) + '">';
+  }
+  h += '<div class="asm3-recipe-head"><div class="asm3-recipe-item">' +
+    '<div class="asm3-recipe-icon" data-live="mch-ricon">' + ric + '</div>' +
+    '<span class="asm3-recipe-name" data-live="mch-rname">' + (rec ? info.name(e.recipe) : '未设置配方') + '</span>' +
+    '</div><button class="asm3-config-btn" data-action="recipe-clear" title="清除配方并重新选择">⚙</button></div>';
   if (!rec) {
     // 未设置配方时也显示模块插槽，便于提前装好模块
     h += moduleSlotSectionHtml(e, true);
+    h += '</div>'; // asm3-recipe
     return h;
   }
-  // 原料 + 进度条 + 产品 单行（横向排布）
-  h += '<div class="mch-flow">';
-  // 原料区：头部显示配方图标 + 配方名称（对齐组装机）
-  h += '<div class="mch-side mch-inp">';
-  const mchOutId = recipeMainIcon(rec, info, e.recipe);
-  h += '<div class="mch-inp-head">' +
-    '<div class="mch-recipe-icon">' + (mchOutId ? '<img src="' + iconDataURL(mchOutId) + '">' : '') + '</div>' +
-    '<span class="mch-recipe-name" data-live="mch-rname">' + info.name(e.recipe) + '</span>' +
-    '</div>';
-  h += '<div class="mch-inp-row" data-live="mch-inp">';
+  // 第二行：原料 + 进度条 + 产品（组装机 asm3-flow 样式）
+  h += '<div class="asm3-flow">';
+  // 原料区
+  h += '<div class="asm3-side asm3-inp"><div class="asm3-inp-row" data-live="mch-inp">';
   for (const k in rec.inp) {
     const cur = e.inp[k] || 0;
     h += '<div class="mch-io-slot' + (cur >= rec.inp[k] ? ' full' : '') + '" data-action="feed-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|配方需 ' + rec.inp[k] + '，当前 ' + cur + '。左键放入，右键取出（或先选左侧物品再点击此槽放入该物品）">' +
@@ -1710,9 +1720,9 @@ function recipeMachineRightHtml(e, info, rec) {
   }
   h += '</div></div>';
   // 进度条（组装机风格：内部显示百分比 + 剩余时间）
-  h += '<div class="mch-prog"><div class="bar"><i></i><span class="bar-txt" data-live="mch-pct">0%</span></div></div>';
+  h += '<div class="asm3-prog"><div class="bar"><i></i><span class="bar-txt" data-live="mch-pct">0%</span></div></div>';
   // 产品区
-  h += '<div class="mch-side mch-out"><div class="mch-out-row" data-live="mch-out">';
+  h += '<div class="asm3-side asm3-out"><div class="asm3-out-row" data-live="mch-out">';
   if (rec.out) {
     for (const k in rec.out) {
       const cur = e.outp[k] || 0;
@@ -1727,9 +1737,10 @@ function recipeMachineRightHtml(e, info, rec) {
     }
   }
   h += '</div></div>';
-  h += '</div>';
-  // 模块插槽：图形化展示设备模块槽位，可点击放入/取出模块（与组装机一致，不显示标题）
+  h += '</div>'; // asm3-flow
+  // 第三行：模块插槽（与组装机一致，不显示标题）
   h += moduleSlotSectionHtml(e, true);
+  h += '</div>'; // asm3-recipe
   return h;
 }
 
