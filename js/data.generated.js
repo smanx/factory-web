@@ -186,6 +186,8 @@ const GAME_DATA = {
   "agricultural-science-pack": 200,
   "biochamber": 20,
   "agricultural-tower": 20,
+  "artificial-yumako-soil": 100,
+  "overgrowth-yumako-soil": 100,
   "crusher": 10,
   "metallic-asteroid-chunk": 1,
   "carbonic-asteroid-chunk": 1,
@@ -1805,6 +1807,17 @@ const GAME_DATA = {
     "recycler": 1
    }
   },
+  "artificial-yumako-soil": {
+   "time": 2,
+   "inp": {
+    "yumako-seed": 2,
+    "nutrients": 50,
+    "landfill": 5
+   },
+   "out": {
+    "artificial-yumako-soil": 10
+   }
+  },
   "sulfuric-acid": {
    "time": 1,
    "inp": {
@@ -2490,6 +2503,7 @@ const GAME_DATA = {
   "advanced-thruster-fuel": "chemical-plant",
   "advanced-thruster-oxidizer": "chemical-plant",
   "recycler": "assembling-machine-1",
+  "artificial-yumako-soil": "assembling-machine-1",
   "sulfuric-acid": "chemical-plant",
   "defender-capsule": "assembling-machine-1",
   "distractor-capsule": "assembling-machine-1",
@@ -3243,6 +3257,14 @@ const GAME_DATA = {
   "agricultural-tower": {
    "zh": "农业塔",
    "en": "Agricultural tower"
+  },
+  "artificial-yumako-soil": {
+   "zh": "玉玛果人造土",
+   "en": "Artificial yumako soil"
+  },
+  "overgrowth-yumako-soil": {
+   "zh": "玉玛果沃土",
+   "en": "Overgrowth yumako soil"
   },
   "crusher": {
    "zh": "破碎机",

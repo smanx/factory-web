@@ -3,7 +3,7 @@
 // ===== 农业塔：太空时代作物种植建筑（对齐《异星工厂》Space Age Agricultural tower，占地 3×3）=====
 // 数据（占地/血量/功耗/堆叠）全部来自 GAME_DATA（由 factorio-data 生成）。
 // 官方 max_health=500、energy_usage=100kW、selection_box ±1.5 → 3×3、堆叠 20。
-// 在人工雅玛果土壤上种植作物：放入玉玛果种子后持续收获玉玛果，
+// 在玉玛果人造土/玉玛果沃土上种植作物：放入玉玛果种子后持续收获玉玛果，
 // 每个生长周期有概率返还玉玛果种子，实现自持种植循环（对齐官方种植/收获机制）。
 // 专用于 Gleba 生物质链（玉玛果 → 果泥 → 生物流 → 农业科研包）。
 
@@ -11,9 +11,16 @@ class AgriculturalTower extends Assembler {
   constructor(type, x, y) {
     super('agricultural-tower', x, y);
   }
+  // 是否位于雅玛果土壤上（对齐《异星工厂》：农业塔须在雅玛果土壤上种植作物）
+  onSoil() {
+    const tx = this.x, ty = this.y;
+    return getTerrain(tx, ty) === T_YUMAKO_SOIL || getTerrain(tx, ty) === T_OVERGROWTH_YUMAKO_SOIL;
+  }
   update(dt) {
     this.portFlow();
     if (!this.recipe) { this.crafting = false; return; }
+    // 须种植在雅玛果土壤上（人工/茂盛均可），否则停止生长
+    if (!this.onSoil()) { this.crafting = false; return; }
     if (G.power.sat <= 0) { this.crafting = false; return; }
     // 电路条件不满足时暂停（对齐《异星工厂》：电路控制配方启停）
     if (!this.circuitEnabled()) { this.crafting = false; return; }
@@ -175,6 +182,7 @@ function agriPanelLive(e, api) {
   api.toggle('#btn-takeout', n > 0, '取回全部输出 (' + n + ')');
   api.prog(e.recipe && e.crafting ? e.prog / RECIPES[e.recipe].time * 100 : 0, e.recipe ? RECIPES[e.recipe].time : 0);
   if (!e.recipe) { api.status('未设置作物，点击下方选择', 'warn'); return; }
+  if (!e.onSoil()) { api.status('已暂停：须种植在玉玛果人造土/沃土上', 'warn'); return; }
   if (e.crafting) { api.status('生长中：' + ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name, 'ok'); return; }
   if (G.power.sat <= 0) { api.status('已暂停：缺电', 'bad'); return; }
   for (const k in RECIPES[e.recipe].out)

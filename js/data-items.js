@@ -38,7 +38,9 @@ const STACK_SIZES = {
   // 基础建材与管线：堆叠 100
   'concrete': 100, 'refined-concrete': 100, 'hazard-concrete': 100, 'stone-path': 100, 'landfill': 100,
   // 品质模块（对齐《异星工厂》Quality DLC：quality-module 官方 stack=50）
-  'quality-module': 50, 'quality-module-2': 50, 'quality-module-3': 50
+  'quality-module': 50, 'quality-module-2': 50, 'quality-module-3': 50,
+  // 雅玛果土壤（太空时代 Gleba，官方 stack=100）
+  'artificial-yumako-soil': 100, 'overgrowth-yumako-soil': 100
 };
 // 返回某物品的最大堆叠数（未特别指定则默认 100，对齐原版多数物品）
 function stackSize(id) {
@@ -251,6 +253,9 @@ const ITEMS = {
   'agricultural-science-pack': { name: '农业科技包', color: '#a8d84a', mark: 'ASP', desc: '太空时代黄色科研包，由生物流在生化炉制得，解锁太空时代农业/生物科技（对齐《异星工厂》Space Age Agricultural science pack，堆叠 200）' },
   'biochamber': { name: '生物室', color: '#4aa86a', desc: '太空时代生物生产建筑（3×3，吃电力）：专用于生产生物质产品（果泥/生物流/营养素/农业科研包等），比组装机更快（对齐《异星工厂》Space Age 生化炉，数据来自 GAME_DATA）' },
   'agricultural-tower': { name: '农业塔', color: '#a08030', desc: '太空时代农业建筑（3×3，吃电力）：在人工雅玛果土壤上种植作物，放入玉玛果种子后持续收获玉玛果（对齐《异星工厂》Space Age Agricultural tower，数据来自 GAME_DATA）' },
+  // ===== 太空时代 Gleba 农业土壤（人工雅玛果土壤 / 茂盛雅玛果土壤，数据来自 factorio-data 官方，见 GAME_DATA）=====
+  'artificial-yumako-soil': { name: '玉玛果人造土', color: '#7a5a34', mark: '土', desc: '太空时代农业种植土壤（地面铺设）：铺在草地上形成可种植雅玛果的人工土壤，供农业塔种植作物。由玉玛果种子+营养素+填海料制成（对齐《异星工厂》Space Age Artificial yumako soil，堆叠 100）' },
+  'overgrowth-yumako-soil': { name: '玉玛果沃土', color: '#5a4a2a', mark: '沃', desc: '太空时代更肥沃的雅玛果土壤（地面铺设）：在人工雅玛果土壤上再铺一层，含更丰富养分，作物生长更快。由人工雅玛果土壤+玉玛果种子+变质物+水制成（对齐《异星工厂》Space Age Overgrowth yumako soil，堆叠 100）' },
   // ===== 太空时代 小行星碎块加工链（破碎机 + 小行星碎块，数据来自 factorio-data 官方，见 GAME_DATA）=====
   'crusher': { name: '破碎机', color: '#9a8a7a', desc: '太空时代破碎建筑（2×3，吃电力）：把小行星碎块（金属/碳质/氧化星块）粉碎成基础资源（铁矿石/碳/冰等），破碎机只会用“破碎”配方（对齐《异星工厂》Space Age 破碎机，官方重力0/太空，此处适配为地面设备，数据来自 GAME_DATA）' },
   'metallic-asteroid-chunk': { name: '金属星块', color: '#8a7a6a', mark: 'Me', desc: '太空时代高金属含量的小行星碎块，用破碎机粉碎可获得大量铁矿石（对齐《异星工厂》Space Age Metallic asteroid chunk，堆叠 1）' },

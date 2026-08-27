@@ -229,6 +229,11 @@ const RECIPES = {
   'agricultural-tower': { time: 10, inp: { 'steel-plate': 10, 'electronic-circuit': 3, 'spoilage': 20, 'landfill': 1 }, out: { 'agricultural-tower': 1 } },
   // 玉玛果种植（农业塔专属生长配方）：玉玛果种子×1 → 玉玛果×6 + 有概率返还种子，持续收获（对齐《异星工厂》Agricultural tower 种植）
   'yumako-growing': { time: 30, inp: { 'yumako-seed': 1 }, out: { 'yumako': 6 } },
+  // 人工雅玛果土壤：玉玛果种子×2 + 营养素×50 + 填海料×5 → 人工雅玛果土壤×10（官方 artificial-yumako-soil 2s）
+  'artificial-yumako-soil': { time: 2, inp: { 'yumako-seed': 2, 'nutrients': 50, 'landfill': 5 }, out: { 'artificial-yumako-soil': 10 } },
+  // 茂盛雅玛果土壤：人工雅玛果土壤×2 + 玉玛果种子×5 + 变质物×50 + 水×100 → 茂盛雅玛果土壤×1
+  // （官方 overgrowth-yumako-soil 10s 依赖 biter-egg 生物蛋，项目适配为现有生物链资源：变质物代替）
+  'overgrowth-yumako-soil': { time: 10, inp: { 'artificial-yumako-soil': 2, 'yumako-seed': 5, 'spoilage': 50, 'water': 100 }, out: { 'overgrowth-yumako-soil': 1 } },
   // ===== 太空时代 小行星碎块加工链（破碎机配方，官方数值参考，见 GAME_DATA）=====
   // 破碎机本体：低密度结构 + 钢板 + 电动引擎 → 破碎机（官方 energy_required=10s，此处对齐 10s）
   'crusher': { time: 10, inp: { 'low-density-structure': 20, 'steel-plate': 10, 'electric-engine-unit': 10 }, out: { 'crusher': 1 } },

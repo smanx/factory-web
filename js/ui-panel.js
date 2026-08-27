@@ -322,7 +322,7 @@ function initPanelEvents() {
     if (itEl && G.panelMode === 'inv' && !itEl.dataset.action) {
       const iid = itEl.dataset.itemid;
       // 地面物品（混凝土/石砖路/填海等）虽非建筑实体，但同样可选中放入快捷栏以铺设
-      const isGroundItem = iid === 'concrete' || iid === 'refined-concrete' || iid === 'hazard-concrete' || iid === 'stone-path' || iid === 'landfill';
+      const isGroundItem = iid === 'concrete' || iid === 'refined-concrete' || iid === 'hazard-concrete' || iid === 'stone-path' || iid === 'landfill' || iid === 'artificial-yumako-soil' || iid === 'overgrowth-yumako-soil';
       if (BUILD_DEFS[iid] || isGroundItem) {
         const idx = HOTBAR.indexOf(iid);
         if (idx >= 0) {

@@ -56,6 +56,8 @@ const TECH_REQ = {
   'biochamber': 'agriculture',
   'agricultural-tower': 'agriculture',
   'yumako-seed': 'agriculture',
+  'artificial-yumako-soil': 'agriculture',
+  'overgrowth-yumako-soil': 'agriculture',
   'biolab': 'biolab',  // 生物实验室（Gleba）：需「生物实验室」科技（官方 Biolab 科技，前置农业科技），科研速度 2 倍
   // ===== 太空时代 小行星碎块加工链（统一由「太空材料加工」科技解锁）=====
   'crusher': 'asteroid-processing',

@@ -196,6 +196,20 @@ ok(ctx.__recipeDevice('yumako-growing') === 'agricultural-tower', '玉玛果种�
 ok(ctx.__itemTechReq('agricultural-tower') === 'agriculture', '农业塔需「农业科技」');
 ok(!!TS['agriculture'], '「农业科技」已注册');
 
+// ===== 雅玛果土壤（Artificial/Overgrowth yumako soil）数据校验 =====
+console.log('\n【雅玛果土壤（Gleba 农业土壤）数据校验】');
+ok(!!GD.stackSize['artificial-yumako-soil'] && GD.stackSize['artificial-yumako-soil'] === 100, 'artificial-yumako-soil 堆叠来自官方 (=100)');
+ok(!!GD.stackSize['overgrowth-yumako-soil'] && GD.stackSize['overgrowth-yumako-soil'] === 100, 'overgrowth-yumako-soil 堆叠来自官方 (=100)');
+ok(!!GD.names['artificial-yumako-soil'], 'artificial-yumako-soil 官方命名已收录 (' + (GD.names['artificial-yumako-soil'] ? GD.names['artificial-yumako-soil'].zh : '?') + ')');
+ok(!!GD.names['overgrowth-yumako-soil'], 'overgrowth-yumako-soil 官方命名已收录 (' + (GD.names['overgrowth-yumako-soil'] ? GD.names['overgrowth-yumako-soil'].zh : '?') + ')');
+ok(!!RP['artificial-yumako-soil'], '人工雅玛果土壤配方已注册');
+ok(!!RP['overgrowth-yumako-soil'], '茂盛雅玛果土壤配方已注册');
+ok(Object.keys(RP['artificial-yumako-soil'].inp).every(k => k in IT || ['water'].indexOf(k) >= 0), '人工雅玛果土壤配方引用物品均存在');
+ok(Object.keys(RP['overgrowth-yumako-soil'].inp).every(k => k in IT || ['water'].indexOf(k) >= 0), '茂盛雅玛果土壤配方引用物品均存在');
+ok(!!IT['artificial-yumako-soil'] && !!IT['overgrowth-yumako-soil'], '土壤物品均已注册');
+ok(ctx.__itemTechReq('artificial-yumako-soil') === 'agriculture', '人工雅玛果土壤需「农业科技」');
+ok(ctx.__itemTechReq('overgrowth-yumako-soil') === 'agriculture', '茂盛雅玛果土壤需「农业科技」');
+
 // ===== 破碎机（Crusher）数据校验 =====
 console.log('\n【破碎机设备数据（官方）】');
 ok(!!GD.stackSize['crusher'], 'crusher 堆叠来自官方 (=10)');
