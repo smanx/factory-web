@@ -539,6 +539,17 @@ const cargoLandingPad = {};
   }
 }
 
+// ---- 物流接驳站扩展舱 cargo-bay（官方 base 建筑：Cargo bay）----
+// 官方 Cargo bay 是物流接驳站的扩展存储舱：与接驳站相邻铺设时，为接驳站提供
+// inventory_size_bonus（官方 20）额外存储槽位。此处暴露 inventorySizeBonus 单源。
+const cargoBay = {};
+{
+  const r = raw['cargo-bay'] && raw['cargo-bay']['cargo-bay'];
+  if (r) {
+    if (typeof r.inventory_size_bonus === 'number') cargoBay.inventorySizeBonus = r.inventory_size_bonus;
+  }
+}
+
 // ---- 个人装备（装备网格） ----
 // 官方类型：solar-panel-equipment / generator-equipment / battery-equipment /
 // energy-shield-equipment / movement-bonus-equipment / active-defense-equipment。
@@ -772,6 +783,7 @@ const FOOTPRINT_SOURCES = {
   'accumulator': ['accumulator', 'accumulator'],
   'radar': ['radar', 'radar'],
   'cargo-landing-pad': ['cargo-landing-pad', 'cargo-landing-pad'],  // 物流接驳站：官方 selection_box ±4 → 8×8
+  'cargo-bay': ['cargo-bay', 'cargo-bay'],  // 物流接驳站扩展舱：官方 selection_box ±2 → 4×4
   'roboport': ['roboport', 'roboport'],
   'nuclear-reactor': ['reactor', 'nuclear-reactor'],
   'heat-pipe': ['heat-pipe', 'heat-pipe'],
@@ -886,6 +898,7 @@ Object.assign(GAME_DATA, {
   ammoDamage,
   radar,
   cargoLandingPad,
+  cargoBay,
   equipment,
   heat,
   lightning,
