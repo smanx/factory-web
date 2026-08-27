@@ -177,7 +177,7 @@ const ITEMS = {
   'rocket-part':     { name: '火箭部件', color: '#a8b0c0', mark: '◈', desc: '火箭发射井逐件组装的中间部件（对齐《异星工厂》Rocket part），集齐后拼装出完整火箭；装产能模块可免费累积额外部件' },
   'rocket-body':     { name: '火箭', color: '#c0c8d0', mark: '🚀', desc: '由火箭发射井集齐火箭部件组装而成的完整火箭本体，放入卫星后可发射' },
   'satellite':       { name: '卫星', color: '#c0c8d0', desc: '放入火箭发射井发射，赢得游戏' },
-  'rocket-silo':     { name: '火箭发射井', color: '#7a6a5a', desc: '组装并发射火箭的终局建筑（5×5），放入卫星并填充火箭部件后发射。可接入电路网络输出井内火箭/卫星/部件就绪状态信号（对齐《异星工厂》火箭发射井电路信号）' },
+  'rocket-silo':     { name: '火箭发射井', color: '#7a6a5a', desc: '组装并发射火箭的终局建筑（9×9，占地来自 GAME_DATA.footprint 官方 selection_box ±4.5），放入卫星并填充火箭部件后发射。可接入电路网络输出井内火箭/卫星/部件就绪状态信号（对齐《异星工厂》火箭发射井电路信号）' },
   'cargo-landing-pad':{ name: '物流接驳站', color: '#6a5a8a', desc: '火箭货物接驳建筑（8×8）：火箭发射后，被发射物品的产物降落在此，内置 80 格大容量存储与雷达视野（对齐《异星工厂》Cargo landing pad，数据来自 GAME_DATA）' },
   'cargo-bay':       { name: '物流扩展舱', color: '#7a6a9a', desc: '物流接驳站的扩展存储舱（4×4）：紧邻接驳站铺设，为接驳站增加 20 格额外存储槽位（官方 Cargo bay，inventory_size_bonus=20，数据来自 GAME_DATA）' },
   'landing-pad-unloading-bay': { name: '物流卸载舱', color: '#8a5a7a', desc: '物流接驳站的卸载舱（4×5）：官方 Cargo unloading bay，允许从太空平台向接驳站卸载货物，紧邻接驳站铺设亦为其增加 20 格额外存储槽位（inventory_size_bonus=20，卸载距离 59 格，数据来自 GAME_DATA）' },

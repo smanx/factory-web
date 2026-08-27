@@ -58,6 +58,13 @@
       + 官方卫星（`satellite`，locale 有官方条目）+ 火箭本体（`rocket-body`，发射井内部组装表示，对应官方 rocket-part 组装）。
 - [x] 全量 18 个校验脚本通过，构建通过。
 
+
+### 阶段一.6：基础建筑占地对齐（本迭代新增）
+- [x] **火箭发射井占地对齐官方**：`rocket-silo` 占地由 5×5 修正为官方 9×9
+      （selection_box ±4.5），新增 FOOTPRINT_SOURCES 桥接，数据来自 GAME_DATA.footprint（factorio-data 官方），
+      渲染随占地缩放，逻辑（火箭部件组装/卫星发射）不受影响。
+- [x] 校验并入 verify-data-alignment（新增火箭发射井占地 9×9 检查），全量 18 个校验脚本通过，构建通过。
+
 ### 阶段二：Space Age 基础材料链（低风险，先落地）
 - [x] 碳纤维 / 锂 / 锂板 / 超导体 / 电磁工厂（Electromagnetic plant）材料链
 - [x] 电磁科研包（electromagnetic-science-pack）及配套「电磁学」科技

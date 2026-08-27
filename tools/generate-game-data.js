@@ -803,6 +803,7 @@ const FOOTPRINT_SOURCES = {
   'solar-panel': ['solar-panel', 'solar-panel'],
   'accumulator': ['accumulator', 'accumulator'],
   'radar': ['radar', 'radar'],
+  'rocket-silo': ['rocket-silo', 'rocket-silo'],  // 火箭发射井：官方 selection_box ±4.5 → 9×9（对齐《异星工厂》2.0 巨型发射井）
   'cargo-landing-pad': ['cargo-landing-pad', 'cargo-landing-pad'],  // 物流接驳站：官方 selection_box ±4 → 8×8
   'cargo-bay': ['cargo-bay', 'cargo-bay'],  // 物流接驳站扩展舱：官方 selection_box ±2 → 4×4
   'landing-pad-unloading-bay': ['cargo-bay', 'landing-pad-unloading-bay'],  // 物流接驳站卸载舱：官方 cargo-bay 原型 selection_box {{-2,-3},{2,2}} → 4×5
