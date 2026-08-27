@@ -277,6 +277,8 @@ const GAME_DATA = {
   "hazard-concrete": 100,
   "refined-hazard-concrete": 100,
   "landfill": 100,
+  "foundation": 50,
+  "ice-platform": 100,
   "modular-armor": 1,
   "power-armor": 1,
   "power-armor-mk2": 1,
@@ -3296,6 +3298,29 @@ const GAME_DATA = {
     "landfill": 1
    }
   },
+  "foundation": {
+   "time": 30,
+   "inp": {
+    "tungsten-plate": 4,
+    "lithium-plate": 4,
+    "carbon-fiber": 4,
+    "stone": 20,
+    "fluoroketone-cold": 20
+   },
+   "out": {
+    "foundation": 1
+   }
+  },
+  "ice-platform": {
+   "time": 30,
+   "inp": {
+    "ammonia": 400,
+    "ice": 50
+   },
+   "out": {
+    "ice-platform": 1
+   }
+  },
   "modular-armor": {
    "time": 15,
    "inp": {
@@ -3747,6 +3772,8 @@ const GAME_DATA = {
   "hazard-concrete": "assembling-machine-1",
   "refined-hazard-concrete": "assembling-machine-1",
   "landfill": "assembling-machine-1",
+  "foundation": "cryogenic-plant",
+  "ice-platform": "cryogenic-plant",
   "modular-armor": "assembling-machine-1",
   "power-armor": "assembling-machine-1",
   "power-armor-mk2": "assembling-machine-1",
@@ -4850,6 +4877,14 @@ const GAME_DATA = {
   "landfill": {
    "zh": "填埋材料",
    "en": "Landfill"
+  },
+  "foundation": {
+   "zh": "工程基座",
+   "en": "Foundation"
+  },
+  "ice-platform": {
+   "zh": "浮冰平台",
+   "en": "Ice platform"
   },
   "modular-armor": {
    "zh": "模块装甲",
@@ -6213,6 +6248,8 @@ const GAME_DATA = {
   "refined-hazard-concrete": "logistics",
   "stone-path": "logistics",
   "landfill": "logistics",
+  "foundation": "logistics",
+  "ice-platform": "logistics",
   "modular-armor": "combat",
   "power-armor": "combat",
   "power-armor-mk2": "combat",

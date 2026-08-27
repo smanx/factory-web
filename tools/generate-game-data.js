@@ -274,6 +274,7 @@ const DLC_DEVICE_RECIPES = {
   // 低温工厂 cryogenic-plant（Space Age cryogenics）
   'ammonia': 'cryogenic-plant', 'fluorine': 'cryogenic-plant', 'fluoroketone-cold': 'cryogenic-plant',
   'fluoroketone-hot': 'cryogenic-plant', 'cryogenic-science-pack': 'cryogenic-plant', 'cryogenic-plant': 'cryogenic-plant',
+  'foundation': 'cryogenic-plant', 'ice-platform': 'cryogenic-plant', // 太空时代地形（官方 cryogenics 低温工厂，流体配方）
   // 农业塔 agricultural-tower（Space Age 种植）
   'yumako-growing': 'agricultural-tower', 'jellynut-growing': 'agricultural-tower',
   // 空间平台中枢（Space Platform）
