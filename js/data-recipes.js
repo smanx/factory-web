@@ -212,6 +212,17 @@ const RECIPES = {
   'electromagnetic-plant': { time: 10, inp: { 'steel-plate': 50, 'processing-unit': 50, 'refined-concrete': 50, 'superconductor': 20 }, out: { 'electromagnetic-plant': 1 } },
   // 回收机：处理器 + 钢板 + 齿轮 + 混凝土 → 回收机（官方 energy_required=3s，此处对齐，10s）
   'recycler': { time: 10, inp: { 'processing-unit': 6, 'steel-plate': 20, 'iron-gear-wheel': 40, 'concrete': 20 }, out: { 'recycler': 1 } },
+  // ===== 太空时代 Fulgora 钬/特斯拉链（官方配方依赖钬溶液/电解液等 Fulgora 专属流体，此处适配电磁工厂/熔炉基础资源）=====
+  // 钬矿石：石头 + 煤 → 钬矿石（官方 holmium-ore 为 Fulgora 天然矿脉，此处适配为电磁工厂从基础矿石还原，12s）
+  'holmium-ore': { time: 12, inp: { 'stone': 4, 'coal': 2 }, out: { 'holmium-ore': 2 } },
+  // 钬板：钬矿石 + 石头 + 水 → 钬板（官方 holmium-solution→holmium-plate 两步精炼，此处适配熔炉一步，10s）
+  'holmium-plate': { time: 10, inp: { 'holmium-ore': 2, 'stone': 1, 'water': 10 }, out: { 'holmium-plate': 1 } },
+  // 超级电容：钬板 + 超导体 + 电路板 + 电池 → 超级电容（官方 2钬板+2超导+4电路板+1电池+电解液，10s）
+  'supercapacitor': { time: 10, inp: { 'holmium-plate': 2, 'superconductor': 2, 'electronic-circuit': 4, 'battery': 1 }, out: { 'supercapacitor': 1 } },
+  // 特斯拉弹药：超级电容 + 塑料 → 特斯拉弹药（官方 supercapacitor+plastic+electrolyte，30s）
+  'tesla-ammo': { time: 30, inp: { 'supercapacitor': 1, 'plastic-bar': 1 }, out: { 'tesla-ammo': 1 } },
+  // 特斯拉炮塔：超级电容 + 处理器 + 超导体 → 特斯拉炮塔（官方 teslagun+10超电容+10处理器+50超导，30s，此处省去 teslagun 枪）
+  'tesla-turret': { time: 30, inp: { 'supercapacitor': 10, 'processing-unit': 10, 'superconductor': 50 }, out: { 'tesla-turret': 1 } },
   // ===== 太空时代 Vulcanus 铸造/钨材料链（官方配方依赖熔融铁/火山熔岩等星球专属资源，此处适配基础资源）=====
   // 钨矿石：石头 + 煤 → 钨矿石×2（官方 tungsten-ore 为 Vulcanus 天然矿脉，此处适配为铸造厂从基础矿石还原，12s）
   'tungsten-ore': { time: 12, inp: { 'stone': 4, 'coal': 2 }, out: { 'tungsten-ore': 2 } },
@@ -439,7 +450,7 @@ const DEVICE_NAMES = {
   'space-platform-hub': '空间平台中枢'
 };
 // 电磁工厂专属配方（太空时代电磁产品）：超导体 / 电磁科研包 / 电磁工厂本体
-const ELECTRO_RECIPES = ['superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant', 'promethium-science-pack'];
+const ELECTRO_RECIPES = ['superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant', 'promethium-science-pack', 'holmium-ore', 'holmium-plate', 'supercapacitor', 'tesla-ammo', 'tesla-turret'];
 function isElectroRecipe(id) { return ELECTRO_RECIPES.indexOf(id) >= 0; }
 // 生化炉专属配方（太空时代生物产品）：果泥 / 生物流 / 营养素 / 生物硫磺 / 农业科研包 / 生化炉本体
 const BIOCHAMBER_RECIPES = ['yumako-mash', 'bioflux', 'nutrients-from-bioflux', 'biosulfur', 'agricultural-science-pack', 'biochamber'];

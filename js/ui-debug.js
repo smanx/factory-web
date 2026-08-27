@@ -110,7 +110,7 @@ const DBG_GIVE_GROUPS = [
   ]],
   ['防御·军事', [
     ['stone-wall', 100], ['gate', 50], ['gun-turret', 20], ['laser-turret', 20],
-    ['flamethrower-turret', 20], ['artillery-turret', 10], ['land-mine', 50]
+    ['tesla-turret', 20], ['flamethrower-turret', 20], ['artillery-turret', 10], ['land-mine', 50]
   ]],
   ['电路·信号', [
     ['constant-combinator', 20], ['arithmetic-combinator', 20], ['decider-combinator', 20],

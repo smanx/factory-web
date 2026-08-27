@@ -177,6 +177,11 @@ const GAME_DATA = {
   "electromagnetic-science-pack": 200,
   "electromagnetic-plant": 20,
   "recycler": 20,
+  "holmium-ore": 50,
+  "holmium-plate": 100,
+  "supercapacitor": 100,
+  "tesla-turret": 10,
+  "tesla-ammo": 100,
   "tungsten-ore": 50,
   "tungsten-plate": 50,
   "tungsten-carbide": 50,
@@ -330,6 +335,7 @@ const GAME_DATA = {
   "accumulator": 150,
   "gun-turret": 400,
   "laser-turret": 1000,
+  "tesla-turret": 2000,
   "flamethrower-turret": 1400,
   "rocket-silo": 5000,
   "cargo-landing-pad": 1000,
@@ -3332,6 +3338,26 @@ const GAME_DATA = {
    "zh": "回收机",
    "en": "Recycler"
   },
+  "holmium-ore": {
+   "zh": "钬矿",
+   "en": "Holmium ore"
+  },
+  "holmium-plate": {
+   "zh": "钬板",
+   "en": "Holmium plate"
+  },
+  "supercapacitor": {
+   "zh": "超级电容器",
+   "en": "Supercapacitor"
+  },
+  "tesla-turret": {
+   "zh": "特斯拉炮塔",
+   "en": "Tesla turret"
+  },
+  "tesla-ammo": {
+   "zh": "特斯拉弹药",
+   "en": "Tesla ammo"
+  },
   "tungsten-ore": {
    "zh": "钨矿",
    "en": "Tungsten ore"
@@ -3854,6 +3880,10 @@ const GAME_DATA = {
   "flamethrower-turret": {
    "range": 30,
    "fireRate": 0.067
+  },
+  "tesla-turret": {
+   "range": 30,
+   "fireRate": 2
   }
  },
  "ammoDamage": {
@@ -4140,6 +4170,10 @@ const GAME_DATA = {
   "laser-turret": {
    "w": 2,
    "h": 2
+  },
+  "tesla-turret": {
+   "w": 4,
+   "h": 4
   },
   "flamethrower-turret": {
    "w": 2,

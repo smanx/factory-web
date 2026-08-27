@@ -41,6 +41,12 @@ const TECH_REQ = {
   'electromagnetic-science-pack': 'electromagnetics',
   'electromagnetic-plant': 'electromagnetics',
   'recycler': 'recycling',   // 回收机需「回收科技」（对齐《异星工厂》Recycling）
+  // ===== 太空时代 Fulgora 钬/特斯拉链（统一由「富尔戈拉电磁」科技解锁）=====
+  'holmium-ore': 'fulgora',
+  'holmium-plate': 'fulgora',
+  'supercapacitor': 'fulgora',
+  'tesla-turret': 'fulgora',
+  'tesla-ammo': 'fulgora',
   // ===== 太空时代 Vulcanus 铸造/冶金材料链（统一由「冶金学」科技解锁）=====
   'tungsten-ore': 'metallurgy',
   'tungsten-plate': 'metallurgy',

@@ -362,6 +362,26 @@
 >   （该项目自定第 7 个测试设备早已移除，仅保留 6 个创造/虚空物品）。
 > - 校验：verify-science-packs 新增冶金/钷素科研包校验（+6 项），全量 18 个校验脚本通过，构建通过。
 
+### 阶段四.10：Fulgora 钬/特斯拉链（Space Age Holmium + Tesla，本迭代新增）
+- [x] **钬矿石 / 钬板 / 超级电容 / 特斯拉炮塔 / 特斯拉弹药**：富尔戈拉电磁防御链
+
+> 已落地说明（本迭代增量）：
+> - 物品：`holmium-ore`（钬矿石，堆叠 50）/ `holmium-plate`（钬板，堆叠 100）/
+>   `supercapacitor`（超级电容，堆叠 100）/ `tesla-turret`（特斯拉炮塔，堆叠 10）/
+>   `tesla-ammo`（特斯拉弹药，堆叠 100），堆叠 / 命名全部来自 GAME_DATA（factorio-data 官方：
+>   Holmium ore / Holmium plate / Supercapacitor / Tesla turret / Tesla ammo），未单独维护数值表。
+> - 生成脚本：GAME_DATA.turret 新增 `tesla-turret`（官方 electric-turret 原型：range 30、cooldown 120tick=2s），
+>   FOOTPRINT_SOURCES 新增 tesla-turret（官方 selection_box ±2 → 4×4），buildingHp 单源（官方 max_health 2000）。
+> - 配方（官方依赖钬溶液/电解液等 Fulgora 专属流体与 supercapacitor/electrolyte，项目暂无流体行星系统，适配电磁工厂/熔炉基础资源）：
+>   `holmium-ore`=石头4+煤2→2（12s）；`holmium-plate`=钬矿石2+石头1+水10→1（10s）；
+>   `supercapacitor`=钬板2+超导体2+电路板4+电池1→1（10s）；`tesla-ammo`=超级电容1+塑料1→1（30s）；
+>   `tesla-turret`=超级电容10+处理器10+超导体50→1（30s，官方 teslagun+10超电容+10处理器+50超导，省去 teslagun 枪）。
+>   配方键保留官方名，数据单源（堆叠/命名/占地/血量/射程/冷却来自 GAME_DATA，配方为手工适配）。
+> - 玩法：特斯拉炮塔（4×4）吃电力发射可连锁跳转的电弧（最多 5 跳，伤害随跳递减 0.8），攻击射程内
+>   （30 格）多个敌人，无需弹药，官方 electric-turret 行为；接入完整炮塔链路（模块/电路/旋转/信号塔）。
+> - 科技：新增「富尔戈拉电磁」科技（fulgora，需电磁科研，用电磁科研包+实用科研包推进），解锁钬/特斯拉链。
+> - 校验：verify-dlc 新增 Fulgora 钬/特斯拉链校验（26 项），全量 18 个校验脚本通过，构建通过。
+
 ### 阶段五：数值/体验精修
 ### 阶段五：数值/体验精修
 - [ ] 各 DLC 建筑占地/功耗/速度逐一桥接 data.generated.js

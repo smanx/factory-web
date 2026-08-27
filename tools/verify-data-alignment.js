@@ -95,6 +95,13 @@ console.log('\n【火箭发射井占地（官方 selection_box ±4.5 → 9×9）
 const SILO_FP = GAME_DATA.footprint && GAME_DATA.footprint['rocket-silo'];
 check('rocket-silo 占地=官方9×9', SILO_FP ? SILO_FP.w + 'x' + SILO_FP.h : 'null', '9x9');
 
+console.log('\n【特斯拉炮塔占地（Fulgora，官方 electric-turret selection_box ±2 → 4×4）】');
+const TESLA_FP = GAME_DATA.footprint && GAME_DATA.footprint['tesla-turret'];
+check('tesla-turret 占地=官方4×4', TESLA_FP ? TESLA_FP.w + 'x' + TESLA_FP.h : 'null', '4x4');
+const TESLA_RANGE = GAME_DATA.turret && GAME_DATA.turret['tesla-turret'];
+check('tesla-turret 射程=官方30', TESLA_RANGE ? String(TESLA_RANGE.range) : 'null', '30');
+check('tesla-turret 冷却=官方2s', TESLA_RANGE ? String(TESLA_RANGE.fireRate) : 'null', '2');
+
 console.log('');
 if (failCount === 0) { console.log(`✅ 数据对齐官方校验全部通过（${passCount} 项）`); process.exit(0); }
 else { console.log(`❌ 失败 ${failCount} 项（请将硬编码值改为从 GAME_DATA 桥接或对齐官方）`); process.exit(1); }

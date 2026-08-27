@@ -490,6 +490,12 @@ const turret = {};
     range: f.attack_parameters.range,
     fireRate: Math.round(f.attack_parameters.cooldown / 60 * 1000) / 1000,
   };
+  // 太空时代特斯拉炮塔（Fulgora，Space Age 官方 electric-turret 原型）：射程 30、cooldown 120tick=2s
+  const t = raw['electric-turret'] && raw['electric-turret']['tesla-turret'];
+  if (t && t.attack_parameters) turret['tesla-turret'] = {
+    range: t.attack_parameters.range,
+    fireRate: Math.round(t.attack_parameters.cooldown / 60 * 1000) / 1000,
+  };
 }
 // 弹药伤害：遍历 ammo_type.action（2.0 结构可能是 {"1":{...}} 或直接对象），找 damage effect 的 amount。
 function findAmmoDamage(ammoProto) {
@@ -812,6 +818,7 @@ const FOOTPRINT_SOURCES = {
   'heat-pipe': ['heat-pipe', 'heat-pipe'],
   'gun-turret': ['ammo-turret', 'gun-turret'],
   'laser-turret': ['electric-turret', 'laser-turret'],
+  'tesla-turret': ['electric-turret', 'tesla-turret'],  // 太空时代特斯拉炮塔（Fulgora）：官方 selection_box
   'flamethrower-turret': ['fluid-turret', 'flamethrower-turret'],
   'stone-wall': ['wall', 'stone-wall'],
   'gate': ['gate', 'gate'],

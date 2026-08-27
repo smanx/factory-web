@@ -89,6 +89,7 @@ const TECHS = {
   'heating-tower': { name: '供热塔', cost: { 'space-science-pack': 100, 'chemical-science-pack': 100 }, desc: '太空时代供热塔：解锁 3×3 供热塔（官方 Heating tower，燃烧化学燃料产热 100MW，为核反应堆 2.5 倍），供热塔经四边热量接口向导热管传导，达到最高温仍持续燃烧，用于热水/防冻基础设施（对齐《异星工厂》Space Age 供热塔科技）', req: ['space-science'] },
   'biolab': { name: '生物实验室', cost: { 'agricultural-science-pack': 100, 'electromagnetic-science-pack': 100 }, desc: '太空时代生物实验室：解锁 5×5 生物实验室（官方 Biolab，科研速度 2 倍、模块槽 4），可研究全部太空时代科技（对齐《异星工厂》Space Age 生物实验室科技，前置农业科技）', req: ['agriculture'] },
   'lightning': { name: '避雷科技', cost: { 'space-science-pack': 100, 'electromagnetic-science-pack': 100 }, desc: '太空时代避雷科技：解锁避雷针与避雷收集器（Fulgora 官方 Lightning 科技）。雷电季节会随机落雷，避雷针/避雷收集器保护周围区域免受雷击并把雷电能量转化为电网电力（官方 efficiency：避雷针 0.2 / 收集器 0.4，数据来自 GAME_DATA.lightning），需电磁科研', req: ['electromagnetics'] },
+  'fulgora': { name: '富尔戈拉电磁', cost: { 'electromagnetic-science-pack': 100, 'utility-science-pack': 100 }, desc: '太空时代 Fulgora 富尔戈拉电磁：解锁钬矿石/钬板/超级电容材料链与特斯拉炮塔、特斯拉弹药（官方 Space Age Fulgora 电磁科学，官方 superconductor/supercapacitor 依赖钬板，此处补齐钬链并适配基础资源），需电磁科研', req: ['electromagnetics'] },
   'space-thruster': { name: '太空推进', cost: { 'space-science-pack': 100, 'electromagnetic-science-pack': 100 }, desc: '太空时代推进科技：解锁推进器燃料与推进器氧化剂（Thruster fuel / oxidizer）的化工厂配方——碳+水制红色推进燃料、铁矿+水制蓝色氧化剂，高级配方加方解石一次产出 1500 单位（官方 Space Age 化学配方，数据单源化），用于太空平台/推进器与高级流体（对齐《异星工厂》Space Age Thruster 科技），需电磁科研', req: ['electromagnetics'] },
   'space-platform': { name: '空间平台', cost: { 'space-science-pack': 100, 'electromagnetic-science-pack': 100 }, desc: '太空时代空间平台：解锁空间平台地基/中枢、推进器与小行星收集器（官方 Space Age Space platform 科技）。空间平台地基可铺设成太空平台地板，中枢为平台核心，推进器燃烧推进燃料/氧化剂产生电能，小行星收集器在轨道收集星块（对齐《异星工厂》Space Age 空间平台体系），需太空推进科技', req: ['space-thruster'] },
   'fusion-power': { name: '聚变能源', cost: { 'space-science-pack': 200, 'electromagnetic-science-pack': 200 }, desc: '太空时代聚变能源科技：解锁聚变反应堆、聚变发电机与聚变燃料棒（官方 Space Age Fusion 科技，Aquilo）。聚变反应堆燃烧聚变燃料棒产生超高温等离子热量，经导热管传导至聚变发电机直接发电，单台满功率 50MW，为终极发电系统（对齐《异星工厂》Space Age 聚变发电科技，数据来自 GAME_DATA），需电磁科研与空间平台', req: ['space-platform'] },
@@ -226,7 +227,7 @@ for (const tid of ['quality', 'quality-2', 'quality-3']) TECHS[tid].cat = 'quali
 const SPACE_AGE_TECHS = [
   'space-science', 'turbo-logistics', 'electromagnetics', 'metallurgy', 'recycling',
   'agriculture', 'asteroid-processing', 'big-mining-drill', 'heating-tower', 'biolab',
-  'lightning', 'space-thruster', 'space-platform', 'space-research-speed',
+  'lightning', 'fulgora', 'space-thruster', 'space-platform', 'space-research-speed',
   'space-mining-productivity', 'weapon-damage', 'follower-robot-count',
   'worker-robot-cargo-size', 'artillery-shooting-speed', 'artillery-shell-range',
   'rail-productivity', 'braking-force', 'rocket-productivity', 'physical-projectile-damage',

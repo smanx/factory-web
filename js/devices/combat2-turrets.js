@@ -411,14 +411,170 @@ function updateAcidPools(dt) {
   G.acidPools = compactFilter(arr, f => f.life > 0);
 }
 
+// ===== 特斯拉炮塔（Space Age Tesla turret，Fulgora）=====
+// 发射可连锁跳转的电弧攻击射程内多个敌人，无需弹药，吃电力（对齐《异星工厂》Tesla turret：
+// 射程 30、cooldown 120tick=2s，官方 electric-turret 原型，数据来自 GAME_DATA.turret）。
+const TESLA_RANGE = GAME_DATA.turret?.['tesla-turret']?.range ?? 30;
+const TESLA_FIRE_RATE = GAME_DATA.turret?.['tesla-turret']?.fireRate ?? 2;
+const TESLA_DMG = 30;            // 首目标电弧伤害（官方 tesla-ammo 电弧伤害，链式递减）
+const TESLA_CHAIN = 5;           // 电弧最多连锁目标数
+const TESLA_CHAIN_DECAY = 0.8;   // 每跳伤害衰减系数
+class TeslaTurret extends CircuitNode {
+  constructor(type, x, y) {
+    super('tesla-turret', x, y);
+    this.cooldown = 0;
+    this.target = null;
+    this.facing = 0;
+    this.arcT = 0;
+    this.arcChain = [];
+    this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
+  }
+  circuitEnabled() {
+    if (!this.circuitCond || !this.circuitCond.enabled) return true;
+    const sig = circuitSignalNear(this);
+    return circuitCondOk(sig, this.circuitCond);
+  }
+  enemiesInRange() {
+    const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
+    const enemies = G._aliveEnemies || (G.enemies || []);
+    let n = 0;
+    for (const en of enemies) {
+      if (!en || en.dead) continue;
+      const d = Math.hypot(en.x / TILE - cx, en.y / TILE - cy);
+      if (d <= TESLA_RANGE) n++;
+    }
+    return n;
+  }
+  outputCircuitSignals() {
+    const n = this.enemiesInRange();
+    if (n <= 0) return [];
+    return [{ sig: 'signal-enemy', count: n }];
+  }
+  update(dt) {
+    this.cooldown -= dt;
+    this.arcT = Math.max(0, this.arcT - dt);
+    this.target = null;
+    if (G.power.sat <= 0) return;
+    if (!this.circuitEnabled()) return;
+    const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
+    let best = null, bestD = Infinity;
+    const enemies = G._aliveEnemies || (G.enemies || []);
+    for (const en of enemies) {
+      if (!en || en.dead) continue;
+      const ex = en.x / TILE, ey = en.y / TILE;
+      const d = Math.hypot(ex - cx, ey - cy);
+      if (d <= TESLA_RANGE && d < bestD) { best = en; bestD = d; }
+    }
+    if (!best) return;
+    this.target = best;
+    this.facing = Math.atan2(best.y - (this.y + this.h / 2) * TILE, best.x - (this.x + this.w / 2) * TILE);
+    if (this.cooldown > 0) return;
+    this.cooldown = TESLA_FIRE_RATE;
+    // 电弧连锁：以首目标为起点，向射程内最近的未命中敌人逐跳跳转，伤害逐跳递减
+    const chain = [];
+    let cur = best;
+    const hit = new Set();
+    let dmg = TESLA_DMG * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('electric') : 1);
+    for (let i = 0; i < TESLA_CHAIN && cur; i++) {
+      hit.add(cur);
+      chain.push({ x: cur.x, y: cur.y });
+      cur.hp -= Math.round(dmg);
+      if (cur.hp <= 0) cur.dead = true;
+      dmg *= TESLA_CHAIN_DECAY;
+      // 找下一个最近的未命中敌人
+      let nxt = null, nxtD = Infinity;
+      for (const en of enemies) {
+        if (!en || en.dead || hit.has(en)) continue;
+        const d = Math.hypot(en.x - cur.x, en.y - cur.y);
+        if (d <= TILE * 10 && d < nxtD) { nxt = en; nxtD = d; }
+      }
+      cur = nxt;
+    }
+    this.arcT = 0.2;
+    this.arcChain = chain;
+    (G.bullets || (G.bullets = [])).push({
+      x: (this.x + this.w / 2) * TILE, y: (this.y + this.h / 2) * TILE,
+      tx: best.x, ty: best.y, t: 0, life: 0.1, dmg: 0, kind: 'tesla'
+    });
+    if (typeof playSfx === 'function') playSfx('laser');
+  }
+  powerDemand() { return 1800; }
+  serialize() { const s = super.serialize(); if (this.circuitCond) s.circuitCond = this.circuitCond; return s; }
+  static restore(s) { const e = super.restore(s); e.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 }; return e; }
+}
+function drawTeslaTurret(ctx, e, gx, gy, dir, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  const s = TILE * e.w;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#3a4a7a';
+  rr(ctx, px + 4, py + 4, s - 8, s - 8, 8); ctx.fill();
+  ctx.strokeStyle = '#2a3055';
+  ctx.lineWidth = 3;
+  rr(ctx, px + 4, py + 4, s - 8, s - 8, 8); ctx.stroke();
+  const cx = px + s / 2, cy = py + s / 2;
+  const ang = e.target ? e.facing : -Math.PI / 2;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(ang);
+  ctx.fillStyle = '#4a8ae0';
+  ctx.fillRect(-7, -7, 14, 14);
+  ctx.fillStyle = '#7ab0f0';
+  ctx.fillRect(4, -4, 20, 8);
+  ctx.restore();
+  // 特斯拉电弧（连锁跳转）
+  if (e.arcT > 0 && e.arcChain && e.arcChain.length) {
+    const alphaA = (e.arcT / 0.2).toFixed(2);
+    ctx.lineWidth = 2;
+    const pts = [{ x: cx, y: cy }].concat(e.arcChain);
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1];
+      ctx.strokeStyle = 'rgba(120,170,255,' + alphaA + ')';
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      // 锯齿状电弧
+      const segs = 6;
+      for (let j = 1; j <= segs; j++) {
+        const t = j / segs;
+        const mx = a.x + (b.x - a.x) * t + (Math.random() - 0.5) * 12;
+        const my = a.y + (b.y - a.y) * t + (Math.random() - 0.5) * 12;
+        ctx.lineTo(mx, my);
+      }
+      ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+function teslaTurretPanelHtml(e) {
+  let h = row('电力', powerStatusLiveHtml(e), 'power');
+  h += '<div class="status"></div>';
+  h += '<div class="dim">特斯拉炮塔：吃电力发射可连锁跳转的电弧，攻击射程内（' + TESLA_RANGE + ' 格）最多 ' + TESLA_CHAIN + ' 个敌人，无需弹药，伤害随连锁递减。供电不足时停止开火（4×4）。</div>';
+  h += circuitPanelHtml(e, 'tt');
+  return h;
+}
+function teslaTurretPanelLive(e, api) {
+  api.set('power', powerStatusLiveHtml(e));
+  if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) { api.status('已停火：电路条件不满足', 'warn'); return; }
+  if (G.power.sat <= 0) api.status('已暂停：缺电', 'warn');
+  else if (e.target) api.status('开火中：电弧连锁攻击敌人', 'ok');
+  else api.status('待机：射程内无敌人', 'ok');
+}
+function teslaTurretTip(e) {
+  return e.target ? '开火中（特斯拉电弧）' : (G.power.sat <= 0 ? '缺电停摆' : '待机（无需弹药）');
+}
+
 // ===== 注册 =====
 ENT_CLASSES['laser-turret'] = LaserTurret;
 ENT_CLASSES['flamethrower-turret'] = FlamethrowerTurret;
+ENT_CLASSES['tesla-turret'] = TeslaTurret;
 DEVICE_RENDER['laser-turret'] = drawLaserTurret;
 DEVICE_RENDER['flamethrower-turret'] = drawFlamethrowerTurret;
+DEVICE_RENDER['tesla-turret'] = drawTeslaTurret;
 DEVICE_STATUS['laser-turret'] = e => (G.power.sat <= 0 ? 'r' : (e.target ? 'g' : 'y'));
 DEVICE_STATUS['flamethrower-turret'] = e => (G.power.sat <= 0 ? 'r' : ((e.fluid['light-oil'] || 0) <= 0 ? 'r' : (e.target ? 'g' : 'y')));
+DEVICE_STATUS['tesla-turret'] = e => (G.power.sat <= 0 ? 'r' : (e.target ? 'g' : 'y'));
 DEVICE_PANEL['laser-turret'] = { html: laserTurretPanelHtml, live: laserTurretPanelLive, tip: laserTurretTip, onAction: (a) => circuitPanelAction('lt', a) };
 DEVICE_PANEL['flamethrower-turret'] = { html: flameTurretPanelHtml, live: flameTurretPanelLive, tip: flameTurretTip, onAction: (a) => circuitPanelAction('ft', a) };
+DEVICE_PANEL['tesla-turret'] = { html: teslaTurretPanelHtml, live: teslaTurretPanelLive, tip: teslaTurretTip, onAction: (a) => circuitPanelAction('tt', a) };
 DEVICE_DIR_ROTATE['laser-turret'] = true;
 DEVICE_DIR_ROTATE['flamethrower-turret'] = true;
+DEVICE_DIR_ROTATE['tesla-turret'] = true;

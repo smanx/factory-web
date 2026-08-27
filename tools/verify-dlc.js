@@ -612,6 +612,40 @@ ok(ctx.__recipeDevice('promethium-science-pack') === 'electromagnetic-plant', '�
 ok(ctx.__recipeTechReq('promethium-science-pack') === 'promethium-science', '钷素科研包需「钷素科研」科技');
 ok(!!TS['promethium-science'], '钷素科研 科技已注册');
 
+// ===== Fulgora 钬/特斯拉链（本迭代新增）：钬矿石/钬板/超级电容/特斯拉炮塔/特斯拉弹药 =====
+console.log('\n【Fulgora 钬/特斯拉链（holmium / tesla）数据】');
+// 物品/堆叠/命名来自官方（factorio-data）
+for (const id of ['holmium-ore','holmium-plate','supercapacitor','tesla-turret','tesla-ammo']) {
+  ok(!!IT[id], id + ' 物品已注册');
+  ok(!!GD.stackSize[id], id + ' 堆叠来自官方 (=' + GD.stackSize[id] + ')');
+  ok(!!GD.names[id], id + ' 官方命名已收录 (' + (GD.names[id] ? GD.names[id].en : '?') + ')');
+}
+ok(GD.stackSize['holmium-ore'] === 50, '钬矿石堆叠=50（官方）');
+ok(GD.stackSize['holmium-plate'] === 100, '钬板堆叠=100（官方）');
+ok(GD.stackSize['supercapacitor'] === 100, '超级电容堆叠=100（官方）');
+ok(GD.stackSize['tesla-turret'] === 10, '特斯拉炮塔堆叠=10（官方）');
+ok(GD.stackSize['tesla-ammo'] === 100, '特斯拉弹药堆叠=100（官方）');
+ok(GD.names['holmium-ore'] && GD.names['holmium-ore'].en === 'Holmium ore', '钬矿石官方命名 (Holmium ore)');
+ok(GD.names['tesla-turret'] && GD.names['tesla-turret'].en === 'Tesla turret', '特斯拉炮塔官方命名 (Tesla turret)');
+// 特斯拉炮塔设备数据（官方 electric-turret 原型，单源）
+ok(GD.footprint['tesla-turret'] && GD.footprint['tesla-turret'].w === 4 && GD.footprint['tesla-turret'].h === 4, '特斯拉炮塔占地 4×4（官方 selection_box ±2）');
+ok(GD.buildingHp['tesla-turret'] === 2000, '特斯拉炮塔血量=2000（官方 max_health）');
+ok(GD.turret['tesla-turret'] && GD.turret['tesla-turret'].range === 30, '特斯拉炮塔射程=30（官方 attack_parameters.range）');
+ok(GD.turret['tesla-turret'] && GD.turret['tesla-turret'].fireRate === 2, '特斯拉炮塔冷却=2s（官方 cooldown 120tick）');
+// 配方
+for (const rid of ['holmium-ore','holmium-plate','supercapacitor','tesla-ammo','tesla-turret']) {
+  ok(!!RP[rid], rid + ' 配方已注册（官方 Fulgora 链适配基础资源）');
+  ok(Object.keys(RP[rid].inp).every(k => k in IT), rid + ' 配方引用物品均存在');
+}
+// 配方设备：电磁工厂（官方 electromagnetic categories）
+ok(ctx.__recipeDevice('supercapacitor') === 'electromagnetic-plant', '超级电容 → 电磁工厂');
+ok(ctx.__recipeDevice('tesla-turret') === 'electromagnetic-plant', '特斯拉炮塔 → 电磁工厂');
+ok(ctx.__recipeDevice('tesla-ammo') === 'electromagnetic-plant', '特斯拉弹药 → 电磁工厂');
+// 科技门控
+ok(ctx.__itemTechReq('holmium-ore') === 'fulgora', '钬矿石需「富尔戈拉电磁」科技');
+ok(ctx.__itemTechReq('tesla-turret') === 'fulgora', '特斯拉炮塔需「富尔戈拉电磁」科技');
+ok(!!TS['fulgora'], '「富尔戈拉电磁」科技已注册');
+
 
 // ===== 行星系统（阶段四增量）：行星定义 / 资源画像 / 地表色调 =====
 console.log('\n【行星系统 PLANETS（Space Age 五行星）】');

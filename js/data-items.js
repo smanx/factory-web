@@ -11,6 +11,7 @@ const STACK_SIZES = {
   // 终局单体物品与载具：堆叠 1（rocket=官方 rocket 物品 stack=100，见下方桥接）
   'rocket': 1, 'rocket-part': 100, 'satellite': 1, 'nuclear-reactor': 10, 'rocket-silo': 1, 'cargo-landing-pad': 1, 'cargo-bay': 10, 'landing-pad-unloading-bay': 10,  // nuclear-reactor 官方 10；cargo-landing-pad 官方 stack=1；cargo-bay/landing-pad-unloading-bay 官方 stack=10
   'recycler': 20,  // 回收机官方 stack=20（由 GAME_DATA 桥接）
+  'tesla-turret': 10,  // 特斯拉炮塔官方 stack=10（由 GAME_DATA 桥接）
   'fusion-reactor': 1, 'fusion-generator': 5, 'fusion-power-cell': 50,  // Aquilo 聚变发电链官方 stack（fusion-reactor=1、fusion-generator=5、fusion-power-cell=50，由 GAME_DATA 桥接）
   'crusher': 10,  // 破碎机官方 stack=10（由 GAME_DATA 桥接）
   'metallic-asteroid-chunk': 1, 'carbonic-asteroid-chunk': 1, 'oxide-asteroid-chunk': 1, 'promethium-asteroid-chunk': 1,  // 小行星碎块官方 stack=1
@@ -237,6 +238,12 @@ const ITEMS = {
   'electromagnetic-science-pack': { name: '电磁科研包', color: '#5a5ae8', mark: 'ESP', desc: '太空时代紫色科研包，由超导体+蓄电器+电路板在电磁工厂制得，解锁太空时代高级科技（对齐《异星工厂》Space Age）' },
   'electromagnetic-plant': { name: '电磁工厂', color: '#4a7ad8', desc: '太空时代高级生产建筑（4×4，吃电力）：比组装机 III 更快、模块槽更多，专用于生产超导体等电磁产品（对齐《异星工厂》Space Age，数据来自 GAME_DATA）' },
   'recycler': { name: '回收机', color: '#8a8f99', desc: '太空时代回收建筑（2×4，吃电力）：把可回收物品还原成其配方原料的 25%（每项至少 1 个），用于处理生产过剩与劣质品（对齐《异星工厂》Space Age 回收机，数据来自 GAME_DATA）' },
+  // ===== 太空时代 Fulgora 钬/特斯拉链（数据来自 factorio-data 官方，见 GAME_DATA）=====
+  'holmium-ore': { name: '钬矿石', color: '#8a5a7a', mark: 'Ho', desc: '太空时代 Fulgora 星球金属矿石，须用电磁工厂精炼成钬液/钬板（对齐《异星工厂》Space Age Holmium ore，堆叠 50）' },
+  'holmium-plate': { name: '钬板', color: '#a86a8a', mark: 'Hp', desc: '太空时代高密度金属板，由钬溶液精炼制得，是超导体/超级电容与特斯拉电器的核心原料（对齐《异星工厂》Space Age Holmium plate，堆叠 100）' },
+  'supercapacitor': { name: '超级电容', color: '#d8d04a', mark: 'Scap', desc: '太空时代高能储电器件，由钬板+超导体+电池制得，是特斯拉炮塔/特斯拉弹药与高级电力设备的核心元件（对齐《异星工厂》Space Age Supercapacitor，堆叠 100）' },
+  'tesla-turret': { name: '特斯拉炮塔', color: '#5a8ae0', mark: 'Tt', desc: '太空时代高级电系炮塔（4×4，吃电力）：发射可连锁跳转的电弧攻击射程内（30 格）多个敌人，无需弹药，伤害随连锁次数递减（对齐《异星工厂》Space Age Tesla turret，数据来自 GAME_DATA）' },
+  'tesla-ammo': { name: '特斯拉弹药', color: '#6a9ae8', mark: 'Ta', desc: '太空时代特斯拉电弧弹药，由超级电容+塑料制得，用于特斯拉炮塔/特斯拉电枪（对齐《异星工厂》Space Age Tesla ammo，堆叠 100）' },
   // ===== 太空时代 Vulcanus 铸造/钨材料链（数据来自 factorio-data 官方，见 GAME_DATA）=====
   'tungsten-ore': { name: '钨矿石', color: '#6a6a72', mark: 'W', desc: '太空时代 Vulcanus 星球金属矿石，须用铸造厂冶炼成钨板（对齐《异星工厂》Space Age Tungsten ore，堆叠 50）' },
   'tungsten-plate': { name: '钨板', color: '#9a9aa8', mark: 'Wp', desc: '太空时代高密度金属板，由钨矿石在铸造厂熔炼制得，是高级装备与超速带的核心原料（对齐《异星工厂》Space Age Tungsten plate）' },
