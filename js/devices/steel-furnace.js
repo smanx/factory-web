@@ -31,7 +31,7 @@ class SteelFurnace extends Furnace {
     this.lit = true;
     this.burnLeft -= dt * fuelConsumptionMult();
     furnaceEmit(this, dt);
-    this.prog += dt / r.time * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 2);
+    this.prog += dt / r.time * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 2) * (this.quality ? qualityMult(this.quality) : 1);
     if (this.prog >= 1) {
       this.prog -= 1;
       this.inp[r.inp] = (this.inp[r.inp] || 0) - (r.inCount || 1);

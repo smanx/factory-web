@@ -88,7 +88,7 @@ class Centrifuge extends Entity {
     const rec = this.recipeObj();
     if (!rec) { this.crafting = false; return; }
     if (this.crafting) {
-      this.prog += dt * 1 * this.moduleSpeedMult() * powerFactor();
+      this.prog += dt * 1 * this.moduleSpeedMult() * powerFactor() * (this.quality ? qualityMult(this.quality) : 1);
       this.spin += dt * 10;
       if (this.prog >= rec.time) {
         if (rec.prob) {
