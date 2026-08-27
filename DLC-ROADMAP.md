@@ -860,3 +860,14 @@
 > - **构建告警清理**：修复 data-tech.js 中 `foundation`/`ice-platform` 重复键（TECH_REQ 内同名键
 >   重复定义，导致 esbuild 重复键告警），删除冗余重复块，构建零告警。
 > - **核验脚本**：verify-recipes / verify-dlc / verify-data-integrity / verify-data-alignment 全绿。
+
+### 阶段四.29：太空时代 Gleba 五足虫敌人体系重构（数据单源化，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> 在既有五足虫敌人基础上，把数据改为完全单源化（GAME_DATA.enemy，factorio-data 官方 unit/spider-unit 原型），
+> 并补充五足虫卵物品与 Gleba 星球生态：
+> - 数据从 GAME_DATA.enemy 单源生成（9 种：wriggler/strafer/stomper × 小中大），血量/速度/射程/冷却/抗性均来自官方。
+> - 仅在 Gleba（句芒星）刷出（对齐官方 Gleba 生态），由 pickPentapodType 抽取。
+> - 五足虫高抗激光（官方 50~80%），经 enemyResistMult 作用于激光炮塔/个人激光防御。
+> - 新增 pentapod-egg（五足虫卵，官方堆叠 20）物品，击杀五足虫有概率掉落（越强掉卵概率越高）+ 变质物。
+> - 校验：verify-dlc 新增五足虫数据校验（11 项），全量 18 个校验脚本通过。

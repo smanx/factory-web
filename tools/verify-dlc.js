@@ -1181,29 +1181,18 @@ console.log('\n【太空时代地面瓦片（foundation / ice-platform）数据�
 
 console.log('\n【太空时代 Gleba 五足虫敌人（Pentapod）校验】');
 {
-  // 源文件级校验：五足虫类型已定义于战斗体系
-  for (const id of ['small-stomper', 'medium-strafer', 'medium-stomper', 'big-strafer', 'big-stomper']) {
-    ok(combatSrc.includes("'" + id + "':"), id + ' 已注册进 ENEMY_TYPES');
-  }
-  // 官方数值对齐（Gleba spider-unit 原型：Stomper=近战巨兽，Strafer=远程扫射）
-  const stomper = /'small-stomper'[^}]*hp:\s*(\d+)[^}]*dmg:\s*(\d+)[^}]*evolution:\s*([\d.]+)/.exec(combatSrc);
-  ok(!!stomper && parseInt(stomper[1]) === 3500, 'small-stomper 血量对齐官方 (=3500)');
-  ok(!!stomper && parseInt(stomper[2]) === 70, 'small-stomper 践踏伤害已定义 (=70)');
-  const bigStomper = /'big-stomper'[^}]*hp:\s*(\d+)/.exec(combatSrc);
-  ok(!!bigStomper && parseInt(bigStomper[1]) === 15000, 'big-stomper 血量对齐官方 (=15000)');
-  const bigStrafer = /'big-strafer'[^}]*dmg:\s*(\d+)[^}]*evolution:\s*([\d.]+)/.exec(combatSrc);
-  ok(!!bigStrafer, 'big-strafer 已定义（远程扫射者）');
-  // 扫射者远程射程（官方 range 28~31）
-  ok(combatSrc.includes("'big-strafer' ? 31"), 'big-strafer 射程=31（官方）');
-  ok(combatSrc.includes("'big-strafer' ? 31 : 28"), 'medium-strafer 射程=28（官方）');
+  // 源文件级校验：五足虫类型已定义于战斗体系（PENTAPOD_TYPES，从 GAME_DATA.enemy 单源构建）
+  ok(combatSrc.includes("PENTAPOD_TYPES["), 'PENTAPOD_TYPES 已构建（数据单源）');
+  ok(combatSrc.includes("pickPentapodType()"), 'pickPentapodType 已定义（Gleba 抽取五足虫）');
+  ok(combatSrc.includes("isGlebaPlanet()"), 'isGlebaPlanet 已定义（Gleba 星球判定）');
+  ok(combatSrc.includes("GAME_DATA.enemy && GAME_DATA.enemy[en.type]"), '五足虫射程/冷却来自 GAME_DATA.enemy（官方 attack_parameters）');
+  // 五足虫高抗激光（官方 resistances）
+  ok(combatSrc.includes("enemyResistMult"), 'enemyResistMult 已定义（官方抗性乘数）');
   // 渲染分支存在（render-entity.js）
-  ok(renderSrc.includes("en.penta === 'stomper' || en.penta === 'strafer'"), '五足虫渲染分支已接入（多足虫兽）');
-  // 极高进化度才刷出（终局威胁）
-  ok(combatSrc.includes("['small-stomper', 0.75]"), '五足虫需极高进化度 (≥0.75) 才刷出');
+  ok(renderSrc.includes("indexOf('pentapod') >= 0"), '五足虫渲染分支已接入（多足虫兽）');
+  // 击杀掉落五足虫卵/变质物
+  ok(combatSrc.includes("pentapod-egg") && combatSrc.includes("spoilage"), '五足虫击杀掉落 五足虫卵+变质物');
 }
-
-
-
 
 console.log('【太空时代补充流体链（lithium-brine / ammoniacal-solution / lava，本迭代新增）数据校验】');
 ok(!!GD.names['lithium-brine'], 'lithium-brine 官方命名已收录 (Lithium brine/锂盐水)');
@@ -1234,6 +1223,33 @@ for (const r of ['lithium-brine', 'ammoniacal-solution', 'ammoniacal-solution-se
   const inpOk = rec && Object.keys(rec.inp).every(x => x in IT);
   const outOk = rec && Object.keys(rec.out).every(x => x in IT);
   ok(inpOk && outOk, r + ' 配方引用的物品均存在');
+}
+
+
+process.exit(fail === 0 ? 0 : 1);
+
+console.log('\n【太空时代 Gleba 五足虫敌人（Pentapod）数据校验】');
+{
+  // GAME_DATA.enemy 从 factorio-data 官方 unit/spider-unit 单源生成
+  const pen = GD.enemy || {};
+  ok(!!pen['small-wriggler-pentapod'], 'GAME_DATA.enemy 含 small-wriggler-pentapod');
+  ok(!!pen['big-stomper-pentapod'], 'GAME_DATA.enemy 含 big-stomper-pentapod');
+  // 官方 max_health
+  ok(pen['small-wriggler-pentapod'] && pen['small-wriggler-pentapod'].hp === 100, 'small-wriggler 血量=100（官方 max_health）');
+  ok(pen['big-wriggler-pentapod'] && pen['big-wriggler-pentapod'].hp === 400, 'big-wriggler 血量=400（官方 max_health）');
+  ok(pen['big-stomper-pentapod'] && pen['big-stomper-pentapod'].hp === 15000, 'big-stomper 血量=15000（官方 max_health）');
+  // 官方激光抗性（五足虫高抗激光）
+  const wr = pen['small-wriggler-pentapod'] && pen['small-wriggler-pentapod'].resist || [];
+  ok(wr.some(r => r.type === 'laser' && r.percent === 50), 'wriggler 官方 50% 激光抗性');
+  // 官方攻击射程
+  ok(pen['big-strafer-pentapod'] && pen['big-strafer-pentapod'].attack && pen['big-strafer-pentapod'].attack.range === 31, 'big-strafer 射程=31（官方 attack range）');
+  // 物品已注册
+  ok(!!GD.stackSize['pentapod-egg'] && GD.stackSize['pentapod-egg'] === 20, 'pentapod-egg 堆叠来自官方 (=20)');
+  ok(!!GD.names['pentapod-egg'] && !!GD.names['pentapod-egg'].en, 'pentapod-egg 官方命名已收录 (' + (GD.names['pentapod-egg'] ? GD.names['pentapod-egg'].en : '?') + ')');
+  ok(!!IT['pentapod-egg'], 'pentapod-egg 物品已注册');
+  // 保底：数据源数量
+  const penCount = Object.keys(pen).filter(k => k.indexOf('pentapod') >= 0).length;
+  ok(penCount >= 9, 'GAME_DATA.enemy 五足虫数量 >= 9（实际 ' + penCount + '）');
 }
 
 

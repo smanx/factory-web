@@ -244,7 +244,7 @@ function updatePersonalLaserDefense(dt) {
   // 消耗个人电力；电力不足则不开火
   if (!drainPersonalPower(PERSONAL_LASER_COST)) return false;
   // 对目标造成伤害（能量武器分类无限科技加成）
-  const laserDmg = Math.round(PERSONAL_LASER_DMG * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('energy') : 1));
+  const laserDmg = Math.round(PERSONAL_LASER_DMG * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('energy') : 1) * (typeof enemyResistMult === 'function' ? enemyResistMult(target, 'laser') : 1));
   target.hp -= laserDmg;
   if (target.hp <= 0) target.dead = true;
   G.personalLaserT = PERSONAL_LASER_RATE;

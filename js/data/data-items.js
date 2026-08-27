@@ -309,7 +309,7 @@ const ITEMS = {
   'jellynut-seed': { name: '果冻果种子', color: '#a04870', mark: 'Js', desc: '太空时代 Gleba 作物种子（堆叠 10），用于种植果仁（对齐《异星工厂》Space Age Jellynut seed，堆叠 10）' },
   'jelly': { name: '果冻', color: '#e860b0', mark: 'J', desc: '太空时代 Gleba 生物质中间产物，由果仁加工制得，是高级生物流与火箭燃料的重要原料（对齐《异星工厂》Space Age Jelly，堆叠 100）' },
   'biter-egg': { name: '异虫卵', color: '#c0a058', mark: '蛋', desc: '太空时代 Gleba 生物资源（堆叠 100）：由生化炉培育产出，用于制造营养素、高级生物质与多种太空时代装备/科研（对齐《异星工厂》Space Age Biter egg）' },
-  'pentapod-egg': { name: '五足虫卵', color: '#b06a5a', mark: '虫蛋', desc: '太空时代 Gleba 星球高级生物资源（堆叠 20）：由生化炉培育繁殖产出，是农业科研包与生化炉的官方原料（对齐《异星工厂》Space Age Pentapod egg，官方配方 1虫蛋+30营养素+60水→2虫蛋）' },
+  'pentapod-egg': { name: '五足虫卵', color: '#b06a5a', mark: '虫蛋', desc: '太空时代 Gleba 星球高级生物资源（堆叠 20）：由生化炉培育繁殖产出，击杀 Gleba 五足虫亦有概率掉落，是农业科研包与生化炉的官方原料（对齐《异星工厂》Space Age Pentapod egg，官方配方 1虫蛋+30营养素+60水→2虫蛋，堆叠 20）' },
   'tree-seed': { name: '树种子', color: '#6a8f5a', mark: '种', desc: '太空时代植树造林种子（堆叠 10）：由 2 木材在组装机合成（2s，官方 Space Age Tree seed 配方），手持树种种在草地上可重新长出一棵树，用于绿化/吸收污染（对齐《异星工厂》Space Age Tree seeding，官方配方 2木材→1树种子）' },
   'captive-biter-spawner': { name: '虫巢孵化器', color: '#7a4a8a', mark: '巢', desc: '太空时代可控的虫巢孵化器（堆叠 1，占地 5×5）：捕获的虫巢经驯化后可持续繁育异虫卵，需定期喂养生物流维持圈养（对齐《异星工厂》Space Age Captive biter spawner）' },
   'capture-robot-rocket': { name: '捕获者火箭弹', color: '#c0a058', mark: '捕', desc: '太空时代捕获机器人火箭弹（堆叠 10）：由火箭筒发射，锁定并捕获目标虫巢，转化为虫巢孵化器（对齐《异星工厂》Space Age Capture robot rocket）' },

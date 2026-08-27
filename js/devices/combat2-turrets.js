@@ -60,7 +60,7 @@ class LaserTurret extends CircuitNode {
     this.facing = Math.atan2(best.y - (this.y + this.h / 2) * TILE, best.x - (this.x + this.w / 2) * TILE);
     if (this.cooldown > 0) return;
     this.cooldown = LASER_FIRE_RATE;
-    best.hp -= Math.round(LASER_DMG * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('energy') : 1));
+    best.hp -= Math.round(LASER_DMG * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('energy') : 1) * (typeof enemyResistMult === 'function' ? enemyResistMult(best, 'laser') : 1));
     this.beamT = 0.15;
     (G.bullets || (G.bullets = [])).push({
       x: (this.x + this.w / 2) * TILE, y: (this.y + this.h / 2) * TILE,

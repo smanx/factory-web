@@ -20,18 +20,74 @@ const ENEMY_TYPES = {
   // 终局变种（对齐《异星工厂》Behemoth 巨兽级，进化度 0.9+）：属性最强，需最先进火力应对
   'behemoth-biter':   { name: '巨兽甲虫', hp: 1200, speed: 1.45,size: 19, dmg: 56, color: '#3a1018', kind: 'melee',   xp: 16, evolution: 0.9 },
   'behemoth-spitter': { name: '巨兽吐痰虫', hp: 900, speed: 1.45,size: 14, dmg: 48, color: '#5a3a1a', kind: 'ranged', xp: 14, evolution: 0.92 },
-  'behemoth-worm':    { name: '巨兽蠕虫', hp: 1500, speed: 0,  size: 20, dmg: 55, color: '#2e1c14', kind: 'ranged', xp: 22, evolution: 0.95 },
-  // ===== 太空时代 Gleba 五足虫（Pentapod，Space Age 终局敌人）=====
-  // 对齐《异星工厂》Space Age：Gleba 星球专属的大型多足虫兽。
-  // Stomper（践踏者）= 近战巨兽，血量极高、践踏撕咬（官方 spider-unit 原型，碰撞盒 ±1.35~±2.4 → 占地 3~5 格）
-  // Strafer（扫射者）= 远程喷吐酸性射流，射程极远（官方 range 28~31），冷却 2s
-  // 均需极高进化度（0.75+）才刷出，是终局基地防御的终极考验。
-  'small-stomper': { name: '践踏者', hp: 3500, speed: 1.15, size: 18, dmg: 70, color: '#7a2a3a', kind: 'melee', xp: 30, evolution: 0.75, foot: 3, penta: 'stomper' },
-  'medium-strafer': { name: '扫射者', hp: 1400, speed: 1.4, size: 16, dmg: 42, color: '#a85a2a', kind: 'ranged', xp: 26, evolution: 0.8, foot: 3, penta: 'strafer' },
-  'medium-stomper': { name: '重践踏者', hp: 8000, speed: 1.0, size: 22, dmg: 120, color: '#5a1a2a', kind: 'melee', xp: 42, evolution: 0.86, foot: 4, penta: 'stomper' },
-  'big-strafer': { name: '巨扫射者', hp: 2400, speed: 1.35, size: 20, dmg: 65, color: '#d07a2a', kind: 'ranged', xp: 38, evolution: 0.92, foot: 4, penta: 'strafer' },
-  'big-stomper': { name: '巨践踏者', hp: 15000, speed: 0.85, size: 28, dmg: 200, color: '#3a0e18', kind: 'melee', xp: 60, evolution: 0.97, foot: 5, penta: 'stomper' }
+  'behemoth-worm':    { name: '巨兽蠕虫', hp: 1500, speed: 0,  size: 20, dmg: 55, color: '#2e1c14', kind: 'ranged', xp: 22, evolution: 0.95 }
 };
+// ===== 太空时代 Gleba 五足虫敌人（对齐《异星工厂》Space Age Pentapod） =====
+// 数据（血量/速度/射程/抗性）来源：GAME_DATA.enemy（factorio-data 官方 unit/spider-unit 原型，经
+// tools/generate-game-data.js 单源生成），HP 按官方相对比例接入项目战斗平衡模型。
+// 五足虫为太空时代（Gleba/句芒星）的敌对生态：小型 wriggler 近战虫、远程 strafer、
+// 以及巨型 stomper（近身酸液喷吐，血量/射程/伤害随体型递增）。
+const GLEBA_PENTAPODS = [
+  ['small-wriggler-pentapod',  500,  2.2, 8,  7,  '#7ac24a', 'melee', 0.30, 3],
+  ['medium-wriggler-pentapod', 900,  2.0, 11, 14, '#5f9c3a', 'melee', 0.45, 4],
+  ['big-wriggler-pentapod',    1500, 1.9, 14, 26, '#4a7c2a', 'melee', 0.70, 6],
+  ['small-strafer-pentapod',   2500, 1.6, 13, 34, '#9a6a3a', 'ranged',0.55, 8],
+  ['medium-strafer-pentapod',  4500, 1.5, 16, 52, '#7a522a', 'ranged',0.75, 10],
+  ['big-strafer-pentapod',     8000, 1.4, 20, 76, '#5a3a1a', 'ranged',0.90, 13],
+  ['small-stomper-pentapod',   12000,1.35,22, 110,'#6a5a2a', 'stomp', 0.80, 16],
+  ['medium-stomper-pentapod',  22000,1.3, 28, 170,'#4f4220', 'stomp', 0.93, 20],
+  ['big-stomper-pentapod',     40000,1.2, 34, 260,'#3a3018', 'stomp', 0.97, 26]
+];
+// 由 GAME_DATA.enemy（官方数据）构建五足虫类型表；官方缺失的原型跳过（数据单源）
+const PENTAPOD_TYPES = {};
+(function buildPentapods(){
+  for (const [id, hp, speed, size, dmg, color, kind, evo, xp] of GLEBA_PENTAPODS) {
+    const od = GAME_DATA.enemy && GAME_DATA.enemy[id];
+    if (!od) continue;                    // 官方无此原型 → 不启用
+    PENTAPOD_TYPES[id] = {
+      name: { 'small-wriggler-pentapod':'小五足虫','medium-wriggler-pentapod':'中五足虫','big-wriggler-pentapod':'大五足虫',
+              'small-strafer-pentapod':'小酸液射手','medium-strafer-pentapod':'中酸液射手','big-strafer-pentapod':'大酸液射手',
+              'small-stomper-pentapod':'小蹂躏者','medium-stomper-pentapod':'中蹂躏者','big-stomper-pentapod':'大蹂躏者' }[id] || '五足虫',
+      hp, speed, size, dmg, color, kind,
+      xp, evolution: evo,
+      attack: od.attack,                  // 官方攻击参数（射程/冷却/伤害倍率）
+      resist: od.resist || []             // 官方抗性（如五足虫高抗激光）
+    };
+  }
+})();
+// 当前是否为 Gleba（句芒）星：五足虫生态的主场（官方 Gleba 敌人）
+function isGlebaPlanet() {
+  try { return (typeof planetId === 'function') && planetId() === 'gleba'; }
+  catch (e) { return false; }
+}
+// 五足虫进化度权重：达到对应进化度后加入刷出池，权重随进化度增大
+function pickPentapodType() {
+  const evo = evolutionFactor();
+  const ids = Object.keys(PENTAPOD_TYPES);
+  const weights = [];
+  for (const id of ids) {
+    const d = PENTAPOD_TYPES[id];
+    if (evo >= d.evolution) weights.push([id, 6 + Math.round((evo - d.evolution) * 60)]);
+  }
+  if (weights.length === 0) return 'small-wriggler-pentapod';
+  let total = 0;
+  for (const [, w] of weights) total += w;
+  let r = Math.random() * total;
+  for (const [k, w] of weights) { r -= w; if (r <= 0) return k; }
+  return weights[0][0];
+}
+// 敌人抗性乘数（对齐《异星工厂》resistances）：五足虫高抗激光（官方 percent），
+// 该伤害类别伤害乘以 (1 - percent/100)。无抗性类别返回 1。
+function enemyResistMult(en, category) {
+  if (!en || !en.type) return 1;
+  const resist = PENTAPOD_TYPES[en.type] && PENTAPOD_TYPES[en.type].resist;
+  if (!resist || resist.length === 0) return 1;
+  for (const r of resist) {
+    if (r.type === category && r.percent) return Math.max(0.05, 1 - r.percent / 100);
+  }
+  return 1;
+}
+
 
 // ===== 敌人进化度系统（对齐《异星工厂》Evolution factor） =====
 // 进化度 0~1，原版由三大来源共同推进：
@@ -66,10 +122,18 @@ function scaledDef(def) {
   const mult = 1 + evo * 1.2;
   return { ...def, hp: Math.round(def.hp * mult), dmg: Math.round(def.dmg * mult) };
 }
+// 取敌人类型定义：优先普通敌人表 ENEMY_TYPES，其次五足虫表 PENTAPOD_TYPES（Gleba 星）。
+function enemyDef(t) {
+  if (ENEMY_TYPES[t]) return ENEMY_TYPES[t];
+  if (PENTAPOD_TYPES[t]) return PENTAPOD_TYPES[t];
+  return ENEMY_TYPES['small-biter'];
+}
 
 // 按权重随机出一个敌人类型（前期以小虫为主，后期更强）。
 // 权重随进化度提升而向更强变种倾斜；进化度不足的变种不会刷出。
 function pickEnemyType() {
+  // 太空时代 Gleba（句芒）星：五足虫生态主场，仅刷五足虫（对齐《异星工厂》Gleba 敌人）
+  if (isGlebaPlanet()) return pickPentapodType();
   const evo = evolutionFactor();
   const base = [
     ['small-biter', 60],
@@ -86,13 +150,7 @@ function pickEnemyType() {
     // 终局 Behemoth 巨兽级（进化度 0.9+）
     ['behemoth-biter', 0.9],
     ['behemoth-spitter', 0.92],
-    ['behemoth-worm', 0.95],
-    // 太空时代 Gleba 五足虫（极高进化度终局威胁）
-    ['small-stomper', 0.75],
-    ['medium-strafer', 0.8],
-    ['medium-stomper', 0.86],
-    ['big-strafer', 0.92],
-    ['big-stomper', 0.97]
+    ['behemoth-worm', 0.95]
   ];
   const weights = base.map(([k, w]) => [k, w]);
   for (const [k, thr] of advanced) {
@@ -338,7 +396,7 @@ function spawnEnemies(dt) {
     }
   }
   const t = pickEnemyType();
-  const def = scaledDef(ENEMY_TYPES[t]);
+  const def = scaledDef(enemyDef(t));
   // 记录敌人所属虫巢（home）坐标：默认围绕其游荡，污染覆盖其虫巢后才转为进攻（对齐《异星工厂》）。
   const home = src ? { x: src.x, y: src.y } : null;
   G.enemies.push({
@@ -346,7 +404,6 @@ function spawnEnemies(dt) {
     hp: def.hp, maxhp: def.hp, dead: false, dir: 0,
     type: t, kind: def.kind, speed: def.speed, size: def.size, dmg: def.dmg,
     color: def.color, attackT: 0, fireT: 0,
-    penta: def.penta, foot: def.foot,
     home: home, wanderT: Math.random() * 2, aggro: false
   });
 }
@@ -370,7 +427,7 @@ function composeWave(px, py) {
   const n = 5 + Math.round(evo * 10);   // 波次敌人总数（随进化度增长）
   for (let i = 0; i < n; i++) {
     const t = pickEnemyType();
-    const def = scaledDef(ENEMY_TYPES[t]);
+    const def = scaledDef(enemyDef(t));
     // 在巢穴/玩家远处随机散布，保证整波成面推进而非重叠成一点
     const ang = Math.random() * Math.PI * 2;
     const rad = 4 + Math.random() * 4;
@@ -379,7 +436,6 @@ function composeWave(px, py) {
       hp: def.hp, maxhp: def.hp, dead: false, dir: 0,
       type: t, kind: def.kind, speed: def.speed, size: def.size, dmg: def.dmg,
       color: def.color, attackT: 0, fireT: 0,
-      penta: def.penta, foot: def.foot,
       wave: true   // 标记为进攻波敌人
     });
   }
@@ -639,13 +695,14 @@ function updateEnemies(dt) {
     }
     const dx = p.x - en.x, dy = p.y - en.y;
     const d = Math.hypot(dx, dy) / TILE;   // 距离（格）
-    if (en.kind === 'ranged') {
+    if (en.kind === 'ranged' || en.kind === 'stomp') {
       // 远程敌人：与玩家保持距离，射程内间歇性吐痰
-      // 五足虫扫射者（strafer）射程极远（官方 range 28~31）、冷却 2s，远超普通吐痰虫
+      // 太空时代五足虫 strafer/stomper 的射程/冷却来自 GAME_DATA.enemy（官方 attack_parameters）
+      const pentapodAtk = en.type && en.type.indexOf('pentapod') >= 0 ? (GAME_DATA.enemy && GAME_DATA.enemy[en.type]) : null;
       const isWorm = en.type === 'worm' || en.type === 'big-worm' || en.type === 'behemoth-worm';
-      const isStrafer = en.penta === 'strafer';
-      const range = isStrafer ? (en.type === 'big-strafer' ? 31 : 28) : (isWorm ? (en.type === 'behemoth-worm' ? 14 : (en.type === 'big-worm' ? 12 : 10)) : 8);
-      const keep = isStrafer ? 12 : (isWorm ? (en.type === 'behemoth-worm' ? 9 : (en.type === 'big-worm' ? 8 : (en.type === 'worm' ? 7 : 5))) : 5);
+      const isStomper = en.kind === 'stomp';
+      const range = pentapodAtk && pentapodAtk.attack ? pentapodAtk.attack.range : (isWorm ? (en.type === 'behemoth-worm' ? 14 : (en.type === 'big-worm' ? 12 : 10)) : 8);
+      const keep = isStomper ? Math.min(range, 4) : (pentapodAtk && pentapodAtk.attack ? Math.min(range, 6) : (en.type === 'behemoth-worm' ? 9 : (en.type === 'big-worm' ? 8 : (en.type === 'worm' ? 7 : 5))));
       // 玩家在射程内则以玩家为目标；否则攻击射程内的建筑（对齐《异星工厂》：远程虫群也会破坏基地）
       let fireTarget = null;
       if (d <= range) fireTarget = p;
@@ -663,17 +720,20 @@ function updateEnemies(dt) {
       } else if (d < keep) {
         moveEnemy(en, -dx / d, -dy / d, en.speed * dt * slow);
       }
-      // 吐痰（投射物）；喷火虫/巨型蠕虫吐火球（命中造成持续灼烧）；扫射者吐紫色酸性射流
+      // 吐痰（投射物）；喷火虫/巨型蠕虫吐火球（命中造成持续灼烧）
       if (en.fireT <= 0 && fireTarget) {
-        en.fireT = isStrafer ? 2.0 : (isWorm ? (en.type === 'behemoth-worm' ? 2.6 : 2.2) : 1.6);
+        // 五足虫 strafer/stomper 的喷吐冷却来自官方 attack_parameters.cooldown（GAME_DATA.enemy）
+        const pentCd = pentapodAtk && pentapodAtk.attack && pentapodAtk.attack.cooldown;
+        en.fireT = pentCd > 0 ? pentCd : (isWorm ? (en.type === 'behemoth-worm' ? 2.6 : 2.2) : 1.6);
         en.lungeT = 0.22;   // 喷吐动作帧
         if (typeof playSfx === 'function') playSfx('spit');   // 远程敌人喷吐音效
         const fire = en.type === 'fire-spitter' || en.type === 'big-worm' || en.type === 'behemoth-worm';
+        const pent = en.type && en.type.indexOf('pentapod') >= 0;
         (G.enemyProjectiles || (G.enemyProjectiles = [])).push({
           x: en.x, y: en.y - en.size, tx: fireTarget.x, ty: fireTarget.y, speed: 3.2, dmg: en.dmg, t: 0,
-          fire: fire, color: isStrafer ? '#b06aff' : (fire ? '#ff8a2a' : '#9ac04a'),
-          // 普通喷吐虫的酸液命中地面会留下酸液洼地（对齐《异星工厂》Spitter acid）；扫射者同样留紫色酸洼
-          acid: !fire || isStrafer,
+          fire: fire, color: fire ? '#ff8a2a' : (pent ? '#c8e05a' : '#9ac04a'),
+          // 五足虫 strafer/stomper 的酸液弹命中地面留下酸性洼地（对齐《异星工厂》Gleba 酸液）
+          acid: pent || !fire,
           buildTarget: fireTarget !== p ? fireTarget : undefined
         });
       }
@@ -791,12 +851,16 @@ function dropEnemyLoot(e) {
   // 巢穴被摧毁掉落更多（含少量铀矿，助力核能）；普通敌人掉 1-2 块矿石
   const isSpawner = e.kind === 'spawner';
   if (!G.lootDrops) G.lootDrops = [];
-  const n = isSpawner ? 3 + ((Math.random() * 3) | 0) : 1 + ((Math.random() * 2) | 0);
+  const isPentapod = e.type && e.type.indexOf('pentapod') >= 0;
+  const n = isSpawner ? 3 + ((Math.random() * 3) | 0) : (isPentapod ? 2 + ((Math.random() * 2) | 0) : 1 + ((Math.random() * 2) | 0));
   for (let i = 0; i < n; i++) {
     // 巢穴约 20% 概率掉铀矿，其余掉铁矿/铜矿/煤/石头；普通敌人随机一种基础矿
     let ore;
     const r = Math.random();
-    if (isSpawner && r < 0.2) ore = 'uranium-ore';
+    if (isPentapod) {
+      // 太空时代 Gleba 五足虫：掉落变质物（官方有机敌人掉落）与五足虫卵（对齐官方，越强掉的越多）
+      ore = (r < (e.type.indexOf('stomper') >= 0 ? 0.5 : 0.3)) ? 'pentapod-egg' : 'spoilage';
+    } else if (isSpawner && r < 0.2) ore = 'uranium-ore';
     else if (isSpawner && r < 0.35) ore = 'stone';
     else {
       const pool = ['iron-ore', 'copper-ore', 'coal', 'stone'];

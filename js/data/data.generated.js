@@ -6365,5 +6365,220 @@ const GAME_DATA = {
   "sulfuric-acid-barrel": "intermediate-products",
   "fluoroketone-cold-barrel": "intermediate-products",
   "fluoroketone-hot-barrel": "intermediate-products"
+ },
+ "enemy": {
+  "small-wriggler-pentapod": {
+   "hp": 100,
+   "speed": 9.600000000000001,
+   "kind": "melee",
+   "evo": 0.3,
+   "size": 8,
+   "color": "#7ac24a",
+   "attack": {
+    "type": "projectile",
+    "range": 1.08,
+    "cooldown": 0.43333333333333335
+   },
+   "resist": [
+    {
+     "type": "laser",
+     "percent": 50
+    }
+   ]
+  },
+  "medium-wriggler-pentapod": {
+   "hp": 200,
+   "speed": 10.8,
+   "kind": "melee",
+   "evo": 0.45,
+   "size": 11,
+   "color": "#5f9c3a",
+   "attack": {
+    "type": "projectile",
+    "range": 1.4400000000000002,
+    "cooldown": 0.43333333333333335
+   },
+   "resist": [
+    {
+     "type": "laser",
+     "percent": 50
+    }
+   ]
+  },
+  "big-wriggler-pentapod": {
+   "hp": 400,
+   "speed": 12,
+   "kind": "melee",
+   "evo": 0.7,
+   "size": 14,
+   "color": "#4a7c2a",
+   "attack": {
+    "type": "projectile",
+    "range": 1.8,
+    "cooldown": 0.43333333333333335
+   },
+   "resist": [
+    {
+     "type": "laser",
+     "percent": 50
+    }
+   ]
+  },
+  "small-strafer-pentapod": {
+   "hp": 800,
+   "speed": 0,
+   "kind": "ranged",
+   "evo": 0.55,
+   "size": 13,
+   "color": "#9a6a3a",
+   "attack": {
+    "type": "projectile",
+    "range": 25,
+    "cooldown": 2
+   },
+   "resist": [
+    {
+     "type": "physical",
+     "percent": 10
+    },
+    {
+     "type": "laser",
+     "percent": 50
+    }
+   ]
+  },
+  "medium-strafer-pentapod": {
+   "hp": 1400,
+   "speed": 0,
+   "kind": "ranged",
+   "evo": 0.75,
+   "size": 16,
+   "color": "#7a522a",
+   "attack": {
+    "type": "projectile",
+    "range": 28,
+    "cooldown": 2
+   },
+   "resist": [
+    {
+     "type": "physical",
+     "percent": 10
+    },
+    {
+     "type": "laser",
+     "percent": 50
+    }
+   ]
+  },
+  "big-strafer-pentapod": {
+   "hp": 2400,
+   "speed": 0,
+   "kind": "ranged",
+   "evo": 0.9,
+   "size": 20,
+   "color": "#5a3a1a",
+   "attack": {
+    "type": "projectile",
+    "range": 31,
+    "cooldown": 2
+   },
+   "resist": [
+    {
+     "type": "physical",
+     "percent": 10
+    },
+    {
+     "type": "laser",
+     "percent": 50
+    }
+   ]
+  },
+  "small-stomper-pentapod": {
+   "hp": 3500,
+   "speed": 0,
+   "kind": "stomp",
+   "evo": 0.8,
+   "size": 22,
+   "color": "#6a5a2a",
+   "attack": {
+    "type": "stream",
+    "range": 5.8500000000000005,
+    "minRange": 3.6,
+    "cooldown": 1,
+    "dmgMod": 0.5
+   },
+   "resist": [
+    {
+     "type": "physical",
+     "percent": 50
+    },
+    {
+     "type": "laser",
+     "percent": 80
+    },
+    {
+     "type": "impact",
+     "percent": 80
+    }
+   ]
+  },
+  "medium-stomper-pentapod": {
+   "hp": 8000,
+   "speed": 0,
+   "kind": "stomp",
+   "evo": 0.93,
+   "size": 28,
+   "color": "#4f4220",
+   "attack": {
+    "type": "stream",
+    "range": 7.8,
+    "minRange": 4.8,
+    "cooldown": 1,
+    "dmgMod": 1
+   },
+   "resist": [
+    {
+     "type": "physical",
+     "percent": 50
+    },
+    {
+     "type": "laser",
+     "percent": 80
+    },
+    {
+     "type": "impact",
+     "percent": 80
+    }
+   ]
+  },
+  "big-stomper-pentapod": {
+   "hp": 15000,
+   "speed": 0,
+   "kind": "stomp",
+   "evo": 0.97,
+   "size": 34,
+   "color": "#3a3018",
+   "attack": {
+    "type": "stream",
+    "range": 10.4,
+    "minRange": 6.4,
+    "cooldown": 1,
+    "dmgMod": 1.6
+   },
+   "resist": [
+    {
+     "type": "physical",
+     "percent": 50
+    },
+    {
+     "type": "laser",
+     "percent": 80
+    },
+    {
+     "type": "impact",
+     "percent": 80
+    }
+   ]
+  }
  }
 };

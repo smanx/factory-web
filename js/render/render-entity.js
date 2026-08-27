@@ -562,58 +562,50 @@ function drawEnemies(ctx) {
         const a = i * Math.PI / 2 + G.time * 0.5;
         ctx.beginPath(); ctx.arc(en.x + Math.cos(a) * size * 0.7, en.y + Math.sin(a) * size * 0.7, 2, 0, 7); ctx.fill();
       }
-    } else if (en.penta === 'stomper' || en.penta === 'strafer') {
-      // 太空时代 Gleba 五足虫（Pentapod）：大型多足虫兽
-      // Stomper（践踏者）= 粗壮短腿、高耸甲壳躯干（近战巨兽）
-      // Strafer（扫射者）= 修长多条腿、昂首喷酸（远程），攻击帧向前方耸动
+    } else if (en.type && en.type.indexOf('pentapod') >= 0) {
+      // 太空时代五足虫（Gleba）：身体呈椭球形、带分段甲壳纹路与六足；蹂躏者(stomp)更庞大呈椭圆甲壳
+      const isStomper = en.kind === 'stomp';
       const a = Math.atan2(G.player.y - en.y, G.player.x - en.x);
-      const lunge = (en.lungeT || 0) > 0 ? Math.min(1, (en.lungeT || 0) / 0.3) : 0;
-      const isStrafer = en.penta === 'strafer';
-      const walk = Math.sin(G.time * 6 + en.x) * (isStrafer ? 2 : 1.5);
       ctx.save();
       ctx.translate(en.x, en.y + bob);
-      ctx.rotate(a * 0.15 + walk * 0.02);
-      // 腿（六条）：向两侧张开，走动摆动
-      ctx.strokeStyle = en.color;
-      ctx.lineWidth = 3;
-      const legLen = size * 1.15, legSpread = size * 0.85;
-      for (let i = -1; i <= 1; i++) {
-        const sway = Math.sin(G.time * 5 + i * 2.1 + en.x) * 2.5;
-        ctx.beginPath();
-        ctx.moveTo(i * size * 0.3, 0);
-        ctx.lineTo(i * legSpread + sway * 0.5, legLen);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(i * size * 0.3, 0);
-        ctx.lineTo(-i * legSpread * 0.6 + sway, legLen * 0.8);
-        ctx.stroke();
-      }
-      // 躯干（高耸甲壳）
-      ctx.fillStyle = en.color;
-      ctx.strokeStyle = 'rgba(20,0,10,0.6)';
-      ctx.lineWidth = 2;
+      ctx.rotate(a);
+      ctx.fillStyle = color;
+      ctx.strokeStyle = '#3a2a12';
+      ctx.lineWidth = 2.5;
+      // 主体（椭圆甲壳）
       ctx.beginPath();
-      ctx.ellipse(0, 0, size * 0.78, size * (isStrafer ? 0.42 : 0.55), 0, 0, 7);
+      ctx.ellipse(0, 0, size * (isStomper ? 1.15 : 0.95), size * 0.72, 0, 0, 7);
       ctx.fill(); ctx.stroke();
-      // 甲壳高拱/壳脊
-      ctx.fillStyle = isStrafer ? 'rgba(0,0,0,0.18)' : 'rgba(0,0,0,0.28)';
+      // 六足（腿部：两侧各 3 条）
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
-      ctx.ellipse(0, -size * 0.15, size * 0.6, size * (isStrafer ? 0.2 : 0.3), 0, 0, 7);
-      ctx.fill();
-      // 眼睛（朝玩家方向，攻击帧瞪大）
-      const look = Math.cos(a) * size * 0.35, lookY = Math.sin(a) * size * 0.3;
-      ctx.fillStyle = '#ffe066';
-      ctx.beginPath(); ctx.arc(look, lookY, isStrafer ? 3.5 : 4.5, 0, 7); ctx.fill();
-      ctx.fillStyle = '#1a0a0a';
-      ctx.beginPath(); ctx.arc(look + Math.cos(a) * 1.4, lookY + Math.sin(a) * 1.4, 1.8, 0, 7); ctx.fill();
-      // 攻击帧：前肢/口器向前扑（扫射者昂首喷酸）
-      if (lunge > 0) {
-        ctx.fillStyle = isStrafer ? '#c8a04a' : '#e0402a';
-        ctx.beginPath();
-        ctx.arc(Math.cos(a) * size * (0.9 + lunge * 0.2), Math.sin(a) * size * 0.6, size * 0.22, 0, 7);
-        ctx.fill();
+      for (let i = -1; i <= 1; i++) {
+        const bx = i * size * 0.5;
+        // 左上腿
+        ctx.moveTo(bx, -size * 0.3);
+        ctx.lineTo(bx + size * 0.7, -size * 0.85);
+        ctx.moveTo(bx, size * 0.3);
+        ctx.lineTo(bx + size * 0.7, size * 0.85);
       }
+      ctx.stroke();
+      // 头节 + 眼睛（朝玩家）
+      ctx.fillStyle = '#d8e8a0';
+      ctx.beginPath(); ctx.arc(size * 0.75, -size * 0.18, size * 0.16, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(size * 0.75, size * 0.18, size * 0.16, 0, 7); ctx.fill();
+      ctx.fillStyle = '#1a2a1a';
+      ctx.beginPath(); ctx.arc(size * 0.85, -size * 0.18, size * 0.07, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(size * 0.85, size * 0.18, size * 0.07, 0, 7); ctx.fill();
       ctx.restore();
+      // 蹂躏者额外显示头顶甲壳冠（凸起的棱角）
+      if (isStomper) {
+        ctx.fillStyle = '#2a2010';
+        ctx.beginPath();
+        ctx.moveTo(en.x - size * 0.7, en.y + bob - size * 0.6);
+        ctx.lineTo(en.x, en.y + bob - size * 1.0);
+        ctx.lineTo(en.x + size * 0.7, en.y + bob - size * 0.6);
+        ctx.closePath(); ctx.fill();
+      }
     } else if (en.type === 'worm' || en.type === 'big-worm' || en.type === 'behemoth-worm') {
       ctx.beginPath();
       ctx.ellipse(en.x, en.y + bob, size, size * 0.5, 0, 0, 7);

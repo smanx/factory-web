@@ -1065,6 +1065,58 @@ for (const pid of projectItems) {
   // 其余（流体/环境/信号等非 5 大 Tab）不写入，由前端按无归类兜底处理
 }
 
+// ================= 敌人（Gleba 五足虫）单源化 =================
+// 从 factorio-data 官方 unit / spider-unit 原型提取太空时代五足虫（Pentapod）敌方数据。
+// 官方数值：max_health、movement_speed（格/tick）、attack_parameters（射程/冷却/伤害倍率/类型）。
+// 项目战斗模型以「格/秒」表示速度（官方格/tick × 60），HP 按其官方相对比例接入游戏平衡模型。
+const enemy = {};
+{
+  const PENTAPOD_UNITS = {
+    'small-wriggler-pentapod':  { kind: 'melee',    evo: 0.30, size: 8,  color: '#7ac24a' },
+    'medium-wriggler-pentapod': { kind: 'melee',    evo: 0.45, size: 11, color: '#5f9c3a' },
+    'big-wriggler-pentapod':    { kind: 'melee',    evo: 0.70, size: 14, color: '#4a7c2a' },
+  };
+  const PENTAPOD_SPIDERS = {
+    'small-strafer-pentapod':  { evo: 0.55, size: 13, color: '#9a6a3a', kind: 'ranged' },
+    'medium-strafer-pentapod': { evo: 0.75, size: 16, color: '#7a522a', kind: 'ranged' },
+    'big-strafer-pentapod':    { evo: 0.90, size: 20, color: '#5a3a1a', kind: 'ranged' },
+    'small-stomper-pentapod':  { evo: 0.80, size: 22, color: '#6a5a2a', kind: 'stomp'  },
+    'medium-stomper-pentapod': { evo: 0.93, size: 28, color: '#4f4220', kind: 'stomp'  },
+    'big-stomper-pentapod':    { evo: 0.97, size: 34, color: '#3a3018', kind: 'stomp'  },
+  };
+  const apply = (id, proto, meta) => {
+    if (!proto) return;
+    const ap = proto.attack_parameters || {};
+    enemy[id] = {
+      hp: proto.max_health,
+      // 官方 movement_speed 为格/tick；项目以格/秒，×60。stomper/strafer 用 spider 的 speed（如有）
+      speed: typeof proto.movement_speed === 'number' ? proto.movement_speed * 60 : 0,
+      kind: meta.kind,
+      evo: meta.evo,
+      size: meta.size,
+      color: meta.color,
+      attack: {
+        type: ap.type || 'projectile',
+        range: typeof ap.range === 'number' ? ap.range : (ap.range_mode ? 4 : 1),
+        minRange: ap.min_attack_distance,
+        cooldown: typeof ap.cooldown === 'number' ? ap.cooldown / 60 : 1,
+        dmgMod: ap.damage_modifier,
+      },
+      resist: proto.resistances ? Object.keys(proto.resistances).map(k => {
+        const r = proto.resistances[k]; return { type: r.type, percent: r.percent };
+      }) : [],
+    };
+  };
+  for (const [id, meta] of Object.entries(PENTAPOD_UNITS)) apply(id, raw.unit && raw.unit[id], meta);
+  for (const [id, meta] of Object.entries(PENTAPOD_SPIDERS)) apply(id, raw['spider-unit'] && raw['spider-unit'][id], meta);
+  // 移除未命中官方原型的项（保持数据单源，只保留官方数值）
+  for (const id of Object.keys(enemy)) {
+    const oid = id;
+    const has = (raw.unit && raw.unit[oid]) || (raw['spider-unit'] && raw['spider-unit'][oid]);
+    if (!has) delete enemy[id];
+  }
+}
+
 // ---- 汇总新增字段进 GAME_DATA（undefined 字段由 JSON 序列化自动剔除）----
 Object.assign(GAME_DATA, {
   undergroundDist,
@@ -1089,6 +1141,7 @@ Object.assign(GAME_DATA, {
   qualityModules,
   qualityTiers,
   itemGroup,
+  enemy,
 });
 
 // ---- recipe ----
@@ -1149,6 +1202,7 @@ function report() {
   console.log('热量链路 heat: ' + JSON.stringify(GAME_DATA.heat));
   console.log('避雷系统 lightning: ' + JSON.stringify(GAME_DATA.lightning));
   console.log('机器人港功耗 roboportPower: ' + JSON.stringify(GAME_DATA.roboportPower));
+  console.log('Gleba 五足虫敌人 enemy: ' + Object.keys(GAME_DATA.enemy||{}).length + ' 种');
   console.log('扩展参数手工保留（官方无此字段/项目简化模型）：汽轮机/锅炉/蒸汽机产汽模型、机器人速度与电量刻度、机器人港容量、',
     '武器/装甲战斗平衡表、燃料能量(项目相对刻度)、载具装备网格、热交换器热量参数、雷达扫描节奏');
   console.log('\n-- 官方多语言命名 names（物品/建筑/流体，中英对照已接入）--');
