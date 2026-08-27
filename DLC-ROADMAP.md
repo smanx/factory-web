@@ -291,6 +291,22 @@
 > - 科技：新增「聚变能源」科技（fusion-power，需空间平台），解锁聚变发电链；数据校验并入 verify-dlc（新增 24 项）。
 - [ ] 轨道平台 / 太空货运（行星间货物调度 / 空间平台遥测）
 
+### 阶段四.8：钷素科研包（Promethium science pack，Space Age 终局科学包，本迭代新增）
+- [x] **钷素科研包 + 钷素星块（Promethium science pack / asteroid chunk）**：太空时代终极科学包
+
+> 已落地说明（本迭代增量）：
+> - 物品：`promethium-science-pack`（钷素科研包，堆叠 200）/ `promethium-asteroid-chunk`（钷素星块，堆叠 1），
+>   堆叠 / 命名全部来自 GAME_DATA（factorio-data 官方 names：钷素科技包（黑瓶）/Promethium science pack、
+>   钷素星块/Promethium asteroid chunk），未单独维护数值表。
+> - 玩法：钷素星块由小行星收集器在远太空中以较低概率（5%）随机收集到（区别于金属/碳质/氧化星块的
+>   常规分布，对齐官方玄金小行星稀有分布）；钷素科研包由电磁工厂（官方 cryogenics 低温工厂，适配）制得。
+> - 配方：官方 promethium-science-pack 5s = 25钷素星块+1量子处理器+10五足虫蛋→10；项目暂无量子处理器/
+>   五足虫蛋，适配为超导体（代量子处理器）+生物结晶（代五足虫蛋），产出物/耗时（25+1+10→10，5s）对齐官方。
+> - 科技：新增「钷素科研」科技（promethium-science，需电磁学+太空材料加工，用钷素科研包推进），
+>   解锁钷素科研包配方；作为太空时代终局科学包，与金属/电磁/农业科研包共同构成完整太空科学链。
+> - 校验：verify-dlc 新增钷素科研包校验（12 项），全量 18 个校验脚本通过，构建通过。
+
+### 阶段五：数值/体验精修
 ### 阶段五：数值/体验精修
 - [ ] 各 DLC 建筑占地/功耗/速度逐一桥接 data.generated.js
 - [ ] DLC 科技树接入 data-tech-tree

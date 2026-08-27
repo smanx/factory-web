@@ -1977,24 +1977,23 @@ html, body {
 .trig-ok { color: #6cd06c; font-weight: bold; align-self: center; padding-right: 6px; }
 /* 研究树图 */
 .tech-tree-wrap { flex: 1; overflow: auto; min-height: 0; }
-.tech-tree-svg { width: 100%; height: auto; min-width: 700px; background: rgba(0,0,0,.15); border-radius: 6px; }
-.tech-node { cursor: pointer; }
-.tech-node-bg {
-  fill: rgba(30,38,48,.95); stroke: #3a4550; stroke-width: 1.2;
-  transition: all .15s;
+/* 竖向研究树（自上而下，前置在上、后继在下） */
+.tech-vert-tree { padding: 6px 4px; }
+.tech-vrow { display: flex; align-items: center; min-height: 26px; line-height: 26px; }
+.tech-vguide { flex: none; width: 14px; position: relative; }
+.tech-vnode {
+  cursor: pointer; color: #cdd6df; font-size: 12px; border-radius: 5px;
+  padding: 2px 8px; border: 1px solid transparent; transition: all .15s;
 }
-.tech-node.done .tech-node-bg { stroke: #5a9a6a; fill: rgba(40,70,50,.7); }
-.tech-node.locked .tech-node-bg { stroke: #555; fill: rgba(20,24,30,.85); opacity: .6; }
-.tech-node.active .tech-node-bg { stroke: #ffd23c; stroke-width: 2; }
-.tech-node.queued .tech-node-bg { stroke: #7aa7ff; stroke-dasharray: 4 3; }
-.tech-node:hover .tech-node-bg { stroke: #ffd23c; }
-.tech-node-text { fill: #eaf1f8; font-family: inherit; }
-.tech-node.locked .tech-node-text { fill: #9aa; }
-.tech-node.done .tech-node-text { fill: #c8e6c8; }
-.tech-badge { fill: #ffd23c; font-weight: bold; }
-/* 连接线 hover 高亮 */
-.tech-edge { transition: stroke .15s; }
-.tech-node:hover ~ .tech-edge, .tech-node:hover + g .tech-edge { stroke: #ffd23c; }
+.tech-vnode .tech-badge { color: #ffd23c; font-weight: bold; margin-right: 4px; font-size: 11px; }
+.tech-vnode .tech-vname { color: #eaf1f8; }
+.tech-vnode:hover { background: rgba(255,210,60,.08); border-color: #ffd23c; }
+.tech-vnode.done .tech-vname { color: #c8e6c8; }
+.tech-vnode.done { border-color: rgba(90,154,106,.5); background: rgba(40,70,50,.25); }
+.tech-vnode.locked { opacity: .6; }
+.tech-vnode.locked .tech-vname { color: #9aa; }
+.tech-vnode.active { border-color: #ffd23c; background: rgba(255,210,60,.14); }
+.tech-vnode.queued { border-color: #7aa7ff; border-style: dashed; }
 /* 列表点击闪烁定位 */
 .tech-flash { animation: techFlash 1.2s ease; }
 @keyframes techFlash { 0%,100% { background: transparent; } 40% { background: rgba(255,210,60,.25); } }

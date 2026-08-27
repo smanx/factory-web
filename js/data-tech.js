@@ -320,7 +320,9 @@ const RECIPE_TECH = {
   // 太空时代 超速物流（Turbo belt，对齐官方 Space Age Turbo transport belt 科技）
   'turbo-transport-belt': 'turbo-logistics',
   'turbo-underground-belt': 'turbo-logistics',
-  'turbo-splitter': 'turbo-logistics'
+  'turbo-splitter': 'turbo-logistics',
+  // 太空时代 钷素科研包（官方 Promethium science pack 科技，由钷素星块+超导体+生物结晶在电磁工厂制得）
+  'promethium-science-pack': 'promethium-science'
 };
 // ===== 任一科技解锁（对齐《异星工厂》科技树）=====
 // 某些配方（如效率模块）既可被新拆分的进阶科技解锁，也可被旧「模块工程」科技解锁，

@@ -100,7 +100,8 @@ function randomAsteroidChunk() {
   const r = Math.random();
   if (r < 0.4) return 'metallic-asteroid-chunk';
   if (r < 0.7) return 'carbonic-asteroid-chunk';
-  return 'oxide-asteroid-chunk';
+  if (r < 0.95) return 'oxide-asteroid-chunk';
+  return 'promethium-asteroid-chunk';   // 钷素星块：官方钷素小行星在远太空稀有分布，低概率收集（5%）
 }
 class AsteroidCollector extends Entity {
   constructor(type, x, y) {

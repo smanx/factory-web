@@ -13,7 +13,7 @@ const STACK_SIZES = {
   'recycler': 20,  // 回收机官方 stack=20（由 GAME_DATA 桥接）
   'fusion-reactor': 1, 'fusion-generator': 5, 'fusion-power-cell': 50,  // Aquilo 聚变发电链官方 stack（fusion-reactor=1、fusion-generator=5、fusion-power-cell=50，由 GAME_DATA 桥接）
   'crusher': 10,  // 破碎机官方 stack=10（由 GAME_DATA 桥接）
-  'metallic-asteroid-chunk': 1, 'carbonic-asteroid-chunk': 1, 'oxide-asteroid-chunk': 1,  // 小行星碎块官方 stack=1
+  'metallic-asteroid-chunk': 1, 'carbonic-asteroid-chunk': 1, 'oxide-asteroid-chunk': 1, 'promethium-asteroid-chunk': 1,  // 小行星碎块官方 stack=1
   'ice': 50,  // 冰官方 stack=50
   'car': 1, 'tank': 1, 'spidertron': 1, 'diesel-locomotive': 1,
   'locomotive': 5, 'cargo-wagon': 5, 'fluid-wagon': 5, 'artillery-wagon': 5,  // 车厢/车头官方 5
@@ -35,7 +35,7 @@ const STACK_SIZES = {
   // 科学包：堆叠 200（对齐原版）
   'automation-science-pack': 200, 'logistic-science-pack': 200, 'chemical-science-pack': 200,
   'military-science-pack': 200, 'production-science-pack': 200, 'utility-science-pack': 200,
-  'space-science-pack': 200,
+  'space-science-pack': 200, 'promethium-science-pack': 200,  // 普罗米修斯科研包官方 stack=200
   // 基础建材与管线：堆叠 100
   'concrete': 100, 'refined-concrete': 100, 'hazard-concrete': 100, 'refined-hazard-concrete': 100, 'stone-path': 100, 'landfill': 100,
   // 品质模块（对齐《异星工厂》Quality DLC：quality-module 官方 stack=50）
@@ -262,12 +262,13 @@ const ITEMS = {
   'metallic-asteroid-chunk': { name: '金属星块', color: '#8a7a6a', mark: 'Me', desc: '太空时代高金属含量的小行星碎块，用破碎机粉碎可获得大量铁矿石（对齐《异星工厂》Space Age Metallic asteroid chunk，堆叠 1）' },
   'carbonic-asteroid-chunk': { name: '碳质星块', color: '#6a5a4a', mark: 'Ca', desc: '太空时代高碳含量的小行星碎块，用破碎机粉碎可获得碳（对齐《异星工厂》Space Age Carbonic asteroid chunk，堆叠 1）' },
   'oxide-asteroid-chunk': { name: '氧化星块', color: '#4a6a8a', mark: 'Ox', desc: '太空时代高氧含量的小行星碎块，用破碎机粉碎可获得冰（对齐《异星工厂》Space Age Oxide asteroid chunk，堆叠 1）' },
+  'promethium-asteroid-chunk': { name: '钷素星块', color: '#4a4a8a', mark: '钷', desc: '太空时代稀有的小行星碎块（钷素 Promethium，堆叠 1），由小行星收集器在远太空中以较低概率收集到，用于合成终极科研包「钷素科研包」（对齐《异星工厂》Space Age Promethium asteroid chunk）' },
   'ice': { name: '冰', color: '#a8d8e8', mark: '冰', desc: '由氧化星块在破碎机粉碎获得，可在熔炉熔化（对齐《异星工厂》Space Age Ice，堆叠 50）' },
   // ===== 太空时代 空间平台系统（Space Platform，数据来自 factorio-data 官方，见 GAME_DATA）=====
   'space-platform-foundation': { name: '太空平台地基', color: '#6a6a76', mark: 'SF', desc: '太空时代空间平台地基（堆叠 100）：铺设成太空平台地板，供空间平台建筑与轨道物流使用（对齐《异星工厂》Space Age Space platform foundation）' },
   'space-platform-hub': { name: '太空平台中枢', color: '#4a5a9a', desc: '太空时代空间平台核心建筑（8×8）：空间平台的中央枢纽，接收行星物资并生产/调度平台地基，是轨道物流的中枢（对齐《异星工厂》Space Age Space platform hub，数据来自 GAME_DATA）' },
   'thruster': { name: '推进器', color: '#a06030', desc: '太空时代推进器（4×8）：燃烧推进器燃料与推进器氧化剂产生推力/电能，是空间平台在行星间航行的动力源（对齐《异星工厂》Space Age Thruster，数据来自 GAME_DATA）' },
-  'asteroid-collector': { name: '小行星收集器', color: '#5a6a8a', desc: '太空时代小行星收集器（2×3）：在轨道上收集小行星碎块（金属/碳质/氧化/玄金星块），供破碎机粉碎加工（对齐《异星工厂》Space Age Asteroid collector，数据来自 GAME_DATA）' },
+  'asteroid-collector': { name: '小行星收集器', color: '#5a6a8a', desc: '太空时代小行星收集器（2×3）：在轨道上收集小行星碎块（金属/碳质/氧化/钷素星块），供破碎机粉碎加工（对齐《异星工厂》Space Age Asteroid collector，数据来自 GAME_DATA）' },
   'space-platform-starter-pack': { name: '空间平台起始包', color: '#8a8a9a', mark: 'SSP', desc: '太空时代空间平台起始套件：由火箭发射升空后构成空间平台的初始骨架（对齐《异星工厂》Space Age Space platform starter pack，堆叠 1）' },
   // ===== 物流机器人网络 =====
   'roboport':          { name: '机器人港', color: '#3a8a8a', desc: '物流机器人的基地与充电站（4×4，吃电力）。把物流机器人放入机器人港后自动调度，机器人往返供应箱与需求箱搬运货物，电量低时回到机器人港充电。可接入电路网络输出整个物流网络各物品库存总量信号（对齐《异星工厂》机器人港电路信号）' },
@@ -353,6 +354,7 @@ const ITEMS = {
   'upgrade-planner': { name: '升级规划器', color: '#57b95c', mark: '升', desc: '手持规划器：选中后进入绿图框选模式，框选一块区域后可批量升级/降级其中的建筑。对齐《异星工厂》Upgrade planner' },
   // ===== 空间科学包（对齐《异星工厂》Space science pack，火箭发射产出） =====
   'space-science-pack': { name: '空间科学包', color: '#d0d0e0', mark: 'SC', desc: '由卫星成功发射后获得的高级科学包，用于终局无限科研（科研速度/采矿产能等）' },
+  'promethium-science-pack': { name: '钷素科研包', color: '#5a4ad8', mark: 'PSP', desc: '太空时代终极科研包（钷素 Promethium，堆叠 200）：由钷素星块+超导体+生物结晶在电磁工厂/空间平台中枢制得，解锁太空时代终局科技（对齐《异星工厂》Space Age Promethium science pack）' },
   // ===== 流体桶装系统（对齐《异星工厂》Barrel system） =====
   'barrel': { name: '空桶', color: '#9aa0aa', mark: '桶', desc: '可盛装流体的金属桶（1×1）。把空桶放进组装机并接好流体管道，选桶装配方即可把流体灌入桶中；装满的桶可用传送带/机械臂/物流机器人/火车运输，实现流体走物流网络；再把满桶放回组装机选倒空配方，即可把流体倒回管道' },
   'water-barrel':          { name: '桶装水',   color: '#4a90d9', mark: '桶', desc: '盛满水的桶，可经物流网络运输，倒空后获得空桶' },
