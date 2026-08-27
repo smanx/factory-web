@@ -6,19 +6,7 @@ function lerpAngle(a, b, t) {
 }
 
 // ===== 实体绘制分发 =====
-// 各设备的绘制函数与状态灯颜色在 js/devices/*.js 里注册到 DEVICE_RENDER/DEVICE_STATUS。
-function drawStatusDot(ctx, x, y, c) {
-  const col = { g: '#57e389', y: '#ffd23c', r: '#ff5b5b' }[c] || '#888';
-  ctx.fillStyle = '#14161a';
-  ctx.beginPath();
-  ctx.arc(x, y, 5.4, 0, 7);
-  ctx.fill();
-  ctx.fillStyle = col;
-  ctx.beginPath();
-  ctx.arc(x, y, 3.9, 0, 7);
-  ctx.fill();
-}
-
+// 各设备的绘制函数在 js/devices/*.js 里注册到 DEVICE_RENDER。
 // 画面优化：实体建筑软阴影——在建筑脚下绘制柔和椭圆投影，增强立体感与工业氛围
 // 仅在离屏缓存首次渲染时生成（不破坏分块缓存复用），低开销
 function drawEntityShadow(ctx, e, gx, gy) {
@@ -66,13 +54,6 @@ function drawEntity(ctx, e, gx, gy, dir, alpha) {
       ctx.fillRect(bx, by, barW * ratio, barH);
     }
   }
-  // 低 LOD 时跳过状态灯（像素太小看不清，省一次 path+fill）
-  // 传送带分流器、地下传送带与水管本身已用图形直观表达工作状态，不再叠加状态小点
-  if (alpha === 1 && !LOD.simple && !NO_STATUS_DOT[e.type]) {
-    const sf = DEVICE_STATUS[e.type];
-    const c = sf ? sf(e) : null;
-    if (c) drawStatusDot(ctx, (gx + e.w) * TILE - 8, gy * TILE + 8, c);
-  }
   // 运行计时器（环形 loading）：为「没有自身环形进度显示」但存在运行时长的设备，
   // 在设备上方绘制一个环形计时圈，实时显示当前这一轮生产的剩余进度。
   if (alpha === 1 && !LOD.simple) drawRunRing(ctx, e, gx, gy);
@@ -111,24 +92,6 @@ function drawRunRing(ctx, e, gx, gy) {
   ctx.lineWidth = 2.6;
   ctx.beginPath(); ctx.arc(cx, cy, rad, -Math.PI / 2, -Math.PI / 2 + r.pct * Math.PI * 2); ctx.stroke();
 }
-
-// 不显示运行状态小点的设备：各类传送带、传送带分流器、地下传送带、水管（状态由图形本身表达）
-const NO_STATUS_DOT = {
-  // 各类传送带（含创造/虚空传送带）不显示右上角状态小点
-  'transport-belt': true, 'fast-transport-belt': true, 'express-transport-belt': true,
-  'creative-belt': true, 'void-belt': true,
-  // 传送带分流器
-  'splitter': true, 'fast-splitter': true, 'express-splitter': true,
-  // 地下传送带
-  'underground-belt': true, 'fast-underground-belt': true, 'express-underground-belt': true,
-  // 水管
-  'pipe': true, 'pipe-to-ground': true,
-  // 其他流体管路（核电传热管、创造/虚空管道）同样不显示状态小点
-  'heat-pipe': true, 'creative-pipe': true, 'void-pipe': true,
-  // 机械臂（电力/加长/高速/集装箱/热能）运行状态由臂体与动画直观表达，不显示状态小点
-  'inserter': true, 'long-handed-inserter': true, 'bulk-inserter': true, 'fast-inserter': true,
-  'stack-inserter': true, 'burner-inserter': true,
-};
 
 // 机械臂类型集合：绘制时置顶，永远显示在传送带/其他设备之上，不被遮挡。
 const IS_INSERTER = { inserter: true, 'long-handed-inserter': true, 'bulk-inserter': true, 'fast-inserter': true, 'stack-inserter': true };
