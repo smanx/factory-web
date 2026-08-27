@@ -94,6 +94,17 @@ check('黄瓶耗时(21s)', getRecipeTime('utility-science-pack'), 21);
 check('蓝瓶配方已定义', getRecipeLine('chemical-science-pack').length > 0, '蓝瓶配方缺失');
 // 空间科学包由火箭发射产出，非合成配方，不校验。
 
+console.log('\n【太空时代 DLC 科学包（对齐《异星工厂》Space Age）】');
+// 冶金科研包（Vulcanus）：钨板2+碳化钨1+高级电路2 → 1（6s，适配官方数值），须可被实验室消耗
+const meta = getRecipeLine('metallurgic-science-pack');
+check('冶金瓶已定义', getRecipeLine('metallurgic-science-pack').length > 0, '冶金瓶配方缺失');
+check('冶金瓶耗时(6s)', getRecipeTime('metallurgic-science-pack'), 6);
+check('冶金瓶在SCIENCE_PACKS', /'metallurgic-science-pack'/.test(src), '未加入实验室消耗列表');
+// 钷素科研包（终局 Promethium）：钷素星块25+超导体1+生物流10 → 10（5s，适配官方数值），须可被实验室消耗
+check('钷素瓶已定义', getRecipeLine('promethium-science-pack').length > 0, '钷素瓶配方缺失');
+check('钷素瓶耗时(5s)', getRecipeTime('promethium-science-pack'), 5);
+check('钷素瓶在SCIENCE_PACKS', /'promethium-science-pack'/.test(src), '未加入实验室消耗列表');
+
 console.log('\n----------------------------------------');
 console.log('通过 ' + passCount + ' 项，失败 ' + failCount + ' 项');
 process.exit(failCount > 0 ? 1 : 0);
