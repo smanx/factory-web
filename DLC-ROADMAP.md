@@ -574,3 +574,21 @@
 > - **科技**：新增「堆叠机械臂」科技（stack-inserter-tech，需物流 III+电磁学，官方前置 logistics3+碳纤维，
 >   此处适配为物流 III+电磁学），解锁堆叠机械臂；数据校验并入 verify-dlc（新增 14 项），
 >   全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段四.17：Gleba 有机生物制品（Bioplastic / Biolubricant，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - 配方（官方 organic 配方，生化炉专属）：
+>   - `bioplastic`（生物塑料）：1 生物流 + 4 玉玛果泥 → 3 塑料（2s，官方 bioplastic，生化炉用生物质制可降解塑料）
+>   - `biolubricant`（生物润滑油）：60 果冻 → 20 润滑油（3s，官方 biolubricant，生化炉用果冻榨油制流体润滑油）
+> - 玩法：补全 Gleba 生物质产品链——此前生化炉仅产出生物质中间物与科研包，现新增两个官方出口：
+>   - 生物塑料：让生物流+果泥可替代石油化工产塑料（官方 Gleba 用生物流制生物塑料），为无石油的 Gleba 行星
+>     提供塑料来源（塑料 → 高级电路/低密度结构/超导体等关键下游）。
+>   - 生物润滑油：让果冻可产出润滑油流体（官方 Gleba 用果冻制生物润滑油），为无原油的 Gleba 行星
+>     提供润滑油来源（润滑油 → 电动引擎/极速带/超速带等关键下游）。
+> - 科技：统一由「农业科技」解锁（RECIPE_TECH 配方级门控，与其它生化炉生物质配方一致）。
+> - 数据单源：配方数值/耗时/配方名/命名均来自 data.generated.js（factorio-data 官方，
+>   命名 生物塑料/Bioplastic、生物润滑油/Biolubricant），设备归属经 DLC_DEVICE_RECIPES 路由生化炉，
+>   BIOCHAMBER_RECIPES 注册进生化炉面板，未单独维护数值表。
+> - 校验：verify-dlc 新增有机生物制品校验（14 项），verify-data-integrity 配方键映射补充 2 项动态键，
+>   全量 18 个校验脚本通过，`node build.js` 构建通过。

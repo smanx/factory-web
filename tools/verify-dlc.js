@@ -317,6 +317,20 @@ ok(ctx.__recipeDevice('burnt-spoilage') === 'biochamber', '燃烧变质物 → �
 ok(ctx.__recipeTechReq('nutrients-from-spoilage') === 'agriculture', '变质物→营养素需「农业科技」');
 ok(ctx.__recipeTechReq('burnt-spoilage') === 'agriculture', '燃烧变质物需「农业科技」');
 
+// ===== Gleba 有机生物制品（Bioplastic / Biolubricant，本迭代新增）数据校验 =====
+console.log('\n【有机生物制品（Bioplastic / Biolubricant，Gleba）数据校验】');
+for (const rid of ['bioplastic', 'biolubricant']) {
+  ok(!!RP[rid], rid + ' 配方已注册');
+  ok(Object.keys(RP[rid].inp).every(k => k in IT), rid + ' 配方引用物品均存在');
+  ok(!!GD.recipeNames[rid], rid + ' 官方配方命名已收录 (' + (GD.recipeNames[rid] ? GD.recipeNames[rid].zh : '?') + ')');
+  ok(ctx.__recipeDevice(rid) === 'biochamber', rid + ' → 生化炉（官方 organic）');
+  ok(ctx.__recipeTechReq(rid) === 'agriculture', rid + ' 需「农业科技」');
+}
+ok(RP['bioplastic'].inp['bioflux'] === 1 && RP['bioplastic'].inp['yumako-mash'] === 4 && RP['bioplastic'].out['plastic-bar'] === 3, '生物塑料=1生物流+4果泥→3塑料（官方）');
+ok(RP['bioplastic'].time === 2, '生物塑料耗时=2s（官方）');
+ok(RP['biolubricant'].inp['jelly'] === 60 && RP['biolubricant'].out['lubricant'] === 20, '生物润滑油=60果冻→20润滑油（官方）');
+ok(RP['biolubricant'].time === 3, '生物润滑油耗时=3s（官方）');
+
 console.log('\n【破碎机设备数据（官方）】');
 ok(!!GD.stackSize['crusher'], 'crusher 堆叠来自官方 (=10)');
 ok(!!GD.names['crusher'], 'crusher 官方命名已收录 (' + (GD.names['crusher'] ? GD.names['crusher'].zh : '?') + ')');

@@ -79,6 +79,8 @@ const dynamicKeys = new Set([
   'iron-bacteria-cultivation', 'copper-bacteria-cultivation', // 细菌培养配方：细菌→细菌（扩增，产物键≠配方键）
   'iron-plate-from-iron-bacteria', 'copper-plate-from-copper-bacteria', // 细菌→板还原配方：产物为铁板/铜板（产物键≠配方键）
   'nutrients-from-spoilage', 'burnt-spoilage', // Gleba 变质物回收配方：变质物→营养素/碳（产物键≠配方键）
+  'bioplastic', // 生化炉配方：生物流+果泥→塑料（产物键≠配方键，产物为塑料）
+  'biolubricant', // 生化炉配方：果冻→润滑油（产物键≠配方键，产物为润滑油流体）
 ]);
 for (const rid in RECIPES) {
   if (rid.startsWith('fill-') || rid.startsWith('empty-')) continue; // 动态桶配方

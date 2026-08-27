@@ -366,6 +366,8 @@ const RECIPE_TECH = {
   // 与其它生物质链统一由「农业科技」解锁）
   'nutrients-from-spoilage': 'agriculture',
   'burnt-spoilage': 'agriculture',
+  'bioplastic': 'agriculture',
+  'biolubricant': 'agriculture',
   'turbo-underground-belt': 'turbo-logistics',
   'turbo-splitter': 'turbo-logistics',
   // 太空时代 堆叠机械臂（官方 Space Age Stack inserter 科技，需碳纤维+集装箱机械臂）

@@ -2377,6 +2377,25 @@ const GAME_DATA = {
     "sulfur": 2
    }
   },
+  "bioplastic": {
+   "time": 2,
+   "inp": {
+    "bioflux": 1,
+    "yumako-mash": 4
+   },
+   "out": {
+    "plastic-bar": 3
+   }
+  },
+  "biolubricant": {
+   "time": 3,
+   "inp": {
+    "jelly": 60
+   },
+   "out": {
+    "lubricant": 20
+   }
+  },
   "agricultural-tower": {
    "time": 10,
    "inp": {
@@ -3523,6 +3542,8 @@ const GAME_DATA = {
   "nutrients-from-spoilage": "biochamber",
   "burnt-spoilage": "biochamber",
   "biosulfur": "biochamber",
+  "bioplastic": "biochamber",
+  "biolubricant": "biochamber",
   "agricultural-tower": "assembling-machine-1",
   "artificial-yumako-soil": "assembling-machine-1",
   "overgrowth-yumako-soil": "assembling-machine-1",
@@ -4840,6 +4861,14 @@ const GAME_DATA = {
   "biosulfur": {
    "zh": "生物硫磺",
    "en": "Biosulfur"
+  },
+  "bioplastic": {
+   "zh": "生物塑料",
+   "en": "Bioplastic"
+  },
+  "biolubricant": {
+   "zh": "生物润滑油",
+   "en": "Biolubricant"
   },
   "jellynut-processing": {
    "zh": "果冻果加工",

@@ -248,7 +248,8 @@ const HUB_RECIPE_IDS = new Set(['space-platform-foundation', 'space-platform-sta
 const DLC_DEVICE_RECIPES = {
   // 生化炉 biochamber（Space Age organic）
   'yumako-mash': 'biochamber', 'bioflux': 'biochamber', 'nutrients-from-bioflux': 'biochamber', 'nutrients-from-spoilage': 'biochamber', 'burnt-spoilage': 'biochamber',
-  'biosulfur': 'biochamber', 'agricultural-science-pack': 'biochamber', 'biochamber': 'biochamber',
+  'biosulfur': 'biochamber', 'bioplastic': 'biochamber', 'biolubricant': 'biochamber',
+  'agricultural-science-pack': 'biochamber', 'biochamber': 'biochamber',
   'jellynut-processing': 'biochamber', 'biter-egg': 'biochamber', 'nutrients-from-biter-egg': 'biochamber',
   'iron-bacteria': 'biochamber', 'copper-bacteria': 'biochamber', 'iron-bacteria-cultivation': 'biochamber', 'copper-bacteria-cultivation': 'biochamber',
   'carbon-fiber': 'biochamber',

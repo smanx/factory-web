@@ -261,6 +261,10 @@ const RECIPES = {
   'burnt-spoilage': { time: 12, inp: { 'spoilage': 6 }, out: { 'carbon': 1 } },
   // 生物硫磺：腐败物×5 + 生物流×1 → 硫磺×2（官方 biosulfur 2s）
   'biosulfur': { time: 2, inp: { 'spoilage': 5, 'bioflux': 1 }, out: { 'sulfur': 2 } },
+  // 生物塑料：生物流×1 + 玉玛果泥×4 → 塑料×3（官方 bioplastic 2s，organic 配方，生化炉制可降解塑料）
+  'bioplastic': { time: 2, inp: { 'bioflux': 1, 'yumako-mash': 4 }, out: { 'plastic-bar': 3 } },
+  // 生物润滑油：果冻×60 → 润滑油×20（官方 biolubricant 3s，organic 配方，生化炉用果冻榨油）
+  'biolubricant': { time: 3, inp: { 'jelly': 60 }, out: { 'lubricant': 20 } },
   // 农业科研包：生物流×1 + 五足虫蛋×1 → 农业科研包×1（官方 agricultural-science-pack 4s，此处适配为生物流+腐败物）
   'agricultural-science-pack': { time: 4, inp: { 'bioflux': 1, 'spoilage': 2 }, out: { 'agricultural-science-pack': 1 } },
   // 生化炉：钢板 + 电路板 + 齿轮 + 混凝土 → 生化炉（官方需生物质，此处适配基础资源）
@@ -531,7 +535,7 @@ const DEVICE_NAMES = {
 const ELECTRO_RECIPES = ['superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant', 'promethium-science-pack', 'holmium-ore', 'holmium-solution', 'holmium-plate', 'supercapacitor', 'electrolyte', 'teslagun', 'tesla-ammo', 'tesla-turret', 'railgun-turret'];
 function isElectroRecipe(id) { return ELECTRO_RECIPES.indexOf(id) >= 0; }
 // 生化炉专属配方（太空时代生物产品）：果泥 / 生物流 / 营养素 / 生物硫磺 / 农业科研包 / 生化炉本体
-const BIOCHAMBER_RECIPES = ['yumako-mash', 'bioflux', 'nutrients-from-bioflux', 'nutrients-from-spoilage', 'burnt-spoilage', 'biosulfur', 'agricultural-science-pack', 'biochamber', 'jellynut-processing', 'biter-egg', 'nutrients-from-biter-egg', 'iron-bacteria', 'copper-bacteria', 'iron-bacteria-cultivation', 'copper-bacteria-cultivation', 'iron-plate-from-iron-bacteria', 'copper-plate-from-copper-bacteria'];
+const BIOCHAMBER_RECIPES = ['yumako-mash', 'bioflux', 'nutrients-from-bioflux', 'nutrients-from-spoilage', 'burnt-spoilage', 'biosulfur', 'bioplastic', 'biolubricant', 'agricultural-science-pack', 'biochamber', 'jellynut-processing', 'biter-egg', 'nutrients-from-biter-egg', 'iron-bacteria', 'copper-bacteria', 'iron-bacteria-cultivation', 'copper-bacteria-cultivation', 'iron-plate-from-iron-bacteria', 'copper-plate-from-copper-bacteria'];
 function isBiochamberRecipe(id) { return BIOCHAMBER_RECIPES.indexOf(id) >= 0; }
 // 破碎机专属配方（太空时代小行星碎块加工）：金属/碳质/氧化星块粉碎 + 破碎机本体 + 冰熔化
 const CRUSHER_RECIPES = ['metallic-asteroid-crushing', 'carbonic-asteroid-crushing', 'oxide-asteroid-crushing',
