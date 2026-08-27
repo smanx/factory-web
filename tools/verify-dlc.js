@@ -269,6 +269,28 @@ ok(ctx.__itemTechReq('jellynut') === 'agriculture', '果仁需「农业科技」
 ok(ctx.__itemTechReq('jellynut-seed') === 'agriculture', '果仁种子需「农业科技」');
 ok(ctx.__itemTechReq('biter-egg') === 'agriculture', '虫蛋需「农业科技」');
 
+// ===== Gleba 五足虫卵（Pentapod egg）高级生物链（本迭代新增）数据校验 =====
+console.log('\n【五足虫卵（Pentapod egg）高级生物链数据校验】');
+// 物品/堆叠/命名来自官方（factorio-data）
+ok(!!IT['pentapod-egg'], '五足虫卵物品已注册');
+ok(!!GD.stackSize['pentapod-egg'], '五足虫卵堆叠来自官方 (=' + GD.stackSize['pentapod-egg'] + ')');
+ok(GD.stackSize['pentapod-egg'] === 20, '五足虫卵堆叠=20（官方）');
+ok(!!GD.names['pentapod-egg'], '五足虫卵官方命名已收录 (' + (GD.names['pentapod-egg'] ? GD.names['pentapod-egg'].zh : '?') + ')');
+// 配方（官方：繁殖 + 农业科研包）
+ok(!!RP['pentapod-egg'], '五足虫卵繁殖配方已注册');
+ok(RP['pentapod-egg'].inp['pentapod-egg'] === 1 && RP['pentapod-egg'].inp['nutrients'] === 30 && RP['pentapod-egg'].inp['water'] === 60, '五足虫卵繁殖=1虫卵+30营养素+60水（官方）');
+ok(RP['pentapod-egg'].out['pentapod-egg'] === 2, '五足虫卵繁殖产出 2 个（官方）');
+ok(RP['pentapod-egg'].time === 15, '五足虫卵繁殖耗时=15s（官方）');
+ok(Object.keys(RP['pentapod-egg'].inp).every(k => k in IT || ['water'].indexOf(k) >= 0), '五足虫卵配方引用物品均存在');
+// 农业科研包配方对齐官方（bioflux + pentapod-egg）
+ok(RP['agricultural-science-pack'].inp['bioflux'] === 1 && RP['agricultural-science-pack'].inp['pentapod-egg'] === 1, '农业科研包=生物流1+五足虫卵1（官方配方）');
+ok(RP['agricultural-science-pack'].out['agricultural-science-pack'] === 1, '农业科研包产出 1（官方）');
+// 设备归属
+ok(ctx.__recipeDevice('pentapod-egg') === 'biochamber', '五足虫卵繁殖 → 生化炉');
+// 科技门控
+ok(ctx.__itemTechReq('pentapod-egg') === 'agriculture', '五足虫卵需「农业科技」');
+
+
 // ===== Gleba 金属细菌链（Iron/Copper bacteria，本迭代新增）数据校验 =====
 console.log('\n【金属细菌链（Iron/Copper bacteria，Gleba）数据校验】');
 // 物品/堆叠/命名来自官方（factorio-data）

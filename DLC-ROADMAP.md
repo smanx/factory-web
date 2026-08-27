@@ -669,3 +669,22 @@
 > 异虫卵培育、小行星加工等），因项目尚未完整模拟行星处理链，按既定设计适配为基础资源，
 > 已在 DLC-ROADMAP 各阶段说明。同步更新 `tools/verify-recipes.js` 机械臂族断言。
 > 全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段四.21：Gleba 五足虫卵（Pentapod egg）高级生物链（本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **物品**：`pentapod-egg`（五足虫卵，堆叠 20）已接入，堆叠 / 中英命名（五足虫卵/Pentapod egg）均来自
+>   GAME_DATA（factorio-data 官方 item 原型 stack_size=20），未单独维护数值表。
+> - **配方**（官方 organic 配方，生化炉专属，数据单源化）：
+>   - `pentapod-egg`（五足虫卵繁殖）：1 五足虫卵 + 30 营养素 + 60 水 → 2 五足虫卵（15s，官方 pentapod-egg 繁殖配方，
+>     生化炉用营养素+水培育繁殖，实现五足虫卵自持循环）
+>   - `agricultural-science-pack`（农业科研包）对齐官方配方：1 生物流 + 1 五足虫卵 → 1 农业科研包（4s，
+>     此前适配为生物流+腐败物，现对齐官方 bioflux+pentapod-egg 配方）
+> - **玩法**：补全 Gleba 高级生物链——五足虫卵为生化炉培育的高级生物资源（官方 Gleba 星球生物），
+>   是农业科研包的官方原料（此前用腐败物适配，现还原官方配方）；生化炉可持续繁殖五足虫卵
+>   （营养素+水→双倍），形成自持循环，农业科研包由生化炉用生物流+五足虫卵制得。
+> - **科技**：统一由「农业科技」解锁（RECIPE_TECH 配方级门控，与其它生化炉生物质配方一致）。
+> - **生成脚本**：DLC_DEVICE_RECIPES 新增 `pentapod-egg` → biochamber 官方桥接（官方 organic 繁殖配方），
+>   GAME_DATA 单源提取 stackSize/names/recipe/recipeDevice。
+> - **校验**：verify-dlc 新增五足虫卵链校验（13 项），verify-data-integrity 配方键映射补充 1 项动态键，
+>   全量 18 个校验脚本通过，`node build.js` 构建通过。

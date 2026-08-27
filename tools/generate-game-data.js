@@ -252,6 +252,7 @@ const DLC_DEVICE_RECIPES = {
   'agricultural-science-pack': 'biochamber', 'biochamber': 'biochamber',
   'jellynut-processing': 'biochamber', 'biter-egg': 'biochamber', 'nutrients-from-biter-egg': 'biochamber',
   'iron-bacteria': 'biochamber', 'copper-bacteria': 'biochamber', 'iron-bacteria-cultivation': 'biochamber', 'copper-bacteria-cultivation': 'biochamber',
+  'pentapod-egg': 'biochamber',
   'carbon-fiber': 'biochamber',
   // 电磁工厂 electromagnetic-plant（Space Age electromagnetics）
   'superconductor': 'electromagnetic-plant', 'electromagnetic-science-pack': 'electromagnetic-plant',

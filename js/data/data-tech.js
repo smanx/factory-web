@@ -77,6 +77,7 @@ const TECH_REQ = {
   'jellynut-seed': 'agriculture',
   'jelly': 'agriculture',
   'biter-egg': 'agriculture',
+  'pentapod-egg': 'agriculture',
   'artificial-jellynut-soil': 'agriculture',
   // Gleba 金属细菌链（Iron/Copper bacteria）：由生化炉培育，统一由「农业科技」解锁
   'iron-bacteria': 'agriculture',

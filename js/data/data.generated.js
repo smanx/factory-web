@@ -213,6 +213,7 @@ const GAME_DATA = {
   "jellynut-seed": 10,
   "jelly": 100,
   "biter-egg": 100,
+  "pentapod-egg": 20,
   "captive-biter-spawner": 1,
   "capture-robot-rocket": 10,
   "iron-bacteria": 50,
@@ -2553,6 +2554,17 @@ const GAME_DATA = {
     "nutrients": 20
    }
   },
+  "pentapod-egg": {
+   "time": 15,
+   "inp": {
+    "pentapod-egg": 1,
+    "nutrients": 30,
+    "water": 60
+   },
+   "out": {
+    "pentapod-egg": 2
+   }
+  },
   "capture-robot-rocket": {
    "time": 10,
    "inp": {
@@ -3651,6 +3663,7 @@ const GAME_DATA = {
   "jellynut-processing": "biochamber",
   "biter-egg": "biochamber",
   "nutrients-from-biter-egg": "biochamber",
+  "pentapod-egg": "biochamber",
   "capture-robot-rocket": "assembling-machine-1",
   "captive-biter-spawner": "assembling-machine-1",
   "iron-bacteria": "biochamber",
@@ -4560,6 +4573,10 @@ const GAME_DATA = {
   "biter-egg": {
    "zh": "异虫卵",
    "en": "Biter egg"
+  },
+  "pentapod-egg": {
+   "zh": "五足虫卵",
+   "en": "Pentapod egg"
   },
   "captive-biter-spawner": {
    "zh": "虫巢孵化器",
@@ -6089,6 +6106,7 @@ const GAME_DATA = {
   "jellynut-seed": "intermediate-products",
   "jelly": "intermediate-products",
   "biter-egg": "intermediate-products",
+  "pentapod-egg": "intermediate-products",
   "captive-biter-spawner": "production",
   "capture-robot-rocket": "combat",
   "iron-bacteria": "intermediate-products",
