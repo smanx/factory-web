@@ -179,7 +179,6 @@ html, body {
   padding: 4px;
   background: rgba(10, 14, 18, .65);
   border-radius: 10px;
-  z-index: 900;
 }
 .qb-row { display: flex; gap: 3px; }
 .qb-slot {
@@ -375,6 +374,28 @@ html, body {
   cursor: pointer;
 }
 .inv-slot .slot-use:hover { background: rgba(255, 210, 60, .3); }
+
+/* 背包制作栏（合成 tab）：与玩家背包一致的「格子 + 图标」网格。
+   左键点击图标制作 1 个，右键点击制作 5 个；右下角角标显示当前可制作次数。 */
+.craft-grid { margin-top: 4px; }
+.craft-slot { cursor: pointer; }
+.craft-slot.locked { filter: grayscale(.75) brightness(.7); cursor: not-allowed; }
+.craft-slot.locked::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+  background: rgba(16, 21, 28, .35);
+  pointer-events: none;
+}
+.craft-slot .craft-lock {
+  position: absolute;
+  left: 1px; top: 1px;
+  font-size: 8px;
+  line-height: 1;
+  pointer-events: none;
+  text-shadow: 0 1px 2px #000;
+}
 
 #panel {
   /* 弹框改为屏幕中间显示 */
