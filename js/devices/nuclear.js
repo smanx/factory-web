@@ -780,60 +780,94 @@ function drawHeatPipe(ctx, e, gx, gy, dir, alpha) {
   const hp = Math.max(0, Math.min(1, temp / HEAT_MAX_TEMP));
   const glow = temp >= HEAT_PIPE_MIN_GLOW_TEMP;
 
-  const R = 11;      // 管体外半径（相对半瓦片）
-  const rIn = 6.5;   // 导热芯半径
+  // 管道尺寸：比原实现更细，观感更接近细管道
+  const R = 7;      // 管体外半径（原 11，调细）
+  const rIn = 3.5;  // 导热芯半径（原 6.5，调细）
+
+  // 连线端点取相邻格中心，让相邻格的管段在连接处完全重合、无缝衔接
+  const cnP = [cx, cy - TILE];
+  const csP = [cx, cy + TILE];
+  const cwP = [cx - TILE, cy];
+  const ceP = [cx + TILE, cy];
+
+  // 组装连续管段：对向直通合并为一条，避免在格中心产生截断与凸点，连接更平滑
   const segs = [];
-  if (cn) segs.push([cx, py, cx, cy]);                    // 北段
-  if (cs) segs.push([cx, cy, cx, py + TILE]);             // 南段
-  if (cw) segs.push([px, cy, cx, cy]);                    // 西段
-  if (ce) segs.push([cx, cy, px + TILE, cy]);             // 东段
+  if (cw && ce) {
+    segs.push([cwP[0], cwP[1], ceP[0], ceP[1]]);          // 西—东直通
+  } else {
+    if (cw) segs.push([cwP[0], cwP[1], cx, cy]);
+    if (ce) segs.push([cx, cy, ceP[0], ceP[1]]);
+  }
+  if (cn && cs) {
+    segs.push([cnP[0], cnP[1], csP[0], csP[1]]);          // 北—南直通
+  } else {
+    if (cn) segs.push([cnP[0], cnP[1], cx, cy]);
+    if (cs) segs.push([cx, cy, csP[0], csP[1]]);
+  }
+
+  // 是否存在转弯/路口（同时有横、纵连接）→ 需画中心节点把交点填满
+  const isJunction = (cn || cs) && (cw || ce);
 
   ctx.globalAlpha = alpha;
-  // ---- 管体外壳（金属）----
+  // ---- 管体外壳（金属）：按连续路径整段描边，连接处不再出现分界环 ----
   ctx.strokeStyle = '#3a3428';
   ctx.lineWidth = R * 2;
   ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
   for (const s of segs) {
     ctx.beginPath();
     ctx.moveTo(s[0], s[1]);
     ctx.lineTo(s[2], s[3]);
     ctx.stroke();
   }
-  ctx.fillStyle = '#3a3428';
-  ctx.beginPath();
-  ctx.arc(cx, cy, R, 0, 7);
-  ctx.fill();
+  // 转弯/路口中心节点
+  if (isJunction) {
+    ctx.fillStyle = '#3a3428';
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, 7);
+    ctx.fill();
+  }
+  // 孤立导热管（四向均无连接）画一个圆点
+  if (segs.length === 0) {
+    ctx.fillStyle = '#3a3428';
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, 7);
+    ctx.fill();
+  }
+  // ---- 外壳描边（连续路径，避免每格各自描边导致连接处出现环痕）----
   ctx.strokeStyle = '#1c1710';
   ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.arc(cx, cy, R, 0, 7);
-  ctx.stroke();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
   for (const s of segs) {
     ctx.beginPath();
     ctx.moveTo(s[0], s[1]);
     ctx.lineTo(s[2], s[3]);
-    ctx.lineWidth = 1.5;
     ctx.stroke();
   }
   // ---- 内芯导热管（达到发光温度才发热变亮）----
   ctx.strokeStyle = glow ? '#e8a14a' : '#5a5245';
   ctx.lineWidth = rIn * 2;
   ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
   for (const s of segs) {
     ctx.beginPath();
     ctx.moveTo(s[0], s[1]);
     ctx.lineTo(s[2], s[3]);
     ctx.stroke();
   }
-  ctx.fillStyle = glow ? '#e8a14a' : '#5a5245';
-  ctx.beginPath();
-  ctx.arc(cx, cy, rIn, 0, 7);
-  ctx.fill();
+  if (isJunction || segs.length === 0) {
+    ctx.fillStyle = glow ? '#e8a14a' : '#5a5245';
+    ctx.beginPath();
+    ctx.arc(cx, cy, rIn, 0, 7);
+    ctx.fill();
+  }
   // ---- 发光光晕（达到发光温度时）----
   if (glow) {
     ctx.strokeStyle = 'rgba(255,170,80,' + (0.3 + hp * 0.5).toFixed(2) + ')';
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 2;
     ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     for (const s of segs) {
       ctx.beginPath();
       ctx.moveTo(s[0], s[1]);
