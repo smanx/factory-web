@@ -166,6 +166,7 @@ const GAME_DATA = {
   "land-mine": 100,
   "artillery-turret": 10,
   "artillery-shell": 1,
+  "artillery-targeting-remote": 1,
   "rail": 100,
   "locomotive": 5,
   "cargo-wagon": 5,
@@ -293,6 +294,7 @@ const GAME_DATA = {
   "energy-shield-mk2-equipment": 20,
   "belt-immunity-equipment": 20,
   "discharge-defense-equipment": 20,
+  "discharge-defense-remote": 1,
   "wood": 100,
   "wooden-chest": 50,
   "iron-chest": 50,
@@ -4607,6 +4609,10 @@ const GAME_DATA = {
    "zh": "重炮炮弹",
    "en": "Artillery shell"
   },
+  "artillery-targeting-remote": {
+   "zh": "重炮瞄准遥控器",
+   "en": "Artillery targeting remote"
+  },
   "rail": {
    "zh": "铁轨",
    "en": "Rail"
@@ -5174,6 +5180,10 @@ const GAME_DATA = {
   "discharge-defense-equipment": {
    "zh": "放电防御模块",
    "en": "Discharge defense"
+  },
+  "discharge-defense-remote": {
+   "zh": "放电防御遥控器",
+   "en": "Discharge defense remote"
   },
   "wood": {
    "zh": "木材",

@@ -115,6 +115,8 @@ const specialOutput = new Set([
   'depleted-uranium-fuel-cell',   // 反应堆燃尽核燃料棒
   'wood', 'raw-wood',             // 砍树获得
   'raw-fish',                     // 捕鱼获得
+  'artillery-targeting-remote',   // 重炮瞄准遥控器：研究「军事科技 IV」后自动授予（对齐官方 spawnable 遥控器）
+  'discharge-defense-remote',     // 放电防御遥控器：研究「装甲电力」后自动授予（对齐官方 spawnable 遥控器）
 ]);
 // 所有可通过配方产出的物品
 const craftable = new Set();
