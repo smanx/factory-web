@@ -36,6 +36,7 @@ const G = {
   debugEnabled: new URLSearchParams(window.location.search).get('debug') === '1',
   spawn: { x: 0, y: 0 },
   invRecipeQ: '',
+  invRecipeTab: 'logistics', // 制作栏当前 Tab：logistics/production/intermediate-products/space/combat
   invItemQ: '',     // 背包「拥有的物品」列表的搜索关键字
   invTab: 'materials', // 背包两个 tab：'materials' 材料（默认）/ 'craft' 合成
   clipboard: null,

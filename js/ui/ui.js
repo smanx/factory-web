@@ -19,6 +19,16 @@ function _invalidateInvCache() {
 // 数量以右下角角标显示。
 const INV_SLOT_COUNT = 80;
 
+// 制作栏 5 个 Tab：顺序、标签与官方 item-group 一一对应（数据单源归类见 GAME_DATA.itemGroup）。
+const CRAFT_TABS = ['logistics', 'production', 'intermediate-products', 'space', 'combat'];
+const CRAFT_TAB_LABEL = {
+  'logistics': '🧱 物流',
+  'production': '🏭 生产',
+  'intermediate-products': '🧪 中间产品',
+  'space': '🚀 太空',
+  'combat': '🔫 武器',
+};
+
 // 背景预热：首次打开背包会一次性计算数百个物品的 tooltip（含遍历数百条配方）与
 // base64 图标，是「首次打开卡顿」的主要来源。这里把最耗时的静态缓存（物流请求/
 // 垃圾桶物品列表、建造设备列表、合成页 HTML、tooltip 基础、图标 URL）拆成小块，
@@ -455,7 +465,8 @@ function updateInvLive() {
   }
   // 手搓配方格子：实时刷新右下角可制作次数角标(.cnt)与未解锁状态。
   // 与玩家背包格子一致采用「格子 + 图标」网格，左键点击制作 1 个、右键点击制作 5 个。
-  body.querySelectorAll('#inv-recipes .craft-slot[data-id]').forEach(el => {
+  // 手搓配方格子分布在 5 个 Tab 网格内（#inv-recipes-<tab>），全部刷新可制作次数与解锁态
+  body.querySelectorAll('[id^="inv-recipes-"].craft-grid .craft-slot[data-id]').forEach(el => {
     const rid = el.dataset.id;
     if (!RECIPES[rid]) return;
     const unlocked = recipeUnlocked(rid);
@@ -695,7 +706,9 @@ function htmlCraft() {
   let h = '<div class="dim" style="margin-bottom:8px">在此手动制作物品（对齐《异星工厂》手工制造）：左键点击图标制作 1 个，右键点击图标制作 5 个。需要流体（石油气/水等）或离心机等高级工艺的配方，请使用对应机器生产。</div>';
   const q = (G.invRecipeQ || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   h += '<input id="inv-recipe-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off" value="' + q + '">';
-  h += '<div id="inv-recipes" class="inv-slots craft-grid">';
+  // 制作栏 5 个 Tab（数据单源归类，见 GAME_DATA.itemGroup）
+  const activeTab = G.invRecipeTab && CRAFT_TABS.indexOf(G.invRecipeTab) >= 0 ? G.invRecipeTab : 'logistics';
+  const perTab = { logistics: [], production: [], 'intermediate-products': [], space: [], combat: [] };
   // 组装机配方（含化工厂/炼油厂以外的普通配方）
   for (const rid in RECIPES) {
     if (isChemRecipe(rid)) continue;
@@ -711,35 +724,80 @@ function htmlCraft() {
     // 含流体原料或产物的配方不列入手搓清单（流体只能走管道，需在组装机/化工厂生产）
     if (Object.keys(_r.inp).some(k => FLUIDS.indexOf(k) >= 0)) continue;
     if (Object.keys(_r.out).some(k => FLUIDS.indexOf(k) >= 0)) continue;
-    const unlocked = recipeUnlocked(rid);
-    const lockTech = recipeLockingTech(rid);
-    const rec = RECIPES[rid];
-    const outId = Object.keys(rec.out)[0];
-    const cnt = unlocked ? craftMaxCount(rid) : 0;
-    const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
-      Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') + ' ' + recipeDeviceName(rid)).toLowerCase();
-    h += '<div class="inv-slot craft-slot' + (unlocked ? '' : ' locked') + '" data-action="craft" data-id="' + rid + '" data-mult="1" data-craftable="' + cnt + '" data-rsearch="' + searchKey.replace(/"/g, '') + '" data-tip="' + itemTip(outId) + '">' +
-      '<img src="' + iconDataURL(outId, 16) + '">' +
-      '<span class="cnt" data-cnt>' + cnt + '</span>' +
-      (unlocked ? '' : '<span class="craft-lock" title="需先研究：' + TECHS[lockTech].name + '">🔒</span>') +
-      '</div>';
+    const outId = Object.keys(_r.out)[0];
+    // 按产物官方 item-group 单源归类到对应 Tab；无归类（理论为 0）时兜底放「物流」
+    const tab = (GAME_DATA.itemGroup && GAME_DATA.itemGroup[outId]) || 'logistics';
+    perTab[tab] = perTab[tab] || [];
+    perTab[tab].push({ rid, outId });
+  }
+  // Tab 栏
+  h += '<div class="craft-tabs" id="inv-recipe-tabs">';
+  for (const tab of CRAFT_TABS) {
+    const n = (perTab[tab] || []).length;
+    const on = tab === activeTab ? ' active' : '';
+    h += '<button type="button" class="craft-tab' + on + '" data-tab="' + tab + '">' + CRAFT_TAB_LABEL[tab] + ' <span class="cnt">' + n + '</span></button>';
   }
   h += '</div>';
+  // 每个 Tab 一个配方网格
+  for (const tab of CRAFT_TABS) {
+    const items = perTab[tab] || [];
+    const on = tab === activeTab ? '' : ' style="display:none"';
+    h += '<div id="inv-recipes-' + tab + '" class="inv-slots craft-grid" data-tab="' + tab + '"' + on + '>';
+    for (const { rid, outId } of items) {
+      const unlocked = recipeUnlocked(rid);
+      const lockTech = recipeLockingTech(rid);
+      const rec = RECIPES[rid];
+      const cnt = unlocked ? craftMaxCount(rid) : 0;
+      const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
+        Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') + ' ' + recipeDeviceName(rid)).toLowerCase();
+      h += '<div class="inv-slot craft-slot' + (unlocked ? '' : ' locked') + '" data-action="craft" data-id="' + rid + '" data-mult="1" data-craftable="' + cnt + '" data-rsearch="' + searchKey.replace(/"/g, '') + '" data-tip="' + itemTip(outId) + '">' +
+        '<img src="' + iconDataURL(outId, 16) + '">' +
+        '<span class="cnt" data-cnt>' + cnt + '</span>' +
+        (unlocked ? '' : '<span class="craft-lock" title="需先研究：' + TECHS[lockTech].name + '">🔒</span>') +
+        '</div>';
+    }
+    h += '</div>';
+  }
   h += '<div class="dim" id="inv-recipe-empty" style="display:none"></div>';
   return h;
+}
 
+// 切换制作栏 Tab：显示/隐藏对应配方网格，并刷新搜索过滤与空态提示
+function switchCraftTab(tab) {
+  const body = document.getElementById('panel-body');
+  if (!body) return;
+  if (CRAFT_TABS.indexOf(tab) < 0) tab = 'logistics';
+  G.invRecipeTab = tab;
+  const tabs = body.querySelectorAll('#inv-recipe-tabs .craft-tab');
+  for (const t of tabs) t.classList.toggle('active', t.dataset.tab === tab);
+  for (const t of CRAFT_TABS) {
+    const grid = body.querySelector('#inv-recipes-' + t);
+    if (grid) grid.style.display = (t === tab) ? '' : 'none';
+  }
+  applyInvRecipeFilter(G.invRecipeQ || '');
 }
 
 function applyInvRecipeFilter(q) {
   const body = document.getElementById('panel-body');
   if (!body) return;
   const ql = (q || '').trim().toLowerCase();
+  const activeTab = G.invRecipeTab && CRAFT_TABS.indexOf(G.invRecipeTab) >= 0 ? G.invRecipeTab : 'logistics';
+  // 只统计当前 Tab 内的可见槽
   let shown = 0;
-  body.querySelectorAll('#inv-recipes .craft-slot').forEach(el => {
-    const hit = !ql || el.dataset.rsearch.includes(ql);
-    el.style.display = hit ? '' : 'none';
-    if (hit) shown++;
-  });
+  const activeGrid = body.querySelector('#inv-recipes-' + activeTab);
+  if (activeGrid) {
+    activeGrid.querySelectorAll('.craft-slot').forEach(el => {
+      const hit = !ql || el.dataset.rsearch.includes(ql);
+      el.style.display = hit ? '' : 'none';
+      if (hit) shown++;
+    });
+  }
+  // 隐藏其它 Tab 的槽（保持干净），避免跨 Tab 误判
+  for (const t of CRAFT_TABS) {
+    if (t === activeTab) continue;
+    const grid = body.querySelector('#inv-recipes-' + t);
+    if (grid) grid.querySelectorAll('.craft-slot').forEach(el => { el.style.display = ''; });
+  }
   const emp = document.getElementById('inv-recipe-empty');
   if (emp) {
     emp.textContent = ql ? '没有匹配「' + q.trim() + '」的配方' : '没有匹配的配方';

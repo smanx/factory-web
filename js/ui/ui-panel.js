@@ -114,6 +114,12 @@ function initPanelEvents() {
       renderPanel(true); // tab 内容不同，切到顶部展示新页面
       return;
     }
+    // 制作栏 5 个 Tab 切换（物流/生产/中间产品/太空/武器）
+    const craftTabBtn = ev.target.closest('#inv-recipe-tabs .craft-tab[data-tab]');
+    if (craftTabBtn && G.panelMode === 'inv') {
+      switchCraftTab(craftTabBtn.dataset.tab);
+      return;
+    }
     const statTab = ev.target.closest('[data-stat-tab]');
     if (statTab) {
       G.statsTab = statTab.dataset.statTab;
@@ -693,7 +699,7 @@ function initPanelEvents() {
   // 与玩家背包一致的「格子 + 图标」网格交互。
   document.getElementById('panel-body').addEventListener('contextmenu', ev => {
     if (G.panelMode !== 'inv') return;
-    const slot = ev.target.closest && ev.target.closest('#inv-recipes .craft-slot[data-action="craft"]');
+    const slot = ev.target.closest && ev.target.closest('[id^="inv-recipes-"] .craft-slot[data-action="craft"]');
     if (!slot) return;
     ev.preventDefault();
     const rid = slot.dataset.id;

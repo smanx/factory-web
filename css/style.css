@@ -390,6 +390,37 @@ html, body {
   text-shadow: 0 1px 2px #000;
 }
 
+/* 制作栏 5 个 Tab（物流/生产/中间产品/太空/武器） */
+.craft-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0 4px;
+}
+.craft-tabs .craft-tab {
+  flex: 1 1 auto;
+  padding: 4px 6px;
+  font-size: 12px;
+  color: #c8d0d8;
+  background: rgba(16, 21, 28, .85);
+  border: 1px solid #3a4450;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.craft-tabs .craft-tab:hover { border-color: #d0a04a; }
+.craft-tabs .craft-tab.active {
+  color: #ffd64a;
+  border-color: #d0a04a;
+  background: rgba(60, 48, 20, .5);
+  font-weight: 600;
+}
+.craft-tabs .craft-tab .cnt {
+  font-size: 10px;
+  opacity: .7;
+  margin-left: 2px;
+}
+
 #panel {
   /* 弹框改为屏幕中间显示 */
   position: absolute;

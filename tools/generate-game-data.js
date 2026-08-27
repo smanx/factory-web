@@ -975,6 +975,68 @@ const qualityTiers = [];
   }
 }
 
+// ---- 制作栏 5 Tab 单源归类（物品 → 官方 item-group）----
+// 解析 factorio-data 所有 item-groups.lua，得到 subgroup → group 归属；
+// 再为每个项目物品按其官方原型 subgroup 反查 group，写入 GAME_DATA.itemGroup[id]。
+// 仅对官方未归入 5 大 Tab（物流/生产/中间产品/太空/武器）的特殊物品做人工兜底。
+const itemGroupMap = {}; // subgroup → group
+{
+  const groupFiles = [];
+  (function walk(dir) {
+    for (const f of fs.readdirSync(dir)) {
+      const p = path.join(dir, f);
+      const st = fs.statSync(p);
+      if (st.isDirectory()) walk(p);
+      else if (/item-groups\.lua$/.test(f)) groupFiles.push(p);
+    }
+  })(path.join(ROOT, 'factorio-data'));
+  for (const gf of groupFiles) {
+    const txt = fs.readFileSync(gf, 'utf8');
+    const blocks = txt.match(/\{[^{}]*?\}/gs) || [];
+    for (const b of blocks) {
+      const type = /type\s*=\s*"([^"]+)"/.exec(b);
+      if (!type || type[1] !== 'item-subgroup') continue;
+      const name = /name\s*=\s*"([^"]+)"/.exec(b);
+      const grp = /group\s*=\s*"([^"]+)"/.exec(b);
+      if (name && grp) itemGroupMap[name[1]] = grp[1];
+    }
+  }
+}
+// 5 大 Tab 的官方 group 名
+const CRAFT_TABS = ['logistics', 'production', 'intermediate-products', 'space', 'combat'];
+// 特殊物品兜底（官方未归入 5 大 Tab 或原型无 subgroup 者 → 人工归 Tab）
+const ITEM_GROUP_OVERRIDE = {
+  'satellite': 'space', 'rocket-body': 'space',
+  'iron-axe': 'production', 'steel-axe': 'production',
+  'red-wire': 'logistics', 'green-wire': 'logistics', 'spidertron-remote': 'logistics',
+  'creative-chest': 'logistics', 'void-chest': 'logistics',
+  'creative-pipe': 'logistics', 'void-pipe': 'logistics',
+  'creative-belt': 'logistics', 'void-belt': 'logistics',
+  'stone-path': 'logistics',
+};
+const itemGroup = {};
+for (const pid of projectItems) {
+  const oid = toOfficialName(pid);
+  // 优先兜底
+  if (ITEM_GROUP_OVERRIDE[pid]) { itemGroup[pid] = ITEM_GROUP_OVERRIDE[pid]; continue; }
+  // 从官方原型取 subgroup
+  let subgroup = null;
+  const it = raw.item && raw.item[oid];
+  if (it && it.subgroup) subgroup = it.subgroup;
+  else {
+    // 实体类（装备/载具/炮塔等）在各自原型带 subgroup
+    for (const tbl of Object.values(raw)) {
+      if (tbl && tbl[oid] && typeof tbl[oid] === 'object' && tbl[oid].subgroup) {
+        subgroup = tbl[oid].subgroup;
+        break;
+      }
+    }
+  }
+  const g = subgroup ? itemGroupMap[subgroup] : null;
+  if (g && CRAFT_TABS.includes(g)) itemGroup[pid] = g;
+  // 其余（流体/环境/信号等非 5 大 Tab）不写入，由前端按无归类兜底处理
+}
+
 // ---- 汇总新增字段进 GAME_DATA（undefined 字段由 JSON 序列化自动剔除）----
 Object.assign(GAME_DATA, {
   undergroundDist,
@@ -998,6 +1060,7 @@ Object.assign(GAME_DATA, {
   dlc,
   qualityModules,
   qualityTiers,
+  itemGroup,
 });
 
 // ---- recipe ----
