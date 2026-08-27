@@ -25,6 +25,8 @@ const T_REF_HAZARD = 8;   // 精炼警示混凝土（精炼混凝土底+警示�
 const T_CLIFF = 7;          // 峭壁（对齐《异星工厂》Cliff）：不可通行、不可建造的地形障碍，可用峭壁炸药清除
 const T_YUMAKO_SOIL = 8;      // 人工雅玛果土壤（太空时代 Gleba 农业）：人工填造的种植土壤，可走行
 const T_OVERGROWTH_YUMAKO_SOIL = 9; // 茂盛雅玛果土壤（太空时代 Gleba 农业）：更肥沃的种植土壤，可走行
+const T_JELLYNUT_SOIL = 10;      // 人工果仁土壤（太空时代 Gleba 农业）：人工填造的果仁种植土壤，可走行
+const T_OVERGROWTH_JELLYNUT_SOIL = 11; // 茂盛果仁土壤（太空时代 Gleba 农业）：更肥沃的果仁种植土壤，可走行
 function isWalkableTerrain(t) { return t !== T_WATER && t !== T_CLIFF; }
 // 地形是否“硬化”（混凝土/石砖路等铺装地）：玩家行走速度提升
 function isPaved(t) { return t === T_CONCRETE || t === T_PATH || t === T_REF_CONCRETE || t === T_HAZARD || t === T_REF_HAZARD; }

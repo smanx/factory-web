@@ -377,11 +377,6 @@ function initPanelEvents() {
         if (typeof resize === 'function') resize();
         toast('画面分辨率已更新');
       }
-      // 虚拟摇杆开关改动后立即显示/隐藏
-      if (key === 'virtualJoystick') {
-        if (typeof updateJoystickVisibility === 'function') updateJoystickVisibility();
-        toast('虚拟摇杆已' + (G.settings.virtualJoystick ? '开启' : '关闭'));
-      }
       return;
     }
     // 星际旅行：点击星球按钮切换当前星球（需「空间平台」科技解锁，由 travelToPlanet 把关）
@@ -724,7 +719,6 @@ async function htmlSettings() {
   }
   h += '</div></div>';
   h += '<div class="dim wcfg-desc">无 = 完全没有敌人；和平 = 敌人存在但不主动攻击；低/中/高 = 影响初始进化度与刷怪频率。修改后立即生效。</div>';
-  h += '<label class="setrow"><input type="checkbox" data-set="virtualJoystick"' + (G.settings.virtualJoystick ? ' checked' : '') + '> 虚拟摇杆（手机/触屏移动）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="minimap"' + (G.settings.minimap !== false ? ' checked' : '') + '> 小地图（右下角显示已探索区域，M 键切换）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="weather"' + (G.settings.weather !== false ? ' checked' : '') + '> 天气（阴云氛围，阴天时整体略暗）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="daylight"' + (G.settings.daylight !== false ? ' checked' : '') + '> 日照光照（昼夜明暗随时间变化）</label>';
@@ -874,35 +868,6 @@ function initPanelDrag() {
   });
 
   window.addEventListener('mouseup', () => { dragging = false; });
-
-  // 触屏拖动（对齐触屏交互：单指在标题栏上拖动）
-  head.addEventListener('touchstart', ev => {
-    if (ev.target.closest && ev.target.closest('#panel-close')) return;
-    const t = ev.touches[0];
-    if (!t) return;
-    const rect = panel.getBoundingClientRect();
-    dragging = true;
-    startX = t.clientX;
-    startY = t.clientY;
-    origX = rect.left;
-    origY = rect.top;
-    panel.style.transform = 'none';
-    panel.style.left = origX + 'px';
-    panel.style.top = origY + 'px';
-    panel.style.right = 'auto';
-    panel.style.bottom = 'auto';
-  }, { passive: true });
-
-  head.addEventListener('touchmove', ev => {
-    if (!dragging) return;
-    ev.preventDefault();
-    const t = ev.touches[0];
-    if (!t) return;
-    panel.style.left = (origX + (t.clientX - startX)) + 'px';
-    panel.style.top = (origY + (t.clientY - startY)) + 'px';
-  }, { passive: false });
-
-  head.addEventListener('touchend', () => { dragging = false; });
 }
 
 // 恢复面板默认位置：清除拖动期间写入的内联 left/top/transform，

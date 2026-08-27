@@ -109,22 +109,20 @@ function itemTip(id, extra) {
 }
 
 function iconCanvas(id, size = 34) {
-  const key = id + '_' + size;
+  // 无边框版本：内容直接铺满整个图标。
+  // 高清渲染：内部按「设备像素比 + 最小分辨率」绘制，再由 CSS 缩放显示，保证底部快捷栏/背包显示清晰不糊。
+  const dpr = Math.max(1, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
+  const px = Math.max(48, Math.round(size * dpr));   // 内部像素分辨率（高分辨率绘制，缩放后依然锐利）
+  const key = id + '_' + px;
   if (ICON_CACHE[key]) return ICON_CACHE[key];
   const c = document.createElement('canvas');
-  c.width = c.height = size;
+  c.width = c.height = px;
   const x = c.getContext('2d');
   const it = ITEMS[id];
-  const pad = Math.max(1, size * 0.06);
-  const lw = Math.max(1, size * 0.07);
-  x.fillStyle = '#20242b';
-  rr(x, pad, pad, size - pad * 2, size - pad * 2, Math.max(2, size * 0.16));
-  x.fill();
-  x.strokeStyle = it.color;
-  x.lineWidth = lw;
-  x.stroke();
+  x.scale(px / size, px / size);   // 以逻辑 size 为单位绘制，放大显示仍清晰
+  // 移除边框：不再绘制圆角底框与描边，让物品图形直接铺满整个图标
   x.fillStyle = it.color;
-  drawItemGlyph(x, id, size / 2, size / 2, size * 0.72);
+  drawItemGlyph(x, id, size / 2, size / 2, size * 0.92);
   ICON_CACHE[key] = c;
   return c;
 }
@@ -229,7 +227,7 @@ function onHotbarMidClick(i) {
 }
 
 function selectSlot(i) {
-  // 选择快捷栏物品建造时退出触屏拆除模式，避免左键行为冲突
+  // 选择快捷栏物品建造时退出拆除模式，避免左键行为冲突
   if (G.deconstructMode) toggleDeconstructMode(false);
   const prev = G.quickSel || (G.sel >= 0 ? (HOTBAR[G.sel] || null) : null);
   const id = HOTBAR[i];
@@ -1450,30 +1448,13 @@ function makeTitleDraggable(panel, head) {
     panel._drag = { ox: r.left, oy: r.top, sx: ev.clientX, sy: ev.clientY, moved: false };
     ev.preventDefault();
   }
-  function onHeadTouch(ev) {
-    const t = ev.changedTouches[0];
-    if (!t || !canDrag(ev)) return;
-    const r = snapToRect();
-    panel._drag = { ox: r.left, oy: r.top, sx: t.clientX, sy: t.clientY, moved: false };
-    ev.preventDefault();
-  }
-
   // 头部可能被重建（如 debug 面板），每次绑定到当前 head 上
   head.addEventListener('mousedown', onHeadDown);
-  head.addEventListener('touchstart', onHeadTouch, { passive: false });
 
   // 全局 move/up 只绑定一次，复用同一份 drag 状态（挂在 panel._drag 上）
   if (!panel._dragGlobalBound) {
     panel._dragGlobalBound = true;
     window.addEventListener('mousemove', ev => { if (panel._drag) moveDrag(ev.clientX, ev.clientY); });
     window.addEventListener('mouseup', endDrag);
-    window.addEventListener('touchmove', ev => {
-      if (!panel._drag) return;
-      const t = ev.changedTouches[0];
-      if (t) moveDrag(t.clientX, t.clientY);
-      ev.preventDefault();
-    }, { passive: false });
-    window.addEventListener('touchend', endDrag);
-    window.addEventListener('touchcancel', endDrag);
   }
 }

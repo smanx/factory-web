@@ -201,6 +201,8 @@ const GAME_DATA = {
   "agricultural-tower": 20,
   "artificial-yumako-soil": 100,
   "overgrowth-yumako-soil": 100,
+  "artificial-jellynut-soil": 100,
+  "overgrowth-jellynut-soil": 100,
   "jellynut": 50,
   "jellynut-seed": 10,
   "jelly": 100,
@@ -1977,6 +1979,30 @@ const GAME_DATA = {
     "overgrowth-yumako-soil": 1
    }
   },
+  "artificial-jellynut-soil": {
+   "time": 2,
+   "inp": {
+    "jellynut-seed": 2,
+    "nutrients": 50,
+    "landfill": 5
+   },
+   "out": {
+    "artificial-jellynut-soil": 10
+   }
+  },
+  "overgrowth-jellynut-soil": {
+   "time": 10,
+   "inp": {
+    "artificial-jellynut-soil": 2,
+    "jellynut-seed": 5,
+    "biter-egg": 10,
+    "spoilage": 50,
+    "water": 100
+   },
+   "out": {
+    "overgrowth-jellynut-soil": 1
+   }
+  },
   "sulfuric-acid": {
    "time": 1,
    "inp": {
@@ -2714,6 +2740,8 @@ const GAME_DATA = {
   "recycler": "assembling-machine-1",
   "artificial-yumako-soil": "assembling-machine-1",
   "overgrowth-yumako-soil": "assembling-machine-1",
+  "artificial-jellynut-soil": "assembling-machine-1",
+  "overgrowth-jellynut-soil": "assembling-machine-1",
   "sulfuric-acid": "chemical-plant",
   "defender-capsule": "assembling-machine-1",
   "distractor-capsule": "assembling-machine-1",
@@ -3539,6 +3567,14 @@ const GAME_DATA = {
   "overgrowth-yumako-soil": {
    "zh": "玉玛果沃土",
    "en": "Overgrowth yumako soil"
+  },
+  "artificial-jellynut-soil": {
+   "zh": "果冻果人造土",
+   "en": "Artificial jellynut soil"
+  },
+  "overgrowth-jellynut-soil": {
+   "zh": "果冻果沃土",
+   "en": "Overgrowth jellynut soil"
   },
   "jellynut": {
    "zh": "果冻果",

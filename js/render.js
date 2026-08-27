@@ -29,7 +29,7 @@ function resize() {
 function updateCamera(dt) {
   const cam = G.cam;
   const pan = cam.pan || { x: 0, y: 0 };
-  // 触屏拖动平移时：相机跟随玩家，但在玩家基础上附加 pan 偏移；
+  // 相机跟随玩家，但在玩家基础上附加 pan 偏移；
   // 玩家移动后偏移仍保持（视角相对玩家位置固定）。
   const txp = G.player.x - TILE / 2 + pan.x;
   const typ = G.player.y - TILE / 2 + pan.y;
@@ -406,6 +406,36 @@ function drawChunkTerrainInto(ctx, cx, cy) {
         ctx.fillRect(px + 12, py + 12, 4, 4);
         ctx.fillRect(px + 24, py + 5, 3, 3);
         ctx.strokeStyle = 'rgba(30,20,8,.4)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
+        continue;
+      }
+      if (t === T_JELLYNUT_SOIL) {
+        // 人工果仁土壤（太空时代 Gleba 农业）：粉褐壤土，带果仁颗粒与土粒
+        const v = hash2(tx, ty);
+        ctx.fillStyle = v > 0.5 ? '#7a4458' : '#734052';
+        ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = 'rgba(50,20,40,.4)';
+        for (const [bx, by] of [[7, 9], [20, 22], [12, 25], [24, 8]]) { ctx.fillRect(px + bx, py + by, 3, 3); }
+        ctx.fillStyle = 'rgba(190,100,150,.5)';
+        for (const [bx, by] of [[17, 6], [9, 18], [23, 17]]) { ctx.fillRect(px + bx, py + by, 2, 2); }
+        ctx.strokeStyle = 'rgba(50,20,35,.35)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
+        continue;
+      }
+      if (t === T_OVERGROWTH_JELLYNUT_SOIL) {
+        // 茂盛果仁土壤：更肥沃的深粉褐壤土，带更多果仁作物与嫩芽
+        const v = hash2(tx, ty);
+        ctx.fillStyle = v > 0.5 ? '#6a3a4e' : '#643547';
+        ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = 'rgba(200,90,160,.55)';
+        ctx.fillRect(px + 5, py + 6, 6, 6);
+        ctx.fillRect(px + 20, py + 20, 5, 5);
+        ctx.fillStyle = 'rgba(220,110,180,.45)';
+        ctx.fillRect(px + 12, py + 12, 4, 4);
+        ctx.fillRect(px + 24, py + 5, 3, 3);
+        ctx.strokeStyle = 'rgba(40,15,30,.4)';
         ctx.lineWidth = 1;
         ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
         continue;

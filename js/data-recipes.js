@@ -265,6 +265,10 @@ const RECIPES = {
   // 茂盛雅玛果土壤：人工雅玛果土壤×2 + 玉玛果种子×5 + 变质物×50 + 水×100 → 茂盛雅玛果土壤×1
   // （官方 overgrowth-yumako-soil 10s 依赖 biter-egg 生物蛋，项目适配为现有生物链资源：变质物代替）
   'overgrowth-yumako-soil': { time: 10, inp: { 'artificial-yumako-soil': 2, 'yumako-seed': 5, 'spoilage': 50, 'water': 100 }, out: { 'overgrowth-yumako-soil': 1 } },
+  // 人工果仁土壤：果仁种子×2 + 营养素×50 + 填海料×5 → 人工果仁土壤×10（官方 artificial-jellynut-soil 2s）
+  'artificial-jellynut-soil': { time: 2, inp: { 'jellynut-seed': 2, 'nutrients': 50, 'landfill': 5 }, out: { 'artificial-jellynut-soil': 10 } },
+  // 茂盛果仁土壤：人工果仁土壤×2 + 果仁种子×5 + 异虫卵×10 + 变质物×50 + 水×100 → 茂盛果仁土壤×1（官方 overgrowth-jellynut-soil 10s，官方配方对齐）
+  'overgrowth-jellynut-soil': { time: 10, inp: { 'artificial-jellynut-soil': 2, 'jellynut-seed': 5, 'biter-egg': 10, 'spoilage': 50, 'water': 100 }, out: { 'overgrowth-jellynut-soil': 1 } },
   // 果仁加工：果仁×1 → 果冻×4（官方 jellynut-processing 1s：1 果仁 → 4 果冻 + 2% 概率种子，此处对齐官方产出）
   'jellynut-processing': { time: 1, inp: { 'jellynut': 1 }, out: { 'jelly': 4 } },
   // 果仁种植（农业塔专属生长配方）：果仁种子×1 → 果仁×5 + 有概率返还种子，持续收获（对齐《异星工厂》Agricultural tower 果仁种植）

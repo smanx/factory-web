@@ -83,8 +83,6 @@ function enterGame() {
   const cq = document.getElementById('craft-queue');
   if (cq) cq.style.display = 'flex';
   toast('WASD 移动 · 左键挖矿/放建筑(覆盖建造) · 右键拆除 · R 旋转 · F 拿取 · Q 取消/拾取朝向 · 中键/E 面板 · T 科技 · P 统计 · B 蓝图 · Alt+B 蓝图库 · Alt+D 红图 · Alt+U 绿图 · K/L 存读档');
-  // 触屏设备：首次进入展示新手引导
-  if (typeof maybeShowTouchTip === 'function') maybeShowTouchTip();
 }
 
 // 退出到开始菜单（主页面）：隐藏游戏界面、显示开始菜单，并暂停游戏循环。
@@ -137,7 +135,7 @@ function respawnAtSpawn() {
   G.enemies = []; G.enemyProjectiles = [];
   G.player.x = G.spawn.x * TILE + TILE / 2;
   G.player.y = G.spawn.y * TILE + TILE / 2;
-  // 复位相机：清掉触屏拖动留下的 pan 偏移，否则相机中心会落在 player+pan 处
+  // 复位相机：居中于玩家
   // （偏离出生点，导致玩家眼前的基地/设备被挤到屏幕外，看起来“全部不见了”）。
   if (G.cam.pan) { G.cam.pan.x = 0; G.cam.pan.y = 0; }
   G.cam.px = G.player.x; G.cam.py = G.player.y;

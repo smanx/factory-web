@@ -59,9 +59,8 @@ function bindInput() {
     else if (k === 'n') { if (typeof placeMapTag === 'function') placeMapTag(); }
     // 操作说明（Alt+H）：随时查看完整快捷键指南
     else if (ev.altKey && k === 'h') { ev.preventDefault(); if (typeof showTutorial === 'function') showTutorial(); }
-    // C 键：循环切换工具栏中已装备的武器（新默认快捷键）
-    // （原放电防御装备的激活改由装备面板/其它按键触发，不再占用 C 键）
-    else if (k === 'c') { if (typeof cycleWeapon === 'function') cycleWeapon(); }
+    // C 键：在左下角快捷栏武器槽中从左到右循环切换当前武器（无武器则不切换）
+    else if (k === 'c') { if (typeof cycleQuickbarWeapon === 'function') cycleQuickbarWeapon(); }
     // ALT 模式（对齐《异星工厂》ALT 模式）：按 Alt 键切换建筑配方/内容叠加显示
     else if (k === 'alt') {
       ev.preventDefault();
@@ -131,8 +130,6 @@ function bindInput() {
   window.addEventListener('mousemove', ev => {
     updateCursorTile(ev.clientX, ev.clientY);
   });
-  // 触屏手势交互：由 js/touch.js 的 touchInit() 统一注册（点按/长按操作盘/拖动平移/攒合缩放等）
-  touchInit();
   G.canvas.addEventListener('mouseenter', () => { G.canvasActive = true; });
   G.canvas.addEventListener('mouseleave', () => {
     G.canvasActive = false;
@@ -162,7 +159,7 @@ function bindInput() {
     if (ev.button === 0) {
       // Shift+左键“粘贴设置”，与普通左键建造（默认支持覆盖）区分开
       if (ev.shiftKey && !ev.ctrlKey && hovered) { pasteSettings(hovered); return; }
-      // 拆除模式：左键（含触屏模拟）用于拆除建筑，而非建造/挖矿
+      // 拆除模式：左键用于拆除建筑，而非建造/挖矿
       if (G.deconstructMode) {
         G.deconstructHeld = true;
         if (G.cursorTile) deconstructAt(G.cursorTile.tx, G.cursorTile.ty);
@@ -206,8 +203,6 @@ function bindInput() {
       else if (G.blueMode === 'green') applyGreenBlueprint();
     }
   });
-
-  // ===== 触屏手势已由 js/touch.js 的 touchInit() 统一接管（点按/长按/拖动/攒合/双击） =====
 
   G.canvas.addEventListener('contextmenu', ev => ev.preventDefault());
   G.canvas.addEventListener('wheel', ev => {
@@ -319,7 +314,7 @@ function updateCursorTile(cx, cy) {
 }
 
 function updateHeldMouse(dt) {
-  // 拆除模式：按住左键/触屏拖动可连续拆除目标格上的建筑
+  // 拆除模式：按住左键拖动可连续拆除目标格上的建筑
   if (G.deconstructHeld && G.cursorTile) {
     if (G.blueMode) { G.deconstructHeld = false; return; }
     deconstructAt(G.cursorTile.tx, G.cursorTile.ty);
@@ -368,7 +363,6 @@ function stepWorld(dt) {
   // 每逻辑步失效信号塔模块加成缓存（P0 优化：同一步内同坐标只查询一次）
   if (typeof clearBeaconBonusCache === 'function') clearBeaconBonusCache();
   updatePlayer(dt);
-  updateTouchMove(dt);
   updateHeldMouse(dt);
   updateMining(dt);
   if (typeof updateGroundItems === 'function') updateGroundItems(dt);   // 地面物品（手动上料）拾取
@@ -534,7 +528,6 @@ function boot() {
     ['topbtn', () => initTopButtons()],
     ['panel', () => initPanelEvents()],
     ['paneldrag', () => initPanelDrag()],
-    ['joystick', () => initJoystick()],
     ['quickbar', () => initQuickbar()],
     ['tooltip', () => initTooltips()],
     ['hudinfo', () => initHudInfo()],

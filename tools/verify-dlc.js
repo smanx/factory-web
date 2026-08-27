@@ -222,6 +222,22 @@ ok(!!IT['artificial-yumako-soil'] && !!IT['overgrowth-yumako-soil'], '土壤物�
 ok(ctx.__itemTechReq('artificial-yumako-soil') === 'agriculture', '人工雅玛果土壤需「农业科技」');
 ok(ctx.__itemTechReq('overgrowth-yumako-soil') === 'agriculture', '茂盛雅玛果土壤需「农业科技」');
 
+// ===== 果冻果土壤（Artificial/Overgrowth jellynut soil）数据校验 =====
+console.log('\n【果冻果土壤（Gleba 双作物种植土壤）数据校验】');
+ok(!!GD.stackSize['artificial-jellynut-soil'] && GD.stackSize['artificial-jellynut-soil'] === 100, 'artificial-jellynut-soil 堆叠来自官方 (=100)');
+ok(!!GD.stackSize['overgrowth-jellynut-soil'] && GD.stackSize['overgrowth-jellynut-soil'] === 100, 'overgrowth-jellynut-soil 堆叠来自官方 (=100)');
+ok(!!GD.names['artificial-jellynut-soil'], 'artificial-jellynut-soil 官方命名已收录 (' + (GD.names['artificial-jellynut-soil'] ? GD.names['artificial-jellynut-soil'].zh : '?') + ')');
+ok(!!GD.names['overgrowth-jellynut-soil'], 'overgrowth-jellynut-soil 官方命名已收录 (' + (GD.names['overgrowth-jellynut-soil'] ? GD.names['overgrowth-jellynut-soil'].zh : '?') + ')');
+ok(!!RP['artificial-jellynut-soil'], '人工果冻果土壤配方已注册');
+ok(!!RP['overgrowth-jellynut-soil'], '茂盛果冻果土壤配方已注册');
+ok(Object.keys(RP['artificial-jellynut-soil'].inp).every(k => k in IT || ['water'].indexOf(k) >= 0), '人工果冻果土壤配方引用物品均存在');
+ok(Object.keys(RP['overgrowth-jellynut-soil'].inp).every(k => k in IT || ['water'].indexOf(k) >= 0), '茂盛果冻果土壤配方引用物品均存在');
+ok(!!IT['artificial-jellynut-soil'] && !!IT['overgrowth-jellynut-soil'], '果冻果土壤物品均已注册');
+ok(ctx.__itemTechReq('artificial-jellynut-soil') === 'agriculture', '人工果冻果土壤需「农业科技」');
+ok(ctx.__itemTechReq('overgrowth-jellynut-soil') === 'agriculture', '茂盛果冻果土壤需「农业科技」');
+ok(ctx.__recipeDevice('artificial-jellynut-soil') === 'assembling-machine-1', '人工果冻果土壤 → 组装机');
+ok(ctx.__recipeDevice('overgrowth-jellynut-soil') === 'assembling-machine-1', '茂盛果冻果土壤 → 组装机');
+
 // ===== Gleba 果仁（Jellynut）生物链数据校验 =====
 console.log('\n【果仁链（Jellynut，Gleba 双作物）数据校验】');
 // 物品/堆叠/命名来自官方（factorio-data）

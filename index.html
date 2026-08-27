@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>工厂原型 Factory Proto</title>
 <link rel="icon" type="image/x-icon" href="favicon.ico">
 <link rel="stylesheet" href="css/style.css?v=36">
@@ -53,7 +53,6 @@
 <div id="toasts"></div>
 <div id="greenbar" style="display:none"></div>
 <div id="tooltip"><b></b><span></span><div id="tooltip-recipe"></div></div>
-<div id="joystick" class="joystick hidden"><div id="joystick-knob"></div></div>
 <div id="dbg-btn">DBG</div>
 <div id="dbg-panel"></div>
 <img src="https://visitor-badge.laobi.icu/badge?page_id=smanx/factory-web&format=true&left_text=v&left_color=%23000000&right_color=%23000000"
@@ -82,7 +81,6 @@
       WASD 移动 · 左键建造/挖矿 · 右键拆除 · R 旋转 · F 拿取 ·
       中键/E 面板 · T 科技 · K/L 存读档
     </div>
-    <div class="start-hint sub">📱 手机/触屏：点按建造/开面板/移动 · 长按建筑弹操作盘（旋转/拆除/复制） · 拖动平移视角 · 双指捏合缩放 · 双击旋转/回中</div>
   </div>
 
   <!-- 读取存档：弹出存档列表弹层，可选指定存档或一键加载最新（置于卡片外，避免受卡片 backdrop-filter 影响定位） -->
@@ -133,7 +131,6 @@
       <div>2. 铺设<b>采矿机 + 传送带 + 机械臂 + 组装机</b>自动化生产</div>
       <div>3. <b>研究中心</b>放红瓶推进科技 → 抽水机+锅炉+蒸汽机发电</div>
       <div>4. 石油 → 塑料 → 高级科技，一路冲向火箭发射</div>
-      <div class="tutorial-hint">触屏端：点按建造 / 长按弹操作盘 / 拖动平移 / 双指缩放</div>
     </div>
     <button id="btn-tutorial-close" class="tutorial-close">开始游戏 ▶</button>
   </div>
@@ -252,15 +249,13 @@
 <script src="js/ui-panel.js?v=3" defer></script>
 <script src="js/ui-hud.js?v=2" defer></script>
 <script src="js/ui-debug.js?v=1" defer></script>
-<script src="js/ui-joystick.js?v=1" defer></script>
-<script src="js/ui-quickbar.js?v=1" defer></script>
+<script src="js/ui-quickbar.js?v=2" defer></script>
 <script src="js/render.js?v=44" defer></script>
 <script src="js/render-entity.js?v=1" defer></script>
 <script src="js/render-player.js?v=1" defer></script>
 <script src="js/render-minimap.js?v=1" defer></script>
 <script src="js/stats.js?v=15" defer></script>
 <script src="js/sfx.js?v=13" defer></script>
-<script src="js/touch.js?v=6" defer></script>
 <script src="js/blueprint.js?v=1" defer></script>
 <script src="js/main.js?v=67" defer></script>
 <script src="js/main-actions.js?v=1" defer></script>

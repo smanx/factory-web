@@ -307,7 +307,7 @@ function ghostSlotSize() {
     const sz = el.getBoundingClientRect().width;
     if (sz > 0) { _ghostSlotSize = sz; return sz; }
   }
-  return 52;   // 面板未打开等场景的回退值（与移动端 .slot 尺寸一致）
+  return 52;   // 面板未打开等场景的回退值
 }
 
 // 在顶层画布上应用与主画布一致的世界坐标变换（相机平移+缩放）。返回是否已入栈需恢复。
@@ -459,7 +459,7 @@ function drawHoverAndMining(ctx) {
   if (!G.cursorTile) return;
   const { tx, ty } = G.cursorTile;
   const e = entAt(tx, ty);
-  // 拆除模式：红色高亮光标所在建筑，提示将被拆除（替代手机端无法使用的右键）
+  // 拆除模式：红色高亮光标所在建筑，提示将被拆除
   if (G.deconstructMode) {
     if (e && withinReach(tx, ty)) {
       ctx.fillStyle = 'rgba(230,60,60,.22)';

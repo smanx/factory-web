@@ -2,7 +2,7 @@
 
 // ===== 蓝图 / 红图：框选一整块进行复制粘贴或删除 =====
 function toggleBlueprint(mode) {
-  // 进入蓝图/红图/绿图模式时退出触屏拆除模式，避免左键行为冲突
+  // 进入蓝图/红图/绿图模式时退出拆除模式，避免左键行为冲突
   if (!G.blueMode && G.deconstructMode) toggleDeconstructMode(false);
   // 再次点击同按钮取消框选
   if (G.blueMode === mode) { cancelBlueprint(); return; }

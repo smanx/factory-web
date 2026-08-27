@@ -497,3 +497,20 @@
 >   农业双作物生态，异虫卵成为高级生物质/钷素科研的官方原料，游戏内容向《异星工厂》太空时代靠齐。
 > - 科技：果仁链统一由「农业科技」解锁（与玉玛果链同科技）。
 > - 校验：verify-dlc 新增果仁链校验（33 项），全量 18 个校验脚本通过，构建通过。
+
+### 阶段四.13：果冻果土壤（Jellynut soil，Gleba 双作物种植土壤，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - 物品/地面：`artificial-jellynut-soil`（果冻果人造土）/ `overgrowth-jellynut-soil`（果冻果沃土）已接入，
+>   堆叠 100、中英命名（果冻果人造土/Artificial jellynut soil、果冻果沃土/Overgrowth jellynut soil）均来自
+>   GAME_DATA（factorio-data 官方），未单独维护数值表（生成脚本从官方 item 原型自动提取）。
+> - 玩法：作为可铺设地砖（对齐官方 place_as_tile），铺在草地上形成种植土壤；农业塔种植果冻果时
+>   须在果冻果土壤上才能生长（人造土/沃土均可，与玉玛果土壤并列 Gleba 双作物种植体系）。
+> - 配方（官方数值，组装机装配方）：
+>   - `artificial-jellynut-soil`：1 果冻果种子×2+营养素×50+填海料×5 → 10（2s，官方 artificial-jellynut-soil）
+>   - `overgrowth-jellynut-soil`：人工果冻果土壤×2+果冻果种子×5+异虫卵×10+变质物×50+水×100 → 1
+>     （10s，官方 overgrowth-jellynut-soil 依赖 biter-egg 生物蛋，项目已有异虫卵，配方直接对齐官方）
+> - 渲染：新增 T_JELLYNUT_SOIL/T_OVERGROWTH_JELLYNUT_SOIL 两种地面瓦片（粉褐壤土 + 更肥沃深粉褐壤土），
+>   小地图同步配色；农业塔 onSoil() 按种植作物匹配对应土壤（玉玛果→玉玛果土壤、果冻果→果冻果土壤）。
+> - 科技：由「农业科技」解锁（与玉玛果土壤/果仁链同科技）；校验并入 verify-dlc（新增 12 项），
+>   全量 18 个校验脚本通过，构建通过。
