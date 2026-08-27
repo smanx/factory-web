@@ -879,12 +879,12 @@ function applyAssemblerRecipeFilter(q) {
 // ===== 研究面板：左=研究列表，右=研究树图 =====
 // 依据 tech-report.md（官方 277 科技清单）重新设计研究面板：
 //   · 左边栏：按模块分组的研究列表（触发式 / 研究中心式科技一目了然），支持分类筛选
-//   · 右边栏：研究树图——每个科技一个节点（图标+名称），用连接线展示前置依赖关系
+//   · 右边栏：研究树图——每个科技一个节点，采用竖向（自上而下）缩进树展示前置依赖：
+//       前置科技在上、后继科技在其下方缩进，严格"竖形"排列，便于按链条阅读解锁顺序
 
-// 计算科技树的分层布局：按前置链最长深度分层（列），供 SVG 树图排版。
-// 返回 { tiers: [[tid,...], ...], pos: {tid:{col,row}} }
+// 计算每个科技的最长前置深度（root 深度 0），供竖向缩进树确定层级。
+// 返回 { depth: {tid:level}, maxDepth }
 function techTreeLayout() {
-  // 计算每个科技的最长前置深度（root 深度 0）
   const depth = {};
   const visit = (tid, stack) => {
     if (depth[tid] !== undefined) return depth[tid];
@@ -898,93 +898,61 @@ function techTreeLayout() {
     return d;
   };
   for (const tid in TECHS) visit(tid, []);
-  // 按层分组
-  const tiers = {};
   let maxDepth = 0;
-  for (const tid in depth) {
-    const d = depth[tid];
-    if (!tiers[d]) tiers[d] = [];
-    tiers[d].push(tid);
-    if (d > maxDepth) maxDepth = d;
-  }
-  // 每层内按名称排序（稳定）
-  const tierArr = [];
-  for (let d = 0; d <= maxDepth; d++) {
-    if (tiers[d]) tiers[d].sort((a,b)=>TECHS[a].name.localeCompare(TECHS[b].name,'zh'));
-    tierArr.push(tiers[d] || []);
-  }
-  // 分配行号：同层自上而下编号，用于 SVG 纵向排布
-  const pos = {};
-  for (let col = 0; col < tierArr.length; col++) {
-    tierArr[col].forEach((tid, row) => { pos[tid] = { col, row }; });
-  }
-  return { tiers: tierArr, pos, maxDepth };
+  for (const tid in depth) if (depth[tid] > maxDepth) maxDepth = depth[tid];
+  return { depth, maxDepth };
 }
 
-// 生成研究树图 SVG：节点（图标+名称）+ 前置连接线（竖向展示：前置在上、后继在下）
+// 生成竖向研究树：前置在上、后继在其下方缩进（自上而下、窄而高，符合"竖形显示"）
 function htmlTechTree() {
-  const { tiers, pos, maxDepth } = techTreeLayout();
-  const NODE_W = 118, NODE_H = 34, GAP_X = 36, GAP_Y = 12;
-  const colW = NODE_W + GAP_X;
-  const rowH = NODE_H + GAP_Y;
-  // 竖向展示：把「层(深度)」映射到纵向（行），把「同层节点序号」映射到横向（列）
-  let maxRows = 1;      // 同层最多节点数 → 横向列数
-  for (const tl of tiers) if (tl.length > maxRows) maxRows = tl.length;
-  const W = maxRows * colW + 10;          // 宽度由同层最多节点决定
-  const H = (maxDepth + 1) * rowH + 10;   // 高度由层数（深度+1）决定
-
-  // 收集连接线（父→子）
-  const lines = [];
+  // 子依赖表：parent -> [children]
+  const children = {};
   for (const tid in TECHS) {
     const t = TECHS[tid];
     for (const r of (t.req || [])) {
-      if (pos[r] && pos[tid]) {
-        const p = pos[r], c = pos[tid];
-        // 只在父层 < 子层 时画线（同层则忽略，避免重叠）
-        lines.push({ from: r, to: tid, pc: p.col, pr: p.row, cc: c.col, cr: c.row });
-      }
+      if (!children[r]) children[r] = [];
+      children[r].push(tid);
     }
   }
-  // 竖向坐标系：x 由「同层序号 row」决定，y 由「深度 col」决定
-  const cx = (r) => r * colW + NODE_W / 2 + 5;
-  const cy = (c) => c * rowH + NODE_H / 2 + 5;
-  let lineSvg = '';
-  for (const ln of lines) {
-    // 父节点（前置）应位于上方（深度更小，cy 更小）
-    const x1 = cx(ln.pr), y1 = cy(ln.pc) + NODE_H / 2;
-    const x2 = cx(ln.cr), y2 = cy(ln.cc) - NODE_H / 2;
-    const my = (y1 + y2) / 2;
-    // 贝塞尔曲线：纵向平滑连接（先向下再向下）
-    lineSvg += '<path d="M ' + x1 + ' ' + y1 + ' C ' + x1 + ' ' + my + ', ' + x2 + ' ' + my + ', ' + x2 + ' ' + y2 +
-      '" fill="none" stroke="#3a4550" stroke-width="1.4" class="tech-edge"></path>';
-  }
+  const byName = (a, b) => TECHS[a].name.localeCompare(TECHS[b].name, 'zh');
+  for (const k in children) children[k].sort(byName);
 
-  // 节点
-  let nodeSvg = '';
-  for (const tid in pos) {
-    const p = pos[tid];
+  // 根节点 = 无前置依赖的科技（深拷贝列表后按名称排序）
+  const roots = [];
+  for (const tid in TECHS) if (!(TECHS[tid].req || []).length) roots.push(tid);
+  roots.sort(byName);
+
+  let h = '<div class="tech-vert-tree">';
+  const shown = new Set();
+  const walk = (tid, indent) => {
+    if (shown.has(tid)) return; // DAG 共享节点只展示一次
+    shown.add(tid);
     const t = TECHS[tid];
     const done = techResearched(tid);
     const locked = !done && techLocked(tid);
     const active = G.activeTech === tid;
     const inQueue = !!(G.techQueue && G.techQueue.indexOf(tid) >= 0);
-    let cls = 'tech-node';
+    let cls = 'tech-vnode';
     if (done) cls += ' done';
     else if (locked) cls += ' locked';
     if (active) cls += ' active';
     if (inQueue && !active) cls += ' queued';
     const badge = t.trigger ? '⚡' : (isInfiniteTech(tid) ? '∞' : '');
-    const x = p.row * colW + 5, y = p.col * rowH + 5;
-    nodeSvg += '<g class="' + cls + '" transform="translate(' + x + ',' + y + ')" data-tid="' + tid + '">' +
-      '<rect class="tech-node-bg" x="0" y="0" width="' + NODE_W + '" height="' + NODE_H + '" rx="6"></rect>' +
-      (badge ? '<text x="7" y="12" font-size="11" class="tech-badge">' + badge + '</text>' : '') +
-      '<text x="' + (badge ? 20 : 7) + '" y="21" font-size="10.5" class="tech-node-text">' + t.name + '</text>' +
-      '</g>';
-  }
-  return '<svg class="tech-tree-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMinYMin meet">' +
-    lineSvg + nodeSvg + '</svg>';
+    h += '<div class="tech-vrow" style="padding-left:' + (indent * 18) + 'px">';
+    h += '<span class="tech-vguide"></span>';
+    h += '<span class="' + cls + '" data-tid="' + tid + '" title="' + t.desc + '">';
+    if (badge) h += '<span class="tech-badge">' + badge + '</span>';
+    h += '<span class="tech-vname">' + t.name + '</span>';
+    if (locked) h += '<span class="lock-tag">🔒</span>';
+    h += '</span></div>';
+    for (const c of (children[tid] || [])) walk(c, indent + 1);
+  };
+  for (const r of roots) walk(r, 0);
+  // 兜底：孤立节点（成环或异常数据）也展示，避免遗漏
+  for (const tid in TECHS) if (!shown.has(tid)) walk(tid, 0);
+  h += '</div>';
+  return h;
 }
-
 // 生成左边栏研究列表
 function htmlTechList() {
   // 分类筛选 tab
