@@ -26,4 +26,4 @@ jobs:
           echo "==== 语法校验 ===="
           for f in $(find js tools -name '*.js'); do node --check "$f"; done
           echo "---- 数据/物理参数回归 ----"
-          bash tools/run-verify.sh
+          node tools/run-verify.js
