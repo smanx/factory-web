@@ -199,6 +199,11 @@ class Refinery extends Entity {
     if ((this.outp[item] || 0) > 0) { this.outp[item]--; if (this.outp[item] <= 0) delete this.outp[item]; return item; }
     return null;
   }
+  // 取回原料：从设备输入缓存中取 1 件指定原料回背包（供设备面板右键取出）
+  takeInputItemOf(item) {
+    if ((this.inp[item] || 0) > 0) { this.inp[item]--; if (this.inp[item] <= 0) delete this.inp[item]; return item; }
+    return null;
+  }
   powerDemand() { return this.recipe ? POWER_USE['oil-refinery'] : 0; }
   contents() {
     const list = [[this.type, 1]];

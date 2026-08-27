@@ -543,8 +543,8 @@ function updateRecipeMachineLive(e, body, api) {
     for (const k in rec.inp) {
       const cur = e.inp[k] || 0;
       const need = rec.inp[k];
-      inp += '<div class="mch-io-slot' + (cur >= need ? ' full' : '') + '" data-action="feed-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|配方需 ' + need + '，当前 ' + cur + '。点击放入（或先选左侧物品再点击此槽放入该物品）">' +
-        '<img src="' + iconDataURL(k) + '"><span class="mch-io-n">' + cur + '/' + need + '</span></div>';
+      inp += '<div class="mch-io-slot' + (cur >= need ? ' full' : '') + '" data-action="feed-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|配方需 ' + need + '，当前 ' + cur + '。左键放入，右键取出（或先选左侧物品再点击此槽放入该物品）">' +
+        '<img src="' + iconDataURL(k) + '">' + (cur > 0 ? '<button class="mch-takein" data-action="takein-slot" data-id="' + k + '" title="取回 1 件 ' + ITEMS[k].name + ' 到背包">−</button>' : '') + '<span class="mch-io-n">' + cur + '/' + need + '</span></div>';
     }
     api.set('mch-inp', inp);
     // 产品数量
@@ -1283,8 +1283,8 @@ function recipeMachineRightHtml(e, info, rec) {
   h += '<div class="mch-side mch-inp"><div class="mch-side-title">原料</div><div class="mch-inp-row" data-live="mch-inp">';
   for (const k in rec.inp) {
     const cur = e.inp[k] || 0;
-    h += '<div class="mch-io-slot" data-action="feed-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|配方需 ' + rec.inp[k] + '，当前 ' + cur + '。点击放入（或先选左侧物品再点击此槽放入该物品）">' +
-      '<img src="' + iconDataURL(k) + '"><span class="mch-io-n">' + cur + '/' + rec.inp[k] + '</span></div>';
+    h += '<div class="mch-io-slot' + (cur >= rec.inp[k] ? ' full' : '') + '" data-action="feed-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|配方需 ' + rec.inp[k] + '，当前 ' + cur + '。左键放入，右键取出（或先选左侧物品再点击此槽放入该物品）">' +
+      '<img src="' + iconDataURL(k) + '">' + (cur > 0 ? '<button class="mch-takein" data-action="takein-slot" data-id="' + k + '" title="取回 1 件 ' + ITEMS[k].name + ' 到背包">−</button>' : '') + '<span class="mch-io-n">' + cur + '/' + rec.inp[k] + '</span></div>';
   }
   h += '</div></div>';
   // 进度条
@@ -1307,7 +1307,7 @@ function recipeMachineRightHtml(e, info, rec) {
   h += '</div></div>';
   h += '</div>';
   // 操作说明
-  h += '<div class="dim mch-help">左栏为你的背包：点击物品选中并显示放置幽灵；先选中背包物品再点击右侧「原料」槽即可把该物品放入设备；点击「产品」图标可把产物取回背包。原料/产品均可通过传送带与机械臂自动进出。</div>';
+  h += '<div class="dim mch-help">左栏为你的背包：先选中背包物品再点击右侧「原料」槽即可放入该物品；在「原料」槽上右键（或点其左上角 −）取回 1 件到背包；点击「产品」图标可把产物取回背包。原料/产品均可通过传送带与机械臂自动进出。</div>';
   // 电力状态与速率
   if (typeof e.powerDemand === 'function') h += row('电力', powerStatusLiveHtml(e), 'power');
   h += machRateHtml(rec, e.crafting && typeof e.moduleSpeedMult === 'function' ? e.moduleSpeedMult() : 1);

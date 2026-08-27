@@ -2091,7 +2091,17 @@ html, body {
 }
 .mch-io-slot:hover { border-color: #ffd23c; background: rgba(255,210,60,.08); }
 .mch-io-slot.full { border-color: #57b95c; background: rgba(87,185,92,.08); }
+.mch-io-slot { position: relative; }
 .mch-io-slot img { width: 30px; height: 30px; border-radius: 4px; }
+.mch-takein {
+  position: absolute; top: 2px; right: 2px;
+  width: 16px; height: 16px; line-height: 14px;
+  padding: 0; margin: 0; border: none; border-radius: 3px;
+  background: rgba(255,90,90,.85); color: #fff; font-size: 12px; font-weight: bold;
+  cursor: pointer; opacity: 0; transition: opacity .15s;
+}
+.mch-io-slot:hover .mch-takein { opacity: 1; }
+.mch-takein:hover { background: #ff4d4d; }
 .mch-io-n { font-size: 11px; color: #cdd6df; margin-top: 2px; white-space: nowrap; }
 .mch-prog { flex: 0 0 130px; display: flex; flex-direction: column; gap: 4px; min-width: 120px; }
 .mch-prog .bar { width: 100%; }
