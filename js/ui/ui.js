@@ -340,33 +340,37 @@ function renderPanel(full) {
   if (!G.panelMode) { document.getElementById('panel').style.display = 'none'; return; }
   const st = full ? 0 : panelScrollTop();
   if (G.panelMode === 'inv') {
-    title.textContent = '';
+    title.textContent = '背包与手工制造';
     const keepFocusId = document.activeElement &&
       (document.activeElement.id === 'inv-recipe-search' || document.activeElement.id === 'inv-item-search') ?
       document.activeElement.id : null;
-    // 背包面板：顶部为三个 tab（玩家 / 物流 / 制作）共用大标题，点击即可切换。
-    // 当前仅展示选中 tab 的内容（单列视图）。制作页含数百条配方，生成较重，缓存复用。
-    const tab = G.invTab || 'inv';
+    // 背包面板：三个 tab（玩家 / 物流 / 制作）公用一个顶部工具栏，并共用一个标题显示名称。
+    // 三列同时显示在界面左、中、右（玩家=左、物流=中、制作=右），默认全部展示，点击 tab 不需切换。
     if (!_invTabCache['craft']) _invTabCache['craft'] = htmlCraft();
-    let content;
-    if (tab === 'craft') {
-      content = '<div id="inv-craft">' + _invTabCache['craft'] + '</div>';
-    } else if (tab === 'logi') {
-      content = htmlLogistics();
-    } else {
-      content = htmlInventory();
-    }
+    const craftHtml = _invTabCache['craft'];
+    const matHtml = htmlInventory();
+    const logiHtml = htmlLogistics();
     const tabBtn = (key, label) =>
-      '<button class="inv-tab' + (tab === key ? ' active' : '') + '" data-inv-tab="' + key + '">' + label + '</button>';
+      '<button class="inv-tab" data-inv-tab="' + key + '">' + label + '</button>';
     body.innerHTML =
       '<div class="inv-tabs">' +
         tabBtn('inv', '🎒 玩家') +
         tabBtn('logi', '📦 物流') +
         tabBtn('craft', '🛠 制作') +
       '</div>' +
-      '<div class="inv-tab-body">' + content + '</div>';
-    if (tab === 'craft') applyInvRecipeFilter(G.invRecipeQ);
-    if (tab === 'inv') applyInvItemSearch(G.invItemQ);
+      '<div class="inv-layout">' +
+        '<div class="inv-col inv-col-left" id="inv-col-left">' +
+          '<div class="inv-col-body" id="inv-mat">' + matHtml + '</div>' +
+        '</div>' +
+        '<div class="inv-col inv-col-mid" id="inv-col-mid">' +
+          '<div class="inv-col-body">' + logiHtml + '</div>' +
+        '</div>' +
+        '<div class="inv-col inv-col-right" id="inv-col-right">' +
+          '<div class="inv-col-body" id="inv-craft">' + craftHtml + '</div>' +
+        '</div>' +
+      '</div>';
+    applyInvRecipeFilter(G.invRecipeQ);
+    applyInvItemSearch(G.invItemQ);
     if (keepFocusId) {
       const inp = document.getElementById(keepFocusId);
       if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
