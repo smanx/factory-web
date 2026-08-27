@@ -614,6 +614,7 @@ function htmlCraft() {
     if (typeof isCrusherRecipe === 'function' && isCrusherRecipe(rid)) continue;
     if (typeof isFoundryRecipe === 'function' && isFoundryRecipe(rid)) continue;
     if (typeof isAgricultureTowerRecipe === 'function' && isAgricultureTowerRecipe(rid)) continue;
+    if (typeof isHubRecipe === 'function' && isHubRecipe(rid)) continue;
     const _r = RECIPES[rid];
     if (!_r.out) continue; // 概率产出配方（如星块再处理）不列入手搓清单
     // 含流体原料或产物的配方不列入手搓清单（流体只能走管道，需在组装机/化工厂生产）

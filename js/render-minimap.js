@@ -38,6 +38,8 @@ function drawMinimap(ctx) {
         : (t === T_HAZARD) ? 'rgba(190,180,40,0.85)'
         : (t === T_PATH) ? 'rgba(150,140,130,0.85)'
         : (t === T_CLIFF) ? 'rgba(100,96,88,0.9)'
+        : (t === T_YUMAKO_SOIL) ? 'rgba(122,90,52,0.9)'
+        : (t === T_OVERGROWTH_YUMAKO_SOIL) ? 'rgba(100,70,40,0.9)'
         : 'rgba(52,78,50,0.9)';
       ctx.fillRect(px, py, z + 0.4, z + 0.4);
       // 矿脉标记

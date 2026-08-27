@@ -16,7 +16,6 @@ const TECH_REQ = {
   'flamethrower-turret': 'flamethrower',
   'rocket-launcher': 'military2',
   'flamethrower': 'flamethrower',
-  'explosive-rocket-launcher': 'explosives',
   'destroyer-capsule': 'advanced-combat',
   'defender-capsule': 'weapons',
   'distractor-capsule': 'weapons',
@@ -30,7 +29,6 @@ const TECH_REQ = {
   'rocket-silo': 'rocket-science',
   'rocket': 'rocket-science',
   'satellite': 'rocket-science',
-  'rocket-control-unit': 'rocket-science',
   'rocket-fuel': 'rocket-science',
   // ===== 太空时代 Space Age 电磁学材料链（对齐《异星工厂》Space Age，统一由「电磁学」科技解锁）=====
   'carbon-fiber': 'electromagnetics',
@@ -56,6 +54,8 @@ const TECH_REQ = {
   'biochamber': 'agriculture',
   'agricultural-tower': 'agriculture',
   'yumako-seed': 'agriculture',
+  'artificial-yumako-soil': 'agriculture',
+  'overgrowth-yumako-soil': 'agriculture',
   'biolab': 'biolab',  // 生物实验室（Gleba）：需「生物实验室」科技（官方 Biolab 科技，前置农业科技），科研速度 2 倍
   // ===== 太空时代 小行星碎块加工链（统一由「太空材料加工」科技解锁）=====
   'crusher': 'asteroid-processing',
@@ -69,6 +69,12 @@ const TECH_REQ = {
   'thruster-oxidizer': 'space-thruster',
   'advanced-thruster-fuel': 'space-thruster',
   'advanced-thruster-oxidizer': 'space-thruster',
+  // ===== 太空平台系统（对齐《异星工厂》Space Age 空间平台科技）=====
+  'space-platform-foundation': 'space-platform',
+  'space-platform-starter-pack': 'space-platform',
+  'space-platform-hub': 'space-platform',
+  'thruster': 'space-platform',
+  'asteroid-collector': 'space-platform',
   'metallic-asteroid-chunk': 'asteroid-processing',
   'carbonic-asteroid-chunk': 'asteroid-processing',
   'oxide-asteroid-chunk': 'asteroid-processing',
@@ -184,7 +190,6 @@ const WEAPON_TECH_REQ = {
   'shotgun': 'weapons',
   'combat-shotgun': 'military2',
   'rocket-launcher': 'military2',
-  'explosive-rocket-launcher': 'explosives',
   'flamethrower': 'flamethrower'
 };
 // 弹药/投掷物科技门控：散弹枪弹由武器科技解锁，穿甲散弹枪弹与集束手雷由高级战斗解锁
@@ -193,7 +198,6 @@ TECH_REQ['piercing-shotgun-shell'] = 'military2';
 TECH_REQ['cluster-grenade'] = 'cluster-grenade';
 // 爆炸火箭弹/爆炸火箭筒：研究「爆炸物科技」后解锁（对齐《异星工厂》Explosive rocket 独立科技）
 TECH_REQ['explosive-rocket'] = 'explosives';
-TECH_REQ['explosive-rocket-launcher'] = 'explosives';
 // 峭壁炸药：研究「爆炸物科技」后解锁（对齐《异星工厂》Cliff explosives 需爆炸物科技）
 TECH_REQ['cliff-explosives'] = 'explosives';
 // 爆炸炮弹 / 铀爆炸炮弹：需爆炸物科技解锁（对齐《异星工厂》：爆炸炮弹由爆炸物科技与核能科技门控）

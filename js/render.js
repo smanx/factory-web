@@ -336,6 +336,37 @@ function drawChunkTerrainInto(ctx, cx, cy) {
         }
         continue;
       }
+
+      if (t === T_YUMAKO_SOIL) {
+        // 人工雅玛果土壤（太空时代 Gleba 农业）：深褐松软壤土，点缀碎草与土粒
+        const v = hash2(tx, ty);
+        ctx.fillStyle = v > 0.5 ? '#7a5a34' : '#735531';
+        ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = 'rgba(40,24,10,.4)';
+        for (const [bx, by] of [[7, 9], [20, 22], [12, 25], [24, 8]]) { ctx.fillRect(px + bx, py + by, 3, 3); }
+        ctx.fillStyle = 'rgba(150,120,70,.5)';
+        for (const [bx, by] of [[17, 6], [9, 18], [23, 17]]) { ctx.fillRect(px + bx, py + by, 2, 2); }
+        ctx.strokeStyle = 'rgba(60,38,16,.35)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
+        continue;
+      }
+      if (t === T_OVERGROWTH_YUMAKO_SOIL) {
+        // 茂盛雅玛果土壤：更肥沃的黑褐壤土，带更多翠绿植被与嫩芽
+        const v = hash2(tx, ty);
+        ctx.fillStyle = v > 0.5 ? '#6a4a28' : '#634524';  
+        ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = 'rgba(60,140,50,.55)';
+        ctx.fillRect(px + 5, py + 6, 6, 6);
+        ctx.fillRect(px + 20, py + 20, 5, 5);
+        ctx.fillStyle = 'rgba(90,170,60,.45)';
+        ctx.fillRect(px + 12, py + 12, 4, 4);
+        ctx.fillRect(px + 24, py + 5, 3, 3);
+        ctx.strokeStyle = 'rgba(30,20,8,.4)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
+        continue;
+      }
       if (t === T_CLIFF) {
         // 峭壁（对齐《异星工厂》Cliff）：灰褐色岩体 + 岩缝，比周围地面略高
         const v = hash2(tx, ty);

@@ -7,16 +7,17 @@
 // ② 放入卫星，点击「发射」进入倒计时，发射成功即赢得游戏。
 // 对齐《异星工厂》：发射井先组装出火箭，再放入卫星发射。
 
-// 组装一枚火箭所需部件（对齐《异星工厂》火箭本体组装）
+// 组装一枚火箭所需部件（对齐《异星工厂》火箭本体组装，官方 rocket-part 配方：
+// 处理单元×10 + 低密度结构×10 + 火箭燃料×10。2.0 已移除 rocket-control-unit，统一走 rocket-part）
 const SILO_ASSEMBLE = {
   'rocket-fuel': 10,
-  'rocket-control-unit': 1,
+  'processing-unit': 10,
   'low-density-structure': 10
 };
 const SILO_CAP = 100;
 // 组装出完整火箭所需火箭部件数（对齐《异星工厂》：发射井逐件组装火箭部件，集齐后拼装成完整火箭本体）。
 // 原版需 100 件；本作结合经济规模取 10 件，使产能模块装进发射井（4 槽）能真正累积免费部件、缩减终局材料投入，
-// 复现《异星工厂》"火箭井装产能模块"的经典玩法。每件部件配方 = SILO_ASSEMBLE（火箭燃料×10 + 火箭控制单元×1 + 低密度结构×10）。
+// 复现《异星工厂》"火箭井装产能模块"的经典玩法。每件部件配方 = SILO_ASSEMBLE（火箭燃料×10 + 处理单元×10 + 低密度结构×10）。
 const ROCKET_PARTS = 10;
 // 火箭产能（对齐《异星工厂》Rocket productivity）：每级降低火箭燃料与低密度结构部件需求（最低保留 1）。
 function siloPartNeed(k) { return (typeof rocketPartNeed === 'function') ? rocketPartNeed(k, SILO_ASSEMBLE[k]) : SILO_ASSEMBLE[k]; }

@@ -38,7 +38,9 @@ const STACK_SIZES = {
   // 基础建材与管线：堆叠 100
   'concrete': 100, 'refined-concrete': 100, 'hazard-concrete': 100, 'stone-path': 100, 'landfill': 100,
   // 品质模块（对齐《异星工厂》Quality DLC：quality-module 官方 stack=50）
-  'quality-module': 50, 'quality-module-2': 50, 'quality-module-3': 50
+  'quality-module': 50, 'quality-module-2': 50, 'quality-module-3': 50,
+  // 雅玛果土壤（太空时代 Gleba，官方 stack=100）
+  'artificial-yumako-soil': 100, 'overgrowth-yumako-soil': 100
 };
 // 返回某物品的最大堆叠数（未特别指定则默认 100，对齐原版多数物品）
 function stackSize(id) {
@@ -137,7 +139,6 @@ const ITEMS = {
   'piercing-shotgun-shell': { name: '穿甲散弹枪弹', color: '#d05a3a', desc: '穿甲散弹枪弹：每枚弹丸伤害更高，供散弹枪与战斗散弹枪使用（对齐《异星工厂》Piercing shotgun shell）' },
   'cluster-grenade': { name: '集束手雷', color: '#3a7a2a', desc: '威力更强、爆炸范围更大的升级手雷，对成片敌人造成重创（对齐《异星工厂》Cluster grenade）' },
   'rocket-launcher': { name: '火箭筒', color: '#5a7a4a', desc: '发射火箭弹造成范围爆炸伤害' },
-  'explosive-rocket-launcher': { name: '爆炸火箭筒', color: '#c05a2a', desc: '发射爆炸火箭弹，爆炸范围与伤害远超普通火箭筒（对齐《异星工厂》Explosive rocket launcher）' },
   'grenade':         { name: '手雷',   color: '#4a7a3a', desc: '投掷爆炸物，对范围敌人造成伤害，可在背包直接使用' },
   'rocket':      { name: '火箭弹', color: '#7a5a4a', desc: '火箭筒的弹药，爆炸造成范围伤害' },
   'explosive-rocket':{ name: '爆炸火箭弹', color: '#c05a2a', desc: '装填高能爆炸物的重型火箭弹，命中后爆炸范围与伤害远超普通火箭弹，供爆炸火箭筒使用（对齐《异星工厂》Explosive rocket）' },
@@ -173,7 +174,6 @@ const ITEMS = {
   'processing-unit': { name: '处理器', color: '#5a8ad0', desc: '蓝板，最先进电子元件，用于火箭控制单元' },
   'low-density-structure': { name: '低密度结构', color: '#b0b8c0', desc: '轻质航空结构材料' },
   'rocket-fuel':     { name: '火箭燃料', color: '#d07a2a', desc: '火箭推进剂，用石油气+电引擎制造；同时也是能量最高的可燃烧燃料（约为固体燃料 10 倍、煤 40 倍），可投入锅炉/熔炉/采矿机/火车/载具使用（对齐《异星工厂》Rocket fuel）' },
-  'rocket-control-unit': { name: '火箭控制单元', color: '#d04a4a', desc: '火箭的大脑，用处理器+高级电路板制造' },
   'rocket-part':     { name: '火箭部件', color: '#a8b0c0', mark: '◈', desc: '火箭发射井逐件组装的中间部件（对齐《异星工厂》Rocket part），集齐后拼装出完整火箭；装产能模块可免费累积额外部件' },
   'rocket-body':     { name: '火箭', color: '#c0c8d0', mark: '🚀', desc: '由火箭发射井集齐火箭部件组装而成的完整火箭本体，放入卫星后可发射' },
   'satellite':       { name: '卫星', color: '#c0c8d0', desc: '放入火箭发射井发射，赢得游戏' },
@@ -251,12 +251,21 @@ const ITEMS = {
   'agricultural-science-pack': { name: '农业科技包', color: '#a8d84a', mark: 'ASP', desc: '太空时代黄色科研包，由生物流在生化炉制得，解锁太空时代农业/生物科技（对齐《异星工厂》Space Age Agricultural science pack，堆叠 200）' },
   'biochamber': { name: '生物室', color: '#4aa86a', desc: '太空时代生物生产建筑（3×3，吃电力）：专用于生产生物质产品（果泥/生物流/营养素/农业科研包等），比组装机更快（对齐《异星工厂》Space Age 生化炉，数据来自 GAME_DATA）' },
   'agricultural-tower': { name: '农业塔', color: '#a08030', desc: '太空时代农业建筑（3×3，吃电力）：在人工雅玛果土壤上种植作物，放入玉玛果种子后持续收获玉玛果（对齐《异星工厂》Space Age Agricultural tower，数据来自 GAME_DATA）' },
+  // ===== 太空时代 Gleba 农业土壤（人工雅玛果土壤 / 茂盛雅玛果土壤，数据来自 factorio-data 官方，见 GAME_DATA）=====
+  'artificial-yumako-soil': { name: '玉玛果人造土', color: '#7a5a34', mark: '土', desc: '太空时代农业种植土壤（地面铺设）：铺在草地上形成可种植雅玛果的人工土壤，供农业塔种植作物。由玉玛果种子+营养素+填海料制成（对齐《异星工厂》Space Age Artificial yumako soil，堆叠 100）' },
+  'overgrowth-yumako-soil': { name: '玉玛果沃土', color: '#5a4a2a', mark: '沃', desc: '太空时代更肥沃的雅玛果土壤（地面铺设）：在人工雅玛果土壤上再铺一层，含更丰富养分，作物生长更快。由人工雅玛果土壤+玉玛果种子+变质物+水制成（对齐《异星工厂》Space Age Overgrowth yumako soil，堆叠 100）' },
   // ===== 太空时代 小行星碎块加工链（破碎机 + 小行星碎块，数据来自 factorio-data 官方，见 GAME_DATA）=====
   'crusher': { name: '破碎机', color: '#9a8a7a', desc: '太空时代破碎建筑（2×3，吃电力）：把小行星碎块（金属/碳质/氧化星块）粉碎成基础资源（铁矿石/碳/冰等），破碎机只会用“破碎”配方（对齐《异星工厂》Space Age 破碎机，官方重力0/太空，此处适配为地面设备，数据来自 GAME_DATA）' },
   'metallic-asteroid-chunk': { name: '金属星块', color: '#8a7a6a', mark: 'Me', desc: '太空时代高金属含量的小行星碎块，用破碎机粉碎可获得大量铁矿石（对齐《异星工厂》Space Age Metallic asteroid chunk，堆叠 1）' },
   'carbonic-asteroid-chunk': { name: '碳质星块', color: '#6a5a4a', mark: 'Ca', desc: '太空时代高碳含量的小行星碎块，用破碎机粉碎可获得碳（对齐《异星工厂》Space Age Carbonic asteroid chunk，堆叠 1）' },
   'oxide-asteroid-chunk': { name: '氧化星块', color: '#4a6a8a', mark: 'Ox', desc: '太空时代高氧含量的小行星碎块，用破碎机粉碎可获得冰（对齐《异星工厂》Space Age Oxide asteroid chunk，堆叠 1）' },
   'ice': { name: '冰', color: '#a8d8e8', mark: '冰', desc: '由氧化星块在破碎机粉碎获得，可在熔炉熔化（对齐《异星工厂》Space Age Ice，堆叠 50）' },
+  // ===== 太空时代 空间平台系统（Space Platform，数据来自 factorio-data 官方，见 GAME_DATA）=====
+  'space-platform-foundation': { name: '太空平台地基', color: '#6a6a76', mark: 'SF', desc: '太空时代空间平台地基（堆叠 100）：铺设成太空平台地板，供空间平台建筑与轨道物流使用（对齐《异星工厂》Space Age Space platform foundation）' },
+  'space-platform-hub': { name: '太空平台中枢', color: '#4a5a9a', desc: '太空时代空间平台核心建筑（8×8）：空间平台的中央枢纽，接收行星物资并生产/调度平台地基，是轨道物流的中枢（对齐《异星工厂》Space Age Space platform hub，数据来自 GAME_DATA）' },
+  'thruster': { name: '推进器', color: '#a06030', desc: '太空时代推进器（4×8）：燃烧推进器燃料与推进器氧化剂产生推力/电能，是空间平台在行星间航行的动力源（对齐《异星工厂》Space Age Thruster，数据来自 GAME_DATA）' },
+  'asteroid-collector': { name: '小行星收集器', color: '#5a6a8a', desc: '太空时代小行星收集器（2×3）：在轨道上收集小行星碎块（金属/碳质/氧化/玄金星块），供破碎机粉碎加工（对齐《异星工厂》Space Age Asteroid collector，数据来自 GAME_DATA）' },
+  'space-platform-starter-pack': { name: '空间平台起始包', color: '#8a8a9a', mark: 'SSP', desc: '太空时代空间平台起始套件：由火箭发射升空后构成空间平台的初始骨架（对齐《异星工厂》Space Age Space platform starter pack，堆叠 1）' },
   // ===== 物流机器人网络 =====
   'roboport':          { name: '机器人港', color: '#3a8a8a', desc: '物流机器人的基地与充电站（4×4，吃电力）。把物流机器人放入机器人港后自动调度，机器人往返供应箱与需求箱搬运货物，电量低时回到机器人港充电。可接入电路网络输出整个物流网络各物品库存总量信号（对齐《异星工厂》机器人港电路信号）' },
   'logistic-robot':    { name: '物流机器人', color: '#4aa0d0', desc: '飞行机器人，放入机器人港后自动在供应箱/需求箱之间搬运物资，消耗电量，需回港充电' },

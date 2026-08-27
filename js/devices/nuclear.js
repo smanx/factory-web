@@ -808,6 +808,13 @@ function drawHeatPipe(ctx, e, gx, gy, dir, alpha) {
   // 是否存在转弯/路口（同时有横、纵连接）→ 需画中心节点把交点填满
   const isJunction = (cn || cs) && (cw || ce);
 
+  // 孤立导热管（四向均无连接）：画成一截细长管道（而非圆点），
+  // 让 Q 复制/单根导热管的光标与地图上的管道观感一致（黄色细长管道）。
+  if (segs.length === 0) {
+    const stubLen = TILE * 0.6;
+    segs.push([cx - stubLen, cy, cx + stubLen, cy]);
+  }
+
   ctx.globalAlpha = alpha;
   // ---- 管体外壳（金属）：按连续路径整段描边，连接处不再出现分界环 ----
   ctx.strokeStyle = '#3a3428';
@@ -822,13 +829,6 @@ function drawHeatPipe(ctx, e, gx, gy, dir, alpha) {
   }
   // 转弯/路口中心节点
   if (isJunction) {
-    ctx.fillStyle = '#3a3428';
-    ctx.beginPath();
-    ctx.arc(cx, cy, R, 0, 7);
-    ctx.fill();
-  }
-  // 孤立导热管（四向均无连接）画一个圆点
-  if (segs.length === 0) {
     ctx.fillStyle = '#3a3428';
     ctx.beginPath();
     ctx.arc(cx, cy, R, 0, 7);
@@ -856,7 +856,7 @@ function drawHeatPipe(ctx, e, gx, gy, dir, alpha) {
     ctx.lineTo(s[2], s[3]);
     ctx.stroke();
   }
-  if (isJunction || segs.length === 0) {
+  if (isJunction) {
     ctx.fillStyle = glow ? '#e8a14a' : '#5a5245';
     ctx.beginPath();
     ctx.arc(cx, cy, rIn, 0, 7);

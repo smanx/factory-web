@@ -196,6 +196,20 @@ ok(ctx.__recipeDevice('yumako-growing') === 'agricultural-tower', '玉玛果种�
 ok(ctx.__itemTechReq('agricultural-tower') === 'agriculture', '农业塔需「农业科技」');
 ok(!!TS['agriculture'], '「农业科技」已注册');
 
+// ===== 雅玛果土壤（Artificial/Overgrowth yumako soil）数据校验 =====
+console.log('\n【雅玛果土壤（Gleba 农业土壤）数据校验】');
+ok(!!GD.stackSize['artificial-yumako-soil'] && GD.stackSize['artificial-yumako-soil'] === 100, 'artificial-yumako-soil 堆叠来自官方 (=100)');
+ok(!!GD.stackSize['overgrowth-yumako-soil'] && GD.stackSize['overgrowth-yumako-soil'] === 100, 'overgrowth-yumako-soil 堆叠来自官方 (=100)');
+ok(!!GD.names['artificial-yumako-soil'], 'artificial-yumako-soil 官方命名已收录 (' + (GD.names['artificial-yumako-soil'] ? GD.names['artificial-yumako-soil'].zh : '?') + ')');
+ok(!!GD.names['overgrowth-yumako-soil'], 'overgrowth-yumako-soil 官方命名已收录 (' + (GD.names['overgrowth-yumako-soil'] ? GD.names['overgrowth-yumako-soil'].zh : '?') + ')');
+ok(!!RP['artificial-yumako-soil'], '人工雅玛果土壤配方已注册');
+ok(!!RP['overgrowth-yumako-soil'], '茂盛雅玛果土壤配方已注册');
+ok(Object.keys(RP['artificial-yumako-soil'].inp).every(k => k in IT || ['water'].indexOf(k) >= 0), '人工雅玛果土壤配方引用物品均存在');
+ok(Object.keys(RP['overgrowth-yumako-soil'].inp).every(k => k in IT || ['water'].indexOf(k) >= 0), '茂盛雅玛果土壤配方引用物品均存在');
+ok(!!IT['artificial-yumako-soil'] && !!IT['overgrowth-yumako-soil'], '土壤物品均已注册');
+ok(ctx.__itemTechReq('artificial-yumako-soil') === 'agriculture', '人工雅玛果土壤需「农业科技」');
+ok(ctx.__itemTechReq('overgrowth-yumako-soil') === 'agriculture', '茂盛雅玛果土壤需「农业科技」');
+
 // ===== 破碎机（Crusher）数据校验 =====
 console.log('\n【破碎机设备数据（官方）】');
 ok(!!GD.stackSize['crusher'], 'crusher 堆叠来自官方 (=10)');
@@ -446,4 +460,45 @@ ok(ctx.__itemTechReq('thruster-oxidizer') === 'space-thruster', '推进器氧化
 ok(ctx.__itemTechReq('advanced-thruster-fuel') === 'space-thruster', '高级推进器燃料需「太空推进」科技');
 ok(!Object.keys(TS['space-thruster'].cost).includes('thruster-fuel'), '「太空推进」科技配方不含推进器燃料（避免循环依赖）');
 console.log('\n' + (fail === 0 ? '✅ DLC 数据校验全部通过（' + pass + ' 项）' : '❌ 失败 ' + fail + ' 项'));
+
+// ===== 空间平台系统（Space Platform，本迭代新增）数据校验 =====
+console.log('\n【空间平台系统（Space Platform）数据】');
+// 物品/命名/堆叠来自官方
+for (const [id, en] of [['space-platform-foundation','Space platform foundation'],['space-platform-hub','Space platform hub'],['thruster','Thruster'],['asteroid-collector','Asteroid collector']]) {
+  ok(!!GD.stackSize[id], id + ' 堆叠来自官方 (=' + GD.stackSize[id] + ')');
+  ok(GD.names[id] && GD.names[id].en === en, id + ' 官方命名已收录 (' + en + ')');
+}
+// 设备占地/血量来自官方
+ok(GD.footprint['space-platform-hub'] && GD.footprint['space-platform-hub'].w === 8 && GD.footprint['space-platform-hub'].h === 8, '空间平台中枢 占地 8×8（官方 selection_box ±4）');
+ok(GD.footprint['thruster'] && GD.footprint['thruster'].w === 4 && GD.footprint['thruster'].h === 8, '推进器 占地 4×8（官方 selection_box）');
+ok(GD.footprint['asteroid-collector'] && GD.footprint['asteroid-collector'].w === 3 && GD.footprint['asteroid-collector'].h === 3, '小行星收集器 占地 3×3（官方 selection_box）');
+ok(GD.buildingHp['space-platform-hub'] === 5000, '空间平台中枢 血量=5000（官方 max_health）');
+ok(GD.buildingHp['thruster'] === 300, '推进器 血量=300（官方 max_health）');
+ok(GD.buildingHp['asteroid-collector'] === 300, '小行星收集器 血量=300（官方 max_health）');
+ok(!!RP['space-platform-foundation'], 'space-platform-foundation 配方已注册');
+ok(!!RP['thruster'], 'thruster 配方已注册');
+ok(!!RP['asteroid-collector'], 'asteroid-collector 配方已注册');
+ok(!!RP['space-platform-hub'], 'space-platform-hub 配方已注册');
+// 官方配方：地基 = 20钢板+20铜线→1（10s）
+ok(RP['space-platform-foundation'].inp['steel-plate'] === 20 && RP['space-platform-foundation'].inp['copper-cable'] === 20, '地基配方=20钢板+20铜线（官方）');
+ok(RP['space-platform-foundation'].out['space-platform-foundation'] === 1 && RP['space-platform-foundation'].time === 10, '地基产出 1、10s（官方）');
+// 官方配方：推进器 = 10钢板+10处理器+5电动机（10s）
+ok(RP['thruster'].inp['steel-plate'] === 10 && RP['thruster'].inp['processing-unit'] === 10 && RP['thruster'].inp['electric-engine-unit'] === 5, '推进器配方=10钢板+10处理器+5电动机（官方）');
+// 官方配方：小行星收集器 = 20低密+8电动机+5处理器（10s）
+ok(RP['asteroid-collector'].inp['low-density-structure'] === 20 && RP['asteroid-collector'].inp['electric-engine-unit'] === 8 && RP['asteroid-collector'].inp['processing-unit'] === 5, '小行星收集器配方=20低密+8电动机+5处理器（官方）');
+ok(Object.keys(RP['thruster'].inp).every(k => k in IT), 'thruster 配方引用物品均存在');
+ok(Object.keys(RP['asteroid-collector'].inp).every(k => k in IT), 'asteroid-collector 配方引用物品均存在');
+ok(ctx.__recipeDevice('space-platform-foundation') === 'space-platform-hub', '地基配方 → 空间平台中枢');
+ok(ctx.__recipeDevice('space-platform-starter-pack') === 'space-platform-hub', '起始包配方 → 空间平台中枢');
+// 科技门控
+ok(!!TS['space-platform'], '「空间平台」科技已注册');
+ok(ctx.__itemTechReq('thruster') === 'space-platform', '推进器需「空间平台」科技');
+ok(ctx.__itemTechReq('space-platform-hub') === 'space-platform', '空间平台中枢需「空间平台」科技');
+ok(ctx.__itemTechReq('asteroid-collector') === 'space-platform', '小行星收集器需「空间平台」科技');
+ok((TS['space-platform'].req || []).includes('space-thruster'), '「空间平台」科技前置太空推进科技');
+ok(!Object.keys(TS['space-platform'].cost).includes('thruster'), '「空间平台」科技配方不含推进器（避免循环依赖）');
+for (const bid of ['space-platform-hub', 'thruster', 'asteroid-collector']) {
+  ok(!!IT[bid], bid + ' 物品已注册');
+}
+
 process.exit(fail === 0 ? 0 : 1);
