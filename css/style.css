@@ -2114,6 +2114,8 @@ html, body {
   transform: translateX(-50%);
   max-height: calc(100vh - 150px);
 }
+/* 组装机面板：只含「背包 + 控制面板」两栏，按内容自适应宽度，避免右侧出现多余空白 */
+#panel.machine-wide:has(.asm3-layout) { width: fit-content; }
 #panel.machine-wide #panel-body {
   display: flex;
   flex-direction: column;
@@ -2327,6 +2329,7 @@ html, body {
   align-items: stretch;
   flex: 1;
   min-height: 0;
+  width: fit-content;
 }
 .asm3-col {
   display: flex;
@@ -2336,7 +2339,7 @@ html, body {
   border-radius: 8px;
   overflow: hidden;
 }
-.asm3-left { flex: 1; min-width: 0; }
+.asm3-left { flex: 0 0 auto; }
 .asm3-col-head {
   padding: 8px 10px;
   font-weight: bold;
@@ -2377,7 +2380,7 @@ html, body {
 .asm3-status-text.bad { color: #e74c3c; }
 /* 机器显示区：CSS 绘制的组装机示意 */
 .asm3-machine {
-  height: 200px;
+  height: 132px;
   background: #252525;
   border: 1px solid #444;
   border-radius: 6px;
@@ -2390,36 +2393,8 @@ html, body {
   background-size: 40px 40px;
   background-position: 0 0, 0 20px, 20px -20px, -20px 0;
 }
-.asm3-machine-icon { width: 120px; height: 120px; position: relative; }
-.asm3-machine-body {
-  width: 100%; height: 100%;
-  background: linear-gradient(135deg, #5a6b3a 0%, #3d4a28 50%, #2d3820 100%);
-  border: 3px solid #6b7c48; border-radius: 6px; position: relative;
-  box-shadow: inset 0 2px 8px rgba(255, 255, 255, .1), 0 8px 20px rgba(0, 0, 0, .6);
-}
-.asm3-machine-port {
-  position: absolute; top: 15%; left: 50%; transform: translateX(-50%);
-  width: 44px; height: 34px;
-  background: linear-gradient(180deg, #8b7355 0%, #6b5a45 100%);
-  border: 2px solid #9a8565; border-radius: 2px;
-}
-.asm3-machine-gear {
-  position: absolute; width: 26px; height: 26px;
-  background: #666; border-radius: 50%; border: 3px solid #888;
-  top: 20%; left: 15%;
-}
-.asm3-machine-gear::after {
-  content: ""; position: absolute; top: 50%; left: 50%;
-  transform: translate(-50%, -50%); width: 8px; height: 8px;
-  background: #444; border-radius: 50%;
-}
-.asm3-machine-dirt {
-  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-  background:
-    radial-gradient(circle at 20% 80%, rgba(101, 67, 33, .4) 0%, transparent 40%),
-    radial-gradient(circle at 80% 20%, rgba(101, 67, 33, .3) 0%, transparent 35%);
-  border-radius: 6px; pointer-events: none;
-}
+.asm3-machine-icon { width: 96px; height: 96px; display: flex; align-items: center; justify-content: center; }
+.asm3-machine-icon canvas { display: block; width: 100%; height: 100%; }
 /* 配方显示区 */
 .asm3-recipe {
   background: #2a2a2a;
@@ -2430,22 +2405,46 @@ html, body {
 .asm3-recipe-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .asm3-recipe-item { display: flex; align-items: center; gap: 12px; }
 .asm3-recipe-icon {
-  width: 44px; height: 44px; background: #8b7355; border: 2px solid #9a8565;
+  width: 32px; height: 32px; background: #8b7355; border: 2px solid #9a8565;
   border-radius: 4px; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden;
 }
 .asm3-recipe-icon img { width: 100%; height: 100%; object-fit: contain; }
 .asm3-recipe-name { font-size: 20px; color: #ddd; font-weight: bold; }
 .asm3-config-btn {
-  width: 42px; height: 42px; background: #3a3a3a; border: 1px solid #555; border-radius: 4px;
+  width: 32px; height: 32px; background: #3a3a3a; border: 1px solid #555; border-radius: 4px;
   cursor: pointer; color: #ccc; font-size: 18px; display: flex; align-items: center; justify-content: center;
 }
 .asm3-config-btn:hover { background: #4a4a4a; }
 /* 进度条行（原料 → 进度 → 产品） */
 .asm3-flow { display: flex; align-items: center; gap: 10px; }
-.asm3-side { flex: 1; min-width: 0; }
-.asm3-side-title { font-size: 11px; color: #9fb2c4; margin-bottom: 4px; text-align: center; }
-.asm3-inp-row, .asm3-out-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
-.asm3-prog { flex: 0 0 120px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.asm3-prog .bar { width: 100%; }
-.asm3-prog-text { font-size: 14px; color: #fff; text-shadow: 1px 1px 2px #000; }
+.asm3-side { flex: 0 0 auto; min-width: 0; }
+.asm3-inp-row, .asm3-out-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; min-height: 32px; }
+.asm3-prog { flex: 1; display: flex; align-items: center; }
+.asm3-prog .bar { width: 100%; height: 22px; position: relative; margin: 0; border-radius: 11px; }
+.asm3-prog .bar-txt {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: #fff; text-shadow: 1px 1px 2px #000; pointer-events: none; white-space: nowrap;
+}
+.asm3-prog .bar-time { display: none; }
 .asm3-help { margin-top: 8px; font-size: 12px; line-height: 1.5; }
+
+/* ===== 组装机控制面板：图标统一为背包格大小(32px)，数量改角标，去除插槽下方文本 ===== */
+.asm3-panel .mch-io-slot { width: 32px; height: 32px; padding: 0; flex: 0 0 auto; }
+.asm3-panel .mch-io-slot:has(img) { border: 0; }
+.asm3-panel .mch-io-slot img { width: 100%; height: 100%; object-fit: cover; border-radius: 3px; }
+.asm3-panel .mch-io-n {
+  position: absolute; bottom: 0; right: 0;
+  font-size: 9px; line-height: 1;
+  background: rgba(0,0,0,.75); color: #fff;
+  padding: 1px 2px; border-radius: 3px 0 0 0;
+  white-space: nowrap;
+}
+.asm3-panel .mod-slot { width: 32px; height: 32px; padding: 0; }
+.asm3-panel .mod-slot:has(img) { border: 0; }
+.asm3-panel .mod-slot img { width: 100%; height: 100%; object-fit: cover; border-radius: 3px; }
+.asm3-panel .mod-slot-n { display: none; }
+.asm3-panel .mod-slot-plus { font-size: 16px; }
+/* 模块插槽下方（状态文本/取出按钮/装入选择）在组装机面板中不再显示 */
+.asm3-panel .mod-status,
+.asm3-panel .mod-buttons,
+.asm3-panel .mod-slots + .btn { display: none !important; }
