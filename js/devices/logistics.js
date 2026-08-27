@@ -349,8 +349,8 @@ function scanNetwork() {
     }
   }
 
-  // 玩家个人物流请求：作为额外的需求端（仅当玩家有个人请求且背包缺货时）
-  if (G.logiRequest) {
+  // 玩家个人物流请求：作为额外的需求端（仅当「背包物流」开关开启、有个人请求且背包缺货时）
+  if (G.logiRequest && G.logiEnabled !== false) {
     const pt = playerLogiTarget();
     let anyReq = false;
     for (const k in G.logiRequest) {
@@ -572,12 +572,17 @@ function updateLogistics(dt) {
     // 性能优化：网络无需求且无玩家回收任务时，跳过对全部机器人的空闲扫描，
     // 避免无物流压力时每帧遍历所有机器人（降低空闲时的每帧开销，不改变指派行为）。
     let hasWork = false;
-    if (G.logiRequest) {
+    // 玩家有请求（背包物流开启）即有工作（送达/回收超出部分）
+    if (G.logiEnabled !== false && G.logiRequest) {
       for (const k in G.logiRequest) if (G.logiRequest[k] > 0) { hasWork = true; break; }
     }
-    // 个人垃圾桶标记有物品待回收也算作有工作（对齐《异星工厂》Trash slots）
+    // 回收区标记有物品待回收也算作有工作
     if (!hasWork && G.trashSlots) {
       for (const k in G.trashSlots) if (G.trashSlots[k] && invCount(k) > 0) { hasWork = true; break; }
+    }
+    // 「回收未请求物品」开启时，背包中存在未请求物品也算有工作
+    if (!hasWork && G.recycleUnrequested) {
+      G.inv.forEach((n, k) => { if (n > 0 && ITEMS[k] && !(G.logiRequest && G.logiRequest[k] > 0)) { hasWork = true; } });
     }
     if (!hasWork) {
       const dm = G.logiNet.demand;
@@ -596,13 +601,15 @@ function updateLogistics(dt) {
 }
 
 // 回收玩家身上的多余物资（对齐《异星工厂》：机器人带走多余物资存回网络）。
-// 分两类：
-//   1) 个人物流请求（logiRequest）：玩家身上超出请求量的部分被机器人带走；
-//   2) 个人垃圾桶（trashSlots）：玩家主动标记为“丢弃”的物品，机器人会全部带走（无视请求量）。
+// 顺序：
+//   1) 物流回收区（trashSlots）：玩家在回收区格子中标记的物品，全部带走；
+//   2) 「回收未请求物品」开启：背包中所有未设置请求的物品全部带走；
+//   3) 个人物流请求超出部分：超出请求量的部分被机器人带走。
+// 「背包物流」总开关关闭时不做任何玩家回收（回收也属于背包物流范畴）。
 function assignRecycleTask(r) {
-  if (!G.logiRequest) return false;
+  if (G.logiEnabled === false) return false;
   const pt = playerLogiTarget();
-  // 优先回收「个人垃圾桶」中标记的物品（对齐《异星工厂》Trash slots：标记即带走）
+  // 1) 优先回收「物流回收区」中标记的物品
   if (G.trashSlots) {
     for (const item in G.trashSlots) {
       if (!G.trashSlots[item]) continue;
@@ -619,21 +626,43 @@ function assignRecycleTask(r) {
       return true;
     }
   }
-  // 其次回收「个人物流请求」超出部分（原有逻辑，保持语义不变）
-  for (const item in G.logiRequest) {
-    const want = G.logiRequest[item] || 0;
-    if (want <= 0) continue;
-    const excess = invCount(item) - want;
-    if (excess <= 0) continue;
-    const takeN = Math.min(robotCarryCap(), excess);
-    if (takeN <= 0) continue;
-    r.carry = { item, count: takeN };
-    r.target = pt;
-    r.tx = (G.player ? G.player.x : 0);
-    r.ty = (G.player ? G.player.y : 0);
-    r.fromPlayer = true;
-    r.state = 'collecting';
-    return true;
+  // 2) 「回收未请求物品」开启：回收背包中所有未请求的物品
+  if (G.recycleUnrequested) {
+    const reqSet = G.logiRequest || {};
+    const carried = new Set();
+    G.inv.forEach((n, k) => {
+      if (n <= 0 || !ITEMS[k]) return;
+      if (reqSet[k] > 0) return;         // 已请求的物品不回收
+      if (carried.has(k)) return;
+      carried.add(k);
+      const takeN = Math.min(robotCarryCap(), n);
+      if (takeN <= 0) return;
+      r.carry = { item: k, count: takeN };
+      r.target = pt;
+      r.tx = (G.player ? G.player.x : 0);
+      r.ty = (G.player ? G.player.y : 0);
+      r.fromPlayer = true;
+      r.state = 'collecting';
+    });
+    if (r.state === 'collecting') return true;
+  }
+  // 3) 回收「个人物流请求」超出部分
+  if (G.logiRequest) {
+    for (const item in G.logiRequest) {
+      const want = G.logiRequest[item] || 0;
+      if (want <= 0) continue;
+      const excess = invCount(item) - want;
+      if (excess <= 0) continue;
+      const takeN = Math.min(robotCarryCap(), excess);
+      if (takeN <= 0) continue;
+      r.carry = { item, count: takeN };
+      r.target = pt;
+      r.tx = (G.player ? G.player.x : 0);
+      r.ty = (G.player ? G.player.y : 0);
+      r.fromPlayer = true;
+      r.state = 'collecting';
+      return true;
+    }
   }
   return false;
 }

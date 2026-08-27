@@ -56,12 +56,6 @@ function initPanelEvents() {
     } else if (id === 'inv-item-search') {
       G.invItemQ = v;
       applyInvItemSearch(G.invItemQ);
-    } else if (id === 'lreq-search') {
-      G.lreqQ = v;
-      if (typeof fillLogiReqGrid === 'function') fillLogiReqGrid(G.lreqQ);
-    } else if (id === 'trash-search') {
-      G.trashQ = v;
-      if (typeof fillTrashGrid === 'function') fillTrashGrid(G.trashQ);
     } else if (id === 'asm-recipe-search') {
       applyAssemblerRecipeFilter(v);
     } else if (id === 'rcp-search') {
@@ -202,58 +196,69 @@ function initPanelEvents() {
       renderPanel(false);
       return;
     }
-    // 个人物流请求：清除已设置的请求项
-    const lreqClear = ev.target.closest('[data-lreqclear]');
-    if (lreqClear && G.panelMode === 'inv') {
-      const item = lreqClear.dataset.lreqclear;
-      if (G.logiRequest && G.logiRequest[item] != null) {
-        delete G.logiRequest[item];
-        toast('已清除对 ' + ITEMS[item].name + ' 的个人请求');
+    // 物流区顶部开关：「背包物流」总开关 / 「回收未请求物品」开关
+    const logiSwitch = ev.target.closest('[data-logiswitch]');
+    if (logiSwitch && G.panelMode === 'inv') {
+      const which = logiSwitch.dataset.logiswitch;
+      if (which === 'main') {
+        G.logiEnabled = (G.logiEnabled !== false) ? false : true;
+        toast(G.logiEnabled ? '已开启「背包物流」，物流机器人将送达请求物品' : '已关闭「背包物流」，物流机器人不再送达请求物品');
+      } else if (which === 'recycle') {
+        G.recycleUnrequested = !G.recycleUnrequested;
+        toast(G.recycleUnrequested ? '已开启「回收未请求物品」，背包中未请求的物品将被机器人回收' : '已关闭「回收未请求物品」');
       }
       renderPanel(false);
       return;
     }
-    // 个人物流请求：点击物品设置请求量
-    const lreqPick = ev.target.closest('#lreq-grid .rcbtn[data-lreqitem]');
-    if (lreqPick && G.panelMode === 'inv') {
-      const item = lreqPick.dataset.lreqitem;
+    // 物流区请求格子（10x5）：点击已有物品设置/清除请求；点击空槽放入当前选中物品
+    const reqCell = ev.target.closest('.logi-cell[data-logireq]');
+    if (reqCell && G.panelMode === 'inv') {
+      const item = reqCell.dataset.logireq;
       if (!G.logiRequest) G.logiRequest = {};
-      const cur = G.logiRequest[item] || 0;
-      const have = invCount(item);
-      const inp = window.prompt('设置对「' + ITEMS[item].name + '」的个人请求数量（当前已请求 ' + cur + '，持有 ' + have + '，输入 0 清除）：', cur || '10');
-      if (inp === null) return;
-      const v = parseInt(inp, 10);
-      if (isNaN(v) || v <= 0) {
-        if (G.logiRequest[item] != null) { delete G.logiRequest[item]; toast('已清除对 ' + ITEMS[item].name + ' 的个人请求'); }
+      if (item) {
+        // 已有物品：输入请求数量（0 清除）
+        const cur = G.logiRequest[item] || 0;
+        const have = invCount(item);
+        const inp = window.prompt('设置「' + ITEMS[item].name + '」的请求数量（当前请求 ' + cur + '，持有 ' + have + '，输入 0 清除）：', cur || '10');
+        if (inp === null) return;
+        const v = parseInt(inp, 10);
+        if (isNaN(v) || v <= 0) {
+          delete G.logiRequest[item];
+          toast('已清除对 ' + ITEMS[item].name + ' 的请求');
+        } else {
+          G.logiRequest[item] = Math.min(v, 10000);
+          toast('已请求 ' + ITEMS[item].name + ' ×' + G.logiRequest[item] + '，物流机器人将自动送达');
+        }
       } else {
-        G.logiRequest[item] = Math.min(v, 10000);
-        toast('已请求 ' + ITEMS[item].name + ' ×' + G.logiRequest[item] + '，物流机器人将自动送达');
+        // 空槽：放入当前选中物品
+        const held = (typeof selItem === 'function') ? selItem() : null;
+        if (!held || !ITEMS[held]) { toast('请先在左栏背包中选中要请求的物品'); return; }
+        if (G.logiRequest[held] != null) { toast(ITEMS[held].name + ' 已在物流区中'); return; }
+        const have = invCount(held);
+        const inp = window.prompt('设置「' + ITEMS[held].name + '」的请求数量（持有 ' + have + '）：', '10');
+        if (inp === null) return;
+        const v = parseInt(inp, 10);
+        if (isNaN(v) || v <= 0) { return; }
+        G.logiRequest[held] = Math.min(v, 10000);
+        toast('已请求 ' + ITEMS[held].name + ' ×' + G.logiRequest[held] + '，物流机器人将自动送达');
       }
       renderPanel(false);
       return;
     }
-    // 个人垃圾桶：清除已标记丢弃的物品
-    const trashClear = ev.target.closest('[data-trashclear]');
-    if (trashClear && G.panelMode === 'inv') {
-      const item = trashClear.dataset.trashclear;
-      if (G.trashSlots && G.trashSlots[item]) {
-        delete G.trashSlots[item];
-        toast('已取消对 ' + ITEMS[item].name + ' 的丢弃标记');
-      }
-      renderPanel(false);
-      return;
-    }
-    // 个人垃圾桶：点击物品切换丢弃标记（对齐《异星工厂》Trash slots）
-    const trashPick = ev.target.closest('#trash-grid .rcbtn[data-trashitem]');
-    if (trashPick && G.panelMode === 'inv') {
-      const item = trashPick.dataset.trashitem;
+    // 物流回收区格子（10x3）：点击已有物品取消回收；点击空槽放入当前选中物品标记回收
+    const recycleCell = ev.target.closest('.logi-cell[data-logirecycle]');
+    if (recycleCell && G.panelMode === 'inv') {
+      const item = recycleCell.dataset.logirecycle;
       if (!G.trashSlots) G.trashSlots = {};
-      if (G.trashSlots[item]) {
+      if (item) {
         delete G.trashSlots[item];
-        toast('已取消对 ' + ITEMS[item].name + ' 的丢弃标记');
+        toast('已取消对 ' + ITEMS[item].name + ' 的回收');
       } else {
-        G.trashSlots[item] = true;
-        toast('已标记 ' + ITEMS[item].name + ' 为丢弃，物流机器人将自动带走');
+        const held = (typeof selItem === 'function') ? selItem() : null;
+        if (!held || !ITEMS[held]) { toast('请先在左栏背包中选中要回收的物品'); return; }
+        if (G.trashSlots[held]) { toast(ITEMS[held].name + ' 已在回收区中'); return; }
+        G.trashSlots[held] = true;
+        toast('已设置 ' + ITEMS[held].name + ' 回收，物流机器人将把它从背包运走');
       }
       renderPanel(false);
       return;

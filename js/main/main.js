@@ -15,6 +15,10 @@ const G = {
   inv: new Map(),
   logiRequest: {},   // 个人物流请求：item -> 目标数量（由物流机器人送达）
   trashSlots: {},    // 个人垃圾桶（对齐《异星工厂》Trash slots）：item -> true（标记后由物流机器人带走存回网络）
+  logiEnabled: true,      // 「背包物流」总开关：关闭后机器人不再送达个人请求物品
+  recycleUnrequested: false, // 「回收未请求物品」开关：开启后机器人回收背包中所有未请求的物品
+  logiReqSlots: 50,       // 物流区（请求）格子数：每行 10 格，共 5 行
+  logiRecycleSlots: 30,   // 物流回收区格子数：每行 10 格，共 3 行
   sel: -1,
   quickSel: null,
   ghostDir: 0,
@@ -154,6 +158,8 @@ function newGame() {
   G.logiNetT = 0;
   G.logiRequest = {};   // 新游戏清空个人物流请求
   G.trashSlots = {};     // 新游戏清空个人垃圾桶标记
+  G.logiEnabled = true;   // 新游戏开启「背包物流」总开关
+  G.recycleUnrequested = false; // 新游戏默认关闭「回收未请求物品」
   G.blueBook = [];      // 新游戏清空蓝图库
   G.orbitalCargo = {}; // 行星间货物调度：目标星球 -> { 物品 -> 数量 }（火箭发射送往目标星球，抵达后交付）
   G.mapTags = [];       // 新游戏清空地图标记
@@ -221,6 +227,8 @@ function travelToPlanet(planet, opts) {
   const repairUses = G.repairPackUses || 0;
   const logiRequest = Object.assign({}, G.logiRequest || {});
   const trashSlots = Object.assign({}, G.trashSlots || {});
+  const logiEnabled = G.logiEnabled !== false;
+  const recycleUnrequested = !!G.recycleUnrequested;
   const blueBook = (G.blueBook || []).slice();
 
   // 更新世界配置的星球
@@ -256,6 +264,7 @@ function travelToPlanet(planet, opts) {
   // 交付已送达本星球的行星间货物（火箭发射送往目标星球，抵达后降落）
   if (typeof deliverOrbitalCargo === 'function') deliverOrbitalCargo(planet);
   G.logiRequest = logiRequest; G.trashSlots = trashSlots; G.blueBook = blueBook;
+  G.logiEnabled = logiEnabled; G.recycleUnrequested = recycleUnrequested;
   if (typeof constrRestore === 'function') constrRestore(null);
   if (typeof equipmentRestore === 'function') equipmentRestore(null);
   return true;
@@ -278,6 +287,8 @@ function serializeAll() {
     inv: Array.from(G.inv),
     logiRequest: Object.assign({}, G.logiRequest || {}),
     trashSlots: Object.assign({}, G.trashSlots || {}),
+    logiEnabled: G.logiEnabled !== false,
+    recycleUnrequested: !!G.recycleUnrequested,
     player: { x: G.player.x, y: G.player.y, hp: G.playerHP, weapon: G.weapon, armor: G.armor },
     evolution: G.evolution || 0,
     pollution: (typeof pollutionSerialize === 'function') ? pollutionSerialize() : null,
@@ -520,6 +531,9 @@ function applySave(d) {
   if (d.trashSlots && typeof d.trashSlots === 'object') {
     for (const k in d.trashSlots) if (ITEMS[k] && d.trashSlots[k]) G.trashSlots[k] = true;
   }
+  // 恢复「背包物流」总开关与「回收未请求物品」开关（旧档默认背包物流开启、不回收未请求物品）
+  G.logiEnabled = d.logiEnabled !== false;
+  G.recycleUnrequested = !!d.recycleUnrequested;
   G.craftQueue = Array.isArray(d.craftQueue)
     ? d.craftQueue.filter(q => RECIPES[q.rid] && isHandCraftable(q.rid)).map(q => ({
       rid: q.rid, outId: q.outId, time: q.time || 1, total: q.time || 1, done: q.done || 0

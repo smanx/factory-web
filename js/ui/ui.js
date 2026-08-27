@@ -75,10 +75,6 @@ function stepPrewarm() {
   return _prewarmQueue.length > 0;
 }
 
-// 材料页静态网格缓存：建造设备 / 物流请求 / 垃圾桶的物品按钮列表结构完全静态
-// （物品集合不变，仅请求/丢弃标记与持有数量动态变化）。首次构建后缓存复用，
-// 打开背包时只按标记与数量轻量拼接，避免每次重建数百个含 base64 图标的按钮节点。
-let _matGridCache = { lreqItems: null, trashItems: null };
 // 材料页可选物品集合（排除流体与测试设备）
 function staticItemIdList() {
   return Object.keys(ITEMS).filter(id => {
@@ -375,8 +371,6 @@ function renderPanel(full) {
       '</div>';
     applyInvRecipeFilter(G.invRecipeQ);
     applyInvItemSearch(G.invItemQ);
-    if (typeof fillLogiReqGrid === 'function') fillLogiReqGrid(G.lreqQ || '');
-    if (typeof fillTrashGrid === 'function') fillTrashGrid(G.trashQ || '');
     if (keepFocusId) {
       const inp = document.getElementById(keepFocusId);
       if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
@@ -637,46 +631,80 @@ function htmlInventory() {
   return h;
 }
 
-function htmlLogistics() {
-  let h = '<div class="sec">个人物流请求 <span class="dim">（需物流网络科技 + 机器人港）</span></div>';
-  h += '<div class="logi-req" id="logi-req">';
+// ===== 个人物流区（对齐《异星工厂》Personal logistic request + Trash slots）=====
+// 中间物流区自上而下分为：
+//   顶部：两个开关 —— 「背包物流」总开关 + 「回收未请求物品」开关
+//   中部物流区：请求物品格子（每行 10 格，共 5 行 = 50 格）。格子中设置的物品会被物流机器人运到背包。
+//   底部物流回收区：回收物品格子（每行 10 格，共 3 行 = 30 格）。格子中设置的物品会被物流机器人从背包运走回收。
+// 数据源仍为 G.logiRequest（item->请求数量）与 G.trashSlots（item->true），
+// 格子按物品键顺序填充到固定数量的槽位中，语义与原有物流引擎一致。
+
+// 物流区（请求）格子数：每行 10 格，共 5 行
+const LOGI_REQ_ROWS = 5, LOGI_REQ_PER_ROW = 10;
+// 物流回收区格子数：每行 10 格，共 3 行
+const LOGI_RECYCLE_ROWS = 3, LOGI_RECYCLE_PER_ROW = 10;
+
+// 渲染物流区请求格子（10x5）。已请求的物品按键序填充到前面的槽位。
+function logiReqGridHtml() {
   const lreq = G.logiRequest || {};
-  const lreqKeys = Object.keys(lreq).filter(k => lreq[k] > 0);
-  if (!lreqKeys.length) {
-    h += '<div class="dim" id="logi-req-empty">点击下方物品设置请求量，物流机器人会自动把物品送到你身上。</div>';
-  } else {
-    h += '<div class="dim" id="logi-req-empty" style="display:none">点击下方物品设置请求量，物流机器人会自动把物品送到你身上。</div>';
-    h += '<div class="chips">';
-    for (const k of lreqKeys) {
+  const keys = Object.keys(lreq).filter(k => lreq[k] > 0).sort();
+  const cap = LOGI_REQ_ROWS * LOGI_REQ_PER_ROW;
+  let h = '<div class="logi-grid" id="logi-req-grid">';
+  for (let i = 0; i < cap; i++) {
+    const k = keys[i];
+    if (k) {
       const have = invCount(k);
-      h += '<span class="chip lreq-chip" data-itemid="' + k + '" data-tip="' + ITEMS[k].name + '|请求 ' + lreq[k] + '，已持有 ' + have + '。点击清除请求" data-lreqclear="' + k + '"><img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ×' + lreq[k] + ' <span class="lreq-have">(' + have + ')</span> ×</span>';
+      const req = lreq[k] || 0;
+      h += '<div class="logi-cell req-cell" data-logireq="' + k + '" data-tip="' + ITEMS[k].name + '|请求 ' + req + '，已持有 ' + have + '。点击设置/清除请求">' +
+        '<img src="' + iconDataURL(k, 16) + '">' +
+        '<span class="lreq-have cnt">' + req + '</span></div>';
+    } else {
+      h += '<div class="logi-cell req-cell empty" data-logireq=""></div>';
     }
-    h += '</div>';
   }
-  h += '<div class="dim">设置请求：先点击下方物品图标选中，再输入数量并点“请求”。清除：点击上方已设置的请求项。</div>';
-  h += '<input id="lreq-search" class="inv-search" type="text" placeholder="搜索物品（设置个人请求）" autocomplete="off">';
-  h += '<div id="lreq-grid" class="recgrid"></div>';
   h += '</div>';
-  // 个人垃圾桶（物流机器人带走标记物品存回网络）
-  h += '<div class="sec">个人垃圾桶 <span class="dim">（物流机器人带走标记物品存回网络）</span></div>';
-  h += '<div class="logi-req" id="logi-trash">';
+  return h;
+}
+
+// 渲染物流回收区格子（10x3）。已标记回收的物品按键序填充到前面的槽位。
+function logiRecycleGridHtml() {
   const trash = G.trashSlots || {};
-  const trashKeys = Object.keys(trash).filter(k => trash[k]);
-  if (!trashKeys.length) {
-    h += '<div class="dim" id="logi-trash-empty">点击下方物品标记为“丢弃”，物流机器人会自动把该物品从你身上带走。用于清理不想保留的杂物（对齐《异星工厂》垃圾桶）。</div>';
-  } else {
-    h += '<div class="dim" id="logi-trash-empty" style="display:none">点击下方物品标记为“丢弃”，物流机器人会自动把该物品从你身上带走。</div>';
-    h += '<div class="chips">';
-    for (const k of trashKeys) {
+  const keys = Object.keys(trash).filter(k => trash[k]).sort();
+  const cap = LOGI_RECYCLE_ROWS * LOGI_RECYCLE_PER_ROW;
+  let h = '<div class="logi-grid" id="logi-recycle-grid">';
+  for (let i = 0; i < cap; i++) {
+    const k = keys[i];
+    if (k) {
       const have = invCount(k);
-      h += '<span class="chip trash-chip" data-tip="' + ITEMS[k].name + '|标记为丢弃，持有 ' + have + '。点击取消" data-trashclear="' + k + '"><img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' <span class="lreq-have">(' + have + ')</span> ×</span>';
+      h += '<div class="logi-cell recycle-cell" data-logirecycle="' + k + '" data-tip="' + ITEMS[k].name + '|标记回收，持有 ' + have + '。点击取消回收">' +
+        '<img src="' + iconDataURL(k, 16) + '">' +
+        '<span class="recycle-x cnt">🗑</span></div>';
+    } else {
+      h += '<div class="logi-cell recycle-cell empty" data-logirecycle=""></div>';
     }
-    h += '</div>';
   }
-  h += '<div class="dim">标记丢弃：点击下方物品图标。取消：点击上方已标记的物品。</div>';
-  h += '<input id="trash-search" class="inv-search" type="text" placeholder="搜索物品（标记丢弃）" autocomplete="off">';
-  h += '<div id="trash-grid" class="recgrid"></div>';
   h += '</div>';
+  return h;
+}
+
+function htmlLogistics() {
+  const logiOn = G.logiEnabled !== false;
+  const recUnreq = !!G.recycleUnrequested;
+  // 顶部两个开关
+  let h = '<div class="logi-switches">' +
+    '<button class="logi-switch" data-logiswitch="main"' + (logiOn ? ' data-on="1"' : '') + '>' +
+      '<span class="sw-label">背包物流</span><span class="sw-dot"></span></button>' +
+    '<button class="logi-switch recycle" data-logiswitch="recycle"' + (recUnreq ? ' data-on="1"' : '') + '>' +
+      '<span class="sw-label">回收未请求物品</span><span class="sw-dot"></span></button>' +
+  '</div>';
+  h += '<div class="dim" style="margin:4px 0">物流区：格子中设置的物品会被机器人运到背包（每行 10 格 × 5 行）。点击空槽放入当前选中的物品，点击已有物品可设置数量/清除。</div>';
+  // 中部物流区（请求格子）
+  h += '<div class="sec">📥 物流区 <span class="dim">（请求送达）</span></div>';
+  h += logiReqGridHtml();
+  // 底部物流回收区（回收格子）
+  h += '<div class="sec">📤 物流回收区 <span class="dim">（从背包运走回收）</span></div>';
+  h += logiRecycleGridHtml();
+  h += '<div class="dim" style="margin-top:4px">回收区：格子中设置的物品会被机器人从背包中运走回收（每行 10 格 × 3 行）。点击空槽放入当前选中的物品，点击已有物品可取消回收。</div>';
   return h;
 }
 
@@ -850,57 +878,6 @@ function applyInserterFilterSearch(q) {
     emp.textContent = ql ? '没有匹配「' + q.trim() + '」的物品' : '';
     emp.style.display = (ql && !shown) ? '' : 'none';
   }
-}
-
-// 个人物流请求：填充可选物品网格并过滤
-// 性能优化：物品集合静态，按钮基础 HTML（图标/名称/tooltip）首次构建后缓存复用，
-// 打开时仅按「请求量」动态拼接标记，避免每次打开都重建数百个含 base64 图标的按钮。
-function fillLogiReqGrid(q) {
-  const grid = document.getElementById('lreq-grid');
-  if (!grid) return;
-  const ql = (q || '').trim().toLowerCase();
-  if (!_matGridCache.lreqItems) {
-    _matGridCache.lreqItems = staticItemIdList().map(id => ({
-      id,
-      key: (ITEMS[id].name + ' ' + id).toLowerCase(),
-      tip: itemTip(id),
-      img: '<img src="' + iconDataURL(id) + '">'
-    }));
-  }
-  let h = '';
-  for (const b of _matGridCache.lreqItems) {
-    if (ql && b.key.indexOf(ql) < 0) continue;
-    const req = (G.logiRequest && G.logiRequest[b.id]) || 0;
-    h += '<button class="rcbtn' + (req > 0 ? ' lreq-on' : '') + '" data-lreqitem="' + b.id + '" data-tip="' + b.tip + (req > 0 ? '（已请求 ' + req + '）' : '') + '">' +
-      b.img + ITEMS[b.id].name + (req > 0 ? ' ✓' + req : '') + '</button>';
-  }
-  grid.innerHTML = h || '<div class="dim">没有匹配的物品</div>';
-}
-
-// 个人垃圾桶：填充可选物品网格并过滤（对齐《异星工厂》Trash slots）
-// 性能优化：与物流请求网格相同，物品按钮基础 HTML 缓存复用，打开时仅按
-// 「丢弃标记 / 持有数量」动态拼接，避免每次重建数百个按钮节点。
-function fillTrashGrid(q) {
-  const grid = document.getElementById('trash-grid');
-  if (!grid) return;
-  const ql = (q || '').trim().toLowerCase();
-  if (!_matGridCache.trashItems) {
-    _matGridCache.trashItems = staticItemIdList().map(id => ({
-      id,
-      key: (ITEMS[id].name + ' ' + id).toLowerCase(),
-      tip: itemTip(id),
-      img: '<img src="' + iconDataURL(id) + '">'
-    }));
-  }
-  let h = '';
-  for (const b of _matGridCache.trashItems) {
-    if (ql && b.key.indexOf(ql) < 0) continue;
-    const on = (G.trashSlots && G.trashSlots[b.id]) ? true : false;
-    const have = invCount(b.id);
-    h += '<button class="rcbtn' + (on ? ' lreq-on trash-on' : '') + '" data-trashitem="' + b.id + '" data-tip="' + b.tip + (on ? '（已标记丢弃）' : '') + (have > 0 ? '（持有 ' + have + '）' : '') + '">' +
-      b.img + ITEMS[b.id].name + (on ? ' 🗑' : '') + (have > 0 ? ' <span class="lreq-have">(' + have + ')</span>' : '') + '</button>';
-  }
-  grid.innerHTML = h || '<div class="dim">没有匹配的物品</div>';
 }
 
 // 蓝图库面板：列出所有保存的蓝图，可加载粘贴或删除
