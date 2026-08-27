@@ -12,6 +12,7 @@ class Assembler extends Entity {
     this.spin = 0;
     this.modules = {};      // { 'speed-module': n, 'productivity-module': n }
     this.prodBuf = 0;       // 产能模块累积进度
+    this.prodTechBuf = 0;   // 科技产能无限科技分数缓冲
     // 电路控制（对齐《异星工厂》：生产建筑可接入电路网络，按信号条件启用/禁用配方）
     this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
   }
@@ -75,6 +76,14 @@ class Assembler extends Entity {
           if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
         }
         this.applyProductivity(rec);
+        // 物品产能无限科技：对主产物累积额外产出（对齐《异星工厂》*-productivity）
+        {
+          const mainOut = Object.keys(rec.out)[0];
+          if (mainOut && typeof applyTechProductivity === 'function') {
+            const extra = applyTechProductivity(this, mainOut, rec.out[mainOut]);
+            if (extra > 0) { this.outp[mainOut] = (this.outp[mainOut] || 0) + extra; if (typeof trackProd === 'function') trackProd(mainOut, extra); }
+          }
+        }
         if (this.recipe && this.recipe.indexOf('-barrel') >= 0 && typeof playSfx === 'function') playSfx('barrel');
         this.crafting = false;
         this.prog = 0;
@@ -187,7 +196,7 @@ class Assembler extends Entity {
     const s = super.serialize();
     s.recipe = this.recipe; s.inp = this.inp; s.outp = this.outp;
     s.crafting = this.crafting; s.prog = this.prog;
-    s.modules = this.modules; s.prodBuf = this.prodBuf;
+    s.modules = this.modules; s.prodBuf = this.prodBuf; s.prodTechBuf = this.prodTechBuf || 0;
     if (this.circuitCond) s.circuitCond = this.circuitCond;
     return s;
   }
@@ -202,7 +211,7 @@ class Assembler extends Entity {
     const a = super.restore(s);
     a.recipe = s.recipe || null; a.inp = s.inp || {}; a.outp = s.outp || {};
     a.crafting = !!s.crafting; a.prog = s.prog || 0;
-    a.modules = s.modules || {}; a.prodBuf = s.prodBuf || 0;
+    a.modules = s.modules || {}; a.prodBuf = s.prodBuf || 0; a.prodTechBuf = s.prodTechBuf || 0;
     a.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
     return a;
   }

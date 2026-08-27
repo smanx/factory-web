@@ -25,6 +25,7 @@ class ChemicalPlant extends Entity {
     this.working = false;
     this.modules = {};  // 化工厂可装 3 个模块（对齐《异星工厂》Chemical plant）
     this.prodBuf = 0;   // 产能模块累积进度
+    this.prodTechBuf = 0;
     // 电路控制（对齐《异星工厂》：生产建筑可接入电路网络，按信号条件启用/禁用配方）
     this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
   }
@@ -142,6 +143,13 @@ class ChemicalPlant extends Entity {
           if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
         }
         this.applyProductivity(rec);
+        {
+          const mainOut = Object.keys(rec.out)[0];
+          if (mainOut && typeof applyTechProductivity === 'function') {
+            const extra = applyTechProductivity(this, mainOut, rec.out[mainOut]);
+            if (extra > 0) { this.outp[mainOut] = (this.outp[mainOut] || 0) + extra; if (typeof trackProd === 'function') trackProd(mainOut, extra); }
+          }
+        }
         this.crafting = false;
         this.prog = 0;
       }
@@ -202,7 +210,7 @@ class ChemicalPlant extends Entity {
     const s = super.serialize();
     s.recipe = this.recipe; s.inp = this.inp; s.outp = this.outp;
     s.crafting = this.crafting; s.prog = this.prog;
-    s.modules = this.modules; s.prodBuf = this.prodBuf;
+    s.modules = this.modules; s.prodBuf = this.prodBuf; s.prodTechBuf = this.prodTechBuf || 0;
     if (this.circuitCond) s.circuitCond = this.circuitCond;
     return s;
   }
@@ -217,7 +225,7 @@ class ChemicalPlant extends Entity {
     const c = super.restore(s);
     c.recipe = s.recipe || null; c.inp = s.inp || {}; c.outp = s.outp || {};
     c.crafting = !!s.crafting; c.prog = s.prog || 0;
-    c.modules = s.modules || {}; c.prodBuf = s.prodBuf || 0;
+    c.modules = s.modules || {}; c.prodBuf = s.prodBuf || 0; c.prodTechBuf = s.prodTechBuf || 0;
     c.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
     return c;
   }

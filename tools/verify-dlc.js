@@ -706,6 +706,33 @@ ok(ctx.__itemTechReq('thruster-fuel') === 'space-thruster', '推进器燃料需�
 ok(ctx.__itemTechReq('thruster-oxidizer') === 'space-thruster', '推进器氧化剂需「太空推进」科技');
 ok(ctx.__itemTechReq('advanced-thruster-fuel') === 'space-thruster', '高级推进器燃料需「太空推进」科技');
 ok(!Object.keys(TS['space-thruster'].cost).includes('thruster-fuel'), '「太空推进」科技配方不含推进器燃料（避免循环依赖）');
+
+console.log('\n【官方无限科技：物品生产产能（*-productivity，每级 +10% 额外产出）】');
+const PROD_TECHS = ['processing-unit-productivity','steel-plate-productivity','plastic-bar-productivity','rocket-fuel-productivity','low-density-structure-productivity','rocket-part-productivity','scrap-recycling-productivity','asteroid-productivity'];
+for (const tid of PROD_TECHS) {
+  ok(!!TS[tid], tid + ' 科技已注册');
+  ok(!!TS[tid].infinite, tid + ' 为无限科技');
+}
+// 数据单源：techProductivity 函数在 data-util.js 中定义并读取 techLevel（data-tech-tree.js 的 techLevel）
+const utilSrc = fs.readFileSync(ROOT + '/js/data/data-util.js', 'utf8');
+ok(/function techProductivity\(item\)/.test(utilSrc), 'techProductivity 函数已定义（data-util.js）');
+ok(/function applyTechProductivity/.test(utilSrc), 'applyTechProductivity 函数已定义（data-util.js）');
+// 前端生产设备单源接入：assembler/chemical-plant/electric-furnace/foundry/crusher/recycler/rocket 调用 applyTechProductivity
+for (const dev of ['js/devices/assembler.js','js/devices/chemical-plant.js','js/devices/electric-furnace.js','js/devices/foundry.js','js/devices/crusher.js','js/devices/recycler.js','js/devices/rocket.js','js/devices/electromagnetic-plant.js','js/devices/cryogenic-plant.js','js/devices/assembler-3.js','js/devices/assembler-mk2.js']) {
+  const devSrc = fs.readFileSync(ROOT + '/' + dev, 'utf8');
+  ok((/applyTechProductivity/.test(devSrc)) || (/techProductivity/.test(devSrc)), dev + ' 接入科技产能（applyTechProductivity/techProductivity）');
+}
+// techProductivity 各物品映射到官方无限科技
+ok(/['\']processing-unit['\']: 'processing-unit-productivity'/.test(utilSrc), '处理器→处理器产能科技');
+ok(/['\']steel-plate['\']: 'steel-plate-productivity'/.test(utilSrc), '钢板→钢板产能科技');
+ok(/['\']plastic-bar['\']: 'plastic-bar-productivity'/.test(utilSrc), '塑料板→塑料板产能科技');
+ok(/['\']rocket-fuel['\']: 'rocket-fuel-productivity'/.test(utilSrc), '火箭燃料→火箭燃料产能科技');
+ok(/['\']low-density-structure['\']: 'low-density-structure-productivity'/.test(utilSrc), '低密度结构→低密度结构产能科技');
+ok(/['\']rocket-part['\']: 'rocket-part-productivity'/.test(utilSrc), '火箭部件→火箭部件产能科技');
+ok(/['\']scrap['\']: 'scrap-recycling-productivity'/.test(utilSrc), '废料→废料回收产能科技');
+ok(/asteroid-productivity/.test(utilSrc), '小行星→小行星产能科技');
+ok(/0\.1 \* techLevel/.test(utilSrc), '产能加成每级 +10%（0.1×等级）');
+
 console.log('\n' + (fail === 0 ? '✅ DLC 数据校验全部通过（' + pass + ' 项）' : '❌ 失败 ' + fail + ' 项'));
 
 // ===== 空间平台系统（Space Platform，本迭代新增）数据校验 =====

@@ -48,6 +48,7 @@ class RocketSilo extends CircuitNode {
     this.parts = 0;          // 已组装的火箭部件数（对齐《异星工厂》：逐件组装，集齐 ROCKET_PARTS 件后拼成火箭）
     this.modules = {};       // 发射井模块（4 槽，对齐《异星工厂》：火箭井可装速度/产能/效率模块）
     this.prodBuf = 0;        // 产能模块累积进度
+    this.prodTechBuf = 0;    // 科技产能无限科技分数缓冲
     this.launching = false;  // 发射倒计时中
     this.launchT = 0;
     this.launchCount = 0;    // 该发射井累计发射次数（对齐《异星工厂》：发射井可重复使用，多次发射产空间科学包）
@@ -179,6 +180,15 @@ class RocketSilo extends CircuitNode {
     this.parts++;
     if (typeof trackProd === 'function') trackProd('rocket-part', 1);
     this.applyProductivity();
+    // 火箭部件产能无限科技：累积免费额外部件（对齐《异星工厂》Rocket part productivity）
+    if (typeof applyTechProductivity === 'function') {
+      const extra = applyTechProductivity(this, 'rocket-part', 1);
+      if (extra > 0) {
+        this.parts += extra;
+        if (typeof trackProd === 'function') trackProd('rocket-part', extra);
+        if (typeof toast === 'function') toast('⚡ 火箭部件产能科技免费产出 ' + extra + ' 个火箭部件！');
+      }
+    }
     if (this.hasRocket()) { if (typeof toast === 'function') toast('🛠️ 火箭部件集齐，完整火箭组装完成！放入卫星即可发射'); }
     else if (typeof toast === 'function') toast('🔩 火箭部件组装完成（' + this.parts + '/' + ROCKET_PARTS + '）');
     uiDirty = true;
@@ -214,14 +224,14 @@ class RocketSilo extends CircuitNode {
   powerDemand() { return this.launching ? 2000 : 20; }
   serialize() {
     const s = super.serialize();
-    s.inp = this.inp; s.parts = this.parts; s.modules = this.modules; s.prodBuf = this.prodBuf;
+    s.inp = this.inp; s.parts = this.parts; s.modules = this.modules; s.prodBuf = this.prodBuf; s.prodTechBuf = this.prodTechBuf || 0;
     s.launching = this.launching; s.launchT = this.launchT; s.launched = this.launched; s.launchCount = this.launchCount || 0;
     s.cargo = this.cargo; s.cargoTarget = this.cargoTarget || null;
     return s;
   }
   static restore(s) {
     const t = super.restore(s);
-    t.inp = s.inp || {}; t.parts = s.parts || 0; t.modules = s.modules || {}; t.prodBuf = s.prodBuf || 0; t.cargo = s.cargo || {}; t.cargoTarget = s.cargoTarget || null;
+    t.inp = s.inp || {}; t.parts = s.parts || 0; t.modules = s.modules || {}; t.prodBuf = s.prodBuf || 0; t.prodTechBuf = s.prodTechBuf || 0; t.cargo = s.cargo || {}; t.cargoTarget = s.cargoTarget || null;
     t.launching = !!s.launching; t.launchT = s.launchT || 0; t.launched = !!s.launched; t.launchCount = s.launchCount || (s.launched ? 1 : 0);
     // 旧档迁移：旧版火箭井直接存 inp.rocket-body（已组装出火箭本体），换算为已集齐火箭部件
     if (t.parts <= 0 && (t.inp['rocket-body'] || 0) > 0) { t.parts = ROCKET_PARTS; delete t.inp['rocket-body']; }

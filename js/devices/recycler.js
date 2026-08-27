@@ -13,6 +13,7 @@ class Recycler extends Entity {
     this.crafting = false;
     this.modules = {};
     this.prodBuf = 0;
+    this.prodTechBuf = 0;
   }
   // 官方回收耗时：回收一批耗时 = 2s / crafting_speed（官方 crafting_speed=0.5 → 4s/批）
   batchTime() { return 2 / (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 0.5); }
@@ -39,8 +40,15 @@ class Recycler extends Entity {
       }
       if (this.prog >= this.batchTime()) {
         this._fracBuf = this._fracBuf || {};
+        // 废料回收产能无限科技：回收废料时额外 +10%/级（对齐《异星工厂》Scrap recycling productivity）
+        let scrapBonus = 0;
+        if (this.recycleItem === 'scrap' && typeof techProductivity === 'function') {
+          scrapBonus = techProductivity('scrap');
+        }
         for (const k in out) {
-          const v = out[k];
+          let v = out[k];
+          // 废料回收产能：对废料回收的每项产物额外按比例加成
+          if (scrapBonus > 0 && k !== 'scrap') v += v * scrapBonus;
           // 官方回收配方含小数期望（extra_count_fraction / probability）——跨批累积进位，对齐官方分数产出
           const acc = (this._fracBuf[k] || 0) + v;
           const whole = Math.floor(acc);
@@ -158,6 +166,7 @@ class Recycler extends Entity {
     s.crafting = this.crafting;
     s.modules = this.modules;
     s.prodBuf = this.prodBuf;
+    s.prodTechBuf = this.prodTechBuf || 0;
     s.fracBuf = this._fracBuf || null;
     return s;
   }
@@ -169,6 +178,7 @@ class Recycler extends Entity {
     r.crafting = !!s.crafting;
     r.modules = s.modules || {};
     r.prodBuf = s.prodBuf || 0;
+    r.prodTechBuf = s.prodTechBuf || 0;
     r._fracBuf = s.fracBuf || null;
     return r;
   }

@@ -123,6 +123,15 @@ const TECHS = {
   'refined-flammables': { name: '燃烧伤害', cost: { 'space-science-pack': 80, 'military-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究提升火焰喷射器、火焰炮塔与地面火场等燃烧伤害 +10%（对齐《异星工厂》Refined flammables 无限科技，链条终结于 Level 7）', req: ['flamethrower', 'space-science'] },
   'stronger-explosives': { name: '爆炸伤害', cost: { 'space-science-pack': 80, 'military-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究提升火箭筒/炮弹/手雷/炮兵/地雷/原子弹等爆炸类伤害 +10%（对齐《异星工厂》Stronger explosives 无限科技，链条终结于 Level 7）', req: ['explosives', 'space-science'] },
   'fuel-efficiency': { name: '燃料效率', cost: { 'space-science-pack': 80, 'utility-science-pack': 40 }, infinite: true, desc: '无限科技：每次研究降低所有燃烧设备（锅炉/熔炉/矿机/热能机械臂/车头/载具等）的燃料消耗约 9%，让每单位燃料更耐用（对齐《异星工厂》Fuel efficiency 无限科技），核燃料棒不受影响', req: ['space-science', 'utility'] },
+  // ==== 官方无限科技：物品生产产能（对齐《异星工厂》各 *-productivity 无限科技，每级 +10% 额外产出）====
+  'processing-unit-productivity': { name: '处理器产能', cost: { 'space-science-pack': 100, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究让组装机/电磁工厂产出处理器时额外 +10% 产能（对齐《异星工厂》Processing unit productivity 无限科技，用空间科学包推进）', req: ['space-science', 'advanced-electronics-2'] },
+  'steel-plate-productivity': { name: '钢板产能', cost: { 'space-science-pack': 100, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究让熔炉/铸造厂产出钢板时额外 +10% 产能（对齐《异星工厂》Steel plate productivity 无限科技）', req: ['space-science', 'steel-processing'] },
+  'plastic-bar-productivity': { name: '塑料板产能', cost: { 'space-science-pack': 100, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究让化工厂产出塑料板时额外 +10% 产能（对齐《异星工厂》Plastic bar productivity 无限科技）', req: ['space-science', 'plastic'] },
+  'rocket-fuel-productivity': { name: '火箭燃料产能', cost: { 'space-science-pack': 100, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究让化工厂产出火箭燃料时额外 +10% 产能（对齐《异星工厂》Rocket fuel productivity 无限科技）', req: ['space-science', 'rocket-science'] },
+  'low-density-structure-productivity': { name: '低密度结构产能', cost: { 'space-science-pack': 100, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究让组装机/铸造厂产出低密度结构时额外 +10% 产能（对齐《异星工厂》Low density structure productivity 无限科技）', req: ['space-science', 'rocket-science'] },
+  'rocket-part-productivity': { name: '火箭部件产能', cost: { 'space-science-pack': 100, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究让火箭发射井组装火箭部件时额外 +10% 产能（对齐《异星工厂》Rocket part productivity 无限科技，与火箭产能科技叠加）', req: ['space-science', 'rocket-science'] },
+  'scrap-recycling-productivity': { name: '废料回收产能', cost: { 'electromagnetic-science-pack': 100, 'space-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究让回收机处理废料时额外 +10% 回收产能（对齐《异星工厂》Scrap recycling productivity 无限科技）', req: ['space-science', 'scrap-recycling'] },
+  'asteroid-productivity': { name: '小行星产能', cost: { 'electromagnetic-science-pack': 100, 'space-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究让破碎机粉碎小行星时额外 +10% 产能（对齐《异星工厂》Asteroid productivity 无限科技）', req: ['space-science', 'asteroid-processing'] },
   infinite:   { name: '无限科技', cost: {}, infinite: true, desc: '无限研究：消耗任意科学包，永不完成', req: [] }
 };
 
@@ -244,7 +253,9 @@ const SPACE_AGE_TECHS = [
   'worker-robot-cargo-size', 'artillery-shooting-speed', 'artillery-shell-range', 'health',
   'rail-productivity', 'braking-force', 'rocket-productivity', 'physical-projectile-damage',
   'energy-weapons-damage', 'refined-flammables', 'stronger-explosives', 'fuel-efficiency',
-  'shooting-speed', 'worker-robot-speed', 'inserter-capacity', 'research-speed', 'research-productivity'
+  'shooting-speed', 'worker-robot-speed', 'inserter-capacity', 'research-speed', 'research-productivity',
+  'processing-unit-productivity', 'steel-plate-productivity', 'plastic-bar-productivity', 'rocket-fuel-productivity',
+  'low-density-structure-productivity', 'rocket-part-productivity', 'scrap-recycling-productivity', 'asteroid-productivity'
 ];
 for (const tid of SPACE_AGE_TECHS) if (TECHS[tid]) TECHS[tid].cat = 'space-age';
 

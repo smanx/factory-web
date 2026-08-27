@@ -17,6 +17,14 @@ class AssemblerMK2 extends Assembler {
           if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
         }
         this.applyProductivity(rec);
+        // 物品产能无限科技：对主产物累积额外产出（对齐《异星工厂》*-productivity）
+        {
+          const mainOut = Object.keys(rec.out)[0];
+          if (mainOut && typeof applyTechProductivity === 'function') {
+            const extra = applyTechProductivity(this, mainOut, rec.out[mainOut]);
+            if (extra > 0) { this.outp[mainOut] = (this.outp[mainOut] || 0) + extra; if (typeof trackProd === 'function') trackProd(mainOut, extra); }
+          }
+        }
         this.crafting = false;
         this.prog = 0;
       }

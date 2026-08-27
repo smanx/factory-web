@@ -1444,3 +1444,29 @@ D
 > - **校验结果**：官方全部可建造建筑占地 **0 处漏接**，占地与官方完全一致。
 > - **校验**：verify-dlc 新增官方建筑占地全量对齐校验（+1 项，涵盖全部官方建筑），
 >   全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段六.10：官方无限科技·物品生产产能（*-productivity，本迭代新增）
+
+> 依据「继续开发完善、向《异星工厂》靠齐」与「所有数据/参数从 data.generated.js（factorio-data 官方）单源获取」原则，
+> 补全官方 **物品生产产能** 无限科技（各 `*-productivity`）——此前项目缺失这些官方终局无限科技，现按官方语义接入：
+>
+> - **科技**（8 个无限科技，均每级 +10% 额外产出，对齐官方 `*-productivity`，归入太空时代分类）：
+>   - `processing-unit-productivity`（处理器产能）：前置 空间科技+高级电子学 II
+>   - `steel-plate-productivity`（钢板产能）：前置 空间科技+炼钢科技
+>   - `plastic-bar-productivity`（塑料板产能）：前置 空间科技+塑料合成
+>   - `rocket-fuel-productivity`（火箭燃料产能）：前置 空间科技+火箭技术
+>   - `low-density-structure-productivity`（低密度结构产能）：前置 空间科技+火箭技术
+>   - `rocket-part-productivity`（火箭部件产能）：前置 空间科技+火箭技术（与既有火箭产能科技叠加）
+>   - `scrap-recycling-productivity`（废料回收产能）：前置 空间科技+废料回收（Fulgora）
+>   - `asteroid-productivity`（小行星产能）：前置 空间科技+太空材料加工
+> - **数据单源**：新增 `techProductivity(item)` / `applyTechProductivity(e,item,count)` 辅助函数（data-util.js，
+>   读取 `techLevel()`），每级 +10% 分数产能，跨批累积进位——与产能模块 `prodBuf` 机制一致，未单独维护数值表；
+>   物品→科技映射单点维护（处理器/钢板/塑料板/火箭燃料/低密度结构/火箭部件/废料/星块）。
+> - **前端接入**：组装机（I/II/III）、化工厂、电炉、铸造厂、电磁工厂、低温工厂、破碎机、回收机、火箭发射井
+>   均接入 `applyTechProductivity`，按主产物累积免费额外部件/产物；火箭发射井把 `rocket-part-productivity`
+>   加成到火箭部件组装；回收机把 `scrap-recycling-productivity` 加成到废料回收每项产物；破碎机把小行星产能
+>   加成到粉碎主产物。`prodTechBuf` 随存档序列化/恢复，旧档自动补空不报错。
+> - **玩法**：研究对应无限科技后，生产该物品的机器每级 +10% 免费产出，让终局无限科研为生产链提供持续增益，
+>   补齐官方终局科研梯度（与采矿产能/科研产能/武器伤害等并列）。
+> - **校验**：verify-dlc 新增物品生产产能校验（科技注册/无限/单源函数/11 设备接入/物品映射/每级 +10%），
+>   全量 18 个校验脚本通过，`node build.js` 构建通过。

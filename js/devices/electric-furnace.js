@@ -3,7 +3,7 @@
 // ===== 电炉：免燃料、吃电力冶炼，速度更高，可出钢板 =====
 // 对齐《异星工厂》：电炉可装 2 个模块（速度/产能/效率），并受信号塔（Beacon）广播加成。
 class ElectricFurnace extends Furnace {
-  constructor(type, x, y) { super('electric-furnace', x, y); this.modules = {}; this.prodBuf = 0; }
+  constructor(type, x, y) { super('electric-furnace', x, y); this.modules = {}; this.prodBuf = 0; this.prodTechBuf = 0; }
   // 模块槽位数（对齐《异星工厂》官方 module_slots：电炉 2 槽）
   moduleSlotCount() { return GAME_DATA.deviceStats?.[this.type]?.moduleSlots ?? 2; }
   // 模块速度倍率：速度模块加速、产能/效率模块小降速；叠加信号塔广播加成
@@ -55,6 +55,10 @@ class ElectricFurnace extends Furnace {
       emitQuality(this, this.outp, r.id, 1);
       if (typeof trackProd === 'function') trackProd(r.id, 1);
       this.applyProductivity(r);
+      if (typeof applyTechProductivity === 'function') {
+        const extra = applyTechProductivity(this, r.id, 1);
+        if (extra > 0) { this.outp[r.id] = (this.outp[r.id] || 0) + extra; if (typeof trackProd === 'function') trackProd(r.id, extra); }
+      }
     }
   }
   giveItem(item) {
@@ -77,7 +81,7 @@ class ElectricFurnace extends Furnace {
   }
   serialize() {
     const s = super.serialize();
-    s.modules = this.modules; s.prodBuf = this.prodBuf;
+    s.modules = this.modules; s.prodBuf = this.prodBuf; s.prodTechBuf = this.prodTechBuf || 0;
     return s;
   }
   blueprint() {
@@ -87,7 +91,7 @@ class ElectricFurnace extends Furnace {
   }
   static restore(s) {
     const e = super.restore(s);
-    e.modules = s.modules || {}; e.prodBuf = s.prodBuf || 0;
+    e.modules = s.modules || {}; e.prodBuf = s.prodBuf || 0; e.prodTechBuf = s.prodTechBuf || 0;
     return e;
   }
   powerDemand() { return this.cur ? POWER_USE['electric-furnace'] * this.modulePowerFactor() : 0; }

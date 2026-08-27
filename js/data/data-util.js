@@ -513,6 +513,39 @@ function fuelConsumptionMult() {
   if (!lvl) return 1;
   return 1 / Math.pow(1.1, lvl);
 }
+// 物品生产产能无限科技（对齐《异星工厂》各 *-productivity 无限科技）：每级让指定物品产出额外 +10%。
+// 通过累积分数进度，在整数产物上追加额外产出（与产能模块 prodBuf 机制一致）。
+// 返回该物品的产能加成分数（每级 0.1）。
+function techProductivity(item) {
+  const map = {
+    'processing-unit': 'processing-unit-productivity',
+    'steel-plate': 'steel-plate-productivity',
+    'plastic-bar': 'plastic-bar-productivity',
+    'rocket-fuel': 'rocket-fuel-productivity',
+    'low-density-structure': 'low-density-structure-productivity',
+    'rocket-part': 'rocket-part-productivity',
+    'scrap': 'scrap-recycling-productivity',
+    'metallic-asteroid-chunk': 'asteroid-productivity',
+    'carbonic-asteroid-chunk': 'asteroid-productivity',
+    'oxide-asteroid-chunk': 'asteroid-productivity',
+    'promethium-asteroid-chunk': 'asteroid-productivity'
+  };
+  const tid = map[item];
+  if (!tid || !techResearched(tid)) return 0;
+  return 0.1 * techLevel(tid);
+}
+// 实体级产能分数缓冲：给定实体与本次产出物品/数量，累积产能分数并返回应追加的整数额外产物。
+// e 须有 prodTechBuf 字段（各生产设备在构造时初始化）。
+function applyTechProductivity(e, item, count) {
+  const frac = techProductivity(item);
+  if (!frac) return 0;
+  if (e.prodTechBuf === undefined) e.prodTechBuf = 0;
+  e.prodTechBuf += count * frac;
+  const whole = Math.floor(e.prodTechBuf);
+  if (whole >= 1) { e.prodTechBuf -= whole; return whole; }
+  return 0;
+}
+
 
 // 健康无限科技等级（对齐《异星工厂》Space Age Health 科技）：每级提升主角最大生命值 +50
 function healthLevel() {
