@@ -7461,7 +7461,10 @@ const GAME_DATA = {
   "boiler": 30,
   "oil-refinery": 6,
   "chemical-plant": 4,
-  "centrifuge": 4
+  "centrifuge": 4,
+  "nuclear-reactor": 7,
+  "burner-inserter": 0.3,
+  "locomotive": 3
  },
  "enemy": {
   "small-wriggler-pentapod": {

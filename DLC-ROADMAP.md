@@ -1180,3 +1180,23 @@
 >   组装机 RECIPES + 1 项 data-recipes.js 单源读取），全量 18 个校验脚本通过，`node build.js` 构建通过。
 > - **数据单源**：炼油/离心机配方数值全部来自 data.generated.js（factorio-data 官方），
 >   未单独维护第二套数值表。
+
+### 阶段六.5：污染排放兜底单源化补齐（Pollution manual fallback single-sourcing，本迭代新增）
+
+> 依据「所有数据/参数从 data.generated.js 单源获取，不单独维护第二套数值」原则，
+> 修复污染系统中核反应堆/火车头/热能机械臂三设备兜底排放的「双套数值」不一致问题：
+> - **问题**：verify-dlc 原断言 `GAME_DATA.pollution` 中应含核反应堆=7、热能机械臂=0.3、
+>   火车头=3 三项兜底值（与 roadmap 阶段六.2 约定一致），但 `generate-game-data.js` 实际未写入
+>   这三项；而前端 `js/devices/pollution.js` 另维护了一套独立 `FALLBACK` 表
+>   （0.8/0.4/0.05），数值与校验断言不符，且违反「设备不单独维护第二套数值」原则，导致
+>   verify-dlc 污染校验失败。
+> - **修复**：
+>   - `tools/generate-game-data.js`：新增 `POLLUTION_MANUAL` 兜底表（核反应堆 7 / 热能机械臂 0.3 /
+>     火车头 3，单位仍为「污染/分」），与官方 emissions 项一并写入 `GAME_DATA.pollution`
+>     （污染项数 11 → 14），使污染数据完全单源。
+>   - `js/devices/pollution.js`：删除前端独立 `FALLBACK` 表，`pollutionRateFor()` 统一从
+>     `GAME_DATA.pollution` 单源读取（含三设备兜底值），不再维护第二套数值表。
+>   - 行为影响：三设备排放按统一折算（perMin/60×POLLUTION_RATE_SCALE）后与既有兜底值近似
+>     （核堆≈0.93、火车头=0.4、热能机械臂≈0.04），相对量级与官方一致。
+> - **校验**：verify-dlc 污染单源化校验全绿（11 官方 + 3 兜底 + 前端单源读取），
+>   全量 18 个校验脚本通过，`node build.js` 构建通过。

@@ -55,15 +55,10 @@ const POLLUTION_FIELD_MAX_TILES = 6000; // 逐格污染场最大格数（超出�
 // 火车头/热能机械臂无数值型排放），故保持项目自定的微量兜底值。
 const POLLUTION_RATE_SCALE = 8; // 官方「污染/分」→ 本模型「污染/s」的全局折算系数
 function pollutionRateFor(type) {
+  // 全部污染源（含核反应堆/火车头/热能机械臂的微量兜底值）均单源自 GAME_DATA.pollution
   const perMin = (GAME_DATA && GAME_DATA.pollution && GAME_DATA.pollution[type]);
   if (typeof perMin === 'number') return perMin / 60 * POLLUTION_RATE_SCALE;
-  // 官方无数值型排放的设备：微量兜底
-  const FALLBACK = {
-    'nuclear-reactor': 0.8,   // 核反应堆：官方零排放，项目保留微量（燃料处理/热量管理）
-    'locomotive': 0.4,        // 火车头：烧煤行驶微量
-    'burner-inserter': 0.05,  // 热能机械臂：烧煤微量
-  };
-  return FALLBACK[type] || 0;
+  return 0;
 }
 
 // 累加污染值（外部调用入口，钳制到上限）

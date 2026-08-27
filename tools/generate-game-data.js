@@ -567,7 +567,8 @@ const turret = {};
 // 污染排放（官方 emissions_per_minute.pollution，单位：污染/分钟）。
 // 来源 = 官方 energy_source.emissions_per_minute.pollution（factorio-data 单源）。
 // 注：核反应堆/火车头/热能机械臂在官方 raw 无 emissions_per_minute（核堆官方零排放、
-//     火车头/热能机械臂无数值型排放），故不进本表，污染系统对这些设备保持项目自定微量值。
+//     火车头/热能机械臂无数值型排放），故在此以 POLLUTION_MANUAL 兜底值与官方项一并写入
+//     GAME_DATA.pollution，使污染系统完全从 data.generated.js 单源读取（不维护第二套数值表）。
 const pollution = {};
 {
   const POLLUTION_SOURCES_OFFICIAL = [
@@ -584,6 +585,14 @@ const pollution = {};
       && proto.energy_source.emissions_per_minute.pollution;
     if (typeof em === 'number') pollution[name] = em;
   }
+  // 官方无直接 emissions_per_minute 的设备（核堆官方零排放、火车头/热能机械臂无数值型排放）：
+  // 项目保留的微量兜底值，一并单源进 GAME_DATA.pollution（单位仍为「污染/分」）。
+  const POLLUTION_MANUAL = {
+    'nuclear-reactor': 7,   // 核反应堆：官方零排放，项目保留微量（燃料处理/热量管理）
+    'burner-inserter': 0.3, // 热能机械臂：烧煤微量
+    'locomotive': 3,        // 火车头：烧煤行驶微量
+  };
+  for (const [name, val] of Object.entries(POLLUTION_MANUAL)) pollution[name] = val;
 }
 
 // 弹药伤害：遍历 ammo_type.action（2.0 结构可能是 {"1":{...}} 或直接对象），找 damage effect 的 amount。
