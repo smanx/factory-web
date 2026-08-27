@@ -981,6 +981,20 @@
 >   GAME_DATA（factorio-data 官方），未单独维护数值表。
 > - **校验**：verify-dlc 新增手持武器校验（17 项），全量 18 个校验脚本通过，`node build.js` 构建通过。
 
+### 阶段五.3：氨制火箭燃料（Ammonia rocket fuel，Aquilo 低温燃料链，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **配方**（官方数值，数据单源化，来自 data.generated.js）：
+>   - `ammonia-rocket-fuel`（氨制火箭燃料）：10 固体燃料 + 50 水 + 500 氨 → 1 火箭燃料（10s，官方
+>     ammonia-rocket-fuel 配方，chemistry+cryogenics 双类别，化工厂 chemistry 配方，Aquilo 低温燃料链）。
+> - **玩法**：补全 Aquilo 低温燃料链——用大量氨制取火箭燃料，为无石油/无果冻的星球（玄冥星等）提供
+>   火箭燃料的替代来源，与既有果冻制火箭燃料（Gleba）、原油火箭燃料（Nauvis）构成完整的多行星燃料网络。
+> - **设备归属**：氨制火箭燃料 → 化工厂（CHEM_RECIPES 注册，官方 chemistry 配方）。
+> - **科技**：由「低温学」科技解锁（RECIPE_TECH 配方级门控，官方 cryogenics 前置，与氨/氟酮/低温科研包同科技）。
+> - **校验**：verify-dlc 新增氨制火箭燃料校验（8 项），verify-data-integrity 配方键映射补充 1 项动态键，
+>   全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+
 ### 阶段六：后续开发计划（迭代方向）
 
 > 基于本次审计，核心数据对齐与 DLC 内容接入已全部完成。后续迭代方向（按价值排序）：

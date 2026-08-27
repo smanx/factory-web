@@ -368,6 +368,9 @@ const RECIPES = {
   'ammoniacal-solution': { time: 5, inp: { 'ammonia': 50, 'water': 50 }, out: { 'ammoniacal-solution': 100 } },
   // 氨溶液分离：氨溶液 → 冰 + 氨（官方 ammoniacal-solution-separation 1s：50 氨溶液 → 5 冰 + 50 氨，低温/化工）
   'ammoniacal-solution-separation': { time: 1, inp: { 'ammoniacal-solution': 50 }, out: { 'ice': 5, 'ammonia': 50 } },
+  // 氨制火箭燃料：10 固体燃料 + 50 水 + 500 氨 → 1 火箭燃料（官方 ammonia-rocket-fuel 10s，chemistry+cryogenics 双类别，
+  // Aquilo 低温燃料链——用氨大量制取火箭燃料，为无石油星球提供火箭燃料来源）
+  'ammonia-rocket-fuel': { time: 10, inp: { 'solid-fuel': 10, 'water': 50, 'ammonia': 500 }, out: { 'rocket-fuel': 1 } },
   // 锂盐水：水 + 方解石 → 锂盐水（官方 lithium-brine 由 Aquilo 抽取，此处适配为富锂盐水）
   'lithium-brine': { time: 5, inp: { 'water': 50, 'calcite': 5 }, out: { 'lithium-brine': 50 } },
   // 低温工厂：钢板 + 处理器 + 导热管 + 聚变燃料棒 → 低温工厂（官方需低温合金，此处适配高级材料，10s）
@@ -555,7 +558,7 @@ function filterChoices() {
   return _filterChoicesCache;
 }
 
-const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant', 'solid-fuel', 'solid-fuel-light-oil', 'solid-fuel-heavy-oil', 'sulfur', 'sulfuric-acid', 'carbon', 'carbon-fiber', 'lithium', 'lithium-brine', 'ammoniacal-solution', 'ammoniacal-solution-separation', 'thruster-fuel', 'thruster-oxidizer', 'advanced-thruster-fuel', 'advanced-thruster-oxidizer', 'flamethrower-ammo', 'holmium-solution', 'coal-synthesis', 'solid-fuel-from-ammonia', 'steam-condensation', 'acid-neutralisation'];
+const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant', 'solid-fuel', 'solid-fuel-light-oil', 'solid-fuel-heavy-oil', 'sulfur', 'sulfuric-acid', 'carbon', 'carbon-fiber', 'lithium', 'lithium-brine', 'ammoniacal-solution', 'ammoniacal-solution-separation', 'thruster-fuel', 'thruster-oxidizer', 'advanced-thruster-fuel', 'advanced-thruster-oxidizer', 'flamethrower-ammo', 'holmium-solution', 'coal-synthesis', 'solid-fuel-from-ammonia', 'ammonia-rocket-fuel', 'steam-condensation', 'acid-neutralisation'];
 function isChemRecipe(id) { return CHEM_RECIPES.indexOf(id) >= 0; }
 function chemMult() { return (G.techDone.plastic ? 1.5 : 1) * ((G.dbg && G.dbg.asmMult) || 1); }
 

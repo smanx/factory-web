@@ -1362,4 +1362,21 @@ console.log('\n【太空时代手持武器（railgun 轨道炮 / teslagun 特斯
   ok(renSrc.indexOf("b.kind === 'tesla'") >= 0, 'tesla 电弧渲染分支已接入');
 }
 
+
+console.log('\n【氨制火箭燃料（ammonia-rocket-fuel）数据校验】');
+{
+  ok(!!RP['ammonia-rocket-fuel'], 'ammonia-rocket-fuel 配方已注册');
+  ok(RP['ammonia-rocket-fuel'] && RP['ammonia-rocket-fuel'].time === 10, 'ammonia-rocket-fuel 耗时=10s（官方）');
+  ok(RP['ammonia-rocket-fuel'] && RP['ammonia-rocket-fuel'].inp['solid-fuel'] === 10 && RP['ammonia-rocket-fuel'].inp['water'] === 50 && RP['ammonia-rocket-fuel'].inp['ammonia'] === 500, 'ammonia-rocket-fuel 配方=10固燃+50水+500氨（官方）');
+  ok(RP['ammonia-rocket-fuel'] && RP['ammonia-rocket-fuel'].out['rocket-fuel'] === 1, 'ammonia-rocket-fuel 产出=1 火箭燃料（官方）');
+  ok(!!GD.recipeNames['ammonia-rocket-fuel'] && GD.recipeNames['ammonia-rocket-fuel'].en === 'Ammonia rocket fuel', 'ammonia-rocket-fuel 官方配方名 (Ammonia rocket fuel)');
+  ok(ctx.__recipeDevice('ammonia-rocket-fuel') === 'chemical-plant', 'ammonia-rocket-fuel 配方 → 化工厂（官方 chemistry）');
+  ok(ctx.__itemTechReq('ammonia-rocket-fuel') === 'cryogenics', 'ammonia-rocket-fuel 需「低温学」科技');
+  const rec = RP['ammonia-rocket-fuel'];
+  const inpOk = rec && Object.keys(rec.inp).every(x => x in IT || ['water'].indexOf(x) >= 0);
+  const outOk = rec && Object.keys(rec.out).every(x => x in IT);
+  ok(inpOk && outOk, 'ammonia-rocket-fuel 配方引用的物品均存在');
+}
+
+
 process.exit(fail === 0 ? 0 : 1);

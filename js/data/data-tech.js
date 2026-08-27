@@ -184,6 +184,7 @@ const TECH_REQ = {
   'fluorine': 'cryogenics',
   'fluoroketone-cold': 'cryogenics',
   'fluoroketone-hot': 'cryogenics',
+  'ammonia-rocket-fuel': 'cryogenics',  // 氨制火箭燃料（Aquilo 低温燃料链，由「低温学」科技解锁）
   'foundation': 'cryogenics',   // 平台基座（空间平台走行地板，官方 Foundation，需氟酮冷，归低温学链）
   'ice-platform': 'cryogenics',  // 冰面平台（玄冥星冰原，官方 Ice platform，需氨水，归低温学链）
   // ===== 太空时代 熔融金属铸造链 / 废料回收（统一由对应科技解锁） =====

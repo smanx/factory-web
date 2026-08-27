@@ -2829,6 +2829,17 @@ const GAME_DATA = {
     "fluoroketone-hot": 3
    }
   },
+  "ammonia-rocket-fuel": {
+   "time": 10,
+   "inp": {
+    "solid-fuel": 10,
+    "water": 50,
+    "ammonia": 500
+   },
+   "out": {
+    "rocket-fuel": 1
+   }
+  },
   "cryogenic-plant": {
    "time": 10,
    "inp": {
@@ -3915,6 +3926,7 @@ const GAME_DATA = {
   "oxide-asteroid-reprocessing": "crusher",
   "promethium-science-pack": "electromagnetic-plant",
   "cryogenic-science-pack": "cryogenic-plant",
+  "ammonia-rocket-fuel": "chemical-plant",
   "cryogenic-plant": "cryogenic-plant",
   "iron-ore-melting": "foundry",
   "copper-ore-melting": "foundry",
@@ -5384,6 +5396,10 @@ const GAME_DATA = {
   "ammoniacal-solution-separation": {
    "zh": "氨溶液分离",
    "en": "Ammoniacal solution separation"
+  },
+  "ammonia-rocket-fuel": {
+   "zh": "氨制火箭燃料",
+   "en": "Ammonia rocket fuel"
   },
   "iron-ore-melting": {
    "zh": "铁矿制熔融铁",
