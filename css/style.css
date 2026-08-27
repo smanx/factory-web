@@ -220,6 +220,21 @@ html, body {
   white-space: nowrap;
 }
 
+/* 战斗快捷栏装载状态背景色：
+   - 默认（全空）：灰底（.qb-slot 默认色）
+   - 武器+弹药都装好：绿
+   - 只装武器 或 只装弹药：红 */
+.qb-slot.qb-green {
+  background: #1f7a3a;
+  border-color: #3fb85f;
+  box-shadow: 0 0 6px rgba(63, 184, 95, .5);
+}
+.qb-slot.qb-red {
+  background: #7a1f1f;
+  border-color: #b83f3f;
+  box-shadow: 0 0 6px rgba(184, 63, 63, .5);
+}
+
 /* ===== 手搓合成队列（左下角快捷栏右侧）=====
    显示规则：仅图标；有多个排队项时自左向右排开；
    队首当前在制项带 loading 旋转效果；完成一件后整体左移一格。 */

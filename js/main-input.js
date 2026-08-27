@@ -54,8 +54,8 @@ function bindInput() {
     else if (k === 'n') { if (typeof placeMapTag === 'function') placeMapTag(); }
     // 操作说明（Alt+H）：随时查看完整快捷键指南
     else if (ev.altKey && k === 'h') { ev.preventDefault(); if (typeof showTutorial === 'function') showTutorial(); }
-    // 放电防御装备：C 键激活对周围敌人放电（对齐《异星工厂》Discharge defense）
-    else if (k === 'c') { if (typeof activateDischargeDefense === 'function') activateDischargeDefense(); }
+    // C 键：在左下角快捷栏武器槽中从左到右循环切换当前武器（无武器则不切换）
+    else if (k === 'c') { if (typeof cycleQuickbarWeapon === 'function') cycleQuickbarWeapon(); }
     // ALT 模式（对齐《异星工厂》ALT 模式）：按 Alt 键切换建筑配方/内容叠加显示
     else if (k === 'alt') {
       ev.preventDefault();
