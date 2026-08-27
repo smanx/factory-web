@@ -182,6 +182,8 @@ const TECH_REQ = {
   'fluorine': 'cryogenics',
   'fluoroketone-cold': 'cryogenics',
   'fluoroketone-hot': 'cryogenics',
+  'foundation': 'cryogenics',   // 平台基座（空间平台走行地板，官方 Foundation，需氟酮冷，归低温学链）
+  'ice-platform': 'cryogenics',  // 冰面平台（玄冥星冰原，官方 Ice platform，需氨水，归低温学链）
   // ===== 太空时代 熔融金属 / 废料回收（统一由对应科技解锁） =====
   'molten-iron': 'molten-metal',
   'molten-copper': 'molten-metal',

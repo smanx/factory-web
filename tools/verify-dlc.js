@@ -1064,4 +1064,19 @@ ok(ctx.__itemTechReq('captive-biter-spawner') === 'captive-biter-spawner', 'capt
 }
 
 
+
+console.log('\n【太空时代地形（Foundation / Ice platform，本迭代新增）数据校验】');
+ok(!!IT['foundation'], 'foundation 物品已注册（平台基座）');
+ok(!!IT['ice-platform'], 'ice-platform 物品已注册（冰面平台）');
+ok(!!RP['foundation'] && RP['foundation'].inp['tungsten-plate'] === 4 && RP['foundation'].inp['lithium-plate'] === 4 && RP['foundation'].inp['carbon-fiber'] === 4 && RP['foundation'].inp['stone'] === 20 && RP['foundation'].inp['fluoroketone-cold'] === 20, 'foundation 配方官方：4钨板+4锂板+4碳纤维+20石+20氟酮冷（30s）');
+ok(RP['foundation'] && RP['foundation'].time === 30, 'foundation 耗时=30s（官方）');
+ok(!!RP['ice-platform'] && RP['ice-platform'].inp['ammonia'] === 400 && RP['ice-platform'].inp['ice'] === 50, 'ice-platform 配方官方：400氨水+50冰（30s）');
+ok(RP['ice-platform'] && RP['ice-platform'].time === 30, 'ice-platform 耗时=30s（官方）');
+ok(ctx.__recipeDevice('foundation') === 'cryogenic-plant', 'foundation → 低温工厂（流体配方）');
+ok(ctx.__recipeDevice('ice-platform') === 'cryogenic-plant', 'ice-platform → 低温工厂（流体配方）');
+ok(ctx.__itemTechReq('foundation') === 'cryogenics', 'foundation 需「低温学」科技');
+ok(ctx.__itemTechReq('ice-platform') === 'cryogenics', 'ice-platform 需「低温学」科技');
+ok(!!IT['foundation'] && !!IT['ice-platform'], 'foundation/ice-platform 堆叠来自官方（50/100，由 STACK_SIZES 单源）');
+
+
 process.exit(fail === 0 ? 0 : 1);

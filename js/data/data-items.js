@@ -48,7 +48,7 @@ const STACK_SIZES = {
   'railgun': 1, 'mech-armor': 1,  // 轨道炮/机械装甲官方 stack=1
   'battery-mk3-equipment': 20, 'fission-reactor-equipment': 20, 'toolbelt-equipment': 20,  // 个人装备官方 stack=20
   // 基础建材与管线：堆叠 100
-  'concrete': 100, 'refined-concrete': 100, 'hazard-concrete': 100, 'refined-hazard-concrete': 100, 'stone-path': 100, 'landfill': 100,
+  'concrete': 100, 'refined-concrete': 100, 'hazard-concrete': 100, 'refined-hazard-concrete': 100, 'stone-path': 100, 'landfill': 100, 'foundation': 50, 'ice-platform': 100,
   // 品质模块（对齐《异星工厂》Quality DLC：quality-module 官方 stack=50）
   'quality-module': 50, 'quality-module-2': 50, 'quality-module-3': 50,
   // 雅玛果/果仁土壤（太空时代 Gleba，官方 stack=100）
@@ -368,6 +368,8 @@ const ITEMS = {
   'refined-hazard-concrete': { name: '精炼警示混凝土', color: '#c8b020', desc: '地面装饰：精炼混凝土底配黑黄警示条纹，行走加速更快（对齐《异星工厂》Refined hazard concrete）' },
   'stone-path': { name: '石砖路', color: '#a8a09a', desc: '地面装饰：铺设在地面上美观且加速行走（由石砖合成）' },
   'landfill': { name: '填海料', color: '#8a6a3a', desc: '地形改造：把水面填成可建造的陆地（由石头+土合成）' },
+  'foundation': { name: '平台基座', color: '#7c8490', desc: '太空平台走行地板（太空时代）：铺成空间平台可走行地面（对齐官方 Foundation，钨板+锂板+碳纤维+氟酮冷合成）' },
+  'ice-platform': { name: '冰面平台', color: '#b8d4e8', desc: '冰原地表（太空时代 Aquilo）：玄冥星冰层铺装，可走行（对齐官方 Ice platform，氨水+冰合成）' },
   // ===== 模块化护甲 + 个人装备（对齐《异星工厂》Modular armor & Equipment grid）=====
   'modular-armor':  { name: '模块化护甲', color: '#6a8a9a', desc: '基础模块化护甲：减伤 30%，自带 5×5 装备网格，可安装太阳能板/电池/外骨骼等个人装备' },
   'power-armor':    { name: '强力装甲', color: '#5a7aa8', desc: '高级模块化护甲：减伤 45%，自带 7×7 装备网格，更多插槽安装个人装备' },

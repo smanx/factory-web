@@ -129,7 +129,7 @@ function cryoPanelHtml(e) {
   h += '<div class="sec">选择配方（低温加工）</div>';
   h += '<input id="asm-recipe-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off" value="">';
   h += '<div class="recgrid">';
-  for (const rid of Object.keys(RECIPES).filter(r => isCryogenicRecipe(r))) {
+  for (const rid of Object.keys(RECIPES).filter(r => isCryoRecipe(r))) {
     const outId = Object.keys(RECIPES[rid].out)[0];
     const selCls = e.recipe === rid ? 'sel' : '';
     const inpStr = Object.keys(RECIPES[rid].inp).map(k => ITEMS[k].name + '×' + RECIPES[rid].inp[k]).join('、');

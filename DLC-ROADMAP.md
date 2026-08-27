@@ -688,3 +688,19 @@
 >   GAME_DATA 单源提取 stackSize/names/recipe/recipeDevice。
 > - **校验**：verify-dlc 新增五足虫卵链校验（13 项），verify-data-integrity 配方键映射补充 1 项动态键，
 >   全量 18 个校验脚本通过，`node build.js` 构建通过。
+### 阶段四.22：太空时代地形（Foundation / Ice platform，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **物品/地面**：`foundation`（平台基座，堆叠 50）/ `ice-platform`（冰面平台，堆叠 100）已接入，
+>   命名（平台基座/Foundation、冰面平台/Ice platform）、堆叠（50/100）与配方全部对齐官方
+>   factorio-data 数值，未单独维护数值表（堆叠经 STACK_SIZES 单源）。
+> - **配方**：`foundation`=4钨板+4锂板+4碳纤维+20石+20氟酮冷→1（30s，官方 crafting-with-fluid）；
+>   `ice-platform`=400氨水+50冰→1（30s，官方 crafting-with-fluid），由低温工厂（cryogenic-plant）制得，
+>   配方键保留官方名，数据单源。
+> - **玩法**：作为可铺设地砖（对齐官方 place_as_tile），铺在草地上形成太空平台走行地板 / 玄冥星冰原；
+>   接入地面铺设（PAVE_TILE）、蓝图记录（TILE_IDS）、渲染（金属格栅地板 / 半透冰面）与小地图配色。
+> - **科技**：统一由「低温学」（cryogenics）解锁（与氨/氟酮同链，官方依赖氟酮冷/氨水）。
+> - **Bug 修复**：修正设备文件中 `isCryogenicRecipe`→`isCryoRecipe` 引用（此前 3 处未定义函数引用，
+>   会导致组装机/低温工厂配方网格运行时 ReferenceError；现低温工厂正确展示氨/氟酮/平台基座/冰面平台配方，
+>   组装机正确排除低温配方）。
+> - **校验**：verify-dlc 新增地形校验（11 项），全量 18 个校验脚本通过，`node build.js` 构建通过。
