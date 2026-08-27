@@ -370,23 +370,36 @@ function drawGhost(ctx) {
     if (worlded) g.restore();
   } else {
     // 鼠标在背包面板/工具栏等 UI 上：屏幕坐标跟随鼠标绘制物品图标，大小与背包格子一致。
-    // 此时不套用世界坐标变换，直接以 CSS 像素（ghostCtx 已按 DPR 缩放）绘制。
+    // 改用与背包格子一致的 iconCanvas 绘制（物品色边框、无间隙、无多余白边），
+    // 使鼠标旁的图标与背包内显示完全一致，并在图标右下角叠加数量角标。
     const slot = ghostSlotSize();
     const ms = G.mouseScreen || { x: W / 2, y: H / 2 };
     g.save();
-    g.globalAlpha = 0.9;
-    g.fillStyle = 'rgba(10,14,18,.72)';
-    if (g.roundRect) g.roundRect(ms.x - slot / 2, ms.y - slot / 2, slot, slot, 6);
-    else g.rect(ms.x - slot / 2, ms.y - slot / 2, slot, slot);
-    g.fill();
-    g.strokeStyle = 'rgba(255,255,255,.55)';
-    g.lineWidth = 1.5;
-    g.stroke();
-    drawItemGlyph(g, type, ms.x, ms.y, slot * 0.72);
+    g.globalAlpha = 0.92;
+    if (typeof iconCanvas === 'function') {
+      const ic = iconCanvas(type, Math.round(slot));
+      g.drawImage(ic, ms.x - slot / 2, ms.y - slot / 2, slot, slot);
+    } else {
+      g.fillStyle = 'rgba(10,14,18,.72)';
+      if (g.roundRect) g.roundRect(ms.x - slot / 2, ms.y - slot / 2, slot, slot, 6);
+      else g.rect(ms.x - slot / 2, ms.y - slot / 2, slot, slot);
+      g.fill();
+      drawItemGlyph(g, type, ms.x, ms.y, slot * 0.72);
+    }
+    // 图标右下角数量角标：与背包格子的 .cnt 显示一致
+    const cnt = (typeof invCount === 'function') ? invCount(type) : 0;
+    if (cnt > 0) {
+      g.globalAlpha = 1;
+      g.fillStyle = '#fff';
+      g.font = 'bold ' + Math.max(10, Math.round(slot * 0.22)) + 'px sans-serif';
+      g.textAlign = 'right';
+      g.textBaseline = 'alphabetic';
+      g.fillText(String(cnt), ms.x + slot / 2 - 2, ms.y + slot / 2 - 2);
+    }
     g.restore();
   }
-  // 屏幕右下角显示当前选中设备的数量（设备始终显示；材料/工具不显示数量徽标）
-  if (def) drawDeviceCountBadge(g);
+  // 屏幕右下角显示当前选中物品的数量徽标（设备/材料/工具均显示数量）
+  drawDeviceCountBadge(g);
 }
 
 // 屏幕右下角绘制当前选中设备的数量徽标（物品图标 + ×数量）
