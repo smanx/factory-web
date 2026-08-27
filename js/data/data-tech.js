@@ -193,7 +193,10 @@ const TECH_REQ = {
   'mech-armor': 'mech-armor',
   'battery-mk3-equipment': 'mech-armor',
   'fission-reactor-equipment': 'mech-armor',
-  'toolbelt-equipment': 'mech-armor'
+  'toolbelt-equipment': 'mech-armor',
+  // ===== 太空时代 虫巢孵化器（统一由「虫巢孵化器」科技解锁）=====
+  'captive-biter-spawner': 'captive-biter-spawner',
+  'capture-robot-rocket': 'captive-biter-spawner'
 };
 
 // ===== 核能科技门控 =====

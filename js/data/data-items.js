@@ -42,6 +42,8 @@ const STACK_SIZES = {
   'cryogenic-science-pack': 200,  // 低温科研包官方 stack=200
   'cryogenic-plant': 20,  // 低温工厂官方 stack=20
   'quantum-processor': 100,  // 量子处理器官方 stack=100
+  'captive-biter-spawner': 1,  // 虫巢孵化器官方 stack=1
+  'capture-robot-rocket': 10,  // 捕获者火箭弹官方 stack=10（官方 ammo 原型）
   'scrap': 50,  // 废料官方 stack=50
   'railgun': 1, 'mech-armor': 1,  // 轨道炮/机械装甲官方 stack=1
   'battery-mk3-equipment': 20, 'fission-reactor-equipment': 20, 'toolbelt-equipment': 20,  // 个人装备官方 stack=20
@@ -292,6 +294,8 @@ const ITEMS = {
   'jellynut-seed': { name: '果冻果种子', color: '#a04870', mark: 'Js', desc: '太空时代 Gleba 作物种子（堆叠 10），用于种植果仁（对齐《异星工厂》Space Age Jellynut seed，堆叠 10）' },
   'jelly': { name: '果冻', color: '#e860b0', mark: 'J', desc: '太空时代 Gleba 生物质中间产物，由果仁加工制得，是高级生物流与火箭燃料的重要原料（对齐《异星工厂》Space Age Jelly，堆叠 100）' },
   'biter-egg': { name: '异虫卵', color: '#c0a058', mark: '蛋', desc: '太空时代 Gleba 生物资源（堆叠 100）：由生化炉培育产出，用于制造营养素、高级生物质与多种太空时代装备/科研（对齐《异星工厂》Space Age Biter egg）' },
+  'captive-biter-spawner': { name: '虫巢孵化器', color: '#7a4a8a', mark: '巢', desc: '太空时代可控的虫巢孵化器（堆叠 1，占地 5×5）：捕获的虫巢经驯化后可持续繁育异虫卵，需定期喂养生物流维持圈养（对齐《异星工厂》Space Age Captive biter spawner）' },
+  'capture-robot-rocket': { name: '捕获者火箭弹', color: '#c0a058', mark: '捕', desc: '太空时代捕获机器人火箭弹（堆叠 10）：由火箭筒发射，锁定并捕获目标虫巢，转化为虫巢孵化器（对齐《异星工厂》Space Age Capture robot rocket）' },
   'iron-bacteria': { name: '铁细菌', color: '#c8c8d0', mark: 'Fe菌', desc: '太空时代 Gleba 生物质金属菌（堆叠 50）：由生化炉用果冻培育，经培养扩增后可在生化炉还原出铁板，是 Gleba 无矿地形下炼铁的关键生物原料（对齐《异星工厂》Space Age Iron bacteria）' },
   'copper-bacteria': { name: '铜细菌', color: '#d0a080', mark: 'Cu菌', desc: '太空时代 Gleba 生物质金属菌（堆叠 50）：由生化炉用玉玛果泥培育，经培养扩增后可在生化炉还原出铜板，是 Gleba 无矿地形下炼铜的关键生物原料（对齐《异星工厂》Space Age Copper bacteria）' },
   // ===== 太空时代 小行星碎块加工链（破碎机 + 小行星碎块，数据来自 factorio-data 官方，见 GAME_DATA）=====

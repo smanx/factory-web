@@ -41,6 +41,7 @@ const BUILD_DEFS = {
   'void-chest':         { w: 1, h: 1, solid: true },
   'lab':                { w: 3, h: 3, solid: true },
   'biolab':             { w: 5, h: 5, solid: true },  // 太空时代生物实验室（Gleba）：占地由 GAME_DATA.footprint 桥接，官方 selection_box ±2.5 → 5×5
+  'captive-biter-spawner': { w: 5, h: 5, solid: true },  // 太空时代虫巢孵化器（Captive biter spawner）：占地由 GAME_DATA.footprint 桥接，官方 selection_box ±2.5 → 5×5
   'boiler':             { w: 3, h: 2, solid: true, rotSwap: true },
   'steam-engine':       { w: 3, h: 5, solid: true, rotSwap: true },
   'offshore-pump':      { w: 2, h: 1, solid: true, rotSwap: true },
@@ -147,6 +148,7 @@ const BUILDING_HP = {
   'crusher': 350,  // 破碎机官方 max_health=350（由 GAME_DATA 桥接）
   'foundry': 350,  // 铸造厂官方 max_health=350（由 GAME_DATA 桥接）
   'cryogenic-plant': 350,  // 低温工厂官方 max_health=350（由 GAME_DATA 桥接）
+  'captive-biter-spawner': 350,  // 虫巢孵化器官方 max_health=350（由 GAME_DATA 桥接）
   'agricultural-tower': 500,  // 农业塔官方 max_health=500（由 GAME_DATA 桥接）
   // 储物箱（官方 wooden 100 / iron 200 / steel 350）
   'wooden-chest': 100, 'iron-chest': 200, 'steel-chest': 350,

@@ -980,4 +980,28 @@ ok(ctx.__itemTechReq('stack-inserter') === 'stack-inserter-tech', 'stack-inserte
 }
 
 
+console.log('\n【太空时代虫巢孵化器（Captive biter spawner，本迭代新增）数据校验】');
+ok(!!GD.stackSize['captive-biter-spawner'] && GD.stackSize['captive-biter-spawner'] === 1, 'captive-biter-spawner 堆叠来自官方 (=1)');
+ok(!!GD.stackSize['capture-robot-rocket'] && GD.stackSize['capture-robot-rocket'] === 10, 'capture-robot-rocket 堆叠来自官方 (=10)');
+ok(GD.buildingHp['captive-biter-spawner'] === 350, 'captive-biter-spawner 血量=350（官方 assembling-machine max_health）');
+ok(GD.footprint['captive-biter-spawner'] && GD.footprint['captive-biter-spawner'].w === 5 && GD.footprint['captive-biter-spawner'].h === 5, 'captive-biter-spawner 占地 5×5（官方 selection_box ±2.5）');
+ok(GD.powerUse['captive-biter-spawner'] === 100, 'captive-biter-spawner 功耗=100kW（官方 energy_usage）');
+ok(!!IT['captive-biter-spawner'], 'captive-biter-spawner 物品已注册');
+ok(!!IT['capture-robot-rocket'], 'capture-robot-rocket 物品已注册');
+ok(!!RP['captive-biter-spawner'], 'captive-biter-spawner 配方已注册');
+ok(RP['captive-biter-spawner'] && RP['captive-biter-spawner'].inp['biter-egg'] === 10, 'captive-biter-spawner 配方含 10 异虫卵（官方）');
+ok(RP['captive-biter-spawner'] && RP['captive-biter-spawner'].inp['capture-robot-rocket'] === 1, 'captive-biter-spawner 配方含 1 捕获者火箭弹（官方）');
+ok(RP['captive-biter-spawner'] && RP['captive-biter-spawner'].inp['uranium-235'] === 15, 'captive-biter-spawner 配方含 15 铀-235（官方）');
+ok(!!RP['capture-robot-rocket'], 'capture-robot-rocket 配方已注册');
+ok(RP['capture-robot-rocket'] && RP['capture-robot-rocket'].inp['flying-robot-frame'] === 1, 'capture-robot-rocket 配方含 1 飞行机器人骨架（官方）');
+ok(!!TS['captive-biter-spawner'], '「虫巢孵化器」科技已注册');
+ok(ctx.__itemTechReq('captive-biter-spawner') === 'captive-biter-spawner', 'captive-biter-spawner 需「虫巢孵化器」科技');
+{
+  const rec = RP['captive-biter-spawner'];
+  const inpOk = Object.keys(rec.inp).every(k => k in IT);
+  const outOk = Object.keys(rec.out).every(k => k in IT);
+  ok(inpOk && outOk, 'captive-biter-spawner 配方引用的物品均存在');
+}
+
+
 process.exit(fail === 0 ? 0 : 1);

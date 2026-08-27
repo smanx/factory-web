@@ -209,6 +209,8 @@ const GAME_DATA = {
   "jellynut-seed": 10,
   "jelly": 100,
   "biter-egg": 100,
+  "captive-biter-spawner": 1,
+  "capture-robot-rocket": 10,
   "iron-bacteria": 50,
   "copper-bacteria": 50,
   "crusher": 10,
@@ -347,6 +349,7 @@ const GAME_DATA = {
   "steel-chest": 350,
   "lab": 150,
   "biolab": 350,
+  "captive-biter-spawner": 350,
   "boiler": 200,
   "steam-engine": 400,
   "offshore-pump": 150,
@@ -436,6 +439,7 @@ const GAME_DATA = {
   "beacon": 480,
   "lab": 60,
   "biolab": 300,
+  "captive-biter-spawner": 100,
   "offshore-pump": 60,
   "electric-mining-drill": 90,
   "big-mining-drill": 300,
@@ -554,6 +558,10 @@ const GAME_DATA = {
   "cryogenic-plant": {
    "craftingSpeed": 2,
    "moduleSlots": 8
+  },
+  "captive-biter-spawner": {
+   "craftingSpeed": 1,
+   "moduleSlots": 0
   },
   "biolab": {
    "moduleSlots": 4,
@@ -2463,6 +2471,30 @@ const GAME_DATA = {
     "nutrients": 20
    }
   },
+  "capture-robot-rocket": {
+   "time": 10,
+   "inp": {
+    "flying-robot-frame": 1,
+    "steel-plate": 2,
+    "bioflux": 20,
+    "processing-unit": 2
+   },
+   "out": {
+    "capture-robot-rocket": 1
+   }
+  },
+  "captive-biter-spawner": {
+   "time": 10,
+   "inp": {
+    "biter-egg": 10,
+    "capture-robot-rocket": 1,
+    "uranium-235": 15,
+    "fluoroketone-cold": 100
+   },
+   "out": {
+    "captive-biter-spawner": 1
+   }
+  },
   "iron-bacteria": {
    "time": 1,
    "inp": {
@@ -3531,6 +3563,8 @@ const GAME_DATA = {
   "jellynut-processing": "biochamber",
   "biter-egg": "biochamber",
   "nutrients-from-biter-egg": "biochamber",
+  "capture-robot-rocket": "assembling-machine-1",
+  "captive-biter-spawner": "assembling-machine-1",
   "iron-bacteria": "biochamber",
   "copper-bacteria": "biochamber",
   "iron-bacteria-cultivation": "biochamber",
@@ -4422,6 +4456,14 @@ const GAME_DATA = {
   "biter-egg": {
    "zh": "异虫卵",
    "en": "Biter egg"
+  },
+  "captive-biter-spawner": {
+   "zh": "虫巢孵化器",
+   "en": "Captive biter spawner"
+  },
+  "capture-robot-rocket": {
+   "zh": "捕获者火箭弹",
+   "en": "Capture bot rocket"
   },
   "iron-bacteria": {
    "zh": "铁细菌",
@@ -5383,6 +5425,10 @@ const GAME_DATA = {
    "w": 5,
    "h": 5
   },
+  "captive-biter-spawner": {
+   "w": 5,
+   "h": 5
+  },
   "lightning-rod": {
    "w": 1,
    "h": 1
@@ -5911,6 +5957,8 @@ const GAME_DATA = {
   "jellynut-seed": "intermediate-products",
   "jelly": "intermediate-products",
   "biter-egg": "intermediate-products",
+  "captive-biter-spawner": "production",
+  "capture-robot-rocket": "combat",
   "iron-bacteria": "intermediate-products",
   "copper-bacteria": "intermediate-products",
   "crusher": "space",

@@ -574,3 +574,22 @@
 > - **科技**：新增「堆叠机械臂」科技（stack-inserter-tech，需物流 III+电磁学，官方前置 logistics3+碳纤维，
 >   此处适配为物流 III+电磁学），解锁堆叠机械臂；数据校验并入 verify-dlc（新增 14 项），
 >   全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段四.17：虫巢孵化器（Captive biter spawner，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **物品**：`captive-biter-spawner`（虫巢孵化器，堆叠 1）/ `capture-robot-rocket`（捕获者火箭弹，堆叠 10）已接入，
+>   堆叠 / 命名（虫巢孵化器/Captive biter spawner、捕获者火箭弹/Capture robot rocket）均来自 GAME_DATA（factorio-data 官方），
+>   未单独维护数值表。
+> - **设备**：`captive-biter-spawner`（虫巢孵化器，5×5）已接入——占地 5×5（官方 selection_box ±2.5）、血量 350、
+>   功耗 100kW、制造速度 1（官方 assembling-machine 原型 crafting_speed=1），全部来自 GAME_DATA
+>   （deviceStats/footprint/buildingHp/powerUse），未单独维护数值表。
+> - **配方**（官方数值，组装机装配方，数据单源化）：
+>   - `capture-robot-rocket`：1 飞行机器人骨架 + 2 钢板 + 20 生物流 + 2 处理器 → 1（官方 capture-robot-rocket 配方，用于捕获虫巢）
+>   - `captive-biter-spawner`：10 异虫卵 + 1 捕获者火箭弹 + 15 铀-235 + 100 氟酮冷 → 1（官方 captive-biter-spawner 配方 10s）
+> - **玩法**：虫巢孵化器为太空时代生物生产建筑——受驯化的虫巢持续繁育异虫卵（官方 spawner 繁育行为），
+>   需定期喂养生物流（bioflux）维持圈养（官方「需持续喂养食物，否则逐渐饿死」机制），食物耗尽则饥饿停转；
+>   补齐异虫卵→钷素科研的生物链终局循环（虫巢孵化器作为异虫卵的持续生产源，替代生化炉手工培育）。
+> - **科技**：新增「虫巢孵化器」科技（captive-biter-spawner，需低温学+电磁科研+铀富集），
+>   解锁捕获者火箭弹与虫巢孵化器配方；数据校验并入 verify-dlc（新增 17 项），
+>   全量 18 个校验脚本通过，`node build.js` 构建通过。

@@ -101,6 +101,7 @@ const TECHS = {
   'molten-metal': { name: '熔融金属', cost: { 'metallurgic-science-pack': 100, 'space-science-pack': 100 }, desc: '太空时代 Vulcanus 熔融金属：解锁熔融铁/熔融铜流体配方（官方 Space Age Molten metal），由铁矿/铜矿+方解石在铸造厂熔炼成液态金属，供高级浇铸（数据来自 GAME_DATA），需冶金学', req: ['metallurgy'] },
   'railgun-defense': { name: '轨道炮防御', cost: { 'cryogenic-science-pack': 100, 'electromagnetic-science-pack': 100, 'military-science-pack': 100 }, desc: '太空时代终局防御：解锁量子处理器与轨道炮（官方 Space Age Railgun 科技）。轨道炮发射贯穿线伤的高伤害攻击，是太空时代最强单兵武器（数据来自 GAME_DATA），需低温学与电磁科研', req: ['cryogenics', 'electromagnetics'] },
   'mech-armor': { name: '机械装甲', cost: { 'cryogenic-science-pack': 100, 'space-science-pack': 100 }, desc: '太空时代机械装甲：解锁终极机械装甲（官方 Space Age Mech armor）与高级个人装备（个人电池 III / 便携裂变反应堆 / 工具腰带），拥有最大装备网格与最强个人动力（数据来自 GAME_DATA），需低温学与电磁科研', req: ['cryogenics', 'electromagnetics'] },
+  'captive-biter-spawner': { name: '虫巢孵化器', cost: { 'cryogenic-science-pack': 100, 'electromagnetic-science-pack': 100, 'military-science-pack': 100 }, desc: '太空时代虫巢孵化器科技：解锁捕获者火箭弹与虫巢孵化器（官方 Space Age Captive biter spawner）。用捕获者火箭弹锁定并捕获虫巢，转化为受驯化的虫巢孵化器——持续繁育异虫卵（官方 spawner 繁育行为，需喂养生物流维持圈养），补齐异虫卵→钷素科研的生物链终局循环（对齐《异星工厂》Space Age 虫巢捕获科技，需低温学+电磁科研）', req: ['cryogenics', 'electromagnetics', 'kovarex-enrichment'] },
   'space-research-speed': { name: '空间科研速度', cost: { 'space-science-pack': 100 }, infinite: true, desc: '无限科技：每次研究科研速度 +20%（对齐《异星工厂》Research speed 无限科技终局阶段，用空间科学包推进）', req: ['space-science'] },
   'space-mining-productivity': { name: '空间采矿产能', cost: { 'space-science-pack': 100 }, infinite: true, desc: '无限科技：每次研究采矿产能 +10%（对齐《异星工厂》Mining productivity 无限科技终局阶段，用空间科学包推进）', req: ['space-science'] },
   'weapon-damage': { name: '武器伤害', cost: { 'space-science-pack': 100, 'military-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究提升所有武器与炮塔伤害 +10%（对齐《异星工厂》Weapon damage 无限科技），让科技军备在终局持续成长', req: ['space-science', 'advanced-combat'] },
@@ -234,7 +235,7 @@ for (const tid of ['quality', 'quality-2', 'quality-3']) TECHS[tid].cat = 'quali
 const SPACE_AGE_TECHS = [
   'space-science', 'turbo-logistics', 'stack-inserter-tech', 'electromagnetics', 'metallurgy', 'recycling', 'cryogenics',
   'agriculture', 'asteroid-processing', 'big-mining-drill', 'heating-tower', 'biolab',
-  'lightning', 'fulgora', 'space-thruster', 'advanced-defense', 'space-platform', 'fusion-power', 'promethium-science',
+  'lightning', 'fulgora', 'space-thruster', 'advanced-defense', 'space-platform', 'fusion-power', 'promethium-science', 'captive-biter-spawner',
   'elevated-rail', 'space-research-speed',
   'space-mining-productivity', 'weapon-damage', 'follower-robot-count',
   'worker-robot-cargo-size', 'artillery-shooting-speed', 'artillery-shell-range',
