@@ -55,6 +55,8 @@ html, body {
   /* 帧数/坐标 HUD 需显示在所有弹框（科技研究/背包等，最高 z-index 240）之上，
      且位于 tooltip(9999) 之下，故使用高 z-index */
   z-index: 9990;
+  /* 启动页/主菜单不显示 HUD，进入游戏后才由 enterGame 显示 */
+  display: none;
 }
 
 /* HUD 信息项：改为可点击（点击弹出详情弹框） */
