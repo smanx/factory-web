@@ -27,6 +27,7 @@
 //   footprint[building] = { w, h }（占地面积格数，官方 selection_box）
 //   pollution[building] = 官方每分排放（emissions_per_minute.pollution，污染/分），供污染系统单源读取
 //   recycling[item] = { time, out:{outItem:每批期望产出} }（官方 *-recycling 回收配方，供回收机单源读取）
+//   fuelEnergy[item] = 燃料能量密度（项目相对刻度，供 burner 设备单源读取：煤=12 基准）
 const GAME_DATA = {
  "stackSize": {
   "iron-ore": 50,
@@ -7698,6 +7699,15 @@ const GAME_DATA = {
     }
    ]
   }
+ },
+ "fuelEnergy": {
+  "coal": 12,
+  "wood": 3,
+  "solid-fuel": 50,
+  "rocket-fuel": 500,
+  "nuclear-fuel": 2500,
+  "raw-fish": 4,
+  "pentapod-egg": 5
  },
  "recycling": {
   "scrap": {

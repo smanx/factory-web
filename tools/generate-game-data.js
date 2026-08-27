@@ -1178,6 +1178,22 @@ const enemy = {};
   }
 }
 
+// ---- 燃料能量密度（burner 设备用，项目相对刻度）----
+// 各可燃烧燃料的能量密度，供锅炉/熔炉/热能采矿机/火车头/热能机械臂等 burner 设备读取。
+// 官方 data.raw 的 fuel_value 为 MJ 绝对值（如煤 4MJ、固体燃料 12MJ、火箭燃料 100MJ、
+// 核燃料 1.21GJ），本项目采用简化的「相对刻度」燃料值（煤=12 为基准），故此处保持项目相对
+// 值（见 data.js COAL_ENERGY 等），统一经 data.generated.js 单源下发，避免在设备文件里
+// 单独维护第二套数值。核燃料 2500 约 = 官方 1.21GJ 折算；五足虫卵 5 / 生鱼 4 为弱效生物质燃料。
+const fuelEnergy = {
+  'coal': 12,             // 煤（基准，官方 4MJ）
+  'wood': 3,              // 木材（约煤 1/4，官方 2MJ）
+  'solid-fuel': 50,       // 固体燃料（约 4× 煤，官方 12MJ）
+  'rocket-fuel': 500,     // 火箭燃料（约 40× 煤，官方 100MJ）
+  'nuclear-fuel': 2500,   // 核燃料（官方 1.21GJ，约 300× 煤）
+  'raw-fish': 4,          // 生鱼（弱效生物质燃料）
+  'pentapod-egg': 5,      // 五足虫卵（官方 5MJ）
+};
+
 // ---- 汇总新增字段进 GAME_DATA（undefined 字段由 JSON 序列化自动剔除）----
 Object.assign(GAME_DATA, {
   undergroundDist,
@@ -1207,6 +1223,7 @@ Object.assign(GAME_DATA, {
   itemOrder,
   pollution,
   enemy,
+  fuelEnergy,
 });
 
 // ---- recipe ----
@@ -1394,6 +1411,7 @@ const header = [
   '//   footprint[building] = { w, h }（占地面积格数，官方 selection_box）',
   '//   pollution[building] = 官方每分排放（emissions_per_minute.pollution，污染/分），供污染系统单源读取',
   '//   recycling[item] = { time, out:{outItem:每批期望产出} }（官方 *-recycling 回收配方，供回收机单源读取）',
+  '//   fuelEnergy[item] = 燃料能量密度（项目相对刻度，供 burner 设备单源读取：煤=12 基准）',
   'const GAME_DATA = ' + JSON.stringify(GAME_DATA, null, 1) + ';',
   '',
 ].join('\n');

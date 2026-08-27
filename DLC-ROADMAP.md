@@ -1325,3 +1325,26 @@ D
 > - **校验**：verify-dlc 新增「科研产能」校验（科技注册/无限/前置/太空分类/labSpeedMult
 >   接入），全量 18 个校验脚本通过，`node build.js` 构建通过。
 
+
+### 阶段六.6：燃料能量密度单源化（Burner fuel energy single-sourcing，本迭代新增）
+
+> 依据「所有数据从 data.generated.js（factorio-data 官方单源）获取，设备不维护第二套数值」原则，
+> 把此前硬编码在 `js/data/data.js` 的燃料能量密度（煤/木材/固体燃料/火箭燃料/核燃料）与
+> `data-util.js fuelEnergy()` 中的弱效生物质燃料（生鱼/五足虫卵）兜底值，统一写入
+> `GAME_DATA.fuelEnergy`（data.generated.js 统一下发），使 burner 设备（锅炉/熔炉/热能采矿机/
+> 火车头/热能机械臂等）的燃料能量全部单源读取，不再在数据文件里单独维护。
+>
+> **改动**：
+> - **generate-game-data.js**：新增 `GAME_DATA.fuelEnergy`（项目相对刻度）：
+>   `coal=12`（基准，官方 4MJ）、`wood=3`（官方 2MJ）、`solid-fuel=50`（官方 12MJ）、
+>   `rocket-fuel=500`（官方 100MJ）、`nuclear-fuel=2500`（官方 1.21GJ）、
+>   `raw-fish=4`、`pentapod-egg=5`（官方 5MJ，弱效生物质燃料）。官方 fuel_value 为 MJ 绝对值，
+>   本项目沿用相对刻度（见 fuelEnergy 注释），统一经 data.generated.js 下发。
+> - **data.js**：`COAL_ENERGY / WOOD_FUEL_ENERGY / SOLID_FUEL_ENERGY / ROCKET_FUEL_ENERGY /
+>   NUCLEAR_FUEL_ENERGY` 由字面量改为从 `GAME_DATA.fuelEnergy` 读取（带兜底）。
+> - **data-util.js**：`fuelEnergy()` 优先读取 `GAME_DATA.fuelEnergy[item]`，不再单独维护
+>   生鱼/五足虫卵兜底。
+> - **校验**：verify-recipes 将 `COAL_ENERGY=12` 的「字面量」检查改为「GAME_DATA.fuelEnergy.coal=12
+>   + data.js 从 GAME_DATA.fuelEnergy 读取」的「单源」检查（2 项），全量 18 个校验脚本通过，
+>   `node build.js` 构建通过。
+> - **数据单源**：燃料能量数值全部来自 data.generated.js，未在数据文件单独维护第二套数值表。

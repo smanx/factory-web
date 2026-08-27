@@ -133,7 +133,11 @@ check('FAST_BELT_MULT 快速带倍数', _fMult !== null && Math.abs(_fMult - 2) 
 check('EXPRESS_BELT_MULT 极速带倍数', _eMult !== null && Math.abs(_eMult - 3) < 1e-9, true);
 check('POWER_PER_ENGINE 蒸汽机功率(kW)', hasConst('POWER_PER_ENGINE', '900'), true);
 check('POWER_PER_TURBINE 汽轮机功率(kW)', hasConst('POWER_PER_TURBINE', '5820'), true);  // 官方 5.82MW
-check('COAL_ENERGY 煤能量', hasConst('COAL_ENERGY', '12'), true);
+// 煤能量（基准）——数据单源：GAME_DATA.fuelEnergy.coal=12（data.generated.js 统一下发），
+// data.js 常量 COAL_ENERGY 从 GAME_DATA.fuelEnergy 读取，不再硬编码字面量。
+const _fe = (_ctx.GAME_DATA && _ctx.GAME_DATA.fuelEnergy) || {};
+check('COAL_ENERGY 煤能量', _fe['coal'] === 12, true);
+check('燃料能量单源化(data.js 从 GAME_DATA.fuelEnergy 读取)', /COAL_ENERGY\s*=\s*GAME_DATA\.fuelEnergy/.test(src), true);
 
 // ---- 建筑配方（对齐《异星工厂》官方 Wiki：锅炉/蒸汽机/抽水机/机枪炮塔/雷达）----
 console.log('\n【建筑配方对齐官方】');
