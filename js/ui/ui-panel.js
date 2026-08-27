@@ -565,8 +565,15 @@ function initPanelEvents() {
         // 逐个放入直至背包取完或设备缓存满（giveItem 满时返回 false）
         let moved = 0;
         while (moved < have && mch.giveItem(target)) moved++;
-        if (moved > 0) { invTake(target, moved); if (typeof playSfx === 'function') playSfx('click'); }
-        else toast('放不进去了');
+        if (moved > 0) {
+          invTake(target, moved);
+          if (typeof playSfx === 'function') playSfx('click');
+          if (typeof updateMachineLive === 'function') updateMachineLive();
+          else renderPanel(false);
+        } else toast('放不进去了');
+      } else if (act === 'takein-slot') {
+        // 点击「原料」槽左上角 − 按钮：从设备输入缓存取回 1 件该原料到背包
+        takeInSlot(id);
       } else if (act === 'take-slot') {
         // 点击右侧「产品」图标：把该产物取回背包 1 件
         const mch = G.panelEnt;
@@ -577,6 +584,8 @@ function initPanelEvents() {
         if (got) {
           invAdd(got, 1);
           if (typeof playSfx === 'function') playSfx('pick');
+          if (typeof updateMachineLive === 'function') updateMachineLive();
+          else renderPanel(false);
         } else {
           toast('暂无' + ITEMS[id].name + '可取出');
         }
@@ -696,6 +705,16 @@ function initPanelEvents() {
   // 背包制作栏（#inv-craft）：右键点击物品图标制作 5 个（左键在 click 处理器中制作 1 个）。
   // 与玩家背包一致的「格子 + 图标」网格交互。
   document.getElementById('panel-body').addEventListener('contextmenu', ev => {
+    // 设备面板「原料」槽：右键取回 1 件原料到背包
+    if (G.panelMode === 'machine' && G.panelEnt) {
+      const islot = ev.target.closest && ev.target.closest('.mch-io-slot[data-action="feed-slot"]');
+      if (islot) {
+        ev.preventDefault();
+        const id = islot.dataset.id;
+        takeInSlot(id);
+        return;
+      }
+    }
     if (G.panelMode !== 'inv') return;
     const slot = ev.target.closest && ev.target.closest('[id^="inv-recipes-"] .craft-slot[data-action="craft"]');
     if (!slot) return;
@@ -711,6 +730,22 @@ function initPanelEvents() {
     }
     if (typeof refreshHotbar === 'function') refreshHotbar();
   });
+}
+
+// 设备面板「原料」槽取出：从设备输入缓存取 1 件指定原料回背包（供右键/左上角 − 按钮调用）
+function takeInSlot(id) {
+  const mch = G.panelEnt;
+  if (!mch || typeof mch.takeInputItemOf !== 'function') return;
+  let got = mch.takeInputItemOf(id);
+  if (got) {
+    invAdd(got, 1);
+    if (typeof playSfx === 'function') playSfx('pick');
+    if (typeof toast === 'function') toast('已取回 ' + ITEMS[id].name + ' 到背包');
+    if (typeof updateMachineLive === 'function') updateMachineLive();
+    else renderPanel(false);
+  } else {
+    if (typeof toast === 'function') toast('设备中没有' + ITEMS[id].name + '可取出');
+  }
 }
 
 // 异步渲染设置面板（含基于 IndexedDB 的存档列表）

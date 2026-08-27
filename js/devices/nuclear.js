@@ -162,6 +162,10 @@ class Centrifuge extends Entity {
   takeItem() { for (const k in this.outp) if (this.outp[k] > 0) { this.outp[k]--; if (this.outp[k] <= 0) delete this.outp[k]; return k; } return null; }
   countOf(item) { return this.outp[item] || 0; }
   takeItemOf(item) { if (this.outp[item] > 0) { this.outp[item]--; if (this.outp[item] <= 0) delete this.outp[item]; return item; } return null; }
+  takeInputItemOf(item) {
+    if ((this.inp[item] || 0) > 0) { this.inp[item]--; if (this.inp[item] <= 0) delete this.inp[item]; return item; }
+    return null;
+  }
   contents() {
     const list = [[this.type, 1]];
     for (const k in this.outp) if (this.outp[k] > 0) list.push([k, this.outp[k]]);

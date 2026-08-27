@@ -290,8 +290,9 @@ function updateMining(dt) {
   const p = G.player;
   // 载具驾驶中不能采矿
   if (G.driving && G.driving.ent && !G.driving.ent._dead) { p.mining = null; p.mineProg = 0; return; }
+  // 采矿/砍树改为按住右键触发（对齐新控制方案：右键采集）。
   // 手持工具（如开采工具）选中时不阻断采矿；仅当真正在放置建筑时才阻断
-  if (!G.mouseDown || (buildActive() && !isToolItem(selItem())) || !G.canvasActive) { p.mining = null; p.mineProg = 0; return; }
+  if (!G.mouseRightDown || !G.canvasActive) { p.mining = null; p.mineProg = 0; return; }
   const t = G.cursorTile;
   if (!t) { p.mining = null; p.mineProg = 0; return; }
   const key = t.tx + ',' + t.ty;

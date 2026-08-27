@@ -345,7 +345,7 @@ function mapTipAt(tx, ty) {
   if (getTerrain(tx, ty) === T_CLIFF) return '峭壁|不可通行、不可建造的地形障碍；可手持峭壁炸药点击清除';
   if (getTerrain(tx, ty) === T_WATER) return '水域|无法通行；可把抽水机放在这里取水';
   // 树木：悬停显示树木信息（对齐《异星工厂》：树木是资源型地形，可砍伐）
-  if (getTerrain(tx, ty) === T_TREE) return '树木|可砍伐获得木材；手持斧头/开采工具按住左键砍伐，或直接在其上铺设建筑自动清理';
+  if (getTerrain(tx, ty) === T_TREE) return '树木|可砍伐获得木材；手持斧头/开采工具按住右键砍伐，或直接在其上铺设建筑自动清理';
   const ti = getOreType(tx, ty);
   if (ti >= 0 && getOreAmt(tx, ty) > 0) {
     if (ti === ORE_OIL) {
@@ -353,7 +353,7 @@ function mapTipAt(tx, ty) {
       return '原油矿床|出产率 ' + rate + '%，储量 ' + Math.floor(getOreAmt(tx, ty)) + '，建造抽油机开采（吃电力）';
     }
     const nm = oreItemId(ti);
-    return (ITEMS[nm] ? ITEMS[nm].name : '未知矿') + '|储量 ' + Math.floor(getOreAmt(tx, ty)) + '，按住左键开采';
+    return (ITEMS[nm] ? ITEMS[nm].name : '未知矿') + '|储量 ' + Math.floor(getOreAmt(tx, ty)) + '，按住右键开采';
   }
   return null;
 }

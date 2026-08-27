@@ -13,6 +13,10 @@ const BUILD_DEFS = {
   'fast-splitter':      { w: 1, h: 2, solid: false, rotSwap: true },
   'express-splitter':   { w: 1, h: 2, solid: false, rotSwap: true },
   'turbo-splitter':     { w: 1, h: 2, solid: false, rotSwap: true },
+  'loader':             { w: 1, h: 2, solid: true, rotSwap: true },  // 装载机（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±0.5×±1 → 1×2）
+  'fast-loader':        { w: 1, h: 2, solid: true, rotSwap: true },  // 高速装载机（官方 selection_box → 1×2）
+  'express-loader':     { w: 1, h: 2, solid: true, rotSwap: true },  // 极速装载机（官方 selection_box → 1×2）
+  'turbo-loader':       { w: 1, h: 2, solid: true, rotSwap: true },  // 超速装载机（官方 selection_box → 1×2）
   'inserter':           { w: 1, h: 1, solid: true },
   'burner-inserter':    { w: 1, h: 1, solid: true },
   'small-lamp':               { w: 1, h: 1, solid: true },
@@ -41,6 +45,7 @@ const BUILD_DEFS = {
   'void-chest':         { w: 1, h: 1, solid: true },
   'lab':                { w: 3, h: 3, solid: true },
   'biolab':             { w: 5, h: 5, solid: true },  // 太空时代生物实验室（Gleba）：占地由 GAME_DATA.footprint 桥接，官方 selection_box ±2.5 → 5×5
+  'captive-biter-spawner': { w: 5, h: 5, solid: true },  // 太空时代虫巢孵化器（Captive biter spawner）：占地由 GAME_DATA.footprint 桥接，官方 selection_box ±2.5 → 5×5
   'boiler':             { w: 3, h: 2, solid: true, rotSwap: true },
   'steam-engine':       { w: 3, h: 5, solid: true, rotSwap: true },
   'offshore-pump':      { w: 2, h: 1, solid: true, rotSwap: true },
@@ -133,6 +138,8 @@ const BUILDING_HP = {
   'splitter': 170, 'express-splitter': 190, 'fast-splitter': 180, 'turbo-splitter': 190,
   // 地下带族（官方 underground-belt 150 / fast 160 / express 170 / turbo 170）
   'underground-belt': 150, 'fast-underground-belt': 160, 'express-underground-belt': 170, 'turbo-underground-belt': 170,
+  // 装载机族（官方 loader 170 / fast 170 / express 170 / turbo 170）
+  'loader': 170, 'fast-loader': 170, 'express-loader': 170, 'turbo-loader': 170,
   // 机械臂族（官方 inserter 150 / fast 150 / long 160 / bulk 160 / burner 100）
   'inserter': 150, 'long-handed-inserter': 160, 'bulk-inserter': 160, 'stack-inserter': 160, 'fast-inserter': 150,
   'burner-inserter': 100,
@@ -147,6 +154,7 @@ const BUILDING_HP = {
   'crusher': 350,  // 破碎机官方 max_health=350（由 GAME_DATA 桥接）
   'foundry': 350,  // 铸造厂官方 max_health=350（由 GAME_DATA 桥接）
   'cryogenic-plant': 350,  // 低温工厂官方 max_health=350（由 GAME_DATA 桥接）
+  'captive-biter-spawner': 350,  // 虫巢孵化器官方 max_health=350（由 GAME_DATA 桥接）
   'agricultural-tower': 500,  // 农业塔官方 max_health=500（由 GAME_DATA 桥接）
   // 储物箱（官方 wooden 100 / iron 200 / steel 350）
   'wooden-chest': 100, 'iron-chest': 200, 'steel-chest': 350,

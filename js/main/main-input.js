@@ -171,6 +171,8 @@ function bindInput() {
       lastPlaceKey = '';
       handleLeftDown();
     } else if (ev.button === 2) {
+      // 按住右键挖矿/砍树（对齐新控制方案：右键采集）
+      G.mouseRightDown = true;
       if (ev.shiftKey && hovered) { copySettings(hovered); return; }
       // 右键取物优先：地下带/部分可逐个取物的设备（对齐《异星工厂》）。
       // 注意：传送带是流动的，若右键优先取物，移动中的传送带会不断补充导致永远取不完、
@@ -193,6 +195,7 @@ function bindInput() {
     }
   });
   window.addEventListener('mouseup', ev => {
+    if (ev.button === 2) { G.mouseRightDown = false; return; }
     if (ev.button !== 0) return;
     G.mouseDown = false;
     G.deconstructHeld = false;

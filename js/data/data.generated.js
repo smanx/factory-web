@@ -68,6 +68,10 @@ const GAME_DATA = {
   "turbo-transport-belt": 100,
   "turbo-underground-belt": 50,
   "turbo-splitter": 50,
+  "loader": 50,
+  "fast-loader": 50,
+  "express-loader": 50,
+  "turbo-loader": 50,
   "fast-splitter": 50,
   "bulk-inserter": 50,
   "stack-inserter": 50,
@@ -209,6 +213,8 @@ const GAME_DATA = {
   "jellynut-seed": 10,
   "jelly": 100,
   "biter-egg": 100,
+  "captive-biter-spawner": 1,
+  "capture-robot-rocket": 10,
   "iron-bacteria": 50,
   "copper-bacteria": 50,
   "crusher": 10,
@@ -321,6 +327,10 @@ const GAME_DATA = {
   "fast-splitter": 180,
   "express-splitter": 190,
   "turbo-splitter": 190,
+  "loader": 170,
+  "fast-loader": 170,
+  "express-loader": 170,
+  "turbo-loader": 170,
   "inserter": 150,
   "burner-inserter": 100,
   "small-lamp": 100,
@@ -347,6 +357,7 @@ const GAME_DATA = {
   "steel-chest": 350,
   "lab": 150,
   "biolab": 350,
+  "captive-biter-spawner": 350,
   "boiler": 200,
   "steam-engine": 400,
   "offshore-pump": 150,
@@ -436,6 +447,7 @@ const GAME_DATA = {
   "beacon": 480,
   "lab": 60,
   "biolab": 300,
+  "captive-biter-spawner": 100,
   "offshore-pump": 60,
   "electric-mining-drill": 90,
   "big-mining-drill": 300,
@@ -507,6 +519,18 @@ const GAME_DATA = {
   "turbo-transport-belt": {
    "beltSpeed": 7.5
   },
+  "loader": {
+   "beltSpeed": 1.875
+  },
+  "fast-loader": {
+   "beltSpeed": 3.75
+  },
+  "express-loader": {
+   "beltSpeed": 5.625
+  },
+  "turbo-loader": {
+   "beltSpeed": 7.5
+  },
   "underground-belt": {
    "beltSpeed": 1.875
   },
@@ -554,6 +578,10 @@ const GAME_DATA = {
   "cryogenic-plant": {
    "craftingSpeed": 2,
    "moduleSlots": 8
+  },
+  "captive-biter-spawner": {
+   "craftingSpeed": 1,
+   "moduleSlots": 0
   },
   "biolab": {
    "moduleSlots": 4,
@@ -745,6 +773,49 @@ const GAME_DATA = {
    },
    "out": {
     "turbo-splitter": 1
+   }
+  },
+  "loader": {
+   "time": 1,
+   "inp": {
+    "inserter": 5,
+    "electronic-circuit": 5,
+    "iron-gear-wheel": 5,
+    "iron-plate": 5,
+    "transport-belt": 5
+   },
+   "out": {
+    "loader": 1
+   }
+  },
+  "fast-loader": {
+   "time": 3,
+   "inp": {
+    "fast-transport-belt": 5,
+    "loader": 1
+   },
+   "out": {
+    "fast-loader": 1
+   }
+  },
+  "express-loader": {
+   "time": 10,
+   "inp": {
+    "express-transport-belt": 5,
+    "fast-loader": 1
+   },
+   "out": {
+    "express-loader": 1
+   }
+  },
+  "turbo-loader": {
+   "time": 20,
+   "inp": {
+    "turbo-transport-belt": 5,
+    "express-loader": 1
+   },
+   "out": {
+    "turbo-loader": 1
    }
   },
   "inserter": {
@@ -2482,6 +2553,30 @@ const GAME_DATA = {
     "nutrients": 20
    }
   },
+  "capture-robot-rocket": {
+   "time": 10,
+   "inp": {
+    "flying-robot-frame": 1,
+    "steel-plate": 2,
+    "bioflux": 20,
+    "processing-unit": 2
+   },
+   "out": {
+    "capture-robot-rocket": 1
+   }
+  },
+  "captive-biter-spawner": {
+   "time": 10,
+   "inp": {
+    "biter-egg": 10,
+    "capture-robot-rocket": 1,
+    "uranium-235": 15,
+    "fluoroketone-cold": 100
+   },
+   "out": {
+    "captive-biter-spawner": 1
+   }
+  },
   "iron-bacteria": {
    "time": 1,
    "inp": {
@@ -3391,6 +3486,10 @@ const GAME_DATA = {
   "turbo-transport-belt": "foundry",
   "turbo-underground-belt": "foundry",
   "turbo-splitter": "foundry",
+  "loader": "assembling-machine-1",
+  "fast-loader": "assembling-machine-1",
+  "express-loader": "assembling-machine-1",
+  "turbo-loader": "assembling-machine-1",
   "inserter": "assembling-machine-1",
   "burner-inserter": "assembling-machine-1",
   "long-handed-inserter": "assembling-machine-1",
@@ -3552,6 +3651,8 @@ const GAME_DATA = {
   "jellynut-processing": "biochamber",
   "biter-egg": "biochamber",
   "nutrients-from-biter-egg": "biochamber",
+  "capture-robot-rocket": "assembling-machine-1",
+  "captive-biter-spawner": "assembling-machine-1",
   "iron-bacteria": "biochamber",
   "copper-bacteria": "biochamber",
   "iron-bacteria-cultivation": "biochamber",
@@ -3819,6 +3920,22 @@ const GAME_DATA = {
   "turbo-splitter": {
    "zh": "超速分流器",
    "en": "Turbo splitter"
+  },
+  "loader": {
+   "zh": "装卸机",
+   "en": "Loader"
+  },
+  "fast-loader": {
+   "zh": "高速装卸机",
+   "en": "Fast loader"
+  },
+  "express-loader": {
+   "zh": "极速装卸机",
+   "en": "Express loader"
+  },
+  "turbo-loader": {
+   "zh": "超速装卸机",
+   "en": "Turbo loader"
   },
   "fast-splitter": {
    "zh": "高速分流器",
@@ -4443,6 +4560,14 @@ const GAME_DATA = {
   "biter-egg": {
    "zh": "异虫卵",
    "en": "Biter egg"
+  },
+  "captive-biter-spawner": {
+   "zh": "虫巢孵化器",
+   "en": "Captive biter spawner"
+  },
+  "capture-robot-rocket": {
+   "zh": "捕获者火箭弹",
+   "en": "Capture bot rocket"
   },
   "iron-bacteria": {
    "zh": "铁细菌",
@@ -5108,6 +5233,22 @@ const GAME_DATA = {
    "w": 1,
    "h": 1
   },
+  "loader": {
+   "w": 1,
+   "h": 2
+  },
+  "fast-loader": {
+   "w": 1,
+   "h": 2
+  },
+  "express-loader": {
+   "w": 1,
+   "h": 2
+  },
+  "turbo-loader": {
+   "w": 1,
+   "h": 2
+  },
   "underground-belt": {
    "w": 1,
    "h": 1
@@ -5409,6 +5550,10 @@ const GAME_DATA = {
    "h": 3
   },
   "biolab": {
+   "w": 5,
+   "h": 5
+  },
+  "captive-biter-spawner": {
    "w": 5,
    "h": 5
   },
@@ -5785,6 +5930,10 @@ const GAME_DATA = {
   "turbo-transport-belt": "logistics",
   "turbo-underground-belt": "logistics",
   "turbo-splitter": "logistics",
+  "loader": "logistics",
+  "fast-loader": "logistics",
+  "express-loader": "logistics",
+  "turbo-loader": "logistics",
   "fast-splitter": "logistics",
   "bulk-inserter": "logistics",
   "stack-inserter": "logistics",
@@ -5940,6 +6089,8 @@ const GAME_DATA = {
   "jellynut-seed": "intermediate-products",
   "jelly": "intermediate-products",
   "biter-egg": "intermediate-products",
+  "captive-biter-spawner": "production",
+  "capture-robot-rocket": "combat",
   "iron-bacteria": "intermediate-products",
   "copper-bacteria": "intermediate-products",
   "crusher": "space",

@@ -447,7 +447,7 @@ html, body {
 /* 背包面板：居中加宽，三列布局（左=玩家背包，中=物流，右=制作） */
 #panel.inv-wide {
   width: 1080px;
-  max-width: calc(100vw - 32px);
+  max-width: 100vw;
   /* 底部预留快捷栏高度（底部快捷栏约 80px），避免背包面板遮挡快捷栏工具栏 */
   top: auto;
   bottom: 92px;
@@ -461,33 +461,33 @@ html, body {
   min-height: 0;
   overflow: hidden;
 }
-/* 背包弹框不显示顶部标题文字（需求），仅保留右上角关闭按钮 */
+/* 背包弹框不显示顶部标题文字（需求），关闭按钮悬浮在面板右上角 */
 #panel.inv-wide #panel-title { display: none; }
-/* 背包面板顶部标题栏：玩家 / 物流 / 制作 三个分区连成整体、不可点击、内容靠左。
-   该标题栏同时是面板的拖拽手柄（cursor:move），按住可拖动整个弹框。 */
-.inv-tabs {
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  background: #1a222c;
-  border-bottom: 1px solid #3a4550;
-  flex-shrink: 0;
+/* 背包面板：关闭按钮悬浮于面板右上角。头部整体绝对定位、不占布局空间，
+   仅右上角显示一个悬浮的关闭按钮，拖拽手柄仍由该头部（#panel-head）承担。 */
+#panel.inv-wide #panel-head {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 26px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  justify-content: flex-end;
+  align-items: flex-start;
   cursor: move;
-  user-select: none;
+  z-index: 5;
 }
-.inv-tab {
-  padding: 4px 14px;
+#panel.inv-wide #panel-close {
+  margin: 6px 8px 0 0;
+  padding: 2px 6px;
+  background: rgba(16, 21, 28, .7);
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 4px;
   font-size: 14px;
-  font-weight: bold;
-  color: #ffe08a;
-  cursor: default;
-  text-align: left;
-  user-select: none;
 }
-.inv-tab + .inv-tab::before {
-  content: ' / ';
-  color: #5f6b78;
-  font-weight: normal;
+#panel.inv-wide #panel-close:hover {
+  background: #3a4657;
+  border-color: #98a5b5;
 }
 /* 玩家背包固定 10 列 / 行（对齐官方有限背包展示） */
 #inv-items {
@@ -2091,7 +2091,17 @@ html, body {
 }
 .mch-io-slot:hover { border-color: #ffd23c; background: rgba(255,210,60,.08); }
 .mch-io-slot.full { border-color: #57b95c; background: rgba(87,185,92,.08); }
+.mch-io-slot { position: relative; }
 .mch-io-slot img { width: 30px; height: 30px; border-radius: 4px; }
+.mch-takein {
+  position: absolute; top: 2px; right: 2px;
+  width: 16px; height: 16px; line-height: 14px;
+  padding: 0; margin: 0; border: none; border-radius: 3px;
+  background: rgba(255,90,90,.85); color: #fff; font-size: 12px; font-weight: bold;
+  cursor: pointer; opacity: 0; transition: opacity .15s;
+}
+.mch-io-slot:hover .mch-takein { opacity: 1; }
+.mch-takein:hover { background: #ff4d4d; }
 .mch-io-n { font-size: 11px; color: #cdd6df; margin-top: 2px; white-space: nowrap; }
 .mch-prog { flex: 0 0 130px; display: flex; flex-direction: column; gap: 4px; min-width: 120px; }
 .mch-prog .bar { width: 100%; }

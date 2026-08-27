@@ -22,6 +22,11 @@ const RECIPES = {
   'turbo-transport-belt': { time: 0.5, inp: { 'express-transport-belt': 1, 'steel-plate': 5, 'plastic-bar': 5, 'lubricant': 20 }, out: { 'turbo-transport-belt': 1 } },
   'turbo-underground-belt': { time: 2, inp: { 'express-underground-belt': 2, 'steel-plate': 40, 'plastic-bar': 20, 'lubricant': 40 }, out: { 'turbo-underground-belt': 2 } },
   'turbo-splitter':        { time: 2, inp: { 'express-splitter': 1, 'steel-plate': 15, 'processing-unit': 2, 'lubricant': 80 }, out: { 'turbo-splitter': 1 } },
+  // ===== 装载机 Loader（对齐《异星工厂》Loader，官方配方，经 GAME_DATA 桥接）=====
+  'loader':             { time: 1, inp: { 'inserter': 5, 'electronic-circuit': 5, 'iron-gear-wheel': 5, 'iron-plate': 5, 'transport-belt': 5 }, out: { 'loader': 1 } },
+  'fast-loader':        { time: 3, inp: { 'fast-transport-belt': 5, 'loader': 1 }, out: { 'fast-loader': 1 } },
+  'express-loader':     { time: 10, inp: { 'express-transport-belt': 5, 'fast-loader': 1 }, out: { 'express-loader': 1 } },
+  'turbo-loader':       { time: 20, inp: { 'turbo-transport-belt': 5, 'express-loader': 1 }, out: { 'turbo-loader': 1 } },
   'inserter':           { time: 0.5, inp: { 'iron-plate': 1, 'iron-gear-wheel': 1, 'electronic-circuit': 1 }, out: { 'inserter': 1 } },
   'burner-inserter':    { time: 0.5, inp: { 'iron-plate': 1, 'iron-gear-wheel': 1 },                  out: { 'burner-inserter': 1 } },
   'long-handed-inserter':      { time: 0.5, inp: { 'inserter': 1, 'iron-gear-wheel': 1 },                             out: { 'long-handed-inserter': 1 } },
@@ -290,6 +295,11 @@ const RECIPES = {
   'biter-egg': { time: 10, inp: { 'jelly': 10, 'nutrients': 20, 'yumako-mash': 10 }, out: { 'biter-egg': 5 } },
   // 虫蛋→营养素：虫蛋×1 → 营养素×20（官方 nutrients-from-biter-egg 2s：1 虫蛋 → 20 营养素）
   'nutrients-from-biter-egg': { time: 2, inp: { 'biter-egg': 1 }, out: { 'nutrients': 20 } },
+  // ===== 太空时代 捕获者火箭弹 + 虫巢孵化器（Captive biter spawner，官方数值，数据单源化）=====
+  // 捕获者火箭弹：飞行机器人骨架+钢板+生物流+处理器（官方 capture-robot-rocket 配方，用于捕获虫巢）
+  'capture-robot-rocket': { time: 10, inp: { 'flying-robot-frame': 1, 'steel-plate': 2, 'bioflux': 20, 'processing-unit': 2 }, out: { 'capture-robot-rocket': 1 } },
+  // 虫巢孵化器：虫蛋+捕获者火箭弹+铀-235+氟酮冷（官方 captive-biter-spawner 配方 10s，由生物机械驯化虫巢）
+  'captive-biter-spawner': { time: 10, inp: { 'biter-egg': 10, 'capture-robot-rocket': 1, 'uranium-235': 15, 'fluoroketone-cold': 100 }, out: { 'captive-biter-spawner': 1 } },
   // ===== 太空时代 Gleba 金属细菌链（生化炉专属，官方数值参考，见 GAME_DATA）=====
   // 铁细菌：果冻×6 → 铁细菌×1 + 变质物×4（官方 iron-bacteria 1s，organic 配方）
   'iron-bacteria': { time: 1, inp: { 'jelly': 6 }, out: { 'iron-bacteria': 1, 'spoilage': 4 } },

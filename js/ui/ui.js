@@ -340,39 +340,34 @@ function renderPanel(full) {
   if (!G.panelMode) { document.getElementById('panel').style.display = 'none'; return; }
   const st = full ? 0 : panelScrollTop();
   if (G.panelMode === 'inv') {
-    // 顶部面板标题去掉（需求：不显示），仅保留右上角关闭按钮；由 CSS #panel.inv-wide #panel-title 隐藏。
+    // 顶部面板标题去掉（需求：不显示），关闭按钮悬浮在面板右上角；由 CSS #panel.inv-wide #panel-title 隐藏。
     title.textContent = '';
     const keepFocusId = document.activeElement &&
       (document.activeElement.id === 'inv-recipe-search' || document.activeElement.id === 'inv-item-search') ?
       document.activeElement.id : null;
-    // 背包面板：玩家 / 物流 / 制作 三个分区共用一个顶部标题栏（不可点击、整体连排、左对齐）。
-    // 该标题栏同时也是面板的拖拽手柄：按住可拖动整个弹框，可拖到窗口外。
+    // 背包面板：左中右三列，标题分别位于每列左上角（🎒 玩家 / 📦 物流 / 🛠 制作）。
     if (!_invTabCache['craft']) _invTabCache['craft'] = htmlCraft();
     const craftHtml = _invTabCache['craft'];
     const matHtml = htmlInventory();
     const logiHtml = htmlLogistics();
     body.innerHTML =
-      '<div class="inv-tabs" id="inv-tabs">' +
-        '<span class="inv-tab">🎒 玩家</span>' +
-        '<span class="inv-tab">📦 物流</span>' +
-        '<span class="inv-tab">🛠 制作</span>' +
-      '</div>' +
       '<div class="inv-layout">' +
         '<div class="inv-col inv-col-left" id="inv-col-left">' +
+          '<div class="inv-col-head">🎒 玩家</div>' +
           '<div class="inv-col-body" id="inv-mat">' + matHtml + '</div>' +
         '</div>' +
         '<div class="inv-col inv-col-mid" id="inv-col-mid">' +
+          '<div class="inv-col-head">📦 物流</div>' +
           '<div class="inv-col-body">' + logiHtml + '</div>' +
         '</div>' +
         '<div class="inv-col inv-col-right" id="inv-col-right">' +
+          '<div class="inv-col-head">🛠 制作</div>' +
           '<div class="inv-col-body" id="inv-craft">' + craftHtml + '</div>' +
         '</div>' +
       '</div>';
     applyInvRecipeFilter(G.invRecipeQ);
     applyInvItemSearch(G.invItemQ);
-    // 用背包分区标题栏作为拖拽手柄（不可点击、连成整体），可拖动整个弹框到窗口外。
-    const invTabsBar = document.getElementById('inv-tabs');
-    if (invTabsBar) makeTitleDraggable(document.getElementById('panel'), invTabsBar);
+    // 用面板顶部的 #panel-head 作为拖拽手柄（已由 initPanelEvents 全局绑定），可拖动整个弹框。
     if (keepFocusId) {
       const inp = document.getElementById(keepFocusId);
       if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
@@ -543,8 +538,8 @@ function updateRecipeMachineLive(e, body, api) {
     for (const k in rec.inp) {
       const cur = e.inp[k] || 0;
       const need = rec.inp[k];
-      inp += '<div class="mch-io-slot' + (cur >= need ? ' full' : '') + '" data-action="feed-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|配方需 ' + need + '，当前 ' + cur + '。点击放入（或先选左侧物品再点击此槽放入该物品）">' +
-        '<img src="' + iconDataURL(k) + '"><span class="mch-io-n">' + cur + '/' + need + '</span></div>';
+      inp += '<div class="mch-io-slot' + (cur >= need ? ' full' : '') + '" data-action="feed-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|配方需 ' + need + '，当前 ' + cur + '。左键放入，右键取出（或先选左侧物品再点击此槽放入该物品）">' +
+        '<img src="' + iconDataURL(k) + '">' + (cur > 0 ? '<button class="mch-takein" data-action="takein-slot" data-id="' + k + '" title="取回 1 件 ' + ITEMS[k].name + ' 到背包">−</button>' : '') + '<span class="mch-io-n">' + cur + '/' + need + '</span></div>';
     }
     api.set('mch-inp', inp);
     // 产品数量
@@ -619,7 +614,7 @@ function htmlInvSlots() {
   }
   h += '</div>';
   if (owned.length === 0) {
-    h += '<div class="dim" style="margin-top:6px">空空如也，去地图上按住左键挖矿吧（铁矿/铜矿/煤/石头）</div>';
+    h += '<div class="dim" style="margin-top:6px">空空如也，去地图上按住右键挖矿吧（铁矿/铜矿/煤/石头）</div>';
   }
   h += '</div>';
   return h;
@@ -1283,8 +1278,8 @@ function recipeMachineRightHtml(e, info, rec) {
   h += '<div class="mch-side mch-inp"><div class="mch-side-title">原料</div><div class="mch-inp-row" data-live="mch-inp">';
   for (const k in rec.inp) {
     const cur = e.inp[k] || 0;
-    h += '<div class="mch-io-slot" data-action="feed-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|配方需 ' + rec.inp[k] + '，当前 ' + cur + '。点击放入（或先选左侧物品再点击此槽放入该物品）">' +
-      '<img src="' + iconDataURL(k) + '"><span class="mch-io-n">' + cur + '/' + rec.inp[k] + '</span></div>';
+    h += '<div class="mch-io-slot' + (cur >= rec.inp[k] ? ' full' : '') + '" data-action="feed-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|配方需 ' + rec.inp[k] + '，当前 ' + cur + '。左键放入，右键取出（或先选左侧物品再点击此槽放入该物品）">' +
+      '<img src="' + iconDataURL(k) + '">' + (cur > 0 ? '<button class="mch-takein" data-action="takein-slot" data-id="' + k + '" title="取回 1 件 ' + ITEMS[k].name + ' 到背包">−</button>' : '') + '<span class="mch-io-n">' + cur + '/' + rec.inp[k] + '</span></div>';
   }
   h += '</div></div>';
   // 进度条
@@ -1307,7 +1302,7 @@ function recipeMachineRightHtml(e, info, rec) {
   h += '</div></div>';
   h += '</div>';
   // 操作说明
-  h += '<div class="dim mch-help">左栏为你的背包：点击物品选中并显示放置幽灵；先选中背包物品再点击右侧「原料」槽即可把该物品放入设备；点击「产品」图标可把产物取回背包。原料/产品均可通过传送带与机械臂自动进出。</div>';
+  h += '<div class="dim mch-help">左栏为你的背包：先选中背包物品再点击右侧「原料」槽即可放入该物品；在「原料」槽上右键（或点其左上角 −）取回 1 件到背包；点击「产品」图标可把产物取回背包。原料/产品均可通过传送带与机械臂自动进出。</div>';
   // 电力状态与速率
   if (typeof e.powerDemand === 'function') h += row('电力', powerStatusLiveHtml(e), 'power');
   h += machRateHtml(rec, e.crafting && typeof e.moduleSpeedMult === 'function' ? e.moduleSpeedMult() : 1);

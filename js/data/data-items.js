@@ -42,6 +42,8 @@ const STACK_SIZES = {
   'cryogenic-science-pack': 200,  // 低温科研包官方 stack=200
   'cryogenic-plant': 20,  // 低温工厂官方 stack=20
   'quantum-processor': 100,  // 量子处理器官方 stack=100
+  'captive-biter-spawner': 1,  // 虫巢孵化器官方 stack=1
+  'capture-robot-rocket': 10,  // 捕获者火箭弹官方 stack=10（官方 ammo 原型）
   'scrap': 50,  // 废料官方 stack=50
   'railgun': 1, 'mech-armor': 1,  // 轨道炮/机械装甲官方 stack=1
   'battery-mk3-equipment': 20, 'fission-reactor-equipment': 20, 'toolbelt-equipment': 20,  // 个人装备官方 stack=20
@@ -106,6 +108,10 @@ const ITEMS = {
   'turbo-transport-belt': { name: '超速传送带', color: '#5a7a5a', desc: '速度约为基础带的 4 倍，物流终极档（太空时代 Space Age 4 档带，对齐《异星工厂》Turbo transport belt，速度 7.5 格/s）' },
   'turbo-underground-belt': { name: '超速地下传送带', color: '#5a7a5a', desc: '同向配对距离最远 11 格，速度是超速带标准（太空时代 Space Age，对齐《异星工厂》Turbo underground belt）' },
   'turbo-splitter': { name: '超速分流器', color: '#5a7a5a', desc: '同分流器，但吞吐与超速带一致，可输送最快物流（太空时代 Space Age，对齐《异星工厂》Turbo splitter）' },
+  'loader':            { name: '基础装载机', color: '#8a8478', desc: '物流设备：放在传送带末端，自动把传送带物品装入相邻容器/机器，或把容器物品卸到传送带（对齐《异星工厂》Loader，占地 1×2、速度 1.875 格/s）' },
+  'fast-loader':       { name: '高速装载机', color: '#d07b28', desc: '物流设备：速度约为基础装载机的 2 倍（对齐《异星工厂》Fast loader）' },
+  'express-loader':    { name: '极速装载机', color: '#3a8bd8', desc: '物流设备：速度约为基础装载机的 3 倍（对齐《异星工厂》Express loader）' },
+  'turbo-loader':      { name: '超速装载机', color: '#d84ad8', desc: '物流设备：速度约为基础装载机的 4 倍，物流终极档（太空时代 Space Age，对齐《异星工厂》Turbo loader，速度 7.5 格/s）' },
   'fast-splitter':    { name: '高速分流器', color: '#e05a4e', desc: '同分流器，但吞吐与高速带一致，可输送更快的物流（对齐《异星工厂》Fast splitter）' },
   'bulk-inserter':    { name: '集装箱机械臂', color: '#7ec850', desc: '同电力机械臂，但可一次性抓取多达 3 个同种物品（对齐《异星工厂》Stack inserter）' },
   'stack-inserter':  { name: '堆叠机械臂', color: '#8ae05a', desc: '太空时代高级机械臂（对齐《异星工厂》Stack inserter）：一次抓取 4 个同种物品并分层叠放传送带，带 5 个过滤槽，由集装箱机械臂升级而来（官方配方 1 集装箱机械臂+1 处理器+2 碳纤维+10 果冻→1，0.5s）' },
@@ -292,6 +298,8 @@ const ITEMS = {
   'jellynut-seed': { name: '果冻果种子', color: '#a04870', mark: 'Js', desc: '太空时代 Gleba 作物种子（堆叠 10），用于种植果仁（对齐《异星工厂》Space Age Jellynut seed，堆叠 10）' },
   'jelly': { name: '果冻', color: '#e860b0', mark: 'J', desc: '太空时代 Gleba 生物质中间产物，由果仁加工制得，是高级生物流与火箭燃料的重要原料（对齐《异星工厂》Space Age Jelly，堆叠 100）' },
   'biter-egg': { name: '异虫卵', color: '#c0a058', mark: '蛋', desc: '太空时代 Gleba 生物资源（堆叠 100）：由生化炉培育产出，用于制造营养素、高级生物质与多种太空时代装备/科研（对齐《异星工厂》Space Age Biter egg）' },
+  'captive-biter-spawner': { name: '虫巢孵化器', color: '#7a4a8a', mark: '巢', desc: '太空时代可控的虫巢孵化器（堆叠 1，占地 5×5）：捕获的虫巢经驯化后可持续繁育异虫卵，需定期喂养生物流维持圈养（对齐《异星工厂》Space Age Captive biter spawner）' },
+  'capture-robot-rocket': { name: '捕获者火箭弹', color: '#c0a058', mark: '捕', desc: '太空时代捕获机器人火箭弹（堆叠 10）：由火箭筒发射，锁定并捕获目标虫巢，转化为虫巢孵化器（对齐《异星工厂》Space Age Capture robot rocket）' },
   'iron-bacteria': { name: '铁细菌', color: '#c8c8d0', mark: 'Fe菌', desc: '太空时代 Gleba 生物质金属菌（堆叠 50）：由生化炉用果冻培育，经培养扩增后可在生化炉还原出铁板，是 Gleba 无矿地形下炼铁的关键生物原料（对齐《异星工厂》Space Age Iron bacteria）' },
   'copper-bacteria': { name: '铜细菌', color: '#d0a080', mark: 'Cu菌', desc: '太空时代 Gleba 生物质金属菌（堆叠 50）：由生化炉用玉玛果泥培育，经培养扩增后可在生化炉还原出铜板，是 Gleba 无矿地形下炼铜的关键生物原料（对齐《异星工厂》Space Age Copper bacteria）' },
   // ===== 太空时代 小行星碎块加工链（破碎机 + 小行星碎块，数据来自 factorio-data 官方，见 GAME_DATA）=====

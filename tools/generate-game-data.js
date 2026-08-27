@@ -422,6 +422,10 @@ const DEVICE_STATS_SOURCES = {
   'fast-transport-belt': ['transport-belt', 'fast-transport-belt'],
   'express-transport-belt': ['transport-belt', 'express-transport-belt'],
   'turbo-transport-belt': ['transport-belt', 'turbo-transport-belt'],  // 太空时代4档带（速度7.5格/s）
+  'loader': ['loader', 'loader'],  // 装载机（官方 loader：speed 0.03125 → 1.875 格/s）
+  'fast-loader': ['loader', 'fast-loader'],  // 高速装载机（speed 0.0625 → 3.75 格/s）
+  'express-loader': ['loader', 'express-loader'],  // 极速装载机（speed 0.09375 → 5.625 格/s）
+  'turbo-loader': ['loader', 'turbo-loader'],  // 超速装载机（speed 0.125 → 7.5 格/s）
   'underground-belt': ['underground-belt', 'underground-belt'],
   'fast-underground-belt': ['underground-belt', 'fast-underground-belt'],
   'express-underground-belt': ['underground-belt', 'express-underground-belt'],
@@ -435,6 +439,7 @@ const DEVICE_STATS_SOURCES = {
   'crusher': ['assembling-machine', 'crusher'],  // 太空时代破碎机：crafting_speed=1, module_slots=2
   'foundry': ['assembling-machine', 'foundry'],  // 太空时代铸造厂（Vulcanus）：crafting_speed=4, module_slots=4
   'cryogenic-plant': ['assembling-machine', 'cryogenic-plant'],  // 太空时代低温工厂（Aquilo）：crafting_speed=2, module_slots=8
+  'captive-biter-spawner': ['assembling-machine', 'captive-biter-spawner'],  // 太空时代虫巢孵化器（Captive biter spawner）：官方 assembling-machine 原型，100kW
   'agricultural-tower': ['agricultural-tower', 'agricultural-tower'],  // 太空时代农业塔（Gleba）：种植建筑，energy_usage=100kW
   'biolab': ['lab', 'biolab'],  // 太空时代生物实验室（Gleba）：官方 researching_speed=2、module_slots=4
 };
@@ -831,6 +836,10 @@ const FOOTPRINT_SOURCES = {
   'fast-transport-belt': ['transport-belt', 'fast-transport-belt'],
   'express-transport-belt': ['transport-belt', 'express-transport-belt'],
   'turbo-transport-belt': ['transport-belt', 'turbo-transport-belt'],  // 太空时代4档带（速度7.5格/s）
+  'loader': ['loader', 'loader'],  // 装载机（官方 selection_box ±0.5×±1 → 1×2）
+  'fast-loader': ['loader', 'fast-loader'],  // 高速装载机（官方 selection_box → 1×2）
+  'express-loader': ['loader', 'express-loader'],  // 极速装载机（官方 selection_box → 1×2）
+  'turbo-loader': ['loader', 'turbo-loader'],  // 超速装载机（官方 selection_box → 1×2）
   'underground-belt': ['underground-belt', 'underground-belt'],
   'fast-underground-belt': ['underground-belt', 'fast-underground-belt'],
   'express-underground-belt': ['underground-belt', 'express-underground-belt'],
@@ -909,6 +918,7 @@ const FOOTPRINT_SOURCES = {
   'agricultural-tower': ['agricultural-tower', 'agricultural-tower'],  // 太空时代农业塔（Gleba）：官方 selection_box ±1.5×±1.5 → 3×3
   'heating-tower': ['reactor', 'heating-tower'],  // 太空时代供热塔（Aquilo）：官方 reactor 原型 selection_box ±1.5×±1.5 → 3×3
   'biolab': ['lab', 'biolab'],  // 太空时代生物实验室（Gleba）：官方 lab 原型 selection_box ±2.5×±2.5 → 5×5
+  'captive-biter-spawner': ['assembling-machine', 'captive-biter-spawner'],  // 太空时代虫巢孵化器（Captive biter spawner）：官方 assembling-machine 原型 selection_box ±2.5×±2.5 → 5×5
   'lightning-rod': ['lightning-attractor', 'lightning-rod'],  // 太空时代避雷针（Fulgora）：官方 selection_box ±0.5 → 1×1
   'lightning-collector': ['lightning-attractor', 'lightning-collector'],  // 太空时代避雷收集器（Fulgora）：官方 selection_box ±1 → 2×2
   // ===== 太空时代 空间平台系统（Space Platform，官方 selection_box）=====
