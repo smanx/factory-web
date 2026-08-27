@@ -375,6 +375,8 @@ const RECIPE_TECH = {
   'burnt-spoilage': 'agriculture',
   'bioplastic': 'agriculture',
   'biolubricant': 'agriculture',
+  // 太空时代 树木播种（官方 Tree seeding 科技，需农业科技，解锁 tree-seed 树种子配方用于绿化补种）
+  'tree-seed': 'agriculture',
   'turbo-underground-belt': 'turbo-logistics',
   'turbo-splitter': 'turbo-logistics',
   // ===== 装载机 Loader（对齐《异星工厂》Loader，web 复刻开放官方隐藏物流设备）=====

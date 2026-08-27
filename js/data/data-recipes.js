@@ -273,6 +273,9 @@ const RECIPES = {
   'bioplastic': { time: 2, inp: { 'bioflux': 1, 'yumako-mash': 4 }, out: { 'plastic-bar': 3 } },
   // 生物润滑油：果冻×60 → 润滑油×20（官方 biolubricant 3s，organic 配方，生化炉用果冻榨油）
   'biolubricant': { time: 3, inp: { 'jelly': 60 }, out: { 'lubricant': 20 } },
+  // 树种子：木材×2 → 树种子×1（官方 tree-seed 2s：2 wood → 1 tree-seed，crafting+organic 双类别，
+  // 可在组装机/生化炉合成，用于绿化补种——把木材回收成树种子再种回树木，对齐《异星工厂》Space Age Tree seeding）
+  'tree-seed': { time: 2, inp: { 'wood': 2 }, out: { 'tree-seed': 1 } },
   // 农业科研包：生物流×1 + 五足虫蛋×1 → 农业科研包×1（官方 agricultural-science-pack 4s，此处适配为生物流+腐败物）
   'agricultural-science-pack': { time: 4, inp: { 'bioflux': 1, 'spoilage': 2 }, out: { 'agricultural-science-pack': 1 } },
   // 生化炉：钢板 + 电路板 + 齿轮 + 混凝土 → 生化炉（官方需生物质，此处适配基础资源）

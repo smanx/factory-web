@@ -25,7 +25,7 @@ const STACK_SIZES = {
   'cannon-shell': 100, 'explosive-cannon-shell': 100, 'uranium-cannon-shell': 100, 'artillery-shell': 1, 'atomic-bomb': 10,
   // 原材料：堆叠 50
   'iron-ore': 50, 'copper-ore': 50, 'coal': 50, 'stone': 50, 'uranium-ore': 50,
-  'wood': 100, 'raw-fish': 100, 'stone-brick': 100, 'calcite': 50,
+  'wood': 100, 'raw-fish': 100, 'stone-brick': 100, 'calcite': 50, 'tree-seed': 10,  // 树种子官方 stack=10
   'sulfur': 50, 'carbon': 50, 'nuclear-fuel': 1,  // uranium-235/238 官方 stack=100、uranium-fuel-cell 官方 stack=50，均由 GAME_DATA 桥接
   'depleted-uranium-fuel-cell': 50,
   // 固体燃料官方 stack=50；火箭燃料/低密度结构官方 stack=20/50，由 GAME_DATA 桥接
@@ -333,6 +333,7 @@ const ITEMS = {
   'requester-chest': { name: '需求箱', color: '#5a8ad0', desc: '物流箱：在面板设置每种物品的需求量，物流机器人会自动从供应箱/仓储箱送货过来补足到目标数量' },
   // ===== 钓鱼与生鱼（对齐《异星工厂》：需手持鱼竿在水域钓鱼，钓到生鱼） =====
   'raw-fish': { name: '生鱼', color: '#8ab0c0', mark: '鱼', desc: '在水域边缘用钓鱼竿钓获的基础食物，可作为低效燃料使用；也可在背包中食用恢复生命值（对齐《异星工厂》：吃鱼治疗）' },
+  'tree-seed': { name: '树种子', color: '#4a7a3a', mark: '🌱', desc: '太空时代农业种子，铺在地面上可种回一棵树（绿化/补种，对齐《异星工厂》Space Age Tree seed：2 木材 → 1 树种子）' },
   // ===== 核能（对齐《异星工厂》核动力）=====
   'uranium-ore':  { name: '铀矿石', color: '#7fd44a', mark: 'U', desc: '放射性矿物，距出生点较远处生成，须用电采矿机开采，离心机处理成铀' },
   'uranium-235': { name: '铀-235', color: '#9af07a', mark: 'U⁵', desc: '裂变同位素，由离心机处理铀矿小概率获得；是制造核燃料的关键' },

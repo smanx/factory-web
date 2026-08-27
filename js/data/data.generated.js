@@ -242,6 +242,7 @@ const GAME_DATA = {
   "buffer-chest": 50,
   "requester-chest": 50,
   "raw-fish": 100,
+  "tree-seed": 10,
   "uranium-ore": 50,
   "uranium-235": 100,
   "uranium-238": 100,
@@ -2473,6 +2474,15 @@ const GAME_DATA = {
     "lubricant": 20
    }
   },
+  "tree-seed": {
+   "time": 2,
+   "inp": {
+    "wood": 2
+   },
+   "out": {
+    "tree-seed": 1
+   }
+  },
   "agricultural-tower": {
    "time": 10,
    "inp": {
@@ -3649,6 +3659,7 @@ const GAME_DATA = {
   "biosulfur": "biochamber",
   "bioplastic": "biochamber",
   "biolubricant": "biochamber",
+  "tree-seed": "assembling-machine-1",
   "agricultural-tower": "assembling-machine-1",
   "artificial-yumako-soil": "assembling-machine-1",
   "overgrowth-yumako-soil": "assembling-machine-1",
@@ -4682,6 +4693,10 @@ const GAME_DATA = {
   "raw-fish": {
    "zh": "鲜鱼",
    "en": "Raw fish"
+  },
+  "tree-seed": {
+   "zh": "树种子",
+   "en": "Tree seed"
   },
   "uranium-ore": {
    "zh": "铀矿",
@@ -6145,6 +6160,7 @@ const GAME_DATA = {
   "buffer-chest": "logistics",
   "requester-chest": "logistics",
   "raw-fish": "intermediate-products",
+  "tree-seed": "intermediate-products",
   "uranium-ore": "intermediate-products",
   "uranium-235": "intermediate-products",
   "uranium-238": "intermediate-products",

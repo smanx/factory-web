@@ -332,6 +332,18 @@ ok(RP['bioplastic'].time === 2, '生物塑料耗时=2s（官方）');
 ok(RP['biolubricant'].inp['jelly'] === 60 && RP['biolubricant'].out['lubricant'] === 20, '生物润滑油=60果冻→20润滑油（官方）');
 ok(RP['biolubricant'].time === 3, '生物润滑油耗时=3s（官方）');
 
+// ===== 树木播种（Tree seeding / Tree seed，本迭代新增）数据校验 =====
+console.log('\n【树木播种（Tree seeding / Tree seed，Space Age）数据校验】');
+ok(!!IT['tree-seed'], '树种子物品已注册');
+ok(!!GD.stackSize['tree-seed'] && GD.stackSize['tree-seed'] === 10, '树种子堆叠来自官方 (=10)');
+ok(!!GD.names['tree-seed'], '树种子官方命名已收录 (' + (GD.names['tree-seed'] ? GD.names['tree-seed'].zh : '?') + ')');
+ok(!!RP['tree-seed'], '树种子配方已注册');
+ok(RP['tree-seed'].inp['wood'] === 2 && RP['tree-seed'].out['tree-seed'] === 1, '树种子=2木材→1树种子（官方）');
+ok(RP['tree-seed'].time === 2, '树种子耗时=2s（官方）');
+ok(Object.keys(RP['tree-seed'].inp).every(k => k in IT), '树种子配方引用物品均存在');
+ok(ctx.__recipeDevice('tree-seed') === 'assembling-machine-1', '树种子 → 组装机（官方 crafting 类别）');
+ok(ctx.__recipeTechReq('tree-seed') === 'agriculture', '树种子需「农业科技」');
+
 console.log('\n【破碎机设备数据（官方）】');
 ok(!!GD.stackSize['crusher'], 'crusher 堆叠来自官方 (=10)');
 ok(!!GD.names['crusher'], 'crusher 官方命名已收录 (' + (GD.names['crusher'] ? GD.names['crusher'].zh : '?') + ')');
