@@ -104,14 +104,35 @@ function drawChest(ctx, e, gx, gy, dir, alpha) {
 }
 
 // ===== 面板 =====
-function chestPanelHtml(e) {
+// 所有储物箱采用「双栏」布局：左栏=玩家背包，右栏=箱子物品，可双向移动物品。
+// 左栏复用 htmlInventory()（与背包/配方设备一致：点击物品即选中，选中后可存入箱子）。
+// 右栏为箱子内容：点击物品取出 1 件回背包；「存入选中物品」把当前选中的背包物品放入箱子。
+
+// 右栏：箱子内容 + 操作
+function chestRightHtml(e, typeName, capDesc) {
   const agg = {};
   for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
-  let h = row('内容', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
+  let h = '<div class="sec">箱子内容（点击物品取出 1 件回背包）</div>';
   h += '<div class="status"></div>';
+  h += '<div class="chest-items" id="chest-items" data-live="chest-items">';
+  const keys = Object.keys(agg);
+  if (!keys.length) {
+    h += '<div class="dim">空箱。先在左栏选中背包物品，再点下方「存入选中物品」，即可放入。</div>';
+  } else {
+    for (const id of keys) {
+      h += '<div class="chest-slot" data-action="chest-take" data-id="' + id + '"' +
+        ' data-tip="' + ITEMS[id].name + '|点击取出 1 件回背包（当前 ' + agg[id] + '）">' +
+        '<img src="' + iconDataURL(id) + '"><span class="chest-slot-n">×' + agg[id] + '</span></div>';
+    }
+  }
+  h += '</div>';
+  // 存入选中物品
+  h += '<div class="sec">存入</div>';
+  h += '<button data-action="chest-put" class="btn sm" id="btn-chest-put" title="把当前选中的背包物品全部存入箱子（未选中时不可用）">⬆ 存入选中物品</button>';
+  // 存量上限（每种物品）
+  h += '<div class="sec">存量上限（每种物品）</div>';
   const ids = Object.keys(agg);
   for (const id in e.limits) if (!(id in agg)) ids.push(id);
-  h += '<div class="sec">存量上限（每种物品）</div>';
   if (!ids.length) {
     h += '<div class="dim">空箱。放入物品后可为每种物品设置最大存量，达到上限后机械臂/手动均无法再存入。</div>';
   } else {
@@ -125,25 +146,58 @@ function chestPanelHtml(e) {
   let total = 0;
   for (const k in agg) total += agg[k];
   if (total > 0) h += '<button data-action="takeout" id="btn-chest-takeout">取出全部 (' + total + ')</button>';
+  h += '<div class="dim">' + capDesc + '</div>';
   return h;
 }
+
+// 双栏布局：左=玩家背包，右=箱子
+function chestDualPaneHtml(e, typeName, capDesc) {
+  const left = htmlInventory();
+  const right = chestRightHtml(e, typeName, capDesc);
+  return '<div class="inv-layout machine-layout chest-layout">' +
+    '<div class="inv-col inv-col-left" id="inv-col-left"><div class="inv-col-head">🎒 玩家背包</div>' +
+    '<div class="inv-col-body" id="inv-mat">' + left + '</div></div>' +
+    '<div class="inv-col inv-col-right" id="inv-col-right"><div class="inv-col-head">📦 ' + typeName + '（箱子）</div>' +
+    '<div class="inv-col-body">' + right + '</div></div>' +
+  '</div>';
+}
+
+function chestPanelHtml(e) {
+  return chestDualPaneHtml(e, ITEMS[e.type].name, '可接入电路网络输出箱内物品数量信号。');
+}
 function chestPanelLive(e, api) {
-  const agg = {};
-  let total = 0;
-  for (const s of e.slots) if (s) { agg[s.item] = (agg[s.item] || 0) + s.count; total += s.count; }
-  const kinds = Object.keys(agg).length;
-  api.set('contents', Object.keys(agg).length ? countStr(agg) : dimSpan('空'));
-  api.toggle('#btn-chest-takeout', total > 0, '取出全部 (' + total + ')');
-  // 状态：达到上限的物品种类提示暂停收纳
-  const full = Object.keys(agg).filter(id => e.limits[id] !== undefined && agg[id] >= e.limits[id]);
-  if (full.length) api.status('已满：' + full.map(id => ITEMS[id].name).join('、') + ' 达到上限，暂停收纳', 'warn');
-  else if (total > 0) api.status('收纳中：' + kinds + ' 种，共 ' + total + ' 件', 'ok');
-  else api.status('空箱：等待存入物品', 'ok');
+  chestDualPaneLive(e, api);
 }
 function chestTip(e) {
   let n = 0, k = 0;
   for (const s of e.slots) if (s) { n += s.count; k++; }
   return k ? ('存货 ' + n + ' 个（' + k + ' 种）') : '空箱';
+}
+function chestDualPaneLive(e, api) {
+  const agg = {};
+  let total = 0;
+  for (const s of e.slots) if (s) { agg[s.item] = (agg[s.item] || 0) + s.count; total += s.count; }
+  const kinds = Object.keys(agg).length;
+  // 更新右栏箱子内容网格
+  const box = document.getElementById('chest-items');
+  if (box) {
+    if (!kinds) {
+      box.innerHTML = '<div class="dim">空箱。先在左栏选中背包物品，再点下方「存入选中物品」，即可放入。</div>';
+    } else {
+      let h = '';
+      for (const id of Object.keys(agg)) {
+        h += '<div class="chest-slot" data-action="chest-take" data-id="' + id + '"' +
+          ' data-tip="' + ITEMS[id].name + '|点击取出 1 件回背包（当前 ' + agg[id] + '）">' +
+          '<img src="' + iconDataURL(id) + '"><span class="chest-slot-n">×' + agg[id] + '</span></div>';
+      }
+      box.innerHTML = h;
+    }
+  }
+  api.toggle('#btn-chest-takeout', total > 0, '取出全部 (' + total + ')');
+  const full = Object.keys(agg).filter(id => e.limits[id] !== undefined && agg[id] >= e.limits[id]);
+  if (full.length) api.status('已满：' + full.map(id => ITEMS[id].name).join('、') + ' 达到上限，暂停收纳', 'warn');
+  else if (total > 0) api.status('收纳中：' + kinds + ' 种，共 ' + total + ' 件', 'ok');
+  else api.status('空箱：等待存入物品', 'ok');
 }
 function chestOnAction(act) {
   if (act === 'limits-clear') {
@@ -195,22 +249,10 @@ function drawWoodenChest(ctx, e, gx, gy, dir, alpha) {
   ctx.globalAlpha = 1;
 }
 function woodenChestPanelHtml(e) {
-  const agg = {};
-  for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
-  let h = row('内容', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
-  h += '<div class="status"></div>';
-  let total = 0;
-  for (const k in agg) total += agg[k];
-  if (total > 0) h += '<button data-action="takeout" id="btn-chest-takeout">取出全部 (' + total + ')</button>';
-  h += '<div class="dim">木箱：最基础的储物箱（16 格），开局即可用木材合成。</div>';
-  return h;
+  return chestDualPaneHtml(e, '木箱', '木箱：最基础的储物箱（16 格），开局即可用木材合成。');
 }
 function woodenChestPanelLive(e, api) {
-  let total = 0, k = 0;
-  for (const s of e.slots) if (s) { total += s.count; k++; }
-  api.set('contents', total ? countStr(e.slots.filter(Boolean).reduce((a, s) => (a[s.item] = (a[s.item] || 0) + s.count, a), {})) : dimSpan('空'));
-  api.toggle('#btn-chest-takeout', total > 0, '取出全部 (' + total + ')');
-  api.status(total ? ('收纳中：' + k + ' 种，共 ' + total + ' 件') : '空木箱', total ? 'ok' : 'ok');
+  chestDualPaneLive(e, api);
 }
 function woodenChestTip(e) {
   let n = 0;
@@ -250,22 +292,10 @@ function drawIronChest(ctx, e, gx, gy, dir, alpha) {
   ctx.globalAlpha = 1;
 }
 function ironChestPanelHtml(e) {
-  const agg = {};
-  for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
-  let h = row('内容', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
-  h += '<div class="status"></div>';
-  let total = 0;
-  for (const k in agg) total += agg[k];
-  if (total > 0) h += '<button data-action="takeout" id="btn-chest-takeout">取出全部 (' + total + ')</button>';
-  h += '<div class="dim">铁箱：容量比木箱更大（32 格），由木箱升级而来。</div>';
-  return h;
+  return chestDualPaneHtml(e, '铁箱', '铁箱：容量比木箱更大（32 格），由木箱升级而来。');
 }
 function ironChestPanelLive(e, api) {
-  let total = 0, k = 0;
-  for (const s of e.slots) if (s) { total += s.count; k++; }
-  api.set('contents', total ? countStr(e.slots.filter(Boolean).reduce((a, s) => (a[s.item] = (a[s.item] || 0) + s.count, a), {})) : dimSpan('空'));
-  api.toggle('#btn-chest-takeout', total > 0, '取出全部 (' + total + ')');
-  api.status(total ? ('收纳中：' + k + ' 种，共 ' + total + ' 件') : '空铁箱', total ? 'ok' : 'ok');
+  chestDualPaneLive(e, api);
 }
 function ironChestTip(e) {
   let n = 0;

@@ -2080,3 +2080,32 @@ html, body {
   border: 1px solid #57b95c; box-shadow: 0 0 8px rgba(87,185,92,.25);
 }
 .rcp-confirm-row .rcp-confirm:hover:not(:disabled) { background: linear-gradient(90deg, #4aa45c, #3a8a4a); }
+
+/* ===== 储物箱双栏面板（左=玩家背包，右=箱子内容）===== */
+#panel.machine-wide .chest-layout { gap: 12px; }
+.chest-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+  max-height: 260px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.chest-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.chest-slot:hover { background: rgba(255,255,255,.1); border-color: #ffe08a; }
+.chest-slot img { width: 32px; height: 32px; image-rendering: pixelated; }
+.chest-slot-n { font-size: 12px; color: #ffe08a; margin-top: 2px; }
+#btn-chest-put { margin-bottom: 10px; }

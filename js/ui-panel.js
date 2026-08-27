@@ -308,9 +308,11 @@ function initPanelEvents() {
       return;
     }
     const itEl = ev.target.closest('[data-itemid]');
-    // 在背包面板，或配方设备交互面板的左栏背包中，点击物品可选中并显示放置幽灵
+    // 在背包面板、配方设备交互面板、或储物箱双栏面板的左栏背包中，
+    // 点击物品可选中并显示放置幽灵（储物箱中选中后可存入箱子）
     const isRecipeMachine = G.panelMode === 'machine' && G.panelEnt && isRecipeDevice(G.panelEnt);
-    if (itEl && (G.panelMode === 'inv' || isRecipeMachine) && !itEl.dataset.action) {
+    const isChestPanel = G.panelMode === 'machine' && G.panelEnt && isChestEntity(G.panelEnt);
+    if (itEl && (G.panelMode === 'inv' || isRecipeMachine || isChestPanel) && !itEl.dataset.action) {
       const iid = itEl.dataset.itemid;
       // 任意物品（设备/材料/工具）均可被鼠标选中，选中后不关闭背包：
       // 设备点击地图可直接建造；材料/工具点击地图无法建造。
@@ -576,6 +578,43 @@ function initPanelEvents() {
           if (typeof playSfx === 'function') playSfx('pick');
         } else {
           toast('暂无' + ITEMS[id].name + '可取出');
+        }
+      } else if (act === 'chest-put') {
+        // 储物箱「存入选中物品」：把当前选中的背包物品全部放入箱子
+        const chest = G.panelEnt;
+        if (!chest || typeof chest.giveItem !== 'function') return;
+        const held = (typeof selItem === 'function') ? selItem() : null;
+        if (!held) { toast('请先在左栏背包中选中要存入的物品'); return; }
+        const have = invCount(held);
+        if (have <= 0) { toast('背包中没有' + ITEMS[held].name); return; }
+        let moved = 0;
+        while (moved < have && chest.giveItem(held)) moved++;
+        if (moved > 0) {
+          invTake(held, moved);
+          if (typeof playSfx === 'function') playSfx('click');
+          toast('已存入 ' + ITEMS[held].name + ' ×' + moved);
+          // 箱子数量变化后轻量刷新右栏
+          if (typeof updateMachineLive === 'function') updateMachineLive();
+          else renderPanel(false);
+        } else {
+          toast('箱子已满，放不进去了');
+        }
+      } else if (act === 'chest-take') {
+        // 储物箱：点击箱内物品取出 1 件回背包（受背包堆叠上限约束）
+        const chest = G.panelEnt;
+        if (!chest || typeof chest.takeItemOf !== 'function') return;
+        if (chest.takeItemOf(id)) {
+          if (invAdd(id, 1) > 0) {
+            if (typeof playSfx === 'function') playSfx('pick');
+            if (typeof updateMachineLive === 'function') updateMachineLive();
+            else renderPanel(false);
+          } else {
+            // 背包已满，把物品放回箱子
+            chest.giveItem(id);
+            toast('背包已满，无法放入' + ITEMS[id].name);
+          }
+        } else {
+          toast('箱子中没有' + ITEMS[id].name);
         }
       } else if (act === 'fuel') {
         const fid = btn.dataset.id || 'coal';
