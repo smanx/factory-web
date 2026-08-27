@@ -101,7 +101,7 @@ function initPanelEvents() {
     // 触发在已脱离 DOM 的旧元素上、不再冒泡到 panel-body，导入“毫无反应”。
     // 故打开文件选择框后跳过本次尾部的 renderPanel(false)。
     let skipPanelRender = false;
-    // 背包两个 tab 切换：材料 / 合成
+    // 背包三个 tab 切换：玩家 / 物流 / 制作
     const invTabBtn = ev.target.closest('[data-inv-tab]');
     if (invTabBtn && G.panelMode === 'inv') {
       G.invTab = invTabBtn.dataset.invTab;

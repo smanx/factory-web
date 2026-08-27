@@ -824,7 +824,7 @@ function logiChestPanelHtml(e) {
   }
   const left = htmlInventory();
   return '<div class="inv-layout machine-layout chest-layout">' +
-    '<div class="inv-col inv-col-left" id="inv-col-left"><div class="inv-col-head">🎒 玩家背包</div>' +
+    '<div class="inv-col inv-col-left" id="inv-col-left"><div class="inv-col-head">🎒 玩家</div>' +
     '<div class="inv-col-body" id="inv-mat">' + left + '</div></div>' +
     '<div class="inv-col inv-col-right" id="inv-col-right"><div class="inv-col-head">📦 ' + ITEMS[e.type].name + '（物流箱）</div>' +
     '<div class="inv-col-body">' + right + '</div></div>' +
