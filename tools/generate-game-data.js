@@ -250,7 +250,7 @@ const HUB_RECIPE_IDS = new Set(['space-platform-foundation', 'space-platform-sta
 // 此处显式映射到项目专属设备，使 recipeDevice 正确。运行时会优先取 GAME_DATA.recipeDevice。
 const DLC_DEVICE_RECIPES = {
   // 生化炉 biochamber（Space Age organic）
-  'yumako-mash': 'biochamber', 'bioflux': 'biochamber', 'nutrients-from-bioflux': 'biochamber', 'nutrients-from-spoilage': 'biochamber', 'burnt-spoilage': 'biochamber',
+  'yumako-mash': 'biochamber', 'bioflux': 'biochamber', 'nutrients-from-yumako-mash': 'biochamber', 'nutrients-from-spoilage': 'biochamber', 'burnt-spoilage': 'biochamber',
   'biosulfur': 'biochamber', 'bioplastic': 'biochamber', 'biolubricant': 'biochamber',
   'agricultural-science-pack': 'biochamber', 'biochamber': 'biochamber',
   'jellynut-processing': 'biochamber', 'biter-egg': 'biochamber', 'nutrients-from-biter-egg': 'biochamber',

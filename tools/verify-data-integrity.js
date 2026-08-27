@@ -67,7 +67,7 @@ const dynamicKeys = new Set([
   'kovarex', // 离心机富集配方（产物为铀-235/238，无独立物品）
   'crack-light', 'crack-gas', // 裂化配方（产物为流体，无独立物品键）
   'solid-fuel-light-oil', 'solid-fuel-heavy-oil', // 同种固体燃料的变体配方
-  'nutrients-from-bioflux', // 生化炉配方：果泥→营养素（产物键≠配方键）
+  'nutrients-from-yumako-mash', // 生化炉配方：果泥→营养素（官方 nutrients-from-yumako-mash，产物键≠配方键）
   'biosulfur',              // 生化炉配方：变质物+生物结晶→硫磺（产物键≠配方键）
   'metallic-asteroid-crushing', 'carbonic-asteroid-crushing', 'oxide-asteroid-crushing', // 破碎机配方：星块粉碎（产物键≠配方键）
   'ice-melting',            // 破碎机配方：冰→水（产物为流体，无独立物品键）

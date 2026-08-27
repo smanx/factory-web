@@ -262,8 +262,8 @@ const RECIPES = {
   'yumako-mash': { time: 1, inp: { 'yumako': 1 }, out: { 'yumako-mash': 2, 'yumako-seed': 1 } },
   // 生物流：果泥×15 → 生物流×4（官方 bioflux 6s，需胶质，此处适配为仅果泥）
   'bioflux': { time: 6, inp: { 'yumako-mash': 15 }, out: { 'bioflux': 4 } },
-  // 营养素：果泥×4 → 营养素×6（官方 nutrients-from-yumako-mash 2s）
-  'nutrients-from-bioflux': { time: 2, inp: { 'yumako-mash': 4 }, out: { 'nutrients': 6 } },
+  // 营养素：果泥×4 → 营养素×6（官方 nutrients-from-yumako-mash 4s，生化炉 organic 配方）
+  'nutrients-from-yumako-mash': { time: 4, inp: { 'yumako-mash': 4 }, out: { 'nutrients': 6 } },
   // 营养素（变质物回收）：腐败物×10 → 营养素×1（官方 nutrients-from-spoilage 2s，生化炉 organic 配方，
   // 补全 Gleba 变质物回收循环——官方产出带 50% 腐败度，项目无新鲜度系统故简化为纯营养素）
   'nutrients-from-spoilage': { time: 2, inp: { 'spoilage': 10 }, out: { 'nutrients': 1 } },
@@ -606,7 +606,7 @@ const DEVICE_NAMES = {
 const ELECTRO_RECIPES = ['superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant', 'promethium-science-pack', 'holmium-ore', 'holmium-solution', 'holmium-plate', 'supercapacitor', 'electrolyte', 'teslagun', 'tesla-ammo', 'tesla-turret', 'railgun-turret'];
 function isElectroRecipe(id) { return ELECTRO_RECIPES.indexOf(id) >= 0; }
 // 生化炉专属配方（太空时代生物产品）：果泥 / 生物流 / 营养素 / 生物硫磺 / 农业科研包 / 生化炉本体
-const BIOCHAMBER_RECIPES = ['yumako-mash', 'bioflux', 'nutrients-from-bioflux', 'nutrients-from-spoilage', 'burnt-spoilage', 'biosulfur', 'bioplastic', 'biolubricant', 'agricultural-science-pack', 'biochamber', 'jellynut-processing', 'biter-egg', 'nutrients-from-biter-egg', 'pentapod-egg', 'fish-breeding', 'nutrients-from-fish', 'rocket-fuel-from-jelly', 'iron-bacteria', 'copper-bacteria', 'iron-bacteria-cultivation', 'copper-bacteria-cultivation', 'iron-plate-from-iron-bacteria', 'copper-plate-from-copper-bacteria'];
+const BIOCHAMBER_RECIPES = ['yumako-mash', 'bioflux', 'nutrients-from-yumako-mash', 'nutrients-from-spoilage', 'burnt-spoilage', 'biosulfur', 'bioplastic', 'biolubricant', 'agricultural-science-pack', 'biochamber', 'jellynut-processing', 'biter-egg', 'nutrients-from-biter-egg', 'pentapod-egg', 'fish-breeding', 'nutrients-from-fish', 'rocket-fuel-from-jelly', 'iron-bacteria', 'copper-bacteria', 'iron-bacteria-cultivation', 'copper-bacteria-cultivation', 'iron-plate-from-iron-bacteria', 'copper-plate-from-copper-bacteria'];
 function isBiochamberRecipe(id) { return BIOCHAMBER_RECIPES.indexOf(id) >= 0; }
 // 破碎机专属配方（太空时代小行星碎块加工）：金属/碳质/氧化星块粉碎 + 破碎机本体 + 冰熔化
 const CRUSHER_RECIPES = ['metallic-asteroid-crushing', 'carbonic-asteroid-crushing', 'oxide-asteroid-crushing',
