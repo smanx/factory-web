@@ -713,6 +713,11 @@ const equipment = {};
       dischargeCooldown: Math.round(dd.attack_parameters.cooldown / 60 * 10) / 10,
     };
   }
+  // 工具腰带（官方 inventory-bonus-equipment，Space Age）：inventory_size_bonus 为背包扩容格数
+  const tb = raw['inventory-bonus-equipment'] && raw['inventory-bonus-equipment']['toolbelt-equipment'];
+  if (tb && typeof tb.inventory_size_bonus === 'number') {
+    equipment['toolbelt-equipment'] = { extraSlots: tb.inventory_size_bonus };
+  }
 }
 
 // ---- 核能热量链路（反应堆 / 导热管） ----

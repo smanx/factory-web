@@ -50,6 +50,8 @@ globalThis.EQUIPMENT = {
     if (src.discharge !== undefined) def.discharge = src.discharge;
     if (src.dischargeRange !== undefined) def.dischargeRange = src.dischargeRange;
     if (src.dischargeCooldown !== undefined) def.dischargeCooldown = src.dischargeCooldown;
+    // 工具腰带：背包扩容格数（官方 inventory_size_bonus）
+    if (src.extraSlots !== undefined) def.extraSlots = src.extraSlots;
   }
 }
 function isEquipment(id) { return !!EQUIPMENT[id]; }
@@ -130,6 +132,16 @@ function equipCount(id) {
   let n = 0;
   for (const e of G.equipGrid) if (e.id === id) n++;
   return n;
+}
+
+// ===== 工具腰带（Toolbelt equipment）背包扩容 =====
+// 对齐《异星工厂》：个人装备网格中每装 1 件工具腰带（官方 Toolbelt equipment），
+// 玩家背包容量 +extraSlots 格（本项目 10 格，数据来自 EQUIPMENT['toolbelt-equipment'].extraSlots）。
+function toolbeltInventoryBonus() {
+  const n = equipCount('toolbelt-equipment');
+  if (n <= 0) return 0;
+  const def = EQUIPMENT['toolbelt-equipment'];
+  return n * ((def && def.extraSlots) || 0);
 }
 
 // ===== 个人电网效果 =====

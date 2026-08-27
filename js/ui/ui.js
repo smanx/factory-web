@@ -19,6 +19,13 @@ function _invalidateInvCache() {
 // 数量以右下角角标显示。
 const INV_SLOT_COUNT = 80;
 
+// 背包实际可用格子数：基础 80 格 + 装备网格中「工具腰带」提供的扩容格
+// （对齐《异星工厂》Toolbelt equipment：每件 +10 格，见 devices/equipment.js toolbeltInventoryBonus）。
+function invSlotCount() {
+  const bonus = (typeof toolbeltInventoryBonus === 'function') ? toolbeltInventoryBonus() : 0;
+  return INV_SLOT_COUNT + bonus;
+}
+
 // 制作栏 5 个 Tab：顺序、标签与官方 item-group 一一对应（数据单源归类见 GAME_DATA.itemGroup）。
 const CRAFT_TABS = ['logistics', 'production', 'intermediate-products', 'space', 'combat'];
 const CRAFT_TAB_LABEL = {
@@ -619,7 +626,7 @@ function htmlInvSlots() {
   const sig = owned.join(',');
   let h = '<div id="inv-items-wrap" data-ownedsig="' + sig + '">';
   h += '<div class="inv-slots" id="inv-items">';
-  for (let i = 0; i < INV_SLOT_COUNT; i++) {
+  for (let i = 0; i < invSlotCount(); i++) {
     const id = owned[i];
     if (id) {
       const n = invCount(id);

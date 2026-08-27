@@ -526,6 +526,17 @@ for (const [pid, en] of [
 }
 ok(GD.names['stone-path'] && GD.names['stone-path'].en === 'Stone path', 'stone-path 官方命名已收录 (Stone path，tile-name)');
 
+// ===== 工具腰带（Toolbelt equipment）背包扩容数据单源 =====
+console.log('\n【工具腰带（Toolbelt）背包扩容单源（GAME_DATA.equipment.extraSlots）】');
+ok(GD.equipment && GD.equipment['toolbelt-equipment'] && GD.equipment['toolbelt-equipment'].extraSlots === 10,
+  'toolbelt-equipment 背包扩容=10 格（官方 inventory_size_bonus，单源 GAME_DATA.equipment）');
+// 前端 invSlotCount 应动态加入工具腰带扩容（而非固定 80 格）
+const uiJs = fs.readFileSync(ROOT + '/js/ui/ui.js', 'utf8');
+ok(uiJs.includes('invSlotCount') && uiJs.includes('toolbeltInventoryBonus'), 'ui.js 背包格数动态加入工具腰带扩容（invSlotCount）');
+const equipJs = fs.readFileSync(ROOT + '/js/devices/equipment.js', 'utf8');
+ok(equipJs.includes("src.extraSlots !== undefined") && equipJs.includes('toolbeltInventoryBonus'), 'equipment.js 单源读取 extraSlots + toolbeltInventoryBonus 扩容函数');
+
+
 // ===== 高架铁轨（Elevated Rails DLC）数据校验 =====
 console.log('\n【高架铁轨（Elevated Rails DLC）数据】');
 ok(!!GD.stackSize['rail-support'], 'rail-support 堆叠来自官方 (=20)');

@@ -1238,3 +1238,19 @@
 > - **存档兼容**：货舱随存档序列化/恢复（`s.cargo` / `e.cargo`），旧档读档自动补空货舱，不报错。
 > - **校验**：verify-dlc 新增「空间平台枢纽轨道货运」校验（11 项：货舱存储/装载/取出/
 >   序列化/派发动作/复用 orbitalCargo/ui-panel 接入），全量 18 个校验脚本通过，构建通过。
+
+### 阶段六.7：工具腰带背包扩容（Toolbelt equipment inventory bonus，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> 对齐《异星工厂》Space Age **Toolbelt equipment（工具腰带）** 装备机制——官方 `inventory-bonus-equipment`
+> 型装备，`inventory_size_bonus=10`，每件为玩家背包扩容 10 格。此前项目只定义了工具腰带物品，
+> 但未实现其背包扩容效果（背包固定 80 格）。本迭代补齐：
+> - **数据单源**：`tools/generate-game-data.js` 新增从官方 `inventory-bonus-equipment` 原型提取
+>   `inventory_size_bonus` 写入 `GAME_DATA.equipment['toolbelt-equipment'].extraSlots`（官方 10）；
+>   `js/devices/equipment.js` 的官方装备参数桥接改为单源读取 `src.extraSlots`（装备 11 → 12 件）。
+> - **玩法**：`equipment.js` 新增 `toolbeltInventoryBonus()`（每装 1 件工具腰带 +10 格，数据来自
+>   GAME_DATA）；`js/ui/ui.js` 新增 `invSlotCount()` = 基础 80 格 + 工具腰带扩容，背包渲染循环
+>   由固定 `INV_SLOT_COUNT` 改为动态 `invSlotCount()`——装工具腰带后背包可见/可用格数随之增加。
+> - **校验**：verify-dlc 新增「工具腰带背包扩容单源」校验（3 项：GAME_DATA 单源 10 格 + ui.js
+>   动态格数 + equipment.js 单源读取），全量 18 个校验脚本通过，`node build.js` 构建通过。
+

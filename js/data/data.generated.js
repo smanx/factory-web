@@ -5700,6 +5700,9 @@ const GAME_DATA = {
    "discharge": true,
    "dischargeRange": 10,
    "dischargeCooldown": 2.5
+  },
+  "toolbelt-equipment": {
+   "extraSlots": 10
   }
  },
  "heat": {
