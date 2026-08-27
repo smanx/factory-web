@@ -133,6 +133,8 @@ function advanceTechQueue() {
   // 跳过已完成与前置未满足的项
   while (G.techQueue.length && (techResearched(G.techQueue[0]) || techLocked(G.techQueue[0]))) G.techQueue.shift();
   G.activeTech = G.techQueue.length ? G.techQueue[0] : null;
+  // 科技完成会解锁新配方，需清除背包「合成」页缓存，保证解锁状态/按钮及时更新
+  if (typeof _invalidateInvCache === 'function') _invalidateInvCache();
   if (typeof renderPanel === 'function') renderPanel(false);
   return G.activeTech;
 }

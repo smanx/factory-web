@@ -423,6 +423,9 @@ function loop(ts) {
 
     if (uiDirty || G.time - lastPanelCheck > 0.25) {
       lastPanelCheck = G.time;
+      // 背包 tab HTML 缓存失效：物品/科技等状态一旦变化（uiDirty），清掉缓存的
+      // innerHTML，确保下次打开/渲染背包时重新生成，避免显示过期数量或解锁状态。
+      if (uiDirty && typeof _invalidateInvCache === 'function') _invalidateInvCache();
       refreshHotbar();
       if (G.panelMode === 'machine') updateMachineLive();
       if (G.panelMode === 'stats') updateStatsLive();
