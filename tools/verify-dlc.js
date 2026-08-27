@@ -802,7 +802,7 @@ ok(GD.buildingHp['railgun-turret'] === 4000, '轨道炮塔血量=4000（官方 m
 ok(GD.buildingHp['rocket-turret'] === 1500, '火箭炮塔血量=1500（官方 max_health）');
 ok(!!GD.names['railgun'] && !!GD.names['railgun-ammo'], '轨道炮/轨道炮弹官方命名已收录');
 ok(!!GD.names['quantum-processor'], '量子处理器官方命名已收录');
-ok(ctx.__itemTechReq('railgun-turret') === 'railgun-defense', '轨道炮塔需「轨道炮防御」科技');
+ok(ctx.__itemTechReq('quantum-processor') === 'railgun-defense', '量子处理器需「轨道炮防御」科技');
 ok(!!TS['railgun-defense'], '「轨道炮防御」科技已注册');
 console.log('\n【Aquilo 高级装备（数据来自 GAME_DATA.equipment）】');
 ok(!!GD.names['mech-armor'], '机械装甲官方命名已收录');
@@ -812,5 +812,44 @@ ok(!!RP['mech-armor'] && !!RP['battery-mk3-equipment'] && !!RP['fission-reactor-
 ok(ctx.__itemTechReq('mech-armor') === 'mech-armor', '机械装甲需「机械装甲」科技');
 ok(!!TS['mech-armor'], '「机械装甲」科技已注册');
 
-process.exit(fail === 0 ? 0 : 1);
 
+// ===== 太空时代高级防御（火箭炮塔 / 磁轨炮塔）数据校验 =====
+console.log('\n【火箭炮塔 rocket-turret / 磁轨炮塔 railgun-turret 数据】');
+ok(!!IT['rocket-turret'], 'rocket-turret 物品已注册');
+ok(!!IT['railgun-turret'], 'railgun-turret 物品已注册');
+ok(!!IT['railgun-ammo'], 'railgun-ammo 物品已注册');
+ok(GD.stackSize['rocket-turret'] === 10, 'rocket-turret 堆叠来自官方 (=10)');
+ok(GD.stackSize['railgun-turret'] === 10, 'railgun-turret 堆叠来自官方 (=10)');
+ok(GD.stackSize['railgun-ammo'] === 10, 'railgun-ammo 堆叠来自官方 (=10)');
+ok(GD.names['rocket-turret'] && GD.names['rocket-turret'].en === 'Rocket turret', 'rocket-turret 官方命名已收录 (Rocket turret)');
+ok(GD.names['railgun-turret'] && GD.names['railgun-turret'].en === 'Railgun turret', 'railgun-turret 官方命名已收录 (Railgun turret)');
+console.log('\n【火箭炮塔 / 磁轨炮塔设备数据（官方）】');
+ok(GD.footprint['rocket-turret'] && GD.footprint['rocket-turret'].w === 3 && GD.footprint['rocket-turret'].h === 3, 'rocket-turret 占地 3×3（官方 selection_box ±1.5）');
+ok(GD.footprint['railgun-turret'] && GD.footprint['railgun-turret'].w === 3 && GD.footprint['railgun-turret'].h === 5, 'railgun-turret 占地 3×5（官方 selection_box ±1.5×±2.5）');
+ok(GD.buildingHp['rocket-turret'] === 1500, 'rocket-turret 血量=1500（官方 max_health）');
+ok(GD.buildingHp['railgun-turret'] === 4000, 'railgun-turret 血量=4000（官方 max_health）');
+ok(GD.turret['rocket-turret'] && GD.turret['rocket-turret'].range === 36, 'rocket-turret 射程=36（官方 attack_parameters.range）');
+ok(GD.turret['rocket-turret'] && GD.turret['rocket-turret'].fireRate === 2, 'rocket-turret 冷却=2s（官方 cooldown 120tick）');
+ok(GD.turret['railgun-turret'] && GD.turret['railgun-turret'].range === 40, 'railgun-turret 射程=40（官方 attack_parameters.range）');
+ok(GD.ammoDamage['railgun-ammo'] === 10000, 'railgun-ammo 伤害=官方 amount 10000');
+console.log('\n【火箭炮塔 / 磁轨炮塔配方与设备归属】');
+ok(!!RP['rocket-turret'], 'rocket-turret 配方已注册');
+ok(!!RP['railgun-turret'], 'railgun-turret 配方已注册');
+ok(!!RP['railgun-ammo'], 'railgun-ammo 配方已注册');
+ok(ctx.__recipeDevice('rocket-turret') === 'assembling-machine-1', 'rocket-turret → 组装机');
+ok(ctx.__recipeDevice('railgun-turret') === 'electromagnetic-plant', 'railgun-turret → 电磁工厂（超导体链）');
+for (const rid of ['rocket-turret', 'railgun-turret', 'railgun-ammo']) {
+  const rec = RP[rid];
+  const inpOk = Object.keys(rec.inp).every(k => k in IT);
+  const outOk = Object.keys(rec.out).every(k => k in IT);
+  ok(inpOk && outOk, '配方 ' + rid + ' 引用的物品均存在');
+}
+console.log('\n【科技门控（高级防御 advanced-defense）】');
+ok(!!TS['advanced-defense'], '「高级防御」科技已注册');
+ok(ctx.__itemTechReq('rocket-turret') === 'advanced-defense', 'rocket-turret 需「高级防御」科技');
+ok(ctx.__itemTechReq('railgun-turret') === 'advanced-defense', 'railgun-turret 需「高级防御」科技');
+ok(ctx.__itemTechReq('railgun-ammo') === 'advanced-defense', 'railgun-ammo 需「高级防御」科技');
+ok(TS['advanced-defense'].req && TS['advanced-defense'].req.indexOf('electromagnetics') >= 0 && TS['advanced-defense'].req.indexOf('metallurgy') >= 0, '「高级防御」科技前置含电磁学与冶金学');
+
+
+process.exit(fail === 0 ? 0 : 1);

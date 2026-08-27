@@ -278,6 +278,10 @@ class Inserter extends Entity {
         return false;  // 创造箱：只产不收
       case 'gun-turret':
         return (item === 'firearm-magazine' || item === 'piercing-rounds-magazine') && t.ammoCount(item) < 40;
+      case 'rocket-turret':
+        return (item === 'rocket' || item === 'explosive-rocket') && t.ammoCount(item) < 10;
+      case 'railgun-turret':
+        return item === 'railgun-ammo' && t.ammo < 20;
       default:
         return false;
     }

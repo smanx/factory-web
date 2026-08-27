@@ -506,6 +506,18 @@ const turret = {};
     range: t.attack_parameters.range,
     fireRate: Math.round(t.attack_parameters.cooldown / 60 * 1000) / 1000,
   };
+  // 太空时代火箭炮塔（Space Age 官方 ammo-turret 原型）：射程 36、cooldown 120tick=2s、最小射程 15
+  const rt = raw['ammo-turret'] && raw['ammo-turret']['rocket-turret'];
+  if (rt && rt.attack_parameters) turret['rocket-turret'] = {
+    range: rt.attack_parameters.range,
+    fireRate: Math.round(rt.attack_parameters.cooldown / 60 * 1000) / 1000,
+  };
+  // 太空时代电磁轨道炮塔（Space Age 官方 ammo-turret 原型）：射程 40、cooldown 170tick≈2.833s、最小射程 3.5
+  const rg = raw['ammo-turret'] && raw['ammo-turret']['railgun-turret'];
+  if (rg && rg.attack_parameters) turret['railgun-turret'] = {
+    range: rg.attack_parameters.range,
+    fireRate: Math.round(rg.attack_parameters.cooldown / 60 * 1000) / 1000,
+  };
 }
 // 弹药伤害：遍历 ammo_type.action（2.0 结构可能是 {"1":{...}} 或直接对象），找 damage effect 的 amount。
 function findAmmoDamage(ammoProto) {
@@ -526,6 +538,7 @@ for (const [pid, oid] of Object.entries({
   'firearm-magazine': 'firearm-magazine',
   'piercing-rounds-magazine': 'piercing-rounds-magazine',
   'uranium-rounds-magazine': 'uranium-rounds-magazine',
+  'railgun-ammo': 'railgun-ammo',  // 太空时代电磁轨道炮弹药（官方 ammo 原型，伤害 amount=10000）
 })) {
   const proto = raw.ammo && raw.ammo[oid];
   if (proto) { const dmg = findAmmoDamage(proto); if (dmg !== null) ammoDamage[pid] = dmg; }
@@ -834,6 +847,8 @@ const FOOTPRINT_SOURCES = {
   'gun-turret': ['ammo-turret', 'gun-turret'],
   'laser-turret': ['electric-turret', 'laser-turret'],
   'tesla-turret': ['electric-turret', 'tesla-turret'],  // 太空时代特斯拉炮塔（Fulgora）：官方 selection_box
+  'rocket-turret': ['ammo-turret', 'rocket-turret'],  // 太空时代火箭炮塔：官方 selection_box ±1.5×±1.5 → 3×3
+  'railgun-turret': ['ammo-turret', 'railgun-turret'],  // 太空时代电磁轨道炮塔：官方 selection_box ±1.5×±2.5 → 3×5
   'flamethrower-turret': ['fluid-turret', 'flamethrower-turret'],
   'stone-wall': ['wall', 'stone-wall'],
   'gate': ['gate', 'gate'],

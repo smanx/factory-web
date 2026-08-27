@@ -47,6 +47,10 @@ const TECH_REQ = {
   'supercapacitor': 'fulgora',
   'tesla-turret': 'fulgora',
   'tesla-ammo': 'fulgora',
+  // ===== 太空时代高级防御（火箭炮塔 / 磁轨炮塔，统一由「高级防御」科技解锁）=====
+  'rocket-turret': 'advanced-defense',
+  'railgun-turret': 'advanced-defense',
+  'railgun-ammo': 'advanced-defense',
   // ===== 太空时代 Vulcanus 铸造/冶金材料链（统一由「冶金学」科技解锁）=====
   'tungsten-ore': 'metallurgy',
   'tungsten-plate': 'metallurgy',
@@ -168,12 +172,9 @@ const TECH_REQ = {
   'molten-copper': 'molten-metal',
   'scrap': 'scrap-recycling',
   'recycle-scrap': 'scrap-recycling',
-  // ===== 太空时代 终局防御（统一由「轨道炮防御」科技解锁） =====
+  // ===== 太空时代 终局防御（轨道炮/量子处理器由「轨道炮防御」科技解锁；炮塔由「高级防御」科技解锁） =====
   'quantum-processor': 'railgun-defense',
   'railgun': 'railgun-defense',
-  'railgun-ammo': 'railgun-defense',
-  'railgun-turret': 'railgun-defense',
-  'rocket-turret': 'railgun-defense',
   // ===== 太空时代 机械装甲（统一由「机械装甲」科技解锁） =====
   'mech-armor': 'mech-armor',
   'battery-mk3-equipment': 'mech-armor',
@@ -363,12 +364,9 @@ const RECIPE_TECH = {
   // 太空时代 废料回收（统一由「废料回收」科技解锁）
   'scrap': 'scrap-recycling',
   'recycle-scrap': 'scrap-recycling',
-  // 太空时代 终局防御（统一由「轨道炮防御」科技解锁）
+  // 太空时代 终局防御（轨道炮/量子处理器由「轨道炮防御」科技解锁；炮塔由「高级防御」科技解锁）
   'quantum-processor': 'railgun-defense',
   'railgun': 'railgun-defense',
-  'railgun-ammo': 'railgun-defense',
-  'railgun-turret': 'railgun-defense',
-  'rocket-turret': 'railgun-defense',
   // 太空时代 机械装甲（统一由「机械装甲」科技解锁）
   'mech-armor': 'mech-armor',
   'battery-mk3-equipment': 'mech-armor',

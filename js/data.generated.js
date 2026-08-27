@@ -182,6 +182,9 @@ const GAME_DATA = {
   "supercapacitor": 100,
   "tesla-turret": 10,
   "tesla-ammo": 100,
+  "rocket-turret": 10,
+  "railgun-turret": 10,
+  "railgun-ammo": 10,
   "tungsten-ore": 50,
   "tungsten-plate": 50,
   "tungsten-carbide": 50,
@@ -284,9 +287,6 @@ const GAME_DATA = {
   "toolbelt-equipment": 20,
   "mech-armor": 1,
   "railgun": 1,
-  "railgun-ammo": 10,
-  "railgun-turret": 10,
-  "rocket-turret": 10,
   "barrel": 10,
   "water-barrel": 10,
   "crude-oil-barrel": 10,
@@ -349,9 +349,9 @@ const GAME_DATA = {
   "gun-turret": 400,
   "laser-turret": 1000,
   "tesla-turret": 2000,
-  "railgun-turret": 4000,
-  "rocket-turret": 1500,
   "flamethrower-turret": 1400,
+  "rocket-turret": 1500,
+  "railgun-turret": 4000,
   "rocket-silo": 5000,
   "cargo-landing-pad": 1000,
   "cargo-bay": 1000,
@@ -3444,6 +3444,18 @@ const GAME_DATA = {
    "zh": "特斯拉弹药",
    "en": "Tesla ammo"
   },
+  "rocket-turret": {
+   "zh": "火箭炮塔",
+   "en": "Rocket turret"
+  },
+  "railgun-turret": {
+   "zh": "磁轨炮塔",
+   "en": "Railgun turret"
+  },
+  "railgun-ammo": {
+   "zh": "磁轨炮弹",
+   "en": "Railgun ammo"
+  },
   "tungsten-ore": {
    "zh": "钨矿",
    "en": "Tungsten ore"
@@ -3864,18 +3876,6 @@ const GAME_DATA = {
    "zh": "磁轨炮",
    "en": "Railgun"
   },
-  "railgun-ammo": {
-   "zh": "磁轨炮弹",
-   "en": "Railgun ammo"
-  },
-  "railgun-turret": {
-   "zh": "磁轨炮塔",
-   "en": "Railgun turret"
-  },
-  "rocket-turret": {
-   "zh": "火箭炮塔",
-   "en": "Rocket turret"
-  },
   "barrel": {
    "zh": "空桶",
    "en": "Barrel"
@@ -4026,12 +4026,21 @@ const GAME_DATA = {
   "tesla-turret": {
    "range": 30,
    "fireRate": 2
+  },
+  "rocket-turret": {
+   "range": 36,
+   "fireRate": 2
+  },
+  "railgun-turret": {
+   "range": 40,
+   "fireRate": 2.833
   }
  },
  "ammoDamage": {
   "firearm-magazine": 5,
   "piercing-rounds-magazine": 8,
-  "uranium-rounds-magazine": 24
+  "uranium-rounds-magazine": 24,
+  "railgun-ammo": 10000
  },
  "radar": {
   "range": 14,
@@ -4323,6 +4332,14 @@ const GAME_DATA = {
    "w": 4,
    "h": 4
   },
+  "rocket-turret": {
+   "w": 3,
+   "h": 3
+  },
+  "railgun-turret": {
+   "w": 3,
+   "h": 5
+  },
   "flamethrower-turret": {
    "w": 2,
    "h": 3
@@ -4406,14 +4423,6 @@ const GAME_DATA = {
   "cryogenic-plant": {
    "w": 5,
    "h": 5
-  },
-  "railgun-turret": {
-   "w": 3,
-   "h": 5
-  },
-  "rocket-turret": {
-   "w": 3,
-   "h": 3
   },
   "agricultural-tower": {
    "w": 3,

@@ -155,13 +155,14 @@ function _altLabelKey(e) {
     const inp = e.inp || {};
     return 'rs:' + (e.parts || 0) + ':' + (inp.satellite || 0) + ':' + (e.launching ? 1 : 0);
   }
-  if (t === 'gun-turret' || t === 'artillery-turret') {
+  if (t === 'gun-turret' || t === 'artillery-turret' || t === 'rocket-turret') {
     // 避免 JSON.stringify 每帧分配；用弹药类型数+总数做轻量指纹
     let n = 0, types = 0;
     if (e.ammo) { for (const k in e.ammo) if (e.ammo[k] > 0) { n += e.ammo[k]; types++; } }
     if (t === 'artillery-turret') n = (e.shells || 0);
     return 'ammo:' + n + ':' + types;
   }
+  if (t === 'railgun-turret') return 'ammo:' + (e.ammo || 0) + ':1';
   if (e.slots) {
     // 箱/车厢内容标签：拼接每槽物品+数量
     let k = 'sl:';
@@ -209,11 +210,12 @@ function _altLabelIcons(e) {
     if ((e.parts || 0) > 0) ids.push('rocket-part');
     return ids;
   }
-  if (t === 'gun-turret') {
+  if (t === 'gun-turret' || t === 'rocket-turret') {
     const ids = [];
     if (e.ammo) for (const k in e.ammo) if (e.ammo[k] > 0 && ITEMS[k] && ids.indexOf(k) < 0) ids.push(k);
     return ids.slice(0, 3);
   }
+  if (t === 'railgun-turret') return (e.ammo || 0) > 0 ? ['railgun-ammo'] : [];
   if (t === 'artillery-turret') {
     return (e.shells || 0) > 0 ? ['artillery-shell'] : [];
   }

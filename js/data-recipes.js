@@ -223,6 +223,12 @@ const RECIPES = {
   'tesla-ammo': { time: 30, inp: { 'supercapacitor': 1, 'plastic-bar': 1 }, out: { 'tesla-ammo': 1 } },
   // 特斯拉炮塔：超级电容 + 处理器 + 超导体 → 特斯拉炮塔（官方 teslagun+10超电容+10处理器+50超导，30s，此处省去 teslagun 枪）
   'tesla-turret': { time: 30, inp: { 'supercapacitor': 10, 'processing-unit': 10, 'superconductor': 50 }, out: { 'tesla-turret': 1 } },
+  // 火箭炮塔：4 火箭筒 + 4 处理器 + 20 碳纤维 + 20 钢板 + 20 齿轮 → 火箭炮塔（官方 rocket-turret 10s）
+  'rocket-turret': { time: 10, inp: { 'rocket-launcher': 4, 'processing-unit': 4, 'carbon-fiber': 20, 'steel-plate': 20, 'iron-gear-wheel': 20 }, out: { 'rocket-turret': 1 } },
+  // 电磁轨道炮弹药：钢板 + 铜线 + 炸药 → 电磁轨道炮弹药（官方 railgun-ammo 25s，数据单源）
+  'railgun-ammo': { time: 25, inp: { 'steel-plate': 5, 'copper-cable': 10, 'explosives': 2 }, out: { 'railgun-ammo': 1 } },
+  // 电磁轨道炮塔：超导体 + 碳纤维 + 钨板 + 处理器 → 电磁轨道炮塔（官方 railgun-turret 需 100量子处理器+30钨板+50超导+20碳纤维，此处适配为超导体代量子处理器，10s，由电磁工厂制得）
+  'railgun-turret': { time: 10, inp: { 'superconductor': 50, 'tungsten-plate': 30, 'carbon-fiber': 20, 'processing-unit': 50 }, out: { 'railgun-turret': 1 } },
   // ===== 太空时代 Vulcanus 铸造/钨材料链（官方配方依赖熔融铁/火山熔岩等星球专属资源，此处适配基础资源）=====
   // 钨矿石：石头 + 煤 → 钨矿石×2（官方 tungsten-ore 为 Vulcanus 天然矿脉，此处适配为铸造厂从基础矿石还原，12s）
   'tungsten-ore': { time: 12, inp: { 'stone': 4, 'coal': 2 }, out: { 'tungsten-ore': 2 } },
@@ -305,12 +311,6 @@ const RECIPES = {
   'quantum-processor': { time: 20, inp: { 'superconductor': 10, 'carbon-fiber': 10, 'processing-unit': 10 }, out: { 'quantum-processor': 1 } },
   // 轨道炮：钬板 + 超导体 + 量子处理器 → 轨道炮（官方 railgun 30s）
   'railgun': { time: 30, inp: { 'holmium-plate': 10, 'superconductor': 20, 'quantum-processor': 5 }, out: { 'railgun': 1 } },
-  // 轨道炮弹：钬板 + 超导体 → 轨道炮弹（官方 railgun-ammo 10s）
-  'railgun-ammo': { time: 10, inp: { 'holmium-plate': 4, 'superconductor': 2 }, out: { 'railgun-ammo': 10 } },
-  // 轨道炮塔：轨道炮 + 超级电容 + 量子处理器 → 轨道炮塔（官方 railgun-turret 30s）
-  'railgun-turret': { time: 30, inp: { 'railgun': 1, 'supercapacitor': 10, 'quantum-processor': 5 }, out: { 'railgun-turret': 1 } },
-  // 火箭炮塔：钢板 + 火箭弹 + 处理器 → 火箭炮塔（官方 rocket-turret 30s）
-  'rocket-turret': { time: 30, inp: { 'steel-plate': 50, 'rocket': 10, 'processing-unit': 10 }, out: { 'rocket-turret': 1 } },
   'ice-melting': { time: 0.5, inp: { 'ice': 1 }, out: { 'water': 100 } },
   // 硫酸：硫磺 + 水 + 铁板 → 硫酸（原版 1s，数量简化）
   // 硫酸：硫磺 + 水 + 铁板 → 硫酸（原版 1s，数量简化）
@@ -491,7 +491,7 @@ const DEVICE_NAMES = {
   'cryogenic-plant': '低温工厂'
 };
 // 电磁工厂专属配方（太空时代电磁产品）：超导体 / 电磁科研包 / 电磁工厂本体
-const ELECTRO_RECIPES = ['superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant', 'promethium-science-pack', 'holmium-ore', 'holmium-plate', 'supercapacitor', 'tesla-ammo', 'tesla-turret'];
+const ELECTRO_RECIPES = ['superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant', 'promethium-science-pack', 'holmium-ore', 'holmium-plate', 'supercapacitor', 'tesla-ammo', 'tesla-turret', 'railgun-turret'];
 function isElectroRecipe(id) { return ELECTRO_RECIPES.indexOf(id) >= 0; }
 // 生化炉专属配方（太空时代生物产品）：果泥 / 生物流 / 营养素 / 生物硫磺 / 农业科研包 / 生化炉本体
 const BIOCHAMBER_RECIPES = ['yumako-mash', 'bioflux', 'nutrients-from-bioflux', 'biosulfur', 'agricultural-science-pack', 'biochamber'];

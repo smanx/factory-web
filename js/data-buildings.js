@@ -59,9 +59,9 @@ const BUILD_DEFS = {
   'gun-turret':         { w: 2, h: 2, solid: true },
   'laser-turret':       { w: 2, h: 2, solid: true },
   'tesla-turret':       { w: 4, h: 4, solid: true },  // 特斯拉炮塔（官方 electric-turret selection_box ±2 → 4×4，由 GAME_DATA.footprint 桥接）
-  'railgun-turret':     { w: 5, h: 5, solid: true },  // 轨道炮塔（官方 selection_box ±2.5 → 5×5，由 GAME_DATA.footprint 桥接）
-  'rocket-turret':      { w: 3, h: 3, solid: true },  // 火箭炮塔（官方 selection_box ±1.5 → 3×3，由 GAME_DATA.footprint 桥接）
   'flamethrower-turret':{ w: 2, h: 3, solid: true },  // 官方 collision_box ±0.72×±1.2 → 2×3
+  'rocket-turret':      { w: 3, h: 3, solid: true },  // 火箭炮塔（官方 ammo-turret selection_box ±1.5×±1.5 → 3×3，由 GAME_DATA.footprint 桥接）
+  'railgun-turret':     { w: 3, h: 5, solid: true },  // 电磁轨道炮塔（官方 ammo-turret selection_box ±1.5×±2.5 → 3×5，由 GAME_DATA.footprint 桥接）
   'rocket-silo':        { w: 9, h: 9, solid: true },  // 火箭发射井（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±4.5 → 9×9，对齐《异星工厂》2.0 巨型发射井）
   'cargo-landing-pad':  { w: 8, h: 8, solid: true },  // 物流接驳站（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±4 → 8×8）
   'cargo-bay':          { w: 4, h: 4, solid: true },  // 物流扩展舱（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±2 → 4×4）
@@ -161,7 +161,7 @@ const BUILDING_HP = {
   'solar-panel': 200, 'accumulator': 150,
   // 炮塔（官方 gun 400 / laser 1000 / flamethrower 1400 / artillery 2000）
   'gun-turret': 400, 'laser-turret': 1000, 'tesla-turret': 2000, 'flamethrower-turret': 1400, 'artillery-turret': 2000,
-  'railgun-turret': 3000, 'rocket-turret': 1500,  // 轨道炮塔/火箭炮塔（官方 max_health，由 GAME_DATA 桥接）
+  'rocket-turret': 1500, 'railgun-turret': 4000,  // 火箭炮塔官方 max_health 1500 / 电磁轨道炮塔官方 max_health 4000（由 GAME_DATA.buildingHp 桥接）
   'stone-wall': 350, 'gate': 350,
   // 石化与火箭（官方 oil-refinery 350 / chemical-plant 300 / rocket-silo 5000 / radar 250）
   'oil-refinery': 350, 'chemical-plant': 300, 'rocket-silo': 5000, 'radar': 250,

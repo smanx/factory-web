@@ -12,6 +12,7 @@ const STACK_SIZES = {
   'rocket': 1, 'rocket-part': 100, 'satellite': 1, 'nuclear-reactor': 10, 'rocket-silo': 1, 'cargo-landing-pad': 1, 'cargo-bay': 10, 'landing-pad-unloading-bay': 10,  // nuclear-reactor 官方 10；cargo-landing-pad 官方 stack=1；cargo-bay/landing-pad-unloading-bay 官方 stack=10
   'recycler': 20,  // 回收机官方 stack=20（由 GAME_DATA 桥接）
   'tesla-turret': 10,  // 特斯拉炮塔官方 stack=10（由 GAME_DATA 桥接）
+  'rocket-turret': 10, 'railgun-turret': 10, 'railgun-ammo': 10,  // 火箭/电磁轨道炮塔官方 stack=10；电磁轨道炮弹药官方 stack=10（由 GAME_DATA 桥接）
   'fusion-reactor': 1, 'fusion-generator': 5, 'fusion-power-cell': 50,  // Aquilo 聚变发电链官方 stack（fusion-reactor=1、fusion-generator=5、fusion-power-cell=50，由 GAME_DATA 桥接）
   'crusher': 10,  // 破碎机官方 stack=10（由 GAME_DATA 桥接）
   'metallic-asteroid-chunk': 1, 'carbonic-asteroid-chunk': 1, 'oxide-asteroid-chunk': 1, 'promethium-asteroid-chunk': 1,  // 小行星碎块官方 stack=1
@@ -41,9 +42,7 @@ const STACK_SIZES = {
   'cryogenic-plant': 20,  // 低温工厂官方 stack=20
   'quantum-processor': 100,  // 量子处理器官方 stack=100
   'scrap': 50,  // 废料官方 stack=50
-  'railgun-ammo': 100,  // 轨道炮弹官方 stack=100
   'railgun': 1, 'mech-armor': 1,  // 轨道炮/机械装甲官方 stack=1
-  'railgun-turret': 10, 'rocket-turret': 10,  // 轨道炮塔/火箭炮塔官方 stack=10
   'battery-mk3-equipment': 20, 'fission-reactor-equipment': 20, 'toolbelt-equipment': 20,  // 个人装备官方 stack=20
   // 基础建材与管线：堆叠 100
   'concrete': 100, 'refined-concrete': 100, 'hazard-concrete': 100, 'refined-hazard-concrete': 100, 'stone-path': 100, 'landfill': 100,
@@ -258,6 +257,9 @@ const ITEMS = {
   'supercapacitor': { name: '超级电容', color: '#d8d04a', mark: 'Scap', desc: '太空时代高能储电器件，由钬板+超导体+电池制得，是特斯拉炮塔/特斯拉弹药与高级电力设备的核心元件（对齐《异星工厂》Space Age Supercapacitor，堆叠 100）' },
   'tesla-turret': { name: '特斯拉炮塔', color: '#5a8ae0', mark: 'Tt', desc: '太空时代高级电系炮塔（4×4，吃电力）：发射可连锁跳转的电弧攻击射程内（30 格）多个敌人，无需弹药，伤害随连锁次数递减（对齐《异星工厂》Space Age Tesla turret，数据来自 GAME_DATA）' },
   'tesla-ammo': { name: '特斯拉弹药', color: '#6a9ae8', mark: 'Ta', desc: '太空时代特斯拉电弧弹药，由超级电容+塑料制得，用于特斯拉炮塔/特斯拉电枪（对齐《异星工厂》Space Age Tesla ammo，堆叠 100）' },
+  'rocket-turret': { name: '火箭炮塔', color: '#8a6a4a', mark: 'Rk', desc: '太空时代高级防御炮塔（3×3，占用弹药）：发射火箭弹对射程内（36 格，最小 15 格）敌人造成范围爆炸伤害，弹幕远射程、伤害高，是基地防线中坚（对齐《异星工厂》Space Age Rocket turret，数据来自 GAME_DATA）' },
+  'railgun-turret': { name: '磁轨炮塔', color: '#4a8ac8', mark: 'Rg', desc: '太空时代终极磁轨炮塔（3×5，吃电力，官方 max_health 4000）：发射磁轨炮弹以超高速直线穿透，对射程内（40 格）敌人造成毁灭性单体伤害，射程最远、火力最强（对齐《异星工厂》Space Age Railgun turret，数据来自 GAME_DATA）' },
+  'railgun-ammo': { name: '磁轨炮弹', color: '#3a6ab8', mark: 'Ra', desc: '太空时代磁轨炮的专用弹药，由钢板+铜线+炸药制得（对齐《异星工厂》Space Age Railgun ammo，堆叠 10）' },
   // ===== 太空时代 Vulcanus 铸造/钨材料链（数据来自 factorio-data 官方，见 GAME_DATA）=====
   'tungsten-ore': { name: '钨矿石', color: '#6a6a72', mark: 'W', desc: '太空时代 Vulcanus 星球金属矿石，须用铸造厂冶炼成钨板（对齐《异星工厂》Space Age Tungsten ore，堆叠 50）' },
   'tungsten-plate': { name: '钨板', color: '#9a9aa8', mark: 'Wp', desc: '太空时代高密度金属板，由钨矿石在铸造厂熔炼制得，是高级装备与超速带的核心原料（对齐《异星工厂》Space Age Tungsten plate）' },
@@ -391,9 +393,6 @@ const ITEMS = {
   'mech-armor': { name: '机械装甲', color: '#5a6a8a', mark: '机', desc: '太空时代终极装甲：拥有最大装备网格，可安装最多强力装备件（官方 Mech armor，数据来自 GAME_DATA）' },
   // ===== 太空时代 终局防御（数据来自 factorio-data 官方，见 GAME_DATA）=====
   'railgun': { name: '轨道炮', color: '#8a8ad0', desc: '太空时代终极单兵武器（官方 Railgun）：发射轨道炮弹，对线性路径上多个敌人造成巨额伤害（对齐《异星工厂》Space Age Railgun）' },
-  'railgun-ammo': { name: '轨道炮弹', color: '#a8a0d0', mark: '弹', desc: '太空时代轨道炮专用弹药（官方 Railgun ammo，堆叠 100）：由钬板+超导体制得，威力巨大（对齐《异星工厂》Space Age Railgun ammo）' },
-  'railgun-turret': { name: '轨道炮塔', color: '#7a7ac8', desc: '太空时代终极防御炮塔（官方 Railgun turret）：发射轨道炮弹攻击线性路径上的敌人，射程远、伤害极高（对齐《异星工厂》Space Age Railgun turret，数据来自 GAME_DATA）' },
-  'rocket-turret': { name: '火箭炮塔', color: '#c8a04a', desc: '太空时代高级防御炮塔（官方 Rocket turret）：发射火箭弹攻击敌人，射程远、可拦截（对齐《异星工厂》Space Age Rocket turret，数据来自 GAME_DATA）' },
   // ===== 流体桶装系统（对齐《异星工厂》Barrel system） =====
   'barrel': { name: '空桶', color: '#9aa0aa', mark: '桶', desc: '可盛装流体的金属桶（1×1）。把空桶放进组装机并接好流体管道，选桶装配方即可把流体灌入桶中；装满的桶可用传送带/机械臂/物流机器人/火车运输，实现流体走物流网络；再把满桶放回组装机选倒空配方，即可把流体倒回管道' },
   'water-barrel':          { name: '桶装水',   color: '#4a90d9', mark: '桶', desc: '盛满水的桶，可经物流网络运输，倒空后获得空桶' },

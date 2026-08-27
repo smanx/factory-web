@@ -407,7 +407,7 @@ function findEnemyBuildingTarget(en) {
   const gx = Math.floor(en.x / TILE), gy = Math.floor(en.y / TILE);
   const r = 2;   // 扫描半径（格）
   let best = null, bestD = Infinity, bestDef = 0;
-  const defPriority = { 'stone-wall': 3, 'gate': 3, 'gun-turret': 3, 'laser-turret': 3, 'tesla-turret': 3, 'flamethrower-turret': 3, 'artillery-turret': 3, 'land-mine': 3 };
+  const defPriority = { 'stone-wall': 3, 'gate': 3, 'gun-turret': 3, 'laser-turret': 3, 'tesla-turret': 3, 'flamethrower-turret': 3, 'artillery-turret': 3, 'rocket-turret': 3, 'railgun-turret': 3, 'land-mine': 3 };
   const ex = en.x / TILE, ey = en.y / TILE;
   // 用桶索引遍历附近实体，避免对空地形逐格 entAt（P2 优化）
   forEachEntInBuckets(bucketKeysIn(gx - r, gy - r, gx + r, gy + r), e => {

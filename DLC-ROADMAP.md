@@ -432,6 +432,29 @@
 > **校验**：verify-dlc 新增低温/熔融/废料/终局防御/机械装甲校验（共 14+6+6+6+9=41 项），
 > 全量 18 个校验脚本通过，`node build.js` 构建通过。 (feat: 接入 Aquilo 低温学链 + 熔融金属/废料回收/终局防御/机械装甲 DLC 内容)
 
+
+### 阶段四.11：太空时代高级防御（Rocket turret + Railgun turret，本迭代新增）
+- [x] **火箭炮塔 / 磁轨炮塔（Rocket turret / Railgun turret）**：太空时代终局高级防御炮塔
+
+> 已落地说明（本迭代增量）：
+> - 物品：`rocket-turret`（火箭炮塔，堆叠 10）/ `railgun-turret`（磁轨炮塔，堆叠 10）/
+>   `railgun-ammo`（磁轨炮弹，堆叠 10），堆叠 / 命名 / 血量 / 占地 / 射程 / 冷却 / 弹药伤害全部来自
+>   GAME_DATA（factorio-data 官方：Rocket turret / Railgun turret / Railgun ammo；
+>   rocket-turret 3×3（selection_box ±1.5）、max_health 1500、射程 36、冷却 120tick=2s、最小射程 15；
+>   railgun-turret 3×5（selection_box ±1.5×±2.5）、max_health 4000、射程 40、冷却 170tick≈2.833s、最小射程 3.5；
+>   railgun-ammo 伤害 amount=10000），未单独维护数值表。
+> - 生成脚本：turret 表新增 rocket-turret / railgun-turret（ammo-turret 官方原型 selection_box/attack_parameters 桥接），
+>   ammoDamage 新增 railgun-ammo（官方 amount=10000），FOOTPRINT_SOURCES 新增两炮塔官方 selection_box。
+> - 玩法：火箭炮塔（3×3）占用弹药，发射火箭弹对命中点造成范围爆炸伤害（火箭弹/爆炸火箭弹伤害与范围递增，
+>   复用现有火箭弹体系）；磁轨炮塔（3×5，吃电力，官方 max_health 4000）发射磁轨炮弹沿射向直线穿透命中目标，
+>   单发高伤害，为射程最远、火力最强的终局单体防御。两者均接入电路网络（可按信号启停）、可由机械臂自动供弹。
+> - 配方（官方依赖量子处理器/氟酮冷却液=Promethium/Aquilo 行星专属资源，此处适配为基础资源）：
+>   火箭炮塔=4火箭筒+4处理器+20碳纤维+20钢板+20齿轮（10s）；磁轨炮弹=5钢板+10铜线+2炸药（25s）；
+>   磁轨炮塔=50超导体+30钨板+20碳纤维+50处理器（10s，官方数值，由电磁工厂制得），配方键保留官方名，数据单源。
+> - 科技：新增「高级防御」科技（advanced-defense，前置电磁学+冶金学，官方 Space Age 高级炮塔科技），
+>   解锁火箭炮塔/磁轨炮塔/磁轨炮弹；作为太空时代终局防御科技链。
+> - 校验：verify-dlc 新增高级防御校验（25 项），全量 18 个校验脚本通过，构建通过。
+
 ### 阶段五：数值/体验精修
 
 - [x] 各 DLC 建筑占地/功耗/速度逐一桥接 data.generated.js
