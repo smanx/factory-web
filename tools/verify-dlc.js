@@ -520,4 +520,22 @@ ok(Object.keys(RP['cargo-landing-pad'].inp).every(k => k in IT), 'cargo-landing-
 // 科技门控：由火箭科技解锁（与火箭发射井同科技）
 ok(ctx.__itemTechReq('cargo-landing-pad') === 'rocket-science', '物流接驳站需「火箭技术」科技');
 
+// ===== 物流扩展舱（cargo-bay，官方 base 建筑：Cargo bay）数据校验 =====
+console.log('\n【物流扩展舱 cargo-bay 数据】');
+// 物品/堆叠/命名来自官方
+ok(!!IT['cargo-bay'], 'cargo-bay 物品已注册');
+ok(GD.stackSize['cargo-bay'] === 10, 'cargo-bay 堆叠来自官方 (=10)');
+ok(GD.names['cargo-bay'] && GD.names['cargo-bay'].en === 'Cargo bay', 'cargo-bay 官方命名已收录 (Cargo bay)');
+// 占地/血量/扩展槽位来自官方
+ok(GD.footprint['cargo-bay'] && GD.footprint['cargo-bay'].w === 4 && GD.footprint['cargo-bay'].h === 4, '物流扩展舱 占地 4×4（官方 selection_box ±2）');
+ok(GD.buildingHp['cargo-bay'] === 1000, '物流扩展舱 血量=1000（官方 max_health）');
+ok(GD.cargoBay && GD.cargoBay.inventorySizeBonus === 20, '物流扩展舱 扩展槽位 20（官方 inventory_size_bonus）');
+// 配方（官方：20钢板+20低密度结构+5处理器，10s）
+ok(!!RP['cargo-bay'], 'cargo-bay 配方已注册');
+ok(RP['cargo-bay'].inp['steel-plate'] === 20 && RP['cargo-bay'].inp['low-density-structure'] === 20 && RP['cargo-bay'].inp['processing-unit'] === 5, '扩展舱配方=20钢板+20低密度结构+5处理器（官方）');
+ok(RP['cargo-bay'].out['cargo-bay'] === 1 && RP['cargo-bay'].time === 10, '扩展舱产出 1、10s（官方）');
+ok(Object.keys(RP['cargo-bay'].inp).every(k => k in IT), 'cargo-bay 配方引用物品均存在');
+// 科技门控：由火箭科技解锁
+ok(ctx.__itemTechReq('cargo-bay') === 'rocket-science', '物流扩展舱需「火箭技术」科技');
+
 process.exit(fail === 0 ? 0 : 1);

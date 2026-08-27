@@ -60,6 +60,7 @@ const BUILD_DEFS = {
   'flamethrower-turret':{ w: 2, h: 3, solid: true },  // 官方 collision_box ±0.72×±1.2 → 2×3
   'rocket-silo':        { w: 5, h: 5, solid: true },
   'cargo-landing-pad':  { w: 8, h: 8, solid: true },  // 物流接驳站（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±4 → 8×8）
+  'cargo-bay':          { w: 4, h: 4, solid: true },  // 物流扩展舱（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±2 → 4×4）
   'radar':              { w: 3, h: 3, solid: true },
   'stone-wall':         { w: 1, h: 1, solid: true },
   'gate':               { w: 1, h: 1, solid: true },

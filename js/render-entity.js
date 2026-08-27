@@ -292,6 +292,7 @@ function drawGhost(ctx) {
   const type = selItem();
   if (!type) return;
   const def = BUILD_DEFS[type];
+  if (!def) return; // 材料等不可建造物品不显示放置幽灵
   let ew = def.w, eh = def.h;
   if (def.rotSwap && (G.ghostDir % 2 === 1)) { ew = def.h; eh = def.w; }
   // 不允许覆盖建造：目标格已有实体时判定为红色不可放置，与建造行为一致。

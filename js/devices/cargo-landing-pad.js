@@ -19,12 +19,29 @@ class CargoLandingPad extends CircuitNode {
     this.cargoIn = 0; // 累计接收的火箭货物量（显示用）
   }
   // ===== 存储：80 槽大容量（官方 inventory_size=80）=====
+  // 相邻物流扩展舱（cargo-bay）可为接驳站提供额外槽位（官方 inventory_size_bonus=20/舱）。
+  slotCap() {
+    let bonus = 0;
+    if (typeof G !== 'undefined' && G.ents) {
+      for (const k in G.ents) {
+        const e = G.ents[k];
+        if (!e || e.type !== 'cargo-bay' || !e.w || !e.h) continue;
+        // 相邻判定：扩展舱与接驳站矩形相邻（不重叠且任一边接触）
+        const cx1 = e.x, cy1 = e.y, cx2 = e.x + e.w, cy2 = e.y + e.h;
+        const px1 = this.x, py1 = this.y, px2 = this.x + this.w, py2 = this.y + this.h;
+        const touch = (cx1 === px2 || cx2 === px1 || cy1 === py2 || cy2 === py1) &&
+          (cx2 > px1 && cx1 < px2) && (cy2 > py1 && cy1 < py2);
+        if (touch) bonus += GAME_DATA.cargoBay?.inventorySizeBonus ?? 20;
+      }
+    }
+    return CARGO_PAD_SLOTS + bonus;
+  }
   giveItem(item) {
     const cap = this.limits[item];
     if (cap !== undefined && this.countOf(item) >= cap) return false;
     for (const s of this.slots)
       if (s && s.item === item && s.count < stackSize(item)) { s.count++; return true; }
-    if (this.slots.length >= CARGO_PAD_SLOTS) return false;
+    if (this.slots.length >= this.slotCap()) return false;
     this.slots.push({ item, count: 1 });
     return true;
   }
@@ -132,12 +149,13 @@ function cargoLandingPadPanelHtml(e) {
   for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
   let h = row('货物', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
   h += row('雷达', '扫描范围 ' + CARGO_PAD_RADAR + ' 格', 'radar');
+  h += row('存储', e.slotCap() + ' 格', 'slots');
   h += row('累计接收', (e.cargoIn || 0) + ' 件', 'cargo');
   h += '<div class="status"></div>';
   let total = 0;
   for (const k in agg) total += agg[k];
   if (total > 0) h += '<button data-action="takeout" id="btn-clp-takeout">取出全部 (' + total + ')</button>';
-  h += '<div class="dim">物流接驳站：火箭发射后货物降落于此（8×8，80 格存储）。可接入电路网络输出货物信号。</div>';
+  h += '<div class="dim">物流接驳站：火箭发射后货物降落于此（8×8，' + e.slotCap() + ' 格存储）。可接入电路网络输出货物信号。</div>';
   return h;
 }
 function cargoLandingPadPanelLive(e, api) {
@@ -147,6 +165,7 @@ function cargoLandingPadPanelLive(e, api) {
   for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
   api.set('contents', total ? countStr(agg) : dimSpan('空'));
   api.set('radar', '扫描范围 ' + CARGO_PAD_RADAR + ' 格');
+  api.set('slots', e.slotCap() + ' 格');
   api.set('cargo', (e.cargoIn || 0) + ' 件');
   api.toggle('#btn-clp-takeout', total > 0, '取出全部 (' + total + ')');
   api.status(total ? ('货物：' + k + ' 种，共 ' + total + ' 件') : '空接驳站', total ? 'ok' : 'ok');
