@@ -203,7 +203,7 @@ function captureBlueprint() {
   }
   if (!ents.length) { toast('框选区域没有可复制的建筑'); return; }
   // 蓝图含地面铺装（混凝土/石砖路/填海料等，对齐《异星工厂》：蓝图会记录地砖）
-  const TILE_IDS = { '2': 'concrete', '3': 'stone-path', '5': 'refined-concrete', '6': 'hazard-concrete', '8': 'refined-hazard-concrete' };
+  const TILE_IDS = { '2': 'concrete', '3': 'stone-path', '5': 'refined-concrete', '6': 'hazard-concrete', '8': 'refined-hazard-concrete', '12': 'foundation', '13': 'ice-platform' };
   const tiles = [];
   for (let ty = r.y0; ty <= r.y1; ty++) {
     for (let tx = r.x0; tx <= r.x1; tx++) {

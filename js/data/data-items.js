@@ -55,7 +55,9 @@ const STACK_SIZES = {
   'quality-module': 50, 'quality-module-2': 50, 'quality-module-3': 50,
   // 雅玛果/果仁土壤（太空时代 Gleba，官方 stack=100）
   'artificial-yumako-soil': 100, 'overgrowth-yumako-soil': 100,
-  'artificial-jellynut-soil': 100, 'overgrowth-jellynut-soil': 100
+  'artificial-jellynut-soil': 100, 'overgrowth-jellynut-soil': 100,
+  // 太空时代地面瓦片（foundation 官方 stack=50 / ice-platform 官方 stack=100）
+  'foundation': 50, 'ice-platform': 100
 };
 // 返回某物品的最大堆叠数（未特别指定则默认 100，对齐原版多数物品）
 function stackSize(id) {
@@ -372,6 +374,9 @@ const ITEMS = {
   'refined-hazard-concrete': { name: '精炼警示混凝土', color: '#c8b020', desc: '地面装饰：精炼混凝土底配黑黄警示条纹，行走加速更快（对齐《异星工厂》Refined hazard concrete）' },
   'stone-path': { name: '石砖路', color: '#a8a09a', desc: '地面装饰：铺设在地面上美观且加速行走（由石砖合成）' },
   'landfill': { name: '填海料', color: '#8a6a3a', desc: '地形改造：把水面填成可建造的陆地（由石头+土合成）' },
+  // ===== 太空时代地面瓦片（foundation / ice-platform，对齐《异星工厂》Space Age 地形）=====
+  'foundation': { name: '地基', color: '#7a7a86', mark: 'FD', desc: '太空时代地面铺设（官方 Foundation）：耐高温耐腐蚀的合金地基板，可铺在水面/熔岩上形成可建造硬地，行走加速。由钨板+锂板+碳纤维+石头+氟酮冷制成（堆叠 50）' },
+  'ice-platform': { name: '冰面平台', color: '#9ad4e8', mark: 'IC', desc: '太空时代地面铺设（官方 Ice platform）：玄冥星耐低温冰面平台，铺在冰原上形成可建造硬地，行走加速。由氨水+冰制成（堆叠 100）' },
   // ===== 模块化护甲 + 个人装备（对齐《异星工厂》Modular armor & Equipment grid）=====
   'modular-armor':  { name: '模块化护甲', color: '#6a8a9a', desc: '基础模块化护甲：减伤 30%，自带 5×5 装备网格，可安装太阳能板/电池/外骨骼等个人装备' },
   'power-armor':    { name: '强力装甲', color: '#5a7aa8', desc: '高级模块化护甲：减伤 45%，自带 7×7 装备网格，更多插槽安装个人装备' },

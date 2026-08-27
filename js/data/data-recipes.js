@@ -437,6 +437,9 @@ const RECIPES = {
   'refined-hazard-concrete':{ time: 0.25, inp: { 'refined-concrete': 10 }, out: { 'refined-hazard-concrete': 10 } },
   'stone-path':        { time: 0.5, inp: { 'stone-brick': 2 },                                      out: { 'stone-path': 4 } },
   'landfill':        { time: 0.5, inp: { 'stone': 50 }, out: { 'landfill': 1 } },
+  // ===== 太空时代地面瓦片（foundation / ice-platform，对齐官方配方，30s）=====
+  'foundation':    { time: 30, inp: { 'tungsten-plate': 4, 'lithium-plate': 4, 'carbon-fiber': 4, 'stone': 20, 'fluoroketone-cold': 20 }, out: { 'foundation': 1 } },
+  'ice-platform':  { time: 30, inp: { 'ammonia': 400, 'ice': 50 }, out: { 'ice-platform': 1 } },
   // ===== 模块化护甲（对齐《异星工厂》Modular armor）=====
   'modular-armor':        { time: 15, inp: { 'advanced-circuit': 30, 'steel-plate': 50 }, out: { 'modular-armor': 1 } },
   'power-armor':        { time: 20, inp: { 'electric-engine-unit': 20, 'processing-unit': 40, 'steel-plate': 40 }, out: { 'power-armor': 1 } },

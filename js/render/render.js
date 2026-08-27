@@ -380,6 +380,45 @@ function drawChunkTerrainInto(ctx, cx, cy) {
         continue;
       }
 
+      if (t === T_FOUNDATION) {
+        // 地基（官方 Foundation）：灰白合金板，带板缝与铆钉高光，行走加速
+        const v = hash2(tx, ty);
+        ctx.fillStyle = v > 0.5 ? '#7a7a86' : '#74747e';
+        ctx.fillRect(px, py, TILE, TILE);
+        ctx.strokeStyle = 'rgba(60,60,70,.6)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
+        // 十字合金板缝
+        ctx.strokeStyle = 'rgba(50,50,60,.5)';
+        ctx.beginPath();
+        ctx.moveTo(px + TILE / 2, py); ctx.lineTo(px + TILE / 2, py + TILE);
+        ctx.moveTo(px, py + TILE / 2); ctx.lineTo(px + TILE, py + TILE / 2);
+        ctx.stroke();
+        // 四角铆钉
+        ctx.fillStyle = 'rgba(200,205,215,.5)';
+        ctx.fillRect(px + 4, py + 4, 2, 2); ctx.fillRect(px + TILE - 6, py + 4, 2, 2);
+        ctx.fillRect(px + 4, py + TILE - 6, 2, 2); ctx.fillRect(px + TILE - 6, py + TILE - 6, 2, 2);
+        continue;
+      }
+      if (t === T_ICE_PLATFORM) {
+        // 冰面平台（官方 Ice platform）：冰蓝亮面，带冰裂纹与高光
+        const v = hash2(tx, ty);
+        ctx.fillStyle = v > 0.5 ? '#9ad4e8' : '#92cce0';
+        ctx.fillRect(px, py, TILE, TILE);
+        ctx.strokeStyle = 'rgba(90,160,190,.55)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
+        // 冰裂纹
+        ctx.strokeStyle = 'rgba(120,190,220,.4)';
+        ctx.beginPath();
+        ctx.moveTo(px + TILE / 2, py + 2); ctx.lineTo(px + TILE / 2 + 3, py + TILE / 2); ctx.lineTo(px + TILE / 2 - 2, py + TILE - 2);
+        ctx.stroke();
+        // 高光
+        ctx.fillStyle = 'rgba(255,255,255,.22)';
+        ctx.fillRect(px + 3, py + 3, TILE / 2 - 2, TILE / 3);
+        continue;
+      }
+
       if (t === T_YUMAKO_SOIL) {
         // 人工雅玛果土壤（太空时代 Gleba 农业）：深褐松软壤土，点缀碎草与土粒
         const v = hash2(tx, ty);

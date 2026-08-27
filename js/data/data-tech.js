@@ -196,7 +196,10 @@ const TECH_REQ = {
   'toolbelt-equipment': 'mech-armor',
   // ===== 太空时代 虫巢孵化器（统一由「虫巢孵化器」科技解锁）=====
   'captive-biter-spawner': 'captive-biter-spawner',
-  'capture-robot-rocket': 'captive-biter-spawner'
+  'capture-robot-rocket': 'captive-biter-spawner',
+  // ===== 太空时代地面瓦片（统一由「低温学」科技解锁，官方 Foundation/Ice platform）=====
+  'foundation': 'cryogenics',
+  'ice-platform': 'cryogenics'
 };
 
 // ===== 核能科技门控 =====
@@ -407,7 +410,10 @@ const RECIPE_TECH = {
   'mech-armor': 'mech-armor',
   'battery-mk3-equipment': 'mech-armor',
   'fission-reactor-equipment': 'mech-armor',
-  'toolbelt-equipment': 'mech-armor'
+  'toolbelt-equipment': 'mech-armor',
+  // 太空时代地面瓦片（统一由「低温学」科技解锁，官方 Foundation/Ice platform）
+  'foundation': 'cryogenics',
+  'ice-platform': 'cryogenics'
 
 };
 // ===== 任一科技解锁（对齐《异星工厂》科技树）=====

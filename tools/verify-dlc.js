@@ -1082,4 +1082,36 @@ console.log('\n【Factorio 2.0 流体阀门（one-way/overflow/top-up valve）�
 
 
 
+console.log('\n【太空时代地面瓦片（foundation / ice-platform）数据校验】');
+{
+  // 官方物品数据单源
+  ok(!!GD.stackSize['foundation'] && GD.stackSize['foundation'] === 50, 'foundation 堆叠来自官方 (=50)');
+  ok(!!GD.stackSize['ice-platform'] && GD.stackSize['ice-platform'] === 100, 'ice-platform 堆叠来自官方 (=100)');
+  ok(!!GD.names['foundation'] && !!GD.names['foundation'].en, 'foundation 官方命名已收录 (' + (GD.names['foundation'] ? GD.names['foundation'].en : '?') + ')');
+  ok(!!GD.names['ice-platform'] && !!GD.names['ice-platform'].en, 'ice-platform 官方命名已收录 (' + (GD.names['ice-platform'] ? GD.names['ice-platform'].en : '?') + ')');
+  // 物品已注册
+  ok(!!IT['foundation'], 'foundation 物品已注册');
+  ok(!!IT['ice-platform'], 'ice-platform 物品已注册');
+  // 配方已注册（官方配方，数据单源）
+  ok(!!RP['foundation'], 'foundation 配方已注册');
+  ok(!!RP['ice-platform'], 'ice-platform 配方已注册');
+  // 官方配方数值
+  ok(RP['foundation'] && RP['foundation'].time === 30, 'foundation 耗时=30s（官方）');
+  ok(RP['foundation'] && RP['foundation'].inp['tungsten-plate'] === 4 && RP['foundation'].inp['lithium-plate'] === 4 && RP['foundation'].inp['carbon-fiber'] === 4, 'foundation 配方=4钨板+4锂板+4碳纤维（官方）');
+  ok(RP['foundation'] && RP['foundation'].inp['stone'] === 20 && RP['foundation'].inp['fluoroketone-cold'] === 20, 'foundation 配方含 20石+20氟酮冷（官方）');
+  ok(RP['ice-platform'] && RP['ice-platform'].time === 30, 'ice-platform 耗时=30s（官方）');
+  ok(RP['ice-platform'] && RP['ice-platform'].inp['ammonia'] === 400 && RP['ice-platform'].inp['ice'] === 50, 'ice-platform 配方=400氨+50冰（官方）');
+  // 科技门控（统一由「低温学」解锁）
+  ok(ctx.__itemTechReq('foundation') === 'cryogenics', 'foundation 需「低温学」科技');
+  ok(ctx.__itemTechReq('ice-platform') === 'cryogenics', 'ice-platform 需「低温学」科技');
+  // 配方引用物品均存在
+  for (const k of ['foundation', 'ice-platform']) {
+    const rec = RP[k];
+    const inpOk = rec && Object.keys(rec.inp).every(x => x in IT || ['water','steam','crude-oil','heavy-oil','light-oil','petroleum-gas','lubricant','sulfuric-acid','fluoroketone-cold','fluoroketone-hot','ammonia'].indexOf(x) >= 0);
+    const outOk = rec && Object.keys(rec.out).every(x => x in IT);
+    ok(inpOk && outOk, k + ' 配方引用的物品均存在');
+  }
+}
+
+
 process.exit(fail === 0 ? 0 : 1);
