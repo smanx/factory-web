@@ -204,6 +204,9 @@ function drawAltMode(ctx, keys, seenBuf) {
   const pad = 3;
   const iter = e => {
     if (e._dead || !onScreen(e)) return;
+    // 已选配方设备：其配方图标已在设备中央绘制（ALT 模式为原始样子），此处不再叠加，
+    // 避免顶部图标排与中央图标重复。
+    if (e.recipe) return;
     // 缓存复用：把上次计算的 key/icons 直接挂在实体上，只有 key 变化才重算 icons，
     // 避免每帧为稳定内容重复查表（ALT 模式高频路径优化）。
     const key = _altLabelKey(e);
