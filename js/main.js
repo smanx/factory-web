@@ -36,7 +36,7 @@ const G = {
   spawn: { x: 0, y: 0 },
   hbArm: null,
   invRecipeQ: '',
-  buildDevQ: '',     // 背包「建造设备」列表的搜索关键字
+  invItemQ: '',     // 背包「拥有的物品」列表的搜索关键字
   invTab: 'materials', // 背包两个 tab：'materials' 材料（默认）/ 'craft' 合成
   clipboard: null,
   blueprint: null,        // 蓝图数据：{ minX, minY, w, h, ents: [序列化实体...] }
