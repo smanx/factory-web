@@ -93,7 +93,6 @@ const TECHS = {
   'space-thruster': { name: '太空推进', cost: { 'space-science-pack': 100, 'electromagnetic-science-pack': 100 }, desc: '太空时代推进科技：解锁推进器燃料与推进器氧化剂（Thruster fuel / oxidizer）的化工厂配方——碳+水制红色推进燃料、铁矿+水制蓝色氧化剂，高级配方加方解石一次产出 1500 单位（官方 Space Age 化学配方，数据单源化），用于太空平台/推进器与高级流体（对齐《异星工厂》Space Age Thruster 科技），需电磁科研', req: ['electromagnetics'] },
   'space-platform': { name: '空间平台', cost: { 'space-science-pack': 100, 'electromagnetic-science-pack': 100 }, desc: '太空时代空间平台：解锁空间平台地基/中枢、推进器与小行星收集器（官方 Space Age Space platform 科技）。空间平台地基可铺设成太空平台地板，中枢为平台核心，推进器燃烧推进燃料/氧化剂产生电能，小行星收集器在轨道收集星块（对齐《异星工厂》Space Age 空间平台体系），需太空推进科技', req: ['space-thruster'] },
   'fusion-power': { name: '聚变能源', cost: { 'space-science-pack': 200, 'electromagnetic-science-pack': 200 }, desc: '太空时代聚变能源科技：解锁聚变反应堆、聚变发电机与聚变燃料棒（官方 Space Age Fusion 科技，Aquilo）。聚变反应堆燃烧聚变燃料棒产生超高温等离子热量，经导热管传导至聚变发电机直接发电，单台满功率 50MW，为终极发电系统（对齐《异星工厂》Space Age 聚变发电科技，数据来自 GAME_DATA），需电磁科研与空间平台', req: ['space-platform'] },
-  'cryogenics': { name: '低温科技', cost: { 'cryogenic-science-pack': 100, 'space-science-pack': 100 }, desc: '太空时代低温科技：解锁冷冻厂与低温科研包（Cryogenic science pack）——由冰+锂板在冷冻厂制得（官方 Aquilo 低温科技，官方配方依赖氟酮冷却液，此处适配为冰+锂板），冷冻厂是模块槽最多的生产建筑（官方 8），用于低温产物与后续终局科研（对齐《异星工厂》Space Age Cryogenic 科技），需电磁科研', req: ['electromagnetics'] },
   'promethium-science': { name: '钷素科研', cost: { 'promethium-science-pack': 100, 'space-science-pack': 100 }, desc: '太空时代终局科研：解锁钷素科研包（Promethium science pack）——由钷素星块（钷素 Promethium asteroid chunk，小行星收集器在远太空以低概率收集）+超导体+生物结晶在电磁工厂制得，是太空时代终极科学包（对齐《异星工厂》Space Age Promethium science pack，官方 25钷素星块+1量子处理器+10五足虫蛋→10，此处适配为现有高级材料），用于终局无限科研', req: ['electromagnetics', 'asteroid-processing'] },
   'cryogenics': { name: '低温学', cost: { 'cryogenic-science-pack': 100, 'electromagnetic-science-pack': 100 }, desc: '太空时代 Aquilo 低温学：解锁低温工厂与低温科研包，可生产氨/氟/氟酮等低温流体（官方 Space Age Cryogenic science，数据来自 GAME_DATA）。低温科研包由氟酮热液+超导体+锂板+钷素星块在低温工厂制得，是太空时代终局科技的关键科学包', req: ['electromagnetics'] },
   'scrap-recycling': { name: '废料回收', cost: { 'electromagnetic-science-pack': 100, 'space-science-pack': 100 }, desc: '太空时代 Fulgora 废料回收：解锁废料与废料回收配方（官方 Space Age Scrap 回收循环）。废料可回收成铁/铜矿石/石/煤等基础资源，构建高价值循环（数据来自 GAME_DATA），需电磁科研', req: ['electromagnetics'] },
@@ -254,7 +253,7 @@ const TRIGGER_TECHS = {
   'recycling': '在富尔戈拉星建立回收体系后自动解锁',
   'big-mining-drill': '进入太空时代后自动解锁大型采矿机',
   'heating-tower': '发现阿奎洛星（Aquilo）后自动解锁供热塔',
-  'cryogenics': '发现阿奎洛星（Aquilo）后自动解锁冷冻厂与低温科研包'
+  'cryogenics': '发现阿奎洛星（Aquilo）后自动解锁低温工厂与低温科研包'
 };
 for (const tid in TRIGGER_TECHS) if (TECHS[tid]) {
   TECHS[tid].trigger = true;

@@ -810,7 +810,7 @@ ok(GD.equipment['battery-mk3-equipment'] && GD.equipment['battery-mk3-equipment'
 ok(GD.equipment['fission-reactor-equipment'] && GD.equipment['fission-reactor-equipment'].powerOut === 750, '便携裂变反应堆 功率=750kW（官方 fission-reactor）');
 ok(!!RP['mech-armor'] && !!RP['battery-mk3-equipment'] && !!RP['fission-reactor-equipment'] && !!RP['toolbelt-equipment'], '机械装甲/高级装备配方已注册');
 ok(ctx.__itemTechReq('mech-armor') === 'mech-armor', '机械装甲需「机械装甲」科技');
-ok(!!TS['mech-armor'], '「机械装甲」科技已注册'); (feat: 接入 Aquilo 低温学链 + 熔融金属/废料回收/终局防御/机械装甲 DLC 内容)
+ok(!!TS['mech-armor'], '「机械装甲」科技已注册');
 
 process.exit(fail === 0 ? 0 : 1);
 

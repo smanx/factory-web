@@ -274,9 +274,9 @@ const GAME_DATA = {
   "deconstruction-planner": 1,
   "upgrade-planner": 1,
   "space-science-pack": 200,
-  "cryogenic-science-pack": 200,
-  "cryogenic-plant": 20,
   "promethium-science-pack": 200,
+  "cryogenic-plant": 20,
+  "cryogenic-science-pack": 200,
   "quantum-processor": 100,
   "scrap": 50,
   "battery-mk3-equipment": 20,
@@ -3816,17 +3816,17 @@ const GAME_DATA = {
    "zh": "太空科技包（白瓶）",
    "en": "Space science pack"
   },
-  "cryogenic-science-pack": {
-   "zh": "低温科技包（靛瓶）",
-   "en": "Cryogenic science pack"
+  "promethium-science-pack": {
+   "zh": "钷素科技包（黑瓶）",
+   "en": "Promethium science pack"
   },
   "cryogenic-plant": {
    "zh": "低温工厂",
    "en": "Cryogenic plant"
   },
-  "promethium-science-pack": {
-   "zh": "钷素科技包（黑瓶）",
-   "en": "Promethium science pack"
+  "cryogenic-science-pack": {
+   "zh": "低温科技包（靛瓶）",
+   "en": "Cryogenic science pack"
   },
   "quantum-processor": {
    "zh": "量子处理器",

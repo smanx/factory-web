@@ -374,8 +374,6 @@ const ITEMS = {
   // ===== 空间科学包（对齐《异星工厂》Space science pack，火箭发射产出） =====
   'space-science-pack': { name: '空间科学包', color: '#d0d0e0', mark: 'SC', desc: '由卫星成功发射后获得的高级科学包，用于终局无限科研（科研速度/采矿产能等）' },
 
-  'cryogenic-science-pack': { name: '低温科研包', color: '#6ad9c3', mark: 'CSP', desc: '太空时代天蓝色科研包（堆叠 200）：由冰+锂板在冷冻厂制得，解锁太空时代低温/核聚变科技（对齐《异星工厂》Space Age Cryogenic science pack，官方配方含氟酮冷却液，此处适配为冰+锂板）' },
-  'cryogenic-plant': { name: '冷冻厂', color: '#4a5ddb', desc: '太空时代低温生产建筑（5×5，吃电力）：比组装机 III 更快、模块槽最多（官方 8），专用于低温产物与低温科研包的生产（对齐《异星工厂》Space Age Cryogenic plant，数据来自 GAME_DATA）' },
   'promethium-science-pack': { name: '钷素科研包', color: '#5a4ad8', mark: 'PSP', desc: '太空时代终极科研包（钷素 Promethium，堆叠 200）：由钷素星块+超导体+生物结晶在电磁工厂/空间平台中枢制得，解锁太空时代终局科技（对齐《异星工厂》Space Age Promethium science pack）' },
   // ===== 太空时代 Aquilo 低温学链（数据来自 factorio-data 官方，见 GAME_DATA）=====
   'cryogenic-plant': { name: '低温工厂', color: '#4aa8d0', desc: '太空时代 Aquilo 低温生产建筑（4×4，吃电力）：专用于低温学配方（氨/氟/氟酮/低温科研包），制造速度快（crafting_speed 2）、模块槽多达 8（对齐《异星工厂》Space Age Cryogenic plant，数据来自 GAME_DATA）' },

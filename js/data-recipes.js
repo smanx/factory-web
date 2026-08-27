@@ -276,13 +276,6 @@ const RECIPES = {
   // 钷素科研包：钷素星块×25 + 超导体×1 + 生物结晶×10 → 钷素科研包×10（官方 promethium-science-pack 5s：
   // 25钷素星块+1量子处理器+10五足虫蛋，适配为超导体代量子处理器、生物结晶代五足虫蛋；由电磁工厂制得，5s 对齐官方）
   'promethium-science-pack': { time: 5, inp: { 'promethium-asteroid-chunk': 25, 'superconductor': 1, 'bioflux': 10 }, out: { 'promethium-science-pack': 10 } },
-  // ===== 太空时代 Aquilo 低温材料链（冷冻厂配方，官方数值参考，见 GAME_DATA）=====
-  // 低温科研包：冰×3 + 锂板×1 → 低温科研包×1（官方 cryogenic-science-pack 20s，官方配方含氟酮冷却液，
-  // 项目无氟酮流体，适配为冰+锂板，20s 对齐官方能量时间，由冷冻厂制得）
-  'cryogenic-science-pack': { time: 20, inp: { 'ice': 3, 'lithium-plate': 1 }, out: { 'cryogenic-science-pack': 1 } },
-  // 冷冻厂：钢筋混凝土×40 + 超导体×20 + 处理器×20 + 锂板×20 → 冷冻厂（官方 cryogenic-plant 10s，数值对齐）
-  'cryogenic-plant': { time: 10, inp: { 'refined-concrete': 40, 'superconductor': 20, 'processing-unit': 20, 'lithium-plate': 20 }, out: { 'cryogenic-plant': 1 } },
-
   // 冰熔化：冰 → 水（官方 ice-melting 0.5s，此处适配熔炉/锅炉链，供氧化链循环）
   // ===== 太空时代 Aquilo 低温学链（Cryogenics，数据来自 factorio-data 官方，见 GAME_DATA）=====
   // 氨：水 + 液态空气 → 氨（官方 ammonia 3s：50 水 + 50 液态空气，此处适配为水+氮气/空气）
@@ -493,7 +486,6 @@ const DEVICE_NAMES = {
   'biochamber': '生化炉',
   'crusher': '破碎机',
   'foundry': '铸造厂',
-  'cryogenic-plant': '冷冻厂',
   'agricultural-tower': '农业塔',
   'space-platform-hub': '空间平台中枢',
   'cryogenic-plant': '低温工厂'
@@ -532,7 +524,6 @@ function recipeDevice(id) {
   if (isFoundryRecipe(id)) return 'foundry';
   if (isAgricultureTowerRecipe(id)) return 'agricultural-tower';
   if (isHubRecipe(id)) return 'space-platform-hub';
-  if (isCryogenicRecipe(id)) return 'cryogenic-plant';
   if (isRefineryRecipe(id)) return 'oil-refinery';
   if (isChemRecipe(id)) return 'chemical-plant';
   if (isCentrifugeRecipe(id)) return 'centrifuge';
