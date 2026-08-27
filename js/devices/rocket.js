@@ -360,7 +360,7 @@ function siloPanelHtml(e) {
       const ocKeys = Object.keys(G.orbitalCargo[tgt]).filter(k => (G.orbitalCargo[tgt][k] || 0) > 0);
       if (ocKeys.length) {
         const ocRows = ocKeys.map(k => {
-          const ic = (ITEMS[k] && ITEMS[k].color) ? '<span class="chip" style="background:' + ITEMS[k].color + '">' + (ITEMS[k].mark || '') + '</span> ' : '';
+          const ic = (ITEMS[k] && ITEMS[k].color) ? '<span class="chip" style="background:' + ITEMS[k].color + '">' + (ITEMS[k].emoji || ITEMS[k].mark || '') + '</span> ' : '';
           return '<span>' + ic + (ITEMS[k] ? ITEMS[k].name : k) + ' ×' + G.orbitalCargo[tgt][k] + '</span>';
         }).join('  ');
         const tgtName = (typeof planetOption === 'function' && planetOption(tgt)) ? planetOption(tgt).name : tgt;
@@ -370,7 +370,7 @@ function siloPanelHtml(e) {
     if (cargoKeys.length) {
       const crows = cargoKeys.map(k => {
         const cnt = e.cargo[k] || 0;
-        const ic = (ITEMS[k] && ITEMS[k].color) ? '<span class="chip" style="background:' + ITEMS[k].color + '">' + (ITEMS[k].mark || '') + '</span> ' : '';
+        const ic = (ITEMS[k] && ITEMS[k].color) ? '<span class="chip" style="background:' + ITEMS[k].color + '">' + (ITEMS[k].emoji || ITEMS[k].mark || '') + '</span> ' : '';
         return '<div class="rcrow"><span>' + ic + (ITEMS[k] ? ITEMS[k].name : k) + ' ×' + cnt + '</span>' +
           '<button data-action="cargo-take" data-id="' + k + '" title="取出全部">取出</button></div>';
       }).join('');
