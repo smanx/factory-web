@@ -495,7 +495,13 @@ function htmlCraft() {
   for (const rid in RECIPES) {
     if (isChemRecipe(rid)) continue;
     if (isCentrifugeRecipe(rid)) continue;
+    if (typeof isElectroRecipe === 'function' && isElectroRecipe(rid)) continue;
+    if (typeof isBiochamberRecipe === 'function' && isBiochamberRecipe(rid)) continue;
+    if (typeof isCrusherRecipe === 'function' && isCrusherRecipe(rid)) continue;
+    if (typeof isFoundryRecipe === 'function' && isFoundryRecipe(rid)) continue;
+    if (typeof isAgricultureTowerRecipe === 'function' && isAgricultureTowerRecipe(rid)) continue;
     const _r = RECIPES[rid];
+    if (!_r.out) continue; // 概率产出配方（如星块再处理）不列入手搓清单
     // 含流体原料或产物的配方不列入手搓清单（流体只能走管道，需在组装机/化工厂生产）
     if (Object.keys(_r.inp).some(k => FLUIDS.indexOf(k) >= 0)) continue;
     if (Object.keys(_r.out).some(k => FLUIDS.indexOf(k) >= 0)) continue;

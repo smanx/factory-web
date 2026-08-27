@@ -503,7 +503,7 @@ for (const id in ITEMS) {
     for (const q of ['uncommon', 'rare', 'epic', 'legendary']) {
       const vid = baseId + '~' + q;
       if (ITEMS[vid]) continue;
-      const manual = (G.settings && G.settings.language === 'en') ? (qNamesEn[q] + base.name) : (qNames[q] + base.name);
+      const manual = (typeof G !== 'undefined' && G.settings && G.settings.language === 'en') ? (qNamesEn[q] + base.name) : (qNames[q] + base.name);
       const descBase = base.desc || '';
       ITEMS[vid] = {
         name: manual,
