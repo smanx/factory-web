@@ -185,6 +185,8 @@ ok(GD.deviceStats['biochamber'] && GD.deviceStats['biochamber'].craftingSpeed ==
 ok(GD.deviceStats['biochamber'].moduleSlots === 4, '模块槽=4（官方 module_slots）');
 ok(ctx.__recipeDevice('agricultural-science-pack') === 'biochamber', '农业科技包 → 生化炉');
 ok(!!RP['biochamber'], '生化炉配方已注册');
+ok(RP['biochamber'].time === 20, '生化炉配方耗时=20s（官方 biochamber）');
+ok(RP['biochamber'].inp['nutrients'] === 5 && RP['biochamber'].inp['pentapod-egg'] === 1 && RP['biochamber'].inp['iron-plate'] === 20 && RP['biochamber'].inp['electronic-circuit'] === 5 && RP['biochamber'].inp['landfill'] === 1, '生化炉配方=5营养素+1五足虫卵+20铁板+5电路板+1填海料（官方 biochamber）');
 ok(Object.keys(RP['biochamber'].inp).every(k => k in IT), '生化炉配方引用物品均存在');
 ok(ctx.__itemTechReq('biochamber') === 'agriculture', '生化炉需「农业科技」');
 ok(!!TS['agriculture'], '「农业科技」已注册');
@@ -669,6 +671,8 @@ ok(GD.powerUse['biolab'] === 300, '功耗=300kW（官方 energy_usage）');
 ok(GD.deviceStats['biolab'] && GD.deviceStats['biolab'].moduleSlots === 4, '模块槽=4（官方 module_slots）');
 ok(GD.deviceStats['biolab'] && GD.deviceStats['biolab'].researchingSpeed === 2, '科研速度=2（官方 researching_speed）');
 ok(!!RP['biolab'], 'biolab 配方已注册');
+ok(RP['biolab'].time === 10, 'biolab 配方耗时=10s（官方）');
+ok(RP['biolab'].inp['lab'] === 1 && RP['biolab'].inp['biter-egg'] === 10 && RP['biolab'].inp['refined-concrete'] === 25 && RP['biolab'].inp['capture-robot-rocket'] === 2 && RP['biolab'].inp['uranium-235'] === 3, 'biolab 配方=1实验室+10异虫卵+25精炼混凝土+2捕获者火箭弹+3铀-235（官方）');
 ok(Object.keys(RP['biolab'].inp).every(k => k in IT), 'biolab 配方引用物品均存在');
 ok(!!IT['biolab'], 'biolab 物品已注册');
 ok(!!TS['biolab'], '「生物实验室」科技已注册');

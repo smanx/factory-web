@@ -35,7 +35,7 @@ const RECIPES = {
   'stone-furnace':      { time: 0.5, inp: { 'stone': 5 },                                        out: { 'stone-furnace': 1 } },
   'assembling-machine-1':        { time: 0.5, inp: { 'electronic-circuit': 3, 'iron-gear-wheel': 5, 'iron-plate': 9 }, out: { 'assembling-machine-1': 1 } },
   'lab':        { time: 2, inp: { 'electronic-circuit': 10, 'iron-gear-wheel': 10, 'transport-belt': 4 }, out: { 'lab': 1 } },
-  'biolab':        { time: 10, inp: { 'lab': 1, 'bioflux': 10, 'refined-concrete': 25, 'uranium-235': 3 }, out: { 'biolab': 1 } },  // 太空时代生物实验室（官方配方依赖 biter-egg/capture-robot-rocket=生物星球资源，适配为项目现有生物链资源；耗时 10s 参考官方）
+  'biolab':        { time: 10, inp: { 'lab': 1, 'biter-egg': 10, 'refined-concrete': 25, 'capture-robot-rocket': 2, 'uranium-235': 3 }, out: { 'biolab': 1 } },  // 对齐官方：1实验室+10异虫卵+25精炼混凝土+2捕获者火箭弹+3铀-235（官方 biolab）
   'boiler':        { time: 0.5, inp: { 'pipe': 4, 'stone-furnace': 1 }, out: { 'boiler': 1 } },
   'steam-engine':        { time: 0.5, inp: { 'iron-gear-wheel': 8, 'iron-plate': 10, 'pipe': 5 }, out: { 'steam-engine': 1 } },
   'offshore-pump':        { time: 0.5, inp: { 'iron-gear-wheel': 2, 'pipe': 3 }, out: { 'offshore-pump': 1 } },
@@ -283,8 +283,8 @@ const RECIPES = {
   'coal-synthesis': { time: 2, inp: { 'carbon': 5, 'sulfur': 1, 'water': 10 }, out: { 'coal': 1 } },
   // 农业科研包：生物流×1 + 五足虫卵×1 → 农业科研包×1（官方 agricultural-science-pack 4s，对齐官方配方）
   'agricultural-science-pack': { time: 4, inp: { 'bioflux': 1, 'pentapod-egg': 1 }, out: { 'agricultural-science-pack': 1 } },
-  // 生化炉：钢板 + 电路板 + 齿轮 + 混凝土 → 生化炉（官方需生物质，此处适配基础资源）
-  'biochamber': { time: 10, inp: { 'steel-plate': 50, 'electronic-circuit': 50, 'iron-gear-wheel': 40, 'concrete': 20 }, out: { 'biochamber': 1 } },
+  // 生化炉：对齐官方 biochamber 配方（营养素+五足虫卵+铁板+电路板+填海料）
+  'biochamber': { time: 20, inp: { 'nutrients': 5, 'pentapod-egg': 1, 'iron-plate': 20, 'electronic-circuit': 5, 'landfill': 1 }, out: { 'biochamber': 1 } },  // 对齐官方 biochamber：5营养素+1五足虫卵+20铁板+5电路板+1填海料
   // 农业塔：钢板 + 电路板 + 变质物 + 填海料 → 农业塔（官方 agricultural-tower 10s：10钢板+3电路板+20变质物+1填海料，此处对齐官方）
   'agricultural-tower': { time: 10, inp: { 'steel-plate': 10, 'electronic-circuit': 3, 'spoilage': 20, 'landfill': 1 }, out: { 'agricultural-tower': 1 } },
   // 玉玛果种植（农业塔专属生长配方）：玉玛果种子×1 → 玉玛果×6 + 有概率返还种子，持续收获（对齐《异星工厂》Agricultural tower 种植）
