@@ -218,8 +218,14 @@ const RECIPES = {
   // ===== 太空时代 Fulgora 钬/特斯拉链（官方配方依赖钬溶液/电解液等 Fulgora 专属流体，此处适配电磁工厂/熔炉基础资源）=====
   // 钬矿石：石头 + 煤 → 钬矿石（官方 holmium-ore 为 Fulgora 天然矿脉，此处适配为电磁工厂从基础矿石还原，12s）
   'holmium-ore': { time: 12, inp: { 'stone': 4, 'coal': 2 }, out: { 'holmium-ore': 2 } },
+  // 钬溶液：钬矿石 + 石头 + 水 → 钬溶液（官方 holmium-solution，chemistry/化工厂，10s；由 GAME_DATA 官方覆盖）
+  'holmium-solution': { time: 10, inp: { 'holmium-ore': 2, 'stone': 1, 'water': 10 }, out: { 'holmium-solution': 100 } },
   // 钬板：钬矿石 + 石头 + 水 → 钬板（官方 holmium-solution→holmium-plate 两步精炼，此处适配熔炉一步，10s）
   'holmium-plate': { time: 10, inp: { 'holmium-ore': 2, 'stone': 1, 'water': 10 }, out: { 'holmium-plate': 1 } },
+  // 电解液：石头 + 重油 + 钬溶液 → 电解液（官方 electrolyte，electromagnetics/电磁工厂，5s；由 GAME_DATA 官方覆盖）
+  'electrolyte': { time: 5, inp: { 'stone': 1, 'heavy-oil': 10, 'holmium-solution': 10 }, out: { 'electrolyte': 10 } },
+  // 特斯拉电枪：钬板 + 超导体 + 塑料 + 电解液 → 特斯拉电枪（官方 teslagun，electromagnetics/电磁工厂，30s；由 GAME_DATA 官方覆盖）
+  'teslagun': { time: 30, inp: { 'holmium-plate': 10, 'superconductor': 10, 'plastic-bar': 30, 'electrolyte': 100 }, out: { 'teslagun': 1 } },
   // 超级电容：钬板 + 超导体 + 电路板 + 电池 → 超级电容（官方 2钬板+2超导+4电路板+1电池+电解液，10s）
   'supercapacitor': { time: 10, inp: { 'holmium-plate': 2, 'superconductor': 2, 'electronic-circuit': 4, 'battery': 1 }, out: { 'supercapacitor': 1 } },
   // 特斯拉弹药：超级电容 + 塑料 → 特斯拉弹药（官方 supercapacitor+plastic+electrolyte，30s）
@@ -461,7 +467,7 @@ function filterChoices() {
   return _filterChoicesCache;
 }
 
-const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant', 'solid-fuel', 'solid-fuel-light-oil', 'solid-fuel-heavy-oil', 'sulfur', 'sulfuric-acid', 'carbon', 'carbon-fiber', 'lithium', 'thruster-fuel', 'thruster-oxidizer', 'advanced-thruster-fuel', 'advanced-thruster-oxidizer', 'flamethrower-ammo'];
+const CHEM_RECIPES = ['plastic-bar', 'crack-light', 'crack-gas', 'lubricant', 'solid-fuel', 'solid-fuel-light-oil', 'solid-fuel-heavy-oil', 'sulfur', 'sulfuric-acid', 'carbon', 'carbon-fiber', 'lithium', 'thruster-fuel', 'thruster-oxidizer', 'advanced-thruster-fuel', 'advanced-thruster-oxidizer', 'flamethrower-ammo', 'holmium-solution'];
 function isChemRecipe(id) { return CHEM_RECIPES.indexOf(id) >= 0; }
 function chemMult() { return (G.techDone.plastic ? 1.5 : 1) * ((G.dbg && G.dbg.asmMult) || 1); }
 
@@ -506,7 +512,7 @@ const DEVICE_NAMES = {
   'cryogenic-plant': '低温工厂'
 };
 // 电磁工厂专属配方（太空时代电磁产品）：超导体 / 电磁科研包 / 电磁工厂本体
-const ELECTRO_RECIPES = ['superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant', 'promethium-science-pack', 'holmium-ore', 'holmium-plate', 'supercapacitor', 'tesla-ammo', 'tesla-turret', 'railgun-turret'];
+const ELECTRO_RECIPES = ['superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant', 'promethium-science-pack', 'holmium-ore', 'holmium-solution', 'holmium-plate', 'supercapacitor', 'electrolyte', 'teslagun', 'tesla-ammo', 'tesla-turret', 'railgun-turret'];
 function isElectroRecipe(id) { return ELECTRO_RECIPES.indexOf(id) >= 0; }
 // 生化炉专属配方（太空时代生物产品）：果泥 / 生物流 / 营养素 / 生物硫磺 / 农业科研包 / 生化炉本体
 const BIOCHAMBER_RECIPES = ['yumako-mash', 'bioflux', 'nutrients-from-bioflux', 'biosulfur', 'agricultural-science-pack', 'biochamber', 'jellynut-processing', 'biter-egg', 'nutrients-from-biter-egg'];

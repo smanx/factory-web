@@ -39,7 +39,7 @@ ok(GD.deviceStats['electromagnetic-plant'].moduleSlots === 5, '模块槽=5（官
 console.log('\n【DLC 配方与设备归属】');
 ok(ctx.__recipeDevice('superconductor') === 'electromagnetic-plant', '超导体 → 电磁工厂');
 ok(ctx.__recipeDevice('electromagnetic-science-pack') === 'electromagnetic-plant', '电磁科研包 → 电磁工厂');
-ok(ctx.__recipeDevice('carbon-fiber') === 'chemical-plant', '碳纤维 → 化工厂');
+ok(ctx.__recipeDevice('carbon-fiber') === 'biochamber', '碳纤维 → 生化炉（官方 organic）');
 ok(ctx.__recipeDevice('lithium') === 'chemical-plant', '锂 → 化工厂');
 ok(ctx.__SMELTS.some(s => s.id === 'lithium-plate'), '锂板 → 熔炉冶炼');
 // 所有新增配方引用的物品均存在
@@ -848,7 +848,7 @@ ok(ctx.__itemTechReq('cryogenic-plant') === 'cryogenics', '低温工厂需「低
 ok(!!TS['cryogenics'], '「低温学」科技已注册');
 ok(TS['cryogenics'].req && TS['cryogenics'].req.indexOf('electromagnetics') >= 0, '低温学前置含「电磁学」');
 const cryoRec2 = RP['cryogenic-science-pack'];
-ok(cryoRec2 && cryoRec2.inp['fluoroketone-hot'] === 100 && cryoRec2.inp['lithium-plate'] === 1, '低温科研包配方=氟酮热100+超导体1+锂板1+钷素星块10');
+ok(cryoRec2 && cryoRec2.inp['ice'] === 3 && cryoRec2.inp['lithium-plate'] === 1 && cryoRec2.inp['fluoroketone-cold'] === 6 && cryoRec2.out && cryoRec2.out['fluoroketone-hot'] === 3, '低温科研包配方=冰3+锂板1+氟酮冷6→1+氟酮热3（官方）');
 console.log('\n【熔融金属 / 废料回收（数据来自 GAME_DATA）】');
 ok(!!GD.names['molten-iron'] && !!GD.names['molten-copper'], '熔融铁/熔融铜官方命名已收录');
 ok(ctx.__recipeDevice('molten-iron') === 'foundry', '熔融铁 → 铸造厂');
