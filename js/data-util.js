@@ -192,7 +192,8 @@ function drawItemGlyph(x, id, cx, cy, s) {
       break;
     }
     case 'refined-concrete':
-    case 'hazard-concrete': {
+    case 'hazard-concrete':
+    case 'refined-hazard-concrete': {
       // 地砖图标：四块石板拼合（警示混凝土加条纹）
       x.fillStyle = col;
       rrPath(x, -r * 0.8, -r * 0.8, r * 1.6, r * 1.6, s * 0.1);
@@ -208,7 +209,7 @@ function drawItemGlyph(x, id, cx, cy, s) {
       x.moveTo(r * 0.55, -r * 0.8); x.lineTo(r * 0.55, r * 0.8);
       x.moveTo(-r * 0.8, r * 0.1); x.lineTo(r * 0.8, r * 0.1);
       x.stroke();
-      if (id === 'hazard-concrete') {
+      if (id === 'hazard-concrete' || id === 'refined-hazard-concrete') {
         // 黑黄警示斜纹
         x.strokeStyle = '#2a2a30';
         x.lineWidth = Math.max(1.5, s * 0.1);

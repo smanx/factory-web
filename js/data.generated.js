@@ -237,6 +237,7 @@ const GAME_DATA = {
   "concrete": 100,
   "refined-concrete": 100,
   "hazard-concrete": 100,
+  "refined-hazard-concrete": 100,
   "landfill": 100,
   "modular-armor": 1,
   "power-armor": 1,
@@ -2279,6 +2280,15 @@ const GAME_DATA = {
     "hazard-concrete": 10
    }
   },
+  "refined-hazard-concrete": {
+   "time": 0.25,
+   "inp": {
+    "refined-concrete": 10
+   },
+   "out": {
+    "refined-hazard-concrete": 10
+   }
+  },
   "landfill": {
    "time": 0.5,
    "inp": {
@@ -2597,6 +2607,7 @@ const GAME_DATA = {
   "concrete": "assembling-machine-1",
   "refined-concrete": "assembling-machine-1",
   "hazard-concrete": "assembling-machine-1",
+  "refined-hazard-concrete": "assembling-machine-1",
   "landfill": "assembling-machine-1",
   "modular-armor": "assembling-machine-1",
   "power-armor": "assembling-machine-1",
@@ -3516,6 +3527,10 @@ const GAME_DATA = {
   "hazard-concrete": {
    "zh": "标准混凝土（标识）",
    "en": "Hazard concrete"
+  },
+  "refined-hazard-concrete": {
+   "zh": "钢筋混凝土（标识）",
+   "en": "Refined hazard concrete"
   },
   "stone-path": {
    "zh": "石砖路",

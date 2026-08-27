@@ -21,12 +21,13 @@ const T_PATH = 3;       // 石砖路（玩家行走加速）
 const T_TREE = 4;       // 树木（可砍伐获得木材）
 const T_REF_CONCRETE = 5; // 精炼混凝土（玩家行走加速更快，对齐《异星工厂》Refined concrete）
 const T_HAZARD = 6;       // 警示混凝土（黑黄条纹装饰，行走加速同普通混凝土，对齐《异星工厂》Hazard concrete）
+const T_REF_HAZARD = 8;   // 精炼警示混凝土（精炼混凝土底+警示条纹，行走加速更快，对齐官方 Refined hazard concrete）
 const T_CLIFF = 7;          // 峭壁（对齐《异星工厂》Cliff）：不可通行、不可建造的地形障碍，可用峭壁炸药清除
 const T_YUMAKO_SOIL = 8;      // 人工雅玛果土壤（太空时代 Gleba 农业）：人工填造的种植土壤，可走行
 const T_OVERGROWTH_YUMAKO_SOIL = 9; // 茂盛雅玛果土壤（太空时代 Gleba 农业）：更肥沃的种植土壤，可走行
 function isWalkableTerrain(t) { return t !== T_WATER && t !== T_CLIFF; }
 // 地形是否“硬化”（混凝土/石砖路等铺装地）：玩家行走速度提升
-function isPaved(t) { return t === T_CONCRETE || t === T_PATH || t === T_REF_CONCRETE || t === T_HAZARD; }
+function isPaved(t) { return t === T_CONCRETE || t === T_PATH || t === T_REF_CONCRETE || t === T_HAZARD || t === T_REF_HAZARD; }
 
 // ===== 无限分块世界 =====
 // 世界由 32×32 块按需确定性生成。矿量稀疏存储：only remaining（被采过且

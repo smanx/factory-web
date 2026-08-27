@@ -55,7 +55,6 @@ const BUILD_DEFS = {
   'pump':               { w: 1, h: 1, solid: true },
   'solar-panel':        { w: 3, h: 3, solid: true },  // 官方 collision_box ±1.35 → 3×3
   'accumulator':        { w: 2, h: 2, solid: true },
-  'passive-power':      { w: 2, h: 2, solid: true },
   'gun-turret':         { w: 2, h: 2, solid: true },
   'laser-turret':       { w: 2, h: 2, solid: true },
   'flamethrower-turret':{ w: 2, h: 3, solid: true },  // 官方 collision_box ±0.72×±1.2 → 2×3
@@ -150,7 +149,7 @@ const BUILDING_HP = {
   'pipe': 100, 'pipe-to-ground': 150, 'pump': 180, 'storage-tank': 500,
   'creative-pipe': 100, 'void-pipe': 100, 'creative-belt': 150, 'void-belt': 150,
   // 电力（官方 solar-panel 200 / accumulator 150）
-  'solar-panel': 200, 'accumulator': 150, 'passive-power': 200,
+  'solar-panel': 200, 'accumulator': 150,
   // 炮塔（官方 gun 400 / laser 1000 / flamethrower 1400 / artillery 2000）
   'gun-turret': 400, 'laser-turret': 1000, 'flamethrower-turret': 1400, 'artillery-turret': 2000,
   'stone-wall': 350, 'gate': 350,

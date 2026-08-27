@@ -70,7 +70,6 @@ function staticItemIdList() {
   return Object.keys(ITEMS).filter(id => {
     if (FLUIDS.indexOf(id) >= 0) return false;
     if (id.indexOf('creative-') === 0 || id.indexOf('void-') === 0) return false;
-    if (id === 'passive-power') return false;
     return true;
   });
 }
@@ -460,7 +459,7 @@ function htmlInventory() {
   if (!_matGridCache.buildDev) {
     // 测试/应急设备（被动供电、创造/虚空箱、创造/虚空管道）仅在开启"无限资源"
     // Debug 模式后才会出现在建造列表；正常游玩不可见、不可获取。
-    const dbgOnlyDevices = new Set(['passive-power', 'creative-chest', 'void-chest', 'creative-pipe', 'void-pipe', 'creative-belt', 'void-belt']);
+    const dbgOnlyDevices = new Set(['creative-chest', 'void-chest', 'creative-pipe', 'void-pipe', 'creative-belt', 'void-belt']);
     _matGridCache.buildDev = [];
     for (const bid of Object.keys(BUILD_DEFS)) {
       if (dbgOnlyDevices.has(bid)) continue;

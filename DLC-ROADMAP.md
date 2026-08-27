@@ -11,6 +11,7 @@
 - 数据单源化：占地/功耗/速度/堆叠/配方/命名均来自 data.generated.js
 - 旧存档 ID 递归迁移层
 - 官方中英命名表（names / recipeNames，供设置内语言切换）
+- 物品裁剪对齐：移除非官方的多余物品，仅保留 6 个创造/虚空物品（创造/虚空箱、创造/虚空管道、创造/虚空传送带）；移除第 7 个非官方测试设备「被动供电设备 passive-power」
 
 ## DLC 数据现状
 - **locale**：`data/{base,core,elevated-rails,quality,recycler,space-age}/locale/{en,zh-CN}` 已就位
@@ -20,6 +21,9 @@
   - Elevated Rails：高架铁轨实体
   - Recycler：回收机
 - 项目当前仅接入部分 Space Age 基础材料（carbon 碳、calcite 方解石）
+- 本迭代新增 base 精炼警示混凝土（refined-hazard-concrete）：10 精炼混凝土 → 10（0.25s，官方配方），
+  堆叠 100、精炼混凝土底 + 黑黄警示条纹、行走加速更快，配方/堆叠全部来自 data.generated.js，
+  由「混凝土」科技解锁，完整接入地面铺设/蓝图/小地图渲染
 
 ## 分阶段开发计划
 

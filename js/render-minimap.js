@@ -36,6 +36,7 @@ function drawMinimap(ctx) {
         : (t === T_CONCRETE) ? 'rgba(120,120,126,0.85)'
         : (t === T_REF_CONCRETE) ? 'rgba(165,168,176,0.85)'
         : (t === T_HAZARD) ? 'rgba(190,180,40,0.85)'
+        : (t === T_REF_HAZARD) ? 'rgba(200,190,50,0.85)'
         : (t === T_PATH) ? 'rgba(150,140,130,0.85)'
         : (t === T_CLIFF) ? 'rgba(100,96,88,0.9)'
         : (t === T_YUMAKO_SOIL) ? 'rgba(122,90,52,0.9)'
