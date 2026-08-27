@@ -18,7 +18,7 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
-const OUT_FILE = path.join(ROOT, 'js', 'data.generated.js');
+const OUT_FILE = path.join(ROOT, 'js', 'data', 'data.generated.js');
 const DATA_DIR = path.join(ROOT, 'data');
 const REPORT = process.argv.includes('--report');
 
@@ -63,6 +63,8 @@ const KEEP_MANUAL_RECIPES = new Set([
   'lithium', 'electromagnetic-science-pack',
   'yumako-mash', 'agricultural-science-pack', 'biochamber',
   'yumako-growing', 'jellynut-growing',
+  // 太空时代 Gleba 金属细菌链：细菌→板还原配方为项目适配（官方无此合成，Gleba 用细菌还原成熔融金属再铸板），保留手工
+  'iron-plate-from-iron-bacteria', 'copper-plate-from-copper-bacteria',
   // ===== 太空时代 Aquilo 低温学链（官方配方依赖低温/液空等星球资源，此处适配基础资源）=====
   'ammonia', 'fluorine', 'fluoroketone-cold', 'fluoroketone-hot',
   // ===== 太空时代 熔融金属/废料（官方配方依赖行星资源，此处适配基础资源）=====
@@ -96,12 +98,12 @@ function extractObjectKeys(file, objName) {
   return keys;
 }
 
-const projectItems = extractObjectKeys(path.join(ROOT, 'js', 'data-items.js'), 'ITEMS');
-const projectRecipes = extractObjectKeys(path.join(ROOT, 'js', 'data-recipes.js'), 'RECIPES');
-const projectBuildings = extractObjectKeys(path.join(ROOT, 'js', 'data-buildings.js'), 'BUILD_DEFS');
+const projectItems = extractObjectKeys(path.join(ROOT, 'js', 'data', 'data-items.js'), 'ITEMS');
+const projectRecipes = extractObjectKeys(path.join(ROOT, 'js', 'data', 'data-recipes.js'), 'RECIPES');
+const projectBuildings = extractObjectKeys(path.join(ROOT, 'js', 'data', 'data-buildings.js'), 'BUILD_DEFS');
 // 独立配方表（炼油厂/离心机面板专用，不在 RECIPES 中）
-const projectRefRecipes = extractObjectKeys(path.join(ROOT, 'js', 'data-recipes.js'), 'REFINERY_RECIPES');
-const projectCentRecipes = extractObjectKeys(path.join(ROOT, 'js', 'data-recipes.js'), 'CENTRIFUGE_RECIPES');
+const projectRefRecipes = extractObjectKeys(path.join(ROOT, 'js', 'data', 'data-recipes.js'), 'REFINERY_RECIPES');
+const projectCentRecipes = extractObjectKeys(path.join(ROOT, 'js', 'data', 'data-recipes.js'), 'CENTRIFUGE_RECIPES');
 
 // 官方全部原型名 → 原型（用于查找物品/实体）
 const officialNames = new Map();
@@ -248,6 +250,7 @@ const DLC_DEVICE_RECIPES = {
   'yumako-mash': 'biochamber', 'bioflux': 'biochamber', 'nutrients-from-bioflux': 'biochamber',
   'biosulfur': 'biochamber', 'agricultural-science-pack': 'biochamber', 'biochamber': 'biochamber',
   'jellynut-processing': 'biochamber', 'biter-egg': 'biochamber', 'nutrients-from-biter-egg': 'biochamber',
+  'iron-bacteria': 'biochamber', 'copper-bacteria': 'biochamber', 'iron-bacteria-cultivation': 'biochamber', 'copper-bacteria-cultivation': 'biochamber',
   'carbon-fiber': 'biochamber',
   // 电磁工厂 electromagnetic-plant（Space Age electromagnetics）
   'superconductor': 'electromagnetic-plant', 'electromagnetic-science-pack': 'electromagnetic-plant',
@@ -1062,7 +1065,7 @@ function report() {
 
   console.log('\n==== 与手工表差异 ====');
   // 对比 stackSize
-  const s = fs.readFileSync(path.join(ROOT, 'js', 'data-items.js'), 'utf8');
+  const s = fs.readFileSync(path.join(ROOT, 'js', 'data', 'data-items.js'), 'utf8');
   const sm = /const STACK_SIZES = \{([\s\S]*?)\n\};/.exec(s);
   const manualStack = {};
   if (sm) {
@@ -1078,7 +1081,7 @@ function report() {
   console.log('stackSize 差异: ' + (stackDiff.length ? stackDiff.join(', ') : '（与官方一致）'));
 
   // 对比 recipe（vm 解析手工 RECIPES 字面量逐条 diff，发现 storage-chest 类语义冲突）
-  const rr = fs.readFileSync(path.join(ROOT, 'js', 'data-recipes.js'), 'utf8');
+  const rr = fs.readFileSync(path.join(ROOT, 'js', 'data', 'data-recipes.js'), 'utf8');
   const rm = /const RECIPES = \{([\s\S]*?)\n\};/.exec(rr);
   let manualRecipes = {};
   if (rm) {

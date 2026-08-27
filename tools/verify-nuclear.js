@@ -13,14 +13,14 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_DIR = path.join(__dirname, '..', 'js');
+const DATA_DIR = path.join(__dirname, '..', 'js', 'data');
 const src = fs.readFileSync(path.join(DATA_DIR, 'data.generated.js'), 'utf8')
   + '\n' + fs.readFileSync(path.join(DATA_DIR, 'data.js'), 'utf8')
   + '\n' + fs.readFileSync(path.join(DATA_DIR, 'data-items.js'), 'utf8')
   + '\n' + fs.readFileSync(path.join(DATA_DIR, 'data-recipes.js'), 'utf8');
 // 核反应堆设备参数取自 js/devices/nuclear.js（温度上限/燃料槽等设备行为）
-const nuclearSrc = fs.readFileSync(path.join(DATA_DIR, 'devices', 'nuclear.js'), 'utf8');
-const inserterSrc = fs.readFileSync(path.join(DATA_DIR, 'devices', 'inserter.js'), 'utf8');
+const nuclearSrc = fs.readFileSync(path.join(__dirname, '..', 'js', 'devices', 'nuclear.js'), 'utf8');
+const inserterSrc = fs.readFileSync(path.join(__dirname, '..', 'js', 'devices', 'inserter.js'), 'utf8');
 
 let passCount = 0;
 let failCount = 0;

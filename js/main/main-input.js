@@ -527,7 +527,6 @@ function boot() {
     ['saves', () => migrateLegacySave()],
     ['topbtn', () => initTopButtons()],
     ['panel', () => initPanelEvents()],
-    ['paneldrag', () => initPanelDrag()],
     ['quickbar', () => initQuickbar()],
     ['tooltip', () => initTooltips()],
     ['hudinfo', () => initHudInfo()],

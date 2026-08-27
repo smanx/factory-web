@@ -15,7 +15,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_PATH = path.join(__dirname, '..', 'js', 'data.js');
+const DATA_PATH = path.join(__dirname, '..', 'js', 'data', 'data.js');
 const src = fs.readFileSync(DATA_PATH, 'utf8');
 
 let pass = 0, fail = 0;
@@ -36,7 +36,7 @@ function getConst(name) {
 }
 
 // 带速取自 GAME_DATA.deviceStats（唯一数值源）
-const _gd = fs.readFileSync(path.join(__dirname, '..', 'js', 'data.generated.js'), 'utf8').replace('const GAME_DATA = {', 'var GAME_DATA = {');
+const _gd = fs.readFileSync(path.join(__dirname, '..', 'js', 'data', 'data.generated.js'), 'utf8').replace('const GAME_DATA = {', 'var GAME_DATA = {');
 const _vm = require('vm'); const _ctx = {}; _vm.createContext(_ctx); _vm.runInContext(_gd, _ctx);
 const _DS = (_ctx.GAME_DATA && _ctx.GAME_DATA.deviceStats) || {};
 const _belt = _DS['transport-belt'], _fast = _DS['fast-transport-belt'], _expr = _DS['express-transport-belt'];

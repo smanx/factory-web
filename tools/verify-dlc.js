@@ -4,13 +4,13 @@
 // 且与官方数值一致；电磁工厂设备数据正确。
 const fs = require('fs'), vm = require('vm');
 const ROOT = __dirname + '/..';
-const code = fs.readFileSync(ROOT + '/js/data.generated.js', 'utf8')
-  + fs.readFileSync(ROOT + '/js/data.js', 'utf8')
-  + fs.readFileSync(ROOT + '/js/data-items.js', 'utf8')
-  + fs.readFileSync(ROOT + '/js/data-recipes.js', 'utf8')
-  + fs.readFileSync(ROOT + '/js/data-buildings.js', 'utf8')
-  + fs.readFileSync(ROOT + '/js/data-tech.js', 'utf8')
-  + fs.readFileSync(ROOT + '/js/data-tech-tree.js', 'utf8')
+const code = fs.readFileSync(ROOT + '/js/data/data.generated.js', 'utf8')
+  + fs.readFileSync(ROOT + '/js/data/data.js', 'utf8')
+  + fs.readFileSync(ROOT + '/js/data/data-items.js', 'utf8')
+  + fs.readFileSync(ROOT + '/js/data/data-recipes.js', 'utf8')
+  + fs.readFileSync(ROOT + '/js/data/data-buildings.js', 'utf8')
+  + fs.readFileSync(ROOT + '/js/data/data-tech.js', 'utf8')
+  + fs.readFileSync(ROOT + '/js/data/data-tech-tree.js', 'utf8')
   + '\n;globalThis.__GAME_DATA=GAME_DATA;globalThis.__ITEMS=ITEMS;globalThis.__RECIPES=RECIPES;'
   + 'globalThis.__TECHS=TECHS;globalThis.__SMELTS=SMELTS;globalThis.__recipeDevice=recipeDevice;'
   + 'globalThis.__itemTechReq=itemTechReq;globalThis.__itemRecipeText=itemRecipeText;globalThis.__recipeTechReq=recipeTechReq;';
@@ -268,6 +268,38 @@ ok(ctx.__recipeDevice('nutrients-from-biter-egg') === 'biochamber', '虫蛋→�
 ok(ctx.__itemTechReq('jellynut') === 'agriculture', '果仁需「农业科技」');
 ok(ctx.__itemTechReq('jellynut-seed') === 'agriculture', '果仁种子需「农业科技」');
 ok(ctx.__itemTechReq('biter-egg') === 'agriculture', '虫蛋需「农业科技」');
+
+// ===== Gleba 金属细菌链（Iron/Copper bacteria，本迭代新增）数据校验 =====
+console.log('\n【金属细菌链（Iron/Copper bacteria，Gleba）数据校验】');
+// 物品/堆叠/命名来自官方（factorio-data）
+for (const id of ['iron-bacteria', 'copper-bacteria']) {
+  ok(!!IT[id], id + ' 物品已注册');
+  ok(!!GD.stackSize[id], id + ' 堆叠来自官方 (=' + GD.stackSize[id] + ')');
+  ok(GD.stackSize[id] === 50, id + ' 堆叠=50（官方）');
+  ok(!!GD.names[id], id + ' 官方命名已收录 (' + (GD.names[id] ? GD.names[id].zh : '?') + ')');
+}
+// 配方（官方 organic 配方）
+for (const rid of ['iron-bacteria', 'copper-bacteria', 'iron-bacteria-cultivation', 'copper-bacteria-cultivation', 'iron-plate-from-iron-bacteria', 'copper-plate-from-copper-bacteria']) {
+  ok(!!RP[rid], rid + ' 配方已注册');
+  ok(Object.keys(RP[rid].inp).every(k => k in IT), rid + ' 配方引用物品均存在');
+}
+ok(RP['iron-bacteria'].inp['jelly'] === 6 && RP['iron-bacteria'].out['iron-bacteria'] === 1 && RP['iron-bacteria'].out['spoilage'] === 4, '铁细菌=6果冻→1铁细菌+4变质物（官方）');
+ok(RP['iron-bacteria'].time === 1, '铁细菌耗时=1s（官方）');
+ok(RP['copper-bacteria'].inp['yumako-mash'] === 3 && RP['copper-bacteria'].out['copper-bacteria'] === 1 && RP['copper-bacteria'].out['spoilage'] === 1, '铜细菌=3果泥→1铜细菌+1变质物（官方）');
+ok(RP['copper-bacteria'].time === 1, '铜细菌耗时=1s（官方）');
+ok(RP['iron-bacteria-cultivation'].inp['iron-bacteria'] === 1 && RP['iron-bacteria-cultivation'].inp['bioflux'] === 1 && RP['iron-bacteria-cultivation'].out['iron-bacteria'] === 4, '铁细菌培养=1铁细菌+1生物流→4铁细菌（官方）');
+ok(RP['iron-bacteria-cultivation'].time === 4, '铁细菌培养耗时=4s（官方）');
+ok(RP['copper-bacteria-cultivation'].inp['copper-bacteria'] === 1 && RP['copper-bacteria-cultivation'].out['copper-bacteria'] === 4, '铜细菌培养=1铜细菌+1生物流→4铜细菌（官方）');
+ok(RP['copper-bacteria-cultivation'].time === 4, '铜细菌培养耗时=4s（官方）');
+ok(RP['iron-plate-from-iron-bacteria'].out['iron-plate'] === 1, '铁细菌→铁板 产出 1 铁板');
+ok(RP['copper-plate-from-copper-bacteria'].out['copper-plate'] === 1, '铜细菌→铜板 产出 1 铜板');
+// 设备归属（全部 → 生化炉）
+for (const rid of ['iron-bacteria', 'copper-bacteria', 'iron-bacteria-cultivation', 'copper-bacteria-cultivation', 'iron-plate-from-iron-bacteria', 'copper-plate-from-copper-bacteria']) {
+  ok(ctx.__recipeDevice(rid) === 'biochamber', rid + ' → 生化炉');
+}
+// 科技门控（统一「农业科技」）
+ok(ctx.__itemTechReq('iron-bacteria') === 'agriculture', '铁细菌需「农业科技」');
+ok(ctx.__itemTechReq('copper-bacteria') === 'agriculture', '铜细菌需「农业科技」');
 
 // ===== 破碎机（Crusher）数据校验 =====
 console.log('\n【破碎机设备数据（官方）】');
@@ -710,7 +742,7 @@ ok(!!TS['fulgora'], '「富尔戈拉电磁」科技已注册');
 console.log('\n【行星系统 PLANETS（Space Age 五行星）】');
 // 在隔离 vm 中加载 world-config.js，校验行星定义（定义/资源画像/地表色调）
 (function () {
-  const wcCode = fs.readFileSync(ROOT + '/js/world-config.js', 'utf8');
+  const wcCode = fs.readFileSync(ROOT + '/js/game/world-config.js', 'utf8');
   const ctx2 = { console, localStorage: { getItem: () => null, setItem: () => {} }, Math, Date, Infinity, NaN };
   ctx2.window = ctx2; ctx2.G = { settings: { language: 'zh' }, worldConfig: { planet: 'nauvis', seed: 1 } };
   ctx2.globalThis = ctx2;
@@ -743,11 +775,11 @@ console.log('\n【行星系统 PLANETS（Space Age 五行星）】');
 console.log('\n【火箭货舱太空货运 ROCKET CARGO】');
 // 在隔离 vm 中加载 rocket.js 依赖，校验 cargo 排除逻辑与货舱序列化
 (function () {
-  const code = fs.readFileSync(ROOT + '/js/data.generated.js', 'utf8')
-    + '\n' + fs.readFileSync(ROOT + '/js/data.js', 'utf8')
-    + '\n' + fs.readFileSync(ROOT + '/js/data-items.js', 'utf8')
-    + '\n' + fs.readFileSync(ROOT + '/js/data-recipes.js', 'utf8')
-    + '\n' + fs.readFileSync(ROOT + '/js/data-tech.js', 'utf8');
+  const code = fs.readFileSync(ROOT + '/js/data/data.generated.js', 'utf8')
+    + '\n' + fs.readFileSync(ROOT + '/js/data/data.js', 'utf8')
+    + '\n' + fs.readFileSync(ROOT + '/js/data/data-items.js', 'utf8')
+    + '\n' + fs.readFileSync(ROOT + '/js/data/data-recipes.js', 'utf8')
+    + '\n' + fs.readFileSync(ROOT + '/js/data/data-tech.js', 'utf8');
   const ctx3 = { console, Math, JSON, Set, Map, Array, Object, String, Number, Boolean, Date, RegExp, parseInt, parseFloat };
   ctx3.G = { techDone: {}, inv: new Map(), ents: {}, power: { sat: 100 } };
   ctx3.global = ctx3;
