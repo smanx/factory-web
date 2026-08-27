@@ -753,28 +753,93 @@ class HeatPipe extends Entity {
     return p;
   }
 }
+function heatPipeConnect(e, dx, dy) {
+  // 相邻格是否有可连接的导热设备：导热管全向连接，热源(反应堆/供热塔)连接，热交换器仅其热交换接口格连接
+  const nx = e.x + dx, ny = e.y + dy;
+  const nb = entAt(nx, ny);
+  if (!nb || nb._dead) return false;
+  if (nb instanceof HeatPipe) return true;
+  if (nb instanceof HeatExchanger) {
+    const p = rotCell(nb, nb.def.w >> 1, nb.def.h);   // 热交换接口：默认下边(南)中间
+    return p.x === nx && p.y === ny;
+  }
+  if (nb instanceof NuclearReactor || nb instanceof HeatingTower) return true;
+  return false;
+}
+// 渲染：把方块优化成"管道"效果——相邻导热设备自动连接，L/T/直通路口自动转弯并连通。
 function drawHeatPipe(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
-  const s = TILE;
+  const cx = px + TILE / 2, cy = py + TILE / 2;
+  // 四向连接检测
+  const cn = heatPipeConnect(e, 0, -1);   // 北
+  const cs = heatPipeConnect(e, 0, 1);    // 南
+  const cw = heatPipeConnect(e, -1, 0);   // 西
+  const ce = heatPipeConnect(e, 1, 0);    // 东
   // 温度占比 + 是否达到最低发光温度 350°C（官方 minimum_glow_temperature）
   const temp = e.temperature();
   const hp = Math.max(0, Math.min(1, temp / HEAT_MAX_TEMP));
   const glow = temp >= HEAT_PIPE_MIN_GLOW_TEMP;
+
+  const R = 11;      // 管体外半径（相对半瓦片）
+  const rIn = 6.5;   // 导热芯半径
+  const segs = [];
+  if (cn) segs.push([cx, py, cx, cy]);                    // 北段
+  if (cs) segs.push([cx, cy, cx, py + TILE]);             // 南段
+  if (cw) segs.push([px, cy, cx, cy]);                    // 西段
+  if (ce) segs.push([cx, cy, px + TILE, cy]);             // 东段
+
   ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#3a3428';
-  rr(ctx, px + 2, py + 2, s - 4, s - 4, 5); ctx.fill();
-  ctx.strokeStyle = '#1c1710';
-  ctx.lineWidth = 2;
-  rr(ctx, px + 2, py + 2, s - 4, s - 4, 5); ctx.stroke();
-  // 内部导热芯（达到发光温度才发热变亮）
-  ctx.fillStyle = glow ? '#e8a14a' : '#5a5245';
-  rr(ctx, px + 6, py + 6, s - 12, s - 12, 3); ctx.fill();
-  if (glow) {
-    ctx.strokeStyle = 'rgba(255,170,80,' + (0.4 + hp * 0.6).toFixed(2) + ')';
-    ctx.lineWidth = 2;
+  // ---- 管体外壳（金属）----
+  ctx.strokeStyle = '#3a3428';
+  ctx.lineWidth = R * 2;
+  ctx.lineCap = 'round';
+  for (const s of segs) {
     ctx.beginPath();
-    ctx.arc(px + s / 2, py + s / 2, s * 0.22, 0, 7);
+    ctx.moveTo(s[0], s[1]);
+    ctx.lineTo(s[2], s[3]);
     ctx.stroke();
+  }
+  ctx.fillStyle = '#3a3428';
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, 0, 7);
+  ctx.fill();
+  ctx.strokeStyle = '#1c1710';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, 0, 7);
+  ctx.stroke();
+  for (const s of segs) {
+    ctx.beginPath();
+    ctx.moveTo(s[0], s[1]);
+    ctx.lineTo(s[2], s[3]);
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+  // ---- 内芯导热管（达到发光温度才发热变亮）----
+  ctx.strokeStyle = glow ? '#e8a14a' : '#5a5245';
+  ctx.lineWidth = rIn * 2;
+  ctx.lineCap = 'round';
+  for (const s of segs) {
+    ctx.beginPath();
+    ctx.moveTo(s[0], s[1]);
+    ctx.lineTo(s[2], s[3]);
+    ctx.stroke();
+  }
+  ctx.fillStyle = glow ? '#e8a14a' : '#5a5245';
+  ctx.beginPath();
+  ctx.arc(cx, cy, rIn, 0, 7);
+  ctx.fill();
+  // ---- 发光光晕（达到发光温度时）----
+  if (glow) {
+    ctx.strokeStyle = 'rgba(255,170,80,' + (0.3 + hp * 0.5).toFixed(2) + ')';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    for (const s of segs) {
+      ctx.beginPath();
+      ctx.moveTo(s[0], s[1]);
+      ctx.lineTo(s[2], s[3]);
+      ctx.stroke();
+    }
   }
   ctx.globalAlpha = 1;
 }
