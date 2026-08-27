@@ -193,23 +193,41 @@ function updateHUD(dt, fps, ups) {
       hud += '   🚗 ' + (de instanceof Tank ? '坦克' : '装甲车') + '（E 下车）';
     }
   }
-  // 手搓合成队列进度
-  const cur = craftCurrent();
-  if (cur) {
-    const pct = Math.min(100, (cur.done / cur.time) * 100);
-    const nm = (ITEMS[cur.outId] && ITEMS[cur.outId].name) || cur.outId;
-    const rest = (G.craftQueue ? G.craftQueue.length - 1 : 0);
-    hud += '   <span style="color:#7fd4a0">⚒ ' + nm +
-      (rest > 0 ? ' (+' + rest + ')' : '') + ' ' + pct.toFixed(0) + '%' +
-      ' <a href="javascript:void(0)" id="craft-cancel" style="color:#ff8a8a;pointer-events:auto;text-decoration:none" title="取消制作">✕</a></span>';
-  }
   el.innerHTML = hud;
-  const cc = document.getElementById('craft-cancel');
-  if (cc) {
-    cc.onclick = () => { cancelCraftQueue(); toast('已取消制作（返还排队材料）'); };
-  }
+  // 手搓合成队列：显示在左下角快捷栏右侧，仅显示图标
+  renderCraftQueue();
   // 实时刷新左下角战斗快捷栏（弹药数量等）
   if (typeof refreshQuickbar === 'function') refreshQuickbar();
+}
+
+// 渲染左下角快捷栏右侧的手搓合成队列（仅图标，队首当前在制项带 loading 效果）
+function renderCraftQueue() {
+  const box = document.getElementById('craft-queue');
+  if (!box) return;
+  if (!G.craftQueue || G.craftQueue.length === 0) {
+    if (box.style.display !== 'none') box.style.display = 'none';
+    if (box.innerHTML !== '') box.innerHTML = '';
+    return;
+  }
+  if (box.style.display !== 'flex') box.style.display = 'flex';
+  const qs = G.craftQueue.map(q => q.outId);
+  let html = '';
+  qs.forEach((outId, idx) => {
+    const nm = (ITEMS[outId] && ITEMS[outId].name) || outId;
+    const cls = idx === 0 ? 'cq-slot cq-working' : 'cq-slot cq-queued';
+    // 排队项计数：统计该物品在队列中出现的次数（角标）
+    const cnt = qs.filter(x => x === outId).length;
+    html += '<div class="' + cls + '" data-itemid="' + outId + '"' +
+      ' data-tip="' + nm + (idx === 0 ? '（制作中）' : '（排队中）') + '·点击取消制作">' +
+      '<img src="' + iconDataURL(outId) + '">' +
+      (cnt > 1 ? '<span class="cq-cnt">×' + cnt + '</span>' : '') +
+      '</div>';
+  });
+  if (box.innerHTML !== html) box.innerHTML = html;
+  // 点击任一队列图标即取消整个制作队列（返还排队材料）
+  Array.prototype.forEach.call(box.querySelectorAll('.cq-slot'), slot => {
+    slot.onclick = () => { cancelCraftQueue(); toast('已取消制作（返还排队材料）'); };
+  });
 }
 
 // ===== HUD 详情弹框：点击 HUD 信息项弹出详情及描述（替代原先悬停 title 提示）=====

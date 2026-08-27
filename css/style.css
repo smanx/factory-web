@@ -222,6 +222,64 @@ html, body {
   white-space: nowrap;
 }
 
+/* ===== 手搓合成队列（左下角快捷栏右侧）=====
+   显示规则：仅图标；有多个排队项时自左向右排开；
+   队首当前在制项带 loading 旋转效果；完成一件后整体左移一格。 */
+#craft-queue {
+  position: absolute;
+  bottom: 12px;
+  /* 快捷栏（2行×4格，36px格 + 6px间距/内边距）右缘 ≈ 186px，再留 8px 间距 */
+  left: 194px;
+  display: none;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  background: rgba(10, 14, 18, .65);
+  border-radius: 10px;
+  z-index: 900;
+  pointer-events: none;
+}
+.cq-slot {
+  position: relative;
+  width: 36px; height: 36px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  border: 2px solid #3a4550;
+  background: #222b35;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  pointer-events: auto;
+}
+.cq-slot img { width: 100%; height: 100%; display: block; object-fit: cover; border-radius: 6px; }
+/* 队首当前在制项：蓝色描边 + 旋转 loading 圆环 */
+.cq-slot.cq-working { border-color: #7fd4a0; }
+.cq-slot.cq-working::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: #7fd4a0;
+  border-right-color: #7fd4a0;
+  animation: cqSpin .8s linear infinite;
+  pointer-events: none;
+}
+@keyframes cqSpin { to { transform: rotate(360deg); } }
+/* 排队（尚未开始）项：半透明 + 少量堆叠数量角标 */
+.cq-slot.cq-queued { opacity: .75; }
+.cq-slot .cq-cnt {
+  position: absolute;
+  right: 2px; bottom: 1px;
+  font-size: 11px; font-weight: bold;
+  color: #fff;
+  text-shadow: 0 1px 2px #000;
+  pointer-events: none;
+}
+.cq-slot:hover { border-color: #7f93ad; }
+
 .slot {
   position: relative;
   width: 36px; height: 36px;
@@ -1762,6 +1820,10 @@ html, body {
   #quickbar .qb-slot { width: 36px; height: 36px; }
   #quickbar .qb-empty { font-size: 16px; }
   #quickbar .qb-cnt { font-size: 10px; }
+
+  /* 手机端合成队列：跟随快捷栏尺寸，缩小槽位 */
+  #craft-queue { bottom: 12px; left: 192px; gap: 4px; padding: 4px; }
+  #craft-queue .cq-slot { width: 32px; height: 32px; }
 }
 
 /* 超窄屏（如竖屏手机）进一步压缩顶部按钮，避免溢出 */

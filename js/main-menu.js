@@ -80,6 +80,8 @@ function enterGame() {
   if (hud) hud.style.display = 'block';
   const qb = document.getElementById('quickbar');
   if (qb) qb.style.display = 'flex';
+  const cq = document.getElementById('craft-queue');
+  if (cq) cq.style.display = 'flex';
   toast('WASD 移动 · 左键挖矿/放建筑(覆盖建造) · 右键拆除 · R 旋转 · F 拿取 · Q 取消/拾取朝向 · 中键/E 面板 · T 科技 · P 统计 · B 蓝图 · Alt+B 蓝图库 · Alt+D 红图 · Alt+U 绿图 · K/L 存读档');
   // 触屏设备：首次进入展示新手引导
   if (typeof maybeShowTouchTip === 'function') maybeShowTouchTip();
@@ -95,6 +97,8 @@ function returnToMenu() {
   if (hud) hud.style.display = 'none';
   const qb = document.getElementById('quickbar');
   if (qb) qb.style.display = 'none';
+  const cq = document.getElementById('craft-queue');
+  if (cq) cq.style.display = 'none';
   G.sel = -1;
   G.blueMode = null;
   G.deconstructMode = false;
