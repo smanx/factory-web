@@ -538,6 +538,12 @@ function updateMachineLive() {
     const wantCls = 'status ' + (state || 'warn');
     if (stEl.className !== wantCls) stEl.className = wantCls;
   }
+  // 顶部状态点配色（非组装机配方设备）：state 'ok'→绿('on')，'warn'→黄，'bad'→红
+  const dotEl = body.querySelector('[data-live="mch-dot"]');
+  if (dotEl) {
+    const dotCls = 'asm3-status-dot ' + (state === 'ok' ? 'on' : (state || 'warn'));
+    if (dotEl.className !== dotCls) dotEl.className = dotCls;
+  }
 }
 
 // 配方设备交互面板的实时刷新（原料/产品数量 + 进度 + 状态）
@@ -566,9 +572,22 @@ function updateRecipeMachineLive(e, body, api) {
     }
     api.set('mch-out', out);
   }
+  // 配方名称（原料头部实时刷新）
+  const rnameEl = body.querySelector('[data-live="mch-rname"]');
+  if (rnameEl && rec) {
+    const nm = info.name(e.recipe);
+    if (rnameEl.textContent !== nm) rnameEl.textContent = nm;
+  }
   // 进度与状态
   const pct = (rec && e.crafting) ? (e.prog / rec.time * 100) : 0;
   api.prog(pct, rec ? rec.time : 0);
+  // 进度条内部显示百分比 + 剩余时间（组装机风格）
+  const pctEl = body.querySelector('[data-live="mch-pct"]');
+  if (pctEl) {
+    let txt = Math.floor(pct) + '%';
+    if (rec && e.crafting) txt += '  ' + Math.max(0, rec.time - e.prog).toFixed(1) + 's';
+    if (pctEl.textContent !== txt) pctEl.textContent = txt;
+  }
   if (!rec) { api.status('未设置配方，点击「清除配方」选择', 'warn'); return; }
   if (e.crafting) { api.status('生产中：' + info.name(e.recipe), 'ok'); return; }
   const needsPower = typeof e.powerDemand === 'function' && e.powerDemand() > 0;
@@ -1655,7 +1674,11 @@ function drawAssemblerIcon(e, cv) {
 // 右侧设备交互信息：配方名 + 原料/进度/产品单行图标 + 清除配方按钮 + 模块插槽 + 操作说明
 function recipeMachineRightHtml(e, info, rec) {
   let h = '';
-  // 当前配方标题 + 清除配方按钮（靠右显示）
+  // 顶部状态区（组装机风格：状态点 + 状态文字，实时刷新）
+  h += '<div class="mch-status asm3-status">' +
+    '<div class="asm3-status-dot" data-live="mch-dot"></div>' +
+    '<div class="asm3-status-text status" data-live="mch-status"></div></div>';
+  // 当前配方标题 + 清除配方按钮（靠右显示，位于头部）
   h += '<div class="sec mch-recipe-head">当前配方：<b>' + (rec ? info.name(e.recipe) : '<span class="dim">未设置</span>') + '</b>' +
     '<button data-action="recipe-clear" class="btn sm" title="清除当前配方并重新选择">✕ 清除配方</button></div>';
   if (!rec) {
@@ -1665,16 +1688,22 @@ function recipeMachineRightHtml(e, info, rec) {
   }
   // 原料 + 进度条 + 产品 单行（横向排布）
   h += '<div class="mch-flow">';
-  // 原料区
-  h += '<div class="mch-side mch-inp"><div class="mch-inp-row" data-live="mch-inp">';
+  // 原料区：头部显示配方图标 + 配方名称（对齐组装机）
+  h += '<div class="mch-side mch-inp">';
+  const mchOutId = recipeMainIcon(rec, info, e.recipe);
+  h += '<div class="mch-inp-head">' +
+    '<div class="mch-recipe-icon">' + (mchOutId ? '<img src="' + iconDataURL(mchOutId) + '">' : '') + '</div>' +
+    '<span class="mch-recipe-name" data-live="mch-rname">' + info.name(e.recipe) + '</span>' +
+    '</div>';
+  h += '<div class="mch-inp-row" data-live="mch-inp">';
   for (const k in rec.inp) {
     const cur = e.inp[k] || 0;
     h += '<div class="mch-io-slot' + (cur >= rec.inp[k] ? ' full' : '') + '" data-action="feed-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|配方需 ' + rec.inp[k] + '，当前 ' + cur + '。左键放入，右键取出（或先选左侧物品再点击此槽放入该物品）">' +
       '<img src="' + iconDataURL(k) + '">' + (cur > 0 ? '<button class="mch-takein" data-action="takein-slot" data-id="' + k + '" title="取回 1 件 ' + ITEMS[k].name + ' 到背包">−</button>' : '') + '<span class="mch-io-n">' + cur + '/' + rec.inp[k] + '</span></div>';
   }
   h += '</div></div>';
-  // 进度条
-  h += '<div class="mch-prog"><div class="bar"><i></i></div><div class="bar-time"></div><div class="status"></div></div>';
+  // 进度条（组装机风格：内部显示百分比 + 剩余时间）
+  h += '<div class="mch-prog"><div class="bar"><i></i><span class="bar-txt" data-live="mch-pct">0%</span></div></div>';
   // 产品区
   h += '<div class="mch-side mch-out"><div class="mch-out-row" data-live="mch-out">';
   if (rec.out) {
