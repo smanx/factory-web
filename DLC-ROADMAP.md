@@ -1254,3 +1254,16 @@
 > - **校验**：verify-dlc 新增「工具腰带背包扩容单源」校验（3 项：GAME_DATA 单源 10 格 + ui.js
 >   动态格数 + equipment.js 单源读取），全量 18 个校验脚本通过，`node build.js` 构建通过。
 
+### 阶段六.6：装载机速度单源化收口（Loader speed single-sourcing，本迭代新增）
+
+> 依据「所有数据/参数从 data.generated.js（factorio-data 单源）获取，设备不单独维护第二套数值」，
+> 清理装载机（loader / fast / express / turbo）设备侧冗余的硬编码速度兜底表：
+> - **去除冗余**：`js/devices/loader.js` 的 `speed()` 删除独立硬编码速度表
+>   `{loader:1.875, fast:3.75, express:5.625, turbo:7.5}`，改为完全从
+>   `GAME_DATA.deviceStats[id].beltSpeed`（factorio-data 官方 speed 换算）单源读取。
+> - **数据来源**：装载机 4 档速度（1.875 / 3.75 / 5.625 / 7.5 格/s）本就在
+>   `GAME_DATA.deviceStats` 中（由 generate-game-data.js 生成），删除兜底表后数值不变，
+>   且消除了「同一数据在设备侧维护第二套」的冗余。
+> - **校验**：`verify-dlc` 新增装载机速度单源守卫（loader.js 读取 GAME_DATA.deviceStats、
+>   已移除硬编码速度表），全量 18 个校验脚本通过，`node build.js` 构建通过。
+

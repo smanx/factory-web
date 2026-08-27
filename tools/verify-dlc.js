@@ -1188,6 +1188,12 @@ ok(RP['turbo-loader'] && RP['turbo-loader'].inp['turbo-transport-belt'] === 5, '
 ok(ctx.__recipeTechReq('loader') === 'logistics2', '基础装载机需「物流 II」科技');
 ok(ctx.__recipeTechReq('express-loader') === 'logistics3', '极速装载机需「物流 III」科技');
 ok(ctx.__recipeTechReq('turbo-loader') === 'turbo-logistics', '超速装载机需「超速物流」科技');
+// loader.js 速度单源：不得维护独立硬编码速度表（对齐「所有数据从 data.generated.js 获取」）
+{
+  const loaderJs = fs.readFileSync(ROOT + '/js/devices/loader.js', 'utf8');
+  ok(loaderJs.includes('GAME_DATA.deviceStats'), 'loader.js 速度从 GAME_DATA.deviceStats 单源读取');
+  ok(!/const tbl = \{[^}]*'loader': 1\.875/.test(loaderJs), 'loader.js 已移除独立硬编码速度表（单源 GAME_DATA）');
+}
 
 
 console.log('\n【太空时代虫巢孵化器（Captive biter spawner，本迭代新增）数据校验】');

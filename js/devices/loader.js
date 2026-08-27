@@ -25,13 +25,13 @@ class Loader extends Entity {
     if (this.dir % 2 === 1) { this.w = this.def.h; this.h = this.def.w; }
     else { this.w = this.def.w; this.h = this.def.h; }
   }
-  // loader 的官方速度（格/s，由 GAME_DATA.deviceStats.beltSpeed 单源提供），来自 GAME_DATA.deviceStats
+  // loader 的官方速度（格/s）——数据单源：来自 GAME_DATA.deviceStats.beltSpeed
+  // （factorio-data 官方 speed(格/tick)×60 换算，由 generate-game-data.js 生成），
+  // 设备侧不再单独维护第二套速度数值表。
   speed() {
     const ds = GAME_DATA.deviceStats && GAME_DATA.deviceStats[this.type];
     if (ds && typeof ds.beltSpeed === 'number') return ds.beltSpeed; // 格/s
-    // 兜底：beltSpeed=官方 speed(格/tick)×60（格/s）：loader=1.875、fast=3.75、express=5.625、turbo=7.5
-    const tbl = { 'loader': 1.875, 'fast-loader': 3.75, 'express-loader': 5.625, 'turbo-loader': 7.5 };
-    return tbl[this.type] || 0.03125;
+    return 0;
   }
   // 每秒搬运件数：beltSpeed 为官方 speed(格/tick)×60=格/s（如基础装载机 1.875 格/s），
   // 每格可承载 1/BELT_SPACING 件 → 每秒搬运件数 = beltSpeed / BELT_SPACING。
