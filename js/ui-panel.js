@@ -818,3 +818,82 @@ function selectInventoryItem(iid) {
   const buildable = !!BUILD_DEFS[iid];
   toast('已选中 ' + ITEMS[iid].name + (buildable ? '，点击地图直接建造（Q 取消）' : '，鼠标显示物品幽灵，可放入快捷栏或按 Q 取消'));
 }
+
+// ===== 弹出面板标题栏拖动 =====
+// 按住面板标题栏可拖动面板位置；关闭后再打开时自动恢复默认位置（不保留上次拖动位置）。
+function initPanelDrag() {
+  const panel = document.getElementById('panel');
+  const head = document.getElementById('panel-head');
+  let dragging = false;
+  let startX = 0, startY = 0, origX = 0, origY = 0;
+
+  // 关闭面板时清除拖动的 left/top/transform，恢复 CSS 默认（居中）定位
+  document.getElementById('panel-close').addEventListener('mousedown', resetPanelPos);
+
+  head.addEventListener('mousedown', ev => {
+    // 标题栏内的关闭按钮交给它自己的逻辑，不做拖动
+    if (ev.button !== 0) return;
+    if (ev.target.closest && ev.target.closest('#panel-close')) return;
+    ev.preventDefault();
+    const rect = panel.getBoundingClientRect();
+    dragging = true;
+    startX = ev.clientX;
+    startY = ev.clientY;
+    origX = rect.left;
+    origY = rect.top;
+    // 切到绝对 left/top 定位（取消居中 transform），从当前可视位置开始拖
+    panel.style.transform = 'none';
+    panel.style.left = origX + 'px';
+    panel.style.top = origY + 'px';
+    panel.style.right = 'auto';
+    panel.style.bottom = 'auto';
+  });
+
+  window.addEventListener('mousemove', ev => {
+    if (!dragging) return;
+    panel.style.left = (origX + (ev.clientX - startX)) + 'px';
+    panel.style.top = (origY + (ev.clientY - startY)) + 'px';
+  });
+
+  window.addEventListener('mouseup', () => { dragging = false; });
+
+  // 触屏拖动（对齐触屏交互：单指在标题栏上拖动）
+  head.addEventListener('touchstart', ev => {
+    if (ev.target.closest && ev.target.closest('#panel-close')) return;
+    const t = ev.touches[0];
+    if (!t) return;
+    const rect = panel.getBoundingClientRect();
+    dragging = true;
+    startX = t.clientX;
+    startY = t.clientY;
+    origX = rect.left;
+    origY = rect.top;
+    panel.style.transform = 'none';
+    panel.style.left = origX + 'px';
+    panel.style.top = origY + 'px';
+    panel.style.right = 'auto';
+    panel.style.bottom = 'auto';
+  }, { passive: true });
+
+  head.addEventListener('touchmove', ev => {
+    if (!dragging) return;
+    ev.preventDefault();
+    const t = ev.touches[0];
+    if (!t) return;
+    panel.style.left = (origX + (t.clientX - startX)) + 'px';
+    panel.style.top = (origY + (t.clientY - startY)) + 'px';
+  }, { passive: false });
+
+  head.addEventListener('touchend', () => { dragging = false; });
+}
+
+// 恢复面板默认位置：清除拖动期间写入的内联 left/top/transform，
+// 让各面板 CSS 的默认定位（居中 / 底部锚定）重新生效。
+function resetPanelPos() {
+  const panel = document.getElementById('panel');
+  panel.style.left = '';
+  panel.style.top = '';
+  panel.style.transform = '';
+  panel.style.right = '';
+  panel.style.bottom = '';
+}

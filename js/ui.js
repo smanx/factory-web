@@ -305,6 +305,8 @@ function openPanel(mode, ent) {
   document.getElementById('panel').classList.toggle('machine-wide', mode === 'machine' && !!ent && (isRecipeDevice(ent) || isChestEntity(ent)));
   // 配方选择面板：网格区可滚动，底部「确认」按钮行固定在面板底部不随之滚动
   document.getElementById('panel').classList.toggle('recipe-wide', mode === 'machinerecipe');
+  // 再次打开时恢复面板默认位置（不保留上次拖动的位置）
+  if (typeof resetPanelPos === 'function') resetPanelPos();
   document.getElementById('panel').style.display = 'flex';
   renderPanel(true);
 }
