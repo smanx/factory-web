@@ -226,13 +226,13 @@ function drawCentrifuge(ctx, e, gx, gy, dir, alpha) {
     ctx.stroke();
   }
   // 中央显示当前配方图标；未选配方时显示默认齿轮占位（不再显示中文）
-  if (e.recipe && e.recipeObj) {
+  if (portDetailsVisible() && e.recipe && e.recipeObj) {
     const rec = e.recipeObj();
     if (rec) {
       const outId = rec.prob ? Object.keys(rec.prob).sort((a, b) => rec.prob[b] - rec.prob[a])[0] : Object.keys(rec.out)[0];
       if (outId) drawRecipeIconCell(ctx, cx, cy, outId);
     }
-  } else if (!(LOD && LOD.simple)) {
+  } else if (!(LOD && LOD.simple) && portDetailsVisible()) {
     drawRecipePlaceholder(ctx, cx, cy, s * 0.5);
   }
   ctx.globalAlpha = 1;

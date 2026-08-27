@@ -232,7 +232,7 @@ function drawAssembler(ctx, e, gx, gy, dir, alpha) {
   gearShape(ctx, 0, 0, 18, 12, 8);
   ctx.fill();
   ctx.restore();
-  if (e.recipe) {
+  if (portDetailsVisible() && e.recipe) {
     const outId = Object.keys(RECIPES[e.recipe].out)[0];
     drawRecipeIconCell(ctx, px + s / 2, py + s / 2, outId);
     const pct = e.crafting ? Math.min(1, e.prog / RECIPES[e.recipe].time) : 0;
@@ -243,7 +243,7 @@ function drawAssembler(ctx, e, gx, gy, dir, alpha) {
       ctx.arc(px + s / 2, py + s / 2, 24, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2);
       ctx.stroke();
     }
-  } else if (!(LOD && LOD.simple)) {
+  } else if (!(LOD && LOD.simple) && portDetailsVisible()) {
     // 未选配方：显示默认齿轮图标（不再显示中文）
     drawRecipePlaceholder(ctx, px + s / 2, py + s / 2, s * 0.5);
   }

@@ -106,7 +106,7 @@ function drawCrusher(ctx, e, gx, gy, dir, alpha) {
   // 下方出料口
   ctx.fillStyle = '#4a4037';
   ctx.fillRect(px + 14, py + sh - 14, s - 28, 8);
-  if (e.recipe) {
+  if (portDetailsVisible() && e.recipe) {
     const outId = crusherMainOut(RECIPES[e.recipe]);
     drawRecipeIconCell(ctx, px + s / 2, py + sh / 2 - 4, outId);
     const pct = e.crafting ? Math.min(1, e.prog / RECIPES[e.recipe].time) : 0;
@@ -117,7 +117,7 @@ function drawCrusher(ctx, e, gx, gy, dir, alpha) {
       ctx.arc(px + s / 2, py + sh / 2 - 4, 26, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2);
       ctx.stroke();
     }
-  } else if (!(LOD && LOD.simple)) {
+  } else if (!(LOD && LOD.simple) && portDetailsVisible()) {
     drawRecipePlaceholder(ctx, px + s / 2, py + sh / 2 - 4, s * 0.4);
   }
   const fr = e.fluidRecipe ? e.fluidRecipe() : null;

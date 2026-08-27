@@ -297,10 +297,10 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
   // ===== 中央显示当前配方（选择配方后始终展示占满一格的大图标） =====
   {
     const cxp = px + s / 2, cyp = py + s / 2;
-    if (e.recipe) {
+    if (portDetailsVisible() && e.recipe) {
       const outId = Object.keys(REFINERY_RECIPES[e.recipe].out)[0];
       drawRecipeIconCell(ctx, cxp, cyp, outId);
-    } else if (!(LOD && LOD.simple)) {
+    } else if (!(LOD && LOD.simple) && portDetailsVisible()) {
       // 未选配方：显示默认图标（不再显示中文）
       drawRecipePlaceholder(ctx, cxp, cyp, s * 0.5);
     }
