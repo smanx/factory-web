@@ -61,13 +61,6 @@ function bindInput() {
     else if (ev.altKey && k === 'h') { ev.preventDefault(); if (typeof showTutorial === 'function') showTutorial(); }
     // C 键：在左下角快捷栏武器槽中从左到右循环切换当前武器（无武器则不切换）
     else if (k === 'c') { if (typeof cycleQuickbarWeapon === 'function') cycleQuickbarWeapon(); }
-    // ALT 模式（对齐《异星工厂》ALT 模式）：按 Alt 键切换建筑配方/内容叠加显示
-    else if (k === 'alt') {
-      ev.preventDefault();
-      G.settings.altMode = !(G.settings.altMode !== false);
-      saveSettings();
-      toast(G.settings.altMode ? 'ALT 模式：开（显示建筑配方/内容叠加）' : 'ALT 模式：关');
-    }
     else if (k === 'escape') {
       // ESC 键：优先关闭当前打开的任何弹框/面板（驾驶界面/蓝图/拆除模式/面板）
       if (G.driving) { if (typeof exitCar === 'function') exitCar(); }
@@ -115,6 +108,15 @@ function bindInput() {
   });
   window.addEventListener('keyup', ev => {
     const k = ev.key.toLowerCase();
+    // ALT 模式（对齐《异星工厂》ALT 模式）：松开 Alt 键时才切换建筑配方/内容叠加显示。
+    // 改为松开时触发：按下即切换会在 Alt+Tab 切换页面等场景误触发 ALT 功能。
+    if (k === 'alt') {
+      ev.preventDefault();
+      G.settings.altMode = !(G.settings.altMode !== false);
+      saveSettings();
+      toast(G.settings.altMode ? 'ALT 模式：开（显示建筑配方/内容叠加）' : 'ALT 模式：关');
+      return;
+    }
     G.keys[k] = false;
   });
 
