@@ -76,6 +76,8 @@ const dynamicKeys = new Set([
   'jellynut-processing', 'jellynut-growing', 'nutrients-from-biter-egg', // Gleba 果仁链：果仁→果冻/果仁种植/虫蛋→营养素（产物键≠配方键）
   'recycle-scrap', // 废料回收配方：废料→基础资源（产物键≠配方键）
   'advanced-thruster-fuel', 'advanced-thruster-oxidizer', // 太空推进高级配方：产物为推进器燃料/氧化剂流体（产物键≠配方键）
+  'iron-bacteria-cultivation', 'copper-bacteria-cultivation', // 细菌培养配方：细菌→细菌（扩增，产物键≠配方键）
+  'iron-plate-from-iron-bacteria', 'copper-plate-from-copper-bacteria', // 细菌→板还原配方：产物为铁板/铜板（产物键≠配方键）
 ]);
 for (const rid in RECIPES) {
   if (rid.startsWith('fill-') || rid.startsWith('empty-')) continue; // 动态桶配方

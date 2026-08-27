@@ -63,6 +63,8 @@ const KEEP_MANUAL_RECIPES = new Set([
   'lithium', 'electromagnetic-science-pack',
   'yumako-mash', 'agricultural-science-pack', 'biochamber',
   'yumako-growing', 'jellynut-growing',
+  // 太空时代 Gleba 金属细菌链：细菌→板还原配方为项目适配（官方无此合成，Gleba 用细菌还原成熔融金属再铸板），保留手工
+  'iron-plate-from-iron-bacteria', 'copper-plate-from-copper-bacteria',
   // ===== 太空时代 Aquilo 低温学链（官方配方依赖低温/液空等星球资源，此处适配基础资源）=====
   'ammonia', 'fluorine', 'fluoroketone-cold', 'fluoroketone-hot',
   // ===== 太空时代 熔融金属/废料（官方配方依赖行星资源，此处适配基础资源）=====
@@ -248,6 +250,7 @@ const DLC_DEVICE_RECIPES = {
   'yumako-mash': 'biochamber', 'bioflux': 'biochamber', 'nutrients-from-bioflux': 'biochamber',
   'biosulfur': 'biochamber', 'agricultural-science-pack': 'biochamber', 'biochamber': 'biochamber',
   'jellynut-processing': 'biochamber', 'biter-egg': 'biochamber', 'nutrients-from-biter-egg': 'biochamber',
+  'iron-bacteria': 'biochamber', 'copper-bacteria': 'biochamber', 'iron-bacteria-cultivation': 'biochamber', 'copper-bacteria-cultivation': 'biochamber',
   'carbon-fiber': 'biochamber',
   // 电磁工厂 electromagnetic-plant（Space Age electromagnetics）
   'superconductor': 'electromagnetic-plant', 'electromagnetic-science-pack': 'electromagnetic-plant',

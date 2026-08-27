@@ -295,6 +295,8 @@ const ITEMS = {
   'jellynut-seed': { name: '果冻果种子', color: '#a04870', mark: 'Js', desc: '太空时代 Gleba 作物种子（堆叠 10），用于种植果仁（对齐《异星工厂》Space Age Jellynut seed，堆叠 10）' },
   'jelly': { name: '果冻', color: '#e860b0', mark: 'J', desc: '太空时代 Gleba 生物质中间产物，由果仁加工制得，是高级生物流与火箭燃料的重要原料（对齐《异星工厂》Space Age Jelly，堆叠 100）' },
   'biter-egg': { name: '异虫卵', color: '#c0a058', mark: '蛋', desc: '太空时代 Gleba 生物资源（堆叠 100）：由生化炉培育产出，用于制造营养素、高级生物质与多种太空时代装备/科研（对齐《异星工厂》Space Age Biter egg）' },
+  'iron-bacteria': { name: '铁细菌', color: '#c8c8d0', mark: 'Fe菌', desc: '太空时代 Gleba 生物质金属菌（堆叠 50）：由生化炉用果冻培育，经培养扩增后可在生化炉还原出铁板，是 Gleba 无矿地形下炼铁的关键生物原料（对齐《异星工厂》Space Age Iron bacteria）' },
+  'copper-bacteria': { name: '铜细菌', color: '#d0a080', mark: 'Cu菌', desc: '太空时代 Gleba 生物质金属菌（堆叠 50）：由生化炉用玉玛果泥培育，经培养扩增后可在生化炉还原出铜板，是 Gleba 无矿地形下炼铜的关键生物原料（对齐《异星工厂》Space Age Copper bacteria）' },
   // ===== 太空时代 小行星碎块加工链（破碎机 + 小行星碎块，数据来自 factorio-data 官方，见 GAME_DATA）=====
   'crusher': { name: '破碎机', color: '#9a8a7a', desc: '太空时代破碎建筑（2×3，吃电力）：把小行星碎块（金属/碳质/氧化星块）粉碎成基础资源（铁矿石/碳/冰等），破碎机只会用“破碎”配方（对齐《异星工厂》Space Age 破碎机，官方重力0/太空，此处适配为地面设备，数据来自 GAME_DATA）' },
   'metallic-asteroid-chunk': { name: '金属星块', color: '#8a7a6a', mark: 'Me', desc: '太空时代高金属含量的小行星碎块，用破碎机粉碎可获得大量铁矿石（对齐《异星工厂》Space Age Metallic asteroid chunk，堆叠 1）' },

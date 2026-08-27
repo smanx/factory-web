@@ -514,3 +514,26 @@
 >   小地图同步配色；农业塔 onSoil() 按种植作物匹配对应土壤（玉玛果→玉玛果土壤、果冻果→果冻果土壤）。
 > - 科技：由「农业科技」解锁（与玉玛果土壤/果仁链同科技）；校验并入 verify-dlc（新增 12 项），
 >   全量 18 个校验脚本通过，构建通过。
+
+### 阶段四.14：Gleba 金属细菌链（Iron/Copper bacteria，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - 物品：`iron-bacteria`（铁细菌，堆叠 50）/ `copper-bacteria`（铜细菌，堆叠 50）已接入，
+>   堆叠/中英命名（铁细菌/Iron bacteria、铜细菌/Copper bacteria）均来自 GAME_DATA（factorio-data 官方），
+>   未单独维护数值表（生成脚本从官方 item 原型自动提取）。
+> - 配方（官方 organic 配方，生化炉专属）：
+>   - `iron-bacteria`：6 果冻 → 1 铁细菌 + 4 变质物（1s，官方 iron-bacteria）
+>   - `copper-bacteria`：3 玉玛果泥 → 1 铜细菌 + 1 变质物（1s，官方 copper-bacteria）
+>   - `iron-bacteria-cultivation`：1 铁细菌 + 1 生物流 → 4 铁细菌（4s，官方培养扩增）
+>   - `copper-bacteria-cultivation`：1 铜细菌 + 1 生物流 → 4 铜细菌（4s，官方培养扩增）
+>   - `iron-plate-from-iron-bacteria`：1 铁细菌 → 1 铁板（2s，项目适配：官方 Gleba 用细菌还原成熔融铁再铸板，此处生化炉一步还原铁板）
+>   - `copper-plate-from-copper-bacteria`：1 铜细菌 → 1 铜板（2s，项目适配）
+> - 玩法：铁/铜细菌构成 Gleba 无矿地形下的替代金属冶炼链——先用果冻/果泥培育细菌，
+>   再用生物流培养扩增，最后在生化炉还原出铁板/铜板，形成可持续金属自持循环，
+>   补全 Gleba 生化炉的金属生产用途（此前生化炉仅产生物质产品），游戏内容向《异星工厂》太空时代靠齐。
+> - 科技：细菌链统一由「农业科技」解锁（与玉玛果/果仁生物链同科技，均为生化炉生物质产品）。
+> - 数据单源：堆叠/命名来自 GAME_DATA（factorio-data 官方），官方有机配方（iron/copper-bacteria 及培养）
+>   由 data.generated.js 单源自动生成（设备归属经 DLC_DEVICE_RECIPES 路由生化炉）；仅细菌→板还原配方
+>   （iron/copper-plate-from-*-bacteria，官方无此合成）为项目手工适配，生化炉面板自动列出细菌配方。
+> - 校验：verify-dlc 新增细菌链校验（34 项），verify-data-integrity 配方键映射补充 4 项动态键，
+>   全量 18 个校验脚本通过，构建通过。

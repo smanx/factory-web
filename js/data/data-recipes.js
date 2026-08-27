@@ -283,6 +283,19 @@ const RECIPES = {
   'biter-egg': { time: 10, inp: { 'jelly': 10, 'nutrients': 20, 'yumako-mash': 10 }, out: { 'biter-egg': 5 } },
   // 虫蛋→营养素：虫蛋×1 → 营养素×20（官方 nutrients-from-biter-egg 2s：1 虫蛋 → 20 营养素）
   'nutrients-from-biter-egg': { time: 2, inp: { 'biter-egg': 1 }, out: { 'nutrients': 20 } },
+  // ===== 太空时代 Gleba 金属细菌链（生化炉专属，官方数值参考，见 GAME_DATA）=====
+  // 铁细菌：果冻×6 → 铁细菌×1 + 变质物×4（官方 iron-bacteria 1s，organic 配方）
+  'iron-bacteria': { time: 1, inp: { 'jelly': 6 }, out: { 'iron-bacteria': 1, 'spoilage': 4 } },
+  // 铜细菌：玉玛果泥×3 → 铜细菌×1 + 变质物×1（官方 copper-bacteria 1s，organic 配方）
+  'copper-bacteria': { time: 1, inp: { 'yumako-mash': 3 }, out: { 'copper-bacteria': 1, 'spoilage': 1 } },
+  // 铁细菌培养：铁细菌×1 + 生物流×1 → 铁细菌×4（官方 iron-bacteria-cultivation 4s，organic 配方）
+  'iron-bacteria-cultivation': { time: 4, inp: { 'iron-bacteria': 1, 'bioflux': 1 }, out: { 'iron-bacteria': 4 } },
+  // 铜细菌培养：铜细菌×1 + 生物流×1 → 铜细菌×4（官方 copper-bacteria-cultivation 4s，organic 配方）
+  'copper-bacteria-cultivation': { time: 4, inp: { 'copper-bacteria': 1, 'bioflux': 1 }, out: { 'copper-bacteria': 4 } },
+  // 铁细菌→铁板：铁细菌×1 → 铁板×1（项目适配：官方 Gleba 用细菌还原成熔融铁再铸板，此处生化炉一步还原铁板，让 Gleba 无矿地形可炼铁）
+  'iron-plate-from-iron-bacteria': { time: 2, inp: { 'iron-bacteria': 1 }, out: { 'iron-plate': 1 } },
+  // 铜细菌→铜板：铜细菌×1 → 铜板×1（项目适配：官方 Gleba 用细菌还原成熔融铜再铸板，此处生化炉一步还原铜板，让 Gleba 无矿地形可炼铜）
+  'copper-plate-from-copper-bacteria': { time: 2, inp: { 'copper-bacteria': 1 }, out: { 'copper-plate': 1 } },
   // ===== 太空时代 小行星碎块加工链（破碎机配方，官方数值参考，见 GAME_DATA）=====
   // 破碎机本体：低密度结构 + 钢板 + 电动引擎 → 破碎机（官方 energy_required=10s，此处对齐 10s）
   'crusher': { time: 10, inp: { 'low-density-structure': 20, 'steel-plate': 10, 'electric-engine-unit': 10 }, out: { 'crusher': 1 } },
@@ -515,7 +528,7 @@ const DEVICE_NAMES = {
 const ELECTRO_RECIPES = ['superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant', 'promethium-science-pack', 'holmium-ore', 'holmium-solution', 'holmium-plate', 'supercapacitor', 'electrolyte', 'teslagun', 'tesla-ammo', 'tesla-turret', 'railgun-turret'];
 function isElectroRecipe(id) { return ELECTRO_RECIPES.indexOf(id) >= 0; }
 // 生化炉专属配方（太空时代生物产品）：果泥 / 生物流 / 营养素 / 生物硫磺 / 农业科研包 / 生化炉本体
-const BIOCHAMBER_RECIPES = ['yumako-mash', 'bioflux', 'nutrients-from-bioflux', 'biosulfur', 'agricultural-science-pack', 'biochamber', 'jellynut-processing', 'biter-egg', 'nutrients-from-biter-egg'];
+const BIOCHAMBER_RECIPES = ['yumako-mash', 'bioflux', 'nutrients-from-bioflux', 'biosulfur', 'agricultural-science-pack', 'biochamber', 'jellynut-processing', 'biter-egg', 'nutrients-from-biter-egg', 'iron-bacteria', 'copper-bacteria', 'iron-bacteria-cultivation', 'copper-bacteria-cultivation', 'iron-plate-from-iron-bacteria', 'copper-plate-from-copper-bacteria'];
 function isBiochamberRecipe(id) { return BIOCHAMBER_RECIPES.indexOf(id) >= 0; }
 // 破碎机专属配方（太空时代小行星碎块加工）：金属/碳质/氧化星块粉碎 + 破碎机本体 + 冰熔化
 const CRUSHER_RECIPES = ['metallic-asteroid-crushing', 'carbonic-asteroid-crushing', 'oxide-asteroid-crushing',

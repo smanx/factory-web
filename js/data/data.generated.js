@@ -208,6 +208,8 @@ const GAME_DATA = {
   "jellynut-seed": 10,
   "jelly": 100,
   "biter-egg": 100,
+  "iron-bacteria": 50,
+  "copper-bacteria": 50,
   "crusher": 10,
   "metallic-asteroid-chunk": 1,
   "carbonic-asteroid-chunk": 1,
@@ -2429,6 +2431,46 @@ const GAME_DATA = {
     "nutrients": 20
    }
   },
+  "iron-bacteria": {
+   "time": 1,
+   "inp": {
+    "jelly": 6
+   },
+   "out": {
+    "iron-bacteria": 1,
+    "spoilage": 4
+   }
+  },
+  "copper-bacteria": {
+   "time": 1,
+   "inp": {
+    "yumako-mash": 3
+   },
+   "out": {
+    "copper-bacteria": 1,
+    "spoilage": 1
+   }
+  },
+  "iron-bacteria-cultivation": {
+   "time": 4,
+   "inp": {
+    "iron-bacteria": 1,
+    "bioflux": 1
+   },
+   "out": {
+    "iron-bacteria": 4
+   }
+  },
+  "copper-bacteria-cultivation": {
+   "time": 4,
+   "inp": {
+    "copper-bacteria": 1,
+    "bioflux": 1
+   },
+   "out": {
+    "copper-bacteria": 4
+   }
+  },
   "crusher": {
    "time": 10,
    "inp": {
@@ -3454,6 +3496,10 @@ const GAME_DATA = {
   "jellynut-processing": "biochamber",
   "biter-egg": "biochamber",
   "nutrients-from-biter-egg": "biochamber",
+  "iron-bacteria": "biochamber",
+  "copper-bacteria": "biochamber",
+  "iron-bacteria-cultivation": "biochamber",
+  "copper-bacteria-cultivation": "biochamber",
   "crusher": "crusher",
   "metallic-asteroid-crushing": "crusher",
   "carbonic-asteroid-crushing": "crusher",
@@ -4338,6 +4384,14 @@ const GAME_DATA = {
    "zh": "异虫卵",
    "en": "Biter egg"
   },
+  "iron-bacteria": {
+   "zh": "铁细菌",
+   "en": "Iron bacteria"
+  },
+  "copper-bacteria": {
+   "zh": "铜细菌",
+   "en": "Copper bacteria"
+  },
   "crusher": {
    "zh": "破碎机",
    "en": "Crusher"
@@ -4747,6 +4801,22 @@ const GAME_DATA = {
   "nutrients-from-biter-egg": {
    "zh": "异虫卵制营养素",
    "en": "Nutrients from biter egg"
+  },
+  "iron-bacteria": {
+   "zh": "铁细菌",
+   "en": "Iron bacteria"
+  },
+  "copper-bacteria": {
+   "zh": "铜细菌",
+   "en": "Copper bacteria"
+  },
+  "iron-bacteria-cultivation": {
+   "zh": "铁细菌培养",
+   "en": "Iron bacteria cultivation"
+  },
+  "copper-bacteria-cultivation": {
+   "zh": "铜细菌培养",
+   "en": "Copper bacteria cultivation"
   },
   "metallic-asteroid-crushing": {
    "zh": "金属星岩粉碎",

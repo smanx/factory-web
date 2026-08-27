@@ -78,6 +78,9 @@ const TECH_REQ = {
   'jelly': 'agriculture',
   'biter-egg': 'agriculture',
   'artificial-jellynut-soil': 'agriculture',
+  // Gleba 金属细菌链（Iron/Copper bacteria）：由生化炉培育，统一由「农业科技」解锁
+  'iron-bacteria': 'agriculture',
+  'copper-bacteria': 'agriculture',
   'overgrowth-jellynut-soil': 'agriculture',
   'biolab': 'biolab',  // 生物实验室（Gleba）：需「生物实验室」科技（官方 Biolab 科技，前置农业科技），科研速度 2 倍
   // ===== 太空时代 小行星碎块加工链（统一由「太空材料加工」科技解锁）=====
