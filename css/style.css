@@ -1,5 +1,9 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* 公共面板背景色：背包面板、设备面板等所有交互面板的背景/标题统一使用此变量，
+   以后想整体换色只需修改这一处。 */
+:root { --panel-bg: #2b2b2b; }
+
 html, body {
   width: 100%; height: 100%;
   overflow: hidden;
@@ -501,6 +505,7 @@ html, body {
   top: 50%;
   transform: translate(-50%, -50%);
   max-height: calc(100vh - 48px);
+  background: var(--panel-bg);
 }
 #panel.inv-wide #panel-body {
   display: flex;
@@ -597,7 +602,7 @@ html, body {
   justify-content: space-between;
   align-items: center;
   padding: 5px 12px;
-  background: #232c38;
+  background: var(--panel-bg);
   font-weight: bold;
   color: #eaf1f8;
   cursor: move;
@@ -2125,6 +2130,10 @@ html, body {
   transform: translateX(-50%);
   max-height: calc(100vh - 150px);
 }
+/* 组装机面板：只含「背包 + 控制面板」两栏，按内容自适应宽度，避免右侧出现多余空白 */
+#panel.machine-wide:has(.asm3-layout) { width: fit-content; }
+/* 组装机面板顶部标题栏背景与右侧控制面板一致 */
+#panel.machine-wide:has(.asm3-layout) #panel-head { background: var(--panel-bg); }
 #panel.machine-wide #panel-body {
   display: flex;
   flex-direction: column;
@@ -2431,7 +2440,7 @@ html, body {
 .asm3-col {
   display: flex;
   flex-direction: column;
-  background: rgba(255, 255, 255, .02);
+  background: var(--panel-bg);
   border: 1px solid rgba(255, 255, 255, .06);
   border-radius: 8px;
   overflow: hidden;
@@ -2441,7 +2450,7 @@ html, body {
   padding: 8px 10px;
   font-weight: bold;
   color: #ffe08a;
-  background: #232c38;
+  background: var(--panel-bg);
   border-bottom: 1px solid #3a4550;
   font-size: 14px;
 }
@@ -2454,7 +2463,7 @@ html, body {
   width: 430px;
   min-width: 380px;
   flex: 0 0 auto;
-  background: #2b2b2b;
+  background: var(--panel-bg);
   border: 2px solid #444;
   border-radius: 8px;
   padding: 14px;
