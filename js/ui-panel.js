@@ -380,6 +380,20 @@ function initPanelEvents() {
       }
       return;
     }
+    // 星际旅行：点击星球按钮切换当前星球（需「空间平台」科技解锁，由 travelToPlanet 把关）
+    const planetBtn = ev.target.closest('[data-planet]');
+    if (planetBtn) {
+      const target = planetBtn.dataset.planet;
+      if (typeof travelToPlanet === 'function' && travelToPlanet(target)) {
+        if (typeof toast === 'function') toast('🚀 已抵达 ' + ((typeof planetOption === 'function' ? planetOption(target) : null)?.name || target));
+        if (typeof playSfx === 'function') playSfx('rocket');
+        const _sb = document.getElementById('panel-body');
+        if (_sb && typeof renderSettingsAsync === 'function') renderSettingsAsync(_sb, 0);
+      } else if (typeof toast === 'function') {
+        toast('未研究「空间平台」科技，无法前往该星球');
+      }
+      return;
+    }
     // 研究面板：分类筛选 tab
     const techCatBtn = ev.target.closest('[data-techcat]');
     if (techCatBtn && G.panelMode === 'tech') {
@@ -717,6 +731,28 @@ async function htmlSettings() {
   h += '<div class="sec">性能优化</div>';
   h += '<label class="setrow"><input type="checkbox" data-set="capDPR"' + (G.settings.capDPR ? ' checked' : '') + '> 限制高清缩放（DPR ≤ 1.5，降载高分屏）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="lowRes"' + (G.settings.lowRes ? ' checked' : '') + '> 省电模式（降至半分辨率，显著降 GPU 负载）</label>';
+  // 星际旅行（Space Age 行星切换）：研究「空间平台」科技后解锁星际旅行
+  h += '<div class="sec">星际旅行（Space Age）</div>';
+  if (typeof planetId !== 'function' || typeof PLANET_OPTIONS === 'undefined') {
+    h += '<div class="dim">行星系统未加载。</div>';
+  } else {
+    const cur = (typeof planetId === 'function') ? planetId() : 'nauvis';
+    const unlocked = !!(G.techDone && G.techDone['space-platform']);
+    h += '<div class="wcfg-row"><div class="wcfg-label">当前星球</div><div class="wcfg-opts">';
+    h += '<button type="button" class="wcfg-opt active" style="cursor:default">' + ((typeof planetOption === 'function' ? planetOption(cur) : null)?.name || '新地星') + '</button>';
+    h += '</div></div>';
+    if (!unlocked) {
+      h += '<div class="dim">🔒 需研究「空间平台」科技方可进行星际旅行（前往其它星球）。</div>';
+    }
+    h += '<div class="wcfg-row"><div class="wcfg-label">前往</div><div class="wcfg-opts">';
+    for (const o of PLANET_OPTIONS) {
+      if (o.v === cur) continue;
+      const disabled = !unlocked ? ' disabled' : '';
+      h += '<button type="button" class="wcfg-opt' + disabled + '" data-planet="' + o.v + '" title="' + o.en + '">' + o.name + (unlocked ? '' : ' 🔒') + '</button>';
+    }
+    h += '</div></div>';
+    h += '<div class="dim">切换星球会按该星球的资源画像重新生成地表与矿脉（不同星球有不同专属资源：祝融=金属/石矿、句芒=农业/石矿、雷神=铀矿、玄冥=冰原油矿）。切换保留背包/科技/装备，但建筑为星球专属不跨星保留。</div>';
+  }
   h += '<div class="sec">存档管理</div>';
   h += '<button data-action="quick-save">➕ 新建存档</button> ';
   h += '<button data-action="quick-load">读取最新存档</button>';

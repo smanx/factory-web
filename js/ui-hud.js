@@ -152,22 +152,7 @@ function initTopButtons() {
   });
   document.getElementById('btn-set').addEventListener('click', () =>
     G.panelMode === 'set' ? closePanel() : openPanel('set'));
-  // 顶部“暂停/继续”按钮：切换游戏暂停状态，并更新按钮文字
-  const pauseBtn = document.getElementById('btn-pause');
-  if (pauseBtn) {
-    const syncPauseBtn = () => {
-      if (G.paused) { pauseBtn.textContent = '▶ 继续'; pauseBtn.title = '继续游戏'; }
-      else { pauseBtn.textContent = '⏸ 暂停'; pauseBtn.title = '暂停游戏'; }
-    };
-    pauseBtn.addEventListener('click', () => {
-      G.paused = !G.paused;
-      syncPauseBtn();
-      if (typeof playSfx === 'function') playSfx('click');
-      if (G.paused) toast('游戏已暂停');
-      else toast('游戏继续');
-    });
-    syncPauseBtn();
-  }
+  // 设置面板的自动暂停/恢复由 openPanel/closePanel 处理（不再提供顶部暂停按钮）
 }
 
 function updateHUD(dt, fps) {

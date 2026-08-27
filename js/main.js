@@ -189,6 +189,69 @@ function newGame() {
   // 仅当在 Debug 模式中开启"无限资源"后才通过建造列表出现，正常游玩不可见。
 }
 
+// ===== 行星切换（Space Age 星际旅行） =====
+// 研究「空间平台」科技后，可在游戏内切换到其它星球（祝融/句芒/雷神/玄冥）。
+// 当前架构为单地表模型：切换星球会按目标星球的资源画像重新生成地表与矿脉，
+// 保留玩家的背包、科技、装备与个人进度（资源/建筑为星球专属，故不跨星保留）。
+// 未研究空间平台前调用会静默失败（由 UI 层把关）。
+function travelToPlanet(planet, opts) {
+  opts = opts || {};
+  // 科技门禁：空间平台科技解锁星际旅行
+  if (typeof isInfiniteTech !== 'function') return false;
+  const gated = (opts.force !== true) && !(G.techDone && G.techDone['space-platform']);
+  if (gated) return false;
+  if (typeof planetId === 'function' && planet === planetId()) return false;  // 已在目标星球
+
+  // 存档背包/科技/装备/玩家状态
+  const inv = new Map(G.inv);
+  const techDone = Object.assign({}, G.techDone);
+  const techProg = Object.assign({}, G.techProg || {});
+  const activeTech = G.activeTech;
+  const techQueue = (G.techQueue || []).slice();
+  const armor = G.armor;
+  const weapon = G.weapon;
+  const hp = G.playerHP, hpMax = G.playerHPmax;
+  const repairUses = G.repairPackUses || 0;
+  const logiRequest = Object.assign({}, G.logiRequest || {});
+  const trashSlots = Object.assign({}, G.trashSlots || {});
+  const blueBook = (G.blueBook || []).slice();
+
+  // 更新世界配置的星球
+  if (!G.worldConfig) G.worldConfig = {};
+  G.worldConfig.planet = planet;
+
+  // 以相同种子重新生成地表（不同星球不同矿脉/地形）
+  const seed = G.world.seed;
+  G.world = genWorld(seed);
+  if (typeof clearTerrainCache === 'function') clearTerrainCache();
+  G.grid = new Map(); G.buckets = new Map(); G.ents = [];
+  G.enemies = []; G.bullets = []; G.enemyProjectiles = []; G.groundFires = [];
+  G.acidPools = []; G.combatRobots = []; G.aoeZones = [];
+  G.railTiles = new Set(); G.elevatedSupports = new Set(); G.trains = [];
+  G.logiNet = null; G.logiRequest = {}; G.trashSlots = {};
+  if (typeof initWeather === 'function') initWeather();
+  if (typeof pollutionReset === 'function') pollutionReset();
+  if (typeof resetPowerReg === 'function') resetPowerReg();
+  if (typeof initWeather === 'function') initWeather();
+
+  // 恢复玩家状态
+  const [sx, sy] = findSpawn(G.world);
+  G.player = makePlayer(sx, sy);
+  G.spawn = { x: sx, y: sy };
+  G.cam.px = G.player.x; G.cam.py = G.player.y;
+  G.playerHP = hp; G.playerHPmax = hpMax;
+  G.armor = armor; G.weapon = weapon;
+  G.repairPackUses = repairUses;
+
+  // 恢复背包/科技/物流请求/蓝图库
+  G.inv = inv;
+  G.techDone = techDone; G.techProg = techProg; G.activeTech = activeTech; G.techQueue = techQueue;
+  G.logiRequest = logiRequest; G.trashSlots = trashSlots; G.blueBook = blueBook;
+  if (typeof constrRestore === 'function') constrRestore(null);
+  if (typeof equipmentRestore === 'function') equipmentRestore(null);
+  return true;
+}
+
 function serializeAll() {
   return {
     v: 2, // 存档布局版本：v2 起含核能设备占地迁移后的布局；旧档(v<2)读档时做占地迁移（见 applySave）

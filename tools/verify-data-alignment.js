@@ -90,6 +90,11 @@ if (rot('inserter')) {
   check('长臂相对倍率=官方0.02/0.014', Math.round(rot('long-handed-inserter') / rot('inserter') * 1000) / 1000, 1.429, 0.01);
 }
 
+
+console.log('\n【火箭发射井占地（官方 selection_box ±4.5 → 9×9）】');
+const SILO_FP = GAME_DATA.footprint && GAME_DATA.footprint['rocket-silo'];
+check('rocket-silo 占地=官方9×9', SILO_FP ? SILO_FP.w + 'x' + SILO_FP.h : 'null', '9x9');
+
 console.log('');
 if (failCount === 0) { console.log(`✅ 数据对齐官方校验全部通过（${passCount} 项）`); process.exit(0); }
 else { console.log(`❌ 失败 ${failCount} 项（请将硬编码值改为从 GAME_DATA 桥接或对齐官方）`); process.exit(1); }

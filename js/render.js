@@ -269,6 +269,8 @@ terrainChunkCache._seq = 0;   // LRU 时钟序号
 
 // 仅绘制单个 chunk 的地形底色（草地/水域），不含矿点
 function drawChunkTerrainInto(ctx, cx, cy) {
+  // 行星地表主色调：不同星球草地颜色不同（祝融赭石 / 句芒深绿 / 雷神灰 / 玄冥冰蓝）
+  const pgrass = (typeof planetGrassColors === 'function') ? planetGrassColors() : ['#4f7c3b', '#4a7538', '#456f35'];
   const ox = cx * CHUNK, oy = cy * CHUNK;
   for (let dy = 0; dy < CHUNK; dy++) {
     for (let dx = 0; dx < CHUNK; dx++) {
@@ -433,7 +435,7 @@ function drawChunkTerrainInto(ctx, cx, cy) {
         continue;
       }
       const v = hash2(tx, ty);
-      ctx.fillStyle = v > 0.62 ? '#4f7c3b' : v > 0.3 ? '#4a7538' : '#456f35';
+      ctx.fillStyle = v > 0.62 ? pgrass[0] : v > 0.3 ? pgrass[1] : pgrass[2];
       ctx.fillRect(px, py, TILE, TILE);
       if (t === T_TREE) drawTreeInto(ctx, px, py, tx, ty);
     }

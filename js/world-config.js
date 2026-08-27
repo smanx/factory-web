@@ -18,7 +18,8 @@ function defaultWorldConfig() {
     resourceSize: 'normal',      // 资源大小（矿团尺寸）
     water: 'normal',             // 水频率
     enemy: 'normal',             // 敌人强度
-    cliff: 'on'                  // 是否生成峭壁（对齐《异星工厂》：峭壁默认开启）
+    cliff: 'on',                 // 是否生成峭壁（对齐《异星工厂》：峭壁默认开启）
+    planet: 'nauvis'            // 起始星球（对齐《异星工厂》Space Age：新地星 Nauvis 为默认）
   };
 }
 // 默认配置单例：保证 worldConfig() 在未设置时返回同一引用，避免缓存永不命中的递归/重建
@@ -48,6 +49,41 @@ const WORLD_CLIFF_OPTIONS = [
   { v: 'off', name: '关闭' }
 ];
 
+// ===== 行星系统（对齐《异星工厂》Space Age 五颗行星）=====
+// 开局可选起始星球（新游戏设置面板），不同星球拥有不同的地表色调与资源分布。
+// 每颗星球在官方 factorio-data 中有专属命名（见 data/space-age/locale）。
+// 资源画像 resourceProfile：{ iron,copper,coal,stone,uranium,oil,asteroid,water }
+//   - 0   = 该星球无此资源（不生成）
+//   - 0.5 = 更少/更稀缺
+//   - 1   = 正常
+//   - 1.5 = 更丰富
+const PLANET_OPTIONS = [
+  { v: 'nauvis',   name: '新地星', en: 'Nauvis' },
+  { v: 'vulcanus', name: '祝融星', en: 'Vulcanus' },
+  { v: 'gleba',    name: '句芒星', en: 'Gleba' },
+  { v: 'fulgora',  name: '雷神星', en: 'Fulgora' },
+  { v: 'aquilo',   name: '玄冥星', en: 'Aquilo' }
+];
+
+// 行星地表主色调（草地色，渲染时对同行星所有地块生效；灰度为石质地面）
+const PLANET_GRASS_COLORS = {
+  nauvis:   ['#4f7c3b', '#4a7538', '#456f35'],  // 温带绿
+  vulcanus: ['#8a6a3a', '#835f32', '#7c592e'],  // 火山赭石
+  gleba:    ['#3f7a3a', '#3a7335', '#356c30'],  // 沼泽深绿
+  fulgora:  ['#7a7a88', '#72727f', '#6b6b78'],  // 雷云灰
+  aquilo:   ['#8a9aa8', '#82929f', '#7a8a97']   // 冰原灰蓝
+};
+
+// 行星资源画像：每颗星球各资源丰度倍率（0=无）。依据官方星球设定适配到现有矿种。
+const PLANET_RESOURCES = {
+  nauvis:   { iron: 1,   copper: 1,   coal: 1,   stone: 1,   uranium: 1,   oil: 1,   asteroid: 1,  water: 1 },
+  vulcanus: { iron: 1.4, copper: 1.4, coal: 0.4, stone: 1.5, uranium: 0,   oil: 0,   asteroid: 1,  water: 0 },
+  gleba:    { iron: 0,   copper: 0,   coal: 0,   stone: 1.2, uranium: 0,   oil: 0,   asteroid: 1,  water: 1.5 },
+  fulgora:  { iron: 0.2, copper: 0.2, coal: 0,   stone: 1,   uranium: 1.6, oil: 0,   asteroid: 1.4, water: 0 },
+  aquilo:   { iron: 0.5, copper: 0.5, coal: 1.2, stone: 1.2, uranium: 0,   oil: 1,   asteroid: 1.5, water: 1 }
+};
+
+
 // 归一化：确保配置对象字段完整、取值合法（旧存档/外部传入可能缺字段）
 function normalizeWorldConfig(c) {
   const d = defaultWorldConfig();
@@ -61,6 +97,7 @@ function normalizeWorldConfig(c) {
   out.water = WORLD_LEVEL_OPTIONS.some(o => o.v === c.water) ? c.water : d.water;
   out.enemy = WORLD_ENEMY_OPTIONS.some(o => o.v === c.enemy) ? c.enemy : d.enemy;
   out.cliff = WORLD_CLIFF_OPTIONS.some(o => o.v === c.cliff) ? c.cliff : d.cliff;
+  out.planet = PLANET_OPTIONS.some(o => o.v === c.planet) ? c.planet : d.planet;
   return out;
 }
 
@@ -84,6 +121,11 @@ function sizeMult() { return worldConfig() && _wcf ? _wcf.size : sizeMult0(); }
 function waterBias() { return worldConfig() && _wcf ? _wcf.water : waterBias0(); }
 function enemyConfig() { return worldConfig() && _wcf ? _wcf.enemy : enemyConfig0(); }
 function cliffOn() { return worldConfig() && _wcf ? _wcf.cliff : cliffOn0(); }
+function planetId() { return worldConfig().planet || 'nauvis'; }
+// 当前行星资源画像（供 world.js 按行星差异化生成资源/地形）
+function planetResources() { return PLANET_RESOURCES[planetId()] || PLANET_RESOURCES.nauvis; }
+function planetGrassColors() { return PLANET_GRASS_COLORS[planetId()] || PLANET_GRASS_COLORS.nauvis; }
+function planetOption(id) { return PLANET_OPTIONS.find(o => o.v === id) || PLANET_OPTIONS[0]; }
 
 // 实际计算逻辑（供 worldConfig 缓存派生值；也可在缓存未就绪时直接调用）
 function richnessMult0() {
@@ -171,6 +213,16 @@ function buildWorldConfigHtml(ov, cfg) {
     h += '</div></div>';
     return h;
   };
+  // 行星选择：对齐《异星工厂》Space Age 五颗行星（新地/祝融/句芒/雷神/玄冥）
+  {
+    let hh = '<div class="wcfg-row"><div class="wcfg-label">🌍 起始星球</div><div class="wcfg-opts">';
+    for (const o of PLANET_OPTIONS) {
+      hh += '<button type="button" class="wcfg-opt' + (o.v === cfg.planet ? ' active' : '') + '" data-key="planet" data-val="' + o.v + '" title="' + o.en + '">' + o.name + '</button>';
+    }
+    hh += '</div></div>';
+    hh += '<div class="dim wcfg-desc">选择起始星球：不同星球拥有不同的地表色调与资源分布（对齐《异星工厂》Space Age）。各星球专属资源为：祝融星=金属/石矿更丰、无原油铀矿；句芒星=无铁铜煤矿但石矿充足；雷神星=铀矿更丰、无石油；玄冥星=冰原、油为主、太阳能效率低。</div>';
+    h += hh;
+  }
   let h = '<div class="wcfg-field">' +
     '<div class="wcfg-label">世界种子</div>' +
     '<div class="wcfg-seedrow">' +

@@ -612,4 +612,38 @@ ok(ctx.__recipeDevice('promethium-science-pack') === 'electromagnetic-plant', '�
 ok(ctx.__recipeTechReq('promethium-science-pack') === 'promethium-science', '钷素科研包需「钷素科研」科技');
 ok(!!TS['promethium-science'], '钷素科研 科技已注册');
 
+
+// ===== 行星系统（阶段四增量）：行星定义 / 资源画像 / 地表色调 =====
+console.log('\n【行星系统 PLANETS（Space Age 五行星）】');
+// 在隔离 vm 中加载 world-config.js，校验行星定义（定义/资源画像/地表色调）
+(function () {
+  const wcCode = fs.readFileSync(ROOT + '/js/world-config.js', 'utf8');
+  const ctx2 = { console, localStorage: { getItem: () => null, setItem: () => {} }, Math, Date, Infinity, NaN };
+  ctx2.window = ctx2; ctx2.G = { settings: { language: 'zh' }, worldConfig: { planet: 'nauvis', seed: 1 } };
+  ctx2.globalThis = ctx2;
+  vm.createContext(ctx2);
+  try {
+    vm.runInContext(wcCode + '\n;globalThis.__PO=PLANET_OPTIONS;globalThis.__PR=PLANET_RESOURCES;'
+      + 'globalThis.__PGC=PLANET_GRASS_COLORS;globalThis.__pid=planetId;globalThis.__popt=planetOption;'
+      + 'globalThis.__pres=planetResources;globalThis.__pgc=planetGrassColors;', ctx2);
+    const OPTIONS = ctx2.__PO;
+    ok(!!OPTIONS && OPTIONS.length === 5, '行星数量 = 5（新地/祝融/句芒/雷神/玄冥）');
+    ok(!!ctx2.__PR && !!ctx2.__PR.nauvis, 'PLANET_RESOURCES 已定义（含 nauvis）');
+    ok(!!ctx2.__PGC && !!ctx2.__PGC.vulcanus, 'PLANET_GRASS_COLORS 已定义（含 vulcanus）');
+    // 各星球资源画像差异（官方设定：祝融无油铀、句芒无铁铜煤铀、雷神无煤油、玄冥无铀）
+    const R = ctx2.__PR;
+    ok(R.vulcanus.oil === 0 && R.vulcanus.uranium === 0, '祝融星 无原油/铀矿（官方）');
+    ok(R.gleba.iron === 0 && R.gleba.copper === 0 && R.gleba.coal === 0 && R.gleba.uranium === 0, '句芒星 无铁铜煤铀（官方）');
+    ok(R.fulgora.coal === 0 && R.fulgora.oil === 0, '雷神星 无煤/石油（官方）');
+    ok(R.aquilo.uranium === 0, '玄冥星 无铀矿（官方）');
+    // 行星 id 解析器与资源/色调查询
+    ok(typeof ctx2.__pid === 'function' && ctx2.__pid() === 'nauvis', 'planetId() 返回当前行星 nauvis');
+    ok(ctx2.__popt('gleba').name === '句芒星', 'planetOption(gleba) 返回 句芒星');
+    ok(!!ctx2.__pres() && ctx2.__pres().iron === 1, 'planetResources() 返回 nauvis 资源画像');
+    ok(!!ctx2.__pgc() && ctx2.__pgc().length === 3, 'planetGrassColors() 返回三档草地色');
+  } catch (e) {
+    fail++; console.log('  ❌ 行星系统 vm 加载失败: ' + e.message);
+  }
+})();
+
 process.exit(fail === 0 ? 0 : 1);

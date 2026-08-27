@@ -294,7 +294,8 @@ function getGhostEnt(type) {
 function drawGhost(ctx) {
   const g = (G && G.ghostCtx) || ctx;   // 顶层画布优先，回退到主画布
   if (g !== ctx) g.clearRect(0, 0, W, H); // 仅清空顶层画布，不清主画布
-  if (!buildActive() || !G.cursorTile || !G.canvasActive) return;
+  // 幽灵需显示在背包面板/底部工具栏等所有界面上方：仅需存在选中物品与鼠标所在格，不再要求 cursorTile 落在主画布上（面板/工具栏上由 window 级 mousemove 持续更新）。
+  if (!buildActive() || !G.cursorTile) return;
   const type = selItem();
   if (!type || !ITEMS[type]) return;
   const def = BUILD_DEFS[type];

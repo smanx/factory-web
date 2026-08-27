@@ -4105,6 +4105,10 @@ const GAME_DATA = {
    "w": 3,
    "h": 3
   },
+  "rocket-silo": {
+   "w": 9,
+   "h": 9
+  },
   "cargo-landing-pad": {
    "w": 8,
    "h": 8
