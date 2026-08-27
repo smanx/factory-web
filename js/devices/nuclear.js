@@ -839,13 +839,16 @@ function drawHeatPipe(ctx, e, gx, gy, dir, alpha) {
   //      使相邻导热管在连接处融为一体、不再被边框切割；线宽已按需求减半（原 1.5 → 0.75）----
   ctx.strokeStyle = '#1c1710';
   ctx.lineWidth = BORDER_W;
+  // 单方向连接时，导热管中心即自由终端端（对侧为开放端），需画边框
+  const connCount = (cn?1:0) + (cs?1:0) + (cw?1:0) + (ce?1:0);
+  const centerIsTerminal = connCount === 1;
   for (const s of segs) {
     for (const end of [[s[0], s[1]], [s[2], s[3]]]) {
       const ex = end[0], ey = end[1];
       // 判断该端点是否为"自由端"（未连接方向），连接处/路口不画外圈边框
       let freeEnd;
       if (ex === cx && ey === cy) {
-        freeEnd = false;                      // 本格中心：连接处
+        freeEnd = centerIsTerminal;           // 本格中心：仅单方向连接时才是自由终端端
       } else if (ex < cx) {
         freeEnd = !cw;                        // 西向
       } else if (ex > cx) {
@@ -856,8 +859,16 @@ function drawHeatPipe(ctx, e, gx, gy, dir, alpha) {
         freeEnd = !cs;                        // 南向
       }
       if (freeEnd) {
+        // 单方向连接的自由端在管中心：只描对侧（开放端）半圆，避免在连接侧画圈
+        let a0 = 0, a1 = Math.PI * 2;
+        if (ex === cx && ey === cy) {
+          if (cw)      { a0 = -Math.PI / 2; a1 =  Math.PI / 2;     }  // 西连 → 东侧开放
+          else if (ce) { a0 =  Math.PI / 2; a1 =  Math.PI * 3 / 2; }  // 东连 → 西侧开放
+          else if (cn) { a0 =  0;           a1 =  Math.PI;         }  // 北连 → 南侧开放
+          else if (cs) { a0 =  Math.PI;     a1 =  Math.PI * 2;     }  // 南连 → 北侧开放
+        }
         ctx.beginPath();
-        ctx.arc(ex, ey, R, 0, Math.PI * 2);
+        ctx.arc(ex, ey, R, a0, a1);
         ctx.stroke();
       }
     }
