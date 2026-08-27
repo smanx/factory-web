@@ -29,6 +29,7 @@ const TECH_REQ = {
   'rocket-silo': 'rocket-science',
   'cargo-landing-pad': 'rocket-science',  // 物流接驳站（对齐《异星工厂》：由火箭科技解锁，火箭货物降落于此）
   'cargo-bay': 'rocket-science',  // 物流扩展舱（对齐《异星工厂》：由火箭科技解锁，接驳站扩展存储）
+  'landing-pad-unloading-bay': 'rocket-science',  // 物流卸载舱（对齐《异星工厂》：由火箭科技解锁，接驳站卸载/扩展存储）
   'rocket': 'rocket-science',
   'satellite': 'rocket-science',
   'rocket-fuel': 'rocket-science',

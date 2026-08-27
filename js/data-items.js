@@ -9,7 +9,7 @@
 // 未列出的物品使用默认 100。玩家背包/储物箱/载具等存储受此上限约束。
 const STACK_SIZES = {
   // 终局单体物品与载具：堆叠 1（rocket=官方 rocket 物品 stack=100，见下方桥接）
-  'rocket': 1, 'rocket-part': 100, 'satellite': 1, 'nuclear-reactor': 10, 'rocket-silo': 1, 'cargo-landing-pad': 1, 'cargo-bay': 10,  // nuclear-reactor 官方 10；cargo-landing-pad 官方 stack=1；cargo-bay 官方 stack=10
+  'rocket': 1, 'rocket-part': 100, 'satellite': 1, 'nuclear-reactor': 10, 'rocket-silo': 1, 'cargo-landing-pad': 1, 'cargo-bay': 10, 'landing-pad-unloading-bay': 10,  // nuclear-reactor 官方 10；cargo-landing-pad 官方 stack=1；cargo-bay/landing-pad-unloading-bay 官方 stack=10
   'recycler': 20,  // 回收机官方 stack=20（由 GAME_DATA 桥接）
   'crusher': 10,  // 破碎机官方 stack=10（由 GAME_DATA 桥接）
   'metallic-asteroid-chunk': 1, 'carbonic-asteroid-chunk': 1, 'oxide-asteroid-chunk': 1,  // 小行星碎块官方 stack=1
@@ -179,6 +179,7 @@ const ITEMS = {
   'rocket-silo':     { name: '火箭发射井', color: '#7a6a5a', desc: '组装并发射火箭的终局建筑（5×5），放入卫星并填充火箭部件后发射。可接入电路网络输出井内火箭/卫星/部件就绪状态信号（对齐《异星工厂》火箭发射井电路信号）' },
   'cargo-landing-pad':{ name: '物流接驳站', color: '#6a5a8a', desc: '火箭货物接驳建筑（8×8）：火箭发射后，被发射物品的产物降落在此，内置 80 格大容量存储与雷达视野（对齐《异星工厂》Cargo landing pad，数据来自 GAME_DATA）' },
   'cargo-bay':       { name: '物流扩展舱', color: '#7a6a9a', desc: '物流接驳站的扩展存储舱（4×4）：紧邻接驳站铺设，为接驳站增加 20 格额外存储槽位（官方 Cargo bay，inventory_size_bonus=20，数据来自 GAME_DATA）' },
+  'landing-pad-unloading-bay': { name: '物流卸载舱', color: '#8a5a7a', desc: '物流接驳站的卸载舱（4×5）：官方 Cargo unloading bay，允许从太空平台向接驳站卸载货物，紧邻接驳站铺设亦为其增加 20 格额外存储槽位（inventory_size_bonus=20，卸载距离 59 格，数据来自 GAME_DATA）' },
   'radar':           { name: '雷达', color: '#5a8a8a', desc: '周期性扫描周围区域，点亮小地图/标记新探索区（3×3，吃电力）' },
   'explosives':       { name: '爆炸物', color: '#d05a2a', desc: '由煤和石油气制造的高能化合物，用于火箭弹' },
   'cliff-explosives': { name: '峭壁炸药', color: '#8a7a5a', desc: '选中后点击峭壁即可将其炸毁清除，开辟地形通途（对齐《异星工厂》Cliff explosives）' },

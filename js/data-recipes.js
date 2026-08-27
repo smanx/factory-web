@@ -168,6 +168,7 @@ const RECIPES = {
   'rocket-silo':        { time: 30, inp: { 'concrete': 1000, 'electric-engine-unit': 200, 'pipe': 100, 'processing-unit': 200, 'steel-plate': 1000 }, out: { 'rocket-silo': 1 } },
   'cargo-landing-pad':  { time: 30, inp: { 'concrete': 200, 'steel-plate': 25, 'processing-unit': 10 }, out: { 'cargo-landing-pad': 1 } },  // 官方：200混凝土+25钢板+10处理器（30s）
   'cargo-bay':          { time: 10, inp: { 'steel-plate': 20, 'low-density-structure': 20, 'processing-unit': 5 }, out: { 'cargo-bay': 1 } },  // 官方：20钢板+20低密度结构+5处理器（10s）
+  'landing-pad-unloading-bay': { time: 10, inp: { 'cargo-bay': 1, 'steel-chest': 4, 'electric-engine-unit': 15, 'processing-unit': 8 }, out: { 'landing-pad-unloading-bay': 1 } },  // 官方：1扩展舱+4钢箱+15电引擎+8处理器（10s）
   'radar':        { time: 0.5, inp: { 'electronic-circuit': 5, 'iron-gear-wheel': 5, 'iron-plate': 10 }, out: { 'radar': 1 } },
   // 爆炸物（火箭弹/手雷专用）
   'explosives':        { time: 4, inp: { 'coal': 1, 'sulfur': 1, 'water': 10 }, out: { 'explosives': 2 } },

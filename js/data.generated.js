@@ -19,6 +19,8 @@
 //           heatPipeSpecificHeat, heatPipeMaxTransfer, reactorHeatRate(MW),
 //           heatingTowerRate(MW), heatingTowerEffectivity, heatingTowerMaxTemp,
 //           heatingTowerSpecificHeat, heatingTowerMaxTransfer }, roboportPower(kW)
+//   cargoLandingPad = { inventorySize, radarRange }, cargoBay = { inventorySizeBonus }（物流接驳站/扩展舱）
+//   cargoUnloadingBay = { inventorySizeBonus, allowUnloading, unloadingDistance }（物流卸载舱）
 //   footprint[building] = { w, h }（占地面积格数，官方 selection_box）
 const GAME_DATA = {
  "stackSize": {
@@ -133,6 +135,7 @@ const GAME_DATA = {
   "rocket-silo": 1,
   "cargo-landing-pad": 1,
   "cargo-bay": 10,
+  "landing-pad-unloading-bay": 10,
   "radar": 50,
   "explosives": 50,
   "cliff-explosives": 20,
@@ -326,6 +329,7 @@ const GAME_DATA = {
   "rocket-silo": 5000,
   "cargo-landing-pad": 1000,
   "cargo-bay": 1000,
+  "landing-pad-unloading-bay": 1000,
   "radar": 250,
   "stone-wall": 350,
   "gate": 350,
@@ -1735,6 +1739,18 @@ const GAME_DATA = {
     "cargo-bay": 1
    }
   },
+  "landing-pad-unloading-bay": {
+   "time": 10,
+   "inp": {
+    "cargo-bay": 1,
+    "steel-chest": 4,
+    "electric-engine-unit": 15,
+    "processing-unit": 8
+   },
+   "out": {
+    "landing-pad-unloading-bay": 1
+   }
+  },
   "radar": {
    "time": 0.5,
    "inp": {
@@ -2582,6 +2598,7 @@ const GAME_DATA = {
   "rocket-silo": "assembling-machine-1",
   "cargo-landing-pad": "assembling-machine-1",
   "cargo-bay": "assembling-machine-1",
+  "landing-pad-unloading-bay": "assembling-machine-1",
   "radar": "assembling-machine-1",
   "explosives": "chemical-plant",
   "battery": "chemical-plant",
@@ -3123,6 +3140,10 @@ const GAME_DATA = {
   "cargo-bay": {
    "zh": "接驳扩展仓",
    "en": "Cargo bay"
+  },
+  "landing-pad-unloading-bay": {
+   "zh": "接驳卸货仓",
+   "en": "Landing pad unloading bay"
   },
   "radar": {
    "zh": "雷达",
@@ -3824,6 +3845,11 @@ const GAME_DATA = {
  "cargoBay": {
   "inventorySizeBonus": 20
  },
+ "cargoUnloadingBay": {
+  "inventorySizeBonus": 20,
+  "allowUnloading": true,
+  "unloadingDistance": 59
+ },
  "equipment": {
   "solar-panel-equipment": {
    "powerOut": 30
@@ -4059,6 +4085,10 @@ const GAME_DATA = {
   "cargo-bay": {
    "w": 4,
    "h": 4
+  },
+  "landing-pad-unloading-bay": {
+   "w": 4,
+   "h": 5
   },
   "roboport": {
    "w": 4,
