@@ -167,7 +167,10 @@
 ### 阶段五：数值/体验精修
 - [ ] 各 DLC 建筑占地/功耗/速度逐一桥接 data.generated.js
 - [ ] DLC 科技树接入 data-tech-tree
-- [ ] DLC 中英命名接入 names / recipeNames
+- [x] DLC 中英命名接入 names / recipeNames（本增量完成装备+瓦片命名单源：
+  LOCALE_SECTIONS 新增 `equipment-name` / `tile-name` 段，装备 13 件（太阳能/电池/聚变/外骨骼/夜视/激光/能量盾/放电/个人机器人接口）
+  与瓦片 `stone-path` 的官方中英命名现从 GAME_DATA.names 单源获取，命名总数 229→240；
+  新增 verify-dlc 装备命名单源校验 13 项。剩余 17 项为项目自定/2.0 移除物品或官方模板名（桶/铁斧等），无官方 locale 条目）
 
 > 原则：所有新增 DLC 物品/配方/建筑的数据一律从 factorio-data 生成的
 > data.generated.js 获取，不再为设备单独维护数值表，保持与官方一致。

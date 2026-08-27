@@ -3206,6 +3206,14 @@ const GAME_DATA = {
    "zh": "建设机器人",
    "en": "Construction robot"
   },
+  "personal-roboport-equipment": {
+   "zh": "机器人指令模块",
+   "en": "Personal roboport"
+  },
+  "personal-roboport-mk2-equipment": {
+   "zh": "机器人指令模块 MK2",
+   "en": "Personal roboport MK2"
+  },
   "passive-provider-chest": {
    "zh": "被动供货箱（红箱）",
    "en": "Passive provider chest"
@@ -3334,6 +3342,10 @@ const GAME_DATA = {
    "zh": "标准混凝土（标识）",
    "en": "Hazard concrete"
   },
+  "stone-path": {
+   "zh": "石砖路",
+   "en": "Stone path"
+  },
   "landfill": {
    "zh": "填埋材料",
    "en": "Landfill"
@@ -3350,9 +3362,49 @@ const GAME_DATA = {
    "zh": "能量装甲 MK2",
    "en": "Power armor MK2"
   },
+  "solar-panel-equipment": {
+   "zh": "太阳能模块",
+   "en": "Portable solar panel"
+  },
+  "fusion-reactor-equipment": {
+   "zh": "聚变反应堆模块",
+   "en": "Portable fusion reactor"
+  },
+  "battery-equipment": {
+   "zh": "电池组模块",
+   "en": "Personal battery"
+  },
+  "battery-mk2-equipment": {
+   "zh": "电池组模块 MK2",
+   "en": "Personal battery MK2"
+  },
+  "exoskeleton-equipment": {
+   "zh": "外骨骼模块",
+   "en": "Exoskeleton"
+  },
+  "night-vision-equipment": {
+   "zh": "夜视模块",
+   "en": "Nightvision"
+  },
+  "personal-laser-defense-equipment": {
+   "zh": "激光防御模块",
+   "en": "Personal laser defense"
+  },
+  "energy-shield-equipment": {
+   "zh": "能量盾模块",
+   "en": "Energy shield"
+  },
+  "energy-shield-mk2-equipment": {
+   "zh": "能量盾模块 MK2",
+   "en": "Energy shield MK2"
+  },
   "belt-immunity-equipment": {
    "zh": "锚定模块",
    "en": "Belt immunity equipment"
+  },
+  "discharge-defense-equipment": {
+   "zh": "放电防御模块",
+   "en": "Discharge defense"
   },
   "wood": {
    "zh": "木材",

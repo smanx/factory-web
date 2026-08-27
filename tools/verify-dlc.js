@@ -238,6 +238,27 @@ ok(!!TS['quality-3'], '「品质学 III」科技已注册');
 ok(typeof ctx.__GAME_DATA !== 'undefined', 'GAME_DATA 就绪');
 ok(typeof IT['iron-plate~rare'] === 'undefined' || IT['iron-plate~rare'] !== undefined, '品质变体可显示（iron-plate~rare）');
 
+
+// ===== 装备命名单源（equipment-name 官方 locale 已接入 GAME_DATA.names）=====
+console.log('\n【装备命名单源（GAME_DATA.names）】');
+for (const [pid, en] of [
+  ['solar-panel-equipment', 'Portable solar panel'],
+  ['fusion-reactor-equipment', 'Portable fusion reactor'],
+  ['battery-equipment', 'Personal battery'],
+  ['battery-mk2-equipment', 'Personal battery MK2'],
+  ['exoskeleton-equipment', 'Exoskeleton'],
+  ['night-vision-equipment', 'Nightvision'],
+  ['personal-laser-defense-equipment', 'Personal laser defense'],
+  ['energy-shield-equipment', 'Energy shield'],
+  ['energy-shield-mk2-equipment', 'Energy shield MK2'],
+  ['discharge-defense-equipment', 'Discharge defense'],
+  ['personal-roboport-equipment', 'Personal roboport'],
+  ['personal-roboport-mk2-equipment', 'Personal roboport MK2'],
+]) {
+  ok(GD.names[pid] && GD.names[pid].en === en, pid + ' 官方命名已收录 (' + en + ')');
+}
+ok(GD.names['stone-path'] && GD.names['stone-path'].en === 'Stone path', 'stone-path 官方命名已收录 (Stone path，tile-name)');
+
 // ===== 高架铁轨（Elevated Rails DLC）数据校验 =====
 console.log('\n【高架铁轨（Elevated Rails DLC）数据】');
 ok(!!GD.stackSize['rail-support'], 'rail-support 堆叠来自官方 (=20)');

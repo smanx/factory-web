@@ -249,7 +249,7 @@ function deviceFor(officialRecipe) {
 // 官方命名（物品/实体/配方/流体）经项目 ID 映射后写入 GAME_DATA.names / GAME_DATA.recipeNames，
 // 供设置内中英文切换使用（见 js/data-util.js 的 localizedName）。
 // 段优先级：item-name > entity-name > recipe-name > fluid-name（同名时前者优先）。
-const LOCALE_SECTIONS = ['item-name', 'entity-name', 'recipe-name', 'fluid-name'];
+const LOCALE_SECTIONS = ['item-name', 'entity-name', 'recipe-name', 'fluid-name', 'equipment-name', 'tile-name'];
 // 解析单个 .cfg：返回 { section: { key: value } }（只保留上述段，跳过 [段头]/空行/无=行）
 function parseLocaleFile(file) {
   const out = {};
