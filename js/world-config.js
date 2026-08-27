@@ -213,6 +213,14 @@ function buildWorldConfigHtml(ov, cfg) {
     h += '</div></div>';
     return h;
   };
+  let h = '<div class="wcfg-field">' +
+    '<div class="wcfg-label">世界种子</div>' +
+    '<div class="wcfg-seedrow">' +
+      '<input id="wcfg-seed-input" type="number" min="1" value="' + (cfg.seed || '') + '" placeholder="留空 = 随机">' +
+      '<button type="button" id="wcfg-seed-random" class="wcfg-opt">🎲 随机</button>' +
+    '</div>' +
+    '<div class="dim wcfg-desc">相同种子会生成相同世界（地形/矿脉/水/峭壁）。留空或 0 表示随机。</div>' +
+  '</div>';
   // 行星选择：对齐《异星工厂》Space Age 五颗行星（新地/祝融/句芒/雷神/玄冥）
   {
     let hh = '<div class="wcfg-row"><div class="wcfg-label">🌍 起始星球</div><div class="wcfg-opts">';
@@ -223,14 +231,6 @@ function buildWorldConfigHtml(ov, cfg) {
     hh += '<div class="dim wcfg-desc">选择起始星球：不同星球拥有不同的地表色调与资源分布（对齐《异星工厂》Space Age）。各星球专属资源为：祝融星=金属/石矿更丰、无原油铀矿；句芒星=无铁铜煤矿但石矿充足；雷神星=铀矿更丰、无石油；玄冥星=冰原、油为主、太阳能效率低。</div>';
     h += hh;
   }
-  let h = '<div class="wcfg-field">' +
-    '<div class="wcfg-label">世界种子</div>' +
-    '<div class="wcfg-seedrow">' +
-      '<input id="wcfg-seed-input" type="number" min="1" value="' + (cfg.seed || '') + '" placeholder="留空 = 随机">' +
-      '<button type="button" id="wcfg-seed-random" class="wcfg-opt">🎲 随机</button>' +
-    '</div>' +
-    '<div class="dim wcfg-desc">相同种子会生成相同世界（地形/矿脉/水/峭壁）。留空或 0 表示随机。</div>' +
-  '</div>';
   h += seg('地图大小', WORLD_SIZE_OPTIONS, cfg.size, 'size');
   h += '<div class="dim wcfg-desc">限制可探索范围：小/中/大为有限地图，无限则不限制（默认）。</div>';
   h += seg('资源丰富度', WORLD_LEVEL_OPTIONS, cfg.resourceRichness, 'resourceRichness');
