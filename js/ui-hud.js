@@ -155,12 +155,13 @@ function initTopButtons() {
   // 设置面板的自动暂停/恢复由 openPanel/closePanel 处理（不再提供顶部暂停按钮）
 }
 
-function updateHUD(dt, fps) {
+function updateHUD(dt, fps, ups) {
   const el = document.getElementById('hud-info');
   const p = G.player;
   const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
   // HUD 信息项改为可点击：点击弹出详情弹框（替代原先的悬停 title 提示）
-  let hud = '<span class="hud-item" data-hud="fps">' + fps + '</span>   <span class="hud-item" data-hud="coord">(' + tx + ',' + ty + ')</span>';
+  // 帧率/更新率：FPS 后紧跟斜杠显示 UPS（更新次数/秒）
+  let hud = '<span class="hud-item" data-hud="fps">' + fps + ' / ' + ups + '</span>   <span class="hud-item" data-hud="coord">(' + tx + ',' + ty + ')</span>';
   if (G.settings.combat) {
     const hp = Math.max(0, Math.round(G.playerHP));
     const hpPct = G.playerHPmax > 0 ? hp / G.playerHPmax : 0;
@@ -220,9 +221,10 @@ function showHudInfo(key, el) {
   const evo = Math.round((G.evolution || 0) * 100);
   let title = 'HUD 详情', desc = '', detail = '';
   if (key === 'fps') {
-    title = '帧率 (FPS)';
-    desc = '每秒渲染的帧数，反映游戏运行流畅度。数值越高画面越流畅，过低则可能卡顿。';
-    detail = '当前帧率：' + (el ? el.textContent : '--') + ' FPS。<br>建议保持 30 FPS 以上以获流畅体验；若持续偏低，可尝试降低画质或关闭其他占资源的窗口。';
+    title = '帧率 / 更新率 (FPS / UPS)';
+    desc = 'FPS 为每秒渲染帧数，反映画面流畅度；UPS 为每秒世界更新次数。两者越接近、数值越高，游戏运行越流畅。';
+    const t = el ? el.textContent : '-- / --';
+    detail = '当前 FPS / UPS：' + t + '。<br>建议保持 30 以上以获流畅体验；若 FPS 明显低于 UPS，说明渲染成为瓶颈，可尝试降低画质或关闭其他占资源的窗口。';
   } else if (key === 'coord') {
     title = '坐标 (x, y)';
     desc = '玩家当前所处的地图格子坐标。X 为横向格子编号，Y 为纵向格子编号。';

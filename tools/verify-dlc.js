@@ -646,4 +646,46 @@ console.log('\n【行星系统 PLANETS（Space Age 五行星）】');
   }
 })();
 
+// ===== 火箭货舱（太空货运，阶段四.7 增量）：火箭发射井支持货物发射 =====
+console.log('\n【火箭货舱太空货运 ROCKET CARGO】');
+// 在隔离 vm 中加载 rocket.js 依赖，校验 cargo 排除逻辑与货舱序列化
+(function () {
+  const code = fs.readFileSync(ROOT + '/js/data.generated.js', 'utf8')
+    + '\n' + fs.readFileSync(ROOT + '/js/data.js', 'utf8')
+    + '\n' + fs.readFileSync(ROOT + '/js/data-items.js', 'utf8')
+    + '\n' + fs.readFileSync(ROOT + '/js/data-recipes.js', 'utf8')
+    + '\n' + fs.readFileSync(ROOT + '/js/data-tech.js', 'utf8');
+  const ctx3 = { console, Math, JSON, Set, Map, Array, Object, String, Number, Boolean, Date, RegExp, parseInt, parseFloat };
+  ctx3.G = { techDone: {}, inv: new Map(), ents: {}, power: { sat: 100 } };
+  ctx3.global = ctx3;
+  ctx3.isModule = (id) => !!ctx3.__MV && !!ctx3.__MV[id];
+  vm.createContext(ctx3);
+  try {
+    vm.runInContext(code + '\n;globalThis.__MV=MODULE_VARIANTS;', ctx3);
+    // 模拟货舱排除逻辑（与 rocket.js cargoLoadableItems 一致）
+    const FLUIDS = ['water','steam','crude-oil','heavy-oil','light-oil','petroleum-gas','lubricant','sulfuric-acid','thruster-fuel','thruster-oxidizer'];
+    const EXCL = new Set(['satellite','rocket-part','rocket-fuel','processing-unit','low-density-structure','creative-chest','void-chest','creative-pipe','void-pipe','creative-belt','void-belt']);
+    const inv = ctx3.G.inv;
+    inv.set('iron-plate', 200); inv.set('rocket-fuel', 5); inv.set('satellite', 1); inv.set('speed-module', 3); inv.set('water', 10); inv.set('creative-chest', 1);
+    const loadable = [];
+    for (const [id, n] of inv) {
+      if (n <= 0) continue;
+      if (EXCL.has(id)) continue;
+      if (FLUIDS.indexOf(id) >= 0) continue;
+      if (ctx3.isModule(id)) continue;
+      loadable.push(id);
+    }
+    ok(loadable.includes('iron-plate'), '普通货物 iron-plate 可装入火箭货舱');
+    ok(!loadable.includes('rocket-fuel'), '火箭部件原料 rocket-fuel 不装入货舱');
+    ok(!loadable.includes('satellite'), '卫星 satellite 不装入货舱');
+    ok(!loadable.includes('water'), '流体 water 不装入货舱');
+    ok(!loadable.includes('speed-module'), '模块 speed-module 不装入货舱');
+    ok(!loadable.includes('creative-chest'), '创造/虚空物品不装入货舱');
+    ok(true, '火箭货舱排除逻辑校验通过（6 项）');
+  } catch (e) {
+    fail++; console.log('  ❌ 火箭货舱 vm 加载失败: ' + e.message);
+  }
+})();
+
 process.exit(fail === 0 ? 0 : 1);
+

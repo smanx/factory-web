@@ -148,7 +148,7 @@ const FLUID_WAGON_CAP = GAME_DATA.fluidCapacity?.fluidWagon ?? 2500;   // 流体
 // 载具可安装个人装备件（外骨骼加速、太阳能板/聚变堆供能、电池储电、夜视/传送带免疫等）
 const VEHICLE_GRIDS = { car: 5, tank: 6 };
 
-const SCIENCE_PACKS = ['automation-science-pack', 'logistic-science-pack', 'chemical-science-pack', 'military-science-pack', 'production-science-pack', 'utility-science-pack', 'space-science-pack', 'electromagnetic-science-pack', 'agricultural-science-pack'];
+const SCIENCE_PACKS = ['automation-science-pack', 'logistic-science-pack', 'chemical-science-pack', 'military-science-pack', 'production-science-pack', 'utility-science-pack', 'space-science-pack', 'electromagnetic-science-pack', 'agricultural-science-pack', 'metallurgic-science-pack', 'promethium-science-pack'];
 function isScience(item) { return SCIENCE_PACKS.indexOf(item) >= 0; }
 const FILTER_CHOICES = ['iron-plate', 'copper-plate', 'steel-plate', 'iron-gear-wheel', 'iron-stick', 'copper-cable', 'electronic-circuit',
   'coal', 'solid-fuel', 'stone', 'plastic-bar', 'automation-science-pack', 'logistic-science-pack', 'chemical-science-pack', 'military-science-pack',

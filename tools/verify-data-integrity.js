@@ -124,9 +124,9 @@ const buildNoRecipe = Object.keys(BUILD_DEFS).filter(id => {
   if (id in RECIPES || id in REFINERY_RECIPES || id in CENTRIFUGE_RECIPES) return false;
   // 这些建筑由特殊机制生成（蓝图/放置/初始物品），允许无配方
   const specialBuild = ['rocket-silo'];
-  // 调试/测试专用设备（创造/虚空箱、创造/虚空管道、创造/虚空传送带、被动应急供电）：
+  // 调试/测试专用设备（创造/虚空箱、创造/虚空管道、创造/虚空传送带）：
   // 仅由 Debug 面板发放，非生存可制造，故允许无配方（对齐官方无此类物品，属本项目测试扩展）
-  const testDevices = ['creative-chest','void-chest','creative-pipe','void-pipe','creative-belt','void-belt','passive-power'];
+  const testDevices = ['creative-chest','void-chest','creative-pipe','void-pipe','creative-belt','void-belt'];
   return !specialBuild.includes(id) && !testDevices.includes(id);
 });
 check('可建造建筑均有配方（例外=' + buildNoRecipe.length + '）', buildNoRecipe.length === 0,

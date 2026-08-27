@@ -340,6 +340,9 @@ function loop(ts) {
   // 打开设置面板不再暂停游戏（仅暂停时世界/设备/电力/玩家停摆）。
   const paused = !!G.paused;
   if (!paused) G.time += dt;
+  // UPS：每秒世界更新次数（暂停时为 0），与 FPS 采用同款指数平滑。
+  const upsNow = paused ? 0 : 1 / Math.max(raw, 0.0001);
+  upsSmooth += (upsNow - upsSmooth) * 0.05;
   fpsSmooth += (1 / Math.max(raw, 0.0001) - fpsSmooth) * 0.05;
   if (G.settings.autoSave) {
     G.autoT += raw;
@@ -450,7 +453,7 @@ function loop(ts) {
       else if (G.panelMode === 'tech' && !isPanelTyping()) renderPanel(false);
       uiDirty = false;
     }
-    updateHUD(dt, Math.round(fpsSmooth));
+    updateHUD(dt, Math.round(fpsSmooth), Math.round(upsSmooth));
   } catch (err) {
     if (!loop.errShown) {
       loop.errShown = true;

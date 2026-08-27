@@ -15,6 +15,26 @@ const SILO_ASSEMBLE = {
   'low-density-structure': 10
 };
 const SILO_CAP = 100;
+// 火箭货舱容量（太空货运）：单种货物最多可装的件数（对齐《异星工厂》：火箭货舱按堆叠装载，这里以件计数）。
+const CARGO_CAP = 200;
+
+// 火箭货舱可运输的物品：玩家背包中可装入火箭发射的货物。
+// 排除：火箭部件/卫星/部件原料、流体、模块、创造/虚空测试设备。
+// 返回背包中可装货物的物品 id 列表（按背包顺序）。
+function cargoLoadableItems() {
+  const excl = new Set(['satellite', 'rocket-part', 'rocket-fuel', 'processing-unit', 'low-density-structure',
+    'creative-chest', 'void-chest', 'creative-pipe', 'void-pipe', 'creative-belt', 'void-belt']);
+  const out = [];
+  if (!(G.inv instanceof Map)) return out;
+  for (const [id, n] of G.inv) {
+    if (n <= 0) continue;
+    if (excl.has(id)) continue;
+    if (FLUIDS.indexOf(id) >= 0) continue;
+    if (typeof isModule === 'function' && isModule(id)) continue;
+    out.push(id);
+  }
+  return out;
+}
 // 组装出完整火箭所需火箭部件数（对齐《异星工厂》：发射井逐件组装火箭部件，集齐后拼装成完整火箭本体）。
 // 原版需 100 件；本作结合经济规模取 10 件，使产能模块装进发射井（4 槽）能真正累积免费部件、缩减终局材料投入，
 // 复现《异星工厂》"火箭井装产能模块"的经典玩法。每件部件配方 = SILO_ASSEMBLE（火箭燃料×10 + 处理单元×10 + 低密度结构×10）。
@@ -32,6 +52,7 @@ class RocketSilo extends CircuitNode {
     this.launchT = 0;
     this.launchCount = 0;    // 该发射井累计发射次数（对齐《异星工厂》：发射井可重复使用，多次发射产空间科学包）
     this.launched = false;   // 历史已发射过（用于渲染/状态；不阻止再次发射）
+    this.cargo = {};         // 火箭货舱（太空货运）：随火箭发射的货物，物品→数量
   }
   // 电路网络信号输出（对齐《异星工厂》：火箭发射井可接入电路网络读取井内状态）。
   // 输出信号：signal-rocket 火箭本体数量、signal-satellite 卫星数量、
@@ -88,7 +109,14 @@ class RocketSilo extends CircuitNode {
       if (typeof playSfx === 'function') playSfx('module');
       return true;
     }
-    if (item !== 'satellite' && !SILO_ASSEMBLE[item]) return false;
+    if (item !== 'satellite' && !SILO_ASSEMBLE[item]) {
+      // 火箭已组装完成（阶段②）：允许把任意物品装入火箭货舱（太空货运）
+      if (!this.hasRocket()) return false;
+      if ((this.cargo[item] || 0) >= CARGO_CAP) return false;
+      this.cargo[item] = (this.cargo[item] || 0) + 1;
+      if (typeof playSfx === 'function') playSfx('rocket-part');
+      return true;
+    }
     if ((this.inp[item] || 0) >= SILO_CAP) return false;
     this.inp[item] = (this.inp[item] || 0) + 1;
     // 火箭部件/卫星送入井内：厚重金属装配声
@@ -96,6 +124,8 @@ class RocketSilo extends CircuitNode {
     return true;
   }
   takeItem() {
+    // 货舱货物优先取出（太空货运）
+    for (const k of Object.keys(this.cargo)) if (this.cargo[k] > 0) return this.takeItemOf(k);
     const keys = ['satellite'].concat(Object.keys(this.modules)).concat(Object.keys(SILO_ASSEMBLE));
     for (const k of keys)
       if (this.inp[k] > 0 || (this.modules[k] || 0) > 0) return this.takeItemOf(k);
@@ -103,6 +133,7 @@ class RocketSilo extends CircuitNode {
   }
   countOf(item) { return (this.inp[item] || 0) + (item === 'rocket-part' ? this.parts : 0); }
   takeItemOf(item) {
+    if ((this.cargo[item] || 0) > 0) { this.cargo[item]--; if (this.cargo[item] <= 0) delete this.cargo[item]; return item; }
     if (item === 'rocket-part' && this.parts > 0) { this.parts--; return 'rocket-part'; }
     if ((this.inp[item] || 0) > 0) { this.inp[item]--; if (this.inp[item] <= 0) delete this.inp[item]; return item; }
     if ((this.modules[item] || 0) > 0) { this.modules[item]--; if (this.modules[item] <= 0) delete this.modules[item]; return item; }
@@ -113,6 +144,7 @@ class RocketSilo extends CircuitNode {
     if (this.parts > 0) list.push(['rocket-part', this.parts]);
     for (const k in this.modules) if (this.modules[k] > 0) list.push([k, this.modules[k]]);
     for (const k in this.inp) list.push([k, this.inp[k]]);
+    for (const k in this.cargo) if (this.cargo[k] > 0) list.push([k, this.cargo[k]]);
     return list;
   }
   // 组装部件是否集齐（一次火箭部件的原料齐备）
@@ -176,7 +208,7 @@ class RocketSilo extends CircuitNode {
       this.launching = false;
       this.launchCount++;
       this.launched = true;
-      onRocketLaunch();
+      onRocketLaunch(this);
     }
   }
   powerDemand() { return this.launching ? 2000 : 20; }
@@ -184,11 +216,12 @@ class RocketSilo extends CircuitNode {
     const s = super.serialize();
     s.inp = this.inp; s.parts = this.parts; s.modules = this.modules; s.prodBuf = this.prodBuf;
     s.launching = this.launching; s.launchT = this.launchT; s.launched = this.launched; s.launchCount = this.launchCount || 0;
+    s.cargo = this.cargo;
     return s;
   }
   static restore(s) {
     const t = super.restore(s);
-    t.inp = s.inp || {}; t.parts = s.parts || 0; t.modules = s.modules || {}; t.prodBuf = s.prodBuf || 0;
+    t.inp = s.inp || {}; t.parts = s.parts || 0; t.modules = s.modules || {}; t.prodBuf = s.prodBuf || 0; t.cargo = s.cargo || {};
     t.launching = !!s.launching; t.launchT = s.launchT || 0; t.launched = !!s.launched; t.launchCount = s.launchCount || (s.launched ? 1 : 0);
     // 旧档迁移：旧版火箭井直接存 inp.rocket-body（已组装出火箭本体），换算为已集齐火箭部件
     if (t.parts <= 0 && (t.inp['rocket-body'] || 0) > 0) { t.parts = ROCKET_PARTS; delete t.inp['rocket-body']; }
@@ -307,6 +340,35 @@ function siloPanelHtml(e) {
     const haveSat = e.inp['satellite'] || 0;
     h += row(ITEMS['satellite'].name, (haveSat > 0 ? '✓ ' : '') + haveSat + '/1', 'satellite');
     h += '<button data-action="feed" data-id="satellite" ' + (haveSat > 0 ? 'disabled' : '') + '>放入卫星</button>';
+    // 火箭货舱（太空货运）：把任意物品装入火箭，随发射降落到物流接驳站
+    h += '<div class="sec">🚀 火箭货舱（太空货运）</div>';
+    const cargoKeys = Object.keys(e.cargo || {});
+    if (cargoKeys.length) {
+      const crows = cargoKeys.map(k => {
+        const cnt = e.cargo[k] || 0;
+        const ic = (ITEMS[k] && ITEMS[k].color) ? '<span class="chip" style="background:' + ITEMS[k].color + '">' + (ITEMS[k].mark || '') + '</span> ' : '';
+        return '<div class="rcrow"><span>' + ic + (ITEMS[k] ? ITEMS[k].name : k) + ' ×' + cnt + '</span>' +
+          '<button data-action="cargo-take" data-id="' + k + '" title="取出全部">取出</button></div>';
+      }).join('');
+      h += '<div class="rcbody">' + crows + '</div>';
+    } else {
+      h += '<div class="dim">货舱为空。发射时货舱内物品将随火箭降落到物流接驳站（cargo-landing-pad），实现地面→轨道的物资运输。</div>';
+    }
+    // 从背包装入货物：列出玩家背包中可运输的物品，点击即装入一批
+    h += '<div class="dim" style="margin-top:4px">从背包装入货物（点击物品装入 1 堆，随火箭发射降落到物流接驳站）：</div>';
+    h += '<div class="recgrid" id="rc-cargogrid">';
+    const own = cargoLoadableItems();
+    if (own.length) {
+      for (const id of own) {
+        const n = Math.min(invCount(id), CARGO_CAP - (e.cargo[id] || 0));
+        if (n <= 0) continue;
+        h += '<button class="rcbtn" data-action="cargo-feed" data-id="' + id + '" data-itemid="' + id + '" ' + (e.launching ? 'disabled' : '') + ' title="装入' + (ITEMS[id] ? ITEMS[id].name : id) + ' ×' + n + '">' +
+          '<img src="' + iconDataURL(id) + '">' + (ITEMS[id] ? ITEMS[id].name : id) + ' ×' + n + '</button>';
+      }
+    } else {
+      h += '<div class="dim">背包中没有可装入的货物。</div>';
+    }
+    h += '</div>';
   }
   h += '<button data-action="launch" id="btn-launch" ' + ((e.launching || !e.hasAllParts()) ? 'disabled' : '') + '>' +
     (e.launching ? '发射中…' : '🚀 发射火箭') + '</button>';
@@ -335,6 +397,8 @@ function siloPanelLive(e, api) {
     api.set('satellite', (haveSat > 0 ? '✓ ' : '') + haveSat + '/1');
     const feedBtn = document.querySelector('[data-action="feed"][data-id="satellite"]');
     if (feedBtn) feedBtn.disabled = haveSat > 0;
+    const cargoFeedBtn = document.querySelector('[data-action="cargo-feed"]');
+    if (cargoFeedBtn) cargoFeedBtn.disabled = !!e.launching;
   }
   const launchBtn = document.getElementById('btn-launch');
   if (launchBtn) {
@@ -354,7 +418,7 @@ function siloTip(e) {
   return (e.inp['satellite'] || 0) > 0 ? '火箭+卫星齐备，可发射' : '火箭已就绪，等待放入卫星'; }
 
 // ===== 火箭发射成功 =====
-function onRocketLaunch() {
+function onRocketLaunch(silo) {
   const first = !G.gameWon;
   if (first) {
     G.gameWon = true;
@@ -380,6 +444,30 @@ function onRocketLaunch() {
     invAdd('space-science-pack', spaceGain);
     if (typeof trackProd === 'function') trackProd('space-science-pack', spaceGain);
     if (typeof toast === 'function') toast('🛰️ 卫星发射成功，获得 +' + spaceGain + ' 空间科学包！');
+  }
+  // ===== 火箭货舱货物降落（太空货运）=====
+  // 玩家装入火箭货舱的物品随火箭一起发射，降落到物流接驳站（若有），否则返回背包。
+  // 对齐《异星工厂》：火箭发射可把货物送到轨道/接驳站，实现地面→轨道的物资运输。
+  const siloCargo = (silo && silo.cargo) || {};
+  let cargoItems = 0;
+  for (const k of Object.keys(siloCargo)) {
+    const n = siloCargo[k] || 0;
+    if (n <= 0) continue;
+    let landed = 0;
+    if (pad) {
+      while (landed < n && pad.giveItem(k)) landed++;
+      if (landed > 0) pad.cargoIn = (pad.cargoIn || 0) + landed;
+    }
+    // 接驳站装不下的（或没有接驳站）返回背包
+    const rest = n - landed;
+    if (rest > 0) invAdd(k, rest);
+    if (typeof trackProd === 'function') trackProd(k, landed);
+    cargoItems += n;
+  }
+  if (silo) silo.cargo = {};
+  if (cargoItems > 0) {
+    if (pad && typeof toast === 'function') toast('📦 火箭货舱 ' + cargoItems + ' 件货物已降落至物流接驳站！');
+    else if (typeof toast === 'function') toast('📦 火箭货舱 ' + cargoItems + ' 件货物已随火箭返回');
   }
   if (first) {
     // 全屏胜利横幅
@@ -494,6 +582,14 @@ DEVICE_PANEL['rocket-silo'] = {
     if (mch instanceof RocketSilo) {
       if (act === 'assemble') { mch.tryAssemble(); renderPanel(false); return true; }
       if (act === 'launch') { mch.tryLaunch(); renderPanel(false); return true; }
+      if (act === 'cargo-feed') {
+        const id = btn.dataset.id;
+        const avail = Math.min(invCount(id), CARGO_CAP - (mch.cargo[id] || 0));
+        if (avail > 0) { invTake(id, avail); mch.cargo[id] = (mch.cargo[id] || 0) + avail; if (typeof toast === 'function') toast('📦 已装入火箭货舱 ' + (ITEMS[id] ? ITEMS[id].name : id) + ' ×' + avail); }
+        else if (typeof toast === 'function') toast('没有可装入的' + (ITEMS[id] ? ITEMS[id].name : id));
+        renderPanel(false); return true;
+      }
+      if (act === 'cargo-take') { const id = btn.dataset.id; const n = mch.cargo[id] || 0; if (n > 0) { invAdd(id, n); delete mch.cargo[id]; toast('已取出' + (ITEMS[id] ? ITEMS[id].name : id) + ' ×' + n); } renderPanel(false); return true; }
     }
     return false;
   }

@@ -2055,6 +2055,23 @@ html, body {
 .mch-prog .status { text-align: center; font-size: 12px; margin-top: 2px; }
 .mch-help { margin-top: 8px; }
 
+/* 配方选择面板：网格区可滚动，底部「确认」按钮行固定在面板底部不随之滚动 */
+#panel.recipe-wide #panel-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+#panel.recipe-wide .rcp-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+#panel.recipe-wide .rcp-scroll .inv-search { position: sticky; top: 0; z-index: 2; background: #10151c; }
+#panel.recipe-wide .rcp-confirm-row { flex: 0 0 auto; }
+
 /* 配方选择面板：右下角确认按钮 */
 .rcp-confirm-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
 .rcp-confirm-row .rcp-confirm {

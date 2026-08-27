@@ -295,6 +295,8 @@ function openPanel(mode, ent) {
   document.getElementById('panel').classList.toggle('tech-wide', mode === 'tech');
   // 配方设备的交互面板：居中加宽双栏布局（左=背包，右=设备交互）
   document.getElementById('panel').classList.toggle('machine-wide', mode === 'machine' && !!ent && isRecipeDevice(ent));
+  // 配方选择面板：网格区可滚动，底部「确认」按钮行固定在面板底部不随之滚动
+  document.getElementById('panel').classList.toggle('recipe-wide', mode === 'machinerecipe');
   document.getElementById('panel').style.display = 'flex';
   renderPanel(true);
 }
@@ -1215,9 +1217,11 @@ function recipeMainIcon(rec, info, rid) {
 // 配方选择面板：配方网格 + 右下角确认按钮
 function recipeSelectPanelHtml(e) {
   const info = recipeDeviceInfo(e);
-  let h = '<div class="sec">点击选择配方（勾选后点右下角「确认」设置）</div>';
+  let h = '<div class="rcp-scroll">';
+  h += '<div class="sec">点击选择配方（勾选后点右下角「确认」设置）</div>';
   h += '<input id="rcp-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off">';
   h += '<div class="recgrid" id="rcp-grid">' + recipeSelectGridHtml(e, info, '') + '</div>';
+  h += '</div>';
   h += '<div class="rcp-confirm-row">';
   h += '<button data-action="recipe-clear">清除配方</button>';
   h += '<button data-action="recipe-confirm" class="rcp-confirm" data-id="' + (G.recipeSel || '') + '"' + (G.recipeSel ? '' : ' disabled') + '>确认设置 ✓</button>';
