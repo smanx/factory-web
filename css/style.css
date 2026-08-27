@@ -2319,3 +2319,133 @@ html, body {
 
 /* 配方设备交互面板：当前配方行按钮靠右显示 */
 .mch-recipe-head .btn.sm { flex: 0 0 auto; }
+
+/* ===== 组装机III：设计稿风格面板（左=玩家背包，右=组装机面板）===== */
+.asm3-layout {
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+}
+.asm3-col {
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, .02);
+  border: 1px solid rgba(255, 255, 255, .06);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.asm3-left { flex: 1; min-width: 0; }
+.asm3-col-head {
+  padding: 8px 10px;
+  font-weight: bold;
+  color: #ffe08a;
+  background: #232c38;
+  border-bottom: 1px solid #3a4550;
+  font-size: 14px;
+}
+.asm3-col-body { overflow-y: auto; padding: 10px 12px; min-height: 0; overscroll-behavior: contain; }
+/* 左栏背包固定 10 列（对齐设计稿 10×8 格子） */
+.asm3-left .inv-slots { grid-template-columns: repeat(10, 32px); }
+
+/* 右侧组装机面板 */
+.asm3-panel {
+  width: 430px;
+  flex: 0 0 auto;
+  background: #2b2b2b;
+  border: 2px solid #444;
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: #ccc;
+}
+/* 状态提示 */
+.asm3-status { display: flex; align-items: center; gap: 8px; }
+.asm3-status-dot {
+  width: 12px; height: 12px; flex: 0 0 auto; border-radius: 50%;
+  background: #e74c3c; box-shadow: 0 0 6px rgba(231, 76, 60, .6);
+}
+.asm3-status-dot.on  { background: #2ecc71; box-shadow: 0 0 6px rgba(46, 204, 113, .6); }
+.asm3-status-dot.warn{ background: #f1c40f; box-shadow: 0 0 6px rgba(241, 196, 15, .6); }
+.asm3-status-dot.bad { background: #e74c3c; box-shadow: 0 0 6px rgba(231, 76, 60, .6); }
+.asm3-status-text { font-size: 16px; font-weight: 500; }
+.asm3-status-text.ok  { color: #2ecc71; }
+.asm3-status-text.warn{ color: #f1c40f; }
+.asm3-status-text.bad { color: #e74c3c; }
+/* 机器显示区：CSS 绘制的组装机示意 */
+.asm3-machine {
+  height: 200px;
+  background: #252525;
+  border: 1px solid #444;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  background-image:
+    linear-gradient(45deg, #2a2a2a 25%, transparent 25%),
+    linear-gradient(-45deg, #2a2a2a 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #2a2a2a 75%),
+    linear-gradient(-45deg, transparent 75%, #2a2a2a 75%);
+  background-size: 40px 40px;
+  background-position: 0 0, 0 20px, 20px -20px, -20px 0;
+}
+.asm3-machine-icon { width: 120px; height: 120px; position: relative; }
+.asm3-machine-body {
+  width: 100%; height: 100%;
+  background: linear-gradient(135deg, #5a6b3a 0%, #3d4a28 50%, #2d3820 100%);
+  border: 3px solid #6b7c48; border-radius: 6px; position: relative;
+  box-shadow: inset 0 2px 8px rgba(255, 255, 255, .1), 0 8px 20px rgba(0, 0, 0, .6);
+}
+.asm3-machine-port {
+  position: absolute; top: 15%; left: 50%; transform: translateX(-50%);
+  width: 44px; height: 34px;
+  background: linear-gradient(180deg, #8b7355 0%, #6b5a45 100%);
+  border: 2px solid #9a8565; border-radius: 2px;
+}
+.asm3-machine-gear {
+  position: absolute; width: 26px; height: 26px;
+  background: #666; border-radius: 50%; border: 3px solid #888;
+  top: 20%; left: 15%;
+}
+.asm3-machine-gear::after {
+  content: ""; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%); width: 8px; height: 8px;
+  background: #444; border-radius: 50%;
+}
+.asm3-machine-dirt {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background:
+    radial-gradient(circle at 20% 80%, rgba(101, 67, 33, .4) 0%, transparent 40%),
+    radial-gradient(circle at 80% 20%, rgba(101, 67, 33, .3) 0%, transparent 35%);
+  border-radius: 6px; pointer-events: none;
+}
+/* 配方显示区 */
+.asm3-recipe {
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 12px;
+}
+.asm3-recipe-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.asm3-recipe-item { display: flex; align-items: center; gap: 12px; }
+.asm3-recipe-icon {
+  width: 44px; height: 44px; background: #8b7355; border: 2px solid #9a8565;
+  border-radius: 4px; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.asm3-recipe-icon img { width: 100%; height: 100%; object-fit: contain; }
+.asm3-recipe-name { font-size: 20px; color: #ddd; font-weight: bold; }
+.asm3-config-btn {
+  width: 42px; height: 42px; background: #3a3a3a; border: 1px solid #555; border-radius: 4px;
+  cursor: pointer; color: #ccc; font-size: 18px; display: flex; align-items: center; justify-content: center;
+}
+.asm3-config-btn:hover { background: #4a4a4a; }
+/* 进度条行（原料 → 进度 → 产品） */
+.asm3-flow { display: flex; align-items: center; gap: 10px; }
+.asm3-side { flex: 1; min-width: 0; }
+.asm3-side-title { font-size: 11px; color: #9fb2c4; margin-bottom: 4px; text-align: center; }
+.asm3-inp-row, .asm3-out-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.asm3-prog { flex: 0 0 120px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.asm3-prog .bar { width: 100%; }
+.asm3-prog-text { font-size: 14px; color: #fff; text-shadow: 1px 1px 2px #000; }
+.asm3-help { margin-top: 8px; font-size: 12px; line-height: 1.5; }

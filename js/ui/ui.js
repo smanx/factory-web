@@ -398,7 +398,10 @@ function renderPanel(full) {
     body.innerHTML = recipeSelectPanelHtml(G.panelEnt);
   } else if (G.panelMode === 'machine' && G.panelEnt) {
     title.textContent = ITEMS[G.panelEnt.type].name;
-    if (isRecipeDevice(G.panelEnt)) {
+    if (G.panelEnt.type === 'assembling-machine-3') {
+      // 组装机III：设计稿风格专用面板
+      body.innerHTML = assembler3LayoutHtml(G.panelEnt);
+    } else if (isRecipeDevice(G.panelEnt)) {
       // 配方设备：重新设计的双栏交互面板（左=背包，右=设备交互信息）
       body.innerHTML = recipeMachineLayoutHtml(G.panelEnt);
     } else if (isChestEntity(G.panelEnt)) {
@@ -497,7 +500,11 @@ function updateMachineLive() {
   };
   // 配方设备：使用重新设计的交互面板，按自身逻辑刷新原料/产品/进度
   if (isRecipeDevice(e)) {
-    updateRecipeMachineLive(e, body, api);
+    if (e.type === 'assembling-machine-3') {
+      updateAssembler3Live(e, body, api);
+    } else {
+      updateRecipeMachineLive(e, body, api);
+    }
   } else {
     const panel = DEVICE_PANEL[e.type];
     if (panel && panel.live) panel.live(e, api);
@@ -1341,6 +1348,96 @@ function recipeMachineLayoutHtml(e) {
     '<div class="inv-col inv-col-right" id="inv-col-right"><div class="inv-col-head">⚙ ' + ITEMS[e.type].name + ' 交互</div>' +
     '<div class="inv-col-body">' + right + '</div></div>' +
   '</div>';
+}
+
+// ===== 组装机III：设计稿风格面板（左=玩家背包，右=组装机面板：状态/机器显示/配方/进度/模块）=====
+function assembler3LayoutHtml(e) {
+  const info = recipeDeviceInfo(e);
+  const rec = e.recipe ? info.getRec(e.recipe) : null;
+  const left = htmlInventory();
+  let h = '<div class="asm3-layout">';
+  // 左栏：玩家背包（格子化网格）
+  h += '<div class="asm3-col asm3-left"><div class="asm3-col-head">玩家</div>' +
+       '<div class="asm3-col-body">' + left + '</div></div>';
+  // 右栏：组装机面板
+  h += '<div class="asm3-panel">';
+  // 状态提示：状态点 + 状态文字（.status 供通用 live 更新文本）
+  h += '<div class="asm3-status"><div class="asm3-status-dot" data-live="asm3-dot"></div>' +
+       '<div class="asm3-status-text status" data-live="asm3-status"></div></div>';
+  // 机器显示区：CSS 绘制的组装机示意
+  h += '<div class="asm3-machine"><div class="asm3-machine-icon"><div class="asm3-machine-body">' +
+       '<div class="asm3-machine-port"></div><div class="asm3-machine-gear"></div>' +
+       '<div class="asm3-machine-dirt"></div></div></div></div>';
+  // 配方显示区
+  h += '<div class="asm3-recipe">';
+  let ric = '';
+  if (rec) {
+    const outId = recipeMainIcon(rec, info, e.recipe);
+    if (outId) ric = '<img src="' + iconDataURL(outId) + '">';
+  }
+  h += '<div class="asm3-recipe-head"><div class="asm3-recipe-item">' +
+       '<div class="asm3-recipe-icon" data-live="asm3-ricon">' + ric + '</div>' +
+       '<span class="asm3-recipe-name" data-live="asm3-rname">' + (rec ? info.name(e.recipe) : '未设置配方') + '</span>' +
+       '</div><button class="asm3-config-btn" data-action="recipe-clear" title="清除配方并重新选择">⚙</button></div>';
+  // 进度条行（原料 → 进度条 → 产品）
+  h += '<div class="asm3-flow">';
+  h += '<div class="asm3-side asm3-inp"><div class="asm3-side-title">原料</div>' +
+       '<div class="asm3-inp-row" data-live="mch-inp"></div></div>';
+  h += '<div class="asm3-prog"><div class="bar"><i></i></div>' +
+       '<div class="asm3-prog-text" data-live="asm3-pct">0%</div></div>';
+  h += '<div class="asm3-side asm3-out"><div class="asm3-side-title">产品</div>' +
+       '<div class="asm3-out-row" data-live="mch-out"></div></div>';
+  h += '</div>';
+  // 模块槽位
+  h += moduleSlotSectionHtml(e);
+  // 操作说明与电力/速率
+  h += '<div class="dim asm3-help">左栏为你的背包：先选中背包物品再点击右侧「原料」槽即可放入该物品；在「原料」槽上右键（或点其左上角 −）取回 1 件到背包；点击「产品」图标可把产物取回背包。原料/产品均可通过传送带与机械臂自动进出。</div>';
+  if (typeof e.powerDemand === 'function') h += row('电力', powerStatusLiveHtml(e), 'power');
+  h += machRateHtml(rec, e.crafting && typeof e.moduleSpeedMult === 'function' ? e.moduleSpeedMult() : 1);
+  h += '</div>'; // recipe
+  h += '</div>'; // panel
+  h += '</div>'; // layout
+  return h;
+}
+
+// 组装机III 实时刷新：复用配方设备的原料/产品/进度逻辑，并额外刷新配方名/图标/百分比/状态点
+function updateAssembler3Live(e, body, api) {
+  const info = recipeDeviceInfo(e);
+  const rec = e.recipe ? info.getRec(e.recipe) : null;
+  // 配方名称与图标
+  const nameEl = body.querySelector('[data-live="asm3-rname"]');
+  const iconEl = body.querySelector('[data-live="asm3-ricon"]');
+  if (rec) {
+    const outId = recipeMainIcon(rec, info, e.recipe);
+    if (nameEl && nameEl.textContent !== info.name(e.recipe)) nameEl.textContent = info.name(e.recipe);
+    if (iconEl) iconEl.innerHTML = outId ? '<img src="' + iconDataURL(outId) + '">' : '';
+  } else {
+    if (nameEl && nameEl.textContent !== '未设置配方') nameEl.textContent = '未设置配方';
+    if (iconEl) iconEl.innerHTML = '';
+  }
+  // 原料/产品/进度/状态：复用通用配方设备逻辑
+  updateRecipeMachineLive(e, body, api);
+  // 百分比文本
+  const pctEl = body.querySelector('[data-live="asm3-pct"]');
+  if (pctEl) {
+    const pct = (rec && e.crafting) ? (e.prog / rec.time * 100) : 0;
+    const txt = Math.floor(pct) + '%';
+    if (pctEl.textContent !== txt) pctEl.textContent = txt;
+  }
+  // 状态点配色：与 updateRecipeMachineLive 一致的状态判断，设置红/黄/绿
+  const dotEl = body.querySelector('[data-live="asm3-dot"]');
+  let dotCls = 'warn';
+  if (rec && e.crafting) dotCls = 'on';
+  else {
+    const needsPower = typeof e.powerDemand === 'function' && e.powerDemand() > 0;
+    if (rec && needsPower && G.power.sat <= 0) dotCls = 'bad';
+    else if (rec) {
+      let miss = null;
+      for (const k in rec.inp) if ((e.inp[k] || 0) < rec.inp[k]) { miss = k; break; }
+      dotCls = miss ? 'bad' : 'on';
+    }
+  }
+  if (dotEl && dotEl.className !== ('asm3-status-dot ' + dotCls)) dotEl.className = 'asm3-status-dot ' + dotCls;
 }
 
 // 右侧设备交互信息：配方名 + 原料/进度/产品单行图标 + 清除配方按钮 + 模块插槽 + 操作说明
