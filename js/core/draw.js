@@ -134,8 +134,9 @@ function drawRecipePlaceholder(ctx, x, y, size) {
 // 设备内部管道口统一显示（机械套管口）：法兰底座→法兰顶面→彩色端口内孔→内孔凹槽描边→顶部高光弧。
 // 端口"内孔"填充传入的 color（水蓝/蒸汽白/输入绿/输出橙红/油气黄），一眼区分进出类型；ALT 详情时在内孔上叠加流体图标。
 // side 0东1南2西3北；(cx,cy)=实体中心像素；dist=中心到该边距离；
-// off=沿边偏移（±0.5 为半格）；fluid=端口允许的流体（ALT 时画图标）；flow=流向
-function drawPort(ctx, cx, cy, side, color, arrow, off, dist, fluid, flow) {
+// off=沿边偏移（±0.5 为半格）；fluid=端口允许的流体（ALT 时画图标）；flow=流向；
+// forceSymbol=true 时即使 fluid 为空也显示 ALT 符号（用于储液罐等 "端口恒可用、流体随内容变化" 的设备，避免空罐时误隐藏）
+function drawPort(ctx, cx, cy, side, color, arrow, off, dist, fluid, flow, forceSymbol) {
   if (!dist) dist = TILE;
   ctx.save();
   ctx.translate(cx, cy);
@@ -162,8 +163,10 @@ function drawPort(ctx, cx, cy, side, color, arrow, off, dist, fluid, flow) {
   ctx.strokeStyle = 'rgba(255,255,255,.38)';
   ctx.lineWidth = 1.2;
   ctx.beginPath(); ctx.arc(pcx, 0, 5.8 - 0.6, -Math.PI * 1.05, -Math.PI * 0.62); ctx.stroke();
-  // ALT 详情：在内孔上叠加流体图标，并在旁边用小蓝色箭头标注流向
-  if (portDetailsVisible()) {
+  // ALT 详情：仅当接口被当前使用（fluid 有效，或 forceSymbol 强调恒可用）时，
+  // 才在内孔上叠加流体图标，并在旁边用小蓝色箭头标注流向。
+  // 未使用的接口（如选择配方但未用到该管道口）不画箭头。
+  if (portDetailsVisible() && (forceSymbol || (fluid && ITEMS[fluid]))) {
     if (fluid && ITEMS[fluid]) drawItemGlyph(ctx, fluid, pcx, 0, 6.5);
     const blue = '#4aa4ff';
     const f = flow || (arrow ? 'out' : 'both');   // 兼容：未显式给流向时按 arrow 推断
@@ -227,7 +230,7 @@ function drawFluidPorts(ctx, e, px, py, s, { inputs, outputs }) {
 }
 
 // 旋转流体设备：端口位置随 dir 一起旋转。
-// ports: [{ side, color, arrow, off, fluid, flow }]，side 为 dir=0 时的基准方向（0东1南2西3北）；
+// ports: [{ side, color, arrow, off, fluid, flow, forceSymbol }]，side 为 dir=0 时的基准方向（0东1南2西3北）；
 // 实际绘制方向 = (side + dir) % 4。
 function drawRotatablePorts(ctx, e, px, py, s, ports) {
   const cxp = px + s / 2, cyp = py + s / 2, half = s / 2;
@@ -237,7 +240,7 @@ function drawRotatablePorts(ctx, e, px, py, s, ports) {
   for (const p of ports) {
     const sd = (p.side + dir) % 4;
     const fluid = (typeof p.fluid === 'function') ? p.fluid(e) : p.fluid;
-    drawPort(ctx, cxp, cyp, sd, p.color, p.arrow, p.off, half, fluid, p.flow);
+    drawPort(ctx, cxp, cyp, sd, p.color, p.arrow, p.off, half, fluid, p.flow, p.forceSymbol);
   }
 }
 

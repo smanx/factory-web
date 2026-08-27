@@ -319,8 +319,17 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
     ctx.fillText('!', px + s / 2, py + s * 0.72);
   }
   // ===== 流体出入口标注（对齐《异星工厂》：入口绿、出口橙红，位置随旋转） =====
-  // 布局：每个接口对齐到对应的格子（一格一接口）：背面(上方=北)2个输入口落在格1/格3，正面(下方=南)3个输出口落在格0/格2/格4（各留 1 格间隔）
-  drawRotatablePorts(ctx, e, px, py, s, REFINERY_PORTS);
+  // 接口按 fluidIconCell 精确落在对应端口格中心绘制，与悬停识别(DEVICE_FLUID_ICONS)共用同一套几何，
+  // 彻底消除"图标/箭头画到相邻管道口"的错位。
+  if (!(LOD && LOD.simple)) {
+    for (const p of REFINERY_PORTS) {
+      const g = fluidIconCell(e, p.side, p.cells[0]);
+      const fcx = g[0] * TILE + TILE / 2, fcy = g[1] * TILE + TILE / 2;
+      const sd = (p.side + (e.dir | 0)) % 4;
+      const fluid = (typeof p.fluid === 'function') ? p.fluid(e) : p.fluid;
+      drawPort(ctx, fcx, fcy, sd, p.color, p.arrow, 0, TILE / 2, fluid, p.flow, p.forceSymbol);
+    }
+  }
   ctx.globalAlpha = 1;
 }
 
