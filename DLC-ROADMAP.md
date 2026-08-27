@@ -708,3 +708,18 @@
 >   GAME_DATA 单源提取 stackSize/names/recipe/recipeDevice。
 > - **校验**：verify-dlc 新增五足虫卵链校验（13 项），verify-data-integrity 配方键映射补充 1 项动态键，
 >   全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+
+### 阶段四.23：树木播种（Tree seeding / Tree seed，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **物品**：`tree-seed`（树种子，堆叠 10）已接入，堆叠 / 中英命名（树种子/Tree seed）全部来自
+>   GAME_DATA（factorio-data 官方 item 原型 + locale），未单独维护数值表。
+> - **配方**：官方 tree-seed 配方 = 2 木材 → 1 树种子（2s，crafting+organic 双类别），由 GAME_DATA
+>   单源自动生成（组装机装配方，device=assembling-machine-1），配方数值/耗时与官方完全一致。
+> - **玩法**：树种子作为可铺设物品（`SEED_TILE` 地面放置分支），铺在草地上即可种回一棵树（T_TREE），
+>   实现绿化/补种——把砍伐获得的木材回收成树种子再种回树木，对齐《异星工厂》Space Age Tree seeding
+>   的「收集树种子并在草地上播种」机制；树被砍伐后地面恢复草地，可再补种。渲染复用现有 T_TREE 树木绘制。
+> - **科技**：由「农业科技」解锁（RECIPE_TECH 配方级门控，官方 tree-seeding 需农业科研包前置，
+>   对齐项目农业科技）；树种子归入「中间产品」制作 Tab（官方 item-group）。
+> - **校验**：verify-dlc 新增树木播种校验（9 项），全量 18 个校验脚本通过，`node build.js` 构建通过。

@@ -377,6 +377,7 @@ ok(RP['bioplastic'].time === 2, '生物塑料耗时=2s（官方）');
 ok(RP['biolubricant'].inp['jelly'] === 60 && RP['biolubricant'].out['lubricant'] === 20, '生物润滑油=60果冻→20润滑油（官方）');
 ok(RP['biolubricant'].time === 3, '生物润滑油耗时=3s（官方）');
 
+
 console.log('\n【破碎机设备数据（官方）】');
 ok(!!GD.stackSize['crusher'], 'crusher 堆叠来自官方 (=10)');
 ok(!!GD.names['crusher'], 'crusher 官方命名已收录 (' + (GD.names['crusher'] ? GD.names['crusher'].zh : '?') + ')');

@@ -627,6 +627,8 @@ function applySave(d) {
 // 地面铺设：混凝土/石砖路铺在草地上，填海把水面填成草地，雅玛果土壤铺在草地上（太空时代农业）
 const PAVE_TILE = { 'concrete': T_CONCRETE, 'refined-concrete': T_REF_CONCRETE, 'hazard-concrete': T_HAZARD, 'refined-hazard-concrete': T_REF_HAZARD, 'stone-path': T_PATH, 'foundation': T_FOUNDATION, 'ice-platform': T_ICE_PLATFORM };
 const SOIL_TILE = { 'artificial-yumako-soil': T_YUMAKO_SOIL, 'overgrowth-yumako-soil': T_OVERGROWTH_YUMAKO_SOIL, 'artificial-jellynut-soil': T_JELLYNUT_SOIL, 'overgrowth-jellynut-soil': T_OVERGROWTH_JELLYNUT_SOIL };
+// 树种子（太空时代绿化补种）：铺在草地上种回一棵树（对齐《异星工厂》Space Age Tree seeding）
+const SEED_TILE = { 'tree-seed': T_TREE };
 function placeGround(type, tx, ty, infinite) {
   const t = getTerrain(tx, ty);
   if (type === 'landfill') {
@@ -641,6 +643,12 @@ function placeGround(type, tx, ty, infinite) {
     // 雅玛果土壤只能铺在草地上（对齐官方 place_as_tile 条件：需地面图层）
     if (t2 !== T_GRASS && t2 !== to) { toast(ITEMS[type]?.name + '只能铺在地面上'); return; }
     if (t2 === to) return; // 已是同种土壤，不重复消耗
+    if (entAt(tx, ty)) { toast('地面有建筑，先拆除'); return; }
+    setTerrain(tx, ty, to);
+  } else if (SEED_TILE[type] !== undefined) {
+    const to = SEED_TILE[type];
+    // 树种子只能种在草地上（对齐官方：在 grass 或 dirt 上播种）
+    if (t !== T_GRASS) { toast(ITEMS[type]?.name + '只能种在草地上'); return; }
     if (entAt(tx, ty)) { toast('地面有建筑，先拆除'); return; }
     setTerrain(tx, ty, to);
   } else {
@@ -683,7 +691,7 @@ function tryPlaceAt(tx, ty) {
   const type = sq.base;
   const placeQuality = sq.quality;
   // 地面铺设（混凝土/石砖路/填海等）：不创建实体，直接修改地形（需优先于 BUILD_DEFS 守卫判定）
-  if (type === 'concrete' || type === 'refined-concrete' || type === 'hazard-concrete' || type === 'stone-path' || type === 'landfill' || type === 'foundation' || type === 'ice-platform' || SOIL_TILE[type] !== undefined) {
+  if (type === 'concrete' || type === 'refined-concrete' || type === 'hazard-concrete' || type === 'stone-path' || type === 'landfill' || type === 'foundation' || type === 'ice-platform' || SOIL_TILE[type] !== undefined || SEED_TILE[type] !== undefined) {
     placeGround(type, tx, ty, infinite);
     return;
   }
