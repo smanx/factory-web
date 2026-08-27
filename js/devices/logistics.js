@@ -753,41 +753,74 @@ function drawLogisticsRobots(ctx) {
 function logiChestPanelHtml(e) {
   const agg = {};
   for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
-  let h = row('内容', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
-  h += '<div class="status"></div>';
   const kind = LOGI_CHEST_KINDS[e.type];
+  let right = '<div class="sec">箱子内容（点击物品取出 1 件回背包）</div>';
+  right += '<div class="status"></div>';
+  right += '<div class="chest-items" id="chest-items">';
+  const keys = Object.keys(agg);
+  if (!keys.length) right += '<div class="dim">空箱。先在左栏选中背包物品，再点下方「存入选中物品」，即可放入。</div>';
+  else {
+    for (const id of keys) {
+      right += '<div class="chest-slot" data-action="chest-take" data-id="' + id + '"' +
+        ' data-tip="' + ITEMS[id].name + '|点击取出 1 件回背包（当前 ' + agg[id] + '）">' +
+        '<img src="' + iconDataURL(id) + '"><span class="chest-slot-n">×' + agg[id] + '</span></div>';
+    }
+  }
+  right += '</div>';
+  right += '<div class="sec">存入</div>';
+  right += '<button data-action="chest-put" class="btn sm" id="btn-chest-put" title="把当前选中的背包物品全部存入箱子（未选中时不可用）">⬆ 存入选中物品</button>';
   if (kind === 'requester' || kind === 'buffer') {
-    h += '<div class="sec">需求量（机器人自动送货补足）</div>';
+    right += '<div class="sec">需求量（机器人自动送货补足）</div>';
     const ids = Object.keys(e.requests);
     if (!ids.length) {
-      h += '<div class="dim">尚未设置需求。下方为每种物品设置目标数量，物流机器人会自动从供应箱/仓储箱搬运货物过来，直到达到目标数量。</div>';
+      right += '<div class="dim">尚未设置需求。下方为每种物品设置目标数量，物流机器人会自动从供应箱/仓储箱搬运货物过来，直到达到目标数量。</div>';
     } else {
       for (const id of ids) {
-        h += '<div class="limitrow">' + chip(id, e.countOf(id)) +
+        right += '<div class="limitrow">' + chip(id, e.countOf(id)) +
           '<input class="limit-in" type="number" min="0" step="10" data-req="' + id + '"' +
           ' value="' + (e.requests[id] || 0) + '" data-tip="需求量|物流机器人会送货至此数量；0 表示不需求"></div>';
       }
     }
     if (kind === 'buffer') {
-      h += '<div class="dim">缓冲箱：请求货物后，也会向物流网络供应库存，作为中转缓冲。</div>';
+      right += '<div class="dim">缓冲箱：请求货物后，也会向物流网络供应库存，作为中转缓冲。</div>';
     }
-    h += '<div class="dim">提示：在下方输入物品名后点击「应用需求」。</div>';
-    h += '<div class="sec">添加需求物品</div>';
-    h += '<input id="logi-req-add" class="inv-search" type="text" placeholder="输入物品名…" autocomplete="off">';
-    h += '<button data-action="logi-req-apply">应用需求</button>';
-    h += '<button data-action="logi-req-clear">清空全部需求</button>';
+    right += '<div class="dim">提示：在下方输入物品名后点击「应用需求」。</div>';
+    right += '<div class="sec">添加需求物品</div>';
+    right += '<input id="logi-req-add" class="inv-search" type="text" placeholder="输入物品名…" autocomplete="off">';
+    right += '<button data-action="logi-req-apply">应用需求</button>';
+    right += '<button data-action="logi-req-clear">清空全部需求</button>';
   } else {
-    h += '<div class="dim">' + ITEMS[e.type].desc + '</div>';
-    if (Object.keys(agg).length) h += '<button data-action="takeout" id="btn-chest-takeout">取出全部 (' + Object.values(agg).reduce((a, b) => a + b, 0) + ')</button>';
+    right += '<div class="dim">' + ITEMS[e.type].desc + '</div>';
+    if (Object.keys(agg).length) right += '<button data-action="takeout" id="btn-chest-takeout">取出全部 (' + Object.values(agg).reduce((a, b) => a + b, 0) + ')</button>';
   }
-  return h;
+  const left = htmlInventory();
+  return '<div class="inv-layout machine-layout chest-layout">' +
+    '<div class="inv-col inv-col-left" id="inv-col-left"><div class="inv-col-head">🎒 玩家背包</div>' +
+    '<div class="inv-col-body" id="inv-mat">' + left + '</div></div>' +
+    '<div class="inv-col inv-col-right" id="inv-col-right"><div class="inv-col-head">📦 ' + ITEMS[e.type].name + '（物流箱）</div>' +
+    '<div class="inv-col-body">' + right + '</div></div>' +
+  '</div>';
 }
 
 function logiChestPanelLive(e, api) {
   const agg = {};
   let total = 0;
   for (const s of e.slots) if (s) { agg[s.item] = (agg[s.item] || 0) + s.count; total += s.count; }
-  api.set('contents', Object.keys(agg).length ? countStr(agg) : dimSpan('空'));
+  const kinds = Object.keys(agg).length;
+  const box = document.getElementById('chest-items');
+  if (box) {
+    if (!kinds) {
+      box.innerHTML = '<div class="dim">空箱。先在左栏选中背包物品，再点下方「存入选中物品」，即可放入。</div>';
+    } else {
+      let h = '';
+      for (const id of Object.keys(agg)) {
+        h += '<div class="chest-slot" data-action="chest-take" data-id="' + id + '"' +
+          ' data-tip="' + ITEMS[id].name + '|点击取出 1 件回背包（当前 ' + agg[id] + '）">' +
+          '<img src="' + iconDataURL(id) + '"><span class="chest-slot-n">×' + agg[id] + '</span></div>';
+      }
+      box.innerHTML = h;
+    }
+  }
   api.toggle('#btn-chest-takeout', total > 0, '取出全部 (' + total + ')');
   const kind = LOGI_CHEST_KINDS[e.type];
   if (kind === 'requester' || kind === 'buffer') {
@@ -796,9 +829,9 @@ function logiChestPanelLive(e, api) {
     else if (Object.keys(e.requests).length) api.status('需求已满足', 'ok');
     else api.status('未设置需求', 'warn');
   } else if (kind === 'storage') {
-    api.status(total > 0 ? '仓储收纳中：' + Object.keys(agg).length + ' 种，共 ' + total + ' 件' : '空仓储箱', total ? 'ok' : 'warn');
+    api.status(total > 0 ? '仓储收纳中：' + kinds + ' 种，共 ' + total + ' 件' : '空仓储箱', total ? 'ok' : 'warn');
   } else {
-    api.status(total > 0 ? '供应箱库存：' + Object.keys(agg).length + ' 种，共 ' + total + ' 件' : '空供应箱：等待放入货物', total ? 'ok' : 'warn');
+    api.status(total > 0 ? '供应箱库存：' + kinds + ' 种，共 ' + total + ' 件' : '空供应箱：等待放入货物', total ? 'ok' : 'warn');
   }
 }
 

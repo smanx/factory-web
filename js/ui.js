@@ -294,7 +294,7 @@ function openPanel(mode, ent) {
   // 研究面板加宽双栏布局（左=研究列表，右=研究树图）
   document.getElementById('panel').classList.toggle('tech-wide', mode === 'tech');
   // 配方设备的交互面板：居中加宽双栏布局（左=背包，右=设备交互）
-  document.getElementById('panel').classList.toggle('machine-wide', mode === 'machine' && !!ent && isRecipeDevice(ent));
+  document.getElementById('panel').classList.toggle('machine-wide', mode === 'machine' && !!ent && (isRecipeDevice(ent) || isChestEntity(ent)));
   // 配方选择面板：网格区可滚动，底部「确认」按钮行固定在面板底部不随之滚动
   document.getElementById('panel').classList.toggle('recipe-wide', mode === 'machinerecipe');
   document.getElementById('panel').style.display = 'flex';
@@ -387,6 +387,18 @@ function renderPanel(full) {
     if (isRecipeDevice(G.panelEnt)) {
       // 配方设备：重新设计的双栏交互面板（左=背包，右=设备交互信息）
       body.innerHTML = recipeMachineLayoutHtml(G.panelEnt);
+    } else if (isChestEntity(G.panelEnt)) {
+      // 储物箱：双栏布局（左=玩家背包，右=箱子内容），底部附通用操作区
+      const chestHtml = htmlMachine(G.panelEnt);
+      const canRot = postPlaceRotatable(G.panelEnt.type);
+      body.innerHTML = chestHtml +
+        '<div class="sec">操作</div>' +
+        '<div class="panel-op-row">' +
+          (canRot ? '<button data-action="panel-rotate" class="panel-op-btn" title="顺时针旋转 90°（R）">⟳ 旋转</button>' : '') +
+          (canRot ? '<button data-action="panel-flip-h" class="panel-op-btn" title="水平翻转（H）">⇋ 水平翻转</button>' : '') +
+          (canRot ? '<button data-action="panel-flip-v" class="panel-op-btn" title="垂直翻转（V）">⇵ 垂直翻转</button>' : '') +
+        '</div>' +
+        '<button data-action="panel-deconstruct" class="deconstruct-btn-inline">✖ 拆除该建筑</button>';
     } else {
       // 普通设备：设备专属内容 + 底部通用操作区（旋转/水平翻转/垂直翻转/拆除）
       const canRot = postPlaceRotatable(G.panelEnt.type);
@@ -1151,6 +1163,17 @@ function barHtml(pct) {
 function isRecipeDevice(e) {
   return !!(e && typeof e.setRecipe === 'function');
 }
+
+// 是否为储物箱（木箱/铁箱/钢箱等标准储物箱 + 物流箱）：
+// 面板采用「左=玩家背包，右=箱子」双栏布局，可双向移动物品
+function isChestEntity(e) {
+  if (!e) return false;
+  return e.type === 'wooden-chest' || e.type === 'iron-chest' || e.type === 'steel-chest' ||
+    e.type === 'passive-provider-chest' || e.type === 'active-provider-chest' ||
+    e.type === 'storage-chest' || e.type === 'requester-chest' || e.type === 'buffer-chest';
+}
+
+
 
 // 返回配方设备可选的配方清单与配方读取函数
 // returns { list: [recipeId], getRec(id)->recipe|null, name(id)->displayName }
