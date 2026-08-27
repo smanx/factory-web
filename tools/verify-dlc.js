@@ -1379,4 +1379,21 @@ console.log('\n【氨制火箭燃料（ammonia-rocket-fuel）数据校验】');
 }
 
 
+
+console.log('\n【污染排放数据单源化（来自 GAME_DATA.pollution，官方 emissions_per_minute）】');
+{
+  const pollSrc = fs.readFileSync(ROOT + '/js/devices/pollution.js', 'utf8');
+  // 官方污染/分数值已单源进 GAME_DATA.pollution
+  ok(GD.pollution && GD.pollution['boiler'] === 30, '锅炉官方每分排放=30（GAME_DATA.pollution 单源）');
+  ok(GD.pollution && GD.pollution['electric-mining-drill'] === 10, '电采矿机官方每分排放=10');
+  ok(GD.pollution && GD.pollution['big-mining-drill'] === 40, '大型采矿机官方每分排放=40');
+  ok(GD.pollution && GD.pollution['stone-furnace'] === 2, '石炉官方每分排放=2');
+  ok(GD.pollution && GD.pollution['electric-furnace'] === 1, '电炉官方每分排放=1（近清洁）');
+  ok(GD.pollution && GD.pollution['oil-refinery'] === 6, '炼油厂官方每分排放=6');
+  // 污染系统改为从 GAME_DATA.pollution 读取（不再单独维护每设备数值表）
+  ok(pollSrc.indexOf('POLLUTION_SOURCES = {') < 0, 'pollution.js 已移除手工 POLLUTION_SOURCES 数值表');
+  ok(pollSrc.indexOf('GAME_DATA.pollution') >= 0, 'pollution.js 从 GAME_DATA.pollution 读取排放（数据单源）');
+  ok(pollSrc.indexOf('pollutionRateFor') >= 0, 'pollution.js 有 pollutionRateFor 折算函数（官方/分→本模型/秒）');
+}
+
 process.exit(fail === 0 ? 0 : 1);

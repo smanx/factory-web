@@ -22,6 +22,7 @@
 //   cargoLandingPad = { inventorySize, radarRange }, cargoBay = { inventorySizeBonus }（物流接驳站/扩展舱）
 //   cargoUnloadingBay = { inventorySizeBonus, allowUnloading, unloadingDistance }（物流卸载舱）
 //   footprint[building] = { w, h }（占地面积格数，官方 selection_box）
+//   pollution[building] = 官方每分排放（emissions_per_minute.pollution，污染/分），供污染系统单源读取
 const GAME_DATA = {
  "stackSize": {
   "iron-ore": 50,
@@ -6616,6 +6617,19 @@ const GAME_DATA = {
   "sulfuric-acid-barrel": "intermediate-products",
   "fluoroketone-cold-barrel": "intermediate-products",
   "fluoroketone-hot-barrel": "intermediate-products"
+ },
+ "pollution": {
+  "burner-mining-drill": 12,
+  "electric-mining-drill": 10,
+  "big-mining-drill": 40,
+  "pumpjack": 10,
+  "stone-furnace": 2,
+  "steel-furnace": 4,
+  "electric-furnace": 1,
+  "boiler": 30,
+  "oil-refinery": 6,
+  "chemical-plant": 4,
+  "centrifuge": 4
  },
  "enemy": {
   "small-wriggler-pentapod": {

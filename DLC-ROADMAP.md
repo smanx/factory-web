@@ -995,6 +995,20 @@
 >   全量 18 个校验脚本通过，`node build.js` 构建通过。
 
 
+### 阶段五.4：污染排放数据单源化（官方 emissions_per_minute 桥接，本迭代新增）
+
+- [x] **污染排放数据单源化**：原 `js/devices/pollution.js` 中的手工 `POLLUTION_SOURCES` 数值表
+      被移除，改为从 `GAME_DATA.pollution`（factorio-data 官方 `energy_source.emissions_per_minute.pollution`，
+      污染/分）读取各污染源排放，满足「所有数据均从 data.generated.js 获取、不为设备单独维护一套数据」。
+- [x] 生成脚本新增 `GAME_DATA.pollution`：官方桥接 锅炉 30 / 电采矿机 10 / 大型采矿机 40 / 抽油机 10 /
+      石炉 2 / 钢铁炉 4 / 电炉 1 / 炼油厂 6 / 化工厂 4 / 离心机 4 / 热能采矿机 12（每分排放）。
+- [x] 污染系统新增 `pollutionRateFor(type)`：把官方「污染/分」按全局 `POLLUTION_RATE_SCALE` 折算为
+      本项目简化模型的「污染/秒」，使各污染源**相对比例与官方一致**（锅炉/大型采矿机为主要污染源，
+      电炉官方仅 1/分、近清洁）。核反应堆/火车头/热能机械臂在官方 raw 无数值型排放
+      （核堆官方零排放），保留项目自定的微量兜底值。
+- [x] 校验并入 verify-dlc（新增 9 项）：断言 `GAME_DATA.pollution` 各官方排放值、pollution.js 已移除
+      手工数值表、改从 GAME_DATA.pollution 读取。全量 18 个校验脚本通过，构建通过。
+
 ### 阶段六：后续开发计划（迭代方向）
 
 > 基于本次审计，核心数据对齐与 DLC 内容接入已全部完成。后续迭代方向（按价值排序）：

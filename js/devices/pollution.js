@@ -47,24 +47,24 @@ const POLLUTION_TREE_ABSORB = 3.0;     // 每棵树每间隔从所在格吸收�
 const POLLUTION_TREE_DIE = 60;         // 树累计吸收污染达到此量后枯萎死亡
 const POLLUTION_FIELD_MAX_TILES = 6000; // 逐格污染场最大格数（超出时加强衰减，防无界膨胀）
 
-// 各设备的污染排放系数（每秒，单位：污染值/s）
-// 对齐《异星工厂》：污染主要来自采矿 / 冶炼 / 石油化工 / 烧煤发电。
-const POLLUTION_SOURCES = {
-  'burner-mining-drill': 3,        // 热能采矿机（烧煤）
-  'electric-mining-drill': 4,      // 电采矿机（采掘污染，略高于热能）
-  'big-mining-drill': 6,        // 大型采矿机（太空时代，更大更快，采掘污染更高）
-  'pumpjack': 2,            // 抽油机（石油开采）
-  'stone-furnace': 2,       // 石炉（烧煤冶炼）
-  'steel-furnace': 4,       // 钢铁炉（烧煤冶炼，产能更高）
-  'electric-furnace': 5,    // 电炉（冶炼污染，功率更大）
-  'boiler': 4,              // 锅炉（烧煤发电）
-  'oil-refinery': 6,            // 炼油厂（石油化工）
-  'chemical-plant': 5,      // 化工厂（石油化工）
-  'centrifuge': 1,          // 离心机（铀浓缩处理，低污染）
-  'nuclear-reactor': 7,     // 核反应堆（虽清洁但燃料处理与热量管理仍有微量排放）
-  'locomotive': 3,          // 火车头（烧煤行驶）
-  'burner-inserter': 0.3    // 热能机械臂（烧煤，微量）
-};
+// 污染排放系数（每秒，单位：污染值/s）——数据单源化
+// 来源 = GAME_DATA.pollution（factorio-data 官方 emissions_per_minute.pollution，污染/分）。
+// 官方单位为「每分」，本项目为简化的全局污染模型，故按 POLLUTION_RATE_SCALE 折算为每秒，
+// 使相对比例与官方一致（锅炉/大型采矿机为主要污染源，电炉官方仅 1/分、近清洁）。
+// 核反应堆/火车头/热能机械臂在官方 raw 无 emissions_per_minute（核堆官方零排放、
+// 火车头/热能机械臂无数值型排放），故保持项目自定的微量兜底值。
+const POLLUTION_RATE_SCALE = 8; // 官方「污染/分」→ 本模型「污染/s」的全局折算系数
+function pollutionRateFor(type) {
+  const perMin = (GAME_DATA && GAME_DATA.pollution && GAME_DATA.pollution[type]);
+  if (typeof perMin === 'number') return perMin / 60 * POLLUTION_RATE_SCALE;
+  // 官方无数值型排放的设备：微量兜底
+  const FALLBACK = {
+    'nuclear-reactor': 0.8,   // 核反应堆：官方零排放，项目保留微量（燃料处理/热量管理）
+    'locomotive': 0.4,        // 火车头：烧煤行驶微量
+    'burner-inserter': 0.05,  // 热能机械臂：烧煤微量
+  };
+  return FALLBACK[type] || 0;
+}
 
 // 累加污染值（外部调用入口，钳制到上限）
 // 同时累计“总污染产生量”（G.pollutionProduced），用于驱动进化度
@@ -249,7 +249,7 @@ function scanPollutionSources(dt) {
   let total = 0;
   for (const e of G.ents) {
     if (e._dead || !e.type) continue;
-    const rate = POLLUTION_SOURCES[e.type];
+    const rate = pollutionRateFor(e.type);
     if (!rate) continue;
     // 仅当设备处于工作/运行状态才排放（利用各设备统一的 working 字段）
     if (e.working) {

@@ -559,6 +559,29 @@ const turret = {};
     fireRate: Math.round(rg.attack_parameters.cooldown / 60 * 1000) / 1000,
   };
 }
+
+// 污染排放（官方 emissions_per_minute.pollution，单位：污染/分钟）。
+// 来源 = 官方 energy_source.emissions_per_minute.pollution（factorio-data 单源）。
+// 注：核反应堆/火车头/热能机械臂在官方 raw 无 emissions_per_minute（核堆官方零排放、
+//     火车头/热能机械臂无数值型排放），故不进本表，污染系统对这些设备保持项目自定微量值。
+const pollution = {};
+{
+  const POLLUTION_SOURCES_OFFICIAL = [
+    ['mining-drill', 'burner-mining-drill'], ['mining-drill', 'electric-mining-drill'],
+    ['mining-drill', 'big-mining-drill'],    ['mining-drill', 'pumpjack'],
+    ['furnace', 'stone-furnace'],            ['furnace', 'steel-furnace'],
+    ['furnace', 'electric-furnace'],         ['boiler', 'boiler'],
+    ['assembling-machine', 'oil-refinery'],  ['assembling-machine', 'chemical-plant'],
+    ['assembling-machine', 'centrifuge'],
+  ];
+  for (const [rtype, name] of POLLUTION_SOURCES_OFFICIAL) {
+    const proto = raw[rtype] && raw[rtype][name];
+    const em = proto && proto.energy_source && proto.energy_source.emissions_per_minute
+      && proto.energy_source.emissions_per_minute.pollution;
+    if (typeof em === 'number') pollution[name] = em;
+  }
+}
+
 // 弹药伤害：遍历 ammo_type.action（2.0 结构可能是 {"1":{...}} 或直接对象），找 damage effect 的 amount。
 function findAmmoDamage(ammoProto) {
   const stack = [ammoProto && ammoProto.ammo_type && ammoProto.ammo_type.action];
@@ -1149,6 +1172,7 @@ Object.assign(GAME_DATA, {
   qualityModules,
   qualityTiers,
   itemGroup,
+  pollution,
   enemy,
 });
 
@@ -1209,6 +1233,7 @@ function report() {
   console.log('个人装备 equipment: ' + JSON.stringify(GAME_DATA.equipment));
   console.log('热量链路 heat: ' + JSON.stringify(GAME_DATA.heat));
   console.log('避雷系统 lightning: ' + JSON.stringify(GAME_DATA.lightning));
+  console.log('污染排放 pollution: ' + JSON.stringify(GAME_DATA.pollution));
   console.log('机器人港功耗 roboportPower: ' + JSON.stringify(GAME_DATA.roboportPower));
   console.log('Gleba 五足虫敌人 enemy: ' + Object.keys(GAME_DATA.enemy||{}).length + ' 种');
   console.log('扩展参数手工保留（官方无此字段/项目简化模型）：汽轮机/锅炉/蒸汽机产汽模型、机器人速度与电量刻度、机器人港容量、',
@@ -1292,6 +1317,7 @@ const header = [
   '//   cargoLandingPad = { inventorySize, radarRange }, cargoBay = { inventorySizeBonus }（物流接驳站/扩展舱）',
   '//   cargoUnloadingBay = { inventorySizeBonus, allowUnloading, unloadingDistance }（物流卸载舱）',
   '//   footprint[building] = { w, h }（占地面积格数，官方 selection_box）',
+  '//   pollution[building] = 官方每分排放（emissions_per_minute.pollution，污染/分），供污染系统单源读取',
   'const GAME_DATA = ' + JSON.stringify(GAME_DATA, null, 1) + ';',
   '',
 ].join('\n');
