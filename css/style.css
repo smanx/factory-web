@@ -34,12 +34,12 @@ html, body {
 /* Firefox：细滚动条 + 工业风配色 */
 * { scrollbar-width: thin; scrollbar-color: #4a5868 rgba(16, 21, 28, .75); }
 
-#game { display: block; position: absolute; inset: 0; cursor: crosshair; touch-action: none; }
+#game { display: block; position: absolute; inset: 0; cursor: crosshair; }
 
 /* 放置幽灵专用顶层画布：绘制在所有界面（含背包面板）的最上方，且不拦截鼠标事件 */
 #ghost-layer {
   display: block; position: absolute; inset: 0;
-  pointer-events: none; touch-action: none;
+  pointer-events: none;
   z-index: 9998; /* 高于所有面板（最高 z-index 240）与 tooltip(9999) 之下，保证幽灵可见但不挡交互 */
 }
 
@@ -1097,14 +1097,6 @@ html, body {
   border-bottom: 1px solid rgba(127, 212, 160, .18);
   padding-bottom: 3px;
 }
-.tutorial-hint {
-  margin-top: 14px;
-  font-size: 12px;
-  color: #8fa89a;
-  background: rgba(127, 212, 160, .08);
-  border-radius: 6px;
-  padding: 6px 10px;
-}
 .tutorial-close {
   margin-top: 16px;
   width: 100%;
@@ -1700,235 +1692,6 @@ html, body {
   display: block;
   height: 100%;
   background: linear-gradient(90deg, #57b95c, #8fe08f);
-}
-
-/* ===== 虚拟摇杆（手机/触屏，可在设置中开关） ===== */
-.joystick {
-  position: absolute;
-  z-index: 60;
-  left: 24px;
-  bottom: 96px;
-  width: 130px;
-  height: 130px;
-  border-radius: 50%;
-  background: rgba(20, 26, 34, .45);
-  border: 2px solid rgba(120, 140, 160, .5);
-  touch-action: none;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, .4);
-}
-.joystick.active { display: flex; }
-.joystick.hidden { display: none; }
-#joystick-knob {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: rgba(90, 120, 150, .75);
-  border: 2px solid rgba(160, 190, 220, .8);
-  box-shadow: 0 0 8px rgba(0, 0, 0, .35);
-  pointer-events: none;
-  transition: transform .05s linear;
-}
-
-/* ===== 手机 / 窄屏适配：放大字体与触控热区，避免文字过小 ===== */
-@media (max-width: 720px) {
-  body { -webkit-text-size-adjust: 100%; }
-
-  /* 顶部按钮菜单：改为竖向折叠面板，方便触控，字体放大 */
-  #topright {
-    flex-direction: column;
-    gap: 6px;
-    align-items: flex-end;
-  }
-  #topright-menu {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-    background: rgba(16, 21, 28, .92);
-    border: 1px solid #3a4550;
-    border-radius: 8px;
-    padding: 8px;
-  }
-  #topright button, #panel button, #btn-menu-toggle {
-    font-size: 16px;
-    padding: 10px 14px;
-  }
-
-  /* 信息栏、面板字体放大 */
-  #hud-info { font-size: 15px; }
-  #panel {
-    width: 92vw;
-    max-width: 92vw;
-    max-height: calc(100vh - 32px);
-    top: 50%; left: 50%;
-    right: auto;
-  }
-  /* 手机端：背包三列改为纵向堆叠（一屏内各列可独立滚动） */
-  #panel.inv-wide {
-    width: 96vw;
-    max-width: 96vw;
-    /* 手机端同样预留底部快捷栏高度，避免背包遮挡快捷栏 */
-    height: calc(100vh - 150px);
-    max-height: calc(100vh - 150px);
-    top: auto;
-    bottom: 100px;
-    transform: translateX(-50%);
-  }
-  #panel.inv-wide .inv-layout {
-    flex-direction: column;
-    overflow-y: auto;
-  }
-  #panel.inv-wide .inv-col {
-    flex: none;
-    max-height: 38vh;
-  }
-  #panel.inv-wide .inv-col-body { overflow-y: auto; }
-  #panel.inv-wide #panel-body { overflow: visible; }
-  #panel-body, #panel-body input, #panel-body select, #panel-body button {
-    font-size: 15px;
-  }
-  #panel-title { font-size: 16px; }
-  .hint, .dim, .ing, .chip { font-size: 14px; }
-
-  /* 快捷栏：手机端改为换行居中排列，每行固定 5 个槽位（10 槽分两行），不压缩槽位 */
-  #hotbar {
-    gap: 5px;
-    padding: 5px;
-    max-width: calc(100vw - 24px);
-    flex-wrap: wrap;
-    justify-content: center;
-    /* 每行固定 5 个槽位：5×16px + 4×3px(gap) + 2×4px(padding) = 100px */
-    width: 100px;
-  }
-  #hotbar { scrollbar-width: thin; }
-  #hotbar::-webkit-scrollbar { height: 4px; width: 4px; }
-  #hotbar::-webkit-scrollbar-thumb {
-    background: linear-gradient(90deg, #4a5868, #37424f);
-    border: none;
-    border-radius: 2px;
-  }
-  .slot { width: 16px; height: 16px; }
-  .slot .key { font-size: 6px; }
-  .slot .cnt { font-size: 7px; }
-  /* 手机端：背包格子沿用统一 16px 小格，多列自适应 */
-  .inv-slots { grid-template-columns: repeat(auto-fill, 16px); }
-  .inv-slot .cnt { font-size: 7px; }
-
-  /* 绿图操作栏放大 */
-  #greenbar { font-size: 15px; padding: 10px 16px; }
-  #greenbar button { font-size: 15px; padding: 8px 14px; }
-
-  /* toast 提示放大 */
-  .toast { font-size: 15px; padding: 9px 16px; }
-
-  /* 虚拟摇杆定位到左下角，避开快捷栏（两行布局后进一步上移） */
-  .joystick.active { display: flex; }
-  .joystick { bottom: 200px; }
-
-  /* 左下角战斗快捷栏：手机端缩小槽位，避免遮挡 */
-  #quickbar { bottom: 12px; left: 12px; gap: 3px; padding: 3px; }
-  #quickbar .qb-row { gap: 3px; }
-  #quickbar .qb-slot { width: 16px; height: 16px; }
-  #quickbar .qb-empty { font-size: 8px; }
-  #quickbar .qb-cnt { font-size: 7px; }
-
-  /* 手机端合成队列：跟随快捷栏尺寸，缩小槽位 */
-  #craft-queue { bottom: 12px; left: 96px; gap: 3px; padding: 3px; }
-  #craft-queue .cq-slot { width: 16px; height: 16px; }
-}
-
-/* 超窄屏（如竖屏手机）进一步压缩顶部按钮，避免溢出 */
-@media (max-width: 480px) {
-  #panel-body button { width: 100%; }
-  .recipe { flex-wrap: wrap; }
-  .recgrid { grid-template-columns: 1fr 1fr; }
-}
-
-/* ===== 全新触屏交互：长按操作盘（径向菜单） ===== */
-#action-wheel {
-  position: fixed;
-  z-index: 120;
-  pointer-events: none;
-  transform: translate(-50%, -50%);
-  width: 0; height: 0;
-}
-#action-wheel .aw-btn {
-  pointer-events: auto;
-  position: absolute;
-  left: 0; top: 0;
-  width: 64px; height: 64px;
-  border-radius: 50%;
-  background: rgba(22, 28, 36, .96);
-  border: 2px solid;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1px;
-  cursor: pointer;
-  box-shadow: 0 3px 14px rgba(0, 0, 0, .55);
-}
-#action-wheel .aw-btn .aw-ic {
-  font-size: 20px;
-  line-height: 1;
-  font-weight: bold;
-}
-#action-wheel .aw-btn .aw-lb {
-  font-size: 11px;
-  color: #e8eef5;
-  font-weight: 600;
-}
-#action-wheel .aw-center {
-  position: absolute;
-  left: 0; top: 0;
-  width: 52px; height: 52px;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: rgba(30, 38, 48, .95);
-  border: 2px solid #7f93ad;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 0 10px rgba(0, 0, 0, .4);
-}
-#action-wheel .aw-center img,
-#action-wheel .aw-center canvas {
-  width: 34px; height: 34px;
-  border-radius: 6px;
-}
-
-/* 触屏提示条（新手上手指引） */
-#touch-tip {
-  position: absolute;
-  bottom: 90px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 80;
-  background: rgba(10, 14, 18, .82);
-  color: #e8eef5;
-  border: 1px solid #3a4550;
-  border-radius: 10px;
-  padding: 8px 14px;
-  font-size: 13px;
-  pointer-events: none;
-  max-width: 88vw;
-  text-align: center;
-  line-height: 1.6;
-  box-shadow: 0 2px 12px rgba(0,0,0,.4);
-  animation: tipfade 6s forwards;
-}
-@keyframes tipfade {
-  0%, 70% { opacity: 1; }
-  100% { opacity: 0; }
-}
-
-/* 触屏模式：操作盘按钮热区加大 */
-@media (max-width: 720px) {
-  #action-wheel .aw-btn { width: 70px; height: 70px; }
-  #action-wheel .aw-btn .aw-ic { font-size: 22px; }
-  #action-wheel .aw-btn .aw-lb { font-size: 12px; }
 }
 
 /* ===== 电路网络（电线杆/组合器面板）===== */

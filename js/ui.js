@@ -229,7 +229,7 @@ function onHotbarMidClick(i) {
 }
 
 function selectSlot(i) {
-  // 选择快捷栏物品建造时退出触屏拆除模式，避免左键行为冲突
+  // 选择快捷栏物品建造时退出拆除模式，避免左键行为冲突
   if (G.deconstructMode) toggleDeconstructMode(false);
   const prev = G.quickSel || (G.sel >= 0 ? (HOTBAR[G.sel] || null) : null);
   const id = HOTBAR[i];
@@ -1450,30 +1450,13 @@ function makeTitleDraggable(panel, head) {
     panel._drag = { ox: r.left, oy: r.top, sx: ev.clientX, sy: ev.clientY, moved: false };
     ev.preventDefault();
   }
-  function onHeadTouch(ev) {
-    const t = ev.changedTouches[0];
-    if (!t || !canDrag(ev)) return;
-    const r = snapToRect();
-    panel._drag = { ox: r.left, oy: r.top, sx: t.clientX, sy: t.clientY, moved: false };
-    ev.preventDefault();
-  }
-
   // 头部可能被重建（如 debug 面板），每次绑定到当前 head 上
   head.addEventListener('mousedown', onHeadDown);
-  head.addEventListener('touchstart', onHeadTouch, { passive: false });
 
   // 全局 move/up 只绑定一次，复用同一份 drag 状态（挂在 panel._drag 上）
   if (!panel._dragGlobalBound) {
     panel._dragGlobalBound = true;
     window.addEventListener('mousemove', ev => { if (panel._drag) moveDrag(ev.clientX, ev.clientY); });
     window.addEventListener('mouseup', endDrag);
-    window.addEventListener('touchmove', ev => {
-      if (!panel._drag) return;
-      const t = ev.changedTouches[0];
-      if (t) moveDrag(t.clientX, t.clientY);
-      ev.preventDefault();
-    }, { passive: false });
-    window.addEventListener('touchend', endDrag);
-    window.addEventListener('touchcancel', endDrag);
   }
 }

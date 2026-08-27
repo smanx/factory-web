@@ -61,7 +61,6 @@ const G = {
   statsPowerTab: 'prod',  // 统计面板-电量页：prod(发电设备) | cons(耗电设备)
   machTab: 'prod',        // 设备面板-消耗/生产 tab：cons | prod（已弃用）
   settings: Object.assign({}, DEFAULT_SETTINGS),
-  joystick: { active: false, id: null, baseX: 0, baseY: 0, dx: 0, dy: 0 },
   autoT: 0,
   power: { prod: 0, demand: 0, sat: 1 },
   powerT: 0,
@@ -84,8 +83,8 @@ const G = {
   victoryT: 0,
   inMenu: true,       // 开始菜单显示中：游戏世界尚未初始化，loop 暂停渲染与更新
   paused: false,      // 游戏暂停：由顶部“暂停/继续”按钮控制，暂停时世界/设备/玩家停摆
-  deconstructMode: false,  // 触屏拆除模式：开启后点触建筑即可拆除（PC 右键拆除不受影响）
-  deconstructHeld: false,  // 拆除模式：左键/触屏是否处于按住连续拆除状态
+  deconstructMode: false,  // 拆除模式：开启后点触建筑即可拆除（右键拆除不受影响）
+  deconstructHeld: false,  // 拆除模式：左键是否处于按住连续拆除状态
   craftQueue: [],     // 手搓合成队列：见 player.js 的 queueCraft / updateCraftQueue
 };
 
@@ -576,8 +575,7 @@ function applySave(d) {
   G.power = { prod: 0, demand: 0, sat: 1 };
   G.powerT = 0;
   if (d.settings) Object.assign(G.settings, d.settings);
-  // 读档后按设置刷新虚拟摇杆显示状态
-  if (typeof updateJoystickVisibility === 'function') updateJoystickVisibility();
+  // 读档后恢复设置
   // 开发者调试数据随存档保存/读取。仅当 URL 参数含 debug=1（debug 按钮开启）时
   // 才恢复已保存的调试数据；否则这些数据不生效，保持默认值。
   if (G.debugEnabled) {
@@ -951,9 +949,9 @@ function rightClickPickupAt(tx, ty) {
   return true;
 }
 
-// ===== 拆除模式（触屏专用，PC 右键拆除不受影响） =====
-// 手机端无法使用鼠标右键，通过“拆除模式”开关替代：
-// 开启后，点触/左键点击建筑即可拆除单个建筑，长按可连续拆除。
+// ===== 拆除模式 =====
+// 通过“拆除模式”开关替代右键拆除：
+// 开启后，左键点击建筑即可拆除单个建筑，长按可连续拆除。
 function toggleDeconstructMode(on) {
   const next = (on === undefined) ? !G.deconstructMode : !!on;
   if (next === G.deconstructMode) return;

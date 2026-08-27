@@ -1,6 +1,6 @@
 'use strict';
 
-const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: true, combat: false, capDPR: true, lowRes: false, virtualJoystick: false, minimap: true, sound: true, soundVol: 0.8, altMode: true, weather: false, daylight: false, music: true, language: 'zh' };  // sound:音效开关 soundVol:音量0~1  altMode:ALT模式(建筑配方/内容叠加显示)  language:界面数据语言('zh'中文/'en'English)
+const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: true, combat: false, capDPR: true, lowRes: false, minimap: true, sound: true, soundVol: 0.8, altMode: true, weather: false, daylight: false, music: true, language: 'zh' };  // sound:音效开关 soundVol:音量0~1  altMode:ALT模式(建筑配方/内容叠加显示)  language:界面数据语言('zh'中文/'en'English)
 const SETTINGS_KEY = 'factory-settings-v1';
 
 // ===== 多语言名称（官方 locale 数据，见 GAME_DATA.names / GAME_DATA.recipeNames）=====

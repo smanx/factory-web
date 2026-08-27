@@ -125,8 +125,6 @@ function bindInput() {
   window.addEventListener('mousemove', ev => {
     updateCursorTile(ev.clientX, ev.clientY);
   });
-  // 触屏手势交互：由 js/touch.js 的 touchInit() 统一注册（点按/长按操作盘/拖动平移/攒合缩放等）
-  touchInit();
   G.canvas.addEventListener('mouseenter', () => { G.canvasActive = true; });
   G.canvas.addEventListener('mouseleave', () => {
     G.canvasActive = false;
@@ -156,7 +154,7 @@ function bindInput() {
     if (ev.button === 0) {
       // Shift+左键“粘贴设置”，与普通左键建造（默认支持覆盖）区分开
       if (ev.shiftKey && !ev.ctrlKey && hovered) { pasteSettings(hovered); return; }
-      // 拆除模式：左键（含触屏模拟）用于拆除建筑，而非建造/挖矿
+      // 拆除模式：左键用于拆除建筑，而非建造/挖矿
       if (G.deconstructMode) {
         G.deconstructHeld = true;
         if (G.cursorTile) deconstructAt(G.cursorTile.tx, G.cursorTile.ty);
@@ -200,8 +198,6 @@ function bindInput() {
       else if (G.blueMode === 'green') applyGreenBlueprint();
     }
   });
-
-  // ===== 触屏手势已由 js/touch.js 的 touchInit() 统一接管（点按/长按/拖动/攒合/双击） =====
 
   G.canvas.addEventListener('contextmenu', ev => ev.preventDefault());
   G.canvas.addEventListener('wheel', ev => {
@@ -313,7 +309,7 @@ function updateCursorTile(cx, cy) {
 }
 
 function updateHeldMouse(dt) {
-  // 拆除模式：按住左键/触屏拖动可连续拆除目标格上的建筑
+  // 拆除模式：按住左键拖动可连续拆除目标格上的建筑
   if (G.deconstructHeld && G.cursorTile) {
     if (G.blueMode) { G.deconstructHeld = false; return; }
     deconstructAt(G.cursorTile.tx, G.cursorTile.ty);
@@ -362,7 +358,6 @@ function stepWorld(dt) {
   // 每逻辑步失效信号塔模块加成缓存（P0 优化：同一步内同坐标只查询一次）
   if (typeof clearBeaconBonusCache === 'function') clearBeaconBonusCache();
   updatePlayer(dt);
-  updateTouchMove(dt);
   updateHeldMouse(dt);
   updateMining(dt);
   if (typeof updateGroundItems === 'function') updateGroundItems(dt);   // 地面物品（手动上料）拾取
@@ -528,7 +523,6 @@ function boot() {
     ['topbtn', () => initTopButtons()],
     ['panel', () => initPanelEvents()],
     ['paneldrag', () => initPanelDrag()],
-    ['joystick', () => initJoystick()],
     ['quickbar', () => initQuickbar()],
     ['tooltip', () => initTooltips()],
     ['hudinfo', () => initHudInfo()],

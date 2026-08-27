@@ -464,7 +464,7 @@ function buildDebug() {
 
   let drag = null;
   let suppressClick = false;
-  // 展开/收起 Debug 面板（鼠标点击与触屏轻点共用）
+  // 展开/收起 Debug 面板（鼠标点击共用）
   function togglePanel() {
     if (panel.style.display === 'block') { panel.style.display = 'none'; return; }
     const r = btn.getBoundingClientRect();
@@ -477,7 +477,7 @@ function buildDebug() {
     panel.style.bottom = 'auto';
     panel.style.display = 'block';
   }
-  // 拖拽 Debug 按钮：统一处理鼠标 / 触屏，使触屏模式下也能拖动按钮
+  // 拖拽 Debug 按钮：鼠标拖动
   function moveDebugBtn(cx, cy) {
     if (!drag) return;
     if (Math.abs(cx - drag.sx) + Math.abs(cy - drag.sy) > 6) drag.moved = true;
@@ -506,33 +506,6 @@ function buildDebug() {
   });
   window.addEventListener('mousemove', ev => moveDebugBtn(ev.clientX, ev.clientY));
   window.addEventListener('mouseup', endDebugDrag);
-  // 触屏拖拽：使用与摇杆一致的 touch 事件处理方式。
-  // 注意：touchstart 里 preventDefault 会抑制系统生成的 click 事件，
-  // 因此触屏的“轻点展开”需在 touchend 里根据是否拖动过自行触发。
-  btn.addEventListener('touchstart', ev => {
-    const t = ev.changedTouches[0];
-    if (!t) return;
-    drag = { sx: t.clientX, sy: t.clientY, bx: btn.offsetLeft, by: btn.offsetTop, moved: false };
-    ev.preventDefault();
-  }, { passive: false });
-  window.addEventListener('touchmove', ev => {
-    if (!drag) return;
-    for (const t of ev.changedTouches) {
-      moveDebugBtn(t.clientX, t.clientY);
-      break;
-    }
-    ev.preventDefault();
-  }, { passive: false });
-  window.addEventListener('touchend', ev => {
-    // 仅当触摸起始于 Debug 按钮（touchstart 设置了 drag）时才可能展开/收起面板；
-    // 否则在屏幕其他位置点触会误触发面板切换（此前 bug）。
-    const wasOnBtn = !!drag;
-    const wasMoved = drag && drag.moved;
-    endDebugDrag();
-    // 轻点（未拖动）时展开/收起面板，拖动后不触发
-    if (wasOnBtn && !wasMoved && !suppressClick) togglePanel();
-  });
-  window.addEventListener('touchcancel', endDebugDrag);
   btn.addEventListener('click', () => {
     if (suppressClick) { suppressClick = false; return; }
     togglePanel();
