@@ -185,6 +185,8 @@ ok(GD.deviceStats['biochamber'] && GD.deviceStats['biochamber'].craftingSpeed ==
 ok(GD.deviceStats['biochamber'].moduleSlots === 4, '模块槽=4（官方 module_slots）');
 ok(ctx.__recipeDevice('agricultural-science-pack') === 'biochamber', '农业科技包 → 生化炉');
 ok(!!RP['biochamber'], '生化炉配方已注册');
+ok(RP['biochamber'].time === 20, '生化炉配方耗时=20s（官方 biochamber）');
+ok(RP['biochamber'].inp['nutrients'] === 5 && RP['biochamber'].inp['pentapod-egg'] === 1 && RP['biochamber'].inp['iron-plate'] === 20 && RP['biochamber'].inp['electronic-circuit'] === 5 && RP['biochamber'].inp['landfill'] === 1, '生化炉配方=5营养素+1五足虫卵+20铁板+5电路板+1填海料（官方 biochamber）');
 ok(Object.keys(RP['biochamber'].inp).every(k => k in IT), '生化炉配方引用物品均存在');
 ok(ctx.__itemTechReq('biochamber') === 'agriculture', '生化炉需「农业科技」');
 ok(!!TS['agriculture'], '「农业科技」已注册');
@@ -669,6 +671,8 @@ ok(GD.powerUse['biolab'] === 300, '功耗=300kW（官方 energy_usage）');
 ok(GD.deviceStats['biolab'] && GD.deviceStats['biolab'].moduleSlots === 4, '模块槽=4（官方 module_slots）');
 ok(GD.deviceStats['biolab'] && GD.deviceStats['biolab'].researchingSpeed === 2, '科研速度=2（官方 researching_speed）');
 ok(!!RP['biolab'], 'biolab 配方已注册');
+ok(RP['biolab'].time === 10, 'biolab 配方耗时=10s（官方）');
+ok(RP['biolab'].inp['lab'] === 1 && RP['biolab'].inp['biter-egg'] === 10 && RP['biolab'].inp['refined-concrete'] === 25 && RP['biolab'].inp['capture-robot-rocket'] === 2 && RP['biolab'].inp['uranium-235'] === 3, 'biolab 配方=1实验室+10异虫卵+25精炼混凝土+2捕获者火箭弹+3铀-235（官方）');
 ok(Object.keys(RP['biolab'].inp).every(k => k in IT), 'biolab 配方引用物品均存在');
 ok(!!IT['biolab'], 'biolab 物品已注册');
 ok(!!TS['biolab'], '「生物实验室」科技已注册');
@@ -1660,6 +1664,55 @@ console.log('\n【官方回收配方（*-recycling，回收机单源）】');
   ok(rCount <= 280, '回收配方条数合理（' + rCount + ' ≤280）');
 }
 
+
+// ===== 官方建筑占地全量对齐守门人（本迭代新增）=====
+// 依据「设备的占地面积都要与《异星工厂》官方一致」原则，把「每个官方可建造建筑
+// 都应有占地来源（GAME_DATA.footprint 单源 或 BUILD_DEFS 手工占地）」由人工审计
+// 升级为 CI 强制校验，防止未来新增建筑时漏接占地导致占地与官方不符。
+// 数据源：factorio-data（官方 selection_box）+ GAME_DATA.footprint + BUILD_DEFS。
+console.log('\n【官方建筑占地全量对齐（selection_box → footprint/BUILD_DEFS）】');
+try {
+  const rawFp = require('./convert-data.js');
+  // 已知用 BUILD_DEFS 手工占地（箱/载具/轨道/带/管道/线杆等，官方 selection_box 统一由 def 兜底）
+  const buildDefHandled = new Set([
+    'splitter','fast-splitter','express-splitter','turbo-splitter',
+    'underground-belt','fast-underground-belt','express-underground-belt','turbo-underground-belt',
+    'transport-belt','fast-transport-belt','express-transport-belt','turbo-transport-belt',
+    'pipe','pipe-to-ground','rail','train-stop','locomotive','cargo-wagon','fluid-wagon','artillery-wagon',
+    'small-electric-pole','medium-electric-pole','big-electric-pole','substation',
+    'inserter','burner-inserter','long-handed-inserter','fast-inserter','bulk-inserter','stack-inserter',
+    'wooden-chest','iron-chest','steel-chest','passive-provider-chest','active-provider-chest',
+    'storage-chest','requester-chest','buffer-chest',
+  ]);
+  const enemyWorm = new Set(['small-worm-turret','medium-worm-turret','big-worm-turret','behemoth-worm-turret']);
+  const fpTypes = ['assembling-machine','furnace','mining-drill','rocket-silo','chemical-plant','oil-refinery',
+    'centrifuge','lab','beacon','pump','boiler','generator','reactor','storage-tank','roboport','solar-panel',
+    'accumulator','turret','radar','wall','gate','electric-pole','inserter','loader','offshore-pump',
+    'heat-pipe','heat-exchanger','space-platform-hub','thruster','asteroid-collector','agricultural-tower',
+    'cryogenic-plant','electromagnetic-plant','biochamber','foundry','recycler','crusher','big-mining-drill',
+    'fusion-reactor','fusion-generator','lightning-rod','lightning-collector','land-mine','pumpjack',
+    'display-panel','selector-combinator','arithmetic-combinator','decider-combinator','constant-combinator',
+    'power-switch','programmable-speaker'];
+  let fpMissing = [];
+  for (const t of fpTypes) {
+    const map = rawFp[t] || {};
+    for (const name of Object.keys(map)) {
+      const e = map[name];
+      if (!e || !e.selection_box) continue;          // 无 selection_box 的非建筑
+      if (enemyWorm.has(name)) continue;             // 敌人蠕虫炮塔（非玩家建造）
+      if (GD.footprint && GD.footprint[name]) continue;   // 已从官方 selection_box 单源桥接
+      if (buildDefHandled.has(name)) continue;       // 已用 BUILD_DEFS 手工占地
+      if (BUILD_DEFS[name] && (BUILD_DEFS[name].w !== undefined)) continue; // 其它 BUILD_DEFS 占地
+      fpMissing.push(t + ':' + name);
+    }
+  }
+  ok(fpMissing.length === 0, '官方可建造建筑占地全量对齐（selection_box → footprint/BUILD_DEFS），未桥接数=' + fpMissing.length);
+  if (fpMissing.length) console.log('  缺占地来源：' + fpMissing.join(', '));
+} catch (e) {
+  ok(false, '官方建筑占地对齐校验：加载 convert-data 失败 ' + e.message);
+}
+
 process.exit(fail === 0 ? 0 : 1);
+
 
 
