@@ -174,14 +174,17 @@ check('电力机械臂(1铁板+1齿轮+1电路板)',
 check('高速机械臂(1电力机械臂+2铁板)',
   assertRecipeInput('fast-inserter', 'inserter', 1) &&
   assertRecipeInput('fast-inserter', 'iron-plate', 2), true);
-// 加长机械臂：1 电力机械臂 + 1 齿轮（官方：1 inserter + 1 iron-gear-wheel）
-check('加长机械臂(1电力机械臂+1齿轮)',
+// 加长机械臂：1 电力机械臂 + 1 齿轮 + 1 铁板（官方：1 inserter + 1 iron-gear-wheel + 1 iron-plate）
+check('加长机械臂(1电力机械臂+1齿轮+1铁板)',
   assertRecipeInput('long-handed-inserter', 'inserter', 1) &&
   assertRecipeInput('long-handed-inserter', 'iron-gear-wheel', 1) &&
-  !getRecipeLine('long-handed-inserter').includes('iron-plate'), true);
-// 集装箱机械臂：官方 = 1 处理器（官方 0.5s + 1 processing unit）
-check('集装箱机械臂(1处理器)',
-  assertRecipeInput('bulk-inserter', 'processing-unit', 1), true);
+  assertRecipeInput('long-handed-inserter', 'iron-plate', 1), true);
+// 集装箱机械臂：官方 = 1 高速机械臂 + 15 电路板 + 15 齿轮 + 1 高级电路（官方 0.5s）
+check('集装箱机械臂(1高速机械臂+15电路板+15齿轮+1高级电路)',
+  assertRecipeInput('bulk-inserter', 'fast-inserter', 1) &&
+  assertRecipeInput('bulk-inserter', 'electronic-circuit', 15) &&
+  assertRecipeInput('bulk-inserter', 'iron-gear-wheel', 15) &&
+  assertRecipeInput('bulk-inserter', 'advanced-circuit', 1), true);
 // ---- 机械臂族配方耗时对齐官方（官方所有机械臂组装配方耗时均为 0.5s）----
 console.log('\n【机械臂族配方耗时对齐官方】');
 // 官方《异星工厂》Wiki：所有机械臂（含热能/电力/加长/高速/集装箱）

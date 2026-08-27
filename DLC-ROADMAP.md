@@ -639,3 +639,33 @@
 > - **校验**：verify-dlc 新增装载机校验（4 级 × 6 + 配方 4 + 科技 3 = 31 项），
 >   全量 18 个校验脚本通过，`node build.js` 构建通过。
 >   全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段四.20：基础配方全面对齐官方（本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> 依据「所有配方数据与《异星工厂》官方一致」原则，把 data-recipes.js 中 **base 基础配方**
+> 与可安全对齐的装备配方逐一修正为官方数值（此前存在旧版/简化配方差异，官方能产出且项目已具备对应材料）：
+> - **机械臂族**：`long-handed-inserter` 补 1 铁板；`bulk-inserter` 由「1 处理器」改为官方
+>   「1 高速机械臂+15 电路板+15 齿轮+1 高级电路」（保持 0.5s）。
+> - **科学包**：`production-science-pack` 产出由 1 改为官方 3。
+> - **裂化**：`crack-light`/`crack-gas` 补官方所需 30 水（化工厂支持流体输入，已单源）。
+> - **武器/弹药**：`pistol`（5 铜板+5 铁板，5s）、`shotgun-shell`（产出 1）、
+>   `atomic-bomb`（100 铀-235）、`destroyer-capsule`（4 骚扰机+4 钢板+1 处理器）、
+>   `cliff-explosives`（补 1 空桶+10 方解石）。
+> - **载具/炮塔**：`artillery-wagon`/`artillery-turret`/`artillery-shell` 对齐官方钨板链
+>   （60/60 钨板+精炼混凝土+齿轮+处理器，炮弹 1 雷达+1 方解石+4 钨板+8 爆炸物）；
+>   `spidertron` 对齐官方（4 外骨骼+2 便携聚变堆+1 火箭炮塔+2 雷达+1 鱼）。
+> - **模块**：`speed-module-3`(+1 碳化钨)、`productivity-module-3`(+1 异虫卵)、
+>   `efficiency-module-3`(+5 变质物)、`quality-module-3`(+1 超导体)。
+> - **护甲/装备**：`power-armor-mk2`（100 节能模块+100 速度模块）、`personal-roboport-mk2-equipment`
+>   （5 接口+50 处理器+50 超导体）、`battery-mk3-equipment`（5 电池 II+10 超级电容，10s）、
+>   `toolbelt-equipment`（3 高级电路+10 碳纤维）。
+> - **高架铁轨**：`rail-support`/`rail-ramp` 耗时对齐官方 0.5s。
+> - **大型采矿机**：`big-mining-drill` 对齐官方熔融铁+碳化钨链（项目已有铸造厂熔融铁产出）。
+> - **回收机**：耗时由 10s 对齐官方 3s。
+>
+> 以上改动均以 `data.generated.js`（factorio-data 官方）为数据源核对，配方差值由 64 → 38 条，
+> 剩余 38 条均为 **Space Age 星球专属材料链**（熔融金属浇铸、钬溶液/电解液、氟酮、氨水、
+> 异虫卵培育、小行星加工等），因项目尚未完整模拟行星处理链，按既定设计适配为基础资源，
+> 已在 DLC-ROADMAP 各阶段说明。同步更新 `tools/verify-recipes.js` 机械臂族断言。
+> 全量 18 个校验脚本通过，`node build.js` 构建通过。

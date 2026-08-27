@@ -29,7 +29,7 @@ const RECIPES = {
   'turbo-loader':       { time: 20, inp: { 'turbo-transport-belt': 5, 'express-loader': 1 }, out: { 'turbo-loader': 1 } },
   'inserter':           { time: 0.5, inp: { 'iron-plate': 1, 'iron-gear-wheel': 1, 'electronic-circuit': 1 }, out: { 'inserter': 1 } },
   'burner-inserter':    { time: 0.5, inp: { 'iron-plate': 1, 'iron-gear-wheel': 1 },                  out: { 'burner-inserter': 1 } },
-  'long-handed-inserter':      { time: 0.5, inp: { 'inserter': 1, 'iron-gear-wheel': 1 },                             out: { 'long-handed-inserter': 1 } },
+  'long-handed-inserter':      { time: 0.5, inp: { 'inserter': 1, 'iron-gear-wheel': 1, 'iron-plate': 1 },                             out: { 'long-handed-inserter': 1 } },  // 对齐官方：1电力机械臂+1齿轮+1铁板
   'fast-inserter':        { time: 0.5, inp: { 'electronic-circuit': 2, 'inserter': 1, 'iron-plate': 2 }, out: { 'fast-inserter': 1 } },
   'burner-mining-drill':        { time: 2, inp: { 'iron-gear-wheel': 3, 'iron-plate': 3, 'stone-furnace': 1 }, out: { 'burner-mining-drill': 1 } },
   'stone-furnace':      { time: 0.5, inp: { 'stone': 5 },                                        out: { 'stone-furnace': 1 } },
@@ -40,10 +40,10 @@ const RECIPES = {
   'steam-engine':        { time: 0.5, inp: { 'iron-gear-wheel': 8, 'iron-plate': 10, 'pipe': 5 }, out: { 'steam-engine': 1 } },
   'offshore-pump':        { time: 0.5, inp: { 'iron-gear-wheel': 2, 'pipe': 3 }, out: { 'offshore-pump': 1 } },
   'electric-mining-drill':        { time: 2, inp: { 'electronic-circuit': 3, 'iron-gear-wheel': 5, 'iron-plate': 10 }, out: { 'electric-mining-drill': 1 } },
-  'big-mining-drill':        { time: 30, inp: { 'electric-mining-drill': 1, 'advanced-circuit': 10, 'electric-engine-unit': 10, 'steel-plate': 50, 'refined-concrete': 20 }, out: { 'big-mining-drill': 1 } },  // 太空时代大型采矿机（官方配方依赖熔融铁/钨碳化物=行星资源，适配为基础资源；产出物/耗时 30s 参考官方）
+  'big-mining-drill':        { time: 30, inp: { 'electric-mining-drill': 1, 'molten-iron': 200, 'tungsten-carbide': 20, 'electric-engine-unit': 10, 'advanced-circuit': 10 }, out: { 'big-mining-drill': 1 } },  // 对齐官方：1电采矿机+200熔融铁+20碳化钨+10电机+10高级电路
   'electric-furnace':        { time: 5, inp: { 'advanced-circuit': 5, 'steel-plate': 10, 'stone-brick': 10 }, out: { 'electric-furnace': 1 } },
   'assembling-machine-2':        { time: 0.5, inp: { 'assembling-machine-1': 1, 'electronic-circuit': 3, 'iron-gear-wheel': 5, 'steel-plate': 2 }, out: { 'assembling-machine-2': 1 } },
-  'bulk-inserter':        { time: 0.5, inp: { 'processing-unit': 1 }, out: { 'bulk-inserter': 1 } },
+  'bulk-inserter':        { time: 0.5, inp: { 'fast-inserter': 1, 'electronic-circuit': 15, 'iron-gear-wheel': 15, 'advanced-circuit': 1 }, out: { 'bulk-inserter': 1 } },  // 对齐官方：1高速机械臂+15电路板+15齿轮+1高级电路
   'stack-inserter':       { time: 0.5, inp: { 'bulk-inserter': 1, 'processing-unit': 1, 'carbon-fiber': 2, 'jelly': 10 }, out: { 'stack-inserter': 1 } },  // 太空时代堆叠机械臂（官方 Space Age 配方，数据经 GAME_DATA 单源）
   'logistic-science-pack':     { time: 6,   inp: { 'transport-belt': 1, 'inserter': 1 },                  out: { 'logistic-science-pack': 1 } },  // 对齐《异星工厂》物流科学包：1传送带+1机械臂，耗时 6s
   'chemical-science-pack':      { time: 8,   inp: { 'plastic-bar': 2, 'electronic-circuit': 2, 'copper-plate': 1 }, out: { 'chemical-science-pack': 1 } },  // 项目为保持科技树无环采用旧版配方（见 README）
@@ -72,7 +72,7 @@ const RECIPES = {
   'military-science-pack':        { time: 10, inp: { 'grenade': 1, 'stone-wall': 2, 'piercing-rounds-magazine': 1 }, out: { 'military-science-pack': 2 } },  // 对齐官方：2石墙+1穿甲弹+1手雷 → 2
   // ===== 后期科学包（对齐《异星工厂》7 色科学包）=====
   'flying-robot-frame':        { time: 20, inp: { 'battery': 2, 'electric-engine-unit': 1, 'electronic-circuit': 3, 'steel-plate': 1 }, out: { 'flying-robot-frame': 1 } },
-  'production-science-pack': { time: 21, inp: { 'rail': 30, 'electric-furnace': 1, 'productivity-module': 1 }, out: { 'production-science-pack': 1 } },  // 对齐官方：30铁轨+1电炉+1产能模块
+  'production-science-pack': { time: 21, inp: { 'rail': 30, 'electric-furnace': 1, 'productivity-module': 1 }, out: { 'production-science-pack': 3 } },  // 对齐官方：30铁轨+1电炉+1产能模块 → 3
   'utility-science-pack':        { time: 21, inp: { 'flying-robot-frame': 1, 'low-density-structure': 3, 'processing-unit': 2 }, out: { 'utility-science-pack': 3 } },
   // 空间科学包：卫星发射后由火箭发射井产出（非合成配方，见 rocket.js 发射逻辑）
   'gun-turret':        { time: 8, inp: { 'copper-plate': 10, 'iron-gear-wheel': 10, 'iron-plate': 20 }, out: { 'gun-turret': 1 } },
@@ -81,8 +81,8 @@ const RECIPES = {
   'firearm-magazine':        { time: 1, inp: { 'iron-plate': 4 }, out: { 'firearm-magazine': 1 } },
   'piercing-rounds-magazine':        { time: 6, inp: { 'copper-plate': 2, 'firearm-magazine': 2, 'steel-plate': 1 }, out: { 'piercing-rounds-magazine': 2 } },
   'plastic-bar':        { time: 1, inp: { 'coal': 1, 'petroleum-gas': 20 }, out: { 'plastic-bar': 2 } },
-  'crack-light':       { time: 2,   inp: { 'heavy-oil': 40 },                                     out: { 'light-oil': 30 } },  // 对齐官方：40 重油 → 30 轻油
-  'crack-gas':         { time: 2,   inp: { 'light-oil': 30 },                                     out: { 'petroleum-gas': 20 } },  // 对齐官方：30 轻油 → 20 石油气
+  'crack-light':       { time: 2,   inp: { 'heavy-oil': 40, 'water': 30 },                                     out: { 'light-oil': 30 } },  // 对齐官方：40 重油 + 30 水 → 30 轻油
+  'crack-gas':         { time: 2,   inp: { 'light-oil': 30, 'water': 30 },                                     out: { 'petroleum-gas': 20 } },  // 对齐官方：30 轻油 + 30 水 → 20 石油气
   'lubricant':        { time: 1, inp: { 'heavy-oil': 10 }, out: { 'lubricant': 10 } },
   // 固体燃料（对齐《异星工厂》：石油气/轻油/重油在化工厂压制，耗时 1s）
   'solid-fuel':        { time: 1,   inp: { 'petroleum-gas': 20 },                                 out: { 'solid-fuel': 1 } },
@@ -94,13 +94,13 @@ const RECIPES = {
   'locomotive':        { time: 4, inp: { 'electronic-circuit': 10, 'engine-unit': 20, 'steel-plate': 30 }, out: { 'locomotive': 1 } },
   'cargo-wagon':        { time: 1, inp: { 'iron-gear-wheel': 10, 'iron-plate': 20, 'steel-plate': 20 }, out: { 'cargo-wagon': 1 } },
   'fluid-wagon':        { time: 1.5, inp: { 'iron-gear-wheel': 10, 'pipe': 8, 'steel-plate': 16, 'storage-tank': 1 }, out: { 'fluid-wagon': 1 } },
-  'artillery-wagon':        { time: 4, inp: { 'advanced-circuit': 20, 'engine-unit': 64, 'iron-gear-wheel': 10, 'pipe': 16, 'steel-plate': 40 }, out: { 'artillery-wagon': 1 } },
+  'artillery-wagon':        { time: 4, inp: { 'engine-unit': 60, 'tungsten-plate': 60, 'refined-concrete': 60, 'iron-gear-wheel': 40, 'processing-unit': 10 }, out: { 'artillery-wagon': 1 } },  // 对齐官方：60引擎+60钨板+60精炼混凝土+40齿轮+10处理器
   'train-stop':        { time: 0.5, inp: { 'electronic-circuit': 5, 'iron-plate': 6, 'iron-stick': 6, 'steel-plate': 3 }, out: { 'train-stop': 1 } },
   'rail-signal':        { time: 0.5, inp: { 'electronic-circuit': 1, 'iron-plate': 5 }, out: { 'rail-signal': 1 } },
   'rail-chain-signal':        { time: 0.5, inp: { 'electronic-circuit': 1, 'iron-plate': 5 }, out: { 'rail-chain-signal': 1 } },
   // ===== 高架铁轨（Elevated Rails DLC，数据来自 factorio-data 官方配方）=====
-  'rail-support':        { time: 1, inp: { 'refined-concrete': 20, 'steel-plate': 10 }, out: { 'rail-support': 1 } },
-  'rail-ramp':           { time: 2, inp: { 'refined-concrete': 100, 'rail': 8, 'steel-plate': 10 }, out: { 'rail-ramp': 1 } },
+  'rail-support':        { time: 0.5, inp: { 'refined-concrete': 20, 'steel-plate': 10 }, out: { 'rail-support': 1 } },  // 对齐官方：0.5s
+  'rail-ramp':           { time: 0.5, inp: { 'refined-concrete': 100, 'rail': 8, 'steel-plate': 10 }, out: { 'rail-ramp': 1 } },  // 对齐官方：0.5s
   // ===== 载具（对齐《异星工厂》Car，需引擎单元）=====
   'car':        { time: 2, inp: { 'engine-unit': 8, 'iron-plate': 20, 'steel-plate': 5 }, out: { 'car': 1 } },
   'tank':        { time: 5, inp: { 'advanced-circuit': 10, 'engine-unit': 32, 'iron-gear-wheel': 15, 'steel-plate': 50 }, out: { 'tank': 1 } },
@@ -110,15 +110,15 @@ const RECIPES = {
   'explosive-uranium-cannon-shell':        { time: 12, inp: { 'explosive-cannon-shell': 1, 'uranium-238': 1 }, out: { 'explosive-uranium-cannon-shell': 1 } },
   'light-armor':        { time: 3, inp: { 'iron-plate': 40 }, out: { 'light-armor': 1 } },
   'heavy-armor':        { time: 8, inp: { 'copper-plate': 100, 'steel-plate': 50 }, out: { 'heavy-armor': 1 } },
-  'spidertron':        { time: 10, inp: { 'efficiency-module-3': 2, 'exoskeleton-equipment': 4, 'low-density-structure': 150, 'processing-unit': 16, 'radar': 2, 'rocket-launcher': 4 }, out: { 'spidertron': 1 } },
+  'spidertron':        { time: 10, inp: { 'exoskeleton-equipment': 4, 'fission-reactor-equipment': 2, 'rocket-turret': 1, 'radar': 2, 'raw-fish': 1 }, out: { 'spidertron': 1 } },  // 对齐官方：4外骨骼+2便携聚变堆+1火箭炮塔+2雷达+1鱼
   // 蜘蛛遥控器（对齐《异星工厂》Spidertron remote）：用于远程命令蜘蛛机器人移动
   'spidertron-remote': { time: 5, inp: { 'processing-unit': 2, 'advanced-circuit': 4, 'iron-gear-wheel': 6, 'battery': 2 }, out: { 'spidertron-remote': 1 } },
   'land-mine':        { time: 5, inp: { 'explosives': 2, 'steel-plate': 1 }, out: { 'land-mine': 4 } },
-  'cliff-explosives':        { time: 8, inp: { 'explosives': 10, 'grenade': 1 }, out: { 'cliff-explosives': 1 } },
-  'artillery-turret':        { time: 40, inp: { 'advanced-circuit': 20, 'concrete': 60, 'iron-gear-wheel': 40, 'steel-plate': 60 }, out: { 'artillery-turret': 1 } },
-  'artillery-shell':        { time: 15, inp: { 'explosive-cannon-shell': 4, 'explosives': 8, 'radar': 1 }, out: { 'artillery-shell': 1 } },
+  'cliff-explosives':        { time: 8, inp: { 'barrel': 1, 'calcite': 10, 'explosives': 10, 'grenade': 1 }, out: { 'cliff-explosives': 1 } },  // 对齐官方：1空桶+10方解石+10爆炸物+1手榴弹
+  'artillery-turret':        { time: 40, inp: { 'tungsten-plate': 60, 'refined-concrete': 60, 'iron-gear-wheel': 40, 'processing-unit': 10 }, out: { 'artillery-turret': 1 } },  // 对齐官方：60钨板+60精炼混凝土+40齿轮+10处理器
+  'artillery-shell':        { time: 15, inp: { 'radar': 1, 'calcite': 1, 'tungsten-plate': 4, 'explosives': 8 }, out: { 'artillery-shell': 1 } },  // 对齐官方：1雷达+1方解石+4钨板+8爆炸物
   // ===== 玩家武器（战斗体系扩充） =====
-  'pistol':            { time: 1,   inp: { 'iron-plate': 4, 'iron-gear-wheel': 1 },                     out: { 'pistol': 1 } },
+  'pistol':            { time: 5,   inp: { 'copper-plate': 5, 'iron-plate': 5 },                     out: { 'pistol': 1 } },  // 对齐官方：5铜板+5铁板，5s
   'submachine-gun':        { time: 10, inp: { 'copper-plate': 5, 'iron-gear-wheel': 10, 'iron-plate': 10 }, out: { 'submachine-gun': 1 } },
   'shotgun':        { time: 10, inp: { 'copper-plate': 10, 'iron-gear-wheel': 5, 'iron-plate': 15, 'wood': 5 }, out: { 'shotgun': 1 } },
   'rocket-launcher':        { time: 10, inp: { 'electronic-circuit': 5, 'iron-gear-wheel': 5, 'iron-plate': 5 }, out: { 'rocket-launcher': 1 } },
@@ -126,13 +126,13 @@ const RECIPES = {
   // 集束手雷（对齐《异星工厂》Cluster grenade）：更强爆炸范围
   'cluster-grenade':        { time: 8, inp: { 'explosives': 5, 'grenade': 7, 'steel-plate': 5 }, out: { 'cluster-grenade': 1 } },
   // 散弹枪弹药体系（对齐《异星工厂》Shotgun shell / Piercing shotgun shell）
-  'shotgun-shell':     { time: 3,   inp: { 'iron-plate': 2, 'copper-plate': 2 },                   out: { 'shotgun-shell': 2 } },  // 对齐官方：3s + 2铜板 + 2铁板 → 2
+  'shotgun-shell':     { time: 3,   inp: { 'iron-plate': 2, 'copper-plate': 2 },                   out: { 'shotgun-shell': 1 } },  // 对齐官方：3s + 2铜板 + 2铁板 → 1
   'piercing-shotgun-shell': { time: 8, inp: { 'shotgun-shell': 2, 'copper-plate': 2, 'steel-plate': 1 }, out: { 'piercing-shotgun-shell': 2 } },  // 对齐官方：8s + 2散弹枪弹+2铜板+1钢板 → 2
   'combat-shotgun':        { time: 10, inp: { 'copper-plate': 10, 'iron-gear-wheel': 5, 'steel-plate': 15, 'wood': 10 }, out: { 'combat-shotgun': 1 } },
   'rocket':        { time: 4, inp: { 'explosives': 1, 'iron-plate': 2 }, out: { 'rocket': 1 } },
   'explosive-rocket':        { time: 8, inp: { 'explosives': 2, 'rocket': 1 }, out: { 'explosive-rocket': 1 } },
   // 原子弹（对齐《异星工厂》Atomic bomb）：铀-235 + 火箭弹 + 爆炸物 + 处理器 → 终极核武器
-  'atomic-bomb':        { time: 50, inp: { 'explosives': 10, 'processing-unit': 10, 'uranium-235': 30 }, out: { 'atomic-bomb': 1 } },
+  'atomic-bomb':        { time: 50, inp: { 'explosives': 10, 'processing-unit': 10, 'uranium-235': 100 }, out: { 'atomic-bomb': 1 } },  // 对齐官方：10爆炸物+10处理器+100铀-235
   'flamethrower':        { time: 10, inp: { 'iron-gear-wheel': 10, 'steel-plate': 5 }, out: { 'flamethrower': 1 } },
   // ===== 终局战斗弹药与胶囊（对齐《异星工厂》Uranium ammo / Capsules）=====
   // 铀弹：铀-238 + 穿甲弹 → 高伤害穿甲弹药（供冲锋枪/机枪炮塔）
@@ -150,17 +150,17 @@ const RECIPES = {
   // ===== 模块系统 =====
   'speed-module':        { time: 15, inp: { 'advanced-circuit': 5, 'electronic-circuit': 5 }, out: { 'speed-module': 1 } },
   'speed-module-2':        { time: 30, inp: { 'advanced-circuit': 5, 'processing-unit': 5, 'speed-module': 4 }, out: { 'speed-module-2': 1 } },
-  'speed-module-3':        { time: 60, inp: { 'advanced-circuit': 5, 'processing-unit': 5, 'speed-module-2': 4 }, out: { 'speed-module-3': 1 } },
+  'speed-module-3':        { time: 60, inp: { 'advanced-circuit': 5, 'processing-unit': 5, 'speed-module-2': 4, 'tungsten-carbide': 1 }, out: { 'speed-module-3': 1 } },  // 对齐官方：+1碳化钨
   'productivity-module':        { time: 15, inp: { 'advanced-circuit': 5, 'electronic-circuit': 5 }, out: { 'productivity-module': 1 } },
   'productivity-module-2':        { time: 30, inp: { 'advanced-circuit': 5, 'processing-unit': 5, 'productivity-module': 4 }, out: { 'productivity-module-2': 1 } },
-  'productivity-module-3':        { time: 60, inp: { 'advanced-circuit': 5, 'processing-unit': 5, 'productivity-module-2': 4 }, out: { 'productivity-module-3': 1 } },
+  'productivity-module-3':        { time: 60, inp: { 'advanced-circuit': 5, 'processing-unit': 5, 'productivity-module-2': 4, 'biter-egg': 1 }, out: { 'productivity-module-3': 1 } },  // 对齐官方：+1异虫卵
   'efficiency-module':        { time: 15, inp: { 'advanced-circuit': 5, 'electronic-circuit': 5 }, out: { 'efficiency-module': 1 } },
   'efficiency-module-2':        { time: 30, inp: { 'advanced-circuit': 5, 'efficiency-module': 4, 'processing-unit': 5 }, out: { 'efficiency-module-2': 1 } },
-  'efficiency-module-3':        { time: 60, inp: { 'advanced-circuit': 5, 'efficiency-module-2': 4, 'processing-unit': 5 }, out: { 'efficiency-module-3': 1 } },
+  'efficiency-module-3':        { time: 60, inp: { 'advanced-circuit': 5, 'efficiency-module-2': 4, 'processing-unit': 5, 'spoilage': 5 }, out: { 'efficiency-module-3': 1 } },  // 对齐官方：+5变质物
   // 品质模块（对齐《异星工厂》Quality DLC：品质模块官方配方与耗时）
   'quality-module':        { time: 15, inp: { 'electronic-circuit': 5, 'advanced-circuit': 5 }, out: { 'quality-module': 1 } },
   'quality-module-2':        { time: 30, inp: { 'quality-module': 4, 'advanced-circuit': 5, 'processing-unit': 5 }, out: { 'quality-module-2': 1 } },
-  'quality-module-3':        { time: 60, inp: { 'quality-module-2': 4, 'advanced-circuit': 5, 'processing-unit': 5 }, out: { 'quality-module-3': 1 } },
+  'quality-module-3':        { time: 60, inp: { 'quality-module-2': 4, 'advanced-circuit': 5, 'processing-unit': 5, 'superconductor': 1 }, out: { 'quality-module-3': 1 } },  // 对齐官方：+1超导体
   'beacon':        { time: 15, inp: { 'advanced-circuit': 20, 'copper-cable': 10, 'electronic-circuit': 20, 'steel-plate': 10 }, out: { 'beacon': 1 } },
   // ===== 火箭链路中间件 =====
   'advanced-circuit':  { time: 6,   inp: { 'electronic-circuit': 2, 'plastic-bar': 2, 'copper-cable': 4 }, out: { 'advanced-circuit': 1 } },
@@ -217,7 +217,7 @@ const RECIPES = {
   // 电磁工厂：钢板 + 处理器 + 钢筋混凝土 + 超导体 → 电磁工厂（官方需钬板，此处适配，10s）
   'electromagnetic-plant': { time: 10, inp: { 'steel-plate': 50, 'processing-unit': 50, 'refined-concrete': 50, 'superconductor': 20 }, out: { 'electromagnetic-plant': 1 } },
   // 回收机：处理器 + 钢板 + 齿轮 + 混凝土 → 回收机（官方 energy_required=3s，此处对齐，10s）
-  'recycler': { time: 10, inp: { 'processing-unit': 6, 'steel-plate': 20, 'iron-gear-wheel': 40, 'concrete': 20 }, out: { 'recycler': 1 } },
+  'recycler': { time: 3, inp: { 'processing-unit': 6, 'steel-plate': 20, 'iron-gear-wheel': 40, 'concrete': 20 }, out: { 'recycler': 1 } },  // 对齐官方：6处理器+20钢板+40齿轮+20混凝土，3s
   // ===== 太空时代 Fulgora 钬/特斯拉链（官方配方依赖钬溶液/电解液等 Fulgora 专属流体，此处适配电磁工厂/熔炉基础资源）=====
   // 钬矿石：石头 + 煤 → 钬矿石（官方 holmium-ore 为 Fulgora 天然矿脉，此处适配为电磁工厂从基础矿石还原，12s）
   'holmium-ore': { time: 12, inp: { 'stone': 4, 'coal': 2 }, out: { 'holmium-ore': 2 } },
@@ -369,13 +369,13 @@ const RECIPES = {
   // ===== 战斗机器人胶囊配方（对齐《异星工厂》Capsules）=====
   'defender-capsule':        { time: 8, inp: { 'electronic-circuit': 3, 'iron-gear-wheel': 3, 'piercing-rounds-magazine': 3 }, out: { 'defender-capsule': 1 } },
   'distractor-capsule':        { time: 15, inp: { 'advanced-circuit': 3, 'defender-capsule': 4 }, out: { 'distractor-capsule': 1 } },
-  'destroyer-capsule':        { time: 15, inp: { 'distractor-capsule': 4, 'speed-module': 1 }, out: { 'destroyer-capsule': 1 } },
+  'destroyer-capsule':        { time: 15, inp: { 'distractor-capsule': 4, 'steel-plate': 4, 'processing-unit': 1 }, out: { 'destroyer-capsule': 1 } },  // 对齐官方：4骚扰机+4钢板+1处理器
   // ===== 物流机器人网络 =====
   'roboport':        { time: 5, inp: { 'advanced-circuit': 45, 'iron-gear-wheel': 45, 'steel-plate': 45 }, out: { 'roboport': 1 } },
   'logistic-robot':        { time: 0.5, inp: { 'advanced-circuit': 2, 'flying-robot-frame': 1 }, out: { 'logistic-robot': 1 } },
   'construction-robot':        { time: 0.5, inp: { 'electronic-circuit': 2, 'flying-robot-frame': 1 }, out: { 'construction-robot': 1 } },
   'personal-roboport-equipment':        { time: 10, inp: { 'advanced-circuit': 10, 'battery': 45, 'iron-gear-wheel': 40, 'steel-plate': 20 }, out: { 'personal-roboport-equipment': 1 } },
-  'personal-roboport-mk2-equipment':        { time: 20, inp: { 'low-density-structure': 20, 'personal-roboport-equipment': 5, 'processing-unit': 100 }, out: { 'personal-roboport-mk2-equipment': 1 } },
+  'personal-roboport-mk2-equipment':        { time: 20, inp: { 'personal-roboport-equipment': 5, 'processing-unit': 50, 'superconductor': 50 }, out: { 'personal-roboport-mk2-equipment': 1 } },  // 对齐官方：5个人机器人接口+50处理器+50超导体
   'passive-provider-chest':        { time: 0.5, inp: { 'advanced-circuit': 1, 'electronic-circuit': 3, 'steel-chest': 1 }, out: { 'passive-provider-chest': 1 } },
   'active-provider-chest':        { time: 0.5, inp: { 'advanced-circuit': 1, 'electronic-circuit': 3, 'steel-chest': 1 }, out: { 'active-provider-chest': 1 } },
   'storage-chest':        { time: 0.5, inp: { 'advanced-circuit': 1, 'electronic-circuit': 3, 'steel-chest': 1 }, out: { 'storage-chest': 1 } },
@@ -434,7 +434,7 @@ const RECIPES = {
   // ===== 模块化护甲（对齐《异星工厂》Modular armor）=====
   'modular-armor':        { time: 15, inp: { 'advanced-circuit': 30, 'steel-plate': 50 }, out: { 'modular-armor': 1 } },
   'power-armor':        { time: 20, inp: { 'electric-engine-unit': 20, 'processing-unit': 40, 'steel-plate': 40 }, out: { 'power-armor': 1 } },
-  'power-armor-mk2':        { time: 25, inp: { 'efficiency-module-2': 25, 'electric-engine-unit': 40, 'low-density-structure': 30, 'processing-unit': 60, 'speed-module-2': 25 }, out: { 'power-armor-mk2': 1 } },
+  'power-armor-mk2':        { time: 25, inp: { 'efficiency-module': 100, 'speed-module': 100, 'processing-unit': 60, 'electric-engine-unit': 40, 'low-density-structure': 30 }, out: { 'power-armor-mk2': 1 } },  // 对齐官方：100节能模块+100速度模块+60处理器+40电机+30低密度结构
   // ===== 个人装备件 =====
   'solar-panel-equipment':        { time: 10, inp: { 'advanced-circuit': 2, 'solar-panel': 1, 'steel-plate': 5 }, out: { 'solar-panel-equipment': 1 } },
   'fusion-reactor-equipment': { time: 20, inp: { 'nuclear-reactor': 1, 'processing-unit': 20, 'low-density-structure': 10, 'electric-engine-unit': 10 }, out: { 'fusion-reactor-equipment': 1 } },
@@ -448,9 +448,9 @@ const RECIPES = {
   'energy-shield-mk2-equipment':        { time: 10, inp: { 'energy-shield-equipment': 10, 'low-density-structure': 5, 'processing-unit': 5 }, out: { 'energy-shield-mk2-equipment': 1 } },
   // ===== 传送带免疫装备（对齐《异星工厂》：铁板+电路板，早期装备件） =====
   'belt-immunity-equipment':        { time: 10, inp: { 'advanced-circuit': 5, 'steel-plate': 10 }, out: { 'belt-immunity-equipment': 1 } },  // ===== 太空时代 Aquilo 高级装备件（数据来自 GAME_DATA.equipment，需「机械装甲」科技） =====
-  'battery-mk3-equipment': { time: 20, inp: { 'battery-mk2-equipment': 10, 'supercapacitor': 10, 'quantum-processor': 5 }, out: { 'battery-mk3-equipment': 1 } },
+  'battery-mk3-equipment': { time: 10, inp: { 'battery-mk2-equipment': 5, 'supercapacitor': 10 }, out: { 'battery-mk3-equipment': 1 } },  // 对齐官方：5电池II+10超级电容，10s
   'fission-reactor-equipment': { time: 30, inp: { 'fusion-reactor-equipment': 2, 'quantum-processor': 5, 'holmium-plate': 10, 'superconductor': 20 }, out: { 'fission-reactor-equipment': 1 } },
-  'toolbelt-equipment': { time: 10, inp: { 'advanced-circuit': 10, 'iron-gear-wheel': 10, 'steel-plate': 10 }, out: { 'toolbelt-equipment': 1 } },
+  'toolbelt-equipment': { time: 10, inp: { 'advanced-circuit': 3, 'carbon-fiber': 10 }, out: { 'toolbelt-equipment': 1 } },  // 对齐官方：3高级电路+10碳纤维
   // 机械装甲（太空时代终极装甲）：强力装甲 II + 钬板 + 超导体 + 量子处理器
   'mech-armor': { time: 40, inp: { 'power-armor-mk2': 1, 'holmium-plate': 20, 'superconductor': 20, 'quantum-processor': 10 }, out: { 'mech-armor': 1 } },
 
