@@ -75,12 +75,14 @@ const PLANET_GRASS_COLORS = {
 };
 
 // 行星资源画像：每颗星球各资源丰度倍率（0=无）。依据官方星球设定适配到现有矿种。
+// 行星专属矿藏：tungsten（祝融星）/ holmium（雷神星）为太空时代天然矿脉（官方）。
+// 仅在其母星丰度 >0 时自然生成；其余星球为 0（不生成），仍可经合成配方获得。
 const PLANET_RESOURCES = {
-  nauvis:   { iron: 1,   copper: 1,   coal: 1,   stone: 1,   uranium: 1,   oil: 1,   asteroid: 1,  water: 1 },
-  vulcanus: { iron: 1.4, copper: 1.4, coal: 0.4, stone: 1.5, uranium: 0,   oil: 0,   asteroid: 1,  water: 0 },
-  gleba:    { iron: 0,   copper: 0,   coal: 0,   stone: 1.2, uranium: 0,   oil: 0,   asteroid: 1,  water: 1.5 },
-  fulgora:  { iron: 0.2, copper: 0.2, coal: 0,   stone: 1,   uranium: 1.6, oil: 0,   asteroid: 1.4, water: 0 },
-  aquilo:   { iron: 0.5, copper: 0.5, coal: 1.2, stone: 1.2, uranium: 0,   oil: 1,   asteroid: 1.5, water: 1 }
+  nauvis:   { iron: 1,   copper: 1,   coal: 1,   stone: 1,   uranium: 1,   oil: 1,   asteroid: 1,  water: 1, tungsten: 0, holmium: 0 },
+  vulcanus: { iron: 1.4, copper: 1.4, coal: 0.4, stone: 1.5, uranium: 0,   oil: 0,   asteroid: 1,  water: 0, tungsten: 1.4, holmium: 0 },
+  gleba:    { iron: 0,   copper: 0,   coal: 0,   stone: 1.2, uranium: 0,   oil: 0,   asteroid: 1,  water: 1.5, tungsten: 0, holmium: 0 },
+  fulgora:  { iron: 0.2, copper: 0.2, coal: 0,   stone: 1,   uranium: 1.6, oil: 0,   asteroid: 1.4, water: 0, tungsten: 0, holmium: 1.6 },
+  aquilo:   { iron: 0.5, copper: 0.5, coal: 1.2, stone: 1.2, uranium: 0,   oil: 1,   asteroid: 1.5, water: 1, tungsten: 0, holmium: 0 }
 };
 
 

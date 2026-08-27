@@ -312,7 +312,7 @@ function updateMining(dt) {
       if (typeof playSfx === 'function') playSfx('mine');
       if (typeof toast === 'function') toast('+1 木材');
     }
-  } else if (((ti >= 0 && ti < ORES.length) || ti === ORE_URANIUM || ti === ORE_ASTEROID) && getOreAmt(t.tx, t.ty) > 0) {
+  } else if (isOreType(ti) && getOreAmt(t.tx, t.ty) > 0) {
     p.mineProg += dt * ((G.dbg && G.dbg.mineMult) || 1) / HAND_MINE_TIME;
     if (p.mineProg >= 1) {
       p.mineProg -= 1;
