@@ -1399,3 +1399,75 @@ function statusLine(txt) {
   return '<div class="status">' + txt + '</div>';
 }
 
+
+// ===== 通用弹框标题拖拽 =====
+// 让所有带标题栏的弹框面板支持“点中标题拖动”：在屏幕内自由移动面板。
+// panel：面板根元素；head：可拖拽的标题栏元素（头部内部按钮如关闭按钮除外）。
+// 支持面板内容重建后重新传入新的 head 重新绑定；drag 状态挂在 panel 上，跨重建共享。
+function makeTitleDraggable(panel, head) {
+  if (!panel || !head) return;
+  panel._dragHead = head;
+  if (!panel._drag) panel._drag = null;
+
+  // 将面板切换到 left/top 定位（取消 transform 居中），并按当前屏幕位置放置
+  function snapToRect() {
+    const r = panel.getBoundingClientRect();
+    panel.style.left = r.left + 'px';
+    panel.style.top = r.top + 'px';
+    panel.style.right = 'auto';
+    panel.style.bottom = 'auto';
+    panel.style.transform = 'none';
+    return r;
+  }
+  function moveDrag(cx, cy) {
+    const d = panel._drag;
+    if (!d) return;
+    if (Math.abs(cx - d.sx) + Math.abs(cy - d.sy) > 5) d.moved = true;
+    if (d.moved) {
+      const w = panel.offsetWidth, h = panel.offsetHeight;
+      let nl = d.ox + (cx - d.sx);
+      let nt = d.oy + (cy - d.sy);
+      nl = Math.max(0, Math.min(innerWidth - w, nl));
+      nt = Math.max(0, Math.min(innerHeight - h, nt));
+      panel.style.left = nl + 'px';
+      panel.style.top = nt + 'px';
+    }
+  }
+  function endDrag() { panel._drag = null; }
+  function canDrag(ev) {
+    if (ev && ev.target && ev.target.closest && ev.target.closest('button, input, select, textarea, a')) return false;
+    return true;
+  }
+  function onHeadDown(ev) {
+    if (!canDrag(ev)) return;
+    const r = snapToRect();
+    panel._drag = { ox: r.left, oy: r.top, sx: ev.clientX, sy: ev.clientY, moved: false };
+    ev.preventDefault();
+  }
+  function onHeadTouch(ev) {
+    const t = ev.changedTouches[0];
+    if (!t || !canDrag(ev)) return;
+    const r = snapToRect();
+    panel._drag = { ox: r.left, oy: r.top, sx: t.clientX, sy: t.clientY, moved: false };
+    ev.preventDefault();
+  }
+
+  // 头部可能被重建（如 debug 面板），每次绑定到当前 head 上
+  head.addEventListener('mousedown', onHeadDown);
+  head.addEventListener('touchstart', onHeadTouch, { passive: false });
+
+  // 全局 move/up 只绑定一次，复用同一份 drag 状态（挂在 panel._drag 上）
+  if (!panel._dragGlobalBound) {
+    panel._dragGlobalBound = true;
+    window.addEventListener('mousemove', ev => { if (panel._drag) moveDrag(ev.clientX, ev.clientY); });
+    window.addEventListener('mouseup', endDrag);
+    window.addEventListener('touchmove', ev => {
+      if (!panel._drag) return;
+      const t = ev.changedTouches[0];
+      if (t) moveDrag(t.clientX, t.clientY);
+      ev.preventDefault();
+    }, { passive: false });
+    window.addEventListener('touchend', endDrag);
+    window.addEventListener('touchcancel', endDrag);
+  }
+}

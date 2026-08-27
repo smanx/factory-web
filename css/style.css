@@ -567,6 +567,9 @@ html, body {
   align-items: center;
   gap: 6px;
   pointer-events: none;
+  /* 底部提示需显示在背包/设备面板（z-index 210）与 debug 面板（300）之上，
+     但低于 HUD(9990)/幽灵(9998) 顶层组 */
+  z-index: 500;
 }
 
 .toast {
@@ -1250,7 +1253,7 @@ html, body {
   align-items: center;
   justify-content: center;
   cursor: grab;
-  z-index: 90;
+  z-index: 301;
   user-select: none;
   box-shadow: 0 2px 10px rgba(0, 0, 0, .45);
 }
@@ -1265,7 +1268,8 @@ html, body {
   background: rgba(18, 23, 31, .97);
   border: 1px solid #5a4a7a;
   border-radius: 10px;
-  z-index: 89;
+  /* debug 面板需显示在背包/设备面板（z-index 210）之上，但低于底部提示（500） */
+  z-index: 300;
   color: #cdd6df;
   font-size: 12px;
   box-shadow: 0 4px 18px rgba(0, 0, 0, .5);

@@ -244,6 +244,8 @@ function closeHudInfo() {
 }
 
 function initHudInfo() {
+  // HUD 详情弹框支持点中标题栏拖动
+  makeTitleDraggable(document.getElementById('hud-modal'), document.getElementById('hud-modal-head'));
   document.addEventListener('click', ev => {
     const item = ev.target && ev.target.closest ? ev.target.closest('#hud-info .hud-item') : null;
     if (item) {

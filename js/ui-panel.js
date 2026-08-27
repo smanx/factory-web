@@ -1,6 +1,8 @@
 'use strict';
 
 function initPanelEvents() {
+  // 弹框支持点中标题栏拖动
+  makeTitleDraggable(document.getElementById('panel'), document.getElementById('panel-head'));
   document.getElementById('panel-body').addEventListener('change', ev => {
     // 设备专属输入（如储物箱存量上限）优先交给设备自己的 onChange
     const panel = G.panelEnt && DEVICE_PANEL[G.panelEnt.type];

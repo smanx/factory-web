@@ -459,6 +459,9 @@ function buildDebug() {
 
   document.getElementById('dbg-x').addEventListener('click', () => { panel.style.display = 'none'; });
 
+  // 调试面板支持点中标题栏拖动（dhead 每次重建后重新绑定）
+  makeTitleDraggable(panel, panel.querySelector('.dhead'));
+
   let drag = null;
   let suppressClick = false;
   // 展开/收起 Debug 面板（鼠标点击与触屏轻点共用）
