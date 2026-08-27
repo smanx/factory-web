@@ -1104,3 +1104,19 @@
   （官方优先，兜底数组仅在 GAME_DATA 缺失时生效），设备侧不再硬编码污染数值表。
 - **校验**：verify-dlc 新增「污染排放单源化」校验（16 项：11 个官方数值 + 3 个兜底 + 前端单源读取），
   全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段六.3：营养素配方键对齐官方 nutrients-from-yumako-mash（本迭代新增）
+
+> 依据「所有配方 ID 与《异星工厂》官方一致」原则，修正生化炉「果泥→营养素」配方的键名与数值：
+> - **配方键改名**：`nutrients-from-bioflux` → **`nutrients-from-yumako-mash`**（官方配方名）。
+>   原键名 `nutrients-from-bioflux` 实为官方另一条配方（5 生物流 → 40 营养素），
+>   被本项目误用于「4 果泥 → 6 营养素」配方，造成命名不一致。
+> - **数值对齐**：耗时由 2s 修正为官方 **4s**（官方 energy_required=4）；材料/产出不变
+>   （4 玉玛果泥 → 6 营养素，官方 nutrients-from-yumako-mash）。
+> - **数据单源**：配方数值/官方中文名（玉玛果泥制营养素 / Nutrients from yumako mash）均来自
+>   data.generated.js（factorio-data 官方），未单独维护数值表。
+> - **设备归属**：生化炉（BIOCHAMBER_RECIPES 注册，官方 organic 类别）；由「农业科技」解锁。
+> - **同步清理**：generate-game-data.js 生化炉设备映射、verify-data-integrity 动态键、
+>   verify-dlc 校验全部改为官方键 `nutrients-from-yumako-mash`。
+> - **校验**：verify-dlc 新增营养素链校验（配方注册/数值 4s/命名/设备/科技/移除非官方键），
+>   全量 18 个校验脚本通过，`node build.js` 构建通过。

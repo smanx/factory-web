@@ -382,6 +382,19 @@ ok(RP['bioplastic'].time === 2, '生物塑料耗时=2s（官方）');
 ok(RP['biolubricant'].inp['jelly'] === 60 && RP['biolubricant'].out['lubricant'] === 20, '生物润滑油=60果冻→20润滑油（官方）');
 ok(RP['biolubricant'].time === 3, '生物润滑油耗时=3s（官方）');
 
+// ===== Gleba 营养素链（Nutrients from yumako mash，配方键对齐官方）数据校验 =====
+console.log('\n【营养素链（Nutrients from yumako mash，配方键对齐官方）数据校验】');
+for (const rid of ['nutrients-from-yumako-mash']) {
+  ok(!!RP[rid], rid + ' 配方已注册');
+  ok(Object.keys(RP[rid].inp).every(k => k in IT), rid + ' 配方引用物品均存在');
+  ok(!!GD.recipeNames[rid], rid + ' 官方配方命名已收录 (' + (GD.recipeNames[rid] ? GD.recipeNames[rid].zh : '?') + ')');
+  ok(ctx.__recipeDevice(rid) === 'biochamber', rid + ' → 生化炉（官方 organic）');
+  ok(ctx.__recipeTechReq(rid) === 'agriculture', rid + ' 需「农业科技」');
+}
+ok(RP['nutrients-from-yumako-mash'].inp['yumako-mash'] === 4 && RP['nutrients-from-yumako-mash'].out['nutrients'] === 6, '果泥→营养素=4果泥→6营养素（官方 nutrients-from-yumako-mash）');
+ok(RP['nutrients-from-yumako-mash'].time === 4, '果泥→营养素耗时=4s（官方）');
+ok(!RP['nutrients-from-bioflux'], '已移除非官方配方键 nutrients-from-bioflux');
+
 // ===== 太空时代 养鱼 + 鱼制营养素 + 煤合成（Fish breeding / Nutrients from fish / Coal synthesis，本迭代新增）数据校验 =====
 console.log('\n【养鱼 + 鱼制营养素 + 煤合成（Space Age）数据校验】');
 for (const rid of ['fish-breeding', 'nutrients-from-fish', 'coal-synthesis']) {
