@@ -14,6 +14,10 @@ function _invalidateInvCache() {
   _invTabCache.materials = null;
   _invTabCache.craft = null;
 }
+// 玩家背包格子数：对齐《异星工厂》官方数据（factorio-data/base/prototypes/entity/entities.lua
+// 中 character 的 inventory_size = 80）。背包是有限的固定格，每格一个物品图标，
+// 数量以右下角角标显示。
+const INV_SLOT_COUNT = 80;
 
 // 背景预热：首次打开背包会一次性计算数百个物品的 tooltip（含遍历数百条配方）与
 // base64 图标，是「首次打开卡顿」的主要来源。这里把最耗时的静态缓存（物流请求/
@@ -432,26 +436,33 @@ function isPanelTyping() {
 function updateInvLive() {
   const body = document.getElementById('panel-body');
   if (!body || G.panelMode !== 'inv') return;
-  // 拥有的物品 chips：<span class="chip" data-itemid="ID"><img>名称 ×N</span>
-  // 数量为0的物品隐藏；有搜索词时按名称/ID 匹配过滤
-  body.querySelectorAll('#inv-items .chip[data-itemid]').forEach(el => {
-    const id = el.dataset.itemid;
-    if (!id || !ITEMS[id]) return;
-    const n = invCount(id);
-    const img = el.querySelector('img');
-    if (!img) return;
-    const q = (G.invItemQ || '').trim().toLowerCase();
-    const hit = !q || (el.dataset.itemsearch || '').includes(q);
-    el.style.display = (n > 0 && hit) ? '' : 'none';
-    // 若数量为0，同时隐藏紧随其后的投掷/食用按钮（手雷/生鱼等）
-    if (n <= 0) {
-      const nxt = el.nextElementSibling;
-      if (nxt && nxt.classList && nxt.classList.contains('usebtn')) nxt.style.display = 'none';
+  // 背包固定格（#inv-items）：每格一种物品，数量以右下角角标(.cnt)显示。
+  // 物品集合变化时（新增/消失/清空）需重建格子以保证排列稳定；集合不变则仅在原地
+  // 更新数量角标与搜索过滤，避免整块重建带来的掉帧。
+  const wrap = body.querySelector('#inv-items-wrap');
+  if (wrap) {
+    // 计算当前已拥有物品的稳定签名（排序后的 ID 串）
+    const ownedIds = [];
+    G.inv.forEach((n, id) => { if (n > 0 && ITEMS[id]) ownedIds.push(id); });
+    ownedIds.sort();
+    const sig = ownedIds.join(',');
+    if (wrap.dataset.ownedsig !== sig) {
+      // 物品集合变化 → 整块重建格子（保持排列稳定）
+      wrap.outerHTML = htmlInvSlots();
+    } else {
+      // 集合不变 → 仅在原地更新各格数量角标与搜索过滤
+      const grid = body.querySelector('#inv-items');
+      const q = (G.invItemQ || '').trim().toLowerCase();
+      if (grid) grid.querySelectorAll('.inv-slot[data-itemid]').forEach(el => {
+        const id = el.dataset.itemid;
+        const n = invCount(id);
+        const c = el.querySelector('.cnt[data-cnt]');
+        if (c && c.textContent !== String(n)) c.textContent = n;
+        const hit = !q || (el.dataset.itemsearch || '').includes(q);
+        el.classList.toggle('hidden', !hit);
+      });
     }
-    el.textContent = '';
-    el.appendChild(img);
-    el.appendChild(document.createTextNode(n > 0 ? ' ×' + n : '')); // 背包物品仅显示图标（名称悬浮显示）
-  });
+  }
   // 手搓配方原料可用性：<span class="ing" data-itemid="K" data-need="N">...名称 have/N</span>
   body.querySelectorAll('#inv-recipes .ing[data-itemid][data-need]').forEach(el => {
     const id = el.dataset.itemid;
@@ -573,6 +584,51 @@ function chip(id, n, iconOnly) {
     (iconOnly ? (n !== undefined ? ' ×' + n : '') : ITEMS[id].name + (n !== undefined ? ' ×' + n : '')) + '</span>';
 }
 
+// ===== 玩家背包固定格渲染（对齐《异星工厂》有限背包）=====
+// 背包是有限的 INV_SLOT_COUNT 个固定格子。每格对应一种物品：格内显示物品图标，
+// 物品数量以右下角角标(.cnt)显示。空格显示为空槽。格子数来自官方数据 inventory_size=80。
+// 物品在格子中的排列按物品 ID 排序，保证稳定；超过格子数的物品无法放入（背包已满）。
+// 手雷/集束手雷与生鱼在对应格子上提供快捷使用角标。
+function htmlInvSlots() {
+  const q = (G.invItemQ || '').trim().toLowerCase();
+  // 稳定排序的已拥有物品列表（仅数量>0 的）
+  const owned = [];
+  G.inv.forEach((n, id) => { if (n > 0 && ITEMS[id]) owned.push(id); });
+  owned.sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
+  const sig = owned.join(',');
+  let h = '<div id="inv-items-wrap" data-ownedsig="' + sig + '">';
+  h += '<div class="inv-slots" id="inv-items">';
+  for (let i = 0; i < INV_SLOT_COUNT; i++) {
+    const id = owned[i];
+    if (id) {
+      const n = invCount(id);
+      const search = (ITEMS[id].name + ' ' + id).toLowerCase().replace(/"/g, '');
+      const hit = !q || search.includes(q);
+      let use = '';
+      // 手雷/集束手雷：可在背包中直接投掷（对齐《异星工厂》投掷物）
+      if (id === 'grenade' || id === 'cluster-grenade') {
+        use = '<button class="slot-use" data-action="use-grenade" data-type="' + id + '" title="投掷' + ITEMS[id].name + '（向当前朝向投掷，造成范围爆炸）">💣</button>';
+      }
+      // 生鱼：可在背包中直接食用回血（对齐《异星工厂》：吃鱼治疗）
+      if (id === 'raw-fish') {
+        use = '<button class="slot-use" data-action="eat-fish" data-type="' + id + '" title="食用' + ITEMS[id].name + '（恢复 20 生命值）">🐟</button>';
+      }
+      h += '<div class="inv-slot' + (hit ? '' : ' hidden') + '" data-itemid="' + id + '" data-tip="' + itemTip(id) + '" data-itemsearch="' + search + '">' +
+        '<img src="' + iconDataURL(id) + '">' +
+        '<span class="cnt" data-cnt="' + id + '">' + n + '</span>' +
+        use + '</div>';
+    } else {
+      h += '<div class="inv-slot empty"></div>';
+    }
+  }
+  h += '</div>';
+  if (owned.length === 0) {
+    h += '<div class="dim" style="margin-top:6px">空空如也，去地图上按住左键挖矿吧（铁矿/铜矿/煤/石头）</div>';
+  }
+  h += '</div>';
+  return h;
+}
+
 function htmlInventory() {
   let h = '<div class="sec">护甲</div><div class="armor-row">';
   // 当前穿戴护甲展示与脱卸
@@ -622,29 +678,10 @@ function htmlInventory() {
     h += '</div><div class="dim">装备个人机器人港 + 背包携带施工机器人后，蓝图粘贴自动生成建造幽灵、红图框选生成拆除标记，由施工机器人自动施工/拆除。' +
       (rInfo ? '当前工作范围 <b>' + rInfo.range + '</b> 格、最多 <b>' + rInfo.maxActive + '</b> 台机器人同时施工（II 型更大更强）。' : '') + '</div>';
   }
-  h += '<div class="sec">拥有的物品（点击任意物品选中：设备点地图可直接建造；材料/工具鼠标显示物品幽灵。鼠标中键点底部快捷栏槽位可设置/清空；点击空槽位可直接放入选中物品且放置幽灵继续选中，Q/E 取消）</div>';
+  h += '<div class="sec">背包（' + INV_SLOT_COUNT + ' 格，对齐《异星工厂》有限背包。点击任意物品选中：设备点地图可直接建造；材料点地图无法建造。选中后可点底部快捷栏放入，Q/E 取消）</div>';
   const iq = (G.invItemQ || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   h += '<input id="inv-item-search" class="inv-search" type="text" placeholder="搜索物品（输入名称）" autocomplete="off" value="' + iq + '">';
-  h += '<div class="chips" id="inv-items">';
-  let any = false;
-  for (const id in ITEMS) {
-    const n = invCount(id);
-    if (n > 0) {
-      h += chip(id, n, true); // 背包物品仅显示图标，名称悬浮显示
-      // 手雷/集束手雷可在背包中直接投掷（对齐《异星工厂》投掷物）
-      if (id === 'grenade' || id === 'cluster-grenade') {
-        h += '<button class="usebtn" data-action="use-grenade" data-type="' + id + '" title="投掷' + ITEMS[id].name + '（向当前朝向投掷，造成范围爆炸）">💣 投掷</button>';
-      }
-      // 生鱼可在背包中直接食用回血（对齐《异星工厂》：吃鱼治疗）
-      if (id === 'raw-fish') {
-        h += '<button class="usebtn" data-action="eat-fish" data-type="' + id + '" title="食用' + ITEMS[id].name + '（恢复 20 生命值）">🐟 食用</button>';
-      }
-      any = true;
-    }
-  }
-  if (!any) h += '<span class="dim">空空如也，去地图上按住左键挖矿吧（铁矿/铜矿/煤/石头）</span>';
-  h += '</div>';
-  h += '<div class="hint">提示：开局先挖 5 个石头合成石炉，再挖煤；点击炉子打开面板，把煤和矿石放进去就能炼铁板/铜板。钢板用铁板×2 合成（石炉/电炉炼制更快）。塑料板等流体化学产物只能在化工厂生产（石油气经管道送入化工厂）。<br>选中：点击「拥有的物品」里任意物品即选中，选中后背包不自动关闭，按 E/Q 或右上角 X 关闭后选中保留。设备点地图直接建造；材料/工具鼠标显示物品放置幽灵。R 旋转、Q 取消。建造支持覆盖：目标格已有建筑时会先拆除旧建筑（返还物资）再放置新建筑，但同一格不会叠加。</div>';
+  h += htmlInvSlots();
   return h;
 }
 
@@ -814,9 +851,9 @@ function applyInvItemSearch(q) {
   const body = document.getElementById('panel-body');
   if (!body) return;
   const ql = (q || '').trim().toLowerCase();
-  body.querySelectorAll('#inv-items .chip[data-itemid]').forEach(el => {
+  body.querySelectorAll('#inv-items .inv-slot[data-itemid]').forEach(el => {
     const hit = !ql || (el.dataset.itemsearch || '').includes(ql);
-    el.style.display = hit ? '' : 'none';
+    el.classList.toggle('hidden', !hit);
   });
 }
 
