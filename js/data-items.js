@@ -282,6 +282,8 @@ const ITEMS = {
   'heat-pipe':    { name: '导热管', color: '#d98a3a', desc: '核能的传热设备（1×1）：把核反应堆产生的热量传导到热交换器，可多根串联、沿路传输（对齐《异星工厂》Heat pipe）' },
   'heat-exchanger': { name: '热交换器', color: '#a06a4a', desc: '核能的水→蒸汽转换设备（3×2，对齐《异星工厂》Heat exchanger 真实结构）：下边(南)热交换接口接收导热管热量，左右两侧各一水口进水（互通，多台水口可直接对口串接），上边(北)中间出高温蒸汽供汽轮机发电' },
   'heating-tower': { name: '供热塔', color: '#d98a3a', desc: '太空时代供热塔（3×3，燃烧式）：高效燃烧化学燃料（煤/固体燃料/火箭燃料）产生巨量热量（100MW，官方 consumption 40MW × effectivity 2.5），经导热管传导，达到最高温仍持续燃烧（对齐《异星工厂》Space Age 供热塔，数据来自 GAME_DATA）' },
+  'lightning-rod': { name: '避雷针', color: '#e8d848', desc: '太空时代避雷针（1×1，Fulgora）：雷电季节保护小片区域免受雷击，并吸收雷电能量转化为电网电力（官方 efficiency 0.2，数据来自 GAME_DATA.lightning）' },
+  'lightning-collector': { name: '避雷收集器', color: '#c0c020', desc: '太空时代避雷收集器（2×2，Fulgora）：保护大片区域免受雷击，收集雷电能量效率更高并转化为电网电力（官方 efficiency 0.4，数据来自 GAME_DATA.lightning）' },
   // ===== 电路网络（对齐《异星工厂》Circuit Network）=====
   'small-electric-pole': { name: '小型电线杆', color: '#8a5a2a', desc: '电线杆：铺设后与附近电线杆自动连线，构成电路网络（1×1，连接距离 7 格）。红/绿线可独立传输信号' },
   'medium-electric-pole': { name: '中型电线杆', color: '#a06a2a', desc: '电线杆：连接距离更远（9 格），构成更大范围的电路网络（2×2）' },

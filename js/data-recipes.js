@@ -277,6 +277,11 @@ const RECIPES = {
   'heat-pipe':        { time: 1, inp: { 'copper-plate': 20, 'steel-plate': 10 }, out: { 'heat-pipe': 1 } },
   'heat-exchanger':        { time: 3, inp: { 'copper-plate': 100, 'pipe': 10, 'steel-plate': 10 }, out: { 'heat-exchanger': 1 } },
   'heating-tower':        { time: 10, inp: { 'boiler': 2, 'heat-pipe': 5, 'concrete': 20 }, out: { 'heating-tower': 1 } },  // 太空时代供热塔（官方配方：2锅炉+5导热管+20混凝土，10s）
+  // ===== Fulgora 避雷系统（太空时代 Space Age，对齐《异星工厂》lightning-rod / lightning-collector）=====
+  // 官方配方：避雷针=12铜线+8钢板+4石砖（5s）；避雷收集器=1避雷针+8超级电容+1蓄电器+80电解质（5s）。
+  // 项目未实现 Fulgora 专属 supercapacitor/electrolyte，故收集器配方适配为现有超导体替代超级电容，产出物/耗时参考官方。
+  'lightning-rod':        { time: 5, inp: { 'copper-cable': 12, 'steel-plate': 8, 'stone-brick': 4 }, out: { 'lightning-rod': 1 } },
+  'lightning-collector':  { time: 5, inp: { 'lightning-rod': 1, 'superconductor': 8, 'accumulator': 1 }, out: { 'lightning-collector': 1 } },
   // ===== 电路网络配方 =====
   'small-electric-pole':        { time: 0.5, inp: { 'copper-cable': 2, 'wood': 1 }, out: { 'small-electric-pole': 2 } },
   'substation':        { time: 0.5, inp: { 'advanced-circuit': 5, 'copper-cable': 6, 'steel-plate': 10 }, out: { 'substation': 1 } },

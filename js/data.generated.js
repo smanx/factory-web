@@ -214,6 +214,8 @@ const GAME_DATA = {
   "heat-pipe": 50,
   "heat-exchanger": 50,
   "heating-tower": 20,
+  "lightning-rod": 50,
+  "lightning-collector": 20,
   "small-electric-pole": 50,
   "medium-electric-pole": 50,
   "big-electric-pole": 50,
@@ -325,6 +327,8 @@ const GAME_DATA = {
   "heat-pipe": 200,
   "heat-exchanger": 200,
   "heating-tower": 500,
+  "lightning-rod": 100,
+  "lightning-collector": 200,
   "roboport": 500,
   "locomotive": 1000,
   "cargo-wagon": 600,
@@ -1999,6 +2003,17 @@ const GAME_DATA = {
     "heating-tower": 1
    }
   },
+  "lightning-rod": {
+   "time": 5,
+   "inp": {
+    "copper-cable": 12,
+    "steel-plate": 8,
+    "stone-brick": 4
+   },
+   "out": {
+    "lightning-rod": 1
+   }
+  },
   "small-electric-pole": {
    "time": 0.5,
    "inp": {
@@ -2451,6 +2466,7 @@ const GAME_DATA = {
   "heat-pipe": "assembling-machine-1",
   "heat-exchanger": "assembling-machine-1",
   "heating-tower": "assembling-machine-1",
+  "lightning-rod": "assembling-machine-1",
   "small-electric-pole": "assembling-machine-1",
   "substation": "assembling-machine-1",
   "programmable-speaker": "assembling-machine-1",
@@ -3286,6 +3302,14 @@ const GAME_DATA = {
    "zh": "供热塔",
    "en": "Heating tower"
   },
+  "lightning-rod": {
+   "zh": "避雷针",
+   "en": "Lightning rod"
+  },
+  "lightning-collector": {
+   "zh": "闪电捕捉器",
+   "en": "Lightning collector"
+  },
   "small-electric-pole": {
    "zh": "小型电线杆",
    "en": "Small electric pole"
@@ -3629,6 +3653,14 @@ const GAME_DATA = {
   "heatingTowerSpecificHeat": 5,
   "heatingTowerMaxTransfer": 10000
  },
+ "lightning": {
+  "rodEfficiency": 0.2,
+  "rodRange": 15,
+  "rodBufferMJ": 500,
+  "collectorEfficiency": 0.4,
+  "collectorRange": 25,
+  "collectorBufferMJ": 1000
+ },
  "roboportPower": 50,
  "footprint": {
   "transport-belt": {
@@ -3914,6 +3946,14 @@ const GAME_DATA = {
   "biolab": {
    "w": 5,
    "h": 5
+  },
+  "lightning-rod": {
+   "w": 1,
+   "h": 1
+  },
+  "lightning-collector": {
+   "w": 2,
+   "h": 2
   }
  },
  "steamPower": {

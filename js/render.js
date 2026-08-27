@@ -117,6 +117,8 @@ function render() {
   drawLogisticsRobots(ctx);
   if (typeof drawConstruction === 'function') drawConstruction(ctx);
   if (typeof drawParticles === 'function') drawParticles(ctx);
+  // 避雷系统：雷暴落雷特效（世界坐标，位于粒子之上）
+  if (typeof drawLightningStrikes === 'function') drawLightningStrikes(ctx, G.cam);
   ctx.restore();
 
   // 昼夜黑暗遮罩：夜晚整个世界变暗（由 solarFactor 推算），夜视仪可抵消；设置中"日照光照"可整体开关

@@ -410,6 +410,8 @@ function loop(ts) {
       if (G.screenFlash > 0) G.screenFlash = Math.max(0, G.screenFlash - dt * 1.6);
       // 天气系统（动态云层 / 阴云，低开销）
       if (typeof updateWeather === 'function') updateWeather(dt);
+      // 避雷系统（Fulgora 雷暴期落雷，需避雷科技）
+      if (typeof updateLightning === 'function') updateLightning(dt);
       // 环境氛围音（Web Audio 昼夜背景音）
       if (typeof ambientUpdate === 'function') ambientUpdate(dt);
     }

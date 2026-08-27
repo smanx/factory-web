@@ -607,6 +607,37 @@ const heat = {};
   }
 }
 
+// ---- Fulgora 避雷系统（Space Age lightning-attractor 原型）----
+// 避雷针/避雷收集器：雷电季节吸收闪电并转化为电网电力（官方 lightning-attractor）。
+// 官方原型字段：efficiency（避雷针 0.2 / 收集器 0.4）、range_elongation（15 / 25）、
+// energy_source.buffer_capacity（500MJ / 1000MJ）、drain（2.5MJ/s）。
+// 项目以官方数值桥接（GAME_DATA.lightning），供避雷设备读取，未单独维护数值表。
+const lightning = {};
+{
+  const rod = raw['lightning-attractor'] && raw['lightning-attractor']['lightning-rod'];
+  if (rod) {
+    if (typeof rod.efficiency === 'number') lightning.rodEfficiency = rod.efficiency;
+    if (typeof rod.range_elongation === 'number') lightning.rodRange = rod.range_elongation;
+    if (rod.energy_source) {
+      const cap = parseEnergyMJ(rod.energy_source.buffer_capacity);
+      if (cap !== null) lightning.rodBufferMJ = cap;
+      const dr = rod.energy_source.drain && parseKiloWatt(rod.energy_source.drain);
+      if (dr !== null) lightning.rodDrainKW = dr;
+    }
+  }
+  const col = raw['lightning-attractor'] && raw['lightning-attractor']['lightning-collector'];
+  if (col) {
+    if (typeof col.efficiency === 'number') lightning.collectorEfficiency = col.efficiency;
+    if (typeof col.range_elongation === 'number') lightning.collectorRange = col.range_elongation;
+    if (col.energy_source) {
+      const cap = parseEnergyMJ(col.energy_source.buffer_capacity);
+      if (cap !== null) lightning.collectorBufferMJ = cap;
+      const dr = col.energy_source.drain && parseKiloWatt(col.energy_source.drain);
+      if (dr !== null) lightning.collectorDrainKW = dr;
+    }
+  }
+}
+
 // ---- 机器人港基础耗电（kW，官方 energy_usage 50kW）----
 const roboportPower = (() => {
   const rp = raw.roboport && raw.roboport.roboport;
@@ -755,6 +786,8 @@ const FOOTPRINT_SOURCES = {
   'agricultural-tower': ['agricultural-tower', 'agricultural-tower'],  // 太空时代农业塔（Gleba）：官方 selection_box ±1.5×±1.5 → 3×3
   'heating-tower': ['reactor', 'heating-tower'],  // 太空时代供热塔（Aquilo）：官方 reactor 原型 selection_box ±1.5×±1.5 → 3×3
   'biolab': ['lab', 'biolab'],  // 太空时代生物实验室（Gleba）：官方 lab 原型 selection_box ±2.5×±2.5 → 5×5
+  'lightning-rod': ['lightning-attractor', 'lightning-rod'],  // 太空时代避雷针（Fulgora）：官方 selection_box ±0.5 → 1×1
+  'lightning-collector': ['lightning-attractor', 'lightning-collector'],  // 太空时代避雷收集器（Fulgora）：官方 selection_box ±1 → 2×2
 };
 // 官方 selection_box 为实体占用的格数（局部坐标跨度，单位格）。
 // 占地格数 = max(1, ceil(跨度))；部分实体（机械臂/电线杆/熔炉等）官方跨度<1 或非整数，
@@ -836,6 +869,7 @@ Object.assign(GAME_DATA, {
   radar,
   equipment,
   heat,
+  lightning,
   roboportPower,
   footprint,
   steamPower,
@@ -902,6 +936,7 @@ function report() {
   console.log('雷达 radar: ' + JSON.stringify(GAME_DATA.radar));
   console.log('个人装备 equipment: ' + JSON.stringify(GAME_DATA.equipment));
   console.log('热量链路 heat: ' + JSON.stringify(GAME_DATA.heat));
+  console.log('避雷系统 lightning: ' + JSON.stringify(GAME_DATA.lightning));
   console.log('机器人港功耗 roboportPower: ' + JSON.stringify(GAME_DATA.roboportPower));
   console.log('扩展参数手工保留（官方无此字段/项目简化模型）：汽轮机/锅炉/蒸汽机产汽模型、机器人速度与电量刻度、机器人港容量、',
     '武器/装甲战斗平衡表、燃料能量(项目相对刻度)、载具装备网格、热交换器热量参数、雷达扫描节奏');

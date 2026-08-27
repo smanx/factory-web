@@ -110,6 +110,35 @@ ok(ctx.__itemTechReq('tungsten-carbide') === 'metallurgy', '碳化钨需「冶�
 ok(ctx.__itemTechReq('foundry') === 'metallurgy', '铸造厂需「冶金学」科技');
 ok(!!TS['metallurgy'], '「冶金学」科技已注册');
 ok(!Object.keys(TS['metallurgy'].cost).includes('metallurgic-science-pack'), '「冶金学」科技不含冶金科研包（避免循环依赖）');
+// ===== Fulgora 避雷系统（避雷针 + 避雷收集器，本迭代新增）数据校验 =====
+console.log('\n【避雷针 lightning-rod（Fulgora）数据】');
+ok(GD.stackSize['lightning-rod'] === 50, 'lightning-rod 堆叠来自官方 (=50)');
+ok(GD.names['lightning-rod'] && GD.names['lightning-rod'].en === 'Lightning rod', 'lightning-rod 官方命名已收录 (Lightning rod)');
+ok(GD.footprint['lightning-rod'] && GD.footprint['lightning-rod'].w === 1 && GD.footprint['lightning-rod'].h === 1, '占地 1×1（官方 selection_box ±0.5）');
+ok(GD.buildingHp['lightning-rod'] === 100, '血量=100（官方 max_health）');
+ok(GD.lightning.rodEfficiency === 0.2, '避雷针效率=0.2（官方 efficiency）');
+ok(GD.lightning.rodRange === 15, '避雷针保护半径=15（官方 range_elongation）');
+ok(GD.lightning.rodBufferMJ === 500, '避雷针储能=500MJ（官方 buffer_capacity）');
+ok(!!RP['lightning-rod'], 'lightning-rod 配方已注册');
+ok(Object.keys(RP['lightning-rod'].inp).every(k => k in IT), 'lightning-rod 配方引用物品均存在');
+ok(!!IT['lightning-rod'], 'lightning-rod 物品已注册');
+ok(!!TS['lightning'], '「避雷科技」已注册');
+ok(ctx.__itemTechReq('lightning-rod') === 'lightning', '避雷针需「避雷科技」');
+
+console.log('\n【避雷收集器 lightning-collector（Fulgora）数据】');
+ok(GD.stackSize['lightning-collector'] === 20, 'lightning-collector 堆叠来自官方 (=20)');
+ok(GD.names['lightning-collector'] && GD.names['lightning-collector'].en === 'Lightning collector', 'lightning-collector 官方命名已收录 (Lightning collector)');
+ok(GD.footprint['lightning-collector'] && GD.footprint['lightning-collector'].w === 2 && GD.footprint['lightning-collector'].h === 2, '占地 2×2（官方 selection_box ±1）');
+ok(GD.buildingHp['lightning-collector'] === 200, '血量=200（官方 max_health）');
+ok(GD.lightning.collectorEfficiency === 0.4, '避雷收集器效率=0.4（官方 efficiency）');
+ok(GD.lightning.collectorRange === 25, '避雷收集器保护半径=25（官方 range_elongation）');
+ok(GD.lightning.collectorBufferMJ === 1000, '避雷收集器储能=1000MJ（官方 buffer_capacity）');
+ok(!!RP['lightning-collector'], 'lightning-collector 配方已注册');
+ok(Object.keys(RP['lightning-collector'].inp).every(k => k in IT), 'lightning-collector 配方引用物品均存在');
+ok(!!IT['lightning-collector'], 'lightning-collector 物品已注册');
+ok(ctx.__itemTechReq('lightning-collector') === 'lightning', '避雷收集器需「避雷科技」');
+ok(TS['lightning'].req.includes('electromagnetics'), '「避雷科技」前置包含电磁学');
+
 console.log('\n' + (fail === 0 ? '✅ DLC 数据校验全部通过（' + pass + ' 项）' : '❌ 失败 ' + fail + ' 项'));
 // ===== 回收机（Recycler）数据校验 =====
 console.log('\n【回收机设备数据（官方）】');

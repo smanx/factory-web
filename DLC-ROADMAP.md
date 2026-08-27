@@ -157,6 +157,22 @@
       game-tick 行为）。由「电路网络」科技解锁。
 - 数据校验并入 verify-dlc（12 项）。
 
+### 阶段三.75：Fulgora 避雷系统（本迭代新增）
+- [x] **避雷针 + 避雷收集器（lightning-rod / lightning-collector）**：太空时代避雷设备
+
+> 已落地说明（本迭代增量）：
+> - 物品/设备：`lightning-rod`（避雷针，1×1）/ `lightning-collector`（避雷收集器，2×2）已接入，
+>   堆叠(=50/20)、占地、血量(100/200)、命名全部来自 GAME_DATA（factorio-data 官方），未单独维护数值表。
+> - 生成脚本新增 `GAME_DATA.lightning`：官方 lightning-attractor 原型单源（efficiency 0.2/0.4、
+>   range_elongation 15/25、buffer_capacity 500MJ/1000MJ）。
+> - 雷暴天气机制：研究「避雷科技」后，每隔一段时间进入雷暴期（8~18 秒），期间周期性落雷；
+>   避雷针/避雷收集器保护其周围半径（15/25 格）区域，接住落雷后按效率把雷电能量充入内置储能，
+>   再放电并入电网（官方效率：避雷针 0.2 / 收集器 0.4）。
+> - 未被避雷设备接住的落雷会对附近玩家/建筑造成伤害（雷电威胁感），并有视觉闪电特效。
+> - 配方：避雷针=12铜线+8钢板+4石砖（5s）；避雷收集器=1避雷针+8超导体+1蓄电器（官方依赖
+>   Fulgora 专属 supercapacitor/electrolyte，适配为现有超导体）。
+> - 科技：新增「避雷科技」（需电磁学），解锁避雷针与避雷收集器；数据校验并入 verify-dlc（24 项）。
+
 ### 阶段四：太空时代行星（高风险，大改）
 - [x] **供热塔（Aquilo Heating tower）**：3×3 燃烧式供热设备，数据全部来自 GAME_DATA.heat（官方 consumption 40MW × effectivity 2.5 → 产热 100MW、specific_heat 5MJ/°C、max_transfer 10GW），达到最高温仍持续燃烧，经四边热量接口向导热管传导（官方 heat_buffer.connections）。配方：2锅炉+5导热管+20混凝土（10s）。由「供热塔」科技解锁。
 - [x] **生物实验室（Gleba Biolab）**：5×5 高级研究中心，数据全部来自 GAME_DATA（官方 researching_speed=2、module_slots=4、功耗 300kW、血量 350、占地 5×5），科研速度 2 倍。配方：1实验室+10生物流+25精炼混凝土+3铀-235（官方依赖 biter-egg/capture-robot-rocket=生物星球资源，适配为现有生物链资源）。由「生物实验室」科技解锁（前置农业科技）。
