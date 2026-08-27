@@ -453,18 +453,17 @@ function updateInvLive() {
       });
     }
   }
-  // 手搓配方原料可用性：<span class="ing" data-itemid="K" data-need="N">...名称 have/N</span>
-  body.querySelectorAll('#inv-recipes .ing[data-itemid][data-need]').forEach(el => {
-    const id = el.dataset.itemid;
-    const need = +el.dataset.need || 0;
-    if (!id || !ITEMS[id]) return;
-    const have = invCount(id);
-    el.classList.toggle('lack', have < need);
-    const img = el.querySelector('img');
-    if (!img) return;
-    el.textContent = '';
-    el.appendChild(img);
-    el.appendChild(document.createTextNode(ITEMS[id].name + ' ' + have + '/' + need));
+  // 手搓配方格子：实时刷新右下角可制作次数角标(.cnt)与未解锁状态。
+  // 与玩家背包格子一致采用「格子 + 图标」网格，左键点击制作 1 个、右键点击制作 5 个。
+  body.querySelectorAll('#inv-recipes .craft-slot[data-id]').forEach(el => {
+    const rid = el.dataset.id;
+    if (!RECIPES[rid]) return;
+    const unlocked = recipeUnlocked(rid);
+    el.classList.toggle('locked', !unlocked);
+    const cnt = unlocked ? craftMaxCount(rid) : 0;
+    el.dataset.craftable = cnt;
+    const c = el.querySelector('.cnt[data-cnt]');
+    if (c && c.textContent !== String(cnt)) c.textContent = cnt;
   });
 }
 
@@ -670,12 +669,33 @@ function htmlLogistics() {
   return h;
 }
 
-// 背包「合成页面」tab：独立渲染全部手搓/化工/炼油配方（对齐《异星工厂》手工制造）
+// 背包「合成页面」tab：独立渲染全部手搓配方（对齐《异星工厂》手工制造）。
+// 与玩家背包一致的「格子 + 图标」网格展示：左键点击图标制作 1 个，右键点击制作 5 个。
+// 配方所需材料/可制作次数以右下角角标(.cnt)显示，未解锁配方显示 🔒 锁标。
+function craftMaxCount(rid) {
+  const rec = RECIPES[rid];
+  if (!rec) return 0;
+  let max = Infinity;
+  // 受当前持有材料限制
+  for (const k in rec.inp) {
+    if (rec.inp[k] > 0) max = Math.min(max, Math.floor(invCount(k) / rec.inp[k]));
+  }
+  // 受背包空位（堆叠上限）限制
+  for (const k in rec.out) {
+    if (FLUIDS.indexOf(k) >= 0) continue;
+    const outN = rec.out[k] || 1;
+    if (outN > 0) {
+      const room = Math.max(0, stackSize(k) - invCount(k));
+      max = Math.min(max, Math.floor(room / outN));
+    }
+  }
+  return (isFinite(max) && max > 0) ? max : 0;
+}
 function htmlCraft() {
-  let h = '<div class="dim" style="margin-bottom:8px">在此手动制作物品（对齐《异星工厂》手工制造）。需要流体（石油气/水等）或离心机等高级工艺的配方，请使用对应机器生产。</div>';
+  let h = '<div class="dim" style="margin-bottom:8px">在此手动制作物品（对齐《异星工厂》手工制造）：左键点击图标制作 1 个，右键点击图标制作 5 个。需要流体（石油气/水等）或离心机等高级工艺的配方，请使用对应机器生产。</div>';
   const q = (G.invRecipeQ || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   h += '<input id="inv-recipe-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off" value="' + q + '">';
-  h += '<div id="inv-recipes">';
+  h += '<div id="inv-recipes" class="inv-slots craft-grid">';
   // 组装机配方（含化工厂/炼油厂以外的普通配方）
   for (const rid in RECIPES) {
     if (isChemRecipe(rid)) continue;
@@ -694,79 +714,20 @@ function htmlCraft() {
     const unlocked = recipeUnlocked(rid);
     const lockTech = recipeLockingTech(rid);
     const rec = RECIPES[rid];
-    const ok = unlocked && canCraft(rid);
     const outId = Object.keys(rec.out)[0];
+    const cnt = unlocked ? craftMaxCount(rid) : 0;
     const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
       Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') + ' ' + recipeDeviceName(rid)).toLowerCase();
-    h += '<div class="recipe' + (unlocked ? '' : ' locked-recipe') + '" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
-    h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + itemTip(outId) + '" src="' + iconDataURL(outId) + '">';
-    h += '<div class="rmain"><div class="rname">' + ITEMS[Object.keys(rec.out)[0]].name +
-      (rec.out[Object.keys(rec.out)[0]] > 1 ? ' ×' + rec.out[Object.keys(rec.out)[0]] : '') +
-      '<span class="rdev">' + recipeDeviceName(rid) + '</span></div>';
-    h += '<div class="ring">';
-    for (const k in rec.inp) {
-      const have = invCount(k);
-      h += '<span class="ing ' + (have >= rec.inp[k] ? '' : 'lack') + '" data-itemid="' + k + '" data-need="' + rec.inp[k] + '" data-tip="' + itemTip(k) + '">' +
-        '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + have + '/' + rec.inp[k] + '</span>';
-    }
-    h += '</div></div>';
-    if (!unlocked) {
-      h += '<button disabled title="需先研究：' + TECHS[lockTech].name + '">🔒 需' + TECHS[lockTech].name + '</button>';
-    } else {
-      h += '<button data-action="craft" data-id="' + rid + '" ' + (ok ? '' : 'disabled') + '>合成</button>';
-      if (ok) h += '<button data-action="craft" data-mult="5" data-id="' + rid + '">×5</button>';
-    }
-    h += '</div>';
-  }
-  // 化工厂配方
-  for (const rid of CHEM_RECIPES) {
-    const unlocked = recipeUnlocked(rid);
-    const lockTech = recipeLockingTech(rid);
-    const rec = RECIPES[rid];
-    const outId = Object.keys(rec.out)[0];
-    const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
-      Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') + ' 化工厂').toLowerCase();
-    h += '<div class="recipe chem' + (unlocked ? '' : ' locked-recipe') + '" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
-    h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + itemTip(outId) + '" src="' + iconDataURL(outId) + '">';
-    h += '<div class="rmain"><div class="rname">' + ITEMS[outId].name +
-      (rec.out[outId] > 1 ? ' ×' + rec.out[outId] : '') + '<span class="rdev">化工厂</span></div>';
-    h += '<div class="ring">';
-    for (const k in rec.inp) {
-      h += '<span class="ing" data-itemid="' + k + '" data-tip="' + itemTip(k) + '">' +
-        '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + rec.inp[k] + '</span>';
-    }
-    h += '</div></div>';
-    h += unlocked ? '<span class="rdev-note">需化工厂</span>' : '<span class="rdev-note lock-tag">🔒 需' + TECHS[lockTech].name + '</span>';
-    h += '</div>';
-  }
-  // 炼油厂配方
-  for (const rid of REFINERY_RECIPE_IDS) {
-    const unlocked = recipeUnlocked(rid);
-    const lockTech = recipeLockingTech(rid);
-    const rec = REFINERY_RECIPES[rid];
-    const outId = Object.keys(rec.out)[0];
-    const searchKey = (rec.name + ' ' + Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') +
-      ' ' + Object.keys(rec.out).map(k => ITEMS[k].name).join(' ') + ' 炼油厂').toLowerCase();
-    h += '<div class="recipe chem' + (unlocked ? '' : ' locked-recipe') + '" data-rsearch="' + searchKey.replace(/"/g, '') + '">';
-    h += '<img class="ric" data-itemid="' + outId + '" data-tip="' + itemTip(outId) + '" src="' + iconDataURL(outId) + '">';
-    h += '<div class="rmain"><div class="rname">' + rec.name + '<span class="rdev">炼油厂</span></div>';
-    h += '<div class="ring">';
-    for (const k in rec.inp) {
-      h += '<span class="ing" data-itemid="' + k + '" data-tip="' + itemTip(k) + '">' +
-        '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + rec.inp[k] + '</span>';
-    }
-    h += '<span class="ing arrow">→</span>';
-    for (const k in rec.out) {
-      h += '<span class="ing" data-itemid="' + k + '" data-tip="' + itemTip(k) + '">' +
-        '<img src="' + iconDataURL(k) + '">' + ITEMS[k].name + ' ' + rec.out[k] + '</span>';
-    }
-    h += '</div></div>';
-    h += unlocked ? '<span class="rdev-note">需炼油厂</span>' : '<span class="rdev-note lock-tag">🔒 需' + TECHS[lockTech].name + '</span>';
-    h += '</div>';
+    h += '<div class="inv-slot craft-slot' + (unlocked ? '' : ' locked') + '" data-action="craft" data-id="' + rid + '" data-mult="1" data-craftable="' + cnt + '" data-rsearch="' + searchKey.replace(/"/g, '') + '" data-tip="' + itemTip(outId) + '">' +
+      '<img src="' + iconDataURL(outId, 16) + '">' +
+      '<span class="cnt" data-cnt>' + cnt + '</span>' +
+      (unlocked ? '' : '<span class="craft-lock" title="需先研究：' + TECHS[lockTech].name + '">🔒</span>') +
+      '</div>';
   }
   h += '</div>';
   h += '<div class="dim" id="inv-recipe-empty" style="display:none"></div>';
   return h;
+
 }
 
 function applyInvRecipeFilter(q) {
@@ -774,7 +735,7 @@ function applyInvRecipeFilter(q) {
   if (!body) return;
   const ql = (q || '').trim().toLowerCase();
   let shown = 0;
-  body.querySelectorAll('#inv-recipes .recipe').forEach(el => {
+  body.querySelectorAll('#inv-recipes .craft-slot').forEach(el => {
     const hit = !ql || el.dataset.rsearch.includes(ql);
     el.style.display = hit ? '' : 'none';
     if (hit) shown++;

@@ -689,6 +689,24 @@ function initPanelEvents() {
     }
     refreshHotbar();
   });
+  // 背包制作栏（#inv-craft）：右键点击物品图标制作 5 个（左键在 click 处理器中制作 1 个）。
+  // 与玩家背包一致的「格子 + 图标」网格交互。
+  document.getElementById('panel-body').addEventListener('contextmenu', ev => {
+    if (G.panelMode !== 'inv') return;
+    const slot = ev.target.closest && ev.target.closest('#inv-recipes .craft-slot[data-action="craft"]');
+    if (!slot) return;
+    ev.preventDefault();
+    const rid = slot.dataset.id;
+    const n = 5;
+    const queued = queueCraft(rid, n);
+    if (!queued) {
+      if (typeof toast === 'function') toast(recipeUnlocked(rid) ? '材料不足或背包已满' : '需先研究「' + TECHS[recipeLockingTech(rid)].name + '」才能制作');
+    } else {
+      const cur = craftCurrent();
+      if (cur && typeof toast === 'function') toast('已开始制作 ' + ITEMS[cur.outId].name + ' ×' + queued);
+    }
+    if (typeof refreshHotbar === 'function') refreshHotbar();
+  });
 }
 
 // 异步渲染设置面板（含基于 IndexedDB 的存档列表）
