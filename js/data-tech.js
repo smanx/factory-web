@@ -27,6 +27,7 @@ const TECH_REQ = {
   'slowdown-capsule': 'advanced-combat',
   'flamethrower-ammo': 'flamethrower',
   'rocket-silo': 'rocket-science',
+  'cargo-landing-pad': 'rocket-science',  // 物流接驳站（对齐《异星工厂》：由火箭科技解锁，火箭货物降落于此）
   'rocket': 'rocket-science',
   'satellite': 'rocket-science',
   'rocket-fuel': 'rocket-science',

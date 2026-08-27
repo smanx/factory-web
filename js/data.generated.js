@@ -131,6 +131,7 @@ const GAME_DATA = {
   "rocket-fuel": 20,
   "rocket-part": 5,
   "rocket-silo": 1,
+  "cargo-landing-pad": 1,
   "radar": 50,
   "explosives": 50,
   "cliff-explosives": 20,
@@ -322,6 +323,7 @@ const GAME_DATA = {
   "laser-turret": 1000,
   "flamethrower-turret": 1400,
   "rocket-silo": 5000,
+  "cargo-landing-pad": 1000,
   "radar": 250,
   "stone-wall": 350,
   "gate": 350,
@@ -1709,6 +1711,17 @@ const GAME_DATA = {
     "rocket-silo": 1
    }
   },
+  "cargo-landing-pad": {
+   "time": 30,
+   "inp": {
+    "concrete": 200,
+    "steel-plate": 25,
+    "processing-unit": 10
+   },
+   "out": {
+    "cargo-landing-pad": 1
+   }
+  },
   "radar": {
    "time": 0.5,
    "inp": {
@@ -2554,6 +2567,7 @@ const GAME_DATA = {
   "low-density-structure": "assembling-machine-1",
   "rocket-fuel": "assembling-machine-1",
   "rocket-silo": "assembling-machine-1",
+  "cargo-landing-pad": "assembling-machine-1",
   "radar": "assembling-machine-1",
   "explosives": "chemical-plant",
   "battery": "chemical-plant",
@@ -3087,6 +3101,10 @@ const GAME_DATA = {
   "rocket-silo": {
    "zh": "火箭发射井",
    "en": "Rocket silo"
+  },
+  "cargo-landing-pad": {
+   "zh": "物流接驳站",
+   "en": "Cargo landing pad"
   },
   "radar": {
    "zh": "雷达",
@@ -3781,6 +3799,10 @@ const GAME_DATA = {
   "range": 14,
   "power": 300
  },
+ "cargoLandingPad": {
+  "inventorySize": 80,
+  "radarRange": 4
+ },
  "equipment": {
   "solar-panel-equipment": {
    "powerOut": 30
@@ -4008,6 +4030,10 @@ const GAME_DATA = {
   "radar": {
    "w": 3,
    "h": 3
+  },
+  "cargo-landing-pad": {
+   "w": 8,
+   "h": 8
   },
   "roboport": {
    "w": 4,

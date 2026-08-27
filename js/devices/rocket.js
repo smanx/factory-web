@@ -369,9 +369,18 @@ function onRocketLaunch() {
   }
   // 每次卫星发射获得空间科学包（对齐《异星工厂》：Space science pack 由火箭发射产出，用于终局无限科研）
   const spaceGain = 100;
-  invAdd('space-science-pack', spaceGain);
-  if (typeof trackProd === 'function') trackProd('space-science-pack', spaceGain);
-  if (typeof toast === 'function') toast('🛰️ 卫星发射成功，获得 +' + spaceGain + ' 空间科学包！');
+  // 火箭产物降落：若有物流接驳站（cargo-landing-pad），空间科学包降落到接驳站存储（对齐官方：火箭发射后产物降落于接驳站）
+  const pad = findCargoLandingPad();
+  if (pad) {
+    for (let i = 0; i < spaceGain; i++) pad.giveItem('space-science-pack');
+    pad.cargoIn = (pad.cargoIn || 0) + spaceGain;
+    if (typeof trackProd === 'function') trackProd('space-science-pack', spaceGain);
+    if (typeof toast === 'function') toast('🛰️ 卫星发射成功，+' + spaceGain + ' 空间科学包已降落至物流接驳站！');
+  } else {
+    invAdd('space-science-pack', spaceGain);
+    if (typeof trackProd === 'function') trackProd('space-science-pack', spaceGain);
+    if (typeof toast === 'function') toast('🛰️ 卫星发射成功，获得 +' + spaceGain + ' 空间科学包！');
+  }
   if (first) {
     // 全屏胜利横幅
     showVictory();
@@ -383,6 +392,18 @@ function onRocketLaunch() {
   }
   uiDirty = true;
 }
+
+// 查找场景中的物流接驳站（cargo-landing-pad），供火箭货物降落。
+// 官方仅允许每个地表建造一个接驳站；此处返回第一个（若有多个取最早放置者）。
+function findCargoLandingPad() {
+  if (typeof G.ents !== 'object') return null;
+  for (const k in G.ents) {
+    const e = G.ents[k];
+    if (e && e.type === 'cargo-landing-pad' && e.w && e.h) return e;
+  }
+  return null;
+}
+
 let victoryEl = null;
 function showVictory() {
   if (victoryEl) { victoryEl.style.display = 'flex'; return; }

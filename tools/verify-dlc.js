@@ -501,4 +501,23 @@ for (const bid of ['space-platform-hub', 'thruster', 'asteroid-collector']) {
   ok(!!IT[bid], bid + ' 物品已注册');
 }
 
+// ===== 物流接驳站（cargo-landing-pad，官方 base 建筑）数据校验 =====
+console.log('\n【物流接驳站 cargo-landing-pad 数据】');
+// 物品/堆叠/命名来自官方
+ok(!!IT['cargo-landing-pad'], 'cargo-landing-pad 物品已注册');
+ok(GD.stackSize['cargo-landing-pad'] === 1, 'cargo-landing-pad 堆叠来自官方 (=1)');
+ok(GD.names['cargo-landing-pad'] && GD.names['cargo-landing-pad'].en === 'Cargo landing pad', 'cargo-landing-pad 官方命名已收录 (Cargo landing pad)');
+// 占地/血量/容量/雷达来自官方
+ok(GD.footprint['cargo-landing-pad'] && GD.footprint['cargo-landing-pad'].w === 8 && GD.footprint['cargo-landing-pad'].h === 8, '物流接驳站 占地 8×8（官方 selection_box ±4）');
+ok(GD.buildingHp['cargo-landing-pad'] === 1000, '物流接驳站 血量=1000（官方 max_health）');
+ok(GD.cargoLandingPad && GD.cargoLandingPad.inventorySize === 80, '物流接驳站 内置 80 槽（官方 inventory_size）');
+ok(GD.cargoLandingPad && GD.cargoLandingPad.radarRange === 4, '物流接驳站 雷达视野 4 格（官方 radar_range）');
+// 配方（官方：200混凝土+25钢板+10处理器，30s）
+ok(!!RP['cargo-landing-pad'], 'cargo-landing-pad 配方已注册');
+ok(RP['cargo-landing-pad'].inp['concrete'] === 200 && RP['cargo-landing-pad'].inp['steel-plate'] === 25 && RP['cargo-landing-pad'].inp['processing-unit'] === 10, '接驳站配方=200混凝土+25钢板+10处理器（官方）');
+ok(RP['cargo-landing-pad'].out['cargo-landing-pad'] === 1 && RP['cargo-landing-pad'].time === 30, '接驳站产出 1、30s（官方）');
+ok(Object.keys(RP['cargo-landing-pad'].inp).every(k => k in IT), 'cargo-landing-pad 配方引用物品均存在');
+// 科技门控：由火箭科技解锁（与火箭发射井同科技）
+ok(ctx.__itemTechReq('cargo-landing-pad') === 'rocket-science', '物流接驳站需「火箭技术」科技');
+
 process.exit(fail === 0 ? 0 : 1);

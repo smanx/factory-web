@@ -528,6 +528,17 @@ const radar = {};
   }
 }
 
+// ---- 物流接驳站 cargo-landing-pad（官方 base 建筑：火箭货物降落枢纽）----
+// inventory_size（官方 80 槽）、radar_range（官方 radar_range=4，单位格）、max_health 由 buildingHp 统一桥接。
+const cargoLandingPad = {};
+{
+  const r = raw['cargo-landing-pad'] && raw['cargo-landing-pad']['cargo-landing-pad'];
+  if (r) {
+    if (typeof r.inventory_size === 'number') cargoLandingPad.inventorySize = r.inventory_size;
+    if (typeof r.radar_range === 'number') cargoLandingPad.radarRange = r.radar_range;
+  }
+}
+
 // ---- 个人装备（装备网格） ----
 // 官方类型：solar-panel-equipment / generator-equipment / battery-equipment /
 // energy-shield-equipment / movement-bonus-equipment / active-defense-equipment。
@@ -760,6 +771,7 @@ const FOOTPRINT_SOURCES = {
   'solar-panel': ['solar-panel', 'solar-panel'],
   'accumulator': ['accumulator', 'accumulator'],
   'radar': ['radar', 'radar'],
+  'cargo-landing-pad': ['cargo-landing-pad', 'cargo-landing-pad'],  // 物流接驳站：官方 selection_box ±4 → 8×8
   'roboport': ['roboport', 'roboport'],
   'nuclear-reactor': ['reactor', 'nuclear-reactor'],
   'heat-pipe': ['heat-pipe', 'heat-pipe'],
@@ -873,6 +885,7 @@ Object.assign(GAME_DATA, {
   turret,
   ammoDamage,
   radar,
+  cargoLandingPad,
   equipment,
   heat,
   lightning,
