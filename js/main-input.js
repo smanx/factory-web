@@ -329,105 +329,135 @@ function updateHeldMouse(dt) {
   }
 }
 
+// ============ 固定步长（decoupled fixed-timestep）更新循环 ============
+// UPS（世界更新次数/秒）与 FPS（渲染帧率/秒）解耦：
+// 世界逻辑以固定步长 TICK 推进（默认 60 次/秒），与渲染帧率无关；
+// 渲染仍由 requestAnimationFrame 驱动，帧率跟随显示器刷新率。
+// 采用经典 accumulator 累积器模式，避免螺旋式死亡并平滑渲染与更新之间的差异。
+const TICK_RATE = 60;              // 目标 UPS：每秒世界更新次数
+const TICK = 1 / TICK_RATE;        // 单个逻辑步长（秒）
+const MAX_TICK_STEPS = 5;          // 单帧最多补跑的更新次数（防止卡顿后追帧导致螺旋式死亡）
+
+// 世界逻辑累积器与上一帧时间（挂在 loop 上便于保存状态）
+loop.acc = 0;
+loop.lastT = 0;
+
+// 单个固定逻辑步：以 dt=TICK 推进一次世界（玩家/设备/电力/物流/战斗/天气等）。
+// 与渲染解耦：渲染帧率波动不会影响这里推进的步长。
+function stepWorld(dt) {
+  // 成就周期性判定（每 3s 覆盖污染等连续增长条件；事件触发点另有即时判定）
+  G.achT = (G.achT || 0) + dt;
+  if (G.achT >= 3) { G.achT = 0; if (typeof checkAchievements === 'function') checkAchievements(); }
+  // 每逻辑步失效信号塔模块加成缓存（P0 优化：同一步内同坐标只查询一次）
+  if (typeof clearBeaconBonusCache === 'function') clearBeaconBonusCache();
+  updatePlayer(dt);
+  updateTouchMove(dt);
+  updateHeldMouse(dt);
+  updateMining(dt);
+  if (typeof updateGroundItems === 'function') updateGroundItems(dt);   // 地面物品（手动上料）拾取
+  updateCraftQueue(dt);   // 手搓合成队列（按时间逐件制作）
+  if (typeof updateFishing === 'function') updateFishing(dt);   // 钓鱼冷却
+  if (typeof updatePersonalPower === 'function') updatePersonalPower(dt);   // 个人电网（装备件）
+  if (typeof updateDischargeCooldown === 'function') updateDischargeCooldown(dt);   // 放电防御冷却
+  // 逻辑帧耗时统计：度量每个逻辑步所有活跃实体 update 的总耗时，写入性能面板（仅开启性能页时采样，避免常态开销）
+  let _updStart = 0;
+  if (G.statsTab === 'perf') _updStart = performance.now();
+  for (const e of G.ents) {
+    // 性能优化：跳过继承基类空 update 的静态实体（储物箱/门/石墙/铁轨/火车车厢/信号灯/机器人港/物流箱/信号塔/电灯等），
+    // 其逻辑由独立系统（箱子存取/门开合/铁路调度/物流扫描/模块广播等）处理，无需每步调用空函数。
+    // 调用基类空 update 与跳过完全等价，故不影响任何功能。
+    if (e._dead || typeof e.update !== 'function') continue;
+    if (e.update === Entity.prototype.update) continue;
+    e.update(dt);
+  }
+  if (_updStart) {
+    if (typeof PERF === 'object' && PERF) PERF.updateMs = performance.now() - _updStart;
+  }
+  // 敌人/子弹系统（可在设置中开关战斗）
+  if (G.settings.combat) {
+    if (typeof resetSpawnerCache === 'function') resetSpawnerCache();   // 每步失效 spawner 列表缓存（P0 优化）
+    spawnEnemies(dt);
+    // 性能优化：本步存活敌人列表只计算一次，供子弹命中/战斗机器人/区域力场等复用，
+    // 避免每步多处在 combat2.js 里各自 filter 生成全新数组（降低 GC 压力）。
+    // 复用数组而非每次 new：先清空再用 for 循环回填，避免每次分配新数组带来的 GC 压力。
+    if (!G._aliveEnemies) G._aliveEnemies = [];
+    const _ae = G._aliveEnemies;
+    _ae.length = 0;
+    const _src = G.enemies || EMPTY_ARR;
+    for (let i = 0; i < _src.length; i++) if (!_src[i].dead) _ae.push(_src[i]);
+    if (typeof updateWaves === 'function') updateWaves(dt);
+    if (typeof updatePollution === 'function') updatePollution(dt);   // 污染系统（对齐《异星工厂》)
+    updateEnemies(dt);
+    updateBullets(dt);
+    updatePlayerFire(dt);
+    updatePlayerBulletHits(dt);
+    updateCombatRobots(dt);
+    updateAoeZones(dt);
+    if (typeof updateGroundFires === 'function') updateGroundFires(dt);
+    if (typeof updateAcidPools === 'function') updateAcidPools(dt);
+    if (typeof updatePersonalLaserDefense === 'function') updatePersonalLaserDefense(dt);
+    if (typeof updateCarFire === 'function') updateCarFire(dt);   // 车载机枪（对齐《异星工厂》Car）
+    if (typeof updateTankFire === 'function') updateTankFire(dt);
+    if (typeof updateLootDrops === 'function') updateLootDrops(dt);
+  }
+  G.powerT += dt;
+  if (G.powerT >= 0.25) { G.powerT = 0; updatePower(); }
+  // 电路网络重算（固定间隔，红/绿信号聚合）
+  G.circuitT = (G.circuitT || 0) + dt;
+  if (G.circuitT >= 0.25) { G.circuitT = 0; if (typeof recomputeCircuit === 'function') recomputeCircuit(); }
+  updateLogistics(dt);
+  if (typeof updateConstruction === 'function') updateConstruction(dt);
+  updateTrains(dt);
+  if (typeof updateParticles === 'function') updateParticles(dt);
+  updateCamera(dt);
+  // 全屏闪光衰减（原子弹核爆等触发的强光，随时间减弱）
+  if (G.screenFlash > 0) G.screenFlash = Math.max(0, G.screenFlash - dt * 1.6);
+  // 天气系统（动态云层 / 阴云，低开销）
+  if (typeof updateWeather === 'function') updateWeather(dt);
+  // 避雷系统（Fulgora 雷暴期落雷，需避雷科技）
+  if (typeof updateLightning === 'function') updateLightning(dt);
+  // 环境氛围音（Web Audio 昼夜背景音）
+  if (typeof ambientUpdate === 'function') ambientUpdate(dt);
+}
+
 function loop(ts) {
   requestAnimationFrame(loop);
   if (G.inMenu) return;   // 开始菜单显示中：不渲染、不更新游戏世界
   const now = ts / 1000;
   const raw = Math.min(0.05, now - (loop.lastT || now));
   loop.lastT = now;
-  const dt = Math.min(0.3, raw * ((G.dbg && G.dbg.timeScale) || 1));
-  // 游戏暂停：由顶部“暂停/继续”按钮控制（G.paused）。
-  // 打开设置面板不再暂停游戏（仅暂停时世界/设备/电力/玩家停摆）。
-  const paused = !!G.paused;
-  if (!paused) G.time += dt;
-  // UPS：每秒世界更新次数（暂停时为 0），与 FPS 采用同款指数平滑。
-  const upsNow = paused ? 0 : 1 / Math.max(raw, 0.0001);
-  upsSmooth += (upsNow - upsSmooth) * 0.05;
+  // FPS：渲染帧率由实际帧间隔平滑得出（跟随显示器刷新率）。
   fpsSmooth += (1 / Math.max(raw, 0.0001) - fpsSmooth) * 0.05;
+  // UPS：世界更新与渲染解耦，固定为 TICK_RATE（如 60），不再跟随渲染帧率。
+  upsSmooth += (TICK_RATE - upsSmooth) * 0.05;
   if (G.settings.autoSave) {
     G.autoT += raw;
     if (G.autoT >= 60) { G.autoT = 0; autoSaveGame().then(() => toast('自动保存完成')); }
   }
 
-  try {
-    if (!paused) {
-      // 成就周期性判定（每 3s 覆盖污染等连续增长条件；事件触发点另有即时判定）
-      G.achT = (G.achT || 0) + dt;
-      if (G.achT >= 3) { G.achT = 0; if (typeof checkAchievements === 'function') checkAchievements(); }
-      // 每帧失效信号塔模块加成缓存（P0 优化：同一帧内同坐标只查询一次）
-      if (typeof clearBeaconBonusCache === 'function') clearBeaconBonusCache();
-      updatePlayer(dt);
-      updateTouchMove(dt);
-      updateHeldMouse(dt);
-      updateMining(dt);
-      if (typeof updateGroundItems === 'function') updateGroundItems(dt);   // 地面物品（手动上料）拾取
-      updateCraftQueue(dt);   // 手搓合成队列（按时间逐件制作）
-      if (typeof updateFishing === 'function') updateFishing(dt);   // 钓鱼冷却
-      if (typeof updatePersonalPower === 'function') updatePersonalPower(dt);   // 个人电网（装备件）
-      if (typeof updateDischargeCooldown === 'function') updateDischargeCooldown(dt);   // 放电防御冷却
-      // 逻辑帧耗时统计：度量每帧所有活跃实体 update 的总耗时，写入性能面板（仅开启性能页时采样，避免常态开销）
-      let _updStart = 0;
-      if (G.statsTab === 'perf') _updStart = performance.now();
-      for (const e of G.ents) {
-        // 性能优化：跳过继承基类空 update 的静态实体（储物箱/门/石墙/铁轨/火车车厢/信号灯/机器人港/物流箱/信号塔/电灯等），
-        // 其逻辑由独立系统（箱子存取/门开合/铁路调度/物流扫描/模块广播等）处理，无需每帧调用空函数。
-        // 调用基类空 update 与跳过完全等价，故不影响任何功能。
-        if (e._dead || typeof e.update !== 'function') continue;
-        if (e.update === Entity.prototype.update) continue;
-        e.update(dt);
-      }
-      if (_updStart) {
-        if (typeof PERF === 'object' && PERF) PERF.updateMs = performance.now() - _updStart;
-      }
-      // 敌人/子弹系统（可在设置中开关战斗）
-      if (G.settings.combat) {
-        if (typeof resetSpawnerCache === 'function') resetSpawnerCache();   // 每帧失效 spawner 列表缓存（P0 优化）
-        spawnEnemies(dt);
-        // 性能优化：本帧存活敌人列表只计算一次，供子弹命中/战斗机器人/区域力场等复用，
-        // 避免每帧多处在 combat2.js 里各自 filter 生成全新数组（降低 GC 压力）。
-        // 复用数组而非每帧 new：先清空再用 for 循环回填，避免每帧分配新数组带来的 GC 压力。
-        if (!G._aliveEnemies) G._aliveEnemies = [];
-        const _ae = G._aliveEnemies;
-        _ae.length = 0;
-        const _src = G.enemies || EMPTY_ARR;
-        for (let i = 0; i < _src.length; i++) if (!_src[i].dead) _ae.push(_src[i]);
-        if (typeof updateWaves === 'function') updateWaves(dt);
-        if (typeof updatePollution === 'function') updatePollution(dt);   // 污染系统（对齐《异星工厂》)
-        updateEnemies(dt);
-        updateBullets(dt);
-        updatePlayerFire(dt);
-        updatePlayerBulletHits(dt);
-        updateCombatRobots(dt);
-        updateAoeZones(dt);
-        if (typeof updateGroundFires === 'function') updateGroundFires(dt);
-        if (typeof updateAcidPools === 'function') updateAcidPools(dt);
-        if (typeof updatePersonalLaserDefense === 'function') updatePersonalLaserDefense(dt);
-        if (typeof updateCarFire === 'function') updateCarFire(dt);   // 车载机枪（对齐《异星工厂》Car）
-        if (typeof updateTankFire === 'function') updateTankFire(dt);
-        if (typeof updateLootDrops === 'function') updateLootDrops(dt);
-      }
-      G.powerT += dt;
-      if (G.powerT >= 0.25) { G.powerT = 0; updatePower(); }
-      // 电路网络重算（固定间隔，红/绿信号聚合）
-      G.circuitT = (G.circuitT || 0) + dt;
-      if (G.circuitT >= 0.25) { G.circuitT = 0; if (typeof recomputeCircuit === 'function') recomputeCircuit(); }
-      updateLogistics(dt);
-      if (typeof updateConstruction === 'function') updateConstruction(dt);
-      updateTrains(dt);
-      if (typeof updateParticles === 'function') updateParticles(dt);
-      updateCamera(dt);
-      // 全屏闪光衰减（原子弹核爆等触发的强光，随时间减弱）
-      if (G.screenFlash > 0) G.screenFlash = Math.max(0, G.screenFlash - dt * 1.6);
-      // 天气系统（动态云层 / 阴云，低开销）
-      if (typeof updateWeather === 'function') updateWeather(dt);
-      // 避雷系统（Fulgora 雷暴期落雷，需避雷科技）
-      if (typeof updateLightning === 'function') updateLightning(dt);
-      // 环境氛围音（Web Audio 昼夜背景音）
-      if (typeof ambientUpdate === 'function') ambientUpdate(dt);
+  // 游戏暂停：由顶部“暂停/继续”按钮控制（G.paused）。
+  // 打开设置面板不再暂停游戏（仅暂停时世界/设备/电力/玩家停摆）。
+  const paused = !!G.paused;
+  if (!paused) {
+    // 累积器模式：把本帧真实流逝时间（乘时间缩放）累加，按固定步长 TICK 补跑世界更新。
+    loop.acc += raw * ((G.dbg && G.dbg.timeScale) || 1);
+    let steps = 0;
+    while (loop.acc >= TICK && steps < MAX_TICK_STEPS) {
+      G.time += TICK;      // 世界时间以固定步长推进
+      stepWorld(TICK);
+      loop.acc -= TICK;
+      steps++;
     }
+    // 若累计滞后过多（远超单帧可补跑上限），丢弃多余累积，避免螺旋式死亡。
+    if (loop.acc > MAX_TICK_STEPS * TICK) loop.acc = 0;
+  } else {
+    // 暂停时清空累积器，避免恢复后一次性补跑大量逻辑步。
+    loop.acc = 0;
+  }
 
+  try {
     // 背景音乐（可独立开关）：暂停游戏时仍持续播放（界面层氛围）
-    if (typeof bgmUpdate === 'function') bgmUpdate(dt);
+    if (typeof bgmUpdate === 'function') bgmUpdate(TICK);
 
     render();
 
@@ -453,7 +483,7 @@ function loop(ts) {
       else if (G.panelMode === 'tech' && !isPanelTyping()) renderPanel(false);
       uiDirty = false;
     }
-    updateHUD(dt, Math.round(fpsSmooth), Math.round(upsSmooth));
+    updateHUD(TICK, Math.round(fpsSmooth), Math.round(upsSmooth));
   } catch (err) {
     if (!loop.errShown) {
       loop.errShown = true;

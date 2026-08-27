@@ -198,6 +198,50 @@ html, body {
   text-shadow: 0 1px 2px #000;
 }
 
+.inv-slots {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 5px;
+}
+.inv-slot {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  border: 1px solid #37424f;
+  background: #222b35;
+  cursor: pointer;
+  overflow: visible;
+}
+.inv-slot:hover { border-color: #7f93ad; }
+.inv-slot.empty { background: rgba(34, 43, 53, .45); border-style: dashed; cursor: default; }
+.inv-slot.hidden { display: none; }
+.inv-slot img { width: 100%; height: 100%; display: block; border-radius: 4px; object-fit: cover; }
+/* 物品数量角标：右下角 */
+.inv-slot .cnt {
+  position: absolute;
+  right: 1px; bottom: 0;
+  font-size: 11px; font-weight: bold;
+  color: #fff;
+  text-shadow: 0 1px 2px #000;
+  pointer-events: none;
+  line-height: 1.1;
+}
+/* 手雷/生鱼快捷使用角标 */
+.inv-slot .slot-use {
+  position: absolute;
+  right: 1px; top: 1px;
+  width: 16px; height: 16px;
+  font-size: 10px;
+  line-height: 14px;
+  text-align: center;
+  padding: 0;
+  border-radius: 4px;
+  background: rgba(16, 21, 28, .85);
+  border: 1px solid #d0a04a;
+  cursor: pointer;
+}
+.inv-slot .slot-use:hover { background: rgba(255, 210, 60, .3); }
+
 #panel {
   /* 弹框改为屏幕中间显示 */
   position: absolute;
@@ -1675,6 +1719,9 @@ html, body {
   .slot { width: 52px; height: 52px; }
   .slot .key { font-size: 12px; }
   .slot .cnt { font-size: 13px; }
+  /* 手机端：背包格子改用 6 列网格，避免格子过小 */
+  .inv-slots { grid-template-columns: repeat(6, 1fr); }
+  .inv-slot .cnt { font-size: 12px; }
 
   /* 绿图操作栏放大 */
   #greenbar { font-size: 15px; padding: 10px 16px; }
