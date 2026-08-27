@@ -15,6 +15,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+
+      - name: 安装依赖（fengari 等，convert-data 解析官方 Lua 数据所需）
+        run: npm ci --no-audit --no-fund
 
       - name: 全量回归校验（配方/堆叠/吞吐/数据完整性）
         run: |
