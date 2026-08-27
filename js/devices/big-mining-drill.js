@@ -65,6 +65,6 @@ function drawBigDrill(ctx, e, gx, gy, dir, alpha) {
 ENT_CLASSES['big-mining-drill'] = BigDrill;
 DEVICE_RENDER['big-mining-drill'] = drawBigDrill;
 DEVICE_STATUS['big-mining-drill'] = electricDrillStatus;
-DEVICE_PANEL['big-mining-drill'] = drillPanel;
+DEVICE_PANEL['big-mining-drill'] = electricDrillPanel;
 DEVICE_PLACE['big-mining-drill'] = DEVICE_PLACE['burner-mining-drill'];
 DEVICE_DIR_ROTATE['big-mining-drill'] = true;

@@ -471,6 +471,43 @@ function electricDrillPanelLive(e, api) {
   }
 }
 
+
+// 悬停提示：矿脉剩余储量 + 电钻/抽油机电量不足 + 铀矿需硫酸
+function drillTip(e) {
+  const base = e.status || ('开采中，产出朝' + ['东', '南', '西', '北'][e.dir]);
+  // 矿脉剩余储量提示（对齐《异星工厂》：矿脉储量有限、会逐渐采空）
+  let oreRemain = 0;
+  let oreFound = false;
+  for (let dy = 0; dy < e.h; dy++)
+    for (let dx = 0; dx < e.w; dx++) {
+      const tx = e.x + dx, ty = e.y + dy;
+      if (!e.minableOreType(getOreType(tx, ty))) continue;
+      const amt = getOreAmt(tx, ty);
+      if (amt <= 0) continue;
+      oreRemain += amt;
+      oreFound = true;
+    }
+  let tip = base;
+  if (oreFound) {
+    tip += '；矿脉剩余 ' + Math.round(oreRemain) + (oreRemain <= 100 ? '（⚠ 即将采空）' : '');
+  }
+  // 电采矿机/抽油机：电量不足（正在耗电且 sat<1）时在提示中注明
+  if (e instanceof ElectricDrill) {
+    const s = powerStatusOf(e);
+    if (s.consuming && s.sat < 1) tip += '；' + (s.sat > 0 ? '电量不足' + Math.round(s.sat * 100) + '%' : '缺电停摆');
+    // 铀矿采集需接入硫酸：提示剩余量与管道接入方向
+    let hasUranium = false;
+    for (let dy = 0; dy < e.h; dy++)
+      for (let dx = 0; dx < e.w; dx++) {
+        if (getOreType(e.x + dx, e.y + dy) === ORE_URANIUM && getOreAmt(e.x + dx, e.y + dy) > 0) hasUranium = true;
+      }
+    if (hasUranium) {
+      tip += '；铀矿需硫酸' + ((e.acid || 0) > 0 ? '（硫酸×' + e.acid + '）' : '（缺硫酸，无法开采）');
+    }
+  }
+  return tip;
+}
+
 // ===== 注册（渲染/面板/提示对三类采矿机统一注册）=====
 ENT_CLASSES['burner-mining-drill'] = Drill;
 DEVICE_RENDER['burner-mining-drill'] = drawDrill;
