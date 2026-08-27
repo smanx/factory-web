@@ -839,3 +839,24 @@
 >   Stomper 粗壮短腿 / Strafer 修长多腿昂首喷酸两种体态，数据/体型随 `penta` 与 `foot` 标记区分。
 > - **校验**：verify-dlc 新增五足虫敌人校验（13 项：类型注册/官方血量/射程/渲染分支/进化度门控），
 >   全量 18 个校验脚本通过，`node build.js` 构建通过。 (feat: 接入太空时代 Gleba 五足虫敌人（Pentapod Stomper/Strafer，数据单源化）)
+
+### 阶段四.28：数据对齐全量核验 + 构建告警清理（本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> 依据「所有物品/材料/设备配方 ID 与命名与《异星工厂》官方一致；多出物品移除，仅保留
+> 6 个创造/虚空物品；所有数据/参数从 data.generated.js 单源获取」原则，对本项目进行全量
+> 数据对齐核验，结论为 **全部达标**：
+> - **子模块**：factorio-data 已更新到 2.1.17（最新稳定版，含全部 DLC：Space Age / Quality /
+>   Elevated Rails / Recycler）。
+> - **ID/命名对齐**：项目全部 321 个基础物品 ID 均为官方原型名（唯一例外 `rocket-body` =
+>   发射井内部组装的完整火箭表示，对应官方 rocket-part 组装；`<流体>-barrel` 为官方流体桶命名
+>   惯例）。非官方测试物品仅保留 6 个创造/虚空物品（创造/虚空箱、创造/虚空管道、创造/虚空传送带）。
+> - **配方对齐**：官方 274 条配方全部接入；项目配方键与官方一致（含 2.0 改名：basic-oil-processing、
+>   kovarex-enrichment-process 等）。
+> - **建筑对齐**：官方全部 95 个占地建筑 / 35 个设备参数 / 125 个 BUILD_DEFS 全部实现。
+> - **数据单源**：占地/功耗/速度/堆叠/血量/配方/命名/设备归属均来自 data.generated.js（factorio-data
+>   现场生成），设备与数据表不单独维护第二套数值。
+> - **全量回归**：18 个校验脚本全部通过，`node build.js` 构建通过。
+> - **构建告警清理**：修复 data-tech.js 中 `foundation`/`ice-platform` 重复键（TECH_REQ 内同名键
+>   重复定义，导致 esbuild 重复键告警），删除冗余重复块，构建零告警。
+> - **核验脚本**：verify-recipes / verify-dlc / verify-data-integrity / verify-data-alignment 全绿。

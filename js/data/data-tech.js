@@ -202,9 +202,6 @@ const TECH_REQ = {
   // ===== 太空时代 虫巢孵化器（统一由「虫巢孵化器」科技解锁）=====
   'captive-biter-spawner': 'captive-biter-spawner',
   'capture-robot-rocket': 'captive-biter-spawner',
-  // ===== 太空时代地面瓦片（统一由「低温学」科技解锁，官方 Foundation/Ice platform）=====
-  'foundation': 'cryogenics',
-  'ice-platform': 'cryogenics'
 };
 
 // ===== 核能科技门控 =====
