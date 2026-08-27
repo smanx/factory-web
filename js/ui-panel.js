@@ -757,6 +757,24 @@ async function htmlSettings() {
     }
     h += '</div></div>';
     h += '<div class="dim">切换星球会按该星球的资源画像重新生成地表与矿脉（不同星球有不同专属资源：祝融=金属/石矿、句芒=农业/石矿、雷神=铀矿、玄冥=冰原油矿）。切换保留背包/科技/装备，但建筑为星球专属不跨星保留。</div>';
+    // 空间平台遥测：全局展示各星球在途轨道货物（火箭发射送往目标星球的物资，抵达后交付）
+    h += '<div class="sec">🛰️ 空间平台遥测（在途货物）</div>';
+    const _oc = (G.orbitalCargo && typeof G.orbitalCargo === 'object') ? G.orbitalCargo : {};
+    let _anyCargo = false;
+    for (const pl of PLANET_OPTIONS) {
+      const q = _oc[pl.v] || {};
+      const items = Object.keys(q).filter(k => (q[k] || 0) > 0);
+      if (!items.length) continue;
+      _anyCargo = true;
+      const pname = pl.name || pl.v;
+      h += '<div class="dim" style="margin-top:4px;color:#7fd07f">🌍 ' + pname + '：';
+      h += items.map(k => {
+        const ic = (ITEMS[k] && ITEMS[k].color) ? '<span class="chip" style="background:' + ITEMS[k].color + '">' + (ITEMS[k].mark || '') + '</span> ' : '';
+        return ic + (ITEMS[k] ? ITEMS[k].name : k) + ' ×' + q[k];
+      }).join('　');
+      h += '</div>';
+    }
+    if (!_anyCargo) h += '<div class="dim">当前无在途轨道货物。在火箭发射井装入货物并选择目标星球发射后，物资会送往目标星球轨道，抵达后自动交付。</div>';
   }
   h += '<div class="sec">存档管理</div>';
   h += '<button data-action="quick-save">➕ 新建存档</button> ';
