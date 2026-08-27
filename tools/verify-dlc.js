@@ -1441,13 +1441,15 @@ const POLLUTION_EXPECT = {
 for (const [id, expect] of Object.entries(POLLUTION_EXPECT)) {
   ok(GD.pollution && GD.pollution[id] === expect, id + ' 污染排放=官方 ' + expect);
 }
-// 官方 raw 无 emissions_per_minute 的设备（核反应堆/火车头/热能机械臂），由 pollution.js 内
-// FALLBACK 微量兜底（不进 GAME_DATA.pollution，保持项目自定微量），校验其兜底值一致。
+// 官方 raw 无 emissions_per_minute 的设备（核反应堆/火车头/热能机械臂，官方经其它机制建模污染）：
+// 由 generate-game-data.js 的 POLLUTION_MANUAL 兜底与官方项一并写入 GAME_DATA.pollution，
+// 使污染系统完全从 data.generated.js 单源读取（前端 pollution.js 不维护第二套数值表）。
+ok(!!GD.pollution && GD.pollution['nuclear-reactor'] === 7, 'nuclear-reactor 污染排放=项目兜底 7（官方无直接 emissions，单源 GAME_DATA.pollution）');
+ok(!!GD.pollution && GD.pollution['burner-inserter'] === 0.3, 'burner-inserter 污染排放=项目兜底 0.3（官方无直接 emissions，单源 GAME_DATA.pollution）');
+ok(!!GD.pollution && GD.pollution['locomotive'] === 3, 'locomotive 污染排放=项目兜底 3（官方无直接 emissions，单源 GAME_DATA.pollution）');
+// 前端 pollution.js 应单源从 GAME_DATA.pollution 读取（不再维护独立 FALLBACK 数值表）
 const _pollJs = fs.readFileSync(ROOT + '/js/devices/pollution.js', 'utf8');
-ok(!GD.pollution || GD.pollution['nuclear-reactor'] === undefined, 'nuclear-reactor 不进 GAME_DATA.pollution（官方无 emissions，项目兜底）');
-ok(_pollJs.includes("'nuclear-reactor': 0.8") || /FALLBACK[\s\S]*nuclear-reactor: 0\.8/.test(_pollJs), 'pollution.js 核反应堆兜底=0.8');
-ok(_pollJs.includes("'burner-inserter': 0.05") || /FALLBACK[\s\S]*burner-inserter: 0\.05/.test(_pollJs), 'pollution.js 热能机械臂兜底=0.05');
-ok(_pollJs.includes("'locomotive': 0.4") || /FALLBACK[\s\S]*locomotive: 0\.4/.test(_pollJs), 'pollution.js 火车头兜底=0.4');
+ok(!/const FALLBACK[\s\S]*'nuclear-reactor'[\s\S]*'locomotive'/.test(_pollJs), 'pollution.js 已移除独立 FALLBACK 数值表（单源 GAME_DATA.pollution）');
 // 前端 pollution.js 应引用 GAME_DATA.pollution（而非硬编码）
 const pollutionJs = fs.readFileSync(ROOT + '/js/devices/pollution.js', 'utf8');
 ok(pollutionJs.includes('GAME_DATA.pollution'), 'pollution.js 从 GAME_DATA.pollution 单源读取（非硬编码）');
