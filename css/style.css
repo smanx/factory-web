@@ -2320,7 +2320,7 @@ html, body {
 /* 配方设备交互面板：当前配方行按钮靠右显示 */
 .mch-recipe-head .btn.sm { flex: 0 0 auto; }
 
-/* ===== 组装机III：设计稿风格面板（左=玩家背包，右=组装机面板）===== */
+/* ===== 组装机 I/II/III：设计稿风格面板（左=玩家背包，右=组装机面板）===== */
 .asm3-layout {
   display: flex;
   gap: 16px;

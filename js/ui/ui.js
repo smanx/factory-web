@@ -398,9 +398,9 @@ function renderPanel(full) {
     body.innerHTML = recipeSelectPanelHtml(G.panelEnt);
   } else if (G.panelMode === 'machine' && G.panelEnt) {
     title.textContent = ITEMS[G.panelEnt.type].name;
-    if (G.panelEnt.type === 'assembling-machine-3') {
-      // 组装机III：设计稿风格专用面板
-      body.innerHTML = assembler3LayoutHtml(G.panelEnt);
+    if (isAssemblerMachine(G.panelEnt)) {
+      // 组装机 I/II/III：设计稿风格专用面板
+      body.innerHTML = assemblerLayoutHtml(G.panelEnt);
     } else if (isRecipeDevice(G.panelEnt)) {
       // 配方设备：重新设计的双栏交互面板（左=背包，右=设备交互信息）
       body.innerHTML = recipeMachineLayoutHtml(G.panelEnt);
@@ -500,8 +500,8 @@ function updateMachineLive() {
   };
   // 配方设备：使用重新设计的交互面板，按自身逻辑刷新原料/产品/进度
   if (isRecipeDevice(e)) {
-    if (e.type === 'assembling-machine-3') {
-      updateAssembler3Live(e, body, api);
+    if (isAssemblerMachine(e)) {
+      updateAssemblerLive(e, body, api);
     } else {
       updateRecipeMachineLive(e, body, api);
     }
@@ -1153,6 +1153,12 @@ function isChestEntity(e) {
 }
 
 
+// 是否为组装机（组装机 I/II/III）：面板统一采用设计稿风格（左=玩家背包，右=组装机面板）
+function isAssemblerMachine(e) {
+  return !!e && (e.type === 'assembling-machine-1' || e.type === 'assembling-machine-2' || e.type === 'assembling-machine-3');
+}
+
+
 
 // 返回配方设备可选的配方清单与配方读取函数
 // returns { list: [recipeId], getRec(id)->recipe|null, name(id)->displayName }
@@ -1350,8 +1356,8 @@ function recipeMachineLayoutHtml(e) {
   '</div>';
 }
 
-// ===== 组装机III：设计稿风格面板（左=玩家背包，右=组装机面板：状态/机器显示/配方/进度/模块）=====
-function assembler3LayoutHtml(e) {
+// ===== 组装机 I/II/III：设计稿风格面板（左=玩家背包，右=组装机面板：状态/机器显示/配方/进度/模块）=====
+function assemblerLayoutHtml(e) {
   const info = recipeDeviceInfo(e);
   const rec = e.recipe ? info.getRec(e.recipe) : null;
   const left = htmlInventory();
@@ -1400,8 +1406,8 @@ function assembler3LayoutHtml(e) {
   return h;
 }
 
-// 组装机III 实时刷新：复用配方设备的原料/产品/进度逻辑，并额外刷新配方名/图标/百分比/状态点
-function updateAssembler3Live(e, body, api) {
+// 组装机 I/II/III 实时刷新：复用配方设备的原料/产品/进度逻辑，并额外刷新配方名/图标/百分比/状态点
+function updateAssemblerLive(e, body, api) {
   const info = recipeDeviceInfo(e);
   const rec = e.recipe ? info.getRec(e.recipe) : null;
   // 配方名称与图标
