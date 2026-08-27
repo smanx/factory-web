@@ -187,18 +187,67 @@ html, body {
 }
 
 #panel {
+  /* 弹框改为屏幕中间显示 */
   position: absolute;
-  top: 54px; right: 10px;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
   /* 启动页（#start-screen z-index:200）点击“成就”时打开的面板需显示在其之上，故高于 200 */
   z-index: 210;
   width: 400px;
-  max-height: calc(100vh - 140px);
+  max-height: calc(100vh - 48px);
   display: none;
   flex-direction: column;
   background: rgba(16, 21, 28, .96);
   border: 1px solid #3a4550;
   border-radius: 10px;
   overflow: hidden;
+}
+/* 背包面板：居中加宽，三列布局（左=玩家背包，中=物流，右=制作） */
+#panel.inv-wide {
+  width: 1080px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 48px);
+}
+#panel.inv-wide #panel-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.inv-layout {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+}
+.inv-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: rgba(255, 255, 255, .02);
+  border: 1px solid rgba(255, 255, 255, .06);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.inv-col-left  { flex: 1.15; }
+.inv-col-mid   { flex: .95; }
+.inv-col-right { flex: 1.3; }
+.inv-col-head {
+  padding: 8px 10px;
+  font-weight: bold;
+  color: #ffe08a;
+  background: #232c38;
+  border-bottom: 1px solid #3a4550;
+  font-size: 14px;
+}
+.inv-col-body {
+  overflow-y: auto;
+  padding: 10px 12px;
+  min-height: 0;
+  overscroll-behavior: contain;
 }
 
 #panel-head {
@@ -1571,11 +1620,28 @@ html, body {
   #hud-info { font-size: 15px; }
   #panel {
     width: 92vw;
-    right: 4vw;
-    left: 4vw;
-    max-height: calc(100vh - 120px);
-    top: 64px;
+    max-width: 92vw;
+    max-height: calc(100vh - 32px);
+    top: 50%; left: 50%;
+    right: auto;
   }
+  /* 手机端：背包三列改为纵向堆叠（一屏内各列可独立滚动） */
+  #panel.inv-wide {
+    width: 96vw;
+    max-width: 96vw;
+    height: calc(100vh - 32px);
+    max-height: calc(100vh - 32px);
+  }
+  #panel.inv-wide .inv-layout {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  #panel.inv-wide .inv-col {
+    flex: none;
+    max-height: 38vh;
+  }
+  #panel.inv-wide .inv-col-body { overflow-y: auto; }
+  #panel.inv-wide #panel-body { overflow: visible; }
   #panel-body, #panel-body input, #panel-body select, #panel-body button {
     font-size: 15px;
   }

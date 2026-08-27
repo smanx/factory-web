@@ -226,6 +226,8 @@ function refreshToastOpacity() {
 function openPanel(mode, ent) {
   G.panelMode = mode;
   G.panelEnt = ent || null;
+  // 背包弹框居中加宽显示（三列布局），其余面板保持右上角小窗
+  document.getElementById('panel').classList.toggle('inv-wide', mode === 'inv');
   document.getElementById('panel').style.display = 'flex';
   renderPanel(true);
 }
@@ -252,33 +254,31 @@ function renderPanel(full) {
     const keepFocusId = document.activeElement &&
       (document.activeElement.id === 'inv-recipe-search' || document.activeElement.id === 'build-dev-search') ?
       document.activeElement.id : null;
-    // 背包两个 tab：默认「材料」、以及「合成」（手搓配方）
-    const invTab = G.invTab === 'craft' ? 'craft' : 'materials';
-    const tabBtn = t => '<button class="inv-tab' + (invTab === t ? ' active' : '') + '" data-inv-tab="' + t + '">' +
-      (t === 'craft' ? '🛠 合成' : '🎒 材料') + '</button>';
-    // 性能优化：
-    // 1) 惰性生成 tab —— 只生成当前激活的 tab，未激活 tab 等切换过去时才生成，
-    //    避免每次打开背包都一次性重建「材料 + 合成」两份大段 DOM（原先首次打开
-    //    卡 2 秒、此后每次打开小卡，主要由合成页数百条配方反复生成导致）。
-    // 2) 复用缓存 —— 「合成」页内容重（数百条配方），首次生成后缓存复用；其动态
-    //    数量由 updateInvLive 每帧轻量刷新，物品/科技变化时 _invalidateInvCache()
-    //    清缓存强制重建（见主循环 hook）。「材料」页含快捷栏编辑、护甲、物流请求、
-    //    垃圾桶等交互变更的区块，这些不随 updateInvLive 刷新，故每次打开都重新生成，
-    //    保证状态始终准确（其体积远小于合成页，成本可控）。
-    // 只生成当前激活 tab 的 HTML；未激活 tab 留空占位，待切换过去时才生成。
-    let matHtml = '', craftHtml = '';
-    if (invTab === 'materials') {
-      matHtml = htmlInventory();
-      // 复用缓存的合成页（未生成过则为空，切到合成页时才生成）
-      craftHtml = _invTabCache['craft'] || '';
-    } else {
-      if (!_invTabCache['craft']) _invTabCache['craft'] = htmlCraft();
-      craftHtml = _invTabCache['craft'];
-      // 材料页含交互变更区块，切换回来时再重新生成，故此处留空
-    }
-    body.innerHTML = '<div class="inv-tabs">' + tabBtn('materials') + tabBtn('craft') + '</div>' +
-      '<div id="inv-tab-materials"' + (invTab === 'materials' ? '' : ' style="display:none"') + '>' + matHtml + '</div>' +
-      '<div id="inv-tab-craft"' + (invTab === 'craft' ? '' : ' style="display:none"') + '>' + craftHtml + '</div>';
+    // 背包三列布局：左=玩家背包物品，中=物流区域，右=制作区域。
+    // 弹框改为屏幕中间显示（见 #panel.inv-wide 样式），三列纵向分区。
+    // 制作区（右列）含数百条配方，生成较重，首次生成后缓存复用；其动态数量由
+    // updateInvLive 每帧轻量刷新，物品/科技变化时 _invalidateInvCache() 清缓存强制重建。
+    if (!_invTabCache['craft']) _invTabCache['craft'] = htmlCraft();
+    const craftHtml = _invTabCache['craft'];
+    // 玩家物品区（左列）与物流区（中列）含交互变更区块，不随 updateInvLive 刷新，
+    // 每次打开都重新生成以保证状态准确（体积远小于合成页，成本可控）。
+    const matHtml = htmlInventory();
+    const logiHtml = htmlLogistics();
+    body.innerHTML =
+      '<div class="inv-layout">' +
+        '<div class="inv-col inv-col-left" id="inv-col-left">' +
+          '<div class="inv-col-head">🎒 玩家背包</div>' +
+          '<div class="inv-col-body" id="inv-mat">' + matHtml + '</div>' +
+        '</div>' +
+        '<div class="inv-col inv-col-mid" id="inv-col-mid">' +
+          '<div class="inv-col-head">📦 物流</div>' +
+          '<div class="inv-col-body">' + logiHtml + '</div>' +
+        '</div>' +
+        '<div class="inv-col inv-col-right" id="inv-col-right">' +
+          '<div class="inv-col-head">🛠 制作</div>' +
+          '<div class="inv-col-body" id="inv-craft">' + craftHtml + '</div>' +
+        '</div>' +
+      '</div>';
     applyInvRecipeFilter(G.invRecipeQ);
     applyBuildSearch(G.buildDevQ);
     if (typeof fillLogiReqGrid === 'function') fillLogiReqGrid(G.lreqQ || '');
@@ -550,10 +550,14 @@ function htmlInventory() {
   }
   if (!any) h += '<span class="dim">空空如也，去地图上按住左键挖矿吧（铁矿/铜矿/煤/石头）</span>';
   h += '</div>';
-  // ===== 个人物流请求（对齐《异星工厂》Personal logistic request）=====
-  // 玩家设置请求量后，物流机器人会自动送达（需已研究物流网络且在物流网络范围内）；
-  // 若玩家身上有超出请求量的物品，机器人也会将其带走存回网络。
-  h += '<div class="sec">个人物流请求 <span class="dim">（需物流网络科技 + 机器人港）</span></div>';
+  h += '<div class="hint">提示：开局先挖 5 个石头合成石炉，再挖煤；点击炉子打开面板，把煤和矿石放进去就能炼铁板/铜板。钢板用铁板×2 合成（石炉/电炉炼制更快）。塑料板等流体化学产物只能在化工厂生产（石油气经管道送入化工厂）。<br>建造：直接点击上方材料区里任何可建造的设备图标即可选中进入放置模式（优先占用空快捷栏槽位），不必依赖底部工具栏；R 旋转、Q 取消。建造支持覆盖：目标格已有建筑时会先拆除旧建筑（返还物资）再放置新建筑，但同一格不会叠加。</div>';
+  return h;
+}
+
+// 物流区域（对齐《异星工厂》Personal logistic request + Trash slots）：
+// 中间区域，玩家设置物流请求量 / 标记丢弃物品，由物流机器人自动配送或带走。
+function htmlLogistics() {
+  let h = '<div class="sec">个人物流请求 <span class="dim">（需物流网络科技 + 机器人港）</span></div>';
   h += '<div class="logi-req" id="logi-req">';
   const lreq = G.logiRequest || {};
   const lreqKeys = Object.keys(lreq).filter(k => lreq[k] > 0);
@@ -572,8 +576,7 @@ function htmlInventory() {
   h += '<input id="lreq-search" class="inv-search" type="text" placeholder="搜索物品（设置个人请求）" autocomplete="off">';
   h += '<div id="lreq-grid" class="recgrid"></div>';
   h += '</div>';
-  // ===== 个人垃圾桶（对齐《异星工厂》Trash slots）=====
-  // 玩家标记要“丢弃”的物品后，物流机器人会把这些物品全部带走存回网络（不受请求量影响）。
+  // 个人垃圾桶（物流机器人带走标记物品存回网络）
   h += '<div class="sec">个人垃圾桶 <span class="dim">（物流机器人带走标记物品存回网络）</span></div>';
   h += '<div class="logi-req" id="logi-trash">';
   const trash = G.trashSlots || {};
@@ -593,7 +596,6 @@ function htmlInventory() {
   h += '<input id="trash-search" class="inv-search" type="text" placeholder="搜索物品（标记丢弃）" autocomplete="off">';
   h += '<div id="trash-grid" class="recgrid"></div>';
   h += '</div>';
-  h += '<div class="hint">提示：开局先挖 5 个石头合成石炉，再挖煤；点击炉子打开面板，把煤和矿石放进去就能炼铁板/铜板。钢板用铁板×2 合成（石炉/电炉炼制更快）。塑料板等流体化学产物只能在化工厂生产（石油气经管道送入化工厂）。<br>建造：直接点击上方材料区里任何可建造的设备图标即可选中进入放置模式（优先占用空快捷栏槽位），不必依赖底部工具栏；R 旋转、Q 取消。建造支持覆盖：目标格已有建筑时会先拆除旧建筑（返还物资）再放置新建筑，但同一格不会叠加。</div>';
   return h;
 }
 
