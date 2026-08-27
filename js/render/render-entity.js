@@ -356,6 +356,8 @@ function drawGhost(ctx) {
     g.lineWidth = 2 / G.cam.z;
     g.strokeRect(G.cursorTile.tx * TILE, G.cursorTile.ty * TILE, ew * TILE, eh * TILE);
     if (worlded) g.restore();
+    // 建筑幽灵上方显示数量
+    drawGhostCount(g, (G.cursorTile.tx + ew / 2) * TILE, G.cursorTile.ty * TILE);
   } else if (overMap) {
     // 材料/工具等：鼠标在地图上 → 在光标所在格绘制物品图标幽灵（跟随鼠标所在格）
     const worlded = ghostWorldTransform(g);
@@ -368,6 +370,8 @@ function drawGhost(ctx) {
     g.lineWidth = 2 / G.cam.z;
     g.strokeRect(G.cursorTile.tx * TILE + 1, G.cursorTile.ty * TILE + 1, TILE - 2, TILE - 2);
     if (worlded) g.restore();
+    // 物品幽灵上方显示数量
+    drawGhostCount(g, (G.cursorTile.tx + 0.5) * TILE, G.cursorTile.ty * TILE);
   } else {
     // 鼠标在背包面板/工具栏等 UI 上：屏幕坐标跟随鼠标绘制物品图标，大小与背包格子一致。
     // 改用与背包格子一致的 iconCanvas 绘制（物品色边框、无间隙、无多余白边），
@@ -398,33 +402,38 @@ function drawGhost(ctx) {
     }
     g.restore();
   }
-  // 屏幕右下角显示当前选中物品的数量徽标（设备/材料/工具均显示数量）
-  drawDeviceCountBadge(g);
+  // 数量已跟随鼠标/幽灵旁显示，不再在屏幕右下角重复绘制
 }
 
-// 屏幕右下角绘制当前选中设备的数量徽标（物品图标 + ×数量）
-function drawDeviceCountBadge(g) {
+// 在建筑/物品幽灵上方绘制数量（世界坐标转屏幕坐标跟随鼠标）。
+// 与鼠标旁跟随显示保持一致，让地图上的幽灵也能直观看到当前持有数量。
+function drawGhostCount(g, wx, wy) {
   const type = selItem();
   if (!type) return;
-  const cnt = invCount(type);
-  const size = 34;
-  const margin = 16;
-  const bx = W - margin - size;
-  const by = H - margin - size - 2;
+  const cnt = (typeof invCount === 'function') ? invCount(type) : 0;
+  if (cnt <= 0) return;
+  const sx = (wx - G.cam.px) * G.cam.z + W / 2;
+  const sy = (wy - G.cam.py) * G.cam.z + H / 2;
   g.save();
   g.globalAlpha = 0.92;
+  const fs = Math.max(10, Math.round(13 * G.cam.z));
+  g.font = 'bold ' + fs + 'px sans-serif';
+  const text = String(cnt);
+  const tw = g.measureText(text).width;
+  const pad = 4;
+  const bw = tw + pad * 2;
+  const bh = fs + 7;
+  const bx = sx - bw / 2;
+  const by = sy - 16 * G.cam.z - bh;
   g.fillStyle = 'rgba(10,14,18,.72)';
-  g.beginPath();
-  if (g.roundRect) g.roundRect(bx - 5, by - 5, size + 10, size + 24, 7);
-  else g.rect(bx - 5, by - 5, size + 10, size + 24);
+  if (g.roundRect) g.roundRect(bx, by, bw, bh, 5);
+  else g.rect(bx, by, bw, bh);
   g.fill();
-  drawItemGlyph(g, type, bx + size / 2, by + size / 2 - 2, size * 0.68);
   g.globalAlpha = 1;
   g.fillStyle = '#fff';
-  g.font = 'bold 13px sans-serif';
   g.textAlign = 'center';
-  g.textBaseline = 'alphabetic';
-  g.fillText('×' + cnt, bx + size / 2, by + size + 13);
+  g.textBaseline = 'middle';
+  g.fillText(text, sx, by + bh / 2 + 1);
   g.restore();
 }
 
