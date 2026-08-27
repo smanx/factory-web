@@ -467,7 +467,8 @@
   FOOTPRINT_SOURCES 官方 selection_box 桥接，未单独维护数值表）
 - [x] DLC 科技树接入 data-tech-tree
   （已接入：电磁学/冶金学/回收科技/农业科技/太空材料加工/大型采矿机/供热塔/生物实验室/避雷科技/太空推进/
-  空间平台/聚变能源/低温科技/钷素科研/超速物流等 DLC 科技全部注册进 data-tech-tree，含前置关系与触发式科技标记）
+  空间平台/聚变能源/低温科技/钷素科研/超速物流等 DLC 科技全部注册进 data-tech-tree，含前置关系与触发式科技标记；
+  本迭代修正高架铁轨 elevated-rail 的 space-age 科技分类——此前误归 base，现纳入 DLC 太空时代分类，与其它 DLC 科技一致）
 
 - [x] DLC 中英命名接入 names / recipeNames（本增量完成装备+瓦片命名单源：
   LOCALE_SECTIONS 新增 `equipment-name` / `tile-name` 段，装备 13 件（太阳能/电池/聚变/外骨骼/夜视/激光/能量盾/放电/个人机器人接口）
