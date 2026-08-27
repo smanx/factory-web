@@ -1177,11 +1177,22 @@ function recipeDeviceInfo(e) {
       name: id => (id === 'kovarex' ? '铀增殖处理' : (CENTRIFUGE_RECIPES[id] ? localizedName(id, CENTRIFUGE_RECIPES[id].name) : id))
     };
   }
-  // 组装机（及默认）：普通可制造配方，排除化工/离心/农业塔专属
+  // 组装机（及默认）：普通可制造配方，排除各专属设备配方（化工/离心/电磁工厂/生化炉/破碎机/铸造厂/农业塔/空间平台中枢）
   return {
-    list: Object.keys(RECIPES).filter(r => !isChemRecipe(r) && !isCentrifugeRecipe(r) && !isAgricultureTowerRecipe(r)),
+    list: Object.keys(RECIPES).filter(r => !isChemRecipe(r) && !isCentrifugeRecipe(r) &&
+      !(typeof isElectroRecipe === 'function' && isElectroRecipe(r)) &&
+      !(typeof isBiochamberRecipe === 'function' && isBiochamberRecipe(r)) &&
+      !(typeof isCrusherRecipe === 'function' && isCrusherRecipe(r)) &&
+      !(typeof isFoundryRecipe === 'function' && isFoundryRecipe(r)) &&
+      !isAgricultureTowerRecipe(r) &&
+      !(typeof isHubRecipe === 'function' && isHubRecipe(r))),
     getRec: id => RECIPES[id] || null,
-    name: id => (RECIPES[id] ? ITEMS[Object.keys(RECIPES[id].out)[0]].name : id)
+    name: id => {
+      const r = RECIPES[id];
+      if (!r) return id;
+      const outId = (r.out && Object.keys(r.out)[0]) || (r.prob && Object.keys(r.prob)[0]);
+      return (outId && ITEMS[outId]) ? ITEMS[outId].name : id;
+    }
   };
 }
 
