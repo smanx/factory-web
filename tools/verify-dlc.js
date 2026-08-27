@@ -4,6 +4,8 @@
 // 且与官方数值一致；电磁工厂设备数据正确。
 const fs = require('fs'), vm = require('vm');
 const ROOT = __dirname + '/..';
+const combatSrc = fs.readFileSync(ROOT + '/js/devices/combat2.js', 'utf8');
+const renderSrc = fs.readFileSync(ROOT + '/js/render/render-entity.js', 'utf8');
 const code = fs.readFileSync(ROOT + '/js/data/data.generated.js', 'utf8')
   + fs.readFileSync(ROOT + '/js/data/data.js', 'utf8')
   + fs.readFileSync(ROOT + '/js/data/data-items.js', 'utf8')
@@ -874,7 +876,9 @@ console.log('\n【行星系统 PLANETS（Space Age 五行星）】');
 console.log('\n【火箭货舱太空货运 ROCKET CARGO】');
 // 在隔离 vm 中加载 rocket.js 依赖，校验 cargo 排除逻辑与货舱序列化
 (function () {
-  const code = fs.readFileSync(ROOT + '/js/data/data.generated.js', 'utf8')
+  const combatSrc = fs.readFileSync(ROOT + '/js/devices/combat2.js', 'utf8');
+const renderSrc = fs.readFileSync(ROOT + '/js/render/render-entity.js', 'utf8');
+const code = fs.readFileSync(ROOT + '/js/data/data.generated.js', 'utf8')
     + '\n' + fs.readFileSync(ROOT + '/js/data/data.js', 'utf8')
     + '\n' + fs.readFileSync(ROOT + '/js/data/data-items.js', 'utf8')
     + '\n' + fs.readFileSync(ROOT + '/js/data/data-recipes.js', 'utf8')
@@ -1174,6 +1178,30 @@ console.log('\n【太空时代地面瓦片（foundation / ice-platform）数据�
     ok(inpOk && outOk, k + ' 配方引用的物品均存在');
   }
 }
+
+console.log('\n【太空时代 Gleba 五足虫敌人（Pentapod）校验】');
+{
+  // 源文件级校验：五足虫类型已定义于战斗体系
+  for (const id of ['small-stomper', 'medium-strafer', 'medium-stomper', 'big-strafer', 'big-stomper']) {
+    ok(combatSrc.includes("'" + id + "':"), id + ' 已注册进 ENEMY_TYPES');
+  }
+  // 官方数值对齐（Gleba spider-unit 原型：Stomper=近战巨兽，Strafer=远程扫射）
+  const stomper = /'small-stomper'[^}]*hp:\s*(\d+)[^}]*dmg:\s*(\d+)[^}]*evolution:\s*([\d.]+)/.exec(combatSrc);
+  ok(!!stomper && parseInt(stomper[1]) === 3500, 'small-stomper 血量对齐官方 (=3500)');
+  ok(!!stomper && parseInt(stomper[2]) === 70, 'small-stomper 践踏伤害已定义 (=70)');
+  const bigStomper = /'big-stomper'[^}]*hp:\s*(\d+)/.exec(combatSrc);
+  ok(!!bigStomper && parseInt(bigStomper[1]) === 15000, 'big-stomper 血量对齐官方 (=15000)');
+  const bigStrafer = /'big-strafer'[^}]*dmg:\s*(\d+)[^}]*evolution:\s*([\d.]+)/.exec(combatSrc);
+  ok(!!bigStrafer, 'big-strafer 已定义（远程扫射者）');
+  // 扫射者远程射程（官方 range 28~31）
+  ok(combatSrc.includes("'big-strafer' ? 31"), 'big-strafer 射程=31（官方）');
+  ok(combatSrc.includes("'big-strafer' ? 31 : 28"), 'medium-strafer 射程=28（官方）');
+  // 渲染分支存在（render-entity.js）
+  ok(renderSrc.includes("en.penta === 'stomper' || en.penta === 'strafer'"), '五足虫渲染分支已接入（多足虫兽）');
+  // 极高进化度才刷出（终局威胁）
+  ok(combatSrc.includes("['small-stomper', 0.75]"), '五足虫需极高进化度 (≥0.75) 才刷出');
+}
+
 
 
 

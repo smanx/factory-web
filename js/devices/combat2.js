@@ -20,7 +20,17 @@ const ENEMY_TYPES = {
   // 终局变种（对齐《异星工厂》Behemoth 巨兽级，进化度 0.9+）：属性最强，需最先进火力应对
   'behemoth-biter':   { name: '巨兽甲虫', hp: 1200, speed: 1.45,size: 19, dmg: 56, color: '#3a1018', kind: 'melee',   xp: 16, evolution: 0.9 },
   'behemoth-spitter': { name: '巨兽吐痰虫', hp: 900, speed: 1.45,size: 14, dmg: 48, color: '#5a3a1a', kind: 'ranged', xp: 14, evolution: 0.92 },
-  'behemoth-worm':    { name: '巨兽蠕虫', hp: 1500, speed: 0,  size: 20, dmg: 55, color: '#2e1c14', kind: 'ranged', xp: 22, evolution: 0.95 }
+  'behemoth-worm':    { name: '巨兽蠕虫', hp: 1500, speed: 0,  size: 20, dmg: 55, color: '#2e1c14', kind: 'ranged', xp: 22, evolution: 0.95 },
+  // ===== 太空时代 Gleba 五足虫（Pentapod，Space Age 终局敌人）=====
+  // 对齐《异星工厂》Space Age：Gleba 星球专属的大型多足虫兽。
+  // Stomper（践踏者）= 近战巨兽，血量极高、践踏撕咬（官方 spider-unit 原型，碰撞盒 ±1.35~±2.4 → 占地 3~5 格）
+  // Strafer（扫射者）= 远程喷吐酸性射流，射程极远（官方 range 28~31），冷却 2s
+  // 均需极高进化度（0.75+）才刷出，是终局基地防御的终极考验。
+  'small-stomper': { name: '践踏者', hp: 3500, speed: 1.15, size: 18, dmg: 70, color: '#7a2a3a', kind: 'melee', xp: 30, evolution: 0.75, foot: 3, penta: 'stomper' },
+  'medium-strafer': { name: '扫射者', hp: 1400, speed: 1.4, size: 16, dmg: 42, color: '#a85a2a', kind: 'ranged', xp: 26, evolution: 0.8, foot: 3, penta: 'strafer' },
+  'medium-stomper': { name: '重践踏者', hp: 8000, speed: 1.0, size: 22, dmg: 120, color: '#5a1a2a', kind: 'melee', xp: 42, evolution: 0.86, foot: 4, penta: 'stomper' },
+  'big-strafer': { name: '巨扫射者', hp: 2400, speed: 1.35, size: 20, dmg: 65, color: '#d07a2a', kind: 'ranged', xp: 38, evolution: 0.92, foot: 4, penta: 'strafer' },
+  'big-stomper': { name: '巨践踏者', hp: 15000, speed: 0.85, size: 28, dmg: 200, color: '#3a0e18', kind: 'melee', xp: 60, evolution: 0.97, foot: 5, penta: 'stomper' }
 };
 
 // ===== 敌人进化度系统（对齐《异星工厂》Evolution factor） =====
@@ -76,7 +86,13 @@ function pickEnemyType() {
     // 终局 Behemoth 巨兽级（进化度 0.9+）
     ['behemoth-biter', 0.9],
     ['behemoth-spitter', 0.92],
-    ['behemoth-worm', 0.95]
+    ['behemoth-worm', 0.95],
+    // 太空时代 Gleba 五足虫（极高进化度终局威胁）
+    ['small-stomper', 0.75],
+    ['medium-strafer', 0.8],
+    ['medium-stomper', 0.86],
+    ['big-strafer', 0.92],
+    ['big-stomper', 0.97]
   ];
   const weights = base.map(([k, w]) => [k, w]);
   for (const [k, thr] of advanced) {
@@ -330,6 +346,7 @@ function spawnEnemies(dt) {
     hp: def.hp, maxhp: def.hp, dead: false, dir: 0,
     type: t, kind: def.kind, speed: def.speed, size: def.size, dmg: def.dmg,
     color: def.color, attackT: 0, fireT: 0,
+    penta: def.penta, foot: def.foot,
     home: home, wanderT: Math.random() * 2, aggro: false
   });
 }
@@ -362,6 +379,7 @@ function composeWave(px, py) {
       hp: def.hp, maxhp: def.hp, dead: false, dir: 0,
       type: t, kind: def.kind, speed: def.speed, size: def.size, dmg: def.dmg,
       color: def.color, attackT: 0, fireT: 0,
+      penta: def.penta, foot: def.foot,
       wave: true   // 标记为进攻波敌人
     });
   }
@@ -623,9 +641,11 @@ function updateEnemies(dt) {
     const d = Math.hypot(dx, dy) / TILE;   // 距离（格）
     if (en.kind === 'ranged') {
       // 远程敌人：与玩家保持距离，射程内间歇性吐痰
+      // 五足虫扫射者（strafer）射程极远（官方 range 28~31）、冷却 2s，远超普通吐痰虫
       const isWorm = en.type === 'worm' || en.type === 'big-worm' || en.type === 'behemoth-worm';
-      const range = isWorm ? (en.type === 'behemoth-worm' ? 14 : (en.type === 'big-worm' ? 12 : 10)) : 8;
-      const keep = en.type === 'behemoth-worm' ? 9 : (en.type === 'big-worm' ? 8 : (en.type === 'worm' ? 7 : 5));
+      const isStrafer = en.penta === 'strafer';
+      const range = isStrafer ? (en.type === 'big-strafer' ? 31 : 28) : (isWorm ? (en.type === 'behemoth-worm' ? 14 : (en.type === 'big-worm' ? 12 : 10)) : 8);
+      const keep = isStrafer ? 12 : (isWorm ? (en.type === 'behemoth-worm' ? 9 : (en.type === 'big-worm' ? 8 : (en.type === 'worm' ? 7 : 5))) : 5);
       // 玩家在射程内则以玩家为目标；否则攻击射程内的建筑（对齐《异星工厂》：远程虫群也会破坏基地）
       let fireTarget = null;
       if (d <= range) fireTarget = p;
@@ -643,17 +663,17 @@ function updateEnemies(dt) {
       } else if (d < keep) {
         moveEnemy(en, -dx / d, -dy / d, en.speed * dt * slow);
       }
-      // 吐痰（投射物）；喷火虫/巨型蠕虫吐火球（命中造成持续灼烧）
+      // 吐痰（投射物）；喷火虫/巨型蠕虫吐火球（命中造成持续灼烧）；扫射者吐紫色酸性射流
       if (en.fireT <= 0 && fireTarget) {
-        en.fireT = isWorm ? (en.type === 'behemoth-worm' ? 2.6 : 2.2) : 1.6;
+        en.fireT = isStrafer ? 2.0 : (isWorm ? (en.type === 'behemoth-worm' ? 2.6 : 2.2) : 1.6);
         en.lungeT = 0.22;   // 喷吐动作帧
         if (typeof playSfx === 'function') playSfx('spit');   // 远程敌人喷吐音效
         const fire = en.type === 'fire-spitter' || en.type === 'big-worm' || en.type === 'behemoth-worm';
         (G.enemyProjectiles || (G.enemyProjectiles = [])).push({
           x: en.x, y: en.y - en.size, tx: fireTarget.x, ty: fireTarget.y, speed: 3.2, dmg: en.dmg, t: 0,
-          fire: fire, color: fire ? '#ff8a2a' : '#9ac04a',
-          // 普通喷吐虫的酸液命中地面会留下酸液洼地（对齐《异星工厂》Spitter acid）
-          acid: !fire,
+          fire: fire, color: isStrafer ? '#b06aff' : (fire ? '#ff8a2a' : '#9ac04a'),
+          // 普通喷吐虫的酸液命中地面会留下酸液洼地（对齐《异星工厂》Spitter acid）；扫射者同样留紫色酸洼
+          acid: !fire || isStrafer,
           buildTarget: fireTarget !== p ? fireTarget : undefined
         });
       }
