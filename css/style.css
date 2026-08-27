@@ -36,6 +36,13 @@ html, body {
 
 #game { display: block; position: absolute; inset: 0; cursor: crosshair; touch-action: none; }
 
+/* 放置幽灵专用顶层画布：绘制在所有界面（含背包面板）的最上方，且不拦截鼠标事件 */
+#ghost-layer {
+  display: block; position: absolute; inset: 0;
+  pointer-events: none; touch-action: none;
+  z-index: 9998; /* 高于所有面板（最高 z-index 240）与 tooltip(9999) 之下，保证幽灵可见但不挡交互 */
+}
+
 #hud-info {
   position: absolute;
   top: 10px; left: 10px;
@@ -206,7 +213,11 @@ html, body {
 #panel.inv-wide {
   width: 1080px;
   max-width: calc(100vw - 32px);
-  max-height: calc(100vh - 48px);
+  /* 底部预留快捷栏高度（底部快捷栏约 80px），避免背包面板遮挡快捷栏工具栏 */
+  top: auto;
+  bottom: 92px;
+  transform: translateX(-50%);
+  max-height: calc(100vh - 150px);
 }
 #panel.inv-wide #panel-body {
   display: flex;
@@ -1629,8 +1640,12 @@ html, body {
   #panel.inv-wide {
     width: 96vw;
     max-width: 96vw;
-    height: calc(100vh - 32px);
-    max-height: calc(100vh - 32px);
+    /* 手机端同样预留底部快捷栏高度，避免背包遮挡快捷栏 */
+    height: calc(100vh - 150px);
+    max-height: calc(100vh - 150px);
+    top: auto;
+    bottom: 100px;
+    transform: translateX(-50%);
   }
   #panel.inv-wide .inv-layout {
     flex-direction: column;

@@ -287,7 +287,11 @@ function getGhostEnt(type) {
   return ghostCache.ent;
 }
 
+// 放置幽灵绘制在专用顶层画布（#ghost-layer）上，层级高于所有界面（含背包面板）。
+// 每帧先清空顶层画布，再套用与主画布一致的世界坐标变换后绘制。
 function drawGhost(ctx) {
+  const g = (G && G.ghostCtx) || ctx;   // 顶层画布优先，回退到主画布
+  if (g !== ctx) g.clearRect(0, 0, W, H); // 仅清空顶层画布，不清主画布
   if (!buildActive() || !G.cursorTile || !G.canvasActive) return;
   const type = selItem();
   if (!type) return;
@@ -300,12 +304,21 @@ function drawGhost(ctx) {
   const tmp = getGhostEnt(type);
   tmp.dir = G.ghostDir;
   tmp.w = ew; tmp.h = eh;
-  drawEntity(ctx, tmp, G.cursorTile.tx, G.cursorTile.ty, G.ghostDir, 0.55);
-  ctx.fillStyle = chk.ok ? 'rgba(120,220,120,.18)' : 'rgba(230,80,80,.22)';
-  ctx.fillRect(G.cursorTile.tx * TILE, G.cursorTile.ty * TILE, ew * TILE, eh * TILE);
-  ctx.strokeStyle = chk.ok ? 'rgba(140,255,140,.9)' : 'rgba(255,110,110,.9)';
-  ctx.lineWidth = 2 / G.cam.z;
-  ctx.strokeRect(G.cursorTile.tx * TILE, G.cursorTile.ty * TILE, ew * TILE, eh * TILE);
+  // 顶层画布需自行应用与主画布相同的世界坐标变换（相机平移+缩放）
+  const worlded = (g !== ctx);
+  if (worlded) {
+    g.save();
+    g.translate(W / 2, H / 2);
+    g.scale(G.cam.z, G.cam.z);
+    g.translate(-G.cam.px, -G.cam.py);
+  }
+  drawEntity(g, tmp, G.cursorTile.tx, G.cursorTile.ty, G.ghostDir, 0.55);
+  g.fillStyle = chk.ok ? 'rgba(120,220,120,.18)' : 'rgba(230,80,80,.22)';
+  g.fillRect(G.cursorTile.tx * TILE, G.cursorTile.ty * TILE, ew * TILE, eh * TILE);
+  g.strokeStyle = chk.ok ? 'rgba(140,255,140,.9)' : 'rgba(255,110,110,.9)';
+  g.lineWidth = 2 / G.cam.z;
+  g.strokeRect(G.cursorTile.tx * TILE, G.cursorTile.ty * TILE, ew * TILE, eh * TILE);
+  if (worlded) g.restore();
 }
 
 // 放置校验：默认规则（不能压水/已有实体/超出触及范围）+ 设备自定义规则

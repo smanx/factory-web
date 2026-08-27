@@ -153,6 +153,12 @@ function buildHotbar() {
     key.textContent = i === 9 ? '0' : i + 1;
     slot.appendChild(key);
     slot.addEventListener('click', () => onHotbarClick(i));
+    // 鼠标中键：鼠标持握幽灵物品时把它设为该槽位；否则清空该槽位
+    slot.addEventListener('auxclick', ev => {
+      if (ev.button !== 1) return;
+      ev.preventDefault();
+      onHotbarMidClick(i);
+    });
     hb.appendChild(slot);
   });
   refreshHotbar();
@@ -194,6 +200,26 @@ function onHotbarClick(i) {
     return;
   }
   selectSlot(i);
+}
+
+// 快捷栏槽位中键：鼠标持握放置幽灵（快捷栏选中槽位或背包选中的物品）时，
+// 直接把它设为该槽位；否则清空该快捷栏槽位。
+function onHotbarMidClick(i) {
+  const held = G.quickSel || (G.sel >= 0 ? (HOTBAR[G.sel] || null) : null);
+  if (held && ITEMS[held]) {
+    // 鼠标持握幽灵物品：设为该快捷栏槽位
+    HOTBAR[i] = held;
+    toast('已设置快捷栏槽位 ' + (i === 9 ? 0 : i + 1) + '：' + ITEMS[held].name);
+    if (typeof playSfx === 'function') playSfx('select');
+  } else {
+    // 无幽灵：清空该快捷栏槽位
+    HOTBAR[i] = null;
+    if (G.sel === i) { G.sel = -1; if (typeof setWeapon === 'function') setWeapon(null); }
+    toast('已清空快捷栏槽位 ' + (i === 9 ? 0 : i + 1));
+    if (typeof playSfx === 'function') playSfx('select');
+  }
+  buildHotbar();
+  uiDirty = true;
 }
 
 function selectSlot(i) {
@@ -382,7 +408,7 @@ function updateInvLive() {
     }
     el.textContent = '';
     el.appendChild(img);
-    el.appendChild(document.createTextNode(ITEMS[id].name + (n > 0 ? ' ×' + n : '')));
+    el.appendChild(document.createTextNode(n > 0 ? ' ×' + n : '')); // 背包物品仅显示图标（名称悬浮显示）
   });
   // 手搓配方原料可用性：<span class="ing" data-itemid="K" data-need="N">...名称 have/N</span>
   body.querySelectorAll('#inv-recipes .ing[data-itemid][data-need]').forEach(el => {
@@ -453,10 +479,10 @@ function updateMachineLive() {
   }
 }
 
-function chip(id, n) {
+function chip(id, n, iconOnly) {
   return '<span class="chip" data-itemid="' + id + '" data-tip="' + itemTip(id) + '" data-itemsearch="' +
     (ITEMS[id].name + ' ' + id).toLowerCase().replace(/"/g, '') + '"><img src="' + iconDataURL(id) + '">' +
-    ITEMS[id].name + (n !== undefined ? ' ×' + n : '') + '</span>';
+    (iconOnly ? (n !== undefined ? ' ×' + n : '') : ITEMS[id].name + (n !== undefined ? ' ×' + n : '')) + '</span>';
 }
 
 function htmlInventory() {
@@ -524,7 +550,7 @@ function htmlInventory() {
   for (const id in ITEMS) {
     const n = invCount(id);
     if (n > 0) {
-      h += chip(id, n);
+      h += chip(id, n, true); // 背包物品仅显示图标，名称悬浮显示
       // 手雷/集束手雷可在背包中直接投掷（对齐《异星工厂》投掷物）
       if (id === 'grenade' || id === 'cluster-grenade') {
         h += '<button class="usebtn" data-action="use-grenade" data-type="' + id + '" title="投掷' + ITEMS[id].name + '（向当前朝向投掷，造成范围爆炸）">💣 投掷</button>';
