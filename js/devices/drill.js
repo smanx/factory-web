@@ -280,18 +280,6 @@ function drawDrill(ctx, e, gx, gy, dir, alpha) {
   // 抽油机原油输出口：画在实际排出的那个角落出口（一格一接口），并用蓝色箭头标注流出方向
   if (pump) {
     drawPort(ctx, px + s / 2, py + s / 2, dir, PORT_OUTPUT, false, 1, s / 2, 'crude-oil', 'out');
-    // 角落出口处叠加一个更醒目的蓝色箭头，明确原油流向（指向设备外）
-    if (portDetailsVisible()) {
-      ctx.save();
-      ctx.translate(px + s / 2, py + s / 2);
-      ctx.rotate(dir * Math.PI / 2);
-      ctx.translate(0, TILE);          // 沿边偏移到角落（与 drawPort off=1 一致）
-      const ax = s / 2 - 6;            // 设备边缘内侧（匹配 drawPort 端口中心）
-      ctx.fillStyle = '#4aa4ff';
-      tri(ctx, ax - 11, -5, ax - 11, 5, ax + 2, 0);   // 箭头指向 +x，即设备外
-      ctx.fill();
-      ctx.restore();
-    }
   }
   // 电采矿机硫酸接入口：除矿物出口方向外，其余 3 个方向的正中间均可接入管道（输入绿）
   if (electric && !pump) {
@@ -452,7 +440,23 @@ const drillPanel = { html: drillPanelHtml, live: drillPanelLive, tip: drillTip }
 DEVICE_PANEL['burner-mining-drill'] = drillPanel;
 DEVICE_PANEL['electric-mining-drill'] = drillPanel;
 DEVICE_PANEL['pumpjack'] = drillPanel;
-DEVICE_PLACE['burner-mining-drill'] = drillNeedsOre;
 DEVICE_DIR_ROTATE['burner-mining-drill'] = true;
 DEVICE_DIR_ROTATE['electric-mining-drill'] = true;
+// 显示详情时，各接口图标所在世界格 + 对应流体名（用于鼠标悬停显示流体名称）
+// 抽油机：原油输出口在 dir 方向、沿边偏移半格到角落；电采矿机：其余 3 个方向中位硫酸输入口
+DEVICE_FLUID_ICONS['pumpjack'] = e => {
+  const s = TILE * e.w;
+  const c = portCenterCell(e, e.x * TILE + s / 2, e.y * TILE + s / 2, e.dir | 0, 1, s / 2);
+  return [{ x: c[0], y: c[1], fluid: 'crude-oil' }];
+};
+DEVICE_FLUID_ICONS['electric-mining-drill'] = e => {
+  const s = TILE * e.w;
+  const dir = e.dir | 0;
+  const icons = [];
+  for (const sd of [(dir + 1) % 4, (dir + 2) % 4, (dir + 3) % 4]) {
+    const c = portCenterCell(e, e.x * TILE + s / 2, e.y * TILE + s / 2, sd, 0, s / 2);
+    icons.push({ x: c[0], y: c[1], fluid: 'sulfuric-acid' });
+  }
+  return icons;
+};
 DEVICE_DIR_ROTATE['pumpjack'] = true;

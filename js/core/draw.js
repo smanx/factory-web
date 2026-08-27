@@ -131,8 +131,8 @@ function drawRecipePlaceholder(ctx, x, y, size) {
   ctx.restore();
 }
 
-// 设备内部管道口统一显示：默认画灰色小圈；ALT 详情时在小圈上叠加流体图标，
-// 并在旁边用蓝色小箭头标注流向（in=向设备内、out=向设备外、both=双向互通）。
+// 设备内部管道口统一显示（机械套管口）：法兰底座→法兰顶面→彩色端口内孔→内孔凹槽描边→顶部高光弧。
+// 端口"内孔"填充传入的 color（水蓝/蒸汽白/输入绿/输出橙红/油气黄），一眼区分进出类型；ALT 详情时在内孔上叠加流体图标。
 // side 0东1南2西3北；(cx,cy)=实体中心像素；dist=中心到该边距离；
 // off=沿边偏移（±0.5 为半格）；fluid=端口允许的流体（ALT 时画图标）；flow=流向
 function drawPort(ctx, cx, cy, side, color, arrow, off, dist, fluid, flow) {
@@ -141,37 +141,53 @@ function drawPort(ctx, cx, cy, side, color, arrow, off, dist, fluid, flow) {
   ctx.translate(cx, cy);
   ctx.rotate(side * Math.PI / 2);
   if (off) ctx.translate(0, off * TILE);
-  const pcx = dist - 9;              // 灰色小圈中心（设备内部边缘）
-  const r = 6;
-  // 灰色小圈（默认状态统一显示）
-  ctx.fillStyle = '#3c424a';
-  ctx.beginPath(); ctx.arc(pcx, 0, r, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,.5)';
-  ctx.lineWidth = 1.3;
-  ctx.beginPath(); ctx.arc(pcx, 0, r, 0, Math.PI * 2); ctx.stroke();
-  // ALT 详情：在小圈上叠加流体图标，并在旁边用小蓝色箭头标注流向
+  const pcx = dist - 9;              // 套管口中心（设备内部边缘）
+  // ① 法兰底座（凸缘盘，外缘描边）
+  ctx.fillStyle = '#454b54';
+  ctx.beginPath(); ctx.arc(pcx, 0, 7.2, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.45)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(pcx, 0, 7.2, 0, Math.PI * 2); ctx.stroke();
+  // ② 法兰顶面（颈部倒角，营造立体层次）
+  ctx.fillStyle = '#636c78';
+  ctx.beginPath(); ctx.arc(pcx, 0, 5.8, 0, Math.PI * 2); ctx.fill();
+  // ③ 端口内孔（填充真实端口类型色）
+  ctx.fillStyle = color || '#5b636e';
+  ctx.beginPath(); ctx.arc(pcx, 0, 4.2, 0, Math.PI * 2); ctx.fill();
+  // ④ 内孔凹槽描边（制造开口凹陷感）
+  ctx.strokeStyle = 'rgba(0,0,0,.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(pcx, 0, 4.2, 0, Math.PI * 2); ctx.stroke();
+  // ⑤ 顶部高光弧（金属反光质感）
+  ctx.strokeStyle = 'rgba(255,255,255,.38)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.arc(pcx, 0, 5.8 - 0.6, -Math.PI * 1.05, -Math.PI * 0.62); ctx.stroke();
+  // ALT 详情：在内孔上叠加流体图标，并在旁边用小蓝色箭头标注流向
   if (portDetailsVisible()) {
-    if (fluid && ITEMS[fluid]) drawItemGlyph(ctx, fluid, pcx, 0, r * 1.2);
+    if (fluid && ITEMS[fluid]) drawItemGlyph(ctx, fluid, pcx, 0, 6.5);
     const blue = '#4aa4ff';
     const f = flow || (arrow ? 'out' : 'both');   // 兼容：未显式给流向时按 arrow 推断
+    const aD = 7.5;                               // 箭头中心相对内孔中心的距离
+    const aS = 0.9;                               // 箭头缩放
     if (f === 'both') {
-      drawFlowArrow(ctx, pcx + 6, 0, false, blue);   // 指向设备外
-      drawFlowArrow(ctx, pcx - 6, 0, true, blue);    // 指向设备内
+      drawFlowArrow(ctx, pcx + aD, 0, false, blue, aS);   // 指向设备外
+      drawFlowArrow(ctx, pcx - aD, 0, true, blue, aS);    // 指向设备内
     } else if (f === 'out') {
-      drawFlowArrow(ctx, pcx + 6, 0, false, blue);   // 指向设备外
+      drawFlowArrow(ctx, pcx + aD, 0, false, blue, aS);   // 指向设备外
     } else if (f === 'in') {
-      drawFlowArrow(ctx, pcx - 6, 0, true, blue);    // 指向设备内
+      drawFlowArrow(ctx, pcx - aD, 0, true, blue, aS);    // 指向设备内
     }
   }
   ctx.restore();
 }
 
-// 小蓝色流向箭头：inward=true 指向设备内，false 指向设备外
-function drawFlowArrow(ctx, x, y, inward, blue) {
+// 小蓝色流向箭头：inward=true 指向设备内，false 指向设备外；scale 可选缩放（默认 1）
+function drawFlowArrow(ctx, x, y, inward, blue, scale) {
   ctx.fillStyle = blue;
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(inward ? Math.PI : 0);
+  if (scale) ctx.scale(scale, scale);
   ctx.beginPath();
   ctx.moveTo(3.4, 0);
   ctx.lineTo(-2.4, -2.6);
@@ -244,6 +260,41 @@ function fluidIconCell(e, side, cell) {
   if (sd === 1) return [e.x + cell, e.y + e.h - 1];
   if (sd === 0) return [e.x + e.w - 1, e.y + cell];
   return [e.x, e.y + cell];
+}
+
+// 计算 drawPort 端口（围绕实体内标定中心像素 (pcx,pcy)，side=最终世界方向 0东1南2西3北，
+// off/dist 与 drawPort 同源：off 为沿边瓦片偏移、dist 为到边像素距离）所在的世界格坐标。
+// 与 drawPort 内部的 rotate+translate 数学一致，供鼠标悬停显示该端口允许的流体名称。
+function portCenterCell(e, pcx, pcy, side, off, dist) {
+  const dx0 = (dist || TILE) - 9;        // drawPort 中 pcx = dist - 9
+  const dy0 = (off || 0) * TILE;
+  let ox, oy;
+  switch (((side % 4) + 4) % 4) {
+    case 0: ox = dx0; oy = dy0; break;   // 东
+    case 1: ox = -dy0; oy = dx0; break;  // 南
+    case 2: ox = -dx0; oy = -dy0; break; // 西
+    default: ox = dy0; oy = -dx0; break; // 北
+  }
+  return [Math.floor((pcx + ox) / TILE), Math.floor((pcy + oy) / TILE)];
+}
+
+// 小型配方流体设备通用图标：输入口在背部 (dir+2)%4、输出口在前方 dir（与各自 drawXxx 一致）。
+// 流体取自 e.fluidRecipe() 的 fin[0]/fout[0]；仅当对应流体非空时才登记该端口。
+function fluidIconFinFout(e, pcx, pcy) {
+  const fr = e.fluidRecipe ? e.fluidRecipe() : null;
+  const dir = e.dir | 0;
+  const fin = (fr && fr.fin.length) ? fr.fin[0] : null;
+  const fout = (fr && fr.fout.length) ? fr.fout[0] : null;
+  const icons = [];
+  if (fin) {
+    const c = portCenterCell(e, pcx, pcy, (dir + 2) % 4, 0, TILE);
+    icons.push({ x: c[0], y: c[1], fluid: fin });
+  }
+  if (fout) {
+    const c = portCenterCell(e, pcx, pcy, dir, 0, TILE);
+    icons.push({ x: c[0], y: c[1], fluid: fout });
+  }
+  return icons;
 }
 
 // 返回设备某条边(side，dir=0 基准方向，随 dir 旋转)上第 cell 个格子外侧相邻的“世界格坐标”。

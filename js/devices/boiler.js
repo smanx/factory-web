@@ -244,3 +244,12 @@ DEVICE_RENDER['boiler'] = drawBoiler;
 DEVICE_STATUS['boiler'] = e => e.burning ? 'g' : (e.steamBuf >= WATER_CAP - 0.01 ? 'y' : 'r');
 DEVICE_PANEL['boiler'] = { html: boilerPanelHtml, live: boilerPanelLive, tip: boilerTip };
 DEVICE_DIR_ROTATE['boiler'] = true;
+// 显示详情时，各接口图标所在世界格 + 对应流体名（用于鼠标悬停显示流体名称）
+DEVICE_FLUID_ICONS['boiler'] = e => {
+  const pL = rotCell(e, 0, 1), pR = rotCell(e, e.def.w - 1, 1), pS = rotCell(e, e.def.w >> 1, e.def.h - 1);
+  return [
+    { x: pL.x, y: pL.y, fluid: 'water' },
+    { x: pR.x, y: pR.y, fluid: 'water' },
+    { x: pS.x, y: pS.y, fluid: 'steam' }
+  ];
+};
