@@ -176,8 +176,8 @@ function buildDebug() {
   const switches = [
     {
       key: 'infinite', label: '无限资源', dataKey: 'dbgSwitch',
-      on() { toast('无限资源模式已开启：建造不消耗原料，可直接建造测试箱（创造/虚空）与测试管道（创造/虚空）'); refreshHotbar(); },
-      off() { toast('无限资源模式已关闭'); refreshHotbar(); }
+      on() { toast('无限资源模式已开启：建造不消耗原料，可直接建造测试箱（创造/虚空）与测试管道（创造/虚空）'); refreshHotbar(); if (typeof _invalidateInvCache === 'function') _invalidateInvCache(); if (typeof _matGridCache !== 'undefined' && _matGridCache) _matGridCache.buildDev = null; },
+      off() { toast('无限资源模式已关闭'); refreshHotbar(); if (typeof _invalidateInvCache === 'function') _invalidateInvCache(); if (typeof _matGridCache !== 'undefined' && _matGridCache) _matGridCache.buildDev = null; }
     },
     {
       key: 'farReach', label: '无限交互距离', dataKey: 'dbgSwitch',

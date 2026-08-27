@@ -15,6 +15,66 @@ function _invalidateInvCache() {
   _invTabCache.craft = null;
 }
 
+// 背景预热：首次打开背包会一次性计算数百个物品的 tooltip（含遍历数百条配方）与
+// base64 图标，是「首次打开卡顿」的主要来源。这里把最耗时的静态缓存（物流请求/
+// 垃圾桶物品列表、建造设备列表、合成页 HTML、tooltip 基础、图标 URL）拆成小块，
+// 在游戏主循环的空闲帧里分批预热，使第一次真正打开背包时缓存已就绪、基本不卡。
+// 每个小片只处理少量物品，分摊到多帧执行，避免预占单帧导致卡顿。
+const _PREWARM_CHUNK = 12;
+let _prewarmQueue = [];
+let _prewarmDone = false;
+function _schedulePrewarm(fn, label) {
+  _prewarmQueue.push({ fn, label });
+}
+function prewarmInvCache() {
+  if (_prewarmDone) return false;
+  _prewarmDone = true; // 只调度一次
+  // 建造设备 / 物流请求 / 垃圾桶：分批预热 base64 图标与 tooltip
+  // 先确保 staticItemIdList 与 BUILD_DEFS 的图标 URL 预热，这样后续生成合成页
+  // HTML 时图标已缓存、不会在单帧内一次性生成大量 canvas 造成卡顿。
+  const allIds = [];
+  try {
+    for (const b of Object.keys(BUILD_DEFS)) allIds.push(b);
+  } catch (e) {}
+  try {
+    for (const id of staticItemIdList()) allIds.push(id);
+  } catch (e) {}
+  for (let i = 0; i < allIds.length; i += _PREWARM_CHUNK) {
+    const chunk = allIds.slice(i, i + _PREWARM_CHUNK);
+    _schedulePrewarm(() => {
+      for (const id of chunk) {
+        if (ITEMS[id]) { iconDataURL(id); itemTip(id); }
+      }
+    }, 'icons-' + i);
+  }
+  // 合成页 HTML：数百条配方，最重，在所有图标预热完后再一次生成（复用已缓存图标）
+  _schedulePrewarm(() => {
+    if (!_invTabCache.craft) _invTabCache.craft = htmlCraft();
+  }, 'craft');
+  return true;
+}
+// 主循环内调用：每次执行队列中下一小片，直到全部完成
+function stepPrewarm() {
+  if (!_prewarmQueue.length) return false;
+  const item = _prewarmQueue.shift();
+  try { item.fn(); } catch (e) { console.error('prewarm[' + item.label + ']', e); }
+  return _prewarmQueue.length > 0;
+}
+
+// 材料页静态网格缓存：建造设备 / 物流请求 / 垃圾桶的物品按钮列表结构完全静态
+// （物品集合不变，仅请求/丢弃标记与持有数量动态变化）。首次构建后缓存复用，
+// 打开背包时只按标记与数量轻量拼接，避免每次重建数百个含 base64 图标的按钮节点。
+let _matGridCache = { lreqItems: null, trashItems: null, buildDev: null };
+// 材料页可选物品集合（排除流体与测试设备）
+function staticItemIdList() {
+  return Object.keys(ITEMS).filter(id => {
+    if (FLUIDS.indexOf(id) >= 0) return false;
+    if (id.indexOf('creative-') === 0 || id.indexOf('void-') === 0) return false;
+    if (id === 'passive-power') return false;
+    return true;
+  });
+}
+
 function iconDataURL(id) {
   let u = URL_CACHE[id];
   if (!u) {
@@ -25,15 +85,22 @@ function iconDataURL(id) {
 }
 
 // 物品悬浮提示：名称|描述（含物品堆叠上限，对齐《异星工厂》stack_size）
+// 性能优化：tooltip 的「名称|描述|堆叠|配方」基础部分是 id 的纯函数（itemRecipeText
+// 会遍历数百条配方），在材料页每次打开时被数百个物品反复调用、开销极大。这里按 id
+// 缓存基础部分，仅动态拼接额外说明（如请求量/已持有），避免每次打开背包都重算配方。
+const TIP_BASE_CACHE = {};
 function itemTip(id, extra) {
-  const it = ITEMS[id];
-  const stack = (typeof stackSize === 'function') ? stackSize(id) : 100;
-  let t = it.name + '|' + it.desc + (stack ? '（最大堆叠 ' + stack + '）' : '');
-  if (extra) t += (extra[0] === '|' ? '' : '|') + extra;
-  // 可合成物品：在 tooltip 末尾追加合成配方（需求：建造物品悬停显示配方）
-  const recipe = itemRecipeText(id);
-  if (recipe) t += '||' + recipe;
-  return t;
+  let base = TIP_BASE_CACHE[id];
+  if (!base) {
+    const it = ITEMS[id];
+    const stack = (typeof stackSize === 'function') ? stackSize(id) : 100;
+    base = it.name + '|' + it.desc + (stack ? '（最大堆叠 ' + stack + '）' : '');
+    // 可合成物品：在 tooltip 末尾追加合成配方（需求：建造物品悬停显示配方）
+    const recipe = itemRecipeText(id);
+    if (recipe) base += '||' + recipe;
+    TIP_BASE_CACHE[id] = base;
+  }
+  return extra ? (base + (extra[0] === '|' ? '' : '|') + extra) : base;
 }
 
 function iconCanvas(id, size = 34) {
@@ -387,17 +454,32 @@ function htmlInventory() {
   h += '<input id="build-dev-search" class="inv-search" type="text" placeholder="搜索建造设备（输入名称）" autocomplete="off" value="' + bdq + '">';
   h += '<div class="recgrid" id="build-dev-grid">';
   const infinite = !!(G.dbg && G.dbg.infinite);
-  // 测试/应急设备（被动供电、创造/虚空箱、创造/虚空管道）仅在开启"无限资源"
-  // Debug 模式后才会出现在建造列表；正常游玩不可见、不可获取。
-  const dbgOnlyDevices = new Set(['passive-power', 'creative-chest', 'void-chest', 'creative-pipe', 'void-pipe', 'creative-belt', 'void-belt']);
-  for (const bid of Object.keys(BUILD_DEFS)) {
-    if (dbgOnlyDevices.has(bid) && !infinite) continue;
-    const n = invCount(bid);
+  // 性能优化：建造设备按钮基础 HTML（图标/名称/tooltip/搜索键）是静态的，首次构建后
+  // 缓存复用；打开时仅按持有数量拼接「×N / ∞」后缀。动态数量由 updateInvLive 每帧轻量
+  // 刷新，无需重建整个网格。
+  if (!_matGridCache.buildDev) {
+    // 测试/应急设备（被动供电、创造/虚空箱、创造/虚空管道）仅在开启"无限资源"
+    // Debug 模式后才会出现在建造列表；正常游玩不可见、不可获取。
+    const dbgOnlyDevices = new Set(['passive-power', 'creative-chest', 'void-chest', 'creative-pipe', 'void-pipe', 'creative-belt', 'void-belt']);
+    _matGridCache.buildDev = [];
+    for (const bid of Object.keys(BUILD_DEFS)) {
+      if (dbgOnlyDevices.has(bid)) continue;
+      const bsearch = (ITEMS[bid].name + ' ' + bid).toLowerCase();
+      _matGridCache.buildDev.push({
+        id: bid,
+        inner: '<img src="' + iconDataURL(bid) + '">' + ITEMS[bid].name,
+        search: bsearch.replace(/"/g, ''),
+        tip: itemTip(bid)
+      });
+    }
+  }
+  for (const b of _matGridCache.buildDev) {
+    const n = invCount(b.id);
     const canBuild = infinite || n > 0;
-    const bsearch = (ITEMS[bid].name + ' ' + bid).toLowerCase();
-    h += '<button class="rcbtn buildbtn"' + (canBuild ? '' : ' disabled style="opacity:.45"') +
-      ' data-itemid="' + bid + '" data-buildsearch="' + bsearch.replace(/"/g, '') + '" data-tip="' + itemTip(bid) + '">' +
-      '<img src="' + iconDataURL(bid) + '">' + ITEMS[bid].name + (n > 0 ? ' ×' + n : (infinite ? ' ∞' : '')) + '</button>';
+    h += '<button class="rcbtn buildbtn' + (canBuild ? '' : ' disabled') + '"' +
+      (canBuild ? '' : ' style="opacity:.45"') +
+      ' data-itemid="' + b.id + '" data-buildsearch="' + b.search + '" data-tip="' + b.tip + '">' +
+      b.inner + (n > 0 ? ' ×' + n : (infinite ? ' ∞' : '')) + '</button>';
   }
   h += '</div>';
   h += '<div class="dim" id="build-dev-empty" style="display:none"></div>';
@@ -685,53 +767,54 @@ function applyInserterFilterSearch(q) {
 }
 
 // 个人物流请求：填充可选物品网格并过滤
+// 性能优化：物品集合静态，按钮基础 HTML（图标/名称/tooltip）首次构建后缓存复用，
+// 打开时仅按「请求量」动态拼接标记，避免每次打开都重建数百个含 base64 图标的按钮。
 function fillLogiReqGrid(q) {
   const grid = document.getElementById('lreq-grid');
   if (!grid) return;
   const ql = (q || '').trim().toLowerCase();
-  const ids = Object.keys(ITEMS).filter(id => {
-    // 排除流体与测试设备；仅列出可作为物品请求的内容
-    if (FLUIDS.indexOf(id) >= 0) return false;
-    if (id.indexOf('creative-') === 0 || id.indexOf('void-') === 0) return false;
-    if (id === 'passive-power') return false;
-    return true;
-  });
+  if (!_matGridCache.lreqItems) {
+    _matGridCache.lreqItems = staticItemIdList().map(id => ({
+      id,
+      key: (ITEMS[id].name + ' ' + id).toLowerCase(),
+      tip: itemTip(id),
+      img: '<img src="' + iconDataURL(id) + '">'
+    }));
+  }
   let h = '';
-  for (const id of ids) {
-    if (ql && !(ITEMS[id].name + ' ' + id).toLowerCase().includes(ql)) continue;
-    const req = (G.logiRequest && G.logiRequest[id]) || 0;
-    h += '<button class="rcbtn' + (req > 0 ? ' lreq-on' : '') + '" data-lreqitem="' + id + '" data-tip="' + itemTip(id) + (req > 0 ? '（已请求 ' + req + '）' : '') + '">' +
-      '<img src="' + iconDataURL(id) + '">' + ITEMS[id].name + (req > 0 ? ' ✓' + req : '') + '</button>';
+  for (const b of _matGridCache.lreqItems) {
+    if (ql && b.key.indexOf(ql) < 0) continue;
+    const req = (G.logiRequest && G.logiRequest[b.id]) || 0;
+    h += '<button class="rcbtn' + (req > 0 ? ' lreq-on' : '') + '" data-lreqitem="' + b.id + '" data-tip="' + b.tip + (req > 0 ? '（已请求 ' + req + '）' : '') + '">' +
+      b.img + ITEMS[b.id].name + (req > 0 ? ' ✓' + req : '') + '</button>';
   }
-  grid.innerHTML = h;
-  if (!h) {
-    grid.innerHTML = '<div class="dim">没有匹配的物品</div>';
-  }
+  grid.innerHTML = h || '<div class="dim">没有匹配的物品</div>';
 }
 
 // 个人垃圾桶：填充可选物品网格并过滤（对齐《异星工厂》Trash slots）
+// 性能优化：与物流请求网格相同，物品按钮基础 HTML 缓存复用，打开时仅按
+// 「丢弃标记 / 持有数量」动态拼接，避免每次重建数百个按钮节点。
 function fillTrashGrid(q) {
   const grid = document.getElementById('trash-grid');
   if (!grid) return;
   const ql = (q || '').trim().toLowerCase();
-  const ids = Object.keys(ITEMS).filter(id => {
-    if (FLUIDS.indexOf(id) >= 0) return false;
-    if (id.indexOf('creative-') === 0 || id.indexOf('void-') === 0) return false;
-    if (id === 'passive-power') return false;
-    return true;
-  });
+  if (!_matGridCache.trashItems) {
+    _matGridCache.trashItems = staticItemIdList().map(id => ({
+      id,
+      key: (ITEMS[id].name + ' ' + id).toLowerCase(),
+      tip: itemTip(id),
+      img: '<img src="' + iconDataURL(id) + '">'
+    }));
+  }
   let h = '';
-  for (const id of ids) {
-    if (ql && !(ITEMS[id].name + ' ' + id).toLowerCase().includes(ql)) continue;
-    const on = (G.trashSlots && G.trashSlots[id]) ? true : false;
-    const have = invCount(id);
-    h += '<button class="rcbtn' + (on ? ' lreq-on trash-on' : '') + '" data-trashitem="' + id + '" data-tip="' + itemTip(id) + (on ? '（已标记丢弃）' : '') + (have > 0 ? '（持有 ' + have + '）' : '') + '">' +
-      '<img src="' + iconDataURL(id) + '">' + ITEMS[id].name + (on ? ' 🗑' : '') + (have > 0 ? ' <span class="lreq-have">(' + have + ')</span>' : '') + '</button>';
+  for (const b of _matGridCache.trashItems) {
+    if (ql && b.key.indexOf(ql) < 0) continue;
+    const on = (G.trashSlots && G.trashSlots[b.id]) ? true : false;
+    const have = invCount(b.id);
+    h += '<button class="rcbtn' + (on ? ' lreq-on trash-on' : '') + '" data-trashitem="' + b.id + '" data-tip="' + b.tip + (on ? '（已标记丢弃）' : '') + (have > 0 ? '（持有 ' + have + '）' : '') + '">' +
+      b.img + ITEMS[b.id].name + (on ? ' 🗑' : '') + (have > 0 ? ' <span class="lreq-have">(' + have + ')</span>' : '') + '</button>';
   }
-  grid.innerHTML = h;
-  if (!h) {
-    grid.innerHTML = '<div class="dim">没有匹配的物品</div>';
-  }
+  grid.innerHTML = h || '<div class="dim">没有匹配的物品</div>';
 }
 
 // 蓝图库面板：列出所有保存的蓝图，可加载粘贴或删除

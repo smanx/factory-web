@@ -421,6 +421,12 @@ function loop(ts) {
 
     render();
 
+    // 后台预热背包静态缓存（首次打开背包的卡顿优化）：每帧处理一小片，分摊到多帧执行，
+    // 预热完成后自动停止，不影响正常游戏帧率。
+    if (typeof stepPrewarm === 'function' && typeof _prewarmQueue !== 'undefined' && _prewarmQueue.length) {
+      stepPrewarm();
+    }
+
     if (uiDirty || G.time - lastPanelCheck > 0.25) {
       lastPanelCheck = G.time;
       // 背包 tab HTML 缓存失效：物品/科技等状态一旦变化（uiDirty），清掉缓存的
@@ -470,6 +476,8 @@ function boot() {
       toast('初始化[' + name + ']失败：' + err.message);
     }
   }
+  // 首次进入游戏即启动背包静态缓存的后台预热，让第一次打开背包不卡
+  if (typeof prewarmInvCache === 'function') prewarmInvCache();
   if (!G.rafStarted) { G.rafStarted = true; requestAnimationFrame(loop); }
 }
 window.addEventListener('load', boot);
