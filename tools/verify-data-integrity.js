@@ -80,6 +80,9 @@ const dynamicKeys = new Set([
   'iron-plate-from-iron-bacteria', 'copper-plate-from-copper-bacteria', // 细菌→板还原配方：产物为铁板/铜板（产物键≠配方键）
   'nutrients-from-spoilage', 'burnt-spoilage', // Gleba 变质物回收配方：变质物→营养素/碳（产物键≠配方键）
   'bioplastic', // 生化炉配方：生物流+果泥→塑料（产物键≠配方键，产物为塑料）
+  'fish-breeding', // 养鱼配方：生鱼→生鱼（扩增，产物键≠配方键）
+  'nutrients-from-fish', // 鱼制营养素配方：生鱼→营养素（产物键≠配方键）
+  'coal-synthesis', // 煤合成配方：碳+硫磺+水→煤（产物键≠配方键）
   'biolubricant', // 生化炉配方：果冻→润滑油（产物键≠配方键，产物为润滑油流体）
   'ammoniacal-solution-separation', // 氨溶液分离配方：氨溶液→冰+氨（产物键≠配方键，产物为流体）
   'molten-iron-from-lava', 'molten-copper-from-lava', // 岩浆炼熔融金属配方：岩浆→熔融铁/铜+石头（产物键≠配方键，产物为流体）

@@ -383,6 +383,11 @@ const RECIPE_TECH = {
   'burnt-spoilage': 'agriculture',
   'bioplastic': 'agriculture',
   'biolubricant': 'agriculture',
+  // 太空时代 养鱼/鱼制营养素/煤合成（官方 fish-breeding / nutrients-from-fish /
+  // coal-synthesis 配方，与其它 Gleba 生物质/化工链统一由「农业科技」解锁）
+  'fish-breeding': 'agriculture',
+  'nutrients-from-fish': 'agriculture',
+  'coal-synthesis': 'agriculture',
   'turbo-underground-belt': 'turbo-logistics',
   'turbo-splitter': 'turbo-logistics',
   // ===== 装载机 Loader（对齐《异星工厂》Loader，web 复刻开放官方隐藏物流设备）=====

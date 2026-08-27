@@ -2486,6 +2486,17 @@ const GAME_DATA = {
     "lubricant": 20
    }
   },
+  "coal-synthesis": {
+   "time": 2,
+   "inp": {
+    "carbon": 5,
+    "sulfur": 1,
+    "water": 10
+   },
+   "out": {
+    "coal": 1
+   }
+  },
   "agricultural-tower": {
    "time": 10,
    "inp": {
@@ -2567,6 +2578,26 @@ const GAME_DATA = {
    "time": 2,
    "inp": {
     "biter-egg": 1
+   },
+   "out": {
+    "nutrients": 20
+   }
+  },
+  "fish-breeding": {
+   "time": 6,
+   "inp": {
+    "raw-fish": 2,
+    "nutrients": 100,
+    "water": 100
+   },
+   "out": {
+    "raw-fish": 3
+   }
+  },
+  "nutrients-from-fish": {
+   "time": 2,
+   "inp": {
+    "raw-fish": 1
    },
    "out": {
     "nutrients": 20
@@ -3697,6 +3728,7 @@ const GAME_DATA = {
   "biosulfur": "biochamber",
   "bioplastic": "biochamber",
   "biolubricant": "biochamber",
+  "coal-synthesis": "chemical-plant",
   "agricultural-tower": "assembling-machine-1",
   "artificial-yumako-soil": "assembling-machine-1",
   "overgrowth-yumako-soil": "assembling-machine-1",
@@ -3705,6 +3737,8 @@ const GAME_DATA = {
   "jellynut-processing": "biochamber",
   "biter-egg": "biochamber",
   "nutrients-from-biter-egg": "biochamber",
+  "fish-breeding": "biochamber",
+  "nutrients-from-fish": "biochamber",
   "pentapod-egg": "biochamber",
   "capture-robot-rocket": "assembling-machine-1",
   "captive-biter-spawner": "assembling-machine-1",
@@ -5096,6 +5130,10 @@ const GAME_DATA = {
    "zh": "生物润滑油",
    "en": "Biolubricant"
   },
+  "coal-synthesis": {
+   "zh": "煤合成",
+   "en": "Coal synthesis"
+  },
   "jellynut-processing": {
    "zh": "果冻果加工",
    "en": "Jellynut processing"
@@ -5103,6 +5141,14 @@ const GAME_DATA = {
   "nutrients-from-biter-egg": {
    "zh": "异虫卵制营养素",
    "en": "Nutrients from biter egg"
+  },
+  "fish-breeding": {
+   "zh": "养鱼",
+   "en": "Fish breeding"
+  },
+  "nutrients-from-fish": {
+   "zh": "鲜鱼制营养素",
+   "en": "Nutrients from fish"
   },
   "iron-bacteria": {
    "zh": "铁细菌",

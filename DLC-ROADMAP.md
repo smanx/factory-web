@@ -795,3 +795,27 @@
 >   锂盐水/氨溶液/岩浆为项目适配（官方无合成配方=星球抽取），与既有适配模式一致，未单独维护数值表。
 > - **校验**：verify-dlc 新增补充流体链校验（22 项），verify-data-integrity 配方键映射补充 3 项动态键，
 >   全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+
+### 阶段四.26：太空时代养鱼 + 鱼制营养素 + 煤合成（本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> 依据「所有物品/配方数据与《异星工厂》官方一致」原则，补全官方 Space Age 中项目此前
+> 尚未接入的三个可玩配方——三者官方材料项目均已具备，直接对齐官方配方（数据单源化）：
+> - **养鱼（`fish-breeding`）**：2 生鱼 + 100 营养素 + 100 水 → 3 生鱼（6s，官方配方），
+>   生化炉 organic/chemistry 配方——用少量初始生鱼 + 营养素 + 水可持续扩繁生鱼，
+>   与「鱼制营养素」形成「鱼 → 营养素 → 更多鱼」的自持循环。
+> - **鱼制营养素（`nutrients-from-fish`）**：1 生鱼 → 20 营养素（2s，官方配方），
+>   生化炉 organic 配方——给营养素新增一个生鱼来源（此前仅果泥/变质物/虫蛋）。
+> - **煤合成（`coal-synthesis`）**：5 碳 + 1 硫磺 + 10 水 → 1 煤（2s，官方配方），
+>   化工厂 chemistry 配方——官方给无煤星球提供煤来源（Space Age），
+>   项目已有碳/硫磺（由煤+硫酸制碳），材料可直接合成，补齐无煤环境下的燃料来源。
+> - **设备归属**：养鱼/鱼制营养素 → 生化炉（官方 organic，DLC_DEVICE_RECIPES 路由 biochamber）；
+>   煤合成 → 化工厂（官方 chemistry，DEVICE_BY_CATEGORY 自动识别）。
+> - **科技**：三者统一由「农业科技」解锁（RECIPE_TECH 配方级门控，与其它 Gleba 生物质/化工链一致，
+>   对齐官方 fish-breeding / bioflux-processing 科技链）。
+> - **数据单源**：配方数值/耗时/配方名/命名均来自 data.generated.js（factorio-data 官方，
+>   命名 养鱼/Fish breeding、鲜鱼制营养素/Nutrients from fish、煤合成/Coal synthesis），
+>   设备归属经 GAME_DATA.recipeDevice 单源桥接，未单独维护数值表。
+> - **校验**：verify-dlc 新增养鱼/鱼制营养素/煤合成校验（14 项），verify-data-integrity
+>   配方键映射补充 3 项动态键（产物键≠配方键），全量 18 个校验脚本通过，`node build.js` 构建通过。 (feat: 接入太空时代养鱼/鱼制营养素/煤合成三个官方配方（数据单源化）)

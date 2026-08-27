@@ -377,6 +377,29 @@ ok(RP['bioplastic'].time === 2, '生物塑料耗时=2s（官方）');
 ok(RP['biolubricant'].inp['jelly'] === 60 && RP['biolubricant'].out['lubricant'] === 20, '生物润滑油=60果冻→20润滑油（官方）');
 ok(RP['biolubricant'].time === 3, '生物润滑油耗时=3s（官方）');
 
+// ===== 太空时代 养鱼 + 鱼制营养素 + 煤合成（Fish breeding / Nutrients from fish / Coal synthesis，本迭代新增）数据校验 =====
+console.log('\n【养鱼 + 鱼制营养素 + 煤合成（Space Age）数据校验】');
+for (const rid of ['fish-breeding', 'nutrients-from-fish', 'coal-synthesis']) {
+  ok(!!RP[rid], rid + ' 配方已注册');
+  ok(Object.keys(RP[rid].inp).every(k => k in IT), rid + ' 配方引用物品均存在');
+  ok(!!GD.recipeNames[rid], rid + ' 官方配方命名已收录 (' + (GD.recipeNames[rid] ? GD.recipeNames[rid].zh : '?') + ')');
+  ok(ctx.__recipeTechReq(rid) === 'agriculture', rid + ' 需「农业科技」');
+}
+// 养鱼（fish-breeding）：2 生鱼 + 100 营养素 + 100 水 → 3 生鱼（官方 6s）
+ok(RP['fish-breeding'].inp['raw-fish'] === 2 && RP['fish-breeding'].inp['nutrients'] === 100 && RP['fish-breeding'].inp['water'] === 100, '养鱼=2生鱼+100营养素+100水（官方）');
+ok(RP['fish-breeding'].out['raw-fish'] === 3, '养鱼产出 3 生鱼（官方）');
+ok(RP['fish-breeding'].time === 6, '养鱼耗时=6s（官方）');
+ok(ctx.__recipeDevice('fish-breeding') === 'biochamber', '养鱼 → 生化炉（官方 organic）');
+// 鱼制营养素（nutrients-from-fish）：1 生鱼 → 20 营养素（官方 2s）
+ok(RP['nutrients-from-fish'].inp['raw-fish'] === 1 && RP['nutrients-from-fish'].out['nutrients'] === 20, '鱼制营养素=1生鱼→20营养素（官方）');
+ok(RP['nutrients-from-fish'].time === 2, '鱼制营养素耗时=2s（官方）');
+ok(ctx.__recipeDevice('nutrients-from-fish') === 'biochamber', '鱼制营养素 → 生化炉（官方 organic）');
+// 煤合成（coal-synthesis）：5 碳 + 1 硫磺 + 10 水 → 1 煤（官方 2s，化工厂）
+ok(RP['coal-synthesis'].inp['carbon'] === 5 && RP['coal-synthesis'].inp['sulfur'] === 1 && RP['coal-synthesis'].inp['water'] === 10, '煤合成=5碳+1硫磺+10水（官方）');
+ok(RP['coal-synthesis'].out['coal'] === 1, '煤合成产出 1 煤（官方）');
+ok(RP['coal-synthesis'].time === 2, '煤合成耗时=2s（官方）');
+ok(ctx.__recipeDevice('coal-synthesis') === 'chemical-plant', '煤合成 → 化工厂（官方 chemistry）');
+
 
 console.log('\n【破碎机设备数据（官方）】');
 ok(!!GD.stackSize['crusher'], 'crusher 堆叠来自官方 (=10)');
