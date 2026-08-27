@@ -101,7 +101,7 @@ const PUMP_RATE = GAME_DATA.fluidCapacity?.pumpRate ?? 20;  // 抽水机每秒�
 const ENGINE_STEAM_RATE = 0.6;   // 蒸汽机满功率耗汽（单位/秒）：1 台锅炉可带 2 台蒸汽机
 const ENGINE_STEAM_CAP = 10;     // 蒸汽机内部储汽上限
 
-const FLUIDS = ['water', 'steam', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas', 'lubricant', 'sulfuric-acid'];
+const FLUIDS = ['water', 'steam', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas', 'lubricant', 'sulfuric-acid', 'thruster-fuel', 'thruster-oxidizer'];
 // 矿石索引：iron/copper/coal/stone = 0-3；原油 = 5（不进手挖矿表）；铀矿 = 6。
 // ⚠️ 版本迁移：早期版本原油索引为 5，本次新增铀矿后改为 6，读档时对旧档做 5→6 重映射。
 const ORE_OIL = 5;                       // 原油矿床的 oreType 索引（不进手挖矿表）

@@ -1751,6 +1751,48 @@ const GAME_DATA = {
     "carbon": 1
    }
   },
+  "thruster-fuel": {
+   "time": 2,
+   "inp": {
+    "carbon": 2,
+    "water": 10
+   },
+   "out": {
+    "thruster-fuel": 75
+   }
+  },
+  "thruster-oxidizer": {
+   "time": 2,
+   "inp": {
+    "iron-ore": 2,
+    "water": 10
+   },
+   "out": {
+    "thruster-oxidizer": 75
+   }
+  },
+  "advanced-thruster-fuel": {
+   "time": 10,
+   "inp": {
+    "carbon": 2,
+    "calcite": 1,
+    "water": 100
+   },
+   "out": {
+    "thruster-fuel": 1500
+   }
+  },
+  "advanced-thruster-oxidizer": {
+   "time": 10,
+   "inp": {
+    "iron-ore": 2,
+    "calcite": 1,
+    "water": 100
+   },
+   "out": {
+    "thruster-oxidizer": 1500
+   }
+  },
   "recycler": {
    "time": 3,
    "inp": {
@@ -2443,6 +2485,10 @@ const GAME_DATA = {
   "battery": "chemical-plant",
   "sulfur": "chemical-plant",
   "carbon": "chemical-plant",
+  "thruster-fuel": "chemical-plant",
+  "thruster-oxidizer": "chemical-plant",
+  "advanced-thruster-fuel": "chemical-plant",
+  "advanced-thruster-oxidizer": "chemical-plant",
   "recycler": "assembling-machine-1",
   "sulfuric-acid": "chemical-plant",
   "defender-capsule": "assembling-machine-1",
@@ -3106,6 +3152,14 @@ const GAME_DATA = {
    "zh": "碳",
    "en": "Carbon"
   },
+  "thruster-fuel": {
+   "zh": "推进器燃料",
+   "en": "Thruster fuel"
+  },
+  "thruster-oxidizer": {
+   "zh": "推进器氧化剂",
+   "en": "Thruster oxidizer"
+  },
   "carbon-fiber": {
    "zh": "碳纤维",
    "en": "Carbon fiber"
@@ -3487,6 +3541,14 @@ const GAME_DATA = {
   "solid-fuel-heavy-oil": {
    "zh": "重油制固体燃料",
    "en": "Solid fuel from heavy oil"
+  },
+  "advanced-thruster-fuel": {
+   "zh": "高级推进器燃料",
+   "en": "Advanced thruster fuel"
+  },
+  "advanced-thruster-oxidizer": {
+   "zh": "高级推进器氧化剂",
+   "en": "Advanced thruster oxidizer"
   },
   "nutrients-from-bioflux": {
    "zh": "生物结晶制营养素",

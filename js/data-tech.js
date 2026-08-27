@@ -64,6 +64,11 @@ const TECH_REQ = {
   // ===== Fulgora 避雷系统（对齐《异星工厂》Space Age Lightning 科技）=====
   'lightning-rod': 'lightning',
   'lightning-collector': 'lightning',  // 避雷收集器需「避雷科技」（官方 Lightning 科技解锁避雷针与收集器）
+  // ===== 太空推进链（对齐《异星工厂》Space Age Thruster 科技：解锁推进器燃料/氧化剂化工厂配方）=====
+  'thruster-fuel': 'space-thruster',
+  'thruster-oxidizer': 'space-thruster',
+  'advanced-thruster-fuel': 'space-thruster',
+  'advanced-thruster-oxidizer': 'space-thruster',
   'metallic-asteroid-chunk': 'asteroid-processing',
   'carbonic-asteroid-chunk': 'asteroid-processing',
   'oxide-asteroid-chunk': 'asteroid-processing',
