@@ -130,7 +130,11 @@ function decodeChunkData(d) {
 function chunkSeed(cx, cy) {
   let h = (Math.imul(cx, 0x27d4eb2d) ^ Math.imul(cy, 0x165667b1)) >>> 0;
   h = Math.imul(h ^ (h >>> 15), 2246822519) >>> 0;
-  return (h ^ (G.world.seed | 0)) >>> 0;
+  // 行星参与种子哈希：同一 world seed 在不同星球生成不同地形/矿脉。
+  const pid = (typeof planetId === 'function') ? planetId() : 'nauvis';
+  let ph = 0x811c9dc5;
+  for (let i = 0; i < pid.length; i++) ph = Math.imul(ph ^ pid.charCodeAt(i), 0x01000193) >>> 0;
+  return ((h ^ (G.world.seed | 0)) ^ ph) >>> 0;
 }
 
 function chunkLocalIdx(tx, ty) {
@@ -231,13 +235,17 @@ function isCliffTile(gx, gy) {
 function isLake(tx, ty) {
   const cell = 13;
   const gx = Math.floor(tx / cell), gy = Math.floor(ty / cell);
+  // 行星水系数：祝融星/雷神星几乎无水，句芒星/玄冥星更湿润，新地星正常
+  const planetW = (typeof planetResources === 'function' && planetResources().water != null) ? planetResources().water : 1;
+  const pWater = (planetW <= 0) ? 0 : (planetW - 1) * 0.05;   // >0 更多水，<0 更少水
   // 水频率配置（对齐《异星工厂》地图生成器）：调整湖泊密度阈值（+bias 更多水体 / -bias 更少水体）
   const bias = (typeof waterBias === 'function') ? waterBias() : 0;
+  const waterBiasTotal = bias + pWater;
   for (let ogx = gx - 1; ogx <= gx + 1; ogx++) {
     for (let ogy = gy - 1; ogy <= gy + 1; ogy++) {
       // 湖泊密度：阈值从 0.04 再降到 0.02，使全图水体数量在上次基础上再减半
       const h = hash2(ogx * 12.9898, ogy * 78.233);
-      if (h < 0.02 + bias) {
+      if (h < 0.02 + waterBiasTotal) {
         const px = (ogx + (hash2(ogx * 3.1, ogy * 7.7) * 0.7 + 0.15)) * cell;
         const py = (ogy + (hash2(ogx * 5.3, ogy * 1.9) * 0.7 + 0.15)) * cell;
         // 单个水体面积适当增大：半径从 3~7.5 提升到 5~11
@@ -251,21 +259,41 @@ function isLake(tx, ty) {
   return false;
 }
 
+// 按行星资源画像加权随机选取一种普通矿石（iron/copper/coal/stone）。
+// 权重来自 PLANET_RESOURCES[当前星球]（0=该星无此矿，不生成）。
+// dist 越远越偏向更"深层"的矿（铁→铜→煤→石），与官方距离相关矿分布一致。
 function pickOreType(rng, dist) {
-  // 方解石为《太空时代》DLC 内容，不在地图生成中
-  const r2 = rng();
-  if (dist > 70) {
-    if (r2 < 0.34) return ORES.indexOf('iron-ore');
-    if (r2 < 0.64) return ORES.indexOf('copper-ore');
-    if (r2 < 0.84) return ORES.indexOf('coal');
-    return ORES.indexOf('stone');
+  const prof = (typeof planetResources === 'function') ? planetResources() : null;
+  const w = (k) => (prof && typeof prof[k] === 'number') ? prof[k] : 1;
+  // 基础权重（近处偏向铁/铜，远处偏向煤/石）
+  let weights = [
+    { id: 'iron-ore',   w: (dist > 70 ? 0.34 : 0.30) * w('iron') },
+    { id: 'copper-ore', w: (dist > 70 ? 0.30 : 0.25) * w('copper') },
+    { id: 'coal',       w: (dist > 70 ? 0.20 : 0.25) * w('coal') },
+    { id: 'stone',      w: (dist > 70 ? 0.16 : 0.20) * w('stone') }
+  ];
+  let total = 0;
+  for (const it of weights) total += it.w;
+  if (total <= 0) return ORES.indexOf('stone');   // 全无铁铜煤时兜底石矿
+  let r2 = rng() * total;
+  for (const it of weights) {
+    if (r2 < it.w) return ORES.indexOf(it.id);
+    r2 -= it.w;
   }
-  if (r2 < 0.3) return ORES.indexOf('iron-ore');
-  if (r2 < 0.55) return ORES.indexOf('copper-ore');
-  if (r2 < 0.8) return ORES.indexOf('coal');
   return ORES.indexOf('stone');
 }
 
+
+// 出生点起步矿：取当前行星普通矿石中权重最高的矿（保证开局能采）。
+function pickStartOre() {
+  const prof = (typeof planetResources === 'function') ? planetResources() : null;
+  let best = ORES.indexOf('iron-ore'), bestW = -1;
+  for (const k of ['iron','copper','coal','stone']) {
+    const w = (prof && typeof prof[k] === 'number') ? prof[k] : 1;
+    if (w > bestW) { bestW = w; best = ORES.indexOf(k + '-ore'); }
+  }
+  return best;
+}
 function growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, size, amt, ti) {
   // 若起点不在可放置的草地上（如落在树/水/已占用格），向四周搜索最近的可行格；
   // 找不到则放弃本矿床，避免生成 1 格残矿（占地面积过小，放不下采矿机）。
@@ -455,9 +483,13 @@ function genChunk(cx, cy) {
     if (placedCnt > 0) placed.push({ x: sx, y: sy, rad });
   }
 
+  // 行星资源画像：当前星球某类资源丰度（0=无此矿）。越远越常见、储量越高。
+  const rp = (typeof planetResources === 'function') ? planetResources() : null;
+  const rw = (k) => (rp && typeof rp[k] === 'number') ? rp[k] : 1;
+
   // 原油矿床：离角色稍远才生成（出生点周围只有石/铁/煤/铜矿），越远越常见、储量越高
-  const oilChance = dist > 60 ? 0.55 : dist > 25 ? 0.15 : 0;
-  if (rng() < oilChance) {
+  const oilChance = (dist > 60 ? 0.55 : dist > 25 ? 0.15 : 0) * rw('oil');
+  if (rw('oil') > 0 && rng() < oilChance) {
     const sx = 2 + Math.floor(rng() * (CHUNK - 4));
     const sy = 2 + Math.floor(rng() * (CHUNK - 4));
     // 原油矿床：隔几格一个，整体聚集（gap≈3 即每个油点相隔 3 格左右）
@@ -465,8 +497,8 @@ function genChunk(cx, cy) {
   }
 
   // 铀矿：距离较远才生成（核能后期，且离角色比原油更远），越远越多，矿团适中
-  const uChance = dist > 120 ? 0.4 : dist > 80 ? 0.15 : 0;
-  if (rng() < uChance) {
+  const uChance = (dist > 120 ? 0.4 : dist > 80 ? 0.15 : 0) * rw('uranium');
+  if (rw('uranium') > 0 && rng() < uChance) {
     const sx = 2 + Math.floor(rng() * (CHUNK - 4));
     const sy = 2 + Math.floor(rng() * (CHUNK - 4));
     const usz = Math.max(8, Math.round((18 + rng() * 20) * Math.min(2.2, scale) * sz));
@@ -476,8 +508,8 @@ function genChunk(cx, cy) {
 
   // 小行星碎块矿床：太空时代终局资源，距离比铀矿更远才生成，越远越多，矿团适中
   // （官方小行星碎块来自太空，此处适配为遥远地面矿床，供破碎机加工）
-  const aChance = dist > 200 ? 0.35 : dist > 150 ? 0.12 : 0;
-  if (rng() < aChance) {
+  const aChance = (dist > 200 ? 0.35 : dist > 150 ? 0.12 : 0) * rw('asteroid');
+  if (rw('asteroid') > 0 && rng() < aChance) {
     const sx = 2 + Math.floor(rng() * (CHUNK - 4));
     const sy = 2 + Math.floor(rng() * (CHUNK - 4));
     const asz = Math.max(6, Math.round((12 + rng() * 16) * Math.min(2.2, scale) * sz));
@@ -485,13 +517,15 @@ function genChunk(cx, cy) {
     growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, asz, aamt, ORE_ASTEROID);
   }
 
-  // 出生点保证：原点上一定有一片小型铁矿起步
+  // 出生点保证：原点上一定有一片小型起步矿。若当前星球无铁矿（如句芒星/玄冥星），
+  // 则用该星最丰富的普通矿石起步，保证开局可采集。
   if (cx === 0 && cy === 0) {
+    const startOre = (typeof pickStartOre === 'function') ? pickStartOre() : ORES.indexOf('iron-ore');
     for (let attempt = 0; attempt < 8; attempt++) {
       const sx = 3 + Math.floor(rng() * 7), sy = 3 + Math.floor(rng() * 7);
       const si = sy * CHUNK + sx;
       if (terrain[si] === T_GRASS && oreType[si] < 0) {
-        growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, 10, 900, ORES.indexOf('iron-ore'));
+        growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, 10, 900, startOre);
         break;
       }
     }
