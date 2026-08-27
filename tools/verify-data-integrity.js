@@ -31,7 +31,7 @@ sandbox.global = sandbox;
 vm.createContext(sandbox);
 const probe = src +
   "\n;globalThis.__items=ITEMS;globalThis.__recs=RECIPES;globalThis.__ref=REFINERY_RECIPES;" +
-  "globalThis.__cen=CENTRIFUGE_RECIPES;globalThis.__sm=SMELTS;globalThis.__build=BUILD_DEFS;";
+  "globalThis.__cen=CENTRIFUGE_RECIPES;globalThis.__sm=SMELTS;globalThis.__build=BUILD_DEFS;globalThis.__stack=STACK_SIZES;globalThis.__GD=GAME_DATA;";
 vm.runInContext(probe, sandbox, { filename: 'data.js' });
 
 const ITEMS = sandbox.__items;
@@ -40,6 +40,8 @@ const REFINERY_RECIPES = sandbox.__ref || {};
 const CENTRIFUGE_RECIPES = sandbox.__cen || {};
 const SMELTS = sandbox.__sm || [];
 const BUILD_DEFS = sandbox.__build || {};
+const STACK_SIZES = sandbox.__stack || {};
+const GAME_DATA = sandbox.__GD || {};
 
 let passCount = 0;
 let failCount = 0;
@@ -176,6 +178,30 @@ const nonOfficial = Object.keys(ITEMS).filter(id =>
   !creativeVoid.has(id) && !officialNameSet.has(id) && !allowInternal.has(id));
 check('非创造/虚空物品均使用官方原型名（非官方=' + nonOfficial.length + '）', nonOfficial.length === 0,
   nonOfficial.length ? JSON.stringify(nonOfficial) : '');
+
+// ---- 7) 物品堆叠上限与官方对齐（零偏差）----
+console.log('\n【物品堆叠上限对齐官方（factorio-data item stack_size，零偏差）】');
+const officialStack = new Map();
+const stackLikeTypes = ['item','ammo','gun','capsule','armor','module','tool','repair-tool',
+  'rail-planner','deconstruction-item','upgrade-item','selection-tool','item-with-entity-data',
+  'spider-vehicle','car','tank','locomotive','cargo-wagon','fluid-wagon','artillery-wagon',
+  'spidertron-remote','space-platform-starter-pack'];
+for (const t of stackLikeTypes) {
+  if (!raw[t]) continue;
+  for (const [n, proto] of Object.entries(raw[t]))
+    if (typeof proto.stack_size === 'number') officialStack.set(n, proto.stack_size);
+}
+// 项目堆叠来源：GAME_DATA.stackSize（自动桥接，官方数据优先）+ STACK_SIZES（手工兜底）
+const stackIds = new Set([...Object.keys(STACK_SIZES), ...Object.keys(GAME_DATA.stackSize || {})]);
+const stackMismatch = [];
+for (const id of stackIds) {
+  const off = officialStack.get(id);
+  if (off === undefined) continue;                       // 官方无此原型（创造/虚空等），跳过
+  const projVal = (GAME_DATA.stackSize && id in GAME_DATA.stackSize) ? GAME_DATA.stackSize[id] : STACK_SIZES[id];
+  if (projVal !== undefined && projVal !== off) stackMismatch.push(id + ':项目=' + projVal + ' 官方=' + off);
+}
+check('物品堆叠上限与官方一致（偏差=' + stackMismatch.length + '）', stackMismatch.length === 0,
+  stackMismatch.length ? JSON.stringify(stackMismatch) : '');
 
 console.log('\n----------------------------------------');
 console.log('通过 ' + passCount + ' 项，失败 ' + failCount + ' 项');

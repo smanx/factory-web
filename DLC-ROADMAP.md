@@ -1021,6 +1021,19 @@
 - [x] 校验结果：当前 ITEMS 327 项中，非创造/虚空物品 **全部** 命中官方原型名（非官方 = 0）。
 - [x] 全量 18 个校验脚本通过，构建通过。
 
+### 阶段六.1.1：物品堆叠上限对齐守门人（verify-data-integrity 新增第 7 项校验，本迭代新增）
+
+> 「所有物品的各项信息都要保持和官方一致」的又一道 CI 守门人：堆叠上限（stack_size）是物品最直观的数值，
+> 把它也纳入自动校验，防止未来新增/调整物品堆叠时与官方 `factorio-data` 产生偏差：
+
+- [x] `verify-data-integrity.js` 新增第 7 项校验「**物品堆叠上限与官方一致**」：
+      从 `factorio-data`（经 `tools/convert-data.js`）提取全部官方 item 类原型（item/ammo/gun/capsule/
+      armor/module/tool/rail-planner/载具车厢/遥控器/起始包等 21 类）的 `stack_size`，与项目
+      `GAME_DATA.stackSize`（自动桥接，官方优先）+ `STACK_SIZES`（手工兜底）逐项核对，
+      任何偏差（创造/虚空等官方无原型者除外）都判定失败并列出项目值 vs 官方值。
+- [x] 校验结果：当前项目 296 个有官方原型的物品堆叠 **全部** 与官方一致（偏差 = 0）。
+- [x] 全量 18 个校验脚本通过，构建通过。
+
 ### 阶段四.30：手动遥控器（Artillery targeting remote / Discharge defense remote，本迭代新增）
 
 > 已落地说明（本迭代增量）：
