@@ -19,6 +19,11 @@ function bindInput() {
     G.keys[k] = true;
     if (k >= '1' && k <= '9') selectSlot(+k - 1);
     else if (k === '0') selectSlot(9);
+    // 攻击选中目标（对齐《异星工厂》快捷键）：Shift+空格 对鼠标选中的目标开火（强制攻击）
+    else if (k === ' ' && ev.shiftKey && !ev.ctrlKey && !ev.altKey) {
+      ev.preventDefault();
+      if (typeof attackSelectedTarget === 'function') attackSelectedTarget();
+    }
     else if (k === 'tab') { ev.preventDefault(); G.panelMode === 'inv' ? closePanel() : openPanel('inv'); }
     // 统计/蓝图/红图/绿图快捷键（对齐《异星工厂》：P 统计、B 蓝图、Alt+D 红图、Alt+U 绿图）
     else if (k === 'p') G.panelMode === 'stats' ? closePanel() : openPanel('stats');

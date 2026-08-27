@@ -184,7 +184,7 @@ html, body {
 .qb-row { display: flex; gap: 3px; }
 .qb-slot {
   position: relative;
-  width: 16px; height: 16px;
+  width: 32px; height: 32px;
   flex-shrink: 0;
   border-radius: 3px;
   border: 1px solid #3a4550;
@@ -241,8 +241,8 @@ html, body {
 #craft-queue {
   position: absolute;
   bottom: 12px;
-  /* 快捷栏（2行×4格，16px格 + 3px间距/4px内边距）右缘 ≈ 93px，再留 8px 间距 */
-  left: 101px;
+  /* 快捷栏（2行×4格，32px格 + 3px间距/4px内边距）右缘 ≈ 157px，再留 8px 间距 */
+  left: 165px;
   display: none;
   flex-direction: row;
   align-items: center;
@@ -255,7 +255,7 @@ html, body {
 }
 .cq-slot {
   position: relative;
-  width: 16px; height: 16px;
+  width: 32px; height: 32px;
   flex-shrink: 0;
   border-radius: 3px;
   border: 1px solid #3a4550;
@@ -277,10 +277,11 @@ html, body {
   border: 1px solid transparent;
   border-top-color: #7fd4a0;
   border-right-color: #7fd4a0;
-  animation: cqSpin .8s linear infinite;
+  /* 旋转角度由 JS 依据合成倒计时进度（done/total）推进，而非持续匀速转圈 */
+  transform: rotate(calc(var(--cq-progress, 0) * 360deg));
+  transition: transform .1s linear;
   pointer-events: none;
 }
-@keyframes cqSpin { to { transform: rotate(360deg); } }
 /* 排队（尚未开始）项：半透明 + 少量堆叠数量角标 */
 .cq-slot.cq-queued { opacity: .75; }
 .cq-slot .cq-cnt {
@@ -295,7 +296,7 @@ html, body {
 
 .slot {
   position: relative;
-  width: 16px; height: 16px;
+  width: 32px; height: 32px;
   flex-shrink: 0;
   border-radius: 3px;
   border: 1px solid #3a4550;
@@ -326,12 +327,12 @@ html, body {
 
 .inv-slots {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 16px);
+  grid-template-columns: repeat(auto-fill, 32px);
   gap: 4px;
 }
 .inv-slot {
   position: relative;
-  width: 16px; height: 16px;
+  width: 32px; height: 32px;
   border-radius: 3px;
   border: 1px solid #37424f;
   background: #222b35;

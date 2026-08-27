@@ -230,6 +230,8 @@ TECH_REQ['small-lamp'] = 'electric';
 const WEAPON_TECH_REQ = {
   'atomic-bomb': 'atomic-bomb',   // 原子弹需独立「原子弹科技」
   'pistol': 'weapons',
+  'iron-axe': 'weapons',
+  'steel-axe': 'military2',
   'submachine-gun': 'weapons',
   'shotgun': 'weapons',
   'combat-shotgun': 'military2',
