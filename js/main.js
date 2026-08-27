@@ -80,7 +80,6 @@ const G = {
   armor: null,        // 当前穿戴的护甲 id（light-armor / heavy-armor）
   gameWon: false,     // 是否已发射火箭赢得游戏
   repairPackUses: 0,  // 当前修理包剩余使用次数（用尽后消耗一个新修理包）
-  axeDura: 0,         // 当前手持开采工具（铁斧/钢斧）剩余耐久（用尽后消失，对齐《异星工厂》Axe）
   victoryT: 0,
   inMenu: true,       // 开始菜单显示中：游戏世界尚未初始化，loop 暂停渲染与更新
   paused: false,      // 游戏暂停：由顶部“暂停/继续”按钮控制，暂停时世界/设备/玩家停摆
@@ -95,6 +94,9 @@ let fpsSmooth = 60;
 
 // 存档由 js/saves.js 的多存档系统管理（自动存档 + 用户存档），不再使用单一键。
 // 保留旧键常量供首次升级时迁移（见 migrateLegacySave）。
+
+// 已废弃物品（对齐《异星工厂》2.0：以下物品已被官方移除，读档时从背包/各容器中清除）
+const OBSOLETE_ITEMS = ['steel-stick', 'fishing-pole', 'iron-axe', 'steel-axe', 'steam-barrel'];
 
 function saveSettings() {
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(G.settings)); } catch (e) {}
@@ -182,7 +184,6 @@ function newGame() {
   invAdd('transport-belt', 32); // 传送带
   invAdd('inserter', 4);        // 机械臂
   invAdd('coal', 8);
-  invAdd('iron-axe', 1);       // 铁斧（对齐《异星工厂》开局默认手持铁斧，砍树/手挖更快）
   // 测试用创造/虚空设备（创造箱/虚空箱/创造管道/虚空管道）不再默认发放：
   // 仅当在 Debug 模式中开启"无限资源"后才通过建造列表出现，正常游玩不可见。
 }
@@ -212,7 +213,6 @@ function serializeAll() {
     })),
     gameWon: G.gameWon,
     repairPackUses: G.repairPackUses || 0,
-    axeDura: G.axeDura || 0,
     techDone: G.techDone,
     techProg: G.techProg,
     activeTech: G.activeTech,
@@ -364,13 +364,15 @@ function applySave(d) {
     if (Array.isArray(obj)) { for (let i = 0; i < obj.length; i++) obj[i] = migrateIds(obj[i]); return obj; }
     if (obj && typeof obj === 'object') {
       for (const k of Object.keys(obj)) {
+        // 移除已废弃物品（对齐《异星工厂》2.0）
+        if (OBSOLETE_ITEMS.includes(k)) { delete obj[k]; continue; }
         const nk = ID_MIGRATE[k] || k;
         if (nk !== k) { obj[nk] = migrateIds(obj[k]); delete obj[k]; }
         else obj[k] = migrateIds(obj[k]);
       }
       return obj;
     }
-    if (typeof obj === 'string') return ID_MIGRATE[obj] || obj;
+    if (typeof obj === 'string') return OBSOLETE_ITEMS.includes(obj) ? '' : (ID_MIGRATE[obj] || obj);
     return obj;
   }
   if (d) migrateIds(d);
@@ -429,6 +431,8 @@ function applySave(d) {
     G.inv.set('depleted-uranium-fuel-cell', (G.inv.get('depleted-uranium-fuel-cell') || 0) + G.inv.get('used-up-uranium-fuel-cell'));
     G.inv.delete('used-up-uranium-fuel-cell');
   }
+  // 移除已废弃物品（对齐《异星工厂》2.0：铁斧/钢斧/钓鱼竿/钢杆/桶装蒸汽已被官方移除）
+  for (const ob of OBSOLETE_ITEMS) if (G.inv.has(ob)) G.inv.delete(ob);
   // 恢复个人物流请求（旧档无该字段则置空）
   G.logiRequest = {};
   if (d.logiRequest && typeof d.logiRequest === 'object') {
@@ -466,7 +470,6 @@ function applySave(d) {
     }
   }
   G.repairPackUses = (typeof d.repairPackUses === 'number') ? d.repairPackUses : 0;
-  G.axeDura = (typeof d.axeDura === 'number') ? d.axeDura : 0;
   if (typeof mapTagsDeserialize === 'function') mapTagsDeserialize(d.mapTags); else G.mapTags = [];
   if (typeof achievementsRestore === 'function') achievementsRestore(d.achievements); else if (typeof achInitStats === 'function') achInitStats();
   G.combatRobots = [];

@@ -55,7 +55,7 @@ const RECIPE_MAP = {
 // 即使官方有同名或映射配方，也保持手工值。例：storage-chest 在官方 2.0 是物流箱
 // （自动会错用 logistic-chest-storage 配方），必须手工；模块 3 级官方用太空材料，项目简化。
 const KEEP_MANUAL_RECIPES = new Set([
-  'steel-stick', 'chemical-science-pack', 'fishing-pole', 'iron-axe', 'steel-axe',
+  'chemical-science-pack',
   'deconstruction-planner', 'upgrade-planner', 'diesel-locomotive', 'spidertron-remote',
   'explosive-rocket-launcher', 'rocket-control-unit', 'satellite', 'red-wire', 'green-wire',
   'stone-path', 'portable-solar-panel-mk2', 'storage-chest',

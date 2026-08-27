@@ -131,10 +131,8 @@ const TECH_REQ = {
   'battery': 'battery',                // 电池：需「电池技术」科技（对齐原版 Battery）
   'plastic-bar': 'plastic',           // 塑料板：需「塑料合成」科技（对齐原版 Plastics）
   'low-density-structure': 'rocket-science', // 低密度结构：需「火箭技术」（对齐原版 Rocket science）
-  'fishing-pole': 'fishing',            // 钓鱼竿：需「钓鱼」科技（对齐原版 Fishing）
   'solid-fuel': 'oil',               // 固体燃料：需「石油冶金」（对齐原版 Oil processing）
   // ===== 补齐官方缺失科技门控（对齐《异星工厂》科技树） =====
-  'steel-axe': 'steel-axe',            // 钢斧：需「钢斧」科技（对齐原版 Steel axe）
   'concrete': 'concrete',              // 混凝土：需「混凝土」科技（对齐原版 Concrete）
   'refined-concrete': 'concrete',      // 精炼混凝土：需「混凝土」科技
   'hazard-concrete': 'concrete',       // 警示混凝土：需「混凝土」科技

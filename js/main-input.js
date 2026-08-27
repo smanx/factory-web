@@ -255,16 +255,11 @@ function handleLeftDown() {
     const we = entAt(G.cursorTile.tx, G.cursorTile.ty);
     if (we && applyWireToNode(we, wireToolSelected())) { toast((we.wireChan === 'both' ? '已恢复双通道接入' : '仅接入' + (we.wireChan === 'red' ? '红线' : '绿线') + '网络') + '（' + ITEMS[we.type].name + '）'); return; }
   }
-  // 手持钓鱼竿点击水域 → 优先钓鱼（对齐《异星工厂》：玩家手持鱼竿点击水面钓鱼）
-  if (G.cursorTile && typeof tryFishAt === 'function' && isWater(G.cursorTile.tx, G.cursorTile.ty) && typeof hasFishingPoleSelected === 'function' && hasFishingPoleSelected()) {
-    tryFishAt(G.cursorTile.tx, G.cursorTile.ty);
-    return;
-  }
   if (buildActive() && G.cursorTile) {
     tryPlaceAt(G.cursorTile.tx, G.cursorTile.ty);
     lastPlaceKey = G.cursorTile.tx + ',' + G.cursorTile.ty;
   } else if (G.cursorTile && typeof tryFishAt === 'function' && isWater(G.cursorTile.tx, G.cursorTile.ty)) {
-    // 未手持建造物/鱼竿点击水域 → 提示需要鱼竿（对齐《异星工厂》钓鱼玩法）
+    // 点击水域 → 钓鱼（对齐《异星工厂》钓鱼玩法）
     tryFishAt(G.cursorTile.tx, G.cursorTile.ty);
   }
 }

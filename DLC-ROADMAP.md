@@ -28,6 +28,19 @@
 - [x] 在 GAME_DATA 暴露 DLC 可用物品/配方清单，并把 Space Age 材料链物品/配方/设备
   完整提取进 GAME_DATA 主表（stackSize/names/footprint/buildingHp/powerUse/deviceStats）
 
+### 阶段一.5：移除已废弃物品（对齐《异星工厂》2.0，本迭代新增）
+- [x] 移除《异星工厂》2.0 已删除的物品，仅保留 6 个创造/虚空物品（创造箱/虚空箱/
+      创造管道/虚空管道/创造带/虚空带）与调试用被动供电源：
+  - `steel-stick`（钢杆，2.0 移除）
+  - `fishing-pole`（钓鱼竿，2.0 移除；钓鱼玩法改为无需鱼竿直接点击水域）
+  - `iron-axe` / `steel-axe`（铁斧/钢斧，2.0 移除手挖工具）
+  - `steam-barrel`（桶装蒸汽，2.0 移除蒸汽桶装）
+- [x] 同步移除对应配方、科技（钓鱼/钢斧）、物品渲染分支、手挖工具耐久机制、
+      过滤器/调试面板条目。
+- [x] 存档迁移：读档时递归清除已废弃物品（`OBSOLETE_ITEMS` + `migrateIds`），
+      旧档不因残留废弃物品而报错。
+- [x] 全量 18 个校验脚本通过，构建通过。
+
 ### 阶段二：Space Age 基础材料链（低风险，先落地）
 - [x] 碳纤维 / 锂 / 锂板 / 超导体 / 电磁工厂（Electromagnetic plant）材料链
 - [x] 电磁科研包（electromagnetic-science-pack）及配套「电磁学」科技

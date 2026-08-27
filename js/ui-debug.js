@@ -29,7 +29,7 @@ const DBG_GIVE_GROUPS = [
   ]],
   ['板材·材料', [
     ['iron-plate', 200], ['copper-plate', 200], ['steel-plate', 100], ['stone-brick', 100],
-    ['iron-gear-wheel', 100], ['iron-stick', 100], ['steel-stick', 100], ['copper-cable', 100],
+    ['iron-gear-wheel', 100], ['iron-stick', 100], ['copper-cable', 100],
     ['plastic-bar', 100], ['wood', 100], ['concrete', 100], ['refined-concrete', 100],
     ['hazard-concrete', 100], ['stone-path', 100], ['landfill', 100]
   ]],
@@ -68,12 +68,12 @@ const DBG_GIVE_GROUPS = [
     ['atomic-bomb', 5], ['nuclear-fuel', 20]
   ]],
   ['装备·机器人', [
-    ['repair-pack', 50], ['iron-axe', 5], ['steel-axe', 5], ['light-armor', 5], ['heavy-armor', 5],
+    ['repair-pack', 50], ['light-armor', 5], ['heavy-armor', 5],
     ['logistic-robot', 20], ['construction-robot', 20], ['flying-robot-frame', 20],
     ['defender-capsule', 20], ['distractor-capsule', 20], ['destroyer-capsule', 20]
   ]],
   ['桶装流体', [
-    ['water-barrel', 50], ['steam-barrel', 50], ['crude-oil-barrel', 50], ['heavy-oil-barrel', 50],
+    ['water-barrel', 50], ['crude-oil-barrel', 50], ['heavy-oil-barrel', 50],
     ['light-oil-barrel', 50], ['petroleum-gas-barrel', 50], ['lubricant-barrel', 50], ['sulfuric-acid-barrel', 50]
   ]],
   ['载具·建筑', [
