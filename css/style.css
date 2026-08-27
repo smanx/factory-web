@@ -45,7 +45,7 @@ html, body {
 
 #hud-info {
   position: absolute;
-  bottom: 12px; right: 10px;
+  top: 0; left: 0;
   color: #cfd8cf;
   font-size: 13px;
   background: rgba(10, 14, 10, .55);
@@ -119,7 +119,7 @@ html, body {
 
 #topright {
   position: absolute;
-  top: 10px; right: 192px;
+  top: 0; right: 168px;
   display: flex; gap: 6px;
 }
 
@@ -159,7 +159,7 @@ html, body {
 
 #hotbar {
   position: absolute;
-  bottom: 12px; left: 50%;
+  bottom: 0; left: 50%;
   transform: translateX(-50%);
   display: flex; gap: 3px;
   padding: 4px;
@@ -171,7 +171,7 @@ html, body {
    第1行：角色图标 / 武器槽×3；第2行：装甲槽 / 武器弹药槽×3 */
 #quickbar {
   position: absolute;
-  bottom: 12px; left: 12px;
+  bottom: 0; left: 0;
   /* 默认隐藏：仅进入游戏后由 enterGame 显示（主页面/开始菜单不显示） */
   display: none;
   flex-direction: column;
@@ -225,9 +225,9 @@ html, body {
    队首当前在制项带 loading 旋转效果；完成一件后整体左移一格。 */
 #craft-queue {
   position: absolute;
-  bottom: 12px;
-  /* 快捷栏（2行×4格，32px格 + 3px间距/4px内边距）右缘 ≈ 157px，再留 8px 间距 */
-  left: 165px;
+  bottom: 0;
+  /* 快捷栏（2行×4格，32px格 + 3px间距/4px内边距）右缘 ≈ 157px，再留间距 */
+  left: 157px;
   display: none;
   flex-direction: row;
   align-items: center;
