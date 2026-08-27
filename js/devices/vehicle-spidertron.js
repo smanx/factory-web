@@ -87,7 +87,7 @@ class Spidertron extends Tank {
     }
     // 便携聚变反应堆全天候发电；个人太阳能板仅白天发电
     let solar = 0;
-    for (const e of this.equipGrid) if (e.id === 'solar-panel-equipment' || e.id === 'portable-solar-panel-mk2') solar += EQUIPMENT[e.id].powerOut;
+    for (const e of this.equipGrid) if (e.id === 'solar-panel-equipment') solar += EQUIPMENT[e.id].powerOut;
     const isDay = typeof isDaytime === 'function' ? isDaytime() : true;
     const totalProd = (prod - solar) + (isDay ? solar : 0);
     this.equipEnergyProd = totalProd;

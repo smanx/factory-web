@@ -56,9 +56,9 @@ const RECIPE_MAP = {
 // （自动会错用 logistic-chest-storage 配方），必须手工；模块 3 级官方用太空材料，项目简化。
 const KEEP_MANUAL_RECIPES = new Set([
   'chemical-science-pack',
-  'deconstruction-planner', 'upgrade-planner', 'diesel-locomotive', 'spidertron-remote',
+  'deconstruction-planner', 'upgrade-planner', 'spidertron-remote',
   'satellite', 'red-wire', 'green-wire',
-  'stone-path', 'portable-solar-panel-mk2', 'storage-chest',
+  'stone-path', 'storage-chest',
   'artillery-wagon', 'artillery-turret', 'artillery-shell', 'spidertron',
   'speed-module-3', 'productivity-module-3', 'efficiency-module-3', 'fusion-reactor-equipment',
   'cliff-explosives',
@@ -576,7 +576,7 @@ const cargoUnloadingBay = {};
 // energy-shield-equipment / movement-bonus-equipment / active-defense-equipment。
 // powerOut=power(kW)、powerCap=energy_source.buffer_capacity(→kJ)、shield=max_shield_value、
 // speed=movement_bonus、laser/放电范围=attack_parameters.range、放电冷却=cooldown(tick→s)。
-// 项目特有装备（portable-solar-panel-mk2 等）官方无对应 → 保持手工。
+// 项目特有装备官方无对应 → 保持手工。
 const equipment = {};
 {
   const sp = raw['solar-panel-equipment'] && raw['solar-panel-equipment']['solar-panel-equipment'];

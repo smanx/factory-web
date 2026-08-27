@@ -12,7 +12,7 @@ function tryEnterNearbyCar() {
   const checks = [[px, py], [px + DX[G.player.dir], py + DY[G.player.dir]]];
   for (const [tx, ty] of checks) {
     const e = entAt(tx, ty);
-    if (e && (e.type === 'car' || e.type === 'tank' || e.type === 'locomotive' || e.type === 'diesel-locomotive' || e.type === 'cargo-wagon' || e.type === 'fluid-wagon' || e.type === 'artillery-wagon') && typeof enterCar === 'function') { enterCar(e); return true; }
+    if (e && (e.type === 'car' || e.type === 'tank' || e.type === 'locomotive' || e.type === 'cargo-wagon' || e.type === 'fluid-wagon' || e.type === 'artillery-wagon') && typeof enterCar === 'function') { enterCar(e); return true; }
   }
   return false;
 }

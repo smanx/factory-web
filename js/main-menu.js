@@ -75,6 +75,9 @@ function enterGame() {
   if (sc) sc.classList.add('hidden');
   G.inMenu = false;
   G.paused = false;
+  // 进入游戏后才显示帧数/坐标 HUD（启动页不显示）
+  const hud = document.getElementById('hud-info');
+  if (hud) hud.style.display = 'block';
   const pb = document.getElementById('btn-pause');
   if (pb) { pb.textContent = '⏸ 暂停'; pb.title = '暂停游戏'; }
   toast('WASD 移动 · 左键挖矿/放建筑(覆盖建造) · 右键拆除 · R 旋转 · F 拿取 · Q 取消/拾取朝向 · 中键/E 面板 · T 科技 · P 统计 · B 蓝图 · Alt+B 蓝图库 · Alt+D 红图 · Alt+U 绿图 · K/L 存读档');
@@ -87,6 +90,9 @@ function returnToMenu() {
   if (typeof closePanel === 'function') closePanel();
   G.inMenu = true;
   G.paused = false;
+  // 回到启动页时隐藏帧数/坐标 HUD（仅在游戏内显示）
+  const hud = document.getElementById('hud-info');
+  if (hud) hud.style.display = 'none';
   G.sel = -1;
   G.blueMode = null;
   G.deconstructMode = false;

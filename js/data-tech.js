@@ -118,7 +118,6 @@ const TECH_REQ = {
   'power-armor': 'armor-power',
   'power-armor-mk2': 'armor-power-mk2',
   'solar-panel-equipment': 'armor-modular',
-  'portable-solar-panel-mk2': 'armor-modular',
   'battery-equipment': 'armor-modular',
   'battery-mk2-equipment': 'armor-modular',
   'exoskeleton-equipment': 'armor-power',
@@ -172,10 +171,9 @@ for (const id of ['defender-capsule', 'distractor-capsule', 'destroyer-capsule']
 TECH_REQ['barrel'] = 'barrel';
 for (const f of BARREL_FLUIDS) TECH_REQ[f + '-barrel'] = 'barrel';
 // ===== 铁路科技门控 =====
-const RAIL_ITEMS = ['rail', 'locomotive', 'cargo-wagon', 'train-stop', 'fluid-wagon', 'diesel-locomotive'];
+const RAIL_ITEMS = ['rail', 'locomotive', 'cargo-wagon', 'train-stop', 'fluid-wagon'];
 for (const id of RAIL_ITEMS) if (!TECH_REQ[id]) TECH_REQ[id] = 'railways';
 // 内燃机车需处理单元（电子学），故需铁路技术+电子学双重前置（对齐原版：内燃机车需进阶电子科技）
-TECH_REQ['diesel-locomotive'] = 'railways'; // 基础解锁为 railways，额外电子学前置由配方所用材料自动约束
 if (!TECH_REQ['rail-signal']) TECH_REQ['rail-signal'] = 'rail-signals';
 if (!TECH_REQ['rail-chain-signal']) TECH_REQ['rail-chain-signal'] = 'rail-signals';
 // 高架铁轨（Elevated Rails DLC）：高架桥墩与高架铁轨需「高架铁轨」科技解锁（对齐官方：前置混凝土+产能科研包）

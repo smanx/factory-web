@@ -209,7 +209,7 @@ class Car extends Entity {
       if (def.powerCap) cap += def.powerCap;
     }
     let solar = 0;
-    for (const e of (this.equipGrid || [])) if (e.id === 'solar-panel-equipment' || e.id === 'portable-solar-panel-mk2') solar += EQUIPMENT[e.id].powerOut;
+    for (const e of (this.equipGrid || [])) if (e.id === 'solar-panel-equipment') solar += EQUIPMENT[e.id].powerOut;
     const isDay = typeof isDaytime === 'function' ? isDaytime() : true;
     this.equipEnergyProd = (prod - solar) + (isDay ? solar : 0);
     this.equipEnergyMax = cap;

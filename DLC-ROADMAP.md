@@ -45,6 +45,19 @@
       旧档不因残留废弃物品而报错。
 - [x] 全量 18 个校验脚本通过，构建通过。
 
+### 阶段一.75：继续移除多余非官方物品（本迭代新增）
+- [x] 按「所有物品/配方 ID 与《异星工厂》官方一致，多出物品移除（仅保留 6 个创造/虚空物品）」原则，
+      继续移除以下官方不存在的物品（含配方/科技/渲染/面板/存档迁移）：
+  - `thruster-fuel-barrel` / `thruster-oxidizer-barrel`（桶装推进器燃料/氧化剂——官方无对应流体桶）
+  - `portable-solar-panel-mk2`（个人太阳能板 II——官方仅有 `portable-solar-panel`→`solar-panel-equipment`）
+  - `diesel-locomotive`（内燃机车——官方仅一种火车头 `locomotive`）
+- [x] 存档迁移：以上物品加入 `OBSOLETE_ITEMS`，`diesel-locomotive` → `locomotive`（ID_MIGRATE），
+      读档自动清除/迁移，旧档不报错。
+- [x] 同步清理 tools/generate-game-data.js 中 KEEP_MANUAL_RECIPES 残留条目。
+- [x] 仅剩的非官方物品 = 6 个创造/虚空物品（创造/虚空箱、创造/虚空管道、创造/虚空带）
+      + 官方卫星（`satellite`，locale 有官方条目）+ 火箭本体（`rocket-body`，发射井内部组装表示，对应官方 rocket-part 组装）。
+- [x] 全量 18 个校验脚本通过，构建通过。
+
 ### 阶段二：Space Age 基础材料链（低风险，先落地）
 - [x] 碳纤维 / 锂 / 锂板 / 超导体 / 电磁工厂（Electromagnetic plant）材料链
 - [x] 电磁科研包（electromagnetic-science-pack）及配套「电磁学」科技

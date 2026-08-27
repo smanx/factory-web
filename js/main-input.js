@@ -63,7 +63,23 @@ function bindInput() {
       saveSettings();
       toast(G.settings.altMode ? 'ALT 模式：开（显示建筑配方/内容叠加）' : 'ALT 模式：关');
     }
-    else if (k === 'escape' || k === 'q') {
+    else if (k === 'escape') {
+      // ESC 键：优先关闭当前打开的任何弹框/面板（驾驶界面/蓝图/拆除模式/面板）
+      if (G.driving) { if (typeof exitCar === 'function') exitCar(); }
+      else if (G.blueMode) {
+        cancelBlueprint();
+      } else if (G.deconstructMode) {
+        toggleDeconstructMode(false);
+      } else if (G.panelMode) {
+        closePanel();
+      }
+      // 当前页面没有任何弹框和面板时：打开设置弹框
+      else {
+        openPanel('set');
+      }
+    }
+    else if (k === 'q') {
+      // Q 键：保留原快速取/取消选择逻辑（对齐《异星工厂》Q 取消选择）
       if (G.driving) { if (typeof exitCar === 'function') exitCar(); }
       else if (G.blueMode) {
         cancelBlueprint();

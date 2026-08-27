@@ -86,7 +86,6 @@ const BUILD_DEFS = {
   'roboport':           { w: 4, h: 4, solid: true },
   'rail':               { w: 1, h: 1, solid: false },
   'locomotive':         { w: 1, h: 1, solid: true },
-  'diesel-locomotive':  { w: 1, h: 1, solid: true },
   'cargo-wagon':        { w: 1, h: 1, solid: true },
   'fluid-wagon':        { w: 1, h: 1, solid: true },
   'artillery-wagon':    { w: 1, h: 1, solid: true },
@@ -174,7 +173,7 @@ const BUILDING_HP = {
   // 照明与告警（官方 small-lamp 100 / programmable-speaker 150）
   'small-lamp': 100, 'programmable-speaker': 150,
   // 铁路（官方 rail 200 / locomotive 1000 / 车厢 600 / train-stop 250 / 信号灯 100）
-  'rail': 200, 'locomotive': 1000, 'diesel-locomotive': 1000, 'cargo-wagon': 600, 'fluid-wagon': 600, 'artillery-wagon': 600, 'train-stop': 250, 'rail-signal': 100, 'rail-chain-signal': 100,
+  'rail': 200, 'locomotive': 1000, 'cargo-wagon': 600, 'fluid-wagon': 600, 'artillery-wagon': 600, 'train-stop': 250, 'rail-signal': 100, 'rail-chain-signal': 100,
   // 高架铁轨（Elevated Rails 官方 max_health：rail-support 1000 / rail-ramp 2000 / 高架轨道 200）
   'rail-support': 1000, 'rail-ramp': 2000,
   // 载具（官方 car 450 / tank 2000 / spidertron 400）

@@ -55,6 +55,8 @@ html, body {
   /* 帧数/坐标 HUD 需显示在所有弹框（科技研究/背包等，最高 z-index 240）之上，
      且位于 tooltip(9999) 之下，故使用高 z-index */
   z-index: 9990;
+  /* 启动页/主菜单不显示 HUD，进入游戏后才由 enterGame 显示 */
+  display: none;
 }
 
 /* HUD 信息项：改为可点击（点击弹出详情弹框） */
@@ -1997,3 +1999,64 @@ html, body {
 /* 列表点击闪烁定位 */
 .tech-flash { animation: techFlash 1.2s ease; }
 @keyframes techFlash { 0%,100% { background: transparent; } 40% { background: rgba(255,210,60,.25); } }
+
+/* ===== 配方设备：交互面板双栏布局 ===== */
+#panel.machine-wide {
+  width: 1080px;
+  max-width: calc(100vw - 32px);
+  top: auto;
+  bottom: 92px;
+  transform: translateX(-50%);
+  max-height: calc(100vh - 150px);
+}
+#panel.machine-wide #panel-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+#panel.machine-wide .inv-layout.machine-layout { gap: 12px; }
+#panel.machine-wide .inv-col-right { flex: 1.2; }
+
+/* 配方设备右侧交互信息 */
+.mch-recipe-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mch-recipe-head b { color: #ffe08a; }
+.mch-recipe-head .btn.sm { margin-left: auto; }
+
+.mch-flow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0 10px;
+  padding: 10px;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+}
+.mch-side { flex: 1; min-width: 0; }
+.mch-side-title { font-size: 11px; color: #9fb2c4; margin-bottom: 4px; text-align: center; }
+.mch-inp-row, .mch-out-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.mch-io-slot {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 58px; height: 62px; background: rgba(0,0,0,.25); border: 1px solid rgba(255,255,255,.1);
+  border-radius: 6px; cursor: pointer; transition: all .15s; padding: 4px;
+}
+.mch-io-slot:hover { border-color: #ffd23c; background: rgba(255,210,60,.08); }
+.mch-io-slot.full { border-color: #57b95c; background: rgba(87,185,92,.08); }
+.mch-io-slot img { width: 30px; height: 30px; border-radius: 4px; }
+.mch-io-n { font-size: 11px; color: #cdd6df; margin-top: 2px; white-space: nowrap; }
+.mch-prog { flex: 0 0 130px; display: flex; flex-direction: column; gap: 4px; min-width: 120px; }
+.mch-prog .bar { width: 100%; }
+.mch-prog .bar-time { text-align: center; }
+.mch-prog .status { text-align: center; font-size: 12px; margin-top: 2px; }
+.mch-help { margin-top: 8px; }
+
+/* 配方选择面板：右下角确认按钮 */
+.rcp-confirm-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
+.rcp-confirm-row .rcp-confirm {
+  font-size: 15px; padding: 10px 22px; font-weight: bold; border-radius: 8px;
+  background: linear-gradient(90deg, #3f8f4f, #2f7a3f); color: #fff;
+  border: 1px solid #57b95c; box-shadow: 0 0 8px rgba(87,185,92,.25);
+}
+.rcp-confirm-row .rcp-confirm:hover:not(:disabled) { background: linear-gradient(90deg, #4aa45c, #3a8a4a); }

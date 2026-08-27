@@ -95,7 +95,9 @@ let fpsSmooth = 60;
 // 保留旧键常量供首次升级时迁移（见 migrateLegacySave）。
 
 // 已废弃物品（对齐《异星工厂》2.0：以下物品已被官方移除，读档时从背包/各容器中清除）
-const OBSOLETE_ITEMS = ['steel-stick', 'fishing-pole', 'iron-axe', 'steel-axe', 'steam-barrel'];
+const OBSOLETE_ITEMS = ['steel-stick', 'fishing-pole', 'iron-axe', 'steel-axe', 'steam-barrel',
+  'thruster-fuel-barrel', 'thruster-oxidizer-barrel', 'portable-solar-panel-mk2',
+  'diesel-locomotive'];
 
 function saveSettings() {
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(G.settings)); } catch (e) {}
@@ -357,6 +359,8 @@ function applySave(d) {
     'personal-roboport-mk2': 'personal-roboport-mk2-equipment',
     // 旧版基础储物箱（官方无此物品，basic 存储用铁/钢/木箱）→ 并入钢箱
     'storage-chest': 'steel-chest',
+    // 内燃机车（官方无此物品，仅一种火车头 locomotive）→ 并入标准车头
+    'diesel-locomotive': 'locomotive',
   };
   // 递归迁移：把对象/数组里出现的所有旧 ID 字符串键/值换成新 ID
   function migrateIds(obj) {

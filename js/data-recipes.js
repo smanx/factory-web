@@ -86,7 +86,6 @@ const RECIPES = {
   // ===== 铁路系统（火车） =====
   'rail':        { time: 0.5, inp: { 'iron-stick': 1, 'steel-plate': 1, 'stone': 1 }, out: { 'rail': 2 } },
   'locomotive':        { time: 4, inp: { 'electronic-circuit': 10, 'engine-unit': 20, 'steel-plate': 30 }, out: { 'locomotive': 1 } },
-  'diesel-locomotive': { time: 5,   inp: { 'engine-unit': 20, 'steel-plate': 10, 'processing-unit': 5 },        out: { 'diesel-locomotive': 1 } },
   'cargo-wagon':        { time: 1, inp: { 'iron-gear-wheel': 10, 'iron-plate': 20, 'steel-plate': 20 }, out: { 'cargo-wagon': 1 } },
   'fluid-wagon':        { time: 1.5, inp: { 'iron-gear-wheel': 10, 'pipe': 8, 'steel-plate': 16, 'storage-tank': 1 }, out: { 'fluid-wagon': 1 } },
   'artillery-wagon':        { time: 4, inp: { 'advanced-circuit': 20, 'engine-unit': 64, 'iron-gear-wheel': 10, 'pipe': 16, 'steel-plate': 40 }, out: { 'artillery-wagon': 1 } },
@@ -342,7 +341,6 @@ const RECIPES = {
   'power-armor-mk2':        { time: 25, inp: { 'efficiency-module-2': 25, 'electric-engine-unit': 40, 'low-density-structure': 30, 'processing-unit': 60, 'speed-module-2': 25 }, out: { 'power-armor-mk2': 1 } },
   // ===== 个人装备件 =====
   'solar-panel-equipment':        { time: 10, inp: { 'advanced-circuit': 2, 'solar-panel': 1, 'steel-plate': 5 }, out: { 'solar-panel-equipment': 1 } },
-  'portable-solar-panel-mk2': { time: 8, inp: { 'solar-panel-equipment': 2, 'processing-unit': 2, 'steel-plate': 5 }, out: { 'portable-solar-panel-mk2': 1 } },
   'fusion-reactor-equipment': { time: 20, inp: { 'nuclear-reactor': 1, 'processing-unit': 20, 'low-density-structure': 10, 'electric-engine-unit': 10 }, out: { 'fusion-reactor-equipment': 1 } },
   'battery-equipment':        { time: 10, inp: { 'battery': 5, 'steel-plate': 10 }, out: { 'battery-equipment': 1 } },
   'battery-mk2-equipment':        { time: 10, inp: { 'battery-equipment': 10, 'low-density-structure': 5, 'processing-unit': 15 }, out: { 'battery-mk2-equipment': 1 } },

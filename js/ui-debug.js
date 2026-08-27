@@ -77,7 +77,7 @@ const DBG_GIVE_GROUPS = [
     ['light-oil-barrel', 50], ['petroleum-gas-barrel', 50], ['lubricant-barrel', 50], ['sulfuric-acid-barrel', 50]
   ]],
   ['载具·建筑', [
-    ['car', 5], ['tank', 5], ['spidertron', 5], ['locomotive', 5], ['diesel-locomotive', 5], ['cargo-wagon', 5],
+    ['car', 5], ['tank', 5], ['spidertron', 5], ['locomotive', 5], ['cargo-wagon', 5],
     ['fluid-wagon', 5], ['artillery-wagon', 5], ['train-stop', 5], ['rail', 100], ['rail-signal', 50], ['rail-chain-signal', 50]
   ]],
   ['物流·传送带', [

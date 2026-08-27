@@ -98,34 +98,7 @@ DEVICE_RENDER['locomotive'] = function (ctx, e, gx, gy, dir, alpha) {
   ctx.restore();
 };
 
-// ===== 内燃机车渲染（蓝灰进阶车头，带速度标识） =====
-DEVICE_RENDER['diesel-locomotive'] = function (ctx, e, gx, gy, dir, alpha) {
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.translate(gx + TILE / 2, gy + TILE / 2);
-  ctx.rotate(dir * Math.PI / 2);
-  // 车体（蓝灰）
-  ctx.fillStyle = '#3f6fa8';
-  rrPath(ctx, -TILE * 0.42, -TILE * 0.32, TILE * 0.84, TILE * 0.64, TILE * 0.12);
-  ctx.fill();
-  ctx.strokeStyle = '#1f3f68'; ctx.lineWidth = 2; ctx.stroke();
-  // 车头驾驶舱窗（体现内燃机车更流线）
-  ctx.fillStyle = '#9fc8ef';
-  rrPath(ctx, TILE * 0.02, -TILE * 0.18, TILE * 0.22, TILE * 0.36, TILE * 0.06);
-  ctx.fill();
-  // 车灯朝前
-  ctx.fillStyle = '#ffe08a';
-  ctx.fillRect(TILE * 0.2, -TILE * 0.06, TILE * 0.1, TILE * 0.12);
-  // 速度标识（两道速度线，标志更快）
-  ctx.strokeStyle = '#c8e0ff'; ctx.lineWidth = 2; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(-TILE * 0.3, -TILE * 0.1); ctx.lineTo(-TILE * 0.3, -TILE * 0.24); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(-TILE * 0.18, -TILE * 0.1); ctx.lineTo(-TILE * 0.18, -TILE * 0.24); ctx.stroke();
-  ctx.lineCap = 'butt';
-  // 燃料状态灯
-  ctx.fillStyle = (e.fuel || 0) > 0 ? '#6fd06f' : '#b04040';
-  ctx.fillRect(-TILE * 0.34, -TILE * 0.38, TILE * 0.12, TILE * 0.12);
-  ctx.restore();
-};
+
 
 // ===== 车厢渲染 =====
 DEVICE_RENDER['cargo-wagon'] = function (ctx, e, gx, gy, dir, alpha) {
