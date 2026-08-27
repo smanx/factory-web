@@ -154,7 +154,7 @@ class Centrifuge extends Entity {
     if (!this.recipe) return false;
     const rec = this.recipeObj();
     if (!rec || !rec.inp[item]) return false;
-    if ((this.inp[item] || 0) >= 50) return false;
+    if ((this.inp[item] || 0) >= rec.inp[item] * 2) return false;
     this.inp[item] = (this.inp[item] || 0) + 1;
     return true;
   }

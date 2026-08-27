@@ -19,6 +19,34 @@ function drawItemGlyph(x, id, cx, cy, s) {
   const dark = 'rgba(10,12,16,.55)';
   x.save();
   x.translate(cx, cy);
+  // emoji 图标优先：所有配置了 emoji 字段的物品一律使用 emoji 渲染
+  const _emoji = ITEMS[id].emoji;
+  if (_emoji) {
+    const eb = r * 0.86;
+    const eg = x.createLinearGradient(-eb, -eb, eb, eb);
+    eg.addColorStop(0, lightenColor(col, 0.45));
+    eg.addColorStop(1, darkenColor(col, 0.38));
+    x.fillStyle = eg;
+    rrPath(x, -eb, -eb, eb * 2, eb * 2, eb * 0.34);
+    x.fill();
+    x.strokeStyle = darkenColor(col, 0.55);
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    x.fillStyle = 'rgba(255,255,255,.22)';
+    rrPath(x, -eb + s * 0.08, -eb + s * 0.08, eb * 2 - s * 0.16, eb * 0.62, eb * 0.28);
+    x.fill();
+    x.fillStyle = 'rgba(0,0,0,.16)';
+    rrPath(x, -eb + s * 0.08, eb - eb * 0.5, eb * 2 - s * 0.16, eb * 0.42, eb * 0.22);
+    x.fill();
+    x.font = Math.round(eb * 1.15) + 'px "Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",system-ui';
+    x.textAlign = 'center';
+    x.textBaseline = 'middle';
+    x.fillText(_emoji, 0, 1);
+    x.fillStyle = 'rgba(255,255,255,.1)';
+    x.fillRect(-eb * 0.7, eb * 0.6, eb * 1.4, Math.max(1, s * 0.05));
+    x.restore();
+    return;
+  }
   switch (id) {
     case 'iron-ore':
     case 'copper-ore': {
@@ -385,17 +413,26 @@ function drawItemGlyph(x, id, cx, cy, s) {
       x.fillStyle = 'rgba(0,0,0,.16)';
       rrPath(x, -box + s * 0.08, box - box * 0.5, box * 2 - s * 0.16, box * 0.42, box * 0.22);
       x.fill();
-      // 文字：白字 + 深色描边，清晰醒目
-      const label = (ITEMS[id].mark || ITEMS[id].name[0]).slice(0, 2);
-      x.font = 'bold ' + Math.round(box * 1.0) + 'px system-ui';
-      x.textAlign = 'center';
-      x.textBaseline = 'middle';
-      x.lineWidth = Math.max(1, s * 0.09);
-      x.strokeStyle = 'rgba(10,14,20,.85)';
-      x.lineJoin = 'round';
-      x.strokeText(label, 0, 1);
-      x.fillStyle = '#f7f9fb';
-      x.fillText(label, 0, 1);
+      // emoji 图标优先（若配置了 emoji 字段则渲染 emoji，否则回退到首字符/标记文字）
+      const emoji = ITEMS[id].emoji;
+      if (emoji) {
+        x.font = Math.round(box * 1.15) + 'px "Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",system-ui';
+        x.textAlign = 'center';
+        x.textBaseline = 'middle';
+        x.fillText(emoji, 0, 1);
+      } else {
+        // 文字：白字 + 深色描边，清晰醒目
+        const label = (ITEMS[id].mark || ITEMS[id].name[0]).slice(0, 2);
+        x.font = 'bold ' + Math.round(box * 1.0) + 'px system-ui';
+        x.textAlign = 'center';
+        x.textBaseline = 'middle';
+        x.lineWidth = Math.max(1, s * 0.09);
+        x.strokeStyle = 'rgba(10,14,20,.85)';
+        x.lineJoin = 'round';
+        x.strokeText(label, 0, 1);
+        x.fillStyle = '#f7f9fb';
+        x.fillText(label, 0, 1);
+      }
       // 底部迷你高光（金属质感）
       x.fillStyle = 'rgba(255,255,255,.1)';
       x.fillRect(-box * 0.7, box * 0.6, box * 1.4, Math.max(1, s * 0.05));
@@ -486,6 +523,16 @@ function fuelConsumptionMult() {
   const lvl = fuelEfficiencyLevel();
   if (!lvl) return 1;
   return 1 / Math.pow(1.1, lvl);
+}
+
+// 健康无限科技等级（对齐《异星工厂》Space Age Health 科技）：每级提升主角最大生命值 +50
+function healthLevel() {
+  if (!techResearched('health')) return 0;
+  return techLevel('health');
+}
+// 主角最大生命值（基础 250 + 健康无限科技每级 +50，对齐官方 health 科技 character-health-bonus +50/级）
+function playerMaxHp() {
+  return PLAYER_BASE_MAX_HP + 50 * healthLevel();
 }
 
 // 武器伤害无限科技倍率（对齐《异星工厂》Weapon damage）：每级 +10%，作用于玩家武器与炮塔
@@ -600,6 +647,7 @@ for (const id in ITEMS) {
         color: qColorOf(q),
         desc: descBase + '（' + qNames[q] + '品质：属性更强）',
         mark: base.mark,
+        emoji: base.emoji,
         _quality: q,
         _base: baseId,
         _qualityVariant: true,
@@ -607,3 +655,16 @@ for (const id in ITEMS) {
     }
   }
 })();
+
+// ===== 机械臂精准补货辅助 =====
+// 对齐《异星工厂》：机械臂按配方实际消耗量精准补货，而非一次性塞满硬编码大数值。
+// 1) 组装机/化工厂/离心机等：每种原料补充到「配方单次消耗量 × 2」
+// 2) 熔炉：矿石补充到「冶炼配方单次消耗量 × 2」，燃料补充到「足够燃烧 5 秒」的量
+function smeltNeed(item) {
+  for (const r of SMELTS) if (r.inp === item) return r.inCount || 1;
+  return 1;
+}
+// 燃料上限 = 足够燃烧 5 秒所需的燃料块数（每块燃料提供 fuelEnergy 点能量，熔炉每秒消耗 fuelConsumptionMult() 点）
+function fuelLimitFor5s(fuelEnergy) {
+  return Math.max(1, Math.ceil(5 * fuelConsumptionMult() / fuelEnergy));
+}

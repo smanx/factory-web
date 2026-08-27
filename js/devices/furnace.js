@@ -79,12 +79,12 @@ class Furnace extends Entity {
     }
   }
   giveItem(item) {
-    if (item === 'rocket-fuel' && this.fuelRocket < 20) { this.fuelRocket++; return true; }
-    if (item === 'coal' && this.fuelCoal < 20) { this.fuelCoal++; return true; }
-    if (item === 'wood' && this.fuelWood < 20) { this.fuelWood++; return true; }
-    if (item === 'solid-fuel' && this.fuelSolid < 20) { this.fuelSolid++; return true; }
+    if (item === 'rocket-fuel' && this.fuelRocket < fuelLimitFor5s(ROCKET_FUEL_ENERGY)) { this.fuelRocket++; return true; }
+    if (item === 'coal' && this.fuelCoal < fuelLimitFor5s(COAL_ENERGY)) { this.fuelCoal++; return true; }
+    if (item === 'wood' && this.fuelWood < fuelLimitFor5s(WOOD_FUEL_ENERGY)) { this.fuelWood++; return true; }
+    if (item === 'solid-fuel' && this.fuelSolid < fuelLimitFor5s(SOLID_FUEL_ENERGY)) { this.fuelSolid++; return true; }
     for (const r of SMELTS)
-      if (r.inp === item && (this.inp[item] || 0) < 50) { this.inp[item] = (this.inp[item] || 0) + 1; return true; }
+      if (r.inp === item && (this.inp[item] || 0) < (r.inCount || 1) * 2) { this.inp[item] = (this.inp[item] || 0) + 1; return true; }
     return false;
   }
   peekItem() {

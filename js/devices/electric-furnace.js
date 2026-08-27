@@ -67,7 +67,7 @@ class ElectricFurnace extends Furnace {
     }
     if (item === 'coal') return false;
     for (const r of SMELTS)
-      if (r.inp === item && (this.inp[item] || 0) < 50) { this.inp[item] = (this.inp[item] || 0) + 1; return true; }
+      if (r.inp === item && (this.inp[item] || 0) < (r.inCount || 1) * 2) { this.inp[item] = (this.inp[item] || 0) + 1; return true; }
     return false;
   }
   contents() {

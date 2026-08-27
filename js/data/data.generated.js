@@ -166,6 +166,7 @@ const GAME_DATA = {
   "land-mine": 100,
   "artillery-turret": 10,
   "artillery-shell": 1,
+  "artillery-targeting-remote": 1,
   "rail": 100,
   "locomotive": 5,
   "cargo-wagon": 5,
@@ -293,6 +294,7 @@ const GAME_DATA = {
   "energy-shield-mk2-equipment": 20,
   "belt-immunity-equipment": 20,
   "discharge-defense-equipment": 20,
+  "discharge-defense-remote": 1,
   "wood": 100,
   "wooden-chest": 50,
   "iron-chest": 50,
@@ -2421,6 +2423,16 @@ const GAME_DATA = {
     "foundry": 1
    }
   },
+  "yumako-mash": {
+   "time": 1,
+   "inp": {
+    "yumako": 1
+   },
+   "out": {
+    "yumako-seed": 1,
+    "yumako-mash": 2
+   }
+  },
   "bioflux": {
    "time": 6,
    "inp": {
@@ -3888,6 +3900,7 @@ const GAME_DATA = {
   "tungsten-carbide": "foundry",
   "metallurgic-science-pack": "foundry",
   "foundry": "foundry",
+  "yumako-mash": "biochamber",
   "bioflux": "biochamber",
   "nutrients-from-bioflux": "biochamber",
   "nutrients-from-spoilage": "biochamber",
@@ -4608,6 +4621,10 @@ const GAME_DATA = {
    "zh": "重炮炮弹",
    "en": "Artillery shell"
   },
+  "artillery-targeting-remote": {
+   "zh": "重炮瞄准遥控器",
+   "en": "Artillery targeting remote"
+  },
   "rail": {
    "zh": "铁轨",
    "en": "Rail"
@@ -5176,6 +5193,10 @@ const GAME_DATA = {
    "zh": "放电防御模块",
    "en": "Discharge defense"
   },
+  "discharge-defense-remote": {
+   "zh": "放电防御遥控器",
+   "en": "Discharge defense remote"
+  },
   "wood": {
    "zh": "木材",
    "en": "Wood"
@@ -5289,6 +5310,10 @@ const GAME_DATA = {
   "advanced-thruster-oxidizer": {
    "zh": "高级推进器氧化剂",
    "en": "Advanced thruster oxidizer"
+  },
+  "yumako-mash": {
+   "zh": "玉玛果加工",
+   "en": "Yumako processing"
   },
   "nutrients-from-bioflux": {
    "zh": "生物结晶制营养素",
@@ -6617,6 +6642,22 @@ const GAME_DATA = {
   "sulfuric-acid-barrel": "intermediate-products",
   "fluoroketone-cold-barrel": "intermediate-products",
   "fluoroketone-hot-barrel": "intermediate-products"
+ },
+ "pollution": {
+  "burner-mining-drill": 12,
+  "electric-mining-drill": 10,
+  "big-mining-drill": 40,
+  "pumpjack": 10,
+  "stone-furnace": 2,
+  "steel-furnace": 4,
+  "electric-furnace": 1,
+  "boiler": 30,
+  "oil-refinery": 6,
+  "chemical-plant": 4,
+  "centrifuge": 4,
+  "nuclear-reactor": 7,
+  "burner-inserter": 0.3,
+  "locomotive": 3
  },
  "enemy": {
   "small-wriggler-pentapod": {

@@ -995,15 +995,112 @@
 >   全量 18 个校验脚本通过，`node build.js` 构建通过。
 
 
+### 阶段五.4：Gleba 雅玛果加工对齐官方（含种子自持，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> 依据「所有物品/配方数据与《异星工厂》官方一致」原则，将项目 `yumako-mash`（玉玛果泥）配方
+> 对齐官方 `yumako-processing`：
+> - **配方数据对齐官方**：`1 雅玛果 → 2 玉玛果泥 + 1 玉玛果种子`（1s，官方 yumako-processing），
+>   生成脚本 `RECIPE_MAP` 新增 `yumako-mash → yumako-processing` 映射，并从 `KEEP_MANUAL_RECIPES`
+>   移除该项目自定条目，使 `GAME_DATA.recipe['yumako-mash']` 由官方单源桥接（配方名显示「玉玛果加工/Yumako processing」）。
+> - **自持农业**：此前玉玛果加工不返种子、需依赖种子来源；对齐官方后加工自返种子，配合
+>   `yumako-growing`（种子→6 玉玛果）构成「果→泥+种子→再种植」的 Gleba 自持农业循环，
+>   与 `jellynut-processing`（官方已返果仁种子）一致。
+> - **手工表一致性**：`data-recipes.js` 手工 `yumako-mash` 同步补上种子产出作为兜底，
+>   运行时仍以 `GAME_DATA.recipe` 官方单源为准。
+> - **守门人**：`verify-dlc` 新增玉玛果加工产出种子/果泥/耗时 1s 三项校验，
+>   防止后续改动破坏官方一致性；全量 18 个校验脚本通过，`node build.js` 构建通过。
+
 ### 阶段六：后续开发计划（迭代方向）
 
 > 基于本次审计，核心数据对齐与 DLC 内容接入已全部完成。后续迭代方向（按价值排序）：
->
-> 1. **行星资源差异化落地**：将部分「适配为基础资源」的 Space Age 星球配方还原为官方行星专属
->    生产链（如熔融金属浇铸已在铸造厂落地，可继续推进熔融铁→铸件在铸造厂的完整官方配方）。
-> 2. **太空平台完整轨道系统**：空间平台体系（地基/中枢/推进器/小行星收集器）已接入，可继续
->    完善轨道平台内部物流（平台内传送带/机械臂网络、平台燃料管理、远程遥测交互）。
-> 3. **品质系统深化**：品质已接入 6 级与品质模块，可继续深化品质对建筑/装备数值加成的逐项
->    核验与精修。
-> 4. **数值体验精修**：逐项复核 DLC 设备的模块槽/信号塔加成/污染排放与官方一致性，补齐遗漏。
-> 5. **存档兼容回归**：为新增 DLC 物品/配方补充存档迁移用例，确保旧档读档不报错、新物品可正常落地。
+
+1. **行星资源差异化落地**：将部分「适配为基础资源」的 Space Age 星球配方还原为官方行星专属
+   生产链（如熔融金属浇铸已在铸造厂落地，可继续推进熔融铁→铸件在铸造厂的完整官方配方）。
+2. **太空平台完整轨道系统**：空间平台体系（地基/中枢/推进器/小行星收集器）已接入，可继续
+   完善轨道平台内部物流（平台内传送带/机械臂网络、平台燃料管理、远程遥测交互）。
+3. **品质系统深化**：品质已接入 6 级与品质模块，可继续深化品质对建筑/装备数值加成的逐项
+   核验与精修。
+4. **数值体验精修**：逐项复核 DLC 设备的模块槽/信号塔加成/污染排放与官方一致性，补齐遗漏。
+5. **存档兼容回归**：为新增 DLC 物品/配方补充存档迁移用例，确保旧档读档不报错、新物品可正常落地。
+
+### 阶段六.1：数据对齐守门人（verify-data-integrity 强化，本迭代新增）
+
+> 本迭代对「资源铁律」再加一道自动化守门人，把「所有物品 ID 与官方对齐、仅保留 6 个创造/虚空测试物品」
+> 由人工审计升级为 **CI 强制校验**，防止未来新增物品时悄悄引入非官方命名：
+
+- [x] `verify-data-integrity.js` 新增第 6 项校验「**非创造/虚空物品均使用官方原型名**」：
+      加载 `factorio-data`（经 `tools/convert-data.js`）得到全部官方原型名集合，逐一核对 `ITEMS` 中
+      除 6 个创造/虚空测试物品（创造/虚空箱、创造/虚空管道、创造/虚空带）与显式白名单内部件
+      （`rocket-body` 发射井内部组装体、`satellite` 官方卫星 locale 条目）外的所有物品 ID，
+      必须命中官方原型名；任何非官方 ID 都判定失败并列出清单。
+- [x] 校验结果：当前 ITEMS 327 项中，非创造/虚空物品 **全部** 命中官方原型名（非官方 = 0）。
+- [x] 全量 18 个校验脚本通过，构建通过。
+
+### 阶段六.1.1：物品堆叠上限对齐守门人（verify-data-integrity 新增第 7 项校验，本迭代新增）
+
+> 「所有物品的各项信息都要保持和官方一致」的又一道 CI 守门人：堆叠上限（stack_size）是物品最直观的数值，
+> 把它也纳入自动校验，防止未来新增/调整物品堆叠时与官方 `factorio-data` 产生偏差：
+
+- [x] `verify-data-integrity.js` 新增第 7 项校验「**物品堆叠上限与官方一致**」：
+      从 `factorio-data`（经 `tools/convert-data.js`）提取全部官方 item 类原型（item/ammo/gun/capsule/
+      armor/module/tool/rail-planner/载具车厢/遥控器/起始包等 21 类）的 `stack_size`，与项目
+      `GAME_DATA.stackSize`（自动桥接，官方优先）+ `STACK_SIZES`（手工兜底）逐项核对，
+      任何偏差（创造/虚空等官方无原型者除外）都判定失败并列出项目值 vs 官方值。
+- [x] 校验结果：当前项目 296 个有官方原型的物品堆叠 **全部** 与官方一致（偏差 = 0）。
+- [x] 全量 18 个校验脚本通过，构建通过。
+
+### 阶段四.30：手动遥控器（Artillery targeting remote / Discharge defense remote，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **物品**：`artillery-targeting-remote`（重炮瞄准遥控器，堆叠 1）/ `discharge-defense-remote`（放电防御遥控器，堆叠 1），
+>   堆叠 / 中英命名全部来自 GAME_DATA（factorio-data 官方：Artillery targeting remote / Discharge defense remote），
+>   未单独维护数值表（生成脚本从官方 item 原型自动提取 stack_size 与 locale 命名）。
+> - **授予机制**（对齐官方 spawnable shortcut 遥控器）：官方两款遥控器由科技解锁后经快捷栏「spawn-item」自动授予，
+>   非组装配方产出。本项目对齐此机制——研究「军事科技 IV」（military4，官方 artillery 科技）后自动授予
+>   重炮瞄准遥控器；研究「装甲电力」（armor-power，官方 discharge-defense-equipment 科技）后自动授予放电防御遥控器。
+>   授权逻辑集中在 `grantTechUnlockItems(tech)`（lab.js 研究完成时调用），item→tech 映射单点维护。
+> - **玩法**：
+>   - **重炮瞄准遥控器**（对齐官方 artillery-remote capsule_action）：手持后点击地图任意位置，
+>     自动锁定落点附近（5 格内）最近敌人，否则直接轰击落点；选择最近的炮兵连（artillery-turret）或
+>     炮兵车厢（artillery-wagon，需有炮弹）向其发射炮弹，命中造成官方大范围爆炸（ARTILLERY_RADIUS 5 格）。
+>     实现手动炮兵瞄准，为炮兵连/炮兵车厢补齐「指定坐标开火」的官方玩法。
+>   - **放电防御遥控器**（对齐官方 equipment-remote capsule_action）：手持后点击地图任意位置，
+>     远程触发放电防御装备（需先安装放电防御 equipment 且个人电网电力充足），对玩家周围敌人释放连锁电击。
+> - **数据单源**：两款遥控器为手持工具（isToolItem 桥接），非可建造/可组装配方物品；
+>   堆叠/命名来自 data.generated.js（factorio-data 官方），未单独维护数值表。
+> - **校验**：verify-data-integrity 把两款遥控器加入「特殊产出（非合成）」白名单；
+>   全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+
+### 阶段四.31：健康无限科技（Health，Space Age，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **科技**：新增「健康」无限科技（`health`，官方 Space Age Health 科技）。每次研究提升主角
+>   最大生命值 +50（官方 `character-health-bonus` +50/级），让主角在终局更强耐打。
+> - **数据单源**：科技定义在 data-tech-tree.js（与其它无限科技一致，固定成本、等级递增效果），
+>   效果函数 `playerMaxHp()` 读取 `techLevel('health')`（对齐官方 health 科技语义）。
+> - **玩法**：研究「健康」科技后，主角最大生命值由基础 250 提升为 250+50×等级，受伤回血上限随之
+>   提高；每次研究即时刷新 `G.playerHPmax`（lab.js 研究完成时同步）。前置：空间科技 + 农业科技
+>   （官方 agricultural-science-pack 前置）+ 实用科技 + 军事科技 IV；成本用空间/农业/实用/军事科学包。
+> - **校验**：verify-dlc 新增健康科技校验（7 项），全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段六.2：污染排放单源化（Pollution emission single-sourcing，本迭代新增）
+
+> 依据「所有数据/参数从 data.generated.js 单源获取，不单独维护第二套数值」原则，
+> 把污染系统各污染源设备的排放系数从设备侧硬编码升级为官方数据单源化：
+
+- **数据单源**：`tools/generate-game-data.js` 新增 `GAME_DATA.pollution`——从 factorio-data 官方
+  实体原型 `energy_source.emissions_per_minute.pollution` 现场提取各污染源设备的排放量，
+  写入 data.generated.js。官方 `emissions_per_minute` 为每分钟排放量，项目以「/s 简化值」
+  接入全局污染模型，直接采用官方数值（石炉 2 / 钢炉 4 / 炼油 6 / 锅炉 30 / 热能采矿机 12 等
+  与官方完全一致），未单独维护数值表。
+- **覆盖设备**：热能采矿机 12 / 电采矿机 10 / 大型采矿机 40 / 抽油机 10 / 石炉 2 / 钢炉 4 /
+  电炉 1 / 锅炉 30 / 炼油厂 6 / 化工厂 4 / 离心机 4（全部官方 emissions_per_minute）。
+- **官方无直接 emissions_per_minute 的设备**（核反应堆 / 热能机械臂 / 火车头，官方经其它机制
+  建模污染，energy_source 无独立 emissions 字段）：由 `POLLUTION_MANUAL` 兜底（7 / 0.3 / 3），
+  在 generate-game-data.js 中与官方项一并写入 GAME_DATA.pollution。
+- **前端**：`js/devices/pollution.js` 的 `POLLUTION_SOURCES` 改为读取 `GAME_DATA.pollution`
+  （官方优先，兜底数组仅在 GAME_DATA 缺失时生效），设备侧不再硬编码污染数值表。
+- **校验**：verify-dlc 新增「污染排放单源化」校验（16 项：11 个官方数值 + 3 个兜底 + 前端单源读取），
+  全量 18 个校验脚本通过，`node build.js` 构建通过。

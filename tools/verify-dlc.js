@@ -191,6 +191,9 @@ for (const k of ['yumako', 'yumako-mash', 'bioflux', 'nutrients', 'spoilage', 'a
   ok(!!GD.names[k], k + ' 官方命名已收录 (' + (GD.names[k] ? GD.names[k].zh : '?') + ')');
 }
 ok(!!RP['yumako-mash'], '玉玛果泥配方已注册');
+ok(Object.keys(RP['yumako-mash'].out).includes('yumako-seed'), '玉玛果加工产出种子（官方 yumako-processing，自持农业）');
+ok(Object.keys(RP['yumako-mash'].out).includes('yumako-mash'), '玉玛果加工产出果泥（官方 yumako-processing）');
+ok(RP['yumako-mash'].time === 1, '玉玛果加工耗时=1s（官方 yumako-processing）');
 ok(!!RP['bioflux'], '生物结晶配方已注册');
 ok(!!RP['agricultural-science-pack'], '农业科技包配方已注册');
 ok(!!IT['agricultural-science-pack'], '农业科技包物品已注册');
@@ -1379,4 +1382,39 @@ console.log('\n【氨制火箭燃料（ammonia-rocket-fuel）数据校验】');
 }
 
 
+// ===== 太空时代 健康无限科技（Health，本迭代新增）数据校验 =====
+console.log('\n【健康无限科技（Health，Space Age）数据校验】');
+ok(!!TS['health'], '健康科技已注册');
+ok(TS['health'].infinite === true, '健康为无限科技（官方 infinite）');
+ok(!!TS['health'].req && TS['health'].req.indexOf('agriculture') >= 0, '健康科技前置含农业科技');
+ok(!!TS['health'].req && TS['health'].req.indexOf('space-science') >= 0, '健康科技前置含空间科技');
+ok(!!TS['health'].req && TS['health'].req.indexOf('utility') >= 0, '健康科技前置含实用科技');
+ok(!!TS['health'].req && TS['health'].req.indexOf('military4') >= 0, '健康科技前置含军事科技 IV');
+ok(TS['health'].cat === 'space-age', '健康科技归入太空时代分类');
+
+
+
+
+// ===== 污染排放单源化校验（本迭代新增）=====
+// 校验各污染源设备排放数值来自 GAME_DATA.pollution（factorio-data 官方
+// energy_source.emissions_per_minute.pollution），而非设备侧硬编码。
+console.log('\n【污染排放单源化（GAME_DATA.pollution，官方 emissions_per_minute）】');
+const POLLUTION_EXPECT = {
+  'burner-mining-drill': 12, 'electric-mining-drill': 10, 'big-mining-drill': 40,
+  'pumpjack': 10, 'stone-furnace': 2, 'steel-furnace': 4, 'electric-furnace': 1,
+  'boiler': 30, 'oil-refinery': 6, 'chemical-plant': 4, 'centrifuge': 4,
+};
+for (const [id, expect] of Object.entries(POLLUTION_EXPECT)) {
+  ok(GD.pollution && GD.pollution[id] === expect, id + ' 污染排放=官方 ' + expect);
+}
+ok(!!GD.pollution && GD.pollution['nuclear-reactor'] === 7, 'nuclear-reactor 污染排放=项目兜底 7（官方无直接 emissions）');
+ok(!!GD.pollution && GD.pollution['burner-inserter'] === 0.3, 'burner-inserter 污染排放=项目兜底 0.3（官方无直接 emissions）');
+ok(!!GD.pollution && GD.pollution['locomotive'] === 3, 'locomotive 污染排放=项目兜底 3（官方无直接 emissions）');
+// 前端 pollution.js 应引用 GAME_DATA.pollution（而非硬编码）
+const pollutionJs = fs.readFileSync(ROOT + '/js/devices/pollution.js', 'utf8');
+ok(pollutionJs.includes('GAME_DATA.pollution'), 'pollution.js 从 GAME_DATA.pollution 单源读取（非硬编码）');
+ok(!/POLLUTION_SOURCES = \{[^}]*'stone-furnace': 2,[^}]*\}/.test(pollutionJs) || pollutionJs.includes('GAME_DATA.pollution'), 'pollution.js 污染数值已单源化');
+
+
 process.exit(fail === 0 ? 0 : 1);
+

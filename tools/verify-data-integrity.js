@@ -31,7 +31,7 @@ sandbox.global = sandbox;
 vm.createContext(sandbox);
 const probe = src +
   "\n;globalThis.__items=ITEMS;globalThis.__recs=RECIPES;globalThis.__ref=REFINERY_RECIPES;" +
-  "globalThis.__cen=CENTRIFUGE_RECIPES;globalThis.__sm=SMELTS;globalThis.__build=BUILD_DEFS;";
+  "globalThis.__cen=CENTRIFUGE_RECIPES;globalThis.__sm=SMELTS;globalThis.__build=BUILD_DEFS;globalThis.__stack=STACK_SIZES;globalThis.__GD=GAME_DATA;";
 vm.runInContext(probe, sandbox, { filename: 'data.js' });
 
 const ITEMS = sandbox.__items;
@@ -40,6 +40,8 @@ const REFINERY_RECIPES = sandbox.__ref || {};
 const CENTRIFUGE_RECIPES = sandbox.__cen || {};
 const SMELTS = sandbox.__sm || [];
 const BUILD_DEFS = sandbox.__build || {};
+const STACK_SIZES = sandbox.__stack || {};
+const GAME_DATA = sandbox.__GD || {};
 
 let passCount = 0;
 let failCount = 0;
@@ -115,6 +117,8 @@ const specialOutput = new Set([
   'depleted-uranium-fuel-cell',   // 反应堆燃尽核燃料棒
   'wood', 'raw-wood',             // 砍树获得
   'raw-fish',                     // 捕鱼获得
+  'artillery-targeting-remote',   // 重炮瞄准遥控器：研究「军事科技 IV」后自动授予（对齐官方 spawnable 遥控器）
+  'discharge-defense-remote',     // 放电防御遥控器：研究「装甲电力」后自动授予（对齐官方 spawnable 遥控器）
 ]);
 // 所有可通过配方产出的物品
 const craftable = new Set();
@@ -154,6 +158,50 @@ const buildNoRecipe = Object.keys(BUILD_DEFS).filter(id => {
 });
 check('可建造建筑均有配方（例外=' + buildNoRecipe.length + '）', buildNoRecipe.length === 0,
   buildNoRecipe.length ? JSON.stringify(buildNoRecipe) : '');
+
+
+// ---- 6) 物品 ID 与官方对齐（零非官方物品，仅保留 6 个创造/虚空测试物品 + 显式白名单内部件）----
+console.log('\n【物品 ID 对齐官方（factorio-data 原型名，零冗余）】');
+const raw = require('./convert-data.js');
+const officialNameSet = new Set();
+for (const [type, tbl] of Object.entries(raw)) {
+  if (typeof tbl !== 'object' || !tbl) continue;
+  for (const name of Object.keys(tbl)) officialNameSet.add(name);
+}
+// 6 个创造/虚空测试物品（Debug 面板发放，非生存物品，官方无对应，允许保留）
+const creativeVoid = new Set(['creative-chest','void-chest','creative-pipe','void-pipe','creative-belt','void-belt']);
+// 显式白名单：项目内部表示/官方 locale 条目（非官方原型名但属官方概念）
+//   rocket-body   —— 火箭发射井内部组装表示（对应官方 rocket-part 组装流程）
+//   satellite     —— 官方卫星（locale 有官方条目，2.0 为火箭载荷）
+const allowInternal = new Set(['rocket-body', 'satellite']);
+const nonOfficial = Object.keys(ITEMS).filter(id =>
+  !creativeVoid.has(id) && !officialNameSet.has(id) && !allowInternal.has(id));
+check('非创造/虚空物品均使用官方原型名（非官方=' + nonOfficial.length + '）', nonOfficial.length === 0,
+  nonOfficial.length ? JSON.stringify(nonOfficial) : '');
+
+// ---- 7) 物品堆叠上限与官方对齐（零偏差）----
+console.log('\n【物品堆叠上限对齐官方（factorio-data item stack_size，零偏差）】');
+const officialStack = new Map();
+const stackLikeTypes = ['item','ammo','gun','capsule','armor','module','tool','repair-tool',
+  'rail-planner','deconstruction-item','upgrade-item','selection-tool','item-with-entity-data',
+  'spider-vehicle','car','tank','locomotive','cargo-wagon','fluid-wagon','artillery-wagon',
+  'spidertron-remote','space-platform-starter-pack'];
+for (const t of stackLikeTypes) {
+  if (!raw[t]) continue;
+  for (const [n, proto] of Object.entries(raw[t]))
+    if (typeof proto.stack_size === 'number') officialStack.set(n, proto.stack_size);
+}
+// 项目堆叠来源：GAME_DATA.stackSize（自动桥接，官方数据优先）+ STACK_SIZES（手工兜底）
+const stackIds = new Set([...Object.keys(STACK_SIZES), ...Object.keys(GAME_DATA.stackSize || {})]);
+const stackMismatch = [];
+for (const id of stackIds) {
+  const off = officialStack.get(id);
+  if (off === undefined) continue;                       // 官方无此原型（创造/虚空等），跳过
+  const projVal = (GAME_DATA.stackSize && id in GAME_DATA.stackSize) ? GAME_DATA.stackSize[id] : STACK_SIZES[id];
+  if (projVal !== undefined && projVal !== off) stackMismatch.push(id + ':项目=' + projVal + ' 官方=' + off);
+}
+check('物品堆叠上限与官方一致（偏差=' + stackMismatch.length + '）', stackMismatch.length === 0,
+  stackMismatch.length ? JSON.stringify(stackMismatch) : '');
 
 console.log('\n----------------------------------------');
 console.log('通过 ' + passCount + ' 项，失败 ' + failCount + ' 项');
