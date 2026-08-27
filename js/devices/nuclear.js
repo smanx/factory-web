@@ -217,14 +217,6 @@ function drawCentrifuge(ctx, e, gx, gy, dir, alpha) {
   gearShape(ctx, 0, 0, s * 0.22, s * 0.14, 9);
   ctx.fill();
   ctx.restore();
-  if (e.crafting) {
-    const pct = e.recipeObj() ? Math.min(1, (e.prog || 0) / e.recipeObj().time) : 0;
-    ctx.strokeStyle = 'rgba(143,224,255,.9)';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(cx, cy, s * 0.3, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2);
-    ctx.stroke();
-  }
   // 中央显示当前配方图标；未选配方时显示默认齿轮占位（不再显示中文）
   if (portDetailsVisible() && e.recipe && e.recipeObj) {
     const rec = e.recipeObj();

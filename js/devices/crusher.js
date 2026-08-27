@@ -109,14 +109,7 @@ function drawCrusher(ctx, e, gx, gy, dir, alpha) {
   if (portDetailsVisible() && e.recipe) {
     const outId = crusherMainOut(RECIPES[e.recipe]);
     drawRecipeIconCell(ctx, px + s / 2, py + sh / 2 - 4, outId);
-    const pct = e.crafting ? Math.min(1, e.prog / RECIPES[e.recipe].time) : 0;
-    if (pct > 0) {
-      ctx.strokeStyle = '#d0b8a0';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(px + s / 2, py + sh / 2 - 4, 26, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2);
-      ctx.stroke();
-    }
+
   } else if (!(LOD && LOD.simple) && portDetailsVisible()) {
     drawRecipePlaceholder(ctx, px + s / 2, py + sh / 2 - 4, s * 0.4);
   }

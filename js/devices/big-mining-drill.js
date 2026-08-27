@@ -52,11 +52,11 @@ function drawBigDrill(ctx, e, gx, gy, dir, alpha) {
   else if (dir === 1) ctx.fillRect(px + s - 8, cy - drillW / 2, drillL, drillW);
   else ctx.fillRect(px - drillL + 8, cy - drillW / 2, drillL, drillW);
   // 电力/模块指示
-  if (e.modules && Object.keys(e.modules).length) drawRecipeIconCell(ctx, px + s - 16, py + 16, Object.keys(e.modules)[0]);
+  if (e.modules && Object.keys(e.modules).length) drawItemDot(ctx, px + s - 16, py + 16, Object.keys(e.modules)[0], 15);
   if (portDetailsVisible() && e.recipe === undefined && (e.working || e.oreTile())) {
     ctx.fillStyle = '#ffffff';
     ctx.globalAlpha = alpha * 0.85;
-    drawRecipeIconCell(ctx, px + s / 2, py + 8, 'big-mining-drill');
+    drawItemDot(ctx, px + s / 2, py + 8, 'big-mining-drill', 15);
   }
   ctx.globalAlpha = 1;
 }

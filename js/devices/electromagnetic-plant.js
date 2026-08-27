@@ -70,14 +70,7 @@ function drawElectromagneticPlant(ctx, e, gx, gy, dir, alpha) {
   if (portDetailsVisible() && e.recipe) {
     const outId = Object.keys(RECIPES[e.recipe].out)[0];
     drawRecipeIconCell(ctx, px + s / 2, py + s / 2, outId);
-    const pct = e.crafting ? Math.min(1, e.prog / RECIPES[e.recipe].time) : 0;
-    if (pct > 0) {
-      ctx.strokeStyle = '#8fe08f';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(px + s / 2, py + s / 2, 26, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2);
-      ctx.stroke();
-    }
+
   } else if (!(LOD && LOD.simple) && portDetailsVisible()) {
     drawRecipePlaceholder(ctx, px + s / 2, py + s / 2, s * 0.5);
   }

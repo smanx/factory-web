@@ -113,9 +113,17 @@ function drawItemDotBig(ctx, x, y, item) {
   drawItemDot(ctx, x, y, item, 7);
 }
 
-// 配方图标：占据一整格面积的大图标（TILE×TILE），用于设备中央展示当前配方
+// 配方图标：只绘制配方图标本体并铺满整个格子（TILE×TILE）。
+// 不绘制背景、边框等任何额外视觉效果，仅保留干净清晰的配方图标。
 function drawRecipeIconCell(ctx, x, y, item) {
-  drawItemDot(ctx, x, y, item, Math.round(TILE * 0.46));
+  if (!ITEMS[item]) return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x - TILE / 2, y - TILE / 2, TILE, TILE);
+  ctx.clip();
+  // 绘制足够大的图标本体以铺满整格；clip 到格子范围内，防止内容溢出
+  drawItemGlyph(ctx, item, x, y, TILE * 1.12);
+  ctx.restore();
 }
 
 // 未选配方时的默认图标：一个中性的灰色齿轮占位（不再显示中文“无配方”）
