@@ -63,10 +63,6 @@ function drawAssembler3(ctx, e, gx, gy, dir, alpha) {
   if (portDetailsVisible() && e.recipe) {
     const outId = Object.keys(RECIPES[e.recipe].out)[0];
     drawRecipeIconCell(ctx, px + s / 2, py + s / 2, outId);
-
-  } else if (!(LOD && LOD.simple) && portDetailsVisible()) {
-    // 未选配方：显示默认齿轮图标（不再显示中文）
-    drawRecipePlaceholder(ctx, px + s / 2, py + s / 2, s * 0.5);
   }
   const fr = e.fluidRecipe ? e.fluidRecipe() : null;
   const pcx = px + s / 2, pcy = py + s / 2;

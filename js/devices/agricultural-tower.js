@@ -108,8 +108,6 @@ function drawAgriculturalTower(ctx, e, gx, gy, dir, alpha) {
   if (portDetailsVisible() && e.recipe) {
     const outId = Object.keys(RECIPES[e.recipe].out)[0];
     drawRecipeIconCell(ctx, px + s / 2, py + s / 2, outId);
-  } else if (!(LOD && LOD.simple) && portDetailsVisible()) {
-    drawRecipePlaceholder(ctx, px + s / 2, py + s / 2, s * 0.5);
   }
   ctx.globalAlpha = 1;
 }

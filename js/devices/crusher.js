@@ -109,9 +109,6 @@ function drawCrusher(ctx, e, gx, gy, dir, alpha) {
   if (portDetailsVisible() && e.recipe) {
     const outId = crusherMainOut(RECIPES[e.recipe]);
     drawRecipeIconCell(ctx, px + s / 2, py + sh / 2 - 4, outId);
-
-  } else if (!(LOD && LOD.simple) && portDetailsVisible()) {
-    drawRecipePlaceholder(ctx, px + s / 2, py + sh / 2 - 4, s * 0.4);
   }
   const fr = e.fluidRecipe ? e.fluidRecipe() : null;
   const pcx = px + s / 2, pcy = py + sh / 2 - 4;

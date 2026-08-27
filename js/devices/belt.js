@@ -203,11 +203,13 @@ class Belt extends Entity {
     }
     return false;
   }
-  grabZone(item, lane) {
+  // matcher 传物品 id 按精确匹配；传函数则作为“是否可取”谓词（机械臂筛选白/黑名单用）
+  grabZone(matcher, lane) {
+    const test = (typeof matcher === 'function') ? matcher : (item => !matcher || item === matcher);
     let best = null;
     for (const o of this.items)
       if ((lane === undefined || lane === null || this.laneOf(o) === lane)
-        && o.pos >= 0.2 && (!item || o.item === item) && (!best || o.pos > best.pos)) best = o;
+        && o.pos >= 0.2 && test(o.item) && (!best || o.pos > best.pos)) best = o;
     return best;
   }
   countOf(item) {

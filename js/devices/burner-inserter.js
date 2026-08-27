@@ -123,32 +123,17 @@ function burnerInserterPanelHtml(e) {
     (invCount('wood') > 0 ? '<button data-action="fuel" data-id="wood">加 5 木材 (' + invCount('wood') + ')</button>' : '') +
     (invCount('solid-fuel') > 0 ? '<button data-action="fuel" data-id="solid-fuel">加 5 固体燃料 (' + invCount('solid-fuel') + ')</button>' : '') +
     (invCount('rocket-fuel') > 0 ? '<button data-action="fuel" data-id="rocket-fuel">加 5 火箭燃料 (' + invCount('rocket-fuel') + ')</button>' : '') +
-    '<div class="status"></div>' +
-    inserterFilterSectionHtml(e, '<div class="dim">当前筛选：') +
-    '<div class="dim">热能机械臂：烧煤驱动，无需电力，开局即可用。从臂体指向的一侧取货、放到箭头一侧。搬运时消耗煤，缺煤会停摆（1×1）。</div>';
+    inserterMachineRowsHtml(e);
 }
+// 燃料以外的面板操作（筛选/堆叠/变质/电路）与普通机械臂一致
 function burnerInserterOnAction(act, btn) {
-  if (act === 'flt') { if (G.panelEnt instanceof Inserter) G.panelEnt.filter = btn.dataset.id; return true; }
-  if (act === 'flt-clear') { if (G.panelEnt instanceof Inserter) G.panelEnt.filter = null; return true; }
-  return false; // 其余（fuel 等）交给全局分发
+  if (act === 'fuel') return false; // 交给全局分发
+  return inserterFilterOnAction(act, btn);
 }
-function burnerInserterPanelLive(e, api) {
+function burnerInserterPanelLive(e, api, body) {
   api.set('fuel', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '') + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) + ' ' : '') + (e.fuelWood > 0 ? chip('wood', e.fuelWood) : (e.fuelRocket <= 0 && e.fuelSolid <= 0 && e.fuelCoal <= 0 ? dimSpan('无') : '')));
   if (!e.hasFuel()) { api.status('已暂停：缺燃料，加入煤/固体燃料/火箭燃料', 'warn'); return; }
-  if (e.holding) {
-    api.status(e.blocked ? '已暂停：放货格已满，卡住 ' + ITEMS[e.holding].name : '搬运中：' + ITEMS[e.holding].name, e.blocked ? 'warn' : 'ok');
-    return;
-  }
-  if (e.rotating) { api.status('工作中：转向取货格', 'ok'); return; }
-  const s = e.entAtPick();
-  const t = e.entAtDrop();
-  const it = e.pickSourceForDrop(s, t);
-  if (!it) {
-    if (!e.peekSource(s)) api.status('已暂停：取货格无物品可取', 'warn');
-    else api.status('已暂停：取货格物品均放不进目标（放货格已满）', 'warn');
-    return;
-  }
-  api.status('待机：等待取货格出现货物', 'ok');
+  inserterPanelLive(e, api, body);   // 复用普通机械臂的状态/图标/抓取刷新
 }
 function burnerInserterTip(e) {
   if (!e.hasFuel()) return '热能机械臂：缺燃料停摆';

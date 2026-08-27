@@ -517,7 +517,7 @@ function updateMachineLive() {
     }
   } else {
     const panel = DEVICE_PANEL[e.type];
-    if (panel && panel.live) panel.live(e, api);
+    if (panel && panel.live) panel.live(e, api, body);
   }
   const bar = body.querySelector('.bar i');
   if (bar) bar.style.width = Math.max(0, Math.min(100, prog)) + '%';
@@ -545,12 +545,11 @@ function updateMachineLive() {
     const wantCls = 'status ' + (state || 'warn');
     if (stEl.className !== wantCls) stEl.className = wantCls;
   }
-  // 顶部状态点配色（非组装机配方设备）：state 'ok'→绿('on')，'warn'→黄，'bad'→红
-  const dotEl = body.querySelector('[data-live="mch-dot"]');
-  if (dotEl) {
+  // 顶部状态点配色（所有 asm3 风格面板通用）：state 'ok'→绿('on')，'warn'→黄，'bad'→红
+  body.querySelectorAll('.asm3-status-dot').forEach(dotEl => {
     const dotCls = 'asm3-status-dot ' + (state === 'ok' ? 'on' : (state || 'warn'));
     if (dotEl.className !== dotCls) dotEl.className = dotCls;
-  }
+  });
 }
 
 // 配方设备交互面板的实时刷新（原料/产品数量 + 进度 + 状态）

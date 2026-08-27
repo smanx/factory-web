@@ -113,29 +113,38 @@ function drawItemDotBig(ctx, x, y, item) {
   drawItemDot(ctx, x, y, item, 7);
 }
 
-// 配方图标：只绘制配方图标本体并铺满整个格子（TILE×TILE）。
-// 不绘制背景、边框等任何额外视觉效果，仅保留干净清晰的配方图标。
+// 配方图标精灵缓存：每个物品一张 TILE×TILE 画布，缓存图标本体（铺满整格），供光晕绘制复用。
+const RECIPE_SPRITES = {};
+function recipeSprite(id) {
+  let sp = RECIPE_SPRITES[id];
+  if (sp) return sp;
+  const c = document.createElement('canvas');
+  c.width = c.height = TILE;
+  const g = c.getContext('2d');
+  g.save();
+  g.beginPath();
+  g.rect(0, 0, TILE, TILE);
+  g.clip();
+  drawItemGlyph(g, id, TILE / 2, TILE / 2, TILE * 1.12);
+  g.restore();
+  RECIPE_SPRITES[id] = c;
+  return c;
+}
+
+// 配方图标：只绘制配方图标本体并铺满整个格子（TILE×TILE），不绘制背景等额外效果。
+// 借助 canvas 阴影（shadowBlur）让黑色阴影从图标四周向外柔和散发，而不是描边边框。
 function drawRecipeIconCell(ctx, x, y, item) {
   if (!ITEMS[item]) return;
   ctx.save();
-  ctx.beginPath();
-  ctx.rect(x - TILE / 2, y - TILE / 2, TILE, TILE);
-  ctx.clip();
-  // 绘制足够大的图标本体以铺满整格；clip 到格子范围内，防止内容溢出
-  drawItemGlyph(ctx, item, x, y, TILE * 1.12);
-  ctx.restore();
-}
-
-// 未选配方时的默认图标：一个中性的灰色齿轮占位（不再显示中文“无配方”）
-function drawRecipePlaceholder(ctx, x, y, size) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.fillStyle = 'rgba(255,255,255,.38)';
-  ctx.strokeStyle = 'rgba(255,255,255,.55)';
-  ctx.lineWidth = 2;
-  gearShape(ctx, 0, 0, (size || 26) * 0.42, (size || 26) * 0.3, 7);
-  ctx.fill();
-  ctx.stroke();
+  ctx.shadowColor = 'rgba(0,0,0,1)';
+  ctx.shadowBlur = 20;
+  const spr = recipeSprite(item);
+  // 双层叠加阴影，让黑色光晕更深更明显
+  ctx.drawImage(spr, x - TILE / 2, y - TILE / 2, TILE, TILE);
+  ctx.drawImage(spr, x - TILE / 2, y - TILE / 2, TILE, TILE);
+  // 无阴影重绘一次，保持图标本体清晰
+  ctx.shadowBlur = 0;
+  ctx.drawImage(spr, x - TILE / 2, y - TILE / 2, TILE, TILE);
   ctx.restore();
 }
 

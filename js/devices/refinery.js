@@ -300,9 +300,6 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
     if (portDetailsVisible() && e.recipe) {
       const outId = Object.keys(REFINERY_RECIPES[e.recipe].out)[0];
       drawRecipeIconCell(ctx, cxp, cyp, outId);
-    } else if (!(LOD && LOD.simple) && portDetailsVisible()) {
-      // 未选配方：显示默认图标（不再显示中文）
-      drawRecipePlaceholder(ctx, cxp, cyp, s * 0.5);
     }
   }
   let bx = px + 14;

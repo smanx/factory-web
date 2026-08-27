@@ -2590,3 +2590,186 @@ html, body {
   72%  { opacity: 1; }
   100% { opacity: 0; transform: translate(-50%, -14px); }
 }
+
+/* ===== 机械臂控制面板（对齐设计稿：状态/机械臂图标/当前抓取/筛选/抓取堆叠/变质优先级）===== */
+/* 机器显示区：棋盘格背景 + 居中绘制机械臂 */
+/* 机械臂面板容器：所有字体统一 12 号 */
+.ins-panel { font-size: 12px; }
+.ins-panel .asm3-status-text { font-size: 12px; }
+.ins-machine {
+  height: 120px;
+  background: #252525;
+  border: 1px solid #444;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  background-image:
+    linear-gradient(45deg, #2a2a2a 25%, transparent 25%),
+    linear-gradient(-45deg, #2a2a2a 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #2a2a2a 75%),
+    linear-gradient(-45deg, transparent 75%, #2a2a2a 75%);
+  background-size: 40px 40px;
+  background-position: 0 0, 0 20px, 20px -20px, -20px 0;
+}
+.ins-machine canvas { display: block; width: 96px; height: 96px; }
+/* 当前抓取物品行 */
+.ins-held {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; padding: 8px 12px;
+  background: #2a2a2a; border: 1px solid #444; border-radius: 6px;
+  font-size: 12px; color: #ddd;
+}
+.ins-held .ins-held-label { color: #98a5b5; font-size: 12px; }
+.ins-held .ins-held-val { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; }
+.ins-held .ins-held-icon { width: 20px; height: 20px; object-fit: contain; }
+/* 通用小节容器 */
+.ins-sec {
+  padding: 10px 12px;
+  background: #2a2a2a; border: 1px solid #444; border-radius: 6px;
+  display: flex; flex-direction: column; gap: 8px;
+  font-size: 12px;
+}
+/* 勾选行（开关复选框 + 标签） */
+.ins-check-row { display: flex; align-items: center; gap: 8px; }
+.ins-check {
+  width: 20px; height: 20px; flex: 0 0 auto;
+  background: #222; border: 2px solid #555; border-radius: 4px;
+  cursor: pointer; position: relative;
+}
+.ins-check:hover { border-color: #777; }
+.ins-check.on { background: #3a5a3a; border-color: #2ecc71; }
+.ins-check.on::after {
+  content: ''; position: absolute;
+  left: 4px; top: 1px; width: 7px; height: 12px;
+  border: solid #6fe09a; border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
+}
+.ins-label { font-size: 12px; color: #ddd; }
+/* 白名单/黑名单行：左侧为切换开关，右侧为 5 个筛选格子，同一行两端对齐 */
+.ins-flt-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-left: 28px;
+}
+/* 未启用筛选：开关与格子仍显示，仅不可交互、淡化 */
+.ins-flt-row.off {
+  opacity: .45;
+  filter: grayscale(.6);
+  pointer-events: none;
+}
+.ins-flt-toggle { display: flex; align-items: center; gap: 8px; }
+.ins-toggle-label { font-size: 12px; color: #8894a0; }
+.ins-toggle-label.on { color: #ffd64a; font-weight: 600; }
+.ins-toggle {
+  width: 46px; height: 24px;
+  background: #555; border-radius: 12px;
+  position: relative; cursor: pointer; flex: 0 0 auto;
+  border: 1px solid #3a4048;
+}
+.ins-toggle:hover { border-color: #777; }
+.ins-toggle-knob {
+  width: 20px; height: 20px;
+  background: #ccc; border-radius: 50%;
+  position: absolute; top: 1px; left: 1px;
+  transition: left .18s;
+}
+/* 变质优先级：标题在左、两选项在右，同一行 */
+.ins-sec.ins-spoil {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+.ins-spoil-opts { display: flex; gap: 18px; }
+.ins-spoil-opts.off .ins-radio {
+  opacity: .4;
+  filter: grayscale(.7);
+  pointer-events: none;
+  cursor: not-allowed;
+}
+/* 单选按钮（品质优先/新鲜优先） */
+.ins-radio {
+  display: flex; align-items: center; gap: 7px;
+  cursor: pointer; white-space: nowrap; user-select: none;
+}
+.ins-radio-dot {
+  width: 16px; height: 16px; flex: 0 0 auto;
+  background: #222; border: 2px solid #555; border-radius: 50%; position: relative;
+}
+.ins-radio:hover .ins-radio-dot { border-color: #777; }
+.ins-radio.selected .ins-radio-dot { border-color: #d0a04a; }
+.ins-radio.selected .ins-radio-dot::after {
+  content: ''; position: absolute;
+  width: 8px; height: 8px; background: #d0a04a; border-radius: 50%;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  box-shadow: 0 0 4px rgba(208, 160, 74, .6);
+}
+.ins-radio-label { font-size: 12px; color: #ccc; }
+.ins-radio.selected .ins-radio-label { color: #ffd64a; font-weight: 600; }
+/* 5 个筛选格子 */
+.ins-slots { display: flex; gap: 6px; }
+.ins-slot {
+  width: 32px; height: 32px; position: relative;
+  background: #1c1c1c; border: 2px solid #444; border-radius: 4px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  overflow: visible;
+}
+.ins-slot:hover { border-color: #d0a04a; }
+.ins-slot img { width: 100%; height: 100%; object-fit: cover; border-radius: 2px; }
+.ins-slot.empty { border-style: dashed; }
+.ins-slot .ins-slot-plus { font-size: 16px; color: #6a7480; line-height: 1; }
+.ins-slot .ins-slot-x {
+  position: absolute; top: -8px; right: -8px; z-index: 2;
+  width: 16px; height: 16px; font-size: 10px; line-height: 15px; text-align: center;
+  background: #b03030; color: #fff; border-radius: 50%;
+  cursor: pointer; border: 1px solid #d04545; font-weight: bold;
+}
+.ins-slot .ins-slot-x:hover { background: #e04040; }
+.ins-slot-hint { padding-left: 28px; font-size: 12px; }
+/* 抓取堆叠：标题在左、滑块/数值在右，同一行两端对齐 */
+.ins-sec.ins-stack {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+.ins-stack-row {
+  display: flex; align-items: center; gap: 8px; flex: 0 0 auto;
+  font-size: 12px;
+}
+/* 未勾选：滑块仍显示，仅不可交互、淡化 */
+.ins-stack-row.off {
+  opacity: .45;
+  filter: grayscale(.6);
+  pointer-events: none;
+}
+.ins-slider { width: 140px; flex: 0 0 auto; min-width: 0; accent-color: #d0a04a; cursor: pointer; }
+.ins-stack-val {
+  width: 42px; text-align: center; font-size: 12px; color: #ffd64a; font-weight: 600;
+  background: #1c1c1c; border: 1px solid #444; border-radius: 4px; padding: 3px 4px;
+}
+
+/* ===== 筛选物品选择弹窗：宽度放宽并居中（复用 #hud-modal）===== */
+#hud-modal.flt-wide {
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: fit-content; min-width: 440px; max-width: 92vw;
+  max-height: 80vh;
+  z-index: 3000; /* 需显示在机械臂设备面板（最高 z-index 240）之上 */
+}
+.flt-modal .inv-search { width: 100%; }
+.flt-modal #flt-tabs .craft-tab { flex: 0 0 auto; }
+.flt-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 32px);
+  gap: 4px; margin: 8px 0;
+}
+.flt-item {
+  width: 32px; height: 32px; padding: 0;
+  background: #1f2730; border: 1px solid #3a4550; border-radius: 3px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.flt-item:hover { border-color: #d0a04a; }
+.flt-item img { width: 100%; height: 100%; object-fit: cover; }
+.flt-item span { display: none; }
+.flt-item.sel { border-color: #2ecc71; box-shadow: 0 0 0 1px #2ecc71 inset; }

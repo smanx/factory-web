@@ -41,7 +41,16 @@ class Inserter extends Entity {
     const itype = type || 'inserter';
     this.stackMax = inserterStackMax(itype);  // 官方 inserter_stack_size_override（普通臂 1 / 堆叠臂 3）
     this.rotSpeed = inserterRotMult(itype);   // 官方 rotation_speed 相对倍率（快速/堆叠臂 ≈ 2.857×）
-    this.filter = null;  // 过滤臂：只抓该物品
+    // ===== 筛选功能（有机组：每个机械臂都自带）=====
+    // 择优实现《异星工厂》过滤抓取：可设为白名单（只抓名单内）/黑名单（不抓名单内），各有 5 个格子。
+    this.filterOn = false;   // 是否启动筛选
+    this.filterMode = 'white'; // 'white' 白名单 | 'black' 黑名单
+    this.filters = [];       // 筛选物品列表（最多 5 个）
+    // 设置抓取堆叠：0=未启用；启用后取值 1 ~ 当前机械臂最大抓取数量（capacity，受机械臂容量科技影响）
+    this.pickStack = 0;
+    // 变质优先级：勾选后启用（默认「变质优先」，可切换到「新鲜优先」）
+    this.spoilPrio = false;
+    this.spoilMode = 'spoil'; // 'spoil' 变质优先 | 'fresh' 新鲜优先
     // 投放/取货侧翻转位：机械臂翻转（R 旋转 / V/H 镜像）后切换，使夹取传送带的边换一边。
     // 默认 false=取近侧/放远侧；翻转后 true=取远侧/放近侧。
     this.sideFlip = false;
@@ -64,6 +73,21 @@ class Inserter extends Entity {
     // 机械臂容量（无限科技）：每研究一次，堆叠臂单次抓取 +1（普通臂一次仍 1 个）
     if (this.stackMax > 1 && G.techProg['inserter-capacity']) cap += G.techProg['inserter-capacity'];
     return cap;
+  }
+  // ===== 筛选功能辅助 =====
+  // 筛选是否生效：启用开关 + 至少填了一个格子
+  filterActive() { return !!(this.filterOn && this.filters && this.filters.length); }
+  // 某物品是否应被抓取（按白/黑名单判断；筛选关闭时一律抓取）
+  wantsItem(item) {
+    if (!this.filterActive()) return true;
+    const inList = this.filters.indexOf(item) >= 0;
+    return this.filterMode === 'white' ? inList : !inList;
+  }
+  // 一次抓取多少个：由「设置抓取堆叠」决定，范围 1 ~ 当前最大抓取数量（capacity）
+  grabN() {
+    const cap = this.capacity();
+    const n = (this.pickStack && this.pickStack >= 1) ? Math.floor(this.pickStack) : 1;
+    return Math.max(1, Math.min(cap, n));
   }
   // ===== 几何：严格单向，取格 = 箭头反方向，放格 = 箭头方向 =====
   pickOffset() {
@@ -119,17 +143,23 @@ class Inserter extends Entity {
     if (!s) return null;
     let it = null;
     if (s instanceof Belt) {
-      // 优先抓取靠近机械臂一侧的 lane；近侧无货时回退到任意 lane（远侧仍可取到）
-      let z = s.grabZone(this.filter || undefined, this.pickBeltLane(s));
-      if (!z) z = s.grabZone(this.filter || undefined);
+      // 优先抓取靠近机械臂一侧的 lane；近侧无货时回退到任意 lane（远侧仍可取到）。
+      // 按筛选规则（白/黑名单）在带上挑选可抓的物品。
+      let z = s.grabZone(o => this.wantsItem(o), this.pickBeltLane(s));
+      if (!z) z = s.grabZone(o => this.wantsItem(o));
       it = z ? z.item : null;
-    } else if (this.filter && s.countOf) {
-      // 过滤臂：直接探测源内是否存在过滤物（而非源的首个产出）
-      it = s.countOf(this.filter) > 0 ? this.filter : null;
+    } else if (this.filterActive() && s.countOf) {
+      // 白名单：直接探测名单内是否有货；黑名单：取源的首个物品再校验
+      if (this.filterMode === 'white') {
+        for (const f of this.filters) if (s.countOf(f) > 0) { it = f; break; }
+      } else {
+        it = s.peekItem ? s.peekItem() : null;
+        if (it && !this.wantsItem(it)) it = null;
+      }
     } else if (s.peekItem) {
       it = s.peekItem();
+      if (it && !this.wantsItem(it)) it = null;
     }
-    if (it && this.filter && it !== this.filter) return null;
     return it;
   }
   countSourceOf(s, item) {
@@ -179,7 +209,7 @@ class Inserter extends Entity {
     if (s instanceof Belt) {
       const near = this.pickBeltLane(s);
       const cand = s.items
-        .filter(o => o.pos >= 0.2 && (!this.filter || o.item === this.filter))
+        .filter(o => o.pos >= 0.2 && this.wantsItem(o.item))
         .sort((a, b) => {
           const na = a.lane === near ? 1 : 0;
           const nb = b.lane === near ? 1 : 0;
@@ -339,7 +369,7 @@ class Inserter extends Entity {
       const it = this.pickSourceForDrop(s, t);
       this.blocked = false;
       if (!it) return;                       // 无可取且目标能收的物品：停在取物位等待
-      const want = Math.max(1, Math.min(this.capacity(), this.countSourceOf(s, it)));
+      const want = Math.max(1, Math.min(this.grabN(), this.countSourceOf(s, it)));
       const got = this.takeNFrom(s, it, want);
       if (!got.length) return;
       this.holding = it;
@@ -363,15 +393,25 @@ class Inserter extends Entity {
     const s = super.serialize();
     s.holding = this.holding;
     s.holdingCount = this.holdingCount || 1;
-    if (this.filter) s.filter = this.filter;
+    if (this.filterOn) s.filterOn = this.filterOn;
+    if (this.filterMode === 'black') s.filterMode = 'black';
+    if (this.filters && this.filters.length) s.filters = this.filters.slice(0, 5);
+    if (this.pickStack > 0) s.pickStack = this.pickStack;
+    if (this.spoilPrio) s.spoilPrio = this.spoilPrio;
+    if (this.spoilMode === 'fresh') s.spoilMode = 'fresh';
     if (this.circuitCond) s.circuitCond = this.circuitCond;
     if (this.sideFlip) s.sideFlip = true;
     return s;
   }
-  // 蓝图只保留过滤器与电路配置，不复制爪上抓取的物品
+  // 蓝图保留筛选/堆叠/变质与电路配置，不复制爪上抓取的物品
   blueprint() {
     const s = super.blueprint();
-    if (this.filter) s.filter = this.filter;
+    if (this.filterOn) s.filterOn = this.filterOn;
+    if (this.filterMode === 'black') s.filterMode = 'black';
+    if (this.filters && this.filters.length) s.filters = this.filters.slice(0, 5);
+    if (this.pickStack > 0) s.pickStack = this.pickStack;
+    if (this.spoilPrio) s.spoilPrio = this.spoilPrio;
+    if (this.spoilMode === 'fresh') s.spoilMode = 'fresh';
     if (this.circuitCond) s.circuitCond = this.circuitCond;
     if (this.sideFlip) s.sideFlip = true;
     return s;
@@ -380,7 +420,15 @@ class Inserter extends Entity {
     const i = super.restore(s);
     i.holding = s.holding || null;
     i.holdingCount = s.holding ? (s.holdingCount || 1) : 0;
-    i.filter = s.filter || null;
+    // 筛选：优先读取新版多格筛选；兼容旧版单个 filter（迁移为白名单单格）
+    i.filterOn = !!s.filterOn;
+    i.filterMode = s.filterMode === 'black' ? 'black' : 'white';
+    if (Array.isArray(s.filters)) i.filters = s.filters.slice(0, 5);
+    else if (s.filter) { i.filters = [s.filter]; i.filterOn = true; }
+    else i.filters = [];
+    i.pickStack = (Number.isFinite(s.pickStack) && s.pickStack > 0) ? Math.max(1, Math.floor(s.pickStack)) : 0;
+    i.spoilPrio = !!s.spoilPrio;
+    i.spoilMode = s.spoilMode === 'fresh' ? 'fresh' : 'spoil';
     i.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
     i.sideFlip = !!s.sideFlip;
     return i;
@@ -423,7 +471,7 @@ function drawInserter(ctx, e, gx, gy, dir, alpha) {
   ctx.lineWidth = 2;
   ctx.stroke();
   const long = e.type === 'long-handed-inserter';
-  if (e.filter) {
+  if (e.filterActive && e.filterActive()) {
     ctx.strokeStyle = '#58b8e8';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -535,54 +583,146 @@ function drawFlowMarks(ctx, e, cx, cy, dir) {
   ctx.globalAlpha = 1;
 }
 
+// 面板里绘制机械臂（设备）图标：复用地图渲染的 drawInserter，保持与地图上一致的外观
+function drawInserterIcon(e, cv) {
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.save();
+  ctx.scale(cv.width / TILE, cv.height / TILE);
+  drawInserter(ctx, e, 0, 0, e.dir || 0, 1);
+  ctx.restore();
+}
+
 // ===== 面板 =====
 // 筛选功能：每台机械臂均自带（对齐需求「每个机械臂都自带筛选功能」）。
-// 在面板选择过滤物后，机械臂只抓取该物品，其余一律不碰；清除后恢复抓取任意物品。
-function inserterFilterSectionHtml(e, lead) {
-  let h = lead + (e.filter ? chip(e.filter) : '<span class="dim">未设置</span>') + '</div>';
-  h += '<div class="sec">筛选：只抓取该物品</div>';
-  if (e.filter) h += '<div class="mrow"><span class="mval"><button data-action="flt-clear">清除筛选（恢复抓取任意物品）</button></span></div>';
-  h += '<input id="flt-search" class="inv-search" type="text" placeholder="搜索物品（输入名称）" autocomplete="off">';
-  h += '<div id="flt-empty" class="dim" style="display:none"></div>';
-  h += '<div class="recgrid">';
-  for (const id of (typeof filterChoices === 'function' ? filterChoices() : FILTER_CHOICES)) {
-    const name = ITEMS[id]?.name || id;
-    h += '<button class="rcbtn ' + (e.filter === id ? 'sel' : '') + '" data-action="flt" data-id="' + id + '" data-itemid="' + id + '" data-search="' + (name + ' ' + id).toLowerCase() + '">' +
-      '<img src="' + iconDataURL(id) + '">' + name + '</button>';
+// 支持：启用开关、白名单/黑名单、5 个筛选格子（点击格子弹窗选物品）、
+//      设置抓取堆叠（1 ~ 当前最大抓取数量）、变质优先级（变质优先/新鲜优先）。
+function insCheckBtn(on, act) {
+  return '<div class="ins-check' + (on ? ' on' : '') + '" data-action="' + act + '"></div>';
+}
+// 白名单/黑名单切换开关（对齐设计稿：白名单 ⟷ 开关 ⟷ 黑名单）
+function insToggle(cur, act) {
+  const isWhite = cur !== 'black';
+  return '<div class="ins-flt-toggle">' +
+    '<span class="ins-toggle-label' + (isWhite ? ' on' : '') + '">白名单</span>' +
+    '<div class="ins-toggle" data-action="' + act + '" title="点击切换白名单/黑名单"><div class="ins-toggle-knob" style="left:' + (isWhite ? '2px' : '24px') + '"></div></div>' +
+    '<span class="ins-toggle-label' + (isWhite ? '' : ' on') + '">黑名单</span>' +
+  '</div>';
+}
+// 单选按钮（品质优先/新鲜优先）
+function insRadio(label, act, mode, cur) {
+  return '<div class="ins-radio' + (mode === cur ? ' selected' : '') + '" data-action="' + act + '" data-mode="' + mode + '">' +
+    '<span class="ins-radio-dot"></span><span class="ins-radio-label">' + label + '</span></div>';
+}
+function insFilterSlotsHtml(e) {
+  let h = '<div class="ins-slots">';
+  for (let i = 0; i < 5; i++) {
+    const id = e.filters[i];
+    if (id) {
+      h += '<div class="ins-slot" data-action="flt-slot" data-idx="' + i + '" title="点击重新选择筛选物品">' +
+        '<img src="' + iconDataURL(id) + '">' +
+        '<span class="ins-slot-x" data-action="flt-slot-clear" data-idx="' + i + '" title="清除此筛选格">✕</span></div>';
+    } else {
+      h += '<div class="ins-slot empty" data-action="flt-slot" data-idx="' + i + '" title="点击选择筛选物品"><span class="ins-slot-plus">+</span></div>';
+    }
   }
   h += '</div>';
   return h;
 }
+// 机械臂控制面板通用行（状态 / 机械臂图标 / 当前抓取 / 筛选 / 抓取堆叠 / 变质优先级）
+function inserterMachineRowsHtml(e) {
+  let h = '';
+  // 第一行：状态（状态点 + 状态文字）
+  h += '<div class="asm3-status">' +
+    '<div class="asm3-status-dot" data-live="ins-dot"></div>' +
+    '<div class="asm3-status-text status" data-live="ins-status"></div></div>';
+  // 第二行：机械臂（设备）图标
+  h += '<div class="ins-machine"><canvas class="ins-cv" width="96" height="96"></canvas></div>';
+  // 第三行：当前抓取的物品
+  h += '<div class="ins-held"><span class="ins-held-label">当前抓取</span><span class="ins-held-val" data-live="ins-held">空手</span></div>';
+  // 第四行：筛选功能（未启用时开关与格子仍显示，仅不可交互）
+  h += '<div class="ins-sec">' +
+    '<div class="ins-check-row">' + insCheckBtn(e.filterOn, 'flt-on') + '<span class="ins-label">启用筛选</span></div>' +
+    '<div class="ins-flt-row' + (e.filterOn ? '' : ' off') + '">' +
+      insToggle(e.filterMode, 'flt-mode') +
+      insFilterSlotsHtml(e) + '</div>' +
+  '</div>';
+  // 第五行：设置抓取堆叠（标题在左、滑块/数值在右，同一行；未勾选时滑块仍显示但不可交互）
+  const cap = e.capacity() || 1;
+  const stackOn = e.pickStack > 0;
+  const curStack = stackOn ? Math.max(1, Math.min(cap, Math.floor(e.pickStack))) : 1;
+  h += '<div class="ins-sec ins-stack">' +
+    '<div class="ins-check-row">' + insCheckBtn(stackOn, 'stack-on') + '<span class="ins-label">设置抓取堆叠</span></div>' +
+    '<div class="ins-stack-row' + (stackOn ? '' : ' off') + '">' +
+      '<input type="range" class="ins-slider" min="1" max="' + cap + '" value="' + curStack + '" data-action="flt-stack" step="1">' +
+      '<span class="ins-stack-val" data-live="ins-stack">' + curStack + '</span>' +
+      '<span class="dim"> / ' + cap + '</span>' +
+    '</div>' +
+  '</div>';
+  // 第六行：变质优先级（标题在左，「变质优先/新鲜优先」在右，同一行；勾选后才可点选）
+  h += '<div class="ins-sec ins-spoil">' +
+    '<div class="ins-check-row">' + insCheckBtn(e.spoilPrio, 'spoil-on') + '<span class="ins-label">变质优先级</span></div>' +
+    '<div class="ins-spoil-opts' + (e.spoilPrio ? '' : ' off') + '">' +
+      insRadio('品质优先', 'spoil-mode', 'spoil', e.spoilPrio ? e.spoilMode : '') +
+      insRadio('新鲜优先', 'spoil-mode', 'fresh', e.spoilPrio ? e.spoilMode : '') +
+    '</div>' +
+  '</div>';
+  return '<div class="ins-panel">' + h + '</div>';
+}
 function inserterPanelHtml(e) {
-  return '<div class="dim">电力机械臂：严格单向搬运。从臂体指向的一侧（灰色圆点）取货，放到地面箭头/亮色箭头的一侧（物流方向）。放到传送带时只在一边放置（目标带上会有一个同色脉冲三角标出投放侧），翻转（R 旋转）机械臂即可把物品转到另一侧车道，横/竖传送带行为一致；侧放/尾放都固定投放一侧，不再两条车道轮流装。双列传送带上优先抓取靠近自己一侧的车道，近侧无货时再取远侧；若最靠前的物品目标（组装机等）已满/不收，会继续在传送带上找其他目标能收的原料抓取，保证组装机需要的多种原料都能补齐。普通臂作用相邻格，加长臂作用第二格。R 旋转。</div>' +
-    inserterFilterSectionHtml(e, '<div class="dim">当前筛选：') +
-    circuitPanelHtml(e, 'ins') + '<div class="status"></div>';
+  return inserterMachineRowsHtml(e);
 }
 function stackInserterPanelHtml(e) {
-  const isStack = e.type === 'stack-inserter';
-  const grabN = isStack ? 4 : 3;
-  const nm = isStack ? '堆叠机械臂' : '集装箱机械臂';
-  return '<div class="dim">' + nm + '：一次最多抓取 ' + grabN + ' 个同种物品再放下，装卸效率约为普通臂的 ' + grabN + ' 倍，并支持分层叠放传送带。R 旋转。</div>' +
-    inserterFilterSectionHtml(e, '<div class="dim">当前筛选：') +
-    circuitPanelHtml(e, 'ins') + '<div class="status"></div>';
+  return inserterMachineRowsHtml(e);
 }
 function inserterFilterOnAction(act, btn) {
-  if (act === 'flt') {
-    if (G.panelEnt instanceof Inserter) G.panelEnt.filter = btn.dataset.id;
+  const e = G.panelEnt;
+  if (!(e instanceof Inserter)) return circuitPanelAction('ins', act);
+  const r = () => { uiDirty = true; renderPanel(false); return true; };
+  if (act === 'flt-on') { e.filterOn = !e.filterOn; return r(); }
+  if (act === 'flt-mode') { e.filterMode = (e.filterMode === 'black') ? 'white' : 'black'; return r(); }
+  if (act === 'flt-slot') { if (typeof openFilterChooser === 'function') openFilterChooser(e, +btn.dataset.idx); return true; }
+  if (act === 'flt-slot-clear') {
+    const i = +btn.dataset.idx;
+    if (e.filters[i] !== undefined) { e.filters.splice(i, 1); return r(); }
     return true;
   }
-  if (act === 'flt-clear') {
-    if (G.panelEnt instanceof Inserter) G.panelEnt.filter = null;
-    return true;
+  if (act === 'flt-choose') {   // 弹窗内选择物品回填到筛选格子
+    const i = +btn.dataset.idx;
+    const id = btn.dataset.id;
+    e.filters[i] = id;
+    if (typeof closeFilterChooser === 'function') closeFilterChooser();
+    return r();
   }
+  if (act === 'stack-on') { e.pickStack = (e.pickStack > 0) ? 0 : (e.capacity() || 1); return r(); }
+  if (act === 'flt-stack') {
+    const v = Math.floor(Number(btn.value));
+    e.pickStack = Math.max(1, Math.min(e.capacity(), v));
+    const row = btn.closest && btn.closest('.ins-stack-row');
+    if (row) {
+      const vEl = row.querySelector('.ins-stack-val');
+      if (vEl && vEl.textContent !== String(e.pickStack)) vEl.textContent = e.pickStack;
+    }
+    uiDirty = true;
+    return true;   // 拖动中不整面板重建，只更新数值显示
+  }
+  if (act === 'spoil-on') { e.spoilPrio = !e.spoilPrio; return r(); }
+  if (act === 'spoil-mode') { e.spoilMode = (btn.dataset.mode === 'fresh') ? 'fresh' : 'spoil'; return r(); }
   return circuitPanelAction('ins', act);
 }
 // 悬浮提示（普通/长臂/过滤/堆叠共用）
 function inserterTip(e) {
-  return e.holding ? ('搬运 ' + ITEMS[e.holding].name + '，8格取放') : '待机：周围8格取放（优先近侧车道、取背面放正面）';
+  if (e.holding) return '搬运 ' + ITEMS[e.holding].name + (e.holdingCount > 1 ? ' ×' + e.holdingCount : '');
+  let flt = '';
+  if (e.filterActive()) flt = (e.filterMode === 'white' ? '白名单 ' : '黑名单 ') + e.filters.map(f => ITEMS[f]?.name || f).join('、');
+  return '待机' + (flt ? '；' + flt : '') + '（取背面放正面）';
 }
-// 面板实时状态：工作中或暂停原因
-function inserterPanelLive(e, api) {
+// 面板实时状态：工作中或暂停原因 + 机械臂图标/当前抓取物品刷新
+function inserterPanelLive(e, api, body) {
+  if (body) { const cv = body.querySelector('.ins-cv'); if (cv) drawInserterIcon(e, cv); }
+  api.set('ins-held', e.holding
+    ? ((ITEMS[e.holding] ? '<img class="ins-held-icon" src="' + iconDataURL(e.holding) + '">' + ITEMS[e.holding].name : e.holding) + (e.holdingCount > 1 ? ' ×' + e.holdingCount : ''))
+    : '空手');
   if (!e.circuitEnabled()) { api.status('已停止：电路条件不满足', 'warn'); return; }
   if (e.holding) {
     if (e.blocked) api.status('已暂停：放货格已满，卡住 ' + ITEMS[e.holding].name, 'warn');
@@ -597,7 +737,7 @@ function inserterPanelLive(e, api) {
     // 无可取的、且目标能收的物品：区分“源无货”与“有货但放不下”两种提示
     const src = e.peekSource(s);
     if (!src) {
-      if (e.filter) api.status('已暂停：取货格没有「' + ITEMS[e.filter].name + '」', 'warn');
+      if (e.filterActive()) api.status('已暂停：取货格没有符合筛选的物品', 'warn');
       else api.status('已暂停：取货格无物品可取', 'warn');
     } else {
       api.status('已暂停：取货格物品均放不进目标（放货格已满）', 'warn');

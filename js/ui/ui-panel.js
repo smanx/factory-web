@@ -20,6 +20,12 @@ function initPanelEvents() {
       panel.onAction('wf-set', wfSel);
       return;
     }
+    // 机械臂「设置抓取堆叠」滑杆（change = 释放后确定数值）
+    const stackCtrl = ev.target.closest && ev.target.closest('.ins-slider[data-action="flt-stack"]');
+    if (stackCtrl && panel && panel.onAction) {
+      panel.onAction('flt-stack', stackCtrl);
+      return;
+    }
     // 历史页物品选择（datalist 下拉选中）
     const histFilter = ev.target.closest('[data-stat-hist-filter]');
     if (histFilter) {
@@ -85,6 +91,12 @@ function initPanelEvents() {
   });
   document.getElementById('panel-body').addEventListener('input', ev => {
     if (imeComposing) return; // 中文组合中，跳过，避免按拼音过滤/打断输入法
+    // 机械臂「设置抓取堆叠」滑杆：拖动过程中实时更新数值显示
+    const stackCtrl = ev.target.closest && ev.target.closest('.ins-slider[data-action="flt-stack"]');
+    if (stackCtrl && G.panelEnt) {
+      const panel = G.panelEnt && DEVICE_PANEL[G.panelEnt.type];
+      if (panel && panel.onAction) { panel.onAction('flt-stack', stackCtrl); return; }
+    }
     applyPanelSearch(ev.target.value, ev.target.id, ev.target);
   });
   document.getElementById('panel-body').addEventListener('keydown', ev => {
@@ -975,3 +987,143 @@ function resetPanelPos() {
   panel.style.right = '';
   panel.style.bottom = '';
 }
+
+// ===== 机械臂筛选物品选择弹窗（复用 #hud-modal 弹框）=====
+// 启动筛选后点击某个筛选格子（+ 或物品图标）弹出本弹窗，在 5 大分组里浏览物品；
+// 点击某个物品即回填到对应的筛选格（对齐组装机选择配方弹框的分组样式）。
+let _fltCtx = null;   // { e: 机械臂实体, idx: 第几格(0..4) }
+let _fltTab = 'logistics';
+let _fltQ = '';
+let _fltComposing = false;
+
+// 把所有可选筛选物品按 5 大分组归类（物品组别取自 factorio-data 的 itemGroup）
+function filterChooserGroups() {
+  const perTab = { logistics: [], production: [], 'intermediate-products': [], space: [], combat: [] };
+  const choices = (typeof filterChoices === 'function') ? filterChoices() : FILTER_CHOICES;
+  for (const id of choices) {
+    const tab = (GAME_DATA.itemGroup && GAME_DATA.itemGroup[id]) || 'logistics';
+    if (!perTab[tab]) continue;
+    perTab[tab].push(id);
+  }
+  return perTab;
+}
+
+function filterChooserPanelHtml() {
+  const perTab = filterChooserGroups();
+  const e = _fltCtx ? _fltCtx.e : null;
+  let h = '<div class="flt-modal">';
+  h += '<input id="flt-search" class="inv-search" type="text" placeholder="搜索物品（输入名称）" autocomplete="off" value="' + _fltQ + '">';
+  // 5 个分组 Tab
+  h += '<div class="craft-tabs" id="flt-tabs">';
+  for (const tab of CRAFT_TABS) {
+    const n = (perTab[tab] || []).length;
+    const on = tab === _fltTab ? ' active' : '';
+    const label = CRAFT_TAB_LABEL[tab];
+    h += '<button type="button" class="craft-tab' + on + '" data-act="flt-tab" data-tab="' + tab + '">' +
+      '<span class="tab-icon">' + label.icon + '</span><span class="tab-label">' + label.text + '</span>' +
+      '<span class="cnt">' + n + '</span></button>';
+  }
+  h += '</div>';
+  for (const tab of CRAFT_TABS) {
+    const on = tab === _fltTab ? '' : ' style="display:none"';
+    const items = perTab[tab] || [];
+    let grid = '';
+    for (const id of items) {
+      const name = (ITEMS[id] && ITEMS[id].name) ? ITEMS[id].name : id;
+      const already = (e && e.filters && e.filters.indexOf(id) >= 0);
+      grid += '<button type="button" class="flt-item' + (already ? ' sel' : '') + '" data-act="flt-choose" data-id="' + id + '" data-idx="' + (_fltCtx ? _fltCtx.idx : 0) + '"' +
+        ' data-rsearch="' + (name + ' ' + id).toLowerCase() + '"' +
+        (already ? ' title="已在筛选列表中"' : '') + '>' +
+        '<img src="' + iconDataURL(id) + '"><span>' + name + '</span></button>';
+    }
+    h += '<div class="flt-grid" data-tab="' + tab + '"' + on + '>' + grid + '</div>';
+  }
+  h += '<div class="dim" id="flt-empty" style="display:none"></div>';
+  h += '<div class="dim">点击物品即设置到该筛选格。已选中的物品高亮显示。</div>';
+  h += '</div>';
+  return h;
+}
+
+function openFilterChooser(e, idx) {
+  if (!e) return;
+  _fltCtx = { e, idx };
+  _fltTab = 'logistics';
+  _fltQ = '';
+  const title = document.getElementById('hud-modal-title');
+  if (title) title.textContent = (e.type === 'burner-inserter' ? '热能机械臂' : '机械臂') + ' · 选择筛选物品';
+  const body = document.getElementById('hud-modal-body');
+  if (body) body.innerHTML = filterChooserPanelHtml();
+  applyFltSearch('');
+  const hm = document.getElementById('hud-modal');
+  hm.classList.add('flt-wide');
+  hm.classList.remove('hidden');
+}
+
+function closeFilterChooser() {
+  _fltCtx = null;
+  const m = document.getElementById('hud-modal');
+  m.classList.remove('flt-wide');
+  m.classList.add('hidden');
+  const body = document.getElementById('hud-modal-body');
+  if (body) body.innerHTML = '';
+  uiDirty = true;
+}
+
+function filterChooserSwitchTab(tab) {
+  if (CRAFT_TABS.indexOf(tab) < 0) tab = 'logistics';
+  _fltTab = tab;
+  for (const b of document.querySelectorAll('#flt-tabs .craft-tab')) b.classList.toggle('active', b.dataset.tab === tab);
+  for (const t of CRAFT_TABS) {
+    const g = document.querySelector('.flt-grid[data-tab="' + t + '"]');
+    if (g) g.style.display = (t === tab) ? '' : 'none';
+  }
+  applyFltSearch(_fltQ);
+}
+
+// 分组网格搜索过滤：仅过滤当前分组，就地隐藏不匹配项（不重建 DOM，保住输入焦点）
+function applyFltSearch(q) {
+  const ql = (q || '').trim().toLowerCase();
+  _fltQ = q;
+  let shown = 0;
+  for (const grid of document.querySelectorAll('#hud-modal-body .flt-grid')) {
+    if (grid.dataset.tab !== _fltTab) { grid.style.display = 'none'; continue; }
+    grid.style.display = '';
+    let cnt = 0;
+    for (const it of grid.querySelectorAll('.flt-item')) {
+      const hit = !ql || (it.dataset.rsearch || '').includes(ql);
+      it.style.display = hit ? '' : 'none';
+      if (hit) cnt++;
+    }
+    shown = cnt;
+  }
+  const emp = document.getElementById('flt-empty');
+  if (emp) {
+    emp.textContent = ql ? '没有匹配「' + q.trim() + '」的物品' : '该分类暂无物品';
+    emp.style.display = shown ? 'none' : '';
+  }
+}
+
+function filterChooserPick(id, idx) {
+  const e = _fltCtx ? _fltCtx.e : null;
+  if (!e) { closeFilterChooser(); return; }
+  if (!e.filters) e.filters = [];
+  e.filters[idx] = id;
+  closeFilterChooser();
+  renderPanel(false);   // 回填后刷新机械臂面板，让格子显示所选物品
+}
+
+// 筛选弹窗交互：弹窗位于 #hud-modal（不在 #panel-body 内），不经过面板分发，单独监听
+document.addEventListener('click', ev => {
+  if (!_fltCtx) return;
+  // 关闭按钮：关闭并清空上下文
+  if (ev.target && ev.target.id === 'hud-modal-close') { ev.stopPropagation(); closeFilterChooser(); return; }
+  const tab = ev.target.closest && ev.target.closest('#flt-tabs .craft-tab[data-tab]');
+  if (tab) { ev.stopPropagation(); filterChooserSwitchTab(tab.dataset.tab); return; }
+  const item = ev.target.closest && ev.target.closest('#hud-modal-body .flt-item[data-id]');
+  if (item) { ev.stopPropagation(); filterChooserPick(item.dataset.id, +item.dataset.idx); }
+});
+document.addEventListener('compositionstart', ev => { if (ev.target && ev.target.id === 'flt-search') _fltComposing = true; });
+document.addEventListener('compositionend', ev => { if (ev.target && ev.target.id === 'flt-search') { _fltComposing = false; applyFltSearch(ev.target.value); } });
+document.addEventListener('input', ev => {
+  if (ev.target && ev.target.id === 'flt-search' && _fltCtx && !_fltComposing) applyFltSearch(ev.target.value);
+});
