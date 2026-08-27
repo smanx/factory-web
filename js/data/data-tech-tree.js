@@ -105,6 +105,7 @@ const TECHS = {
   'captive-biter-spawner': { name: '虫巢孵化器', cost: { 'cryogenic-science-pack': 100, 'electromagnetic-science-pack': 100, 'military-science-pack': 100 }, desc: '太空时代虫巢孵化器科技：解锁捕获者火箭弹与虫巢孵化器（官方 Space Age Captive biter spawner）。用捕获者火箭弹锁定并捕获虫巢，转化为受驯化的虫巢孵化器——持续繁育异虫卵（官方 spawner 繁育行为，需喂养生物流维持圈养），补齐异虫卵→钷素科研的生物链终局循环（对齐《异星工厂》Space Age 虫巢捕获科技，需低温学+电磁科研）', req: ['cryogenics', 'electromagnetics', 'kovarex-enrichment'] },
   'space-research-speed': { name: '空间科研速度', cost: { 'space-science-pack': 100 }, infinite: true, desc: '无限科技：每次研究科研速度 +20%（对齐《异星工厂》Research speed 无限科技终局阶段，用空间科学包推进）', req: ['space-science'] },
   'space-mining-productivity': { name: '空间采矿产能', cost: { 'space-science-pack': 100 }, infinite: true, desc: '无限科技：每次研究采矿产能 +10%（对齐《异星工厂》Mining productivity 无限科技终局阶段，用空间科学包推进）', req: ['space-science'] },
+  'research-productivity': { name: '科研产能', cost: { 'space-science-pack': 100, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究提升科研产能 +10%（对齐《异星工厂》Research productivity 无限科技）——每瓶科学包产生的研究进度 +10%，让无限科研在终局更高效推进', req: ['space-science', 'utility'] },
   'weapon-damage': { name: '武器伤害', cost: { 'space-science-pack': 100, 'military-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究提升所有武器与炮塔伤害 +10%（对齐《异星工厂》Weapon damage 无限科技），让科技军备在终局持续成长', req: ['space-science', 'advanced-combat'] },
   'health': { name: '健康', cost: { 'space-science-pack': 100, 'agricultural-science-pack': 100, 'utility-science-pack': 100, 'military-science-pack': 100 }, infinite: true, desc: '无限科技：每次研究提升主角最大生命值 +50（对齐《异星工厂》Space Age Health 科技，官方 character-health-bonus +50/级），让主角在终局更强耐打', req: ['space-science', 'agriculture', 'utility', 'military4'] },
   'follower-robot-count': { name: '追随机器人', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究提升同时在场战斗机器人数量上限 +2（对齐《异星工厂》Follower robot count 无限科技，链条终结于 Level 5）', req: ['combat-robotics', 'utility'] },
@@ -243,7 +244,7 @@ const SPACE_AGE_TECHS = [
   'worker-robot-cargo-size', 'artillery-shooting-speed', 'artillery-shell-range', 'health',
   'rail-productivity', 'braking-force', 'rocket-productivity', 'physical-projectile-damage',
   'energy-weapons-damage', 'refined-flammables', 'stronger-explosives', 'fuel-efficiency',
-  'shooting-speed', 'worker-robot-speed', 'inserter-capacity', 'research-speed'
+  'shooting-speed', 'worker-robot-speed', 'inserter-capacity', 'research-speed', 'research-productivity'
 ];
 for (const tid of SPACE_AGE_TECHS) if (TECHS[tid]) TECHS[tid].cat = 'space-age';
 

@@ -1467,6 +1467,20 @@ ok(!!TS['health'].req && TS['health'].req.indexOf('military4') >= 0, '健康科�
 ok(TS['health'].cat === 'space-age', '健康科技归入太空时代分类');
 
 
+// ===== 太空时代 科研产能无限科技（Research productivity，本迭代新增）数据校验 =====
+console.log('\n【科研产能无限科技（Research productivity，Space Age）数据校验】');
+ok(!!TS['research-productivity'], '科研产能科技已注册');
+ok(TS['research-productivity'].infinite === true, '科研产能为无限科技（官方 infinite）');
+ok(!!TS['research-productivity'].req && TS['research-productivity'].req.indexOf('space-science') >= 0, '科研产能前置含空间科技');
+ok(!!TS['research-productivity'].req && TS['research-productivity'].req.indexOf('utility') >= 0, '科研产能前置含实用科技');
+ok(TS['research-productivity'].cat === 'space-age', '科研产能归入太空时代分类');
+// 科研产能倍率接入 labSpeedMult（data-util.js）：每级 ×1.1
+{
+  const utilSrc = fs.readFileSync(ROOT + '/js/data/data-util.js', 'utf8');
+  ok(utilSrc.indexOf("Math.pow(1.1, techLevel('research-productivity'))") >= 0, 'labSpeedMult 已接入科研产能倍率（每级 ×1.1）');
+}
+
+
 
 
 

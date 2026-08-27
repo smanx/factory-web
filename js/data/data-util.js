@@ -477,9 +477,11 @@ function elecMachMult() { return (G.techDone.electric ? 1.2 : 1); }
 function oilMult()    { return (G.techDone.oil ? 1.5 : 1); }
 // 科研速度倍率（对齐《异星工厂》Research speed 无限科技）：普通科研速度 ×1.5，
 // 空间科研速度无限科技每级再 ×1.2，可无限叠加。
+// 科研产能（Research productivity）无限科技：每级让每瓶科学包产生的研究进度 +10%（对齐官方）。
 function labSpeedMult() {
   let m = (techResearched('research-speed') ? 1.5 : 1);
   m *= Math.pow(1.2, techLevel('space-research-speed'));
+  m *= Math.pow(1.1, techLevel('research-productivity'));
   return m;
 }
 // 机器人速度倍率（对齐《异星工厂》Worker robot speed 无限科技）：每级 ×1.5 叠加。

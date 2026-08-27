@@ -1308,3 +1308,20 @@ D
 >   并把 verify-data-integrity 的 `nutrients-from-bioflux` 加入动态键（产物键≠配方键）；
 >   移除原「已移除非官方配方键 nutrients-from-bioflux」反向断言（该键现为合法官方配方）。
 >   全量 18 个校验脚本通过，`node build.js` 构建通过。
+### 阶段六.5：科研产能无限科技（Research productivity，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **科技**：新增「科研产能」无限科技（`research-productivity`，官方 Space Age Research
+>   productivity 无限科技）。每次研究提升科研产能 +10%（对齐官方 research-productivity，
+>   每瓶科学包产生的研究进度 +10%），让终局无限科研更高效推进。
+> - **数据单源**：科技定义在 data-tech-tree.js（无限科技，需空间科技+实用科技前置），
+>   效果经 `labSpeedMult()`（data-util.js）单源接入——每级让科研进度倍率再 ×1.1，
+>   与既有科研速度（research-speed ×1.5、space-research-speed ×1.2/级）独立叠加，
+>   未单独维护数值表。
+> - **玩法**：研究「科研产能」后，研究中心产出的科研进度每级 +10%，与科研速度科技
+>   相互叠加，让终局无限科技链（采矿产能/武器伤害/健康等）的推进更快。
+> - **前置**：空间科技 + 实用科技（官方 research-productivity 需 space-science 前置），
+>   成本用空间科学包 + 实用科学包。
+> - **校验**：verify-dlc 新增「科研产能」校验（科技注册/无限/前置/太空分类/labSpeedMult
+>   接入），全量 18 个校验脚本通过，`node build.js` 构建通过。
+
