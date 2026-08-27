@@ -287,6 +287,8 @@ function openPanel(mode, ent) {
   }
   G.panelMode = mode;
   G.panelEnt = ent || null;
+  // 打开设置面板时自动暂停游戏（关闭时恢复，见 closePanel）
+  if (mode === 'set') G.paused = true;
   // 背包弹框居中加宽显示（三列布局），其余面板保持右上角小窗
   document.getElementById('panel').classList.toggle('inv-wide', mode === 'inv');
   // 研究面板加宽双栏布局（左=研究列表，右=研究树图）
@@ -298,11 +300,14 @@ function openPanel(mode, ent) {
 }
 
 function closePanel(hide = true) {
+  const wasSettings = G.panelMode === 'set';
   G.panelMode = null;
   G.panelEnt = null;
   G.invRecipeQ = '';
   G.recipeSel = null;
   if (hide) document.getElementById('panel').style.display = 'none';
+  // 关闭设置面板后恢复游戏（对应 openPanel 中打开设置时的自动暂停）
+  if (wasSettings) G.paused = false;
 }
 
 function panelScrollTop() {
