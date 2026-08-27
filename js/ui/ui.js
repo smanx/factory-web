@@ -745,6 +745,24 @@ function craftMaxCount(rid) {
   }
   return (isFinite(max) && max > 0) ? max : 0;
 }
+// —— 官方顺序比较器（数据来自 GAME_DATA.itemSubgroup/subgroupOrder/itemOrder）——
+// 二级分组按官方 subgroupOrder 排序、组内物品按官方 itemOrder 排序；
+// 无官方数据的兜底：subgroup 排最后、物品保持 data-recipes 原始顺序（稳定排序）。
+function officialSubgroupCompare(a, b) {
+  const A = (GAME_DATA.subgroupOrder && GAME_DATA.subgroupOrder[a]) || '\uffff';
+  const B = (GAME_DATA.subgroupOrder && GAME_DATA.subgroupOrder[b]) || '\uffff';
+  if (A !== B) return A < B ? -1 : 1;
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+function officialItemCompare(a, b) {
+  const A = (GAME_DATA.itemOrder && GAME_DATA.itemOrder[a]) || '';
+  const B = (GAME_DATA.itemOrder && GAME_DATA.itemOrder[b]) || '';
+  if (A && B) return A < B ? -1 : A > B ? 1 : 0;
+  if (A) return -1;
+  if (B) return 1;
+  return 0; // 稳定排序：无官方顺序的兜底保持原顺序
+}
+
 function htmlCraft() {
   let h = '';
   const q = (G.invRecipeQ || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
@@ -797,22 +815,10 @@ function htmlCraft() {
       if (!groups.has(sg)) groups.set(sg, []);
       groups.get(sg).push(it);
     }
-    const sgList = Array.from(groups.keys()).sort((a, b) => {
-      const A = (GAME_DATA.subgroupOrder && GAME_DATA.subgroupOrder[a]) || '\uffff';
-      const B = (GAME_DATA.subgroupOrder && GAME_DATA.subgroupOrder[b]) || '\uffff';
-      if (A !== B) return A < B ? -1 : 1;
-      return a < b ? -1 : a > b ? 1 : 0;
-    });
+    const sgList = Array.from(groups.keys()).sort(officialSubgroupCompare);
     h += '<div id="inv-recipes-' + tab + '" class="craft-grid" data-tab="' + tab + '"' + on + '>';
     for (const sg of sgList) {
-      const list = groups.get(sg).slice().sort((x, y) => {
-        const A = (GAME_DATA.itemOrder && GAME_DATA.itemOrder[x.outId]) || '';
-        const B = (GAME_DATA.itemOrder && GAME_DATA.itemOrder[y.outId]) || '';
-        if (A && B) return A < B ? -1 : A > B ? 1 : 0;
-        if (A) return -1;
-        if (B) return 1;
-        return 0; // 稳定排序：无官方顺序的兜底保留 data-recipes 原始顺序
-      });
+      const list = groups.get(sg).slice().sort((x, y) => officialItemCompare(x.outId, y.outId));
       h += '<div class="craft-subgroup inv-slots">';
       for (const { rid, outId } of list) {
         const unlocked = recipeUnlocked(rid);
@@ -1296,13 +1302,24 @@ function recipeSelectPanelHtml(e) {
       '<span class="cnt">' + n + '</span></button>';
   }
   h += '</div>';
-  // 每个 Tab 一个配方网格
+  // 每个 Tab 一个配方网格；Tab 内按官方二级分组（item-subgroup）分组渲染，
+  // 分组顺序按官方 subgroupOrder、组内物品按官方 itemOrder（与背包制作栏一致）。
   for (const tab of CRAFT_TABS) {
     const items = perTab[tab] || [];
     const on = tab === activeTab ? '' : ' style="display:none"';
-    h += '<div id="rcp-grid-' + tab + '" data-tab="' + tab + '"' + on + '>' +
-      '<div class="inv-slots">' + recipeSelectGridHtmlForTab(e, info, items, '') + '</div>' +
-      '</div>';
+    const groups = new Map();
+    for (const it of items) {
+      const sg = (GAME_DATA.itemSubgroup && GAME_DATA.itemSubgroup[it.outId]) || '';
+      if (!groups.has(sg)) groups.set(sg, []);
+      groups.get(sg).push(it);
+    }
+    const sgList = Array.from(groups.keys()).sort(officialSubgroupCompare);
+    h += '<div id="rcp-grid-' + tab + '" data-tab="' + tab + '"' + on + '>';
+    for (const sg of sgList) {
+      const list = groups.get(sg).slice().sort((x, y) => officialItemCompare(x.outId, y.outId));
+      h += '<div class="craft-subgroup inv-slots">' + recipeSelectGridHtmlForTab(e, info, list, '') + '</div>';
+    }
+    h += '</div>';
   }
   h += '<div class="dim" id="rcp-empty" style="display:none"></div>';
   h += '</div>';
@@ -1471,11 +1488,17 @@ function applyRcpFilter(q) {
       el.style.display = hit ? '' : 'none';
       if (hit) shown++;
     });
+    // 搜索时隐藏没有任何可见槽位的二级分组（空分组留白不显示）
+    activeGrid.querySelectorAll('.craft-subgroup').forEach(g => {
+      g.style.display = g.querySelectorAll('.rcp-slot').length &&
+        Array.from(g.querySelectorAll('.rcp-slot')).some(el => el.style.display !== 'none') ? '' : 'none';
+    });
   }
   for (const t of CRAFT_TABS) {
     if (t === activeTab) continue;
     const grid = body.querySelector('#rcp-grid-' + t);
     if (grid) grid.querySelectorAll('.rcp-slot').forEach(el => { el.style.display = ''; });
+    if (grid) grid.querySelectorAll('.craft-subgroup').forEach(g => { g.style.display = ''; });
   }
   // 空状态提示：当前 Tab 无匹配配方时显示
   const emp = body.querySelector('#rcp-empty');
