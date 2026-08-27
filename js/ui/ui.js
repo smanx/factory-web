@@ -340,37 +340,33 @@ function renderPanel(full) {
   if (!G.panelMode) { document.getElementById('panel').style.display = 'none'; return; }
   const st = full ? 0 : panelScrollTop();
   if (G.panelMode === 'inv') {
-    title.textContent = '背包与手工制造';
+    title.textContent = '';
     const keepFocusId = document.activeElement &&
       (document.activeElement.id === 'inv-recipe-search' || document.activeElement.id === 'inv-item-search') ?
       document.activeElement.id : null;
-    // 背包三列布局：左=玩家背包物品，中=物流区域，右=制作区域。
-    // 弹框改为屏幕中间显示（见 #panel.inv-wide 样式），三列纵向分区。
-    // 制作区（右列）含数百条配方，生成较重，首次生成后缓存复用；其动态数量由
-    // updateInvLive 每帧轻量刷新，物品/科技变化时 _invalidateInvCache() 清缓存强制重建。
+    // 背包面板：顶部为三个 tab（玩家 / 物流 / 制作）共用大标题，点击即可切换。
+    // 当前仅展示选中 tab 的内容（单列视图）。制作页含数百条配方，生成较重，缓存复用。
+    const tab = G.invTab || 'inv';
     if (!_invTabCache['craft']) _invTabCache['craft'] = htmlCraft();
-    const craftHtml = _invTabCache['craft'];
-    // 玩家物品区（左列）与物流区（中列）含交互变更区块，不随 updateInvLive 刷新，
-    // 每次打开都重新生成以保证状态准确（体积远小于合成页，成本可控）。
-    const matHtml = htmlInventory();
-    const logiHtml = htmlLogistics();
+    let content;
+    if (tab === 'craft') {
+      content = '<div id="inv-craft">' + _invTabCache['craft'] + '</div>';
+    } else if (tab === 'logi') {
+      content = htmlLogistics();
+    } else {
+      content = htmlInventory();
+    }
+    const tabBtn = (key, label) =>
+      '<button class="inv-tab' + (tab === key ? ' active' : '') + '" data-inv-tab="' + key + '">' + label + '</button>';
     body.innerHTML =
-      '<div class="inv-layout">' +
-        '<div class="inv-col inv-col-left" id="inv-col-left">' +
-          '<div class="inv-col-head">🎒 玩家背包</div>' +
-          '<div class="inv-col-body" id="inv-mat">' + matHtml + '</div>' +
-        '</div>' +
-        '<div class="inv-col inv-col-mid" id="inv-col-mid">' +
-          '<div class="inv-col-head">📦 物流</div>' +
-          '<div class="inv-col-body">' + logiHtml + '</div>' +
-        '</div>' +
-        '<div class="inv-col inv-col-right" id="inv-col-right">' +
-          '<div class="inv-col-head">🛠 制作</div>' +
-          '<div class="inv-col-body" id="inv-craft">' + craftHtml + '</div>' +
-        '</div>' +
-      '</div>';
-    applyInvRecipeFilter(G.invRecipeQ);
-    applyInvItemSearch(G.invItemQ);
+      '<div class="inv-tabs">' +
+        tabBtn('inv', '🎒 玩家') +
+        tabBtn('logi', '📦 物流') +
+        tabBtn('craft', '🛠 制作') +
+      '</div>' +
+      '<div class="inv-tab-body">' + content + '</div>';
+    if (tab === 'craft') applyInvRecipeFilter(G.invRecipeQ);
+    if (tab === 'inv') applyInvItemSearch(G.invItemQ);
     if (keepFocusId) {
       const inp = document.getElementById(keepFocusId);
       if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
@@ -624,7 +620,7 @@ function htmlInvSlots() {
 }
 
 function htmlInventory() {
-  let h = '<div class="sec">背包（' + INV_SLOT_COUNT + ' 格，对齐《异星工厂》有限背包。点击任意物品选中：设备点地图可直接建造；材料点地图无法建造。选中后可点底部快捷栏放入，Q/E 取消）</div>';
+  let h = '';
   const iq = (G.invItemQ || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   h += '<input id="inv-item-search" class="inv-search" type="text" placeholder="搜索物品（输入名称）" autocomplete="off" value="' + iq + '">';
   h += htmlInvSlots();
@@ -697,14 +693,10 @@ function htmlLogistics() {
     '<button class="logi-switch recycle" data-logiswitch="recycle"' + (recUnreq ? ' data-on="1"' : '') + '>' +
       '<span class="sw-label">回收未请求物品</span><span class="sw-dot"></span></button>' +
   '</div>';
-  h += '<div class="dim" style="margin:4px 0">物流区：格子中设置的物品会被机器人运到背包（每行 10 格 × 5 行）。点击空槽放入当前选中的物品，点击已有物品可设置数量/清除。</div>';
   // 中部物流区（请求格子）
-  h += '<div class="sec">📥 物流区 <span class="dim">（请求送达）</span></div>';
   h += logiReqGridHtml();
   // 底部物流回收区（回收格子）
-  h += '<div class="sec">📤 物流回收区 <span class="dim">（从背包运走回收）</span></div>';
   h += logiRecycleGridHtml();
-  h += '<div class="dim" style="margin-top:4px">回收区：格子中设置的物品会被机器人从背包中运走回收（每行 10 格 × 3 行）。点击空槽放入当前选中的物品，点击已有物品可取消回收。</div>';
   return h;
 }
 
@@ -731,7 +723,7 @@ function craftMaxCount(rid) {
   return (isFinite(max) && max > 0) ? max : 0;
 }
 function htmlCraft() {
-  let h = '<div class="dim" style="margin-bottom:8px">在此手动制作物品（对齐《异星工厂》手工制造）：左键点击图标制作 1 个，右键点击图标制作 5 个。需要流体（石油气/水等）或离心机等高级工艺的配方，请使用对应机器生产。</div>';
+  let h = '';
   const q = (G.invRecipeQ || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   h += '<input id="inv-recipe-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off" value="' + q + '">';
   // 制作栏 5 个 Tab（数据单源归类，见 GAME_DATA.itemGroup）
@@ -1262,7 +1254,7 @@ function recipeMachineLayoutHtml(e) {
   const left = htmlInventory();
   const right = recipeMachineRightHtml(e, info, rec);
   return '<div class="inv-layout machine-layout">' +
-    '<div class="inv-col inv-col-left" id="inv-col-left"><div class="inv-col-head">🎒 玩家背包</div>' +
+    '<div class="inv-col inv-col-left" id="inv-col-left"><div class="inv-col-head">🎒 玩家</div>' +
     '<div class="inv-col-body" id="inv-mat">' + left + '</div></div>' +
     '<div class="inv-col inv-col-right" id="inv-col-right"><div class="inv-col-head">⚙ ' + ITEMS[e.type].name + ' 交互</div>' +
     '<div class="inv-col-body">' + right + '</div></div>' +

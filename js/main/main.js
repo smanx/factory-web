@@ -42,7 +42,7 @@ var G = {
   invRecipeQ: '',
   invRecipeTab: 'logistics', // 制作栏当前 Tab：logistics/production/intermediate-products/space/combat
   invItemQ: '',     // 背包「拥有的物品」列表的搜索关键字
-  invTab: 'materials', // 背包两个 tab：'materials' 材料（默认）/ 'craft' 合成
+  invTab: 'inv', // 背包三个 tab：'inv' 玩家（默认）/ 'logi' 物流 / 'craft' 制作
   clipboard: null,
   blueprint: null,        // 蓝图数据：{ minX, minY, w, h, ents: [序列化实体...] }
   blueBook: [],           // 蓝图库：保存的多个蓝图 { name, minX, minY, ents }（对齐《异星工厂》蓝图库）
