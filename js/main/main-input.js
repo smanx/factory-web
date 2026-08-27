@@ -230,10 +230,6 @@ function bindInput() {
     }
     // 手持蜘蛛遥控器点击地面 → 命令蜘蛛机器人移动
     if (typeof selItem === 'function' && selItem() === 'spidertron-remote') { commandSpidertron(G.cursorTile.tx, G.cursorTile.ty); return; }
-    // 手持重炮瞄准遥控器点击地图 → 手动炮兵瞄准（对齐《异星工厂》Artillery targeting remote）
-    if (typeof selItem === 'function' && selItem() === 'artillery-targeting-remote') { fireArtilleryShellAt(G.cursorTile.tx, G.cursorTile.ty); return; }
-    // 手持放电防御遥控器点击地图 → 远程触发放电防御（对齐《异星工厂》Discharge defense remote）
-    if (typeof selItem === 'function' && selItem() === 'discharge-defense-remote') { if (typeof activateDischargeDefense === 'function') activateDischargeDefense(); return; }
     // 手持峭壁炸药点击峭壁 → 炸毁清除（对齐《异星工厂》Cliff explosives）
     if (hasCliffBlastSelected() && isCliff(G.cursorTile.tx, G.cursorTile.ty)) { cliffBlastAt(G.cursorTile.tx, G.cursorTile.ty); return; }
     // 手持红/绿电路线缆点击电路设备 → 切换其接入通道（对齐《异星工厂》Red/Green wire）
@@ -260,16 +256,6 @@ function handleLeftDown() {
   // 手持蜘蛛遥控器点击地面 → 命令蜘蛛机器人移动到目标点（对齐《异星工厂》Spidertron remote）
   if (typeof selItem === 'function' && selItem() === 'spidertron-remote' && G.cursorTile) {
     commandSpidertron(G.cursorTile.tx, G.cursorTile.ty);
-    return;
-  }
-  // 手持重炮瞄准遥控器点击地图 → 手动炮兵瞄准
-  if (typeof selItem === 'function' && selItem() === 'artillery-targeting-remote' && G.cursorTile) {
-    fireArtilleryShellAt(G.cursorTile.tx, G.cursorTile.ty);
-    return;
-  }
-  // 手持放电防御遥控器点击地图 → 远程触发放电防御
-  if (typeof selItem === 'function' && selItem() === 'discharge-defense-remote' && G.cursorTile) {
-    if (typeof activateDischargeDefense === 'function') activateDischargeDefense();
     return;
   }
   // 手持修理包点击受损建筑 → 修复（对齐《异星工厂》：左键维修）

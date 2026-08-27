@@ -66,51 +66,6 @@ const ARTILLERY_FIRE_RATE = 3;   // 两次射击间隔（秒）
 const ARTILLERY_DMG = 200;       // 爆炸伤害
 const ARTILLERY_RADIUS = 5;      // 爆炸范围（格）
 const ARTILLERY_SHELL_CAP = 40;  // 内置炮弹容量
-
-// ===== 手动炮兵瞄准（对齐《异星工厂》Artillery targeting remote）=====
-// 手持重炮瞄准遥控器点击地图任意位置：优先锁定落点附近最近的敌人，否则直接轰击落点；
-// 选择最近的炮兵连（artillery-turret）或炮兵车厢（artillery-wagon，含炮弹者）开火。
-function fireArtilleryShellAt(tx, ty) {
-  const range = artilleryRange();
-  const tpx = tx * TILE + TILE / 2, tpy = ty * TILE + TILE / 2;
-  // 1) 确定目标：落点附近（5 格内）最近敌人，否则直接落点
-  let target = null, bestD = Infinity;
-  for (const en of (G.enemies || [])) {
-    if (!en || en.dead) continue;
-    const d = Math.hypot(en.x - tpx, en.y - tpy);
-    if (d < bestD) { bestD = d; target = en; }
-  }
-  const aimX = target ? target.x : tpx, aimY = target ? target.y : tpy;
-  // 2) 找到最近的炮兵源（炮兵连 / 炮兵车厢），需有炮弹且在射程内
-  let src = null, srcD = Infinity;
-  const addSrc = (ex, ey, e) => {
-    const d = Math.hypot((ex) * TILE - tpx, (ey) * TILE - tpy);
-    if (d <= range * TILE && d < srcD) { srcD = d; src = e; }
-  };
-  for (const e of (G.ents || [])) {
-    if (e._dead) continue;
-    if (e.type === 'artillery-turret' && e.shells > 0) addSrc(e.x + e.w / 2, e.y + e.h / 2, e);
-  }
-  for (const tr of (G.trains || [])) {
-    for (const car of tr.cars) {
-      if (car instanceof ArtilleryWagon && (car.shells || 0) > 0) addSrc(car.x + car.w / 2, car.y + car.h / 2, car);
-    }
-  }
-  if (!src) { if (typeof toast === 'function') toast('手动炮兵：没有可用的炮兵连/炮兵车厢（需有炮弹）'); return false; }
-  // 3) 开火
-  const cx = (src.x + src.w / 2), cy = (src.y + src.h / 2);
-  if (src instanceof ArtilleryWagon) { src.shells--; }
-  else if (typeof src.takeItemOf === 'function') { src.takeItemOf('artillery-shell'); }
-  src.facing = Math.atan2(aimY - cy * TILE, aimX - cx * TILE);
-  if (typeof playSfx === 'function') playSfx('artillery');
-  (G.bullets || (G.bullets = [])).push({
-    x: cx * TILE, y: cy * TILE, tx: aimX, ty: aimY, t: 0,
-    life: Math.max(0.3, srcD / 40), art: true, splash: ARTILLERY_RADIUS,
-    dmg: Math.round(ARTILLERY_DMG * (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) * (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('explosives') : 1))
-  });
-  if (typeof toast === 'function') toast('🎯 手动炮兵：轰击 (' + tx + ',' + ty + ')' + (target ? ' 已锁定附近敌人' : ''));
-  return true;
-}
 class ArtilleryTurret extends CircuitNode {
   constructor(type, x, y) {
     super('artillery-turret', x, y);

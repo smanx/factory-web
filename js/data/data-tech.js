@@ -12,7 +12,6 @@ const TECH_REQ = {
   'artillery-turret': 'military4',
   'artillery-shell': 'military4',
   'artillery-wagon': 'military4',
-  'artillery-targeting-remote': 'military4',   // 重炮瞄准遥控器需军事科技 IV（对齐官方 artillery 科技，研究后自动获得）
   'laser-turret': 'laser-turrets',
   'flamethrower-turret': 'flamethrower',
   'rocket-launcher': 'military2',
@@ -154,7 +153,6 @@ const TECH_REQ = {
   // 传送带免疫/放电防御装备科技门控（对齐《异星工厂》装备科技线）
   'belt-immunity-equipment': 'armor-modular',
   'discharge-defense-equipment': 'armor-power',
-  'discharge-defense-remote': 'armor-power',   // 放电防御遥控器需装甲电力科技（对齐官方 discharge-defense-equipment 科技，研究后自动获得）
   // ===== 组装机 / 集装箱机械臂科技门控（对齐《异星工厂》Automation 3 / Logistics 3） =====
   'assembling-machine-3': 'automation3',
   'bulk-inserter': 'logistics3',
