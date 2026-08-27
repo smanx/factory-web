@@ -558,4 +558,37 @@ ok(Object.keys(RP['landing-pad-unloading-bay'].inp).every(k => k in IT), 'landin
 // 科技门控：由火箭科技解锁
 ok(ctx.__itemTechReq('landing-pad-unloading-bay') === 'rocket-science', '物流卸载舱需「火箭技术」科技');
 
+// ===== Aquilo 聚变发电链（fusion-reactor / fusion-generator / fusion-power-cell）数据校验 =====
+console.log('\n【Aquilo 聚变发电链 fusion-reactor / fusion-generator 数据】');
+// 物品/堆叠/命名来自官方
+ok(!!IT['fusion-reactor'], 'fusion-reactor 物品已注册');
+ok(!!IT['fusion-generator'], 'fusion-generator 物品已注册');
+ok(!!IT['fusion-power-cell'], 'fusion-power-cell 物品已注册');
+ok(GD.stackSize['fusion-reactor'] === 1, 'fusion-reactor 堆叠来自官方 (=1)');
+ok(GD.stackSize['fusion-generator'] === 5, 'fusion-generator 堆叠来自官方 (=5)');
+ok(GD.stackSize['fusion-power-cell'] === 50, 'fusion-power-cell 堆叠来自官方 (=50)');
+ok(GD.names['fusion-reactor'] && GD.names['fusion-reactor'].en === 'Fusion reactor', 'fusion-reactor 官方命名已收录 (Fusion reactor)');
+ok(GD.names['fusion-generator'] && GD.names['fusion-generator'].en === 'Fusion generator', 'fusion-generator 官方命名已收录 (Fusion generator)');
+ok(GD.names['fusion-power-cell'] && GD.names['fusion-power-cell'].en === 'Fusion power cell', 'fusion-power-cell 官方命名已收录 (Fusion power cell)');
+// 占地/血量来自官方
+ok(GD.footprint['fusion-reactor'] && GD.footprint['fusion-reactor'].w === 6 && GD.footprint['fusion-reactor'].h === 6, '聚变反应堆 占地 6×6（官方 selection_box ±3）');
+ok(GD.footprint['fusion-generator'] && GD.footprint['fusion-generator'].w === 3 && GD.footprint['fusion-generator'].h === 5, '聚变发电机 占地 3×5（官方 selection_box ±1.5×±2.5）');
+ok(GD.buildingHp['fusion-reactor'] === 1000, '聚变反应堆 血量=1000（官方 max_health）');
+ok(GD.buildingHp['fusion-generator'] === 1000, '聚变发电机 血量=1000（官方 max_health）');
+// 配方（官方适配）
+ok(!!RP['fusion-reactor'], 'fusion-reactor 配方已注册');
+ok(!!RP['fusion-generator'], 'fusion-generator 配方已注册');
+ok(!!RP['fusion-power-cell'], 'fusion-power-cell 配方已注册');
+ok(RP['fusion-power-cell'].out['fusion-power-cell'] === 1 && RP['fusion-power-cell'].time === 10, '聚变燃料棒产出 1、10s（官方适配）');
+ok(RP['fusion-reactor'].out['fusion-reactor'] === 1 && RP['fusion-reactor'].time === 60, '聚变反应堆产出 1、60s（官方适配）');
+ok(RP['fusion-generator'].out['fusion-generator'] === 1 && RP['fusion-generator'].time === 30, '聚变发电机产出 1、30s（官方适配）');
+ok(Object.keys(RP['fusion-reactor'].inp).every(k => k in IT), 'fusion-reactor 配方引用物品均存在');
+ok(Object.keys(RP['fusion-generator'].inp).every(k => k in IT), 'fusion-generator 配方引用物品均存在');
+ok(Object.keys(RP['fusion-power-cell'].inp).every(k => k in IT), 'fusion-power-cell 配方引用物品均存在');
+// 科技门控：由聚变能源科技解锁
+ok(ctx.__itemTechReq('fusion-reactor') === 'fusion-power', '聚变反应堆需「聚变能源」科技');
+ok(ctx.__itemTechReq('fusion-generator') === 'fusion-power', '聚变发电机需「聚变能源」科技');
+ok(ctx.__itemTechReq('fusion-power-cell') === 'fusion-power', '聚变燃料棒需「聚变能源」科技');
+ok(!!TS['fusion-power'], '「聚变能源」科技已注册');
+ok((TS['fusion-power'].req || []).indexOf('space-platform') >= 0, '「聚变能源」科技前置含「空间平台」');
 process.exit(fail === 0 ? 0 : 1);

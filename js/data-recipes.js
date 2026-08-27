@@ -299,6 +299,11 @@ const RECIPES = {
   'heat-pipe':        { time: 1, inp: { 'copper-plate': 20, 'steel-plate': 10 }, out: { 'heat-pipe': 1 } },
   'heat-exchanger':        { time: 3, inp: { 'copper-plate': 100, 'pipe': 10, 'steel-plate': 10 }, out: { 'heat-exchanger': 1 } },
   'heating-tower':        { time: 10, inp: { 'boiler': 2, 'heat-pipe': 5, 'concrete': 20 }, out: { 'heating-tower': 1 } },  // 太空时代供热塔（官方配方：2锅炉+5导热管+20混凝土，10s）
+  // ===== Aquilo 聚变发电链（太空时代 Space Age，对齐《异星工厂》fusion-reactor / fusion-generator / fusion-power-cell）=====
+  // 官方配方依赖钨板/量子处理器/钬板/氨（Aquilo 行星专属资源），项目暂无行星系统，适配为现有超导体/锂板/处理器等高级材料，产出物/耗时参考官方。
+  'fusion-power-cell': { time: 10, inp: { 'lithium-plate': 5, 'superconductor': 1, 'carbon-fiber': 1 }, out: { 'fusion-power-cell': 1 } },  // 官方 5锂板+1钬板+100氨（10s），适配
+  'fusion-reactor':    { time: 60, inp: { 'superconductor': 50, 'processing-unit': 50, 'lithium-plate': 30, 'steel-plate': 50 }, out: { 'fusion-reactor': 1 } },  // 官方 200钨板+200超导+250量子处理器（60s），适配
+  'fusion-generator':  { time: 30, inp: { 'superconductor': 30, 'processing-unit': 30, 'lithium-plate': 20 }, out: { 'fusion-generator': 1 } },  // 官方 100钨板+100超导+50量子处理器（30s），适配
   // ===== Fulgora 避雷系统（太空时代 Space Age，对齐《异星工厂》lightning-rod / lightning-collector）=====
   // 官方配方：避雷针=12铜线+8钢板+4石砖（5s）；避雷收集器=1避雷针+8超级电容+1蓄电器+80电解质（5s）。
   // 项目未实现 Fulgora 专属 supercapacitor/electrolyte，故收集器配方适配为现有超导体替代超级电容，产出物/耗时参考官方。

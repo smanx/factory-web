@@ -226,6 +226,9 @@ const GAME_DATA = {
   "heat-pipe": 50,
   "heat-exchanger": 50,
   "heating-tower": 20,
+  "fusion-reactor": 1,
+  "fusion-generator": 5,
+  "fusion-power-cell": 50,
   "lightning-rod": 50,
   "lightning-collector": 20,
   "small-electric-pole": 50,
@@ -343,6 +346,8 @@ const GAME_DATA = {
   "heat-pipe": 200,
   "heat-exchanger": 200,
   "heating-tower": 500,
+  "fusion-reactor": 1000,
+  "fusion-generator": 1000,
   "lightning-rod": 100,
   "lightning-collector": 200,
   "space-platform-hub": 5000,
@@ -3521,6 +3526,18 @@ const GAME_DATA = {
    "zh": "供热塔",
    "en": "Heating tower"
   },
+  "fusion-reactor": {
+   "zh": "聚变反应堆",
+   "en": "Fusion reactor"
+  },
+  "fusion-generator": {
+   "zh": "聚变发电机",
+   "en": "Fusion generator"
+  },
+  "fusion-power-cell": {
+   "zh": "聚变燃料棒",
+   "en": "Fusion power cell"
+  },
   "lightning-rod": {
    "zh": "避雷针",
    "en": "Lightning rod"
@@ -4221,6 +4238,14 @@ const GAME_DATA = {
   "asteroid-collector": {
    "w": 3,
    "h": 3
+  },
+  "fusion-reactor": {
+   "w": 6,
+   "h": 6
+  },
+  "fusion-generator": {
+   "w": 3,
+   "h": 5
   }
  },
  "steamPower": {

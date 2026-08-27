@@ -840,6 +840,8 @@ const FOOTPRINT_SOURCES = {
   'space-platform-hub': ['space-platform-hub', 'space-platform-hub'],  // 官方 selection_box ±4 → 8×8
   'thruster': ['thruster', 'thruster'],  // 官方 selection_box {{-2,-2.5},{2,5.5}} → 4×8
   'asteroid-collector': ['asteroid-collector', 'asteroid-collector'],  // 官方 selection_box
+  'fusion-reactor': ['fusion-reactor', 'fusion-reactor'],  // 太空时代聚变反应堆（Aquilo）：官方 selection_box ±3×±3 → 6×6
+  'fusion-generator': ['fusion-generator', 'fusion-generator'],  // 太空时代聚变发电机（Aquilo）：官方 selection_box ±1.5×±2.5 → 3×5
 };
 // 官方 selection_box 为实体占用的格数（局部坐标跨度，单位格）。
 // 占地格数 = max(1, ceil(跨度))；部分实体（机械臂/电线杆/熔炉等）官方跨度<1 或非整数，
