@@ -106,6 +106,7 @@ const TECHS = {
   'space-research-speed': { name: '空间科研速度', cost: { 'space-science-pack': 100 }, infinite: true, desc: '无限科技：每次研究科研速度 +20%（对齐《异星工厂》Research speed 无限科技终局阶段，用空间科学包推进）', req: ['space-science'] },
   'space-mining-productivity': { name: '空间采矿产能', cost: { 'space-science-pack': 100 }, infinite: true, desc: '无限科技：每次研究采矿产能 +10%（对齐《异星工厂》Mining productivity 无限科技终局阶段，用空间科学包推进）', req: ['space-science'] },
   'weapon-damage': { name: '武器伤害', cost: { 'space-science-pack': 100, 'military-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究提升所有武器与炮塔伤害 +10%（对齐《异星工厂》Weapon damage 无限科技），让科技军备在终局持续成长', req: ['space-science', 'advanced-combat'] },
+  'health': { name: '健康', cost: { 'space-science-pack': 100, 'agricultural-science-pack': 100, 'utility-science-pack': 100, 'military-science-pack': 100 }, infinite: true, desc: '无限科技：每次研究提升主角最大生命值 +50（对齐《异星工厂》Space Age Health 科技，官方 character-health-bonus +50/级），让主角在终局更强耐打', req: ['space-science', 'agriculture', 'utility', 'military4'] },
   'follower-robot-count': { name: '追随机器人', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究提升同时在场战斗机器人数量上限 +2（对齐《异星工厂》Follower robot count 无限科技，链条终结于 Level 5）', req: ['combat-robotics', 'utility'] },
   'worker-robot-cargo-size': { name: '机器人容量', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：物流/施工机器人单次搬运数量每级 +2（对齐《异星工厂》Worker robot cargo size / Worker robot storage 无限科技，链条终结于 Level 3）', req: ['logistics-network'] },
   'artillery-shooting-speed': { name: '炮兵射速', cost: { 'production-science-pack': 60, 'utility-science-pack': 60, 'military-science-pack': 40 }, infinite: true, desc: '无限科技：每次研究提升炮兵连与炮兵车厢射击速度 +10%（对齐《异星工厂》Artillery shell shooting speed 无限科技）', req: ['military4', 'production'] },
@@ -239,7 +240,7 @@ const SPACE_AGE_TECHS = [
   'lightning', 'fulgora', 'space-thruster', 'advanced-defense', 'space-platform', 'fusion-power', 'promethium-science', 'captive-biter-spawner',
   'elevated-rail', 'space-research-speed',
   'space-mining-productivity', 'weapon-damage', 'follower-robot-count',
-  'worker-robot-cargo-size', 'artillery-shooting-speed', 'artillery-shell-range',
+  'worker-robot-cargo-size', 'artillery-shooting-speed', 'artillery-shell-range', 'health',
   'rail-productivity', 'braking-force', 'rocket-productivity', 'physical-projectile-damage',
   'energy-weapons-damage', 'refined-flammables', 'stronger-explosives', 'fuel-efficiency',
   'shooting-speed', 'worker-robot-speed', 'inserter-capacity', 'research-speed'

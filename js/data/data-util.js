@@ -488,6 +488,16 @@ function fuelConsumptionMult() {
   return 1 / Math.pow(1.1, lvl);
 }
 
+// 健康无限科技等级（对齐《异星工厂》Space Age Health 科技）：每级提升主角最大生命值 +50
+function healthLevel() {
+  if (!techResearched('health')) return 0;
+  return techLevel('health');
+}
+// 主角最大生命值（基础 250 + 健康无限科技每级 +50，对齐官方 health 科技 character-health-bonus +50/级）
+function playerMaxHp() {
+  return PLAYER_BASE_MAX_HP + 50 * healthLevel();
+}
+
 // 武器伤害无限科技倍率（对齐《异星工厂》Weapon damage）：每级 +10%，作用于玩家武器与炮塔
 function weaponDamageMult() {
   const lvl = (G.techProg && G.techProg['weapon-damage']) || 0;

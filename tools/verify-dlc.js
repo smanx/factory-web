@@ -1379,4 +1379,15 @@ console.log('\n【氨制火箭燃料（ammonia-rocket-fuel）数据校验】');
 }
 
 
+// ===== 太空时代 健康无限科技（Health，本迭代新增）数据校验 =====
+console.log('\n【健康无限科技（Health，Space Age）数据校验】');
+ok(!!TS['health'], '健康科技已注册');
+ok(TS['health'].infinite === true, '健康为无限科技（官方 infinite）');
+ok(!!TS['health'].req && TS['health'].req.indexOf('agriculture') >= 0, '健康科技前置含农业科技');
+ok(!!TS['health'].req && TS['health'].req.indexOf('space-science') >= 0, '健康科技前置含空间科技');
+ok(!!TS['health'].req && TS['health'].req.indexOf('utility') >= 0, '健康科技前置含实用科技');
+ok(!!TS['health'].req && TS['health'].req.indexOf('military4') >= 0, '健康科技前置含军事科技 IV');
+ok(TS['health'].cat === 'space-age', '健康科技归入太空时代分类');
+
+
 process.exit(fail === 0 ? 0 : 1);

@@ -1030,3 +1030,15 @@
 > - **校验**：verify-data-integrity 把两款遥控器加入「特殊产出（非合成）」白名单；
 >   全量 18 个校验脚本通过，`node build.js` 构建通过。
 
+
+### 阶段四.31：健康无限科技（Health，Space Age，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **科技**：新增「健康」无限科技（`health`，官方 Space Age Health 科技）。每次研究提升主角
+>   最大生命值 +50（官方 `character-health-bonus` +50/级），让主角在终局更强耐打。
+> - **数据单源**：科技定义在 data-tech-tree.js（与其它无限科技一致，固定成本、等级递增效果），
+>   效果函数 `playerMaxHp()` 读取 `techLevel('health')`（对齐官方 health 科技语义）。
+> - **玩法**：研究「健康」科技后，主角最大生命值由基础 250 提升为 250+50×等级，受伤回血上限随之
+>   提高；每次研究即时刷新 `G.playerHPmax`（lab.js 研究完成时同步）。前置：空间科技 + 农业科技
+>   （官方 agricultural-science-pack 前置）+ 实用科技 + 军事科技 IV；成本用空间/农业/实用/军事科学包。
+> - **校验**：verify-dlc 新增健康科技校验（7 项），全量 18 个校验脚本通过，`node build.js` 构建通过。

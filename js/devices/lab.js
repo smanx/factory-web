@@ -87,6 +87,11 @@ class Lab extends Entity {
         // 产能模块：达到阈值时本次科研免费（不消耗科学包）
         if (!this.applyProductivity()) this.consumeAnyPack(1);
         G.techProg[tech] = (G.techProg[tech] || 0) + 1;   // 进度无限增长
+        // 健康无限科技：每级提升主角最大生命值 +50（对齐官方 Health 科技），即时刷新最大生命值
+        if (tech === 'health' && typeof playerMaxHp === 'function' && typeof G.playerHPmax === 'number') {
+          G.playerHPmax = playerMaxHp();
+          if (typeof G.playerHP === 'number' && G.playerHP > G.playerHPmax) G.playerHP = G.playerHPmax;
+        }
         uiDirty = true;
       }
       return;
