@@ -64,7 +64,7 @@ function stepPrewarm() {
 // 材料页静态网格缓存：建造设备 / 物流请求 / 垃圾桶的物品按钮列表结构完全静态
 // （物品集合不变，仅请求/丢弃标记与持有数量动态变化）。首次构建后缓存复用，
 // 打开背包时只按标记与数量轻量拼接，避免每次重建数百个含 base64 图标的按钮节点。
-let _matGridCache = { lreqItems: null, trashItems: null, buildDev: null };
+let _matGridCache = { lreqItems: null, trashItems: null };
 // 材料页可选物品集合（排除流体与测试设备）
 function staticItemIdList() {
   return Object.keys(ITEMS).filter(id => {
@@ -251,7 +251,7 @@ function renderPanel(full) {
   if (G.panelMode === 'inv') {
     title.textContent = '背包与手工制造';
     const keepFocusId = document.activeElement &&
-      (document.activeElement.id === 'inv-recipe-search' || document.activeElement.id === 'build-dev-search') ?
+      (document.activeElement.id === 'inv-recipe-search' || document.activeElement.id === 'inv-item-search') ?
       document.activeElement.id : null;
     // 背包三列布局：左=玩家背包物品，中=物流区域，右=制作区域。
     // 弹框改为屏幕中间显示（见 #panel.inv-wide 样式），三列纵向分区。
@@ -279,7 +279,7 @@ function renderPanel(full) {
         '</div>' +
       '</div>';
     applyInvRecipeFilter(G.invRecipeQ);
-    applyBuildSearch(G.buildDevQ);
+    applyInvItemSearch(G.invItemQ);
     if (typeof fillLogiReqGrid === 'function') fillLogiReqGrid(G.lreqQ || '');
     if (typeof fillTrashGrid === 'function') fillTrashGrid(G.trashQ || '');
     if (keepFocusId) {
@@ -338,32 +338,25 @@ function isPanelTyping() {
 function updateInvLive() {
   const body = document.getElementById('panel-body');
   if (!body || G.panelMode !== 'inv') return;
-  const infinite = !!(G.dbg && G.dbg.infinite);
-  // 材料 chips：<span class="chip" data-itemid="ID"><img>名称 ×N</span>
-  // （排除物流请求/垃圾桶 chip，它们带 lreq-chip/trash-chip 类且有内嵌子元素）
-  body.querySelectorAll('.chips .chip[data-itemid]:not(.lreq-chip):not(.trash-chip)').forEach(el => {
+  // 拥有的物品 chips：<span class="chip" data-itemid="ID"><img>名称 ×N</span>
+  // 数量为0的物品隐藏；有搜索词时按名称/ID 匹配过滤
+  body.querySelectorAll('#inv-items .chip[data-itemid]').forEach(el => {
     const id = el.dataset.itemid;
     if (!id || !ITEMS[id]) return;
     const n = invCount(id);
     const img = el.querySelector('img');
     if (!img) return;
+    const q = (G.invItemQ || '').trim().toLowerCase();
+    const hit = !q || (el.dataset.itemsearch || '').includes(q);
+    el.style.display = (n > 0 && hit) ? '' : 'none';
+    // 若数量为0，同时隐藏紧随其后的投掷/食用按钮（手雷/生鱼等）
+    if (n <= 0) {
+      const nxt = el.nextElementSibling;
+      if (nxt && nxt.classList && nxt.classList.contains('usebtn')) nxt.style.display = 'none';
+    }
     el.textContent = '';
     el.appendChild(img);
     el.appendChild(document.createTextNode(ITEMS[id].name + (n > 0 ? ' ×' + n : '')));
-  });
-  // 建造设备按钮：<button class="buildbtn" data-itemid="ID"><img>名称 ×N</button>
-  body.querySelectorAll('#build-dev-grid .buildbtn[data-itemid]').forEach(btn => {
-    const id = btn.dataset.itemid;
-    if (!id || !ITEMS[id]) return;
-    const n = invCount(id);
-    const can = infinite || n > 0;
-    btn.classList.toggle('disabled', !can);
-    btn.style.opacity = can ? '' : '.45';
-    const img = btn.querySelector('img');
-    if (!img) return;
-    btn.textContent = '';
-    btn.appendChild(img);
-    btn.appendChild(document.createTextNode(ITEMS[id].name + (infinite ? ' ∞' : (n > 0 ? ' ×' + n : ''))));
   });
   // 手搓配方原料可用性：<span class="ing" data-itemid="K" data-need="N">...名称 have/N</span>
   body.querySelectorAll('#inv-recipes .ing[data-itemid][data-need]').forEach(el => {
@@ -435,7 +428,8 @@ function updateMachineLive() {
 }
 
 function chip(id, n) {
-  return '<span class="chip" data-itemid="' + id + '" data-tip="' + itemTip(id) + '"><img src="' + iconDataURL(id) + '">' +
+  return '<span class="chip" data-itemid="' + id + '" data-tip="' + itemTip(id) + '" data-itemsearch="' +
+    (ITEMS[id].name + ' ' + id).toLowerCase().replace(/"/g, '') + '"><img src="' + iconDataURL(id) + '">' +
     ITEMS[id].name + (n !== undefined ? ' ×' + n : '') + '</span>';
 }
 
@@ -448,40 +442,6 @@ function htmlInventory() {
       (id ? '<img src="' + iconDataURL(id) + '">' : '<span>空</span>') + '</div>';
   }
   h += '</div><div class="dim">点一个槽位选中（黄框），再点击下面任意物品图标即可放入该槽位；再点一次同槽位清空。数字键 1-9/0 切换。</div>';
-  h += '<div class="sec">建造设备（点击直接选中放置）</div>';
-  const bdq = (G.buildDevQ || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-  h += '<input id="build-dev-search" class="inv-search" type="text" placeholder="搜索建造设备（输入名称）" autocomplete="off" value="' + bdq + '">';
-  h += '<div class="recgrid" id="build-dev-grid">';
-  const infinite = !!(G.dbg && G.dbg.infinite);
-  // 性能优化：建造设备按钮基础 HTML（图标/名称/tooltip/搜索键）是静态的，首次构建后
-  // 缓存复用；打开时仅按持有数量拼接「×N / ∞」后缀。动态数量由 updateInvLive 每帧轻量
-  // 刷新，无需重建整个网格。
-  if (!_matGridCache.buildDev) {
-    // 测试/应急设备（被动供电、创造/虚空箱、创造/虚空管道）仅在开启"无限资源"
-    // Debug 模式后才会出现在建造列表；正常游玩不可见、不可获取。
-    const dbgOnlyDevices = new Set(['creative-chest', 'void-chest', 'creative-pipe', 'void-pipe', 'creative-belt', 'void-belt']);
-    _matGridCache.buildDev = [];
-    for (const bid of Object.keys(BUILD_DEFS)) {
-      if (dbgOnlyDevices.has(bid)) continue;
-      const bsearch = (ITEMS[bid].name + ' ' + bid).toLowerCase();
-      _matGridCache.buildDev.push({
-        id: bid,
-        inner: '<img src="' + iconDataURL(bid) + '">' + ITEMS[bid].name,
-        search: bsearch.replace(/"/g, ''),
-        tip: itemTip(bid)
-      });
-    }
-  }
-  for (const b of _matGridCache.buildDev) {
-    const n = invCount(b.id);
-    const canBuild = infinite || n > 0;
-    h += '<button class="rcbtn buildbtn' + (canBuild ? '' : ' disabled') + '"' +
-      (canBuild ? '' : ' style="opacity:.45"') +
-      ' data-itemid="' + b.id + '" data-buildsearch="' + b.search + '" data-tip="' + b.tip + '">' +
-      b.inner + (n > 0 ? ' ×' + n : (infinite ? ' ∞' : '')) + '</button>';
-  }
-  h += '</div>';
-  h += '<div class="dim" id="build-dev-empty" style="display:none"></div>';
   h += '<div class="sec">护甲</div><div class="armor-row">';
   // 当前穿戴护甲展示与脱卸
   h += '<div class="armor-slot' + (G.armor ? ' equipped' : '') + '" data-tip="' + (G.armor ? (ITEMS[G.armor].name + '|当前穿戴的护甲，点击脱卸') : '未穿戴护甲|护甲可减少所受伤害') + '" data-armor="unequip">' +
@@ -530,7 +490,10 @@ function htmlInventory() {
     h += '</div><div class="dim">装备个人机器人港 + 背包携带施工机器人后，蓝图粘贴自动生成建造幽灵、红图框选生成拆除标记，由施工机器人自动施工/拆除。' +
       (rInfo ? '当前工作范围 <b>' + rInfo.range + '</b> 格、最多 <b>' + rInfo.maxActive + '</b> 台机器人同时施工（II 型更大更强）。' : '') + '</div>';
   }
-  h += '<div class="sec">材料</div><div class="chips">';
+  h += '<div class="sec">拥有的物品（点击建筑设备可直接建造；点击普通物品放入快捷栏，去地图上建造无反应）</div>';
+  const iq = (G.invItemQ || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  h += '<input id="inv-item-search" class="inv-search" type="text" placeholder="搜索物品（输入名称）" autocomplete="off" value="' + iq + '">';
+  h += '<div class="chips" id="inv-items">';
   let any = false;
   for (const id in ITEMS) {
     const n = invCount(id);
@@ -549,7 +512,7 @@ function htmlInventory() {
   }
   if (!any) h += '<span class="dim">空空如也，去地图上按住左键挖矿吧（铁矿/铜矿/煤/石头）</span>';
   h += '</div>';
-  h += '<div class="hint">提示：开局先挖 5 个石头合成石炉，再挖煤；点击炉子打开面板，把煤和矿石放进去就能炼铁板/铜板。钢板用铁板×2 合成（石炉/电炉炼制更快）。塑料板等流体化学产物只能在化工厂生产（石油气经管道送入化工厂）。<br>建造：直接点击上方材料区里任何可建造的设备图标即可选中进入放置模式（优先占用空快捷栏槽位），不必依赖底部工具栏；R 旋转、Q 取消。建造支持覆盖：目标格已有建筑时会先拆除旧建筑（返还物资）再放置新建筑，但同一格不会叠加。</div>';
+  h += '<div class="hint">提示：开局先挖 5 个石头合成石炉，再挖煤；点击炉子打开面板，把煤和矿石放进去就能炼铁板/铜板。钢板用铁板×2 合成（石炉/电炉炼制更快）。塑料板等流体化学产物只能在化工厂生产（石油气经管道送入化工厂）。<br>建造：直接点击上方「拥有的物品」列表里任何可建造的设备图标即可选中进入放置模式（优先占用空快捷栏槽位），不必依赖底部工具栏；R 旋转、Q 取消。建造支持覆盖：目标格已有建筑时会先拆除旧建筑（返还物资）再放置新建筑，但同一格不会叠加。</div>';
   return h;
 }
 
@@ -715,21 +678,14 @@ function applyInvRecipeFilter(q) {
 }
 
 // 背包「建造设备」列表：按关键字过滤建造设备按钮
-function applyBuildSearch(q) {
+function applyInvItemSearch(q) {
   const body = document.getElementById('panel-body');
   if (!body) return;
   const ql = (q || '').trim().toLowerCase();
-  let shown = 0;
-  body.querySelectorAll('#build-dev-grid .buildbtn').forEach(el => {
-    const hit = !ql || el.dataset.buildsearch.includes(ql);
+  body.querySelectorAll('#inv-items .chip[data-itemid]').forEach(el => {
+    const hit = !ql || (el.dataset.itemsearch || '').includes(ql);
     el.style.display = hit ? '' : 'none';
-    if (hit) shown++;
   });
-  const emp = document.getElementById('build-dev-empty');
-  if (emp) {
-    emp.textContent = ql ? '没有匹配「' + q.trim() + '」的建造设备' : '没有匹配的建造设备';
-    emp.style.display = shown ? 'none' : '';
-  }
 }
 
 // 分流器过滤搜索：按关键字过滤可编程分离器的物品选择列表

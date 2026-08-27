@@ -51,9 +51,9 @@ function initPanelEvents() {
     if (id === 'inv-recipe-search') {
       G.invRecipeQ = v;
       applyInvRecipeFilter(G.invRecipeQ);
-    } else if (id === 'build-dev-search') {
-      G.buildDevQ = v;
-      applyBuildSearch(G.buildDevQ);
+    } else if (id === 'inv-item-search') {
+      G.invItemQ = v;
+      applyInvItemSearch(G.invItemQ);
     } else if (id === 'lreq-search') {
       G.lreqQ = v;
       if (typeof fillLogiReqGrid === 'function') fillLogiReqGrid(G.lreqQ);
