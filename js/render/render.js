@@ -173,6 +173,8 @@ function render() {
 
   // 小地图（位于画布右下角）
   if (G.settings && G.settings.minimap !== false) drawMinimap(ctx);
+  // 设备信息面板：鼠标悬停设备时在小地图下方显示长条详情
+  if (typeof drawDeviceInfoBar === 'function') drawDeviceInfoBar(ctx);
 }
 
 // ===== 电灯照明：在黑暗遮罩上凿出光圈并叠加暖光 =====
