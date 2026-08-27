@@ -360,14 +360,44 @@ function mapTipAt(tx, ty) {
 
 function initTooltips() {
   const tip = document.getElementById('tooltip');
+  // 配方卡悬浮层：悬停配方槽时在鼠标旁展示完整的「配方卡」（与普通 tooltip 互斥）
+  let rcp = document.getElementById('rcp-tip');
+  if (!rcp) {
+    rcp = document.createElement('div');
+    rcp.id = 'rcp-tip';
+    document.body.appendChild(rcp);
+  }
+  // 把浮动框摆到鼠标旁，越界时翻转到左侧/上方
+  function placeNear(el, clientX, clientY) {
+    el.style.display = 'block';
+    const r = el.getBoundingClientRect();
+    let x = clientX + 14, y = clientY + 14;
+    if (x + r.width > innerWidth - 6) x = clientX - r.width - 14;
+    if (y + r.height > innerHeight - 6) y = clientY - r.height - 14;
+    if (x < 4) x = 4;
+    if (y < 4) y = 4;
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+  }
   document.addEventListener('mousemove', ev => {
     let text = null;
-    if (ev.target && ev.target.closest) {
-      const el = ev.target.closest('[data-tip]');
-      if (el) text = el.dataset.tip;
+    const el = (ev.target && ev.target.closest) ? ev.target.closest('[data-tip]') : null;
+    const slot = (ev.target && ev.target.closest) ? ev.target.closest('.rcp-slot[data-id], .craft-slot[data-id]') : null;
+    if (slot && slot.dataset.id) {
+      // 悬停配方槽：优先显示“配方卡”
+      const html = (typeof recipeCardHtml === 'function') ? recipeCardHtml(slot.dataset.id) : '';
+      if (html) {
+        tip.style.display = 'none';
+        rcp.innerHTML = html;
+        placeNear(rcp, ev.clientX, ev.clientY);
+        return;
+      }
     }
+    if (el) text = el.dataset.tip;
     if (!text && ev.target === G.canvas && G.cursorTile)
       text = mapTipAt(G.cursorTile.tx, G.cursorTile.ty);
+    // 不在配方槽上：隐藏配方卡，回退到普通 tooltip
+    rcp.style.display = 'none';
     if (text) {
       const parts = text.split('||');
       const p = parts[0].split('|');

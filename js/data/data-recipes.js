@@ -258,8 +258,8 @@ const RECIPES = {
   // 铸造厂：钢板 + 处理器 + 钢筋混凝土 + 电炉 → 铸造厂（官方需熔融铁+碳化钨，此处适配基础资源，10s）
   'foundry': { time: 10, inp: { 'steel-plate': 50, 'processing-unit': 50, 'refined-concrete': 50, 'electric-furnace': 4 }, out: { 'foundry': 1 } },
   // ===== 太空时代 农业/Gleba 生物质材料链（官方数值参考，见 GAME_DATA）=====
-  // 雅玛果泥：雅玛果 → 果泥×2（官方 yumako-processing 1s，2 果泥 + 概率种子）
-  'yumako-mash': { time: 1, inp: { 'yumako': 1 }, out: { 'yumako-mash': 2 } },
+  // 雅玛果泥：雅玛果 → 果泥×2 + 种子×1（官方 yumako-processing 1s，2 果泥 + 1 种子，种子可复种实现自持农业）
+  'yumako-mash': { time: 1, inp: { 'yumako': 1 }, out: { 'yumako-mash': 2, 'yumako-seed': 1 } },
   // 生物流：果泥×15 → 生物流×4（官方 bioflux 6s，需胶质，此处适配为仅果泥）
   'bioflux': { time: 6, inp: { 'yumako-mash': 15 }, out: { 'bioflux': 4 } },
   // 营养素：果泥×4 → 营养素×6（官方 nutrients-from-yumako-mash 2s）

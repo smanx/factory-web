@@ -50,6 +50,8 @@ const RECIPE_MAP = {
   'solid-fuel': 'solid-fuel-from-petroleum-gas',
   'uranium-processing': 'uranium-processing',
   'kovarex': 'kovarex-enrichment-process',
+  // 太空时代 Gleba：项目 yumako-mash 对应官方 yumako-processing（含种子产出，实现自持农业）
+  'yumako-mash': 'yumako-processing',
 };
 // ===== 保留手工的配方（项目自定 / 故意用旧版，不允许自动覆盖）=====
 // 即使官方有同名或映射配方，也保持手工值。例：storage-chest 在官方 2.0 是物流箱
@@ -61,7 +63,7 @@ const KEEP_MANUAL_RECIPES = new Set([
   'stone-path', 'storage-chest',
   // ===== 太空时代 Space Age 手工适配配方（官方配方依赖星球专属资源，此处适配基础资源）=====
   'lithium', 'lithium-brine', 'ammoniacal-solution', 'ammoniacal-solution-separation', 'electromagnetic-science-pack',
-  'yumako-mash', 'agricultural-science-pack', 'biochamber',
+  'agricultural-science-pack', 'biochamber',
   'yumako-growing', 'jellynut-growing',
   // 太空时代 Gleba 金属细菌链：细菌→板还原配方为项目适配（官方无此合成，Gleba 用细菌还原成熔融金属再铸板），保留手工
   'iron-plate-from-iron-bacteria', 'copper-plate-from-copper-bacteria',
@@ -461,6 +463,8 @@ for (const [pid, [rtype, oname]] of Object.entries(DEVICE_STATS_SOURCES)) {
   const ds = {};
   if (typeof proto.crafting_speed === 'number') ds.craftingSpeed = proto.crafting_speed;
   if (typeof proto.module_slots === 'number') ds.moduleSlots = proto.module_slots;
+  // 官方组装机未写 module_slots 时默认 0 槽（如组装机 I 无插件槽，而不应回退到旧默认 4）
+  else if (rtype === 'assembling-machine') ds.moduleSlots = 0;
   if (typeof proto.mining_speed === 'number') ds.miningSpeed = proto.mining_speed;
   if (typeof proto.speed === 'number') ds.beltSpeed = Math.round(proto.speed * 60 * 1000) / 1000; // 官方 speed 单位=格/tick，×60 → 格/秒
   if (typeof proto.distribution_effectivity === 'number') ds.beaconEffectivity = proto.distribution_effectivity;
@@ -1074,27 +1078,39 @@ const ITEM_GROUP_OVERRIDE = {
   'stone-path': 'logistics',
 };
 const itemGroup = {};
+// 二级分组：物品 → 官方 item-subgroup（仅 5 大 Tab 内），供背包合成列表在 Tab 内继续分组的单源数据。
+const itemSubgroup = {};
+// 官方顺序：subgroup 在 group 内的 order、物品在 subgroup 内的 order（官方制作栏排序，配方无 order 时按主产物 order）。
+const subgroupOrder = {};
+for (const sg of Object.values(raw['item-subgroup'] || {})) {
+  if (sg && typeof sg === 'object' && sg.name && typeof sg.order === 'string') subgroupOrder[sg.name] = sg.order;
+}
+const itemOrder = {};
 for (const pid of projectItems) {
   const oid = toOfficialName(pid);
   // 优先兜底
   if (ITEM_GROUP_OVERRIDE[pid]) { itemGroup[pid] = ITEM_GROUP_OVERRIDE[pid]; continue; }
   // 从官方原型取 subgroup
   let subgroup = null;
+  let order = null;
   const it = raw.item && raw.item[oid];
-  if (it && it.subgroup) subgroup = it.subgroup;
+  if (it && it.subgroup) { subgroup = it.subgroup; order = it.order; }
   else {
     // 实体类（装备/载具/炮塔等）在各自原型带 subgroup
     for (const tbl of Object.values(raw)) {
-      if (tbl && tbl[oid] && typeof tbl[oid] === 'object' && tbl[oid].subgroup) {
-        subgroup = tbl[oid].subgroup;
-        break;
-      }
+      const o = tbl && tbl[oid];
+      if (o && typeof o === 'object' && o.subgroup) { subgroup = o.subgroup; order = o.order; break; }
     }
   }
   const g = subgroup ? itemGroupMap[subgroup] : null;
-  if (g && CRAFT_TABS.includes(g)) itemGroup[pid] = g;
+  if (g && CRAFT_TABS.includes(g)) {
+    itemGroup[pid] = g;
+    if (subgroup) itemSubgroup[pid] = subgroup;
+    if (typeof order === 'string') itemOrder[pid] = order;
+  }
   // 其余（流体/环境/信号等非 5 大 Tab）不写入，由前端按无归类兜底处理
 }
+
 
 // ================= 敌人（Gleba 五足虫）单源化 =================
 // 从 factorio-data 官方 unit / spider-unit 原型提取太空时代五足虫（Pentapod）敌方数据。
@@ -1172,6 +1188,9 @@ Object.assign(GAME_DATA, {
   qualityModules,
   qualityTiers,
   itemGroup,
+  itemSubgroup,
+  subgroupOrder,
+  itemOrder,
   pollution,
   enemy,
 });
@@ -1305,6 +1324,9 @@ const header = [
   '//   deviceStats[id] = { craftingSpeed, moduleSlots, miningSpeed, beltSpeed(格/s), beaconEffectivity }',
   '//   names[id] = { zh, en }（物品/建筑/流体官方命名，供中英文切换，见 data-util.js localizedName）',
   '//   recipeNames[rid] = { zh, en }（配方官方命名，供炼油/离心机面板切换）',
+  '//   itemGroup[item] = 制作栏 5 Tab（物流/生产/中间产品/太空/武器）',
+  '//   itemSubgroup[item] = item-group 内二级分组（官方 item-subgroup）',
+  '//   subgroupOrder[subgroup] = subgroup 在 group 内官方顺序,  itemOrder[item] = 物品在 subgroup 内官方顺序',
   '//   其余设备行为参数（官方接入，见对应设备文件 GAME_DATA.xxx?.[..] ?? 兜底）：',
   '//   undergroundDist[带] = 地下带最大距离(格), renewable = { solarPower, accumCap, accumChargeRate }',
   '//   fluidCapacity = { storageTank, fluidWagon, pumpRate, pipeVolume, pipeToGroundVolume }, beaconRange = 信号塔半径(格)',
@@ -1323,4 +1345,4 @@ const header = [
 ].join('\n');
 
 fs.writeFileSync(OUT_FILE, header);
-console.log('OK: 已生成 ' + path.relative(ROOT, OUT_FILE) + ' (配方 ' + Object.keys(GAME_DATA.recipe).length + ' 条, 堆叠 ' + Object.keys(GAME_DATA.stackSize).length + ' 条, 血量 ' + Object.keys(GAME_DATA.buildingHp).length + ' 条, 功耗 ' + Object.keys(GAME_DATA.powerUse).length + ' 条, 设备参数 ' + Object.keys(GAME_DATA.deviceStats).length + ' 条, 命名 ' + Object.keys(GAME_DATA.names).length + ' 条, 配方名 ' + Object.keys(GAME_DATA.recipeNames).length + ' 条, 地下带 ' + Object.keys(GAME_DATA.undergroundDist).length + ' 条, 可再生 ' + (GAME_DATA.renewable ? Object.keys(GAME_DATA.renewable).length : 0) + ' 项, 流体容量 ' + (GAME_DATA.fluidCapacity ? Object.keys(GAME_DATA.fluidCapacity).length : 0) + ' 项, 炮塔 ' + Object.keys(GAME_DATA.turret).length + ' 座, 弹药伤害 ' + Object.keys(GAME_DATA.ammoDamage).length + ' 种, 雷达 ' + (GAME_DATA.radar ? Object.keys(GAME_DATA.radar).length : 0) + ' 项, 装备 ' + Object.keys(GAME_DATA.equipment).length + ' 件, 热量 ' + (GAME_DATA.heat ? Object.keys(GAME_DATA.heat).length : 0) + ' 项)');
+console.log('OK: 已生成 ' + path.relative(ROOT, OUT_FILE) + ' (配方 ' + Object.keys(GAME_DATA.recipe).length + ' 条, 堆叠 ' + Object.keys(GAME_DATA.stackSize).length + ' 条, 血量 ' + Object.keys(GAME_DATA.buildingHp).length + ' 条, 功耗 ' + Object.keys(GAME_DATA.powerUse).length + ' 条, 设备参数 ' + Object.keys(GAME_DATA.deviceStats).length + ' 条, 命名 ' + Object.keys(GAME_DATA.names).length + ' 条, 配方名 ' + Object.keys(GAME_DATA.recipeNames).length + ' 条, 地下带 ' + Object.keys(GAME_DATA.undergroundDist).length + ' 条, 可再生 ' + (GAME_DATA.renewable ? Object.keys(GAME_DATA.renewable).length : 0) + ' 项, 流体容量 ' + (GAME_DATA.fluidCapacity ? Object.keys(GAME_DATA.fluidCapacity).length : 0) + ' 项, 炮塔 ' + Object.keys(GAME_DATA.turret).length + ' 座, 弹药伤害 ' + Object.keys(GAME_DATA.ammoDamage).length + ' 种, 雷达 ' + (GAME_DATA.radar ? Object.keys(GAME_DATA.radar).length : 0) + ' 项, 装备 ' + Object.keys(GAME_DATA.equipment).length + ' 件, 热量 ' + (GAME_DATA.heat ? Object.keys(GAME_DATA.heat).length : 0) + ' 项, 污染排放 ' + Object.keys(GAME_DATA.pollution || {}).length + ' 项)');

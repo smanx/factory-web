@@ -168,7 +168,8 @@ function buildActive() { return G.sel >= 0 || !!G.quickSel; }
 // 是否为手持工具（非建筑、选中时不应阻断采矿/使用）
 function isToolItem(id) {
   return id === 'deconstruction-planner' || id === 'upgrade-planner' ||
-         id === 'repair-pack' || id === 'cliff-explosives' || id === 'spidertron-remote';
+         id === 'repair-pack' || id === 'cliff-explosives' || id === 'spidertron-remote' ||
+         id === 'artillery-targeting-remote' || id === 'discharge-defense-remote';
 }
 
 function invTake(id, n = 1) {

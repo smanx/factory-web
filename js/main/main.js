@@ -79,6 +79,8 @@ var G = {
   driving: null,       // 载具驾驶状态：{ ent: Car }，玩家进入驾驶时非空
   spawnT: 0,
   playerHP: PLAYER_BASE_MAX_HP,
+  // 初始时尚未研究任何科技，直接用基础最大生命值；读档/新游戏/研究 health 时再按 playerMaxHp() 重算。
+  // 注意：不能在 G 对象字面量求值期间调用 playerMaxHp()——它会读取 G.techDone，而此时 G 仍为 undefined。
   playerHPmax: PLAYER_BASE_MAX_HP,
   playerFireT: 0,
   weapon: null,       // 当前选中的武器 id（player 持有）
@@ -168,7 +170,7 @@ function newGame() {
   G.railTiles = new Set();
   G.elevatedSupports = new Set();
   G.trains = [];
-  G.playerHP = PLAYER_BASE_MAX_HP; G.playerHPmax = PLAYER_BASE_MAX_HP;
+  G.playerHP = PLAYER_BASE_MAX_HP; G.playerHPmax = (typeof playerMaxHp === 'function') ? playerMaxHp() : PLAYER_BASE_MAX_HP;
   G.weapon = null;
   G.armor = null;
   G.gameWon = false;
@@ -541,8 +543,8 @@ function applySave(d) {
   G.player = makePlayer(0, 0);
   G.player.x = d.player.x; G.player.y = d.player.y;
   // 加载存档：保留当前生命值（不超过基础最大值），但最大生命值统一对齐《异星工厂》主角 250 点
-  if (typeof d.player.hp === 'number') G.playerHP = Math.min(PLAYER_BASE_MAX_HP, Math.max(1, d.player.hp));
-  G.playerHPmax = PLAYER_BASE_MAX_HP;
+  if (typeof d.player.hp === 'number') G.playerHP = Math.min((typeof playerMaxHp === 'function') ? playerMaxHp() : PLAYER_BASE_MAX_HP, Math.max(1, d.player.hp));
+  G.playerHPmax = (typeof playerMaxHp === 'function') ? playerMaxHp() : PLAYER_BASE_MAX_HP;
   G.weapon = d.player.weapon || null;
   G.armor = (isArmor && isArmor(d.player.armor)) ? d.player.armor : null;
   // 恢复敌人进化度（旧档无该字段则从 0 开始）

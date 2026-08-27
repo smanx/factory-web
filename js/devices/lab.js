@@ -1,6 +1,17 @@
 'use strict';
 
 // ===== 研究中心：消耗科学包推进所选科技 =====
+// 研究完成时按官方机制自动授予物品（对齐《异星工厂》spawnable shortcut 物品：遥控器）
+function grantTechUnlockItems(tech) {
+  if (!tech) return;
+  const grant = { 'military4': 'artillery-targeting-remote', 'armor-power': 'discharge-defense-remote' };
+  const item = grant[tech];
+  if (item && typeof invAdd === 'function' && typeof toast === 'function') {
+    invAdd(item, 1);
+    toast('🔧 已获得：' + (ITEMS[item] ? ITEMS[item].name : item) + '（研究 ' + (TECHS[tech] ? TECHS[tech].name : tech) + ' 后自动授予）');
+  }
+}
+
 class Lab extends Entity {
   constructor(type, x, y) {
     super(type || 'lab', x, y);   // biolab（生物实验室，Gleba）：官方 researching_speed=2、module_slots=4，数据经 GAME_DATA 桥接
@@ -76,6 +87,11 @@ class Lab extends Entity {
         // 产能模块：达到阈值时本次科研免费（不消耗科学包）
         if (!this.applyProductivity()) this.consumeAnyPack(1);
         G.techProg[tech] = (G.techProg[tech] || 0) + 1;   // 进度无限增长
+        // 健康无限科技：每级提升主角最大生命值 +50（对齐官方 Health 科技），即时刷新最大生命值
+        if (tech === 'health' && typeof playerMaxHp === 'function' && typeof G.playerHPmax === 'number') {
+          G.playerHPmax = playerMaxHp();
+          if (typeof G.playerHP === 'number' && G.playerHP > G.playerHPmax) G.playerHP = G.playerHPmax;
+        }
         uiDirty = true;
       }
       return;
@@ -84,6 +100,7 @@ class Lab extends Entity {
     let done = G.techProg[tech] || 0;
     if (done >= list.length) {
       G.techDone[tech] = true;
+      grantTechUnlockItems(tech);
       toast('研究完成：' + TECHS[tech].name);
       if (typeof playSfx === 'function') playSfx('research');
       // 成就：研究完成计数（对齐《异星工厂》科研成就）
@@ -111,6 +128,7 @@ class Lab extends Entity {
       uiDirty = true;
       if (done >= list.length) {
         G.techDone[tech] = true;
+        grantTechUnlockItems(tech);
         toast('研究完成：' + TECHS[tech].name);
         if (typeof playSfx === 'function') playSfx('research');
         // 成就：研究完成计数（对齐《异星工厂》科研成就）

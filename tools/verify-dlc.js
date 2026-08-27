@@ -191,6 +191,9 @@ for (const k of ['yumako', 'yumako-mash', 'bioflux', 'nutrients', 'spoilage', 'a
   ok(!!GD.names[k], k + ' 官方命名已收录 (' + (GD.names[k] ? GD.names[k].zh : '?') + ')');
 }
 ok(!!RP['yumako-mash'], '玉玛果泥配方已注册');
+ok(Object.keys(RP['yumako-mash'].out).includes('yumako-seed'), '玉玛果加工产出种子（官方 yumako-processing，自持农业）');
+ok(Object.keys(RP['yumako-mash'].out).includes('yumako-mash'), '玉玛果加工产出果泥（官方 yumako-processing）');
+ok(RP['yumako-mash'].time === 1, '玉玛果加工耗时=1s（官方 yumako-processing）');
 ok(!!RP['bioflux'], '生物结晶配方已注册');
 ok(!!RP['agricultural-science-pack'], '农业科技包配方已注册');
 ok(!!IT['agricultural-science-pack'], '农业科技包物品已注册');
@@ -1379,7 +1382,6 @@ console.log('\n【氨制火箭燃料（ammonia-rocket-fuel）数据校验】');
 }
 
 
-
 console.log('\n【污染排放数据单源化（来自 GAME_DATA.pollution，官方 emissions_per_minute）】');
 {
   const pollSrc = fs.readFileSync(ROOT + '/js/devices/pollution.js', 'utf8');
@@ -1396,4 +1398,15 @@ console.log('\n【污染排放数据单源化（来自 GAME_DATA.pollution，官
   ok(pollSrc.indexOf('pollutionRateFor') >= 0, 'pollution.js 有 pollutionRateFor 折算函数（官方/分→本模型/秒）');
 }
 
+// ===== 太空时代 健康无限科技（Health，本迭代新增）数据校验 =====
+console.log('\n【健康无限科技（Health，Space Age）数据校验】');
+ok(!!TS['health'], '健康科技已注册');
+ok(TS['health'].infinite === true, '健康为无限科技（官方 infinite）');
+ok(!!TS['health'].req && TS['health'].req.indexOf('agriculture') >= 0, '健康科技前置含农业科技');
+ok(!!TS['health'].req && TS['health'].req.indexOf('space-science') >= 0, '健康科技前置含空间科技');
+ok(!!TS['health'].req && TS['health'].req.indexOf('utility') >= 0, '健康科技前置含实用科技');
+ok(!!TS['health'].req && TS['health'].req.indexOf('military4') >= 0, '健康科技前置含军事科技 IV');
+ok(TS['health'].cat === 'space-age', '健康科技归入太空时代分类');
+
 process.exit(fail === 0 ? 0 : 1);
+
