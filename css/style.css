@@ -2170,7 +2170,15 @@ html, body {
 .mch-prog .status { text-align: center; font-size: 12px; margin-top: 2px; }
 .mch-help { margin-top: 8px; }
 
-/* 配方选择面板：网格区可滚动，底部「确认」按钮行固定在面板底部不随之滚动 */
+/* 配方选择面板：居中加宽，与背包面板布局一致 */
+#panel.recipe-wide {
+  width: calc(100vw - 32px);
+  max-width: calc(100vw - 16px);
+  top: auto;
+  bottom: 92px;
+  transform: translateX(-50%);
+  max-height: calc(100vh - 150px);
+}
 #panel.recipe-wide #panel-body {
   display: flex;
   flex-direction: column;
@@ -2186,6 +2194,32 @@ html, body {
 }
 #panel.recipe-wide .rcp-scroll .inv-search { position: sticky; top: 0; z-index: 2; background: #10151c; }
 #panel.recipe-wide .rcp-confirm-row { flex: 0 0 auto; }
+
+/* 配方选择面板：与背包「制作」列一致——图标格子网格（icon-only auto-fill），
+   选中项金色描边，未解锁显示 🔒 锁标 */
+#panel.recipe-wide .rcp-scroll .rcp-slot {
+  cursor: pointer;
+  border: 1px solid #37424f;
+  background: #222b35;
+}
+#panel.recipe-wide .rcp-scroll .rcp-slot.sel {
+  border-color: #ffd23c;
+  box-shadow: 0 0 6px rgba(255, 210, 60, .4);
+  outline: 1px solid #ffd23c;
+  outline-offset: -2px;
+}
+#panel.recipe-wide .rcp-scroll .rcp-slot.locked {
+  filter: grayscale(.75) brightness(.7);
+  cursor: not-allowed;
+}
+#panel.recipe-wide .rcp-scroll .rcp-slot .craft-lock {
+  position: absolute;
+  left: 1px; top: 1px;
+  font-size: 8px;
+  line-height: 1;
+  pointer-events: none;
+  text-shadow: 0 1px 2px #000;
+}
 
 /* 配方选择面板：右下角确认按钮 */
 .rcp-confirm-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }

@@ -1213,7 +1213,7 @@ function recipeSelectPanelHtml(e) {
   let h = '<div class="rcp-scroll">';
   h += '<div class="sec">点击选择配方（勾选后点右下角「确认」设置）</div>';
   h += '<input id="rcp-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off">';
-  h += '<div class="recgrid" id="rcp-grid">' + recipeSelectGridHtml(e, info, '') + '</div>';
+  h += '<div class="inv-slots" id="rcp-grid">' + recipeSelectGridHtml(e, info, '') + '</div>';
   h += '</div>';
   h += '<div class="rcp-confirm-row">';
   h += '<button data-action="recipe-clear">清除配方</button>';
@@ -1245,9 +1245,11 @@ function recipeSelectGridHtml(e, info, q) {
     if (q && searchKey.indexOf(q) < 0) continue;
     const tipMain = name + '|每周期耗时 ' + r.time + ' 秒' + (unlocked ? '' : '。未解锁：需先研究「' + (lockTech ? TECHS[lockTech].name : '对应科技') + '」');
     const tipRecipe = (inpStr ? '所需原料：' + inpStr : '') + (outStr ? '（产出：' + outStr + '）' : '');
-    h += '<button class="rcbtn ' + selCls + (unlocked ? '' : ' locked') + '" data-action="pickrecipe" data-id="' + rid + '" data-itemid="' + (outId || '') + '"' +
-      ' data-tip="' + tipMain + '||' + tipRecipe + '"' + (unlocked ? '' : ' disabled') + '>' +
-      (outId ? '<img src="' + iconDataURL(outId) + '">' : '') + name + (unlocked ? '' : '<br><small>🔒' + (lockTech ? TECHS[lockTech].name : '') + '</small>') + '</button>';
+    h += '<div class="inv-slot rcp-slot' + selCls + (unlocked ? '' : ' locked') + '" data-action="pickrecipe" data-id="' + rid + '" data-itemid="' + (outId || '') + '"' +
+      ' data-tip="' + tipMain + '||' + tipRecipe + '"' + (unlocked ? '' : ' data-locked="1"') + '>' +
+      (outId ? '<img src="' + iconDataURL(outId, 16) + '">' : '') +
+      (unlocked ? '' : '<span class="craft-lock" title="需先研究：' + (lockTech ? TECHS[lockTech].name : '对应科技') + '">🔒</span>') +
+      '</div>';
   }
   return h;
 }
