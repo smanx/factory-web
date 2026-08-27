@@ -614,26 +614,23 @@ function initPanelEvents() {
         if (typeof playSfx === 'function') playSfx('pick');
         renderPanel(false);
       } else if (act === 'mod-put') {
-        // 点击空模块插槽：从背包放入模块（选取背包中可用的模块）
+        // 模块插槽只能放入插件模块：先在左栏背包选中插件，再点击此槽放入；
+        // 鼠标持握的是非插件（或未持握）时不放入，并在鼠标正上方浮出提示。
         const mch = G.panelEnt;
         if (!mch || typeof mch.giveItem !== 'function') return;
         const slotN = (typeof mch.moduleSlotCount === 'function') ? mch.moduleSlotCount() : 4;
         const used = Object.values(mch.modules || {}).reduce((a, b) => a + b, 0);
         if (used >= slotN) { toast('模块插槽已满'); return; }
-        // 查找背包中可用的模块类型
-        const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3', 'quality-module', 'quality-module-2', 'quality-module-3'];
-        let found = false;
-        for (const mid of order) {
-          if (!itemUnlocked(mid)) continue;
-          const have = invCount(mid);
-          if (have > 0 && mch.giveItem(mid)) {
-            invTake(mid, 1);
-            if (typeof playSfx === 'function') playSfx('module');
-            found = true;
-            break;
-          }
+        const held = (typeof selItem === 'function') ? selItem() : null;
+        if (!held || typeof isModule !== 'function' || !isModule(held)) {
+          // 持握非插件/未持握：不放入，鼠标正上方就地浮出“只能安放插件”提示
+          if (typeof showFloatWarn === 'function') showFloatWarn('此处只能安放插件', ev.clientX, ev.clientY);
+          return;
         }
-        if (!found) toast('背包中没有可用的模块');
+        if (invCount(held) > 0 && mch.giveItem(held)) {
+          invTake(held, 1);
+          if (typeof playSfx === 'function') playSfx('module');
+        }
         renderPanel(false);
       } else if (act === 'chest-put') {
         // 储物箱「存入选中物品」：把当前选中的背包物品全部放入箱子

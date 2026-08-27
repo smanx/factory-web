@@ -281,6 +281,20 @@ function toast(msg) {
   setTimeout(() => t.remove(), 2800);
 }
 
+// 在鼠标正上方就地浮出提示文字（模块插槽“只能安放插件”等地就反馈，不打断操作）。
+function showFloatWarn(msg, clientX, clientY) {
+  document.querySelectorAll('.float-warn').forEach(n => n.remove());
+  const el = document.createElement('div');
+  el.className = 'float-warn';
+  el.textContent = msg;
+  const x = (typeof clientX === 'number') ? clientX : Math.floor(innerWidth / 2);
+  const y = (typeof clientY === 'number') ? clientY : Math.floor(innerHeight / 2);
+  el.style.left = x + 'px';
+  el.style.top = (y - 36) + 'px';
+  document.body.appendChild(el);
+  setTimeout(() => { if (el.isConnected) el.remove(); }, 1300);
+}
+
 // 按新旧程度刷新提示透明度：最新的不透明，越旧越透明
 function refreshToastOpacity() {
   const box = document.getElementById('toasts');
@@ -1298,6 +1312,104 @@ function recipeSelectGridHtmlForTab(e, info, items, q) {
   return h;
 }
 
+// —— 配方卡悬浮信息（组装机选配方时，悬停配方槽在鼠标旁显示参考式配方卡）——
+// 与普通「名称|描述」tooltip 不同，配方槽悬停单独展示一张信息更完整的配方卡
+//（标题/分类/原料/制造时间/产品/制造于/物品属性），样式参考《异星工厂》配方卡。
+function recipeCardHtml(rid) {
+  const r = RECIPES[rid];
+  if (!r) return '';
+  const outId = (r.out ? Object.keys(r.out)[0] : null) || (r.prob ? Object.keys(r.prob)[0] : null);
+  const name = (outId && ITEMS[outId]) ? ITEMS[outId].name : rid;
+  const cat = outId ? (GAME_DATA.itemGroup && GAME_DATA.itemGroup[outId]) : null;
+  const catLabel = (cat && CRAFT_TAB_LABEL[cat]) ? CRAFT_TAB_LABEL[cat].text : '基础';
+  const icn = k => (ITEMS[k] ? '<img class="rcp-card-img" src="' + iconDataURL(k, 28) + '" alt="">' : '');
+  // 原料行
+  let inp = '';
+  if (r.inp) for (const k in r.inp)
+    inp += '<div class="rcp-card-row">' + icn(k) +
+      '<span class="rcp-card-cnt">' + r.inp[k] + ' ×</span>' +
+      '<span class="rcp-card-name">' + (ITEMS[k] ? ITEMS[k].name : k) + '</span></div>';
+  // 产品行
+  let out = '';
+  if (r.out) for (const k in r.out)
+    out += '<div class="rcp-card-row">' + icn(k) +
+      '<span class="rcp-card-cnt">' + r.out[k] + ' ×</span>' +
+      '<span class="rcp-card-name">' + (ITEMS[k] ? ITEMS[k].name : k) + '</span></div>';
+  else if (r.prob) for (const k in r.prob)
+    out += '<div class="rcp-card-row">' + icn(k) +
+      '<span class="rcp-card-cnt">' + Math.round(r.prob[k] * 100) + '%</span>' +
+      '<span class="rcp-card-name">' + (ITEMS[k] ? ITEMS[k].name : k) + '</span></div>';
+  // 制造于（由配方生产设备推导；可手搓时追加「工程师」）
+  let bld = '';
+  for (const b of recipeBuildings(rid))
+    bld += '<div class="rcp-card-row">' + recipeBuildingIcon(b) +
+      '<span class="rcp-card-name">' + recipeBuildingName(b) + '</span></div>';
+  // 物品属性（产物堆叠上限）
+  const stack = outId ? (typeof stackSize === 'function' ? stackSize(outId) : null) : null;
+  let stat = '';
+  if (stack) stat += '<div class="rcp-card-stat"><span class="rcp-card-statL">堆叠:</span><span class="rcp-card-statV"> ' + stack + '</span></div>';
+  let h = '<div class="rcp-card">';
+  h += '<div class="rcp-card-title">' + name + ' (配方)</div>';
+  h += '<div class="rcp-card-cat">官方基础包 › ' + catLabel + '</div>';
+  if (inp) { h += '<div class="rcp-card-sub">原料：</div>' + inp; }
+  h += '<div class="rcp-card-divider"></div>';
+  h += '<div class="rcp-card-time">' + r.time + ' s 制造时间</div>';
+  if (out) { h += '<div class="rcp-card-sub">产品：</div>' + out; }
+  if (bld) { h += '<div class="rcp-card-sub">制造于：</div>' + bld; }
+  h += '<div class="rcp-card-title">' + name + '</div>';
+  h += '<div class="rcp-card-cat">官方基础包 › ' + catLabel + '</div>';
+  h += stat;
+  h += '</div>';
+  return h;
+}
+
+// 配方可由哪些建筑制造（由配方生产设备推导；组装类配方默认组装机 I/II/III）
+function recipeBuildings(rid) {
+  const dev = GAME_DATA.recipeDevice && GAME_DATA.recipeDevice[rid];
+  let ids = [];
+  if (dev && dev.indexOf('assembling-machine') === 0) ids = ['assembling-machine-1', 'assembling-machine-2', 'assembling-machine-3'];
+  else if (dev && ITEMS[dev]) ids = [dev];
+  else ids = ['assembling-machine-1', 'assembling-machine-2', 'assembling-machine-3'];
+  if (isHandcraftable(rid)) ids.push('engineer');
+  return ids;
+}
+
+function recipeBuildingIcon(b) {
+  if (b === 'engineer') {
+    return '<svg class="rcp-card-bico" viewBox="0 0 56 72">' +
+      '<ellipse cx="28" cy="16" rx="14" ry="12" fill="#ffaa00" stroke="#cc8800" stroke-width="2"/>' +
+      '<rect x="18" y="18" width="20" height="8" fill="#333"/>' +
+      '<rect x="16" y="28" width="24" height="24" fill="#ff8800" stroke="#cc6600" stroke-width="2"/>' +
+      '<rect x="16" y="44" width="24" height="4" fill="#666"/>' +
+      '<rect x="18" y="52" width="8" height="16" fill="#555"/>' +
+      '<rect x="30" y="52" width="8" height="16" fill="#555"/></svg>';
+  }
+  return (ITEMS[b] ? '<img class="rcp-card-img" src="' + iconDataURL(b, 28) + '" alt="">' : '');
+}
+
+function recipeBuildingName(b) {
+  if (b === 'engineer') return '工程师';
+  // 与物品行一致，直接取本地化名称，避免 [object object]
+  return (ITEMS[b] && ITEMS[b].name) ? ITEMS[b].name : b;
+}
+
+// 配方能否手搓（与背包「制作」页同一套过滤口径）
+function isHandcraftable(rid) {
+  const r = RECIPES[rid];
+  if (!r || !r.out) return false;
+  if (Object.keys(r.inp).some(k => FLUIDS.indexOf(k) >= 0)) return false;
+  if (Object.keys(r.out).some(k => FLUIDS.indexOf(k) >= 0)) return false;
+  if (typeof isBiochamberRecipe === 'function' && isBiochamberRecipe(rid)) return false;
+  if (typeof isCrusherRecipe === 'function' && isCrusherRecipe(rid)) return false;
+  if (typeof isFoundryRecipe === 'function' && isFoundryRecipe(rid)) return false;
+  if (typeof isChemistryRecipe === 'function' && isChemistryRecipe(rid)) return false;
+  if (typeof isRefineryRecipe === 'function' && isRefineryRecipe(rid)) return false;
+  if (typeof isCentrifugeRecipe === 'function' && isCentrifugeRecipe(rid)) return false;
+  if (typeof isAgricultureTowerRecipe === 'function' && isAgricultureTowerRecipe(rid)) return false;
+  if (typeof isHubRecipe === 'function' && isHubRecipe(rid)) return false;
+  return true;
+}
+
 // 配方选择 Tab 切换：显示/隐藏对应配方网格
 function switchRcpTab(tab) {
   const body = document.getElementById('panel-body');
@@ -1389,8 +1501,8 @@ function assemblerLayoutHtml(e) {
   h += '<div class="asm3-prog"><div class="bar"><i></i><span class="bar-txt" data-live="asm3-pct">0%</span></div></div>';
   h += '<div class="asm3-side asm3-out"><div class="asm3-out-row" data-live="mch-out"></div></div>';
   h += '</div>';
-  // 模块槽位
-  h += moduleSlotSectionHtml(e);
+  // 模块槽位（组装机面板不显示“模块插槽（N 个）”标题文字，故传 noHeader）
+  h += moduleSlotSectionHtml(e, true);
   h += '</div>'; // recipe
   h += '</div>'; // panel
   h += '</div>'; // layout
@@ -1507,16 +1619,18 @@ function recipeMachineRightHtml(e, info, rec) {
 }
 
 // 设备模块插槽区域：图形化展示 N 个插槽，已装模块显示图标，空槽显示 "+"；
-// 点击空槽可放入背包中的模块，点击已装模块可取出到背包。
-function moduleSlotSectionHtml(e) {
+// noHeader=true 时不显示“模块插槽（N 个）”标题（组装机面板隐藏该段文字）；
+// 空槽放入模块需先在左栏背包选中插件模块后再点击（放入非插件会就地浮出提示）。
+function moduleSlotSectionHtml(e, noHeader) {
   const slotN = (typeof e.moduleSlotCount === 'function') ? e.moduleSlotCount() : 4;
+  if (slotN <= 0) return ''; // 无插槽设备（如组装机 I）不显示模块区
   const mods = e.modules || {};
   const slotItems = [];
   for (const mid in mods) {
     if ((mods[mid] || 0) > 0) for (let i = 0; i < mods[mid]; i++) slotItems.push(mid);
   }
-  // 组装已装模块列表
-  let h = '<div class="sec">模块插槽（' + slotN + ' 个）</div>';
+  // 组装已装模块列表（默认显示标题；组装机面板由调用方传入 noHeader 隐藏）
+  let h = noHeader ? '' : '<div class="sec">模块插槽（' + slotN + ' 个）</div>';
   h += '<div class="mod-slots">';
   for (let i = 0; i < slotN; i++) {
     const mid = slotItems[i];
@@ -1525,7 +1639,7 @@ function moduleSlotSectionHtml(e) {
         '<img src="' + iconDataURL(mid, 16) + '">' +
         '<span class="mod-slot-n">' + ITEMS[mid].name + '</span></div>';
     } else {
-      h += '<div class="mod-slot empty" data-action="mod-put" data-index="' + i + '" data-tip="点击从背包放入模块">' +
+      h += '<div class="mod-slot empty" data-action="mod-put" data-index="' + i + '" data-tip="选中插件后点击放入">' +
         '<span class="mod-slot-plus">+</span></div>';
     }
   }

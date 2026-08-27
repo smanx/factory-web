@@ -474,7 +474,8 @@ const GAME_DATA = {
  },
  "deviceStats": {
   "assembling-machine-1": {
-   "craftingSpeed": 0.5
+   "craftingSpeed": 0.5,
+   "moduleSlots": 0
   },
   "assembling-machine-2": {
    "craftingSpeed": 0.75,

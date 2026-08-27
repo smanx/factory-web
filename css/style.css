@@ -420,6 +420,9 @@ html, body {
   cursor: pointer;
   white-space: nowrap;
 }
+/* 背包制作栏 Tab：靠左排列，不再均布满占位 */
+#inv-recipe-tabs { justify-content: flex-start; }
+#inv-recipe-tabs .craft-tab { flex: 0 0 auto; }
 .craft-tabs .craft-tab:hover { border-color: #d0a04a; }
 .craft-tabs .craft-tab.active {
   color: #ffd64a;
@@ -2172,13 +2175,14 @@ html, body {
 .mch-prog .status { text-align: center; font-size: 12px; margin-top: 2px; }
 .mch-help { margin-top: 8px; }
 
-/* 配方选择面板：居中加宽，与背包面板布局一致 */
+/* 配方选择面板：水平+垂直居中显示在屏幕中间，
+   宽度贴合内容（一行 10 个配方图标 ≈ 10×32+9×4+内边距），不铺满整个屏幕 */
 #panel.recipe-wide {
-  width: calc(100vw - 32px);
+  width: 380px;
   max-width: calc(100vw - 16px);
-  top: auto;
-  bottom: 92px;
-  transform: translateX(-50%);
+  top: 50%;
+  bottom: auto;
+  transform: translate(-50%, -50%);
   max-height: calc(100vh - 150px);
 }
 #panel.recipe-wide #panel-body {
@@ -2186,16 +2190,83 @@ html, body {
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  /* 内部不设独立滚动区：由整块面板统一滚动，避免窄面板内出现内嵌滚动条 */
+  overflow-y: auto;
 }
 #panel.recipe-wide .rcp-scroll {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
-  overflow-y: auto;
+  overflow: visible;
   overscroll-behavior: contain;
 }
 #panel.recipe-wide .rcp-scroll .inv-search { position: sticky; top: 0; z-index: 2; background: #10151c; }
 #panel.recipe-wide .rcp-confirm-row { flex: 0 0 auto; }
+/* 配方选择网格：每行最多 10 个配方图标（固定 10 列） */
+#panel.recipe-wide .rcp-scroll .inv-slots { grid-template-columns: repeat(10, 32px); }
+/* 配方弹框内的分类 tab 靠左排布，不等分拉伸占满宽度 */
+#panel.recipe-wide .craft-tabs { justify-content: flex-start; }
+#panel.recipe-wide .craft-tabs .craft-tab { flex: 0 0 auto; }
+
+/* ——— 配方卡悬浮信息（悬停配方槽时在鼠标旁展示，参考《异星工厂》配方卡）——— */
+#rcp-tip {
+  position: fixed; z-index: 100000;
+  display: none;
+  pointer-events: none;
+  width: 142px;                       /* 190px 再缩短 1/4 */
+  max-width: calc(100vw - 12px);
+  max-height: calc(100vh - 12px);
+  overflow-y: auto;
+}
+.rcp-card {
+  width: 100%;
+  background: rgba(30, 30, 30, .9);   /* 微微透明，透出下层界面 */
+  border: 1px solid #3a3a3a;
+  color: #ffffff;
+  box-shadow: 0 5px 18px rgba(0,0,0,.6);
+  font-size: 11px;
+  line-height: 1.25;
+}
+.rcp-card-title {
+  background: #E4CFAE;  /* 标题背景色 */
+  color: #000000;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 4px 8px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  border-bottom: 1px solid #2a2a2a;
+}
+.rcp-card-cat {
+  color: #63aeee;
+  font-size: 10px;
+  padding: 4px 8px;
+  border-bottom: 1px solid #333333;
+}
+.rcp-card-sub {
+  color: #e6c88a;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 6px 8px 1px;
+}
+.rcp-card-row {
+  display: flex;
+  align-items: center;
+  padding: 2px 8px;
+  gap: 7px;
+  overflow: hidden;
+}
+.rcp-card-img { width: 20px; height: 20px; display: block; flex: 0 0 auto; }
+.rcp-card-bico { width: 18px; height: 23px; display: block; flex: 0 0 auto; }
+.rcp-card-cnt { font-size: 11px; color: #ffffff; flex: 0 0 auto; }
+.rcp-card-name {
+  font-size: 11px; color: #ffffff;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.rcp-card-divider { height: 1px; background: #444444; margin: 4px 8px; }
+.rcp-card-time { text-align: center; font-size: 11px; padding: 2px 0; color: #ffffff; }
+.rcp-card-time::before { content: "⏱ "; }
+.rcp-card-stat { padding: 3px 8px 8px; font-size: 11px; }
+.rcp-card-statL { color: #e6c88a; }
+.rcp-card-statV { color: #ffffff; }
 
 /* 配方选择面板：与背包「制作」列一致——图标格子网格（icon-only auto-fill），
    选中项金色描边，未解锁显示 🔒 锁标 */
@@ -2448,3 +2519,20 @@ html, body {
 .asm3-panel .mod-status,
 .asm3-panel .mod-buttons,
 .asm3-panel .mod-slots + .btn { display: none !important; }
+
+/* 鼠标正上方就地浮出提示（模块插槽“只能安放插件”等），不打断操作 */
+.float-warn {
+  position: fixed; z-index: 100000;
+  transform: translate(-50%, 0);
+  padding: 4px 10px; border-radius: 5px;
+  background: rgba(20,20,20,.92); color: #ffb3a6;
+  font-size: 12px; white-space: nowrap; pointer-events: none;
+  border: 1px solid #8a4a40; box-shadow: 0 2px 8px rgba(0,0,0,.45);
+  animation: fw-rise 1.3s ease-out forwards;
+}
+@keyframes fw-rise {
+  0%   { opacity: 0; transform: translate(-50%, 6px); }
+  12%  { opacity: 1; transform: translate(-50%, 0); }
+  72%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -14px); }
+}

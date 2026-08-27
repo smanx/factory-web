@@ -461,6 +461,8 @@ for (const [pid, [rtype, oname]] of Object.entries(DEVICE_STATS_SOURCES)) {
   const ds = {};
   if (typeof proto.crafting_speed === 'number') ds.craftingSpeed = proto.crafting_speed;
   if (typeof proto.module_slots === 'number') ds.moduleSlots = proto.module_slots;
+  // 官方组装机未写 module_slots 时默认 0 槽（如组装机 I 无插件槽，而不应回退到旧默认 4）
+  else if (rtype === 'assembling-machine') ds.moduleSlots = 0;
   if (typeof proto.mining_speed === 'number') ds.miningSpeed = proto.mining_speed;
   if (typeof proto.speed === 'number') ds.beltSpeed = Math.round(proto.speed * 60 * 1000) / 1000; // 官方 speed 单位=格/tick，×60 → 格/秒
   if (typeof proto.distribution_effectivity === 'number') ds.beaconEffectivity = proto.distribution_effectivity;
