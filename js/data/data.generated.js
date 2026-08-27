@@ -5643,18 +5643,21 @@ const GAME_DATA = {
    "range": 24,
    "fireRate": 0.667,
    "powerDraw": 9600,
-   "drain": 24
+   "drain": 24,
+   "damage": 14
   },
   "flamethrower-turret": {
    "range": 30,
    "fireRate": 0.067,
-   "powerDraw": 0
+   "powerDraw": 0,
+   "damage": 8
   },
   "tesla-turret": {
    "range": 30,
    "fireRate": 2,
    "powerDraw": 7000,
-   "drain": 1000
+   "drain": 1000,
+   "damage": 30
   },
   "rocket-turret": {
    "range": 36,
@@ -5672,7 +5675,9 @@ const GAME_DATA = {
   "firearm-magazine": 5,
   "piercing-rounds-magazine": 8,
   "uranium-rounds-magazine": 24,
-  "railgun-ammo": 10000
+  "railgun-ammo": 10000,
+  "rocket": 35,
+  "explosive-rocket": 60
  },
  "radar": {
   "range": 14,

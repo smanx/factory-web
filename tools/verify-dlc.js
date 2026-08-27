@@ -1142,6 +1142,20 @@ ok(GD.turret['gun-turret'] && GD.turret['gun-turret'].powerDraw === 0, 'gun-turr
 ok(GD.turret['rocket-turret'] && GD.turret['rocket-turret'].powerDraw === 0, 'rocket-turret 吃弹药不吃电（powerDraw=0）');
 ok(GD.turret['flamethrower-turret'] && GD.turret['flamethrower-turret'].powerDraw === 0, 'flamethrower-turret 吃油不吃电（powerDraw=0）');
 
+console.log('\n【炮塔单发伤害单源化（GAME_DATA.turret[塔].damage / ammoDamage，data.generated.js 单源）】');
+ok(GD.turret['laser-turret'] && GD.turret['laser-turret'].damage === 14, 'laser-turret 单发伤害=14（data.generated.js 单源，官方 laser-beam 参考）');
+ok(GD.turret['flamethrower-turret'] && GD.turret['flamethrower-turret'].damage === 8, 'flamethrower-turret 单发伤害=8（data.generated.js 单源，官方 flamethrower-fire-stream 参考）');
+ok(GD.turret['tesla-turret'] && GD.turret['tesla-turret'].damage === 30, 'tesla-turret 单发伤害=30（data.generated.js 单源，官方 chain-tesla-turret-beam 参考）');
+ok(GD.ammoDamage['rocket'] === 35, 'rocket 单发伤害=35（data.generated.js 单源，官方 projectile rocket 参考）');
+ok(GD.ammoDamage['explosive-rocket'] === 60, 'explosive-rocket 单发伤害=60（data.generated.js 单源，官方 projectile explosive-rocket 参考）');
+// 前端 combat2-turrets.js 应引用 GAME_DATA（而非硬编码字面量）
+const c2t = fs.readFileSync(ROOT + '/js/devices/combat2-turrets.js', 'utf8');
+ok(c2t.includes("GAME_DATA.turret?.['laser-turret']?.damage"), 'combat2-turrets 激光伤害从 GAME_DATA.turret 单源读取');
+ok(c2t.includes("GAME_DATA.turret?.['flamethrower-turret']?.damage"), 'combat2-turrets 火焰伤害从 GAME_DATA.turret 单源读取');
+ok(c2t.includes("GAME_DATA.turret?.['tesla-turret']?.damage"), 'combat2-turrets 特斯拉伤害从 GAME_DATA.turret 单源读取');
+ok(c2t.includes("GAME_DATA.ammoDamage?.['rocket']"), 'combat2-turrets 火箭伤害从 GAME_DATA.ammoDamage 单源读取');
+ok(c2t.includes("GAME_DATA.ammoDamage?.['explosive-rocket']"), 'combat2-turrets 爆炸火箭伤害从 GAME_DATA.ammoDamage 单源读取');
+
 console.log('\n【火箭炮塔 / 磁轨炮塔配方与设备归属】');
 ok(!!RP['rocket-turret'], 'rocket-turret 配方已注册');
 ok(!!RP['railgun-turret'], 'railgun-turret 配方已注册');

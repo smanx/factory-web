@@ -1368,3 +1368,21 @@ D
   `powerDemand()` 在射击冷却（cooldown>0）期间返回官方 powerDraw、闲置返回 0（对齐官方「炮塔有内部
   缓冲、射击时才大电流补给」）；火焰炮塔改回不吃电（官方 fluid-turret 无电网，吃油）。
 - **校验**：verify-dlc 新增炮塔耗电单源化校验（8 项），全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段六.8：炮塔单发伤害单源化（Turret per-shot damage single-sourcing，本迭代新增）
+
+> 依据「所有数据从 data.generated.js（factorio-data 官方单源）获取，设备不维护第二套数值」原则，
+> 把此前硬编码在 `js/devices/combat2-turrets.js` 中的炮塔单发伤害（激光 14 / 火焰 8 / 特斯拉 30 /
+> 火箭 35 / 爆炸火箭 60）统一改为从 `GAME_DATA` 单源读取，完成上一轮「炮塔耗电单源化」的伤害侧收口。
+
+- **生成脚本**（tools/generate-game-data.js）：
+  - `GAME_DATA.turret` 为激光/火焰/特斯拉炮塔新增 `damage` 单发伤害字段（项目简化口径，官方参考：
+    laser-beam 逐 tick 10、flamethrower-fire-stream 逐 tick 3、chain-tesla-turret-beam 120）。
+  - `GAME_DATA.ammoDamage` 新增 `rocket`（官方 projectile rocket 单发 200）、`explosive-rocket`
+    （官方 projectile explosive-rocket 直击 50 + 范围 100）两项弹药单发伤害，沿用项目既有简化口径
+    （35 / 60），不改变战斗平衡，数据统一经 data.generated.js 下发。
+- **设备侧**（combat2-turrets.js）：`LASER_DMG / FT_DMG / TESLA_DMG` 改为从
+  `GAME_DATA.turret[塔].damage` 读取；`ROCKET_AMMO_DMG` 改为从 `GAME_DATA.ammoDamage['rocket'/'explosive-rocket']`
+  读取（均带兜底），不再在设备文件维护第二套字面量伤害。
+- **校验**：verify-dlc 新增炮塔单发伤害单源化校验（9 项：数值来源 + 前端单源引用），全量 18 个校验
+  脚本通过，`node build.js` 构建通过。

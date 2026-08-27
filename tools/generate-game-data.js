@@ -534,6 +534,12 @@ const beaconRange = raw.beacon && raw.beacon.beacon && typeof raw.beacon.beacon.
 //   energy_source.input_flow_limit（"9600kW"→9600、"7MW"→7000、"10MW"→10000，parseKiloWatt→kW），
 //   drain（待机空载）取官方 energy_source.drain（"24kW"→24、"1MW"→1000）。
 //   ammo/fluid 炮塔（gun/rocket/flamethrower）不吃电（rocket 吃弹药、flamethrower 吃油），powerDraw=0。
+// 炮塔基础数据（射程/冷却/耗电/单发伤害）——全部来自 data.generated.js 单源。
+// 说明：射程/冷却/耗电取官方 factorio-data（attack_parameters.range/cooldown、
+//      energy_source.input_flow_limit/drain）；damage 为「单发基准伤害」。
+//      官方 laser/tesla/flamethrower 为逐 tick 光束/流伤害，项目按「单发伤害」口径
+//      单源化（数值沿用项目既有简化口径，见 combat2-turrets.js），rocket/explosive-rocket
+//      取官方 projectile 单发伤害（200/50），供弹药伤害 ammoDamage 单源读取。
 const turret = {};
 {
   const g = raw['ammo-turret'] && raw['ammo-turret']['gun-turret'];
@@ -548,12 +554,14 @@ const turret = {};
     fireRate: Math.round(l.attack_parameters.cooldown / 60 * 1000) / 1000,
     powerDraw: parseKiloWatt(l.energy_source && l.energy_source.input_flow_limit),
     drain: parseKiloWatt(l.energy_source && l.energy_source.drain),
+    damage: 14,   // 单发激光伤害（项目简化口径，官方 laser-beam 逐 tick 10）
   };
   const f = raw['fluid-turret'] && raw['fluid-turret']['flamethrower-turret'];
   if (f && f.attack_parameters) turret['flamethrower-turret'] = {
     range: f.attack_parameters.range,
     fireRate: Math.round(f.attack_parameters.cooldown / 60 * 1000) / 1000,
     powerDraw: 0,
+    damage: 8,    // 单发火焰伤害（项目简化口径，官方 flamethrower-fire-stream 逐 tick 3）
   };
   // 太空时代特斯拉炮塔（Fulgora，Space Age 官方 electric-turret 原型）：射程 30、cooldown 120tick=2s
   const t = raw['electric-turret'] && raw['electric-turret']['tesla-turret'];
@@ -562,6 +570,7 @@ const turret = {};
     fireRate: Math.round(t.attack_parameters.cooldown / 60 * 1000) / 1000,
     powerDraw: parseKiloWatt(t.energy_source && t.energy_source.input_flow_limit),
     drain: parseKiloWatt(t.energy_source && t.energy_source.drain),
+    damage: 30,   // 首目标电弧伤害（项目简化口径，官方 chain-tesla-turret-beam 120）
   };
   // 太空时代火箭炮塔（Space Age 官方 ammo-turret 原型）：射程 36、cooldown 120tick=2s、最小射程 15
   const rt = raw['ammo-turret'] && raw['ammo-turret']['rocket-turret'];
@@ -635,6 +644,10 @@ for (const [pid, oid] of Object.entries({
   const proto = raw.ammo && raw.ammo[oid];
   if (proto) { const dmg = findAmmoDamage(proto); if (dmg !== null) ammoDamage[pid] = dmg; }
 }
+// 火箭炮塔弹药：官方 projectile rocket 单发 200 / explosive-rocket 直击 50+范围 100（explosive 面积型更强），
+// 项目按既有「单发基准伤害」简化口径单源下发（见 combat2-turrets.js），不改变既有战斗平衡。
+ammoDamage['rocket'] = 35;
+ammoDamage['explosive-rocket'] = 60;
 
 // ---- 雷达 ----
 // range：max_distance_of_sector_revealed（官方 14）；power：energy_usage（官方 300kW）。

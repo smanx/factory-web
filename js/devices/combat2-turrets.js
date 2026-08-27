@@ -4,7 +4,7 @@
 // 吃电力、无需弹药、射程更远（对齐《异星工厂》Laser turret）
 const LASER_RANGE = GAME_DATA.turret?.['laser-turret']?.range ?? 9;       // 射程（格，官方 attack_parameters.range 24）
 const LASER_FIRE_RATE = GAME_DATA.turret?.['laser-turret']?.fireRate ?? 0.35; // 两次射击间隔（秒，官方 cooldown 40tick=0.667s）
-const LASER_DMG = 14;
+const LASER_DMG = GAME_DATA.turret?.['laser-turret']?.damage ?? 14;  // 单发激光伤害（data.generated.js 单源，官方 laser-beam 参考）
 
 // 炮塔耗电单源化：powerDraw 来自 GAME_DATA.turret[塔].powerDraw（官方 energy_source.input_flow_limit，
 // 经 tools/generate-game-data.js 单源生成）。gun/rocket 吃弹药、flamethrower 吃油 → powerDraw=0（不吃电）。
@@ -134,7 +134,7 @@ function laserTurretTip(e) {
 // 喷射火焰造成持续灼烧，消耗石油气，范围杀伤（对齐《异星工厂》Flamethrower turret）
 const FT_RANGE = GAME_DATA.turret?.['flamethrower-turret']?.range ?? 6;   // 射程（格，官方 attack_parameters.range 30）
 const FT_FIRE_RATE = GAME_DATA.turret?.['flamethrower-turret']?.fireRate ?? 0.3; // 两次喷射间隔（秒，官方 cooldown 4tick=0.067s）
-const FT_DMG = 8;
+const FT_DMG = GAME_DATA.turret?.['flamethrower-turret']?.damage ?? 8;  // 单发火焰伤害（data.generated.js 单源，官方 flamethrower-fire-stream 参考）
 const FT_FLUID_CAP = 200;
 class FlamethrowerTurret extends CircuitNode {
   constructor(type, x, y) {
@@ -424,7 +424,7 @@ function updateAcidPools(dt) {
 // 射程 30、cooldown 120tick=2s，官方 electric-turret 原型，数据来自 GAME_DATA.turret）。
 const TESLA_RANGE = GAME_DATA.turret?.['tesla-turret']?.range ?? 30;
 const TESLA_FIRE_RATE = GAME_DATA.turret?.['tesla-turret']?.fireRate ?? 2;
-const TESLA_DMG = 30;            // 首目标电弧伤害（官方 tesla-ammo 电弧伤害，链式递减）
+const TESLA_DMG = GAME_DATA.turret?.['tesla-turret']?.damage ?? 30;  // 首目标电弧伤害（data.generated.js 单源，官方 chain-tesla-turret-beam 参考，链式递减）
 const TESLA_CHAIN = 5;           // 电弧最多连锁目标数
 const TESLA_CHAIN_DECAY = 0.8;   // 每跳伤害衰减系数
 class TeslaTurret extends CircuitNode {
@@ -593,7 +593,8 @@ const ROCKET_TURRET_RANGE = GAME_DATA.turret?.['rocket-turret']?.range ?? 36;   
 const ROCKET_TURRET_FIRE_RATE = GAME_DATA.turret?.['rocket-turret']?.fireRate ?? 2; // 两次射击间隔（秒，官方 cooldown 120tick=2s）
 const ROCKET_TURRET_MIN_RANGE = 15;   // 最小射程（格，官方 attack_parameters.min_range 15，近距无法开火）
 const ROCKET_TURRET_AMMO = ['rocket', 'explosive-rocket'];  // 官方 ammo_category=rocket
-const ROCKET_AMMO_DMG = { 'rocket': 35, 'explosive-rocket': 60 };
+// 火箭炮塔弹药单发伤害（data.generated.js 单源：GAME_DATA.ammoDamage，官方 projectile rocket/explosive-rocket 参考）
+const ROCKET_AMMO_DMG = { 'rocket': GAME_DATA.ammoDamage?.['rocket'] ?? 35, 'explosive-rocket': GAME_DATA.ammoDamage?.['explosive-rocket'] ?? 60 };
 const ROCKET_AMMO_SPLASH = { 'rocket': 1.8, 'explosive-rocket': 3.2 };
 class RocketTurret extends CircuitNode {
   constructor(type, x, y) {
