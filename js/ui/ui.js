@@ -22,11 +22,11 @@ const INV_SLOT_COUNT = 80;
 // 制作栏 5 个 Tab：顺序、标签与官方 item-group 一一对应（数据单源归类见 GAME_DATA.itemGroup）。
 const CRAFT_TABS = ['logistics', 'production', 'intermediate-products', 'space', 'combat'];
 const CRAFT_TAB_LABEL = {
-  'logistics': '🧱 物流',
-  'production': '🏭 生产',
-  'intermediate-products': '🧪 中间产品',
-  'space': '🚀 太空',
-  'combat': '🔫 武器',
+  'logistics': { icon: '🧱', text: '物流' },
+  'production': { icon: '🏭', text: '生产' },
+  'intermediate-products': { icon: '🧪', text: '中间产品' },
+  'space': { icon: '🚀', text: '太空' },
+  'combat': { icon: '🔫', text: '武器' },
 };
 
 // 背景预热：首次打开背包会一次性计算数百个物品的 tooltip（含遍历数百条配方）与
@@ -756,7 +756,11 @@ function htmlCraft() {
   for (const tab of CRAFT_TABS) {
     const n = (perTab[tab] || []).length;
     const on = tab === activeTab ? ' active' : '';
-    h += '<button type="button" class="craft-tab' + on + '" data-tab="' + tab + '">' + CRAFT_TAB_LABEL[tab] + ' <span class="cnt">' + n + '</span></button>';
+    const label = CRAFT_TAB_LABEL[tab];
+    h += '<button type="button" class="craft-tab' + on + '" data-tab="' + tab + '">' +
+      '<span class="tab-icon">' + label.icon + '</span>' +
+      '<span class="tab-label">' + label.text + '</span>' +
+      '<span class="cnt">' + n + '</span></button>';
   }
   h += '</div>';
   // 每个 Tab 一个配方网格

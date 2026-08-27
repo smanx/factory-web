@@ -422,6 +422,23 @@ html, body {
   background: rgba(60, 48, 20, .5);
   font-weight: 600;
 }
+.craft-tabs .craft-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+/* 默认只显示图标，隐藏文本；悬停时显示文本 */
+.craft-tabs .craft-tab .tab-label {
+  display: none;
+}
+.craft-tabs .craft-tab:hover .tab-label,
+.craft-tabs .craft-tab.active:hover .tab-label {
+  display: inline;
+}
+.craft-tabs .craft-tab .tab-icon {
+  line-height: 1;
+}
 .craft-tabs .craft-tab .cnt {
   font-size: 10px;
   opacity: .7;
