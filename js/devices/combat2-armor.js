@@ -82,7 +82,7 @@ const WEAPONS = {
   'pistol':          { name: '手枪',   dmg: 10, rate: 0.3, ammo: 'firearm-magazine',        spread: 0.06, auto: false, range: 7, sfx: 'shoot' },
   'submachine-gun':  { name: '冲锋枪', dmg: 7,  rate: 0.1, ammo: 'firearm-magazine', ammoTiers: ['firearm-magazine', 'piercing-rounds-magazine', 'uranium-rounds-magazine'], ammoDmg: { 'firearm-magazine': 7, 'piercing-rounds-magazine': 10, 'uranium-rounds-magazine': 16 }, spread: 0.12, auto: true,  range: 7, sfx: 'machine-gun' },
   'shotgun':         { name: '散弹枪', dmg: 6,  rate: 0.5, ammo: 'shotgun-shell', spread: 0.4,  auto: false, range: 6, pellets: 6, sfx: 'shotgun' },
-  'combat-shotgun':  { name: '战斗散弹枪', dmg: 10, rate: 0.35, ammo: 'piercing-shotgun-shell', spread: 0.32, auto: false, range: 7, pellets: 8, sfx: 'shotgun' },
+  'combat-shotgun':  { name: '战斗散弹枪', dmg: 8,  rate: 0.25, ammo: 'piercing-shotgun-shell', spread: 0.32, auto: false, range: 7, pellets: 8, dmgBonus: 0.2, sfx: 'shotgun' },
   'rocket-launcher': { name: '火箭筒', dmg: 35, rate: 1.1, ammo: 'rocket', ammoTiers: ['rocket', 'explosive-rocket'], ammoDmg: { 'rocket': 35, 'explosive-rocket': 60 }, splashAmmo: { 'rocket': 1.8, 'explosive-rocket': 3.2 }, spread: 0.03, auto: false, range: 9, splash: 1.8, sfx: 'rocket' },
   // 原子弹（对齐《异星工厂》Atomic bomb）：火箭筒发射的终极核武器，命中引发超大范围核爆
   'atomic-bomb': { name: '原子弹', dmg: 300, rate: 2.5, ammo: 'atomic-bomb', spread: 0.02, auto: false, range: 12, splash: 9, nuclear: true, sfx: 'rocket' },
@@ -94,7 +94,10 @@ const WEAPONS = {
   // 战斗机器人胶囊：投掷后释放战斗机器人（见 CAPSULES）
   'defender-capsule':   { name: '防御机器人',   dmg: 0, rate: 0.8, ammo: 'defender-capsule',   spread: 0, auto: false, range: 6, capsule: 'defender' },
   'distractor-capsule': { name: '干扰机器人',   dmg: 0, rate: 0.8, ammo: 'distractor-capsule', spread: 0, auto: false, range: 6, capsule: 'distractor' },
-  'destroyer-capsule':  { name: '破坏机器人',   dmg: 0, rate: 0.8, ammo: 'destroyer-capsule',  spread: 0, auto: false, range: 6, capsule: 'destroyer' }
+  'destroyer-capsule':  { name: '破坏机器人',   dmg: 0, rate: 0.8, ammo: 'destroyer-capsule',  spread: 0, auto: false, range: 6, capsule: 'destroyer' },
+  // ===== 近战武器（对齐《异星工厂》Axe：手持近战工具，无需弹药） =====
+  'iron-axe':   { name: '铁斧',   dmg: 12, rate: 0.45, melee: true, range: 1.6, sfx: 'mine' },
+  'steel-axe':  { name: '钢斧',   dmg: 20, rate: 0.4,  melee: true, range: 1.8, sfx: 'mine' }
 };
 function isWeapon(id) { return !!WEAPONS[id]; }
 function isCapsuleWeapon(id) { return !!(WEAPONS[id] && WEAPONS[id].capsule); }
@@ -109,6 +112,83 @@ function setWeapon(id) {
   G.weapon = id;
   uiDirty = true;
 }
+
+// 是否已装备（手持）武器：为武器类且背包中仍有该武器本体。
+// 对齐《异星工厂》：持枪才能开火；近战斧头同理需手持才可挥砍。
+function hasEquippedWeapon() {
+  return !!G.weapon && isWeapon(G.weapon) && invCount(G.weapon) >= 1;
+}
+
+// 循环切换工具栏中已装备的武器（新默认快捷键 C）。
+// 仅在快捷栏（HOTBAR）里扫描仍拥有本体的武器，从当前武器之后开始找下一个，
+// 找到则切换手持并同步快捷栏选中；若无任何武器则不切换。
+function cycleWeapon() {
+  // 收集快捷栏中当前实际可用的武器（拥有本体且科技已解锁）
+  const pool = [];
+  for (let i = 0; i < HOTBAR.length; i++) {
+    const id = HOTBAR[i];
+    if (id && isWeapon(id) && invCount(id) >= 1) {
+      if (WEAPON_TECH_REQ[id] && !G.techDone[WEAPON_TECH_REQ[id]]) continue;
+      pool.push({ id, i });
+    }
+  }
+  if (pool.length === 0) {
+    if (typeof toast === 'function') toast('快捷栏中没有可用武器');
+    if (typeof playSfx === 'function') playSfx('error');
+    return;
+  }
+  // 从当前武器向后取下一个；当前未在池中则取第一个
+  const curId = G.weapon;
+  let idx = pool.findIndex(p => p.id === curId);
+  idx = (idx + 1) % pool.length;
+  const next = pool[idx];
+  // 直接切换武器并同步快捷栏选中（勿重复触发 setWeapon 的科技拦截，已在收集时过滤）
+  G.weapon = next.id;
+  G.sel = -1;
+  G.quickSel = next.id;
+  if (typeof refreshHotbar === 'function') refreshHotbar();
+  if (typeof playSfx === 'function') playSfx('select');
+  if (typeof toast === 'function') toast('已切换武器：' + (ITEMS[next.id] ? ITEMS[next.id].name : WEAPONS[next.id].name));
+  uiDirty = true;
+}
+
+// 近战斧头攻击：挥砍目标点短距离内的单个敌人（无需弹药）。
+function playerMeleeAttack(tx, ty) {
+  const id = G.weapon;
+  if (!id) return;
+  const w = WEAPONS[id];
+  if (!w || !w.melee) return;
+  const px = G.player.x, py = G.player.y;
+  const reach = w.range * TILE;
+  const base = (typeof weaponDamageMult === 'function' ? weaponDamageMult() : 1) *
+               (typeof weaponCategoryMult === 'function' ? weaponCategoryMult('projectile') : 1);
+  const dmg = Math.round(w.dmg * base);
+  // 命中光标范围内最近的敌人
+  const alive = G._aliveEnemies || (G.enemies || []);
+  let best = null, bestD = Infinity;
+  for (const en of alive) {
+    if (en.dead) continue;
+    const d = Math.hypot(en.x - px, en.y - py);
+    if (d <= reach && d < bestD) { best = en; bestD = d; }
+  }
+  if (best) {
+    best.hp -= dmg;
+    if (best.hp <= 0) best.dead = true;
+  }
+  if (typeof playSfx === 'function') playSfx(w.sfx || 'mine');
+  // 挥砍命中特效：命中点火花（若有粒子系统）
+  if (typeof spawnHitSpark === 'function' && best) spawnHitSpark(best.x, best.y);
+  uiDirty = true;
+}
+
+// 攻击选中目标（默认 Shift+空格）：朝鼠标指针选中的目标（敌人/建筑/树木）开火。
+// 若光标指向非敌人实体（建筑/树），弹丸飞向该位置（命中可破坏物由命中检测处理）。
+function playerFireAtCursor() {
+  if (!G.cursorTile) return;
+  const tx = G.cursorTile.tx * TILE + TILE / 2;
+  const ty = G.cursorTile.ty * TILE + TILE / 2;
+  playerFire(tx, ty);
+}
 // 朝目标点开火
 function playerFire(tx, ty) {
   const id = G.weapon;
@@ -118,6 +198,11 @@ function playerFire(tx, ty) {
   // 战斗机器人胶囊：投掷后释放机器人
   if (isCapsuleWeapon(id)) {
     throwCapsule(id, tx, ty);
+    return;
+  }
+  // 近战武器（斧头）：挥砍目标点短距离内的敌人，无需弹药
+  if (w.melee) {
+    playerMeleeAttack(tx, ty);
     return;
   }
   const px = G.player.x, py = G.player.y;
@@ -143,6 +228,8 @@ function playerFire(tx, ty) {
   // 弹药升级伤害：使用穿甲弹/铀弹时套用对应伤害，否则用武器基础伤害
   let baseDmg = w.dmg;
   if (w.ammoDmg && w.ammoDmg[ammoUsed]) baseDmg = w.ammoDmg[ammoUsed];
+  // 武器固有伤害加成（如战斗散弹枪 +20% 伤害）
+  if (w.dmgBonus) baseDmg = Math.round(baseDmg * (1 + w.dmgBonus));
   const dmg = Math.round(baseDmg * base);
   for (let i = 0; i < pellets; i++) {
     const a = baseAng + (Math.random() - 0.5) * 2 * w.spread;
@@ -169,16 +256,19 @@ function playerFire(tx, ty) {
   if (typeof playSfx === 'function') playSfx(w.sfx || (w.pellets > 1 ? 'shotgun' : 'shoot'));
   uiDirty = true;
 }
-// 玩家开火更新：按住空格/左键对敌人持续射击
+// 玩家开火更新：按住空格/左键对敌人持续射击（手动攻击）。
+// 玩家角色本身不具备自动攻击能力——“自动攻击”仅由炮塔、蜘蛛机甲等设备/载具执行。
 function updatePlayerFire(dt) {
   if (!G.weapon || !G.settings.combat) return;
   // 驾驶装甲车/坦克时：按住空格由车载机枪/主炮开火，不再用手持武器（对齐《异星工厂》：驾驶载具用载具武器）
   if (G.driving && G.driving.ent && (G.driving.ent instanceof Car)) return;
   G.playerFireT -= dt;
-  // 空格键开火（触屏可自行调用 playerFire 实现开火）
-  const firing = !!G.keys[' '];
-  if (!firing) return;
   const w = WEAPONS[G.weapon];
+  if (!w) return;
+  // 是否触发开火：按住 空格 或 鼠标左键（装备武器后直接按住即可连续射击）
+  // 注意：G.weapon 仅在手握武器时非空（选中建筑时被 setWeapon 置空），故左键开火无需再判 buildActive
+  const firing = !!G.keys[' '] || (!!G.mouseDown && !G.driving);
+  if (!firing) return;
   if (w && !w.auto && G.playerFireT > 0) return;  // 非自动武器需间隔
   if (G.playerFireT > 0) return;
   // 目标点：鼠标光标所在世界坐标，或朝向方向
@@ -193,6 +283,19 @@ function updatePlayerFire(dt) {
   }
   playerFire(tx, ty);
   // 射击速度无限科技：射击间隔缩短，射速提升（对齐《异星工厂》Shooting speed）
+  G.playerFireT = (typeof shootingSpeedMult === 'function' ? w.rate / shootingSpeedMult() : w.rate);
+}
+
+// 攻击选中目标（Shift+空格）：对鼠标指针选中的特定目标（敌人/建筑/树木）开火。
+// 视为“强制攻击”，无论目标是否为敌人都朝其位置射击。
+function attackSelectedTarget() {
+  if (!G.weapon || !G.settings.combat) return;
+  if (G.driving && G.driving.ent && (G.driving.ent instanceof Car)) return;
+  const w = WEAPONS[G.weapon];
+  if (!w) return;
+  G.playerFireT = 0;
+  if (!G.cursorTile) return;
+  playerFireAtCursor();
   G.playerFireT = (typeof shootingSpeedMult === 'function' ? w.rate / shootingSpeedMult() : w.rate);
 }
 // 玩家子弹命中敌人（沿子弹飞行路径检测）

@@ -113,6 +113,9 @@ const RECIPES = {
   'artillery-shell':        { time: 15, inp: { 'explosive-cannon-shell': 4, 'explosives': 8, 'radar': 1 }, out: { 'artillery-shell': 1 } },
   // ===== 玩家武器（战斗体系扩充） =====
   'pistol':            { time: 1,   inp: { 'iron-plate': 4, 'iron-gear-wheel': 1 },                     out: { 'pistol': 1 } },
+  // 近战武器（对齐《异星工厂》Iron/Steel axe：铁板/钢板制成）
+  'iron-axe':            { time: 1, inp: { 'iron-plate': 5, 'wood': 1 }, out: { 'iron-axe': 1 } },
+  'steel-axe':           { time: 2, inp: { 'iron-axe': 1, 'steel-plate': 5, 'wood': 2 }, out: { 'steel-axe': 1 } },
   'submachine-gun':        { time: 10, inp: { 'copper-plate': 5, 'iron-gear-wheel': 10, 'iron-plate': 10 }, out: { 'submachine-gun': 1 } },
   'shotgun':        { time: 10, inp: { 'copper-plate': 10, 'iron-gear-wheel': 5, 'iron-plate': 15, 'wood': 5 }, out: { 'shotgun': 1 } },
   'rocket-launcher':        { time: 10, inp: { 'electronic-circuit': 5, 'iron-gear-wheel': 5, 'iron-plate': 5 }, out: { 'rocket-launcher': 1 } },

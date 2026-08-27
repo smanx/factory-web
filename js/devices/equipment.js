@@ -411,7 +411,7 @@ function equipPowerHtml() {
   // 放电防御：点击按钮激活
   if (hasDischargeDefense()) {
     const cd = Math.max(0, G.dischargeCd || 0);
-    h += '<div class="dim"><button class="rcbtn" id="btn-discharge" data-discharge="1"' + (cd > 0 ? ' disabled' : '') + '>⚡ 放电防御（C 键，冷却 ' + cd.toFixed(1) + 's）</button><span class="dim">对周围 ' + DISCHARGE_RANGE + ' 格内敌人连锁电击，消耗 ' + (DISCHARGE_COST/1000) + 'MJ 个人电力</span></div>';
+    h += '<div class="dim"><button class="rcbtn" id="btn-discharge" data-discharge="1"' + (cd > 0 ? ' disabled' : '') + '>⚡ 放电防御（点击激活，冷却 ' + cd.toFixed(1) + 's）</button><span class="dim">对周围 ' + DISCHARGE_RANGE + ' 格内敌人连锁电击，消耗 ' + (DISCHARGE_COST/1000) + 'MJ 个人电力</span></div>';
   }
   return h;
 }
