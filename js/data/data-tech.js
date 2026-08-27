@@ -265,7 +265,9 @@ const WEAPON_TECH_REQ = {
   'shotgun': 'weapons',
   'combat-shotgun': 'military2',
   'rocket-launcher': 'military2',
-  'flamethrower': 'flamethrower'
+  'flamethrower': 'flamethrower',
+  'railgun': 'railgun-defense',     // 轨道炮需「轨道炮防御」科技
+  'teslagun': 'fulgora'             // 特斯拉电枪需「富尔戈拉电磁」科技
 };
 // 弹药/投掷物科技门控：散弹枪弹由武器科技解锁，穿甲散弹枪弹与集束手雷由高级战斗解锁
 TECH_REQ['shotgun-shell'] = 'weapons';

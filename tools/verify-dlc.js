@@ -1328,4 +1328,38 @@ console.log('\n【太空时代空间平台地基（space-platform-foundation）�
 
 
 
+console.log('\n【太空时代手持武器（railgun 轨道炮 / teslagun 特斯拉电枪）数据校验】');
+{
+  // 加载手持武器表 WEAPONS（combat2-armor.js）到 VM
+  const armorSrc = fs.readFileSync(ROOT + '/js/devices/combat2-armor.js', 'utf8');
+  // 抽取 WEAPONS 对象（平衡括号扫描）
+  const wm = /const\s+WEAPONS\s*=\s*\{/.exec(armorSrc);
+  let wobjStart = armorSrc.indexOf('{', wm.index), wDepth = 0, wj = wobjStart;
+  for (; wj < armorSrc.length; wj++) { const c = armorSrc[wj]; if (c === '{') wDepth++; else if (c === '}') { wDepth--; if (wDepth === 0) break; } }
+  const WEAPONS = Function('return ' + armorSrc.slice(wobjStart, wj + 1))();
+  // 物品/弹药/配方/科技 均已接入
+  ok(!!IT['railgun'], 'railgun 物品已注册（官方轨道炮）');
+  ok(!!IT['teslagun'], 'teslagun 物品已注册（官方特斯拉电枪）');
+  ok(!!IT['railgun-ammo'], 'railgun-ammo 弹药已注册');
+  ok(!!IT['tesla-ammo'], 'tesla-ammo 弹药已注册');
+  ok(!!RP['railgun'] && !!RP['railgun-ammo'], 'railgun 及其弹药配方已注册');
+  ok(!!RP['teslagun'] && !!RP['tesla-ammo'], 'teslagun 及其弹药配方已注册');
+  // 手持武器已注册进 WEAPONS
+  ok(!!WEAPONS['railgun'] && WEAPONS['railgun'].railgun === true, 'railgun 已注册为手持武器（直线贯穿）');
+  ok(!!WEAPONS['teslagun'] && WEAPONS['teslagun'].tesla === true, 'teslagun 已注册为手持武器（电弧连锁）');
+  ok(WEAPONS['railgun'] && WEAPONS['railgun'].ammo === 'railgun-ammo', 'railgun 弹药=railgun-ammo');
+  ok(WEAPONS['teslagun'] && WEAPONS['teslagun'].ammo === 'tesla-ammo', 'teslagun 弹药=tesla-ammo');
+  // 数值来自 GAME_DATA / 官方
+  ok(GD.stackSize['railgun'] === 1, 'railgun 堆叠来自官方 (=1)');
+  ok(GD.names['railgun'] && GD.names['railgun'].en === 'Railgun', 'railgun 官方命名已收录 (Railgun)');
+  ok(GD.names['teslagun'] && GD.names['teslagun'].en === 'Tesla gun', 'teslagun 官方命名已收录 (Tesla gun)');
+  // 科技门控
+  ok(ctx.__itemTechReq('railgun') === 'railgun-defense', 'railgun 需「轨道炮防御」科技');
+  ok(ctx.__itemTechReq('teslagun') === 'fulgora', 'teslagun 需「富尔戈拉电磁」科技');
+  // 渲染分支已接入
+  const renSrc = fs.readFileSync(ROOT + '/js/render/render-entity.js', 'utf8');
+  ok(renSrc.indexOf("b.kind === 'railgun'") >= 0, 'railgun 贯穿光束渲染分支已接入');
+  ok(renSrc.indexOf("b.kind === 'tesla'") >= 0, 'tesla 电弧渲染分支已接入');
+}
+
 process.exit(fail === 0 ? 0 : 1);
