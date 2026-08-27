@@ -52,6 +52,9 @@ html, body {
   padding: 6px 10px;
   border-radius: 6px;
   pointer-events: none;
+  /* 帧数/坐标 HUD 需显示在所有弹框（科技研究/背包等，最高 z-index 240）之上，
+     且位于 tooltip(9999) 之下，故使用高 z-index */
+  z-index: 9990;
 }
 
 /* HUD 信息项：改为可点击（点击弹出详情弹框） */
@@ -1889,7 +1892,6 @@ html, body {
 .eqlist .rcbtn img { width: 18px; height: 18px; border-radius: 4px; }
 
 /* ===== 小地图（右下角） ===== */
-#hud-info { z-index: 5; }
 
 /* ===== 载具储物箱（trunk） ===== */
 .trunk-list { display: flex; flex-direction: column; gap: 4px; margin: 4px 0; }
