@@ -16,13 +16,17 @@ const code = fs.readFileSync(ROOT + '/js/data/data.generated.js', 'utf8')
   + '\n;globalThis.__GAME_DATA=GAME_DATA;globalThis.__ITEMS=ITEMS;globalThis.__RECIPES=RECIPES;'
   + 'globalThis.__TECHS=TECHS;globalThis.__SMELTS=SMELTS;globalThis.__recipeDevice=recipeDevice;'
   + 'globalThis.__itemTechReq=itemTechReq;globalThis.__itemRecipeText=itemRecipeText;globalThis.__recipeTechReq=recipeTechReq;'
-  + 'globalThis.__BUILD_DEFS=BUILD_DEFS;';
+  + 'globalThis.__BUILD_DEFS=BUILD_DEFS;'
+  + 'globalThis.__ORE_TUNGSTEN=ORE_TUNGSTEN;globalThis.__ORE_HOLMIUM=ORE_HOLMIUM;'
+  + 'globalThis.__oreItemId=oreItemId;globalThis.__isOreType=isOreType;globalThis.__oreMiningTime=oreMiningTime;';
 const ctx = { console, localStorage: { getItem: () => null, setItem: () => {} } };
 ctx.window = ctx; ctx.G = { settings: { language: 'zh' }, power: { sat: 1 }, techDone: {} };
 ctx.globalThis = ctx;
 vm.createContext(ctx);
 vm.runInContext(code, ctx);
 const GD = ctx.__GAME_DATA, IT = ctx.__ITEMS, RP = ctx.__RECIPES, TS = ctx.__TECHS;
+const ORE_TUNGSTEN = ctx.__ORE_TUNGSTEN, ORE_HOLMIUM = ctx.__ORE_HOLMIUM;
+const oreItemId = ctx.__oreItemId, isOreType = ctx.__isOreType, oreMiningTime = ctx.__oreMiningTime;
 
 let pass = 0, fail = 0;
 function ok(cond, msg) { if (cond) { pass++; console.log('  ✅ ' + msg); } else { fail++; console.log('  ❌ ' + msg); } }
@@ -1470,6 +1474,39 @@ ok(!('coal-liquefaction' in RECIPES_F) && !('nuclear-fuel-reprocessing' in RECIP
 const recJs = fs.readFileSync(ROOT + '/js/data/data-recipes.js', 'utf8');
 ok(recJs.includes("REFINERY_RECIPES[k] !== undefined || CENTRIFUGE_RECIPES[k] !== undefined"), 'data-recipes.js 炼油/离心配方从 GAME_DATA.recipe 单源覆盖');
 
+
+console.log('\n【行星专属矿藏（祝融星钨矿 / 雷神星钬矿）数据校验】');
+{
+  // 矿石物品注册 + 官方堆叠
+  ok(!!IT['tungsten-ore'], 'tungsten-ore 物品已注册（祝融星钨矿）');
+  ok(!!IT['holmium-ore'], 'holmium-ore 物品已注册（雷神星钬矿）');
+  ok(GD.stackSize['tungsten-ore'] === 50, 'tungsten-ore 堆叠来自官方 (=50)');
+  ok(GD.stackSize['holmium-ore'] === 50, 'holmium-ore 堆叠来自官方 (=50)');
+  // 新矿石索引 + oreItemId 映射（data.js 单源）
+  ok(typeof ORE_TUNGSTEN === 'number' && typeof ORE_HOLMIUM === 'number', 'ORE_TUNGSTEN / ORE_HOLMIUM 索引已定义（data.js）');
+  ok(oreItemId(ORE_TUNGSTEN) === 'tungsten-ore', 'oreItemId(ORE_TUNGSTEN) = tungsten-ore');
+  ok(oreItemId(ORE_HOLMIUM) === 'holmium-ore', 'oreItemId(ORE_HOLMIUM) = holmium-ore');
+  ok(isOreType(ORE_TUNGSTEN) && isOreType(ORE_HOLMIUM), 'isOreType() 识别钨/钬矿脉格');
+  // 采矿时间已接入（官方 mining_time=2）
+  ok(oreMiningTime('tungsten-ore') === 2, 'tungsten-ore 采矿时间=2s（官方）');
+  ok(oreMiningTime('holmium-ore') === 2, 'holmium-ore 采矿时间=2s（官方）');
+  // 行星资源画像（world-config.js）：祝融星有钨、雷神星有钬
+  const wc = fs.readFileSync(ROOT + '/js/game/world-config.js', 'utf8');
+  ok(wc.indexOf("vulcanus: {") >= 0 && wc.indexOf("tungsten: 1.4") >= 0, '祝融星 Vulcanus 资源画像含钨矿（tungsten:1.4）');
+  ok(wc.indexOf("fulgora:") >= 0 && wc.indexOf("holmium: 1.6") >= 0, '雷神星 Fulgora 资源画像含钬矿（holmium:1.6）');
+  ok(wc.indexOf("nauvis:") >= 0 && wc.indexOf("tungsten: 0") >= 0, '新地星 Nauvis 无钨/钬天然矿（tungsten:0）');
+  // 世界生成逻辑已接入（world.js）
+  const wj = fs.readFileSync(ROOT + '/js/game/world.js', 'utf8');
+  ok(wj.indexOf("ORE_TUNGSTEN") >= 0 && wj.indexOf("tungsten") >= 0, 'world.js 已接入祝融星钨矿天然生成');
+  ok(wj.indexOf("ORE_HOLMIUM") >= 0 && wj.indexOf("holmium") >= 0, 'world.js 已接入雷神星钬矿天然生成');
+  // 采矿/手挖/渲染识别新矿脉（isOreType 集中判断）
+  const drillSrc = fs.readFileSync(ROOT + '/js/devices/drill.js', 'utf8');
+  const playerSrc = fs.readFileSync(ROOT + '/js/game/player.js', 'utf8');
+  const renEnt = fs.readFileSync(ROOT + '/js/render/render-entity.js', 'utf8');
+  ok(drillSrc.indexOf("isOreType(ti)") >= 0, '采矿机 minableOreType 用 isOreType 识别钨/钬矿');
+  ok(playerSrc.indexOf("isOreType(ti)") >= 0, '玩家手挖用 isOreType 识别钨/钬矿');
+  ok(renEnt.indexOf("isOreType(ti)") >= 0, '渲染用 isOreType 识别钨/钬矿开采圈');
+}
 
 process.exit(fail === 0 ? 0 : 1);
 

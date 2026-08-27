@@ -31,8 +31,8 @@ class Drill extends Entity {
     this.status = '';
     this.spin = 0;
   }
-  // 可开采的矿石索引：普通矿 0-4 + 铀矿 6（原油 5 由抽油机专用）。
-  minableOreType(ti) { return (ti >= 0 && ti < ORES.length) || ti === ORE_URANIUM || ti === ORE_ASTEROID; }
+  // 可开采的矿石索引：普通矿 0-4 + 铀矿 6 + 小行星 7 + 祝融钨矿 8 + 雷神钬矿 9（原油 5 由抽油机专用）。
+  minableOreType(ti) { return isOreType(ti); }
   oreTile() {
     for (let dy = 0; dy < this.h; dy++)
       for (let dx = 0; dx < this.w; dx++) {
@@ -304,7 +304,7 @@ function drillNeedsOre(type, tx, ty, dir, ew, eh) {
   for (let dy = 0; dy < eh && !hasOre; dy++)
     for (let dx = 0; dx < ew && !hasOre; dx++) {
       const ti = getOreType(tx + dx, ty + dy);
-      if ((ti >= 0 && ti < ORES.length) || ti === ORE_URANIUM || ti === ORE_ASTEROID) hasOre = true;
+      if (isOreType(ti)) hasOre = true;
     }
   return hasOre ? null : { ok: false };
 }

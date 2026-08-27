@@ -522,6 +522,29 @@ function genChunk(cx, cy) {
     growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, asz, aamt, ORE_ASTEROID);
   }
 
+
+  // 行星专属矿藏（太空时代天然矿脉，官方）：
+  //   祝融星 Vulcanus → 钨矿 tungsten-ore（官方 tungsten-ore 天然矿脉）
+  //   雷神星 Fulgora  → 钬矿 holmium-ore（官方 holmium-ore 天然矿脉）
+  // 仅在其母星（丰度>0）自然生成；其余星球经合成配方兜底（见 data-recipes.js）。
+  // 生成距离与铀矿/小行星同级（后期资源），越远越常见、储量越高。
+  const tChance = (dist > 100 ? 0.35 : dist > 60 ? 0.12 : 0) * rw('tungsten');
+  if (rw('tungsten') > 0 && rng() < tChance) {
+    const sx = 2 + Math.floor(rng() * (CHUNK - 4));
+    const sy = 2 + Math.floor(rng() * (CHUNK - 4));
+    const tsz = Math.max(8, Math.round((16 + rng() * 18) * Math.min(2.2, scale) * sz));
+    const tamt = (400 + rng() * 700) * scale * ri;
+    growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, tsz, tamt, ORE_TUNGSTEN);
+  }
+  const hChance = (dist > 100 ? 0.35 : dist > 60 ? 0.12 : 0) * rw('holmium');
+  if (rw('holmium') > 0 && rng() < hChance) {
+    const sx = 2 + Math.floor(rng() * (CHUNK - 4));
+    const sy = 2 + Math.floor(rng() * (CHUNK - 4));
+    const hsz = Math.max(8, Math.round((16 + rng() * 18) * Math.min(2.2, scale) * sz));
+    const hamt = (400 + rng() * 700) * scale * ri;
+    growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, hsz, hamt, ORE_HOLMIUM);
+  }
+
   // 出生点保证：原点上一定有一片小型起步矿。若当前星球无铁矿（如句芒星/玄冥星），
   // 则用该星最丰富的普通矿石起步，保证开局可采集。
   if (cx === 0 && cy === 0) {

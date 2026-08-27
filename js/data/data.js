@@ -27,7 +27,8 @@ const DRILL_TIME = 1.0;
 //   普通矿（铁/铜/煤/石）mining_time = 2s；铀矿 mining_time = 4s。
 // 实际每采 1 个矿耗时 = 该矿石采矿时间 ÷ 采矿机速度（热能 0.25 / 电 0.5）。
 const ORE_MINING_TIME = {
-  'iron-ore': 2.0, 'copper-ore': 2.0, 'coal': 2.0, 'stone': 2.0, 'uranium-ore': 4.0, 'metallic-asteroid-chunk': 2.0, 'carbonic-asteroid-chunk': 2.0, 'oxide-asteroid-chunk': 2.0
+  'iron-ore': 2.0, 'copper-ore': 2.0, 'coal': 2.0, 'stone': 2.0, 'uranium-ore': 4.0, 'metallic-asteroid-chunk': 2.0, 'carbonic-asteroid-chunk': 2.0, 'oxide-asteroid-chunk': 2.0,
+  'tungsten-ore': 2.0, 'holmium-ore': 2.0   // 太空时代行星专属矿（官方 mining_time=2，与普通矿一致）
 };
 function oreMiningTime(item) {
   const t = ORE_MINING_TIME[item];
@@ -117,11 +118,20 @@ const FLUIDS = ['water', 'steam', 'crude-oil', 'heavy-oil', 'light-oil', 'petrol
 const ORE_OIL = 5;                       // 原油矿床的 oreType 索引（不进手挖矿表）
 const ORE_URANIUM = 6;                   // 铀矿床的 oreType 索引
 const ORE_ASTEROID = 7;                  // 小行星碎块矿床的 oreType 索引（太空时代，随机出金属/碳质/氧化星块）
+const ORE_TUNGSTEN = 8;                // 钨矿床的 oreType 索引（太空时代祝融星天然矿脉，官方 tungsten-ore）
+const ORE_HOLMIUM = 9;                 // 钬矿床的 oreType 索引（太空时代雷神星天然矿脉，官方 holmium-ore）
 function oreItemId(ti) {
   if (ti === ORE_OIL) return 'crude-oil';
   if (ti === ORE_URANIUM) return 'uranium-ore';
   if (ti === ORE_ASTEROID) return randomAsteroidChunk();
+  if (ti === ORE_TUNGSTEN) return 'tungsten-ore';
+  if (ti === ORE_HOLMIUM) return 'holmium-ore';
   return ORES[ti];
+}
+// 是否为可开采的矿脉格（含普通矿 + 铀矿 + 小行星 + 祝融星钨矿 + 雷神星钬矿）。
+// 集中判断，供采矿机/手挖/渲染复用，避免各文件分散维护矿石清单。
+function isOreType(ti) {
+  return (ti >= 0 && ti < ORES.length) || ti === ORE_URANIUM || ti === ORE_ASTEROID || ti === ORE_TUNGSTEN || ti === ORE_HOLMIUM;
 }
 // 随机返回一种小行星碎块（金属/碳质/氧化），破碎机可粉碎加工
 function randomAsteroidChunk() {
