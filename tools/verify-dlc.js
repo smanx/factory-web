@@ -191,6 +191,9 @@ for (const k of ['yumako', 'yumako-mash', 'bioflux', 'nutrients', 'spoilage', 'a
   ok(!!GD.names[k], k + ' 官方命名已收录 (' + (GD.names[k] ? GD.names[k].zh : '?') + ')');
 }
 ok(!!RP['yumako-mash'], '玉玛果泥配方已注册');
+ok(Object.keys(RP['yumako-mash'].out).includes('yumako-seed'), '玉玛果加工产出种子（官方 yumako-processing，自持农业）');
+ok(Object.keys(RP['yumako-mash'].out).includes('yumako-mash'), '玉玛果加工产出果泥（官方 yumako-processing）');
+ok(RP['yumako-mash'].time === 1, '玉玛果加工耗时=1s（官方 yumako-processing）');
 ok(!!RP['bioflux'], '生物结晶配方已注册');
 ok(!!RP['agricultural-science-pack'], '农业科技包配方已注册');
 ok(!!IT['agricultural-science-pack'], '农业科技包物品已注册');

@@ -50,6 +50,8 @@ const RECIPE_MAP = {
   'solid-fuel': 'solid-fuel-from-petroleum-gas',
   'uranium-processing': 'uranium-processing',
   'kovarex': 'kovarex-enrichment-process',
+  // 太空时代 Gleba：项目 yumako-mash 对应官方 yumako-processing（含种子产出，实现自持农业）
+  'yumako-mash': 'yumako-processing',
 };
 // ===== 保留手工的配方（项目自定 / 故意用旧版，不允许自动覆盖）=====
 // 即使官方有同名或映射配方，也保持手工值。例：storage-chest 在官方 2.0 是物流箱
@@ -61,7 +63,7 @@ const KEEP_MANUAL_RECIPES = new Set([
   'stone-path', 'storage-chest',
   // ===== 太空时代 Space Age 手工适配配方（官方配方依赖星球专属资源，此处适配基础资源）=====
   'lithium', 'lithium-brine', 'ammoniacal-solution', 'ammoniacal-solution-separation', 'electromagnetic-science-pack',
-  'yumako-mash', 'agricultural-science-pack', 'biochamber',
+  'agricultural-science-pack', 'biochamber',
   'yumako-growing', 'jellynut-growing',
   // 太空时代 Gleba 金属细菌链：细菌→板还原配方为项目适配（官方无此合成，Gleba 用细菌还原成熔融金属再铸板），保留手工
   'iron-plate-from-iron-bacteria', 'copper-plate-from-copper-bacteria',

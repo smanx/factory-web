@@ -2422,6 +2422,16 @@ const GAME_DATA = {
     "foundry": 1
    }
   },
+  "yumako-mash": {
+   "time": 1,
+   "inp": {
+    "yumako": 1
+   },
+   "out": {
+    "yumako-seed": 1,
+    "yumako-mash": 2
+   }
+  },
   "bioflux": {
    "time": 6,
    "inp": {
@@ -3889,6 +3899,7 @@ const GAME_DATA = {
   "tungsten-carbide": "foundry",
   "metallurgic-science-pack": "foundry",
   "foundry": "foundry",
+  "yumako-mash": "biochamber",
   "bioflux": "biochamber",
   "nutrients-from-bioflux": "biochamber",
   "nutrients-from-spoilage": "biochamber",
@@ -5298,6 +5309,10 @@ const GAME_DATA = {
   "advanced-thruster-oxidizer": {
    "zh": "高级推进器氧化剂",
    "en": "Advanced thruster oxidizer"
+  },
+  "yumako-mash": {
+   "zh": "玉玛果加工",
+   "en": "Yumako processing"
   },
   "nutrients-from-bioflux": {
    "zh": "生物结晶制营养素",

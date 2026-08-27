@@ -995,6 +995,22 @@
 >   全量 18 个校验脚本通过，`node build.js` 构建通过。
 
 
+### 阶段五.4：Gleba 雅玛果加工对齐官方（含种子自持，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> 依据「所有物品/配方数据与《异星工厂》官方一致」原则，将项目 `yumako-mash`（玉玛果泥）配方
+> 对齐官方 `yumako-processing`：
+> - **配方数据对齐官方**：`1 雅玛果 → 2 玉玛果泥 + 1 玉玛果种子`（1s，官方 yumako-processing），
+>   生成脚本 `RECIPE_MAP` 新增 `yumako-mash → yumako-processing` 映射，并从 `KEEP_MANUAL_RECIPES`
+>   移除该项目自定条目，使 `GAME_DATA.recipe['yumako-mash']` 由官方单源桥接（配方名显示「玉玛果加工/Yumako processing」）。
+> - **自持农业**：此前玉玛果加工不返种子、需依赖种子来源；对齐官方后加工自返种子，配合
+>   `yumako-growing`（种子→6 玉玛果）构成「果→泥+种子→再种植」的 Gleba 自持农业循环，
+>   与 `jellynut-processing`（官方已返果仁种子）一致。
+> - **手工表一致性**：`data-recipes.js` 手工 `yumako-mash` 同步补上种子产出作为兜底，
+>   运行时仍以 `GAME_DATA.recipe` 官方单源为准。
+> - **守门人**：`verify-dlc` 新增玉玛果加工产出种子/果泥/耗时 1s 三项校验，
+>   防止后续改动破坏官方一致性；全量 18 个校验脚本通过，`node build.js` 构建通过。
+
 ### 阶段六：后续开发计划（迭代方向）
 
 > 基于本次审计，核心数据对齐与 DLC 内容接入已全部完成。后续迭代方向（按价值排序）：
