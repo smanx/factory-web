@@ -75,9 +75,11 @@ function enterGame() {
   if (sc) sc.classList.add('hidden');
   G.inMenu = false;
   G.paused = false;
-  // 进入游戏后才显示帧数/坐标 HUD（启动页不显示）
+  // 进入游戏后才显示帧数/坐标 HUD 与左下角战斗快捷栏（启动页/主菜单不显示）
   const hud = document.getElementById('hud-info');
   if (hud) hud.style.display = 'block';
+  const qb = document.getElementById('quickbar');
+  if (qb) qb.style.display = 'flex';
   toast('WASD 移动 · 左键挖矿/放建筑(覆盖建造) · 右键拆除 · R 旋转 · F 拿取 · Q 取消/拾取朝向 · 中键/E 面板 · T 科技 · P 统计 · B 蓝图 · Alt+B 蓝图库 · Alt+D 红图 · Alt+U 绿图 · K/L 存读档');
   // 触屏设备：首次进入展示新手引导
   if (typeof maybeShowTouchTip === 'function') maybeShowTouchTip();
@@ -88,9 +90,11 @@ function returnToMenu() {
   if (typeof closePanel === 'function') closePanel();
   G.inMenu = true;
   G.paused = false;
-  // 回到启动页时隐藏帧数/坐标 HUD（仅在游戏内显示）
+  // 回到启动页时隐藏帧数/坐标 HUD 与左下角战斗快捷栏（仅在游戏内显示）
   const hud = document.getElementById('hud-info');
   if (hud) hud.style.display = 'none';
+  const qb = document.getElementById('quickbar');
+  if (qb) qb.style.display = 'none';
   G.sel = -1;
   G.blueMode = null;
   G.deconstructMode = false;
