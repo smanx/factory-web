@@ -179,6 +179,7 @@ const GAME_DATA = {
   "recycler": 20,
   "holmium-ore": 50,
   "holmium-plate": 100,
+  "teslagun": 5,
   "supercapacitor": 100,
   "tesla-turret": 10,
   "tesla-ammo": 100,
@@ -706,6 +707,40 @@ const GAME_DATA = {
    },
    "out": {
     "express-splitter": 1
+   }
+  },
+  "turbo-transport-belt": {
+   "time": 0.5,
+   "inp": {
+    "tungsten-plate": 5,
+    "express-transport-belt": 1,
+    "lubricant": 20
+   },
+   "out": {
+    "turbo-transport-belt": 1
+   }
+  },
+  "turbo-underground-belt": {
+   "time": 2,
+   "inp": {
+    "tungsten-plate": 40,
+    "express-underground-belt": 2,
+    "lubricant": 40
+   },
+   "out": {
+    "turbo-underground-belt": 2
+   }
+  },
+  "turbo-splitter": {
+   "time": 2,
+   "inp": {
+    "express-splitter": 1,
+    "tungsten-plate": 15,
+    "processing-unit": 2,
+    "lubricant": 80
+   },
+   "out": {
+    "turbo-splitter": 1
    }
   },
   "inserter": {
@@ -1255,6 +1290,19 @@ const GAME_DATA = {
     "fluid-wagon": 1
    }
   },
+  "artillery-wagon": {
+   "time": 4,
+   "inp": {
+    "engine-unit": 60,
+    "tungsten-plate": 60,
+    "refined-concrete": 60,
+    "iron-gear-wheel": 40,
+    "processing-unit": 10
+   },
+   "out": {
+    "artillery-wagon": 1
+   }
+  },
   "train-stop": {
    "time": 0.5,
    "inp": {
@@ -1285,6 +1333,27 @@ const GAME_DATA = {
    },
    "out": {
     "rail-chain-signal": 1
+   }
+  },
+  "rail-support": {
+   "time": 0.5,
+   "inp": {
+    "refined-concrete": 20,
+    "steel-plate": 10
+   },
+   "out": {
+    "rail-support": 1
+   }
+  },
+  "rail-ramp": {
+   "time": 0.5,
+   "inp": {
+    "refined-concrete": 100,
+    "rail": 8,
+    "steel-plate": 10
+   },
+   "out": {
+    "rail-ramp": 1
    }
   },
   "car": {
@@ -1361,6 +1430,19 @@ const GAME_DATA = {
     "heavy-armor": 1
    }
   },
+  "spidertron": {
+   "time": 10,
+   "inp": {
+    "exoskeleton-equipment": 4,
+    "fission-reactor-equipment": 2,
+    "rocket-turret": 1,
+    "radar": 2,
+    "raw-fish": 1
+   },
+   "out": {
+    "spidertron": 1
+   }
+  },
   "land-mine": {
    "time": 5,
    "inp": {
@@ -1369,6 +1451,42 @@ const GAME_DATA = {
    },
    "out": {
     "land-mine": 4
+   }
+  },
+  "cliff-explosives": {
+   "time": 8,
+   "inp": {
+    "explosives": 10,
+    "calcite": 10,
+    "grenade": 1,
+    "barrel": 1
+   },
+   "out": {
+    "cliff-explosives": 1
+   }
+  },
+  "artillery-turret": {
+   "time": 40,
+   "inp": {
+    "tungsten-plate": 60,
+    "refined-concrete": 60,
+    "iron-gear-wheel": 40,
+    "processing-unit": 10
+   },
+   "out": {
+    "artillery-turret": 1
+   }
+  },
+  "artillery-shell": {
+   "time": 15,
+   "inp": {
+    "radar": 1,
+    "calcite": 1,
+    "tungsten-plate": 4,
+    "explosives": 8
+   },
+   "out": {
+    "artillery-shell": 1
    }
   },
   "pistol": {
@@ -1606,6 +1724,18 @@ const GAME_DATA = {
     "speed-module-2": 1
    }
   },
+  "speed-module-3": {
+   "time": 60,
+   "inp": {
+    "speed-module-2": 4,
+    "advanced-circuit": 5,
+    "processing-unit": 5,
+    "tungsten-carbide": 1
+   },
+   "out": {
+    "speed-module-3": 1
+   }
+  },
   "productivity-module": {
    "time": 15,
    "inp": {
@@ -1627,6 +1757,18 @@ const GAME_DATA = {
     "productivity-module-2": 1
    }
   },
+  "productivity-module-3": {
+   "time": 60,
+   "inp": {
+    "productivity-module-2": 4,
+    "advanced-circuit": 5,
+    "processing-unit": 5,
+    "biter-egg": 1
+   },
+   "out": {
+    "productivity-module-3": 1
+   }
+  },
   "efficiency-module": {
    "time": 15,
    "inp": {
@@ -1646,6 +1788,18 @@ const GAME_DATA = {
    },
    "out": {
     "efficiency-module-2": 1
+   }
+  },
+  "efficiency-module-3": {
+   "time": 60,
+   "inp": {
+    "efficiency-module-2": 4,
+    "advanced-circuit": 5,
+    "processing-unit": 5,
+    "spoilage": 5
+   },
+   "out": {
+    "efficiency-module-3": 1
    }
   },
   "quality-module": {
@@ -1943,6 +2097,49 @@ const GAME_DATA = {
     "asteroid-collector": 1
    }
   },
+  "carbon-fiber": {
+   "time": 5,
+   "inp": {
+    "yumako-mash": 10,
+    "carbon": 1
+   },
+   "out": {
+    "carbon-fiber": 1
+   }
+  },
+  "lithium-plate": {
+   "time": 6.4,
+   "inp": {
+    "lithium": 1
+   },
+   "out": {
+    "lithium-plate": 1
+   }
+  },
+  "superconductor": {
+   "time": 5,
+   "inp": {
+    "holmium-plate": 1,
+    "copper-plate": 1,
+    "plastic-bar": 1,
+    "light-oil": 5
+   },
+   "out": {
+    "superconductor": 2
+   }
+  },
+  "electromagnetic-plant": {
+   "time": 10,
+   "inp": {
+    "holmium-plate": 150,
+    "steel-plate": 50,
+    "processing-unit": 50,
+    "refined-concrete": 50
+   },
+   "out": {
+    "electromagnetic-plant": 1
+   }
+  },
   "recycler": {
    "time": 3,
    "inp": {
@@ -1953,6 +2150,209 @@ const GAME_DATA = {
    },
    "out": {
     "recycler": 1
+   }
+  },
+  "holmium-solution": {
+   "time": 10,
+   "inp": {
+    "holmium-ore": 2,
+    "stone": 1,
+    "water": 10
+   },
+   "out": {
+    "holmium-solution": 100
+   }
+  },
+  "holmium-plate": {
+   "time": 1,
+   "inp": {
+    "holmium-solution": 20
+   },
+   "out": {
+    "holmium-plate": 1
+   }
+  },
+  "electrolyte": {
+   "time": 5,
+   "inp": {
+    "stone": 1,
+    "heavy-oil": 10,
+    "holmium-solution": 10
+   },
+   "out": {
+    "electrolyte": 10
+   }
+  },
+  "teslagun": {
+   "time": 30,
+   "inp": {
+    "holmium-plate": 10,
+    "superconductor": 10,
+    "plastic-bar": 30,
+    "electrolyte": 100
+   },
+   "out": {
+    "teslagun": 1
+   }
+  },
+  "supercapacitor": {
+   "time": 10,
+   "inp": {
+    "holmium-plate": 2,
+    "superconductor": 2,
+    "electronic-circuit": 4,
+    "battery": 1,
+    "electrolyte": 10
+   },
+   "out": {
+    "supercapacitor": 1
+   }
+  },
+  "tesla-ammo": {
+   "time": 30,
+   "inp": {
+    "supercapacitor": 1,
+    "plastic-bar": 1,
+    "electrolyte": 10
+   },
+   "out": {
+    "tesla-ammo": 1
+   }
+  },
+  "tesla-turret": {
+   "time": 30,
+   "inp": {
+    "teslagun": 1,
+    "supercapacitor": 10,
+    "processing-unit": 10,
+    "superconductor": 50,
+    "electrolyte": 500
+   },
+   "out": {
+    "tesla-turret": 1
+   }
+  },
+  "rocket-turret": {
+   "time": 10,
+   "inp": {
+    "rocket-launcher": 4,
+    "processing-unit": 4,
+    "carbon-fiber": 20,
+    "steel-plate": 20,
+    "iron-gear-wheel": 20
+   },
+   "out": {
+    "rocket-turret": 1
+   }
+  },
+  "railgun-ammo": {
+   "time": 25,
+   "inp": {
+    "steel-plate": 5,
+    "copper-cable": 10,
+    "explosives": 2
+   },
+   "out": {
+    "railgun-ammo": 1
+   }
+  },
+  "railgun-turret": {
+   "time": 10,
+   "inp": {
+    "quantum-processor": 100,
+    "tungsten-plate": 30,
+    "superconductor": 50,
+    "carbon-fiber": 20,
+    "fluoroketone-cold": 100
+   },
+   "out": {
+    "railgun-turret": 1
+   }
+  },
+  "tungsten-plate": {
+   "time": 10,
+   "inp": {
+    "tungsten-ore": 4,
+    "molten-iron": 10
+   },
+   "out": {
+    "tungsten-plate": 1
+   }
+  },
+  "tungsten-carbide": {
+   "time": 1,
+   "inp": {
+    "tungsten-ore": 2,
+    "sulfuric-acid": 10,
+    "carbon": 1
+   },
+   "out": {
+    "tungsten-carbide": 1
+   }
+  },
+  "metallurgic-science-pack": {
+   "time": 10,
+   "inp": {
+    "tungsten-carbide": 3,
+    "tungsten-plate": 2,
+    "molten-copper": 200
+   },
+   "out": {
+    "metallurgic-science-pack": 1
+   }
+  },
+  "foundry": {
+   "time": 10,
+   "inp": {
+    "tungsten-carbide": 50,
+    "steel-plate": 50,
+    "electronic-circuit": 30,
+    "refined-concrete": 20,
+    "lubricant": 20
+   },
+   "out": {
+    "foundry": 1
+   }
+  },
+  "bioflux": {
+   "time": 6,
+   "inp": {
+    "yumako-mash": 15,
+    "jelly": 12
+   },
+   "out": {
+    "bioflux": 4
+   }
+  },
+  "nutrients-from-bioflux": {
+   "time": 2,
+   "inp": {
+    "bioflux": 5
+   },
+   "out": {
+    "nutrients": 40
+   }
+  },
+  "biosulfur": {
+   "time": 2,
+   "inp": {
+    "spoilage": 5,
+    "bioflux": 1
+   },
+   "out": {
+    "sulfur": 2
+   }
+  },
+  "agricultural-tower": {
+   "time": 10,
+   "inp": {
+    "steel-plate": 10,
+    "electronic-circuit": 3,
+    "spoilage": 20,
+    "landfill": 1
+   },
+   "out": {
+    "agricultural-tower": 1
    }
   },
   "artificial-yumako-soil": {
@@ -2001,6 +2401,210 @@ const GAME_DATA = {
    },
    "out": {
     "overgrowth-jellynut-soil": 1
+   }
+  },
+  "jellynut-processing": {
+   "time": 1,
+   "inp": {
+    "jellynut": 1
+   },
+   "out": {
+    "jellynut-seed": 1,
+    "jelly": 4
+   }
+  },
+  "biter-egg": {
+   "time": 10,
+   "inp": {},
+   "out": {
+    "biter-egg": 5
+   }
+  },
+  "nutrients-from-biter-egg": {
+   "time": 2,
+   "inp": {
+    "biter-egg": 1
+   },
+   "out": {
+    "nutrients": 20
+   }
+  },
+  "crusher": {
+   "time": 10,
+   "inp": {
+    "low-density-structure": 20,
+    "steel-plate": 10,
+    "electric-engine-unit": 10
+   },
+   "out": {
+    "crusher": 1
+   }
+  },
+  "metallic-asteroid-crushing": {
+   "time": 2,
+   "inp": {
+    "metallic-asteroid-chunk": 1
+   },
+   "out": {
+    "iron-ore": 20,
+    "metallic-asteroid-chunk": 1
+   }
+  },
+  "carbonic-asteroid-crushing": {
+   "time": 2,
+   "inp": {
+    "carbonic-asteroid-chunk": 1
+   },
+   "out": {
+    "carbon": 10,
+    "carbonic-asteroid-chunk": 1
+   }
+  },
+  "oxide-asteroid-crushing": {
+   "time": 2,
+   "inp": {
+    "oxide-asteroid-chunk": 1
+   },
+   "out": {
+    "ice": 5,
+    "oxide-asteroid-chunk": 1
+   }
+  },
+  "advanced-metallic-asteroid-crushing": {
+   "time": 5,
+   "inp": {
+    "metallic-asteroid-chunk": 1
+   },
+   "out": {
+    "iron-ore": 10,
+    "copper-ore": 4,
+    "metallic-asteroid-chunk": 1
+   }
+  },
+  "advanced-carbonic-asteroid-crushing": {
+   "time": 5,
+   "inp": {
+    "carbonic-asteroid-chunk": 1
+   },
+   "out": {
+    "carbon": 5,
+    "sulfur": 2,
+    "carbonic-asteroid-chunk": 1
+   }
+  },
+  "advanced-oxide-asteroid-crushing": {
+   "time": 5,
+   "inp": {
+    "oxide-asteroid-chunk": 1
+   },
+   "out": {
+    "ice": 3,
+    "calcite": 2,
+    "oxide-asteroid-chunk": 1
+   }
+  },
+  "metallic-asteroid-reprocessing": {
+   "time": 2,
+   "inp": {
+    "metallic-asteroid-chunk": 1
+   },
+   "prob": {
+    "metallic-asteroid-chunk": 0.4,
+    "carbonic-asteroid-chunk": 0.2,
+    "oxide-asteroid-chunk": 0.2
+   }
+  },
+  "carbonic-asteroid-reprocessing": {
+   "time": 2,
+   "inp": {
+    "carbonic-asteroid-chunk": 1
+   },
+   "prob": {
+    "carbonic-asteroid-chunk": 0.4,
+    "metallic-asteroid-chunk": 0.2,
+    "oxide-asteroid-chunk": 0.2
+   }
+  },
+  "oxide-asteroid-reprocessing": {
+   "time": 1,
+   "inp": {
+    "oxide-asteroid-chunk": 1
+   },
+   "prob": {
+    "oxide-asteroid-chunk": 0.4,
+    "metallic-asteroid-chunk": 0.2,
+    "carbonic-asteroid-chunk": 0.2
+   }
+  },
+  "promethium-science-pack": {
+   "time": 5,
+   "inp": {
+    "promethium-asteroid-chunk": 25,
+    "quantum-processor": 1,
+    "biter-egg": 10
+   },
+   "out": {
+    "promethium-science-pack": 10
+   }
+  },
+  "cryogenic-science-pack": {
+   "time": 20,
+   "inp": {
+    "ice": 3,
+    "lithium-plate": 1,
+    "fluoroketone-cold": 6
+   },
+   "out": {
+    "cryogenic-science-pack": 1,
+    "fluoroketone-hot": 3
+   }
+  },
+  "cryogenic-plant": {
+   "time": 10,
+   "inp": {
+    "refined-concrete": 40,
+    "superconductor": 20,
+    "processing-unit": 20,
+    "lithium-plate": 20
+   },
+   "out": {
+    "cryogenic-plant": 1
+   }
+  },
+  "quantum-processor": {
+   "time": 30,
+   "inp": {
+    "tungsten-carbide": 1,
+    "processing-unit": 1,
+    "superconductor": 1,
+    "carbon-fiber": 1,
+    "lithium-plate": 2,
+    "fluoroketone-cold": 10
+   },
+   "out": {
+    "quantum-processor": 1,
+    "fluoroketone-hot": 5
+   }
+  },
+  "railgun": {
+   "time": 10,
+   "inp": {
+    "tungsten-plate": 10,
+    "superconductor": 10,
+    "quantum-processor": 20,
+    "fluoroketone-cold": 10
+   },
+   "out": {
+    "railgun": 1
+   }
+  },
+  "ice-melting": {
+   "time": 1,
+   "inp": {
+    "ice": 1
+   },
+   "out": {
+    "water": 20
    }
   },
   "sulfuric-acid": {
@@ -2287,6 +2891,18 @@ const GAME_DATA = {
     "lightning-rod": 1
    }
   },
+  "lightning-collector": {
+   "time": 5,
+   "inp": {
+    "lightning-rod": 1,
+    "supercapacitor": 8,
+    "accumulator": 1,
+    "electrolyte": 80
+   },
+   "out": {
+    "lightning-collector": 1
+   }
+  },
   "small-electric-pole": {
    "time": 0.5,
    "inp": {
@@ -2509,6 +3125,20 @@ const GAME_DATA = {
     "solar-panel-equipment": 1
    }
   },
+  "fusion-reactor-equipment": {
+   "time": 30,
+   "inp": {
+    "fission-reactor-equipment": 1,
+    "fusion-power-cell": 10,
+    "tungsten-plate": 250,
+    "carbon-fiber": 100,
+    "supercapacitor": 25,
+    "quantum-processor": 250
+   },
+   "out": {
+    "fusion-reactor-equipment": 1
+   }
+  },
   "battery-equipment": {
    "time": 10,
    "inp": {
@@ -2593,6 +3223,50 @@ const GAME_DATA = {
     "belt-immunity-equipment": 1
    }
   },
+  "battery-mk3-equipment": {
+   "time": 10,
+   "inp": {
+    "battery-mk2-equipment": 5,
+    "supercapacitor": 10
+   },
+   "out": {
+    "battery-mk3-equipment": 1
+   }
+  },
+  "fission-reactor-equipment": {
+   "time": 10,
+   "inp": {
+    "processing-unit": 200,
+    "low-density-structure": 50,
+    "uranium-fuel-cell": 4
+   },
+   "out": {
+    "fission-reactor-equipment": 1
+   }
+  },
+  "toolbelt-equipment": {
+   "time": 10,
+   "inp": {
+    "advanced-circuit": 3,
+    "carbon-fiber": 10
+   },
+   "out": {
+    "toolbelt-equipment": 1
+   }
+  },
+  "mech-armor": {
+   "time": 60,
+   "inp": {
+    "power-armor-mk2": 1,
+    "holmium-plate": 200,
+    "processing-unit": 100,
+    "superconductor": 50,
+    "supercapacitor": 50
+   },
+   "out": {
+    "mech-armor": 1
+   }
+  },
   "discharge-defense-equipment": {
    "time": 10,
    "inp": {
@@ -2621,6 +3295,9 @@ const GAME_DATA = {
   "splitter": "assembling-machine-1",
   "fast-splitter": "assembling-machine-1",
   "express-splitter": "assembling-machine-1",
+  "turbo-transport-belt": "foundry",
+  "turbo-underground-belt": "foundry",
+  "turbo-splitter": "foundry",
   "inserter": "assembling-machine-1",
   "burner-inserter": "assembling-machine-1",
   "long-handed-inserter": "assembling-machine-1",
@@ -2673,9 +3350,12 @@ const GAME_DATA = {
   "locomotive": "assembling-machine-1",
   "cargo-wagon": "assembling-machine-1",
   "fluid-wagon": "assembling-machine-1",
+  "artillery-wagon": "assembling-machine-1",
   "train-stop": "assembling-machine-1",
   "rail-signal": "assembling-machine-1",
   "rail-chain-signal": "assembling-machine-1",
+  "rail-support": "assembling-machine-1",
+  "rail-ramp": "assembling-machine-1",
   "car": "assembling-machine-1",
   "tank": "assembling-machine-1",
   "cannon-shell": "assembling-machine-1",
@@ -2683,7 +3363,11 @@ const GAME_DATA = {
   "explosive-uranium-cannon-shell": "assembling-machine-1",
   "light-armor": "assembling-machine-1",
   "heavy-armor": "assembling-machine-1",
+  "spidertron": "assembling-machine-1",
   "land-mine": "assembling-machine-1",
+  "cliff-explosives": "assembling-machine-1",
+  "artillery-turret": "assembling-machine-1",
+  "artillery-shell": "assembling-machine-1",
   "pistol": "assembling-machine-1",
   "submachine-gun": "assembling-machine-1",
   "shotgun": "assembling-machine-1",
@@ -2706,10 +3390,13 @@ const GAME_DATA = {
   "flamethrower-turret": "assembling-machine-1",
   "speed-module": "assembling-machine-1",
   "speed-module-2": "assembling-machine-1",
+  "speed-module-3": "assembling-machine-1",
   "productivity-module": "assembling-machine-1",
   "productivity-module-2": "assembling-machine-1",
+  "productivity-module-3": "assembling-machine-1",
   "efficiency-module": "assembling-machine-1",
   "efficiency-module-2": "assembling-machine-1",
+  "efficiency-module-3": "assembling-machine-1",
   "quality-module": "assembling-machine-1",
   "quality-module-2": "assembling-machine-1",
   "quality-module-3": "assembling-machine-1",
@@ -2737,11 +3424,52 @@ const GAME_DATA = {
   "space-platform-starter-pack": "space-platform-hub",
   "thruster": "assembling-machine-1",
   "asteroid-collector": "assembling-machine-1",
+  "carbon-fiber": "biochamber",
+  "lithium-plate": "assembling-machine-1",
+  "superconductor": "electromagnetic-plant",
+  "electromagnetic-plant": "electromagnetic-plant",
   "recycler": "assembling-machine-1",
+  "holmium-solution": "chemical-plant",
+  "holmium-plate": "electromagnetic-plant",
+  "electrolyte": "electromagnetic-plant",
+  "teslagun": "electromagnetic-plant",
+  "supercapacitor": "electromagnetic-plant",
+  "tesla-ammo": "electromagnetic-plant",
+  "tesla-turret": "electromagnetic-plant",
+  "rocket-turret": "assembling-machine-1",
+  "railgun-ammo": "assembling-machine-1",
+  "railgun-turret": "electromagnetic-plant",
+  "tungsten-plate": "foundry",
+  "tungsten-carbide": "foundry",
+  "metallurgic-science-pack": "foundry",
+  "foundry": "foundry",
+  "bioflux": "biochamber",
+  "nutrients-from-bioflux": "biochamber",
+  "biosulfur": "biochamber",
+  "agricultural-tower": "assembling-machine-1",
   "artificial-yumako-soil": "assembling-machine-1",
   "overgrowth-yumako-soil": "assembling-machine-1",
   "artificial-jellynut-soil": "assembling-machine-1",
   "overgrowth-jellynut-soil": "assembling-machine-1",
+  "jellynut-processing": "biochamber",
+  "biter-egg": "biochamber",
+  "nutrients-from-biter-egg": "biochamber",
+  "crusher": "crusher",
+  "metallic-asteroid-crushing": "crusher",
+  "carbonic-asteroid-crushing": "crusher",
+  "oxide-asteroid-crushing": "crusher",
+  "advanced-metallic-asteroid-crushing": "crusher",
+  "advanced-carbonic-asteroid-crushing": "crusher",
+  "advanced-oxide-asteroid-crushing": "crusher",
+  "metallic-asteroid-reprocessing": "crusher",
+  "carbonic-asteroid-reprocessing": "crusher",
+  "oxide-asteroid-reprocessing": "crusher",
+  "promethium-science-pack": "electromagnetic-plant",
+  "cryogenic-science-pack": "cryogenic-plant",
+  "cryogenic-plant": "cryogenic-plant",
+  "quantum-processor": "assembling-machine-1",
+  "railgun": "assembling-machine-1",
+  "ice-melting": "crusher",
   "sulfuric-acid": "chemical-plant",
   "defender-capsule": "assembling-machine-1",
   "distractor-capsule": "assembling-machine-1",
@@ -2768,6 +3496,7 @@ const GAME_DATA = {
   "fusion-reactor": "assembling-machine-1",
   "fusion-generator": "assembling-machine-1",
   "lightning-rod": "assembling-machine-1",
+  "lightning-collector": "electromagnetic-plant",
   "small-electric-pole": "assembling-machine-1",
   "substation": "assembling-machine-1",
   "programmable-speaker": "assembling-machine-1",
@@ -2789,6 +3518,7 @@ const GAME_DATA = {
   "power-armor": "assembling-machine-1",
   "power-armor-mk2": "assembling-machine-1",
   "solar-panel-equipment": "assembling-machine-1",
+  "fusion-reactor-equipment": "assembling-machine-1",
   "battery-equipment": "assembling-machine-1",
   "battery-mk2-equipment": "assembling-machine-1",
   "exoskeleton-equipment": "assembling-machine-1",
@@ -2797,6 +3527,10 @@ const GAME_DATA = {
   "energy-shield-equipment": "assembling-machine-1",
   "energy-shield-mk2-equipment": "assembling-machine-1",
   "belt-immunity-equipment": "assembling-machine-1",
+  "battery-mk3-equipment": "assembling-machine-1",
+  "fission-reactor-equipment": "assembling-machine-1",
+  "toolbelt-equipment": "assembling-machine-1",
+  "mech-armor": "assembling-machine-1",
   "discharge-defense-equipment": "assembling-machine-1"
  },
  "names": {
@@ -3476,9 +4210,21 @@ const GAME_DATA = {
    "zh": "钬矿",
    "en": "Holmium ore"
   },
+  "holmium-solution": {
+   "zh": "钬溶液",
+   "en": "Holmium solution"
+  },
   "holmium-plate": {
    "zh": "钬板",
    "en": "Holmium plate"
+  },
+  "electrolyte": {
+   "zh": "电解液",
+   "en": "Electrolyte"
+  },
+  "teslagun": {
+   "zh": "特斯拉枪",
+   "en": "Tesla gun"
   },
   "supercapacitor": {
    "zh": "超级电容器",

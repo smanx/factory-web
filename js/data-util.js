@@ -22,23 +22,46 @@ function drawItemGlyph(x, id, cx, cy, s) {
   switch (id) {
     case 'iron-ore':
     case 'copper-ore': {
-      x.fillStyle = col;
+      // 立体矿石：三颗带高光的矿粒
       for (let i = 0; i < 3; i++) {
         const a = i * 2.09 - Math.PI / 2;
+        const cx = Math.cos(a) * r * 0.36, cy = Math.sin(a) * r * 0.36;
+        const rr = s * 0.17;
+        const g = x.createLinearGradient(cx - rr, cy - rr, cx + rr, cy + rr);
+        g.addColorStop(0, lightenColor(col, 0.5));
+        g.addColorStop(1, darkenColor(col, 0.3));
+        x.fillStyle = g;
         x.beginPath();
-        x.arc(Math.cos(a) * r * 0.36, Math.sin(a) * r * 0.36, s * 0.17, 0, 7);
+        x.arc(cx, cy, rr, 0, 7);
+        x.fill();
+        // 高光
+        x.fillStyle = 'rgba(255,255,255,.35)';
+        x.beginPath();
+        x.arc(cx - rr * 0.28, cy - rr * 0.32, rr * 0.32, 0, 7);
         x.fill();
       }
       break;
     }
     case 'coal': {
-      x.fillStyle = col;
+      const g = x.createLinearGradient(-r * 0.6, -r * 0.85, r * 0.6, r * 0.6);
+      g.addColorStop(0, lightenColor(col, 0.3));
+      g.addColorStop(1, darkenColor(col, 0.35));
+      x.fillStyle = g;
       x.beginPath();
       x.moveTo(-r * 0.6, -r * 0.5);
       x.lineTo(0, -r * 0.85);
       x.lineTo(r * 0.7, -r * 0.3);
       x.lineTo(r * 0.45, r * 0.6);
       x.lineTo(-r * 0.55, r * 0.55);
+      x.closePath();
+      x.fill();
+      // 顶面高光
+      x.fillStyle = 'rgba(255,255,255,.16)';
+      x.beginPath();
+      x.moveTo(-r * 0.5, -r * 0.42);
+      x.lineTo(0, -r * 0.72);
+      x.lineTo(r * 0.55, -r * 0.3);
+      x.lineTo(-r * 0.05, -r * 0.42);
       x.closePath();
       x.fill();
       break;
@@ -62,14 +85,27 @@ function drawItemGlyph(x, id, cx, cy, s) {
     }
     case 'iron-plate':
     case 'copper-plate': {
-      x.fillStyle = col;
+      // 金属板：渐变 + 顶部高光 + 底部阴影，立体金属质感
+      const g = x.createLinearGradient(-r * 0.85, -r * 0.55, r * 0.85, r * 0.55);
+      g.addColorStop(0, lightenColor(col, 0.42));
+      g.addColorStop(1, darkenColor(col, 0.28));
+      x.fillStyle = g;
       x.fillRect(-r * 0.85, -r * 0.55, r * 1.7, r * 1.1);
-      x.fillStyle = 'rgba(255,255,255,.4)';
-      x.fillRect(-r * 0.85, -r * 0.55, r * 1.7, r * 0.22);
+      // 顶部折光
+      x.fillStyle = 'rgba(255,255,255,.45)';
+      x.fillRect(-r * 0.85, -r * 0.55, r * 1.7, r * 0.2);
+      x.fillStyle = 'rgba(255,255,255,.18)';
+      x.fillRect(-r * 0.85, -r * 0.35, r * 1.7, r * 0.1);
+      // 底部暗部
+      x.fillStyle = 'rgba(0,0,0,.18)';
+      x.fillRect(-r * 0.85, r * 0.3, r * 1.7, r * 0.25);
       break;
     }
     case 'iron-gear-wheel': {
-      x.fillStyle = col;
+      const g = x.createLinearGradient(-r * 0.8, -r * 0.8, r * 0.8, r * 0.8);
+      g.addColorStop(0, lightenColor(col, 0.4));
+      g.addColorStop(1, darkenColor(col, 0.3));
+      x.fillStyle = g;
       x.beginPath();
       for (let i = 0; i < 16; i++) {
         const a = i * Math.PI / 8;
@@ -81,11 +117,17 @@ function drawItemGlyph(x, id, cx, cy, s) {
       x.moveTo(s * 0.09, 0);
       x.arc(0, 0, s * 0.11, 0, Math.PI * 2, true);
       x.fill('evenodd');
+      // 顶部高光
+      x.fillStyle = 'rgba(255,255,255,.22)';
+      x.beginPath();
+      x.arc(0, -s * 0.18, s * 0.3, Math.PI, 0);
+      x.fill();
       break;
     }
     case 'copper-cable': {
-      x.strokeStyle = col;
-      x.lineWidth = s * 0.14;
+      // 铜线：粗线 + 高光细线，更具金属线缆质感
+      x.strokeStyle = darkenColor(col, 0.3);
+      x.lineWidth = s * 0.16;
       x.lineCap = 'round';
       x.beginPath();
       for (let i = 0; i <= 12; i++) {
@@ -95,10 +137,24 @@ function drawItemGlyph(x, id, cx, cy, s) {
         i === 0 ? x.moveTo(px, py) : x.lineTo(px, py);
       }
       x.stroke();
+      // 高光芯线
+      x.strokeStyle = 'rgba(255,255,255,.5)';
+      x.lineWidth = s * 0.05;
+      x.beginPath();
+      for (let i = 0; i <= 12; i++) {
+        const t = i / 12;
+        const px = -r * 0.8 + t * r * 1.6;
+        const py = Math.sin(t * Math.PI * 3) * r * 0.42 - s * 0.02;
+        i === 0 ? x.moveTo(px, py) : x.lineTo(px, py);
+      }
+      x.stroke();
       break;
     }
     case 'electronic-circuit': {
-      x.fillStyle = col;
+      const g = x.createLinearGradient(-r * 0.72, -r * 0.62, r * 0.72, r * 0.62);
+      g.addColorStop(0, lightenColor(col, 0.4));
+      g.addColorStop(1, darkenColor(col, 0.3));
+      x.fillStyle = g;
       x.fillRect(-r * 0.72, -r * 0.62, r * 1.44, r * 1.24);
       x.strokeStyle = '#123c16';
       x.lineWidth = Math.max(1, s * 0.06);
@@ -106,6 +162,9 @@ function drawItemGlyph(x, id, cx, cy, s) {
       x.moveTo(-r * 0.5, 0); x.lineTo(r * 0.5, 0);
       x.moveTo(0, -r * 0.45); x.lineTo(0, r * 0.45);
       x.stroke();
+      // 高光
+      x.fillStyle = 'rgba(255,255,255,.14)';
+      x.fillRect(-r * 0.72, -r * 0.62, r * 1.44, r * 0.16);
       break;
     }
     case 'automation-science-pack':
@@ -114,15 +173,26 @@ function drawItemGlyph(x, id, cx, cy, s) {
     case 'military-science-pack':
     case 'production-science-pack':
     case 'utility-science-pack': {
+      // 科学瓶：瓶盖 + 渐变液滴
       x.fillStyle = '#e8ecf2';
-      x.fillRect(-r * 0.16, -r * 0.9, r * 0.32, r * 0.35);
-      x.fillStyle = col;
+      x.fillRect(-r * 0.16, -r * 0.82, r * 0.32, r * 0.32);
+      const g = x.createLinearGradient(-r * 0.6, -r * 0.5, r * 0.6, r * 0.68);
+      g.addColorStop(0, lightenColor(col, 0.4));
+      g.addColorStop(1, darkenColor(col, 0.3));
+      x.fillStyle = g;
       x.beginPath();
-      x.moveTo(-r * 0.16, -r * 0.55);
-      x.lineTo(r * 0.16, -r * 0.55);
-      x.lineTo(r * 0.75, r * 0.75);
-      x.arc(0, r * 0.75, r * 0.75, 0, Math.PI, true);
+      x.moveTo(-r * 0.16, -r * 0.5);
+      x.lineTo(r * 0.16, -r * 0.5);
+      x.lineTo(r * 0.68, r * 0.68);
+      x.arc(0, r * 0.68, r * 0.68, 0, Math.PI, true);
       x.closePath();
+      x.fill();
+      // 液滴高光
+      x.fillStyle = 'rgba(255,255,255,.3)';
+      x.beginPath();
+      x.moveTo(-r * 0.05, -r * 0.28);
+      x.lineTo(r * 0.02, -r * 0.28);
+      x.arc(0, r * 0.2, r * 0.3, -0.4, Math.PI + 0.4, true);
       x.fill();
       break;
     }
@@ -257,11 +327,11 @@ function drawItemGlyph(x, id, cx, cy, s) {
       x.strokeStyle = dark;
       x.lineWidth = Math.max(1.2, s * 0.06);
       x.beginPath();
-      x.moveTo(0, -r * 0.65); x.lineTo(0, -r * 0.95);
+      x.moveTo(0, -r * 0.62); x.lineTo(0, -r * 0.82);
       x.stroke();
       x.fillStyle = '#e0d040';
       x.beginPath();
-      x.arc(0, -r * 0.98, r * 0.1, 0, 7);
+      x.arc(0, -r * 0.86, r * 0.09, 0, 7);
       x.fill();
       // 中部圆盘（机器人进出港标识）
       x.fillStyle = (id === 'personal-roboport-mk2-equipment') ? '#d04a5a' : '#b8c0a0';
@@ -292,21 +362,64 @@ function drawItemGlyph(x, id, cx, cy, s) {
       break;
     }
     default: {
-      x.fillStyle = col;
-      rrPath(x, -r * 0.8, -r * 0.8, r * 1.6, r * 1.6, s * 0.12);
+      // 通用精美图标：立体渐变底 + 圆角 + 高光 + 描边 + 精致首字符
+      // 范围控制在 r*0.85 内，配合 iconCanvas 的 size*1.08 正好铺满整个格子。
+      const box = r * 0.86;                      // 半边长（图形最大范围）
+      const grad = x.createLinearGradient(-box, -box, box, box);
+      const lighter = lightenColor(col, 0.45);
+      const darker = darkenColor(col, 0.38);
+      grad.addColorStop(0, lighter);
+      grad.addColorStop(1, darker);
+      x.fillStyle = grad;
+      rrPath(x, -box, -box, box * 2, box * 2, box * 0.34);
       x.fill();
-      x.strokeStyle = dark;
-      x.lineWidth = Math.max(1, s * 0.05);
+      // 外描边（加深立体感）
+      x.strokeStyle = darkenColor(col, 0.55);
+      x.lineWidth = Math.max(1, s * 0.045);
       x.stroke();
-      x.fillStyle = '#f4f6f8';
-      x.font = 'bold ' + Math.round(s * 0.42) + 'px system-ui';
+      // 顶部光泽高光
+      x.fillStyle = 'rgba(255,255,255,.22)';
+      rrPath(x, -box + s * 0.08, -box + s * 0.08, box * 2 - s * 0.16, box * 0.62, box * 0.28);
+      x.fill();
+      // 底部内侧阴影
+      x.fillStyle = 'rgba(0,0,0,.16)';
+      rrPath(x, -box + s * 0.08, box - box * 0.5, box * 2 - s * 0.16, box * 0.42, box * 0.22);
+      x.fill();
+      // 文字：白字 + 深色描边，清晰醒目
+      const label = (ITEMS[id].mark || ITEMS[id].name[0]).slice(0, 2);
+      x.font = 'bold ' + Math.round(box * 1.0) + 'px system-ui';
       x.textAlign = 'center';
       x.textBaseline = 'middle';
-      x.fillText((ITEMS[id].mark || ITEMS[id].name[0]), 0, 1);
+      x.lineWidth = Math.max(1, s * 0.09);
+      x.strokeStyle = 'rgba(10,14,20,.85)';
+      x.lineJoin = 'round';
+      x.strokeText(label, 0, 1);
+      x.fillStyle = '#f7f9fb';
+      x.fillText(label, 0, 1);
+      // 底部迷你高光（金属质感）
+      x.fillStyle = 'rgba(255,255,255,.1)';
+      x.fillRect(-box * 0.7, box * 0.6, box * 1.4, Math.max(1, s * 0.05));
     }
+
   }
   x.restore();
 }
+
+// 颜色工具：对十六进制色值做明暗处理（用于图标立体渐变），返回新 hex。
+function shadeColor(hex, amt) {
+  const h = (hex || '#888888').replace('#', '');
+  let n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  const t = amt < 0 ? 0 : 255;
+  const p = Math.abs(amt);
+  r = Math.round((t - r) * p) + r;
+  g = Math.round((t - g) * p) + g;
+  b = Math.round((t - b) * p) + b;
+  const to2 = v => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0');
+  return '#' + to2(r) + to2(g) + to2(b);
+}
+function lightenColor(hex, amt) { return shadeColor(hex, Math.abs(amt)); }
+function darkenColor(hex, amt) { return shadeColor(hex, -Math.abs(amt)); }
 
 function rrPath(x, px, py, w, h, r) {
   x.beginPath();

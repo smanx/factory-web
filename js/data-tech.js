@@ -43,7 +43,10 @@ const TECH_REQ = {
   'recycler': 'recycling',   // 回收机需「回收科技」（对齐《异星工厂》Recycling）
   // ===== 太空时代 Fulgora 钬/特斯拉链（统一由「富尔戈拉电磁」科技解锁）=====
   'holmium-ore': 'fulgora',
+  'holmium-solution': 'fulgora',
   'holmium-plate': 'fulgora',
+  'electrolyte': 'fulgora',
+  'teslagun': 'fulgora',
   'supercapacitor': 'fulgora',
   'tesla-turret': 'fulgora',
   'tesla-ammo': 'fulgora',

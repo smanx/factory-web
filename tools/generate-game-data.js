@@ -59,36 +59,19 @@ const KEEP_MANUAL_RECIPES = new Set([
   'deconstruction-planner', 'upgrade-planner', 'spidertron-remote',
   'satellite', 'red-wire', 'green-wire',
   'stone-path', 'storage-chest',
-  'artillery-wagon', 'artillery-turret', 'artillery-shell', 'spidertron',
-  'speed-module-3', 'productivity-module-3', 'efficiency-module-3', 'fusion-reactor-equipment',
-  'cliff-explosives',
   // ===== 太空时代 Space Age 手工适配配方（官方配方依赖星球专属资源，此处适配基础资源）=====
-  'carbon-fiber', 'lithium', 'lithium-plate', 'superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant', 'promethium-science-pack',
-  'yumako-mash', 'bioflux', 'nutrients-from-bioflux', 'biosulfur', 'agricultural-science-pack', 'biochamber',
-  'agricultural-tower', 'yumako-growing', 'jellynut-growing', 'biter-egg', 'jellynut-processing', 'nutrients-from-biter-egg',  // 太空时代农业塔（种植专属配方，非官方合成）+ Gleba 果仁种植；biter-egg 官方无合成原料（生物机制繁殖），此处适配为生化炉培育
+  'lithium', 'electromagnetic-science-pack',
+  'yumako-mash', 'agricultural-science-pack', 'biochamber',
+  'yumako-growing', 'jellynut-growing',
   // ===== 太空时代 Aquilo 低温学链（官方配方依赖低温/液空等星球资源，此处适配基础资源）=====
-  'ammonia', 'fluorine', 'fluoroketone-cold', 'fluoroketone-hot', 'cryogenic-science-pack', 'cryogenic-plant',
-  // ===== 太空时代 熔融金属/废料/终局防御（官方配方依赖行星资源，此处适配基础资源）=====
+  'ammonia', 'fluorine', 'fluoroketone-cold', 'fluoroketone-hot',
+  // ===== 太空时代 熔融金属/废料（官方配方依赖行星资源，此处适配基础资源）=====
   'molten-iron', 'molten-copper', 'scrap', 'recycle-scrap',
-  'quantum-processor', 'railgun', 'railgun-ammo', 'railgun-turret', 'rocket-turret',
-  // ===== 太空时代 Aquilo 高级装备（官方配方依赖星球资源，此处适配基础资源）=====
-  'battery-mk3-equipment', 'fission-reactor-equipment', 'toolbelt-equipment', 'mech-armor',
-  // ===== 太空时代 小行星碎块加工（破碎机专属配方，适配地面）=====
-  'crusher', 'metallic-asteroid-crushing', 'carbonic-asteroid-crushing', 'oxide-asteroid-crushing', 'ice-melting',
-  // 进阶星块加工（高级粉碎/再处理，破碎机专属，官方数值简化适配）
-  'advanced-metallic-asteroid-crushing', 'advanced-carbonic-asteroid-crushing', 'advanced-oxide-asteroid-crushing',
-  'metallic-asteroid-reprocessing', 'carbonic-asteroid-reprocessing', 'oxide-asteroid-reprocessing',
-  // ===== 高架铁轨（Elevated Rails DLC，官方配方：精炼混凝土+铁轨+钢板）=====
-  'rail-support', 'rail-ramp',
-  // ===== 超速物流（太空时代 Turbo belt，官方配方依赖钨板，此处适配基础资源）=====
-  'turbo-transport-belt', 'turbo-underground-belt', 'turbo-splitter',
-  // ===== 太空时代 Vulcanus 铸造/冶金材料链（官方配方依赖熔融铁等星球资源，此处适配基础资源）=====
-  'tungsten-ore', 'tungsten-plate', 'tungsten-carbide', 'metallurgic-science-pack', 'foundry',
-  // ===== 太空时代 Aquilo 低温材料链（冷冻厂配方，官方配方依赖氟酮冷却液流体，此处适配冰+锂板）=====
-  'cryogenic-science-pack', 'cryogenic-plant',
+  // ===== 太空时代 Vulcanus 钨矿（官方为天然矿脉，无合成配方）=====
+  'tungsten-ore',
   // ===== 太空时代 生物实验室（Gleba biolab：官方配方依赖 biter-egg/capture-robot-rocket=生物星球资源，此处适配现有生物链资源）=====
   'biolab',
-]);
+]);;
 
 // ================= 小工具 =================
 // 解析手工 JS 文件里某个 const 对象字面量的顶层键（平衡括号扫描，容错嵌套对象）
@@ -255,6 +238,42 @@ function deviceFor(officialRecipe) {
 }
 // 空间平台中枢专属配方（Space Platform 设备，官方 crafting 类别但须在空间平台中枢生产）
 const HUB_RECIPE_IDS = new Set(['space-platform-foundation', 'space-platform-starter-pack', 'space-platform-hub']);
+
+// ===== DLC 专属设备配方映射（配方ID → 设备ID）=====
+// 官方 DLC 配方使用专属 crafting categories（organic/crushing/metallurgy/cryogenics/
+// electromagnetics/captive-spawner-process 等），生成脚本的 deviceFor() 无法识别，
+// 此处显式映射到项目专属设备，使 recipeDevice 正确。运行时会优先取 GAME_DATA.recipeDevice。
+const DLC_DEVICE_RECIPES = {
+  // 生化炉 biochamber（Space Age organic）
+  'yumako-mash': 'biochamber', 'bioflux': 'biochamber', 'nutrients-from-bioflux': 'biochamber',
+  'biosulfur': 'biochamber', 'agricultural-science-pack': 'biochamber', 'biochamber': 'biochamber',
+  'jellynut-processing': 'biochamber', 'biter-egg': 'biochamber', 'nutrients-from-biter-egg': 'biochamber',
+  'carbon-fiber': 'biochamber',
+  // 电磁工厂 electromagnetic-plant（Space Age electromagnetics）
+  'superconductor': 'electromagnetic-plant', 'electromagnetic-science-pack': 'electromagnetic-plant',
+  'electromagnetic-plant': 'electromagnetic-plant', 'promethium-science-pack': 'electromagnetic-plant',
+  'holmium-ore': 'electromagnetic-plant', 'holmium-plate': 'electromagnetic-plant',
+  'supercapacitor': 'electromagnetic-plant', 'tesla-ammo': 'electromagnetic-plant',
+  'tesla-turret': 'electromagnetic-plant', 'railgun-turret': 'electromagnetic-plant',
+  'electrolyte': 'electromagnetic-plant', 'teslagun': 'electromagnetic-plant',
+  'lightning-collector': 'electromagnetic-plant',
+  // 破碎机 crusher（Space Age crushing）
+  'crusher': 'crusher', 'ice-melting': 'crusher',
+  'metallic-asteroid-crushing': 'crusher', 'carbonic-asteroid-crushing': 'crusher', 'oxide-asteroid-crushing': 'crusher',
+  'advanced-metallic-asteroid-crushing': 'crusher', 'advanced-carbonic-asteroid-crushing': 'crusher', 'advanced-oxide-asteroid-crushing': 'crusher',
+  'metallic-asteroid-reprocessing': 'crusher', 'carbonic-asteroid-reprocessing': 'crusher', 'oxide-asteroid-reprocessing': 'crusher',
+  // 铸造厂 foundry（Space Age metallurgy / crafting-with-fluid）
+  'tungsten-ore': 'foundry', 'tungsten-plate': 'foundry', 'tungsten-carbide': 'foundry',
+  'metallurgic-science-pack': 'foundry', 'foundry': 'foundry', 'molten-iron': 'foundry', 'molten-copper': 'foundry',
+  'turbo-transport-belt': 'foundry', 'turbo-underground-belt': 'foundry', 'turbo-splitter': 'foundry',
+  // 低温工厂 cryogenic-plant（Space Age cryogenics）
+  'ammonia': 'cryogenic-plant', 'fluorine': 'cryogenic-plant', 'fluoroketone-cold': 'cryogenic-plant',
+  'fluoroketone-hot': 'cryogenic-plant', 'cryogenic-science-pack': 'cryogenic-plant', 'cryogenic-plant': 'cryogenic-plant',
+  // 农业塔 agricultural-tower（Space Age 种植）
+  'yumako-growing': 'agricultural-tower', 'jellynut-growing': 'agricultural-tower',
+  // 空间平台中枢（Space Platform）
+  'space-platform-foundation': 'space-platform-hub', 'space-platform-starter-pack': 'space-platform-hub', 'space-platform-hub': 'space-platform-hub',
+};
 
 // ================= 官方多语言命名（data/*/locale/{en,zh-CN}/*.cfg） =================
 // 官方命名（物品/实体/配方/流体）经项目 ID 映射后写入 GAME_DATA.names / GAME_DATA.recipeNames，
@@ -1000,7 +1019,7 @@ for (const rid of projectRecipes) {
     continue;
   }
   GAME_DATA.recipe[rid] = rec;
-  GAME_DATA.recipeDevice[rid] = HUB_RECIPE_IDS.has(rid) ? 'space-platform-hub' : deviceFor(or);
+  GAME_DATA.recipeDevice[rid] = DLC_DEVICE_RECIPES[rid] || (HUB_RECIPE_IDS.has(rid) ? 'space-platform-hub' : deviceFor(or));
 }
 
 // ================= 报告 =================

@@ -122,7 +122,10 @@ function iconCanvas(id, size = 34) {
   x.scale(px / size, px / size);   // 以逻辑 size 为单位绘制，放大显示仍清晰
   // 移除边框：不再绘制圆角底框与描边，让物品图形直接铺满整个图标
   x.fillStyle = it.color;
-  drawItemGlyph(x, id, size / 2, size / 2, size * 0.92);
+  // 让图形铺满整个格子：尺寸提升到 size*1.08，占满格子（最大图形范围约 r*0.85，
+  // 此时图形直径≈0.95~1.0 倍格子宽）。个别范围更大的物品（科学包/机器人港）已在
+  // drawItemGlyph 内微调缩放到 r*0.85 以内，避免溢出画布边缘。
+  drawItemGlyph(x, id, size / 2, size / 2, size * 1.08);
   ICON_CACHE[key] = c;
   return c;
 }
