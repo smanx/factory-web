@@ -2118,15 +2118,13 @@ html, body {
 
 /* ===== 配方设备：交互面板双栏布局 ===== */
 #panel.machine-wide {
-  width: 1080px;
+  width: fit-content;
   max-width: calc(100vw - 32px);
   top: auto;
   bottom: 92px;
   transform: translateX(-50%);
   max-height: calc(100vh - 150px);
 }
-/* 组装机面板：只含「背包 + 控制面板」两栏，按内容自适应宽度，避免右侧出现多余空白 */
-#panel.machine-wide:has(.asm3-layout) { width: fit-content; }
 #panel.machine-wide #panel-body {
   display: flex;
   flex-direction: column;
@@ -2311,8 +2309,27 @@ html, body {
 }
 .rcp-confirm-row .rcp-confirm:hover:not(:disabled) { background: linear-gradient(90deg, #4aa45c, #3a8a4a); }
 
-/* ===== 储物箱双栏面板（左=玩家背包，右=箱子内容）===== */
-#panel.machine-wide .chest-layout { gap: 12px; }
+/* ===== 储物箱双栏面板（左=玩家背包，右=箱子内容）— 与组装机色彩一致 ===== */
+#panel.machine-wide .chest-layout { gap: 16px; }
+/* 箱子面板的左右栏容器使用与组装机一致的深色背景 */
+#panel.machine-wide .chest-layout .inv-col {
+  background: #2b2b2b;
+  border: 1px solid #444;
+  border-radius: 8px;
+}
+#panel.machine-wide .chest-layout .inv-col-head {
+  background: #2b2b2b;
+  border-bottom: 1px solid #3a4550;
+  color: #ffe08a;
+  padding: 8px 10px;
+  font-weight: bold;
+  font-size: 14px;
+}
+#panel.machine-wide .chest-layout .inv-col-right {
+  background: #2b2b2b;
+  border: 2px solid #444;
+  padding: 14px;
+}
 .chest-items {
   display: flex;
   flex-wrap: wrap;
@@ -2409,6 +2426,7 @@ html, body {
   flex: 1;
   min-height: 0;
   width: fit-content;
+  overflow: hidden;
 }
 .asm3-col {
   display: flex;
@@ -2434,6 +2452,7 @@ html, body {
 /* 右侧组装机面板 */
 .asm3-panel {
   width: 430px;
+  min-width: 380px;
   flex: 0 0 auto;
   background: #2b2b2b;
   border: 2px solid #444;
@@ -2443,6 +2462,8 @@ html, body {
   flex-direction: column;
   gap: 12px;
   color: #ccc;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 /* 状态提示 */
 .asm3-status { display: flex; align-items: center; gap: 8px; }
@@ -2526,7 +2547,8 @@ html, body {
 /* 模块插槽下方（状态文本/取出按钮/装入选择）在组装机面板中不再显示 */
 .asm3-panel .mod-status,
 .asm3-panel .mod-buttons,
-.asm3-panel .mod-slots + .btn { display: none !important; }
+.asm3-panel .mod-slots + .btn,
+.asm3-panel .mod-status + .btn { display: none !important; }
 
 /* 鼠标正上方就地浮出提示（模块插槽“只能安放插件”等），不打断操作 */
 .float-warn {

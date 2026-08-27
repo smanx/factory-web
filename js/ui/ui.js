@@ -322,8 +322,8 @@ function openPanel(mode, ent) {
   document.getElementById('panel').classList.toggle('inv-wide', mode === 'inv');
   // 研究面板加宽双栏布局（左=研究列表，右=研究树图）
   document.getElementById('panel').classList.toggle('tech-wide', mode === 'tech');
-  // 配方设备的交互面板：居中加宽双栏布局（左=背包，右=设备交互）
-  document.getElementById('panel').classList.toggle('machine-wide', mode === 'machine' && !!ent && (isRecipeDevice(ent) || isChestEntity(ent)));
+  // 所有设备的交互面板：居中加宽双栏布局（左=背包，右=设备操作面板），与组装机一致
+  document.getElementById('panel').classList.toggle('machine-wide', mode === 'machine' && !!ent);
   // 配方选择面板：网格区可滚动，底部「确认」按钮行固定在面板底部不随之滚动
   document.getElementById('panel').classList.toggle('recipe-wide', mode === 'machinerecipe');
   // 再次打开时恢复面板默认位置（不保留上次拖动的位置）
@@ -412,19 +412,8 @@ function renderPanel(full) {
     body.innerHTML = recipeSelectPanelHtml(G.panelEnt);
   } else if (G.panelMode === 'machine' && G.panelEnt) {
     title.textContent = ITEMS[G.panelEnt.type].name;
-    if (isAssemblerMachine(G.panelEnt)) {
-      // 组装机 I/II/III：设计稿风格专用面板
-      body.innerHTML = assemblerLayoutHtml(G.panelEnt);
-    } else if (isRecipeDevice(G.panelEnt)) {
-      // 配方设备：重新设计的双栏交互面板（左=背包，右=设备交互信息）
-      body.innerHTML = recipeMachineLayoutHtml(G.panelEnt);
-    } else if (isChestEntity(G.panelEnt)) {
-      // 储物箱：双栏布局（左=玩家背包，右=箱子内容）
-      body.innerHTML = htmlMachine(G.panelEnt);
-    } else {
-      // 普通设备：设备专属内容
-      body.innerHTML = htmlMachine(G.panelEnt);
-    }
+    // 所有设备的交互面板统一采用组装机设计稿风格（左=玩家背包，右=设备操作面板）
+    body.innerHTML = unifiedMachineLayoutHtml(G.panelEnt);
   }
   if (G.panelMode !== 'set') body.scrollTop = st;
 }
@@ -1541,6 +1530,49 @@ function assemblerLayoutHtml(e) {
   return h;
 }
 
+// ===== 统一设备面板布局：所有设备与组装机一致（左=玩家背包，右=设备操作面板）=====
+function unifiedMachineLayoutHtml(e) {
+  // 组装机保持原有设计稿风格面板
+  if (isAssemblerMachine(e)) return assemblerLayoutHtml(e);
+  const left = htmlInventory();
+  let right = '';
+  if (isRecipeDevice(e)) {
+    const info = recipeDeviceInfo(e);
+    const rec = e.recipe ? info.getRec(e.recipe) : null;
+    right = recipeMachineRightHtml(e, info, rec);
+  } else if (isChestEntity(e)) {
+    // 储物箱（含物流箱）：直接使用设备自身的面板（自带左背包+右箱子双栏布局）
+    const panel = DEVICE_PANEL[e.type];
+    right = (panel && panel.html) ? panel.html(e) : '<div class="dim">无信息</div>';
+    return right;
+  } else {
+    const panel = DEVICE_PANEL[e.type];
+    right = (panel && panel.html) ? panel.html(e) : '<div class="dim">无信息</div>';
+    // 电路节点设备：追加「接入通道」设置
+    if (typeof isCircuitNodeEntity === 'function' && isCircuitNodeEntity(e)) {
+      const ch = e.wireChan || 'both';
+      right += '<div class="sec">电路接入通道</div>' +
+        '<div class="mrow"><span class="mlabel">接入</span><span class="mval">' +
+        (ch === 'both' ? '红 + 绿（双通）' : ch === 'red' ? '仅红线' : '仅绿线') +
+        '</span></div>' +
+        '<div class="circ-wire-row">' +
+          '<button data-wire="red" class="btn sm">接红线</button>' +
+          '<button data-wire="green" class="btn sm">接绿线</button>' +
+          '<button data-wire="both" class="btn sm">双通</button>' +
+        '</div>' +
+        '<div class="dim">' + (ch === 'both'
+          ? '当前同时接入红/绿网络，可感知两通道全部信号。'
+          : '当前仅接入' + (ch === 'red' ? '红线' : '绿线') + '网络，只感知该通道信号，与另一通道物理隔离。') +
+        '（也可手持对应线缆点击设备快速切换）</div>';
+    }
+  }
+  return '<div class="asm3-layout">' +
+    '<div class="asm3-col asm3-left"><div class="asm3-col-head">玩家</div>' +
+    '<div class="asm3-col-body">' + left + '</div></div>' +
+    '<div class="asm3-panel">' + right + '</div>' +
+  '</div>';
+}
+
 // 组装机 I/II/III 实时刷新：复用配方设备的原料/产品/进度逻辑，并额外刷新配方名/图标/百分比/状态点
 function updateAssemblerLive(e, body, api) {
   const info = recipeDeviceInfo(e);
@@ -1606,7 +1638,7 @@ function recipeMachineRightHtml(e, info, rec) {
   if (!rec) {
     h += '<div class="dim">请点击「清除配方」选择配方后即可生产。</div>';
     // 未设置配方时也显示模块插槽，便于提前装好模块
-    h += moduleSlotSectionHtml(e);
+    h += moduleSlotSectionHtml(e, true);
     // 电力状态与速率
     if (typeof e.powerDemand === 'function') h += row('电力', powerStatusLiveHtml(e), 'power');
     return h;
@@ -1642,8 +1674,8 @@ function recipeMachineRightHtml(e, info, rec) {
   h += '</div>';
   // 操作说明
   h += '<div class="dim mch-help">左栏为你的背包：先选中背包物品再点击右侧「原料」槽即可放入该物品；在「原料」槽上右键（或点其左上角 −）取回 1 件到背包；点击「产品」图标可把产物取回背包。原料/产品均可通过传送带与机械臂自动进出。</div>';
-  // 模块插槽：图形化展示设备模块槽位，可点击放入/取出模块
-  h += moduleSlotSectionHtml(e);
+  // 模块插槽：图形化展示设备模块槽位，可点击放入/取出模块（与组装机一致，不显示标题）
+  h += moduleSlotSectionHtml(e, true);
   // 电力状态与速率
   if (typeof e.powerDemand === 'function') h += row('电力', powerStatusLiveHtml(e), 'power');
   h += machRateHtml(rec, e.crafting && typeof e.moduleSpeedMult === 'function' ? e.moduleSpeedMult() : 1);
