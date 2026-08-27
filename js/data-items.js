@@ -49,8 +49,9 @@ const STACK_SIZES = {
   'concrete': 100, 'refined-concrete': 100, 'hazard-concrete': 100, 'refined-hazard-concrete': 100, 'stone-path': 100, 'landfill': 100,
   // 品质模块（对齐《异星工厂》Quality DLC：quality-module 官方 stack=50）
   'quality-module': 50, 'quality-module-2': 50, 'quality-module-3': 50,
-  // 雅玛果土壤（太空时代 Gleba，官方 stack=100）
-  'artificial-yumako-soil': 100, 'overgrowth-yumako-soil': 100
+  // 雅玛果/果仁土壤（太空时代 Gleba，官方 stack=100）
+  'artificial-yumako-soil': 100, 'overgrowth-yumako-soil': 100,
+  'artificial-jellynut-soil': 100, 'overgrowth-jellynut-soil': 100
 };
 // 返回某物品的最大堆叠数（未特别指定则默认 100，对齐原版多数物品）
 function stackSize(id) {
@@ -280,6 +281,9 @@ const ITEMS = {
   // ===== 太空时代 Gleba 农业土壤（人工雅玛果土壤 / 茂盛雅玛果土壤，数据来自 factorio-data 官方，见 GAME_DATA）=====
   'artificial-yumako-soil': { name: '玉玛果人造土', color: '#7a5a34', mark: '土', desc: '太空时代农业种植土壤（地面铺设）：铺在草地上形成可种植雅玛果的人工土壤，供农业塔种植作物。由玉玛果种子+营养素+填海料制成（对齐《异星工厂》Space Age Artificial yumako soil，堆叠 100）' },
   'overgrowth-yumako-soil': { name: '玉玛果沃土', color: '#5a4a2a', mark: '沃', desc: '太空时代更肥沃的雅玛果土壤（地面铺设）：在人工雅玛果土壤上再铺一层，含更丰富养分，作物生长更快。由人工雅玛果土壤+玉玛果种子+变质物+水制成（对齐《异星工厂》Space Age Overgrowth yumako soil，堆叠 100）' },
+  // ===== 太空时代 Gleba 果仁（Jellynut）土壤：与玉玛果土壤并列为双作物种植土壤（数据来自 factorio-data 官方，见 GAME_DATA）=====
+  'artificial-jellynut-soil': { name: '果冻果人造土', color: '#7a4458', mark: '土', desc: '太空时代农业种植土壤（地面铺设）：铺在草地上形成可种植果冻果的人工土壤，供农业塔种植果冻果作物。由果冻果种子+营养素+填海料制成（对齐《异星工厂》Space Age Artificial jellynut soil，堆叠 100）' },
+  'overgrowth-jellynut-soil': { name: '果冻果沃土', color: '#5a3448', mark: '沃', desc: '太空时代更肥沃的果冻果土壤（地面铺设）：在人工果冻果土壤上再铺一层，含更丰富养分，果冻果作物生长更快。由人工果冻果土壤+果冻果种子+异虫卵+变质物+水制成（对齐《异星工厂》Space Age Overgrowth jellynut soil，堆叠 100）' },
   // ===== 太空时代 Gleba 果仁（Jellynut）生物链：与玉玛果并列为 Gleba 两大作物（数据来自 factorio-data 官方，见 GAME_DATA）=====
   'jellynut': { name: '果冻果', color: '#c05880', mark: 'Jn', desc: '太空时代 Gleba 星球作物（果仁，堆叠 100），与玉玛果并列为 Gleba 两大农作物，用于制成果冻等生物质产品（对齐《异星工厂》Space Age Jellynut）' },
   'jellynut-seed': { name: '果冻果种子', color: '#a04870', mark: 'Js', desc: '太空时代 Gleba 作物种子（堆叠 10），用于种植果仁（对齐《异星工厂》Space Age Jellynut seed，堆叠 10）' },

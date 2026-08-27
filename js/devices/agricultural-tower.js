@@ -11,10 +11,15 @@ class AgriculturalTower extends Assembler {
   constructor(type, x, y) {
     super('agricultural-tower', x, y);
   }
-  // 是否位于雅玛果土壤上（对齐《异星工厂》：农业塔须在雅玛果土壤上种植作物）
+  // 是否位于对应作物土壤上（对齐《异星工厂》：农业塔须在对应作物土壤上种植）
+  // 玉玛果种植须在玉玛果土壤上，果仁种植须在果仁土壤上（人工/茂盛均可）
   onSoil() {
     const tx = this.x, ty = this.y;
-    return getTerrain(tx, ty) === T_YUMAKO_SOIL || getTerrain(tx, ty) === T_OVERGROWTH_YUMAKO_SOIL;
+    const t = getTerrain(tx, ty);
+    if (this.recipe === 'jellynut-growing') {
+      return t === T_JELLYNUT_SOIL || t === T_OVERGROWTH_JELLYNUT_SOIL;
+    }
+    return t === T_YUMAKO_SOIL || t === T_OVERGROWTH_YUMAKO_SOIL;
   }
   update(dt) {
     this.portFlow();
@@ -166,7 +171,7 @@ function agriPanelHtml(e) {
   h += '</div>';
   h += '<div class="dim" id="asm-recipe-empty" style="display:none"></div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除作物</button>';
-  h += '<div class="dim">农业塔：太空时代作物种植建筑，可种植玉玛果或果仁（Gleba 双作物）。放入对应作物种子后持续收获，收获有概率返还种子（自持循环）。须种植在玉玛果人造土/沃土上。数据（占地/血量/功耗）来自 GAME_DATA。选中后按 R 旋转朝向。</div>';
+  h += '<div class="dim">农业塔：太空时代作物种植建筑，可种植玉玛果或果冻果（Gleba 双作物）。放入对应作物种子后持续收获，收获有概率返还种子（自持循环）。须种植在对应作物的土壤上（玉玛果/果冻果人造土或沃土）。数据（占地/血量/功耗）来自 GAME_DATA。选中后按 R 旋转朝向。</div>';
   h += circuitPanelHtml(e, 'agri');
   return h;
 }
@@ -184,7 +189,7 @@ function agriPanelLive(e, api) {
   api.toggle('#btn-takeout', n > 0, '取回全部输出 (' + n + ')');
   api.prog(e.recipe && e.crafting ? e.prog / RECIPES[e.recipe].time * 100 : 0, e.recipe ? RECIPES[e.recipe].time : 0);
   if (!e.recipe) { api.status('未设置作物，点击下方选择', 'warn'); return; }
-  if (!e.onSoil()) { api.status('已暂停：须种植在玉玛果人造土/沃土上', 'warn'); return; }
+  if (!e.onSoil()) { api.status(e.recipe === 'jellynut-growing' ? '已暂停：须种植在果冻果人造土/沃土上' : '已暂停：须种植在玉玛果人造土/沃土上', 'warn'); return; }
   if (e.crafting) { api.status('生长中：' + ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name, 'ok'); return; }
   if (G.power.sat <= 0) { api.status('已暂停：缺电', 'bad'); return; }
   for (const k in RECIPES[e.recipe].out)
