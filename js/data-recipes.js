@@ -219,6 +219,10 @@ const RECIPES = {
   'agricultural-science-pack': { time: 4, inp: { 'bioflux': 1, 'spoilage': 2 }, out: { 'agricultural-science-pack': 1 } },
   // 生化炉：钢板 + 电路板 + 齿轮 + 混凝土 → 生化炉（官方需生物质，此处适配基础资源）
   'biochamber': { time: 10, inp: { 'steel-plate': 50, 'electronic-circuit': 50, 'iron-gear-wheel': 40, 'concrete': 20 }, out: { 'biochamber': 1 } },
+  // 农业塔：钢板 + 电路板 + 变质物 + 填海料 → 农业塔（官方 agricultural-tower 10s：10钢板+3电路板+20变质物+1填海料，此处对齐官方）
+  'agricultural-tower': { time: 10, inp: { 'steel-plate': 10, 'electronic-circuit': 3, 'spoilage': 20, 'landfill': 1 }, out: { 'agricultural-tower': 1 } },
+  // 玉玛果种植（农业塔专属生长配方）：玉玛果种子×1 → 玉玛果×6 + 有概率返还种子，持续收获（对齐《异星工厂》Agricultural tower 种植）
+  'yumako-growing': { time: 30, inp: { 'yumako-seed': 1 }, out: { 'yumako': 6 } },
   // ===== 太空时代 小行星碎块加工链（破碎机配方，官方数值参考，见 GAME_DATA）=====
   // 破碎机本体：低密度结构 + 钢板 + 电动引擎 → 破碎机（官方 energy_required=10s，此处对齐 10s）
   'crusher': { time: 10, inp: { 'low-density-structure': 20, 'steel-plate': 10, 'electric-engine-unit': 10 }, out: { 'crusher': 1 } },
@@ -394,7 +398,8 @@ const DEVICE_NAMES = {
   'electromagnetic-plant': '电磁工厂',
   'biochamber': '生化炉',
   'crusher': '破碎机',
-  'foundry': '铸造厂'
+  'foundry': '铸造厂',
+  'agricultural-tower': '农业塔'
 };
 // 电磁工厂专属配方（太空时代电磁产品）：超导体 / 电磁科研包 / 电磁工厂本体
 const ELECTRO_RECIPES = ['superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant'];
@@ -411,12 +416,16 @@ function isCrusherRecipe(id) { return CRUSHER_RECIPES.indexOf(id) >= 0; }
 // 铸造厂专属配方（太空时代 Vulcanus 冶金产品）：钨板 / 碳化钨 / 冶金科研包 / 铸造厂本体
 const FOUNDRY_RECIPES = ['tungsten-ore', 'tungsten-plate', 'tungsten-carbide', 'metallurgic-science-pack', 'foundry'];
 function isFoundryRecipe(id) { return FOUNDRY_RECIPES.indexOf(id) >= 0; }
+// 农业塔专属种植配方（太空时代 Gleba 作物种植）：玉玛果种植 + 农业塔本体
+const AGRICULTURE_TOWER_RECIPES = ['yumako-growing'];
+function isAgricultureTowerRecipe(id) { return AGRICULTURE_TOWER_RECIPES.indexOf(id) >= 0; }
 function recipeDevice(id) {
   if (GAME_DATA.recipeDevice && GAME_DATA.recipeDevice[id]) return GAME_DATA.recipeDevice[id];
   if (isElectroRecipe(id)) return 'electromagnetic-plant';
   if (isBiochamberRecipe(id)) return 'biochamber';
   if (isCrusherRecipe(id)) return 'crusher';
   if (isFoundryRecipe(id)) return 'foundry';
+  if (isAgricultureTowerRecipe(id)) return 'agricultural-tower';
   if (isRefineryRecipe(id)) return 'oil-refinery';
   if (isChemRecipe(id)) return 'chemical-plant';
   if (isCentrifugeRecipe(id)) return 'centrifuge';

@@ -30,6 +30,7 @@ const BUILD_DEFS = {
   'biochamber': { w: 3, h: 3, solid: true },  // 太空时代生化炉（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±1.5 → 3×3）
   'crusher': { w: 2, h: 3, solid: true },  // 太空时代破碎机（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±1×±1.5 → 2×3）
   'foundry': { w: 5, h: 5, solid: true },  // 太空时代铸造厂（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±2.5 → 5×5）
+  'agricultural-tower': { w: 3, h: 3, solid: true },  // 太空时代农业塔（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±1.5 → 3×3）
   'beacon':             { w: 3, h: 3, solid: true },
   'wooden-chest':       { w: 1, h: 1, solid: true },
   'iron-chest':         { w: 1, h: 1, solid: true },
@@ -130,6 +131,7 @@ const BUILDING_HP = {
   'biochamber': 300,  // 生化炉官方 max_health=300（由 GAME_DATA 桥接）
   'crusher': 350,  // 破碎机官方 max_health=350（由 GAME_DATA 桥接）
   'foundry': 350,  // 铸造厂官方 max_health=350（由 GAME_DATA 桥接）
+  'agricultural-tower': 500,  // 农业塔官方 max_health=500（由 GAME_DATA 桥接）
   // 储物箱（官方 wooden 100 / iron 200 / steel 350）
   'wooden-chest': 100, 'iron-chest': 200, 'steel-chest': 350,
   'creative-chest': 350, 'void-chest': 350,

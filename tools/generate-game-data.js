@@ -65,6 +65,7 @@ const KEEP_MANUAL_RECIPES = new Set([
   // ===== 太空时代 Space Age 手工适配配方（官方配方依赖星球专属资源，此处适配基础资源）=====
   'carbon-fiber', 'lithium', 'lithium-plate', 'superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant',
   'yumako-mash', 'bioflux', 'nutrients-from-bioflux', 'biosulfur', 'agricultural-science-pack', 'biochamber',
+  'agricultural-tower', 'yumako-growing',  // 太空时代农业塔（种植专属配方，非官方合成）
   // ===== 太空时代 小行星碎块加工（破碎机专属配方，适配地面）=====
   'crusher', 'metallic-asteroid-crushing', 'carbonic-asteroid-crushing', 'oxide-asteroid-crushing', 'ice-melting',
   // 进阶星块加工（高级粉碎/再处理，破碎机专属，官方数值简化适配）
@@ -397,6 +398,7 @@ const DEVICE_STATS_SOURCES = {
   'biochamber': ['assembling-machine', 'biochamber'],  // 太空时代生化炉：crafting_speed=2, module_slots=4
   'crusher': ['assembling-machine', 'crusher'],  // 太空时代破碎机：crafting_speed=1, module_slots=2
   'foundry': ['assembling-machine', 'foundry'],  // 太空时代铸造厂（Vulcanus）：crafting_speed=4, module_slots=4
+  'agricultural-tower': ['agricultural-tower', 'agricultural-tower'],  // 太空时代农业塔（Gleba）：种植建筑，energy_usage=100kW
 };
 for (const [pid, [rtype, oname]] of Object.entries(DEVICE_STATS_SOURCES)) {
   const proto = raw[rtype] && raw[rtype][oname];
@@ -729,6 +731,7 @@ const FOOTPRINT_SOURCES = {
   'biochamber': ['assembling-machine', 'biochamber'],  // 太空时代生化炉（space-age 装配机原型，3×3）
   'crusher': ['assembling-machine', 'crusher'],  // 太空时代破碎机（space-age 装配机原型，selection_box ±1×±1.5 → 2×3）
   'foundry': ['assembling-machine', 'foundry'],  // 太空时代铸造厂（space-age 装配机原型，selection_box ±2.5×±2.5 → 5×5）
+  'agricultural-tower': ['agricultural-tower', 'agricultural-tower'],  // 太空时代农业塔（Gleba）：官方 selection_box ±1.5×±1.5 → 3×3
 };
 // 官方 selection_box 为实体占用的格数（局部坐标跨度，单位格）。
 // 占地格数 = max(1, ceil(跨度))；部分实体（机械臂/电线杆/熔炉等）官方跨度<1 或非整数，
@@ -751,6 +754,7 @@ for (const [pid, [rtype, oname]] of Object.entries(FOOTPRINT_SOURCES)) {
 const dlcItemKeywords = ['electromagnetic','lithium','superconductor','asteroid','yumako','bioflux',
   'fluoroketone','promethium','carbon','metallic','oxide','quality','recycler','capture-robot',
   'agricultural','lightning','thruster','cargo-pod','landing-pad','space-platform','big-mining'];
+
 const dlc = {
   version: '2.1.17',
   items: {},

@@ -182,6 +182,7 @@ const GAME_DATA = {
   "spoilage": 200,
   "agricultural-science-pack": 200,
   "biochamber": 20,
+  "agricultural-tower": 20,
   "crusher": 10,
   "metallic-asteroid-chunk": 1,
   "carbonic-asteroid-chunk": 1,
@@ -284,6 +285,7 @@ const GAME_DATA = {
   "biochamber": 300,
   "crusher": 350,
   "foundry": 350,
+  "agricultural-tower": 500,
   "beacon": 200,
   "wooden-chest": 100,
   "iron-chest": 200,
@@ -359,6 +361,7 @@ const GAME_DATA = {
   "biochamber": 500,
   "crusher": 540,
   "foundry": 2500,
+  "agricultural-tower": 100,
   "beacon": 480,
   "lab": 60,
   "offshore-pump": 60,
@@ -3139,6 +3142,10 @@ const GAME_DATA = {
    "zh": "生物室",
    "en": "Biochamber"
   },
+  "agricultural-tower": {
+   "zh": "农业塔",
+   "en": "Agricultural tower"
+  },
   "crusher": {
    "zh": "破碎机",
    "en": "Crusher"
@@ -3806,6 +3813,10 @@ const GAME_DATA = {
   "foundry": {
    "w": 5,
    "h": 5
+  },
+  "agricultural-tower": {
+   "w": 3,
+   "h": 3
   }
  },
  "steamPower": {

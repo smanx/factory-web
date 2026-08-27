@@ -247,6 +247,7 @@ const ITEMS = {
   'spoilage': { name: '变质物', color: '#8a7a50', mark: 'Sp', desc: '太空时代生物质副产物，用于制造生物硫磺等（对齐《异星工厂》Space Age Spoilage，堆叠 200）' },
   'agricultural-science-pack': { name: '农业科技包', color: '#a8d84a', mark: 'ASP', desc: '太空时代黄色科研包，由生物流在生化炉制得，解锁太空时代农业/生物科技（对齐《异星工厂》Space Age Agricultural science pack，堆叠 200）' },
   'biochamber': { name: '生物室', color: '#4aa86a', desc: '太空时代生物生产建筑（3×3，吃电力）：专用于生产生物质产品（果泥/生物流/营养素/农业科研包等），比组装机更快（对齐《异星工厂》Space Age 生化炉，数据来自 GAME_DATA）' },
+  'agricultural-tower': { name: '农业塔', color: '#a08030', desc: '太空时代农业建筑（3×3，吃电力）：在人工雅玛果土壤上种植作物，放入玉玛果种子后持续收获玉玛果（对齐《异星工厂》Space Age Agricultural tower，数据来自 GAME_DATA）' },
   // ===== 太空时代 小行星碎块加工链（破碎机 + 小行星碎块，数据来自 factorio-data 官方，见 GAME_DATA）=====
   'crusher': { name: '破碎机', color: '#9a8a7a', desc: '太空时代破碎建筑（2×3，吃电力）：把小行星碎块（金属/碳质/氧化星块）粉碎成基础资源（铁矿石/碳/冰等），破碎机只会用“破碎”配方（对齐《异星工厂》Space Age 破碎机，官方重力0/太空，此处适配为地面设备，数据来自 GAME_DATA）' },
   'metallic-asteroid-chunk': { name: '金属星块', color: '#8a7a6a', mark: 'Me', desc: '太空时代高金属含量的小行星碎块，用破碎机粉碎可获得大量铁矿石（对齐《异星工厂》Space Age Metallic asteroid chunk，堆叠 1）' },

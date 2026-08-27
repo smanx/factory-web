@@ -72,6 +72,7 @@ const dynamicKeys = new Set([
   // 进阶星块加工（产物键≠配方键，产物为已有基础资源/星块）
   'advanced-metallic-asteroid-crushing', 'advanced-carbonic-asteroid-crushing', 'advanced-oxide-asteroid-crushing',
   'metallic-asteroid-reprocessing', 'carbonic-asteroid-reprocessing', 'oxide-asteroid-reprocessing',
+  'yumako-growing', // 农业塔种植配方：种子→玉玛果（产物键≠配方键）
 ]);
 for (const rid in RECIPES) {
   if (rid.startsWith('fill-') || rid.startsWith('empty-')) continue; // 动态桶配方

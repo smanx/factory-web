@@ -152,6 +152,21 @@ ok(!!RP['agricultural-science-pack'], '农业科技包配方已注册');
 ok(!!IT['agricultural-science-pack'], '农业科技包物品已注册');
 ok(ctx.__itemTechReq('agricultural-science-pack') === 'agriculture', '农业科技包需「农业科技」');
 
+// ===== 农业塔（Agricultural tower）数据校验 =====
+console.log('\n【农业塔设备数据（官方）】');
+ok(!!GD.stackSize['agricultural-tower'], 'agricultural-tower 堆叠来自官方 (=20)');
+ok(!!GD.names['agricultural-tower'] && GD.names['agricultural-tower'].en === 'Agricultural tower', 'agricultural-tower 官方命名已收录 (Agricultural tower)');
+ok(GD.footprint['agricultural-tower'] && GD.footprint['agricultural-tower'].w === 3 && GD.footprint['agricultural-tower'].h === 3, '占地 3×3（官方 selection_box ±1.5）');
+ok(GD.buildingHp['agricultural-tower'] === 500, '血量=500（官方 max_health）');
+ok(GD.powerUse['agricultural-tower'] === 100, '功耗=100kW（官方 energy_usage）');
+ok(!!RP['agricultural-tower'], '农业塔配方已注册（官方 10钢板+3电路板+20变质物+1填海料）');
+ok(Object.keys(RP['agricultural-tower'].inp).every(k => k in IT), '农业塔配方引用物品均存在');
+ok(!!RP['yumako-growing'], '玉玛果种植配方已注册');
+ok(Object.keys(RP['yumako-growing'].out).includes('yumako'), '玉玛果种植产出玉玛果');
+ok(ctx.__recipeDevice('yumako-growing') === 'agricultural-tower', '玉玛果种植 → 农业塔');
+ok(ctx.__itemTechReq('agricultural-tower') === 'agriculture', '农业塔需「农业科技」');
+ok(!!TS['agriculture'], '「农业科技」已注册');
+
 // ===== 破碎机（Crusher）数据校验 =====
 console.log('\n【破碎机设备数据（官方）】');
 ok(!!GD.stackSize['crusher'], 'crusher 堆叠来自官方 (=10)');
