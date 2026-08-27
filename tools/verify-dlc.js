@@ -1,7 +1,7 @@
 'use strict';
 // ===== DLC（太空时代）数据校验 =====
 // 校验：新增 DLC 物品/配方/设备数据均来自 GAME_DATA（data.generated.js，factorio-data 生成），
-// 且与官方数值一致；电磁工厂设备数据正确。
+// 且与官方数值一致；电磁工厂设备数据正确；官方回收配方（*-recycling）单源读取正确。
 const fs = require('fs'), vm = require('vm');
 const ROOT = __dirname + '/..';
 const combatSrc = fs.readFileSync(ROOT + '/js/devices/combat2.js', 'utf8');
@@ -1580,6 +1580,38 @@ console.log('\n【行星专属生产建筑（对齐官方星球专属建筑）�
     ok(re.test(wcSrc), b + ' → 官方专属星球 ' + p);
   }
   ok(reSrc.indexOf("buildingRequiredPlanet") >= 0 && reSrc.indexOf("planet: planetReq.planet") >= 0, 'render-entity 的 canPlaceAt 已接入行星专属建造限制（返回受限星球）');
+}
+
+// ===== 官方回收配方（Recycler）单源校验 =====
+console.log('\n【官方回收配方（*-recycling，回收机单源）】');
+{
+  const recyclerSrc = fs.readFileSync(ROOT + '/js/devices/recycler.js', 'utf8');
+  // 前端回收机读取 GAME_DATA.recycling 单源
+  ok(recyclerSrc.indexOf("GAME_DATA.recycling") >= 0, 'recycler.js 从 GAME_DATA.recycling 单源读取官方回收配方');
+  // 数据已生成且非空
+  const rCount = Object.keys(GD.recycling || {}).length;
+  ok(rCount > 200, 'GAME_DATA.recycling 已生成官方回收配方 (' + rCount + ' 条 ≥200)');
+  // 抽样核对官方回收数值（expected per-batch）
+  const expectRecycle = {
+    'transport-belt': { time: 0.015625, out: { 'iron-gear-wheel': 0.125, 'iron-plate': 0.125 } },
+    'electronic-circuit': { time: 0.03125, out: { 'copper-cable': 0.75, 'iron-plate': 0.25 } },
+    'iron-plate': { time: 0.2, out: { 'iron-plate': 0.25 } },
+    'superconductor': { time: 0.3125, out: { 'superconductor': 0.25 } },
+    'carbon-fiber': { time: 0.3125, out: { 'carbon-fiber': 0.25 } },
+    'recycler': { time: 0.1875, out: { 'concrete': 5, 'iron-gear-wheel': 10, 'steel-plate': 5, 'processing-unit': 1.5 } },
+  };
+  for (const [item, exp] of Object.entries(expectRecycle)) {
+    const rec = GD.recycling && GD.recycling[item];
+    ok(!!rec, item + ' 官方回收配方已收录');
+    if (rec) {
+      ok(rec.time === exp.time, item + ' 回收耗时=' + exp.time + '（官方 energy_required）');
+      for (const [oid, ov] of Object.entries(exp.out)) {
+        ok(rec.out && rec.out[oid] === ov, item + ' 回收产出 ' + oid + '=' + ov + '（官方）');
+      }
+    }
+  }
+  // 官方有 *-recycling 配方但项目未收录输入物品的项不写入（数量上限检查）
+  ok(rCount <= 280, '回收配方条数合理（' + rCount + ' ≤280）');
 }
 
 process.exit(fail === 0 ? 0 : 1);

@@ -1237,6 +1237,42 @@ for (const rid of ALL_RECIPE_IDS) {
   GAME_DATA.recipeDevice[rid] = DLC_DEVICE_RECIPES[rid] || (HUB_RECIPE_IDS.has(rid) ? 'space-platform-hub' : deviceFor(or));
 }
 
+// ---- recycling（官方 *-recycling 回收配方，供回收机 Recycler 单源读取）----
+// 官方《异星工厂》为绝大多数物品定义了 *-recycling 配方（energy 短、输出=原配方按 recycle_ratio
+// 折算后的精确值，含 extra_count_fraction 分数与 independent_probability 概率）。这里把官方回收配方
+// 全部提取进 GAME_DATA.recycling，回收机直接读取（不再按通用 25% 估算法）。
+// recycling[item] = { time, out: {outItem: 每批期望产出（可为小数）} }
+//   - extra_count_fraction: 分数输出（amount + fraction，按小数期望累积）
+//   - independent_probability: 概率输出（amount × probability 期望）
+//   - 普通 amount: 固定整数输出
+GAME_DATA.recycling = {};
+for (const orid of Object.keys(raw.recipe || {})) {
+  if (!orid.endsWith('-recycling')) continue;
+  const or = raw.recipe[orid];
+  const inputOid = orid.slice(0, -'-recycling'.length);
+  const inputPid = toProjectItem(inputOid);
+  if (!inputPid) continue;                       // 输入物品项目未收录 → 跳过
+  const out = {};
+  let ok = true;
+  for (const k of Object.keys(or.results || {})) {
+    const e = or.results[k];
+    const pid = toProjectItem(e.name);
+    if (!pid) { ok = false; break; }
+    const amount = e.amount !== undefined ? e.amount : (e.amount_min !== undefined ? e.amount_min : 1);
+    let frac = e.extra_count_fraction !== undefined ? e.extra_count_fraction : 0;
+    let prob = (typeof e.probability === 'number') ? e.probability : (e.independent_probability || 0);
+    let v = amount + frac;
+    if (prob > 0) v = amount * prob;             // 概率输出：期望 = amount × probability
+    if (v > 0) out[pid] = Math.round(v * 1000000) / 1000000;
+  }
+  if (ok && Object.keys(out).length > 0) {
+    GAME_DATA.recycling[inputPid] = {
+      time: or.energy_required !== undefined ? or.energy_required : 0.2,
+      out,
+    };
+  }
+}
+
 // ================= 报告 =================
 function report() {
   console.log('==== 名称映射报告 ====');
@@ -1357,9 +1393,10 @@ const header = [
   '//   cargoUnloadingBay = { inventorySizeBonus, allowUnloading, unloadingDistance }（物流卸载舱）',
   '//   footprint[building] = { w, h }（占地面积格数，官方 selection_box）',
   '//   pollution[building] = 官方每分排放（emissions_per_minute.pollution，污染/分），供污染系统单源读取',
+  '//   recycling[item] = { time, out:{outItem:每批期望产出} }（官方 *-recycling 回收配方，供回收机单源读取）',
   'const GAME_DATA = ' + JSON.stringify(GAME_DATA, null, 1) + ';',
   '',
 ].join('\n');
 
 fs.writeFileSync(OUT_FILE, header);
-console.log('OK: 已生成 ' + path.relative(ROOT, OUT_FILE) + ' (配方 ' + Object.keys(GAME_DATA.recipe).length + ' 条, 堆叠 ' + Object.keys(GAME_DATA.stackSize).length + ' 条, 血量 ' + Object.keys(GAME_DATA.buildingHp).length + ' 条, 功耗 ' + Object.keys(GAME_DATA.powerUse).length + ' 条, 设备参数 ' + Object.keys(GAME_DATA.deviceStats).length + ' 条, 命名 ' + Object.keys(GAME_DATA.names).length + ' 条, 配方名 ' + Object.keys(GAME_DATA.recipeNames).length + ' 条, 地下带 ' + Object.keys(GAME_DATA.undergroundDist).length + ' 条, 可再生 ' + (GAME_DATA.renewable ? Object.keys(GAME_DATA.renewable).length : 0) + ' 项, 流体容量 ' + (GAME_DATA.fluidCapacity ? Object.keys(GAME_DATA.fluidCapacity).length : 0) + ' 项, 炮塔 ' + Object.keys(GAME_DATA.turret).length + ' 座, 弹药伤害 ' + Object.keys(GAME_DATA.ammoDamage).length + ' 种, 雷达 ' + (GAME_DATA.radar ? Object.keys(GAME_DATA.radar).length : 0) + ' 项, 装备 ' + Object.keys(GAME_DATA.equipment).length + ' 件, 热量 ' + (GAME_DATA.heat ? Object.keys(GAME_DATA.heat).length : 0) + ' 项, 污染排放 ' + Object.keys(GAME_DATA.pollution || {}).length + ' 项)');
+console.log('OK: 已生成 ' + path.relative(ROOT, OUT_FILE) + ' (配方 ' + Object.keys(GAME_DATA.recipe).length + ' 条, 堆叠 ' + Object.keys(GAME_DATA.stackSize).length + ' 条, 血量 ' + Object.keys(GAME_DATA.buildingHp).length + ' 条, 功耗 ' + Object.keys(GAME_DATA.powerUse).length + ' 条, 设备参数 ' + Object.keys(GAME_DATA.deviceStats).length + ' 条, 命名 ' + Object.keys(GAME_DATA.names).length + ' 条, 配方名 ' + Object.keys(GAME_DATA.recipeNames).length + ' 条, 地下带 ' + Object.keys(GAME_DATA.undergroundDist).length + ' 条, 可再生 ' + (GAME_DATA.renewable ? Object.keys(GAME_DATA.renewable).length : 0) + ' 项, 流体容量 ' + (GAME_DATA.fluidCapacity ? Object.keys(GAME_DATA.fluidCapacity).length : 0) + ' 项, 炮塔 ' + Object.keys(GAME_DATA.turret).length + ' 座, 弹药伤害 ' + Object.keys(GAME_DATA.ammoDamage).length + ' 种, 雷达 ' + (GAME_DATA.radar ? Object.keys(GAME_DATA.radar).length : 0) + ' 项, 装备 ' + Object.keys(GAME_DATA.equipment).length + ' 件, 热量 ' + (GAME_DATA.heat ? Object.keys(GAME_DATA.heat).length : 0) + ' 项, 污染排放 ' + Object.keys(GAME_DATA.pollution || {}).length + ' 项, 回收配方 ' + Object.keys(GAME_DATA.recycling || {}).length + ' 条)');

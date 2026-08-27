@@ -26,6 +26,7 @@
 //   cargoUnloadingBay = { inventorySizeBonus, allowUnloading, unloadingDistance }（物流卸载舱）
 //   footprint[building] = { w, h }（占地面积格数，官方 selection_box）
 //   pollution[building] = 官方每分排放（emissions_per_minute.pollution，污染/分），供污染系统单源读取
+//   recycling[item] = { time, out:{outItem:每批期望产出} }（官方 *-recycling 回收配方，供回收机单源读取）
 const GAME_DATA = {
  "stackSize": {
   "iron-ore": 50,
@@ -7682,6 +7683,2054 @@ const GAME_DATA = {
      "percent": 80
     }
    ]
+  }
+ },
+ "recycling": {
+  "scrap": {
+   "time": 0.2,
+   "out": {
+    "iron-gear-wheel": 1,
+    "solid-fuel": 1,
+    "concrete": 1,
+    "ice": 1,
+    "steel-plate": 1,
+    "battery": 1,
+    "stone": 1,
+    "advanced-circuit": 1,
+    "copper-cable": 1,
+    "processing-unit": 1,
+    "low-density-structure": 1,
+    "holmium-ore": 1
+   }
+  },
+  "speed-module": {
+   "time": 0.9375,
+   "out": {
+    "electronic-circuit": 1.25,
+    "advanced-circuit": 1.25
+   }
+  },
+  "speed-module-2": {
+   "time": 1.875,
+   "out": {
+    "processing-unit": 1.25,
+    "advanced-circuit": 1.25,
+    "speed-module": 1
+   }
+  },
+  "speed-module-3": {
+   "time": 3.75,
+   "out": {
+    "processing-unit": 1.25,
+    "advanced-circuit": 1.25,
+    "speed-module-2": 1,
+    "tungsten-carbide": 0.25
+   }
+  },
+  "productivity-module": {
+   "time": 0.9375,
+   "out": {
+    "electronic-circuit": 1.25,
+    "advanced-circuit": 1.25
+   }
+  },
+  "productivity-module-2": {
+   "time": 1.875,
+   "out": {
+    "processing-unit": 1.25,
+    "advanced-circuit": 1.25,
+    "productivity-module": 1
+   }
+  },
+  "productivity-module-3": {
+   "time": 3.75,
+   "out": {
+    "processing-unit": 1.25,
+    "advanced-circuit": 1.25,
+    "productivity-module-2": 1,
+    "biter-egg": 0.25
+   }
+  },
+  "efficiency-module": {
+   "time": 0.9375,
+   "out": {
+    "electronic-circuit": 1.25,
+    "advanced-circuit": 1.25
+   }
+  },
+  "efficiency-module-2": {
+   "time": 1.875,
+   "out": {
+    "processing-unit": 1.25,
+    "advanced-circuit": 1.25,
+    "efficiency-module": 1
+   }
+  },
+  "efficiency-module-3": {
+   "time": 3.75,
+   "out": {
+    "processing-unit": 1.25,
+    "advanced-circuit": 1.25,
+    "efficiency-module-2": 1,
+    "spoilage": 1.25
+   }
+  },
+  "bulk-inserter": {
+   "time": 0.03125,
+   "out": {
+    "fast-inserter": 0.25,
+    "advanced-circuit": 0.25,
+    "electronic-circuit": 3.75,
+    "iron-gear-wheel": 3.75
+   }
+  },
+  "barrel": {
+   "time": 0.0625,
+   "out": {
+    "steel-plate": 0.25
+   }
+  },
+  "night-vision-equipment": {
+   "time": 0.625,
+   "out": {
+    "steel-plate": 2.5,
+    "advanced-circuit": 1.25
+   }
+  },
+  "belt-immunity-equipment": {
+   "time": 0.625,
+   "out": {
+    "steel-plate": 2.5,
+    "advanced-circuit": 1.25
+   }
+  },
+  "energy-shield-equipment": {
+   "time": 0.625,
+   "out": {
+    "steel-plate": 2.5,
+    "advanced-circuit": 1.25
+   }
+  },
+  "energy-shield-mk2-equipment": {
+   "time": 0.625,
+   "out": {
+    "low-density-structure": 1.25,
+    "processing-unit": 1.25,
+    "energy-shield-equipment": 2.5
+   }
+  },
+  "battery-equipment": {
+   "time": 0.625,
+   "out": {
+    "steel-plate": 2.5,
+    "battery": 1.25
+   }
+  },
+  "battery-mk2-equipment": {
+   "time": 0.625,
+   "out": {
+    "low-density-structure": 1.25,
+    "processing-unit": 3.75,
+    "battery-equipment": 2.5
+   }
+  },
+  "solar-panel-equipment": {
+   "time": 0.625,
+   "out": {
+    "steel-plate": 1.25,
+    "advanced-circuit": 0.5,
+    "solar-panel": 0.25
+   }
+  },
+  "fission-reactor-equipment": {
+   "time": 0.625,
+   "out": {
+    "uranium-fuel-cell": 1,
+    "low-density-structure": 12.5,
+    "processing-unit": 50
+   }
+  },
+  "personal-laser-defense-equipment": {
+   "time": 0.625,
+   "out": {
+    "laser-turret": 1.25,
+    "low-density-structure": 1.25,
+    "processing-unit": 5
+   }
+  },
+  "discharge-defense-equipment": {
+   "time": 0.625,
+   "out": {
+    "laser-turret": 2.5,
+    "steel-plate": 5,
+    "processing-unit": 1.25
+   }
+  },
+  "exoskeleton-equipment": {
+   "time": 0.625,
+   "out": {
+    "steel-plate": 5,
+    "electric-engine-unit": 7.5,
+    "processing-unit": 2.5
+   }
+  },
+  "personal-roboport-equipment": {
+   "time": 0.625,
+   "out": {
+    "battery": 11.25,
+    "steel-plate": 5,
+    "iron-gear-wheel": 10,
+    "advanced-circuit": 2.5
+   }
+  },
+  "personal-roboport-mk2-equipment": {
+   "time": 1.25,
+   "out": {
+    "superconductor": 12.5,
+    "processing-unit": 12.5,
+    "personal-roboport-equipment": 1.25
+   }
+  },
+  "laser-turret": {
+   "time": 1.25,
+   "out": {
+    "battery": 3,
+    "electronic-circuit": 5,
+    "steel-plate": 5
+   }
+  },
+  "flamethrower-turret": {
+   "time": 1.25,
+   "out": {
+    "engine-unit": 1.25,
+    "pipe": 2.5,
+    "iron-gear-wheel": 3.75,
+    "steel-plate": 7.5
+   }
+  },
+  "artillery-turret": {
+   "time": 2.5,
+   "out": {
+    "processing-unit": 2.5,
+    "iron-gear-wheel": 10,
+    "refined-concrete": 15,
+    "tungsten-plate": 15
+   }
+  },
+  "gun-turret": {
+   "time": 0.5,
+   "out": {
+    "iron-plate": 5,
+    "copper-plate": 2.5,
+    "iron-gear-wheel": 2.5
+   }
+  },
+  "wooden-chest": {
+   "time": 0.03125,
+   "out": {
+    "wood": 0.5
+   }
+  },
+  "display-panel": {
+   "time": 0.03125,
+   "out": {
+    "electronic-circuit": 0.25,
+    "iron-plate": 0.25
+   }
+  },
+  "iron-stick": {
+   "time": 0.015625,
+   "out": {
+    "iron-plate": 0.125
+   }
+  },
+  "stone-furnace": {
+   "time": 0.03125,
+   "out": {
+    "stone": 1.25
+   }
+  },
+  "boiler": {
+   "time": 0.03125,
+   "out": {
+    "pipe": 1,
+    "stone-furnace": 0.25
+   }
+  },
+  "steam-engine": {
+   "time": 0.03125,
+   "out": {
+    "iron-plate": 2.5,
+    "pipe": 1.25,
+    "iron-gear-wheel": 2
+   }
+  },
+  "iron-gear-wheel": {
+   "time": 0.03125,
+   "out": {
+    "iron-plate": 0.5
+   }
+  },
+  "electronic-circuit": {
+   "time": 0.03125,
+   "out": {
+    "copper-cable": 0.75,
+    "iron-plate": 0.25
+   }
+  },
+  "transport-belt": {
+   "time": 0.015625,
+   "out": {
+    "iron-gear-wheel": 0.125,
+    "iron-plate": 0.125
+   }
+  },
+  "electric-mining-drill": {
+   "time": 0.125,
+   "out": {
+    "iron-plate": 2.5,
+    "iron-gear-wheel": 1.25,
+    "electronic-circuit": 0.75
+   }
+  },
+  "burner-mining-drill": {
+   "time": 0.125,
+   "out": {
+    "iron-plate": 0.75,
+    "stone-furnace": 0.25,
+    "iron-gear-wheel": 0.75
+   }
+  },
+  "inserter": {
+   "time": 0.03125,
+   "out": {
+    "iron-plate": 0.25,
+    "iron-gear-wheel": 0.25,
+    "electronic-circuit": 0.25
+   }
+  },
+  "fast-inserter": {
+   "time": 0.03125,
+   "out": {
+    "inserter": 0.25,
+    "iron-plate": 0.5,
+    "electronic-circuit": 0.5
+   }
+  },
+  "long-handed-inserter": {
+   "time": 0.03125,
+   "out": {
+    "inserter": 0.25,
+    "iron-plate": 0.25,
+    "iron-gear-wheel": 0.25
+   }
+  },
+  "burner-inserter": {
+   "time": 0.03125,
+   "out": {
+    "iron-gear-wheel": 0.25,
+    "iron-plate": 0.25
+   }
+  },
+  "pipe": {
+   "time": 0.03125,
+   "out": {
+    "iron-plate": 0.25
+   }
+  },
+  "offshore-pump": {
+   "time": 0.03125,
+   "out": {
+    "iron-gear-wheel": 0.5,
+    "pipe": 0.75
+   }
+  },
+  "copper-cable": {
+   "time": 0.015625,
+   "out": {
+    "copper-plate": 0.125
+   }
+  },
+  "small-electric-pole": {
+   "time": 0.015625,
+   "out": {
+    "copper-cable": 0.25,
+    "wood": 0.125
+   }
+  },
+  "submachine-gun": {
+   "time": 0.625,
+   "out": {
+    "iron-plate": 2.5,
+    "copper-plate": 1.25,
+    "iron-gear-wheel": 2.5
+   }
+  },
+  "firearm-magazine": {
+   "time": 0.0625,
+   "out": {
+    "iron-plate": 1
+   }
+  },
+  "light-armor": {
+   "time": 0.1875,
+   "out": {
+    "iron-plate": 10
+   }
+  },
+  "radar": {
+   "time": 0.03125,
+   "out": {
+    "iron-plate": 2.5,
+    "iron-gear-wheel": 1.25,
+    "electronic-circuit": 1.25
+   }
+  },
+  "small-lamp": {
+   "time": 0.03125,
+   "out": {
+    "iron-plate": 0.25,
+    "copper-cable": 0.75,
+    "electronic-circuit": 0.25
+   }
+  },
+  "pipe-to-ground": {
+   "time": 0.015625,
+   "out": {
+    "iron-plate": 0.625,
+    "pipe": 1.25
+   }
+  },
+  "assembling-machine-1": {
+   "time": 0.03125,
+   "out": {
+    "iron-plate": 2.25,
+    "iron-gear-wheel": 1.25,
+    "electronic-circuit": 0.75
+   }
+  },
+  "lab": {
+   "time": 0.125,
+   "out": {
+    "transport-belt": 1,
+    "iron-gear-wheel": 2.5,
+    "electronic-circuit": 2.5
+   }
+  },
+  "stone-wall": {
+   "time": 0.03125,
+   "out": {
+    "stone-brick": 1.25
+   }
+  },
+  "assembling-machine-2": {
+   "time": 0.03125,
+   "out": {
+    "assembling-machine-1": 0.25,
+    "iron-gear-wheel": 1.25,
+    "electronic-circuit": 0.75,
+    "steel-plate": 0.5
+   }
+  },
+  "splitter": {
+   "time": 0.0625,
+   "out": {
+    "transport-belt": 1,
+    "iron-plate": 1.25,
+    "electronic-circuit": 1.25
+   }
+  },
+  "underground-belt": {
+   "time": 0.03125,
+   "out": {
+    "transport-belt": 0.625,
+    "iron-plate": 1.25
+   }
+  },
+  "loader": {
+   "time": 0.0625,
+   "out": {
+    "transport-belt": 1.25,
+    "iron-plate": 1.25,
+    "iron-gear-wheel": 1.25,
+    "electronic-circuit": 1.25,
+    "inserter": 1.25
+   }
+  },
+  "engine-unit": {
+   "time": 0.625,
+   "out": {
+    "pipe": 0.5,
+    "iron-gear-wheel": 0.25,
+    "steel-plate": 0.25
+   }
+  },
+  "iron-chest": {
+   "time": 0.03125,
+   "out": {
+    "iron-plate": 2
+   }
+  },
+  "big-electric-pole": {
+   "time": 0.03125,
+   "out": {
+    "copper-cable": 1,
+    "steel-plate": 1.25,
+    "iron-stick": 2
+   }
+  },
+  "medium-electric-pole": {
+   "time": 0.03125,
+   "out": {
+    "copper-cable": 0.5,
+    "steel-plate": 0.5,
+    "iron-stick": 1
+   }
+  },
+  "shotgun": {
+   "time": 0.625,
+   "out": {
+    "wood": 1.25,
+    "copper-plate": 2.5,
+    "iron-gear-wheel": 1.25,
+    "iron-plate": 3.75
+   }
+  },
+  "shotgun-shell": {
+   "time": 0.1875,
+   "out": {
+    "iron-plate": 0.5,
+    "copper-plate": 0.5
+   }
+  },
+  "piercing-rounds-magazine": {
+   "time": 0.1875,
+   "out": {
+    "copper-plate": 0.25,
+    "steel-plate": 0.125,
+    "firearm-magazine": 0.25
+   }
+  },
+  "grenade": {
+   "time": 0.5,
+   "out": {
+    "coal": 2.5,
+    "iron-plate": 1.25
+   }
+  },
+  "steel-furnace": {
+   "time": 0.1875,
+   "out": {
+    "stone-brick": 2.5,
+    "steel-plate": 1.5
+   }
+  },
+  "gate": {
+   "time": 0.03125,
+   "out": {
+    "electronic-circuit": 0.5,
+    "steel-plate": 0.5,
+    "stone-wall": 0.25
+   }
+  },
+  "heavy-armor": {
+   "time": 0.5,
+   "out": {
+    "steel-plate": 12.5,
+    "copper-plate": 25
+   }
+  },
+  "steel-chest": {
+   "time": 0.03125,
+   "out": {
+    "steel-plate": 2
+   }
+  },
+  "fast-underground-belt": {
+   "time": 0.0625,
+   "out": {
+    "underground-belt": 0.25,
+    "iron-gear-wheel": 5
+   }
+  },
+  "fast-splitter": {
+   "time": 0.125,
+   "out": {
+    "electronic-circuit": 2.5,
+    "iron-gear-wheel": 2.5,
+    "splitter": 0.25
+   }
+  },
+  "concrete": {
+   "time": 0.0625,
+   "out": {
+    "iron-ore": 0.025,
+    "stone-brick": 0.125
+   }
+  },
+  "hazard-concrete": {
+   "time": 0.0625,
+   "out": {
+    "iron-ore": 0.025,
+    "stone-brick": 0.125
+   }
+  },
+  "refined-concrete": {
+   "time": 0.09375,
+   "out": {
+    "steel-plate": 0.025,
+    "iron-stick": 0.2,
+    "concrete": 0.5
+   }
+  },
+  "refined-hazard-concrete": {
+   "time": 0.09375,
+   "out": {
+    "steel-plate": 0.025,
+    "iron-stick": 0.2,
+    "concrete": 0.5
+   }
+  },
+  "fast-transport-belt": {
+   "time": 0.03125,
+   "out": {
+    "transport-belt": 0.25,
+    "iron-gear-wheel": 1.25
+   }
+  },
+  "solar-panel": {
+   "time": 0.625,
+   "out": {
+    "copper-plate": 1.25,
+    "electronic-circuit": 3.75,
+    "steel-plate": 1.25
+   }
+  },
+  "rail-signal": {
+   "time": 0.03125,
+   "out": {
+    "iron-plate": 1.25,
+    "electronic-circuit": 0.25
+   }
+  },
+  "rail-chain-signal": {
+   "time": 0.03125,
+   "out": {
+    "iron-plate": 1.25,
+    "electronic-circuit": 0.25
+   }
+  },
+  "train-stop": {
+   "time": 0.03125,
+   "out": {
+    "steel-plate": 0.75,
+    "iron-stick": 1.5,
+    "iron-plate": 1.5,
+    "electronic-circuit": 1.25
+   }
+  },
+  "arithmetic-combinator": {
+   "time": 0.03125,
+   "out": {
+    "electronic-circuit": 1.25,
+    "copper-cable": 1.25
+   }
+  },
+  "decider-combinator": {
+   "time": 0.03125,
+   "out": {
+    "electronic-circuit": 1.25,
+    "copper-cable": 1.25
+   }
+  },
+  "constant-combinator": {
+   "time": 0.03125,
+   "out": {
+    "electronic-circuit": 0.5,
+    "copper-cable": 1.25
+   }
+  },
+  "selector-combinator": {
+   "time": 0.03125,
+   "out": {
+    "decider-combinator": 1.25,
+    "advanced-circuit": 0.5
+   }
+  },
+  "power-switch": {
+   "time": 0.125,
+   "out": {
+    "electronic-circuit": 0.5,
+    "copper-cable": 1.25,
+    "iron-plate": 1.25
+   }
+  },
+  "programmable-speaker": {
+   "time": 0.125,
+   "out": {
+    "electronic-circuit": 1,
+    "copper-cable": 1.25,
+    "iron-stick": 1,
+    "iron-plate": 0.75
+   }
+  },
+  "poison-capsule": {
+   "time": 0.5,
+   "out": {
+    "coal": 2.5,
+    "electronic-circuit": 0.75,
+    "steel-plate": 0.75
+   }
+  },
+  "slowdown-capsule": {
+   "time": 0.5,
+   "out": {
+    "coal": 1.25,
+    "electronic-circuit": 0.5,
+    "steel-plate": 0.5
+   }
+  },
+  "cluster-grenade": {
+   "time": 0.5,
+   "out": {
+    "steel-plate": 1.25,
+    "explosives": 1.25,
+    "grenade": 1.75
+   }
+  },
+  "defender-capsule": {
+   "time": 0.5,
+   "out": {
+    "iron-gear-wheel": 0.75,
+    "electronic-circuit": 0.75,
+    "piercing-rounds-magazine": 0.75
+   }
+  },
+  "distractor-capsule": {
+   "time": 0.9375,
+   "out": {
+    "advanced-circuit": 0.75,
+    "defender-capsule": 1
+   }
+  },
+  "destroyer-capsule": {
+   "time": 0.9375,
+   "out": {
+    "processing-unit": 0.25,
+    "steel-plate": 1,
+    "distractor-capsule": 1
+   }
+  },
+  "cliff-explosives": {
+   "time": 0.5,
+   "out": {
+    "barrel": 0.25,
+    "grenade": 0.25,
+    "calcite": 2.5,
+    "explosives": 2.5
+   }
+  },
+  "uranium-rounds-magazine": {
+   "time": 0.625,
+   "out": {
+    "uranium-238": 0.25,
+    "piercing-rounds-magazine": 0.25
+   }
+  },
+  "rocket": {
+   "time": 0.25,
+   "out": {
+    "iron-plate": 0.5,
+    "explosives": 0.25
+   }
+  },
+  "explosive-rocket": {
+   "time": 0.5,
+   "out": {
+    "explosives": 0.5,
+    "rocket": 0.25
+   }
+  },
+  "atomic-bomb": {
+   "time": 3.125,
+   "out": {
+    "uranium-235": 25,
+    "explosives": 2.5,
+    "processing-unit": 2.5
+   }
+  },
+  "piercing-shotgun-shell": {
+   "time": 0.25,
+   "out": {
+    "steel-plate": 0.125,
+    "copper-plate": 0.25,
+    "shotgun-shell": 0.25
+   }
+  },
+  "cannon-shell": {
+   "time": 0.5,
+   "out": {
+    "explosives": 0.25,
+    "plastic-bar": 0.5,
+    "steel-plate": 0.5
+   }
+  },
+  "explosive-cannon-shell": {
+   "time": 0.5,
+   "out": {
+    "explosives": 0.5,
+    "plastic-bar": 0.5,
+    "steel-plate": 0.5
+   }
+  },
+  "uranium-cannon-shell": {
+   "time": 0.75,
+   "out": {
+    "uranium-238": 0.25,
+    "cannon-shell": 0.25
+   }
+  },
+  "explosive-uranium-cannon-shell": {
+   "time": 0.75,
+   "out": {
+    "uranium-238": 0.25,
+    "explosive-cannon-shell": 0.25
+   }
+  },
+  "artillery-shell": {
+   "time": 0.9375,
+   "out": {
+    "explosives": 2,
+    "tungsten-plate": 1,
+    "calcite": 0.25,
+    "radar": 0.25
+   }
+  },
+  "express-transport-belt": {
+   "time": 0.03125,
+   "out": {
+    "fast-transport-belt": 0.25,
+    "iron-gear-wheel": 2.5
+   }
+  },
+  "assembling-machine-3": {
+   "time": 0.03125,
+   "out": {
+    "speed-module": 1,
+    "assembling-machine-2": 0.5
+   }
+  },
+  "modular-armor": {
+   "time": 0.9375,
+   "out": {
+    "steel-plate": 12.5,
+    "advanced-circuit": 7.5
+   }
+  },
+  "power-armor": {
+   "time": 1.25,
+   "out": {
+    "steel-plate": 10,
+    "electric-engine-unit": 5,
+    "processing-unit": 10
+   }
+  },
+  "power-armor-mk2": {
+   "time": 1.5625,
+   "out": {
+    "low-density-structure": 7.5,
+    "electric-engine-unit": 10,
+    "processing-unit": 15,
+    "speed-module": 25,
+    "efficiency-module": 25
+   }
+  },
+  "flamethrower": {
+   "time": 0.625,
+   "out": {
+    "iron-gear-wheel": 2.5,
+    "steel-plate": 1.25
+   }
+  },
+  "land-mine": {
+   "time": 0.078125,
+   "out": {
+    "explosives": 0.125,
+    "steel-plate": 0.0625
+   }
+  },
+  "rocket-launcher": {
+   "time": 0.625,
+   "out": {
+    "electronic-circuit": 1.25,
+    "iron-gear-wheel": 1.25,
+    "iron-plate": 1.25
+   }
+  },
+  "combat-shotgun": {
+   "time": 0.625,
+   "out": {
+    "wood": 2.5,
+    "copper-plate": 2.5,
+    "iron-gear-wheel": 1.25,
+    "steel-plate": 3.75
+   }
+  },
+  "express-underground-belt": {
+   "time": 0.0625,
+   "out": {
+    "fast-underground-belt": 0.25,
+    "iron-gear-wheel": 10
+   }
+  },
+  "fast-loader": {
+   "time": 0.1875,
+   "out": {
+    "loader": 0.25,
+    "fast-transport-belt": 1.25
+   }
+  },
+  "express-loader": {
+   "time": 0.625,
+   "out": {
+    "fast-loader": 0.25,
+    "express-transport-belt": 1.25
+   }
+  },
+  "express-splitter": {
+   "time": 0.125,
+   "out": {
+    "advanced-circuit": 2.5,
+    "iron-gear-wheel": 2.5,
+    "fast-splitter": 0.25
+   }
+  },
+  "advanced-circuit": {
+   "time": 0.375,
+   "out": {
+    "copper-cable": 1,
+    "plastic-bar": 0.5,
+    "electronic-circuit": 0.5
+   }
+  },
+  "processing-unit": {
+   "time": 0.625,
+   "out": {
+    "advanced-circuit": 0.5,
+    "electronic-circuit": 5
+   }
+  },
+  "logistic-robot": {
+   "time": 0.03125,
+   "out": {
+    "advanced-circuit": 0.5,
+    "flying-robot-frame": 0.25
+   }
+  },
+  "construction-robot": {
+   "time": 0.03125,
+   "out": {
+    "electronic-circuit": 0.5,
+    "flying-robot-frame": 0.25
+   }
+  },
+  "passive-provider-chest": {
+   "time": 0.03125,
+   "out": {
+    "advanced-circuit": 0.25,
+    "electronic-circuit": 0.75,
+    "steel-chest": 0.25
+   }
+  },
+  "active-provider-chest": {
+   "time": 0.03125,
+   "out": {
+    "advanced-circuit": 0.25,
+    "electronic-circuit": 0.75,
+    "steel-chest": 0.25
+   }
+  },
+  "storage-chest": {
+   "time": 0.03125,
+   "out": {
+    "advanced-circuit": 0.25,
+    "electronic-circuit": 0.75,
+    "steel-chest": 0.25
+   }
+  },
+  "buffer-chest": {
+   "time": 0.03125,
+   "out": {
+    "advanced-circuit": 0.25,
+    "electronic-circuit": 0.75,
+    "steel-chest": 0.25
+   }
+  },
+  "requester-chest": {
+   "time": 0.03125,
+   "out": {
+    "advanced-circuit": 0.25,
+    "electronic-circuit": 0.75,
+    "steel-chest": 0.25
+   }
+  },
+  "rocket-silo": {
+   "time": 1.875,
+   "out": {
+    "electric-engine-unit": 50,
+    "processing-unit": 50,
+    "pipe": 25,
+    "concrete": 250,
+    "steel-plate": 250
+   }
+  },
+  "cargo-landing-pad": {
+   "time": 1.875,
+   "out": {
+    "processing-unit": 2.5,
+    "steel-plate": 6.25,
+    "concrete": 50
+   }
+  },
+  "roboport": {
+   "time": 0.3125,
+   "out": {
+    "advanced-circuit": 11.25,
+    "iron-gear-wheel": 11.25,
+    "steel-plate": 11.25
+   }
+  },
+  "substation": {
+   "time": 0.03125,
+   "out": {
+    "copper-cable": 1.5,
+    "advanced-circuit": 1.25,
+    "steel-plate": 2.5
+   }
+  },
+  "accumulator": {
+   "time": 0.625,
+   "out": {
+    "battery": 1.25,
+    "iron-plate": 0.5
+   }
+  },
+  "electric-furnace": {
+   "time": 0.3125,
+   "out": {
+    "stone-brick": 2.5,
+    "advanced-circuit": 1.25,
+    "steel-plate": 2.5
+   }
+  },
+  "beacon": {
+   "time": 0.9375,
+   "out": {
+    "copper-cable": 2.5,
+    "steel-plate": 2.5,
+    "advanced-circuit": 5,
+    "electronic-circuit": 5
+   }
+  },
+  "pumpjack": {
+   "time": 0.3125,
+   "out": {
+    "pipe": 2.5,
+    "electronic-circuit": 1.25,
+    "iron-gear-wheel": 2.5,
+    "steel-plate": 1.25
+   }
+  },
+  "oil-refinery": {
+   "time": 0.5,
+   "out": {
+    "pipe": 2.5,
+    "electronic-circuit": 2.5,
+    "stone-brick": 2.5,
+    "iron-gear-wheel": 2.5,
+    "steel-plate": 3.75
+   }
+  },
+  "electric-engine-unit": {
+   "time": 0.625,
+   "out": {
+    "electronic-circuit": 0.5,
+    "engine-unit": 0.25
+   }
+  },
+  "flying-robot-frame": {
+   "time": 1.25,
+   "out": {
+    "electronic-circuit": 0.75,
+    "steel-plate": 0.25,
+    "battery": 0.5,
+    "electric-engine-unit": 0.25
+   }
+  },
+  "battery": {
+   "time": 0.25,
+   "out": {
+    "copper-plate": 0.25,
+    "iron-plate": 0.25
+   }
+  },
+  "storage-tank": {
+   "time": 0.1875,
+   "out": {
+    "steel-plate": 1.25,
+    "iron-plate": 5
+   }
+  },
+  "pump": {
+   "time": 0.125,
+   "out": {
+    "pipe": 0.25,
+    "steel-plate": 0.25,
+    "engine-unit": 0.25
+   }
+  },
+  "chemical-plant": {
+   "time": 0.3125,
+   "out": {
+    "pipe": 1.25,
+    "electronic-circuit": 1.25,
+    "iron-gear-wheel": 1.25,
+    "steel-plate": 1.25
+   }
+  },
+  "low-density-structure": {
+   "time": 0.9375,
+   "out": {
+    "plastic-bar": 1.25,
+    "copper-plate": 5,
+    "steel-plate": 0.5
+   }
+  },
+  "rocket-fuel": {
+   "time": 0.9375,
+   "out": {
+    "solid-fuel": 2.5
+   }
+  },
+  "nuclear-reactor": {
+   "time": 0.5,
+   "out": {
+    "copper-plate": 125,
+    "advanced-circuit": 125,
+    "steel-plate": 125,
+    "concrete": 125
+   }
+  },
+  "centrifuge": {
+   "time": 0.25,
+   "out": {
+    "iron-gear-wheel": 25,
+    "advanced-circuit": 25,
+    "steel-plate": 12.5,
+    "concrete": 25
+   }
+  },
+  "nuclear-fuel": {
+   "time": 5.625,
+   "out": {
+    "rocket-fuel": 0.25,
+    "uranium-235": 0.25
+   }
+  },
+  "heat-exchanger": {
+   "time": 0.1875,
+   "out": {
+    "pipe": 2.5,
+    "copper-plate": 25,
+    "steel-plate": 2.5
+   }
+  },
+  "heat-pipe": {
+   "time": 0.0625,
+   "out": {
+    "copper-plate": 5,
+    "steel-plate": 2.5
+   }
+  },
+  "steam-turbine": {
+   "time": 0.1875,
+   "out": {
+    "pipe": 5,
+    "copper-plate": 12.5,
+    "iron-gear-wheel": 12.5
+   }
+  },
+  "rail-support": {
+   "time": 0.03125,
+   "out": {
+    "steel-plate": 2.5,
+    "refined-concrete": 5
+   }
+  },
+  "quality-module": {
+   "time": 0.9375,
+   "out": {
+    "advanced-circuit": 1.25,
+    "electronic-circuit": 1.25
+   }
+  },
+  "quality-module-2": {
+   "time": 1.875,
+   "out": {
+    "processing-unit": 1.25,
+    "advanced-circuit": 1.25,
+    "quality-module": 1
+   }
+  },
+  "quality-module-3": {
+   "time": 3.75,
+   "out": {
+    "superconductor": 0.25,
+    "processing-unit": 1.25,
+    "advanced-circuit": 1.25,
+    "quality-module-2": 1
+   }
+  },
+  "recycler": {
+   "time": 0.1875,
+   "out": {
+    "concrete": 5,
+    "iron-gear-wheel": 10,
+    "steel-plate": 5,
+    "processing-unit": 1.5
+   }
+  },
+  "artificial-yumako-soil": {
+   "time": 0.0125,
+   "out": {
+    "landfill": 0.125,
+    "nutrients": 1.25,
+    "yumako-seed": 0.05
+   }
+  },
+  "overgrowth-yumako-soil": {
+   "time": 0.625,
+   "out": {
+    "spoilage": 12.5,
+    "biter-egg": 2.5,
+    "yumako-seed": 1.25,
+    "artificial-yumako-soil": 0.5
+   }
+  },
+  "artificial-jellynut-soil": {
+   "time": 0.0125,
+   "out": {
+    "landfill": 0.125,
+    "nutrients": 1.25,
+    "jellynut-seed": 0.05
+   }
+  },
+  "overgrowth-jellynut-soil": {
+   "time": 0.625,
+   "out": {
+    "spoilage": 12.5,
+    "biter-egg": 2.5,
+    "jellynut-seed": 1.25,
+    "artificial-jellynut-soil": 0.5
+   }
+  },
+  "nutrients": {
+   "time": 0.125,
+   "out": {
+    "spoilage": 2.5
+   }
+  },
+  "toolbelt-equipment": {
+   "time": 0.625,
+   "out": {
+    "carbon-fiber": 2.5,
+    "advanced-circuit": 0.75
+   }
+  },
+  "battery-mk3-equipment": {
+   "time": 0.625,
+   "out": {
+    "supercapacitor": 2.5,
+    "battery-mk2-equipment": 1.25
+   }
+  },
+  "space-platform-foundation": {
+   "time": 0.625,
+   "out": {
+    "copper-cable": 5,
+    "steel-plate": 5
+   }
+  },
+  "stack-inserter": {
+   "time": 0.03125,
+   "out": {
+    "jelly": 2.5,
+    "carbon-fiber": 0.5,
+    "processing-unit": 0.25,
+    "bulk-inserter": 0.25
+   }
+  },
+  "rocket-turret": {
+   "time": 0.625,
+   "out": {
+    "iron-gear-wheel": 5,
+    "steel-plate": 5,
+    "carbon-fiber": 5,
+    "processing-unit": 1,
+    "rocket-launcher": 1
+   }
+  },
+  "cargo-bay": {
+   "time": 0.625,
+   "out": {
+    "processing-unit": 1.25,
+    "low-density-structure": 5,
+    "steel-plate": 5
+   }
+  },
+  "landing-pad-unloading-bay": {
+   "time": 0.625,
+   "out": {
+    "processing-unit": 2,
+    "electric-engine-unit": 3.75,
+    "steel-chest": 1,
+    "cargo-bay": 0.25
+   }
+  },
+  "asteroid-collector": {
+   "time": 0.625,
+   "out": {
+    "processing-unit": 1.25,
+    "electric-engine-unit": 2,
+    "low-density-structure": 5
+   }
+  },
+  "crusher": {
+   "time": 0.625,
+   "out": {
+    "electric-engine-unit": 2.5,
+    "steel-plate": 2.5,
+    "low-density-structure": 5
+   }
+  },
+  "thruster": {
+   "time": 0.625,
+   "out": {
+    "electric-engine-unit": 1.25,
+    "processing-unit": 2.5,
+    "steel-plate": 2.5
+   }
+  },
+  "foundry": {
+   "time": 0.625,
+   "out": {
+    "refined-concrete": 5,
+    "electronic-circuit": 7.5,
+    "steel-plate": 12.5,
+    "tungsten-carbide": 12.5
+   }
+  },
+  "turbo-transport-belt": {
+   "time": 0.03125,
+   "out": {
+    "express-transport-belt": 0.25,
+    "tungsten-plate": 1.25
+   }
+  },
+  "turbo-underground-belt": {
+   "time": 0.0625,
+   "out": {
+    "express-underground-belt": 0.25,
+    "tungsten-plate": 5
+   }
+  },
+  "turbo-splitter": {
+   "time": 0.125,
+   "out": {
+    "processing-unit": 0.5,
+    "tungsten-plate": 3.75,
+    "express-splitter": 0.25
+   }
+  },
+  "turbo-loader": {
+   "time": 1.25,
+   "out": {
+    "express-loader": 0.25,
+    "turbo-transport-belt": 1.25
+   }
+  },
+  "big-mining-drill": {
+   "time": 1.875,
+   "out": {
+    "advanced-circuit": 2.5,
+    "electric-engine-unit": 2.5,
+    "tungsten-carbide": 5,
+    "electric-mining-drill": 0.25
+   }
+  },
+  "mech-armor": {
+   "time": 3.75,
+   "out": {
+    "supercapacitor": 12.5,
+    "superconductor": 12.5,
+    "processing-unit": 25,
+    "holmium-plate": 50,
+    "power-armor-mk2": 0.25
+   }
+  },
+  "railgun": {
+   "time": 0.625,
+   "out": {
+    "quantum-processor": 5,
+    "superconductor": 2.5,
+    "tungsten-plate": 2.5
+   }
+  },
+  "railgun-turret": {
+   "time": 0.625,
+   "out": {
+    "carbon-fiber": 5,
+    "superconductor": 12.5,
+    "tungsten-plate": 7.5,
+    "quantum-processor": 25
+   }
+  },
+  "railgun-ammo": {
+   "time": 1.5625,
+   "out": {
+    "explosives": 0.5,
+    "copper-cable": 2.5,
+    "steel-plate": 1.25
+   }
+  },
+  "agricultural-tower": {
+   "time": 0.625,
+   "out": {
+    "landfill": 0.25,
+    "spoilage": 5,
+    "electronic-circuit": 0.75,
+    "steel-plate": 2.5
+   }
+  },
+  "biochamber": {
+   "time": 1.25,
+   "out": {
+    "landfill": 0.25,
+    "electronic-circuit": 1.25,
+    "iron-plate": 5,
+    "pentapod-egg": 0.25,
+    "nutrients": 1.25
+   }
+  },
+  "capture-robot-rocket": {
+   "time": 0.625,
+   "out": {
+    "processing-unit": 0.5,
+    "bioflux": 5,
+    "steel-plate": 0.5,
+    "flying-robot-frame": 0.25
+   }
+  },
+  "lightning-rod": {
+   "time": 0.3125,
+   "out": {
+    "stone-brick": 1,
+    "steel-plate": 2,
+    "copper-cable": 3
+   }
+  },
+  "electromagnetic-plant": {
+   "time": 0.625,
+   "out": {
+    "refined-concrete": 12.5,
+    "processing-unit": 12.5,
+    "steel-plate": 12.5,
+    "holmium-plate": 37.5
+   }
+  },
+  "supercapacitor": {
+   "time": 0.625,
+   "out": {
+    "battery": 0.25,
+    "electronic-circuit": 1,
+    "superconductor": 0.5,
+    "holmium-plate": 0.5
+   }
+  },
+  "lightning-collector": {
+   "time": 0.3125,
+   "out": {
+    "accumulator": 0.25,
+    "supercapacitor": 2,
+    "lightning-rod": 0.25
+   }
+  },
+  "teslagun": {
+   "time": 1.875,
+   "out": {
+    "plastic-bar": 7.5,
+    "superconductor": 2.5,
+    "holmium-plate": 2.5
+   }
+  },
+  "tesla-turret": {
+   "time": 1.875,
+   "out": {
+    "superconductor": 12.5,
+    "processing-unit": 2.5,
+    "supercapacitor": 2.5,
+    "teslagun": 0.25
+   }
+  },
+  "tesla-ammo": {
+   "time": 1.875,
+   "out": {
+    "plastic-bar": 0.25,
+    "supercapacitor": 0.25
+   }
+  },
+  "heating-tower": {
+   "time": 0.625,
+   "out": {
+    "concrete": 5,
+    "heat-pipe": 1.25,
+    "boiler": 0.5
+   }
+  },
+  "cryogenic-plant": {
+   "time": 0.625,
+   "out": {
+    "lithium-plate": 5,
+    "processing-unit": 5,
+    "superconductor": 5,
+    "refined-concrete": 10
+   }
+  },
+  "quantum-processor": {
+   "time": 1.875,
+   "out": {
+    "lithium-plate": 0.5,
+    "carbon-fiber": 0.25,
+    "superconductor": 0.25,
+    "processing-unit": 0.25,
+    "tungsten-carbide": 0.25
+   }
+  },
+  "fusion-reactor-equipment": {
+   "time": 1.875,
+   "out": {
+    "quantum-processor": 62.5,
+    "supercapacitor": 6.25,
+    "carbon-fiber": 25,
+    "tungsten-plate": 62.5,
+    "fusion-power-cell": 2.5,
+    "fission-reactor-equipment": 0.25
+   }
+  },
+  "fusion-reactor": {
+   "time": 3.75,
+   "out": {
+    "quantum-processor": 62.5,
+    "superconductor": 50,
+    "tungsten-plate": 50
+   }
+  },
+  "fusion-generator": {
+   "time": 1.875,
+   "out": {
+    "quantum-processor": 12.5,
+    "superconductor": 25,
+    "tungsten-plate": 25
+   }
+  },
+  "ice-platform": {
+   "time": 1.875,
+   "out": {
+    "ice": 12.5
+   }
+  },
+  "foundation": {
+   "time": 1.875,
+   "out": {
+    "stone": 5,
+    "carbon-fiber": 1,
+    "lithium-plate": 1,
+    "tungsten-plate": 1
+   }
+  },
+  "water-barrel": {
+   "time": 0.0125,
+   "out": {
+    "barrel": 0.25
+   }
+  },
+  "sulfuric-acid-barrel": {
+   "time": 0.0125,
+   "out": {
+    "barrel": 0.25
+   }
+  },
+  "crude-oil-barrel": {
+   "time": 0.0125,
+   "out": {
+    "barrel": 0.25
+   }
+  },
+  "heavy-oil-barrel": {
+   "time": 0.0125,
+   "out": {
+    "barrel": 0.25
+   }
+  },
+  "light-oil-barrel": {
+   "time": 0.0125,
+   "out": {
+    "barrel": 0.25
+   }
+  },
+  "petroleum-gas-barrel": {
+   "time": 0.0125,
+   "out": {
+    "barrel": 0.25
+   }
+  },
+  "lubricant-barrel": {
+   "time": 0.0125,
+   "out": {
+    "barrel": 0.25
+   }
+  },
+  "fluoroketone-cold-barrel": {
+   "time": 0.0125,
+   "out": {
+    "barrel": 0.25
+   }
+  },
+  "fluoroketone-hot-barrel": {
+   "time": 0.0125,
+   "out": {
+    "barrel": 0.25
+   }
+  },
+  "stone-brick": {
+   "time": 0.2,
+   "out": {
+    "stone-brick": 0.25
+   }
+  },
+  "wood": {
+   "time": 0.03125,
+   "out": {
+    "wood": 0.25
+   }
+  },
+  "coal": {
+   "time": 0.03125,
+   "out": {
+    "coal": 0.25
+   }
+  },
+  "stone": {
+   "time": 0.03125,
+   "out": {
+    "stone": 0.25
+   }
+  },
+  "iron-ore": {
+   "time": 0.03125,
+   "out": {
+    "iron-ore": 0.25
+   }
+  },
+  "copper-ore": {
+   "time": 0.03125,
+   "out": {
+    "copper-ore": 0.25
+   }
+  },
+  "iron-plate": {
+   "time": 0.2,
+   "out": {
+    "iron-plate": 0.25
+   }
+  },
+  "copper-plate": {
+   "time": 0.2,
+   "out": {
+    "copper-plate": 0.25
+   }
+  },
+  "automation-science-pack": {
+   "time": 0.3125,
+   "out": {
+    "automation-science-pack": 0.25
+   }
+  },
+  "logistic-science-pack": {
+   "time": 0.375,
+   "out": {
+    "logistic-science-pack": 0.25
+   }
+  },
+  "steel-plate": {
+   "time": 1,
+   "out": {
+    "steel-plate": 0.25
+   }
+  },
+  "solid-fuel": {
+   "time": 0.03125,
+   "out": {
+    "solid-fuel": 0.25
+   }
+  },
+  "landfill": {
+   "time": 0.03125,
+   "out": {
+    "landfill": 0.25
+   }
+  },
+  "uranium-ore": {
+   "time": 0.03125,
+   "out": {
+    "uranium-ore": 0.25
+   }
+  },
+  "chemical-science-pack": {
+   "time": 1.5,
+   "out": {
+    "chemical-science-pack": 0.25
+   }
+  },
+  "military-science-pack": {
+   "time": 0.625,
+   "out": {
+    "military-science-pack": 0.25
+   }
+  },
+  "production-science-pack": {
+   "time": 1.3125,
+   "out": {
+    "production-science-pack": 0.25
+   }
+  },
+  "utility-science-pack": {
+   "time": 1.3125,
+   "out": {
+    "utility-science-pack": 0.25
+   }
+  },
+  "space-science-pack": {
+   "time": 0.9375,
+   "out": {
+    "space-science-pack": 0.25
+   }
+  },
+  "sulfur": {
+   "time": 0.0625,
+   "out": {
+    "sulfur": 0.25
+   }
+  },
+  "plastic-bar": {
+   "time": 0.0625,
+   "out": {
+    "plastic-bar": 0.25
+   }
+  },
+  "explosives": {
+   "time": 0.25,
+   "out": {
+    "explosives": 0.25
+   }
+  },
+  "uranium-235": {
+   "time": 0.03125,
+   "out": {
+    "uranium-235": 0.25
+   }
+  },
+  "uranium-238": {
+   "time": 0.03125,
+   "out": {
+    "uranium-238": 0.25
+   }
+  },
+  "uranium-fuel-cell": {
+   "time": 0.625,
+   "out": {
+    "uranium-fuel-cell": 0.25
+   }
+  },
+  "depleted-uranium-fuel-cell": {
+   "time": 0.03125,
+   "out": {
+    "depleted-uranium-fuel-cell": 0.25
+   }
+  },
+  "one-way-valve": {
+   "time": 0.03125,
+   "out": {
+    "one-way-valve": 0.25
+   }
+  },
+  "overflow-valve": {
+   "time": 0.03125,
+   "out": {
+    "overflow-valve": 0.25
+   }
+  },
+  "top-up-valve": {
+   "time": 0.03125,
+   "out": {
+    "top-up-valve": 0.25
+   }
+  },
+  "metallurgic-science-pack": {
+   "time": 0.625,
+   "out": {
+    "metallurgic-science-pack": 0.25
+   }
+  },
+  "agricultural-science-pack": {
+   "time": 0.25,
+   "out": {
+    "agricultural-science-pack": 0.25
+   }
+  },
+  "electromagnetic-science-pack": {
+   "time": 0.625,
+   "out": {
+    "electromagnetic-science-pack": 0.25
+   }
+  },
+  "cryogenic-science-pack": {
+   "time": 1.25,
+   "out": {
+    "cryogenic-science-pack": 0.25
+   }
+  },
+  "promethium-science-pack": {
+   "time": 0.3125,
+   "out": {
+    "promethium-science-pack": 0.25
+   }
+  },
+  "metallic-asteroid-chunk": {
+   "time": 0.03125,
+   "out": {
+    "metallic-asteroid-chunk": 0.25
+   }
+  },
+  "carbonic-asteroid-chunk": {
+   "time": 0.03125,
+   "out": {
+    "carbonic-asteroid-chunk": 0.25
+   }
+  },
+  "oxide-asteroid-chunk": {
+   "time": 0.03125,
+   "out": {
+    "oxide-asteroid-chunk": 0.25
+   }
+  },
+  "promethium-asteroid-chunk": {
+   "time": 0.03125,
+   "out": {
+    "promethium-asteroid-chunk": 0.25
+   }
+  },
+  "ice": {
+   "time": 0.03125,
+   "out": {
+    "ice": 0.25
+   }
+  },
+  "carbon": {
+   "time": 0.0625,
+   "out": {
+    "carbon": 0.25
+   }
+  },
+  "calcite": {
+   "time": 0.03125,
+   "out": {
+    "calcite": 0.25
+   }
+  },
+  "tungsten-ore": {
+   "time": 0.03125,
+   "out": {
+    "tungsten-ore": 0.25
+   }
+  },
+  "tungsten-plate": {
+   "time": 0.625,
+   "out": {
+    "tungsten-plate": 0.25
+   }
+  },
+  "tungsten-carbide": {
+   "time": 0.0625,
+   "out": {
+    "tungsten-carbide": 0.25
+   }
+  },
+  "copper-bacteria": {
+   "time": 0.0625,
+   "out": {
+    "copper-bacteria": 0.25
+   }
+  },
+  "iron-bacteria": {
+   "time": 0.0625,
+   "out": {
+    "iron-bacteria": 0.25
+   }
+  },
+  "yumako-seed": {
+   "time": 0.03125,
+   "out": {
+    "yumako-seed": 0.25
+   }
+  },
+  "jellynut-seed": {
+   "time": 0.03125,
+   "out": {
+    "jellynut-seed": 0.25
+   }
+  },
+  "biolab": {
+   "time": 0.625,
+   "out": {
+    "biolab": 0.25
+   }
+  },
+  "captive-biter-spawner": {
+   "time": 0.625,
+   "out": {
+    "captive-biter-spawner": 0.25
+   }
+  },
+  "biter-egg": {
+   "time": 0.625,
+   "out": {
+    "biter-egg": 0.25
+   }
+  },
+  "pentapod-egg": {
+   "time": 0.9375,
+   "out": {
+    "pentapod-egg": 0.25
+   }
+  },
+  "carbon-fiber": {
+   "time": 0.3125,
+   "out": {
+    "carbon-fiber": 0.25
+   }
+  },
+  "holmium-ore": {
+   "time": 0.03125,
+   "out": {
+    "holmium-ore": 0.25
+   }
+  },
+  "holmium-plate": {
+   "time": 0.0625,
+   "out": {
+    "holmium-plate": 0.25
+   }
+  },
+  "lithium": {
+   "time": 1.25,
+   "out": {
+    "lithium": 0.25
+   }
+  },
+  "lithium-plate": {
+   "time": 0.4,
+   "out": {
+    "lithium-plate": 0.25
+   }
+  },
+  "superconductor": {
+   "time": 0.3125,
+   "out": {
+    "superconductor": 0.25
+   }
+  },
+  "fusion-power-cell": {
+   "time": 0.625,
+   "out": {
+    "fusion-power-cell": 0.25
+   }
+  },
+  "spoilage": {
+   "time": 0.03125,
+   "out": {
+    "spoilage": 0.25
+   }
+  },
+  "space-platform-hub": {
+   "time": 0.03125,
+   "out": {
+    "space-platform-hub": 0.25
+   }
+  },
+  "tree-seed": {
+   "time": 0.125,
+   "out": {
+    "tree-seed": 0.25
+   }
+  },
+  "flamethrower-ammo": {
+   "time": 0.375,
+   "out": {
+    "flamethrower-ammo": 0.25
+   }
+  },
+  "raw-fish": {
+   "time": 0.03125,
+   "out": {
+    "raw-fish": 0.25
+   }
+  },
+  "yumako": {
+   "time": 0.03125,
+   "out": {
+    "yumako": 0.25
+   }
+  },
+  "jellynut": {
+   "time": 0.03125,
+   "out": {
+    "jellynut": 0.25
+   }
+  },
+  "yumako-mash": {
+   "time": 0.03125,
+   "out": {
+    "yumako-mash": 0.25
+   }
+  },
+  "jelly": {
+   "time": 0.03125,
+   "out": {
+    "jelly": 0.25
+   }
+  },
+  "bioflux": {
+   "time": 0.375,
+   "out": {
+    "bioflux": 0.25
+   }
+  },
+  "pistol": {
+   "time": 0.3125,
+   "out": {
+    "pistol": 0.25
+   }
   }
  }
 };

@@ -38,9 +38,17 @@ class Recycler extends Entity {
         spawnSpark((this.x + 0.5 + (Math.random() - 0.5) * 0.8) * TILE, (this.y + 0.4) * TILE, { size: 1.5, life: 0.5, speed: 2.5, color: '#ff9a3a' });
       }
       if (this.prog >= this.batchTime()) {
+        this._fracBuf = this._fracBuf || {};
         for (const k in out) {
-          this.outp[k] = (this.outp[k] || 0) + out[k];
-          if (typeof trackProd === 'function') trackProd(k, out[k]);
+          const v = out[k];
+          // 官方回收配方含小数期望（extra_count_fraction / probability）——跨批累积进位，对齐官方分数产出
+          const acc = (this._fracBuf[k] || 0) + v;
+          const whole = Math.floor(acc);
+          this._fracBuf[k] = acc - whole;
+          if (whole > 0) {
+            this.outp[k] = (this.outp[k] || 0) + whole;
+            if (typeof trackProd === 'function') trackProd(k, whole);
+          }
         }
         this.recycleItem = null;
         this.crafting = false;
@@ -49,11 +57,21 @@ class Recycler extends Entity {
       return;
     }
   }
-  // 计算某物品回收返还的原料：取其配方各输入的 25%（每项至少 1 个）。
-  // 配方来源：通用 RECIPES（组装机/化工/炼油/离心等）。无配方（矿石/流体/不可回收）返回 null。
+  // 计算某物品回收返还的原料。返回 {outItem: 每批期望产出}（可为小数）。
+  // 优先读取官方 *-recycling 回收配方（GAME_DATA.recycling，单源来自 data.generated.js），
+  // 无官方回收配方的物品回退到通用 25% 估算法（对齐官方 recycle_ratio=0.25 兜底）。
   recycleResults(item) {
     const out = {};
     let found = false;
+    // 官方 *-recycling 回收配方（精确单源，含 extra_count_fraction 分数 / independent_probability 概率）
+    const rrec = GAME_DATA.recycling && GAME_DATA.recycling[item];
+    if (rrec && rrec.out) {
+      for (const k in rrec.out) {
+        const v = rrec.out[k];
+        if (v > 0) { out[k] = (out[k] || 0) + v; found = true; }
+      }
+      return found ? out : null;
+    }
     // 通用配方表（组装机等）以 out 键为物品名
     for (const rid in RECIPES) {
       const rec = RECIPES[rid];
@@ -140,6 +158,7 @@ class Recycler extends Entity {
     s.crafting = this.crafting;
     s.modules = this.modules;
     s.prodBuf = this.prodBuf;
+    s.fracBuf = this._fracBuf || null;
     return s;
   }
   static restore(s) {
@@ -150,6 +169,7 @@ class Recycler extends Entity {
     r.crafting = !!s.crafting;
     r.modules = s.modules || {};
     r.prodBuf = s.prodBuf || 0;
+    r._fracBuf = s.fracBuf || null;
     return r;
   }
 }

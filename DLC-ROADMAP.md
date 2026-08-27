@@ -1221,6 +1221,7 @@
 > 按既定适配设计不限制，可在任意星球建造，避免破坏既有玩法。
 > **校验**：verify-dlc 新增「行星专属生产建筑」校验（9 项），全量 18 个校验脚本通过，构建通过。
 
+D
 ### 阶段六.5：空间平台枢纽轨道货运（Space Platform Hub Orbital Cargo，本迭代新增）
 
 > 依据「继续开发完善、向《异星工厂》太空时代靠齐」与「太空平台完整轨道系统」迭代方向，
@@ -1266,4 +1267,24 @@
 >   且消除了「同一数据在设备侧维护第二套」的冗余。
 > - **校验**：`verify-dlc` 新增装载机速度单源守卫（loader.js 读取 GAME_DATA.deviceStats、
 >   已移除硬编码速度表），全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+
+### 阶段六.8：官方回收配方单源化（Recycler *-recycling，本迭代新增）
+
+> 依据「所有数据/参数从 data.generated.js 单源获取，不单独维护第二套数值」原则，
+> 把回收机（Recycler）的回收产出从「通用 25% 估算法」升级为官方 `*-recycling` 回收配方精确值：
+
+- **数据单源**：`tools/generate-game-data.js` 新增 `GAME_DATA.recycling[item]`——从 factorio-data 官方
+  `*-recycling` 配方现场提取每个可回收物品的精确回收配方（耗时 `energy_required` + 产出），
+  覆盖 `extra_count_fraction`（分数产出，如电子电路→铜线 0.75/铁板 0.25）与
+  `independent_probability`（概率产出，如铁板 25% 返还自身），映射到项目物品 ID 写入
+  data.generated.js（回收配方 279 条）。未单独维护数值表。
+- **前端**：`js/devices/recycler.js` 的 `recycleResults()` 改为优先读取 `GAME_DATA.recycling[item]`
+  （官方精确产出），无官方回收配方的物品回退到通用 25% 估算法兜底；跨批用分数进位缓冲
+  `_fracBuf` 累积小数产出（对齐官方 `extra_count_fraction` 语义），并加入存档序列化。
+- **效果**：回收机对 DLC/基础物品（超导体 25% 返还、传送带 0.125 齿轮+0.125 铁板/批、
+  组装机 2.25 铁板+1.25 齿轮+0.75 电路/批、回收机自身 5 混凝土+10 齿轮+5 钢板+1.5 处理器/批等）
+  严格对齐官方回收数值，不再用「每项至少 1 个」的粗放估算。
+- **校验**：verify-dlc 新增「官方回收配方」校验（recycler.js 单源读取 + 抽样 6 物品的
+  耗时/产出逐项核对 + 条数合理），全量 18 个校验脚本通过，`node build.js` 构建通过。
 
