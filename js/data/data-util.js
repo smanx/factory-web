@@ -617,3 +617,16 @@ for (const id in ITEMS) {
     }
   }
 })();
+
+// ===== 机械臂精准补货辅助 =====
+// 对齐《异星工厂》：机械臂按配方实际消耗量精准补货，而非一次性塞满硬编码大数值。
+// 1) 组装机/化工厂/离心机等：每种原料补充到「配方单次消耗量 × 2」
+// 2) 熔炉：矿石补充到「冶炼配方单次消耗量 × 2」，燃料补充到「足够燃烧 5 秒」的量
+function smeltNeed(item) {
+  for (const r of SMELTS) if (r.inp === item) return r.inCount || 1;
+  return 1;
+}
+// 燃料上限 = 足够燃烧 5 秒所需的燃料块数（每块燃料提供 fuelEnergy 点能量，熔炉每秒消耗 fuelConsumptionMult() 点）
+function fuelLimitFor5s(fuelEnergy) {
+  return Math.max(1, Math.ceil(5 * fuelConsumptionMult() / fuelEnergy));
+}
