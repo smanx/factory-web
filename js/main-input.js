@@ -333,14 +333,23 @@ function updateHeldMouse(dt) {
 // UPS（世界更新次数/秒）与 FPS（渲染帧率/秒）解耦：
 // 世界逻辑以固定步长 TICK 推进（默认 60 次/秒），与渲染帧率无关；
 // 渲染仍由 requestAnimationFrame 驱动，帧率跟随显示器刷新率。
+// UPS 显示值为实测：最近 1 秒内实际执行的世界更新步数，
+// 跟随 timeScale 加速，且受 MAX_TICK_STEPS 与渲染帧率共同封顶。
 // 采用经典 accumulator 累积器模式，避免螺旋式死亡并平滑渲染与更新之间的差异。
 const TICK_RATE = 60;              // 目标 UPS：每秒世界更新次数
 const TICK = 1 / TICK_RATE;        // 单个逻辑步长（秒）
 const MAX_TICK_STEPS = 5;          // 单帧最多补跑的更新次数（防止卡顿后追帧导致螺旋式死亡）
+// 实测 UPS 显示的窗口与平滑系数：窗口越短、系数越大 → 上升响应越快。
+// 窗口过短会因高刷新率下部分空帧（0 步）抖动；此处 0.5s + 0.25 约 1 秒内稳定到位且足够抗噪。
+const UPS_WINDOW = 0.5;            // UPS 统计窗口（秒）
+const UPS_SMOOTH = 0.25;           // UPS 平滑系数（越大跟踪越快）
 
 // 世界逻辑累积器与上一帧时间（挂在 loop 上便于保存状态）
 loop.acc = 0;
 loop.lastT = 0;
+// 实测 UPS 统计：最近真实 1 秒窗口内实际执行过的世界更新步数（跟随 timeScale 且受 MAX_TICK_STEPS/FPS 封顶）
+loop.upsSteps = 0;      // 当前窗口内累计的逻辑步数
+loop.upsWinT = 0;       // 当前窗口已累计的真实流逝时间
 
 // 单个固定逻辑步：以 dt=TICK 推进一次世界（玩家/设备/电力/物流/战斗/天气等）。
 // 与渲染解耦：渲染帧率波动不会影响这里推进的步长。
@@ -428,8 +437,6 @@ function loop(ts) {
   loop.lastT = now;
   // FPS：渲染帧率由实际帧间隔平滑得出（跟随显示器刷新率）。
   fpsSmooth += (1 / Math.max(raw, 0.0001) - fpsSmooth) * 0.05;
-  // UPS：世界更新与渲染解耦，固定为 TICK_RATE（如 60），不再跟随渲染帧率。
-  upsSmooth += (TICK_RATE - upsSmooth) * 0.05;
   if (G.settings.autoSave) {
     G.autoT += raw;
     if (G.autoT >= 60) { G.autoT = 0; autoSaveGame().then(() => toast('自动保存完成')); }
@@ -447,13 +454,28 @@ function loop(ts) {
       stepWorld(TICK);
       loop.acc -= TICK;
       steps++;
+      loop.upsSteps++;     // 实测：累计一次逻辑步
     }
     // 若累计滞后过多（远超单帧可补跑上限），丢弃多余累积，避免螺旋式死亡。
     if (loop.acc > MAX_TICK_STEPS * TICK) loop.acc = 0;
+    // 实测 UPS：以真实流逝时间按 0.5 秒短窗口累计步数，平滑回写目标。
+    // 窗口越短、系数越大 → 上升响应越快；短窗口可消除高刷新率下空帧（0 步）带来的抖动。
+    // （总体跟随 timeScale，且如实反映 MAX_TICK_STEPS 与渲染 FPS 封顶。）
+    loop.upsWinT += raw;
+    if (loop.upsWinT >= UPS_WINDOW) {
+      loop.upsWinT = 0;
+      const measured = loop.upsSteps / UPS_WINDOW;   // 每秒等价步数
+      upsSmooth += (measured - upsSmooth) * UPS_SMOOTH;
+      loop.upsSteps = 0;
+    }
   } else {
-    // 暂停时清空累积器，避免恢复后一次性补跑大量逻辑步。
     loop.acc = 0;
+    // 暂停：窗口归零，UPS 平滑回落，反映“未在更新”。
+    loop.upsSteps = 0;
+    loop.upsWinT = 0;
   }
+  // 暂停期间不推进，故将暂停时的回写放到未暂停分支内；这里补充暂停时朝 0 平滑。
+  if (paused) upsSmooth += (0 - upsSmooth) * 0.05;
 
   try {
     // 背景音乐（可独立开关）：暂停游戏时仍持续播放（界面层氛围）
