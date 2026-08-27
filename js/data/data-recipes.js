@@ -705,5 +705,18 @@ function itemRecipeText(id) {
 // ===== 官方配方数据桥接（GAME_DATA 由 factorio-data 现场生成，见 tools/generate-game-data.js）=====
 // 唯一数值源 = factorio-data；此处在文件末尾把自动生成配方合并进 RECIPES（自动覆盖手工同名键，
 // 未生成的键（保留手工 / 官方无 / 引用未知物品）保持手工值不变）。
-for (const k in GAME_DATA.recipe) RECIPES[k] = GAME_DATA.recipe[k];
+for (const k in GAME_DATA.recipe) {
+  // 炼油/离心机配方走各自独立面板表（REFINERY_RECIPES / CENTRIFUGE_RECIPES），
+  // 不混入 RECIPES 组装机表，避免组装机面板误列。
+  if (REFINERY_RECIPES[k] !== undefined || CENTRIFUGE_RECIPES[k] !== undefined) continue;
+  RECIPES[k] = GAME_DATA.recipe[k];
+}
+// 炼油厂/离心机配方同样从 GAME_DATA 单源覆盖数值（保留 name 显示名）：
+// 自动把官方数值（time/inp/out/prob）写回独立面板表，修正手工表与官方的差异（如
+// simple-coal-liquefaction 官方 = 10煤+2方解石+25硫酸 → 50重油）。
+for (const tbl of [REFINERY_RECIPES, CENTRIFUGE_RECIPES]) {
+  for (const rid in tbl) {
+    if (GAME_DATA.recipe[rid]) Object.assign(tbl[rid], GAME_DATA.recipe[rid]);
+  }
+}
 

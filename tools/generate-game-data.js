@@ -1194,7 +1194,10 @@ Object.assign(GAME_DATA, {
 
 // ---- recipe ----
 const skipDetails = {}; // rid → 原因
-for (const rid of projectRecipes) {
+// 遍历全部配方表（RECIPES + REFINERY_RECIPES + CENTRIFUGE_RECIPES），
+// 让炼油/离心机配方也同 RECIPES 一样从官方数据单源化（见 data-recipes.js 末尾桥接）。
+const ALL_RECIPE_IDS = new Set([...projectRecipes, ...projectRefRecipes, ...projectCentRecipes]);
+for (const rid of ALL_RECIPE_IDS) {
   if (KEEP_MANUAL_RECIPES.has(rid)) {
     log.keptManual.push(rid);
     skipDetails[rid] = '保留手工（项目自定/旧版，见 KEEP_MANUAL_RECIPES）';

@@ -1120,3 +1120,28 @@
 >   verify-dlc 校验全部改为官方键 `nutrients-from-yumako-mash`。
 > - **校验**：verify-dlc 新增营养素链校验（配方注册/数值 4s/命名/设备/科技/移除非官方键），
 >   全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段六.4：炼油/离心机配方数据单源化（本迭代新增）
+
+> 依据「所有配方数据从 data.generated.js（factorio-data 官方）获取，设备不单独维护第二套数值」原则，
+> 把此前硬编码在 data-recipes.js 的炼油厂（REFINERY_RECIPES）与离心机（CENTRIFUGE_RECIPES）
+> 配方表改为从 GAME_DATA.recipe 单源覆盖，并修正其中与官方不一致的数值。
+>
+> **改动**：
+> - **generate-game-data.js**：配方抽取循环由 `projectRecipes`（组装机 RECIPES）扩展为
+>   `RECIPES + REFINERY_RECIPES + CENTRIFUGE_RECIPES` 全集，把 6 条炼油/离心机配方
+>   （basic-oil / advanced-oil / coal-liquefaction / simple-coal / uranium-processing /
+>   nuclear-fuel-reprocessing）也写入 GAME_DATA.recipe，并按官方 crafting category 路由
+>   到 oil-refinery / centrifuge（`recipeDevice`）。
+> - **data-recipes.js**：文件末尾把 GAME_DATA.recipe 合并进 RECIPES 时**跳过炼油/离心机键**，
+>   避免混入组装机表；并新增独立桥接块，把 GAME_DATA.recipe 数值 `Object.assign` 回
+>   `REFINERY_RECIPES` / `CENTRIFUGE_RECIPES`（保留 name 显示名，覆盖 time/inp/out/prob）。
+> - **修正数值**（原手工表与官方不一致）：
+>   - `simple-coal-liquefaction`：`10煤+25方解石 → 50重油` 修正为官方
+>     **`10煤 + 2方解石 + 25硫酸 → 50重油`**（5s）。方解石用量 25→2，并补上硫酸原料。
+>   - 其余 5 条（basic/advanced-oil、coal-liquefaction、uranium-processing、
+>     nuclear-fuel-reprocessing）原值与官方一致，经单源确认无变化。
+> - **校验**：verify-dlc 新增「炼油/离心机配方单源化」校验（9 项：6 条官方数值 + 2 项不混入
+>   组装机 RECIPES + 1 项 data-recipes.js 单源读取），全量 18 个校验脚本通过，`node build.js` 构建通过。
+> - **数据单源**：炼油/离心机配方数值全部来自 data.generated.js（factorio-data 官方），
+>   未单独维护第二套数值表。

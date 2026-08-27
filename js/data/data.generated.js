@@ -3727,6 +3727,70 @@ const GAME_DATA = {
    "out": {
     "discharge-defense-equipment": 1
    }
+  },
+  "basic-oil": {
+   "time": 5,
+   "inp": {
+    "crude-oil": 100
+   },
+   "out": {
+    "petroleum-gas": 45
+   }
+  },
+  "advanced-oil": {
+   "time": 5,
+   "inp": {
+    "water": 50,
+    "crude-oil": 100
+   },
+   "out": {
+    "heavy-oil": 25,
+    "light-oil": 45,
+    "petroleum-gas": 55
+   }
+  },
+  "coal-liquefaction": {
+   "time": 5,
+   "inp": {
+    "coal": 10,
+    "heavy-oil": 25,
+    "steam": 50
+   },
+   "out": {
+    "heavy-oil": 90,
+    "light-oil": 20,
+    "petroleum-gas": 10
+   }
+  },
+  "simple-coal": {
+   "time": 5,
+   "inp": {
+    "coal": 10,
+    "calcite": 2,
+    "sulfuric-acid": 25
+   },
+   "out": {
+    "heavy-oil": 50
+   }
+  },
+  "uranium-processing": {
+   "time": 12,
+   "inp": {
+    "uranium-ore": 10
+   },
+   "prob": {
+    "uranium-235": 0.007,
+    "uranium-238": 0.993
+   }
+  },
+  "nuclear-fuel-reprocessing": {
+   "time": 60,
+   "inp": {
+    "depleted-uranium-fuel-cell": 5
+   },
+   "out": {
+    "uranium-238": 3
+   }
   }
  },
  "recipeDevice": {
@@ -4021,7 +4085,13 @@ const GAME_DATA = {
   "fission-reactor-equipment": "assembling-machine-1",
   "toolbelt-equipment": "assembling-machine-1",
   "mech-armor": "assembling-machine-1",
-  "discharge-defense-equipment": "assembling-machine-1"
+  "discharge-defense-equipment": "assembling-machine-1",
+  "basic-oil": "oil-refinery",
+  "advanced-oil": "oil-refinery",
+  "coal-liquefaction": "oil-refinery",
+  "simple-coal": "oil-refinery",
+  "uranium-processing": "centrifuge",
+  "nuclear-fuel-reprocessing": "centrifuge"
  },
  "names": {
   "iron-ore": {

@@ -1429,5 +1429,47 @@ ok(pollutionJs.includes('GAME_DATA.pollution'), 'pollution.js 从 GAME_DATA.poll
 ok(!/POLLUTION_SOURCES = \{[^}]*'stone-furnace': 2,[^}]*\}/.test(pollutionJs) || pollutionJs.includes('GAME_DATA.pollution'), 'pollution.js 污染数值已单源化');
 
 
+
+// ===== 炼油/离心机配方单源化校验（本迭代新增）=====
+// 校验 REFINERY_RECIPES / CENTRIFUGE_RECIPES 数值来自 GAME_DATA.recipe（factorio-data 官方），
+// 且配方键不混入 RECIPES 组装机表。
+console.log('\n【炼油/离心机配方单源化（GAME_DATA.recipe 官方）】');
+// 运行时经 vm 加载，获取独立面板表与 RECIPES
+const recSrc = fs.readFileSync(ROOT + '/js/data/data.generated.js', 'utf8')
+  + '\n' + fs.readFileSync(ROOT + '/js/data/data.js', 'utf8')
+  + '\n' + fs.readFileSync(ROOT + '/js/data/data-items.js', 'utf8')
+  + '\n' + fs.readFileSync(ROOT + '/js/data/data-recipes.js', 'utf8');
+const rsandbox = { console, Math, JSON, Set, Map, Array, Object, String, Number, Boolean, Date, RegExp, parseInt, parseFloat, G: { techDone: {}, dbg: null } };
+rsandbox.global = rsandbox;
+vm.createContext(rsandbox);
+vm.runInContext(recSrc + ';globalThis.__RR=REFINERY_RECIPES;globalThis.__CR=CENTRIFUGE_RECIPES;globalThis.__R=RECIPES;', rsandbox);
+const RRF = rsandbox.__RR, CRF = rsandbox.__CR, RECIPES_F = rsandbox.__R;
+// simple-coal-liquefaction 官方 = 10煤+2方解石+25硫酸 → 50重油（5s）
+const sc = RRF['simple-coal'];
+ok(sc && sc.time === 5 && sc.inp['coal'] === 10 && sc.inp['calcite'] === 2 && sc.inp['sulfuric-acid'] === 25 && sc.out['heavy-oil'] === 50,
+  'simple-coal-liquefaction=10煤+2方解石+25硫酸→50重油（5s，官方）');
+// basic-oil-processing 官方 = 100原油 → 45石油气（5s）
+const bo = RRF['basic-oil'];
+ok(bo && bo.time === 5 && bo.inp['crude-oil'] === 100 && bo.out['petroleum-gas'] === 45, 'basic-oil-processing=100原油→45石油气（5s，官方）');
+// advanced-oil-processing 官方 = 100原油+50水 → 25重+45轻+55气（5s）
+const ao = RRF['advanced-oil'];
+ok(ao && ao.time === 5 && ao.inp['crude-oil'] === 100 && ao.inp['water'] === 50 && ao.out['heavy-oil'] === 25 && ao.out['light-oil'] === 45 && ao.out['petroleum-gas'] === 55, 'advanced-oil-processing=100原油+50水→25重+45轻+55气（5s，官方）');
+// coal-liquefaction 官方 = 10煤+25重油+50蒸汽 → 90重+20轻+10气（5s）
+const cl = RRF['coal-liquefaction'];
+ok(cl && cl.time === 5 && cl.inp['coal'] === 10 && cl.inp['heavy-oil'] === 25 && cl.inp['steam'] === 50 && cl.out['heavy-oil'] === 90 && cl.out['light-oil'] === 20 && cl.out['petroleum-gas'] === 10, 'coal-liquefaction=10煤+25重油+50蒸汽→90重+20轻+10气（5s，官方）');
+// uranium-processing 官方 = 10铀矿 → 概率铀-235/铀-238（12s）
+const up = CRF['uranium-processing'];
+ok(up && up.time === 12 && up.inp['uranium-ore'] === 10 && up.prob['uranium-235'] === 0.007 && up.prob['uranium-238'] === 0.993, 'uranium-processing=10铀矿→铀-235 0.7%/铀-238 99.3%（12s，官方）');
+// nuclear-fuel-reprocessing 官方 = 5贫化燃料棒 → 3铀-238（60s）
+const nr = CRF['nuclear-fuel-reprocessing'];
+ok(nr && nr.time === 60 && nr.inp['depleted-uranium-fuel-cell'] === 5 && nr.out['uranium-238'] === 3, 'nuclear-fuel-reprocessing=5贫化燃料棒→3铀-238（60s，官方）');
+// 炼油/离心机配方不得混入 RECIPES 组装机表
+ok(!('simple-coal' in RECIPES_F) && !('uranium-processing' in RECIPES_F) && !('basic-oil' in RECIPES_F), '炼油/离心机配方不混入组装机 RECIPES 表');
+ok(!('coal-liquefaction' in RECIPES_F) && !('nuclear-fuel-reprocessing' in RECIPES_F), '煤液化/后处理不混入组装机 RECIPES 表');
+// 数据单源：data-recipes.js 应通过 GAME_DATA.recipe 覆盖炼油/离心表
+const recJs = fs.readFileSync(ROOT + '/js/data/data-recipes.js', 'utf8');
+ok(recJs.includes("REFINERY_RECIPES[k] !== undefined || CENTRIFUGE_RECIPES[k] !== undefined"), 'data-recipes.js 炼油/离心配方从 GAME_DATA.recipe 单源覆盖');
+
+
 process.exit(fail === 0 ? 0 : 1);
 
