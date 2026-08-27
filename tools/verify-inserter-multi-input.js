@@ -90,7 +90,7 @@ function setup() {
 // —— 用例 3：过滤臂仍只抓过滤物 ——
 {
   const { belt, ins } = setup();
-  ins.filter = 'copper-plate';
+  ins.filterOn = true; ins.filters = ['copper-plate'];
   belt.items.push({ item: 'iron-plate', pos: 0.9, lane: 1, side: -1 });   // 近侧非过滤物
   belt.items.push({ item: 'copper-plate', pos: 0.8, lane: 0, side: -1 }); // 远侧过滤物
   const t = { type: 'assembling-machine-1', recipe: 'x' };

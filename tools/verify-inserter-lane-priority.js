@@ -113,7 +113,7 @@ function pickLane(ins, belt) {
 {
   const { belt, ins } = setup();
   ins.x = 1; ins.y = -1;
-  ins.filter = 'copper-plate';
+  ins.filterOn = true; ins.filters = ['copper-plate'];
   belt.items.push({ item: 'iron-plate', pos: 0.9, lane: 1, side: -1 }); // 近侧非过滤物
   belt.items.push({ item: 'copper-plate', pos: 0.8, lane: 0, side: -1 }); // 远侧过滤物
   const it = ins.peekSource(belt);
