@@ -90,6 +90,7 @@ const G = {
 let lastPlaceKey = '';
 let lastPanelCheck = 0;
 let fpsSmooth = 60;
+let upsSmooth = 60;
 
 // 存档由 js/saves.js 的多存档系统管理（自动存档 + 用户存档），不再使用单一键。
 // 保留旧键常量供首次升级时迁移（见 migrateLegacySave）。
