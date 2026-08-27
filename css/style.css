@@ -432,14 +432,30 @@ html, body {
   align-items: center;
   justify-content: center;
   gap: 4px;
+  position: relative;
 }
-/* 默认只显示图标，隐藏文本；悬停时显示文本 */
+/* 默认只显示图标，隐藏文本；悬停时文字以悬浮 tooltip 显示在按钮下方，
+   不内嵌进按钮布局（不改变按钮宽度/排版），鼠标移开即隐藏 */
 .craft-tabs .craft-tab .tab-label {
+  position: absolute;
+  top: calc(100% + 6px);           /* 浮在按钮下方，避免被列/面板上方边界裁剪 */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
   display: none;
+  white-space: nowrap;
+  padding: 3px 9px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(22, 28, 36, .97);
+  border: 1px solid #3a4550;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .45);
+  pointer-events: none;
 }
-.craft-tabs .craft-tab:hover .tab-label,
-.craft-tabs .craft-tab.active:hover .tab-label {
-  display: inline;
+.craft-tabs .craft-tab:hover .tab-label {
+  display: block;
 }
 .craft-tabs .craft-tab .tab-icon {
   line-height: 1;
