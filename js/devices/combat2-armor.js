@@ -8,7 +8,9 @@ const ARMORS = {
   // 模块化护甲：自带装备网格（grid 为行列数），可安装个人装备件
   'modular-armor':   { name: '模块化护甲', protect: 0.7,  grid: 5 },  // 减伤 30%，5×5 网格
   'power-armor':     { name: '强力装甲',   protect: 0.55, grid: 7 },  // 减伤 45%，7×7 网格
-  'power-armor-mk2': { name: '强力装甲 II', protect: 0.45, grid: 8 }   // 减伤 55%，8×8 网格
+  'power-armor-mk2': { name: '强力装甲 II', protect: 0.45, grid: 8 },   // 减伤 55%，8×8 网格
+  // 太空时代机械装甲（官方 Mech armor）：减伤更强、装备网格最大
+  'mech-armor': { name: '机械装甲', protect: 0.35, grid: 10 }   // 减伤 65%，10×10 网格
 };
 function isArmor(id) { return !!ARMORS[id]; }
 // 装备护甲：消耗背包中的护甲；若已穿戴则替换（旧护甲回包）

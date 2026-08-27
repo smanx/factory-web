@@ -28,7 +28,11 @@ const EQUIPMENT = {
   // 传送带免疫：站上传送带不再被带动位移
   'belt-immunity-equipment':  { name: '传送带免疫',        size: 1, beltImmune: true, desc: '传送带推动免疫' },
   // 放电防御：手动激活对周围敌人释放连锁电击，消耗个人电网电力
-  'discharge-defense-equipment':        { name: '放电防御',          size: 3, discharge: true, desc: '主动放电打击周围敌人' }
+  'discharge-defense-equipment':        { name: '放电防御',          size: 3, discharge: true, desc: '主动放电打击周围敌人' },
+  // 太空时代 Aquilo 高级装备（数据来自 GAME_DATA.equipment）
+  'battery-mk3-equipment':     { name: '个人电池 III',      size: 2, powerCap: 100000, desc: '储电 100MJ（官方 Battery Mk3）' },
+  'fission-reactor-equipment': { name: '便携裂变反应堆',    size: 4, powerOut: 4000, desc: '全天候 4MW（官方 Fission reactor equipment）' },
+  'toolbelt-equipment':        { name: '工具腰带',          size: 2, extraSlots: 10, desc: '随身额外物品栏 +10（官方 Toolbelt）' }
 };
 // 官方装备参数桥接（GAME_DATA.equipment 由 factorio-data 现场生成，见 tools/generate-game-data.js）。
 // 仅覆盖官方有对应数据的数值字段（发电/储电/护盾/速度/射程/放电范围冷却）；

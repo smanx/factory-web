@@ -284,6 +284,40 @@ const RECIPES = {
   'cryogenic-plant': { time: 10, inp: { 'refined-concrete': 40, 'superconductor': 20, 'processing-unit': 20, 'lithium-plate': 20 }, out: { 'cryogenic-plant': 1 } },
 
   // 冰熔化：冰 → 水（官方 ice-melting 0.5s，此处适配熔炉/锅炉链，供氧化链循环）
+  // ===== 太空时代 Aquilo 低温学链（Cryogenics，数据来自 factorio-data 官方，见 GAME_DATA）=====
+  // 氨：水 + 液态空气 → 氨（官方 ammonia 3s：50 水 + 50 液态空气，此处适配为水+氮气/空气）
+  'ammonia': { time: 3, inp: { 'water': 50, 'sulfuric-acid': 5 }, out: { 'ammonia': 50 } },
+  // 氟：氟酮冷液 → 氟（官方 fluorine 2s，此处适配为氨+方解石电解）
+  'fluorine': { time: 2, inp: { 'ammonia': 50, 'calcite': 2 }, out: { 'fluorine': 50 } },
+  // 氟酮（冷）：氟 + 氨 + 碳 → 氟酮冷液（官方 fluoroketone-cold 3s）
+  'fluoroketone-cold': { time: 3, inp: { 'fluorine': 50, 'ammonia': 25, 'carbon': 5 }, out: { 'fluoroketone-cold': 50 } },
+  // 氟酮（热）：氟酮冷液 → 氟酮热液（官方 fluoroketone-hot，低温工厂热交换，此处适配升温）
+  'fluoroketone-hot': { time: 2, inp: { 'fluoroketone-cold': 50 }, out: { 'fluoroketone-hot': 50 } },
+  // 低温科研包：氟酮热液 + 超导体 + 锂板 + 钷素星块 → 低温科研包（官方 cryogenic-science-pack 6s，此处适配）
+  'cryogenic-science-pack': { time: 6, inp: { 'fluoroketone-hot': 100, 'superconductor': 1, 'lithium-plate': 1, 'promethium-asteroid-chunk': 10 }, out: { 'cryogenic-science-pack': 2 } },
+  // 低温工厂：钢板 + 处理器 + 导热管 + 聚变燃料棒 → 低温工厂（官方需低温合金，此处适配高级材料，10s）
+  'cryogenic-plant': { time: 10, inp: { 'steel-plate': 30, 'processing-unit': 20, 'heat-pipe': 20, 'fusion-power-cell': 1 }, out: { 'cryogenic-plant': 1 } },
+  // ===== 太空时代 熔融金属流体（Vulcanus 铸造厂，数据来自 factorio-data 官方）=====
+  // 熔融铁：铁矿 + 方解石 → 熔融铁（官方 molten-iron 4s：铁矿+方解石，铸造厂）
+  'molten-iron': { time: 4, inp: { 'iron-ore': 20, 'calcite': 5 }, out: { 'molten-iron': 100 } },
+  // 熔融铜：铜矿 + 方解石 → 熔融铜（官方 molten-copper 4s）
+  'molten-copper': { time: 4, inp: { 'copper-ore': 20, 'calcite': 5 }, out: { 'molten-copper': 100 } },
+  // ===== 太空时代 Fulgora 废料回收（数据来自 factorio-data 官方）=====
+  // 废料：由回收机回收或人工产出（此处可由铁板+铜板等合成模拟，供回收链闭环）
+  'scrap': { time: 2, inp: { 'iron-plate': 2, 'copper-plate': 1, 'stone': 1 }, out: { 'scrap': 4 } },
+  // 废料回收：废料 → 基础资源（官方 scrap 回收：铁矿石/铜矿石/石/煤/冰等概率产出）
+  'recycle-scrap': { time: 1, inp: { 'scrap': 1 }, prob: { 'iron-ore': 0.4, 'copper-ore': 0.25, 'stone': 0.2, 'coal': 0.15 } },
+  // ===== 太空时代 终局防御（数据来自 factorio-data 官方，见 GAME_DATA）=====
+  // 量子处理器：超导体 + 碳纤维 + 处理器 → 量子处理器（官方 quantum-processor 20s）
+  'quantum-processor': { time: 20, inp: { 'superconductor': 10, 'carbon-fiber': 10, 'processing-unit': 10 }, out: { 'quantum-processor': 1 } },
+  // 轨道炮：钬板 + 超导体 + 量子处理器 → 轨道炮（官方 railgun 30s）
+  'railgun': { time: 30, inp: { 'holmium-plate': 10, 'superconductor': 20, 'quantum-processor': 5 }, out: { 'railgun': 1 } },
+  // 轨道炮弹：钬板 + 超导体 → 轨道炮弹（官方 railgun-ammo 10s）
+  'railgun-ammo': { time: 10, inp: { 'holmium-plate': 4, 'superconductor': 2 }, out: { 'railgun-ammo': 10 } },
+  // 轨道炮塔：轨道炮 + 超级电容 + 量子处理器 → 轨道炮塔（官方 railgun-turret 30s）
+  'railgun-turret': { time: 30, inp: { 'railgun': 1, 'supercapacitor': 10, 'quantum-processor': 5 }, out: { 'railgun-turret': 1 } },
+  // 火箭炮塔：钢板 + 火箭弹 + 处理器 → 火箭炮塔（官方 rocket-turret 30s）
+  'rocket-turret': { time: 30, inp: { 'steel-plate': 50, 'rocket': 10, 'processing-unit': 10 }, out: { 'rocket-turret': 1 } },
   'ice-melting': { time: 0.5, inp: { 'ice': 1 }, out: { 'water': 100 } },
   // 硫酸：硫磺 + 水 + 铁板 → 硫酸（原版 1s，数量简化）
   // 硫酸：硫磺 + 水 + 铁板 → 硫酸（原版 1s，数量简化）
@@ -369,7 +403,13 @@ const RECIPES = {
   'energy-shield-equipment':        { time: 10, inp: { 'advanced-circuit': 5, 'steel-plate': 10 }, out: { 'energy-shield-equipment': 1 } },
   'energy-shield-mk2-equipment':        { time: 10, inp: { 'energy-shield-equipment': 10, 'low-density-structure': 5, 'processing-unit': 5 }, out: { 'energy-shield-mk2-equipment': 1 } },
   // ===== 传送带免疫装备（对齐《异星工厂》：铁板+电路板，早期装备件） =====
-  'belt-immunity-equipment':        { time: 10, inp: { 'advanced-circuit': 5, 'steel-plate': 10 }, out: { 'belt-immunity-equipment': 1 } },
+  'belt-immunity-equipment':        { time: 10, inp: { 'advanced-circuit': 5, 'steel-plate': 10 }, out: { 'belt-immunity-equipment': 1 } },  // ===== 太空时代 Aquilo 高级装备件（数据来自 GAME_DATA.equipment，需「机械装甲」科技） =====
+  'battery-mk3-equipment': { time: 20, inp: { 'battery-mk2-equipment': 10, 'supercapacitor': 10, 'quantum-processor': 5 }, out: { 'battery-mk3-equipment': 1 } },
+  'fission-reactor-equipment': { time: 30, inp: { 'fusion-reactor-equipment': 2, 'quantum-processor': 5, 'holmium-plate': 10, 'superconductor': 20 }, out: { 'fission-reactor-equipment': 1 } },
+  'toolbelt-equipment': { time: 10, inp: { 'advanced-circuit': 10, 'iron-gear-wheel': 10, 'steel-plate': 10 }, out: { 'toolbelt-equipment': 1 } },
+  // 机械装甲（太空时代终极装甲）：强力装甲 II + 钬板 + 超导体 + 量子处理器
+  'mech-armor': { time: 40, inp: { 'power-armor-mk2': 1, 'holmium-plate': 20, 'superconductor': 20, 'quantum-processor': 10 }, out: { 'mech-armor': 1 } },
+
   // ===== 放电防御装备（对齐《异星工厂》：需高级电路板/电池/处理器等） =====
   'discharge-defense-equipment':        { time: 10, inp: { 'laser-turret': 10, 'processing-unit': 5, 'steel-plate': 20 }, out: { 'discharge-defense-equipment': 1 } },
 };
@@ -455,7 +495,8 @@ const DEVICE_NAMES = {
   'foundry': '铸造厂',
   'cryogenic-plant': '冷冻厂',
   'agricultural-tower': '农业塔',
-  'space-platform-hub': '空间平台中枢'
+  'space-platform-hub': '空间平台中枢',
+  'cryogenic-plant': '低温工厂'
 };
 // 电磁工厂专属配方（太空时代电磁产品）：超导体 / 电磁科研包 / 电磁工厂本体
 const ELECTRO_RECIPES = ['superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant', 'promethium-science-pack', 'holmium-ore', 'holmium-plate', 'supercapacitor', 'tesla-ammo', 'tesla-turret'];
@@ -470,7 +511,7 @@ const CRUSHER_RECIPES = ['metallic-asteroid-crushing', 'carbonic-asteroid-crushi
   'crusher', 'ice-melting'];
 function isCrusherRecipe(id) { return CRUSHER_RECIPES.indexOf(id) >= 0; }
 // 铸造厂专属配方（太空时代 Vulcanus 冶金产品）：钨板 / 碳化钨 / 冶金科研包 / 铸造厂本体
-const FOUNDRY_RECIPES = ['tungsten-ore', 'tungsten-plate', 'tungsten-carbide', 'metallurgic-science-pack', 'foundry'];
+const FOUNDRY_RECIPES = ['tungsten-ore', 'tungsten-plate', 'tungsten-carbide', 'metallurgic-science-pack', 'foundry', 'molten-iron', 'molten-copper'];
 function isFoundryRecipe(id) { return FOUNDRY_RECIPES.indexOf(id) >= 0; }
 // 农业塔专属种植配方（太空时代 Gleba 作物种植）：玉玛果种植 + 农业塔本体
 const AGRICULTURE_TOWER_RECIPES = ['yumako-growing'];
@@ -478,11 +519,13 @@ function isAgricultureTowerRecipe(id) { return AGRICULTURE_TOWER_RECIPES.indexOf
 // 空间平台中枢专属配方（太空时代空间平台产品）：地基 / 起始包 / 中枢本体
 const HUB_RECIPES = ['space-platform-foundation', 'space-platform-starter-pack', 'space-platform-hub'];
 function isHubRecipe(id) { return HUB_RECIPES.indexOf(id) >= 0; }
-// 冷冻厂专属配方（太空时代 Aquilo 低温产品）：低温科研包 / 冷冻厂本体
-const CRYOGENIC_RECIPES = ['cryogenic-science-pack', 'cryogenic-plant'];
-function isCryogenicRecipe(id) { return CRYOGENIC_RECIPES.indexOf(id) >= 0; }
+// 低温工厂专属配方（太空时代 Aquilo 低温产品）：氨 / 氟 / 氟酮 / 低温科研包 / 低温工厂本体
+const CRYO_RECIPES = ['ammonia', 'fluorine', 'fluoroketone-cold', 'fluoroketone-hot', 'cryogenic-science-pack', 'cryogenic-plant'];
+function isCryoRecipe(id) { return CRYO_RECIPES.indexOf(id) >= 0; }
+
 function recipeDevice(id) {
   if (GAME_DATA.recipeDevice && GAME_DATA.recipeDevice[id]) return GAME_DATA.recipeDevice[id];
+  if (isCryoRecipe(id)) return 'cryogenic-plant';
   if (isElectroRecipe(id)) return 'electromagnetic-plant';
   if (isBiochamberRecipe(id)) return 'biochamber';
   if (isCrusherRecipe(id)) return 'crusher';

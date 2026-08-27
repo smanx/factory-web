@@ -277,6 +277,16 @@ const GAME_DATA = {
   "cryogenic-science-pack": 200,
   "cryogenic-plant": 20,
   "promethium-science-pack": 200,
+  "quantum-processor": 100,
+  "scrap": 50,
+  "battery-mk3-equipment": 20,
+  "fission-reactor-equipment": 20,
+  "toolbelt-equipment": 20,
+  "mech-armor": 1,
+  "railgun": 1,
+  "railgun-ammo": 10,
+  "railgun-turret": 10,
+  "rocket-turret": 10,
   "barrel": 10,
   "water-barrel": 10,
   "crude-oil-barrel": 10,
@@ -316,8 +326,8 @@ const GAME_DATA = {
   "biochamber": 300,
   "crusher": 350,
   "foundry": 350,
-  "agricultural-tower": 500,
   "cryogenic-plant": 350,
+  "agricultural-tower": 500,
   "beacon": 200,
   "wooden-chest": 100,
   "iron-chest": 200,
@@ -339,6 +349,8 @@ const GAME_DATA = {
   "gun-turret": 400,
   "laser-turret": 1000,
   "tesla-turret": 2000,
+  "railgun-turret": 4000,
+  "rocket-turret": 1500,
   "flamethrower-turret": 1400,
   "rocket-silo": 5000,
   "cargo-landing-pad": 1000,
@@ -406,8 +418,8 @@ const GAME_DATA = {
   "biochamber": 500,
   "crusher": 540,
   "foundry": 2500,
-  "agricultural-tower": 100,
   "cryogenic-plant": 1500,
+  "agricultural-tower": 100,
   "beacon": 480,
   "lab": 60,
   "biolab": 300,
@@ -813,6 +825,19 @@ const GAME_DATA = {
    },
    "out": {
     "electric-mining-drill": 1
+   }
+  },
+  "big-mining-drill": {
+   "time": 30,
+   "inp": {
+    "electric-mining-drill": 1,
+    "molten-iron": 200,
+    "tungsten-carbide": 20,
+    "electric-engine-unit": 10,
+    "advanced-circuit": 10
+   },
+   "out": {
+    "big-mining-drill": 1
    }
   },
   "electric-furnace": {
@@ -2173,6 +2198,39 @@ const GAME_DATA = {
     "heating-tower": 1
    }
   },
+  "fusion-power-cell": {
+   "time": 10,
+   "inp": {
+    "lithium-plate": 5,
+    "holmium-plate": 1,
+    "ammonia": 100
+   },
+   "out": {
+    "fusion-power-cell": 1
+   }
+  },
+  "fusion-reactor": {
+   "time": 60,
+   "inp": {
+    "tungsten-plate": 200,
+    "superconductor": 200,
+    "quantum-processor": 250
+   },
+   "out": {
+    "fusion-reactor": 1
+   }
+  },
+  "fusion-generator": {
+   "time": 30,
+   "inp": {
+    "tungsten-plate": 100,
+    "superconductor": 100,
+    "quantum-processor": 50
+   },
+   "out": {
+    "fusion-generator": 1
+   }
+  },
   "lightning-rod": {
    "time": 5,
    "inp": {
@@ -2530,6 +2588,7 @@ const GAME_DATA = {
   "steam-engine": "assembling-machine-1",
   "offshore-pump": "assembling-machine-1",
   "electric-mining-drill": "assembling-machine-1",
+  "big-mining-drill": "assembling-machine-1",
   "electric-furnace": "assembling-machine-1",
   "assembling-machine-2": "assembling-machine-1",
   "bulk-inserter": "assembling-machine-1",
@@ -2657,6 +2716,9 @@ const GAME_DATA = {
   "heat-pipe": "assembling-machine-1",
   "heat-exchanger": "assembling-machine-1",
   "heating-tower": "assembling-machine-1",
+  "fusion-power-cell": "assembling-machine-1",
+  "fusion-reactor": "assembling-machine-1",
+  "fusion-generator": "assembling-machine-1",
   "lightning-rod": "assembling-machine-1",
   "small-electric-pole": "assembling-machine-1",
   "substation": "assembling-machine-1",
@@ -3318,6 +3380,22 @@ const GAME_DATA = {
    "zh": "推进器氧化剂",
    "en": "Thruster oxidizer"
   },
+  "ammonia": {
+   "zh": "氨",
+   "en": "Ammonia"
+  },
+  "fluorine": {
+   "zh": "氟",
+   "en": "Fluorine"
+  },
+  "fluoroketone-cold": {
+   "zh": "氟酮（冷）",
+   "en": "Fluoroketone (Cold)"
+  },
+  "fluoroketone-hot": {
+   "zh": "氟酮（热）",
+   "en": "Fluoroketone (Hot)"
+  },
   "carbon-fiber": {
    "zh": "碳纤维",
    "en": "Carbon fiber"
@@ -3750,6 +3828,54 @@ const GAME_DATA = {
    "zh": "钷素科技包（黑瓶）",
    "en": "Promethium science pack"
   },
+  "quantum-processor": {
+   "zh": "量子处理器",
+   "en": "Quantum processor"
+  },
+  "molten-iron": {
+   "zh": "熔融铁",
+   "en": "Molten iron"
+  },
+  "molten-copper": {
+   "zh": "熔融铜",
+   "en": "Molten copper"
+  },
+  "scrap": {
+   "zh": "废料",
+   "en": "Scrap"
+  },
+  "battery-mk3-equipment": {
+   "zh": "电池组模块 MK3",
+   "en": "Personal battery MK3"
+  },
+  "fission-reactor-equipment": {
+   "zh": "裂变反应堆模块",
+   "en": "Portable fission reactor"
+  },
+  "toolbelt-equipment": {
+   "zh": "工具腰带模块",
+   "en": "Toolbelt equipment"
+  },
+  "mech-armor": {
+   "zh": "机械装甲",
+   "en": "Mech armor"
+  },
+  "railgun": {
+   "zh": "磁轨炮",
+   "en": "Railgun"
+  },
+  "railgun-ammo": {
+   "zh": "磁轨炮弹",
+   "en": "Railgun ammo"
+  },
+  "railgun-turret": {
+   "zh": "磁轨炮塔",
+   "en": "Railgun turret"
+  },
+  "rocket-turret": {
+   "zh": "火箭炮塔",
+   "en": "Rocket turret"
+  },
   "barrel": {
    "zh": "空桶",
    "en": "Barrel"
@@ -3935,6 +4061,12 @@ const GAME_DATA = {
   },
   "battery-mk2-equipment": {
    "powerCap": 100000
+  },
+  "battery-mk3-equipment": {
+   "powerCap": 250000
+  },
+  "fission-reactor-equipment": {
+   "powerOut": 750
   },
   "energy-shield-equipment": {
    "shield": 50
@@ -4274,6 +4406,14 @@ const GAME_DATA = {
   "cryogenic-plant": {
    "w": 5,
    "h": 5
+  },
+  "railgun-turret": {
+   "w": 3,
+   "h": 5
+  },
+  "rocket-turret": {
+   "w": 3,
+   "h": 3
   },
   "agricultural-tower": {
    "w": 3,

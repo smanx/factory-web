@@ -158,8 +158,32 @@ const TECH_REQ = {
   'refined-concrete': 'concrete',      // 精炼混凝土：需「混凝土」科技
   'hazard-concrete': 'concrete',       // 警示混凝土：需「混凝土」科技
   'refined-hazard-concrete': 'concrete',   // 精炼警示混凝土：需「混凝土」科技
-  'landfill': 'landfill'               // 填海料：需「填海」科技（对齐原版 Landfill）
+  'landfill': 'landfill',               // 填海料：需「填海」科技（对齐原版 Landfill）
+  // ===== 太空时代 Aquilo 低温学链（统一由「低温学」科技解锁） =====
+  'cryogenic-plant': 'cryogenics',
+  'cryogenic-science-pack': 'cryogenics',
+  'ammonia': 'cryogenics',
+  'fluorine': 'cryogenics',
+  'fluoroketone-cold': 'cryogenics',
+  'fluoroketone-hot': 'cryogenics',
+  // ===== 太空时代 熔融金属 / 废料回收（统一由对应科技解锁） =====
+  'molten-iron': 'molten-metal',
+  'molten-copper': 'molten-metal',
+  'scrap': 'scrap-recycling',
+  'recycle-scrap': 'scrap-recycling',
+  // ===== 太空时代 终局防御（统一由「轨道炮防御」科技解锁） =====
+  'quantum-processor': 'railgun-defense',
+  'railgun': 'railgun-defense',
+  'railgun-ammo': 'railgun-defense',
+  'railgun-turret': 'railgun-defense',
+  'rocket-turret': 'railgun-defense',
+  // ===== 太空时代 机械装甲（统一由「机械装甲」科技解锁） =====
+  'mech-armor': 'mech-armor',
+  'battery-mk3-equipment': 'mech-armor',
+  'fission-reactor-equipment': 'mech-armor',
+  'toolbelt-equipment': 'mech-armor'
 };
+
 // ===== 核能科技门控 =====
 for (const id of ['centrifuge', 'nuclear-reactor', 'steam-turbine', 'heat-pipe', 'heat-exchanger', 'uranium-235', 'uranium-238', 'nuclear-fuel', 'uranium-fuel-cell']) {
   if (!TECH_REQ[id]) TECH_REQ[id] = 'nuclear';
@@ -329,7 +353,31 @@ const RECIPE_TECH = {
   'turbo-underground-belt': 'turbo-logistics',
   'turbo-splitter': 'turbo-logistics',
   // 太空时代 钷素科研包（官方 Promethium science pack 科技，由钷素星块+超导体+生物结晶在电磁工厂制得）
-  'promethium-science-pack': 'promethium-science'
+  'promethium-science-pack': 'promethium-science',  // 太空时代 Aquilo 低温学链（统一由「低温学」科技解锁）
+  'cryogenic-plant': 'cryogenics',
+  'cryogenic-science-pack': 'cryogenics',
+  'ammonia': 'cryogenics',
+  'fluorine': 'cryogenics',
+  'fluoroketone-cold': 'cryogenics',
+  'fluoroketone-hot': 'cryogenics',
+  // 太空时代 熔融金属（统一由「熔融金属」科技解锁）
+  'molten-iron': 'molten-metal',
+  'molten-copper': 'molten-metal',
+  // 太空时代 废料回收（统一由「废料回收」科技解锁）
+  'scrap': 'scrap-recycling',
+  'recycle-scrap': 'scrap-recycling',
+  // 太空时代 终局防御（统一由「轨道炮防御」科技解锁）
+  'quantum-processor': 'railgun-defense',
+  'railgun': 'railgun-defense',
+  'railgun-ammo': 'railgun-defense',
+  'railgun-turret': 'railgun-defense',
+  'rocket-turret': 'railgun-defense',
+  // 太空时代 机械装甲（统一由「机械装甲」科技解锁）
+  'mech-armor': 'mech-armor',
+  'battery-mk3-equipment': 'mech-armor',
+  'fission-reactor-equipment': 'mech-armor',
+  'toolbelt-equipment': 'mech-armor'
+
 };
 // ===== 任一科技解锁（对齐《异星工厂》科技树）=====
 // 某些配方（如效率模块）既可被新拆分的进阶科技解锁，也可被旧「模块工程」科技解锁，

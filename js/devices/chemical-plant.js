@@ -391,3 +391,17 @@ DEVICE_FLUID_ICONS['chemical-plant'] = e => {
   }
   return icons;
 };
+
+// ===== 低温工厂（太空时代 Cryogenic plant，复用化工厂流体组装机行为） =====
+// 数据全部来自 GAME_DATA（占地 4×4 / 血量 350 / 功耗 1500kW / crafting_speed 2 / 模块槽 8）。
+ENT_CLASSES['cryogenic-plant'] = ChemicalPlant;
+DEVICE_RENDER['cryogenic-plant'] = drawChemicalPlant;
+DEVICE_STATUS['cryogenic-plant'] = DEVICE_STATUS['chemical-plant'];
+DEVICE_PANEL['cryogenic-plant'] = { html: chemicalPlantPanelHtml, live: chemicalPlantPanelLive, tip: (e) => {
+  const base = e.recipe ? (e.crafting ? '低温加工 ' + ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name : '待料（流体经管道自动吸入）') : '未设置配方，点击打开面板';
+  const s = powerStatusOf(e);
+  if (s.consuming && s.sat < 1) return base + '；' + (s.sat > 0 ? '电量不足' + Math.round(s.sat * 100) + '%' : '缺电停摆');
+  return base;
+}, onAction: (a) => circuitPanelAction('cp', a) };
+DEVICE_DIR_ROTATE['cryogenic-plant'] = true;
+DEVICE_FLUID_ICONS['cryogenic-plant'] = DEVICE_FLUID_ICONS['chemical-plant'];

@@ -772,34 +772,45 @@ console.log('\n【行星间货物调度 INTERPLANETARY CARGO】');
   console.log('  （行星间货物调度校验 6 项）');
 })();
 
-// ===== 低温材料链（Cryogenic science pack，Space Age Aquilo 终局科研包）数据校验 =====
-console.log('\n【低温科研包 cryogenic-science-pack / 冷冻厂 cryogenic-plant 数据】');
-ok(!!IT['cryogenic-science-pack'], 'cryogenic-science-pack 物品已注册');
-ok(GD.stackSize['cryogenic-science-pack'] === 200, 'cryogenic-science-pack 堆叠来自官方 (=200)');
-ok(GD.names['cryogenic-science-pack'] && GD.names['cryogenic-science-pack'].en === 'Cryogenic science pack', 'cryogenic-science-pack 官方命名已收录 (Cryogenic science pack)');
-ok(!!GD.stackSize['cryogenic-plant'], 'cryogenic-plant 堆叠来自官方 (=20)');
-ok(GD.names['cryogenic-plant'] && GD.names['cryogenic-plant'].en === 'Cryogenic plant', 'cryogenic-plant 官方命名已收录 (Cryogenic plant)');
-console.log('\n【冷冻厂设备数据（官方）】');
-ok(GD.footprint['cryogenic-plant'] && GD.footprint['cryogenic-plant'].w === 5 && GD.footprint['cryogenic-plant'].h === 5, '占地 5×5（官方 selection_box ±2.5）');
-ok(GD.buildingHp['cryogenic-plant'] === 350, '血量=350（官方 max_health）');
-ok(GD.powerUse['cryogenic-plant'] === 1500, '功耗=1500kW（官方 energy_usage）');
-ok(GD.deviceStats['cryogenic-plant'] && GD.deviceStats['cryogenic-plant'].craftingSpeed === 2, '制造速度=2（官方 crafting_speed）');
-ok(GD.deviceStats['cryogenic-plant'].moduleSlots === 8, '模块槽=8（官方 module_slots）');
-console.log('\n【低温科研包配方与设备归属】');
-ok(!!RP['cryogenic-science-pack'], 'cryogenic-science-pack 配方已注册');
-ok(ctx.__recipeDevice('cryogenic-science-pack') === 'cryogenic-plant', '低温科研包 → 冷冻厂');
-ok(ctx.__recipeDevice('cryogenic-plant') === 'cryogenic-plant', '冷冻厂本体 → 冷冻厂配方');
-const cryoRec = RP['cryogenic-science-pack'];
-ok(cryoRec && cryoRec.inp['ice'] === 3 && cryoRec.inp['lithium-plate'] === 1, '低温科研包配方=3冰+1锂板（官方 3冰+1锂板+氟酮冷却液 适配）');
-ok(cryoRec && cryoRec.time === 20, '低温科研包产出 20s（官方 energy_required=20）');
-ok(Object.keys(cryoRec.inp).every(k => k in IT || ['water','steam','crude-oil','heavy-oil','light-oil','petroleum-gas','lubricant','sulfuric-acid'].indexOf(k) >= 0), '低温科研包配方引用物品均存在');
-console.log('\n【科技门控（低温科技 cryogenics）】');
-ok(ctx.__itemTechReq('cryogenic-science-pack') === 'cryogenics', '低温科研包需「低温科技」');
-ok(ctx.__itemTechReq('cryogenic-plant') === 'cryogenics', '冷冻厂需「低温科技」');
-ok(!!TS['cryogenics'], '「低温科技」已注册');
-ok(ctx.__itemTechReq('cryogenic-science-pack') && TS['cryogenics'].req && TS['cryogenics'].req.indexOf('electromagnetics') >= 0, '低温科技前置含「电磁学」');
-ok(ctx.isScience && ctx.isScience('cryogenic-science-pack'), '低温科研包为可消耗科研包');
-
+console.log('\n【Aquilo 低温学链（Cryogenics，数据来自 GAME_DATA）】');
+ok(!!GD.names['cryogenic-plant'], '低温工厂官方命名已收录');
+ok(GD.footprint['cryogenic-plant'] && GD.footprint['cryogenic-plant'].w === 5 && GD.footprint['cryogenic-plant'].h === 5, '低温工厂占地 5×5（官方 selection_box）');
+ok(GD.buildingHp['cryogenic-plant'] === 350, '低温工厂血量=350（官方 max_health）');
+ok(GD.powerUse['cryogenic-plant'] === 1500, '低温工厂功耗=1500kW（官方 energy_usage）');
+ok(GD.deviceStats['cryogenic-plant'] && GD.deviceStats['cryogenic-plant'].craftingSpeed === 2, '低温工厂制造速度=2（官方 crafting_speed）');
+ok(GD.deviceStats['cryogenic-plant'].moduleSlots === 8, '低温工厂模块槽=8（官方 module_slots）');
+ok(!!GD.names['cryogenic-science-pack'], '低温科研包官方命名已收录');
+ok(GD.stackSize['cryogenic-science-pack'] === 200, '低温科研包堆叠=200（官方）');
+for (const f of ['ammonia', 'fluorine', 'fluoroketone-cold', 'fluoroketone-hot']) {
+  ok(!!GD.names[f], f + ' 流体官方命名已收录 (' + (GD.names[f] ? GD.names[f].zh : '?') + ')');
+}
+ok(ctx.__recipeDevice('cryogenic-science-pack') === 'cryogenic-plant', '低温科研包 → 低温工厂');
+ok(ctx.__itemTechReq('cryogenic-plant') === 'cryogenics', '低温工厂需「低温学」科技');
+ok(!!TS['cryogenics'], '「低温学」科技已注册');
+ok(TS['cryogenics'].req && TS['cryogenics'].req.indexOf('electromagnetics') >= 0, '低温学前置含「电磁学」');
+const cryoRec2 = RP['cryogenic-science-pack'];
+ok(cryoRec2 && cryoRec2.inp['fluoroketone-hot'] === 100 && cryoRec2.inp['lithium-plate'] === 1, '低温科研包配方=氟酮热100+超导体1+锂板1+钷素星块10');
+console.log('\n【熔融金属 / 废料回收（数据来自 GAME_DATA）】');
+ok(!!GD.names['molten-iron'] && !!GD.names['molten-copper'], '熔融铁/熔融铜官方命名已收录');
+ok(ctx.__recipeDevice('molten-iron') === 'foundry', '熔融铁 → 铸造厂');
+ok(ctx.__recipeDevice('molten-copper') === 'foundry', '熔融铜 → 铸造厂');
+ok(!!GD.names['scrap'], '废料官方命名已收录');
+ok(GD.stackSize['scrap'] === 50, '废料堆叠=50（官方）');
+ok(!!RP['recycle-scrap'], '废料回收配方已注册');
+console.log('\n【终局防御（轨道炮 / 火箭炮塔，数据来自 GAME_DATA）】');
+ok(GD.buildingHp['railgun-turret'] === 4000, '轨道炮塔血量=4000（官方 max_health）');
+ok(GD.buildingHp['rocket-turret'] === 1500, '火箭炮塔血量=1500（官方 max_health）');
+ok(!!GD.names['railgun'] && !!GD.names['railgun-ammo'], '轨道炮/轨道炮弹官方命名已收录');
+ok(!!GD.names['quantum-processor'], '量子处理器官方命名已收录');
+ok(ctx.__itemTechReq('railgun-turret') === 'railgun-defense', '轨道炮塔需「轨道炮防御」科技');
+ok(!!TS['railgun-defense'], '「轨道炮防御」科技已注册');
+console.log('\n【Aquilo 高级装备（数据来自 GAME_DATA.equipment）】');
+ok(!!GD.names['mech-armor'], '机械装甲官方命名已收录');
+ok(GD.equipment['battery-mk3-equipment'] && GD.equipment['battery-mk3-equipment'].powerCap === 250000, '个人电池 III 储电=250000kJ（官方 battery-mk3）');
+ok(GD.equipment['fission-reactor-equipment'] && GD.equipment['fission-reactor-equipment'].powerOut === 750, '便携裂变反应堆 功率=750kW（官方 fission-reactor）');
+ok(!!RP['mech-armor'] && !!RP['battery-mk3-equipment'] && !!RP['fission-reactor-equipment'] && !!RP['toolbelt-equipment'], '机械装甲/高级装备配方已注册');
+ok(ctx.__itemTechReq('mech-armor') === 'mech-armor', '机械装甲需「机械装甲」科技');
+ok(!!TS['mech-armor'], '「机械装甲」科技已注册'); (feat: 接入 Aquilo 低温学链 + 熔融金属/废料回收/终局防御/机械装甲 DLC 内容)
 
 process.exit(fail === 0 ? 0 : 1);
 

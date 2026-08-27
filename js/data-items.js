@@ -36,7 +36,15 @@ const STACK_SIZES = {
   // 科学包：堆叠 200（对齐原版）
   'automation-science-pack': 200, 'logistic-science-pack': 200, 'chemical-science-pack': 200,
   'military-science-pack': 200, 'production-science-pack': 200, 'utility-science-pack': 200,
-  'space-science-pack': 200, 'promethium-science-pack': 200, 'cryogenic-science-pack': 200, 'cryogenic-plant': 20,  // 普罗米修斯科研包/低温科研包官方 stack=200；冷冻厂 stack=20
+  'space-science-pack': 200, 'promethium-science-pack': 200,  // 普罗米修斯科研包官方 stack=200
+  'cryogenic-science-pack': 200,  // 低温科研包官方 stack=200
+  'cryogenic-plant': 20,  // 低温工厂官方 stack=20
+  'quantum-processor': 100,  // 量子处理器官方 stack=100
+  'scrap': 50,  // 废料官方 stack=50
+  'railgun-ammo': 100,  // 轨道炮弹官方 stack=100
+  'railgun': 1, 'mech-armor': 1,  // 轨道炮/机械装甲官方 stack=1
+  'railgun-turret': 10, 'rocket-turret': 10,  // 轨道炮塔/火箭炮塔官方 stack=10
+  'battery-mk3-equipment': 20, 'fission-reactor-equipment': 20, 'toolbelt-equipment': 20,  // 个人装备官方 stack=20
   // 基础建材与管线：堆叠 100
   'concrete': 100, 'refined-concrete': 100, 'hazard-concrete': 100, 'refined-hazard-concrete': 100, 'stone-path': 100, 'landfill': 100,
   // 品质模块（对齐《异星工厂》Quality DLC：quality-module 官方 stack=50）
@@ -230,6 +238,12 @@ const ITEMS = {
   // ===== 太空推进链（Space Age Thruster fuel/oxidizer，对齐《异星工厂》Space Age，数据来自官方 locale/GAME_DATA）=====
   'thruster-fuel': { name: '推进器燃料', color: '#e03020', mark: 'TF', desc: '太空时代红色推进流体，由碳+水在化工厂制得（官方 Thruster fuel，化学类别配方）。供推进器/太空平台燃烧，制造推进剂（对齐《异星工厂》Space Age，堆叠以流体计）' },
   'thruster-oxidizer': { name: '推进器氧化剂', color: '#1565ca', mark: 'TO', desc: '太空时代蓝色氧化流体，由铁矿+水在化工厂制得（官方 Thruster oxidizer，化学类别配方）。与推进器燃料配合作为氧化剂（对齐《异星工厂》Space Age，堆叠以流体计）' },
+  // ===== 太空时代 Aquilo 低温流体（数据来自 factorio-data 官方 fluid-name，见 GAME_DATA.names）=====
+  'ammonia': { name: '氨', color: '#b0c8d8', mark: '氨', desc: '太空时代低温流体：由水+硫酸在低温工厂制得（官方 Ammonia），是氟/氟酮与低温化学链的基础流体（对齐《异星工厂》Space Age，数据来自 GAME_DATA.names）' },
+  'fluorine': { name: '氟', color: '#c0e0a0', mark: '氟', desc: '太空时代低温流体：由氨+方解石在低温工厂电解制得（官方 Fluorine），用于制造氟酮（对齐《异星工厂》Space Age，数据来自 GAME_DATA.names）' },
+  'fluoroketone-cold': { name: '氟酮（冷）', color: '#a0d8e8', mark: 'FK', desc: '太空时代低温流体：由氟+氨+碳在低温工厂制得的冷态氟酮（官方 Fluoroketone Cold），是低温科研包的核心原料（对齐《异星工厂》Space Age，数据来自 GAME_DATA.names）' },
+  'fluoroketone-hot': { name: '氟酮（热）', color: '#f0a060', mark: 'FK', desc: '太空时代低温流体：由冷态氟酮在低温工厂加热制得的热态氟酮（官方 Fluoroketone Hot），用于低温科研包合成（对齐《异星工厂》Space Age，数据来自 GAME_DATA.names）' },
+  // ===== 太空时代 Vulcanus 熔融金属流体（数据来自 factorio-data 官方 fluid-name）=====
   // ===== 太空时代 Space Age 材料链（数据来自 factorio-data 官方，见 GAME_DATA）=====
   'carbon-fiber': { name: '碳纤维', color: '#7a7a8a', mark: 'CF', desc: '太空时代复合材料，由碳在化工厂制得，用于制造先进装备与科研产物（对齐《异星工厂》Space Age）' },
   'lithium': { name: '锂', color: '#d8d8e8', mark: 'Li', desc: '太空时代金属，由硫酸+轻油在化工厂电解制得，冶炼成锂板用于高级科研（对齐《异星工厂》Space Age）' },
@@ -363,6 +377,25 @@ const ITEMS = {
   'cryogenic-science-pack': { name: '低温科研包', color: '#6ad9c3', mark: 'CSP', desc: '太空时代天蓝色科研包（堆叠 200）：由冰+锂板在冷冻厂制得，解锁太空时代低温/核聚变科技（对齐《异星工厂》Space Age Cryogenic science pack，官方配方含氟酮冷却液，此处适配为冰+锂板）' },
   'cryogenic-plant': { name: '冷冻厂', color: '#4a5ddb', desc: '太空时代低温生产建筑（5×5，吃电力）：比组装机 III 更快、模块槽最多（官方 8），专用于低温产物与低温科研包的生产（对齐《异星工厂》Space Age Cryogenic plant，数据来自 GAME_DATA）' },
   'promethium-science-pack': { name: '钷素科研包', color: '#5a4ad8', mark: 'PSP', desc: '太空时代终极科研包（钷素 Promethium，堆叠 200）：由钷素星块+超导体+生物结晶在电磁工厂/空间平台中枢制得，解锁太空时代终局科技（对齐《异星工厂》Space Age Promethium science pack）' },
+  // ===== 太空时代 Aquilo 低温学链（数据来自 factorio-data 官方，见 GAME_DATA）=====
+  'cryogenic-plant': { name: '低温工厂', color: '#4aa8d0', desc: '太空时代 Aquilo 低温生产建筑（4×4，吃电力）：专用于低温学配方（氨/氟/氟酮/低温科研包），制造速度快（crafting_speed 2）、模块槽多达 8（对齐《异星工厂》Space Age Cryogenic plant，数据来自 GAME_DATA）' },
+  'cryogenic-science-pack': { name: '低温科研包', color: '#6ad8f0', mark: 'CSP', desc: '太空时代 Aquilo 蓝色科研包（堆叠 200）：由氟酮+超导体+低温等离子体在低温工厂制得，解锁太空时代低温/终极科技（对齐《异星工厂》Space Age Cryogenic science pack）' },
+  'quantum-processor': { name: '量子处理器', color: '#a86ad8', mark: 'QP', desc: '太空时代终极计算元件（堆叠 100）：由超导体+碳纤维+处理器制得，是轨道炮/终极科技的核心原料（对齐《异星工厂》Space Age Quantum processor）' },
+  // ===== 太空时代 熔融金属流体（Vulcanus 铸造厂，数据来自 factorio-data 官方）=====
+  'molten-iron': { name: '熔融铁', color: '#d08060', mark: 'Fe', desc: '太空时代 Vulcanus 熔融态铁流体：由铁矿+方解石在铸造厂熔炼成液态铁，可浇铸成铁板/钢（对齐《异星工厂》Space Age Molten iron）' },
+  'molten-copper': { name: '熔融铜', color: '#e09868', mark: 'Cu', desc: '太空时代 Vulcanus 熔融态铜流体：由铜矿+方解石在铸造厂熔炼成液态铜，可浇铸成铜板/线（对齐《异星工厂》Space Age Molten copper）' },
+  // ===== 太空时代 Fulgora 废料回收（数据来自 factorio-data 官方）=====
+  'scrap': { name: '废料', color: '#7a7a6a', mark: '废', desc: '太空时代 Fulgora 星球废料（堆叠 50）：由回收机/人工产出，可回收成铁/铜/石/煤等基础资源（对齐《异星工厂》Space Age Scrap）' },
+  // ===== 太空时代 终局装备（数据来自 factorio-data 官方，见 GAME_DATA.equipment）=====
+  'battery-mk3-equipment': { name: '个人电池 III', color: '#4aa0d8', mark: '电', desc: '个人装备：更强大的储能电池，储电量远胜个人电池 II（官方 100MJ，数据来自 GAME_DATA.equipment）' },
+  'fission-reactor-equipment': { name: '便携裂变反应堆', color: '#5a8a5a', mark: '核', desc: '个人装备：终极便携发电装置，全天候输出高达 4MW（官方 4MW，数据来自 GAME_DATA.equipment）' },
+  'toolbelt-equipment': { name: '工具腰带', color: '#8a7a5a', mark: '带', desc: '个人装备：随身额外物品栏（官方 toolbelt，数据来自 GAME_DATA.equipment）' },
+  'mech-armor': { name: '机械装甲', color: '#5a6a8a', mark: '机', desc: '太空时代终极装甲：拥有最大装备网格，可安装最多强力装备件（官方 Mech armor，数据来自 GAME_DATA）' },
+  // ===== 太空时代 终局防御（数据来自 factorio-data 官方，见 GAME_DATA）=====
+  'railgun': { name: '轨道炮', color: '#8a8ad0', desc: '太空时代终极单兵武器（官方 Railgun）：发射轨道炮弹，对线性路径上多个敌人造成巨额伤害（对齐《异星工厂》Space Age Railgun）' },
+  'railgun-ammo': { name: '轨道炮弹', color: '#a8a0d0', mark: '弹', desc: '太空时代轨道炮专用弹药（官方 Railgun ammo，堆叠 100）：由钬板+超导体制得，威力巨大（对齐《异星工厂》Space Age Railgun ammo）' },
+  'railgun-turret': { name: '轨道炮塔', color: '#7a7ac8', desc: '太空时代终极防御炮塔（官方 Railgun turret）：发射轨道炮弹攻击线性路径上的敌人，射程远、伤害极高（对齐《异星工厂》Space Age Railgun turret，数据来自 GAME_DATA）' },
+  'rocket-turret': { name: '火箭炮塔', color: '#c8a04a', desc: '太空时代高级防御炮塔（官方 Rocket turret）：发射火箭弹攻击敌人，射程远、可拦截（对齐《异星工厂》Space Age Rocket turret，数据来自 GAME_DATA）' },
   // ===== 流体桶装系统（对齐《异星工厂》Barrel system） =====
   'barrel': { name: '空桶', color: '#9aa0aa', mark: '桶', desc: '可盛装流体的金属桶（1×1）。把空桶放进组装机并接好流体管道，选桶装配方即可把流体灌入桶中；装满的桶可用传送带/机械臂/物流机器人/火车运输，实现流体走物流网络；再把满桶放回组装机选倒空配方，即可把流体倒回管道' },
   'water-barrel':          { name: '桶装水',   color: '#4a90d9', mark: '桶', desc: '盛满水的桶，可经物流网络运输，倒空后获得空桶' },

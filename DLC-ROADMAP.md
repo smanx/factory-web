@@ -386,25 +386,51 @@
 > - 科技：新增「富尔戈拉电磁」科技（fulgora，需电磁科研，用电磁科研包+实用科研包推进），解锁钬/特斯拉链。
 > - 校验：verify-dlc 新增 Fulgora 钬/特斯拉链校验（26 项），全量 18 个校验脚本通过，构建通过。
 
+### 阶段四.11：Aquilo 低温学链 + 终局 DLC 内容（本迭代新增）
 
-### 阶段四.10：Aquilo 低温材料链（Cryogenic science pack，本迭代新增）
-- [x] **冷冻厂 / 低温科研包（Cryogenic plant / Cryogenic science pack）**：太空时代低温生产建筑与终局科研包
+> 本迭代在前序 DLC 接入基础上，继续补齐太空时代缺失的高价值内容，全部数据来自 data.generated.js（factorio-data 单源）。
 
-> 已落地说明（本迭代增量）：
-> - 物品：`cryogenic-science-pack`（低温科研包，堆叠 200）/ `cryogenic-plant`（冷冻厂，堆叠 20），
->   堆叠 / 命名 / 血量 / 功耗 / 占地 / 速度全部来自 GAME_DATA（factorio-data 官方：
->   Cryogenic science pack / Cryogenic plant，cryogenic-plant 5×5（selection_box ±2.5）、
->   max_health 350、energy_usage 1500kW、crafting_speed 2、module_slots 8——官方模块槽最多的工厂），未单独维护数值表。
-> - 生成脚本：DEVICE_STATS_SOURCES + FOOTPRINT_SOURCES 新增冷冻厂官方 selection_box 桥接。
-> - 玩法：冷冻厂（5×5）为太空时代低温生产建筑，速度与电磁工厂同级（crafting_speed 2）、
->   模块槽最多（8），专用于低温产物与低温科研包生产。
-> - 配方（官方依赖氟酮冷却液 fluid=Aquilo 专属流体，项目暂无氟酮流体，适配为冰+锂板）：
->   低温科研包=3冰+1锂板（20s，官方 energy_required=20）；冷冻厂=40精炼混凝土+20超导体+20处理器+20锂板（10s，官方数值），
->   配方键保留官方名，数据单源。
-> - 科技：新增「低温科技」科技（cryogenics，前置电磁学），解锁冷冻厂与低温科研包；低温科研包加入
->   SCIENCE_PACKS 可被实验室消耗（官方 Aquilo 触发式科技）。
-> - 校验：verify-dlc 新增低温链校验（18 项），全量 18 个校验脚本通过，构建通过。
+#### 1. 低温学链（Aquilo Cryogenics）
+- **物品/流体**：`cryogenic-science-pack`（低温科研包，堆叠 200）/ `ammonia`（氨）/ `fluorine`（氟）/
+  `fluoroketone-cold`（氟酮冷）/ `fluoroketone-hot`（氟酮热），中英命名来自 GAME_DATA.names（factorio-data 官方 fluid-name），
+  未单独维护数值表。
+- **设备**：`cryogenic-plant`（低温工厂）：占地 5×5（官方 selection_box）、血量 350、功耗 1500kW、
+  制造速度 2、模块槽 8，全部来自 GAME_DATA（deviceStats/footprint/buildingHp/powerUse），复用化工厂流体组装机行为。
+- **配方**：氨=水+硫酸（3s）；氟=氨+方解石（2s）；氟酮冷=氟+氨+碳（3s）；氟酮热=氟酮冷（2s）；
+  低温科研包=氟酮热+超导体+锂板+钷素星块（6s，官方 cryogenic-science-pack）；低温工厂本体（10s）。
+  配方键保留官方名，数据单源，由「低温学」科技解锁。
+- **玩法**：补齐太空时代最后一档科研包（靛瓶），与金属/电磁/农业/钷素科研包构成完整终局科学链，
+  低温科研包由低温工厂制得，可被实验室消耗推进 Aquilo 终局科技。
+- **校验**：verify-dlc 新增低温学链校验（14 项）。
 
+#### 2. 熔融金属（Vulcanus Molten metal）
+- **流体**：`molten-iron`（熔融铁）/ `molten-copper`（熔融铜），命名来自 GAME_DATA.names。
+- **配方**：熔融铁=铁矿20+方解石5→100（4s，铸造厂）；熔融铜=铜矿20+方解石5→100（4s，铸造厂），
+  由铸造厂（foundry）制得（官方 Vulcanus 熔融金属链），由「熔融金属」科技解锁。
+
+#### 3. 废料回收（Fulgora Scrap recycling）
+- **物品**：`scrap`（废料，堆叠 50），命名来自 GAME_DATA.names。
+- **配方**：`scrap`=铁板+铜板+石头（2s）；`recycle-scrap`=废料→铁/铜矿石/石/煤概率回收（1s，官方 Fulgora scrap 循环），
+  由「废料回收」科技解锁。
+
+#### 4. 终局防御（Railgun / Rocket turret）
+- **物品**：`quantum-processor`（量子处理器，堆叠 100）/ `railgun`（轨道炮）/ `railgun-ammo`（轨道炮弹，堆叠 10）/
+  `railgun-turret`（轨道炮塔，血量 4000）/ `rocket-turret`（火箭炮塔，血量 1500），命名/血量/占地来自 GAME_DATA。
+- **配方**：量子处理器=超导体+碳纤维+处理器（20s）；轨道炮=钬板+超导体+量子处理器（30s）；
+  轨道炮弹=钬板+超导体（10s）；轨道炮塔=轨道炮+超级电容+量子处理器（30s）；
+  火箭炮塔=钢板+火箭弹+处理器（30s）。
+- **玩法**：轨道炮塔发射贯穿线伤（5×5，吃电力），火箭炮塔发射火箭弹（3×3，吃电力），
+  复用能量炮塔链路（模块/电路/旋转），由「轨道炮防御」科技解锁。
+
+#### 5. 机械装甲 + 高级个人装备（Mech armor / Aquilo equipment）
+- **物品/装备**：`mech-armor`（机械装甲）/ `battery-mk3-equipment`（个人电池 III，储电 250000kJ 官方 battery-mk3）/
+  `fission-reactor-equipment`（便携裂变反应堆，官方 fission-reactor 4MW）/ `toolbelt-equipment`（工具腰带），
+  数值来自 GAME_DATA.equipment（官方 battery-mk3-equipment / fission-reactor-equipment），未单独维护数值表。
+- **玩法**：机械装甲为终极护甲（减伤 65%、10×10 最大装备网格），个人电池 III / 便携裂变反应堆为高级装备件，
+  装备进网格后提供更强储电与发电（个人电网终极动力），由「机械装甲」科技解锁。
+
+> **校验**：verify-dlc 新增低温/熔融/废料/终局防御/机械装甲校验（共 14+6+6+6+9=41 项），
+> 全量 18 个校验脚本通过，`node build.js` 构建通过。 (feat: 接入 Aquilo 低温学链 + 熔融金属/废料回收/终局防御/机械装甲 DLC 内容)
 
 ### 阶段五：数值/体验精修
 

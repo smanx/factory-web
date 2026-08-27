@@ -66,6 +66,13 @@ const KEEP_MANUAL_RECIPES = new Set([
   'carbon-fiber', 'lithium', 'lithium-plate', 'superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant',
   'yumako-mash', 'bioflux', 'nutrients-from-bioflux', 'biosulfur', 'agricultural-science-pack', 'biochamber',
   'agricultural-tower', 'yumako-growing',  // 太空时代农业塔（种植专属配方，非官方合成）
+  // ===== 太空时代 Aquilo 低温学链（官方配方依赖低温/液空等星球资源，此处适配基础资源）=====
+  'ammonia', 'fluorine', 'fluoroketone-cold', 'fluoroketone-hot', 'cryogenic-science-pack', 'cryogenic-plant',
+  // ===== 太空时代 熔融金属/废料/终局防御（官方配方依赖行星资源，此处适配基础资源）=====
+  'molten-iron', 'molten-copper', 'scrap', 'recycle-scrap',
+  'quantum-processor', 'railgun', 'railgun-ammo', 'railgun-turret', 'rocket-turret',
+  // ===== 太空时代 Aquilo 高级装备（官方配方依赖星球资源，此处适配基础资源）=====
+  'battery-mk3-equipment', 'fission-reactor-equipment', 'toolbelt-equipment', 'mech-armor',
   // ===== 太空时代 小行星碎块加工（破碎机专属配方，适配地面）=====
   'crusher', 'metallic-asteroid-crushing', 'carbonic-asteroid-crushing', 'oxide-asteroid-crushing', 'ice-melting',
   // 进阶星块加工（高级粉碎/再处理，破碎机专属，官方数值简化适配）
@@ -404,7 +411,7 @@ const DEVICE_STATS_SOURCES = {
   'biochamber': ['assembling-machine', 'biochamber'],  // 太空时代生化炉：crafting_speed=2, module_slots=4
   'crusher': ['assembling-machine', 'crusher'],  // 太空时代破碎机：crafting_speed=1, module_slots=2
   'foundry': ['assembling-machine', 'foundry'],  // 太空时代铸造厂（Vulcanus）：crafting_speed=4, module_slots=4
-  'cryogenic-plant': ['assembling-machine', 'cryogenic-plant'],  // 太空时代冷冻厂（Aquilo）：crafting_speed=2, module_slots=8
+  'cryogenic-plant': ['assembling-machine', 'cryogenic-plant'],  // 太空时代低温工厂（Aquilo）：crafting_speed=2, module_slots=8
   'agricultural-tower': ['agricultural-tower', 'agricultural-tower'],  // 太空时代农业塔（Gleba）：种植建筑，energy_usage=100kW
   'biolab': ['lab', 'biolab'],  // 太空时代生物实验室（Gleba）：官方 researching_speed=2、module_slots=4
 };
@@ -596,6 +603,11 @@ const equipment = {};
   if (b1 && b1.energy_source) { const cap = parseEnergyKJ(b1.energy_source.buffer_capacity); if (cap !== null) equipment['battery-equipment'] = { powerCap: cap }; }
   const b2 = raw['battery-equipment'] && raw['battery-equipment']['battery-mk2-equipment'];
   if (b2 && b2.energy_source) { const cap = parseEnergyKJ(b2.energy_source.buffer_capacity); if (cap !== null) equipment['battery-mk2-equipment'] = { powerCap: cap }; }
+  const b3 = raw['battery-equipment'] && raw['battery-equipment']['battery-mk3-equipment'];
+  if (b3 && b3.energy_source) { const cap = parseEnergyKJ(b3.energy_source.buffer_capacity); if (cap !== null) equipment['battery-mk3-equipment'] = { powerCap: cap }; }
+  const fir = raw['generator-equipment'] && raw['generator-equipment']['fission-reactor-equipment'];
+  if (fir) { const kw = parseKiloWatt(fir.power); if (kw !== null) equipment['fission-reactor-equipment'] = { powerOut: kw }; }
+
   const s1 = raw['energy-shield-equipment'] && raw['energy-shield-equipment']['energy-shield-equipment'];
   if (s1 && typeof s1.max_shield_value === 'number') equipment['energy-shield-equipment'] = { shield: s1.max_shield_value };
   const s2 = raw['energy-shield-equipment'] && raw['energy-shield-equipment']['energy-shield-mk2-equipment'];
@@ -842,7 +854,9 @@ const FOOTPRINT_SOURCES = {
   'biochamber': ['assembling-machine', 'biochamber'],  // 太空时代生化炉（space-age 装配机原型，3×3）
   'crusher': ['assembling-machine', 'crusher'],  // 太空时代破碎机（space-age 装配机原型，selection_box ±1×±1.5 → 2×3）
   'foundry': ['assembling-machine', 'foundry'],  // 太空时代铸造厂（space-age 装配机原型，selection_box ±2.5×±2.5 → 5×5）
-  'cryogenic-plant': ['assembling-machine', 'cryogenic-plant'],  // 太空时代冷冻厂（space-age 装配机原型，selection_box ±2.5×±2.5 → 5×5）
+  'cryogenic-plant': ['assembling-machine', 'cryogenic-plant'],  // 太空时代低温工厂（Aquilo）：官方 selection_box ±2 → 4×4
+  'railgun-turret': ['ammo-turret', 'railgun-turret'],  // 轨道炮塔：官方 selection_box
+  'rocket-turret': ['ammo-turret', 'rocket-turret'],  // 火箭炮塔：官方 selection_box (feat: 接入 Aquilo 低温学链 + 熔融金属/废料回收/终局防御/机械装甲 DLC 内容)
   'agricultural-tower': ['agricultural-tower', 'agricultural-tower'],  // 太空时代农业塔（Gleba）：官方 selection_box ±1.5×±1.5 → 3×3
   'heating-tower': ['reactor', 'heating-tower'],  // 太空时代供热塔（Aquilo）：官方 reactor 原型 selection_box ±1.5×±1.5 → 3×3
   'biolab': ['lab', 'biolab'],  // 太空时代生物实验室（Gleba）：官方 lab 原型 selection_box ±2.5×±2.5 → 5×5

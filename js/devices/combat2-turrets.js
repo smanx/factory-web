@@ -578,3 +578,100 @@ DEVICE_PANEL['tesla-turret'] = { html: teslaTurretPanelHtml, live: teslaTurretPa
 DEVICE_DIR_ROTATE['laser-turret'] = true;
 DEVICE_DIR_ROTATE['flamethrower-turret'] = true;
 DEVICE_DIR_ROTATE['tesla-turret'] = true;
+
+// ===== 轨道炮塔（太空时代 Railgun turret，复用能量炮塔模式） =====
+// 数据来自 GAME_DATA（占地 5×5 / 血量 3000，官方 Railgun turret）。
+const RAILGUN_RANGE = 32;          // 射程（格）
+const RAILGUN_FIRE_RATE = 1.5;     // 冷却（秒）
+const RAILGUN_DMG = 300;           // 单发伤害（贯穿线伤）
+class RailgunTurret extends CircuitNode {
+  constructor(type, x, y) { super('railgun-turret', x, y); this.cooldown = 0; this.target = null; this.facing = 0; this.beamT = 0; this.circuitCond = { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 }; }
+  circuitEnabled() { if (!this.circuitCond || !this.circuitCond.enabled) return true; return circuitCondOk(circuitSignalNear(this), this.circuitCond); }
+  enemiesInRange() { const cx=this.x+this.w/2,cy=this.y+this.h/2; const es=G._aliveEnemies||(G.enemies||[]); let n=0; for(const en of es){ if(!en||en.dead)continue; if(Math.hypot(en.x/TILE-cx,en.y/TILE-cy)<=RAILGUN_RANGE)n++; } return n; }
+  outputCircuitSignals() { const n=this.enemiesInRange(); return n>0?[{sig:'signal-enemy',count:n}]:[]; }
+  update(dt) {
+    this.cooldown-=dt; this.beamT=Math.max(0,this.beamT-dt); this.target=null;
+    if(G.power.sat<=0||!this.circuitEnabled())return;
+    const cx=this.x+this.w/2,cy=this.y+this.h/2; let best=null,bestD=Infinity;
+    const es=G._aliveEnemies||(G.enemies||[]);
+    for(const en of es){ if(!en||en.dead)continue; const d=Math.hypot(en.x/TILE-cx,en.y/TILE-cy); if(d<=RAILGUN_RANGE&&d<bestD){best=en;bestD=d;} }
+    if(!best)return; this.target=best;
+    this.facing=Math.atan2(best.y-(this.y+this.h/2)*TILE,best.x-(this.x+this.w/2)*TILE);
+    if(this.cooldown>0)return; this.cooldown=RAILGUN_FIRE_RATE;
+    // 贯穿线伤：对以炮塔为起点的方向扇形内多个敌人造成伤害
+    const ang=this.facing; let dmg=RAILGUN_DMG*(typeof weaponDamageMult==='function'?weaponDamageMult():1);
+    for(const en of es){ if(!en||en.dead)continue; const dx=en.x/TILE-cx,dy=en.y/TILE-cy; const d=Math.hypot(dx,dy); if(d>RAILGUN_RANGE)continue; const a=Math.atan2(dy,dx); let da=Math.abs(a-ang); if(da>Math.PI)da=2*Math.PI-da; if(da<0.35){ en.hp-=Math.round(dmg); if(en.hp<=0)en.dead=true; } }
+    this.beamT=0.2; (G.bullets||(G.bullets=[])).push({x:(this.x+this.w/2)*TILE,y:(this.y+this.h/2)*TILE,tx:best.x,ty:best.y,t:0,life:0.12,dmg:0,kind:'laser'});
+    if(typeof playSfx==='function')playSfx('laser');
+  }
+  powerDemand(){return 1000;}
+  serialize(){const s=super.serialize();if(this.circuitCond)s.circuitCond=this.circuitCond;return s;}
+  static restore(s){const e=super.restore(s);e.circuitCond=s.circuitCond||{enabled:false,channel:'red',sig:'iron-plate',op:'>',count:1};return e;}
+}
+function drawRailgunTurret(ctx,e,gx,gy,dir,alpha){
+  const px=gx*TILE,py=gy*TILE,s=TILE*e.w;ctx.globalAlpha=alpha;
+  ctx.fillStyle='#4a4a6a';rr(ctx,px+6,py+6,s-12,s-12,12);ctx.fill();
+  ctx.strokeStyle='#30304a';ctx.lineWidth=4;rr(ctx,px+6,py+6,s-12,s-12,12);ctx.stroke();
+  const cx=px+s/2,cy=py+s/2,ang=e.target?e.facing:-Math.PI/2;
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(ang);
+  ctx.fillStyle='#7a6ad0';ctx.fillRect(-10,-10,20,20);
+  ctx.fillStyle='#a89ae8';ctx.fillRect(6,-5,26,10);
+  ctx.restore();
+  if(e.beamT>0&&e.target){ctx.strokeStyle='rgba(140,120,255,'+(e.beamT/0.2).toFixed(2)+')';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(e.target.x,e.target.y);ctx.stroke();}
+  ctx.globalAlpha=1;
+}
+function railgunTurretTip(e){return e.target?'开火中（轨道贯穿）':(G.power.sat<=0?'缺电停摆':'待机（吃电力，无需弹药）');}
+
+// ===== 火箭炮塔（太空时代 Rocket turret） =====
+const ROCKET_TURRET_RANGE = 26;    // 射程（格）
+const ROCKET_TURRET_FIRE_RATE = 0.8; // 冷却（秒）
+const ROCKET_TURRET_DMG = 120;     // 单发伤害
+class RocketTurret extends CircuitNode {
+  constructor(type,x,y){super('rocket-turret',x,y);this.cooldown=0;this.target=null;this.facing=0;this.beamT=0;this.circuitCond={enabled:false,channel:'red',sig:'iron-plate',op:'>',count:1};}
+  circuitEnabled(){if(!this.circuitCond||!this.circuitCond.enabled)return true;return circuitCondOk(circuitSignalNear(this),this.circuitCond);}
+  enemiesInRange(){const cx=this.x+this.w/2,cy=this.y+this.h/2;const es=G._aliveEnemies||(G.enemies||[]);let n=0;for(const en of es){if(!en||en.dead)continue;if(Math.hypot(en.x/TILE-cx,en.y/TILE-cy)<=ROCKET_TURRET_RANGE)n++;}return n;}
+  outputCircuitSignals(){const n=this.enemiesInRange();return n>0?[{sig:'signal-enemy',count:n}]:[];}
+  update(dt){
+    this.cooldown-=dt;this.beamT=Math.max(0,this.beamT-dt);this.target=null;
+    if(G.power.sat<=0||!this.circuitEnabled())return;
+    const cx=this.x+this.w/2,cy=this.y+this.h/2;let best=null,bestD=Infinity;
+    const es=G._aliveEnemies||(G.enemies||[]);
+    for(const en of es){if(!en||en.dead)continue;const d=Math.hypot(en.x/TILE-cx,en.y/TILE-cy);if(d<=ROCKET_TURRET_RANGE&&d<bestD){best=en;bestD=d;}}
+    if(!best)return;this.target=best;
+    this.facing=Math.atan2(best.y-(this.y+this.h/2)*TILE,best.x-(this.x+this.w/2)*TILE);
+    if(this.cooldown>0)return;this.cooldown=ROCKET_TURRET_FIRE_RATE;
+    const dmg=Math.round(ROCKET_TURRET_DMG*(typeof weaponDamageMult==='function'?weaponDamageMult():1));
+    best.hp-=dmg;this.beamT=0.15;
+    (G.bullets||(G.bullets=[])).push({x:(this.x+this.w/2)*TILE,y:(this.y+this.h/2)*TILE,tx:best.x,ty:best.y,t:0,life:0.15,dmg:0,kind:'rocket'});
+    if(typeof playSfx==='function')playSfx('shoot');
+    if(best.hp<=0)best.dead=true;
+  }
+  powerDemand(){return 500;}
+  serialize(){const s=super.serialize();if(this.circuitCond)s.circuitCond=this.circuitCond;return s;}
+  static restore(s){const e=super.restore(s);e.circuitCond=s.circuitCond||{enabled:false,channel:'red',sig:'iron-plate',op:'>',count:1};return e;}
+}
+function drawRocketTurret(ctx,e,gx,gy,dir,alpha){
+  const px=gx*TILE,py=gy*TILE,s=TILE*e.w;ctx.globalAlpha=alpha;
+  ctx.fillStyle='#6a5a3a';rr(ctx,px+4,py+4,s-8,s-8,10);ctx.fill();
+  ctx.strokeStyle='#4a3a24';ctx.lineWidth=3;rr(ctx,px+4,py+4,s-8,s-8,10);ctx.stroke();
+  const cx=px+s/2,cy=py+s/2,ang=e.target?e.facing:-Math.PI/2;
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(ang);
+  ctx.fillStyle='#c8a04a';ctx.fillRect(-8,-8,16,16);
+  ctx.fillStyle='#e0c070';ctx.fillRect(5,-4,20,8);
+  ctx.restore();
+  if(e.beamT>0&&e.target){ctx.strokeStyle='rgba(255,180,80,'+(e.beamT/0.15).toFixed(2)+')';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(e.target.x,e.target.y);ctx.stroke();}
+  ctx.globalAlpha=1;
+}
+function rocketTurretTip(e){return e.target?'开火中（火箭弹）':(G.power.sat<=0?'缺电停摆':'待机（吃电力，无需弹药）');}
+
+// ===== 注册新炮塔 =====
+ENT_CLASSES['railgun-turret'] = RailgunTurret;
+ENT_CLASSES['rocket-turret'] = RocketTurret;
+DEVICE_RENDER['railgun-turret'] = drawRailgunTurret;
+DEVICE_RENDER['rocket-turret'] = drawRocketTurret;
+DEVICE_STATUS['railgun-turret'] = e => (G.power.sat<=0?'r':(e.target?'g':'y'));
+DEVICE_STATUS['rocket-turret'] = e => (G.power.sat<=0?'r':(e.target?'g':'y'));
+DEVICE_PANEL['railgun-turret'] = { html: laserTurretPanelHtml, live: laserTurretPanelLive, tip: railgunTurretTip, onAction: (a) => circuitPanelAction('rg', a) };
+DEVICE_PANEL['rocket-turret'] = { html: laserTurretPanelHtml, live: laserTurretPanelLive, tip: rocketTurretTip, onAction: (a) => circuitPanelAction('rk', a) };
+DEVICE_DIR_ROTATE['railgun-turret'] = true;
+DEVICE_DIR_ROTATE['rocket-turret'] = true;

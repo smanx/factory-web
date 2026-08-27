@@ -30,6 +30,7 @@ const BUILD_DEFS = {
   'biochamber': { w: 3, h: 3, solid: true },  // 太空时代生化炉（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±1.5 → 3×3）
   'crusher': { w: 2, h: 3, solid: true },  // 太空时代破碎机（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±1×±1.5 → 2×3）
   'foundry': { w: 5, h: 5, solid: true },  // 太空时代铸造厂（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±2.5 → 5×5）
+  'cryogenic-plant': { w: 4, h: 4, solid: true },  // 太空时代低温工厂（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±2 → 4×4）
   'agricultural-tower': { w: 3, h: 3, solid: true },  // 太空时代农业塔（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±1.5 → 3×3）
   'cryogenic-plant': { w: 5, h: 5, solid: true },  // 太空时代冷冻厂（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±2.5 → 5×5）
   'beacon':             { w: 3, h: 3, solid: true },
@@ -59,6 +60,8 @@ const BUILD_DEFS = {
   'gun-turret':         { w: 2, h: 2, solid: true },
   'laser-turret':       { w: 2, h: 2, solid: true },
   'tesla-turret':       { w: 4, h: 4, solid: true },  // 特斯拉炮塔（官方 electric-turret selection_box ±2 → 4×4，由 GAME_DATA.footprint 桥接）
+  'railgun-turret':     { w: 5, h: 5, solid: true },  // 轨道炮塔（官方 selection_box ±2.5 → 5×5，由 GAME_DATA.footprint 桥接）
+  'rocket-turret':      { w: 3, h: 3, solid: true },  // 火箭炮塔（官方 selection_box ±1.5 → 3×3，由 GAME_DATA.footprint 桥接）
   'flamethrower-turret':{ w: 2, h: 3, solid: true },  // 官方 collision_box ±0.72×±1.2 → 2×3
   'rocket-silo':        { w: 9, h: 9, solid: true },  // 火箭发射井（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±4.5 → 9×9，对齐《异星工厂》2.0 巨型发射井）
   'cargo-landing-pad':  { w: 8, h: 8, solid: true },  // 物流接驳站（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±4 → 8×8）
@@ -143,6 +146,7 @@ const BUILDING_HP = {
   'biochamber': 300,  // 生化炉官方 max_health=300（由 GAME_DATA 桥接）
   'crusher': 350,  // 破碎机官方 max_health=350（由 GAME_DATA 桥接）
   'foundry': 350,  // 铸造厂官方 max_health=350（由 GAME_DATA 桥接）
+  'cryogenic-plant': 350,  // 低温工厂官方 max_health=350（由 GAME_DATA 桥接）
   'agricultural-tower': 500,  // 农业塔官方 max_health=500（由 GAME_DATA 桥接）
   // 储物箱（官方 wooden 100 / iron 200 / steel 350）
   'wooden-chest': 100, 'iron-chest': 200, 'steel-chest': 350,
@@ -158,6 +162,7 @@ const BUILDING_HP = {
   'solar-panel': 200, 'accumulator': 150,
   // 炮塔（官方 gun 400 / laser 1000 / flamethrower 1400 / artillery 2000）
   'gun-turret': 400, 'laser-turret': 1000, 'tesla-turret': 2000, 'flamethrower-turret': 1400, 'artillery-turret': 2000,
+  'railgun-turret': 3000, 'rocket-turret': 1500,  // 轨道炮塔/火箭炮塔（官方 max_health，由 GAME_DATA 桥接）
   'stone-wall': 350, 'gate': 350,
   // 石化与火箭（官方 oil-refinery 350 / chemical-plant 300 / rocket-silo 5000 / radar 250）
   'oil-refinery': 350, 'chemical-plant': 300, 'rocket-silo': 5000, 'radar': 250,
