@@ -421,6 +421,10 @@ const DEVICE_STATS_SOURCES = {
   'fast-transport-belt': ['transport-belt', 'fast-transport-belt'],
   'express-transport-belt': ['transport-belt', 'express-transport-belt'],
   'turbo-transport-belt': ['transport-belt', 'turbo-transport-belt'],  // 太空时代4档带（速度7.5格/s）
+  'loader': ['loader', 'loader'],  // 装载机（官方 loader：speed 0.03125 → 1.875 格/s）
+  'fast-loader': ['loader', 'fast-loader'],  // 高速装载机（speed 0.0625 → 3.75 格/s）
+  'express-loader': ['loader', 'express-loader'],  // 极速装载机（speed 0.09375 → 5.625 格/s）
+  'turbo-loader': ['loader', 'turbo-loader'],  // 超速装载机（speed 0.125 → 7.5 格/s）
   'underground-belt': ['underground-belt', 'underground-belt'],
   'fast-underground-belt': ['underground-belt', 'fast-underground-belt'],
   'express-underground-belt': ['underground-belt', 'express-underground-belt'],
@@ -831,6 +835,10 @@ const FOOTPRINT_SOURCES = {
   'fast-transport-belt': ['transport-belt', 'fast-transport-belt'],
   'express-transport-belt': ['transport-belt', 'express-transport-belt'],
   'turbo-transport-belt': ['transport-belt', 'turbo-transport-belt'],  // 太空时代4档带（速度7.5格/s）
+  'loader': ['loader', 'loader'],  // 装载机（官方 selection_box ±0.5×±1 → 1×2）
+  'fast-loader': ['loader', 'fast-loader'],  // 高速装载机（官方 selection_box → 1×2）
+  'express-loader': ['loader', 'express-loader'],  // 极速装载机（官方 selection_box → 1×2）
+  'turbo-loader': ['loader', 'turbo-loader'],  // 超速装载机（官方 selection_box → 1×2）
   'underground-belt': ['underground-belt', 'underground-belt'],
   'fast-underground-belt': ['underground-belt', 'fast-underground-belt'],
   'express-underground-belt': ['underground-belt', 'express-underground-belt'],

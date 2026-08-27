@@ -979,6 +979,30 @@ ok(ctx.__itemTechReq('stack-inserter') === 'stack-inserter-tech', 'stack-inserte
   ok(inpOk && outOk, 'stack-inserter 配方引用的物品均存在');
 }
 
+console.log('\n【装载机 Loader（本迭代新增）数据校验】');
+const LOADER_SPEED = { 'loader': 1.875, 'fast-loader': 3.75, 'express-loader': 5.625, 'turbo-loader': 7.5 };
+for (const id of ['loader', 'fast-loader', 'express-loader', 'turbo-loader']) {
+  ok(!!GD.stackSize[id] && GD.stackSize[id] === 50, id + ' 堆叠=50（官方 stack_size）');
+  ok(GD.buildingHp[id] === 170, id + ' 血量=170（官方 max_health）');
+  ok(!!GD.deviceStats[id] && Math.abs(GD.deviceStats[id].beltSpeed - LOADER_SPEED[id]) < 0.001, id + ' 速度=' + LOADER_SPEED[id] + ' 格/s（官方 speed）');
+  ok(!!GD.footprint[id] && GD.footprint[id].w === 1 && GD.footprint[id].h === 2, id + ' 占地 1×2（官方 selection_box ±0.5×±1）');
+  ok(!!IT[id], id + ' 物品已注册');
+  ok(!!RP[id], id + ' 配方已注册');
+  const rec = RP[id];
+  const inpOk = Object.keys(rec.inp).every(k => k in IT);
+  const outOk = Object.keys(rec.out).every(k => k in IT);
+  ok(inpOk && outOk, id + ' 配方引用的物品均存在');
+}
+// 官方 loader 配方原料核对
+ok(RP['loader'] && RP['loader'].inp['inserter'] === 5 && RP['loader'].inp['transport-belt'] === 5, '基础装载机配方=5机械臂+5电路板+5齿轮+5铁板+5传送带（官方）');
+ok(RP['fast-loader'] && RP['fast-loader'].inp['fast-transport-belt'] === 5 && RP['fast-loader'].inp['loader'] === 1, '高速装载机配方=5快带+1基础装载机（官方）');
+ok(RP['express-loader'] && RP['express-loader'].inp['express-transport-belt'] === 5, '极速装载机配方=5极速带+1高速装载机（官方）');
+ok(RP['turbo-loader'] && RP['turbo-loader'].inp['turbo-transport-belt'] === 5, '超速装载机配方=5超速带+1极速装载机（官方）');
+// 科技门控
+ok(ctx.__recipeTechReq('loader') === 'logistics2', '基础装载机需「物流 II」科技');
+ok(ctx.__recipeTechReq('express-loader') === 'logistics3', '极速装载机需「物流 III」科技');
+ok(ctx.__recipeTechReq('turbo-loader') === 'turbo-logistics', '超速装载机需「超速物流」科技');
+
 
 console.log('\n【太空时代虫巢孵化器（Captive biter spawner，本迭代新增）数据校验】');
 ok(!!GD.stackSize['captive-biter-spawner'] && GD.stackSize['captive-biter-spawner'] === 1, 'captive-biter-spawner 堆叠来自官方 (=1)');

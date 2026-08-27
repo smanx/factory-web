@@ -593,3 +593,30 @@
 > - **科技**：新增「虫巢孵化器」科技（captive-biter-spawner，需低温学+电磁科研+铀富集），
 >   解锁捕获者火箭弹与虫巢孵化器配方；数据校验并入 verify-dlc（新增 17 项），
 >   全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+
+### 阶段四.18：装载机 Loader（官方 base 物流设备，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **物品/设备**：`loader`（基础装载机）/ `fast-loader`（高速）/ `express-loader`（极速）/
+>   `turbo-loader`（超速）已接入，堆叠(=50) / 血量(=170) / 占地(1×2，官方 selection_box ±0.5×±1) /
+>   速度（loader 1.875 / fast 3.75 / express 5.625 / turbo 7.5 格/s）全部来自 GAME_DATA
+>   （factorio-data 官方 loader 原型：speed、max_health、stack_size、selection_box），未单独维护数值表。
+> - **生成脚本**：`DEVICE_STATS_SOURCES` / `FOOTPRINT_SOURCES` 新增 4 级 loader 官方桥接
+>   （官方 `loader` 原型 speed → beltSpeed、selection_box → footprint）。
+> - **配方**（官方 loader 配方，经 GAME_DATA 桥接）：
+>   - `loader`：1s = 5机械臂 + 5电路板 + 5齿轮 + 5铁板 + 5传送带 → 1；
+>   - `fast-loader`：3s = 5快带 + 1基础装载机 → 1；
+>   - `express-loader`：10s = 5极速带 + 1高速装载机 → 1；
+>   - `turbo-loader`：20s = 5超速带 + 1极速装载机 → 1。
+> - **玩法**：装载机为官方 base 物流设备（官方默认隐藏，web 复刻开放），放置在传送带末端。
+>   自动判定装载/卸载模式：
+>   - **装载**：后方接传送带、前方接容器/机器 → 从传送带取物自动装入容器；
+>   - **卸载**：后方接容器、前方接传送带 → 从容器取物自动卸到传送带。
+>   处理速率 = 官方速度（基础 15 件/s，与对应档传送带吞吐一致：快 30 / 极速 45 / 超速 60 件/s）。
+> - **科技**：基础/高速装载机需「物流 II」、极速装载机需「物流 III」、超速装载机需「超速物流」科技。
+> - **新设备文件**：`js/devices/loader.js`（ENT_CLASSES / DEVICE_RENDER / DEVICE_STATUS / DEVICE_PANEL /
+>   DEVICE_DIR_ROTATE 自注册），继承 Entity，复用传送带 grabZone/acceptItem 与容器 giveItem/takeItemOf 接口。
+> - **校验**：verify-dlc 新增装载机校验（4 级 × 6 + 配方 4 + 科技 3 = 31 项），
+
+>   全量 18 个校验脚本通过，`node build.js` 构建通过。

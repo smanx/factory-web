@@ -371,6 +371,11 @@ const RECIPE_TECH = {
   'burnt-spoilage': 'agriculture',
   'turbo-underground-belt': 'turbo-logistics',
   'turbo-splitter': 'turbo-logistics',
+  // ===== 装载机 Loader（对齐《异星工厂》Loader，web 复刻开放官方隐藏物流设备）=====
+  'loader': 'logistics2',             // 基础装载机：需「物流 II」
+  'fast-loader': 'logistics2',        // 高速装载机：需「物流 II」
+  'express-loader': 'logistics3',     // 极速装载机：需「物流 III」
+  'turbo-loader': 'turbo-logistics',  // 超速装载机：需「超速物流」科技
   // 太空时代 堆叠机械臂（官方 Space Age Stack inserter 科技，需碳纤维+集装箱机械臂）
   'stack-inserter': 'stack-inserter-tech',
   // 太空时代 钷素科研包（官方 Promethium science pack 科技，由钷素星块+超导体+生物结晶在电磁工厂制得）

@@ -22,6 +22,11 @@ const RECIPES = {
   'turbo-transport-belt': { time: 0.5, inp: { 'express-transport-belt': 1, 'steel-plate': 5, 'plastic-bar': 5, 'lubricant': 20 }, out: { 'turbo-transport-belt': 1 } },
   'turbo-underground-belt': { time: 2, inp: { 'express-underground-belt': 2, 'steel-plate': 40, 'plastic-bar': 20, 'lubricant': 40 }, out: { 'turbo-underground-belt': 2 } },
   'turbo-splitter':        { time: 2, inp: { 'express-splitter': 1, 'steel-plate': 15, 'processing-unit': 2, 'lubricant': 80 }, out: { 'turbo-splitter': 1 } },
+  // ===== 装载机 Loader（对齐《异星工厂》Loader，官方配方，经 GAME_DATA 桥接）=====
+  'loader':             { time: 1, inp: { 'inserter': 5, 'electronic-circuit': 5, 'iron-gear-wheel': 5, 'iron-plate': 5, 'transport-belt': 5 }, out: { 'loader': 1 } },
+  'fast-loader':        { time: 3, inp: { 'fast-transport-belt': 5, 'loader': 1 }, out: { 'fast-loader': 1 } },
+  'express-loader':     { time: 10, inp: { 'express-transport-belt': 5, 'fast-loader': 1 }, out: { 'express-loader': 1 } },
+  'turbo-loader':       { time: 20, inp: { 'turbo-transport-belt': 5, 'express-loader': 1 }, out: { 'turbo-loader': 1 } },
   'inserter':           { time: 0.5, inp: { 'iron-plate': 1, 'iron-gear-wheel': 1, 'electronic-circuit': 1 }, out: { 'inserter': 1 } },
   'burner-inserter':    { time: 0.5, inp: { 'iron-plate': 1, 'iron-gear-wheel': 1 },                  out: { 'burner-inserter': 1 } },
   'long-handed-inserter':      { time: 0.5, inp: { 'inserter': 1, 'iron-gear-wheel': 1 },                             out: { 'long-handed-inserter': 1 } },
