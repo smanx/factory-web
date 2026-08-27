@@ -25,6 +25,7 @@
 //   cargoLandingPad = { inventorySize, radarRange }, cargoBay = { inventorySizeBonus }（物流接驳站/扩展舱）
 //   cargoUnloadingBay = { inventorySizeBonus, allowUnloading, unloadingDistance }（物流卸载舱）
 //   footprint[building] = { w, h }（占地面积格数，官方 selection_box）
+//   pollution[building] = 官方每分排放（emissions_per_minute.pollution，污染/分），供污染系统单源读取
 const GAME_DATA = {
  "stackSize": {
   "iron-ore": 50,
@@ -7390,10 +7391,7 @@ const GAME_DATA = {
   "boiler": 30,
   "oil-refinery": 6,
   "chemical-plant": 4,
-  "centrifuge": 4,
-  "nuclear-reactor": 7,
-  "burner-inserter": 0.3,
-  "locomotive": 3
+  "centrifuge": 4
  },
  "enemy": {
   "small-wriggler-pentapod": {
