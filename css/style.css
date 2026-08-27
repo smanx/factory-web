@@ -816,6 +816,17 @@ html, body {
 .bar i { display: block; height: 100%; background: linear-gradient(90deg, #57b95c, #8fe08f); transition: width .2s; }
 .bar-time { font-size: 12px; color: #9fd8a0; margin: 2px 0 4px; font-family: monospace; }
 
+/* 燃料消耗指示（热能采矿机专属面板）：当前燃烧燃料剩余能量条 */
+.mini-bar {
+  height: 6px;
+  background: #10151c;
+  border-radius: 3px;
+  overflow: hidden;
+  width: 100%;
+}
+.mini-bar i { display: block; height: 100%; background: linear-gradient(90deg, #e8762c, #ffa64d); transition: width .2s; }
+.mini-bar.empty i { width: 0 !important; }
+
 .status { color: #ffd23c; margin-top: 4px; }
 .status.ok { color: #57e389; }
 .status.bad { color: #ff5b5b; }

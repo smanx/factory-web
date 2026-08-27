@@ -22,6 +22,8 @@ class Drill extends Entity {
     this.fuelRocket = 0;
     this.fuelWood = 0;
     this.burnLeft = 0;
+    this.burnCap = 0;      // 当前燃烧燃料的满能量（燃料消耗指示用）
+    this.burnType = '';    // 当前燃烧燃料类型（coal/wood/solid-fuel/rocket-fuel）
     this.bufItem = null;
     this.buf = 0;
     this.prog = 0;
@@ -77,18 +79,22 @@ class Drill extends Entity {
         this.fuelRocket--;
         if (typeof trackProd === 'function') trackProd('rocket-fuel', -1);
         this.burnLeft += ROCKET_FUEL_ENERGY;
+        this.burnCap = ROCKET_FUEL_ENERGY; this.burnType = 'rocket-fuel';
       } else if (this.fuelSolid > 0) {
         this.fuelSolid--;
         if (typeof trackProd === 'function') trackProd('solid-fuel', -1);
         this.burnLeft += SOLID_FUEL_ENERGY;
+        this.burnCap = SOLID_FUEL_ENERGY; this.burnType = 'solid-fuel';
       } else if (this.fuelCoal > 0) {
         this.fuelCoal--;
         if (typeof trackProd === 'function') trackProd('coal', -1);
         this.burnLeft += COAL_ENERGY;
+        this.burnCap = COAL_ENERGY; this.burnType = 'coal';
       } else if (this.fuelWood > 0) {
         this.fuelWood--;
         if (typeof trackProd === 'function') trackProd('wood', -1);
         this.burnLeft += WOOD_FUEL_ENERGY;
+        this.burnCap = WOOD_FUEL_ENERGY; this.burnType = 'wood';
       }
       else { this.status = '缺燃料'; this.spin = 0; return; }
     }
@@ -203,12 +209,14 @@ class Drill extends Entity {
     const s = super.serialize();
     s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket; s.fuelWood = this.fuelWood; s.burnLeft = this.burnLeft;
     s.bufItem = this.bufItem; s.buf = this.buf; s.prog = this.prog;
+    s.burnCap = this.burnCap; s.burnType = this.burnType;
     return s;
   }
   static restore(s) {
     const d = super.restore(s);
     d.fuelCoal = s.fuelCoal || 0; d.fuelSolid = s.fuelSolid || 0; d.fuelRocket = s.fuelRocket || 0; d.fuelWood = s.fuelWood || 0; d.burnLeft = s.burnLeft || 0;
     d.bufItem = s.bufItem || null; d.buf = s.buf || 0; d.prog = s.prog || 0;
+    d.burnCap = s.burnCap || 0; d.burnType = s.burnType || '';
     return d;
   }
 }
@@ -301,75 +309,86 @@ function drillNeedsOre(type, tx, ty, dir, ew, eh) {
   return hasOre ? null : { ok: false };
 }
 
-// ===== 面板（热能/电采矿机/抽油机共用，按是否吃电分支）=====
-function drillPanelHtml(e) {
-  const eDrill = e instanceof ElectricDrill;
+// ===== 热能采矿机专属面板（对齐设计：信息透明、操作直接）=====
+// 面板分四块，直击“自给自足、简单实用”：
+//   ① 燃料槽    —— 显示当前燃料数量（煤/木材/固体/火箭），手动放入即可启动；
+//   ② 燃料消耗指示 —— 进度条展示当前正在燃烧的那一单位燃料剩余能量，一眼看清还能撑多久；
+//   ③ 采矿进度条 —— 当前一个矿石的开采进度（由 api.prog 驱动渲染）；
+//   ④ 产品槽    —— 已开采矿石缓存，支持一键取回。
+function burnerDrillPanelHtml(e) {
+  const fuelChips = (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '')
+    + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '')
+    + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) + ' ' : '')
+    + (e.fuelWood > 0 ? chip('wood', e.fuelWood) : (e.fuelRocket <= 0 && e.fuelSolid <= 0 && e.fuelCoal <= 0 ? '<span class="dim">空 — 放入燃料启动</span>' : ''));
   let h = '';
-  if (eDrill) {
-    h += row('电力', powerStatusLiveHtml(e), 'power');
-  } else {
-    h += row('燃料', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '') + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) + ' ' : '') + (e.fuelWood > 0 ? chip('wood', e.fuelWood) : (e.fuelRocket <= 0 && e.fuelSolid <= 0 && e.fuelCoal <= 0 ? '<span class="dim">无</span>' : '')), 'fuel');
-    if (invCount('coal') > 0)
-      h += '<button data-action="fuel" data-id="coal">加 5 煤 (' + invCount('coal') + ')</button>';
-    if (invCount('wood') > 0)
-      h += '<button data-action="fuel" data-id="wood">加 5 木材 (' + invCount('wood') + ')</button>';
-    if (invCount('solid-fuel') > 0)
-      h += '<button data-action="fuel" data-id="solid-fuel">加 5 固体燃料 (' + invCount('solid-fuel') + ')</button>';
-    if (invCount('rocket-fuel') > 0)
-      h += '<button data-action="fuel" data-id="rocket-fuel">加 5 火箭燃料 (' + invCount('rocket-fuel') + ')</button>';
-  }
-  // 采矿速率显示在面板靠前位置（电力/燃料行之后）
+  // ① 燃料槽
+  h += row('燃料槽', fuelChips, 'fuel');
+  // ② 燃料消耗指示：当前燃烧燃料的剩余能量条
+  h += row('燃料消耗', '<span id="drill-burnbar"></span>', 'burn');
+  // 加料按钮（操作直接：点一下即放入 5 个）
+  if (invCount('coal') > 0)
+    h += '<button data-action="fuel" data-id="coal">加 5 煤 (' + invCount('coal') + ')</button>';
+  if (invCount('wood') > 0)
+    h += '<button data-action="fuel" data-id="wood">加 5 木材 (' + invCount('wood') + ')</button>';
+  if (invCount('solid-fuel') > 0)
+    h += '<button data-action="fuel" data-id="solid-fuel">加 5 固体燃料 (' + invCount('solid-fuel') + ')</button>';
+  if (invCount('rocket-fuel') > 0)
+    h += '<button data-action="fuel" data-id="rocket-fuel">加 5 火箭燃料 (' + invCount('rocket-fuel') + ')</button>';
+  // 采矿速率
   h += '<div id="mach-rate-block"></div>';
-  // 模块槽位（仅电采矿机/抽油机，对齐《异星工厂》：采矿设备可装模块）
-  if (eDrill) {
-    const mc = moduleCounts(e.modules);
-    const hasMod = (Object.keys(e.modules).length > 0);
-    h += row('模块', hasMod ?
-      '速度+' + mc.speed.toFixed(1) + ' 产能+' + mc.prod.toFixed(1) + ' 效率-' + mc.eff.toFixed(1) + ' 品质+' + (mc.quality*100).toFixed(1) + '%' : '<span class="dim">无</span>', 'mod');
-    for (const mid of Object.keys(e.modules)) {
-      if ((e.modules[mid] || 0) > 0) h += '<span class="dim">' + ITEMS[mid].name + ' ×' + e.modules[mid] + '</span> ';
-    }
-    const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3', 'quality-module', 'quality-module-2', 'quality-module-3'];
-    for (const mid of order) {
-      if (!itemUnlocked(mid)) continue;
-      const n = Math.min(invCount(mid), e.moduleSlotCount() - (e.modules[mid] || 0));
-      if (n > 0) h += '<button data-action="feed" data-id="' + mid + '">装入' + ITEMS[mid].name + ' ×' + n + '</button>';
-    }
-    if (hasMod) h += '<button data-action="takein" data-modules="1">取出全部模块</button>';
-    h += row('硫酸', '<span class="dim"></span>', 'acid');
-  }
-  h += row('矿物缓存', '<span class="dim"></span>', 'buffer');
+  // ④ 产品槽（矿物缓存）
+  h += row('产品槽', '<span class="dim"></span>', 'buffer');
   h += '<button data-action="takeout" id="btn-drill-takeout" style="display:none"></button>';
+  // ③ 采矿进度条
   h += barHtml(0);
   h += '<div class="status"></div>';
   h += '<div id="drill-ore-remain" class="dim"></div>';
   h += '<div class="dim">产出方向朝' + ['东', '南', '西', '北'][e.dir] + '，选中后按 R 旋转（需先关闭本面板或按 Q 取消选择）</div>';
   return h;
 }
-function drillPanelLive(e, api) {
-  const eDrill = e instanceof ElectricDrill;
-  if (eDrill) api.set('power', powerStatusLiveHtml(e));
-  if (!eDrill) api.set('fuel', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '') + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) + ' ' : '') + (e.fuelWood > 0 ? chip('wood', e.fuelWood) : (e.fuelRocket <= 0 && e.fuelSolid <= 0 && e.fuelCoal <= 0 ? dimSpan('无') : '')));
-  // 硫酸缓冲显示：铀矿采集的原料（管道接入）
-  if (eDrill) api.set('acid', (e.acid || 0) > 0 ? chip('sulfuric-acid', e.acid) : dimSpan('无'));
+function burnerDrillPanelLive(e, api) {
+  api.set('fuel', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '')
+    + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '')
+    + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) + ' ' : '')
+    + (e.fuelWood > 0 ? chip('wood', e.fuelWood) : (e.fuelRocket <= 0 && e.fuelSolid <= 0 && e.fuelCoal <= 0 ? dimSpan('空 — 放入燃料启动') : '')));
+  // ② 燃料消耗指示
+  const burnEl = document.getElementById('drill-burnbar');
+  if (burnEl) {
+    const cap = e.burnCap > 0 ? e.burnCap : COAL_ENERGY;
+    const pct = Math.max(0, Math.min(100, e.burnLeft / cap * 100));
+    let txt;
+    if (e.burnLeft > 0) {
+      const name = e.burnType && ITEMS[e.burnType] ? ITEMS[e.burnType].name : '燃料';
+      txt = name + ' 燃烧中 · 剩余能量 ' + e.burnLeft.toFixed(1) + 'MJ（' + Math.round(pct) + '%）';
+    } else if (e.fuelRocket > 0 || e.fuelSolid > 0 || e.fuelCoal > 0 || e.fuelWood > 0) {
+      txt = '燃料已就绪，即将燃烧';
+    } else {
+      txt = '缺燃料 · 已停摆';
+    }
+    const html = '<div class="mini-bar' + (e.burnLeft > 0 ? '' : ' empty') + '"><i style="width:' + pct + '%"></i></div>'
+      + '<div class="dim" style="margin-top:2px">' + txt + '</div>';
+    if (burnEl.innerHTML !== html) burnEl.innerHTML = html;
+  }
+  // ④ 产品槽
   api.set('buffer', e.buf > 0 && e.bufItem ? chip(e.bufItem, e.buf) : dimSpan('空'));
-  api.toggle('#btn-drill-takeout', e.buf > 0, '取回缓存 (' + e.buf + ')');
+  api.toggle('#btn-drill-takeout', e.buf > 0, '取回产品 (' + e.buf + ')');
+  // ③ 采矿进度条
   api.prog(e.working ? e.prog / e.oreTime() * 100 : 0, e.oreTime());
-  // 开采速率：每秒产矿量 = 1 / 该矿石采矿时间 × 采矿科技 × 机型倍率（电钻×电学、抽油×石油科技）
+  // 开采速率：每秒产矿量 = 1 / 该矿石采矿时间 × 采矿科技 × 机型倍率
   const rateEl = document.getElementById('mach-rate-block');
   if (rateEl) {
     const o = e.oreTile();
     const item = o ? e.mineItem(o) : (e.bufItem || null);
-    const mult = e instanceof ElectricDrill ? drillMult() * e.machMult() * e.moduleSpeedMult() : drillMult() * (GAME_DATA.deviceStats?.[e.type]?.miningSpeed ?? 0.25);
+    const mult = drillMult() * (GAME_DATA.deviceStats?.[e.type]?.miningSpeed ?? 0.25);
     const rec = item ? { time: oreMiningTime(item), inp: {}, out: { [item]: 1 } } : null;
     const html = rec ? machRateHtml(rec, mult) : '';
     if (rateEl.innerHTML !== html) rateEl.innerHTML = html;
   }
-  // 状态：工作中或暂停原因（无矿/缓存满/缺电/缺燃料）
+  // 状态：工作中或暂停原因
   if (e.status) api.status('已暂停：' + e.status, 'warn');
   else if (!e.working) api.status('待机：产出朝' + ['东', '南', '西', '北'][e.dir], 'ok');
   else api.status('开采中：产出朝' + ['东', '南', '西', '北'][e.dir], 'ok');
-  // 矿脉剩余储量显示（对齐《异星工厂》：矿脉储量有限、会逐渐采空，便于规划迁移）
+  // 矿脉剩余储量显示
   const oreRemainEl = document.getElementById('drill-ore-remain');
   if (oreRemainEl) {
     let oreRemain = 0, oreFound = false;
@@ -387,40 +406,69 @@ function drillPanelLive(e, api) {
     if (oreRemainEl.textContent !== txt) oreRemainEl.textContent = txt;
   }
 }
-function drillTip(e) {
-  const base = e.status || ('开采中，产出朝' + ['东', '南', '西', '北'][e.dir]);
-  // 矿脉剩余储量提示（对齐《异星工厂》：矿脉储量有限、会逐渐采空）。
-  // 计算本采矿机覆盖范围内剩余矿量总和，供玩家感知矿脉枯竭、及时迁移。
-  let oreRemain = 0;
-  let oreFound = false;
-  for (let dy = 0; dy < e.h; dy++)
-    for (let dx = 0; dx < e.w; dx++) {
-      const tx = e.x + dx, ty = e.y + dy;
-      if (!e.minableOreType(getOreType(tx, ty))) continue;
-      const amt = getOreAmt(tx, ty);
-      if (amt <= 0) continue;
-      oreRemain += amt;
-      oreFound = true;
-    }
-  let tip = base;
-  if (oreFound) {
-    tip += '；矿脉剩余 ' + Math.round(oreRemain) + (oreRemain <= 100 ? '（⚠ 即将采空）' : '');
+
+// ===== 电采矿机/抽油机面板（保持原设计，按是否吃电分支）=====
+function electricDrillPanelHtml(e) {
+  let h = '';
+  h += row('电力', powerStatusLiveHtml(e), 'power');
+  h += '<div id="mach-rate-block"></div>';
+  const mc = moduleCounts(e.modules);
+  const hasMod = (Object.keys(e.modules).length > 0);
+  h += row('模块', hasMod ?
+    '速度+' + mc.speed.toFixed(1) + ' 产能+' + mc.prod.toFixed(1) + ' 效率-' + mc.eff.toFixed(1) + ' 品质+' + (mc.quality*100).toFixed(1) + '%' : '<span class="dim">无</span>', 'mod');
+  for (const mid of Object.keys(e.modules)) {
+    if ((e.modules[mid] || 0) > 0) h += '<span class="dim">' + ITEMS[mid].name + ' ×' + e.modules[mid] + '</span> ';
   }
-  // 电采矿机/抽油机：电量不足（正在耗电且 sat<1）时在提示中注明
-  if (e instanceof ElectricDrill) {
-    const s = powerStatusOf(e);
-    if (s.consuming && s.sat < 1) tip += '；' + (s.sat > 0 ? '电量不足' + Math.round(s.sat * 100) + '%' : '缺电停摆');
-    // 铀矿采集需接入硫酸：提示剩余量与管道接入方向
-    let hasUranium = false;
+  const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3', 'quality-module', 'quality-module-2', 'quality-module-3'];
+  for (const mid of order) {
+    if (!itemUnlocked(mid)) continue;
+    const n = Math.min(invCount(mid), e.moduleSlotCount() - (e.modules[mid] || 0));
+    if (n > 0) h += '<button data-action="feed" data-id="' + mid + '">装入' + ITEMS[mid].name + ' ×' + n + '</button>';
+  }
+  if (hasMod) h += '<button data-action="takein" data-modules="1">取出全部模块</button>';
+  h += row('硫酸', '<span class="dim"></span>', 'acid');
+  h += row('矿物缓存', '<span class="dim"></span>', 'buffer');
+  h += '<button data-action="takeout" id="btn-drill-takeout" style="display:none"></button>';
+  h += barHtml(0);
+  h += '<div class="status"></div>';
+  h += '<div id="drill-ore-remain" class="dim"></div>';
+  h += '<div class="dim">产出方向朝' + ['东', '南', '西', '北'][e.dir] + '，选中后按 R 旋转（需先关闭本面板或按 Q 取消选择）</div>';
+  return h;
+}
+function electricDrillPanelLive(e, api) {
+  api.set('power', powerStatusLiveHtml(e));
+  api.set('acid', (e.acid || 0) > 0 ? chip('sulfuric-acid', e.acid) : dimSpan('无'));
+  api.set('buffer', e.buf > 0 && e.bufItem ? chip(e.bufItem, e.buf) : dimSpan('空'));
+  api.toggle('#btn-drill-takeout', e.buf > 0, '取回缓存 (' + e.buf + ')');
+  api.prog(e.working ? e.prog / e.oreTime() * 100 : 0, e.oreTime());
+  const rateEl = document.getElementById('mach-rate-block');
+  if (rateEl) {
+    const o = e.oreTile();
+    const item = o ? e.mineItem(o) : (e.bufItem || null);
+    const mult = drillMult() * e.machMult() * e.moduleSpeedMult();
+    const rec = item ? { time: oreMiningTime(item), inp: {}, out: { [item]: 1 } } : null;
+    const html = rec ? machRateHtml(rec, mult) : '';
+    if (rateEl.innerHTML !== html) rateEl.innerHTML = html;
+  }
+  if (e.status) api.status('已暂停：' + e.status, 'warn');
+  else if (!e.working) api.status('待机：产出朝' + ['东', '南', '西', '北'][e.dir], 'ok');
+  else api.status('开采中：产出朝' + ['东', '南', '西', '北'][e.dir], 'ok');
+  const oreRemainEl = document.getElementById('drill-ore-remain');
+  if (oreRemainEl) {
+    let oreRemain = 0, oreFound = false;
     for (let dy = 0; dy < e.h; dy++)
       for (let dx = 0; dx < e.w; dx++) {
-        if (getOreType(e.x + dx, e.y + dy) === ORE_URANIUM && getOreAmt(e.x + dx, e.y + dy) > 0) hasUranium = true;
+        const tx = e.x + dx, ty = e.y + dy;
+        if (!e.minableOreType(getOreType(tx, ty))) continue;
+        const amt = getOreAmt(tx, ty);
+        if (amt <= 0) continue;
+        oreRemain += amt; oreFound = true;
       }
-    if (hasUranium) {
-      tip += '；铀矿需硫酸' + ((e.acid || 0) > 0 ? '（硫酸×' + e.acid + '）' : '（缺硫酸，无法开采）');
-    }
+    const txt = oreFound
+      ? ('矿脉剩余：' + Math.round(oreRemain) + (oreRemain <= 100 ? '（⚠ 即将采空）' : ''))
+      : '矿脉剩余：—';
+    if (oreRemainEl.textContent !== txt) oreRemainEl.textContent = txt;
   }
-  return tip;
 }
 
 // ===== 注册（渲染/面板/提示对三类采矿机统一注册）=====
@@ -436,10 +484,11 @@ function electricDrillStatus(e) {
 }
 DEVICE_STATUS['electric-mining-drill'] = electricDrillStatus;
 DEVICE_STATUS['pumpjack'] = electricDrillStatus;
-const drillPanel = { html: drillPanelHtml, live: drillPanelLive, tip: drillTip };
-DEVICE_PANEL['burner-mining-drill'] = drillPanel;
-DEVICE_PANEL['electric-mining-drill'] = drillPanel;
-DEVICE_PANEL['pumpjack'] = drillPanel;
+const burnerDrillPanel = { html: burnerDrillPanelHtml, live: burnerDrillPanelLive, tip: drillTip };
+const electricDrillPanel = { html: electricDrillPanelHtml, live: electricDrillPanelLive, tip: drillTip };
+DEVICE_PANEL['burner-mining-drill'] = burnerDrillPanel;
+DEVICE_PANEL['electric-mining-drill'] = electricDrillPanel;
+DEVICE_PANEL['pumpjack'] = electricDrillPanel;
 DEVICE_DIR_ROTATE['burner-mining-drill'] = true;
 DEVICE_DIR_ROTATE['electric-mining-drill'] = true;
 // 显示详情时，各接口图标所在世界格 + 对应流体名（用于鼠标悬停显示流体名称）
