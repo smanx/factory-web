@@ -39,6 +39,7 @@ const RECIPES = {
   'electric-furnace':        { time: 5, inp: { 'advanced-circuit': 5, 'steel-plate': 10, 'stone-brick': 10 }, out: { 'electric-furnace': 1 } },
   'assembling-machine-2':        { time: 0.5, inp: { 'assembling-machine-1': 1, 'electronic-circuit': 3, 'iron-gear-wheel': 5, 'steel-plate': 2 }, out: { 'assembling-machine-2': 1 } },
   'bulk-inserter':        { time: 0.5, inp: { 'processing-unit': 1 }, out: { 'bulk-inserter': 1 } },
+  'stack-inserter':       { time: 0.5, inp: { 'bulk-inserter': 1, 'processing-unit': 1, 'carbon-fiber': 2, 'jelly': 10 }, out: { 'stack-inserter': 1 } },  // 官方配方，由 GAME_DATA 单源自动覆盖
   'logistic-science-pack':     { time: 6,   inp: { 'transport-belt': 1, 'inserter': 1 },                  out: { 'logistic-science-pack': 1 } },  // 对齐《异星工厂》物流科学包：1传送带+1机械臂，耗时 6s
   'chemical-science-pack':      { time: 8,   inp: { 'plastic-bar': 2, 'electronic-circuit': 2, 'copper-plate': 1 }, out: { 'chemical-science-pack': 1 } },  // 项目为保持科技树无环采用旧版配方（见 README）
   'pipe':              { time: 0.5, inp: { 'iron-plate': 1 },                                     out: { 'pipe': 1 } },
@@ -113,9 +114,6 @@ const RECIPES = {
   'artillery-shell':        { time: 15, inp: { 'explosive-cannon-shell': 4, 'explosives': 8, 'radar': 1 }, out: { 'artillery-shell': 1 } },
   // ===== 玩家武器（战斗体系扩充） =====
   'pistol':            { time: 1,   inp: { 'iron-plate': 4, 'iron-gear-wheel': 1 },                     out: { 'pistol': 1 } },
-  // 近战武器（对齐《异星工厂》Iron/Steel axe：铁板/钢板制成）
-  'iron-axe':            { time: 1, inp: { 'iron-plate': 5, 'wood': 1 }, out: { 'iron-axe': 1 } },
-  'steel-axe':           { time: 2, inp: { 'iron-axe': 1, 'steel-plate': 5, 'wood': 2 }, out: { 'steel-axe': 1 } },
   'submachine-gun':        { time: 10, inp: { 'copper-plate': 5, 'iron-gear-wheel': 10, 'iron-plate': 10 }, out: { 'submachine-gun': 1 } },
   'shotgun':        { time: 10, inp: { 'copper-plate': 10, 'iron-gear-wheel': 5, 'iron-plate': 15, 'wood': 5 }, out: { 'shotgun': 1 } },
   'rocket-launcher':        { time: 10, inp: { 'electronic-circuit': 5, 'iron-gear-wheel': 5, 'iron-plate': 5 }, out: { 'rocket-launcher': 1 } },

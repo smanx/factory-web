@@ -97,9 +97,6 @@ const WEAPONS = {
   'defender-capsule':   { name: '防御机器人',   dmg: 0, rate: 0.8, ammo: 'defender-capsule',   spread: 0, auto: false, range: 6, capsule: 'defender' },
   'distractor-capsule': { name: '干扰机器人',   dmg: 0, rate: 0.8, ammo: 'distractor-capsule', spread: 0, auto: false, range: 6, capsule: 'distractor' },
   'destroyer-capsule':  { name: '破坏机器人',   dmg: 0, rate: 0.8, ammo: 'destroyer-capsule',  spread: 0, auto: false, range: 6, capsule: 'destroyer' },
-  // ===== 近战武器（对齐《异星工厂》Axe：手持近战工具，无需弹药） =====
-  'iron-axe':   { name: '铁斧',   dmg: 12, rate: 0.45, melee: true, range: 1.6, sfx: 'mine' },
-  'steel-axe':  { name: '钢斧',   dmg: 20, rate: 0.4,  melee: true, range: 1.8, sfx: 'mine' }
 };
 function isWeapon(id) { return !!WEAPONS[id]; }
 function isCapsuleWeapon(id) { return !!(WEAPONS[id] && WEAPONS[id].capsule); }

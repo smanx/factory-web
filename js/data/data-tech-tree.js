@@ -80,6 +80,7 @@ const TECHS = {
   // ==== 空间科技（火箭发射后，用空间科学包推进终极无限科研）====
   'space-science': { name: '空间科技', cost: { 'space-science-pack': 50, 'utility-science-pack': 50 }, desc: '解锁空间科学科研体系，允许用空间科学包研究终极科技（科研速度/采矿产能等）', req: ['utility', 'rocket-science'] },
   'turbo-logistics': { name: '超速物流', cost: { 'space-science-pack': 100, 'production-science-pack': 100 }, desc: '太空时代超速物流：解锁超速传送带/地下带/分流器（4 档带，速度 7.5 格/s，为普通带 4 倍），物流终极档（对齐《异星工厂》Space Age Turbo transport belt，需先建立太空科研体系）', req: ['space-science', 'express'] },
+  'stack-inserter': { name: '叠加机械臂', cost: { 'space-science-pack': 100, 'production-science-pack': 100, 'agricultural-science-pack': 100 }, desc: '太空时代叠加机械臂：解锁叠加机械臂（Stack inserter，由集装箱机械臂升级），一次性抓取多达 4 个同种物品，为最高效装卸臂（对齐《异星工厂》Space Age Stack inserter 科技，需碳纤维/果冻与集装箱机械臂）', req: ['electromagnetics', 'logistics3', 'agriculture'] },
   'electromagnetics': { name: '电磁学', cost: { 'space-science-pack': 100, 'utility-science-pack': 100 }, desc: '太空时代电磁学：解锁碳纤维/锂/锂板/超导体材料链与电磁工厂、电磁科研包（对齐《异星工厂》Space Age 电磁科学），需先建立空间科学体系', req: ['space-science'] },
   'metallurgy': { name: '冶金学', cost: { 'space-science-pack': 100, 'utility-science-pack': 100 }, desc: '太空时代冶金学：解锁钨矿石/钨板/碳化钨材料链与铸造厂、冶金科研包（对齐《异星工厂》Space Age 冶金科学），需先建立空间科学体系', req: ['space-science'] },
   'recycling': { name: '回收科技', cost: { 'electromagnetic-science-pack': 100, 'utility-science-pack': 100 }, desc: '解锁回收机：把物品还原成其配方原料的 25%，用于处理生产过剩与回收高级材料（对齐《异星工厂》Recycling 科技，需电磁科研）', req: ['electromagnetics'] },
@@ -232,7 +233,7 @@ for (const tid of ['quality', 'quality-2', 'quality-3']) TECHS[tid].cat = 'quali
 // 太空时代科技 → space-age（依据 tech-report.md 的 space-age 模块）
 const SPACE_AGE_TECHS = [
   'space-science', 'turbo-logistics', 'electromagnetics', 'metallurgy', 'recycling', 'cryogenics',
-  'agriculture', 'asteroid-processing', 'big-mining-drill', 'heating-tower', 'biolab',
+  'agriculture', 'asteroid-processing', 'big-mining-drill', 'heating-tower', 'biolab', 'stack-inserter',
   'lightning', 'fulgora', 'space-thruster', 'advanced-defense', 'space-platform', 'fusion-power', 'promethium-science',
   'elevated-rail', 'space-research-speed',
   'space-mining-productivity', 'weapon-damage', 'follower-robot-count',

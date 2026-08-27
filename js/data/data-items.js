@@ -107,7 +107,8 @@ const ITEMS = {
   'turbo-underground-belt': { name: '超速地下传送带', color: '#5a7a5a', desc: '同向配对距离最远 11 格，速度是超速带标准（太空时代 Space Age，对齐《异星工厂》Turbo underground belt）' },
   'turbo-splitter': { name: '超速分流器', color: '#5a7a5a', desc: '同分流器，但吞吐与超速带一致，可输送最快物流（太空时代 Space Age，对齐《异星工厂》Turbo splitter）' },
   'fast-splitter':    { name: '高速分流器', color: '#e05a4e', desc: '同分流器，但吞吐与高速带一致，可输送更快的物流（对齐《异星工厂》Fast splitter）' },
-  'bulk-inserter':    { name: '集装箱机械臂', color: '#7ec850', desc: '同电力机械臂，但可一次性抓取多达 3 个同种物品（对齐《异星工厂》Stack inserter）' },
+  'bulk-inserter':    { name: '集装箱机械臂', color: '#7ec850', desc: '同电力机械臂，但可一次性抓取多达 3 个同种物品（对齐《异星工厂》Bulk inserter）' },
+  'stack-inserter':   { name: '叠加机械臂', color: '#a0d848', desc: '集装箱机械臂的进阶版：一次性抓取多达 4 个同种物品，为最高效的装卸臂（对齐《异星工厂》Stack inserter，由集装箱机械臂升级）' },
   'fast-inserter':     { name: '高速机械臂', color: '#4f9fe8', desc: '比普通机械臂抓取更快（旋转速度约为其 2 倍）（对齐《异星工厂》Fast inserter）' },
   'steel-chest':       { name: '钢箱', color: '#9aa4b0', desc: '比储物箱容量更大的钢铁储物箱（24 格）。可接入电路网络输出箱内物品数量信号（对齐《异星工厂》）' },
   'creative-chest':    { name: '创造箱', color: '#3e8f4a', mark: '∞', desc: '测试设备：无限生成选定物品，点开面板选择要生成的物品，机械臂可无限取走' },
@@ -156,10 +157,6 @@ const ITEMS = {
   'flamethrower-ammo': { name: '火焰弹药', color: '#d06a2a', desc: '火焰喷射器的专用燃料，由化工厂用轻油+重油制成，能量密度高（对齐《异星工厂》Flamethrower ammo）' },
   'uranium-rounds-magazine':  { name: '铀弹', color: '#9af07a', desc: '铀-238 制成的穿甲弹药，威力远超穿甲弹，供冲锋枪与机枪炮塔使用（对齐《异星工厂》Uranium rounds）' },
   'atomic-bomb': { name: '原子弹', color: '#a8e0c0', mark: '☢', desc: '终极核武器：由铀-235 制成，火箭筒发射，落地引发超大范围核爆，对成片敌人造成毁灭性打击（对齐《异星工厂》Atomic bomb）' },
-  // ===== 近战武器（对齐《异星工厂》Axe：手持近战工具，可用于攻击） =====
-  'iron-axe':  { name: '铁斧', color: '#9aa0a8', desc: '近战工具，可用于砍伐树木与近身攻击敌人，无需弹药（对齐《异星工厂》Iron axe）' },
-  'steel-axe': { name: '钢斧', color: '#b8c0c8', desc: '铁斧的升级版：近战伤害更高，可用于砍伐树木与近身攻击敌人，无需弹药（对齐《异星工厂》Steel axe）' },
-
   'uranium-cannon-shell': { name: '铀炮弹', color: '#9af07a', desc: '铀-238 制成的重型炮弹，威力远超普通炮弹，供坦克主炮使用（对齐《异星工厂》Uranium cannon shell）' },
   'poison-capsule':  { name: '毒胶囊', color: '#7ad04a', desc: '投掷后落地释放剧毒云雾，对范围内的敌人持续造成伤害（对齐《异星工厂》Poison capsule）' },
   'slowdown-capsule':{ name: '减速胶囊', color: '#4a9ad0', desc: '投掷后落地形成减速力场，大幅降低范围内敌人的移动速度（对齐《异星工厂》Slowdown capsule）' },

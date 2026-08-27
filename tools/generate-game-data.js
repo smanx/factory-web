@@ -769,7 +769,15 @@ const INSERTER_SOURCES = {
   'long-handed-inserter': 'long-handed-inserter',
   'fast-inserter': 'fast-inserter',
   'bulk-inserter': 'bulk-inserter',
+  'stack-inserter': 'stack-inserter',
   'burner-inserter': 'burner-inserter',
+};
+// 官方机械臂基础抓取堆叠（格内一次性抓取上限，不随 `inserter-capacity` 无限科技累加前的基础值）：
+//   inserter/fast/long/burner = 1；bulk-inserter = 3；stack-inserter = 4（官方 stack_size_bonus）。
+// 官方原型仅在 stack-inserter 上显式给出 stack_size_bonus=4，其余基础档为 1/3（游戏硬编码），此处按官方对齐。
+const INSERTER_BASE_STACK = {
+  'inserter': 1, 'fast-inserter': 1, 'long-handed-inserter': 1, 'burner-inserter': 1,
+  'bulk-inserter': 3, 'stack-inserter': 4,
 };
 {
   const ins = raw.inserter && raw.inserter.inserter;
@@ -785,7 +793,9 @@ const INSERTER_SOURCES = {
     const row = {};
     if (typeof p.rotation_speed === 'number') row.rotationSpeed = p.rotation_speed;
     if (typeof p.extension_speed === 'number') row.extensionSpeed = p.extension_speed;
-    if (typeof p.inserter_stack_size_override === 'number') row.stack = p.inserter_stack_size_override;
+    // 抓取堆叠：优先官方 stack_size_bonus（stack-inserter=4），否则按官方基础档对齐
+    row.stack = (typeof p.stack_size_bonus === 'number' && p.stack_size_bonus > 0)
+      ? p.stack_size_bonus : (INSERTER_BASE_STACK[pid] || 1);
     if (Object.keys(row).length) perType[pid] = row;
   }
   if (Object.keys(perType).length) inserterStats.perType = perType;
@@ -832,6 +842,7 @@ const FOOTPRINT_SOURCES = {
   'long-handed-inserter': ['inserter', 'long-handed-inserter'],
   'fast-inserter': ['inserter', 'fast-inserter'],
   'bulk-inserter': ['inserter', 'bulk-inserter'],
+  'stack-inserter': ['inserter', 'stack-inserter'],
   'burner-mining-drill': ['mining-drill', 'burner-mining-drill'],
   'electric-mining-drill': ['mining-drill', 'electric-mining-drill'],
   'pumpjack': ['mining-drill', 'pumpjack'],
@@ -1007,7 +1018,6 @@ const CRAFT_TABS = ['logistics', 'production', 'intermediate-products', 'space',
 // 特殊物品兜底（官方未归入 5 大 Tab 或原型无 subgroup 者 → 人工归 Tab）
 const ITEM_GROUP_OVERRIDE = {
   'satellite': 'space', 'rocket-body': 'space',
-  'iron-axe': 'production', 'steel-axe': 'production',
   'red-wire': 'logistics', 'green-wire': 'logistics', 'spidertron-remote': 'logistics',
   'creative-chest': 'logistics', 'void-chest': 'logistics',
   'creative-pipe': 'logistics', 'void-pipe': 'logistics',

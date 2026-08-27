@@ -236,8 +236,6 @@ TECH_REQ['small-lamp'] = 'electric';
 const WEAPON_TECH_REQ = {
   'atomic-bomb': 'atomic-bomb',   // 原子弹需独立「原子弹科技」
   'pistol': 'weapons',
-  'iron-axe': 'weapons',
-  'steel-axe': 'military2',
   'submachine-gun': 'weapons',
   'shotgun': 'weapons',
   'combat-shotgun': 'military2',
@@ -369,6 +367,8 @@ const RECIPE_TECH = {
   'burnt-spoilage': 'agriculture',
   'turbo-underground-belt': 'turbo-logistics',
   'turbo-splitter': 'turbo-logistics',
+  // 太空时代 叠加机械臂（官方 Space Age Stack inserter 科技，需碳纤维+集装箱机械臂）
+  'stack-inserter': 'stack-inserter',
   // 太空时代 钷素科研包（官方 Promethium science pack 科技，由钷素星块+超导体+生物结晶在电磁工厂制得）
   'promethium-science-pack': 'promethium-science',  // 太空时代 Aquilo 低温学链（统一由「低温学」科技解锁）
   'cryogenic-plant': 'cryogenics',

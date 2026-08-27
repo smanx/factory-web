@@ -70,6 +70,7 @@ const GAME_DATA = {
   "turbo-splitter": 50,
   "fast-splitter": 50,
   "bulk-inserter": 50,
+  "stack-inserter": 50,
   "fast-inserter": 50,
   "steel-chest": 50,
   "logistic-science-pack": 200,
@@ -326,6 +327,7 @@ const GAME_DATA = {
   "programmable-speaker": 150,
   "long-handed-inserter": 160,
   "bulk-inserter": 160,
+  "stack-inserter": 160,
   "fast-inserter": 150,
   "burner-mining-drill": 150,
   "stone-furnace": 200,
@@ -918,6 +920,18 @@ const GAME_DATA = {
    },
    "out": {
     "bulk-inserter": 1
+   }
+  },
+  "stack-inserter": {
+   "time": 0.5,
+   "inp": {
+    "bulk-inserter": 1,
+    "processing-unit": 1,
+    "carbon-fiber": 2,
+    "jelly": 10
+   },
+   "out": {
+    "stack-inserter": 1
    }
   },
   "logistic-science-pack": {
@@ -3374,6 +3388,7 @@ const GAME_DATA = {
   "electric-furnace": "assembling-machine-1",
   "assembling-machine-2": "assembling-machine-1",
   "bulk-inserter": "assembling-machine-1",
+  "stack-inserter": "assembling-machine-1",
   "logistic-science-pack": "assembling-machine-1",
   "pipe": "assembling-machine-1",
   "pumpjack": "assembling-machine-1",
@@ -3791,6 +3806,10 @@ const GAME_DATA = {
   "bulk-inserter": {
    "zh": "集装机械臂",
    "en": "Bulk inserter"
+  },
+  "stack-inserter": {
+   "zh": "堆叠机械臂",
+   "en": "Stack inserter"
   },
   "fast-inserter": {
    "zh": "高速机械臂",
@@ -5108,6 +5127,10 @@ const GAME_DATA = {
    "w": 1,
    "h": 1
   },
+  "stack-inserter": {
+   "w": 1,
+   "h": 1
+  },
   "burner-mining-drill": {
    "w": 2,
    "h": 2
@@ -5406,23 +5429,33 @@ const GAME_DATA = {
   "perType": {
    "inserter": {
     "rotationSpeed": 0.014,
-    "extensionSpeed": 0.035
+    "extensionSpeed": 0.035,
+    "stack": 1
    },
    "long-handed-inserter": {
     "rotationSpeed": 0.02,
-    "extensionSpeed": 0.05
+    "extensionSpeed": 0.05,
+    "stack": 1
    },
    "fast-inserter": {
     "rotationSpeed": 0.04,
-    "extensionSpeed": 0.1
+    "extensionSpeed": 0.1,
+    "stack": 1
    },
    "bulk-inserter": {
     "rotationSpeed": 0.04,
-    "extensionSpeed": 0.1
+    "extensionSpeed": 0.1,
+    "stack": 3
+   },
+   "stack-inserter": {
+    "rotationSpeed": 0.04,
+    "extensionSpeed": 0.1,
+    "stack": 4
    },
    "burner-inserter": {
     "rotationSpeed": 0.013,
-    "extensionSpeed": 0.035
+    "extensionSpeed": 0.035,
+    "stack": 1
    }
   }
  },
@@ -5725,6 +5758,7 @@ const GAME_DATA = {
   "turbo-splitter": "logistics",
   "fast-splitter": "logistics",
   "bulk-inserter": "logistics",
+  "stack-inserter": "logistics",
   "fast-inserter": "logistics",
   "steel-chest": "logistics",
   "creative-chest": "logistics",
@@ -5768,8 +5802,6 @@ const GAME_DATA = {
   "flamethrower-ammo": "combat",
   "uranium-rounds-magazine": "combat",
   "atomic-bomb": "combat",
-  "iron-axe": "production",
-  "steel-axe": "production",
   "uranium-cannon-shell": "combat",
   "poison-capsule": "combat",
   "slowdown-capsule": "combat",

@@ -19,6 +19,7 @@ const BUILD_DEFS = {
   'programmable-speaker': { w: 1, h: 1, solid: true },
   'long-handed-inserter':      { w: 1, h: 1, solid: true },
   'bulk-inserter':     { w: 1, h: 1, solid: true },
+  'stack-inserter':    { w: 1, h: 1, solid: true },
   'fast-inserter':      { w: 1, h: 1, solid: true },
   'burner-mining-drill':       { w: 2, h: 2, solid: true },
   'stone-furnace':      { w: 2, h: 2, solid: true },
@@ -133,7 +134,7 @@ const BUILDING_HP = {
   // 地下带族（官方 underground-belt 150 / fast 160 / express 170 / turbo 170）
   'underground-belt': 150, 'fast-underground-belt': 160, 'express-underground-belt': 170, 'turbo-underground-belt': 170,
   // 机械臂族（官方 inserter 150 / fast 150 / long 160 / bulk 160 / burner 100）
-  'inserter': 150, 'long-handed-inserter': 160, 'bulk-inserter': 160, 'fast-inserter': 150,
+  'inserter': 150, 'long-handed-inserter': 160, 'bulk-inserter': 160, 'stack-inserter': 160, 'fast-inserter': 150,
   'burner-inserter': 100,
   // 采矿机（官方 burner-mining-drill 150 / electric-mining-drill 300 / pumpjack 200）
   'burner-mining-drill': 150, 'electric-mining-drill': 300, 'pumpjack': 200,

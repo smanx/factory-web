@@ -405,6 +405,7 @@ function inserterArmColor(e) {
     : e.type === 'fast-inserter' ? '#4f9fe8'
     : e.type === 'long-handed-inserter' ? '#e05a4e'
     : e.type === 'bulk-inserter' ? '#7ec850'
+    : e.type === 'stack-inserter' ? '#a0d848'
     : '#e0b23c';
 }
 function drawInserter(ctx, e, gx, gy, dir, alpha) {
@@ -649,20 +650,25 @@ const stackInserterPanel = { html: stackInserterPanelHtml, live: inserterPanelLi
 ENT_CLASSES['inserter'] = Inserter;
 ENT_CLASSES['long-handed-inserter'] = LongInserter;
 ENT_CLASSES['bulk-inserter'] = StackInserter;
+ENT_CLASSES['stack-inserter'] = StackInserter;
 ENT_CLASSES['fast-inserter'] = FastInserter;
 DEVICE_RENDER['inserter'] = drawInserter;
 DEVICE_RENDER['long-handed-inserter'] = drawInserter;
 DEVICE_RENDER['bulk-inserter'] = drawInserter;
+DEVICE_RENDER['stack-inserter'] = drawInserter;
 DEVICE_RENDER['fast-inserter'] = drawInserter;
 DEVICE_STATUS['inserter'] = inserterStatusFn;
 DEVICE_STATUS['long-handed-inserter'] = inserterStatusFn;
 DEVICE_STATUS['bulk-inserter'] = inserterStatusFn;
+DEVICE_STATUS['stack-inserter'] = inserterStatusFn;
 DEVICE_STATUS['fast-inserter'] = inserterStatusFn;
 DEVICE_PANEL['inserter'] = inserterPanel;
 DEVICE_PANEL['long-handed-inserter'] = inserterPanel;
 DEVICE_PANEL['bulk-inserter'] = stackInserterPanel;
+DEVICE_PANEL['stack-inserter'] = stackInserterPanel;
 DEVICE_PANEL['fast-inserter'] = inserterPanel;
 DEVICE_DIR_ROTATE['inserter'] = true;
 DEVICE_DIR_ROTATE['long-handed-inserter'] = true;
 DEVICE_DIR_ROTATE['bulk-inserter'] = true;
+DEVICE_DIR_ROTATE['stack-inserter'] = true;
 DEVICE_DIR_ROTATE['fast-inserter'] = true;
