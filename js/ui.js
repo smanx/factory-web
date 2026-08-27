@@ -133,7 +133,7 @@ function buildHotbar() {
     slot.className = 'slot' + (id ? '' : ' nilslot');
     slot.dataset.idx = i;
     if (id) slot.dataset.tip = itemTip(id);
-    else slot.dataset.tip = '空槽位|打开背包(E)，在快捷栏编辑器里点选槽位后点击任意物品即可放入';
+    else slot.dataset.tip = '空槽位|打开背包(E)，选中任意物品后用鼠标中键可设置该槽位';
     if (id) {
       const ic = iconCanvas(id).cloneNode();
       ic.getContext('2d').drawImage(iconCanvas(id), 0, 0);
@@ -170,35 +170,16 @@ function refreshHotbar() {
     const el = document.getElementById('hb-cnt-' + i);
     if (!el) return;
     el.textContent = id ? (infinite ? '∞' : invCount(id)) : '';
+    // 快捷栏无选中效果：点击只切换鼠标放置幽灵，不显示高亮/选中态
     const slot = document.getElementById('hotbar').children[i];
-    slot.classList.toggle('active', G.sel === i);
+    slot.classList.remove('active');
     slot.classList.toggle('empty', !!id && !infinite && invCount(id) <= 0);
   });
 }
 
-// 快捷栏槽位点击：若鼠标正持有从背包选中的物品（quickSel），则执行“放入/交换”操作；
-// 否则退化为普通的选择/取消该槽位（selectSlot）。
+// 快捷栏槽位点击：直接切换鼠标放置幽灵为该槽位物品。
+// 快捷栏无选中效果：点击只让鼠标幽灵显示该物品，不高亮/不选中快捷栏槽位。
 function onHotbarClick(i) {
-  const held = G.quickSel;
-  if (held && ITEMS[held]) {
-    const slotItem = HOTBAR[i];
-    if (!slotItem) {
-      // 空槽位：把鼠标物品放入该槽位，且鼠标仍选中该物品（选中状态不变）
-      HOTBAR[i] = held;
-      toast('已放入快捷栏槽位 ' + (i === 9 ? 0 : i + 1) + '，仍选中 ' + ITEMS[held].name);
-    } else {
-      // 有物品：不替换槽位，而是把鼠标选中的物品换成快捷栏的这个物品
-      // （原鼠标物品放回背包；快捷栏槽位保持不变）
-      G.sel = i;
-      G.quickSel = null;
-      if (typeof setWeapon === 'function') setWeapon(slotItem);
-      toast('鼠标选中换成 ' + ITEMS[slotItem].name + '（' + ITEMS[held].name + ' 已放回背包）');
-    }
-    if (typeof playSfx === 'function') playSfx('select');
-    buildHotbar();
-    uiDirty = true;
-    return;
-  }
   selectSlot(i);
 }
 
@@ -213,8 +194,14 @@ function onHotbarMidClick(i) {
     if (typeof playSfx === 'function') playSfx('select');
   } else {
     // 无幽灵：清空该快捷栏槽位
+    const oldId = HOTBAR[i];
     HOTBAR[i] = null;
-    if (G.sel === i) { G.sel = -1; if (typeof setWeapon === 'function') setWeapon(null); }
+    // 若当前鼠标幽灵正是该槽位物品，则一并取消选中
+    if (oldId && G.quickSel === oldId) {
+      G.sel = -1;
+      G.quickSel = null;
+      if (typeof setWeapon === 'function') setWeapon(null);
+    }
     toast('已清空快捷栏槽位 ' + (i === 9 ? 0 : i + 1));
     if (typeof playSfx === 'function') playSfx('select');
   }
@@ -225,15 +212,22 @@ function onHotbarMidClick(i) {
 function selectSlot(i) {
   // 选择快捷栏物品建造时退出触屏拆除模式，避免左键行为冲突
   if (G.deconstructMode) toggleDeconstructMode(false);
-  const prev = G.sel >= 0 ? (HOTBAR[G.sel] || null) : null;
-  G.sel = (G.sel === i ? -1 : i);
-  G.quickSel = null;
-  // 选择武器：若该槽位是武器，则作为当前手持武器
-  if (G.sel >= 0 && HOTBAR[G.sel]) setWeapon(HOTBAR[G.sel]);
-  else if (G.sel < 0) setWeapon(null);
+  const prev = G.quickSel || (G.sel >= 0 ? (HOTBAR[G.sel] || null) : null);
+  const id = HOTBAR[i];
+  if (id && ITEMS[id]) {
+    // 快捷栏有物品：直接让鼠标放置幽灵显示该物品（不选中/不高亮快捷栏槽位）
+    G.sel = -1;
+    G.quickSel = id;
+    if (typeof setWeapon === 'function') setWeapon(id);
+  } else {
+    // 空槽位：取消当前选中
+    G.sel = -1;
+    G.quickSel = null;
+    if (typeof setWeapon === 'function') setWeapon(null);
+  }
   // 规划器（拆除/升级）选中：进入对应红图/绿图框选模式（对齐《异星工厂》Planner）
   if (typeof toggleBlueprint === 'function') {
-    const cur = G.sel >= 0 ? (HOTBAR[G.sel] || null) : null;
+    const cur = G.quickSel;
     if (cur === 'deconstruction-planner') { toggleBlueprint('red'); }
     else if (cur === 'upgrade-planner') { toggleBlueprint('green'); }
     else if (prev === 'deconstruction-planner' || prev === 'upgrade-planner') {
@@ -488,15 +482,7 @@ function chip(id, n, iconOnly) {
 }
 
 function htmlInventory() {
-  let h = '<div class="sec">快捷栏编辑</div><div class="hbedit" id="hbedit">';
-  for (let i = 0; i < 10; i++) {
-    const id = HOTBAR[i];
-    h += '<div class="hbslot ' + (G.hbArm === i ? 'arm' : '') + '" data-hbedit="' + i + '" data-tip="' +
-      (id ? '槽位' + (i === 9 ? 0 : i + 1) + '：' + ITEMS[id].name + '|点击两次清空；或先点这里再点下方物品替换' : '空槽位' + (i === 9 ? 0 : i + 1) + '|点击选中后，再点下方任意物品放入') + '">' +
-      (id ? '<img src="' + iconDataURL(id) + '">' : '<span>空</span>') + '</div>';
-  }
-  h += '</div><div class="dim">点一个槽位选中（黄框），再点击下面任意物品图标即可放入该槽位；再点一次同槽位清空。数字键 1-9/0 切换。</div>';
-  h += '<div class="sec">护甲</div><div class="armor-row">';
+  let h = '<div class="sec">护甲</div><div class="armor-row">';
   // 当前穿戴护甲展示与脱卸
   h += '<div class="armor-slot' + (G.armor ? ' equipped' : '') + '" data-tip="' + (G.armor ? (ITEMS[G.armor].name + '|当前穿戴的护甲，点击脱卸') : '未穿戴护甲|护甲可减少所受伤害') + '" data-armor="unequip">' +
     (G.armor ? '<img src="' + iconDataURL(G.armor) + '"><b>' + ITEMS[G.armor].name + '</b>' : '<span>🛡 未穿戴</span>') + '</div>';
@@ -544,7 +530,7 @@ function htmlInventory() {
     h += '</div><div class="dim">装备个人机器人港 + 背包携带施工机器人后，蓝图粘贴自动生成建造幽灵、红图框选生成拆除标记，由施工机器人自动施工/拆除。' +
       (rInfo ? '当前工作范围 <b>' + rInfo.range + '</b> 格、最多 <b>' + rInfo.maxActive + '</b> 台机器人同时施工（II 型更大更强）。' : '') + '</div>';
   }
-  h += '<div class="sec">拥有的物品（点击任意物品选中：设备点地图可直接建造；材料点地图无法建造。选中后可点底部快捷栏放入，Q/E 取消）</div>';
+  h += '<div class="sec">拥有的物品（点击任意物品选中：设备点地图可直接建造；材料/工具鼠标显示物品幽灵。鼠标中键点底部快捷栏槽位可设置/清空，Q/E 取消）</div>';
   const iq = (G.invItemQ || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   h += '<input id="inv-item-search" class="inv-search" type="text" placeholder="搜索物品（输入名称）" autocomplete="off" value="' + iq + '">';
   h += '<div class="chips" id="inv-items">';
@@ -566,7 +552,7 @@ function htmlInventory() {
   }
   if (!any) h += '<span class="dim">空空如也，去地图上按住左键挖矿吧（铁矿/铜矿/煤/石头）</span>';
   h += '</div>';
-  h += '<div class="hint">提示：开局先挖 5 个石头合成石炉，再挖煤；点击炉子打开面板，把煤和矿石放进去就能炼铁板/铜板。钢板用铁板×2 合成（石炉/电炉炼制更快）。塑料板等流体化学产物只能在化工厂生产（石油气经管道送入化工厂）。<br>选中：点击「拥有的物品」里任意物品即选中，选中后背包不自动关闭，按 E/Q 或右上角 X 关闭后选中保留。设备点地图直接建造；材料点地图无法建造。把选中物品点到底部快捷栏：空槽直接放入（鼠标仍选中），有物品则不替换、改为选中该槽物品。R 旋转、Q 取消。建造支持覆盖：目标格已有建筑时会先拆除旧建筑（返还物资）再放置新建筑，但同一格不会叠加。</div>';
+  h += '<div class="hint">提示：开局先挖 5 个石头合成石炉，再挖煤；点击炉子打开面板，把煤和矿石放进去就能炼铁板/铜板。钢板用铁板×2 合成（石炉/电炉炼制更快）。塑料板等流体化学产物只能在化工厂生产（石油气经管道送入化工厂）。<br>选中：点击「拥有的物品」里任意物品即选中，选中后背包不自动关闭，按 E/Q 或右上角 X 关闭后选中保留。设备点地图直接建造；材料/工具鼠标显示物品放置幽灵。R 旋转、Q 取消。建造支持覆盖：目标格已有建筑时会先拆除旧建筑（返还物资）再放置新建筑，但同一格不会叠加。</div>';
   return h;
 }
 

@@ -76,6 +76,8 @@ const BUILD_DEFS = {
   'heat-pipe':          { w: 1, h: 1, solid: true },
   'heat-exchanger':     { w: 3, h: 2, solid: true, rotSwap: true },
   'heating-tower':      { w: 3, h: 3, solid: true },  // 太空时代供热塔（Aquilo）：占地由 GAME_DATA.footprint 桥接，官方 selection_box ±1.5 → 3×3
+  'fusion-reactor':    { w: 6, h: 6, solid: true },  // 太空时代聚变反应堆（Aquilo）：占地由 GAME_DATA.footprint 桥接，官方 selection_box ±3 → 6×6
+  'fusion-generator':  { w: 3, h: 5, solid: true, rotSwap: true },  // 太空时代聚变发电机（Aquilo）：占地由 GAME_DATA.footprint 桥接，官方 selection_box ±1.5×±2.5 → 3×5
   'lightning-rod':      { w: 1, h: 1, solid: true },  // 太空时代避雷针（Fulgora）：占地由 GAME_DATA.footprint 桥接，官方 selection_box ±0.5 → 1×1
   'lightning-collector':{ w: 2, h: 2, solid: true },  // 太空时代避雷收集器（Fulgora）：占地由 GAME_DATA.footprint 桥接，官方 selection_box ±1 → 2×2
   'space-platform-hub': { w: 8, h: 8, solid: true },  // 太空时代空间平台中枢（占地由 GAME_DATA.footprint 桥接，官方 selection_box ±4 → 8×8）

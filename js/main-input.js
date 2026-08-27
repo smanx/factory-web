@@ -83,22 +83,15 @@ function bindInput() {
         }
       } else {
         const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
-        const idx = e ? HOTBAR.indexOf(e.type) : -1;
-        if (idx < 0) {
-          G.sel = -1;
-          if (e && BUILD_DEFS[e.type]) {
-            G.quickSel = e.type;
-            G.ghostDir = e.dir;
-            toast('已直接选中 ' + ITEMS[e.type].name + '（Q 取消）');
-          }
-          uiDirty = true;
-          refreshHotbar();
-        } else {
-          G.sel = idx;
+        // 选中建筑：统一用 quickSel（快捷栏无选中效果），鼠标直接显示放置幽灵
+        G.sel = -1;
+        if (e && BUILD_DEFS[e.type]) {
+          G.quickSel = e.type;
           G.ghostDir = e.dir;
-          uiDirty = true;
-          refreshHotbar();
+          toast('已直接选中 ' + ITEMS[e.type].name + '（Q 取消）');
         }
+        uiDirty = true;
+        refreshHotbar();
       }
     }
   });

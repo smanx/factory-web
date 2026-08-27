@@ -301,24 +301,7 @@ function initPanelEvents() {
     if (typeof vehEquipPanelClick === 'function' && vehEquipPanelClick(ev.target)) {
       return;
     }
-    const hbSlot = ev.target.closest('[data-hbedit]');
-    if (hbSlot) {
-      const i = +hbSlot.dataset.hbedit;
-      if (G.hbArm === i) { HOTBAR[i] = null; G.hbArm = null; }
-      else G.hbArm = i;
-      renderPanel(false);
-      buildHotbar();
-      return;
-    }
     const itEl = ev.target.closest('[data-itemid]');
-    if (itEl && G.hbArm !== null && G.hbArm !== undefined) {
-      HOTBAR[G.hbArm] = itEl.dataset.itemid;
-      toast('已放入快捷栏槽位 ' + (G.hbArm === 9 ? 0 : G.hbArm + 1));
-      G.hbArm = null;
-      renderPanel(false);
-      buildHotbar();
-      return;
-    }
     if (itEl && G.panelMode === 'inv' && !itEl.dataset.action) {
       const iid = itEl.dataset.itemid;
       // 任意物品（设备/材料/工具）均可被鼠标选中，选中后不关闭背包：
@@ -711,22 +694,15 @@ async function saveListHtml() {
 // 选中后不关闭背包，用户通过快捷键(E/Q)或右上角“X”关闭后选中状态保留。
 function selectInventoryItem(iid) {
   if (!ITEMS[iid]) return;
-  const idx = HOTBAR.indexOf(iid);
-  if (idx >= 0) {
-    // 该物品已在快捷栏 → 直接选中对应槽位
-    G.sel = idx;
-    G.quickSel = null;
-    refreshHotbar();
-  } else {
-    // 物品不在快捷栏 → 用 quickSel 临时持握（不占用快捷栏槽位）
-    G.sel = -1;
-    G.quickSel = iid;
-    refreshHotbar();
-  }
+  // 选中任意物品（设备/材料/工具）都让鼠标显示放置幽灵：
+  // 统一用 quickSel 临时持握，不占用/不高亮快捷栏槽位（快捷栏无选中效果）。
+  G.sel = -1;
+  G.quickSel = iid;
   G.ghostDir = 0;
+  refreshHotbar();
   uiDirty = true;
   if (typeof setWeapon === 'function') setWeapon(iid);
   if (typeof playSfx === 'function') playSfx('select');
   const buildable = !!BUILD_DEFS[iid];
-  toast('已选中 ' + ITEMS[iid].name + (buildable ? '，点击地图直接建造（Q 取消）' : '，材料无法在地图建造，可点底部快捷栏放入'));
+  toast('已选中 ' + ITEMS[iid].name + (buildable ? '，点击地图直接建造（Q 取消）' : '，鼠标显示物品幽灵，可放入快捷栏或按 Q 取消'));
 }

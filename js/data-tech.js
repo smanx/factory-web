@@ -84,6 +84,10 @@ const TECH_REQ = {
   'ice': 'asteroid-processing',
   'speed-module': 'modules',
   'productivity-module': 'modules',
+  // ===== Aquilo 聚变发电链（对齐《异星工厂》Space Age Fusion 科技）=====
+  'fusion-reactor': 'fusion-power',
+  'fusion-generator': 'fusion-power',
+  'fusion-power-cell': 'fusion-power',
   'efficiency-module': 'advanced-material-processing',
   'speed-module-2': 'modules2',
   'speed-module-3': 'modules3',

@@ -78,6 +78,16 @@ const HEATING_TOWER_RATE = GAME_DATA.heat?.heatingTowerRate ?? 40;             /
 const HEATING_TOWER_EFFECTIVITY = GAME_DATA.heat?.heatingTowerEffectivity ?? 2.5; // 热效比 2.5（官方 effectivity）
 const HEATING_TOWER_SPECIFIC_HEAT = GAME_DATA.heat?.heatingTowerSpecificHeat ?? 5; // 比热 5MJ/°C（官方 heat_buffer specific_heat）
 const HEATING_TOWER_MAX_TRANSFER = GAME_DATA.heat?.heatingTowerMaxTransfer ?? 10000; // 最大传热 10GW（官方 max_transfer）
+// ===== Aquilo 聚变发电链（fusion-reactor / fusion-generator，对齐《异星工厂》Space Age Fusion）=====
+// 官方 fusion-reactor：6×6、max_health 1000、power_input 10MW；fusion-generator：3×5、output_flow_limit 50MW。
+const FUSION_REACTOR_SPECIFIC_HEAT = 10;   // 聚变反应堆比热 10MJ/°C（官方 heat_buffer）
+const FUSION_REACTOR_MAX_TRANSFER = 10000; // 聚变反应堆最大传热 10GW（官方 max_transfer）
+const FUSION_REACTOR_HEAT_RATE = 200;      // 聚变反应堆热功率 200MW（终极发电，高于核反应堆 40MW/供热塔 100MW）
+const FUSION_FUEL_ENERGY = 200;            // 每根聚变燃料棒可持续燃烧秒数
+const FUSION_GENERATOR_SPECIFIC_HEAT = 1;  // 聚变发电机比热 1MJ/°C
+const FUSION_GENERATOR_MAX_TRANSFER = 2000;// 聚变发电机最大传热 2GW（官方 max_transfer）
+const FUSION_GENERATOR_MAX_POWER = 50000;  // 聚变发电机满功率 50MW（官方 output_flow_limit=50MW）
+const FUSION_HEAT_PER_KW = 0.004;          // 每 kW·s 发电需消耗热量(MJ)：50MW 满功率每秒需 200MJ
 const POWER_USE = {
   'electric-mining-drill': 90,          // 电采矿机
   'electric-furnace': 180,       // 电炉
