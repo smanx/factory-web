@@ -438,9 +438,8 @@ const RECIPES = {
   'refined-hazard-concrete':{ time: 0.25, inp: { 'refined-concrete': 10 }, out: { 'refined-hazard-concrete': 10 } },
   'stone-path':        { time: 0.5, inp: { 'stone-brick': 2 },                                      out: { 'stone-path': 4 } },
   'landfill':        { time: 0.5, inp: { 'stone': 50 }, out: { 'landfill': 1 } },
-  // 太空时代地形：平台基座（空间平台走行地板，官方 Foundation：钨板+锂板+碳纤维+石+氟酮冷，30s 流体配方）
+  // ===== 太空时代地面瓦片（foundation / ice-platform，对齐官方配方，30s，低温工厂生产）=====
   'foundation':   { time: 30, inp: { 'tungsten-plate': 4, 'lithium-plate': 4, 'carbon-fiber': 4, 'stone': 20, 'fluoroketone-cold': 20 }, out: { 'foundation': 1 } },
-  // 太空时代地形：冰面平台（玄冥星冰原，官方 Ice platform：氨水+冰，30s 流体配方）
   'ice-platform': { time: 30, inp: { 'ammonia': 400, 'ice': 50 }, out: { 'ice-platform': 1 } },
   // ===== 模块化护甲（对齐《异星工厂》Modular armor）=====
   'modular-armor':        { time: 15, inp: { 'advanced-circuit': 30, 'steel-plate': 50 }, out: { 'modular-armor': 1 } },

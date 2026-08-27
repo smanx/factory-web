@@ -635,6 +635,11 @@ function placeGround(type, tx, ty, infinite) {
     if (t !== T_WATER) { toast('填海料只能铺在水面上'); return; }
     if (entAt(tx, ty)) { toast('水面有建筑，无法填海'); return; }
     setTerrain(tx, ty, T_GRASS);
+  } else if (type === 'foundation') {
+    // 地基（官方 Foundation）：可铺在水面/熔岩上形成可建造硬地（对齐官方 place_as_tile 允许覆盖水域/熔岩），也可铺在地面
+    if (entAt(tx, ty)) { toast('地面有建筑，先拆除'); return; }
+    if (t === T_FOUNDATION) return;
+    setTerrain(tx, ty, T_FOUNDATION);
   } else if (SOIL_TILE[type] !== undefined) {
     const to = SOIL_TILE[type];
     // 铺设在树木上：先砍掉树（对齐《异星工厂》：铺设前自动清理树木）

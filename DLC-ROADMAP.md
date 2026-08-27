@@ -750,3 +750,20 @@
 > - 配方/耗时/产出均与 factorio-data 官方核对，数据经 GAME_DATA 单源桥接，未单独维护数值表。
 > - 全量 18 个校验脚本通过，`node build.js` 构建通过。
 
+### 阶段四.21：太空时代地面瓦片（Foundation / Ice platform，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> - **物品/地面瓦片**：`foundation`（工程基座/Foundation，堆叠 50）/ `ice-platform`（浮冰平台/Ice platform，堆叠 100）
+>   已接入，堆叠 / 中英命名全部来自 GAME_DATA（factorio-data 官方 item 原型 + locale：工程基座/Foundation、
+>   浮冰平台/Ice platform），未单独维护数值表。
+> - **配方**（官方数值，数据单源化）：
+>   - `foundation`：30s = 4 钨板 + 4 锂板 + 4 碳纤维 + 20 石 + 20 氟酮冷 → 1（官方 foundation 配方）
+>   - `ice-platform`：30s = 400 氨 + 50 冰 → 1（官方 ice-platform 配方）
+> - **玩法**：作为可铺设地砖接入地面铺设 / 蓝图 / 渲染 / 小地图——`foundation` 可铺在水面/熔岩上形成
+>   可建造硬地（对齐官方 place_as_tile 允许覆盖水域/熔岩），`ice-platform` 铺在地面形成耐低温冰面平台，
+>   二者均为硬化地面（行走加速 40%），为地面铺设体系补全太空时代硬地瓦片。
+> - **渲染**：新增 `T_FOUNDATION`（灰白合金板 + 板缝 + 四角铆钉）/ `T_ICE_PLATFORM`（冰蓝亮面 + 冰裂纹 + 高光）
+>   两种地面瓦片渲染分支，小地图同步配色；蓝图记录/粘贴含这两种地砖（TILE_IDS 桥接）。
+> - **科技**：统一由「低温学」科技解锁（RECIPE_TECH 配方级门控，官方 foundation/ice-platform 属 Aquilo/
+>   Vulcanus 星球地形，需低温学（氟酮冷/氨）前置）；归入「物流」制作 Tab（官方 terrain subgroup）。
+> - **校验**：verify-dlc 新增地面瓦片校验（17 项），全量 18 个校验脚本通过，`node build.js` 构建通过。

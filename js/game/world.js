@@ -31,7 +31,7 @@ const T_ICE_PLATFORM = 12;   // 冰面平台（太空时代 Aquilo）：玄冥�
 const T_FOUNDATION = 13;    // 平台基座（太空时代 Space platform）：空间平台走行地板，可走行
 function isWalkableTerrain(t) { return t !== T_WATER && t !== T_CLIFF; }
 // 地形是否“硬化”（混凝土/石砖路等铺装地）：玩家行走速度提升
-function isPaved(t) { return t === T_CONCRETE || t === T_PATH || t === T_REF_CONCRETE || t === T_HAZARD || t === T_REF_HAZARD; }
+function isPaved(t) { return t === T_CONCRETE || t === T_PATH || t === T_REF_CONCRETE || t === T_HAZARD || t === T_REF_HAZARD || t === T_FOUNDATION || t === T_ICE_PLATFORM; }
 
 // ===== 无限分块世界 =====
 // 世界由 32×32 块按需确定性生成。矿量稀疏存储：only remaining（被采过且
