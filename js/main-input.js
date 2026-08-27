@@ -445,8 +445,8 @@ function boot() {
   if (G.booted) return;
   G.booted = true;
   const steps = [
-    ['canvas', () => { G.canvas = document.getElementById('game'); G.ctx = G.canvas.getContext('2d'); resize(); }],
     ['ghost', () => { G.ghostCv = document.getElementById('ghost-layer'); G.ghostCtx = G.ghostCv.getContext('2d'); }],
+    ['canvas', () => { G.canvas = document.getElementById('game'); G.ctx = G.canvas.getContext('2d'); resize(); }],
     ['settings', () => loadSettings()],
     ['saves', () => migrateLegacySave()],
     ['topbtn', () => initTopButtons()],
