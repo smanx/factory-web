@@ -866,7 +866,7 @@ async function htmlSettings() {
       const pname = pl.name || pl.v;
       h += '<div class="dim" style="margin-top:4px;color:#7fd07f">🌍 ' + pname + '：';
       h += items.map(k => {
-        const ic = (ITEMS[k] && ITEMS[k].color) ? '<span class="chip" style="background:' + ITEMS[k].color + '">' + (ITEMS[k].emoji || ITEMS[k].mark || '') + '</span> ' : '';
+        const ic = (ITEMS[k] && ITEMS[k].color) ? '<span class="chip" data-itemid="' + k + '" data-tip="' + itemTip(k) + '"><img src="' + iconDataURL(k) + '"></span> ' : '';
         return ic + (ITEMS[k] ? ITEMS[k].name : k) + ' ×' + q[k];
       }).join('　');
       h += '</div>';
