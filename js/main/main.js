@@ -735,6 +735,16 @@ function tryPlaceAt(tx, ty) {
     // 传送带特殊逻辑优先：同向衔接铺设、或自动改用地下带跨越障碍
     if (tryPlaceOntoSameDirBelt(type, tx, ty)) { uiDirty = true; return; }
     if (tryAutoUnderground(type, tx, ty)) { uiDirty = true; return; }
+    // 行星专属生产建筑：只能在对应星球建造（对齐《异星工厂》Space Age 星球专属建筑）
+    if (chk.planet) {
+      const pOpt = (typeof planetOption === 'function') ? planetOption(chk.planet) : null;
+      const pName = pOpt ? (pOpt.name || chk.planet) : chk.planet;
+      const cOpt = (typeof planetOption === 'function') ? planetOption(planetId()) : null;
+      const cName = cOpt ? (cOpt.name || '当前星球') : '当前星球';
+      toast('「' + (ITEMS[type] ? ITEMS[type].name : type) + '」是' + pName + '专属建筑，只能在' + pName + '建造（当前在' + cName + '）');
+      if (typeof playSfx === 'function') playSfx('deny');
+      return;
+    }
     // 不允许覆盖建造：目标格已有建筑（如组装机）时直接提示，不拆除替换。
     // 传送带升级/降级仍走上方同族覆盖逻辑，其余建筑冲突一律拒绝。
     toast('无法在这里建造');

@@ -1200,3 +1200,23 @@
 >     （核堆≈0.93、火车头=0.4、热能机械臂≈0.04），相对量级与官方一致。
 > - **校验**：verify-dlc 污染单源化校验全绿（11 官方 + 3 兜底 + 前端单源读取），
 >   全量 18 个校验脚本通过，`node build.js` 构建通过。
+### 阶段六.6：行星专属生产建筑（Planet-exclusive production buildings，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> 对齐《异星工厂》Space Age **星球专属建筑**设定——官方每个星球拥有专属生产建筑（各建筑原型的
+> `planet` 字段），只能在对应星球建造。本迭代把这 5 个签名建筑接入行星限制（数据源仍来自
+> factorio-data 官方，仅新增玩法限制层，不改动任何数值表）：
+> - **祝融星 Vulcanus**：铸造厂 `foundry`
+> - **雷神星 Fulgora**：电磁工厂 `electromagnetic-plant`
+> - **句芒星 Gleba**：生化炉 `biochamber`、农业塔 `agricultural-tower`
+> - **玄冥星 Aquilo**：低温工厂 `cryogenic-plant`
+>
+> **玩法**：`js/game/world-config.js` 新增 `PLANET_BUILDINGS` 行星专属建筑表 + `buildingRequiredPlanet()`
+> / `canBuildOnCurrentPlanet()` 判定；`js/render/render-entity.js` 的 `canPlaceAt` 接入建造限制——
+> 非对应星球上尝试建造（含蓝图粘贴、施工机器人）会被拒绝，并给出明确提示（「该建筑是X星专属，
+> 只能在X星建造（当前在Y星）」）。配合既有星际旅行系统（`travelToPlanet`），玩家需旅行到对应星球
+> 才能使用该星球专属建筑，游戏向《异星工厂》太空时代靠齐。
+> **存档兼容**：仅限制**新建造**；旧档已在任意星球摆放的建筑保留并继续运作，读档不受影响。
+> 非签名建筑（破碎机 crusher / 回收机 recycler / 生物实验室 biolab / 供热塔 / 聚变链 / 避雷链等）
+> 按既定适配设计不限制，可在任意星球建造，避免破坏既有玩法。
+> **校验**：verify-dlc 新增「行星专属生产建筑」校验（9 项），全量 18 个校验脚本通过，构建通过。

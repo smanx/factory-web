@@ -278,3 +278,30 @@ function resolveWorldSeed() {
   if (cfg.seed && cfg.seed > 0) return cfg.seed;
   return (Math.random() * 1e9) | 0;
 }
+
+// ===== 行星专属生产建筑（对齐《异星工厂》Space Age：星球专属建筑只能在对应星球建造）=====
+// 官方每个星球拥有专属生产建筑（见 factorio-data 各建筑 prototypes 的 planet 字段）：
+//   - 祝融星 Vulcanus：铸造厂 foundry
+//   - 雷神星 Fulgora：电磁工厂 electromagnetic-plant
+//   - 句芒星 Gleba：生化炉 biochamber、农业塔 agricultural-tower
+//   - 玄冥星 Aquilo：低温工厂 cryogenic-plant
+// 项目未实现行星专属的其它建筑（破碎机 crusher / 回收机 recycler / 生物实验室 biolab 等）
+// 按适配设计可在任意星球建造，不在此限制，避免破坏既有玩法。
+const PLANET_BUILDINGS = {
+  'foundry': 'vulcanus',
+  'electromagnetic-plant': 'fulgora',
+  'biochamber': 'gleba',
+  'agricultural-tower': 'gleba',
+  'cryogenic-plant': 'aquilo'
+};
+// 某建筑是否受行星限制；未列出的建筑返回 null（任意星球可建造）。
+// 返回 { planet } 表示只能在指定星球建造；返回 null 表示不限制。
+function buildingRequiredPlanet(type) {
+  return PLANET_BUILDINGS[type] ? { planet: PLANET_BUILDINGS[type] } : null;
+}
+// 当前星球是否允许建造该建筑（无限制→true；有限制→当前星球是否为对应星球）
+function canBuildOnCurrentPlanet(type) {
+  const r = buildingRequiredPlanet(type);
+  if (!r) return true;
+  return planetId() === r.planet;
+}

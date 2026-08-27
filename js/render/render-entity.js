@@ -441,6 +441,14 @@ function drawGhostCount(g, wx, wy) {
 // （DEVICE_PLACE[type] 返回 {ok} 则短路，返回 null 则继续默认校验）
 // 不允许覆盖建造：目标格已有实体时返回 {ok:false}，由调用方提示。
 function canPlaceAt(type, tx, ty, dir) {
+  // 行星专属生产建筑：只能在对应星球建造（对齐《异星工厂》Space Age 星球专属建筑）
+  const planetReq = (typeof buildingRequiredPlanet === 'function') ? buildingRequiredPlanet(type) : null;
+  if (planetReq) {
+    const cur = (typeof planetId === 'function') ? planetId() : 'nauvis';
+    if (cur !== planetReq.planet) {
+      return { ok: false, planet: planetReq.planet };
+    }
+  }
   const def = BUILD_DEFS[type];
   let ew = def.w, eh = def.h;
   if (def.rotSwap && (dir % 2 === 1)) { ew = def.h; eh = def.w; }

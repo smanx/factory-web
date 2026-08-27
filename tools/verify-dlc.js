@@ -1533,5 +1533,22 @@ console.log('\n【行星专属矿藏（祝融星钨矿 / 雷神星钬矿）数�
 }
 
 
+// ===== 行星专属生产建筑（Planet-exclusive buildings，Space Age）校验 =====
+console.log('\n【行星专属生产建筑（对齐官方星球专属建筑）】');
+{
+  const wcSrc = fs.readFileSync(ROOT + '/js/game/world-config.js', 'utf8');
+  const reSrc = fs.readFileSync(ROOT + '/js/render/render-entity.js', 'utf8');
+  // 官方 Space Age 各星球专属生产建筑（planet 字段）——项目仅限这 5 个签名建筑，避免破坏既有玩法
+  const expectMap = { 'foundry': 'vulcanus', 'electromagnetic-plant': 'fulgora', 'biochamber': 'gleba', 'agricultural-tower': 'gleba', 'cryogenic-plant': 'aquilo' };
+  ok(wcSrc.indexOf('PLANET_BUILDINGS') >= 0, 'world-config 定义 PLANET_BUILDINGS 行星专属建筑表');
+  ok(wcSrc.indexOf('canBuildOnCurrentPlanet') >= 0, 'world-config 提供 canBuildOnCurrentPlanet 判定函数');
+  for (const [b, p] of Object.entries(expectMap)) {
+    const re = new RegExp("'" + b + "'[ \\t]*:[ \\t]*'" + p + "'");
+    ok(re.test(wcSrc), b + ' → 官方专属星球 ' + p);
+  }
+  ok(reSrc.indexOf("buildingRequiredPlanet") >= 0 && reSrc.indexOf("planet: planetReq.planet") >= 0, 'render-entity 的 canPlaceAt 已接入行星专属建造限制（返回受限星球）');
+}
+
 process.exit(fail === 0 ? 0 : 1);
+
 
