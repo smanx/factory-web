@@ -685,42 +685,6 @@ function initPanelEvents() {
         // 取消研究：移除当前项（若队列还有下一项则顺延）
         if (G.techQueue && G.techQueue.length) G.techQueue.shift();
         G.activeTech = (G.techQueue && G.techQueue.length) ? G.techQueue[0] : null;
-      } else if (act === 'panel-rotate' || act === 'panel-flip-h' || act === 'panel-flip-v') {
-        // 面板操作区：旋转 / 水平翻转 / 垂直翻转当前选中的建筑（复用蓝图变换的方向算法）
-        const mch = G.panelEnt;
-        if (mch && G.ents.includes(mch) && BUILD_DEFS[mch.type]) {
-          // 固定管道口建筑（锅炉/蒸汽机/汽轮机/热交换器）放置后不可旋转/翻转
-          if (!postPlaceRotatable(mch.type)) { toast('该建筑放置后不可旋转/翻转'); return; }
-          const nd = act === 'panel-rotate' ? (mch.dir + 1) % 4 : flipDir(mch.dir, act === 'panel-flip-h' ? 'h' : 'v');
-          if (nd === mch.dir && act !== 'panel-rotate') { toast('该建筑已处于该朝向'); }
-          // 非方形设备（分流器类）：旋转/翻转后脚印变化，需重挂网格
-          if (BUILD_DEFS[mch.type].rotSwap) {
-            if (mch.type === 'offshore-pump' && !pumpCanFace(mch, nd)) { toast('抽水机无法朝该方向操作：必须仍压在水面上'); return; }
-            removeEnt(mch);
-            mch.dir = nd;
-            mch.applyDir();
-            addEnt(mch);
-            uiDirty = true;
-          } else if (DEVICE_DIR_ROTATE[mch.type]) {
-            // 有朝向的设备：直接旋转/翻转（传送带方向变化会改变输入侧判定，失效附近缓存）
-            mch.dir = nd;
-            invalidateBeltInputNear(mch.x, mch.y, mch.w, mch.h);
-            if (typeof mch.onRotate === 'function') mch.onRotate();
-            uiDirty = true;
-          } else {
-            toast('该建筑不支持旋转/翻转');
-          }
-        }
-      } else if (act === 'panel-deconstruct') {
-        // 建筑面板内的“拆除”按钮：拆除当前选中的建筑（PC/手机端通用）
-        const mch = G.panelEnt;
-        if (mch && G.ents.includes(mch)) {
-          // 直接拆除面板对应的建筑，并返还物资；不受距离限制（面板已打开）
-          for (const [iid, n] of mch.contents()) invAdd(iid, n);
-          removeEnt(mch);
-          if (G.panelEnt === mch) closePanel();
-          uiDirty = true;
-        }
       }
     }
     if (!skipPanelRender) {

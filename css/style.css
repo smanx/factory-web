@@ -1602,43 +1602,6 @@ html, body {
   transition: transform .05s linear;
 }
 
-/* 建筑面板内的“拆除”按钮（PC/手机端通用）：红色破坏性操作样式 */
-#panel button.deconstruct-btn-inline {
-  width: 100%;
-  margin-top: 4px;
-  padding: 9px 12px;
-  font-weight: bold;
-  color: #fff;
-  background: rgba(120, 30, 30, .85);
-  border: 1px solid #ff5b5b;
-  box-shadow: 0 0 8px rgba(255, 91, 91, .3);
-}
-#panel button.deconstruct-btn-inline:hover:not(:disabled) {
-  background: rgba(150, 40, 40, .95);
-  border-color: #ff8080;
-}
-
-/* 建筑面板操作区：旋转/水平翻转/垂直翻转一排并排展示 */
-#panel .panel-op-row {
-  display: flex;
-  gap: 6px;
-  margin-top: 4px;
-}
-#panel .panel-op-row button.panel-op-btn {
-  flex: 1;
-  min-width: 0;
-  padding: 8px 4px;
-  font-weight: bold;
-  font-size: 13px;
-  color: #fff;
-  background: rgba(42, 58, 77, .9);
-  border: 1px solid #4a6075;
-}
-#panel .panel-op-row button.panel-op-btn:hover:not(:disabled) {
-  background: rgba(62, 82, 105, .95);
-  border-color: #6a8aa0;
-}
-
 /* ===== 手机 / 窄屏适配：放大字体与触控热区，避免文字过小 ===== */
 @media (max-width: 720px) {
   body { -webkit-text-size-adjust: 100%; }
@@ -1738,8 +1701,6 @@ html, body {
 /* 超窄屏（如竖屏手机）进一步压缩顶部按钮，避免溢出 */
 @media (max-width: 480px) {
   #panel-body button { width: 100%; }
-  /* 面板操作区按钮保持并排，不被上面的 width:100% 规则撑坏 */
-  #panel-body .panel-op-row button.panel-op-btn { width: auto; }
   .recipe { flex-wrap: wrap; }
   .recgrid { grid-template-columns: 1fr 1fr; }
 }

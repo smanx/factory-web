@@ -392,28 +392,11 @@ function renderPanel(full) {
       // 配方设备：重新设计的双栏交互面板（左=背包，右=设备交互信息）
       body.innerHTML = recipeMachineLayoutHtml(G.panelEnt);
     } else if (isChestEntity(G.panelEnt)) {
-      // 储物箱：双栏布局（左=玩家背包，右=箱子内容），底部附通用操作区
-      const chestHtml = htmlMachine(G.panelEnt);
-      const canRot = postPlaceRotatable(G.panelEnt.type);
-      body.innerHTML = chestHtml +
-        '<div class="sec">操作</div>' +
-        '<div class="panel-op-row">' +
-          (canRot ? '<button data-action="panel-rotate" class="panel-op-btn" title="顺时针旋转 90°（R）">⟳ 旋转</button>' : '') +
-          (canRot ? '<button data-action="panel-flip-h" class="panel-op-btn" title="水平翻转（H）">⇋ 水平翻转</button>' : '') +
-          (canRot ? '<button data-action="panel-flip-v" class="panel-op-btn" title="垂直翻转（V）">⇵ 垂直翻转</button>' : '') +
-        '</div>' +
-        '<button data-action="panel-deconstruct" class="deconstruct-btn-inline">✖ 拆除该建筑</button>';
+      // 储物箱：双栏布局（左=玩家背包，右=箱子内容）
+      body.innerHTML = htmlMachine(G.panelEnt);
     } else {
-      // 普通设备：设备专属内容 + 底部通用操作区（旋转/水平翻转/垂直翻转/拆除）
-      const canRot = postPlaceRotatable(G.panelEnt.type);
-      body.innerHTML = htmlMachine(G.panelEnt) +
-        '<div class="sec">操作</div>' +
-        '<div class="panel-op-row">' +
-          (canRot ? '<button data-action="panel-rotate" class="panel-op-btn" title="顺时针旋转 90°（R）">⟳ 旋转</button>' : '') +
-          (canRot ? '<button data-action="panel-flip-h" class="panel-op-btn" title="水平翻转（H）">⇋ 水平翻转</button>' : '') +
-          (canRot ? '<button data-action="panel-flip-v" class="panel-op-btn" title="垂直翻转（V）">⇵ 垂直翻转</button>' : '') +
-        '</div>' +
-        '<button data-action="panel-deconstruct" class="deconstruct-btn-inline">✖ 拆除该建筑</button>';
+      // 普通设备：设备专属内容
+      body.innerHTML = htmlMachine(G.panelEnt);
     }
   }
   if (G.panelMode !== 'set') body.scrollTop = st;
