@@ -222,6 +222,37 @@ ok(!!IT['artificial-yumako-soil'] && !!IT['overgrowth-yumako-soil'], '土壤物�
 ok(ctx.__itemTechReq('artificial-yumako-soil') === 'agriculture', '人工雅玛果土壤需「农业科技」');
 ok(ctx.__itemTechReq('overgrowth-yumako-soil') === 'agriculture', '茂盛雅玛果土壤需「农业科技」');
 
+// ===== Gleba 果仁（Jellynut）生物链数据校验 =====
+console.log('\n【果仁链（Jellynut，Gleba 双作物）数据校验】');
+// 物品/堆叠/命名来自官方（factorio-data）
+for (const id of ['jellynut', 'jellynut-seed', 'jelly', 'biter-egg']) {
+  ok(!!IT[id], id + ' 物品已注册');
+  ok(!!GD.stackSize[id], id + ' 堆叠来自官方 (=' + GD.stackSize[id] + ')');
+  ok(!!GD.names[id], id + ' 官方命名已收录 (' + (GD.names[id] ? GD.names[id].zh : '?') + ')');
+}
+ok(GD.stackSize['jellynut-seed'] === 10, '果仁种子堆叠=10（官方）');
+ok(GD.stackSize['jelly'] === 100, '果冻堆叠=100（官方）');
+ok(GD.stackSize['biter-egg'] === 100, '虫蛋堆叠=100（官方）');
+// 配方
+for (const rid of ['jellynut-processing', 'jellynut-growing', 'biter-egg', 'nutrients-from-biter-egg']) {
+  ok(!!RP[rid], rid + ' 配方已注册');
+  ok(Object.keys(RP[rid].inp).every(k => k in IT || ['water'].indexOf(k) >= 0), rid + ' 配方引用物品均存在');
+}
+ok(RP['jellynut-processing'].inp['jellynut'] === 1 && RP['jellynut-processing'].out['jelly'] === 4, '果仁加工=1果仁→4果冻（官方）');
+ok(RP['jellynut-processing'].time === 1, '果仁加工耗时=1s（官方）');
+ok(Object.keys(RP['jellynut-growing'].out).includes('jellynut'), '果仁种植产出果仁');
+ok(RP['nutrients-from-biter-egg'].inp['biter-egg'] === 1 && RP['nutrients-from-biter-egg'].out['nutrients'] === 20, '虫蛋→营养素=1虫蛋→20营养素（官方）');
+ok(RP['biter-egg'].out['biter-egg'] === 5, '虫蛋培育产出 5 个（官方 biter-egg 5）');
+// 设备归属
+ok(ctx.__recipeDevice('jellynut-processing') === 'biochamber', '果仁加工 → 生化炉');
+ok(ctx.__recipeDevice('jellynut-growing') === 'agricultural-tower', '果仁种植 → 农业塔');
+ok(ctx.__recipeDevice('biter-egg') === 'biochamber', '虫蛋培育 → 生化炉');
+ok(ctx.__recipeDevice('nutrients-from-biter-egg') === 'biochamber', '虫蛋→营养素 → 生化炉');
+// 科技门控
+ok(ctx.__itemTechReq('jellynut') === 'agriculture', '果仁需「农业科技」');
+ok(ctx.__itemTechReq('jellynut-seed') === 'agriculture', '果仁种子需「农业科技」');
+ok(ctx.__itemTechReq('biter-egg') === 'agriculture', '虫蛋需「农业科技」');
+
 // ===== 破碎机（Crusher）数据校验 =====
 console.log('\n【破碎机设备数据（官方）】');
 ok(!!GD.stackSize['crusher'], 'crusher 堆叠来自官方 (=10)');
@@ -613,9 +644,9 @@ ok(GD.names['promethium-science-pack'] && GD.names['promethium-science-pack'].en
 ok(!!IT['promethium-asteroid-chunk'], 'promethium-asteroid-chunk 物品已注册');
 ok(GD.stackSize['promethium-asteroid-chunk'] === 1, 'promethium-asteroid-chunk 堆叠来自官方 (=1)');
 ok(GD.names['promethium-asteroid-chunk'] && GD.names['promethium-asteroid-chunk'].en === 'Promethium asteroid chunk', 'promethium-asteroid-chunk 官方命名已收录 (Promethium asteroid chunk)');
-// 配方（官方：25钷素星块+1量子处理器+10五足虫蛋→10，5s；此处适配为超导体/生物结晶，耗时对齐官方 5s）
+// 配方（官方：25钷素星块+1量子处理器+10虫蛋→10，5s；接入虫蛋 biter-egg 后采用官方配方）
 ok(!!RP['promethium-science-pack'], 'promethium-science-pack 配方已注册');
-ok(RP['promethium-science-pack'].inp['promethium-asteroid-chunk'] === 25 && RP['promethium-science-pack'].inp['superconductor'] === 1 && RP['promethium-science-pack'].inp['bioflux'] === 10, '钷素科研包配方=25钷素星块+1超导体+10生物结晶（官方 25+1+10 适配）');
+ok(RP['promethium-science-pack'].inp['promethium-asteroid-chunk'] === 25 && RP['promethium-science-pack'].inp['quantum-processor'] === 1 && RP['promethium-science-pack'].inp['biter-egg'] === 10, '钷素科研包配方=25钷素星块+1量子处理器+10虫蛋（官方）');
 ok(RP['promethium-science-pack'].out['promethium-science-pack'] === 10 && RP['promethium-science-pack'].time === 5, '钷素科研包产出 10、5s（官方）');
 ok(Object.keys(RP['promethium-science-pack'].inp).every(k => k in IT), 'promethium-science-pack 配方引用物品均存在');
 // 配方设备：电磁工厂（官方 cryogenics 低温工厂，此处适配为电磁工厂生产钷素科研包）

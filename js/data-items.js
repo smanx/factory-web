@@ -280,6 +280,11 @@ const ITEMS = {
   // ===== 太空时代 Gleba 农业土壤（人工雅玛果土壤 / 茂盛雅玛果土壤，数据来自 factorio-data 官方，见 GAME_DATA）=====
   'artificial-yumako-soil': { name: '玉玛果人造土', color: '#7a5a34', mark: '土', desc: '太空时代农业种植土壤（地面铺设）：铺在草地上形成可种植雅玛果的人工土壤，供农业塔种植作物。由玉玛果种子+营养素+填海料制成（对齐《异星工厂》Space Age Artificial yumako soil，堆叠 100）' },
   'overgrowth-yumako-soil': { name: '玉玛果沃土', color: '#5a4a2a', mark: '沃', desc: '太空时代更肥沃的雅玛果土壤（地面铺设）：在人工雅玛果土壤上再铺一层，含更丰富养分，作物生长更快。由人工雅玛果土壤+玉玛果种子+变质物+水制成（对齐《异星工厂》Space Age Overgrowth yumako soil，堆叠 100）' },
+  // ===== 太空时代 Gleba 果仁（Jellynut）生物链：与玉玛果并列为 Gleba 两大作物（数据来自 factorio-data 官方，见 GAME_DATA）=====
+  'jellynut': { name: '果冻果', color: '#c05880', mark: 'Jn', desc: '太空时代 Gleba 星球作物（果仁，堆叠 100），与玉玛果并列为 Gleba 两大农作物，用于制成果冻等生物质产品（对齐《异星工厂》Space Age Jellynut）' },
+  'jellynut-seed': { name: '果冻果种子', color: '#a04870', mark: 'Js', desc: '太空时代 Gleba 作物种子（堆叠 10），用于种植果仁（对齐《异星工厂》Space Age Jellynut seed，堆叠 10）' },
+  'jelly': { name: '果冻', color: '#e860b0', mark: 'J', desc: '太空时代 Gleba 生物质中间产物，由果仁加工制得，是高级生物流与火箭燃料的重要原料（对齐《异星工厂》Space Age Jelly，堆叠 100）' },
+  'biter-egg': { name: '异虫卵', color: '#c0a058', mark: '蛋', desc: '太空时代 Gleba 生物资源（堆叠 100）：由生化炉培育产出，用于制造营养素、高级生物质与多种太空时代装备/科研（对齐《异星工厂》Space Age Biter egg）' },
   // ===== 太空时代 小行星碎块加工链（破碎机 + 小行星碎块，数据来自 factorio-data 官方，见 GAME_DATA）=====
   'crusher': { name: '破碎机', color: '#9a8a7a', desc: '太空时代破碎建筑（2×3，吃电力）：把小行星碎块（金属/碳质/氧化星块）粉碎成基础资源（铁矿石/碳/冰等），破碎机只会用“破碎”配方（对齐《异星工厂》Space Age 破碎机，官方重力0/太空，此处适配为地面设备，数据来自 GAME_DATA）' },
   'metallic-asteroid-chunk': { name: '金属星块', color: '#8a7a6a', mark: 'Me', desc: '太空时代高金属含量的小行星碎块，用破碎机粉碎可获得大量铁矿石（对齐《异星工厂》Space Age Metallic asteroid chunk，堆叠 1）' },

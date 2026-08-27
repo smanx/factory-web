@@ -73,6 +73,7 @@ const dynamicKeys = new Set([
   'advanced-metallic-asteroid-crushing', 'advanced-carbonic-asteroid-crushing', 'advanced-oxide-asteroid-crushing',
   'metallic-asteroid-reprocessing', 'carbonic-asteroid-reprocessing', 'oxide-asteroid-reprocessing',
   'yumako-growing', // 农业塔种植配方：种子→玉玛果（产物键≠配方键）
+  'jellynut-processing', 'jellynut-growing', 'nutrients-from-biter-egg', // Gleba 果仁链：果仁→果冻/果仁种植/虫蛋→营养素（产物键≠配方键）
   'recycle-scrap', // 废料回收配方：废料→基础资源（产物键≠配方键）
   'advanced-thruster-fuel', 'advanced-thruster-oxidizer', // 太空推进高级配方：产物为推进器燃料/氧化剂流体（产物键≠配方键）
 ]);

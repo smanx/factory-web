@@ -63,9 +63,9 @@ const KEEP_MANUAL_RECIPES = new Set([
   'speed-module-3', 'productivity-module-3', 'efficiency-module-3', 'fusion-reactor-equipment',
   'cliff-explosives',
   // ===== 太空时代 Space Age 手工适配配方（官方配方依赖星球专属资源，此处适配基础资源）=====
-  'carbon-fiber', 'lithium', 'lithium-plate', 'superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant',
+  'carbon-fiber', 'lithium', 'lithium-plate', 'superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant', 'promethium-science-pack',
   'yumako-mash', 'bioflux', 'nutrients-from-bioflux', 'biosulfur', 'agricultural-science-pack', 'biochamber',
-  'agricultural-tower', 'yumako-growing',  // 太空时代农业塔（种植专属配方，非官方合成）
+  'agricultural-tower', 'yumako-growing', 'jellynut-growing', 'biter-egg', 'jellynut-processing', 'nutrients-from-biter-egg',  // 太空时代农业塔（种植专属配方，非官方合成）+ Gleba 果仁种植；biter-egg 官方无合成原料（生物机制繁殖），此处适配为生化炉培育
   // ===== 太空时代 Aquilo 低温学链（官方配方依赖低温/液空等星球资源，此处适配基础资源）=====
   'ammonia', 'fluorine', 'fluoroketone-cold', 'fluoroketone-hot', 'cryogenic-science-pack', 'cryogenic-plant',
   // ===== 太空时代 熔融金属/废料/终局防御（官方配方依赖行星资源，此处适配基础资源）=====

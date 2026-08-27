@@ -201,6 +201,10 @@ const GAME_DATA = {
   "agricultural-tower": 20,
   "artificial-yumako-soil": 100,
   "overgrowth-yumako-soil": 100,
+  "jellynut": 50,
+  "jellynut-seed": 10,
+  "jelly": 100,
+  "biter-egg": 100,
   "crusher": 10,
   "metallic-asteroid-chunk": 1,
   "carbonic-asteroid-chunk": 1,
@@ -1960,6 +1964,19 @@ const GAME_DATA = {
     "artificial-yumako-soil": 10
    }
   },
+  "overgrowth-yumako-soil": {
+   "time": 10,
+   "inp": {
+    "artificial-yumako-soil": 2,
+    "yumako-seed": 5,
+    "biter-egg": 10,
+    "spoilage": 50,
+    "water": 100
+   },
+   "out": {
+    "overgrowth-yumako-soil": 1
+   }
+  },
   "sulfuric-acid": {
    "time": 1,
    "inp": {
@@ -2696,6 +2713,7 @@ const GAME_DATA = {
   "asteroid-collector": "assembling-machine-1",
   "recycler": "assembling-machine-1",
   "artificial-yumako-soil": "assembling-machine-1",
+  "overgrowth-yumako-soil": "assembling-machine-1",
   "sulfuric-acid": "chemical-plant",
   "defender-capsule": "assembling-machine-1",
   "distractor-capsule": "assembling-machine-1",
@@ -3522,6 +3540,22 @@ const GAME_DATA = {
    "zh": "玉玛果沃土",
    "en": "Overgrowth yumako soil"
   },
+  "jellynut": {
+   "zh": "果冻果",
+   "en": "Jellynut"
+  },
+  "jellynut-seed": {
+   "zh": "果冻果种子",
+   "en": "Jellynut seed"
+  },
+  "jelly": {
+   "zh": "果冻",
+   "en": "Jelly"
+  },
+  "biter-egg": {
+   "zh": "异虫卵",
+   "en": "Biter egg"
+  },
   "crusher": {
    "zh": "破碎机",
    "en": "Crusher"
@@ -3923,6 +3957,14 @@ const GAME_DATA = {
   "biosulfur": {
    "zh": "生物硫磺",
    "en": "Biosulfur"
+  },
+  "jellynut-processing": {
+   "zh": "果冻果加工",
+   "en": "Jellynut processing"
+  },
+  "nutrients-from-biter-egg": {
+   "zh": "异虫卵制营养素",
+   "en": "Nutrients from biter egg"
   },
   "metallic-asteroid-crushing": {
    "zh": "金属星岩粉碎",

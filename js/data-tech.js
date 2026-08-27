@@ -69,6 +69,11 @@ const TECH_REQ = {
   'yumako-seed': 'agriculture',
   'artificial-yumako-soil': 'agriculture',
   'overgrowth-yumako-soil': 'agriculture',
+  // Gleba 果仁（Jellynut）生物链：与玉玛果并列，统一由「农业科技」解锁
+  'jellynut': 'agriculture',
+  'jellynut-seed': 'agriculture',
+  'jelly': 'agriculture',
+  'biter-egg': 'agriculture',
   'biolab': 'biolab',  // 生物实验室（Gleba）：需「生物实验室」科技（官方 Biolab 科技，前置农业科技），科研速度 2 倍
   // ===== 太空时代 小行星碎块加工链（统一由「太空材料加工」科技解锁）=====
   'crusher': 'asteroid-processing',

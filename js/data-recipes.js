@@ -262,6 +262,14 @@ const RECIPES = {
   // 茂盛雅玛果土壤：人工雅玛果土壤×2 + 玉玛果种子×5 + 变质物×50 + 水×100 → 茂盛雅玛果土壤×1
   // （官方 overgrowth-yumako-soil 10s 依赖 biter-egg 生物蛋，项目适配为现有生物链资源：变质物代替）
   'overgrowth-yumako-soil': { time: 10, inp: { 'artificial-yumako-soil': 2, 'yumako-seed': 5, 'spoilage': 50, 'water': 100 }, out: { 'overgrowth-yumako-soil': 1 } },
+  // 果仁加工：果仁×1 → 果冻×4（官方 jellynut-processing 1s：1 果仁 → 4 果冻 + 2% 概率种子，此处对齐官方产出）
+  'jellynut-processing': { time: 1, inp: { 'jellynut': 1 }, out: { 'jelly': 4 } },
+  // 果仁种植（农业塔专属生长配方）：果仁种子×1 → 果仁×5 + 有概率返还种子，持续收获（对齐《异星工厂》Agricultural tower 果仁种植）
+  'jellynut-growing': { time: 30, inp: { 'jellynut-seed': 1 }, out: { 'jellynut': 5 } },
+  // 虫蛋：果冻+营养素+果泥 → 虫蛋×5（官方 biter-egg 由生物机制繁殖产出，无合成原料；此处适配为生化炉用 Gleba 生物链资源培育，10s 对齐官方耗时）
+  'biter-egg': { time: 10, inp: { 'jelly': 10, 'nutrients': 20, 'yumako-mash': 10 }, out: { 'biter-egg': 5 } },
+  // 虫蛋→营养素：虫蛋×1 → 营养素×20（官方 nutrients-from-biter-egg 2s：1 虫蛋 → 20 营养素）
+  'nutrients-from-biter-egg': { time: 2, inp: { 'biter-egg': 1 }, out: { 'nutrients': 20 } },
   // ===== 太空时代 小行星碎块加工链（破碎机配方，官方数值参考，见 GAME_DATA）=====
   // 破碎机本体：低密度结构 + 钢板 + 电动引擎 → 破碎机（官方 energy_required=10s，此处对齐 10s）
   'crusher': { time: 10, inp: { 'low-density-structure': 20, 'steel-plate': 10, 'electric-engine-unit': 10 }, out: { 'crusher': 1 } },
@@ -279,9 +287,9 @@ const RECIPES = {
   'metallic-asteroid-reprocessing': { time: 2, inp: { 'metallic-asteroid-chunk': 1 }, prob: { 'metallic-asteroid-chunk': 0.4, 'carbonic-asteroid-chunk': 0.2, 'oxide-asteroid-chunk': 0.2 } },
   'carbonic-asteroid-reprocessing': { time: 2, inp: { 'carbonic-asteroid-chunk': 1 }, prob: { 'carbonic-asteroid-chunk': 0.4, 'metallic-asteroid-chunk': 0.2, 'oxide-asteroid-chunk': 0.2 } },
   'oxide-asteroid-reprocessing': { time: 1, inp: { 'oxide-asteroid-chunk': 1 }, prob: { 'oxide-asteroid-chunk': 0.4, 'metallic-asteroid-chunk': 0.2, 'carbonic-asteroid-chunk': 0.2 } },
-  // 钷素科研包：钷素星块×25 + 超导体×1 + 生物结晶×10 → 钷素科研包×10（官方 promethium-science-pack 5s：
-  // 25钷素星块+1量子处理器+10五足虫蛋，适配为超导体代量子处理器、生物结晶代五足虫蛋；由电磁工厂制得，5s 对齐官方）
-  'promethium-science-pack': { time: 5, inp: { 'promethium-asteroid-chunk': 25, 'superconductor': 1, 'bioflux': 10 }, out: { 'promethium-science-pack': 10 } },
+  // 钷素科研包：钷素星块×25 + 量子处理器×1 + 虫蛋×10 → 钷素科研包×10（官方 promethium-science-pack 5s：
+  // 25钷素星块+1量子处理器+10虫蛋，官方配方；接入虫蛋 biter-egg 后采用官方数值，由电磁工厂制得，5s 对齐官方）
+  'promethium-science-pack': { time: 5, inp: { 'promethium-asteroid-chunk': 25, 'quantum-processor': 1, 'biter-egg': 10 }, out: { 'promethium-science-pack': 10 } },
   // 冰熔化：冰 → 水（官方 ice-melting 0.5s，此处适配熔炉/锅炉链，供氧化链循环）
   // ===== 太空时代 Aquilo 低温学链（Cryogenics，数据来自 factorio-data 官方，见 GAME_DATA）=====
   // 氨：水 + 液态空气 → 氨（官方 ammonia 3s：50 水 + 50 液态空气，此处适配为水+氮气/空气）
@@ -494,7 +502,7 @@ const DEVICE_NAMES = {
 const ELECTRO_RECIPES = ['superconductor', 'electromagnetic-science-pack', 'electromagnetic-plant', 'promethium-science-pack', 'holmium-ore', 'holmium-plate', 'supercapacitor', 'tesla-ammo', 'tesla-turret', 'railgun-turret'];
 function isElectroRecipe(id) { return ELECTRO_RECIPES.indexOf(id) >= 0; }
 // 生化炉专属配方（太空时代生物产品）：果泥 / 生物流 / 营养素 / 生物硫磺 / 农业科研包 / 生化炉本体
-const BIOCHAMBER_RECIPES = ['yumako-mash', 'bioflux', 'nutrients-from-bioflux', 'biosulfur', 'agricultural-science-pack', 'biochamber'];
+const BIOCHAMBER_RECIPES = ['yumako-mash', 'bioflux', 'nutrients-from-bioflux', 'biosulfur', 'agricultural-science-pack', 'biochamber', 'jellynut-processing', 'biter-egg', 'nutrients-from-biter-egg'];
 function isBiochamberRecipe(id) { return BIOCHAMBER_RECIPES.indexOf(id) >= 0; }
 // 破碎机专属配方（太空时代小行星碎块加工）：金属/碳质/氧化星块粉碎 + 破碎机本体 + 冰熔化
 const CRUSHER_RECIPES = ['metallic-asteroid-crushing', 'carbonic-asteroid-crushing', 'oxide-asteroid-crushing',
@@ -506,7 +514,7 @@ function isCrusherRecipe(id) { return CRUSHER_RECIPES.indexOf(id) >= 0; }
 const FOUNDRY_RECIPES = ['tungsten-ore', 'tungsten-plate', 'tungsten-carbide', 'metallurgic-science-pack', 'foundry', 'molten-iron', 'molten-copper'];
 function isFoundryRecipe(id) { return FOUNDRY_RECIPES.indexOf(id) >= 0; }
 // 农业塔专属种植配方（太空时代 Gleba 作物种植）：玉玛果种植 + 农业塔本体
-const AGRICULTURE_TOWER_RECIPES = ['yumako-growing'];
+const AGRICULTURE_TOWER_RECIPES = ['yumako-growing', 'jellynut-growing'];
 function isAgricultureTowerRecipe(id) { return AGRICULTURE_TOWER_RECIPES.indexOf(id) >= 0; }
 // 空间平台中枢专属配方（太空时代空间平台产品）：地基 / 起始包 / 中枢本体
 const HUB_RECIPES = ['space-platform-foundation', 'space-platform-starter-pack', 'space-platform-hub'];

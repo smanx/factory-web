@@ -39,10 +39,12 @@ class AgriculturalTower extends Assembler {
           emitQuality(this, this.outp, k, rec.out[k]);
           if (typeof trackProd === 'function') trackProd(k, rec.out[k]);
         }
-        // 收获时 60% 概率返还 1 粒玉玛果种子（官方作物收获会返还种子，保证种植可自持循环）
-        if (Math.random() < 0.6) {
-          this.outp['yumako-seed'] = (this.outp['yumako-seed'] || 0) + 1;
-          if (typeof trackProd === 'function') trackProd('yumako-seed', 1);
+        // 收获时 60% 概率返还 1 粒作物种子（官方作物收获会返还种子，保证种植可自持循环）
+        // 玉玛果种植返还玉玛果种子，果仁种植返还果仁种子（对齐官方双作物农业塔）
+        const seedId = this.recipe === 'yumako-growing' ? 'yumako-seed' : (this.recipe === 'jellynut-growing' ? 'jellynut-seed' : null);
+        if (seedId && Math.random() < 0.6) {
+          this.outp[seedId] = (this.outp[seedId] || 0) + 1;
+          if (typeof trackProd === 'function') trackProd(seedId, 1);
         }
         this.applyProductivity(rec);
         this.crafting = false;
@@ -164,7 +166,7 @@ function agriPanelHtml(e) {
   h += '</div>';
   h += '<div class="dim" id="asm-recipe-empty" style="display:none"></div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除作物</button>';
-  h += '<div class="dim">农业塔：太空时代作物种植建筑，专用于玉玛果种植。放入玉玛果种子后持续收获玉玛果，收获有概率返还种子（自持循环）。数据（占地/血量/功耗）来自 GAME_DATA。选中后按 R 旋转朝向。</div>';
+  h += '<div class="dim">农业塔：太空时代作物种植建筑，可种植玉玛果或果仁（Gleba 双作物）。放入对应作物种子后持续收获，收获有概率返还种子（自持循环）。须种植在玉玛果人造土/沃土上。数据（占地/血量/功耗）来自 GAME_DATA。选中后按 R 旋转朝向。</div>';
   h += circuitPanelHtml(e, 'agri');
   return h;
 }
