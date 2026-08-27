@@ -80,7 +80,7 @@ const dynamicKeys = new Set([
   'advanced-thruster-fuel', 'advanced-thruster-oxidizer', // 太空推进高级配方：产物为推进器燃料/氧化剂流体（产物键≠配方键）
   'iron-bacteria-cultivation', 'copper-bacteria-cultivation', // 细菌培养配方：细菌→细菌（扩增，产物键≠配方键）
   'iron-plate-from-iron-bacteria', 'copper-plate-from-copper-bacteria', // 细菌→板还原配方：产物为铁板/铜板（产物键≠配方键）
-  'nutrients-from-spoilage', 'burnt-spoilage', // Gleba 变质物回收配方：变质物→营养素/碳（产物键≠配方键）
+  'nutrients-from-spoilage', 'nutrients-from-bioflux', 'burnt-spoilage', // Gleba 营养素/回收配方：变质物→营养素、生物流→营养素、变质物→碳（产物键≠配方键）
   'bioplastic', // 生化炉配方：生物流+果泥→塑料（产物键≠配方键，产物为塑料）
   'fish-breeding', // 养鱼配方：生鱼→生鱼（扩增，产物键≠配方键）
   'nutrients-from-fish', // 鱼制营养素配方：生鱼→营养素（产物键≠配方键）

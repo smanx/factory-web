@@ -397,7 +397,15 @@ for (const rid of ['nutrients-from-yumako-mash']) {
 }
 ok(RP['nutrients-from-yumako-mash'].inp['yumako-mash'] === 4 && RP['nutrients-from-yumako-mash'].out['nutrients'] === 6, '果泥→营养素=4果泥→6营养素（官方 nutrients-from-yumako-mash）');
 ok(RP['nutrients-from-yumako-mash'].time === 4, '果泥→营养素耗时=4s（官方）');
-ok(!RP['nutrients-from-bioflux'], '已移除非官方配方键 nutrients-from-bioflux');
+// 营养素（生物流制）：官方 nutrients-from-bioflux 配方（5 生物流 → 40 营养素，2s，生化炉 organic）
+// 此前项目误把该官方键用于「4 果泥→6 营养素」配方（已改名回官方 nutrients-from-yumako-mash）；
+// 现正式接入官方 nutrients-from-bioflux 配方本身，作为生物流→营养素的高效来源。
+ok(!!RP['nutrients-from-bioflux'], 'nutrients-from-bioflux 配方已注册（官方生物流→营养素）');
+ok(RP['nutrients-from-bioflux'].inp['bioflux'] === 5 && RP['nutrients-from-bioflux'].out['nutrients'] === 40, '生物流→营养素=5生物流→40营养素（官方 nutrients-from-bioflux）');
+ok(RP['nutrients-from-bioflux'].time === 2, '生物流→营养素耗时=2s（官方）');
+ok(!!GD.recipeNames['nutrients-from-bioflux'], 'nutrients-from-bioflux 官方配方命名已收录 (' + (GD.recipeNames['nutrients-from-bioflux'] ? GD.recipeNames['nutrients-from-bioflux'].zh : '?') + ')');
+ok(ctx.__recipeDevice('nutrients-from-bioflux') === 'biochamber', 'nutrients-from-bioflux → 生化炉（官方 organic）');
+ok(ctx.__recipeTechReq('nutrients-from-bioflux') === 'agriculture', 'nutrients-from-bioflux 需「农业科技」');
 
 // ===== 太空时代 养鱼 + 鱼制营养素 + 煤合成（Fish breeding / Nutrients from fish / Coal synthesis，本迭代新增）数据校验 =====
 console.log('\n【养鱼 + 鱼制营养素 + 煤合成（Space Age）数据校验】');

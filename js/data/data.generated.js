@@ -2457,6 +2457,15 @@ const GAME_DATA = {
     "nutrients": 6
    }
   },
+  "nutrients-from-bioflux": {
+   "time": 2,
+   "inp": {
+    "bioflux": 5
+   },
+   "out": {
+    "nutrients": 40
+   }
+  },
   "nutrients-from-spoilage": {
    "time": 2,
    "inp": {
@@ -3972,6 +3981,7 @@ const GAME_DATA = {
   "yumako-mash": "biochamber",
   "bioflux": "biochamber",
   "nutrients-from-yumako-mash": "biochamber",
+  "nutrients-from-bioflux": "biochamber",
   "nutrients-from-spoilage": "biochamber",
   "burnt-spoilage": "biochamber",
   "biosulfur": "biochamber",
@@ -5393,6 +5403,10 @@ const GAME_DATA = {
   "nutrients-from-yumako-mash": {
    "zh": "玉玛果泥制营养素",
    "en": "Nutrients from yumako mash"
+  },
+  "nutrients-from-bioflux": {
+   "zh": "生物结晶制营养素",
+   "en": "Nutrients from bioflux"
   },
   "nutrients-from-spoilage": {
    "zh": "变质物制营养素",

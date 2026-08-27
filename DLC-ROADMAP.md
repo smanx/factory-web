@@ -1288,3 +1288,23 @@ D
 - **校验**：verify-dlc 新增「官方回收配方」校验（recycler.js 单源读取 + 抽样 6 物品的
   耗时/产出逐项核对 + 条数合理），全量 18 个校验脚本通过，`node build.js` 构建通过。
 
+
+### 阶段五.5：生物流制营养素配方接入官方（Nutrients from bioflux，本迭代新增）
+
+> 已落地说明（本迭代增量）：
+> 依据「所有配方数据与《异星工厂》官方一致」原则，补全官方 Space Age **生物流制营养素**配方
+> （`nutrients-from-bioflux`）——此前该官方键被项目误用于「4 果泥→6 营养素」配方
+> （阶段六.3 已把该配方改名回官方 `nutrients-from-yumako-mash`），而官方 `nutrients-from-bioflux`
+> 配方本身（**5 生物流 → 40 营养素，2s**）一直缺失。现正式接入：
+> - **配方**（官方数值，数据单源化，来自 data.generated.js）：`nutrients-from-bioflux` =
+>   **5 生物流 → 40 营养素（2s）**，生化炉 organic 配方，官方高效营养素来源
+>   （5 生物流制 40 营养素，远高于 4 果泥→6 营养素，供生化炉/虫巢孵化器持续供能）。
+> - **设备归属**：生化炉（DLC_DEVICE_RECIPES 新增 `nutrients-from-bioflux` → biochamber，
+>   GAME_DATA.recipeDevice 单源）。
+> - **配方命名**：`生物结晶制营养素 / Nutrients from bioflux`，来自 GAME_DATA.recipeNames
+>   （factorio-data 官方 space-age locale）。
+> - **科技**：由「农业科技」解锁（RECIPE_TECH 配方级门控，与其它生化炉生物质配方一致）。
+> - **校验**：verify-dlc 新增生物流制营养素校验（配方注册/数值 5→40/耗时 2s/命名/设备/科技），
+>   并把 verify-data-integrity 的 `nutrients-from-bioflux` 加入动态键（产物键≠配方键）；
+>   移除原「已移除非官方配方键 nutrients-from-bioflux」反向断言（该键现为合法官方配方）。
+>   全量 18 个校验脚本通过，`node build.js` 构建通过。
