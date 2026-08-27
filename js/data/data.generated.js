@@ -217,6 +217,7 @@ const GAME_DATA = {
   "jelly": 100,
   "biter-egg": 100,
   "pentapod-egg": 20,
+  "tree-seed": 10,
   "captive-biter-spawner": 1,
   "capture-robot-rocket": 10,
   "iron-bacteria": 50,
@@ -1094,6 +1095,15 @@ const GAME_DATA = {
    },
    "out": {
     "wooden-chest": 1
+   }
+  },
+  "tree-seed": {
+   "time": 2,
+   "inp": {
+    "wood": 2
+   },
+   "out": {
+    "tree-seed": 1
    }
   },
   "iron-chest": {
@@ -3533,6 +3543,7 @@ const GAME_DATA = {
   "storage-tank": "assembling-machine-1",
   "steel-chest": "assembling-machine-1",
   "wooden-chest": "assembling-machine-1",
+  "tree-seed": "assembling-machine-1",
   "iron-chest": "assembling-machine-1",
   "repair-pack": "assembling-machine-1",
   "steel-furnace": "assembling-machine-1",
@@ -4595,6 +4606,10 @@ const GAME_DATA = {
   "pentapod-egg": {
    "zh": "五足虫卵",
    "en": "Pentapod egg"
+  },
+  "tree-seed": {
+   "zh": "树种子",
+   "en": "Tree seed"
   },
   "captive-biter-spawner": {
    "zh": "虫巢孵化器",
@@ -6137,6 +6152,7 @@ const GAME_DATA = {
   "jelly": "intermediate-products",
   "biter-egg": "intermediate-products",
   "pentapod-egg": "intermediate-products",
+  "tree-seed": "intermediate-products",
   "captive-biter-spawner": "production",
   "capture-robot-rocket": "combat",
   "iron-bacteria": "intermediate-products",

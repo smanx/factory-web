@@ -94,6 +94,7 @@ const checks = [
   ['空间科学包', 'space-science-pack', GAME_DATA.stackSize['space-science-pack'] ?? 200],
   ['空桶', 'barrel', GAME_DATA.stackSize['barrel'] ?? 10],
   ['原油桶', 'crude-oil-barrel', GAME_DATA.stackSize['crude-oil-barrel'] ?? 10],
+  ['树种', 'tree-seed', GAME_DATA.stackSize['tree-seed'] ?? 10],
 ];
 
 console.log('【物品堆叠上限（官方 factorio-data 对齐）】');

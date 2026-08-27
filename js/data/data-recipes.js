@@ -55,6 +55,8 @@ const RECIPES = {
   'steel-chest':        { time: 0.5, inp: { 'steel-plate': 8 }, out: { 'steel-chest': 1 } },
   // ===== 基础储物箱（木箱→铁箱→钢箱递进，对齐《异星工厂》） =====
   'wooden-chest':     { time: 0.5, inp: { 'wood': 2 }, out: { 'wooden-chest': 1 } },
+  // ===== 树种（对齐《异星工厂》Space Age Tree seed：官方配方 2 木材 → 1 树种，2s，组装机装配方）=====
+  'tree-seed':        { time: 2, inp: { 'wood': 2 }, out: { 'tree-seed': 1 } },
   'iron-chest':        { time: 0.5, inp: { 'iron-plate': 8 }, out: { 'iron-chest': 1 } },
   // ===== 钓鱼竿（对齐《异星工厂》Fishing pole：1 木材 + 1 铁杆 → 1 鱼竿，需「钓鱼」科技） =====
   // ===== 修理包（对齐《异星工厂》Repair pack） =====
