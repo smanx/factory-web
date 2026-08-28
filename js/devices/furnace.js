@@ -68,7 +68,7 @@ class Furnace extends Entity {
     this.lit = true;
     this.burnLeft -= dt * fuelConsumptionMult();
     furnaceEmit(this, dt);
-    this.prog += dt / r.time;
+    this.prog += dt / r.time * (this.quality ? qualityMult(this.quality) : 1);
     if (this.prog >= 1) {
       this.prog -= 1;
       this.inp[r.inp] = (this.inp[r.inp] || 0) - (r.inCount || 1);

@@ -109,7 +109,7 @@ class Drill extends Entity {
     this.burnLeft -= dt * fuelConsumptionMult();
     this.spin += dt * 6;
     // 热能采矿机 mining-speed 0.25（对齐《异星工厂》官方 mining_speed）；每采 1 个矿需累计到该矿石的采矿时间
-    this.prog += dt * drillMult() * (GAME_DATA.deviceStats?.[this.type]?.miningSpeed ?? 0.25);
+    this.prog += dt * drillMult() * (GAME_DATA.deviceStats?.[this.type]?.miningSpeed ?? 0.25) * (this.quality ? qualityMult(this.quality) : 1);
     const mt = this.oreTime(); // 当前矿石的采矿时间（铁/铜/煤/石 2s、铀矿 4s，对齐《异星工厂》mining_time）
     if (this.prog >= mt) {
       this.prog -= mt;

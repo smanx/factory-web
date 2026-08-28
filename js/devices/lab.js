@@ -81,7 +81,7 @@ class Lab extends Entity {
       const any = this.peekAnyPack();
       if (!any) { this.t = 0; return; }   // 没有任何科学包则暂停
       this.active = true;
-      this.t += dt * powerFactor() * labSpeedMult() * this.moduleSpeedMult() * this.researchSpeedMult();
+      this.t += dt * powerFactor() * labSpeedMult() * this.moduleSpeedMult() * this.researchSpeedMult() * (this.quality ? qualityMult(this.quality) : 1);
       if (this.t >= LAB_TIME) {
         this.t -= LAB_TIME;
         // 产能模块：达到阈值时本次科研免费（不消耗科学包）
@@ -114,7 +114,7 @@ class Lab extends Entity {
     const need = list[done];
     if (!need || this.packCount(need) <= 0) { this.t = 0; return; }
     this.active = true;
-    this.t += dt * powerFactor() * labSpeedMult() * this.moduleSpeedMult() * this.researchSpeedMult();
+    this.t += dt * powerFactor() * labSpeedMult() * this.moduleSpeedMult() * this.researchSpeedMult() * (this.quality ? qualityMult(this.quality) : 1);
     if (this.t >= LAB_TIME) {
       this.t -= LAB_TIME;
       // 产能模块：达到阈值时本次科研免费（不消耗科学包）

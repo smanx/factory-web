@@ -1745,6 +1745,19 @@ try {
   ok(false, '官方建筑占地对齐校验：加载 convert-data 失败 ' + e.message);
 }
 
+// ---- 推进器 Thruster 数据单源化（GAME_DATA.thruster，官方 max_performance）----
+console.log('\n【推进器 Thruster 数据单源化】');
+const THR = GD.thruster || {};
+ok(THR.fluidUsage === 2, '官方推进器消耗速率 fluid_usage=2（单位/秒）');
+ok(THR.fluidVolume === 0.8, '官方推进器缓冲容积 fluid_volume=0.8');
+ok(THR.effectivity === 0.51, '官方推进器能量效率 effectivity=0.51');
+{
+  const spSrc = fs.readFileSync(ROOT + '/js/devices/space-platform.js', 'utf8');
+  ok(/THRUSTER_FUEL_RATE = \(GAME_DATA\.thruster/.test(spSrc), '推进器燃料消耗速率从 GAME_DATA.thruster 单源读取');
+  ok(!/const THRUSTER_FUEL_RATE = 2\.0;/.test(spSrc), '推进器燃料消耗速率不再硬编码 2.0');
+  ok(/THRUSTER_OXID_RATE = THRUSTER_FUEL_RATE/.test(spSrc), '推进器氧化剂消耗速率与燃料同速（官方同速）');
+}
+
 process.exit(fail === 0 ? 0 : 1);
 
 

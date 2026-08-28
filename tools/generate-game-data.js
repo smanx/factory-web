@@ -910,6 +910,21 @@ const steamPower = {};
   if (t && typeof t.fluid_usage_per_tick === 'number') steamPower.turbineRate = t.fluid_usage_per_tick * 60;
 }
 
+// ---- 推进器 Thruster（太空时代空间平台动力）----
+// 官方 thruster 原型 max_performance 提供消耗/容积/效率（fluid_usage=每秒消耗流体单位、fluid_volume=缓冲容积、
+// effectivity=能量效率）。项目将其单源化进 GAME_DATA.thruster，前端 space-platform.js 读取，
+// 不再单独维护推进器数值表（THRUSTER_FUEL_RATE/THRUSTER_OXID_RATE）。
+const thruster = {};
+{
+  const th = raw.thruster && raw.thruster.thruster;
+  const mp = th && th.max_performance;
+  if (mp) {
+    if (typeof mp.fluid_usage === 'number') thruster.fluidUsage = mp.fluid_usage;
+    if (typeof mp.fluid_volume === 'number') thruster.fluidVolume = mp.fluid_volume;
+    if (typeof mp.effectivity === 'number') thruster.effectivity = mp.effectivity;
+  }
+}
+
 // ---- 设备占地面积（格，官方 selection_box）----
 // 项目建筑 id → [官方 raw 类型, 官方原型名]。占地 = selection_box 的右界减左界（格）。
 // 官方 2.0 类型变更：gun-turret=ammo-turret、laser-turret=electric-turret、
@@ -1255,6 +1270,7 @@ Object.assign(GAME_DATA, {
   pollution,
   enemy,
   fuelEnergy,
+  thruster,
 });
 
 // ---- recipe ----
