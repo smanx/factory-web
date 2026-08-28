@@ -11,7 +11,7 @@
 <link rel="preload" as="script" href="js/game/saves.js?v=3">
 <link rel="preload" as="script" href="js/game/world-config.js?v=3">
 <link rel="preload" as="script" href="js/main/main-menu.js?v=1">
-<link rel="preload" as="script" href="js/game/menu.js?v=7">
+<link rel="preload" as="script" href="js/game/menu.js?v=8">
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -76,6 +76,7 @@
       <button id="btn-new-game" class="start-btn primary">▶ 开始新游戏</button>
       <button id="btn-continue" class="start-btn">📂 读取存档</button>
       <button id="btn-start-ach" class="start-btn">🏆 成就</button>
+      <button id="btn-start-vers" class="start-btn">🕘 切换版本</button>
       <div id="start-save-info" class="start-save-info"></div>
     </div>
 
@@ -96,6 +97,17 @@
       <button id="btn-load-from-file" class="load-file-btn">📂 从文件读取存档</button>
       <input type="file" id="load-save-file" accept=".json,.gz,.json.gz,application/json,application/gzip" style="display:none">
       <div id="load-save-list" class="load-save-list"></div>
+    </div>
+  </div>
+
+  <!-- 切换版本：从 histroy/versions.json 读取历史版本列表，点击某版本后在新窗口打开对应历史页面 -->
+  <div id="version-overlay" class="load-save-overlay hidden">
+    <div class="load-save-panel">
+      <div class="load-save-head">
+        <span class="load-save-title">🕘 切换版本</span>
+        <button id="version-close" class="load-save-close" title="关闭">✕</button>
+      </div>
+      <div id="version-list" class="load-save-list"></div>
     </div>
   </div>
 
@@ -157,7 +169,7 @@
 <script src="js/game/saves.js?v=3"></script>
 <script src="js/game/world-config.js?v=3"></script>
 <script src="js/main/main-menu.js?v=1"></script>
-<script src="js/game/menu.js?v=7"></script>
+<script src="js/game/menu.js?v=8"></script>
 
 <!-- ===== 非关键脚本：defer 并行加载（保持文档顺序，依赖链不变）===== -->
 <script src="js/data/data-items.js?v=3" defer></script>
@@ -252,7 +264,7 @@
 <script src="js/game/player.js?v=31" defer></script>
 <script src="js/ui/ui.js?v=72" defer></script>
 <script src="js/ui/ui-panel.js?v=10" defer></script>
-<script src="js/ui/ui-hud.js?v=4" defer></script>
+<script src="js/ui/ui-hud.js?v=5" defer></script>
 <script src="js/ui/ui-debug.js?v=1" defer></script>
 <script src="js/ui/ui-quickbar.js?v=2" defer></script>
 <script src="js/render/render.js?v=46" defer></script>

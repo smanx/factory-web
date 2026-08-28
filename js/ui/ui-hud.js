@@ -62,7 +62,9 @@ async function downloadSave() {
     const blob = new Blob([bytes], { type: 'application/gzip' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'factory-save-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json.gz';
+    // 文件名追加打包版本号（bundle 顶部由 build.js 注入 __BUILD_VERSION__，未注入时兜底 dev）
+    const ver = (typeof window !== 'undefined' && window.__BUILD_VERSION__) || 'dev';
+    a.download = 'factory-save-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '-' + ver + '.json.gz';
     document.body.appendChild(a);
     a.click();
     a.remove();

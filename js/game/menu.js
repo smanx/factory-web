@@ -182,6 +182,61 @@
       });
     }
 
+    // 开始菜单“切换版本”按钮：读取 histroy/versions.json 获取历史版本列表，
+    // 弹出弹层供选择；点击某版本后在新窗口打开“当前目录+/histroy/[版本号]”页面。
+    const startVersBtn = document.getElementById('btn-start-vers');
+    const versionOverlay = document.getElementById('version-overlay');
+    const versionList = document.getElementById('version-list');
+    const versionClose = document.getElementById('version-close');
+    const closeVersionOverlay = function () {
+      if (versionOverlay) versionOverlay.classList.add('hidden');
+    };
+    if (versionOverlay) versionOverlay.addEventListener('click', function (ev) {
+      if (ev.target === versionOverlay) closeVersionOverlay();
+    });
+    if (versionClose) versionClose.addEventListener('click', closeVersionOverlay);
+    if (startVersBtn) {
+      startVersBtn.addEventListener('click', async function () {
+        if (typeof playSfx === 'function') playSfx('click');
+        if (!versionList) return;
+        versionList.innerHTML = '<div class="load-save-empty">加载中…</div>';
+        if (versionOverlay) versionOverlay.classList.remove('hidden');
+        let versions = [];
+        try {
+          // 复用项目内 histroy/versions.json 作为版本列表来源
+          const res = await fetch('histroy/versions.json', { cache: 'no-store' });
+          if (res.ok) {
+            const data = await res.json();
+            if (data && Array.isArray(data.versions)) versions = data.versions;
+          }
+        } catch (e) { /* 忽略，走无版本提示 */ }
+        if (!versions.length) {
+          versionList.innerHTML = '<div class="load-save-empty">当前无历史版本</div>';
+          return;
+        }
+        // 版本页面基准：取当前 URL 去掉最后一个文件名部分，拼接 /histroy/[版本号]
+        const base = window.location.href.replace(/\/[^/]*$/, '');
+        // 倒序显示：越新的版本越靠前（默认 versions.json 为升序 v0.0.1...v0.0.N）
+        versionList.innerHTML = '';
+        [].slice.call(versions).reverse().forEach(function (ver) {
+          const item = document.createElement('div');
+          item.className = 'load-save-item';
+          const info = document.createElement('div');
+          info.className = 'load-save-item-info';
+          const name = document.createElement('div');
+          name.className = 'load-save-item-name';
+          name.textContent = ver;
+          info.appendChild(name);
+          item.appendChild(info);
+          item.addEventListener('click', function () {
+            closeVersionOverlay();
+            window.open(base + '/histroy/' + encodeURIComponent(ver), '_blank');
+          });
+          versionList.appendChild(item);
+        });
+      });
+    }
+
     // 开始菜单期间屏蔽空格/回车等默认滚动，保持体验
     screen.addEventListener('keydown', function (e) {
       if (e.key === ' ' || e.key === 'Tab') e.preventDefault();
