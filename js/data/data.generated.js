@@ -7723,6 +7723,11 @@ const GAME_DATA = {
   "raw-fish": 4,
   "pentapod-egg": 5
  },
+ "thruster": {
+  "fluidUsage": 2,
+  "fluidVolume": 0.8,
+  "effectivity": 0.51
+ },
  "recycling": {
   "scrap": {
    "time": 0.2,

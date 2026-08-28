@@ -14,8 +14,10 @@
 // 此处适配为地面发电机：同时消耗两种推进流体，按消耗比例发电。
 const THRUSTER_FUEL_BUF = 1000;      // 推进器燃料缓冲（单位）
 const THRUSTER_OXID_BUF = 1000;      // 推进器氧化剂缓冲（单位）
-const THRUSTER_FUEL_RATE = 2.0;      // 每秒消耗推进器燃料（官方 fluid_usage=2）
-const THRUSTER_OXID_RATE = 2.0;      // 每秒消耗推进器氧化剂（官方同速）
+// 消耗速率从 GAME_DATA.thruster 单源读取（官方 thruster.max_performance.fluid_usage=2，单位/秒）；
+// 兜底仍用官方值，未单独维护第二套数值表。
+const THRUSTER_FUEL_RATE = (GAME_DATA.thruster && GAME_DATA.thruster.fluidUsage) || 2.0;
+const THRUSTER_OXID_RATE = THRUSTER_FUEL_RATE;  // 官方燃料/氧化剂同速
 const THRUSTER_POWER = 8000;         // 满功率发电 8MW（空间平台推进动力，适配简化模型）
 class Thruster extends Entity {
   constructor(type, x, y) {
