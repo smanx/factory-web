@@ -68,7 +68,8 @@ const KEEP_MANUAL_RECIPES = new Set([
   // 太空时代 Gleba 金属细菌链：细菌→板还原配方为项目适配（官方无此合成，Gleba 用细菌还原成熔融金属再铸板），保留手工
   'iron-plate-from-iron-bacteria', 'copper-plate-from-copper-bacteria',
   // ===== 太空时代 Aquilo 低温学链（官方配方依赖低温/液空等星球资源，此处适配基础资源）=====
-  'ammonia', 'fluorine', 'fluoroketone-cold', 'fluoroketone-hot',
+  'ammonia', 'fluorine', // 氨/氟官方无合成配方（Aquilo 海水抽取），保留手工适配
+
   // ===== 太空时代 熔融金属/废料（官方配方依赖行星资源，此处适配基础资源）=====
   // 注：iron-ore-melting/copper-ore-melting/casting-* 已按官方数据自动桥接，不在此保留手工。
   'lava', 'molten-iron-from-lava', 'molten-copper-from-lava', 'scrap', 'recycle-scrap',
@@ -288,8 +289,8 @@ const DLC_DEVICE_RECIPES = {
   'lava': 'foundry', 'molten-iron-from-lava': 'foundry', 'molten-copper-from-lava': 'foundry',
   'turbo-transport-belt': 'foundry', 'turbo-underground-belt': 'foundry', 'turbo-splitter': 'foundry',
   // 低温工厂 cryogenic-plant（Space Age cryogenics）
-  'ammonia': 'cryogenic-plant', 'fluorine': 'cryogenic-plant', 'fluoroketone-cold': 'cryogenic-plant',
-  'fluoroketone-hot': 'cryogenic-plant', 'cryogenic-science-pack': 'cryogenic-plant', 'cryogenic-plant': 'cryogenic-plant',
+  'ammonia': 'cryogenic-plant', 'fluorine': 'cryogenic-plant', 'fluoroketone': 'cryogenic-plant',
+  'fluoroketone-cooling': 'cryogenic-plant', 'cryogenic-science-pack': 'cryogenic-plant', 'cryogenic-plant': 'cryogenic-plant',
   'foundation': 'cryogenic-plant', 'ice-platform': 'cryogenic-plant', // 太空时代地形（官方 cryogenics 低温工厂，流体配方）
   'steam-condensation': 'chemical-plant', 'acid-neutralisation': 'chemical-plant', // 化工厂（官方 chemistry/cryogenics 双类别）
   // 农业塔 agricultural-tower（Space Age 种植）
@@ -778,7 +779,8 @@ const equipment = {};
 
 // ---- 核能热量链路（反应堆 / 导热管） ----
 // 官方 heat_buffer：specific_heat("10MJ"/"1MJ")、max_transfer("10GW"/"1GW")、max_temperature=1000、
-// minimum_glow_temperature=350。热交换器在本数据集中为简化的 boiler 型（无 heat_buffer）→ 保持手工。
+// minimum_glow_temperature=350。热交换器为官方 boiler 型（energy_source=heat），其比热/最大传热/最低工作温度/最低发光温度
+// 亦从官方 energy_source 桥接（specific_heat、max_transfer、min_working_temperature、minimum_glow_temperature）。
 // reactorHeatRate：核燃料棒 8GJ / 官方燃烧 200s = 40MW。
 const heat = {};
 {
@@ -803,6 +805,19 @@ const heat = {};
   if (fuel) {
     const g = parseEnergyMJ(fuel.fuel_value);
     if (g !== null) heat.reactorHeatRate = Math.round(g / 200 * 10) / 10; // 8GJ/200s = 40MW
+  }
+  // 热交换器（heat-exchanger）：官方 boiler 型，energy_source=heat。specific_heat=1MJ/°C、
+  // max_transfer=2GW、min_working_temperature=500、minimum_glow_temperature=350（官方），
+  // 由 GAME_DATA.heat 单源桥接（此前为手工常量，本迭代单源化）。
+  const hx = raw.boiler && raw.boiler['heat-exchanger'];
+  if (hx && hx.energy_source) {
+    const es = hx.energy_source;
+    const sh = parseEnergyMJ(es.specific_heat);
+    if (sh !== null) heat.heatExchangerSpecificHeat = sh;   // 1MJ/°C
+    const mt = parsePowerMW(es.max_transfer);
+    if (mt !== null) heat.heatExchangerMaxTransfer = mt;    // 2GW=2000MW
+    if (typeof es.min_working_temperature === 'number') heat.heatExchangerMinWorkTemp = es.min_working_temperature; // 500°C
+    if (typeof es.minimum_glow_temperature === 'number') heat.heatExchangerMinGlowTemp = es.minimum_glow_temperature; // 350°C
   }
   // 太空时代供热塔（Aquilo heating-tower）：官方 reactor 原型，燃烧化学燃料产热。
   // 产热 = consumption × effectivity（官方 consumption=40MW、effectivity=2.5 → 100MW，高于核反应堆 40MW）。
@@ -965,6 +980,27 @@ const thruster = {};
   }
 }
 
+
+// ---- 聚变发电链（太空时代 Aquilo Fusion）----
+// 官方 fusion-reactor 提供 power_input（耗电 10MW）、max_fluid_usage（每秒消耗氟酮冷液单位）、
+// fusion-generator 提供 output_flow_limit（满功率 50MW）。项目将其单源化进 GAME_DATA.fusion，
+// 前端 fusion.js / data.js 读取，不再单独维护聚变发电数值表。
+const fusion = {};
+{
+  const fr = raw['fusion-reactor'] && raw['fusion-reactor']['fusion-reactor'];
+  if (fr) {
+    const pi = parsePowerMW(fr.power_input);
+    if (pi !== null) fusion.reactorPowerInput = pi;                 // MW（官方 10MW 耗电）
+    if (typeof fr.max_fluid_usage === 'number') fusion.reactorFluidUsage = fr.max_fluid_usage * 60;  // 每秒氟酮冷液单位（0.0667/tick→4/s）
+  }
+  const fg = raw['fusion-generator'] && raw['fusion-generator']['fusion-generator'];
+  if (fg) {
+    const es = fg.energy_source;
+    const om = es && parsePowerMW(es.output_flow_limit);
+    if (om !== null) fusion.generatorMaxPower = om * 1000;          // kW（官方 output_flow_limit 50MW）
+  }
+}
+
 // ---- 设备占地面积（格，官方 selection_box）----
 // 项目建筑 id → [官方 raw 类型, 官方原型名]。占地 = selection_box 的右界减左界（格）。
 // 官方 2.0 类型变更：gun-turret=ammo-turret、laser-turret=electric-turret、
@@ -986,6 +1022,7 @@ const FOOTPRINT_SOURCES = {
   'splitter': ['splitter', 'splitter'],
   'fast-splitter': ['splitter', 'fast-splitter'],
   'express-splitter': ['splitter', 'express-splitter'],
+  'turbo-splitter': ['splitter', 'turbo-splitter'],  // 太空时代超速分流器（官方 splitter 原型，项目 1×2 由 FOOTPRINT_OVERRIDE 保持竖放）
   'inserter': ['inserter', 'inserter'],
   'burner-inserter': ['inserter', 'burner-inserter'],
   'long-handed-inserter': ['inserter', 'long-handed-inserter'],
@@ -1022,6 +1059,15 @@ const FOOTPRINT_SOURCES = {
   'solar-panel': ['solar-panel', 'solar-panel'],
   'accumulator': ['accumulator', 'accumulator'],
   'radar': ['radar', 'radar'],
+  'small-lamp': ['lamp', 'small-lamp'],  // 电灯：官方 lamp 原型 selection_box ±0.5 → 1×1
+  'wooden-chest': ['container', 'wooden-chest'],  // 官方 selection_box ±0.5 → 1×1
+  'iron-chest': ['container', 'iron-chest'],
+  'steel-chest': ['container', 'steel-chest'],
+  'passive-provider-chest': ['logistic-container', 'passive-provider-chest'],
+  'active-provider-chest': ['logistic-container', 'active-provider-chest'],
+  'storage-chest': ['logistic-container', 'storage-chest'],
+  'requester-chest': ['logistic-container', 'requester-chest'],
+  'buffer-chest': ['logistic-container', 'buffer-chest'],
   'rocket-silo': ['rocket-silo', 'rocket-silo'],  // 火箭发射井：官方 selection_box ±4.5 → 9×9（对齐《异星工厂》2.0 巨型发射井）
   'cargo-landing-pad': ['cargo-landing-pad', 'cargo-landing-pad'],  // 物流接驳站：官方 selection_box ±4 → 8×8
   'cargo-bay': ['cargo-bay', 'cargo-bay'],  // 物流接驳站扩展舱：官方 selection_box ±2 → 4×4
@@ -1130,11 +1176,25 @@ const qualityTiers = [];
     }
   }
   // 官方品质等级（quality 原型：uncommon/rare/epic/legendary，normal 为 0 级默认）
+  // 额外把官方 quality 原型的品质 multiplier 一并单源化（beacon 功耗/采矿机资源消耗/科研消耗/
+  // 货运车厢容量/火车头功率/车辆最高速度），使高品质建筑在这些属性上也与官方一致。
   if (raw.quality) {
     const order = ['normal', 'uncommon', 'rare', 'epic', 'legendary'];
     for (const name of order) {
       const q = raw.quality[name];
-      if (q) qualityTiers.push({ id: name, level: q.level || 0, color: q.color ? [q.color['1']||0, q.color['2']||0, q.color['3']||0] : null });
+      if (!q) continue;
+      const tier = { id: name, level: q.level || 0, color: q.color ? [q.color['1']||0, q.color['2']||0, q.color['3']||0] : null };
+      // 官方 quality 原型的 multiplier 字段（normal 默认 1.0，未定义则按官方语义取 1）
+      const pick = (v) => (typeof v === 'number') ? v : 1;
+      tier.beaconPowerUsageMult = pick(q.beacon_power_usage_multiplier);
+      tier.miningDrillDrainMult = pick(q.mining_drill_resource_drain_multiplier);
+      tier.sciencePackDrainMult = pick(q.science_pack_drain_multiplier);
+      tier.cargoWagonCapMult = pick(q.cargo_wagon_inventory_size_multiplier);
+      tier.locomotivePowerMult = pick(q.locomotive_power_multiplier);
+      tier.rollingStockSpeedMult = pick(q.rolling_stock_max_speed_multiplier);
+      // 品质合成链式概率（官方 chain_probability，normal 无 = 默认 0.1）
+      if (typeof q.chain_probability === 'number') tier.chainProbability = q.chain_probability;
+      qualityTiers.push(tier);
     }
   }
 }
@@ -1311,6 +1371,7 @@ Object.assign(GAME_DATA, {
   enemy,
   fuelEnergy,
   thruster,
+  fusion,
 });
 
 // ---- recipe ----

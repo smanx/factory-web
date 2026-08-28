@@ -80,7 +80,7 @@ class CargoLandingPad extends CircuitNode {
     return rows;
   }
   // ===== 电路网络信号：把箱内每种物品数量作为信号输出（对齐官方：接驳站可接入电路）=====
-  circuitSignals() {
+  outputCircuitSignals() {
     const out = [];
     for (const s of this.slots) if (s) {
       let has = false;

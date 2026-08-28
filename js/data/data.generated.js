@@ -2845,6 +2845,27 @@ const GAME_DATA = {
     "promethium-science-pack": 10
    }
   },
+  "fluoroketone": {
+   "time": 10,
+   "inp": {
+    "fluorine": 50,
+    "ammonia": 50,
+    "solid-fuel": 1,
+    "lithium": 1
+   },
+   "out": {
+    "fluoroketone-hot": 50
+   }
+  },
+  "fluoroketone-cooling": {
+   "time": 5,
+   "inp": {
+    "fluoroketone-hot": 10
+   },
+   "out": {
+    "fluoroketone-cold": 10
+   }
+  },
   "cryogenic-science-pack": {
    "time": 20,
    "inp": {
@@ -4019,6 +4040,8 @@ const GAME_DATA = {
   "carbonic-asteroid-reprocessing": "crusher",
   "oxide-asteroid-reprocessing": "crusher",
   "promethium-science-pack": "electromagnetic-plant",
+  "fluoroketone": "cryogenic-plant",
+  "fluoroketone-cooling": "cryogenic-plant",
   "cryogenic-science-pack": "cryogenic-plant",
   "ammonia-rocket-fuel": "chemical-plant",
   "cryogenic-plant": "cryogenic-plant",
@@ -5509,6 +5532,14 @@ const GAME_DATA = {
    "zh": "氧化星岩再处理",
    "en": "Oxide asteroid reprocessing"
   },
+  "fluoroketone": {
+   "zh": "氟酮",
+   "en": "Fluoroketone"
+  },
+  "fluoroketone-cooling": {
+   "zh": "热氟酮冷却",
+   "en": "Cooling hot fluoroketone"
+  },
   "ammoniacal-solution-separation": {
    "zh": "氨溶液分离",
    "en": "Ammoniacal solution separation"
@@ -5745,6 +5776,10 @@ const GAME_DATA = {
   "heatPipeSpecificHeat": 1,
   "heatPipeMaxTransfer": 1000,
   "reactorHeatRate": 40,
+  "heatExchangerSpecificHeat": 1,
+  "heatExchangerMaxTransfer": 2000,
+  "heatExchangerMinWorkTemp": 500,
+  "heatExchangerMinGlowTemp": 350,
   "heatingTowerRate": 40,
   "heatingTowerEffectivity": 2.5,
   "heatingTowerMaxTemp": 1000,
@@ -5818,6 +5853,10 @@ const GAME_DATA = {
    "h": 1
   },
   "express-splitter": {
+   "w": 2,
+   "h": 1
+  },
+  "turbo-splitter": {
    "w": 2,
    "h": 1
   },
@@ -5964,6 +6003,42 @@ const GAME_DATA = {
   "radar": {
    "w": 3,
    "h": 3
+  },
+  "small-lamp": {
+   "w": 1,
+   "h": 1
+  },
+  "wooden-chest": {
+   "w": 1,
+   "h": 1
+  },
+  "iron-chest": {
+   "w": 1,
+   "h": 1
+  },
+  "steel-chest": {
+   "w": 1,
+   "h": 1
+  },
+  "passive-provider-chest": {
+   "w": 1,
+   "h": 1
+  },
+  "active-provider-chest": {
+   "w": 1,
+   "h": 1
+  },
+  "storage-chest": {
+   "w": 1,
+   "h": 1
+  },
+  "requester-chest": {
+   "w": 1,
+   "h": 1
+  },
+  "buffer-chest": {
+   "w": 1,
+   "h": 1
   },
   "rocket-silo": {
    "w": 9,
@@ -6404,7 +6479,14 @@ const GAME_DATA = {
     0,
     0,
     0
-   ]
+   ],
+   "beaconPowerUsageMult": 1,
+   "miningDrillDrainMult": 1,
+   "sciencePackDrainMult": 1,
+   "cargoWagonCapMult": 1,
+   "locomotivePowerMult": 1,
+   "rollingStockSpeedMult": 1,
+   "chainProbability": 0.1
   },
   {
    "id": "uncommon",
@@ -6413,7 +6495,14 @@ const GAME_DATA = {
     43,
     165,
     61
-   ]
+   ],
+   "beaconPowerUsageMult": 0.8333333333333334,
+   "miningDrillDrainMult": 0.8333333333333334,
+   "sciencePackDrainMult": 0.99,
+   "cargoWagonCapMult": 1.25,
+   "locomotivePowerMult": 1.2,
+   "rollingStockSpeedMult": 1.03,
+   "chainProbability": 0.1
   },
   {
    "id": "rare",
@@ -6422,7 +6511,14 @@ const GAME_DATA = {
     25,
     104,
     178
-   ]
+   ],
+   "beaconPowerUsageMult": 0.6666666666666666,
+   "miningDrillDrainMult": 0.6666666666666666,
+   "sciencePackDrainMult": 0.98,
+   "cargoWagonCapMult": 1.5,
+   "locomotivePowerMult": 1.4,
+   "rollingStockSpeedMult": 1.06,
+   "chainProbability": 0.1
   },
   {
    "id": "epic",
@@ -6431,7 +6527,14 @@ const GAME_DATA = {
     137,
     0,
     178
-   ]
+   ],
+   "beaconPowerUsageMult": 0.5,
+   "miningDrillDrainMult": 0.5,
+   "sciencePackDrainMult": 0.97,
+   "cargoWagonCapMult": 1.75,
+   "locomotivePowerMult": 1.6,
+   "rollingStockSpeedMult": 1.09,
+   "chainProbability": 0.1
   },
   {
    "id": "legendary",
@@ -6440,7 +6543,13 @@ const GAME_DATA = {
     178,
     104,
     0
-   ]
+   ],
+   "beaconPowerUsageMult": 0.16666666666666666,
+   "miningDrillDrainMult": 0.16666666666666666,
+   "sciencePackDrainMult": 0.95,
+   "cargoWagonCapMult": 2.5,
+   "locomotivePowerMult": 2,
+   "rollingStockSpeedMult": 1.15
   }
  ],
  "itemGroup": {
@@ -7730,6 +7839,11 @@ const GAME_DATA = {
   "fluidUsage": 2,
   "fluidVolume": 0.8,
   "effectivity": 0.51
+ },
+ "fusion": {
+  "reactorPowerInput": 10,
+  "reactorFluidUsage": 4,
+  "generatorMaxPower": 50000
  },
  "recycling": {
   "scrap": {

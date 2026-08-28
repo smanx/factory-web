@@ -15,8 +15,15 @@
 // ===== 常量 =====
 const TRAIN_SPEED = 0.35;      // 列车每格移动耗时（秒），慢于传送带但运量大（蒸汽车头）
 // 按车头类型返回每格移动耗时：蒸汽车头标准速度。
+// 数据单源化：高品质车辆按官方 rolling_stock_max_speed_multiplier 提升最高速度
+// （官方 legendary 1.15 = 快 15%，因此每格移动耗时缩短 1/mult）；高品质火车头按官方
+// locomotive_power_multiplier 提升功率（牵引更足，同样缩短耗时）。
 function trainMoveTime(head) {
-  return TRAIN_SPEED;
+  const q = head && head.quality;
+  let mult = 1;
+  if (typeof qualityRollingStockSpeedMult === 'function') mult *= qualityRollingStockSpeedMult(q);
+  if (typeof qualityLocomotivePowerMult === 'function') mult *= qualityLocomotivePowerMult(q);
+  return TRAIN_SPEED / mult;
 }
 const LOCO_FUEL = 400;         // 单格煤提供的燃料量（一格跑多格）
 const LOCO_SOLID_FUEL = 1600;  // 单格固体燃料提供的燃料量（约为煤的 4 倍）
@@ -474,6 +481,13 @@ class CargoWagon extends Entity {
     // 索引与车厢槽位一一对应，避免混合装载错位。
     this.filters = [];
   }
+  // 数据单源化：高品质货运车厢按官方 cargo_wagon_inventory_size_multiplier 提升槽位容量
+  // （官方：uncommon 1.25 / rare 1.5 / epic 1.75 / legendary 2.5 倍）。基础槽位 = 技术研究后的 wagonSlots()。
+  slotCapacity() {
+    const base = wagonSlots();
+    const mult = (typeof qualityCargoWagonCapMult === 'function') ? qualityCargoWagonCapMult(this.quality) : 1;
+    return Math.round(base * mult);
+  }
   slotFilter(i) { return (this.filters && this.filters[i]) || null; }
   setSlotFilter(i, id) {
     if (!this.filters) this.filters = [];
@@ -496,7 +510,7 @@ class CargoWagon extends Entity {
     }
     // 再寻找空槽：优先“设了过滤且匹配”的空槽，其次任意未设过滤的空槽；
     // 被其他过滤占用的槽（设了过滤但指向别的物品）不可用。
-    const total = wagonSlots();
+    const total = this.slotCapacity();
     let filtered = -1, free = -1;
     for (let i = 0; i < total; i++) {
       if (this.slots[i]) continue;                 // 已占用

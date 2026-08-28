@@ -60,7 +60,7 @@ class CargoBay extends CircuitNode {
     return rows;
   }
   // ===== 电路网络信号：把舱内每种物品数量作为信号输出 =====
-  circuitSignals() {
+  outputCircuitSignals() {
     const out = [];
     for (const s of this.slots) if (s) {
       let has = false;

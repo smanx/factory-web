@@ -134,7 +134,7 @@ function trainAutoLoadUnload(train, station) {
   for (const item of station.load || []) {
     for (const car of train.cars) {
       if (car.type === 'cargo-wagon' && car.giveItem && car.countOf) {
-        while (car.countOf(item) < wagonSlots() * stackSize(item)) {
+        while (car.countOf(item) < (typeof car.slotCapacity === 'function' ? car.slotCapacity() : wagonSlots()) * stackSize(item)) {
           let got = false;
           for (const c of chests) {
             if (c.countOf && c.countOf(item) > 0 && c.takeItemOf) {
@@ -300,7 +300,7 @@ function trainStopByName(name) {
 function trainCargoSlotsFull(w) {
   if (w instanceof FluidWagon) return w.fluid ? w.amount >= w.fluidCapacity() : false;
   if (w instanceof CargoWagon) {
-    if (w.slots.length < wagonSlots()) return false;
+    if (w.slots.length < (typeof w.slotCapacity === 'function' ? w.slotCapacity() : wagonSlots())) return false;
     for (const s of w.slots) if (s && s.count < stackSize(s.item)) return false;
     return true;
   }

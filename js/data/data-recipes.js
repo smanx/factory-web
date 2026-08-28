@@ -362,10 +362,12 @@ const RECIPES = {
   'ammonia': { time: 3, inp: { 'water': 50, 'sulfuric-acid': 5 }, out: { 'ammonia': 50 } },
   // 氟：氟酮冷液 → 氟（官方 fluorine 2s，此处适配为氨+方解石电解）
   'fluorine': { time: 2, inp: { 'ammonia': 50, 'calcite': 2 }, out: { 'fluorine': 50 } },
-  // 氟酮（冷）：氟 + 氨 + 碳 → 氟酮冷液（官方 fluoroketone-cold 3s）
-  'fluoroketone-cold': { time: 3, inp: { 'fluorine': 50, 'ammonia': 25, 'carbon': 5 }, out: { 'fluoroketone-cold': 50 } },
-  // 氟酮（热）：氟酮冷液 → 氟酮热液（官方 fluoroketone-hot，低温工厂热交换，此处适配升温）
-  'fluoroketone-hot': { time: 2, inp: { 'fluoroketone-cold': 50 }, out: { 'fluoroketone-hot': 50 } },
+  // 氟酮：氟 + 氨 + 固体燃料 + 锂 → 氟酮热液（官方 fluoroketone 10s：50氟+50氨+1固体燃料+1锂，低温工厂）
+  //    —— 对齐官方配方（此配方键与官方一致），由 GAME_DATA（data.generated.js）单源桥接。
+  'fluoroketone': { time: 10, inp: { 'fluorine': 50, 'ammonia': 50, 'solid-fuel': 1, 'lithium': 1 }, out: { 'fluoroketone-hot': 50 } },
+  // 氟酮冷却：氟酮热液 → 氟酮冷液（官方 fluoroketone-cooling 5s：10氟酮热→10氟酮冷，低温工厂）
+  //    —— 对齐官方配方，由 GAME_DATA（data.generated.js）单源桥接。
+  'fluoroketone-cooling': { time: 5, inp: { 'fluoroketone-hot': 10 }, out: { 'fluoroketone-cold': 10 } },
   // 低温科研包：氟酮热液 + 超导体 + 锂板 + 钷素星块 → 低温科研包（官方 cryogenic-science-pack 6s，此处适配）
   'cryogenic-science-pack': { time: 20, inp: { 'ice':3, 'lithium-plate':1, 'fluoroketone-cold':6 }, out: { 'cryogenic-science-pack':1, 'fluoroketone-hot':3 } },
   // ===== 太空时代 Aquilo 补充流体（氨溶液 / 锂盐水，官方由 Aquilo 抽取，此处适配基础资源，数据来自 GAME_DATA.names）=====
@@ -629,7 +631,7 @@ function isAgricultureTowerRecipe(id) { return AGRICULTURE_TOWER_RECIPES.indexOf
 const HUB_RECIPES = ['space-platform-foundation', 'space-platform-starter-pack', 'space-platform-hub', 'space-science-pack'];
 function isHubRecipe(id) { return HUB_RECIPES.indexOf(id) >= 0; }
 // 低温工厂专属配方（太空时代 Aquilo 低温产品）：氨 / 氟 / 氟酮 / 低温科研包 / 低温工厂本体
-const CRYO_RECIPES = ['ammonia', 'fluorine', 'fluoroketone-cold', 'fluoroketone-hot', 'cryogenic-science-pack', 'cryogenic-plant', 'foundation', 'ice-platform'];
+const CRYO_RECIPES = ['ammonia', 'fluorine', 'fluoroketone', 'fluoroketone-cooling', 'cryogenic-science-pack', 'cryogenic-plant', 'foundation', 'ice-platform'];
 function isCryoRecipe(id) { return CRYO_RECIPES.indexOf(id) >= 0; }
 
 function recipeDevice(id) {

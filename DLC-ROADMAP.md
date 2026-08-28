@@ -1550,3 +1550,241 @@ D
 > - **行为不变**：官方值即 900 / 5820 / 350，改造后游戏数值与官方完全一致，仅数据来源单源化。
 > - **校验**：verify-recipes 新增 5 项单源化守门人（前端常量确从 GAME_DATA 读取 + 官方值比对）；
 >   verify-data-alignment 新增「=GAME_DATA 单源」双重核验；全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段六.15：重复 emoji 物品图标颜色区分（Duplicate emoji icon color badge）
+
+> 依据「优化重复物品图标」需求：项目物品图标以 emoji 为主，多个物品共用同一 emoji
+> （如 ⛏️ 矿石/采矿机、📦 各箱/装载机、🔥 燃料/炉子/熔融金属等），玩家难以区分。
+>
+> **改动**（`js/data/data-util.js`）：
+> - 新增 `_emojiDupSet()`：运行时统计 ITEMS 中每个 emoji 的出现次数，构建「其 emoji 被
+>   至少两种物品共用」的物品集合（277 项）。唯一 emoji 物品不受影响。
+> - 新增 `isEmojiDuplicated(id)` / `drawEmojiDupBadge(x,id,r)`：对共用 emoji 的物品，
+>   在图标左下角叠加一个小圆点色标（直径随图标缩放），色标颜色取该物品自身的 `color`，
+>   外层带深色描边环保证在任意背景/地图上可见。
+> - 在 `drawItemGlyph` 的两个 emoji 渲染分支（地面/实体地图图标、背包/槽位 GUI 图标）
+>   均接入该色标。
+>
+> **效果**：同 emoji 的不同物品通过「左下角色标颜色」一目了然（如 ⛏️ 铁矿石=蓝、铜矿石=橙、
+> 电采矿机=深蓝），无需逐个悬停辨认；唯一 emoji 物品（⚙️ 齿轮、🔌 铜线、🔬 研究所等）保持纯 emoji 不变。
+> - `node build.js` 构建通过；全量 18 个校验脚本通过。
+### 阶段六.16：热交换器热量参数数据单源化（Heat exchanger heat params single-sourcing，本迭代新增）
+
+> 依据「所有数据/参数从 data.generated.js（factorio-data 官方）单源获取，不要单独给设备维护一套数据」
+> 原则，把此前在 `js/data/data.js` 手工维护的热交换器（heat-exchanger）三项热量参数单源进 GAME_DATA：
+> - **官方推导**：官方 `heat-exchanger`（boiler 型）`energy_source=heat` 含
+>   `specific_heat=1MJ/°C`、`max_transfer=2GW`、`min_working_temperature=500°C`、
+>   `minimum_glow_temperature=350°C`（此前热交换器因被简化为 boiler 型而误判为「无 heat_buffer → 保持手工」）。
+> - **改动**：
+>   - `tools/generate-game-data.js`：`GAME_DATA.heat` 新增 `heatExchangerSpecificHeat` / `heatExchangerMaxTransfer` /
+>     `heatExchangerMinWorkTemp` / `heatExchangerMinGlowTemp`（从官方 `energy_source` 现场桥接，未单独维护数值表）；
+>   - `js/data/data.js`：`HEAT_EXCHANGER_SPECIFIC_HEAT` / `HEAT_EXCHANGER_MAX_TRANSFER` /
+>     `HEAT_EXCHANGER_MIN_WORK_TEMP` 改从 `GAME_DATA.heat` 读取（`??` 兜底），不再硬编码字面量。
+> - **行为不变**：官方值即 1 / 2000 / 500，改造后游戏数值与官方完全一致，仅数据来源单源化。
+> - **校验**：verify-data-alignment 新增「热交换器热量参数单源化」守门人（6 项：
+>   前端常量确从 GAME_DATA 读取 + 官方值 1MJ/2GW/500°C 比对），全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段六.17：Aquilo 氟酮链配方对齐官方（fluoroketone / fluoroketone-cooling，本迭代新增）
+
+> 依据「所有配方 ID 与命名与《异星工厂》官方一致、所有数据从 data.generated.js（factorio-data）单源获取」
+> 原则，把此前「适配基础资源」的低温工厂氟酮链配方对齐回官方**两条官方配方**，并移除项目自定的非官方配方键：
+>
+> - **移除**：项目自定的 `fluoroketone-cold` / `fluoroketone-hot` 配方键（非官方配方名，
+>   官方无此二配方——官方氟酮生产是 `fluoroketone`（→氟酮热）+ `fluoroketone-cooling`（氟酮热→氟酮冷）两条配方）。
+> - **对齐官方配方**（低温工厂 cryogenics 类别，数据来自 GAME_DATA / data.generated.js 单源桥接）：
+>   - `fluoroketone`（氟酮）：**50 氟 + 50 氨 + 1 固体燃料 + 1 锂 → 50 氟酮热（10s）**（官方 fluoroketone）
+>   - `fluoroketone-cooling`（氟酮冷却）：**10 氟酮热 → 10 氟酮冷（5s）**（官方 fluoroketone-cooling）
+>   - 配方键与官方一致，产出/耗时/原料逐项对齐 factorio-data 官方，经 `GAME_DATA.recipe` /
+>     `GAME_DATA.recipeDevice` 单源桥接（`fluoroketone` / `fluoroketone-cooling` → 低温工厂）。
+> - **保留适配**：`ammonia` / `fluorine` 官方无合成配方（Aquilo 海水抽取），仍保留项目手工适配
+>   （氨=水+硫酸、氟=氨+方解石），满足官方 `fluoroketone` 所需原料。
+> - **下游兼容**：氟酮冷/氟酮热为官方流体物品（`fluoroketone-cold` / `fluoroketone-hot`），
+>   低温科研包 / 量子处理器 / 轨道炮 / 平台基座等下游配方仍按官方以氟酮冷为输入，经新 `fluoroketone-cooling`
+>   生产氟酮冷，链路无缝衔接，存档不破坏。
+> - **数据单源**：配方数值/耗时/配方名均来自 data.generated.js（factorio-data 官方），未单独维护数值表；
+>   仅 `ammonia`/`fluorine` 保留手工适配（官方无配方）。
+> - **校验**：verify-dlc 新增 fluoroketone / fluoroketone-cooling 官方配方校验（配方注册/数值 50+50+1+1→50、
+>   10s / 10→10、5s / 设备归属低温工厂），verify-data-integrity 新增 2 项动态键（产物键≠配方键），
+>   全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段六.19：聚变等离子体功能化（Fusion plasma functional，本迭代新增）
+
+> 依据「继续开发完善、向《异星工厂》太空时代靠齐」原则，把此前「仅注册为官方流体、未介入玩法」的
+> **聚变等离子体（`fusion-plasma` / Plasma）** 接入聚变发电链，使其成为官方语义的**工作介质**：
+> 聚变反应堆产生 Plasma → 管道 → 聚变发电机消耗 Plasma 发电。
+> - **反应堆**（fusion-reactor）：燃烧聚变燃料棒产生热量，同时把热功率线性换算为等离子流体
+>   （200MW → 每秒 2000 单位，`FUSION_PLASMA_RATE`），经四边流体接口 `portFlow()` 输出到相邻管道，
+>   与既有「导热管传热」路径并列（官方 Aquilo 聚变链的 Plasma 工作介质）。
+> - **发电机**（fusion-generator）：`portFlow()` 从相邻管道吸取 `fusion-plasma`，每单位折算 1MJ 热量
+>   （`FUSION_HEAT_PER_PLASMA`）供热发电，与「相邻导热管吸热」路径并列；任一路径供热均可发电，
+>   热量满则停止吸热，行为不破坏既有热量模型。
+> - **数据单源**：`fusion-plasma` 流体与命名（Plasma/等离子体）来自 GAME_DATA（factorio-data 官方）；
+>   产出/折算速率为相对刻度玩法常量（官方无固定产出速率，按热功率换算），不单独维护数值表。
+> - **面板/提示**：反应堆面板新增「等离子体」行，反应堆/发电机描述与提示补充 Plasma 工作介质说明。
+> - **校验**：verify-dlc 新增聚变等离子体功能化校验（8 项：流体注册/官方命名/速率常量/反应堆缓冲/
+>   输出管道/发电机吸取/热量折算/面板展示）；全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 后续开发计划（迭代方向）
+
+> 基于本次全量扫描：**物品/配方 ID 与命名对齐官方、仅保留 6 个创造/虚空物品、全部设备数据从
+> data.generated.js 单源获取**均已落地并由 CI 守门人强制校验；DLC（Space Age / Quality / Elevated Rails /
+> Recycler）内容已按 roadmap 分阶段接入完毕。后续迭代方向（按价值排序）：
+1. **太空平台内部物流深化**：空间平台体系（地基/中枢/推进器/小行星收集器/空间科研包）已接入，可继续完善
+   平台内传送带/机械臂网络、推进器燃料自动管理、平台遥测远程交互。
+2. **品质系统数值深化**：品质 6 级与品质模块已接入，可继续逐项核验品质对建筑/装备数值加成与官方一致性。
+3. **存档兼容回归**：为新增 DLC 物品/配方补充存档迁移用例，确保旧档读档不报错、新物品可正常落地。
+4. **行星专属配方还原**：将部分「适配为基础资源」的 Space Age 星球配方逐步还原为官方行星专属生产链，
+   与既有行星资源矿脉（祝融钨/雷神钬）形成完整官方链。
+5. **数值体验精修**：逐项复核 DLC 设备模块槽/信号塔加成/污染排放与官方一致性，补齐遗漏。
+6. **太空物流电路信号补全**：已修复接驳站/扩展舱/卸载舱电路信号输出（`circuitSignals`→`outputCircuitSignals`），
+   可继续把空间平台中枢纳入电路节点体系以输出货舱库存信号，并为推进器（燃料/氧化剂余量）、
+   小行星收集器（各星块存量）补充电路信号，让空间平台全链路可自动化。
+7. **火箭→空间平台直投**：当前行星间货物经 `orbitalCargo` 队列在玩家抵达后交付；可扩展为火箭发射
+   时若目标星球存在空间平台中枢则直投至平台货舱，实现行星→平台的无玩家往返自动货运。
+
+### 阶段六.18：太空物流建筑电路信号输出修复（Cargo pad / Cargo bay 电路信号，本迭代新增）
+
+> 全量扫描太空物流建筑电路网络接入时发现一个**真实缺陷**：`cargo-landing-pad`（物流接驳站）、
+> `cargo-bay`（物流扩展舱）、`landing-pad-unloading-bay`（物流卸载舱）三座 Space Age 物流建筑
+> 定义了电路信号方法 `circuitSignals()`，但电路网络收集器（`js/devices/circuit.js` recomputeCircuit）
+> 统一读取的是 **`outputCircuitSignals()`** 接口，导致这三座建筑的内置库存信号**从未真正输出到电路网络**，
+> 面板提示「可接入电路网络输出货物信号」实际不生效。
+- [x] 将三座物流建筑的方法名由 `circuitSignals()` 修正为 `outputCircuitSignals()`（collector 统一接口），
+      使接驳站/扩展舱/卸载舱把舱内每种物品数量以该物品为信号输出到所连网络（红/绿双通道），
+      供组合器/功率开关/告警音箱读取，实现「接驳站库存达标才放行 / 扩展舱某物资超量告警」等自动化。
+- [x] 全量 18 个校验脚本通过，构建通过。
+- 空间平台中枢（`space-platform-hub`）为 `Assembler` 变体（非 `CircuitNode`），当前仅能读取电路条件
+  （`circuitSignalNear`），不进入电路节点网络，故货舱库存信号输出留待后续把中枢纳入电路节点体系时再接入。
+
+### 阶段六.20：太空物流电路信号补全（Space platform circuit signals，本迭代新增）
+
+> 依据「太空物流电路信号补全」迭代方向（roadmap 后续计划第 6 项），把空间平台三大设备纳入
+> 电路节点体系，使其输出内置库存/液位/星块信号到电路网络，实现空间平台全链路自动化，向《异星工厂》
+> Space Age 平台物流电路对齐。
+
+**问题背景**：空间平台中枢（`space-platform-hub`）为 `Assembler` 变体（非 `CircuitNode`），此前仅能
+通过 `circuitSignalNear` **读取**电路条件，不进入电路节点网络，货舱库存信号无法输出到网络；推进器
+（燃料/氧化剂余量）与小行星收集器（星块存量）同样不参与电路网络，空间平台侧无法自动化。
+
+**改动**（`js/devices/circuit.js` + `js/devices/space-platform.js`）：
+- `circuit.js` 新增轻量「电路信号生产者」API `installCircuitProducerAPI(obj)`：为非 `CircuitNode` 子类
+  的设备安装最小电路节点能力（red/green 连线集合、netRed/netGreen、distTo/range/cx/cy、双通道输出），
+  `collectCircuitNodes()` 一并收集 `isCircuitProducer()` 设备，使其参与 `recomputeCircuit` 的连线分组
+  与信号聚合。
+- `space-platform.js` 三个空间平台设备安装该 API 并实现 `outputCircuitSignals()`：
+  - **空间平台中枢**：把平台货舱（`cargo`）内每种物品数量 + 组装输出缓存（`outp`）以该物品为信号
+    输出到网络（红/绿双通道）——「货舱物资超量告警 / 产物满停线」自动化。
+  - **推进器**：把燃料 / 氧化剂余量（`thruster-fuel` / `thruster-oxidizer`）以对应流体为信号输出——「燃料不足自动补给」。
+  - **小行星收集器**：把已收集的每种星块存量以该星块为信号输出——「星块满 10 自动停/取出」。
+- 三座设备面板补充「电路输出」说明。
+- 数据单源：均为设备运行时状态信号（非官方静态数值表），不单独维护数值表，仅接入既有电路网络协议。
+
+**校验**：`verify-dlc` 新增「太空物流电路信号补全」守门人（9 项：生产者 API/收集器接入/三设备安装
+API/中枢货舱信号/推进器液位信号/三设备均实现输出/面板提示），全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段六.21：火箭→空间平台直投（Rocket direct delivery to space platform，本迭代新增）
+
+> 依据「火箭→空间平台直投」迭代方向（roadmap 后续计划第 7 项），实现行星→空间平台的
+> **无玩家往返自动货运**：火箭把货物派发到目标星球轨道后，若该星球存在空间平台中枢，
+> 货物直接投递到平台货舱（而非仅降落物流接驳站/背包），向《异星工厂》Space Age 平台轨道物流靠齐。
+
+**问题背景**：此前行星间货物经 `G.orbitalCargo[planet]` 轨道队列，玩家星际旅行抵达后由
+`deliverOrbitalCargo` 统一降落到物流接驳站或背包，空间平台货舱只能靠玩家手动装入，无法
+实现「行星→平台」的自动化货运链路（官方 Space Age 中平台货舱可直接接收行星物资）。
+
+**改动**（`js/devices/rocket.js`）：
+- 新增 `findSpacePlatformHub()`：在当前星球世界按 `space-platform-hub` 实体类型查找空间平台中枢。
+- `deliverOrbitalCargo(planet)` 增加**平台优先投递**分支：抵达目标星球时若存在空间平台中枢，
+  货物先直投平台货舱（`hub.giveItem`——配方原料入平台输入缓存、其余入平台货舱，供平台自动消耗/派发），
+  平台货舱满后剩余降落物流接驳站，再回退背包。
+- 投递提示区分「直投至空间平台货舱 / 降落至物流接驳站 / 已入背包」。
+
+**数据单源**：均为设备运行时状态操作（复用平台既有 giveItem / cargo 机制），不引入第二套数值表。
+
+**校验**：`verify-dlc` 新增「火箭→空间平台直投」守门人（6 项：findSpacePlatformHub 存在/按类型查找/
+直投逻辑/优先取中枢/投递至平台货舱/提示区分），全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段六.22：聚变发电链数据单源化（Fusion power single-sourcing，本迭代新增）
+
+> 依据「所有数据/参数从 data.generated.js（factorio-data 官方）单源获取，不要单独给设备维护一套数据」
+> 原则，把此前在 `js/data/data.js` 硬编码的三项聚变发电数值单源进 GAME_DATA：
+> - **官方推导**：
+>   - 聚变发电机满功率 = 官方 `fusion-generator` `energy_source.output_flow_limit` = **50MW**（50000kW）；
+>   - 聚变反应堆耗电 = 官方 `fusion-reactor` `power_input` = **10MW**；
+>   - 聚变反应堆冷却剂消耗 = 官方 `max_fluid_usage`（0.0667/tick × 60）= **4 氟酮冷液/秒**。
+> - **改动**：
+>   - `tools/generate-game-data.js`：新增 `GAME_DATA.fusion`（reactorPowerInput / reactorFluidUsage /
+>     generatorMaxPower，从 factorio-data 现场提取，未单独维护数值表）；
+>   - `js/data/data.js`：`FUSION_GENERATOR_MAX_POWER` / `FUSION_REACTOR_POWER_INPUT` /
+>     `FUSION_REACTOR_FLUID_USAGE` 改从 `GAME_DATA.fusion` 读取（均 `??` 兜底），不再硬编码字面量；
+>   - `js/devices/fusion.js`：聚变反应堆新增**氟酮冷液冷却剂**消耗（官方 input_fluid_box
+>     filter=fluoroketone-cold），从相邻管道按 `FUSION_REACTOR_FLUID_USAGE`（4/s）吸取冷却剂，
+>     冷却剂充足时产等离子体、不足时按可用比例节流（热量仍产出）——补全官方「氟酮冷液冷却 → 产 Plasma」链路。
+> - **行为**：官方值即 50MW / 10MW / 4s，改造后游戏数值与官方完全一致，仅数据来源单源化；
+>   冷却剂为新增要求，旧档 `coolantBuf` 自动补空不报错，未接氟酮冷液时等离子体节流、热量不受影响。
+> - **校验**：verify-dlc 新增「聚变发电链数据单源化」守门人（8 项：官方 3 数值 + 3 前端单源读取 +
+>   冷却剂接入），全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段六.23：品质系统数值深化（Quality multiplier 官方单源化，本迭代新增）
+
+> 依据「品质系统数值深化：逐项核验品质对建筑/装备数值加成与官方一致性」迭代方向（roadmap 后续计划第 2 项）
+> 与「所有数据/参数从 data.generated.js 单源获取、与官方一致」铁律，把此前**硬编码**的品质 multiplier
+> 全部改为从 factorio-data 官方 quality 原型单源化，并接入设备。
+
+**问题背景**：官方《异星工厂》Quality DLC 的 `quality` 原型为每个品质等级定义了多项数值 multiplier——
+`beacon_power_usage_multiplier`（信号塔功耗）、`mining_drill_resource_drain_multiplier`（采矿机资源消耗）、
+`science_pack_drain_multiplier`（科研包消耗）、`cargo_wagon_inventory_size_multiplier`（货运车厢容量）、
+`locomotive_power_multiplier`（火车头功率）、`rolling_stock_max_speed_multiplier`（车辆最高速度），
+以及品质合成链式概率 `chain_probability`（0.1）。此前项目仅在 `js/data/data-tech.js` 硬编码了品质等级
+的建筑速度加成（`QUALITY_TIERS.mult` = 1.0/1.1/1.2/1.3/1.5）与合成链式概率 0.1，未接入官方 quality
+原型的这些 multiplier，高品质建筑在信号塔功耗/采矿机资源/科研消耗/车厢容量/车头功率/车辆速度上
+未与官方一致。
+
+**改动**（`tools/generate-game-data.js` + `js/data/data-tech.js` + `js/devices/beacon.js` + `js/devices/lab.js` + `js/devices/railway.js`）：
+- **数据单源**：`GAME_DATA.qualityTiers` 从 factorio-data 官方 quality 原型提取全部 multiplier 字段
+  （`beaconPowerUsageMult` / `miningDrillDrainMult` / `sciencePackDrainMult` / `cargoWagonCapMult` /
+  `locomotivePowerMult` / `rollingStockSpeedMult` / `chainProbability`），normal 级官方无字段默认 1。
+- **前端单源**：`QUALITY_TIERS`（data-tech.js）改为从 `GAME_DATA.qualityTiers` 构建，保留项目中文名与
+  建筑速度加成 `mult`（官方品质：uncommon +10% / rare +20% / epic +30% / legendary +50%），新增 6 个
+  按品质读取官方 multiplier 的辅助函数（`qualityBeaconPowerMult` / `qualityMiningDrillDrainMult` /
+  `qualityScienceDrainMult` / `qualityCargoWagonCapMult` / `qualityLocomotivePowerMult` /
+  `qualityRollingStockSpeedMult`）。
+- **品质合成链式概率**：`rollQualityUpgrade` 改为用官方 `chainProbability`（GAME_DATA 单源）作为
+  进入升级池后的逐级连续升级概率，不再硬编码 0.1。
+- **设备接入**（官方 multiplier 生效，数据均来自 GAME_DATA）：
+  - **信号塔**：`beacon.powerDemand()` 按官方 `beacon_power_usage_multiplier` 降耗
+    （legendary 信号塔功耗 = 0.167×，官方）。
+  - **实验室**：`lab.consumePackDrain()` 按官方 `science_pack_drain_multiplier` 少耗科研包
+    （legendary 平均每 1/0.95≈1.053 周期耗 1 包，累积消耗量 `_drainAcc` 存档持久化，旧档自动补 0）。
+  - **列车**：`trainMoveTime(head)` 按官方 `rolling_stock_max_speed_multiplier`（速度提升）
+    与 `locomotive_power_multiplier`（功率提升）缩短每格移动耗时（legendary 快 15%×2）。
+  - **采矿机**：`drill.consumeOreDrain()` 按官方 `mining_drill_resource_drain_multiplier` 减少矿脉损耗
+    （legendary 0.167，即同样矿脉能采约 6 倍矿；累积消耗量 `_drainAcc` 存档持久化，旧档自动补 0）。
+  - **货运车厢**：`cargo-wagon.slotCapacity()` 按官方 `cargo_wagon_inventory_size_multiplier` 提升槽位容量
+    （legendary 2.5×），车站装卸（`railway-trainstop.js`）改用品质容量，高品质车厢额外槽位可被车站机械臂利用。
+- **校验**：verify-dlc 新增「官方品质 multiplier 单源化」守门人（24 项：官方 6 类 multiplier 各档数值 +
+  前端 QUALITY_TIERS 单源构建 + 6 个辅助函数按品质读取 + 建筑速度 mult）+「设备接入品质加成」守门人
+  （8 项：信号塔/采矿机/实验室/车厢/车站/列车 + 存档累积字段），全量 18 个校验脚本通过，
+  `node build.js` 构建通过。
+
+### 阶段六.24：基础物流/储物建筑占地数据单源化收口（本迭代新增）
+
+> 依据「所有设备占地都来自 data.generated.js、不单独给设备维护一套数据」铁律，把此前在
+> `js/data/data-buildings.js` 的 `BUILD_DEFS` 中以硬编码维护占地、且官方 factorio-data 已有
+> selection_box 数据的基础储物/照明/超速分流建筑，改为从官方 selection_box 单源桥接。
+
+**问题背景**：官方 `selection_box` 已为储物箱族（`container` / `logistic-container`）、电灯（`lamp`）、
+超速分流器（`splitter` 原型）定义了占地，但此前这些建筑未列入 `tools/generate-game-data.js` 的
+`FOOTPRINT_SOURCES`，占地仍以 `BUILD_DEFS` 硬编码（多为 1×1），未做到「占地数据全部来自 GAME_DATA」。
+
+**改动**（`tools/generate-game-data.js` + `js/data/data.generated.js` + `js/data/data-buildings.js` + `tools/verify-dlc.js`）：
+- **数据单源**：`FOOTPRINT_SOURCES` 新增 `turbo-splitter`（官方 `splitter` 原型 selection_box → 2×1）、
+  储物箱族 `wooden-chest`/`iron-chest`/`steel-chest`/`passive-provider-chest`/`active-provider-chest`/
+  `storage-chest`/`requester-chest`/`buffer-chest`（`container`/`logistic-container` → 1×1）、
+  `small-lamp`（`lamp` → 1×1），全部写入 `GAME_DATA.footprint`。
+- **占地一致**：储物箱族/电灯占地 1×1 与官方一致；`turbo-splitter` 官方为 2×1（横放），项目沿用
+  分流器族 1×2 竖放建模，经 `FOOTPRINT_OVERRIDE` 保持，`BUILD_DEFS.turbo-splitter = 1×2`。
+- **数据不再重复维护**：以上建筑的占地由 `data-buildings.js` 底部桥接循环从 `GAME_DATA.footprint`
+  统一覆盖，不再在 `BUILD_DEFS` 维护第二套数值。
+- **校验**：verify-dlc 新增「基础物流/储物建筑占地单源化」守门人（储物箱族 8 项 + 电灯 + 超速分流器
+  官方 footprint 2×1 与 BUILD_DEFS 1×2 双断言），全量 18 个校验脚本通过，`node build.js` 构建通过。

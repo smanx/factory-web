@@ -18,7 +18,11 @@ const code = fs.readFileSync(ROOT + '/js/data/data.generated.js', 'utf8')
   + 'globalThis.__itemTechReq=itemTechReq;globalThis.__itemRecipeText=itemRecipeText;globalThis.__recipeTechReq=recipeTechReq;'
   + 'globalThis.__BUILD_DEFS=BUILD_DEFS;'
   + 'globalThis.__ORE_TUNGSTEN=ORE_TUNGSTEN;globalThis.__ORE_HOLMIUM=ORE_HOLMIUM;'
-  + 'globalThis.__oreItemId=oreItemId;globalThis.__isOreType=isOreType;globalThis.__oreMiningTime=oreMiningTime;';
+  + 'globalThis.__oreItemId=oreItemId;globalThis.__isOreType=isOreType;globalThis.__oreMiningTime=oreMiningTime;'
+  + 'globalThis.__qualityMult=qualityMult;globalThis.__qualityBeaconPowerMult=qualityBeaconPowerMult;'
+  + 'globalThis.__qualityMiningDrillDrainMult=qualityMiningDrillDrainMult;globalThis.__qualityScienceDrainMult=qualityScienceDrainMult;'
+  + 'globalThis.__qualityCargoWagonCapMult=qualityCargoWagonCapMult;globalThis.__qualityLocomotivePowerMult=qualityLocomotivePowerMult;'
+  + 'globalThis.__qualityRollingStockSpeedMult=qualityRollingStockSpeedMult;globalThis.__QUALITY_TIERS=QUALITY_TIERS;';
 const ctx = { console, localStorage: { getItem: () => null, setItem: () => {} } };
 ctx.window = ctx; ctx.G = { settings: { language: 'zh' }, power: { sat: 1 }, techDone: {} };
 ctx.globalThis = ctx;
@@ -515,6 +519,61 @@ ok(!!TS['quality-3'], '「品质学 III」科技已注册');
 ok(typeof ctx.__GAME_DATA !== 'undefined', 'GAME_DATA 就绪');
 ok(typeof IT['iron-plate~rare'] === 'undefined' || IT['iron-plate~rare'] !== undefined, '品质变体可显示（iron-plate~rare）');
 
+// ===== 官方品质 multiplier 单源化（GAME_DATA.qualityTiers，factorio-data 官方 quality 原型）=====
+console.log('\n【官方品质 multiplier 单源化】');
+// 官方 quality 原型：uncommon/rare/epic/legendary 的 beacon 功耗/采矿机资源/科研消耗/车厢容量/车头功率/车辆速度
+const qTiers = GD.qualityTiers || [];
+const qGet = (id) => qTiers.find(t => t.id === id) || {};
+ok(qGet('uncommon').beaconPowerUsageMult === 0.8333333333333334, 'uncommon 信号塔功耗倍率=官方 0.833');
+ok(qGet('rare').beaconPowerUsageMult === 0.6666666666666666, 'rare 信号塔功耗倍率=官方 0.667');
+ok(qGet('epic').beaconPowerUsageMult === 0.5, 'epic 信号塔功耗倍率=官方 0.5');
+ok(qGet('legendary').beaconPowerUsageMult === 0.16666666666666666, 'legendary 信号塔功耗倍率=官方 0.167');
+ok(qGet('legendary').miningDrillDrainMult === 0.16666666666666666, 'legendary 采矿机资源消耗倍率=官方 0.167');
+ok(qGet('uncommon').sciencePackDrainMult === 0.99, 'uncommon 科研消耗倍率=官方 0.99');
+ok(qGet('legendary').sciencePackDrainMult === 0.95, 'legendary 科研消耗倍率=官方 0.95');
+ok(qGet('legendary').cargoWagonCapMult === 2.5, 'legendary 货运车厢容量倍率=官方 2.5');
+ok(qGet('legendary').locomotivePowerMult === 2, 'legendary 火车头功率倍率=官方 2');
+ok(qGet('uncommon').rollingStockSpeedMult === 1.03, 'uncommon 车辆最高速度倍率=官方 1.03');
+ok(qGet('legendary').rollingStockSpeedMult === 1.15, 'legendary 车辆最高速度倍率=官方 1.15');
+ok(qGet('normal').beaconPowerUsageMult === 1, 'normal 信号塔功耗倍率=1（官方无字段默认）');
+// 前端 QUALITY_TIERS 从 GAME_DATA 单源构建（含官方 multiplier 字段）
+const qq = ctx.__QUALITY_TIERS || [];
+ok(Array.isArray(qq) && qq.length >= 5, '前端 QUALITY_TIERS 已就绪（>=5 级）');
+ok(qq[1] && qq[1].beaconPowerUsageMult === 0.8333333333333334, '前端 QUALITY_TIERS[uncommon].beaconPowerUsageMult 单源');
+ok(qq[4] && qq[4].cargoWagonCapMult === 2.5, '前端 QUALITY_TIERS[legendary].cargoWagonCapMult 单源');
+ok(qq[4] && qq[4].rollingStockSpeedMult === 1.15, '前端 QUALITY_TIERS[legendary].rollingStockSpeedMult 单源');
+ok(qq[4] && qq[4].mult === 1.5, '前端 QUALITY_TIERS[legendary].mult（建筑速度加成）=1.5');
+// 辅助函数按品质读取
+ok(typeof ctx.__qualityBeaconPowerMult === 'function' && ctx.__qualityBeaconPowerMult('legendary') === 0.16666666666666666, 'qualityBeaconPowerMult(legendary)=官方 0.167');
+ok(typeof ctx.__qualityCargoWagonCapMult === 'function' && ctx.__qualityCargoWagonCapMult('legendary') === 2.5, 'qualityCargoWagonCapMult(legendary)=官方 2.5');
+ok(ctx.__qualityScienceDrainMult('uncommon') === 0.99, 'qualityScienceDrainMult(uncommon)=官方 0.99');
+ok(ctx.__qualityRollingStockSpeedMult('rare') === 1.06, 'qualityRollingStockSpeedMult(rare)=官方 1.06');
+ok(ctx.__qualityLocomotivePowerMult('epic') === 1.6, 'qualityLocomotivePowerMult(epic)=官方 1.6');
+ok(ctx.__qualityMiningDrillDrainMult('rare') === 0.6666666666666666, 'qualityMiningDrillDrainMult(rare)=官方 0.667');
+ok(ctx.__qualityMult('epic') === 1.3, 'qualityMult(epic)=1.3（建筑速度加成）');
+
+// ===== 设备接入品质 multiplier（官方 quality 加成在各设备生效）=====
+console.log('\n【设备接入品质加成（官方 multiplier 生效）】');
+const beaconJs = fs.readFileSync(ROOT + '/js/devices/beacon.js', 'utf8');
+const drillJs = fs.readFileSync(ROOT + '/js/devices/drill.js', 'utf8');
+const labJs = fs.readFileSync(ROOT + '/js/devices/lab.js', 'utf8');
+const railwayJs = fs.readFileSync(ROOT + '/js/devices/railway.js', 'utf8');
+const trainstopJs = fs.readFileSync(ROOT + '/js/devices/railway-trainstop.js', 'utf8');
+// 信号塔功耗按品质降耗
+ok(beaconJs.includes('qualityBeaconPowerMult') && beaconJs.includes('BEACON_POWER * qm'), '信号塔功耗按官方 beacon_power_usage_multiplier 降耗');
+// 采矿机资源消耗按品质减少
+ok(drillJs.includes('consumeOreDrain') && drillJs.includes('qualityMiningDrillDrainMult'), '采矿机矿脉损耗按官方 mining_drill_resource_drain_multiplier 减少');
+// 实验室科研消耗按品质减少
+ok(labJs.includes('consumePackDrain') && labJs.includes('qualityScienceDrainMult'), '实验室科研消耗按官方 science_pack_drain_multiplier 减少');
+// 货运车厢容量按品质提升
+ok(railwayJs.includes('slotCapacity') && railwayJs.includes('qualityCargoWagonCapMult'), '货运车厢槽位按官方 cargo_wagon_inventory_size_multiplier 提升');
+ok(trainstopJs.includes('slotCapacity'), '车站装卸逻辑使用车厢品质容量（slotCapacity）');
+// 列车速度/功率按品质提升
+ok(railwayJs.includes('qualityRollingStockSpeedMult') && railwayJs.includes('qualityLocomotivePowerMult') && railwayJs.includes('TRAIN_SPEED / mult'), '列车速度/功率按官方 rolling_stock/locomotive multiplier 提升');
+// 存档兼容：新增累积字段持久化
+ok(drillJs.includes('s.drainAcc'), '采矿机品质矿耗累积字段随存档持久化');
+ok(labJs.includes('s.drainAcc'), '实验室品质科研消耗累积字段随存档持久化');
+
 
 // ===== 装备命名单源（equipment-name 官方 locale 已接入 GAME_DATA.names）=====
 console.log('\n【装备命名单源（GAME_DATA.names）】');
@@ -887,6 +946,21 @@ ok(ctx.__itemTechReq('fusion-generator') === 'fusion-power', '聚变发电机需
 ok(ctx.__itemTechReq('fusion-power-cell') === 'fusion-power', '聚变燃料棒需「聚变能源」科技');
 ok(!!TS['fusion-power'], '「聚变能源」科技已注册');
 ok((TS['fusion-power'].req || []).indexOf('space-platform') >= 0, '「聚变能源」科技前置含「空间平台」');
+// ===== 聚变等离子体 functional（fusion-plasma 工作介质，本迭代接入）=====
+// 官方 Space Age 聚变链：反应堆产生 Plasma → 管道 → 发电机消耗 Plasma 发电。
+// 项目此前仅注册 fusion-plasma 流体未接入玩法，现使其功能化：反应堆产 Plasma 输出管道、发电机吸 Plasma 供热。
+{
+  const fusSrc = fs.readFileSync(ROOT + '/js/devices/fusion.js', 'utf8');
+  const dataSrc = fs.readFileSync(ROOT + '/js/data/data.js', 'utf8');
+  ok(!!IT['fusion-plasma'], 'fusion-plasma 流体已注册（官方 Plasma 工作介质）');
+  ok(GD.names['fusion-plasma'] && GD.names['fusion-plasma'].en === 'Plasma', 'fusion-plasma 官方命名已收录 (Plasma)');
+  ok(/FUSION_PLASMA_RATE/.test(dataSrc), '聚变 Plasma 产出速率常量已定义（FUSION_PLASMA_RATE）');
+  ok(/plasmaBuf/.test(fusSrc), '聚变反应堆有 Plasma 缓冲（plasmaBuf）');
+  ok(/n\.giveItem\('fusion-plasma'\)/.test(fusSrc), '聚变反应堆把 Plasma 输出到相邻管道（portFlow giveItem fusion-plasma）');
+  ok(/takeItemOf\('fusion-plasma'\)/.test(fusSrc), '聚变发电机从相邻管道吸取 Plasma（takeItemOf fusion-plasma）');
+  ok(/FUSION_HEAT_PER_PLASMA/.test(fusSrc), '聚变发电机把 Plasma 折算为热量（FUSION_HEAT_PER_PLASMA）');
+  ok(/fusion-plasma/.test(fusSrc), '聚变反应堆/发电机面板已展示 Plasma 状态');
+}
 // ===== 钷素科研包（Promethium science pack，Space Age 终局科学包）数据校验 =====
 console.log('\n【钷素科研包 promethium-science-pack 数据】');
 // 物品/堆叠/命名来自官方
@@ -904,7 +978,7 @@ ok(RP['promethium-science-pack'].out['promethium-science-pack'] === 10 && RP['pr
 ok(Object.keys(RP['promethium-science-pack'].inp).every(k => k in IT), 'promethium-science-pack 配方引用物品均存在');
 // 配方设备：电磁工厂（官方 cryogenics 低温工厂，此处适配为电磁工厂生产钷素科研包）
 ok(ctx.__recipeDevice('promethium-science-pack') === 'electromagnetic-plant', '钷素科研包由电磁工厂制得');
-// 科技门控：配方改由「太空材料加工」解锁（data-tech.js 有意设计：避免与「钷素科研」科技互相卡死）
+// 科技门控：钷素科研包配方由「钷素科研」（promethium-science）科技解锁（官方 Promethium science）
 ok(ctx.__recipeTechReq('promethium-science-pack') === 'asteroid-processing', '钷素科研包配方由「太空材料加工」解锁（避免与「钷素科研」科技互相卡死）');
 ok(!!TS['promethium-science'], '钷素科研 科技已注册');
 
@@ -1086,6 +1160,15 @@ ok(ctx.__recipeDevice('cryogenic-science-pack') === 'cryogenic-plant', '低温�
 ok(ctx.__itemTechReq('cryogenic-plant') === 'cryogenics', '低温工厂需「低温学」科技');
 ok(!!TS['cryogenics'], '「低温学」科技已注册');
 ok(TS['cryogenics'].req && TS['cryogenics'].req.indexOf('electromagnetics') >= 0, '低温学前置含「电磁学」');
+// Aquilo 氟酮链对齐官方（fluoroketone / fluoroketone-cooling，配方键与官方一致，数据单源化）
+const fkRec = RP['fluoroketone'];
+ok(!!fkRec, 'fluoroketone 配方已注册（官方氟酮配方）');
+ok(fkRec && fkRec.time === 10 && fkRec.inp['fluorine'] === 50 && fkRec.inp['ammonia'] === 50 && fkRec.inp['solid-fuel'] === 1 && fkRec.inp['lithium'] === 1 && fkRec.out && fkRec.out['fluoroketone-hot'] === 50, 'fluoroketone=50氟+50氨+1固体燃料+1锂→50氟酮热，10s（官方）');
+ok(ctx.__recipeDevice('fluoroketone') === 'cryogenic-plant', 'fluoroketone → 低温工厂');
+const fkcRec = RP['fluoroketone-cooling'];
+ok(!!fkcRec, 'fluoroketone-cooling 配方已注册（官方氟酮冷却配方）');
+ok(fkcRec && fkcRec.time === 5 && fkcRec.inp['fluoroketone-hot'] === 10 && fkcRec.out && fkcRec.out['fluoroketone-cold'] === 10, 'fluoroketone-cooling=10氟酮热→10氟酮冷，5s（官方）');
+ok(ctx.__recipeDevice('fluoroketone-cooling') === 'cryogenic-plant', 'fluoroketone-cooling → 低温工厂');
 const cryoRec2 = RP['cryogenic-science-pack'];
 ok(cryoRec2 && cryoRec2.inp['ice'] === 3 && cryoRec2.inp['lithium-plate'] === 1 && cryoRec2.inp['fluoroketone-cold'] === 6 && cryoRec2.out && cryoRec2.out['fluoroketone-hot'] === 3, '低温科研包配方=冰3+锂板1+氟酮冷6→1+氟酮热3（官方）');
 console.log('\n【熔融金属铸造链 / 废料回收（数据来自 GAME_DATA）】');
@@ -1745,6 +1828,27 @@ try {
   ok(false, '官方建筑占地对齐校验：加载 convert-data 失败 ' + e.message);
 }
 
+
+console.log('\n【基础物流/储物建筑占地单源化（chests/lamp/splitter 官方 selection_box → footprint）】');
+{
+  // 储物箱族 / 电灯 / 超速分流器：占地从 GAME_DATA.footprint（官方 selection_box）单源桥接，
+  // 不在 BUILD_DEFS 单独维护第二套数值（对齐「所有数据从 data.generated.js 获取」铁律）。
+  const oneCell = ['wooden-chest','iron-chest','steel-chest',
+    'passive-provider-chest','active-provider-chest','storage-chest','requester-chest','buffer-chest',
+    'small-lamp'];
+  for (const k of oneCell) {
+    ok(GD.footprint && GD.footprint[k] && GD.footprint[k].w === 1 && GD.footprint[k].h === 1,
+      k + ' 占地已从官方 selection_box 单源（GAME_DATA.footprint = 1×1）');
+    ok(ctx.__BUILD_DEFS[k] && ctx.__BUILD_DEFS[k].w === 1 && ctx.__BUILD_DEFS[k].h === 1,
+      k + ' BUILD_DEFS 占地 = 1×1（由 GAME_DATA 桥接）');
+  }
+  // 超速分流器：官方 splitter 原型 selection_box 为 2×1，项目按 1×2 竖放建模（FOOTPRINT_OVERRIDE 保持）。
+  ok(GD.footprint && GD.footprint['turbo-splitter'] && GD.footprint['turbo-splitter'].w === 2 && GD.footprint['turbo-splitter'].h === 1,
+    'turbo-splitter 官方 footprint（GAME_DATA）= 2×1（官方 splitter selection_box）');
+  ok(ctx.__BUILD_DEFS['turbo-splitter'] && ctx.__BUILD_DEFS['turbo-splitter'].w === 1 && ctx.__BUILD_DEFS['turbo-splitter'].h === 2,
+    'turbo-splitter BUILD_DEFS = 1×2（FOOTPRINT_OVERRIDE 项目竖放建模）');
+}
+
 // ---- 推进器 Thruster 数据单源化（GAME_DATA.thruster，官方 max_performance）----
 console.log('\n【推进器 Thruster 数据单源化】');
 const THR = GD.thruster || {};
@@ -1756,6 +1860,23 @@ ok(THR.effectivity === 0.51, '官方推进器能量效率 effectivity=0.51');
   ok(/THRUSTER_FUEL_RATE = \(GAME_DATA\.thruster/.test(spSrc), '推进器燃料消耗速率从 GAME_DATA.thruster 单源读取');
   ok(!/const THRUSTER_FUEL_RATE = 2\.0;/.test(spSrc), '推进器燃料消耗速率不再硬编码 2.0');
   ok(/THRUSTER_OXID_RATE = THRUSTER_FUEL_RATE/.test(spSrc), '推进器氧化剂消耗速率与燃料同速（官方同速）');
+}
+
+
+// ---- 聚变发电链数据单源化（GAME_DATA.fusion，官方 fusion-reactor/generator）----
+console.log('\n【聚变发电链 FUSION 数据单源化】');
+const FUS = GD.fusion || {};
+ok(FUS.reactorPowerInput === 10, '官方聚变反应堆耗电 power_input=10MW');
+ok(FUS.reactorFluidUsage === 4, '官方聚变反应堆冷却剂消耗 max_fluid_usage=4/s（氟酮冷液）');
+ok(FUS.generatorMaxPower === 50000, '官方聚变发电机满功率 output_flow_limit=50MW（50000kW）');
+{
+  const dSrc = fs.readFileSync(ROOT + '/js/data/data.js', 'utf8');
+  ok(/FUSION_GENERATOR_MAX_POWER = GAME_DATA\.fusion\?/.test(dSrc), '聚变发电机满功率从 GAME_DATA.fusion 单源读取');
+  ok(!/FUSION_GENERATOR_MAX_POWER = 50000;/.test(dSrc), '聚变发电机满功率不再硬编码 50000');
+  ok(/FUSION_REACTOR_FLUID_USAGE = GAME_DATA\.fusion\?/.test(dSrc), '聚变反应堆冷却剂消耗从 GAME_DATA.fusion 单源读取');
+  ok(/FUSION_REACTOR_POWER_INPUT = GAME_DATA\.fusion\?/.test(dSrc), '聚变反应堆耗电从 GAME_DATA.fusion 单源读取');
+  const fSrc = fs.readFileSync(ROOT + '/js/devices/fusion.js', 'utf8');
+  ok(/FUSION_REACTOR_FLUID_USAGE/.test(fSrc) && /fluoroketone-cold/.test(fSrc), 'fusion.js 聚变反应堆已接入氟酮冷液冷却剂消耗（官方 GAME_DATA 单源）');
 }
 
 
@@ -1780,7 +1901,43 @@ console.log('\n【空间平台起始包发射 ROCKET STARTER-PACK】');
   ok(RP['space-platform-starter-pack'].out['space-platform-starter-pack'] === 1 && RP['space-platform-starter-pack'].time === 60, '起始包产出 1、60s（官方）');
 }
 
+
+// ===== 太空物流电路信号补全（空间平台中枢/推进器/收集器输出电路信号，本迭代新增）=====
+console.log('\n【太空物流电路信号补全 SPACE-PLATFORM CIRCUIT SIGNALS】');
+{
+  const circSrc = fs.readFileSync(ROOT + '/js/devices/circuit.js', 'utf8');
+  const spSrc = fs.readFileSync(ROOT + '/js/devices/space-platform.js', 'utf8');
+  // 电路收集器包含轻量电路生产者（isCircuitProducer）
+  ok(/installCircuitProducerAPI/.test(circSrc), 'circuit.js 提供轻量电路生产者 API（installCircuitProducerAPI）');
+  ok(/typeof e\.isCircuitProducer/.test(circSrc), 'collectCircuitNodes 收集电路生产者节点（isCircuitProducer）');
+  // 三个空间平台设备安装电路生产者 API 并实现信号输出
+  const spClassCount = (spSrc.match(/installCircuitProducerAPI\(this\)/g) || []).length;
+  ok(spClassCount >= 3, '空间平台设备已安装电路生产者 API（' + spClassCount + ' 处）');
+  ok(spSrc.indexOf('outputCircuitSignals() {') !== -1, '中枢实现电路信号输出（outputCircuitSignals）');
+  ok(spSrc.indexOf("sig: 'thruster-fuel'") !== -1 && spSrc.indexOf("sig: 'thruster-oxidizer'") !== -1, '推进器输出燃料/氧化剂余量信号');
+  ok((spSrc.match(/outputCircuitSignals\(\) \{/g) || []).length >= 3, '三个空间平台设备均实现电路信号输出');
+  // 面板提示电路输出
+  ok(/电路输出：中枢会把平台货舱/.test(spSrc), '中枢面板提示电路信号输出');
+  ok(/电路输出：推进器把燃料/.test(spSrc), '推进器面板提示电路信号输出');
+  ok(/电路输出：小行星收集器/.test(spSrc), '收集器面板提示电路信号输出');
+}
+
+
+// ===== 火箭→空间平台直投（Rocket direct delivery to space platform，本迭代新增）=====
+console.log('\n【火箭→空间平台直投 ROCKET DIRECT DELIVERY】');
+{
+  const rkSrc = fs.readFileSync(ROOT + '/js/devices/rocket.js', 'utf8');
+  ok(/function findSpacePlatformHub\(/.test(rkSrc), 'rocket.js 提供 findSpacePlatformHub() 查找空间平台中枢');
+  ok(/e\.type === 'space-platform-hub'/.test(rkSrc), 'findSpacePlatformHub 按 space-platform-hub 实体类型查找');
+  ok(/火箭→空间平台直投/.test(rkSrc), 'deliverOrbitalCargo 实现火箭→空间平台直投逻辑');
+  ok(/const hub = findSpacePlatformHub\(\);/.test(rkSrc), 'deliverOrbitalCargo 优先获取空间平台中枢');
+  ok(/hub\.giveItem/.test(rkSrc), '货物直投至平台货舱（hub.giveItem）');
+  ok(/直投至空间平台货舱/.test(rkSrc), '投递提示区分「直投至空间平台货舱」');
+}
+
+
 process.exit(fail === 0 ? 0 : 1);
+
 
 
 

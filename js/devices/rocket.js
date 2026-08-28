@@ -597,6 +597,16 @@ function findCargoLandingPad() {
   return null;
 }
 
+function findSpacePlatformHub() {
+  if (typeof G.ents !== 'object') return null;
+  for (const k in G.ents) {
+    const e = G.ents[k];
+    if (e && e.type === 'space-platform-hub' && e.w && e.h) return e;
+  }
+  return null;
+}
+
+
 let victoryEl = null;
 function showVictory() {
   if (victoryEl) { victoryEl.style.display = 'flex'; return; }
@@ -712,14 +722,23 @@ function deliverOrbitalCargo(planet) {
   const queued = (G.orbitalCargo && G.orbitalCargo[planet]) || {};
   const keys = Object.keys(queued).filter(k => (queued[k] || 0) > 0);
   if (!keys.length) return 0;
+  // 火箭→空间平台直投：若该星球存在空间平台中枢，货物直接投递到平台货舱，
+  // 实现行星→平台的无玩家往返自动货运（对齐《异星工厂》Space Age 平台轨道物流）。
+  const hub = findSpacePlatformHub();
   const pad = findCargoLandingPad();
-  let delivered = 0;
+  let delivered = 0, toHub = 0;
   for (const k of keys) {
     let n = queued[k] || 0;
     if (n <= 0) continue;
     let landed = 0;
-    if (pad) {
-      while (landed < n && pad.giveItem(k)) landed++;
+    // 优先直投平台货舱（若中枢存在）：物品进入平台输入缓存/货舱，供平台自动消耗或派发
+    if (hub && typeof hub.giveItem === 'function') {
+      while (landed < n && hub.giveItem(k)) { landed++; }
+      if (landed > 0) toHub += landed;
+    }
+    // 平台货舱满后剩余降落物流接驳站
+    if (landed < n && pad) {
+      while (landed < n && pad.giveItem(k)) { landed++; }
       if (landed > 0) pad.cargoIn = (pad.cargoIn || 0) + landed;
     }
     const rest = n - landed;
@@ -730,7 +749,8 @@ function deliverOrbitalCargo(planet) {
   delete G.orbitalCargo[planet];
   if (delivered > 0 && typeof toast === 'function') {
     const name = (typeof planetOption === 'function' && planetOption(planet)) ? planetOption(planet).name : planet;
-    toast('📦 行星间货物已送达' + name + '：' + delivered + ' 件' + (pad ? '降落至物流接驳站' : '已入背包'));
+    const dest = toHub > 0 ? '已直投至空间平台货舱' : (pad ? '已降落至物流接驳站' : '已入背包');
+    toast('📦 行星间货物已送达' + name + '：' + delivered + ' 件（' + dest + '）');
   }
   return delivered;
 }

@@ -74,12 +74,12 @@ const URANIUM_CENTRIFUGE_KOVAREX_TIME = 60; // Kovarex 富集耗时（秒）
 const HEAT_MAX_TEMP = GAME_DATA.heat?.reactorMaxTemp ?? 1000;   // 所有 heat buffer 最高温度 1000°C（官方 max_temperature）
 const REACTOR_SPECIFIC_HEAT = GAME_DATA.heat?.reactorSpecificHeat ?? 10;  // 反应堆比热 10MJ/°C（官方）
 const HEAT_PIPE_SPECIFIC_HEAT = GAME_DATA.heat?.heatPipeSpecificHeat ?? 1; // 导热管比热 1MJ/°C（官方）
-const HEAT_EXCHANGER_SPECIFIC_HEAT = 1;    // 热交换器比热 1MJ/°C（官方，本数据集中为简化锅炉型 → 手工）
+const HEAT_EXCHANGER_SPECIFIC_HEAT = GAME_DATA.heat?.heatExchangerSpecificHeat ?? 1;    // 热交换器比热 1MJ/°C（官方 energy_source specific_heat，GAME_DATA 单源）
 const REACTOR_MAX_TRANSFER = GAME_DATA.heat?.reactorMaxTransfer ?? 10000;  // 反应堆最大传热 10GW=10000MW（官方 max_transfer）
 const HEAT_PIPE_MAX_TRANSFER = GAME_DATA.heat?.heatPipeMaxTransfer ?? 1000; // 导热管最大传热 1GW=1000MW（官方 max_transfer）
-const HEAT_EXCHANGER_MAX_TRANSFER = 2000;  // 热交换器最大传热 2GW=2000MW（官方 max_transfer，手工）
+const HEAT_EXCHANGER_MAX_TRANSFER = GAME_DATA.heat?.heatExchangerMaxTransfer ?? 2000;  // 热交换器最大传热 2GW=2000MW（官方 energy_source max_transfer，GAME_DATA 单源）
 const REACTOR_HEAT_RATE = GAME_DATA.heat?.reactorHeatRate ?? 40;  // 反应堆热功率 40MW（铀燃料棒 8GJ / 200s，官方）
-const HEAT_EXCHANGER_MIN_WORK_TEMP = 500;  // 热交换器最低工作温度 500°C（官方 min_working_temperature，手工）
+const HEAT_EXCHANGER_MIN_WORK_TEMP = GAME_DATA.heat?.heatExchangerMinWorkTemp ?? 500;  // 热交换器最低工作温度 500°C（官方 energy_source min_working_temperature，GAME_DATA 单源）
 const HEAT_PIPE_MIN_GLOW_TEMP = GAME_DATA.heat?.heatPipeMinGlowTemp ?? 350; // 导热管/热设备最低发光温度 350°C（官方 minimum_glow_temperature）
 const HEAT_EXCHANGER_ENERGY_PER_STEAM = 20;// 热交换器每产 1 单位蒸汽需消耗热量(MJ)，满产(2单位/s)恰好消耗反应堆 40MW 热功率
 const HEAT_EXCHANGER_STEAM_RATE = 2.0;     // 热交换器满功率产汽速率（单位/秒）
@@ -91,14 +91,25 @@ const HEATING_TOWER_SPECIFIC_HEAT = GAME_DATA.heat?.heatingTowerSpecificHeat ?? 
 const HEATING_TOWER_MAX_TRANSFER = GAME_DATA.heat?.heatingTowerMaxTransfer ?? 10000; // 最大传热 10GW（官方 max_transfer）
 // ===== Aquilo 聚变发电链（fusion-reactor / fusion-generator，对齐《异星工厂》Space Age Fusion）=====
 // 官方 fusion-reactor：6×6、max_health 1000、power_input 10MW；fusion-generator：3×5、output_flow_limit 50MW。
+// 数据单源化：发电功率/反应堆耗电/氟酮冷液消耗均来自 GAME_DATA.fusion（data.generated.js，
+// 由 tools/generate-game-data.js 从 factorio-data 现场提取官方 power_input / max_fluid_usage /
+// output_flow_limit），不在本文件另行维护第二套数值表。
 const FUSION_REACTOR_SPECIFIC_HEAT = 10;   // 聚变反应堆比热 10MJ/°C（官方 heat_buffer）
 const FUSION_REACTOR_MAX_TRANSFER = 10000; // 聚变反应堆最大传热 10GW（官方 max_transfer）
 const FUSION_REACTOR_HEAT_RATE = 200;      // 聚变反应堆热功率 200MW（终极发电，高于核反应堆 40MW/供热塔 100MW）
+const FUSION_REACTOR_POWER_INPUT = GAME_DATA.fusion?.reactorPowerInput ?? 10;  // 聚变反应堆耗电 MW（官方 power_input=10MW）
+const FUSION_REACTOR_FLUID_USAGE = GAME_DATA.fusion?.reactorFluidUsage ?? 4;   // 聚变反应堆每秒耗氟酮冷液单位（官方 max_fluid_usage 4/s）
 const FUSION_FUEL_ENERGY = 200;            // 每根聚变燃料棒可持续燃烧秒数
 const FUSION_GENERATOR_SPECIFIC_HEAT = 1;  // 聚变发电机比热 1MJ/°C
 const FUSION_GENERATOR_MAX_TRANSFER = 2000;// 聚变发电机最大传热 2GW（官方 max_transfer）
-const FUSION_GENERATOR_MAX_POWER = 50000;  // 聚变发电机满功率 50MW（官方 output_flow_limit=50MW）
+const FUSION_GENERATOR_MAX_POWER = GAME_DATA.fusion?.generatorMaxPower ?? 50000;  // 聚变发电机满功率 50MW（官方 output_flow_limit=50MW，GAME_DATA 单源）
 const FUSION_HEAT_PER_KW = 0.004;          // 每 kW·s 发电需消耗热量(MJ)：50MW 满功率每秒需 200MJ
+// 聚变等离子体（官方 fusion-plasma）工作介质常数：反应堆产 Plasma → 管道 → 发电机吸 Plasma 发电。
+// 相对刻度（项目简化模型），以热功率线性换算（200MW → 每秒 2000 单位 Plasma），
+// 每单位 Plasma 折算 1MJ 热量；数值不单独维护数值表（官方无固定产出速率，按热功率换算）。
+const FUSION_PLASMA_RATE = 2000;           // 聚变反应堆每秒产 Plasma 单位（200MW→2000/s）
+const FUSION_PLASMA_BUF = 2000;            // 聚变反应堆内部 Plasma 缓冲上限
+const FUSION_HEAT_PER_PLASMA = 1;          // 每单位 Plasma 折算热量(MJ)（发电机吸 Plasma 供热）
 const POWER_USE = {
   'electric-mining-drill': 90,          // 电采矿机
   'electric-furnace': 180,       // 电炉

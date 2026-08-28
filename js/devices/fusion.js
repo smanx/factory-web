@@ -17,6 +17,8 @@ class FusionReactor extends Entity {
     this.fuel = 0;          // 聚变燃料棒数量
     this.burnLeft = 0;      // 当前燃料剩余燃烧秒数
     this.heatEnergy = 0;    // 内部热量能量(MJ)，温度 = heatEnergy / specificHeat
+    this.plasmaBuf = 0;     // 聚变等离子体缓冲（官方 Plasma 工作介质，输出到相邻管道）
+    this.coolantBuf = 0;    // 氟酮冷液缓冲（官方 fusion-reactor 冷却剂 input_fluid_box 输入 fluoroketone-cold）
     this.burning = false;
     this.lit = false;
   }
@@ -28,6 +30,8 @@ class FusionReactor extends Entity {
   heatCap() { return this.maxEnergy(); }
   update(dt) {
     this.burning = false;
+    this.coolantFlow(dt);  // 先吸取氟酮冷液冷却剂（官方 fusion-reactor 输入 fluoroketone-cold）
+    this.portFlow();  // 先输出等离子体到相邻管道
     // 向相邻导热管/热交换器/聚变发电机传导热量
     this.heatFlow(dt);
     // 消耗燃料：只要还有燃料就一直燃烧，无视热量是否存满（官方：达到最高温仍持续燃烧）
@@ -42,7 +46,34 @@ class FusionReactor extends Entity {
     // 产热（MJ/s）：聚变热功率，终极发电，高于核反应堆
     const rate = FUSION_REACTOR_HEAT_RATE;
     this.heatEnergy = Math.min(this.maxEnergy(), this.heatEnergy + rate * dt);
+    // 产等离子体（官方 Plasma 工作介质）：聚变核心把热功率的一部分转为等离子流体，
+    // 经四边流体接口输出到相邻管道，供聚变发电机经管道吸取发电（对齐官方 Aquilo 聚变链）。
+    // 官方 fusion-reactor 需氟酮冷液冷却剂（max_fluid_usage 4/s，GAME_DATA 单源）才产等离子体；
+    // 冷却剂不足时按可用比例节流等离子体产出（热量仍持续产出，与官方“无冷却剂停机”对齐但保持可用）。
+    const coolantFactor = this.coolantBuf >= 0.01 ? Math.min(1, this.coolantBuf / (FUSION_REACTOR_FLUID_USAGE * Math.max(dt, 0.01))) : 0;
+    if (coolantFactor > 0) {
+      this.coolantBuf = Math.max(0, this.coolantBuf - FUSION_REACTOR_FLUID_USAGE * dt);
+      this.plasmaBuf = Math.min(FUSION_PLASMA_BUF, this.plasmaBuf + FUSION_PLASMA_RATE * dt * coolantFactor);
+    }
     this.burnLeft -= dt;
+  }
+  // 从相邻管道吸取氟酮冷液冷却剂（对齐官方 fusion-reactor input_fluid_box filter=fluoroketone-cold）
+  coolantFlow(dt) {
+    if (this.coolantBuf >= FUSION_REACTOR_FLUID_USAGE * 2 + 1) return;  // 冷却剂已足，稍后再取
+    forEachNeighborEnt(this, n => {
+      if (this.coolantBuf >= FUSION_REACTOR_FLUID_USAGE * 2 + 1) return;
+      if (!(n instanceof Pipe)) return;
+      if ((n.fluid['fluoroketone-cold'] || 0) >= 1) n.takeItemOf('fluoroketone-cold'), this.coolantBuf++;
+    });
+  }
+  // 把等离子体输出到相邻管道（对齐官方：聚变反应堆产生 Plasma，经管道输送到发电机）
+  portFlow() {
+    if (this.plasmaBuf < 1) return;
+    forEachNeighborEnt(this, n => {
+      if (this.plasmaBuf < 1) return;
+      if (!(n instanceof Pipe)) return;
+      if (n.total() < PIPE_CAP && n.giveItem('fusion-plasma')) this.plasmaBuf--;
+    });
   }
   // 热量传导：把热量输送给相邻的导热管/热交换器/聚变发电机
   heatFlow(dt) {
@@ -75,12 +106,12 @@ class FusionReactor extends Entity {
   }
   serialize() {
     const s = super.serialize();
-    s.fuel = this.fuel; s.burnLeft = this.burnLeft; s.heatEnergy = this.heatEnergy;
+    s.fuel = this.fuel; s.burnLeft = this.burnLeft; s.heatEnergy = this.heatEnergy; s.plasmaBuf = this.plasmaBuf; s.coolantBuf = this.coolantBuf || 0;
     return s;
   }
   static restore(s) {
     const r = super.restore(s);
-    r.fuel = s.fuel || 0; r.burnLeft = s.burnLeft || 0; r.heatEnergy = s.heatEnergy || 0;
+    r.fuel = s.fuel || 0; r.burnLeft = s.burnLeft || 0; r.heatEnergy = s.heatEnergy || 0; r.plasmaBuf = s.plasmaBuf || 0; r.coolantBuf = s.coolantBuf || 0;
     return r;
   }
 }
@@ -103,7 +134,22 @@ class FusionGenerator extends Entity {
   maxEnergy() { return HEAT_MAX_TEMP * this.specificHeat(); }
   temperature() { return this.heatEnergy / this.specificHeat(); }
   heatCap() { return this.maxEnergy(); }
+  // 从相邻管道吸取聚变等离子体并转化为内部热量（官方：发电机消耗 Plasma 工作介质）
+  // 等离子体作为聚变发电的流体介质来源，与相邻导热管热源并列；任一路径供热均可发电。
+  portFlow() {
+    if (this.temperature() >= HEAT_MAX_TEMP) return;  // 热量已满，不再吸热
+    forEachNeighborEnt(this, n => {
+      if (n._dead || this.temperature() >= HEAT_MAX_TEMP) return;
+      if (!(n instanceof Pipe)) return;
+      if ((n.fluid['fusion-plasma'] || 0) >= 1) {
+        n.takeItemOf('fusion-plasma');
+        // 每 1 单位等离子体折算 1MJ 热量（相对刻度，对齐聚变热功率 200MW→2000 单位/s 的换算）
+        this.heatEnergy = Math.min(this.maxEnergy(), this.heatEnergy + FUSION_HEAT_PER_PLASMA);
+      }
+    });
+  }
   update(dt) {
+    this.portFlow();       // 先吸取等离子体供热
     this.heatFlow(dt);
     // 把热量转化为电力：满功率耗热率 = 满功率(kW) / (发电机容量比例)
     // 简化：每 MJ 热量 → 对应发电量，满功率 50MW 时每秒消耗的热量由发电量折算
@@ -217,16 +263,18 @@ function fusionReactorPanelHtml(e) {
   const fuel = e.fuel;
   return row('聚变核心', e.burning ? '<span class="ok">运行中（产热 ' + FUSION_REACTOR_HEAT_RATE + 'MW）</span>' : '<span class="dim">待机</span>', 'status') +
     row('核心温度', _temp + '°C', 'heat') +
+    row('等离子体', chip('fusion-plasma', '×' + Math.round(e.plasmaBuf || 0)), 'item') +
+    row('冷却剂', chip('fluoroketone-cold', '×' + Math.round(e.coolantBuf || 0)), 'item') +
     row('燃料', chip('fusion-power-cell', '×' + fuel), 'item') +
-    '<div class="dim">聚变反应堆：燃烧聚变燃料棒产生超高温等离子热量，经导热管传导至聚变发电机发电（6×6，功率远超核反应堆，对齐《异星工厂》Space Age 聚变反应堆，数据来自 GAME_DATA）。</div>';
+    '<div class="dim">聚变反应堆：燃烧聚变燃料棒 + 消耗氟酮冷液冷却剂（官方 max_fluid_usage 4/s）产生超高温等离子体（Plasma），经四边接口输出到相邻管道，或经导热管传导热量至聚变发电机发电（6×6，功率远超核反应堆，对齐《异星工厂》Space Age 聚变反应堆，数据来自 GAME_DATA）。</div>';
 }
 function fusionReactorPanelLive(e, api) {
   api.set('heat', e.temperature() >= 1 ? chip('heat-pipe', Math.round(e.temperature()) + '°C') : dimSpan('待机'));
-  api.set('item', e.fuel > 0 ? chip('fusion-power-cell', '×' + e.fuel) : dimSpan('空'));
   api.set('status', e.burning ? '运行中' : (e.fuel > 0 ? '点火中' : '缺燃料'));
+  api.set('item', (e.coolantBuf || 0) > 0 ? chip('fluoroketone-cold', '×' + Math.round(e.coolantBuf || 0)) + ' ' + (e.fuel > 0 ? chip('fusion-power-cell', '×' + e.fuel) : dimSpan('空')) : (e.fuel > 0 ? chip('fusion-power-cell', '×' + e.fuel) : dimSpan('空')));
 }
 function fusionReactorTip(e) {
-  return '聚变反应堆（6×6）：吃聚变燃料棒，产热 ' + FUSION_REACTOR_HEAT_RATE + 'MW。热量经导热管→聚变发电机→电力。';
+  return '聚变反应堆（6×6）：吃聚变燃料棒，产热 ' + FUSION_REACTOR_HEAT_RATE + 'MW 并产生等离子体（Plasma）。热量经导热管或 Plasma 经管道→聚变发电机→电力。';
 }
 function fusionReactorOnAction(e, action, data) {
   if (action === 'fuel') {
@@ -239,14 +287,14 @@ function fusionReactorOnAction(e, action, data) {
 function fusionGeneratorPanelHtml(e) {
   return row('发电', (e.powerOut || 0) + 'kW / ' + FUSION_GENERATOR_MAX_POWER + 'kW', 'power') +
     row('核心温度', Math.round(e.temperature()) + '°C', 'heat') +
-    '<div class="dim">聚变发电机：把聚变反应堆经导热管传来的热量直接转化为电能（3×5，单台满功率 50MW，对齐《异星工厂》Space Age 聚变发电机，数据来自 GAME_DATA）。</div>';
+    '<div class="dim">聚变发电机：消耗相邻管道输入的聚变等离子体（Plasma）或导热管传来的热量，直接转化为电能（3×5，单台满功率 50MW，对齐《异星工厂》Space Age 聚变发电机，数据来自 GAME_DATA）。</div>';
 }
 function fusionGeneratorPanelLive(e, api) {
   api.set('power', (e.powerOut || 0) + 'kW');
   api.set('heat', e.temperature() >= 1 ? chip('heat-pipe', Math.round(e.temperature()) + '°C') : dimSpan('待机'));
 }
 function fusionGeneratorTip(e) {
-  return '聚变发电机（3×5）：把相邻导热管的热量转为电力，满功率 ' + (FUSION_GENERATOR_MAX_POWER / 1000) + 'MW。';
+  return '聚变发电机（3×5）：消耗相邻管道输入的等离子体或导热管热量转为电力，满功率 ' + (FUSION_GENERATOR_MAX_POWER / 1000) + 'MW。';
 }
 
 // ===== 注册 =====

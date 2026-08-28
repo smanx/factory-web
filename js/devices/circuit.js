@@ -43,10 +43,34 @@ class CircuitNode extends Entity {
   contents() { return [[this.type, 1]]; }
 }
 
+// ===== 轻量电路信号生产者（Circuit signal producer）=====
+// 空间平台中枢 / 推进器 / 小行星收集器等「非 CircuitNode 子类」但需要向电路网络输出
+// 内置库存/液位信号的设备，通过本函数安装最小电路节点 API，使其能参与 recomputeCircuit 的
+// 连线分组与信号聚合（对齐《异星工厂》：平台货舱/推进器液位/小行星星块存量可作为电路信号
+// 读取，实现空间平台全链路自动化）。这些设备仅输出信号（红/绿双通道），不做连线方向配置。
+function installCircuitProducerAPI(obj) {
+  obj.red = new Set();       // 红线相连的其它节点（由 recompute 填充）
+  obj.green = new Set();     // 绿线相连的其它节点
+  obj.netRed = obj.netRed || {};    // 所属网络红线聚合信号
+  obj.netGreen = obj.netGreen || {}; // 所属网络绿线聚合信号
+  obj.wireChan = 'both';     // 输出双通道（红+绿），供任意通道读取
+  obj._tick = -1;
+  obj.isCircuitProducer = () => true;
+  obj.cx = obj.cx || (() => obj.x + obj.w / 2);
+  obj.cy = obj.cy || (() => obj.y + obj.h / 2);
+  obj.range = obj.range !== undefined ? obj.range : CIRCUIT_COMB_RANGE;
+  obj.distTo = obj.distTo || (o => Math.max(Math.abs(obj.cx() - o.cx()), Math.abs(obj.cy() - o.cy())));
+  // 默认输出空信号（由具体设备覆写）
+  if (typeof obj.outputCircuitSignals !== 'function') obj.outputCircuitSignals = () => [];
+}
+
 // 收集当前所有电路节点
 function collectCircuitNodes() {
   const nodes = [];
-  for (const e of G.ents) if (!e._dead && e instanceof CircuitNode) nodes.push(e);
+  for (const e of G.ents) {
+    if (e._dead) continue;
+    if (e instanceof CircuitNode || (typeof e.isCircuitProducer === 'function' && e.isCircuitProducer())) nodes.push(e);
+  }
   return nodes;
 }
 
