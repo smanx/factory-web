@@ -1568,3 +1568,31 @@ D
 > **效果**：同 emoji 的不同物品通过「左下角色标颜色」一目了然（如 ⛏️ 铁矿石=蓝、铜矿石=橙、
 > 电采矿机=深蓝），无需逐个悬停辨认；唯一 emoji 物品（⚙️ 齿轮、🔌 铜线、🔬 研究所等）保持纯 emoji 不变。
 > - `node build.js` 构建通过；全量 18 个校验脚本通过。
+### 阶段六.16：热交换器热量参数数据单源化（Heat exchanger heat params single-sourcing，本迭代新增）
+
+> 依据「所有数据/参数从 data.generated.js（factorio-data 官方）单源获取，不要单独给设备维护一套数据」
+> 原则，把此前在 `js/data/data.js` 手工维护的热交换器（heat-exchanger）三项热量参数单源进 GAME_DATA：
+> - **官方推导**：官方 `heat-exchanger`（boiler 型）`energy_source=heat` 含
+>   `specific_heat=1MJ/°C`、`max_transfer=2GW`、`min_working_temperature=500°C`、
+>   `minimum_glow_temperature=350°C`（此前热交换器因被简化为 boiler 型而误判为「无 heat_buffer → 保持手工」）。
+> - **改动**：
+>   - `tools/generate-game-data.js`：`GAME_DATA.heat` 新增 `heatExchangerSpecificHeat` / `heatExchangerMaxTransfer` /
+>     `heatExchangerMinWorkTemp` / `heatExchangerMinGlowTemp`（从官方 `energy_source` 现场桥接，未单独维护数值表）；
+>   - `js/data/data.js`：`HEAT_EXCHANGER_SPECIFIC_HEAT` / `HEAT_EXCHANGER_MAX_TRANSFER` /
+>     `HEAT_EXCHANGER_MIN_WORK_TEMP` 改从 `GAME_DATA.heat` 读取（`??` 兜底），不再硬编码字面量。
+> - **行为不变**：官方值即 1 / 2000 / 500，改造后游戏数值与官方完全一致，仅数据来源单源化。
+> - **校验**：verify-data-alignment 新增「热交换器热量参数单源化」守门人（6 项：
+>   前端常量确从 GAME_DATA 读取 + 官方值 1MJ/2GW/500°C 比对），全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 后续开发计划（迭代方向）
+
+> 基于本次全量扫描：**物品/配方 ID 与命名对齐官方、仅保留 6 个创造/虚空物品、全部设备数据从
+> data.generated.js 单源获取**均已落地并由 CI 守门人强制校验；DLC（Space Age / Quality / Elevated Rails /
+> Recycler）内容已按 roadmap 分阶段接入完毕。后续迭代方向（按价值排序）：
+1. **太空平台内部物流深化**：空间平台体系（地基/中枢/推进器/小行星收集器/空间科研包）已接入，可继续完善
+   平台内传送带/机械臂网络、推进器燃料自动管理、平台遥测远程交互。
+2. **品质系统数值深化**：品质 6 级与品质模块已接入，可继续逐项核验品质对建筑/装备数值加成与官方一致性。
+3. **存档兼容回归**：为新增 DLC 物品/配方补充存档迁移用例，确保旧档读档不报错、新物品可正常落地。
+4. **行星专属配方还原**：将部分「适配为基础资源」的 Space Age 星球配方逐步还原为官方行星专属生产链，
+   与既有行星资源矿脉（祝融钨/雷神钬）形成完整官方链。
+5. **数值体验精修**：逐项复核 DLC 设备模块槽/信号塔加成/污染排放与官方一致性，补齐遗漏。

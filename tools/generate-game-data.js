@@ -778,7 +778,8 @@ const equipment = {};
 
 // ---- 核能热量链路（反应堆 / 导热管） ----
 // 官方 heat_buffer：specific_heat("10MJ"/"1MJ")、max_transfer("10GW"/"1GW")、max_temperature=1000、
-// minimum_glow_temperature=350。热交换器在本数据集中为简化的 boiler 型（无 heat_buffer）→ 保持手工。
+// minimum_glow_temperature=350。热交换器为官方 boiler 型（energy_source=heat），其比热/最大传热/最低工作温度/最低发光温度
+// 亦从官方 energy_source 桥接（specific_heat、max_transfer、min_working_temperature、minimum_glow_temperature）。
 // reactorHeatRate：核燃料棒 8GJ / 官方燃烧 200s = 40MW。
 const heat = {};
 {
@@ -803,6 +804,19 @@ const heat = {};
   if (fuel) {
     const g = parseEnergyMJ(fuel.fuel_value);
     if (g !== null) heat.reactorHeatRate = Math.round(g / 200 * 10) / 10; // 8GJ/200s = 40MW
+  }
+  // 热交换器（heat-exchanger）：官方 boiler 型，energy_source=heat。specific_heat=1MJ/°C、
+  // max_transfer=2GW、min_working_temperature=500、minimum_glow_temperature=350（官方），
+  // 由 GAME_DATA.heat 单源桥接（此前为手工常量，本迭代单源化）。
+  const hx = raw.boiler && raw.boiler['heat-exchanger'];
+  if (hx && hx.energy_source) {
+    const es = hx.energy_source;
+    const sh = parseEnergyMJ(es.specific_heat);
+    if (sh !== null) heat.heatExchangerSpecificHeat = sh;   // 1MJ/°C
+    const mt = parsePowerMW(es.max_transfer);
+    if (mt !== null) heat.heatExchangerMaxTransfer = mt;    // 2GW=2000MW
+    if (typeof es.min_working_temperature === 'number') heat.heatExchangerMinWorkTemp = es.min_working_temperature; // 500°C
+    if (typeof es.minimum_glow_temperature === 'number') heat.heatExchangerMinGlowTemp = es.minimum_glow_temperature; // 350°C
   }
   // 太空时代供热塔（Aquilo heating-tower）：官方 reactor 原型，燃烧化学燃料产热。
   // 产热 = consumption × effectivity（官方 consumption=40MW、effectivity=2.5 → 100MW，高于核反应堆 40MW）。

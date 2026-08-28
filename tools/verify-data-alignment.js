@@ -33,7 +33,8 @@ vm.createContext(sandbox);
 const probe = src + "\n;globalThis.__GD=GAME_DATA;globalThis.__ppe=POWER_PER_ENGINE;" +
   "globalThis.__ppt=POWER_PER_TURBINE;globalThis.__esr=ENGINE_STEAM_RATE;" +
   "globalThis.__tsr=TURBINE_STEAM_RATE;globalThis.__pr=PUMP_RATE;" +
-  "globalThis.__cp=CENTRIFUGE_POWER;globalThis.__btm=BOILER_TEMP_MAX;globalThis.__bwr=BOILER_WATER_RATE;";
+  "globalThis.__cp=CENTRIFUGE_POWER;globalThis.__btm=BOILER_TEMP_MAX;globalThis.__bwr=BOILER_WATER_RATE;" +
+  "globalThis.__hxsh=HEAT_EXCHANGER_SPECIFIC_HEAT;globalThis.__hxmt=HEAT_EXCHANGER_MAX_TRANSFER;globalThis.__hxmwt=HEAT_EXCHANGER_MIN_WORK_TEMP;";
 vm.runInContext(probe, sandbox, { filename: 'data.js' });
 const GAME_DATA = sandbox.__GD;
 
@@ -84,6 +85,19 @@ check('离心机功耗=官方350', CENTRIFUGE_POWER, 350);
 console.log('\n【锅炉目标温度(°C)】');
 const BOILER_TEMP_MAX = sandbox.__btm;
 check('锅炉目标温度=官方165', BOILER_TEMP_MAX, GAME_DATA.steamPower?.boilerTargetTemp ?? 165);
+
+console.log('\n【热交换器热量参数（GAME_DATA 单源）】');
+// 官方 heat-exchanger（boiler 型）energy_source=heat：specific_heat=1MJ/°C、max_transfer=2GW、
+// min_working_temperature=500、minimum_glow_temperature=350。此前为手工常量，本迭代单源化进 GAME_DATA.heat。
+const HX_SPECIFIC_HEAT = sandbox.__hxsh;
+const HX_MAX_TRANSFER = sandbox.__hxmt;
+const HX_MIN_WORK_TEMP = sandbox.__hxmwt;
+check('热交换器比热(MJ/°C)=GAME_DATA单源', HX_SPECIFIC_HEAT, GAME_DATA.heat?.heatExchangerSpecificHeat ?? 1);
+check('热交换器最大传热(MW)=GAME_DATA单源', HX_MAX_TRANSFER, GAME_DATA.heat?.heatExchangerMaxTransfer ?? 2000);
+check('热交换器最低工作温度(°C)=GAME_DATA单源', HX_MIN_WORK_TEMP, GAME_DATA.heat?.heatExchangerMinWorkTemp ?? 500);
+check('热交换器比热=官方1', HX_SPECIFIC_HEAT, 1);
+check('热交换器最大传热=官方2GW', HX_MAX_TRANSFER, 2000);
+check('热交换器最低工作温度=官方500', HX_MIN_WORK_TEMP, 500);
 
 console.log('\n【机械臂旋转速度相对倍率】');
 // 官方 rotation_speed：普通 0.014、快速/堆叠 0.04、长臂 0.02、热能 0.013

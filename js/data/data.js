@@ -73,12 +73,12 @@ const URANIUM_CENTRIFUGE_KOVAREX_TIME = 60; // Kovarex 富集耗时（秒）
 const HEAT_MAX_TEMP = GAME_DATA.heat?.reactorMaxTemp ?? 1000;   // 所有 heat buffer 最高温度 1000°C（官方 max_temperature）
 const REACTOR_SPECIFIC_HEAT = GAME_DATA.heat?.reactorSpecificHeat ?? 10;  // 反应堆比热 10MJ/°C（官方）
 const HEAT_PIPE_SPECIFIC_HEAT = GAME_DATA.heat?.heatPipeSpecificHeat ?? 1; // 导热管比热 1MJ/°C（官方）
-const HEAT_EXCHANGER_SPECIFIC_HEAT = 1;    // 热交换器比热 1MJ/°C（官方，本数据集中为简化锅炉型 → 手工）
+const HEAT_EXCHANGER_SPECIFIC_HEAT = GAME_DATA.heat?.heatExchangerSpecificHeat ?? 1;    // 热交换器比热 1MJ/°C（官方 energy_source specific_heat，GAME_DATA 单源）
 const REACTOR_MAX_TRANSFER = GAME_DATA.heat?.reactorMaxTransfer ?? 10000;  // 反应堆最大传热 10GW=10000MW（官方 max_transfer）
 const HEAT_PIPE_MAX_TRANSFER = GAME_DATA.heat?.heatPipeMaxTransfer ?? 1000; // 导热管最大传热 1GW=1000MW（官方 max_transfer）
-const HEAT_EXCHANGER_MAX_TRANSFER = 2000;  // 热交换器最大传热 2GW=2000MW（官方 max_transfer，手工）
+const HEAT_EXCHANGER_MAX_TRANSFER = GAME_DATA.heat?.heatExchangerMaxTransfer ?? 2000;  // 热交换器最大传热 2GW=2000MW（官方 energy_source max_transfer，GAME_DATA 单源）
 const REACTOR_HEAT_RATE = GAME_DATA.heat?.reactorHeatRate ?? 40;  // 反应堆热功率 40MW（铀燃料棒 8GJ / 200s，官方）
-const HEAT_EXCHANGER_MIN_WORK_TEMP = 500;  // 热交换器最低工作温度 500°C（官方 min_working_temperature，手工）
+const HEAT_EXCHANGER_MIN_WORK_TEMP = GAME_DATA.heat?.heatExchangerMinWorkTemp ?? 500;  // 热交换器最低工作温度 500°C（官方 energy_source min_working_temperature，GAME_DATA 单源）
 const HEAT_PIPE_MIN_GLOW_TEMP = GAME_DATA.heat?.heatPipeMinGlowTemp ?? 350; // 导热管/热设备最低发光温度 350°C（官方 minimum_glow_temperature）
 const HEAT_EXCHANGER_ENERGY_PER_STEAM = 20;// 热交换器每产 1 单位蒸汽需消耗热量(MJ)，满产(2单位/s)恰好消耗反应堆 40MW 热功率
 const HEAT_EXCHANGER_STEAM_RATE = 2.0;     // 热交换器满功率产汽速率（单位/秒）
