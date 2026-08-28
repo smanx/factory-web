@@ -208,6 +208,8 @@ const RECIPES = {
   'thruster': { time: 10, inp: { 'steel-plate': 10, 'processing-unit': 10, 'electric-engine-unit': 5 }, out: { 'thruster': 1 } },
   // 小行星收集器：低密度结构 + 电动机 + 处理器 → 收集器（官方 asteroid-collector 10s，20低密+8电动机+5处理器→1）
   'asteroid-collector': { time: 10, inp: { 'low-density-structure': 20, 'electric-engine-unit': 8, 'processing-unit': 5 }, out: { 'asteroid-collector': 1 } },
+  // 太空科研包（空间平台中枢生产，对齐官方 space-science-pack 2.1.17：15s，2铁板+1碳+1冰→5，官方需微重力=空间平台，此处适配为中枢专属）
+  'space-science-pack': { time: 15, inp: { 'iron-plate': 2, 'carbon': 1, 'ice': 1 }, out: { 'space-science-pack': 5 } },
   // ===== 太空时代 Space Age 材料链（数据来自官方 factorio-data，见 GAME_DATA）=====
   // 碳纤维：碳 → 碳纤维（官方 carbon-fiber 由 yumako-mash+碳，此处适配为化工厂碳加工，耗时 5s）
   'carbon-fiber': { time: 5, inp: { 'yumako-mash':10, 'carbon':1 }, out: { 'carbon-fiber':1 } },
@@ -624,7 +626,7 @@ function isFoundryRecipe(id) { return FOUNDRY_RECIPES.indexOf(id) >= 0; }
 const AGRICULTURE_TOWER_RECIPES = ['yumako-growing', 'jellynut-growing'];
 function isAgricultureTowerRecipe(id) { return AGRICULTURE_TOWER_RECIPES.indexOf(id) >= 0; }
 // 空间平台中枢专属配方（太空时代空间平台产品）：地基 / 起始包 / 中枢本体
-const HUB_RECIPES = ['space-platform-foundation', 'space-platform-starter-pack', 'space-platform-hub'];
+const HUB_RECIPES = ['space-platform-foundation', 'space-platform-starter-pack', 'space-platform-hub', 'space-science-pack'];
 function isHubRecipe(id) { return HUB_RECIPES.indexOf(id) >= 0; }
 // 低温工厂专属配方（太空时代 Aquilo 低温产品）：氨 / 氟 / 氟酮 / 低温科研包 / 低温工厂本体
 const CRYO_RECIPES = ['ammonia', 'fluorine', 'fluoroketone-cold', 'fluoroketone-hot', 'cryogenic-science-pack', 'cryogenic-plant', 'foundation', 'ice-platform'];
@@ -655,7 +657,7 @@ function itemNoRecipeReason(id) {
   if (RAW_RESOURCES.indexOf(id) >= 0) return '天然资源，无合成配方，需开采/采集获得';
   if (id.indexOf('creative-') === 0 || id.indexOf('void-') === 0 ) return '测试物品，无合成配方';
   if (id === 'rocket-part') return '由火箭发射井逐件组装获得，无手工配方';
-  if (id === 'space-science-pack') return '卫星发射后由火箭发射井产出，无合成配方';
+  if (id === 'space-science-pack') return '由卫星发射（火箭发射井）或空间平台中枢合成获得';
   if (id === 'depleted-uranium-fuel-cell') return '核燃料棒反应后的副产物，无法合成';
   if (id === 'barrel') return '由灌装机倒空流体桶后获得';
   if (id.indexOf('-barrel') >= 0) return '由灌装机灌装对应流体获得';

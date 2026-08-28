@@ -415,7 +415,7 @@ const ITEMS = {
   'deconstruction-planner': {emoji: '🟥',  name: '拆除规划器', color: '#d04848', mark: '拆', desc: '手持规划器：选中后进入红图框选模式，框选一块区域即可批量拆除其中的建筑（装备个人机器人港后改由施工机器人拆除）。对齐《异星工厂》Deconstruction planner' },
   'upgrade-planner': {emoji: '🟩',  name: '升级规划器', color: '#57b95c', mark: '升', desc: '手持规划器：选中后进入绿图框选模式，框选一块区域后可批量升级/降级其中的建筑。对齐《异星工厂》Upgrade planner' },
   // ===== 空间科学包（对齐《异星工厂》Space science pack，火箭发射产出） =====
-  'space-science-pack': {emoji: '⚪',  name: '空间科学包', color: '#d0d0e0', mark: 'SC', desc: '由卫星成功发射后获得的高级科学包，用于终局无限科研（科研速度/采矿产能等）' },
+  'space-science-pack': {emoji: '⚪',  name: '空间科学包', color: '#d0d0e0', mark: 'SC', desc: '高级科学包：由卫星成功发射（火箭发射井）或空间平台中枢合成获得（2铁板+1碳+1冰→5），用于终局无限科研（科研速度/采矿产能等）' },
 
   'promethium-science-pack': {emoji: '🟣',  name: '钷素科研包', color: '#5a4ad8', mark: 'PSP', desc: '太空时代终极科研包（钷素 Promethium，堆叠 200）：由钷素星块+超导体+生物结晶在电磁工厂/空间平台中枢制得，解锁太空时代终局科技（对齐《异星工厂》Space Age Promethium science pack）' },
   // ===== 太空时代 Aquilo 低温学链（数据来自 factorio-data 官方，见 GAME_DATA）=====
