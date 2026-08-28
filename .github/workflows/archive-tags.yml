@@ -1,0 +1,74 @@
+name: Archive Tags to history
+
+# 仅手动触发
+on:
+  workflow_dispatch:
+    inputs:
+      tag_pattern:
+        description: 'Tag 筛选（glob 形式，例如 "v*"）。留空则自动匹配所有版本号形式的 tag（如 1.2.3 / v2.0.0 / 1.0.0-beta）'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: archive-tags
+  cancel-in-progress: true
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出完整历史与全部 tag
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # 拉取完整历史，确保每个 tag 都能被还原
+          fetch-tags: true
+
+      - name: 收集需要归档的 tag
+        id: tags
+        run: |
+          set -e
+          PATTERN="${{ github.event.inputs.tag_pattern }}"
+          if [ -n "$PATTERN" ]; then
+            git tag -l "$PATTERN" > work_tags.txt
+          else
+            # 版本号形式的 tag：1.2.3 / v1.2.3 / 带 -beta 等后缀
+            git tag -l | grep -E '^v?[0-9]+(\.[0-9]+)*(-[0-9A-Za-z.-]+)?$' > work_tags.txt || true
+          fi
+          # tag 名将作为目录名，若含斜杠则替换，避免被识别为目录层级
+          sed -i 's|/|_|g' work_tags.txt
+          sort -u -o work_tags.txt work_tags.txt
+          echo "count=$(wc -l < work_tags.txt)" >> "$GITHUB_OUTPUT"
+          echo "匹配到 $(wc -l < work_tags.txt) 个 tag"
+
+      - name: 并行拉取并还原每个 tag
+        # 每个 tag 检出到独立的 <tag> 目录（目录之间互不干扰，因此可用 -P 并行）
+        # git archive 还原该 tag 提交时的原始文件树（不含 factorio-data 子模块的实际内容，仅保留其 gitlink）
+        run: |
+          set -e
+          mkdir -p export
+          if [ -s work_tags.txt ]; then
+            cat work_tags.txt | xargs -P "$(nproc)" -I{} bash -c '
+              set -e
+              mkdir -p "export/{}"
+              git archive "{}" | tar -x -C "export/{}"
+            '
+          else
+            echo "没有匹配到可归档的版本号 tag"
+          fi
+
+      - name: 强制推送所有 tag 目录到 history 分支（覆盖重建）
+        if: steps.tags.outputs.count != '0'
+        run: |
+          cd export
+          git init
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git checkout -b history
+          git add -A
+          git commit -m "history: $(date -u +'%Y-%m-%dT%H:%M:%SZ') archive of $(wc -l < ../work_tags.txt) tags"
+          git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          git push -f origin history
