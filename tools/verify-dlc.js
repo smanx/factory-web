@@ -1783,6 +1783,23 @@ ok(THR.effectivity === 0.51, '官方推进器能量效率 effectivity=0.51');
 }
 
 
+// ---- 聚变发电链数据单源化（GAME_DATA.fusion，官方 fusion-reactor/generator）----
+console.log('\n【聚变发电链 FUSION 数据单源化】');
+const FUS = GD.fusion || {};
+ok(FUS.reactorPowerInput === 10, '官方聚变反应堆耗电 power_input=10MW');
+ok(FUS.reactorFluidUsage === 4, '官方聚变反应堆冷却剂消耗 max_fluid_usage=4/s（氟酮冷液）');
+ok(FUS.generatorMaxPower === 50000, '官方聚变发电机满功率 output_flow_limit=50MW（50000kW）');
+{
+  const dSrc = fs.readFileSync(ROOT + '/js/data/data.js', 'utf8');
+  ok(/FUSION_GENERATOR_MAX_POWER = GAME_DATA\.fusion\?/.test(dSrc), '聚变发电机满功率从 GAME_DATA.fusion 单源读取');
+  ok(!/FUSION_GENERATOR_MAX_POWER = 50000;/.test(dSrc), '聚变发电机满功率不再硬编码 50000');
+  ok(/FUSION_REACTOR_FLUID_USAGE = GAME_DATA\.fusion\?/.test(dSrc), '聚变反应堆冷却剂消耗从 GAME_DATA.fusion 单源读取');
+  ok(/FUSION_REACTOR_POWER_INPUT = GAME_DATA\.fusion\?/.test(dSrc), '聚变反应堆耗电从 GAME_DATA.fusion 单源读取');
+  const fSrc = fs.readFileSync(ROOT + '/js/devices/fusion.js', 'utf8');
+  ok(/FUSION_REACTOR_FLUID_USAGE/.test(fSrc) && /fluoroketone-cold/.test(fSrc), 'fusion.js 聚变反应堆已接入氟酮冷液冷却剂消耗（官方 GAME_DATA 单源）');
+}
+
+
 // ===== 空间平台起始包发射（火箭发射起始包→空间平台，本迭代新增）=====
 console.log('\n【空间平台起始包发射 ROCKET STARTER-PACK】');
 {

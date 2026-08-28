@@ -980,6 +980,27 @@ const thruster = {};
   }
 }
 
+
+// ---- 聚变发电链（太空时代 Aquilo Fusion）----
+// 官方 fusion-reactor 提供 power_input（耗电 10MW）、max_fluid_usage（每秒消耗氟酮冷液单位）、
+// fusion-generator 提供 output_flow_limit（满功率 50MW）。项目将其单源化进 GAME_DATA.fusion，
+// 前端 fusion.js / data.js 读取，不再单独维护聚变发电数值表。
+const fusion = {};
+{
+  const fr = raw['fusion-reactor'] && raw['fusion-reactor']['fusion-reactor'];
+  if (fr) {
+    const pi = parsePowerMW(fr.power_input);
+    if (pi !== null) fusion.reactorPowerInput = pi;                 // MW（官方 10MW 耗电）
+    if (typeof fr.max_fluid_usage === 'number') fusion.reactorFluidUsage = fr.max_fluid_usage * 60;  // 每秒氟酮冷液单位（0.0667/tick→4/s）
+  }
+  const fg = raw['fusion-generator'] && raw['fusion-generator']['fusion-generator'];
+  if (fg) {
+    const es = fg.energy_source;
+    const om = es && parsePowerMW(es.output_flow_limit);
+    if (om !== null) fusion.generatorMaxPower = om * 1000;          // kW（官方 output_flow_limit 50MW）
+  }
+}
+
 // ---- 设备占地面积（格，官方 selection_box）----
 // 项目建筑 id → [官方 raw 类型, 官方原型名]。占地 = selection_box 的右界减左界（格）。
 // 官方 2.0 类型变更：gun-turret=ammo-turret、laser-turret=electric-turret、
@@ -1326,6 +1347,7 @@ Object.assign(GAME_DATA, {
   enemy,
   fuelEnergy,
   thruster,
+  fusion,
 });
 
 // ---- recipe ----

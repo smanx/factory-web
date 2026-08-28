@@ -7766,6 +7766,11 @@ const GAME_DATA = {
   "fluidVolume": 0.8,
   "effectivity": 0.51
  },
+ "fusion": {
+  "reactorPowerInput": 10,
+  "reactorFluidUsage": 4,
+  "generatorMaxPower": 50000
+ },
  "recycling": {
   "scrap": {
    "time": 0.2,

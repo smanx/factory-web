@@ -1703,3 +1703,24 @@ API/中枢货舱信号/推进器液位信号/三设备均实现输出/面板提�
 
 **校验**：`verify-dlc` 新增「火箭→空间平台直投」守门人（6 项：findSpacePlatformHub 存在/按类型查找/
 直投逻辑/优先取中枢/投递至平台货舱/提示区分），全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段六.22：聚变发电链数据单源化（Fusion power single-sourcing，本迭代新增）
+
+> 依据「所有数据/参数从 data.generated.js（factorio-data 官方）单源获取，不要单独给设备维护一套数据」
+> 原则，把此前在 `js/data/data.js` 硬编码的三项聚变发电数值单源进 GAME_DATA：
+> - **官方推导**：
+>   - 聚变发电机满功率 = 官方 `fusion-generator` `energy_source.output_flow_limit` = **50MW**（50000kW）；
+>   - 聚变反应堆耗电 = 官方 `fusion-reactor` `power_input` = **10MW**；
+>   - 聚变反应堆冷却剂消耗 = 官方 `max_fluid_usage`（0.0667/tick × 60）= **4 氟酮冷液/秒**。
+> - **改动**：
+>   - `tools/generate-game-data.js`：新增 `GAME_DATA.fusion`（reactorPowerInput / reactorFluidUsage /
+>     generatorMaxPower，从 factorio-data 现场提取，未单独维护数值表）；
+>   - `js/data/data.js`：`FUSION_GENERATOR_MAX_POWER` / `FUSION_REACTOR_POWER_INPUT` /
+>     `FUSION_REACTOR_FLUID_USAGE` 改从 `GAME_DATA.fusion` 读取（均 `??` 兜底），不再硬编码字面量；
+>   - `js/devices/fusion.js`：聚变反应堆新增**氟酮冷液冷却剂**消耗（官方 input_fluid_box
+>     filter=fluoroketone-cold），从相邻管道按 `FUSION_REACTOR_FLUID_USAGE`（4/s）吸取冷却剂，
+>     冷却剂充足时产等离子体、不足时按可用比例节流（热量仍产出）——补全官方「氟酮冷液冷却 → 产 Plasma」链路。
+> - **行为**：官方值即 50MW / 10MW / 4s，改造后游戏数值与官方完全一致，仅数据来源单源化；
+>   冷却剂为新增要求，旧档 `coolantBuf` 自动补空不报错，未接氟酮冷液时等离子体节流、热量不受影响。
+> - **校验**：verify-dlc 新增「聚变发电链数据单源化」守门人（8 项：官方 3 数值 + 3 前端单源读取 +
+>   冷却剂接入），全量 18 个校验脚本通过，`node build.js` 构建通过。
