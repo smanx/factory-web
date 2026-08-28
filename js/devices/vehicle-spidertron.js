@@ -245,7 +245,7 @@ class Spidertron extends Tank {
     const nx = cx + mx * speed * dt, ny = cy + my * speed * dt;
     // 蜘蛛可跨水/墙，仅需避开其他建筑实体
     const r = 14;
-    let okX = !boxBlocked(nx, cy, r), okY = !boxBlocked(cx, ny, r);
+    let okX = !terrainBoxBlocked(nx, cy, r), okY = !terrainBoxBlocked(cx, ny, r);
     let ntx = this.x, nty = this.y;
     if (okX) ntx = Math.floor(nx / TILE);
     if (okY) nty = Math.floor(ny / TILE);

@@ -24,14 +24,31 @@ function makePlayer(tx, ty) {
   };
 }
 
-function solidAtPx(px, py) {
+// 仅地形碰撞（水/峭壁/树木），不含建筑——供蜘蛛机器人等可跨越建筑/石墙的单位使用
+function terrainSolidAtPx(px, py) {
   const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE);
-  // 玩家/载具碰撞：水、峭壁与树木均不可通行（对齐《异星工厂》：树与 Cliff 均阻隔移动，需砍伐/清除才能通过）
   return isWater(tx, ty) || isCliff(tx, ty) || isTree(tx, ty);
 }
 
+function solidAtPx(px, py) {
+  const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE);
+  // 玩家/载具碰撞：水、峭壁与树木均不可通行（对齐《异星工厂》：树与 Cliff 均阻隔移动，需砍伐/清除才能通过）
+  if (terrainSolidAtPx(px, py)) return true;
+  // 建筑碰撞：可建造的实心建筑阻挡移动（传送带/机械臂除外，对齐《异星工厂》：玩家可站上传送带被推动，机械臂也不占行走格）
+  const e = entAt(tx, ty);
+  if (e && e.solid && !(e instanceof Belt) && !(e instanceof Inserter)) return true;
+  return false;
+}
+
+// 仅地形碰撞的 boxBlocked（供蜘蛛机器人等保留跨水/墙能力，不受建筑碰撞影响）
+function terrainBoxBlocked(cx, cy, r) {
+  if (G.dbg && G.dbg.noclip) return false;
+  return terrainSolidAtPx(cx - r, cy - r) || terrainSolidAtPx(cx + r, cy - r) ||
+         terrainSolidAtPx(cx - r, cy + r) || terrainSolidAtPx(cx + r, cy + r);
+}
+
 function boxBlocked(cx, cy, r) {
-  // 开发者调试：主角无视碰撞（穿越水/峭壁/树木等障碍）
+  // 开发者调试：主角无视碰撞（穿越水/峭壁/树木/建筑等障碍）
   if (G.dbg && G.dbg.noclip) return false;
   return solidAtPx(cx - r, cy - r) || solidAtPx(cx + r, cy - r) ||
          solidAtPx(cx - r, cy + r) || solidAtPx(cx + r, cy + r);
