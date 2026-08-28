@@ -315,7 +315,8 @@ const VIRTUAL_SIGNALS = {
   'signal-rocket-launch': '火箭发射中',
   'signal-T': '游戏时钟tick',
   'signal-D': '游戏天数',
-  'signal-L': '昼夜长度'
+  'signal-L': '昼夜长度',
+  'signal-any-quality': '任意品质信号'
 };
 // 判断某信号名是否为虚拟信号（各列表/输入框均识别）
 function isVirtualSignal(sig) { return Object.prototype.hasOwnProperty.call(VIRTUAL_SIGNALS, sig); }
