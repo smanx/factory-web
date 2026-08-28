@@ -1,5 +1,11 @@
 'use strict';
 
+// 屏幕右下角访客徽章下方显示打包版本号：由 build.js 在 bundle 顶部注入 __BUILD_VERSION__
+(function () {
+  const el = document.getElementById('ver-corner-text');
+  if (el) el.textContent = window.__BUILD_VERSION__ || 'dev';
+})();
+
 function initPanelEvents() {
   // 弹框支持点中标题栏拖动
   makeTitleDraggable(document.getElementById('panel'), document.getElementById('panel-head'));
@@ -834,6 +840,55 @@ function initPanelEvents() {
     }
     if (typeof refreshHotbar === 'function') refreshHotbar();
   });
+
+  // ===== 存档管理面板（独立于 #panel-body 的事件分发）=====
+  const saveOv = document.getElementById('save-manage-overlay');
+  if (saveOv) {
+    // 关闭按钮
+    const saveClose = document.getElementById('save-manage-close');
+    if (saveClose) saveClose.addEventListener('click', () => closeSaveManage());
+    // 点击遮罩空白处关闭
+    saveOv.addEventListener('click', ev => { if (ev.target === saveOv) closeSaveManage(); });
+    // 存档操作按钮（复用与设置面板一致的快存/读档/覆盖/删除/导出/导入）
+    saveOv.addEventListener('click', async ev => {
+      const btn = ev.target.closest && ev.target.closest('[data-action]');
+      if (!btn) return;
+      const act = btn.dataset.action;
+      const id = btn.dataset.id;
+      if (act === 'quick-save') { await saveGame(); await renderSaveManage(); }
+      else if (act === 'quick-load') {
+        const newest = (await listAllSaves())[0];
+        if (newest) { await loadGame(newest.id); closeSaveManage(); if (typeof closePauseMenu === 'function') closePauseMenu(); } else { toast('暂无存档'); }
+      }
+      else if (act === 'load-save') { await loadGame(id); closeSaveManage(); if (typeof closePauseMenu === 'function') closePauseMenu(); }
+      else if (act === 'overwrite-save') { await saveGame(id); await renderSaveManage(); }
+      else if (act === 'delete-save') { await deleteSave(id); toast('已删除存档'); await renderSaveManage(); }
+      else if (act === 'export-save') { if (typeof exportSave === 'function') await exportSave(id); }
+      else if (act === 'exp-save') { downloadSave(); if (ev.preventDefault) ev.preventDefault(); }
+      else if (act === 'imp-save') {
+        const impFile = document.getElementById('save-manage-imp-file');
+        if (impFile) impFile.click();
+      }
+    });
+    // 从文件导入存档（change 事件会冒泡到 saveOv）：读取选中文件后导入并刷新列表
+    saveOv.addEventListener('change', ev => {
+      if (ev.target.id !== 'save-manage-imp-file') return;
+      const f = ev.target.files[0];
+      if (!f) return;
+      const rd = new FileReader();
+      rd.onload = async () => {
+        ev.target.value = '';   // 重置，保证再次选择同一文件也能触发 change
+        try {
+          await importSaveFile(rd.result);
+          await renderSaveManage();
+        } catch (err) {
+          toast('导入失败：' + err.message);
+        }
+      };
+      rd.onerror = () => { toast('读取文件失败'); };
+      rd.readAsArrayBuffer(f);
+    });
+  }
 }
 
 // 设备面板「原料」槽取出：从设备输入缓存取 1 件指定原料回背包（供右键/左上角 − 按钮调用）
@@ -884,6 +939,7 @@ async function htmlSettings() {
   h += '<label class="setrow"><input type="checkbox" data-set="weather"' + (G.settings.weather !== false ? ' checked' : '') + '> 天气（阴云氛围，阴天时整体略暗）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="daylight"' + (G.settings.daylight !== false ? ' checked' : '') + '> 日照光照（昼夜明暗随时间变化）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="altMode"' + (G.settings.altMode ? ' checked' : '') + '> ALT 模式（建筑上显示配方/内容，Alt 键切换）</label>';
+  h += '<label class="setrow"><input type="checkbox" data-set="showReach"' + (G.settings.showReach ? ' checked' : '') + '> 显示建造范围（角色周围画出可建造/交互范围圆圈）</label>';
   h += '<div class="sec">音效</div>';
   h += '<label class="setrow"><input type="checkbox" data-set="music"' + (G.settings.music !== false ? ' checked' : '') + '> 背景音乐（可单独开关）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="sound"' + (G.settings.sound ? ' checked' : '') + '> 游戏音效（建造/拆除/射击/爆炸等）</label>';
@@ -931,17 +987,10 @@ async function htmlSettings() {
     }
     if (!_anyCargo) h += '<div class="dim">当前无在途轨道货物。在火箭发射井装入货物并选择目标星球发射后，物资会送往目标星球轨道，抵达后自动交付。</div>';
   }
-  h += '<div class="sec">存档管理</div>';
-  h += '<button data-action="quick-save">➕ 新建存档</button> ';
-  h += '<button data-action="quick-load">读取最新存档</button>';
-  h += '<button data-action="exp-save">导出存档到文件</button> ';
-  h += '<button data-action="imp-save">从文件导入存档</button>';
-  h += '<input type="file" id="imp-file" accept=".json,.gz,.json.gz,application/json,application/gzip" style="display:none">';
-  h += '<div class="hint">自动存档保留最近 3 个（旧的自动覆盖）；用户可自行新建/覆盖/读取/删除存档。</div>';
-  h += await saveListHtml();
   h += '<div class="sec">退出</div>';
   h += '<button data-action="quit-to-menu" style="color:#ff8a8a">🚪 退出到主页面</button>';
   h += '<div class="hint">退出到开始菜单，游戏进度请先保存（新建存档后自动持久化）。</div>';
+  h += '<div class="ver-line">版本 ' + escHtml(window.__BUILD_VERSION__ || 'dev') + '</div>';
   return h;
 }
 
@@ -964,6 +1013,7 @@ async function saveListHtml() {
     h += '    <div class="save-item-ops">';
     h += '      <button data-action="load-save" data-id="' + s.id + '" title="读取该存档">📂 读取</button>';
     h += '      <button data-action="overwrite-save" data-id="' + s.id + '" title="用当前进度覆盖该存档">💾 覆盖</button>';
+    h += '      <button data-action="export-save" data-id="' + s.id + '" title="单独导出该存档为文件">📦 导出</button>';
     h += '      <button data-action="delete-save" data-id="' + s.id + '" title="删除该存档">🗑 删除</button>';
     h += '    </div>';
     h += '  </div>';
@@ -972,6 +1022,44 @@ async function saveListHtml() {
   }
   h += '</div>';
   return h;
+}
+
+// ===== 存档管理面板 =====
+// 供游戏菜单“保存游戏/载入存档”打开；功能与原设置面板的存档管理完全一致
+// （新建/读取最新/导出/导入 + 每条存档的读取/覆盖/删除）。
+function openSaveManage() {
+  const ov = document.getElementById('save-manage-overlay');
+  if (!ov) return;
+  ov.classList.remove('hidden');   // 打开存档管理页（游戏菜单仍处于暂停态）
+  renderSaveManage();
+}
+function closeSaveManage() {
+  const ov = document.getElementById('save-manage-overlay');
+  if (ov) ov.classList.add('hidden');
+}
+function isSaveManageOpen() {
+  const ov = document.getElementById('save-manage-overlay');
+  return !!ov && !ov.classList.contains('hidden');
+}
+async function renderSaveManage() {
+  const body = document.getElementById('save-manage-body');
+  if (!body) return;
+  // 首页（开始菜单，G.inMenu=true）打开时当前并无进行中的游戏，
+  // 无法“新建存档”或“导出当前游戏为文件”，置灰并禁用这两个按钮。
+  const inHome = !!(typeof G !== 'undefined' && G.inMenu);
+  const dis = inHome ? ' disabled' : '';
+  let h = '<div class="save-actions">';
+  h += '<button data-action="quick-save"' + dis + ' title="' + (inHome ? '主页无进行中的游戏，不可存档' : '新建存档') + '">➕ 新建存档</button>';
+  h += '<button data-action="quick-load">读取最新存档</button>';
+  h += '<button data-action="exp-save"' + dis + ' title="' + (inHome ? '主页无进行中的游戏，不可导出' : '导出当前游戏为文件') + '">导出存档到文件</button>';
+  h += '<button data-action="imp-save">从文件导入存档</button>';
+  h += '</div>';
+  h += '<input type="file" id="save-manage-imp-file" accept=".json,.gz,.json.gz,application/json,application/gzip" style="display:none">';
+  h += '<div class="hint">自动存档保留最近 3 个（旧的自动覆盖）；用户可自行新建/覆盖/读取/删除存档。</div>';
+  h += await saveListHtml();
+  if (document.getElementById('save-manage-overlay') && !document.getElementById('save-manage-overlay').classList.contains('hidden')) {
+    body.innerHTML = h;
+  }
 }
 
 // 背包物品点击：把任意物品（设备/材料/工具）放入鼠标选中状态。

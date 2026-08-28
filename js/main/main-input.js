@@ -62,18 +62,26 @@ function bindInput() {
     // C 键：在左下角快捷栏武器槽中从左到右循环切换当前武器（无武器则不切换）
     else if (k === 'c') { if (typeof cycleQuickbarWeapon === 'function') cycleQuickbarWeapon(); }
     else if (k === 'escape') {
-      // ESC 键：优先关闭当前打开的任何弹框/面板（驾驶界面/蓝图/拆除模式/面板）
-      if (G.driving) { if (typeof exitCar === 'function') exitCar(); }
-      else if (G.blueMode) {
+      // ESC 键：弹框从最上层逐层往下关闭（确认 → 存档管理 → 面板 → 游戏菜单）；
+      // 仅剩游戏界面（驾驶/蓝图/拆除等状态）则处理对应状态；若无任何弹框则直接打开游戏菜单。
+      if (isConfirmOpen()) {
+        closeConfirm();                          // 最上层：二级确认弹框
+      } else if (isSaveManageOpen()) {
+        closeSaveManage();                       // 存档管理面板
+      } else if (G.panelMode) {
+        closePanel();                            // 设置/背包/设备等面板
+      } else if (isPauseMenuOpen()) {
+        closePauseMenu();                        // 游戏菜单
+      } else if (G.driving) {
+        if (typeof exitCar === 'function') exitCar();
+      } else if (G.blueMode) {
         cancelBlueprint();
       } else if (G.deconstructMode) {
         toggleDeconstructMode(false);
-      } else if (G.panelMode) {
-        closePanel();
       }
-      // 当前页面没有任何弹框和面板时：打开设置弹框
+      // 游戏界面无任何弹框：直接展开游戏菜单并暂停
       else {
-        openPanel('set');
+        openPauseMenu();
       }
     }
     else if (k === 'q') {
@@ -523,7 +531,7 @@ function loop(ts) {
       // 的输入框，打断中文输入法并清空已输入内容。改用轻量计数刷新（不改 DOM 结构）。
       // 整面板的重建只发生在打开面板或用户在面板内交互时（renderPanel）。
       if (G.panelMode === 'inv' && !isPanelTyping()) updateInvLive();
-      else if (G.panelMode === 'tech' && !isPanelTyping()) renderPanel(false);
+      else if (G.panelMode === 'tech' && !isPanelTyping()) updateTechLive();
       uiDirty = false;
     }
     updateHUD(TICK, Math.round(fpsSmooth), Math.round(upsSmooth));
@@ -552,6 +560,7 @@ function boot() {
     ['tutorial', () => initTutorial()],
     ['debug', () => buildDebug()],
     ['deathmenu', () => initDeathMenu()],
+    ['pausemenu', () => initPauseMenu()],
     ['input', () => bindInput()]
   ];
   for (const [name, fn] of steps) {

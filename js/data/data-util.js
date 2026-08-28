@@ -1,6 +1,6 @@
 'use strict';
 
-const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: true, combat: false, capDPR: true, lowRes: false, minimap: true, sound: true, soundVol: 0.8, altMode: true, weather: false, daylight: false, music: true, language: 'zh' };  // sound:音效开关 soundVol:音量0~1  altMode:ALT模式(建筑配方/内容叠加显示)  language:界面数据语言('zh'中文/'en'English)
+const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: true, combat: false, capDPR: true, lowRes: false, minimap: true, sound: true, soundVol: 0.8, altMode: true, weather: false, daylight: false, music: true, language: 'zh', showReach: false };  // sound:音效开关 soundVol:音量0~1  altMode:ALT模式(建筑配方/内容叠加显示)  language:界面数据语言('zh'中文/'en'English)  showReach:显示角色建造范围圆圈(默认关闭)
 const SETTINGS_KEY = 'factory-settings-v1';
 
 // ===== 多语言名称（官方 locale 数据，见 GAME_DATA.names / GAME_DATA.recipeNames）=====
@@ -13,45 +13,62 @@ function localizedName(id, manual) {
   return manual || id;
 }
 
-
-// ===== 重复 emoji 图标颜色区分 =====
-// 许多物品共用同一个 emoji（如 ⛏️ 矿石/采矿机、📦 各箱/装载机等）。
-// 为让玩家能区分同 emoji 的不同物品，对「其 emoji 被至少两种物品共用」的物品，
-// 在图标左下角叠加一个小圆点色标，颜色取该物品自身的 color，作为视觉区分键。
-let _EMOJI_DUP_SET = null;
-function _emojiDupSet() {
-  if (_EMOJI_DUP_SET) return _EMOJI_DUP_SET;
-  const cnt = {};
-  for (const k in ITEMS) {
-    const e = ITEMS[k].emoji;
-    if (e) cnt[e] = (cnt[e] || 0) + 1;
+// ===== emoji 去重彩色角标（区分共用同一 emoji 的物品）=====
+// 惰性计算（首次绘制时执行，此时 ITEMS 已含品质变体）：找出被多个物品共用的 emoji，
+// 为其对应物品绘制彩色角标；若同一 emoji 组内 color 也相同（纯色角标无法区分），
+// 则在该角标上额外叠加一个 mark/名称首字符字母来进一步区分。
+let _emojiDupCache = null;
+function _emojiDupInfo() {
+  if (_emojiDupCache) return _emojiDupCache;
+  const byEmoji = {};
+  for (const id in ITEMS) {
+    const e = ITEMS[id].emoji;
+    if (e) (byEmoji[e] = byEmoji[e] || []).push(id);
   }
-  _EMOJI_DUP_SET = new Set();
-  for (const k in ITEMS) {
-    const e = ITEMS[k].emoji;
-    if (e && cnt[e] > 1) _EMOJI_DUP_SET.add(k);
+  const dupEmoji = new Set();       // 被多个物品共用的 emoji
+  const colorConflict = new Set();  // 同一 emoji 组内存在相同 color（需叠加字母）
+  for (const e in byEmoji) {
+    const ids = byEmoji[e];
+    if (ids.length < 2) continue;
+    dupEmoji.add(e);
+    const cnt = {};
+    for (const id of ids) { const c = ITEMS[id].color; if (c) cnt[c] = (cnt[c] || 0) + 1; }
+    for (const c in cnt) if (cnt[c] > 1) { colorConflict.add(e); break; }
   }
-  return _EMOJI_DUP_SET;
+  _emojiDupCache = { dupEmoji, colorConflict };
+  return _emojiDupCache;
 }
-function isEmojiDuplicated(id) { return _emojiDupSet().has(id); }
-// 在 emoji 图标左下角绘制小圆点色标（用物品自身 color），带深色描边保证可见。
+
+// 在 emoji 图形右下角绘制去重角标：小圆点填充 item 颜色；颜色冲突时叠加字母。
 function drawEmojiDupBadge(x, id, r) {
-  if (!isEmojiDuplicated(id)) return;
-  const bc = ITEMS[id].color || '#888';
-  const bd = r * 0.34;                 // 色标半径（随图标尺寸缩放）
-  const px = -r * 0.92 + bd * 0.55;    // 左下角定位
-  const py = r * 0.92 - bd * 0.55;
-  x.save();
-  // 深色描边环，保证在任意背景下可见
-  x.beginPath();
-  x.arc(px, py, bd, 0, Math.PI * 2);
-  x.fillStyle = 'rgba(10,14,18,.75)';
-  x.fill();
-  x.beginPath();
-  x.arc(px, py, bd * 0.72, 0, Math.PI * 2);
-  x.fillStyle = bc;
-  x.fill();
-  x.restore();
+  const { dupEmoji, colorConflict } = _emojiDupInfo();
+  const emoji = ITEMS[id].emoji;
+  if (!emoji || !dupEmoji.has(emoji)) return;
+  const needLabel = colorConflict.has(emoji);
+  const d = r * 0.6;                   // 角标圆点直径
+  const px = r * 0.82, py = -r * 0.82; // 右上角定位（相对图标中心）
+  const col = ITEMS[id].color;
+  // 外白描边，保证深色/深色底上也清晰可见
+  const outerR = d / 2;
+  // 描边宽度不超过外圆半径，并确保内圆半径始终为正，避免小尺寸时 arc 报错
+  const border = Math.min(outerR, Math.max(1, r * 0.05));
+  const innerR = Math.max(0.5, outerR - border);
+  x.fillStyle = '#fff';
+  x.beginPath(); x.arc(px, py, outerR, 0, 7); x.fill();
+  x.fillStyle = col;
+  x.beginPath(); x.arc(px, py, innerR, 0, 7); x.fill();
+  if (needLabel) {
+    const label = (ITEMS[id].mark || ITEMS[id].name[0]).slice(0, 1);
+    x.font = 'bold ' + Math.round(d * 0.85) + 'px system-ui';
+    x.textAlign = 'center';
+    x.textBaseline = 'middle';
+    x.lineWidth = Math.min(outerR, Math.max(1, r * 0.05));
+    x.strokeStyle = 'rgba(10,14,20,.9)';
+    x.lineJoin = 'round';
+    x.strokeText(label, px, py + 1);
+    x.fillStyle = '#fff';
+    x.fillText(label, px, py + 1);
+  }
 }
 
 function drawItemGlyph(x, id, cx, cy, s) {

@@ -62,12 +62,36 @@ async function downloadSave() {
     const blob = new Blob([bytes], { type: 'application/gzip' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'factory-save-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json.gz';
+    // 文件名追加打包版本号（bundle 顶部由 build.js 注入 __BUILD_VERSION__，未注入时兜底 dev）
+    const ver = (typeof window !== 'undefined' && window.__BUILD_VERSION__) || 'dev';
+    a.download = 'factory-save-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '-' + ver + '.json.gz';
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1500);
     toast('存档已导出（gzip 压缩）');
+  } catch (err) {
+    toast('导出失败：' + err.message);
+  }
+}
+
+// 单独导出某一条存档为 gzip 文件（供存档管理页每条存档的“导出”按钮使用）
+async function exportSave(id) {
+  try {
+    const data = await readSave(id);
+    if (!data) { toast('未找到该存档'); return; }
+    const bytes = await gzipCompress(JSON.stringify(data));
+    const blob = new Blob([bytes], { type: 'application/gzip' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const ver = (typeof window !== 'undefined' && window.__BUILD_VERSION__) || 'dev';
+    const safeId = String(id).replace(/[^\w-]+/g, '');
+    a.download = 'factory-save-' + safeId + '-' + ver + '.json.gz';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+    toast('该存档已导出（gzip 压缩）');
   } catch (err) {
     toast('导出失败：' + err.message);
   }
@@ -94,12 +118,23 @@ async function importSaveFile(arrayBuffer) {
 function importSaveText(text) {
   try {
     const d = JSON.parse(text);
-    if (!d || d.v !== 1) {
+    // 只做最基本的格式校验（必须是可解析的 JSON 对象），不再按存档版本号拦截。
+    // 版本兼容性由用户依据导出文件名中标记的版本号自行判断。
+    if (!d || typeof d !== 'object') {
       throw new Error('格式不正确');
     }
-    applySave(d);
-    closePanel();
-    toast('导入成功');
+    // 导入成功后立即加载并进入游戏：先关闭所有弹框（设置面板/存档管理浮层/暂停菜单），
+    // 再复用主菜单读档的进入流程（applySave + buildHotbar + enterGame + toast）。
+    if (typeof closeSaveManage === 'function') closeSaveManage();
+    if (typeof closePauseMenu === 'function') closePauseMenu();
+    if (typeof closePanel === 'function') closePanel();
+    if (typeof enterFromSave === 'function') {
+      enterFromSave(d, '导入成功');
+    } else {
+      // 兜底：独立环境下仅有 applySave 可用时，直接应用存档并提示（不再自动进游戏）
+      applySave(d);
+      toast('导入成功');
+    }
   } catch (err) {
     toast('导入失败：' + err.message);
   }

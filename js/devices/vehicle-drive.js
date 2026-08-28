@@ -135,7 +135,8 @@ function updateDriving(dt) {
     const cx = car.x * TILE + TILE * car.w / 2, cy = car.y * TILE + TILE * car.h / 2;
     const nx = cx + mx * speed * dt, ny = cy + my * speed * dt;
     const r = isTank ? TANK_COLLIDE : 14; // 载具碰撞半径
-    let okX = !boxBlocked(nx, cy, r), okY = !boxBlocked(cx, ny, r);
+    let okX = !(isSpider ? terrainBoxBlocked(nx, cy, r) : boxBlocked(nx, cy, r));
+    let okY = !(isSpider ? terrainBoxBlocked(cx, ny, r) : boxBlocked(cx, ny, r));
     // 载具不能驶入建筑/水域：额外检查中心格（蜘蛛机器人可跨水/墙，不受此限）
     let ntx = car.x, nty = car.y;
     if (isSpider || (!isWater(Math.floor(nx / TILE), Math.floor(cy / TILE)) && !isCliff(Math.floor(nx / TILE), Math.floor(cy / TILE)))) {

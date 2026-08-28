@@ -24,11 +24,15 @@ while ((m = scriptRe.exec(html)) !== null) {
 console.log(`Found ${scripts.length} script entries`);
 
 // ── 拼接所有 JS 文件内容 ──
+// 在最前面注入打包版本号（来自 tag 的 TAG_NAME），游戏内设置面板可读取展示
 function concatScripts() {
-  return scripts.map(f => {
+  const version = TAG_NAME || 'dev';
+  let out = 'window.__BUILD_VERSION__ = ' + JSON.stringify(version) + ';\n';
+  for (const f of scripts) {
     const filePath = path.join(ROOT, f);
-    return `// ===== ${f} =====\n${fs.readFileSync(filePath, 'utf8')}`;
-  }).join('\n\n');
+    out += `// ===== ${f} =====\n${fs.readFileSync(filePath, 'utf8')}\n\n`;
+  }
+  return out;
 }
 
 // ── 计算内容哈希（取前 8 位） ──

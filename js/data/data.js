@@ -39,7 +39,8 @@ function oreMiningTime(item) {
   return (typeof t === 'number' && t > 0) ? t : DRILL_TIME;
 }
 const HAND_MINE_TIME = 0.45;
-const REACH_TILES = 5.5;
+// 角色建造/交互范围半径（格）：对齐《异星工厂》官方 character 原型 reach_distance = 10（build_distance 同为 10）
+const REACH_TILES = 10;
 const REACH_PX = REACH_TILES * TILE;
 const LAB_TIME = 1; // 研究中心每瓶科学包耗时（秒）
 // 功率数值对齐《异星工厂》(Factorio) 官方 Wiki（单位 kW）

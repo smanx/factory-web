@@ -358,8 +358,9 @@ function closePanel(hide = true) {
   G.rcpTab = null;
   G.rcpQ = '';
   if (hide) document.getElementById('panel').style.display = 'none';
-  // 关闭设置面板后恢复游戏（对应 openPanel 中打开设置时的自动暂停）
-  if (wasSettings) G.paused = false;
+  // 关闭设置面板后，仅当游戏菜单未打开时才自动恢复游戏；
+  // 若设置面板是从游戏菜单打开的，则关闭后仍停留在暂停的游戏菜单，由用户按 Esc 继续。
+  if (wasSettings && !(typeof isPauseMenuOpen === 'function' && isPauseMenuOpen())) G.paused = false;
 }
 
 function panelScrollTop() {
@@ -407,7 +408,18 @@ function renderPanel(full) {
     }
   } else if (G.panelMode === 'tech') {
     title.textContent = '科技研究';
+    // 科技面板每帧走轻量重建（主循环 renderPanel(false)），整块 innerHTML 重建会把
+    // 左右两栏(#tech-col-list / #tech-col-tree)的滚动容器一并销毁，导致滚动位置被重置回顶部、
+    // 用户下拉后立刻“自动回弹”。重建前记录两栏 scrollTop，重建后原样恢复，保住浏览位置。
+    const oldList = body.querySelector('#tech-col-list');
+    const oldTree = body.querySelector('#tech-col-tree');
+    const listScrollTop = oldList ? oldList.scrollTop : 0;
+    const treeScrollTop = oldTree ? oldTree.scrollTop : 0;
     body.innerHTML = htmlTech();
+    const newList = body.querySelector('#tech-col-list');
+    const newTree = body.querySelector('#tech-col-tree');
+    if (newList && listScrollTop) newList.scrollTop = listScrollTop;
+    if (newTree && treeScrollTop) newTree.scrollTop = treeScrollTop;
   } else if (G.panelMode === 'bluebook') {
     title.textContent = '蓝图库（Blueprint book）';
     body.innerHTML = htmlBlueBook();
@@ -491,6 +503,41 @@ function updateInvLive() {
     el.dataset.craftable = cnt;
     const c = el.querySelector('.cnt[data-cnt]');
     if (c && c.textContent !== String(cnt)) c.textContent = cnt;
+  });
+}
+
+// 科技面板轻量实时刷新：主循环每 0.25s 调用，仅原地更新正在变化的研究进度条/文本、
+// 完成/锁定状态，不重建 DOM。整块重建会重建 #tech-col-list 滚动容器，即使恢复 scrollTop
+// 也会造成滚动时的闪烁抖动、且打断输入框；改为原地更新后滚动顺滑。
+// 队列增减、科技开始/取消/完成等结构变化由各自的交互事件触发 renderPanel(false) 重建。
+function updateTechLive() {
+  const body = document.getElementById('panel-body');
+  if (!body || G.panelMode !== 'tech') return;
+  body.querySelectorAll('#tech-col-list .recipe.tech[data-techid]').forEach(el => {
+    const tid = el.dataset.techid;
+    const t = TECHS[tid];
+    if (!t) return;
+    const done = techResearched(tid);
+    const locked = !done && techLocked(tid);
+    // 完成 / 锁定状态
+    el.classList.toggle('done', done);
+    el.classList.toggle('locked', locked);
+    const prog = G.techProg[tid] || 0;
+    const total = techCostTotal(tid);
+    // 进度条
+    const barI = el.querySelector('.bar > i');
+    if (barI) barI.style.width = Math.min(100, prog / total * 100) + '%';
+    // 进度文本（bar 直接后跟的 .dim；触发式科技没有 bar，跳过）
+    const pDim = el.querySelector('.bar + .dim');
+    if (pDim) {
+      if (isInfiniteTech(tid)) {
+        pDim.textContent = done ? '已完成' : '无限研究 · 已消耗 ' + prog + ' 瓶 · 消耗任意科学包';
+      } else {
+        const cs = [];
+        for (const pk in t.cost) cs.push(ITEMS[pk].name + '×' + t.cost[pk]);
+        pDim.textContent = done ? '已完成' : prog + ' / ' + techCostTotal(tid) + '（' + cs.join(' + ') + '）';
+      }
+    }
   });
 }
 
