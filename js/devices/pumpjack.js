@@ -5,7 +5,7 @@
 // 越抽越慢，模拟油井枯竭；生产速度 = 基础速度 10 × 产量因子。
 const PUMPJACK_MIN_YIELD = 0.2;        // 最低产量因子（对齐《异星工厂》：降到原始值 20% 后不再下降）
 const PUMPJACK_YIELD_DECAY = 0.005;    // 每次抽取递减量（每产 1 桶油递减 0.005，产 160 桶后降到 20%）
-const PUMPJACK_BASE_RATE = 10;         // 抽油机基础速度（原油/秒）：油井产量 100% 时 = 10 原油/秒（默认原为 1）
+const PUMPJACK_BASE_RATE = GAME_DATA.pumpjackBaseRate ?? 10; // 抽油机基础速度（原油/秒）：data.generated.js 单源（官方 pumpjack mining_speed×原油矿脉 10/mining_time 1 = 10）
 
 class Pumpjack extends ElectricDrill {
   constructor(type, x, y) { super(type || 'pumpjack', x, y); this.yieldFactor = 1; }

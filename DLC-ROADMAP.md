@@ -1506,3 +1506,15 @@ D
 > - **存档兼容**：起始包为既有物品，新发射载荷为增量逻辑，旧档读档不受影响；中枢生成仅影响新发射。
 > - **校验**：verify-dlc 新增「空间平台起始包发射」校验（10 项：rocket.js 接入/双载荷判定/中枢生成/面板入口/
 >   配方注册/设备归属/物品存在/官方配方数值），全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段六.13：抽油机基础抽取速率数据单源化（Pumpjack base rate single-sourcing，本迭代新增）
+
+> 依据「所有数据/参数从 data.generated.js（factorio-data 官方）单源获取，不要单独给设备维护一套数据」
+> 原则，把此前抽油机硬编码的基础抽取速率（`PUMPJACK_BASE_RATE = 10`）单源进 GAME_DATA：
+> - **官方推导**：抽油机基础速率 = 原油矿脉 `crude-oil.minable.results` 流体量（10）÷ `mining_time`（1s）
+>   × 抽油机 `mining_speed`（1）= **10 原油/秒**（与官方一致）。
+> - **改动**：`tools/generate-game-data.js` 新增 `GAME_DATA.pumpjackBaseRate`（从 factorio-data 现场计算，
+>   未单独维护数值表）；`js/devices/pumpjack.js` 改从 `GAME_DATA.pumpjackBaseRate` 读取（`?? 10` 兜底），
+>   不再硬编码。
+> - **行为不变**：官方值即 10，改造后游戏数值与官方完全一致，仅数据来源单源化。
+> - **校验**：全量 18 个校验脚本通过，`node build.js` 构建通过。

@@ -5614,6 +5614,7 @@ const GAME_DATA = {
    "en": "Nuclear fuel reprocessing"
   }
  },
+ "pumpjackBaseRate": 10,
  "undergroundDist": {
   "underground-belt": 5,
   "fast-underground-belt": 7,

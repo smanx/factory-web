@@ -422,7 +422,7 @@ for (const id of projectBuildings) {
 
 // ---- deviceStats（设备行为参数：制造速度/模块槽/采矿速度/带速/信号塔效果）----
 // 项目建筑 id → [官方 raw 类型, 官方原型名]。仅收录可一对一映射的设备；
-// 项目自定/模型不同（抽油机基础速率、信号塔效果系数、机械臂简化模型、
+// 项目自定/模型不同（信号塔效果系数、机械臂简化模型、
 // 地下带距离、分流器、创意/虚空带等）保持手工，不在下表。
 const DEVICE_STATS_SOURCES = {
   'assembling-machine-1': ['assembling-machine', 'assembling-machine-1'],
@@ -476,6 +476,31 @@ for (const [pid, [rtype, oname]] of Object.entries(DEVICE_STATS_SOURCES)) {
   if (typeof proto.researching_speed === 'number') ds.researchingSpeed = proto.researching_speed; // 生物实验室 biolab：官方 researching_speed=2（2 倍科研速度）
   if (Object.keys(ds).length) GAME_DATA.deviceStats[pid] = ds;
 }
+
+// ---- 抽油机基础抽取速率（原油/秒）----
+// 官方 pumpjack 基础抽取速率 = 原油矿脉 minable.results 的流体量 ÷ mining_time × 抽油机 mining_speed。
+//   factorio-data: resource/crude-oil.minable = { mining_time:1, results: {crude-oil:10} } → 每周期 10 原油，
+//   抽油机 mining_speed=1 → 基础速率 = 10/1 × 1 = 10 原油/秒。
+// 单源进 GAME_DATA.pumpjackBaseRate，抽油机（pumpjack.js）不再硬编码 10（data 单源，对齐官方）。
+const pumpjackBaseRate = (() => {
+  const oil = raw.resource && raw.resource['crude-oil'];
+  const pj = raw['mining-drill'] && raw['mining-drill']['pumpjack'];
+  if (!oil || !oil.minable || !pj) return undefined;
+  let amount = null;
+  const res = oil.minable.results;
+  if (res && typeof res === 'object') {
+    for (const k of Object.keys(res)) {
+      const r = res[k];
+      if (r && r.type === 'fluid' && typeof r.amount === 'number') { amount = r.amount; break; }
+      if (r && r.name === 'crude-oil' && typeof r.amount === 'number') { amount = r.amount; break; }
+    }
+  }
+  if (amount === null) return undefined;
+  const mt = typeof oil.minable.mining_time === 'number' && oil.minable.mining_time > 0 ? oil.minable.mining_time : 1;
+  const ms = typeof pj.mining_speed === 'number' ? pj.mining_speed : 1;
+  return Math.round(amount / mt * ms * 1000) / 1000;
+})();
+if (pumpjackBaseRate !== undefined) GAME_DATA.pumpjackBaseRate = pumpjackBaseRate;
 
 // ---- 地下带最大距离（格）----
 // 官方 2.0 改小了地下带距离（基础 5 / 快速 7 / 极速 9），项目原先用 1.x 值（6/14/20），
@@ -1357,7 +1382,8 @@ function report() {
   console.log(log.noHp.length ? log.noHp.join(', ') : '（无）');
   console.log('\n-- 设备行为参数 deviceStats（官方已接入）--');
   console.log(Object.keys(GAME_DATA.deviceStats).length ? Object.keys(GAME_DATA.deviceStats).join(', ') : '（无）');
-  console.log('deviceStats 手工保留（项目自定/模型不同，未接入）：抽油机基础速率、信号塔效果系数、机械臂简化模型、地下带距离、分流器、创意/虚空带');
+  console.log('deviceStats 手工保留（项目自定/模型不同，未接入）：信号塔效果系数、机械臂简化模型、地下带距离、分流器、创意/虚空带');
+  console.log('抽油机基础抽取速率 pumpjackBaseRate: ' + JSON.stringify(GAME_DATA.pumpjackBaseRate));
   console.log('\n-- 扩展设备参数（官方已接入，见 GAME_DATA 新字段）--');
   console.log('地下带距离 undergroundDist: ' + JSON.stringify(GAME_DATA.undergroundDist));
   console.log('太阳能/蓄电器 renewable: ' + JSON.stringify(GAME_DATA.renewable));

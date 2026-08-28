@@ -203,6 +203,12 @@ for (const id of stackIds) {
 check('物品堆叠上限与官方一致（偏差=' + stackMismatch.length + '）', stackMismatch.length === 0,
   stackMismatch.length ? JSON.stringify(stackMismatch) : '');
 
+// 抽油机基础抽取速率单源校验：GAME_DATA.pumpjackBaseRate 须存在且 = 官方 10 原油/秒
+// （官方 crude-oil.minable.results=10 ÷ mining_time=1 × pumpjack.mining_speed=1 = 10）
+const pumpRate = GAME_DATA && GAME_DATA.pumpjackBaseRate;
+check('抽油机基础抽取速率单源化（GAME_DATA.pumpjackBaseRate=' + (pumpRate ?? '缺失') + '，官方=10）',
+  pumpRate === 10, pumpRate === 10 ? '' : ('pumpjackBaseRate=' + pumpRate));
+
 console.log('\n----------------------------------------');
 console.log('通过 ' + passCount + ' 项，失败 ' + failCount + ' 项');
 process.exit(failCount === 0 ? 0 : 1);
