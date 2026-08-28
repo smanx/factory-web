@@ -523,7 +523,7 @@ function loop(ts) {
       // 的输入框，打断中文输入法并清空已输入内容。改用轻量计数刷新（不改 DOM 结构）。
       // 整面板的重建只发生在打开面板或用户在面板内交互时（renderPanel）。
       if (G.panelMode === 'inv' && !isPanelTyping()) updateInvLive();
-      else if (G.panelMode === 'tech' && !isPanelTyping()) renderPanel(false);
+      else if (G.panelMode === 'tech' && !isPanelTyping()) updateTechLive();
       uiDirty = false;
     }
     updateHUD(TICK, Math.round(fpsSmooth), Math.round(upsSmooth));
