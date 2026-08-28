@@ -1825,6 +1825,20 @@ console.log('\n【太空物流电路信号补全 SPACE-PLATFORM CIRCUIT SIGNALS�
   ok(/电路输出：小行星收集器/.test(spSrc), '收集器面板提示电路信号输出');
 }
 
+
+// ===== 火箭→空间平台直投（Rocket direct delivery to space platform，本迭代新增）=====
+console.log('\n【火箭→空间平台直投 ROCKET DIRECT DELIVERY】');
+{
+  const rkSrc = fs.readFileSync(ROOT + '/js/devices/rocket.js', 'utf8');
+  ok(/function findSpacePlatformHub\(/.test(rkSrc), 'rocket.js 提供 findSpacePlatformHub() 查找空间平台中枢');
+  ok(/e\.type === 'space-platform-hub'/.test(rkSrc), 'findSpacePlatformHub 按 space-platform-hub 实体类型查找');
+  ok(/火箭→空间平台直投/.test(rkSrc), 'deliverOrbitalCargo 实现火箭→空间平台直投逻辑');
+  ok(/const hub = findSpacePlatformHub\(\);/.test(rkSrc), 'deliverOrbitalCargo 优先获取空间平台中枢');
+  ok(/hub\.giveItem/.test(rkSrc), '货物直投至平台货舱（hub.giveItem）');
+  ok(/直投至空间平台货舱/.test(rkSrc), '投递提示区分「直投至空间平台货舱」');
+}
+
+
 process.exit(fail === 0 ? 0 : 1);
 
 
