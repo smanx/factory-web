@@ -1086,6 +1086,15 @@ ok(ctx.__recipeDevice('cryogenic-science-pack') === 'cryogenic-plant', '低温�
 ok(ctx.__itemTechReq('cryogenic-plant') === 'cryogenics', '低温工厂需「低温学」科技');
 ok(!!TS['cryogenics'], '「低温学」科技已注册');
 ok(TS['cryogenics'].req && TS['cryogenics'].req.indexOf('electromagnetics') >= 0, '低温学前置含「电磁学」');
+// Aquilo 氟酮链对齐官方（fluoroketone / fluoroketone-cooling，配方键与官方一致，数据单源化）
+const fkRec = RP['fluoroketone'];
+ok(!!fkRec, 'fluoroketone 配方已注册（官方氟酮配方）');
+ok(fkRec && fkRec.time === 10 && fkRec.inp['fluorine'] === 50 && fkRec.inp['ammonia'] === 50 && fkRec.inp['solid-fuel'] === 1 && fkRec.inp['lithium'] === 1 && fkRec.out && fkRec.out['fluoroketone-hot'] === 50, 'fluoroketone=50氟+50氨+1固体燃料+1锂→50氟酮热，10s（官方）');
+ok(ctx.__recipeDevice('fluoroketone') === 'cryogenic-plant', 'fluoroketone → 低温工厂');
+const fkcRec = RP['fluoroketone-cooling'];
+ok(!!fkcRec, 'fluoroketone-cooling 配方已注册（官方氟酮冷却配方）');
+ok(fkcRec && fkcRec.time === 5 && fkcRec.inp['fluoroketone-hot'] === 10 && fkcRec.out && fkcRec.out['fluoroketone-cold'] === 10, 'fluoroketone-cooling=10氟酮热→10氟酮冷，5s（官方）');
+ok(ctx.__recipeDevice('fluoroketone-cooling') === 'cryogenic-plant', 'fluoroketone-cooling → 低温工厂');
 const cryoRec2 = RP['cryogenic-science-pack'];
 ok(cryoRec2 && cryoRec2.inp['ice'] === 3 && cryoRec2.inp['lithium-plate'] === 1 && cryoRec2.inp['fluoroketone-cold'] === 6 && cryoRec2.out && cryoRec2.out['fluoroketone-hot'] === 3, '低温科研包配方=冰3+锂板1+氟酮冷6→1+氟酮热3（官方）');
 console.log('\n【熔融金属铸造链 / 废料回收（数据来自 GAME_DATA）】');

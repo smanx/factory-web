@@ -99,6 +99,7 @@ const dynamicKeys = new Set([
   'casting-copper-cable', // 浇铸铜线（产物键≠配方键）
   'concrete-from-molten-iron', // 熔融铁制混凝土（产物键≠配方键）
   'steam-condensation', 'acid-neutralisation', // 蒸汽冷凝→水 / 酸中和→蒸汽（产物为流体）
+  'fluoroketone', 'fluoroketone-cooling', // Aquilo 氟酮链：氟+氨+固燃+锂→氟酮热（产物键≠配方键）/ 氟酮热→氟酮冷（产物为流体）
 ]);
 for (const rid in RECIPES) {
   if (rid.startsWith('fill-') || rid.startsWith('empty-')) continue; // 动态桶配方

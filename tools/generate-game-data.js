@@ -68,7 +68,8 @@ const KEEP_MANUAL_RECIPES = new Set([
   // 太空时代 Gleba 金属细菌链：细菌→板还原配方为项目适配（官方无此合成，Gleba 用细菌还原成熔融金属再铸板），保留手工
   'iron-plate-from-iron-bacteria', 'copper-plate-from-copper-bacteria',
   // ===== 太空时代 Aquilo 低温学链（官方配方依赖低温/液空等星球资源，此处适配基础资源）=====
-  'ammonia', 'fluorine', 'fluoroketone-cold', 'fluoroketone-hot',
+  'ammonia', 'fluorine', // 氨/氟官方无合成配方（Aquilo 海水抽取），保留手工适配
+
   // ===== 太空时代 熔融金属/废料（官方配方依赖行星资源，此处适配基础资源）=====
   // 注：iron-ore-melting/copper-ore-melting/casting-* 已按官方数据自动桥接，不在此保留手工。
   'lava', 'molten-iron-from-lava', 'molten-copper-from-lava', 'scrap', 'recycle-scrap',
@@ -288,8 +289,8 @@ const DLC_DEVICE_RECIPES = {
   'lava': 'foundry', 'molten-iron-from-lava': 'foundry', 'molten-copper-from-lava': 'foundry',
   'turbo-transport-belt': 'foundry', 'turbo-underground-belt': 'foundry', 'turbo-splitter': 'foundry',
   // 低温工厂 cryogenic-plant（Space Age cryogenics）
-  'ammonia': 'cryogenic-plant', 'fluorine': 'cryogenic-plant', 'fluoroketone-cold': 'cryogenic-plant',
-  'fluoroketone-hot': 'cryogenic-plant', 'cryogenic-science-pack': 'cryogenic-plant', 'cryogenic-plant': 'cryogenic-plant',
+  'ammonia': 'cryogenic-plant', 'fluorine': 'cryogenic-plant', 'fluoroketone': 'cryogenic-plant',
+  'fluoroketone-cooling': 'cryogenic-plant', 'cryogenic-science-pack': 'cryogenic-plant', 'cryogenic-plant': 'cryogenic-plant',
   'foundation': 'cryogenic-plant', 'ice-platform': 'cryogenic-plant', // 太空时代地形（官方 cryogenics 低温工厂，流体配方）
   'steam-condensation': 'chemical-plant', 'acid-neutralisation': 'chemical-plant', // 化工厂（官方 chemistry/cryogenics 双类别）
   // 农业塔 agricultural-tower（Space Age 种植）

@@ -2845,6 +2845,27 @@ const GAME_DATA = {
     "promethium-science-pack": 10
    }
   },
+  "fluoroketone": {
+   "time": 10,
+   "inp": {
+    "fluorine": 50,
+    "ammonia": 50,
+    "solid-fuel": 1,
+    "lithium": 1
+   },
+   "out": {
+    "fluoroketone-hot": 50
+   }
+  },
+  "fluoroketone-cooling": {
+   "time": 5,
+   "inp": {
+    "fluoroketone-hot": 10
+   },
+   "out": {
+    "fluoroketone-cold": 10
+   }
+  },
   "cryogenic-science-pack": {
    "time": 20,
    "inp": {
@@ -4019,6 +4040,8 @@ const GAME_DATA = {
   "carbonic-asteroid-reprocessing": "crusher",
   "oxide-asteroid-reprocessing": "crusher",
   "promethium-science-pack": "electromagnetic-plant",
+  "fluoroketone": "cryogenic-plant",
+  "fluoroketone-cooling": "cryogenic-plant",
   "cryogenic-science-pack": "cryogenic-plant",
   "ammonia-rocket-fuel": "chemical-plant",
   "cryogenic-plant": "cryogenic-plant",
@@ -5508,6 +5531,14 @@ const GAME_DATA = {
   "oxide-asteroid-reprocessing": {
    "zh": "氧化星岩再处理",
    "en": "Oxide asteroid reprocessing"
+  },
+  "fluoroketone": {
+   "zh": "氟酮",
+   "en": "Fluoroketone"
+  },
+  "fluoroketone-cooling": {
+   "zh": "热氟酮冷却",
+   "en": "Cooling hot fluoroketone"
   },
   "ammoniacal-solution-separation": {
    "zh": "氨溶液分离",

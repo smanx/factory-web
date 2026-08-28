@@ -1584,6 +1584,29 @@ D
 > - **校验**：verify-data-alignment 新增「热交换器热量参数单源化」守门人（6 项：
 >   前端常量确从 GAME_DATA 读取 + 官方值 1MJ/2GW/500°C 比对），全量 18 个校验脚本通过，`node build.js` 构建通过。
 
+### 阶段六.17：Aquilo 氟酮链配方对齐官方（fluoroketone / fluoroketone-cooling，本迭代新增）
+
+> 依据「所有配方 ID 与命名与《异星工厂》官方一致、所有数据从 data.generated.js（factorio-data）单源获取」
+> 原则，把此前「适配基础资源」的低温工厂氟酮链配方对齐回官方**两条官方配方**，并移除项目自定的非官方配方键：
+>
+> - **移除**：项目自定的 `fluoroketone-cold` / `fluoroketone-hot` 配方键（非官方配方名，
+>   官方无此二配方——官方氟酮生产是 `fluoroketone`（→氟酮热）+ `fluoroketone-cooling`（氟酮热→氟酮冷）两条配方）。
+> - **对齐官方配方**（低温工厂 cryogenics 类别，数据来自 GAME_DATA / data.generated.js 单源桥接）：
+>   - `fluoroketone`（氟酮）：**50 氟 + 50 氨 + 1 固体燃料 + 1 锂 → 50 氟酮热（10s）**（官方 fluoroketone）
+>   - `fluoroketone-cooling`（氟酮冷却）：**10 氟酮热 → 10 氟酮冷（5s）**（官方 fluoroketone-cooling）
+>   - 配方键与官方一致，产出/耗时/原料逐项对齐 factorio-data 官方，经 `GAME_DATA.recipe` /
+>     `GAME_DATA.recipeDevice` 单源桥接（`fluoroketone` / `fluoroketone-cooling` → 低温工厂）。
+> - **保留适配**：`ammonia` / `fluorine` 官方无合成配方（Aquilo 海水抽取），仍保留项目手工适配
+>   （氨=水+硫酸、氟=氨+方解石），满足官方 `fluoroketone` 所需原料。
+> - **下游兼容**：氟酮冷/氟酮热为官方流体物品（`fluoroketone-cold` / `fluoroketone-hot`），
+>   低温科研包 / 量子处理器 / 轨道炮 / 平台基座等下游配方仍按官方以氟酮冷为输入，经新 `fluoroketone-cooling`
+>   生产氟酮冷，链路无缝衔接，存档不破坏。
+> - **数据单源**：配方数值/耗时/配方名均来自 data.generated.js（factorio-data 官方），未单独维护数值表；
+>   仅 `ammonia`/`fluorine` 保留手工适配（官方无配方）。
+> - **校验**：verify-dlc 新增 fluoroketone / fluoroketone-cooling 官方配方校验（配方注册/数值 50+50+1+1→50、
+>   10s / 10→10、5s / 设备归属低温工厂），verify-data-integrity 新增 2 项动态键（产物键≠配方键），
+>   全量 18 个校验脚本通过，`node build.js` 构建通过。
+
 ### 后续开发计划（迭代方向）
 
 > 基于本次全量扫描：**物品/配方 ID 与命名对齐官方、仅保留 6 个创造/虚空物品、全部设备数据从
