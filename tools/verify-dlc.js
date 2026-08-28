@@ -904,8 +904,8 @@ ok(RP['promethium-science-pack'].out['promethium-science-pack'] === 10 && RP['pr
 ok(Object.keys(RP['promethium-science-pack'].inp).every(k => k in IT), 'promethium-science-pack 配方引用物品均存在');
 // 配方设备：电磁工厂（官方 cryogenics 低温工厂，此处适配为电磁工厂生产钷素科研包）
 ok(ctx.__recipeDevice('promethium-science-pack') === 'electromagnetic-plant', '钷素科研包由电磁工厂制得');
-// 科技门控：钷素科研科技
-ok(ctx.__recipeTechReq('promethium-science-pack') === 'promethium-science', '钷素科研包需「钷素科研」科技');
+// 科技门控：配方改由「太空材料加工」解锁（data-tech.js 有意设计：避免与「钷素科研」科技互相卡死）
+ok(ctx.__recipeTechReq('promethium-science-pack') === 'asteroid-processing', '钷素科研包配方由「太空材料加工」解锁（避免与「钷素科研」科技互相卡死）');
 ok(!!TS['promethium-science'], '钷素科研 科技已注册');
 
 // ===== Fulgora 钬/特斯拉链（本迭代新增）：钬矿石/钬板/超级电容/特斯拉炮塔/特斯拉弹药 =====
