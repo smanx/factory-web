@@ -1540,12 +1540,18 @@ const AP_CONTROL_ITEM_HINT = {
   // 无专属中文名，复用同款基础矿的中文（vulcanus_coal 即煤矿、gleba_stone 即石矿）
   'vulcanus_coal': 'coal',
   'gleba_stone': 'stone',
+  'aquilo_crude_oil': 'crude-oil',
+  // 玄冥星专属资源（entity-name 段落），id 用下划线、官方名用连字符
+  'lithium_brine': 'lithium-brine',
+  'fluorine_vent': 'fluorine-vent',
 };
 // Autoplace 控件的本地化名：优先按 hint 物品名，其次复用官方实体/物品命名（多段优先级）。
 function apControlName(cid, proto) {
   const hint = AP_CONTROL_ITEM_HINT[cid];
   if (hint) {
-    const t = localeBySection['item-name'] && localeBySection['item-name'][hint];
+    // 部分行星资源（sulfuric-acid-geyser 等）在 entity-name 而非 item-name，两段都查
+    const t = localeBySection['item-name'] && localeBySection['item-name'][hint]
+      || localeBySection['entity-name'] && localeBySection['entity-name'][hint];
     if (t && t.zh && t.en) return t;
   }
   const t = officialLocale(cid);

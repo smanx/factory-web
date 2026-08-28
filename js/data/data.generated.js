@@ -9990,8 +9990,8 @@ const GAME_DATA = {
     "richness": true,
     "canBeDisabled": true,
     "name": {
-     "zh": "sulfuric_acid_geyser",
-     "en": "sulfuric_acid_geyser"
+     "en": "Sulfuric acid geyser",
+     "zh": "硫酸喷泉"
     }
    },
    {
@@ -10067,7 +10067,7 @@ const GAME_DATA = {
     "richness": false,
     "canBeDisabled": true,
     "name": {
-     "en": "Cliffs",
+     "en": "Cliff",
      "zh": "悬崖"
     }
    },
@@ -10166,8 +10166,8 @@ const GAME_DATA = {
     "richness": true,
     "canBeDisabled": true,
     "name": {
-     "zh": "aquilo_crude_oil",
-     "en": "aquilo_crude_oil"
+     "en": "Crude oil",
+     "zh": "原油"
     }
    },
    {
@@ -10177,8 +10177,8 @@ const GAME_DATA = {
     "richness": true,
     "canBeDisabled": true,
     "name": {
-     "zh": "lithium_brine",
-     "en": "lithium_brine"
+     "en": "Lithium brine",
+     "zh": "锂盐水"
     }
    },
    {
@@ -10188,8 +10188,8 @@ const GAME_DATA = {
     "richness": true,
     "canBeDisabled": true,
     "name": {
-     "zh": "fluorine_vent",
-     "en": "fluorine_vent"
+     "en": "Fluorine vent",
+     "zh": "氟气喷口"
     }
    },
    {
