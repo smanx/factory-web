@@ -6,33 +6,52 @@
 const MINIMAP_SIZE = 168;           // 小地图边长（px）
 const MINIMAP_ZOOM = 2.2;           // 每瓦片像素（越大多看得越细，但覆盖范围变小）
 const MINIMAP_VIEW = Math.ceil(MINIMAP_SIZE / MINIMAP_ZOOM / 2); // 半边长覆盖瓦片数
-function drawMinimap(ctx) {
-  const size = MINIMAP_SIZE;
-  const pad = 0;
-  const x0 = W - size - pad, y0 = pad; // 小地图移至上（右）角显示
-  const pcx = G.player.x / TILE, pcy = G.player.y / TILE;
-  // 背景框
-  ctx.fillStyle = 'rgba(8,12,10,0.78)';
-  ctx.strokeStyle = 'rgba(140,200,160,0.35)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.roundRect ? ctx.roundRect(x0, y0, size, size, 6) : ctx.rect(x0, y0, size, size);
-  ctx.fill(); ctx.stroke();
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(x0, y0, size, size);
-  ctx.clip();
-  const z = MINIMAP_ZOOM;
-  // 覆盖范围内的瓦片：遍历世界坐标瓦片，按探索状态绘制
-  const cx = x0 + size / 2, cy = y0 + size / 2;
+
+// 小地图背景缓存（渲染优化）：地形/矿点是静态的，不需要每帧重绘。
+// 原实现每帧对 79×79=6241 个瓦片做逐格 getTerrain + 十二分支字符串配色 + fillRect + getOreType，
+// 在缩放 0.5 全景时是 render() 的大头之一。
+// 改为：把地形+矿点画进一块离屏画布，仅在“玩家换格 / 首次 / 距上次≥500ms”时重建一次，
+// 其余帧直接用 drawImage 整图贴上（克还是动态的污染/标签/玩家点仍逐帧叠加）。
+let _mmCache = null;                // 离屏背景画布（按 DPR 分辨率）
+let _mmLastKey = '';                // 上次绘制时玩家所在瓦片（用于换格重绘）
+let _mmNextPaint = 0;               // 下一次允许重建的时间戳（节流）
+let _mmDirty = true;                // 主动强制重建标记
+
+// 确保离屏背景画布存在且与当前 DPR 匹配（显示缩放变化时需重建）。
+function _mmEnsure() {
+  const dpr = window.devicePixelRatio || 1;
+  if (!_mmCache) {
+    _mmCache = document.createElement('canvas');
+    _mmCache.width = Math.round(MINIMAP_SIZE * dpr);
+    _mmCache.height = Math.round(MINIMAP_SIZE * dpr);
+    _mmCache._dpr = dpr;
+  } else if (_mmCache._dpr !== dpr) {
+    _mmCache.width = Math.round(MINIMAP_SIZE * dpr);
+    _mmCache.height = Math.round(MINIMAP_SIZE * dpr);
+    _mmCache._dpr = dpr;
+    _mmDirty = true;
+  }
+  return _mmCache;
+}
+
+// 把当前玩家视口内的地形+矿点一次性画进离屏背景画布（逻辑与旧 drawMinimap 的瓦片循环一致）。
+function _paintMinimapBg(pcx, pcy) {
+  const c = _mmEnsure();
+  const cctx = c.getContext('2d');
+  const dpr = c._dpr;
+  cctx.save();
+  cctx.scale(dpr, dpr);
+  cctx.clearRect(0, 0, MINIMAP_SIZE, MINIMAP_SIZE);
+  const size = MINIMAP_SIZE, z = MINIMAP_ZOOM;
+  const cx = size / 2, cy = size / 2;
   for (let dy = -MINIMAP_VIEW; dy <= MINIMAP_VIEW; dy++) {
     for (let dx = -MINIMAP_VIEW; dx <= MINIMAP_VIEW; dx++) {
       const tx = Math.floor(pcx) + dx, ty = Math.floor(pcy) + dy;
       if (!tileExplored(tx, ty)) continue;
       const px = cx + (tx - pcx) * z, py = cy + (ty - pcy) * z;
-      if (px < x0 - z || py < y0 - z || px > x0 + size || py > y0 + size) continue;
+      if (px < -z || py < -z || px > size + z || py > size + z) continue;
       const t = getTerrain(tx, ty);
-      ctx.fillStyle = (t === T_WATER) ? 'rgba(40,90,140,0.9)'
+      cctx.fillStyle = (t === T_WATER) ? 'rgba(40,90,140,0.9)'
         : (t === T_CONCRETE) ? 'rgba(120,120,126,0.85)'
         : (t === T_REF_CONCRETE) ? 'rgba(165,168,176,0.85)'
         : (t === T_HAZARD) ? 'rgba(190,180,40,0.85)'
@@ -47,17 +66,48 @@ function drawMinimap(ctx) {
         : (t === T_ICE_PLATFORM) ? 'rgba(184,212,232,0.9)'
         : (t === T_SPACE_PLATFORM) ? 'rgba(110,112,120,0.9)'
         : 'rgba(52,78,50,0.9)';
-      ctx.fillRect(px, py, z + 0.4, z + 0.4);
+      cctx.fillRect(px, py, z + 0.4, z + 0.4);
       // 矿脉标记
       const oi = getOreType(tx, ty);
       if (oi >= 0) {
         const oid = oreItemId(oi);
         const oc = ITEMS[oid] ? ITEMS[oid].color : '#aaa';
-        ctx.fillStyle = oc;
-        ctx.fillRect(px + z * 0.25, py + z * 0.25, z * 0.5, z * 0.5);
+        cctx.fillStyle = oc;
+        cctx.fillRect(px + z * 0.25, py + z * 0.25, z * 0.5, z * 0.5);
       }
     }
   }
+  cctx.restore();
+}
+
+function drawMinimap(ctx) {
+  const size = MINIMAP_SIZE;
+  const pad = 0;
+  const x0 = W - size - pad, y0 = pad; // 小地图移至上（右）角显示
+  const pcx = G.player.x / TILE, pcy = G.player.y / TILE;
+  const z = MINIMAP_ZOOM;
+  const cx = x0 + size / 2, cy = y0 + size / 2;
+  // 背景框
+  ctx.fillStyle = 'rgba(8,12,10,0.78)';
+  ctx.strokeStyle = 'rgba(140,200,160,0.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(x0, y0, size, size, 6) : ctx.rect(x0, y0, size, size);
+  ctx.fill(); ctx.stroke();
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x0, y0, size, size);
+  ctx.clip();
+  // 背景缓存：仅玩家换格/首次/节流到点才重建 6241 格地形+矿点，其余帧直接贴整图
+  const curKey = Math.floor(pcx) + ',' + Math.floor(pcy);
+  const now = performance.now();
+  if (_mmDirty || curKey !== _mmLastKey || now >= _mmNextPaint) {
+    _paintMinimapBg(pcx, pcy);
+    _mmLastKey = curKey;
+    _mmDirty = false;
+    _mmNextPaint = now + 500;   // 节流：最多 500ms 重建一次，兜住雷达扩图/矿量变化
+  }
+  ctx.drawImage(_mmEnsure(), x0, y0, size, size);
   // 地图标记：在小地图上绘制已探索范围内的标记
   if (typeof drawMapTagsMinimap === 'function') drawMapTagsMinimap(ctx, cx, cy, z, pcx, pcy, x0, y0, size);
   // 污染系统：在小地图叠加污染范围（红褐色），需在 clip() 内绘制，确保污染显示范围不超出小地图边界

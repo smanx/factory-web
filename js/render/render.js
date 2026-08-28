@@ -100,9 +100,32 @@ function render() {
         Math.ceil(FRAME_BOUNDS.x0 / TILE) + BUCK, Math.ceil(FRAME_BOUNDS.y0 / TILE) + BUCK,
         _bucketKeysBuf)
     : null;
+  // 渲染分类型耗时采样（分段法，与逻辑侧 main-input.js 的 update 采样一致）：
+  // 仅性能页开启时采样，按设备类型累计本帧绘制耗时，用于定位「哪类设备在渲染上拖累帧率」
+  // （缩小画面、视口满载时尤其关键）。只在不同类型切换时取 performance.now()，避免逐实体取证开销。
+  let _rtri = null, _rLast = null, _rSegStart = 0, _rStart = 0;
+  if (G.statsTab === 'perf' && typeof PERF === 'object' && PERF) {
+    if (!PERF._rtri) PERF._rtri = { t0: 0, renderMs: 0, type: {} };
+    _rtri = PERF._rtri;
+    if (!_rtri.t0) _rtri.t0 = performance.now();
+    _rStart = performance.now();
+  }
+  const _rSegFlush = (type, endT) => {
+    if (type != null && !isNaN(_rSegStart)) {
+      _rtri.renderMs += endT - _rSegStart;
+      _rtri.type[type] = (_rtri.type[type] || 0) + (endT - _rSegStart);
+    }
+  };
   const drawPass = (e, drawInserter) => {
     if (e._dead || !onScreen(e)) return;
     if (drawInserter !== !!IS_INSERTER[e.type]) return;
+    if (_rtri) {
+      if (e.type !== _rLast) {
+        if (_rLast !== null) _rSegFlush(_rLast, performance.now());
+        _rLast = e.type;
+        _rSegStart = performance.now();
+      }
+    }
     drawEntity(ctx, e, e.x, e.y, e.dir, 1);
   };
   if (keys) {
@@ -111,6 +134,10 @@ function render() {
   } else {
     for (const e of G.ents) drawPass(e, false);
     for (const e of G.ents) drawPass(e, true);
+  }
+  if (_rtri) {
+    if (_rLast !== null) _rSegFlush(_rLast, performance.now());
+    if (typeof PERF === 'object' && PERF) PERF.renderMs = performance.now() - _rStart;
   }
   // ALT 模式（对齐《异星工厂》）：在建筑上叠加显示当前配方/内容标签
   if (G.settings.altMode) drawAltMode(ctx, keys, _bucketSeenBuf);
@@ -733,8 +760,10 @@ function drawTerrain(ctx) {
       ctx.drawImage(oc, sx, sy, ex - dx, ey - dy, dx, dy, ex - dx, ey - dy);
     }
   }
-  // 动态水面波浪（画面优化）：在水域瓦片叠加缓缓流动的高光波纹
-  drawWaterAnimation(ctx, tx0, ty0, tx1, ty1);
+  // 动态水面波浪（画面优化）：在水域瓦片叠加缓缓流动的高光波纹。
+  // 缩放很小时（瓦片 <20px）弧线在屏幕上已不可辨，而每水域瓦片要做两次 beginPath/arc/stroke，
+  // 视野内通常有成片水域，全景缩放下是 render() 的显著开销 → 直接跳过（渲染卡顿优化）。
+  if (!LOD.simple) drawWaterAnimation(ctx, tx0, ty0, tx1, ty1);
   terrainCacheStats.state = '分块缓存（' + terrainChunkCache.size + '/' + TERRAIN_CHUNK_LRU_MAX + ' 张，命中 ' + terrainCacheStats.hits + ' / 未命中 ' + terrainCacheStats.misses + '）';
 }
 

@@ -1,9 +1,29 @@
 'use strict';
 
-// ===== 地下管道：同向摆两座（最远 PIPE_GROUND_MAX 格）自动配对，从地下穿行流体 =====
-// 可跨过传送带/管道等障碍，容量与普通管道一致（PIPE_CAP）。入口端把流体送入地下，
-// 出口端把地下流体送回地面管道网络。
+// ===== 地下管道：背向摆两座（朝向相反，最远 PIPE_GROUND_MAX 格）自动配对，从地下穿行流体 =====
+// 管道口背向相对的两座自动配对；一条线上有多个管道时只与最近的背向管道配对（同向的不配对）。
+// 可跨过传送带/管道等障碍，容量与普通管道一致（PIPE_CAP）。
+// 地下管道与普通管道一样是“互通”的：不分入口/出口，正前方、背侧的地面管道以及配对的
+// 另一端地下管道之间按压差双向均压流动，流体可从任一端进入、从任一端流出。
 const PIPE_GROUND_MAX = 10;
+
+// 双向均压：将流体 k 从 a/b 中较多的一侧匀到较少的一侧（至少 1 单位），并遵守容量与防混合。
+function pipeToGroundSwap(a, b, k) {
+  const aF = a.fluid[k] || 0;
+  const bF = b.fluid[k] || 0;
+  // 防混合：任一端含有其它流体则不交换
+  if (a.total() - aF > 0 || b.total() - bF > 0) return;
+  if (aF === bF) return;
+  let from, to, avail, cap;
+  if (aF > bF) { from = a; to = b; avail = aF; cap = PIPE_CAP - b.total(); }
+  else { from = b; to = a; avail = bF; cap = PIPE_CAP - a.total(); }
+  let move = Math.max(1, Math.floor(Math.abs(aF - bF) / 2));
+  move = Math.min(move, avail, cap);
+  if (move <= 0) return;
+  from.fluid[k] -= move;
+  if (from.fluid[k] <= 0) delete from.fluid[k];
+  to.fluid[k] = (to.fluid[k] || 0) + move;
+}
 class PipeToGround extends Entity {
   constructor(type, x, y) {
     super('pipe-to-ground', x, y);
@@ -12,71 +32,46 @@ class PipeToGround extends Entity {
   total() { let s = 0; for (const k in this.fluid) s += this.fluid[k]; return s; }
   maxDist() { return PIPE_GROUND_MAX; }
   findMate() {
+    // 沿自身朝向扫描：只与“背向”（朝向相反）的管道配对，同向的跳过继续找最近的背向管道
     for (let k = 1; k <= this.maxDist(); k++) {
       const nx = this.x + DX[this.dir] * k, ny = this.y + DY[this.dir] * k;
       const t = entAt(nx, ny);
       if (!t) continue;
-      if (t instanceof PipeToGround) return (t.dir === this.dir) ? t : null;
+      if (t instanceof PipeToGround) {
+        if (PipeToGround._parallel(t.dir, this.dir)) return t;
+        continue;   // 同向的管道不配对，继续找最近的背向管道
+      }
       // 中间不可隔普通管道？不：地下管道本身就是用于穿越管道。但不可隔其它固体设备
       if (t instanceof Pipe) continue;
       if (t.solid) return null;
     }
     return null;
   }
-  // 是否为“入口端”：沿 dir 前方有配对出口
-  isInlet() { return !!this.findMate(); }
-  // 是否为“出口端”：沿 dir 后方有配对入口
-  isOutlet() { return !!this.findBackMate(); }
-  findBackMate() {
-    for (let k = 1; k <= this.maxDist(); k++) {
-      const nx = this.x - DX[this.dir] * k, ny = this.y - DY[this.dir] * k;
-      const t = entAt(nx, ny);
-      if (!t) continue;
-      if (t instanceof PipeToGround) return (t.dir === this.dir) ? t : null;
-      if (t instanceof Pipe) continue;
-      if (t.solid) return null;
-    }
-    return null;
-  }
+  // 是否已配对：（背向）连线的另一端有配对的地下管道
+  isPaired() { return !!this.findMate(); }
+  // 两条地下管道只有“背向”（朝向相反，同在一条直线上）才配对。
+  // 管道口背靠背相对，地下运行段在两座之间相接；同向的面向同一方、不会在地下相接，因此不配对。
+  static _parallel(d1, d2) { return ((d1 - d2 + 4) % 4) === 2; }
   update(dt) {
-    // 无配对则无传输
-    if (!this.findMate()) return;
-    // 入口端：从背侧管道吸入流体，送入地下缓冲（总量受 PIPE_CAP 限制）
-    // 出口端：把地下缓冲排向正前方管道
-    if (this.isInlet()) {
-      const back = entAt(this.x - DX[this.dir], this.y - DY[this.dir]);
-      if (back instanceof Pipe && this.total() < PIPE_CAP) {
-        for (const k of Object.keys(back.fluid)) {
-          if (!(back.fluid[k] > 0)) continue;
-          if (this.total() >= PIPE_CAP) break;
-          if (!this.giveItem(k)) continue;
-          back.takeItemOf(k);
-        }
-      }
-      // 把缓冲转运给配对的出口端
-      const mate = this.findMate();
-      if (mate && this.total() > 0 && mate.total() < PIPE_CAP) {
-        for (const k of Object.keys(this.fluid)) {
-          if (!(this.fluid[k] > 0)) break;
-          if (!(mate.fluid[k] > 0) && mate.total() > 0) continue; // 防混合
-          mate.fluid[k] = (mate.fluid[k] || 0) + 1;
-          this.fluid[k]--;
-          if (this.fluid[k] <= 0) delete this.fluid[k];
-          if (this.total() <= 0) break;
-        }
-      }
-    } else if (this.isOutlet()) {
-      // 出口端：把地下缓冲排向正前方管道
-      const front = entAt(this.x + DX[this.dir], this.y + DY[this.dir]);
-      if (front instanceof Pipe && this.total() > 0) {
-        for (const k of Object.keys(this.fluid)) {
-          if (!(this.fluid[k] > 0)) break;
-          if (front.total() >= PIPE_CAP) break;
-          if (front.giveItem(k)) {
-            this.fluid[k]--;
-            if (this.fluid[k] <= 0) delete this.fluid[k];
-          }
-        }
+    // 惰性调度（同普通管道）：流体扩散是抽象均衡，按帧节流避免每帧四向扫描
+    this._balT = (this._balT || 0) - dt;
+    if (this._balT > 0) return;
+    this._balT = 0.05;
+    // 双向互通：正前方、背侧的地面管道，以及与它配对的另一端地下管道，
+    // 都作为“邻居”按压差互相匀液——流体可从任一端进入、从任一端流出。
+    const back = entAt(this.x - DX[this.dir], this.y - DY[this.dir]);
+    const front = entAt(this.x + DX[this.dir], this.y + DY[this.dir]);
+    const mate = this.findMate();
+    const conns = [];
+    if (back instanceof Pipe) conns.push(back);
+    if (front instanceof Pipe) conns.push(front);
+    if (mate) conns.push(mate);
+    // 收集所有可能出现的流体种类（本方 + 各邻居），避免只扫本方导致“只进不出”
+    const fluids = new Set(Object.keys(this.fluid));
+    for (const t of conns) for (const k of Object.keys(t.fluid)) fluids.add(k);
+    for (const k of fluids) {
+      for (const t of conns) {
+        if ((this.fluid[k] > 0) || ((t.fluid[k] || 0) > 0)) pipeToGroundSwap(this, t, k);
       }
     }
     for (const k of Object.keys(this.fluid)) if (!(this.fluid[k] > 0)) delete this.fluid[k];
@@ -113,51 +108,48 @@ class PipeToGround extends Entity {
 function drawPipeGround(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const cx = px + TILE / 2, cy = py + TILE / 2;
-  const inlet = e.isInlet(), outlet = e.isOutlet();
-  const bodyCol = inlet ? '#4a3f36' : outlet ? '#5a4a3a' : '#443f3a';
-  const accCol = inlet ? '#b08a6a' : outlet ? '#c9a87a' : '#8a7a6a';
+  const paired = !!e.isPaired();
+  const dx = DX[dir], dy = DY[dir];
   ctx.globalAlpha = alpha;
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(dir * Math.PI / 2);
-  ctx.fillStyle = bodyCol;
-  rr(ctx, -13, -11, 26, 22, 5); ctx.fill();
-  if (!inlet && !outlet) ctx.setLineDash([4, 3]);
-  ctx.strokeStyle = accCol;
-  ctx.lineWidth = 2;
-  rr(ctx, -13, -11, 26, 22, 5); ctx.stroke();
-  ctx.setLineDash([]);
-  // 流体圆点
-  ctx.strokeStyle = accCol;
-  ctx.lineWidth = 3;
+  // 地表土坑衬底：一小片翻开的地表
+  ctx.fillStyle = paired ? '#5b543f' : '#4c4c46';
+  rr(ctx, cx - 11, cy - 9, 22, 18, 4); ctx.fill();
+  // 土坑内缘（凹陷感）
+  ctx.strokeStyle = paired ? '#39342a' : '#3a3a3a';
+  ctx.lineWidth = 1.5;
+  rr(ctx, cx - 11, cy - 9, 22, 18, 4); ctx.stroke();
+  // 管道：沿轴向从后端延伸至中心，再向下弯折扎入地下（不区分进出，无箭头）
+  const pipeCol = paired ? '#8f8572' : '#6f6f6a';
+  ctx.strokeStyle = pipeCol;
+  ctx.lineWidth = 6.5;
   ctx.lineCap = 'round';
+  if (!paired) ctx.setLineDash([4, 3]);
   ctx.beginPath();
-  ctx.moveTo(-8, 0);
-  ctx.lineTo(1, 0);
+  ctx.moveTo(cx - dx * 12, cy - dy * 12);
+  ctx.lineTo(cx - dx * 2, cy - dy * 2);
+  ctx.lineTo(cx, cy);
+  ctx.lineTo(cx, cy + 8); // 扎入地下
   ctx.stroke();
-  ctx.fillStyle = accCol;
-  tri(ctx, -1, -5, -1, 5, 7, 0);
-  ctx.fill();
+  ctx.setLineDash([]);
+  // 管道暗边
+  ctx.strokeStyle = paired ? '#4c463a' : '#5a5a5a';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx - dx * 12, cy - dy * 12);
+  ctx.lineTo(cx, cy);
+  ctx.lineTo(cx, cy + 8);
+  ctx.stroke();
+  // 流体圆点：位于弯折扎入点
   const total = e.total ? e.total() : 0;
   if (total > 0) {
     const first = Object.keys(e.fluid).find(k => e.fluid[k] > 0);
     if (first && ITEMS[first]) {
       ctx.fillStyle = ITEMS[first].color;
       ctx.beginPath();
-      ctx.arc(-3, 0, 3.5, 0, 7);
+      ctx.arc(cx - dx * 2, cy - dy * 2, 3.5, 0, 7);
       ctx.fill();
     }
   }
-  ctx.restore();
-  const badge = inlet ? '入' : outlet ? '出' : '—';
-  const bcol = inlet ? '#7a5a40' : outlet ? '#8a6a44' : '#5a504a';
-  ctx.fillStyle = bcol;
-  rr(ctx, px + 2, py + 2, 15, 13, 3);
-  ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 9px system-ui';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(badge, px + 9.5, py + 9);
   ctx.globalAlpha = 1;
 }
 
@@ -167,9 +159,9 @@ function pipeGroundPanelHtml(e) {
   for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
   let h = row('流体', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
   h += row('容量', e.total() + ' / ' + PIPE_CAP, 'cap');
-  if (Object.keys(agg).length) h += '<button data-action="takeout" id="btn-pgt-takeout">取出全部 (' + e.total() + ')</button>';
+  if (Object.keys(agg).length) h += '<button data-action="drain" id="btn-pgt-takeout">直接清空</button>';
   h += '<div class="status"></div>';
-  h += '<div class="dim">地下管道：同向摆两座（最远 ' + PIPE_GROUND_MAX + ' 格）自动配对，从地下穿行流体，可跨过传送带/管道。入口端从背侧管道吸入，出口端排向正前方管道。R 旋转方向。</div>';
+  h += '<div class="dim">地下管道：背向摆两座（朝向相反，最远 ' + PIPE_GROUND_MAX + ' 格）自动配对，从地下穿行流体，可跨过传送带/管道。与普通管道一样互通，不分入口/出口，正前方与背侧管道及配对端均按压差双向输送。一条线上多个管道时只与最近的背向管道配对。R 旋转方向。</div>';
   return h;
 }
 function pipeGroundPanelLive(e, api) {
@@ -177,23 +169,21 @@ function pipeGroundPanelLive(e, api) {
   for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
   api.set('contents', Object.keys(agg).length ? countStr(agg) : dimSpan('空'));
   api.set('cap', e.total() + ' / ' + PIPE_CAP);
-  api.toggle('#btn-pgt-takeout', e.total() > 0, '取出全部 (' + e.total() + ')');
-  if (!e.findMate() && !e.findBackMate()) api.status('已暂停：未配对（同向 ' + PIPE_GROUND_MAX + ' 格内无另一座地下管道）', 'warn');
-  else if (e.isInlet()) api.status('地下入口：从背侧管道吸入流体', e.total() > 0 ? 'ok' : 'ok');
-  else if (e.isOutlet()) api.status('地下出口：向前方管道排出流体', 'ok');
-  else api.status('待机', 'ok');
+  api.toggle('#btn-pgt-takeout', e.total() > 0, '直接清空');
+  if (!e.isPaired()) api.status('已暂停：未配对（背向 ' + PIPE_GROUND_MAX + ' 格内无朝向相反的另一座地下管道）', 'warn');
+  else if (e.total() > 0) api.status('输送中：与前后管道双向均压流动', 'ok');
+  else api.status('地下互通：等待流体进入', 'ok');
 }
 function pipeGroundTip(e) {
   const agg = {};
   for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
-  if (e.isInlet()) return '地下入口' + (Object.keys(agg).length ? '（缓冲 ' + Object.keys(agg).map(k => ITEMS[k].name + '×' + agg[k]).join('、') + '）' : '');
-  if (e.isOutlet()) return '地下出口';
-  return '未配对（同向 ' + PIPE_GROUND_MAX + ' 格内无另一座）';
+  if (e.isPaired()) return '地下管道：互通双向输送' + (Object.keys(agg).length ? '（缓冲 ' + Object.keys(agg).map(k => ITEMS[k].name + '×' + agg[k]).join('、') + '）' : '') + '，R 旋转方向';
+  return '未配对（背向 ' + PIPE_GROUND_MAX + ' 格内无朝向相反的另一座）';
 }
 
 // ===== 注册 =====
 ENT_CLASSES['pipe-to-ground'] = PipeToGround;
 DEVICE_RENDER['pipe-to-ground'] = drawPipeGround;
-DEVICE_STATUS['pipe-to-ground'] = e => (e.findMate() || e.findBackMate()) ? (e.total() > 0 ? 'g' : 'r') : 'y';
+DEVICE_STATUS['pipe-to-ground'] = e => e.findMate() ? (e.total() > 0 ? 'g' : 'r') : 'y';
 DEVICE_PANEL['pipe-to-ground'] = { html: pipeGroundPanelHtml, live: pipeGroundPanelLive, tip: pipeGroundTip };
 DEVICE_DIR_ROTATE['pipe-to-ground'] = true;

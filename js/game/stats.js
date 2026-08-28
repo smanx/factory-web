@@ -360,6 +360,9 @@ const PERF = {
   updateMs: 0,          // 每帧所有活跃实体 update 的总耗时（逻辑帧开销），由 main loop 写入
   updateMsPerSec: 0,    // 最近采样窗口内实体 update 平均每帧耗时再折算出的实时长度（诊断用）
   logicTickMs: 0,       // 逻辑帧单帧耗时估算（update 耗时 + 调度/电力/物流等系统耗时）
+  frameStepMs: 0,       // 整帧分解：本帧所有 stepWorld 调用总耗时平均值（含战斗/物流/铁路等系统，非仅设备 update）
+  frameRenderMs: 0,     // 整帧分解：本帧 render() 总耗时平均值（含地形回贴/清屏，非仅 drawEntity）
+  frameOtherMs: 0,      // 整帧分解：frameMs - frameStepMs - frameRenderMs（合成/GC/等待/未计入部分）
   budgetMs: (1000 / 60), // 单帧预算（以 60 FPS 为基准的毫秒数）
   tiles: 0,
   chunkCount: 0,
@@ -369,7 +372,11 @@ const PERF = {
   lodState: '—',
   devices: [],          // 按类型统计的设备，[ { type, name, n, active } ]，按数量降序
   typeCost: [],         // 按类型统计的 update 耗时，[ { type, name, n, ms, perDevMs, pct } ]，按 ms 降序
-  _tri: null            // 采样窗口内部状态（激活期间由 main loop 写入）
+  renderMs: 0,          // 每帧实体绘制总耗时（渲染帧开销，不含地形离屏贴图），由 render 写入
+  renderMsPerSec: 0,    // 最近采样窗口内实体绘制平均每帧耗时折算的每秒 CPU 开销（诊断用）
+  renderTypeCost: [],   // 按类型统计的 render 耗时，[ { type, name, n, ms, perDevMs, pct } ]，按 ms 降序
+  _tri: null,           // 采样窗口内部状态（激活期间由 main loop 写入）
+  _ftri: null           // 整帧分解采样窗口（stepWorld 总/ render 总 滚动累加，由 main loop 写入）
 };
 
 // 按设备类型统计实体数量，用于判断哪类设备对帧数/逻辑帧影响最大。
@@ -430,6 +437,47 @@ function settlePerfWindow() {
   }
   list.sort((a, b) => (b.ms - a.ms) || (b.n - a.n));
   PERF.typeCost = list;
+  // 渲染侧结算：把 render 累计的分类型绘制耗时折算为平均每帧耗时与每秒开销，
+  // 生成按耗时降序的 renderTypeCost 列表（用于定位“哪类设备在绘制上拖累帧率”）。
+  const rtri = PERF._rtri;
+  if (rtri && rtri.t0) {
+    PERF.renderMs = rtri.renderMs > 0 ? (rtri.renderMs / frames) : 0;
+    PERF.renderMsPerSec = rtri.renderMs / (el / 1000);
+    const rlist = [];
+    let rtotal = rtri.renderMs || 0;
+    for (const k in rtri.type) {
+      const ms = rtri.type[k];
+      const n = nMap[k] || 0;
+      rlist.push({
+        type: k,
+        name: (ITEMS[k] && ITEMS[k].name) ? ITEMS[k].name : k,
+        n: n, ms: ms,
+        perDevMs: frames > 0 && n > 0 ? (ms / frames / n) : 0,  // 单台每帧平均绘制耗时
+        pct: rtotal > 0 ? (ms / rtotal) * 100 : 0               // 占渲染帧耗时百分比
+      });
+    }
+    rlist.sort((a, b) => (b.ms - a.ms) || (b.n - a.n));
+    rlist.length = Math.min(rlist.length, 15); // 只保留开销靠前的一批，避免面板过长
+    PERF.renderTypeCost = rlist;
+    // 重置渲染窗口（滚动继续）
+    rtri.t0 = now;
+    rtri.renderMs = 0;
+    rtri.type = {};
+  }
+  // 整帧时间分解结算：stepWorld 总耗时与 render() 总耗时分别取均值，
+  // “其它”段 = 真实帧间隔 - 逻辑总 - 渲染总（合成/GC/等待/未计入部分）。
+  const ftri = PERF._ftri;
+  if (ftri && ftri.t0 && ftri.frames > 0) {
+    const fc = ftri.frames;
+    PERF.frameStepMs = ftri.swMs / fc;
+    PERF.frameRenderMs = ftri.rndMs / fc;
+    const fr = PERF.frameMs || (ftri.swMs + ftri.rndMs) / fc;
+    PERF.frameOtherMs = Math.max(0, fr - PERF.frameStepMs - PERF.frameRenderMs);
+    ftri.t0 = now;
+    ftri.swMs = 0;
+    ftri.rndMs = 0;
+    ftri.frames = 0;
+  }
   // 重置窗口（滚动继续）
   tri.t0 = now;
   tri.frames = 0;
@@ -886,8 +934,12 @@ function htmlStatsPerf() {
   h2 += row2('逻辑帧 UPS', '<b data-live="pups">' + PERF.ups + '</b>');
   h2 += row2('单帧耗时', '<span data-live="pframems">' + PERF.frameMs.toFixed(2) + ' ms</span>');
   h2 += row2('逻辑帧耗时（实体 update）', '<span data-live="pupdate">' + upd.toFixed(2) + ' ms</span>');
+  const rms = +(PERF.renderMs || 0).toFixed(2);
+  const renderPct = PERF.frameMs > 0 ? (rms / PERF.frameMs * 100).toFixed(1) : 0;
+  h2 += row2('渲染耗时（实体绘制）', '<span data-live="prender">' + rms + ' ms</span>（估占帧耗 ' + renderPct + '%）');
   h2 += row2('逻辑帧预算占用', '<span data-live="plogicpct">' + logicPct.toFixed(1) + ' % / 60Hz预算 ' + budget.toFixed(1) + 'ms</span> <b class="perf-health" data-live="phealth">' + health + '</b>');
   h2 += row2('实体 update 每秒开销', '<span data-live="pupdsec">' + (PERF.updateMsPerSec || 0).toFixed(0) + ' ms/s</span>');
+  h2 += row2('实体渲染每秒开销', '<span data-live="prendsec">' + (PERF.renderMsPerSec || 0).toFixed(0) + ' ms/s</span>');
   h2 += row2('实体数量', '<span data-live="pents">' + PERF.ents + '</span>');
   h2 += row2('活跃实体', '<b data-live="pactive">' + PERF.activeEnts + '</b>');
   h2 += row2('静态实体', '<span data-live="pstatic">' + PERF.staticEnts + '</span>');
@@ -896,6 +948,20 @@ function htmlStatsPerf() {
   h2 += row2('地形缓存最近重建耗时', '<span data-live="pcachem">' + (PERF.cacheRebuildMs || 0).toFixed(1) + ' ms</span>');
   h2 += row2('缩放级别', '<span data-live="pzoom">×' + PERF.zoom.toFixed(2) + '</span>');
   h2 += row2('LOD 分级', '<span data-live="plod">' + PERF.lodState + '</span>');
+  h2 += '</div>';
+
+  // 整帧时间分解：把真实帧间隔拆成 逻辑(stepWorld) / 渲染(render) / 其它(合成·GC·等待) 三段。
+  // 设备层采样(update/renderTypeCost)不覆盖战斗·物流·地形回贴等，此表负责看清“剩下那部分”在哪。
+  const _fs = (PERF.frameStepMs || 0), _fr = (PERF.frameRenderMs || 0), _fo = (PERF.frameOtherMs || 0);
+  const _fsPct = PERF.frameMs > 0 ? (_fs / PERF.frameMs * 100) : 0;
+  const _frPct = PERF.frameMs > 0 ? (_fr / PERF.frameMs * 100) : 0;
+  const _foPct = PERF.frameMs > 0 ? (_fo / PERF.frameMs * 100) : 0;
+  h2 += '<div class="sec">整帧时间分解（逻辑 / 渲染 / 其它）</div>';
+  h2 += '<div class="dim">逻辑=本帧所有 stepWorld（含战斗/物流/铁路等系统）；渲染=render()（含地形回贴/清屏）；其它=整帧减去前两者后的剩余（浏览器合成/GC/等待）。三者之和≈单帧耗时。</div>';
+  h2 += '<div class="stat-table">';
+  h2 += row2('逻辑 stepWorld', _fs.toFixed(2) + ' ms（' + _fsPct.toFixed(1) + '%）');
+  h2 += row2('渲染 render()', _fr.toFixed(2) + ' ms（' + _frPct.toFixed(1) + '%）');
+  h2 += row2('其它（合成/GC/等待）', (_fo).toFixed(2) + ' ms（' + _foPct.toFixed(1) + '%）');
   h2 += '</div>';
 
   // 按 update 耗时降序的设备成本：判定“哪类设备把逻辑氛围做大”
@@ -912,6 +978,24 @@ function htmlStatsPerf() {
       h += row2(
         (c.name || c.type),
         '<span data-live="pcn-' + c.type + '">' + c.n + '</span> × <span data-live="pcu-' + c.type + '">' + c.perDevMs.toFixed(2) + '</span>ms  <b data-live="pcp-' + c.type + '">' + c.pct.toFixed(1) + '%</b>'
+      );
+    }
+  }
+  h += '</div>';
+
+  // 按 render 耗时降序的设备成本：定位“哪类设备在绘制上拖累帧率”（缩小画面时最明显）
+  const rcost = (PERF.renderTypeCost && PERF.renderTypeCost.length) ? PERF.renderTypeCost : [];
+  h += '<div class="sec">设备渲染耗时 Top（按渲染耗时降序）</div>';
+  h += '<div class="dim">单台耗时=该类所有设备每帧平均绘制耗时；占比=该类占总渲染帧耗的百分比。数量越大/单台越慢 → 越可能是渲染卡顿主因。</div>';
+  h += '<div class="stat-table" id="perf-render-cost">';
+  if (!rcost.length) {
+    h += '<div class="dim">正在采样渲染耗时…（保持本页打开即可实时累积）</div>';
+  } else {
+    h += '<div class="stat-head"><span>设备</span><span>数量</span><span>单台/帧</span><span>窗口占比</span></div>';
+    for (const c of rcost) {
+      h += row2(
+        (c.name || c.type),
+        '<span data-live="prn-' + c.type + '">' + c.n + '</span> × <span data-live="pru-' + c.type + '">' + c.perDevMs.toFixed(2) + '</span>ms  <b data-live="prp-' + c.type + '">' + c.pct.toFixed(1) + '%</b>'
       );
     }
   }
@@ -965,7 +1049,19 @@ function buildPerfExport() {
     zoom: +PERF.zoom.toFixed(2),
     lod: PERF.lodState,
     deviceCount: PERF.devices.map(d => ({ type: d.type, name: d.name, n: d.n, active: d.active })),
-    deviceCostTop: PERF.typeCost.map(c => ({ type: c.type, name: c.name, n: c.n, perDevMsPerFrame: +c.perDevMs.toFixed(4), pct: +c.pct.toFixed(1) }))
+    deviceCostTop: PERF.typeCost.map(c => ({ type: c.type, name: c.name, n: c.n, perDevMsPerFrame: +c.perDevMs.toFixed(4), pct: +c.pct.toFixed(1) })),
+    // 渲染侧：实体绘制每帧耗时 / 每秒开销 / 按设备类型占比（定位渲染瓶颈的关键数据）
+    renderMs: +(PERF.renderMs || 0).toFixed(2),
+    renderMsPerSec: +((PERF.renderMsPerSec || 0)).toFixed(0),
+    // renderMs 相对整帧(渲染+逻辑)的占比，直观看出“绘制”是不是当前卡顿主因
+    renderPctOfFrame: PERF.frameMs > 0 ? +((PERF.renderMs || 0) / PERF.frameMs * 100).toFixed(1) : 0,
+    // 整帧时间分解：逻辑(stepWorld)总 / 渲染(render)总 / 其它(合成·GC·等待)，三者和≈单帧耗时
+    frameMsBreakdown: {
+      stepMs: +(PERF.frameStepMs || 0).toFixed(2),
+      renderMs: +(PERF.frameRenderMs || 0).toFixed(2),
+      otherMs: +(PERF.frameOtherMs || 0).toFixed(2)
+    },
+    renderTypeCost: (PERF.renderTypeCost || []).map(c => ({ type: c.type, name: c.name, n: c.n, perDevMsPerFrame: +c.perDevMs.toFixed(4), pct: +c.pct.toFixed(1) }))
   };
 }
 

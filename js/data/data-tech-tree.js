@@ -70,7 +70,7 @@ const TECHS = {
   // ==== 五级科技（黄瓶：实用科学） ====
   'worker-robot-speed': { name: '机器人速度', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：物流/施工机器人速度每级 ×1.5，可无限叠加（对齐《异星工厂》Worker robot speed 无限科技，链条终结于 Level 6，Space Age 再延展至 Level 7）', req: ['logistics-network'] },
   utility: { name: '实用科技', cost: { 'utility-science-pack': 60 }, desc: '解锁飞行机器人框架、施工机器人，完善机器人网络', req: ['logistics-network', 'worker-robot-speed'] },
-  'research-speed': { name: '科研速度', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：科研速度每级 +50%，可无限叠加（对齐《异星工厂》Research speed 科技，链条终结于 Level 6）', req: ['automation2'] },
+  'research-speed': { name: '科研速度', cost: { 'production-science-pack': 50, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：科研速度累加式提升（对齐官方 laboratory-speed L1~L6：+20%/+30%/+40%/+50%/+50%/+60%，满级 +250%即 ×3.5），超过 6 级不再提升速度', req: ['automation2'] },
   'kovarex-enrichment': { name: '铀富集', cost: { 'production-science-pack': 60, 'utility-science-pack': 40 }, desc: '解锁 Kovarex 富集循环：用铀-238 在铀-235 催化下持续富集出更多铀-235，可自持循环（对齐《异星工厂》Kovarex enrichment process）', req: ['nuclear', 'production'] },
   'inserter-capacity': { name: '机械臂容量', cost: { 'production-science-pack': 50, 'utility-science-pack': 30 }, infinite: true, desc: '无限科技：每次研究让集装箱机械臂单次抓取数量 +1（对齐《异星工厂》Inserter capacity bonus 科技，链条终结于 Level 7）', req: ['logistics3'] },
   // ==== 终局装备科技（对齐《异星工厂》Modular armor / Power armor 科技链）====
@@ -103,7 +103,7 @@ const TECHS = {
   'railgun-defense': { name: '轨道炮防御', cost: { 'cryogenic-science-pack': 100, 'electromagnetic-science-pack': 100, 'military-science-pack': 100 }, desc: '太空时代终局防御：解锁量子处理器与轨道炮（官方 Space Age Railgun 科技）。轨道炮发射贯穿线伤的高伤害攻击，是太空时代最强单兵武器（数据来自 GAME_DATA），需低温学与电磁科研', req: ['cryogenics', 'electromagnetics'] },
   'mech-armor': { name: '机械装甲', cost: { 'cryogenic-science-pack': 100, 'space-science-pack': 100 }, desc: '太空时代机械装甲：解锁终极机械装甲（官方 Space Age Mech armor）与高级个人装备（个人电池 III / 便携裂变反应堆 / 工具腰带），拥有最大装备网格与最强个人动力（数据来自 GAME_DATA），需低温学与电磁科研', req: ['cryogenics', 'electromagnetics'] },
   'captive-biter-spawner': { name: '虫巢孵化器', cost: { 'cryogenic-science-pack': 100, 'electromagnetic-science-pack': 100, 'military-science-pack': 100 }, desc: '太空时代虫巢孵化器科技：解锁捕获者火箭弹与虫巢孵化器（官方 Space Age Captive biter spawner）。用捕获者火箭弹锁定并捕获虫巢，转化为受驯化的虫巢孵化器——持续繁育异虫卵（官方 spawner 繁育行为，需喂养生物流维持圈养），补齐异虫卵→钷素科研的生物链终局循环（对齐《异星工厂》Space Age 虫巢捕获科技，需低温学+电磁科研）', req: ['cryogenics', 'electromagnetics', 'kovarex-enrichment'] },
-  'space-research-speed': { name: '空间科研速度', cost: { 'space-science-pack': 100 }, infinite: true, desc: '无限科技：每次研究科研速度 +20%（对齐《异星工厂》Research speed 无限科技终局阶段，用空间科学包推进）', req: ['space-science'] },
+  'space-research-speed': { name: '空间科研速度', cost: { 'space-science-pack': 100 }, infinite: true, desc: '无限科技：每次研究科研速度 +5% 累加（终局阶段用空间科学包推进，为对齐官方数值而明显削弱）', req: ['space-science'] },
   'space-mining-productivity': { name: '空间采矿产能', cost: { 'space-science-pack': 100 }, infinite: true, desc: '无限科技：每次研究采矿产能 +10%（对齐《异星工厂》Mining productivity 无限科技终局阶段，用空间科学包推进）', req: ['space-science'] },
   'research-productivity': { name: '科研产能', cost: { 'space-science-pack': 100, 'utility-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究提升科研产能 +10%（对齐《异星工厂》Research productivity 无限科技）——每瓶科学包产生的研究进度 +10%，让无限科研在终局更高效推进', req: ['space-science', 'utility'] },
   'weapon-damage': { name: '武器伤害', cost: { 'space-science-pack': 100, 'military-science-pack': 50 }, infinite: true, desc: '无限科技：每次研究提升所有武器与炮塔伤害 +10%（对齐《异星工厂》Weapon damage 无限科技），让科技军备在终局持续成长', req: ['space-science', 'advanced-combat'] },

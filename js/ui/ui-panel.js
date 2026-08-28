@@ -792,6 +792,13 @@ function initPanelEvents() {
         // "取出全部"：各设备在自己的文件里实现 takeAll()（默认清空 outp）
         const mch = G.panelEnt;
         if (mch && mch.takeAll) for (const [k, n] of mch.takeAll()) invAdd(k, n);
+      } else if (act === 'drain') {
+        // "直接清空"（管道/地下管道）：抹除与当前管道互通的所有连接管道及设备中的液体，不回收物品
+        const mch = G.panelEnt;
+        if (mch && typeof drainFluidNetwork === 'function') {
+          const cleared = drainFluidNetwork(mch);
+          if (cleared > 0 && typeof playSfx === 'function') playSfx('pick');
+        }
       } else if (act === 'tech') {
         // 前置科技校验：未满足前置的科技不能开始研究
         if (G.techDone[id] && !isInfiniteTech(id)) { toast('该科技已完成'); return; }

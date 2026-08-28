@@ -39,6 +39,9 @@ class FastSplitter extends Splitter {
 
 // ===== 渲染（各复用同档绘制，仅换红色系配色）=====
 function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
+  // 简化 LOD：缩放很小时全格单色 + 物品色点即可（复用 belt.js 的简化绘制），
+  // 跳过转角弧/动效箭头/描边，缓解缩小画面时上千条极速带的渲染压力
+  if (LOD && LOD.simple) { drawBeltSimple(ctx, e, gx, gy, '#2e3a52'); return; }
   const px = gx * TILE, py = gy * TILE;
   const cx = px + TILE / 2, cy = py + TILE / 2;
   const inp = beltInputSide(e);

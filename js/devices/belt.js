@@ -494,7 +494,32 @@ function beltColors(e) {
   return { belt: '#3a3f47', chev: 'rgba(224,178,60,.85)' };
 }
 
+// 简化 LOD 传送带：缩放很小（瓦片 < LOD_SIMPLE_PX）时带面细节在屏幕上已不可辨，
+// 省略转角弧 / 侧面汇入 / 动效箭头 / 描边 / clip 等昂贵绘制，整格单色底色 + 物品色点即可。
+// 缩小画面时视口内可同时含上千条传送带，原每帧 save/rotate/clip+3 三角的绘制是渲染卡顿主因。
+function drawBeltSimple(ctx, e, gx, gy, beltCol) {
+  const px = gx * TILE, py = gy * TILE;
+  ctx.fillStyle = beltCol;
+  ctx.fillRect(px, py, TILE, TILE);
+  if (e.items.length) {
+    const cx = px + TILE / 2, cy = py + TILE / 2;
+    const fdx = DX[e.dir], fdy = DY[e.dir];
+    // 前进 = 沿行进方向 pos 0→1 横跨整格；双列车道垂直偏移（lane 1 在行进方向右侧，±7px）
+    const kx = fdy * 7, ky = -fdx * 7;
+    for (const o of e.items) {
+      const lo = (o.lane === 1 ? 1 : -1);
+      const ix = cx + fdx * (o.pos - 0.5) * TILE + kx * lo;
+      const iy = cy + fdy * (o.pos - 0.5) * TILE + ky * lo;
+      drawItemDotLOD(ctx, ix, iy, o.item);
+    }
+  }
+  // 仅创造/虚空带需角标，普通/极速带（占绝大多数）直接跳过
+  if (e.type === 'creative-belt' || e.type === 'void-belt') drawBeltMark(ctx, e, gx, gy, 1);
+}
+
 function drawBelt(ctx, e, gx, gy, dir, alpha) {
+  // 简化 LOD：缩放很小时全格单色 + 物品色点即可，跳过转角弧/动效箭头/描边（渲染卡顿优化）
+  if (LOD && LOD.simple) { drawBeltSimple(ctx, e, gx, gy, beltColors(e).belt); return; }
   const px = gx * TILE, py = gy * TILE;
   const cx = px + TILE / 2, cy = py + TILE / 2;
   const inp = beltInputSide(e);

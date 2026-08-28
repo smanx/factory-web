@@ -501,13 +501,21 @@ function loop(ts) {
   // 游戏暂停：由顶部“暂停/继续”按钮控制（G.paused）。
   // 打开设置面板不再暂停游戏（仅暂停时世界/设备/电力/玩家停摆）。
   const paused = !!G.paused;
+  // 整帧时间分解：仅性能页开启时打点。stepWorld 可能一帧补跑多步，render() 含地形回贴/清屏，
+  // 两者都计入毫秒并滚动累加，结算时与真实帧间隔(frameMs)对比，拆出“逻辑/渲染/其它”三段占比，
+  // 用于定位那部分“既不在设备 update、也不在 drawEntity”里的大额整帧开销。
+  const _perfOn = (G.statsTab === 'perf' && typeof PERF === 'object' && PERF);
+  if (_perfOn && !PERF._ftri) PERF._ftri = { t0: performance.now(), swMs: 0, rndMs: 0, frames: 0 };
+  let _swMs = 0;
   if (!paused) {
     // 累积器模式：把本帧真实流逝时间（乘时间缩放）累加，按固定步长 TICK 补跑世界更新。
     loop.acc += raw * ((G.dbg && G.dbg.timeScale) || 1);
     let steps = 0;
     while (loop.acc >= TICK && steps < MAX_TICK_STEPS) {
       G.time += TICK;      // 世界时间以固定步长推进
+      const _tw0 = _perfOn ? performance.now() : 0;
       stepWorld(TICK);
+      if (_perfOn) _swMs += performance.now() - _tw0;
       loop.acc -= TICK;
       steps++;
       loop.upsSteps++;     // 实测：累计一次逻辑步
@@ -537,7 +545,11 @@ function loop(ts) {
     // 背景音乐（可独立开关）：暂停游戏时仍持续播放（界面层氛围）
     if (typeof bgmUpdate === 'function') bgmUpdate(TICK);
 
+    const _rw0 = _perfOn ? performance.now() : 0;
     render();
+    // 整帧时间分解：累加本帧 render() 与 stepWorld 总耗时（含地形回贴/清屏/多逻辑步），
+    // 结算窗口内取平均，与真实帧间隔对比拆出“其它(合成/GC/等待)”段。
+    if (_perfOn) { PERF._ftri.rndMs += performance.now() - _rw0; PERF._ftri.swMs += _swMs; PERF._ftri.frames++; }
 
     // 后台预热背包静态缓存（首次打开背包的卡顿优化）：每帧处理一小片，分摊到多帧执行，
     // 预热完成后自动停止，不影响正常游戏帧率。

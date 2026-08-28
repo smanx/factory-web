@@ -537,13 +537,16 @@ function drillMult()  { return (G.techDone.mining ? 2 : 1) * ((G.dbg && G.dbg.dr
 function asmMult()    { return (G.techDone.automation ? 1.5 : 1) * (G.techDone.automation2 ? 1.2 : 1) * ((G.dbg && G.dbg.asmMult) || 1); }
 function elecMachMult() { return (G.techDone.electric ? 1.2 : 1); }
 function oilMult()    { return (G.techDone.oil ? 1.5 : 1); }
-// 科研速度倍率（对齐《异星工厂》Research speed 无限科技）：普通科研速度 ×1.5，
-// 空间科研速度无限科技每级再 ×1.2，可无限叠加。
-// 科研产能（Research productivity）无限科技：每级让每瓶科学包产生的研究进度 +10%（对齐官方）。
+// 科研速度倍率（对齐《异星工厂》Research speed 累加式 laboratory-speed，链条 L1~L6）：
+// 各等级累加 modifier：+0.2/+0.3/+0.4/+0.5/+0.5/+0.6 → 满级加成 +2.5（最终 ×3.5），超过 6 级不再叠加。
+// 空间科研速度（终局额外加成）：每级累加 +5%。
+// 科研产能（Research productivity）无限科技：每级让研究进度 +10% 累加（对齐官方，非复利）。
 function labSpeedMult() {
-  let m = (techResearched('research-speed') ? 1.5 : 1);
-  m *= Math.pow(1.2, techLevel('space-research-speed'));
-  m *= Math.pow(1.1, techLevel('research-productivity'));
+  const lvl = techResearched('research-speed') ? Math.min(6, Math.max(1, techLevel('research-speed') || 1)) : 0;
+  const lvlADD = [0, 0.2, 0.5, 0.9, 1.4, 1.9, 2.5];
+  let m = 1 + lvlADD[lvl];
+  m += 0.05 * techLevel('space-research-speed');
+  m += 0.1 * techLevel('research-productivity');
   return m;
 }
 // 机器人速度倍率（对齐《异星工厂》Worker robot speed 无限科技）：每级 ×1.5 叠加。

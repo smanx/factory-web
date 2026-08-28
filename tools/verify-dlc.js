@@ -1618,10 +1618,10 @@ ok(TS['research-productivity'].infinite === true, '科研产能为无限科技�
 ok(!!TS['research-productivity'].req && TS['research-productivity'].req.indexOf('space-science') >= 0, '科研产能前置含空间科技');
 ok(!!TS['research-productivity'].req && TS['research-productivity'].req.indexOf('utility') >= 0, '科研产能前置含实用科技');
 ok(TS['research-productivity'].cat === 'space-age', '科研产能归入太空时代分类');
-// 科研产能倍率接入 labSpeedMult（data-util.js）：每级 ×1.1
+// 科研产能倍率接入 labSpeedMult（data-util.js）：每级 +10% 累加（官方 Research productivity）
 {
   const utilSrc = fs.readFileSync(ROOT + '/js/data/data-util.js', 'utf8');
-  ok(utilSrc.indexOf("Math.pow(1.1, techLevel('research-productivity'))") >= 0, 'labSpeedMult 已接入科研产能倍率（每级 ×1.1）');
+  ok(utilSrc.indexOf("0.1 * techLevel('research-productivity')") >= 0, 'labSpeedMult 已接入科研产能倍率（每级 +10% 累加）');
 }
 
 

@@ -95,6 +95,54 @@ class Pipe extends Entity {
   static restore(s) { const p = super.restore(s); p.fluid = s.fluid || {}; return p; }
 }
 
+// ===== 直接清空互通管网 =====
+// "直接清空"：不回收物品，直接把与当前管道/地下管道互通（管道相互连通、地下配对互连、
+// 以及邻接的储液罐/设备接口）的所有实体中的液体抹除。设备（化工/炼油/装配/采矿机）
+// 只清理其流体缓冲，不向外扩散；管道/地下管道/储液罐作为连接集合继续扩散。
+const FLUID_NET_MEMBERS = true;
+function clearEntityFluid(e) {
+  let n = 0;
+  if (e.fluid && typeof e.fluid === 'object') {
+    for (const k in e.fluid) { n += e.fluid[k]; delete e.fluid[k]; }
+  }
+  // 依赖流体配方/缓冲的设备：化工/炼油/装配的输入输出流体、采矿机的硫酸缓冲
+  for (const map of [e.inp, e.outp]) {
+    if (!map || typeof map !== 'object') continue;
+    for (const k of Object.keys(map)) {
+      if (FLUIDS.indexOf(k) >= 0) { n += map[k]; delete map[k]; }
+    }
+  }
+  if (typeof e.acid === 'number') { n += e.acid; e.acid = 0; }
+  return n;
+}
+function drainFluidNetwork(start) {
+  const visited = new Set();
+  const queue = [start];
+  visited.add(start);
+  let cleared = 0;
+  while (queue.length) {
+    const cur = queue.shift();
+    cleared += clearEntityFluid(cur);
+    // 地下配对端视为直接连通
+    if (cur instanceof PipeToGround) {
+      const mate = cur.findMate();
+      if (mate && !visited.has(mate)) { visited.add(mate); queue.push(mate); }
+    }
+    // 只有管道/地下管道/储液罐扩展连通集合；设备仅清空其自身流体，不继续扩散
+    const expand = (cur instanceof Pipe) || (cur instanceof PipeToGround) || (cur instanceof StorageTank);
+    if (!expand) continue;
+    for (let i = 0; i < 4; i++) {
+      const t = entAt(cur.x + DX[i], cur.y + DY[i]);
+      if (!t || visited.has(t)) continue;
+      const connected = t instanceof Pipe || t instanceof PipeToGround || t instanceof StorageTank ||
+                        t instanceof Refinery || t instanceof ChemicalPlant ||
+                        (t instanceof Assembler && t.acceptsFluid) || t instanceof ElectricDrill;
+      if (connected) { visited.add(t); queue.push(t); }
+    }
+  }
+  return cleared;
+}
+
 // ===== 渲染 =====
 function drawPipe(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
@@ -141,7 +189,7 @@ function pipePanelHtml(e) {
   for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
   let h = row('流体', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
   h += row('容量', '', 'cap');
-  if (Object.keys(agg).length) h += '<button data-action="takeout" id="btn-pipe-takeout">取出全部 (' + e.total() + ')</button>';
+  if (Object.keys(agg).length) h += '<button data-action="drain" id="btn-pipe-takeout">直接清空</button>';
   h += '<div class="status"></div>';
   h += '<div class="dim">管道与相邻管道自动互连均压，并把原油送入邻接炼油厂；机械臂可从管道抓取流体。</div>';
   return h;
@@ -151,7 +199,7 @@ function pipePanelLive(e, api) {
   for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
   api.set('contents', Object.keys(agg).length ? countStr(agg) : dimSpan('空'));
   api.set('cap', e.total() + ' / ' + PIPE_CAP);
-  api.toggle('#btn-pipe-takeout', e.total() > 0, '取出全部 (' + e.total() + ')');
+  api.toggle('#btn-pipe-takeout', e.total() > 0, '直接清空');
   if (e.total() >= PIPE_CAP) api.status('已暂停：管道已满，等待下游消耗', 'warn');
   else if (e.total() > 0) api.status('输送中：' + Object.keys(agg).map(k => ITEMS[k].name + '×' + agg[k]).join('、'), 'ok');
   else api.status('空管：等待流体进入', 'ok');

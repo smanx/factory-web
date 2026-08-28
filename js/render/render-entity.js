@@ -486,6 +486,21 @@ function drawHoverAndMining(ctx) {
     ctx.lineWidth = 2 / G.cam.z;
     ctx.strokeRect(e.x * TILE + 1, e.y * TILE + 1, e.w * TILE - 2, e.h * TILE - 2);
   }
+  // 地下管道已配对：鼠标移上去时，在其与配对端之间画一条虚线连接表示地下穿行段
+  if (e instanceof PipeToGround && e.isPaired()) {
+    const m = e.findMate();
+    if (m) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(110,180,255,.95)';
+      ctx.lineWidth = 2 / G.cam.z;
+      ctx.setLineDash([6 / G.cam.z, 4 / G.cam.z]);
+      ctx.beginPath();
+      ctx.moveTo(e.x * TILE + TILE / 2, e.y * TILE + TILE / 2);
+      ctx.lineTo(m.x * TILE + TILE / 2, m.y * TILE + TILE / 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
   const p = G.player;
   if (p.mining) {
     const [mx, my] = p.mining.split(',').map(Number);
