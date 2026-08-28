@@ -6,10 +6,25 @@ class Underground extends Entity {
     super(type || 'underground-belt', x, y);
     this.items = [];
     this.outItems = [];
+    // 隧道在途物品：{ item, lane, rem }，rem = 距出口剩余格数（格），随流速递减。
+    // 用来把「过洞」改造成真实耗时：物品以地上带单列流速穿过 D 格隧道后才冒出地面，
+    // 而不是上一版“入口瞬时塞进出口缓存”造成的瞬间传送 + 变速。
+    this.tunnel = [];
     // 双列（对齐《异星工厂》）：隧道内两条独立车道各用一套累积计时器推进，互不混合。
-    this.cd = [0, 0];   // 入口 → 出口 传输计时器（lane0 / lane1）
+    this.cd = [0, 0];   // 入口 → 隧道 进洞计时器（lane0 / lane1）
     this.ejectT = [0, 0]; // 出口 → 地面 喷射计时器（lane0 / lane1）
+    this._blockL = [false, false]; // 出口各车道是否被下游卡住（lane0 / lane1），驱动动画冻结
   }
+  // 与配对地下带之间的跨度（格）：入口→前方出口、出口→后方入口。未配对按 1 格计。
+  ugDist() {
+    const m = this.isEntrance() ? this.findMate() : this.findBackMate();
+    if (!m) return 1;
+    return Math.max(Math.abs(m.x - this.x), Math.abs(m.y - this.y));
+  }
+  // 隧道单列容量 = 跨度(格) × 每格每列件数(UG_CAP)。配对越长缓存越多，与地上带逐格同口径。
+  tunnelCapLane() { return UG_CAP * this.ugDist(); }
+  // 每列流速（格/秒）：与地上传送带单列一致（beltSpeed/2）。
+  speedLane() { return beltSpeed() * this.speedMult() / 2; }
   maxDist() { return this.type === 'fast-underground-belt' ? FAST_UNDERGROUND_MAX : UNDERGROUND_MAX; }
   findMate() {
     for (let k = 1; k <= this.maxDist(); k++) {
@@ -30,8 +45,8 @@ class Underground extends Entity {
   // 基础带：0.25 / 1.875 ≈ 0.1333s/件 → 每车道 7.5、双车道合计 15 items/s，与地上基础带一致。
   ugInterval() { return (2 * BELT_SPACING) / Math.max(0.05, beltSpeed() * this.speedMult()); }
   update(dt) {
-    // 惰性调度（P0 优化）：入口/出口都空时无需每帧扫描
-    if ((!this.items || !this.items.length) && (!this.outItems || !this.outItems.length)) return;
+    // 惰性调度（P0 优化）：入口/出口/隧道在途都空时无需每帧扫描
+    if (!this.items.length && !this.outItems.length && !(this.tunnel && this.tunnel.length)) return;
     const iv = this.ugInterval();
     // 累积计时器（而非倒计时）：按真实经过时间批量转移/喷射，
     // 避免高速档（iv < 帧时长 dt）时被帧率封顶（例如极速带 60fps 下只能 60 件/秒）。
@@ -42,6 +57,7 @@ class Underground extends Entity {
       if (this.items.length || this.outItems.length) {
         this.items = []; this.outItems = [];
       }
+      if (this.tunnel && this.tunnel.length) this.tunnel = [];
       return;
     }
     // 只与离它最近的那一个配对：入口 → 最近前方出口；出口 → 后方入口。
@@ -49,46 +65,75 @@ class Underground extends Entity {
     // 通过 isEntrance()/isExit() 递归判定，确保每座出口的后方入口尚未被占用。
     if (this.isEntrance()) {
       const mate = this.findMate();
-      // 入口：把本格收进 items 的货送往最近的前方出口，
-      // 绝不向地面带外溢，保证"进洞的货只能从出口出来"。
-      // 双列：两条车道（lane0/lane1）各自独立传输，每列按单列间隔 iv 推进，互不混合。
+      // 入口：把本格收进 items 的货按间隔 iv 逐件放入隧道（rem = 距出口格数），
+      // 在途物品由出口侧的 _tickTunnel 按地上带同等流速推进，穿越整条隧道后才冒出地面。
+      // 双列：两条车道（lane0/lane1）各自独立进洞，互不混合。
       if (mate) {
         this._transferLane(mate, 0, iv);
         this._transferLane(mate, 1, iv);
       }
     } else if (this.isExit()) {
-      // 出口：后方已有入口配对，把收到的货投向地面（前方带/设备），不再转给更前方。
-      // 双列：两条车道各自独立喷射到地面带对应车道（左进左出/右进右出）。
+      // 出口：推进隧道在途物品（按流速向地面靠拢），到达出口口的投入待喷射缓冲后喷到地面带。
+      this._tickTunnel(dt);
       this._ejectLane(0, iv);
       this._ejectLane(1, iv);
     }
-  }
-  // 入口传输单条车道：把本车道（lane）入口缓存 items 里的货送往最近出口的对应车道缓存。
-  // 两列独立计时器，各自按单列间隔 iv 推进，互不占用对方队列。
-  _transferLane(mate, lane, iv) {
-    const cap = UG_CAP; // 每列容量
-    let outLane = 0;
-    for (const it of mate.outItems) if (it.lane === lane) outLane++;
-    // 出口车道已满则不再转移；否则按本车道推进间隔 iv 逐件送往出口对应车道。
-    while (this.cd[lane] >= iv && outLane < cap) {
-      let moved = false;
-      for (let i = 0; i < this.items.length; i++) {
-        if (this.items[i].lane === lane) {
-          mate.outItems.push(this.items.splice(i, 1)[0]);
-          outLane++; moved = true; break;
-        }
+    // 平滑动画时钟：每条车道一个单调递增的时间戳（秒），驱动物品在带面上滑动。
+    // 只有“未被卡住”的车道才走表：正常输运时走表 → 物品持续前移；
+    // 一旦卡住，时钟停走 → 物品原地冻结，与地上传送带被堵停完全一致。
+    //   入口车道卡住 = 隧道该列已塞满（无法再放入）；
+    //   出口车道卡住 = 下游拒收 → _ejectLane 里置位 _blockL[l]。
+    // 时钟单调不回退 → 物品只会平滑前移或原地冻结，绝不会抖动。
+    this._flow = this._flow || [0, 0];
+    this._blockL = this._blockL || [false, false];
+    const isIn = this.isEntrance(), isOut = this.isExit();
+    const mate = isIn ? this.findMate() : null;
+    for (let l = 0; l < 2; l++) {
+      let moving = false;
+      if (isIn && mate) {
+        let inT = 0;
+        for (const t of (mate.tunnel || [])) if (t.lane === l) inT++;
+        moving = inT < this.tunnelCapLane();
+      } else if (isOut) {
+        moving = !((this._blockL && this._blockL[l]) || false);
       }
-      if (!moved) {
-        for (let i = 0; i < this.outItems.length; i++) {
-          if (this.outItems[i].lane === lane) {
-            mate.outItems.push(this.outItems.splice(i, 1)[0]);
-            outLane++; moved = true; break;
-          }
-        }
-      }
-      if (!moved) break;
-      this.cd[lane] -= iv;
+      if (moving) this._flow[l] += dt;
     }
+  }
+  // 入口进洞单条车道：把本车道（lane）入口缓存 items 里的货按间隔 iv 逐件放入出口侧隧道
+  // （每件记 rem = 距出口格数），隧道该列塞满（tunnelCapLane）则不再放入（上游反堵）。
+  _transferLane(mate, lane, iv) {
+    const capT = this.tunnelCapLane();
+    if (!mate.tunnel) mate.tunnel = [];
+    let inT = 0;
+    for (const t of mate.tunnel) if (t.lane === lane) inT++;
+    while (this.cd[lane] >= iv && inT < capT) {
+      let idx = -1;
+      for (let i = 0; i < this.items.length; i++) if (this.items[i].lane === lane) { idx = i; break; }
+      if (idx < 0) break;
+      const it = this.items.splice(idx, 1)[0];
+      mate.tunnel.push({ item: it.item, lane: lane, rem: this.ugDist() });
+      inT++; this.cd[lane] -= iv;
+    }
+  }
+  // 出口推进隧道在途物品：每件按地上带单列流速（speedLane，格/秒）向出口靠近；
+  // 走完全程（rem<=0）即“冒出地面”，投入本出口待喷射缓冲 outItems（每列至多 UG_CAP）。
+  // 缓冲满则 clamp 在隧道末端等待，隧道自然反堵 → 容量、流速、缓存都按真实长度计算。
+  _tickTunnel(dt) {
+    if (!this.tunnel || !this.tunnel.length) return;
+    const sp = this.speedLane();
+    const keep = [];
+    for (const t of this.tunnel) {
+      t.rem -= sp * dt;
+      if (t.rem <= 0) {
+        let laneCnt = 0;
+        for (const o of this.outItems) if (o.lane === t.lane) laneCnt++;
+        if (laneCnt < UG_CAP) { this.outItems.push({ item: t.item, lane: t.lane }); continue; }
+        t.rem = 0; // 出口缓冲满：等在隧道末端
+      }
+      keep.push(t);
+    }
+    this.tunnel = keep;
   }
   // 出口喷射单条车道：把隧道出口缓存 outItems 里对应车道的货投向地面带同车道。
   // 两列独立计时器，各自按单列间隔 iv 喷射，互不占用对方队列。
@@ -119,8 +164,8 @@ class Underground extends Entity {
       } else if (t && !(t instanceof Underground)) {
         sent = t.giveItem(this.outItems[idx].item);
       }
-      if (sent) { this.outItems.splice(idx, 1); this.ejectT[lane] -= iv; }
-      else { this.ejectT[lane] = 0; break; }  // 下游无空位：清空计时等待下一帧重试
+      if (sent) { this.outItems.splice(idx, 1); this.ejectT[lane] -= iv; if (this._blockL) this._blockL[lane] = false; }
+      else { this.ejectT[lane] = 0; if (this._blockL) this._blockL[lane] = true; break; }  // 下游无空位：置位阻塞冻结动画，等待下一帧重试
     }
   }
   // 是否作为“出口”：后方已有同向同档地下带配对（无论前方是否还有更远的带）。
@@ -291,9 +336,12 @@ function drawUnderground(ctx, e, gx, gy, dir, alpha) {
   rr(ctx, -14, -10, 28, 20, 3);
   ctx.fill();
 
-  // 井口(深坑) x 范围。入口=前坑(+X)，出口=后坑(-X)，未配对=后坑但用虚线示孤井。
-  let m0 = -15, m1 = -4;
-  if (st === 'in') { m0 = 4; m1 = 15; }
+  // 井口(深坑) x 范围 —— 每端恰好覆盖格子的 1/2（格心到格边）：
+  // 入口=前坑(+X) 占 [0, +半格]，出口=后坑(-X) 占 [-半格, 0]，未配对=后坑但用虚线示孤井。
+  // 半格正好与物品/箭头的可见半格分界(x=0)对齐，格栅齿铺满半格，视觉上盖住 1/2 的位置。
+  const HALF = TILE / 2;
+  let m0 = -HALF, m1 = 0;
+  if (st === 'in') { m0 = 0; m1 = HALF; }
 
   // ---- 4) 传送带表面（从无井口一侧延伸至井口边缘，未配对不画带面）----
   let bx0, bx1;
@@ -351,50 +399,123 @@ function drawUnderground(ctx, e, gx, gy, dir, alpha) {
     ctx.setLineDash([]);
   }
 
-  // ---- 6) 双列物品流：与正常传送带一致，lane0/lane1（上下两排 / 竖向则左右两列）各自流动 ----
-  // 只要地下带在工作(busy)，就始终显示上/下两条车道流（横向两行、竖向两列）。
-  // 每条车道优先用真实缓存物品；若该车道恰好为空但整块带确有物品在输运，则借整批物品兜底，
-  // 保证两条车道都能清楚看到物品在走（不会出现“只有一线有物品”）。
+  // ---- 6) 双列物品流：与正常传送带一致，lane0/lane1 各自流动 ----
+  // 关键改动：物品用“屏幕空间的垂直偏移向量”（beltLaneOffset）绘制，而非依赖旋转坐标里的固定 y。
+  // 这样无论横向还是竖向（四向），两条车道都严格沿行进方向的垂直方向错开：
+  //   横向 → 上下两行；竖向 → 左右两列。与地上传送带的显示丝毫不差。
+  // 先退出旋转坐标系，改在绝对屏幕坐标画物品/箭头。
+  ctx.restore();
   if (busy) {
-    const spd = beltSpeed() * (e.speedMult ? e.speedMult() : 1) * TILE;
     const itemFn = (LOD && LOD.simple) ? drawItemDotLOD : drawItemDot;
-    const span = Math.max(8, bx1 - bx0);                 // 可见带段长度(px)
+    const span = Math.max(8, bx1 - bx0);                 // 可见带段长度（沿行进方向）
+    const px = gx * TILE, py = gy * TILE;
+    const cx = px + TILE / 2, cy = py + TILE / 2;        // 格心
+    const fx = DX[dir], fy = DY[dir];                    // 行进方向（屏幕）
     const pool = e.items.concat(e.outItems);             // 本格缓冲的所有物品
-    const total = pool.length;
     for (const li of [1, 0]) {
-      const y = (li === 1 ? -5 : 5);                     // lane1 上(左)排 / lane0 下(右)排
-      // 该车道推进箭头（始终画，指示该车道流向）
+      const lo = beltLaneOffset(e, li);                  // 本车道的屏幕垂直偏移向量
+      const ofsX = lo[0] * 7, ofsY = lo[1] * 7;          // 与地上传送带同样 7px 车道间距
+      // 动画时钟：由本车道“单调递增的流动钟”（_flow[lane]）驱动，而非全局 G.time 或会回绕的转移计时器。
+      // 流动钟只在本车道正常输运时走表（update() 维护），被堵即停 → 物品冻结；单调不回退 → 物品绝不抖动。
+      // 换算为“横跨可见带段的相位 0..1”：按与地面带同速（单车道 beltSpeed/2 格/秒）折算像素后对 span 取模。
+      const flow = (e._flow && e._flow[li]) || 0;
+      const spdPx = beltSpeed() * e.speedMult() * (TILE / 2);
+      // 遮罩边界（中间地下部分只做后台流动，不外显）：
+      //   以格子的中分线（局部 x=0，即格心）为界，每格只露出一半 —— 盖住恰好 1/2：
+      //     入口（in）只显示前半格 [bx0, 0]：物品走过 1/2 即被遮罩盖住，不再显示 →
+      //       前半格内物品向右(井口)滑去时渐隐，模拟“钻入井下并被遮住”。
+      //     出口（out）只显示后半格 [0, bx1]：从遮罩中冒出的物品前半格被盖住，
+      //       到中分线 x=0 后方才开始显示，并继续滑向出口缘 → 模拟“从井下冒出地面”。
+      let v0 = bx0, v1 = bx1;
+      if (st === 'in')       v1 = 0;                     // 入口：格心往前的 1/2 被遮住
+      else if (st === 'out') v0 = 0;                     // 出口：格心往后的 1/2 被遮住
+      const vSeg = Math.max(4, v1 - v0);                 // 可见半格长度（沿行进方向）
+      // 换算为“横跨可见半格的相位 0..1”：按与地面带同速（单车道 beltSpeed/2 格/秒）折算像素后对 vSeg 取模。
+      // 物品在可见半格内以 spdPx px/s 推进（遮罩的另一半计时仍算入流动钟，保证速度一致）。
+      let clk = ((flow * spdPx) / vSeg) % 1;
+      if (clk < 0) clk += 1;
+      // 该车道推进箭头（指示流向）：只在可见半格内绘制，遮罩半格保持干净，卡住即静止
       ctx.fillStyle = acc;
       const step = 11;
-      const off = ((G.time * spd) % step + step) % step;
+      const cOff = ((flow * spdPx) % step + step) % step;
+      const pdx = -fy * 2.6, pdy = fx * 2.6;             // chevron 垂直于行进方向张开
       for (let k = -2; k <= 3; k++) {
-        const ax = bx0 + k * step + off;
-        if (ax < bx0 + 2 || ax > bx1 - 2) continue;
-        tri(ctx, ax - 3, y - 2.6, ax - 3, y + 2.6, ax + 3, y);
+        const ax = bx0 + k * step + cOff;
+        if (ax < v0 + 2 || ax > v1 - 2) continue;
+        const bxC = cx + fx * (ax - 3) + ofsX, byC = cy + fy * (ax - 3) + ofsY; // 尾中
+        const hx = cx + fx * (ax + 3) + ofsX, hy = cy + fy * (ax + 3) + ofsY;    // 尖
+        tri(ctx, bxC + pdx, byC + pdy, bxC - pdx, byC - pdy, hx, hy);
         ctx.fill();
       }
-      // 本车道物品：优先真实物品；车道暂无但整块带在输运时借整批兜底，保证双线有物品
-      let laneItems = pool.filter(o => o.lane === li).map(o => o.item);
-      if (!laneItems.length && total) laneItems = pool.map(o => o.item);
-      if (!laneItems.length) continue;                   // 完全无物品：保持静默（带闲置）
-      const n = Math.min(laneItems.length, 3);
-      const spacing = span / n;
-      const ph = ((G.time * spd) / spacing) % 1;
-      for (let i = 0; i < n; i++) {
-        const t = (i / n + ph) % 1;
-        const x = bx0 + span * t;
+      // 本车道物品：按「可见半格上的连续流」绘制（对齐地上传送带：一条带上应同时可见多个物品连续流动）。
+      //   来源/流向：
+      //     入口（in）：本格缓存 items（即将送入地下）沿后半格 … 前半格流向井口(x=0)，入洞渐隐
+      //                  —— 显示为“物品从后方源源滚来、钻入井口”。
+      //     出口（out）：已冒出/正在冒出的货从井口(x=0)滑出，渐显并继续滑向格边进入下一格带
+      //                  —— 显示为“物品从井口源源冒出、流向下一带”。
+      //   关键修正（解决 3 个 bug）：
+      //     1) 槽位数固定为 “可见半格容量”（≈每格每车道 8 件 折算），不再随缓存长度逐帧跳变 n=1/2
+      //        → 消除 “路口物品一闪一闪”。
+      //     2) 固定多个槽位 + 流动钟相位整体前移 → 同时可见多个物品、形成连续流（不再只有一个）。
+      //     3) 出口以 待发 outItems（不足时取隧道末端货补足）为来源 → 能看见物品冒出，
+      //        不再“直接突现到下一带”。
+      //   阻塞一致：相位由单调流动钟 _flow[li] 驱动，堵住即冻结、流通即前移，与地上带停/流观感一致。
+      // 该车道「真实的在途货源」（按物理顺序，最深处在索引前、最近地面在索引后）：
+      //   入口（in）：本格缓存 items —— 正从后面源源滚来、即将送入地下的货；
+      //   出口（out）：隧道在途（深处）→ 待发 outItems（靠近地面的货）拼接，
+      //                使出口总能从隧道缓冲里“冒”出连绵的货，而不是只看到被瞬时喷走的 1~2 件。
+      // 关键修正（解决 4 个 bug）：
+      //   1) 不再用 min(src.length, dens) 限制显示数量 → 固定槽位永远显示满，
+      //      即使缓存里只有 1 件真货也按固定密度铺满 → 同时可见多个物品、连续流动（不再“只显示一个”）。
+      //   2) 槽位相位由单调流动钟 _flow[li] 驱动（只增不回退）→ 堵住即冻结、流通即前移，
+      //      且相位不随缓存增减跳变 → 不再“一闪一闪”。
+      //   3) 槽位数量固定、物品类型循环复用 → 一条路口带肉眼上与地上传送带一致的多物品连续流。
+      //   4) 出口改用“隧道+待发”拼接为货源 → 能看到物品从井口源源冒出（不再“突然出现在下一带”）。
+      let src;
+      if (st === 'out') {
+        src = (e.tunnel || []).filter(t => t.lane === li).map(t => t.item)
+          .concat(e.outItems.filter(o => o.lane === li).map(o => o.item));
+      } else {
+        src = e.items.filter(o => o.lane === li).map(o => o.item);
+      }
+      // 可见半格能铺满的槽位数（稳定值，杜绝闪烁）：按地面带每格每车道 8 件 折算。
+      // 因槽位相位按 vSeg 均分，槽距自动等于地面带物品间距（BELT_SPACING×TILE）。
+      const dens = Math.max(2, Math.min(4, Math.round(8 * (vSeg / TILE))));
+      // —— 入口闪灭的来源：入口缓存 e.items 被 _transferLane 按“攒够一批再成批吸进隧道”的方式清空，
+      //    稳态下会在 1 → 0 之间逐帧跳变，货源偶尔空一帧 → 整个流就空一帧 → 一闪一闪。
+      //    这里用一个「滚动类型缓冲」桥接这段极短暂的 0 货帧：
+      //    · 有真货时，用最新货源刷新缓冲；
+      //    · 真货短暂归零（< 0.4s）时，沿用上一次缓冲继续画，避免闪灭；
+      //    · 真货长时间归零（供应真停了）才清空显示 —— 保证入口带真正空载时不出伪物。
+      e._vis = e._vis || [[], []];
+      e._visIdle = e._visIdle || [0, 0];
+      const vis = e._vis[li];
+      if (src.length) {
+        vis.length = Math.min(dens, src.length);         // 至多铺满 dens 个，冷的旧类型被挤掉
+        for (let j = 0; j < vis.length; j++) vis[j] = src[j];
+        e._visIdle[li] = 0;
+      } else if (e._visIdle[li] < 24) {                  // 短暂归零：沿用缓冲，桥接一帧
+        if (!vis.length) continue;                       // 从未流过货：不画
+        e._visIdle[li]++;
+      } else {                                           // 长时间无货：真静止，清空
+        vis.length = 0;
+        continue;
+      }
+      const ph = clk;
+      for (let j = 0; j < dens; j++) {
+        const slot = (j / dens + ph) % 1;                // 槽位 j 基准 + 整体前移；模 1 环绕=连续流
+        const xl = v0 + vSeg * slot;
+        const ix = cx + fx * xl + ofsX, iy = cy + fy * xl + ofsY;
+        const p = (xl - v0) / vSeg;                      // 0=进入端，1=遮罩端
         let a = alpha;
-        const p = (x - bx0) / span;
-        if (st === 'in')  a = alpha * (p < 0.85 ? 1 : Math.max(0.12, 1 - (p - 0.85) / 0.15)); // 落洞渐隐
-        else              a = alpha * (p < 0.15 ? p / 0.15 : 1);                            // 出洞渐显
+        if (st === 'in')       a = alpha * (1 - p * 0.75);          // 走向遮罩(井口)渐隐 = 钻入
+        else if (st === 'out') a = alpha * (0.25 + p * 0.75);       // 从遮罩冒出渐显 = 冒出
         ctx.globalAlpha = a;
-        itemFn(ctx, x, y, laneItems[(i + li) % laneItems.length]);
+        itemFn(ctx, ix, iy, vis[j % vis.length]);
       }
       ctx.globalAlpha = alpha;
     }
   }
-
-  ctx.restore();
 
   ctx.globalAlpha = 1;
 }

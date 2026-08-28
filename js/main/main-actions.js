@@ -222,6 +222,24 @@ function flipAction(axis) {
         uiDirty = true;
         return;
       }
+      // 地下传送带：翻转会交换整对的入/出口。若它已与另一座配对（同向），
+      // 把配对的那一座也一起翻转，保持两者仍同向、整对继续有效。
+      // 仅当翻转在当前轴真正改变了方向时才生效：
+      //   横带(0/2)按 H → 方向互换；竖带(1/3)按 V → 方向互换；其它组合不改向。
+      if (rotOk && (e instanceof Underground)) {
+        const nd = flipDir(e.dir, axis);
+        if (nd !== e.dir) {
+          const mate = e.findMate() || e.findBackMate();
+          if (mate) {
+            mate.dir = flipDir(mate.dir, axis);
+            if (typeof mate.onRotate === 'function') mate.onRotate();
+          }
+          e.dir = nd;
+          if (typeof e.onRotate === 'function') e.onRotate();
+          uiDirty = true;
+        }
+        return;
+      }
       // 有朝向的设备：直接翻转
       if (rotOk && DEVICE_DIR_ROTATE[e.type]) {
         e.dir = flipDir(e.dir, axis);

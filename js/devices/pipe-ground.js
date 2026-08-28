@@ -32,8 +32,9 @@ class PipeToGround extends Entity {
   total() { let s = 0; for (const k in this.fluid) s += this.fluid[k]; return s; }
   maxDist() { return PIPE_GROUND_MAX; }
   // 沿自身朝向的 sign 方向（+1 前方 / -1 背侧）扫描最近的背向管道；同向的跳过继续，固体阻挡返回 null。
+  // 距离从 2 起：紧挨（距离 1）且相对的两座只是像普通管道一样直接连通，不属于地下配对（配对应跨过一段空隙）。
   _findAlong(sign) {
-    for (let k = 1; k <= this.maxDist(); k++) {
+    for (let k = 2; k <= this.maxDist(); k++) {
       const nx = this.x + DX[this.dir] * sign * k, ny = this.y + DY[this.dir] * sign * k;
       const t = entAt(nx, ny);
       if (!t) continue;
@@ -60,6 +61,14 @@ class PipeToGround extends Entity {
   }
   // 是否已配对：同轴反向（朝向相反）的另一端有配对的地下管道
   isPaired() { return !!this.findMate(); }
+  // 相邻（距离 1）且口对口（背向）的地下管道：不算配对关系，但像普通管道一样可直接互通。
+  // 这与 findMate（仅距离 ≥2 的配对面）分开，配对只管地下穿行的长段，互通则就近道连通。
+  _adjacentMouthOpposite() {
+    const front = entAt(this.x + DX[this.dir], this.y + DY[this.dir]);
+    const back = entAt(this.x - DX[this.dir], this.y - DY[this.dir]);
+    const inner = t => t instanceof PipeToGround && PipeToGround._parallel(t.dir, this.dir);
+    return inner(front) ? front : inner(back) ? back : null;
+  }
   // 两条地下管道只有“背向”（朝向相反，同在一条直线上）才配对。
   // 管道口背靠背相对，地下运行段在两座之间相接；同向的面向同一方、不会在地下相接，因此不配对。
   static _parallel(d1, d2) { return ((d1 - d2 + 4) % 4) === 2; }
@@ -77,6 +86,9 @@ class PipeToGround extends Entity {
     if (back instanceof Pipe) conns.push(back);
     if (front instanceof Pipe) conns.push(front);
     if (mate) conns.push(mate);
+    // 相邻口对口（不配对）的地下管道也能就近互通
+    const mouthOpp = this._adjacentMouthOpposite();
+    if (mouthOpp) conns.push(mouthOpp);
     // 收集所有可能出现的流体种类（本方 + 各邻居），避免只扫本方导致“只进不出”
     const fluids = new Set(Object.keys(this.fluid));
     for (const t of conns) for (const k of Object.keys(t.fluid)) fluids.add(k);
