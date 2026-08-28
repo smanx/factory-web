@@ -355,6 +355,11 @@ async function loadGame(id) {
     closePanel();
     toast('已读档');
     if (typeof sfxWarmup === 'function') sfxWarmup(500); // 读档静默缓冲，过滤首帧实体恢复爆音
+    // 从主页面的“存档管理”读档：此时仍在开始菜单（G.inMenu=true），需进入游戏
+    if (G.inMenu) {
+      if (typeof buildHotbar === 'function') buildHotbar();
+      if (typeof enterGame === 'function') enterGame();
+    }
   } catch (err) {
     toast('存档损坏：' + err.message);
     return false;

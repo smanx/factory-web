@@ -62,19 +62,24 @@ function bindInput() {
     // C 键：在左下角快捷栏武器槽中从左到右循环切换当前武器（无武器则不切换）
     else if (k === 'c') { if (typeof cycleQuickbarWeapon === 'function') cycleQuickbarWeapon(); }
     else if (k === 'escape') {
-      // ESC 键：从上到下逐层关闭——驾驶/蓝图/拆除 → 面板 → 游戏菜单；均无则打开游戏菜单
-      if (G.driving) {
+      // ESC 键：弹框从最上层逐层往下关闭（确认 → 存档管理 → 面板 → 游戏菜单）；
+      // 仅剩游戏界面（驾驶/蓝图/拆除等状态）则处理对应状态；若无任何弹框则直接打开游戏菜单。
+      if (isConfirmOpen()) {
+        closeConfirm();                          // 最上层：二级确认弹框
+      } else if (isSaveManageOpen()) {
+        closeSaveManage();                       // 存档管理面板
+      } else if (G.panelMode) {
+        closePanel();                            // 设置/背包/设备等面板
+      } else if (isPauseMenuOpen()) {
+        closePauseMenu();                        // 游戏菜单
+      } else if (G.driving) {
         if (typeof exitCar === 'function') exitCar();
       } else if (G.blueMode) {
         cancelBlueprint();
       } else if (G.deconstructMode) {
         toggleDeconstructMode(false);
-      } else if (G.panelMode) {
-        closePanel();
-      } else if (isPauseMenuOpen()) {
-        closePauseMenu();   // 再按一次：合上游戏菜单并继续游戏
       }
-      // 当前页面没有任何弹框/面板/菜单时：展开游戏菜单并暂停游戏
+      // 游戏界面无任何弹框：直接展开游戏菜单并暂停
       else {
         openPauseMenu();
       }

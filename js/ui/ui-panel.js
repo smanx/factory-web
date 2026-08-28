@@ -1037,13 +1037,21 @@ function closeSaveManage() {
   const ov = document.getElementById('save-manage-overlay');
   if (ov) ov.classList.add('hidden');
 }
+function isSaveManageOpen() {
+  const ov = document.getElementById('save-manage-overlay');
+  return !!ov && !ov.classList.contains('hidden');
+}
 async function renderSaveManage() {
   const body = document.getElementById('save-manage-body');
   if (!body) return;
+  // 首页（开始菜单，G.inMenu=true）打开时当前并无进行中的游戏，
+  // 无法“新建存档”或“导出当前游戏为文件”，置灰并禁用这两个按钮。
+  const inHome = !!(typeof G !== 'undefined' && G.inMenu);
+  const dis = inHome ? ' disabled' : '';
   let h = '<div class="save-actions">';
-  h += '<button data-action="quick-save">➕ 新建存档</button>';
+  h += '<button data-action="quick-save"' + dis + ' title="' + (inHome ? '主页无进行中的游戏，不可存档' : '新建存档') + '">➕ 新建存档</button>';
   h += '<button data-action="quick-load">读取最新存档</button>';
-  h += '<button data-action="exp-save">导出存档到文件</button>';
+  h += '<button data-action="exp-save"' + dis + ' title="' + (inHome ? '主页无进行中的游戏，不可导出' : '导出当前游戏为文件') + '">导出存档到文件</button>';
   h += '<button data-action="imp-save">从文件导入存档</button>';
   h += '</div>';
   h += '<input type="file" id="save-manage-imp-file" accept=".json,.gz,.json.gz,application/json,application/gzip" style="display:none">';

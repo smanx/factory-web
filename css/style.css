@@ -1559,47 +1559,10 @@ html, body {
   font-size: 13px;
   cursor: pointer;
 }
-.save-manage-body button:hover { background: #3a4657; }
+.save-manage-body button:hover:not(:disabled) { background: #3a4657; }
 .save-manage-body .save-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.save-manage-body .save-actions button:disabled { opacity: .45; cursor: default; }
 .save-manage-body .save-list-title { margin-top: 6px; }
-
-.load-newest-btn {
-  width: 100%;
-  padding: 12px 14px;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  background: linear-gradient(180deg, #2f5c38, #1f4a2a);
-  color: #eafff0;
-  border: 1px solid #57b95c;
-  border-radius: 10px;
-  cursor: pointer;
-  margin-bottom: 12px;
-  transition: all .18s;
-}
-.load-newest-btn:hover {
-  background: linear-gradient(180deg, #3a7445, #276035);
-  box-shadow: 0 0 16px rgba(87, 185, 92, .4);
-}
-
-.load-file-btn {
-  width: 100%;
-  padding: 10px 14px;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 1px;
-  background: linear-gradient(180deg, #2a3340, #1e2630);
-  color: #dfe6ee;
-  border: 1px solid #46536a;
-  border-radius: 10px;
-  cursor: pointer;
-  margin-bottom: 12px;
-  transition: all .18s;
-}
-.load-file-btn:hover {
-  background: linear-gradient(180deg, #3a4657, #2a3340);
-  box-shadow: 0 0 12px rgba(100, 130, 180, .35);
-}
 
 .load-save-list {
   overflow-y: auto;

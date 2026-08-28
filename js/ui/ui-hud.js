@@ -118,12 +118,23 @@ async function importSaveFile(arrayBuffer) {
 function importSaveText(text) {
   try {
     const d = JSON.parse(text);
-    if (!d || d.v !== 1) {
+    // 只做最基本的格式校验（必须是可解析的 JSON 对象），不再按存档版本号拦截。
+    // 版本兼容性由用户依据导出文件名中标记的版本号自行判断。
+    if (!d || typeof d !== 'object') {
       throw new Error('格式不正确');
     }
-    applySave(d);
-    closePanel();
-    toast('导入成功');
+    // 导入成功后立即加载并进入游戏：先关闭所有弹框（设置面板/存档管理浮层/暂停菜单），
+    // 再复用主菜单读档的进入流程（applySave + buildHotbar + enterGame + toast）。
+    if (typeof closeSaveManage === 'function') closeSaveManage();
+    if (typeof closePauseMenu === 'function') closePauseMenu();
+    if (typeof closePanel === 'function') closePanel();
+    if (typeof enterFromSave === 'function') {
+      enterFromSave(d, '导入成功');
+    } else {
+      // 兜底：独立环境下仅有 applySave 可用时，直接应用存档并提示（不再自动进游戏）
+      applySave(d);
+      toast('导入成功');
+    }
   } catch (err) {
     toast('导入失败：' + err.message);
   }

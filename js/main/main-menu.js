@@ -171,6 +171,10 @@ function isPauseMenuOpen() {
   const ov = document.getElementById('pause-overlay');
   return !!ov && !ov.classList.contains('hidden');
 }
+function isConfirmOpen() {
+  const ov = document.getElementById('confirm-overlay');
+  return !!ov && !ov.classList.contains('hidden');
+}
 function openPauseMenu() {
   const ov = document.getElementById('pause-overlay');
   if (ov) ov.classList.remove('hidden');
@@ -205,7 +209,6 @@ function initPauseMenu() {
   const resume = document.getElementById('btn-pause-resume');
   const restart = document.getElementById('btn-pause-restart');
   const load = document.getElementById('btn-pause-load');
-  const save = document.getElementById('btn-pause-save');
   const settings = document.getElementById('btn-pause-settings');
   const quit = document.getElementById('btn-pause-quit');
   if (resume) resume.addEventListener('click', () => {
@@ -215,18 +218,14 @@ function initPauseMenu() {
   // 重开游戏会丢失当前进度，需二级确认并提醒先保存存档
   if (restart) restart.addEventListener('click', () => {
     if (typeof playSfx === 'function') playSfx('click');
-    openConfirm('↻ 重开游戏', '将生成一个全新世界，当前进度会全部丢失！\n请先到「💾 保存游戏」手动保存存档。', '重开游戏', () => {
+    openConfirm('↻ 重开游戏', '将生成一个全新世界，当前进度会全部丢失！\n请先到「💾 存档管理」手动保存存档。', '重开游戏', () => {
       closePauseMenu();
       if (typeof startNewGame === 'function') startNewGame();   // 重新开始游戏（生成新世界）
     });
   });
   if (load) load.addEventListener('click', () => {
     if (typeof playSfx === 'function') playSfx('click');
-    if (typeof openSaveManage === 'function') openSaveManage();   // 打开存档管理页（含读取/导入存档）
-  });
-  if (save) save.addEventListener('click', () => {
-    if (typeof playSfx === 'function') playSfx('click');
-    if (typeof openSaveManage === 'function') openSaveManage();   // 打开存档管理页（含新建/写入存档）
+    if (typeof openSaveManage === 'function') openSaveManage();   // 打开存档管理页（含新建/保存/读取/导入存档）
   });
   if (settings) settings.addEventListener('click', () => {
     if (typeof playSfx === 'function') playSfx('click');
@@ -237,7 +236,7 @@ function initPauseMenu() {
   // 返回主菜单不会自动保存，需二级确认并提醒先保存存档
   if (quit) quit.addEventListener('click', () => {
     if (typeof playSfx === 'function') playSfx('click');
-    openConfirm('🏠 返回主菜单', '返回主菜单不会自动保存，未保存的进度将丢失！\n请先到「💾 保存游戏」手动保存存档。', '返回主菜单', () => {
+    openConfirm('🏠 返回主菜单', '返回主菜单不会自动保存，未保存的进度将丢失！\n请先到「💾 存档管理」手动保存存档。', '返回主菜单', () => {
       closePauseMenu();
       if (typeof returnToMenu === 'function') returnToMenu();
     });
