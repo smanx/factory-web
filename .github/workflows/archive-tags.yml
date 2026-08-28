@@ -1,7 +1,8 @@
 name: Archive Tags to history
 
-# 仅手动触发，无需任何输入
 on:
+  push:
+    branches: [master]
   workflow_dispatch:
 
 permissions:
