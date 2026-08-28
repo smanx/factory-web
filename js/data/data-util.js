@@ -45,20 +45,24 @@ function drawEmojiDupBadge(x, id, r) {
   const emoji = ITEMS[id].emoji;
   if (!emoji || !dupEmoji.has(emoji)) return;
   const needLabel = colorConflict.has(emoji);
-  const d = r * 0.6;                 // 角标圆点直径
-  const px = r * 0.82, py = r * 0.82; // 右下角定位（相对图标中心）
+  const d = r * 0.6;                   // 角标圆点直径
+  const px = r * 0.82, py = -r * 0.82; // 右上角定位（相对图标中心）
   const col = ITEMS[id].color;
   // 外白描边，保证深色/深色底上也清晰可见
+  const outerR = d / 2;
+  // 描边宽度不超过外圆半径，并确保内圆半径始终为正，避免小尺寸时 arc 报错
+  const border = Math.min(outerR, Math.max(1, r * 0.05));
+  const innerR = Math.max(0.5, outerR - border);
   x.fillStyle = '#fff';
-  x.beginPath(); x.arc(px, py, d / 2, 0, 7); x.fill();
+  x.beginPath(); x.arc(px, py, outerR, 0, 7); x.fill();
   x.fillStyle = col;
-  x.beginPath(); x.arc(px, py, d / 2 - Math.max(1, r * 0.05), 0, 7); x.fill();
+  x.beginPath(); x.arc(px, py, innerR, 0, 7); x.fill();
   if (needLabel) {
     const label = (ITEMS[id].mark || ITEMS[id].name[0]).slice(0, 1);
     x.font = 'bold ' + Math.round(d * 0.85) + 'px system-ui';
     x.textAlign = 'center';
     x.textBaseline = 'middle';
-    x.lineWidth = Math.max(1, r * 0.05);
+    x.lineWidth = Math.min(outerR, Math.max(1, r * 0.05));
     x.strokeStyle = 'rgba(10,14,20,.9)';
     x.lineJoin = 'round';
     x.strokeText(label, px, py + 1);
