@@ -1,5 +1,11 @@
 'use strict';
 
+// 屏幕右下角访客徽章下方显示打包版本号：由 build.js 在 bundle 顶部注入 __BUILD_VERSION__
+(function () {
+  const el = document.getElementById('ver-corner-text');
+  if (el) el.textContent = window.__BUILD_VERSION__ || 'dev';
+})();
+
 function initPanelEvents() {
   // 弹框支持点中标题栏拖动
   makeTitleDraggable(document.getElementById('panel'), document.getElementById('panel-head'));
@@ -942,6 +948,7 @@ async function htmlSettings() {
   h += '<div class="sec">退出</div>';
   h += '<button data-action="quit-to-menu" style="color:#ff8a8a">🚪 退出到主页面</button>';
   h += '<div class="hint">退出到开始菜单，游戏进度请先保存（新建存档后自动持久化）。</div>';
+  h += '<div class="ver-line">版本 ' + escHtml(window.__BUILD_VERSION__ || 'dev') + '</div>';
   return h;
 }
 

@@ -68,6 +68,21 @@ jobs:
           fi
           echo "打包失败 tag: $(wc -l < failed_tags.txt 2>/dev/null || echo 0) 个"
 
+      - name: 在 history 目录生成版本列表 JSON
+        if: steps.tags.outputs.count != '0'
+        run: |
+          node -e '
+            const fs = require("fs");
+            const dir = "export/history";
+            const versions = fs.readdirSync(dir)
+              .filter(n => fs.statSync(dir + "/" + n).isDirectory())
+              .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+            const out = { versions, updated: new Date().toISOString(), count: versions.length };
+            fs.writeFileSync(dir + "/versions.json", JSON.stringify(out, null, 2) + "\n");
+            console.log("已生成 history/versions.json:", versions.length, "个版本");
+            console.log(versions.map(v => "  " + v).join("\n"));
+          '
+
       - name: 在根目录复制一份最新 tag 的内容
         if: steps.tags.outputs.count != '0'
         run: |

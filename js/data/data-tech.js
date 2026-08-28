@@ -136,7 +136,9 @@ const TECH_REQ = {
   'production-science-pack': 'production',
   'beacon': 'production',
   'utility-science-pack': 'utility',
-  'flying-robot-frame': 'utility',
+  // 飞行机器人框架改由「电动引擎」（蓝阶段）解锁，而非「实用科技」——否则黄瓶配方（需飞机器人框架）
+  // 与「实用科技」（消耗黄瓶）互相卡死，导致黄瓶时代永远进不去（对齐原版：Flying robot frame 前置电动引擎）
+  'flying-robot-frame': 'electric-engine-unit',
   'construction-robot': 'utility',
   'personal-roboport-equipment': 'utility',
   'personal-roboport-mk2-equipment': 'armor-power-mk2',
@@ -412,12 +414,20 @@ const RECIPE_TECH = {
   'fast-loader': 'logistics2',        // 高速装载机：需「物流 II」
   'express-loader': 'logistics3',     // 极速装载机：需「物流 III」
   'turbo-loader': 'turbo-logistics',  // 超速装载机：需「超速物流」科技
+  // ===== 进阶科学包配方解锁（打破“造瓶 ↔ 通用科技”成环，对齐官方：科研包配方由低一阶科技解锁）=====
+  // 产能科学包（紫瓶）：由蓝包终技「重工蓝图 deep」解锁；研究 deep 后即可合成紫瓶，再研究「产能科技 production」→ 无环
+  'production-science-pack': 'deep',
+  // 实用科学包（黄瓶）：由「产能科技 production」解锁；研究 production（已能合成紫瓶）后即可合成黄瓶，再研究「实用科技 utility」→ 无环
+  'utility-science-pack': 'production',
   // 太空时代 堆叠机械臂（官方 Space Age Stack inserter 科技，需碳纤维+集装箱机械臂）
   'stack-inserter': 'stack-inserter-tech',
   // 太空时代 钷素科研包（官方 Promethium science pack 科技，由钷素星块+超导体+生物结晶在电磁工厂制得）
-  'promethium-science-pack': 'promethium-science',  // 太空时代 Aquilo 低温学链（统一由「低温学」科技解锁）
+  // 配方改由「太空材料加工」（钷素星块收集前置）解锁，否则与「钷素科研」科技（本身消耗钷素科研包）互相卡死
+  'promethium-science-pack': 'asteroid-processing',
   'cryogenic-plant': 'cryogenics',
-  'cryogenic-science-pack': 'cryogenics',
+  // 低温科研包配方改由「电磁学」解锁（电磁学成本为空间+实用瓶，不消耗低温瓶），
+  // 否则与「低温学」科技（成本含低温科研包）成环；此修改对触发式自动解锁亦更稳健
+  'cryogenic-science-pack': 'electromagnetics',
   'ammonia': 'cryogenics',
   'fluorine': 'cryogenics',
   'fluoroketone-cold': 'cryogenics',
