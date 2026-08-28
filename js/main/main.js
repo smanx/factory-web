@@ -745,9 +745,16 @@ function tryPlaceAt(tx, ty) {
       if (typeof playSfx === 'function') playSfx('deny');
       return;
     }
-    // 不允许覆盖建造：目标格已有建筑（如组装机）时直接提示，不拆除替换。
-    // 传送带升级/降级仍走上方同族覆盖逻辑，其余建筑冲突一律拒绝。
-    toast('无法在这里建造');
+    // 明确指出建造失败的具体原因（超出范围/水面/峭壁/树木/已有建筑等），
+    // 而非笼统的“无法在这里建造”。
+    const REASON_TXT = {
+      reach: '距离太远，超出建造范围',
+      water: '此处是水面，无法建造',
+      cliff: '峭壁阻挡，需先用峭壁炸药清除',
+      tree: '树木阻挡，需先砍掉树木',
+      occupied: '此处已有建筑，无法覆盖放置',
+    };
+    toast(REASON_TXT[chk.reason] || '无法在这里建造');
     if (typeof playSfx === 'function') playSfx('deny');
     return;
   }

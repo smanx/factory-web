@@ -164,3 +164,98 @@ function initDeathMenu() {
   });
 }
 
+// ===== 游戏菜单（按 Esc 展开/合上）：暂停世界并居中显示菜单 =====
+// 与 main-input.js 的 ESC 分支配合：游戏内无任何弹框/面板时，第一次 Esc 展开游戏菜单并暂停，
+// 再按一次 Esc 合上并继续游戏（对齐《异星工厂》暂停菜单）。
+function isPauseMenuOpen() {
+  const ov = document.getElementById('pause-overlay');
+  return !!ov && !ov.classList.contains('hidden');
+}
+function openPauseMenu() {
+  const ov = document.getElementById('pause-overlay');
+  if (ov) ov.classList.remove('hidden');
+  G.paused = true;   // 展开菜单即暂停世界
+  if (typeof playSfx === 'function') playSfx('click');
+}
+function closePauseMenu() {
+  const ov = document.getElementById('pause-overlay');
+  if (ov) ov.classList.add('hidden');
+  G.paused = false;   // 合上菜单即继续游戏
+}
+
+// ===== 二级确认弹框 =====
+// 用于“重开游戏/返回主菜单”前提醒用户先手动保存存档；确认后回调。
+let _confirmCb = null;
+function openConfirm(title, desc, okLabel, onConfirm) {
+  _confirmCb = typeof onConfirm === 'function' ? onConfirm : null;
+  const t = document.getElementById('confirm-title'); if (t) t.textContent = title || '⚠ 确认操作';
+  const d = document.getElementById('confirm-desc'); if (d) d.textContent = desc || '';
+  const ok = document.getElementById('btn-confirm-ok'); if (ok) ok.textContent = okLabel || '确认';
+  const ov = document.getElementById('confirm-overlay'); if (ov) ov.classList.remove('hidden');
+  if (typeof playSfx === 'function') playSfx('click');
+}
+function closeConfirm() {
+  _confirmCb = null;
+  const ov = document.getElementById('confirm-overlay'); if (ov) ov.classList.add('hidden');
+}
+
+function initPauseMenu() {
+  const ov = document.getElementById('pause-overlay');
+  const cvOv = document.getElementById('confirm-overlay');
+  const resume = document.getElementById('btn-pause-resume');
+  const restart = document.getElementById('btn-pause-restart');
+  const load = document.getElementById('btn-pause-load');
+  const save = document.getElementById('btn-pause-save');
+  const settings = document.getElementById('btn-pause-settings');
+  const quit = document.getElementById('btn-pause-quit');
+  if (resume) resume.addEventListener('click', () => {
+    if (typeof playSfx === 'function') playSfx('click');
+    closePauseMenu();
+  });
+  // 重开游戏会丢失当前进度，需二级确认并提醒先保存存档
+  if (restart) restart.addEventListener('click', () => {
+    if (typeof playSfx === 'function') playSfx('click');
+    openConfirm('↻ 重开游戏', '将生成一个全新世界，当前进度会全部丢失！\n请先到「💾 保存游戏」手动保存存档。', '重开游戏', () => {
+      closePauseMenu();
+      if (typeof startNewGame === 'function') startNewGame();   // 重新开始游戏（生成新世界）
+    });
+  });
+  if (load) load.addEventListener('click', () => {
+    if (typeof playSfx === 'function') playSfx('click');
+    if (typeof openSaveManage === 'function') openSaveManage();   // 打开存档管理页（含读取/导入存档）
+  });
+  if (save) save.addEventListener('click', () => {
+    if (typeof playSfx === 'function') playSfx('click');
+    if (typeof openSaveManage === 'function') openSaveManage();   // 打开存档管理页（含新建/写入存档）
+  });
+  if (settings) settings.addEventListener('click', () => {
+    if (typeof playSfx === 'function') playSfx('click');
+    // 保留游戏菜单（不收起），打开设置面板（暂停态由 openPanel('set') 维持）；
+    // 关闭设置时若游戏菜单仍在，则继续保持暂停并停留在游戏菜单（见 ui.js closePanel）
+    if (typeof openPanel === 'function') openPanel('set');
+  });
+  // 返回主菜单不会自动保存，需二级确认并提醒先保存存档
+  if (quit) quit.addEventListener('click', () => {
+    if (typeof playSfx === 'function') playSfx('click');
+    openConfirm('🏠 返回主菜单', '返回主菜单不会自动保存，未保存的进度将丢失！\n请先到「💾 保存游戏」手动保存存档。', '返回主菜单', () => {
+      closePauseMenu();
+      if (typeof returnToMenu === 'function') returnToMenu();
+    });
+  });
+  // 二级确认弹框：确认/取消
+  const cvOk = document.getElementById('btn-confirm-ok');
+  const cvCancel = document.getElementById('btn-confirm-cancel');
+  if (cvOk) cvOk.addEventListener('click', () => {
+    if (typeof playSfx === 'function') playSfx('click');
+    const cb = _confirmCb; closeConfirm(); if (cb) cb();
+  });
+  if (cvCancel) cvCancel.addEventListener('click', () => {
+    if (typeof playSfx === 'function') playSfx('click');
+    closeConfirm();
+  });
+  // 点击确认遮罩空白处视为取消
+  if (cvOv) cvOv.addEventListener('click', ev => { if (ev.target === cvOv) closeConfirm(); });
+  // 点击遮罩空白处合上菜单并继续游戏
+  if (ov) ov.addEventListener('click', ev => { if (ev.target === ov) closePauseMenu(); });
+}
+

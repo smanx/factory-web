@@ -77,24 +77,37 @@
 
     const newBtn = document.getElementById('btn-new-game');
     const contBtn = document.getElementById('btn-continue');
+    const continueGameBtn = document.getElementById('btn-continue-game');
     const infoEl = document.getElementById('start-save-info');
     const overlay = document.getElementById('load-save-overlay');
     const listEl = document.getElementById('load-save-list');
     const closeBtn = document.getElementById('load-save-close');
     const newestBtn = document.getElementById('btn-load-newest');
 
-    // 启动时检测是否存在可用存档，并提示
-    if (infoEl) {
-      hasAnySave().then(hasSave => {
+    // 启动时检测是否存在可用存档：有则显示最上方的"继续游戏"按钮（一键加载最新存档），
+    // 并做相应提示；无存档则隐藏该按钮（按钮默认 hidden，只在此处决定是否显示）。
+    if (continueGameBtn) {
+      // 点击"继续游戏"：直接加载时间最新的存档开始游戏
+      continueGameBtn.addEventListener('click', function () {
+        if (typeof playSfx === 'function') playSfx('click');
+        if (typeof startFromSave === 'function') startFromSave();
+      });
+    }
+    hasAnySave().then(hasSave => {
+      if (continueGameBtn) {
+        if (hasSave) continueGameBtn.classList.remove('hidden');
+        else continueGameBtn.classList.add('hidden');
+      }
+      if (infoEl) {
         if (hasSave) {
-          infoEl.textContent = '检测到已有存档，可点击"读取存档"选择存档继续，或一键加载最新。';
+          infoEl.textContent = '检测到已有存档，可点击"继续游戏"一键加载最新，或"读取存档"选择指定存档。';
           infoEl.className = 'start-save-info has-save';
         } else {
           infoEl.textContent = '暂无存档，点击"开始新游戏"创建新世界。';
           infoEl.className = 'start-save-info no-save';
         }
-      });
-    }
+      }
+    });
 
     // 新游戏：先弹出地图设置面板（对齐《异星工厂》新游戏地图生成器），确认后开始
     if (newBtn) {

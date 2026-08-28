@@ -75,6 +75,28 @@ async function downloadSave() {
   }
 }
 
+// 单独导出某一条存档为 gzip 文件（供存档管理页每条存档的“导出”按钮使用）
+async function exportSave(id) {
+  try {
+    const data = await readSave(id);
+    if (!data) { toast('未找到该存档'); return; }
+    const bytes = await gzipCompress(JSON.stringify(data));
+    const blob = new Blob([bytes], { type: 'application/gzip' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const ver = (typeof window !== 'undefined' && window.__BUILD_VERSION__) || 'dev';
+    const safeId = String(id).replace(/[^\w-]+/g, '');
+    a.download = 'factory-save-' + safeId + '-' + ver + '.json.gz';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+    toast('该存档已导出（gzip 压缩）');
+  } catch (err) {
+    toast('导出失败：' + err.message);
+  }
+}
+
 // 从文件导入存档：支持 gzip 压缩文件，兼容旧的纯 JSON 文件（未压缩则直接导入）
 async function importSaveFile(arrayBuffer) {
   try {

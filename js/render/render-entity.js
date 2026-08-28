@@ -405,7 +405,8 @@ function drawGhostCount(g, wx, wy) {
 
 // 放置校验：默认规则（不能压水/已有实体/超出触及范围）+ 设备自定义规则
 // （DEVICE_PLACE[type] 返回 {ok} 则短路，返回 null 则继续默认校验）
-// 不允许覆盖建造：目标格已有实体时返回 {ok:false}，由调用方提示。
+// 不允许覆盖建造：目标格已有实体时返回 {ok:false, reason:'occupied'}，由调用方按具体原因提示。
+// reason 取值：water 水面 / cliff 峭壁 / tree 树木 / occupied 已有建筑 / reach 超出建造范围。
 function canPlaceAt(type, tx, ty, dir) {
   // 行星专属生产建筑：只能在对应星球建造（对齐《异星工厂》Space Age 星球专属建筑）
   const planetReq = (typeof buildingRequiredPlanet === 'function') ? buildingRequiredPlanet(type) : null;
@@ -425,20 +426,20 @@ function canPlaceAt(type, tx, ty, dir) {
   }
   for (let dy = 0; dy < eh; dy++)
     for (let dx = 0; dx < ew; dx++) {
-      if (isWater(tx + dx, ty + dy)) return { ok: false };
+      if (isWater(tx + dx, ty + dy)) return { ok: false, reason: 'water' };
       // 峭壁阻挡建造（对齐《异星工厂》：峭壁需先用峭壁炸药清除）
-      if (getTerrain(tx + dx, ty + dy) === T_CLIFF) return { ok: false };
+      if (getTerrain(tx + dx, ty + dy) === T_CLIFF) return { ok: false, reason: 'cliff' };
       // 树木阻挡建造（对齐《异星工厂》：需先砍树清空场地）
-      if (getTerrain(tx + dx, ty + dy) === T_TREE) return { ok: false };
+      if (getTerrain(tx + dx, ty + dy) === T_TREE) return { ok: false, reason: 'tree' };
       if (entAt(tx + dx, ty + dy)) {
         // 传送带升级/降级覆盖：用带系/地下带/分流器的同类覆盖现有同族带（对齐《异星工厂》覆盖升级）
         // 但反向传送带视为障碍（不参与覆盖），交由自动地下带逻辑跨越处理
         const e = entAt(tx + dx, ty + dy);
         const reversed = e instanceof Belt && Math.abs(((e.dir - dir) % 4 + 4) % 4) === 2;
         if (!reversed && canOverwriteWithBelt(type, e)) continue;
-        return { ok: false };
+        return { ok: false, reason: 'occupied' };
       }
-      if (!withinReach(tx + dx, ty + dy)) return { ok: false };
+      if (!withinReach(tx + dx, ty + dy)) return { ok: false, reason: 'reach' };
     }
   return { ok: true };
 }

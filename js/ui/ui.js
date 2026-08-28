@@ -358,8 +358,9 @@ function closePanel(hide = true) {
   G.rcpTab = null;
   G.rcpQ = '';
   if (hide) document.getElementById('panel').style.display = 'none';
-  // 关闭设置面板后恢复游戏（对应 openPanel 中打开设置时的自动暂停）
-  if (wasSettings) G.paused = false;
+  // 关闭设置面板后，仅当游戏菜单未打开时才自动恢复游戏；
+  // 若设置面板是从游戏菜单打开的，则关闭后仍停留在暂停的游戏菜单，由用户按 Esc 继续。
+  if (wasSettings && !(typeof isPauseMenuOpen === 'function' && isPauseMenuOpen())) G.paused = false;
 }
 
 function panelScrollTop() {

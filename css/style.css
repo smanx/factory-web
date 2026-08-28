@@ -487,7 +487,7 @@ html, body {
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
   /* 启动页（#start-screen z-index:200）点击“成就”时打开的面板需显示在其之上，故高于 200 */
-  z-index: 210;
+  z-index: 250; /* 高于游戏菜单（245），使从游戏菜单打开设置时两者可共存 */
   width: 400px;
   max-height: calc(100vh - 48px);
   display: none;
@@ -959,6 +959,33 @@ html, body {
 
 #start-screen.hidden { display: none; }
 
+/* 主菜单右上角的 GitHub 开源地址图标链接：悬停高亮，点击新窗口打开仓库 */
+.gh-link {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  color: #cfdbd3;
+  background: rgba(24, 36, 30, .6);
+  border: 1px solid rgba(111, 209, 126, .3);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: all .18s;
+}
+.gh-link svg { width: 24px; height: 24px; }
+.gh-link:hover {
+  color: #fff;
+  border-color: #57b95c;
+  box-shadow: 0 0 16px rgba(87, 185, 92, .4);
+  transform: translateY(-1px);
+}
+
 .start-bg {
   position: absolute;
   inset: 0;
@@ -1115,6 +1142,22 @@ html, body {
 .start-btn.primary:hover {
   background: linear-gradient(180deg, rgba(70, 144, 90, .95), rgba(43, 107, 58, .95));
   box-shadow: 0 0 28px rgba(87, 185, 92, .55), 0 3px 0 #16301d;
+}
+/* "继续游戏"：主菜单最上方的醒目按钮，用琥珀金色与"开始新游戏"区分，提示已有存档可一键继续 */
+.start-btn.continue {
+  padding: 17px 16px;
+  font-size: 17px;
+  background: linear-gradient(180deg, rgba(196, 148, 46, .95), rgba(150, 106, 28, .95));
+  border-color: rgba(255, 214, 128, .9);
+  color: #fff8e6;
+  box-shadow: 0 0 22px rgba(232, 178, 76, .35), 0 3px 0 #4a350b, inset 0 1px 0 rgba(255, 255, 255, .22);
+}
+/* 无存档时隐藏"继续游戏"按钮（style.css 无通用 .hidden 规则，需单独声明 display:none） */
+.start-btn.continue.hidden { display: none; }
+.start-btn.continue:hover {
+  background: linear-gradient(180deg, rgba(216, 168, 58, .95), rgba(168, 122, 34, .95));
+  border-color: #ffd98a;
+  box-shadow: 0 0 30px rgba(232, 178, 76, .6), 0 3px 0 #4a350b;
 }
 
 .start-save-info {
@@ -1386,6 +1429,55 @@ html, body {
 .death-btn:hover { filter: brightness(1.15); }
 .death-btn.primary { background: linear-gradient(135deg, #3fa87e, #2f8a6a); color: #eafff3; }
 .death-btn.danger { background: linear-gradient(135deg, #c04a4a, #9a3232); color: #ffecec; }
+
+/* 游戏菜单（按 Esc 展开/合上）：暂停世界并居中显示菜单（对齐《异星工厂》Esc 菜单） */
+.pause-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 245;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 12, 14, .72);
+  backdrop-filter: blur(4px);
+  animation: overlayFade .2s ease;
+}
+.pause-overlay.hidden { display: none; }
+.pause-panel {
+  width: min(340px, 90vw);
+  text-align: center;
+  background: #22262c;
+  border: 1px solid #3d4752;
+  border-radius: 14px;
+  padding: 26px 24px;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, .6);
+  animation: startPop .3s cubic-bezier(.2, .9, .3, 1.1);
+}
+.pause-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #e8edf4;
+}
+.pause-sub {
+  font-size: 13px;
+  color: #9aa7b5;
+  margin: 6px 0 18px;
+}
+.pause-menu { display: flex; flex-direction: column; gap: 10px; }
+.pause-btn {
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #2c343d;
+  color: #e8edf4;
+  transition: filter .15s;
+}
+.pause-btn:hover { filter: brightness(1.15); }
+.pause-btn.primary { background: linear-gradient(135deg, #3fa87e, #2f8a6a); color: #eafff3; }
+.pause-btn.danger { background: linear-gradient(135deg, #c04a4a, #9a3232); color: #ffecec; }
 @keyframes overlayFade {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -1432,6 +1524,44 @@ html, body {
   border-color: #57b95c;
   color: #fff;
 }
+
+/* 存档管理面板（点击“保存游戏/载入存档”打开）：复用原设置面板的存档管理功能 */
+#save-manage-overlay { z-index: 260; }   /* 需覆盖在游戏菜单（z-index:245）之上 */
+#save-manage-overlay .load-save-panel {
+  width: min(760px, 94vw);   /* 更宽且随屏幕响应，便于显示完整存档名 */
+}
+#save-manage-overlay .save-name {
+  max-width: none;            /* 取消原 150px 截断，完整显示存档名称 */
+  white-space: normal;        /* 允许换行承接长名称 */
+  overflow-wrap: anywhere;
+}
+#confirm-overlay { z-index: 270; }   /* 二级确认需覆盖在设置面板（250）与游戏菜单（245）之上 */
+.confirm-title { font-size: 17px; font-weight: 800; color: #ffce66; margin-bottom: 8px; }
+.confirm-desc { font-size: 13px; color: #b7c1cc; line-height: 1.6; margin-bottom: 18px; white-space: pre-line; text-align: left; }
+.confirm-actions { display: flex; gap: 10px; justify-content: center; }
+.confirm-actions .pause-btn { flex: 1; }
+.save-manage-body {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 60px;
+  padding-right: 2px;
+}
+.save-manage-body .sec { color: #a5c9a8; font-size: 12px; margin: 2px 0; }
+.save-manage-body .hint { color: #7d8894; font-size: 12px; }
+.save-manage-body button {
+  background: #2a3340;
+  color: #dfe6ee;
+  border: 1px solid #46536a;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.save-manage-body button:hover { background: #3a4657; }
+.save-manage-body .save-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.save-manage-body .save-list-title { margin-top: 6px; }
 
 .load-newest-btn {
   width: 100%;

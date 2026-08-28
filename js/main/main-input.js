@@ -62,18 +62,21 @@ function bindInput() {
     // C 键：在左下角快捷栏武器槽中从左到右循环切换当前武器（无武器则不切换）
     else if (k === 'c') { if (typeof cycleQuickbarWeapon === 'function') cycleQuickbarWeapon(); }
     else if (k === 'escape') {
-      // ESC 键：优先关闭当前打开的任何弹框/面板（驾驶界面/蓝图/拆除模式/面板）
-      if (G.driving) { if (typeof exitCar === 'function') exitCar(); }
-      else if (G.blueMode) {
+      // ESC 键：从上到下逐层关闭——驾驶/蓝图/拆除 → 面板 → 游戏菜单；均无则打开游戏菜单
+      if (G.driving) {
+        if (typeof exitCar === 'function') exitCar();
+      } else if (G.blueMode) {
         cancelBlueprint();
       } else if (G.deconstructMode) {
         toggleDeconstructMode(false);
       } else if (G.panelMode) {
         closePanel();
+      } else if (isPauseMenuOpen()) {
+        closePauseMenu();   // 再按一次：合上游戏菜单并继续游戏
       }
-      // 当前页面没有任何弹框和面板时：打开设置弹框
+      // 当前页面没有任何弹框/面板/菜单时：展开游戏菜单并暂停游戏
       else {
-        openPanel('set');
+        openPauseMenu();
       }
     }
     else if (k === 'q') {
@@ -552,6 +555,7 @@ function boot() {
     ['tutorial', () => initTutorial()],
     ['debug', () => buildDebug()],
     ['deathmenu', () => initDeathMenu()],
+    ['pausemenu', () => initPauseMenu()],
     ['input', () => bindInput()]
   ];
   for (const [name, fn] of steps) {

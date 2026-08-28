@@ -125,6 +125,7 @@ function render() {
   drawBlueprintOverlay(ctx);
   drawHoverAndMining(ctx);
   drawPlayer(ctx);
+  drawReachCircle(ctx);
   drawEnemies(ctx);
   drawBullets(ctx);
   drawCombatRobots(ctx);
@@ -184,6 +185,37 @@ function render() {
   if (G.settings && G.settings.minimap !== false) drawMinimap(ctx);
   // 设备信息面板：鼠标悬停设备时在小地图下方显示长条详情
   if (typeof drawDeviceInfoBar === 'function') drawDeviceInfoBar(ctx);
+}
+
+// ===== 显示角色建造范围圆圈（设置「显示建造范围」开启时绘制）=====
+// 以角色中心为圆心、半径为 REACH_PX（10 格，对齐原版）的圆，恰好覆盖 withinReach 判定边界
+// （角色中心到瓦片中心的距离 ≤ REACH_PX 即视为可建造/交互）。
+function drawReachCircle(ctx) {
+  if (!G.settings || !G.settings.showReach) return;
+  // 调试「无限交互距离」开启时范围无穷大，不画圈
+  if (G.dbg && G.dbg.farReach) return;
+  const p = G.player;
+  if (!p) return;
+  const r = REACH_PX;
+  // 视口剔除：圆圈完全不在屏幕内时跳过，避免无效绘制
+  const cam = G.cam, z = cam.z;
+  const sx = (p.x - cam.px) * z + W / 2;
+  const sy = (p.y - cam.py) * z + H / 2;
+  const sr = r * z;
+  if (sx + sr < -20 || sx - sr > W + 20 || sy + sr < -20 || sy - sr > H + 20) return;
+  // 半透明填充（范围内的地面轻微高亮）
+  ctx.fillStyle = 'rgba(120,200,255,.06)';
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+  ctx.fill();
+  // 虚线描边（随缩放保持粗细一致）
+  ctx.strokeStyle = 'rgba(160,220,255,.55)';
+  ctx.lineWidth = 1.5 / z;
+  ctx.setLineDash([8 / z, 6 / z]);
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
 }
 
 // ===== 电灯照明：在黑暗遮罩上凿出光圈并叠加暖光 =====
