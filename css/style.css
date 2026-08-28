@@ -121,34 +121,7 @@ html, body {
   margin-top: 6px;
 }
 
-#topright {
-  position: absolute;
-  top: 0; right: 168px;
-  display: flex; gap: 6px;
-}
-
-#topright-menu {
-  display: flex; gap: 6px;
-}
-
-#topright.collapsed #topright-menu {
-  display: none;
-}
-
-#btn-menu-toggle {
-  background: #2a3340;
-  color: #dfe6ee;
-  border: 1px solid #46536a;
-  border-radius: 6px;
-  padding: 6px 10px;
-  font-size: 14px;
-  cursor: pointer;
-  line-height: 1;
-}
-
-#btn-menu-toggle:hover { background: #3a4657; }
-
-#topright button, #panel button {
+#panel button {
   background: #2a3340;
   color: #dfe6ee;
   border: 1px solid #46536a;
@@ -158,7 +131,7 @@ html, body {
   cursor: pointer;
 }
 
-#topright button:hover, #panel button:hover:not(:disabled) { background: #3a4657; }
+#panel button:hover:not(:disabled) { background: #3a4657; }
 #panel button:disabled { opacity: .45; cursor: default; }
 
 #hotbar {
@@ -2140,6 +2113,20 @@ html, body {
 .ach-desc { color: #8a95a3; font-size: 12px; margin-top: 2px; line-height: 1.4; }
 
 /* ===== 研究面板：双栏布局（左=研究列表，右=研究树图）===== */
+#panel.set-wide {
+  /* 设置面板：宽度自适应屏幕（视口越宽面板越宽），并保证在窄窗口不溢出 */
+  width: clamp(400px, 42vw, 620px);
+  min-width: 0;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  /* 背景色与游戏菜单（Esc 暂停菜单 .pause-panel）保持一致 */
+  background: #22262c;
+}
+/* 设置面板内容：加大左右内边距，文字不再紧贴面板边 */
+#panel.set-wide #panel-body {
+  padding-left: 26px;
+  padding-right: 26px;
+}
 #panel.tech-wide {
   width: 1180px;
   max-width: calc(100vw - 32px);

@@ -103,13 +103,6 @@ function returnToMenu() {
   G.ghostDir = 0;
   const sc = document.getElementById('start-screen');
   if (sc) sc.classList.remove('hidden');
-  // 收起顶部菜单（保持整洁的主菜单视图）
-  const topMenu = document.getElementById('topright');
-  const menuToggle = document.getElementById('btn-menu-toggle');
-  if (topMenu && !topMenu.classList.contains('collapsed')) {
-    topMenu.classList.add('collapsed');
-    if (menuToggle) { menuToggle.textContent = '☰'; menuToggle.title = '展开顶部菜单'; }
-  }
   if (typeof playSfx === 'function') playSfx('click');
   toast('已退出到主页面');
   // 回到主菜单时随机生成一张新地图作为背景（复用游戏地图生成功能）

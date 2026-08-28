@@ -140,42 +140,8 @@ function importSaveText(text) {
   }
 }
 
+// 顶部菜单按钮已按用户要求移除（小地图左侧的按钮及展开列表），仅保留绿图操作栏初始化
 function initTopButtons() {
-  // 顶部菜单折叠/展开
-  const topMenu = document.getElementById('topright');
-  const menuToggle = document.getElementById('btn-menu-toggle');
-  if (topMenu && menuToggle) {
-    // 默认折叠顶部菜单（与 index.html 中 #topright 默认 collapsed 保持一致）
-    const isCollapsed = topMenu.classList.contains('collapsed');
-    menuToggle.textContent = isCollapsed ? '☰' : '✕';
-    menuToggle.title = isCollapsed ? '展开顶部菜单' : '折叠顶部菜单';
-    menuToggle.addEventListener('click', () => {
-      const collapsed = topMenu.classList.toggle('collapsed');
-      menuToggle.textContent = collapsed ? '☰' : '✕';
-      menuToggle.title = collapsed ? '展开顶部菜单' : '折叠顶部菜单';
-    });
-  }
-  document.getElementById('btn-inv').addEventListener('click', () =>
-    G.panelMode === 'inv' ? closePanel() : openPanel('inv'));
-  document.getElementById('btn-tech').addEventListener('click', () =>
-    G.panelMode === 'tech' ? closePanel() : openPanel('tech'));
-  document.getElementById('btn-stats').addEventListener('click', () =>
-    G.panelMode === 'stats' ? closePanel() : openPanel('stats'));
-  const achBtn = document.getElementById('btn-ach');
-  if (achBtn) achBtn.addEventListener('click', () =>
-    G.panelMode === 'ach' ? closePanel() : openPanel('ach'));
-  document.getElementById('btn-blue').addEventListener('click', () => {
-    closePanel();
-    toggleBlueprint('blue');
-  });
-  document.getElementById('btn-red').addEventListener('click', () => {
-    closePanel();
-    toggleBlueprint('red');
-  });
-  document.getElementById('btn-green').addEventListener('click', () => {
-    closePanel();
-    toggleBlueprint('green');
-  });
   // 绿图操作栏：升级/降级/取消
   const greenbar = document.getElementById('greenbar');
   if (greenbar) greenbar.addEventListener('click', ev => {
@@ -185,9 +151,6 @@ function initTopButtons() {
     if (act === 'cancel') { hideGreenBar(); G.greenRect = null; return; }
     greenAreaAction(act);
   });
-  document.getElementById('btn-set').addEventListener('click', () =>
-    G.panelMode === 'set' ? closePanel() : openPanel('set'));
-  // 设置面板的自动暂停/恢复由 openPanel/closePanel 处理（不再提供顶部暂停按钮）
 }
 
 function updateHUD(dt, fps, ups) {
