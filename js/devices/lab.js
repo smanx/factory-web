@@ -48,6 +48,35 @@ class Lab extends Entity {
     for (const k of SCIENCE_PACKS) if (this.packCount(k) > 0) return k;
     return null;
   }
+  // 数据单源化：高品质实验室按官方 science_pack_drain_multiplier 消耗更少科研包。
+  // 官方 multiplier：uncommon 0.99 / rare 0.98 / epic 0.97 / legendary 0.95（normal 1）。
+  // 科研包按整消耗，这里用累积消耗量（_drainAcc）把“少耗”累积成整数后统一扣除，
+  // 保证长期平均消耗与官方 multiplier 一致（如 legendary 平均每 1/0.95≈1.053 周期耗 1）。
+  drainMult() {
+    return (typeof qualityScienceDrainMult === 'function') ? qualityScienceDrainMult(this.quality) : 1;
+  }
+  // 从指定科研包扣除一次科研消耗（受品质消耗倍率影响）
+  consumePackDrain(need) {
+    const mult = this.drainMult();
+    if (mult >= 1) {   // normal / 未实现品质：按原 1 个消耗
+      if (mult > 1) {
+        this._drainAcc = ((this._drainAcc || 0) + (mult - 1));
+        const extra = Math.floor(this._drainAcc);
+        if (extra > 0) { this._drainAcc -= extra; }
+      }
+      this.packs[need] = (this.packs[need] || 0) - 1;
+      if (typeof trackProd === 'function') trackProd(need, -1);
+      if (this.packs[need] <= 0) delete this.packs[need];
+      return;
+    }
+    // 高品质：按倍率累积消耗（每次科研累积 mult 的消耗量，攒够 1 才实际扣 1）
+    this._drainAcc = (this._drainAcc || 0) + mult;
+    if (this._drainAcc < 1) return;           // 尚未攒够，本次科研免扣（官方少耗）
+    this._drainAcc -= 1;
+    this.packs[need] = (this.packs[need] || 0) - 1;
+    if (typeof trackProd === 'function') trackProd(need, -1);
+    if (this.packs[need] <= 0) delete this.packs[need];
+  }
   // 从任意一种有库存的科学包中消耗 n 个（不限种类）
   consumeAnyPack(n) {
     for (const k of SCIENCE_PACKS) {
@@ -85,7 +114,7 @@ class Lab extends Entity {
       if (this.t >= LAB_TIME) {
         this.t -= LAB_TIME;
         // 产能模块：达到阈值时本次科研免费（不消耗科学包）
-        if (!this.applyProductivity()) this.consumeAnyPack(1);
+        if (!this.applyProductivity()) this.consumePackDrain(this.peekAnyPack());
         G.techProg[tech] = (G.techProg[tech] || 0) + 1;   // 进度无限增长
         // 健康无限科技：每级提升主角最大生命值 +50（对齐官方 Health 科技），即时刷新最大生命值
         if (tech === 'health' && typeof playerMaxHp === 'function' && typeof G.playerHPmax === 'number') {
@@ -118,11 +147,7 @@ class Lab extends Entity {
     if (this.t >= LAB_TIME) {
       this.t -= LAB_TIME;
       // 产能模块：达到阈值时本次科研免费（不消耗科学包）
-      if (!this.applyProductivity()) {
-        this.packs[need]--;
-        if (typeof trackProd === 'function') trackProd(need, -1);
-        if (this.packs[need] <= 0) delete this.packs[need];
-      }
+      if (!this.applyProductivity()) this.consumePackDrain(need);
       done++;
       G.techProg[tech] = done;
       uiDirty = true;
@@ -185,6 +210,7 @@ class Lab extends Entity {
     const s = super.serialize();
     s.packs = this.packs; s.t = this.t;
     s.modules = this.modules || {}; s.prodBuf = this.prodBuf || 0;
+    s.drainAcc = this._drainAcc || 0;
     return s;
   }
   static restore(s) {
@@ -192,6 +218,7 @@ class Lab extends Entity {
     l.packs = typeof s.packs === 'number' ? { 'automation-science-pack': s.packs } : (s.packs || {});
     l.t = s.t || 0;
     l.modules = s.modules || {}; l.prodBuf = s.prodBuf || 0;
+    l._drainAcc = s.drainAcc || 0;
     return l;
   }
 }

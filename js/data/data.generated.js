@@ -6439,7 +6439,14 @@ const GAME_DATA = {
     0,
     0,
     0
-   ]
+   ],
+   "beaconPowerUsageMult": 1,
+   "miningDrillDrainMult": 1,
+   "sciencePackDrainMult": 1,
+   "cargoWagonCapMult": 1,
+   "locomotivePowerMult": 1,
+   "rollingStockSpeedMult": 1,
+   "chainProbability": 0.1
   },
   {
    "id": "uncommon",
@@ -6448,7 +6455,14 @@ const GAME_DATA = {
     43,
     165,
     61
-   ]
+   ],
+   "beaconPowerUsageMult": 0.8333333333333334,
+   "miningDrillDrainMult": 0.8333333333333334,
+   "sciencePackDrainMult": 0.99,
+   "cargoWagonCapMult": 1.25,
+   "locomotivePowerMult": 1.2,
+   "rollingStockSpeedMult": 1.03,
+   "chainProbability": 0.1
   },
   {
    "id": "rare",
@@ -6457,7 +6471,14 @@ const GAME_DATA = {
     25,
     104,
     178
-   ]
+   ],
+   "beaconPowerUsageMult": 0.6666666666666666,
+   "miningDrillDrainMult": 0.6666666666666666,
+   "sciencePackDrainMult": 0.98,
+   "cargoWagonCapMult": 1.5,
+   "locomotivePowerMult": 1.4,
+   "rollingStockSpeedMult": 1.06,
+   "chainProbability": 0.1
   },
   {
    "id": "epic",
@@ -6466,7 +6487,14 @@ const GAME_DATA = {
     137,
     0,
     178
-   ]
+   ],
+   "beaconPowerUsageMult": 0.5,
+   "miningDrillDrainMult": 0.5,
+   "sciencePackDrainMult": 0.97,
+   "cargoWagonCapMult": 1.75,
+   "locomotivePowerMult": 1.6,
+   "rollingStockSpeedMult": 1.09,
+   "chainProbability": 0.1
   },
   {
    "id": "legendary",
@@ -6475,7 +6503,13 @@ const GAME_DATA = {
     178,
     104,
     0
-   ]
+   ],
+   "beaconPowerUsageMult": 0.16666666666666666,
+   "miningDrillDrainMult": 0.16666666666666666,
+   "sciencePackDrainMult": 0.95,
+   "cargoWagonCapMult": 2.5,
+   "locomotivePowerMult": 2,
+   "rollingStockSpeedMult": 1.15
   }
  ],
  "itemGroup": {

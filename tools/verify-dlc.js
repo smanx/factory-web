@@ -18,7 +18,11 @@ const code = fs.readFileSync(ROOT + '/js/data/data.generated.js', 'utf8')
   + 'globalThis.__itemTechReq=itemTechReq;globalThis.__itemRecipeText=itemRecipeText;globalThis.__recipeTechReq=recipeTechReq;'
   + 'globalThis.__BUILD_DEFS=BUILD_DEFS;'
   + 'globalThis.__ORE_TUNGSTEN=ORE_TUNGSTEN;globalThis.__ORE_HOLMIUM=ORE_HOLMIUM;'
-  + 'globalThis.__oreItemId=oreItemId;globalThis.__isOreType=isOreType;globalThis.__oreMiningTime=oreMiningTime;';
+  + 'globalThis.__oreItemId=oreItemId;globalThis.__isOreType=isOreType;globalThis.__oreMiningTime=oreMiningTime;'
+  + 'globalThis.__qualityMult=qualityMult;globalThis.__qualityBeaconPowerMult=qualityBeaconPowerMult;'
+  + 'globalThis.__qualityMiningDrillDrainMult=qualityMiningDrillDrainMult;globalThis.__qualityScienceDrainMult=qualityScienceDrainMult;'
+  + 'globalThis.__qualityCargoWagonCapMult=qualityCargoWagonCapMult;globalThis.__qualityLocomotivePowerMult=qualityLocomotivePowerMult;'
+  + 'globalThis.__qualityRollingStockSpeedMult=qualityRollingStockSpeedMult;globalThis.__QUALITY_TIERS=QUALITY_TIERS;';
 const ctx = { console, localStorage: { getItem: () => null, setItem: () => {} } };
 ctx.window = ctx; ctx.G = { settings: { language: 'zh' }, power: { sat: 1 }, techDone: {} };
 ctx.globalThis = ctx;
@@ -514,6 +518,61 @@ ok(!!TS['quality-3'], '「品质学 III」科技已注册');
 // 品质变体物品（data-util 生成）与品质辅助函数
 ok(typeof ctx.__GAME_DATA !== 'undefined', 'GAME_DATA 就绪');
 ok(typeof IT['iron-plate~rare'] === 'undefined' || IT['iron-plate~rare'] !== undefined, '品质变体可显示（iron-plate~rare）');
+
+// ===== 官方品质 multiplier 单源化（GAME_DATA.qualityTiers，factorio-data 官方 quality 原型）=====
+console.log('\n【官方品质 multiplier 单源化】');
+// 官方 quality 原型：uncommon/rare/epic/legendary 的 beacon 功耗/采矿机资源/科研消耗/车厢容量/车头功率/车辆速度
+const qTiers = GD.qualityTiers || [];
+const qGet = (id) => qTiers.find(t => t.id === id) || {};
+ok(qGet('uncommon').beaconPowerUsageMult === 0.8333333333333334, 'uncommon 信号塔功耗倍率=官方 0.833');
+ok(qGet('rare').beaconPowerUsageMult === 0.6666666666666666, 'rare 信号塔功耗倍率=官方 0.667');
+ok(qGet('epic').beaconPowerUsageMult === 0.5, 'epic 信号塔功耗倍率=官方 0.5');
+ok(qGet('legendary').beaconPowerUsageMult === 0.16666666666666666, 'legendary 信号塔功耗倍率=官方 0.167');
+ok(qGet('legendary').miningDrillDrainMult === 0.16666666666666666, 'legendary 采矿机资源消耗倍率=官方 0.167');
+ok(qGet('uncommon').sciencePackDrainMult === 0.99, 'uncommon 科研消耗倍率=官方 0.99');
+ok(qGet('legendary').sciencePackDrainMult === 0.95, 'legendary 科研消耗倍率=官方 0.95');
+ok(qGet('legendary').cargoWagonCapMult === 2.5, 'legendary 货运车厢容量倍率=官方 2.5');
+ok(qGet('legendary').locomotivePowerMult === 2, 'legendary 火车头功率倍率=官方 2');
+ok(qGet('uncommon').rollingStockSpeedMult === 1.03, 'uncommon 车辆最高速度倍率=官方 1.03');
+ok(qGet('legendary').rollingStockSpeedMult === 1.15, 'legendary 车辆最高速度倍率=官方 1.15');
+ok(qGet('normal').beaconPowerUsageMult === 1, 'normal 信号塔功耗倍率=1（官方无字段默认）');
+// 前端 QUALITY_TIERS 从 GAME_DATA 单源构建（含官方 multiplier 字段）
+const qq = ctx.__QUALITY_TIERS || [];
+ok(Array.isArray(qq) && qq.length >= 5, '前端 QUALITY_TIERS 已就绪（>=5 级）');
+ok(qq[1] && qq[1].beaconPowerUsageMult === 0.8333333333333334, '前端 QUALITY_TIERS[uncommon].beaconPowerUsageMult 单源');
+ok(qq[4] && qq[4].cargoWagonCapMult === 2.5, '前端 QUALITY_TIERS[legendary].cargoWagonCapMult 单源');
+ok(qq[4] && qq[4].rollingStockSpeedMult === 1.15, '前端 QUALITY_TIERS[legendary].rollingStockSpeedMult 单源');
+ok(qq[4] && qq[4].mult === 1.5, '前端 QUALITY_TIERS[legendary].mult（建筑速度加成）=1.5');
+// 辅助函数按品质读取
+ok(typeof ctx.__qualityBeaconPowerMult === 'function' && ctx.__qualityBeaconPowerMult('legendary') === 0.16666666666666666, 'qualityBeaconPowerMult(legendary)=官方 0.167');
+ok(typeof ctx.__qualityCargoWagonCapMult === 'function' && ctx.__qualityCargoWagonCapMult('legendary') === 2.5, 'qualityCargoWagonCapMult(legendary)=官方 2.5');
+ok(ctx.__qualityScienceDrainMult('uncommon') === 0.99, 'qualityScienceDrainMult(uncommon)=官方 0.99');
+ok(ctx.__qualityRollingStockSpeedMult('rare') === 1.06, 'qualityRollingStockSpeedMult(rare)=官方 1.06');
+ok(ctx.__qualityLocomotivePowerMult('epic') === 1.6, 'qualityLocomotivePowerMult(epic)=官方 1.6');
+ok(ctx.__qualityMiningDrillDrainMult('rare') === 0.6666666666666666, 'qualityMiningDrillDrainMult(rare)=官方 0.667');
+ok(ctx.__qualityMult('epic') === 1.3, 'qualityMult(epic)=1.3（建筑速度加成）');
+
+// ===== 设备接入品质 multiplier（官方 quality 加成在各设备生效）=====
+console.log('\n【设备接入品质加成（官方 multiplier 生效）】');
+const beaconJs = fs.readFileSync(ROOT + '/js/devices/beacon.js', 'utf8');
+const drillJs = fs.readFileSync(ROOT + '/js/devices/drill.js', 'utf8');
+const labJs = fs.readFileSync(ROOT + '/js/devices/lab.js', 'utf8');
+const railwayJs = fs.readFileSync(ROOT + '/js/devices/railway.js', 'utf8');
+const trainstopJs = fs.readFileSync(ROOT + '/js/devices/railway-trainstop.js', 'utf8');
+// 信号塔功耗按品质降耗
+ok(beaconJs.includes('qualityBeaconPowerMult') && beaconJs.includes('BEACON_POWER * qm'), '信号塔功耗按官方 beacon_power_usage_multiplier 降耗');
+// 采矿机资源消耗按品质减少
+ok(drillJs.includes('consumeOreDrain') && drillJs.includes('qualityMiningDrillDrainMult'), '采矿机矿脉损耗按官方 mining_drill_resource_drain_multiplier 减少');
+// 实验室科研消耗按品质减少
+ok(labJs.includes('consumePackDrain') && labJs.includes('qualityScienceDrainMult'), '实验室科研消耗按官方 science_pack_drain_multiplier 减少');
+// 货运车厢容量按品质提升
+ok(railwayJs.includes('slotCapacity') && railwayJs.includes('qualityCargoWagonCapMult'), '货运车厢槽位按官方 cargo_wagon_inventory_size_multiplier 提升');
+ok(trainstopJs.includes('slotCapacity'), '车站装卸逻辑使用车厢品质容量（slotCapacity）');
+// 列车速度/功率按品质提升
+ok(railwayJs.includes('qualityRollingStockSpeedMult') && railwayJs.includes('qualityLocomotivePowerMult') && railwayJs.includes('TRAIN_SPEED / mult'), '列车速度/功率按官方 rolling_stock/locomotive multiplier 提升');
+// 存档兼容：新增累积字段持久化
+ok(drillJs.includes('s.drainAcc'), '采矿机品质矿耗累积字段随存档持久化');
+ok(labJs.includes('s.drainAcc'), '实验室品质科研消耗累积字段随存档持久化');
 
 
 // ===== 装备命名单源（equipment-name 官方 locale 已接入 GAME_DATA.names）=====

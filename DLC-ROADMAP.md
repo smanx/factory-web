@@ -1724,3 +1724,45 @@ API/中枢货舱信号/推进器液位信号/三设备均实现输出/面板提�
 >   冷却剂为新增要求，旧档 `coolantBuf` 自动补空不报错，未接氟酮冷液时等离子体节流、热量不受影响。
 > - **校验**：verify-dlc 新增「聚变发电链数据单源化」守门人（8 项：官方 3 数值 + 3 前端单源读取 +
 >   冷却剂接入），全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段六.23：品质系统数值深化（Quality multiplier 官方单源化，本迭代新增）
+
+> 依据「品质系统数值深化：逐项核验品质对建筑/装备数值加成与官方一致性」迭代方向（roadmap 后续计划第 2 项）
+> 与「所有数据/参数从 data.generated.js 单源获取、与官方一致」铁律，把此前**硬编码**的品质 multiplier
+> 全部改为从 factorio-data 官方 quality 原型单源化，并接入设备。
+
+**问题背景**：官方《异星工厂》Quality DLC 的 `quality` 原型为每个品质等级定义了多项数值 multiplier——
+`beacon_power_usage_multiplier`（信号塔功耗）、`mining_drill_resource_drain_multiplier`（采矿机资源消耗）、
+`science_pack_drain_multiplier`（科研包消耗）、`cargo_wagon_inventory_size_multiplier`（货运车厢容量）、
+`locomotive_power_multiplier`（火车头功率）、`rolling_stock_max_speed_multiplier`（车辆最高速度），
+以及品质合成链式概率 `chain_probability`（0.1）。此前项目仅在 `js/data/data-tech.js` 硬编码了品质等级
+的建筑速度加成（`QUALITY_TIERS.mult` = 1.0/1.1/1.2/1.3/1.5）与合成链式概率 0.1，未接入官方 quality
+原型的这些 multiplier，高品质建筑在信号塔功耗/采矿机资源/科研消耗/车厢容量/车头功率/车辆速度上
+未与官方一致。
+
+**改动**（`tools/generate-game-data.js` + `js/data/data-tech.js` + `js/devices/beacon.js` + `js/devices/lab.js` + `js/devices/railway.js`）：
+- **数据单源**：`GAME_DATA.qualityTiers` 从 factorio-data 官方 quality 原型提取全部 multiplier 字段
+  （`beaconPowerUsageMult` / `miningDrillDrainMult` / `sciencePackDrainMult` / `cargoWagonCapMult` /
+  `locomotivePowerMult` / `rollingStockSpeedMult` / `chainProbability`），normal 级官方无字段默认 1。
+- **前端单源**：`QUALITY_TIERS`（data-tech.js）改为从 `GAME_DATA.qualityTiers` 构建，保留项目中文名与
+  建筑速度加成 `mult`（官方品质：uncommon +10% / rare +20% / epic +30% / legendary +50%），新增 6 个
+  按品质读取官方 multiplier 的辅助函数（`qualityBeaconPowerMult` / `qualityMiningDrillDrainMult` /
+  `qualityScienceDrainMult` / `qualityCargoWagonCapMult` / `qualityLocomotivePowerMult` /
+  `qualityRollingStockSpeedMult`）。
+- **品质合成链式概率**：`rollQualityUpgrade` 改为用官方 `chainProbability`（GAME_DATA 单源）作为
+  进入升级池后的逐级连续升级概率，不再硬编码 0.1。
+- **设备接入**（官方 multiplier 生效，数据均来自 GAME_DATA）：
+  - **信号塔**：`beacon.powerDemand()` 按官方 `beacon_power_usage_multiplier` 降耗
+    （legendary 信号塔功耗 = 0.167×，官方）。
+  - **实验室**：`lab.consumePackDrain()` 按官方 `science_pack_drain_multiplier` 少耗科研包
+    （legendary 平均每 1/0.95≈1.053 周期耗 1 包，累积消耗量 `_drainAcc` 存档持久化，旧档自动补 0）。
+  - **列车**：`trainMoveTime(head)` 按官方 `rolling_stock_max_speed_multiplier`（速度提升）
+    与 `locomotive_power_multiplier`（功率提升）缩短每格移动耗时（legendary 快 15%×2）。
+  - **采矿机**：`drill.consumeOreDrain()` 按官方 `mining_drill_resource_drain_multiplier` 减少矿脉损耗
+    （legendary 0.167，即同样矿脉能采约 6 倍矿；累积消耗量 `_drainAcc` 存档持久化，旧档自动补 0）。
+  - **货运车厢**：`cargo-wagon.slotCapacity()` 按官方 `cargo_wagon_inventory_size_multiplier` 提升槽位容量
+    （legendary 2.5×），车站装卸（`railway-trainstop.js`）改用品质容量，高品质车厢额外槽位可被车站机械臂利用。
+- **校验**：verify-dlc 新增「官方品质 multiplier 单源化」守门人（24 项：官方 6 类 multiplier 各档数值 +
+  前端 QUALITY_TIERS 单源构建 + 6 个辅助函数按品质读取 + 建筑速度 mult）+「设备接入品质加成」守门人
+  （8 项：信号塔/采矿机/实验室/车厢/车站/列车 + 存档累积字段），全量 18 个校验脚本通过，
+  `node build.js` 构建通过。

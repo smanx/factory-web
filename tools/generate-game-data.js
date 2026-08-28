@@ -1166,11 +1166,25 @@ const qualityTiers = [];
     }
   }
   // 官方品质等级（quality 原型：uncommon/rare/epic/legendary，normal 为 0 级默认）
+  // 额外把官方 quality 原型的品质 multiplier 一并单源化（beacon 功耗/采矿机资源消耗/科研消耗/
+  // 货运车厢容量/火车头功率/车辆最高速度），使高品质建筑在这些属性上也与官方一致。
   if (raw.quality) {
     const order = ['normal', 'uncommon', 'rare', 'epic', 'legendary'];
     for (const name of order) {
       const q = raw.quality[name];
-      if (q) qualityTiers.push({ id: name, level: q.level || 0, color: q.color ? [q.color['1']||0, q.color['2']||0, q.color['3']||0] : null });
+      if (!q) continue;
+      const tier = { id: name, level: q.level || 0, color: q.color ? [q.color['1']||0, q.color['2']||0, q.color['3']||0] : null };
+      // 官方 quality 原型的 multiplier 字段（normal 默认 1.0，未定义则按官方语义取 1）
+      const pick = (v) => (typeof v === 'number') ? v : 1;
+      tier.beaconPowerUsageMult = pick(q.beacon_power_usage_multiplier);
+      tier.miningDrillDrainMult = pick(q.mining_drill_resource_drain_multiplier);
+      tier.sciencePackDrainMult = pick(q.science_pack_drain_multiplier);
+      tier.cargoWagonCapMult = pick(q.cargo_wagon_inventory_size_multiplier);
+      tier.locomotivePowerMult = pick(q.locomotive_power_multiplier);
+      tier.rollingStockSpeedMult = pick(q.rolling_stock_max_speed_multiplier);
+      // 品质合成链式概率（官方 chain_probability，normal 无 = 默认 0.1）
+      if (typeof q.chain_probability === 'number') tier.chainProbability = q.chain_probability;
+      qualityTiers.push(tier);
     }
   }
 }

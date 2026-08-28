@@ -22,7 +22,10 @@ class Beacon extends Entity {
   }
   powerDemand() {
     const n = Object.values(this.modules).reduce((a, b) => a + b, 0);
-    return n > 0 ? BEACON_POWER : 0;   // 有模块才耗电
+    if (n <= 0) return 0;   // 有模块才耗电
+    // 数据单源化：高品质信号塔按官方 beacon_power_usage_multiplier 降低功耗（GAME_DATA 单源）
+    const qm = (typeof qualityBeaconPowerMult === 'function') ? qualityBeaconPowerMult(this.quality) : 1;
+    return BEACON_POWER * qm;
   }
   giveItem(item) {
     // 对齐《异星工厂》：信号塔只能装速度模块，产能/效率模块无法放入信号塔。

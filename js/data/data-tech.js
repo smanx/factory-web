@@ -532,15 +532,40 @@ let HOTBAR = DEFAULT_HOTBAR.slice();
 
 // ===== 品质系统（对齐《异星工厂》Quality DLC：6 级品质） =====
 // 品质等级定义（官方 quality 原型：normal/uncommon/rare/epic/legendary，含 quality-unknown 占位）。
-// 每级对应一个提升比例，用于装备/建筑在更高品质下的数值加成（官方无统一公式，此处按
-// 等级线性折衷：normal=1.0、uncommon=1.1、rare=1.2、epic=1.3、legendary=1.5）。
-const QUALITY_TIERS = [
-  { id: 'normal',    name: '普通',   color: '#d0d0d0', mult: 1.0 },
-  { id: 'uncommon',  name: '罕见',   color: '#2ba53d', mult: 1.1 },
-  { id: 'rare',      name: '稀有',   color: '#1968b2', mult: 1.2 },
-  { id: 'epic',      name: '史诗',   color: '#8900b2', mult: 1.3 },
-  { id: 'legendary', name: '传说',   color: '#b26800', mult: 1.5 },
-];
+// 数据单源化：品质等级的顺序/颜色/官方 multiplier（信号塔功耗/采矿机资源消耗/科研消耗/
+// 货运车厢容量/火车头功率/车辆最高速度）与合成链式概率全部来自 GAME_DATA.qualityTiers
+// （data.generated.js，由 factorio-data 官方 quality 原型现场生成），不再单独维护第二套数值。
+// mult = 高品质建筑速度加成倍率（官方 Quality：uncommon +10% / rare +20% / epic +30% /
+// legendary +50%，normal=1.0 基准；由本地按官方语义补充）。
+const GQ = (GAME_DATA && GAME_DATA.qualityTiers) || [];
+const _qColor = (t) => {
+  // 官方 color 为 RGB 数组 → 转 #rrggbb；缺失则按官方色板兜底
+  if (t && Array.isArray(t.color) && t.color.length >= 3) {
+    return '#' + t.color.slice(0,3).map(c => Math.max(0,Math.min(255,Math.round(c))).toString(16).padStart(2,'0')).join('');
+  }
+  return '#d0d0d0';
+};
+const _qName = (id) => ({ normal:'普通', uncommon:'罕见', rare:'稀有', epic:'史诗', legendary:'传说' }[id] || id);
+const _qMult = (id) => ({ normal:1.0, uncommon:1.1, rare:1.2, epic:1.3, legendary:1.5 }[id] || 1.0);
+const QUALITY_TIERS = GQ.length >= 5
+  ? GQ.map(t => ({
+      id: t.id, name: _qName(t.id), color: _qColor(t),
+      mult: _qMult(t.id),
+      beaconPowerUsageMult: (typeof t.beaconPowerUsageMult === 'number') ? t.beaconPowerUsageMult : 1,
+      miningDrillDrainMult:  (typeof t.miningDrillDrainMult  === 'number') ? t.miningDrillDrainMult  : 1,
+      sciencePackDrainMult:  (typeof t.sciencePackDrainMult  === 'number') ? t.sciencePackDrainMult  : 1,
+      cargoWagonCapMult:     (typeof t.cargoWagonCapMult     === 'number') ? t.cargoWagonCapMult     : 1,
+      locomotivePowerMult:   (typeof t.locomotivePowerMult   === 'number') ? t.locomotivePowerMult   : 1,
+      rollingStockSpeedMult: (typeof t.rollingStockSpeedMult === 'number') ? t.rollingStockSpeedMult : 1,
+      chainProbability:      (typeof t.chainProbability      === 'number') ? t.chainProbability      : 0.1,
+    }))
+  : [
+      { id:'normal', name:'普通', color:'#d0d0d0', mult:1.0, beaconPowerUsageMult:1, miningDrillDrainMult:1, sciencePackDrainMult:1, cargoWagonCapMult:1, locomotivePowerMult:1, rollingStockSpeedMult:1, chainProbability:0.1 },
+      { id:'uncommon', name:'罕见', color:'#2ba53d', mult:1.1, beaconPowerUsageMult:0.8333333333333334, miningDrillDrainMult:0.8333333333333334, sciencePackDrainMult:0.99, cargoWagonCapMult:1.25, locomotivePowerMult:1.2, rollingStockSpeedMult:1.03, chainProbability:0.1 },
+      { id:'rare', name:'稀有', color:'#1968b2', mult:1.2, beaconPowerUsageMult:0.6666666666666666, miningDrillDrainMult:0.6666666666666666, sciencePackDrainMult:0.98, cargoWagonCapMult:1.5, locomotivePowerMult:1.4, rollingStockSpeedMult:1.06, chainProbability:0.1 },
+      { id:'epic', name:'史诗', color:'#8900b2', mult:1.3, beaconPowerUsageMult:0.5, miningDrillDrainMult:0.5, sciencePackDrainMult:0.97, cargoWagonCapMult:1.75, locomotivePowerMult:1.6, rollingStockSpeedMult:1.09, chainProbability:0.1 },
+      { id:'legendary', name:'传说', color:'#b26800', mult:1.5, beaconPowerUsageMult:0.16666666666666666, miningDrillDrainMult:0.16666666666666666, sciencePackDrainMult:0.95, cargoWagonCapMult:2.5, locomotivePowerMult:2, rollingStockSpeedMult:1.15, chainProbability:0.1 },
+    ];
 const QUALITY_INDEX = { normal: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
 // 物品的品质后缀标记：`item~quality`。无后缀视为 normal 品质。
 const QUALITY_SEP = '~';
@@ -561,16 +586,22 @@ function moduleQualityChance(modules) {
   return mc.quality;
 }
 // 依据品质加成，掷一次品质升级：返回升级后的品质 id（未升级返回原品质）
-// 品质模块提供 chance 概率进入“升级池”，升级池内按等级逐级累计概率（官方链式概率，此处简化）。
+// 数据单源化：品质模块提供 chance 概率进入“升级池”；进入后沿品质链连续升级的
+// 每级概率 = 官方 chain_probability（GAME_DATA.qualityTiers 单源，uncommon/rare/epic=0.1、
+// legendary 为链末无 next），最高到 legendary。
 function rollQualityUpgrade(currentQuality, chance) {
   if (chance <= 0) return currentQuality;
   const cur = QUALITY_INDEX[currentQuality] || 0;
-  // 逐级尝试升级：每级成功概率 = chance（品质加成），最高到 legendary
+  // 先掷“进入升级池”的总概率（品质模块品质加成）
+  if (Math.random() >= chance) return currentQuality;
+  // 进入升级池后，沿链逐级升级：从当前级起，每级按官方 chain_probability 判定是否升到下一级
   for (let lvl = cur; lvl < QUALITY_TIERS.length - 1; lvl++) {
-    if (Math.random() < chance) {
-      // 连续升级（链式概率，官方 chain_probability=0.1 简化取 chance）
+    const chainP = QUALITY_TIERS[lvl] && typeof QUALITY_TIERS[lvl].chainProbability === 'number'
+      ? QUALITY_TIERS[lvl].chainProbability : 0.1;
+    if (Math.random() < chainP) {
       return QUALITY_TIERS[lvl + 1].id;
     }
+    break; // 链式升级失败即止步
   }
   return currentQuality;
 }
@@ -579,3 +610,22 @@ function qualityMult(quality) {
   const q = QUALITY_INDEX[quality] || 0;
   return QUALITY_TIERS[q].mult;
 }
+// 官方 quality 原型 multiplier 的品质单源读取（GAME_DATA.qualityTiers，factorio-data 官方）：
+// 返回指定品质下对应官方 multiplier；quality 缺省/normal 返回 1（官方 normal 无 multiplier 默认 1）。
+const _qField = (quality, field) => {
+  const t = QUALITY_TIERS[QUALITY_INDEX[quality] || 0];
+  if (t && typeof t[field] === 'number') return t[field];
+  return 1;
+};
+// 高品质信号塔功耗倍率（beacon_power_usage_multiplier，高品质更低）
+function qualityBeaconPowerMult(quality) { return _qField(quality, 'beaconPowerUsageMult'); }
+// 高品质采矿机资源消耗倍率（mining_drill_resource_drain_multiplier，高品质更低）
+function qualityMiningDrillDrainMult(quality) { return _qField(quality, 'miningDrillDrainMult'); }
+// 高品质科研包消耗倍率（science_pack_drain_multiplier，高品质更低）
+function qualityScienceDrainMult(quality) { return _qField(quality, 'sciencePackDrainMult'); }
+// 高品质货运车厢容量倍率（cargo_wagon_inventory_size_multiplier，高品质更大）
+function qualityCargoWagonCapMult(quality) { return _qField(quality, 'cargoWagonCapMult'); }
+// 高品质火车头功率倍率（locomotive_power_multiplier，高品质更大）
+function qualityLocomotivePowerMult(quality) { return _qField(quality, 'locomotivePowerMult'); }
+// 高品质车辆最高速度倍率（rolling_stock_max_speed_multiplier，高品质更大）
+function qualityRollingStockSpeedMult(quality) { return _qField(quality, 'rollingStockSpeedMult'); }

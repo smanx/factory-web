@@ -113,7 +113,7 @@ class Drill extends Entity {
     const mt = this.oreTime(); // 当前矿石的采矿时间（铁/铜/煤/石 2s、铀矿 4s，对齐《异星工厂》mining_time）
     if (this.prog >= mt) {
       this.prog -= mt;
-      if (!G.settings.infiniteOre) consumeOre(o[0], o[1]);
+      if (!G.settings.infiniteOre) this.consumeOreDrain(o[0], o[1]);
       const mined = this.mineItem(o);
       // 采矿产能科技：按比例累积免费额外产出（对齐《异星工厂》Mining productivity）
       if (this.prodAccum === undefined) this.prodAccum = 0;
@@ -205,11 +205,24 @@ class Drill extends Entity {
   }
   // R 旋转后立即尝试朝新方向输出
   onRotate() { this.tryOutput(); }
+  // 数据单源化：高品质采矿机按官方 mining_drill_resource_drain_multiplier 减少矿脉损耗
+  // （官方：uncommon 0.833 / rare 0.667 / epic 0.5 / legendary 0.167，即同样矿脉能采更多矿）。
+  // 矿脉按整数消耗，这里用累积量（_drainAcc）把“少耗”累积成整数后统一减少，
+  // 保证长期平均矿脉损耗与官方 multiplier 一致（如 legendary 平均每 1/0.167≈6 次采矿耗 1）。
+  consumeOreDrain(tx, ty) {
+    const mult = (typeof qualityMiningDrillDrainMult === 'function') ? qualityMiningDrillDrainMult(this.quality) : 1;
+    this._drainAcc = (this._drainAcc || 0) + mult;
+    if (this._drainAcc < 1) return;            // 尚未攒够，本次采矿不耗矿脉（官方少耗）
+    const n = Math.floor(this._drainAcc);
+    this._drainAcc -= n;
+    for (let i = 0; i < n; i++) consumeOre(tx, ty);
+  }
   serialize() {
     const s = super.serialize();
     s.fuelCoal = this.fuelCoal; s.fuelSolid = this.fuelSolid; s.fuelRocket = this.fuelRocket; s.fuelWood = this.fuelWood; s.burnLeft = this.burnLeft;
     s.bufItem = this.bufItem; s.buf = this.buf; s.prog = this.prog;
     s.burnCap = this.burnCap; s.burnType = this.burnType;
+    s.drainAcc = this._drainAcc || 0;
     return s;
   }
   static restore(s) {
@@ -217,6 +230,7 @@ class Drill extends Entity {
     d.fuelCoal = s.fuelCoal || 0; d.fuelSolid = s.fuelSolid || 0; d.fuelRocket = s.fuelRocket || 0; d.fuelWood = s.fuelWood || 0; d.burnLeft = s.burnLeft || 0;
     d.bufItem = s.bufItem || null; d.buf = s.buf || 0; d.prog = s.prog || 0;
     d.burnCap = s.burnCap || 0; d.burnType = s.burnType || '';
+    d._drainAcc = s.drainAcc || 0;
     return d;
   }
 }
