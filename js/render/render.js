@@ -112,6 +112,9 @@ function render() {
   }
   // ALT 模式（对齐《异星工厂》）：在建筑上叠加显示当前配方/内容标签
   if (G.settings.altMode) drawAltMode(ctx, keys, _bucketSeenBuf);
+  // 兜底清空放置幽灵顶层画布：确保每帧 ghost-layer 都被清空，
+  // 避免任何路径下遗留上一帧的半透明阴影/数量角标（防残留叠加）。
+  if (G.ghostCtx) G.ghostCtx.clearRect(0, 0, W, H);
   drawGhost(ctx);
   drawBlueprintOverlay(ctx);
   drawHoverAndMining(ctx);
