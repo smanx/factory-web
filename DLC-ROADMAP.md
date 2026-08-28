@@ -1550,3 +1550,21 @@ D
 > - **行为不变**：官方值即 900 / 5820 / 350，改造后游戏数值与官方完全一致，仅数据来源单源化。
 > - **校验**：verify-recipes 新增 5 项单源化守门人（前端常量确从 GAME_DATA 读取 + 官方值比对）；
 >   verify-data-alignment 新增「=GAME_DATA 单源」双重核验；全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段六.15：重复 emoji 物品图标颜色区分（Duplicate emoji icon color badge）
+
+> 依据「优化重复物品图标」需求：项目物品图标以 emoji 为主，多个物品共用同一 emoji
+> （如 ⛏️ 矿石/采矿机、📦 各箱/装载机、🔥 燃料/炉子/熔融金属等），玩家难以区分。
+>
+> **改动**（`js/data/data-util.js`）：
+> - 新增 `_emojiDupSet()`：运行时统计 ITEMS 中每个 emoji 的出现次数，构建「其 emoji 被
+>   至少两种物品共用」的物品集合（277 项）。唯一 emoji 物品不受影响。
+> - 新增 `isEmojiDuplicated(id)` / `drawEmojiDupBadge(x,id,r)`：对共用 emoji 的物品，
+>   在图标左下角叠加一个小圆点色标（直径随图标缩放），色标颜色取该物品自身的 `color`，
+>   外层带深色描边环保证在任意背景/地图上可见。
+> - 在 `drawItemGlyph` 的两个 emoji 渲染分支（地面/实体地图图标、背包/槽位 GUI 图标）
+>   均接入该色标。
+>
+> **效果**：同 emoji 的不同物品通过「左下角色标颜色」一目了然（如 ⛏️ 铁矿石=蓝、铜矿石=橙、
+> 电采矿机=深蓝），无需逐个悬停辨认；唯一 emoji 物品（⚙️ 齿轮、🔌 铜线、🔬 研究所等）保持纯 emoji 不变。
+> - `node build.js` 构建通过；全量 18 个校验脚本通过。
