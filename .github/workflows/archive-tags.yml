@@ -21,6 +21,11 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: 收集所有版本号 tag
         id: tags
         run: |
@@ -31,27 +36,49 @@ jobs:
           echo "count=$(wc -l < work_tags.txt)" >> "$GITHUB_OUTPUT"
           echo "匹配到 $(wc -l < work_tags.txt) 个 tag"
 
-      - name: 并行切换每个 tag 并打包
-        # 对每个 tag：拉取本项目 -> 切到该 tag -> 打包（去掉 .git 外壳）-> 改名为该 tag 的目录
-        # 各 tag 在独立临时目录中完成，互不冲突，因此可用 -P 并行
+      - name: 并行构建每个 tag 并归档到 history 目录
+        # 对每个 tag：拉取本项目 -> 切到该 tag -> npm run build 产出 dist -> 把 dist 改名为 history/<tag>
+        # 各 tag 在独立临时目录完成，互不冲突，因此可并行；用 -P 4 限制并发，避免 npm 构建时资源耗尽
         run: |
           set -e
-          mkdir -p export
+          mkdir -p export/history
+          : > failed_tags.txt
+          build_one() {
+            local name="$1"
+            local staging="$RUNNER_TEMP/build-${name//[^A-Za-z0-9_.-]/_}"
+            rm -rf "$staging"
+            if ! {
+              git clone --quiet --no-checkout --branch "$name" "$GITHUB_WORKSPACE" "$staging" &&
+              git -C "$staging" checkout --quiet "$name" &&
+              (cd "$staging" && npm install --no-audit --no-fund && TAG_NAME="$name" npm run build:minify) &&
+              mv "$staging/dist" "export/history/$name"   # 改名：dist 放入 history/ 并以 tag 命名
+            }; then
+              echo "$name" >> failed_tags.txt
+              echo "[FAIL] tag: $name"
+            else
+              rm -rf "$staging"
+              echo "[OK]   tag: $name"
+            fi
+          }
+          export -f build_one
           if [ -s work_tags.txt ]; then
-            cat work_tags.txt | xargs -P "$(nproc)" -I{} bash -c '
-              set -e
-              name="{}"
-              staging="$RUNNER_TEMP/build-${name//[^A-Za-z0-9_.-]/_}"
-              git clone --quiet --no-checkout --branch "$name" "$GITHUB_WORKSPACE" "$staging"
-              git -C "$staging" checkout --quiet "$name"
-              mv "$staging" "export/$name"        # 改名：目录以 tag 命名
-              rm -rf "export/$name/.git"          # 打包仅保留源码文件
-            '
+            cat work_tags.txt | xargs -P 4 -I{} bash -c 'build_one "{}"'
           else
             echo "没有匹配到可归档的版本号 tag"
           fi
+          echo "打包失败 tag: $(wc -l < failed_tags.txt 2>/dev/null || echo 0) 个"
 
-      - name: 强制推送所有 tag 目录到 history 分支（覆盖重建）
+      - name: 在根目录复制一份最新 tag 的内容
+        if: steps.tags.outputs.count != '0'
+        run: |
+          set -e
+          latest=$(sort -V work_tags.txt | tail -1)
+          echo "最新 tag: $latest"
+          # 把最新 tag 的构建产物（不含 history/ 层级）直接复制到分支根目录
+          cp -a "export/history/$latest/." export/
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+
+      - name: 强制推送到 history 分支（覆盖重建）
         if: steps.tags.outputs.count != '0'
         run: |
           cd export
