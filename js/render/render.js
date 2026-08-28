@@ -114,7 +114,13 @@ function render() {
   if (G.settings.altMode) drawAltMode(ctx, keys, _bucketSeenBuf);
   // 兜底清空放置幽灵顶层画布：确保每帧 ghost-layer 都被清空，
   // 避免任何路径下遗留上一帧的半透明阴影/数量角标（防残留叠加）。
-  if (G.ghostCtx) G.ghostCtx.clearRect(0, 0, W, H);
+  // 先重置为与主画布一致的 dpr 变换再清除，保证 clearRect 覆盖整块画布，
+  // 即便上一帧在某些分支把幽灵画布残留了平移/缩放变换也仍能完整清空。
+  if (G.ghostCtx) {
+    const _dpr = window.devicePixelRatio || 1;
+    G.ghostCtx.setTransform(_dpr, 0, 0, _dpr, 0, 0);
+    G.ghostCtx.clearRect(0, 0, W, H);
+  }
   drawGhost(ctx);
   drawBlueprintOverlay(ctx);
   drawHoverAndMining(ctx);
