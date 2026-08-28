@@ -3,6 +3,9 @@
 // ===== 传送带 =====
 // 性能优化：传送带物品排序的比较器提为模块级常量，避免每帧在 update 中重建闭包（降低 GC 压力）
 const _beltItemSortDesc = (a, b) => b.pos - a.pos;
+// 性能优化：车道分区缓冲（模块级复用）。update 每 tick 为每条带做左右车道分区排序，
+// 若每次 new [].push+sort 会给 GC 巨大压力；改为复用一个模块级数组，按需 clear 就地复用。
+const _beltLaneBuf = [];
 
 class Belt extends Entity {
   constructor(type, x, y) {
@@ -38,39 +41,38 @@ class Belt extends Entity {
     // 双车道合计吞吐口径：两条车道并行但面板/数值以「双车道总速度」计（基础带=15 件/秒）。
     // 因此单车道移动速度须为带速的一半（基础带 1.875/2=0.9375 格/秒 → 单列 7.5、双列 15 件/秒）。
     const sp = beltSpeed() * this.speedMult() * dt / 2;
-    this._sp = sp;
-    // 每列车道各自推进：前端到达出口即转移到下一格对应车道
-    this.transferFront();
+    // 每条带每 tick 只做一次分区遍历：构建车道缓冲 → 排序 → 前端转移 → 车道推进，
+    // 取代旧版“两次全量扫描 this.items（transferFront 找前端 + 分区）”与“每层新建数组”。
+    // 复用模块级缓冲避免新建数组（GC 压力），缓冲按需 clear（length=0）就地复用，
+    // 排序只影响缓冲顺序、引用（item 对象）不变，不影响 this.items 结构。
     for (let lane = 0; lane < 2; lane++) {
-      const laneItems = [];
-      for (const o of this.items) if (this.laneOf(o) === lane) laneItems.push(o);
-      if (!laneItems.length) continue;
-      laneItems.sort(_beltItemSortDesc);
-      for (let i = 0; i < laneItems.length; i++) {
-        const it = laneItems[i];
+      _beltLaneBuf.length = 0;
+      for (let i = 0; i < this.items.length; i++) {
+        const o = this.items[i];
+        if (this.laneOf(o) === lane) _beltLaneBuf.push(o);
+      }
+      if (!_beltLaneBuf.length) continue;
+      _beltLaneBuf.sort(_beltItemSortDesc);
+      // 前端转移：排序后 buffer[0] 即该车道 pos 最大的物品；到达出口即转移到下一格对应车道
+      const front = _beltLaneBuf[0];
+      const transferred = (front.pos + sp >= 1) && this._transferItem(front);
+      for (let i = 0; i < _beltLaneBuf.length; i++) {
+        const it = _beltLaneBuf[i];
+        // 已转移的前端已从 this.items 移除；缓冲为独立引用，需显式跳过以免把已离开的物品再推进
+        if (transferred && it === front) continue;
         let lim = 1;
-        if (i > 0) lim = Math.max(0, laneItems[i - 1].pos - BELT_SPACING);
+        if (i > 0) lim = Math.max(0, _beltLaneBuf[i - 1].pos - BELT_SPACING);
         it.pos = Math.min(it.pos + sp, lim);
         if (it.pos < 0) it.pos = 0;
       }
     }
   }
-  // 前端转移：两条车道的各自前端物品到达出口时，各自转移到下一格对应车道
-  transferFront() {
-    const sp = this._sp || 0;
-    for (let lane = 0; lane < 2; lane++) {
-      let idx = -1, front = null;
-      for (let i = 0; i < this.items.length; i++) {
-        const o = this.items[i];
-        if (this.laneOf(o) !== lane) continue;
-        if (!front || o.pos > front.pos) { front = o; idx = i; }
-      }
-      if (!front || front.pos + sp < 1) continue;
-      this._transferOne(idx);
-    }
+  _removeItem(f) {
+    const idx = this.items.indexOf(f);
+    if (idx >= 0) this.items.splice(idx, 1);
   }
-  _transferOne(idx) {
-    const f = this.items[idx];
+  // 前端转移：两条车道的各自前端物品到达出口时，各自转移到下一格对应车道
+  _transferItem(f) {
     const nx = this.x + DX[this.dir], ny = this.y + DY[this.dir];
     const nb = entAt(nx, ny);
     if (!nb) return false;
@@ -93,18 +95,18 @@ class Belt extends Entity {
       // 判定，避免把 A 的车道号误当作 B 的车道号、把物品错放到 B 的远侧车道。
       const laneHint = (nb.dir === this.dir || isCorner) ? f.lane : undefined;
       if (!nb.acceptItem(f.item, this.dir, this.x, this.y, laneHint)) return false;
-      this.items.splice(idx, 1);
+      this._removeItem(f);
       return true;
     }
     if (nb instanceof Underground) {
       // 传入 lane 作为 laneHint：让地下带保留物品所在车道（左进左出/右进右出），
       // 与地上传送带直通逻辑一致，避免进洞后 lane 信息丢失导致两线混合。
       if (!nb.acceptItem(f.item, this.dir, this.x, this.y, f.lane)) return false;
-      this.items.splice(idx, 1);
+      this._removeItem(f);
       return true;
     }
     if (nb instanceof Splitter && nb.acceptItem(f.item, this.dir, this.x, this.y, f.lane)) {
-      this.items.splice(idx, 1);
+      this._removeItem(f);
       return true;
     }
     return false;

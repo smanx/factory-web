@@ -265,17 +265,20 @@ function isLake(tx, ty) {
 }
 
 // 按行星资源画像加权随机选取一种普通矿石（iron/copper/coal/stone）。
-// 权重来自 PLANET_RESOURCES[当前星球]（0=该星无此矿，不生成）。
+// 权重来自 PLANET_RESOURCES[当前星球]（0=该星无此矿，不生成），
+// 再叠加该资源「频率」Autoplace 控件倍率（none=0 → 完全不生成，high 更常见）。
 // dist 越远越偏向更"深层"的矿（铁→铜→煤→石），与官方距离相关矿分布一致。
 function pickOreType(rng, dist) {
   const prof = (typeof planetResources === 'function') ? planetResources() : null;
   const w = (k) => (prof && typeof prof[k] === 'number') ? prof[k] : 1;
+  // 逐资源频率倍率：沿用 controlMult（0 = none / 已关闭）
+  const fw = (id, dft) => (typeof controlMult === 'function') ? Math.max(0, controlMult(id, 'frequency')) : dft;
   // 基础权重（近处偏向铁/铜，远处偏向煤/石）
   let weights = [
-    { id: 'iron-ore',   w: (dist > 70 ? 0.34 : 0.30) * w('iron') },
-    { id: 'copper-ore', w: (dist > 70 ? 0.30 : 0.25) * w('copper') },
-    { id: 'coal',       w: (dist > 70 ? 0.20 : 0.25) * w('coal') },
-    { id: 'stone',      w: (dist > 70 ? 0.16 : 0.20) * w('stone') }
+    { id: 'iron-ore',   w: (dist > 70 ? 0.34 : 0.30) * w('iron')   * fw('iron-ore', 1) },
+    { id: 'copper-ore', w: (dist > 70 ? 0.30 : 0.25) * w('copper') * fw('copper-ore', 1) },
+    { id: 'coal',       w: (dist > 70 ? 0.20 : 0.25) * w('coal')   * fw('coal', 1) },
+    { id: 'stone',      w: (dist > 70 ? 0.16 : 0.20) * w('stone')  * fw('stone', 1) }
   ];
   let total = 0;
   for (const it of weights) total += it.w;
@@ -443,9 +446,18 @@ function genChunk(cx, cy) {
   if (typeof maxMapDist === 'function' && dist > maxMapDist()) return null;
   const scale = 1 + dist / 90;
   // 资源频率/大小/丰富度配置（对齐《异星工厂》地图生成器）
+  // 旧全局倍率用于非逐资源环节兜底；逐资源见下 CONTROL_MAP
   const fq = (typeof frequencyMult === 'function') ? frequencyMult() : 1;
   const sz = (typeof sizeMult === 'function') ? sizeMult() : 1;
   const ri = (typeof richnessMult === 'function') ? richnessMult() : 1;
+  // Autoplace 控件 → 矿石类型的映射（矿石 int index → 控件 id 从 ORES 名称推导）
+  const ctlOf = (oreIdName) => (typeof cachedControlMult === 'function') ? ({
+    f: (typeof controlMult === 'function') ? controlMult(oreIdName, 'frequency') : 1,
+    s: (typeof controlMult === 'function') ? controlMult(oreIdName, 'size') : 1,
+    r: (typeof controlMult === 'function') ? controlMult(oreIdName, 'richness') : 1,
+  }) : { f: 1, s: 1, r: 1 };
+  // 默认全"中"兜底
+  const mult = (id, dft) => (typeof controlMult === 'function' && controlMult(id, 'frequency') != null) ? controlMult(id, 'frequency') : dft;
   // 矿床数量：资源频率在当前基础上再降至 1/5（更稀疏散布）。
   // 原为每区块约 1 个矿床，现改为平均约每 5 个区块才有 1 个矿床（保留越远越多趋势）。
   const freqProb = 0.2 * fq * (1 + Math.min(0.5, dist / 200));
@@ -455,11 +467,16 @@ function genChunk(cx, cy) {
 
   for (let n = 0; n < count; n++) {
     const ti = pickOreType(rng, dist);
+    // 逐资源 Autoplace 控件倍率（频率/大小/丰富度，来自 data.generated.js 的控件设置）
+    const oreName = (typeof ORES !== 'undefined' && ORES[ti] != null) ? ORES[ti] : 'iron-ore';
+    const ctl = ctlOf(oreName);
     // 单个矿床面积提高到原来的 5 倍（更大的矿团，占地足够放下多台采矿机）
-    const size = Math.max(12, Math.round((40 + rng() * 40) * Math.min(2.2, scale) * sz * 5));
+    // 受该资源「大小」控件倍率影响
+    const size = Math.max(12, Math.round((40 + rng() * 40) * Math.min(2.2, scale) * sz * ctl.s * 5));
     // 由面积估算矿床近似半径（圆形面积 ≈ πr²）
     const rad = Math.max(4, Math.sqrt(size / Math.PI) * 1.1);
-    const amt = (500 + rng() * 900) * scale * ri;
+    // 单格储量受该资源「丰富度」控件倍率影响（且受地图大小缩放）
+    const amt = (500 + rng() * 900) * scale * ri * ctl.r;
     // 找一个离已有矿床足够远的位置，确保矿床之间间隔较远；
     // 若因地形（树/水）导致矿团过小，则换位置重试，保证每个矿床占地足够大。
     const minPlaced = Math.max(15, Math.floor(size * 0.4));
@@ -493,32 +510,39 @@ function genChunk(cx, cy) {
   const rw = (k) => (rp && typeof rp[k] === 'number') ? rp[k] : 1;
 
   // 原油矿床：离角色稍远才生成（出生点周围只有石/铁/煤/铜矿），越远越常见、储量越高
-  const oilChance = (dist > 60 ? 0.55 : dist > 25 ? 0.15 : 0) * rw('oil');
-  if (rw('oil') > 0 && rng() < oilChance) {
+  // 受「crude-oil」Autoplace 控件控制（频率/大小/丰富度）
+  const oilCtl = ctlOf('crude-oil');
+  const oilChance = (dist > 60 ? 0.55 : dist > 25 ? 0.15 : 0) * rw('oil') * oilCtl.f;
+  if (rw('oil') > 0 && oilCtl.f > 0 && rng() < oilChance) {
     const sx = 2 + Math.floor(rng() * (CHUNK - 4));
     const sy = 2 + Math.floor(rng() * (CHUNK - 4));
     // 原油矿床：隔几格一个，整体聚集（gap≈3 即每个油点相隔 3 格左右）
-    growOilField(terrain, oreType, oreAmt, oilRate, rng, sx, sy, 4 + Math.floor(rng() * 5), (1500 + rng() * 2500) * ri, 3);
+    // 大小/丰富度受对应控件倍率缩放
+    growOilField(terrain, oreType, oreAmt, oilRate, rng, sx, sy, 4 + Math.floor(rng() * 5), (1500 + rng() * 2500) * ri * oilCtl.r, 3);
   }
 
   // 铀矿：距离较远才生成（核能后期，且离角色比原油更远），越远越多，矿团适中
-  const uChance = (dist > 120 ? 0.4 : dist > 80 ? 0.15 : 0) * rw('uranium');
-  if (rw('uranium') > 0 && rng() < uChance) {
+  // 受「uranium-ore」Autoplace 控件控制（频率/大小/丰富度）
+  const uCtl = ctlOf('uranium-ore');
+  const uChance = (dist > 120 ? 0.4 : dist > 80 ? 0.15 : 0) * rw('uranium') * uCtl.f;
+  if (rw('uranium') > 0 && uCtl.f > 0 && rng() < uChance) {
     const sx = 2 + Math.floor(rng() * (CHUNK - 4));
     const sy = 2 + Math.floor(rng() * (CHUNK - 4));
-    const usz = Math.max(8, Math.round((18 + rng() * 20) * Math.min(2.2, scale) * sz));
-    const uamt = (400 + rng() * 700) * scale * ri;
+    const usz = Math.max(8, Math.round((18 + rng() * 20) * Math.min(2.2, scale) * sz * uCtl.s));
+    const uamt = (400 + rng() * 700) * scale * ri * uCtl.r;
     growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, usz, uamt, ORE_URANIUM);
   }
 
   // 小行星碎块矿床：太空时代终局资源，距离比铀矿更远才生成，越远越多，矿团适中
   // （官方小行星碎块来自太空，此处适配为遥远地面矿床，供破碎机加工）
-  const aChance = (dist > 200 ? 0.35 : dist > 150 ? 0.12 : 0) * rw('asteroid');
-  if (rw('asteroid') > 0 && rng() < aChance) {
+  // 受「asteroid-chunks」（如果存在）Autoplace 控件控制
+  const aCtl = ctlOf('asteroid-chunks');
+  const aChance = (dist > 200 ? 0.35 : dist > 150 ? 0.12 : 0) * rw('asteroid') * aCtl.f;
+  if (rw('asteroid') > 0 && aCtl.f > 0 && rng() < aChance) {
     const sx = 2 + Math.floor(rng() * (CHUNK - 4));
     const sy = 2 + Math.floor(rng() * (CHUNK - 4));
-    const asz = Math.max(6, Math.round((12 + rng() * 16) * Math.min(2.2, scale) * sz));
-    const aamt = (300 + rng() * 600) * scale * ri;
+    const asz = Math.max(6, Math.round((12 + rng() * 16) * Math.min(2.2, scale) * sz * aCtl.s));
+    const aamt = (300 + rng() * 600) * scale * ri * aCtl.r;
     growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, asz, aamt, ORE_ASTEROID);
   }
 
@@ -528,20 +552,23 @@ function genChunk(cx, cy) {
   //   雷神星 Fulgora  → 钬矿 holmium-ore（官方 holmium-ore 天然矿脉）
   // 仅在其母星（丰度>0）自然生成；其余星球经合成配方兜底（见 data-recipes.js）。
   // 生成距离与铀矿/小行星同级（后期资源），越远越常见、储量越高。
-  const tChance = (dist > 100 ? 0.35 : dist > 60 ? 0.12 : 0) * rw('tungsten');
-  if (rw('tungsten') > 0 && rng() < tChance) {
+  // 受对应 Autoplace 控件控制（已提取到 data.generated.js）
+  const tCtl = ctlOf('tungsten_ore');
+  const tChance = (dist > 100 ? 0.35 : dist > 60 ? 0.12 : 0) * rw('tungsten') * tCtl.f;
+  if (rw('tungsten') > 0 && tCtl.f > 0 && rng() < tChance) {
     const sx = 2 + Math.floor(rng() * (CHUNK - 4));
     const sy = 2 + Math.floor(rng() * (CHUNK - 4));
-    const tsz = Math.max(8, Math.round((16 + rng() * 18) * Math.min(2.2, scale) * sz));
-    const tamt = (400 + rng() * 700) * scale * ri;
+    const tsz = Math.max(8, Math.round((16 + rng() * 18) * Math.min(2.2, scale) * sz * tCtl.s));
+    const tamt = (400 + rng() * 700) * scale * ri * tCtl.r;
     growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, tsz, tamt, ORE_TUNGSTEN);
   }
-  const hChance = (dist > 100 ? 0.35 : dist > 60 ? 0.12 : 0) * rw('holmium');
-  if (rw('holmium') > 0 && rng() < hChance) {
+  const hCtl = ctlOf('holmium_ore');
+  const hChance = (dist > 100 ? 0.35 : dist > 60 ? 0.12 : 0) * rw('holmium') * hCtl.f;
+  if (rw('holmium') > 0 && hCtl.f > 0 && rng() < hChance) {
     const sx = 2 + Math.floor(rng() * (CHUNK - 4));
     const sy = 2 + Math.floor(rng() * (CHUNK - 4));
-    const hsz = Math.max(8, Math.round((16 + rng() * 18) * Math.min(2.2, scale) * sz));
-    const hamt = (400 + rng() * 700) * scale * ri;
+    const hsz = Math.max(8, Math.round((16 + rng() * 18) * Math.min(2.2, scale) * sz * hCtl.s));
+    const hamt = (400 + rng() * 700) * scale * ri * hCtl.r;
     growPolyfill(terrain, oreType, oreAmt, rng, sx, sy, hsz, hamt, ORE_HOLMIUM);
   }
 

@@ -57,7 +57,9 @@ let _bucketSeenBuf = new Set();
 // 缩放很小时跳过昂贵细节（物品 dot 的 clip/glyph、状态灯、流体标注、动画三角等）。
 const LOD = { level: 2, simple: false, tilePx: TILE };
 // 屏幕尺寸低于该阈值时启用简化绘制（仅底色+箭头，物品改色块）。
-const LOD_SIMPLE_PX = 14;
+// 20 = 缩放 0.63 以下进入简化。实测 0.5 时 tilePx≈16，若用 14 会落在完整绘制区间，
+// 导致大基地缩放看全局一览时仍逐格渲染带内物品/动画三角等昂贵细节，是渲染卡顿主因之一。
+const LOD_SIMPLE_PX = 20;
 
 function updateLOD() {
   LOD.tilePx = TILE * G.cam.z;

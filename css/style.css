@@ -1186,7 +1186,9 @@ html, body {
 }
 .world-config-overlay.hidden { display: none; }
 .world-config-panel {
-  width: min(440px, 92vw);
+  width: fit-content;
+  min-width: min(380px, 92vw);
+  max-width: 100vw;
   max-height: 86vh;
   display: flex;
   flex-direction: column;
@@ -1273,10 +1275,11 @@ html, body {
   padding: 14px 20px;
   border-top: 1px solid #33493a;
   background: #141c16;
+  display: flex;
+  justify-content: flex-end;
 }
 .world-config-ok {
-  width: 100%;
-  padding: 12px 16px;
+  padding: 12px 28px;
   font-size: 15px;
   font-weight: bold;
   letter-spacing: 2px;
@@ -1291,6 +1294,75 @@ html, body {
 .world-config-ok:hover {
   background: linear-gradient(180deg, #46905a, #2b6b3a);
   box-shadow: 0 0 24px rgba(87, 185, 92, .5), 0 3px 0 #1b3a22;
+}
+/* 新版数据驱动面板：分组与控件样式 */
+.wcfg-ctrl-group {
+  border: 1px solid #2a3f32;
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin: 12px 0;
+  background: rgba(24, 36, 28, .5);
+}
+.wcfg-group-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #a3c1b0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #2a3f32;
+  margin-bottom: 8px;
+}
+.wcfg-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.wcfg-preset {
+  padding: 5px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  background: #202b23;
+  color: #b8c8bc;
+  border: 1px solid #33473a;
+  cursor: pointer;
+  transition: all .15s;
+}
+.wcfg-preset:hover { border-color: #57b95c; color: #eef6ee; }
+.wcfg-preset.active {
+  background: linear-gradient(180deg, #3a7445, #235330);
+  border-color: #6fd17e;
+  color: #effff2;
+}
+.wcfg-ctrl {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.wcfg-ctrl-name {
+  font-size: 12px;
+  color: #cfe0d2;
+  font-weight: 500;
+  min-width: 80px;
+}
+.wcfg-ctrl-opts {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.wcfg-axis-label {
+  font-size: 11px;
+  color: #8a9a90;
+  margin-right: 2px;
+}
+.wcfg-axis-sep {
+  width: 6px;
+  display: inline-block;
+}
+.wcfg-ctrl .wcfg-opt {
+  padding: 4px 7px;
+  font-size: 11px;
 }
 
 /* ===== 新手引导面板 ===== */

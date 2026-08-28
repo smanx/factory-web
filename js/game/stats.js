@@ -352,18 +352,24 @@ function powerSummary() {
 // 地形离屏缓存状态由 render.js 维护到 terrainCacheStats。
 const PERF = {
   fps: 60,
+  ups: 60,              // 世界更新逻辑步/秒（UPS），反映逻辑帧是否能跟上帧率
   frameMs: 0,
   ents: 0,
   activeEnts: 0,
   staticEnts: 0,
   updateMs: 0,          // 每帧所有活跃实体 update 的总耗时（逻辑帧开销），由 main loop 写入
+  updateMsPerSec: 0,    // 最近采样窗口内实体 update 平均每帧耗时再折算出的实时长度（诊断用）
   logicTickMs: 0,       // 逻辑帧单帧耗时估算（update 耗时 + 调度/电力/物流等系统耗时）
+  budgetMs: (1000 / 60), // 单帧预算（以 60 FPS 为基准的毫秒数）
   tiles: 0,
+  chunkCount: 0,
   cacheState: '—',
   cacheRebuildMs: 0,
   zoom: 1,
   lodState: '—',
-  devices: []           // 按类型统计的设备，[ { type, name, n, active } ]，按数量降序
+  devices: [],          // 按类型统计的设备，[ { type, name, n, active } ]，按数量降序
+  typeCost: [],         // 按类型统计的 update 耗时，[ { type, name, n, ms, perDevMs, pct } ]，按 ms 降序
+  _tri: null            // 采样窗口内部状态（激活期间由 main loop 写入）
 };
 
 // 按设备类型统计实体数量，用于判断哪类设备对帧数/逻辑帧影响最大。
@@ -387,10 +393,56 @@ function countDevices() {
   return { arr, active, staticN };
 }
 
+// 采样窗口时长（毫秒）：性能页打开后，持续滚动采样各设备类型的 update 耗时。
+// 窗口满则结算一次生成 typeCost，随后重置进入下一窗口（滚动测量，实时反映当下行情）。
+const PERF_SAMPLE_MS = 800;
+
+// 结算最近一个采样窗口：把 main loop 累计的分类型 update 耗时折算为
+// “平均每帧耗时”与“每秒 CPU 开销”，并生成按耗时降序的 typeCost 列表。
+function settlePerfWindow() {
+  const tri = PERF._tri;
+  if (!tri || !tri.t0) return;
+  const now = performance.now();
+  const el = now - tri.t0;
+  if (el < PERF_SAMPLE_MS) return;   // 窗口未满，继续采样
+  const frames = Math.max(1, tri.frames);
+  // 各类型当前数量（从设备分布里查，用于计算单台耗时）
+  const nMap = {};
+  for (const d of PERF.devices) nMap[d.type] = d.n;
+  // 平均每帧所有活跃实体 update 的总耗时 = 逻辑帧开销
+  PERF.updateMs = tri.updateMs / frames;
+  // 每秒该部分消耗的 CPU 时间（毫秒/秒），用于评估逻辑薄环节是否吃满性能
+  PERF.updateMsPerSec = tri.updateMs / (el / 1000);
+  // 分类型累计耗时 → typeCost（按耗时降序）
+  const list = [];
+  let total = tri.updateMs || 0;
+  for (const k in tri.type) {
+    const ms = tri.type[k];
+    const n = nMap[k] || 0;
+    list.push({
+      type: k,
+      name: (ITEMS[k] && ITEMS[k].name) ? ITEMS[k].name : k,
+      n: n,
+      ms: ms,                        // 窗口内累计耗时
+      perDevMs: frames > 0 && n > 0 ? (ms / frames / n) : 0,  // 单台每帧平均耗时
+      pct: total > 0 ? (ms / total) * 100 : 0                  // 占逻辑帧耗时百分比
+    });
+  }
+  list.sort((a, b) => (b.ms - a.ms) || (b.n - a.n));
+  PERF.typeCost = list;
+  // 重置窗口（滚动继续）
+  tri.t0 = now;
+  tri.frames = 0;
+  tri.updateMs = 0;
+  tri.type = {};
+}
+
 // 读取/刷新性能指标（每次渲染面板时调用）
 function refreshPerf() {
   PERF.fps = Math.round(fpsSmooth || 60);
   PERF.frameMs = fpsSmooth > 0 ? (1000 / fpsSmooth) : 0;
+  // UPS：由 main loop 平滑写入，反映逻辑更新是否跟得上帧率
+  if (typeof upsSmooth === 'number') PERF.ups = Math.round(upsSmooth || 60);
   // 只统计存活实体（墓碑惰性清理期间不计入已拆除的）
   PERF.ents = G.ents.filter(e => !e._dead).length;
   PERF.zoom = G.cam.z;
@@ -405,6 +457,12 @@ function refreshPerf() {
   }
   // 已加载地形格子数（世界缓存中的 chunk 数量换算）
   PERF.tiles = (G.world && G.world.chunks) ? (G.world.chunks.size || 0) * (CHUNK * CHUNK) : 0;
+  PERF.chunkCount = (G.world && G.world.chunks) ? G.world.chunks.size || 0 : 0;
+  // 采样窗口：性能页打开时确保 _tri 已初始化，并在窗口满时结算
+  if (G.statsTab === 'perf') {
+    if (!PERF._tri) PERF._tri = { t0: performance.now(), frames: 0, updateMs: 0, type: {} };
+    settlePerfWindow();
+  }
 }
 
 // ---- 统计面板 HTML ----
@@ -817,23 +875,51 @@ function row2(label, val) {
 function htmlStatsPerf() {
   refreshPerf();
   let h = '<div class="sec">性能分析</div>';
-  h += '<div class="stat-table">';
-  h += row2('帧率 (FPS)', '<b data-live="pfps">' + PERF.fps + '</b>');
-  h += row2('单帧耗时', '<span data-live="pframems">' + PERF.frameMs.toFixed(2) + ' ms</span>');
-  h += row2('逻辑帧耗时', '<span data-live="pupdate">' + (PERF.updateMs || 0).toFixed(2) + ' ms</span>');
-  h += row2('实体数量', '<span data-live="pents">' + PERF.ents + '</span>');
-  h += row2('活跃实体', '<b data-live="pactive">' + PERF.activeEnts + '</b>');
-  h += row2('静态实体', '<span data-live="pstatic">' + PERF.staticEnts + '</span>');
-  h += row2('地形格子数（已加载块）', '<span data-live="ptiles">' + PERF.tiles + ' 格（' + (G.world.chunks ? G.world.chunks.size : 0) + ' 块）</span>');
-  h += row2('地形离屏缓存状态', '<span data-live="pcache">' + PERF.cacheState + '</span>');
-  h += row2('地形缓存最近重建耗时', '<span data-live="pcachem">' + (PERF.cacheRebuildMs || 0).toFixed(1) + ' ms</span>');
-  h += row2('缩放级别', '<span data-live="pzoom">×' + PERF.zoom.toFixed(2) + '</span>');
-  h += row2('LOD 分级', '<span data-live="plod">' + PERF.lodState + '</span>');
+  const budget = PERF.budgetMs || (1000 / 60);
+  const upd = PERF.updateMs || 0;
+  // 逻辑/渲染开销相对每帧预算的健康度
+  const logicPct = Math.min(100, (upd / budget) * 100);
+  const health = upd < budget * 0.5 ? '优' : (upd < budget * 0.85 ? '中' : '高⚠');
+  let h2 = '<div class="sec">帧率与开销</div>';
+  h2 += '<div class="stat-table">';
+  h2 += row2('帧率 (FPS)', '<b data-live="pfps">' + PERF.fps + '</b>');
+  h2 += row2('逻辑帧 UPS', '<b data-live="pups">' + PERF.ups + '</b>');
+  h2 += row2('单帧耗时', '<span data-live="pframems">' + PERF.frameMs.toFixed(2) + ' ms</span>');
+  h2 += row2('逻辑帧耗时（实体 update）', '<span data-live="pupdate">' + upd.toFixed(2) + ' ms</span>');
+  h2 += row2('逻辑帧预算占用', '<span data-live="plogicpct">' + logicPct.toFixed(1) + ' % / 60Hz预算 ' + budget.toFixed(1) + 'ms</span> <b class="perf-health" data-live="phealth">' + health + '</b>');
+  h2 += row2('实体 update 每秒开销', '<span data-live="pupdsec">' + (PERF.updateMsPerSec || 0).toFixed(0) + ' ms/s</span>');
+  h2 += row2('实体数量', '<span data-live="pents">' + PERF.ents + '</span>');
+  h2 += row2('活跃实体', '<b data-live="pactive">' + PERF.activeEnts + '</b>');
+  h2 += row2('静态实体', '<span data-live="pstatic">' + PERF.staticEnts + '</span>');
+  h2 += row2('地形格子数（已加载块）', '<span data-live="ptiles">' + PERF.tiles + ' 格（' + PERF.chunkCount + ' 块）</span>');
+  h2 += row2('地形离屏缓存状态', '<span data-live="pcache">' + PERF.cacheState + '</span>');
+  h2 += row2('地形缓存最近重建耗时', '<span data-live="pcachem">' + (PERF.cacheRebuildMs || 0).toFixed(1) + ' ms</span>');
+  h2 += row2('缩放级别', '<span data-live="pzoom">×' + PERF.zoom.toFixed(2) + '</span>');
+  h2 += row2('LOD 分级', '<span data-live="plod">' + PERF.lodState + '</span>');
+  h2 += '</div>';
+
+  // 按 update 耗时降序的设备成本：判定“哪类设备把逻辑氛围做大”
+  h += h2;
+  const cost = (PERF.typeCost && PERF.typeCost.length) ? PERF.typeCost : [];
+  h += '<div class="sec">设备 update 耗时 Top（按耗时降序）</div>';
+  h += '<div class="dim">单台耗时=该类所有设备每帧平均耗时；占比=该类占总逻辑帧耗时的百分比。数量越大/单台越慢 → 越可能是卡顿主因。</div>';
+  h += '<div class="stat-table" id="perf-cost">';
+  if (!cost.length) {
+    h += '<div class="dim">正在采样设备耗时…（保持本页打开即可实时累积）</div>';
+  } else {
+    h += '<div class="stat-head"><span>设备</span><span>数量</span><span>单台/帧</span><span>窗口占比</span></div>';
+    for (const c of cost) {
+      h += row2(
+        (c.name || c.type),
+        '<span data-live="pcn-' + c.type + '">' + c.n + '</span> × <span data-live="pcu-' + c.type + '">' + c.perDevMs.toFixed(2) + '</span>ms  <b data-live="pcp-' + c.type + '">' + c.pct.toFixed(1) + '%</b>'
+      );
+    }
+  }
   h += '</div>';
-  // 设备分布：按数量降序列出各类设备，判断哪类对帧数/逻辑帧影响最大
+
+  // 设备分布（按数量）
   const devs = PERF.devices || [];
-  h += '<div class="sec">设备分布</div>';
-  h += '<div class="dim">活跃实体（每帧执行逻辑）直接决定逻辑帧开销；静态实体不逐帧跑逻辑，主要影响渲染与内存。以下按数量降序：</div>';
+  h += '<div class="sec">设备分布（按数量）</div>';
   h += '<div class="stat-table" id="perf-devices">';
   if (!devs.length) {
     h += '<div class="dim">暂无设备。</div>';
@@ -844,8 +930,93 @@ function htmlStatsPerf() {
     }
   }
   h += '</div>';
+
+  // 导出按钮
+  h += '<div class="sec">导出性能数据</div>';
+  h += '<div class="dim">导出当前性能快照为 JSON，粘贴给开发者即可定位卡顿点。建议在“卡顿时”再点导出，最能反映问题。</div>';
+  h += '<div class="perf-export-row">';
+  h += '<button class="btn sm" data-perf-export="json">导出 JSON</button>';
+  h += '<button class="btn sm" data-perf-export="copy">复制到剪贴板</button>';
+  h += '</div>';
   h += '<div class="dim">地形离屏缓存：地形绘到离屏画布，相机未大幅移动时直接整块贴图，避免逐格重算；缓存失效时会重建并记录耗时。逻辑帧耗时=每帧所有活跃实体 update 的总耗时（不含渲染）。</div>';
   return h;
+}
+
+// 汇总性能快照为结构化对象，供导出/复制使用。
+function buildPerfExport() {
+  refreshPerf();
+  settlePerfWindow();
+  return {
+    time: new Date().toISOString(),
+    fps: PERF.fps,
+    ups: PERF.ups,
+    frameMs: +(PERF.frameMs || 0).toFixed(2),
+    updateMsPerFrame: +((PERF.updateMs || 0)).toFixed(2),
+    budgetMs: +(PERF.budgetMs || 16.7).toFixed(2),
+    logicBudgetPct: +((PERF.updateMs || 0) / (PERF.budgetMs || 16.7) * 100).toFixed(1),
+    updateMsPerSec: +((PERF.updateMsPerSec || 0)).toFixed(0),
+    ents: PERF.ents,
+    activeEnts: PERF.activeEnts,
+    staticEnts: PERF.staticEnts,
+    tiles: PERF.tiles,
+    chunkCount: PERF.chunkCount,
+    terrainCacheState: PERF.cacheState,
+    terrainCacheRebuildMs: +((PERF.cacheRebuildMs || 0)).toFixed(1),
+    zoom: +PERF.zoom.toFixed(2),
+    lod: PERF.lodState,
+    deviceCount: PERF.devices.map(d => ({ type: d.type, name: d.name, n: d.n, active: d.active })),
+    deviceCostTop: PERF.typeCost.map(c => ({ type: c.type, name: c.name, n: c.n, perDevMsPerFrame: +c.perDevMs.toFixed(4), pct: +c.pct.toFixed(1) }))
+  };
+}
+
+// 把性能快照导出为 JSON 字符串（带缩进）。
+function perfExportJSON() {
+  const obj = buildPerfExport();
+  return JSON.stringify(obj, null, 2);
+}
+
+// 导出：下载 JSON 文件 或 复制到剪贴板。
+function exportPerf(mode) {
+  const json = perfExportJSON();
+  if (mode === 'copy') {
+    const done = () => { if (typeof toast === 'function') toast('性能数据已复制到剪贴板'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(json).then(done, () => { fallbackCopyPerf(json, done); });
+    } else {
+      fallbackCopyPerf(json, done);
+    }
+    return;
+  }
+  // 下载 JSON
+  try {
+    const blob = new Blob([json], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'perf-snapshot-' + Date.now() + '.json';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 500);
+    if (typeof toast === 'function') toast('性能数据已导出为 JSON 文件');
+  } catch (err) {
+    fallbackCopyPerf(json, () => { if (typeof toast === 'function') toast('已改为复制到剪贴板'); });
+  }
+}
+
+function fallbackCopyPerf(text, done) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+    if (done) done();
+  } catch (err) { /* ignore */ }
 }
 
 // 计算统计面板各页的“结构签名”：仅在列表成员（物品 / 发电·耗电设备）集合变化时
@@ -926,17 +1097,30 @@ function updateStatsLive() {
     set('psat', '<span class="satbar"><i style="width:' + satPct + '%"></i></span> <b>' + satPct + '%</b>');
   } else {
     refreshPerf();
+    const budget = PERF.budgetMs || (1000 / 60);
+    const upd = PERF.updateMs || 0;
+    const logicPct = Math.min(100, (upd / budget) * 100);
+    const health = upd < budget * 0.5 ? '优' : (upd < budget * 0.85 ? '中' : '高⚠');
     set('pfps', PERF.fps);
+    set('pups', PERF.ups);
     set('pframems', PERF.frameMs.toFixed(2) + ' ms');
-    set('pupdate', (PERF.updateMs || 0).toFixed(2) + ' ms');
+    set('pupdate', upd.toFixed(2) + ' ms');
+    set('plogicpct', logicPct.toFixed(1) + ' % / 60Hz预算 ' + budget.toFixed(1) + 'ms');
+    set('phealth', health);
+    set('pupdsec', (PERF.updateMsPerSec || 0).toFixed(0) + ' ms/s');
     set('pents', PERF.ents);
     set('pactive', PERF.activeEnts);
     set('pstatic', PERF.staticEnts);
-    set('ptiles', PERF.tiles + ' 格（' + (G.world.chunks ? G.world.chunks.size : 0) + ' 块）');
+    set('ptiles', PERF.tiles + ' 格（' + PERF.chunkCount + ' 块）');
     set('pcache', PERF.cacheState);
     set('pcachem', (PERF.cacheRebuildMs || 0).toFixed(1) + ' ms');
     set('pzoom', '×' + PERF.zoom.toFixed(2));
     set('plod', PERF.lodState);
     for (const d of PERF.devices || []) set('pd-' + d.type, d.n);
+    for (const c of PERF.typeCost || []) {
+      set('pcn-' + c.type, c.n);
+      set('pcu-' + c.type, c.perDevMs.toFixed(2));
+      set('pcp-' + c.type, c.pct.toFixed(1) + '%');
+    }
   }
 }

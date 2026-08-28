@@ -135,6 +135,12 @@ function initPanelEvents() {
       renderPanel(false);
       return;
     }
+    // 性能页导出：下载 JSON / 复制到剪贴板
+    const perfExport = ev.target.closest && ev.target.closest('[data-perf-export]');
+    if (perfExport && typeof exportPerf === 'function') {
+      exportPerf(perfExport.dataset.perfExport || 'json');
+      return;
+    }
     const statItemTab = ev.target.closest('[data-stat-item-tab]');
     if (statItemTab) {
       G.statsItemTab = statItemTab.dataset.statItemTab;

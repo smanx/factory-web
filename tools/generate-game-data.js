@@ -303,7 +303,7 @@ const DLC_DEVICE_RECIPES = {
 // 官方命名（物品/实体/配方/流体）经项目 ID 映射后写入 GAME_DATA.names / GAME_DATA.recipeNames，
 // 供设置内中英文切换使用（见 js/data-util.js 的 localizedName）。
 // 段优先级：item-name > entity-name > recipe-name > fluid-name（同名时前者优先）。
-const LOCALE_SECTIONS = ['item-name', 'entity-name', 'recipe-name', 'fluid-name', 'equipment-name', 'tile-name'];
+const LOCALE_SECTIONS = ['autoplace-control-names', 'item-name', 'entity-name', 'recipe-name', 'fluid-name', 'equipment-name', 'tile-name', 'map-gen-preset-name', 'map-gen-preset-description'];
 // 解析单个 .cfg：返回 { section: { key: value } }（只保留上述段，跳过 [段头]/空行/无=行）
 function parseLocaleFile(file) {
   const out = {};
@@ -1524,6 +1524,89 @@ function report() {
     Object.keys(GAME_DATA.recipe).length + ' 条, 保留手工 ' + log.keptManual.length + ' 条(见上), 未覆盖 ' +
     (Object.keys(manualRecipes).length - Object.keys(GAME_DATA.recipe).length - log.keptManual.length) + ' 条(官方无/引用未知物品,见候选清单)');
 }
+
+// ================= 地图生成数据（autoplace-controls / map-gen-presets） =================
+// 从 factorio-data 直接提取地图生成所需命名与控件数据，随 GAME_DATA 写入 data.generated.js。
+// 前端地图设置面板（world-config.js）完全以 data.generated.js 单源读取，不再手工维护控件/预设列表。
+// autoplace-control 原型：{ name, category(resource/terrain/cliff/enemy), order, richness, can_be_disabled }
+// Autoplace 控件 id → 需显示的官方物品名（部分控件 id 与物品名不同，如 vulcanus_coal 显示"煤矿"）。
+const AP_CONTROL_ITEM_HINT = {
+  'nauvis_cliff': 'cliff',
+  'enemy-base': 'enemy-base',
+  'starting_area_moisture': 'tile-water-shallow',
+  // 行星资源控件 id 用下划线，官方 item-name 用连字符（tungsten-ore / sulfuric-acid-geyser）
+  'tungsten_ore': 'tungsten-ore',
+  'sulfuric_acid_geyser': 'sulfuric-acid-geyser',
+  // 无专属中文名，复用同款基础矿的中文（vulcanus_coal 即煤矿、gleba_stone 即石矿）
+  'vulcanus_coal': 'coal',
+  'gleba_stone': 'stone',
+};
+// Autoplace 控件的本地化名：优先按 hint 物品名，其次复用官方实体/物品命名（多段优先级）。
+function apControlName(cid, proto) {
+  const hint = AP_CONTROL_ITEM_HINT[cid];
+  if (hint) {
+    const t = localeBySection['item-name'] && localeBySection['item-name'][hint];
+    if (t && t.zh && t.en) return t;
+  }
+  const t = officialLocale(cid);
+  if (t) return t;
+  return { zh: cid, en: cid };
+}
+// 归一化 autoplace-controls：value 可为字符串等级或数字
+GAME_DATA.mapGen = {
+  // 控件列表（自动从 factorio-data 的 autoplace-control 原型提取，按 order 排序）
+  autoplaceControls: (() => {
+    const out = [];
+    const tbl = raw['autoplace-control'] || {};
+    for (const [id, proto] of Object.entries(tbl)) {
+      if (!proto || typeof proto !== 'object') continue;
+      out.push({
+        id,
+        category: proto.category || 'terrain',
+        order: proto.order || 'z',
+        richness: !!proto.richness,
+        canBeDisabled: proto.can_be_disabled !== false,
+        name: apControlName(id, proto)
+      });
+    }
+    out.sort((a, b) => a.order.localeCompare(b.order) || a.id.localeCompare(b.id));
+    return out;
+  })(),
+  // 预设（自动从 factorio-data 的 map-gen-presets 原型提取，含名称/描述/默认控件覆盖）
+  presets: (() => {
+    const out = [];
+    const tbl = raw['map-gen-presets'] || {};
+    for (const proto of Object.values(tbl)) {
+      if (!proto || typeof proto !== 'object') continue;
+      for (const [id, p] of Object.entries(proto)) {
+        // 外套字段：type/name 为原型元数据；其余字段即各预设（含名为 "default" 的默认预设）
+        if (id === 'name' || id === 'type') continue;
+        if (!p || typeof p !== 'object') continue;
+        const ac = (p.basic_settings && p.basic_settings.autoplace_controls) || {};
+        const nameOf = (sec, key) => {
+          const t = localeBySection[sec] && localeBySection[sec][key];
+          return t && t.zh && t.en ? t : null;
+        };
+        out.push({
+          id,
+          order: typeof p.order === 'string' ? p.order : id,
+          name: nameOf('map-gen-preset-name', id) || { zh: id, en: id },
+          desc: nameOf('map-gen-preset-description', id) || null,
+          autoplaceControls: (() => {
+            const o = {};
+            for (const [cid, vals] of Object.entries(ac)) o[cid] = vals;
+            return o;
+          })()
+        });
+      }
+    }
+    out.sort((a, b) => a.order.localeCompare(b.order) || a.id.localeCompare(b.id));
+    return out;
+  })(),
+};
+// 日志
+console.log('地图控件 autoplaceControls: ' + GAME_DATA.mapGen.autoplaceControls.map(c => c.id).join(', '));
+console.log('地图预设 presets: ' + GAME_DATA.mapGen.presets.map(p => p.id).join(', '));
 
 if (REPORT) {
   report();

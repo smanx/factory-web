@@ -397,17 +397,44 @@ function stepWorld(dt) {
   if (typeof updateFishing === 'function') updateFishing(dt);   // 钓鱼冷却
   if (typeof updatePersonalPower === 'function') updatePersonalPower(dt);   // 个人电网（装备件）
   if (typeof updateDischargeCooldown === 'function') updateDischargeCooldown(dt);   // 放电防御冷却
-  // 逻辑帧耗时统计：度量每个逻辑步所有活跃实体 update 的总耗时，写入性能面板（仅开启性能页时采样，避免常态开销）
+  // 逻辑帧耗时统计：度量每个逻辑步所有活跃实体 update 的总耗时，写入性能面板。
+  // 仅在开启性能页时采样（常态关闭避免额外开销），并按设备类型累计，用于定位卡顿主因。
+  // 采样采用“分段法”：只记录同类型连续区间的两个端点耗时，仅类型切换时才调用
+  // performance.now()，避免逐实体取证带来的额外开销（同类型设备通常成片建造、便于分段）。
   let _updStart = 0;
-  if (G.statsTab === 'perf') _updStart = performance.now();
+  let _tri = null;
+  if (G.statsTab === 'perf' && typeof PERF === 'object' && PERF) {
+    if (!PERF._tri) PERF._tri = { t0: 0, frames: 0, updateMs: 0, type: {} };
+    _tri = PERF._tri;
+    if (!_tri.t0) _tri.t0 = performance.now();
+    _tri.frames++;
+    _updStart = performance.now();
+  }
+  // 分段区间状态：lastType=上一段类型，segStart=上一段开始时刻
+  let _lastType = null, _segStart = 0;
+  const _segFlush = (type, endT) => {
+    if (type != null && !isNaN(_segStart)) {
+      const dt = endT - _segStart;
+      _tri.updateMs += dt;
+      _tri.type[type] = (_tri.type[type] || 0) + dt;
+    }
+  };
   for (const e of G.ents) {
     // 性能优化：跳过继承基类空 update 的静态实体（储物箱/门/石墙/铁轨/火车车厢/信号灯/机器人港/物流箱/信号塔/电灯等），
     // 其逻辑由独立系统（箱子存取/门开合/铁路调度/物流扫描/模块广播等）处理，无需每步调用空函数。
     // 调用基类空 update 与跳过完全等价，故不影响任何功能。
     if (e._dead || typeof e.update !== 'function') continue;
     if (e.update === Entity.prototype.update) continue;
+    if (_tri) {
+      if (e.type !== _lastType) {
+        if (_lastType !== null) _segFlush(_lastType, performance.now());
+        _lastType = e.type;
+        _segStart = performance.now();
+      }
+    }
     e.update(dt);
   }
+  if (_tri && _lastType !== null) _segFlush(_lastType, performance.now());
   if (_updStart) {
     if (typeof PERF === 'object' && PERF) PERF.updateMs = performance.now() - _updStart;
   }

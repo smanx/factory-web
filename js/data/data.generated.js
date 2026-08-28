@@ -4263,7 +4263,7 @@ const GAME_DATA = {
    "en": "Offshore pump"
   },
   "water": {
-   "zh": "水",
+   "zh": "水域",
    "en": "Water"
   },
   "steam": {
@@ -9892,5 +9892,546 @@ const GAME_DATA = {
     "pistol": 0.25
    }
   }
+ },
+ "mapGen": {
+  "autoplaceControls": [
+   {
+    "id": "iron-ore",
+    "category": "resource",
+    "order": "a-a",
+    "richness": true,
+    "canBeDisabled": true,
+    "name": {
+     "en": "Iron ore",
+     "zh": "铁矿"
+    }
+   },
+   {
+    "id": "copper-ore",
+    "category": "resource",
+    "order": "a-b",
+    "richness": true,
+    "canBeDisabled": true,
+    "name": {
+     "en": "Copper ore",
+     "zh": "铜矿"
+    }
+   },
+   {
+    "id": "stone",
+    "category": "resource",
+    "order": "a-c",
+    "richness": true,
+    "canBeDisabled": true,
+    "name": {
+     "en": "Stone",
+     "zh": "石矿"
+    }
+   },
+   {
+    "id": "coal",
+    "category": "resource",
+    "order": "a-d",
+    "richness": true,
+    "canBeDisabled": true,
+    "name": {
+     "en": "Coal",
+     "zh": "煤矿"
+    }
+   },
+   {
+    "id": "crude-oil",
+    "category": "resource",
+    "order": "a-e",
+    "richness": true,
+    "canBeDisabled": true,
+    "name": {
+     "en": "Crude oil",
+     "zh": "原油"
+    }
+   },
+   {
+    "id": "uranium-ore",
+    "category": "resource",
+    "order": "a-f",
+    "richness": true,
+    "canBeDisabled": true,
+    "name": {
+     "en": "Uranium ore",
+     "zh": "铀矿"
+    }
+   },
+   {
+    "id": "vulcanus_coal",
+    "category": "resource",
+    "order": "b-a",
+    "richness": true,
+    "canBeDisabled": true,
+    "name": {
+     "en": "Coal",
+     "zh": "煤矿"
+    }
+   },
+   {
+    "id": "calcite",
+    "category": "resource",
+    "order": "b-c",
+    "richness": true,
+    "canBeDisabled": true,
+    "name": {
+     "en": "Calcite",
+     "zh": "方解石"
+    }
+   },
+   {
+    "id": "sulfuric_acid_geyser",
+    "category": "resource",
+    "order": "b-c",
+    "richness": true,
+    "canBeDisabled": true,
+    "name": {
+     "zh": "sulfuric_acid_geyser",
+     "en": "sulfuric_acid_geyser"
+    }
+   },
+   {
+    "id": "tungsten_ore",
+    "category": "resource",
+    "order": "b-d",
+    "richness": true,
+    "canBeDisabled": true,
+    "name": {
+     "en": "Tungsten ore",
+     "zh": "钨矿"
+    }
+   },
+   {
+    "id": "gleba_stone",
+    "category": "resource",
+    "order": "c-a",
+    "richness": true,
+    "canBeDisabled": true,
+    "name": {
+     "en": "Stone",
+     "zh": "石矿"
+    }
+   },
+   {
+    "id": "water",
+    "category": "terrain",
+    "order": "c-a",
+    "richness": false,
+    "canBeDisabled": true,
+    "name": {
+     "en": "Water",
+     "zh": "水域"
+    }
+   },
+   {
+    "id": "trees",
+    "category": "terrain",
+    "order": "c-x",
+    "richness": false,
+    "canBeDisabled": true,
+    "name": {
+     "en": "Trees",
+     "zh": "树木"
+    }
+   },
+   {
+    "id": "rocks",
+    "category": "terrain",
+    "order": "c-y",
+    "richness": false,
+    "canBeDisabled": true,
+    "name": {
+     "en": "Rocks",
+     "zh": "岩石"
+    }
+   },
+   {
+    "id": "enemy-base",
+    "category": "enemy",
+    "order": "c-z",
+    "richness": false,
+    "canBeDisabled": false,
+    "name": {
+     "en": "Enemy bases",
+     "zh": "虫族部落"
+    }
+   },
+   {
+    "id": "nauvis_cliff",
+    "category": "cliff",
+    "order": "c-z",
+    "richness": false,
+    "canBeDisabled": true,
+    "name": {
+     "en": "Cliffs",
+     "zh": "悬崖"
+    }
+   },
+   {
+    "id": "starting_area_moisture",
+    "category": "terrain",
+    "order": "c-z",
+    "richness": false,
+    "canBeDisabled": true,
+    "name": {
+     "en": "Starting area moisture",
+     "zh": "起始区域湿度"
+    }
+   },
+   {
+    "id": "vulcanus_volcanism",
+    "category": "terrain",
+    "order": "c-z-a",
+    "richness": false,
+    "canBeDisabled": false,
+    "name": {
+     "en": "Vulcanus volcanism",
+     "zh": "祝融星火山活动"
+    }
+   },
+   {
+    "id": "gleba_cliff",
+    "category": "cliff",
+    "order": "c-z-b",
+    "richness": false,
+    "canBeDisabled": true,
+    "name": {
+     "en": "Gleba cliffs",
+     "zh": "句芒星悬崖"
+    }
+   },
+   {
+    "id": "gleba_water",
+    "category": "terrain",
+    "order": "c-z-b",
+    "richness": false,
+    "canBeDisabled": false,
+    "name": {
+     "en": "Gleba water",
+     "zh": "句芒星水域"
+    }
+   },
+   {
+    "id": "fulgora_cliff",
+    "category": "cliff",
+    "order": "c-z-c",
+    "richness": false,
+    "canBeDisabled": true,
+    "name": {
+     "en": "Fulgora cliffs",
+     "zh": "雷神星悬崖"
+    }
+   },
+   {
+    "id": "gleba_plants",
+    "category": "terrain",
+    "order": "c-z-c",
+    "richness": false,
+    "canBeDisabled": false,
+    "name": {
+     "en": "Gleba plants",
+     "zh": "句芒星植物"
+    }
+   },
+   {
+    "id": "fulgora_islands",
+    "category": "terrain",
+    "order": "c-z-d",
+    "richness": false,
+    "canBeDisabled": false,
+    "name": {
+     "en": "Fulgora islands",
+     "zh": "雷神星岛屿"
+    }
+   },
+   {
+    "id": "scrap",
+    "category": "resource",
+    "order": "d-a",
+    "richness": true,
+    "canBeDisabled": true,
+    "name": {
+     "en": "Scrap",
+     "zh": "废料"
+    }
+   },
+   {
+    "id": "aquilo_crude_oil",
+    "category": "resource",
+    "order": "e-a",
+    "richness": true,
+    "canBeDisabled": true,
+    "name": {
+     "zh": "aquilo_crude_oil",
+     "en": "aquilo_crude_oil"
+    }
+   },
+   {
+    "id": "lithium_brine",
+    "category": "resource",
+    "order": "e-b",
+    "richness": true,
+    "canBeDisabled": true,
+    "name": {
+     "zh": "lithium_brine",
+     "en": "lithium_brine"
+    }
+   },
+   {
+    "id": "fluorine_vent",
+    "category": "resource",
+    "order": "e-c",
+    "richness": true,
+    "canBeDisabled": true,
+    "name": {
+     "zh": "fluorine_vent",
+     "en": "fluorine_vent"
+    }
+   },
+   {
+    "id": "gleba_enemy_base",
+    "category": "enemy",
+    "order": "z",
+    "richness": false,
+    "canBeDisabled": false,
+    "name": {
+     "en": "Gleba enemy bases",
+     "zh": "句芒星虫族部落"
+    }
+   }
+  ],
+  "presets": [
+   {
+    "id": "default",
+    "order": "a",
+    "name": {
+     "en": "Default",
+     "zh": "默认预设"
+    },
+    "desc": {
+     "en": "Normal settings. The recommended way to play Factorio.",
+     "zh": "常规设置，推荐使用。"
+    },
+    "autoplaceControls": {}
+   },
+   {
+    "id": "rich-resources",
+    "order": "b",
+    "name": {
+     "en": "Rich resources",
+     "zh": "富饶之地"
+    },
+    "desc": {
+     "en": "Resource patches have a larger richness, so you don't have to expand far.",
+     "zh": "矿区愈加丰饶，玩家因此不必拓张太远。"
+    },
+    "autoplaceControls": {
+     "iron-ore": {
+      "richness": "very-good"
+     },
+     "copper-ore": {
+      "richness": "very-good"
+     },
+     "stone": {
+      "richness": "very-good"
+     },
+     "coal": {
+      "richness": "very-good"
+     },
+     "uranium-ore": {
+      "richness": "very-good"
+     },
+     "crude-oil": {
+      "richness": "very-good"
+     }
+    }
+   },
+   {
+    "id": "marathon",
+    "order": "c",
+    "name": {
+     "en": "Marathon",
+     "zh": "长期作战"
+    },
+    "desc": {
+     "en": "Technologies are more expensive.",
+     "zh": "科技更为昂贵。"
+    },
+    "autoplaceControls": {}
+   },
+   {
+    "id": "death-world",
+    "order": "d",
+    "name": {
+     "en": "Death world",
+     "zh": "末日领域"
+    },
+    "desc": {
+     "en": "Biters are more dangerous and evolve faster.",
+     "zh": "虫子更加残暴，而且进化得更快。"
+    },
+    "autoplaceControls": {
+     "enemy-base": {
+      "frequency": "very-high",
+      "size": "very-big"
+     }
+    }
+   },
+   {
+    "id": "death-world-marathon",
+    "order": "d",
+    "name": {
+     "en": "Death world marathon",
+     "zh": "绝地求生"
+    },
+    "desc": {
+     "en": "Technologies are more expensive, and biters are dangerous and plentiful. Only select this if you are a Factorio veteran.",
+     "zh": "科技更为昂贵，虫子更加残暴，而且进化得更快。仅推荐游戏老手尝试。"
+    },
+    "autoplaceControls": {
+     "enemy-base": {
+      "frequency": "very-high",
+      "size": "very-big"
+     }
+    }
+   },
+   {
+    "id": "rail-world",
+    "order": "e",
+    "name": {
+     "en": "Rail world",
+     "zh": "铁道纵横"
+    },
+    "desc": {
+     "en": "Resource patches are large and spread far apart to encourage train systems. Biters won't create any new bases or re-expand into cleared territory.",
+     "zh": "矿区面积大且相距较远，鼓励使用列车系统。虫子不会扩张出新的虫巢，也不会重新回到已清理的领地。"
+    },
+    "autoplaceControls": {
+     "coal": {
+      "frequency": 0.33333333333,
+      "size": 3
+     },
+     "copper-ore": {
+      "frequency": 0.33333333333,
+      "size": 3
+     },
+     "crude-oil": {
+      "frequency": 0.33333333333,
+      "size": 3
+     },
+     "uranium-ore": {
+      "frequency": 0.33333333333,
+      "size": 3
+     },
+     "iron-ore": {
+      "frequency": 0.33333333333,
+      "size": 3
+     },
+     "stone": {
+      "frequency": 0.33333333333,
+      "size": 3
+     },
+     "enemy-base": {
+      "size": 1
+     },
+     "water": {
+      "frequency": 0.5,
+      "size": 1.5
+     }
+    }
+   },
+   {
+    "id": "ribbon-world",
+    "order": "f",
+    "name": {
+     "en": "Ribbon world",
+     "zh": "冤家路窄"
+    },
+    "desc": {
+     "en": "The map height is limited to only 128 tiles, which introduces a range of challenges and interesting situations.",
+     "zh": "地图高度限制为128格，这将带来一系列有趣挑战。"
+    },
+    "autoplaceControls": {
+     "coal": {
+      "frequency": 3,
+      "size": 0.5,
+      "richness": 2
+     },
+     "copper-ore": {
+      "frequency": 3,
+      "size": 0.5,
+      "richness": 2
+     },
+     "crude-oil": {
+      "frequency": 3,
+      "size": 0.5,
+      "richness": 2
+     },
+     "uranium-ore": {
+      "frequency": 3,
+      "size": 0.5,
+      "richness": 2
+     },
+     "iron-ore": {
+      "frequency": 3,
+      "size": 0.5,
+      "richness": 2
+     },
+     "stone": {
+      "frequency": 3,
+      "size": 0.5,
+      "richness": 2
+     },
+     "water": {
+      "frequency": 4,
+      "size": 0.25
+     },
+     "nauvis_cliff": {
+      "frequency": 0.25,
+      "size": 0.75
+     }
+    }
+   },
+   {
+    "id": "lakes",
+    "order": "g",
+    "name": {
+     "en": "Lakes",
+     "zh": "湖泊星罗"
+    },
+    "desc": {
+     "en": "Lakes with consistent size and cliffs that tend to follow the coastline. Forest paths are disabled. The same elevation as Factorio 1.1.",
+     "zh": "大小一致的湖泊，悬崖沿着河岸线延伸，禁用林中小径。海拔与1.1版本一致。"
+    },
+    "autoplaceControls": {
+     "trees": {
+      "frequency": 1,
+      "size": 0.5
+     }
+    }
+   },
+   {
+    "id": "island",
+    "order": "h",
+    "name": {
+     "en": "Island",
+     "zh": "汪洋孤岛"
+    },
+    "desc": {
+     "en": "A large island in an endless ocean. Forest paths are disabled.",
+     "zh": "无尽海洋中的一座大岛，禁用林中小径。"
+    },
+    "autoplaceControls": {
+     "trees": {
+      "frequency": 1,
+      "size": 0.5
+     }
+    }
+   }
+  ]
  }
 };
