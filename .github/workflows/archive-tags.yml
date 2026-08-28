@@ -1,14 +1,8 @@
 name: Archive Tags to history
 
-# 仅手动触发
+# 仅手动触发，无需任何输入
 on:
   workflow_dispatch:
-    inputs:
-      tag_pattern:
-        description: 'Tag 筛选（glob 形式，例如 "v*"）。留空则自动匹配所有版本号形式的 tag（如 1.2.3 / v2.0.0 / 1.0.0-beta）'
-        required: false
-        default: ''
-        type: string
 
 permissions:
   contents: write
@@ -24,37 +18,34 @@ jobs:
       - name: 检出完整历史与全部 tag
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0  # 拉取完整历史，确保每个 tag 都能被还原
+          fetch-depth: 0
           fetch-tags: true
 
-      - name: 收集需要归档的 tag
+      - name: 收集所有版本号 tag
         id: tags
         run: |
           set -e
-          PATTERN="${{ github.event.inputs.tag_pattern }}"
-          if [ -n "$PATTERN" ]; then
-            git tag -l "$PATTERN" > work_tags.txt
-          else
-            # 版本号形式的 tag：1.2.3 / v1.2.3 / 带 -beta 等后缀
-            git tag -l | grep -E '^v?[0-9]+(\.[0-9]+)*(-[0-9A-Za-z.-]+)?$' > work_tags.txt || true
-          fi
-          # tag 名将作为目录名，若含斜杠则替换，避免被识别为目录层级
-          sed -i 's|/|_|g' work_tags.txt
+          # 版本号形式的 tag：1.2.3 / v1.2.3 / 1.0.0-beta 等
+          git tag -l | grep -E '^v?[0-9]+(\.[0-9]+)*(-[0-9A-Za-z.-]+)?$' > work_tags.txt || true
           sort -u -o work_tags.txt work_tags.txt
           echo "count=$(wc -l < work_tags.txt)" >> "$GITHUB_OUTPUT"
           echo "匹配到 $(wc -l < work_tags.txt) 个 tag"
 
-      - name: 并行拉取并还原每个 tag
-        # 每个 tag 检出到独立的 <tag> 目录（目录之间互不干扰，因此可用 -P 并行）
-        # git archive 还原该 tag 提交时的原始文件树（不含 factorio-data 子模块的实际内容，仅保留其 gitlink）
+      - name: 并行切换每个 tag 并打包
+        # 对每个 tag：拉取本项目 -> 切到该 tag -> 打包（去掉 .git 外壳）-> 改名为该 tag 的目录
+        # 各 tag 在独立临时目录中完成，互不冲突，因此可用 -P 并行
         run: |
           set -e
           mkdir -p export
           if [ -s work_tags.txt ]; then
             cat work_tags.txt | xargs -P "$(nproc)" -I{} bash -c '
               set -e
-              mkdir -p "export/{}"
-              git archive "{}" | tar -x -C "export/{}"
+              name="{}"
+              staging="$RUNNER_TEMP/build-${name//[^A-Za-z0-9_.-]/_}"
+              git clone --quiet --no-checkout --branch "$name" "$GITHUB_WORKSPACE" "$staging"
+              git -C "$staging" checkout --quiet "$name"
+              mv "$staging" "export/$name"        # 改名：目录以 tag 命名
+              rm -rf "export/$name/.git"          # 打包仅保留源码文件
             '
           else
             echo "没有匹配到可归档的版本号 tag"
