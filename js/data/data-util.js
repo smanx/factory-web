@@ -13,6 +13,60 @@ function localizedName(id, manual) {
   return manual || id;
 }
 
+// ===== emoji 去重彩色角标（区分共用同一 emoji 的物品）=====
+// 惰性计算（首次绘制时执行，此时 ITEMS 已含品质变体）：找出被多个物品共用的 emoji，
+// 为其对应物品绘制彩色角标；若同一 emoji 组内 color 也相同（纯色角标无法区分），
+// 则在该角标上额外叠加一个 mark/名称首字符字母来进一步区分。
+let _emojiDupCache = null;
+function _emojiDupInfo() {
+  if (_emojiDupCache) return _emojiDupCache;
+  const byEmoji = {};
+  for (const id in ITEMS) {
+    const e = ITEMS[id].emoji;
+    if (e) (byEmoji[e] = byEmoji[e] || []).push(id);
+  }
+  const dupEmoji = new Set();       // 被多个物品共用的 emoji
+  const colorConflict = new Set();  // 同一 emoji 组内存在相同 color（需叠加字母）
+  for (const e in byEmoji) {
+    const ids = byEmoji[e];
+    if (ids.length < 2) continue;
+    dupEmoji.add(e);
+    const cnt = {};
+    for (const id of ids) { const c = ITEMS[id].color; if (c) cnt[c] = (cnt[c] || 0) + 1; }
+    for (const c in cnt) if (cnt[c] > 1) { colorConflict.add(e); break; }
+  }
+  _emojiDupCache = { dupEmoji, colorConflict };
+  return _emojiDupCache;
+}
+
+// 在 emoji 图形右下角绘制去重角标：小圆点填充 item 颜色；颜色冲突时叠加字母。
+function drawEmojiDupBadge(x, id, r) {
+  const { dupEmoji, colorConflict } = _emojiDupInfo();
+  const emoji = ITEMS[id].emoji;
+  if (!emoji || !dupEmoji.has(emoji)) return;
+  const needLabel = colorConflict.has(emoji);
+  const d = r * 0.6;                 // 角标圆点直径
+  const px = r * 0.82, py = r * 0.82; // 右下角定位（相对图标中心）
+  const col = ITEMS[id].color;
+  // 外白描边，保证深色/深色底上也清晰可见
+  x.fillStyle = '#fff';
+  x.beginPath(); x.arc(px, py, d / 2, 0, 7); x.fill();
+  x.fillStyle = col;
+  x.beginPath(); x.arc(px, py, d / 2 - Math.max(1, r * 0.05), 0, 7); x.fill();
+  if (needLabel) {
+    const label = (ITEMS[id].mark || ITEMS[id].name[0]).slice(0, 1);
+    x.font = 'bold ' + Math.round(d * 0.85) + 'px system-ui';
+    x.textAlign = 'center';
+    x.textBaseline = 'middle';
+    x.lineWidth = Math.max(1, r * 0.05);
+    x.strokeStyle = 'rgba(10,14,20,.9)';
+    x.lineJoin = 'round';
+    x.strokeText(label, px, py + 1);
+    x.fillStyle = '#fff';
+    x.fillText(label, px, py + 1);
+  }
+}
+
 function drawItemGlyph(x, id, cx, cy, s) {
   const col = ITEMS[id].color;
   const r = s / 2;
@@ -29,6 +83,7 @@ function drawItemGlyph(x, id, cx, cy, s) {
     x.textBaseline = 'middle';
     x.fillStyle = '#fff';
     x.fillText(_emoji, 0, 1);
+    drawEmojiDupBadge(x, id, r);
     x.restore();
     return;
   }
@@ -405,6 +460,7 @@ function drawItemGlyph(x, id, cx, cy, s) {
         x.textAlign = 'center';
         x.textBaseline = 'middle';
         x.fillText(emoji, 0, 1);
+        drawEmojiDupBadge(x, id, box);
       } else {
         // 文字：白字 + 深色描边，清晰醒目
         const label = (ITEMS[id].mark || ITEMS[id].name[0]).slice(0, 2);
