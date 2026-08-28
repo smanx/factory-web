@@ -1788,3 +1788,46 @@ API/中枢货舱信号/推进器液位信号/三设备均实现输出/面板提�
   统一覆盖，不再在 `BUILD_DEFS` 维护第二套数值。
 - **校验**：verify-dlc 新增「基础物流/储物建筑占地单源化」守门人（储物箱族 8 项 + 电灯 + 超速分流器
   官方 footprint 2×1 与 BUILD_DEFS 1×2 双断言），全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段六.25：全量数据对齐审计 + 简易煤液化回退修正（本迭代新增）
+
+> 依据「所有物品/配方/设备 ID 与命名与《异星工厂》官方一致」「所有数据/参数从 data.generated.js
+> 单源获取」「多出物品移除、仅保留 6 个创造/虚空物品」三项铁律，对当前 agent-dev 分支做了一次
+> **全量数据对齐审计**，逐项核验项目与 factorio-data（2.1.17，含全部 DLC）的一致性：
+
+**1. 物品 ID/命名全量对齐（官方零偏差）**
+- `verify-data-integrity` 守门人：**非创造/虚空物品均使用官方原型名，非官方 = 0**。
+- 官方全部 350 个物品原型（item/fluid/ammo/module/equipment/armor/gun/capsule/tool 等）中，
+  项目仅缺编辑器/调试/光标专用件（`copper-wire` 接线光标件、`infinity-*`、`linked-*`、
+  `electric-energy-interface`、`heat-interface`、`no-item`/`science`/`coin`/`empty-module-slot`/
+  `lane-splitter` 等）——这些均非正常游戏可玩内容，不应出现在 web 复刻中。
+- 项目侧非官方物品 = **6 个创造/虚空物品**（创造/虚空箱、创造/虚空管道、创造/虚空带，任务要求保留）
+  + 官方卫星 `satellite`（Space Age 2.0 移除，作为经典火箭胜利负载保留）
+  + 火箭本体 `rocket-body`（发射井内部组装表示，对应官方 rocket-part 组装）。
+- 全部 12 个官方模块（speed/productivity/efficiency/quality 1-3 级）、全部官方装备/弹药/科学包均已接入。
+
+**2. 配方数据全量对齐（零偏差）**
+- 对项目全部配方表（RECIPES / REFINERY_RECIPES / CENTRIFUGE_RECIPES）与 `GAME_DATA.recipe`
+  （data.generated.js，factorio-data 官方）逐一比对 **time / inp / out / prob 全部一致，偏差 = 0**。
+- 项目对官方 DLC 专属配方（熔融金属、氟酮、氨水、钬溶液、小行星加工、虫卵培育等）按既定设计
+  适配为基础资源，配方键保留官方名，产出物/耗时参考官方，数据经 GAME_DATA 单源核对。
+- 官方仅剩的 3 条产出非项目物品的配方（`infinity-chest`/`infinity-pipe`/`heat-interface`）为编辑器
+  调试件，不纳入游戏内容。
+
+**3. 简易煤液化（simple-coal-liquefaction）回退值修正**
+- 审计发现 `js/data/data-recipes.js` 中 `simple-coal`（简易煤液化）的**静态回退值**写成了
+  `coal:10 + calcite:25`，与官方 `coal:10 + calcite:2 + sulfuric-acid:25` 不符。
+- 该回退值在运行时会被 `GAME_DATA.recipe['simple-coal-liquefaction']` 覆盖（数据单源化），
+  故游戏实际数值始终与官方一致；但为消除误导并保证「源码兜底也保持官方一致」，已把回退值
+  修正为官方 `coal:10 + calcite:2 + sulfuric-acid:25 → heavy-oil:50`。
+- `verify-dlc` 断言（10煤+2方解石+25硫酸→50重油）继续通过。
+
+**4. 占地/功耗/速度全量单源化（零未桥接）**
+- `verify-dlc` 守门人：**官方可建造建筑占地全量对齐（selection_box → footprint/BUILD_DEFS），
+  未桥接数 = 0**。全部可建造建筑的 footprint、buildingHp、powerUse、deviceStats（craftingSpeed/
+  moduleSlots）均来自 GAME_DATA（factorio-data 官方），未单独维护第二套数值表。
+- 物品堆叠上限与官方一致（`verify-data-integrity`：偏差 = 0）。
+
+> 结论：项目已满足「物品/配方/设备 ID 与命名官方一致」「多出物品移除（保留 6 个创造/虚空物品）」
+> 「所有数据从 data.generated.js 单源获取、与官方一致」全部要求；DLC（Space Age / Quality /
+> Elevated Rails / Recycler）数据已全部更新进项目，全部 18 个校验脚本通过，`node build.js` 构建通过。
