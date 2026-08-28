@@ -1471,6 +1471,21 @@ D
 > - **校验**：verify-dlc 新增物品生产产能校验（科技注册/无限/单源函数/11 设备接入/物品映射/每级 +10%），
 >   全量 18 个校验脚本通过，`node build.js` 构建通过。
 
+### 阶段六.11：推进器 Thruster 数据单源化（本迭代新增）
+
+> 依据「所有数据/参数从 data.generated.js（factorio-data 官方）单源获取，不单独维护一套数据」原则，
+> 修复空间平台推进器（Thruster）消耗速率的「双套数值」问题——此前 `space-platform.js` 硬编码
+> `THRUSTER_FUEL_RATE = 2.0`，虽数值与官方一致，但违反「设备不单独维护数值表」的铁律：
+
+- **数据单源**：`tools/generate-game-data.js` 新增 `GAME_DATA.thruster`——从 factorio-data 官方
+  空间时代 `thruster` 原型 `max_performance` 现场提取 `fluid_usage`（每秒消耗流体单位=2）、
+  `fluid_volume`（缓冲容积=0.8）、`effectivity`（能量效率=0.51），写入 data.generated.js。
+- **前端接入**：`js/devices/space-platform.js` 推进器燃料/氧化剂消耗速率改为从
+  `GAME_DATA.thruster.fluidUsage` 单源读取（兜底仍为官方值 2.0，不维护第二套数值表），
+  燃料/氧化剂保持官方同速（`fluid_usage` 官方对两流体一致）。
+- **校验**：verify-dlc 新增推进器数据单源化校验（官方 3 项数值 + 3 项前端单源读取），
+  全量 18 个校验脚本通过，`node build.js` 构建通过。
+
 ### 阶段六.11：空间平台中枢生产空间科研包（Space Platform Hub Space Science，本迭代新增）
 
 > 依据「继续开发完善、向《异星工厂》太空时代靠齐」与「所有数据/参数从 data.generated.js
