@@ -1828,6 +1828,27 @@ try {
   ok(false, '官方建筑占地对齐校验：加载 convert-data 失败 ' + e.message);
 }
 
+
+console.log('\n【基础物流/储物建筑占地单源化（chests/lamp/splitter 官方 selection_box → footprint）】');
+{
+  // 储物箱族 / 电灯 / 超速分流器：占地从 GAME_DATA.footprint（官方 selection_box）单源桥接，
+  // 不在 BUILD_DEFS 单独维护第二套数值（对齐「所有数据从 data.generated.js 获取」铁律）。
+  const oneCell = ['wooden-chest','iron-chest','steel-chest',
+    'passive-provider-chest','active-provider-chest','storage-chest','requester-chest','buffer-chest',
+    'small-lamp'];
+  for (const k of oneCell) {
+    ok(GD.footprint && GD.footprint[k] && GD.footprint[k].w === 1 && GD.footprint[k].h === 1,
+      k + ' 占地已从官方 selection_box 单源（GAME_DATA.footprint = 1×1）');
+    ok(ctx.__BUILD_DEFS[k] && ctx.__BUILD_DEFS[k].w === 1 && ctx.__BUILD_DEFS[k].h === 1,
+      k + ' BUILD_DEFS 占地 = 1×1（由 GAME_DATA 桥接）');
+  }
+  // 超速分流器：官方 splitter 原型 selection_box 为 2×1，项目按 1×2 竖放建模（FOOTPRINT_OVERRIDE 保持）。
+  ok(GD.footprint && GD.footprint['turbo-splitter'] && GD.footprint['turbo-splitter'].w === 2 && GD.footprint['turbo-splitter'].h === 1,
+    'turbo-splitter 官方 footprint（GAME_DATA）= 2×1（官方 splitter selection_box）');
+  ok(ctx.__BUILD_DEFS['turbo-splitter'] && ctx.__BUILD_DEFS['turbo-splitter'].w === 1 && ctx.__BUILD_DEFS['turbo-splitter'].h === 2,
+    'turbo-splitter BUILD_DEFS = 1×2（FOOTPRINT_OVERRIDE 项目竖放建模）');
+}
+
 // ---- 推进器 Thruster 数据单源化（GAME_DATA.thruster，官方 max_performance）----
 console.log('\n【推进器 Thruster 数据单源化】');
 const THR = GD.thruster || {};

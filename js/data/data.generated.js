@@ -5856,6 +5856,10 @@ const GAME_DATA = {
    "w": 2,
    "h": 1
   },
+  "turbo-splitter": {
+   "w": 2,
+   "h": 1
+  },
   "inserter": {
    "w": 1,
    "h": 1
@@ -5999,6 +6003,42 @@ const GAME_DATA = {
   "radar": {
    "w": 3,
    "h": 3
+  },
+  "small-lamp": {
+   "w": 1,
+   "h": 1
+  },
+  "wooden-chest": {
+   "w": 1,
+   "h": 1
+  },
+  "iron-chest": {
+   "w": 1,
+   "h": 1
+  },
+  "steel-chest": {
+   "w": 1,
+   "h": 1
+  },
+  "passive-provider-chest": {
+   "w": 1,
+   "h": 1
+  },
+  "active-provider-chest": {
+   "w": 1,
+   "h": 1
+  },
+  "storage-chest": {
+   "w": 1,
+   "h": 1
+  },
+  "requester-chest": {
+   "w": 1,
+   "h": 1
+  },
+  "buffer-chest": {
+   "w": 1,
+   "h": 1
   },
   "rocket-silo": {
    "w": 9,

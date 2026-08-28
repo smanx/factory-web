@@ -1766,3 +1766,25 @@ API/中枢货舱信号/推进器液位信号/三设备均实现输出/面板提�
   前端 QUALITY_TIERS 单源构建 + 6 个辅助函数按品质读取 + 建筑速度 mult）+「设备接入品质加成」守门人
   （8 项：信号塔/采矿机/实验室/车厢/车站/列车 + 存档累积字段），全量 18 个校验脚本通过，
   `node build.js` 构建通过。
+
+### 阶段六.24：基础物流/储物建筑占地数据单源化收口（本迭代新增）
+
+> 依据「所有设备占地都来自 data.generated.js、不单独给设备维护一套数据」铁律，把此前在
+> `js/data/data-buildings.js` 的 `BUILD_DEFS` 中以硬编码维护占地、且官方 factorio-data 已有
+> selection_box 数据的基础储物/照明/超速分流建筑，改为从官方 selection_box 单源桥接。
+
+**问题背景**：官方 `selection_box` 已为储物箱族（`container` / `logistic-container`）、电灯（`lamp`）、
+超速分流器（`splitter` 原型）定义了占地，但此前这些建筑未列入 `tools/generate-game-data.js` 的
+`FOOTPRINT_SOURCES`，占地仍以 `BUILD_DEFS` 硬编码（多为 1×1），未做到「占地数据全部来自 GAME_DATA」。
+
+**改动**（`tools/generate-game-data.js` + `js/data/data.generated.js` + `js/data/data-buildings.js` + `tools/verify-dlc.js`）：
+- **数据单源**：`FOOTPRINT_SOURCES` 新增 `turbo-splitter`（官方 `splitter` 原型 selection_box → 2×1）、
+  储物箱族 `wooden-chest`/`iron-chest`/`steel-chest`/`passive-provider-chest`/`active-provider-chest`/
+  `storage-chest`/`requester-chest`/`buffer-chest`（`container`/`logistic-container` → 1×1）、
+  `small-lamp`（`lamp` → 1×1），全部写入 `GAME_DATA.footprint`。
+- **占地一致**：储物箱族/电灯占地 1×1 与官方一致；`turbo-splitter` 官方为 2×1（横放），项目沿用
+  分流器族 1×2 竖放建模，经 `FOOTPRINT_OVERRIDE` 保持，`BUILD_DEFS.turbo-splitter = 1×2`。
+- **数据不再重复维护**：以上建筑的占地由 `data-buildings.js` 底部桥接循环从 `GAME_DATA.footprint`
+  统一覆盖，不再在 `BUILD_DEFS` 维护第二套数值。
+- **校验**：verify-dlc 新增「基础物流/储物建筑占地单源化」守门人（储物箱族 8 项 + 电灯 + 超速分流器
+  官方 footprint 2×1 与 BUILD_DEFS 1×2 双断言），全量 18 个校验脚本通过，`node build.js` 构建通过。

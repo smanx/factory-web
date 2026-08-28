@@ -1022,6 +1022,7 @@ const FOOTPRINT_SOURCES = {
   'splitter': ['splitter', 'splitter'],
   'fast-splitter': ['splitter', 'fast-splitter'],
   'express-splitter': ['splitter', 'express-splitter'],
+  'turbo-splitter': ['splitter', 'turbo-splitter'],  // 太空时代超速分流器（官方 splitter 原型，项目 1×2 由 FOOTPRINT_OVERRIDE 保持竖放）
   'inserter': ['inserter', 'inserter'],
   'burner-inserter': ['inserter', 'burner-inserter'],
   'long-handed-inserter': ['inserter', 'long-handed-inserter'],
@@ -1058,6 +1059,15 @@ const FOOTPRINT_SOURCES = {
   'solar-panel': ['solar-panel', 'solar-panel'],
   'accumulator': ['accumulator', 'accumulator'],
   'radar': ['radar', 'radar'],
+  'small-lamp': ['lamp', 'small-lamp'],  // 电灯：官方 lamp 原型 selection_box ±0.5 → 1×1
+  'wooden-chest': ['container', 'wooden-chest'],  // 官方 selection_box ±0.5 → 1×1
+  'iron-chest': ['container', 'iron-chest'],
+  'steel-chest': ['container', 'steel-chest'],
+  'passive-provider-chest': ['logistic-container', 'passive-provider-chest'],
+  'active-provider-chest': ['logistic-container', 'active-provider-chest'],
+  'storage-chest': ['logistic-container', 'storage-chest'],
+  'requester-chest': ['logistic-container', 'requester-chest'],
+  'buffer-chest': ['logistic-container', 'buffer-chest'],
   'rocket-silo': ['rocket-silo', 'rocket-silo'],  // 火箭发射井：官方 selection_box ±4.5 → 9×9（对齐《异星工厂》2.0 巨型发射井）
   'cargo-landing-pad': ['cargo-landing-pad', 'cargo-landing-pad'],  // 物流接驳站：官方 selection_box ±4 → 8×8
   'cargo-bay': ['cargo-bay', 'cargo-bay'],  // 物流接驳站扩展舱：官方 selection_box ±2 → 4×4
