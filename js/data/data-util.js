@@ -13,6 +13,47 @@ function localizedName(id, manual) {
   return manual || id;
 }
 
+
+// ===== 重复 emoji 图标颜色区分 =====
+// 许多物品共用同一个 emoji（如 ⛏️ 矿石/采矿机、📦 各箱/装载机等）。
+// 为让玩家能区分同 emoji 的不同物品，对「其 emoji 被至少两种物品共用」的物品，
+// 在图标左下角叠加一个小圆点色标，颜色取该物品自身的 color，作为视觉区分键。
+let _EMOJI_DUP_SET = null;
+function _emojiDupSet() {
+  if (_EMOJI_DUP_SET) return _EMOJI_DUP_SET;
+  const cnt = {};
+  for (const k in ITEMS) {
+    const e = ITEMS[k].emoji;
+    if (e) cnt[e] = (cnt[e] || 0) + 1;
+  }
+  _EMOJI_DUP_SET = new Set();
+  for (const k in ITEMS) {
+    const e = ITEMS[k].emoji;
+    if (e && cnt[e] > 1) _EMOJI_DUP_SET.add(k);
+  }
+  return _EMOJI_DUP_SET;
+}
+function isEmojiDuplicated(id) { return _emojiDupSet().has(id); }
+// 在 emoji 图标左下角绘制小圆点色标（用物品自身 color），带深色描边保证可见。
+function drawEmojiDupBadge(x, id, r) {
+  if (!isEmojiDuplicated(id)) return;
+  const bc = ITEMS[id].color || '#888';
+  const bd = r * 0.34;                 // 色标半径（随图标尺寸缩放）
+  const px = -r * 0.92 + bd * 0.55;    // 左下角定位
+  const py = r * 0.92 - bd * 0.55;
+  x.save();
+  // 深色描边环，保证在任意背景下可见
+  x.beginPath();
+  x.arc(px, py, bd, 0, Math.PI * 2);
+  x.fillStyle = 'rgba(10,14,18,.75)';
+  x.fill();
+  x.beginPath();
+  x.arc(px, py, bd * 0.72, 0, Math.PI * 2);
+  x.fillStyle = bc;
+  x.fill();
+  x.restore();
+}
+
 function drawItemGlyph(x, id, cx, cy, s) {
   const col = ITEMS[id].color;
   const r = s / 2;
@@ -29,6 +70,7 @@ function drawItemGlyph(x, id, cx, cy, s) {
     x.textBaseline = 'middle';
     x.fillStyle = '#fff';
     x.fillText(_emoji, 0, 1);
+    drawEmojiDupBadge(x, id, r);
     x.restore();
     return;
   }
@@ -405,6 +447,7 @@ function drawItemGlyph(x, id, cx, cy, s) {
         x.textAlign = 'center';
         x.textBaseline = 'middle';
         x.fillText(emoji, 0, 1);
+        drawEmojiDupBadge(x, id, box);
       } else {
         // 文字：白字 + 深色描边，清晰醒目
         const label = (ITEMS[id].mark || ITEMS[id].name[0]).slice(0, 2);
