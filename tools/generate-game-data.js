@@ -76,6 +76,8 @@ const KEEP_MANUAL_RECIPES = new Set([
   'tungsten-ore',
   // ===== 太空时代 生物实验室（Gleba biolab：官方配方依赖 biter-egg/capture-robot-rocket=生物星球资源，此处适配现有生物链资源）=====
   'biolab',
+  // ===== 空间科研包（官方 space-science-pack 2.1.17 需微重力=空间平台中枢，项目同时保留卫星发射链路）=====
+  'space-science-pack',
 ]);;
 
 // ================= 小工具 =================

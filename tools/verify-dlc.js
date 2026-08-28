@@ -764,6 +764,12 @@ ok(Object.keys(RP['thruster'].inp).every(k => k in IT), 'thruster 配方引用�
 ok(Object.keys(RP['asteroid-collector'].inp).every(k => k in IT), 'asteroid-collector 配方引用物品均存在');
 ok(ctx.__recipeDevice('space-platform-foundation') === 'space-platform-hub', '地基配方 → 空间平台中枢');
 ok(ctx.__recipeDevice('space-platform-starter-pack') === 'space-platform-hub', '起始包配方 → 空间平台中枢');
+// 官方空间科研包（空间平台中枢专属配方，2.1.17：2铁板+1碳+1冰→5，15s）
+ok(!!RP['space-science-pack'], 'space-science-pack 配方已注册（空间平台中枢）');
+ok(RP['space-science-pack'].inp['iron-plate'] === 2 && RP['space-science-pack'].inp['carbon'] === 1 && RP['space-science-pack'].inp['ice'] === 1, '空间科研包配方=2铁板+1碳+1冰（官方 2.1.17）');
+ok(RP['space-science-pack'].out['space-science-pack'] === 5 && RP['space-science-pack'].time === 15, '空间科研包产出 5、15s（官方）');
+ok(ctx.__recipeDevice('space-science-pack') === 'space-platform-hub', '空间科研包配方 → 空间平台中枢');
+ok(Object.keys(RP['space-science-pack'].inp).every(k => k in IT), 'space-science-pack 配方引用物品均存在');
 // 科技门控
 ok(!!TS['space-platform'], '「空间平台」科技已注册');
 ok(ctx.__itemTechReq('thruster') === 'space-platform', '推进器需「空间平台」科技');
