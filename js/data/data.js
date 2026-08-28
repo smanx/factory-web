@@ -98,6 +98,12 @@ const FUSION_GENERATOR_SPECIFIC_HEAT = 1;  // 聚变发电机比热 1MJ/°C
 const FUSION_GENERATOR_MAX_TRANSFER = 2000;// 聚变发电机最大传热 2GW（官方 max_transfer）
 const FUSION_GENERATOR_MAX_POWER = 50000;  // 聚变发电机满功率 50MW（官方 output_flow_limit=50MW）
 const FUSION_HEAT_PER_KW = 0.004;          // 每 kW·s 发电需消耗热量(MJ)：50MW 满功率每秒需 200MJ
+// 聚变等离子体（官方 fusion-plasma）工作介质常数：反应堆产 Plasma → 管道 → 发电机吸 Plasma 发电。
+// 相对刻度（项目简化模型），以热功率线性换算（200MW → 每秒 2000 单位 Plasma），
+// 每单位 Plasma 折算 1MJ 热量；数值不单独维护数值表（官方无固定产出速率，按热功率换算）。
+const FUSION_PLASMA_RATE = 2000;           // 聚变反应堆每秒产 Plasma 单位（200MW→2000/s）
+const FUSION_PLASMA_BUF = 2000;            // 聚变反应堆内部 Plasma 缓冲上限
+const FUSION_HEAT_PER_PLASMA = 1;          // 每单位 Plasma 折算热量(MJ)（发电机吸 Plasma 供热）
 const POWER_USE = {
   'electric-mining-drill': 90,          // 电采矿机
   'electric-furnace': 180,       // 电炉

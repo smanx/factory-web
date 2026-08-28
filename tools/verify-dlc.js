@@ -887,6 +887,21 @@ ok(ctx.__itemTechReq('fusion-generator') === 'fusion-power', '聚变发电机需
 ok(ctx.__itemTechReq('fusion-power-cell') === 'fusion-power', '聚变燃料棒需「聚变能源」科技');
 ok(!!TS['fusion-power'], '「聚变能源」科技已注册');
 ok((TS['fusion-power'].req || []).indexOf('space-platform') >= 0, '「聚变能源」科技前置含「空间平台」');
+// ===== 聚变等离子体 functional（fusion-plasma 工作介质，本迭代接入）=====
+// 官方 Space Age 聚变链：反应堆产生 Plasma → 管道 → 发电机消耗 Plasma 发电。
+// 项目此前仅注册 fusion-plasma 流体未接入玩法，现使其功能化：反应堆产 Plasma 输出管道、发电机吸 Plasma 供热。
+{
+  const fusSrc = fs.readFileSync(ROOT + '/js/devices/fusion.js', 'utf8');
+  const dataSrc = fs.readFileSync(ROOT + '/js/data/data.js', 'utf8');
+  ok(!!IT['fusion-plasma'], 'fusion-plasma 流体已注册（官方 Plasma 工作介质）');
+  ok(GD.names['fusion-plasma'] && GD.names['fusion-plasma'].en === 'Plasma', 'fusion-plasma 官方命名已收录 (Plasma)');
+  ok(/FUSION_PLASMA_RATE/.test(dataSrc), '聚变 Plasma 产出速率常量已定义（FUSION_PLASMA_RATE）');
+  ok(/plasmaBuf/.test(fusSrc), '聚变反应堆有 Plasma 缓冲（plasmaBuf）');
+  ok(/n\.giveItem\('fusion-plasma'\)/.test(fusSrc), '聚变反应堆把 Plasma 输出到相邻管道（portFlow giveItem fusion-plasma）');
+  ok(/takeItemOf\('fusion-plasma'\)/.test(fusSrc), '聚变发电机从相邻管道吸取 Plasma（takeItemOf fusion-plasma）');
+  ok(/FUSION_HEAT_PER_PLASMA/.test(fusSrc), '聚变发电机把 Plasma 折算为热量（FUSION_HEAT_PER_PLASMA）');
+  ok(/fusion-plasma/.test(fusSrc), '聚变反应堆/发电机面板已展示 Plasma 状态');
+}
 // ===== 钷素科研包（Promethium science pack，Space Age 终局科学包）数据校验 =====
 console.log('\n【钷素科研包 promethium-science-pack 数据】');
 // 物品/堆叠/命名来自官方
@@ -904,7 +919,7 @@ ok(RP['promethium-science-pack'].out['promethium-science-pack'] === 10 && RP['pr
 ok(Object.keys(RP['promethium-science-pack'].inp).every(k => k in IT), 'promethium-science-pack 配方引用物品均存在');
 // 配方设备：电磁工厂（官方 cryogenics 低温工厂，此处适配为电磁工厂生产钷素科研包）
 ok(ctx.__recipeDevice('promethium-science-pack') === 'electromagnetic-plant', '钷素科研包由电磁工厂制得');
-// 科技门控：钷素科研科技
+// 科技门控：钷素科研包配方由「钷素科研」（promethium-science）科技解锁（官方 Promethium science）
 ok(ctx.__recipeTechReq('promethium-science-pack') === 'promethium-science', '钷素科研包需「钷素科研」科技');
 ok(!!TS['promethium-science'], '钷素科研 科技已注册');
 
