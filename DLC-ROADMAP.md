@@ -1655,3 +1655,29 @@ D
 - [x] 全量 18 个校验脚本通过，构建通过。
 - 空间平台中枢（`space-platform-hub`）为 `Assembler` 变体（非 `CircuitNode`），当前仅能读取电路条件
   （`circuitSignalNear`），不进入电路节点网络，故货舱库存信号输出留待后续把中枢纳入电路节点体系时再接入。
+
+### 阶段六.20：太空物流电路信号补全（Space platform circuit signals，本迭代新增）
+
+> 依据「太空物流电路信号补全」迭代方向（roadmap 后续计划第 6 项），把空间平台三大设备纳入
+> 电路节点体系，使其输出内置库存/液位/星块信号到电路网络，实现空间平台全链路自动化，向《异星工厂》
+> Space Age 平台物流电路对齐。
+
+**问题背景**：空间平台中枢（`space-platform-hub`）为 `Assembler` 变体（非 `CircuitNode`），此前仅能
+通过 `circuitSignalNear` **读取**电路条件，不进入电路节点网络，货舱库存信号无法输出到网络；推进器
+（燃料/氧化剂余量）与小行星收集器（星块存量）同样不参与电路网络，空间平台侧无法自动化。
+
+**改动**（`js/devices/circuit.js` + `js/devices/space-platform.js`）：
+- `circuit.js` 新增轻量「电路信号生产者」API `installCircuitProducerAPI(obj)`：为非 `CircuitNode` 子类
+  的设备安装最小电路节点能力（red/green 连线集合、netRed/netGreen、distTo/range/cx/cy、双通道输出），
+  `collectCircuitNodes()` 一并收集 `isCircuitProducer()` 设备，使其参与 `recomputeCircuit` 的连线分组
+  与信号聚合。
+- `space-platform.js` 三个空间平台设备安装该 API 并实现 `outputCircuitSignals()`：
+  - **空间平台中枢**：把平台货舱（`cargo`）内每种物品数量 + 组装输出缓存（`outp`）以该物品为信号
+    输出到网络（红/绿双通道）——「货舱物资超量告警 / 产物满停线」自动化。
+  - **推进器**：把燃料 / 氧化剂余量（`thruster-fuel` / `thruster-oxidizer`）以对应流体为信号输出——「燃料不足自动补给」。
+  - **小行星收集器**：把已收集的每种星块存量以该星块为信号输出——「星块满 10 自动停/取出」。
+- 三座设备面板补充「电路输出」说明。
+- 数据单源：均为设备运行时状态信号（非官方静态数值表），不单独维护数值表，仅接入既有电路网络协议。
+
+**校验**：`verify-dlc` 新增「太空物流电路信号补全」守门人（9 项：生产者 API/收集器接入/三设备安装
+API/中枢货舱信号/推进器液位信号/三设备均实现输出/面板提示），全量 18 个校验脚本通过，`node build.js` 构建通过。

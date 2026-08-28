@@ -1804,7 +1804,29 @@ console.log('\n【空间平台起始包发射 ROCKET STARTER-PACK】');
   ok(RP['space-platform-starter-pack'].out['space-platform-starter-pack'] === 1 && RP['space-platform-starter-pack'].time === 60, '起始包产出 1、60s（官方）');
 }
 
+
+// ===== 太空物流电路信号补全（空间平台中枢/推进器/收集器输出电路信号，本迭代新增）=====
+console.log('\n【太空物流电路信号补全 SPACE-PLATFORM CIRCUIT SIGNALS】');
+{
+  const circSrc = fs.readFileSync(ROOT + '/js/devices/circuit.js', 'utf8');
+  const spSrc = fs.readFileSync(ROOT + '/js/devices/space-platform.js', 'utf8');
+  // 电路收集器包含轻量电路生产者（isCircuitProducer）
+  ok(/installCircuitProducerAPI/.test(circSrc), 'circuit.js 提供轻量电路生产者 API（installCircuitProducerAPI）');
+  ok(/typeof e\.isCircuitProducer/.test(circSrc), 'collectCircuitNodes 收集电路生产者节点（isCircuitProducer）');
+  // 三个空间平台设备安装电路生产者 API 并实现信号输出
+  const spClassCount = (spSrc.match(/installCircuitProducerAPI\(this\)/g) || []).length;
+  ok(spClassCount >= 3, '空间平台设备已安装电路生产者 API（' + spClassCount + ' 处）');
+  ok(spSrc.indexOf('outputCircuitSignals() {') !== -1, '中枢实现电路信号输出（outputCircuitSignals）');
+  ok(spSrc.indexOf("sig: 'thruster-fuel'") !== -1 && spSrc.indexOf("sig: 'thruster-oxidizer'") !== -1, '推进器输出燃料/氧化剂余量信号');
+  ok((spSrc.match(/outputCircuitSignals\(\) \{/g) || []).length >= 3, '三个空间平台设备均实现电路信号输出');
+  // 面板提示电路输出
+  ok(/电路输出：中枢会把平台货舱/.test(spSrc), '中枢面板提示电路信号输出');
+  ok(/电路输出：推进器把燃料/.test(spSrc), '推进器面板提示电路信号输出');
+  ok(/电路输出：小行星收集器/.test(spSrc), '收集器面板提示电路信号输出');
+}
+
 process.exit(fail === 0 ? 0 : 1);
+
 
 
 

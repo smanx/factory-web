@@ -22,6 +22,7 @@ const THRUSTER_POWER = 8000;         // 满功率发电 8MW（空间平台推进
 class Thruster extends Entity {
   constructor(type, x, y) {
     super('thruster', x, y);
+    if (typeof installCircuitProducerAPI === 'function') installCircuitProducerAPI(this);
     this.fuelBuf = 0;      // 推进器燃料缓冲
     this.oxidBuf = 0;      // 推进器氧化剂缓冲
     this.on = false;
@@ -78,6 +79,14 @@ class Thruster extends Entity {
     if (this.oxidBuf >= 1) list.push(['thruster-oxidizer', Math.floor(this.oxidBuf)]);
     return list;
   }
+  // 电路信号输出：把推进器燃料/氧化剂余量以对应流体为信号输出到网络（红/绿双通道），
+  // 供组合器/功率开关/告警音箱实现「燃料不足自动补给 / 余量告警」等自动化。
+  outputCircuitSignals() {
+    const out = [];
+    if (Math.floor(this.fuelBuf) > 0) out.push({ sig: 'thruster-fuel', count: Math.floor(this.fuelBuf) });
+    if (Math.floor(this.oxidBuf) > 0) out.push({ sig: 'thruster-oxidizer', count: Math.floor(this.oxidBuf) });
+    return out;
+  }
   serialize() {
     const s = super.serialize();
     s.fuelBuf = this.fuelBuf;
@@ -108,6 +117,7 @@ function randomAsteroidChunk() {
 class AsteroidCollector extends Entity {
   constructor(type, x, y) {
     super('asteroid-collector', x, y);
+    if (typeof installCircuitProducerAPI === 'function') installCircuitProducerAPI(this);
     this.buf = {};        // 收集到的星块
     this.timer = 0;       // 收集计时
   }
@@ -132,6 +142,13 @@ class AsteroidCollector extends Entity {
     for (const k in this.buf) list.push([k, this.buf[k]]);
     return list;
   }
+  // 电路信号输出：把已收集的每种小行星碎块存量以该星块为信号输出到网络，
+  // 供组合器实现「星块满 10 自动停/取出」等自动化。
+  outputCircuitSignals() {
+    const out = [];
+    for (const k in this.buf) if (this.buf[k] > 0) out.push({ sig: k, count: this.buf[k] });
+    return out;
+  }
   serialize() {
     const s = super.serialize();
     s.buf = this.buf || {};
@@ -150,6 +167,7 @@ class AsteroidCollector extends Entity {
 class SpacePlatformHub extends Assembler {
   constructor(type, x, y) {
     super('space-platform-hub', x, y);
+    if (typeof installCircuitProducerAPI === 'function') installCircuitProducerAPI(this);
     this.cargo = {};        // 平台货舱：物品 → 数量（轨道货运）
     this.cargoTarget = null; // 货运目标星球（dispatch 后清空）
   }
@@ -234,6 +252,16 @@ class SpacePlatformHub extends Assembler {
     return null;
   }
   cargoTotal() { return Object.values(this.cargo).reduce((a, b) => a + b, 0); }
+  // 电路信号输出（对齐《异星工厂》space-platform-hub 平台货舱电路信号）：
+  // 把平台货舱内每种物品数量以该物品为信号输出到所连网络（红/绿双通道），
+  // 同时输出组装输出缓存，供组合器/功率开关/告警音箱实现「平台货舱某物资超量告警 /
+  // 产物满自动停线 / 燃料不足自动补给」等太空平台全链路自动化。
+  outputCircuitSignals() {
+    const out = [];
+    for (const k in this.cargo) if (this.cargo[k] > 0) out.push({ sig: k, count: this.cargo[k] });
+    for (const k in this.outp) if (this.outp[k] > 0) out.push({ sig: k, count: this.outp[k] });
+    return out;
+  }
   serialize() {
     const s = super.serialize();
     s.cargo = this.cargo || {};
@@ -444,6 +472,7 @@ function hubPanelHtml(e) {
     h += '<button data-action="hub-cargo-dispatch">🚀 派发货物到目标星球</button>';
   }
   h += circuitPanelHtml(e, 'hub');
+  h += '<div class="dim">电路输出：中枢会把平台货舱与输出缓存内每种物品数量以该物品为信号输出到所连电路网络（红/绿双通道），供组合器/功率开关/告警音箱实现「货舱物资超量告警 / 产物满停线」等自动化。</div>';
   return h;
 }
 
@@ -478,6 +507,7 @@ function thrusterPanelHtml(e) {
   h += row('当前发电', (e.powerOut || 0).toFixed(0) + ' kW', 'power');
   h += row('状态', e.on ? '<span class="ok">推进中</span>' : (e.fuelBuf < 1 ? '<span class="dim">缺少推进器燃料</span>' : (e.oxidBuf < 1 ? '<span class="dim">缺少推进器氧化剂</span>' : '<span class="dim">待机</span>')));
   h += '<div class="dim">推进器：燃烧推进器燃料与推进器氧化剂产生推力/电能（4×8），满功率发电 ' + THRUSTER_POWER + ' kW。需通过管道同时输入两种推进流体，选中后按 R 旋转朝向。</div>';
+  h += '<div class="dim">电路输出：推进器把燃料/氧化剂余量以对应流体为信号输出到所连电路网络，供组合器实现「燃料不足自动补给」。</div>';
   return h;
 }
 function thrusterPanelLive(e, api) {
@@ -498,6 +528,7 @@ function collectorPanelHtml(e) {
   for (const k in e.buf) h += '<span class="dim">' + ITEMS[k].name + ' ×' + e.buf[k] + '</span> ';
   h += row('下次收集', total >= ASTEROID_COLLECT_CAP ? '已满' : Math.ceil(ASTEROID_COLLECT_TIME - e.timer) + ' 秒', 'info');
   h += '<div class="dim">小行星收集器：在轨道上持续收集小行星碎块（金属/碳质/氧化），供破碎机粉碎加工。收集满后需取出星块。</div>';
+  h += '<div class="dim">电路输出：小行星收集器把已收集的每种星块存量以该星块为信号输出到所连电路网络，供组合器实现「星块满 10 自动停/取出」。</div>';
   return h;
 }
 function collectorPanelLive(e, api) {
