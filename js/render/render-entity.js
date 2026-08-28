@@ -321,6 +321,32 @@ function drawGhost(ctx) {
     g.strokeStyle = chk.ok ? 'rgba(140,255,140,.9)' : 'rgba(255,110,110,.9)';
     g.lineWidth = 2 / G.cam.z;
     g.strokeRect(G.cursorTile.tx * TILE, G.cursorTile.ty * TILE, ew * TILE, eh * TILE);
+    // 地下管道铺设时：若与已有管道能背向配对，用绿色虚线框住这一对（含幽灵格）提示可配对
+    if (tmp instanceof PipeToGround && typeof tmp.isPaired === 'function') {
+      tmp.x = G.cursorTile.tx; tmp.y = G.cursorTile.ty;
+      const mt = tmp.findMate();
+      if (mt) {
+        g.strokeStyle = 'rgba(90,220,120,.95)';
+        g.lineWidth = 2 / G.cam.z;
+        g.setLineDash([6 / G.cam.z, 4 / G.cam.z]);
+        g.strokeRect(Math.min(tmp.x, mt.x) * TILE + 1, Math.min(tmp.y, mt.y) * TILE + 1,
+          (Math.abs(mt.x - tmp.x) + 1) * TILE - 2, (Math.abs(mt.y - tmp.y) + 1) * TILE - 2);
+        g.setLineDash([]);
+      }
+    }
+    // 地下传送带铺设时：若与已有地下带能配对（同向同档，isPaired），同样用绿色虚线框住这一对（含幽灵格）
+    if (tmp instanceof Underground && typeof tmp.isPaired === 'function') {
+      tmp.x = G.cursorTile.tx; tmp.y = G.cursorTile.ty;
+      const mt = tmp.findMate() || tmp.findBackMate();
+      if (mt) {
+        g.strokeStyle = 'rgba(90,220,120,.95)';
+        g.lineWidth = 2 / G.cam.z;
+        g.setLineDash([6 / G.cam.z, 4 / G.cam.z]);
+        g.strokeRect(Math.min(tmp.x, mt.x) * TILE + 1, Math.min(tmp.y, mt.y) * TILE + 1,
+          (Math.abs(mt.x - tmp.x) + 1) * TILE - 2, (Math.abs(mt.y - tmp.y) + 1) * TILE - 2);
+        g.setLineDash([]);
+      }
+    }
     if (worlded) g.restore();
     // 建筑幽灵上方显示数量
     drawGhostCount(g, (G.cursorTile.tx + ew / 2) * TILE, G.cursorTile.ty * TILE);
@@ -486,18 +512,37 @@ function drawHoverAndMining(ctx) {
     ctx.lineWidth = 2 / G.cam.z;
     ctx.strokeRect(e.x * TILE + 1, e.y * TILE + 1, e.w * TILE - 2, e.h * TILE - 2);
   }
-  // 地下管道已配对：鼠标移上去时，在其与配对端之间画一条虚线连接表示地下穿行段
+  // 地下管道已配对：鼠标移上去时，画一个绿色虚线矩形框，刚好框住这两座配对的管道
   if (e instanceof PipeToGround && e.isPaired()) {
     const m = e.findMate();
     if (m) {
+      const x0 = Math.min(e.x, m.x) * TILE, y0 = Math.min(e.y, m.y) * TILE;
+      const x1 = (Math.max(e.x, m.x) + 1) * TILE, y1 = (Math.max(e.y, m.y) + 1) * TILE;
       ctx.save();
-      ctx.strokeStyle = 'rgba(110,180,255,.95)';
+      ctx.strokeStyle = 'rgba(90,220,120,.95)';
       ctx.lineWidth = 2 / G.cam.z;
       ctx.setLineDash([6 / G.cam.z, 4 / G.cam.z]);
-      ctx.beginPath();
-      ctx.moveTo(e.x * TILE + TILE / 2, e.y * TILE + TILE / 2);
-      ctx.lineTo(m.x * TILE + TILE / 2, m.y * TILE + TILE / 2);
-      ctx.stroke();
+      ctx.strokeRect(x0 + 1, y0 + 1, x1 - x0 - 2, y1 - y0 - 2);
+      ctx.restore();
+    }
+  }
+  // 地下传送带已配对：鼠标移上去时，同样用绿色虚线矩形框住这一对（对齐地下管道的配对提示）。
+  // 必须按运送逻辑的同款配对判定选 mate：入口与其最近前方配对，出口与其后方配对，
+  // 而不能一律优先取前方（findMate）。否则一条线上多对（如 1-2、3-4）时，
+  // 鼠标移到某一对的出口（格2/格4）会误框到前方那一座（格3/格5之后的配对）。
+  if (e instanceof Underground && e.isPaired()) {
+    let m = null;
+    if (e.isEntrance()) m = e.findMate();        // 入口 → 最近前方同向同档
+    else if (e.isExit()) m = e.findBackMate();   // 出口 → 后方入口
+    else m = e.findMate() || e.findBackMate();   // 未配对兜底：任取一座做显示
+    if (m) {
+      const x0 = Math.min(e.x, m.x) * TILE, y0 = Math.min(e.y, m.y) * TILE;
+      const x1 = (Math.max(e.x, m.x) + 1) * TILE, y1 = (Math.max(e.y, m.y) + 1) * TILE;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(90,220,120,.95)';
+      ctx.lineWidth = 2 / G.cam.z;
+      ctx.setLineDash([6 / G.cam.z, 4 / G.cam.z]);
+      ctx.strokeRect(x0 + 1, y0 + 1, x1 - x0 - 2, y1 - y0 - 2);
       ctx.restore();
     }
   }

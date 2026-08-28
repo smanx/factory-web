@@ -152,13 +152,19 @@ function drawPipe(ctx, e, gx, gy, dir, alpha) {
   ctx.lineWidth = 8;
   for (const [dx, dy] of PIPE_DIRS) {
     const nb = entAt(gx + dx, gy + dy);
-    if (nb instanceof Pipe || nb instanceof Refinery || nb instanceof Pumpjack ||
+    if (nb instanceof PipeToGround) {
+      // 地下管道只有“口”朝向这一侧（其朝向方向）才伸出连接，其余三向不显连接段
+      const ok = DX[nb.dir] === dx && DY[nb.dir] === dy;
+      if (!ok) continue;
+    }
+    const connect = nb instanceof Pipe || nb instanceof Refinery || nb instanceof Pumpjack ||
         nb instanceof ElectricDrill ||
         nb instanceof Boiler || nb instanceof Pump || nb instanceof SteamEngine ||
         nb instanceof ChemicalPlant || nb instanceof Assembler || nb instanceof HeatExchanger ||
         (nb instanceof StorageTank && (!nb.isPortCell || nb.isPortCell(gx, gy))) ||
         nb instanceof PipeToGround || nb instanceof FluidPump ||
-        (nb && (nb.type === 'one-way-valve' || nb.type === 'overflow-valve' || nb.type === 'top-up-valve'))) {
+        (nb && (nb.type === 'one-way-valve' || nb.type === 'overflow-valve' || nb.type === 'top-up-valve'));
+    if (connect) {
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.lineTo(cx + dx * TILE / 2, cy + dy * TILE / 2);

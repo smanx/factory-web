@@ -132,62 +132,8 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
 }
 
 function drawExpressUnderground(ctx, e, gx, gy, dir, alpha) {
-  const px = gx * TILE, py = gy * TILE;
-  const cx = px + TILE / 2, cy = py + TILE / 2;
-  const st = e.isEntrance() ? 'in' : (e.isExit() ? 'out' : 'idle');
-  const bodyCol = st === 'in' ? '#2e3a52' : st === 'out' ? '#26344a' : '#2c3544';
-  const accCol = st === 'in' ? '#5a9ae0' : st === 'out' ? '#6aa5e8' : '#4a6a92';
-  ctx.globalAlpha = alpha;
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(dir * Math.PI / 2);
-  ctx.fillStyle = bodyCol;
-  rr(ctx, -14, -11, 28, 22, 5);
-  ctx.fill();
-  if (st === 'idle') ctx.setLineDash([4, 3]);
-  ctx.strokeStyle = accCol;
-  ctx.lineWidth = 2;
-  rr(ctx, -14, -11, 28, 22, 5);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.strokeStyle = accCol;
-  ctx.lineWidth = 3;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(-9, 0);
-  ctx.lineTo(2, 0);
-  ctx.stroke();
-  ctx.fillStyle = accCol;
-  tri(ctx, 0, -5, 0, 5, 9, 0);
-  ctx.fill();
-  if (st !== 'idle') {
-    ctx.fillStyle = accCol;
-    for (let k = 0; k < 3; k++) {
-      const t = ((G.time * 0.9) + k / 3) % 1;
-      let dx2, a;
-      if (st === 'in') { dx2 = -11 + t * 10; a = t < 0.7 ? 0.95 : Math.max(0, (1 - t) * 3.3); }
-      else { dx2 = -1 + t * 10; a = t < 0.3 ? t * 3.3 : 0.95; }
-      ctx.globalAlpha = alpha * a;
-      ctx.beginPath();
-      ctx.arc(dx2, 0, 2.4, 0, 7);
-      ctx.fill();
-    }
-    ctx.globalAlpha = alpha;
-  }
-  const n = Math.min(e.items.length + e.outItems.length, 6);
-  ctx.fillStyle = 'rgba(255,255,255,.7)';
-  for (let i = 0; i < n; i++) ctx.fillRect(-9 + i * 3.4, 8, 2.4, 2.4);
-  ctx.restore();
-  const badge = st === 'in' ? '入' : st === 'out' ? '出' : '—';
-  const bcol = st === 'in' ? '#3f78c8' : st === 'out' ? '#3568b0' : '#4a5a78';
-  ctx.fillStyle = bcol;
-  rr(ctx, px + 2, py + 2, 15, 13, 3);
-  ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 9px system-ui';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(badge, px + 9.5, py + 9);
-  ctx.globalAlpha = 1;
+  // 极速地下带与普通/快速地下带共用同一套「井口钻地」绘制（underground.js），仅换极速蓝色系配色。
+  drawUnderground(ctx, e, gx, gy, dir, alpha);
 }
 
 // ===== 分流器渲染（统一调用 drawSplitterBase，仅换配色）=====
@@ -330,62 +276,8 @@ function drawTurboBelt(ctx, e, gx, gy, dir, alpha) {
 }
 
 function drawTurboUnderground(ctx, e, gx, gy, dir, alpha) {
-  const px = gx * TILE, py = gy * TILE;
-  const cx = px + TILE / 2, cy = py + TILE / 2;
-  const st = e.isEntrance() ? 'in' : (e.isExit() ? 'out' : 'idle');
-  const bodyCol = st === 'in' ? '#2f4a33' : st === 'out' ? '#263c2a' : '#2c3a2e';
-  const accCol = st === 'in' ? '#5ab878' : st === 'out' ? '#6ac888' : '#4a8a5a';
-  ctx.globalAlpha = alpha;
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(dir * Math.PI / 2);
-  ctx.fillStyle = bodyCol;
-  rr(ctx, -14, -11, 28, 22, 5);
-  ctx.fill();
-  if (st === 'idle') ctx.setLineDash([4, 3]);
-  ctx.strokeStyle = accCol;
-  ctx.lineWidth = 2;
-  rr(ctx, -14, -11, 28, 22, 5);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.strokeStyle = accCol;
-  ctx.lineWidth = 3;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(-9, 0);
-  ctx.lineTo(2, 0);
-  ctx.stroke();
-  ctx.fillStyle = accCol;
-  tri(ctx, 0, -5, 0, 5, 9, 0);
-  ctx.fill();
-  if (st !== 'idle') {
-    ctx.fillStyle = accCol;
-    for (let k = 0; k < 3; k++) {
-      const t = ((G.time * 0.9) + k / 3) % 1;
-      let dx2, a;
-      if (st === 'in') { dx2 = -11 + t * 10; a = t < 0.7 ? 0.95 : Math.max(0, (1 - t) * 3.3); }
-      else { dx2 = -1 + t * 10; a = t < 0.3 ? t * 3.3 : 0.95; }
-      ctx.globalAlpha = alpha * a;
-      ctx.beginPath();
-      ctx.arc(dx2, 0, 2.4, 0, 7);
-      ctx.fill();
-    }
-    ctx.globalAlpha = alpha;
-  }
-  const n = Math.min(e.items.length + e.outItems.length, 6);
-  ctx.fillStyle = 'rgba(255,255,255,.7)';
-  for (let i = 0; i < n; i++) ctx.fillRect(-9 + i * 3.4, 8, 2.4, 2.4);
-  ctx.restore();
-  const badge = st === 'in' ? '入' : st === 'out' ? '出' : '—';
-  const bcol = st === 'in' ? '#3f8a58' : st === 'out' ? '#35784c' : '#4a6a54';
-  ctx.fillStyle = bcol;
-  rr(ctx, px + 2, py + 2, 15, 13, 3);
-  ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 9px system-ui';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(badge, px + 9.5, py + 9);
-  ctx.globalAlpha = 1;
+  // 涡轮地下带与普通/快速/极速地下带共用同一套「井口钻地」绘制（underground.js），仅换涡轮绿色系配色。
+  drawUnderground(ctx, e, gx, gy, dir, alpha);
 }
 
 function drawTurboSplitter(ctx, e, gx, gy, dir, alpha) {

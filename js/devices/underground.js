@@ -103,9 +103,19 @@ class Underground extends Entity {
       const t = entAt(nx, ny);
       if (t instanceof Belt) {
         if (!(t instanceof Splitter) && t.dir === ((this.dir + 2) % 4)) sent = false;
-        // 把隧道内物品的 lane 作为 laneHint 传给下游传送带，保证左线进从右线（同一 lane）
-        // 出来，右线进的也从同一 lane 出来，不会在两条车道间混合/轮流装载（与地上传送带一致）。
-        else sent = t.acceptItem(this.outItems[idx].item, this.dir, undefined, undefined, lane);
+        else if (t.dir === this.dir || t instanceof Splitter) {
+          // 直通/分流器：把隧道内物品的 lane 作为 laneHint 传给下游传送带，
+          // 保证左线进从左线出、右线进从右线出（左进左出/右进右出，与地上直通一致）。
+          sent = t.acceptItem(this.outItems[idx].item, this.dir, undefined, undefined, lane);
+        } else {
+          // 出口接到垂直传送带上 → T 型交叉口（对齐地上传送带的 T 型交叉/转角逻辑）：
+          // 1) 可直接转弯（下游带是纯 90° 转角：仅此一个侧面输入、背面无同向直行带）→
+          //    双车道物品都能直接转弯流过去：地下两条车道各映射到下游带对应车道（lane 保留）。
+          // 2) 不能直接转弯（下游带背面有同向直行带，属一般侧面搭接）→
+          //    只能流向最靠近地下带的近侧车道（不带 laneHint，交由下游按 sideOfLane 判定）。
+          const isCorner = typeof beltCornerDir === 'function' && beltCornerDir(t) !== null;
+          sent = t.acceptItem(this.outItems[idx].item, this.dir, undefined, undefined, isCorner ? lane : undefined);
+        }
       } else if (t && !(t instanceof Underground)) {
         sent = t.giveItem(this.outItems[idx].item);
       }
@@ -203,18 +213,24 @@ class FastUnderground extends Underground {
 }
 
 // ===== 渲染 =====
-// 地下传送带各档配色（基础=黄，高速=红，极速=蓝；对齐传送带/分流器配色）
+// 地下传送带各档配色（基础=黄，高速=红，极速=蓝，涡轮=绿；对齐传送带/分流器配色）
 function undergroundColors(e) {
-  const fast = e.type === 'fast-underground-belt';
-  const express = e.type === 'express-underground-belt';
-  if (express) {
+  const type = e.type;
+  if (type === 'express-underground-belt') {
     return {
       in:  { body: '#2e3a52', acc: '#5a9ae0', badge: '#3f78c8' },
       out: { body: '#26344a', acc: '#6aa5e8', badge: '#3568b0' },
       idle:{ body: '#2c3544', acc: '#4a6a92', badge: '#4a5a78' },
     };
   }
-  if (fast) {
+  if (type === 'turbo-underground-belt') {
+    return {
+      in:  { body: '#2f4a33', acc: '#5ab878', badge: '#3a7a4a' },
+      out: { body: '#263c2a', acc: '#6ac888', badge: '#2f6a3c' },
+      idle:{ body: '#2c3a2e', acc: '#4a8a5a', badge: '#3f6a4a' },
+    };
+  }
+  if (type === 'fast-underground-belt') {
     return {
       in:  { body: '#5a2a28', acc: '#e05a4e', badge: '#c04a3a' },
       out: { body: '#4a302a', acc: '#e07060', badge: '#a84030' },
@@ -228,74 +244,158 @@ function undergroundColors(e) {
   };
 }
 
+// 把十六进制颜色按 amt（可正可负）调亮/调暗，返回可用的颜色串。用于井下层次、带面明暗。
+function ugShade(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.max(0, Math.min(255, ((n >> 16) & 255) + amt));
+  const g = Math.max(0, Math.min(255, ((n >> 8) & 255) + amt));
+  const b = Math.max(0, Math.min(255, (n & 255) + amt));
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
+}
+
+// 绘制地下传送带：不再是“一个带箭头的盒子”，而是描绘一条真的钻入/钻出地下的传送带——
+// 金属护框包裹的开挖口 + 露出地面的带面 + 一端的井下井口(深坑)。
+// 布局（旋转后局部坐标：+X 为行进方向）：
+//   入口(in)：井口在前端(+X)，带面从后方延伸、货物随箭头钻入井口；
+//   出口(out)：井口在后端(-X)，货物从井口冒出、沿带面向 +X 输送；
+//   未配对(idle)：孤井，两头都看不到传送面，用虚线框提示未接通。
 function drawUnderground(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const cx = px + TILE / 2, cy = py + TILE / 2;
   const st = e.isEntrance() ? 'in' : (e.isExit() ? 'out' : 'idle');
   const uc = undergroundColors(e);
-  const bodyCol = uc[st].body;
-  const accCol = uc[st].acc;
+  const body = uc[st].body, acc = uc[st].acc;
+  const light = ugShade(body, 30), dark = ugShade(body, -28);
+  const pitDark = 'rgba(8,10,12,.96)';   // 井下深处
+  const busy = st !== 'idle';
 
   ctx.globalAlpha = alpha;
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(dir * Math.PI / 2);
 
-  ctx.fillStyle = bodyCol;
-  rr(ctx, -14, -11, 28, 22, 5);
+  // ---- 1) 开挖口地面暗影（略超出格边，暗示向下挖开的土坑）----
+  ctx.fillStyle = 'rgba(15,17,21,.55)';
+  rr(ctx, -16, -13, 32, 26, 5);
   ctx.fill();
-  if (st === 'idle') ctx.setLineDash([4, 3]);
-  ctx.strokeStyle = accCol;
-  ctx.lineWidth = 2;
-  rr(ctx, -14, -11, 28, 22, 5);
+  // ---- 2) 金属护框（底板）----
+  ctx.fillStyle = body;
+  rr(ctx, -15, -12, 30, 24, 5);
+  ctx.fill();
+  ctx.strokeStyle = light;
+  ctx.lineWidth = 1.4;
+  rr(ctx, -15, -12, 30, 24, 5);
   ctx.stroke();
-  ctx.setLineDash([]);
-
-  ctx.strokeStyle = accCol;
-  ctx.lineWidth = 3;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(-9, 0);
-  ctx.lineTo(2, 0);
-  ctx.stroke();
-  ctx.fillStyle = accCol;
-  tri(ctx, 0, -5, 0, 5, 9, 0);
+  // ---- 3) 中间传送带凹槽 ----
+  ctx.fillStyle = dark;
+  rr(ctx, -14, -10, 28, 20, 3);
   ctx.fill();
 
-  if (st !== 'idle') {
-    ctx.fillStyle = accCol;
-    for (let k = 0; k < 3; k++) {
-      const t = ((G.time * 0.9) + k / 3) % 1;
-      let dx2, a;
-      if (st === 'in') { dx2 = -11 + t * 10; a = t < 0.7 ? 0.95 : Math.max(0, (1 - t) * 3.3); }
-      else { dx2 = -1 + t * 10; a = t < 0.3 ? t * 3.3 : 0.95; }
-      ctx.globalAlpha = alpha * a;
-      ctx.beginPath();
-      ctx.arc(dx2, 0, 2.4, 0, 7);
-      ctx.fill();
-    }
-    ctx.globalAlpha = alpha;
+  // 井口(深坑) x 范围。入口=前坑(+X)，出口=后坑(-X)，未配对=后坑但用虚线示孤井。
+  let m0 = -15, m1 = -4;
+  if (st === 'in') { m0 = 4; m1 = 15; }
+
+  // ---- 4) 传送带表面（从无井口一侧延伸至井口边缘，未配对不画带面）----
+  let bx0, bx1;
+  if (st === 'in')      { bx0 = -12; bx1 = m0; }
+  else if (st === 'out'){ bx0 = m1;  bx1 = 12; }
+  else                  { bx0 = -12; bx1 = 12; }
+  if (busy) {
+    ctx.fillStyle = light;
+    ctx.fillRect(bx0, -8, bx1 - bx0, 16);
+    // 上下边缘轨道
+    ctx.strokeStyle = acc;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(bx0, -8); ctx.lineTo(bx1, -8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(bx0, 8);  ctx.lineTo(bx1, 8);  ctx.stroke();
+    // 中央分割线（双列车道）
+    ctx.strokeStyle = ugShade(body, -8);
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(bx0, 0); ctx.lineTo(bx1, 0); ctx.stroke();
+    // 车道动效与物品见下方第 6 步（只为“确有物品的车道”绘制，保持与地上带一条/两条一致）
   }
 
-  // 双列显示：lane0 / lane1 缓存物品分上下两排小方块（各排最多 4 件），直观体现两条独立车道。
-  const cntL0 = Math.min(e.items.filter(o => o.lane === 0).length, 4);
-  const cntL1 = Math.min(e.items.filter(o => o.lane === 1).length, 4);
-  ctx.fillStyle = 'rgba(255,255,255,.7)';
-  for (let i = 0; i < cntL0; i++) ctx.fillRect(-8 + i * 3.4, 7, 2.4, 2.4);
-  for (let i = 0; i < cntL1; i++) ctx.fillRect(-8 + i * 3.4, 11, 2.4, 2.4);
+  // ---- 5) 井口（深坑）：传送带入/出地下的洞口 ----
+  // 井口护边
+  ctx.fillStyle = light;
+  rr(ctx, m0, -10, m1 - m0, 20, 2);
+  ctx.fill();
+  // 井下内部（暗洞）
+  ctx.fillStyle = pitDark;
+  rr(ctx, m0 + 1.5, -8.5, (m1 - m0) - 3, 17, 1.5);
+  ctx.fill();
+  // 深度层次：入口方向越深入越暗，出口方向越浅越亮（体现“下钻/上冒”）
+  if (busy) {
+    const grad = ctx.createLinearGradient(m0, 0, m1, 0);
+    if (st === 'in') { grad.addColorStop(0, 'rgba(0,0,0,0)');   grad.addColorStop(1, 'rgba(0,0,0,.9)'); }
+    else             { grad.addColorStop(0, 'rgba(0,0,0,.9)'); grad.addColorStop(1, 'rgba(0,0,0,0)'); }
+    ctx.fillStyle = grad;
+    rr(ctx, m0, -10, m1 - m0, 20, 2);
+    ctx.fill();
+  }
+  // 井口格栅齿（2~3 根竖齿，强化台阶/下沉感；入口加深、出口提亮以示意方向）
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = ugShade(acc, st === 'in' ? -12 : 14);
+  for (let t = 0; t < 3; t++) {
+    const fx = m0 + 2.6 + t * ((m1 - m0) - 5.2) / 2;
+    ctx.beginPath(); ctx.moveTo(fx, -9); ctx.lineTo(fx, 9); ctx.stroke();
+  }
+
+  // 未配对：整格虚线框提醒“孤井未接通”（不传送）
+  if (st === 'idle') {
+    ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = uc[st].acc;
+    ctx.lineWidth = 1.6;
+    rr(ctx, -15, -11, 30, 22, 5);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // ---- 6) 双列物品流：与正常传送带一致，lane0/lane1（上下两排 / 竖向则左右两列）各自流动 ----
+  // 只要地下带在工作(busy)，就始终显示上/下两条车道流（横向两行、竖向两列）。
+  // 每条车道优先用真实缓存物品；若该车道恰好为空但整块带确有物品在输运，则借整批物品兜底，
+  // 保证两条车道都能清楚看到物品在走（不会出现“只有一线有物品”）。
+  if (busy) {
+    const spd = beltSpeed() * (e.speedMult ? e.speedMult() : 1) * TILE;
+    const itemFn = (LOD && LOD.simple) ? drawItemDotLOD : drawItemDot;
+    const span = Math.max(8, bx1 - bx0);                 // 可见带段长度(px)
+    const pool = e.items.concat(e.outItems);             // 本格缓冲的所有物品
+    const total = pool.length;
+    for (const li of [1, 0]) {
+      const y = (li === 1 ? -5 : 5);                     // lane1 上(左)排 / lane0 下(右)排
+      // 该车道推进箭头（始终画，指示该车道流向）
+      ctx.fillStyle = acc;
+      const step = 11;
+      const off = ((G.time * spd) % step + step) % step;
+      for (let k = -2; k <= 3; k++) {
+        const ax = bx0 + k * step + off;
+        if (ax < bx0 + 2 || ax > bx1 - 2) continue;
+        tri(ctx, ax - 3, y - 2.6, ax - 3, y + 2.6, ax + 3, y);
+        ctx.fill();
+      }
+      // 本车道物品：优先真实物品；车道暂无但整块带在输运时借整批兜底，保证双线有物品
+      let laneItems = pool.filter(o => o.lane === li).map(o => o.item);
+      if (!laneItems.length && total) laneItems = pool.map(o => o.item);
+      if (!laneItems.length) continue;                   // 完全无物品：保持静默（带闲置）
+      const n = Math.min(laneItems.length, 3);
+      const spacing = span / n;
+      const ph = ((G.time * spd) / spacing) % 1;
+      for (let i = 0; i < n; i++) {
+        const t = (i / n + ph) % 1;
+        const x = bx0 + span * t;
+        let a = alpha;
+        const p = (x - bx0) / span;
+        if (st === 'in')  a = alpha * (p < 0.85 ? 1 : Math.max(0.12, 1 - (p - 0.85) / 0.15)); // 落洞渐隐
+        else              a = alpha * (p < 0.15 ? p / 0.15 : 1);                            // 出洞渐显
+        ctx.globalAlpha = a;
+        itemFn(ctx, x, y, laneItems[(i + li) % laneItems.length]);
+      }
+      ctx.globalAlpha = alpha;
+    }
+  }
 
   ctx.restore();
 
-  const badge = st === 'in' ? '入' : st === 'out' ? '出' : '—';
-  const bcol = uc[st].badge;
-  ctx.fillStyle = bcol;
-  rr(ctx, px + 2, py + 2, 15, 13, 3);
-  ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 9px system-ui';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(badge, px + 9.5, py + 9);
   ctx.globalAlpha = 1;
 }
 

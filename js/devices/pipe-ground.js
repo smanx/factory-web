@@ -31,10 +31,10 @@ class PipeToGround extends Entity {
   }
   total() { let s = 0; for (const k in this.fluid) s += this.fluid[k]; return s; }
   maxDist() { return PIPE_GROUND_MAX; }
-  findMate() {
-    // 沿自身朝向扫描：只与“背向”（朝向相反）的管道配对，同向的跳过继续找最近的背向管道
+  // 沿自身朝向的 sign 方向（+1 前方 / -1 背侧）扫描最近的背向管道；同向的跳过继续，固体阻挡返回 null。
+  _findAlong(sign) {
     for (let k = 1; k <= this.maxDist(); k++) {
-      const nx = this.x + DX[this.dir] * k, ny = this.y + DY[this.dir] * k;
+      const nx = this.x + DX[this.dir] * sign * k, ny = this.y + DY[this.dir] * sign * k;
       const t = entAt(nx, ny);
       if (!t) continue;
       if (t instanceof PipeToGround) {
@@ -47,7 +47,18 @@ class PipeToGround extends Entity {
     }
     return null;
   }
-  // 是否已配对：（背向）连线的另一端有配对的地下管道
+  findMate() {
+    // 口对口或背对背、同轴反向的两座都能配对：前方与背侧各找一个最近的背向管道，取更近者。
+    const front = this._findAlong(1);
+    const back = this._findAlong(-1);
+    if (front && back) {
+      const df = Math.abs(front.x - this.x) + Math.abs(front.y - this.y);
+      const db = Math.abs(back.x - this.x) + Math.abs(back.y - this.y);
+      return (df <= db) ? front : back;
+    }
+    return front || back;
+  }
+  // 是否已配对：同轴反向（朝向相反）的另一端有配对的地下管道
   isPaired() { return !!this.findMate(); }
   // 两条地下管道只有“背向”（朝向相反，同在一条直线上）才配对。
   // 管道口背靠背相对，地下运行段在两座之间相接；同向的面向同一方、不会在地下相接，因此不配对。
@@ -111,42 +122,36 @@ function drawPipeGround(ctx, e, gx, gy, dir, alpha) {
   const paired = !!e.isPaired();
   const dx = DX[dir], dy = DY[dir];
   ctx.globalAlpha = alpha;
-  // 地表土坑衬底：一小片翻开的地表
+  // 底层：圆形土坑（区别于普通管道的圆形节点，用泥土色 + 更大半径 + 内缘凹陷）
   ctx.fillStyle = paired ? '#5b543f' : '#4c4c46';
-  rr(ctx, cx - 11, cy - 9, 22, 18, 4); ctx.fill();
-  // 土坑内缘（凹陷感）
+  ctx.beginPath(); ctx.arc(cx, cy, 10.5, 0, 7); ctx.fill();
   ctx.strokeStyle = paired ? '#39342a' : '#3a3a3a';
   ctx.lineWidth = 1.5;
-  rr(ctx, cx - 11, cy - 9, 22, 18, 4); ctx.stroke();
-  // 管道：沿轴向从后端延伸至中心，再向下弯折扎入地下（不区分进出，无箭头）
-  const pipeCol = paired ? '#8f8572' : '#6f6f6a';
-  ctx.strokeStyle = pipeCol;
-  ctx.lineWidth = 6.5;
+  ctx.beginPath(); ctx.arc(cx, cy, 10.5, 0, 7); ctx.stroke();
+  // 指向方向（背侧）的管道：粗细/颜色与普通管道一致，指到瓦片边缘，与相邻普通管道无缝衔接
+  ctx.strokeStyle = '#7d7264';
+  ctx.lineWidth = 8;
   ctx.lineCap = 'round';
-  if (!paired) ctx.setLineDash([4, 3]);
+  if (!paired) ctx.setLineDash([5, 4]);
   ctx.beginPath();
-  ctx.moveTo(cx - dx * 12, cy - dy * 12);
-  ctx.lineTo(cx - dx * 2, cy - dy * 2);
-  ctx.lineTo(cx, cy);
-  ctx.lineTo(cx, cy + 8); // 扎入地下
+  ctx.moveTo(cx - dx * 3, cy - dy * 3);
+  ctx.lineTo(cx - dx * (TILE / 2 - 1), cy - dy * (TILE / 2 - 1));
   ctx.stroke();
   ctx.setLineDash([]);
-  // 管道暗边
-  ctx.strokeStyle = paired ? '#4c463a' : '#5a5a5a';
+  // 管口亮环（呼应普通管道管口）：位于指向端（背侧）
+  ctx.fillStyle = '#8d8272';
+  ctx.beginPath(); ctx.arc(cx - dx * 5, cy - dy * 5, 4.5, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#55503f';
   ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(cx - dx * 12, cy - dy * 12);
-  ctx.lineTo(cx, cy);
-  ctx.lineTo(cx, cy + 8);
-  ctx.stroke();
-  // 流体圆点：位于弯折扎入点
+  ctx.beginPath(); ctx.arc(cx - dx * 5, cy - dy * 5, 4.5, 0, 7); ctx.stroke();
+  // 流体圆点：位于指向端管口（背侧）
   const total = e.total ? e.total() : 0;
   if (total > 0) {
     const first = Object.keys(e.fluid).find(k => e.fluid[k] > 0);
     if (first && ITEMS[first]) {
       ctx.fillStyle = ITEMS[first].color;
       ctx.beginPath();
-      ctx.arc(cx - dx * 2, cy - dy * 2, 3.5, 0, 7);
+      ctx.arc(cx - dx * 5, cy - dy * 5, 3, 0, 7);
       ctx.fill();
     }
   }
