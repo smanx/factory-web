@@ -1758,6 +1758,28 @@ ok(THR.effectivity === 0.51, '官方推进器能量效率 effectivity=0.51');
   ok(/THRUSTER_OXID_RATE = THRUSTER_FUEL_RATE/.test(spSrc), '推进器氧化剂消耗速率与燃料同速（官方同速）');
 }
 
+
+// ===== 空间平台起始包发射（火箭发射起始包→空间平台，本迭代新增）=====
+console.log('\n【空间平台起始包发射 ROCKET STARTER-PACK】');
+{
+  const rkSrc = fs.readFileSync(ROOT + '/js/devices/rocket.js', 'utf8');
+  // 起始包可作为火箭发射有效载荷（替代卫星），且货舱可装填
+  ok(/space-platform-starter-pack/.test(rkSrc), 'rocket.js 已接入空间平台起始包发射');
+  ok(/hasAllParts/.test(rkSrc) && /cargo/.test(rkSrc), 'hasAllParts 允许「卫星 或 空间平台起始包」发射');
+  ok(/new cls/.test(rkSrc) && /space-platform-hub/.test(rkSrc), '发射起始包后生成空间平台中枢（space-platform-hub）');
+  ok(/装入「空间平台起始包」/.test(rkSrc), '面板提供「装填空间平台起始包」入口');
+  // 起始包物品与配方均已注册（空间平台中枢专属）
+  ok(!!RP['space-platform-starter-pack'], '空间平台起始包配方已注册');
+  ok(ctx.__recipeDevice('space-platform-starter-pack') === 'space-platform-hub', '起始包配方 → 空间平台中枢');
+  ok(!!IT['space-platform-starter-pack'], '空间平台起始包物品存在');
+  ok(!!IT['space-platform-hub'], '空间平台中枢物品存在');
+  // 起始包官方配方：60 地基 + 20 钢板 + 20 处理器 → 1（60s）
+  ok(RP['space-platform-starter-pack'].inp['space-platform-foundation'] === 60 &&
+     RP['space-platform-starter-pack'].inp['steel-plate'] === 20 &&
+     RP['space-platform-starter-pack'].inp['processing-unit'] === 20, '起始包配方=60地基+20钢板+20处理器（官方）');
+  ok(RP['space-platform-starter-pack'].out['space-platform-starter-pack'] === 1 && RP['space-platform-starter-pack'].time === 60, '起始包产出 1、60s（官方）');
+}
+
 process.exit(fail === 0 ? 0 : 1);
 
 

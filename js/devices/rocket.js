@@ -165,7 +165,7 @@ class RocketSilo extends CircuitNode {
   hasRocket() { return this.parts >= ROCKET_PARTS; }
   partsLeft() { return Math.max(0, ROCKET_PARTS - this.parts); }
   // 发射就绪：有完整火箭本体且已有卫星
-  hasAllParts() { return this.hasRocket() && (this.inp['satellite'] || 0) >= 1; }
+  hasAllParts() { return this.hasRocket() && ((this.inp['satellite'] || 0) >= 1 || (this.cargo['space-platform-starter-pack'] || 0) >= 1); }
   // 组装火箭部件：消耗部件原料，产出 1 个火箭部件（带模块速度/产能）
   tryAssemble() {
     if (this.hasRocket()) { if (typeof toast === 'function') toast('火箭部件已集齐，放入卫星即可发射！'); return false; }
@@ -198,12 +198,14 @@ class RocketSilo extends CircuitNode {
     if (this.launching) return false;
     if (G.power.sat <= 0) { if (typeof toast === 'function') toast('发射需要电力！'); return false; }
     if (!this.hasAllParts()) {
-      if (typeof toast === 'function') toast('尚未就绪：需要完整火箭本体与卫星');
+      if (typeof toast === 'function') toast('尚未就绪：需要完整火箭本体与卫星（或空间平台起始包）');
       return false;
     }
-    // 消耗卫星开始发射（火箭本体随发射离场）
+    // 消耗卫星（或空间平台起始包）开始发射（火箭本体随发射离场）
     this.parts = 0;
-    this.inp['satellite']--; if (this.inp['satellite'] <= 0) delete this.inp['satellite'];
+    this.launchedSatellite = (this.inp['satellite'] || 0) > 0;
+    if (this.launchedSatellite) { this.inp['satellite']--; if (this.inp['satellite'] <= 0) delete this.inp['satellite']; }
+    if (!this.launchedSatellite) { this.cargo["space-platform-starter-pack"] = 0; delete this.cargo["space-platform-starter-pack"]; }
     this.launching = true;
     this.launchT = 0;
     if (typeof toast === 'function') toast('🚀 火箭发射倒计时 10 秒…');
@@ -225,14 +227,14 @@ class RocketSilo extends CircuitNode {
   serialize() {
     const s = super.serialize();
     s.inp = this.inp; s.parts = this.parts; s.modules = this.modules; s.prodBuf = this.prodBuf; s.prodTechBuf = this.prodTechBuf || 0;
-    s.launching = this.launching; s.launchT = this.launchT; s.launched = this.launched; s.launchCount = this.launchCount || 0;
+    s.launching = this.launching; s.launchT = this.launchT; s.launched = this.launched; s.launchCount = this.launchCount || 0; s.launchedSatellite = !!this.launchedSatellite;
     s.cargo = this.cargo; s.cargoTarget = this.cargoTarget || null;
     return s;
   }
   static restore(s) {
     const t = super.restore(s);
     t.inp = s.inp || {}; t.parts = s.parts || 0; t.modules = s.modules || {}; t.prodBuf = s.prodBuf || 0; t.prodTechBuf = s.prodTechBuf || 0; t.cargo = s.cargo || {}; t.cargoTarget = s.cargoTarget || null;
-    t.launching = !!s.launching; t.launchT = s.launchT || 0; t.launched = !!s.launched; t.launchCount = s.launchCount || (s.launched ? 1 : 0);
+    t.launching = !!s.launching; t.launchT = s.launchT || 0; t.launched = !!s.launched; t.launchCount = s.launchCount || (s.launched ? 1 : 0); t.launchedSatellite = s.launchedSatellite !== undefined ? !!s.launchedSatellite : true;
     // 旧档迁移：旧版火箭井直接存 inp.rocket-body（已组装出火箭本体），换算为已集齐火箭部件
     if (t.parts <= 0 && (t.inp['rocket-body'] || 0) > 0) { t.parts = ROCKET_PARTS; delete t.inp['rocket-body']; }
     return t;
@@ -350,6 +352,10 @@ function siloPanelHtml(e) {
     const haveSat = e.inp['satellite'] || 0;
     h += row(ITEMS['satellite'].name, (haveSat > 0 ? '✓ ' : '') + haveSat + '/1', 'satellite');
     h += '<button data-action="feed" data-id="satellite" ' + (haveSat > 0 ? 'disabled' : '') + '>放入卫星</button>';
+    // 空间平台起始包（官方：火箭发射起始包→空间平台骨架）：放入后发射可生成空间平台中枢
+    const haveSP = (e.cargo['space-platform-starter-pack'] || 0) > 0;
+    h += '<div class="dim" style="margin-top:3px">🌌 空间平台发射（替代卫星）：装入「空间平台起始包」后发射，可在该星球生成一个空间平台中枢（配合平台地基铺设太空平台，官方 Space Age）。</div>';
+    h += '<button data-action="cargo-feed" data-id="space-platform-starter-pack" data-itemid="space-platform-starter-pack" ' + (haveSP ? 'disabled' : '') + '>装填空间平台起始包</button>';
     // 火箭货舱（太空货运）：把任意物品装入火箭，随发射降落到物流接驳站
     h += '<div class="sec">🚀 火箭货舱（太空货运）</div>';
     const cargoKeys = Object.keys(e.cargo || {});
@@ -443,7 +449,7 @@ function siloPanelLive(e, api) {
   else if (G.power.sat <= 0) api.status('已暂停：缺电', 'warn');
   else if (!e.hasRocket() && !e.hasAssembleParts()) api.status('待组装：缺少 ' + assemblePartsNeededStr(e), 'warn');
   else if (!e.hasRocket()) api.status('部件原料齐备，点击「🛠️ 组装 1 个火箭部件」！', 'ok');
-  else if (!(e.inp['satellite'] || 0)) api.status('火箭已就绪，放入卫星后点击「🚀 发射火箭」！', 'ok');
+  else if (!(e.inp['satellite'] || 0) && !(e.cargo['space-platform-starter-pack'] || 0)) api.status('火箭已就绪：放入卫星（得空间科研包）或装入空间平台起始包（建平台）后发射！', 'ok');
   else api.status('全部就绪，点击「🚀 发射火箭」！', 'ok');
 }
 function siloTip(e) {
@@ -466,18 +472,62 @@ function onRocketLaunch(silo) {
     if (typeof playSfx === 'function') playSfx('rocket');
   }
   // 每次卫星发射获得空间科学包（对齐《异星工厂》：Space science pack 由火箭发射产出，用于终局无限科研）
-  const spaceGain = 100;
   // 火箭产物降落：若有物流接驳站（cargo-landing-pad），空间科学包降落到接驳站存储（对齐官方：火箭发射后产物降落于接驳站）
   const pad = findCargoLandingPad();
-  if (pad) {
-    for (let i = 0; i < spaceGain; i++) pad.giveItem('space-science-pack');
-    pad.cargoIn = (pad.cargoIn || 0) + spaceGain;
-    if (typeof trackProd === 'function') trackProd('space-science-pack', spaceGain);
-    if (typeof toast === 'function') toast('🛰️ 卫星发射成功，+' + spaceGain + ' 空间科学包已降落至物流接驳站！');
-  } else {
-    invAdd('space-science-pack', spaceGain);
-    if (typeof trackProd === 'function') trackProd('space-science-pack', spaceGain);
-    if (typeof toast === 'function') toast('🛰️ 卫星发射成功，获得 +' + spaceGain + ' 空间科学包！');
+  // ===== 空间平台起始包发射：建造空间平台（对齐《异星工厂》Space Age：火箭发射起始包→空间平台骨架）=====
+  // 若火箭货舱装有 space-platform-starter-pack，则发射后在该星球生成一个空间平台中枢（space-platform-hub），
+  // 配合平台地基在太空铺设空间平台（起始包→中枢→地基→空间科研包）。
+  // 起始包发射判定：基于 tryLaunch 记录的 launchedSatellite 标志（起始包已在发射时从货舱消耗）。
+  const launchStarter = !!(silo && silo.launchedSatellite === false);
+  // 起始包发射（建太空平台）不产出空间科研包，仅卫星发射产出。
+  const withSatellite = !launchStarter;
+  const spaceGain = withSatellite ? 100 : 0;
+  if (launchStarter) {
+    const spawnHub = (function () {
+      const cls = ENT_CLASSES['space-platform-hub'];
+      if (typeof cls !== 'function') return null;
+      // 落点：优先物流接驳站旁；否则火箭发射井旁。
+      const ox = (pad ? pad.x + pad.w + 1 : (silo ? silo.x : 8));
+      const oy = (pad ? pad.y : (silo ? silo.y : 8));
+      // 找一个空闲的 8×8 落点（在接驳站/发射井周围扫描）
+      const baseX = ox, baseY = oy;
+      let found = null;
+      for (let dy = 0; dy <= 20 && !found; dy += 8) {
+        for (let dx = -8; dx <= 8 && !found; dx += 8) {
+          const tx = baseX + dx, ty = baseY + dy;
+          let free = true;
+          for (let yy = 0; yy < 8 && free; yy++) {
+            for (let xx = 0; xx < 8 && free; xx++) {
+              if (typeof solidAt === 'function' && solidAt(tx + xx, ty + yy)) { free = false; }
+              else if (entAt && entAt(tx + xx, ty + yy)) { free = false; }
+            }
+          }
+          if (free) { found = { x: tx, y: ty }; break; }
+        }
+      }
+      if (!found) found = { x: baseX, y: baseY };
+      const hub = new cls('space-platform-hub', found.x, found.y);
+      if (typeof addEnt === 'function') { addEnt(hub); return hub; }
+      return null;
+    })();
+    if (spawnHub) {
+      if (typeof toast === 'function') toast('🚀 空间平台起始包发射成功！已在星球生成空间平台中枢（可放置平台地基）');
+    } else if (typeof toast === 'function') {
+      toast('🚀 空间平台起始包已发射（未生成中枢：需要先放置空间平台中枢建筑）');
+    }
+  }
+
+  if (spaceGain > 0) {
+    if (pad) {
+      for (let i = 0; i < spaceGain; i++) pad.giveItem('space-science-pack');
+      pad.cargoIn = (pad.cargoIn || 0) + spaceGain;
+      if (typeof trackProd === 'function') trackProd('space-science-pack', spaceGain);
+      if (typeof toast === 'function') toast('🛰️ 卫星发射成功，+' + spaceGain + ' 空间科学包已降落至物流接驳站！');
+    } else {
+      invAdd('space-science-pack', spaceGain);
+      if (typeof trackProd === 'function') trackProd('space-science-pack', spaceGain);
+      if (typeof toast === 'function') toast('🛰️ 卫星发射成功，获得 +' + spaceGain + ' 空间科学包！');
+    }
   }
   // ===== 火箭货舱货物降落（太空货运 / 行星间调度）=====
   // 玩家装入火箭货舱的物品随火箭一起发射。
