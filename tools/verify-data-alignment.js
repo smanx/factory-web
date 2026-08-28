@@ -52,8 +52,12 @@ console.log('\n【蒸汽机/汽轮机功率】');
 // 官方：蒸汽机 effectivity=1、fluid_usage_per_tick=0.5、maximum_temperature=165
 // 输出功率 = fluid_usage_per_tick(单位/秒=30) × (温度-15) × effectivity × 200J/°C/单位 = 900kW
 // 汽轮机 = 60 × (500-15) × 1 × 200 = 5820kW（官方 5.82MW）
+// 数据单源化：data.js 的 POWER_PER_ENGINE / POWER_PER_TURBINE 已从 GAME_DATA.steamPower 读取，
+// 官方值即由 generate 脚本现场计算，此处双重核验（前端值 == GAME_DATA 单源值 == 官方期望值）。
 const POWER_PER_ENGINE = sandbox.__ppe;
 const POWER_PER_TURBINE = sandbox.__ppt;
+check('蒸汽机满功率(kW)=GAME_DATA单源', POWER_PER_ENGINE, GAME_DATA.steamPower?.enginePower ?? 900);
+check('汽轮机满功率(kW)=GAME_DATA单源', POWER_PER_TURBINE, GAME_DATA.steamPower?.turbinePower ?? 5820);
 check('蒸汽机满功率(kW)=官方900', POWER_PER_ENGINE, 900);
 check('汽轮机满功率(kW)=官方5820', POWER_PER_TURBINE, 5820);
 
@@ -72,8 +76,10 @@ const PUMP_RATE = sandbox.__pr;
 check('抽水机产水率(/s)=官方20', PUMP_RATE, GAME_DATA.fluidCapacity?.pumpRate ?? 20);
 
 console.log('\n【离心机功耗(kW)】');
+// 数据单源化：data.js 的 CENTRIFUGE_POWER 已从 GAME_DATA.powerUse 读取，此处双重核验。
 const CENTRIFUGE_POWER = sandbox.__cp;
-check('离心机功耗=官方350', CENTRIFUGE_POWER, GAME_DATA.powerUse?.centrifuge ?? 350);
+check('离心机功耗=GAME_DATA单源', CENTRIFUGE_POWER, GAME_DATA.powerUse?.centrifuge ?? 350);
+check('离心机功耗=官方350', CENTRIFUGE_POWER, 350);
 
 console.log('\n【锅炉目标温度(°C)】');
 const BOILER_TEMP_MAX = sandbox.__btm;

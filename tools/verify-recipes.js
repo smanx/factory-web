@@ -131,8 +131,15 @@ check('BELT_SPEED 基础带速', _beltOK && Math.abs(_belt.beltSpeed - 1.875) < 
 check('BELT_SPACING 物品间隔=0.125(官方)', hasConst('BELT_SPACING', '0.125'), true);
 check('FAST_BELT_MULT 快速带倍数', _fMult !== null && Math.abs(_fMult - 2) < 1e-9, true);
 check('EXPRESS_BELT_MULT 极速带倍数', _eMult !== null && Math.abs(_eMult - 3) < 1e-9, true);
-check('POWER_PER_ENGINE 蒸汽机功率(kW)', hasConst('POWER_PER_ENGINE', '900'), true);
-check('POWER_PER_TURBINE 汽轮机功率(kW)', hasConst('POWER_PER_TURBINE', '5820'), true);  // 官方 5.82MW
+// 蒸汽机/汽轮机功率——数据单源化：data.js 的 POWER_PER_ENGINE / POWER_PER_TURBINE
+// 已从 GAME_DATA.steamPower.enginePower / turbinePower 读取（generate 脚本从 factorio-data 现场计算），
+// 官方值（900 / 5820）即由 data.generated.js 下发，此处核验前端常量确从 GAME_DATA 单源读取。
+const _sp = (_ctx.GAME_DATA && _ctx.GAME_DATA.steamPower) || {};
+check('POWER_PER_ENGINE 蒸汽机功率(kW)', _sp.enginePower === 900, true);
+check('POWER_PER_TURBINE 汽轮机功率(kW)', _sp.turbinePower === 5820, true);  // 官方 5.82MW
+check('蒸汽机功率单源化(data.js 从 GAME_DATA.steamPower 读取)', /POWER_PER_ENGINE\s*=\s*GAME_DATA\.steamPower/.test(src), true);
+check('汽轮机功率单源化(data.js 从 GAME_DATA.steamPower 读取)', /POWER_PER_TURBINE\s*=\s*GAME_DATA\.steamPower/.test(src), true);
+check('离心机功耗单源化(data.js 从 GAME_DATA.powerUse 读取)', /CENTRIFUGE_POWER\s*=\s*GAME_DATA\.powerUse/.test(src), true);
 // 煤能量（基准）——数据单源：GAME_DATA.fuelEnergy.coal=12（data.generated.js 统一下发），
 // data.js 常量 COAL_ENERGY 从 GAME_DATA.fuelEnergy 读取，不再硬编码字面量。
 const _fe = (_ctx.GAME_DATA && _ctx.GAME_DATA.fuelEnergy) || {};
