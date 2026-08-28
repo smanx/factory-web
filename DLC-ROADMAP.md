@@ -1518,3 +1518,20 @@ D
 >   不再硬编码。
 > - **行为不变**：官方值即 10，改造后游戏数值与官方完全一致，仅数据来源单源化。
 > - **校验**：全量 18 个校验脚本通过，`node build.js` 构建通过。
+
+### 阶段六.14：蒸汽机/汽轮机/离心机功率数据单源化（Steam power single-sourcing，本迭代新增）
+
+> 依据「所有数据/参数从 data.generated.js（factorio-data 官方）单源获取，不要单独给设备维护一套数据」
+> 原则，把此前在 `js/data/data.js` 硬编码的三项功率数值单源进 GAME_DATA：
+> - **官方推导**：
+>   - 蒸汽机满功率 = 官方 `fluid_usage_per_tick`(0.5)×60×`effectivity`(1)×(165-15)°C×200J = **900kW**；
+>   - 汽轮机满功率 = 60/s×(500-15)°C×1×200J = **5820kW**（官方 5.82MW）；
+>   - 离心机功耗 = 官方 `energy_usage` = **350kW**。
+> - **改动**：
+>   - `tools/generate-game-data.js`：`GAME_DATA.steamPower` 新增 `enginePower` / `turbinePower`
+>     （从 factorio-data 现场计算，未单独维护数值表）；
+>   - `js/data/data.js`：`POWER_PER_ENGINE` / `POWER_PER_TURBINE` 改从 `GAME_DATA.steamPower` 读取，
+>     `CENTRIFUGE_POWER` 改从 `GAME_DATA.powerUse` 读取（均 `??` 兜底），不再硬编码字面量。
+> - **行为不变**：官方值即 900 / 5820 / 350，改造后游戏数值与官方完全一致，仅数据来源单源化。
+> - **校验**：verify-recipes 新增 5 项单源化守门人（前端常量确从 GAME_DATA 读取 + 官方值比对）；
+>   verify-data-alignment 新增「=GAME_DATA 单源」双重核验；全量 18 个校验脚本通过，`node build.js` 构建通过。

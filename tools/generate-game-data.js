@@ -919,7 +919,9 @@ const INSERTER_BASE_STACK = {
 // ---- 锅炉 / 蒸汽机 / 汽轮机（官方参数）----
 // boilerPower：锅炉最大热输入 energy_consumption（MW，官方 1.8MW）；
 // engineRate / turbineRate：蒸汽机/汽轮机满功率耗汽率 fluid_usage_per_tick（官方 0.5 / 1 → ×60=30/60 单位/秒）；
-// effectivity：能量转换效率（官方 1）。
+// effectivity：能量转换效率（官方 1）；
+// enginePower / turbinePower：满功率输出（kW，官方 = rate × (max_temp-15) × effectivity × 200J/°C/单位，
+//   蒸汽机 = 30×(165-15)×1×200 = 900kW；汽轮机 = 60×(500-15)×1×200 = 5820kW）。
 const steamPower = {};
 {
   const b = raw.boiler && raw.boiler.boiler;
@@ -928,11 +930,24 @@ const steamPower = {};
   if (b && typeof b.target_temperature === 'number') steamPower.boilerTargetTemp = b.target_temperature;
   const e = raw.generator && raw.generator['steam-engine'];
   if (e) {
-    if (typeof e.fluid_usage_per_tick === 'number') steamPower.engineRate = e.fluid_usage_per_tick * 60;
+    if (typeof e.fluid_usage_per_tick === 'number') {
+      steamPower.engineRate = e.fluid_usage_per_tick * 60;
+      // 官方：最大温度 165°C，基准温度 15°C，每单位蒸汽 200J/°C
+      const eff = typeof e.effectivity === 'number' ? e.effectivity : 1;
+      const maxT = (e.maximum_temperature != null) ? e.maximum_temperature : 165;
+      steamPower.enginePower = Math.round(e.fluid_usage_per_tick * 60 * (maxT - 15) * eff * 200 / 1000);
+    }
     if (typeof e.effectivity === 'number') steamPower.effectivity = e.effectivity;
   }
   const t = raw.generator && raw.generator['steam-turbine'];
-  if (t && typeof t.fluid_usage_per_tick === 'number') steamPower.turbineRate = t.fluid_usage_per_tick * 60;
+  if (t) {
+    if (typeof t.fluid_usage_per_tick === 'number') {
+      steamPower.turbineRate = t.fluid_usage_per_tick * 60;
+      const eff = typeof t.effectivity === 'number' ? t.effectivity : 1;
+      const maxT = (t.maximum_temperature != null) ? t.maximum_temperature : 500;
+      steamPower.turbinePower = Math.round(t.fluid_usage_per_tick * 60 * (maxT - 15) * eff * 200 / 1000);
+    }
+  }
 }
 
 // ---- 推进器 Thruster（太空时代空间平台动力）----
@@ -1398,8 +1413,9 @@ function report() {
   console.log('污染排放 pollution: ' + JSON.stringify(GAME_DATA.pollution));
   console.log('机器人港功耗 roboportPower: ' + JSON.stringify(GAME_DATA.roboportPower));
   console.log('Gleba 五足虫敌人 enemy: ' + Object.keys(GAME_DATA.enemy||{}).length + ' 种');
-  console.log('扩展参数手工保留（官方无此字段/项目简化模型）：汽轮机/锅炉/蒸汽机产汽模型、机器人速度与电量刻度、机器人港容量、',
+  console.log('扩展参数手工保留（官方无此字段/项目简化模型）：蒸汽机/汽轮机产汽模型、机器人速度与电量刻度、机器人港容量、',
     '武器/装甲战斗平衡表、燃料能量(项目相对刻度)、载具装备网格、热交换器热量参数、雷达扫描节奏');
+  console.log('（蒸汽机/汽轮机满功率 900/5820kW 与离心机功耗 350kW 已由 GAME_DATA.steamPower.enginePower/turbinePower 与 powerUse.centrifuge 单源化）');
   console.log('\n-- 官方多语言命名 names（物品/建筑/流体，中英对照已接入）--');
   console.log(Object.keys(GAME_NAMES).length + ' 条；配方名 recipeNames ' + Object.keys(RECIPE_NAMES).length + ' 条');
 

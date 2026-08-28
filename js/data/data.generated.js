@@ -6146,8 +6146,10 @@ const GAME_DATA = {
   "boilerPower": 1.8,
   "boilerTargetTemp": 165,
   "engineRate": 30,
+  "enginePower": 900,
   "effectivity": 1,
-  "turbineRate": 60
+  "turbineRate": 60,
+  "turbinePower": 5820
  },
  "robotSpeed": {
   "logistic": 3,

@@ -43,9 +43,14 @@ const REACH_TILES = 5.5;
 const REACH_PX = REACH_TILES * TILE;
 const LAB_TIME = 1; // 研究中心每瓶科学包耗时（秒）
 // 功率数值对齐《异星工厂》(Factorio) 官方 Wiki（单位 kW）
-const POWER_PER_ENGINE = 900;   // 蒸汽机满功率输出
-const POWER_PER_TURBINE = 5820; // 汽轮机满功率输出（官方 effectivity1 × 60/s × (500-15)°C × 200J = 5.82MW）
-const CENTRIFUGE_POWER = 350;   // 离心机功耗 kW（对齐《异星工厂》350kW）
+// 数据单源化：全部来自 GAME_DATA.steamPower / GAME_DATA.powerUse（data.generated.js，
+// 由 tools/generate-game-data.js 从 factorio-data 现场计算），不在本文件另行维护第二套数值。
+//   官方蒸汽机满功率 = 30/s × (165-15)°C × 1 × 200J = 900kW（GAME_DATA.steamPower.enginePower）
+//   官方汽轮机满功率 = 60/s × (500-15)°C × 1 × 200J = 5.82MW（GAME_DATA.steamPower.turbinePower）
+//   离心机功耗 = 350kW（GAME_DATA.powerUse.centrifuge）
+const POWER_PER_ENGINE = GAME_DATA.steamPower?.enginePower ?? 900;    // 蒸汽机满功率输出
+const POWER_PER_TURBINE = GAME_DATA.steamPower?.turbinePower ?? 5820; // 汽轮机满功率输出
+const CENTRIFUGE_POWER = GAME_DATA.powerUse?.['centrifuge'] ?? 350;   // 离心机功耗 kW
 // ===== 核能（对齐《异星工厂》核动力）=====
 // 核反应堆：消耗核燃料 + 水 → 产出高温蒸汽；汽轮机以远高于蒸汽机的功率发电。
 const REACTOR_POWER = 40000;    // 反应堆热功率 40MW（对齐官方）；简化：直接折算成产汽能力
