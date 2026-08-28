@@ -555,9 +555,13 @@ function bgmUpdate(dt) {
     return;
   }
   if (!bgmEnsure()) return;
-  // 音量略高于旧版，让背景音乐清晰可闻，但不喧宾夺主
-  const target = ((G.settings.soundVol != null ? G.settings.soundVol : 1)) * 0.16;
-  bgmNodes.g.gain.value += (target - bgmNodes.g.gain.value) * Math.min(1, dt * 2);
+  // 游戏暂停（游戏菜单/设置面板/阵亡）或返回开始菜单时，暂停背景音乐：
+  // 淡出音量并停止推进旋律（noteIdx 冻结），恢复后自然淡入、从暂停处继续演奏。
+  const paused = !!(G && (G.paused || G.inMenu));
+  // 音量略高于旧版，让背景音乐清晰可闻，但不喧宾夺主；暂停时目标音量归零
+  const target = ((G.settings.soundVol != null ? G.settings.soundVol : 1)) * (paused ? 0 : 0.16);
+  bgmNodes.g.gain.value += (target - bgmNodes.g.gain.value) * Math.min(1, dt * 3);
+  if (paused) return;   // 暂停期间不推进音符
   bgmNodes.barT += dt;
   if (bgmNodes.barT >= BGM_NOTE_DUR) {
     bgmNodes.barT -= BGM_NOTE_DUR;
