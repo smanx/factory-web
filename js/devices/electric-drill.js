@@ -122,16 +122,16 @@ class ElectricDrill extends Drill {
     }
   }
   giveItem(item) {
+    // 硫酸原料优先进入内置缓冲（采集铀矿的原料）
+    if (item === 'sulfuric-acid' && (this.acid || 0) < ELECTRIC_DRILL_ACID_MAX) {
+      this.acid = (this.acid || 0) + 1;
+      return true;
+    }
     if (isModule(item)) {
       // 模块槽位限制（对齐《异星工厂》：电采矿机 3 槽）
       if ((this.modules[item] || 0) >= this.moduleSlotCount()) return false;
       this.modules[item] = (this.modules[item] || 0) + 1;
       if (typeof playSfx === 'function') playSfx('module');
-      return true;
-    }
-    // 管道接入硫酸：存入内置硫酸缓冲（采集铀矿的原料）
-    if (item === 'sulfuric-acid' && (this.acid || 0) < ELECTRIC_DRILL_ACID_MAX) {
-      this.acid = (this.acid || 0) + 1;
       return true;
     }
     return false;

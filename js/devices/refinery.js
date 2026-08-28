@@ -172,6 +172,15 @@ class Refinery extends Entity {
     return REFINERY_INPUT_CELLS.map(cell => sideNeighborCell(this, 3, cell));
   }
   giveItem(item) {
+    // 配方原料优先：插件若为当前配方原料则入原料区，而非插件槽
+    if (this.recipe) {
+      const rec = REFINERY_RECIPES[this.recipe];
+      if (rec.inp[item]) {
+        if ((this.inp[item] || 0) >= REFINERY_BUF_CAP) return false;
+        this.inp[item] = (this.inp[item] || 0) + 1;
+        return true;
+      }
+    }
     if (isModule(item)) {
       // 模块槽位限制（对齐《异星工厂》：炼油厂 3 槽）
       if ((this.modules[item] || 0) >= this.moduleSlotCount()) return false;
@@ -179,12 +188,7 @@ class Refinery extends Entity {
       if (typeof playSfx === 'function') playSfx('module');
       return true;
     }
-    if (!this.recipe) return false;
-    const rec = REFINERY_RECIPES[this.recipe];
-    if (!rec.inp[item]) return false;
-    if ((this.inp[item] || 0) >= REFINERY_BUF_CAP) return false;
-    this.inp[item] = (this.inp[item] || 0) + 1;
-    return true;
+    return false;
   }
   peekItem() {
     for (const k in this.outp) if (this.outp[k] > 0) return k;

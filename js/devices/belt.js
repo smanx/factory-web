@@ -80,7 +80,11 @@ class Belt extends Entity {
       // 是否为“纯 90° 转角”：下游带从侧面接入、背面无直行带。此时源带的左右两列
       // 应各自映射到转角的内/外弧（车道号保持），对齐《异星工厂》弯道双列不交叉，
       // 绝不能把两条源车道塌缩成一条（否则 A/B 两线物品会在弯道混叠、互相干扰）。
-      const isCorner = beltCornerDir(nb) !== null;
+      // 但“梯形交汇”转角例外：它视觉上被画成“直行带 + 侧面汇入（单车道）”，
+      // 因此流转也应等同直行带的侧搭接——只并入近侧单车道；若仍保守两条源车道，
+      // 2 条线会硬挤进 1 条视觉线，物品叠到带子中间、无法平滑流向出口。
+      const cornerDir = beltCornerDir(nb);
+      const isCorner = cornerDir !== null && !beltCornerTrapezoid(nb);
       if (!(nb instanceof Splitter)) {
         if (nb.dir === ((this.dir + 2) % 4)) return false;
         // 直通/纯转角沿用源车道；一般侧面交叉（横向搭接进直线带）则进入下游“近侧车道”。
@@ -577,6 +581,11 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
   const laneOffset = e.items.length ? beltLaneOffset(e, 1) : null;
   // 低 LOD：物品用色块直填，省去 clip+glyph 的昂贵路径绘制
   const itemFn = (LOD && LOD.simple) ? drawItemDotLOD : drawItemDot;
+  // 侧面向量（与 beltInputSide / beltSideIndex 同序）：把“物品来源侧面（绝对轴索引 0/1）”
+  // 映射到实际存在的侧面输入列 inp 的索引。inp/sideArc 只保留真正有输入源的侧面（压缩列表），
+  // 若直接按绝对轴索引从 inp[o.side] 取，输入在轴 1 时会错位——物品落到背面/格中而非汇入圆弧。
+  const _fdx = DX[dir], _fdy = DY[dir];
+  const _sideVec = [[_fdy, -_fdx], [-_fdy, _fdx]];
   for (const o of e.items) {
     let ix, iy;
     // 该物品所属车道的垂直偏移（lane 0 在 -perp 侧，lane 1 在 +perp 侧）
@@ -586,13 +595,20 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
     // 前半段（pos<0.5）：从入口走到格心。仅“确实来自侧面”的物品走侧面接入线；
     // 直通物品（side<0，从背面同向进来，即首尾相接方向一致的直通连接）无需向中间靠拢，
     // 全程保持各自车道偏移、直接平移过去；侧面进入的物品沿接入圆弧自然弯折汇入主带。
-    const fromSide = inp.length > 0 && o.side !== undefined && o.side >= 0 && o.side < inp.length;
-    const a = fromSide && sideArc.length > 0 ? sideArc[o.side] : null;
+    let sideIdx = -1;
+    if (o.side !== undefined && o.side >= 0 && o.side < 2) {
+      const sv = _sideVec[o.side];
+      for (let k = 0; k < inp.length; k++) {
+        if (inp[k][0] === sv[0] && inp[k][1] === sv[1]) { sideIdx = k; break; }
+      }
+    }
+    const fromSide = sideIdx >= 0;
+    const a = fromSide && sideArc.length > 0 ? sideArc[sideIdx] : null;
     if (a) {
       // 侧面进入的物品沿接入圆弧走完整段（入口边 → 汇入主带方向 → 出口边），
       // 与弧形轨道一致，不再直楞楞地斜穿格心、也避免直矩形“搭”在主带上；
       // 内/外弧决定车道位置，平滑接续主带车道。
-      const s = inp[o.side];
+      const s = inp[sideIdx];
       const srcDir = dirIndexOf(-s[0], -s[1]);
       const turnZ = DX[srcDir] * DY[dir] - DY[srcDir] * DX[dir]; // >0 右转，<0 左转
       const rightTurn = turnZ > 0;
@@ -602,21 +618,13 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
       ix = cx + a.CCx + Math.cos(ang) * laneR;
       iy = cy + a.CCy + Math.sin(ang) * laneR;
     } else if (o.pos < 0.5) {
-      if (fromSide) {
-        const s = inp[o.side];
-        const inX = cx + s[0] * step, inY = cy + s[1] * step;
-        const t = o.pos / 0.5;
-        ix = inX + (cx - inX) * t;
-        iy = inY + (cy - inY) * t;
-        // 侧面进入的物品：随车道向目标车道水平收拢
-        ix += perpX * t; iy += perpY * t;
-      } else {
-        // 直通物品（首尾相接方向一致）：全程保持车道偏移直接平移，不向中间收拢
-        const inX = cx - DX[dir] * step, inY = cy - DY[dir] * step; // 背面入口
-        const t = o.pos / 0.5;
-        ix = inX + (cx - inX) * t + perpX;
-        iy = inY + (cy - inY) * t + perpY;
-      }
+      // 直通物品与侧面搭接物品统一沿车道直线流动：全程保持车道偏移直接平移，
+      // 不把侧面进入的物品“拉向带子格心再流出”（否则会在带子中间突然出现、再拐向出口）。
+      // 侧面物品已落在近侧单车道（sideOfLane），并入后沿 B 行进方向继续前进即可。
+      const inX = cx - DX[dir] * step, inY = cy - DY[dir] * step; // 背面入口
+      const t = o.pos / 0.5;
+      ix = inX + (cx - inX) * t + perpX;
+      iy = inY + (cy - inY) * t + perpY;
     } else {
       // 后半段：从格心走到出口（直通物品共用）
       const t = (o.pos - 0.5) / 0.5;

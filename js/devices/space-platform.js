@@ -212,17 +212,17 @@ class SpacePlatformHub extends Assembler {
   hubCargoCap() { return 50; }
   // 往平台货舱装货（物品若非当前配方原料/模块，则入货舱；机械臂/传送带可自动送入）
   giveItem(item) {
-    if (isModule(item)) {
-      if ((this.modules[item] || 0) >= this.moduleSlotCount()) return false;
-      this.modules[item] = (this.modules[item] || 0) + 1;
-      if (typeof playSfx === 'function') playSfx('module');
-      return true;
-    }
-    // 当前配方所需原料优先进入输入缓存
+    // 配方原料优先：插件若为当前配方原料则入原料区，而非插件槽
     if (this.recipe && RECIPES[this.recipe] && RECIPES[this.recipe].inp[item]) {
       const rec = RECIPES[this.recipe];
       if ((this.inp[item] || 0) >= rec.inp[item] * 2) return false;
       this.inp[item] = (this.inp[item] || 0) + 1;
+      return true;
+    }
+    if (isModule(item)) {
+      if ((this.modules[item] || 0) >= this.moduleSlotCount()) return false;
+      this.modules[item] = (this.modules[item] || 0) + 1;
+      if (typeof playSfx === 'function') playSfx('module');
       return true;
     }
     // 否则进入平台货舱（轨道货运）

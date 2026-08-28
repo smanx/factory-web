@@ -148,18 +148,24 @@ class Assembler extends Entity {
     this.crafting = false; this.prog = 0;
   }
   giveItem(item) {
+    // 配方原料优先：凡属于当前配方输入的物品一律放入原料区。插件若本身是配方
+    // 原料（如用低级插件合成高级插件），也必须进入原料区而非插件槽。
+    if (this.recipe) {
+      const rec = RECIPES[this.recipe];
+      if (rec.inp[item]) {
+        if ((this.inp[item] || 0) >= rec.inp[item] * 2) return false;
+        this.inp[item] = (this.inp[item] || 0) + 1;
+        return true;
+      }
+    }
+    // 非配方原料的插件才放入插件槽（供玩家 mod-put 手动装填）
     if (isModule(item)) {
       if ((this.modules[item] || 0) >= this.moduleSlotCount()) return false;
       this.modules[item] = (this.modules[item] || 0) + 1;
       if (typeof playSfx === 'function') playSfx('module');
       return true;
     }
-    if (!this.recipe) return false;
-    const rec = RECIPES[this.recipe];
-    if (!rec.inp[item]) return false;
-    if ((this.inp[item] || 0) >= rec.inp[item] * 2) return false;
-    this.inp[item] = (this.inp[item] || 0) + 1;
-    return true;
+    return false;
   }
   peekItem() {
     for (const k in this.outp) if (this.outp[k] > 0) return k;

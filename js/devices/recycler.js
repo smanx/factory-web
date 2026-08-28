@@ -117,20 +117,24 @@ class Recycler extends Entity {
     return found ? out : null;
   }
   giveItem(item) {
+    // 可回收物优先投入回收（含插件：若插件可回收直接回收，而非进插件槽）
+    if (!this.crafting && !this.recycleItem) {
+      const out = this.recycleResults(item);
+      if (out) {
+        this.recycleItem = item;
+        this.crafting = true;
+        this.prog = 0;
+        if (typeof playSfx === 'function') playSfx('machine-run');
+        return true;
+      }
+    }
     if (isModule(item)) {
       if ((this.modules[item] || 0) >= this.moduleSlotCount()) return false;
       this.modules[item] = (this.modules[item] || 0) + 1;
       if (typeof playSfx === 'function') playSfx('module');
       return true;
     }
-    if (this.crafting || this.recycleItem) return false;   // 一次只回收一件
-    const out = this.recycleResults(item);
-    if (!out) return false;                                 // 不可回收
-    this.recycleItem = item;
-    this.crafting = true;
-    this.prog = 0;
-    if (typeof playSfx === 'function') playSfx('machine-run');
-    return true;
+    return false;
   }
   peekItem() {
     for (const k in this.outp) if (this.outp[k] > 0) return k;

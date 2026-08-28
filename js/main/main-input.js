@@ -16,7 +16,13 @@ function bindInput() {
       t.blur();
       return;
     }
-    G.keys[k] = true;
+    // 组合键与单键区分：当修饰键(Alt/Ctrl/Shift)同时按下时属组合键操作，不写入 G.keys。
+    // G.keys 驱动“按住即生效”的单键行为（人物移动/连续开火等），组合键要么走事件标志直接
+    // 处理（如 Alt+D 红图），要么根本无意触发的单键功能（如 Alt+D 不应让人物向右走）。
+    if (!ev.altKey && !ev.ctrlKey && !ev.shiftKey) G.keys[k] = true;
+    // 组合键识别：按下其他按键时若 Alt 处于按住状态，标记本次 Alt 被用于组合键。
+    // 松开 Alt 时据此跳过 ALT 模式切换，避免 Alt+D/B/U/H/N 等组合键误触发“单按 ALT”的功能。
+    if (ev.altKey && k !== 'alt') G._altCombo = true;
     if (k >= '1' && k <= '9') selectSlot(+k - 1);
     else if (k === '0') selectSlot(9);
     // 攻击选中目标（对齐《异星工厂》快捷键）：Shift+空格 对鼠标选中的目标开火（强制攻击）
@@ -27,7 +33,7 @@ function bindInput() {
     else if (k === 'tab') { ev.preventDefault(); G.panelMode === 'inv' ? closePanel() : openPanel('inv'); }
     // 统计/蓝图/红图/绿图快捷键（对齐《异星工厂》：P 统计、B 蓝图、Alt+D 红图、Alt+U 绿图）
     else if (k === 'p') G.panelMode === 'stats' ? closePanel() : openPanel('stats');
-    else if (k === 'b') { closePanel(); toggleBlueprint('blue'); }
+    else if (!ev.altKey && k === 'b') { closePanel(); toggleBlueprint('blue'); }
     else if (ev.altKey && k === 'b') { ev.preventDefault(); if (G.blueMode) cancelBlueprint(); G.panelMode === 'bluebook' ? closePanel() : openPanel('bluebook'); }
     else if (ev.altKey && k === 'd') { ev.preventDefault(); closePanel(); toggleBlueprint('red'); }
     else if (ev.altKey && k === 'u') { ev.preventDefault(); closePanel(); toggleBlueprint('green'); }
@@ -38,7 +44,7 @@ function bindInput() {
       toast('配方已清除');
     }
     else if (k === 'r') rotateAction();
-    else if (k === 'h') flipAction('h');
+    else if (!ev.altKey && k === 'h') flipAction('h');
     else if (k === 'v') flipAction('v');
     else if (k === 'f') { if (!tryEnterNearbyCar()) pickupAction(); }
     // 全部拾取（对齐《异星工厂》：按住 Z 拾取范围内所有地面物品）
@@ -118,8 +124,10 @@ function bindInput() {
     const k = ev.key.toLowerCase();
     // ALT 模式（对齐《异星工厂》ALT 模式）：松开 Alt 键时才切换建筑配方/内容叠加显示。
     // 改为松开时触发：按下即切换会在 Alt+Tab 切换页面等场景误触发 ALT 功能。
+    // 若本次 Alt 被用于组合键（Alt+D 等），松开时不切换 ALT 模式，避免组合键误触单按 ALT。
     if (k === 'alt') {
       ev.preventDefault();
+      if (G._altCombo) { G._altCombo = false; return; }
       G.settings.altMode = !(G.settings.altMode !== false);
       saveSettings();
       toast(G.settings.altMode ? 'ALT 模式：开（显示建筑配方/内容叠加）' : 'ALT 模式：关');

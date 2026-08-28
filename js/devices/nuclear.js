@@ -144,6 +144,15 @@ class Centrifuge extends Entity {
     this.crafting = false; this.prog = 0;
   }
   giveItem(item) {
+    // 配方原料优先：插件若为当前配方原料则入原料区，而非插件槽
+    if (this.recipe) {
+      const rec = this.recipeObj();
+      if (rec && rec.inp[item]) {
+        if ((this.inp[item] || 0) >= rec.inp[item] * 2) return false;
+        this.inp[item] = (this.inp[item] || 0) + 1;
+        return true;
+      }
+    }
     if (isModule(item)) {
       // 模块槽位限制（对齐《异星工厂》：离心机 2 槽）
       if ((this.modules[item] || 0) >= this.moduleSlotCount()) return false;
@@ -151,12 +160,7 @@ class Centrifuge extends Entity {
       if (typeof playSfx === 'function') playSfx('module');
       return true;
     }
-    if (!this.recipe) return false;
-    const rec = this.recipeObj();
-    if (!rec || !rec.inp[item]) return false;
-    if ((this.inp[item] || 0) >= rec.inp[item] * 2) return false;
-    this.inp[item] = (this.inp[item] || 0) + 1;
-    return true;
+    return false;
   }
   peekItem() { for (const k in this.outp) if (this.outp[k] > 0) return k; return null; }
   takeItem() { for (const k in this.outp) if (this.outp[k] > 0) { this.outp[k]--; if (this.outp[k] <= 0) delete this.outp[k]; return k; } return null; }
