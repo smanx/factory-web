@@ -135,10 +135,22 @@ function drawMinimap(ctx) {
   ctx.fillText('🗺 ' + Math.round(pcx) + ',' + Math.round(pcy), x0 + 6, y0 + 5);
 }
 
+// 按像素宽度裁剪文本，超出部分以省略号结尾（对齐官方 tooltip 的固定宽度换行/截断）
+function _fitTooltipText(ctx, text, maxW) {
+  if (ctx.measureText(text).width <= maxW) return text;
+  let t = text;
+  while (t.length > 1 && ctx.measureText(t + '…').width > maxW) t = t.slice(0, -1);
+  return t + '…';
+}
+
+// 燃烧器（烧燃料）设备：能量显示“(燃烧器)”而非“(电能)”，对齐官方 tooltip。
+const _BURNER_DEVICES = new Set(['burner-mining-drill', 'stone-furnace', 'steel-furnace', 'boiler', 'burner-inserter']);
+
 // ===== 设备信息面板（小地图下方长条） =====
-// 鼠标悬停到设备上时，在小地图正下方绘制一个长条面板，展示该设备的具体信息：
-// 名称、类别/描述、运行状态、制造/开采速度、污染、生产输出、存储、生命值、电力消耗与供电。
-// 与《异星工厂》选中山体/建筑的"详情条"风格对齐，数据全部来自 GAME_DATA 单源。
+// 鼠标悬停到设备上时，在小地图正下方绘制详情面板。
+// 内容与排版对齐《异星工厂》官方 tooltip：金色名称标题 + 物品图标 + 描述 + 分隔线 + 官方字段行
+// （采矿速度/制造速度/研究速度/运载速度/存储容量/能量消耗/污染/插件槽位/生命值），
+// 字段标签取自官方 core.cfg [description]，数值全部来自 GAME_DATA 单源。
 function drawDeviceInfoBar(ctx) {
   // 仅在小地图开启时展示（面板锚定在小地图正下方）
   if (!(G.settings && G.settings.minimap !== false)) return;
@@ -148,134 +160,104 @@ function drawDeviceInfoBar(ctx) {
   const it = ITEMS[e.type];
   if (!it) return;
 
-  // ---- 收集面板数据 ----
-  const name = it.name || e.type;
+  const name = localizedName(e.type, it.name || e.type);
   const desc = it.desc || '';
-  const hp = (e.hp !== undefined && e.maxhp) ? Math.max(0, Math.round(e.hp)) : null;
-  const maxhp = e.maxhp || null;
-
-  // 状态：优先复用各设备面板的 tip 文案（DEVICE_PANEL[type].tip）
-  let status = '';
-  const panel = DEVICE_PANEL[e.type];
-  if (panel && panel.tip) { const t = panel.tip(e); if (t) status = t; }
-  if (!status) status = runningStateText(e);
-
-  // 制造/开采速度（来自官方 GAME_DATA.deviceStats，单源）
-  let speed = '';
   const ds = GAME_DATA.deviceStats && GAME_DATA.deviceStats[e.type];
-  if (ds) {
-    if (ds.craftingSpeed) speed = '制造速度 ' + ds.craftingSpeed;
-    else if (ds.miningSpeed) speed = '开采速度 ' + ds.miningSpeed;
-    else if (ds.beltSpeed) speed = '带速 ' + ds.beltSpeed;
+
+  // ---- 收集官方字段（GAME_DATA 单源；标签对齐官方 core.cfg [description]）----
+  // 顺序对齐官方 tooltip：速度类 → 存储容量 → 能量 → 污染 → 插件槽位 → 生命值。
+  const lines = [];
+  const add = (label, value) => lines.push({ label, value });
+
+  // 速度类（官方 制造速度/采矿速度/研究速度/运载速度）
+  if (ds && ds.miningSpeed) add('采矿速度', String(ds.miningSpeed));
+  if (ds && ds.craftingSpeed) add('制造速度', String(ds.craftingSpeed));
+  if (ds && ds.researchingSpeed) add('研究速度', String(ds.researchingSpeed));
+  if (ds && ds.beltSpeed) add('运载速度', Math.round(ds.beltSpeed * 8) + ' 个/秒'); // 官方 15 个/秒 = 1.875 格/秒 × 8
+
+  // 存储容量（管道/地下管道/储液罐/流体车厢；官方 core.cfg fluid-capacity=存储容量）
+  const fcap = GAME_DATA.fluidCapacity;
+  if (fcap) {
+    const cap = (e.type === 'storage-tank') ? fcap.storageTank
+      : (e.type === 'pipe') ? fcap.pipeVolume
+      : (e.type === 'pipe-to-ground') ? fcap.pipeToGroundVolume
+      : (e.type === 'fluid-wagon') ? fcap.fluidWagon
+      : null;
+    if (cap) add('存储容量', String(cap));
   }
 
-  // 电力：当前耗电 + 最大能耗 + 供电饱和度
-  const pow = devicePowerInfo(e);
+  // 能量消耗（燃烧器设备显示“(燃烧器)”，其余“(电能)”，对齐官方 tooltip）
+  const pw = GAME_DATA.powerUse && GAME_DATA.powerUse[e.type];
+  if (pw) add('能量消耗', pw + ' kW（' + (_BURNER_DEVICES.has(e.type) ? '燃烧器' : '电能') + '）');
 
-  // 污染：官方/项目污染源速率（/m）
-  let poll = '';
-  if (typeof POLLUTION_SOURCES === 'object' && POLLUTION_SOURCES[e.type]) {
-    poll = POLLUTION_SOURCES[e.type] + '/m';
-  }
+  // 污染
+  const poll = GAME_DATA.pollution && GAME_DATA.pollution[e.type];
+  if (poll) add('污染', poll + ' / 分钟');
 
-  // 输出（生产成品）与输入/存储
-  let output = '';
-  if (e.outp && Object.keys(e.outp).length) {
-    const first = Object.keys(e.outp)[0];
-    output = (ITEMS[first] ? ITEMS[first].name : first) + ' ×' + e.outp[first];
-  } else output = '0';
-  let storage = '';
-  if (e.inp && Object.keys(e.inp).length) {
-    storage = Object.keys(e.inp).map(k => (ITEMS[k] ? ITEMS[k].name : k) + '×' + e.inp[k]).join('、');
+  // 插件槽位
+  if (ds && ds.moduleSlots) add('插件槽位', String(ds.moduleSlots));
+
+  // 生命值（官方 tooltip 中位于最末；受损时显示当前/最大）
+  const hp = GAME_DATA.buildingHp && GAME_DATA.buildingHp[e.type];
+  if (hp) {
+    const cur = (e.hp !== undefined && e.maxhp) ? Math.min(hp, Math.max(0, Math.round(e.hp))) : hp;
+    add('生命值', cur >= hp ? String(hp) : cur + '/' + hp);
   }
 
   // ---- 布局 ----
-  const bw = MINIMAP_SIZE + 16;          // 面板宽度略宽于小地图，容纳更多信息
-  const bx = W - MINIMAP_SIZE - 8;       // 左缘略超小地图，右缘对齐画布右边缘
+  const bw = 226;                        // 面板宽度（略宽于小地图，容纳名称+描述+字段行）
+  const bx = W - bw - 6;                 // 右缘对齐画布右缘（与小地图右缘一致）
   const top = MINIMAP_SIZE + 6;          // 小地图正下方，留 6px 间距
-  const pad = 8, lh = 15;
-  // 估算行高：标题行 + 描述 + 分隔线 + 若干信息行
-  let lines = [];
-  if (name) lines.push({ label: '名称', value: name, bold: true });
-  if (desc) lines.push({ label: '类别', value: desc });
-  if (status) lines.push({ label: '状态', value: status });
-  if (speed) lines.push({ label: '速度', value: speed });
-  if (output !== null) lines.push({ label: '生产', value: output });
-  if (storage) lines.push({ label: '存储', value: storage });
-  if (poll) lines.push({ label: '污染', value: poll });
-  if (pow) lines.push({ label: '电力', value: pow.text });
-  if (hp !== null && maxhp) lines.push({ label: '生命值', value: hp + '/' + maxhp });
+  const pad = 10;
+  const titleH = 17;                     // 标题行高（金色粗体）
+  const descH = desc ? 14 : 0;           // 描述行高
+  const sepY = top + pad + titleH + descH + 3;          // 分隔线 y
+  const lh = 15;                         // 字段行高
+  const bh = pad + titleH + descH + 7 + lines.length * lh + 8;
 
-  const supH = (pow && pow.max > 0) ? 16 : 0;      // 供电进度条区块高度（条+百分比文字）
-  const bh = pad + lines.length * lh + 6 + supH;
-  const y0 = top;
-
-  // ---- 绘制背景 ----
-  ctx.fillStyle = 'rgba(8,12,10,0.82)';
-  ctx.strokeStyle = 'rgba(140,200,160,0.35)';
+  // ---- 背景（官方 tooltip 深色半透明底 + 细边框）----
+  ctx.fillStyle = 'rgba(15,16,14,0.92)';
+  ctx.strokeStyle = 'rgba(150,150,140,0.45)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.roundRect ? ctx.roundRect(bx, y0, bw, bh, 6) : ctx.rect(bx, y0, bw, bh);
+  ctx.roundRect ? ctx.roundRect(bx, top, bw, bh, 4) : ctx.rect(bx, top, bw, bh);
   ctx.fill(); ctx.stroke();
 
-  // ---- 信息行 ----
   ctx.textBaseline = 'top';
-  let y = y0 + pad;
+  ctx.textAlign = 'left';
+
+  // ---- 标题（名称，金色粗体，前接物品图标，对齐官方 tooltip 图标+名称）----
+  const ny = top + pad;
+  let nx = bx + pad;
+  if (it.emoji) { ctx.font = '13px system-ui'; ctx.fillText(it.emoji, nx, ny); nx += 19; }
+  ctx.font = 'bold 12.5px system-ui';
+  ctx.fillStyle = '#ffd43b';
+  ctx.fillText(name, nx, ny);
+
+  // ---- 描述（浅色正文）----
+  if (desc) {
+    ctx.font = '10.5px system-ui';
+    ctx.fillStyle = 'rgba(226,228,222,0.9)';
+    ctx.fillText(_fitTooltipText(ctx, desc, bw - pad * 2 - 19), bx + pad + 19, ny + titleH - 3);
+  }
+
+  // ---- 分隔线 ----
+  ctx.strokeStyle = 'rgba(200,200,190,0.18)';
+  ctx.beginPath();
+  ctx.moveTo(bx + pad, sepY);
+  ctx.lineTo(bx + bw - pad, sepY);
+  ctx.stroke();
+
+  // ---- 官方字段行（标签灰 + 值白）----
+  let y = sepY + 6;
+  ctx.font = '10.5px system-ui';
+  const vx = bx + pad + 62;
+  const vw = bw - pad - 62 - 4;
   for (const ln of lines) {
-    // 标签
-    ctx.font = '10px system-ui';
-    ctx.fillStyle = 'rgba(160,190,175,0.85)';
-    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(160,164,155,0.85)';
     ctx.fillText(ln.label + '：', bx + pad, y);
-    // 值
-    ctx.font = (ln.bold ? 'bold ' : '') + '10px system-ui';
-    ctx.fillStyle = ln.color || 'rgba(225,235,228,0.95)';
-    const vx = bx + pad + 42;
-    const vw = bw - pad * 2 - 42;
-    const txt = (ln.value.length > 16) ? ln.value.slice(0, 15) + '…' : ln.value;
-    ctx.fillText(txt, vx, y);
+    ctx.fillStyle = 'rgba(240,242,236,0.95)';
+    ctx.fillText(_fitTooltipText(ctx, ln.value, vw), vx, y);
     y += lh;
   }
-
-  // ---- 供电进度条（若有电设备） ----
-  if (pow && pow.max > 0) {
-    const px0 = bx + pad, pw = bw - pad * 2, py = y + 4;
-    const sat = Math.max(0, Math.min(1, pow.sat));
-    const col = sat >= 1 ? '#7dd87d' : (sat > 0 ? '#ffd23c' : '#ff5b5b');
-    // 条背景
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    ctx.fillRect(px0, py, pw, 6);
-    // 条填充
-    ctx.fillStyle = col;
-    ctx.fillRect(px0, py, pw * sat, 6);
-    ctx.strokeStyle = 'rgba(200,230,210,0.4)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(px0, py, pw, 6);
-    // 百分比文字（条下方）
-    ctx.font = '9px system-ui';
-    ctx.fillStyle = col;
-    ctx.textAlign = 'right';
-    ctx.fillText('供电 ' + Math.round(sat * 100) + '%', bx + bw - pad, py + 7);
-  }
-}
-
-// 供电信息（复用 power.js 口径）：返回 { max, sat, text } 或 null
-function devicePowerInfo(e) {
-  const demand = (typeof e.powerDemand === 'function') ? (e.powerDemand() || 0) : 0;
-  const base = POWER_USE[e.type] || (GAME_DATA.powerUse && GAME_DATA.powerUse[e.type]) || 0;
-  const max = base || demand;
-  const sat = (G.power && typeof G.power.sat === 'number') ? G.power.sat : 1;
-  if (max <= 0 && demand <= 0) return null;   // 纯无电设备（如热能设备）不显示电力
-  const text = (demand > 0 ? '耗电 ' + demand.toFixed(1) + ' kW · 最大 ' + max.toFixed(0) + ' kW'
-               : '最大能耗 ' + max.toFixed(0) + ' kW');
-  return { max, sat, text };
-}
-
-// 设备运行状态兜底文案
-function runningStateText(e) {
-  if (e.crafting === true) return '生产中';
-  if (e.working === true) return '运行中';
-  if (e.recipe && !e.crafting) return '已暂停';
-  if (e.powerDemand && typeof e.powerDemand === 'function' && e.powerDemand() > 0 && G.power && G.power.sat <= 0) return '缺电停摆';
-  return '待机';
 }

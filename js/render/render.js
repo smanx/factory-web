@@ -130,9 +130,11 @@ function render() {
   };
   if (keys) {
     forEachEntInBuckets(keys, e => drawPass(e, false), _bucketSeenBuf);   // 普通设备（含传送带等）
+    if (typeof drawBeltItemsAll === 'function') drawBeltItemsAll(ctx);    // 传送带物品第二遍：盖在所有带面之上
     forEachEntInBuckets(keys, e => drawPass(e, true), _bucketSeenBuf);    // 机械臂置顶
   } else {
     for (const e of G.ents) drawPass(e, false);
+    if (typeof drawBeltItemsAll === 'function') drawBeltItemsAll(ctx);    // 传送带物品第二遍
     for (const e of G.ents) drawPass(e, true);
   }
   if (_rtri) {

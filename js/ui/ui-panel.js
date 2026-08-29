@@ -440,8 +440,9 @@ function initPanelEvents() {
       }
       return;
     }
-    // 研究面板：分类筛选 tab
-    const techCatBtn = ev.target.closest('[data-techcat]');
+    // 研究面板：分类筛选 tab（仅命中真正的 tab 按钮；科技行本身也带 data-techcat，
+    // 若用 [data-techcat] 会误拦截行内「研究」按钮的点击）
+    const techCatBtn = ev.target.closest('.tech-tab[data-techcat], .tech-tabs [data-techcat]');
     if (techCatBtn && G.panelMode === 'tech') {
       G.techCatFilter = techCatBtn.dataset.techcat;
       renderPanel(false);

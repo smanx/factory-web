@@ -48,7 +48,10 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
   // 纯 90° 转角：以弯曲圆弧绘制，区分于 T 型转角（复用 belt.js 中的通用转角绘制）。
   // 梯形交汇的转角例外——直接连到直线带，不单独画圆弧。
   if (!beltCornerTrapezoid(e) && drawBeltCorner(ctx, e, gx, gy, dir, alpha,
-    { belt: '#2e3a52', chev: 'rgba(90,150,230,.9)' })) return;
+    { belt: '#2e3a52', chev: 'rgba(90,150,230,.9)' }, false)) {
+    if (e.items && e.items.length) BELT_ITEM_QUEUE.push({ e, gx, gy, dir, alpha, corner: true });
+    return;
+  }
   ctx.globalAlpha = alpha;
   ctx.fillStyle = '#2e3a52';
   ctx.strokeStyle = '#1a2434';
@@ -83,51 +86,10 @@ function drawExpressBelt(ctx, e, gx, gy, dir, alpha) {
   const bx = e.x - DX[dir], by = e.y - DY[dir];
   const backBelt = entAt(bx, by);
   const hasBackInput = backBelt instanceof Belt && backBelt.dir === dir;
-  const sideArc = (inp.length === 1 && !hasBackInput) ? [drawBeltSideMerge(ctx, e, cx, cy, dir, inp[0], step, alpha, { belt: '#2e3a52', chev: 'rgba(90,150,230,.9)' })] : [];
+  const sideArc = (inp.length === 1 && !hasBackInput) ? [drawBeltSideMerge(ctx, e, cx, cy, dir, inp[0], step, alpha, { belt: '#2e3a52', chev: 'rgba(90,150,230,.9)' })] : null;
 
-  const exitX = DX[dir] * step, exitY = DY[dir] * step;
-  // 双列错位：物品沿各自车道流动（与普通带一致）
-  const LANE_OFF = 7;
-  const laneOffset = e.items.length ? beltLaneOffset(e, 1) : null;
-  const itemFn = (LOD && LOD.simple) ? drawItemDotLOD : drawItemDot;
-  for (const o of e.items) {
-    let ix, iy;
-    const lo = (o.lane === 1 ? 1 : -1);
-    const perpX = laneOffset ? laneOffset[0] * lo * LANE_OFF : 0;
-    const perpY = laneOffset ? laneOffset[1] * lo * LANE_OFF : 0;
-    // 与普通带一致：仅确实来自侧面的物品走侧面接入线；直通物品（side<0）无需向中间靠拢，
-    // 首尾相接方向一致时全程保持车道偏移直接平移过去。
-    const fromSide = inp.length > 0 && o.side !== undefined && o.side >= 0 && o.side < inp.length;
-    const a = fromSide && sideArc.length > 0 ? sideArc[o.side] : null;
-    if (a) {
-      // 侧面进入的物品沿接入圆弧走完整段，与弧形轨道一致；内/外弧决定车道位置
-      const s = inp[o.side];
-      const srcDir = dirIndexOf(-s[0], -s[1]);
-      const turnZ = DX[srcDir] * DY[dir] - DY[srcDir] * DX[dir];
-      const rightTurn = turnZ > 0;
-      const innerLane = rightTurn ? 0 : 1;
-      const laneR = a.rC + ((o.lane === innerLane ? -1 : 1) * 5);
-      const ang = a.aE + a.d * o.pos;
-      ix = cx + a.CCx + Math.cos(ang) * laneR;
-      iy = cy + a.CCy + Math.sin(ang) * laneR;
-    } else if (o.pos < 0.5) {
-      if (fromSide) {
-        const s = inp[o.side];
-        const inX = cx + s[0] * step, inY = cy + s[1] * step;
-        const t = o.pos / 0.5;
-        ix = inX + (cx - inX) * t + perpX * t; iy = inY + (cy - inY) * t + perpY * t;
-      } else {
-        // 直通物品（首尾相接方向一致）：全程保持车道偏移直接平移，不向中间收拢
-        const inX = cx - DX[dir] * step, inY = cy - DY[dir] * step;
-        const t = o.pos / 0.5;
-        ix = inX + (cx - inX) * t + perpX; iy = inY + (cy - inY) * t + perpY;
-      }
-    } else {
-      const t = (o.pos - 0.5) / 0.5;
-      ix = cx + exitX * t + perpX; iy = cy + exitY * t + perpY;
-    }
-    itemFn(ctx, ix, iy, o.item);
-  }
+  // 物品统一走两遍渲染的第二遍（drawBeltItems），盖在所有带面之上
+  if (e.items && e.items.length) BELT_ITEM_QUEUE.push({ e, gx, gy, dir, alpha, sideArc });
   ctx.globalAlpha = 1;
 }
 
@@ -199,7 +161,10 @@ function drawTurboBelt(ctx, e, gx, gy, dir, alpha) {
   const cx = px + TILE / 2, cy = py + TILE / 2;
   const inp = beltInputSide(e);
   if (!beltCornerTrapezoid(e) && drawBeltCorner(ctx, e, gx, gy, dir, alpha,
-    { belt: '#2f4a33', chev: 'rgba(90,180,120,.9)' })) return;
+    { belt: '#2f4a33', chev: 'rgba(90,180,120,.9)' }, false)) {
+    if (e.items && e.items.length) BELT_ITEM_QUEUE.push({ e, gx, gy, dir, alpha, corner: true });
+    return;
+  }
   ctx.globalAlpha = alpha;
   ctx.fillStyle = '#2f4a33';
   ctx.strokeStyle = '#18261b';
@@ -232,46 +197,10 @@ function drawTurboBelt(ctx, e, gx, gy, dir, alpha) {
   const bx = e.x - DX[dir], by = e.y - DY[dir];
   const backBelt = entAt(bx, by);
   const hasBackInput = backBelt instanceof Belt && backBelt.dir === dir;
-  const sideArc = (inp.length === 1 && !hasBackInput) ? [drawBeltSideMerge(ctx, e, cx, cy, dir, inp[0], step, alpha, { belt: '#2f4a33', chev: 'rgba(90,180,120,.9)' })] : [];
+  const sideArc = (inp.length === 1 && !hasBackInput) ? [drawBeltSideMerge(ctx, e, cx, cy, dir, inp[0], step, alpha, { belt: '#2f4a33', chev: 'rgba(90,180,120,.9)' })] : null;
 
-  const exitX = DX[dir] * step, exitY = DY[dir] * step;
-  const LANE_OFF = 7;
-  const laneOffset = e.items.length ? beltLaneOffset(e, 1) : null;
-  const itemFn = (LOD && LOD.simple) ? drawItemDotLOD : drawItemDot;
-  for (const o of e.items) {
-    let ix, iy;
-    const lo = (o.lane === 1 ? 1 : -1);
-    const perpX = laneOffset ? laneOffset[0] * lo * LANE_OFF : 0;
-    const perpY = laneOffset ? laneOffset[1] * lo * LANE_OFF : 0;
-    const fromSide = inp.length > 0 && o.side !== undefined && o.side >= 0 && o.side < inp.length;
-    const a = fromSide && sideArc.length > 0 ? sideArc[o.side] : null;
-    if (a) {
-      const s = inp[o.side];
-      const srcDir = dirIndexOf(-s[0], -s[1]);
-      const turnZ = DX[srcDir] * DY[dir] - DY[srcDir] * DX[dir];
-      const rightTurn = turnZ > 0;
-      const innerLane = rightTurn ? 0 : 1;
-      const laneR = a.rC + ((o.lane === innerLane ? -1 : 1) * 5);
-      const ang = a.aE + a.d * o.pos;
-      ix = cx + a.CCx + Math.cos(ang) * laneR;
-      iy = cy + a.CCy + Math.sin(ang) * laneR;
-    } else if (o.pos < 0.5) {
-      if (fromSide) {
-        const s = inp[o.side];
-        const inX = cx + s[0] * step, inY = cy + s[1] * step;
-        const t = o.pos / 0.5;
-        ix = inX + (cx - inX) * t + perpX * t; iy = inY + (cy - inY) * t + perpY * t;
-      } else {
-        const inX = cx - DX[dir] * step, inY = cy - DY[dir] * step;
-        const t = o.pos / 0.5;
-        ix = inX + (cx - inX) * t + perpX; iy = inY + (cy - inY) * t + perpY;
-      }
-    } else {
-      const t = (o.pos - 0.5) / 0.5;
-      ix = cx + exitX * t + perpX; iy = cy + exitY * t + perpY;
-    }
-    itemFn(ctx, ix, iy, o.item);
-  }
+  // 物品统一走两遍渲染的第二遍（drawBeltItems），盖在所有带面之上
+  if (e.items && e.items.length) BELT_ITEM_QUEUE.push({ e, gx, gy, dir, alpha, sideArc });
   ctx.globalAlpha = 1;
 }
 

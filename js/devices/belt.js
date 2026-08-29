@@ -116,7 +116,11 @@ class Belt extends Entity {
       // 一般侧面交叉（横向搭接进直线带）不传 laneHint，交由下游按“近侧车道”
       // 判定，避免把 A 的车道号误当作 B 的车道号、把物品错放到 B 的远侧车道。
       const laneHint = (nb.dir === this.dir || isCorner) ? f.lane : undefined;
-      if (!nb.acceptItem(f.item, this.dir, this.x, this.y, laneHint)) return false;
+      // 侧面汇入时额外传源车道号 srcLane：供下游渲染物品的汇入过渡曲线
+      // （物品需要从“源带自己的车道列与接缝的交点”平滑弯入主带近侧车道，
+      // 不知道源车道就无从得知接缝上的精确入口点，过渡会跳变）。
+      const srcLane = (nb.dir === this.dir || isCorner) ? undefined : f.lane;
+      if (!nb.acceptItem(f.item, this.dir, this.x, this.y, laneHint, srcLane)) return false;
       this._removeItem(f);
       return true;
     }
@@ -160,7 +164,7 @@ class Belt extends Entity {
     const nb = entAt(bx, by);
     return nb instanceof Belt && nb.dir === this.dir;
   }
-  acceptItem(item, fromDir, sx, sy, laneHint) {
+  acceptItem(item, fromDir, sx, sy, laneHint, srcLane) {
     const rel = (fromDir === undefined || fromDir === null) ? -1 : ((fromDir - this.dir) % 4 + 4) % 4;
     const isSide = rel === 1 || rel === 3;
     const isTail = rel === 0;   // 尾部输入：与行进同向的直通带从带尾送入
@@ -232,14 +236,27 @@ class Belt extends Entity {
     // 仅对“未指定车道的尾部输入”（机械臂/地面物品从带尾投放）保留回退，用于均衡装载。
     const strictLane = (laneHint !== undefined && laneHint !== null) || isSide;
     const laneTry = strictLane ? [lane] : [lane, 1 - lane];
-    const candidates = isSide ? [0.45, 0] : [0, 0.45];
+    // 进格落点：侧面搭接（汇入）优先落在格中 0.45（队尾留位），直通/尾部输入从入口边 0 进格。
+    // 但「纯转角」例外——转角的带面是圆弧，入口边就是弧线起点（pos 0），物品必须从 0 进格；
+    // 若沿用汇入的 0.45 落点，物品会凭空出现在弧线中段：内弧因弧长短（约 14px）看不出来，
+    // 外弧弧线长（约 36px）就会在弧线中段与后段之间露出明显空档，满带时表现为"外弧不连续"。
+    const cd = beltCornerDir(this);
+    const isCornerEntry = !!(cd && !beltCornerTrapezoid(this)
+      && fromDir === dirIndexOf(-cd[0], -cd[1]));
+    const candidates = (isSide && !isCornerEntry) ? [0.45, 0] : [0, 0.45];
     for (const l of laneTry) {
       for (const p of candidates) {
         let ok = true;
         for (const o of this.items)
           if (this.laneOf(o) === l && Math.abs(o.pos - p) < BELT_SPACING) { ok = false; break; }
         if (ok) {
-          this.items.push({ item, pos: p, lane: l, side: isSide ? side : -1 });
+          // srcLane：侧面汇入时记录源带车道号（渲染汇入过渡曲线用）；
+          // e0：本格进格落点（0.45 或 0），渲染时据此让物品恰在接缝处开始过渡。
+          this.items.push({
+            item, pos: p, lane: l, side: isSide ? side : -1,
+            srcLane: (isSide && srcLane !== undefined && srcLane !== null) ? (srcLane === 1 ? 1 : 0) : undefined,
+            e0: isSide ? p : undefined,
+          });
           if (isTail && l === lane) this._nextTailLane = 1 - (this._nextTailLane || 0);
           return true;
         }
@@ -292,13 +309,25 @@ class Belt extends Entity {
   }
   serialize() {
     const s = super.serialize();
-    s.items = this.items.map(o => [o.item, +o.pos.toFixed(3), o.side === undefined ? -1 : o.side, o.lane === 1 ? 1 : 0]);
+    s.items = this.items.map(o => [
+      o.item, +o.pos.toFixed(3),
+      o.side === undefined ? -1 : o.side,
+      o.lane === 1 ? 1 : 0,
+      o.srcLane === undefined || o.srcLane === null ? -1 : o.srcLane,
+      o.e0 === undefined || o.e0 === null ? -1 : +o.e0.toFixed(3),
+    ]);
     if (this.circuitCond) s.circuitCond = this.circuitCond;
     return s;
   }
   static restore(s) {
     const b = super.restore(s);
-    b.items = (s.items || []).map(a => ({ item: a[0], pos: a[1], side: a.length > 2 ? a[2] : -1, lane: a.length > 3 ? (a[3] === 1 ? 1 : 0) : 0 }));
+    b.items = (s.items || []).map(a => ({
+      item: a[0], pos: a[1],
+      side: a.length > 2 ? a[2] : -1,
+      lane: a.length > 3 ? (a[3] === 1 ? 1 : 0) : 0,
+      srcLane: a.length > 4 && a[4] >= 0 ? a[4] : undefined,
+      e0: a.length > 5 && a[5] >= 0 ? a[5] : undefined,
+    }));
     b.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1, circuitRead: false };
     return b;
   }
@@ -363,6 +392,11 @@ function beltLaneOffset(e, lane) {
   return [fdy * k, -fdx * k];
 }
 
+// 转角外弧贝塞尔控制点收拢系数：1 = 正圆弧（弧长 R0*π/2≈36px，比一格长 13%，
+// 满带时外弧物品被拉稀到 4.5px/件）；0.75 ≈ 弧长 33.8px（4.23px/件，贴近直线带的 4px），
+// 弧中点向格心内收约 2.7px，仍稳稳落在带面外半侧（带面半径区间 7~25）。
+const BELT_CORNER_OUTER_S = 0.75;
+
 // ===== 90° 转角渲染 =====
 // 判断是否为"纯 90° 转角"：有且仅有一个侧面输入，且背面（与行进方向相反）
 // 没有同向直行传送带。这样的单转角用弯曲圆弧绘制，区别于 T 型转角（背面有直行）。
@@ -406,7 +440,7 @@ function beltCornerTrapezoid(e) {
 
 // 绘制 90° 转角（弯曲圆弧带）。返回 true 表示已按转角绘制完成（含动效与物品）。
 // colors: { belt: 轨道底色, chev: 动效箭头色 }
-function drawBeltCorner(ctx, e, gx, gy, dir, alpha, colors) {
+function drawBeltCorner(ctx, e, gx, gy, dir, alpha, colors, itemsOnly) {
   const s = beltCornerDir(e);
   if (!s) return false;
   const px = gx * TILE, py = gy * TILE;
@@ -425,7 +459,8 @@ function drawBeltCorner(ctx, e, gx, gy, dir, alpha, colors) {
   // 轨道带：带宽 18 与直行带一致，中心线半径 = step（衔接相邻格边中心）
   const rIn = step - 9, rOut = step + 9, rC = step;
 
-  // 轨道底色（圆环带）
+  // 轨道底色（圆环带）——两遍渲染时归入第一遍带面（itemsOnly=false）
+  if (!itemsOnly) {
   ctx.globalAlpha = alpha;
   ctx.fillStyle = colors.belt;
   ctx.strokeStyle = '#22252a';
@@ -454,20 +489,37 @@ function drawBeltCorner(ctx, e, gx, gy, dir, alpha, colors) {
     ctx.fill();
     ctx.restore();
   }
+  } // 结束带面段（!itemsOnly）
+  ctx.globalAlpha = alpha;
 
   // 物品沿圆弧行进（双列：外/内弧，对齐《异星工厂》弯道）。
+  // 两遍渲染时只有第二遍（itemsOnly=true）才绘制物品，否则会被画两遍。
+  if (!itemsOnly) { ctx.globalAlpha = 1; return true; }
   // lane 号是传送带材质本身的物理车道（右转为内/外互换、左转保持），
   // 因此内/外弧归属取决于转弯方向：右转 lane0 走内弧、lane1 走外弧；
   // 左转 lane0 走外弧、lane1 走内弧，与源带/出带的直行车道视觉连续。
   const srcDir = dirIndexOf(-s[0], -s[1]);
   const turnZ = DX[srcDir] * DY[dir] - DY[srcDir] * DX[dir]; // >0 右转，<0 左转
   const rightTurn = turnZ > 0;
+  const innerLane = rightTurn ? 0 : 1; // 内弧所属车道（右转=0，左转=1）
   const itemFn = (LOD && LOD.simple) ? drawItemDotLOD : drawItemDot;
+  // 入口/出口方向的单位向量（半径端点方向），用于按车道构造二次贝塞尔弧
+  const uEx = Math.cos(aE), uEy = Math.sin(aE);
+  const uXx = Math.cos(aX), uXy = Math.sin(aX);
   for (const o of e.items) {
-    const ang = aE + d * o.pos;
-    const innerLane = rightTurn ? 0 : 1; // 内弧所属车道（右转=0，左转=1）
-    const laneR = rC + ((o.lane === innerLane ? -1 : 1) * 5);
-    const ix = cx + CCx + Math.cos(ang) * laneR, iy = cy + CCy + Math.sin(ang) * laneR;
+    // 车道半径 R0：端点（入口边/出口边）与相邻直带的车道位置逐像素对齐。
+    const R0 = rC + ((o.lane === innerLane ? -1 : 1) * 7);
+    const p0x = CCx + uEx * R0, p0y = CCy + uEy * R0;   // 入口边端点（与上游带车道重合）
+    const p1x = CCx + uXx * R0, p1y = CCy + uXy * R0;   // 出口边端点（与下游带车道重合）
+    // 二次贝塞尔 P0→K→P1 替代正圆弧：K = 圆心 + (uE+uX)*R0 时即为圆弧（长度 R0*π/2≈36px）。
+    // 外弧（R0=23）比一格（32px）长 13%，满带时物品间距被拉大到 4.5px（直线带 4px、
+    // 内弧仅 1.8px），视觉上就是"外弧发虚、中间隔空"；把控制点朝弦收拢（系数 <1）
+    // 可把外弧长度压回≈一格，使外弧物品密度与直线带一致，且端点仍严格对齐相邻带。
+    const sC = (o.lane === innerLane) ? 1 : BELT_CORNER_OUTER_S;
+    const kx = CCx + (uEx + uXx) * R0 * sC, ky = CCy + (uEy + uXy) * R0 * sC;
+    const t = o.pos, u = 1 - t;
+    const ix = cx + u * u * p0x + 2 * u * t * kx + t * t * p1x;
+    const iy = cy + u * u * p0y + 2 * u * t * ky + t * t * p1y;
     itemFn(ctx, ix, iy, o.item);
   }
   ctx.globalAlpha = 1;
@@ -536,27 +588,19 @@ function beltColors(e) {
   return { belt: '#3a3f47', chev: 'rgba(224,178,60,.85)' };
 }
 
-// 简化 LOD 传送带：缩放很小（瓦片 < LOD_SIMPLE_PX）时带面细节在屏幕上已不可辨，
-// 省略转角弧 / 侧面汇入 / 动效箭头 / 描边 / clip 等昂贵绘制，整格单色底色 + 物品色点即可。
-// 缩小画面时视口内可同时含上千条传送带，原每帧 save/rotate/clip+3 三角的绘制是渲染卡顿主因。
+// ===== 传送带两遍渲染 =====
+// 先画所有带面（第一遍），再统一画所有物品（第二遍，见 drawBeltItemsAll）。
+// 否则按桶序相邻带后画时，其不透明带面会盖掉上游带物品越过接缝的部分——
+// 视觉上物品在连接处“被裁掉半截/闪没”，转移到下游带又整体出现，像凭空冒出的新物品。
+const BELT_ITEM_QUEUE = [];
+
 function drawBeltSimple(ctx, e, gx, gy, beltCol) {
   const px = gx * TILE, py = gy * TILE;
   ctx.fillStyle = beltCol;
   ctx.fillRect(px, py, TILE, TILE);
-  if (e.items.length) {
-    const cx = px + TILE / 2, cy = py + TILE / 2;
-    const fdx = DX[e.dir], fdy = DY[e.dir];
-    // 前进 = 沿行进方向 pos 0→1 横跨整格；双列车道垂直偏移（lane 1 在行进方向右侧，±7px）
-    const kx = fdy * 7, ky = -fdx * 7;
-    for (const o of e.items) {
-      const lo = (o.lane === 1 ? 1 : -1);
-      const ix = cx + fdx * (o.pos - 0.5) * TILE + kx * lo;
-      const iy = cy + fdy * (o.pos - 0.5) * TILE + ky * lo;
-      drawItemDotLOD(ctx, ix, iy, o.item);
-    }
-  }
   // 仅创造/虚空带需角标，普通/极速带（占绝大多数）直接跳过
   if (e.type === 'creative-belt' || e.type === 'void-belt') drawBeltMark(ctx, e, gx, gy, 1);
+  if (e.items && e.items.length) BELT_ITEM_QUEUE.push({ e, gx, gy, dir: e.dir, alpha: 1, simple: true });
 }
 
 function drawBelt(ctx, e, gx, gy, dir, alpha) {
@@ -568,8 +612,10 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
   const col = beltColors(e);
   // 纯 90° 转角：直接以弯曲圆弧绘制，区分于 T 型转角。
   // 梯形交汇的转角例外——直接连到直线带（走下方直行带绘制），不再单独画圆弧。
-  if (!beltCornerTrapezoid(e) && drawBeltCorner(ctx, e, gx, gy, dir, alpha, col)) {
+  // itemsOnly=false：本遍只画带面（弧形轨道+箭头），物品统一留到第二遍（drawBeltItemsAll）。
+  if (!beltCornerTrapezoid(e) && drawBeltCorner(ctx, e, gx, gy, dir, alpha, col, false)) {
     drawBeltMark(ctx, e, gx, gy, alpha);
+    if (e.items && e.items.length) BELT_ITEM_QUEUE.push({ e, gx, gy, dir, alpha, corner: true });
     return;
   }
   ctx.globalAlpha = alpha;
@@ -611,9 +657,22 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
   const bx = e.x - DX[dir], by = e.y - DY[dir];
   const backBelt = entAt(bx, by);
   const hasBackInput = backBelt instanceof Belt && backBelt.dir === dir;
-  const sideArc = (inp.length === 1 && !hasBackInput) ? [drawBeltSideMerge(ctx, e, cx, cy, dir, inp[0], step, alpha, col)] : [];
+  const sideArc = (inp.length === 1 && !hasBackInput) ? [drawBeltSideMerge(ctx, e, cx, cy, dir, inp[0], step, alpha, col)] : null;
 
+  drawBeltMark(ctx, e, gx, gy, alpha);
+  if (e.items && e.items.length) BELT_ITEM_QUEUE.push({ e, gx, gy, dir, alpha, sideArc });
+}
+
+// 第二遍：统一绘制传送带上的物品（含转角弧上的物品）。此阶段所有带面（含相邻带）
+// 都已画完，物品越过接缝的部分必然绘制在相邻带面之上——连接处不再被后画的带面
+// 盖掉半截，也就不会出现“物品在接缝处被裁掉/闪没、转移到下游又凭空出现”的抖动。
+// sideArc：带面阶段算好的汇入弧参数（仅单侧面输入时存在；旧档物品无 srcLane 时沿弧渲染）。
+function drawBeltItems(ctx, e, gx, gy, dir, alpha, sideArc) {
+  const cx = gx * TILE + TILE / 2, cy = gy * TILE + TILE / 2;
+  const inp = beltInputSide(e);
+  const step = TILE / 2;
   const exitX = DX[dir] * step, exitY = DY[dir] * step;
+  ctx.globalAlpha = alpha;
   // 双列错位：两条车道在行进方向垂直方向各偏移一半，物品沿各自车道流动
   const LANE_OFF = 7;
   const laneOffset = e.items.length ? beltLaneOffset(e, 1) : null;
@@ -641,8 +700,38 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
       }
     }
     const fromSide = sideIdx >= 0;
-    const a = fromSide && sideArc.length > 0 ? sideArc[sideIdx] : null;
-    if (a) {
+    const a = (fromSide && sideArc && sideArc.length > 0) ? sideArc[sideIdx] : null;
+    if (fromSide && o.srcLane !== undefined && o.srcLane !== null) {
+      // 侧面汇入物品的平滑过渡（修复连接处物品闪动）：
+      // 旧逻辑里多侧面输入的带子没有汇入弧（sideArc 仅单侧面时生成），侧面来的物品
+      // 直接按车道直线渲染——进格落点 0.45 的物品画在格心附近、落点 0 的画在背面边，
+      // 而它们上一帧还在侧面接缝上（源带 pos=1 处），每个物品过连接处瞬移十余像素，
+      // 且两种落点交替出现，视觉上就是“连接处物品闪动、过渡生硬”。
+      // 现改为二次贝塞尔过渡曲线 P0→K→P2：
+      //   P0 = 接缝上源车道所在点（与物品在源带 pos=1 的渲染位置逐像素重合，转移零跳变）
+      //   K  = 车道线上的拐点（起始切向 = 源带行进方向，终点切向 = 主带流向）
+      //   P2 = 主带车道线上当前 pos 对应点（pos=1 时恰为出口边中心±车道偏移，
+      //        与下一格 pos=0 的渲染位置重合，出格同样零跳变）
+      // 进度 v = (pos - e0) / (1 - e0)，e0 为进格落点：转移瞬间物品恰在接缝处，
+      // 之后沿曲线自然弯入主带车道，不再“凭空出现在带子中间”。
+      const sv = _sideVec[o.side];
+      const srcDir2 = dirIndexOf(-sv[0], -sv[1]);
+      // 源带 lane1 方向（源带 perp）与主带流向的点积 = ±1：把源车道列号换算成
+      // 沿主带流向的接缝偏移（如向上流的 B 带 lane1=西列 → 接缝入口在格心西侧 7px）
+      const sDot = DY[srcDir2] * DX[dir] - DX[srcDir2] * DY[dir];
+      const colOff = (o.srcLane === 1 ? LANE_OFF : -LANE_OFF) * sDot;
+      const p0x = cx + sv[0] * step + DX[dir] * colOff;
+      const p0y = cy + sv[1] * step + DY[dir] * colOff;
+      const kx2 = cx + sv[0] * LANE_OFF + DX[dir] * colOff;
+      const ky2 = cy + sv[1] * LANE_OFF + DY[dir] * colOff;
+      const e0 = (o.e0 === undefined || o.e0 === null) ? 0 : o.e0;
+      const v = Math.min(1, Math.max(0, (o.pos - e0) / (1 - e0)));
+      const p2x = cx + DX[dir] * (o.pos - 0.5) * TILE + perpX;
+      const p2y = cy + DY[dir] * (o.pos - 0.5) * TILE + perpY;
+      const u = 1 - v;
+      ix = u * u * p0x + 2 * u * v * kx2 + v * v * p2x;
+      iy = u * u * p0y + 2 * u * v * ky2 + v * v * p2y;
+    } else if (a) {
       // 侧面进入的物品沿接入圆弧走完整段（入口边 → 汇入主带方向 → 出口边），
       // 与弧形轨道一致，不再直楞楞地斜穿格心、也避免直矩形“搭”在主带上；
       // 内/外弧决定车道位置，平滑接续主带车道。
@@ -651,7 +740,7 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
       const turnZ = DX[srcDir] * DY[dir] - DY[srcDir] * DX[dir]; // >0 右转，<0 左转
       const rightTurn = turnZ > 0;
       const innerLane = rightTurn ? 0 : 1; // 内弧所属车道（右转=0，左转=1），与纯转角一致
-      const laneR = a.rC + ((o.lane === innerLane ? -1 : 1) * 5);
+      const laneR = a.rC + ((o.lane === innerLane ? -1 : 1) * LANE_OFF);
       const ang = a.aE + a.d * o.pos;
       ix = cx + a.CCx + Math.cos(ang) * laneR;
       iy = cy + a.CCy + Math.sin(ang) * laneR;
@@ -671,8 +760,20 @@ function drawBelt(ctx, e, gx, gy, dir, alpha) {
     }
     itemFn(ctx, ix, iy, o.item);
   }
-  drawBeltMark(ctx, e, gx, gy, alpha);
+  // 创造/虚空带角标保持在物品之上（与旧行为一致）
+  if (e.type === 'creative-belt' || e.type === 'void-belt') drawBeltMark(ctx, e, gx, gy, alpha);
   ctx.globalAlpha = 1;
+}
+
+// 队列冲刷：按入队顺序绘制所有传送带物品并清空队列（每帧在设备第一遍之后调用一次）。
+function drawBeltItemsAll(ctx) {
+  const q = BELT_ITEM_QUEUE;
+  for (let i = 0; i < q.length; i++) {
+    const it = q[i];
+    if (it.corner) drawBeltCorner(ctx, it.e, it.gx, it.gy, it.dir, it.alpha, beltColors(it.e), true);
+    else drawBeltItems(ctx, it.e, it.gx, it.gy, it.dir, it.alpha, it.sideArc || null);
+  }
+  q.length = 0;
 }
 
 // 创造/虚空传送带叠加角标：绿色 ∞（创造带）与红色 ×（虚空带），便于辨识测试设备。
