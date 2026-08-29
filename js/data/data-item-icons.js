@@ -6268,4 +6268,419 @@ const ITEM_CUSTOM_ICONS = {
     x.fill();
   },
 
+  // ===== 中间产品（docs/item-icons-todo.md 批次 2） =====
+
+  // 自动化科学包：红色圆瓶 + 瓶盖 + 瓶身高光，实验药剂质感
+  'automation-science-pack': (x, r, s, col) => {
+    // 瓶盖
+    x.fillStyle = '#9aa0a8';
+    rrPath(x, -r * 0.3, -r * 0.92, r * 0.6, r * 0.34, r * 0.08);
+    x.fill();
+    x.strokeStyle = 'rgba(30,35,45,.6)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    x.fillStyle = 'rgba(255,255,255,.35)';
+    x.fillRect(-r * 0.3, -r * 0.82, r * 0.6, r * 0.09);
+    // 瓶身（圆底瓶）
+    const g = x.createRadialGradient(-r * 0.22, -r * 0.2, r * 0.08, 0, r * 0.15, r * 0.95);
+    g.addColorStop(0, lightenColor(col, 0.55));
+    g.addColorStop(0.5, col);
+    g.addColorStop(1, darkenColor(col, 0.5));
+    x.fillStyle = g;
+    x.beginPath();
+    x.moveTo(-r * 0.24, -r * 0.62);
+    x.lineTo(-r * 0.24, -r * 0.2);
+    x.quadraticCurveTo(-r * 0.8, r * 0.05, -r * 0.8, r * 0.42);
+    x.arc(0, r * 0.42, r * 0.8, Math.PI, 0);
+    x.quadraticCurveTo(r * 0.8, r * 0.05, r * 0.24, -r * 0.2);
+    x.lineTo(r * 0.24, -r * 0.62);
+    x.closePath();
+    x.fill();
+    x.strokeStyle = 'rgba(70,15,15,.6)';
+    x.stroke();
+    // 瓶身竖向高光
+    x.strokeStyle = 'rgba(255,235,235,.5)';
+    x.lineWidth = r * 0.14;
+    x.lineCap = 'round';
+    x.beginPath();
+    x.moveTo(-r * 0.45, r * 0.1);
+    x.quadraticCurveTo(-r * 0.6, r * 0.35, -r * 0.42, r * 0.6);
+    x.stroke();
+    // 液面气泡
+    x.fillStyle = 'rgba(255,255,255,.35)';
+    x.beginPath(); x.arc(r * 0.18, r * 0.42, r * 0.07, 0, 7); x.fill();
+    x.beginPath(); x.arc(r * 0.36, r * 0.25, r * 0.05, 0, 7); x.fill();
+  },
+
+  // 钢板：灰蓝金属厚板，铆钉 + 拉丝质感 + 侧边厚度
+  'steel-plate': (x, r, s, col) => {
+    x.save(); x.rotate(-0.22);
+    // 板厚度侧边
+    x.fillStyle = darkenColor(col, 0.55);
+    rrPath(x, -r * 0.82, -r * 0.5, r * 1.64, r * 1.08, r * 0.1);
+    x.fill();
+    // 顶面
+    const g = x.createLinearGradient(-r * 0.8, -r * 0.62, r * 0.8, r * 0.5);
+    g.addColorStop(0, lightenColor(col, 0.5));
+    g.addColorStop(0.45, col);
+    g.addColorStop(1, darkenColor(col, 0.3));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.82, -r * 0.62, r * 1.64, r * 1.0, r * 0.1);
+    x.fill();
+    x.strokeStyle = 'rgba(25,35,50,.65)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    x.stroke();
+    // 拉丝纹
+    x.strokeStyle = 'rgba(255,255,255,.12)';
+    x.lineWidth = Math.max(0.8, s * 0.025);
+    for (let i = 0; i < 4; i++) {
+      const py = -r * 0.38 + i * r * 0.26;
+      x.beginPath(); x.moveTo(-r * 0.6, py); x.lineTo(r * 0.6, py); x.stroke();
+    }
+    // 四角铆钉
+    x.fillStyle = 'rgba(235,240,248,.85)';
+    for (const [px, py] of [[-0.62, -0.42], [0.62, -0.42], [-0.62, 0.2], [0.62, 0.2]]) {
+      x.beginPath(); x.arc(px * r, py * r, r * 0.07, 0, 7); x.fill();
+    }
+    x.restore();
+  },
+
+  // 物流科学包：绿色圆瓶 + 瓶盖，药剂质感（与红瓶同构）
+  'logistic-science-pack': (x, r, s, col) => {
+    x.fillStyle = '#9aa0a8';
+    rrPath(x, -r * 0.3, -r * 0.92, r * 0.6, r * 0.34, r * 0.08);
+    x.fill();
+    x.strokeStyle = 'rgba(30,35,45,.6)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    x.fillStyle = 'rgba(255,255,255,.35)';
+    x.fillRect(-r * 0.3, -r * 0.82, r * 0.6, r * 0.09);
+    const g = x.createRadialGradient(-r * 0.22, -r * 0.2, r * 0.08, 0, r * 0.15, r * 0.95);
+    g.addColorStop(0, lightenColor(col, 0.55));
+    g.addColorStop(0.5, col);
+    g.addColorStop(1, darkenColor(col, 0.5));
+    x.fillStyle = g;
+    x.beginPath();
+    x.moveTo(-r * 0.24, -r * 0.62);
+    x.lineTo(-r * 0.24, -r * 0.2);
+    x.quadraticCurveTo(-r * 0.8, r * 0.05, -r * 0.8, r * 0.42);
+    x.arc(0, r * 0.42, r * 0.8, Math.PI, 0);
+    x.quadraticCurveTo(r * 0.8, r * 0.05, r * 0.24, -r * 0.2);
+    x.lineTo(r * 0.24, -r * 0.62);
+    x.closePath();
+    x.fill();
+    x.strokeStyle = 'rgba(15,60,20,.6)';
+    x.stroke();
+    x.strokeStyle = 'rgba(240,255,240,.5)';
+    x.lineWidth = r * 0.14;
+    x.lineCap = 'round';
+    x.beginPath();
+    x.moveTo(-r * 0.45, r * 0.1);
+    x.quadraticCurveTo(-r * 0.6, r * 0.35, -r * 0.42, r * 0.6);
+    x.stroke();
+    x.fillStyle = 'rgba(255,255,255,.35)';
+    x.beginPath(); x.arc(r * 0.18, r * 0.42, r * 0.07, 0, 7); x.fill();
+    x.beginPath(); x.arc(r * 0.36, r * 0.25, r * 0.05, 0, 7); x.fill();
+  },
+
+  // 化工科学包：蓝色锥形烧瓶 + 液体 + 冒泡，化工实验感
+  'chemical-science-pack': (x, r, s, col) => {
+    // 瓶口与瓶盖
+    x.fillStyle = '#9aa0a8';
+    rrPath(x, -r * 0.18, -r * 0.95, r * 0.36, r * 0.3, r * 0.06);
+    x.fill();
+    // 锥形瓶体
+    const g = x.createLinearGradient(-r * 0.6, -r * 0.6, r * 0.6, r * 0.8);
+    g.addColorStop(0, lightenColor(col, 0.45));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = g;
+    x.beginPath();
+    x.moveTo(-r * 0.16, -r * 0.66);
+    x.lineTo(-r * 0.7, r * 0.6);
+    x.quadraticCurveTo(-r * 0.78, r * 0.82, -r * 0.5, r * 0.82);
+    x.lineTo(r * 0.5, r * 0.82);
+    x.quadraticCurveTo(r * 0.78, r * 0.82, r * 0.7, r * 0.6);
+    x.lineTo(r * 0.16, -r * 0.66);
+    x.closePath();
+    x.fill();
+    x.strokeStyle = 'rgba(10,35,70,.65)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    x.stroke();
+    // 底部液体（更深）
+    x.fillStyle = 'rgba(20,50,110,.5)';
+    x.beginPath();
+    x.moveTo(-r * 0.5, r * 0.18);
+    x.lineTo(-r * 0.62, r * 0.6);
+    x.quadraticCurveTo(-r * 0.7, r * 0.78, -r * 0.5, r * 0.78);
+    x.lineTo(r * 0.5, r * 0.78);
+    x.quadraticCurveTo(r * 0.7, r * 0.78, r * 0.62, r * 0.6);
+    x.lineTo(r * 0.5, r * 0.18);
+    x.closePath();
+    x.fill();
+    // 液面
+    x.fillStyle = 'rgba(200,225,255,.55)';
+    rrPath(x, -r * 0.51, r * 0.14, r * 1.02, r * 0.09, r * 0.04);
+    x.fill();
+    // 气泡
+    x.fillStyle = 'rgba(235,245,255,.6)';
+    x.beginPath(); x.arc(-r * 0.2, r * 0.42, r * 0.07, 0, 7); x.fill();
+    x.beginPath(); x.arc(r * 0.14, r * 0.55, r * 0.05, 0, 7); x.fill();
+    // 瓶身高光
+    x.strokeStyle = 'rgba(255,255,255,.4)';
+    x.lineWidth = r * 0.1;
+    x.lineCap = 'round';
+    x.beginPath();
+    x.moveTo(-r * 0.14, -r * 0.4);
+    x.quadraticCurveTo(-r * 0.42, r * 0.1, -r * 0.44, r * 0.5);
+    x.stroke();
+  },
+
+  // 塑料板：白色半透明板 + 轻微弯折 + 高光，树脂质感
+  'plastic-bar': (x, r, s, col) => {
+    x.save(); x.rotate(0.25);
+    const g = x.createLinearGradient(-r * 0.7, -r * 0.5, r * 0.7, r * 0.5);
+    g.addColorStop(0, lightenColor(col, 0.35));
+    g.addColorStop(0.5, lightenColor(col, 0.12));
+    g.addColorStop(1, darkenColor(col, 0.2));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.8, -r * 0.42, r * 1.6, r * 0.84, r * 0.16);
+    x.fill();
+    x.strokeStyle = 'rgba(60,70,85,.55)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 斜向高光带
+    x.fillStyle = 'rgba(255,255,255,.45)';
+    x.beginPath();
+    x.moveTo(-r * 0.6, -r * 0.36);
+    x.lineTo(-r * 0.25, -r * 0.36);
+    x.lineTo(-r * 0.05, r * 0.36);
+    x.lineTo(-r * 0.4, r * 0.36);
+    x.closePath();
+    x.fill();
+    x.fillStyle = 'rgba(255,255,255,.28)';
+    x.beginPath();
+    x.moveTo(r * 0.1, -r * 0.36);
+    x.lineTo(r * 0.28, -r * 0.36);
+    x.lineTo(r * 0.48, r * 0.36);
+    x.lineTo(r * 0.3, r * 0.36);
+    x.closePath();
+    x.fill();
+    x.restore();
+  },
+
+  // 军事科学包：深灰绿军壶 + 弹头图案 + 弹链点缀
+  'military-science-pack': (x, r, s, col) => {
+    // 军壶主体（扁圆）
+    const g = x.createLinearGradient(-r * 0.7, -r * 0.7, r * 0.6, r * 0.7);
+    g.addColorStop(0, lightenColor(col, 0.4));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.5));
+    x.fillStyle = g;
+    x.beginPath();
+    x.ellipse(0, r * 0.12, r * 0.82, r * 0.72, 0, 0, 7);
+    x.fill();
+    x.strokeStyle = 'rgba(15,25,15,.7)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    x.stroke();
+    // 壶口
+    x.fillStyle = darkenColor(col, 0.4);
+    rrPath(x, -r * 0.2, -r * 0.86, r * 0.4, r * 0.3, r * 0.07);
+    x.fill();
+    x.strokeStyle = 'rgba(15,25,15,.6)';
+    x.stroke();
+    // 中带
+    x.fillStyle = 'rgba(35,48,35,.55)';
+    x.fillRect(-r * 0.8, r * 0.02, r * 1.6, r * 0.2);
+    // 白色弹头符号
+    x.fillStyle = 'rgba(240,240,230,.92)';
+    x.beginPath();
+    x.moveTo(0, -r * 0.42);
+    x.quadraticCurveTo(r * 0.2, -r * 0.14, r * 0.2, r * 0.3);
+    x.lineTo(-r * 0.2, r * 0.3);
+    x.quadraticCurveTo(-r * 0.2, -r * 0.14, 0, -r * 0.42);
+    x.closePath();
+    x.fill();
+    // 弹底座
+    x.fillStyle = '#c9a24a';
+    x.fillRect(-r * 0.24, r * 0.3, r * 0.48, r * 0.12);
+  },
+
+  // 高级电路板：暗红基板 + 金色走线 + 中央芯片，比绿板更高级
+  'advanced-circuit': (x, r, s, col) => {
+    // 引脚
+    x.fillStyle = '#b8a24e';
+    for (let i = 0; i < 4; i++) {
+      x.fillRect(-r * 0.6 + i * r * 0.4, r * 0.78, r * 0.16, r * 0.2);
+    }
+    const g = x.createLinearGradient(-r * 0.75, -r * 0.75, r * 0.75, r * 0.75);
+    g.addColorStop(0, lightenColor(col, 0.35));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.78, -r * 0.78, r * 1.56, r * 1.56, r * 0.14);
+    x.fill();
+    x.strokeStyle = 'rgba(35,8,8,.65)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    x.stroke();
+    // 金色走线（横竖各两条）
+    x.strokeStyle = 'rgba(230,196,90,.85)';
+    x.lineWidth = Math.max(1, s * 0.032);
+    x.lineCap = 'round';
+    x.beginPath();
+    x.moveTo(-r * 0.62, -r * 0.32); x.lineTo(r * 0.62, -r * 0.32);
+    x.moveTo(-r * 0.62, r * 0.34); x.lineTo(r * 0.62, r * 0.34);
+    x.moveTo(-r * 0.3, -r * 0.62); x.lineTo(-r * 0.3, r * 0.62);
+    x.moveTo(r * 0.3, -r * 0.62); x.lineTo(r * 0.3, r * 0.62);
+    x.stroke();
+    // 走线端点焊盘
+    x.fillStyle = 'rgba(240,210,110,.95)';
+    for (const [px, py] of [[-0.62, -0.32], [0.62, -0.32], [-0.62, 0.34], [0.62, 0.34], [-0.3, -0.62], [0.3, -0.62], [-0.3, 0.62], [0.3, 0.62]]) {
+      x.beginPath(); x.arc(px * r, py * r, r * 0.055, 0, 7); x.fill();
+    }
+    // 中央芯片
+    x.fillStyle = '#2a2a32';
+    rrPath(x, -r * 0.3, -r * 0.3, r * 0.6, r * 0.6, r * 0.06);
+    x.fill();
+    x.strokeStyle = 'rgba(230,196,90,.6)';
+    x.lineWidth = Math.max(0.8, s * 0.025);
+    x.stroke();
+    // 芯片引脚
+    x.fillStyle = 'rgba(230,196,90,.9)';
+    for (let i = 0; i < 3; i++) {
+      x.fillRect(-r * 0.24 + i * r * 0.22, -r * 0.42, r * 0.1, r * 0.12);
+      x.fillRect(-r * 0.24 + i * r * 0.22, r * 0.3, r * 0.1, r * 0.12);
+    }
+  },
+
+  // 引擎单元：灰钢气缸体 + 活塞杆 + 散热鳍片
+  'engine-unit': (x, r, s, col) => {
+    x.save(); x.rotate(-0.35);
+    // 活塞杆
+    x.fillStyle = '#c9ced6';
+    x.fillRect(-r * 0.12, -r * 0.95, r * 0.24, r * 0.5);
+    x.strokeStyle = 'rgba(40,48,60,.5)';
+    x.lineWidth = Math.max(1, s * 0.03);
+    x.strokeRect(-r * 0.12, -r * 0.95, r * 0.24, r * 0.5);
+    // 气缸体
+    const g = x.createLinearGradient(-r * 0.55, 0, r * 0.55, 0);
+    g.addColorStop(0, lightenColor(col, 0.5));
+    g.addColorStop(0.5, col);
+    g.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.55, -r * 0.48, r * 1.1, r * 1.25, r * 0.14);
+    x.fill();
+    x.strokeStyle = 'rgba(35,42,55,.65)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    x.stroke();
+    // 散热鳍片
+    x.fillStyle = 'rgba(45,55,70,.45)';
+    for (let i = 0; i < 3; i++) {
+      x.fillRect(-r * 0.55, -r * 0.26 + i * r * 0.4, r * 1.1, r * 0.13);
+    }
+    // 缸体高光
+    x.fillStyle = 'rgba(255,255,255,.25)';
+    rrPath(x, -r * 0.42, -r * 0.4, r * 0.2, r * 1.05, r * 0.08);
+    x.fill();
+    // 底座
+    x.fillStyle = '#6d747d';
+    rrPath(x, -r * 0.7, r * 0.66, r * 1.4, r * 0.22, r * 0.06);
+    x.fill();
+    x.strokeStyle = 'rgba(35,42,55,.6)';
+    x.stroke();
+    x.restore();
+  },
+
+  // 电动引擎：蓝灰电机壳 + 转轴 + 电刷火花色端盖
+  'electric-engine-unit': (x, r, s, col) => {
+    x.save(); x.rotate(0.3);
+    // 转轴
+    x.fillStyle = '#c9ced6';
+    x.fillRect(-r * 0.1, -r * 0.95, r * 0.2, r * 0.42);
+    x.strokeStyle = 'rgba(40,48,60,.5)';
+    x.lineWidth = Math.max(1, s * 0.03);
+    x.strokeRect(-r * 0.1, -r * 0.95, r * 0.2, r * 0.42);
+    // 电机壳
+    const g = x.createLinearGradient(-r * 0.6, 0, r * 0.6, 0);
+    g.addColorStop(0, lightenColor(col, 0.45));
+    g.addColorStop(0.5, col);
+    g.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.6, -r * 0.55, r * 1.2, r * 1.3, r * 0.16);
+    x.fill();
+    x.strokeStyle = 'rgba(25,40,55,.65)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    x.stroke();
+    // 电机壳散热槽（竖向）
+    x.fillStyle = 'rgba(25,40,55,.4)';
+    for (let i = 0; i < 4; i++) {
+      x.fillRect(-r * 0.45 + i * r * 0.26, -r * 0.42, r * 0.1, r * 0.98);
+    }
+    // 顶部端盖
+    x.fillStyle = '#e8b93a';
+    rrPath(x, -r * 0.42, -r * 0.62, r * 0.84, r * 0.2, r * 0.07);
+    x.fill();
+    x.strokeStyle = 'rgba(90,65,10,.55)';
+    x.stroke();
+    // 壳体高光
+    x.fillStyle = 'rgba(255,255,255,.22)';
+    rrPath(x, -r * 0.48, -r * 0.42, r * 0.18, r * 1.05, r * 0.08);
+    x.fill();
+    // 底座
+    x.fillStyle = '#6d747d';
+    rrPath(x, -r * 0.72, r * 0.66, r * 1.44, r * 0.2, r * 0.06);
+    x.fill();
+    x.restore();
+  },
+
+  // 处理器：墨绿基板 + 金色网格走线 + 双芯片，尖端电子感
+  'processing-unit': (x, r, s, col) => {
+    // 引脚
+    x.fillStyle = '#b8a24e';
+    for (let i = 0; i < 5; i++) {
+      x.fillRect(-r * 0.64 + i * r * 0.32, r * 0.8, r * 0.13, r * 0.18);
+    }
+    const g = x.createLinearGradient(-r * 0.8, -r * 0.8, r * 0.8, r * 0.8);
+    g.addColorStop(0, lightenColor(col, 0.4));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.82, -r * 0.82, r * 1.64, r * 1.64, r * 0.13);
+    x.fill();
+    x.strokeStyle = 'rgba(8,30,18,.7)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    x.stroke();
+    // 金色网格走线
+    x.strokeStyle = 'rgba(232,200,100,.7)';
+    x.lineWidth = Math.max(0.8, s * 0.026);
+    for (let i = 0; i < 3; i++) {
+      const p = -r * 0.5 + i * r * 0.5;
+      x.beginPath();
+      x.moveTo(-r * 0.7, p); x.lineTo(r * 0.7, p);
+      x.moveTo(p, -r * 0.7); x.lineTo(p, r * 0.7);
+      x.stroke();
+    }
+    // 主芯片（中央）
+    x.fillStyle = '#1e222b';
+    rrPath(x, -r * 0.34, -r * 0.34, r * 0.68, r * 0.68, r * 0.07);
+    x.fill();
+    x.strokeStyle = 'rgba(232,200,100,.75)';
+    x.lineWidth = Math.max(1, s * 0.028);
+    x.stroke();
+    // 芯片内核微光
+    x.fillStyle = 'rgba(120,200,255,.35)';
+    rrPath(x, -r * 0.16, -r * 0.16, r * 0.32, r * 0.32, r * 0.04);
+    x.fill();
+    // 两颗副芯片
+    x.fillStyle = '#2a2f3a';
+    rrPath(x, -r * 0.66, -r * 0.66, r * 0.3, r * 0.3, r * 0.05);
+    x.fill();
+    x.strokeStyle = 'rgba(232,200,100,.5)';
+    x.stroke();
+    rrPath(x, r * 0.36, r * 0.36, r * 0.3, r * 0.3, r * 0.05);
+    x.fillStyle = '#2a2f3a';
+    x.fill();
+    x.stroke();
+  },
+
 };

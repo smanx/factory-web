@@ -163,16 +163,16 @@
 - [x] `iron-stick` 铁杆
 - [x] `copper-cable` 铜线
 - [x] `electronic-circuit` 电路板
-- [ ] `automation-science-pack` 自动化科学包
-- [ ] `steel-plate` 钢板
-- [ ] `logistic-science-pack` 物流科学包
-- [ ] `chemical-science-pack` 化工科学包
-- [ ] `plastic-bar` 塑料板
-- [ ] `military-science-pack` 军事科学包
-- [ ] `advanced-circuit` 高级电路板
-- [ ] `engine-unit` 引擎单元
-- [ ] `electric-engine-unit` 电动引擎
-- [ ] `processing-unit` 处理器
+- [x] `automation-science-pack` 自动化科学包
+- [x] `steel-plate` 钢板
+- [x] `logistic-science-pack` 物流科学包
+- [x] `chemical-science-pack` 化工科学包
+- [x] `plastic-bar` 塑料板
+- [x] `military-science-pack` 军事科学包
+- [x] `advanced-circuit` 高级电路板
+- [x] `engine-unit` 引擎单元
+- [x] `electric-engine-unit` 电动引擎
+- [x] `processing-unit` 处理器
 - [ ] `low-density-structure` 低密度结构
 - [ ] `rocket-fuel` 火箭燃料
 - [ ] `explosives` 爆炸物
