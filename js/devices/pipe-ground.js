@@ -5,7 +5,24 @@
 // 可跨过传送带/管道等障碍，容量与普通管道一致（PIPE_CAP）。
 // 地下管道与普通管道一样是“互通”的：不分入口/出口，正前方、背侧的地面管道以及配对的
 // 另一端地下管道之间按压差双向均压流动，流体可从任一端进入、从任一端流出。
-const PIPE_GROUND_MAX = 10;
+//
+// 【中间可放设备】两座之间可以放任意设备（建筑/机器/传送带……），这正是地下管道的用途：
+// 地下管段从这些设备的“下方”穿过，因此**不会被中间的设备阻挡、也不会与它们连通流体**。
+// 只有「峭壁 / 水面」这类不可建造的地形会切断地下管段（对齐《异星工厂》：Cliff 会阻挡地下管道）。
+// 最大跨距（格）来自官方 data.raw：pipe-to-ground 的 underground pipe_connection.max_underground_distance = 10
+// （由 tools/generate-game-data.js → GAME_DATA.pipeGroundDist 单源下发，见 AGENT.md 数据铁律）
+const PIPE_GROUND_MAX = GAME_DATA.pipeGroundDist ?? 10;
+
+// 地下管段能否从 (tx,ty) 这一格下方穿过：
+//   ① 空地 / 树木 → 可以（地下管道本就用于穿越树木等地面障碍）
+//   ② 任何设备（建筑 / 机器 / 传送带 / 管道 / 机械臂……）→ 可以，且不与它们连通
+//   ③ 峭壁 / 水面 → 不可以，地形切断地下管段（对齐《异星工厂》：Cliff 会阻挡地下管道）
+// 地形判定复用 world.js 的 isCliff/isWater（地形语义唯一源，此处不重复维护地形常量）。
+function ugPipePassable(tx, ty) {
+  if (typeof isCliff === 'function' && isCliff(tx, ty)) return false;   // 峭壁切断地下管段
+  if (typeof isWater === 'function' && isWater(tx, ty)) return false;   // 水面不可铺设地下管段
+  return true;
+}
 
 // 双向均压：将流体 k 从 a/b 中较多的一侧匀到较少的一侧（至少 1 单位），并遵守容量与防混合。
 function pipeToGroundSwap(a, b, k) {
@@ -13,11 +30,13 @@ function pipeToGroundSwap(a, b, k) {
   const bF = b.fluid[k] || 0;
   // 防混合：任一端含有其它流体则不交换
   if (a.total() - aF > 0 || b.total() - bF > 0) return;
-  if (aF === bF) return;
+  const diff = Math.abs(aF - bF);
+  // 差 1 以内视作已均衡：否则两端会反复互推这 1 单位，液面永远在 2/3 之间抖动。
+  if (diff < 2) return;
   let from, to, avail, cap;
   if (aF > bF) { from = a; to = b; avail = aF; cap = PIPE_CAP - b.total(); }
   else { from = b; to = a; avail = bF; cap = PIPE_CAP - a.total(); }
-  let move = Math.max(1, Math.floor(Math.abs(aF - bF) / 2));
+  let move = Math.floor(diff / 2);
   move = Math.min(move, avail, cap);
   if (move <= 0) return;
   from.fluid[k] -= move;
@@ -31,20 +50,25 @@ class PipeToGround extends Entity {
   }
   total() { let s = 0; for (const k in this.fluid) s += this.fluid[k]; return s; }
   maxDist() { return PIPE_GROUND_MAX; }
-  // 沿自身朝向的 sign 方向（+1 前方 / -1 背侧）扫描最近的背向管道；同向的跳过继续，固体阻挡返回 null。
+  // 沿自身朝向的 sign 方向（+1 前方 / -1 背侧）扫描最近的背向管道；同向的跳过继续，地形阻挡返回 null。
   // 距离从 2 起：紧挨（距离 1）且相对的两座只是像普通管道一样直接连通，不属于地下配对（配对应跨过一段空隙）。
+  //
+  // 【中间可放设备】扫描途中遇到的**任何设备都不再阻挡配对**（这是本次修复的核心）：
+  // 地下管段从设备下方穿过，中间放设备（建筑/机器/传送带/管道……）照样互通。
+  // 只有峭壁/水面（ugPipePassable=false）会切断这条地下管段。
+  // 旧行为：`if (t.solid) return null;` —— 中间放一台设备就直接断连，与《异星工厂》不符。
   _findAlong(sign) {
     for (let k = 2; k <= this.maxDist(); k++) {
       const nx = this.x + DX[this.dir] * sign * k, ny = this.y + DY[this.dir] * sign * k;
+      // 地形（峭壁/水面）切断地下管段
+      if (!ugPipePassable(nx, ny)) return null;
       const t = entAt(nx, ny);
       if (!t) continue;
       if (t instanceof PipeToGround) {
         if (PipeToGround._parallel(t.dir, this.dir)) return t;
         continue;   // 同向的管道不配对，继续找最近的背向管道
       }
-      // 中间不可隔普通管道？不：地下管道本身就是用于穿越管道。但不可隔其它固体设备
-      if (t instanceof Pipe) continue;
-      if (t.solid) return null;
+      // 其它设备（建筑/机器/传送带/普通管道……）一律“可穿越、不连通”，继续向后找配对端
     }
     return null;
   }
@@ -178,7 +202,7 @@ function pipeGroundPanelHtml(e) {
   h += row('容量', e.total() + ' / ' + PIPE_CAP, 'cap');
   if (Object.keys(agg).length) h += '<button data-action="drain" id="btn-pgt-takeout">直接清空</button>';
   h += '<div class="status"></div>';
-  h += '<div class="dim">地下管道：背向摆两座（朝向相反，最远 ' + PIPE_GROUND_MAX + ' 格）自动配对，从地下穿行流体，可跨过传送带/管道。与普通管道一样互通，不分入口/出口，正前方与背侧管道及配对端均按压差双向输送。一条线上多个管道时只与最近的背向管道配对。R 旋转方向。</div>';
+  h += '<div class="dim">地下管道：背向摆两座（朝向相反，最远 ' + PIPE_GROUND_MAX + ' 格）自动配对，从地下穿行流体。与普通管道一样互通，不分入口/出口，正前方与背侧管道及配对端均按压差双向输送。<b>两座中间可以放任意设备</b>（建筑/机器/传送带/管道……），管段从设备下方穿过，不会被阻挡也不会与设备连通；只有峭壁/水面会切断地下管段。一条线上多个管道时只与最近的背向管道配对。R 旋转方向。</div>';
   return h;
 }
 function pipeGroundPanelLive(e, api) {

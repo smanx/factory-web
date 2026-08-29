@@ -517,6 +517,22 @@ for (const [pid, [rtype, oname]] of Object.entries({
   if (proto && typeof proto.max_distance === 'number') undergroundDist[pid] = proto.max_distance;
 }
 
+// ---- 地下管道最大跨距（格）----
+// 官方 pipe-to-ground 的 fluid_box.pipe_connections 中 connection_type="underground" 那一项的
+// max_underground_distance（官方 = 10）。项目原先硬编码 PIPE_GROUND_MAX，现改为官方单源。
+const pipeGroundDist = (() => {
+  const pt = raw['pipe-to-ground'] && raw['pipe-to-ground']['pipe-to-ground'];
+  const conns = pt && pt.fluid_box && pt.fluid_box.pipe_connections;
+  if (!conns) return undefined;
+  for (const k of Object.keys(conns)) {
+    const c = conns[k];
+    if (c && c.connection_type === 'underground' && typeof c.max_underground_distance === 'number') {
+      return c.max_underground_distance;
+    }
+  }
+  return undefined;
+})();
+
 // ---- 太阳能板 / 蓄电器 ----
 // solarPower：production "60kW" → 60（kW）；accumCap：energy_source.buffer_capacity "5MJ" → 5000（kJ）；
 // accumChargeRate：energy_source.input_flow_limit "300kW" → 300（kW，充/放电速率上限）。
@@ -1343,6 +1359,7 @@ const fuelEnergy = {
 // ---- 汇总新增字段进 GAME_DATA（undefined 字段由 JSON 序列化自动剔除）----
 Object.assign(GAME_DATA, {
   undergroundDist,
+  pipeGroundDist,
   renewable,
   fluidCapacity,
   beaconRange,
@@ -1637,7 +1654,7 @@ const header = [
   '//   itemSubgroup[item] = item-group 内二级分组（官方 item-subgroup）',
   '//   subgroupOrder[subgroup] = subgroup 在 group 内官方顺序,  itemOrder[item] = 物品在 subgroup 内官方顺序',
   '//   其余设备行为参数（官方接入，见对应设备文件 GAME_DATA.xxx?.[..] ?? 兜底）：',
-  '//   undergroundDist[带] = 地下带最大距离(格), renewable = { solarPower, accumCap, accumChargeRate }',
+  '//   undergroundDist[带] = 地下带最大距离(格), pipeGroundDist = 地下管道最大跨距(格), renewable = { solarPower, accumCap, accumChargeRate }',
   '//   fluidCapacity = { storageTank, fluidWagon, pumpRate, pipeVolume, pipeToGroundVolume }, beaconRange = 信号塔半径(格)',
   '//   turret[塔] = { range, fireRate(秒) }, ammoDamage[弹药] = 伤害, radar = { range, power(kW) }',
   '//   equipment[装备] = { powerOut | powerCap(kJ) | shield | speed | laser | dischargeRange/Cooldown }',
@@ -1656,4 +1673,4 @@ const header = [
 ].join('\n');
 
 fs.writeFileSync(OUT_FILE, header);
-console.log('OK: 已生成 ' + path.relative(ROOT, OUT_FILE) + ' (配方 ' + Object.keys(GAME_DATA.recipe).length + ' 条, 堆叠 ' + Object.keys(GAME_DATA.stackSize).length + ' 条, 血量 ' + Object.keys(GAME_DATA.buildingHp).length + ' 条, 功耗 ' + Object.keys(GAME_DATA.powerUse).length + ' 条, 设备参数 ' + Object.keys(GAME_DATA.deviceStats).length + ' 条, 命名 ' + Object.keys(GAME_DATA.names).length + ' 条, 配方名 ' + Object.keys(GAME_DATA.recipeNames).length + ' 条, 地下带 ' + Object.keys(GAME_DATA.undergroundDist).length + ' 条, 可再生 ' + (GAME_DATA.renewable ? Object.keys(GAME_DATA.renewable).length : 0) + ' 项, 流体容量 ' + (GAME_DATA.fluidCapacity ? Object.keys(GAME_DATA.fluidCapacity).length : 0) + ' 项, 炮塔 ' + Object.keys(GAME_DATA.turret).length + ' 座, 弹药伤害 ' + Object.keys(GAME_DATA.ammoDamage).length + ' 种, 雷达 ' + (GAME_DATA.radar ? Object.keys(GAME_DATA.radar).length : 0) + ' 项, 装备 ' + Object.keys(GAME_DATA.equipment).length + ' 件, 热量 ' + (GAME_DATA.heat ? Object.keys(GAME_DATA.heat).length : 0) + ' 项, 污染排放 ' + Object.keys(GAME_DATA.pollution || {}).length + ' 项, 回收配方 ' + Object.keys(GAME_DATA.recycling || {}).length + ' 条)');
+console.log('OK: 已生成 ' + path.relative(ROOT, OUT_FILE) + ' (配方 ' + Object.keys(GAME_DATA.recipe).length + ' 条, 堆叠 ' + Object.keys(GAME_DATA.stackSize).length + ' 条, 血量 ' + Object.keys(GAME_DATA.buildingHp).length + ' 条, 功耗 ' + Object.keys(GAME_DATA.powerUse).length + ' 条, 设备参数 ' + Object.keys(GAME_DATA.deviceStats).length + ' 条, 命名 ' + Object.keys(GAME_DATA.names).length + ' 条, 配方名 ' + Object.keys(GAME_DATA.recipeNames).length + ' 条, 地下带 ' + Object.keys(GAME_DATA.undergroundDist).length + ' 条, 地下管道跨距 ' + (GAME_DATA.pipeGroundDist ?? '?') + ' 条, 可再生 ' + (GAME_DATA.renewable ? Object.keys(GAME_DATA.renewable).length : 0) + ' 项, 流体容量 ' + (GAME_DATA.fluidCapacity ? Object.keys(GAME_DATA.fluidCapacity).length : 0) + ' 项, 炮塔 ' + Object.keys(GAME_DATA.turret).length + ' 座, 弹药伤害 ' + Object.keys(GAME_DATA.ammoDamage).length + ' 种, 雷达 ' + (GAME_DATA.radar ? Object.keys(GAME_DATA.radar).length : 0) + ' 项, 装备 ' + Object.keys(GAME_DATA.equipment).length + ' 件, 热量 ' + (GAME_DATA.heat ? Object.keys(GAME_DATA.heat).length : 0) + ' 项, 污染排放 ' + Object.keys(GAME_DATA.pollution || {}).length + ' 项, 回收配方 ' + Object.keys(GAME_DATA.recycling || {}).length + ' 条)');

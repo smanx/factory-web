@@ -131,7 +131,7 @@ const ITEMS = {
   'petroleum-gas':     {emoji: '🫧',  name: '石油气', color: '#c9a84a', mark: 'PG', desc: '炼油关键产物，制造塑料的原料' },
   'plastic-bar':       {emoji: '🧴',  name: '塑料板', color: '#cfe8a8', mark: 'Pl', desc: '石油化工产物，须在化工厂用石油气+煤生产，用于高级配方' },
   'pipe':              {emoji: '🚰',  name: '管道', color: '#6a5f52', desc: '输送流体（水/蒸汽/原油/重轻油/石油气），相邻互连，容量 40' },
-  'pipe-to-ground':    {emoji: '🚰',  name: '地下管道', color: '#8a7a6a', desc: '同向摆两座（最远 10 格）自动配对，从地下穿行流体，可跨过传送带/管道' },
+  'pipe-to-ground':    {emoji: '🚰',  name: '地下管道', color: '#8a7a6a', desc: '背向（朝向相反）摆两座（最远 ' + (GAME_DATA.pipeGroundDist ?? 10) + ' 格）自动配对，从地下穿行流体；两座中间可放任意设备，管段从其下方穿过不会被阻挡，也不与这些设备连通；仅峭壁/水面会切断管段' },
   'pump':              {emoji: '💨',  name: '流体泵', color: '#5aa0a8', desc: '从背侧吸入流体、向前侧加压泵出，单向输送、提速吞吐（1×1）' },
   'one-way-valve':   {emoji: '🚦',  name: '单向阀', color: '#7a6a5a', desc: '流体阀门（1×1，对齐《异星工厂》2.0 One-way valve）：只允许流体沿箭头方向单向流动，反向截止，用于防止管道回流' },
   'overflow-valve':  {emoji: '🚦',  name: '溢出阀', color: '#8a7a5a', desc: '流体阀门（1×1，对齐《异星工厂》2.0 Overflow valve）：仅当入口侧流体压力超过阈值（80%）时才允许流体流向出口侧，实现优先供给' },
