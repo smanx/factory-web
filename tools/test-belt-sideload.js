@@ -213,4 +213,79 @@ check('转角物品只绘制一遍', g.total === g.laneCount, `绘制点数=${g.
 check('外弧路径长度贴近一格（<35px，旧值 36.1）', g.outerLen < 35, `外弧总长=${g.outerLen}px（${g.outerN} 件）`);
 check('外弧端点仍与相邻直带车道对齐（半径 23）', g.seamR.every(r => Math.abs(r - 23) < 0.01), JSON.stringify(g.seamR));
 
+// ===== 地下带链式拼接：出口 → 下一组地下带的入口 =====
+// 布局（统一向东 dir=0）：
+//   带(0,0)(1,0)(2,0) → UG1入口(3,0) … UG1出口(6,0) → UG2入口(7,0) … UG2出口(10,0) → 带(11,0)
+const UG_SRC = fs.readFileSync(path.join(__dirname, '..', 'js', 'devices', 'underground.js'), 'utf8');
+// 回退补丁：屏蔽"出口接入下一组入口"的新分支（模拟修改前行为）
+const UG_OLD = s => s.replace(
+  'if (t.dir === this.dir && t.type === this.type && t.isEntrance()) {',
+  'if (false) {');
+
+function buildUg(ugSrc) {
+  const prelude = `
+const DX=[1,0,-1,0], DY=[0,1,0,-1], TILE=32, BELT_SPACING=0.125, BELT_SPEED=1.875;
+const UG_CAP=8, UNDERGROUND_MAX=6, FAST_UNDERGROUND_MAX=14, FAST_BELT_MULT=2;
+const G={time:0, dbg:{}, cam:{z:1}};
+const LOD={simple:false};
+const ITEMS={};
+function beltSpeed(){return BELT_SPEED;}
+class Entity{constructor(t,x,y){this.type=t;this.x=x;this.y=y;}}
+class Splitter{}
+function circuitSignalNear(){return {};}
+function circuitCondOk(){return true;}
+function tri(){}
+function rr(){}
+function drawItemDot(){}
+function drawItemDotLOD(){}
+const ENT_CLASSES={},DEVICE_RENDER={},DEVICE_STATUS={},DEVICE_PANEL={},DEVICE_DIR_ROTATE={};
+const __ents=new Map();
+function entAt(x,y){return __ents.get(x+','+y)||null;}
+`;
+  return new Function(prelude + '\n' + BELT_SRC + '\n' + ugSrc
+    + '\nreturn { Belt, Underground, __ents, beltInputSide };')();
+}
+function runUgChain(ugSrc) {
+  const { Belt, Underground, __ents, beltInputSide } = buildUg(ugSrc);
+  __ents.clear();
+  const put = (e) => __ents.set(e.x + ',' + e.y, e);
+  const src = [];
+  for (let x = 0; x <= 2; x++) { const b = new Belt('transport-belt', x, 0); b.dir = 0; src.push(b); put(b); }
+  const ug1i = new Underground('underground-belt', 3, 0); ug1i.dir = 0; put(ug1i);
+  const ug1o = new Underground('underground-belt', 6, 0); ug1o.dir = 0; put(ug1o);
+  const ug2i = new Underground('underground-belt', 7, 0); ug2i.dir = 0; put(ug2i);
+  const ug2o = new Underground('underground-belt', 10, 0); ug2o.dir = 0; put(ug2o);
+  const dst = new Belt('transport-belt', 11, 0); dst.dir = 0; put(dst);
+  // 侧面邻居：位于 UG2 入口南侧的传送带（UG2 入口不应被当作"向地面输出"的输入源）
+  const sideBelt = new Belt('transport-belt', 7, 1); sideBelt.dir = 0; put(sideBelt);
+  const IT = lane => ({ item: 'iron-plate', pos: 0.9, lane, side: -1 });
+  src.forEach(b => { b.items = [IT(0), IT(1), IT(0), IT(1)]; });
+  const dt = 1 / 60;
+  let arrived = 0; const byLane = [0, 0];
+  for (let t = 0; t < 1200; t++) {
+    for (const b of src) b.update(dt);
+    ug1i.update(dt); ug1o.update(dt); ug2i.update(dt); ug2o.update(dt);
+    dst.update(dt);
+    arrived += dst.items.length;
+    for (const o of dst.items) byLane[o.lane === 1 ? 1 : 0]++;
+    dst.items.length = 0;                       // 终点持续消耗
+    for (const b of src) if (b.items.length < 4) b.items.push(IT(t % 2));  // 源头持续供料
+  }
+  return {
+    arrived, byLane,
+    ug1oIsExit: ug1o.isExit(),
+    ug2iIsEntrance: ug2i.isEntrance(),
+    sideInp: beltInputSide(sideBelt).length,    // 侧面带的输入源数量（UG2 入口不应计入）
+  };
+}
+const ugOld = runUgChain(UG_OLD(UG_SRC));
+const ugNew = runUgChain(UG_SRC);
+console.log('地下带链（修改前）:', JSON.stringify(ugOld));
+console.log('地下带链（修改后）:', JSON.stringify(ugNew));
+check('出口紧邻下一组入口时仍正确判定出口/入口', ugNew.ug1oIsExit && ugNew.ug2iIsEntrance, JSON.stringify(ugNew));
+check('修改前：出口接不进下一组入口（终点 0 件）', ugOld.arrived === 0, 'arrived=' + ugOld.arrived);
+check('修改后：物品贯穿两组地下带（终点 >0 件）', ugNew.arrived > 0, 'arrived=' + ugNew.arrived);
+check('入口不再被当作地面输出源（侧面带输入源 = 0）', ugNew.sideInp === 0, 'sideInp=' + ugNew.sideInp);
+check('贯穿隧道后车道保持（左进左出/右进右出，两列都有货）', ugNew.byLane[0] > 0 && ugNew.byLane[1] > 0, JSON.stringify(ugNew.byLane));
+
 process.exit(fail ? 1 : 0);

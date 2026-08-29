@@ -353,7 +353,8 @@ function drawSplitterBase(ctx, e, gx, gy, dir, alpha, colors, opts) {
 function isInletConnected(ent, dir) {
   if (!ent) return false;
   if (ent instanceof Belt && !(ent instanceof Splitter) && ent.dir === dir) return true;
-  if (ent instanceof Underground && ent.dir === dir && ent.findBackMate()) return true;
+  // 必须确为「出口」：链式拼接后入口的后方也有同族地下带，findBackMate() 已不足以判定
+  if (ent instanceof Underground && ent.dir === dir && ent.isExit()) return true;
   // 上游分流器的出口朝向我们时，视为连接的传送带，一样处理。
   if (ent instanceof Splitter) return true;
   return false;
@@ -363,7 +364,8 @@ function isInletConnected(ent, dir) {
 function isOutletConnected(ent, dir) {
   if (!ent) return false;
   if (ent instanceof Belt && !(ent instanceof Splitter) && ent.dir === dir) return true;
-  if (ent instanceof Underground && ent.dir === dir && ent.findBackMate()) return true;
+  // 同上：按 isExit() 判定是否真的向地面输出
+  if (ent instanceof Underground && ent.dir === dir && ent.isExit()) return true;
   // 下游分流器的入口朝向我们时，视为连接的传送带，一样处理。
   if (ent instanceof Splitter) return true;
   return false;

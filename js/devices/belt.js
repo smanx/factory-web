@@ -355,7 +355,10 @@ function beltInputSide(e) {
     // 地下带只有“出口”（已配对、后方有mate）才会把货投向地面带，
     // 入口会把货钻入地下、不会向旁边传送带输出，因此入口不搭在侧面传送带上。
     // 未配对的地下带仅作静态显示，不搭在其他传送带上（对齐《异星工厂》）。
-    if (nb instanceof Underground && nb.dir === want && nb.findBackMate()) { inps.push([sx, sy]); continue; }
+    // 必须是「出口」才算向地面输出：入口会把货钻入地下、不会向旁边传送带输出。
+    // 链式拼接（出口紧邻下一组入口）后，入口的后方也存在同族地下带，
+    // 因此不能再用 findBackMate()（只判断"后方有同族"）近似，必须按 isExit() 判定。
+    if (nb instanceof Underground && nb.dir === want && nb.isExit()) { inps.push([sx, sy]); continue; }
     if (nb instanceof Belt && nb.dir === want) { inps.push([sx, sy]); continue; }
   }
   e.__inp = inps;

@@ -161,7 +161,15 @@ class Underground extends Entity {
           const isCorner = typeof beltCornerDir === 'function' && beltCornerDir(t) !== null;
           sent = t.acceptItem(this.outItems[idx].item, this.dir, undefined, undefined, isCorner ? lane : undefined);
         }
-      } else if (t && !(t instanceof Underground)) {
+      } else if (t instanceof Underground) {
+        // 出口可直接接入「下一组地下带的入口」（背靠背链式拼接，对齐《异星工厂》）：
+        // 出口把货喷到地面后，若紧邻的下一格是同向同档、且当前作为入口的地下带
+        // （它会把货送向自己的出口），则按车道直接入洞，保持左进左出/右进右出。
+        // 前方是出口 / 未配对 / 异档则拒收，避免把货穿进别人的出口造成错乱。
+        if (t.dir === this.dir && t.type === this.type && t.isEntrance()) {
+          sent = t.acceptItem(this.outItems[idx].item, this.dir, undefined, undefined, lane);
+        }
+      } else if (t) {
         sent = t.giveItem(this.outItems[idx].item);
       }
       if (sent) { this.outItems.splice(idx, 1); this.ejectT[lane] -= iv; if (this._blockL) this._blockL[lane] = false; }
