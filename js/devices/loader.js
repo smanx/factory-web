@@ -215,9 +215,9 @@ function loaderPanelHtml() {
   return '<div class="dim">装载机（Loader）：传送带物流设备，放置在传送带末端。</div>' +
     '<div class="dim">· 装载模式：后方接传送带、前方接容器/机器 → 传送带物品自动装入容器；</div>' +
     '<div class="dim">· 卸载模式：后方接容器、前方接传送带 → 容器物品自动卸到传送带。</div>' +
-    '<div class="dim">R 旋转朝向；处理速率由官方速度决定。数据全部来自 data.generated.js。</div>' +
-    '<div class="status"></div>';
+    '<div class="dim">R 旋转朝向；处理速率由官方速度决定。数据全部来自 data.generated.js。</div>';
 }
+
 function loaderPanelLive(e, api) {
   const m = e.detectMode ? e.detectMode() : null;
   if (m === 'load') api.status('装载中：' + (e.backType || '传送带') + ' → ' + (e.frontType || '容器') + '（' + e.rate() + ' 件/秒）', 'g');

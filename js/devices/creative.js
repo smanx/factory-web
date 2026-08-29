@@ -269,7 +269,6 @@ function creativeChestPanelHtml(e) {
   }
   h += '</div>';
   if (e.selected) h += '<button data-action="csel-clear">停止生成</button>';
-  h += '<div class="status"></div>';
   return h;
 }
 function applyCreativeChestSearch(q) {
@@ -325,7 +324,6 @@ function creativePipePanelHtml(e) {
   }
   h += '</div>';
   if (e.selected) h += '<button data-action="psel-clear">停止生成</button>';
-  h += '<div class="status"></div>';
   return h;
 }
 function applyCreativePipeSearch(q) {
@@ -478,7 +476,6 @@ function creativeBeltPanelHtml(e) {
   }
   h += '</div>';
   if (e.selected) h += '<button data-action="cbsel-clear">停止生成</button>';
-  h += '<div class="status"></div>';
   return h;
 }
 function applyCreativeBeltSearch(q) {

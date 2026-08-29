@@ -151,7 +151,6 @@ function cargoLandingPadPanelHtml(e) {
   h += row('雷达', '扫描范围 ' + CARGO_PAD_RADAR + ' 格', 'radar');
   h += row('存储', e.slotCap() + ' 格', 'slots');
   h += row('累计接收', (e.cargoIn || 0) + ' 件', 'cargo');
-  h += '<div class="status"></div>';
   let total = 0;
   for (const k in agg) total += agg[k];
   if (total > 0) h += '<button data-action="takeout" id="btn-clp-takeout">取出全部 (' + total + ')</button>';

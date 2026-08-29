@@ -75,7 +75,6 @@ function drawLamp(ctx, e, gx, gy, dir, alpha) {
 // ===== 面板 =====
 function lampPanelHtml(e) {
   return row('状态', '<span class="dim"></span>', 'st') +
-    '<div class="status"></div>' +
     (typeof circuitPanelHtml === 'function' ? circuitPanelHtml(e || { circuitCond: null }, 'small-lamp') : '') +
     '<div class="dim">电灯：夜间通电时点亮，照亮周围 ' + LAMP_RADIUS + ' 格，让基地在黑暗中清晰可见。白天不耗电。断电或供电不足时熄灭。可在电路控制中设置启用条件，仅当电路信号满足时才点亮（1×1，需电力工程科技）。</div>';
 }

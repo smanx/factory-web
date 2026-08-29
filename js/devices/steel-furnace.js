@@ -114,8 +114,6 @@ function steelFurnacePanelHtml(e) {
   if (Object.keys(e.inp).length) h += '<button data-action="takein">取回全部输入</button>';
   h += row('输出', Object.keys(e.outp).length ? countStr(e.outp) : '<span class="dim">空</span>', 'output');
   h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
-  h += barHtml(0);
-  h += '<div class="status"></div>';
   h += '<div class="dim">钢铁炉：烧煤冶炼，速度约为石炉的 2 倍，可高效产铁板/铜板/钢板（2×2）。</div>';
   return h;
 }

@@ -207,8 +207,6 @@ function furnacePanelHtml(e) {
   if (Object.keys(e.inp).length) h += '<button data-action="takein">取回全部输入</button>';
   h += row('输出', Object.keys(e.outp).length ? countStr(e.outp) : '<span class="dim">空</span>', 'output');
   h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
-  h += barHtml(0);
-  h += '<div class="status"></div>';
   return h;
 }
 function furnacePanelLive(e, api) {

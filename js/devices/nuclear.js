@@ -543,8 +543,6 @@ function reactorPanelHtml(e) {
   h += '<button data-action="takeout" id="btn-spent-takeout" style="display:none"></button>';
   h += row('堆芯温度', '', 'heat');
   h += row('堆芯温度上限', '', 'temp');
-  h += barHtml(0);
-  h += '<div class="status"></div>';
   h += '<div class="dim">核反应堆：消耗铀燃料棒产生巨量热量，经四边（北/东/南/西）黄色热量接口传给导热管（对齐官方 heat_buffer.connections，每条 5 格边仅中间 3 格有热交换接口，非整条边均布，可向导热管/热交换器传热），再由导热管把热量送到热交换器，由热交换器把水烧成高温蒸汽供汽轮机发电（对齐《异星工厂》核能标准链路，反应堆仅消耗铀燃料棒而非核燃料）。燃尽的燃料会留下贫化铀燃料棒，可在离心机再生为铀-238，闭合核燃料循环。核能技术解锁。</div>';
   h += '<div class="dim">💡 相邻加成：并排摆放多座反应堆，每座相邻反应堆使输出 +100%（对齐《异星工厂》）。</div>';
   h += '<div class="dim">🔗 标准接法：反应堆→(导热管)→热交换器（接水管）→(蒸汽管)→汽轮机</div>';
@@ -689,7 +687,6 @@ function drawSteamTurbine(ctx, e, gx, gy, dir, alpha) {
 function turbinePanelHtml(e) {
   return row('功率输出', '<span class="dim"></span>', 'power') +
     row('蒸汽缓存', '<span class="dim"></span>', 'steam') +
-    '<div class="status"></div>' +
     '<div class="dim">汽轮机：上/下两端中部汽口接入高温蒸汽（来自热交换器上边(北)出汽口/蒸汽管道），以远高于蒸汽机的功率发电。核能技术解锁。</div>';
 }
 function turbinePanelLive(e, api) {
@@ -1083,7 +1080,6 @@ function heatExchangerPanelHtml(e) {
   return row('温度', '<span class="dim"></span>', 'heat') +
     row('水', '<span class="dim"></span>', 'water') +
     row('蒸汽缓存', '<span class="dim"></span>', 'steam') +
-    '<div class="status"></div>' +
     '<div class="dim">热交换器：下边(南)黄色接口接收导热管热量，左右两侧两个蓝口接水管进水（互通，多台水口可直接对口串接），上边(北)中间白口送出高温蒸汽到汽轮机。核能技术解锁。</div>' +
     '<div class="dim">🔗 标准接法：反应堆→(导热管)→热交换器（接水管）→(蒸汽管)→汽轮机</div>';
 }
@@ -1135,7 +1131,7 @@ DEVICE_FLUID_ICONS['steam-turbine'] = e => {
 ENT_CLASSES['heat-pipe'] = HeatPipe;
 DEVICE_RENDER['heat-pipe'] = drawHeatPipe;
 DEVICE_STATUS['heat-pipe'] = e => (e.temperature() || 0) > 0 ? 'g' : 'r';
-DEVICE_PANEL['heat-pipe'] = { html: () => row('温度', '<span class="dim"></span>', 'heat') + '<div class="status"></div>' + '<div class="dim">导热管：把核反应堆产生的热量传导到热交换器，可多根串联成导热线路（对齐官方：按温度差传导）。核能技术解锁。</div>', live: (e, api) => api.set('heat', e.temperature() >= 1 ? chip('heat-pipe', Math.round(e.temperature()) + '°C') : dimSpan('待机')), tip: heatPipeTip };
+DEVICE_PANEL['heat-pipe'] = { html: () => row('温度', '<span class="dim"></span>', 'heat') + '<div class="dim">导热管：把核反应堆产生的热量传导到热交换器，可多根串联成导热线路（对齐官方：按温度差传导）。核能技术解锁。</div>', live: (e, api) => api.set('heat', e.temperature() >= 1 ? chip('heat-pipe', Math.round(e.temperature()) + '°C') : dimSpan('待机')), tip: heatPipeTip };
 DEVICE_DIR_ROTATE['heat-pipe'] = true; // 导热管支持旋转
 
 ENT_CLASSES['heat-exchanger'] = HeatExchanger;

@@ -820,9 +820,9 @@ function drawBeltMark(ctx, e, gx, gy, alpha) {
 function beltPanelHtml(e) {
   return '<div class="dim">传送带：双列独立输送（对齐《异星工厂》左右两列），物品沿箭头方向流动。R 旋转方向。靠近后按 F 拿取带上物品。</div>' +
     '<div class="dim">当前吞吐：<span data-live="speed">-</span>（件/秒，双车道合计）</div>' +
-    (typeof circuitPanelHtml === 'function' ? circuitPanelHtml(e, 'belt') : '') +
-    '<div class="status"></div>';
+    (typeof circuitPanelHtml === 'function' ? circuitPanelHtml(e, 'belt') : '');
 }
+
 function beltPanelLive(e, api) {
   if (!e.circuitEnabled()) { api.status('已停止：电路条件不满足', 'warn'); return; }
   const mult = e.speedMult ? e.speedMult() : 1;

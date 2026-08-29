@@ -116,8 +116,6 @@ function drawPump(ctx, e, gx, gy, dir, alpha) {
 // ===== 面板 =====
 function pumpPanelHtml(e) {
   let h = row('储水', '<span class="dim"></span>', 'buf');
-  h += barHtml(0);
-  h += '<div class="status"></div>';
   h += '<div class="dim">必须放在水面上，免电力无限抽水。产出朝箭头方向：指向锅炉左端/右端蓝口水口可直接供水，或接入管道远送。选中后按 R 旋转方向。</div>';
   return h;
 }

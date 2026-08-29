@@ -576,7 +576,6 @@ function splitterPanelHtml(e) {
       '<img src="' + iconDataURL(id) + '">' + name + '</button>';
   }
   h += '</div>';
-  h += '<div class="status"></div>';
   return h;
 }
 

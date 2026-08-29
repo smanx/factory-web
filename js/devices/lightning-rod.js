@@ -238,7 +238,6 @@ function drawLightningStrikes(ctx, cam) {
 // ===== 面板 =====
 function lightningRodPanelHtml() {
   return row('储能', '<span class="dim"></span>', 'stored') +
-    '<div class="status"></div>' +
     '<div class="dim">避雷针：保护小片区域免受雷击，接雷后把雷电能量转化为电网电力（1×1，官方 efficiency 0.2）。雷暴期会自动接雷充能并放电。</div>';
 }
 function lightningRodPanelLive(e, api) {
@@ -257,7 +256,6 @@ function lightningRodTip(e) {
 // 收集器面板（效率更高、范围更大）
 function lightningCollectorPanelHtml() {
   return row('储能', '<span class="dim"></span>', 'stored') +
-    '<div class="status"></div>' +
     '<div class="dim">避雷收集器：保护大片区域免受雷击，接雷效率更高（官方 efficiency 0.4），把雷电能量更高效地转化为电网电力（2×2）。</div>';
 }
 function lightningCollectorPanelLive(e, api) { lightningRodPanelLive(e, api); }

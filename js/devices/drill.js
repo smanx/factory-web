@@ -354,8 +354,6 @@ function burnerDrillPanelHtml(e) {
   h += row('产品槽', '<span class="dim"></span>', 'buffer');
   h += '<button data-action="takeout" id="btn-drill-takeout" style="display:none"></button>';
   // ③ 采矿进度条
-  h += barHtml(0);
-  h += '<div class="status"></div>';
   h += '<div id="drill-ore-remain" class="dim"></div>';
   h += '<div class="dim">产出方向朝' + ['东', '南', '西', '北'][e.dir] + '，选中后按 R 旋转（需先关闭本面板或按 Q 取消选择）</div>';
   return h;
@@ -443,8 +441,6 @@ function electricDrillPanelHtml(e) {
   h += row('硫酸', '<span class="dim"></span>', 'acid');
   h += row('矿物缓存', '<span class="dim"></span>', 'buffer');
   h += '<button data-action="takeout" id="btn-drill-takeout" style="display:none"></button>';
-  h += barHtml(0);
-  h += '<div class="status"></div>';
   h += '<div id="drill-ore-remain" class="dim"></div>';
   h += '<div class="dim">产出方向朝' + ['东', '南', '西', '北'][e.dir] + '，选中后按 R 旋转（需先关闭本面板或按 Q 取消选择）</div>';
   return h;

@@ -202,7 +202,6 @@ function pipePanelHtml(e) {
   let h = row('流体', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
   h += row('容量', '', 'cap');
   if (Object.keys(agg).length) h += '<button data-action="drain" id="btn-pipe-takeout">直接清空</button>';
-  h += '<div class="status"></div>';
   h += '<div class="dim">管道与相邻管道自动互连均压，并把原油送入邻接炼油厂；机械臂可从管道抓取流体。</div>';
   return h;
 }

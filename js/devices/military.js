@@ -23,7 +23,7 @@ function drawStoneWall(ctx, e, gx, gy, dir, alpha) {
   ctx.globalAlpha = 1;
 }
 function stoneWallPanelHtml() {
-  return '<div class="dim">石墙：防御障碍物，阻挡敌人与玩家通行。可围成防御工事保护炮塔（1×1）。</div><div class="status"></div>';
+  return '<div class="dim">石墙：防御障碍物，阻挡敌人与玩家通行。可围成防御工事保护炮塔（1×1）。</div>';
 }
 function stoneWallPanelLive(e, api) {
   api.status('防御墙', 'ok');
@@ -199,7 +199,6 @@ function gunTurretPanelHtml(e) {
       ITEMS[id].name + ' ×' + n + '</button>';
   }
   if (e.totalAmmo() > 0) h += '<button data-action="takeout" id="btn-turret-takeout">取出全部弹药</button>';
-  h += '<div class="status"></div>';
   h += '<div class="dim">机枪炮塔：自动攻击射程内（' + TURRET_RANGE + ' 格）的敌人，需装入弹药。威力：铀弹 > 穿甲弹 > 弹药匣。配合石墙构筑防御阵地（2×2）。</div>';
   h += circuitPanelHtml(e, 'gt');
   return h;

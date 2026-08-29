@@ -176,7 +176,6 @@ function beaconPanelHtml(e) {
     }
   }
   if (Object.values(e.modules).reduce((a, b) => a + b, 0) > 0) h += '<button data-action="takein" data-modules="1">取出全部模块</button>';
-  h += '<div class="status"></div>';
   h += '<div class="dim">信号塔可将模块效果共享给周围 9×9 内的组装机/电炉等生产建筑，一座信号塔可服务多台设备，适合大规模生产区。</div>';
   return h;
 }

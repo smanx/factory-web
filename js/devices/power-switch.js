@@ -115,7 +115,6 @@ function powerSwitchPanelHtml(e) {
   }
   h += '</div>';
   h += row('阈值', '<input type="number" data-input="cnt" min="0" value="' + (c.count || 0) + '">', 'cnt') +
-    '<div class="status"></div>' +
     '<div class="dim">功率开关：接入电路网络，读取信号并按条件判断。条件满足时强制全图断电（甩负荷保护），不满足时正常供电。可用于按燃料/电量等信号自动调度电力（1×1，需电路网络科技）。</div>';
   return h;
 }

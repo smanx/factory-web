@@ -574,8 +574,7 @@ function undergroundPanelHtml(e) {
   else if (e.isExit()) txt = '【出口】接收后方隧道来货并向前输出（只与最近者配对，不再向更前方转送）。待发 ' + e.outItems.length;
   else txt = '【未配对】同向' + e.maxDist() + '格内没有另一座。仅作显示，不接收/不传送物品。缓存 ' + e.items.length + '/' + cap;
   return '<div class="dim">地下带' + txt + '。R 旋转方向。</div>' +
-    '<div class="dim">当前吞吐：<span data-live="speed">-</span>（件/秒，双车道合计）</div>' +
-    '<div class="status"></div>';
+    '<div class="dim">当前吞吐：<span data-live="speed">-</span>（件/秒，双车道合计）</div>';
 }
 function undergroundPanelLive(e, api) {
   const paired = e.isPaired();
