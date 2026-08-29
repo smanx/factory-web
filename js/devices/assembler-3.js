@@ -49,36 +49,11 @@ class Assembler3 extends Assembler {
   powerDemand() { return this.recipe ? POWER_USE['assembling-machine-3'] : 0; }
 }
 
-// ===== 渲染：与组装机 I/II 共用绘制，仅换色（深紫金属）=====
+// ===== 渲染：复用组装机 I/II/III 通用绘制主体（按 e.type 自动取 MK3 配色）=====
+// 见 [assembler.js] drawAssembler；这里只是为了在加载顺序上保证 drawAssembler 一定可用，
+// 把相同的调用别名挂在 drawAssembler3 上，保持注册表入口稳定。
 function drawAssembler3(ctx, e, gx, gy, dir, alpha) {
-  const px = gx * TILE, py = gy * TILE;
-  const s = TILE * e.w, sh = TILE * e.h;
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#5f3f8a';
-  rr(ctx, px + 3, py + 3, s - 6, sh - 6, 7); ctx.fill();
-  ctx.strokeStyle = '#382252';
-  ctx.lineWidth = 3;
-  rr(ctx, px + 3, py + 3, s - 6, sh - 6, 7); ctx.stroke();
-  ctx.fillStyle = '#4c3070';
-  rr(ctx, px + 10, py + 10, s - 20, sh - 20, 5); ctx.fill();
-  ctx.save();
-  ctx.translate(px + s / 2, py + s / 2);
-  ctx.rotate(e.crafting ? e.spin : 0);
-  ctx.fillStyle = e.crafting ? '#e0d0f2' : '#a98fd0';
-  gearShape(ctx, 0, 0, 18, 12, 8);
-  ctx.fill();
-  ctx.restore();
-  if (portDetailsVisible() && e.recipe) {
-    const outId = Object.keys(RECIPES[e.recipe].out)[0];
-    drawRecipeIconCell(ctx, px + s / 2, py + s / 2, outId);
-  }
-  const fr = e.fluidRecipe ? e.fluidRecipe() : null;
-  const pcx = px + s / 2, pcy = py + s / 2;
-  const fin = (fr && fr.fin.length) ? fr.fin[0] : null;
-  const fout = (fr && fr.fout.length) ? fr.fout[0] : null;
-  drawPort(ctx, pcx, pcy, (dir + 2) % 4, fin ? ITEMS[fin].color : PORT_FLUID, false, 0, TILE, fin || null, 'in');
-  drawPort(ctx, pcx, pcy, dir, fout ? ITEMS[fout].color : PORT_FLUID, true, 0, TILE, fout || null, 'out');
-  ctx.globalAlpha = 1;
+  return drawAssembler(ctx, e, gx, gy, dir, alpha);
 }
 
 // ===== 面板：复用组装机面板（配方选择/输入/输出/进度）=====

@@ -347,19 +347,80 @@ const TERRAIN_CHUNK_PX = CHUNK * TILE;   // 1024
 const terrainChunkCache = new Map();   // 'cx,cy' -> { canvas, last }
 terrainChunkCache._seq = 0;   // LRU 时钟序号
 
+// ===== 地形颜色工具（地图画面重设计） =====
+// '#rrggbb' → [r,g,b]（解析缓存，地形为一次性离屏构建，开销可忽略）
+const _hexParseCache = {};
+function _hexRGBOf(hex) {
+  let c = _hexParseCache[hex];
+  if (c) return c;
+  let h = hex.charAt(0) === '#' ? hex.slice(1) : hex;
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  const n = parseInt(h, 16);
+  c = isNaN(n) ? [128, 128, 128] : [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  _hexParseCache[hex] = c;
+  return c;
+}
+function _rgbHexOf(r, g, b) {
+  const cl = (v) => v < 0 ? 0 : v > 255 ? 255 : Math.round(v);
+  return '#' + ((1 << 24) + (cl(r) << 16) + (cl(g) << 8) + cl(b)).toString(16).slice(1);
+}
+// 两个 #rrggbb 之间线性插值（t=0 取 a，t=1 取 b）
+function _mixHex(a, b, t) {
+  const A = _hexRGBOf(a), B = _hexRGBOf(b);
+  return _rgbHexOf(A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t, A[2] + (B[2] - A[2]) * t);
+}
+// 变亮（amt>0）/变暗（amt<0），幅度 0~1
+function _shadeHex(hex, amt) { return amt >= 0 ? _mixHex(hex, '#ffffff', amt) : _mixHex(hex, '#101010', -amt); }
+
+// 水体配色（hi=近岸浅水，lo=湖心深水）：按行星取色，缺省 nauvis
+const WATER_COLORS = {
+  nauvis:   { hi: '#4f8cbb', lo: '#1e5180' },
+  vulcanus: { hi: '#4a8492', lo: '#1f4a56' },
+  gleba:    { hi: '#4d8069', lo: '#204735' },
+  fulgora:  { hi: '#4d5773', lo: '#222a42' },
+  aquilo:   { hi: '#93c3da', lo: '#3f6f92' }
+};
+// 岸滩配色（水陆交界的滩涂带）
+const SAND_COLORS = {
+  nauvis:   '#c8b184',
+  vulcanus: '#6b5342',
+  gleba:    '#8a7a55',
+  fulgora:  '#6e687e',
+  aquilo:   '#aec6d2'
+};
+// 泥土配色（草稀处露出的地表底土，偏淡的浅色泥土）：覆盖度噪声低于阈值时显露
+const DIRT_COLORS = {
+  nauvis:   '#c0a064',   // 淡黄褐泥土
+  vulcanus: '#a97e50',   // 浅火山灰褐
+  gleba:    '#8a7450',   // 浅沼泽泥褐
+  fulgora:  '#9e95a2',   // 浅干裂紫灰
+  aquilo:   '#ab9a84'    // 浅冻土灰褐
+};
+
 // 仅绘制单个 chunk 的地形底色（草地/水域），不含矿点
 function drawChunkTerrainInto(ctx, cx, cy) {
   // 行星地表主色调：不同星球草地颜色不同（祝融赭石 / 句芒深绿 / 雷神灰 / 玄冥冰蓝）
   const pgrass = (typeof planetGrassColors === 'function') ? planetGrassColors() : ['#4f7c3b', '#4a7538', '#456f35'];
+  const pid = (typeof planetId === 'function') ? planetId() : 'nauvis';
+  const wcol = WATER_COLORS[pid] || WATER_COLORS.nauvis;
+  const sand = SAND_COLORS[pid] || SAND_COLORS.nauvis;
   const ox = cx * CHUNK, oy = cy * CHUNK;
+  // 预取 3×3 邻域地形（含 chunk 外一圈）：岸线/滩涂/峭壁投影需要读取相邻格地形，
+  // 保证跨 chunk 边界的过渡自然连续（读取会按需生成相邻 chunk，结果确定且被缓存）。
+  const EW = CHUNK + 2;
+  const ext = new Uint8Array(EW * EW);
+  for (let y = -1; y <= CHUNK; y++)
+    for (let x = -1; x <= CHUNK; x++)
+      ext[(y + 1) * EW + (x + 1)] = getTerrain(ox + x, oy + y);
+  // 峭壁格收集：主循环画完后统一向南侧地面补投影（投影落在南侧邻格上，须等邻格画完再叠加）
+  const cliffTiles = [];
   for (let dy = 0; dy < CHUNK; dy++) {
     for (let dx = 0; dx < CHUNK; dx++) {
       const tx = ox + dx, ty = oy + dy;
       const px = dx * TILE, py = dy * TILE;
-      const t = getTerrain(tx, ty);
+      const t = ext[(dy + 1) * EW + (dx + 1)];
       if (t === T_WATER) {
-        ctx.fillStyle = hash2(tx, ty) > 0.5 ? '#265d8a' : '#28618f';
-        ctx.fillRect(px, py, TILE, TILE);
+        drawWaterTile(ctx, px, py, tx, ty, ext, dy, dx, wcol, sand);
         continue;
       }
       if (t === T_CONCRETE) {
@@ -581,63 +642,366 @@ function drawChunkTerrainInto(ctx, cx, cy) {
         continue;
       }
       if (t === T_CLIFF) {
-        // 峭壁（对齐《异星工厂》Cliff）：灰褐色岩体 + 岩缝，比周围地面略高
-        const v = hash2(tx, ty);
-        ctx.fillStyle = v > 0.5 ? '#6d6a63' : '#65625c';
-        ctx.fillRect(px, py, TILE, TILE);
-        // 岩体立体边缘（左上受光，右下背光）
-        ctx.fillStyle = 'rgba(255,255,255,.16)';
-        ctx.beginPath();
-        ctx.moveTo(px, py); ctx.lineTo(px + TILE, py); ctx.lineTo(px, py + TILE);
-        ctx.closePath(); ctx.fill();
-        ctx.fillStyle = 'rgba(0,0,0,.28)';
-        ctx.beginPath();
-        ctx.moveTo(px + TILE, py); ctx.lineTo(px + TILE, py + TILE); ctx.lineTo(px, py + TILE);
-        ctx.closePath(); ctx.fill();
-        // 岩缝与碎石
-        ctx.strokeStyle = 'rgba(30,28,24,.6)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(px + TILE * 0.3, py + TILE * 0.15); ctx.lineTo(px + TILE * 0.45, py + TILE * 0.5);
-        ctx.lineTo(px + TILE * 0.3, py + TILE * 0.85);
-        ctx.stroke();
-        ctx.fillStyle = 'rgba(140,136,126,.7)';
-        ctx.fillRect(px + TILE * 0.6, py + TILE * 0.35, 4, 4);
-        ctx.fillRect(px + TILE * 0.7, py + TILE * 0.65, 3, 3);
+        // 峭壁（对齐《异星工厂》Cliff）：灰褐色岩体 + 层理 + 受光/背光缘，比周围地面略高
+        drawCliffTile(ctx, px, py, tx, ty, ext, dy, dx);
+        cliffTiles.push(dy * CHUNK + dx);
         continue;
       }
-      const v = hash2(tx, ty);
-      ctx.fillStyle = v > 0.62 ? pgrass[0] : v > 0.3 ? pgrass[1] : pgrass[2];
-      ctx.fillRect(px, py, TILE, TILE);
+      drawGrassTile(ctx, px, py, tx, ty, ext, dy, dx, pgrass, sand, pid);
       if (t === T_TREE) drawTreeInto(ctx, px, py, tx, ty);
+    }
+  }
+  // 峭壁投影：崖脚向南侧地面投出接触阴影（在全部地表画完后叠加，避免被行序覆盖）
+  for (const c of cliffTiles) {
+    const dx = c % CHUNK, dy = (c / CHUNK) | 0;
+    if (ext[(dy + 2) * EW + (dx + 1)] === T_CLIFF) continue;   // 南侧同为峭壁：崖体内部，不投影
+    const px = dx * TILE, py = (dy + 1) * TILE;                // 投影带画在崖体南缘下方
+    const g = ctx.createLinearGradient(0, py, 0, py + 6);
+    g.addColorStop(0, 'rgba(15,14,10,.32)');
+    g.addColorStop(1, 'rgba(15,14,10,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(px, py, TILE, 6);
+  }
+}
+
+// ===== 水面瓦片：按深度着色 + 岸线浅滩 + 白色水线 =====
+// 深度由 8 邻域水域占比估算（岸浅湖心深），叠加低频噪声让水体成片渐变；
+// 邻格为陆地的方向画浅色渐变浅滩带与泡沫水线，斜角邻陆处用圆角光斑补齐岸线。
+function drawWaterTile(ctx, px, py, tx, ty, ext, dy, dx, wcol, sand) {
+  const EW = CHUNK + 2;
+  const r0 = (dy + 1) * EW + (dx + 1);
+  const nN = ext[r0 - EW], nS = ext[r0 + EW], nW = ext[r0 - 1], nE = ext[r0 + 1];
+  const nNW = ext[r0 - EW - 1], nNE = ext[r0 - EW + 1], nSW = ext[r0 + EW - 1], nSE = ext[r0 + EW + 1];
+  // 深度：邻域水域占比 + 低频噪声（湖内成片微渐变）
+  let cnt = 0;
+  if (nN === T_WATER) cnt++; if (nS === T_WATER) cnt++;
+  if (nW === T_WATER) cnt++; if (nE === T_WATER) cnt++;
+  if (nNW === T_WATER) cnt++; if (nNE === T_WATER) cnt++;
+  if (nSW === T_WATER) cnt++; if (nSE === T_WATER) cnt++;
+  const wn = valueNoise(tx * 0.15 + 13.7, ty * 0.15 + 31.3);
+  let d = cnt / 8 * 0.82 + wn * 0.18;
+  if (d < 0) d = 0; else if (d > 1) d = 1;
+  ctx.fillStyle = _mixHex(wcol.hi, wcol.lo, d * d);
+  ctx.fillRect(px, py, TILE, TILE);
+  // 岸线：邻陆方向的浅滩渐变带（沙色混入水中，越靠岸越浅）
+  const SH = 7;
+  const sd = _hexRGBOf(sand);
+  const sand0 = 'rgba(' + sd[0] + ',' + sd[1] + ',' + sd[2] + ',0)';
+  const shallow = 'rgba(' + sd[0] + ',' + sd[1] + ',' + sd[2] + ',.34)';
+  const band = (land, gx0, gy0, gx1, gy1, bx, by, bw, bh) => {
+    if (!land) return;
+    const g = ctx.createLinearGradient(gx0, gy0, gx1, gy1);
+    g.addColorStop(0, shallow);
+    g.addColorStop(1, sand0);
+    ctx.fillStyle = g;
+    ctx.fillRect(px + bx, py + by, bw, bh);
+  };
+  band(nN !== T_WATER, px, py, px, py + SH, 0, 0, TILE, SH);
+  band(nS !== T_WATER, px, py + TILE, px, py + TILE - SH, 0, TILE - SH, TILE, SH);
+  band(nW !== T_WATER, px, py, px + SH, py, 0, 0, SH, TILE);
+  band(nE !== T_WATER, px + TILE, py, px + TILE - SH, py, TILE - SH, 0, SH, TILE);
+  // 泡沫水线：贴陆岸的细亮线
+  ctx.fillStyle = 'rgba(232,246,255,.35)';
+  if (nN !== T_WATER) ctx.fillRect(px, py, TILE, 1.5);
+  if (nS !== T_WATER) ctx.fillRect(px, py + TILE - 1.5, TILE, 1.5);
+  if (nW !== T_WATER) ctx.fillRect(px, py, 1.5, TILE);
+  if (nE !== T_WATER) ctx.fillRect(px + TILE - 1.5, py, 1.5, TILE);
+  // 斜角邻陆（两侧为水）：圆角浅滩光斑，让岸线转角圆润自然
+  const corner = (diag, a, b, cxx, cyy) => {
+    if (diag === T_WATER || a !== T_WATER || b !== T_WATER) return;
+    const g = ctx.createRadialGradient(cxx, cyy, 0.5, cxx, cyy, 6);
+    g.addColorStop(0, shallow);
+    g.addColorStop(1, sand0);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(cxx, cyy, 6, 0, 7);
+    ctx.fill();
+  };
+  corner(nNW, nN, nW, px, py);
+  corner(nNE, nN, nE, px + TILE, py);
+  corner(nSW, nS, nW, px, py + TILE);
+  corner(nSE, nS, nE, px + TILE, py + TILE);
+}
+
+// ===== 草地瓦片：草覆盖度分带（草稀露土/草密成片）+ 细节 + 岸滩 =====
+// 覆盖度用双频值噪声在「泥土 ↔ 草色」间插值：贫瘠处露黄褐泥土、
+// 肥沃处草色浓密，草稀/草密成片交错（而非满屏纯绿）；细节按覆盖度
+// 分层点缀——密草区画草丛/野花，稀草区画枯黄短草，露土区画土粒/干裂纹。
+function drawGrassTile(ctx, px, py, tx, ty, ext, dy, dx, pgrass, sand, pid) {
+  const EW = CHUNK + 2;
+  const r0 = (dy + 1) * EW + (dx + 1);
+  const nN = ext[r0 - EW], nS = ext[r0 + EW], nW = ext[r0 - 1], nE = ext[r0 + 1];
+  const dirt = DIRT_COLORS[pid] || DIRT_COLORS.nauvis;
+  // 草覆盖度：大尺度斑块（哪片草稀/密）+ 中尺度纹理 + 微抖动，略偏草（+0.08）
+  const n1 = valueNoise(tx * 0.062, ty * 0.062);
+  const n2 = valueNoise(tx * 0.21 + 53.1, ty * 0.21 + 97.7);
+  let cov = n1 * 0.7 + n2 * 0.3 + 0.08 + (hash2(tx * 1.31, ty * 2.17) - 0.5) * 0.1;
+  if (cov < 0) cov = 0; else if (cov > 1) cov = 1;
+  // 草色自身深浅（中尺度噪声，保持草场斑驳）
+  const grassTone = _mixHex(pgrass[2], pgrass[0], n2);
+  // smoothstep 拉开“露土/覆草”过渡：稀草带与密草带对比更清晰
+  const cs = cov * cov * (3 - 2 * cov);
+  const base = _mixHex(dirt, grassTone, cs);
+  ctx.fillStyle = base;
+  ctx.fillRect(px, py, TILE, TILE);
+  // 岸滩：邻水的边铺一条沙带（水陆之间的海滩过渡）
+  const SB = 8;
+  let banded = false;
+  if (nN === T_WATER) { ctx.fillStyle = sand; ctx.fillRect(px, py, TILE, SB); banded = true; }
+  if (nS === T_WATER) { ctx.fillStyle = sand; ctx.fillRect(px, py + TILE - SB, TILE, SB); banded = true; }
+  if (nW === T_WATER) { ctx.fillStyle = sand; ctx.fillRect(px, py, SB, TILE); banded = true; }
+  if (nE === T_WATER) { ctx.fillStyle = sand; ctx.fillRect(px + TILE - SB, py, SB, TILE); banded = true; }
+  if (banded) {
+    // 沙粒（深色小点）+ 沙带内缘的过渡暗线，让滩涂有颗粒质感
+    ctx.fillStyle = 'rgba(70,56,32,.3)';
+    if (nN === T_WATER) { ctx.fillRect(px + 6, py + 2, 2, 1.5); ctx.fillRect(px + 15, py + 4, 2, 1.5); ctx.fillRect(px + 24, py + 3, 2, 1.5); }
+    if (nS === T_WATER) { ctx.fillRect(px + 9, py + TILE - 4, 2, 1.5); ctx.fillRect(px + 20, py + TILE - 3, 2, 1.5); }
+    if (nW === T_WATER) { ctx.fillRect(px + 2, py + 8, 2, 1.5); ctx.fillRect(px + 4, py + 18, 2, 1.5); ctx.fillRect(px + 3, py + 26, 2, 1.5); }
+    if (nE === T_WATER) { ctx.fillRect(px + TILE - 4, py + 10, 2, 1.5); ctx.fillRect(px + TILE - 3, py + 22, 2, 1.5); }
+    ctx.strokeStyle = 'rgba(60,48,28,.25)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (nN === T_WATER) { ctx.moveTo(px, py + SB - .5); ctx.lineTo(px + TILE, py + SB - .5); }
+    if (nS === T_WATER) { ctx.moveTo(px, py + TILE - SB + .5); ctx.lineTo(px + TILE, py + TILE - SB + .5); }
+    if (nW === T_WATER) { ctx.moveTo(px + SB - .5, py); ctx.lineTo(px + SB - .5, py + TILE); }
+    if (nE === T_WATER) { ctx.moveTo(px + TILE - SB + .5, py); ctx.lineTo(px + TILE - SB + .5, py + TILE); }
+    ctx.stroke();
+  } else {
+    // 斜角邻水：补一小块沙角，避免岸线出现“漏角”
+    if (ext[r0 - EW - 1] === T_WATER) { ctx.fillStyle = sand; ctx.fillRect(px, py, 4, 4); }
+    if (ext[r0 - EW + 1] === T_WATER) { ctx.fillStyle = sand; ctx.fillRect(px + TILE - 4, py, 4, 4); }
+    if (ext[r0 + EW - 1] === T_WATER) { ctx.fillStyle = sand; ctx.fillRect(px, py + TILE - 4, 4, 4); }
+    if (ext[r0 + EW + 1] === T_WATER) { ctx.fillStyle = sand; ctx.fillRect(px + TILE - 4, py + TILE - 4, 4, 4); }
+    // 细节按覆盖度分层（滩涂上不画），同一 hash 分段互斥
+    const hv = hash2(tx * 5.13, ty * 3.71);
+    if (cov >= 0.55) {
+      // ---- 密草区：草丛 / 碎石 / 野花 / 泥斑 ----
+      if (hv < 0.5) {
+        // 草丛：2~3 笔小 “V” 形草叶（草色的明/暗变体）
+        ctx.strokeStyle = hv < 0.25 ? _shadeHex(grassTone, -0.22) : _shadeHex(grassTone, 0.26);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        const nT = 2 + (((hv * 100) | 0) & 1);
+        for (let i = 0; i < nT; i++) {
+          const gx = px + 5 + hash2(tx * 7 + i, ty * 3 - i) * (TILE - 10);
+          const gy = py + 7 + hash2(tx * 2 - i, ty * 9 + i) * (TILE - 12);
+          ctx.moveTo(gx - 1.6, gy + 3.2);
+          ctx.lineTo(gx, gy - 1);
+          ctx.lineTo(gx + 1.6, gy + 3.2);
+        }
+        ctx.stroke();
+      } else if (hv < 0.62) {
+        // 碎石：一颗带高光的小灰石
+        const gx = px + 4 + hash2(tx * 9, ty * 5) * (TILE - 9);
+        const gy = py + 4 + hash2(tx * 4, ty * 8) * (TILE - 9);
+        ctx.fillStyle = 'rgba(120,118,110,.6)';
+        ctx.beginPath();
+        ctx.ellipse(gx, gy, 2.2, 1.7, hash2(tx, ty) * 3, 0, 7);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.18)';
+        ctx.beginPath();
+        ctx.ellipse(gx - 0.6, gy - 0.5, 0.9, 0.7, 0, 0, 7);
+        ctx.fill();
+      } else if (hv < 0.66 && (pid === 'nauvis' || pid === 'gleba')) {
+        // 野花：两朵小白/小黄点（仅温带与沼泽行星，只长在草密处）
+        const fx = px + 6 + hash2(tx * 6, ty * 4) * (TILE - 12);
+        const fy = py + 6 + hash2(tx * 3, ty * 7) * (TILE - 12);
+        ctx.fillStyle = hash2(tx, ty * 2) > 0.5 ? 'rgba(238,236,210,.85)' : 'rgba(224,196,106,.85)';
+        ctx.beginPath();
+        ctx.arc(fx, fy, 1.4, 0, 7);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(fx + 3, fy + 2.5, 1.1, 0, 7);
+        ctx.fill();
+      } else if (hv < 0.72) {
+        // 泥斑：半透明土色小椭圆
+        const mx = px + 5 + hash2(tx * 8, ty * 2) * (TILE - 12);
+        const my = py + 5 + hash2(tx * 5, ty * 6) * (TILE - 12);
+        ctx.fillStyle = 'rgba(105,84,58,.16)';
+        ctx.beginPath();
+        ctx.ellipse(mx, my, 3.5, 2.4, hash2(tx, ty * 3) * 3, 0, 7);
+        ctx.fill();
+      }
+    } else if (cov >= 0.28) {
+      // ---- 稀草区：枯黄短草 / 土粒 / 碎石 ----
+      if (hv < 0.42) {
+        // 短草：1~2 笔偏枯黄的细草（草色混土 → 干草色）
+        const dryTone = _mixHex(grassTone, dirt, 0.45);
+        ctx.strokeStyle = hv < 0.21 ? _shadeHex(dryTone, 0.12) : _shadeHex(dryTone, -0.12);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        const nT = 1 + (((hv * 100) | 0) & 1);
+        for (let i = 0; i < nT; i++) {
+          const gx = px + 5 + hash2(tx * 6 + i, ty * 4 - i) * (TILE - 10);
+          const gy = py + 8 + hash2(tx * 3 - i, ty * 7 + i) * (TILE - 14);
+          ctx.moveTo(gx - 1.2, gy + 2.4);
+          ctx.lineTo(gx, gy - 0.6);
+          ctx.lineTo(gx + 1.2, gy + 2.4);
+        }
+        ctx.stroke();
+      } else if (hv < 0.58) {
+        // 土粒：深浅两色土屑
+        ctx.fillStyle = 'rgba(96,74,44,.34)';
+        const gx1 = px + 5 + hash2(tx * 8, ty * 2) * (TILE - 12);
+        const gy1 = py + 5 + hash2(tx * 5, ty * 6) * (TILE - 12);
+        ctx.fillRect(gx1, gy1, 2, 1.5);
+        ctx.fillRect(gx1 + 5, gy1 + 4, 2, 1.5);
+        ctx.fillStyle = 'rgba(214,192,150,.3)';
+        ctx.fillRect(gx1 + 2, gy1 + 7, 2, 1.5);
+      } else if (hv < 0.66) {
+        // 碎石：一颗带高光的小灰石
+        const gx = px + 4 + hash2(tx * 9, ty * 5) * (TILE - 9);
+        const gy = py + 4 + hash2(tx * 4, ty * 8) * (TILE - 9);
+        ctx.fillStyle = 'rgba(120,118,110,.55)';
+        ctx.beginPath();
+        ctx.ellipse(gx, gy, 2.2, 1.7, hash2(tx, ty) * 3, 0, 7);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.16)';
+        ctx.beginPath();
+        ctx.ellipse(gx - 0.6, gy - 0.5, 0.9, 0.7, 0, 0, 7);
+        ctx.fill();
+      }
+    } else {
+      // ---- 露土区：土粒 / 干裂纹 / 碎石 ----
+      if (hv < 0.45) {
+        // 土粒：深浅两色土屑散布
+        ctx.fillStyle = 'rgba(96,74,44,.32)';
+        for (const [bx, by] of [[7, 9], [19, 21], [12, 25], [24, 8]]) ctx.fillRect(px + bx, py + by, 2, 1.5);
+        ctx.fillStyle = 'rgba(214,192,150,.28)';
+        for (const [bx, by] of [[15, 6], [9, 18], [23, 15]]) ctx.fillRect(px + bx, py + by, 2, 1.5);
+      } else if (hv < 0.6) {
+        // 干裂纹：浅色短折线（干土开裂）
+        const cx0 = px + 4 + hash2(tx * 3, ty * 8) * (TILE - 12);
+        const cy0 = py + 4 + hash2(tx * 7, ty * 2) * (TILE - 12);
+        ctx.strokeStyle = 'rgba(230,212,176,.3)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cx0, cy0);
+        ctx.lineTo(cx0 + 4 + hash2(tx, ty) * 3, cy0 + 2 + hash2(ty, tx) * 3);
+        ctx.lineTo(cx0 + 7 + hash2(tx * 2, ty * 3) * 3, cy0 + 5 + hash2(ty * 3, tx * 2) * 3);
+        ctx.stroke();
+      } else if (hv < 0.68) {
+        // 碎石：一颗带高光的小灰石
+        const gx = px + 4 + hash2(tx * 9, ty * 5) * (TILE - 9);
+        const gy = py + 4 + hash2(tx * 4, ty * 8) * (TILE - 9);
+        ctx.fillStyle = 'rgba(120,118,110,.55)';
+        ctx.beginPath();
+        ctx.ellipse(gx, gy, 2.2, 1.7, hash2(tx, ty) * 3, 0, 7);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.16)';
+        ctx.beginPath();
+        ctx.ellipse(gx - 0.6, gy - 0.5, 0.9, 0.7, 0, 0, 7);
+        ctx.fill();
+      }
     }
   }
 }
 
-// 绘制单棵树木（用 hash 决定树形与枝叶细节，保证确定性）
+// ===== 峭壁瓦片：岩体 + 横向层理 + 崖顶受光/崖脚背光 =====
+// 北缘亮带 + 南缘暗带让成片峭壁呈现连续的“崖顶-崖面-崖脚”结构；
+// 崖脚对南侧地面的投影由 drawChunkTerrainInto 末尾统一补画。
+function drawCliffTile(ctx, px, py, tx, ty, ext, dy, dx) {
+  const EW = CHUNK + 2;
+  const r0 = (dy + 1) * EW + (dx + 1);
+  const nN = ext[r0 - EW], nS = ext[r0 + EW], nW = ext[r0 - 1], nE = ext[r0 + 1];
+  const v = hash2(tx, ty);
+  ctx.fillStyle = v > 0.5 ? '#6d6a63' : '#65625c';
+  ctx.fillRect(px, py, TILE, TILE);
+  // 崖顶受光（北缘非峭壁时是崖顶）与左右侧缘的立体分隔
+  if (nN !== T_CLIFF) {
+    ctx.fillStyle = 'rgba(255,255,255,.18)';
+    ctx.fillRect(px, py, TILE, 4);
+    ctx.fillStyle = 'rgba(255,255,255,.09)';
+    ctx.fillRect(px, py, TILE, 7);
+  }
+  if (nW !== T_CLIFF) { ctx.fillStyle = 'rgba(255,255,255,.07)'; ctx.fillRect(px, py, 2, TILE); }
+  if (nE !== T_CLIFF) { ctx.fillStyle = 'rgba(0,0,0,.13)'; ctx.fillRect(px + TILE - 2, py, 2, TILE); }
+  // 崖脚背光
+  if (nS !== T_CLIFF) { ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.fillRect(px, py + TILE - 4, TILE, 4); }
+  // 横向岩层理（轻微起伏的沉积层）
+  ctx.strokeStyle = 'rgba(35,33,29,.38)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  const y1 = py + 9 + hash2(tx, ty * 3) * 3;
+  ctx.moveTo(px, y1);
+  ctx.lineTo(px + TILE, y1 + (hash2(tx * 2, ty) - 0.5) * 4);
+  const y2 = py + 19 + hash2(tx * 3, ty * 5) * 3;
+  ctx.moveTo(px, y2);
+  ctx.lineTo(px + TILE, y2 + (hash2(tx, ty * 7) - 0.5) * 4);
+  ctx.stroke();
+  // 岩缝与碎石
+  ctx.strokeStyle = 'rgba(30,28,24,.55)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(px + TILE * 0.3, py + TILE * 0.15); ctx.lineTo(px + TILE * 0.45, py + TILE * 0.5);
+  ctx.lineTo(px + TILE * 0.3, py + TILE * 0.85);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(140,136,126,.6)';
+  ctx.fillRect(px + TILE * 0.6, py + TILE * 0.35, 4, 4);
+  ctx.fillRect(px + TILE * 0.7, py + TILE * 0.65, 3, 3);
+}
+
+// 绘制单棵树木（用 hash 决定树形/尺寸/色相，保证确定性）
+// 结构：地面投影 → 树干 → 深色树冠底盘 → 中层受光 → 高光叶簇 → 叶间碎影
 function drawTreeInto(ctx, px, py, tx, ty) {
   const h = hash2(tx * 3.7, ty * 7.1);
-  const cx = px + TILE / 2;
-  const baseY = py + TILE;
-  // 树干
-  ctx.fillStyle = '#5c4630';
-  ctx.fillRect(cx - 2.5, baseY - 13, 5, 13);
-  // 树冠：三层圆形/多边形枝叶
-  ctx.fillStyle = h > 0.5 ? '#2e5d22' : '#376b2a';
+  const h2 = hash2(tx * 11.9, ty * 5.3);
+  const s = 0.85 + h2 * 0.3;                    // 尺寸
+  const cx = px + TILE / 2 + (h - 0.5) * 6;     // 树心水平偏移，打破网格感
+  const baseY = py + TILE - 4 - h2 * 3;
+  // 色相二选一（冷绿/暖绿）
+  const leafD = h > 0.5 ? '#2b5620' : '#33602a';
+  const leafM = h > 0.5 ? '#3b6e2e' : '#437836';
+  const leafL = h > 0.5 ? '#549042' : '#5c9a4a';
+  // 地面投影（椭圆阴影）
+  ctx.fillStyle = 'rgba(18,28,14,.3)';
   ctx.beginPath();
-  ctx.arc(cx, baseY - 18, 7 + h * 2, 0, 7); ctx.fill();
+  ctx.ellipse(cx + 2.2, baseY + 1, 8.5 * s, 3.1 * s, 0, 0, 7);
+  ctx.fill();
+  // 树干（下宽上窄梯形 + 左缘高光）
+  ctx.fillStyle = '#5a4433';
   ctx.beginPath();
-  ctx.arc(cx - 4, baseY - 13, 5, 0, 7); ctx.fill();
-  ctx.beginPath();
-  ctx.arc(cx + 4, baseY - 13, 5, 0, 7); ctx.fill();
-  // 顶部高光
-  ctx.fillStyle = 'rgba(140,220,120,.35)';
-  ctx.beginPath();
-  ctx.arc(cx - 1, baseY - 20, 3, 0, 7); ctx.fill();
+  ctx.moveTo(cx - 2.3 * s, baseY);
+  ctx.lineTo(cx - 1.3 * s, baseY - 13 * s);
+  ctx.lineTo(cx + 1.3 * s, baseY - 13 * s);
+  ctx.lineTo(cx + 2.3 * s, baseY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.14)';
+  ctx.fillRect(cx - 2.0 * s, baseY - 12 * s, 1.0 * s, 11 * s);
+  // 树冠：多球拼接
+  const c = (x, y, r) => { ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); };
+  ctx.fillStyle = leafD;   // 深色底盘（蓬松外轮廓）
+  c(cx, baseY - 17 * s, 8.6 * s);
+  c(cx - 6.2 * s, baseY - 12 * s, 5.8 * s);
+  c(cx + 6.2 * s, baseY - 12 * s, 5.8 * s);
+  c(cx - 2.8 * s, baseY - 23 * s, 5.6 * s);
+  c(cx + 3.2 * s, baseY - 22 * s, 5.4 * s);
+  ctx.fillStyle = leafM;   // 中层（主色，略小偏上 → 受光体积）
+  c(cx - 1.5, baseY - 18.5 * s, 7.4 * s);
+  c(cx - 6.4 * s, baseY - 13.5 * s, 4.6 * s);
+  c(cx + 3.6 * s, baseY - 14.5 * s, 4.8 * s);
+  c(cx + 0.6 * s, baseY - 24 * s, 4.4 * s);
+  ctx.fillStyle = leafL;   // 高光叶簇（左上受光）
+  c(cx - 2.6 * s, baseY - 24 * s, 3.6 * s);
+  c(cx - 5.4 * s, baseY - 16 * s, 2.6 * s);
+  ctx.fillStyle = leafD;   // 叶间碎影
+  c(cx + 4.4 * s, baseY - 19 * s, 1.4 * s);
+  c(cx - 1.2 * s, baseY - 13.5 * s, 1.2 * s);
+  c(cx + 6.4 * s, baseY - 12.5 * s, 1.1 * s);
 }
-// 地形被修改（铺混凝土/石砖路/填海）后清除对应 chunk 的地形缓存
+// 地形被修改（铺混凝土/石砖路/填海）后清除对应 chunk 的地形缓存。
+// 新版地形会读取相邻格（岸线/滩涂/峭壁投影跨界过渡），所以位于 chunk 边缘的
+// 格子被修改时，相邻 chunk 的缓存也要一并失效，避免跨界岸线残留旧画面。
 function invalidateTerrainChunk(tx, ty) {
-  terrainChunkCache.delete(Math.floor(tx / CHUNK) + ',' + Math.floor(ty / CHUNK));
+  const cx = Math.floor(tx / CHUNK), cy = Math.floor(ty / CHUNK);
+  terrainChunkCache.delete(cx + ',' + cy);
+  const lx = ((tx % CHUNK) + CHUNK) % CHUNK;
+  const ly = ((ty % CHUNK) + CHUNK) % CHUNK;
+  if (lx === 0) terrainChunkCache.delete((cx - 1) + ',' + cy);
+  if (lx === CHUNK - 1) terrainChunkCache.delete((cx + 1) + ',' + cy);
+  if (ly === 0) terrainChunkCache.delete(cx + ',' + (cy - 1));
+  if (ly === CHUNK - 1) terrainChunkCache.delete(cx + ',' + (cy + 1));
 }
 
 // 获取指定 chunk 的离屏缓存画布；未命中时生成并写回 LRU。
@@ -773,32 +1137,39 @@ function drawTerrain(ctx) {
   terrainCacheStats.state = '分块缓存（' + terrainChunkCache.size + '/' + TERRAIN_CHUNK_LRU_MAX + ' 张，命中 ' + terrainCacheStats.hits + ' / 未命中 ' + terrainCacheStats.misses + '）';
 }
 
-// 动态水面：对可见范围内的水域瓦片绘制缓慢漂移的高光波纹，营造“水面流动”感。
-// 只在主渲染层叠加（不写入离屏缓存），避免破坏缓存复用；波纹基于时间与瓦片坐标做确定性错相。
+// 动态水面：对可见范围内的水域瓦片绘制缓慢漂移的波光，营造“水面流动”感。
+// 只在主渲染层叠加（不写入离屏缓存），避免破坏缓存复用；波光基于时间与瓦片坐标做确定性错相。
 function drawWaterAnimation(ctx, tx0, ty0, tx1, ty1) {
   if (!G || !G.time) return;
   const t = G.time;
+  ctx.lineCap = 'round';
   for (let ty = ty0; ty <= ty1; ty++) {
     for (let tx = tx0; tx <= tx1; tx++) {
       if (getTerrain(tx, ty) !== T_WATER) continue;
       const px = tx * TILE, py = ty * TILE;
-      // 缓慢漂移的高光波纹：位置随世界坐标与时间缓慢移动，随机错相避免整齐划一
       const phase = hash2(tx, ty) * 6.2832;
-      const driftX = Math.sin(t * 0.4 + phase) * 5;
-      const driftY = Math.cos(t * 0.32 + phase * 1.3) * 4;
-      // 主高光弧线（半透明白色，随波漂移）
-      const a = 0.12 + 0.08 * Math.sin(t * 1.2 + phase);
-      ctx.strokeStyle = 'rgba(190,220,245,' + a.toFixed(3) + ')';
-      ctx.lineWidth = 1.5;
+      // 波光：随波漂移的短弧线高光，随时间闪烁（负相位直接跳过，约一半时间可见）
+      const a = 0.1 + 0.09 * Math.sin(t * 1.1 + phase);
+      if (a <= 0.02) continue;
+      const driftX = Math.sin(t * 0.35 + phase) * 6;
+      const driftY = Math.cos(t * 0.3 + phase * 1.3) * 3;
+      const wx = px + TILE / 2 + driftX, wy = py + TILE / 2 + driftY;
+      ctx.strokeStyle = 'rgba(205,232,250,' + a.toFixed(3) + ')';
+      ctx.lineWidth = 1.8;
       ctx.beginPath();
-      ctx.arc(px + TILE / 2 + driftX, py + TILE / 2 + driftY, TILE * 0.32, Math.PI * 0.2, Math.PI * 1.6);
+      ctx.moveTo(wx - 4.5, wy);
+      ctx.quadraticCurveTo(wx, wy - 1.8, wx + 4.5, wy);
       ctx.stroke();
-      // 更浅的第二道副波纹
-      ctx.strokeStyle = 'rgba(200,225,250,' + (a * 0.7).toFixed(3) + ')';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(px + TILE / 2 - driftX * 0.6, py + TILE / 2 - driftY * 0.6, TILE * 0.2, Math.PI * 0.4, Math.PI * 1.8);
-      ctx.stroke();
+      // 偶发星光点（约 1/3 水格出现，频率更高、更亮，模拟阳光碎金）
+      if (hash2(tx * 1.7, ty * 2.3) > 0.62) {
+        const sp = 0.5 + 0.5 * Math.sin(t * 2.2 + phase * 2);
+        if (sp > 0.35) {
+          ctx.fillStyle = 'rgba(235,248,255,' + (sp * 0.35).toFixed(3) + ')';
+          ctx.beginPath();
+          ctx.arc(px + 8 + hash2(tx * 3, ty) * (TILE - 16), py + 8 + hash2(tx, ty * 3) * (TILE - 16), 1.3, 0, 7);
+          ctx.fill();
+        }
+      }
     }
   }
 }
@@ -808,9 +1179,12 @@ function drawOreDots(ctx, px, py, itemId, amt, tx, ty) {
     ? Math.max(1, Math.min(3, Math.round(Math.sqrt(Math.max(amt, 0)) / 40)))
     : Math.max(2, Math.min(7, Math.round(Math.sqrt(Math.max(amt, 0)) / 9)));
   const col = ITEMS[itemId].color;
-  // 在矿格上铺一层淡淡的底色，让矿脉更醒目、更具“富矿感”（画面优化）
-  ctx.fillStyle = 'rgba(' + hexToRgb(col) + ',0.18)';
-  ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 4);
+  // 矿脉底色：柔和的有机圆斑（略压扁+旋转，形状随格子确定性变化），
+  // 替代旧版方框，让矿团边缘自然融入草地（画面优化）
+  ctx.fillStyle = 'rgba(' + hexToRgb(col) + ',0.16)';
+  ctx.beginPath();
+  ctx.ellipse(px + TILE / 2, py + TILE / 2, TILE * 0.46, TILE * 0.4, hash2(tx * 0.7, ty * 1.9) * 3, 0, 7);
+  ctx.fill();
   ctx.fillStyle = col;
   ctx.strokeStyle = 'rgba(0,0,0,.3)';
   ctx.lineWidth = 1;

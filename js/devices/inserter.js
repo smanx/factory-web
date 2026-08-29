@@ -461,44 +461,260 @@ function inserterArmColor(e) {
     : e.type === 'stack-inserter' ? '#8ae05a'
     : '#e0b23c';
 }
+// 轻量色彩工具（机械臂渲染）：把 #rrggbb 以 0~1 透明度混合成 rgba 叠加色
+function _insMix(hex, t) {
+  const n = parseInt(hex.slice(1), 16);
+  return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + t.toFixed(3) + ')';
+}
+// 机械臂档位规格：按类型给出臂宽/爪规格/转台尺寸，塑造「同族不同级」的观感——
+//   堆叠臂粗壮大爪（一次抓多个）、快速臂纤细（速度感）、其余为标准规格
+function inserterSpec(e) {
+  const t = e.type;
+  if (t === 'bulk-inserter' || t === 'stack-inserter') return { a1: 6.2, a2: 4.6, claw: 5.4, hub: 5.6 };
+  if (t === 'fast-inserter') return { a1: 4.2, a2: 3.0, claw: 4.0, hub: 4.8 };
+  return { a1: 5.0, a2: 3.6, claw: 4.4, hub: 5.2 };
+}
+// 转台式工业机械臂。视觉分区（自下而上，与其他重绘设备统一的工业语言）：
+//   ① 地面椭圆阴影   ② 固定基座（错位双层钢盘 + 顶面圆 + 螺栓，右上角留给状态 LED）
+//   ③ 筛选指示环（原有蓝环）   ④ 旋转组件（统一在臂角坐标系，随 armAng 旋转）：
+//     主题色转台臂座（双层胶囊 + 上缘高光 + 3 颗刻度点，刻度让旋转可见）
+//     → 钢灰近节臂 → 肘关节 → 主题色远节臂 → 腕关节 → 双指夹爪
+//     （持物张开夹住物品 / 空手闭合）→ 中心轴承盖；热能臂转台尾部带小炉膛火光
+//   ⑤ 臂端物品 + 堆叠数（世界坐标，图标方向不随臂旋转）
+//   ⑥ 状态 LED（基座右上）：绿=工作中 / 黄=放货堵塞 / 红=缺燃料闪 / 暗=待机
+//   ⑦ 陷口 / 物流方向箭头 / 投放车道指示（原有物流标记，保持不变）
+// 臂长仍按「持物伸长 / 空手收缩」伸缩，由两节臂分摊（肘随 len 同步移动）。
 function drawInserter(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const cx = px + TILE / 2, cy = py + TILE / 2;
   ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#3c4048';
-  ctx.beginPath(); ctx.arc(cx, cy, 9, 0, 7); ctx.fill();
-  ctx.strokeStyle = '#22252a';
-  ctx.lineWidth = 2;
-  ctx.stroke();
+  const col = inserterArmColor(e);
   const long = e.type === 'long-handed-inserter';
-  if (e.filterActive && e.filterActive()) {
-    ctx.strokeStyle = '#58b8e8';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 12, 0, 7);
-    ctx.stroke();
-  }
   const len = e.holding ? (long ? TILE * 2.02 : TILE * 1.06) : (long ? TILE * 1.55 : TILE * 0.82);
   const ang = e.armAng !== undefined ? e.armAng : ((dir + 2) % 4) * Math.PI / 2;
   const tipx = cx + Math.cos(ang) * len;
   const tipy = cy + Math.sin(ang) * len;
-  ctx.strokeStyle = inserterArmColor(e);
-  ctx.lineWidth = long ? 5 : 4;
+  const stackN = e.holding ? (e.holdingCount || 1) : 0;
+
+  // ===== 低 LOD（缩远）：基座简圆 + 单线臂 + 物品，省掉全部细节与车道标记 =====
+  const simple = (typeof LOD !== 'undefined' && LOD && LOD.simple);
+  if (simple) {
+    ctx.fillStyle = '#31363e';
+    ctx.beginPath(); ctx.arc(cx, cy, 9.5, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#0e1013';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = long ? 5 : 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(tipx, tipy);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+    if (e.holding) {
+      if (typeof drawItemDotLOD === 'function') drawItemDotLOD(ctx, tipx, tipy, e.holding);
+      else drawItemDot(ctx, tipx, tipy, e.holding, 4);
+    }
+    if (stackN > 1) {
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 9px system-ui';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('×' + stackN, tipx, tipy - 9);
+    }
+    ctx.fillStyle = col;
+    notch(ctx, px, py, dir);
+    ctx.globalAlpha = 1;
+    return;
+  }
+
+  const spec = inserterSpec(e);
+  const burner = e.type === 'burner-inserter';
+  const noFuel = burner && typeof e.hasFuel === 'function' && !e.hasFuel();
+
+  // ① 地面阴影（椭圆，托起整台机械臂）
+  ctx.fillStyle = 'rgba(0,0,0,0.30)';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 8.6, 10.5, 3.6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ② 固定基座：错位双层钢盘（下厚上亮，纯色叠加营造厚度）+ 顶面受光圆
+  ctx.fillStyle = '#15181c';
+  ctx.beginPath(); ctx.arc(cx, cy + 1.2, 10.6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#31363e';
+  ctx.beginPath(); ctx.arc(cx, cy, 10.2, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#0e1013';
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  ctx.fillStyle = '#40464f';
+  ctx.beginPath(); ctx.arc(cx, cy - 0.6, 7.8, 0, Math.PI * 2); ctx.fill();
+  // 基座 3 颗螺栓（左上/左下/右下 45° 方向；右上 45° 位置留给状态 LED）
+  for (let i = 0; i < 3; i++) {
+    const a = Math.PI * 3 / 4 + i * Math.PI / 2;
+    const bx = cx + Math.cos(a) * 8.8, by = cy + Math.sin(a) * 8.8;
+    ctx.fillStyle = '#0e1013';
+    ctx.beginPath(); ctx.arc(bx, by, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#5b626c';
+    ctx.beginPath(); ctx.arc(bx - 0.2, by - 0.2, 0.9, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // ③ 筛选指示环（启用筛选时蓝色圈，原有功能）
+  if (e.filterActive && e.filterActive()) {
+    ctx.strokeStyle = '#58b8e8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 12.5, 0, 7);
+    ctx.stroke();
+  }
+
+  // ④ 旋转组件：转台臂座 + 两节臂 + 关节 + 夹爪（统一在臂角坐标系，随 armAng 旋转）
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(ang);
+  // 肘关节位置：两节随 len 同步展开（空手收缩 / 持物伸长的伸缩动画由两节分摊）
+  const elbow = Math.max(spec.hub + 3, len * (long ? 0.44 : 0.46));
+
+  // 转台臂座：主题色胶囊（下暗上亮两层 + 上缘高光；3 颗刻度点随臂旋转，让转动可见）
+  rr(ctx, -spec.hub - 1.5, -spec.hub + 0.8, spec.hub * 2 + 7, spec.hub * 2, spec.hub * 0.9);
+  ctx.fillStyle = _insMix(col, 0.45);
+  ctx.fill();
+  rr(ctx, -spec.hub - 1.5, -spec.hub - 0.8, spec.hub * 2 + 7, spec.hub * 2 - 0.6, spec.hub * 0.9);
+  ctx.fillStyle = col;
+  ctx.fill();
+  ctx.strokeStyle = '#10131a';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-spec.hub - 0.5, -spec.hub + 0.8);
+  ctx.lineTo(spec.hub + 3.5, -spec.hub + 0.8);
+  ctx.stroke();
+  ctx.fillStyle = _insMix(col, 0.4);
+  for (let i = 0; i < 3; i++) {
+    const ta = i * Math.PI * 2 / 3;
+    ctx.beginPath();
+    ctx.arc(Math.cos(ta) * (spec.hub - 1.3), Math.sin(ta) * (spec.hub - 1.3), 0.9, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 近节臂：钢灰粗臂（转台前端 → 肘），叠在转台之上，带上缘高光
+  ctx.strokeStyle = '#4c525c';
+  ctx.lineWidth = spec.a1;
   ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.moveTo(cx, cy);
-  ctx.lineTo(tipx, tipy);
+  ctx.moveTo(3.5, 0);
+  ctx.lineTo(elbow, 0);
   ctx.stroke();
   ctx.lineCap = 'butt';
+  ctx.strokeStyle = 'rgba(255,255,255,0.20)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(5, -spec.a1 * 0.28);
+  ctx.lineTo(elbow - 2, -spec.a1 * 0.28);
+  ctx.stroke();
+
+  // 肘关节：暗底 + 亮面 + 轴心（三重圆，旋转关节感）
+  ctx.fillStyle = '#181b20';
+  ctx.beginPath(); ctx.arc(elbow, 0, spec.a1 * 0.62 + 0.8, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#6a717d';
+  ctx.beginPath(); ctx.arc(elbow, -0.3, spec.a1 * 0.62, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#9aa2ae';
+  ctx.beginPath(); ctx.arc(elbow, -0.5, spec.a1 * 0.3, 0, Math.PI * 2); ctx.fill();
+
+  // 远节臂：主题色细臂（肘 → 腕），深色衬底 + 上缘高光
+  ctx.strokeStyle = '#10131a';
+  ctx.lineWidth = spec.a2 + 1.6;
+  ctx.beginPath();
+  ctx.moveTo(elbow, 0);
+  ctx.lineTo(len - 2.5, 0);
+  ctx.stroke();
+  ctx.strokeStyle = col;
+  ctx.lineWidth = spec.a2;
+  ctx.beginPath();
+  ctx.moveTo(elbow, 0);
+  ctx.lineTo(len - 2.5, 0);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.lineWidth = 0.9;
+  ctx.beginPath();
+  ctx.moveTo(elbow + 2, -spec.a2 * 0.28);
+  ctx.lineTo(len - 4, -spec.a2 * 0.28);
+  ctx.stroke();
+
+  // 腕关节
+  ctx.fillStyle = '#181b20';
+  ctx.beginPath(); ctx.arc(len - 1.5, 0, spec.a2 * 0.75 + 0.7, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#767e8a';
+  ctx.beginPath(); ctx.arc(len - 1.5, 0, spec.a2 * 0.75, 0, Math.PI * 2); ctx.fill();
+
+  // 双指夹爪：两片爪指垂直于臂方向（持物张开夹住物品 / 空手闭合），爪尖主题色端帽
+  const gap = e.holding ? 6.4 : 3.2;
+  const clawW = Math.max(2, spec.a2 * 0.62);
+  for (const s of [-1, 1]) {
+    rr(ctx, len - 1 - spec.claw, s * gap - clawW / 2, spec.claw, clawW, 1);
+    ctx.fillStyle = '#454b54';
+    ctx.fill();
+    ctx.strokeStyle = '#10131a';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(len - 1.4, s * gap, clawW * 0.42, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.beginPath(); ctx.arc(len - 2.8, s * gap, 0.5, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // 热能机械臂：转台尾部小炉膛（有燃料时透橙红火光并闪烁，随臂旋转）
+  if (burner) {
+    const fl = 0.6 + Math.sin((G.time || 0) * 9 + px * 0.5) * 0.3;
+    ctx.fillStyle = noFuel ? '#2a2018' : 'rgba(255,150,50,' + (0.55 + fl * 0.4).toFixed(2) + ')';
+    ctx.beginPath();
+    ctx.arc(-3.5, 0, 1.7, 0, Math.PI * 2);
+    ctx.fill();
+    if (!noFuel) {
+      ctx.fillStyle = 'rgba(255,220,120,' + (fl * 0.85).toFixed(2) + ')';
+      ctx.beginPath();
+      ctx.arc(-3.5, 0, 0.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // 中心轴承盖（臂根关节，盖在近节臂根部之上）
+  ctx.fillStyle = '#181b20';
+  ctx.beginPath(); ctx.arc(0, 0, 2.8, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#8a92a0';
+  ctx.beginPath(); ctx.arc(0, 0, 2.1, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#c8ced8';
+  ctx.beginPath(); ctx.arc(-0.3, -0.3, 0.9, 0, Math.PI * 2); ctx.fill();
+
+  ctx.restore();
+
+  // ⑤ 臂端物品与堆叠数（世界坐标，图标方向不随臂旋转）
   if (e.holding) drawItemDot(ctx, tipx, tipy, e.holding, 4);
-  if (e.holding && (e.holdingCount || 1) > 1) {
+  if (stackN > 1) {
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 9px system-ui';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('×' + e.holdingCount, tipx, tipy - 9);
+    ctx.fillText('×' + stackN, tipx, tipy - 9);
   }
-  ctx.fillStyle = inserterArmColor(e);
+
+  // ⑥ 状态 LED（基座右上 45°，最后绘制保证任何臂姿态下可见）
+  const ledX = cx + 6.2, ledY = cy - 6.2;
+  let ledC = '#3a3f46', ledOn = false;
+  if (noFuel) { ledC = '#ff5040'; ledOn = ((G.time || 0) * 8) % 2 < 1; }
+  else if (e.blocked && e.holding) { ledC = '#ffb04a'; ledOn = true; }
+  else if (e.rotating || e.holding || e._selfFeed) { ledC = '#9ce06c'; ledOn = true; }   // _selfFeed：热能臂自补给中也亮绿灯
+  ctx.fillStyle = ledC;
+  ctx.beginPath(); ctx.arc(ledX, ledY, 1.7, 0, Math.PI * 2); ctx.fill();
+  if (ledOn) {
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.beginPath(); ctx.arc(ledX - 0.4, ledY - 0.5, 0.6, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // ⑦ 陷口 / 物流方向箭头 / 投放车道指示（原有物流标记，保持不变）
+  ctx.fillStyle = col;
   notch(ctx, px, py, dir);
   drawFlowMarks(ctx, e, cx, cy, dir);
   drawDropLane(ctx, e);

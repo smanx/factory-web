@@ -150,49 +150,136 @@ function drainFluidNetwork(start) {
 }
 
 // ===== 渲染 =====
+// 1×1 黄铜十字接头：中心金属接头 + 四向连接管段 + 流体显示
+// 视觉分区：
+//   ① 4 向连接管段（双层：深色外管壁 + 亮色内管）  ② 中央 4 通接头（双层圆角矩形）
+//   ③ 接头高光  ④ 中央流体圆点（按容量比例）
 function drawPipe(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const cx = px + TILE / 2, cy = py + TILE / 2;
   ctx.globalAlpha = alpha;
-  ctx.strokeStyle = '#7d7264';
-  ctx.lineWidth = 8;
+  ctx.lineCap = 'round';
+
+  // ① 4 向连接管段（按连接方向画到瓦片边）
+  //    复用旧 connect 判定逻辑：找出所有"应在管口侧显式延伸"的邻居
+  //    然后分两层画：外层深色（管壁）+ 内层亮色（管内）。
+  //    连接段用平头（butt）延伸到瓦片边：相邻管道/地下管道口的管段在共享边严丝合缝，
+  //    不再用圆头（round）让两端管帽凸进邻格、在接缝处双重叠加。
+  const conns = [];
   for (const [dx, dy] of PIPE_DIRS) {
     const nb = entAt(gx + dx, gy + dy);
     if (nb instanceof PipeToGround) {
-      // 地下管道只有“口”朝向这一侧（其朝向方向）才伸出连接，其余三向不显连接段
       const ok = DX[nb.dir] === dx && DY[nb.dir] === dy;
       if (!ok) continue;
     }
-    const connect = nb instanceof Pipe || nb instanceof Refinery || nb instanceof Pumpjack ||
+    let connect = nb instanceof Pipe || nb instanceof Refinery || nb instanceof Pumpjack ||
         nb instanceof ElectricDrill ||
         nb instanceof Boiler || nb instanceof Pump || nb instanceof SteamEngine ||
         nb instanceof ChemicalPlant || nb instanceof Assembler || nb instanceof HeatExchanger ||
         (nb instanceof StorageTank && (!nb.isPortCell || nb.isPortCell(gx, gy))) ||
         nb instanceof PipeToGround || nb instanceof FluidPump ||
         (nb && (nb.type === 'one-way-valve' || nb.type === 'overflow-valve' || nb.type === 'top-up-valve'));
-    if (connect) {
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx + dx * TILE / 2, cy + dy * TILE / 2);
-      ctx.stroke();
+    // 抽水机只在短边（原点格朝 dir 一侧）出/接水：只有该侧相邻格的管道才画连接段，
+    // 长边两侧的管道不显示连接（与 tryOutput 的唯一出水格一致，避免误读为"长边也有出口"）
+    if (connect && nb instanceof Pump) {
+      const ox = nb.dir === 0 ? nb.x + nb.w : (nb.dir === 2 ? nb.x - 1 : nb.x);
+      const oy = nb.dir === 1 ? nb.y + nb.h : (nb.dir === 3 ? nb.y - 1 : nb.y);
+      connect = (gx === ox && gy === oy);
     }
+    if (connect) conns.push([dx, dy]);
   }
+  // 连接段平头（butt）：两端齐平延伸到瓦片边，与相邻管段在共享边合拢
+  ctx.lineCap = 'butt';
+  // 外层管壁（深色）
+  ctx.strokeStyle = '#4a4234';
+  ctx.lineWidth = 9;
+  for (const [dx, dy] of conns) {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + dx * (TILE / 2), cy + dy * (TILE / 2));
+    ctx.stroke();
+  }
+  // 内层管体（亮色黄铜）
+  ctx.strokeStyle = '#8d8272';
+  ctx.lineWidth = 6.5;
+  for (const [dx, dy] of conns) {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + dx * (TILE / 2), cy + dy * (TILE / 2));
+    ctx.stroke();
+  }
+  // 管段高光（上沿）
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = 'rgba(255, 235, 200, 0.30)';
+  ctx.lineWidth = 1.2;
+  for (const [dx, dy] of conns) {
+    ctx.beginPath();
+    const ox = dx === 0 ? 0 : (dx > 0 ? 0.6 : -0.6);
+    const oy = dy === 0 ? 0 : (dy > 0 ? 0.6 : -0.6);
+    ctx.moveTo(cx + ox, cy + oy);
+    ctx.lineTo(cx + dx * (TILE / 2) + ox, cy + dy * (TILE / 2) + oy);
+    ctx.stroke();
+  }
+
+  // ② 中央 4 通接头（双层圆角矩形 — 模拟十字管件）
+  // 外层（深色金属边）
+  ctx.fillStyle = '#4a4234';
+  rr(ctx, cx - 9.5, cy - 9.5, 19, 19, 3); ctx.fill();
+  // 内层（亮色黄铜面）
   ctx.fillStyle = '#8d8272';
-  ctx.beginPath(); ctx.arc(cx, cy, 8.5, 0, 7); ctx.fill();
-  ctx.strokeStyle = '#55503f';
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(cx, cy, 8.5, 0, 7); ctx.stroke();
+  rr(ctx, cx - 7.5, cy - 7.5, 15, 15, 2.5); ctx.fill();
+  // 接头描边
+  ctx.strokeStyle = '#3a3228';
+  ctx.lineWidth = 0.6;
+  rr(ctx, cx - 7.5, cy - 7.5, 15, 15, 2.5); ctx.stroke();
+
+  // ③ 接头 4 角小螺栓（强化"工业接头"质感）
+  const drawBolt = (bx, by) => {
+    ctx.fillStyle = '#3a3228';
+    ctx.beginPath(); ctx.arc(bx, by, 1.1, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,235,200,0.35)';
+    ctx.beginPath(); ctx.arc(bx - 0.2, by - 0.2, 0.5, 0, Math.PI * 2); ctx.fill();
+  };
+  drawBolt(cx - 5.5, cy - 5.5);
+  drawBolt(cx + 5.5, cy - 5.5);
+  drawBolt(cx - 5.5, cy + 5.5);
+  drawBolt(cx + 5.5, cy + 5.5);
+
+  // ③b 接头顶面高光
+  ctx.fillStyle = 'rgba(255, 235, 200, 0.30)';
+  ctx.fillRect(cx - 6, cy - 6, 12, 0.8);
+
+  // ④ 中央流体圆点（按容量比例）
   const total = e.total ? e.total() : 0;
   if (total > 0) {
     const first = Object.keys(e.fluid).find(k => e.fluid[k] > 0);
     if (first && ITEMS[first]) {
+      const r = Math.max(2.5, 5.5 * Math.min(1, total / PIPE_CAP));
+      // 流体深色边
+      ctx.fillStyle = _pipeDarken(ITEMS[first].color, 0.35);
+      ctx.beginPath();
+      ctx.arc(cx, cy, r + 0.6, 0, Math.PI * 2);
+      ctx.fill();
+      // 流体本色
       ctx.fillStyle = ITEMS[first].color;
       ctx.beginPath();
-      ctx.arc(cx, cy, Math.max(3, 6.5 * Math.min(1, total / PIPE_CAP)), 0, 7);
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+      // 流体高光
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+      ctx.beginPath();
+      ctx.arc(cx - r * 0.3, cy - r * 0.3, r * 0.4, 0, Math.PI * 2);
       ctx.fill();
     }
   }
   ctx.globalAlpha = 1;
+}
+function _pipeDarken(hex, t) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.max(0, Math.floor(((n >> 16) & 255) * (1 - t)));
+  const g = Math.max(0, Math.floor(((n >> 8) & 255) * (1 - t)));
+  const b = Math.max(0, Math.floor((n & 255) * (1 - t)));
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
 }
 
 // ===== 面板 =====

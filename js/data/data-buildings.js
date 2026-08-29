@@ -81,7 +81,7 @@ const BUILD_DEFS = {
   'pumpjack':           { w: 3, h: 3, solid: true },
   'oil-refinery':           { w: 5, h: 5, solid: true },
   'chemical-plant':     { w: 3, h: 3, solid: true },
-  'storage-tank':       { w: 3, h: 3, solid: true },
+  'storage-tank':       { w: 2, h: 2, solid: true },
   // ===== 核能建筑 =====
   'centrifuge':         { w: 3, h: 3, solid: true },  // 官方 collision_box ±1.2 → 3×3
   'nuclear-reactor':    { w: 5, h: 5, solid: true },
@@ -213,12 +213,17 @@ for (const k in (GAME_DATA.buildingHp || {})) {
 // 占地 w/h（格）默认来自官方 selection_box（GAME_DATA.footprint）。
 // 以下为项目有意简化/旋转模型，与官方 selection_box 不同，保持手工值：
 //   - 分流器：游戏内按 1×2 竖放建模（官方 2×1 横放）
-//   - 抽水机：游戏内 2×1（官方 2×2，含底部管线位）
+//   - 抽水机：游戏内 2×1（官方 2×2，含底部管线位）；
+//     方向采用 rotSwap 通用约定（dir 偶数=东西向用 2×1、dir 奇数=南北向交换为 1×2），
+//     使出水方向永远沿长轴——出水口落在宽 1 的短边上（唯一管口）
 //   - 泵 / 运算组合器 / 功率开关：游戏内 1×1（官方 selection_box 含管线伸出）
+//   - 储液罐：游戏内 2×2 单体圆柱罐（官方 3×3）；接口布局仍对齐官方 pipe_connections
+//     （一对对角角落各两口），见 js/devices/storage-tank.js 头注释
 // 其余建筑占地一律采用官方数据，保证与《异星工厂》一致。
 const FOOTPRINT_OVERRIDE = {
   'splitter': { w: 1, h: 2 }, 'fast-splitter': { w: 1, h: 2 }, 'express-splitter': { w: 1, h: 2 }, 'turbo-splitter': { w: 1, h: 2 },
   'offshore-pump': { w: 2, h: 1 },
+  'storage-tank': { w: 2, h: 2 },
   'pump': { w: 1, h: 1 },
   'arithmetic-combinator': { w: 1, h: 1 }, 'decider-combinator': { w: 1, h: 1 },
   'selector-combinator': { w: 1, h: 1 }, 'display-panel': { w: 1, h: 1 },

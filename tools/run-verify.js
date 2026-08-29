@@ -24,6 +24,7 @@ const scripts = [
   'tools/verify-oil-rate.js',
   'tools/verify-data-alignment.js',
   'tools/verify-dlc.js',
+  'tools/verify-terrain-render.js',
 ];
 
 const root = path.join(__dirname, '..');

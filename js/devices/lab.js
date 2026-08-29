@@ -225,29 +225,313 @@ class Lab extends Entity {
 }
 
 // ===== 渲染 =====
+// 轻量色彩工具（研究中心渲染用）：#rrggbb → rgba(r,g,b,a)
+function _labMix(hex, t) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + t.toFixed(3) + ')';
+}
+// 研究中心渲染：洁净实验室风格（白色陶瓷外壳 + 中央原子研究舱 + 双侧科学包补给柱 + 顶部穹顶天线）
+// 在一众深色工业设备中，研究中心以“白色洁净设备”身份凸显科技感；主题青色保留旧版识别度。
+// 视觉分区（自下而上）：
+//   ① 地面阴影 + 深色基座踢脚板（带运行状态灯：绿=研究中/琥珀=有包待机/红=无包）
+//   ② 白色陶瓷主外壳（顶亮底暗渐变 + 左右内阴影 + 顶部板缝）
+//   ③ 双侧科学包补给柱（各 3 舱位，按真实库存点亮包色；当前消耗的舱位脉冲高亮，顶部汇入管接研究舱）
+//   ④ 中央研究舱（钢环螺栓 + 暗腔 + 3 条原子轨道[运转时电子公转] + 能量核心）
+//   ⑤ 研究进度环（e.t/LAB_TIME 亮弧，颜色随当前消耗的科学包）
+//   ⑥ 顶部玻璃穹顶（内透核心色辉光）+ 角部天线（随 dir 旋转，红色航标灯闪烁）
+//   ⑦ 角部螺栓 + 外框描边
+// 核心颜色语义 = 当前正在消耗的科学包颜色（无限科技取任意现存包；待机为青色）。
+// ALT 详情模式下，核心改显当前消耗科学包的图标。支持 lab（3×3）与 biolab（5×5）等比缩放。
 function drawLab(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
-  const w = TILE * e.w, h = TILE * e.h;   // 支持 lab（3×3）与 biolab（5×5，生物实验室）
+  const s = TILE * e.w;                       // 支持 lab（3×3）与 biolab（5×5，生物实验室）
+  const k = s / 96;                           // 以 96px（3×3）为基准的缩放系数
+  const cx = px + s / 2, cy = py + s / 2;
   ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#37807a';
-  rr(ctx, px + 3, py + 3, w - 6, h - 6, 7); ctx.fill();
-  ctx.strokeStyle = '#1e4a46';
-  ctx.lineWidth = 3;
-  rr(ctx, px + 3, py + 3, w - 6, h - 6, 7); ctx.stroke();
-  ctx.fillStyle = '#245c57';
-  rr(ctx, px + 10, py + 10, w - 20, h - 20, 5); ctx.fill();
-  ctx.fillStyle = e.active ? '#8ff0e0' : '#4a8f86';
-  ctx.beginPath();
-  ctx.arc(px + w / 2, py + h / 2, 12, 0, 7);
-  ctx.fill();
-  if (e.active) {
-    const bb = Math.sin(G.time * 8 + px) * 3;
-    ctx.fillStyle = 'rgba(255,255,255,.7)';
-    ctx.beginPath();
-    ctx.arc(px + w / 2 - 4, py + h / 2 - 4 + bb, 2.5, 0, 7);
-    ctx.arc(px + w / 2 + 5, py + h / 2 - 2 - bb, 2, 0, 7);
-    ctx.fill();
+
+  const T = G.time || 0;
+  const working = !!e.active;
+  // 当前正在消耗的科学包（核心/穹顶/进度环用它上色；无限科技取任意现存包）
+  let need = (typeof e.nextNeed === 'function') ? e.nextNeed() : null;
+  if (need && (!(ITEMS[need] && ITEMS[need].color) || e.packCount(need) <= 0)) need = null;
+  const coreColor = need ? ITEMS[need].color : '#37d6c2';
+  const totalPacks = (typeof e.totalPacks === 'function') ? e.totalPacks() : 0;
+  const ledColor = working ? '#7af05a' : (totalPacks > 0 ? '#f0c04a' : '#f05a4a');
+  const prog = Math.max(0, Math.min(1, (e.t || 0) / LAB_TIME));
+  const simple = (typeof LOD !== 'undefined' && LOD && LOD.simple);
+
+  // ===== 低 LOD（缩远）：白色剪影 + 暗腔 + 彩色核心 =====
+  if (simple) {
+    ctx.fillStyle = '#c5d2d9';
+    rr(ctx, px + 3 * k, py + 3 * k, s - 6 * k, s - 6 * k, 10 * k); ctx.fill();
+    ctx.fillStyle = '#12242b';
+    ctx.beginPath(); ctx.arc(cx, cy, 16 * k, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = _labMix(coreColor, working ? 0.95 : 0.55);
+    ctx.beginPath(); ctx.arc(cx, cy, 5 * k, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+    return;
   }
+
+  // ===== ① 地面阴影 =====
+  ctx.fillStyle = 'rgba(0,0,0,0.30)';
+  ctx.beginPath();
+  ctx.ellipse(cx, py + s - 2 * k, s * 0.42, 4.5 * k, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ===== ② 白色陶瓷主外壳（顶亮底暗渐变 + 左右内阴影 + 顶部板缝）=====
+  const bodyGrad = ctx.createLinearGradient(0, py + 3 * k, 0, py + s - 3 * k);
+  bodyGrad.addColorStop(0,    '#f2f6f8');
+  bodyGrad.addColorStop(0.45, '#dde6ec');
+  bodyGrad.addColorStop(1,    '#b7c6cf');
+  ctx.fillStyle = bodyGrad;
+  rr(ctx, px + 3 * k, py + 3 * k, s - 6 * k, s - 6 * k, 10 * k); ctx.fill();
+  // 左右内阴影（圆润设备质感）
+  const sideShade = ctx.createLinearGradient(px, 0, px + s, 0);
+  sideShade.addColorStop(0,    'rgba(60,84,96,0.20)');
+  sideShade.addColorStop(0.12, 'rgba(60,84,96,0)');
+  sideShade.addColorStop(0.88, 'rgba(60,84,96,0)');
+  sideShade.addColorStop(1,    'rgba(60,84,96,0.22)');
+  ctx.fillStyle = sideShade;
+  rr(ctx, px + 3 * k, py + 3 * k, s - 6 * k, s - 6 * k, 10 * k); ctx.fill();
+  // 顶部板缝（穹顶下方的水平拼缝，暗线 + 亮线成对）
+  ctx.strokeStyle = 'rgba(70,96,108,0.35)';
+  ctx.lineWidth = 1 * k;
+  ctx.beginPath();
+  ctx.moveTo(px + 10 * k, py + 21 * k);
+  ctx.lineTo(px + s - 10 * k, py + 21 * k);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+  ctx.lineWidth = 0.6 * k;
+  ctx.beginPath();
+  ctx.moveTo(px + 10 * k, py + 22.2 * k);
+  ctx.lineTo(px + s - 10 * k, py + 22.2 * k);
+  ctx.stroke();
+
+  // ===== ①b 深色基座踢脚板（外壳底部的深色横带，运行状态灯装在其上）=====
+  ctx.fillStyle = '#22333c';
+  rr(ctx, px + 5 * k, py + s - 12 * k, s - 10 * k, 8 * k, 3 * k); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.10)';
+  ctx.fillRect(px + 9 * k, py + s - 11 * k, s - 18 * k, 0.8 * k);
+
+  // ===== ⑤a 研究进度环轨道（外壳上的环形细槽，先画让补给管从上方跨过）=====
+  const R = 20 * k;                            // 研究舱半径
+  ctx.strokeStyle = 'rgba(50,76,88,0.30)';
+  ctx.lineWidth = 2.6 * k;
+  ctx.beginPath(); ctx.arc(cx, cy, R + 3.4 * k, 0, Math.PI * 2); ctx.stroke();
+
+  // ===== ③ 双侧科学包补给柱（各 3 舱位，按库存量前 6 的包类型点亮）=====
+  const packIds = Object.keys(e.packs || {})
+    .filter(id => (e.packs[id] || 0) > 0 && ITEMS[id] && ITEMS[id].color)
+    .sort((a, b) => e.packs[b] - e.packs[a])
+    .slice(0, 6);
+  const colX = [px + 10.5 * k, px + s - 19.5 * k];   // 左右柱左上角 x（柱宽 9k）
+  const colY = py + 30 * k, cellH = 11 * k;
+  for (let c = 0; c < 2; c++) {
+    const x = colX[c];
+    // 柱框架（暗色内嵌槽）
+    ctx.fillStyle = '#16303a';
+    rr(ctx, x, colY, 9 * k, 36 * k, 2.5 * k); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+    ctx.lineWidth = 0.8 * k;
+    rr(ctx, x, colY, 9 * k, 36 * k, 2.5 * k); ctx.stroke();
+    // 汇入管（柱中部 → 研究舱钢环外缘）
+    const pipeFrom = c === 0 ? x + 9 * k : x;
+    const pipeTo = c === 0 ? cx - R : cx + R;
+    ctx.fillStyle = '#31454f';
+    rr(ctx, Math.min(pipeFrom, pipeTo), cy - 1.3 * k, Math.abs(pipeTo - pipeFrom), 2.6 * k, 1.2 * k); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillRect(Math.min(pipeFrom, pipeTo), cy - 1 * k, Math.abs(pipeTo - pipeFrom), 0.7 * k);
+    // 3 个舱位（自上而下；当前消耗的包脉冲高亮）
+    for (let i = 0; i < 3; i++) {
+      const pid = packIds[c * 3 + i] || null;
+      const cxl = x + 1 * k, cyl = colY + 1 * k + i * (cellH + 1 * k);
+      if (pid) {
+        const isCur = (pid === need);
+        const pulse = isCur ? 0.75 + 0.25 * Math.sin(T * 6) : 1;
+        ctx.fillStyle = _labMix(ITEMS[pid].color, 0.92 * pulse);
+        rr(ctx, cxl, cyl, 7 * k, cellH, 1.5 * k); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.fillRect(cxl + 1 * k, cyl + 1 * k, 5 * k, 1 * k);
+        if (isCur) {   // 当前消耗舱位：外圈辉光
+          ctx.strokeStyle = _labMix(ITEMS[pid].color, 0.6);
+          ctx.lineWidth = 1.1 * k;
+          rr(ctx, cxl - 0.6 * k, cyl - 0.6 * k, 8.2 * k, cellH + 1.2 * k, 2 * k); ctx.stroke();
+        }
+      } else {
+        ctx.fillStyle = '#0d1e26';
+        rr(ctx, cxl, cyl, 7 * k, cellH, 1.5 * k); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.06)';
+        ctx.fillRect(cxl + 1 * k, cyl + 1 * k, 5 * k, 0.8 * k);
+      }
+    }
+  }
+
+  // ===== ④ 中央研究舱：钢环 + 暗腔 + 原子轨道 + 能量核心 =====
+  // 钢环（外缘暗描边 + 钢面）
+  ctx.fillStyle = '#5c707c';
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#2c4048';
+  ctx.lineWidth = 1.6 * k;
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+  // 暗腔（凹陷内室，径向渐变）
+  const chamberGrad = ctx.createRadialGradient(cx, cy - 4 * k, 2 * k, cx, cy, R - 3 * k);
+  chamberGrad.addColorStop(0, '#17303a');
+  chamberGrad.addColorStop(1, '#081218');
+  ctx.fillStyle = chamberGrad;
+  ctx.beginPath(); ctx.arc(cx, cy, R - 3.2 * k, 0, Math.PI * 2); ctx.fill();
+  // 钢环小螺栓（4 颗，45° 方位）
+  for (let i = 0; i < 4; i++) {
+    const ba = Math.PI / 4 + i * Math.PI / 2;
+    const bx = cx + Math.cos(ba) * (R - 1.6 * k), by = cy + Math.sin(ba) * (R - 1.6 * k);
+    ctx.fillStyle = '#2c4048';
+    ctx.beginPath(); ctx.arc(bx, by, 1.3 * k, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.beginPath(); ctx.arc(bx - 0.3 * k, by - 0.3 * k, 0.5 * k, 0, Math.PI * 2); ctx.fill();
+  }
+  // 内室内容（裁剪进暗腔）：背景辉光 → 原子轨道 → 电子 → 能量核心
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, R - 3.4 * k, 0, Math.PI * 2); ctx.clip();
+  const glowA = working ? 0.32 + 0.14 * Math.sin(T * 5) : 0.10;
+  const glow = ctx.createRadialGradient(cx, cy, 1 * k, cx, cy, R - 4 * k);
+  glow.addColorStop(0, _labMix(coreColor, glowA));
+  glow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(cx - R, cy - R, 2 * R, 2 * R);
+  // 原子轨道（3 条椭圆整体缓慢旋转；运转时电子沿轨道公转）
+  const orbR = R - 6.5 * k;
+  const spin = T * 0.35;
+  for (let i = 0; i < 3; i++) {
+    const baseA = i * Math.PI / 3 + spin;
+    ctx.strokeStyle = _labMix(coreColor, working ? 0.55 : 0.30);
+    ctx.lineWidth = 1.1 * k;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, orbR, orbR * 0.38, baseA, 0, Math.PI * 2);
+    ctx.stroke();
+    const ea = T * 2.4 + i * 2.1;
+    const ex = cx + Math.cos(ea) * Math.cos(baseA) * orbR - Math.sin(ea) * Math.sin(baseA) * orbR * 0.38;
+    const ey = cy + Math.cos(ea) * Math.sin(baseA) * orbR + Math.sin(ea) * Math.cos(baseA) * orbR * 0.38;
+    ctx.fillStyle = working ? '#ffffff' : _labMix(coreColor, 0.7);
+    ctx.beginPath(); ctx.arc(ex, ey, 1.5 * k, 0, Math.PI * 2); ctx.fill();
+  }
+  // 能量核心（ALT 详情时改显当前消耗包的图标）
+  if (portDetailsVisible() && need) {
+    drawRecipeIconCell(ctx, cx, cy, need);
+  } else {
+    const coreR = 6.5 * k;
+    const coreGrad = ctx.createRadialGradient(cx - 1.5 * k, cy - 1.5 * k, 0.5 * k, cx, cy, coreR);
+    coreGrad.addColorStop(0,    '#ffffff');
+    coreGrad.addColorStop(0.35, _labMix(coreColor, 0.95));
+    coreGrad.addColorStop(1,    _labMix(coreColor, 0.25));
+    ctx.fillStyle = coreGrad;
+    ctx.beginPath(); ctx.arc(cx, cy, coreR, 0, Math.PI * 2); ctx.fill();
+    if (working) {   // 核心呼吸微光
+      ctx.fillStyle = _labMix(coreColor, 0.22 + 0.13 * Math.sin(T * 5));
+      ctx.beginPath(); ctx.arc(cx, cy, coreR + 2.2 * k + Math.sin(T * 5) * 0.8 * k, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  ctx.restore();
+  // 舱内玻璃反光（左上弧）
+  ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+  ctx.lineWidth = 1.2 * k;
+  ctx.beginPath();
+  ctx.arc(cx, cy, R - 5 * k, Math.PI * 1.05, Math.PI * 1.45);
+  ctx.stroke();
+
+  // ===== ⑤ 研究进度环（亮弧随 e.t/LAB_TIME 增长；满一圈 = 消耗一瓶科学包）=====
+  if (prog > 0.005) {
+    ctx.strokeStyle = _labMix(coreColor, 0.95);
+    ctx.lineWidth = 2.6 * k;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(cx, cy, R + 3.4 * k, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+  }
+
+  // ===== ⑥ 顶部玻璃穹顶（基座 + 玻璃 + 内透核心色辉光 + 高光）=====
+  const domeY = py + 8 * k;
+  ctx.fillStyle = '#5c707c';
+  rr(ctx, cx - 13 * k, domeY + 2.5 * k, 26 * k, 3.2 * k, 1.5 * k); ctx.fill();
+  ctx.strokeStyle = '#2c4048';
+  ctx.lineWidth = 0.8 * k;
+  rr(ctx, cx - 13 * k, domeY + 2.5 * k, 26 * k, 3.2 * k, 1.5 * k); ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(cx, domeY, 11 * k, 5.2 * k, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(190,225,235,0.30)';
+  ctx.fill();
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(cx, domeY, 11 * k, 5.2 * k, 0, 0, Math.PI * 2);
+  ctx.clip();
+  const domeGlow = ctx.createRadialGradient(cx, domeY + 1 * k, 0.5 * k, cx, domeY, 11 * k);
+  domeGlow.addColorStop(0, _labMix(coreColor, working ? 0.5 : 0.18));
+  domeGlow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = domeGlow;
+  ctx.fillRect(cx - 12 * k, domeY - 6 * k, 24 * k, 12 * k);
+  ctx.restore();
+  ctx.strokeStyle = '#33505c';
+  ctx.lineWidth = 1.1 * k;
+  ctx.beginPath();
+  ctx.ellipse(cx, domeY, 11 * k, 5.2 * k, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  ctx.lineWidth = 1 * k;
+  ctx.beginPath();
+  ctx.ellipse(cx, domeY, 9 * k, 3.8 * k, 0, Math.PI * 1.05, Math.PI * 1.5);
+  ctx.stroke();
+
+  // ===== ⑥b 角部天线（随 dir 旋转到对应角；红色航标灯闪烁）=====
+  const aAng = -Math.PI / 4 + ((dir | 0) % 4) * (Math.PI / 2);
+  const ax = cx + Math.cos(aAng) * s * 0.355;
+  const ay = cy + Math.sin(aAng) * s * 0.355;
+  ctx.fillStyle = '#5c707c';
+  rr(ctx, ax - 3 * k, ay + 1 * k, 6 * k, 3 * k, 1 * k); ctx.fill();
+  ctx.strokeStyle = '#2c4048';
+  ctx.lineWidth = 0.7 * k;
+  rr(ctx, ax - 3 * k, ay + 1 * k, 6 * k, 3 * k, 1 * k); ctx.stroke();
+  ctx.strokeStyle = '#3c4e58';
+  ctx.lineWidth = 1.4 * k;
+  ctx.beginPath();
+  ctx.moveTo(ax, ay + 1 * k);
+  ctx.lineTo(ax, ay - 7 * k);
+  ctx.stroke();
+  const blink = 0.35 + 0.65 * Math.max(0, Math.sin(T * 4 + px));
+  if (blink > 0.5) {
+    ctx.fillStyle = 'rgba(255,120,90,' + (blink * 0.3).toFixed(2) + ')';
+    ctx.beginPath(); ctx.arc(ax, ay - 8.2 * k, 3.4 * k, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(240,80,60,' + blink.toFixed(2) + ')';
+  ctx.beginPath(); ctx.arc(ax, ay - 8.2 * k, 1.7 * k, 0, Math.PI * 2); ctx.fill();
+
+  // ===== ⑦ 基座运行状态灯（绿=研究中 / 琥珀=有包待机 / 红=无科学包）=====
+  const ledY = py + s - 7 * k;
+  for (const lx of [cx - 12 * k, cx + 12 * k]) {
+    ctx.fillStyle = ledColor;
+    ctx.beginPath(); ctx.arc(lx, ledY, 1.6 * k, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.beginPath(); ctx.arc(lx - 0.4 * k, ledY - 0.5 * k, 0.55 * k, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // ===== ⑦b 角部螺栓（4 角）=====
+  const drawBolt = (bx, by) => {
+    ctx.fillStyle = 'rgba(40,60,70,0.5)';
+    ctx.beginPath(); ctx.arc(bx, by, 2.3 * k, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#43545e';
+    ctx.beginPath(); ctx.arc(bx, by, 1.7 * k, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.beginPath(); ctx.arc(bx - 0.4 * k, by - 0.5 * k, 0.7 * k, 0, Math.PI * 2); ctx.fill();
+  };
+  drawBolt(px + 9 * k,        py + 9 * k);
+  drawBolt(px + s - 9 * k,    py + 9 * k);
+  drawBolt(px + 9 * k,        py + s - 9 * k);
+  drawBolt(px + s - 9 * k,    py + s - 9 * k);
+
+  // ===== ⑧ 外框描边 =====
+  ctx.strokeStyle = '#33505c';
+  ctx.lineWidth = 2.2 * k;
+  rr(ctx, px + 3 * k, py + 3 * k, s - 6 * k, s - 6 * k, 10 * k); ctx.stroke();
+
   ctx.globalAlpha = 1;
 }
 

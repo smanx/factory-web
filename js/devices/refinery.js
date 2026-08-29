@@ -280,53 +280,231 @@ function refineryOutputFull(e) {
   for (const k in rec.out) if ((e.outp[k] || 0) + rec.out[k] > REFINERY_BUF_CAP) return true;
   return false;
 }
+// 轻量色彩工具（仅在炼油厂/化工厂渲染中用到）：把 #rrggbb 与 0~1 比例混合到 alpha
+function _rfMix(hex, t) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + t.toFixed(3) + ')';
+}
+// 炼油厂渲染：重工业铜色立式炉 + 顶部双烟囱 + 中央蒸馏塔 + 底部 3 路输出油管
+// 视觉分区（自下而上）：
+//   ① 罐底阴影与基座  ② 铜钢外壳（铜→焦橙渐变 + 焊接筋板）
+//   ③ 顶部双烟囱（运转时持续冒蒸汽）  ④ 中央蒸馏塔（橙色炉火 + 配方图标）
+//   ⑤ 罐体侧壁检修门与螺栓  ⑥ 底部 3 路输出口油管（按产油量填充）
+//   ⑦ 流体出入口凸缘（沿用旧 REFINERY_PORTS 约定，端口按 fluidIconCell 精确定位）
+//   ⑧ 罐体外框
 function drawRefinery(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
-  const s = TILE * e.w;
-  const sh = TILE * e.h;
+  const s = TILE * e.w, sh = TILE * e.h;
+  const cx = px + s / 2, cy = py + sh / 2;
   ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#8f5a34';
+
+  const rec = e.recipe ? REFINERY_RECIPES[e.recipe] : null;
+  const working = e.working || e.crafting;
+  const fl = 0.5 + Math.sin((G.time || 0) * 10 + px) * 0.25;     // 炉火闪烁系数
+  const heat = working ? (0.55 + fl * 0.35) : 0.18;                 // 炉火强度（待机也微亮）
+
+  // ① 罐底投影 + 基座
+  ctx.fillStyle = 'rgba(0,0,0,0.32)';
+  ctx.beginPath();
+  ctx.ellipse(cx, py + sh - 2, s * 0.42, 4.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#2a1a10';
+  rr(ctx, px + 5, py + sh - 12, s - 10, 9, 3); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.fillRect(px + 9, py + sh - 7, s - 18, 0.8);
+
+  // ② 铜钢外壳（重工业铜色，顶亮底暗）
+  const bodyGrad = ctx.createLinearGradient(0, py + 4, 0, py + sh - 4);
+  bodyGrad.addColorStop(0,    '#b8703c');
+  bodyGrad.addColorStop(0.18, '#9a5a2a');
+  bodyGrad.addColorStop(0.55, '#7a4321');
+  bodyGrad.addColorStop(1,    '#4a2812');
+  ctx.fillStyle = bodyGrad;
   rr(ctx, px + 3, py + 3, s - 6, sh - 6, 10); ctx.fill();
-  ctx.strokeStyle = '#5c3820';
-  ctx.lineWidth = 3;
-  rr(ctx, px + 3, py + 3, s - 6, sh - 6, 10); ctx.stroke();
-  ctx.fillStyle = '#3b3230';
-  rr(ctx, px + s * 0.12, py + 10, 13, s * 0.22, 3); ctx.fill();
-  rr(ctx, px + s * 0.28, py + 10, 13, s * 0.22, 3); ctx.fill();
-  if (e.working) {
-    const fl = 0.5 + Math.sin(G.time * 10 + px) * 0.25;
-    ctx.fillStyle = 'rgba(255,160,60,' + (fl * 0.45).toFixed(2) + ')';
-    rr(ctx, px + 12, py + s * 0.42, s - 24, s * 0.24, 6); ctx.fill();
+
+  // ②b 罐体外壳左右各 3 条焊接筋板（明暗交替，强化金属拼接感）
+  const ribXs = [px + s * 0.14, px + s * 0.30, px + s * 0.50 - 1,
+                 px + s * 0.50 + 1, px + s * 0.70, px + s * 0.86];
+  const ribShade = ['rgba(0,0,0,0.25)', 'rgba(0,0,0,0.20)', 'rgba(0,0,0,0.22)',
+                    'rgba(255,255,255,0.10)', 'rgba(0,0,0,0.20)', 'rgba(0,0,0,0.25)'];
+  for (let i = 0; i < ribXs.length; i++) {
+    ctx.fillStyle = ribShade[i];
+    ctx.fillRect(ribXs[i], py + 26, 1.6, sh - 50);
+    ctx.fillStyle = i < 3 ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.18)';
+    ctx.fillRect(ribXs[i] + (i < 3 ? 1.6 : -0.6), py + 26, 0.6, sh - 50);
   }
-  // ===== 中央显示当前配方（选择配方后始终展示占满一格的大图标） =====
-  {
-    const cxp = px + s / 2, cyp = py + s / 2;
-    if (portDetailsVisible() && e.recipe) {
-      const outId = Object.keys(REFINERY_RECIPES[e.recipe].out)[0];
-      drawRecipeIconCell(ctx, cxp, cyp, outId);
+
+  // ③ 顶部双烟囱（圆柱形 + 顶冠 + 烟囱口高亮；运转时冒蒸汽）
+  const stackY = py + 4, stackH = 22, stackW = 8;
+  const drawStack = (sx) => {
+    // 烟囱阴影侧
+    const stackGrad = ctx.createLinearGradient(sx - stackW / 2, 0, sx + stackW / 2, 0);
+    stackGrad.addColorStop(0,   '#3a2818');
+    stackGrad.addColorStop(0.5, '#6a4830');
+    stackGrad.addColorStop(1,   '#2a1a10');
+    ctx.fillStyle = stackGrad;
+    rr(ctx, sx - stackW / 2, stackY, stackW, stackH, 2.5); ctx.fill();
+    // 烟囱顶冠（向外凸一档）
+    ctx.fillStyle = '#7a5238';
+    rr(ctx, sx - stackW / 2 - 1.5, stackY - 2, stackW + 3, 4, 1.5); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.lineWidth = 0.8;
+    rr(ctx, sx - stackW / 2 - 1.5, stackY - 2, stackW + 3, 4, 1.5); ctx.stroke();
+    // 烟囱口（暗内孔）
+    ctx.fillStyle = '#1a0e08';
+    ctx.fillRect(sx - stackW / 2 + 1.5, stackY - 1, stackW - 3, 1.4);
+    // 烟囱中段高光环
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.fillRect(sx - stackW / 2 + 0.5, stackY + 4, 0.8, stackH - 8);
+  };
+  drawStack(px + s * 0.30);
+  drawStack(px + s * 0.70);
+
+  // ③b 运转时烟囱持续排放蒸汽（用 spawnSteam 已有节奏在 update 中调用；这里只画高光）
+  if (working) {
+    for (let i = 0; i < 2; i++) {
+      const sx = i === 0 ? px + s * 0.30 : px + s * 0.70;
+      const phase = ((G.time || 0) * 0.7 + i * 0.5) % 1;
+      ctx.fillStyle = 'rgba(240,232,220,' + (0.35 * (1 - phase)).toFixed(2) + ')';
+      ctx.beginPath();
+      ctx.arc(sx + Math.sin(phase * 5 + i) * 1.8, stackY - 4 - phase * 8, 2 + phase * 1.8, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
-  let bx = px + 14;
+
+  // ④ 中央蒸馏塔（圆角矩形，钢圈 + 橙色炉火内透）
+  // 塔身外壳
+  const tcX = px + 12, tcY = py + 30, tcW = s - 24, tcH = sh - 56;
+  ctx.fillStyle = '#3a261a';
+  rr(ctx, tcX, tcY, tcW, tcH, 5); ctx.fill();
+  // 塔身内框（深色凹陷，让炉火像从内部透出）
+  ctx.save();
+  rr(ctx, tcX + 3, tcY + 3, tcW - 6, tcH - 6, 3); ctx.clip();
+  // 底色（深焦）
+  const darkGrad = ctx.createLinearGradient(0, tcY, 0, tcY + tcH);
+  darkGrad.addColorStop(0, '#1a0e08');
+  darkGrad.addColorStop(0.5, '#2a1408');
+  darkGrad.addColorStop(1, '#3a1c0a');
+  ctx.fillStyle = darkGrad;
+  ctx.fillRect(tcX + 3, tcY + 3, tcW - 6, tcH - 6);
+  // 炉火（橙红渐变，越亮表示越热）
+  const fireY = tcY + tcH * (1 - heat * 0.85);
+  const fireH = tcH * heat * 0.85;
+  const fireGrad = ctx.createLinearGradient(0, fireY, 0, tcY + tcH);
+  fireGrad.addColorStop(0,   _rfMix('#ff6a2a', 0.85));
+  fireGrad.addColorStop(0.4, _rfMix('#ff8a3a', 0.70));
+  fireGrad.addColorStop(1,   _rfMix('#ffae48', 0.25));
+  ctx.fillStyle = fireGrad;
+  ctx.fillRect(tcX + 3, fireY, tcW - 6, fireH);
+  // 炉火表面波纹（动态）
+  if (working) {
+    const w1 = Math.sin((G.time || 0) * 4.5 + px) * 1.5;
+    const w2 = Math.cos((G.time || 0) * 3.2 + py) * 1.2;
+    ctx.fillStyle = 'rgba(255,220,120,0.55)';
+    ctx.fillRect(tcX + 4, fireY + w1, tcW - 8, 1.4);
+    ctx.fillStyle = 'rgba(255,140,40,0.45)';
+    ctx.fillRect(tcX + 4, fireY + w1 + 2, tcW - 8, 1);
+  }
+  ctx.restore();
+  // 塔身边框
+  ctx.strokeStyle = 'rgba(255,255,255,0.20)';
+  ctx.lineWidth = 1;
+  rr(ctx, tcX, tcY, tcW, tcH, 5); ctx.stroke();
+  // 钢圈（2 条横线，分隔出上下层）
+  ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(tcX + 2, tcY + tcH * 0.35);
+  ctx.lineTo(tcX + tcW - 2, tcY + tcH * 0.35);
+  ctx.moveTo(tcX + 2, tcY + tcH * 0.65);
+  ctx.lineTo(tcX + tcW - 2, tcY + tcH * 0.65);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+  ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  ctx.moveTo(tcX + 2, tcY + tcH * 0.35 + 1);
+  ctx.lineTo(tcX + tcW - 2, tcY + tcH * 0.35 + 1);
+  ctx.moveTo(tcX + 2, tcY + tcH * 0.65 + 1);
+  ctx.lineTo(tcX + tcW - 2, tcY + tcH * 0.65 + 1);
+  ctx.stroke();
+
+  // ④b 中央配方图标（选择配方后显示在蒸馏塔上方）
+  if (portDetailsVisible() && rec) {
+    const outId = Object.keys(rec.out)[0];
+    drawRecipeIconCell(ctx, cx, tcY + tcH * 0.42, outId);
+  }
+
+  // ⑤ 罐体侧壁检修门（左下 + 右下两块带把手的金属板）
+  const drawPlate = (x, y, w, h) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.30)';
+    rr(ctx, x, y, w, h, 2); ctx.fill();
+    ctx.fillStyle = '#5a3018';
+    rr(ctx, x + 1, y + 1, w - 2, h - 2, 1.5); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.lineWidth = 0.8;
+    rr(ctx, x + 1, y + 1, w - 2, h - 2, 1.5); ctx.stroke();
+    // 门把手（小圆点）
+    ctx.fillStyle = '#d8a060';
+    ctx.beginPath();
+    ctx.arc(x + w - 4, y + h / 2, 1.4, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  drawPlate(px + 6,         py + sh - 28, 12, 14);
+  drawPlate(px + s - 6 - 12, py + sh - 28, 12, 14);
+
+  // ⑤b 角部螺栓（4 角各 1 颗）
+  const drawBolt = (bx, by) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.beginPath(); ctx.arc(bx, by, 2.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#2a1a10';
+    ctx.beginPath(); ctx.arc(bx, by, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,200,140,0.30)';
+    ctx.beginPath(); ctx.arc(bx - 0.5, by - 0.5, 0.9, 0, Math.PI * 2); ctx.fill();
+  };
+  drawBolt(px + 9,        py + 9);
+  drawBolt(px + s - 9,     py + 9);
+  drawBolt(px + 9,        py + sh - 9);
+  drawBolt(px + s - 9,     py + sh - 9);
+
+  // ⑥ 底部 3 路输出口油管（按产油量填充进度条）
+  const pipeY = py + sh - 17, pipeH = 6;
+  const pipeW = 22, gap = 4;
+  const pipeTotalW = pipeW * 3 + gap * 2;
+  let bx = cx - pipeTotalW / 2;
   for (const [id] of [['heavy-oil'], ['light-oil'], ['petroleum-gas']]) {
     const n = e.outp[id] || 0;
-    ctx.fillStyle = '#20242b';
-    rr(ctx, bx, py + s - 18, 18, 7, 2); ctx.fill();
+    // 管底（暗）
+    ctx.fillStyle = '#1a0e08';
+    rr(ctx, bx, pipeY, pipeW, pipeH, 2); ctx.fill();
     if (n > 0) {
       ctx.fillStyle = ITEMS[id].color;
-      rr(ctx, bx, py + s - 18, 18 * Math.min(1, n / 16), 7, 2); ctx.fill();
+      rr(ctx, bx, pipeY, pipeW * Math.min(1, n / REFINERY_BUF_CAP), pipeH, 2); ctx.fill();
+      // 管内液面高光
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.fillRect(bx + 1, pipeY, pipeW * Math.min(1, n / REFINERY_BUF_CAP) - 2, 1.2);
     }
-    bx += 24;
+    // 管口上下边
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+    ctx.lineWidth = 0.6;
+    rr(ctx, bx, pipeY, pipeW, pipeH, 2); ctx.stroke();
+    // 管标签小点
+    ctx.fillStyle = ITEMS[id].color;
+    ctx.beginPath();
+    ctx.arc(bx + pipeW / 2, pipeY - 2, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+    bx += pipeW + gap;
   }
-  if (!e.working && e.recipe && refineryMissingInput(e) && !(LOD && LOD.simple)) {
-    // 缺原料：显示感叹号警示（不再显示中文）
+
+  // ⑥b 缺原料警示：顶部居中显示感叹号
+  if (!working && rec && refineryMissingInput(e) && !(LOD && LOD.simple)) {
     ctx.fillStyle = '#ffb04a';
-    ctx.font = 'bold 16px system-ui';
+    ctx.font = 'bold 14px system-ui';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('!', px + s / 2, py + s * 0.72);
+    ctx.fillText('!', cx, py + sh * 0.86);
   }
-  // ===== 流体出入口标注（对齐《异星工厂》：入口绿、出口橙红，位置随旋转） =====
-  // 接口按 fluidIconCell 精确落在对应端口格中心绘制，与悬停识别(DEVICE_FLUID_ICONS)共用同一套几何，
-  // 彻底消除"图标/箭头画到相邻管道口"的错位。
+
+  // ⑦ 流体出入口标注（沿用旧 REFINERY_PORTS 约定）
   if (!(LOD && LOD.simple)) {
     for (const p of REFINERY_PORTS) {
       const g = fluidIconCell(e, p.side, p.cells[0]);
@@ -336,6 +514,12 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
       drawPort(ctx, fcx, fcy, sd, p.color, p.arrow, 0, TILE / 2, fluid, p.flow, p.forceSymbol);
     }
   }
+
+  // ⑧ 罐体外框描边（最上层）
+  ctx.strokeStyle = '#2a1a10';
+  ctx.lineWidth = 2.4;
+  rr(ctx, px + 3, py + 3, s - 6, sh - 6, 10); ctx.stroke();
+
   ctx.globalAlpha = 1;
 }
 

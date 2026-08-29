@@ -449,8 +449,10 @@ function applySave(d) {
     'personal-roboport': 'personal-roboport-equipment',
     'personal-battery-mk2': 'battery-mk2-equipment',
     'personal-roboport-mk2': 'personal-roboport-mk2-equipment',
-    // 旧版基础储物箱（官方无此物品，basic 存储用铁/钢/木箱）→ 并入钢箱
-    'storage-chest': 'steel-chest',
+    // 旧版基础储物箱（官方无此物品，basic 存储用铁/钢/木箱）→ 并入钢箱。
+    // 注意不能在此迁移 'storage-chest'：该键也是物流「仓储箱」的实体类型，
+    // 若放进 ID_MIGRATE 会把物流仓储箱读档时误转成钢箱。旧基础储物箱的
+    // 并入改在 applySave 实体恢复处按 features（带 limits 字段）单独处理。
     // 内燃机车（官方无此物品，仅一种火车头 locomotive）→ 并入标准车头
     'diesel-locomotive': 'locomotive',
   };
@@ -511,6 +513,10 @@ function applySave(d) {
   // 导致实体“既选不中又删不掉、却仍显示在地图上”。故对所有版本存档读档时
   // 对这两个尺寸敏感的设备做重叠消解：仅当重叠才平移，未重叠的保持原位（幂等）。
   for (const s of d.ents) {
+    // 旧版基础储物箱 storage-chest（旧 Chest 实体会带 limits 字段）→ 并入钢箱；
+    // 物流「仓储箱」同名同键但序列化不含 limits，保持不变。
+    // （ID_MIGRATE 中已移除该键，避免把物流仓储箱读档时误转成钢箱。）
+    if (s.type === 'storage-chest' && s.limits && typeof s.limits === 'object') s.type = 'steel-chest';
     const cls = ENT_CLASSES[s.type];
     if (!cls) continue;
     const e = cls.restore(s);
@@ -758,6 +764,7 @@ function tryPlaceAt(tx, ty) {
       cliff: '峭壁阻挡，需先用峭壁炸药清除',
       tree: '树木阻挡，需先砍掉树木',
       occupied: '此处已有建筑，无法覆盖放置',
+      player: '你正站在这块地上，无法建造',
     };
     toast(REASON_TXT[chk.reason] || '无法在这里建造');
     if (typeof playSfx === 'function') playSfx('deny');

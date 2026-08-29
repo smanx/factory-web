@@ -1,0 +1,359 @@
+# 物品图标设计 · 待办清单
+
+> 用途：为游戏中**全部物品**逐一设计专属图标。
+> 数据源：`js/data/data-items.js` 的 `ITEMS`（共 **329** 项），分类依据 `GAME_DATA.itemGroup`（制作栏 5 大 Tab）。
+> 用法：每设计完一个图标，把对应项的 `- [ ]` 勾选为 `- [x]`。
+
+## 🧱 物流（85）
+
+- [ ] `stone-brick` 石砖
+- [ ] `transport-belt` 基础传送带
+- [ ] `inserter` 电力机械臂
+- [ ] `burner-inserter` 热能机械臂
+- [ ] `long-handed-inserter` 加长机械臂
+- [ ] `small-lamp` 电灯
+- [ ] `substation` 变电站
+- [ ] `programmable-speaker` 可编程音箱
+- [ ] `splitter` 基础分流器
+- [ ] `underground-belt` 基础地下传送带
+- [ ] `fast-transport-belt` 高速传送带
+- [ ] `fast-underground-belt` 高速地下传送带
+- [ ] `express-transport-belt` 极速传送带
+- [ ] `express-underground-belt` 极速地下传送带
+- [ ] `express-splitter` 极速分流器
+- [ ] `turbo-transport-belt` 超速传送带
+- [ ] `turbo-underground-belt` 超速地下传送带
+- [ ] `turbo-splitter` 超速分流器
+- [ ] `loader` 基础装载机
+- [ ] `fast-loader` 高速装载机
+- [ ] `express-loader` 极速装载机
+- [ ] `turbo-loader` 超速装载机
+- [ ] `fast-splitter` 高速分流器
+- [ ] `bulk-inserter` 集装箱机械臂
+- [ ] `stack-inserter` 堆叠机械臂
+- [ ] `fast-inserter` 高速机械臂
+- [ ] `steel-chest` 钢箱
+- [ ] `creative-chest` 创造箱
+- [ ] `void-chest` 虚空箱
+- [ ] `pipe` 管道
+- [ ] `pipe-to-ground` 地下管道
+- [ ] `pump` 流体泵
+- [ ] `storage-tank` 储液罐
+- [ ] `creative-pipe` 创造管道
+- [ ] `void-pipe` 虚空管道
+- [ ] `creative-belt` 创造传送带
+- [ ] `void-belt` 虚空传送带
+- [ ] `cliff-explosives` 峭壁炸药
+- [ ] `car` 装甲车
+- [ ] `tank` 坦克
+- [ ] `spidertron` 蜘蛛机器人
+- [ ] `spidertron-remote` 蜘蛛遥控器
+- [ ] `rail` 铁轨
+- [ ] `locomotive` 火车头
+- [ ] `cargo-wagon` 货运车厢
+- [ ] `fluid-wagon` 流体车厢
+- [ ] `artillery-wagon` 炮兵车厢
+- [ ] `train-stop` 车站
+- [ ] `rail-signal` 铁路信号灯
+- [ ] `rail-chain-signal` 铁路链式信号灯
+- [ ] `rail-support` 高架桥墩
+- [ ] `rail-ramp` 高架铁轨
+- [ ] `artificial-yumako-soil` 玉玛果人造土
+- [ ] `overgrowth-yumako-soil` 玉玛果沃土
+- [ ] `artificial-jellynut-soil` 果冻果人造土
+- [ ] `overgrowth-jellynut-soil` 果冻果沃土
+- [ ] `roboport` 机器人港
+- [ ] `logistic-robot` 物流机器人
+- [ ] `construction-robot` 施工机器人
+- [ ] `passive-provider-chest` 被动供应箱
+- [ ] `active-provider-chest` 主动供应箱
+- [ ] `storage-chest` 仓储箱
+- [ ] `buffer-chest` 缓冲箱
+- [ ] `requester-chest` 需求箱
+- [ ] `small-electric-pole` 小型电线杆
+- [ ] `medium-electric-pole` 中型电线杆
+- [ ] `big-electric-pole` 大型电线杆
+- [ ] `constant-combinator` 常量组合器
+- [ ] `arithmetic-combinator` 运算组合器
+- [ ] `decider-combinator` 判断组合器
+- [ ] `selector-combinator` 选择组合器
+- [ ] `display-panel` 显示屏
+- [ ] `power-switch` 功率开关
+- [ ] `red-wire` 红电路线缆
+- [ ] `green-wire` 绿电路线缆
+- [ ] `concrete` 混凝土
+- [ ] `refined-concrete` 精炼混凝土
+- [ ] `hazard-concrete` 警示混凝土
+- [ ] `refined-hazard-concrete` 精炼警示混凝土
+- [ ] `stone-path` 石砖路
+- [ ] `landfill` 填海料
+- [ ] `foundation` 平台基座
+- [ ] `ice-platform` 冰面平台
+- [ ] `wooden-chest` 木箱
+- [ ] `iron-chest` 铁箱
+
+## 🏭 生产（53）
+
+- [ ] `burner-mining-drill` 热能采矿机
+- [ ] `stone-furnace` 石炉
+- [ ] `assembling-machine-1` 组装机
+- [ ] `lab` 研究中心
+- [ ] `biolab` 生物实验室
+- [ ] `boiler` 锅炉
+- [ ] `steam-engine` 蒸汽机
+- [ ] `offshore-pump` 抽水机
+- [ ] `electric-mining-drill` 电采矿机
+- [ ] `big-mining-drill` 大型采矿机
+- [ ] `electric-furnace` 电炉
+- [ ] `assembling-machine-2` 组装机 II
+- [ ] `pumpjack` 抽油机
+- [ ] `solar-panel` 太阳能板
+- [ ] `accumulator` 蓄电器
+- [ ] `steel-furnace` 钢铁炉
+- [ ] `assembling-machine-3` 组装机 III
+- [ ] `oil-refinery` 炼油厂
+- [ ] `chemical-plant` 化工厂
+- [ ] `speed-module` 速度模块
+- [ ] `speed-module-2` 速度模块 II
+- [ ] `speed-module-3` 速度模块 III
+- [ ] `productivity-module` 产能模块
+- [ ] `productivity-module-2` 产能模块 II
+- [ ] `productivity-module-3` 产能模块 III
+- [ ] `beacon` 信号塔
+- [ ] `efficiency-module` 效率模块
+- [ ] `efficiency-module-2` 效率模块 II
+- [ ] `efficiency-module-3` 效率模块 III
+- [ ] `quality-module` 品质模块
+- [ ] `quality-module-2` 品质模块 II
+- [ ] `quality-module-3` 品质模块 III
+- [ ] `electromagnetic-plant` 电磁工厂
+- [ ] `recycler` 回收机
+- [ ] `foundry` 铸造厂
+- [ ] `biochamber` 生物室
+- [ ] `agricultural-tower` 农业塔
+- [ ] `captive-biter-spawner` 虫巢孵化器
+- [ ] `space-platform-hub` 太空平台中枢
+- [ ] `centrifuge` 离心机
+- [ ] `nuclear-reactor` 核反应堆
+- [ ] `steam-turbine` 汽轮机
+- [ ] `heat-pipe` 导热管
+- [ ] `heat-exchanger` 热交换器
+- [ ] `heating-tower` 供热塔
+- [ ] `fusion-reactor` 聚变反应堆
+- [ ] `fusion-generator` 聚变发电机
+- [ ] `lightning-rod` 避雷针
+- [ ] `lightning-collector` 避雷收集器
+- [ ] `repair-pack` 修理包
+- [ ] `deconstruction-planner` 拆除规划器
+- [ ] `upgrade-planner` 升级规划器
+- [ ] `cryogenic-plant` 低温工厂
+
+## 🧪 中间产品（87）
+
+- [ ] `iron-ore` 铁矿石
+- [ ] `copper-ore` 铜矿石
+- [ ] `coal` 煤
+- [ ] `solid-fuel` 固体燃料
+- [ ] `stone` 石头
+- [ ] `calcite` 方解石
+- [ ] `iron-plate` 铁板
+- [ ] `copper-plate` 铜板
+- [ ] `iron-gear-wheel` 齿轮
+- [ ] `iron-stick` 铁杆
+- [ ] `copper-cable` 铜线
+- [ ] `electronic-circuit` 电路板
+- [ ] `automation-science-pack` 自动化科学包
+- [ ] `steel-plate` 钢板
+- [ ] `logistic-science-pack` 物流科学包
+- [ ] `chemical-science-pack` 化工科学包
+- [ ] `plastic-bar` 塑料板
+- [ ] `military-science-pack` 军事科学包
+- [ ] `advanced-circuit` 高级电路板
+- [ ] `engine-unit` 引擎单元
+- [ ] `electric-engine-unit` 电动引擎
+- [ ] `processing-unit` 处理器
+- [ ] `low-density-structure` 低密度结构
+- [ ] `rocket-fuel` 火箭燃料
+- [ ] `explosives` 爆炸物
+- [ ] `battery` 电池
+- [ ] `flying-robot-frame` 飞行机器人框架
+- [ ] `production-science-pack` 产能科学包
+- [ ] `utility-science-pack` 实用科学包
+- [ ] `lubricant` 润滑油
+- [ ] `sulfur` 硫磺
+- [ ] `sulfuric-acid` 硫酸
+- [ ] `carbon` 碳
+- [ ] `carbon-fiber` 碳纤维
+- [ ] `lithium` 锂
+- [ ] `lithium-plate` 锂板
+- [ ] `superconductor` 超导体
+- [ ] `electromagnetic-science-pack` 电磁科研包
+- [ ] `holmium-ore` 钬矿石
+- [ ] `holmium-solution` 钬溶液
+- [ ] `holmium-plate` 钬板
+- [ ] `electrolyte` 电解液
+- [ ] `supercapacitor` 超级电容
+- [ ] `tungsten-ore` 钨矿石
+- [ ] `tungsten-plate` 钨板
+- [ ] `tungsten-carbide` 碳化钨
+- [ ] `metallurgic-science-pack` 冶金科研包
+- [ ] `yumako` 玉玛果
+- [ ] `yumako-seed` 玉玛果种子
+- [ ] `yumako-mash` 玉玛果泥
+- [ ] `bioflux` 生物结晶
+- [ ] `nutrients` 营养素
+- [ ] `spoilage` 变质物
+- [ ] `agricultural-science-pack` 农业科技包
+- [ ] `jellynut` 果冻果
+- [ ] `jellynut-seed` 果冻果种子
+- [ ] `jelly` 果冻
+- [ ] `biter-egg` 异虫卵
+- [ ] `pentapod-egg` 五足虫卵
+- [ ] `tree-seed` 树种子
+- [ ] `iron-bacteria` 铁细菌
+- [ ] `copper-bacteria` 铜细菌
+- [ ] `ice` 冰
+- [ ] `raw-fish` 生鱼
+- [ ] `uranium-ore` 铀矿石
+- [ ] `uranium-235` 铀-235
+- [ ] `uranium-238` 铀-238
+- [ ] `nuclear-fuel` 核燃料
+- [ ] `uranium-fuel-cell` 铀燃料棒
+- [ ] `depleted-uranium-fuel-cell` 贫化铀燃料棒
+- [ ] `fusion-power-cell` 聚变燃料棒
+- [ ] `wood` 木材
+- [ ] `space-science-pack` 空间科学包
+- [ ] `promethium-science-pack` 钷素科研包
+- [ ] `cryogenic-science-pack` 低温科研包
+- [ ] `quantum-processor` 量子处理器
+- [ ] `scrap` 废料
+- [ ] `barrel` 空桶
+- [ ] `water-barrel` 桶装水
+- [ ] `crude-oil-barrel` 桶装原油
+- [ ] `heavy-oil-barrel` 桶装重油
+- [ ] `light-oil-barrel` 桶装轻油
+- [ ] `petroleum-gas-barrel` 桶装石油气
+- [ ] `lubricant-barrel` 桶装润滑油
+- [ ] `sulfuric-acid-barrel` 桶装硫酸
+- [ ] `fluoroketone-cold-barrel` 桶装氟酮（冷）
+- [ ] `fluoroketone-hot-barrel` 桶装氟酮（热）
+
+## 🚀 太空（18）
+
+- [ ] `rocket-part` 火箭部件
+- [ ] `rocket-body` 火箭
+- [ ] `satellite` 卫星
+- [ ] `rocket-silo` 火箭发射井
+- [ ] `cargo-landing-pad` 物流接驳站
+- [ ] `cargo-bay` 物流扩展舱
+- [ ] `landing-pad-unloading-bay` 物流卸载舱
+- [ ] `thruster-fuel` 推进器燃料
+- [ ] `thruster-oxidizer` 推进器氧化剂
+- [ ] `crusher` 破碎机
+- [ ] `metallic-asteroid-chunk` 金属星块
+- [ ] `carbonic-asteroid-chunk` 碳质星块
+- [ ] `oxide-asteroid-chunk` 氧化星块
+- [ ] `promethium-asteroid-chunk` 钷素星块
+- [ ] `space-platform-foundation` 太空平台地基
+- [ ] `thruster` 推进器
+- [ ] `asteroid-collector` 小行星收集器
+- [ ] `space-platform-starter-pack` 空间平台起始包
+
+## 🔫 武器（65）
+
+- [ ] `gun-turret` 机枪炮塔
+- [ ] `stone-wall` 石墙
+- [ ] `gate` 门
+- [ ] `firearm-magazine` 弹药匣
+- [ ] `piercing-rounds-magazine` 穿甲弹
+- [ ] `pistol` 手枪
+- [ ] `submachine-gun` 冲锋枪
+- [ ] `shotgun` 散弹枪
+- [ ] `combat-shotgun` 战斗散弹枪
+- [ ] `shotgun-shell` 散弹枪弹
+- [ ] `piercing-shotgun-shell` 穿甲散弹枪弹
+- [ ] `cluster-grenade` 集束手雷
+- [ ] `rocket-launcher` 火箭筒
+- [ ] `grenade` 手雷
+- [ ] `rocket` 火箭弹
+- [ ] `explosive-rocket` 爆炸火箭弹
+- [ ] `flamethrower` 火焰喷射器
+- [ ] `flamethrower-ammo` 火焰弹药
+- [ ] `uranium-rounds-magazine` 铀弹
+- [ ] `atomic-bomb` 原子弹
+- [ ] `uranium-cannon-shell` 铀炮弹
+- [ ] `poison-capsule` 毒胶囊
+- [ ] `slowdown-capsule` 减速胶囊
+- [ ] `laser-turret` 激光炮塔
+- [ ] `flamethrower-turret` 火焰炮塔
+- [ ] `radar` 雷达
+- [ ] `defender-capsule` 防御机器人胶囊
+- [ ] `distractor-capsule` 干扰机器人胶囊
+- [ ] `destroyer-capsule` 破坏机器人胶囊
+- [ ] `cannon-shell` 炮弹
+- [ ] `explosive-cannon-shell` 爆炸炮弹
+- [ ] `explosive-uranium-cannon-shell` 铀爆炸炮弹
+- [ ] `light-armor` 轻型护甲
+- [ ] `heavy-armor` 重型护甲
+- [ ] `land-mine` 地雷
+- [ ] `artillery-turret` 炮兵连
+- [ ] `artillery-shell` 炮弹（炮兵）
+- [ ] `teslagun` 特斯拉电枪
+- [ ] `tesla-turret` 特斯拉炮塔
+- [ ] `tesla-ammo` 特斯拉弹药
+- [ ] `rocket-turret` 火箭炮塔
+- [ ] `railgun-turret` 磁轨炮塔
+- [ ] `railgun-ammo` 磁轨炮弹
+- [ ] `capture-robot-rocket` 捕获者火箭弹
+- [ ] `personal-roboport-equipment` 个人机器人港
+- [ ] `personal-roboport-mk2-equipment` 个人机器人港 II
+- [ ] `modular-armor` 模块化护甲
+- [ ] `power-armor` 强力装甲
+- [ ] `power-armor-mk2` 强力装甲 II
+- [ ] `solar-panel-equipment` 个人太阳能板
+- [ ] `fusion-reactor-equipment` 便携聚变反应堆
+- [ ] `battery-equipment` 个人电池
+- [ ] `battery-mk2-equipment` 个人电池 II
+- [ ] `exoskeleton-equipment` 外骨骼
+- [ ] `night-vision-equipment` 夜视仪
+- [ ] `personal-laser-defense-equipment` 个人激光防御
+- [ ] `energy-shield-equipment` 能量护盾
+- [ ] `energy-shield-mk2-equipment` 能量护盾 II
+- [ ] `belt-immunity-equipment` 传送带免疫
+- [ ] `discharge-defense-equipment` 放电防御
+- [ ] `battery-mk3-equipment` 个人电池 III
+- [ ] `fission-reactor-equipment` 便携裂变反应堆
+- [ ] `toolbelt-equipment` 工具腰带
+- [ ] `mech-armor` 机械装甲
+- [ ] `railgun` 轨道炮
+
+## 💧 流体（16）
+
+- [ ] `water` 水
+- [ ] `steam` 蒸汽
+- [ ] `crude-oil` 原油
+- [ ] `heavy-oil` 重油
+- [ ] `light-oil` 轻油
+- [ ] `petroleum-gas` 石油气
+- [ ] `ammonia` 氨
+- [ ] `fluorine` 氟
+- [ ] `fluoroketone-cold` 氟酮（冷）
+- [ ] `fluoroketone-hot` 氟酮（热）
+- [ ] `ammoniacal-solution` 氨溶液
+- [ ] `lithium-brine` 锂盐水
+- [ ] `lava` 岩浆
+- [ ] `fusion-plasma` 等离子体
+- [ ] `molten-iron` 熔融铁
+- [ ] `molten-copper` 熔融铜
+
+## 🧩 其他（5）
+
+- [ ] `one-way-valve` 单向阀
+- [ ] `overflow-valve` 溢出阀
+- [ ] `top-up-valve` 补给阀
+- [ ] `artillery-targeting-remote` 重炮瞄准遥控器
+- [ ] `discharge-defense-remote` 放电防御遥控器
+
+---
+
+**合计：329 项**（物流 85 / 生产 53 / 中间产品 87 / 太空 18 / 武器 65 / 流体 16 / 其他 5）

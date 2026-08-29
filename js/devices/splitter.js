@@ -191,97 +191,241 @@ class Splitter extends Belt {
 
 // ===== 渲染 =====
 
-// 分流器各档配色（供 drawSplitterBase 使用）
+// 分流器各档配色（供 drawSplitterBase 使用；档位差异：黄=基础 / 红=高速 / 蓝=极速 / 绿=超速）
+// base/border=底盘，body[]=外壳渐变（顶亮底暗），groove/grooveEdge=X 凹槽与高光，
+// hub/hubEdge/stripe=中央分流梭与警示纹，led=运转发光色，chev=流向箭头，running=状态边框呼吸色
 const SPLITTER_COLORS = {
-  normal:  { base: '#4a4436', border: '#26221d', accent: 'rgba(224,178,60,.16)', chev: 'rgba(224,178,60,.8)', running: 'rgba(143,224,143,' },
-  fast:    { base: '#5a2a28', border: '#2e1815', accent: 'rgba(224,90,78,.2)',  chev: 'rgba(224,90,78,.8)',  running: 'rgba(224,90,78,' },
-  express: { base: '#2e3a52', border: '#1a2434', accent: 'rgba(90,150,230,.2)', chev: 'rgba(90,150,230,.8)', running: 'rgba(110,160,235,' },
+  normal: {
+    base: '#4a4436', border: '#26221d',
+    body: ['#8a7a4e', '#5d5031', '#33291a'],          // 黄褐工业钢渐变
+    groove: 'rgba(0,0,0,.34)', grooveEdge: 'rgba(255,255,255,.12)',
+    hub: '#1c1710', hubEdge: '#3a3020', stripe: 'rgba(255,235,150,.5)',
+    led: 'rgba(224,178,60,', chev: 'rgba(224,178,60,.8)',
+    accent: 'rgba(224,178,60,.16)', running: 'rgba(143,224,143,',
+    boltHi: 'rgba(255,240,180,.5)',
+  },
+  fast: {
+    base: '#5a2a28', border: '#2e1815',
+    body: ['#9a4a3c', '#6a2e26', '#3a1712'],          // 赤红工业钢渐变
+    groove: 'rgba(0,0,0,.34)', grooveEdge: 'rgba(255,255,255,.12)',
+    hub: '#24120e', hubEdge: '#4a2418', stripe: 'rgba(255,190,150,.5)',
+    led: 'rgba(224,90,78,', chev: 'rgba(224,90,78,.8)',
+    accent: 'rgba(224,90,78,.2)', running: 'rgba(224,90,78,',
+    boltHi: 'rgba(255,220,200,.5)',
+  },
+  express: {
+    base: '#2e3a52', border: '#1a2434',
+    body: ['#4a6a96', '#2e4468', '#18263e'],          // 科技蓝钢渐变
+    groove: 'rgba(0,0,0,.34)', grooveEdge: 'rgba(255,255,255,.14)',
+    hub: '#101a2a', hubEdge: '#2c4060', stripe: 'rgba(170,210,255,.5)',
+    led: 'rgba(90,150,230,', chev: 'rgba(90,150,230,.8)',
+    accent: 'rgba(90,150,230,.2)', running: 'rgba(110,160,235,',
+    boltHi: 'rgba(190,220,255,.5)',
+  },
   // 太空时代 4 档（Turbo splitter，对齐《异星工厂》Turbo splitter：深绿色系）
-  turbo:   { base: '#2f4a33', border: '#18261b', accent: 'rgba(90,180,120,.22)', chev: 'rgba(90,180,120,.8)', running: 'rgba(110,200,140,' },
+  turbo: {
+    base: '#2f4a33', border: '#18261b',
+    body: ['#4a7a58', '#2e5638', '#1a3420'],          // 深空翠绿钢渐变
+    groove: 'rgba(0,0,0,.34)', grooveEdge: 'rgba(255,255,255,.14)',
+    hub: '#0e2214', hubEdge: '#2c5238', stripe: 'rgba(170,255,200,.5)',
+    led: 'rgba(90,180,120,', chev: 'rgba(90,180,120,.8)',
+    accent: 'rgba(90,180,120,.22)', running: 'rgba(110,200,140,',
+    boltHi: 'rgba(190,255,215,.5)',
+  },
 };
 
 // 统一分流器渲染（替代 drawSplitter / drawExpressSplitter / drawFastSplitter 三个重复函数）
-// colors: { base, border, accent, chev, running } 配色对象
-// opts: { glow } 可选额外效果（快速分流器中央脉动光晕）
+// colors: { base, border, body[], groove, grooveEdge, hub, hubEdge, stripe, led, chev, accent, running, boltHi } 档位配色
+// opts: { glow } 可选额外效果（快速/超速分流器中央分流梭的强光晕）
 function drawSplitterBase(ctx, e, gx, gy, dir, alpha, colors, opts) {
   ctx.globalAlpha = alpha;
   const cx = (gx + e.w / 2) * TILE, cy = (gy + e.h / 2) * TILE;
   const across = (dir % 2 === 1 ? e.w : e.h) * TILE;
   const running = e.items.length > 0;
+  const stuck = e.items.some(o => o.pos >= 0.999);
+  const filtered = !!e.filter;
+  const t = colors;
+  const pulse = 0.5 + 0.5 * Math.sin(G.time * 6);
 
-  // --- 底盘 ---
+  // 简化 LOD：缩远时单色底 + 中心状态点，省去全部细节
+  if (LOD && LOD.simple) {
+    ctx.fillStyle = 'rgba(0,0,0,0.30)';
+    rr(ctx, cx - TILE / 2 - 2, cy - across / 2 - 2, TILE + 4, across + 4, 8);
+    ctx.fill();
+    ctx.fillStyle = t.body[1];
+    rr(ctx, cx - TILE / 2 + 1, cy - across / 2 + 1, TILE - 2, across - 2, 6);
+    ctx.fill();
+    ctx.fillStyle = running ? t.led + '0.85)' : '#0c1014';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+    ctx.fill();
+    drawSplitterItems(ctx, e, gx, gy, cx, cy);
+    ctx.globalAlpha = 1;
+    return;
+  }
+
+  // ===== 主体（局部坐标：+y 为物流方向，输入在上、输出在下）=====
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(dir * Math.PI / 2);
-  ctx.fillStyle = colors.base;
-  rr(ctx, -TILE / 2 + 2, -across / 2 + 2, TILE - 4, across - 4, 6);
+
+  // --- ① 地面阴影（比机身略大一圈、向下偏移，形成悬浮投影）---
+  ctx.fillStyle = 'rgba(0,0,0,0.30)';
+  rr(ctx, -TILE / 2 - 2, -across / 2 - 2, TILE + 4, across + 4, 9);
   ctx.fill();
-  ctx.strokeStyle = colors.border;
-  ctx.lineWidth = 2;
-  rr(ctx, -TILE / 2 + 2, -across / 2 + 2, TILE - 4, across - 4, 6);
+
+  // --- ② 底盘（深色金属基座，满占 1×2 足迹）---
+  ctx.fillStyle = t.base;
+  rr(ctx, -TILE / 2, -across / 2, TILE, across, 8);
+  ctx.fill();
+  const baseFade = ctx.createLinearGradient(0, across * 0.1, 0, across / 2);
+  baseFade.addColorStop(0, 'rgba(0,0,0,0)');
+  baseFade.addColorStop(1, 'rgba(0,0,0,0.42)');
+  ctx.fillStyle = baseFade;
+  rr(ctx, -TILE / 2, 0, TILE, across / 2, 8);
+  ctx.fill();
+  ctx.strokeStyle = t.border;
+  ctx.lineWidth = 1.5;
+  rr(ctx, -TILE / 2, -across / 2, TILE, across, 8);
   ctx.stroke();
 
-  // --- 内部 X 交叉线（表示双入双出交叉路径）---
+  // --- ③ 主体外壳（档位色渐变：顶亮底暗，模拟受光）---
+  const bodyGrad = ctx.createLinearGradient(0, -across / 2, 0, across / 2);
+  bodyGrad.addColorStop(0, t.body[0]);
+  bodyGrad.addColorStop(0.5, t.body[1]);
+  bodyGrad.addColorStop(1, t.body[2]);
+  ctx.fillStyle = bodyGrad;
+  rr(ctx, -TILE / 2 + 3, -across / 2 + 3, TILE - 6, across - 6, 6);
+  ctx.fill();
+  ctx.strokeStyle = t.border;
+  ctx.lineWidth = 1.2;
+  rr(ctx, -TILE / 2 + 3, -across / 2 + 3, TILE - 6, across - 6, 6);
+  ctx.stroke();
+  // 顶部高光条（上沿受光）
+  ctx.fillStyle = 'rgba(255,255,255,0.14)';
+  rr(ctx, -TILE / 2 + 5, -across / 2 + 4, TILE - 10, 2, 1);
+  ctx.fill();
+
+  // --- ④ 输入/输出端「带口」压板（与相邻传送带的接缝：左进右出，上下双口）---
+  for (const bx of [-TILE / 2 + 4, TILE / 2 - 4]) {
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    rr(ctx, bx - 2, -22, 4, 44, 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    rr(ctx, bx - 1.2, -19, 2.4, 6, 1);
+    ctx.fill();
+    rr(ctx, bx - 1.2, 13, 2.4, 6, 1);
+    ctx.fill();
+    ctx.fillStyle = t.grooveEdge;
+    ctx.fillRect(bx + 1, -19, 0.8, 6);
+    ctx.fillRect(bx + 1, 13, 0.8, 6);
+  }
+
+  // --- ⑤ X 交叉分流通道（四条从两侧带口汇向中央的凹槽：双入双出的交叉路径）---
   ctx.save();
-  ctx.beginPath();
-  ctx.rect(-TILE / 2 + 4, -across / 2 + 4, TILE - 8, across - 8);
+  rr(ctx, -13, -17, 26, 34, 6);
   ctx.clip();
-  ctx.strokeStyle = colors.accent;
-  ctx.lineWidth = 3.5;
-  for (const [x1, y1, x2, y2] of [[-14, -13, 0, 0], [-14, 13, 0, 0], [0, 0, 14, -13], [0, 0, 14, 13]]) {
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.stroke();
+  ctx.strokeStyle = t.groove;
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-13, -16); ctx.lineTo(0, 0); ctx.lineTo(13, 16);
+  ctx.moveTo(13, -16); ctx.lineTo(0, 0); ctx.lineTo(-13, 16);
+  ctx.stroke();
+  ctx.strokeStyle = t.grooveEdge;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-13, -16); ctx.lineTo(0, 0); ctx.lineTo(13, 16);
+  ctx.moveTo(13, -16); ctx.lineTo(0, 0); ctx.lineTo(-13, 16);
+  ctx.stroke();
+  ctx.restore();
+
+  // --- ⑥ 物流方向箭头动画（与传送带同款：沿物流方向滚动的小箭头，恒常显示）---
+  // 分流器有双入口/双出口：上下两条物流线（长边进 → 长边出）各自滚动，方向一目了然
+  const spStep = TILE / 2;
+  const spOff = ((G.time * beltSpeed() * (e.speedMult ? e.speedMult() : 1) * TILE / 2) % spStep + spStep) % spStep;
+  ctx.save();
+  rr(ctx, -TILE / 2 + 3, -across / 2 + 3, TILE - 6, across - 6, 6);
+  ctx.clip();
+  ctx.fillStyle = t.chev;
+  ctx.strokeStyle = 'rgba(0,0,0,.4)';
+  ctx.lineWidth = 1;
+  for (const yy of [-16, 16]) {
+    for (let k = -2; k <= 3; k++) {
+      const xx = -across / 2 + k * spStep + spOff;
+      ctx.beginPath();
+      ctx.moveTo(xx - 3, yy - 4);
+      ctx.lineTo(xx - 3, yy + 4);
+      ctx.lineTo(xx + 3, yy);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
   }
   ctx.restore();
 
-  // --- 中央通道条 ---
-  ctx.fillStyle = 'rgba(0,0,0,.28)';
-  rr(ctx, -TILE * 0.2, -across / 2 + 3, TILE * 0.4, across - 6, 4);
+  // --- ⑦ 中央分流梭（X 枢纽：警示底盘 + 档位色内芯，运转时脉动）---
+  ctx.fillStyle = t.hub;
+  rr(ctx, -9, -9, 18, 18, 5);
   ctx.fill();
-
-  // --- 流向指示箭头（放置时即可辨认物流方向）---
-  // 固定使用档位色（与传送带动效箭头 chev 一致），避免旋转方向时颜色改变。
-  ctx.fillStyle = colors.chev;
-  ctx.strokeStyle = 'rgba(0,0,0,.45)';
+  ctx.strokeStyle = t.hubEdge;
+  ctx.lineWidth = 1.5;
+  rr(ctx, -9, -9, 18, 18, 5);
+  ctx.stroke();
+  // 四角警示斜纹
+  ctx.strokeStyle = t.stripe;
+  ctx.lineWidth = 1.1;
+  for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(6 * sx - 2, 5 * sy - 2);
+    ctx.lineTo(6 * sx + 2, 5 * sy + 2);
+    ctx.stroke();
+  }
+  // 内芯（档位色圆盘：运转时呼吸发光，空闲时暗）
+  ctx.fillStyle = running ? t.led + (0.7 + 0.3 * pulse).toFixed(2) + ')' : '#0a0d10';
+  ctx.beginPath();
+  ctx.arc(0, 0, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
   ctx.lineWidth = 1;
-  for (const ax of [-TILE * 0.26, TILE * 0.04]) {
+  ctx.beginPath();
+  ctx.arc(0, 0, 4, 0, Math.PI * 2);
+  ctx.stroke();
+  // 玻璃高光
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.beginPath();
+  ctx.arc(-1.4, -1.4, 1.2, 0, Math.PI * 2);
+  ctx.fill();
+  // 强光晕（快速/超速分流器专属）
+  if (running && opts && opts.glow) {
+    ctx.fillStyle = t.led + (0.10 + 0.10 * pulse).toFixed(2) + ')';
     ctx.beginPath();
-    ctx.moveTo(ax - 5, -7);
-    ctx.lineTo(ax - 5, 7);
-    ctx.lineTo(ax + 6, 0);
-    ctx.closePath();
+    ctx.arc(0, 0, 12 + pulse * 3, 0, Math.PI * 2);
     ctx.fill();
-    ctx.stroke();
   }
 
-  // --- 运行状态边框 ---
+  // --- ⑧ 四角螺栓 ---
+  for (const bx of [-11, 11]) for (const by of [-26, 26]) {
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath();
+    ctx.arc(bx, by, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = t.boltHi;
+    ctx.beginPath();
+    ctx.arc(bx - 0.4, by - 0.4, 0.8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // --- ⑨ 运行状态边框（拥堵=橙色闪烁 / 过滤=蓝色呼吸 / 正常=档位色呼吸）---
   if (running) {
-    // 判断是否输出端拥堵（用于状态颜色）
-    const stuck = e.items.some(o => o.pos >= 0.999);
-    if (stuck) {
-      // 拥堵：橙色闪烁
-      ctx.strokeStyle = 'rgba(240,150,80,' + (0.5 + 0.3 * Math.sin(G.time * 8)).toFixed(2) + ')';
-    } else if (e.filter) {
-      // 过滤模式：蓝色呼吸灯
-      ctx.strokeStyle = 'rgba(100,160,240,' + (0.45 + 0.25 * Math.sin(G.time * 6)).toFixed(2) + ')';
-    } else {
-      // 正常运行：沿用档位色呼吸灯
-      ctx.strokeStyle = colors.running + (0.45 + 0.25 * Math.sin(G.time * 6)).toFixed(2) + ')';
-    }
+    let col;
+    if (stuck) col = 'rgba(240,150,80,' + (0.5 + 0.3 * Math.sin(G.time * 8)).toFixed(2) + ')';
+    else if (filtered) col = 'rgba(100,160,240,' + (0.45 + 0.25 * Math.sin(G.time * 6)).toFixed(2) + ')';
+    else col = t.running + (0.45 + 0.25 * Math.sin(G.time * 6)).toFixed(2) + ')';
+    ctx.strokeStyle = col;
     ctx.lineWidth = 2;
-    rr(ctx, -TILE / 2 + 2, -across / 2 + 2, TILE - 4, across - 4, 6);
+    rr(ctx, -TILE / 2 + 3, -across / 2 + 3, TILE - 6, across - 6, 6);
     ctx.stroke();
-  }
-
-  // --- 快速分流器专属：中央分流点脉动光晕 ---
-  if (opts && opts.glow && running) {
-    const pulse = 0.5 + 0.5 * Math.sin(G.time * 8);
-    ctx.fillStyle = 'rgba(224,90,78,' + (0.18 + 0.18 * pulse).toFixed(2) + ')';
-    ctx.beginPath();
-    ctx.arc(0, 0, 6 + pulse * 3, 0, Math.PI * 2);
-    ctx.fill();
   }
 
   ctx.restore();

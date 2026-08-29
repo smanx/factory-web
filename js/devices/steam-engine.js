@@ -76,59 +76,245 @@ class SteamEngine extends Entity {
   }
 }
 
-// ===== 渲染 =====
+// ===== 蒸汽机渲染：3×5 立式蒸汽涡轮发电机 =====
+// 视觉分区（自下而上）：
+//   ① 罐底阴影 + 基座  ② 主外壳（深蓝钢渐变）
+//   ③ 焊接筋板  ④ 顶部 2 个蒸汽入口（双向，蓝色）
+//   ⑤ 顶部蒸汽管路（连通两端入口）  ⑥ 中央飞轮（旋转）+ 连杆（活塞驱动）
+//   ⑦ 底部发电机外壳（输出功率 + 状态 LED）  ⑧ 4 角螺栓  ⑨ 罐体外框
 function drawSteamEngine(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const w = TILE * e.w, h = TILE * e.h;
+  const cx = px + w / 2;
   const om = Math.max(0, Math.min(1, e.outMult || 0));
   ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#5d7790';
-  rr(ctx, px + 3, py + 3, w - 6, h - 6, 8); ctx.fill();
-  ctx.strokeStyle = '#33435a';
-  ctx.lineWidth = 3;
-  rr(ctx, px + 3, py + 3, w - 6, h - 6, 8); ctx.stroke();
-  ctx.fillStyle = '#466075';
-  rr(ctx, px + 10, py + 10, w - 20, h - 20, 5); ctx.fill();
-  const gcx = px + w / 2, gcy = py + h * 0.32;
-  if (e.on) {
-    ctx.save();
-    ctx.translate(gcx, gcy);
-    ctx.rotate(e.spin || 0);
-    ctx.fillStyle = om >= 1 ? '#c4e4ff' : '#aac8e8';
-    gearShape(ctx, 0, 0, 16, 10, 8);
-    ctx.fill();
-    ctx.restore();
-    ctx.strokeStyle = 'rgba(143,224,224,' + (0.35 + 0.55 * om).toFixed(2) + ')';
-    ctx.lineWidth = 3;
+
+  // ① 罐底阴影 + 基座
+  ctx.fillStyle = 'rgba(0,0,0,0.32)';
+  ctx.beginPath();
+  ctx.ellipse(cx, py + h - 2, w * 0.42, 4.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#1a2434';
+  rr(ctx, px + 5, py + h - 11, w - 10, 8, 3); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.fillRect(px + 9, py + h - 6, w - 18, 0.8);
+
+  // ② 主外壳（深蓝钢渐变）
+  const bodyGrad = ctx.createLinearGradient(0, py + 4, 0, py + h - 4);
+  bodyGrad.addColorStop(0,    '#6a8aac');
+  bodyGrad.addColorStop(0.5,  '#3e5a7a');
+  bodyGrad.addColorStop(1,    '#1e324a');
+  ctx.fillStyle = bodyGrad;
+  rr(ctx, px + 3, py + 3, w - 6, h - 6, 9); ctx.fill();
+
+  // ③ 焊接筋板（左右各 3 条）
+  const ribXs = [px + w * 0.16, px + w * 0.32, px + w * 0.50 - 1,
+                 px + w * 0.50 + 1, px + w * 0.68, px + w * 0.84];
+  for (let i = 0; i < ribXs.length; i++) {
+    const darkSide = (i % 2 === 0);
+    ctx.fillStyle = darkSide ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.10)';
+    ctx.fillRect(ribXs[i], py + 28, 1.4, h - 60);
+  }
+
+  // ④ 顶部蒸汽管路（连通两端入口的横向总管）
+  ctx.fillStyle = '#4a5e7a';
+  rr(ctx, px + 10, py + 14, w - 20, 10, 3); ctx.fill();
+  ctx.strokeStyle = '#1a2434';
+  ctx.lineWidth = 1;
+  rr(ctx, px + 10, py + 14, w - 20, 10, 3); ctx.stroke();
+  // 管路高光
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.fillRect(px + 14, py + 16, w - 28, 1.2);
+  // 管路中段阀芯（亮起的蓝色小灯表示供汽）
+  if (e.steamBuf > 0) {
+    const sv = 0.5 + Math.sin((G.time || 0) * 4 + px) * 0.25;
+    ctx.fillStyle = 'rgba(143,224,255,' + (0.5 + sv * 0.4).toFixed(2) + ')';
     ctx.beginPath();
-    ctx.arc(gcx, gcy, 22, 0, Math.PI * 2);
-    ctx.stroke();
-    const fl = Math.sin(G.time * 20 + px);
-    if (fl > 0.2) {
-      ctx.fillStyle = 'rgba(255,255,255,' + (0.25 + 0.35 * om).toFixed(2) + ')';
-      ctx.beginPath();
-      ctx.moveTo(gcx - 14, py + 26);
-      ctx.lineTo(gcx - 4, py + 12);
-      ctx.lineTo(gcx - 10, py + 26);
-      ctx.closePath();
-      ctx.fill();
-    }
-  } else {
-    ctx.fillStyle = '#7d8894';
-    gearShape(ctx, gcx, gcy, 16, 10, 8);
+    ctx.arc(cx, py + 19, 2.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(220,245,255,0.8)';
+    ctx.beginPath();
+    ctx.arc(cx - 0.5, py + 18.3, 0.8, 0, Math.PI * 2);
     ctx.fill();
   }
+
+  // ⑤ 顶部中央气缸（蒸汽推动活塞的圆筒）
+  const cyX = px + w * 0.5, cyY = py + 30;
+  const cyW = w * 0.46, cyH = 18;
+  ctx.fillStyle = '#2a3a52';
+  rr(ctx, cyX - cyW / 2, cyY, cyW, cyH, 3); ctx.fill();
+  // 气缸高光
+  const cylGrad = ctx.createLinearGradient(0, cyY, 0, cyY + cyH);
+  cylGrad.addColorStop(0,   'rgba(180,210,240,0.35)');
+  cylGrad.addColorStop(0.5, 'rgba(120,150,180,0.0)');
+  cylGrad.addColorStop(1,   'rgba(0,0,0,0.30)');
+  ctx.fillStyle = cylGrad;
+  rr(ctx, cyX - cyW / 2, cyY, cyW, cyH, 3); ctx.fill();
+  ctx.strokeStyle = '#1a2434';
+  ctx.lineWidth = 1;
+  rr(ctx, cyX - cyW / 2, cyY, cyW, cyH, 3); ctx.stroke();
+  // 气缸内活塞（左右来回运动）
+  if (e.on) {
+    const pistonOffset = Math.sin((e.spin || 0) * 0.5) * (cyW * 0.32);
+    ctx.fillStyle = '#5a6e88';
+    ctx.fillRect(cyX - 3 + pistonOffset, cyY + 2, 6, cyH - 4);
+    ctx.fillStyle = 'rgba(180,210,240,0.5)';
+    ctx.fillRect(cyX - 3 + pistonOffset, cyY + 2, 1, cyH - 4);
+  }
+  // 气缸左右安装螺栓
+  const drawSmallBolt = (bx, by) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.beginPath(); ctx.arc(bx, by, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1a2434';
+    ctx.beginPath(); ctx.arc(bx, by, 1.0, 0, Math.PI * 2); ctx.fill();
+  };
+  drawSmallBolt(cyX - cyW / 2 + 2, cyY + 2);
+  drawSmallBolt(cyX + cyW / 2 - 2, cyY + 2);
+  drawSmallBolt(cyX - cyW / 2 + 2, cyY + cyH - 2);
+  drawSmallBolt(cyX + cyW / 2 - 2, cyY + cyH - 2);
+
+  // ⑥ 中央飞轮（大圆 + 6 辐条 + 旋转）
+  const fwx = cx, fwy = py + h * 0.58;
+  const fwr = 22;
+  // 飞轮外圈（深色金属）
+  const wheelGrad = ctx.createRadialGradient(fwx - 4, fwy - 4, 1, fwx, fwy, fwr);
+  wheelGrad.addColorStop(0,   '#a0b0c4');
+  wheelGrad.addColorStop(0.5, '#6a7e98');
+  wheelGrad.addColorStop(1,   '#2a3a52');
+  ctx.fillStyle = wheelGrad;
+  ctx.beginPath(); ctx.arc(fwx, fwy, fwr, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#1a2434';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(fwx, fwy, fwr, 0, Math.PI * 2); ctx.stroke();
+  // 飞轮内圈
+  ctx.fillStyle = e.on ? '#3a4a62' : '#2a3a52';
+  ctx.beginPath(); ctx.arc(fwx, fwy, fwr - 5, 0, Math.PI * 2); ctx.fill();
+  // 6 条辐条 + 中心轮毂
+  if (e.on) {
+    ctx.save();
+    ctx.translate(fwx, fwy);
+    ctx.rotate(e.spin || 0);
+    for (let i = 0; i < 6; i++) {
+      ctx.fillStyle = '#4a5e7a';
+      ctx.save();
+      ctx.rotate(i * Math.PI / 3);
+      ctx.fillRect(-1.5, -(fwr - 6), 3, fwr - 12);
+      ctx.restore();
+    }
+    // 中心轮毂
+    ctx.fillStyle = '#8a9cb8';
+    ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#3a4a62';
+    ctx.beginPath(); ctx.arc(0, 0, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  } else {
+    // 待机：显示静态辐条
+    for (let i = 0; i < 6; i++) {
+      ctx.fillStyle = '#3a4a62';
+      ctx.save();
+      ctx.translate(fwx, fwy);
+      ctx.rotate(i * Math.PI / 3);
+      ctx.fillRect(-1.5, -(fwr - 6), 3, fwr - 12);
+      ctx.restore();
+    }
+    ctx.fillStyle = '#5a6e88';
+    ctx.beginPath(); ctx.arc(fwx, fwy, 4, 0, Math.PI * 2); ctx.fill();
+  }
+  // 飞轮外圈装饰齿
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 16; i++) {
+    const a = i * Math.PI * 2 / 16;
+    ctx.beginPath();
+    ctx.moveTo(fwx + Math.cos(a) * fwr, fwy + Math.sin(a) * fwr);
+    ctx.lineTo(fwx + Math.cos(a) * (fwr - 1.5), fwy + Math.sin(a) * (fwr - 1.5));
+    ctx.stroke();
+  }
+  // 飞轮发光（运转时）
+  if (e.on) {
+    ctx.strokeStyle = 'rgba(143,224,255,' + (0.35 + 0.55 * om).toFixed(2) + ')';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(fwx, fwy, fwr + 3, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  // 连杆（活塞 → 飞轮偏心轴）
+  if (e.on) {
+    const pistonX = cyX - 3 + Math.sin((e.spin || 0) * 0.5) * (cyW * 0.32);
+    const pistonY = cyY + cyH;
+    const crankA = (e.spin || 0) + Math.PI;
+    const crankX = fwx + Math.cos(crankA) * 7;
+    const crankY = fwy + Math.sin(crankA) * 7;
+    ctx.strokeStyle = '#8a9cb8';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(pistonX, pistonY);
+    ctx.lineTo(crankX, crankY);
+    ctx.stroke();
+    // 偏心轴小圆
+    ctx.fillStyle = '#4a5e7a';
+    ctx.beginPath(); ctx.arc(crankX, crankY, 1.8, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // ⑦ 底部发电机外壳（功率显示区）
+  const genX = px + 10, genY = py + h - 32, genW = w - 20, genH = 16;
+  ctx.fillStyle = '#1a2434';
+  rr(ctx, genX, genY, genW, genH, 3); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 0.6;
+  rr(ctx, genX, genY, genW, genH, 3); ctx.stroke();
+  // 功率文字（白色加描边）
   ctx.fillStyle = '#fff';
-  ctx.font = 'bold 10px system-ui';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  if (e.on) ctx.fillText('+' + (e.powerOut || 0).toFixed(1), px + w / 2, py + h - 14);
-  // 两端通用汽口：任意一端均可进出蒸汽（随 dir 旋转），画在设备内部靠边缘处
+  ctx.font = 'bold 11px system-ui';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+  ctx.lineWidth = 2.5;
+  const powerStr = e.on ? ('+' + Math.round(e.powerOut || 0) + ' kW') : '+0 kW';
+  ctx.strokeText(powerStr, cx, genY + genH / 2);
+  ctx.fillText(powerStr, cx, genY + genH / 2);
+  // 状态 LED（左下角，根据运行/待机/供汽不足变色）
+  const ledC = e.on ? '#9ce06c' : (e.steamBuf > 0 ? '#ffd23c' : '#3a4a62');
+  ctx.fillStyle = ledC;
+  ctx.beginPath(); ctx.arc(px + 12, py + h - 24, 1.8, 0, Math.PI * 2); ctx.fill();
+  if (e.on) {
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.beginPath(); ctx.arc(px + 11.5, py + h - 24.5, 0.6, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // ⑧ 4 角螺栓
+  const drawBolt = (bx, by) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.beginPath(); ctx.arc(bx, by, 2.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1a2434';
+    ctx.beginPath(); ctx.arc(bx, by, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(180,210,240,0.4)';
+    ctx.beginPath(); ctx.arc(bx - 0.4, by - 0.4, 0.7, 0, Math.PI * 2); ctx.fill();
+  };
+  drawBolt(px + 9,        py + 9);
+  drawBolt(px + w - 9,     py + 9);
+  drawBolt(px + 9,        py + h - 9);
+  drawBolt(px + w - 9,     py + h - 9);
+
+  // ⑨ 罐体外框描边
+  ctx.strokeStyle = '#1a2434';
+  ctx.lineWidth = 2.4;
+  rr(ctx, px + 3, py + 3, w - 6, h - 6, 9); ctx.stroke();
+  // 顶部圆弧高光
+  ctx.strokeStyle = 'rgba(180,210,240,0.22)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(cx, py + 4, w * 0.32, Math.PI * 1.05, Math.PI * 1.95);
+  ctx.stroke();
+
+  // 端口沿用旧 drawPort 约定：上端 = 北向汽口，下端 = 南向汽口
   const pN = rotCell(e, e.def.w >> 1, 0);
   const pS = rotCell(e, e.def.w >> 1, e.def.h - 1);
   const _d = e.dir | 0;
-  const cD = TILE / 2 - 1; // 端口凸缘贴合设备内部边缘
+  const cD = TILE / 2 - 1;
   drawPort(ctx, pN.x * TILE + TILE / 2, pN.y * TILE + TILE / 2, rotSide(3, _d), PORT_STEAM, false, 0, cD, 'steam', 'both');
   drawPort(ctx, pS.x * TILE + TILE / 2, pS.y * TILE + TILE / 2, rotSide(1, _d), PORT_STEAM, false, 0, cD, 'steam', 'both');
+
   ctx.globalAlpha = 1;
 }
 
@@ -137,7 +323,7 @@ function steamEnginePanelHtml(e) {
   let h = row('输出功率', '<span class="dim"></span>', 'power');
   h += row('蒸汽存量', '<span class="dim"></span>', 'steam');
   h += '<div class="dim">上下两端各一只通用汽口，功能相同：蒸汽可从任意一端进入发电，多余蒸汽也可从另一端送出——可与相邻蒸汽机首尾串联或接入蒸汽管道。满功率耗汽 ' + ENGINE_STEAM_RATE +
-    '/s（1 台锅炉约带 2 台），输出 +' + POWER_PER_ENGINE + ' 并入全图电网。</div>';
+    '/s（1 台锅炉约带 2 台），输出 +' + POWER_PER_ENGINE + ' kW 并入全图电网。</div>';
   return h;
 }
 function steamEnginePanelLive(e, api) {
@@ -149,7 +335,7 @@ function steamEnginePanelLive(e, api) {
   else api.status('已暂停：未接蒸汽（从任一端汽口接入）', 'bad');
 }
 function steamEngineTip(e) {
-  return e.on ? '发电中 +' + (e.powerOut || 0).toFixed(1) + '（存汽' + Math.floor(e.steamBuf || 0) + '）'
+  return e.on ? '发电中 +' + Math.round(e.powerOut || 0) + ' kW（存汽' + Math.floor(e.steamBuf || 0) + '）'
     : (e.steamBuf > 0 ? '供汽不足，功率受限'
     : '未接蒸汽：从任一端汽口接入（紧邻锅炉出汽口或经管道）');
 }
