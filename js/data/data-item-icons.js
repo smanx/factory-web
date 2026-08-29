@@ -4840,4 +4840,484 @@ const ITEM_CUSTOM_ICONS = {
       x.beginPath(); x.arc(px, py, r * 0.05, 0, 7); x.fill();
     }
   },
+
+  // ==================== 第 14 批：生物室 / 农业塔 / 虫巢孵化器 / 太空平台中枢 / 离心机 / 核反应堆 / 汽轮机 / 导热管 / 热交换器 / 供热塔 ====================
+
+  // 生物室：绿色培养舱 + 培养皿中的生物样本 + 气泡
+  'biochamber': (x, r, s, col) => {
+    // 舱体
+    const g = x.createLinearGradient(0, -r * 0.8, 0, r * 0.8);
+    g.addColorStop(0, lightenColor(col, 0.3));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.4));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.72, -r * 0.72, r * 1.44, r * 1.44, r * 0.22);
+    x.fill();
+    x.strokeStyle = 'rgba(10,30,18,.55)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 内框
+    x.strokeStyle = 'rgba(255,255,255,.22)';
+    x.lineWidth = Math.max(0.8, s * 0.028);
+    rrPath(x, -r * 0.55, -r * 0.55, r * 1.1, r * 1.1, r * 0.14);
+    x.stroke();
+    // 培养皿（玻璃皿）
+    x.fillStyle = 'rgba(220,245,225,.28)';
+    x.beginPath(); x.ellipse(0, r * 0.22, r * 0.46, r * 0.18, 0, 0, 7); x.fill();
+    x.strokeStyle = 'rgba(255,255,255,.5)';
+    x.lineWidth = Math.max(0.7, s * 0.026);
+    x.stroke();
+    // 培养液
+    x.fillStyle = '#8fe0a0';
+    x.beginPath(); x.ellipse(0, r * 0.2, r * 0.36, r * 0.13, 0, 0, 7); x.fill();
+    // 生物样本（萌发的芽）
+    x.strokeStyle = '#c8f0c0';
+    x.lineCap = 'round';
+    x.lineWidth = r * 0.09;
+    x.beginPath();
+    x.moveTo(0, r * 0.18); x.quadraticCurveTo(-r * 0.04, -r * 0.06, -r * 0.14, -r * 0.2);
+    x.moveTo(0, r * 0.18); x.quadraticCurveTo(r * 0.06, -r * 0.02, r * 0.18, -r * 0.12);
+    x.moveTo(0, r * 0.18); x.lineTo(r * 0.02, r * 0.04);
+    x.stroke();
+    // 气泡
+    x.fillStyle = 'rgba(255,255,255,.65)';
+    for (const [bx, by, br] of [[-r * 0.3, -r * 0.32, 0.07], [r * 0.22, -r * 0.44, 0.055], [r * 0.38, -r * 0.16, 0.04]]) {
+      x.beginPath(); x.arc(bx, by, r * br, 0, 7); x.fill();
+    }
+    // 顶部舱盖铆钉
+    x.fillStyle = 'rgba(230,250,235,.6)';
+    for (const [px, py] of [[-r * 0.6, -r * 0.6], [r * 0.6, -r * 0.6]]) {
+      x.beginPath(); x.arc(px, py, r * 0.06, 0, 7); x.fill();
+    }
+  },
+
+  // 农业塔：棕褐塔身 + 顶部喷洒臂 + 下方嫩芽田垄
+  'agricultural-tower': (x, r, s, col) => {
+    // 田垄（底部绿色田地条纹）
+    const fg = x.createLinearGradient(0, r * 0.3, 0, r * 0.85);
+    fg.addColorStop(0, '#7cb85a');
+    fg.addColorStop(1, '#4a7a36');
+    x.fillStyle = fg;
+    rrPath(x, -r * 0.85, r * 0.3, r * 1.7, r * 0.55, r * 0.12);
+    x.fill();
+    x.strokeStyle = 'rgba(20,40,15,.5)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    // 垄沟
+    x.strokeStyle = 'rgba(30,55,22,.55)';
+    x.lineWidth = Math.max(0.8, s * 0.028);
+    for (let i = 0; i < 3; i++) {
+      const py = r * (0.42 + i * 0.13);
+      x.beginPath(); x.moveTo(-r * 0.72, py); x.lineTo(r * 0.72, py); x.stroke();
+    }
+    // 塔身（支柱）
+    x.fillStyle = col;
+    x.fillRect(-r * 0.1, -r * 0.55, r * 0.2, r * 0.95);
+    x.strokeStyle = 'rgba(35,25,8,.5)';
+    x.lineWidth = Math.max(0.8, s * 0.03);
+    x.strokeRect(-r * 0.1, -r * 0.55, r * 0.2, r * 0.95);
+    // 顶部横梁
+    x.fillStyle = lightenColor(col, 0.2);
+    rrPath(x, -r * 0.55, -r * 0.72, r * 1.1, r * 0.2, r * 0.08);
+    x.fill();
+    x.stroke();
+    // 喷洒头（中央下垂）
+    x.fillStyle = '#9aa4ad';
+    x.beginPath(); x.moveTo(-r * 0.08, -r * 0.52); x.lineTo(r * 0.08, -r * 0.52); x.lineTo(r * 0.14, -r * 0.36); x.lineTo(-r * 0.14, -r * 0.36); x.closePath(); x.fill();
+    // 水滴
+    x.fillStyle = 'rgba(120,190,235,.9)';
+    for (const [dx, dy] of [[-r * 0.26, -r * 0.12], [0, -r * 0.02], [r * 0.26, -r * 0.12]]) {
+      x.beginPath();
+      x.moveTo(dx, dy - r * 0.09);
+      x.quadraticCurveTo(dx + r * 0.07, dy + r * 0.02, dx, dy + r * 0.09);
+      x.quadraticCurveTo(dx - r * 0.07, dy + r * 0.02, dx, dy - r * 0.09);
+      x.fill();
+    }
+    // 嫩芽
+    x.strokeStyle = '#bfe890';
+    x.lineCap = 'round';
+    x.lineWidth = r * 0.07;
+    for (const [sx, sh] of [[-r * 0.45, 0.16], [0, 0.2], [r * 0.45, 0.16]]) {
+      x.beginPath();
+      x.moveTo(sx, r * 0.34);
+      x.quadraticCurveTo(sx - r * 0.08, r * (0.34 - sh * 0.6), sx, r * (0.34 - sh));
+      x.stroke();
+    }
+  },
+
+  // 虫巢孵化器：紫色虫巢半球 + 巢孔 + 圈养项圈指示
+  'captive-biter-spawner': (x, r, s, col) => {
+    // 巢体（半球穹顶）
+    const g = x.createRadialGradient(-r * 0.2, -r * 0.3, r * 0.1, 0, 0, r * 0.85);
+    g.addColorStop(0, lightenColor(col, 0.35));
+    g.addColorStop(0.6, col);
+    g.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = g;
+    x.beginPath();
+    x.moveTo(-r * 0.8, r * 0.5);
+    x.quadraticCurveTo(-r * 0.85, -r * 0.55, 0, -r * 0.62);
+    x.quadraticCurveTo(r * 0.85, -r * 0.55, r * 0.8, r * 0.5);
+    x.closePath();
+    x.fill();
+    x.strokeStyle = 'rgba(30,10,40,.55)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 巢孔（三孔，发光）
+    for (const [hx, hy, hr] of [[-r * 0.32, r * 0.02, 0.13], [r * 0.26, -r * 0.16, 0.11], [r * 0.05, r * 0.28, 0.1]]) {
+      x.fillStyle = '#2a1030';
+      x.beginPath(); x.ellipse(hx, hy, r * hr, r * hr * 0.75, 0, 0, 7); x.fill();
+      x.fillStyle = 'rgba(220,120,255,.55)';
+      x.beginPath(); x.ellipse(hx, hy + r * 0.02, r * hr * 0.55, r * hr * 0.4, 0, 0, 7); x.fill();
+    }
+    // 圈养项圈（底部金属环，示意被驯化圈养）
+    x.strokeStyle = '#c8b040';
+    x.lineWidth = r * 0.1;
+    x.beginPath(); x.moveTo(-r * 0.62, r * 0.5); x.lineTo(r * 0.62, r * 0.5); x.stroke();
+    x.strokeStyle = 'rgba(255,240,170,.7)';
+    x.lineWidth = r * 0.035;
+    x.beginPath(); x.moveTo(-r * 0.62, r * 0.46); x.lineTo(r * 0.62, r * 0.46); x.stroke();
+    // 巢体斑点
+    x.fillStyle = 'rgba(255,255,255,.16)';
+    for (const [px, py, pr] of [[-r * 0.42, -r * 0.3, 0.08], [r * 0.36, -r * 0.34, 0.06], [r * 0.5, r * 0.08, 0.05]]) {
+      x.beginPath(); x.arc(px, py, r * pr, 0, 7); x.fill();
+    }
+  },
+
+  // 太空平台中枢：深蓝航天枢纽 + 中央舱体 + 对接环 + 星点
+  'space-platform-hub': (x, r, s, col) => {
+    // 底盘
+    x.fillStyle = darkenColor(col, 0.35);
+    rrPath(x, -r * 0.85, r * 0.3, r * 1.7, r * 0.4, r * 0.12);
+    x.fill();
+    x.strokeStyle = 'rgba(5,10,25,.6)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 中央主舱
+    const g = x.createLinearGradient(0, -r * 0.7, 0, r * 0.4);
+    g.addColorStop(0, lightenColor(col, 0.35));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.4));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.5, -r * 0.7, r * 1.0, r * 1.05, r * 0.16);
+    x.fill();
+    x.stroke();
+    // 舷窗（发光）
+    x.fillStyle = '#8fd8ff';
+    for (const wy of [-r * 0.42, -r * 0.14, r * 0.14]) {
+      x.beginPath(); x.arc(0, wy, r * 0.1, 0, 7); x.fill();
+    }
+    // 对接环（顶部）
+    x.strokeStyle = '#b8c4d8';
+    x.lineWidth = r * 0.1;
+    x.beginPath(); x.ellipse(0, -r * 0.66, r * 0.3, r * 0.11, 0, 0, 7); x.stroke();
+    // 侧翼太阳能板
+    x.fillStyle = '#2a4a80';
+    x.fillRect(-r * 0.92, -r * 0.32, r * 0.36, r * 0.5);
+    x.fillRect(r * 0.56, -r * 0.32, r * 0.36, r * 0.5);
+    x.strokeStyle = 'rgba(140,200,255,.6)';
+    x.lineWidth = Math.max(0.6, s * 0.024);
+    for (const side of [-1, 1]) {
+      for (let i = 0; i <= 2; i++) {
+        const px = side === -1 ? -r * 0.92 + i * r * 0.12 : r * 0.56 + i * r * 0.12;
+        x.beginPath(); x.moveTo(px, -r * 0.32); x.lineTo(px, r * 0.18); x.stroke();
+      }
+    }
+    // 星点
+    x.fillStyle = 'rgba(255,255,255,.9)';
+    for (const [sx, sy, ss] of [[-r * 0.75, -r * 0.72, 0.05], [r * 0.7, -r * 0.6, 0.04], [r * 0.85, r * 0.05, 0.045]]) {
+      x.beginPath(); x.arc(sx, sy, r * ss, 0, 7); x.fill();
+    }
+  },
+
+  // 离心机：钢灰机身 + 旋转离心管束 + 绿色铀料辉光
+  'centrifuge': (x, r, s, col) => {
+    // 机身
+    const g = x.createLinearGradient(0, -r * 0.8, 0, r * 0.8);
+    g.addColorStop(0, lightenColor(col, 0.3));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.68, -r * 0.72, r * 1.36, r * 1.44, r * 0.2);
+    x.fill();
+    x.strokeStyle = 'rgba(15,25,32,.55)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 顶部旋转指示（弧形箭头）
+    x.strokeStyle = 'rgba(255,255,255,.85)';
+    x.lineCap = 'round';
+    x.lineWidth = r * 0.1;
+    x.beginPath(); x.arc(0, -r * 0.02, r * 0.42, Math.PI * 0.6, Math.PI * 1.75); x.stroke();
+    // 箭头头部
+    x.fillStyle = 'rgba(255,255,255,.85)';
+    x.beginPath();
+    x.moveTo(r * 0.4, -r * 0.42);
+    x.lineTo(r * 0.6, -r * 0.2);
+    x.lineTo(r * 0.3, -r * 0.16);
+    x.closePath();
+    x.fill();
+    // 离心管束（三根倾斜试管，绿色铀料）
+    for (let i = 0; i < 3; i++) {
+      const tx = -r * 0.3 + i * r * 0.3;
+      x.save();
+      x.translate(tx, r * 0.22);
+      x.rotate((i - 1) * 0.22);
+      // 管壁
+      x.fillStyle = 'rgba(200,220,230,.35)';
+      rrPath(x, -r * 0.07, -r * 0.3, r * 0.14, r * 0.5, r * 0.06);
+      x.fill();
+      x.strokeStyle = 'rgba(230,240,245,.7)';
+      x.lineWidth = Math.max(0.6, s * 0.022);
+      x.stroke();
+      // 铀料（绿光）
+      const ug = x.createLinearGradient(0, -r * 0.1, 0, r * 0.18);
+      ug.addColorStop(0, '#c8ff70');
+      ug.addColorStop(1, '#5aa028');
+      x.fillStyle = ug;
+      rrPath(x, -r * 0.05, -r * 0.1, r * 0.1, r * 0.26, r * 0.04);
+      x.fill();
+      x.restore();
+    }
+    // 底座铆钉
+    x.fillStyle = 'rgba(220,230,235,.6)';
+    for (const [px, py] of [[-r * 0.55, r * 0.62], [r * 0.55, r * 0.62]]) {
+      x.beginPath(); x.arc(px, py, r * 0.06, 0, 7); x.fill();
+    }
+  },
+
+  // 核反应堆：深绿反应堆体 + 放射警示三叶标 + 热量橙光
+  'nuclear-reactor': (x, r, s, col) => {
+    // 堆体
+    const g = x.createLinearGradient(0, -r * 0.8, 0, r * 0.8);
+    g.addColorStop(0, lightenColor(col, 0.3));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.75, -r * 0.75, r * 1.5, r * 1.5, r * 0.18);
+    x.fill();
+    x.strokeStyle = 'rgba(8,30,15,.6)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    x.stroke();
+    // 内框
+    x.strokeStyle = 'rgba(255,255,255,.2)';
+    x.lineWidth = Math.max(0.8, s * 0.028);
+    rrPath(x, -r * 0.58, -r * 0.58, r * 1.16, r * 1.16, r * 0.12);
+    x.stroke();
+    // 放射三叶标
+    const cy = -r * 0.02;
+    x.fillStyle = '#f5e13a';
+    for (let i = 0; i < 3; i++) {
+      const a0 = -Math.PI / 2 + i * (Math.PI * 2 / 3) - 0.42;
+      const a1 = a0 + 0.84;
+      x.beginPath();
+      x.arc(0, cy, r * 0.4, a0, a1);
+      x.arc(0, cy, r * 0.16, a1, a0, true);
+      x.closePath();
+      x.fill();
+    }
+    // 中心圆
+    x.fillStyle = '#f5e13a';
+    x.beginPath(); x.arc(0, cy, r * 0.1, 0, 7); x.fill();
+    x.strokeStyle = 'rgba(40,35,5,.7)';
+    x.lineWidth = Math.max(0.7, s * 0.026);
+    x.beginPath(); x.arc(0, cy, r * 0.1, 0, 7); x.stroke();
+    // 底部热量橙光条
+    const hg = x.createLinearGradient(0, r * 0.4, 0, r * 0.68);
+    hg.addColorStop(0, 'rgba(255,150,50,.15)');
+    hg.addColorStop(1, 'rgba(255,140,40,.75)');
+    x.fillStyle = hg;
+    x.fillRect(-r * 0.58, r * 0.4, r * 1.16, r * 0.28);
+  },
+
+  // 汽轮机：蓝灰涡轮机身 + 叶轮 + 蒸汽流线
+  'steam-turbine': (x, r, s, col) => {
+    // 机身
+    const g = x.createLinearGradient(0, -r * 0.7, 0, r * 0.7);
+    g.addColorStop(0, lightenColor(col, 0.35));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.4));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.8, -r * 0.55, r * 1.6, r * 1.1, r * 0.2);
+    x.fill();
+    x.strokeStyle = 'rgba(15,30,40,.55)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 检修分缝
+    x.strokeStyle = 'rgba(15,30,40,.4)';
+    x.lineWidth = Math.max(0.7, s * 0.026);
+    x.beginPath(); x.moveTo(-r * 0.1, -r * 0.55); x.lineTo(-r * 0.1, r * 0.55); x.stroke();
+    // 叶轮（右侧圆形，辐条旋转）
+    x.fillStyle = darkenColor(col, 0.3);
+    x.beginPath(); x.arc(r * 0.38, 0, r * 0.34, 0, 7); x.fill();
+    x.strokeStyle = 'rgba(220,235,245,.8)';
+    x.lineWidth = r * 0.07;
+    for (let i = 0; i < 4; i++) {
+      const a = i * Math.PI / 2 + 0.4;
+      x.beginPath();
+      x.moveTo(r * 0.38 - Math.cos(a) * r * 0.26, -Math.sin(a) * r * 0.26);
+      x.lineTo(r * 0.38 + Math.cos(a) * r * 0.26, Math.sin(a) * r * 0.26);
+      x.stroke();
+    }
+    x.beginPath(); x.arc(r * 0.38, 0, r * 0.34, 0, 7); x.stroke();
+    // 蒸汽流线（左侧三道白色波纹）
+    x.strokeStyle = 'rgba(255,255,255,.75)';
+    x.lineWidth = r * 0.07;
+    for (let i = 0; i < 3; i++) {
+      const ly = -r * 0.24 + i * r * 0.24;
+      x.beginPath();
+      x.moveTo(-r * 0.72, ly);
+      x.quadraticCurveTo(-r * 0.55, ly - r * 0.12, -r * 0.4, ly);
+      x.quadraticCurveTo(-r * 0.28, ly + r * 0.08, -r * 0.16, ly - r * 0.02);
+      x.stroke();
+    }
+    // 底座
+    x.fillStyle = darkenColor(col, 0.45);
+    x.fillRect(-r * 0.65, r * 0.55, r * 1.3, r * 0.2);
+    x.strokeRect(-r * 0.65, r * 0.55, r * 1.3, r * 0.2);
+  },
+
+  // 导热管：橙色金属管段 + 高温红热段 + 热浪波纹
+  'heat-pipe': (x, r, s, col) => {
+    // 管体（斜置粗管）
+    x.save();
+    x.rotate(-0.6);
+    const g = x.createLinearGradient(0, -r * 0.2, 0, r * 0.2);
+    g.addColorStop(0, lightenColor(col, 0.4));
+    g.addColorStop(0.5, col);
+    g.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.95, -r * 0.2, r * 1.9, r * 0.4, r * 0.14);
+    x.fill();
+    x.strokeStyle = 'rgba(60,30,5,.55)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    // 法兰接口（两端）
+    x.fillStyle = lightenColor(col, 0.15);
+    x.fillRect(-r * 0.98, -r * 0.28, r * 0.14, r * 0.56);
+    x.fillRect(r * 0.84, -r * 0.28, r * 0.14, r * 0.56);
+    x.strokeRect(-r * 0.98, -r * 0.28, r * 0.14, r * 0.56);
+    x.strokeRect(r * 0.84, -r * 0.28, r * 0.14, r * 0.56);
+    // 红热段（中部高温发光）
+    const hg = x.createLinearGradient(-r * 0.3, 0, r * 0.3, 0);
+    hg.addColorStop(0, 'rgba(255,120,40,0)');
+    hg.addColorStop(0.5, 'rgba(255,130,45,.85)');
+    hg.addColorStop(1, 'rgba(255,120,40,0)');
+    x.fillStyle = hg;
+    x.fillRect(-r * 0.3, -r * 0.2, r * 0.6, r * 0.4);
+    // 管身高光
+    x.strokeStyle = 'rgba(255,230,190,.5)';
+    x.lineWidth = r * 0.05;
+    x.beginPath(); x.moveTo(-r * 0.8, -r * 0.1); x.lineTo(r * 0.8, -r * 0.1); x.stroke();
+    x.restore();
+    // 热浪波纹（右上）
+    x.strokeStyle = 'rgba(255,170,80,.85)';
+    x.lineCap = 'round';
+    x.lineWidth = Math.max(0.8, s * 0.035);
+    for (let i = 0; i < 3; i++) {
+      const wy = -r * (0.95 - i * 0.18);
+      x.beginPath();
+      x.moveTo(-r * 0.15 + i * r * 0.18, wy + r * 0.12);
+      x.quadraticCurveTo(-r * 0.05 + i * r * 0.18, wy, r * 0.05 + i * r * 0.18, wy + r * 0.12);
+      x.stroke();
+    }
+  },
+
+  // 热交换器：铜褐箱体 + 火焰热源 + 水/汽双接口
+  'heat-exchanger': (x, r, s, col) => {
+    // 箱体
+    const g = x.createLinearGradient(0, -r * 0.75, 0, r * 0.75);
+    g.addColorStop(0, lightenColor(col, 0.3));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.7, -r * 0.7, r * 1.4, r * 1.35, r * 0.18);
+    x.fill();
+    x.strokeStyle = 'rgba(40,20,10,.6)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    x.stroke();
+    // 换热管束（横向三管）
+    x.strokeStyle = 'rgba(255,205,150,.55)';
+    x.lineWidth = r * 0.09;
+    for (let i = 0; i < 3; i++) {
+      const py = -r * 0.42 + i * r * 0.28;
+      x.beginPath(); x.moveTo(-r * 0.5, py); x.lineTo(r * 0.5, py); x.stroke();
+    }
+    // 火焰热源（底部）
+    x.fillStyle = '#e8703a';
+    x.beginPath();
+    x.moveTo(0, r * 0.88);
+    x.quadraticCurveTo(-r * 0.3, r * 0.6, 0, r * 0.34);
+    x.quadraticCurveTo(r * 0.3, r * 0.6, 0, r * 0.88);
+    x.fill();
+    x.fillStyle = '#f8c83a';
+    x.beginPath();
+    x.moveTo(0, r * 0.8);
+    x.quadraticCurveTo(-r * 0.14, r * 0.62, 0, r * 0.48);
+    x.quadraticCurveTo(r * 0.14, r * 0.62, 0, r * 0.8);
+    x.fill();
+    // 蒸汽出口（顶部白色汽泡）
+    x.fillStyle = 'rgba(240,248,255,.85)';
+    for (const [vx, vy, vr] of [[-r * 0.2, -r * 0.82, 0.08], [r * 0.05, -r * 0.92, 0.1], [r * 0.3, -r * 0.8, 0.07]]) {
+      x.beginPath(); x.arc(vx, vy, r * vr, 0, 7); x.fill();
+    }
+    // 水滴接口（左上蓝色）
+    x.fillStyle = 'rgba(110,180,235,.9)';
+    x.beginPath();
+    x.moveTo(-r * 0.52, -r * 0.62);
+    x.quadraticCurveTo(-r * 0.62, -r * 0.48, -r * 0.52, -r * 0.4);
+    x.quadraticCurveTo(-r * 0.42, -r * 0.48, -r * 0.52, -r * 0.62);
+    x.fill();
+  },
+
+  // 供热塔：橙塔身 + 炉膛火光 + 顶部热量扩散波
+  'heating-tower': (x, r, s, col) => {
+    // 塔身
+    const g = x.createLinearGradient(0, -r * 0.8, 0, r * 0.8);
+    g.addColorStop(0, lightenColor(col, 0.35));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = g;
+    x.beginPath();
+    x.moveTo(-r * 0.52, -r * 0.75);
+    x.lineTo(r * 0.52, -r * 0.75);
+    x.lineTo(r * 0.68, r * 0.75);
+    x.lineTo(-r * 0.68, r * 0.75);
+    x.closePath();
+    x.fill();
+    x.strokeStyle = 'rgba(55,25,5,.6)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    x.stroke();
+    // 塔顶平台
+    x.fillStyle = lightenColor(col, 0.2);
+    x.fillRect(-r * 0.62, -r * 0.85, r * 1.24, r * 0.16);
+    x.strokeRect(-r * 0.62, -r * 0.85, r * 1.24, r * 0.16);
+    // 炉膛口（发光）
+    x.fillStyle = '#3a1c08';
+    rrPath(x, -r * 0.3, r * 0.05, r * 0.6, r * 0.55, r * 0.12);
+    x.fill();
+    const fg = x.createRadialGradient(0, r * 0.35, r * 0.03, 0, r * 0.35, r * 0.26);
+    fg.addColorStop(0, '#ffe89a');
+    fg.addColorStop(0.5, '#ff9a3a');
+    fg.addColorStop(1, 'rgba(230,90,30,0)');
+    x.fillStyle = fg;
+    x.beginPath(); x.arc(0, r * 0.35, r * 0.26, 0, 7); x.fill();
+    // 通风栅缝
+    x.strokeStyle = 'rgba(55,25,5,.55)';
+    x.lineWidth = Math.max(0.8, s * 0.03);
+    for (let i = 0; i < 3; i++) {
+      const py = -r * (0.5 - i * 0.16);
+      x.beginPath(); x.moveTo(-r * 0.32, py); x.lineTo(r * 0.32, py); x.stroke();
+    }
+    // 顶部热量波（上升弧线）
+    x.strokeStyle = 'rgba(255,170,70,.85)';
+    x.lineCap = 'round';
+    x.lineWidth = Math.max(0.8, s * 0.035);
+    for (let i = 0; i < 3; i++) {
+      const wx = -r * 0.3 + i * r * 0.3;
+      x.beginPath();
+      x.moveTo(wx, -r * 0.95);
+      x.quadraticCurveTo(wx + r * 0.12, -r * 1.1, wx, -r * 1.22);
+      x.stroke();
+    }
+  },
+
 };

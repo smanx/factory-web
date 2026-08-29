@@ -130,16 +130,16 @@
 - [x] `electromagnetic-plant` 电磁工厂
 - [x] `recycler` 回收机
 - [x] `foundry` 铸造厂
-- [ ] `biochamber` 生物室
-- [ ] `agricultural-tower` 农业塔
-- [ ] `captive-biter-spawner` 虫巢孵化器
-- [ ] `space-platform-hub` 太空平台中枢
-- [ ] `centrifuge` 离心机
-- [ ] `nuclear-reactor` 核反应堆
-- [ ] `steam-turbine` 汽轮机
-- [ ] `heat-pipe` 导热管
-- [ ] `heat-exchanger` 热交换器
-- [ ] `heating-tower` 供热塔
+- [x] `biochamber` 生物室
+- [x] `agricultural-tower` 农业塔
+- [x] `captive-biter-spawner` 虫巢孵化器
+- [x] `space-platform-hub` 太空平台中枢
+- [x] `centrifuge` 离心机
+- [x] `nuclear-reactor` 核反应堆
+- [x] `steam-turbine` 汽轮机
+- [x] `heat-pipe` 导热管
+- [x] `heat-exchanger` 热交换器
+- [x] `heating-tower` 供热塔
 - [ ] `fusion-reactor` 聚变反应堆
 - [ ] `fusion-generator` 聚变发电机
 - [ ] `lightning-rod` 避雷针
