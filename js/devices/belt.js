@@ -6,6 +6,9 @@ const _beltItemSortDesc = (a, b) => b.pos - a.pos;
 // 性能优化：车道分区缓冲（模块级复用）。update 每 tick 为每条带做左右车道分区排序，
 // 若每次 new [].push+sort 会给 GC 巨大压力；改为复用一个模块级数组，按需 clear 就地复用。
 const _beltLaneBuf = [];
+// 车道转移尝试顺序：默认 lane0 先行；左转侧向汇入时翻转为 lane1 先行（见 update 内说明）
+const _LANES_FWD = [0, 1];
+const _LANES_REV = [1, 0];
 
 class Belt extends Entity {
   constructor(type, x, y) {
@@ -45,7 +48,22 @@ class Belt extends Entity {
     // 取代旧版“两次全量扫描 this.items（transferFront 找前端 + 分区）”与“每层新建数组”。
     // 复用模块级缓冲避免新建数组（GC 压力），缓冲按需 clear（length=0）就地复用，
     // 排序只影响缓冲顺序、引用（item 对象）不变，不影响 this.items 结构。
-    for (let lane = 0; lane < 2; lane++) {
+    // 车道优先序（侧向搭接的外弧优先规则）：汇入满载的近侧车道时，每 tick 新空位
+    // 只在队列尾部开启（落点 pos=0，靠下游来向一端）；外弧车道的物品恰从队尾切入，
+    // 总能抢占该空位；内弧车道的切入位在队列中段（pos≈0.45），被满载队列掩埋，
+    // 只有下游欠载留出真实空位时才能插入 → 满速时内弧饿死、外弧优先。
+    // 内外弧按转弯方向定：(nb.dir - this.dir + 4) % 4 = 1 右转：内弧 = lane0、
+    // 外弧 = lane1（如向下汇入向左的直线带）→ 翻转为 lane1 先行；
+    // = 3 左转：内弧 = lane1、外弧 = lane0（如向上汇入向左的直线带）→ 保持默认顺序。
+    // 直通/纯转角两车道各自独立承接（lane 沿用），不存在争抢，顺序不影响结果。
+    let lanes = _LANES_FWD;
+    const ahead = entAt(this.x + DX[this.dir], this.y + DY[this.dir]);
+    if (ahead instanceof Belt && !(ahead instanceof Splitter) && ahead.dir !== this.dir) {
+      const cd = beltCornerDir(ahead);
+      const isPureCorner = cd !== null && !beltCornerTrapezoid(ahead);
+      if (!isPureCorner && ((ahead.dir - this.dir) % 4 + 4) % 4 === 1) lanes = _LANES_REV;
+    }
+    for (const lane of lanes) {
       _beltLaneBuf.length = 0;
       for (let i = 0; i < this.items.length; i++) {
         const o = this.items[i];
