@@ -388,13 +388,13 @@ const SAND_COLORS = {
   fulgora:  '#6e687e',
   aquilo:   '#aec6d2'
 };
-// 泥土配色（草稀处露出的地表底土）：覆盖度噪声低于阈值时显露
+// 泥土配色（草稀处露出的地表底土，偏淡的浅色泥土）：覆盖度噪声低于阈值时显露
 const DIRT_COLORS = {
-  nauvis:   '#a3814e',   // 黄褐泥土
-  vulcanus: '#93683c',   // 火山灰褐
-  gleba:    '#6f5c3a',   // 沼泽泥褐
-  fulgora:  '#8a8090',   // 干裂紫灰
-  aquilo:   '#92826c'    // 冻土灰褐
+  nauvis:   '#c0a064',   // 淡黄褐泥土
+  vulcanus: '#a97e50',   // 浅火山灰褐
+  gleba:    '#8a7450',   // 浅沼泽泥褐
+  fulgora:  '#9e95a2',   // 浅干裂紫灰
+  aquilo:   '#ab9a84'    // 浅冻土灰褐
 };
 
 // 仅绘制单个 chunk 的地形底色（草地/水域），不含矿点
