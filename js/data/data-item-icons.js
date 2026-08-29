@@ -90,6 +90,73 @@ function _modulePips(x, r, s, n) {
   }
 }
 
+// 效率模块符号：叶子（环保省电，示意低耗环保）
+function _moduleLeaf(x, r, s) {
+  // 叶身
+  const g = x.createLinearGradient(-r * 0.4, r * 0.4, r * 0.4, -r * 0.4);
+  g.addColorStop(0, '#9fe89a');
+  g.addColorStop(1, '#3f9e4f');
+  x.fillStyle = g;
+  x.beginPath();
+  x.moveTo(-r * 0.42, r * 0.42);
+  x.quadraticCurveTo(-r * 0.55, -r * 0.1, -r * 0.05, -r * 0.48);
+  x.quadraticCurveTo(r * 0.5, -r * 0.4, r * 0.42, r * 0.1);
+  x.quadraticCurveTo(r * 0.2, r * 0.55, -r * 0.42, r * 0.42);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(15,45,25,.5)';
+  x.lineWidth = Math.max(0.8, s * 0.035);
+  x.stroke();
+  // 叶脉
+  x.strokeStyle = 'rgba(255,255,255,.65)';
+  x.lineWidth = Math.max(0.7, s * 0.03);
+  x.beginPath();
+  x.moveTo(-r * 0.38, r * 0.38);
+  x.quadraticCurveTo(r * 0.05, r * 0.05, r * 0.38, -r * 0.4);
+  x.stroke();
+}
+
+// 品质模块符号：宝石菱形 + 高光
+function _moduleGem(x, r, s) {
+  // 菱形宝石
+  const g = x.createLinearGradient(-r * 0.4, -r * 0.45, r * 0.4, r * 0.5);
+  g.addColorStop(0, '#eaf6ff');
+  g.addColorStop(0.5, '#8fd4f8');
+  g.addColorStop(1, '#3f8fd0');
+  x.fillStyle = g;
+  x.beginPath();
+  x.moveTo(0, -r * 0.5);
+  x.lineTo(r * 0.42, -r * 0.05);
+  x.lineTo(0, r * 0.52);
+  x.lineTo(-r * 0.42, -r * 0.05);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(20,50,80,.55)';
+  x.lineWidth = Math.max(0.8, s * 0.035);
+  x.stroke();
+  // 切面线
+  x.strokeStyle = 'rgba(255,255,255,.7)';
+  x.lineWidth = Math.max(0.6, s * 0.028);
+  x.beginPath();
+  x.moveTo(-r * 0.42, -r * 0.05); x.lineTo(r * 0.42, -r * 0.05);
+  x.moveTo(0, -r * 0.5); x.lineTo(-r * 0.16, -r * 0.05); x.lineTo(0, r * 0.52);
+  x.moveTo(0, -r * 0.5); x.lineTo(r * 0.16, -r * 0.05); x.lineTo(0, r * 0.52);
+  x.stroke();
+  // 星形高光
+  x.fillStyle = 'rgba(255,255,255,.95)';
+  x.beginPath();
+  x.moveTo(r * 0.16, -r * 0.3);
+  x.lineTo(r * 0.21, -r * 0.2);
+  x.lineTo(r * 0.3, -r * 0.16);
+  x.lineTo(r * 0.21, -r * 0.12);
+  x.lineTo(r * 0.16, -r * 0.02);
+  x.lineTo(r * 0.11, -r * 0.12);
+  x.lineTo(r * 0.02, -r * 0.16);
+  x.lineTo(r * 0.11, -r * 0.2);
+  x.closePath();
+  x.fill();
+}
+
 const ITEM_CUSTOM_ICONS = {
 
   // 石砖：错缝双排砖块，立体渐变 + 砖缝描边
@@ -4496,5 +4563,281 @@ const ITEM_CUSTOM_ICONS = {
     _moduleBase(x, r, s, col);
     _moduleArrowPlus(x, r, s);
     _modulePips(x, r, 3);
+  },
+
+  // ===== 信号塔：中继塔体 + 两侧广播电波 =====
+  'beacon': (x, r, s, col) => {
+    // 塔基座
+    const bg = x.createLinearGradient(0, r * 0.2, 0, r * 0.9);
+    bg.addColorStop(0, lightenColor(col, 0.25));
+    bg.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = bg;
+    x.beginPath();
+    x.moveTo(-r * 0.72, r * 0.88);
+    x.lineTo(-r * 0.5, r * 0.18);
+    x.lineTo(r * 0.5, r * 0.18);
+    x.lineTo(r * 0.72, r * 0.88);
+    x.closePath();
+    x.fill();
+    x.strokeStyle = 'rgba(15,20,30,.6)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 塔颈
+    x.fillStyle = darkenColor(col, 0.2);
+    x.fillRect(-r * 0.18, -r * 0.28, r * 0.36, r * 0.5);
+    // 塔顶模块舱（发光核心）
+    const tg = x.createLinearGradient(-r * 0.45, -r * 0.9, r * 0.45, -r * 0.1);
+    tg.addColorStop(0, lightenColor(col, 0.45));
+    tg.addColorStop(0.55, col);
+    tg.addColorStop(1, darkenColor(col, 0.4));
+    x.fillStyle = tg;
+    rrPath(x, -r * 0.48, -r * 0.95, r * 0.96, r * 0.78, r * 0.14);
+    x.fill();
+    x.strokeStyle = 'rgba(15,20,30,.55)';
+    x.stroke();
+    // 两个模块插槽
+    x.fillStyle = 'rgba(20,26,36,.75)';
+    x.fillRect(-r * 0.34, -r * 0.78, r * 0.26, r * 0.44);
+    x.fillRect(r * 0.08, -r * 0.78, r * 0.26, r * 0.44);
+    // 核心光晕
+    x.fillStyle = 'rgba(255,244,180,.95)';
+    x.beginPath(); x.arc(0, -r * 0.56, r * 0.1, 0, 7); x.fill();
+    // 两侧广播电波（弧线）
+    x.strokeStyle = 'rgba(255,244,180,.85)';
+    x.lineCap = 'round';
+    for (let i = 0; i < 2; i++) {
+      const w = r * (0.22 + i * 0.18);
+      x.lineWidth = Math.max(0.8, s * (0.045 - i * 0.012));
+      x.beginPath(); x.arc(-r * 0.62, -r * 0.56, w, Math.PI * 0.62, Math.PI * 1.38); x.stroke();
+      x.beginPath(); x.arc(r * 0.62, -r * 0.56, w, -Math.PI * 0.38, Math.PI * 0.38); x.stroke();
+    }
+    // 基座指示灯
+    x.fillStyle = 'rgba(120,220,255,.9)';
+    x.beginPath(); x.arc(0, r * 0.55, r * 0.09, 0, 7); x.fill();
+  },
+
+
+  // 效率模块：淡紫电路板 + 叶子 + 单档位灯
+  'efficiency-module': (x, r, s, col) => {
+    _moduleBase(x, r, s, col);
+    _moduleLeaf(x, r, s);
+    _modulePips(x, r, 1);
+  },
+
+  // 效率模块 II：紫色电路板 + 叶子 + 双档位灯
+  'efficiency-module-2': (x, r, s, col) => {
+    _moduleBase(x, r, s, col);
+    _moduleLeaf(x, r, s);
+    _modulePips(x, r, 2);
+  },
+
+  // 效率模块 III：深紫电路板 + 发光叶 + 三档位灯
+  'efficiency-module-3': (x, r, s, col) => {
+    _moduleBase(x, r, s, col);
+    _moduleLeaf(x, r, s);
+    _modulePips(x, r, 3);
+  },
+
+
+  // 品质模块：金色电路板 + 宝石 + 单档位灯
+  'quality-module': (x, r, s, col) => {
+    _moduleBase(x, r, s, col);
+    _moduleGem(x, r, s);
+    _modulePips(x, r, 1);
+  },
+
+  // 品质模块 II：深金电路板 + 宝石 + 双档位灯
+  'quality-module-2': (x, r, s, col) => {
+    _moduleBase(x, r, s, col);
+    _moduleGem(x, r, s);
+    _modulePips(x, r, 2);
+  },
+
+  // 品质模块 III：橙金电路板 + 宝石 + 三档位灯
+  'quality-module-3': (x, r, s, col) => {
+    _moduleBase(x, r, s, col);
+    _moduleGem(x, r, s);
+    _modulePips(x, r, 3);
+  },
+
+  // 电磁工厂：蓝钢厂房 + 电磁线圈 + 闪电符号
+  'electromagnetic-plant': (x, r, s, col) => {
+    // 厂房主体
+    const g = x.createLinearGradient(-r * 0.8, -r * 0.7, r * 0.8, r * 0.85);
+    g.addColorStop(0, lightenColor(col, 0.35));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = g;
+    x.beginPath();
+    x.moveTo(-r * 0.85, r * 0.85);
+    x.lineTo(-r * 0.85, -r * 0.1);
+    x.lineTo(-r * 0.35, -r * 0.55);
+    x.lineTo(r * 0.5, -r * 0.55);
+    x.lineTo(r * 0.5, r * 0.85);
+    x.closePath();
+    x.fill();
+    x.strokeStyle = 'rgba(15,25,50,.6)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 侧翼低层
+    x.fillStyle = darkenColor(col, 0.3);
+    x.beginPath();
+    x.moveTo(r * 0.5, r * 0.85);
+    x.lineTo(r * 0.5, -r * 0.1);
+    x.lineTo(r * 0.85, -r * 0.1);
+    x.lineTo(r * 0.85, r * 0.85);
+    x.closePath();
+    x.fill();
+    x.stroke();
+    // 屋顶电磁线圈（竖杆 + 顶部圆球）
+    x.fillStyle = '#9aa2ae';
+    x.fillRect(-r * 0.66, -r * 0.95, r * 0.12, r * 0.5);
+    x.fillStyle = '#e8ecf2';
+    x.beginPath(); x.arc(-r * 0.6, -r * 1.0, r * 0.12, 0, 7); x.fill();
+    x.strokeStyle = 'rgba(120,180,255,.8)';
+    x.lineWidth = Math.max(0.8, s * 0.035);
+    x.beginPath(); x.arc(-r * 0.6, -r * 1.0, r * 0.2, 0, 7); x.stroke();
+    // 面板闪电符号
+    x.fillStyle = '#fff16a';
+    x.beginPath();
+    x.moveTo(r * 0.06, -r * 0.32);
+    x.lineTo(-r * 0.22, r * 0.12);
+    x.lineTo(-r * 0.02, r * 0.12);
+    x.lineTo(-r * 0.12, r * 0.62);
+    x.lineTo(r * 0.28, r * 0.02);
+    x.lineTo(r * 0.06, r * 0.02);
+    x.lineTo(r * 0.24, -r * 0.32);
+    x.closePath();
+    x.fill();
+    x.strokeStyle = 'rgba(180,120,0,.5)';
+    x.lineWidth = Math.max(0.6, s * 0.028);
+    x.stroke();
+    // 底部通风栅格
+    x.strokeStyle = 'rgba(10,18,36,.5)';
+    x.lineWidth = Math.max(0.8, s * 0.03);
+    for (let i = 0; i < 3; i++) {
+      x.beginPath();
+      x.moveTo(-r * 0.7, r * 0.42 + i * r * 0.14);
+      x.lineTo(-r * 0.3, r * 0.42 + i * r * 0.14);
+      x.stroke();
+    }
+  },
+
+  // 回收机：金属机身 + 三角循环回收箭头
+  'recycler': (x, r, s, col) => {
+    // 机身（上宽下窄梯形料斗 + 方形机体）
+    const g = x.createLinearGradient(-r * 0.8, -r * 0.8, r * 0.8, r * 0.85);
+    g.addColorStop(0, lightenColor(col, 0.35));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.8, -r * 0.55, r * 1.6, r * 1.4, r * 0.16);
+    x.fill();
+    x.strokeStyle = 'rgba(20,25,32,.6)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 顶部进料口
+    x.fillStyle = darkenColor(col, 0.35);
+    rrPath(x, -r * 0.5, -r * 0.82, r * 1.0, r * 0.34, r * 0.1);
+    x.fill();
+    x.strokeStyle = 'rgba(20,25,32,.5)';
+    x.stroke();
+    // 回收三角循环箭头（三段弧箭头）
+    const cx = 0, cy = r * 0.12, R = r * 0.42;
+    x.strokeStyle = '#4fd07a';
+    x.lineCap = 'round';
+    x.lineWidth = r * 0.14;
+    const heads = [];
+    for (let i = 0; i < 3; i++) {
+      const a0 = -Math.PI / 2 + i * (Math.PI * 2 / 3) + 0.35;
+      const a1 = -Math.PI / 2 + (i + 1) * (Math.PI * 2 / 3) - 0.35;
+      x.beginPath();
+      x.arc(cx, cy, R, a0, a1);
+      x.stroke();
+      heads.push(a1);
+    }
+    // 箭头头部
+    x.fillStyle = '#4fd07a';
+    for (const a of heads) {
+      const hx = cx + R * Math.cos(a), hy = cy + R * Math.sin(a);
+      const dir = a + Math.PI / 2 + Math.PI / 3;
+      x.beginPath();
+      x.moveTo(hx + Math.cos(dir) * r * 0.2, hy + Math.sin(dir) * r * 0.2);
+      x.lineTo(hx + Math.cos(dir + 2.5) * r * 0.16, hy + Math.sin(dir + 2.5) * r * 0.16);
+      x.lineTo(hx + Math.cos(dir - 2.5) * r * 0.16, hy + Math.sin(dir - 2.5) * r * 0.16);
+      x.closePath();
+      x.fill();
+    }
+    // 侧面指示灯
+    x.fillStyle = 'rgba(255,210,90,.9)';
+    x.beginPath(); x.arc(-r * 0.58, r * 0.68, r * 0.08, 0, 7); x.fill();
+    x.fillStyle = 'rgba(120,220,255,.9)';
+    x.beginPath(); x.arc(-r * 0.36, r * 0.68, r * 0.08, 0, 7); x.fill();
+  },
+
+  // 铸造厂：砖红炉体 + 坩埚浇铸口 + 金色熔液与火花
+  'foundry': (x, r, s, col) => {
+    // 炉体（宽厚机体）
+    const g = x.createLinearGradient(-r * 0.85, -r * 0.7, r * 0.85, r * 0.9);
+    g.addColorStop(0, lightenColor(col, 0.35));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.85, -r * 0.5, r * 1.7, r * 1.4, r * 0.14);
+    x.fill();
+    x.strokeStyle = 'rgba(60,30,10,.6)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 顶部加料斗
+    const hg = x.createLinearGradient(0, -r * 0.95, 0, -r * 0.45);
+    hg.addColorStop(0, lightenColor(col, 0.25));
+    hg.addColorStop(1, darkenColor(col, 0.3));
+    x.fillStyle = hg;
+    x.beginPath();
+    x.moveTo(-r * 0.62, -r * 0.5);
+    x.lineTo(-r * 0.4, -r * 0.95);
+    x.lineTo(r * 0.4, -r * 0.95);
+    x.lineTo(r * 0.62, -r * 0.5);
+    x.closePath();
+    x.fill();
+    x.stroke();
+    // 浇铸口（流出的熔液弧线）
+    x.strokeStyle = '#ffd76a';
+    x.lineCap = 'round';
+    x.lineWidth = r * 0.13;
+    x.beginPath();
+    x.moveTo(-r * 0.85, -r * 0.1);
+    x.quadraticCurveTo(-r * 1.1, r * 0.25, -r * 0.92, r * 0.72);
+    x.stroke();
+    // 出液口发光坩埚池
+    const pg = x.createRadialGradient(-r * 0.92, r * 0.72, 0, -r * 0.92, r * 0.72, r * 0.28);
+    pg.addColorStop(0, '#fff3b0');
+    pg.addColorStop(0.6, '#ffb840');
+    pg.addColorStop(1, 'rgba(255,140,30,0)');
+    x.fillStyle = pg;
+    x.beginPath(); x.arc(-r * 0.92, r * 0.72, r * 0.28, 0, 7); x.fill();
+    // 炉面观察窗（橙光）
+    x.fillStyle = '#ff9a2e';
+    rrPath(x, r * 0.1, -r * 0.2, r * 0.5, r * 0.42, r * 0.08);
+    x.fill();
+    x.strokeStyle = 'rgba(60,30,10,.55)';
+    x.lineWidth = Math.max(0.8, s * 0.035);
+    x.stroke();
+    // 窗内光晕
+    const wg = x.createRadialGradient(r * 0.35, r * 0.01, 0, r * 0.35, r * 0.01, r * 0.2);
+    wg.addColorStop(0, 'rgba(255,250,200,.95)');
+    wg.addColorStop(1, 'rgba(255,180,60,0)');
+    x.fillStyle = wg;
+    x.beginPath(); x.arc(r * 0.35, r * 0.01, r * 0.2, 0, 7); x.fill();
+    // 火花
+    x.fillStyle = '#ffe08a';
+    for (const [sx, sy, ss] of [[-r * 1.15, -r * 0.35, 0.06], [-r * 1.0, -r * 0.6, 0.05], [-r * 0.7, -r * 0.75, 0.045]]) {
+      x.beginPath(); x.arc(sx, sy, r * ss, 0, 7); x.fill();
+    }
+    // 炉体铆钉
+    x.fillStyle = 'rgba(255,235,200,.6)';
+    for (const [px, py] of [[r * 0.6, r * 0.6], [r * 0.75, r * 0.3], [r * 0.45, r * 0.6]]) {
+      x.beginPath(); x.arc(px, py, r * 0.05, 0, 7); x.fill();
+    }
   },
 };

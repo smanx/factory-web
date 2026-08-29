@@ -120,16 +120,16 @@
 - [x] `productivity-module` 产能模块
 - [x] `productivity-module-2` 产能模块 II
 - [x] `productivity-module-3` 产能模块 III
-- [ ] `beacon` 信号塔
-- [ ] `efficiency-module` 效率模块
-- [ ] `efficiency-module-2` 效率模块 II
-- [ ] `efficiency-module-3` 效率模块 III
-- [ ] `quality-module` 品质模块
-- [ ] `quality-module-2` 品质模块 II
-- [ ] `quality-module-3` 品质模块 III
-- [ ] `electromagnetic-plant` 电磁工厂
-- [ ] `recycler` 回收机
-- [ ] `foundry` 铸造厂
+- [x] `beacon` 信号塔
+- [x] `efficiency-module` 效率模块
+- [x] `efficiency-module-2` 效率模块 II
+- [x] `efficiency-module-3` 效率模块 III
+- [x] `quality-module` 品质模块
+- [x] `quality-module-2` 品质模块 II
+- [x] `quality-module-3` 品质模块 III
+- [x] `electromagnetic-plant` 电磁工厂
+- [x] `recycler` 回收机
+- [x] `foundry` 铸造厂
 - [ ] `biochamber` 生物室
 - [ ] `agricultural-tower` 农业塔
 - [ ] `captive-biter-spawner` 虫巢孵化器
