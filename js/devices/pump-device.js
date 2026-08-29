@@ -84,49 +84,148 @@ class FluidPump extends Entity {
 }
 
 // ===== 渲染 =====
+// 1×1 流体泵：青绿方底 + 中央电机圆盘 + 旋转叶轮 + 背/前两侧连接管 + 流向箭头
+// 视觉分区：
+//   ① 阴影  ② 青绿方底（深色描边）  ③ 背/前两侧连接管段（黄铜，方向 = dir）
+//   ④ 中央电机外壳（径向渐变 + 顶面高光）  ⑤ 旋转叶轮（3 叶片）
+//   ⑥ 流体圆点（按缓冲比例）  ⑦ 流向箭头（沿用旧 notch）
 function drawFluidPump(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const cx = px + TILE / 2, cy = py + TILE / 2;
   ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#3d6a72';
+  ctx.lineCap = 'round';
+  const dx = DX[dir], dy = DY[dir];
+
+  // ① 罐底阴影
+  ctx.fillStyle = 'rgba(0,0,0,0.30)';
+  ctx.beginPath();
+  ctx.ellipse(cx, py + TILE - 2, TILE * 0.40, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ② 青绿方底（外壳）
+  const bodyGrad = ctx.createLinearGradient(0, py + 3, 0, py + TILE - 3);
+  bodyGrad.addColorStop(0,   '#5a8a92');
+  bodyGrad.addColorStop(0.5, '#3d6a72');
+  bodyGrad.addColorStop(1,   '#1f4250');
+  ctx.fillStyle = bodyGrad;
   rr(ctx, px + 3, py + 3, TILE - 6, TILE - 6, 6); ctx.fill();
-  ctx.strokeStyle = '#25454d';
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#0e2630';
+  ctx.lineWidth = 1.2;
   rr(ctx, px + 3, py + 3, TILE - 6, TILE - 6, 6); ctx.stroke();
-  // 泵体圆盘
-  ctx.fillStyle = '#5aa0a8';
-  ctx.beginPath(); ctx.arc(cx, cy, 8.5, 0, 7); ctx.fill();
-  ctx.strokeStyle = '#2f5a62';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  // 旋转叶片
+  // 顶面高光
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  ctx.fillRect(px + 5, py + 5, TILE - 10, 0.8);
+
+  // ③ 背/前两侧连接管段（黄铜 — 与普通管道同色，与泵体青绿形成对比）
+  //    方向 = (dx, dy) — 前侧（出口）
+  for (const sign of [1, -1]) {
+    const sx = sign * dx, sy = sign * dy;
+    if (sx === 0 && sy === 0) continue;
+    // 外层管壁
+    ctx.strokeStyle = '#4a4234';
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + sx * (TILE / 2 - 1), cy + sy * (TILE / 2 - 1));
+    ctx.stroke();
+    // 内层黄铜
+    ctx.strokeStyle = '#8d8272';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + sx * (TILE / 2 - 1), cy + sy * (TILE / 2 - 1));
+    ctx.stroke();
+    // 管段高光
+    ctx.strokeStyle = 'rgba(255, 235, 200, 0.30)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    const ox = sx === 0 ? 0 : (sx > 0 ? 0.5 : -0.5);
+    const oy = sy === 0 ? 0 : (sy > 0 ? 0.5 : -0.5);
+    ctx.moveTo(cx + ox, cy + oy);
+    ctx.lineTo(cx + sx * (TILE / 2 - 1) + ox, cy + sy * (TILE / 2 - 1) + oy);
+    ctx.stroke();
+  }
+
+  // ④ 中央电机外壳（径向渐变金属圆盘 + 顶面高光）
+  const motorGrad = ctx.createRadialGradient(cx - 1.5, cy - 1.5, 1, cx, cy, 9);
+  motorGrad.addColorStop(0,   '#9ce0e8');
+  motorGrad.addColorStop(0.5, '#5aa0a8');
+  motorGrad.addColorStop(1,   '#1f4250');
+  ctx.fillStyle = motorGrad;
+  ctx.beginPath(); ctx.arc(cx, cy, 9, 0, Math.PI * 2); ctx.fill();
+  // 外圈描边
+  ctx.strokeStyle = '#0e2630';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.arc(cx, cy, 9, 0, Math.PI * 2); ctx.stroke();
+  // 顶面高光
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.beginPath();
+  ctx.arc(cx - 2.5, cy - 2.5, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ⑤ 旋转叶轮（3 叶片，绕中心旋转 — 速度叠加 dir 偏移让方向感更明确）
   ctx.save();
   ctx.translate(cx, cy);
-  ctx.rotate(dir * Math.PI / 2 + (G.time * 3));
-  ctx.fillStyle = '#cfe8ec';
-  for (const a of [0, Math.PI / 3, Math.PI * 2 / 3]) {
+  ctx.rotate(dir * Math.PI / 2 + (G.time || 0) * 3);
+  // 叶片
+  ctx.fillStyle = '#d8f0f4';
+  for (let i = 0; i < 3; i++) {
+    ctx.save();
+    ctx.rotate(i * Math.PI * 2 / 3);
     ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(Math.cos(a) * 7, Math.sin(a) * 7);
-    ctx.lineTo(Math.cos(a + 0.6) * 7, Math.sin(a + 0.6) * 7);
+    ctx.moveTo(0, -1.5);
+    ctx.lineTo(7, -3);
+    ctx.lineTo(7, 3);
+    ctx.lineTo(0, 1.5);
     ctx.closePath();
     ctx.fill();
+    ctx.restore();
   }
+  // 中心轴
+  ctx.fillStyle = '#5a8a92';
+  ctx.beginPath(); ctx.arc(0, 0, 1.8, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#0e2630';
+  ctx.beginPath(); ctx.arc(0, 0, 0.9, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
-  // 流体显示
+
+  // ⑥ 流体圆点（按缓冲比例 + 工作中脉动）
   const total = e.total ? e.total() : 0;
   if (total > 0) {
     const first = Object.keys(e.fluid).find(k => e.fluid[k] > 0);
     if (first && ITEMS[first]) {
+      const baseR = Math.max(2, 4.5 * Math.min(1, total / PUMP_BUF_CAP));
+      const fl = (G.time || 0) * 3;
+      const r = e.total && e.total() > 0 && e.circuitEnabled && e.circuitEnabled() ? baseR + Math.sin(fl) * 0.4 : baseR;
+      // 深色边
+      ctx.fillStyle = _pumpDarken(ITEMS[first].color, 0.35);
+      ctx.beginPath();
+      ctx.arc(cx, cy, r + 0.6, 0, Math.PI * 2);
+      ctx.fill();
+      // 本色
       ctx.fillStyle = ITEMS[first].color;
       ctx.beginPath();
-      ctx.arc(cx, cy, 3.5, 0, 7);
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+      // 高光
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.beginPath();
+      ctx.arc(cx - r * 0.3, cy - r * 0.3, r * 0.4, 0, Math.PI * 2);
       ctx.fill();
     }
   }
+
+  // ⑦ 流向箭头（沿用旧 notch，dir=0 在前侧标识流向；R 旋转时跟着转）
   ctx.fillStyle = dirColorNotch(dir);
   notch(ctx, px, py, dir);
+
   ctx.globalAlpha = 1;
+}
+function _pumpDarken(hex, t) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.max(0, Math.floor(((n >> 16) & 255) * (1 - t)));
+  const g = Math.max(0, Math.floor(((n >> 8) & 255) * (1 - t)));
+  const b = Math.max(0, Math.floor((n & 255) * (1 - t)));
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
 }
 
 // ===== 面板 =====

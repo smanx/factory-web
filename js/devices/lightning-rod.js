@@ -13,7 +13,9 @@
 // storm：当前是否处于雷暴；nextStrike：距下次落雷秒数；strikes：活动落雷特效数组。
 // 雷电以"雷暴期"触发：每隔一段随机时间进入雷暴（持续若干秒，期间周期性落雷）。
 function lightningEnabled() {
-  // 设置了避雷科技后才出现雷电系统（否则纯天气，不落雷）
+  // 雷暴只在雷神星（Fulgora）出现（对齐《异星工厂》：雷电仅限 Fulgora），
+  // 且需已研究避雷科技（否则纯天气，不落雷）
+  if ((typeof planetId === 'function' ? planetId() : 'nauvis') !== 'fulgora') return false;
   return !!(G.techDone && G.techDone['lightning']);
 }
 
@@ -48,9 +50,10 @@ function initLightning() {
 
 // 更新避雷系统：雷暴期推进 + 周期性落雷（dt 秒）
 function updateLightning(dt) {
-  if (!lightningEnabled()) return;
   const L = initLightning();
-  L.strikes = L.strikes.filter(s => s.t > 0);   // 清理已消失的落雷特效
+  // 落雷特效计时衰减并清理已消失的特效（无论当前是否在本星球落雷，先清理残留，避免闪电卡住不消失）
+  L.strikes = L.strikes.filter(s => (s.t -= dt) > 0);
+  if (!lightningEnabled()) return;
 
   // 不在雷暴期：倒计时进入下一次雷暴
   if (!L.storm) {

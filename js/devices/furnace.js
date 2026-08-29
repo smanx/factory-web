@@ -130,50 +130,282 @@ class Furnace extends Entity {
   }
 }
 
-// ===== 渲染（石炉/电炉共用，按 type 换色）=====
+// 轻量色彩工具（仅在炉子渲染中用到）：把 #rrggbb 与 0~1 比例混合到 alpha
+function _furnMix(hex, t) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + t.toFixed(3) + ')';
+}
+// 通用炉子渲染配色（按 e.type 切换石炉/电炉，钢炉在 steel-furnace.js 单独实现）
+function _furnTierOf(e) {
+  if (e.type === 'electric-furnace') return {
+    label: 'ELEC',
+    body: ['#4fb078', '#2f8a5a', '#1a5a3a'],         // 科技绿渐变
+    line: '#0e3826', inner: '#1d6845',
+    fireCore: '#a8f4c4', fireMid: '#5fd890', fireOut: '#1a8a4a', glow: 'rgba(80,240,140,',
+    cap: '#7edca0', coilHi: 'rgba(220,255,230,',     // 顶部感应圈高光
+    bolt: '#0a2618', boltHi: 'rgba(180,240,200,0.45)',
+    ledOn: '#9ce06c', ledOff: '#1a3a26',
+    big: true, noFuel: true,                          // 3×3 大尺寸，无燃料条
+  };
+  // 石炉 2×2
+  return {
+    label: 'STONE',
+    body: ['#a89274', '#7e6a4e', '#503e2a'],         // 陶土黄/砖石色渐变
+    line: '#2e2418', inner: '#5a4830',
+    fireCore: '#fff0a0', fireMid: '#ff9a3a', fireOut: '#c84a18', glow: 'rgba(255,160,60,',
+    cap: '#5a4830', coilHi: 'rgba(255,200,120,',
+    bolt: '#1a1208', boltHi: 'rgba(255,200,120,0.4)',
+    ledOn: '#ffb04a', ledOff: '#3a2a18',
+    big: false, noFuel: false,                        // 2×2 小尺寸
+  };
+}
+// 通用炉子渲染：石炉/电炉共用绘制主体
+// 视觉分区（自下而上）：
+//   ① 罐底阴影 + 基座  ② 主外壳（顶亮底暗渐变）
+//   ③ 砖石/金属筋板纹理  ④ 顶部烟囱/感应圈
+//   ⑤ 中央炉膛（玻璃 + 内部火焰/等离子 + 进度文字）
+//   ⑥ 状态 LED + 燃料条（仅石炉/钢炉）
+//   ⑦ 4 角螺栓  ⑧ 罐体外框
 function drawFurnace(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
-  const s = TILE * e.w;
-  const sh = TILE * e.h;
-  const electric = e.type === 'electric-furnace';
-  const bodyC = electric ? '#2e7d5c' : '#8b8577';
-  const lineC = electric ? '#1a4f3a' : '#57524a';
-  const innerC = electric ? '#25694c' : '#6d6759';
+  const s = TILE * e.w, sh = TILE * e.h;
+  const cx = px + s / 2;
   ctx.globalAlpha = alpha;
-  ctx.fillStyle = bodyC;
-  rr(ctx, px + 3, py + 3, s - 6, sh - 6, 8); ctx.fill();
-  ctx.strokeStyle = lineC;
-  ctx.lineWidth = 3;
-  rr(ctx, px + 3, py + 3, s - 6, sh - 6, 8); ctx.stroke();
-  ctx.fillStyle = innerC;
-  rr(ctx, px + 9, py + 9, s - 18, 12, 3); ctx.fill();
-  if (e.lit) {
-    const fl = 0.55 + Math.sin(G.time * 12 + px) * 0.2;
-    ctx.fillStyle = electric ? 'rgba(64,216,160,' + (fl * 0.35).toFixed(2) + ')' : 'rgba(232,118,44,' + (fl * 0.35).toFixed(2) + ')';
-    rr(ctx, px + 9, py + 9, s - 18, 12, 3); ctx.fill();
+  const tier = _furnTierOf(e);
+  const working = e.lit && e.cur;
+  const fl = 0.55 + Math.sin((G.time || 0) * 10 + px) * 0.25;     // 火焰闪烁
+  const heat = working ? (0.55 + fl * 0.35) : 0.10;                 // 炉膛亮度
+
+  // ① 罐底阴影 + 基座
+  ctx.fillStyle = 'rgba(0,0,0,0.30)';
+  ctx.beginPath();
+  ctx.ellipse(cx, py + sh - 2, s * 0.42, 4.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = tier.line;
+  rr(ctx, px + 5, py + sh - 11, s - 10, 8, 3); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.fillRect(px + 9, py + sh - 6, s - 18, 0.8);
+
+  // ② 主外壳（顶亮底暗渐变）
+  const bodyGrad = ctx.createLinearGradient(0, py + 4, 0, py + sh - 4);
+  bodyGrad.addColorStop(0,    tier.body[0]);
+  bodyGrad.addColorStop(0.5,  tier.body[1]);
+  bodyGrad.addColorStop(1,    tier.body[2]);
+  ctx.fillStyle = bodyGrad;
+  const bodyR = tier.big ? 10 : 7;
+  rr(ctx, px + 3, py + 3, s - 6, sh - 6, bodyR); ctx.fill();
+
+  // ③ 砖石/金属筋板纹理
+  if (e.type === 'electric-furnace') {
+    // 金属筋板（左右各 3 条）
+    const ribXs = [px + s * 0.16, px + s * 0.32, px + s * 0.50 - 1,
+                   px + s * 0.50 + 1, px + s * 0.68, px + s * 0.84];
+    for (let i = 0; i < ribXs.length; i++) {
+      const darkSide = (i % 2 === 0);
+      ctx.fillStyle = darkSide ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.10)';
+      ctx.fillRect(ribXs[i], py + 26, 1.4, sh - 50);
+    }
+  } else {
+    // 砖石纹理：3 行错位砖块
+    const brickH = (sh - 26) / 3.5;
+    for (let r = 0; r < 3; r++) {
+      const by = py + 14 + r * brickH;
+      const offset = (r % 2 === 0) ? 0 : brickH * 0.5;
+      // 横向灰浆线
+      ctx.fillStyle = 'rgba(0,0,0,0.30)';
+      ctx.fillRect(px + 6, by, s - 12, 1);
+      // 竖向灰浆线（错位）
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      let bx = px + 6 - offset;
+      while (bx < px + s - 6) {
+        ctx.fillRect(bx, by, 1, brickH);
+        bx += brickH;
+      }
+    }
   }
-  ctx.fillStyle = '#3a3630';
-  rr(ctx, px + s * 0.24, py + s * 0.42, s * 0.52, s * 0.36, 6); ctx.fill();
-  if (e.lit) {
-    const fl = 0.65 + Math.sin(G.time * 12 + px) * 0.25;
-    ctx.fillStyle = electric ? 'rgba(64,216,160,' + fl.toFixed(2) + ')' : 'rgba(232,118,44,' + fl.toFixed(2) + ')';
-    rr(ctx, px + s * 0.27, py + s * 0.45, s * 0.46, s * 0.30, 4); ctx.fill();
-    ctx.fillStyle = electric ? 'rgba(200,255,230,' + (fl * 0.7).toFixed(2) + ')' : 'rgba(255,210,60,' + (fl * 0.7).toFixed(2) + ')';
-    rr(ctx, px + s * 0.32, py + s * 0.54, s * 0.36, s * 0.16, 3); ctx.fill();
+
+  // ④ 顶部装饰
+  if (e.type === 'electric-furnace') {
+    // 双感应圈（线圈缠绕的圆筒）
+    const drawCoil = (cx0) => {
+      // 底座
+      ctx.fillStyle = tier.line;
+      rr(ctx, cx0 - 9, py + 10, 18, 6, 1.5); ctx.fill();
+      // 圆筒
+      ctx.fillStyle = tier.body[0];
+      rr(ctx, cx0 - 7, py + 4, 14, 9, 1.5); ctx.fill();
+      ctx.strokeStyle = tier.line;
+      ctx.lineWidth = 0.8;
+      rr(ctx, cx0 - 7, py + 4, 14, 9, 1.5); ctx.stroke();
+      // 线圈（4 圈铜色金属丝）
+      for (let i = 0; i < 4; i++) {
+        ctx.fillStyle = (i % 2 === 0) ? '#d8a648' : '#a07828';
+        ctx.fillRect(cx0 - 7 + i * 4, py + 4, 1.4, 9);
+      }
+      // 顶部高光
+      ctx.fillStyle = tier.coilHi + '0.7)';
+      ctx.fillRect(cx0 - 6, py + 5, 12, 0.8);
+      // 通电时辉光
+      if (working) {
+        const gfl = 0.4 + Math.sin((G.time || 0) * 14 + cx0) * 0.3;
+        ctx.fillStyle = tier.glow + (gfl * 0.55).toFixed(2) + ')';
+        rr(ctx, cx0 - 9, py + 3, 18, 11, 2); ctx.fill();
+      }
+    };
+    drawCoil(px + s * 0.30);
+    drawCoil(px + s * 0.70);
+  } else {
+    // 单烟囱（石炉：短粗的陶土烟囱）
+    const sxC = cx;
+    // 烟囱底座
+    ctx.fillStyle = tier.line;
+    rr(ctx, sxC - 7, py + 13, 14, 5, 1.5); ctx.fill();
+    // 烟囱主体
+    const stackGrad = ctx.createLinearGradient(sxC - 6, 0, sxC + 6, 0);
+    stackGrad.addColorStop(0,   '#3a2e1c');
+    stackGrad.addColorStop(0.5, '#7a6244');
+    stackGrad.addColorStop(1,   '#3a2e1c');
+    ctx.fillStyle = stackGrad;
+    rr(ctx, sxC - 6, py + 5, 12, 9, 1.5); ctx.fill();
+    // 烟囱顶冠
+    ctx.fillStyle = tier.cap;
+    rr(ctx, sxC - 7, py + 4, 14, 3, 1); ctx.fill();
+    ctx.strokeStyle = tier.line;
+    ctx.lineWidth = 0.6;
+    rr(ctx, sxC - 7, py + 4, 14, 3, 1); ctx.stroke();
+    // 烟囱口（暗内孔）
+    ctx.fillStyle = '#1a1208';
+    ctx.fillRect(sxC - 4, py + 5, 8, 1);
+    // 烟囱中段高光
+    ctx.fillStyle = 'rgba(255,255,255,0.20)';
+    ctx.fillRect(sxC - 5, py + 7, 0.8, 5);
   }
+
+  // ⑤ 中央炉膛（深色凹陷 + 内部火焰/等离子 + 玻璃高光）
+  const wcX = tier.big ? px + 12 : px + 9;
+  const wcY = tier.big ? py + 26 : py + 24;
+  const wcW = s - (tier.big ? 24 : 18);
+  const wcH = sh - (tier.big ? 50 : 42);
+  // 炉膛外框（深色金属边）
+  ctx.fillStyle = tier.line;
+  rr(ctx, wcX, wcY, wcW, wcH, 4); ctx.fill();
+  // 炉膛内底
+  ctx.save();
+  rr(ctx, wcX + 1.5, wcY + 1.5, wcW - 3, wcH - 3, 3); ctx.clip();
+  // 底色（深色焦痕/玻璃后）
+  ctx.fillStyle = 'rgba(8, 6, 4, 0.85)';
+  ctx.fillRect(wcX + 1.5, wcY + 1.5, wcW - 3, wcH - 3);
+  // 火焰/等离子填充
+  if (heat > 0.15) {
+    const fireY = wcY + wcH * (1 - heat * 0.8);
+    const fireH = wcH * heat * 0.8;
+    const fireGrad = ctx.createLinearGradient(0, fireY, 0, wcY + wcH);
+    if (e.type === 'electric-furnace') {
+      // 绿能等离子：核心白绿→边缘墨绿
+      fireGrad.addColorStop(0,   _furnMix(tier.fireCore, 0.90));
+      fireGrad.addColorStop(0.4, _furnMix(tier.fireMid, 0.75));
+      fireGrad.addColorStop(1,   _furnMix(tier.fireOut, 0.30));
+    } else {
+      // 橙红火焰：核心白黄→边缘焦红
+      fireGrad.addColorStop(0,   _furnMix(tier.fireCore, 0.95));
+      fireGrad.addColorStop(0.4, _furnMix(tier.fireMid, 0.80));
+      fireGrad.addColorStop(1,   _furnMix(tier.fireOut, 0.30));
+    }
+    ctx.fillStyle = fireGrad;
+    ctx.fillRect(wcX + 1.5, fireY, wcW - 3, fireH);
+    // 表面波纹
+    if (working) {
+      const w1 = Math.sin((G.time || 0) * 6 + px) * 1.2;
+      ctx.fillStyle = e.type === 'electric-furnace'
+        ? 'rgba(220,255,230,0.55)'
+        : 'rgba(255,220,120,0.55)';
+      ctx.fillRect(wcX + 2, fireY + w1, wcW - 4, 1.2);
+    }
+  }
+  ctx.restore();
+  // 炉膛亮边
+  ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+  ctx.lineWidth = 0.9;
+  rr(ctx, wcX, wcY, wcW, wcH, 4); ctx.stroke();
+  // 玻璃左上高光（新月形）
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(wcX + 4, wcY + 4, Math.min(wcW, wcH) * 0.35, Math.PI * 1.1, Math.PI * 1.55);
+  ctx.stroke();
+
+  // ⑤b 进度文字（炉膛上方，冶炼中显示百分比）
   if (e.cur && e.prog > 0) {
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 12px system-ui';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(Math.floor(e.prog * 100) + '%', px + s / 2, py + 15);
+    ctx.font = 'bold 10px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // 描边（让白字在亮背景上仍可读）
+    ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+    ctx.lineWidth = 2.5;
+    ctx.strokeText(Math.floor(e.prog * 100) + '%', cx, py + 14);
+    ctx.fillText(Math.floor(e.prog * 100) + '%', cx, py + 14);
   }
-  if (!electric) {
-    const fuelPct = Math.min(1, e.burnLeft / COAL_ENERGY);
+
+  // ⑥ 状态 LED（仅大尺寸电炉显示在左下角）
+  if (tier.big) {
+    const ledY = py + sh - 17;
+    const on = !!e.lit;
+    ctx.fillStyle = on ? tier.ledOn : tier.ledOff;
+    ctx.beginPath(); ctx.arc(px + 14, ledY, 1.8, 0, Math.PI * 2); ctx.fill();
+    if (on) {
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.beginPath(); ctx.arc(px + 13.5, ledY - 0.5, 0.6, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // ⑥b 燃料条（石炉/钢炉专用；按 burnLeft / COAL_ENERGY 比例填充）
+  if (!tier.noFuel) {
+    const fuelY = py + sh - 12;
+    const fuelW = s - 20;
     ctx.fillStyle = '#20242b';
-    rr(ctx, px + 10, py + s - 12, s - 20, 5, 2); ctx.fill();
+    rr(ctx, px + 10, fuelY, fuelW, 5, 2); ctx.fill();
+    const fuelPct = Math.min(1, e.burnLeft / COAL_ENERGY);
     ctx.fillStyle = fuelPct > 0 ? '#e8762c' : '#c33';
-    rr(ctx, px + 10, py + s - 12, (s - 20) * fuelPct, 5, 2); ctx.fill();
+    rr(ctx, px + 10, fuelY, fuelW * fuelPct, 5, 2); ctx.fill();
+    // 燃料条高光
+    if (fuelPct > 0) {
+      ctx.fillStyle = 'rgba(255,255,255,0.30)';
+      ctx.fillRect(px + 11, fuelY, fuelW * fuelPct - 2, 1.2);
+    }
   }
+
+  // ⑦ 角部螺栓（电炉用 4 角，石炉因空间小只用 2 上角）
+  const drawBolt = (bx, by) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.beginPath(); ctx.arc(bx, by, 2.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = tier.bolt;
+    ctx.beginPath(); ctx.arc(bx, by, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = tier.boltHi;
+    ctx.beginPath(); ctx.arc(bx - 0.4, by - 0.4, 0.7, 0, Math.PI * 2); ctx.fill();
+  };
+  if (tier.big) {
+    drawBolt(px + 9,        py + 9);
+    drawBolt(px + s - 9,     py + 9);
+    drawBolt(px + 9,        py + sh - 9);
+    drawBolt(px + s - 9,     py + sh - 9);
+  } else {
+    drawBolt(px + 7, py + 9);
+    drawBolt(px + s - 7, py + 9);
+  }
+
+  // ⑧ 罐体外框描边（最上层）
+  ctx.strokeStyle = tier.line;
+  ctx.lineWidth = 2.2;
+  rr(ctx, px + 3, py + 3, s - 6, sh - 6, bodyR); ctx.stroke();
+  // 顶部圆弧高光
+  ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(cx, py + 4, s * 0.32, Math.PI * 1.05, Math.PI * 1.95);
+  ctx.stroke();
+
   ctx.globalAlpha = 1;
 }
 

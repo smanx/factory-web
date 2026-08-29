@@ -65,7 +65,7 @@ function _paintMinimapBg(pcx, pcy) {
         : (t === T_FOUNDATION) ? 'rgba(124,132,144,0.9)'
         : (t === T_ICE_PLATFORM) ? 'rgba(184,212,232,0.9)'
         : (t === T_SPACE_PLATFORM) ? 'rgba(110,112,120,0.9)'
-        : 'rgba(52,78,50,0.9)';
+        : 'rgba(104,108,60,0.9)';   // 草+土混合观感（与主地形露土风格一致）
       cctx.fillRect(px, py, z + 0.4, z + 0.4);
       // 矿脉标记
       const oi = getOreType(tx, ty);

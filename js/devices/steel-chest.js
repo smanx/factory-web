@@ -14,20 +14,9 @@ class SteelChest extends Chest {
   }
 }
 
-// ===== 渲染（钢箱：金属灰蓝配色）=====
+// ===== 渲染（钢箱：厚重深钢灰 + 双加强筋，复用 chest.js 的统一箱子渲染）=====
 function drawSteelChest(ctx, e, gx, gy, dir, alpha) {
-  const px = gx * TILE, py = gy * TILE;
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#6f7884';
-  rr(ctx, px + 4, py + 8, TILE - 8, TILE - 13, 3); ctx.fill();
-  ctx.fillStyle = '#8792a0';
-  rr(ctx, px + 4, py + 5, TILE - 8, 10, 3); ctx.fill();
-  ctx.strokeStyle = '#434b57';
-  ctx.lineWidth = 1.5;
-  rr(ctx, px + 4, py + 8, TILE - 8, TILE - 13, 3); ctx.stroke();
-  ctx.fillStyle = '#b8c4d2';
-  ctx.fillRect(px + TILE / 2 - 2, py + 12, 4, 6);
-  ctx.globalAlpha = 1;
+  drawChestBox(ctx, e, gx, gy, dir, alpha, CHEST_TIERS.steel, null);
 }
 
 // ===== 面板：复用储物箱面板（含存量上限），仅文案标注钢箱=====

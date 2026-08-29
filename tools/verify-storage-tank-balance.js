@@ -55,6 +55,7 @@ vm.runInContext(
   + load('data/data-buildings.js') + '\n'
   + load('core/entity.js') + '\n'
   + load('devices/pipe.js') + '\n'
+  + load('devices/pipe-ground.js') + '\n'
   // 储液罐依赖 CircuitNode（circuit.js）与若干设备类；此处提供最小桩，仅验证罐↔管流通
   + 'const PORT_FLUID = "#c9a84a"; const DEVICE_FLUID_ICONS = {};'
   // 忠实复刻 core/draw.js 的 sideNeighborCell（储液罐 isPortCell 依赖它判定对角接口格）
@@ -66,14 +67,15 @@ vm.runInContext(
   + 'class Refinery extends Entity {} class ChemicalPlant extends Entity {} class Assembler extends Entity {}'
   + 'class ElectricDrill extends Entity {}'
   + load('devices/storage-tank.js') + '\n'
-  + 'globalThis.__Entity=Entity;globalThis.__Pipe=Pipe;globalThis.__StorageTank=StorageTank;'
+  + 'globalThis.__Entity=Entity;globalThis.__Pipe=Pipe;globalThis.__PipeToGround=PipeToGround;'
+  + 'globalThis.__StorageTank=StorageTank;'
   + 'globalThis.__Refinery=Refinery;globalThis.__ChemicalPlant=ChemicalPlant;globalThis.__Assembler=Assembler;'
   + 'globalThis.__ElectricDrill=ElectricDrill;'
   + 'globalThis.__PIPE_CAP=PIPE_CAP;globalThis.__STORAGE_TANK_CAP=STORAGE_TANK_CAP;',
   sandbox, { filename: 'storage-tank.js' }
 );
 
-const { __Entity: Entity, __Pipe: Pipe, __StorageTank: StorageTank,
+const { __Entity: Entity, __Pipe: Pipe, __PipeToGround: PipeToGround, __StorageTank: StorageTank,
         __Refinery: Refinery, __PIPE_CAP: PIPE_CAP, __STORAGE_TANK_CAP: STORAGE_TANK_CAP } = sandbox;
 
 let pass = 0, fail = 0;
@@ -106,17 +108,18 @@ class MockRefinery extends Refinery {
 function tickN(ents, n) { for (let i = 0; i < n; i++) for (const e of ents) e.update(0.05); }
 
 console.log('容量常量：STORAGE_TANK_CAP=' + STORAGE_TANK_CAP + '（官方 25000），PIPE_CAP=' + PIPE_CAP + '（官方 100）');
-console.log('储液罐 3×3 的 4 个接口格（isPortCell）为：北·左上(西列)、西·左上(北行)、南·右下(东列)、东·右下(南行)。');
+console.log('储液罐 2×2 的 4 个接口格（isPortCell）集中在一对对角角落（对齐官方 factorio-data pipe_connections）：');
+console.log('  dir 0/2 → 北西角（北面口+西面口）+ 南东角（东面口+南面口）；dir 1/3 → 北东角 + 南西角。');
 
 console.log('\n【A. 罐 2000、紧邻接口格单管、无消费】');
 fresh();
 {
   const tank = put(new StorageTank('storage-tank', 20, 20));
   tank.fluid = { 'crude-oil': 2000 };
-  const p = pipe(20, 19);          // 北·左上接口格（side3,cell0）
+  const p = pipe(20, 19);          // 北西角·北面口（西北格上方）
   ok(tank.isPortCell(p.x, p.y), '管道所在格是罐的接口格（isPortCell=true）');
-  const pBad = pipe(24, 20);       // 东侧中行(23,20)外侧：紧贴但不是接口格、且不挨其它管
-  ok(!tank.isPortCell(pBad.x, pBad.y), '紧贴但非接口格（24,20 邻 23,20）isPortCell=false → 罐不与其直接交换');
+  const pBad = pipe(22, 20);       // 北东角·东面口(82,20 同款位置)：紧贴但 dir0 下非接口格（接口在南东角东面 22,21）
+  ok(!tank.isPortCell(pBad.x, pBad.y), '紧贴但非接口格（22,20 邻 21,20）isPortCell=false → 罐不与其直接交换');
   tickN([tank, p, pBad], 400);
   ok(p.total() > 0, '接口格的管道收到液体（p=' + p.total() + '）');
   ok(pBad.total() === 0, '非接口格的管道始终为 0（不与罐直接交换）');
@@ -157,6 +160,64 @@ fresh();
   ok(p1.total() > 0 && p2.total() > 0 && p3.total() > 0, '流体能沿管网逐根传导');
   ok(Math.abs(p2.total() - p1.total()) <= 3 && Math.abs(p3.total() - p1.total()) <= 3,
     '管网内各管液位趋平（比例均分）');
+}
+
+console.log('\n【D. 接口角落布局（对齐官方 pipe_connections + two_direction_only）】');
+fresh();
+{
+  const tank = put(new StorageTank('storage-tank', 80, 20));
+  // dir=0：北西角（北面口 (80,19) + 西面口 (79,20)）+ 南东角（南面口 (81,22) + 东面口 (82,21)）
+  tank.dir = 0;
+  ok(tank.isPortCell(80, 19) && tank.isPortCell(79, 20) && tank.isPortCell(81, 22) && tank.isPortCell(82, 21),
+    'dir0：接口在 北西角+南东角 的 4 个角落格');
+  ok(!tank.isPortCell(81, 19) && !tank.isPortCell(79, 21) && !tank.isPortCell(80, 22) && !tank.isPortCell(82, 20),
+    'dir0：另一对对角（北东/南西）及面中格均不可接');
+  // dir=1：旋转 90° 切换为 北东角（北面口 (81,19) + 东面口 (82,20)）+ 南西角（南面口 (80,22) + 西面口 (79,21)）
+  tank.dir = 1;
+  ok(tank.isPortCell(81, 19) && tank.isPortCell(82, 20) && tank.isPortCell(80, 22) && tank.isPortCell(79, 21),
+    'dir1：接口切换到 北东角+南西角');
+  ok(!tank.isPortCell(80, 19) && !tank.isPortCell(82, 21), 'dir1：原北西/南东对角不再可接');
+  // dir=2 与 dir=0 同一对角（two_direction_only：180° 旋转回到同一对）
+  tank.dir = 2;
+  ok(tank.isPortCell(80, 19) && tank.isPortCell(82, 21), 'dir2：与 dir0 同一对角（two_direction_only）');
+}
+
+console.log('\n【E. 地下管道直接接储液罐接口（管口侧互通，背向不通）】');
+function ptg(x, y, d) { const p = put(new PipeToGround('pipe-to-ground', x, y)); p.dir = d; return p; }
+fresh();
+{
+  // 布局：罐(20,20) ─ 北西角北面口 ─ 地下管道A(20,19,dir=3 管口朝南对罐) ⇄ 背靠背配对 B(20,18,dir=1) ─ 管口 ─ 普通管道(20,17)
+  const tank = put(new StorageTank('storage-tank', 20, 20));
+  tank.fluid = { 'crude-oil': 2000 };
+  const pgA = ptg(20, 19, 3);
+  const pgB = ptg(20, 18, 1);
+  const p = pipe(20, 17);
+  ok(pgA.isPaired(), '两座地下管道背靠背配对（A↔B）');
+  ok(tank.isPortCell(pgA.x, pgA.y), '地下管道 A 位于罐的接口格（管口对罐）');
+  tickN([tank, pgA, pgB, p], 400);
+  console.log('      → 400 步后：远端管道=' + p.total() + '，A=' + pgA.total() + '，B=' + pgB.total() + '，罐=' + tank.total());
+  ok(p.total() > 0, '罐 → 接口地下管道 → 配对端 → 远端管道：全链路流出（p=' + p.total() + '）');
+  ok(tank.total() < 2000, '罐确实向地下管道下放（tank=' + tank.total() + '）');
+}
+fresh();
+{
+  // 反向：远端管道 → 配对地下管道 → 管口对罐 → 罐收流
+  const tank = put(new StorageTank('storage-tank', 20, 20));
+  const pgA = ptg(20, 19, 3);
+  const pgB = ptg(20, 18, 1);
+  const p = pipe(20, 17);
+  p.fluid = { 'crude-oil': 80 };
+  tickN([tank, pgA, pgB, p], 400);
+  ok(tank.total() > 0, '远端管道 → 地下管道 → 罐：流体灌入罐（tank=' + tank.total() + '）');
+}
+fresh();
+{
+  // 负例：地下管道位于接口格但背向罐（管口朝外，地下段从罐底穿过）→ 不互通
+  const tank = put(new StorageTank('storage-tank', 20, 20));
+  tank.fluid = { 'crude-oil': 2000 };
+  const pgA = ptg(20, 19, 1);   // dir=1：管口朝北（背离罐），地下段朝南从罐底穿过
+  tickN([tank, pgA], 200);
+  ok(pgA.total() === 0, '背向（地下管段侧）对罐：不互通（pgA=' + pgA.total() + '）');
 }
 
 console.log('\n结果：通过 ' + pass + ' 项，失败 ' + fail + ' 项');

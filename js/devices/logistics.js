@@ -668,45 +668,63 @@ function assignRecycleTask(r) {
 }
 
 // ===== 渲染 =====
-function drawLogiChestBase(ctx, px, py, base, lid, stroke, alpha) {
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = base;
-  rr(ctx, px + 4, py + 8, TILE - 8, TILE - 13, 3); ctx.fill();
-  ctx.fillStyle = lid;
-  rr(ctx, px + 4, py + 5, TILE - 8, 10, 3); ctx.fill();
-  ctx.strokeStyle = stroke;
-  ctx.lineWidth = 1.5;
-  rr(ctx, px + 4, py + 8, TILE - 8, TILE - 13, 3); ctx.stroke();
-  ctx.globalAlpha = 1;
-}
-function drawLogiChest(ctx, e, gx, gy, dir, alpha, colors, mark) {
-  const px = gx * TILE, py = gy * TILE;
-  drawLogiChestBase(ctx, px, py, colors.base, colors.lid, colors.stroke, alpha);
-  // 物流标记徽章
-  ctx.fillStyle = colors.badge;
-  ctx.beginPath();
-  ctx.arc(px + TILE - 7, py + 7, 5, 0, 7);
-  ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 7px system-ui';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(mark, px + TILE - 7, py + 7);
-  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+// 物流箱：箱体整体按各类型功能色上色，对齐《异星工厂》2.0 物流箱配色
+// （官方中文文案：被动供货箱（红箱）/主动供货箱（紫箱）/被动存货箱（黄箱）/
+//   优先集货箱（蓝箱）/主动存货箱（绿箱）），
+// 盖顶上方信号灯随呼吸辉光、箱体正面底部信号条，一眼区分五类物流箱职能；
+// 正面以 noCorner 省去护角，留给锁扣/双筋/信号条更干净。
+// 每类一套与主题色匹配的金属漆渐变（tier 结构同 CHEST_TIERS，ribs=2 双加强筋）。
+const LOGI_CHEST_TIERS = {
+  passive:   { grad:['#e05a4a','#c43a2e','#8e241c'], lidG:['#ea6e5c','#c94634'], lidTop:'#f0876f', line:'#6b1c16', rib:'#b0362a', rivet:'#f5c2b8', pallet:'#4e1210', style:'metal', ribs:2, noCorner:true },
+  active:    { grad:['#b279d8','#8e54c0','#64348c'], lidG:['#bd88e0','#9a63ca'], lidTop:'#caa0ec', line:'#4a2266', rib:'#7d4fa8', rivet:'#e4c8f5', pallet:'#3a1c50', style:'metal', ribs:2, noCorner:true },
+  storage:   { grad:['#e6cf62','#cdb643','#a3881f'], lidG:['#eed874','#cfae45'], lidTop:'#f2e08a', line:'#6e5c14', rib:'#b39a33', rivet:'#f0e6b0', pallet:'#57470f', style:'metal', ribs:2, noCorner:true },
+  requester: { grad:['#6f98dc','#5480c4','#3a5c8e'], lidG:['#7fa6e2','#5f8cd4'], lidTop:'#8fb0e8', line:'#2c4266', rib:'#4d76b0', rivet:'#bcd2f2', pallet:'#16243c', style:'metal', ribs:2, noCorner:true },
+  buffer:    { grad:['#83c068','#5f9e46','#3f7229'], lidG:['#8fc978','#6aa84e'], lidTop:'#a3d689', line:'#2a4d18', rib:'#548a3c', rivet:'#d4ecc4', pallet:'#263d14', style:'metal', ribs:2, noCorner:true },
+};
+const LOGI_CHEST_ACCENTS = {
+  passive:   { color: '#e04a3a' },  // 红：可被机器人取货
+  active:    { color: '#a868d8' },  // 紫：优先供向网络
+  storage:   { color: '#e8c83a' },  // 黄：收纳返还/多余货物
+  requester: { color: '#5a8ad0' },  // 蓝：按需求收货
+  buffer:    { color: '#68b04e' },  // 绿：中转缓冲
+};
+function drawLogiChest(ctx, e, gx, gy, dir, alpha, kind) {
+  const A = LOGI_CHEST_ACCENTS[kind];
+  const tier = LOGI_CHEST_TIERS[kind];
+  const pulse = 0.55 + 0.3 * Math.sin((G.time || 0) * 5 + (gx * 7 + gy * 13));
+  drawChestBox(ctx, e, gx, gy, dir, alpha, tier, (g, px, py) => {
+    const cx = px + TILE / 2;
+    // 盖顶上方信号灯座 + 呼吸灯（功能色，像天线指示灯凸起）
+    g.fillStyle = '#232a34';
+    rr(g, cx - 3, py + 3.1, 6, 2.2, 1); g.fill();
+    g.fillStyle = A.color;
+    g.beginPath(); g.arc(cx, py + 4.2, 1.7 + pulse * 0.4, 0, Math.PI * 2); g.fill();
+    g.fillStyle = 'rgba(255,255,255,' + (0.25 + pulse * 0.2).toFixed(2) + ')';
+    g.beginPath(); g.arc(cx - 0.5, py + 3.9, 0.65, 0, Math.PI * 2); g.fill();
+    // 箱体正面底部功能色信号条（带顶部高光/底缘收边）
+    const barY = py + 22, barH = 2.4;
+    g.fillStyle = A.color;
+    rr(g, px + 7, barY, 18, barH, 1); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.35)';
+    rr(g, px + 7, barY, 18, 0.8, 0.4); g.fill();
+    g.fillStyle = 'rgba(0,0,0,0.30)';
+    rr(g, px + 7, barY + barH - 0.7, 18, 0.7, 0.35); g.fill();
+  });
 }
 function drawLogiPassive(ctx, e, gx, gy, dir, alpha) {
-  drawLogiChest(ctx, e, gx, gy, dir, alpha, { base: '#9c7c2e', lid: '#b89a4a', stroke: '#6a5620', badge: '#8a6a2a' }, '供');
+  drawLogiChest(ctx, e, gx, gy, dir, alpha, 'passive');
 }
 function drawLogiActive(ctx, e, gx, gy, dir, alpha) {
-  drawLogiChest(ctx, e, gx, gy, dir, alpha, { base: '#b06a2e', lid: '#c98a4a', stroke: '#7a4a20', badge: '#d0743a' }, '主');
+  drawLogiChest(ctx, e, gx, gy, dir, alpha, 'active');
 }
 function drawLogiStorage(ctx, e, gx, gy, dir, alpha) {
-  drawLogiChest(ctx, e, gx, gy, dir, alpha, { base: '#6a7a4a', lid: '#84945e', stroke: '#4a5630', badge: '#8a9a6a' }, '仓');
+  drawLogiChest(ctx, e, gx, gy, dir, alpha, 'storage');
 }
 function drawLogiRequester(ctx, e, gx, gy, dir, alpha) {
-  drawLogiChest(ctx, e, gx, gy, dir, alpha, { base: '#4a6a9c', lid: '#5f84b8', stroke: '#334a6a', badge: '#5a8ad0' }, '需');
+  drawLogiChest(ctx, e, gx, gy, dir, alpha, 'requester');
 }
 function drawLogiBuffer(ctx, e, gx, gy, dir, alpha) {
-  drawLogiChest(ctx, e, gx, gy, dir, alpha, { base: '#9c8a4a', lid: '#b8a860', stroke: '#6a5e2e', badge: '#c8a05a' }, '缓');
+  drawLogiChest(ctx, e, gx, gy, dir, alpha, 'buffer');
 }
 
 function drawRoboport(ctx, e, gx, gy, dir, alpha) {

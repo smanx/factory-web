@@ -2,8 +2,15 @@
 
 // ===== 热能机械臂 Burner Inserter（对齐《异星工厂》Burner inserter）=====
 // 烧煤驱动的机械臂：无需电力，开局即可用。与普通机械臂一样严格单向取放，
-// 但工作时需要持续消耗煤作燃料（像热能采矿机）。无煤时停摆。
+// 但工作时需要持续消耗煤作燃料（像热能采矿机）。
 // 可放入组装机/石炉/采矿机等邻格设备取放物品，也可从燃料箱/机械臂供煤。
+// 自补给优先：储备燃料 ≤ BURNER_SELF_FEED_MAX 时先从取物格给自己抓燃料
+// （一次 1 个直接入炉，不看筛选白/黑名单——活命优先），储备 > 阈值后才为
+// 放物目标搬运；炉膛烧空时也允许转身自救，无煤可抓且炉膛已空才停摆。
+// 自补给可抓的燃料类型（与 giveItem 接受的一致），列表顺序即取用优先级：煤 > 木材 > 固体燃料 > 火箭燃料
+const BURNER_FUELS = ['coal', 'wood', 'solid-fuel', 'rocket-fuel'];
+// 自补给阈值：储备燃料（燃料仓未烧的件数之和，不含正在烧的 burnLeft）≤ 2 时优先自补给
+const BURNER_SELF_FEED_MAX = 2;
 class BurnerInserter extends Inserter {
   constructor(type, x, y) {
     super(type || 'burner-inserter', x, y);
@@ -61,19 +68,74 @@ class BurnerInserter extends Inserter {
     if (this.fuelWood > 0) list.push(['wood', this.fuelWood]);
     return list;
   }
+  // 储备燃料总件数（燃料仓里还没烧的；不含正在炉膛里烧的 burnLeft）
+  fuelStored() {
+    return this.fuelCoal + this.fuelWood + this.fuelSolid + this.fuelRocket;
+  }
+  // ===== 自补给优先（本类核心行为）=====
+  // 空手且储备 ≤ BURNER_SELF_FEED_MAX：先转身到取物格给自己抓燃料（一次 1 个直接入炉），
+  // 不为放物目标搬运；直到储备 > 阈值才恢复标准取放。
+  // 炉膛彻底烧空也允许转身自补给（自救：避免守着燃料带却饿死的死锁）；
+  // 取物格没有燃料可抓时：炉膛还有火则照常搬运，烧空且无燃料才停摆等待。
   update(dt) {
-    if (!this.hasFuel()) {
-      // 缺煤：若正持物则保持不动等待燃料
-      this._probeT = 0.15;
-      return;
+    this._selfFeed = false;
+    if (this.holdingCount <= 0 && this.fuelStored() <= BURNER_SELF_FEED_MAX) {
+      if (this.selfFeedUpdate(dt)) {
+        // 本帧用于自补给（转身/等待/进食）：转身按时间烧燃料（烧空时 consumeFuel 无事可烧）
+        this._selfFeed = true;
+        if (this.rotating) this.consumeFuel(dt);
+        this._fuelT = 0;
+        return;
+      }
+      if (!this.hasFuel()) { this._probeT = 0.15; return; }   // 无燃料可自补且烧空：停摆等待
     }
-    const wasWorking = this.holdingCount > 0 || this.rotating;
+    // 储备充足（> 阈值）/ 持物途中 / 低储备但无燃料可自补：走标准取放状态机
     super.update(dt);
     const isWorking = this.holdingCount > 0 || this.rotating;
-    // 只有实际在搬运时才烧煤（持续干活按时间扣燃料）
     if (isWorking) this.consumeFuel(dt);
-    else if (wasWorking) { /* 刚停下来，不做额外处理 */ }
     this._fuelT = 0;
+  }
+  // 自补给子状态机：转身到取物格 → 到位后降频抓 1 个燃料入炉（约 5 次/秒，惰性调度）。
+  // 返回 true = 本帧用于自补给（保持自补给模式）；false = 取物格没有可抓的燃料，交还控制权。
+  selfFeedUpdate(dt) {
+    if (!this.circuitEnabled()) { this.rotating = false; return true; }   // 电路条件不满足：停转等待
+    if (this.armAng === undefined) this.armAng = this.pickAng();
+    const step = Math.PI * 4.4 * (this.rotSpeed || 1) * dt;
+    const target = this.pickAng();
+    this.blocked = false;
+    if (Math.abs(angNorm(target - this.armAng)) >= 0.05) {
+      this.rotating = true;
+      this.armAng = approachAng(this.armAng, target, step);
+      if (Math.abs(angNorm(target - this.armAng)) < 0.05) this.armAng = target;
+      return true;
+    }
+    this.rotating = false;
+    this.armAng = target;
+    this._sfProbeT = (this._sfProbeT || 0) - dt;
+    if (this._sfProbeT > 0) return true;
+    this._sfProbeT = 0.15;
+    if (this.trySelfFeed()) {
+      if (typeof onScreen === 'function' && onScreen(this) && typeof playSfx === 'function') playSfx('inserter');
+      return true;
+    }
+    // 没抓到燃料：清零标准状态机的探测节流再交还控制权，让父级本帧立即探测正常取物
+    //（否则父级 _probeT 只在偶尔落进来的帧里递减，低储备无燃料源时的搬运会被拖慢）
+    this._probeT = 0;
+    return false;
+  }
+  // 从取物格抓 1 个燃料（按 BURNER_FUELS 优先级）直接吃进自己的燃料仓。
+  // 复用 takeNFrom 的取物语义（传送带近侧优先 / 箱子 takeItemOf），一次只吃 1 个；
+  // 储备 ≤ 2 时各燃料槽都远未到上限（5），giveItem 必成功。不看筛选名单（活命优先）。
+  trySelfFeed() {
+    const s = this.entAtPick();
+    if (!s) return false;
+    for (const f of BURNER_FUELS) {
+      if (this.takeNFrom(s, f, 1).length) {
+        this.giveItem(f);
+        return true;
+      }
+    }
+    return false;
   }
   serialize() {
     const s = super.serialize();
@@ -95,24 +157,19 @@ class BurnerInserter extends Inserter {
   }
 }
 
-// ===== 渲染：热能机械臂带小燃料仓与黑灰臂体（主配色黑灰） =====
+// ===== 渲染：热能机械臂（主配色黑灰 + 转台尾部炉膛火光，见 drawInserter）=====
 function drawBurnerInserter(ctx, e, gx, gy, dir, alpha) {
-  // 复用普通机械臂臂体绘制，但用烧煤配色 + 燃料槽
+  // 复用通用机械臂绘制（黑灰主题 + 炉膛火光 + 缺燃料红 LED），再叠加燃料槽
   drawInserter(ctx, e, gx, gy, dir, alpha);
   const px = gx * TILE, py = gy * TILE;
   ctx.save();
   ctx.globalAlpha = alpha;
-  // 底部燃料仓（橙色小槽）
-  ctx.fillStyle = '#20242b';
-  rr(ctx, px + 6, py + TILE - 10, TILE - 12, 6, 2); ctx.fill();
+  // 底部燃料槽（贴地，紧挨基座下方）：橙=余量，暗红=耗尽（缺料警示由基座右上红闪 LED 承担）
+  ctx.fillStyle = '#15181c';
+  rr(ctx, px + 6, py + 27, TILE - 12, 4, 2); ctx.fill();
   const pct = e.hasFuel() ? Math.min(1, (e.burnLeft + e.fuelCoal * 4 + e.fuelSolid * 4 + e.fuelRocket * 4 + e.fuelWood) / 5) : 0;
   ctx.fillStyle = pct > 0 ? '#e8762c' : '#8a2c1c';
-  rr(ctx, px + 7, py + TILE - 9, (TILE - 14) * pct, 4, 2); ctx.fill();
-  if (!e.hasFuel()) {
-    // 缺煤警示
-    ctx.fillStyle = 'rgba(255,80,60,.8)';
-    ctx.fillRect(px + TILE - 11, py + 6, 4, 4);
-  }
+  rr(ctx, px + 7, py + 27.7, (TILE - 14) * pct, 2.6, 1.3); ctx.fill();
   ctx.restore();
 }
 
@@ -132,11 +189,14 @@ function burnerInserterOnAction(act, btn) {
 }
 function burnerInserterPanelLive(e, api, body) {
   api.set('fuel', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '') + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) + ' ' : '') + (e.fuelWood > 0 ? chip('wood', e.fuelWood) : (e.fuelRocket <= 0 && e.fuelSolid <= 0 && e.fuelCoal <= 0 ? dimSpan('无') : '')));
-  if (!e.hasFuel()) { api.status('已暂停：缺燃料，加入煤/固体燃料/火箭燃料', 'warn'); return; }
+  if (!e.hasFuel()) { api.status('燃料耗尽：取物格出现煤/木材/固体燃料/火箭燃料时会自动抓取自救', 'warn'); return; }
+  if (e.fuelStored() <= BURNER_SELF_FEED_MAX) { api.status('低燃料：优先给自己抓燃料，储备 > ' + BURNER_SELF_FEED_MAX + ' 后恢复搬运', 'warn'); return; }
   inserterPanelLive(e, api, body);   // 复用普通机械臂的状态/图标/抓取刷新
 }
 function burnerInserterTip(e) {
-  if (!e.hasFuel()) return '热能机械臂：缺燃料停摆';
+  if (e.fuelStored() <= BURNER_SELF_FEED_MAX) {
+    return e.hasFuel() ? '热能机械臂：燃料不足，优先自补给中' : '热能机械臂：燃料耗尽，等待自补给';
+  }
   return e.holding ? ('搬运 ' + ITEMS[e.holding].name) : '热能机械臂：待机';
 }
 
@@ -144,6 +204,6 @@ function burnerInserterTip(e) {
 const burnerInserterPanel = { html: burnerInserterPanelHtml, live: burnerInserterPanelLive, tip: burnerInserterTip, onAction: burnerInserterOnAction };
 ENT_CLASSES['burner-inserter'] = BurnerInserter;
 DEVICE_RENDER['burner-inserter'] = drawBurnerInserter;
-DEVICE_STATUS['burner-inserter'] = e => e.holding || e.rotating ? (e.blocked ? 'y' : 'g') : (e.hasFuel() ? 'r' : 'r');
+DEVICE_STATUS['burner-inserter'] = e => (e.holding || e.rotating || e._selfFeed) ? (e.blocked ? 'y' : 'g') : 'r';
 DEVICE_PANEL['burner-inserter'] = burnerInserterPanel;
 DEVICE_DIR_ROTATE['burner-inserter'] = true;

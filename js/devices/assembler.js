@@ -223,41 +223,210 @@ class Assembler extends Entity {
   }
 }
 
-// ===== 渲染（组装机 I/II 共用，按 type 换色）=====
+// ===== 渲染（组装机 I/II/III 共用绘制主体，按 type 切换 tier 配色）=====
+// 视觉分区（自下而上）：
+//   ① 罐底阴影 + 基座  ② 主外壳（顶亮底暗渐变）
+//   ③ 焊接筋板  ④ 顶部机械臂横梁 + 左右 2 支机械臂（运转时上下摆动）
+//   ⑤ 中央作业窗（玻璃 + 配方图标 + 底部传送带滚动）
+//   ⑥ 状态 LED（左右 2 颗）+ 中央档位徽章
+//   ⑦ 4 角螺栓  ⑧ 流体端口（北=入口，南=出口）  ⑨ 罐体外框
+// 三档共用同一套结构，只换配色：MK1=钢灰 / MK2=科技蓝 / MK3=翠绿
+function _asmTierOf(e) {
+  if (e.type === 'assembling-machine-3') return {
+    label: 'III',
+    body: ['#7ad88c', '#3aa860', '#1a5838'], line: '#0a2e1c', inner: '#2a7048',
+    armC: '#c8f4d0', beamC: '#4ab068', bolt: '#0a2018', boltHi: 'rgba(180,240,200,0.4)',
+    trim: null, ledOn: '#a8f07a', ledOff: '#1a3828',
+  };
+  if (e.type === 'assembling-machine-2') return {
+    label: 'II',
+    body: ['#7aabd8', '#3e74b0', '#1e4470'], line: '#0e2040', inner: '#2a5478',
+    armC: '#c8e0f8', beamC: '#4a78b0', bolt: '#0a1a30', boltHi: 'rgba(180,210,240,0.4)',
+    trim: null, ledOn: '#9ce06c', ledOff: '#1a2840',
+  };
+  return {
+    label: 'I',
+    body: ['#9aa4b0', '#5a6470', '#2e3640'], line: '#1a2028', inner: '#3e4854',
+    armC: '#d0d8e0', beamC: '#6a7480', bolt: '#0e1218', boltHi: 'rgba(220,230,240,0.4)',
+    trim: null, ledOn: '#9ce06c', ledOff: '#2a3038',
+  };
+}
 function drawAssembler(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
-  const s = TILE * e.w;
-  const sh = TILE * e.h;
-  const mk2 = e.type === 'assembling-machine-2';
-  const bodyC = mk2 ? '#6b4d8f' : '#4d5f8f';
-  const lineC = mk2 ? '#3c2a52' : '#2e3a5c';
-  const innerC = mk2 ? '#4c3a66' : '#3a486e';
+  const s = TILE * e.w, sh = TILE * e.h;
+  const cx = px + s / 2;
   ctx.globalAlpha = alpha;
-  ctx.fillStyle = bodyC;
-  rr(ctx, px + 3, py + 3, s - 6, sh - 6, 7); ctx.fill();
-  ctx.strokeStyle = lineC;
-  ctx.lineWidth = 3;
-  rr(ctx, px + 3, py + 3, s - 6, sh - 6, 7); ctx.stroke();
-  ctx.fillStyle = innerC;
-  rr(ctx, px + 10, py + 10, s - 20, sh - 20, 5); ctx.fill();
-  ctx.save();
-  ctx.translate(px + s / 2, py + s / 2);
-  ctx.rotate(e.crafting ? e.spin : 0);
-  ctx.fillStyle = e.crafting ? '#cdd6ea' : '#8b98bd';
-  gearShape(ctx, 0, 0, 18, 12, 8);
+  const tier = _asmTierOf(e);
+  const working = e.crafting;
+
+  // ① 罐底阴影 + 基座
+  ctx.fillStyle = 'rgba(0,0,0,0.30)';
+  ctx.beginPath();
+  ctx.ellipse(cx, py + sh - 2, s * 0.42, 4.5, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.restore();
+  ctx.fillStyle = tier.line;
+  rr(ctx, px + 5, py + sh - 11, s - 10, 8, 3); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.fillRect(px + 9, py + sh - 6, s - 18, 0.8);
+
+  // ② 主外壳（顶亮底暗渐变）
+  const bodyGrad = ctx.createLinearGradient(0, py + 4, 0, py + sh - 4);
+  bodyGrad.addColorStop(0,    tier.body[0]);
+  bodyGrad.addColorStop(0.5,  tier.body[1]);
+  bodyGrad.addColorStop(1,    tier.body[2]);
+  ctx.fillStyle = bodyGrad;
+  rr(ctx, px + 3, py + 3, s - 6, sh - 6, 9); ctx.fill();
+
+  // ③ 焊接筋板（左右各 2 条，明暗交替）
+  const ribXs = [px + s * 0.18, px + s * 0.50 - 1, px + s * 0.50 + 1, px + s * 0.82];
+  for (let i = 0; i < ribXs.length; i++) {
+    const darkSide = (i === 0 || i === 3);
+    ctx.fillStyle = darkSide ? 'rgba(0,0,0,0.22)' : (i === 1 ? 'rgba(0,0,0,0.18)' : 'rgba(255,255,255,0.10)');
+    ctx.fillRect(ribXs[i], py + 28, 1.4, sh - 50);
+    ctx.fillStyle = darkSide ? 'rgba(255,255,255,0.10)' : (i === 1 ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.18)');
+    ctx.fillRect(ribXs[i] + (darkSide ? 1.4 : -0.5), py + 28, 0.5, sh - 50);
+  }
+
+  // ④ 顶部机械臂横梁
+  ctx.fillStyle = tier.beamC;
+  rr(ctx, px + 8, py + 12, s - 16, 8, 2.5); ctx.fill();
+  ctx.strokeStyle = tier.line;
+  ctx.lineWidth = 1;
+  rr(ctx, px + 8, py + 12, s - 16, 8, 2.5); ctx.stroke();
+  // 横梁高光
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.fillRect(px + 12, py + 13, s - 24, 1);
+  // 轨道齿（横梁下沿小竖线，模拟齿轮齿条）
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  for (let i = 0; i < 6; i++) ctx.fillRect(px + 11 + i * ((s - 22) / 5), py + 18, 1, 2);
+
+  // ⑤ 左右 2 支机械臂（仅运转时上下摆动；MK3 摆动幅度更大以体现高速；未运转时静止收拢）
+  const armSpd = (e.type === 'assembling-machine-3' ? 9 : 6);
+  const armAmp = (e.type === 'assembling-machine-3' ? 3.5 : 2.5);
+  const drawArm = (ax, phase) => {
+    const yBase = py + 22, yReach = 14 + (working ? Math.sin((G.time || 0) * armSpd + phase) * armAmp : 0);
+    // 滑块（挂在横梁上）
+    ctx.fillStyle = tier.line;
+    rr(ctx, ax - 3, py + 19, 6, 4, 1); ctx.fill();
+    // 垂直臂杆
+    ctx.fillStyle = tier.armC;
+    ctx.fillRect(ax - 1.4, yBase, 2.8, yReach);
+    // 关节（深色铰链点）
+    ctx.fillStyle = tier.line;
+    ctx.beginPath(); ctx.arc(ax, yBase + 2, 1.4, 0, Math.PI * 2); ctx.fill();
+    // 机械爪末端
+    ctx.fillStyle = '#2a2a3a';
+    rr(ctx, ax - 4, yBase + yReach - 2, 8, 4, 1); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fillRect(ax - 3, yBase + yReach - 2, 6, 0.7);
+  };
+  drawArm(px + s * 0.32, 0);
+  drawArm(px + s * 0.68, 1.2);
+
+  // ⑥ 中央作业窗（深色凹陷 + 玻璃高光 + 配方图标 + 底部传送带滚动）
+  const wcX = px + 12, wcY = py + 38, wcW = s - 24, wcH = sh - 62;
+  ctx.fillStyle = tier.inner;
+  rr(ctx, wcX, wcY, wcW, wcH, 4); ctx.fill();
+  // MK3 镀金镶边
+  if (tier.trim) {
+    ctx.strokeStyle = tier.trim;
+    ctx.lineWidth = 0.8;
+    rr(ctx, wcX + 0.5, wcY + 0.5, wcW - 1, wcH - 1, 4); ctx.stroke();
+  }
+  ctx.save();
+  rr(ctx, wcX + 2, wcY + 2, wcW - 4, wcH - 4, 3); ctx.clip();
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(wcX + 2, wcY + 2, wcW - 4, wcH - 4);
+  // 运转时辉光（脉冲）
+  if (working) {
+    const fl = 0.5 + Math.sin((G.time || 0) * 8 + px) * 0.25;
+    ctx.fillStyle = 'rgba(160,200,255,' + (fl * 0.18).toFixed(2) + ')';
+    ctx.fillRect(wcX + 2, wcY + 2, wcW - 4, wcH - 4);
+  }
+  // 中央配方图标
   if (portDetailsVisible() && e.recipe) {
     const outId = Object.keys(RECIPES[e.recipe].out)[0];
-    drawRecipeIconCell(ctx, px + s / 2, py + s / 2, outId);
+    drawRecipeIconCell(ctx, cx, wcY + wcH * 0.42, outId);
   }
+  // 底部传送带（运转时滚动条纹）
+  const beltY = wcY + wcH - 5;
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.fillRect(wcX + 2, beltY, wcW - 4, 3);
+  if (working) {
+    const beltOff = ((G.time || 0) * (e.type === 'assembling-machine-3' ? 18 : 12)) % 6;
+    for (let i = -1; i < wcW / 4 + 1; i++) {
+      ctx.fillStyle = 'rgba(255,255,255,0.22)';
+      ctx.fillRect(wcX + 2 + i * 6 - beltOff, beltY, 3, 3);
+    }
+  }
+  ctx.restore();
+  // 窗框亮边
+  ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+  ctx.lineWidth = 1;
+  rr(ctx, wcX, wcY, wcW, wcH, 4); ctx.stroke();
+  // 窗横线
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+  ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  ctx.moveTo(wcX + 2, wcY + wcH * 0.55);
+  ctx.lineTo(wcX + wcW - 2, wcY + wcH * 0.55);
+  ctx.stroke();
+
+  // ⑦ 状态 LED（左右各 1 颗，运转时亮绿；MK3 多 1 颗中心 LED）
+  const ledY = py + sh - 17;
+  const drawLed = (lx, ly, on) => {
+    ctx.fillStyle = on ? tier.ledOn : tier.ledOff;
+    ctx.beginPath(); ctx.arc(lx, ly, 1.7, 0, Math.PI * 2); ctx.fill();
+    if (on) {
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.beginPath(); ctx.arc(lx - 0.4, ly - 0.5, 0.6, 0, Math.PI * 2); ctx.fill();
+    }
+  };
+  drawLed(px + 14,    ledY, working);
+  drawLed(px + s - 14, ledY, working);
+  if (e.type === 'assembling-machine-3') drawLed(cx, ledY, working);
+
+  // ⑧ 中央档位徽章（顶部小标 I/II/III，MK3 带金边）
+  ctx.fillStyle = tier.line;
+  rr(ctx, cx - 11, py + 5, 22, 6, 1.5); ctx.fill();
+  if (tier.trim) {
+    ctx.strokeStyle = tier.trim;
+    ctx.lineWidth = 0.8;
+    rr(ctx, cx - 11, py + 5, 22, 6, 1.5); ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.88)';
+  ctx.font = 'bold 7px system-ui';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(tier.label, cx, py + 8.2);
+
+  // ⑨ 角部螺栓（4 角）
+  const drawBolt = (bx, by) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.beginPath(); ctx.arc(bx, by, 2.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = tier.bolt;
+    ctx.beginPath(); ctx.arc(bx, by, 1.8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = tier.boltHi;
+    ctx.beginPath(); ctx.arc(bx - 0.4, by - 0.5, 0.8, 0, Math.PI * 2); ctx.fill();
+  };
+  drawBolt(px + 9,        py + 9);
+  drawBolt(px + s - 9,     py + 9);
+  drawBolt(px + 9,        py + sh - 9);
+  drawBolt(px + s - 9,     py + sh - 9);
+
+  // ⑩ 流体端口（沿用旧约定：北=入口，南=出口；颜色按配方流体变）
   const fr = e.fluidRecipe ? e.fluidRecipe() : null;
   const pcx = px + s / 2, pcy = py + s / 2;
-  // 流体入口：背部恒有一口通用流体口（可按 R 旋转朝向），用于接管道向配方输送流体原料
   const fin = (fr && fr.fin.length) ? fr.fin[0] : null;
   const fout = (fr && fr.fout.length) ? fr.fout[0] : null;
   drawPort(ctx, pcx, pcy, (dir + 2) % 4, fin ? ITEMS[fin].color : PORT_FLUID, false, 0, TILE, fin || null, 'in');
   drawPort(ctx, pcx, pcy, dir, fout ? ITEMS[fout].color : PORT_FLUID, true, 0, TILE, fout || null, 'out');
+
+  // ⑪ 罐体外框描边（最上层）
+  ctx.strokeStyle = tier.line;
+  ctx.lineWidth = 2.4;
+  rr(ctx, px + 3, py + 3, s - 6, sh - 6, 9); ctx.stroke();
+
   ctx.globalAlpha = 1;
 }
 

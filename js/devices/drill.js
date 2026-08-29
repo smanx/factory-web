@@ -235,6 +235,219 @@ class Drill extends Entity {
   }
 }
 
+// ===== 热能采矿机专属渲染（铜色旧工业风 + 顶部小烟囱 + 旋转钻头）=====
+// 区别于共享 drawDrill（电采矿机/抽油机共用），给最基础的"烧煤钻"一个更立体的造型。
+// 视觉分区（自下而上）：
+//   ① 罐底阴影 + 厚钢基座  ② 铜色主体（顶亮底暗渐变）
+//   ③ 焊接筋板  ④ 顶部小烟囱（运转时冒烟）
+//   ⑤ 内部炉口（运转时透出橙红火光）  ⑥ 中央旋转钻头（向下钻入地面）
+//   ⑦ 侧向输出箭头（按 dir 旋转）  ⑧ 燃料条  ⑨ 状态 LED
+//   ⑩ 4 角螺栓  ⑪ 罐体外框
+function drawBurnerDrill(ctx, e, gx, gy, dir, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  const s = TILE * e.w, sh = TILE * e.h;
+  const cx = px + s / 2;
+  ctx.globalAlpha = alpha;
+  const working = e.working;
+  const fl = 0.55 + Math.sin((G.time || 0) * 10 + px) * 0.25;
+
+  // ① 罐底阴影 + 厚钢基座
+  ctx.fillStyle = 'rgba(0,0,0,0.32)';
+  ctx.beginPath();
+  ctx.ellipse(cx, py + sh - 2, s * 0.42, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#1a0e08';
+  rr(ctx, px + 3, py + sh - 9, s - 6, 6, 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,200,140,0.12)';
+  ctx.lineWidth = 0.6;
+  rr(ctx, px + 3, py + sh - 9, s - 6, 6, 2); ctx.stroke();
+  // 基座安装螺栓
+  const baseBolt = (bx, by) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath(); ctx.arc(bx, by, 1.3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#3a261a';
+    ctx.beginPath(); ctx.arc(bx, by, 0.9, 0, Math.PI * 2); ctx.fill();
+  };
+  baseBolt(px + 6,     py + sh - 6);
+  baseBolt(px + s - 6, py + sh - 6);
+
+  // ② 铜色主体（顶亮底暗渐变，模拟旧工业铜壳）
+  const bodyGrad = ctx.createLinearGradient(0, py + 6, 0, py + sh - 12);
+  bodyGrad.addColorStop(0,    '#b8703c');
+  bodyGrad.addColorStop(0.5,  '#8a4a22');
+  bodyGrad.addColorStop(1,    '#5a3018');
+  ctx.fillStyle = bodyGrad;
+  rr(ctx, px + 3, py + 7, s - 6, sh - 19, 6); ctx.fill();
+
+  // ③ 焊接筋板（左右各 1 条）
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(px + s * 0.20, py + 14, 1.4, sh - 32);
+  ctx.fillRect(px + s * 0.80 - 1.4, py + 14, 1.4, sh - 32);
+  ctx.fillStyle = 'rgba(255,255,255,0.10)';
+  ctx.fillRect(px + s * 0.20 + 1.4, py + 14, 0.5, sh - 32);
+  ctx.fillRect(px + s * 0.80 - 0.5, py + 14, 0.5, sh - 32);
+
+  // ④ 顶部小烟囱（运转时冒烟）
+  const stackX = cx, stackY = py + 2;
+  // 烟囱底座
+  ctx.fillStyle = '#2a1808';
+  rr(ctx, stackX - 4, py + 7, 8, 3, 0.8); ctx.fill();
+  // 烟囱主体
+  const stackGrad = ctx.createLinearGradient(stackX - 3, 0, stackX + 3, 0);
+  stackGrad.addColorStop(0,   '#2a1808');
+  stackGrad.addColorStop(0.5, '#7a4a30');
+  stackGrad.addColorStop(1,   '#2a1808');
+  ctx.fillStyle = stackGrad;
+  rr(ctx, stackX - 3, stackY, 6, 6, 1); ctx.fill();
+  // 烟囱顶冠
+  ctx.fillStyle = '#7a4830';
+  rr(ctx, stackX - 4, stackY - 1, 8, 2, 0.5); ctx.fill();
+  // 烟囱口
+  ctx.fillStyle = '#1a0e04';
+  ctx.fillRect(stackX - 2, stackY, 4, 0.8);
+  // 运转时烟雾（向上飘的小圆）
+  if (working) {
+    const phase = ((G.time || 0) * 0.6) % 1;
+    ctx.fillStyle = 'rgba(200,180,160,' + (0.4 * (1 - phase)).toFixed(2) + ')';
+    ctx.beginPath();
+    ctx.arc(stackX + Math.sin(phase * 4) * 1.2, stackY - 3 - phase * 7, 1.5 + phase * 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    if (phase > 0.3) {
+      ctx.fillStyle = 'rgba(180,160,140,' + (0.3 * (1 - phase)).toFixed(2) + ')';
+      ctx.beginPath();
+      ctx.arc(stackX - 1 + Math.cos(phase * 3) * 1.5, stackY - 5 - (phase - 0.3) * 6, 1.2 + (phase - 0.3) * 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // ⑤ 内部炉口（运转时透出橙红火光）
+  if (e.burnLeft > 0) {
+    const fireX = cx - 6, fireY = py + sh - 18, fireW = 12, fireH = 4;
+    // 炉口外框
+    ctx.fillStyle = '#1a0e04';
+    rr(ctx, fireX, fireY, fireW, fireH, 1.2); ctx.fill();
+    // 火焰
+    const fireGrad = ctx.createLinearGradient(0, fireY, 0, fireY + fireH);
+    fireGrad.addColorStop(0,   'rgba(255,210,90,' + (fl * 0.95).toFixed(2) + ')');
+    fireGrad.addColorStop(0.5, 'rgba(255,130,50,' + (fl * 0.75).toFixed(2) + ')');
+    fireGrad.addColorStop(1,   'rgba(200,60,20,'  + (fl * 0.35).toFixed(2) + ')');
+    ctx.fillStyle = fireGrad;
+    rr(ctx, fireX + 0.5, fireY + 0.5, fireW - 1, fireH - 1, 0.8); ctx.fill();
+    // 火焰表面波纹
+    if (working) {
+      const w1 = Math.sin((G.time || 0) * 6 + px) * 0.6;
+      ctx.fillStyle = 'rgba(255,240,160,0.55)';
+      ctx.fillRect(fireX + 1, fireY + w1, fireW - 2, 0.8);
+    }
+  }
+
+  // ⑥ 中央旋转钻头（垂直向下，工作时绕中心轴旋转；待机时灰色静止）
+  const drillCx = cx, drillCy = py + sh - 16;
+  // 钻头固定卡座
+  ctx.fillStyle = '#2a1808';
+  rr(ctx, drillCx - 6, drillCy - 3, 12, 5, 1.5); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,200,140,0.2)';
+  ctx.lineWidth = 0.6;
+  rr(ctx, drillCx - 6, drillCy - 3, 12, 5, 1.5); ctx.stroke();
+  // 钻头本体
+  ctx.save();
+  ctx.translate(drillCx, drillCy);
+  if (working) ctx.rotate(e.spin || 0);
+  // 钻头金属色（运转时亮灰、待机时暗灰）
+  ctx.fillStyle = working ? '#c4ccd8' : '#6a7280';
+  // 钻头刃（三刃螺旋形：菱形 + 两侧刃）
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(-4, 0);
+  ctx.lineTo(0, 8);
+  ctx.lineTo(4, 0);
+  ctx.closePath();
+  ctx.fill();
+  // 钻头高光（左侧刃）
+  ctx.fillStyle = working ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.18)';
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(-1.5, 0);
+  ctx.lineTo(0, 6);
+  ctx.closePath();
+  ctx.fill();
+  // 钻头中线
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+  ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  ctx.moveTo(0, 0); ctx.lineTo(0, 8);
+  ctx.stroke();
+  ctx.restore();
+
+  // ⑦ 侧向输出箭头（按 dir 旋转；上下 2 支表示"此方向出料"）
+  ctx.save();
+  ctx.translate(cx, py + sh / 2 - 4);
+  ctx.rotate(dir * Math.PI / 2);
+  for (const m of [-7, 7]) {
+    ctx.save();
+    ctx.translate(s / 2 - 7, m);
+    ctx.fillStyle = dirColorNotch(dir);
+    tri(ctx, 0, -3, 0, 3, 6, 0);
+    ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+
+  // ⑧ 燃料条（顶部，居中偏上显示 burnLeft / COAL_ENERGY 比例）
+  const fuelY = py + 16;
+  const fuelW = s - 16;
+  ctx.fillStyle = '#20242b';
+  rr(ctx, px + 8, fuelY, fuelW, 4, 1.5); ctx.fill();
+  const fuelPct = Math.min(1, e.burnLeft / COAL_ENERGY);
+  ctx.fillStyle = fuelPct > 0 ? '#e8762c' : '#c33';
+  rr(ctx, px + 8, fuelY, fuelW * fuelPct, 4, 1.5); ctx.fill();
+  // 燃料条高光
+  if (fuelPct > 0) {
+    ctx.fillStyle = 'rgba(255,255,255,0.30)';
+    ctx.fillRect(px + 9, fuelY, fuelW * fuelPct - 2, 1);
+  }
+
+  // ⑨ 状态 LED（右上角小灯）
+  const ledX = px + s - 8, ledY = py + 10;
+  let ledC, ledOn = false;
+  if (e.status) { ledC = '#ffb04a'; ledOn = true; }       // 缺料/缺燃料 → 橙色
+  else if (working) { ledC = '#9ce06c'; ledOn = true; }   // 工作中 → 绿色
+  else { ledC = '#5a3018'; ledOn = false; }               // 待机 → 暗
+  ctx.fillStyle = ledC;
+  ctx.beginPath(); ctx.arc(ledX, ledY, 1.8, 0, Math.PI * 2); ctx.fill();
+  if (ledOn) {
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.beginPath(); ctx.arc(ledX - 0.4, ledY - 0.5, 0.6, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // ⑩ 角部螺栓（4 角）
+  const drawBolt = (bx, by) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.beginPath(); ctx.arc(bx, by, 1.7, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1a0e08';
+    ctx.beginPath(); ctx.arc(bx, by, 1.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,200,120,0.4)';
+    ctx.beginPath(); ctx.arc(bx - 0.3, by - 0.3, 0.5, 0, Math.PI * 2); ctx.fill();
+  };
+  drawBolt(px + 6,     py + 9);
+  drawBolt(px + s - 6, py + 9);
+  drawBolt(px + 6,     py + sh - 12);
+  drawBolt(px + s - 6, py + sh - 12);
+
+  // ⑪ 罐体外框描边
+  ctx.strokeStyle = '#1a0e08';
+  ctx.lineWidth = 2;
+  rr(ctx, px + 3, py + 7, s - 6, sh - 19, 6); ctx.stroke();
+  // 顶部圆弧高光
+  ctx.strokeStyle = 'rgba(255,200,140,0.22)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(cx, py + 8, s * 0.30, Math.PI * 1.05, Math.PI * 1.95);
+  ctx.stroke();
+
+  ctx.globalAlpha = 1;
+}
+
 // ===== 渲染（热能/电采矿机/抽油机共用同一绘制，按 type 换色）=====
 function drawDrill(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
@@ -520,7 +733,9 @@ function drillTip(e) {
 
 // ===== 注册（渲染/面板/提示对三类采矿机统一注册）=====
 ENT_CLASSES['burner-mining-drill'] = Drill;
-DEVICE_RENDER['burner-mining-drill'] = drawDrill;
+// 热能采矿机：专属铜色旧工业风渲染（顶部烟囱 + 旋转钻头）
+DEVICE_RENDER['burner-mining-drill'] = drawBurnerDrill;
+// 电采矿机/抽油机：沿用旧共享 drawDrill
 DEVICE_RENDER['electric-mining-drill'] = drawDrill;
 DEVICE_RENDER['pumpjack'] = drawDrill;
 DEVICE_STATUS['burner-mining-drill'] = e => e.working ? 'g' : 'r';

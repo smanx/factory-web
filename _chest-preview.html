@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>箱子新样式预览（临时）</title>
+<style>
+  body { background:#13181a; color:#cfd6dc; font-family:system-ui; margin:0; padding:24px; }
+  h2 { font-size:15px; font-weight:600; margin:26px 0 10px; color:#9fb0c0; }
+  .row { display:flex; gap:22px; align-items:flex-start; flex-wrap:wrap; }
+  .cell { text-align:center; }
+  .cell canvas { display:block; background:#1c2326; border-radius:6px; }
+  .lbl { margin-top:6px; font-size:12px; color:#aab6c2; }
+  .sub { margin-top:2px; font-size:11px; color:#66757f; }
+</style>
+</head>
+<body>
+<h2>基础箱（32px 原始贴图）</h2>
+<div class="row" id="r1"></div>
+<h2>基础箱（放大 4×，查看细节）</h2>
+<div class="row" id="r2"></div>
+<h2>物流箱（放大 4×，查看信号灯/徽标/信号条）</h2>
+<div class="row" id="r3"></div>
+
+<script>
+// ===== 预览用桩（与游戏内一致）=====
+const TILE = 32;
+const G = { time: 2.7 };
+const LOD = { simple: false };
+
+function rr(x, px, py, w, h, r) {
+  x.beginPath();
+  x.moveTo(px + r, py);
+  x.arcTo(px + w, py, px + w, py + h, r);
+  x.arcTo(px + w, py + h, px, py + h, r);
+  x.arcTo(px, py + h, px, py, r);
+  x.arcTo(px, py, px + w, py, r);
+  x.closePath();
+  return x;
+}
+
+// ===== 以下为 chest.js / steel-chest.js / logistics.js 中的渲染实现副本（预览用途）=====
+const CHEST_TIERS = {
+  wood:  { grad:['#a07a45','#83602f','#5a3e1c'], lidG:['#b08a52','#8a6335'], lidTop:'#c9a468', line:'#4c381d', rib:'#6d4d26', rivet:'#c9b27e', pallet:'#46351a', corner:'#6f6f6f', style:'wood' },
+  iron:  { grad:['#98aab8','#7a8c9e','#52627a'], lidG:['#a8bac9','#8598aa'], lidTop:'#b8c8d5', line:'#3d4a58', rib:'#63768a', rivet:'#d3dde7', pallet:'#39434f', corner:'#5e6d7d', style:'metal', ribs:1 },
+  steel: { grad:['#7a8a9e','#5c6b7e','#3d4652'], lidG:['#8c9cb0','#68788e'], lidTop:'#9daebf', line:'#313b46', rib:'#4c5a6c', rivet:'#b7c3d0', pallet:'#2c343e', corner:'#44505c', style:'metal', ribs:2, lidH:7.5 },
+};
+
+function drawChestBox(ctx, e, gx, gy, dir, alpha, tier, extra) {
+  const px = gx * TILE, py = gy * TILE;
+  const simple = false;
+  const cx = px + TILE / 2;
+  const lidH = tier.lidH || 6;
+  const lidX = px + 3, lidY = py + 4, lidW = 26;
+  const bodyX = px + 4.5, bodyW = 23;
+  const bodyY = py + 3.5 + lidH;
+  const bodyH = 25.2 - 3.5 - lidH;
+  ctx.globalAlpha = alpha;
+  // ① 地面阴影
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';
+  ctx.beginPath();
+  ctx.ellipse(cx, py + 29.2, 13, 2.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // ② 托盘底座：左右脚块，中间留叉车槽
+  for (const fx of [px + 5, px + 20]) {
+    ctx.fillStyle = tier.pallet;
+    rr(ctx, fx, py + 25.2, 7, 3.7, 1.2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    rr(ctx, fx + 0.6, py + 25.5, 5.8, 0.9, 0.5); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.30)';
+    rr(ctx, fx + 0.6, py + 28.1, 5.8, 0.7, 0.4); ctx.fill();
+  }
+  // ③ 箱体主体（竖渐变：上亮下暗）
+  const bodyGrad = ctx.createLinearGradient(0, bodyY, 0, bodyY + bodyH);
+  bodyGrad.addColorStop(0, tier.grad[0]);
+  bodyGrad.addColorStop(0.55, tier.grad[1]);
+  bodyGrad.addColorStop(1, tier.grad[2]);
+  ctx.fillStyle = bodyGrad;
+  rr(ctx, bodyX, bodyY, bodyW, bodyH, 2.2); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  rr(ctx, bodyX + 1, bodyY + bodyH - 2.6, bodyW - 2, 2.4, 1.5); ctx.fill();
+  // ④ 材质纹理
+  if (!simple) {
+    if (tier.style === 'wood') {
+      ctx.strokeStyle = tier.line; ctx.lineWidth = 1;
+      for (const sy of [bodyY + 5.2, bodyY + 10.4]) {
+        ctx.beginPath(); ctx.moveTo(bodyX + 3, sy); ctx.lineTo(bodyX + bodyW - 3, sy); ctx.stroke();
+        ctx.fillStyle = tier.rivet;
+        ctx.beginPath(); ctx.arc(bodyX + 3.5, sy, 0.85, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(bodyX + bodyW - 3.5, sy, 0.85, 0, Math.PI * 2); ctx.fill();
+      }
+    } else {
+      const ribs = (tier.ribs === 2) ? [bodyY + 4.3, bodyY + 9.3] : [bodyY + 7];
+      for (const ry of ribs) {
+        ctx.fillStyle = tier.rib;
+        rr(ctx, bodyX + 3, ry, bodyW - 6, 2, 1); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.16)';
+        rr(ctx, bodyX + 3, ry + 0.35, bodyW - 6, 0.7, 0.4); ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        rr(ctx, bodyX + 3, ry + 1.4, bodyW - 6, 0.65, 0.35); ctx.fill();
+      }
+    }
+  }
+  // ⑤ 四角 L 形护角铁
+  if (!simple && !tier.noCorner) {
+    const a = 6.5, t = 2;
+    const x0 = bodyX + 0.5, y0 = bodyY + 1;
+    const x1 = bodyX + bodyW - 0.5, y1 = bodyY + bodyH - 0.5;
+    ctx.fillStyle = tier.corner;
+    rr(ctx, x0, y0, a, t, 1); ctx.fill();
+    rr(ctx, x0, y0, t, a, 1); ctx.fill();
+    rr(ctx, x1 - a, y0, a, t, 1); ctx.fill();
+    rr(ctx, x1 - t, y0, t, a, 1); ctx.fill();
+    rr(ctx, x0, y1 - t, a, t, 1); ctx.fill();
+    rr(ctx, x0, y1 - a, t, a, 1); ctx.fill();
+    rr(ctx, x1 - a, y1 - t, a, t, 1); ctx.fill();
+    rr(ctx, x1 - t, y1 - a, t, a, 1); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.14)';
+    rr(ctx, x0 + 0.4, y0 + 0.3, a - 0.8, 0.6, 0.3); ctx.fill();
+    rr(ctx, x1 - a + 0.4, y0 + 0.3, a - 0.8, 0.6, 0.3); ctx.fill();
+  }
+  // ⑥ 盖沿投影
+  ctx.fillStyle = 'rgba(0,0,0,0.26)';
+  rr(ctx, bodyX + 0.8, bodyY, bodyW - 1.6, 1.4, 0.7); ctx.fill();
+  // ⑦ 凸沿上盖
+  const lidGrad = ctx.createLinearGradient(0, lidY, 0, lidY + lidH);
+  lidGrad.addColorStop(0, tier.lidG[0]);
+  lidGrad.addColorStop(1, tier.lidG[1]);
+  ctx.fillStyle = lidGrad;
+  rr(ctx, lidX, lidY, lidW, lidH, 2.4); ctx.fill();
+  ctx.fillStyle = tier.lidTop;
+  rr(ctx, lidX + 1, lidY + 0.8, lidW - 2, 2.5, 1.2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.30)';
+  rr(ctx, lidX + 1.8, lidY + 1.2, lidW - 3.6, 0.9, 0.5); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.32)';
+  rr(ctx, lidX + 0.8, lidY + lidH - 1.2, lidW - 1.6, 1, 0.5); ctx.fill();
+  // ⑧ 中央锁扣
+  const latchY = lidY + lidH - 1.5;
+  ctx.fillStyle = tier.line;
+  rr(ctx, cx - 5, latchY, 10, 5, 1.5); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.16)';
+  rr(ctx, cx - 5, latchY, 10, 1.2, 1); ctx.fill();
+  ctx.fillStyle = '#141a22';
+  rr(ctx, cx - 0.9, latchY + 1.1, 1.8, 3, 0.9); ctx.fill();
+  // ⑨ 角部铆钉
+  if (!simple) {
+    const nails = [
+      [lidX + 2.8, lidY + lidH - 2.2], [lidX + lidW - 2.8, lidY + lidH - 2.2],
+      [bodyX + 3.5, bodyY + bodyH - 1.5], [bodyX + bodyW - 3.5, bodyY + bodyH - 1.5],
+    ];
+    for (const [nx, ny] of nails) {
+      ctx.fillStyle = 'rgba(0,0,0,0.42)';
+      ctx.beginPath(); ctx.arc(nx, ny, 1.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = tier.rivet;
+      ctx.beginPath(); ctx.arc(nx, ny, 0.75, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  // ⑩ 外描边
+  ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+  ctx.lineWidth = 1;
+  rr(ctx, lidX + 0.4, lidY + 0.4, lidW - 0.8, lidH - 0.8, 2); ctx.stroke();
+  rr(ctx, bodyX + 0.4, bodyY + 0.4, bodyW - 0.8, bodyH - 0.8, 1.8); ctx.stroke();
+  if (extra) extra(ctx, px, py, tier);
+  ctx.globalAlpha = 1;
+}
+
+const LOGI_CHEST_TIERS = {
+  passive:   { grad:['#e05a4a','#c43a2e','#8e241c'], lidG:['#ea6e5c','#c94634'], lidTop:'#f0876f', line:'#6b1c16', rib:'#b0362a', rivet:'#f5c2b8', pallet:'#4e1210', style:'metal', ribs:2, noCorner:true },
+  active:    { grad:['#b279d8','#8e54c0','#64348c'], lidG:['#bd88e0','#9a63ca'], lidTop:'#caa0ec', line:'#4a2266', rib:'#7d4fa8', rivet:'#e4c8f5', pallet:'#3a1c50', style:'metal', ribs:2, noCorner:true },
+  storage:   { grad:['#e6cf62','#cdb643','#a3881f'], lidG:['#eed874','#cfae45'], lidTop:'#f2e08a', line:'#6e5c14', rib:'#b39a33', rivet:'#f0e6b0', pallet:'#57470f', style:'metal', ribs:2, noCorner:true },
+  requester: { grad:['#6f98dc','#5480c4','#3a5c8e'], lidG:['#7fa6e2','#5f8cd4'], lidTop:'#8fb0e8', line:'#2c4266', rib:'#4d76b0', rivet:'#bcd2f2', pallet:'#16243c', style:'metal', ribs:2, noCorner:true },
+  buffer:    { grad:['#83c068','#5f9e46','#3f7229'], lidG:['#8fc978','#6aa84e'], lidTop:'#a3d689', line:'#2a4d18', rib:'#548a3c', rivet:'#d4ecc4', pallet:'#263d14', style:'metal', ribs:2, noCorner:true },
+};
+const LOGI_CHEST_ACCENTS = {
+  passive:   { color: '#e04a3a' },
+  active:    { color: '#a868d8' },
+  storage:   { color: '#e8c83a' },
+  requester: { color: '#5a8ad0' },
+  buffer:    { color: '#68b04e' },
+};
+
+function drawLogiChest(ctx, e, gx, gy, dir, alpha, kind) {
+  const A = LOGI_CHEST_ACCENTS[kind];
+  const tier = LOGI_CHEST_TIERS[kind];
+  const pulse = 0.55 + 0.3 * Math.sin((G.time || 0) * 5 + (gx * 7 + gy * 13));
+  drawChestBox(ctx, e, gx, gy, dir, alpha, tier, (g, px, py) => {
+    const cx = px + TILE / 2;
+    g.fillStyle = '#232a34';
+    rr(g, cx - 3, py + 3.1, 6, 2.2, 1); g.fill();
+    g.fillStyle = A.color;
+    g.beginPath(); g.arc(cx, py + 4.2, 1.7 + pulse * 0.4, 0, Math.PI * 2); g.fill();
+    g.fillStyle = 'rgba(255,255,255,' + (0.25 + pulse * 0.2).toFixed(2) + ')';
+    g.beginPath(); g.arc(cx - 0.5, py + 3.9, 0.65, 0, Math.PI * 2); g.fill();
+    const barY = py + 22, barH = 2.4;
+    g.fillStyle = A.color;
+    rr(g, px + 7, barY, 18, barH, 1); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.35)';
+    rr(g, px + 7, barY, 18, 0.8, 0.4); g.fill();
+    g.fillStyle = 'rgba(0,0,0,0.30)';
+    rr(g, px + 7, barY + barH - 0.7, 18, 0.7, 0.35); g.fill();
+  });
+}
+// ===== 副本结束 =====
+
+// 渲染辅助
+function renderInto(canvas, drawFn) {
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawFn(ctx, 0, 0);
+}
+function basicCell(name, sub, tier) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 32;
+  const e = { type: 'x', w: 1, h: 1, dir: 0 };
+  renderInto(cv, (ctx) => drawChestBox(ctx, e, 0, 0, 0, 1, tier, null));
+  return cellWrap(cv, name, sub);
+}
+function logiCell(name, kind) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 32;
+  const e = { type: 'x', w: 1, h: 1, dir: 0 };
+  renderInto(cv, (ctx) => drawLogiChest(ctx, e, 0, 0, 0, 1, kind));
+  return cellWrap(cv, name, '');
+}
+function bigCell(cv, name) {
+  const cv2 = document.createElement('canvas'); cv2.width = cv2.height = 128;
+  const c2 = cv2.getContext('2d');
+  c2.imageSmoothingEnabled = false;
+  c2.drawImage(cv, 0, 0, 128, 128);
+  return cellWrap(cv2, name, '');
+}
+function cellWrap(cv, name, sub) {
+  const d = document.createElement('div'); d.className = 'cell';
+  d.appendChild(cv);
+  const l = document.createElement('div'); l.className = 'lbl'; l.textContent = name; d.appendChild(l);
+  if (sub) { const s = document.createElement('div'); s.className = 'sub'; s.textContent = sub; d.appendChild(s); }
+  return d;
+}
+
+const r1 = document.getElementById('r1');
+r1.appendChild(basicCell('木箱', '木板条 + 铁护角 + 托盘脚', CHEST_TIERS.wood));
+r1.appendChild(basicCell('铁箱', '单加强筋 + 凸沿盖', CHEST_TIERS.iron));
+r1.appendChild(basicCell('钢箱', '双加强筋 + 加厚凸沿盖', CHEST_TIERS.steel));
+
+const small = {
+  wood: basicCell('木箱', '', CHEST_TIERS.wood).firstChild,
+  iron: basicCell('铁箱', '', CHEST_TIERS.iron).firstChild,
+  steel: basicCell('钢箱', '', CHEST_TIERS.steel).firstChild,
+  passive: logiCell('被动供应箱', 'passive').firstChild,
+  active: logiCell('主动供应箱', 'active').firstChild,
+  storage: logiCell('仓储箱', 'storage').firstChild,
+  requester: logiCell('需求箱', 'requester').firstChild,
+  buffer: logiCell('缓冲箱', 'buffer').firstChild,
+};
+
+const r2 = document.getElementById('r2');
+r2.appendChild(bigCell(small.wood, '木箱'));
+r2.appendChild(bigCell(small.iron, '铁箱'));
+r2.appendChild(bigCell(small.steel, '钢箱'));
+
+const r3 = document.getElementById('r3');
+r3.appendChild(bigCell(small.passive, '被动供应箱 · 红'));
+r3.appendChild(bigCell(small.active, '主动供应箱 · 紫'));
+r3.appendChild(bigCell(small.storage, '仓储箱 · 黄'));
+r3.appendChild(bigCell(small.requester, '需求箱 · 蓝'));
+r3.appendChild(bigCell(small.buffer, '缓冲箱 · 绿'));
+</script>
+</body>
+</html>

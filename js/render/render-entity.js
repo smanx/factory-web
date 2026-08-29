@@ -94,7 +94,7 @@ function drawRunRing(ctx, e, gx, gy) {
 }
 
 // 机械臂类型集合：绘制时置顶，永远显示在传送带/其他设备之上，不被遮挡。
-const IS_INSERTER = { inserter: true, 'long-handed-inserter': true, 'bulk-inserter': true, 'fast-inserter': true, 'stack-inserter': true };
+const IS_INSERTER = { inserter: true, 'long-handed-inserter': true, 'bulk-inserter': true, 'fast-inserter': true, 'stack-inserter': true, 'burner-inserter': true };
 
 const ghostCache = { type: null, ent: null };
 
@@ -561,7 +561,8 @@ function drawHoverAndMining(ctx) {
   if (p.mining) {
     const [mx, my] = p.mining.split(',').map(Number);
     const ti = getOreType(mx, my);
-    if (isOreType(ti)) {
+    // 手动采集进度圈：矿石与树木（砍伐）都显示（对齐右键挖矿的 loading 反馈）
+    if (isOreType(ti) || getTerrain(mx, my) === T_TREE) {
       ctx.strokeStyle = '#fff';
       ctx.lineWidth = 3;
       ctx.beginPath();

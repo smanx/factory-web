@@ -34,9 +34,11 @@ function solidAtPx(px, py) {
   const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE);
   // 玩家/载具碰撞：水、峭壁与树木均不可通行（对齐《异星工厂》：树与 Cliff 均阻隔移动，需砍伐/清除才能通过）
   if (terrainSolidAtPx(px, py)) return true;
-  // 建筑碰撞：可建造的实心建筑阻挡移动（传送带/机械臂除外，对齐《异星工厂》：玩家可站上传送带被推动，机械臂也不占行走格）
+  // 建筑碰撞：可建造的实心建筑阻挡移动（传送带/机械臂/箱子除外，对齐《异星工厂》：玩家可站上传送带被推动，
+  // 机械臂不占行走格；箱子也不与主角碰撞，可自由穿行，方便在密集仓库间移动）
   const e = entAt(tx, ty);
-  if (e && e.solid && !(e instanceof Belt) && !(e instanceof Inserter)) return true;
+  if (e && e.solid && !(e instanceof Belt) && !(e instanceof Inserter) &&
+      !(typeof e.type === 'string' && e.type.endsWith('-chest'))) return true;
   return false;
 }
 
