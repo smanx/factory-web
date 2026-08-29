@@ -140,19 +140,19 @@
 - [x] `heat-pipe` 导热管
 - [x] `heat-exchanger` 热交换器
 - [x] `heating-tower` 供热塔
-- [ ] `fusion-reactor` 聚变反应堆
-- [ ] `fusion-generator` 聚变发电机
-- [ ] `lightning-rod` 避雷针
-- [ ] `lightning-collector` 避雷收集器
-- [ ] `repair-pack` 修理包
-- [ ] `deconstruction-planner` 拆除规划器
-- [ ] `upgrade-planner` 升级规划器
-- [ ] `cryogenic-plant` 低温工厂
+- [x] `fusion-reactor` 聚变反应堆
+- [x] `fusion-generator` 聚变发电机
+- [x] `lightning-rod` 避雷针
+- [x] `lightning-collector` 避雷收集器
+- [x] `repair-pack` 修理包
+- [x] `deconstruction-planner` 拆除规划器
+- [x] `upgrade-planner` 升级规划器
+- [x] `cryogenic-plant` 低温工厂
 
 ## 🧪 中间产品（87）
 
-- [ ] `iron-ore` 铁矿石
-- [ ] `copper-ore` 铜矿石
+- [x] `iron-ore` 铁矿石
+- [x] `copper-ore` 铜矿石
 - [ ] `coal` 煤
 - [ ] `solid-fuel` 固体燃料
 - [ ] `stone` 石头
