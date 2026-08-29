@@ -153,16 +153,16 @@
 
 - [x] `iron-ore` 铁矿石
 - [x] `copper-ore` 铜矿石
-- [ ] `coal` 煤
-- [ ] `solid-fuel` 固体燃料
-- [ ] `stone` 石头
-- [ ] `calcite` 方解石
-- [ ] `iron-plate` 铁板
-- [ ] `copper-plate` 铜板
-- [ ] `iron-gear-wheel` 齿轮
-- [ ] `iron-stick` 铁杆
-- [ ] `copper-cable` 铜线
-- [ ] `electronic-circuit` 电路板
+- [x] `coal` 煤
+- [x] `solid-fuel` 固体燃料
+- [x] `stone` 石头
+- [x] `calcite` 方解石
+- [x] `iron-plate` 铁板
+- [x] `copper-plate` 铜板
+- [x] `iron-gear-wheel` 齿轮
+- [x] `iron-stick` 铁杆
+- [x] `copper-cable` 铜线
+- [x] `electronic-circuit` 电路板
 - [ ] `automation-science-pack` 自动化科学包
 - [ ] `steel-plate` 钢板
 - [ ] `logistic-science-pack` 物流科学包
