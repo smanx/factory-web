@@ -17,16 +17,16 @@
 - [x] `programmable-speaker` 可编程音箱
 - [x] `splitter` 基础分流器
 - [x] `underground-belt` 基础地下传送带
-- [ ] `fast-transport-belt` 高速传送带
-- [ ] `fast-underground-belt` 高速地下传送带
-- [ ] `express-transport-belt` 极速传送带
-- [ ] `express-underground-belt` 极速地下传送带
-- [ ] `express-splitter` 极速分流器
-- [ ] `turbo-transport-belt` 超速传送带
-- [ ] `turbo-underground-belt` 超速地下传送带
-- [ ] `turbo-splitter` 超速分流器
-- [ ] `loader` 基础装载机
-- [ ] `fast-loader` 高速装载机
+- [x] `fast-transport-belt` 高速传送带
+- [x] `fast-underground-belt` 高速地下传送带
+- [x] `express-transport-belt` 极速传送带
+- [x] `express-underground-belt` 极速地下传送带
+- [x] `express-splitter` 极速分流器
+- [x] `turbo-transport-belt` 超速传送带
+- [x] `turbo-underground-belt` 超速地下传送带
+- [x] `turbo-splitter` 超速分流器
+- [x] `loader` 基础装载机
+- [x] `fast-loader` 高速装载机
 - [ ] `express-loader` 极速装载机
 - [ ] `turbo-loader` 超速装载机
 - [ ] `fast-splitter` 高速分流器

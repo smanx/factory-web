@@ -337,4 +337,360 @@ const ITEM_CUSTOM_ICONS = {
     x.fill();
   },
 
+  // 高速传送带：红色带体（同基础带造型，配色区分档位）
+  'fast-transport-belt': (x, r, s, col) => {
+    x.fillStyle = darkenColor(col, 0.5);
+    x.fillRect(-r * 0.95, -r * 0.62, r * 1.9, r * 0.26);
+    x.fillRect(-r * 0.95, r * 0.36, r * 1.9, r * 0.26);
+    const g = x.createLinearGradient(0, -r * 0.36, 0, r * 0.36);
+    g.addColorStop(0, lightenColor(col, 0.28));
+    g.addColorStop(0.5, col);
+    g.addColorStop(1, darkenColor(col, 0.28));
+    x.fillStyle = g;
+    x.fillRect(-r * 0.95, -r * 0.36, r * 1.9, r * 0.72);
+    x.strokeStyle = 'rgba(0,0,0,.2)';
+    x.lineWidth = Math.max(1, s * 0.035);
+    for (let i = 0; i < 5; i++) {
+      const px = -r * 0.76 + i * r * 0.38;
+      x.beginPath(); x.moveTo(px, -r * 0.34); x.lineTo(px, r * 0.34); x.stroke();
+    }
+    x.fillStyle = 'rgba(255,255,255,.9)';
+    [0].forEach(off => {
+      x.beginPath();
+      x.moveTo(off * r - r * 0.38, -r * 0.17);
+      x.lineTo(off * r + r * 0.02, -r * 0.17);
+      x.lineTo(off * r + r * 0.02, -r * 0.38);
+      x.lineTo(off * r + r * 0.48, 0);
+      x.lineTo(off * r + r * 0.02, r * 0.38);
+      x.lineTo(off * r + r * 0.02, r * 0.17);
+      x.lineTo(off * r - r * 0.38, r * 0.17);
+      x.closePath();
+      x.fill();
+    });
+  },
+
+  // 高速地下传送带：红色拱形罩
+  'fast-underground-belt': (x, r, s, col) => {
+    x.fillStyle = darkenColor(col, 0.32);
+    x.beginPath();
+    x.arc(0, r * 0.18, r * 0.62, Math.PI, 0);
+    x.closePath();
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.4)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    x.fillStyle = '#20242a';
+    x.beginPath();
+    x.arc(0, r * 0.18, r * 0.34, Math.PI, 0);
+    x.closePath();
+    x.fill();
+    const g = x.createLinearGradient(0, r * 0.55, 0, r * 0.85);
+    g.addColorStop(0, lightenColor(col, 0.1));
+    g.addColorStop(1, darkenColor(col, 0.2));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.95, r * 0.55, r * 1.9, r * 0.3, r * 0.08);
+    x.fill();
+    x.fillStyle = 'rgba(255,255,255,.9)';
+    x.beginPath();
+    x.moveTo(0, r * 0.32);
+    x.lineTo(r * 0.2, r * 0.62);
+    x.lineTo(r * 0.08, r * 0.62);
+    x.lineTo(r * 0.08, r * 0.82);
+    x.lineTo(-r * 0.08, r * 0.82);
+    x.lineTo(-r * 0.08, r * 0.62);
+    x.lineTo(-r * 0.2, r * 0.62);
+    x.closePath();
+    x.fill();
+  },
+
+  // 极速传送带：蓝色带体
+  'express-transport-belt': (x, r, s, col) => {
+    x.fillStyle = darkenColor(col, 0.5);
+    x.fillRect(-r * 0.95, -r * 0.62, r * 1.9, r * 0.26);
+    x.fillRect(-r * 0.95, r * 0.36, r * 1.9, r * 0.26);
+    const g = x.createLinearGradient(0, -r * 0.36, 0, r * 0.36);
+    g.addColorStop(0, lightenColor(col, 0.28));
+    g.addColorStop(0.5, col);
+    g.addColorStop(1, darkenColor(col, 0.28));
+    x.fillStyle = g;
+    x.fillRect(-r * 0.95, -r * 0.36, r * 1.9, r * 0.72);
+    x.strokeStyle = 'rgba(0,0,0,.2)';
+    x.lineWidth = Math.max(1, s * 0.035);
+    for (let i = 0; i < 5; i++) {
+      const px = -r * 0.76 + i * r * 0.38;
+      x.beginPath(); x.moveTo(px, -r * 0.34); x.lineTo(px, r * 0.34); x.stroke();
+    }
+    x.fillStyle = 'rgba(255,255,255,.9)';
+    [0].forEach(off => {
+      x.beginPath();
+      x.moveTo(off * r - r * 0.38, -r * 0.17);
+      x.lineTo(off * r + r * 0.02, -r * 0.17);
+      x.lineTo(off * r + r * 0.02, -r * 0.38);
+      x.lineTo(off * r + r * 0.48, 0);
+      x.lineTo(off * r + r * 0.02, r * 0.38);
+      x.lineTo(off * r + r * 0.02, r * 0.17);
+      x.lineTo(off * r - r * 0.38, r * 0.17);
+      x.closePath();
+      x.fill();
+    });
+  },
+
+  // 极速地下传送带：蓝色拱形罩
+  'express-underground-belt': (x, r, s, col) => {
+    x.fillStyle = darkenColor(col, 0.32);
+    x.beginPath();
+    x.arc(0, r * 0.18, r * 0.62, Math.PI, 0);
+    x.closePath();
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.4)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    x.fillStyle = '#20242a';
+    x.beginPath();
+    x.arc(0, r * 0.18, r * 0.34, Math.PI, 0);
+    x.closePath();
+    x.fill();
+    const g = x.createLinearGradient(0, r * 0.55, 0, r * 0.85);
+    g.addColorStop(0, lightenColor(col, 0.1));
+    g.addColorStop(1, darkenColor(col, 0.2));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.95, r * 0.55, r * 1.9, r * 0.3, r * 0.08);
+    x.fill();
+    x.fillStyle = 'rgba(255,255,255,.9)';
+    x.beginPath();
+    x.moveTo(0, r * 0.32);
+    x.lineTo(r * 0.2, r * 0.62);
+    x.lineTo(r * 0.08, r * 0.62);
+    x.lineTo(r * 0.08, r * 0.82);
+    x.lineTo(-r * 0.08, r * 0.82);
+    x.lineTo(-r * 0.08, r * 0.62);
+    x.lineTo(-r * 0.2, r * 0.62);
+    x.closePath();
+    x.fill();
+  },
+
+  // 极速分流器：蓝色一入两出带体
+  'express-splitter': (x, r, s, col) => {
+    const band = (px, py, w, h) => {
+      x.fillStyle = darkenColor(col, 0.4);
+      rrPath(x, px, py, w, h, r * 0.08);
+      x.fill();
+    };
+    band(-r * 0.95, -r * 0.13, r * 1.15, r * 0.26);
+    x.save(); x.translate(r * 0.12, 0); x.rotate(-0.62);
+    band(-r * 0.05, -r * 0.12, r * 0.9, r * 0.24);
+    x.restore();
+    x.save(); x.translate(r * 0.12, 0); x.rotate(0.62);
+    band(-r * 0.05, -r * 0.12, r * 0.9, r * 0.24);
+    x.restore();
+    const tri = (tx, ty, ang) => {
+      x.save(); x.translate(tx, ty); x.rotate(ang);
+      x.fillStyle = 'rgba(255,255,255,.9)';
+      x.beginPath();
+      x.moveTo(-r * 0.14, -r * 0.12);
+      x.lineTo(r * 0.06, -r * 0.12);
+      x.lineTo(r * 0.06, -r * 0.24);
+      x.lineTo(r * 0.3, 0);
+      x.lineTo(r * 0.06, r * 0.24);
+      x.lineTo(r * 0.06, r * 0.12);
+      x.lineTo(-r * 0.14, r * 0.12);
+      x.closePath();
+      x.fill();
+      x.restore();
+    };
+    tri(-r * 0.9, 0, 0);
+    tri(r * 0.6, -r * 0.42, -0.62);
+    tri(r * 0.6, r * 0.42, 0.62);
+  },
+
+  // 超速传送带：军绿带体 + 双白箭头（太空时代终极档）
+  'turbo-transport-belt': (x, r, s, col) => {
+    x.fillStyle = darkenColor(col, 0.5);
+    x.fillRect(-r * 0.95, -r * 0.62, r * 1.9, r * 0.26);
+    x.fillRect(-r * 0.95, r * 0.36, r * 1.9, r * 0.26);
+    const g = x.createLinearGradient(0, -r * 0.36, 0, r * 0.36);
+    g.addColorStop(0, lightenColor(col, 0.28));
+    g.addColorStop(0.5, col);
+    g.addColorStop(1, darkenColor(col, 0.28));
+    x.fillStyle = g;
+    x.fillRect(-r * 0.95, -r * 0.36, r * 1.9, r * 0.72);
+    x.strokeStyle = 'rgba(0,0,0,.2)';
+    x.lineWidth = Math.max(1, s * 0.035);
+    for (let i = 0; i < 5; i++) {
+      const px = -r * 0.76 + i * r * 0.38;
+      x.beginPath(); x.moveTo(px, -r * 0.34); x.lineTo(px, r * 0.34); x.stroke();
+    }
+    x.fillStyle = 'rgba(255,255,255,.9)';
+    [-0.22, 0.26].forEach(off => {
+      x.beginPath();
+      x.moveTo(off * r - r * 0.38, -r * 0.17);
+      x.lineTo(off * r + r * 0.02, -r * 0.17);
+      x.lineTo(off * r + r * 0.02, -r * 0.38);
+      x.lineTo(off * r + r * 0.48, 0);
+      x.lineTo(off * r + r * 0.02, r * 0.38);
+      x.lineTo(off * r + r * 0.02, r * 0.17);
+      x.lineTo(off * r - r * 0.38, r * 0.17);
+      x.closePath();
+      x.fill();
+    });
+  },
+
+  // 超速地下传送带：军绿拱形罩
+  'turbo-underground-belt': (x, r, s, col) => {
+    x.fillStyle = darkenColor(col, 0.32);
+    x.beginPath();
+    x.arc(0, r * 0.18, r * 0.62, Math.PI, 0);
+    x.closePath();
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.4)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    x.fillStyle = '#20242a';
+    x.beginPath();
+    x.arc(0, r * 0.18, r * 0.34, Math.PI, 0);
+    x.closePath();
+    x.fill();
+    const g = x.createLinearGradient(0, r * 0.55, 0, r * 0.85);
+    g.addColorStop(0, lightenColor(col, 0.1));
+    g.addColorStop(1, darkenColor(col, 0.2));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.95, r * 0.55, r * 1.9, r * 0.3, r * 0.08);
+    x.fill();
+    x.fillStyle = 'rgba(255,255,255,.9)';
+    x.beginPath();
+    x.moveTo(0, r * 0.32);
+    x.lineTo(r * 0.2, r * 0.62);
+    x.lineTo(r * 0.08, r * 0.62);
+    x.lineTo(r * 0.08, r * 0.82);
+    x.lineTo(-r * 0.08, r * 0.82);
+    x.lineTo(-r * 0.08, r * 0.62);
+    x.lineTo(-r * 0.2, r * 0.62);
+    x.closePath();
+    x.fill();
+  },
+
+  // 超速分流器：军绿一入两出带体
+  'turbo-splitter': (x, r, s, col) => {
+    const band = (px, py, w, h) => {
+      x.fillStyle = darkenColor(col, 0.4);
+      rrPath(x, px, py, w, h, r * 0.08);
+      x.fill();
+    };
+    band(-r * 0.95, -r * 0.13, r * 1.15, r * 0.26);
+    x.save(); x.translate(r * 0.12, 0); x.rotate(-0.62);
+    band(-r * 0.05, -r * 0.12, r * 0.9, r * 0.24);
+    x.restore();
+    x.save(); x.translate(r * 0.12, 0); x.rotate(0.62);
+    band(-r * 0.05, -r * 0.12, r * 0.9, r * 0.24);
+    x.restore();
+    const tri = (tx, ty, ang) => {
+      x.save(); x.translate(tx, ty); x.rotate(ang);
+      x.fillStyle = 'rgba(255,255,255,.9)';
+      x.beginPath();
+      x.moveTo(-r * 0.14, -r * 0.12);
+      x.lineTo(r * 0.06, -r * 0.12);
+      x.lineTo(r * 0.06, -r * 0.24);
+      x.lineTo(r * 0.3, 0);
+      x.lineTo(r * 0.06, r * 0.24);
+      x.lineTo(r * 0.06, r * 0.12);
+      x.lineTo(-r * 0.14, r * 0.12);
+      x.closePath();
+      x.fill();
+      x.restore();
+    };
+    tri(-r * 0.9, 0, 0);
+    tri(r * 0.6, -r * 0.42, -0.62);
+    tri(r * 0.6, r * 0.42, 0.62);
+  },
+
+  // 基础装载机：机体 + 装载箭头 + 1 道速度线
+  'loader': (x, r, s, col) => {
+    const g = x.createLinearGradient(-r * 0.6, -r * 0.8, r * 0.6, r * 0.6);
+    g.addColorStop(0, lightenColor(col, 0.32));
+    g.addColorStop(1, darkenColor(col, 0.32));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.75, -r * 0.8, r * 1.5, r * 1.6, r * 0.16);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.42)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    x.fillStyle = '#20242a';
+    rrPath(x, -r * 0.45, -r * 0.55, r * 0.9, r * 1.1, r * 0.08);
+    x.fill();
+    x.strokeStyle = 'rgba(255,255,255,.22)';
+    x.lineWidth = Math.max(1, s * 0.035);
+    for (let i = 0; i < 3; i++) {
+      const py = -r * 0.3 + i * r * 0.4;
+      x.beginPath(); x.moveTo(-r * 0.42, py); x.lineTo(r * 0.42, py); x.stroke();
+    }
+    x.fillStyle = 'rgba(255,255,255,.85)';
+    x.beginPath();
+    x.moveTo(0.00 * r - r * 0.1, -r * 0.62);
+    x.lineTo(0.00 * r + r * 0.1, -r * 0.62);
+    x.lineTo(0.00 * r + r * 0.1, -r * 0.44);
+    x.lineTo(0.00 * r - r * 0.1, -r * 0.44);
+    x.closePath();
+    x.fill();
+    x.fillStyle = 'rgba(255,255,255,.92)';
+    x.beginPath();
+    x.moveTo(-r * 0.3, -r * 0.14);
+    x.lineTo(r * 0.18, -r * 0.14);
+    x.lineTo(r * 0.18, -r * 0.34);
+    x.lineTo(r * 0.58, 0);
+    x.lineTo(r * 0.18, r * 0.34);
+    x.lineTo(r * 0.18, r * 0.14);
+    x.lineTo(-r * 0.3, r * 0.14);
+    x.closePath();
+    x.fill();
+  },
+
+  // 高速装载机：红色机体 + 2 道速度线
+  'fast-loader': (x, r, s, col) => {
+    const g = x.createLinearGradient(-r * 0.6, -r * 0.8, r * 0.6, r * 0.6);
+    g.addColorStop(0, lightenColor(col, 0.32));
+    g.addColorStop(1, darkenColor(col, 0.32));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.75, -r * 0.8, r * 1.5, r * 1.6, r * 0.16);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.42)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    x.fillStyle = '#20242a';
+    rrPath(x, -r * 0.45, -r * 0.55, r * 0.9, r * 1.1, r * 0.08);
+    x.fill();
+    x.strokeStyle = 'rgba(255,255,255,.22)';
+    x.lineWidth = Math.max(1, s * 0.035);
+    for (let i = 0; i < 3; i++) {
+      const py = -r * 0.3 + i * r * 0.4;
+      x.beginPath(); x.moveTo(-r * 0.42, py); x.lineTo(r * 0.42, py); x.stroke();
+    }
+    x.fillStyle = 'rgba(255,255,255,.85)';
+    x.beginPath();
+    x.moveTo(-0.08 * r - r * 0.1, -r * 0.62);
+    x.lineTo(-0.08 * r + r * 0.1, -r * 0.62);
+    x.lineTo(-0.08 * r + r * 0.1, -r * 0.44);
+    x.lineTo(-0.08 * r - r * 0.1, -r * 0.44);
+    x.closePath();
+    x.fill();
+    x.fillStyle = 'rgba(255,255,255,.85)';
+    x.beginPath();
+    x.moveTo(0.08 * r - r * 0.1, -r * 0.62);
+    x.lineTo(0.08 * r + r * 0.1, -r * 0.62);
+    x.lineTo(0.08 * r + r * 0.1, -r * 0.44);
+    x.lineTo(0.08 * r - r * 0.1, -r * 0.44);
+    x.closePath();
+    x.fill();
+    x.fillStyle = 'rgba(255,255,255,.92)';
+    x.beginPath();
+    x.moveTo(-r * 0.3, -r * 0.14);
+    x.lineTo(r * 0.18, -r * 0.14);
+    x.lineTo(r * 0.18, -r * 0.34);
+    x.lineTo(r * 0.58, 0);
+    x.lineTo(r * 0.18, r * 0.34);
+    x.lineTo(r * 0.18, r * 0.14);
+    x.lineTo(-r * 0.3, r * 0.14);
+    x.closePath();
+    x.fill();
+  },
+
 };
