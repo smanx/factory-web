@@ -147,6 +147,70 @@ class PipeToGround extends Entity {
         if ((this.fluid[k] > 0) || ((t.fluid[k] || 0) > 0)) pipeToGroundSwap(this, t, k);
       }
     }
+    // 管口直接对接带管道口的设备时，把流体注入其流体输入口。
+    // 与普通管道 Pipe.update 的直推逻辑一致；但地下管道仅「管口」侧能接流体，
+    // 故设备必须位于管口格、且本座恰好落在设备的输入口格（一格一接口）才注入。
+    // 覆盖所有带流体输入口的设备：
+    //   · 炼油厂/化工厂/电采矿机 —— isFluidInlet 判定输入格；
+    //   · 储液罐 —— isPortCell 判定对角接口格；
+    //   · 锅炉/热交换器 —— isWaterPortCell 判定两端水口格（收水）；
+    //   · 蒸汽机/汽轮机/推进器 —— 两端中部汽口格（蒸汽机/汽轮机收蒸汽；推进器北口收燃料、南口收氧化剂）；
+    //   · 火焰炮塔 —— 底部(南)油口格收轻油（随 dir 旋转，与 fluidPort 同式）；
+    //   · 聚变反应堆/聚变发电机 —— 四周全向收流体（各自 coolantFlow/portFlow 即全向吸取，无格级接口）；
+    //   · 装配机族（含铸造厂/电磁组装机/生物室/粉碎机/低温工厂/农业塔等 Assembler 子类）—— acceptsFluid 按配方收流体。
+    // 各设备类名用 typeof 守卫：工具/测试环境未加载设备文件时不影响地下管道自身行为。
+    const dev = mouth;
+    const devIsAsm = typeof Assembler !== 'undefined' && dev instanceof Assembler;
+    const devIsSteamPort = (typeof SteamEngine !== 'undefined' && dev instanceof SteamEngine) ||
+                           (typeof SteamTurbine !== 'undefined' && dev instanceof SteamTurbine);
+    const devIsThruster = typeof Thruster !== 'undefined' && dev instanceof Thruster;
+    const devIsFlamethrower = typeof FlamethrowerTurret !== 'undefined' && dev instanceof FlamethrowerTurret;
+    const devIsFusionPort = (typeof FusionReactor !== 'undefined' && dev instanceof FusionReactor) ||
+                            (typeof FusionGenerator !== 'undefined' && dev instanceof FusionGenerator);
+    const devIsFluidDevice = dev && dev !== this && (
+      (typeof Refinery !== 'undefined' && dev instanceof Refinery) ||
+      (typeof ChemicalPlant !== 'undefined' && dev instanceof ChemicalPlant) ||
+      (typeof ElectricDrill !== 'undefined' && dev instanceof ElectricDrill) ||
+      (typeof StorageTank !== 'undefined' && dev instanceof StorageTank) ||
+      (typeof Boiler !== 'undefined' && dev instanceof Boiler) ||
+      (typeof HeatExchanger !== 'undefined' && dev instanceof HeatExchanger) ||
+      (typeof SteamEngine !== 'undefined' && dev instanceof SteamEngine) ||
+      (typeof SteamTurbine !== 'undefined' && dev instanceof SteamTurbine) ||
+      devIsThruster || devIsFlamethrower || devIsFusionPort ||
+      devIsAsm
+    );
+    if (devIsFluidDevice) {
+      // 一格一接口：本座 (this.x,this.y) 须命中该设备的某个流体输入口格。
+      // 蒸汽机/汽轮机/推进器无格级判定方法，按其两端中部口格判定（与各自 portFlow 一致）；
+      // 火焰炮塔按底部(南)油口格判定；聚变反应堆/发电机四周全向 → atPort 保持 true。
+      let atPort = true;
+      if (dev.isFluidInlet) atPort = dev.isFluidInlet(this.x, this.y);
+      else if (dev.isPortCell) atPort = dev.isPortCell(this.x, this.y);          // 储液罐：对角接口格
+      else if (dev.isWaterPortCell) atPort = dev.isWaterPortCell(this.x, this.y); // 锅炉/热交换器：两端水口
+      else if (devIsSteamPort || devIsThruster) {
+        const pN = rotCell(dev, dev.def.w >> 1, -1);
+        const pS = rotCell(dev, dev.def.w >> 1, dev.def.h);
+        atPort = (pN.x === this.x && pN.y === this.y) || (pS.x === this.x && pS.y === this.y);
+      } else if (devIsFlamethrower) {
+        const port = neighborOnSideCell(dev, (1 + (dev.dir | 0)) % 4, 0);
+        atPort = !!(port && port.x === this.x && port.y === this.y);
+      }
+      // 装配机族无格级接口（任一侧均可按配方收流体），跳过格判定
+      if (atPort) {
+        for (const k of Object.keys(this.fluid)) {
+          if (!(this.fluid[k] > 0)) continue;
+          if (devIsAsm && !dev.acceptsFluid(k)) continue;   // 装配机族仅收当前配方的流体
+          if (devIsThruster) {
+            // 推进器双口分流体：北口只收燃料、南口只收氧化剂（与 portFlow 一致）
+            const pN = rotCell(dev, dev.def.w >> 1, -1);
+            const atFuelPort = pN.x === this.x && pN.y === this.y;
+            if (k === 'thruster-fuel' && !atFuelPort) continue;
+            if (k === 'thruster-oxidizer' && atFuelPort) continue;
+          }
+          if (dev.giveItem(k)) this.fluid[k]--;
+        }
+      }
+    }
     for (const k of Object.keys(this.fluid)) if (!(this.fluid[k] > 0)) delete this.fluid[k];
   }
   giveItem(item) {

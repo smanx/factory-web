@@ -87,6 +87,8 @@ class FusionReactor extends Entity {
     });
   }
   giveItem(item) {
+    // 流体输入口（对齐官方 input_fluid_box filter=fluoroketone-cold）：地下管道/普通管道可经此灌入冷液
+    if (item === 'fluoroketone-cold' && this.coolantBuf < FUSION_REACTOR_FLUID_USAGE * 2 + 1) { this.coolantBuf++; return true; }
     if (item === 'fusion-power-cell' && this.fuel < 10) { this.fuel++; return true; }
     return false;
   }
@@ -180,6 +182,14 @@ class FusionGenerator extends Entity {
     });
   }
   contents() { return [[this.type, 1]]; }
+  // 流体输入口（对齐官方 generator 消耗 Plasma 工作介质）：地下管道/普通管道可经此灌入等离子体供热
+  giveItem(item) {
+    if (item === 'fusion-plasma' && this.temperature() < HEAT_MAX_TEMP) {
+      this.heatEnergy = Math.min(this.maxEnergy(), this.heatEnergy + FUSION_HEAT_PER_PLASMA);
+      return true;
+    }
+    return false;
+  }
   serialize() {
     const s = super.serialize();
     s.heatEnergy = this.heatEnergy;
