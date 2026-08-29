@@ -758,6 +758,7 @@ function tryPlaceAt(tx, ty) {
       cliff: '峭壁阻挡，需先用峭壁炸药清除',
       tree: '树木阻挡，需先砍掉树木',
       occupied: '此处已有建筑，无法覆盖放置',
+      player: '你正站在这块地上，无法建造',
     };
     toast(REASON_TXT[chk.reason] || '无法在这里建造');
     if (typeof playSfx === 'function') playSfx('deny');

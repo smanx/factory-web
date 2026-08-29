@@ -435,7 +435,7 @@ function drawGhostCount(g, wx, wy) {
 // 放置校验：默认规则（不能压水/已有实体/超出触及范围）+ 设备自定义规则
 // （DEVICE_PLACE[type] 返回 {ok} 则短路，返回 null 则继续默认校验）
 // 不允许覆盖建造：目标格已有实体时返回 {ok:false, reason:'occupied'}，由调用方按具体原因提示。
-// reason 取值：water 水面 / cliff 峭壁 / tree 树木 / occupied 已有建筑 / reach 超出建造范围。
+// reason 取值：water 水面 / cliff 峭壁 / tree 树木 / occupied 已有建筑 / reach 超出建造范围 / player 玩家正站在目标格。
 function canPlaceAt(type, tx, ty, dir) {
   // 行星专属生产建筑：只能在对应星球建造（对齐《异星工厂》Space Age 星球专属建筑）
   const planetReq = (typeof buildingRequiredPlanet === 'function') ? buildingRequiredPlanet(type) : null;
@@ -448,6 +448,14 @@ function canPlaceAt(type, tx, ty, dir) {
   const def = BUILD_DEFS[type];
   let ew = def.w, eh = def.h;
   if (def.rotSwap && (dir % 2 === 1)) { ew = def.h; eh = def.w; }
+  // 玩家占位校验：建筑占地覆盖玩家所在格时禁止建造（对齐《异星工厂》：
+  // 角色站立格本身是障碍，不能把建筑盖在角色身上，否则角色会被卡住走不出来）
+  if (G.player) {
+    const px = Math.floor(G.player.x / TILE), py = Math.floor(G.player.y / TILE);
+    if (px >= tx && px < tx + ew && py >= ty && py < ty + eh) {
+      return { ok: false, reason: 'player' };
+    }
+  }
   const rule = DEVICE_PLACE[type];
   if (rule) {
     const r = rule(type, tx, ty, dir, ew, eh);
