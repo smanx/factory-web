@@ -47,16 +47,16 @@
 - [x] `cliff-explosives` 峭壁炸药
 - [x] `car` 装甲车
 - [x] `tank` 坦克
-- [ ] `spidertron` 蜘蛛机器人
-- [ ] `spidertron-remote` 蜘蛛遥控器
-- [ ] `rail` 铁轨
-- [ ] `locomotive` 火车头
-- [ ] `cargo-wagon` 货运车厢
-- [ ] `fluid-wagon` 流体车厢
-- [ ] `artillery-wagon` 炮兵车厢
-- [ ] `train-stop` 车站
-- [ ] `rail-signal` 铁路信号灯
-- [ ] `rail-chain-signal` 铁路链式信号灯
+- [x] `spidertron` 蜘蛛机器人
+- [x] `spidertron-remote` 蜘蛛遥控器
+- [x] `rail` 铁轨
+- [x] `locomotive` 火车头
+- [x] `cargo-wagon` 货运车厢
+- [x] `fluid-wagon` 流体车厢
+- [x] `artillery-wagon` 炮兵车厢
+- [x] `train-stop` 车站
+- [x] `rail-signal` 铁路信号灯
+- [x] `rail-chain-signal` 铁路链式信号灯
 - [ ] `rail-support` 高架桥墩
 - [ ] `rail-ramp` 高架铁轨
 - [ ] `artificial-yumako-soil` 玉玛果人造土

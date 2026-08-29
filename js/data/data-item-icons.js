@@ -1560,4 +1560,424 @@ const ITEM_CUSTOM_ICONS = {
     x.beginPath(); x.arc(-r * 0.1, -r * 0.1, r * 0.12, 0, 7); x.fill();
   },
 
+
+  // 蜘蛛机器人：俯视六足机甲 + 中央驾驶舱 + 四联炮管
+  'spidertron': (x, r, s, col) => {
+    // 六条机械腿（三对，斜向伸出）
+    const leg = (a1, a2) => {
+      [a1, a2].forEach(a => {
+        x.strokeStyle = '#3a3f4a';
+        x.lineWidth = Math.max(1.5, s * 0.07);
+        x.lineCap = 'round';
+        x.beginPath();
+        const sx = Math.cos(a) * r * 0.42, sy = Math.sin(a) * r * 0.42;
+        const mx = Math.cos(a) * r * 0.78, my = Math.sin(a) * r * 0.78;
+        const ex = Math.cos(a + 0.5) * r * 1.0, ey = Math.sin(a + 0.5) * r * 1.0;
+        x.moveTo(sx, sy); x.lineTo(mx, my); x.lineTo(ex, ey);
+        x.stroke();
+      });
+    };
+    leg(-Math.PI * 0.62, -Math.PI * 0.38);  // 上方两腿
+    leg(-Math.PI * 0.5, -Math.PI * 0.44);   // 两侧腿
+    leg(Math.PI * 0.38, Math.PI * 0.62);    // 下方两腿
+    // 腿端脚垫
+    x.fillStyle = '#22252b';
+    x.beginPath(); x.arc(Math.cos(-Math.PI * 0.12) * r * 1.0, Math.sin(-Math.PI * 0.12) * r * 1.0, r * 0.1, 0, 7); x.fill();
+    x.beginPath(); x.arc(Math.cos(Math.PI * 1.12) * r * 1.0, Math.sin(Math.PI * 1.12) * r * 1.0, r * 0.1, 0, 7); x.fill();
+    // 中央躯体（圆角六边形）
+    const g = x.createLinearGradient(0, -r * 0.6, 0, r * 0.6);
+    g.addColorStop(0, lightenColor(col, 0.42));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.42));
+    x.fillStyle = g;
+    x.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = i * Math.PI / 3 - Math.PI / 2;
+      const px = Math.cos(a) * r * 0.62, py = Math.sin(a) * r * 0.62;
+      i === 0 ? x.moveTo(px, py) : x.lineTo(px, py);
+    }
+    x.closePath();
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.48)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 驾驶舱玻璃罩
+    x.fillStyle = 'rgba(40,60,90,.9)';
+    x.beginPath(); x.ellipse(0, -r * 0.05, r * 0.3, r * 0.36, 0, 0, 7); x.fill();
+    x.strokeStyle = 'rgba(160,200,255,.5)';
+    x.lineWidth = Math.max(1, s * 0.03);
+    x.stroke();
+    x.fillStyle = 'rgba(200,230,255,.45)';
+    x.beginPath(); x.ellipse(-r * 0.1, -r * 0.16, r * 0.1, r * 0.12, -0.5, 0, 7); x.fill();
+    // 四联炮管（顶部两根 + 底部两根，前向）
+    x.fillStyle = darkenColor(col, 0.55);
+    rrPath(x, -r * 0.4, -r * 0.95, r * 0.14, r * 0.4, r * 0.04);
+    x.fill();
+    rrPath(x, r * 0.26, -r * 0.95, r * 0.14, r * 0.4, r * 0.04);
+    x.fill();
+    // 腹部指示灯
+    x.fillStyle = '#ffd76a';
+    x.beginPath(); x.arc(0, r * 0.38, r * 0.08, 0, 7); x.fill();
+  },
+
+  // 蜘蛛遥控器：手持终端 + 屏幕（十字准星）+ 顶部天线
+  'spidertron-remote': (x, r, s, col) => {
+    // 机身（竖向圆角矩形）
+    const g = x.createLinearGradient(-r * 0.5, 0, r * 0.5, 0);
+    g.addColorStop(0, lightenColor(col, 0.4));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.4));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.52, -r * 0.78, r * 1.04, r * 1.56, r * 0.2);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 顶部天线
+    x.strokeStyle = '#3a3f4a';
+    x.lineWidth = Math.max(1.2, s * 0.05);
+    x.beginPath(); x.moveTo(0, -r * 0.78); x.lineTo(0, -r * 0.95); x.stroke();
+    x.fillStyle = '#e05a5a';
+    x.beginPath(); x.arc(0, -r * 0.95, r * 0.07, 0, 7); x.fill();
+    // 屏幕
+    x.fillStyle = '#101820';
+    rrPath(x, -r * 0.36, -r * 0.6, r * 0.72, r * 0.72, r * 0.1);
+    x.fill();
+    // 屏内十字准星
+    x.strokeStyle = '#7ee08a';
+    x.lineWidth = Math.max(1.2, s * 0.04);
+    x.beginPath();
+    x.moveTo(0, -r * 0.44); x.lineTo(0, -r * 0.04);
+    x.moveTo(-r * 0.24, -r * 0.24); x.lineTo(r * 0.24, -r * 0.24);
+    x.stroke();
+    // 准星中心点与外圈
+    x.strokeStyle = 'rgba(126,224,138,.6)';
+    x.beginPath(); x.arc(0, -r * 0.24, r * 0.2, 0, 7); x.stroke();
+    x.fillStyle = '#7ee08a';
+    x.beginPath(); x.arc(0, -r * 0.24, r * 0.05, 0, 7); x.fill();
+    // 底部操作键
+    x.fillStyle = 'rgba(255,255,255,.35)';
+    x.beginPath(); x.arc(-r * 0.2, r * 0.42, r * 0.09, 0, 7); x.fill();
+    x.beginPath(); x.arc(0, r * 0.42, r * 0.09, 0, 7); x.fill();
+    x.beginPath(); x.arc(r * 0.2, r * 0.42, r * 0.09, 0, 7); x.fill();
+  },
+
+  // 铁轨：双钢轨 + 枕木（斜置一段弯轨视角简化为直段）
+  'rail': (x, r, s, col) => {
+    // 枕木
+    x.fillStyle = '#7a5c3a';
+    for (let i = 0; i < 4; i++) {
+      const px = -r * 0.66 + i * r * 0.44;
+      rrPath(x, px - r * 0.08, -r * 0.72, r * 0.16, r * 1.44, r * 0.05);
+      x.fill();
+    }
+    // 枕木暗纹
+    x.fillStyle = 'rgba(0,0,0,.18)';
+    for (let i = 0; i < 4; i++) {
+      const px = -r * 0.66 + i * r * 0.44;
+      x.fillRect(px - r * 0.08, r * 0.5, r * 0.16, r * 0.22);
+    }
+    // 双钢轨（竖向，金属渐变）
+    const railBar = (px) => {
+      const g = x.createLinearGradient(px - r * 0.09, 0, px + r * 0.09, 0);
+      g.addColorStop(0, lightenColor(col, 0.5));
+      g.addColorStop(0.5, lightenColor(col, 0.15));
+      g.addColorStop(1, darkenColor(col, 0.45));
+      x.fillStyle = g;
+      rrPath(x, px - r * 0.09, -r * 0.95, r * 0.18, r * 1.9, r * 0.05);
+      x.fill();
+      x.strokeStyle = 'rgba(0,0,0,.4)';
+      x.lineWidth = Math.max(0.8, s * 0.03);
+      x.stroke();
+    };
+    railBar(-r * 0.34);
+    railBar(r * 0.34);
+    // 轨顶高光
+    x.strokeStyle = 'rgba(255,255,255,.45)';
+    x.lineWidth = Math.max(1, s * 0.025);
+    x.beginPath(); x.moveTo(-r * 0.34 - r * 0.03, -r * 0.9); x.lineTo(-r * 0.34 - r * 0.03, r * 0.9); x.stroke();
+    x.beginPath(); x.moveTo(r * 0.34 - r * 0.03, -r * 0.9); x.lineTo(r * 0.34 - r * 0.03, r * 0.9); x.stroke();
+  },
+
+  // 火车头：俯视车头 + 驾驶室 + 前部排障器与车灯
+  'locomotive': (x, r, s, col) => {
+    // 车体（长圆角矩形，前尖后平）
+    const g = x.createLinearGradient(0, -r * 0.95, 0, r * 0.95);
+    g.addColorStop(0, lightenColor(col, 0.4));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.42));
+    x.fillStyle = g;
+    x.beginPath();
+    x.moveTo(-r * 0.5, -r * 0.62);
+    x.quadraticCurveTo(0, -r * 0.98, r * 0.5, -r * 0.62);
+    x.lineTo(r * 0.5, r * 0.85);
+    x.quadraticCurveTo(0, r * 0.95, -r * 0.5, r * 0.85);
+    x.closePath();
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 驾驶室（后部深色块）
+    x.fillStyle = 'rgba(0,0,0,.25)';
+    rrPath(x, -r * 0.38, r * 0.28, r * 0.76, r * 0.52, r * 0.1);
+    x.fill();
+    // 驾驶室窗
+    x.fillStyle = 'rgba(150,200,240,.6)';
+    rrPath(x, -r * 0.22, r * 0.4, r * 0.44, r * 0.22, r * 0.06);
+    x.fill();
+    // 烟囱口
+    x.fillStyle = '#22252b';
+    x.beginPath(); x.arc(0, -r * 0.3, r * 0.16, 0, 7); x.fill();
+    x.fillStyle = 'rgba(255,255,255,.15)';
+    x.beginPath(); x.arc(-r * 0.05, -r * 0.35, r * 0.06, 0, 7); x.fill();
+    // 前部车灯
+    x.fillStyle = '#ffe9a0';
+    x.beginPath(); x.arc(0, -r * 0.78, r * 0.1, 0, 7); x.fill();
+    x.strokeStyle = 'rgba(255,233,160,.5)';
+    x.lineWidth = Math.max(1, s * 0.03);
+    x.beginPath(); x.arc(0, -r * 0.78, r * 0.18, 0, 7); x.stroke();
+    // 排障器楔形
+    x.fillStyle = '#4a4f56';
+    x.beginPath();
+    x.moveTo(-r * 0.5, -r * 0.55); x.lineTo(0, -r * 0.95); x.lineTo(r * 0.5, -r * 0.55);
+    x.lineTo(r * 0.32, -r * 0.55); x.lineTo(0, -r * 0.82); x.lineTo(-r * 0.32, -r * 0.55);
+    x.closePath();
+    x.fill();
+    // 车体中线
+    x.strokeStyle = 'rgba(0,0,0,.22)';
+    x.lineWidth = Math.max(1, s * 0.028);
+    x.beginPath(); x.moveTo(0, -r * 0.2); x.lineTo(0, r * 0.8); x.stroke();
+  },
+
+  // 货运车厢：俯视木纹车厢 + 舱盖缝线 + 中央货箱
+  'cargo-wagon': (x, r, s, col) => {
+    // 车厢体
+    const g = x.createLinearGradient(0, -r * 0.8, 0, r * 0.8);
+    g.addColorStop(0, lightenColor(col, 0.35));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.4));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.62, -r * 0.72, r * 1.24, r * 1.44, r * 0.14);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 舱盖横向缝线
+    x.strokeStyle = 'rgba(0,0,0,.22)';
+    x.lineWidth = Math.max(1, s * 0.028);
+    for (let i = 0; i < 3; i++) {
+      const py = -r * 0.36 + i * r * 0.36;
+      x.beginPath(); x.moveTo(-r * 0.56, py); x.lineTo(r * 0.56, py); x.stroke();
+    }
+    // 中央货箱（俯视小方箱）
+    x.fillStyle = '#a8885c';
+    rrPath(x, -r * 0.26, -r * 0.26, r * 0.52, r * 0.52, r * 0.06);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.4)';
+    x.lineWidth = Math.max(1, s * 0.035);
+    x.stroke();
+    // 货箱盖十字木条
+    x.strokeStyle = 'rgba(0,0,0,.3)';
+    x.beginPath();
+    x.moveTo(-r * 0.26, -r * 0.26); x.lineTo(r * 0.26, r * 0.26);
+    x.moveTo(r * 0.26, -r * 0.26); x.lineTo(-r * 0.26, r * 0.26);
+    x.stroke();
+    // 车厢四角铆钉
+    x.fillStyle = 'rgba(255,255,255,.3)';
+    [[-0.5, -0.6], [0.5, -0.6], [-0.5, 0.6], [0.5, 0.6]].forEach(p => {
+      x.beginPath(); x.arc(p[0] * r, p[1] * r, r * 0.05, 0, 7); x.fill();
+    });
+  },
+
+  // 流体车厢：俯视罐车 + 大圆柱罐体 + 罐顶入料口
+  'fluid-wagon': (x, r, s, col) => {
+    // 底盘（前后短梁）
+    x.fillStyle = '#3a3f46';
+    rrPath(x, -r * 0.75, -r * 0.2, r * 0.22, r * 0.4, r * 0.06);
+    x.fill();
+    rrPath(x, r * 0.53, -r * 0.2, r * 0.22, r * 0.4, r * 0.06);
+    x.fill();
+    // 卧式圆柱罐体（竖向）
+    const g = x.createLinearGradient(-r * 0.5, 0, r * 0.5, 0);
+    g.addColorStop(0, lightenColor(col, 0.45));
+    g.addColorStop(0.5, col);
+    g.addColorStop(1, darkenColor(col, 0.42));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.5, -r * 0.78, r * 1.0, r * 1.56, r * 0.42);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 罐体环箍
+    x.strokeStyle = 'rgba(0,0,0,.25)';
+    x.lineWidth = Math.max(1.2, s * 0.04);
+    x.beginPath(); x.moveTo(-r * 0.44, -r * 0.3); x.quadraticCurveTo(0, -r * 0.36, r * 0.44, -r * 0.3); x.stroke();
+    x.beginPath(); x.moveTo(-r * 0.44, r * 0.3); x.quadraticCurveTo(0, r * 0.24, r * 0.44, r * 0.3); x.stroke();
+    // 罐顶入料口
+    x.fillStyle = darkenColor(col, 0.4);
+    x.beginPath(); x.ellipse(0, 0, r * 0.2, r * 0.26, 0, 0, 7); x.fill();
+    x.fillStyle = '#101820';
+    x.beginPath(); x.ellipse(0, 0, r * 0.13, r * 0.18, 0, 0, 7); x.fill();
+    // 罐顶高光
+    x.strokeStyle = 'rgba(255,255,255,.4)';
+    x.lineWidth = Math.max(1, s * 0.03);
+    x.beginPath(); x.arc(-r * 0.12, 0, r * 0.5, Math.PI * 0.7, Math.PI * 1.3); x.stroke();
+  },
+
+  // 炮兵车厢：俯视装甲车厢 + 伸出的巨型炮管
+  'artillery-wagon': (x, r, s, col) => {
+    // 车厢体（装甲绿灰）
+    const g = x.createLinearGradient(0, -r * 0.8, 0, r * 0.8);
+    g.addColorStop(0, lightenColor(col, 0.35));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.42));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.6, -r * 0.55, r * 1.2, r * 1.1, r * 0.14);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 装甲缝线
+    x.strokeStyle = 'rgba(0,0,0,.22)';
+    x.lineWidth = Math.max(1, s * 0.028);
+    x.beginPath(); x.moveTo(-r * 0.54, -r * 0.18); x.lineTo(r * 0.54, -r * 0.18); x.stroke();
+    x.beginPath(); x.moveTo(-r * 0.54, r * 0.18); x.lineTo(r * 0.54, r * 0.18); x.stroke();
+    // 巨型炮管（朝前伸出）
+    const bg = x.createLinearGradient(-r * 0.16, 0, r * 0.16, 0);
+    bg.addColorStop(0, lightenColor(col, 0.3));
+    bg.addColorStop(0.6, darkenColor(col, 0.2));
+    bg.addColorStop(1, darkenColor(col, 0.5));
+    x.fillStyle = bg;
+    rrPath(x, -r * 0.16, -r * 0.98, r * 0.32, r * 0.6, r * 0.06);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.035);
+    x.stroke();
+    // 炮口套环
+    x.fillStyle = darkenColor(col, 0.55);
+    rrPath(x, -r * 0.2, -r * 0.98, r * 0.4, r * 0.16, r * 0.05);
+    x.fill();
+    // 炮塔基座
+    x.fillStyle = darkenColor(col, 0.3);
+    x.beginPath(); x.arc(0, -r * 0.2, r * 0.3, 0, 7); x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.4)';
+    x.stroke();
+    // 后部弹药舱指示
+    x.fillStyle = '#c8a040';
+    rrPath(x, -r * 0.3, r * 0.35, r * 0.6, r * 0.16, r * 0.05);
+    x.fill();
+  },
+
+  // 车站：站牌（立柱 + 停车标志牌 P 字）
+  'train-stop': (x, r, s, col) => {
+    // 立柱
+    x.fillStyle = '#4a5058';
+    rrPath(x, -r * 0.09, -r * 0.2, r * 0.18, r * 1.0, r * 0.05);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.4)';
+    x.lineWidth = Math.max(0.8, s * 0.03);
+    x.stroke();
+    // 底座
+    x.fillStyle = '#3a3f46';
+    rrPath(x, -r * 0.3, r * 0.68, r * 0.6, r * 0.22, r * 0.06);
+    x.fill();
+    // 标志牌（圆角方牌）
+    const g = x.createLinearGradient(0, -r * 0.9, 0, r * 0.1);
+    g.addColorStop(0, lightenColor(col, 0.4));
+    g.addColorStop(1, darkenColor(col, 0.3));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.55, -r * 0.9, r * 1.1, r * 1.0, r * 0.16);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 牌面白色内框
+    x.strokeStyle = 'rgba(255,255,255,.5)';
+    x.lineWidth = Math.max(1, s * 0.03);
+    rrPath(x, -r * 0.44, -r * 0.79, r * 0.88, r * 0.78, r * 0.1);
+    x.stroke();
+    // 停车字标「停」简写 T + 横杠（列车停驶标识）
+    x.fillStyle = '#fff';
+    x.font = 'bold ' + Math.round(r * 0.62) + 'px system-ui';
+    x.textAlign = 'center';
+    x.textBaseline = 'middle';
+    x.fillText('P', 0, -r * 0.38);
+  },
+
+  // 铁路信号灯：立柱 + 红色灯头（占用）
+  'rail-signal': (x, r, s, col) => {
+    // 立柱
+    x.fillStyle = '#4a5058';
+    rrPath(x, -r * 0.1, -r * 0.15, r * 0.2, r * 1.05, r * 0.06);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.4)';
+    x.lineWidth = Math.max(0.8, s * 0.03);
+    x.stroke();
+    // 底座
+    x.fillStyle = '#3a3f46';
+    rrPath(x, -r * 0.32, r * 0.72, r * 0.64, r * 0.24, r * 0.07);
+    x.fill();
+    // 灯箱（圆角矩形壳）
+    x.fillStyle = '#2a2e34';
+    rrPath(x, -r * 0.32, -r * 0.95, r * 0.64, r * 0.95, r * 0.14);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.5)';
+    x.stroke();
+    // 红灯（发光）
+    x.fillStyle = '#ff4d4d';
+    x.beginPath(); x.arc(0, -r * 0.62, r * 0.2, 0, 7); x.fill();
+    x.strokeStyle = 'rgba(255,120,120,.55)';
+    x.lineWidth = Math.max(2, s * 0.08);
+    x.beginPath(); x.arc(0, -r * 0.62, r * 0.28, 0, 7); x.stroke();
+    // 备用灯位（暗绿）
+    x.fillStyle = '#1e3a24';
+    x.beginPath(); x.arc(0, -r * 0.22, r * 0.14, 0, 7); x.fill();
+    // 灯箱高光
+    x.fillStyle = 'rgba(255,255,255,.12)';
+    rrPath(x, -r * 0.26, -r * 0.9, r * 0.2, r * 0.8, r * 0.08);
+    x.fill();
+  },
+
+  // 铁路链式信号灯：立柱 + 琥珀灯头 + 链环标识
+  'rail-chain-signal': (x, r, s, col) => {
+    // 立柱
+    x.fillStyle = '#4a5058';
+    rrPath(x, -r * 0.1, -r * 0.15, r * 0.2, r * 1.05, r * 0.06);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.4)';
+    x.lineWidth = Math.max(0.8, s * 0.03);
+    x.stroke();
+    // 底座
+    x.fillStyle = '#3a3f46';
+    rrPath(x, -r * 0.32, r * 0.72, r * 0.64, r * 0.24, r * 0.07);
+    x.fill();
+    // 灯箱
+    x.fillStyle = '#2a2e34';
+    rrPath(x, -r * 0.32, -r * 0.95, r * 0.64, r * 0.95, r * 0.14);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.5)';
+    x.stroke();
+    // 琥珀灯（发光）
+    x.fillStyle = '#ffb84d';
+    x.beginPath(); x.arc(0, -r * 0.62, r * 0.2, 0, 7); x.fill();
+    x.strokeStyle = 'rgba(255,200,120,.55)';
+    x.lineWidth = Math.max(2, s * 0.08);
+    x.beginPath(); x.arc(0, -r * 0.62, r * 0.28, 0, 7); x.stroke();
+    // 备用灯位（暗绿）
+    x.fillStyle = '#1e3a24';
+    x.beginPath(); x.arc(0, -r * 0.22, r * 0.14, 0, 7); x.fill();
+    // 链环标识（灯箱下部小链环）
+    x.strokeStyle = '#c8ccd4';
+    x.lineWidth = Math.max(1.2, s * 0.035);
+    x.beginPath();
+    x.ellipse(-r * 0.09, r * 0.42, r * 0.09, r * 0.06, 0, 0, 7);
+    x.stroke();
+    x.beginPath();
+    x.ellipse(r * 0.09, r * 0.42, r * 0.09, r * 0.06, 0, 0, 7);
+    x.stroke();
+    // 灯箱高光
+    x.fillStyle = 'rgba(255,255,255,.12)';
+    rrPath(x, -r * 0.26, -r * 0.9, r * 0.2, r * 0.8, r * 0.08);
+    x.fill();
+  },
 };
