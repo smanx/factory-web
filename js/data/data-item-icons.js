@@ -1980,4 +1980,455 @@ const ITEM_CUSTOM_ICONS = {
     rrPath(x, -r * 0.26, -r * 0.9, r * 0.2, r * 0.8, r * 0.08);
     x.fill();
   },
+
+  // 高架桥墩：正视混凝土桥墩 + 交叉桁架撑 + 顶部轨排
+  'rail-support': (x, r, s, col) => {
+    // 顶部轨排（桥面）
+    x.fillStyle = '#6a6a78';
+    rrPath(x, -r * 0.9, -r * 0.95, r * 1.8, r * 0.26, r * 0.06);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    // 桥面上两条钢轨头
+    x.fillStyle = '#c8ccd4';
+    x.fillRect(-r * 0.5, -r * 0.99, r * 0.12, r * 0.1);
+    x.fillRect(r * 0.38, -r * 0.99, r * 0.12, r * 0.1);
+    // 墩柱
+    const g = x.createLinearGradient(-r * 0.34, 0, r * 0.34, 0);
+    g.addColorStop(0, lightenColor(col, 0.35));
+    g.addColorStop(0.5, lightenColor(col, 0.08));
+    g.addColorStop(1, darkenColor(col, 0.4));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.3, -r * 0.72, r * 0.6, r * 1.5, r * 0.08);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    // 交叉桁架撑
+    x.strokeStyle = darkenColor(col, 0.5);
+    x.lineWidth = Math.max(1.2, s * 0.055);
+    x.beginPath();
+    x.moveTo(-r * 0.24, -r * 0.5); x.lineTo(r * 0.24, r * 0.0);
+    x.moveTo(r * 0.24, -r * 0.5); x.lineTo(-r * 0.24, r * 0.0);
+    x.moveTo(-r * 0.24, r * 0.05); x.lineTo(r * 0.24, r * 0.55);
+    x.moveTo(r * 0.24, r * 0.05); x.lineTo(-r * 0.24, r * 0.55);
+    x.stroke();
+    // 横撑
+    x.strokeStyle = lightenColor(col, 0.2);
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.beginPath();
+    x.moveTo(-r * 0.26, -r * 0.24); x.lineTo(r * 0.26, -r * 0.24);
+    x.moveTo(-r * 0.26, r * 0.3); x.lineTo(r * 0.26, r * 0.3);
+    x.stroke();
+    // 宽基座
+    const bg = x.createLinearGradient(0, r * 0.62, 0, r * 0.95);
+    bg.addColorStop(0, lightenColor(col, 0.25));
+    bg.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = bg;
+    rrPath(x, -r * 0.7, r * 0.62, r * 1.4, r * 0.34, r * 0.07);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    // 墩身高光
+    x.fillStyle = 'rgba(255,255,255,.22)';
+    x.fillRect(-r * 0.22, -r * 0.68, r * 0.1, r * 1.4);
+  },
+
+  // 高架铁轨：斜向上坡轨排 + 白色上行箭头
+  'rail-ramp': (x, r, s, col) => {
+    x.save();
+    x.rotate(-Math.PI / 6);
+    // 枕木
+    x.fillStyle = '#7a5c3a';
+    for (let i = 0; i < 4; i++) {
+      const py = -r * 0.62 + i * r * 0.42;
+      rrPath(x, -r * 0.72, py - r * 0.08, r * 1.44, r * 0.16, r * 0.05);
+      x.fill();
+    }
+    // 双钢轨（横向，沿坡向）
+    const railBar = (py) => {
+      const g = x.createLinearGradient(0, py - r * 0.09, 0, py + r * 0.09);
+      g.addColorStop(0, lightenColor(col, 0.5));
+      g.addColorStop(0.5, lightenColor(col, 0.15));
+      g.addColorStop(1, darkenColor(col, 0.45));
+      x.fillStyle = g;
+      rrPath(x, -r * 0.95, py - r * 0.09, r * 1.9, r * 0.18, r * 0.05);
+      x.fill();
+      x.strokeStyle = 'rgba(0,0,0,.4)';
+      x.lineWidth = Math.max(0.8, s * 0.03);
+      x.stroke();
+    };
+    railBar(-r * 0.34);
+    railBar(r * 0.34);
+    // 轨顶高光
+    x.strokeStyle = 'rgba(255,255,255,.45)';
+    x.lineWidth = Math.max(1, s * 0.025);
+    x.beginPath(); x.moveTo(-r * 0.9, -r * 0.37); x.lineTo(r * 0.9, -r * 0.37); x.stroke();
+    // 坡度角标
+    x.strokeStyle = '#e8b23c';
+    x.lineWidth = Math.max(1.2, s * 0.05);
+    x.beginPath(); x.arc(0, 0, r * 0.16, Math.PI * 0.9, Math.PI * 1.4); x.stroke();
+    x.restore();
+    // 上行箭头
+    x.fillStyle = 'rgba(255,255,255,.92)';
+    x.beginPath();
+    x.moveTo(0, -r * 0.28);
+    x.lineTo(r * 0.22, r * 0.05);
+    x.lineTo(r * 0.09, r * 0.05);
+    x.lineTo(r * 0.09, r * 0.42);
+    x.lineTo(-r * 0.09, r * 0.42);
+    x.lineTo(-r * 0.09, r * 0.05);
+    x.lineTo(-r * 0.22, r * 0.05);
+    x.closePath();
+    x.fill();
+  },
+
+  // 玉玛果人造土：褐色耕作土砖 + 垄沟 + 幼苗
+  'artificial-yumako-soil': (x, r, s, col) => {
+    const g = x.createLinearGradient(0, -r * 0.8, 0, r * 0.8);
+    g.addColorStop(0, lightenColor(col, 0.3));
+    g.addColorStop(1, darkenColor(col, 0.35));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.8, -r * 0.8, r * 1.6, r * 1.6, r * 0.16);
+    x.fill();
+    x.strokeStyle = 'rgba(30,20,10,.5)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 垄沟
+    x.strokeStyle = 'rgba(30,20,10,.4)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    for (let i = 0; i < 3; i++) {
+      const py = -r * 0.4 + i * r * 0.42;
+      x.beginPath();
+      x.moveTo(-r * 0.66, py);
+      x.quadraticCurveTo(0, py + r * 0.1, r * 0.66, py);
+      x.stroke();
+    }
+    // 幼苗（两片叶 + 茎）
+    x.strokeStyle = '#5aa03f';
+    x.lineWidth = Math.max(1.5, s * 0.06);
+    x.lineCap = 'round';
+    x.beginPath(); x.moveTo(0, r * 0.28); x.quadraticCurveTo(r * 0.04, 0, 0, -r * 0.3); x.stroke();
+    x.fillStyle = '#6fbf4f';
+    x.beginPath(); x.ellipse(-r * 0.18, -r * 0.22, r * 0.19, r * 0.11, -0.6, 0, 7); x.fill();
+    x.beginPath(); x.ellipse(r * 0.18, -r * 0.3, r * 0.19, r * 0.11, 0.6, 0, 7); x.fill();
+    // 种子点
+    x.fillStyle = '#3a2a18';
+    x.beginPath(); x.arc(-r * 0.42, r * 0.5, r * 0.05, 0, 7); x.fill();
+    x.beginPath(); x.arc(r * 0.4, r * 0.52, r * 0.05, 0, 7); x.fill();
+  },
+
+  // 玉玛果沃土：深色沃土 + 茂盛双叶苗 + 养分光点
+  'overgrowth-yumako-soil': (x, r, s, col) => {
+    const g = x.createLinearGradient(0, -r * 0.8, 0, r * 0.8);
+    g.addColorStop(0, lightenColor(col, 0.32));
+    g.addColorStop(1, darkenColor(col, 0.38));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.8, -r * 0.8, r * 1.6, r * 1.6, r * 0.16);
+    x.fill();
+    x.strokeStyle = 'rgba(20,14,8,.55)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 垄沟
+    x.strokeStyle = 'rgba(20,14,8,.42)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    for (let i = 0; i < 3; i++) {
+      const py = -r * 0.4 + i * r * 0.42;
+      x.beginPath();
+      x.moveTo(-r * 0.66, py);
+      x.quadraticCurveTo(0, py + r * 0.1, r * 0.66, py);
+      x.stroke();
+    }
+    // 茂盛幼苗（四片叶）
+    x.strokeStyle = '#4a8a35';
+    x.lineWidth = Math.max(1.5, s * 0.06);
+    x.lineCap = 'round';
+    x.beginPath(); x.moveTo(0, r * 0.3); x.quadraticCurveTo(0.04 * r, 0, 0, -r * 0.34); x.stroke();
+    x.fillStyle = '#7ecf56';
+    [[-0.24, -0.24, -0.7], [0.24, -0.32, 0.7], [-0.3, 0.02, -0.5], [0.3, -0.06, 0.5]].forEach(l => {
+      x.beginPath(); x.ellipse(l[0] * r, l[1] * r, r * 0.2, r * 0.11, l[2], 0, 7); x.fill();
+    });
+    // 养分光点
+    x.fillStyle = 'rgba(180,240,150,.75)';
+    [[-0.5, -0.52], [0.55, -0.45], [0.45, 0.55]].forEach(p => {
+      x.beginPath(); x.arc(p[0] * r, p[1] * r, r * 0.06, 0, 7); x.fill();
+    });
+  },
+
+  // 果冻果人造土：紫红耕作土砖 + 垄沟 + 果冻色嫩芽
+  'artificial-jellynut-soil': (x, r, s, col) => {
+    const g = x.createLinearGradient(0, -r * 0.8, 0, r * 0.8);
+    g.addColorStop(0, lightenColor(col, 0.3));
+    g.addColorStop(1, darkenColor(col, 0.35));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.8, -r * 0.8, r * 1.6, r * 1.6, r * 0.16);
+    x.fill();
+    x.strokeStyle = 'rgba(40,14,24,.5)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 垄沟
+    x.strokeStyle = 'rgba(40,14,24,.4)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    for (let i = 0; i < 3; i++) {
+      const py = -r * 0.4 + i * r * 0.42;
+      x.beginPath();
+      x.moveTo(-r * 0.66, py);
+      x.quadraticCurveTo(0, py + r * 0.1, r * 0.66, py);
+      x.stroke();
+    }
+    // 果冻色嫩芽
+    x.strokeStyle = '#b05a8a';
+    x.lineWidth = Math.max(1.5, s * 0.06);
+    x.lineCap = 'round';
+    x.beginPath(); x.moveTo(0, r * 0.28); x.quadraticCurveTo(r * 0.04, 0, 0, -r * 0.28); x.stroke();
+    x.fillStyle = '#e07ab0';
+    x.beginPath(); x.ellipse(-r * 0.17, -r * 0.2, r * 0.18, r * 0.11, -0.6, 0, 7); x.fill();
+    x.beginPath(); x.ellipse(r * 0.17, -r * 0.28, r * 0.18, r * 0.11, 0.6, 0, 7); x.fill();
+    // 种子点
+    x.fillStyle = '#40182a';
+    x.beginPath(); x.arc(-r * 0.42, r * 0.5, r * 0.05, 0, 7); x.fill();
+    x.beginPath(); x.arc(r * 0.4, r * 0.52, r * 0.05, 0, 7); x.fill();
+  },
+
+  // 果冻果沃土：深紫沃土 + 茂盛果冻苗 + 养分光点
+  'overgrowth-jellynut-soil': (x, r, s, col) => {
+    const g = x.createLinearGradient(0, -r * 0.8, 0, r * 0.8);
+    g.addColorStop(0, lightenColor(col, 0.34));
+    g.addColorStop(1, darkenColor(col, 0.38));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.8, -r * 0.8, r * 1.6, r * 1.6, r * 0.16);
+    x.fill();
+    x.strokeStyle = 'rgba(30,10,20,.55)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 垄沟
+    x.strokeStyle = 'rgba(30,10,20,.42)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    for (let i = 0; i < 3; i++) {
+      const py = -r * 0.4 + i * r * 0.42;
+      x.beginPath();
+      x.moveTo(-r * 0.66, py);
+      x.quadraticCurveTo(0, py + r * 0.1, r * 0.66, py);
+      x.stroke();
+    }
+    // 茂盛果冻苗（四片叶）
+    x.strokeStyle = '#9a4a70';
+    x.lineWidth = Math.max(1.5, s * 0.06);
+    x.lineCap = 'round';
+    x.beginPath(); x.moveTo(0, r * 0.3); x.quadraticCurveTo(0.04 * r, 0, 0, -r * 0.34); x.stroke();
+    x.fillStyle = '#f090c0';
+    [[-0.24, -0.24, -0.7], [0.24, -0.32, 0.7], [-0.3, 0.02, -0.5], [0.3, -0.06, 0.5]].forEach(l => {
+      x.beginPath(); x.ellipse(l[0] * r, l[1] * r, r * 0.2, r * 0.11, l[2], 0, 7); x.fill();
+    });
+    // 养分光点
+    x.fillStyle = 'rgba(255,190,225,.75)';
+    [[-0.5, -0.52], [0.55, -0.45], [0.45, 0.55]].forEach(p => {
+      x.beginPath(); x.arc(p[0] * r, p[1] * r, r * 0.06, 0, 7); x.fill();
+    });
+  },
+
+  // 机器人港：大型八角基座 + 双天线 + 充能圆盘 + 警示条纹
+  'roboport': (x, r, s, col) => {
+    // 八角主体
+    const g = x.createLinearGradient(0, -r * 0.85, 0, r * 0.85);
+    g.addColorStop(0, lightenColor(col, 0.4));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.42));
+    x.fillStyle = g;
+    x.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = i * Math.PI / 4 + Math.PI / 8;
+      const px = Math.cos(a) * r * 0.82, py = Math.sin(a) * r * 0.82;
+      i === 0 ? x.moveTo(px, py) : x.lineTo(px, py);
+    }
+    x.closePath();
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.48)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 充能圆盘
+    const dg = x.createRadialGradient(-r * 0.08, -r * 0.08, r * 0.05, 0, 0, r * 0.4);
+    dg.addColorStop(0, lightenColor(col, 0.55));
+    dg.addColorStop(1, darkenColor(col, 0.35));
+    x.fillStyle = dg;
+    x.beginPath(); x.arc(0, r * 0.02, r * 0.38, 0, 7); x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.4)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    // 圆盘内上下箭头（机器人进出港）
+    x.strokeStyle = '#123a3a';
+    x.lineWidth = Math.max(1.5, s * 0.06);
+    x.lineCap = 'round';
+    x.beginPath();
+    x.moveTo(-r * 0.14, -r * 0.16); x.lineTo(-r * 0.14, r * 0.2);
+    x.moveTo(-r * 0.14, r * 0.2); x.lineTo(-r * 0.2, r * 0.12);
+    x.moveTo(-r * 0.14, r * 0.2); x.lineTo(-r * 0.08, r * 0.12);
+    x.moveTo(r * 0.14, r * 0.2); x.lineTo(r * 0.14, -r * 0.16);
+    x.moveTo(r * 0.14, -r * 0.16); x.lineTo(r * 0.08, -r * 0.08);
+    x.moveTo(r * 0.14, -r * 0.16); x.lineTo(r * 0.2, -r * 0.08);
+    x.stroke();
+    // 双天线
+    x.strokeStyle = '#2a4a4a';
+    x.lineWidth = Math.max(1.2, s * 0.05);
+    [[-0.4, -0.72], [0.4, -0.72]].forEach(p => {
+      x.beginPath(); x.moveTo(p[0] * r, p[1] * r + r * 0.14); x.lineTo(p[0] * r, p[1] * r - r * 0.14); x.stroke();
+      x.fillStyle = '#ffd43b';
+      x.beginPath(); x.arc(p[0] * r, p[1] * r - r * 0.18, r * 0.08, 0, 7); x.fill();
+    });
+    // 底部警示条纹
+    x.save();
+    x.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = i * Math.PI / 4 + Math.PI / 8;
+      const px = Math.cos(a) * r * 0.82, py = Math.sin(a) * r * 0.82;
+      i === 0 ? x.moveTo(px, py) : x.lineTo(px, py);
+    }
+    x.closePath();
+    x.clip();
+    x.fillStyle = '#e8b23c';
+    x.fillRect(-r * 0.9, r * 0.55, r * 1.8, r * 0.2);
+    x.fillStyle = '#2a2a30';
+    for (let i = 0; i < 5; i++) {
+      x.fillRect(-r * 0.9 + i * r * 0.42, r * 0.55, r * 0.2, r * 0.2);
+    }
+    x.restore();
+  },
+
+  // 物流机器人：俯视飞行机器人 + 双旋翼 + 蓝色机身 + 货斗
+  'logistic-robot': (x, r, s, col) => {
+    // 旋翼臂（横穿）
+    x.strokeStyle = '#3a444e';
+    x.lineWidth = Math.max(1.5, s * 0.07);
+    x.lineCap = 'round';
+    x.beginPath();
+    x.moveTo(-r * 0.95, -r * 0.4); x.lineTo(r * 0.95, -r * 0.4);
+    x.moveTo(-r * 0.95, r * 0.4); x.lineTo(r * 0.95, r * 0.4);
+    x.stroke();
+    // 旋翼残影（半透明圆盘）
+    x.fillStyle = 'rgba(200,220,235,.28)';
+    [[-0.72, -0.4], [0.72, -0.4], [-0.72, 0.4], [0.72, 0.4]].forEach(p => {
+      x.beginPath(); x.arc(p[0] * r, p[1] * r, r * 0.26, 0, 7); x.fill();
+    });
+    // 旋翼中心毂
+    x.fillStyle = '#5a646e';
+    [[-0.72, -0.4], [0.72, -0.4], [-0.72, 0.4], [0.72, 0.4]].forEach(p => {
+      x.beginPath(); x.arc(p[0] * r, p[1] * r, r * 0.09, 0, 7); x.fill();
+    });
+    // 机身（纵向胶囊）
+    const g = x.createLinearGradient(0, -r * 0.6, 0, r * 0.6);
+    g.addColorStop(0, lightenColor(col, 0.45));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.4));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.34, -r * 0.62, r * 0.68, r * 1.24, r * 0.3);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.48)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 感应眼（前部）
+    x.fillStyle = '#ffe24a';
+    x.beginPath(); x.arc(0, -r * 0.34, r * 0.1, 0, 7); x.fill();
+    // 货斗（后部开口）
+    x.fillStyle = darkenColor(col, 0.5);
+    rrPath(x, -r * 0.24, r * 0.3, r * 0.48, r * 0.3, r * 0.08);
+    x.fill();
+    x.strokeStyle = 'rgba(255,255,255,.3)';
+    x.lineWidth = Math.max(1, s * 0.025);
+    x.stroke();
+    // 机身高光
+    x.fillStyle = 'rgba(255,255,255,.3)';
+    rrPath(x, -r * 0.22, -r * 0.56, r * 0.12, r * 0.7, r * 0.06);
+    x.fill();
+  },
+
+  // 施工机器人：俯视飞行机器人 + X 形旋翼臂 + 橙色机身 + 扳手爪
+  'construction-robot': (x, r, s, col) => {
+    // X 形旋翼臂
+    x.strokeStyle = '#4a4038';
+    x.lineWidth = Math.max(1.5, s * 0.07);
+    x.lineCap = 'round';
+    x.beginPath();
+    x.moveTo(-r * 0.88, -r * 0.5); x.lineTo(r * 0.88, r * 0.5);
+    x.moveTo(r * 0.88, -r * 0.5); x.lineTo(-r * 0.88, r * 0.5);
+    x.stroke();
+    // 旋翼残影
+    x.fillStyle = 'rgba(235,215,190,.3)';
+    [[-0.66, -0.38], [0.66, 0.38], [0.66, -0.38], [-0.66, 0.38]].forEach(p => {
+      x.beginPath(); x.arc(p[0] * r, p[1] * r, r * 0.24, 0, 7); x.fill();
+    });
+    x.fillStyle = '#6a6058';
+    [[-0.66, -0.38], [0.66, 0.38], [0.66, -0.38], [-0.66, 0.38]].forEach(p => {
+      x.beginPath(); x.arc(p[0] * r, p[1] * r, r * 0.08, 0, 7); x.fill();
+    });
+    // 机身
+    const g = x.createLinearGradient(0, -r * 0.6, 0, r * 0.6);
+    g.addColorStop(0, lightenColor(col, 0.45));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.4));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.36, -r * 0.58, r * 0.72, r * 1.16, r * 0.28);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.48)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 感应眼
+    x.fillStyle = '#ffe24a';
+    x.beginPath(); x.arc(0, -r * 0.3, r * 0.1, 0, 7); x.fill();
+    // 前部扳手（施工标识）
+    x.strokeStyle = '#c8ccd4';
+    x.lineWidth = Math.max(2, s * 0.09);
+    x.lineCap = 'round';
+    x.beginPath();
+    x.moveTo(-r * 0.16, r * 0.12); x.lineTo(r * 0.16, r * 0.44);
+    x.stroke();
+    x.strokeStyle = '#c8ccd4';
+    x.lineWidth = Math.max(1.2, s * 0.05);
+    x.beginPath(); x.arc(r * 0.2, r * 0.48, r * 0.1, Math.PI * 0.7, Math.PI * 1.9); x.stroke();
+    // 机身高光
+    x.fillStyle = 'rgba(255,255,255,.3)';
+    rrPath(x, -r * 0.23, -r * 0.52, r * 0.12, r * 0.62, r * 0.06);
+    x.fill();
+  },
+
+  // 被动供应箱：红色物流箱 + 箱盖 + 白色下行供应箭头
+  'passive-provider-chest': (x, r, s, col) => {
+    const g = x.createLinearGradient(-r * 0.8, -r * 0.7, r * 0.8, r * 0.75);
+    g.addColorStop(0, lightenColor(col, 0.35));
+    g.addColorStop(1, darkenColor(col, 0.35));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.8, -r * 0.55, r * 1.6, r * 1.28, r * 0.12);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 箱盖
+    const lg = x.createLinearGradient(0, -r * 0.85, 0, -r * 0.5);
+    lg.addColorStop(0, lightenColor(col, 0.5));
+    lg.addColorStop(1, lightenColor(col, 0.1));
+    x.fillStyle = lg;
+    rrPath(x, -r * 0.85, -r * 0.85, r * 1.7, r * 0.36, r * 0.1);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    // 下行供应箭头（机器人取货送出）
+    x.fillStyle = 'rgba(255,255,255,.92)';
+    x.beginPath();
+    x.moveTo(0, -r * 0.28);
+    x.lineTo(r * 0.22, r * 0.02);
+    x.lineTo(r * 0.09, r * 0.02);
+    x.lineTo(r * 0.09, r * 0.36);
+    x.lineTo(-r * 0.09, r * 0.36);
+    x.lineTo(-r * 0.09, r * 0.02);
+    x.lineTo(-r * 0.22, r * 0.02);
+    x.closePath();
+    x.fill();
+    // 四角铆钉
+    x.fillStyle = lightenColor(col, 0.5);
+    [[-0.62, -0.36], [0.62, -0.36], [-0.62, 0.54], [0.62, 0.54]].forEach(p => {
+      x.beginPath(); x.arc(p[0] * r, p[1] * r, r * 0.06, 0, 7); x.fill();
+    });
+  },
 };

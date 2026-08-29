@@ -57,16 +57,16 @@
 - [x] `train-stop` 车站
 - [x] `rail-signal` 铁路信号灯
 - [x] `rail-chain-signal` 铁路链式信号灯
-- [ ] `rail-support` 高架桥墩
-- [ ] `rail-ramp` 高架铁轨
-- [ ] `artificial-yumako-soil` 玉玛果人造土
-- [ ] `overgrowth-yumako-soil` 玉玛果沃土
-- [ ] `artificial-jellynut-soil` 果冻果人造土
-- [ ] `overgrowth-jellynut-soil` 果冻果沃土
-- [ ] `roboport` 机器人港
-- [ ] `logistic-robot` 物流机器人
-- [ ] `construction-robot` 施工机器人
-- [ ] `passive-provider-chest` 被动供应箱
+- [x] `rail-support` 高架桥墩
+- [x] `rail-ramp` 高架铁轨
+- [x] `artificial-yumako-soil` 玉玛果人造土
+- [x] `overgrowth-yumako-soil` 玉玛果沃土
+- [x] `artificial-jellynut-soil` 果冻果人造土
+- [x] `overgrowth-jellynut-soil` 果冻果沃土
+- [x] `roboport` 机器人港
+- [x] `logistic-robot` 物流机器人
+- [x] `construction-robot` 施工机器人
+- [x] `passive-provider-chest` 被动供应箱
 - [ ] `active-provider-chest` 主动供应箱
 - [ ] `storage-chest` 仓储箱
 - [ ] `buffer-chest` 缓冲箱
