@@ -41,6 +41,12 @@ class Pipe extends Entity {
           // 管道把流体灌入储液罐（罐空或同种流体且未满时才能灌入）
           // 仅允许在对角接口格接入（另一对对角为空不可接管）
           if (t.isPortCell && !t.isPortCell(this.x, this.y)) continue;
+          // 仅当管道液位比例高于罐时才回赠：低压管道不应向高压罐倒灌
+          // （对齐官方压力均分——流体从高压流向低压直到全网同比例）。
+          // 若无条件回赠，管道会被持续压在低液位，罐里的流体难以向外流。
+          const pipeRatio = this.fluid[k] / PIPE_CAP;
+          const tankRatio = (t.fluid[k] || 0) / STORAGE_TANK_CAP;
+          if (pipeRatio <= tankRatio) continue;
           if (t.giveItem(k)) this.fluid[k]--;
         } else if ((t instanceof Refinery) || (t instanceof ChemicalPlant) ||
                     (t instanceof Assembler && t.acceptsFluid(k)) ||

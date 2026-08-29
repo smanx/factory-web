@@ -81,8 +81,10 @@ class StorageTank extends CircuitNode {
     const ratioMine = mine / STORAGE_TANK_CAP;
     const ratioTheirs = theirs / capT;
     if (ratioMine <= ratioTheirs) return false;
-    // 期望目标液位 = 两液位均值，折算成目标应增的数量
-    const targetRatio = (ratioMine + ratioTheirs) / 2;
+    // 目标 = 罐自身的液位比例（对齐官方压力均分：整个连通网络趋同于同一比例）。
+    // 若取两方均值，管道永远低于罐的比例，且下取整后每步推进极小、近似停滞，
+    // 会让罐里的流体看起来"不往外流"。
+    const targetRatio = ratioMine;
     const targetAmount = Math.floor(targetRatio * capT);
     const move = Math.min(targetAmount - theirs, mine, capT - t.total());
     if (move <= 0) return false;
