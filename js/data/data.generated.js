@@ -14,7 +14,7 @@
 //   itemSubgroup[item] = item-group 内二级分组（官方 item-subgroup）
 //   subgroupOrder[subgroup] = subgroup 在 group 内官方顺序,  itemOrder[item] = 物品在 subgroup 内官方顺序
 //   其余设备行为参数（官方接入，见对应设备文件 GAME_DATA.xxx?.[..] ?? 兜底）：
-//   undergroundDist[带] = 地下带最大距离(格), renewable = { solarPower, accumCap, accumChargeRate }
+//   undergroundDist[带] = 地下带最大距离(格), pipeGroundDist = 地下管道最大跨距(格), renewable = { solarPower, accumCap, accumChargeRate }
 //   fluidCapacity = { storageTank, fluidWagon, pumpRate, pipeVolume, pipeToGroundVolume }, beaconRange = 信号塔半径(格)
 //   turret[塔] = { range, fireRate(秒) }, ammoDamage[弹药] = 伤害, radar = { range, power(kW) }
 //   equipment[装备] = { powerOut | powerCap(kJ) | shield | speed | laser | dischargeRange/Cooldown }
@@ -5652,6 +5652,7 @@ const GAME_DATA = {
   "express-underground-belt": 9,
   "turbo-underground-belt": 11
  },
+ "pipeGroundDist": 10,
  "renewable": {
   "solarPower": 60,
   "accumCap": 5000,

@@ -22,6 +22,17 @@ const load = (p) => fs.readFileSync(path.join(SRC, p), 'utf8');
 
 const TILE = 32, BELT_SPEED = 1.875, BELT_SPACING = 0.125;
 const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
+// 地下带最大跨距：js/devices/underground.js 从 data.js 读取 UNDERGROUND_MAX/FAST_UNDERGROUND_MAX/…，
+// 而 data.js 又桥接自 GAME_DATA.undergroundDist（官方单源）。本脚本用 vm 加载设备文件，
+// 未加载 data.js，故在此按同一官方源补上常量，供 Underground.maxDist() 使用。
+const _gdSrc = fs.readFileSync(path.join(__dirname, '..', 'js', 'data', 'data.generated.js'), 'utf8');
+const _gdVm = { GAME_DATA: null };
+require('vm').createContext(_gdVm);
+require('vm').runInContext(_gdSrc.replace('const GAME_DATA =', 'GAME_DATA ='), _gdVm);
+const _UG = (_gdVm.GAME_DATA && _gdVm.GAME_DATA.undergroundDist) || {};
+const UNDERGROUND_MAX = _UG['underground-belt'];
+const FAST_UNDERGROUND_MAX = _UG['fast-underground-belt'];
+const EXPRESS_UNDERGROUND_MAX = _UG['express-underground-belt'];
 
 const G = {
   grid: new Map(), ents: [], buckets: new Map(), techProg: {}, techDone: {}, time: 0, dbg: {},
@@ -62,6 +73,7 @@ const DEVICE_DIR_ROTATE = {};
 const sandbox = {
   console, TILE, BELT_SPEED, BELT_SPACING, DX, DY, G, entAt, entKey,
   BUILD_DEFS, DEVICE_DIR_ROTATE,
+  UNDERGROUND_MAX, FAST_UNDERGROUND_MAX, EXPRESS_UNDERGROUND_MAX,
   postPlaceRotatable: (t) => !(t === 'boiler' || t === 'steam-engine' || t === 'steam-turbine' || t === 'heat-exchanger'),
   ITEMS: {},
   Underground: class Underground {}, Splitter: class Splitter {},
