@@ -2813,4 +2813,353 @@ const ITEM_CUSTOM_ICONS = {
     rrPath(x, -r * 0.3, r * 0.52, r * 0.6, r * 0.12, r * 0.05);
     x.fill();
   },
+
+  // 选择组合器：蓝色机身 + 漏斗筛选标识 + 输出箭头
+  'selector-combinator': (x, r, s, col) => {
+    // 机身
+    const g = x.createLinearGradient(-r * 0.8, -r * 0.8, r * 0.8, r * 0.8);
+    g.addColorStop(0, lightenColor(col, 0.4));
+    g.addColorStop(1, darkenColor(col, 0.4));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.8, -r * 0.7, r * 1.6, r * 1.4, r * 0.12);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 深色内屏
+    x.fillStyle = '#101820';
+    rrPath(x, -r * 0.55, -r * 0.5, r * 1.1, r * 1.0, r * 0.1);
+    x.fill();
+    // 漏斗筛选标识
+    x.strokeStyle = '#7fb2f0';
+    x.fillStyle = '#7fb2f0';
+    x.lineWidth = Math.max(1.4, s * 0.06);
+    x.lineCap = 'round';
+    x.lineJoin = 'round';
+    x.beginPath();
+    x.moveTo(-r * 0.32, -r * 0.36); x.lineTo(r * 0.32, -r * 0.36);
+    x.lineTo(r * 0.08, -r * 0.04); x.lineTo(r * 0.08, r * 0.22);
+    x.lineTo(-r * 0.08, r * 0.22); x.lineTo(-r * 0.08, -r * 0.04);
+    x.closePath();
+    x.stroke();
+    // 漏斗下方三条候选线（被筛选的信号）
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.beginPath(); x.moveTo(-r * 0.34, r * 0.36); x.lineTo(-r * 0.06, r * 0.36); x.stroke();
+    x.beginPath(); x.moveTo(r * 0.06, r * 0.36); x.lineTo(r * 0.34, r * 0.36); x.stroke();
+    // 选中的中间信号高亮点
+    x.beginPath(); x.arc(0, r * 0.36, r * 0.07, 0, 7); x.fill();
+    // 底部线缆接口
+    x.fillStyle = darkenColor(col, 0.5);
+    rrPath(x, -r * 0.3, r * 0.52, r * 0.6, r * 0.12, r * 0.05);
+    x.fill();
+  },
+
+  // 显示屏：浅色外框 + 深色屏面 + 绿色信号文字行 + 支架
+  'display-panel': (x, r, s, col) => {
+    // 支架底座
+    x.fillStyle = darkenColor(col, 0.4);
+    rrPath(x, -r * 0.34, r * 0.66, r * 0.68, r * 0.16, r * 0.05);
+    x.fill();
+    // 支柱
+    x.fillRect(-r * 0.08, r * 0.36, r * 0.16, r * 0.34);
+    // 屏体外壳
+    const g = x.createLinearGradient(0, -r * 0.7, 0, r * 0.5);
+    g.addColorStop(0, lightenColor(col, 0.25));
+    g.addColorStop(1, darkenColor(col, 0.3));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.85, -r * 0.75, r * 1.7, r * 1.3, r * 0.14);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 屏面
+    x.fillStyle = '#101820';
+    rrPath(x, -r * 0.68, -r * 0.58, r * 1.36, r * 0.96, r * 0.08);
+    x.fill();
+    // 信号文字行（绿色等宽感线条）
+    x.strokeStyle = '#7fe87f';
+    x.lineCap = 'round';
+    x.lineWidth = Math.max(1.2, s * 0.05);
+    x.beginPath(); x.moveTo(-r * 0.5, -r * 0.32); x.lineTo(r * 0.28, -r * 0.32); x.stroke();
+    x.beginPath(); x.moveTo(-r * 0.5, -r * 0.04); x.lineTo(r * 0.48, -r * 0.04); x.stroke();
+    x.beginPath(); x.moveTo(-r * 0.5, r * 0.24); x.lineTo(r * 0.04, r * 0.24); x.stroke();
+    // 行首信号点
+    x.fillStyle = '#e0c060';
+    x.beginPath(); x.arc(-r * 0.58, -r * 0.04, r * 0.05, 0, 7); x.fill();
+  },
+
+  // 功率开关：红铜底座 + 斜置闸刀手柄 + 触点
+  'power-switch': (x, r, s, col) => {
+    // 底座
+    const g = x.createLinearGradient(0, -r * 0.6, 0, r * 0.8);
+    g.addColorStop(0, lightenColor(col, 0.3));
+    g.addColorStop(1, darkenColor(col, 0.35));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.8, -r * 0.35, r * 1.6, r * 1.1, r * 0.14);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 两个触点柱
+    x.fillStyle = '#8a8a92';
+    rrPath(x, -r * 0.58, -r * 0.16, r * 0.22, r * 0.5, r * 0.06);
+    x.fill();
+    rrPath(x, r * 0.36, -r * 0.16, r * 0.22, r * 0.5, r * 0.06);
+    x.fill();
+    // 触点铰链
+    x.fillStyle = '#d8d8e0';
+    x.beginPath(); x.arc(-r * 0.47, -r * 0.1, r * 0.09, 0, 7); x.fill();
+    // 斜置闸刀手柄（断开位）
+    x.strokeStyle = '#e8e8f0';
+    x.lineCap = 'round';
+    x.lineWidth = r * 0.16;
+    x.beginPath(); x.moveTo(-r * 0.47, -r * 0.1); x.lineTo(r * 0.42, -r * 0.62); x.stroke();
+    // 手柄高光
+    x.strokeStyle = 'rgba(255,255,255,.55)';
+    x.lineWidth = r * 0.05;
+    x.beginPath(); x.moveTo(-r * 0.42, -r * 0.16); x.lineTo(r * 0.36, -r * 0.64); x.stroke();
+    // 手柄末端圆球
+    x.fillStyle = '#e05a4a';
+    x.beginPath(); x.arc(r * 0.44, -r * 0.64, r * 0.13, 0, 7); x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.35)';
+    x.lineWidth = Math.max(0.8, s * 0.03);
+    x.stroke();
+    // 右触点火花缺口指示
+    x.strokeStyle = '#f0c040';
+    x.lineWidth = Math.max(1, s * 0.035);
+    x.beginPath();
+    x.moveTo(r * 0.62, r * 0.06); x.lineTo(r * 0.78, r * 0.06);
+    x.moveTo(r * 0.7, -r * 0.02); x.lineTo(r * 0.7, r * 0.14);
+    x.stroke();
+  },
+
+  // 红电路线缆：线缆卷环 + 两端插头 + 「R」标识
+  'red-wire': (x, r, s, col) => {
+    // 线缆卷（外环粗线 + 内环细线，螺旋感）
+    x.strokeStyle = darkenColor(col, 0.25);
+    x.lineWidth = r * 0.34;
+    x.beginPath(); x.arc(0, r * 0.06, r * 0.44, 0.6, 5.9); x.stroke();
+    x.strokeStyle = lightenColor(col, 0.3);
+    x.lineWidth = r * 0.16;
+    x.beginPath(); x.arc(0, r * 0.06, r * 0.44, 0.6, 5.9); x.stroke();
+    // 环内高光弧
+    x.strokeStyle = 'rgba(255,255,255,.4)';
+    x.lineWidth = r * 0.05;
+    x.beginPath(); x.arc(0, r * 0.06, r * 0.28, 2.4, 4.2); x.stroke();
+    // 左端插头
+    x.strokeStyle = darkenColor(col, 0.3);
+    x.lineWidth = r * 0.12;
+    x.lineCap = 'round';
+    x.beginPath(); x.moveTo(-r * 0.42, r * 0.34); x.quadraticCurveTo(-r * 0.62, r * 0.44, -r * 0.68, r * 0.2); x.stroke();
+    x.fillStyle = '#d8d8e0';
+    rrPath(x, -r * 0.82, -r * 0.06, r * 0.24, r * 0.34, r * 0.06);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.4)';
+    x.lineWidth = Math.max(0.8, s * 0.03);
+    x.stroke();
+    // 右端插头
+    x.beginPath(); x.moveTo(r * 0.42, r * 0.34); x.quadraticCurveTo(r * 0.62, r * 0.44, r * 0.68, r * 0.2); x.stroke();
+    x.fillStyle = '#d8d8e0';
+    rrPath(x, r * 0.58, -r * 0.06, r * 0.24, r * 0.34, r * 0.06);
+    x.fill();
+    x.stroke();
+    // 「R」标识
+    x.fillStyle = '#fff';
+    x.font = 'bold ' + Math.round(r * 0.5) + 'px system-ui';
+    x.textAlign = 'center';
+    x.textBaseline = 'middle';
+    x.fillText('R', 0, r * 0.08);
+  },
+
+  // 绿电路线缆：线缆卷环 + 两端插头 + 「G」标识
+  'green-wire': (x, r, s, col) => {
+    x.strokeStyle = darkenColor(col, 0.25);
+    x.lineWidth = r * 0.34;
+    x.beginPath(); x.arc(0, r * 0.06, r * 0.44, 0.6, 5.9); x.stroke();
+    x.strokeStyle = lightenColor(col, 0.3);
+    x.lineWidth = r * 0.16;
+    x.beginPath(); x.arc(0, r * 0.06, r * 0.44, 0.6, 5.9); x.stroke();
+    x.strokeStyle = 'rgba(255,255,255,.4)';
+    x.lineWidth = r * 0.05;
+    x.beginPath(); x.arc(0, r * 0.06, r * 0.28, 2.4, 4.2); x.stroke();
+    x.strokeStyle = darkenColor(col, 0.3);
+    x.lineWidth = r * 0.12;
+    x.lineCap = 'round';
+    x.beginPath(); x.moveTo(-r * 0.42, r * 0.34); x.quadraticCurveTo(-r * 0.62, r * 0.44, -r * 0.68, r * 0.2); x.stroke();
+    x.fillStyle = '#d8d8e0';
+    rrPath(x, -r * 0.82, -r * 0.06, r * 0.24, r * 0.34, r * 0.06);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.4)';
+    x.lineWidth = Math.max(0.8, s * 0.03);
+    x.stroke();
+    x.beginPath(); x.moveTo(r * 0.42, r * 0.34); x.quadraticCurveTo(r * 0.62, r * 0.44, r * 0.68, r * 0.2); x.stroke();
+    x.fillStyle = '#d8d8e0';
+    rrPath(x, r * 0.58, -r * 0.06, r * 0.24, r * 0.34, r * 0.06);
+    x.fill();
+    x.stroke();
+    x.fillStyle = '#fff';
+    x.font = 'bold ' + Math.round(r * 0.5) + 'px system-ui';
+    x.textAlign = 'center';
+    x.textBaseline = 'middle';
+    x.fillText('G', 0, r * 0.08);
+  },
+
+  // 混凝土：灰色 2×2 地砖 + 砖缝 + 石点纹理
+  'concrete': (x, r, s, col) => {
+    const tile = (px, py, w, h) => {
+      const g = x.createLinearGradient(px, py, px, py + h);
+      g.addColorStop(0, lightenColor(col, 0.22));
+      g.addColorStop(1, darkenColor(col, 0.25));
+      x.fillStyle = g;
+      rrPath(x, px, py, w, h, h * 0.14);
+      x.fill();
+      x.strokeStyle = 'rgba(40,40,45,.5)';
+      x.lineWidth = Math.max(0.8, s * 0.035);
+      x.stroke();
+      // 石点纹理
+      x.fillStyle = 'rgba(0,0,0,.14)';
+      x.beginPath(); x.arc(px + w * 0.32, py + h * 0.4, w * 0.06, 0, 7); x.fill();
+      x.beginPath(); x.arc(px + w * 0.66, py + h * 0.62, w * 0.05, 0, 7); x.fill();
+      x.fillStyle = 'rgba(255,255,255,.18)';
+      x.beginPath(); x.arc(px + w * 0.7, py + h * 0.3, w * 0.05, 0, 7); x.fill();
+    };
+    const h = r * 0.46, w = r * 0.46, gap = r * 0.03;
+    tile(-r - gap / 2, -r - gap / 2, w, h);
+    tile(gap / 2, -r - gap / 2, w, h);
+    tile(-r - gap / 2, gap / 2, w, h);
+    tile(gap / 2, gap / 2, w, h);
+  },
+
+  // 精炼混凝土：浅灰大板 + 十字深缝 + 角部装饰点
+  'refined-concrete': (x, r, s, col) => {
+    // 整板底
+    const g = x.createLinearGradient(-r, -r, r, r);
+    g.addColorStop(0, lightenColor(col, 0.28));
+    g.addColorStop(1, darkenColor(col, 0.22));
+    x.fillStyle = g;
+    rrPath(x, -r, -r, r * 2, r * 2, r * 0.12);
+    x.fill();
+    x.strokeStyle = 'rgba(40,40,45,.5)';
+    x.lineWidth = Math.max(0.8, s * 0.035);
+    x.stroke();
+    // 十字深缝
+    x.strokeStyle = 'rgba(50,50,55,.65)';
+    x.lineWidth = Math.max(1.2, s * 0.05);
+    x.beginPath(); x.moveTo(0, -r * 0.96); x.lineTo(0, r * 0.96); x.stroke();
+    x.beginPath(); x.moveTo(-r * 0.96, 0); x.lineTo(r * 0.96, 0); x.stroke();
+    // 每块角部小方点装饰
+    x.fillStyle = 'rgba(60,60,66,.55)';
+    const o = r * 0.18, d = r * 0.09;
+    [[-o, -o], [o, -o], [-o, o], [o, o]].forEach(p => {
+      rrPath(x, p[0] - d, p[1] - d, d * 2, d * 2, d * 0.5);
+      x.fill();
+    });
+    // 高光扫面
+    x.fillStyle = 'rgba(255,255,255,.1)';
+    rrPath(x, -r * 0.92, -r * 0.92, r * 1.84, r * 0.5, r * 0.1);
+    x.fill();
+  },
+
+  // 警示混凝土：黄底黑斜纹地砖
+  'hazard-concrete': (x, r, s, col) => {
+    // 底砖
+    const g = x.createLinearGradient(-r, -r, r, r);
+    g.addColorStop(0, lightenColor(col, 0.2));
+    g.addColorStop(1, darkenColor(col, 0.3));
+    x.fillStyle = g;
+    rrPath(x, -r, -r, r * 2, r * 2, r * 0.12);
+    x.fill();
+    // 黑色斜纹（裁剪在砖内）
+    x.save();
+    rrPath(x, -r, -r, r * 2, r * 2, r * 0.12);
+    x.clip();
+    x.fillStyle = '#22222a';
+    for (let i = -3; i <= 3; i++) {
+      x.save();
+      x.translate(i * r * 0.62, 0);
+      x.rotate(Math.PI / 4);
+      x.fillRect(-r * 0.14, -r * 2, r * 0.28, r * 4);
+      x.restore();
+    }
+    x.restore();
+    // 描边
+    x.strokeStyle = 'rgba(40,40,45,.55)';
+    x.lineWidth = Math.max(0.8, s * 0.035);
+    rrPath(x, -r, -r, r * 2, r * 2, r * 0.12);
+    x.stroke();
+  },
+
+  // 精炼警示混凝土：浅灰大板 + 黑黄斜纹带 + 精炼缝
+  'refined-hazard-concrete': (x, r, s, col) => {
+    // 精炼底板
+    const g = x.createLinearGradient(-r, -r, r, r);
+    g.addColorStop(0, lightenColor('#b0b0b6', 0.25));
+    g.addColorStop(1, darkenColor('#b0b0b6', 0.2));
+    x.fillStyle = g;
+    rrPath(x, -r, -r, r * 2, r * 2, r * 0.12);
+    x.fill();
+    // 中部斜纹警示带（裁剪）
+    x.save();
+    x.beginPath();
+    rrPath(x, -r * 0.95, -r * 0.34, r * 1.9, r * 0.68, r * 0.1);
+    x.clip();
+    x.fillStyle = lightenColor(col, 0.15);
+    x.fillRect(-r, -r * 0.4, r * 2, r * 0.8);
+    x.fillStyle = '#22222a';
+    for (let i = -3; i <= 3; i++) {
+      x.save();
+      x.translate(i * r * 0.5, 0);
+      x.rotate(Math.PI / 4);
+      x.fillRect(-r * 0.12, -r * 2, r * 0.24, r * 4);
+      x.restore();
+    }
+    x.restore();
+    // 警示带边框
+    x.strokeStyle = 'rgba(50,50,55,.6)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    rrPath(x, -r * 0.95, -r * 0.34, r * 1.9, r * 0.68, r * 0.1);
+    x.stroke();
+    // 外框 + 十字缝
+    x.strokeStyle = 'rgba(40,40,45,.5)';
+    x.lineWidth = Math.max(0.8, s * 0.035);
+    rrPath(x, -r, -r, r * 2, r * 2, r * 0.12);
+    x.stroke();
+    x.fillStyle = 'rgba(60,60,66,.5)';
+    const d = r * 0.08, o = r * 0.18;
+    [[-o, -o], [o, -o], [-o, o], [o, o]].forEach(p => {
+      rrPath(x, p[0] - d, p[1] - d, d * 2, d * 2, d * 0.5);
+      x.fill();
+    });
+  },
+
+  // 石砖路：不规则圆石铺面（多块鹅卵石 + 缝隙阴影）
+  'stone-path': (x, r, s, col) => {
+    // 底土色
+    x.fillStyle = darkenColor(col, 0.45);
+    rrPath(x, -r, -r, r * 2, r * 2, r * 0.12);
+    x.fill();
+    x.strokeStyle = 'rgba(40,35,30,.5)';
+    x.lineWidth = Math.max(0.8, s * 0.035);
+    x.stroke();
+    // 圆石（错缝铺排）
+    const pebble = (px, py, rad) => {
+      const g = x.createRadialGradient(px - rad * 0.3, py - rad * 0.3, rad * 0.2, px, py, rad);
+      g.addColorStop(0, lightenColor(col, 0.3));
+      g.addColorStop(1, darkenColor(col, 0.2));
+      x.fillStyle = g;
+      x.beginPath();
+      x.ellipse(px, py, rad, rad * 0.82, 0.3, 0, 7);
+      x.fill();
+      x.strokeStyle = 'rgba(40,35,30,.45)';
+      x.lineWidth = Math.max(0.6, s * 0.028);
+      x.stroke();
+    };
+    pebble(-r * 0.52, -r * 0.5, r * 0.34);
+    pebble(r * 0.32, -r * 0.56, r * 0.3);
+    pebble(r * 0.06, -r * 0.04, r * 0.36);
+    pebble(-r * 0.6, r * 0.12, r * 0.28);
+    pebble(r * 0.62, r * 0.1, r * 0.3);
+    pebble(-r * 0.16, r * 0.62, r * 0.3);
+    pebble(r * 0.5, r * 0.66, r * 0.24);
+  },
 };

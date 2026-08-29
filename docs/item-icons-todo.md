@@ -77,16 +77,16 @@
 - [x] `constant-combinator` 常量组合器
 - [x] `arithmetic-combinator` 运算组合器
 - [x] `decider-combinator` 判断组合器
-- [ ] `selector-combinator` 选择组合器
-- [ ] `display-panel` 显示屏
-- [ ] `power-switch` 功率开关
-- [ ] `red-wire` 红电路线缆
-- [ ] `green-wire` 绿电路线缆
-- [ ] `concrete` 混凝土
-- [ ] `refined-concrete` 精炼混凝土
-- [ ] `hazard-concrete` 警示混凝土
-- [ ] `refined-hazard-concrete` 精炼警示混凝土
-- [ ] `stone-path` 石砖路
+- [x] `selector-combinator` 选择组合器
+- [x] `display-panel` 显示屏
+- [x] `power-switch` 功率开关
+- [x] `red-wire` 红电路线缆
+- [x] `green-wire` 绿电路线缆
+- [x] `concrete` 混凝土
+- [x] `refined-concrete` 精炼混凝土
+- [x] `hazard-concrete` 警示混凝土
+- [x] `refined-hazard-concrete` 精炼警示混凝土
+- [x] `stone-path` 石砖路
 - [ ] `landfill` 填海料
 - [ ] `foundation` 平台基座
 - [ ] `ice-platform` 冰面平台
