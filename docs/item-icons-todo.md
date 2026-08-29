@@ -3,19 +3,20 @@
 > 用途：为游戏中**全部物品**逐一设计专属图标。
 > 数据源：`js/data/data-items.js` 的 `ITEMS`（共 **329** 项），分类依据 `GAME_DATA.itemGroup`（制作栏 5 大 Tab）。
 > 用法：每设计完一个图标，把对应项的 `- [ ]` 勾选为 `- [x]`。
+> 已设计图标由 `js/data/data-item-icons.js` 的 `ITEM_CUSTOM_ICONS` 手绘实现，在 `drawItemGlyph` 中优先渲染。
 
 ## 🧱 物流（85）
 
-- [ ] `stone-brick` 石砖
-- [ ] `transport-belt` 基础传送带
-- [ ] `inserter` 电力机械臂
-- [ ] `burner-inserter` 热能机械臂
-- [ ] `long-handed-inserter` 加长机械臂
-- [ ] `small-lamp` 电灯
-- [ ] `substation` 变电站
-- [ ] `programmable-speaker` 可编程音箱
-- [ ] `splitter` 基础分流器
-- [ ] `underground-belt` 基础地下传送带
+- [x] `stone-brick` 石砖
+- [x] `transport-belt` 基础传送带
+- [x] `inserter` 电力机械臂
+- [x] `burner-inserter` 热能机械臂
+- [x] `long-handed-inserter` 加长机械臂
+- [x] `small-lamp` 电灯
+- [x] `substation` 变电站
+- [x] `programmable-speaker` 可编程音箱
+- [x] `splitter` 基础分流器
+- [x] `underground-belt` 基础地下传送带
 - [ ] `fast-transport-belt` 高速传送带
 - [ ] `fast-underground-belt` 高速地下传送带
 - [ ] `express-transport-belt` 极速传送带

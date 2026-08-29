@@ -71,6 +71,15 @@ function drawItemGlyph(x, id, cx, cy, s) {
   const dark = 'rgba(10,12,16,.55)';
   x.save();
   x.translate(cx, cy);
+  // 专属图标最优先：命中 ITEM_CUSTOM_ICONS（data-item-icons.js）的物品使用手绘专属图标，
+  // 跳过 emoji 兜底，保证每个已设计物品有独一无二的辨识度。
+  const _custom = typeof ITEM_CUSTOM_ICONS !== 'undefined' && ITEM_CUSTOM_ICONS[id];
+  if (_custom) {
+    _custom(x, r, s, col);
+    drawEmojiDupBadge(x, id, r);
+    x.restore();
+    return;
+  }
   // emoji 图标优先：所有配置了 emoji 字段的物品一律使用 emoji 渲染
   // 直接渲染 emoji 原图：不绘制边框、底框与高光/阴影蒙层，保证 emoji 清晰可见。
   const _emoji = ITEMS[id].emoji;
