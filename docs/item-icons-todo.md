@@ -87,19 +87,19 @@
 - [x] `hazard-concrete` 警示混凝土
 - [x] `refined-hazard-concrete` 精炼警示混凝土
 - [x] `stone-path` 石砖路
-- [ ] `landfill` 填海料
-- [ ] `foundation` 平台基座
-- [ ] `ice-platform` 冰面平台
-- [ ] `wooden-chest` 木箱
-- [ ] `iron-chest` 铁箱
+- [x] `landfill` 填海料
+- [x] `foundation` 平台基座
+- [x] `ice-platform` 冰面平台
+- [x] `wooden-chest` 木箱
+- [x] `iron-chest` 铁箱
 
 ## 🏭 生产（53）
 
-- [ ] `burner-mining-drill` 热能采矿机
-- [ ] `stone-furnace` 石炉
-- [ ] `assembling-machine-1` 组装机
-- [ ] `lab` 研究中心
-- [ ] `biolab` 生物实验室
+- [x] `burner-mining-drill` 热能采矿机
+- [x] `stone-furnace` 石炉
+- [x] `assembling-machine-1` 组装机
+- [x] `lab` 研究中心
+- [x] `biolab` 生物实验室
 - [ ] `boiler` 锅炉
 - [ ] `steam-engine` 蒸汽机
 - [ ] `offshore-pump` 抽水机
