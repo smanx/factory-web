@@ -2431,4 +2431,386 @@ const ITEM_CUSTOM_ICONS = {
       x.beginPath(); x.arc(p[0] * r, p[1] * r, r * 0.06, 0, 7); x.fill();
     });
   },
+
+  // 主动供应箱：紫色物流箱 + 上行箭头（机器人优先取货送出）
+  'active-provider-chest': (x, r, s, col) => {
+    const g = x.createLinearGradient(-r * 0.8, -r * 0.7, r * 0.8, r * 0.75);
+    g.addColorStop(0, lightenColor(col, 0.35));
+    g.addColorStop(1, darkenColor(col, 0.35));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.8, -r * 0.55, r * 1.6, r * 1.28, r * 0.12);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 箱盖
+    const lg = x.createLinearGradient(0, -r * 0.85, 0, -r * 0.5);
+    lg.addColorStop(0, lightenColor(col, 0.5));
+    lg.addColorStop(1, lightenColor(col, 0.1));
+    x.fillStyle = lg;
+    rrPath(x, -r * 0.85, -r * 0.85, r * 1.7, r * 0.36, r * 0.1);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    // 上行供应箭头（货物主动送出网络）
+    x.fillStyle = 'rgba(255,255,255,.92)';
+    x.beginPath();
+    x.moveTo(0, -r * 0.4);
+    x.lineTo(r * 0.24, -r * 0.08);
+    x.lineTo(r * 0.1, -r * 0.08);
+    x.lineTo(r * 0.1, r * 0.3);
+    x.lineTo(-r * 0.1, r * 0.3);
+    x.lineTo(-r * 0.1, -r * 0.08);
+    x.lineTo(-r * 0.24, -r * 0.08);
+    x.closePath();
+    x.fill();
+    // 四角铆钉
+    x.fillStyle = lightenColor(col, 0.5);
+    [[-0.62, -0.36], [0.62, -0.36], [-0.62, 0.54], [0.62, 0.54]].forEach(p => {
+      x.beginPath(); x.arc(p[0] * r, p[1] * r, r * 0.06, 0, 7); x.fill();
+    });
+  },
+
+  // 仓储箱：黄色物流箱 + 空心方框（收纳/存储标识）
+  'storage-chest': (x, r, s, col) => {
+    const g = x.createLinearGradient(-r * 0.8, -r * 0.7, r * 0.8, r * 0.75);
+    g.addColorStop(0, lightenColor(col, 0.35));
+    g.addColorStop(1, darkenColor(col, 0.35));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.8, -r * 0.55, r * 1.6, r * 1.28, r * 0.12);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 箱盖
+    const lg = x.createLinearGradient(0, -r * 0.85, 0, -r * 0.5);
+    lg.addColorStop(0, lightenColor(col, 0.5));
+    lg.addColorStop(1, lightenColor(col, 0.1));
+    x.fillStyle = lg;
+    rrPath(x, -r * 0.85, -r * 0.85, r * 1.7, r * 0.36, r * 0.1);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    // 空心方框（收纳标识）
+    x.strokeStyle = 'rgba(255,255,255,.92)';
+    x.lineWidth = Math.max(1.4, s * 0.07);
+    rrPath(x, -r * 0.3, -r * 0.32, r * 0.6, r * 0.6, r * 0.08);
+    x.stroke();
+    // 四角铆钉
+    x.fillStyle = lightenColor(col, 0.5);
+    [[-0.62, -0.36], [0.62, -0.36], [-0.62, 0.54], [0.62, 0.54]].forEach(p => {
+      x.beginPath(); x.arc(p[0] * r, p[1] * r, r * 0.06, 0, 7); x.fill();
+    });
+  },
+
+  // 缓冲箱：绿色物流箱 + 双向箭头（既收又供，中转缓冲）
+  'buffer-chest': (x, r, s, col) => {
+    const g = x.createLinearGradient(-r * 0.8, -r * 0.7, r * 0.8, r * 0.75);
+    g.addColorStop(0, lightenColor(col, 0.35));
+    g.addColorStop(1, darkenColor(col, 0.35));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.8, -r * 0.55, r * 1.6, r * 1.28, r * 0.12);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 箱盖
+    const lg = x.createLinearGradient(0, -r * 0.85, 0, -r * 0.5);
+    lg.addColorStop(0, lightenColor(col, 0.5));
+    lg.addColorStop(1, lightenColor(col, 0.1));
+    x.fillStyle = lg;
+    rrPath(x, -r * 0.85, -r * 0.85, r * 1.7, r * 0.36, r * 0.1);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    // 左右双向箭头
+    x.fillStyle = 'rgba(255,255,255,.92)';
+    x.beginPath();
+    x.moveTo(-r * 0.46, 0);
+    x.lineTo(-r * 0.2, -r * 0.2);
+    x.lineTo(-r * 0.2, -r * 0.08);
+    x.lineTo(r * 0.2, -r * 0.08);
+    x.lineTo(r * 0.2, -r * 0.2);
+    x.lineTo(r * 0.46, 0);
+    x.lineTo(r * 0.2, r * 0.2);
+    x.lineTo(r * 0.2, r * 0.08);
+    x.lineTo(-r * 0.2, r * 0.08);
+    x.lineTo(-r * 0.2, r * 0.2);
+    x.closePath();
+    x.fill();
+    // 四角铆钉
+    x.fillStyle = lightenColor(col, 0.5);
+    [[-0.62, -0.36], [0.62, -0.36], [-0.62, 0.54], [0.62, 0.54]].forEach(p => {
+      x.beginPath(); x.arc(p[0] * r, p[1] * r, r * 0.06, 0, 7); x.fill();
+    });
+  },
+
+  // 需求箱：蓝色物流箱 + 对勾（按请求补足货物）
+  'requester-chest': (x, r, s, col) => {
+    const g = x.createLinearGradient(-r * 0.8, -r * 0.7, r * 0.8, r * 0.75);
+    g.addColorStop(0, lightenColor(col, 0.35));
+    g.addColorStop(1, darkenColor(col, 0.35));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.8, -r * 0.55, r * 1.6, r * 1.28, r * 0.12);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 箱盖
+    const lg = x.createLinearGradient(0, -r * 0.85, 0, -r * 0.5);
+    lg.addColorStop(0, lightenColor(col, 0.5));
+    lg.addColorStop(1, lightenColor(col, 0.1));
+    x.fillStyle = lg;
+    rrPath(x, -r * 0.85, -r * 0.85, r * 1.7, r * 0.36, r * 0.1);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    // 对勾（需求满足标识）
+    x.strokeStyle = 'rgba(255,255,255,.92)';
+    x.lineWidth = Math.max(1.6, s * 0.09);
+    x.lineJoin = 'round';
+    x.lineCap = 'round';
+    x.beginPath();
+    x.moveTo(-r * 0.34, 0);
+    x.lineTo(-r * 0.08, r * 0.28);
+    x.lineTo(r * 0.38, -r * 0.3);
+    x.stroke();
+    // 四角铆钉
+    x.fillStyle = lightenColor(col, 0.5);
+    [[-0.62, -0.36], [0.62, -0.36], [-0.62, 0.54], [0.62, 0.54]].forEach(p => {
+      x.beginPath(); x.arc(p[0] * r, p[1] * r, r * 0.06, 0, 7); x.fill();
+    });
+  },
+
+  // 小型电线杆：木质单杆 + 小横担 + 双绝缘子
+  'small-electric-pole': (x, r, s, col) => {
+    // 杆身
+    const g = x.createLinearGradient(-r * 0.12, 0, r * 0.12, 0);
+    g.addColorStop(0, lightenColor(col, 0.35));
+    g.addColorStop(1, darkenColor(col, 0.35));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.11, -r * 0.72, r * 0.22, r * 1.5, r * 0.06);
+    x.fill();
+    // 横担
+    x.fillStyle = darkenColor(col, 0.25);
+    rrPath(x, -r * 0.62, -r * 0.5, r * 1.24, r * 0.16, r * 0.05);
+    x.fill();
+    // 斜撑
+    x.strokeStyle = darkenColor(col, 0.3);
+    x.lineWidth = Math.max(1, s * 0.05);
+    x.beginPath();
+    x.moveTo(-r * 0.5, -r * 0.36); x.lineTo(-r * 0.06, -r * 0.62);
+    x.moveTo(r * 0.5, -r * 0.36); x.lineTo(r * 0.06, -r * 0.62);
+    x.stroke();
+    // 绝缘子（两端白点）
+    x.fillStyle = '#e8e8e0';
+    x.beginPath(); x.arc(-r * 0.54, -r * 0.52, r * 0.09, 0, 7); x.fill();
+    x.beginPath(); x.arc(r * 0.54, -r * 0.52, r * 0.09, 0, 7); x.fill();
+    // 顶帽
+    x.fillStyle = darkenColor(col, 0.4);
+    rrPath(x, -r * 0.15, -r * 0.8, r * 0.3, r * 0.12, r * 0.04);
+    x.fill();
+  },
+
+  // 中型电线杆：金属杆 + 宽横担 + 三绝缘子
+  'medium-electric-pole': (x, r, s, col) => {
+    // 杆身（金属渐变）
+    const g = x.createLinearGradient(-r * 0.13, 0, r * 0.13, 0);
+    g.addColorStop(0, lightenColor(col, 0.4));
+    g.addColorStop(1, darkenColor(col, 0.4));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.13, -r * 0.78, r * 0.26, r * 1.6, r * 0.06);
+    x.fill();
+    // 宽横担
+    x.fillStyle = darkenColor(col, 0.28);
+    rrPath(x, -r * 0.78, -r * 0.56, r * 1.56, r * 0.15, r * 0.05);
+    x.fill();
+    // 斜撑
+    x.strokeStyle = darkenColor(col, 0.32);
+    x.lineWidth = Math.max(1, s * 0.05);
+    x.beginPath();
+    x.moveTo(-r * 0.62, -r * 0.42); x.lineTo(-r * 0.06, -r * 0.68);
+    x.moveTo(r * 0.62, -r * 0.42); x.lineTo(r * 0.06, -r * 0.68);
+    x.stroke();
+    // 三绝缘子
+    x.fillStyle = '#e8e8e0';
+    [-0.7, 0, 0.7].forEach(k => {
+      x.beginPath(); x.arc(k * r, -r * 0.58, r * 0.085, 0, 7); x.fill();
+    });
+  },
+
+  // 大型电线杆：钢架塔（梯形桁架 + 交叉撑 + 顶部双臂）
+  'big-electric-pole': (x, r, s, col) => {
+    const steel = lightenColor(col, 0.3);
+    const steelD = darkenColor(col, 0.42);
+    x.strokeStyle = steel;
+    x.lineCap = 'round';
+    // 塔身两侧斜线
+    x.lineWidth = Math.max(1.6, s * 0.075);
+    x.beginPath();
+    x.moveTo(-r * 0.62, r * 0.82); x.lineTo(-r * 0.16, -r * 0.62);
+    x.moveTo(r * 0.62, r * 0.82); x.lineTo(r * 0.16, -r * 0.62);
+    x.stroke();
+    // 横撑 + 交叉撑
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.beginPath();
+    x.moveTo(-r * 0.5, r * 0.3); x.lineTo(r * 0.5, r * 0.3);
+    x.moveTo(-r * 0.36, -r * 0.18); x.lineTo(r * 0.36, -r * 0.18);
+    x.stroke();
+    x.beginPath();
+    x.moveTo(-r * 0.5, r * 0.3); x.lineTo(r * 0.36, -r * 0.18);
+    x.moveTo(r * 0.5, r * 0.3); x.lineTo(-r * 0.36, -r * 0.18);
+    x.stroke();
+    // 顶部双臂
+    x.lineWidth = Math.max(1.4, s * 0.06);
+    x.strokeStyle = steelD;
+    x.beginPath();
+    x.moveTo(-r * 0.14, -r * 0.4); x.lineTo(-r * 0.66, -r * 0.66);
+    x.moveTo(r * 0.14, -r * 0.4); x.lineTo(r * 0.66, -r * 0.66);
+    x.stroke();
+    // 塔顶尖
+    x.beginPath();
+    x.moveTo(-r * 0.14, -r * 0.62); x.lineTo(0, -r * 0.86); x.lineTo(r * 0.14, -r * 0.62);
+    x.stroke();
+    // 绝缘子
+    x.fillStyle = '#e8e8e0';
+    x.beginPath(); x.arc(-r * 0.66, -r * 0.72, r * 0.085, 0, 7); x.fill();
+    x.beginPath(); x.arc(r * 0.66, -r * 0.72, r * 0.085, 0, 7); x.fill();
+  },
+
+  // 常量组合器：蓝灰机身 + 七段数码管显示「1」+ 常量输出标识
+  'constant-combinator': (x, r, s, col) => {
+    // 机身
+    const g = x.createLinearGradient(-r * 0.8, -r * 0.8, r * 0.8, r * 0.8);
+    g.addColorStop(0, lightenColor(col, 0.4));
+    g.addColorStop(1, darkenColor(col, 0.4));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.8, -r * 0.7, r * 1.6, r * 1.4, r * 0.12);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 数码屏底
+    x.fillStyle = '#101820';
+    rrPath(x, -r * 0.52, -r * 0.42, r * 1.04, r * 0.84, r * 0.1);
+    x.fill();
+    // 七段数码管「1」（红色段）
+    const seg = '#ff5a4e';
+    const on = (px, py, w, h) => { x.fillStyle = seg; rrPath(x, px, py, w, h, h / 2); x.fill(); };
+    const dx = r * 0.1, dw = r * 0.09, dh = r * 0.16;
+    on(dx - dw / 2, -r * 0.32, dw, dh);            // 上竖段
+    on(dx - dw / 2, r * 0.02, dw, dh);             // 下竖段
+    // 暗段（显示七段管底版，突出「1」）
+    x.fillStyle = 'rgba(255,90,78,.14)';
+    // 顶/底横段
+    rrPath(x, -r * 0.28, -r * 0.4, r * 0.44, r * 0.07, r * 0.03); x.fill();
+    rrPath(x, -r * 0.28, -r * 0.03, r * 0.44, r * 0.07, r * 0.03); x.fill();
+    rrPath(x, -r * 0.28, r * 0.33, r * 0.44, r * 0.07, r * 0.03); x.fill();
+    // 左竖段（暗）
+    rrPath(x, -r * 0.34, -r * 0.32, r * 0.08, r * 0.16, r * 0.03); x.fill();
+    rrPath(x, -r * 0.34, r * 0.02, r * 0.08, r * 0.16, r * 0.03); x.fill();
+    // 右竖段（暗）
+    rrPath(x, r * 0.2, -r * 0.32, r * 0.08, r * 0.16, r * 0.03); x.fill();
+    rrPath(x, r * 0.2, r * 0.02, r * 0.08, r * 0.16, r * 0.03); x.fill();
+    // 顶部信号点（常量持续输出）
+    x.fillStyle = '#6ee07f';
+    x.beginPath(); x.arc(r * 0.58, -r * 0.56, r * 0.09, 0, 7); x.fill();
+    // 底部线缆接口
+    x.fillStyle = darkenColor(col, 0.5);
+    rrPath(x, -r * 0.3, r * 0.5, r * 0.6, r * 0.14, r * 0.05);
+    x.fill();
+  },
+
+  // 运算组合器：青蓝机身 + 四则运算符号 2×2 网格
+  'arithmetic-combinator': (x, r, s, col) => {
+    // 机身
+    const g = x.createLinearGradient(-r * 0.8, -r * 0.8, r * 0.8, r * 0.8);
+    g.addColorStop(0, lightenColor(col, 0.4));
+    g.addColorStop(1, darkenColor(col, 0.4));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.8, -r * 0.7, r * 1.6, r * 1.4, r * 0.12);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 运算符号（+ − × ÷ 缩略为 + − × 三枚，右上 ÷ 省略以保清晰）
+    x.strokeStyle = '#eef4f8';
+    x.fillStyle = '#eef4f8';
+    x.lineWidth = Math.max(1.4, s * 0.07);
+    x.lineCap = 'round';
+    // 「+」左上
+    x.beginPath();
+    x.moveTo(-r * 0.52, -r * 0.38); x.lineTo(-r * 0.2, -r * 0.38);
+    x.moveTo(-r * 0.36, -r * 0.54); x.lineTo(-r * 0.36, -r * 0.22);
+    x.stroke();
+    // 「−」右上
+    x.beginPath();
+    x.moveTo(r * 0.2, -r * 0.38); x.lineTo(r * 0.52, -r * 0.38);
+    x.stroke();
+    // 「×」左下
+    x.beginPath();
+    x.moveTo(-r * 0.5, r * 0.16); x.lineTo(-r * 0.22, r * 0.46);
+    x.moveTo(-r * 0.22, r * 0.16); x.lineTo(-r * 0.5, r * 0.46);
+    x.stroke();
+    // 「÷」右下（横线 + 上下点）
+    x.beginPath();
+    x.moveTo(r * 0.2, r * 0.31); x.lineTo(r * 0.52, r * 0.31);
+    x.stroke();
+    x.beginPath(); x.arc(r * 0.36, r * 0.14, r * 0.055, 0, 7); x.fill();
+    x.beginPath(); x.arc(r * 0.36, r * 0.48, r * 0.055, 0, 7); x.fill();
+    // 底部线缆接口
+    x.fillStyle = darkenColor(col, 0.5);
+    rrPath(x, -r * 0.3, r * 0.52, r * 0.6, r * 0.12, r * 0.05);
+    x.fill();
+  },
+
+  // 判断组合器：青绿机身 + 菱形判断框 + 分支箭头（是/否）
+  'decider-combinator': (x, r, s, col) => {
+    // 机身
+    const g = x.createLinearGradient(-r * 0.8, -r * 0.8, r * 0.8, r * 0.8);
+    g.addColorStop(0, lightenColor(col, 0.4));
+    g.addColorStop(1, darkenColor(col, 0.4));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.8, -r * 0.7, r * 1.6, r * 1.4, r * 0.12);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.45)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 菱形判断框
+    x.fillStyle = '#101820';
+    x.strokeStyle = '#7fe8c8';
+    x.lineWidth = Math.max(1.4, s * 0.06);
+    x.beginPath();
+    x.moveTo(0, -r * 0.56); x.lineTo(r * 0.46, 0);
+    x.lineTo(0, r * 0.56); x.lineTo(-r * 0.46, 0);
+    x.closePath();
+    x.fill();
+    x.stroke();
+    // 内部问号（判断标识）
+    x.fillStyle = '#7fe8c8';
+    x.font = 'bold ' + Math.round(r * 0.62) + 'px system-ui';
+    x.textAlign = 'center';
+    x.textBaseline = 'middle';
+    x.fillText('?', 0, r * 0.02);
+    // 右侧输出分支（满足 → 输出）
+    x.strokeStyle = '#6ee07f';
+    x.lineWidth = Math.max(1.4, s * 0.06);
+    x.lineCap = 'round';
+    x.beginPath();
+    x.moveTo(r * 0.52, 0); x.lineTo(r * 0.7, 0);
+    x.stroke();
+    x.fillStyle = '#6ee07f';
+    x.beginPath();
+    x.moveTo(r * 0.76, 0); x.lineTo(r * 0.62, -r * 0.09); x.lineTo(r * 0.62, r * 0.09);
+    x.closePath();
+    x.fill();
+    // 底部线缆接口
+    x.fillStyle = darkenColor(col, 0.5);
+    rrPath(x, -r * 0.3, r * 0.52, r * 0.6, r * 0.12, r * 0.05);
+    x.fill();
+  },
 };

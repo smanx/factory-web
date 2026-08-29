@@ -67,16 +67,16 @@
 - [x] `logistic-robot` 物流机器人
 - [x] `construction-robot` 施工机器人
 - [x] `passive-provider-chest` 被动供应箱
-- [ ] `active-provider-chest` 主动供应箱
-- [ ] `storage-chest` 仓储箱
-- [ ] `buffer-chest` 缓冲箱
-- [ ] `requester-chest` 需求箱
-- [ ] `small-electric-pole` 小型电线杆
-- [ ] `medium-electric-pole` 中型电线杆
-- [ ] `big-electric-pole` 大型电线杆
-- [ ] `constant-combinator` 常量组合器
-- [ ] `arithmetic-combinator` 运算组合器
-- [ ] `decider-combinator` 判断组合器
+- [x] `active-provider-chest` 主动供应箱
+- [x] `storage-chest` 仓储箱
+- [x] `buffer-chest` 缓冲箱
+- [x] `requester-chest` 需求箱
+- [x] `small-electric-pole` 小型电线杆
+- [x] `medium-electric-pole` 中型电线杆
+- [x] `big-electric-pole` 大型电线杆
+- [x] `constant-combinator` 常量组合器
+- [x] `arithmetic-combinator` 运算组合器
+- [x] `decider-combinator` 判断组合器
 - [ ] `selector-combinator` 选择组合器
 - [ ] `display-panel` 显示屏
 - [ ] `power-switch` 功率开关
