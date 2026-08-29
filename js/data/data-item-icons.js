@@ -3597,4 +3597,516 @@ const ITEM_CUSTOM_ICONS = {
   x.beginPath(); x.ellipse(-r * 0.12, -r * 1.02, r * 0.11, r * 0.055, -0.6, 0, 7); x.fill();
   x.beginPath(); x.ellipse(r * 0.12, -r * 0.96, r * 0.11, r * 0.055, 0.6, 0, 7); x.fill();
 },
+
+  // 锅炉：钢制炉体 + 左右蓝水口 + 底部橙色炉门火焰 + 顶部出汽
+  'boiler': (x, r, s, col) => {
+    // 炉体
+    const g = x.createLinearGradient(0, -r * 0.85, 0, r * 0.85);
+    g.addColorStop(0, lightenColor(col, 0.3));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.4));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.68, -r * 0.82, r * 1.36, r * 1.6, r * 0.2);
+    x.fill();
+    x.strokeStyle = 'rgba(30,20,10,.5)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 铆钉横带
+    x.strokeStyle = 'rgba(0,0,0,.18)';
+    x.lineWidth = Math.max(0.8, s * 0.03);
+    x.beginPath(); x.moveTo(-r * 0.66, -r * 0.42); x.lineTo(r * 0.66, -r * 0.42); x.stroke();
+    // 左右蓝色水口
+    const port = (px) => {
+      const pg = x.createLinearGradient(px - r * 0.14, 0, px + r * 0.14, 0);
+      pg.addColorStop(0, '#7fd0f0');
+      pg.addColorStop(1, '#2a6aa8');
+      x.fillStyle = pg;
+      rrPath(x, px - r * 0.16, -r * 0.28, r * 0.32, r * 0.56, r * 0.08);
+      x.fill();
+      x.strokeStyle = 'rgba(10,30,60,.55)';
+      x.lineWidth = Math.max(0.8, s * 0.035);
+      x.stroke();
+    };
+    port(-r * 0.92);
+    port(r * 0.92);
+    // 炉门
+    x.fillStyle = '#3a2a1c';
+    rrPath(x, -r * 0.36, r * 0.02, r * 0.72, r * 0.66, r * 0.12);
+    x.fill();
+    // 炉火
+    const fg = x.createRadialGradient(0, r * 0.5, r * 0.03, 0, r * 0.45, r * 0.3);
+    fg.addColorStop(0, '#ffe9a0');
+    fg.addColorStop(0.55, '#ff9a3a');
+    fg.addColorStop(1, 'rgba(220,80,20,0)');
+    x.fillStyle = fg;
+    x.beginPath(); x.arc(0, r * 0.42, r * 0.3, 0, 7); x.fill();
+    // 底部出汽口
+    x.fillStyle = '#eef3f8';
+    rrPath(x, -r * 0.3, -r * 1.02, r * 0.6, r * 0.24, r * 0.06);
+    x.fill();
+    // 蒸汽泡泡
+    x.fillStyle = 'rgba(255,255,255,.8)';
+    x.beginPath(); x.arc(-r * 0.18, -r * 1.14, r * 0.07, 0, 7); x.fill();
+    x.beginPath(); x.arc(r * 0.12, -r * 1.22, r * 0.05, 0, 7); x.fill();
+  },
+
+  // 蒸汽机：蓝灰机身 + 活塞连杆飞轮 + 底部进汽口
+  'steam-engine': (x, r, s, col) => {
+    // 机座
+    x.fillStyle = darkenColor(col, 0.45);
+    rrPath(x, -r * 0.9, r * 0.42, r * 1.8, r * 0.44, r * 0.1);
+    x.fill();
+    // 汽缸
+    const g = x.createLinearGradient(-r * 0.5, 0, r * 0.1, 0);
+    g.addColorStop(0, lightenColor(col, 0.35));
+    g.addColorStop(1, darkenColor(col, 0.3));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.5, -r * 0.6, r * 0.62, r * 1.1, r * 0.12);
+    x.fill();
+    x.strokeStyle = 'rgba(20,30,45,.5)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 缸顶汽口
+    x.fillStyle = '#5a7a92';
+    rrPath(x, -r * 0.36, -r * 0.86, r * 0.34, r * 0.3, r * 0.06);
+    x.fill();
+    // 活塞杆
+    x.strokeStyle = '#d8dde4';
+    x.lineWidth = r * 0.11;
+    x.lineCap = 'round';
+    x.beginPath(); x.moveTo(r * 0.12, -r * 0.05); x.lineTo(r * 0.52, r * 0.18); x.stroke();
+    // 飞轮
+    const fg = x.createRadialGradient(-r * 0.04, -r * 0.06, r * 0.03, 0, 0, r * 0.32);
+    fg.addColorStop(0, lightenColor('#c8ccd2', 0.25));
+    fg.addColorStop(1, darkenColor('#9aa0a8', 0.2));
+    x.fillStyle = fg;
+    x.beginPath(); x.arc(r * 0.55, r * 0.18, r * 0.32, 0, 7); x.fill();
+    x.strokeStyle = 'rgba(25,35,50,.55)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    // 轮辐
+    x.strokeStyle = 'rgba(40,50,65,.7)';
+    x.lineWidth = Math.max(0.9, s * 0.03);
+    for (let i = 0; i < 4; i++) {
+      const a = i * Math.PI / 2 + 0.4;
+      x.beginPath();
+      x.moveTo(r * 0.55, r * 0.18);
+      x.lineTo(r * 0.55 + Math.cos(a) * r * 0.26, r * 0.18 + Math.sin(a) * r * 0.26);
+      x.stroke();
+    }
+    // 轮毂
+    x.fillStyle = '#3a4452';
+    x.beginPath(); x.arc(r * 0.55, r * 0.18, r * 0.08, 0, 7); x.fill();
+    // 蒸汽
+    x.fillStyle = 'rgba(255,255,255,.75)';
+    x.beginPath(); x.arc(-r * 0.22, -r * 1.0, r * 0.08, 0, 7); x.fill();
+    x.beginPath(); x.arc(-r * 0.05, -r * 1.1, r * 0.06, 0, 7); x.fill();
+  },
+
+  // 抽水机：蓝绿水泵机身 + 管口 + 扇叶端面
+  'offshore-pump': (x, r, s, col) => {
+    // 机身
+    const g = x.createLinearGradient(0, -r * 0.8, 0, r * 0.85);
+    g.addColorStop(0, lightenColor(col, 0.35));
+    g.addColorStop(1, darkenColor(col, 0.4));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.72, -r * 0.78, r * 1.44, r * 1.6, r * 0.18);
+    x.fill();
+    x.strokeStyle = 'rgba(10,40,55,.55)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 出水口（朝上短管）
+    x.fillStyle = darkenColor(col, 0.25);
+    rrPath(x, -r * 0.2, -r * 1.05, r * 0.4, r * 0.34, r * 0.07);
+    x.fill();
+    // 端面圆窗：旋转扇叶
+    const og = x.createRadialGradient(-r * 0.05, -r * 0.08, r * 0.03, 0, 0, r * 0.4);
+    og.addColorStop(0, '#d8f2fa');
+    og.addColorStop(1, '#1f6a86');
+    x.fillStyle = og;
+    x.beginPath(); x.arc(0, 0, r * 0.4, 0, 7); x.fill();
+    x.strokeStyle = 'rgba(8,40,55,.6)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    // 扇叶
+    x.fillStyle = 'rgba(255,255,255,.9)';
+    for (let i = 0; i < 3; i++) {
+      const a = i * Math.PI * 2 / 3 + 0.5;
+      x.save();
+      x.translate(Math.cos(a) * r * 0.17, Math.sin(a) * r * 0.17);
+      x.rotate(a + Math.PI / 2);
+      x.beginPath();
+      x.ellipse(0, 0, r * 0.16, r * 0.07, 0, 0, 7);
+      x.fill();
+      x.restore();
+    }
+    // 轮毂
+    x.fillStyle = '#0e3a4a';
+    x.beginPath(); x.arc(0, 0, r * 0.08, 0, 7); x.fill();
+    // 水波
+    x.strokeStyle = 'rgba(255,255,255,.7)';
+    x.lineWidth = Math.max(1, s * 0.03);
+    x.beginPath(); x.arc(0, r * 0.62, r * 0.3, 0.3, Math.PI - 0.3); x.stroke();
+    x.beginPath(); x.arc(-r * 0.42, r * 0.68, r * 0.2, 0.4, Math.PI - 0.4); x.stroke();
+  },
+
+  // 电采矿机：蓝钢机身 + 中央钻头 + 闪电能量纹
+  'electric-mining-drill': (x, r, s, col) => {
+    // 机身
+    const g = x.createLinearGradient(-r * 0.85, -r * 0.85, r * 0.85, r * 0.85);
+    g.addColorStop(0, lightenColor(col, 0.32));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.42));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.85, -r * 0.85, r * 1.7, r * 1.7, r * 0.16);
+    x.fill();
+    x.strokeStyle = 'rgba(15,25,50,.55)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 四角螺栓
+    x.fillStyle = 'rgba(255,255,255,.35)';
+    [[-0.62, -0.62], [0.62, -0.62], [-0.62, 0.62], [0.62, 0.62]].forEach(p => {
+      x.beginPath(); x.arc(p[0] * r, p[1] * r, r * 0.06, 0, 7); x.fill();
+    });
+    // 中央钻头
+    const dg = x.createLinearGradient(0, -r * 0.4, 0, r * 0.5);
+    dg.addColorStop(0, lightenColor('#c8ccd2', 0.3));
+    dg.addColorStop(1, darkenColor('#8a9098', 0.3));
+    x.fillStyle = dg;
+    x.beginPath();
+    x.moveTo(-r * 0.3, -r * 0.36);
+    x.lineTo(r * 0.3, -r * 0.36);
+    x.lineTo(r * 0.16, r * 0.3);
+    x.lineTo(0, r * 0.52);
+    x.lineTo(-r * 0.16, r * 0.3);
+    x.closePath();
+    x.fill();
+    x.strokeStyle = 'rgba(20,30,40,.6)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    // 钻头螺纹
+    x.strokeStyle = 'rgba(30,40,55,.5)';
+    x.lineWidth = Math.max(0.8, s * 0.03);
+    for (let i = 0; i < 3; i++) {
+      const py = -r * 0.2 + i * r * 0.22;
+      x.beginPath(); x.moveTo(-r * 0.24 + i * r * 0.03, py); x.lineTo(r * 0.24 - i * r * 0.03, py + r * 0.06); x.stroke();
+    }
+    // 闪电标记
+    x.fillStyle = '#ffe14a';
+    x.beginPath();
+    x.moveTo(r * 0.02, -r * 0.22);
+    x.lineTo(-r * 0.16, r * 0.02);
+    x.lineTo(-r * 0.02, r * 0.02);
+    x.lineTo(-r * 0.1, r * 0.26);
+    x.lineTo(r * 0.14, -r * 0.04);
+    x.lineTo(0, -r * 0.04);
+    x.lineTo(r * 0.14, -r * 0.22);
+    x.closePath();
+    x.fill();
+  },
+
+  // 大型采矿机：更大机身 + 双钻头 + 重型履带边框 + 闪电
+  'big-mining-drill': (x, r, s, col) => {
+    // 履带底座
+    x.fillStyle = darkenColor(col, 0.5);
+    rrPath(x, -r * 0.95, r * 0.5, r * 1.9, r * 0.42, r * 0.18);
+    x.fill();
+    x.fillStyle = 'rgba(0,0,0,.3)';
+    for (let i = 0; i < 6; i++) {
+      x.fillRect(-r * 0.85 + i * r * 0.3, r * 0.56, r * 0.08, r * 0.3);
+    }
+    // 机身
+    const g = x.createLinearGradient(-r * 0.8, -r * 0.9, r * 0.8, r * 0.7);
+    g.addColorStop(0, lightenColor(col, 0.32));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.42));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.8, -r * 0.9, r * 1.6, r * 1.55, r * 0.16);
+    x.fill();
+    x.strokeStyle = 'rgba(15,25,50,.55)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    x.stroke();
+    // 双钻头
+    const drill = (dxx) => {
+      const dg = x.createLinearGradient(dxx, -r * 0.5, dxx, r * 0.55);
+      dg.addColorStop(0, lightenColor('#c8ccd2', 0.3));
+      dg.addColorStop(1, darkenColor('#8a9098', 0.35));
+      x.fillStyle = dg;
+      x.beginPath();
+      x.moveTo(dxx - r * 0.2, -r * 0.4);
+      x.lineTo(dxx + r * 0.2, -r * 0.4);
+      x.lineTo(dxx + r * 0.1, r * 0.34);
+      x.lineTo(dxx, r * 0.56);
+      x.lineTo(dxx - r * 0.1, r * 0.34);
+      x.closePath();
+      x.fill();
+      x.strokeStyle = 'rgba(20,30,40,.6)';
+      x.lineWidth = Math.max(0.9, s * 0.035);
+      x.stroke();
+    };
+    drill(-r * 0.32);
+    drill(r * 0.32);
+    // 闪电标记
+    x.fillStyle = '#ffe14a';
+    x.beginPath();
+    x.moveTo(r * 0.02, -r * 0.78);
+    x.lineTo(-r * 0.14, -r * 0.56);
+    x.lineTo(-r * 0.02, -r * 0.56);
+    x.lineTo(-r * 0.1, -r * 0.34);
+    x.lineTo(r * 0.12, -r * 0.6);
+    x.lineTo(0, -r * 0.6);
+    x.lineTo(r * 0.12, -r * 0.78);
+    x.closePath();
+    x.fill();
+    // 顶部警示灯
+    x.fillStyle = '#ffb03a';
+    x.beginPath(); x.arc(-r * 0.55, -r * 0.72, r * 0.08, 0, 7); x.fill();
+  },
+
+  // 电炉：青绿炉体 + 电热丝炉口 + 能量指示灯
+  'electric-furnace': (x, r, s, col) => {
+    // 炉体
+    const g = x.createLinearGradient(0, -r * 0.85, 0, r * 0.85);
+    g.addColorStop(0, lightenColor(col, 0.35));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.42));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.8, -r * 0.82, r * 1.6, r * 1.64, r * 0.15);
+    x.fill();
+    x.strokeStyle = 'rgba(10,45,35,.55)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 炉口
+    x.fillStyle = '#1a2a26';
+    rrPath(x, -r * 0.42, -r * 0.55, r * 0.84, r * 0.5, r * 0.08);
+    x.fill();
+    // 电热丝（发光电阻圈）
+    x.strokeStyle = '#ff7a3a';
+    x.lineWidth = Math.max(1.2, s * 0.04);
+    x.beginPath();
+    for (let i = 0; i < 4; i++) {
+      const px = -r * 0.3 + i * r * 0.2;
+      i === 0 ? x.moveTo(px, -r * 0.42) : x.lineTo(px, -r * 0.42);
+      x.lineTo(px + r * 0.1, -r * 0.3);
+    }
+    x.stroke();
+    x.strokeStyle = 'rgba(255,220,120,.85)';
+    x.lineWidth = Math.max(0.6, s * 0.02);
+    x.stroke();
+    // 侧面散热格栅
+    x.strokeStyle = 'rgba(0,0,0,.3)';
+    x.lineWidth = Math.max(0.8, s * 0.03);
+    for (let i = 0; i < 3; i++) {
+      x.beginPath();
+      x.moveTo(-r * 0.5, r * 0.12 + i * r * 0.14);
+      x.lineTo(r * 0.5, r * 0.12 + i * r * 0.14);
+      x.stroke();
+    }
+    // 出料口
+    x.fillStyle = '#14302a';
+    rrPath(x, -r * 0.55, r * 0.62, r * 1.1, r * 0.18, r * 0.05);
+    x.fill();
+    // 电能指示灯
+    x.fillStyle = '#7af0c8';
+    x.beginPath(); x.arc(r * 0.58, -r * 0.62, r * 0.08, 0, 7); x.fill();
+  },
+
+  // 组装机 II：紫色机身 + 齿轮 + 高速指示条纹
+  'assembling-machine-2': (x, r, s, col) => {
+    // 机身
+    const g = x.createLinearGradient(-r * 0.85, -r * 0.85, r * 0.85, r * 0.85);
+    g.addColorStop(0, lightenColor(col, 0.32));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.42));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.85, -r * 0.8, r * 1.7, r * 1.66, r * 0.14);
+    x.fill();
+    x.strokeStyle = 'rgba(30,10,45,.55)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 中央齿轮
+    const teeth = 8;
+    x.fillStyle = '#d8dde4';
+    for (let i = 0; i < teeth; i++) {
+      const a = i * Math.PI * 2 / teeth + 0.2;
+      x.save();
+      x.translate(Math.cos(a) * r * 0.4, Math.sin(a) * r * 0.4);
+      x.rotate(a);
+      x.fillRect(-r * 0.08, -r * 0.1, r * 0.16, r * 0.2);
+      x.restore();
+    }
+    const gg = x.createRadialGradient(-r * 0.05, -r * 0.1, r * 0.03, 0, 0, r * 0.38);
+    gg.addColorStop(0, lightenColor('#d8dde4', 0.35));
+    gg.addColorStop(1, darkenColor('#d8dde4', 0.25));
+    x.fillStyle = gg;
+    x.beginPath(); x.arc(0, 0, r * 0.34, 0, 7); x.fill();
+    x.fillStyle = '#453062';
+    x.beginPath(); x.arc(0, 0, r * 0.12, 0, 7); x.fill();
+    // 速度条纹（两侧斜纹）
+    x.strokeStyle = 'rgba(255,255,255,.4)';
+    x.lineWidth = Math.max(1, s * 0.035);
+    for (let i = 0; i < 2; i++) {
+      x.beginPath();
+      x.moveTo(-r * 0.72, -r * 0.1 + i * r * 0.2);
+      x.lineTo(-r * 0.5, -r * 0.22 + i * r * 0.2);
+      x.stroke();
+      x.beginPath();
+      x.moveTo(r * 0.5, -r * 0.1 + i * r * 0.2);
+      x.lineTo(r * 0.72, -r * 0.22 + i * r * 0.2);
+      x.stroke();
+    }
+    // 底部出入口
+    x.fillStyle = '#241a30';
+    rrPath(x, -r * 0.6, r * 0.58, r * 1.2, r * 0.2, r * 0.05);
+    x.fill();
+    // 状态灯
+    x.fillStyle = '#5ad06a';
+    x.beginPath(); x.arc(r * 0.6, -r * 0.6, r * 0.09, 0, 7); x.fill();
+  },
+
+  // 抽油机：深绿井架 + 摇臂点头运动 + 黑金原油滴
+  'pumpjack': (x, r, s, col) => {
+    // 地面
+    x.fillStyle = darkenColor(col, 0.45);
+    rrPath(x, -r * 0.95, r * 0.6, r * 1.9, r * 0.28, r * 0.06);
+    x.fill();
+    // 井架（三角支撑）
+    x.strokeStyle = darkenColor(col, 0.25);
+    x.lineWidth = r * 0.13;
+    x.lineCap = 'round';
+    x.beginPath();
+    x.moveTo(-r * 0.42, r * 0.62); x.lineTo(-r * 0.1, -r * 0.3);
+    x.moveTo(r * 0.42, r * 0.62); x.lineTo(r * 0.1, -r * 0.3);
+    x.stroke();
+    // 平衡配重块
+    x.fillStyle = darkenColor(col, 0.35);
+    rrPath(x, -r * 0.85, r * 0.02, r * 0.4, r * 0.55, r * 0.08);
+    x.fill();
+    // 摇臂（驴头）
+    x.strokeStyle = '#c8b060';
+    x.lineWidth = r * 0.12;
+    x.beginPath(); x.moveTo(-r * 0.62, -r * 0.18); x.lineTo(r * 0.55, -r * 0.38); x.stroke();
+    // 驴头弧
+    x.beginPath(); x.arc(r * 0.55, -r * 0.24, r * 0.16, Math.PI * 0.6, Math.PI * 1.4); x.stroke();
+    // 钢丝绳 + 泵头
+    x.strokeStyle = '#8a8f96';
+    x.lineWidth = Math.max(0.9, s * 0.03);
+    x.beginPath(); x.moveTo(r * 0.55, -r * 0.08); x.lineTo(r * 0.55, r * 0.3); x.stroke();
+    x.fillStyle = '#3a3f46';
+    rrPath(x, r * 0.44, r * 0.3, r * 0.22, r * 0.18, r * 0.04);
+    x.fill();
+    // 原油滴
+    x.fillStyle = '#1a1410';
+    x.beginPath();
+    x.moveTo(r * 0.55, r * 0.56);
+    x.quadraticCurveTo(r * 0.66, r * 0.72, r * 0.55, r * 0.84);
+    x.quadraticCurveTo(r * 0.44, r * 0.72, r * 0.55, r * 0.56);
+    x.fill();
+    x.fillStyle = 'rgba(255,255,255,.25)';
+    x.beginPath(); x.arc(r * 0.51, r * 0.74, r * 0.03, 0, 7); x.fill();
+    // 电机盒
+    x.fillStyle = lightenColor(col, 0.15);
+    rrPath(x, -r * 0.05, r * 0.28, r * 0.5, r * 0.32, r * 0.06);
+    x.fill();
+  },
+
+  // 太阳能板：深蓝面板 + 白色栅线 + 斜射阳光
+  'solar-panel': (x, r, s, col) => {
+    // 面板（略带透视的平行四边形）
+    const g = x.createLinearGradient(-r * 0.8, -r * 0.7, r * 0.7, r * 0.7);
+    g.addColorStop(0, lightenColor(col, 0.25));
+    g.addColorStop(0.6, col);
+    g.addColorStop(1, darkenColor(col, 0.35));
+    x.fillStyle = g;
+    x.beginPath();
+    x.moveTo(-r * 0.85, -r * 0.6);
+    x.lineTo(r * 0.7, -r * 0.85);
+    x.lineTo(r * 0.85, r * 0.45);
+    x.lineTo(-r * 0.7, r * 0.7);
+    x.closePath();
+    x.fill();
+    x.strokeStyle = 'rgba(10,25,60,.6)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    x.stroke();
+    // 白色栅线
+    x.strokeStyle = 'rgba(255,255,255,.55)';
+    x.lineWidth = Math.max(0.8, s * 0.028);
+    for (let i = 1; i < 4; i++) {
+      const t = i / 4;
+      x.beginPath();
+      x.moveTo(-r * 0.85 + t * r * 0.15, -r * 0.6 + t * r * 0.1);
+      x.lineTo(r * 0.7 - t * r * 0.15, -r * 0.85 + t * r * 0.1);
+      x.stroke();
+    }
+    for (let i = 1; i < 3; i++) {
+      x.beginPath();
+      x.moveTo(-r * 0.85 + i * r * 0.52, -r * 0.6 + i * r * 0.1);
+      x.lineTo(-r * 0.7 + i * r * 0.52, r * 0.7 + i * r * 0.1);
+      x.stroke();
+    }
+    // 支架
+    x.strokeStyle = '#5a6270';
+    x.lineWidth = r * 0.1;
+    x.beginPath(); x.moveTo(0, r * 0.55); x.lineTo(0, r * 0.9); x.stroke();
+    // 太阳
+    x.fillStyle = '#ffdf5a';
+    x.beginPath(); x.arc(r * 0.55, -r * 0.75, r * 0.16, 0, 7); x.fill();
+    // 光线
+    x.strokeStyle = 'rgba(255,223,90,.9)';
+    x.lineWidth = Math.max(0.8, s * 0.028);
+    for (let i = 0; i < 5; i++) {
+      const a = -Math.PI / 2 + (i - 2) * 0.4;
+      x.beginPath();
+      x.moveTo(r * 0.55 + Math.cos(a) * r * 0.22, -r * 0.75 + Math.sin(a) * r * 0.22);
+      x.lineTo(r * 0.55 + Math.cos(a) * r * 0.3, -r * 0.75 + Math.sin(a) * r * 0.3);
+      x.stroke();
+    }
+  },
+
+  // 蓄电器：黄铜外壳 + 电量窗（半充绿色箭头）+ 电极
+  'accumulator': (x, r, s, col) => {
+    // 外壳
+    const g = x.createLinearGradient(-r * 0.7, 0, r * 0.7, 0);
+    g.addColorStop(0, lightenColor(col, 0.3));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.38));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.68, -r * 0.62, r * 1.36, r * 1.5, r * 0.14);
+    x.fill();
+    x.strokeStyle = 'rgba(60,45,10,.55)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 顶部电极
+    x.fillStyle = darkenColor(col, 0.45);
+    rrPath(x, -r * 0.2, -r * 0.95, r * 0.4, r * 0.35, r * 0.06);
+    x.fill();
+    x.fillStyle = '#9aa0a8';
+    x.fillRect(-r * 0.08, -r * 1.1, r * 0.16, r * 0.2);
+    // 电量观察窗
+    const wg = x.createLinearGradient(0, -r * 0.4, 0, r * 0.7);
+    wg.addColorStop(0, '#e8f4d0');
+    wg.addColorStop(1, '#5a7a3a');
+    x.fillStyle = wg;
+    rrPath(x, -r * 0.42, -r * 0.4, r * 0.84, r * 1.06, r * 0.1);
+    x.fill();
+    x.strokeStyle = 'rgba(50,40,10,.5)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    // 充电闪电
+    x.fillStyle = '#f0e14a';
+    x.beginPath();
+    x.moveTo(r * 0.06, -r * 0.24);
+    x.lineTo(-r * 0.18, r * 0.12);
+    x.lineTo(-r * 0.02, r * 0.12);
+    x.lineTo(-r * 0.12, r * 0.42);
+    x.lineTo(r * 0.16, r * 0.02);
+    x.lineTo(0, r * 0.02);
+    x.lineTo(r * 0.16, -r * 0.24);
+    x.closePath();
+    x.fill();
+    // 外壳高光
+    x.strokeStyle = 'rgba(255,255,255,.4)';
+    x.lineWidth = Math.max(0.8, s * 0.03);
+    x.beginPath(); x.moveTo(-r * 0.5, -r * 0.45); x.lineTo(-r * 0.5, r * 0.6); x.stroke();
+  },
 };

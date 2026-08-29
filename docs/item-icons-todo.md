@@ -100,16 +100,16 @@
 - [x] `assembling-machine-1` 组装机
 - [x] `lab` 研究中心
 - [x] `biolab` 生物实验室
-- [ ] `boiler` 锅炉
-- [ ] `steam-engine` 蒸汽机
-- [ ] `offshore-pump` 抽水机
-- [ ] `electric-mining-drill` 电采矿机
-- [ ] `big-mining-drill` 大型采矿机
-- [ ] `electric-furnace` 电炉
-- [ ] `assembling-machine-2` 组装机 II
-- [ ] `pumpjack` 抽油机
-- [ ] `solar-panel` 太阳能板
-- [ ] `accumulator` 蓄电器
+- [x] `boiler` 锅炉
+- [x] `steam-engine` 蒸汽机
+- [x] `offshore-pump` 抽水机
+- [x] `electric-mining-drill` 电采矿机
+- [x] `big-mining-drill` 大型采矿机
+- [x] `electric-furnace` 电炉
+- [x] `assembling-machine-2` 组装机 II
+- [x] `pumpjack` 抽油机
+- [x] `solar-panel` 太阳能板
+- [x] `accumulator` 蓄电器
 - [ ] `steel-furnace` 钢铁炉
 - [ ] `assembling-machine-3` 组装机 III
 - [ ] `oil-refinery` 炼油厂
