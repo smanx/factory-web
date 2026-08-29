@@ -466,6 +466,7 @@ const GAME_DATA = {
   "lab": 60,
   "biolab": 300,
   "captive-biter-spawner": 100,
+  "boiler": 1800,
   "offshore-pump": 60,
   "electric-mining-drill": 90,
   "big-mining-drill": 300,

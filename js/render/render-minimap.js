@@ -135,12 +135,31 @@ function drawMinimap(ctx) {
   ctx.fillText('🗺 ' + Math.round(pcx) + ',' + Math.round(pcy), x0 + 6, y0 + 5);
 }
 
-// 按像素宽度裁剪文本，超出部分以省略号结尾（对齐官方 tooltip 的固定宽度换行/截断）
-function _fitTooltipText(ctx, text, maxW) {
-  if (ctx.measureText(text).width <= maxW) return text;
-  let t = text;
-  while (t.length > 1 && ctx.measureText(t + '…').width > maxW) t = t.slice(0, -1);
-  return t + '…';
+// 按像素宽度把文本折行（支持中英文混排）：
+// 优先在空格处断行（英文单词），单个超长词（或无空格的中文长句）按字符逐个断行。返回行数组。
+function _wrapTooltipText(ctx, text, maxW) {
+  const words = String(text).split(/(\s+)/);
+  const lines = [];
+  let cur = '';
+  const flush = (t) => { if (t) lines.push(t); };
+  for (const w of words) {
+    if (ctx.measureText(cur + w).width <= maxW) { cur += w; continue; }
+    flush(cur);
+    cur = w;
+    // 当前行已满，且剩下一整段仍超宽：按字符拆行
+    // 注意：内层 while 找到的是“第一个超宽字符”，必须退回一格，保证每行都不超过 maxW，
+    // 否则长文本换行后会比限制宽一个字符、顶到右边框（实测 CJK 差 ~11px）。
+    while (ctx.measureText(cur).width > maxW) {
+      let i = 1;
+      while (i < cur.length && ctx.measureText(cur.slice(0, i)).width <= maxW) i++;
+      if (ctx.measureText(cur.slice(0, i)).width > maxW) i--;   // 退回最后一个放得下的字符
+      if (i < 1) i = 1;                                          // 单字符也放不下时强制推一个
+      lines.push(cur.slice(0, i));
+      cur = cur.slice(i);
+    }
+  }
+  flush(cur);
+  return lines.length ? lines : [String(text)];
 }
 
 // 燃烧器（烧燃料）设备：能量显示“(燃烧器)”而非“(电能)”，对齐官方 tooltip。
@@ -148,9 +167,11 @@ const _BURNER_DEVICES = new Set(['burner-mining-drill', 'stone-furnace', 'steel-
 
 // ===== 设备信息面板（小地图下方长条） =====
 // 鼠标悬停到设备上时，在小地图正下方绘制详情面板。
-// 内容与排版对齐《异星工厂》官方 tooltip：金色名称标题 + 物品图标 + 描述 + 分隔线 + 官方字段行
-// （采矿速度/制造速度/研究速度/运载速度/存储容量/能量消耗/污染/插件槽位/生命值），
+// 宽度与小地图完全一致并紧贴其下方/屏幕边缘；内容与排版对齐《异星工厂》官方 tooltip：
+// 金色名称标题 + 物品图标 + 描述 + 分隔线 + 官方字段行
+// （采矿速度/制造速度/研究速度/运载速度/存储容量/消耗量/污染/插件槽位/生命值），
 // 字段标签取自官方 core.cfg [description]，数值全部来自 GAME_DATA 单源。
+// 文本超宽时自动换行（标题/描述/字段值均可折行），不做省略号截断。
 function drawDeviceInfoBar(ctx) {
   // 仅在小地图开启时展示（面板锚定在小地图正下方）
   if (!(G.settings && G.settings.minimap !== false)) return;
@@ -186,9 +207,9 @@ function drawDeviceInfoBar(ctx) {
     if (cap) add('存储容量', String(cap));
   }
 
-  // 能量消耗（燃烧器设备显示“(燃烧器)”，其余“(电能)”，对齐官方 tooltip）
+  // 消耗量（官方 core.cfg energy-consumption=消耗量；燃烧器设备显示“(燃烧器)”，其余“(电能)”）
   const pw = GAME_DATA.powerUse && GAME_DATA.powerUse[e.type];
-  if (pw) add('能量消耗', pw + ' kW（' + (_BURNER_DEVICES.has(e.type) ? '燃烧器' : '电能') + '）');
+  if (pw) add('消耗量', pw + ' kW（' + (_BURNER_DEVICES.has(e.type) ? '燃烧器' : '电能') + '）');
 
   // 污染
   const poll = GAME_DATA.pollution && GAME_DATA.pollution[e.type];
@@ -204,16 +225,55 @@ function drawDeviceInfoBar(ctx) {
     add('生命值', cur >= hp ? String(hp) : cur + '/' + hp);
   }
 
-  // ---- 布局 ----
-  const bw = 226;                        // 面板宽度（略宽于小地图，容纳名称+描述+字段行）
-  const bx = W - bw - 6;                 // 右缘对齐画布右缘（与小地图右缘一致）
-  const top = MINIMAP_SIZE + 6;          // 小地图正下方，留 6px 间距
-  const pad = 10;
-  const titleH = 17;                     // 标题行高（金色粗体）
-  const descH = desc ? 14 : 0;           // 描述行高
-  const sepY = top + pad + titleH + descH + 3;          // 分隔线 y
-  const lh = 15;                         // 字段行高
-  const bh = pad + titleH + descH + 7 + lines.length * lh + 8;
+  // ---- 布局：宽度与小地图一致，紧贴其下方、紧贴屏幕右边缘 ----
+  const bw = MINIMAP_SIZE;               // 宽度与小地图完全一致
+  const bx = W - MINIMAP_SIZE;           // 右缘贴屏幕右边缘（与小地图右缘对齐）
+  const top = MINIMAP_SIZE;              // 顶缘紧贴小地图底边（无间距）
+  const pad = 9;                         // 左侧内边距
+  const padR = 14;                       // 右侧内边距（文本不贴右边框）
+  const iconW = it.emoji ? 19 : 0;       // 物品图标占宽
+  const innerW = bw - pad - padR;        // 内容区宽
+
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'left';
+
+  // 标题：名称折行（短名称单行不变）
+  ctx.font = 'bold 12.5px system-ui';
+  const titleLines = _wrapTooltipText(ctx, name, innerW - iconW);
+
+  // 描述：折行显示
+  ctx.font = '10.5px system-ui';
+  const descLines = desc ? _wrapTooltipText(ctx, desc, innerW - iconW) : [];
+
+  // 字段行：标签灰 + 值白；值超宽则换行（续行缩进到数值列），列宽过窄时标签独占一行
+  const rows = [];
+  for (const f of lines) {
+    const labelFull = f.label + '：';
+    const labelW = ctx.measureText(labelFull).width;
+    const vx = bx + pad + labelW + 6;
+    const valueMaxW = (bx + bw - padR) - vx;
+    if (valueMaxW < 24) {
+      rows.push({ label: labelFull, value: null, vx });
+      for (const vl of _wrapTooltipText(ctx, f.value, innerW)) rows.push({ label: null, value: vl, vx: bx + pad });
+    } else {
+      const vLines = _wrapTooltipText(ctx, f.value, valueMaxW);
+      rows.push({ label: labelFull, value: vLines[0], vx });
+      for (let i = 1; i < vLines.length; i++) rows.push({ label: null, value: vLines[i], vx });
+    }
+  }
+
+  // ---- 高度：由折行后的行数累加 ----
+  const titleLh = 16;                    // 标题行高
+  const descLh = 13;                     // 描述行高
+  const fieldLh = 14;                    // 字段行高
+  const sepBefore = 3;                   // 描述→分隔线间距
+  const sepAfter = 5;                    // 分隔线→字段间距
+  const padTop = 8, padBottom = 8;
+  const bh = padTop + titleLines.length * titleLh
+    + descLines.length * descLh
+    + sepBefore + 1 + sepAfter
+    + rows.length * fieldLh
+    + padBottom;
 
   // ---- 背景（官方 tooltip 深色半透明底 + 细边框）----
   ctx.fillStyle = 'rgba(15,16,14,0.92)';
@@ -223,41 +283,34 @@ function drawDeviceInfoBar(ctx) {
   ctx.roundRect ? ctx.roundRect(bx, top, bw, bh, 4) : ctx.rect(bx, top, bw, bh);
   ctx.fill(); ctx.stroke();
 
-  ctx.textBaseline = 'top';
-  ctx.textAlign = 'left';
-
   // ---- 标题（名称，金色粗体，前接物品图标，对齐官方 tooltip 图标+名称）----
-  const ny = top + pad;
+  let y = top + padTop;
   let nx = bx + pad;
-  if (it.emoji) { ctx.font = '13px system-ui'; ctx.fillText(it.emoji, nx, ny); nx += 19; }
-  ctx.font = 'bold 12.5px system-ui';
+  if (it.emoji) { ctx.font = '13px system-ui'; ctx.fillText(it.emoji, nx, y); nx += iconW; ctx.font = 'bold 12.5px system-ui'; }
   ctx.fillStyle = '#ffd43b';
-  ctx.fillText(name, nx, ny);
+  for (const tl of titleLines) { ctx.fillText(tl, nx, y); y += titleLh; }
 
-  // ---- 描述（浅色正文）----
-  if (desc) {
+  // ---- 描述（浅色正文，超宽换行）----
+  if (descLines.length) {
     ctx.font = '10.5px system-ui';
     ctx.fillStyle = 'rgba(226,228,222,0.9)';
-    ctx.fillText(_fitTooltipText(ctx, desc, bw - pad * 2 - 19), bx + pad + 19, ny + titleH - 3);
+    for (const dl of descLines) { ctx.fillText(dl, bx + pad + iconW, y); y += descLh; }
   }
 
   // ---- 分隔线 ----
+  y += sepBefore;
   ctx.strokeStyle = 'rgba(200,200,190,0.18)';
   ctx.beginPath();
-  ctx.moveTo(bx + pad, sepY);
-  ctx.lineTo(bx + bw - pad, sepY);
+  ctx.moveTo(bx + pad, y);
+  ctx.lineTo(bx + bw - padR, y);
   ctx.stroke();
+  y += 1 + sepAfter;
 
-  // ---- 官方字段行（标签灰 + 值白）----
-  let y = sepY + 6;
+  // ---- 官方字段行（标签灰 + 值白，值超宽换行）----
   ctx.font = '10.5px system-ui';
-  const vx = bx + pad + 62;
-  const vw = bw - pad - 62 - 4;
-  for (const ln of lines) {
-    ctx.fillStyle = 'rgba(160,164,155,0.85)';
-    ctx.fillText(ln.label + '：', bx + pad, y);
-    ctx.fillStyle = 'rgba(240,242,236,0.95)';
-    ctx.fillText(_fitTooltipText(ctx, ln.value, vw), vx, y);
-    y += lh;
+  for (const r of rows) {
+    if (r.label) { ctx.fillStyle = 'rgba(160,164,155,0.85)'; ctx.fillText(r.label, bx + pad, y); }
+    if (r.value) { ctx.fillStyle = 'rgba(240,242,236,0.95)'; ctx.fillText(r.value, r.vx, y); }
+    y += fieldLh;
   }
 }

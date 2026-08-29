@@ -124,6 +124,11 @@ for (const [type, tbl] of Object.entries(raw)) {
     if (typeof proto.stack_size === 'number') officialStack.set(name, proto.stack_size);
     if (typeof proto.max_health === 'number') officialHp.set(name, proto.max_health);
     if (typeof proto.energy_usage === 'string') officialPower.set(name, proto.energy_usage);
+    // 燃烧器设备无 energy_usage，仅有 energy_consumption（如锅炉 1.8MW）——同样计入官方功耗
+    else if (typeof proto.energy_consumption === 'string'
+      && proto.energy_source && proto.energy_source.type === 'burner') {
+      officialPower.set(name, proto.energy_consumption);
+    }
   }
 }
 

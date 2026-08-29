@@ -14,61 +14,51 @@ function localizedName(id, manual) {
 }
 
 // ===== emoji 去重彩色角标（区分共用同一 emoji 的物品）=====
-// 惰性计算（首次绘制时执行，此时 ITEMS 已含品质变体）：找出被多个物品共用的 emoji，
-// 为其对应物品绘制彩色角标；若同一 emoji 组内 color 也相同（纯色角标无法区分），
-// 则在该角标上额外叠加一个 mark/名称首字符字母来进一步区分。
-let _emojiDupCache = null;
-function _emojiDupInfo() {
-  if (_emojiDupCache) return _emojiDupCache;
-  const byEmoji = {};
-  for (const id in ITEMS) {
-    const e = ITEMS[id].emoji;
-    if (e) (byEmoji[e] = byEmoji[e] || []).push(id);
+// 纯颜色区分：为每个共用同一 emoji 的物品分配一个组内唯一的醒目角标颜色，
+// 直接以角标圆点颜色区分物品，不再叠加任何字母/符号（保证纯颜色即可辨识）。
+// 惰性计算（首次绘制时执行，此时 ITEMS 已含品质变体）：
+// 若物品自带 color 在其 emoji 组内唯一则沿用（如基础带黄、高速带红），
+// 否则从醒目标记色板取一个组内未用过的颜色。
+let _emojiBadgeCache = null;
+const EMOJI_BADGE_PALETTE = ['#3ec8ff', '#ff8a2a', '#6ee07f', '#ff4d5e', '#c07bf0', '#ffe24a', '#4fd6c2', '#5a8aff', '#ff7ab8', '#ffcf3d'];
+function _emojiBadgeColor(id) {
+  if (!_emojiBadgeCache) {
+    const group = {}, color = {};
+    for (const key in ITEMS) {
+      const e = ITEMS[key].emoji;
+      if (e) (group[e] = group[e] || []).push(key);
+    }
+    for (const e in group) {
+      const ids = group[e];
+      if (ids.length < 2) continue; // 未被多个物品共用，无需角标
+      const taken = new Set();
+      for (const key of ids) {
+        const own = ITEMS[key] && ITEMS[key].color;
+        if (own && !taken.has(own)) { color[key] = own; }
+        else { color[key] = EMOJI_BADGE_PALETTE.find(c => !taken.has(c)) || '#ffd43b'; }
+        taken.add(color[key]);
+      }
+    }
+    _emojiBadgeCache = { color };
   }
-  const dupEmoji = new Set();       // 被多个物品共用的 emoji
-  const colorConflict = new Set();  // 同一 emoji 组内存在相同 color（需叠加字母）
-  for (const e in byEmoji) {
-    const ids = byEmoji[e];
-    if (ids.length < 2) continue;
-    dupEmoji.add(e);
-    const cnt = {};
-    for (const id of ids) { const c = ITEMS[id].color; if (c) cnt[c] = (cnt[c] || 0) + 1; }
-    for (const c in cnt) if (cnt[c] > 1) { colorConflict.add(e); break; }
-  }
-  _emojiDupCache = { dupEmoji, colorConflict };
-  return _emojiDupCache;
+  return _emojiBadgeCache.color[id];
 }
 
-// 在 emoji 图形右下角绘制去重角标：小圆点填充 item 颜色；颜色冲突时叠加字母。
+// 在 emoji 图形右下角绘制去重角标：小圆点填充该物品专属区分颜色（外圈白描边保证深色底清晰）。
 function drawEmojiDupBadge(x, id, r) {
-  const { dupEmoji, colorConflict } = _emojiDupInfo();
-  const emoji = ITEMS[id].emoji;
-  if (!emoji || !dupEmoji.has(emoji)) return;
-  const needLabel = colorConflict.has(emoji);
-  const d = r * 0.6;                   // 角标圆点直径
-  const px = r * 0.82, py = -r * 0.82; // 右上角定位（相对图标中心）
-  const col = ITEMS[id].color;
-  // 外白描边，保证深色/深色底上也清晰可见
+  if (!ITEMS[id].emoji) return;
+  const col = _emojiBadgeColor(id);
+  if (!col) return; // 非共用 emoji，无角标
+  const d = r * 0.78;                   // 角标圆点直径（整体继续放大）
+  const px = r * 0.88, py = -r * 0.88; // 右上角定位（相对图标中心）
   const outerR = d / 2;
-  // 描边宽度不超过外圆半径，并确保内圆半径始终为正，避免小尺寸时 arc 报错
-  const border = Math.min(outerR, Math.max(1, r * 0.05));
+  // 白描边进一步变细：宽度不超过外圆半径，并确保内圆半径始终为正，避免小尺寸时 arc 报错
+  const border = Math.min(outerR, Math.max(0.5, r * 0.02));
   const innerR = Math.max(0.5, outerR - border);
   x.fillStyle = '#fff';
   x.beginPath(); x.arc(px, py, outerR, 0, 7); x.fill();
   x.fillStyle = col;
   x.beginPath(); x.arc(px, py, innerR, 0, 7); x.fill();
-  if (needLabel) {
-    const label = (ITEMS[id].mark || ITEMS[id].name[0]).slice(0, 1);
-    x.font = 'bold ' + Math.round(d * 0.85) + 'px system-ui';
-    x.textAlign = 'center';
-    x.textBaseline = 'middle';
-    x.lineWidth = Math.min(outerR, Math.max(1, r * 0.05));
-    x.strokeStyle = 'rgba(10,14,20,.9)';
-    x.lineJoin = 'round';
-    x.strokeText(label, px, py + 1);
-    x.fillStyle = '#fff';
-    x.fillText(label, px, py + 1);
-  }
 }
 
 function drawItemGlyph(x, id, cx, cy, s) {
