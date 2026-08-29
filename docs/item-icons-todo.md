@@ -110,16 +110,16 @@
 - [x] `pumpjack` 抽油机
 - [x] `solar-panel` 太阳能板
 - [x] `accumulator` 蓄电器
-- [ ] `steel-furnace` 钢铁炉
-- [ ] `assembling-machine-3` 组装机 III
-- [ ] `oil-refinery` 炼油厂
-- [ ] `chemical-plant` 化工厂
-- [ ] `speed-module` 速度模块
-- [ ] `speed-module-2` 速度模块 II
-- [ ] `speed-module-3` 速度模块 III
-- [ ] `productivity-module` 产能模块
-- [ ] `productivity-module-2` 产能模块 II
-- [ ] `productivity-module-3` 产能模块 III
+- [x] `steel-furnace` 钢铁炉
+- [x] `assembling-machine-3` 组装机 III
+- [x] `oil-refinery` 炼油厂
+- [x] `chemical-plant` 化工厂
+- [x] `speed-module` 速度模块
+- [x] `speed-module-2` 速度模块 II
+- [x] `speed-module-3` 速度模块 III
+- [x] `productivity-module` 产能模块
+- [x] `productivity-module-2` 产能模块 II
+- [x] `productivity-module-3` 产能模块 III
 - [ ] `beacon` 信号塔
 - [ ] `efficiency-module` 效率模块
 - [ ] `efficiency-module-2` 效率模块 II

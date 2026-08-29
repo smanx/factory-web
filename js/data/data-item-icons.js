@@ -5,6 +5,91 @@
 // 设计进度记录见 docs/item-icons-todo.md（每完成一项勾选对应条目）。
 // 绘制约定：坐标系原点在图标中心，r = 图标半径（s/2），col = ITEMS[id].color，
 // 可用工具：rrPath / lightenColor / darkenColor / dark（深色描边）。
+
+// ===== 模块类图标共享绘制工具（速度/产能/效率/品质模块通用骨架） =====
+// 电路板基板：圆角方板 + 四角螺丝 + 内框走线 + 底部引脚
+function _moduleBase(x, r, s, col) {
+  // 引脚（底部金属脚）
+  x.fillStyle = '#8a8f96';
+  for (let i = 0; i < 4; i++) {
+    x.fillRect(-r * 0.6 + i * r * 0.4, r * 0.78, r * 0.16, r * 0.2);
+  }
+  // 基板
+  const g = x.createLinearGradient(-r * 0.75, -r * 0.75, r * 0.75, r * 0.75);
+  g.addColorStop(0, lightenColor(col, 0.3));
+  g.addColorStop(0.55, col);
+  g.addColorStop(1, darkenColor(col, 0.45));
+  x.fillStyle = g;
+  rrPath(x, -r * 0.75, -r * 0.78, r * 1.5, r * 1.56, r * 0.16);
+  x.fill();
+  x.strokeStyle = 'rgba(10,15,25,.6)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 内框走线
+  x.strokeStyle = 'rgba(255,255,255,.25)';
+  x.lineWidth = Math.max(0.8, s * 0.028);
+  rrPath(x, -r * 0.58, -r * 0.62, r * 1.16, r * 1.24, r * 0.1);
+  x.stroke();
+  // 四角螺丝
+  x.fillStyle = 'rgba(230,235,240,.8)';
+  for (const [px, py] of [[-0.58, -0.62], [0.58, -0.62], [-0.58, 0.62], [0.58, 0.62]]) {
+    x.beginPath(); x.arc(px * r, py * r, r * 0.06, 0, 7); x.fill();
+  }
+}
+
+// 速度模块符号：三重上行箭头（>>，指向右上，示意加速）
+function _moduleChevrons(x, r, s) {
+  x.lineCap = 'round';
+  x.lineJoin = 'round';
+  for (let i = 0; i < 3; i++) {
+    const ox = -r * 0.42 + i * r * 0.34;
+    x.strokeStyle = i === 2 ? 'rgba(255,255,255,.95)' : 'rgba(255,255,255,.6)';
+    x.lineWidth = r * 0.13;
+    x.beginPath();
+    x.moveTo(ox, r * 0.3);
+    x.lineTo(ox + r * 0.24, -r * 0.04);
+    x.lineTo(ox, -r * 0.38);
+    x.stroke();
+  }
+}
+
+// 产能模块符号：粗上行箭头 + 右下加号（示意产出累积）
+function _moduleArrowPlus(x, r, s) {
+  x.fillStyle = 'rgba(255,255,255,.9)';
+  // 箭头
+  x.beginPath();
+  x.moveTo(-r * 0.34, r * 0.34);
+  x.lineTo(-r * 0.34, -r * 0.1);
+  x.lineTo(-r * 0.54, -r * 0.1);
+  x.lineTo(-r * 0.22, -r * 0.5);
+  x.lineTo(r * 0.1, -r * 0.1);
+  x.lineTo(-r * 0.1, -r * 0.1);
+  x.lineTo(-r * 0.1, r * 0.34);
+  x.closePath();
+  x.fill();
+  // 加号
+  x.fillStyle = '#f0e14a';
+  x.fillRect(r * 0.18, -r * 0.04, r * 0.34, r * 0.11);
+  x.fillRect(r * 0.295, -r * 0.155, r * 0.11, r * 0.34);
+}
+
+// 模块档位灯：底部右侧 1~3 颗小灯，示意 I / II / III
+function _modulePips(x, r, s, n) {
+  for (let i = 0; i < n; i++) {
+    x.fillStyle = '#f8d84a';
+    x.beginPath();
+    x.arc(-r * 0.5 + i * r * 0.24, r * 0.5, r * 0.08, 0, 7);
+    x.fill();
+  }
+  x.strokeStyle = 'rgba(255,255,255,.5)';
+  x.lineWidth = Math.max(0.6, s * 0.025);
+  for (let i = 0; i < n; i++) {
+    x.beginPath();
+    x.arc(-r * 0.5 + i * r * 0.24, r * 0.5, r * 0.08, 0, 7);
+    x.stroke();
+  }
+}
+
 const ITEM_CUSTOM_ICONS = {
 
   // 石砖：错缝双排砖块，立体渐变 + 砖缝描边
@@ -4108,5 +4193,308 @@ const ITEM_CUSTOM_ICONS = {
     x.strokeStyle = 'rgba(255,255,255,.4)';
     x.lineWidth = Math.max(0.8, s * 0.03);
     x.beginPath(); x.moveTo(-r * 0.5, -r * 0.45); x.lineTo(-r * 0.5, r * 0.6); x.stroke();
+  },
+  // 钢铁炉：钢灰炉体 + 大烟囱冒烟 + 炉口橙焰 + 铆钉加固
+  'steel-furnace': (x, r, s, col) => {
+    // 炉体（钢灰渐变，下宽上窄的梯形感）
+    const g = x.createLinearGradient(-r * 0.8, -r * 0.6, r * 0.8, r * 0.8);
+    g.addColorStop(0, lightenColor(col, 0.3));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = g;
+    x.beginPath();
+    x.moveTo(-r * 0.82, -r * 0.35);
+    x.lineTo(r * 0.82, -r * 0.35);
+    x.lineTo(r * 0.9, r * 0.75);
+    x.lineTo(-r * 0.9, r * 0.75);
+    x.closePath();
+    x.fill();
+    x.strokeStyle = 'rgba(25,30,38,.6)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 大烟囱
+    const cg = x.createLinearGradient(-r * 0.2, 0, r * 0.2, 0);
+    cg.addColorStop(0, darkenColor(col, 0.2));
+    cg.addColorStop(0.4, lightenColor(col, 0.2));
+    cg.addColorStop(1, darkenColor(col, 0.35));
+    x.fillStyle = cg;
+    rrPath(x, -r * 0.22, -r * 1.05, r * 0.44, r * 0.85, r * 0.06);
+    x.fill();
+    x.strokeStyle = 'rgba(25,30,38,.55)';
+    x.stroke();
+    // 烟囱口加固环
+    x.fillStyle = darkenColor(col, 0.3);
+    rrPath(x, -r * 0.28, -r * 1.12, r * 0.56, r * 0.14, r * 0.05);
+    x.fill();
+    // 烟雾
+    x.fillStyle = 'rgba(200,205,215,.55)';
+    x.beginPath(); x.arc(-r * 0.1, -r * 1.18, r * 0.12, 0, 7); x.fill();
+    x.fillStyle = 'rgba(200,205,215,.35)';
+    x.beginPath(); x.arc(r * 0.14, -r * 1.32, r * 0.09, 0, 7); x.fill();
+    // 炉口（内凹黑腔）
+    x.fillStyle = '#241d16';
+    rrPath(x, -r * 0.5, r * 0.05, r * 1.0, r * 0.5, r * 0.08);
+    x.fill();
+    // 外焰
+    x.fillStyle = '#e8703a';
+    x.beginPath();
+    x.moveTo(-r * 0.34, r * 0.5);
+    x.quadraticCurveTo(-r * 0.42, r * 0.24, 0, r * 0.12);
+    x.quadraticCurveTo(r * 0.42, r * 0.24, r * 0.34, r * 0.5);
+    x.closePath();
+    x.fill();
+    // 内焰
+    x.fillStyle = '#f8c83a';
+    x.beginPath();
+    x.moveTo(-r * 0.18, r * 0.5);
+    x.quadraticCurveTo(-r * 0.22, r * 0.3, 0, r * 0.24);
+    x.quadraticCurveTo(r * 0.22, r * 0.3, r * 0.18, r * 0.5);
+    x.closePath();
+    x.fill();
+    // 铆钉
+    x.fillStyle = lightenColor(col, 0.4);
+    for (const [px, py] of [[-0.66, -0.14], [0.66, -0.14], [-0.72, 0.62], [0.72, 0.62]]) {
+      x.beginPath(); x.arc(px * r, py * r, r * 0.05, 0, 7); x.fill();
+    }
+    // 侧身高光
+    x.strokeStyle = 'rgba(255,255,255,.3)';
+    x.lineWidth = Math.max(0.8, s * 0.03);
+    x.beginPath(); x.moveTo(-r * 0.62, -r * 0.22); x.lineTo(-r * 0.68, r * 0.6); x.stroke();
+  },
+
+  // 组装机 III：紫色机身 + 双齿轮咬合 + 三重速度条纹
+  'assembling-machine-3': (x, r, s, col) => {
+    // 机身
+    const g = x.createLinearGradient(-r * 0.85, -r * 0.85, r * 0.85, r * 0.85);
+    g.addColorStop(0, lightenColor(col, 0.35));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.85, -r * 0.8, r * 1.7, r * 1.66, r * 0.14);
+    x.fill();
+    x.strokeStyle = 'rgba(30,10,45,.55)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 双齿轮（主 + 副，咬合）
+    const gear = (cx, cy, rad) => {
+      const teeth = 8;
+      x.fillStyle = '#d8dde4';
+      for (let i = 0; i < teeth; i++) {
+        const a = i * Math.PI * 2 / teeth + 0.35;
+        x.save();
+        x.translate(cx + Math.cos(a) * rad * 0.82, cy + Math.sin(a) * rad * 0.82);
+        x.rotate(a);
+        x.fillRect(-rad * 0.16, -rad * 0.2, rad * 0.32, rad * 0.4);
+        x.restore();
+      }
+      const gg = x.createRadialGradient(cx - rad * 0.15, cy - rad * 0.15, rad * 0.06, cx, cy, rad);
+      gg.addColorStop(0, lightenColor('#d8dde4', 0.35));
+      gg.addColorStop(1, darkenColor('#d8dde4', 0.25));
+      x.fillStyle = gg;
+      x.beginPath(); x.arc(cx, cy, rad * 0.68, 0, 7); x.fill();
+      x.fillStyle = '#3a2a55';
+      x.beginPath(); x.arc(cx, cy, rad * 0.24, 0, 7); x.fill();
+    };
+    gear(-r * 0.12, -r * 0.06, r * 0.36);
+    gear(r * 0.42, r * 0.26, r * 0.18);
+    // 三重速度条纹（比 II 多一组，更强）
+    x.strokeStyle = 'rgba(255,255,255,.45)';
+    x.lineWidth = Math.max(1, s * 0.035);
+    for (let i = 0; i < 3; i++) {
+      x.beginPath();
+      x.moveTo(-r * 0.74, -r * 0.24 + i * r * 0.24);
+      x.lineTo(-r * 0.48, -r * 0.4 + i * r * 0.24);
+      x.stroke();
+      x.beginPath();
+      x.moveTo(r * 0.48, r * 0.04 + i * r * 0.2);
+      x.lineTo(r * 0.74, -r * 0.12 + i * r * 0.2);
+      x.stroke();
+    }
+    // 底部出入口
+    x.fillStyle = '#241a30';
+    rrPath(x, -r * 0.6, r * 0.58, r * 1.2, r * 0.2, r * 0.05);
+    x.fill();
+    // 状态灯
+    x.fillStyle = '#5ad06a';
+    x.beginPath(); x.arc(-r * 0.6, -r * 0.6, r * 0.09, 0, 7); x.fill();
+  },
+
+  // 炼油厂：锈橙厂房 + 蒸馏塔 + 管廊 + 原油储罐
+  'oil-refinery': (x, r, s, col) => {
+    // 蒸馏塔（高柱，分节）
+    const tg = x.createLinearGradient(-r * 0.16, 0, r * 0.16, 0);
+    tg.addColorStop(0, darkenColor(col, 0.25));
+    tg.addColorStop(0.4, lightenColor(col, 0.18));
+    tg.addColorStop(1, darkenColor(col, 0.3));
+    x.fillStyle = tg;
+    rrPath(x, -r * 0.16, -r * 0.95, r * 0.32, r * 1.55, r * 0.08);
+    x.fill();
+    x.strokeStyle = 'rgba(40,20,8,.55)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    // 塔节环
+    x.fillStyle = darkenColor(col, 0.2);
+    for (const py of [-0.62, -0.24, 0.14]) {
+      rrPath(x, -r * 0.19, py * r, r * 0.38, r * 0.09, r * 0.04);
+      x.fill();
+    }
+    // 塔顶小烟囱冒烟
+    x.fillStyle = darkenColor(col, 0.35);
+    rrPath(x, r * 0.06, -r * 1.06, r * 0.1, r * 0.16, r * 0.03);
+    x.fill();
+    x.fillStyle = 'rgba(220,220,225,.45)';
+    x.beginPath(); x.arc(r * 0.14, -r * 1.16, r * 0.1, 0, 7); x.fill();
+    // 主厂房
+    const g = x.createLinearGradient(-r * 0.8, -r * 0.5, 0, r * 0.7);
+    g.addColorStop(0, lightenColor(col, 0.25));
+    g.addColorStop(1, darkenColor(col, 0.4));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.95, -r * 0.3, r * 1.35, r * 1.05, r * 0.08);
+    x.fill();
+    x.strokeStyle = 'rgba(40,20,8,.55)';
+    x.stroke();
+    // 厂房窗户（暗口 + 橙光）
+    x.fillStyle = '#2a1c10';
+    for (const px of [-0.72, -0.4]) {
+      rrPath(x, px * r, -r * 0.1, r * 0.22, r * 0.3, r * 0.04);
+      x.fill();
+    }
+    x.fillStyle = 'rgba(240,150,60,.85)';
+    rrPath(x, -r * 0.69, -r * 0.07, r * 0.16, r * 0.24, r * 0.03);
+    x.fill();
+    rrPath(x, -r * 0.37, -r * 0.07, r * 0.16, r * 0.24, r * 0.03);
+    x.fill();
+    // 管廊（塔→厂房）
+    x.strokeStyle = '#9aa0a8';
+    x.lineWidth = r * 0.09;
+    x.beginPath(); x.moveTo(r * 0.16, -r * 0.4); x.lineTo(r * 0.5, -r * 0.4); x.lineTo(r * 0.5, r * 0.3); x.stroke();
+    x.lineWidth = r * 0.06;
+    x.beginPath(); x.moveTo(r * 0.16, -r * 0.2); x.lineTo(r * 0.62, -r * 0.2); x.stroke();
+    // 原油储罐
+    const og = x.createLinearGradient(r * 0.45, 0, r * 0.95, 0);
+    og.addColorStop(0, '#3a332c');
+    og.addColorStop(1, '#191410');
+    x.fillStyle = og;
+    rrPath(x, r * 0.42, r * 0.1, r * 0.55, r * 0.68, r * 0.1);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.5)';
+    x.stroke();
+    // 储罐高光
+    x.strokeStyle = 'rgba(255,255,255,.2)';
+    x.lineWidth = Math.max(0.8, s * 0.03);
+    x.beginPath(); x.moveTo(r * 0.5, r * 0.18); x.lineTo(r * 0.5, r * 0.7); x.stroke();
+    // 底部地面
+    x.fillStyle = 'rgba(50,35,20,.4)';
+    rrPath(x, -r * 0.95, r * 0.72, r * 1.9, r * 0.16, r * 0.05);
+    x.fill();
+  },
+
+  // 化工厂：灰绿厂房 + 玻璃反应釜 + 冒泡液体 + 输送管
+  'chemical-plant': (x, r, s, col) => {
+    // 厂房主体
+    const g = x.createLinearGradient(-r * 0.8, -r * 0.7, r * 0.8, r * 0.8);
+    g.addColorStop(0, lightenColor(col, 0.28));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.42));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.85, -r * 0.55, r * 1.7, r * 1.4, r * 0.12);
+    x.fill();
+    x.strokeStyle = 'rgba(25,35,20,.6)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 玻璃反应釜（圆窗，内部液体冒泡）
+    x.fillStyle = 'rgba(15,25,15,.55)';
+    x.beginPath(); x.arc(-r * 0.18, r * 0.05, r * 0.38, 0, 7); x.fill();
+    // 釜内液体
+    x.save();
+    x.beginPath(); x.arc(-r * 0.18, r * 0.05, r * 0.32, 0, 7); x.clip();
+    const lg = x.createLinearGradient(0, -r * 0.1, 0, r * 0.4);
+    lg.addColorStop(0, '#7ad06a');
+    lg.addColorStop(1, '#3a7a2a');
+    x.fillStyle = lg;
+    x.fillRect(-r * 0.55, -r * 0.05, r * 1.1, r * 0.6);
+    // 气泡
+    x.fillStyle = 'rgba(255,255,255,.6)';
+    x.beginPath(); x.arc(-r * 0.3, r * 0.18, r * 0.05, 0, 7); x.fill();
+    x.beginPath(); x.arc(-r * 0.06, r * 0.1, r * 0.04, 0, 7); x.fill();
+    x.fillStyle = 'rgba(255,255,255,.35)';
+    x.beginPath(); x.arc(-r * 0.18, r * 0.28, r * 0.035, 0, 7); x.fill();
+    x.restore();
+    // 釜口金属箍
+    x.strokeStyle = '#9aa0a8';
+    x.lineWidth = r * 0.09;
+    x.beginPath(); x.arc(-r * 0.18, r * 0.05, r * 0.38, 0, 7); x.stroke();
+    // 顶部进料管 + 阀门轮
+    x.strokeStyle = '#9aa0a8';
+    x.lineWidth = r * 0.1;
+    x.beginPath(); x.moveTo(-r * 0.18, -r * 0.55); x.lineTo(-r * 0.18, -r * 0.8); x.lineTo(r * 0.3, -r * 0.8); x.stroke();
+    x.strokeStyle = '#c85050';
+    x.lineWidth = r * 0.06;
+    x.beginPath(); x.arc(r * 0.3, -r * 0.8, r * 0.1, 0, 7); x.stroke();
+    // 右侧出料管
+    x.strokeStyle = '#9aa0a8';
+    x.lineWidth = r * 0.09;
+    x.beginPath(); x.moveTo(r * 0.2, r * 0.3); x.lineTo(r * 0.55, r * 0.3); x.lineTo(r * 0.55, r * 0.55); x.stroke();
+    // 危险警示条纹（底部）
+    x.save();
+    rrPath(x, -r * 0.85, r * 0.52, r * 1.7, r * 0.32, r * 0.08);
+    x.clip();
+    x.fillStyle = '#e0b040';
+    x.fillRect(-r * 0.85, r * 0.52, r * 1.7, r * 0.32);
+    x.fillStyle = '#2a2a28';
+    for (let i = 0; i < 5; i++) {
+      x.beginPath();
+      const px = -r * 0.9 + i * r * 0.4;
+      x.moveTo(px, r * 0.84); x.lineTo(px + r * 0.16, r * 0.52);
+      x.lineTo(px + r * 0.3, r * 0.52); x.lineTo(px + r * 0.14, r * 0.84);
+      x.closePath(); x.fill();
+    }
+    x.restore();
+    x.strokeStyle = 'rgba(25,35,20,.5)';
+    x.lineWidth = Math.max(1, s * 0.035);
+    rrPath(x, -r * 0.85, r * 0.52, r * 1.7, r * 0.32, r * 0.08);
+    x.stroke();
+  },
+
+  // 速度模块 I：蓝色电路板 + 三重上行箭头 + 单档位灯
+  'speed-module': (x, r, s, col) => {
+    _moduleBase(x, r, s, col);
+    _moduleChevrons(x, r, s);
+    _modulePips(x, r, 1);
+  },
+
+  // 速度模块 II：深蓝电路板 + 三重上行箭头 + 双档位灯
+  'speed-module-2': (x, r, s, col) => {
+    _moduleBase(x, r, s, col);
+    _moduleChevrons(x, r, s);
+    _modulePips(x, r, 2);
+  },
+
+  // 速度模块 III：更深的蓝电路板 + 发光箭头 + 三档位灯
+  'speed-module-3': (x, r, s, col) => {
+    _moduleBase(x, r, s, col);
+    _moduleChevrons(x, r, s);
+    _modulePips(x, r, 3);
+  },
+
+  // 产能模块 I：绿色电路板 + 上行箭头带加号 + 单档位灯
+  'productivity-module': (x, r, s, col) => {
+    _moduleBase(x, r, s, col);
+    _moduleArrowPlus(x, r, s);
+    _modulePips(x, r, 1);
+  },
+
+  // 产能模块 II：深绿电路板 + 上行箭头带加号 + 双档位灯
+  'productivity-module-2': (x, r, s, col) => {
+    _moduleBase(x, r, s, col);
+    _moduleArrowPlus(x, r, s);
+    _modulePips(x, r, 2);
+  },
+
+  // 产能模块 III：更深的绿电路板 + 发光箭头加号 + 三档位灯
+  'productivity-module-3': (x, r, s, col) => {
+    _moduleBase(x, r, s, col);
+    _moduleArrowPlus(x, r, s);
+    _modulePips(x, r, 3);
   },
 };
