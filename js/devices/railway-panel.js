@@ -154,9 +154,13 @@ function locoScheduleEntryAction(btn, e, idx, mch) {
 
 DEVICE_PANEL['cargo-wagon'] = {
   html(e) {
-    let h = '<div class="dim">货运车厢：挂在车头后随列车移动，最多 ' + wagonSlots() + ' 格各 ' + WAGON_STACK + ' 个。车站可用机械臂装卸。可为每个槽位设置<b>过滤物</b>（对齐《异星工厂》Cargo wagon 过滤槽），设置后该槽只能装入指定物品，便于分类运输。</div><div class="sec">货物</div><div class="rows">';
+    let h = '<div class="dim">货运车厢：挂在车头后随列车移动，最多 ' + wagonSlots() + ' 格各 ' + WAGON_STACK + ' 个。车站可用机械臂装卸。可为每个槽位设置<b>过滤物</b>（对齐《异星工厂》Cargo wagon 过滤槽），设置后该槽只能装入指定物品，便于分类运输。</div><div class="sec">货物</div><div class="asm3-inp-row">';
     if (!e.slots || !e.slots.length) h += '<div class="dim">车厢是空的</div>';
-    else for (const s of e.slots) if (s) h += '<div class="row"><span>' + ITEMS[s.item].name + '</span><b>' + s.count + '</b><button data-act="take" data-id="' + s.item + '">取出1</button></div>';
+    else {
+      const agg = {};
+      for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
+      h += itemSlotsHtml(agg, { action: 'chest-take' });
+    }
     h += '</div>';
     // 过滤槽设置：为前 wagonSlots() 个槽位提供过滤下拉
     h += '<div class="sec">槽位过滤</div><div class="rows">';

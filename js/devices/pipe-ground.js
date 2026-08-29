@@ -288,7 +288,7 @@ function drawPipeGround(ctx, e, gx, gy, dir, alpha) {
 function pipeGroundPanelHtml(e) {
   const agg = {};
   for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
-  let h = row('流体', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
+  let h = row('流体', Object.keys(agg).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(agg, { action: 'display' }) + '</div>' : '<span class="dim">空</span>', 'contents');
   h += row('容量', e.total() + ' / ' + PIPE_CAP, 'cap');
   if (Object.keys(agg).length) h += '<button data-action="drain" id="btn-pgt-takeout">直接清空</button>';
   h += '<div class="dim">地下管道：<b>背靠背</b>摆两座（朝向相对，最远 ' + PIPE_GROUND_MAX + ' 格）自动配对，从地下穿行流体；口对口（朝向相背、管口相对）只是像普通管道一样的简单连通，不属于配对。只有<b>管口</b>（管道伸出的那一侧）能接普通管道与流体，背向不接管道，只与配对的另一端地下管道互通；不分入口/出口，流体可从管口进、从配对端出。<b>两座中间可以放任意设备</b>（建筑/机器/传送带/管道……），管段从设备下方穿过，不会被阻挡也不会与设备连通；只有峭壁/水面会切断地下管段。一条线上多个管道时只与最近的背向管道配对。R 旋转方向。</div>';
@@ -297,7 +297,7 @@ function pipeGroundPanelHtml(e) {
 function pipeGroundPanelLive(e, api) {
   const agg = {};
   for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
-  api.set('contents', Object.keys(agg).length ? countStr(agg) : dimSpan('空'));
+  api.set('contents', Object.keys(agg).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(agg, { action: 'display' }) + '</div>' : dimSpan('空'));
   api.set('cap', e.total() + ' / ' + PIPE_CAP);
   api.toggle('#btn-pgt-takeout', e.total() > 0, '直接清空');
   if (!e.isPaired()) api.status('已暂停：未配对（背靠背 ' + PIPE_GROUND_MAX + ' 格内无朝向相对的另一座地下管道）', 'warn');

@@ -330,13 +330,9 @@ function drillNeedsOre(type, tx, ty, dir, ew, eh) {
 //   ③ 采矿进度条 —— 当前一个矿石的开采进度（由 api.prog 驱动渲染）；
 //   ④ 产品槽    —— 已开采矿石缓存，支持一键取回。
 function burnerDrillPanelHtml(e) {
-  const fuelChips = (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '')
-    + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '')
-    + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) + ' ' : '')
-    + (e.fuelWood > 0 ? chip('wood', e.fuelWood) : (e.fuelRocket <= 0 && e.fuelSolid <= 0 && e.fuelCoal <= 0 ? '<span class="dim">空 — 放入燃料启动</span>' : ''));
   let h = '';
   // ① 燃料槽
-  h += row('燃料槽', fuelChips, 'fuel');
+  h += row('燃料槽', (e.fuelRocket > 0 || e.fuelSolid > 0 || e.fuelCoal > 0 || e.fuelWood > 0) ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'rocket-fuel': e.fuelRocket, 'solid-fuel': e.fuelSolid, 'coal': e.fuelCoal, 'wood': e.fuelWood }, { action: 'display' }) + '</div>' : '<span class="dim">空 — 放入燃料启动</span>', 'fuel');
   // ② 燃料消耗指示：当前燃烧燃料的剩余能量条
   h += row('燃料消耗', '<span id="drill-burnbar"></span>', 'burn');
   // 加料按钮（操作直接：点一下即放入 5 个）
@@ -359,10 +355,7 @@ function burnerDrillPanelHtml(e) {
   return h;
 }
 function burnerDrillPanelLive(e, api) {
-  api.set('fuel', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '')
-    + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '')
-    + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) + ' ' : '')
-    + (e.fuelWood > 0 ? chip('wood', e.fuelWood) : (e.fuelRocket <= 0 && e.fuelSolid <= 0 && e.fuelCoal <= 0 ? dimSpan('空 — 放入燃料启动') : '')));
+  api.set('fuel', (e.fuelRocket > 0 || e.fuelSolid > 0 || e.fuelCoal > 0 || e.fuelWood > 0) ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'rocket-fuel': e.fuelRocket, 'solid-fuel': e.fuelSolid, 'coal': e.fuelCoal, 'wood': e.fuelWood }, { action: 'display' }) + '</div>' : dimSpan('空 — 放入燃料启动'));
   // ② 燃料消耗指示
   const burnEl = document.getElementById('drill-burnbar');
   if (burnEl) {
@@ -382,7 +375,7 @@ function burnerDrillPanelLive(e, api) {
     if (burnEl.innerHTML !== html) burnEl.innerHTML = html;
   }
   // ④ 产品槽
-  api.set('buffer', e.buf > 0 && e.bufItem ? chip(e.bufItem, e.buf) : dimSpan('空'));
+  api.set('buffer', e.buf > 0 && e.bufItem ? '<div class="asm3-inp-row">' + itemSlotsHtml({ [e.bufItem]: e.buf }, { action: 'take-slot' }) + '</div>' : dimSpan('空'));
   api.toggle('#btn-drill-takeout', e.buf > 0, '取回产品 (' + e.buf + ')');
   // ③ 采矿进度条
   api.prog(e.working ? e.prog / e.oreTime() * 100 : 0, e.oreTime());
@@ -447,8 +440,8 @@ function electricDrillPanelHtml(e) {
 }
 function electricDrillPanelLive(e, api) {
   api.set('power', powerStatusLiveHtml(e));
-  api.set('acid', (e.acid || 0) > 0 ? chip('sulfuric-acid', e.acid) : dimSpan('无'));
-  api.set('buffer', e.buf > 0 && e.bufItem ? chip(e.bufItem, e.buf) : dimSpan('空'));
+  api.set('acid', (e.acid || 0) > 0 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'sulfuric-acid': e.acid }, { action: 'display' }) + '</div>' : dimSpan('无'));
+  api.set('buffer', e.buf > 0 && e.bufItem ? '<div class="asm3-inp-row">' + itemSlotsHtml({ [e.bufItem]: e.buf }, { action: 'take-slot' }) + '</div>' : dimSpan('空'));
   api.toggle('#btn-drill-takeout', e.buf > 0, '取回缓存 (' + e.buf + ')');
   api.prog(e.working ? e.prog / e.oreTime() * 100 : 0, e.oreTime());
   const rateEl = document.getElementById('mach-rate-block');

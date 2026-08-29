@@ -227,9 +227,7 @@ function recyclerPanelHtml(e) {
   h += '<div class="mach-outputs"><b>产出：</b>';
   const outKeys = Object.keys(e.outp || {});
   if (outKeys.length === 0) h += '<span class="dim">无</span>';
-  for (const k of outKeys) {
-    h += chip(k, e.outp[k]);
-  }
+  else h += '<div class="asm3-inp-row">' + itemSlotsHtml(e.outp, { action: 'take-slot' }) + '</div>';
   h += '</div>';
   h += '<div class="dim" style="margin-top:4px">回收机把放入的物品还原成其配方原料的 25%（每项至少 1 个）。可用机械臂/传送带或面板「装入」投入物品。</div>';
   return h;

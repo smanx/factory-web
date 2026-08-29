@@ -120,7 +120,7 @@ function pumpPanelHtml(e) {
   return h;
 }
 function pumpPanelLive(e, api) {
-  api.set('buf', e.buf >= 1 ? chip('water', Math.floor(e.buf)) : dimSpan('空'));
+  api.set('buf', e.buf >= 1 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ water: Math.floor(e.buf) }, { action: 'display' }) + '</div>' : dimSpan('空'));
   api.prog(e.working ? e.pulse * 100 : ((e.buf || 0) / WATER_CAP * 100));
   if (e.working) api.status('抽水中，产出朝' + ['东', '南', '西', '北'][e.dir], 'ok');
   else if (e.buf >= 1) api.status('已暂停：缓存已满，等待输出', 'warn');

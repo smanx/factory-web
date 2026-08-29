@@ -102,7 +102,7 @@ function drawCargoBay(ctx, e, gx, gy, dir, alpha) {
 function cargoBayPanelHtml(e) {
   const agg = {};
   for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
-  let h = row('货物', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
+  let h = row('货物', Object.keys(agg).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(agg, { action: 'take-slot' }) + '</div>' : '<span class="dim">空</span>', 'contents');
   h += row('扩展存储', '+' + CARGO_BAY_SLOTS + ' 格', 'bonus');
   let total = 0;
   for (const k in agg) total += agg[k];
@@ -115,7 +115,7 @@ function cargoBayPanelLive(e, api) {
   for (const s of e.slots) if (s) { total += s.count; k++; }
   const agg = {};
   for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
-  api.set('contents', total ? countStr(agg) : dimSpan('空'));
+  api.set('contents', total ? '<div class="asm3-inp-row">' + itemSlotsHtml(agg, { action: 'take-slot' }) + '</div>' : dimSpan('空'));
   api.set('bonus', '+' + CARGO_BAY_SLOTS + ' 格');
   api.toggle('#btn-cb-takeout', total > 0, '取出全部 (' + total + ')');
   api.status(total ? ('货物：' + k + ' 种，共 ' + total + ' 件') : '空扩展舱', 'ok');

@@ -165,7 +165,7 @@ function valvePanelHtml(e) {
   for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
   const modeName = { 'one-way-valve': '单向阀（One-way）', 'overflow-valve': '溢出阀（Overflow）', 'top-up-valve': '补给阀（Top-up）' }[e.type] || e.type;
   let h = row('类型', modeName, 'type');
-  h += row('流体', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
+  h += row('流体', Object.keys(agg).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(agg, { action: 'display' }) + '</div>' : '<span class="dim">空</span>', 'contents');
   h += row('缓冲', e.total() + ' / ' + VALVE_VOLUME, 'cap');
   if (Object.keys(agg).length) h += '<button data-action="takeout" id="btn-valve-takeout">取出全部 (' + e.total() + ')</button>';
   h += '<div class="dim">阀门按模式约束管道流体：单向阀只放行箭头方向；溢出阀在入口压力超过阈值时外溢；补给阀在出口压力低于阈值时补给。R 旋转方向。</div>';
@@ -174,7 +174,7 @@ function valvePanelHtml(e) {
 function valvePanelLive(e, api) {
   const agg = {};
   for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
-  api.set('contents', Object.keys(agg).length ? countStr(agg) : dimSpan('空'));
+  api.set('contents', Object.keys(agg).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(agg, { action: 'display' }) + '</div>' : dimSpan('空'));
   api.set('cap', e.total() + ' / ' + VALVE_VOLUME);
   api.toggle('#btn-valve-takeout', e.total() > 0, '取出全部 (' + e.total() + ')');
   const back = entAt(e.x - DX[e.dir], e.y - DY[e.dir]);

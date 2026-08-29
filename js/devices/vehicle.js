@@ -17,14 +17,14 @@ const TANK_ARMOR = 0.55;         // 驾驶坦克时玩家所受伤害系数（55
 const TRUNK_SLOTS = 10;          // 载具储物箱槽位数（对齐《异星工厂》：汽车/坦克/蜘蛛机自带储物箱）
 // ===== 载具燃料显示辅助（对齐《异星工厂》燃料分级：核燃料 > 火箭燃料 > 固体燃料 > 煤）=====
 function vehicleFuelDisplay(e, cap) {
-  let s = '';
-  if ((e.fuelNuclear || 0) > 0) s += '核燃料 ' + e.fuelNuclear;
-  if ((e.fuelRocket || 0) > 0) s += (s ? ' + ' : '') + '火箭燃料 ' + e.fuelRocket;
-  if ((e.fuelSolid || 0) > 0) s += (s ? ' + ' : '') + '固体燃料 ' + e.fuelSolid;
-  if ((e.fuelCoal || 0) > 0) s += (s ? ' + ' : '') + '煤 ' + e.fuelCoal;
-  if ((e.fuelWood || 0) > 0) s += (s ? ' + ' : '') + '木材 ' + e.fuelWood;
-  if (!s) s = '<span class="dim">空</span>';
-  return s + ' / ' + cap;
+  const o = {};
+  if ((e.fuelNuclear || 0) > 0) o['nuclear-fuel'] = e.fuelNuclear;
+  if ((e.fuelRocket || 0) > 0) o['rocket-fuel'] = e.fuelRocket;
+  if ((e.fuelSolid || 0) > 0) o['solid-fuel'] = e.fuelSolid;
+  if ((e.fuelCoal || 0) > 0) o['coal'] = e.fuelCoal;
+  if ((e.fuelWood || 0) > 0) o['wood'] = e.fuelWood;
+  if (!Object.keys(o).length) return '<span class="dim">空</span> / ' + cap;
+  return '<div class="asm3-inp-row">' + itemSlotsHtml(o, { action: 'display' }) + '</div> / ' + cap;
 }
 
 

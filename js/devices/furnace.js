@@ -184,7 +184,7 @@ function furnacePanelHtml(e) {
   if (eFurn) {
     h += row('电力', powerStatusLiveHtml(e), 'power');
   } else {
-    h += row('燃料', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '') + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) + ' ' : '') + (e.fuelWood > 0 ? chip('wood', e.fuelWood) : (e.fuelRocket <= 0 && e.fuelSolid <= 0 && e.fuelCoal <= 0 ? '<span class="dim">无</span>' : '')), 'fuel');
+    h += row('燃料', (e.fuelRocket > 0 || e.fuelSolid > 0 || e.fuelCoal > 0 || e.fuelWood > 0) ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'rocket-fuel': e.fuelRocket, 'solid-fuel': e.fuelSolid, 'coal': e.fuelCoal, 'wood': e.fuelWood }, { action: 'display' }) + '</div>' : '<span class="dim">无</span>', 'fuel');
     if (invCount('coal') > 0)
       h += '<button data-action="fuel" data-id="coal">加 5 煤 (' + invCount('coal') + ')</button>';
     if (invCount('wood') > 0)
@@ -198,23 +198,23 @@ function furnacePanelHtml(e) {
   h += '<div id="mach-rate-block"></div>';
   // 模块槽位（仅电炉，对齐《异星工厂》：电炉可装 2 模块）
   if (eFurn) h += modulePanelSection(e);
-  h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
+  h += row('输入', Object.keys(e.inp).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(e.inp, { action: 'display' }) + '</div>' : '<span class="dim">空</span>', 'input');
   for (const r of SMELTS) {
     const n = Math.min(invCount(r.inp), 50 - (e.inp[r.inp] || 0));
     if (n > 0) h += '<button data-action="feed" data-id="' + r.inp + '">放入' +
       ITEMS[r.inp].name + ' ×' + n + '</button>';
   }
   if (Object.keys(e.inp).length) h += '<button data-action="takein">取回全部输入</button>';
-  h += row('输出', Object.keys(e.outp).length ? countStr(e.outp) : '<span class="dim">空</span>', 'output');
+  h += row('输出', Object.keys(e.outp).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(e.outp, { action: 'take-slot' }) + '</div>' : '<span class="dim">空</span>', 'output');
   h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
   return h;
 }
 function furnacePanelLive(e, api) {
   const eFurn = e instanceof ElectricFurnace;
   if (eFurn) api.set('power', powerStatusLiveHtml(e));
-  if (!eFurn) api.set('fuel', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '') + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) + ' ' : '') + (e.fuelWood > 0 ? chip('wood', e.fuelWood) : (e.fuelRocket <= 0 && e.fuelSolid <= 0 && e.fuelCoal <= 0 ? dimSpan('无') : '')));
-  api.set('input', Object.keys(e.inp).length ? countStr(e.inp) : dimSpan('空'));
-  api.set('output', Object.keys(e.outp).length ? countStr(e.outp) : dimSpan('空'));
+  if (!eFurn) api.set('fuel', (e.fuelRocket > 0 || e.fuelSolid > 0 || e.fuelCoal > 0 || e.fuelWood > 0) ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'rocket-fuel': e.fuelRocket, 'solid-fuel': e.fuelSolid, 'coal': e.fuelCoal, 'wood': e.fuelWood }, { action: 'display' }) + '</div>' : dimSpan('无'));
+  api.set('input', Object.keys(e.inp).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(e.inp, { action: 'display' }) + '</div>' : dimSpan('空'));
+  api.set('output', Object.keys(e.outp).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(e.outp, { action: 'take-slot' }) + '</div>' : dimSpan('空'));
   const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
   api.toggle('#btn-takeout', n > 0, '取回全部输出 (' + n + ')');
   api.prog(e.prog * 100, e.cur ? e.cur.time : 0);

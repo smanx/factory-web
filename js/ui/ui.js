@@ -1242,6 +1242,37 @@ function countStr(o) {
   return parts.join('');
 }
 
+
+// ===== 统一插槽渲染（对齐组装机插槽样式与交互）=====
+// 所有设备面板中的「物品槽」统一渲染为组装机风格：32px 图标 + 右下角数量角标。
+// 支持三种交互动作：
+//   take-slot   —— 点击取回 1 件（设备实现 takeItemOf/takeItem 时可用）
+//   feed-slot   —— 点击放入 1 件（设备实现 giveItem 时可用，从背包取 1 件放入）
+//   chest-take  —— 储物箱专用：点击取出 1 件回背包
+// 传参：
+//   o       —— { itemId: count } 物品与数量（已装填内容，非可放入清单）
+//   opts    —— { action: 交互动作, tip: 自定义提示前缀 }
+function itemSlotsHtml(o, opts) {
+  opts = opts || {};
+  const parts = [];
+  for (const k in o) {
+    const n = o[k];
+    if (!n) continue;
+    const act = opts.action || 'take-slot';
+    let tip = ITEMS[k].name + '|当前 ' + n + (act === 'take-slot' ? '，点击取回 1 件' : (act === 'feed-slot' ? '，点击放入 1 件' : ''));
+    if (opts.tip) tip = opts.tip(k, n) || tip;
+    const icon = iconDataURL(k);
+    let inner = '<img src="' + icon + '">';
+    // 数量角标（组装机风格：右下角角标）
+    inner += '<span class="mch-io-n">' + n + '</span>';
+    // display 模式：纯展示（流体等不可取回），不带交互动作
+    const actAttr = act === 'display' ? '' : ' data-action="' + act + '" data-id="' + k + '"';
+    parts.push('<div class="mch-io-slot' + (act === 'display' ? ' display' : '') + '"' + actAttr + ' data-tip="' + tip.replace(/"/g, '') + '">' + inner + '</div>');
+  }
+  return parts.join('');
+}
+
+
 // 机器面板：按设备类型查注册表分发，各设备的 html 定义在 js/devices/*.js
 function htmlMachine(e) {
   const panel = DEVICE_PANEL[e.type];

@@ -133,7 +133,7 @@ function drawFluidPump(ctx, e, gx, gy, dir, alpha) {
 function fluidPumpPanelHtml(e) {
   const agg = {};
   for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
-  let h = row('流体', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
+  let h = row('流体', Object.keys(agg).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(agg, { action: 'display' }) + '</div>' : '<span class="dim">空</span>', 'contents');
   h += row('缓冲', e.total() + ' / ' + PUMP_BUF_CAP, 'cap');
   if (Object.keys(agg).length) h += '<button data-action="takeout" id="btn-pump-takeout">取出全部 (' + e.total() + ')</button>';
   h += '<div class="sec">电路控制</div>';
@@ -154,7 +154,7 @@ function fluidPumpPanelHtml(e) {
 function fluidPumpPanelLive(e, api) {
   const agg = {};
   for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
-  api.set('contents', Object.keys(agg).length ? countStr(agg) : dimSpan('空'));
+  api.set('contents', Object.keys(agg).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(agg, { action: 'display' }) + '</div>' : dimSpan('空'));
   api.set('cap', e.total() + ' / ' + PUMP_BUF_CAP);
   api.toggle('#btn-pump-takeout', e.total() > 0, '取出全部 (' + e.total() + ')');
   const back = entAt(e.x - DX[e.dir], e.y - DY[e.dir]);

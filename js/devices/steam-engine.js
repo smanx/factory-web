@@ -142,7 +142,7 @@ function steamEnginePanelHtml(e) {
 }
 function steamEnginePanelLive(e, api) {
   api.set('power', e.on ? '+' + e.powerOut.toFixed(1) : dimSpan('+0'));
-  api.set('steam', e.steamBuf >= 1 ? chip('steam', Math.floor(e.steamBuf)) : dimSpan('空'));
+  api.set('steam', e.steamBuf >= 1 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ steam: Math.floor(e.steamBuf) }, { action: 'display' }) + '</div>' : dimSpan('空'));
   api.prog((e.outMult || 0) * 100);
   if (e.on) api.status('发电中：供汽越足功率越高', 'ok');
   else if (e.steamBuf > 0) api.status('已暂停：蒸汽不足，功率随供汽量下降', 'warn');

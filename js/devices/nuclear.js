@@ -277,12 +277,12 @@ function centrifugePanelLive(e, api) {
     api.set('rec-info', '');
   }
   api.set('power', powerStatusLiveHtml(e));
-  let inp = '';
-  for (const k in e.inp) if (e.inp[k] > 0) inp += chip(k, e.inp[k]);
-  api.set('inp', inp || dimSpan('空'));
-  let out = '';
-  for (const k in e.outp) if (e.outp[k] > 0) out += chip(k, e.outp[k]);
-  api.set('out', out || dimSpan('空'));
+  const inpObj = {};
+  for (const k in e.inp) if (e.inp[k] > 0) inpObj[k] = e.inp[k];
+  api.set('inp', Object.keys(inpObj).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(inpObj, { action: 'display' }) + '</div>' : dimSpan('空'));
+  const outObj = {};
+  for (const k in e.outp) if (e.outp[k] > 0) outObj[k] = e.outp[k];
+  api.set('out', Object.keys(outObj).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(outObj, { action: 'take-slot' }) + '</div>' : dimSpan('空'));
   const rec = e.recipeObj();
   if (!rec) api.status('未选择配方', 'warn');
   else if (e.crafting) api.status('处理中', 'ok');
@@ -536,7 +536,7 @@ function drawNuclearReactor(ctx, e, gx, gy, dir, alpha) {
   ctx.globalAlpha = 1;
 }
 function reactorPanelHtml(e) {
-  let h = row('铀燃料棒', e.fuel > 0 ? chip('uranium-fuel-cell', e.fuel) : '<span class="dim">无</span>', 'fuel');
+  let h = row('铀燃料棒', e.fuel > 0 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'uranium-fuel-cell': e.fuel }, { action: 'display' }) + '</div>' : '<span class="dim">无</span>', 'fuel');
   if (invCount('uranium-fuel-cell') > 0)
     h += '<button data-action="fuel" data-id="uranium-fuel-cell">装入铀燃料棒 (' + invCount('uranium-fuel-cell') + ')</button>';
   h += row('贫化铀燃料棒', '<span class="dim"></span>', 'spent');
@@ -549,8 +549,8 @@ function reactorPanelHtml(e) {
   return h;
 }
 function reactorPanelLive(e, api) {
-  api.set('fuel', e.fuel > 0 ? chip('uranium-fuel-cell', e.fuel) : dimSpan('无'));
-  api.set('spent', e.spent > 0 ? chip('depleted-uranium-fuel-cell', e.spent) : dimSpan('无'));
+  api.set('fuel', e.fuel > 0 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'uranium-fuel-cell': e.fuel }, { action: 'display' }) + '</div>' : dimSpan('无'));
+  api.set('spent', e.spent > 0 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'depleted-uranium-fuel-cell': e.spent }, { action: 'take-slot' }) + '</div>' : dimSpan('无'));
   api.toggle('#btn-spent-takeout', e.spent > 0, '取回贫化铀燃料棒 (' + e.spent + ')');
   const _temp = e.temperature();
   api.set('heat', _temp >= 1 ? chip('heat-pipe', Math.round(_temp) + '°C') : dimSpan('空'));
@@ -691,7 +691,7 @@ function turbinePanelHtml(e) {
 }
 function turbinePanelLive(e, api) {
   api.set('power', '+' + (e.powerOut || 0).toFixed(0) + ' kW');
-  api.set('steam', e.steamBuf >= 1 ? chip('steam', Math.floor(e.steamBuf)) : dimSpan('空'));
+  api.set('steam', e.steamBuf >= 1 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ steam: Math.floor(e.steamBuf) }, { action: 'display' }) + '</div>' : dimSpan('空'));
   if (e.on) api.status('发电中：' + (e.powerOut || 0).toFixed(0) + ' kW', 'ok');
   else if (e.steamBuf < 0.5) api.status('已暂停：无高温蒸汽', 'warn');
   else api.status('待机', 'ok');
@@ -1086,8 +1086,8 @@ function heatExchangerPanelHtml(e) {
 function heatExchangerPanelLive(e, api) {
   const t = e.temperature();
   api.set('heat', t >= 1 ? chip('heat-pipe', Math.round(t) + '°C') : dimSpan('空'));
-  api.set('water', e.water >= 1 ? chip('water', Math.floor(e.water)) : dimSpan('空'));
-  api.set('steam', e.steamBuf >= 1 ? chip('steam', Math.floor(e.steamBuf)) : dimSpan('空'));
+  api.set('water', e.water >= 1 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ water: Math.floor(e.water) }, { action: 'display' }) + '</div>' : dimSpan('空'));
+  api.set('steam', e.steamBuf >= 1 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ steam: Math.floor(e.steamBuf) }, { action: 'display' }) + '</div>' : dimSpan('空'));
   if (e.active) api.status('运行中：产汽（' + Math.round(t) + '°C）', 'ok');
   else if (t < HEAT_EXCHANGER_MIN_WORK_TEMP) api.status('升温中 ' + Math.round(t) + '°C（需≥500°C，检查导热管/反应堆）', 'warn');
   else if (e.water < 0.5) api.status('缺水（检查左右蓝口水口）', 'bad');

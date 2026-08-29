@@ -273,15 +273,15 @@ function fusionReactorPanelHtml(e) {
   const fuel = e.fuel;
   return row('聚变核心', e.burning ? '<span class="ok">运行中（产热 ' + FUSION_REACTOR_HEAT_RATE + 'MW）</span>' : '<span class="dim">待机</span>', 'status') +
     row('核心温度', _temp + '°C', 'heat') +
-    row('等离子体', chip('fusion-plasma', '×' + Math.round(e.plasmaBuf || 0)), 'item') +
-    row('冷却剂', chip('fluoroketone-cold', '×' + Math.round(e.coolantBuf || 0)), 'item') +
-    row('燃料', chip('fusion-power-cell', '×' + fuel), 'item') +
+    row('等离子体', (e.plasmaBuf || 0) > 0 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'fusion-plasma': Math.round(e.plasmaBuf || 0) }, { action: 'display' }) + '</div>' : dimSpan('空'), 'item') +
+    row('冷却剂', (e.coolantBuf || 0) > 0 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'fluoroketone-cold': Math.round(e.coolantBuf || 0) }, { action: 'display' }) + '</div>' : dimSpan('空'), 'item') +
+    row('燃料', fuel > 0 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'fusion-power-cell': fuel }, { action: 'display' }) + '</div>' : dimSpan('空'), 'item') +
     '<div class="dim">聚变反应堆：燃烧聚变燃料棒 + 消耗氟酮冷液冷却剂（官方 max_fluid_usage 4/s）产生超高温等离子体（Plasma），经四边接口输出到相邻管道，或经导热管传导热量至聚变发电机发电（6×6，功率远超核反应堆，对齐《异星工厂》Space Age 聚变反应堆，数据来自 GAME_DATA）。</div>';
 }
 function fusionReactorPanelLive(e, api) {
   api.set('heat', e.temperature() >= 1 ? chip('heat-pipe', Math.round(e.temperature()) + '°C') : dimSpan('待机'));
   api.set('status', e.burning ? '运行中' : (e.fuel > 0 ? '点火中' : '缺燃料'));
-  api.set('item', (e.coolantBuf || 0) > 0 ? chip('fluoroketone-cold', '×' + Math.round(e.coolantBuf || 0)) + ' ' + (e.fuel > 0 ? chip('fusion-power-cell', '×' + e.fuel) : dimSpan('空')) : (e.fuel > 0 ? chip('fusion-power-cell', '×' + e.fuel) : dimSpan('空')));
+  api.set('item', (e.fuel > 0) ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'fusion-power-cell': e.fuel }, { action: 'display' }) + '</div>' : dimSpan('空'));
 }
 function fusionReactorTip(e) {
   return '聚变反应堆（6×6）：吃聚变燃料棒，产热 ' + FUSION_REACTOR_HEAT_RATE + 'MW 并产生等离子体（Plasma）。热量经导热管或 Plasma 经管道→聚变发电机→电力。';

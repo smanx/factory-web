@@ -192,7 +192,7 @@ function drawGunTurret(ctx, e, gx, gy, dir, alpha) {
   ctx.globalAlpha = 1;
 }
 function gunTurretPanelHtml(e) {
-  let h = row('弹药', e.totalAmmo() > 0 ? countStr(e.ammo) : '<span class="dim">空</span>', 'ammo');
+  let h = row('弹药', e.totalAmmo() > 0 ? '<div class="asm3-inp-row">' + itemSlotsHtml(e.ammo, { action: 'take-slot' }) + '</div>' : '<span class="dim">空</span>', 'ammo');
   for (const id of TURRET_AMMO_TYPES) {
     const n = Math.min(invCount(id), 40 - e.ammoCount(id));
     if (n > 0) h += '<button data-action="feed" data-id="' + id + '">放入' +
@@ -205,7 +205,7 @@ function gunTurretPanelHtml(e) {
 }
 function gunTurretPanelLive(e, api) {
   if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) { api.status('已停火：电路条件不满足', 'warn'); return; }
-  api.set('ammo', e.totalAmmo() > 0 ? countStr(e.ammo) : dimSpan('空'));
+  api.set('ammo', e.totalAmmo() > 0 ? '<div class="asm3-inp-row">' + itemSlotsHtml(e.ammo, { action: 'take-slot' }) + '</div>' : dimSpan('空'));
   api.toggle('#btn-turret-takeout', e.totalAmmo() > 0, '取出全部弹药 (' + e.totalAmmo() + ')');
   if (e.totalAmmo() <= 0) api.status('已暂停：无弹药（放入弹药匣/穿甲弹/铀弹）', 'warn');
   else if (e.target) api.status('开火中：攻击敌人', 'ok');

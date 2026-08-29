@@ -147,7 +147,7 @@ function drawCargoLandingPad(ctx, e, gx, gy, dir, alpha) {
 function cargoLandingPadPanelHtml(e) {
   const agg = {};
   for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
-  let h = row('货物', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
+  let h = row('货物', Object.keys(agg).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(agg, { action: 'take-slot' }) + '</div>' : '<span class="dim">空</span>', 'contents');
   h += row('雷达', '扫描范围 ' + CARGO_PAD_RADAR + ' 格', 'radar');
   h += row('存储', e.slotCap() + ' 格', 'slots');
   h += row('累计接收', (e.cargoIn || 0) + ' 件', 'cargo');
@@ -162,7 +162,7 @@ function cargoLandingPadPanelLive(e, api) {
   for (const s of e.slots) if (s) { total += s.count; k++; }
   const agg = {};
   for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
-  api.set('contents', total ? countStr(agg) : dimSpan('空'));
+  api.set('contents', total ? '<div class="asm3-inp-row">' + itemSlotsHtml(agg, { action: 'take-slot' }) + '</div>' : dimSpan('空'));
   api.set('radar', '扫描范围 ' + CARGO_PAD_RADAR + ' 格');
   api.set('slots', e.slotCap() + ' 格');
   api.set('cargo', (e.cargoIn || 0) + ' 件');

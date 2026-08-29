@@ -109,7 +109,7 @@ function drawCargoUnloadingBay(ctx, e, gx, gy, dir, alpha) {
 function cargoUnloadingBayPanelHtml(e) {
   const agg = {};
   for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
-  let h = row('货物', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
+  let h = row('货物', Object.keys(agg).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(agg, { action: 'take-slot' }) + '</div>' : '<span class="dim">空</span>', 'contents');
   h += row('扩展存储', '+' + UNLOADING_BAY_SLOTS + ' 格', 'bonus');
   h += row('卸载距离', UNLOADING_BAY_DIST + ' 格', 'range');
   let total = 0;
@@ -123,7 +123,7 @@ function cargoUnloadingBayPanelLive(e, api) {
   for (const s of e.slots) if (s) { total += s.count; k++; }
   const agg = {};
   for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
-  api.set('contents', total ? countStr(agg) : dimSpan('空'));
+  api.set('contents', total ? '<div class="asm3-inp-row">' + itemSlotsHtml(agg, { action: 'take-slot' }) + '</div>' : dimSpan('空'));
   api.set('bonus', '+' + UNLOADING_BAY_SLOTS + ' 格');
   api.set('range', UNLOADING_BAY_DIST + ' 格');
   api.toggle('#btn-ub-takeout', total > 0, '取出全部 (' + total + ')');

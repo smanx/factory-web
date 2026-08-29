@@ -133,7 +133,7 @@ function cbsPanelHtml(e) {
   return h;
 }
 function cbsPanelLive(e, api) {
-  api.set('egg', (e.outp['biter-egg'] || 0) > 0 ? chip('biter-egg', e.outp['biter-egg']) : dimSpan('空'));
+  api.set('egg', (e.outp['biter-egg'] || 0) > 0 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'biter-egg': e.outp['biter-egg'] }, { action: 'take-slot' }) + '</div>' : dimSpan('空'));
   api.prog((e.food / e.foodMax) * 100);
   if (e.hungry) api.status('饥饿：食物耗尽，需喂养生物流', 'r');
   else if (e.food < 20) api.status('低食物：请补充生物流', 'y');

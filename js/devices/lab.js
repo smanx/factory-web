@@ -277,10 +277,10 @@ function labPanelHtml(e) {
   return h;
 }
 function labPanelLive(e, api) {
-  const parts = [];
+  const packObj = {};
   let total = 0;
-  for (const pk of SCIENCE_PACKS) if (e.packCount(pk) > 0) { parts.push(chip(pk, e.packCount(pk))); total += e.packCount(pk); }
-  api.set('packs', parts.length ? parts.join('') : dimSpan('无'));
+  for (const pk of SCIENCE_PACKS) if (e.packCount(pk) > 0) { packObj[pk] = e.packCount(pk); total += e.packCount(pk); }
+  api.set('packs', total > 0 ? '<div class="asm3-inp-row">' + itemSlotsHtml(packObj, { action: 'take-slot' }) + '</div>' : dimSpan('无'));
   api.toggle('#btn-lab-takeout', total > 0, '取回科学包 (' + total + ')');
   const tech = G.activeTech;
   if (tech && !G.techDone[tech]) {

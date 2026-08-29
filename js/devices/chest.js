@@ -120,9 +120,7 @@ function chestRightHtml(e, typeName, capDesc) {
     h += '<div class="dim">空箱。先在左栏选中背包物品，再点下方「存入选中物品」，即可放入。</div>';
   } else {
     for (const id of keys) {
-      h += '<div class="chest-slot" data-action="chest-take" data-id="' + id + '"' +
-        ' data-tip="' + ITEMS[id].name + '|点击取出 1 件回背包（当前 ' + agg[id] + '）">' +
-        '<img src="' + iconDataURL(id) + '"><span class="chest-slot-n">×' + agg[id] + '</span></div>';
+      h += itemSlotsHtml({ [id]: agg[id] }, { action: 'chest-take', tip: (k, n) => ITEMS[k].name + '|点击取出 1 件回背包（当前 ' + n + '）' });
     }
   }
   h += '</div>';
@@ -186,9 +184,7 @@ function chestDualPaneLive(e, api) {
     } else {
       let h = '';
       for (const id of Object.keys(agg)) {
-        h += '<div class="chest-slot" data-action="chest-take" data-id="' + id + '"' +
-          ' data-tip="' + ITEMS[id].name + '|点击取出 1 件回背包（当前 ' + agg[id] + '）">' +
-          '<img src="' + iconDataURL(id) + '"><span class="chest-slot-n">×' + agg[id] + '</span></div>';
+        h += itemSlotsHtml({ [id]: agg[id] }, { action: 'chest-take', tip: (k, n) => ITEMS[k].name + '|点击取出 1 件回背包（当前 ' + n + '）' });
       }
       box.innerHTML = h;
     }

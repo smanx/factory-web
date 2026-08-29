@@ -199,7 +199,7 @@ function drawPipe(ctx, e, gx, gy, dir, alpha) {
 function pipePanelHtml(e) {
   const agg = {};
   for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
-  let h = row('流体', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
+  let h = row('流体', Object.keys(agg).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(agg, { action: 'display' }) + '</div>' : '<span class="dim">空</span>', 'contents');
   h += row('容量', '', 'cap');
   if (Object.keys(agg).length) h += '<button data-action="drain" id="btn-pipe-takeout">直接清空</button>';
   h += '<div class="dim">管道与相邻管道自动互连均压，并把原油送入邻接炼油厂；机械臂可从管道抓取流体。</div>';
@@ -208,7 +208,7 @@ function pipePanelHtml(e) {
 function pipePanelLive(e, api) {
   const agg = {};
   for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
-  api.set('contents', Object.keys(agg).length ? countStr(agg) : dimSpan('空'));
+  api.set('contents', Object.keys(agg).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(agg, { action: 'display' }) + '</div>' : dimSpan('空'));
   api.set('cap', e.total() + ' / ' + PIPE_CAP);
   api.toggle('#btn-pipe-takeout', e.total() > 0, '直接清空');
   if (e.total() >= PIPE_CAP) api.status('已暂停：管道已满，等待下游消耗', 'warn');

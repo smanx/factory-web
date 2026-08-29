@@ -200,7 +200,13 @@ function drawBoiler(ctx, e, gx, gy, dir, alpha) {
 
 // ===== 面板 =====
 function boilerPanelHtml(e) {
-  let h = row('燃料', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '') + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) + ' ' : '') + (e.fuelWood > 0 ? chip('wood', e.fuelWood) : (e.fuelRocket <= 0 && e.fuelSolid <= 0 && e.fuelCoal <= 0 ? '<span class="dim">无</span>' : '')), 'fuel');
+  // 燃料/水/蒸汽统一用组装机风格插槽展示
+  const fuelObj = {};
+  if (e.fuelRocket > 0) fuelObj['rocket-fuel'] = e.fuelRocket;
+  if (e.fuelSolid > 0) fuelObj['solid-fuel'] = e.fuelSolid;
+  if (e.fuelCoal > 0) fuelObj['coal'] = e.fuelCoal;
+  if (e.fuelWood > 0) fuelObj['wood'] = e.fuelWood;
+  let h = row('燃料', Object.keys(fuelObj).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(fuelObj, { action: 'display' }) + '</div>' : '<span class="dim">无</span>', 'fuel');
   if (invCount('coal') > 0)
     h += '<button data-action="fuel" data-id="coal">加 5 煤 (' + invCount('coal') + ')</button>';
   if (invCount('wood') > 0)
@@ -209,18 +215,23 @@ function boilerPanelHtml(e) {
     h += '<button data-action="fuel" data-id="solid-fuel">加 5 固体燃料 (' + invCount('solid-fuel') + ')</button>';
   if (invCount('rocket-fuel') > 0)
     h += '<button data-action="fuel" data-id="rocket-fuel">加 5 火箭燃料 (' + invCount('rocket-fuel') + ')</button>';
-  h += row('水', '<span class="dim"></span>', 'water');
+  h += row('水', e.water >= 1 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ water: Math.floor(e.water) }, { action: 'display' }) + '</div>' : '<span class="dim">空</span>', 'water');
   if (invCount('water') > 0)
     h += '<button data-action="feed" data-id="water">注入全部存水</button>';
-  h += row('蒸汽缓存', '<span class="dim"></span>', 'steam');
+  h += row('蒸汽缓存', e.steamBuf >= 1 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ steam: Math.floor(e.steamBuf) }, { action: 'display' }) + '</div>' : '<span class="dim">空</span>', 'steam');
   h += row('温度', '', 'temp');
   h += '<div class="dim">供电链：抽水机 → 管道 → 锅炉两端蓝口水口（左右互通、双向进出、水位自动平衡，可一端进另一端出、多台串联）；加煤烧出的蒸汽从底边中间白口送往下方蒸汽机，也可经蒸汽管道远送。</div>';
   return h;
 }
 function boilerPanelLive(e, api) {
-  api.set('fuel', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '') + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) + ' ' : '') + (e.fuelWood > 0 ? chip('wood', e.fuelWood) : (e.fuelRocket <= 0 && e.fuelSolid <= 0 && e.fuelCoal <= 0 ? dimSpan('无') : '')));
-  api.set('water', e.water >= 1 ? chip('water', Math.floor(e.water)) : dimSpan('空'));
-  api.set('steam', e.steamBuf >= 1 ? chip('steam', Math.floor(e.steamBuf)) : dimSpan('空'));
+  const fuelObj = {};
+  if (e.fuelRocket > 0) fuelObj['rocket-fuel'] = e.fuelRocket;
+  if (e.fuelSolid > 0) fuelObj['solid-fuel'] = e.fuelSolid;
+  if (e.fuelCoal > 0) fuelObj['coal'] = e.fuelCoal;
+  if (e.fuelWood > 0) fuelObj['wood'] = e.fuelWood;
+  api.set('fuel', Object.keys(fuelObj).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(fuelObj, { action: 'display' }) + '</div>' : dimSpan('无'));
+  api.set('water', e.water >= 1 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ water: Math.floor(e.water) }, { action: 'display' }) + '</div>' : dimSpan('空'));
+  api.set('steam', e.steamBuf >= 1 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ steam: Math.floor(e.steamBuf) }, { action: 'display' }) + '</div>' : dimSpan('空'));
   api.set('temp', Math.round(e.temp) + ' / ' + BOILER_TEMP_MAX + ' °C');
   api.prog(e.temp / BOILER_TEMP_MAX * 100);
   if (e.steamBuf >= WATER_CAP - 0.01) api.status('已暂停：蒸汽憋满，等待蒸汽机/管道消耗', 'warn');

@@ -601,19 +601,22 @@ function initPanelEvents() {
           openPanel('machinerecipe', mch);
         }
       } else if (act === 'feed-slot') {
-        // 点击右侧「原料」槽放入物品：优先放入已选中的物品；否则从背包放入该原料
+        // 点击右侧「原料/放入」槽：从背包放入该物品
         const mch = G.panelEnt;
         if (!mch || typeof mch.giveItem !== 'function') return;
+        // 配方设备：仅允许当前配方原料（点击槽本身即配方原料）；非配方设备：直接放入点击的槽对应物品
         const info = recipeDeviceInfo(mch);
         const rec = mch.recipe ? info.getRec(mch.recipe) : null;
-        if (!rec) return;
-        // 若左侧已选中某个背包物品且是该配方原料，则放入该选中物品
-        const heldItem = (typeof selItem === 'function') ? selItem() : null;
+        const isRecipeDev = !!(rec && Object.keys(rec.inp).length);
         let target = id;
-        if (heldItem && rec.inp[heldItem]) target = heldItem;
-        // 放入（优先流体经管道，仅处理可手动放入的固体）
+        // 配方设备：若左栏已选中某个背包物品且是当前配方原料，优先放入该选中物品（对齐组装机原交互）
+        if (isRecipeDev) {
+          const heldItem = (typeof selItem === 'function') ? selItem() : null;
+          if (heldItem && rec.inp[heldItem]) target = heldItem;
+        }
+        // 放入（流体走管道，仅处理可手动放入的固体）
         if (FLUIDS.indexOf(target) >= 0) { toast(ITEMS[target].name + ' 为流体，请通过管道接入'); return; }
-        if (!rec.inp[target]) { toast('该物品不是当前配方原料'); return; }
+        if (isRecipeDev && !rec.inp[target]) { toast('该物品不是当前配方原料'); return; }
         const have = invCount(target);
         if (have <= 0) { toast('背包中没有' + ITEMS[target].name); return; }
         // 逐个放入直至背包取完或设备缓存满（giveItem 满时返回 false）

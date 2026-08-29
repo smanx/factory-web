@@ -158,7 +158,7 @@ function heatingTowerTip(e) {
 function heatingTowerPanelHtml(e) {
   const temp = Math.round(e.temperature());
   let h = '';
-  h += row('燃料', (e.fuelRocket > 0 ? chip('rocket-fuel', e.fuelRocket) + ' ' : '') + (e.fuelSolid > 0 ? chip('solid-fuel', e.fuelSolid) + ' ' : '') + (e.fuelCoal > 0 ? chip('coal', e.fuelCoal) + ' ' : '') + (e.fuelWood > 0 ? chip('wood', e.fuelWood) : (e.fuelRocket <= 0 && e.fuelSolid <= 0 && e.fuelCoal <= 0 && e.fuelWood <= 0 ? '<span class="dim">无</span>' : '')), 'fuel');
+  h += row('燃料', (e.fuelRocket > 0 || e.fuelSolid > 0 || e.fuelCoal > 0 || e.fuelWood > 0) ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'rocket-fuel': e.fuelRocket, 'solid-fuel': e.fuelSolid, 'coal': e.fuelCoal, 'wood': e.fuelWood }, { action: 'display' }) + '</div>' : '<span class="dim">无</span>', 'fuel');
   if (e.fuelCoal < 20) h += '<button data-action="fuel" data-id="coal">加 5 煤 (' + invCount('coal') + ')</button>';
   if (e.fuelSolid < 20) h += '<button data-action="fuel" data-id="solid">加 5 固 (' + invCount('solid-fuel') + ')</button>';
   h += row('炉温', temp >= 1 ? chip('heat-pipe', temp + '°C') : dimSpan('空'), 'heat');

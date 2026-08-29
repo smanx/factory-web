@@ -283,7 +283,7 @@ function drawFlamethrowerTurret(ctx, e, gx, gy, dir, alpha) {
   ctx.globalAlpha = 1;
 }
 function flameTurretPanelHtml(e) {
-  let h = row('轻油', (e.fluid['light-oil'] || 0) > 0 ? ((e.fluid['light-oil'] || 0) + ' 单位') : '<span class="dim">空</span>', 'fluid');
+  let h = row('轻油', (e.fluid['light-oil'] || 0) > 0 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'light-oil': e.fluid['light-oil'] || 0 }, { action: 'display' }) + '</div>' : '<span class="dim">空</span>', 'fluid');
   const n = Math.min(invCount('light-oil'), FT_FLUID_CAP - (e.fluid['light-oil'] || 0));
   if (n > 0) h += '<button data-action="feed" data-id="light-oil">放入轻油 ×' + n + '</button>';
   h += '<div class="dim">火焰炮塔：消耗轻油喷射火焰，对锥形范围敌人造成持续灼烧伤害。可从底部输入口相邻管道自动吸入轻油（2×3）。对齐《异星工厂》Flamethrower turret：以轻油为燃料。</div>';
@@ -291,7 +291,7 @@ function flameTurretPanelHtml(e) {
   return h;
 }
 function flameTurretPanelLive(e, api) {
-  api.set('fluid', (e.fluid['light-oil'] || 0) > 0 ? ((e.fluid['light-oil'] || 0) + ' 单位') : dimSpan('空'));
+  api.set('fluid', (e.fluid['light-oil'] || 0) > 0 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'light-oil': e.fluid['light-oil'] || 0 }, { action: 'display' }) + '</div>' : dimSpan('空'));
   const fl = e.fluid['light-oil'] || 0;
   if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) { api.status('已停火：电路条件不满足', 'warn'); return; }
   if (G.power.sat <= 0) api.status('已暂停：缺电', 'warn');
@@ -700,7 +700,7 @@ function drawRocketTurret(ctx, e, gx, gy, dir, alpha) {
   ctx.globalAlpha = 1;
 }
 function rocketTurretPanelHtml(e) {
-  let h = row('弹药', e.totalAmmo() > 0 ? countStr(e.ammo) : '<span class="dim">空</span>', 'ammo');
+  let h = row('弹药', e.totalAmmo() > 0 ? '<div class="asm3-inp-row">' + itemSlotsHtml(e.ammo, { action: 'take-slot' }) + '</div>' : '<span class="dim">空</span>', 'ammo');
   for (const id of ROCKET_TURRET_AMMO) {
     const n = Math.min(invCount(id), 10 - e.ammoCount(id));
     if (n > 0) h += '<button data-action="feed" data-id="' + id + '">放入' + ITEMS[id].name + ' ×' + n + '</button>';
@@ -711,7 +711,7 @@ function rocketTurretPanelHtml(e) {
   return h;
 }
 function rocketTurretPanelLive(e, api) {
-  api.set('ammo', e.totalAmmo() > 0 ? countStr(e.ammo) : dimSpan('空'));
+  api.set('ammo', e.totalAmmo() > 0 ? '<div class="asm3-inp-row">' + itemSlotsHtml(e.ammo, { action: 'take-slot' }) + '</div>' : dimSpan('空'));
   api.toggle('#btn-rocket-turret-takeout', e.totalAmmo() > 0, '取出全部弹药 (' + e.totalAmmo() + ')');
   if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) { api.status('已停火：电路条件不满足', 'warn'); return; }
   if (e.totalAmmo() <= 0) api.status('无弹药', 'warn');
@@ -845,7 +845,7 @@ function drawRailgunTurret(ctx, e, gx, gy, dir, alpha) {
   ctx.globalAlpha = 1;
 }
 function railgunTurretPanelHtml(e) {
-  let h = row('弹药', e.totalAmmo() > 0 ? countStr(e.ammo) : '<span class="dim">空</span>', 'ammo');
+  let h = row('弹药', e.totalAmmo() > 0 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'railgun-ammo': e.ammo }, { action: 'take-slot' }) + '</div>' : '<span class="dim">空</span>', 'ammo');
   const n = Math.min(invCount('railgun-ammo'), 20 - e.ammo);
   if (n > 0) h += '<button data-action="feed" data-id="railgun-ammo">放入' + ITEMS['railgun-ammo'].name + ' ×' + n + '</button>';
   if (e.totalAmmo() > 0) h += '<button data-action="takeout" id="btn-railgun-turret-takeout">取出全部弹药</button>';
@@ -854,7 +854,7 @@ function railgunTurretPanelHtml(e) {
   return h;
 }
 function railgunTurretPanelLive(e, api) {
-  api.set('ammo', e.totalAmmo() > 0 ? countStr(e.ammo) : dimSpan('空'));
+  api.set('ammo', e.totalAmmo() > 0 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'railgun-ammo': e.ammo }, { action: 'take-slot' }) + '</div>' : dimSpan('空'));
   api.toggle('#btn-railgun-turret-takeout', e.totalAmmo() > 0, '取出全部弹药 (' + e.totalAmmo() + ')');
   if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) { api.status('已停火：电路条件不满足', 'warn'); return; }
   if (G.power.sat <= 0) api.status('已暂停：缺电', 'warn');
