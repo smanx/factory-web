@@ -55,10 +55,14 @@ function drawEmojiDupBadge(x, id, r) {
   // 白描边进一步变细：宽度不超过外圆半径，并确保内圆半径始终为正，避免小尺寸时 arc 报错
   const border = Math.min(outerR, Math.max(0.5, r * 0.02));
   const innerR = Math.max(0.5, outerR - border);
+  // 角标被图标圆形边界（半径 r）裁剪：只露出落在图标内的一角，不外溢成完整圆点
+  x.save();
+  x.beginPath(); x.arc(0, 0, r, 0, Math.PI * 2); x.clip();
   x.fillStyle = '#fff';
   x.beginPath(); x.arc(px, py, outerR, 0, 7); x.fill();
   x.fillStyle = col;
   x.beginPath(); x.arc(px, py, innerR, 0, 7); x.fill();
+  x.restore();
 }
 
 function drawItemGlyph(x, id, cx, cy, s) {

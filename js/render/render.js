@@ -128,6 +128,8 @@ function render() {
     }
     drawEntity(ctx, e, e.x, e.y, e.dir, 1);
   };
+  // 每帧先清空管道口箭头队列，再让各设备在 drawPort 里重新排队（丢弃幽灵等后置绘制的残留）
+  if (typeof clearPortArrowQueue === 'function') clearPortArrowQueue();
   if (keys) {
     forEachEntInBuckets(keys, e => drawPass(e, false), _bucketSeenBuf);   // 普通设备（含传送带等）
     if (typeof drawBeltItemsAll === 'function') drawBeltItemsAll(ctx);    // 传送带物品第二遍：盖在所有带面之上
@@ -143,6 +145,8 @@ function render() {
   }
   // ALT 模式（对齐《异星工厂》）：在建筑上叠加显示当前配方/内容标签
   if (G.settings.altMode) drawAltMode(ctx, keys, _bucketSeenBuf);
+  // 管道口流向箭头置顶：在实体/管道绘制之后统一画出，保证不被相邻管道遮挡
+  if (typeof flushPortArrowOverlay === 'function') flushPortArrowOverlay(ctx);
   // 兜底清空放置幽灵顶层画布：确保每帧 ghost-layer 都被清空，
   // 避免任何路径下遗留上一帧的半透明阴影/数量角标（防残留叠加）。
   // 先重置为与主画布一致的 dpr 变换再清除，保证 clearRect 覆盖整块画布，

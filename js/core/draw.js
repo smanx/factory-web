@@ -184,37 +184,78 @@ function drawPort(ctx, cx, cy, side, color, arrow, off, dist, fluid, flow, force
   // 才在内孔上叠加流体图标，并在旁边用小蓝色箭头标注流向。
   // 未使用的接口（如选择配方但未用到该管道口）不画箭头。
   if (portDetailsVisible() && (forceSymbol || (fluid && ITEMS[fluid]))) {
-    if (fluid && ITEMS[fluid]) drawItemGlyph(ctx, fluid, pcx, 0, 6.5);
     const blue = '#4aa4ff';
     const f = flow || (arrow ? 'out' : 'both');   // 兼容：未显式给流向时按 arrow 推断
-    const aD = 7.5;                               // 箭头中心相对内孔中心的距离
-    const aS = 0.9;                               // 箭头缩放
+    // 流体图标（若有）：放大到背包同尺寸（32px）并整体内移，外沿不越过设备边界
+    let aPos;                                     // 箭头所在位置（管道口一侧）
+    if (fluid && ITEMS[fluid]) {
+      const iconR = 16;                           // 半径 = 32/2（对齐背包一格图标大小）
+      const icx = Math.min(pcx, dist - iconR);    // 向内收缩，避免图标画出设备外
+      drawItemGlyph(ctx, fluid, icx, 0, iconR * 2);
+      aPos = icx + iconR + 3.5;                   // 挨着管道口（图标外缘外 3.5px）
+    } else {
+      aPos = pcx + 3.5;                           // 无图标（空储液罐 forceSymbol）：挨着端口外缘
+    }
+    // 流向箭头：只显示在管道口一侧，且不在此处直接绘制——延迟到渲染末段
+    // flushPortArrowOverlay 统一绘制，确保盖在相邻管道之上、不被遮挡。
+    // 单向画一支（指向流动方向）；双向上下紧贴画两支更小的（一进一出，合计约等于单个箭头大小）。
+    const aS = 2;                                 // 单向箭头缩放（基形 8×4 放大一倍 → 16×8）
+    const aS2 = 1;                                // 双向各支更小：两支合计约等于单个箭头大小
+    const sOff = 4.4;                             // 双向两支垂直间距（上下紧贴）
     if (f === 'both') {
-      drawFlowArrow(ctx, pcx + aD, 0, false, blue, aS);   // 指向设备外
-      drawFlowArrow(ctx, pcx - aD, 0, true, blue, aS);    // 指向设备内
+      queuePortArrow(cx, cy, side, off, aPos, -sOff, true, blue, aS2);   // 上：进设备
+      queuePortArrow(cx, cy, side, off, aPos, sOff, false, blue, aS2);   // 下：出设备
     } else if (f === 'out') {
-      drawFlowArrow(ctx, pcx + aD, 0, false, blue, aS);   // 指向设备外
+      queuePortArrow(cx, cy, side, off, aPos, 0, false, blue, aS);       // 出设备
     } else if (f === 'in') {
-      drawFlowArrow(ctx, pcx - aD, 0, true, blue, aS);    // 指向设备内
+      queuePortArrow(cx, cy, side, off, aPos, 0, true, blue, aS);        // 进设备
     }
   }
   ctx.restore();
 }
 
-// 小蓝色流向箭头：inward=true 指向设备内，false 指向设备外；scale 可选缩放（默认 1）
-function drawFlowArrow(ctx, x, y, inward, blue, scale) {
-  ctx.fillStyle = blue;
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(inward ? Math.PI : 0);
-  if (scale) ctx.scale(scale, scale);
-  ctx.beginPath();
-  ctx.moveTo(3.4, 0);
-  ctx.lineTo(-2.4, -2.6);
-  ctx.lineTo(-2.4, 2.6);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
+// ===== 管道口流向箭头：延迟到渲染末段统一绘制（盖在相邻管道之上，避免被管道遮挡）=====
+// drawPort 只把箭头（世界坐标 + 朝向角）记入队列，渲染末段 flushPortArrowOverlay 再统一绘制；
+// 这样箭头永远显示在管道等实体之上。
+let _portArrowQueue = [];
+// 记录一支流向箭头：anchor=(cx,cy)、side 为端口方向(0东1南2西3北)、off 为沿边偏移(格)、
+// aPos 为沿外向轴的偏移、yOff 为沿边(垂直)偏移、inward=true 指向设备内、scale 为缩放。
+function queuePortArrow(cx, cy, side, off, aPos, yOff, inward, color, scale) {
+  const θ = side * Math.PI / 2;
+  const c = Math.cos(θ), s = Math.sin(θ);
+  const ey = yOff + (off ? off * TILE : 0);
+  _portArrowQueue.push({
+    x: cx + aPos * c - ey * s,
+    y: cy + aPos * s + ey * c,
+    angle: θ + (inward ? Math.PI : 0),
+    color, scale
+  });
+}
+// 每帧开始前清空队列（丢弃上一帧幽灵等后置绘制残留的箭头）
+function clearPortArrowQueue() { _portArrowQueue.length = 0; }
+// 渲染末段（实体/管道绘制之后）统一绘制箭头并清空队列：保证箭头盖在管道上层
+function flushPortArrowOverlay(ctx) {
+  for (let i = 0; i < _portArrowQueue.length; i++) {
+    const a = _portArrowQueue[i];
+    ctx.save();
+    ctx.translate(a.x, a.y);
+    ctx.rotate(a.angle);
+    if (a.scale) ctx.scale(a.scale, a.scale);
+    ctx.fillStyle = a.color;
+    // 矮胖三角形：底部长度 = 管道口宽度(8px)，箭头方向高度 = 半管道宽(4px)
+    ctx.beginPath();
+    ctx.moveTo(2, 0);       // 尖端（高度 4 = 尖端 2 + 后边 2）
+    ctx.lineTo(-2, -4);     // 左后角（底边全长 8）
+    ctx.lineTo(-2, 4);      // 右后角
+    ctx.closePath();
+    ctx.fill();
+    // 和谐边框：比三角形颜色稍深的细蓝色描边（宽度约为原 1/4，保底可见），轮廓清晰
+    ctx.strokeStyle = '#2a6fc4';
+    ctx.lineWidth = Math.max(0.4, 0.15 * (a.scale || 1));
+    ctx.stroke();
+    ctx.restore();
+  }
+  _portArrowQueue.length = 0;
 }
 
 const PORT_WATER = '#3fa0e8';
