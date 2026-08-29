@@ -183,16 +183,16 @@
 - [x] `lubricant` 润滑油
 - [x] `sulfur` 硫磺
 - [x] `sulfuric-acid` 硫酸
-- [ ] `carbon` 碳
-- [ ] `carbon-fiber` 碳纤维
-- [ ] `lithium` 锂
-- [ ] `lithium-plate` 锂板
-- [ ] `superconductor` 超导体
-- [ ] `electromagnetic-science-pack` 电磁科研包
-- [ ] `holmium-ore` 钬矿石
-- [ ] `holmium-solution` 钬溶液
-- [ ] `holmium-plate` 钬板
-- [ ] `electrolyte` 电解液
+- [x] `carbon` 碳
+- [x] `carbon-fiber` 碳纤维
+- [x] `lithium` 锂
+- [x] `lithium-plate` 锂板
+- [x] `superconductor` 超导体
+- [x] `electromagnetic-science-pack` 电磁科研包
+- [x] `holmium-ore` 钬矿石
+- [x] `holmium-solution` 钬溶液
+- [x] `holmium-plate` 钬板
+- [x] `electrolyte` 电解液
 - [ ] `supercapacitor` 超级电容
 - [ ] `tungsten-ore` 钨矿石
 - [ ] `tungsten-plate` 钨板
