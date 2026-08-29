@@ -114,7 +114,6 @@ function drawLaserTurret(ctx, e, gx, gy, dir, alpha) {
 }
 function laserTurretPanelHtml(e) {
   let h = row('电力', powerStatusLiveHtml(e), 'power');
-  h += '<div class="status"></div>';
   h += '<div class="dim">激光炮塔：吃电力自动发射激光攻击射程内（' + LASER_RANGE + ' 格）敌人，无需弹药，伤害高于机枪。供电不足时停止开火。配合石墙构筑防线（2×2）。</div>';
   h += circuitPanelHtml(e, 'lt');
   return h;
@@ -287,7 +286,6 @@ function flameTurretPanelHtml(e) {
   let h = row('轻油', (e.fluid['light-oil'] || 0) > 0 ? ((e.fluid['light-oil'] || 0) + ' 单位') : '<span class="dim">空</span>', 'fluid');
   const n = Math.min(invCount('light-oil'), FT_FLUID_CAP - (e.fluid['light-oil'] || 0));
   if (n > 0) h += '<button data-action="feed" data-id="light-oil">放入轻油 ×' + n + '</button>';
-  h += '<div class="status"></div>';
   h += '<div class="dim">火焰炮塔：消耗轻油喷射火焰，对锥形范围敌人造成持续灼烧伤害。可从底部输入口相邻管道自动吸入轻油（2×3）。对齐《异星工厂》Flamethrower turret：以轻油为燃料。</div>';
   h += circuitPanelHtml(e, 'ft');
   return h;
@@ -554,7 +552,6 @@ function drawTeslaTurret(ctx, e, gx, gy, dir, alpha) {
 }
 function teslaTurretPanelHtml(e) {
   let h = row('电力', powerStatusLiveHtml(e), 'power');
-  h += '<div class="status"></div>';
   h += '<div class="dim">特斯拉炮塔：吃电力发射可连锁跳转的电弧，攻击射程内（' + TESLA_RANGE + ' 格）最多 ' + TESLA_CHAIN + ' 个敌人，无需弹药，伤害随连锁递减。供电不足时停止开火（4×4）。</div>';
   h += circuitPanelHtml(e, 'tt');
   return h;
@@ -709,7 +706,6 @@ function rocketTurretPanelHtml(e) {
     if (n > 0) h += '<button data-action="feed" data-id="' + id + '">放入' + ITEMS[id].name + ' ×' + n + '</button>';
   }
   if (e.totalAmmo() > 0) h += '<button data-action="takeout" id="btn-rocket-turret-takeout">取出全部弹药</button>';
-  h += '<div class="status"></div>';
   h += '<div class="dim">火箭炮塔：射程 ' + ROCKET_TURRET_RANGE + ' 格（最小 ' + ROCKET_TURRET_MIN_RANGE + ' 格），发射火箭弹对命中点造成范围爆炸伤害（爆炸火箭弹伤害/范围更高）。需装载火箭弹/爆炸火箭弹（3×3，官方 max_health 1500）。</div>';
   h += circuitPanelHtml(e, 'rt');
   return h;
@@ -853,7 +849,6 @@ function railgunTurretPanelHtml(e) {
   const n = Math.min(invCount('railgun-ammo'), 20 - e.ammo);
   if (n > 0) h += '<button data-action="feed" data-id="railgun-ammo">放入' + ITEMS['railgun-ammo'].name + ' ×' + n + '</button>';
   if (e.totalAmmo() > 0) h += '<button data-action="takeout" id="btn-railgun-turret-takeout">取出全部弹药</button>';
-  h += '<div class="status"></div>';
   h += '<div class="dim">磁轨炮塔：射程 ' + RAILGUN_RANGE + ' 格（最小 ' + RAILGUN_MIN_RANGE + ' 格），吃电力，发射磁轨炮弹沿直线穿透命中目标（单发高伤害）。需装载磁轨炮弹（3×5，官方 max_health 4000）。</div>';
   h += circuitPanelHtml(e, 'rg');
   return h;

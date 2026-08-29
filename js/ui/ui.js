@@ -575,8 +575,7 @@ function updateMachineLive() {
       updateRecipeMachineLive(e, body, api);
     }
   } else {
-    const panel = DEVICE_PANEL[e.type];
-    if (panel && panel.live) panel.live(e, api, body);
+    updateGenericDeviceLive(e, body, api);
   }
   const bar = body.querySelector('.bar i');
   if (bar) bar.style.width = Math.max(0, Math.min(100, prog)) + '%';
@@ -597,6 +596,15 @@ function updateMachineLive() {
     if (timeEl.textContent !== txt) timeEl.textContent = txt;
   } else if (timeEl) {
     timeEl.textContent = '';
+  }
+  // 通用设备外壳：进度条内部同步显示百分比 + 剩余时间（组装机 asm3-prog 风格）
+  if (!isRecipeDevice(e)) {
+    const pctEl = body.querySelector('[data-live="mch-pct"]');
+    if (pctEl) {
+      let txt = Math.floor(prog) + '%';
+      if (runTotal > 0 && prog > 0) txt += '  ' + Math.max(0, runTotal * (1 - Math.min(100, prog) / 100)).toFixed(1) + 's';
+      if (pctEl.textContent !== txt) pctEl.textContent = txt;
+    }
   }
   const stEl = body.querySelector('.status');
   if (stEl && status) {
@@ -1273,6 +1281,23 @@ function isRecipeDevice(e) {
   return !!(e && typeof e.setRecipe === 'function');
 }
 
+// 非配方设备中会驱动 api.prog 进度条的类型（这些设备外壳才显示进度条，其余不显示避免空进度条）
+const GENERIC_PROGRESS_TYPES = {
+  'boiler': 1, 'steam-engine': 1, 'offshore-pump': 1,
+  'lab': 1, 'biolab': 1,
+  'stone-furnace': 1, 'electric-furnace': 1, 'steel-furnace': 1,
+  'burner-mining-drill': 1, 'electric-mining-drill': 1, 'pumpjack': 1,
+  'nuclear-reactor': 1, 'captive-biter-spawner': 1
+};
+
+// 机械臂族（含热能机械臂）：面板已自带组装机风格的 asm3-status + 机器图标（ins-cv），
+// 无需再套通用外壳，否则会重复显示状态区与机器图标。
+function isAssemblerStyleDevice(e) {
+  if (!e) return false;
+  return e.type === 'inserter' || e.type === 'long-handed-inserter' || e.type === 'bulk-inserter' ||
+    e.type === 'fast-inserter' || e.type === 'stack-inserter' || e.type === 'burner-inserter';
+}
+
 // 是否为储物箱（木箱/铁箱/钢箱等标准储物箱 + 物流箱）：
 // 面板采用「左=玩家背包，右=箱子」双栏布局，可双向移动物品
 function isChestEntity(e) {
@@ -1658,13 +1683,19 @@ function unifiedMachineLayoutHtml(e) {
     const panel = DEVICE_PANEL[e.type];
     right = (panel && panel.html) ? panel.html(e) : '<div class="dim">无信息</div>';
     return right;
-  } else {
+  } else if (isAssemblerStyleDevice(e)) {
+    // 机械臂族（已与组装机一致的 asm3 风格面板）：直接使用设备自身面板，不再套外壳
     const panel = DEVICE_PANEL[e.type];
     right = (panel && panel.html) ? panel.html(e) : '<div class="dim">无信息</div>';
+  } else {
+    // 非配方设备（锅炉/蒸汽机/泵/管道/炮塔/信号塔/储液罐等）：
+    // 一律套用组装机风格外壳（状态点 + 机器图标 + 进度条 + 操作区），保证交互风格与组装机一致。
+    const panel = DEVICE_PANEL[e.type];
+    let inner = (panel && panel.html) ? panel.html(e) : '<div class="dim">无信息</div>';
     // 电路节点设备：追加「接入通道」设置
     if (typeof isCircuitNodeEntity === 'function' && isCircuitNodeEntity(e)) {
       const ch = e.wireChan || 'both';
-      right += '<div class="sec">电路接入通道</div>' +
+      inner += '<div class="sec">电路接入通道</div>' +
         '<div class="mrow"><span class="mlabel">接入</span><span class="mval">' +
         (ch === 'both' ? '红 + 绿（双通）' : ch === 'red' ? '仅红线' : '仅绿线') +
         '</span></div>' +
@@ -1678,6 +1709,7 @@ function unifiedMachineLayoutHtml(e) {
           : '当前仅接入' + (ch === 'red' ? '红线' : '绿线') + '网络，只感知该通道信号，与另一通道物理隔离。') +
         '（也可手持对应线缆点击设备快速切换）</div>';
     }
+    right = asmMachineShellHtml(e, inner, { progress: !!GENERIC_PROGRESS_TYPES[e.type] });
   }
   return '<div class="asm3-layout">' +
     '<div class="asm3-col asm3-left"><div class="asm3-col-head">玩家</div>' +
@@ -1740,6 +1772,54 @@ function drawAssemblerIcon(e, cv) {
   ctx.scale(scale, scale);
   drawAssembler(ctx, e, 0, 0, e.dir || 0, 1);
   ctx.restore();
+}
+
+// 通用设备图标：把任意设备按地图渲染样式画进面板的 96×96 canvas（按设备占地缩放，保持比例一致）
+function drawDeviceIcon(e, cv) {
+  if (!cv || !e) return;
+  const ctx = cv.getContext('2d');
+  const w = e.w || 1, h = e.h || 1;
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  const fn = DEVICE_RENDER[e.type];
+  if (typeof fn !== 'function') return;
+  ctx.save();
+  // 等比例缩放使设备完整显示在 canvas 内（保留小边距）
+  const pad = 6;
+  const scale = Math.min((cv.width - pad * 2) / (w * TILE), (cv.height - pad * 2) / (h * TILE));
+  const ox = (cv.width - w * TILE * scale) / 2;
+  const oy = (cv.height - h * TILE * scale) / 2;
+  ctx.translate(ox, oy);
+  ctx.scale(scale, scale);
+  try { fn(ctx, e, 0, 0, e.dir || 0, 1); } catch (err) { /* 设备绘制异常不影响面板 */ }
+  ctx.restore();
+}
+
+// ===== 通用组装机风格外壳（非配方设备也用与组装机一致的布局：状态点+机器图标+进度条+操作区）=====
+// 复用 asm3-status / asm3-machine / asm3-prog 等既有样式，使所有设备面板交互风格统一。
+function asmMachineShellHtml(e, innerHtml, opts) {
+  opts = opts || {};
+  // 顶部状态区（状态点 + 状态文字，由 updateMachineLive 统一驱动）
+  let h = '<div class="asm3-status">' +
+    '<div class="asm3-status-dot" data-live="mch-dot"></div>' +
+    '<div class="asm3-status-text status" data-live="mch-status"></div></div>';
+  // 机器显示区：与地图渲染一致，直接绘制同款设备
+  h += '<div class="asm3-machine"><div class="asm3-machine-icon">' +
+       '<canvas class="asm3-machine-canvas" width="96" height="96"></canvas></div></div>';
+  // 进度条（组装机风格：内部显示百分比 + 剩余时间），仅当 opts.progress !== false 时显示
+  if (opts.progress !== false) {
+    h += '<div class="asm3-prog"><div class="bar"><i></i><span class="bar-txt" data-live="mch-pct">0%</span></div></div>';
+  }
+  // 操作内容
+  h += innerHtml;
+  return h;
+}
+
+// 通用设备面板实时刷新：非配方设备也复用组装机风格的机器图标绘制 + 百分比/状态点
+function updateGenericDeviceLive(e, body, api) {
+  const cv = body.querySelector('.asm3-machine-icon canvas');
+  if (cv) drawDeviceIcon(e, cv);
+  const panel = DEVICE_PANEL[e.type];
+  if (panel && panel.live) panel.live(e, api, body);
 }
 
 // 右侧设备交互信息：配方名 + 原料/进度/产品单行图标 + 清除配方按钮 + 模块插槽 + 操作说明

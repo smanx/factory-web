@@ -2945,3 +2945,9 @@ html, body {
 .flt-item img { width: 100%; height: 100%; object-fit: cover; }
 .flt-item span { display: none; }
 .flt-item.sel { border-color: #2ecc71; box-shadow: 0 0 0 1px #2ecc71 inset; }
+
+/* ===== 通用组装机风格外壳（非配方设备：锅炉/泵/炮塔/储液罐等）=====
+   外壳复用 asm3-status / asm3-machine / asm3-prog 样式，使所有设备面板交互风格与组装机一致。
+   外壳中的进度条是面板直接子元素（非 asm3-flow 内的 flex 行），需限制不纵向拉伸。 */
+.asm3-panel > .asm3-prog { flex: 0 0 auto; align-self: stretch; }
+.asm3-panel > .asm3-prog .bar { width: 100%; }

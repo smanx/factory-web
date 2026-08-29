@@ -62,7 +62,6 @@ function carPanelHtml(e) {
   if (ns > 0) h += '<button data-action="feed" data-id="solid-fuel">放入固体燃料 ×' + ns + '</button>';
   if (nrk > 0) h += '<button data-action="feed" data-id="rocket-fuel">放入火箭燃料 ×' + nrk + '</button>';
   if (nw > 0) h += '<button data-action="feed" data-id="wood">放入木材 ×' + nw + '</button>';
-  h += '<div class="status"></div>';
   h += '<button data-action="drive" id="btn-car-drive" class="primary">🚗 进入驾驶</button>';
   h += '<div class="dim">装甲车：靠近后按 E 进入驾驶（WASD 更快移动），移动消耗煤/固体燃料（固体燃料更耐用），驾驶时按空格发射车载机枪（消耗背包弹药），E 下车。可用机械臂/手动放入。</div>';
   h += trunkPanelHtml(e);
@@ -162,7 +161,6 @@ function tankPanelHtml(e) {
   if (cu > 0) h += '<button data-action="feed" data-id="uranium-cannon-shell">装填铀炮弹 ×' + cu + '</button>';
   if (ce > 0) h += '<button data-action="feed" data-id="explosive-cannon-shell">装填爆炸炮弹 ×' + ce + '</button>';
   if (ceu > 0) h += '<button data-action="feed" data-id="explosive-uranium-cannon-shell">装填铀爆炸炮弹 ×' + ceu + '</button>';
-  h += '<div class="status"></div>';
   h += '<button data-action="drive" class="primary">🚀 进入驾驶（空格开炮）</button>';
   h += '<div class="dim">坦克：重型战斗载具，装甲更厚（驾驶时受伤减少），按空格向光标方向发射炮弹（范围爆炸）。弹药分级对齐《异星工厂》：炮弹 → 爆炸炮弹（爆炸物科技，更大爆炸）→ 铀炮弹（核能科技）→ 铀爆炸炮弹（终极）。需高级战斗科技。</div>';
   h += trunkPanelHtml(e);

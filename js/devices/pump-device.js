@@ -136,7 +136,6 @@ function fluidPumpPanelHtml(e) {
   let h = row('流体', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
   h += row('缓冲', e.total() + ' / ' + PUMP_BUF_CAP, 'cap');
   if (Object.keys(agg).length) h += '<button data-action="takeout" id="btn-pump-takeout">取出全部 (' + e.total() + ')</button>';
-  h += '<div class="status"></div>';
   h += '<div class="sec">电路控制</div>';
   h += '<div class="circ-add">' +
     '<select id="p-en" class="circ-btype">' +

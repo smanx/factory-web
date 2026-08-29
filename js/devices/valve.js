@@ -168,7 +168,6 @@ function valvePanelHtml(e) {
   h += row('流体', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
   h += row('缓冲', e.total() + ' / ' + VALVE_VOLUME, 'cap');
   if (Object.keys(agg).length) h += '<button data-action="takeout" id="btn-valve-takeout">取出全部 (' + e.total() + ')</button>';
-  h += '<div class="status"></div>';
   h += '<div class="dim">阀门按模式约束管道流体：单向阀只放行箭头方向；溢出阀在入口压力超过阈值时外溢；补给阀在出口压力低于阈值时补给。R 旋转方向。</div>';
   return h;
 }

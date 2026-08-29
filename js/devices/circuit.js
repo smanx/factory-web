@@ -719,7 +719,6 @@ function constantPanelHtml(e) {
   h += '<div class="sec">常量输出（绿线）</div>';
   h += '<div class="circ-signal-list" id="c-green-list">' + constantSignalListHtml(e.output.green) + '</div>';
   h += signalAddRow('c-green', e);
-  h += '<div class="status"></div>';
   h += '<div class="dim">把指定物品信号以固定数值持续输出到红线/绿线网络。信号名=物品，数值可正可负。</div>';
   return h;
 }
@@ -795,7 +794,6 @@ function arithPanelHtml(e) {
     '到 <select id="a-ch" class="circ-op">' + channelSelect(e.channel) + '</select>' +
     '<button data-action="a-apply">应用</button></div>';
   h += '<datalist id="vsig-list">' + vsigOptionsHtml() + '</datalist>';
-  h += '<div class="status"></div>';
   h += '<div class="dim">信号A可为「每个信号」：对每个输入信号逐个运算并以原信号名输出；或「全部信号」：全部输入求和后单信号输出。÷ 为整除。</div>';
   return h;
 }
@@ -863,7 +861,6 @@ function deciderPanelHtml(e) {
     ' 到 <select id="d-ch" class="circ-op">' + channelSelect(e.channel) + '</select>' +
     '<button data-action="d-apply">应用</button></div>';
   h += '<div class="circ-add"><label><input type="checkbox" id="d-copy"' + (e.copyFrom ? ' checked' : '') + '> 复制信号A原值输出（而非固定值）</label></div>';
-  h += '<div class="status"></div>';
   h += '<div class="dim">信号A可为「每个信号」：对所有输入逐个判断、满足的以原信号名输出；「全部信号」：全部满足才输出；「任一信号」：任一个满足即输出。可用作批量过滤/阈值开关。</div>';
   return h;
 }
@@ -904,7 +901,6 @@ function selectorPanelHtml(e) {
     (e.mode === 'index' ? ' 索引 <input type="number" id="s-index" class="circ-cnt" value="' + e.index + '" min="1">' : '') +
     ' 到 <select id="s-ch" class="circ-op">' + channelSelect(e.channel) + '</select>' +
     '<button data-action="s-apply">应用</button></div>';
-  h += '<div class="status"></div>';
   h += '<div class="dim">按索引：选信号名升序第 N 个信号并输出其值；随机：随机选一个信号；数值最大：选值最大的信号；游戏时钟：输出游戏 tick/天数/昼夜长度。</div>';
   return h;
 }
@@ -940,7 +936,6 @@ function displayPanelHtml(e) {
   h += '<div class="circ-add"><input type="text" id="dp-text" class="circ-siginv" placeholder="固定文本" autocomplete="off">' +
     '<button data-action="dp-addtext">添加文本行</button></div>';
   h += '<datalist id="vsig-list">' + vsigOptionsHtml() + '</datalist>';
-  h += '<div class="status"></div>';
   h += '<div class="dim">每行显示一个信号的值或固定文本；不配置时默认列出全部网络信号。</div>';
   return h;
 }

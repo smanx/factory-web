@@ -95,7 +95,6 @@ function speakerPanelHtml(e) {
   }
   h += '</div>';
   h += row('阈值', '<input type="number" data-input="cnt" min="0" value="' + (c.count || 0) + '">', 'cnt') +
-    '<div class="status"></div>' +
     '<div class="dim">可编程音箱：接入电路网络，读取信号并按条件判断。满足条件时点亮警报灯，用于信号监控与告警（1×1，需电路网络科技）。</div>';
   return h;
 }

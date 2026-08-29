@@ -412,7 +412,6 @@ function siloPanelHtml(e) {
   }
   h += '<button data-action="launch" id="btn-launch" ' + ((e.launching || !e.hasAllParts()) ? 'disabled' : '') + '>' +
     (e.launching ? '发射中…' : '🚀 发射火箭') + '</button>';
-  h += '<div class="status"></div>';
   // 模块槽（4 槽，对齐《异星工厂》：火箭井可装速度/产能/效率模块，产能模块累积免费部件）
   h += modulePanelSection(e);
   h += '<div class="dim">火箭发射井分两阶段（对齐《异星工厂》）：① 集齐火箭燃料×10、火箭控制单元×1、低密度结构×10 组装出 1 个火箭部件，逐件组装共 ' + ROCKET_PARTS + ' 个部件后拼成完整火箭；② 放入卫星后点击「发射」。发射井有 4 个模块槽，装产能模块可免费累积额外部件、装速度模块加速组装；装火箭产能科技可降低部件需求。发射倒计时需持续供电，成功后赢得游戏，且发射井可反复发射继续冲刺无限科研（对齐《异星工厂》：Rocket silo 可复用，每次卫星发射获得空间科学包）！部件可用机械臂/手动放入（9×9，吃电力，占地来自 GAME_DATA.footprint 官方 selection_box ±4.5）。</div>';
@@ -671,7 +670,6 @@ function drawRadar(ctx, e, gx, gy, dir, alpha) {
 }
 function radarPanelHtml(e) {
   let h = row('电力', powerStatusLiveHtml(e), 'power');
-  h += '<div class="status"></div>';
   h += '<div class="dim">雷达：吃电力周期性扫描周围 ' + RADAR_RANGE + ' 格区域，点亮并标记新探索区块，帮助规划基地扩张（3×3）。</div>';
   return h;
 }

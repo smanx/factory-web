@@ -214,8 +214,6 @@ function boilerPanelHtml(e) {
     h += '<button data-action="feed" data-id="water">注入全部存水</button>';
   h += row('蒸汽缓存', '<span class="dim"></span>', 'steam');
   h += row('温度', '', 'temp');
-  h += barHtml(0);
-  h += '<div class="status"></div>';
   h += '<div class="dim">供电链：抽水机 → 管道 → 锅炉两端蓝口水口（左右互通、双向进出、水位自动平衡，可一端进另一端出、多台串联）；加煤烧出的蒸汽从底边中间白口送往下方蒸汽机，也可经蒸汽管道远送。</div>';
   return h;
 }

@@ -55,7 +55,7 @@ function drawGate(ctx, e, gx, gy, dir, alpha) {
   ctx.globalAlpha = 1;
 }
 function gatePanelHtml() {
-  return '<div class="dim">门：可开合的入口，玩家靠近自动打开、离开自动关闭；敌人无法通过。与石墙搭配构成可进出的防线（1×1）。</div><div class="status"></div>';
+  return '<div class="dim">门：可开合的入口，玩家靠近自动打开、离开自动关闭；敌人无法通过。与石墙搭配构成可进出的防线（1×1）。</div>';
 }
 function gatePanelLive(e, api) {
   api.status(gateOpen(e) ? '已打开（可通行）' : '已关闭（阻挡通行）', gateOpen(e) ? 'g' : 'r');

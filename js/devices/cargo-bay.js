@@ -104,7 +104,6 @@ function cargoBayPanelHtml(e) {
   for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
   let h = row('货物', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
   h += row('扩展存储', '+' + CARGO_BAY_SLOTS + ' 格', 'bonus');
-  h += '<div class="status"></div>';
   let total = 0;
   for (const k in agg) total += agg[k];
   if (total > 0) h += '<button data-action="takeout" id="btn-cb-takeout">取出全部 (' + total + ')</button>';

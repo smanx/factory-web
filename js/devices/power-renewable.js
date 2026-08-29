@@ -119,7 +119,6 @@ function drawAccumulator(ctx, e, gx, gy, dir, alpha) {
 // ===== 面板 =====
 function solarPanelPanelHtml() {
   return row('当前输出', '<span class="dim"></span>', 'power') +
-    '<div class="status"></div>' +
     '<div class="dim">太阳能板：白天无燃料发电，夜晚停发。并入全图电网，可为用电设备供能（2×2）。</div>';
 }
 function solarPanelPanelLive(e, api) {
@@ -132,7 +131,6 @@ function solarPanelTip(e) {
 }
 function accumulatorPanelHtml() {
   return row('储电量', '<span class="dim"></span>', 'stored') +
-    '<div class="status"></div>' +
     '<div class="dim">蓄电器：储存电力，白天电网有盈余时充电，夜间/缺口时放电补充，平滑电网波动（2×2）。</div>';
 }
 function accumulatorPanelLive(e, api) {

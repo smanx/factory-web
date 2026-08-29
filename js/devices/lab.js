@@ -270,8 +270,6 @@ function labPanelHtml(e) {
   }
   if (Object.keys(e.modules).length > 0) h += '<button data-action="modtake">取出全部模块</button>';
   h += '</div>';
-  h += barHtml(0);
-  h += '<div class="status"></div>';
   h += row('课题', '', 'techline');
   // 消耗速率：每 LAB_TIME 秒消耗 1 瓶科学包（按所选科技配方逐瓶消耗）
   h += machRateHtml({ inp: { 'automation-science-pack': 1 }, out: {}, time: LAB_TIME }, 1);

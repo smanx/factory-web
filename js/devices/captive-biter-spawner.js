@@ -129,8 +129,6 @@ function drawCaptiveBiterSpawner(ctx, e, gx, gy, dir, alpha) {
 // ===== 面板 =====
 function cbsPanelHtml(e) {
   let h = row('异虫卵', '<span class="dim"></span>', 'egg');
-  h += barHtml(0);
-  h += '<div class="status"></div>';
   h += '<div class="dim">捕获的虫巢经驯化后持续繁育异虫卵，需喂养生物流维持圈养（食物耗尽会饿死停转）。</div>';
   return h;
 }

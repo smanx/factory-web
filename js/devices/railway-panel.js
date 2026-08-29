@@ -249,7 +249,6 @@ DEVICE_PANEL['artillery-wagon'] = {
     const n = invCount('artillery-shell');
     if (n > 0) h += '<button data-action="feed" data-id="artillery-shell">装入炮弹 ×' + n + '</button>';
     if (e.shells > 0) h += '<button data-action="takeout" id="btn-aw-takeout">取出全部炮弹</button>';
-    h += '<div class="status"></div>';
     return h;
   },
   live(e, api) {
@@ -387,7 +386,6 @@ function trainStopPanelHtml(e) {
     '<div class="row"><button data-action="ts-readtrain" class="rcbtn ' + (e.readTrain ? 'sel' : '') + '">' +
     (e.readTrain ? '✓ ' : '') + '读取列车内容（输出到电路网络）</button></div>' +
     '<div class="dim">开启后，把停靠列车所有车厢所载物品与流体以物品信号输出到所连电路网络，供组合器/功率开关/告警音箱按列车载货量自动化调度（对齐《异星工厂》车站 Read train contents）。</div>';
-  h += '<div class="status"></div>';
   h += '<div class="dim">放置：把车站放在铁轨上，车站旁（3×3）放储物箱。列车停靠时，自动把“卸载”物品从车厢卸入箱子、把“装载”物品从箱子装入车厢。对齐《异星工厂》火车车站装卸。</div>';
   h += '<div class="dim">已接入电路网络：有列车停靠本站时输出 signal-train（车站列车信号）到所连网络，供组合器/功率开关/告警音箱读取，实现按列车到站自动化的调度（对齐《异星工厂》车站电路信号）。</div>';
   return h;

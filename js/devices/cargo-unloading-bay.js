@@ -112,7 +112,6 @@ function cargoUnloadingBayPanelHtml(e) {
   let h = row('货物', Object.keys(agg).length ? countStr(agg) : '<span class="dim">空</span>', 'contents');
   h += row('扩展存储', '+' + UNLOADING_BAY_SLOTS + ' 格', 'bonus');
   h += row('卸载距离', UNLOADING_BAY_DIST + ' 格', 'range');
-  h += '<div class="status"></div>';
   let total = 0;
   for (const k in agg) total += agg[k];
   if (total > 0) h += '<button data-action="takeout" id="btn-ub-takeout">取出全部 (' + total + ')</button>';

@@ -924,7 +924,6 @@ DEVICE_DIR_ROTATE['roboport'] = true; // 支持旋转
 DEVICE_PANEL['roboport'] = {
   html: e => {
     let h = row('机器人', e.roboCap + ' 台', 'robo');
-    h += '<div class="status"></div>';
     h += '<div class="dim">把「物流机器人」放入此港，机器人会自动在供应箱与需求箱之间搬运货物。电量不足时回港充电（消耗电力）。</div>';
     if (e.roboCap > 0) h += '<div class="dim">已调度：物流网络覆盖全图。</div>';
     else h += '<button data-action="robo-add">投入 1 台物流机器人</button>';

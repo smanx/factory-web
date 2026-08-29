@@ -136,8 +136,6 @@ function drawSteamEngine(ctx, e, gx, gy, dir, alpha) {
 function steamEnginePanelHtml(e) {
   let h = row('输出功率', '<span class="dim"></span>', 'power');
   h += row('蒸汽存量', '<span class="dim"></span>', 'steam');
-  h += barHtml(0);
-  h += '<div class="status"></div>';
   h += '<div class="dim">上下两端各一只通用汽口，功能相同：蒸汽可从任意一端进入发电，多余蒸汽也可从另一端送出——可与相邻蒸汽机首尾串联或接入蒸汽管道。满功率耗汽 ' + ENGINE_STEAM_RATE +
     '/s（1 台锅炉约带 2 台），输出 +' + POWER_PER_ENGINE + ' 并入全图电网。</div>';
   return h;
