@@ -1,7 +1,9 @@
 'use strict';
 
-// ===== 地下管道：背向摆两座（朝向相反，最远 PIPE_GROUND_MAX 格）自动配对，从地下穿行流体 =====
-// 管道口背向相对的两座自动配对；一条线上有多个管道时只与最近的背向管道配对（同向的不配对）。
+// ===== 地下管道：背靠背摆两座（朝向相对，最远 PIPE_GROUND_MAX 格）自动配对，从地下穿行流体 =====
+// 只有「背靠背」（两座朝向相对，地下管段在中间相接）才算配对；口对口（朝向相背、管口相对）
+// 只是像普通管道一样的简单连通（紧挨时），不属于配对、不显示配对框线。
+// 一条线上有多个管道时只与最近的背向管道配对（同向的不配对）。
 // 可跨过传送带/管道等障碍，容量与普通管道一致（PIPE_CAP）。
 // 只有“管口”（this.dir 的反向，即视觉上伸出连接管段的那一侧）能接普通管道与流体；
 // 背向（this.dir 正向）不接任何管道，只通过与配对的另一端地下管道（地下管段）互通流体。
@@ -51,51 +53,76 @@ class PipeToGround extends Entity {
   }
   total() { let s = 0; for (const k in this.fluid) s += this.fluid[k]; return s; }
   maxDist() { return PIPE_GROUND_MAX; }
-  // 沿自身朝向的 sign 方向（+1 前方 / -1 背侧）扫描最近的背向管道；同向的跳过继续，地形阻挡返回 null。
-  // 距离从 2 起：紧挨（距离 1）且相对的两座只是像普通管道一样直接连通，不属于地下配对（配对应跨过一段空隙）。
+  // 沿自身朝向的 sign 方向（+1 前方 / -1 背侧）扫描最近的背向管道；同向的截断，地形阻挡返回 null。
+  // 距离从 1 起：**背靠背紧挨**（距离 1、朝向相对）同样配对——两座朝向侧的地下管段在
+  // 共享边相接，属于配对连通。口对口相邻（距离 1、朝向相背）不在此配对，由
+  // _adjacentMouthOpposite 作为「普通管道式直接连通」处理（与本扫描无关）。
   //
   // 【中间可放设备】扫描途中遇到的**任何设备都不再阻挡配对**（这是本次修复的核心）：
   // 地下管段从设备下方穿过，中间放设备（建筑/机器/传送带/管道……）照样互通。
   // 只有峭壁/水面（ugPipePassable=false）会切断这条地下管段。
   // 旧行为：`if (t.solid) return null;` —— 中间放一台设备就直接断连，与《异星工厂》不符。
-  _findAlong(sign) {
-    for (let k = 2; k <= this.maxDist(); k++) {
+  //
+  // extra（可选）：虚拟在场的管道（放置幽灵/蓝图预览的本座）。幽灵不在实体网格里，
+  // 若不给扫描"看见"它，就无法预测"放置后"的配对结果；把幽灵当作一个虚拟管道
+  // 参与扫描与互认判定，让预览与真实摆放一致。
+  _findAlong(sign, extra) {
+    for (let k = 1; k <= this.maxDist(); k++) {
       const nx = this.x + DX[this.dir] * sign * k, ny = this.y + DY[this.dir] * sign * k;
       // 地形（峭壁/水面）切断地下管段
       if (!ugPipePassable(nx, ny)) return null;
+      if (extra && extra.x === nx && extra.y === ny) {
+        // 虚拟管道：与实体同规则——背向可配对，同向截断
+        if (PipeToGround._parallel(extra.dir, this.dir)) return extra;
+        return null;
+      }
       const t = entAt(nx, ny);
       if (!t) continue;
       if (t instanceof PipeToGround) {
         if (PipeToGround._parallel(t.dir, this.dir)) return t;
-        continue;   // 同向的管道不配对，继续找最近的背向管道
+        // 同向的地下管道：不配对，且**到此为止**（对齐《异星工厂》：中间隔着同方向的
+        // 地下管道就断开，不能越过它去配更远的一座；已配对的那一对也不再与下一座配对）。
+        // 旧行为是 continue 继续往后找，会导致隔着已配对的 2 号去配 1 号。
+        return null;
       }
       // 其它设备（建筑/机器/传送带/普通管道……）一律“可穿越、不连通”，继续向后找配对端
     }
     return null;
   }
-  findMate() {
-    // 口对口或背对背、同轴反向的两座都能配对：前方与背侧各找一个最近的背向管道，取更近者。
-    const front = this._findAlong(1);
-    const back = this._findAlong(-1);
-    if (front && back) {
-      const df = Math.abs(front.x - this.x) + Math.abs(front.y - this.y);
-      const db = Math.abs(back.x - this.x) + Math.abs(back.y - this.y);
-      return (df <= db) ? front : back;
-    }
-    return front || back;
+  // 原始配对候选（不做占用校验）：只认「本座朝向的前方」（背靠背）的背向管道——
+  // 背靠背时两座的地下管段（朝向侧）相对相接，构成地下配对。
+  // 口对口（本座朝向反方向的那一座，即后方）不构成配对：管口相对只是像普通管道一样
+  // 的简单连通（相邻时由 _adjacentMouthOpposite 就近互通），不产生地下管段、不配对。
+  _rawMate(extra) {
+    return this._findAlong(1, extra);
   }
-  // 是否已配对：同轴反向（朝向相反）的另一端有配对的地下管道
+  findMate() {
+    // 只与「同样把本座当作最近配对端」的那一座成对：已经与别人配对的地下管道，
+    // 不会再与下一座继续配对（避免三座串成一团、也避免旋转时牵动已配对的那一对）。
+    // 幽灵（不在实体网格，如放置幽灵/蓝图预览）：把本座作为虚拟管道交给对方扫描，
+    // 模拟「放置后」的配对结果——若本座插在已配对的两座之间、且比对方当前配对端更近，
+    // 预览就能正确显示"放置后会改配本座"（放置后由真实逻辑自然断开旧对）。
+    // 真实实体（在网格中）：extra=null，走互认校验。
+    const inGrid = entAt(this.x, this.y) === this;
+    const extra = inGrid ? null : this;
+    const m = this._rawMate(extra);
+    if (!m) return null;
+    const other = m._rawMate(extra);
+    return (other === this || !other) ? m : null;
+  }
+  // 是否已配对：背靠背（本座朝向的前方有朝向相反的地下管道）才有配对端。
+  // 口对口（朝向相背、管口相对）只是简单连通，不属于配对。
   isPaired() { return !!this.findMate(); }
   // 相邻（距离 1）且在管口侧（this.dir 反向）口对口相对的地下管道：不算配对关系，但像普通管道一样可直接互通。
-  // 背向（this.dir 正向）不接任何管道——地下管道只有管口一个方向能接管道/流体（配对走 findMate 的地下长段）。
-  // 这与 findMate（仅距离 ≥2 的配对面）分开，配对只管地下穿行的长段，互通则就近道连通。
+  // 背向（this.dir 正向）不接任何管道——地下管道只有管口一个方向能接管道/流体（配对走 findMate 的地下管段）。
+  // 这与 findMate（背靠背配对）分开：配对是背靠背（含紧挨距离 1）的地下管段互通，口对口是就近简单连通。
   _adjacentMouthOpposite() {
     const mouth = entAt(this.x - DX[this.dir], this.y - DY[this.dir]);
     const inner = t => t instanceof PipeToGround && PipeToGround._parallel(t.dir, this.dir);
     return inner(mouth) ? mouth : null;
   }
-  // 两条地下管道只有“背向”（朝向相反，同在一条直线上）才配对。
-  // 管道口背靠背相对，地下运行段在两座之间相接；同向的面向同一方、不会在地下相接，因此不配对。
+  // 两条地下管道只有「背靠背」（朝向相对、同在一条直线上）才配对：
+  // 背靠背时两座的地下管段（朝向侧）相对相接；口对口（朝向相背）只是管口简单连通，不配对。
   static _parallel(d1, d2) { return ((d1 - d2 + 4) % 4) === 2; }
   update(dt) {
     // 惰性调度（同普通管道）：流体扩散是抽象均衡，按帧节流避免每帧四向扫描
@@ -201,7 +228,7 @@ function pipeGroundPanelHtml(e) {
   h += row('容量', e.total() + ' / ' + PIPE_CAP, 'cap');
   if (Object.keys(agg).length) h += '<button data-action="drain" id="btn-pgt-takeout">直接清空</button>';
   h += '<div class="status"></div>';
-  h += '<div class="dim">地下管道：背向摆两座（朝向相反，最远 ' + PIPE_GROUND_MAX + ' 格）自动配对，从地下穿行流体。只有<b>管口</b>（管道伸出的那一侧）能接普通管道与流体，背向不接管道，只与配对的另一端地下管道互通；不分入口/出口，流体可从管口进、从配对端出。<b>两座中间可以放任意设备</b>（建筑/机器/传送带/管道……），管段从设备下方穿过，不会被阻挡也不会与设备连通；只有峭壁/水面会切断地下管段。一条线上多个管道时只与最近的背向管道配对。R 旋转方向。</div>';
+  h += '<div class="dim">地下管道：<b>背靠背</b>摆两座（朝向相对，最远 ' + PIPE_GROUND_MAX + ' 格）自动配对，从地下穿行流体；口对口（朝向相背、管口相对）只是像普通管道一样的简单连通，不属于配对。只有<b>管口</b>（管道伸出的那一侧）能接普通管道与流体，背向不接管道，只与配对的另一端地下管道互通；不分入口/出口，流体可从管口进、从配对端出。<b>两座中间可以放任意设备</b>（建筑/机器/传送带/管道……），管段从设备下方穿过，不会被阻挡也不会与设备连通；只有峭壁/水面会切断地下管段。一条线上多个管道时只与最近的背向管道配对。R 旋转方向。</div>';
   return h;
 }
 function pipeGroundPanelLive(e, api) {
@@ -210,7 +237,7 @@ function pipeGroundPanelLive(e, api) {
   api.set('contents', Object.keys(agg).length ? countStr(agg) : dimSpan('空'));
   api.set('cap', e.total() + ' / ' + PIPE_CAP);
   api.toggle('#btn-pgt-takeout', e.total() > 0, '直接清空');
-  if (!e.isPaired()) api.status('已暂停：未配对（背向 ' + PIPE_GROUND_MAX + ' 格内无朝向相反的另一座地下管道）', 'warn');
+  if (!e.isPaired()) api.status('已暂停：未配对（背靠背 ' + PIPE_GROUND_MAX + ' 格内无朝向相对的另一座地下管道）', 'warn');
   else if (e.total() > 0) api.status('输送中：管口与配对端双向均压流动', 'ok');
   else api.status('地下互通：等待流体进入', 'ok');
 }

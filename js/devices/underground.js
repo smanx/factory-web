@@ -26,17 +26,25 @@ class Underground extends Entity {
   // 每列流速（格/秒）：与地上传送带单列一致（beltSpeed/2）。
   speedLane() { return beltSpeed() * this.speedMult() / 2; }
   maxDist() { return this.type === 'fast-underground-belt' ? FAST_UNDERGROUND_MAX : UNDERGROUND_MAX; }
-  findMate() {
+  // 原始几何扫描：沿朝向（sign=+1 前方 / -1 背侧）找最近的同向同档地下带。
+  // 纯几何、不做"是否已被占用"判定——isEntrance/isExit 与配对判定都基于它，避免相互递归。
+  // 可跨过固体障碍（建筑/水域），这正是地下带的用途：拖动铺设遇障碍时自动配一对钻过去。
+  _scanAlong(sign) {
     for (let k = 1; k <= this.maxDist(); k++) {
-      const nx = this.x + DX[this.dir] * k, ny = this.y + DY[this.dir] * k;
+      const nx = this.x + DX[this.dir] * sign * k, ny = this.y + DY[this.dir] * sign * k;
       const t = entAt(nx, ny);
       if (!t) continue;
       if (t instanceof Underground) return (t.dir === this.dir && t.type === this.type) ? t : null;
-      // 地下传送带可跨过固体障碍（建筑/水域），这正是它的用途：
-      // 拖动铺设遇障碍时自动配一对地下带即可钻过障碍继续铺。
     }
     return null;
   }
+  // 配对关系（对齐《异星工厂》：中间不能隔着同方向的地下带，已配对的不能再与下一座配对）：
+  //   入口 → 只与前方最近的一座配对（背侧不配对）；
+  //   出口 → 只与背侧最近的一座配对（前方不配对）。
+  // 于是一条线上 1-2、3-4 各自成对：2 号不会再去配 3 号，3 号也不会回头配 2 号或 1 号；
+  // 落单的第 3 座（前方没有可配对的）判定为未配对，不参与传输，也不再牵动 1/2 号（旋转联动同理）。
+  findMate() { return this.isEntrance() ? this._scanAlong(1) : null; }
+  findBackMate() { return this.isExit() ? this._scanAlong(-1) : null; }
   speedMult() { return this.type === 'fast-underground-belt' ? FAST_BELT_MULT : 1; }
   // 与同档传送带完全一致的双车道合计吞吐：面板/数值以「双车道总速度」计（基础带=15 件/秒）。
   // 隧道内两条车道（lane0/lane1）各自独立推进，每车道吞吐 = 双车道合计的一半。
@@ -178,20 +186,11 @@ class Underground extends Entity {
   }
   // 是否作为“出口”：后方已有同向同档地下带配对（无论前方是否还有更远的带）。
   // 出口把收到的货投向地面，不再向更前方的地下带转送（只与最近者配对）。
-  isExit() { const back = this.findBackMate(); return back ? back.isEntrance() : false; }
+  // 注意：这里必须用原始几何扫描 _scanAlong，不能用 findBackMate（后者依赖本判定，会相互递归）。
+  isExit() { const back = this._scanAlong(-1); return back ? back.isEntrance() : false; }
   // 是否作为“入口”：前方有同向同档地下带配对，且后方没有配对（是链的起点）。
   // 入口把货送向最近的前方出口。
-  isEntrance() { if (!this.findMate()) return false; const back = this.findBackMate(); return !back || !back.isEntrance(); }
-  findBackMate() {
-    for (let k = 1; k <= this.maxDist(); k++) {
-      const nx = this.x - DX[this.dir] * k, ny = this.y - DY[this.dir] * k;
-      const t = entAt(nx, ny);
-      if (!t) continue;
-      if (t instanceof Underground) return (t.dir === this.dir && t.type === this.type) ? t : null;
-      // 同 findMate：可跨过固体障碍配对。
-    }
-    return null;
-  }
+  isEntrance() { if (!this._scanAlong(1)) return false; const back = this._scanAlong(-1); return !back || !back.isEntrance(); }
   // 是否已配对（前方或后方有同向同档地下带）。
   // 未配对的地下带仅作静态显示，不参与任何物品传输（对齐《异星工厂》）。
   isPaired() { return !!(this.findMate() || this.findBackMate()); }
@@ -297,6 +296,16 @@ function undergroundColors(e) {
   };
 }
 
+// 地下带行进方向箭头的颜色：与地上对应档位传送带逐档一一对应
+// （基础=黄 rgba(224,178,60,.85)、快速=红 rgba(224,90,78,.9)、
+//   极速=蓝 rgba(90,150,230,.9)、涡流=绿 rgba(90,180,120,.9)）。
+function ugChevColor(e) {
+  if (e.type === 'fast-underground-belt')    return 'rgba(224,90,78,.9)';
+  if (e.type === 'express-underground-belt') return 'rgba(90,150,230,.9)';
+  if (e.type === 'turbo-underground-belt')   return 'rgba(90,180,120,.9)';
+  return 'rgba(224,178,60,.85)';
+}
+
 // 把十六进制颜色按 amt（可正可负）调亮/调暗，返回可用的颜色串。用于井下层次、带面明暗。
 function ugShade(hex, amt) {
   const n = parseInt(hex.slice(1), 16);
@@ -356,20 +365,19 @@ function drawUnderground(ctx, e, gx, gy, dir, alpha) {
   if (st === 'in')      { bx0 = -12; bx1 = m0; }
   else if (st === 'out'){ bx0 = m1;  bx1 = 12; }
   else                  { bx0 = -12; bx1 = 12; }
-  if (busy) {
-    ctx.fillStyle = light;
-    ctx.fillRect(bx0, -8, bx1 - bx0, 16);
-    // 上下边缘轨道
-    ctx.strokeStyle = acc;
-    ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.moveTo(bx0, -8); ctx.lineTo(bx1, -8); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(bx0, 8);  ctx.lineTo(bx1, 8);  ctx.stroke();
-    // 中央分割线（双列车道）
-    ctx.strokeStyle = ugShade(body, -8);
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(bx0, 0); ctx.lineTo(bx1, 0); ctx.stroke();
-    // 车道动效与物品见下方第 6 步（只为“确有物品的车道”绘制，保持与地上带一条/两条一致）
-  }
+  // 带面始终绘制（即使未配对/空载也保留完整带面，方向箭头才能一直可见、一直流动）
+  ctx.fillStyle = light;
+  ctx.fillRect(bx0, -8, bx1 - bx0, 16);
+  // 上下边缘轨道
+  ctx.strokeStyle = acc;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(bx0, -8); ctx.lineTo(bx1, -8); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bx0, 8);  ctx.lineTo(bx1, 8);  ctx.stroke();
+  // 中央分割线（双列车道）
+  ctx.strokeStyle = ugShade(body, -8);
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(bx0, 0); ctx.lineTo(bx1, 0); ctx.stroke();
+  // 车道动效与物品见下方第 6 步（只为“确有物品的车道”绘制，保持与地上带一条/两条一致）
 
   // ---- 5) 井口（深坑）：传送带入/出地下的洞口 ----
   // 井口护边
@@ -413,6 +421,47 @@ function drawUnderground(ctx, e, gx, gy, dir, alpha) {
   //   横向 → 上下两行；竖向 → 左右两列。与地上传送带的显示丝毫不差。
   // 先退出旋转坐标系，改在绝对屏幕坐标画物品/箭头。
   ctx.restore();
+
+  // ---- 6a) 行进方向箭头：居中的单列箭头（对齐普通地上传送带）----
+  // 与地上带一致：始终画在带面中央、始终循环流动（以 G.time 驱动，与地上带同口径），
+  // 不论是否配对、是否载物都在流动；不再按左右两车道各画一条、也不再随阻塞冻结。
+  {
+    const step = TILE / 2;   // 箭头间距与地上传送带完全一致
+    const arrSpeed = beltSpeed() * (e.speedMult ? e.speedMult() : 1) * (TILE / 2);
+    const off = ((G.time * arrSpeed) % step + step) % step;
+    // 遮罩：入口只显示前半格、出口只显示后半格；未配对井口在后方，只在前半格显示
+    let a0 = bx0, a1 = bx1;
+    if (st === 'in')       a1 = 0;
+    else if (st === 'out') a0 = 0;
+    else                   a0 = 0;
+    // 箭头与地上传送带逐档一一对应：尺寸（底边跨带面垂直方向 ±5px、尖端 +3px）与颜色（ugChevColor）都一致。
+    // 边缘处理：整体 clip 到可见半带，箭头在带面边缘不再硬切，而是按头部/尾部越界量渐隐渐显——
+    // 当箭头头部触到边缘时，从头部开始慢慢淡出（正是“从前面开始消失”的效果），完全移出后才彻底消失。
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(dir * Math.PI / 2);
+    ctx.beginPath();
+    ctx.rect(a0, -8, Math.max(4, a1 - a0), 16);
+    ctx.clip();
+    const FADE = 6;                       // 边缘渐隐过渡长度（px，约等于箭头全长）
+    ctx.fillStyle = ugChevColor(e);
+    for (let k = -1; k <= 2; k++) {
+      const ax = bx0 + k * step + off;    // 箭头中心（局部坐标，沿行进方向）
+      const tail = ax - 3, head = ax + 3; // 尾部（后方）与头部（前方）
+      if (head <= a0 || tail >= a1) continue;   // 整体已超出可见区 → 跳过
+      // 头部越过出口边缘：从头开始渐隐；尾部未进入入口边缘：从尾渐显
+      let fade = 1;
+      if (head > a1) fade = Math.min(fade, Math.max(0, 1 - (head - a1) / FADE));
+      if (tail < a0) fade = Math.min(fade, Math.max(0, 1 - (a0 - tail) / FADE));
+      if (fade <= 0) continue;
+      ctx.globalAlpha = alpha * fade;
+      tri(ctx, ax - 3, -5, ax - 3, 5, ax + 3, 0);   // 底边 ±5px、尖端 +3px
+      ctx.fill();
+    }
+    ctx.restore();
+    ctx.globalAlpha = alpha;
+  }
+
   if (busy) {
     const itemFn = (LOD && LOD.simple) ? drawItemDotLOD : drawItemDot;
     const span = Math.max(8, bx1 - bx0);                 // 可见带段长度（沿行进方向）
@@ -442,19 +491,6 @@ function drawUnderground(ctx, e, gx, gy, dir, alpha) {
       // 物品在可见半格内以 spdPx px/s 推进（遮罩的另一半计时仍算入流动钟，保证速度一致）。
       let clk = ((flow * spdPx) / vSeg) % 1;
       if (clk < 0) clk += 1;
-      // 该车道推进箭头（指示流向）：只在可见半格内绘制，遮罩半格保持干净，卡住即静止
-      ctx.fillStyle = acc;
-      const step = 11;
-      const cOff = ((flow * spdPx) % step + step) % step;
-      const pdx = -fy * 2.6, pdy = fx * 2.6;             // chevron 垂直于行进方向张开
-      for (let k = -2; k <= 3; k++) {
-        const ax = bx0 + k * step + cOff;
-        if (ax < v0 + 2 || ax > v1 - 2) continue;
-        const bxC = cx + fx * (ax - 3) + ofsX, byC = cy + fy * (ax - 3) + ofsY; // 尾中
-        const hx = cx + fx * (ax + 3) + ofsX, hy = cy + fy * (ax + 3) + ofsY;    // 尖
-        tri(ctx, bxC + pdx, byC + pdy, bxC - pdx, byC - pdy, hx, hy);
-        ctx.fill();
-      }
       // 本车道物品：按「可见半格上的连续流」绘制（对齐地上传送带：一条带上应同时可见多个物品连续流动）。
       //   来源/流向：
       //     入口（in）：本格缓存 items（即将送入地下）沿后半格 … 前半格流向井口(x=0)，入洞渐隐

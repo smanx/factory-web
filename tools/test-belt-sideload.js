@@ -288,4 +288,164 @@ check('修改后：物品贯穿两组地下带（终点 >0 件）', ugNew.arrive
 check('入口不再被当作地面输出源（侧面带输入源 = 0）', ugNew.sideInp === 0, 'sideInp=' + ugNew.sideInp);
 check('贯穿隧道后车道保持（左进左出/右进右出，两列都有货）', ugNew.byLane[0] > 0 && ugNew.byLane[1] > 0, JSON.stringify(ugNew.byLane));
 
+// ===== 地下带/地下管道配对规则：已配对的不能再与下一座配对 =====
+function buildPair(ugSrc, pipeSrc) {
+  const prelude = `
+const DX=[1,0,-1,0], DY=[0,1,0,-1], TILE=32, BELT_SPACING=0.125, BELT_SPEED=1.875;
+const UG_CAP=8, UNDERGROUND_MAX=6, FAST_UNDERGROUND_MAX=14, FAST_BELT_MULT=2;
+const PIPE_CAP=100;
+const GAME_DATA={};
+const G={time:0, dbg:{}, cam:{z:1}};
+const LOD={simple:false};
+const ITEMS={};
+function beltSpeed(){return BELT_SPEED;}
+function isCliff(){return false;}
+function isWater(){return false;}
+class Entity{constructor(t,x,y){this.type=t;this.x=x;this.y=y;}}
+class Splitter{}
+class Pipe{}
+function circuitSignalNear(){return {};}
+function circuitCondOk(){return true;}
+function tri(){}
+function rr(){}
+function drawItemDot(){}
+function drawItemDotLOD(){}
+const ENT_CLASSES={},DEVICE_RENDER={},DEVICE_STATUS={},DEVICE_PANEL={},DEVICE_DIR_ROTATE={};
+const __ents=new Map();
+function entAt(x,y){return __ents.get(x+','+y)||null;}
+`;
+  return new Function(prelude + '\n' + BELT_SRC + '\n' + ugSrc + '\n' + (pipeSrc || '')
+    + '\nreturn { Belt, Underground, __ents, PipeToGround: (typeof PipeToGround === "undefined") ? null : PipeToGround };')();
+}
+// 一条线上 n 座同向地下带（间距 2 格，均在 maxDist 内），返回各座的配对关系
+function ugLine(n) {
+  const { Underground, __ents } = buildPair(UG_SRC);
+  __ents.clear();
+  const us = [];
+  for (let i = 0; i < n; i++) { const u = new Underground('underground-belt', i * 2, 0); u.dir = 0; us.push(u); __ents.set(u.x + ',' + u.y, u); }
+  const name = u => (u ? '#' + (us.indexOf(u) + 1) : 'null');
+  return {
+    fwd: us.map(u => name(u.findMate())),
+    back: us.map(u => name(u.findBackMate())),
+    paired: us.map(u => u.isPaired()),
+    roles: us.map(u => (u.isEntrance() ? 'in' : (u.isExit() ? 'out' : '-'))),
+  };
+}
+const PIPE_SRC = fs.readFileSync(path.join(__dirname, '..', 'js', 'devices', 'pipe-ground.js'), 'utf8');
+// 管道：#1(x=0,朝东) 与 #2(x=3,朝西) 已配对；#3(x=6) 旋转为朝西后不得再与 #1/#2 配对
+function pipeLine() {
+  const { PipeToGround, __ents } = buildPair(UG_SRC, PIPE_SRC);
+  __ents.clear();
+  const mk = (x, dir) => { const p = new PipeToGround('pipe-to-ground', x, 0); p.dir = dir; __ents.set(x + ',0', p); return p; };
+  const p1 = mk(0, 0), p2 = mk(3, 2), p3 = mk(6, 2);   // 东、西、西
+  return { p1, p2, p3, m1: p1.findMate() === p2, m2: p2.findMate() === p1, m3: !!p3.findMate() };
+}
+
+const l4 = ugLine(4), l3 = ugLine(3);
+console.log('地下带×4 配对:', JSON.stringify(l4));
+console.log('地下带×3 配对:', JSON.stringify(l3));
+check('4 座线：1-2、3-4 各自成对', l4.fwd[0] === '#2' && l4.back[1] === '#1' && l4.fwd[2] === '#4' && l4.back[3] === '#3', JSON.stringify(l4.fwd) + JSON.stringify(l4.back));
+check('4 座线：已配对的 2 号不再向前配 3 号', l4.fwd[1] === 'null', 'fwd=' + JSON.stringify(l4.fwd));
+check('4 座线：3 号不回头配 2 号/1 号', l4.back[2] === 'null', 'back=' + JSON.stringify(l4.back));
+check('4 座线：角色交替 in/out/in/out', l4.roles.join(',') === 'in,out,in,out', JSON.stringify(l4.roles));
+check('3 座线：落单的 3 号判定为未配对', l3.paired[2] === false, JSON.stringify(l3));
+check('3 座线：3 号旋转不会牵动 1/2 号（无配对端）', l3.fwd[2] === 'null' && l3.back[2] === 'null', JSON.stringify(l3));
+check('3 座线：1-2 仍然配对', l3.fwd[0] === '#2' && l3.back[1] === '#1', JSON.stringify(l3));
+
+const pl = pipeLine();
+console.log('地下管道:', JSON.stringify({ m1: pl.m1, m2: pl.m2, m3: pl.m3 }));
+check('管道：1-2 背向配对', pl.m1 && pl.m2, JSON.stringify({ m1: pl.m1, m2: pl.m2 }));
+check('管道：3 号隔着同向的 2 号不得再配 1/2 号', pl.m3 === false, 'm3=' + pl.m3);
+
+// ===== 幽灵配对：幽灵实体坐标必须先设为光标格，内部配对判定才与真实摆放一致 =====
+function ghostPairOrder() {
+  const { PipeToGround, __ents } = buildPair(UG_SRC, PIPE_SRC);
+  __ents.clear();
+  const mk = (x, dir) => { const p = new PipeToGround('pipe-to-ground', x, 0); p.dir = dir; __ents.set(x + ',0', p); return p; };
+  const a = mk(0, 0);                       // 已铺设：朝东（管口朝西）
+  // 幽灵实体：与 drawGhost 里 getGhostEnt 的缓存对象一样，初始 x/y 停留在原点
+  const ghost = new PipeToGround('pipe-to-ground', 0, 0);
+  ghost.dir = 2;                            // 幽灵朝西，光标在 (3,0)
+  // 旧顺序（bug）：drawEntity 先于 tmp.x/tmp.y 赋值 → isPaired 用的是缓存旧坐标 (0,0)
+  const stale = ghost.isPaired();
+  // 修复后顺序：先 tmp.x=3; tmp.y=0 再 drawEntity → 判定基于光标格
+  ghost.x = 3; ghost.y = 0;
+  const fixed = ghost.isPaired();
+  // 真实放置后的对照：同一位置同一朝向的已铺设管道
+  const real = mk(3, 2);
+  return { stale, fixed, real: real.isPaired() };
+}
+const gp = ghostPairOrder();
+console.log('幽灵配对（旧坐标/新坐标/真实摆放）:', JSON.stringify(gp));
+check('幽灵在旧坐标上配对判定错误（stale=false，bug 特征）', gp.stale === false, 'stale=' + gp.stale);
+check('坐标先赋值后，幽灵配对与真实摆放一致', gp.fixed === true && gp.fixed === gp.real, JSON.stringify(gp));
+
+// ===== 插入配对：3 号放在已配对的 1、2 中间 =====
+// 1@(0,0)朝东 与 2@(6,0)朝西 已配对；3 号(3,0)插中间
+function insertMiddle() {
+  const { PipeToGround, __ents } = buildPair(UG_SRC, PIPE_SRC);
+  __ents.clear();
+  const mk = (x, dir) => { const p = new PipeToGround('pipe-to-ground', x, 0); p.dir = dir; __ents.set(x + ',0', p); return p; };
+  const p1 = mk(0, 0), p2 = mk(6, 2);
+  const pairedBefore = p1.findMate() === p2 && p2.findMate() === p1;
+  // 幽灵预览：3 号（朝西）在 (3,0)，未铺设
+  const ghost = new PipeToGround('pipe-to-ground', 3, 0); ghost.dir = 2;
+  const ghostMate = ghost.findMate();
+  // 放置后：把 3 号真实铺进去
+  const p3 = mk(3, 2);
+  return {
+    pairedBefore,
+    ghostPairs1: ghostMate === p1,
+    ghostPairs2: ghostMate === p2,
+    after: {
+      p1Mate3: p1.findMate() === p3,
+      p3Mate1: p3.findMate() === p1,
+      p2Mate: p2.findMate(),
+    },
+  };
+}
+const im = insertMiddle();
+console.log('插入配对（3 号插中间）:', JSON.stringify(im, (k, v) => (v && v.x !== undefined ? 'pipe@' + v.x : v)));
+check('插入前 1-2 保持配对', im.pairedBefore === true, 'pairedBefore=' + im.pairedBefore);
+check('幽灵预览：3 号可配对（预测放置后与 1 配对）', im.ghostPairs1 === true && im.ghostPairs2 === false, 'ghostMate=' + (im.ghostPairs1 ? 'p1' : (im.ghostPairs2 ? 'p2' : 'null')));
+check('放置后 1-3 配对', im.after.p1Mate3 === true && im.after.p3Mate1 === true, JSON.stringify(im.after));
+check('放置后 1-2 自然断开（2 号失配）', im.after.p2Mate === null, 'p2Mate=' + (im.after.p2Mate ? '有' : 'null'));
+
+// ===== 口对口 vs 背对背：只有背靠背才配对、才显示配对框 =====
+function mouthVsBack() {
+  const { PipeToGround, __ents } = buildPair(UG_SRC, PIPE_SRC);
+  __ents.clear();
+  const mk = (x, dir) => { const p = new PipeToGround('pipe-to-ground', x, 0); p.dir = dir; __ents.set(x + ',0', p); return p; };
+  // 口对口（隔空、朝向相背）：1@0 朝西、2@3 朝东 → 各自朝向相反方向，不配对
+  const a1 = mk(0, 2), a2 = mk(3, 0);
+  const mouthGap = { m1: a1.findMate(), m2: a2.findMate(), p1: a1.isPaired(), p2: a2.isPaired() };
+  __ents.clear();
+  // 紧挨口对口（距离 1）：3@0 朝西、4@1 朝东 → 不配对，但管口相邻可直接互通
+  const b1 = mk(0, 2), b2 = mk(1, 0);
+  const mouthAdj = { m1: b1.findMate(), m2: b2.findMate(), p1: b1.isPaired(), p2: b2.isPaired(), opp: b1._adjacentMouthOpposite() === b2 };
+  __ents.clear();
+  // 背靠背（距离 3）：5@0 朝东、6@3 朝西 → 配对
+  const c1 = mk(0, 0), c2 = mk(3, 2);
+  const backPair = { m1: c1.findMate() === c2, m2: c2.findMate() === c1 };
+  return { mouthGap, mouthAdj, backPair };
+}
+const mv = mouthVsBack();
+console.log('口对口/背对背:', JSON.stringify(mv, (k, v) => (v && v.x !== undefined ? 'pipe@' + v.x : v)));
+check('口对口（隔空）：不配对、无配对端', mv.mouthGap.m1 === null && mv.mouthGap.m2 === null && !mv.mouthGap.p1 && !mv.mouthGap.p2, JSON.stringify(mv.mouthGap));
+check('口对口（紧挨）：仍不配对', !mv.mouthAdj.p1 && !mv.mouthAdj.p2, JSON.stringify(mv.mouthAdj));
+check('口对口（紧挨）：管口相邻可直接互通', mv.mouthAdj.opp === true, 'opp=' + mv.mouthAdj.opp);
+check('背靠背：配对（绿色框线只在此显示）', mv.backPair.m1 && mv.backPair.m2, JSON.stringify(mv.backPair));
+
+// ===== 背靠背紧挨（距离 1、无间隔）：也要配对连通 =====
+function backAdjacent() {
+  const { PipeToGround, __ents } = buildPair(UG_SRC, PIPE_SRC);
+  __ents.clear();
+  const mk = (x, dir) => { const p = new PipeToGround('pipe-to-ground', x, 0); p.dir = dir; __ents.set(x + ',0', p); return p; };
+  const a = mk(0, 0), b = mk(1, 2);   // 朝东 + 朝西，紧挨背靠背
+  return { m1: a.findMate() === b, m2: b.findMate() === a, p1: a.isPaired(), p2: b.isPaired() };
+}
+const ba = backAdjacent();
+console.log('背靠背紧挨:', JSON.stringify(ba));
+check('背靠背紧挨（距离 1）：双向配对连通', ba.m1 && ba.m2 && ba.p1 && ba.p2, JSON.stringify(ba));
+
 process.exit(fail ? 1 : 0);

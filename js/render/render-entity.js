@@ -315,6 +315,11 @@ function drawGhost(ctx) {
     const tmp = getGhostEnt(type);
     tmp.dir = G.ghostDir;
     tmp.w = ew; tmp.h = eh;
+    // 幽灵实体先定位到光标格：drawPipeGround / drawUnderground 内部会用 e.isPaired() /
+    // isEntrance() / isExit() 等判定（基于 e.x/e.y 扫描 entAt 找配对端），
+    // 必须在 drawEntity 之前把坐标设好——否则幽灵停留在缓存里的旧坐标（上一帧光标/原点），
+    // 配对显示会与真实摆放不一致（放置后恢复正常，正是该 bug 的现象）。
+    tmp.x = G.cursorTile.tx; tmp.y = G.cursorTile.ty;
     drawEntity(g, tmp, G.cursorTile.tx, G.cursorTile.ty, G.ghostDir, 0.55);
     g.fillStyle = chk.ok ? 'rgba(120,220,120,.18)' : 'rgba(230,80,80,.22)';
     g.fillRect(G.cursorTile.tx * TILE, G.cursorTile.ty * TILE, ew * TILE, eh * TILE);
@@ -323,7 +328,6 @@ function drawGhost(ctx) {
     g.strokeRect(G.cursorTile.tx * TILE, G.cursorTile.ty * TILE, ew * TILE, eh * TILE);
     // 地下管道铺设时：若与已有管道能背向配对，用绿色虚线框住这一对（含幽灵格）提示可配对
     if (tmp instanceof PipeToGround && typeof tmp.isPaired === 'function') {
-      tmp.x = G.cursorTile.tx; tmp.y = G.cursorTile.ty;
       const mt = tmp.findMate();
       if (mt) {
         g.strokeStyle = 'rgba(90,220,120,.95)';
@@ -336,7 +340,6 @@ function drawGhost(ctx) {
     }
     // 地下传送带铺设时：若与已有地下带能配对（同向同档，isPaired），同样用绿色虚线框住这一对（含幽灵格）
     if (tmp instanceof Underground && typeof tmp.isPaired === 'function') {
-      tmp.x = G.cursorTile.tx; tmp.y = G.cursorTile.ty;
       const mt = tmp.findMate() || tmp.findBackMate();
       if (mt) {
         g.strokeStyle = 'rgba(90,220,120,.95)';
