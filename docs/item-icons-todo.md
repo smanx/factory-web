@@ -27,16 +27,16 @@
 - [x] `turbo-splitter` 超速分流器
 - [x] `loader` 基础装载机
 - [x] `fast-loader` 高速装载机
-- [ ] `express-loader` 极速装载机
-- [ ] `turbo-loader` 超速装载机
-- [ ] `fast-splitter` 高速分流器
-- [ ] `bulk-inserter` 集装箱机械臂
-- [ ] `stack-inserter` 堆叠机械臂
-- [ ] `fast-inserter` 高速机械臂
-- [ ] `steel-chest` 钢箱
-- [ ] `creative-chest` 创造箱
-- [ ] `void-chest` 虚空箱
-- [ ] `pipe` 管道
+- [x] `express-loader` 极速装载机
+- [x] `turbo-loader` 超速装载机
+- [x] `fast-splitter` 高速分流器
+- [x] `bulk-inserter` 集装箱机械臂
+- [x] `stack-inserter` 堆叠机械臂
+- [x] `fast-inserter` 高速机械臂
+- [x] `steel-chest` 钢箱
+- [x] `creative-chest` 创造箱
+- [x] `void-chest` 虚空箱
+- [x] `pipe` 管道
 - [ ] `pipe-to-ground` 地下管道
 - [ ] `pump` 流体泵
 - [ ] `storage-tank` 储液罐

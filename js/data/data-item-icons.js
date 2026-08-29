@@ -693,4 +693,400 @@ const ITEM_CUSTOM_ICONS = {
     x.fill();
   },
 
+  // 极速装载机：蓝色机体 + 3 道速度线（速度档以速度线数量区分）
+  'express-loader': (x, r, s, col) => {
+    const g = x.createLinearGradient(-r * 0.6, -r * 0.8, r * 0.6, r * 0.6);
+    g.addColorStop(0, lightenColor(col, 0.32));
+    g.addColorStop(1, darkenColor(col, 0.32));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.75, -r * 0.8, r * 1.5, r * 1.6, r * 0.16);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.42)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 进料槽
+    x.fillStyle = '#20242a';
+    rrPath(x, -r * 0.45, -r * 0.55, r * 0.9, r * 1.1, r * 0.08);
+    x.fill();
+    // 槽内速度线（3 道）
+    x.strokeStyle = 'rgba(255,255,255,.22)';
+    x.lineWidth = Math.max(1, s * 0.035);
+    for (let i = 0; i < 4; i++) {
+      const py = -r * 0.38 + i * r * 0.28;
+      x.beginPath(); x.moveTo(-r * 0.42, py); x.lineTo(r * 0.42, py); x.stroke();
+    }
+    // 顶部指示灯（3 档）
+    x.fillStyle = 'rgba(255,255,255,.85)';
+    [-0.12, 0, 0.12].forEach(off => {
+      x.fillRect(off * r - r * 0.06, -r * 0.68, r * 0.12, r * 0.2);
+    });
+    // 出料箭头
+    x.fillStyle = 'rgba(255,255,255,.92)';
+    x.beginPath();
+    x.moveTo(-r * 0.3, r * 0.06);
+    x.lineTo(r * 0.18, r * 0.06);
+    x.lineTo(r * 0.18, -r * 0.14);
+    x.lineTo(r * 0.58, r * 0.2);
+    x.lineTo(r * 0.18, r * 0.54);
+    x.lineTo(r * 0.18, r * 0.34);
+    x.lineTo(-r * 0.3, r * 0.34);
+    x.closePath();
+    x.fill();
+  },
+
+  // 超速装载机：紫色机体 + 4 道速度线 + 双出料箭头
+  'turbo-loader': (x, r, s, col) => {
+    const g = x.createLinearGradient(-r * 0.6, -r * 0.8, r * 0.6, r * 0.6);
+    g.addColorStop(0, lightenColor(col, 0.32));
+    g.addColorStop(1, darkenColor(col, 0.32));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.75, -r * 0.8, r * 1.5, r * 1.6, r * 0.16);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.42)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 进料槽
+    x.fillStyle = '#20242a';
+    rrPath(x, -r * 0.45, -r * 0.55, r * 0.9, r * 1.1, r * 0.08);
+    x.fill();
+    // 槽内速度线（5 道，档位最高）
+    x.strokeStyle = 'rgba(255,255,255,.25)';
+    x.lineWidth = Math.max(1, s * 0.035);
+    for (let i = 0; i < 5; i++) {
+      const py = -r * 0.44 + i * r * 0.23;
+      x.beginPath(); x.moveTo(-r * 0.42, py); x.lineTo(r * 0.42, py); x.stroke();
+    }
+    // 顶部指示灯（4 档）
+    x.fillStyle = 'rgba(255,255,255,.85)';
+    [-0.18, -0.06, 0.06, 0.18].forEach(off => {
+      x.fillRect(off * r - r * 0.05, -r * 0.7, r * 0.1, r * 0.18);
+    });
+    // 双出料箭头（超速吞吐）
+    x.fillStyle = 'rgba(255,255,255,.92)';
+    [-0.28, 0.16].forEach(off => {
+      x.beginPath();
+      x.moveTo(off * r, r * 0.06);
+      x.lineTo(off * r + r * 0.3, r * 0.06);
+      x.lineTo(off * r + r * 0.3, -r * 0.12);
+      x.lineTo(off * r + r * 0.58, r * 0.2);
+      x.lineTo(off * r + r * 0.3, r * 0.52);
+      x.lineTo(off * r + r * 0.3, r * 0.34);
+      x.lineTo(off * r, r * 0.34);
+      x.closePath();
+      x.fill();
+    });
+  },
+
+  // 高速分流器：红色一入两出带体（同分流器造型，配色区分档位）
+  'fast-splitter': (x, r, s, col) => {
+    const band = (px, py, w, h) => {
+      x.fillStyle = darkenColor(col, 0.4);
+      rrPath(x, px, py, w, h, r * 0.08);
+      x.fill();
+    };
+    // 左侧入带
+    band(-r * 0.95, -r * 0.13, r * 1.15, r * 0.26);
+    // 右上 / 右下分支
+    x.save(); x.translate(r * 0.12, 0); x.rotate(-0.62);
+    band(-r * 0.05, -r * 0.12, r * 0.9, r * 0.24);
+    x.restore();
+    x.save(); x.translate(r * 0.12, 0); x.rotate(0.62);
+    band(-r * 0.05, -r * 0.12, r * 0.9, r * 0.24);
+    x.restore();
+    // 三端白色小箭头
+    const tri = (tx, ty, ang) => {
+      x.save(); x.translate(tx, ty); x.rotate(ang);
+      x.fillStyle = 'rgba(255,255,255,.9)';
+      x.beginPath();
+      x.moveTo(-r * 0.14, -r * 0.12);
+      x.lineTo(r * 0.06, -r * 0.12);
+      x.lineTo(r * 0.06, -r * 0.24);
+      x.lineTo(r * 0.3, 0);
+      x.lineTo(r * 0.06, r * 0.24);
+      x.lineTo(r * 0.06, r * 0.12);
+      x.lineTo(-r * 0.14, r * 0.12);
+      x.closePath();
+      x.fill();
+      x.restore();
+    };
+    tri(-r * 0.9, 0, 0);
+    tri(r * 0.6, -r * 0.42, -0.62);
+    tri(r * 0.6, r * 0.42, 0.62);
+  },
+
+  // 集装箱机械臂：绿机体 + 粗壮双关节臂 + 宽口双爪夹持货物
+  'bulk-inserter': (x, r, s, col) => {
+    // 底座
+    x.fillStyle = darkenColor(col, 0.38);
+    rrPath(x, -r * 0.55, r * 0.3, r * 1.1, r * 0.6, r * 0.15);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.4)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    // 立柱
+    x.fillStyle = col;
+    rrPath(x, -r * 0.2, -r * 0.02, r * 0.4, r * 0.52, r * 0.1);
+    x.fill();
+    // 主臂（更粗）
+    x.strokeStyle = lightenColor(col, 0.18);
+    x.lineCap = 'round';
+    x.lineWidth = r * 0.28;
+    x.beginPath(); x.moveTo(r * 0.02, r * 0.14); x.lineTo(r * 0.44, -r * 0.4); x.stroke();
+    // 臂身高光
+    x.strokeStyle = 'rgba(255,255,255,.35)';
+    x.lineWidth = r * 0.07;
+    x.beginPath(); x.moveTo(r * 0.06, r * 0.08); x.lineTo(r * 0.4, -r * 0.36); x.stroke();
+    // 关节点
+    x.fillStyle = lightenColor(col, 0.4);
+    x.beginPath(); x.arc(r * 0.44, -r * 0.4, r * 0.1, 0, 7); x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.35)';
+    x.lineWidth = Math.max(1, s * 0.03);
+    x.stroke();
+    // 宽口双爪（夹持两件货物）
+    x.strokeStyle = '#e08a3a';
+    x.lineWidth = r * 0.13;
+    x.beginPath();
+    x.moveTo(r * 0.34, -r * 0.48); x.lineTo(r * 0.52, -r * 0.7);
+    x.moveTo(r * 0.72, -r * 0.4); x.lineTo(r * 0.9, -r * 0.58);
+    x.stroke();
+    // 被夹持的两件货物
+    const g = x.createRadialGradient(r * 0.5, -r * 0.5, r * 0.02, r * 0.5, -r * 0.5, r * 0.2);
+    g.addColorStop(0, lightenColor(col, 0.5));
+    g.addColorStop(1, darkenColor(col, 0.28));
+    x.fillStyle = g;
+    x.beginPath(); x.arc(r * 0.46, -r * 0.52, r * 0.12, 0, 7); x.fill();
+    x.beginPath(); x.arc(r * 0.66, -r * 0.42, r * 0.12, 0, 7); x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.3)';
+    x.lineWidth = Math.max(1, s * 0.025);
+    x.stroke();
+  },
+
+  // 堆叠机械臂：亮绿机体 + 竖叠 3 件货物的机械爪
+  'stack-inserter': (x, r, s, col) => {
+    // 底座
+    x.fillStyle = darkenColor(col, 0.38);
+    rrPath(x, -r * 0.55, r * 0.3, r * 1.1, r * 0.6, r * 0.15);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.4)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    // 立柱
+    x.fillStyle = col;
+    rrPath(x, -r * 0.2, -r * 0.02, r * 0.4, r * 0.52, r * 0.1);
+    x.fill();
+    // 主臂
+    x.strokeStyle = lightenColor(col, 0.15);
+    x.lineCap = 'round';
+    x.lineWidth = r * 0.26;
+    x.beginPath(); x.moveTo(r * 0.02, r * 0.14); x.lineTo(r * 0.46, -r * 0.38); x.stroke();
+    // 臂身高光
+    x.strokeStyle = 'rgba(255,255,255,.35)';
+    x.lineWidth = r * 0.06;
+    x.beginPath(); x.moveTo(r * 0.06, r * 0.08); x.lineTo(r * 0.42, -r * 0.34); x.stroke();
+    // 竖叠 3 件货物（分层堆叠特征）
+    const g = x.createLinearGradient(r * 0.3, -r * 0.9, r * 0.3, -r * 0.3);
+    g.addColorStop(0, lightenColor(col, 0.45));
+    g.addColorStop(1, darkenColor(col, 0.25));
+    x.fillStyle = g;
+    [-0.72, -0.5, -0.28].forEach(off => {
+      rrPath(x, r * 0.2, off * r, r * 0.42, r * 0.18, r * 0.05);
+      x.fill();
+    });
+    x.strokeStyle = 'rgba(0,0,0,.35)';
+    x.lineWidth = Math.max(1, s * 0.025);
+    [-0.72, -0.5, -0.28].forEach(off => {
+      rrPath(x, r * 0.2, off * r, r * 0.42, r * 0.18, r * 0.05);
+      x.stroke();
+    });
+    // 夹爪从上方压住
+    x.strokeStyle = '#e08a3a';
+    x.lineWidth = r * 0.12;
+    x.beginPath();
+    x.moveTo(r * 0.14, -r * 0.8); x.lineTo(r * 0.14, -r * 0.2);
+    x.moveTo(r * 0.72, -r * 0.8); x.lineTo(r * 0.72, -r * 0.2);
+    x.stroke();
+  },
+
+  // 高速机械臂：蓝色机体（同电力机械臂造型，配色区分档位）
+  'fast-inserter': (x, r, s, col) => {
+    // 底座
+    x.fillStyle = darkenColor(col, 0.35);
+    rrPath(x, -r * 0.55, r * 0.28, r * 1.1, r * 0.62, r * 0.15);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.4)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.stroke();
+    // 立柱
+    x.fillStyle = col;
+    rrPath(x, -r * 0.18, -r * 0.02, r * 0.36, r * 0.5, r * 0.1);
+    x.fill();
+    // 机械臂
+    x.strokeStyle = lightenColor(col, 0.18);
+    x.lineCap = 'round';
+    x.lineWidth = r * 0.22;
+    x.beginPath(); x.moveTo(r * 0.02, r * 0.12); x.lineTo(r * 0.42, -r * 0.42); x.stroke();
+    // 臂身高光
+    x.strokeStyle = 'rgba(255,255,255,.35)';
+    x.lineWidth = r * 0.06;
+    x.beginPath(); x.moveTo(r * 0.06, r * 0.06); x.lineTo(r * 0.38, -r * 0.38); x.stroke();
+    // 橙色夹爪
+    x.strokeStyle = '#e08a3a';
+    x.lineWidth = r * 0.13;
+    x.beginPath();
+    x.moveTo(r * 0.3, -r * 0.46); x.lineTo(r * 0.46, -r * 0.66);
+    x.moveTo(r * 0.52, -r * 0.34); x.lineTo(r * 0.72, -r * 0.5);
+    x.stroke();
+    // 速度弧线（体现高速）
+    x.strokeStyle = 'rgba(255,255,255,.45)';
+    x.lineWidth = Math.max(1, s * 0.035);
+    x.beginPath(); x.arc(-r * 0.15, r * 0.05, r * 0.72, -1.15, -0.35); x.stroke();
+  },
+
+  // 钢箱：钢灰色铆接箱体 + 交叉加固梁 + 金属包角
+  'steel-chest': (x, r, s, col) => {
+    const g = x.createLinearGradient(-r * 0.8, -r * 0.75, r * 0.8, r * 0.75);
+    g.addColorStop(0, lightenColor(col, 0.32));
+    g.addColorStop(1, darkenColor(col, 0.32));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.8, -r * 0.7, r * 1.6, r * 1.4, r * 0.1);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.42)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 交叉加固梁
+    x.strokeStyle = darkenColor(col, 0.45);
+    x.lineWidth = Math.max(1.5, s * 0.07);
+    x.beginPath();
+    x.moveTo(-r * 0.66, -r * 0.56); x.lineTo(r * 0.66, r * 0.56);
+    x.moveTo(r * 0.66, -r * 0.56); x.lineTo(-r * 0.66, r * 0.56);
+    x.stroke();
+    // 梁高光
+    x.strokeStyle = 'rgba(255,255,255,.25)';
+    x.lineWidth = Math.max(1, s * 0.025);
+    x.beginPath();
+    x.moveTo(-r * 0.66, -r * 0.5); x.lineTo(r * 0.66, r * 0.62);
+    x.stroke();
+    // 四角铆钉
+    x.fillStyle = lightenColor(col, 0.45);
+    [[-0.62, -0.52], [0.62, -0.52], [-0.62, 0.52], [0.62, 0.52]].forEach(p => {
+      x.beginPath(); x.arc(p[0] * r, p[1] * r, r * 0.07, 0, 7); x.fill();
+    });
+    // 顶部箱盖线
+    x.strokeStyle = 'rgba(0,0,0,.3)';
+    x.lineWidth = Math.max(1, s * 0.035);
+    x.beginPath(); x.moveTo(-r * 0.8, -r * 0.38); x.lineTo(r * 0.8, -r * 0.38); x.stroke();
+  },
+
+  // 创造箱：绿色箱体 + 无限符号 + 微光粒
+  'creative-chest': (x, r, s, col) => {
+    const g = x.createLinearGradient(-r * 0.8, -r * 0.75, r * 0.8, r * 0.75);
+    g.addColorStop(0, lightenColor(col, 0.38));
+    g.addColorStop(1, darkenColor(col, 0.3));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.8, -r * 0.7, r * 1.6, r * 1.4, r * 0.12);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.42)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 箱盖线
+    x.strokeStyle = 'rgba(0,0,0,.3)';
+    x.lineWidth = Math.max(1, s * 0.035);
+    x.beginPath(); x.moveTo(-r * 0.8, -r * 0.36); x.lineTo(r * 0.8, -r * 0.36); x.stroke();
+    // 发光无限符号
+    x.strokeStyle = '#8af0a0';
+    x.lineWidth = Math.max(1.5, s * 0.09);
+    x.lineCap = 'round';
+    x.beginPath();
+    x.ellipse(-r * 0.2, r * 0.12, r * 0.24, r * 0.16, 0, 0, 7);
+    x.stroke();
+    x.beginPath();
+    x.ellipse(r * 0.2, r * 0.12, r * 0.24, r * 0.16, 0, 0, 7);
+    x.stroke();
+    // 中心亮点
+    x.fillStyle = 'rgba(255,255,255,.9)';
+    x.beginPath(); x.arc(0, r * 0.12, r * 0.06, 0, 7); x.fill();
+    // 微光粒子
+    x.fillStyle = 'rgba(200,255,210,.6)';
+    [[-0.55, -0.5], [0.6, -0.42], [-0.35, 0.55]].forEach(p => {
+      x.beginPath(); x.arc(p[0] * r, p[1] * r, r * 0.05, 0, 7); x.fill();
+    });
+  },
+
+  // 虚空箱：深色箱体 + 红色叉号 + 内吸暗涡
+  'void-chest': (x, r, s, col) => {
+    const g = x.createLinearGradient(-r * 0.8, -r * 0.75, r * 0.8, r * 0.75);
+    g.addColorStop(0, lightenColor(col, 0.28));
+    g.addColorStop(1, darkenColor(col, 0.42));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.8, -r * 0.7, r * 1.6, r * 1.4, r * 0.12);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.5)';
+    x.lineWidth = Math.max(1, s * 0.045);
+    x.stroke();
+    // 箱盖线
+    x.strokeStyle = 'rgba(0,0,0,.4)';
+    x.lineWidth = Math.max(1, s * 0.035);
+    x.beginPath(); x.moveTo(-r * 0.8, -r * 0.36); x.lineTo(r * 0.8, -r * 0.36); x.stroke();
+    // 内吸暗涡
+    const vg = x.createRadialGradient(0, r * 0.14, r * 0.04, 0, r * 0.14, r * 0.34);
+    vg.addColorStop(0, '#0a0c10');
+    vg.addColorStop(1, 'rgba(10,12,16,0)');
+    x.fillStyle = vg;
+    x.beginPath(); x.arc(0, r * 0.14, r * 0.34, 0, 7); x.fill();
+    // 红色叉号
+    x.strokeStyle = '#e05a5a';
+    x.lineWidth = Math.max(2, s * 0.11);
+    x.lineCap = 'round';
+    x.beginPath();
+    x.moveTo(-r * 0.3, -r * 0.16); x.lineTo(r * 0.3, r * 0.44);
+    x.moveTo(r * 0.3, -r * 0.16); x.lineTo(-r * 0.3, r * 0.44);
+    x.stroke();
+    // 叉号外发光描边
+    x.strokeStyle = 'rgba(224,90,90,.35)';
+    x.lineWidth = Math.max(3.5, s * 0.19);
+    x.beginPath();
+    x.moveTo(-r * 0.3, -r * 0.16); x.lineTo(r * 0.3, r * 0.44);
+    x.moveTo(r * 0.3, -r * 0.16); x.lineTo(-r * 0.3, r * 0.44);
+    x.stroke();
+  },
+
+  // 管道：深灰金属管段 + 双法兰接口 + 管身高光
+  'pipe': (x, r, s, col) => {
+    // 管身（横向）
+    const g = x.createLinearGradient(0, -r * 0.45, 0, r * 0.45);
+    g.addColorStop(0, lightenColor(col, 0.38));
+    g.addColorStop(0.45, lightenColor(col, 0.05));
+    g.addColorStop(1, darkenColor(col, 0.4));
+    x.fillStyle = g;
+    x.fillRect(-r * 0.62, -r * 0.42, r * 1.24, r * 0.84);
+    // 管身高光
+    x.fillStyle = 'rgba(255,255,255,.3)';
+    x.fillRect(-r * 0.62, -r * 0.3, r * 1.24, r * 0.14);
+    // 两端法兰
+    const flange = (px) => {
+      const fg = x.createLinearGradient(px - r * 0.16, 0, px + r * 0.16, 0);
+      fg.addColorStop(0, lightenColor(col, 0.32));
+      fg.addColorStop(1, darkenColor(col, 0.32));
+      x.fillStyle = fg;
+      rrPath(x, px - r * 0.16, -r * 0.62, r * 0.32, r * 1.24, r * 0.06);
+      x.fill();
+      x.strokeStyle = 'rgba(0,0,0,.42)';
+      x.lineWidth = Math.max(1, s * 0.04);
+      x.stroke();
+      // 法兰螺栓
+      x.fillStyle = lightenColor(col, 0.45);
+      [-0.4, 0.4].forEach(off => {
+        x.beginPath(); x.arc(px, off * r, r * 0.055, 0, 7); x.fill();
+      });
+    };
+    flange(-r * 0.55);
+    flange(r * 0.55);
+    // 中段管箍
+    x.fillStyle = darkenColor(col, 0.28);
+    rrPath(x, -r * 0.14, -r * 0.5, r * 0.28, r * 1.0, r * 0.05);
+    x.fill();
+    x.strokeStyle = 'rgba(0,0,0,.35)';
+    x.stroke();
+  },
+
 };
