@@ -141,6 +141,19 @@ class Belt extends Entity {
     for (const o of nb.items) if (o.pos >= 0.5) return true;
     return false;
   }
+  // 判断来自某侧面（相对本带的偏移 ox,oy）的输入当前是否「真能进入」本带：
+  // 其目标近侧车道尾部（pos 最小端）保有 ≥ BELT_SPACING 的空间——这是侧面输入
+  // 唯一的可能落点（候选 0.45 被占时可退到 0，而 0 可用 ⟺ 尾部空间 ≥ 间隔）。
+  // 用于 T 型调度让位判定：对侧「有货待进」但目标车道堵塞时它永远进不来，
+  // 不应据此让当前侧持续让位（否则对侧堵死会连累空闲车道一侧被永久阻塞）。
+  _sideCanEnter(ox, oy) {
+    const fd = dirIndexOf(-ox, -oy);
+    if (fd < 0) return false;
+    const lane = sideOfLane(this, fd);
+    let back = Infinity;
+    for (const o of this.items) if (this.laneOf(o) === lane) back = Math.min(back, o.pos);
+    return back >= BELT_SPACING;
+  }
   // 是否背面存在同向直行带（即“直线输入”，与出口同一直线）。
   _hasStraightBack() {
     const bx = this.x - DX[this.dir], by = this.y - DY[this.dir];
@@ -180,14 +193,21 @@ class Belt extends Entity {
       //    优先级随 2 号带流动方向改变，而不是盲目轮流。
       //    - 优先侧（流向右侧）：对侧也有货且本侧刚进过时才让位（防饿死，保证对侧也有机会）。
       //    - 非优先侧（流向左侧）：优先侧有货待进入时一律让位。
+      //    - 让位前提：对侧必须「真能进入」（其目标近侧车道尾部有空间）。对侧目标车道
+      //      堵塞时它永远进不来、_lastSideIn 永远不会刷新为对侧，若仍盲目让位，
+      //      会把空闲车道一侧的输入永久阻塞（如 lane1 满时 lane0 侧的 A 带无法流入）。
       if (!haveBack && inp.length >= 2) {
         const pref = 0; // sides[0] 恒为接收带流向右侧的输入
         if (side === pref) {
           const other = inp[1 - side];
-          if (other && this._beltIncoming(this.x + other[0], this.y + other[1]) && this._lastSideIn === side) return false;
+          if (other && this._beltIncoming(this.x + other[0], this.y + other[1])
+            && this._sideCanEnter(other[0], other[1])
+            && this._lastSideIn === side) return false;
         } else {
           const pri = inp[pref];
-          if (pri && this._beltIncoming(this.x + pri[0], this.y + pri[1]) && this._lastSideIn !== pref) return false;
+          if (pri && this._beltIncoming(this.x + pri[0], this.y + pri[1])
+            && this._sideCanEnter(pri[0], pri[1])
+            && this._lastSideIn !== pref) return false;
         }
       }
       this._lastSideIn = side;
