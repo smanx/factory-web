@@ -37,16 +37,16 @@
 - [x] `creative-chest` 创造箱
 - [x] `void-chest` 虚空箱
 - [x] `pipe` 管道
-- [ ] `pipe-to-ground` 地下管道
-- [ ] `pump` 流体泵
-- [ ] `storage-tank` 储液罐
-- [ ] `creative-pipe` 创造管道
-- [ ] `void-pipe` 虚空管道
-- [ ] `creative-belt` 创造传送带
-- [ ] `void-belt` 虚空传送带
-- [ ] `cliff-explosives` 峭壁炸药
-- [ ] `car` 装甲车
-- [ ] `tank` 坦克
+- [x] `pipe-to-ground` 地下管道
+- [x] `pump` 流体泵
+- [x] `storage-tank` 储液罐
+- [x] `creative-pipe` 创造管道
+- [x] `void-pipe` 虚空管道
+- [x] `creative-belt` 创造传送带
+- [x] `void-belt` 虚空传送带
+- [x] `cliff-explosives` 峭壁炸药
+- [x] `car` 装甲车
+- [x] `tank` 坦克
 - [ ] `spidertron` 蜘蛛机器人
 - [ ] `spidertron-remote` 蜘蛛遥控器
 - [ ] `rail` 铁轨
