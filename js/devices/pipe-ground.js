@@ -3,8 +3,9 @@
 // ===== 地下管道：背向摆两座（朝向相反，最远 PIPE_GROUND_MAX 格）自动配对，从地下穿行流体 =====
 // 管道口背向相对的两座自动配对；一条线上有多个管道时只与最近的背向管道配对（同向的不配对）。
 // 可跨过传送带/管道等障碍，容量与普通管道一致（PIPE_CAP）。
-// 地下管道与普通管道一样是“互通”的：不分入口/出口，正前方、背侧的地面管道以及配对的
-// 另一端地下管道之间按压差双向均压流动，流体可从任一端进入、从任一端流出。
+// 只有“管口”（this.dir 的反向，即视觉上伸出连接管段的那一侧）能接普通管道与流体；
+// 背向（this.dir 正向）不接任何管道，只通过与配对的另一端地下管道（地下管段）互通流体。
+// 不分入口/出口：流体可从管口进入、从配对端流出，反之亦然。
 //
 // 【中间可放设备】两座之间可以放任意设备（建筑/机器/传送带……），这正是地下管道的用途：
 // 地下管段从这些设备的“下方”穿过，因此**不会被中间的设备阻挡、也不会与它们连通流体**。
@@ -85,13 +86,13 @@ class PipeToGround extends Entity {
   }
   // 是否已配对：同轴反向（朝向相反）的另一端有配对的地下管道
   isPaired() { return !!this.findMate(); }
-  // 相邻（距离 1）且口对口（背向）的地下管道：不算配对关系，但像普通管道一样可直接互通。
+  // 相邻（距离 1）且在管口侧（this.dir 反向）口对口相对的地下管道：不算配对关系，但像普通管道一样可直接互通。
+  // 背向（this.dir 正向）不接任何管道——地下管道只有管口一个方向能接管道/流体（配对走 findMate 的地下长段）。
   // 这与 findMate（仅距离 ≥2 的配对面）分开，配对只管地下穿行的长段，互通则就近道连通。
   _adjacentMouthOpposite() {
-    const front = entAt(this.x + DX[this.dir], this.y + DY[this.dir]);
-    const back = entAt(this.x - DX[this.dir], this.y - DY[this.dir]);
+    const mouth = entAt(this.x - DX[this.dir], this.y - DY[this.dir]);
     const inner = t => t instanceof PipeToGround && PipeToGround._parallel(t.dir, this.dir);
-    return inner(front) ? front : inner(back) ? back : null;
+    return inner(mouth) ? mouth : null;
   }
   // 两条地下管道只有“背向”（朝向相反，同在一条直线上）才配对。
   // 管道口背靠背相对，地下运行段在两座之间相接；同向的面向同一方、不会在地下相接，因此不配对。
@@ -101,14 +102,12 @@ class PipeToGround extends Entity {
     this._balT = (this._balT || 0) - dt;
     if (this._balT > 0) return;
     this._balT = 0.05;
-    // 双向互通：正前方、背侧的地面管道，以及与它配对的另一端地下管道，
-    // 都作为“邻居”按压差互相匀液——流体可从任一端进入、从任一端流出。
-    const back = entAt(this.x - DX[this.dir], this.y - DY[this.dir]);
-    const front = entAt(this.x + DX[this.dir], this.y + DY[this.dir]);
+    // 只有“管口”（this.dir 的反向）能接普通管道与流体；背向（this.dir 正向）不接任何管道。
+    // 邻居 = 管口侧的地面管道 + 相邻口对口的地下管道 + 配对的另一端地下管道（地下管段互通）。
+    const mouth = entAt(this.x - DX[this.dir], this.y - DY[this.dir]);
     const mate = this.findMate();
     const conns = [];
-    if (back instanceof Pipe) conns.push(back);
-    if (front instanceof Pipe) conns.push(front);
+    if (mouth instanceof Pipe) conns.push(mouth);
     if (mate) conns.push(mate);
     // 相邻口对口（不配对）的地下管道也能就近互通
     const mouthOpp = this._adjacentMouthOpposite();
@@ -202,7 +201,7 @@ function pipeGroundPanelHtml(e) {
   h += row('容量', e.total() + ' / ' + PIPE_CAP, 'cap');
   if (Object.keys(agg).length) h += '<button data-action="drain" id="btn-pgt-takeout">直接清空</button>';
   h += '<div class="status"></div>';
-  h += '<div class="dim">地下管道：背向摆两座（朝向相反，最远 ' + PIPE_GROUND_MAX + ' 格）自动配对，从地下穿行流体。与普通管道一样互通，不分入口/出口，正前方与背侧管道及配对端均按压差双向输送。<b>两座中间可以放任意设备</b>（建筑/机器/传送带/管道……），管段从设备下方穿过，不会被阻挡也不会与设备连通；只有峭壁/水面会切断地下管段。一条线上多个管道时只与最近的背向管道配对。R 旋转方向。</div>';
+  h += '<div class="dim">地下管道：背向摆两座（朝向相反，最远 ' + PIPE_GROUND_MAX + ' 格）自动配对，从地下穿行流体。只有<b>管口</b>（管道伸出的那一侧）能接普通管道与流体，背向不接管道，只与配对的另一端地下管道互通；不分入口/出口，流体可从管口进、从配对端出。<b>两座中间可以放任意设备</b>（建筑/机器/传送带/管道……），管段从设备下方穿过，不会被阻挡也不会与设备连通；只有峭壁/水面会切断地下管段。一条线上多个管道时只与最近的背向管道配对。R 旋转方向。</div>';
   return h;
 }
 function pipeGroundPanelLive(e, api) {
@@ -212,7 +211,7 @@ function pipeGroundPanelLive(e, api) {
   api.set('cap', e.total() + ' / ' + PIPE_CAP);
   api.toggle('#btn-pgt-takeout', e.total() > 0, '直接清空');
   if (!e.isPaired()) api.status('已暂停：未配对（背向 ' + PIPE_GROUND_MAX + ' 格内无朝向相反的另一座地下管道）', 'warn');
-  else if (e.total() > 0) api.status('输送中：与前后管道双向均压流动', 'ok');
+  else if (e.total() > 0) api.status('输送中：管口与配对端双向均压流动', 'ok');
   else api.status('地下互通：等待流体进入', 'ok');
 }
 function pipeGroundTip(e) {

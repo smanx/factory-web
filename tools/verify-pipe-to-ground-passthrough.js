@@ -154,6 +154,39 @@ fresh();
   ok(Math.abs(a.total() - b.total()) <= 1, '稳态两端趋平（a=' + a.total() + ' b=' + b.total() + '）');
 }
 
+console.log('\n【管口方向性：只有管口能接管道（Bug 修复回归）】');
+// dir=0 时管口在 -dir（西侧），背向在 +dir（东侧）
+fresh();
+{
+  const a = ug(10, 5, 0);
+  const backPipe = put(new Pipe('pipe', 11, 5));   // 背向（东侧）的普通管道
+  a.giveItem('water'); a.giveItem('water');
+  for (let i = 0; i < 200; i++) a.update(0.05);   // 流体交换由地下管道 update 驱动
+  ok(backPipe.total() === 0, '背向（+dir）接普通管道：不连通、不接流体（修复后，back=' + backPipe.total() + '）');
+  ok(a.total() === 2, '背向不泄流：流体仍留在管内（a=' + a.total() + '）');
+}
+fresh();
+{
+  const a = ug(10, 5, 0);
+  const mouthPipe = put(new Pipe('pipe', 9, 5));   // 管口（西侧）的普通管道
+  a.giveItem('water'); a.giveItem('water');
+  for (let i = 0; i < 200; i++) a.update(0.05);   // 流体交换由地下管道 update 驱动
+  ok(mouthPipe.total() > 0, '管口（-dir）接普通管道：正常连通并接流体（mouth=' + mouthPipe.total() + '）');
+  ok(a.total() + mouthPipe.total() === 2, '管口侧总量守恒 = 2（实际 ' + (a.total() + mouthPipe.total()) + '）');
+}
+fresh();
+{
+  // 背对背相邻的地下管道不就近互通（背向不接管道），但背向配对的长段仍互通
+  const a = ug(10, 5, 0), b = ug(11, 5, 2);   // b 在 a 背向
+  for (let i = 0; i < 3; i++) a.giveItem('water');
+  for (let i = 0; i < 200; i++) { a.update(0.05); b.update(0.05); }
+  ok(b.total() === 0, '背对背相邻地下管道：背向不互通（b=' + b.total() + '）');
+  const c = ug(16, 5, 2);   // 与 a 背向配对（距离 6）
+  for (let i = 0; i < 200; i++) { a.update(0.05); b.update(0.05); c.update(0.05); }
+  ok(a.findMate() === c, 'a 仍与背向远端 c 配对（findMate=c）');
+  ok(c.total() > 0, '背向配对端经地下管段互通（c=' + c.total() + '）');
+}
+
 console.log('\n【地形阻挡：峭壁 / 水面切断地下管段】');
 for (const [label, tile] of [['峭壁', T_CLIFF], ['水面', T_WATER]]) {
   fresh();
@@ -174,7 +207,10 @@ fresh();
 {
   const a = ug(10, 5, 0), b = ug(11, 5, 2);
   ok(a.findMate() === null, '距离 1 相邻：不算配对（findMate=null）');
-  ok(a._adjacentMouthOpposite() === b, '距离 1 相邻：仍按口对口就近互通');
+  ok(a._adjacentMouthOpposite() === null, '距离 1 背对背（b 在 a 背向）：背向不接管道（_adjacentMouthOpposite=null）');
+  // 口对口（管口侧）的相邻地下管道仍就近互通：a 管口朝西，c 管口朝东，两两相对
+  const c = ug(9, 5, 2);
+  ok(a._adjacentMouthOpposite() === c, '距离 1 口对口（管口侧）：仍按口对口就近互通');
 }
 fresh();
 {
