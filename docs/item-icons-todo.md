@@ -173,16 +173,16 @@
 - [x] `engine-unit` 引擎单元
 - [x] `electric-engine-unit` 电动引擎
 - [x] `processing-unit` 处理器
-- [ ] `low-density-structure` 低密度结构
-- [ ] `rocket-fuel` 火箭燃料
-- [ ] `explosives` 爆炸物
-- [ ] `battery` 电池
-- [ ] `flying-robot-frame` 飞行机器人框架
-- [ ] `production-science-pack` 产能科学包
-- [ ] `utility-science-pack` 实用科学包
-- [ ] `lubricant` 润滑油
-- [ ] `sulfur` 硫磺
-- [ ] `sulfuric-acid` 硫酸
+- [x] `low-density-structure` 低密度结构
+- [x] `rocket-fuel` 火箭燃料
+- [x] `explosives` 爆炸物
+- [x] `battery` 电池
+- [x] `flying-robot-frame` 飞行机器人框架
+- [x] `production-science-pack` 产能科学包
+- [x] `utility-science-pack` 实用科学包
+- [x] `lubricant` 润滑油
+- [x] `sulfur` 硫磺
+- [x] `sulfuric-acid` 硫酸
 - [ ] `carbon` 碳
 - [ ] `carbon-fiber` 碳纤维
 - [ ] `lithium` 锂

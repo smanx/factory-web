@@ -6683,4 +6683,460 @@ const ITEM_CUSTOM_ICONS = {
     x.stroke();
   },
 
+
+  // ===== 中间产品批次 1（low-density-structure ~ sulfuric-acid，共 10 项）=====
+
+  // 低密度结构：轻质蜂窝夹层板，蜂窝六边形 + 银白航空质感
+  'low-density-structure': (x, r, s, col) => {
+    const g = x.createLinearGradient(-r * 0.8, -r * 0.8, r * 0.8, r * 0.8);
+    g.addColorStop(0, '#e8edf2');
+    g.addColorStop(0.5, col);
+    g.addColorStop(1, darkenColor(col, 0.4));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.82, -r * 0.72, r * 1.64, r * 1.44, r * 0.14);
+    x.fill();
+    x.strokeStyle = 'rgba(40,50,62,.65)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    x.stroke();
+    // 蜂窝六边形阵列
+    const hex = (cx, cy, rr) => {
+      x.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const a = Math.PI / 6 + i * Math.PI / 3;
+        const px = cx + Math.cos(a) * rr, py = cy + Math.sin(a) * rr;
+        i ? x.lineTo(px, py) : x.moveTo(px, py);
+      }
+      x.closePath();
+    };
+    x.fillStyle = 'rgba(70,85,100,.35)';
+    for (let row = 0; row < 2; row++) {
+      for (let i = 0; i < 3; i++) {
+        hex(-r * 0.44 + i * r * 0.5 + (row ? r * 0.25 : 0), -r * 0.3 + row * r * 0.5, r * 0.2);
+        x.fill();
+        x.strokeStyle = 'rgba(255,255,255,.4)';
+        x.lineWidth = Math.max(0.6, s * 0.022);
+        x.stroke();
+      }
+    }
+    // 顶部斜向高光
+    x.fillStyle = 'rgba(255,255,255,.35)';
+    x.beginPath();
+    x.moveTo(-r * 0.7, -r * 0.6);
+    x.lineTo(-r * 0.3, -r * 0.6);
+    x.lineTo(r * 0.1, r * 0.6);
+    x.lineTo(-r * 0.3, r * 0.6);
+    x.closePath();
+    x.fill();
+  },
+
+  // 火箭燃料：橙色推进剂桶 + 火焰尾迹，示意高能燃烧
+  'rocket-fuel': (x, r, s, col) => {
+    // 燃料桶
+    const g = x.createLinearGradient(-r * 0.5, 0, r * 0.5, 0);
+    g.addColorStop(0, lightenColor(col, 0.4));
+    g.addColorStop(0.5, col);
+    g.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.52, -r * 0.8, r * 1.04, r * 1.15, r * 0.16);
+    x.fill();
+    x.strokeStyle = 'rgba(80,40,8,.65)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    x.stroke();
+    // 桶箍两道
+    x.strokeStyle = 'rgba(60,30,5,.5)';
+    x.lineWidth = Math.max(0.8, s * 0.035);
+    x.beginPath();
+    x.moveTo(-r * 0.52, -r * 0.4); x.lineTo(r * 0.52, -r * 0.4);
+    x.moveTo(-r * 0.52, r * 0.12); x.lineTo(r * 0.52, r * 0.12);
+    x.stroke();
+    // 危险火焰标记（三角形 + 火苗）
+    x.fillStyle = '#1c1206';
+    x.beginPath();
+    x.moveTo(0, -r * 0.24);
+    x.lineTo(-r * 0.26, r * 0.3);
+    x.lineTo(r * 0.26, r * 0.3);
+    x.closePath();
+    x.fill();
+    x.fillStyle = '#ffd23e';
+    x.beginPath();
+    x.moveTo(0, -r * 0.12);
+    x.quadraticCurveTo(-r * 0.14, r * 0.06, 0, r * 0.24);
+    x.quadraticCurveTo(r * 0.14, r * 0.06, 0, -r * 0.12);
+    x.fill();
+    // 底部喷口
+    x.fillStyle = '#5c626a';
+    rrPath(x, -r * 0.3, r * 0.35, r * 0.6, r * 0.14, r * 0.05);
+    x.fill();
+    // 火焰尾迹
+    const fg = x.createLinearGradient(0, r * 0.45, 0, r * 0.95);
+    fg.addColorStop(0, '#ffe066');
+    fg.addColorStop(0.5, '#ff8c2e');
+    fg.addColorStop(1, 'rgba(255,80,20,0)');
+    x.fillStyle = fg;
+    x.beginPath();
+    x.moveTo(-r * 0.22, r * 0.46);
+    x.quadraticCurveTo(0, r * 0.7, r * 0.22, r * 0.46);
+    x.quadraticCurveTo(0, r * 1.05, -r * 0.22, r * 0.46);
+    x.fill();
+  },
+
+  // 爆炸物：纸质炸药包 + 引线火花，橙红警戒色
+  'explosives': (x, r, s, col) => {
+    // 三根炸药棒捆
+    const stick = (ox) => {
+      const g = x.createLinearGradient(ox - r * 0.16, 0, ox + r * 0.16, 0);
+      g.addColorStop(0, lightenColor(col, 0.35));
+      g.addColorStop(0.55, col);
+      g.addColorStop(1, darkenColor(col, 0.45));
+      x.fillStyle = g;
+      rrPath(x, ox - r * 0.17, -r * 0.35, r * 0.34, r * 1.3, r * 0.1);
+      x.fill();
+      x.strokeStyle = 'rgba(70,20,8,.6)';
+      x.lineWidth = Math.max(0.8, s * 0.035);
+      x.stroke();
+    };
+    stick(-r * 0.36); stick(0); stick(r * 0.36);
+    // 捆扎带
+    x.fillStyle = 'rgba(50,28,10,.75)';
+    x.fillRect(-r * 0.56, -r * 0.12, r * 1.12, r * 0.16);
+    // 引线
+    x.strokeStyle = '#c9b48a';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.lineCap = 'round';
+    x.beginPath();
+    x.moveTo(0, -r * 0.35);
+    x.quadraticCurveTo(r * 0.3, -r * 0.7, r * 0.5, -r * 0.62);
+    x.stroke();
+    // 火花
+    x.fillStyle = '#ffd23e';
+    x.beginPath(); x.arc(r * 0.54, -r * 0.64, r * 0.1, 0, 7); x.fill();
+    x.strokeStyle = '#ff8c2e';
+    x.lineWidth = Math.max(0.7, s * 0.03);
+    for (let i = 0; i < 5; i++) {
+      const a = -Math.PI / 2 + (i - 2) * 0.5;
+      x.beginPath();
+      x.moveTo(r * 0.54 + Math.cos(a) * r * 0.14, -r * 0.64 + Math.sin(a) * r * 0.14);
+      x.lineTo(r * 0.54 + Math.cos(a) * r * 0.26, -r * 0.64 + Math.sin(a) * r * 0.26);
+      x.stroke();
+    }
+  },
+
+  // 电池：圆柱电池 + 顶盖正极 + 电量条纹
+  'battery': (x, r, s, col) => {
+    // 正极凸起
+    x.fillStyle = '#8a8f96';
+    rrPath(x, -r * 0.14, -r * 0.92, r * 0.28, r * 0.16, r * 0.04);
+    x.fill();
+    // 桶身
+    const g = x.createLinearGradient(-r * 0.55, 0, r * 0.55, 0);
+    g.addColorStop(0, lightenColor(col, 0.45));
+    g.addColorStop(0.5, col);
+    g.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.55, -r * 0.8, r * 1.1, r * 1.6, r * 0.14);
+    x.fill();
+    x.strokeStyle = 'rgba(70,58,8,.6)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    x.stroke();
+    // 顶部负极环
+    x.fillStyle = '#6d747d';
+    rrPath(x, -r * 0.44, -r * 0.88, r * 0.88, r * 0.12, r * 0.05);
+    x.fill();
+    // 电量条纹（白色闪电）
+    x.fillStyle = '#2a2410';
+    rrPath(x, -r * 0.34, -r * 0.52, r * 0.68, r * 1.06, r * 0.08);
+    x.fill();
+    x.fillStyle = '#ffe95c';
+    x.beginPath();
+    x.moveTo(r * 0.06, -r * 0.42);
+    x.lineTo(-r * 0.18, r * 0.08);
+    x.lineTo(-r * 0.02, r * 0.08);
+    x.lineTo(-r * 0.08, r * 0.44);
+    x.lineTo(r * 0.18, -r * 0.08);
+    x.lineTo(r * 0.0, -r * 0.08);
+    x.closePath();
+    x.fill();
+  },
+
+  // 飞行机器人框架：机架 + 四旋翼 + 中央核心，蓝灰科技感
+  'flying-robot-frame': (x, r, s, col) => {
+    // 四根旋翼臂（X 形）
+    x.strokeStyle = '#55606e';
+    x.lineWidth = Math.max(1.4, s * 0.07);
+    x.lineCap = 'round';
+    for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      x.beginPath();
+      x.moveTo(0, 0);
+      x.lineTo(sx * r * 0.66, sy * r * 0.55);
+      x.stroke();
+      // 旋翼环
+      x.strokeStyle = 'rgba(180,200,225,.8)';
+      x.lineWidth = Math.max(1, s * 0.045);
+      x.beginPath();
+      x.ellipse(sx * r * 0.66, sy * r * 0.55, r * 0.22, r * 0.09, sy > 0 ? 0.4 : -0.4, 0, 7);
+      x.stroke();
+      x.strokeStyle = '#55606e';
+      x.lineWidth = Math.max(1.4, s * 0.07);
+    }
+    // 中央机架
+    const g = x.createLinearGradient(-r * 0.4, -r * 0.4, r * 0.4, r * 0.4);
+    g.addColorStop(0, lightenColor(col, 0.4));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.4, -r * 0.34, r * 0.8, r * 0.68, r * 0.14);
+    x.fill();
+    x.strokeStyle = 'rgba(20,32,48,.7)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    x.stroke();
+    // 核心发光
+    x.fillStyle = 'rgba(120,200,255,.9)';
+    x.beginPath(); x.arc(0, 0, r * 0.14, 0, 7); x.fill();
+    x.fillStyle = 'rgba(120,200,255,.3)';
+    x.beginPath(); x.arc(0, 0, r * 0.26, 0, 7); x.fill();
+  },
+
+  // 产能科学包：紫色锥形瓶 + 白色箭头加号（产能符号）
+  'production-science-pack': (x, r, s, col) => {
+    // 瓶口与瓶盖
+    x.fillStyle = '#9aa0a8';
+    rrPath(x, -r * 0.18, -r * 0.95, r * 0.36, r * 0.3, r * 0.06);
+    x.fill();
+    const g = x.createLinearGradient(-r * 0.6, -r * 0.6, r * 0.6, r * 0.8);
+    g.addColorStop(0, lightenColor(col, 0.45));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = g;
+    x.beginPath();
+    x.moveTo(-r * 0.16, -r * 0.66);
+    x.lineTo(-r * 0.7, r * 0.6);
+    x.quadraticCurveTo(-r * 0.78, r * 0.82, -r * 0.5, r * 0.82);
+    x.lineTo(r * 0.5, r * 0.82);
+    x.quadraticCurveTo(r * 0.78, r * 0.82, r * 0.7, r * 0.6);
+    x.lineTo(r * 0.16, -r * 0.66);
+    x.closePath();
+    x.fill();
+    x.strokeStyle = 'rgba(45,15,70,.65)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    x.stroke();
+    // 深色液体
+    x.fillStyle = 'rgba(60,20,100,.55)';
+    x.beginPath();
+    x.moveTo(-r * 0.5, r * 0.18);
+    x.lineTo(-r * 0.62, r * 0.6);
+    x.quadraticCurveTo(-r * 0.7, r * 0.78, -r * 0.5, r * 0.78);
+    x.lineTo(r * 0.5, r * 0.78);
+    x.quadraticCurveTo(r * 0.7, r * 0.78, r * 0.62, r * 0.6);
+    x.lineTo(r * 0.5, r * 0.18);
+    x.closePath();
+    x.fill();
+    // 瓶身高光
+    x.fillStyle = 'rgba(255,255,255,.3)';
+    x.beginPath();
+    x.moveTo(-r * 0.1, -r * 0.55);
+    x.lineTo(-r * 0.3, r * 0.1);
+    x.lineTo(-r * 0.18, r * 0.1);
+    x.lineTo(-r * 0.02, -r * 0.55);
+    x.closePath();
+    x.fill();
+    // PP 字样（产能标记）
+    x.fillStyle = '#fff';
+    x.font = 'bold ' + Math.round(r * 0.52) + 'px system-ui';
+    x.textAlign = 'center';
+    x.textBaseline = 'middle';
+    x.fillText('PP', 0, r * 0.42);
+  },
+
+  // 实用科学包：黄色锥形瓶 + 白色齿轮标记（实用符号）
+  'utility-science-pack': (x, r, s, col) => {
+    x.fillStyle = '#9aa0a8';
+    rrPath(x, -r * 0.18, -r * 0.95, r * 0.36, r * 0.3, r * 0.06);
+    x.fill();
+    const g = x.createLinearGradient(-r * 0.6, -r * 0.6, r * 0.6, r * 0.8);
+    g.addColorStop(0, lightenColor(col, 0.45));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = g;
+    x.beginPath();
+    x.moveTo(-r * 0.16, -r * 0.66);
+    x.lineTo(-r * 0.7, r * 0.6);
+    x.quadraticCurveTo(-r * 0.78, r * 0.82, -r * 0.5, r * 0.82);
+    x.lineTo(r * 0.5, r * 0.82);
+    x.quadraticCurveTo(r * 0.78, r * 0.82, r * 0.7, r * 0.6);
+    x.lineTo(r * 0.16, -r * 0.66);
+    x.closePath();
+    x.fill();
+    x.strokeStyle = 'rgba(80,72,10,.65)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    x.stroke();
+    x.fillStyle = 'rgba(120,105,15,.5)';
+    x.beginPath();
+    x.moveTo(-r * 0.5, r * 0.18);
+    x.lineTo(-r * 0.62, r * 0.6);
+    x.quadraticCurveTo(-r * 0.7, r * 0.78, -r * 0.5, r * 0.78);
+    x.lineTo(r * 0.5, r * 0.78);
+    x.quadraticCurveTo(r * 0.7, r * 0.78, r * 0.62, r * 0.6);
+    x.lineTo(r * 0.5, r * 0.18);
+    x.closePath();
+    x.fill();
+    x.fillStyle = 'rgba(255,255,255,.3)';
+    x.beginPath();
+    x.moveTo(-r * 0.1, -r * 0.55);
+    x.lineTo(-r * 0.3, r * 0.1);
+    x.lineTo(-r * 0.18, r * 0.1);
+    x.lineTo(-r * 0.02, -r * 0.55);
+    x.closePath();
+    x.fill();
+    // 齿轮标记
+    x.save();
+    x.translate(0, r * 0.42);
+    x.fillStyle = '#fff';
+    const gearR = r * 0.3;
+    for (let i = 0; i < 8; i++) {
+      x.save();
+      x.rotate(i * Math.PI / 4);
+      x.fillRect(-gearR * 0.14, -gearR * 1.25, gearR * 0.28, gearR * 0.4);
+      x.restore();
+    }
+    x.beginPath(); x.arc(0, 0, gearR * 0.9, 0, 7); x.fill();
+    x.fillStyle = col;
+    x.beginPath(); x.arc(0, 0, gearR * 0.4, 0, 7); x.fill();
+    x.restore();
+  },
+
+  // 润滑油：油壶 + 滴落油滴，金黄色
+  'lubricant': (x, r, s, col) => {
+    // 壶身
+    const g = x.createLinearGradient(-r * 0.5, -r * 0.4, r * 0.5, r * 0.8);
+    g.addColorStop(0, lightenColor(col, 0.4));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = g;
+    rrPath(x, -r * 0.55, -r * 0.35, r * 1.1, r * 1.15, r * 0.14);
+    x.fill();
+    x.strokeStyle = 'rgba(90,72,8,.6)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    x.stroke();
+    // 壶嘴（斜向上）
+    x.fillStyle = col;
+    x.beginPath();
+    x.moveTo(-r * 0.5, -r * 0.3);
+    x.lineTo(-r * 0.95, -r * 0.68);
+    x.lineTo(-r * 0.72, -r * 0.78);
+    x.lineTo(-r * 0.25, -r * 0.38);
+    x.closePath();
+    x.fill();
+    x.strokeStyle = 'rgba(90,72,8,.6)';
+    x.stroke();
+    // 壶嘴口油滴
+    x.fillStyle = '#f2dc4e';
+    x.beginPath();
+    x.moveTo(-r * 0.9, -r * 0.62);
+    x.quadraticCurveTo(-r * 1.02, -r * 0.36, -r * 0.9, -r * 0.28);
+    x.quadraticCurveTo(-r * 0.78, -r * 0.36, -r * 0.9, -r * 0.62);
+    x.fill();
+    // 握把
+    x.strokeStyle = '#8a7410';
+    x.lineWidth = Math.max(1.2, s * 0.06);
+    x.beginPath();
+    x.arc(r * 0.35, -r * 0.35, r * 0.26, -Math.PI / 2, Math.PI / 2);
+    x.stroke();
+    // 标签
+    x.fillStyle = 'rgba(255,255,255,.75)';
+    rrPath(x, -r * 0.34, r * 0.05, r * 0.68, r * 0.42, r * 0.06);
+    x.fill();
+    x.fillStyle = '#8a7410';
+    x.font = 'bold ' + Math.round(r * 0.3) + 'px system-ui';
+    x.textAlign = 'center';
+    x.textBaseline = 'middle';
+    x.fillText('LUB', 0, r * 0.27);
+  },
+
+  // 硫磺：黄色晶簇堆（三颗晶体）
+  'sulfur': (x, r, s, col) => {
+    const crystal = (cx, cy, w, h) => {
+      const g = x.createLinearGradient(cx, cy - h / 2, cx + w / 2, cy + h / 2);
+      g.addColorStop(0, '#f7ee7a');
+      g.addColorStop(0.6, col);
+      g.addColorStop(1, darkenColor(col, 0.35));
+      x.fillStyle = g;
+      x.beginPath();
+      x.moveTo(cx, cy - h / 2);
+      x.lineTo(cx + w / 2, cy - h * 0.1);
+      x.lineTo(cx + w * 0.3, cy + h / 2);
+      x.lineTo(cx - w * 0.3, cy + h / 2);
+      x.lineTo(cx - w / 2, cy - h * 0.1);
+      x.closePath();
+      x.fill();
+      x.strokeStyle = 'rgba(110,95,10,.55)';
+      x.lineWidth = Math.max(0.8, s * 0.035);
+      x.stroke();
+      // 晶面高光
+      x.fillStyle = 'rgba(255,255,240,.5)';
+      x.beginPath();
+      x.moveTo(cx, cy - h / 2);
+      x.lineTo(cx + w * 0.1, cy - h * 0.05);
+      x.lineTo(cx - w * 0.15, cy + h * 0.15);
+      x.closePath();
+      x.fill();
+    };
+    crystal(-r * 0.42, r * 0.28, r * 0.62, r * 0.75);
+    crystal(r * 0.4, r * 0.3, r * 0.58, r * 0.7);
+    crystal(0, -r * 0.18, r * 0.78, r * 1.05);
+  },
+
+  // 硫酸：试剂瓶 + 骷髅危险标签，黄绿腐蚀液
+  'sulfuric-acid': (x, r, s, col) => {
+    // 瓶口与瓶盖
+    x.fillStyle = '#9aa0a8';
+    rrPath(x, -r * 0.18, -r * 0.95, r * 0.36, r * 0.3, r * 0.06);
+    x.fill();
+    const g = x.createLinearGradient(-r * 0.6, -r * 0.6, r * 0.6, r * 0.8);
+    g.addColorStop(0, lightenColor(col, 0.45));
+    g.addColorStop(0.55, col);
+    g.addColorStop(1, darkenColor(col, 0.45));
+    x.fillStyle = g;
+    x.beginPath();
+    x.moveTo(-r * 0.16, -r * 0.66);
+    x.lineTo(-r * 0.7, r * 0.6);
+    x.quadraticCurveTo(-r * 0.78, r * 0.82, -r * 0.5, r * 0.82);
+    x.lineTo(r * 0.5, r * 0.82);
+    x.quadraticCurveTo(r * 0.78, r * 0.82, r * 0.7, r * 0.6);
+    x.lineTo(r * 0.16, -r * 0.66);
+    x.closePath();
+    x.fill();
+    x.strokeStyle = 'rgba(75,70,10,.65)';
+    x.lineWidth = Math.max(1, s * 0.05);
+    x.stroke();
+    // 腐蚀性液体
+    x.fillStyle = 'rgba(130,125,15,.55)';
+    x.beginPath();
+    x.moveTo(-r * 0.5, r * 0.18);
+    x.lineTo(-r * 0.62, r * 0.6);
+    x.quadraticCurveTo(-r * 0.7, r * 0.78, -r * 0.5, r * 0.78);
+    x.lineTo(r * 0.5, r * 0.78);
+    x.quadraticCurveTo(r * 0.7, r * 0.78, r * 0.62, r * 0.6);
+    x.lineTo(r * 0.5, r * 0.18);
+    x.closePath();
+    x.fill();
+    // 液面气泡
+    x.fillStyle = 'rgba(255,255,220,.6)';
+    x.beginPath(); x.arc(-r * 0.25, r * 0.35, r * 0.07, 0, 7); x.fill();
+    x.beginPath(); x.arc(r * 0.12, r * 0.5, r * 0.05, 0, 7); x.fill();
+    x.beginPath(); x.arc(r * 0.32, r * 0.3, r * 0.06, 0, 7); x.fill();
+    // 危险菱形标签
+    x.save();
+    x.translate(0, r * 0.02);
+    x.rotate(Math.PI / 4);
+    x.fillStyle = '#1c1a08';
+    rrPath(x, -r * 0.3, -r * 0.3, r * 0.6, r * 0.6, r * 0.07);
+    x.fill();
+    x.restore();
+    x.fillStyle = '#f2e14e';
+    x.font = 'bold ' + Math.round(r * 0.44) + 'px system-ui';
+    x.textAlign = 'center';
+    x.textBaseline = 'middle';
+    x.fillText('H₂SO₄', 0, r * 0.04);
+  },
+
 };
