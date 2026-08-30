@@ -118,8 +118,8 @@ checkNum('热交换器最低工作温度(500°C)', 500, 500);
 checkNum('导热管最低发光温度(350°C)', HEAT.heatPipeMinGlowTemp ?? null, 350);
 // 反应堆最大传热 = 10GW（官方 max_transfer）
 checkNum('反应堆最大传热(10GW=10000MW)', HEAT.reactorMaxTransfer ?? null, 10000);
-// 面板显示的温度分母也应同步为 1000
-check('核反应堆面板显示最高温度(1000°C)', /\/ 1000 °C/.test(nuclearSrc), true);
+// 面板显示的温度分母也应同步为 1000（动态读 HEAT_MAX_TEMP，兜底 1000）
+check('核反应堆面板显示最高温度(1000°C)', (/\/ 1000 °C/.test(nuclearSrc) || (/\+ HEAT_MAX_TEMP \+ ' °C'/.test(nuclearSrc) && /HEAT_MAX_TEMP = [^\n]*\?\? 1000/.test(fs.readFileSync(path.join(__dirname, '..', 'js', 'data', 'data.js'), 'utf8')))), true);
 // 导热管以温度(°C)显示而非存热量
 check('导热管按温度显示(°C)', /heatPipeTip/.test(nuclearSrc) && /Math\.round\(t\) \+ '°C'/.test(nuclearSrc), true);
 // 燃料槽容量 = 5（官方：反应堆可装 5 根燃料棒）

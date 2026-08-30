@@ -831,6 +831,10 @@ const heat = {};
   // max_transfer=2GW、min_working_temperature=500、minimum_glow_temperature=350（官方），
   // 由 GAME_DATA.heat 单源桥接（此前为手工常量，本迭代单源化）。
   const hx = raw.boiler && raw.boiler['heat-exchanger'];
+  if (hx) {
+    const ec = hx.energy_consumption && parsePowerMW(hx.energy_consumption);
+    if (ec !== null) heat.heatExchangerPower = ec;          // 满负荷耗热 10MW（官方 energy_consumption）
+  }
   if (hx && hx.energy_source) {
     const es = hx.energy_source;
     const sh = parseEnergyMJ(es.specific_heat);
@@ -1664,7 +1668,7 @@ const header = [
   '//   turret[塔] = { range, fireRate(秒) }, ammoDamage[弹药] = 伤害, radar = { range, power(kW) }',
   '//   equipment[装备] = { powerOut | powerCap(kJ) | shield | speed | laser | dischargeRange/Cooldown }',
   '//   heat = { reactorMaxTemp, reactorSpecificHeat, reactorMaxTransfer, heatPipeMaxTemp, heatPipeMinGlowTemp,',
-  '//           heatPipeSpecificHeat, heatPipeMaxTransfer, reactorHeatRate(MW),',
+  '//           heatPipeSpecificHeat, heatPipeMaxTransfer, reactorHeatRate(MW), heatExchangerPower(MW),',
   '//           heatingTowerRate(MW), heatingTowerEffectivity, heatingTowerMaxTemp,',
   '//           heatingTowerSpecificHeat, heatingTowerMaxTransfer }, roboportPower(kW)',
   '//   cargoLandingPad = { inventorySize, radarRange }, cargoBay = { inventorySizeBonus }（物流接驳站/扩展舱）',

@@ -348,6 +348,51 @@ function heatTransfer(from, to, dt) {
   to.heatEnergy += want;
 }
 
+// ===== 官方 heat_buffer.connections 接口判定 =====
+// 热量只能通过设备声明的热量接口格流出/流入(对齐官方 connections):
+//   - 核反应堆(5×5):四边各 3 个接口格(相对中心 -2/0/+2,即第 1/3/5 格);
+//   - 供热塔(3×3)/聚变反应堆(6×6):四边各 1 个接口格(边中心);
+//   - 热交换器(3×2):热交换接口 1 格(默认下边(南)中间,随 dir 旋转);
+//   - 聚变发电机(3×5):热交换接口 1 格(默认下边(南)中间,随 dir 旋转,与热交换器同布局)。
+// 端口判定统一走 rotCell 局部坐标 → 世界格,再判断目标格是否被该实体占据。
+function heatDevicePortCells(e) {
+  // 反应堆:四边各 3 个(官方 -2/0/+2 偏移)
+  if (e instanceof NuclearReactor) {
+    const cells = [];
+    for (const o of [-2, 0, 2]) {
+      cells.push({ x: e.x + ((e.w / 2) | 0) + o, y: e.y - 1 });               // 北边
+      cells.push({ x: e.x + ((e.w / 2) | 0) + o, y: e.y + e.h });             // 南边
+      cells.push({ x: e.x + e.w, y: e.y + ((e.h / 2) | 0) + o });             // 东边
+      cells.push({ x: e.x - 1, y: e.y + ((e.h / 2) | 0) + o });               // 西边
+    }
+    return cells;
+  }
+  // 供热塔:四边各 1 个(官方 heating-tower heat_buffer.connections,不随 dir 旋转)
+  if (e instanceof HeatingTower) {
+    return [
+      { x: e.x + ((e.w / 2) | 0), y: e.y - 1 },
+      { x: e.x + ((e.w / 2) | 0), y: e.y + e.h },
+      { x: e.x + e.w, y: e.y + ((e.h / 2) | 0) },
+      { x: e.x - 1, y: e.y + ((e.h / 2) | 0) },
+    ];
+  }
+  // 热交换器/聚变发电机:热交换接口 1 格(默认下边(南)中间,随 dir 旋转)
+  if (e instanceof HeatExchanger || e instanceof FusionGenerator) {
+    return [rotCell(e, e.def.w >> 1, e.def.h)];   // 接口外侧相邻格
+  }
+  return null;
+}
+// from 的某世界格 (cx,cy) 是否是 from 的热量接口外侧格,且该格被 to 占据
+// (即 to 有一格贴在 from 的热量接口上 → 二者可通过该接口传热)
+function heatDevicesConnectedViaPort(from, to) {
+  const ports = heatDevicePortCells(from);
+  if (!ports) return true;    // 无接口定义的设备(如导热管)按全格连通
+  for (const p of ports) {
+    if (p.x >= to.x && p.x < to.x + to.w && p.y >= to.y && p.y < to.y + to.h) return true;
+  }
+  return false;
+}
+
 // ===================== 核反应堆（5×5，吃铀燃料棒）=====================
 // 复用锅炉的“水→蒸汽”模型：铀燃料棒燃烧把水加热成高温蒸汽，经底边出汽口排出。
 // 产汽能力远超锅炉：同耗水量下产出更多蒸汽，供多台汽轮机满载。
@@ -405,12 +450,14 @@ class NuclearReactor extends Entity {
     this.heatEnergy = Math.min(this.maxEnergy(), this.heatEnergy + rate * dt);
   }
   // 热量传导：把热量输送给相邻的导热管/热交换器（官方算法：按温度差，从高温流向低温，受双方 max_transfer 限制）
+  // 仅经官方 heat_buffer.connections 声明的热量接口传热（四边各 3 个接口格），接口未对上不传热。
   heatFlow(dt) {
     if (this.temperature() <= 0) return;
     forEachNeighborEnt(this, n => {
       if (n._dead) return;
       const isHeatSink = (n instanceof HeatPipe) || (n instanceof HeatExchanger);
       if (!isHeatSink) return;
+      if (!heatDevicesConnectedViaPort(this, n)) return;
       if (this.temperature() <= n.temperature()) return;
       heatTransfer(this, n, dt);
     });
@@ -771,39 +818,38 @@ function drawNuclearReactor(ctx, e, gx, gy, dir, alpha) {
   // ⑫ 热量出口（黄色线标注，与热交换器热交换接口同款样式）
   // 对齐官方 heat_buffer.connections：核反应堆四边（北/东/南/西）各 3 个热交换接口，
   // 5 格边中仅第 1/3/5 格（相对中心 -2/0/+2）有接口，而非整条边均布。
-  ctx.strokeStyle = '#ffd23a';
+  // 接口外侧相邻格接上导热管/热交换器时亮黄，未连接时暗黄，方便核对接口是否对上。
   ctx.lineWidth = 3;
   ctx.lineCap = 'butt';
   const cRx = px + w / 2, cRy = py + h / 2;   // 反应堆中心
   const hC = [ -2 * TILE, 0, 2 * TILE ];      // 每条边 3 个连接点（相对中心）
+  // 判定某条边第 o 格（-2/0/+2）外侧相邻格是否为可传热设备（导热管/热交换器）
+  const rx0 = e.x, ry0 = e.y;
+  const half = ((e.w / 2) | 0);
+  const portLit = (side, o) => {
+    const cxp = rx0 + half + o, cyp = ry0 + half + o;
+    let nx, ny;
+    if (side === 3) { nx = cxp; ny = ry0 - 1; }        // 北
+    else if (side === 1) { nx = cxp; ny = ry0 + e.h; } // 南
+    else if (side === 0) { nx = rx0 + e.w; ny = cyp; } // 东
+    else { nx = rx0 - 1; ny = cyp; }                   // 西
+    const t = entAt(nx, ny);
+    return !!t && !t._dead && ((t instanceof HeatPipe) || (t instanceof HeatExchanger));
+  };
+  const drawHeatSeg = (x0, y0, x1, y1, lit) => {
+    ctx.strokeStyle = lit ? '#ffd23a' : 'rgba(255,210,58,0.28)';
+    ctx.beginPath();
+    ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
+    ctx.stroke();
+  };
   // 上边（北）
-  for (const dx of hC) {
-    ctx.beginPath();
-    ctx.moveTo(cRx + dx - TILE * 0.22, py + 3);
-    ctx.lineTo(cRx + dx + TILE * 0.22, py + 3);
-    ctx.stroke();
-  }
+  for (const dx of hC) drawHeatSeg(cRx + dx - TILE * 0.22, py + 3, cRx + dx + TILE * 0.22, py + 3, portLit(3, Math.round(dx / TILE)));
   // 下边（南）
-  for (const dx of hC) {
-    ctx.beginPath();
-    ctx.moveTo(cRx + dx - TILE * 0.22, py + h - 3);
-    ctx.lineTo(cRx + dx + TILE * 0.22, py + h - 3);
-    ctx.stroke();
-  }
+  for (const dx of hC) drawHeatSeg(cRx + dx - TILE * 0.22, py + h - 3, cRx + dx + TILE * 0.22, py + h - 3, portLit(1, Math.round(dx / TILE)));
   // 左边（西）
-  for (const dy of hC) {
-    ctx.beginPath();
-    ctx.moveTo(px + 3, cRy + dy - TILE * 0.22);
-    ctx.lineTo(px + 3, cRy + dy + TILE * 0.22);
-    ctx.stroke();
-  }
+  for (const dy of hC) drawHeatSeg(px + 3, cRy + dy - TILE * 0.22, px + 3, cRy + dy + TILE * 0.22, portLit(2, Math.round(dy / TILE)));
   // 右边（东）
-  for (const dy of hC) {
-    ctx.beginPath();
-    ctx.moveTo(px + w - 3, cRy + dy - TILE * 0.22);
-    ctx.lineTo(px + w - 3, cRy + dy + TILE * 0.22);
-    ctx.stroke();
-  }
+  for (const dy of hC) drawHeatSeg(px + w - 3, cRy + dy - TILE * 0.22, px + w - 3, cRy + dy + TILE * 0.22, portLit(0, Math.round(dy / TILE)));
   ctx.globalAlpha = 1;
 }
 function reactorPanelHtml(e) {
@@ -814,7 +860,7 @@ function reactorPanelHtml(e) {
   h += '<button data-action="takeout" id="btn-spent-takeout" style="display:none"></button>';
   h += row('堆芯温度', '', 'heat');
   h += row('堆芯温度上限', '', 'temp');
-  h += '<div class="dim">核反应堆：消耗铀燃料棒产生巨量热量，经四边（北/东/南/西）黄色热量接口传给导热管（对齐官方 heat_buffer.connections，每条 5 格边仅中间 3 格有热交换接口，非整条边均布，可向导热管/热交换器传热），再由导热管把热量送到热交换器，由热交换器把水烧成高温蒸汽供汽轮机发电（对齐《异星工厂》核能标准链路，反应堆仅消耗铀燃料棒而非核燃料）。燃尽的燃料会留下贫化铀燃料棒，可在离心机再生为铀-238，闭合核燃料循环。核能技术解锁。</div>';
+  h += '<div class="dim">核反应堆：消耗铀燃料棒产生巨量热量，经四边（北/东/南/西）黄色热量接口传给导热管（对齐官方 heat_buffer.connections，每条 5 格边仅中间 3 格有热交换接口，非整条边均布，导热管/热交换器须对准接口格才传热），再由导热管把热量送到热交换器（热交换器须接其热交换口），由热交换器把水烧成高温蒸汽供汽轮机发电（对齐《异星工厂》核能标准链路，反应堆仅消耗铀燃料棒而非核燃料）。燃尽的燃料会留下贫化铀燃料棒，可在离心机再生为铀-238，闭合核燃料循环。核能技术解锁。</div>';
   h += '<div class="dim">💡 相邻加成：并排摆放多座反应堆，每座相邻反应堆使输出 +100%（对齐《异星工厂》）。</div>';
   h += '<div class="dim">🔗 标准接法：反应堆→(导热管)→热交换器（接水管）→(蒸汽管)→汽轮机</div>';
   return h;
@@ -825,7 +871,7 @@ function reactorPanelLive(e, api) {
   api.toggle('#btn-spent-takeout', e.spent > 0, '取回贫化铀燃料棒 (' + e.spent + ')');
   const _temp = e.temperature();
   api.set('heat', _temp >= 1 ? chip('heat-pipe', Math.round(_temp) + '°C') : dimSpan('空'));
-  api.set('temp', Math.round(_temp) + ' / 1000 °C');
+  api.set('temp', Math.round(_temp) + ' / ' + HEAT_MAX_TEMP + ' °C');
   api.prog(Math.min(100, _temp / HEAT_MAX_TEMP * 100));
   if (e.burning) api.status('运行中：产热 ' + REACTOR_HEAT_RATE + 'MW' + (_temp >= HEAT_MAX_TEMP - 1 ? '（已达最高温，多余热量流失）' : ''), 'ok');
   else if (e.fuel <= 0 && e.burnLeft <= 0) api.status('已暂停：无铀燃料棒', 'bad');
@@ -1275,6 +1321,8 @@ class HeatPipe extends Entity {
       if (n._dead) return;
       const isHeatDev = (n instanceof HeatPipe) || (n instanceof HeatExchanger);
       if (!isHeatDev) return;
+      // 热交换器只在其热交换接口格接收/输出热量（官方 connections），未对上不传热
+      if (n instanceof HeatExchanger && !heatDevicesConnectedViaPort(n, this)) return;
       if (this.temperature() <= n.temperature()) return;
       heatTransfer(this, n, dt);
     });
@@ -1300,16 +1348,21 @@ class HeatPipe extends Entity {
   }
 }
 function heatPipeConnect(e, dx, dy) {
-  // 相邻格是否有可连接的导热设备：导热管全向连接，热源(反应堆/供热塔)连接，热交换器仅其热交换接口格连接
+  // 相邻格是否有可连接的导热设备（与 heatFlow 逻辑判定完全一致，对齐官方 heat_buffer.connections）：
+  // 导热管全向连接；反应堆仅四边 3 个热量接口格；供热塔四边中心各 1 格；
+  // 热交换器/聚变发电机仅其热交换接口格（默认下边(南)中间，随 dir 旋转）。
   const nx = e.x + dx, ny = e.y + dy;
   const nb = entAt(nx, ny);
   if (!nb || nb._dead) return false;
   if (nb instanceof HeatPipe) return true;
-  if (nb instanceof HeatExchanger) {
+  if (nb instanceof HeatExchanger || nb instanceof FusionGenerator) {
     const p = rotCell(nb, nb.def.w >> 1, nb.def.h);   // 热交换接口：默认下边(南)中间
     return p.x === nx && p.y === ny;
   }
-  if (nb instanceof NuclearReactor || nb instanceof HeatingTower) return true;
+  if (nb instanceof NuclearReactor || nb instanceof HeatingTower) {
+    // 反应堆：5 格边仅第 1/3/5 格（-2/0/+2）有接口；供热塔：四边中心各 1 格
+    return heatDevicesConnectedViaPort(nb, e);
+  }
   return false;
 }
 // 颜色插值小工具（核能设备局部使用）：'#rrggbb' 两色按 t∈[0,1] 混合
@@ -1528,15 +1581,13 @@ class HeatExchanger extends Entity {
     this.portFlow(dt);
   }
   // 从相邻导热管/反应堆吸热（导热管/反应堆会主动送热，这里也做被动吸收兜底）
+  // 仅经热交换接口（官方 connections：默认下边(南)中间，随 dir 旋转）吸热，接口未对上不传热。
   heatFlow(dt) {
-    const pHT = rotCell(this, this.def.w >> 1, this.def.h); // 热交换接口外侧：默认下边(南)中间
     forEachNeighborEnt(this, n => {
       if (n._dead) return;
-      const isSrc = (n instanceof HeatPipe) || (n instanceof NuclearReactor);
+      const isSrc = (n instanceof HeatPipe) || (n instanceof NuclearReactor) || (n instanceof HeatingTower);
       if (!isSrc) return;
-      // 热交换接口在下边中间：只接收下侧相邻导热管/反应堆传来的热量
-      const covers = (a, cx, cy) => cx >= a.x && cx < a.x + a.w && cy >= a.y && cy < a.y + a.h;
-      if (!covers(n, pHT.x, pHT.y)) return;
+      if (!heatDevicesConnectedViaPort(this, n)) return;
       if (n.temperature() <= this.temperature()) return;
       heatTransfer(n, this, dt);
     });
@@ -1572,10 +1623,10 @@ class HeatExchanger extends Entity {
       }
     });
     // 产汽：温度 >= 500°C（官方 min_working_temperature）才开始工作，耗热 + 耗水 → 蒸汽
+    // 满负荷固定耗热 HEAT_EXCHANGER_POWER(官方 energy_consumption 10MW，1 反应堆 40MW 可带 4 台)：
+    // 耗热恒定不随温度升高而增大，多余热量使全链温度继续升向 1000°C（对齐官方核能表现）。
     if (this.temperature() >= HEAT_EXCHANGER_MIN_WORK_TEMP && this.water >= 0.5) {
-      // 满功率产汽速率(单位/s)，对应消耗热量 = 速率 × 每单位蒸汽热值(MJ)
-      const rate = HEAT_EXCHANGER_STEAM_RATE;
-      const maxHeat = HEAT_EXCHANGER_ENERGY_PER_STEAM * rate * dt; // 满负荷每秒消耗热量(MJ)
+      const maxHeat = HEAT_EXCHANGER_POWER * dt;                    // 满负荷每秒消耗热量(MJ)
       const heatUse = Math.min(maxHeat, this.heatEnergy);
       const steamProduced = heatUse / HEAT_EXCHANGER_ENERGY_PER_STEAM;
       const waterUse = Math.min(steamProduced, this.water);
@@ -1808,8 +1859,8 @@ function heatExchangerPanelHtml(e) {
   return row('温度', '<span class="dim"></span>', 'heat') +
     row('水', '<span class="dim"></span>', 'water') +
     row('蒸汽缓存', '<span class="dim"></span>', 'steam') +
-    '<div class="dim">热交换器：下边(南)黄色接口接收导热管热量，左右两侧两个蓝口接水管进水（互通，多台水口可直接对口串接），上边(北)中间白口送出高温蒸汽到汽轮机。核能技术解锁。</div>' +
-    '<div class="dim">🔗 标准接法：反应堆→(导热管)→热交换器（接水管）→(蒸汽管)→汽轮机</div>';
+    '<div class="dim">热交换器：下边(南)黄色热交换口接收导热管热量（导热管/反应堆须对准该接口格，接在其他位置不传热），左右两侧两个蓝口接水管进水（互通，多台水口可直接对口串接），上边(北)中间白口送出高温蒸汽到汽轮机。满负荷耗热 10MW（官方 energy_consumption），1 反应堆可带 4 台。核能技术解锁。</div>' +
+    '<div class="dim">🔗 标准接法：反应堆→(导热管对准热交换口)→热交换器（接水管）→(蒸汽管)→汽轮机</div>';
 }
 function heatExchangerPanelLive(e, api) {
   const t = e.temperature();

@@ -58,13 +58,14 @@ class HeatingTower extends Entity {
     // 燃烧粒子（可选：供热塔燃烧火光/热浪）
     if (typeof heatingTowerEmit === 'function') heatingTowerEmit(this, dt);
   }
-  // 热量传导：把热量输送给相邻的导热管/热交换器
+  // 热量传导：把热量输送给相邻的导热管/热交换器（仅经四边热量接口，接口未对上不传热）
   heatFlow(dt) {
     if (this.temperature() <= 0) return;
     forEachNeighborEnt(this, n => {
       if (n._dead) return;
       const isHeatSink = (n instanceof HeatPipe) || (n instanceof HeatExchanger);
       if (!isHeatSink) return;
+      if (!heatDevicesConnectedViaPort(this, n)) return;
       if (this.temperature() <= n.temperature()) return;
       heatTransfer(this, n, dt);
     });
@@ -164,7 +165,7 @@ function heatingTowerPanelHtml(e) {
   h += row('炉温', temp >= 1 ? chip('heat-pipe', temp + '°C') : dimSpan('空'), 'heat');
   h += row('产热', (e.burning ? (HEATING_TOWER_RATE * HEATING_TOWER_EFFECTIVITY) + 'MW' : '<span class="dim">0</span>'), 'power');
   h += row('状态', e.burning ? '<span class="ok">燃烧中（已达最高温仍持续燃烧）</span>' : (e.lit ? '<span class="ok">点火中</span>' : '<span class="dim">缺燃料</span>'), 'status');
-  h += '<div class="dim">供热塔：燃烧化学燃料（煤/固体/火箭/木头）产热，经四边热量接口向导热管传导，再经热交换器产高温蒸汽供汽轮机发电（对齐《异星工厂》Space Age 供热塔，数据来自 GAME_DATA）。</div>';
+  h += '<div class="dim">供热塔：燃烧化学燃料（煤/固体/火箭/木头）产热，经四边热量接口向导热管传导（导热管/热交换器须对准四边接口格才传热），再经热交换器热交换口产高温蒸汽供汽轮机发电（对齐《异星工厂》Space Age 供热塔，数据来自 GAME_DATA）。</div>';
   return h;
 }
 function heatingTowerOnAction(e, action, data) {

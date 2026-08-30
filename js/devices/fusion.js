@@ -75,13 +75,14 @@ class FusionReactor extends Entity {
       if (n.total() < PIPE_CAP && n.giveItem('fusion-plasma')) this.plasmaBuf--;
     });
   }
-  // 热量传导：把热量输送给相邻的导热管/热交换器/聚变发电机
+  // 热量传导：把热量输送给相邻的导热管/热交换器/聚变发电机（仅经四边热量接口，接口未对上不传热）
   heatFlow(dt) {
     if (this.temperature() <= 0) return;
     forEachNeighborEnt(this, n => {
       if (n._dead) return;
       const isHeatSink = (n instanceof HeatPipe) || (n instanceof HeatExchanger) || (n instanceof FusionGenerator);
       if (!isHeatSink) return;
+      if (!heatDevicesConnectedViaPort(this, n)) return;
       if (this.temperature() <= n.temperature()) return;
       heatTransfer(this, n, dt);
     });
@@ -171,12 +172,13 @@ class FusionGenerator extends Entity {
     this.on = this.powerOut > 0.05;
     if (typeof regPowerEnt === 'function') regPowerEnt(this);
   }
-  // 从相邻导热管/反应堆吸热
+  // 从相邻导热管/反应堆吸热（仅经热交换接口：默认下边(南)中间，随 dir 旋转）
   heatFlow(dt) {
     forEachNeighborEnt(this, n => {
       if (n._dead) return;
       const isSrc = (n instanceof HeatPipe) || (n instanceof NuclearReactor) || (n instanceof FusionReactor) || (n instanceof HeatingTower);
       if (!isSrc) return;
+      if (!heatDevicesConnectedViaPort(this, n)) return;
       if (n.temperature() <= this.temperature()) return;
       heatTransfer(n, this, dt);
     });

@@ -19,7 +19,7 @@
 //   turret[塔] = { range, fireRate(秒) }, ammoDamage[弹药] = 伤害, radar = { range, power(kW) }
 //   equipment[装备] = { powerOut | powerCap(kJ) | shield | speed | laser | dischargeRange/Cooldown }
 //   heat = { reactorMaxTemp, reactorSpecificHeat, reactorMaxTransfer, heatPipeMaxTemp, heatPipeMinGlowTemp,
-//           heatPipeSpecificHeat, heatPipeMaxTransfer, reactorHeatRate(MW),
+//           heatPipeSpecificHeat, heatPipeMaxTransfer, reactorHeatRate(MW), heatExchangerPower(MW),
 //           heatingTowerRate(MW), heatingTowerEffectivity, heatingTowerMaxTemp,
 //           heatingTowerSpecificHeat, heatingTowerMaxTransfer }, roboportPower(kW)
 //   cargoLandingPad = { inventorySize, radarRange }, cargoBay = { inventorySizeBonus }（物流接驳站/扩展舱）
@@ -305,6 +305,7 @@ const GAME_DATA = {
   "wooden-chest": 50,
   "iron-chest": 50,
   "repair-pack": 100,
+  "blueprint": 1,
   "deconstruction-planner": 1,
   "upgrade-planner": 1,
   "space-science-pack": 200,
@@ -5323,6 +5324,10 @@ const GAME_DATA = {
    "zh": "修理包",
    "en": "Repair pack"
   },
+  "blueprint": {
+   "zh": "蓝图（建设规划）",
+   "en": "Blueprint"
+  },
   "deconstruction-planner": {
    "zh": "红图（拆除规划）",
    "en": "Deconstruction planner"
@@ -5778,6 +5783,7 @@ const GAME_DATA = {
   "heatPipeSpecificHeat": 1,
   "heatPipeMaxTransfer": 1000,
   "reactorHeatRate": 40,
+  "heatExchangerPower": 10,
   "heatExchangerSpecificHeat": 1,
   "heatExchangerMaxTransfer": 2000,
   "heatExchangerMinWorkTemp": 500,
@@ -6840,6 +6846,7 @@ const GAME_DATA = {
   "wooden-chest": "logistics",
   "iron-chest": "logistics",
   "repair-pack": "production",
+  "blueprint": "production",
   "deconstruction-planner": "production",
   "upgrade-planner": "production",
   "space-science-pack": "intermediate-products",
@@ -7138,6 +7145,7 @@ const GAME_DATA = {
   "wooden-chest": "storage",
   "iron-chest": "storage",
   "repair-pack": "tool",
+  "blueprint": "tool",
   "deconstruction-planner": "tool",
   "upgrade-planner": "tool",
   "space-science-pack": "science-pack",
@@ -7573,6 +7581,7 @@ const GAME_DATA = {
   "wooden-chest": "a[items]-a[wooden-chest]",
   "iron-chest": "a[items]-b[iron-chest]",
   "repair-pack": "b[repair]-a[repair-pack]",
+  "blueprint": "c[automated-construction]-a[blueprint]",
   "deconstruction-planner": "c[automated-construction]-b[deconstruction-planner]",
   "upgrade-planner": "c[automated-construction]-c[upgrade-planner]",
   "space-science-pack": "g[space-science-pack]",
@@ -9892,6 +9901,12 @@ const GAME_DATA = {
    "time": 0.3125,
    "out": {
     "pistol": 0.25
+   }
+  },
+  "blueprint": {
+   "time": 0.03125,
+   "out": {
+    "blueprint": 0.25
    }
   }
  },
