@@ -448,9 +448,10 @@ function canPlaceAt(type, tx, ty, dir) {
   const def = BUILD_DEFS[type];
   let ew = def.w, eh = def.h;
   if (def.rotSwap && (dir % 2 === 1)) { ew = def.h; eh = def.w; }
-  // 玩家占位校验：建筑占地覆盖玩家所在格时禁止建造（对齐《异星工厂》：
-  // 角色站立格本身是障碍，不能把建筑盖在角色身上，否则角色会被卡住走不出来）
-  if (G.player) {
+  // 玩家占位校验：只有与主角有碰撞体积的建筑，主角站其占地内才禁止建造；
+  // 与主角无碰撞体积的建筑（传送带/地下带/分流器/机械臂/箱子等）即便主角站在原地也能正常建造
+  // （对齐《异星工厂》：传送带可站上去被推动、机械臂不占行走格，角色不会被卡住）
+  if (G.player && buildCollidesPlayer(type)) {
     const px = Math.floor(G.player.x / TILE), py = Math.floor(G.player.y / TILE);
     if (px >= tx && px < tx + ew && py >= ty && py < ty + eh) {
       return { ok: false, reason: 'player' };
