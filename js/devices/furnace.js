@@ -37,8 +37,9 @@ class Furnace extends Entity {
     this.lit = false;
   }
   pickRecipe() {
+    // 熔炉例外（不遵循「堆积即停工」）：持续工作直到产物堆满一整组 Stack 为止
     for (const r of SMELTS)
-      if ((this.inp[r.inp] || 0) >= (r.inCount || 1) && (this.outp[r.id] || 0) < 50) return r;
+      if ((this.inp[r.inp] || 0) >= (r.inCount || 1) && (this.outp[r.id] || 0) < stackSize(r.id)) return r;
     return null;
   }
   update(dt) {
@@ -83,6 +84,9 @@ class Furnace extends Entity {
     if (item === 'coal' && this.fuelCoal < fuelLimitFor5s(COAL_ENERGY)) { this.fuelCoal++; return true; }
     if (item === 'wood' && this.fuelWood < fuelLimitFor5s(WOOD_FUEL_ENERGY)) { this.fuelWood++; return true; }
     if (item === 'solid-fuel' && this.fuelSolid < fuelLimitFor5s(SOLID_FUEL_ENERGY)) { this.fuelSolid++; return true; }
+    // 产物已满一整组（Stack）时不再接收矿石：继续送只会白白堆积在熔炉里
+    for (const r of SMELTS)
+      if (r.inp === item && (this.outp[r.id] || 0) >= stackSize(r.id)) return false;
     for (const r of SMELTS)
       if (r.inp === item && (this.inp[item] || 0) < (r.inCount || 1) * 2) { this.inp[item] = (this.inp[item] || 0) + 1; return true; }
     return false;
@@ -458,12 +462,16 @@ function furnacePanelLive(e, api) {
     const html = rec ? machRateHtml(rec, mult) : '';
     if (rateEl.innerHTML !== html) rateEl.innerHTML = html;
   }
+  // 熔炉例外：持续工作直到产物堆满一整组（Stack）为止，满组即待料
+  const outFullStack = Object.keys(e.outp).some(k => (e.outp[k] || 0) >= stackSize(k));
   if (eFurn) {
     if (e.lit) api.status('冶炼中', 'ok');
+    else if (e.cur && outFullStack) api.status('已暂停：产物已满一整组', 'warn');
     else if (e.cur && G.power.sat <= 0) api.status('已暂停：缺电', 'bad');
     else api.status('已暂停：待料（放入矿石）', 'warn');
   } else {
     if (e.lit) api.status('冶炼中', 'ok');
+    else if (e.cur && outFullStack) api.status('已暂停：产物已满一整组', 'warn');
     else if (e.cur) api.status('已暂停：等待燃料（加入煤/固体燃料/火箭燃料）', 'warn');
     else api.status('已暂停：待料（放入燃料和矿石）', 'warn');
   }

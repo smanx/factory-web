@@ -97,6 +97,8 @@ class Refinery extends Entity {
       const n = neighborOnSideCell(this, inSide, cell);
       if (!(n instanceof Pipe)) continue;
       if (!(n.fluid[k] > 0)) continue;
+      // 产物堆积（够用 2 次生产）时停止吸入流体原料，防止原料积压在前端管道
+      if (outputBacklogged(this.outp, rec.out, REFINERY_BUF_CAP)) return;
       if ((this.inp[k] || 0) < REFINERY_BUF_CAP && n.takeItemOf(k)) this.inp[k] = (this.inp[k] || 0) + 1;
     }
   }
@@ -147,8 +149,8 @@ class Refinery extends Entity {
     }
     // 检查原料是否齐备
     for (const k in rec.inp) if ((this.inp[k] || 0) < rec.inp[k]) { this.tryOutput(); return; }
-    // 产物缓存是否过满（防止产物未排出时停产）
-    for (const k in rec.out) if ((this.outp[k] || 0) + rec.out[k] > REFINERY_BUF_CAP) { this.tryOutput(); return; }
+    // 产物堆积即停工（动态「够用」：存量足够再产 2 次即停，防止原料积压在前端机器）
+    if (outputBacklogged(this.outp, rec.out, REFINERY_BUF_CAP)) { this.tryOutput(); return; }
     // 消耗原料，开始加工
     for (const k in rec.inp) {
       this.inp[k] -= rec.inp[k];
@@ -176,6 +178,8 @@ class Refinery extends Entity {
     if (this.recipe) {
       const rec = REFINERY_RECIPES[this.recipe];
       if (rec.inp[item]) {
+        // 产物堆积（够用 2 次生产）时停止送料，防止原料过度积压在前端机器
+        if (outputBacklogged(this.outp, rec.out, REFINERY_BUF_CAP)) return false;
         if ((this.inp[item] || 0) >= REFINERY_BUF_CAP) return false;
         this.inp[item] = (this.inp[item] || 0) + 1;
         return true;
@@ -273,12 +277,11 @@ function refineryMissingInput(e) {
   for (const k in rec.inp) if ((e.inp[k] || 0) < rec.inp[k]) return true;
   return false;
 }
-// 判断炼油厂是否因产物缓存过满而无法开工（产物堆积）：某产物缓存 + 一次产出量 > 缓冲上限
+// 判断炼油厂是否因产物堆积而无法开工：动态「够用」——存量足够再产 2 次即停
 function refineryOutputFull(e) {
   const rec = e.recipe ? REFINERY_RECIPES[e.recipe] : null;
   if (!rec) return false;
-  for (const k in rec.out) if ((e.outp[k] || 0) + rec.out[k] > REFINERY_BUF_CAP) return true;
-  return false;
+  return outputBacklogged(e.outp, rec.out, REFINERY_BUF_CAP);
 }
 // 轻量色彩工具（仅在炼油厂/化工厂渲染中用到）：把 #rrggbb 与 0~1 比例混合到 alpha
 function _rfMix(hex, t) {
@@ -585,7 +588,7 @@ function refineryPanelLive(e, api) {
   if (!e.recipe) api.status('已暂停：未设置配方，点击下方选择', 'warn');
   else if (e.crafting) api.status('精炼中', 'ok');
   else if (G.power.sat <= 0) api.status('已暂停：缺电', 'bad');
-  else if (refineryOutputFull(e)) api.status('已暂停：产物堆积（输出已满）', 'warn');
+  else if (refineryOutputFull(e)) api.status('已暂停：产物堆积（够用 2 次生产）', 'warn');
   else api.status('已暂停：等待原料', 'warn');
 }
 function refineryTip(e) {

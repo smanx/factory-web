@@ -56,8 +56,10 @@ class Assembler extends Entity {
       if (!(n instanceof Pipe)) return;
       // 只有流体口外侧那一格的管道才能与本机互通
       if (n.x !== pc[0] || n.y !== pc[1]) return;
+      // 产物堆积（够用 2 次生产）时停止吸入流体原料，防止原料积压在前端管道
+      const backlog = outputBacklogged(this.outp, fr.rec.out);
       for (const k of fr.fin)
-        if ((this.inp[k] || 0) < 50 && (n.fluid[k] || 0) >= 1) {
+        if (!backlog && (this.inp[k] || 0) < 50 && (n.fluid[k] || 0) >= 1) {
           n.takeItemOf(k);
           this.inp[k] = (this.inp[k] || 0) + 1;
         }
@@ -109,7 +111,8 @@ class Assembler extends Entity {
       return;
     }
     for (const k in rec.inp) if ((this.inp[k] || 0) < rec.inp[k]) return;
-    for (const k in rec.out) if ((this.outp[k] || 0) + rec.out[k] > 50) return;
+    // 产物堆积即停工（动态「够用」：存量足够再产 2 次即停，防止原料积压在前端机器）
+    if (outputBacklogged(this.outp, rec.out)) return;
     for (const k in rec.inp) {
       this.inp[k] -= rec.inp[k];
       if (typeof trackProd === 'function') trackProd(k, -rec.inp[k]);
@@ -171,6 +174,8 @@ class Assembler extends Entity {
     if (this.recipe) {
       const rec = RECIPES[this.recipe];
       if (rec.inp[item]) {
+        // 产物堆积（够用 2 次生产）时停止送料，防止原料过度积压在前端机器
+        if (outputBacklogged(this.outp, rec.out)) return false;
         if ((this.inp[item] || 0) >= rec.inp[item] * 2) return false;
         this.inp[item] = (this.inp[item] || 0) + 1;
         return true;
@@ -538,8 +543,7 @@ function assemblerPanelLive(e, api) {
   // 仅吃电的机型（组装机 II）在缺电时暂停；组装机 I 不吃电
   const needsPower = typeof e.powerDemand === 'function' && e.powerDemand() > 0;
   if (needsPower && G.power.sat <= 0) { api.status('已暂停：缺电', 'bad'); return; }
-  for (const k in rec.out)
-    if ((e.outp[k] || 0) + rec.out[k] > 50) { api.status('已暂停：输出已满（' + ITEMS[k].name + '）', 'warn'); return; }
+  if (outputBacklogged(e.outp, rec.out)) { api.status('已暂停：产物堆积（够用 2 次生产）', 'warn'); return; }
   const missing = Object.keys(rec.inp).filter(k => (e.inp[k] || 0) < rec.inp[k]);
   if (missing.length) {
     api.status('已暂停：缺少原料 ' + missing.map(k => ITEMS[k].name).join('、'), 'warn');

@@ -31,7 +31,8 @@ class AssemblerMK2 extends Assembler {
       return;
     }
     for (const k in rec.inp) if ((this.inp[k] || 0) < rec.inp[k]) return;
-    for (const k in rec.out) if ((this.outp[k] || 0) + rec.out[k] > 50) return;
+    // 产物堆积即停工（动态「够用」：存量足够再产 2 次即停，防止原料积压在前端机器）
+    if (outputBacklogged(this.outp, rec.out)) return;
     for (const k in rec.inp) {
       this.inp[k] -= rec.inp[k];
       if (typeof trackProd === 'function') trackProd(k, -rec.inp[k]);

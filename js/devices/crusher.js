@@ -61,12 +61,14 @@ class Crusher extends Assembler {
       return;
     }
     for (const k in rec.inp) if ((this.inp[k] || 0) < rec.inp[k]) return;
+    // 产物堆积即停工（动态「够用」）：普通配方按「存量够再产 2 次」停；
+    // 概率配方（每周期只产 1 件）按总存量 >= 2 停，同样防止原料积压在前端
     if (rec.prob) {
       let total = 0;
       for (const k in this.outp) total += this.outp[k];
-      if (total >= 50) return;
+      if (total >= 2) return;
     } else {
-      for (const k in rec.out) if ((this.outp[k] || 0) + rec.out[k] > 50) return;
+      if (outputBacklogged(this.outp, rec.out)) return;
     }
     for (const k in rec.inp) {
       this.inp[k] -= rec.inp[k];
@@ -201,9 +203,9 @@ function crusherPanelLive(e, api) {
     const rcp = RECIPES[e.recipe];
     if (rcp.prob) {
       let total = 0; for (const k in e.outp) total += e.outp[k];
-      if (total >= 50) { api.status('已暂停：输出已满（概率配方，货柜已满）', 'warn'); return; }
+      if (total >= 2) { api.status('已暂停：产物堆积（够用 2 次生产）', 'warn'); return; }
     } else {
-      for (const k in rcp.out) if ((e.outp[k] || 0) + rcp.out[k] > 50) { api.status('已暂停：输出已满（' + ITEMS[k].name + '）', 'warn'); return; }
+      if (outputBacklogged(e.outp, rcp.out)) { api.status('已暂停：产物堆积（够用 2 次生产）', 'warn'); return; }
     }
   }
   const missing = Object.keys(RECIPES[e.recipe].inp).filter(k => (e.inp[k] || 0) < RECIPES[e.recipe].inp[k]);

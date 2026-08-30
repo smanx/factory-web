@@ -39,7 +39,8 @@ class Foundry extends Assembler {
       return;
     }
     for (const k in rec.inp) if ((this.inp[k] || 0) < rec.inp[k]) return;
-    for (const k in rec.out) if ((this.outp[k] || 0) + rec.out[k] > 50) return;
+    // 产物堆积即停工（动态「够用」：存量足够再产 2 次即停，防止原料积压在前端机器）
+    if (outputBacklogged(this.outp, rec.out)) return;
     for (const k in rec.inp) {
       this.inp[k] -= rec.inp[k];
       if (typeof trackProd === 'function') trackProd(k, -rec.inp[k]);
@@ -154,7 +155,7 @@ function foundryPanelLive(e, api) {
   if (e.crafting) { api.status('生产中：' + ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name, 'ok'); return; }
   if (G.power.sat <= 0) { api.status('已暂停：缺电', 'bad'); return; }
   for (const k in RECIPES[e.recipe].out)
-    if ((e.outp[k] || 0) + RECIPES[e.recipe].out[k] > 50) { api.status('已暂停：输出已满（' + ITEMS[k].name + '）', 'warn'); return; }
+    if (outputBacklogged(e.outp, RECIPES[e.recipe].out)) { api.status('已暂停：产物堆积（够用 2 次生产）', 'warn'); return; }
   const missing = Object.keys(RECIPES[e.recipe].inp).filter(k => (e.inp[k] || 0) < RECIPES[e.recipe].inp[k]);
   if (missing.length) { api.status('已暂停：缺少原料 ' + missing.map(k => ITEMS[k].name).join('、'), 'warn'); return; }
   api.status('已暂停：等待材料就绪', 'warn');
