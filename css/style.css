@@ -3188,6 +3188,23 @@ html, body {
 .cip-embed { min-width: 0; }
 .cip-embed #cip-tabs .craft-tab { flex: 0 0 auto; }
 .cip-embed #cip-empty { padding: 6px 0; }
+/* 图标格子复位：选择器格子是 <button>，被 #panel button 的通用按钮样式覆盖。
+   #panel button 特异性 (1,0,1) 高于 .flt-item (0,1,0)，会把 32px 格子的内容区
+   压成 6×18px（padding 6px 12px + 1px 边框），图标被挤成细条，与背包合成页
+   32×32 满格图标不一致。这里复位为按钮默认外观 + 格子尺寸，恢复满格显示。
+   选择器位于 #hud-modal（机械臂筛选弹窗）时不受 #panel button 影响，此处规则同样适用。 */
+.cip-embed .flt-item,
+#panel .cip-embed .flt-item {
+  padding: 0;
+  background: #1f2730;
+  border-radius: 3px;
+  font-size: inherit;
+  /* 图标铺满整格：与背包合成页 .inv-slot:has(img){border:0} 一致，去掉 1px 边框，
+     使图标渲染尺寸同为 32×32（否则为 30×30、比背包小一圈）。
+     选中态仍靠 .flt-item.sel 的 inset 绿色内环高亮，不依赖边框。 */
+  border: 0;
+}
+.cip-embed .flt-item:hover { background: #1f2730; }
 
 /* 设备面板配方头部（图标+名称）：悬停弹出配方卡的高亮反馈 */
 .asm3-recipe-item[data-rec-id] { cursor: help; padding: 2px 6px; margin: -2px -6px; border-radius: 6px; }
