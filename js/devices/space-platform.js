@@ -216,8 +216,7 @@ class SpacePlatformHub extends Assembler {
     // 配方原料优先：插件若为当前配方原料则入原料区，而非插件槽
     if (this.recipe && RECIPES[this.recipe] && RECIPES[this.recipe].inp[item]) {
       const rec = RECIPES[this.recipe];
-      // 产物堆积（够用 2 次生产）时停止送料，防止原料过度积压在前端机器
-      if (outputBacklogged(this.outp, rec.out)) return false;
+      // 只按原料判定是否超过 2 倍：产物不做计数（自循环配方产物即原料）
       if ((this.inp[item] || 0) >= rec.inp[item] * 2) return false;
       this.inp[item] = (this.inp[item] || 0) + 1;
       return true;

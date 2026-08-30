@@ -97,8 +97,7 @@ class Refinery extends Entity {
       const n = neighborOnSideCell(this, inSide, cell);
       if (!(n instanceof Pipe)) continue;
       if (!(n.fluid[k] > 0)) continue;
-      // 产物堆积（够用 2 次生产）时停止吸入流体原料，防止原料积压在前端管道
-      if (outputBacklogged(this.outp, rec.out, REFINERY_BUF_CAP)) return;
+      // 只按原料缓冲上限吸入流体原料：产物不做计数（煤液化等配方产物即原料）
       if ((this.inp[k] || 0) < REFINERY_BUF_CAP && n.takeItemOf(k)) this.inp[k] = (this.inp[k] || 0) + 1;
     }
   }
@@ -178,8 +177,8 @@ class Refinery extends Entity {
     if (this.recipe) {
       const rec = REFINERY_RECIPES[this.recipe];
       if (rec.inp[item]) {
-        // 产物堆积（够用 2 次生产）时停止送料，防止原料过度积压在前端机器
-        if (outputBacklogged(this.outp, rec.out, REFINERY_BUF_CAP)) return false;
+        // 只按原料缓冲上限判定：产物不做计数（煤液化等配方产物即原料，
+        // 把产物算进总量会让设备被自己上一轮产出「喂饱」而拒收下一轮原料）
         if ((this.inp[item] || 0) >= REFINERY_BUF_CAP) return false;
         this.inp[item] = (this.inp[item] || 0) + 1;
         return true;

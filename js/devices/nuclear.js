@@ -171,8 +171,8 @@ class Centrifuge extends Entity {
     if (this.recipe) {
       const rec = this.recipeObj();
       if (rec && rec.inp[item]) {
-        // 产物堆积（够用 2 次生产）时停止送料（自循环配方按固定缓冲容量判定）
-        if (this.outputBufferFull(rec)) return false;
+        // 只按原料判定是否超过 2 倍：产物不做计数（Kovarex 等自循环配方产物即原料，
+        // 把产物算进总量会让离心机被自己上一轮产出「喂饱」而拒收下一轮原料）
         if ((this.inp[item] || 0) >= rec.inp[item] * 2) return false;
         this.inp[item] = (this.inp[item] || 0) + 1;
         return true;

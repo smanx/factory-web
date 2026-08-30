@@ -259,15 +259,15 @@ class Inserter extends Entity {
       case 'electromagnetic-plant': {
         if (!t.recipe) return false;
         const rec = RECIPES[t.recipe];
-        // 产物堆积（够用 2 次生产）时停止送料，防止原料过度积压在前端机器
-        if (outputBacklogged(t.outp, rec.out)) return false;
+        // 只按原料判定是否超过 2 倍：产物不做计数（自循环配方产物即原料，
+        // 若把产物算进总量会导致设备被自己上一轮的产出提前「喂饱」而停止送料）
         return !!rec.inp[item] && (t.inp[item] || 0) < rec.inp[item] * 2;
       }
       case 'centrifuge': {
         if (!t.recipe) return false;
         const rec = t.recipeObj();
-        // 产物堆积时停止送料（判定统一走离心机 outputBufferFull：概率/自循环/普通配方各自规则）
-        if (t.outputBufferFull(rec)) return false;
+        // 只按原料判定是否超过 2 倍：产物不做计数（Kovarex 等自循环配方产物即原料，
+        // 把产物算进总量会让离心机被自己上一轮产出「喂饱」而停止送料）
         return !!rec.inp[item] && (t.inp[item] || 0) < rec.inp[item] * 2;
       }
       case 'burner-mining-drill':

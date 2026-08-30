@@ -56,10 +56,9 @@ class Assembler extends Entity {
       if (!(n instanceof Pipe)) return;
       // 只有流体口外侧那一格的管道才能与本机互通
       if (n.x !== pc[0] || n.y !== pc[1]) return;
-      // 产物堆积（够用 2 次生产）时停止吸入流体原料，防止原料积压在前端管道
-      const backlog = outputBacklogged(this.outp, fr.rec.out);
+      // 只按原料缓冲上限吸入流体原料：产物不做计数（自循环配方产物即原料）
       for (const k of fr.fin)
-        if (!backlog && (this.inp[k] || 0) < 50 && (n.fluid[k] || 0) >= 1) {
+        if ((this.inp[k] || 0) < 50 && (n.fluid[k] || 0) >= 1) {
           n.takeItemOf(k);
           this.inp[k] = (this.inp[k] || 0) + 1;
         }
@@ -174,8 +173,8 @@ class Assembler extends Entity {
     if (this.recipe) {
       const rec = RECIPES[this.recipe];
       if (rec.inp[item]) {
-        // 产物堆积（够用 2 次生产）时停止送料，防止原料过度积压在前端机器
-        if (outputBacklogged(this.outp, rec.out)) return false;
+        // 只按原料判定是否超过 2 倍：产物不做计数（自循环配方产物即原料，
+        // 把产物算进总量会让设备被自己上一轮产出「喂饱」而拒收下一轮原料）
         if ((this.inp[item] || 0) >= rec.inp[item] * 2) return false;
         this.inp[item] = (this.inp[item] || 0) + 1;
         return true;
