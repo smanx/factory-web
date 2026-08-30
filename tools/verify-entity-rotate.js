@@ -6,7 +6,8 @@
  * 验证《异星工厂》建筑旋转/翻转规则：
  *   - 所有建筑在建造时（选择后、放下前，即幽灵预览阶段）均可按住 R 旋转、
  *     V/H 翻转（通过 ghostDir 生效，包括放置后不可旋转的建筑如箱子）。
- *   - 所有建筑放置后均可按 R 旋转、V/H 翻转（含非方形 rotSwap 设备，占地与端口随 dir 交换）。
+ *   - 放置后：V/H 翻转所有建筑均可用；R 旋转仅物流件白名单（传送带/机械臂/
+ *     地下传送带/地下管道）可用，其余建筑不可旋转（R 只作用于放置幽灵）。
  *   - 非方形设备（rotSwap，如分流器）旋转/翻转后占地宽高正确交换。
  *
  * 运行：node tools/verify-entity-rotate.js （退出码 0 = 通过）
@@ -62,19 +63,22 @@ const BUILD_DEFS = {
   'stack-inserter':    { w: 1, h: 1, solid: true },
   'fast-inserter':       { w: 1, h: 1, solid: true },
   'wooden-chest':        { w: 1, h: 1, solid: true },
+  'pipe-to-ground':      { w: 1, h: 1, solid: true },
 };
 // 放置后可直接旋转本体的设备（R/V/H 生效），其余建筑仅幽灵阶段可旋转
 const DEVICE_DIR_ROTATE = {};
 ['transport-belt','fast-transport-belt','express-transport-belt',
  'underground-belt','fast-underground-belt','express-underground-belt',
- 'inserter','burner-inserter','long-handed-inserter','bulk-inserter','fast-inserter']
+ 'inserter','burner-inserter','long-handed-inserter','bulk-inserter','fast-inserter',
+ 'pipe-to-ground']
   .forEach(t => { DEVICE_DIR_ROTATE[t] = true; });
 
 const sandbox = {
   console, TILE, BELT_SPEED, BELT_SPACING, DX, DY, G, entAt, entKey,
   BUILD_DEFS, DEVICE_DIR_ROTATE,
   UNDERGROUND_MAX, FAST_UNDERGROUND_MAX, EXPRESS_UNDERGROUND_MAX,
-  postPlaceRotatable: (t) => !(t === 'boiler' || t === 'steam-engine' || t === 'steam-turbine' || t === 'heat-exchanger'),
+  // 放置后仍可直接旋转（R）的白名单：仅物流件（传送带/机械臂/地下传送带/地下管道）
+  postPlaceRotatable: (t) => /^(transport-belt|fast-transport-belt|express-transport-belt|turbo-transport-belt|creative-belt|void-belt|inserter|burner-inserter|long-handed-inserter|fast-inserter|bulk-inserter|stack-inserter|underground-belt|fast-underground-belt|express-underground-belt|turbo-underground-belt|pipe-to-ground)$/.test(t),
   ITEMS: {},
   Underground: class Underground {}, Splitter: class Splitter {},
   Belt: class Belt {}, Entity: class Entity {},
@@ -194,19 +198,24 @@ for (const t of entities) {
   ok(sandbox.__r4 === 0, `${t} 放置后再 R 旋转 3→${sandbox.__r4}（期望 0）`);
 }
 
-// ===== 三、非方形 rotSwap 设备（分流器）放置后旋转/翻转占地正确交换 =====
-console.log('\n【rotSwap 非方形设备占地交换】');
+// ===== 三、非方形 rotSwap 设备（分流器）放置后：R 不可旋转（白名单外），H 翻转可用 =====
+console.log('\n【rotSwap 非方形设备（分流器）放置后旋转白名单】');
 fresh();
 vm.runInContext(`(function(){
   const sp = new Splitter('splitter', 5, 5);
   sp.dir = 0; sp.w = 1; sp.h = 2;
   G.grid.set(entKey(5,5), sp); G.ents.push(sp);
   G.cursorTile = {tx:5, ty:5};
-  rotateAction();  // 0 -> 1，宽高交换
-  __w1 = sp.w; __h1 = sp.h; __d1 = sp.dir;
+  G.ghostDir = 0;
+  rotateAction();  // 非白名单物流件：本体不旋转，幽灵旋转
+  __w1 = sp.w; __h1 = sp.h; __d1 = sp.dir; __g1 = G.ghostDir;
+  flipAction('h'); // 翻转不受白名单限制
+  __d2 = sp.dir;
 })()`, sandbox);
-ok(sandbox.__d1 === 1 && sandbox.__w1 === 2 && sandbox.__h1 === 1,
-  `分流器 R 旋转 dir=${sandbox.__d1} w=${sandbox.__w1} h=${sandbox.__h1}（期望 dir=1 w=2 h=1）`);
+ok(sandbox.__d1 === 0 && sandbox.__w1 === 1 && sandbox.__h1 === 2 && sandbox.__g1 === 1,
+  `分流器放置后 R 不旋转本体 dir=${sandbox.__d1} w=${sandbox.__w1} h=${sandbox.__h1}（期望 dir=0 w=1 h=2），幽灵旋转(${sandbox.__g1}→期望 1)`);
+ok(sandbox.__d2 === 2,
+  `分流器放置后 H 翻转本体 0→${sandbox.__d2}（期望 2，翻转不受白名单限制）`);
 
 // ===== 四、核能/蒸汽等非方形设备也可旋转/翻转，端口随 dir 旋转 =====
 // 热交换器(3×2)、汽轮机(5×3)、锅炉(3×2)、蒸汽机(3×5) 均标记 rotSwap，
@@ -266,10 +275,10 @@ for (const t in rotateDefs) {
   ok(re.test(bdSrc), `${t} 已标记 rotSwap（建造时可旋转/翻转）`);
 }
 
-// ===== 五、非方形 rotSwap 设备放置后仍可直接旋转（占地正确交换） =====
-// 全部设备放置后均可 R/V/H 调整朝向；rotSwap 类（锅炉/蒸汽机/汽轮机/热交换器/分流器）
-// 旋转后占地宽高交换、端口随 dir 旋转。
-console.log('\n【rotSwap 设备放置后直接旋转】');
+// ===== 五、放置后旋转白名单 =====
+// 已放置设备默认不可旋转：非物流件（锅炉/蒸汽机/汽轮机/热交换器/分流器等）
+// 按 R 不旋转本体、只旋转当前放置幽灵；物流件（传送带/机械臂/地下传送带/地下管道）例外。
+console.log('\n【放置后旋转白名单：非物流件不可旋转，仅转幽灵】');
 const rotSwapDefs = { 'boiler': [3, 2], 'steam-engine': [3, 5], 'steam-turbine': [3, 5], 'heat-exchanger': [3, 2] };
 for (const t in rotSwapDefs) {
   fresh();
@@ -280,25 +289,45 @@ for (const t in rotSwapDefs) {
     G.grid.set(entKey(5,5), e); G.ents.push(e);
     G.cursorTile = {tx:5, ty:5};
     G.ghostDir = 0;
-    rotateAction(); // 指向已放置的 rotSwap 设备，R 直接旋转本体并交换占地
+    rotateAction(); // 非物流件：R 不旋转本体，转幽灵
     __d = e.dir; __w = e.w; __h = e.h; __gw = G.ghostDir;
+    flipAction('h'); // 翻转不受白名单限制：所有已放置设备均可 H 翻转
+    __fd = e.dir;
   })()`, sandbox);
   const [dw, dh] = rotSwapDefs[t];
-  ok(sandbox.__d === 1 && sandbox.__w === dh && sandbox.__h === dw && sandbox.__gw === 0,
-    `${t} 放置后按 R 直接旋转本体 dir=${sandbox.__d} w=${sandbox.__w} h=${sandbox.__h}（期望 dir=1 w=${dh} h=${dw}），幽灵不变(${sandbox.__gw})`);
+  ok(sandbox.__d === 0 && sandbox.__w === dw && sandbox.__h === dh && sandbox.__gw === 1,
+    `${t} 放置后按 R 不旋转本体 dir=${sandbox.__d} w=${sandbox.__w} h=${sandbox.__h}（期望 dir=0 w=${dw} h=${dh}），幽灵旋转(${sandbox.__gw}→期望 1)`);
+  ok(sandbox.__fd === 2, `${t} 放置后按 H 翻转本体 0→${sandbox.__fd}（期望 2，翻转不受白名单限制）`);
 }
-// 分流器放置后仍可直接旋转
+// 分流器（rotSwap 且非白名单物流件）：放置后 R 不可旋转本体，H 翻转可用
 fresh();
 vm.runInContext(`(function(){
   const sp = new Splitter('splitter', 5, 5);
   sp.dir = 0; sp.w = 1; sp.h = 2;
   G.grid.set(entKey(5,5), sp); G.ents.push(sp);
   G.cursorTile = {tx:5, ty:5};
+  G.ghostDir = 0;
   rotateAction();
-  __d = sp.dir; __w = sp.w; __h = sp.h;
+  __d = sp.dir; __w = sp.w; __h = sp.h; __gw = G.ghostDir;
+  flipAction('h');
+  __fd = sp.dir;
 })()`, sandbox);
-ok(sandbox.__d === 1 && sandbox.__w === 2 && sandbox.__h === 1,
-  `分流器放置后按 R 仍可旋转 dir=${sandbox.__d} w=${sandbox.__w} h=${sandbox.__h}`);
+ok(sandbox.__d === 0 && sandbox.__w === 1 && sandbox.__h === 2 && sandbox.__gw === 1,
+  `分流器放置后按 R 不旋转本体 dir=${sandbox.__d} w=${sandbox.__w} h=${sandbox.__h}（期望 dir=0 w=1 h=2），幽灵旋转(${sandbox.__gw})`);
+ok(sandbox.__fd === 2,
+  `分流器放置后按 H 翻转本体 0→${sandbox.__fd}（期望 2，翻转不受白名单限制）`);
+// 物流件例外：锅炉之外，传送带类 rotSwap 白名单设备放置后可直接旋转（用创造带模拟 rotSwap 物流件）
+fresh();
+vm.runInContext(`(function(){
+  const b = { type: 'pipe-to-ground', x: 5, y: 5, dir: 0, w: 1, h: 1 };
+  G.grid.set(entKey(5,5), b); G.ents.push(b);
+  G.cursorTile = {tx:5, ty:5};
+  G.ghostDir = 0;
+  rotateAction(); // 白名单物流件：R 直接旋转本体
+  __d = b.dir; __gw = G.ghostDir;
+})()`, sandbox);
+ok(sandbox.__d === 1 && sandbox.__gw === 0,
+  `地下管道放置后按 R 可直接旋转 dir=${sandbox.__d}（期望 1，白名单例外），幽灵不变(${sandbox.__gw})`);
 
 console.log('\n----------------------------------------');
 console.log(`通过 ${pass} 项，失败 ${fail} 项`);

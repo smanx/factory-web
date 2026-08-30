@@ -158,8 +158,11 @@ function rotateAction() {
   if (G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
     const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
     if (e && BUILD_DEFS[e.type]) {
-      // 所有已放置设备均可直接旋转；非方形设备（分流器类）旋转后脚印变化，需重挂网格
-      if (BUILD_DEFS[e.type].rotSwap) {
+      // 已放置设备默认不可旋转，仅物流件（传送带/机械臂/地下传送带/地下管道等）
+      // 白名单例外可直接旋转；其余按 R 只作用于当前放置幽灵（预览）。
+      // 非方形设备（分流器类）旋转后脚印变化，需重挂网格
+      const rotOk = postPlaceRotatable(e.type);
+      if (rotOk && BUILD_DEFS[e.type].rotSwap) {
         const nd = (e.dir + 1) % 4;
         // 抽水机必须始终压在水面上，旋转后脚印变化需重新校验
         if (e.type === 'offshore-pump' && !pumpCanFace(e, nd)) { toast('抽水机无法朝该方向旋转：必须仍压在水面上'); return; }
@@ -171,7 +174,7 @@ function rotateAction() {
         return;
       }
       // 有朝向的设备：直接旋转（采矿机转完立即尝试朝新方向输出）
-      if (DEVICE_DIR_ROTATE[e.type]) {
+      if (rotOk && DEVICE_DIR_ROTATE[e.type]) {
         e.dir = (e.dir + 1) % 4;
         // 传送带方向变化会改变其输入侧判定，失效附近缓存
         invalidateBeltInputNear(e.x, e.y, e.w, e.h);
