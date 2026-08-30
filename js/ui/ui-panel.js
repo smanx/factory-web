@@ -1494,6 +1494,7 @@ function selectInventoryItem(iid) {
   G.sel = -1;
   G.quickSel = iid;
   G.ghostDir = 0;
+  G.ghostMirror = 0;
   refreshHotbar();
   uiDirty = true;
   if (typeof setWeapon === 'function') setWeapon(iid);

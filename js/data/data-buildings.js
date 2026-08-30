@@ -199,29 +199,9 @@ const BUILDING_HP = {
 };
 function buildingMaxHp(type) { return BUILDING_HP[type] || 100; }
 
-// 放置后（本体已建在地图上）仍允许直接旋转的设备白名单：
-//   传送带（各等级）、机械臂（各类型）、地下传送带（各等级）、地下管道（pipe-to-ground），
-//   以及加工建筑：炼油厂 / 化工厂 / 低温工厂（本体方形对称，端口随 dir 旋转，无需重挂网格），
-//   以及储液罐（2×2 圆柱罐：罐顶定向构件与对角管道口随 dir 旋转/翻转，见 js/devices/storage-tank.js）。
-// 白名单外设备放置后朝向固定，按 R 仅在放置幽灵（预览）阶段调整朝向。
-// 注意：V/H 翻转不受此白名单限制，所有已放置设备均可翻转（见 flipAction）。
-const POST_PLACE_ROTATE_OK = {
-  // 传送带（含创造/虚空带）
-  'transport-belt': 1, 'fast-transport-belt': 1, 'express-transport-belt': 1, 'turbo-transport-belt': 1,
-  'creative-belt': 1, 'void-belt': 1,
-  // 机械臂（各类型）
-  'inserter': 1, 'burner-inserter': 1, 'long-handed-inserter': 1, 'fast-inserter': 1,
-  'bulk-inserter': 1, 'stack-inserter': 1,
-  // 地下传送带（各等级）
-  'underground-belt': 1, 'fast-underground-belt': 1, 'express-underground-belt': 1, 'turbo-underground-belt': 1,
-  // 地下管道
-  'pipe-to-ground': 1,
-  // 加工建筑（本体方形对称、端口随 dir 旋转）：炼油厂 / 化工厂（含低温工厂，复用化工厂注册）
-  'oil-refinery': 1, 'chemical-plant': 1, 'cryogenic-plant': 1,
-  // 储液罐（2×2 圆柱罐：罐顶定向构件与对角管道口随 dir 旋转/翻转，R 可直接旋转本体）
-  'storage-tank': 1
-};
-function postPlaceRotatable(type) { return !!POST_PLACE_ROTATE_OK[type]; }
+// 放置后（本体已建在地图上）的 R 旋转 / V·H 翻转：所有设备统一继承 Entity.rotateCW()/Entity.flip()，
+// 行为完全一致（rotSwap 设备自动重挂网格交换占地；地下传送带/地下管道覆写 flip 以同步配对端）。
+// 不再有"放置后旋转白名单"——朝向调整对所有设备一视同仁。
 
 // ===== 官方建筑血量数据桥接（GAME_DATA 由 factorio-data 现场生成，见 tools/generate-game-data.js）=====
 // 与《异星工厂》官方完全一致：官方 max_health 覆盖手工值。

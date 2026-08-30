@@ -102,6 +102,7 @@ function returnToMenu() {
   if (typeof syncBlueprintCursor === 'function') syncBlueprintCursor();
   G.deconstructMode = false;
   G.ghostDir = 0;
+  G.ghostMirror = 0;
   const sc = document.getElementById('start-screen');
   if (sc) sc.classList.remove('hidden');
   if (typeof playSfx === 'function') playSfx('click');

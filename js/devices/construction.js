@@ -91,6 +91,7 @@ class ConstrGhost {
     const def = BUILD_DEFS[type];
     this.type = type;
     this.x = x; this.y = y; this.dir = dir | 0;
+    this.mirror = 0;               // 镜像手性（蓝图粘贴时随快照携带，储液罐等对角接口设备用）
     this.w = def.w; this.h = def.h;
     this.recipe = null;            // 组装机/化工厂/炼油厂等保留配方
     this.buildT = 0;               // 施工进度
@@ -140,6 +141,7 @@ function pasteBlueprintAsGhosts(bp) {
     // 校验放置合法性（水面/可放置规则），不合法跳过
     if (!canPlaceAt(s.type, nx, ny, ndir).ok) continue;
     const g = new ConstrGhost(s.type, nx, ny, ndir);
+    g.mirror = s.mirror | 0;
     if (s.recipe) g.recipe = s.recipe;
     if (isReplace) g.replaceEnt = oldEnt;   // 标记替换建造：落地时移除旧设备并返还
     G.constrGhosts.push(g);
@@ -281,8 +283,8 @@ function completeBuild(g) {
   }
   // 格仍被占用则放弃
   if (entAt(g.x, g.y)) { g._dead = true; return; }
-  const e = cls.restore({ type: g.type, x: g.x, y: g.y, dir: g.dir });
-  e.dir = g.dir | 0; e.applyDir();
+  const e = cls.restore({ type: g.type, x: g.x, y: g.y, dir: g.dir, mirror: g.mirror | 0 });
+  e.dir = g.dir | 0; e.mirror = g.mirror | 0; e.applyDir();
   if (g.recipe && typeof e.setRecipe === 'function') e.setRecipe(g.recipe);
   addEnt(e);
   g._dead = true;

@@ -43,7 +43,7 @@ const sandbox = {
   invalidateBeltInputNear: () => {},
   circuitSignalNear: () => ({}),
   playSfx: () => {}, toast: () => {},
-  ENT_CLASSES: {}, DEVICE_RENDER: {}, DEVICE_STATUS: {}, DEVICE_PANEL: {}, DEVICE_DIR_ROTATE: {}, DEVICE_PLACE: {},
+  ENT_CLASSES: {}, DEVICE_RENDER: {}, DEVICE_STATUS: {}, DEVICE_PANEL: {}, DEVICE_DIR_ROTATE: {}, DEVICE_PLACE: {}, DEVICE_FLIP: {},
 };
 sandbox.globalThis = sandbox;
 sandbox.window = sandbox;

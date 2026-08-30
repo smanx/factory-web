@@ -24,13 +24,15 @@ class StorageTank extends CircuitNode {
     return x >= this.x && x < this.x + this.w && y >= this.y && y < this.y + this.h &&
       (x === this.x || x === this.x + this.w - 1 || y === this.y || y === this.y + this.h - 1);
   }
-  // 4 个接口所在的外部相邻世界格（一对对角角落，随 dir 切换）：
-  //   dir 0/2 → 北西角（北面口=西北格上方、西面口=西北格左侧）+ 南东角（东面口、南面口）；
-  //   dir 1/3 → 北东角（北面口、东面口）+ 南西角（南面口、西面口）。
+  // 4 个接口所在的外部相邻世界格（一对对角角落，随 dir/mirror 切换）：
+  //   有效奇偶 p = (dir%2) XOR mirror：p=0 → 北西角（北面口 + 西面口）+ 南东角（东面口 + 南面口）；
+  //   p=1 → 北东角（北面口 + 东面口）+ 南西角（南面口 + 西面口）。
+  //   R 旋转切换 dir（奇偶翻转）；V/H 真镜像翻转切换 mirror 手性（同样换对角，但罐顶构件是
+  //   反射而非转 90°——走桥等定向构件保持原轴向、左右/上下对调）。
   // 与官方 pipe_connections 的 position+direction 一一对应（角落格 + 该角落的两个朝向）。
   portCells() {
     const x2 = this.x + this.w - 1, y2 = this.y + this.h - 1;   // 东南角格
-    return (this.dir % 2 === 0)
+    return (((this.dir % 2) ^ (this.mirror | 0)) === 0)
       ? [[this.x, this.y - 1], [this.x - 1, this.y],            // 北西角：北面口 + 西面口
          [x2, this.y + this.h], [this.x + this.w, y2]]          // 南东角：南面口 + 东面口
       : [[x2, this.y - 1], [this.x + this.w, this.y],           // 北东角：北面口 + 东面口
@@ -152,8 +154,9 @@ class StorageTank extends CircuitNode {
 // 接口布局见类头注释：4 个口集中在两个对角角落（对齐官方 factorio-data）。
 // 储液罐为圆柱罐俯视图，整个罐顶（含管道口法兰）绘制在随 dir 旋转的局部坐标系里：
 //   dir 0 基线 → 活跃角落为北西角(-1,-1) + 南东角(+1,+1)，与 portCells() 一一对应；
-//   R 旋转 = dir 顺时针 +1（每档转 90°）；V/H 翻转 = flipDir 镜像 dir，
-//   罐顶与管道口随之同步旋转/翻转（管口在局部坐标里的位置不变，观感随方向整体转动）。
+//   R 旋转 = dir 顺时针 +1（每档转 90°）；V/H 真镜像翻转 = 切换 mirror 手性
+//   （局部坐标系先反射再旋转，接口换到另一对对角、罐顶构件做镜像而非转 90°，
+//   见文件末尾 DEVICE_FLIP 注册）。
 // 视觉分层（自下而上）：
 //   ① 地面阴影  ② 混凝土基座圆盘  ③ 罐体外壳圆盘（径向渐变 + 铆钉圈 + 环箍焊缝）
 //   ④ 内腔（环形腔带：液色随液位加深，运转涟漪高光弧）
@@ -169,9 +172,10 @@ function _tankMix(hex, t) {
 }
 // 储液罐渲染：俯视「圆柱储罐」（2×2 占地保持不变）——正圆金属罐体 + 同心环带 +
 // 随 dir 旋转的罐顶定向构件 + 对角角落管道口（对齐官方 factorio-data）。
-// 设备可 R 旋转、V/H 翻转：罐顶整体（走桥/刻度弧/呼吸阀/毂盖/管道口）在随 dir 旋转的
-// 局部坐标系里绘制，dir 0 基线管口落在北西角+南东角（与 portCells() 严格一致），
-// 每按一次 R 顺时针转 90°，V/H 翻转镜像方向，管道口始终跟着罐体一起转。
+// 设备可 R 旋转、V/H 真镜像翻转：罐顶整体（走桥/刻度弧/呼吸阀/毂盖/管道口）在随
+// dir 旋转的局部坐标系里绘制，mirror 手性时先反射局部 x 再旋转，dir 0 基线管口落在
+// 北西角+南东角（与 portCells() 严格一致），每按一次 R 顺时针转 90°，
+// V/H 翻转把接口换到另一对对角并镜像罐顶构件（走桥轴向不变、左右/上下对调）。
 function drawStorageTank(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const s = TILE * e.w;
@@ -185,7 +189,10 @@ function drawStorageTank(ctx, e, gx, gy, dir, alpha) {
   const fluidColor = f ? ITEMS[f].color : '#8a97a6';
   const simple = (typeof LOD !== 'undefined' && LOD && LOD.simple);
   const t = G.time || 0;
-  const rot = (dir & 3) * Math.PI / 2;  // 顺时针旋转角：R 每按一次 +90°，V/H 镜像后同样生效
+  const rot = (dir & 3) * Math.PI / 2;  // 顺时针旋转角：R 每按一次 +90°
+  // 镜像手性：V/H 真镜像翻转置 1。局部坐标系先沿 x 轴反射（lx→-lx）再旋转，
+  // 得到 8 种二面体朝向；接口对角 = (dir%2) XOR mirror，与 portCells() 严格一致。
+  const mir = (e.mirror | 0) ? -1 : 1;
 
   // ===== 俯视圆柱罐几何（罐体正圆与方向无关；定向构件与管口随 dir 旋转）=====
   const R = 28 * k;               // 罐体外接半径（略小于 32k 半格宽，留基座边）
@@ -194,9 +201,9 @@ function drawStorageTank(ctx, e, gx, gy, dir, alpha) {
   const tankPath = () => {
     ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
   };
-  // 局部坐标（罐顶基线朝向）→ 世界坐标：把罐顶定向构件与管道口画进随 dir 旋转的坐标系。
+  // 局部坐标（罐顶基线朝向）→ 世界坐标：先按手性反射局部 x（mirror），再随 dir 旋转。
   // （局部 +x 朝"东"，rot 为顺时针角，与 canvas y 轴向下的屏幕观感一致）
-  const lp = (lx, ly) => [cx + lx * Math.cos(rot) - ly * Math.sin(rot), cy + lx * Math.sin(rot) + ly * Math.cos(rot)];
+  const lp = (lx, ly) => { const X = lx * mir; return [cx + X * Math.cos(rot) - ly * Math.sin(rot), cy + X * Math.sin(rot) + ly * Math.cos(rot)]; };
 
   // ===== 低 LOD（缩远）：圆罐剪影 + 液色填充 + 角落接口点（随 dir 旋转），省掉细节 =====
   if (simple) {
@@ -316,8 +323,8 @@ function drawStorageTank(ctx, e, gx, gy, dir, alpha) {
     const tickN = 14, litN = Math.round(level * tickN);
     const trR = R * 0.90;
     for (let i = 0; i < tickN; i++) {
-      const a = rot + Math.PI * 0.75 + i * Math.PI * 2 / tickN;   // 缺口起点在走桥左端一侧（随 rot 旋转）
-      const tx = cx + Math.cos(a) * trR, ty = cy + Math.sin(a) * trR;
+      const a = Math.PI * 0.75 + i * Math.PI * 2 / tickN;   // 缺口起点在走桥左端一侧（局部角，经 lp 随 rot/mirror 变换）
+      const [tx, ty] = lp(Math.cos(a) * trR, Math.sin(a) * trR);
       if (i < litN) {
         ctx.fillStyle = _tankMix(fluidColor, 0.85);
         ctx.beginPath(); ctx.arc(tx, ty, 1.7 * k, 0, Math.PI * 2); ctx.fill();
@@ -346,8 +353,8 @@ function drawStorageTank(ctx, e, gx, gy, dir, alpha) {
   ctx.fillStyle = '#333c48';
   ctx.beginPath();
   for (let i = 0; i < 6; i++) {
-    const a = rot + i * Math.PI / 3 + Math.PI / 6;
-    const hx = cx + Math.cos(a) * inR * 1.05, hy = cy + Math.sin(a) * inR * 1.05;
+    const a = i * Math.PI / 3 + Math.PI / 6;
+    const [hx, hy] = lp(Math.cos(a) * inR * 1.05, Math.sin(a) * inR * 1.05);
     i === 0 ? ctx.moveTo(hx, hy) : ctx.lineTo(hx, hy);
   }
   ctx.closePath(); ctx.fill();
@@ -366,9 +373,10 @@ function drawStorageTank(ctx, e, gx, gy, dir, alpha) {
   // 六颗盖面螺栓（沿六角方向分布，随 rot 转动）
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   for (let i = 0; i < 6; i++) {
-    const a = rot + i * Math.PI / 3;
+    const a = i * Math.PI / 3;
+    const [bx, by] = lp(Math.cos(a) * inR * 0.78, Math.sin(a) * inR * 0.78);
     ctx.beginPath();
-    ctx.arc(cx + Math.cos(a) * inR * 0.78, cy + Math.sin(a) * inR * 0.78, 0.7 * k, 0, Math.PI * 2);
+    ctx.arc(bx, by, 0.7 * k, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -425,7 +433,7 @@ function storageTankPanelHtml(e) {
   let h = row('流体', Object.keys(agg).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(agg, { action: 'display' }) + '</div>' : '<span class="dim">空</span>', 'contents');
   h += row('容量', e.total() + ' / ' + STORAGE_TANK_CAP, 'cap');
   if (Object.keys(agg).length) h += '<button data-action="takeout" id="btn-tank-takeout">取出全部 (' + e.total() + ')</button>';
-  h += '<div class="dim">储液罐大容量缓冲（' + STORAGE_TANK_CAP + ' 单位），罐内只容纳单一液体/气体。罐像管道一样互联互通：接口集中在一对对角角落（北西角：北面+西面两口；南东角：东面+南面两口，对齐官方布局；旋转 90° 切换为另一对对角），可进可出，与相邻管道/地下管道（管口侧）/储液罐按液位自动平衡，任一接口进、可从其他接口出，也能接其他管道或其他储液罐；同时向相邻炼油厂/化工厂等输入口供料。出入口处会显示当前流体图标。</div>';
+  h += '<div class="dim">储液罐大容量缓冲（' + STORAGE_TANK_CAP + ' 单位），罐内只容纳单一液体/气体。罐像管道一样互联互通：接口集中在一对对角角落（北西角：北面+西面两口；南东角：东面+南面两口，对齐官方布局；旋转 90° 或按 V/H 翻转均切换为另一对对角），可进可出，与相邻管道/地下管道（管口侧）/储液罐按液位自动平衡，任一接口进、可从其他接口出，也能接其他管道或其他储液罐；同时向相邻炼油厂/化工厂等输入口供料。出入口处会显示当前流体图标。</div>';
   h += '<div class="dim">已接入电路网络：罐内流体存量以流体名（如水→water）作为信号输出到所连网络，供组合器/功率开关/机械臂等做按液位自动化（对齐《异星工厂》储液罐电路信号）。</div>';
   return h;
 }
@@ -451,14 +459,21 @@ function storageTankTip(e) {
 ENT_CLASSES['storage-tank'] = StorageTank;
 DEVICE_RENDER['storage-tank'] = drawStorageTank;
 DEVICE_DIR_ROTATE['storage-tank'] = true; // 支持旋转
+// V/H 真镜像翻转（非旋转）：储液罐接口集中在一对对角角落，沿水平或垂直轴镜像
+// 都会把接口换到另一对对角，且罐顶构件（走桥/刻度弧/呼吸阀/毂盖）做反射而非转 90°。
+// 通用 flipDir 只表达旋转（H 换 0↔2 / V 换 1↔3，奇偶不变），无法表达镜像，
+// 故注册真镜像映射 mirrorFlipDir（返回 [dir, mirror]，手性取反）：
+//   H（左右镜像）：dir→(4-dir)%4；V（上下镜像）：dir→(2-dir)%4；均对合，H∘V=旋转180°。
+// 接口对角 = (dir%2) XOR mirror，渲染 lp() 先反射局部 x 再随 dir 旋转，二者严格同步。
+DEVICE_FLIP['storage-tank'] = mirrorFlipDir;
 DEVICE_STATUS['storage-tank'] = e => e.total() > 0 ? 'g' : 'r';
 DEVICE_PANEL['storage-tank'] = { html: storageTankPanelHtml, live: storageTankPanelLive, tip: storageTankTip };
 // 显示详情时，接口所在的对角角落格 + 当前存储流体名（用于鼠标悬停显示流体名称）。
-// 图标放在罐体自身的角落格上（entAt 可命中），随 dir 在两对对角之间切换。
+// 图标放在罐体自身的角落格上（entAt 可命中），随 dir/mirror 在两对对角之间切换。
 DEVICE_FLUID_ICONS['storage-tank'] = e => {
   const f = tankFluid(e);
   if (!f) return [];
-  const cs = (e.dir % 2 === 0)
+  const cs = (((e.dir % 2) ^ (e.mirror | 0)) === 0)
     ? [[e.x, e.y], [e.x + e.w - 1, e.y + e.h - 1]]        // 北西角格 + 南东角格
     : [[e.x + e.w - 1, e.y], [e.x, e.y + e.h - 1]];       // 北东角格 + 南西角格
   return cs.map(c => ({ x: c[0], y: c[1], fluid: f }));

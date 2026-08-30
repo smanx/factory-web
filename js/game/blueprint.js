@@ -424,15 +424,15 @@ function flipEnts(ents, axis) {
   const bb = blueprintBounds(ents);
   const newEnts = ents.map(s => {
     const fp = blueprintFootprint(s);
-    let nx = s.x, ny = s.y, ndir = s.dir;
+    let nx = s.x, ny = s.y, ndir = s.dir, nmir = s.mirror | 0;
     if (axis === 'h') {
       nx = bb.minX + bb.maxX - (s.x + fp.w - 1);
-      ndir = flipDir(s.dir, 'h');
+      [ndir, nmir] = flipEntityDir(s.type, s.dir, s.mirror, 'h');
     } else {
       ny = bb.minY + bb.maxY - (s.y + fp.h - 1);
-      ndir = flipDir(s.dir, 'v');
+      [ndir, nmir] = flipEntityDir(s.type, s.dir, s.mirror, 'v');
     }
-    return { ...s, x: nx, y: ny, dir: ndir };
+    return { ...s, x: nx, y: ny, dir: ndir, mirror: nmir };
   });
   const nb = blueprintBounds(newEnts);
   return { ents: newEnts, minX: nb.minX, minY: nb.minY };
@@ -622,6 +622,7 @@ function blueprintEncode(b) {
   if (!b || !Array.isArray(b.ents) || !b.ents.length) return null;
   const ents = b.ents.map(e => {
     const arr = [e.type, e.x - b.minX, e.y - b.minY, e.dir | 0];
+    if (e.mirror) arr.push(1);   // 镜像手性（仅储液罐等对角接口设备会用到）
     return arr;
   });
   const obj = { n: String(b.name || '蓝图'), w: 1, h: 1, e: ents };
@@ -642,7 +643,7 @@ function blueprintDecode(str) {
     if (!obj || !Array.isArray(obj.e)) return null;
     const ents = obj.e.map(arr => {
       if (!Array.isArray(arr) || arr.length < 3) return null;
-      const e = { type: String(arr[0]), x: arr[1], y: arr[2], dir: (arr[3] || 0) | 0 };
+      const e = { type: String(arr[0]), x: arr[1], y: arr[2], dir: (arr[3] || 0) | 0, mirror: (arr[4] || 0) | 0 };
       // 仅接受已知设备类型，避免导入未知类型导致异常
       if (!BUILD_DEFS[e.type] && !ENT_CLASSES[e.type]) return null;
       return e;

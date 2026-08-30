@@ -290,14 +290,16 @@ function _rfMix(hex, t) {
   const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
   return 'rgba(' + r + ',' + g + ',' + b + ',' + Math.max(0, Math.min(1, t)).toFixed(3) + ')';
 }
-// 炼油厂渲染：俯视「离心分馏机」——圆形金属平台 + 六叶反应槽 + 三重环形分馏管道。
-// 设备可 R 旋转、V/H 翻转（均只改 dir），因此视觉元素全部使用圆周对称结构：
-// 气泡（圆点）、环形管道（圆弧）、离心辐条（过圆心直径线）、旋转辉光（圆弧）——
-// 任意 dir 旋转/水平垂直翻转后动画观感完全一致，不再出现横置/倒置的柱状图。
+// 炼油厂渲染：俯视「分馏厂」——方形混凝土基座 + 双蒸馏塔 + 中央分馏反应槽 + 三产品储球。
+// 设备可 R 旋转、V/H 翻转（均只改 dir），整座厂区随 dir 一起旋转：
+// 双塔圆心对准背面 2 个输入口、三储球对准正面 3 个输出口，管廊按工艺流向
+// （原油吸入 → 蒸馏塔 → 分馏反应槽 → 产品储球 → 排出）前后贯通——
+// 任意朝向下，端口布局与视觉流向天然一致，朝向本身即传达进料/出料方向。
+// 配色对齐物品图标：锈橙主厂房 + 钢灰塔/罐 + 混凝土基座，运转时琥珀色工艺辉光。
 // 视觉分层（自下而上）：
-//   ① 地面阴影  ② 金属基座圆盘  ③ 外壳圆环（拉丝钢）④ 六叶反应槽（配方反应液 + 上升气泡）
-//   ⑤ 分馏环管×2（内环/外环，运转时流动高光）⑥ 离心辐条与中心毂（运转时随离心节奏闪动）
-//   ⑦ 配方图标 + 状态灯  ⑧ 流体端口（drawPort 世界坐标，不随本体旋转）⑨ 外圈描边
+//   ① 地面阴影  ② 混凝土基座（圆角方形 + 地脚螺栓 + 端口警示色块）  ③ 工艺管廊（运转时油流流动高光）
+//   ④ 双蒸馏塔 + 火炬塔（钢质环缝 + 顶盖，运转时脉冲辉光）  ⑤ 中央分馏反应槽（配方液窗 + 进度段 + 气泡）
+//   ⑥ 三产品储球  ⑦ 配方图标 + 状态灯  ⑧ 流体端口（drawPort 世界坐标，不随本体旋转） ⑨ 外框描边
 function drawRefinery(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const s = TILE * e.w;                       // 5×5
@@ -307,194 +309,269 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
   const rec = e.recipe ? REFINERY_RECIPES[e.recipe] : null;
   const working = !!(e.working || e.crafting);
   const t = G.time || 0;
+  const H = s / 2;                            // 半占地（80px）
 
-  // 本体随 dir 旋转（R 旋转 / V·H 翻转均改 dir）。俯视圆对称结构在任意 dir 下观感一致。
+  const outFluid = rec ? Object.keys(rec.out)[0] : null;
+  const mixCol = (outFluid && ITEMS[outFluid]) ? ITEMS[outFluid].color : '#8a5a2a';
+
+  // 低 LOD（缩远）：基座 + 主厂房剪影，省掉全部细节
+  if (LOD && LOD.simple) {
+    ctx.fillStyle = 'rgba(0,0,0,0.30)';
+    rr(ctx, cx - H + 6, cy - H + 7, s - 8, s - 8, 10); ctx.fill();
+    ctx.fillStyle = '#3a332b';
+    rr(ctx, cx - H + 4, cy - H + 4, s - 8, s - 8, 10); ctx.fill();
+    ctx.fillStyle = rec ? _rfMix(mixCol, 0.75) : '#7a4a26';
+    rr(ctx, cx - 26, cy - 14, 52, 34, 6); ctx.fill();
+    ctx.globalAlpha = 1;
+    return;
+  }
+
+  // 本体随 dir 旋转（R 旋转 / V·H 翻转均改 dir），厂区全部画在局部坐标（原点=中心）。
   // 端口与文字在 restore 后以世界坐标绘制，避免双重旋转导致标注倒置。
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate((dir | 0) * Math.PI / 2);
-  ctx.translate(-cx, -cy);
+  // 真镜像手性：V/H 翻转置 mirror 时，本体在旋转后再沿竖直轴反射（R(dir)·S），
+  // 与端口逻辑 rotCell/sideNeighborCell 的局部反射严格一致。否则本体只会转 180°（左右也翻），
+  // 而非真正的上下镜像——化工厂因本体是正圆看不出差别，炼油厂有前后双塔/三球就会露馅。
+  if (e.mirror) ctx.scale(-1, 1);
 
-  const R = s * 0.47;                         // 主体外接半径
-
-  // ① 地面阴影（圆形，中心略向主光反方向偏移，与本体旋转无关）
+  // ① 地面阴影（略向主光反方向偏移）
   ctx.fillStyle = 'rgba(0,0,0,0.32)';
-  ctx.beginPath(); ctx.arc(cx + 2, cy + 3, R, 0, Math.PI * 2); ctx.fill();
+  rr(ctx, -H + 6, -H + 7, s - 8, s - 8, 12); ctx.fill();
 
-  // ② 金属基座圆盘（混凝土色，略大于本体）
-  ctx.fillStyle = '#3a332b';
-  ctx.beginPath(); ctx.arc(cx, cy, R + 2, 0, Math.PI * 2); ctx.fill();
-
-  // ③ 外壳圆环（拉丝钢径向渐变，左上受光）
-  const bodyGrad = ctx.createRadialGradient(cx - R * 0.35, cy - R * 0.35, R * 0.1, cx, cy, R);
-  bodyGrad.addColorStop(0, '#9a6a42');
-  bodyGrad.addColorStop(0.55, '#7a4a26');
-  bodyGrad.addColorStop(1, '#422612');
-  ctx.fillStyle = bodyGrad;
-  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
-  // 外壳铆钉圈（12 颗，圆周均匀——旋转/翻转后依旧均匀）
-  ctx.fillStyle = 'rgba(0,0,0,0.40)';
-  for (let i = 0; i < 12; i++) {
-    const a = i * Math.PI / 6 + Math.PI / 12;
+  // ② 混凝土基座（圆角方形，左上受光渐变 + 深色描边 + 内沿高光）
+  const padGrad = ctx.createLinearGradient(-H, -H, H, H);
+  padGrad.addColorStop(0, '#4a4238');
+  padGrad.addColorStop(0.5, '#3a332b');
+  padGrad.addColorStop(1, '#241f19');
+  ctx.fillStyle = padGrad;
+  rr(ctx, -H + 4, -H + 4, s - 8, s - 8, 12); ctx.fill();
+  ctx.strokeStyle = '#191410';
+  ctx.lineWidth = 2;
+  rr(ctx, -H + 4, -H + 4, s - 8, s - 8, 12); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+  ctx.lineWidth = 1;
+  rr(ctx, -H + 7, -H + 7, s - 14, s - 14, 10); ctx.stroke();
+  // 地脚螺栓（8 颗沿基座边均匀）
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  for (let i = 0; i < 8; i++) {
+    const a = i * Math.PI / 4 + Math.PI / 8;
     ctx.beginPath();
-    ctx.arc(cx + Math.cos(a) * (R - 4.5), cy + Math.sin(a) * (R - 4.5), 1.3, 0, Math.PI * 2);
+    ctx.arc(Math.cos(a) * (H - 10), Math.sin(a) * (H - 10), 1.4, 0, Math.PI * 2);
     ctx.fill();
   }
+  // 端口警示色块：背面输入格绿块、正面输出格橙红块（与端口内孔同色，强化进/出方向感）
+  for (const ix of [-32, 32]) {
+    ctx.fillStyle = _rfMix(PORT_INPUT, 0.5);
+    rr(ctx, ix - 10, -H + 5, 20, 3.4, 1.7); ctx.fill();
+  }
+  for (const ox of [-64, 0, 64]) {
+    ctx.fillStyle = _rfMix(PORT_OUTPUT, 0.5);
+    rr(ctx, ox - 10, H - 8.4, 20, 3.4, 1.7); ctx.fill();
+  }
 
-  // ④ 六叶反应槽：圆周均匀 6 格（扇区环带），反应液 + 气泡 + 进度闪动
-  const inR = R * 0.46, outR = R * 0.86;
-  const outFluid = rec ? Object.keys(rec.out)[0] : null;
-  const mixCol = rec
-    ? ((FLUIDS.indexOf(outFluid) >= 0 || ITEMS[outFluid]) && ITEMS[outFluid] ? ITEMS[outFluid].color : '#8a5a2a')
-    : '#2a1a10';
-  // 反应槽底（深色腔体）：实心圆 + 深色腔描边（六等分效果由辐条分隔）
+  // ③ 工艺管廊（先画，设备压住接头；运转时油流沿"输入→输出"方向流动）
+  const pipeRuns = [
+    [[-32, -H + 2], [-32, -52]],                          // 左输入口 → 左蒸馏塔
+    [[32, -H + 2], [32, -52]],                            // 右输入口 → 右蒸馏塔
+    [[-32, -24], [-32, -14]],                             // 左塔 → 反应槽
+    [[32, -24], [32, -14]],                               // 右塔 → 反应槽
+    [[0, -52], [0, -14]],                                 // 火炬塔 → 反应槽
+    [[0, 28], [0, 34]],                                   // 反应槽 → 产品汇管
+    [[-64, 34], [64, 34]],                                // 产品汇管（横贯三储球）
+    [[-64, 34], [-64, 38]], [[0, 34], [0, 38]], [[64, 34], [64, 38]]  // 汇管 → 储球
+  ];
+  ctx.lineCap = 'round';
+  for (const run of pipeRuns) {
+    ctx.strokeStyle = '#1c1008';
+    ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.moveTo(run[0][0], run[0][1]); ctx.lineTo(run[1][0], run[1][1]); ctx.stroke();
+    ctx.strokeStyle = '#59626e';
+    ctx.lineWidth = 4.4;
+    ctx.beginPath(); ctx.moveTo(run[0][0], run[0][1]); ctx.lineTo(run[1][0], run[1][1]); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(run[0][0], run[0][1]); ctx.lineTo(run[1][0], run[1][1]); ctx.stroke();
+  }
+  if (working) {
+    ctx.strokeStyle = _rfMix('#ffcf8a', 0.55);
+    ctx.lineWidth = 2;
+    ctx.setLineDash([7, 11]);
+    ctx.lineDashOffset = -t * 26;
+    for (const run of pipeRuns) {
+      ctx.beginPath(); ctx.moveTo(run[0][0], run[0][1]); ctx.lineTo(run[1][0], run[1][1]); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+  }
+  ctx.lineCap = 'butt';
+
+  // 蒸馏塔助手：俯视钢质圆柱（环缝 + 圈带螺栓 + 顶盖；运转时顶盖脉冲辉光 + 旋转高光弧）
+  const drawColumn = (x, y, r) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath(); ctx.arc(x, y + 2, r, 0, Math.PI * 2); ctx.fill();
+    const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.12, x, y, r);
+    g.addColorStop(0, '#9aa6b4');
+    g.addColorStop(0.55, '#5a6470');
+    g.addColorStop(1, '#20262e');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#141a20';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(0,0,0,0.30)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(x, y, r * 0.72, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y, r * 0.46, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = 'rgba(0,0,0,0.40)';
+    for (let i = 0; i < 4; i++) {
+      const a = i * Math.PI / 2 + Math.PI / 4;
+      ctx.beginPath(); ctx.arc(x + Math.cos(a) * (r - 3), y + Math.sin(a) * (r - 3), 1.1, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = '#6d7886';
+    ctx.beginPath(); ctx.arc(x, y, r * 0.30, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(x, y, r * 0.30, 0, Math.PI * 2); ctx.stroke();
+    if (working) {
+      ctx.fillStyle = _rfMix('#ffb060', 0.5 + Math.sin(t * 4 + x * 0.1) * 0.25);
+      ctx.beginPath(); ctx.arc(x, y, r * 0.16, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,210,150,0.35)';
+      ctx.lineWidth = 1.4;
+      const sw = t * 1.8 + y;
+      ctx.beginPath(); ctx.arc(x, y, r * 0.85, sw, sw + Math.PI * 0.7); ctx.stroke();
+    }
+  };
+  // ④ 双蒸馏塔（对准背面两输入口）+ 火炬塔（居中略小）
+  drawColumn(-32, -38, 15);
+  drawColumn(32, -38, 15);
+  drawColumn(0, -60, 9);
+
+  // ⑤ 中央分馏反应槽：锈橙主厂房 + 配方液窗 + 进度段
+  const bx = -44, by = -16, bw = 88, bh = 44;
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  rr(ctx, bx + 2, by + 3, bw, bh, 8); ctx.fill();
+  const hallGrad = ctx.createLinearGradient(bx, by, bx, by + bh);
+  hallGrad.addColorStop(0, '#a06a3c');
+  hallGrad.addColorStop(0.5, '#7a4a26');
+  hallGrad.addColorStop(1, '#42260f');
+  ctx.fillStyle = hallGrad;
+  rr(ctx, bx, by, bw, bh, 8); ctx.fill();
+  ctx.strokeStyle = '#241206';
+  ctx.lineWidth = 2;
+  rr(ctx, bx, by, bw, bh, 8); ctx.stroke();
+  // 厂房铆钉（上下两排）
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  for (let i = 0; i < 6; i++) {
+    const rx2 = bx + 10 + i * (bw - 20) / 5;
+    ctx.beginPath(); ctx.arc(rx2, by + 4.5, 1.1, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(rx2, by + bh - 4.5, 1.1, 0, Math.PI * 2); ctx.fill();
+  }
+  // 液窗（深色腔体 + 按配方主产物上色反应液；运转时外溢辉光）
+  const wx = bx + 8, wy = by + 8, ww = bw - 16, wh = bh - 16;
   ctx.fillStyle = '#160c06';
-  ctx.beginPath(); ctx.arc(cx, cy, outR, 0, Math.PI * 2); ctx.fill();
+  rr(ctx, wx, wy, ww, wh, 5); ctx.fill();
   if (rec) {
-    // 反应液（环形圆，各方向一致）
-    const liqGrad = ctx.createRadialGradient(cx, cy, inR * 0.4, cx, cy, outR);
-    liqGrad.addColorStop(0, _rfMix(mixCol, working ? 0.75 : 0.45));
-    liqGrad.addColorStop(1, _rfMix(mixCol, working ? 0.42 : 0.25));
-    ctx.fillStyle = liqGrad;
-    ctx.beginPath(); ctx.arc(cx, cy, outR - 2, 0, Math.PI * 2); ctx.fill();
-    // 液面气泡（圆点上升扩散，圆对称，任意方向观感一致）
+    if (working) { ctx.save(); ctx.shadowColor = _rfMix(mixCol, 0.8); ctx.shadowBlur = 10; }
+    const lg = ctx.createLinearGradient(wx, wy, wx, wy + wh);
+    lg.addColorStop(0, _rfMix(mixCol, working ? 0.72 : 0.42));
+    lg.addColorStop(1, _rfMix(mixCol, working ? 0.40 : 0.22));
+    ctx.fillStyle = lg;
+    rr(ctx, wx + 1.5, wy + 1.5, ww - 3, wh - 3, 4); ctx.fill();
+    if (working) ctx.restore();
+    // 气泡：沿工艺方向（朝产品侧）漂移，横向均匀分布
     if (working) {
       ctx.fillStyle = 'rgba(255,235,200,0.50)';
-      for (let i = 0; i < 6; i++) {
-        const ph = (t * 0.35 + i * 0.167) % 1;                 // 0→1 循环
-        const ba = i * Math.PI / 3 + 0.5;                      // 气泡方位角（均匀分布）
-        const br = inR + (outR - inR - 4) * ph;                // 由内向外扩散
+      for (let i = 0; i < 5; i++) {
+        const ph = (t * 0.45 + i * 0.2) % 1;
+        const bxx = wx + 8 + (i * 37) % (ww - 16);
         ctx.beginPath();
-        ctx.arc(cx + Math.cos(ba) * br, cy + Math.sin(ba) * br, 1.2 + ph * 1.8, 0, Math.PI * 2);
+        ctx.arc(bxx, wy + 3 + ph * (wh - 6), 1 + ph * 1.4, 0, Math.PI * 2);
         ctx.fill();
       }
     }
-    // 加工进度：六扇区轮流点亮（进度指示，每扇区等价，无方向性）
+    // 加工进度：液窗底沿 6 段自左向右点亮
     const phase = rec.time ? Math.min(1, (e.prog || 0) / rec.time) : 0;
     const litN = Math.floor(phase * 6);
     for (let i = 0; i < 6; i++) {
-      const flash = working && ((Math.floor(t * 3) + i) % 6 === 0);
-      if (i < litN || flash) {
-        const a0 = i * Math.PI / 3 - Math.PI / 2;
-        ctx.fillStyle = flash ? 'rgba(255,190,110,0.30)' : 'rgba(255,170,80,0.16)';
-        ctx.beginPath();
-        ctx.arc(cx, cy, outR - 3, a0 + 0.06, a0 + Math.PI / 3 - 0.06);
-        ctx.arc(cx, cy, inR + 3, a0 + Math.PI / 3 - 0.06, a0 + 0.06, true);
-        ctx.closePath(); ctx.fill();
+      if (i < litN) {
+        ctx.fillStyle = 'rgba(255,190,110,0.35)';
+        rr(ctx, wx + 3 + i * (ww - 6) / 6, wy + wh - 4.5, (ww - 6) / 6 - 2, 2.6, 1.2); ctx.fill();
       }
     }
   }
-  // 腔体外沿钢圈
-  ctx.strokeStyle = 'rgba(0,0,0,0.55)';
-  ctx.lineWidth = 2.2;
-  ctx.beginPath(); ctx.arc(cx, cy, outR + 1, 0, Math.PI * 2); ctx.stroke();
-  ctx.strokeStyle = 'rgba(255,255,255,0.14)';
-  ctx.lineWidth = 0.8;
-  ctx.beginPath(); ctx.arc(cx, cy, outR + 2.4, 0, Math.PI * 2); ctx.stroke();
-
-  // ⑤ 分馏环管×2（内环/外环同心，运转时高光弧顺时针流动——圆弧在任意 dir 下观感一致）
-  for (const [rr2, segN] of [[inR - 8, 4], [outR + 7, 5]]) {
-    ctx.strokeStyle = '#241206';
-    ctx.lineWidth = 3.4;
-    ctx.beginPath(); ctx.arc(cx, cy, rr2, 0, Math.PI * 2); ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(cx, cy, rr2 - 1.2, 0, Math.PI * 2); ctx.stroke();
-    if (working) {
-      // 流动高光：若干段等分弧带，相位随时间推进（旋转对称）
-      ctx.strokeStyle = 'rgba(255,200,130,0.55)';
-      ctx.lineWidth = 1.6;
-      const sweep = (t * 0.9) % (Math.PI * 2 / segN);
-      for (let i = 0; i < segN; i++) {
-        const a0 = i * Math.PI * 2 / segN + sweep;
-        ctx.beginPath(); ctx.arc(cx, cy, rr2, a0, a0 + Math.PI * 2 / segN * 0.45); ctx.stroke();
-      }
-    }
-  }
-
-  // ⑥ 离心辐条 + 中心毂：三根过圆心的直径线（三重圆周对称，任意 90° 旋转后重合）
-  ctx.strokeStyle = '#3a2412';
-  ctx.lineWidth = 4.5;
-  for (let i = 0; i < 3; i++) {
-    const a = i * Math.PI / 3 + Math.PI / 6;
-    ctx.beginPath();
-    ctx.moveTo(cx + Math.cos(a) * inR, cy + Math.sin(a) * inR);
-    ctx.lineTo(cx + Math.cos(a) * outR, cy + Math.sin(a) * outR);
-    ctx.stroke();
-  }
-  // 辐条高光
-  ctx.strokeStyle = 'rgba(255,255,255,0.14)';
-  ctx.lineWidth = 1;
-  for (let i = 0; i < 3; i++) {
-    const a = i * Math.PI / 3 + Math.PI / 6;
-    ctx.beginPath();
-    ctx.moveTo(cx + Math.cos(a) * inR, cy + Math.sin(a) * inR);
-    ctx.lineTo(cx + Math.cos(a) * outR, cy + Math.sin(a) * outR);
-    ctx.stroke();
-  }
-  // 中心毂（圆 + 高光点；运转时随离心节奏微微增亮——亮度变化无方向性）
-  ctx.fillStyle = '#241206';
-  ctx.beginPath(); ctx.arc(cx, cy, R * 0.17, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#8a5a34';
+  ctx.strokeStyle = 'rgba(0,0,0,0.50)';
   ctx.lineWidth = 1.6;
-  ctx.beginPath(); ctx.arc(cx, cy, R * 0.17, 0, Math.PI * 2); ctx.stroke();
-  ctx.fillStyle = working ? _rfMix('#ffb060', 0.55 + Math.sin(t * 5) * 0.2) : '#3a2412';
-  ctx.beginPath(); ctx.arc(cx, cy, R * 0.09, 0, Math.PI * 2); ctx.fill();
-  // 运转时的离心辉光（旋转扫过的高光弧）
-  if (working) {
-    const sweepA = t * 1.6;
-    ctx.strokeStyle = 'rgba(255,180,100,0.28)';
-    ctx.lineWidth = 5;
-    ctx.beginPath(); ctx.arc(cx, cy, R * 0.60, sweepA, sweepA + Math.PI * 0.85); ctx.stroke();
-  }
+  rr(ctx, wx, wy, ww, wh, 5); ctx.stroke();
 
-  // ⑦ 中央配方图标（世界坐标restore后绘制保持正立可读）
+  // 储球助手：俯视钢球罐（焊缝 + 左上高光弧 + 顶检人孔按产物着色）
+  const drawTank = (x, y, r) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath(); ctx.arc(x, y + 2, r, 0, Math.PI * 2); ctx.fill();
+    const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.12, x, y, r);
+    g.addColorStop(0, '#8e9aa8');
+    g.addColorStop(0.55, '#525c68');
+    g.addColorStop(1, '#1e242c');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#141a20';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(x, y, r * 0.66, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = rec ? _rfMix(mixCol, working ? 0.6 : 0.35) : '#39414c';
+    ctx.beginPath(); ctx.arc(x, y, r * 0.34, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.40)';
+    ctx.beginPath(); ctx.arc(x, y, r * 0.34, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.30)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(x, y, r * 0.8, Math.PI * 1.05, Math.PI * 1.55); ctx.stroke();
+  };
+  // ⑥ 三产品储球（对准正面三输出口）
+  drawTank(-64, 48, 12);
+  drawTank(0, 48, 12);
+  drawTank(64, 48, 12);
+
+  // ⑨ 外框描边（压住基座外沿）
+  ctx.strokeStyle = '#2a1a10';
+  ctx.lineWidth = 2.4;
+  rr(ctx, -H + 4, -H + 4, s - 8, s - 8, 12); ctx.stroke();
+
+  // 退出本体旋转变换，以下在世界坐标绘制（端口与文字不随本体翻转，保证可读）
   ctx.restore();
 
+  // ⑦ 中央配方图标（世界坐标绘制，保持正立可读）
   if (portDetailsVisible() && rec) {
-    const outId = Object.keys(rec.out)[0];
-    drawRecipeIconCell(ctx, cx, cy, outId);
+    drawRecipeIconCell(ctx, cx, cy, outFluid);
   }
 
   // ⑧ 流体出入口标注（REFINERY_PORTS，端口按 fluidIconCell 定位，内部随 dir 旋转；标注本身保持正立）
-  if (!(LOD && LOD.simple)) {
-    for (const p of REFINERY_PORTS) {
-      const g = fluidIconCell(e, p.side, p.cells[0]);
-      const fcx = g[0] * TILE + TILE / 2, fcy = g[1] * TILE + TILE / 2;
-      const sd = (p.side + (e.dir | 0)) % 4;
-      const fluid = (typeof p.fluid === 'function') ? p.fluid(e) : p.fluid;
-      drawPort(ctx, fcx, fcy, sd, p.color, p.arrow, 0, TILE / 2, fluid, p.flow, p.forceSymbol);
-    }
+  for (const p of REFINERY_PORTS) {
+    const g = fluidIconCell(e, p.side, p.cells[0]);
+    const fcx = g[0] * TILE + TILE / 2, fcy = g[1] * TILE + TILE / 2;
+    const sd = (p.side + (e.dir | 0)) % 4;
+    const fluid = (typeof p.fluid === 'function') ? p.fluid(e) : p.fluid;
+    drawPort(ctx, fcx, fcy, sd, p.color, p.arrow, 0, TILE / 2, fluid, p.flow, p.forceSymbol);
   }
 
-  // 状态灯（右上角小圆点，世界坐标不随旋转；运转绿色呼吸、停机暗红）
-  if (!(LOD && LOD.simple)) {
-    const lx = cx + R * 0.72, ly = cy - R * 0.72;
+  // 状态灯（基座右上角小圆点，世界坐标不随旋转；运转绿色呼吸、停机暗红）
+  {
+    const lx = cx + H - 20, ly = cy - H + 20;
     ctx.fillStyle = '#141414';
     ctx.beginPath(); ctx.arc(lx, ly, 3.6, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = working
-      ? _rfMix('#7fe08f', 0.65 + Math.sin(t * 6) * 0.3)
-      : '#663333';
+    ctx.fillStyle = working ? _rfMix('#7fe08f', 0.65 + Math.sin(t * 6) * 0.3) : '#663333';
     ctx.beginPath(); ctx.arc(lx, ly, 2.4, 0, Math.PI * 2); ctx.fill();
   }
 
   // 缺原料警示：居中感叹号（世界坐标，始终正立可读）
-  if (!working && rec && refineryMissingInput(e) && !(LOD && LOD.simple)) {
+  if (!working && rec && refineryMissingInput(e)) {
     ctx.fillStyle = '#ffb04a';
     ctx.font = 'bold 14px system-ui';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('!', cx, cy);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   }
-
-  // ⑨ 外圈描边（随本体最后补一次，压住端口根部的衔接）
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate((dir | 0) * Math.PI / 2);
-  ctx.translate(-cx, -cy);
-  ctx.strokeStyle = '#2a1a10';
-  ctx.lineWidth = 2.4;
-  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
-  ctx.restore();
 
   ctx.globalAlpha = 1;
 }
@@ -536,7 +613,7 @@ function refineryPanelHtml(e) {
   }
   h += '</div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
-  h += '<div class="dim">炼油厂吃电力，须先选配方。接口对齐格子：背面（上方）2个输入口分别在左数第2、4格，正面（下方）3个输出口分别在左数第1、3、5格（各口之间留 1 格间隔）。所需流体经背面输入口相邻管道自动吸入，流体产物自动经正面输出口排回管道；煤/方解石等固体原料机械臂可从任意方向抓取放入。可装 3 个模块（速度/产能/效率）并受信号塔加成。中央配方 + 各接口流体图标会直接显示。</div>';
+  h += '<div class="dim">炼油厂吃电力，须先选配方。厂区进料/出料方向与外观一致：背面（双蒸馏塔侧）2个输入口分别在左数第2、4格，正面（三储球侧）3个输出口分别在左数第1、3、5格（各口之间留 1 格间隔）。所需流体经背面输入口相邻管道自动吸入，流体产物自动经正面输出口排回管道；煤/方解石等固体原料机械臂可从任意方向抓取放入。可装 3 个模块（速度/产能/效率）并受信号塔加成。中央配方 + 各接口流体图标会直接显示。</div>';
   h += circuitPanelHtml(e, 'rf');
   return h;
 }
@@ -577,6 +654,8 @@ DEVICE_STATUS['oil-refinery'] = e => {
 DEVICE_PANEL['oil-refinery'] = { html: refineryPanelHtml, live: refineryPanelLive, tip: refineryTip, onAction: (a) => circuitPanelAction('rf', a) };
 // 炼油厂四边均布流体口、本体对称，旋转仅记录朝向；选中/悬停后按 R 可直接旋转
 DEVICE_DIR_ROTATE['oil-refinery'] = true;
+// V/H 真镜像：左右镜像保持朝向、沿边端口左右对调；上下镜像前后边互换（dir+2）。
+DEVICE_FLIP['oil-refinery'] = mirrorFlipDir;
 // 显示详情时，各接口流体图标所在世界格 + 对应流体名（用于鼠标悬停显示流体名称）
 DEVICE_FLUID_ICONS['oil-refinery'] = e => {
   const icons = [];

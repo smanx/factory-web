@@ -118,6 +118,7 @@ function bindInput() {
         if (e && BUILD_DEFS[e.type]) {
           G.quickSel = e.type;
           G.ghostDir = e.dir;
+          G.ghostMirror = e.mirror | 0;
           toast('已直接选中 ' + ITEMS[e.type].name + '（Q 取消）');
         }
         uiDirty = true;

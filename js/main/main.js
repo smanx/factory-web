@@ -24,6 +24,7 @@ var G = {
   sel: -1,
   quickSel: null,
   ghostDir: 0,
+  ghostMirror: 0,         // 放置幽灵的镜像手性（V/H 真镜像翻转；仅对角接口设备如储液罐用到）
   techDone: {},
   techProg: {},
   activeTech: null,
@@ -863,7 +864,7 @@ function tryPlaceAt(tx, ty) {
       // 受损的旧设备不允许直接替换（对齐《异星工厂》：需先用修理包修复或手动拆除），
       // 避免用一次替换就「免费修复」了受损设备。
       const notDamaged = !(targetEnt.maxhp > 0 && targetEnt.hp !== undefined && targetEnt.hp < targetEnt.maxhp * 0.999);
-      if (sameType && sameQuality && targetEnt.dir === G.ghostDir && notDamaged) {
+      if (sameType && sameQuality && targetEnt.dir === G.ghostDir && (targetEnt.mirror | 0) === (G.ghostMirror | 0) && notDamaged) {
         // 完全相同（类型/品质/朝向/占地）且未受损：视为未改变，不消耗不替换
         return;
       }
@@ -878,6 +879,7 @@ function tryPlaceAt(tx, ty) {
       const cls = ENT_CLASSES[type];
       const e = new cls(type, tx, ty);
       e.dir = G.ghostDir;
+      e.mirror = G.ghostMirror | 0;
       e.applyDir();
       if (placeQuality && placeQuality !== 'normal') e.quality = placeQuality;
       addEnt(e);
@@ -892,6 +894,7 @@ function tryPlaceAt(tx, ty) {
   const cls = ENT_CLASSES[type];
   const e = new cls(type, tx, ty);
   e.dir = G.ghostDir;
+  e.mirror = G.ghostMirror | 0;
   e.applyDir();
   // 品质建筑：记录品质等级（normal 不记），后续设备速度/强度按品质加成
   if (placeQuality && placeQuality !== 'normal') e.quality = placeQuality;

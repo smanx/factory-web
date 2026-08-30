@@ -296,9 +296,15 @@ function drawRotatablePorts(ctx, e, px, py, s, ports) {
   // 低 LOD 时省略端口凸缘（缩放太小看不清）
   if (LOD && LOD.simple) return;
   for (const p of ports) {
-    const sd = (p.side + dir) % 4;
+    let sd = (p.side + dir) % 4, off = p.off;
+    // 镜像手性：在基准边局部坐标系反射（水平边沿格偏移 off 取反、竖直边东西互换）后再随 dir 旋转，
+    // 与 sideNeighborCell / fluidIconCell / neighborOnSideCell 的反射规则一致，端口凸缘与逻辑落点吻合。
+    if (e.mirror) {
+      if (p.side === 1 || p.side === 3) off = -off;
+      else sd = ((p.side === 0 ? 2 : 0) + dir) % 4;
+    }
     const fluid = (typeof p.fluid === 'function') ? p.fluid(e) : p.fluid;
-    drawPort(ctx, cxp, cyp, sd, p.color, p.arrow, p.off, half, fluid, p.flow, p.forceSymbol);
+    drawPort(ctx, cxp, cyp, sd, p.color, p.arrow, off, half, fluid, p.flow, p.forceSymbol);
   }
 }
 
@@ -313,14 +319,17 @@ function portLabelVisible() {
 }
 
 // 计算设备某流体接口图标所在的世界格坐标（用于鼠标悬停显示流体名称）。
-// side 为 dir=0 时的基准方向（0东1南2西3北），cell 为沿边 0 基格号；方向随 dir 旋转。
-// 图标画在设备内部靠近该边、落在该接口所在格内，故格坐标即沿边该格的内部格。
+// side 为 dir=0 基准方向，cell 为沿边 0 基格号；图标落在设备内部靠该边的格内。
+// 与 sideNeighborCell 同源：还原局部内格坐标后交给 rotCell（镜像反射 + dir 旋转），保证任意朝向一致。
 function fluidIconCell(e, side, cell) {
-  const sd = (side + (e.dir | 0)) % 4;
-  if (sd === 3) return [e.x + cell, e.y];
-  if (sd === 1) return [e.x + cell, e.y + e.h - 1];
-  if (sd === 0) return [e.x + e.w - 1, e.y + cell];
-  return [e.x, e.y + cell];
+  const w0 = e.def.w, h0 = e.def.h;
+  let lx, ly;
+  if (side === 3) { lx = cell; ly = 0; }
+  else if (side === 1) { lx = cell; ly = h0 - 1; }
+  else if (side === 0) { lx = w0 - 1; ly = cell; }
+  else { lx = 0; ly = cell; }
+  const c = rotCell(e, lx, ly);
+  return [c.x, c.y];
 }
 
 // 计算 drawPort 端口（围绕实体内标定中心像素 (pcx,pcy)，side=最终世界方向 0东1南2西3北，
@@ -358,16 +367,18 @@ function fluidIconFinFout(e, pcx, pcy) {
   return icons;
 }
 
-// 返回设备某条边(side，dir=0 基准方向，随 dir 旋转)上第 cell 个格子外侧相邻的“世界格坐标”。
-// 与 neighborOnSideCell 语义一致，但返回格子坐标（而非实体左上角），供储液罐等大实体判断是否命中设备流体口。
+// 返回设备某条边(side，dir=0 基准方向)上第 cell 个格子外侧相邻的“世界格坐标”。
+// 统一用 rotCell 计算：先把 (side,cell) 还原为 dir=0 局部坐标，再由 rotCell 施加「镜像反射局部 x + 随 dir 旋转」，
+// 与本体渲染 ctx.rotate(dir)·ctx.scale(mirror) 的 R(dir)·S 变换严格一致（旧版手算分解在 dir≠0 时会多一次左右翻）。
 function sideNeighborCell(e, side, cell) {
-  const sd = (side + (e.dir | 0)) % 4;
-  let bx, by;
-  if (sd === 3) { bx = e.x; by = e.y - 1; }        // 北
-  else if (sd === 1) { bx = e.x; by = e.y + e.h; } // 南
-  else if (sd === 0) { bx = e.x + e.w; by = e.y; } // 东
-  else { bx = e.x - 1; by = e.y; }                 // 西
-  return (sd === 1 || sd === 3) ? [bx + cell, by] : [bx, by + cell];
+  const w0 = e.def.w, h0 = e.def.h;
+  let lx, ly;
+  if (side === 3) { lx = cell; ly = -1; }
+  else if (side === 1) { lx = cell; ly = h0; }
+  else if (side === 0) { lx = w0; ly = cell; }
+  else { lx = -1; ly = cell; }
+  const c = rotCell(e, lx, ly);
+  return [c.x, c.y];
 }
 
 // 围绕中心画一个指向某方向的箭头标签（用于进出方向提示）

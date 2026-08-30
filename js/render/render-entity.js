@@ -418,6 +418,7 @@ function drawGhost(ctx) {
     const chk = canPlaceAt(type, G.cursorTile.tx, G.cursorTile.ty, G.ghostDir);
     const tmp = getGhostEnt(type);
     tmp.dir = G.ghostDir;
+    tmp.mirror = G.ghostMirror | 0;
     tmp.w = ew; tmp.h = eh;
     // 幽灵实体先定位到光标格：drawPipeGround / drawUnderground 内部会用 e.isPaired() /
     // isEntrance() / isExit() 等判定（基于 e.x/e.y 扫描 entAt 找配对端），

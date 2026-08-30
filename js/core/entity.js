@@ -122,6 +122,9 @@ function rotCell(e, lx, ly) {
   const d = (e.dir | 0) % 4;
   const x = e.x, y = e.y;
   const w0 = e.def.w, h0 = e.def.h;
+  // 镜像手性：先把局部坐标沿竖直轴反射（lx→w0-1-lx），再随 dir 旋转。
+  // 与渲染层 translate+rotate 后 ctx.scale(-1,1) 严格对应，保证端口落点与画面一致。
+  if (e.mirror) lx = (w0 - 1) - lx;
   switch (d) {
     case 0: return { x: x + lx, y: y + ly };
     case 1: return { x: x + (h0 - 1 - ly), y: y + lx };
@@ -131,6 +134,30 @@ function rotCell(e, lx, ly) {
 }
 // 端口朝向(默认 side0)经 dir 旋转后的世界朝向
 function rotSide(side0, dir) { return ((side0 + (dir | 0)) % 4 + 4) % 4; }
+
+// 真镜像翻转的通用二面体映射（适用于「dir 选择前/后边、端口沿边分布」的机器与对角接口设备）：
+//   H（左右镜像 x→-x）：dir→(4-dir)%4，手性取反；
+//   V（上下镜像 y→-y）：dir→(2-dir+4)%4，手性取反。
+// 均为对合（按两次复原），H∘V = 旋转 180°。与 rotCell/sideNeighborCell 的局部反射规则配套。
+// 注意：传送带/机械臂等「dir 即流向箭头」的设备其 flipDir 已等价真镜像，不套用此映射。
+function mirrorFlipDir(dir, mirror, axis) {
+  return [axis === 'h' ? (4 - dir) % 4 : (2 - dir + 4) % 4, (mirror | 0) ^ 1];
+}
+
+// 方向性翻转（dir 即朝向箭头的设备：传送带/机械臂/管道等）。
+// H 左右镜像交换 0<->2，V 上下镜像交换 1<->3，另一轴不变。
+// 这类设备本体关于自身轴对称，箭头镜像等价于真镜像，无需手性位。
+function flipDir(dir, axis) {
+  if (axis === 'h') return dir === 0 ? 2 : dir === 2 ? 0 : dir;
+  return dir === 1 ? 3 : dir === 3 ? 1 : dir;
+}
+
+// 翻转统一映射入口：设备注册了 DEVICE_FLIP（真镜像手性映射）则用之，否则用方向性 flipDir。
+// 地下传送带/地下管道的配对同步在各自 flip() 覆写里处理，此处只算单体目标朝向。
+function flipEntityDir(type, dir, mirror, axis) {
+  const fn = (typeof DEVICE_FLIP !== 'undefined' && type) ? DEVICE_FLIP[type] : null;
+  return fn ? fn(dir, mirror | 0, axis) : [flipDir(dir, axis), mirror | 0];
+}
 
 // 获取实体某一世界方向(side)整条边上的相邻实体（去重、不含自身）
 // half 可选 'L'/'R'：仅返回该边前半/后半（沿边方向），南/北边即世界左侧/右侧
@@ -164,12 +191,18 @@ function neighborsOnSide(e, side, half) {
   return res;
 }
 
-// 获取设备某条边(side，0东1南2西3北)上第 cell 个格子（沿边 0基偏移）相邻的实体
+// 获取设备某条边(side，0东1南2西3北，世界方向)上第 cell 个格子（沿边 0基偏移）相邻的实体。
+// 镜像手性：把世界边还原为 dir=0 基准边后在局部坐标系反射（与 sideNeighborCell / 渲染 scale 一致），
+// 再随 dir 旋转定位。mirror=0 时与旧行为完全一致。
 function neighborOnSideCell(e, side, cell) {
-  if (side === 1) return entAt(e.x + cell, e.y + e.h);      // 南
-  if (side === 3) return entAt(e.x + cell, e.y - 1);        // 北
-  if (side === 0) return entAt(e.x + e.w, e.y + cell);      // 东
-  return entAt(e.x - 1, e.y + cell);                        // 西
+  const base = (((side - (e.dir | 0)) % 4) + 4) % 4;
+  const c = (typeof sideNeighborCell === 'function') ? sideNeighborCell(e, base, cell) : null;
+  if (c) return entAt(c[0], c[1]);
+  // 兜底（sideNeighborCell 未加载时）：原始世界边定位
+  if (side === 1) return entAt(e.x + cell, e.y + e.h);
+  if (side === 3) return entAt(e.x + cell, e.y - 1);
+  if (side === 0) return entAt(e.x + e.w, e.y + cell);
+  return entAt(e.x - 1, e.y + cell);
 }
 
 // 遍历实体正交相邻格上的实体（去重，不含斜角）
@@ -211,12 +244,33 @@ class Entity {
     this.h = this.def.h;
     this.x = x; this.y = y;
     this.dir = 0;
+// 镜像手性（0/1）：V/H 翻转产生的反射状态。dir 只表达 4 个旋转，
+    // 对角接口设备（如储液罐）的镜像无法用旋转表达，需此位区分 8 种二面体朝向。
+    // 仅注册了 DEVICE_FLIP 的设备会用到；其余设备恒为 0，行为与旧版完全一致。
+    this.mirror = 0;
     // 建筑耐久度（对齐《异星工厂》）：每个可建造建筑有 HP，受敌人攻击会损毁，可用修理包修复
     this.maxhp = (typeof buildingMaxHp === 'function') ? buildingMaxHp(type) : 100;
     this.hp = this.maxhp;
   }
   get solid() { return this.def.solid; }
   applyDir() { this.w = this.def.w; this.h = this.def.h; }
+  // ===== 统一的 R 旋转 / V·H 翻转（所有设备继承同一实现，行为完全一致）=====
+  // rotSwap 设备（占地随朝向交换）改 dir 后需重挂网格；其余原地改。
+  _rehookDir(apply) {
+    if (this.def && this.def.rotSwap) { removeEnt(this); apply(); this.applyDir(); addEnt(this); }
+    else apply();
+  }
+  // R：dir 顺时针 +1（手性不变）。
+  rotateCW() {
+    this._rehookDir(() => { this.dir = (this.dir + 1) % 4; });
+    if (typeof this.onRotate === 'function') this.onRotate();
+  }
+  // V/H 真镜像翻转：按设备映射算新 dir（+手性）。地下带/地下管覆写以同步配对端。
+  flip(axis) {
+    const [nd, nm] = flipEntityDir(this.type, this.dir, this.mirror, axis);
+    this._rehookDir(() => { this.dir = nd; this.mirror = nm; });
+    if (typeof this.onRotate === 'function') this.onRotate();
+  }
   update(dt) {}
   peekItem() { return null; }
   giveItem(item) { return false; }
@@ -234,17 +288,21 @@ class Entity {
   }
   serialize() {
     const s = { type: this.type, x: this.x, y: this.y, dir: this.dir };
+    if (this.mirror) s.mirror = 1;   // 仅镜像态才写入，旧档/普通设备保持精简
     if (this.hp !== undefined && this.hp < this.maxhp) s.hp = Math.max(1, Math.round(this.hp));
     return s;
   }
-  // 蓝图专用：仅序列化建筑本身（类型/坐标/方向），
+  // 蓝图专用：仅序列化建筑本身（类型/坐标/方向/镜像），
   // 不含建筑内部原料、输出、燃料、流体，以及传送带上的物品。
   blueprint() {
-    return { type: this.type, x: this.x, y: this.y, dir: this.dir };
+    const s = { type: this.type, x: this.x, y: this.y, dir: this.dir };
+    if (this.mirror) s.mirror = 1;
+    return s;
   }
   static restore(s) {
     const e = new this(s.type, s.x, s.y);
     e.dir = s.dir | 0;
+    e.mirror = s.mirror ? 1 : 0;
     // 按方向校正占地宽高（对 rotSwap 类设备如热交换器/汽轮机/锅炉/蒸汽机/分流器/抽水机，
     // 旋转后宽高需随 dir 交换；否则读档后旋转状态会复原/错乱）。幂等，对普通设备无副作用。
     e.applyDir();

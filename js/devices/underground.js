@@ -45,6 +45,20 @@ class Underground extends Entity {
   // 落单的第 3 座（前方没有可配对的）判定为未配对，不参与传输，也不再牵动 1/2 号（旋转联动同理）。
   findMate() { return this.isEntrance() ? this._scanAlong(1) : null; }
   findBackMate() { return this.isExit() ? this._scanAlong(-1) : null; }
+  // 覆写翻转：地下带翻转会交换整对的入/出口，若已与另一座配对（同向），把配对端一起翻转，
+  // 保持两者同向、整对继续有效。仅当该轴真正改变朝向时才联动（横带按 H / 竖带按 V 才换向）。
+  flip(axis) {
+    const [nd, nm] = flipEntityDir(this.type, this.dir, this.mirror, axis);
+    if (nd === this.dir && nm === (this.mirror | 0)) return;
+    const mate = this.findMate() || this.findBackMate();
+    if (mate) {
+      const [md, mm] = flipEntityDir(mate.type, mate.dir, mate.mirror, axis);
+      mate.dir = md; mate.mirror = mm;
+      if (typeof mate.onRotate === 'function') mate.onRotate();
+    }
+    this.dir = nd; this.mirror = nm;
+    if (typeof this.onRotate === 'function') this.onRotate();
+  }
   speedMult() { return this.type === 'fast-underground-belt' ? FAST_BELT_MULT : 1; }
   // 与同档传送带完全一致的双车道合计吞吐：面板/数值以「双车道总速度」计（基础带=15 件/秒）。
   // 隧道内两条车道（lane0/lane1）各自独立推进，每车道吞吐 = 双车道合计的一半。

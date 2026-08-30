@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>炼油厂新样式预览（临时）</title>
+<style>
+  body { background:#13181a; color:#cfd6dc; font-family:system-ui; margin:0; padding:24px; }
+  h2 { font-size:15px; font-weight:600; margin:26px 0 10px; color:#9fb0c0; }
+  .row { display:flex; gap:22px; align-items:flex-start; flex-wrap:wrap; }
+  .cell { text-align:center; }
+  .cell canvas { display:block; background:#243024; border-radius:6px; }
+  .lbl { margin-top:6px; font-size:12px; color:#aab6c2; }
+</style>
+</head>
+<body>
+<h2>运转中（dir 0/1/2/3）</h2>
+<div class="row" id="r1"></div>
+<h2>空闲（未设配方）/ 缺原料 / ALT 关闭 / 低 LOD</h2>
+<div class="row" id="r2"></div>
+<h2>煤液化配方（产物颜色不同）</h2>
+<div class="row" id="r3"></div>
+
+<script>
+// ===== 桩：仅补 refinery.js / draw.js 运行所需的最小全局环境 =====
+const TILE = 32;
+const G = { time: 3.2, settings: { altMode: true } };
+const LOD = { simple: false };
+const FLUIDS = ['crude-oil','heavy-oil','light-oil','petroleum-gas','water','steam'];
+const ITEMS = {
+  'crude-oil':{color:'#3a3226'}, 'heavy-oil':{color:'#7a3c12'}, 'light-oil':{color:'#c8a832'},
+  'petroleum-gas':{color:'#7ab832'}, 'water':{color:'#3fa0e8'}, 'steam':{color:'#dfe8ee'},
+  'coal':{color:'#232323'}, 'calcite':{color:'#e8e0d0'},
+};
+const REFINERY_RECIPES = {
+  'basic-oil-processing':    { name:'原油加工',   time:5,  inp:{'crude-oil':100}, out:{'heavy-oil':25,'light-oil':45,'petroleum-gas':55} },
+  'advanced-oil-processing': { name:'进阶原油加工', time:8,  inp:{'crude-oil':100,'water':50}, out:{'heavy-oil':10,'light-oil':90} },
+  'coal-liquefaction':       { name:'煤液化',     time:8,  inp:{'coal':44,'heavy-oil':25,'steam':50}, out:{'heavy-oil':25,'light-oil':20,'petroleum-gas':20} },
+};
+class Entity { constructor(type,x,y){ this.type=type; this.x=x; this.y=y; this.w=5; this.h=5; this.dir=0; } }
+const ENT_CLASSES={}, DEVICE_RENDER={}, DEVICE_STATUS={}, DEVICE_PANEL={}, DEVICE_DIR_ROTATE={}, DEVICE_FLUID_ICONS={};
+function drawItemGlyph(x, id, cx, cy, s) {
+  const col = (ITEMS[id] && ITEMS[id].color) || '#8a5a2a';
+  x.fillStyle = col;
+  x.beginPath(); x.arc(cx, cy, s*0.32, 0, Math.PI*2); x.fill();
+  x.strokeStyle = 'rgba(0,0,0,.5)'; x.lineWidth = Math.max(1,s*0.05); x.stroke();
+}
+</script>
+<script src="js/core/draw.js"></script>
+<script src="js/devices/refinery.js"></script>
+<script>
+function mkEnt(opts) {
+  const e = new Entity('oil-refinery', 1, 1);
+  Object.assign(e, {
+    recipe: opts.recipe || null, inp: opts.inp || {}, outp: opts.outp || {},
+    crafting: !!opts.crafting, working: !!opts.crafting, prog: opts.prog || 0,
+    fluidInputs() { const r = this.recipe ? REFINERY_RECIPES[this.recipe] : null; return r ? Object.keys(r.inp).filter(k=>FLUIDS.includes(k)) : []; },
+    fluidOutputs() { const r = this.recipe ? REFINERY_RECIPES[this.recipe] : null; return r ? Object.keys(r.out).filter(k=>FLUIDS.includes(k)) : []; },
+  });
+  return e;
+}
+function cell(e, dir, label, altOff, simple) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 224;
+  const ctx = cv.getContext('2d');
+  const oldAlt = G.settings.altMode, oldSimple = LOD.simple;
+  if (altOff) G.settings.altMode = false;
+  if (simple) LOD.simple = true;
+  ctx.save(); ctx.translate(-e.x*TILE+32, -e.y*TILE+32);
+  drawRefinery(ctx, e, e.x, e.y, dir, 1);
+  ctx.restore();
+  G.settings.altMode = oldAlt; LOD.simple = oldSimple;
+  const d = document.createElement('div'); d.className = 'cell';
+  d.appendChild(cv);
+  const l = document.createElement('div'); l.className = 'lbl'; l.textContent = label; d.appendChild(l);
+  return d;
+}
+const run = { recipe:'basic-oil-processing', crafting:true, prog:2.6, inp:{'crude-oil':60}, outp:{'heavy-oil':10} };
+const r1 = document.getElementById('r1');
+[0,1,2,3].forEach(d => r1.appendChild(cell(mkEnt(run), d, 'dir ' + d)));
+const r2 = document.getElementById('r2');
+r2.appendChild(cell(mkEnt({}), 0, '空闲：未设配方'));
+r2.appendChild(cell(mkEnt({ recipe:'advanced-oil-processing', inp:{'crude-oil':30} }), 0, '缺原料'));
+r2.appendChild(cell(mkEnt(run), 0, 'ALT 关闭', true));
+r2.appendChild(cell(mkEnt(run), 0, '低 LOD', false, true));
+const r3 = document.getElementById('r3');
+r3.appendChild(cell(mkEnt({ recipe:'coal-liquefaction', crafting:true, prog:6.5, inp:{'coal':20,'heavy-oil':10,'steam':25}, outp:{'light-oil':8} }), 0, '煤液化'));
+r3.appendChild(cell(mkEnt({ recipe:'advanced-oil-processing', crafting:true, prog:7.2, inp:{'water':20}, outp:{'light-oil':40} }), 2, '进阶原油加工 dir2'));
+</script>
+</body>
+</html>

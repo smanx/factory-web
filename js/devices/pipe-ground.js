@@ -114,6 +114,20 @@ class PipeToGround extends Entity {
   // 是否已配对：背靠背（本座朝向的前方有朝向相反的地下管道）才有配对端。
   // 口对口（朝向相背、管口相对）只是简单连通，不属于配对。
   isPaired() { return !!this.findMate(); }
+  // 覆写翻转：地下管道靠「背靠背（朝向相反）」成对，翻转单体后若不同步配对端就会拆对。
+  // 故翻转时把配对的另一座一起按同轴翻转，维持背靠背关系；该轴不改变朝向时整对不动。
+  flip(axis) {
+    const [nd, nm] = flipEntityDir(this.type, this.dir, this.mirror, axis);
+    if (nd === this.dir && nm === (this.mirror | 0)) return;
+    const mate = this.findMate();
+    if (mate) {
+      const [md, mm] = flipEntityDir(mate.type, mate.dir, mate.mirror, axis);
+      mate.dir = md; mate.mirror = mm;
+      if (typeof mate.onRotate === 'function') mate.onRotate();
+    }
+    this.dir = nd; this.mirror = nm;
+    if (typeof this.onRotate === 'function') this.onRotate();
+  }
   // 相邻（距离 1）且在管口侧（this.dir 反向）口对口相对的地下管道：不算配对关系，但像普通管道一样可直接互通。
   // 背向（this.dir 正向）不接任何管道——地下管道只有管口一个方向能接管道/流体（配对走 findMate 的地下管段）。
   // 这与 findMate（背靠背配对）分开：配对是背靠背（含紧挨距离 1）的地下管段互通，口对口是就近简单连通。

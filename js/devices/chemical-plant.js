@@ -528,6 +528,8 @@ DEVICE_STATUS['chemical-plant'] = e => {
 DEVICE_PANEL['chemical-plant'] = { html: chemicalPlantPanelHtml, live: chemicalPlantPanelLive, tip: chemicalPlantTip, onAction: (a) => circuitPanelAction('cp', a) };
 // 化工厂四边均布流体口、本体对称，旋转仅记录朝向；选中/悬停后按 R 可直接旋转
 DEVICE_DIR_ROTATE['chemical-plant'] = true;
+// V/H 真镜像：左右镜像保持朝向、左右输入口（两种不同流体）对调；上下镜像前后边互换（dir+2）。
+DEVICE_FLIP['chemical-plant'] = mirrorFlipDir;
 // 显示详情时，各接口流体图标所在世界格 + 对应流体名（用于鼠标悬停显示流体名称）
 DEVICE_FLUID_ICONS['chemical-plant'] = e => {
   const icons = [];
@@ -554,4 +556,5 @@ DEVICE_PANEL['cryogenic-plant'] = { html: chemicalPlantPanelHtml, live: chemical
   return base;
 }, onAction: (a) => circuitPanelAction('cp', a) };
 DEVICE_DIR_ROTATE['cryogenic-plant'] = true;
+DEVICE_FLIP['cryogenic-plant'] = mirrorFlipDir;
 DEVICE_FLUID_ICONS['cryogenic-plant'] = DEVICE_FLUID_ICONS['chemical-plant'];

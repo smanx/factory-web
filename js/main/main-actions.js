@@ -140,6 +140,28 @@ function pasteSettings(e) {
   toast('配置已粘贴');
 }
 
+// 列车编组保护：已连成多节列车的车厢/车头不可单独 R/V/H 改朝向（会拆散编组），
+// 与地下带/地下管的配对同步同属「耦合实体」特例。单节未连挂的可自由旋转/翻转。
+function _inCoupledTrain(e) {
+  const isLoco = typeof Locomotive !== 'undefined' && e instanceof Locomotive;
+  const isWagon = typeof CargoWagon !== 'undefined' && e instanceof CargoWagon;
+  if (!isLoco && !isWagon) return false;
+  if (typeof findTrainOfCar !== 'function') return false;
+  const tr = findTrainOfCar(e);
+  return !!(tr && tr.cars && tr.cars.length > 1);
+}
+
+// 是否处于「放置幽灵」态：手持可建造物品（含 Q 选中的同类复制）。
+// 此态下 R/V/H 一律作用于待放置幽灵（所有设备都可旋转/翻转），不触碰光标下的已有建筑。
+function _placingBuildable() {
+  if (typeof selItem !== 'function') return false;
+  let it = selItem();
+  if (!it) return false;
+  if (typeof isBlueprintItem === 'function' && isBlueprintItem(it)) return false;   // 蓝图另有处理
+  if (typeof splitQuality === 'function') it = splitQuality(it).base;
+  return !!BUILD_DEFS[it];
+}
+
 function rotateAction() {
   // 驾驶火车时：R 反转车头方向（对齐《异星工厂》：驾驶列车按 R 掉头）
   if (G.driving && G.driving.ent && typeof reverseTrain === 'function' &&
@@ -147,8 +169,7 @@ function rotateAction() {
     const tr = findTrainOfCar ? findTrainOfCar(G.driving.ent) : null;
     if (tr) reverseTrain(tr);
     return;
-  }
-  // 蓝图旋转（对齐《异星工厂》R 键旋转蓝图）：粘贴中、或手持蓝图物品尚未放置时都生效。
+  }  // 蓝图旋转（对齐《异星工厂》R 键旋转蓝图）：粘贴中、或手持蓝图物品尚未放置时都生效。
   // 手持蓝图物品（blueprint#n）在未点击地图前还不在 paste 模式，此前按 R 无反应，
   // 与界面提示「R 旋转，V/H 翻转」不符；这里一并处理，预览幽灵立即跟着旋转。
   if (typeof isBlueprintHeld === 'function' && isBlueprintHeld()) {
@@ -164,43 +185,25 @@ function rotateAction() {
     toast('蓝图已旋转 90°（R 继续旋转，V/H 翻转）');
     return;
   }
+  // 放置幽灵态：R 旋转待放置幽灵，所有设备都可旋转（不触碰光标下的已有建筑）。
+  if (_placingBuildable()) { G.ghostDir = (G.ghostDir + 1) % 4; uiDirty = true; return; }
   if (G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
     const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
-    if (e && BUILD_DEFS[e.type]) {
-      // 已放置设备默认不可旋转，仅物流件（传送带/机械臂/地下传送带/地下管道等）
-      // 白名单例外可直接旋转；其余按 R 只作用于当前放置幽灵（预览）。
-      // 非方形设备（分流器类）旋转后脚印变化，需重挂网格
-      const rotOk = postPlaceRotatable(e.type);
-      if (rotOk && BUILD_DEFS[e.type].rotSwap) {
-        const nd = (e.dir + 1) % 4;
-        // 抽水机必须始终压在水面上，旋转后脚印变化需重新校验
-        if (e.type === 'offshore-pump' && !pumpCanFace(e, nd)) { toast('抽水机无法朝该方向旋转：必须仍压在水面上'); return; }
-        removeEnt(e);
-        e.dir = nd;
-        e.applyDir();
-        addEnt(e);
-        uiDirty = true;
-        return;
+    if (e && BUILD_DEFS[e.type] && typeof e.rotateCW === 'function') {
+      if (_inCoupledTrain(e)) { toast('列车编组中的车厢不可单独旋转'); return; }
+      // 放置后：仅长宽相等（方形占地）的设备可 R 旋转本体；非方形设备朝向固定，需换向请在放置前用幽灵调好。
+      if (e.w !== e.h) { toast('非方形设备放置后不可旋转（请在放置前按 R 调整朝向）'); return; }
+      // 抽水机必须始终压在水面上，旋转后脚印变化需先校验。
+      if (BUILD_DEFS[e.type].rotSwap && e.type === 'offshore-pump' && !pumpCanFace(e, (e.dir + 1) % 4)) {
+        toast('抽水机无法朝该方向旋转：必须仍压在水面上'); return;
       }
-      // 有朝向的设备：直接旋转（采矿机转完立即尝试朝新方向输出）
-      if (rotOk && DEVICE_DIR_ROTATE[e.type]) {
-        e.dir = (e.dir + 1) % 4;
-        // 传送带方向变化会改变其输入侧判定，失效附近缓存
-        invalidateBeltInputNear(e.x, e.y, e.w, e.h);
-        if (typeof e.onRotate === 'function') e.onRotate();
-        uiDirty = true;
-        return;
-      }
+      e.rotateCW();
+      invalidateBeltInputNear(e.x, e.y, e.w, e.h);
+      uiDirty = true;
+      return;
     }
   }
   G.ghostDir = (G.ghostDir + 1) % 4;
-}
-
-// 翻转方向：h=水平翻转（左右镜像，东西互兑），v=垂直翻转（上下镜像，南北互兑）
-// 方向 0东 1南 2西 3北。水平翻转交换 0<->2；垂直翻转交换 1<->3，另一轴方向保持不变。
-function flipDir(dir, axis) {
-  if (axis === 'h') return dir === 0 ? 2 : dir === 2 ? 0 : dir;
-  return dir === 1 ? 3 : dir === 3 ? 1 : dir;
 }
 
 function flipAction(axis) {
@@ -220,49 +223,34 @@ function flipAction(axis) {
     toast('蓝图已' + (axis === 'h' ? '水平翻转' : '垂直翻转') + '（R 旋转，V/H 翻转）');
     return;
   }
+  // 放置幽灵态：V/H 翻转待放置幽灵，所有设备都可翻转（不触碰光标下的已有建筑）。
+  if (_placingBuildable()) {
+    let gt = (typeof selItem === 'function') ? selItem() : null;
+    if (gt && typeof splitQuality === 'function') gt = splitQuality(gt).base;
+    const [gd, gm] = flipEntityDir(gt, G.ghostDir, G.ghostMirror, axis);
+    G.ghostDir = gd; G.ghostMirror = gm; uiDirty = true; return;
+  }
   if (G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
     const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
-    if (e && BUILD_DEFS[e.type]) {
-      // 所有已放置设备均可直接翻转；非方形设备（分流器类）翻转后脚印变化，需重挂网格
-      if (BUILD_DEFS[e.type].rotSwap) {
-        const nd = flipDir(e.dir, axis);
-        // 抽水机必须始终压在水面上，翻转后脚印变化需重新校验
-        if (e.type === 'offshore-pump' && !pumpCanFace(e, nd)) { toast('抽水机无法朝该方向翻转：必须仍压在水面上'); return; }
-        removeEnt(e);
-        e.dir = nd;
-        e.applyDir();
-        addEnt(e);
-        uiDirty = true;
-        return;
+    if (e && BUILD_DEFS[e.type] && typeof e.flip === 'function') {
+      if (_inCoupledTrain(e)) { toast('列车编组中的车厢不可单独翻转'); return; }
+      // 所有设备统一：V/H 真镜像翻转本体（继承 Entity.flip；rotSwap 自动重挂网格，
+      // 地下传送带/地下管道各自覆写以同步配对端）。抽水机翻转后须仍压在水面上。
+      if (BUILD_DEFS[e.type].rotSwap && e.type === 'offshore-pump' &&
+          !pumpCanFace(e, flipEntityDir(e.type, e.dir, e.mirror, axis)[0])) {
+        toast('抽水机无法朝该方向翻转：必须仍压在水面上'); return;
       }
-      // 地下传送带：翻转会交换整对的入/出口。若它已与另一座配对（同向），
-      // 把配对的那一座也一起翻转，保持两者仍同向、整对继续有效。
-      // 仅当翻转在当前轴真正改变了方向时才生效：
-      //   横带(0/2)按 H → 方向互换；竖带(1/3)按 V → 方向互换；其它组合不改向。
-      if (e instanceof Underground) {
-        const nd = flipDir(e.dir, axis);
-        if (nd !== e.dir) {
-          const mate = e.findMate() || e.findBackMate();
-          if (mate) {
-            mate.dir = flipDir(mate.dir, axis);
-            if (typeof mate.onRotate === 'function') mate.onRotate();
-          }
-          e.dir = nd;
-          if (typeof e.onRotate === 'function') e.onRotate();
-          uiDirty = true;
-        }
-        return;
-      }
-      // 有朝向的设备：直接翻转
-      if (DEVICE_DIR_ROTATE[e.type]) {
-        e.dir = flipDir(e.dir, axis);
-        if (typeof e.onRotate === 'function') e.onRotate();
-        uiDirty = true;
-        return;
-      }
+      e.flip(axis);
+      invalidateBeltInputNear(e.x, e.y, e.w, e.h);
+      uiDirty = true;
+      return;
     }
   }
-  // 没有可翻转的已放置设备时，翻转幽灵/预览方向
-  G.ghostDir = flipDir(G.ghostDir, axis);
+  // 没有可翻转的已放置设备时，翻转幽灵/预览方向（当前手持设备有自定义镜像映射时同样生效）
+  let ghostType = (typeof selItem === 'function') ? selItem() : null;
+  if (ghostType && typeof splitQuality === 'function') ghostType = splitQuality(ghostType).base;
+  const [gd, gm] = flipEntityDir(ghostType, G.ghostDir, G.ghostMirror, axis);
+  G.ghostDir = gd;
+  G.ghostMirror = gm;
 }
 

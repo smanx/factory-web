@@ -9,4 +9,5 @@ const DEVICE_STATUS = {};     // type -> fn(e) => 'g'|'y'|'r'|null 状态灯颜�
 const DEVICE_PANEL = {};      // type -> { html,live,tip,onAction,onChange } 机器面板
 const DEVICE_PLACE = {};      // type -> fn(type,tx,ty,dir,ew,eh) => {ok}|null 放置规则（null=继续默认校验）
 const DEVICE_DIR_ROTATE = {}; // type -> true 表示 R 可直接旋转本体朝向（非 rotSwap 类设备）
+const DEVICE_FLIP = {};       // type -> fn(dir, mirror, axis) => [newDir, newMirror] 自定义 V/H 真镜像翻转（缺省用通用 flipDir，手性不变）
 const DEVICE_FLUID_ICONS = {}; // type -> fn(e) => [{x,y,fluid}] 在“显示详情”时接口流体图标所在世界格，用于鼠标悬停显示流体名称
