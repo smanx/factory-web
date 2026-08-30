@@ -1752,10 +1752,14 @@ html, body {
 .dsw { display: flex; align-items: center; gap: 6px; padding: 3px 6px; background: #2a3340; border: 1px solid #46536a; border-radius: 5px; cursor: pointer; color: #dfe6ee; }
 .dsw input[type=checkbox] { accent-color: #b06ccf; margin: 0; }
 .dsw:hover { background: #3a4657; }
-.dgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+/* 面板变宽后按钮自适应多列：每列至少 150px，能放几列放几列 */
+.dgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 5px; }
 .dgrid button {
   font-size: 11px;
   padding: 5px 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   background: #2a3340;
   border: 1px solid #46536a;
   color: #dfe6ee;
@@ -1771,6 +1775,12 @@ html, body {
   gap: 5px;
   text-align: left;
   padding: 4px 6px;
+  min-width: 0;
+}
+.dgrid button.ditem span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .dgrid button.ditem .ditem-ic {
   width: 16px;
