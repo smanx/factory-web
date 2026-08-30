@@ -201,7 +201,8 @@ function buildingMaxHp(type) { return BUILDING_HP[type] || 100; }
 
 // 放置后（本体已建在地图上）仍允许直接旋转的设备白名单：
 //   传送带（各等级）、机械臂（各类型）、地下传送带（各等级）、地下管道（pipe-to-ground），
-//   以及加工建筑：炼油厂 / 化工厂 / 低温工厂（本体方形对称，端口随 dir 旋转，无需重挂网格）。
+//   以及加工建筑：炼油厂 / 化工厂 / 低温工厂（本体方形对称，端口随 dir 旋转，无需重挂网格），
+//   以及储液罐（2×2 圆柱罐：罐顶定向构件与对角管道口随 dir 旋转/翻转，见 js/devices/storage-tank.js）。
 // 白名单外设备放置后朝向固定，按 R 仅在放置幽灵（预览）阶段调整朝向。
 // 注意：V/H 翻转不受此白名单限制，所有已放置设备均可翻转（见 flipAction）。
 const POST_PLACE_ROTATE_OK = {
@@ -216,7 +217,9 @@ const POST_PLACE_ROTATE_OK = {
   // 地下管道
   'pipe-to-ground': 1,
   // 加工建筑（本体方形对称、端口随 dir 旋转）：炼油厂 / 化工厂（含低温工厂，复用化工厂注册）
-  'oil-refinery': 1, 'chemical-plant': 1, 'cryogenic-plant': 1
+  'oil-refinery': 1, 'chemical-plant': 1, 'cryogenic-plant': 1,
+  // 储液罐（2×2 圆柱罐：罐顶定向构件与对角管道口随 dir 旋转/翻转，R 可直接旋转本体）
+  'storage-tank': 1
 };
 function postPlaceRotatable(type) { return !!POST_PLACE_ROTATE_OK[type]; }
 
