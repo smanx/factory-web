@@ -724,7 +724,7 @@ function chip(id, n, iconOnly) {
 // 物品数量以右下角角标(.cnt)显示。空格显示为空槽。格子数来自官方数据 inventory_size=80。
 // 物品在格子中的排列按物品 ID 排序，保证稳定；超过格子数的物品无法放入（背包已满）。
 // 手雷/集束手雷与生鱼在对应格子上提供快捷使用角标。
-function htmlInvSlots() {
+function htmlInvSlots(withActionId) {
   const q = (G.invItemQ || '').trim().toLowerCase();
   // 稳定排序的已拥有物品列表（仅数量>0 的）
   const owned = [];
@@ -774,7 +774,7 @@ function htmlInventory(withActionId) {
   let h = '';
   const iq = (G.invItemQ || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   h += '<input id="inv-item-search" class="inv-search" type="text" placeholder="搜索物品（输入名称）" autocomplete="off" value="' + iq + '">';
-  h += htmlInvSlots();
+  h += htmlInvSlots(withActionId);
   return h;
 }
 
