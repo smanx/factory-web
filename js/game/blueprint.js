@@ -1,5 +1,19 @@
 'use strict';
 
+// ===== 框选模式的白色十字光标 =====
+// 按下 Ctrl+C / Ctrl+X / Alt+B（以及 Alt+D 红图 / Alt+U 绿图）进入框选时，
+// 把地图画布的十字光标换成白色（系统默认 crosshair 为黑色，深色地面/夜间不明显）；
+// 退出框选或转入蓝图粘贴模式时还原默认光标。
+// 用内联 SVG 画十字：白色主线条 + 半透明深色描边衬底，亮色地面（混凝土等）上也可见。
+const BP_CURSOR_WHITE = 'url("data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724%27 height=%2724%27%3E%3Cg fill=%27none%27 stroke-linecap=%27round%27%3E%3Cg stroke=%27rgba(0,0,0,0.55)%27 stroke-width=%273.2%27%3E%3Cline x1=%2712%27 y1=%272%27 x2=%2712%27 y2=%279%27/%3E%3Cline x1=%2712%27 y1=%2715%27 x2=%2712%27 y2=%2722%27/%3E%3Cline x1=%272%27 y1=%2712%27 x2=%279%27 y2=%2712%27/%3E%3Cline x1=%2715%27 y1=%2712%27 x2=%2722%27 y2=%2712%27/%3E%3C/g%3E%3Cg stroke=%27white%27 stroke-width=%271.8%27%3E%3Cline x1=%2712%27 y1=%272%27 x2=%2712%27 y2=%279%27/%3E%3Cline x1=%2712%27 y1=%2715%27 x2=%2712%27 y2=%2722%27/%3E%3Cline x1=%272%27 y1=%2712%27 x2=%279%27 y2=%2712%27/%3E%3Cline x1=%2715%27 y1=%2712%27 x2=%2722%27 y2=%2712%27/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") 12 12, crosshair';
+
+// 按当前框选状态同步地图画布光标：框选类模式用白色十字，其余还原 CSS 默认。
+function syncBlueprintCursor() {
+  const c = document.getElementById('game');
+  if (!c) return;
+  c.style.cursor = (G.blueMode && G.blueMode !== 'paste') ? BP_CURSOR_WHITE : '';
+}
+
 // ===== 蓝图 / 红图：框选一整块进行复制粘贴或删除 =====
 function toggleBlueprint(mode) {
   // 进入蓝图/红图/绿图模式时退出拆除模式，避免左键行为冲突
@@ -24,6 +38,7 @@ function toggleBlueprint(mode) {
         : mode === 'red'
           ? '红图模式：拖拽框选要删除的区域，松开即删除整块'
           : '绿图模式：拖拽框选要升级/降级的区域，松开后选择升级或降级');
+  syncBlueprintCursor();
 }
 
 function cancelBlueprint() {
@@ -32,6 +47,7 @@ function cancelBlueprint() {
   G.blueRot = 0; G.blueFlipH = false; G.blueFlipV = false;
   G.greenRect = null; G.greenAction = null;
   hideGreenBar();
+  syncBlueprintCursor();
   refreshHotbar();
 }
 
@@ -303,6 +319,7 @@ function captureBlueprint() {
   if (typeof blueBookAdd === 'function') blueBookAdd(G.blueprint);
   if (typeof playSfx === 'function') playSfx('blueprint');
   G.blueMode = 'paste';
+  syncBlueprintCursor();
   G.blueStart = null; G.blueEnd = null;
   G.blueRot = 0; G.blueFlipH = false; G.blueFlipV = false;
   toast('蓝图已复制 ' + ents.length + ' 个建筑，点击空白处粘贴（R旋转，V/H翻转，右键取消）');
@@ -852,6 +869,7 @@ function quickCopyBlueprint(cut) {
   G.blueMode = 'paste';
   G.blueStart = null; G.blueEnd = null;
   G.blueRot = 0; G.blueFlipH = false; G.blueFlipV = false;
+  syncBlueprintCursor();
   if (cut) {
     // 剪切：复制后删除框选区域内全部建筑（物资返还背包），再进入粘贴模式
     doRedBlueprintDelete(r);

@@ -305,6 +305,7 @@ function initPanelEvents() {
         if (G.blueprint && G.blueprint.ents && G.blueprint.ents.length) {
           G.blueMode = 'paste';
           G.blueRot = 0; G.blueFlipH = false; G.blueFlipV = false;
+          if (typeof syncBlueprintCursor === 'function') syncBlueprintCursor();
           toast('蓝图已创建（' + G.blueprint.ents.length + ' 个建筑），点击空白处放置（R旋转，V/H翻转，右键取消）');
           if (typeof playSfx === 'function') playSfx('blueprint');
         } else {

@@ -99,6 +99,7 @@ function returnToMenu() {
   if (cq) cq.style.display = 'none';
   G.sel = -1;
   G.blueMode = null;
+  if (typeof syncBlueprintCursor === 'function') syncBlueprintCursor();
   G.deconstructMode = false;
   G.ghostDir = 0;
   const sc = document.getElementById('start-screen');
