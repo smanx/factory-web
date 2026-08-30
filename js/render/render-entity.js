@@ -148,9 +148,13 @@ function _altLabelKey(e) {
   }
   if (t === 'railgun-turret') return 'ammo:' + (e.ammo || 0) + ':1';
   if (e.slots) {
-    // 箱/车厢内容标签：拼接每槽物品+数量
+    // 箱/车厢内容标签：拼接每槽物品+数量（兼容 {item,count} 与字符串槽——创造箱为字符串数组）
     let k = 'sl:';
-    for (const s of e.slots) if (s) k += s.item + ':' + s.count + ';';
+    for (const s of e.slots) {
+      if (!s) continue;
+      if (typeof s === 'string') k += s + ':1;';
+      else k += s.item + ':' + s.count + ';';
+    }
     return k;
   }
   if (t === 'car' || t === 'tank' || t === 'spidertron') {
@@ -162,6 +166,17 @@ function _altLabelKey(e) {
   if (e.filter) return 'f:' + e.filter;
   return '';
 }
+// 箱子类存储容器：ALT 模式内容图标按「需求规则」直接盖在容器上
+// （1 种=与箱子同大；2~4 种=半格宽，2/3 横排、4 个 2×2 方形）。
+// 覆盖：木箱/铁箱/钢箱、物流箱（供应/仓储/需求/缓冲）、创造/虚空箱、物流接驳站/扩展舱/卸载舱。
+// 货运车厢（cargo-wagon）与载具储物虽也有 slots/trunk，但沿用顶部图标排布局，不在此列。
+const CHEST_ALT_TYPES = new Set([
+  'wooden-chest', 'iron-chest', 'steel-chest',
+  'passive-provider-chest', 'active-provider-chest', 'storage-chest', 'requester-chest', 'buffer-chest',
+  'creative-chest', 'void-chest',
+  'cargo-bay', 'cargo-landing-pad', 'landing-pad-unloading-bay',
+]);
+
 // ALT 模式（图标版）：把建筑当前配方/内容映射为一组物品图标（配方的产出物 / 材料 / 物品），
 // 供 drawAltMode 在建筑顶部叠加绘制图标，取代原来的文本标签（需求：切换详情只显示图标）。
 function _altLabelIcons(e) {
@@ -204,10 +219,15 @@ function _altLabelIcons(e) {
     return (e.shells || 0) > 0 ? ['artillery-shell'] : [];
   }
   if (e.slots) {
-    // 箱/车厢：箱内主要物品图标（最多 3 种）
+    // 箱/车厢：按槽位顺序去重；箱子类最多 4 种（ALT 箱子布局），货运车厢保持 3 种
+    const max = CHEST_ALT_TYPES.has(t) ? 4 : 3;
     const ids = [];
-    for (const s of e.slots) if (s && s.item && ids.indexOf(s.item) < 0) ids.push(s.item);
-    return ids.slice(0, 3);
+    for (const s of e.slots) {
+      const id = (s && s.item) ? s.item : s;   // 兼容 {item,count} 与字符串槽（创造箱）
+      if (id && ITEMS[id] && ids.indexOf(id) < 0) ids.push(id);
+      if (ids.length >= max) break;
+    }
+    return ids;
   }
   if (t === 'car' || t === 'tank' || t === 'spidertron') {
     const tr = e.trunk || {};
@@ -241,6 +261,12 @@ function drawAltMode(ctx, keys, seenBuf) {
       e._altIcons = icons;
     }
     if (!icons || !icons.length) return;
+    // 箱子类存储容器：内容图标直接盖在容器上，按需求规则布局
+    // （1 种=与箱子同大的图标；2~4 种=每个半格宽，2/3 个横向排列、4 个 2×2 方形）
+    if (e.slots && CHEST_ALT_TYPES.has(e.type)) {
+      drawChestAltIcons(ctx, e, icons);
+      return;
+    }
     // 图标排绘制在建筑顶部中央
     const n = icons.length;
     const bw = n * iconSize + (n - 1) * gap + pad * 2;
@@ -266,6 +292,50 @@ function drawAltMode(ctx, keys, seenBuf) {
   };
   if (keys) forEachEntInBuckets(keys, iter, seenBuf);
   else for (const e of G.ents) iter(e);
+}
+
+// ALT 模式：箱子/存储容器内容图标布局（需求规则）
+//   1 种物品：显示该物品图标，大小 = 一个格子（与 1 格箱子同大），居中盖在箱子顶部
+//   2~4 种物品：每个图标宽度 = 格子的 1/2
+//     - 2 个 / 3 个：横向按顺序排列
+//     - 4 个：呈 2×2 方形
+// 图标按槽位顺序（去重）排列；超过 4 种只显示前 4 种（规则未定义更多）。
+function drawChestAltIcons(ctx, e, icons) {
+  let ids = icons;
+  if (ids.length > 4) ids = ids.slice(0, 4);
+  const n = ids.length;
+  const tilePx = TILE * G.cam.z;                 // 一个格子（箱子）在屏幕上的像素宽度
+  const cx = (e.x + e.w / 2) * TILE;             // 容器中心
+  const cy = (e.y + e.h / 2) * TILE;
+  ctx.save();
+  if (n === 1) {
+    // 单个物品：图标与箱子一样大，盖在箱子上面
+    drawItemGlyph(ctx, ids[0], cx, cy, tilePx);
+    ctx.restore();
+    return;
+  }
+  const iconSize = tilePx / 2;                   // 每个图标宽度 = 格子的 1/2
+  const gap = Math.max(1, iconSize * 0.08);      // 图标间极小间隔（避免图标边缘粘连）
+  if (n === 4) {
+    // 4 个：2×2 方形
+    const x0 = cx - iconSize - gap / 2;
+    const y0 = cy - iconSize - gap / 2;
+    for (let i = 0; i < 4; i++) {
+      const ix = x0 + (i % 2) * (iconSize + gap);
+      const iy = y0 + Math.floor(i / 2) * (iconSize + gap);
+      drawItemGlyph(ctx, ids[i], ix + iconSize / 2, iy + iconSize / 2, iconSize);
+    }
+    ctx.restore();
+    return;
+  }
+  // 2 / 3 个：横向按顺序排列
+  const totalW = n * iconSize + (n - 1) * gap;
+  const x0 = cx - totalW / 2;
+  for (let i = 0; i < n; i++) {
+    const ix = x0 + i * (iconSize + gap);
+    drawItemGlyph(ctx, ids[i], ix + iconSize / 2, cy, iconSize);
+  }
+  ctx.restore();
 }
 
 function getGhostEnt(type) {
