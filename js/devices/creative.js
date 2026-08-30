@@ -315,12 +315,20 @@ function drawVoidPipe(ctx, e, gx, gy, dir, alpha) {
 // ===== 创造箱面板：选择要生成的物品（可多选，箱内可同时放多种物品）=====
 // 物品选择列表内嵌于面板右侧（creativePickerHtml）：5 大分类 Tab + 二级分组 + 搜索 + 图标 tooltip。
 // 点选即「加选」该物品；已选物品再点一次「取消选」。
+// 已选生成物 chip：物品名后带 ✕ 移除按钮，点击单个移除该生成物（data-action=csel-rm，
+// 由 creative-item-picker.js 的 document 捕获监听器优先拦截，避免被背包选中逻辑吃掉）。
+function creativeChestChip(id) {
+  return '<span class="chip" data-itemid="' + id + '" data-tip="' + itemTip(id) + '" data-itemsearch="' +
+    (ITEMS[id].name + ' ' + id).toLowerCase().replace(/"/g, '') + '">' +
+    '<img src="' + iconDataURL(id) + '">' + ITEMS[id].name +
+    '<button type="button" class="chip-x" data-action="csel-rm" data-id="' + id + '" title="移除 ' + ITEMS[id].name + '">✕</button></span>';
+}
 function creativeChestPanelHtml(e) {
   if (e._ensureSlots) e._ensureSlots();
   const ids = (e.slots && e.slots.length) ? e.slots : (e.selected ? [e.selected] : []);
   let h = '<div class="dim">创造箱（测试）：无限生成选中的物品（可多选），机械臂/玩家可无限取走任意一种。已选 ' +
-    ids.length + ' 种：' +
-    (ids.length ? ids.map(id => chip(id)).join(' ') : '<span class="dim">未选择</span>') + '</div>';
+    ids.length + ' 种（点 ✕ 可单个移除）：' +
+    (ids.length ? ids.map(id => creativeChestChip(id)).join(' ') : '<span class="dim">未选择</span>') + '</div>';
   h += creativePickerHtml(e, 'item');
   if (ids.length) h += '<button data-action="csel-clear">清空生成物</button>';
   return h;
@@ -335,6 +343,20 @@ function creativeChestOnAction(act, btn) {
   if (act === 'csel-clear') {
     if (G.panelEnt instanceof CreativeChest) { G.panelEnt.selected = null; G.panelEnt.slots = []; }
     return true;
+  }
+  // 单个移除：chip ✕ 按钮（data-id=物品id）
+  if (act === 'csel-rm') {
+    const e = G.panelEnt;
+    const id = btn && btn.dataset ? btn.dataset.id : null;
+    if (e instanceof CreativeChest && id) {
+      if (e.selected === id) e.selected = null;
+      if (Array.isArray(e.slots)) {
+        const i = e.slots.indexOf(id);
+        if (i >= 0) e.slots.splice(i, 1);
+      }
+      return true;
+    }
+    return false;
   }
   return false;
 }

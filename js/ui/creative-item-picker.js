@@ -164,6 +164,19 @@ function creativePickerPick(id) {
 // 阻止冒泡触发整面板重建/设备 onAction 兜底链；仅当本选择器仍对应当前面板设备时生效。
 document.addEventListener('click', ev => {
   if (!_cipCtx || _cipCtx.e !== G.panelEnt) return;
+  // 已选生成物 chip 上的 ✕ 单个移除按钮：转发给设备 onAction（csel-rm），
+  // 这里优先拦截是因为 chip span 本身无 data-action，若放行会被 #panel-body 的
+  // 背包选中分支（closest [data-itemid]）吃掉，导致移除失效。
+  const rm = ev.target.closest && ev.target.closest('[data-action="csel-rm"]');
+  if (rm) {
+    ev.stopPropagation(); ev.preventDefault();
+    const panel = DEVICE_PANEL[G.panelEnt.type];
+    if (panel && panel.onAction) panel.onAction('csel-rm', rm);
+    // 重建面板刷新已选 chip 列表与选中高亮（保留选择器浏览状态）
+    if (typeof uiDirty !== 'undefined') uiDirty = true;
+    if (typeof renderPanel === 'function') renderPanel(false);
+    return;
+  }
   const tab = ev.target.closest && ev.target.closest('#cip-tabs .craft-tab[data-tab]');
   if (tab) { ev.stopPropagation(); ev.preventDefault(); creativePickerSwitchTab(tab.dataset.tab); return; }
   const item = ev.target.closest && ev.target.closest('.cip-item[data-id]');
