@@ -48,6 +48,9 @@ var G = {
   blueprint: null,        // 蓝图数据：{ minX, minY, w, h, ents: [序列化实体...] }
   blueBook: [],           // 蓝图库：保存的多个蓝图 { name, minX, minY, ents }（对齐《异星工厂》蓝图库）
   blueprintItems: {},     // 蓝图物品化数据：blueprint#n → { name, minX, minY, ents, tiles }（蓝图是可入背包/快捷栏的物品）
+  bbGridView: true,       // 蓝图库视图：true=格子视图（默认），false=列表视图
+  bbSel: null,            // 蓝图库当前选中的蓝图索引（格子高亮）
+  bbDetail: null,         // 蓝图详情页当前查看的蓝图索引（右键格子打开）
   blueMode: null,         // 'blue' | 'red' | 'paste'（框选/删除/粘贴蓝图）
   orbitalCargo: {},       // 行星间货物调度：目标星球 -> { 物品 -> 数量 }（火箭发射送往目标星球，抵达后交付）
   blueStart: null,        // 框选起点瓦片

@@ -78,6 +78,14 @@ function initPanelEvents() {
       applySplitterFilterSearch(v);
     } else if (id === 'flt-search') {
       applyInserterFilterSearch(v);
+    } else if (id === 'bb-search') {
+      applyBbSearch(v);
+    } else if (id === 'bb-detail-name') {
+      const b = (G.blueBook || [])[G.bbDetail];
+      if (b && typeof blueBookRename === 'function') {
+        const nm = v.trim();
+        if (nm) blueBookRename(G.bbDetail, nm);
+      }
     } else if (id === 'cip-search') {
       // 创造设备通用选择器（#hud-modal 内输入框不在 panel-body，正常不会走到这里，兜底）
       if (typeof applyCipSearch === 'function') applyCipSearch(v);
@@ -318,6 +326,96 @@ function initPanelEvents() {
         return;
       }
       return;
+    }
+    // 蓝图库：格子视图 / 列表视图切换
+    const bbView = ev.target.closest('[data-bbview]');
+    if (bbView && G.panelMode === 'bluebook') {
+      G.bbGridView = (G.bbGridView === false);
+      renderPanel(false);
+      return;
+    }
+    // 蓝图库背包格子：已选中蓝图时点击背包任意格子 = 把蓝图物品放入背包（对齐「入包」交互）
+    const bbInvSlot = ev.target.closest('.inv-slot[data-itemid]');
+    if (bbInvSlot && G.panelMode === 'bluebook' && typeof G.bbSel === 'number' && (G.blueBook || [])[G.bbSel]) {
+      const b = G.blueBook[G.bbSel];
+      if (b && typeof bpItemToInv === 'function') {
+        if (bpItemToInv(b)) toast('蓝图「' + b.name + '」已放入背包（选中后点击地图放置）');
+        uiDirty = true;
+        return;
+      }
+    }
+    // 蓝图库格子：左键选中蓝图（可点击地图铺建，也可放入背包/快捷栏）
+    const bbCell = ev.target.closest('[data-bbcell]');
+    if (bbCell && G.panelMode === 'bluebook' && ev.button === 0) {
+      const i = +bbCell.dataset.bbcell;
+      const b = (G.blueBook || [])[i];
+      if (G.bbSel === i) {
+        // 再次点击已选中格子：取消选择（恢复背包自由选物）
+        G.bbSel = null;
+        G.quickSel = null;
+        G.sel = -1;
+        if (typeof setWeapon === 'function') setWeapon(null);
+        if (typeof refreshHotbar === 'function') refreshHotbar();
+        renderPanel(false);
+        return;
+      }
+      if (b && typeof bpItemToInv === 'function') {
+        const id = (typeof bpItemCreate === 'function') ? bpItemCreate(b) : null;
+        if (id && typeof selectInventoryItem === 'function') {
+          // 选中蓝图物品：鼠标出现放置幽灵，点击地图即可铺建；面板保持打开可继续选
+          G.bbSel = i;
+          selectInventoryItem(id);
+        } else if (bpItemToInv(b)) {
+          toast('蓝图「' + b.name + '」已放入背包（选中后点击地图放置）');
+        }
+      }
+      renderPanel(false);
+      return;
+    }
+    // 蓝图库详情页：加载铺建/入包/导出/删除/返回
+    if (G.panelMode === 'bluebook-detail') {
+      const i = G.bbDetail;
+      const b = (G.blueBook || [])[i];
+      // 名称输入失焦同步（value 实时读取，无需额外事件）
+      const nameInput = document.getElementById('bb-detail-name');
+      const syncName = () => {
+        if (nameInput && b && typeof blueBookRename === 'function') {
+          const nm = nameInput.value.trim();
+          if (nm && nm !== b.name) blueBookRename(i, nm);
+        }
+      };
+      const back = ev.target.closest('#bb-detail-back');
+      if (back) { G.bbDetail = null; openPanel('bluebook'); return; }
+      const dPlace = ev.target.closest('#bb-detail-place');
+      if (dPlace && b) {
+        syncName();
+        if (typeof blueBookLoad === 'function') blueBookLoad(i);
+        return;
+      }
+      const dInv = ev.target.closest('#bb-detail-inv');
+      if (dInv && b) {
+        syncName();
+        if (typeof bpItemToInv === 'function' && bpItemToInv(b)) toast('蓝图「' + b.name + '」已放入背包（选中后点击地图放置）');
+        renderPanel(false);
+        return;
+      }
+      const dExp = ev.target.closest('#bb-detail-export');
+      if (dExp && b) {
+        syncName();
+        if (typeof blueBookExport === 'function') blueBookExport(i);
+        return;
+      }
+      const dDel = ev.target.closest('#bb-detail-del');
+      if (dDel && b) {
+        if (window.confirm('确定删除蓝图「' + b.name + '」？')) {
+          if (typeof blueBookRemove === 'function') blueBookRemove(i);
+          G.bbDetail = null;
+          G.bbSel = null;
+          openPanel('bluebook');
+        }
+        renderPanel(true);
+        return;
+      }
     }
     // 蓝图库：加载蓝图粘贴
     const bbUse = ev.target.closest('[data-bbuse]');
@@ -877,6 +975,22 @@ function initPanelEvents() {
   // 背包制作栏（#inv-craft）：右键点击物品图标制作 5 个（左键在 click 处理器中制作 1 个）。
   // 与玩家背包一致的「格子 + 图标」网格交互。
   document.getElementById('panel-body').addEventListener('contextmenu', ev => {
+    // 蓝图库格子：右键打开蓝图详情页
+    const bbCell = ev.target.closest && ev.target.closest('[data-bbcell]');
+    if (bbCell && G.panelMode === 'bluebook') {
+      ev.preventDefault();
+      G.bbDetail = +bbCell.dataset.bbcell;
+      G.bbSel = G.bbDetail;
+      openPanel('bluebook-detail');
+      return;
+    }
+    // 蓝图详情页：右键空白处返回蓝图库
+    if (G.panelMode === 'bluebook-detail') {
+      ev.preventDefault();
+      G.bbDetail = null;
+      openPanel('bluebook');
+      return;
+    }
     // 设备面板「原料」槽：右键取回 1 件原料到背包
     if (G.panelMode === 'machine' && G.panelEnt) {
       const islot = ev.target.closest && ev.target.closest('.mch-io-slot[data-action="feed-slot"]');

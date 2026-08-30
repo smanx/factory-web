@@ -760,6 +760,51 @@ html, body {
 /* 右栏蓝图列表窄屏适配 */
 .bb2-right .bluebook-item { flex-wrap: wrap; }
 
+/* 蓝图库格子视图：一格一蓝图（与背包格子一致的陈列方式） */
+.bb-grid-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin-bottom: 6px;
+}
+.bb-grid-bar input.inv-search { flex: 1; min-width: 0; }
+.bb-grid-bar button {
+  font-size: 12px; padding: 4px 10px; border-radius: 6px; cursor: pointer;
+  background: rgba(90,138,208,.18); border: 1px solid #5a8ad0; color: #cfe0ff;
+}
+.bb-grid-bar button:hover { background: rgba(90,138,208,.35); }
+.bb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 36px);
+  gap: 4px;
+  margin-top: 8px;
+}
+.bb-cell {
+  position: relative;
+  width: 36px; height: 36px;
+  border-radius: 4px;
+  border: 1px solid #37424f;
+  background: #222b35;
+  cursor: pointer;
+  overflow: visible;
+}
+.bb-cell:hover { border-color: #7aa5e0; background: #2a3542; }
+.bb-cell.sel { border-color: #ffd88a; box-shadow: 0 0 0 1px #ffd88a; }
+.bb-cell canvas { width: 100%; height: 100%; display: block; border-radius: 3px; }
+.bb-cell-more {
+  position: absolute; right: 1px; bottom: 0;
+  font-size: 8px; font-weight: bold; color: #fff;
+  text-shadow: 0 1px 2px #000;
+  pointer-events: none; line-height: 1;
+}
+
+/* 蓝图详情页（右键格子打开） */
+.bb-detail-layout {
+  display: flex; flex-direction: column; gap: 10px;
+  min-width: 380px; max-width: 460px;
+}
+.bb-detail-info { display: flex; flex-direction: column; gap: 4px; }
+.bb-detail-info .dim b { color: #dbe6f0; }
+#panel.blue-wide .bb-detail-layout .bp-edit-slots { max-height: 160px; overflow-y: auto; }
+
 /* ===== 蓝图编辑界面（Alt+B 框选后弹出）===== */
 .bp-edit-layout {
   display: flex;
