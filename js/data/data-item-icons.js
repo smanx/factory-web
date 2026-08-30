@@ -157,8 +157,6 @@ function _moduleGem(x, r, s) {
   x.fill();
 }
 
-
-
 // ===== 第 30 批：中间产品收尾（Gleba 生物 / 核燃料 / 科学包 / 桶装流体上半） =====
 
 // 共享工具：金属桶身（桶装流体家族共用骨架），fluidC 为色带颜色，传 null 表示空桶
@@ -301,6 +299,78 @@ function _spaceFlask(x, r, s, col, drawInner) {
   x.fillRect(-r * 0.32, -r * 0.86, r * 0.64, r * 0.08);
 }
 
+// ===== 科技包共享「彩色药瓶」绘制（12 种科技包统一造型：对应颜色 = 瓶身液体色）=====
+// 设计：圆底玻璃瓶 + 银灰瓶盖 + 瓶内高饱和对应色液体（液面/高光/气泡），
+// 颜色完全由 ITEMS[id].color 驱动，保证各种科技包一眼可辨（红/绿/蓝/灰/紫/黄/白/紫电/橙/黄绿/深紫/冰蓝）。
+function _scienceBottle(x, r, s, col) {
+  // 瓶身轮廓路径（复用两次：填充 + 裁剪内液）
+  const bodyPath = () => {
+    x.beginPath();
+    x.moveTo(-r * 0.24, -r * 0.62);
+    x.lineTo(-r * 0.24, -r * 0.2);
+    x.quadraticCurveTo(-r * 0.8, r * 0.05, -r * 0.8, r * 0.42);
+    x.arc(0, r * 0.42, r * 0.8, Math.PI, 0);
+    x.quadraticCurveTo(r * 0.8, r * 0.05, r * 0.24, -r * 0.2);
+    x.lineTo(r * 0.24, -r * 0.62);
+    x.closePath();
+  };
+  // 瓶内液体（先画在裁剪区内）
+  bodyPath();
+  x.save();
+  x.clip();
+  // 液体渐变（对应色）
+  const g = x.createLinearGradient(-r * 0.3, -r * 0.35, r * 0.4, r * 0.9);
+  g.addColorStop(0, lightenColor(col, 0.35));
+  g.addColorStop(0.5, col);
+  g.addColorStop(1, darkenColor(col, 0.45));
+  x.fillStyle = g;
+  x.fillRect(-r, -r, r * 2, r * 2.2);
+  // 液面（浅色带）
+  x.fillStyle = 'rgba(255,255,255,.35)';
+  rrPath(x, -r, -r * 0.52, r * 2, r * 0.14, r * 0.06);
+  x.fill();
+  // 瓶身左侧竖向高光
+  x.strokeStyle = 'rgba(255,255,255,.5)';
+  x.lineWidth = r * 0.14;
+  x.lineCap = 'round';
+  x.beginPath();
+  x.moveTo(-r * 0.45, r * 0.02);
+  x.quadraticCurveTo(-r * 0.6, r * 0.3, -r * 0.42, r * 0.6);
+  x.stroke();
+  // 液内小气泡
+  x.fillStyle = 'rgba(255,255,255,.4)';
+  x.beginPath(); x.arc(r * 0.2, r * 0.4, r * 0.07, 0, 7); x.fill();
+  x.beginPath(); x.arc(r * 0.4, r * 0.18, r * 0.05, 0, 7); x.fill();
+  x.beginPath(); x.arc(-r * 0.05, r * 0.62, r * 0.045, 0, 7); x.fill();
+  x.restore();
+  // 瓶身玻璃描边（半透明玻璃质感）
+  const gl = x.createLinearGradient(-r * 0.3, -r * 0.62, r * 0.3, r * 0.62);
+  gl.addColorStop(0, 'rgba(255,255,255,.55)');
+  gl.addColorStop(0.5, 'rgba(255,255,255,.12)');
+  gl.addColorStop(1, 'rgba(20,24,34,.5)');
+  x.strokeStyle = gl;
+  x.lineWidth = Math.max(1, s * 0.05);
+  bodyPath();
+  x.stroke();
+  // 瓶颈高光
+  x.strokeStyle = 'rgba(255,255,255,.45)';
+  x.lineWidth = Math.max(0.8, s * 0.03);
+  x.beginPath();
+  x.moveTo(-r * 0.16, -r * 0.56); x.lineTo(-r * 0.16, -r * 0.26);
+  x.moveTo(r * 0.16, -r * 0.56); x.lineTo(r * 0.16, -r * 0.26);
+  x.stroke();
+  // 瓶盖（银灰金属）
+  x.fillStyle = '#9aa0a8';
+  rrPath(x, -r * 0.3, -r * 0.95, r * 0.6, r * 0.36, r * 0.08);
+  x.fill();
+  x.strokeStyle = 'rgba(30,35,45,.6)';
+  x.lineWidth = Math.max(1, s * 0.04);
+  x.stroke();
+  // 瓶盖高光
+  x.fillStyle = 'rgba(255,255,255,.4)';
+  rrPath(x, -r * 0.24, -r * 0.9, r * 0.48, r * 0.1, r * 0.05);
+  x.fill();
+}
 
 // 共享工具：小行星碎块（四种星块共用岩块骨架），variant 决定矿脉颜色与纹理
 function _asteroidChunk(x, r, s, col, variant) {
@@ -2166,7 +2236,6 @@ const ITEM_CUSTOM_ICONS = {
     x.beginPath(); x.arc(-r * 0.1, -r * 0.1, r * 0.12, 0, 7); x.fill();
   },
 
-
   // 蜘蛛机器人：俯视六足机甲 + 中央驾驶舱 + 四联炮管
   'spidertron': (x, r, s, col) => {
     // 六条机械腿（三对，斜向伸出）
@@ -3769,7 +3838,6 @@ const ITEM_CUSTOM_ICONS = {
     pebble(r * 0.5, r * 0.66, r * 0.24);
   },
 
-
 // ===== 第 9 批：物流收尾（填海料/平台基座/冰面平台/木箱/铁箱）+ 生产开头 =====
 
 // 填海料：水面上的填土方块，斜纹夯实 + 水波示意
@@ -5070,7 +5138,6 @@ const ITEM_CUSTOM_ICONS = {
     x.beginPath(); x.arc(0, r * 0.55, r * 0.09, 0, 7); x.fill();
   },
 
-
   // 效率模块：淡紫电路板 + 叶子 + 单档位灯
   'efficiency-module': (x, r, s, col) => {
     _moduleBase(x, r, s, col);
@@ -5091,7 +5158,6 @@ const ITEM_CUSTOM_ICONS = {
     _moduleLeaf(x, r, s);
     _modulePips(x, r, 3);
   },
-
 
   // 品质模块：金色电路板 + 宝石 + 单档位灯
   'quality-module': (x, r, s, col) => {
@@ -5773,7 +5839,6 @@ const ITEM_CUSTOM_ICONS = {
       x.stroke();
     }
   },
-
 
   // 聚变反应堆：青铜机身 + 等离子橙红核心 + 氟酮冷却蓝管
   'fusion-reactor': (x, r, s, col) => {
@@ -6724,46 +6789,10 @@ const ITEM_CUSTOM_ICONS = {
 
   // ===== 中间产品（docs/item-icons-todo.md 批次 2） =====
 
-  // 自动化科学包：红色圆瓶 + 瓶盖 + 瓶身高光，实验药剂质感
+  // 统一药瓶造型：对应颜色即瓶内液体色（共享 _scienceBottle）
   'automation-science-pack': (x, r, s, col) => {
-    // 瓶盖
-    x.fillStyle = '#9aa0a8';
-    rrPath(x, -r * 0.3, -r * 0.92, r * 0.6, r * 0.34, r * 0.08);
-    x.fill();
-    x.strokeStyle = 'rgba(30,35,45,.6)';
-    x.lineWidth = Math.max(1, s * 0.04);
-    x.stroke();
-    x.fillStyle = 'rgba(255,255,255,.35)';
-    x.fillRect(-r * 0.3, -r * 0.82, r * 0.6, r * 0.09);
-    // 瓶身（圆底瓶）
-    const g = x.createRadialGradient(-r * 0.22, -r * 0.2, r * 0.08, 0, r * 0.15, r * 0.95);
-    g.addColorStop(0, lightenColor(col, 0.55));
-    g.addColorStop(0.5, col);
-    g.addColorStop(1, darkenColor(col, 0.5));
-    x.fillStyle = g;
-    x.beginPath();
-    x.moveTo(-r * 0.24, -r * 0.62);
-    x.lineTo(-r * 0.24, -r * 0.2);
-    x.quadraticCurveTo(-r * 0.8, r * 0.05, -r * 0.8, r * 0.42);
-    x.arc(0, r * 0.42, r * 0.8, Math.PI, 0);
-    x.quadraticCurveTo(r * 0.8, r * 0.05, r * 0.24, -r * 0.2);
-    x.lineTo(r * 0.24, -r * 0.62);
-    x.closePath();
-    x.fill();
-    x.strokeStyle = 'rgba(70,15,15,.6)';
-    x.stroke();
-    // 瓶身竖向高光
-    x.strokeStyle = 'rgba(255,235,235,.5)';
-    x.lineWidth = r * 0.14;
-    x.lineCap = 'round';
-    x.beginPath();
-    x.moveTo(-r * 0.45, r * 0.1);
-    x.quadraticCurveTo(-r * 0.6, r * 0.35, -r * 0.42, r * 0.6);
-    x.stroke();
-    // 液面气泡
-    x.fillStyle = 'rgba(255,255,255,.35)';
-    x.beginPath(); x.arc(r * 0.18, r * 0.42, r * 0.07, 0, 7); x.fill();
-    x.beginPath(); x.arc(r * 0.36, r * 0.25, r * 0.05, 0, 7); x.fill();
+    // 对应颜色瓶子：颜色由 ITEMS[id].color 驱动
+    _scienceBottle(x, r, s, col);
   },
 
   // 钢板：灰蓝金属厚板，铆钉 + 拉丝质感 + 侧边厚度
@@ -6799,95 +6828,16 @@ const ITEM_CUSTOM_ICONS = {
     x.restore();
   },
 
-  // 物流科学包：绿色圆瓶 + 瓶盖，药剂质感（与红瓶同构）
+  // 统一药瓶造型：对应颜色即瓶内液体色（共享 _scienceBottle）
   'logistic-science-pack': (x, r, s, col) => {
-    x.fillStyle = '#9aa0a8';
-    rrPath(x, -r * 0.3, -r * 0.92, r * 0.6, r * 0.34, r * 0.08);
-    x.fill();
-    x.strokeStyle = 'rgba(30,35,45,.6)';
-    x.lineWidth = Math.max(1, s * 0.04);
-    x.stroke();
-    x.fillStyle = 'rgba(255,255,255,.35)';
-    x.fillRect(-r * 0.3, -r * 0.82, r * 0.6, r * 0.09);
-    const g = x.createRadialGradient(-r * 0.22, -r * 0.2, r * 0.08, 0, r * 0.15, r * 0.95);
-    g.addColorStop(0, lightenColor(col, 0.55));
-    g.addColorStop(0.5, col);
-    g.addColorStop(1, darkenColor(col, 0.5));
-    x.fillStyle = g;
-    x.beginPath();
-    x.moveTo(-r * 0.24, -r * 0.62);
-    x.lineTo(-r * 0.24, -r * 0.2);
-    x.quadraticCurveTo(-r * 0.8, r * 0.05, -r * 0.8, r * 0.42);
-    x.arc(0, r * 0.42, r * 0.8, Math.PI, 0);
-    x.quadraticCurveTo(r * 0.8, r * 0.05, r * 0.24, -r * 0.2);
-    x.lineTo(r * 0.24, -r * 0.62);
-    x.closePath();
-    x.fill();
-    x.strokeStyle = 'rgba(15,60,20,.6)';
-    x.stroke();
-    x.strokeStyle = 'rgba(240,255,240,.5)';
-    x.lineWidth = r * 0.14;
-    x.lineCap = 'round';
-    x.beginPath();
-    x.moveTo(-r * 0.45, r * 0.1);
-    x.quadraticCurveTo(-r * 0.6, r * 0.35, -r * 0.42, r * 0.6);
-    x.stroke();
-    x.fillStyle = 'rgba(255,255,255,.35)';
-    x.beginPath(); x.arc(r * 0.18, r * 0.42, r * 0.07, 0, 7); x.fill();
-    x.beginPath(); x.arc(r * 0.36, r * 0.25, r * 0.05, 0, 7); x.fill();
+    // 对应颜色瓶子：颜色由 ITEMS[id].color 驱动
+    _scienceBottle(x, r, s, col);
   },
 
-  // 化工科学包：蓝色锥形烧瓶 + 液体 + 冒泡，化工实验感
+  // 统一药瓶造型：对应颜色即瓶内液体色（共享 _scienceBottle）
   'chemical-science-pack': (x, r, s, col) => {
-    // 瓶口与瓶盖
-    x.fillStyle = '#9aa0a8';
-    rrPath(x, -r * 0.18, -r * 0.95, r * 0.36, r * 0.3, r * 0.06);
-    x.fill();
-    // 锥形瓶体
-    const g = x.createLinearGradient(-r * 0.6, -r * 0.6, r * 0.6, r * 0.8);
-    g.addColorStop(0, lightenColor(col, 0.45));
-    g.addColorStop(0.55, col);
-    g.addColorStop(1, darkenColor(col, 0.45));
-    x.fillStyle = g;
-    x.beginPath();
-    x.moveTo(-r * 0.16, -r * 0.66);
-    x.lineTo(-r * 0.7, r * 0.6);
-    x.quadraticCurveTo(-r * 0.78, r * 0.82, -r * 0.5, r * 0.82);
-    x.lineTo(r * 0.5, r * 0.82);
-    x.quadraticCurveTo(r * 0.78, r * 0.82, r * 0.7, r * 0.6);
-    x.lineTo(r * 0.16, -r * 0.66);
-    x.closePath();
-    x.fill();
-    x.strokeStyle = 'rgba(10,35,70,.65)';
-    x.lineWidth = Math.max(1, s * 0.05);
-    x.stroke();
-    // 底部液体（更深）
-    x.fillStyle = 'rgba(20,50,110,.5)';
-    x.beginPath();
-    x.moveTo(-r * 0.5, r * 0.18);
-    x.lineTo(-r * 0.62, r * 0.6);
-    x.quadraticCurveTo(-r * 0.7, r * 0.78, -r * 0.5, r * 0.78);
-    x.lineTo(r * 0.5, r * 0.78);
-    x.quadraticCurveTo(r * 0.7, r * 0.78, r * 0.62, r * 0.6);
-    x.lineTo(r * 0.5, r * 0.18);
-    x.closePath();
-    x.fill();
-    // 液面
-    x.fillStyle = 'rgba(200,225,255,.55)';
-    rrPath(x, -r * 0.51, r * 0.14, r * 1.02, r * 0.09, r * 0.04);
-    x.fill();
-    // 气泡
-    x.fillStyle = 'rgba(235,245,255,.6)';
-    x.beginPath(); x.arc(-r * 0.2, r * 0.42, r * 0.07, 0, 7); x.fill();
-    x.beginPath(); x.arc(r * 0.14, r * 0.55, r * 0.05, 0, 7); x.fill();
-    // 瓶身高光
-    x.strokeStyle = 'rgba(255,255,255,.4)';
-    x.lineWidth = r * 0.1;
-    x.lineCap = 'round';
-    x.beginPath();
-    x.moveTo(-r * 0.14, -r * 0.4);
-    x.quadraticCurveTo(-r * 0.42, r * 0.1, -r * 0.44, r * 0.5);
-    x.stroke();
+    // 对应颜色瓶子：颜色由 ITEMS[id].color 驱动
+    _scienceBottle(x, r, s, col);
   },
 
   // 塑料板：白色半透明板 + 轻微弯折 + 高光，树脂质感
@@ -6923,41 +6873,10 @@ const ITEM_CUSTOM_ICONS = {
     x.restore();
   },
 
-  // 军事科学包：深灰绿军壶 + 弹头图案 + 弹链点缀
+  // 统一药瓶造型：对应颜色即瓶内液体色（共享 _scienceBottle）
   'military-science-pack': (x, r, s, col) => {
-    // 军壶主体（扁圆）
-    const g = x.createLinearGradient(-r * 0.7, -r * 0.7, r * 0.6, r * 0.7);
-    g.addColorStop(0, lightenColor(col, 0.4));
-    g.addColorStop(0.55, col);
-    g.addColorStop(1, darkenColor(col, 0.5));
-    x.fillStyle = g;
-    x.beginPath();
-    x.ellipse(0, r * 0.12, r * 0.82, r * 0.72, 0, 0, 7);
-    x.fill();
-    x.strokeStyle = 'rgba(15,25,15,.7)';
-    x.lineWidth = Math.max(1, s * 0.05);
-    x.stroke();
-    // 壶口
-    x.fillStyle = darkenColor(col, 0.4);
-    rrPath(x, -r * 0.2, -r * 0.86, r * 0.4, r * 0.3, r * 0.07);
-    x.fill();
-    x.strokeStyle = 'rgba(15,25,15,.6)';
-    x.stroke();
-    // 中带
-    x.fillStyle = 'rgba(35,48,35,.55)';
-    x.fillRect(-r * 0.8, r * 0.02, r * 1.6, r * 0.2);
-    // 白色弹头符号
-    x.fillStyle = 'rgba(240,240,230,.92)';
-    x.beginPath();
-    x.moveTo(0, -r * 0.42);
-    x.quadraticCurveTo(r * 0.2, -r * 0.14, r * 0.2, r * 0.3);
-    x.lineTo(-r * 0.2, r * 0.3);
-    x.quadraticCurveTo(-r * 0.2, -r * 0.14, 0, -r * 0.42);
-    x.closePath();
-    x.fill();
-    // 弹底座
-    x.fillStyle = '#c9a24a';
-    x.fillRect(-r * 0.24, r * 0.3, r * 0.48, r * 0.12);
+    // 对应颜色瓶子：颜色由 ITEMS[id].color 驱动
+    _scienceBottle(x, r, s, col);
   },
 
   // 高级电路板：暗红基板 + 金色走线 + 中央芯片，比绿板更高级
@@ -7136,7 +7055,6 @@ const ITEM_CUSTOM_ICONS = {
     x.fill();
     x.stroke();
   },
-
 
   // ===== 中间产品批次 1（low-density-structure ~ sulfuric-acid，共 10 项）=====
 
@@ -7350,112 +7268,16 @@ const ITEM_CUSTOM_ICONS = {
     x.beginPath(); x.arc(0, 0, r * 0.26, 0, 7); x.fill();
   },
 
-  // 产能科学包：紫色锥形瓶 + 白色箭头加号（产能符号）
+  // 统一药瓶造型：对应颜色即瓶内液体色（共享 _scienceBottle）
   'production-science-pack': (x, r, s, col) => {
-    // 瓶口与瓶盖
-    x.fillStyle = '#9aa0a8';
-    rrPath(x, -r * 0.18, -r * 0.95, r * 0.36, r * 0.3, r * 0.06);
-    x.fill();
-    const g = x.createLinearGradient(-r * 0.6, -r * 0.6, r * 0.6, r * 0.8);
-    g.addColorStop(0, lightenColor(col, 0.45));
-    g.addColorStop(0.55, col);
-    g.addColorStop(1, darkenColor(col, 0.45));
-    x.fillStyle = g;
-    x.beginPath();
-    x.moveTo(-r * 0.16, -r * 0.66);
-    x.lineTo(-r * 0.7, r * 0.6);
-    x.quadraticCurveTo(-r * 0.78, r * 0.82, -r * 0.5, r * 0.82);
-    x.lineTo(r * 0.5, r * 0.82);
-    x.quadraticCurveTo(r * 0.78, r * 0.82, r * 0.7, r * 0.6);
-    x.lineTo(r * 0.16, -r * 0.66);
-    x.closePath();
-    x.fill();
-    x.strokeStyle = 'rgba(45,15,70,.65)';
-    x.lineWidth = Math.max(1, s * 0.05);
-    x.stroke();
-    // 深色液体
-    x.fillStyle = 'rgba(60,20,100,.55)';
-    x.beginPath();
-    x.moveTo(-r * 0.5, r * 0.18);
-    x.lineTo(-r * 0.62, r * 0.6);
-    x.quadraticCurveTo(-r * 0.7, r * 0.78, -r * 0.5, r * 0.78);
-    x.lineTo(r * 0.5, r * 0.78);
-    x.quadraticCurveTo(r * 0.7, r * 0.78, r * 0.62, r * 0.6);
-    x.lineTo(r * 0.5, r * 0.18);
-    x.closePath();
-    x.fill();
-    // 瓶身高光
-    x.fillStyle = 'rgba(255,255,255,.3)';
-    x.beginPath();
-    x.moveTo(-r * 0.1, -r * 0.55);
-    x.lineTo(-r * 0.3, r * 0.1);
-    x.lineTo(-r * 0.18, r * 0.1);
-    x.lineTo(-r * 0.02, -r * 0.55);
-    x.closePath();
-    x.fill();
-    // PP 字样（产能标记）
-    x.fillStyle = '#fff';
-    x.font = 'bold ' + Math.round(r * 0.52) + 'px system-ui';
-    x.textAlign = 'center';
-    x.textBaseline = 'middle';
-    x.fillText('PP', 0, r * 0.42);
+    // 对应颜色瓶子：颜色由 ITEMS[id].color 驱动
+    _scienceBottle(x, r, s, col);
   },
 
-  // 实用科学包：黄色锥形瓶 + 白色齿轮标记（实用符号）
+  // 统一药瓶造型：对应颜色即瓶内液体色（共享 _scienceBottle）
   'utility-science-pack': (x, r, s, col) => {
-    x.fillStyle = '#9aa0a8';
-    rrPath(x, -r * 0.18, -r * 0.95, r * 0.36, r * 0.3, r * 0.06);
-    x.fill();
-    const g = x.createLinearGradient(-r * 0.6, -r * 0.6, r * 0.6, r * 0.8);
-    g.addColorStop(0, lightenColor(col, 0.45));
-    g.addColorStop(0.55, col);
-    g.addColorStop(1, darkenColor(col, 0.45));
-    x.fillStyle = g;
-    x.beginPath();
-    x.moveTo(-r * 0.16, -r * 0.66);
-    x.lineTo(-r * 0.7, r * 0.6);
-    x.quadraticCurveTo(-r * 0.78, r * 0.82, -r * 0.5, r * 0.82);
-    x.lineTo(r * 0.5, r * 0.82);
-    x.quadraticCurveTo(r * 0.78, r * 0.82, r * 0.7, r * 0.6);
-    x.lineTo(r * 0.16, -r * 0.66);
-    x.closePath();
-    x.fill();
-    x.strokeStyle = 'rgba(80,72,10,.65)';
-    x.lineWidth = Math.max(1, s * 0.05);
-    x.stroke();
-    x.fillStyle = 'rgba(120,105,15,.5)';
-    x.beginPath();
-    x.moveTo(-r * 0.5, r * 0.18);
-    x.lineTo(-r * 0.62, r * 0.6);
-    x.quadraticCurveTo(-r * 0.7, r * 0.78, -r * 0.5, r * 0.78);
-    x.lineTo(r * 0.5, r * 0.78);
-    x.quadraticCurveTo(r * 0.7, r * 0.78, r * 0.62, r * 0.6);
-    x.lineTo(r * 0.5, r * 0.18);
-    x.closePath();
-    x.fill();
-    x.fillStyle = 'rgba(255,255,255,.3)';
-    x.beginPath();
-    x.moveTo(-r * 0.1, -r * 0.55);
-    x.lineTo(-r * 0.3, r * 0.1);
-    x.lineTo(-r * 0.18, r * 0.1);
-    x.lineTo(-r * 0.02, -r * 0.55);
-    x.closePath();
-    x.fill();
-    // 齿轮标记
-    x.save();
-    x.translate(0, r * 0.42);
-    x.fillStyle = '#fff';
-    const gearR = r * 0.3;
-    for (let i = 0; i < 8; i++) {
-      x.save();
-      x.rotate(i * Math.PI / 4);
-      x.fillRect(-gearR * 0.14, -gearR * 1.25, gearR * 0.28, gearR * 0.4);
-      x.restore();
-    }
-    x.beginPath(); x.arc(0, 0, gearR * 0.9, 0, 7); x.fill();
-    x.fillStyle = col;
-    x.beginPath(); x.arc(0, 0, gearR * 0.4, 0, 7); x.fill();
-    x.restore();
+    // 对应颜色瓶子：颜色由 ITEMS[id].color 驱动
+    _scienceBottle(x, r, s, col);
   },
 
   // 润滑油：油壶 + 滴落油滴，金黄色
@@ -7592,7 +7414,6 @@ const ITEM_CUSTOM_ICONS = {
     x.textBaseline = 'middle';
     x.fillText('H₂SO₄', 0, r * 0.04);
   },
-
 
   // 碳：黑色无定形碳块堆（三颗哑光碳粒）+ 微弱光泽
   'carbon': (x, r, s, col) => {
@@ -7810,71 +7631,10 @@ const ITEM_CUSTOM_ICONS = {
     x.fill();
   },
 
-  // 电磁科研包：紫色斜置科研瓶 + 环绕电弧 + "ESP" 底座
+  // 统一药瓶造型：对应颜色即瓶内液体色（共享 _scienceBottle）
   'electromagnetic-science-pack': (x, r, s, col) => {
-    // 电弧背景辉光
-    const glow = x.createRadialGradient(0, 0, r * 0.1, 0, 0, r * 0.95);
-    glow.addColorStop(0, 'rgba(120,120,255,.4)');
-    glow.addColorStop(1, 'rgba(120,120,255,0)');
-    x.fillStyle = glow;
-    x.beginPath(); x.arc(0, 0, r * 0.95, 0, 7); x.fill();
-    // 斜置瓶身
-    x.save();
-    x.rotate(-0.5);
-    const g = x.createLinearGradient(-r * 0.3, -r * 0.7, r * 0.3, r * 0.7);
-    g.addColorStop(0, lightenColor(col, 0.4));
-    g.addColorStop(0.55, col);
-    g.addColorStop(1, darkenColor(col, 0.45));
-    x.fillStyle = g;
-    x.beginPath();
-    x.moveTo(-r * 0.24, -r * 0.42);
-    x.lineTo(-r * 0.24, -r * 0.1);
-    x.quadraticCurveTo(-r * 0.52, r * 0.12, -r * 0.42, r * 0.4);
-    x.quadraticCurveTo(-r * 0.36, r * 0.58, 0, r * 0.58);
-    x.quadraticCurveTo(r * 0.36, r * 0.58, r * 0.42, r * 0.4);
-    x.quadraticCurveTo(r * 0.52, r * 0.12, r * 0.24, -r * 0.1);
-    x.lineTo(r * 0.24, -r * 0.42);
-    x.closePath();
-    x.fill();
-    x.strokeStyle = 'rgba(20,20,60,.7)';
-    x.lineWidth = Math.max(1, s * 0.045);
-    x.stroke();
-    // 瓶口
-    x.fillStyle = '#c9cfe0';
-    rrPath(x, -r * 0.3, -r * 0.72, r * 0.6, r * 0.32, r * 0.08);
-    x.fill();
-    x.strokeStyle = 'rgba(20,20,60,.6)';
-    x.stroke();
-    // 瓶内发光液体
-    x.fillStyle = 'rgba(255,255,255,.28)';
-    x.beginPath();
-    x.moveTo(-r * 0.4, r * 0.24);
-    x.quadraticCurveTo(-r * 0.44, r * 0.5, 0, r * 0.5);
-    x.quadraticCurveTo(r * 0.44, r * 0.5, r * 0.4, r * 0.24);
-    x.closePath();
-    x.fill();
-    x.restore();
-    // 环绕电弧（左右两道折线电弧）
-    x.strokeStyle = 'rgba(220,230,255,.9)';
-    x.lineWidth = Math.max(1, s * 0.04);
-    x.lineJoin = 'round';
-    for (const side of [-1, 1]) {
-      x.beginPath();
-      x.moveTo(side * r * 0.86, -r * 0.3);
-      x.lineTo(side * r * 0.6, -r * 0.08);
-      x.lineTo(side * r * 0.78, r * 0.06);
-      x.lineTo(side * r * 0.5, r * 0.36);
-      x.stroke();
-    }
-    // 底座标牌 ESP
-    x.fillStyle = 'rgba(15,15,40,.78)';
-    rrPath(x, -r * 0.42, r * 0.6, r * 0.84, r * 0.34, r * 0.08);
-    x.fill();
-    x.fillStyle = '#e8ebff';
-    x.font = 'bold ' + Math.round(r * 0.24) + 'px system-ui';
-    x.textAlign = 'center';
-    x.textBaseline = 'middle';
-    x.fillText('ESP', 0, r * 0.78);
+    // 对应颜色瓶子：颜色由 ITEMS[id].color 驱动
+    _scienceBottle(x, r, s, col);
   },
 
   // 钬矿石：紫红色矿石粒（三颗带高光的矿粒，颜色对齐钬系）
@@ -8026,9 +7786,6 @@ const ITEM_CUSTOM_ICONS = {
     x.beginPath(); x.arc(-r * 0.02, -r * 0.2, r * 0.05, 0, 7); x.fill();
   },
 
-
-
-
   // ===== Gleba 生物质 & Vulcanus 冶金批次（10 个） =====
 
   // 钨矿石：深灰矿石簇（三颗不规则矿粒 + 金属光泽），棱角比铁/铜矿更硬
@@ -8156,68 +7913,10 @@ const ITEM_CUSTOM_ICONS = {
     x.fill();
   },
 
-  // 冶金科研包：斜置科研瓶 + 橙色液体 + 熔炉火花点缀
+  // 统一药瓶造型：对应颜色即瓶内液体色（共享 _scienceBottle）
   'metallurgic-science-pack': (x, r, s, col) => {
-    // 暖色背景辉光
-    const glow = x.createRadialGradient(0, 0, r * 0.1, 0, 0, r * 0.95);
-    glow.addColorStop(0, 'rgba(255,150,60,.35)');
-    glow.addColorStop(1, 'rgba(255,150,60,0)');
-    x.fillStyle = glow;
-    x.beginPath(); x.arc(0, 0, r * 0.95, 0, 7); x.fill();
-    // 斜置瓶身
-    x.save();
-    x.rotate(-0.5);
-    const g = x.createLinearGradient(-r * 0.3, -r * 0.7, r * 0.3, r * 0.7);
-    g.addColorStop(0, lightenColor(col, 0.4));
-    g.addColorStop(0.55, col);
-    g.addColorStop(1, darkenColor(col, 0.45));
-    x.fillStyle = g;
-    x.beginPath();
-    x.moveTo(-r * 0.24, -r * 0.42);
-    x.lineTo(-r * 0.24, -r * 0.1);
-    x.quadraticCurveTo(-r * 0.52, r * 0.12, -r * 0.42, r * 0.4);
-    x.quadraticCurveTo(-r * 0.36, r * 0.58, 0, r * 0.58);
-    x.quadraticCurveTo(r * 0.36, r * 0.58, r * 0.42, r * 0.4);
-    x.quadraticCurveTo(r * 0.52, r * 0.12, r * 0.24, -r * 0.1);
-    x.lineTo(r * 0.24, -r * 0.42);
-    x.closePath();
-    x.fill();
-    x.strokeStyle = 'rgba(70,35,10,.7)';
-    x.lineWidth = Math.max(1, s * 0.045);
-    x.stroke();
-    // 瓶口
-    x.fillStyle = '#d8cfc4';
-    rrPath(x, -r * 0.3, -r * 0.72, r * 0.6, r * 0.32, r * 0.08);
-    x.fill();
-    x.strokeStyle = 'rgba(70,35,10,.6)';
-    x.stroke();
-    // 瓶内液体高光
-    x.fillStyle = 'rgba(255,235,200,.32)';
-    x.beginPath();
-    x.moveTo(-r * 0.4, r * 0.24);
-    x.quadraticCurveTo(-r * 0.44, r * 0.5, 0, r * 0.5);
-    x.quadraticCurveTo(r * 0.44, r * 0.5, r * 0.4, r * 0.24);
-    x.closePath();
-    x.fill();
-    x.restore();
-    // 环绕火花（冶金主题，替代电磁包的电弧）
-    x.strokeStyle = 'rgba(255,215,120,.95)';
-    x.lineWidth = Math.max(1.2, s * 0.045);
-    x.lineCap = 'round';
-    for (const [x1, y1, x2, y2, x3, y3] of [
-      [-0.85, -0.3, -0.6, -0.1, -0.85, 0.15],
-      [0.85, 0.3, 0.6, 0.1, 0.85, -0.15],
-    ]) {
-      x.beginPath();
-      x.moveTo(x1 * r, y1 * r);
-      x.lineTo(x2 * r, y2 * r);
-      x.lineTo(x3 * r, y3 * r);
-      x.stroke();
-    }
-    // 火星点
-    x.fillStyle = 'rgba(255,230,150,.9)';
-    x.beginPath(); x.arc(r * 0.62, -r * 0.55, r * 0.05, 0, 7); x.fill();
-    x.beginPath(); x.arc(-r * 0.68, r * 0.5, r * 0.04, 0, 7); x.fill();
+    // 对应颜色瓶子：颜色由 ITEMS[id].color 驱动
+    _scienceBottle(x, r, s, col);
   },
 
   // 玉玛果：菠萝状果体（鳞片网格 + 顶部叶冠）
@@ -8524,35 +8223,10 @@ const ITEM_CUSTOM_ICONS = {
   x.stroke();
 },
 
-// 农业科技包：黄绿科学瓶 + 瓶内幼苗（农业科研意象）
+// 统一药瓶造型：对应颜色即瓶内液体色（共享 _scienceBottle）
 'agricultural-science-pack': (x, r, s, col) => {
-  _spaceFlask(x, r, s, col, (x, r) => {
-    // 培养土层
-    x.fillStyle = '#6a4a2a';
-    x.beginPath();
-    x.ellipse(0, r * 0.75, r * 0.85, r * 0.3, 0, 0, 7);
-    x.fill();
-    // 幼苗：茎 + 两片子叶
-    x.strokeStyle = '#3f7e34';
-    x.lineWidth = Math.max(1.2, s * 0.05);
-    x.lineCap = 'round';
-    x.beginPath();
-    x.moveTo(0, r * 0.6);
-    x.quadraticCurveTo(r * 0.04, r * 0.2, 0, -r * 0.3);
-    x.stroke();
-    x.fillStyle = '#6ab84a';
-    x.beginPath();
-    x.ellipse(-r * 0.22, -r * 0.18, r * 0.2, r * 0.1, -0.5, 0, 7);
-    x.fill();
-    x.beginPath();
-    x.ellipse(r * 0.22, -r * 0.18, r * 0.2, r * 0.1, 0.5, 0, 7);
-    x.fill();
-    // 顶部新芽
-    x.fillStyle = '#a8d84a';
-    x.beginPath();
-    x.ellipse(0, -r * 0.38, r * 0.09, r * 0.14, 0, 0, 7);
-    x.fill();
-  });
+  // 对应颜色瓶子：颜色由 ITEMS[id].color 驱动
+  _scienceBottle(x, r, s, col);
 },
 
 // 果冻果：紫红圆果 + 顶部果脐 + 汁液高光（Gleba 作物）
@@ -9283,118 +8957,22 @@ const ITEM_CUSTOM_ICONS = {
   x.restore();
 },
 
-// 空间科学包：银白科学瓶 + 瓶内火箭升空轨迹
+// 统一药瓶造型：对应颜色即瓶内液体色（共享 _scienceBottle）
 'space-science-pack': (x, r, s, col) => {
-  _spaceFlask(x, r, s, col, (x, r) => {
-    // 深空底色
-    x.fillStyle = 'rgba(30,36,60,.85)';
-    x.fillRect(-r * 0.9, -r * 0.7, r * 1.8, r * 1.6);
-    // 星点
-    x.fillStyle = 'rgba(255,255,255,.8)';
-    for (const [px, py, pr] of [[-0.45, -0.3, 0.03], [0.4, -0.4, 0.025], [0.5, 0.1, 0.03], [-0.5, 0.25, 0.02]]) {
-      x.beginPath(); x.arc(px * r, py * r, pr * r, 0, 7); x.fill();
-    }
-    // 小火箭（瓶内向上）
-    x.save();
-    x.translate(0, r * 0.2);
-    x.fillStyle = '#e8ecf4';
-    x.beginPath();
-    x.moveTo(0, -r * 0.5);
-    x.quadraticCurveTo(r * 0.16, -r * 0.18, r * 0.13, r * 0.12);
-    x.lineTo(-r * 0.13, r * 0.12);
-    x.quadraticCurveTo(-r * 0.16, -r * 0.18, 0, -r * 0.5);
-    x.closePath();
-    x.fill();
-    // 尾焰
-    x.fillStyle = '#f0a03a';
-    x.beginPath();
-    x.moveTo(-r * 0.08, r * 0.14);
-    x.lineTo(0, r * 0.42);
-    x.lineTo(r * 0.08, r * 0.14);
-    x.closePath();
-    x.fill();
-    x.restore();
-  });
+  // 对应颜色瓶子：颜色由 ITEMS[id].color 驱动
+  _scienceBottle(x, r, s, col);
 },
 
-// 钷素科研包：深紫终极科学瓶 + 瓶内星云漩涡 + 神秘辉光
+// 统一药瓶造型：对应颜色即瓶内液体色（共享 _scienceBottle）
 'promethium-science-pack': (x, r, s, col) => {
-  // 紫色辉光背景
-  const glow = x.createRadialGradient(0, 0, r * 0.1, 0, 0, r * 0.95);
-  glow.addColorStop(0, 'rgba(130,110,255,.4)');
-  glow.addColorStop(1, 'rgba(130,110,255,0)');
-  x.fillStyle = glow;
-  x.beginPath(); x.arc(0, 0, r * 0.95, 0, 7); x.fill();
-  _spaceFlask(x, r, s, col, (x, r) => {
-    // 深紫星云底
-    x.fillStyle = 'rgba(28,18,70,.9)';
-    x.fillRect(-r * 0.9, -r * 0.7, r * 1.8, r * 1.6);
-    // 星云漩涡（两条螺旋臂）
-    x.strokeStyle = 'rgba(180,150,255,.85)';
-    x.lineWidth = Math.max(1.2, s * 0.045);
-    x.lineCap = 'round';
-    x.beginPath();
-    x.arc(0, r * 0.1, r * 0.34, 0.5, 2.8);
-    x.stroke();
-    x.strokeStyle = 'rgba(220,190,255,.6)';
-    x.beginPath();
-    x.arc(r * 0.04, r * 0.16, r * 0.2, 3.2, 5.6);
-    x.stroke();
-    // 核心亮星
-    const cg = x.createRadialGradient(0, r * 0.1, r * 0.02, 0, r * 0.1, r * 0.16);
-    cg.addColorStop(0, 'rgba(255,255,255,.95)');
-    cg.addColorStop(1, 'rgba(200,170,255,0)');
-    x.fillStyle = cg;
-    x.beginPath(); x.arc(0, r * 0.1, r * 0.16, 0, 7); x.fill();
-    // 散落星点
-    x.fillStyle = 'rgba(255,255,255,.85)';
-    for (const [px, py] of [[-0.4, -0.25], [0.42, -0.35], [0.5, 0.2], [-0.5, 0.3]]) {
-      x.beginPath(); x.arc(px * r, py * r, r * 0.028, 0, 7); x.fill();
-    }
-  });
+  // 对应颜色瓶子：颜色由 ITEMS[id].color 驱动
+  _scienceBottle(x, r, s, col);
 },
 
-// 低温科研包：冰蓝科学瓶 + 瓶内雪花晶体 + 寒气
+// 统一药瓶造型：对应颜色即瓶内液体色（共享 _scienceBottle）
 'cryogenic-science-pack': (x, r, s, col) => {
-  // 寒气辉光
-  const glow = x.createRadialGradient(0, 0, r * 0.1, 0, 0, r * 0.95);
-  glow.addColorStop(0, 'rgba(120,220,250,.35)');
-  glow.addColorStop(1, 'rgba(120,220,250,0)');
-  x.fillStyle = glow;
-  x.beginPath(); x.arc(0, 0, r * 0.95, 0, 7); x.fill();
-  _spaceFlask(x, r, s, col, (x, r) => {
-    // 冰蓝液体
-    const g = x.createLinearGradient(0, -r * 0.2, 0, r * 0.8);
-    g.addColorStop(0, 'rgba(220,250,255,.95)');
-    g.addColorStop(1, 'rgba(90,190,230,.95)');
-    x.fillStyle = g;
-    x.fillRect(-r * 0.9, -r * 0.1, r * 1.8, r * 1.0);
-    // 液面
-    x.fillStyle = 'rgba(255,255,255,.6)';
-    x.fillRect(-r * 0.9, -r * 0.1, r * 1.8, r * 0.06);
-    // 雪花晶体（六轴）
-    x.save();
-    x.translate(0, r * 0.3);
-    x.strokeStyle = 'rgba(255,255,255,.95)';
-    x.lineWidth = Math.max(1, s * 0.04);
-    x.lineCap = 'round';
-    for (let i = 0; i < 6; i++) {
-      x.rotate(Math.PI / 3);
-      x.beginPath();
-      x.moveTo(0, 0); x.lineTo(0, -r * 0.34);
-      // 分叉
-      x.moveTo(0, -r * 0.2); x.lineTo(-r * 0.09, -r * 0.28);
-      x.moveTo(0, -r * 0.2); x.lineTo(r * 0.09, -r * 0.28);
-      x.stroke();
-    }
-    x.restore();
-    // 上浮寒气泡
-    x.strokeStyle = 'rgba(255,255,255,.55)';
-    x.lineWidth = Math.max(0.6, s * 0.024);
-    for (const [px, py, pr] of [[-0.3, -0.32, 0.05], [0.28, -0.42, 0.04]]) {
-      x.beginPath(); x.arc(px * r, py * r, pr * r, 0, 7); x.stroke();
-    }
-  });
+  // 对应颜色瓶子：颜色由 ITEMS[id].color 驱动
+  _scienceBottle(x, r, s, col);
 },
 
 // 量子处理器：紫色量子芯片 + 叠加量子位环 + 金色引脚
@@ -13430,10 +13008,6 @@ const ITEM_CUSTOM_ICONS = {
     x.beginPath(); x.arc(r * 0.12, r * 0.34, r * 0.07, 0, 7); x.fill();
     x.restore();
   },
-
-
-
-
 
   
 };
