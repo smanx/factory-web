@@ -390,8 +390,8 @@ function _hoverRuntimeSections(e) {
       rows.push({ label: '燃料燃尽', value: '剩 ' + fmt(e.burnLeft || 0) + ' 秒' });
       rows.push({ label: '当前温度', value: Math.round(e.temperature()) + ' °C / 最高 ' + HEAT_MAX_TEMP + ' °C' });
     } else if (e instanceof HeatExchanger) {
-      rows.push({ label: '耗热速率', value: e.active ? '−' + fmt(HEAT_EXCHANGER_ENERGY_PER_STEAM * HEAT_EXCHANGER_STEAM_RATE) + ' MJ/秒' : '−0 MJ/秒', color: '#ff9a3a' });
-      rows.push({ label: '产汽速率', value: e.active ? '+' + fmt(HEAT_EXCHANGER_STEAM_RATE) + '/秒 蒸汽' : '+0/秒', color: '#8fe08f' });
+      rows.push({ label: '耗热速率', value: e.active ? '−' + fmt(HEAT_EXCHANGER_POWER) + ' MJ/秒' : '−0 MJ/秒', color: '#ff9a3a' });
+      rows.push({ label: '产汽速率', value: e.active ? '+' + fmt(HEAT_EXCHANGER_POWER / HEAT_EXCHANGER_ENERGY_PER_STEAM) + '/秒 蒸汽' : '+0/秒', color: '#8fe08f' });
       rows.push({ label: '当前温度', value: Math.round(e.temperature()) + ' °C' });
       rows.push({ label: '启动温度', value: HEAT_EXCHANGER_MIN_WORK_TEMP + ' °C' + (e.temperature() >= HEAT_EXCHANGER_MIN_WORK_TEMP ? '（已达标）' : '（未达标）'), color: e.temperature() >= HEAT_EXCHANGER_MIN_WORK_TEMP ? '#8fe08f' : '#ff5b5b' });
       rows.push({ label: '最高温度', value: HEAT_MAX_TEMP + ' °C' });
