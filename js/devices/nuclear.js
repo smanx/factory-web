@@ -1557,6 +1557,7 @@ class HeatExchanger extends Entity {
     this.water = 0;       // 内部水箱（左右两侧进水口，互通）
     this.steamBuf = 0;    // 高温蒸汽缓冲（上边中间出汽口）
     this.active = false;
+    this.animT = 0;       // 运行动画相位计时器（仅运行时推进，停止运行即冻结/消失）
   }
   applyDir() { if (this.dir % 2 === 1) { this.w = this.def.h; this.h = this.def.w; } }
   // ===== 官方 Heat buffer 接口 =====
@@ -1654,6 +1655,7 @@ class HeatExchanger extends Entity {
         this.water -= waterUse;
         this.steamBuf = Math.min(TURBINE_STEAM_CAP, this.steamBuf + waterUse);
         this.active = true;
+        this.animT = (this.animT + dt) % 1;   // 运行中推进动画相位；停止运行时不再推进，动画随之停止
       }
     }
   }
@@ -1783,6 +1785,25 @@ function drawHeatExchanger(ctx, e, gx, gy, dir, alpha) {
     } else {
       ctx.fillRect(x0 - 2.6, y0 - 1, 5.2, 1.8);
       ctx.fillRect(x0 - 2.6, y1 - 0.8, 5.2, 1.8);
+    }
+  }
+  // 汽泡上升动画：仅在正常运行（active）时绘制并随 animT 推进，停止运行即刻消失
+  if (e.active) {
+    const nB = 7;
+    for (let i = 0; i < nB; i++) {
+      const ph = (e.animT + i * 0.618) % 1;                       // 各泡错相上升（0→1）
+      const bx = w >= h
+        ? wx0 + (wx1 - wx0) * (0.10 + ((i * 0.37) % 0.8) + Math.sin((ph + i) * 6.28) * 0.03)
+        : wx0 + (wx1 - wx0) * (0.18 + (i % 3) * 0.32 + Math.sin((ph + i) * 6.28) * 0.03);
+      const by = w >= h
+        ? wy1 - (wy1 - wy0) * ph
+        : wy1 - (wy1 - wy0) * ((ph + i * 0.13) % 1);
+      const r = 1.1 + ((i * 0.29) % 1) * 1.5;
+      const a = 0.55 * Math.sin(Math.PI * ph);                    // 底部渐现、顶部渐隐
+      ctx.fillStyle = 'rgba(215,238,255,' + a.toFixed(2) + ')';
+      ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,' + (a * 0.5).toFixed(2) + ')';
+      ctx.beginPath(); ctx.arc(bx - r * 0.3, by - r * 0.3, r * 0.35, 0, Math.PI * 2); ctx.fill();
     }
   }
   // 玻璃高光（斜向反光线）
