@@ -26,6 +26,7 @@ const scripts = [
   'tools/verify-data-alignment.js',
   'tools/verify-dlc.js',
   'tools/verify-terrain-render.js',
+  'tools/verify-held-move.js',
 ];
 
 const root = path.join(__dirname, '..');

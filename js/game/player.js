@@ -179,11 +179,39 @@ function withinReach(tx, ty) {
   return Math.hypot(tx * TILE + TILE / 2 - p.x, ty * TILE + TILE / 2 - p.y) <= REACH_PX;
 }
 
-function invAdd(id, n = 1) {
-  // 物品堆叠上限（对齐《异星工厂》）：背包中每种物品不超过其最大堆叠数
-  const cap = (typeof stackSize === 'function') ? stackSize(id) : 100;
+// 单组堆叠上限（对齐官方 stackSize，未知物品兜底 100）
+function invStackCap(id) { return (typeof stackSize === 'function') ? stackSize(id) : 100; }
+// 背包已占用格数：手动槽按实际占格计（同物品拆多格时各占一格），
+// 其余（自动余量）每种物品按余量向上取整占用若干格（一格一组，满组溢出到新格）
+function invUsedSlots() {
+  const man = (typeof invManualCnt === 'function') ? invManualCnt() : new Map();
+  let used = 0;
+  G.inv.forEach((cnt, id) => {
+    if (cnt <= 0 || (typeof isInvOwnedItem === 'function' && !isInvOwnedItem(id))) return;
+    const m = man.get(id) || 0;
+    used += Math.ceil(m / invStackCap(id)) + Math.ceil((cnt - m) / invStackCap(id));
+  });
+  return used;
+}
+// 在已占用 used 格的前提下，为 id 再放入物品的可容纳量（自动余量末格剩余 + 背包空格 × 每组）
+function invRoomFor(id, n, used, total) {
+  const cap = invStackCap(id);
   const cur = G.inv.get(id) || 0;
-  const addable = Math.max(0, Math.min(n, cap - cur));
+  const man = (typeof invManualCnt === 'function') ? invManualCnt() : new Map();
+  const m = man.get(id) || 0;
+  const auto = Math.max(0, cur - m);                    // 自动区余量（手动槽各格独立摆放，不参与合并）
+  const autoSlots = auto > 0 ? Math.ceil(auto / cap) : 0;
+  const freeSlots = Math.max(0, total - used);          // 未被任何物品占用的空格
+  return (autoSlots * cap - auto) + freeSlots * cap;    // 余量末格剩余 + 空格 × 每组
+}
+
+function invAdd(id, n = 1) {
+  // 物品堆叠上限（对齐《异星工厂》）：每格一组，满一组自动溢出到下一空格，直到背包格全部占满
+  const cap = invStackCap(id);
+  const cur = G.inv.get(id) || 0;
+  const total = (typeof invSlotCount === 'function') ? invSlotCount() : 80;
+  const maxAdd = invRoomFor(id, n, invUsedSlots(), total);
+  const addable = Math.max(0, Math.min(n, maxAdd));
   if (addable <= 0) return 0;
   G.inv.set(id, cur + addable);
   if (typeof trackProd === 'function') trackProd(id, addable);
@@ -194,16 +222,27 @@ function invAdd(id, n = 1) {
 function invCount(id) { return G.inv.get(id) || 0; }
 
 // 背包手动槽位归一化：清除槽数组中已不存在/数量为 0 的物品（保留用户摆放的空位）。
+// 手动槽元素为 {id, count}（兼容旧档纯 id 字符串：整物品视为一槽，渲染时自动展开多格）。
 // fillFromEmpty 为 true（旧档无 invSlots 字段）时，把当前背包物品按物品 ID 排序
 // 依次放入手动槽，与旧版按 ID 排序的展示完全一致，读档后格子位置稳定；
 // 新档（false）则维持现有手动槽不变，未手动摆放过的物品仍全部按自动物品排到后面。
 function normalizeInvSlots(fillFromEmpty) {
   if (!G.invSlots || !Array.isArray(G.invSlots)) G.invSlots = [];
   // 数量归零的物品（物品已从背包移除）释放对应槽位；非法物品（不在 ITEMS 且非蓝图）一并释放，
-  // 避免读档/迁移后残留占位导致背包渲染崩溃
+  // 避免读档/迁移后残留占位导致背包渲染崩溃；同物品多槽按剩余总量钳制（Σ手动槽 ≤ 总量）
+  const remain = new Map();
   for (let i = 0; i < G.invSlots.length; i++) {
-    const sid = G.invSlots[i];
-    if (sid != null && (invCount(sid) <= 0 || !isInvOwnedItem(sid))) G.invSlots[i] = null;
+    let s = G.invSlots[i];
+    if (typeof s === 'string') s = { id: s, count: invCount(s) };
+    if (!s || s.id == null || !isInvOwnedItem(s.id)) { G.invSlots[i] = null; continue; }
+    let cnt = (typeof s.count === 'number' && s.count > 0) ? s.count : invCount(s.id);
+    if (!(typeof isBlueprintItem === 'function' && isBlueprintItem(s.id))) {
+      let rem = remain.get(s.id);
+      if (rem === undefined) { rem = invCount(s.id); remain.set(s.id, rem); }
+      cnt = Math.min(cnt, rem);
+      remain.set(s.id, rem - cnt);
+    }
+    G.invSlots[i] = (cnt > 0) ? { id: s.id, count: cnt } : null;
   }
   // 清理尾部多余的空槽（保持数组紧凑，长度即手动物品占用槽数）
   while (G.invSlots.length && G.invSlots[G.invSlots.length - 1] == null) G.invSlots.pop();
@@ -213,7 +252,7 @@ function normalizeInvSlots(fillFromEmpty) {
     G.inv.forEach((n, id) => { if (n > 0 && isInvOwnedItem(id)) ids.push(id); });
     // 旧版排序为字符串字典序（item id 全为小写字母/数字/中划线），localeCompare 保持同语义
     ids.sort((a, b) => String(a).localeCompare(String(b)));
-    G.invSlots = ids;
+    G.invSlots = ids.map(id => ({ id, count: invCount(id) }));
   }
 }
 
@@ -230,10 +269,22 @@ function isToolItem(id) {
 function invTake(id, n = 1) {
   const c = invCount(id);
   if (c < n) return false;
-  if (c - n <= 0) G.inv.delete(id); else G.inv.set(id, c - n);
-  // 该物品数量清零后，释放其手动摆放的背包槽位（槽位随物品消失，避免空占位）
-  if (c - n <= 0 && Array.isArray(G.invSlots)) {
-    for (let i = 0; i < G.invSlots.length; i++) if (G.invSlots[i] === id) { G.invSlots[i] = null; }
+  const left = c - n;
+  if (left <= 0) G.inv.delete(id); else G.inv.set(id, left);
+  // 手动槽数量同步：物品总量清零后释放其全部槽位；总量减少到低于手动槽合计
+  // （合成/建造/物流消耗）时从靠前的槽开始扣减，保证 Σ手动槽 ≤ 总量
+  if (Array.isArray(G.invSlots)) {
+    let sum = 0;
+    for (const s of G.invSlots) if (s && s.id === id) sum += s.count;
+    let excess = sum - left;
+    for (let i = 0; i < G.invSlots.length && excess > 0; i++) {
+      const s = G.invSlots[i];
+      if (s && s.id === id) {
+        const cut = Math.min(s.count, excess);
+        s.count -= cut; excess -= cut;
+        if (s.count <= 0) G.invSlots[i] = null;
+      }
+    }
   }
   if (typeof trackProd === 'function') trackProd(id, -n);
   uiDirty = true;
@@ -246,12 +297,22 @@ function canCraft(rid) {
   return true;
 }
 
-// 是否有足够的背包空位容纳一次配方的全部产出（受物品堆叠上限约束）
+// 是否有足够的背包空间容纳一次配方的全部产出（每格一组、满组溢出到新格，受总格数约束）
 function hasCraftRoom(rid) {
   const rec = RECIPES[rid];
+  const total = (typeof invSlotCount === 'function') ? invSlotCount() : 80;
+  let used = invUsedSlots();
   for (const k in rec.out) {
     if (FLUIDS.indexOf(k) >= 0) continue;          // 流体不入背包
-    if (invCount(k) + (rec.out[k] || 1) > stackSize(k)) return false;
+    const need = rec.out[k] || 1;
+    const room = invRoomFor(k, need, used, total);
+    if (need > room) return false;
+    // 累加本次产出后更新已占用格数，供后续产物校验（手动槽占格不变，仅自动余量增长）
+    const cap = invStackCap(k);
+    const cur = G.inv.get(k) || 0;
+    const man = (typeof invManualCnt === 'function') ? invManualCnt() : new Map();
+    const auto = Math.max(0, cur - (man.get(k) || 0));
+    used = used - (auto > 0 ? Math.ceil(auto / cap) : 0) + Math.ceil((auto + need) / cap);
   }
   return true;
 }

@@ -174,6 +174,20 @@ class Refinery extends Entity {
   fluidInputCells() {
     return REFINERY_INPUT_CELLS.map(cell => sideNeighborCell(this, 3, cell));
   }
+  // 是否为炼油厂当前配方下「真正在用」的流体端口格：该格须有对应的进料或出料流体
+  // （refineryInputFluid/refineryOutputFluid 非空）。配方未用到的口（如基础炼油只用 1 个输入口、
+  // 产物只占部分输出口）不显示连接。
+  isFluidPort(x, y) {
+    for (const cell of REFINERY_INPUT_CELLS) {
+      if (!refineryInputFluid(this, cell)) continue;
+      const p = sideNeighborCell(this, 3, cell); if (p[0] === x && p[1] === y) return true;
+    }
+    for (const cell of REFINERY_OUTPUT_CELLS) {
+      if (!refineryOutputFluid(this, cell)) continue;
+      const p = sideNeighborCell(this, 1, cell); if (p[0] === x && p[1] === y) return true;
+    }
+    return false;
+  }
   giveItem(item) {
     // 配方原料优先：插件若为当前配方原料则入原料区，而非插件槽
     if (this.recipe) {

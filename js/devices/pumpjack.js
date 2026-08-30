@@ -19,6 +19,10 @@ class Pumpjack extends ElectricDrill {
     if (this.dir === 1) return [[this.x, this.y + this.h]];               // 南：左下角
     return [[this.x + this.w - 1, this.y - 1]];                           // 北：右上角
   }
+  // 抽油机唯一的原油输出口格：管道只有接在这一格才真正互通，也才显示"连接"管段。
+  isFluidPort(x, y) {
+    return this.frontTargets().some(p => p[0] === x && p[1] === y);
+  }
   // 产量因子随抽取递减：yieldFactor 越低，抽取越慢（对齐《异星工厂》油井产量递减）。
   // 生产速度 = 基础速度 10 × 原油井产量因子 × 油井出产率：
   // 出产率 100%（yieldFactor=1）时 = 10 原油/秒，产量减至 20% 时 = 2 原油/秒；

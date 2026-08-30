@@ -214,10 +214,13 @@ function drawPipe(ctx, e, gx, gy, dir, alpha) {
       const ok = DX[nb.dir] === dx && DY[nb.dir] === dy;
       if (!ok) continue;
     }
-    let connect = nb instanceof Pipe || nb instanceof Refinery || nb instanceof Pumpjack ||
-        (nb instanceof ElectricDrill && (!nb.isFluidInlet || nb.isFluidInlet(gx, gy))) ||
+    let connect = nb instanceof Pipe ||
+        (nb instanceof Refinery && (!nb.isFluidPort || nb.isFluidPort(gx, gy))) ||
+        (nb instanceof Pumpjack && (!nb.isFluidPort || nb.isFluidPort(gx, gy))) ||
+        (nb instanceof ElectricDrill && !(nb instanceof Pumpjack) && (!nb.isFluidInlet || nb.isFluidInlet(gx, gy))) ||
         nb instanceof Boiler || nb instanceof Pump || nb instanceof SteamEngine ||
-        nb instanceof ChemicalPlant || (nb instanceof Assembler && (!nb.isFluidInlet || nb.isFluidInlet(gx, gy))) || nb instanceof HeatExchanger ||
+        (nb instanceof ChemicalPlant && (!nb.isFluidPort || nb.isFluidPort(gx, gy))) ||
+        (nb instanceof Assembler && (!nb.isFluidInlet || nb.isFluidInlet(gx, gy))) || nb instanceof HeatExchanger ||
         (nb instanceof StorageTank && (!nb.isPortCell || nb.isPortCell(gx, gy))) ||
         nb instanceof PipeToGround || nb instanceof FluidPump ||
         (nb && (nb.type === 'one-way-valve' || nb.type === 'overflow-valve' || nb.type === 'top-up-valve'));

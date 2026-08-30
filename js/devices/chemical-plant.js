@@ -126,6 +126,20 @@ class ChemicalPlant extends Entity {
   fluidInputCells() {
     return CHEM_INPUT_CELLS.map(cell => sideNeighborCell(this, 1, cell));
   }
+  // 是否为化工厂当前配方下「真正在用」的流体端口格：该格须有对应的进料或出料流体
+  // （chemInputFluid/chemOutputFluid 非空）。配方未用到的口（如只用 1 个输入口、产物只占 1 个输出口）
+  // 不显示连接。
+  isFluidPort(x, y) {
+    for (const cell of CHEM_INPUT_CELLS) {
+      if (!chemInputFluid(this, cell)) continue;
+      const p = sideNeighborCell(this, 1, cell); if (p[0] === x && p[1] === y) return true;
+    }
+    for (const cell of CHEM_OUTPUT_CELLS) {
+      if (!chemOutputFluid(this, cell)) continue;
+      const p = sideNeighborCell(this, 3, cell); if (p[0] === x && p[1] === y) return true;
+    }
+    return false;
+  }
   update(dt) {
     this.working = false;
     const rec = this.recipe ? RECIPES[this.recipe] : null;

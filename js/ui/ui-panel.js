@@ -372,15 +372,101 @@ function initPanelEvents() {
       renderPanel(false);
       return;
     }
-    // 蓝图库背包格子：已选中蓝图时点击背包任意格子 = 把蓝图物品放入背包（对齐「入包」交互）
-    const bbInvSlot = ev.target.closest('.inv-slot[data-itemid]');
-    if (bbInvSlot && G.panelMode === 'bluebook' && typeof G.bbSel === 'number' && (G.blueBook || [])[G.bbSel]) {
-      const b = G.blueBook[G.bbSel];
-      if (b && typeof bpItemToInv === 'function') {
-        if (bpItemToInv(b)) toast('蓝图「' + b.name + '」已放入背包（选中后点击地图放置）');
+    // 背包里选中蓝图物品（持握于鼠标/幽灵选中）时点击右侧蓝图库 = 存入蓝图库（蓝图当作物品处理）
+    if (G.panelMode === 'bluebook' && ev.button === 0 && ev.target.closest && ev.target.closest('.bb2-right') && !ev.target.closest('button,input')) {
+      // 蓝图库内部移动：已选中蓝图后点击另一个空格 = 把该蓝图移到该空格（原槽位留空）
+      const bbCellEl = ev.target.closest('[data-bbcell]');
+      if (bbCellEl && !G.held && typeof G.bbSel === 'number' && (G.blueBook || [])[G.bbSel]) {
+        const from = G.bbSel, to = +bbCellEl.dataset.bbcell;
+        if (from !== to && !G.blueBook[to]) {
+          const nm = G.blueBook[from].name;
+          G.blueBook[to] = G.blueBook[from];
+          G.blueBook[from] = null;
+          G.bbSel = null;
+          G.quickSel = null;
+          G.sel = -1;
+          if (typeof setWeapon === 'function') setWeapon(null);
+          if (typeof refreshHotbar === 'function') refreshHotbar();
+          toast('蓝图「' + nm + '」已移动到蓝图库空格');
+          if (typeof playSfx === 'function') playSfx('click');
+          uiDirty = true;
+          renderPanel(false);
+          return;
+        }
+      }
+      const heldBpId = (typeof isBlueprintItem === 'function')
+        ? ((G.held && isBlueprintItem(G.held.id)) ? G.held.id
+          : (!G.bbSel && isBlueprintItem(G.quickSel) ? G.quickSel : null))
+        : null;
+      if (heldBpId) {
+        const fromHeld = !!(G.held && isBlueprintItem(G.held.id));
+        const bpData = (typeof bpDataOfItem === 'function') ? bpDataOfItem(heldBpId) : null;
+        let stored = false;
+        if (bpData && bpData.ents && bpData.ents.length && typeof blueBookAdd === 'function') {
+          if (!Array.isArray(G.blueBook)) G.blueBook = [];
+          // 点击蓝图库具体空格 = 移入该格；点击其它区域 = 移入第一个空格
+          const cellEl = ev.target.closest('[data-bbcell]');
+          const at = (cellEl && !G.blueBook[+cellEl.dataset.bbcell]) ? +cellEl.dataset.bbcell : undefined;
+          const idx = blueBookAdd(bpData, at);
+          if (idx != null) {
+            if (bpData.name) G.blueBook[idx].name = bpData.name;
+            toast('蓝图「' + (bpData.name || '未命名') + '」已移入蓝图库');
+            if (typeof playSfx === 'function') playSfx('pick');
+            stored = true;
+          } else {
+            toast('蓝图库中已有相同蓝图，无法重复存入');
+          }
+        } else {
+          toast('这是空蓝图，无法存入蓝图库');
+        }
+        // 存入成功 = 蓝图离开背包（持握叠被消耗，多持的份数退回背包）；未存入则整叠退回
+        if (fromHeld) {
+          const left = G.held ? G.held.count - (stored ? 1 : 0) : 0;
+          if (left > 0) invAdd(heldBpId, left);
+          G.held = null;
+        }
+        // 放入蓝图库后取消选中状态
+        G.bbSel = null;
+        G.quickSel = null;
+        G.sel = -1;
+        if (typeof setWeapon === 'function') setWeapon(null);
+        if (typeof refreshHotbar === 'function') refreshHotbar();
         uiDirty = true;
+        renderPanel(false);
         return;
       }
+      // 持握普通（非蓝图）物品点击蓝图库：不能存入，放回背包
+      if (G.held) {
+        heldReturn();
+        toast('只有蓝图物品可以移入蓝图库');
+        uiDirty = true;
+        renderPanel(false);
+        return;
+      }
+    }
+    // 蓝图库已选中蓝图时点击背包格子 = 把蓝图物品移入背包（点空格即放入该空格）；
+    // 蓝图当作物品处理：移入背包后蓝图库中该项消失（相互移动），并取消选中
+    const bbInvSlot = ev.target.closest('.inv-slot[data-slotidx]');
+    if (bbInvSlot && G.panelMode === 'bluebook' && typeof G.bbSel === 'number' && (G.blueBook || [])[G.bbSel]) {
+      const bIdx = G.bbSel;
+      const b = G.blueBook[bIdx];
+      let placed = false;
+      const id = (typeof bpItemCreate === 'function') ? bpItemCreate(b) : null;
+      if (id) placed = depositToInvSlot(+bbInvSlot.dataset.slotidx, id, 1) > 0;
+      if (!placed && typeof bpItemToInv === 'function') placed = bpItemToInv(b);
+      if (placed) {
+        G.blueBook[bIdx] = null;   // 移动语义：蓝图离开蓝图库，原槽位留空不前移（对齐背包）
+        toast('蓝图「' + b.name + '」已移入背包（选中后点击地图放置）');
+        // 放入背包后取消蓝图库选中与鼠标放置幽灵
+        G.bbSel = null;
+        G.quickSel = null;
+        G.sel = -1;
+        if (typeof setWeapon === 'function') setWeapon(null);
+        if (typeof refreshHotbar === 'function') refreshHotbar();
+      }
+      uiDirty = true;
+      renderPanel(false);
+      return;
     }
     // 蓝图库格子：左键选中蓝图（可点击地图铺建，也可放入背包/快捷栏）
     const bbCell = ev.target.closest('[data-bbcell]');
@@ -523,7 +609,7 @@ function initPanelEvents() {
     }
     // 机械臂爪上取下的物品（G.armGrab 抓取状态）→ 点击背包空格放入背包
     // （点击移动进行中时优先执行移动，避免冲突）
-    if (G.armGrab && (typeof G._clickMoveFrom !== 'number') && ev.target.closest && (ev.target.closest('.inv-slot.empty') || ev.target.closest('#inv-items .inv-slots'))) {
+    if (G.armGrab && (typeof G._clickMoveFrom !== 'number') && !G.held && ev.target.closest && (ev.target.closest('.inv-slot.empty') || ev.target.closest('#inv-items .inv-slots'))) {
       const g = G.armGrab;
       const added = (typeof invAdd === 'function') ? invAdd(g.id, g.count) : 0;
       if (added > 0) {
@@ -540,15 +626,28 @@ function initPanelEvents() {
     }
     // 手持蓝图物品（放置幽灵跟随鼠标）时点击左栏背包任意格子 = 蓝图入包：
     // 空格/已有物品格都算「背包」落点（蓝图不消耗材料，入包只加 1 个蓝图物品，不吞目标物品）。
-    // 点击移动进行中（刚拿起背包格物品）时不触发，交给下方移动/交换逻辑处理。
+    // 点击移动进行中（G.held 已拿起背包格物品）时不触发，交给下方移动/交换逻辑处理（落位后释放鼠标）。
     const heldBp = (typeof isBlueprintItem === 'function') ? isBlueprintItem(G.quickSel) : false;
-    if (heldBp && (typeof G._clickMoveFrom !== 'number') && ev.target.closest && ev.target.closest('.inv-slots') && !ev.target.closest('[data-action]')) {
+    if (heldBp && !G.held && (typeof G._clickMoveFrom !== 'number') && ev.target.closest && ev.target.closest('.inv-slots') && !ev.target.closest('[data-action]')) {
       const bpId = G.quickSel;
       const bpData = (typeof bpDataOfItem === 'function') ? bpDataOfItem(bpId) : null;
       if (bpData && typeof bpItemToInv === 'function') {
         if (bpItemToInv(bpData)) toast('蓝图「' + (bpData.name || '未命名') + '」已放入背包（可从背包重新选中放置）');
         uiDirty = true;
       }
+      return;
+    }
+    // 持握物品时点击左栏背包格：
+    //   来自背包(src inv) → 放入该格（空格落位 / 不同物品整叠交换，手持被换出的物品）
+    //   来自箱子/设备 → 整叠取出到背包（放不下的继续持握）
+    if (G.held && ev.target.closest && ev.target.closest('#inv-items .inv-slot[data-slotidx]') && !ev.target.closest('[data-action]')) {
+      if (G.held.src && G.held.src.kind === 'inv') {
+        heldInvDropToSlot(+ev.target.closest('#inv-items .inv-slot[data-slotidx]').dataset.slotidx);
+      } else {
+        placeHeld({ kind: 'inv', slot: +ev.target.closest('#inv-items .inv-slot[data-slotidx]').dataset.slotidx });
+      }
+      if (typeof updateMachineLive === 'function') updateMachineLive();
+      else renderPanel(false);
       return;
     }
     // 蓝图面板（bluebook 双栏布局）左栏背包：与背包面板一致可选中物品
@@ -558,54 +657,15 @@ function initPanelEvents() {
     // 右栏设备操作区的可交互控件都带 data-action，故用 !itEl.dataset.action 排除。
     // 箱子右栏格子（data-chestslot）不是左栏背包物品：排除，交由下方 chestSlot 分支处理
     if (itEl && (G.panelMode === 'inv' || G.panelMode === 'bluebook' || (G.panelMode === 'machine' && G.panelEnt)) && !itEl.dataset.action && !itEl.closest('[data-chestslot]')) {
-      const iid = itEl.dataset.itemid;
-      // 背包物品点击移动（需求：点击一个物品 → 再点空格处即可放到空格；也可点有物品的格交换）：
-      // 左栏背包格子带 data-slotidx。若当前已“持握/选中”另一个背包格物品，再点背包格即把
-      // 该物品移动到目标格（空格直接落位 / 有物品则两格交换），随后选中目标格物品继续可移。
-      // 点已选中格自身 = 取消选中（避免“无法拿起/放下”的死锁）。
       const tgtSlot = ev.target.closest && ev.target.closest('#inv-items .inv-slot[data-slotidx]');
-      if (tgtSlot && (typeof G._clickMoveFrom === 'number') && G._clickMoveFrom !== +tgtSlot.dataset.slotidx) {
-        const from = G._clickMoveFrom;
-        const to = +tgtSlot.dataset.slotidx;
-        // 目标为空格：直接落位；目标有物品：交换（两格物品互换位置）
-        const L = (typeof invSlotLayout === 'function') ? invSlotLayout() : null;
-        const fromId = (typeof invSlotIdAt === 'function') ? invSlotIdAt(from, L) : null;
-        const toId = (typeof invSlotIdAt === 'function') ? invSlotIdAt(to, L) : null;
-        if (fromId) {
-          if (toId) {
-            // 交换：先取走来源格，再把目标格物品放到来源格，最后把来源格物品放到目标格
-            swapInvSlots(from, to);
-            if (typeof playSfx === 'function') playSfx('click');
-          } else {
-            moveInvItemToSlot(from, to);
-            if (typeof playSfx === 'function') playSfx('click');
-          }
-          uiDirty = true;
-          if (typeof renderPanel === 'function') renderPanel(false);
-        }
-        // 放置完成：清空拿起状态与选中（对齐《异星工厂》：放下物品后光标为空）
-        G._clickMoveFrom = null;
-        G.quickSel = null;
-        G.sel = -1;
-        if (typeof refreshHotbar === 'function') refreshHotbar();
+      if (tgtSlot) {
+        // 点击背包物品格 = 拿起该格整叠物品到鼠标（悬浮跟随，可放入任意格/取出/建造；再点同格放回）
+        heldInvPickup(+tgtSlot.dataset.slotidx);
+        renderPanel(false);
         return;
       }
-      // 已选中同格物品：再次点击 = 取消选中（与按 Q 取消一致），让用户可重新拿起别格物品
-      if (tgtSlot && (typeof G._clickMoveFrom === 'number') && G._clickMoveFrom === +tgtSlot.dataset.slotidx) {
-        G._clickMoveFrom = null;
-        G.quickSel = null;
-        G.sel = -1;
-        if (typeof refreshHotbar === 'function') refreshHotbar();
-        return;
-      }
-      // 首次点击背包格：仅“拿起”该格物品（记录来源格 + 进入选中态），不立即移动；
-      // 等待用户再点空格/其它格完成放置。选择状态复用现有选中态（放置幽灵），
-      // 若用户直接关闭背包或按 Q，选择被取消且 _clickMoveFrom 一并清空（见 closePanel/Q 分支）。
-      G._clickMoveFrom = +tgtSlot.dataset.slotidx;
-      // 任意物品（设备/材料/工具）均可被鼠标选中，选中后不关闭背包：
-      // 设备点击地图可直接建造；材料/工具点击地图无法建造。
-      // 用户可通过快捷键（E/Q）或右上角“X”关闭背包，选中状态保留。
-      selectInventoryItem(iid);
+      // 非背包格的物品图标（如配方产物展示）：保持原选中行为
+      selectInventoryItem(itEl.dataset.itemid);
       return;
     }
     const setVol = ev.target.closest('[data-setvol]');
@@ -699,56 +759,43 @@ function initPanelEvents() {
       }
       return;
     }
-    // 点击背包空格：把已“拿起”的背包格物品放到位（需求：点击物品，再点击空格处即可放入）。
-    // 必须放在 data-action 分发之前——空槽本身没有 data-action，会被上面的 if(!btn) 提前 return。
-    if ((typeof G._clickMoveFrom === 'number') && ev.target.closest && ev.target.closest('#inv-items .inv-slot.empty[data-slotidx]')) {
-      const to = +ev.target.closest('#inv-items .inv-slot.empty[data-slotidx]').dataset.slotidx;
-      const from = G._clickMoveFrom;
-      if (to !== from && typeof moveInvItemToSlot === 'function') {
-        moveInvItemToSlot(from, to);
-        if (typeof playSfx === 'function') playSfx('click');
-        uiDirty = true;
-      }
-      // 放置完成：清空拿起状态与选中（对齐《异星工厂》：放下物品后光标为空）
-      G._clickMoveFrom = null;
-      G.quickSel = null;
-      G.sel = -1;
-      if (typeof refreshHotbar === 'function') refreshHotbar();
-      renderPanel(false);
-      return;
-    }
-    // 箱子固定格子：点击物品格取出 1 件回背包，点击空格把选中的背包物品放入 1 件。
+    // 箱子固定格子：与背包一致的「持握于鼠标」点击式移动（统一 G.held 模型）。
+    //   - 已持握物品（来自背包/箱子/设备）→ 点箱格：放入该格（同箱=移动/合并/交换，跨容器=存入）。
+    //   - 未持握时：点物品格=拿起该格物品悬浮于鼠标；点空格=兼容放入/提示。
     // 需放在 data-action 分发之前——箱子格子本身无 data-action，会被上面的 if(!btn) 提前 return。
     const chestSlot = ev.target.closest && ev.target.closest('[data-chestslot]');
     if (chestSlot && G.panelMode === 'machine' && G.panelEnt && typeof G.panelEnt.slots === 'object') {
       const chest = G.panelEnt;
       const idx = +chestSlot.dataset.chestslot;
+      // 1) 已持握物品（来自背包/箱子/设备）→ 放入点击的箱格（同箱=移动/合并/交换，跨容器=存入）
+      if (G.held) {
+        placeHeld({ kind: 'chest', ent: chest, slot: idx });
+        if (typeof updateMachineLive === 'function') updateMachineLive();
+        else renderPanel(false);
+        return;
+      }
+      // 2) 未拿起任何物品：点物品格 = 拿起该格物品（悬浮于鼠标）；点空格 = 兼容放入/提示
       const slot = chest.slots[idx];
       if (slot) {
-        // 点击物品格：取出 1 件回背包（受背包堆叠上限约束）
-        const id = slot.item;
-        if (chest.takeItemOf(id)) {
-          if (invAdd(id, 1) > 0) {
-            if (typeof playSfx === 'function') playSfx('pick');
-          } else {
-            chest.giveItem(id);   // 背包已满，放回箱子
-            toast('背包已满，无法放入' + (ITEMS[id] ? ITEMS[id].name : id));
-          }
-        }
+        pickupHeld(slot.item, slot.count, { kind: 'chest', ent: chest, slot: idx });
+        toast('已拿起 ' + (ITEMS[slot.item] ? ITEMS[slot.item].name : slot.item) + ' ×' + slot.count + '（悬浮于鼠标）：点击背包/箱格/设备原料或产品格放入，再点本格放回，Q 取消');
+        if (typeof updateMachineLive === 'function') updateMachineLive();
+        else renderPanel(false);
       } else {
-        // 点击空格：把当前选中的背包物品放入 1 件（未选中时提示）
+        // 空格且未拿起任何物品：兼容旧交互——已选中（幽灵持握）背包/快捷栏物品时放入 1 件；否则提示
         const held = (typeof selItem === 'function') ? selItem() : null;
-        if (!held) { toast('请先在左栏背包中选中要存入的物品'); return; }
-        if (invCount(held) <= 0) { toast('背包中没有' + (ITEMS[held] ? ITEMS[held].name : held)); return; }
-        if (chest.giveItem(held)) {
-          invTake(held, 1);
-          if (typeof playSfx === 'function') playSfx('click');
+        if (held && ITEMS[held] && invCount(held) > 0) {
+          if (chest.giveItem(held)) {
+            invTake(held, 1);
+            if (typeof playSfx === 'function') playSfx('click');
+          } else toast('箱子已满或该物品已达上限，放不进去了');
         } else {
-          toast('箱子已满，放不进去了');
+          toast('请先拿起要放入的物品（点击背包/箱子/设备中的物品）');
         }
+        uiDirty = true;
+        if (typeof updateMachineLive === 'function') updateMachineLive();
+        else renderPanel(false);
       }
-      if (typeof updateMachineLive === 'function') updateMachineLive();
-      else renderPanel(false);
       return;
     }
     const btn = ev.target.closest('[data-action], [data-act]');
@@ -895,6 +942,13 @@ function initPanelEvents() {
         // 点击右侧「原料/放入」槽：从背包放入该物品
         const mch = G.panelEnt;
         if (!mch || typeof mch.giveItem !== 'function') return;
+        // 已持握物品（来自箱子/设备）→ 放入该设备原料缓存
+        if (G.held) {
+          placeHeld({ kind: 'min', ent: mch });
+          if (typeof updateMachineLive === 'function') updateMachineLive();
+          else renderPanel(false);
+          return;
+        }
         // 配方设备：仅允许当前配方原料（点击槽本身即配方原料）；非配方设备：直接放入点击的槽对应物品
         const info = recipeDeviceInfo(mch);
         const rec = mch.recipe ? info.getRec(mch.recipe) : null;
@@ -919,24 +973,40 @@ function initPanelEvents() {
           if (typeof updateMachineLive === 'function') updateMachineLive();
           else renderPanel(false);
         } else toast('放不进去了');
-      } else if (act === 'takein-slot') {
-        // 点击「原料」槽左上角 − 按钮：从设备输入缓存取回 1 件该原料到背包
-        takeInSlot(id);
       } else if (act === 'take-slot') {
-        // 点击右侧「产品」图标：把该产物取回背包 1 件
+        // 点击右侧「产品」图标：未持握时拿起该产物整叠悬浮于鼠标；已持握时把持握物品放入产品缓存
         const mch = G.panelEnt;
         if (!mch) return;
-        let got = null;
-        if (typeof mch.takeItemOf === 'function') got = mch.takeItemOf(id);
-        else if (typeof mch.takeItem === 'function') got = mch.takeItem();
-        if (got) {
-          invAdd(got, 1);
-          if (typeof playSfx === 'function') playSfx('pick');
+        if (G.held) {
+          placeHeld({ kind: 'mout', ent: mch, sid: id });
           if (typeof updateMachineLive === 'function') updateMachineLive();
           else renderPanel(false);
-        } else {
-          toast('暂无' + ITEMS[id].name + '可取出');
+          return;
         }
+        const have = (mch.outp && mch.outp[id]) || 0;
+        if (have <= 0) { toast('暂无' + (ITEMS[id] ? ITEMS[id].name : id) + '可取出'); return; }
+        const lift = Math.min(have, stackSize(id));
+        pickupHeld(id, lift, { kind: 'mout', ent: mch, sid: id });
+        toast('已拿起 ' + (ITEMS[id] ? ITEMS[id].name : id) + ' ×' + lift + '（悬浮于鼠标）：点击背包/箱格/设备格放入，再点本格放回，Q 取消');
+        if (typeof updateMachineLive === 'function') updateMachineLive();
+        else renderPanel(false);
+      } else if (act === 'takein-slot') {
+        // 点击「原料」槽 − 按钮：未持握时拿起该原料整叠悬浮于鼠标；已持握时放入
+        const mch = G.panelEnt;
+        if (!mch) return;
+        if (G.held) {
+          placeHeld({ kind: 'min', ent: mch });
+          if (typeof updateMachineLive === 'function') updateMachineLive();
+          else renderPanel(false);
+          return;
+        }
+        const have = (mch.inp && mch.inp[id]) || 0;
+        if (have <= 0) { toast('设备中没有' + (ITEMS[id] ? ITEMS[id].name : id) + '可取出'); return; }
+        const lift = Math.min(have, stackSize(id));
+        pickupHeld(id, lift, { kind: 'min', ent: mch, sid: id });
+        toast('已拿起 ' + (ITEMS[id] ? ITEMS[id].name : id) + ' ×' + lift + '（悬浮于鼠标）：点击背包/箱格/设备格放入，再点本格放回，Q 取消');
+        if (typeof updateMachineLive === 'function') updateMachineLive();
+        else renderPanel(false);
       } else if (act === 'mod-take') {
         // 点击模块插槽：取出该模块到背包
         const mch = G.panelEnt;
@@ -1087,6 +1157,8 @@ function initPanelEvents() {
         // "取出全部"：各设备在自己的文件里实现 takeAll()（默认清空 outp）
         const mch = G.panelEnt;
         if (mch && mch.takeAll) for (const [k, n] of mch.takeAll()) invAdd(k, n);
+        // 取出全部后：若正持握来自该容器的物品，退回背包（原格已清空，无法放回）
+        if (G.held && G.held.src && G.held.src.ent === mch) { invAdd(G.held.id, G.held.count); G.held = null; }
       } else if (act === 'drain') {
         // "直接清空"（管道/地下管道）：抹除与当前管道互通的所有连接管道及设备中的液体，不回收物品
         const mch = G.panelEnt;
@@ -1123,9 +1195,9 @@ function initPanelEvents() {
   // 背包制作栏（#inv-craft）：右键点击物品图标制作 5 个（左键在 click 处理器中制作 1 个）。
   // 与玩家背包一致的「格子 + 图标」网格交互。
   document.getElementById('panel-body').addEventListener('contextmenu', ev => {
-    // 蓝图库格子：右键打开蓝图详情页
+    // 蓝图库格子：右键打开蓝图详情页（空格无蓝图，不响应）
     const bbCell = ev.target.closest && ev.target.closest('[data-bbcell]');
-    if (bbCell && G.panelMode === 'bluebook') {
+    if (bbCell && G.panelMode === 'bluebook' && (G.blueBook || [])[+bbCell.dataset.bbcell]) {
       ev.preventDefault();
       G.bbDetail = +bbCell.dataset.bbcell;
       G.bbSel = G.bbDetail;
@@ -1386,98 +1458,280 @@ async function renderSaveManage() {
   }
 }
 
-// ===== 背包手动摆放：把 from 格物品移到 to 格（需求：背包不自动排序）=====
-// 展示模型：手动摆放的物品记录在 G.invSlots（下标即格子下标，可含 null 空位），
-// 自动物品按 G.inv 获取顺序排在所有手动槽之后。拖拽落位规则：
-//   - 目标格有物品：目标格及其后物品整体后移一格，腾出目标格给拖拽物品（目标格原物品顺延）；
-//   - 目标格为空：直接落位。
-// 落位后该物品即成为「手动摆放」物品，固定在该格；被挤出的物品回到自动区（排到最后）。
+// ===== 背包手动摆放：每格独立堆叠（需求：移动一格只动那一格，同物品其它格不受影响）=====
+// 手动槽 G.invSlots：下标即视觉格下标，元素 {id, count} 或 null。任何摆放/移动/拿起前
+// 先把当前布局「冻结」为逐格独立堆叠（invFreezeStacks），此后视觉格下标 == 手动槽下标，
+// 同一物品的多组堆叠彼此独立，只对被点的格子做增删/互换，其余格子位置与数量保持不变。
+function invFreezeStacks() {
+  const slots = invStackSlots();
+  const manual = slots.map(s => (s && s.id != null) ? { id: s.id, count: s.count } : null);
+  while (manual.length && manual[manual.length - 1] == null) manual.pop();
+  G.invSlots = manual;
+}
+
+// 把 from 格那一叠移到 to 格：目标空 → 落位、来源变空；目标有物品 → 两格互换。
+// 只改动 from/to 两格，同物品的其它格与其它物品全部不动。
 function moveInvItemToSlot(from, to) {
   if (from === to) return;
-  const L = (typeof invSlotLayout === 'function') ? invSlotLayout() : null;
-  if (!L) return;
-  const fromId = (typeof invSlotIdAt === 'function') ? invSlotIdAt(from, L) : null;
-  if (!fromId) return;
-  const total = L.total;
-  // 一维展示序列（null=空格）
-  const seq = [];
-  for (let i = 0; i < total; i++) seq.push((typeof invSlotIdAt === 'function') ? invSlotIdAt(i, L) : null);
-  // 从来源移除
-  seq[from] = null;
-  // 目标格及之后整体右移一格，腾出 to 格
-  for (let i = total - 1; i > to; i--) seq[i] = seq[i - 1];
-  seq[to] = fromId;
-  // 重新切分：手动槽长度扩展覆盖 to（若 to 在自动区）；自动区为剩余非空物品
-  const mlen = Math.max(L.manual.length, to + 1);
-  const newManual = seq.slice(0, mlen);
-  // 仅放行 ITEMS 已有或蓝图物品进手动槽：未知/废弃物品直接释放为空格，避免渲染崩溃
-  for (let i = 0; i < newManual.length; i++) {
-    if (newManual[i] != null && !isInvOwnedItem(newManual[i])) newManual[i] = null;
-  }
-  const newAuto = seq.slice(mlen).filter(id => id != null && isInvOwnedItem(id));
-  // 手动槽去重（同物品不应占两格，保留靠前位置）
-  const seen = new Set();
-  for (let i = 0; i < newManual.length; i++) {
-    if (newManual[i] != null) {
-      if (seen.has(newManual[i])) newManual[i] = null;
-      else seen.add(newManual[i]);
-    }
-  }
-  // 尾部空位压缩：末尾连续空槽收掉，避免手动槽无限增长
-  while (newManual.length && newManual[newManual.length - 1] == null) newManual.pop();
-  G.invSlots = newManual;
-  // 重建 G.inv 顺序：手动槽顺序优先，自动物品按 newAuto 顺序在后（含被挤出物品，排到最后）
-  const seen2 = new Set();
-  const ordered = [];
-  for (const id of newManual) if (id != null && !seen2.has(id)) { seen2.add(id); ordered.push(id); }
-  for (const id of newAuto) if (!seen2.has(id)) { seen2.add(id); ordered.push(id); }
-  for (const [id, n] of G.inv) if (!seen2.has(id)) { seen2.add(id); ordered.push(id); }
-  const newInv = new Map();
-  for (const id of ordered) if (G.inv.has(id)) newInv.set(id, G.inv.get(id));
-  G.inv = newInv;
+  invFreezeStacks();
+  const manual = G.invSlots.slice();
+  while (manual.length <= to) manual.push(null);
+  const tmp = manual[to]; manual[to] = manual[from]; manual[from] = tmp;
+  while (manual.length && manual[manual.length - 1] == null) manual.pop();
+  G.invSlots = manual;
+  uiDirty = true;
 }
 
 // 交换两个背包格的物品（点击式移动：目标格有物品时两格互换位置）。
-// 直接操作 G.invSlots 与 G.inv 顺序，与 moveInvItemToSlot 的落位口径一致：
-// 交换后两格都视为手动摆放，自动区按剩余物品顺序排在手动物品之后。
 function swapInvSlots(a, b) {
-  if (a === b) return;
-  const L = (typeof invSlotLayout === 'function') ? invSlotLayout() : null;
-  if (!L) return;
-  const idA = (typeof invSlotIdAt === 'function') ? invSlotIdAt(a, L) : null;
-  const idB = (typeof invSlotIdAt === 'function') ? invSlotIdAt(b, L) : null;
-  if (!idA && !idB) return;
-  const total = L.total;
-  const seq = [];
-  for (let i = 0; i < total; i++) seq.push((typeof invSlotIdAt === 'function') ? invSlotIdAt(i, L) : null);
-  // 交换两格
-  const tmp = seq[a]; seq[a] = seq[b]; seq[b] = tmp;
-  const mlen = Math.max(L.manual.length, Math.max(a, b) + 1);
-  const newManual = seq.slice(0, mlen);
-  // 仅放行合法物品进手动槽（与 moveInvItemToSlot 一致）
-  for (let i = 0; i < newManual.length; i++) {
-    if (newManual[i] != null && !isInvOwnedItem(newManual[i])) newManual[i] = null;
+  moveInvItemToSlot(a, b);
+}
+
+// ===== 背包「持握于鼠标」拿起/落位（与箱子/设备一致的 hand↔slot 语义）=====
+// 拿起背包某格：把「该格这一叠」移出背包、悬浮于鼠标，并在原格留一个空位占位（其后格子不动）。
+// 同一物品可能占多格（每格一组，如 100+50），只拿起被点那一组的数量，其余组保持不动。
+function heldInvPickup(slot) {
+  invFreezeStacks();
+  const st = G.invSlots[slot];
+  if (!st || st.id == null) return;
+  const id = st.id, count = st.count;
+  if (count <= 0) return;
+  G.invSlots[slot] = null;          // 先腾空该格，再按数量扣总量（避免 invTake 误扣其它同物品格）
+  invTake(id, count);               // 仅移出该组的数量（同物品其它组保留）
+  G.held = { id, count, src: { kind: 'inv', slot } };
+  G._clickMoveFrom = null;
+  G.quickSel = id;                  // 仍显示跟随幽灵（可点地图建造，建造从手持堆叠扣除）
+  G.sel = -1;
+  if (typeof refreshHotbar === 'function') refreshHotbar();
+  if (typeof playSfx === 'function') playSfx('select');
+  uiDirty = true;
+}
+// 把持握的背包物品放入目标格：空格→落位（来源格保持空）；同种→仅并入被点的目标那一叠；
+// 不同物品→手持与目标格那一叠互换（手持改为目标格原那一叠，来源格仍为空——即「手上物品↔格子物品」兑换）。
+function heldInvDropToSlot(to) {
+  const h = G.held; if (!h || !h.src || h.src.kind !== 'inv') return;
+  const from = h.src.slot;
+  if (from === to) { heldReturn(); return; }
+  invFreezeStacks();
+  const manual = G.invSlots.slice();
+  while (manual.length <= to) manual.push(null);
+  const tgt = manual[to];
+  if (tgt && tgt.id != null && tgt.id !== h.id) {
+    // 交换：手持物品放入 to，to 那一叠拿起（其来源=to）；来源格在拿起时已空，无需再清
+    const zId = tgt.id, zCount = tgt.count;
+    manual[to] = null;
+    G.invSlots[to] = null;           // 先腾空目标格（invTake 按 G.invSlots 同步），再移出该叠
+    invTake(zId, zCount);            // 先移出目标那一叠（腾出背包空间）→ 拿起于手
+    invAdd(h.id, h.count);           // 手持物品回背包（落入 to 格）
+    manual[to] = { id: h.id, count: h.count };
+    while (manual.length && manual[manual.length - 1] == null) manual.pop();
+    G.invSlots = manual;
+    G.held = { id: zId, count: zCount, src: { kind: 'inv', slot: to } };
+    G.quickSel = zId;
+    if (typeof playSfx === 'function') playSfx('click');
+    uiDirty = true;
+    return;
   }
-  const newAuto = seq.slice(mlen).filter(id => id != null && isInvOwnedItem(id));
-  // 手动槽去重（同物品不占两格，保留靠前位置）
-  const seen = new Set();
-  for (let i = 0; i < newManual.length; i++) {
-    if (newManual[i] != null) {
-      if (seen.has(newManual[i])) newManual[i] = null;
-      else seen.add(newManual[i]);
+  // 目标为同种物品：仅并入被点的目标那一叠（同物品其它格不受影响），清空持握
+  if (tgt && tgt.id === h.id) {
+    const a = invAdd(h.id, h.count);
+    tgt.count += a;
+    if (a >= h.count) { G.held = null; G.quickSel = null; G.sel = -1; if (typeof refreshHotbar === 'function') refreshHotbar(); }
+    else { h.count -= a; G.quickSel = h.id; }
+    if (typeof playSfx === 'function') playSfx('click');
+    uiDirty = true;
+    return;
+  }
+  // 空格：手持物品整叠放入 to 格（来源格在拿起时已空；只占目标这一格，同物品其它格不动）
+  const added = invAdd(h.id, h.count);
+  if (added > 0) manual[to] = { id: h.id, count: added };
+  while (manual.length && manual[manual.length - 1] == null) manual.pop();
+  G.invSlots = manual;
+  if (added < h.count) { h.count -= added; G.quickSel = h.id; uiDirty = true; return; }   // 背包放不下，剩余继续持握
+  G.held = null;
+  G.quickSel = null;
+  G.sel = -1;
+  if (typeof refreshHotbar === 'function') refreshHotbar();
+  if (typeof playSfx === 'function') playSfx('click');
+  uiDirty = true;
+}
+
+// ===== 通用「持握于鼠标」物品（箱子/组装机等拿出 → 悬浮鼠标 → 放入任意格）=====
+// G.held = { id, count, src }，src.kind：
+//   'chest' {ent, slot}  箱子格；'mout' {ent, sid} 设备产品缓存；'min' {ent, sid} 设备原料缓存
+// 采用「立即移出」：拿起时物品即离开来源悬浮于鼠标（对齐《异星工厂》光标堆叠），
+// 取消（Q/点回原格/点地图空地）则放回来源；放入目标即完成转移，目标被不同物品占用时整叠交换。
+// 背包拿起的物品 src.kind='inv'（见 heldInvPickup/heldInvDropToSlot），同样走本持握模型，实现「手上↔格子」兑换。
+function heldValid() {
+  return !!(G.held && G.held.id && G.held.count > 0 && G.held.src);
+}
+// 从来源移出 n 件（拿起时整叠移出）
+function heldSrcRemove(n) {
+  const h = G.held; const s = h.src;
+  if (s.kind === 'chest') { const st = s.ent.slots[s.slot]; if (st) { st.count -= n; if (st.count <= 0) s.ent.slots[s.slot] = null; } }
+  else if (s.kind === 'mout') { s.ent.outp[s.sid] = (s.ent.outp[s.sid] || 0) - n; if (s.ent.outp[s.sid] <= 0) delete s.ent.outp[s.sid]; }
+  else if (s.kind === 'min') { s.ent.inp[s.sid] = (s.ent.inp[s.sid] || 0) - n; if (s.ent.inp[s.sid] <= 0) delete s.ent.inp[s.sid]; }
+}
+// 拿起：整叠移出来源并悬浮于鼠标。一次只能持握一件，清除背包拿起/选中态。
+function pickupHeld(id, count, src) {
+  G.held = { id, count, src };
+  heldSrcRemove(count);
+  G._clickMoveFrom = null;
+  G.quickSel = null;
+  G.sel = -1;
+  if (typeof refreshHotbar === 'function') refreshHotbar();
+  if (typeof playSfx === 'function') playSfx('select');
+  uiDirty = true;
+}
+// 取消持握：把物品放回来源（来源已失效则退回背包）
+function heldReturn() {
+  const h = G.held; if (!h) return;
+  const s = h.src;
+  if (s.kind === 'inv') {
+    // 背包拿起的叠：放回原格（原格仍空则原位放回，保持每格独立；被占则退回自动区）
+    invFreezeStacks();
+    const manual = G.invSlots;
+    while (manual.length <= s.slot) manual.push(null);
+    if (!manual[s.slot]) {
+      const a = invAdd(h.id, h.count);
+      if (a > 0) manual[s.slot] = { id: h.id, count: a };
+      if (a >= h.count) { G.held = null; G.quickSel = null; G.sel = -1; if (typeof refreshHotbar === 'function') refreshHotbar(); uiDirty = true; return; }
+      h.count -= a; uiDirty = true; return;
+    }
+    invAdd(h.id, h.count);
+    G.held = null;
+    G.quickSel = null;
+    G.sel = -1;
+    if (typeof refreshHotbar === 'function') refreshHotbar();
+    uiDirty = true;
+    return;
+  }
+  let ok = true;
+  if (s.kind === 'chest') {
+    const st = s.ent.slots[s.slot];
+    if (!st) s.ent.slots[s.slot] = { item: h.id, count: h.count };
+    else if (st.item === h.id) st.count += h.count;
+    else ok = false;
+  } else if (s.kind === 'mout') { s.ent.outp[s.sid] = (s.ent.outp[s.sid] || 0) + h.count; }
+  else if (s.kind === 'min') { s.ent.inp[s.sid] = (s.ent.inp[s.sid] || 0) + h.count; }
+  else ok = false;
+  if (!ok) invAdd(h.id, h.count);   // 原格已被占：退回背包
+  G.held = null;
+  uiDirty = true;
+}
+// 持握数量减少 n 件（已移出来源，仅更新光标计数）
+function heldTake(n) { const h = G.held; if (!h) return; h.count -= n; if (h.count <= 0) G.held = null; }
+// 把 (id,count) 放入箱子指定格：空格/同种合并；返回实际放入件数
+function depositToChestSlot(chest, to, id, count) {
+  const lim = chest.limits ? chest.limits[id] : undefined;
+  let room = Infinity; if (lim !== undefined) room = Math.max(0, lim - chest.countOf(id));
+  const dst = chest.slots[to];
+  if (!dst) {
+    const n = Math.min(count, stackSize(id), room);
+    if (n > 0) chest.slots[to] = { item: id, count: n };
+    return n;
+  }
+  if (dst.item === id) {
+    const n = Math.min(count, stackSize(id) - dst.count, room);
+    if (n > 0) dst.count += n;
+    return n;
+  }
+  return 0;   // 不同物品：由 placeHeld 走交换
+}
+// 把 (id,count) 放入设备原料缓存（giveItem 逐个，满/非法即止）
+function depositToMachineInput(ent, id, count) {
+  if (typeof ent.giveItem !== 'function') return 0;
+  let moved = 0;
+  while (moved < count && ent.giveItem(id)) moved++;
+  return moved;
+}
+// 把 (id,count) 放入设备产品缓存
+function depositToMachineOutput(ent, id, count) {
+  if (!ent.outp) return 0;
+  ent.outp[id] = (ent.outp[id] || 0) + count;
+  return count;
+}
+// 把 (id,count) 放入背包指定格（需求：点哪个空格就放哪个格，不自动排到最前）：
+// 空格→整叠落位；同种→仅并入被点那一叠；不同物品→返回 0（由 placeHeld 走整叠交换）。
+// 返回实际放入件数。
+function depositToInvSlot(slot, id, count) {
+  invFreezeStacks();
+  const manual = G.invSlots;
+  while (manual.length <= slot) manual.push(null);
+  const tgt = manual[slot];
+  if (tgt && tgt.id != null && tgt.id !== id) return 0;
+  const a = invAdd(id, count);
+  if (a > 0) {
+    if (tgt && tgt.id === id) tgt.count += a;
+    else manual[slot] = { id, count: a };
+  }
+  while (manual.length && manual[manual.length - 1] == null) manual.pop();
+  G.invSlots = manual;
+  return a;
+}
+// 把持握物品放入目标格：target={kind:'inv'|'chest'|'min'|'mout', ent?, slot?/sid?}
+// 返回 true 表示已处理（成功或明确拒绝），调用后应刷新面板。
+function placeHeld(target) {
+  const h = G.held; if (!h) return false;
+  const s = h.src;
+  // 点回原来源格 = 放回（取消）
+  if (s.kind === 'chest' && target.kind === 'chest' && target.ent === s.ent && target.slot === s.slot) { heldReturn(); return true; }
+  if (s.kind === 'mout' && target.kind === 'mout' && target.ent === s.ent && target.sid === s.sid) { heldReturn(); return true; }
+  if (s.kind === 'min' && target.kind === 'min' && target.ent === s.ent && target.sid === s.sid) { heldReturn(); return true; }
+  // 持握来源为箱子格、目标箱格被不同物品占用 → 整叠交换（目标物品拿起，放回时回到原持握来源格）
+  if (s.kind === 'chest' && target.kind === 'chest') {
+    const dst = target.ent.slots[target.slot];
+    if (dst && dst.item !== h.id) {
+      const swapId = dst.item, swapCount = dst.count;
+      target.ent.slots[target.slot] = { item: h.id, count: h.count };
+      // 新持握=被换出的目标物品，来源记为「原持握格」(s.slot，现已空)，取消时可换回
+      G.held = { id: swapId, count: swapCount, src: { kind: 'chest', ent: s.ent, slot: s.slot } };
+      if (typeof playSfx === 'function') playSfx('click');
+      toast('已交换：手持 ' + (ITEMS[swapId] ? ITEMS[swapId].name : swapId) + ' ×' + swapCount);
+      uiDirty = true;
+      return true;
     }
   }
-  while (newManual.length && newManual[newManual.length - 1] == null) newManual.pop();
-  G.invSlots = newManual;
-  // 重建 G.inv 顺序：手动槽优先，自动物品在后（与 moveInvItemToSlot 一致）
-  const seen2 = new Set();
-  const ordered = [];
-  for (const id of newManual) if (id != null && !seen2.has(id)) { seen2.add(id); ordered.push(id); }
-  for (const id of newAuto) if (!seen2.has(id)) { seen2.add(id); ordered.push(id); }
-  for (const [id, n] of G.inv) if (!seen2.has(id)) { seen2.add(id); ordered.push(id); }
-  const newInv = new Map();
-  for (const id of ordered) if (G.inv.has(id)) newInv.set(id, G.inv.get(id));
-  G.inv = newInv;
+  let moved = 0;
+  if (target.kind === 'inv') {
+    if (target.slot != null) {
+      // 点击了具体背包格：不同物品 → 手持与该格整叠交换（与背包内部移动一致）
+      invFreezeStacks();
+      const manual = G.invSlots;
+      while (manual.length <= target.slot) manual.push(null);
+      const tgt = manual[target.slot];
+      if (tgt && tgt.id != null && tgt.id !== h.id) {
+        const zId = tgt.id, zCount = tgt.count;
+        manual[target.slot] = null;
+        invTake(zId, zCount);           // 先腾空该格并移出该叠（拿起于手）
+        const added = invAdd(h.id, h.count);
+        manual[target.slot] = { id: h.id, count: added };
+        while (manual.length && manual[manual.length - 1] == null) manual.pop();
+        G.invSlots = manual;
+        G.held = { id: zId, count: zCount, src: { kind: 'inv', slot: target.slot } };
+        G.quickSel = zId;
+        if (typeof playSfx === 'function') playSfx('click');
+        toast('已交换：手持 ' + (ITEMS[zId] ? ITEMS[zId].name : zId) + ' ×' + zCount);
+        uiDirty = true;
+        return true;
+      }
+      moved = depositToInvSlot(target.slot, h.id, h.count);
+    } else moved = invAdd(h.id, h.count);
+  }
+  else if (target.kind === 'chest') moved = depositToChestSlot(target.ent, target.slot, h.id, h.count);
+  else if (target.kind === 'min') moved = depositToMachineInput(target.ent, h.id, h.count);
+  else if (target.kind === 'mout') moved = depositToMachineOutput(target.ent, h.id, h.count);
+  if (moved > 0) {
+    const nm = ITEMS[h.id] ? ITEMS[h.id].name : h.id;
+    heldTake(moved);
+    if (!G.held) { G.quickSel = null; G.sel = -1; if (typeof refreshHotbar === 'function') refreshHotbar(); }   // 全部放入 → 取消鼠标选中（与背包内部移动一致）
+    if (typeof playSfx === 'function') playSfx('click');
+    toast(G.held ? ('已放入 ' + nm + ' ×' + moved + '（手持还剩 ×' + G.held.count + '）') : ('已放入 ' + nm + ' ×' + moved));
+  } else {
+    toast('放不进去：目标已满或类型不符');
+  }
+  uiDirty = true;
+  return true;
 }
 
 // 背包物品点击：把任意物品（设备/材料/工具）放入鼠标选中状态。

@@ -123,7 +123,7 @@ function drawCargoUnloadingBay(ctx, e, gx, gy, dir, alpha) {
 
 // ===== 面板 =====
 function cargoUnloadingBayPanelHtml(e) {
-  let h = '<div class="sec">货物（' + e.slotCap() + ' 格，点击物品格取出 1 件，点击空格放入选中的背包物品）</div>';
+  let h = '<div class="sec">货物（' + e.slotCap() + ' 格，点击拿起物品，再点另一格移动/交换，点左栏背包格取出；拿起背包物品后点箱格存入）</div>';
   h += '<div class="chest-items" id="chest-items">' + chestSlotGridHtml(e) + '</div>';
   h += row('扩展存储', '+' + UNLOADING_BAY_SLOTS + ' 格', 'bonus');
   h += row('卸载距离', UNLOADING_BAY_DIST + ' 格', 'range');
@@ -136,8 +136,7 @@ function cargoUnloadingBayPanelHtml(e) {
 function cargoUnloadingBayPanelLive(e, api) {
   let total = 0, k = 0;
   for (const s of e.slots) if (s) { total += s.count; k++; }
-  const box = document.getElementById('chest-items');
-  if (box) box.innerHTML = chestSlotGridHtml(e);
+  refreshChestGrid(e);
   api.set('bonus', '+' + UNLOADING_BAY_SLOTS + ' 格');
   api.set('range', UNLOADING_BAY_DIST + ' 格');
   api.toggle('#btn-ub-takeout', total > 0, '取出全部 (' + total + ')');

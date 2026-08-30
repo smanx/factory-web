@@ -13,8 +13,10 @@ var G = {
   grid: new Map(),
   buckets: new Map(),   // 区块（桶）空间索引：bucketKey -> Set<Entity>（见 core/entity.js）
   inv: new Map(),
-  invSlots: [],          // 玩家手动摆放的背包槽位：数组元素为物品 id（数组下标即格子下标）；自动放入的物品不在此数组，排列时自动排到手动槽之后
+  invSlots: [],          // 玩家手动摆放的背包槽位：数组元素为 {id, count} 或 null（数组下标即格子下标，每格一组、相互独立）；自动放入的物品不在此数组，排列时自动排到手动槽之后
   _clickMoveFrom: null,  // 背包点击式移动：当前“拿起”的背包格下标（null=未拿起）；点空格落位/点物品格交换后清空
+  held: null,            // 通用“持握于鼠标”的物品：{id, count, src}；src={kind:'chest'|'mout'|'min', ent, slot/sid}
+                         // 从箱子/组装机等拿出物品时悬浮于鼠标，可放入背包/箱子/其它设备的原料或产品格
   logiRequest: {},   // 个人物流请求：item -> 目标数量（由物流机器人送达）
   trashSlots: {},    // 个人垃圾桶（对齐《异星工厂》Trash slots）：item -> true（标记后由物流机器人带走存回网络）
   logiEnabled: true,      // 「背包物流」总开关：关闭后机器人不再送达个人请求物品
@@ -329,7 +331,8 @@ function serializeAll() {
     constr: (typeof constrSerialize === 'function') ? constrSerialize() : null,
     equipment: (typeof equipmentSerialize === 'function') ? equipmentSerialize() : null,
     orbitalCargo: Object.assign({}, G.orbitalCargo || {}),
-    blueBook: (G.blueBook || []).map(b => ({ name: b.name, minX: b.minX | 0, minY: b.minY | 0, ents: b.ents, tiles: Array.isArray(b.tiles) ? b.tiles : [] })),
+    // 蓝图库为稀疏数组（下标=格子位置，null=空槽）：序列化保留空位，读档后格子位置不变
+    blueBook: (G.blueBook || []).map(b => b ? { name: b.name, minX: b.minX | 0, minY: b.minY | 0, ents: b.ents, tiles: Array.isArray(b.tiles) ? b.tiles : [] } : null),
     blueprintItems: (typeof bpItemsSerialize === 'function') ? bpItemsSerialize() : [],
     mapTags: (typeof mapTagsSerialize === 'function') ? mapTagsSerialize() : (G.mapTags || []).slice(),
     achievements: (typeof achievementsSerialize === 'function') ? achievementsSerialize() : null
@@ -588,11 +591,10 @@ function applySave(d) {
   G.blueBook = [];
   if (typeof bpItemsDeserialize === 'function') bpItemsDeserialize(d.blueprintItems);
   if (Array.isArray(d.blueBook)) {
-    for (const b of d.blueBook) {
-      if (b && Array.isArray(b.ents) && b.ents.length && b.name) {
-        G.blueBook.push({ name: String(b.name), minX: b.minX | 0, minY: b.minY | 0, ents: b.ents, tiles: Array.isArray(b.tiles) ? b.tiles : [] });
-      }
-    }
+    // 按原下标恢复（稀疏数组：null/无效项保留为空槽，蓝图不前移补位）
+    G.blueBook = d.blueBook.map(b => (b && Array.isArray(b.ents) && b.ents.length && b.name)
+      ? { name: String(b.name), minX: b.minX | 0, minY: b.minY | 0, ents: b.ents, tiles: Array.isArray(b.tiles) ? b.tiles : [] }
+      : null);
   }
   G.repairPackUses = (typeof d.repairPackUses === 'number') ? d.repairPackUses : 0;
   // 恢复行星间货物调度队列（旧档无该字段则置空）
@@ -706,7 +708,7 @@ function placeGround(type, tx, ty, infinite) {
     setTerrain(tx, ty, to);
   }
   if (typeof invalidateTerrainChunk === 'function') invalidateTerrainChunk(tx, ty);
-  if (!infinite) invTake(type, 1);
+  if (!infinite) takeForPlace(type);
   if (typeof playSfx === 'function') playSfx('build');
   refreshHotbar();
 }
@@ -721,9 +723,23 @@ function plantTree(tx, ty, infinite) {
   if (entAt(tx, ty)) { toast('地面有建筑，无法种树'); if (typeof playSfx === 'function') playSfx('deny'); return; }
   setTerrain(tx, ty, T_TREE);
   if (typeof invalidateTerrainChunk === 'function') invalidateTerrainChunk(tx, ty);
-  if (!infinite) invTake('tree-seed', 1);
+  if (!infinite) takeForPlace('tree-seed');
   if (typeof playSfx === 'function') playSfx('build');
   refreshHotbar();
+}
+
+// 建造消耗：若该物品正持握于鼠标（从背包拿起），优先从手持堆叠扣除（对齐《异星工厂》光标堆叠可直接放置）
+function heldOfId(id) { return (G.held && G.held.id === id) ? G.held : null; }
+function haveForPlace(id) { return invCount(id) + (heldOfId(id) ? G.held.count : 0); }
+function takeForPlace(id) {
+  const h = heldOfId(id);
+  if (h) {
+    if (typeof heldTake === 'function') heldTake(1);
+    if (!G.held) { G.quickSel = null; G.sel = -1; if (typeof refreshHotbar === 'function') refreshHotbar(); }
+    return true;
+  }
+  if (invCount(id) > 0) { invTake(id, 1); return true; }
+  return false;
 }
 
 function tryPlaceAt(tx, ty) {
@@ -759,7 +775,7 @@ function tryPlaceAt(tx, ty) {
   // 无限资源模式：建造不消耗原料，且可直接放置测试用创造/虚空箱与管道（无需背包里拥有）
   // 品质物品须检查实际持有的带品质物品（背包里是 `item~quality`），基础类型未必有库存
   const needId = (placeQuality && placeQuality !== 'normal') ? rawSel : type;
-  if (!infinite && invCount(needId) < 1) {
+  if (!infinite && haveForPlace(needId) < 1) {
     toast('背包里没有' + ITEMS[type].name + '了');
     if (typeof playSfx === 'function') playSfx('deny');
     G.sel = -1;
@@ -883,7 +899,7 @@ function tryPlaceAt(tx, ty) {
       e.applyDir();
       if (placeQuality && placeQuality !== 'normal') e.quality = placeQuality;
       addEnt(e);
-      if (!infinite) invTake(needId, 1);
+      if (!infinite) takeForPlace(needId);
       if (typeof achEnsureStats === 'function') { achEnsureStats(); G.achStats.builds++; checkAchievements(); }
       if (typeof playSfx === 'function') playSfx('build');
       refreshHotbar();
@@ -899,7 +915,7 @@ function tryPlaceAt(tx, ty) {
   // 品质建筑：记录品质等级（normal 不记），后续设备速度/强度按品质加成
   if (placeQuality && placeQuality !== 'normal') e.quality = placeQuality;
   addEnt(e);
-  if (!infinite) invTake(needId, 1);
+  if (!infinite) takeForPlace(needId);
   // 成就：建造计数（对齐《异星工厂》建造成就）
   if (typeof achEnsureStats === 'function') { achEnsureStats(); G.achStats.builds++; checkAchievements(); }
   if (typeof playSfx === 'function') playSfx('build');

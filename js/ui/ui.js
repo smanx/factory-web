@@ -358,6 +358,7 @@ function openPanel(mode, ent) {
   }
   G.panelMode = mode;
   G.panelEnt = ent || null;
+  // 注意：不清空 G.held —— 通用持握物品需跨面板存在（从一台设备拿到另一台设备/背包）
   // 打开设置面板时自动暂停游戏（关闭时恢复，见 closePanel）
   if (mode === 'set') G.paused = true;
   // 背包弹框居中加宽显示（三列布局），其余面板保持右上角小窗
@@ -396,6 +397,7 @@ function closePanel(hide = true) {
   G.bbDetail = null;
   G.recipeSel = null;
   G._clickMoveFrom = null;
+  // G.held 不在关闭面板时清空：持握物品跨面板保留（对齐《异星工厂》光标堆叠）
   G.rcpTab = null;
   G.rcpQ = '';
   if (hide) document.getElementById('panel').style.display = 'none';
@@ -469,7 +471,6 @@ function renderPanel(full) {
   } else if (G.panelMode === 'bluebook') {
     title.textContent = '蓝图库（Blueprint book）';
     body.innerHTML = bluebookLayoutHtml();
-    renderBlueprintThumbs(body);
     applyBbSearch(G.bbQ || '');
   } else if (G.panelMode === 'bluebook-detail') {
     title.textContent = '蓝图详情';
@@ -545,19 +546,24 @@ function updateInvLive() {
       // 物品集合变化 → 整块重建格子（保持排列稳定）
       wrap.outerHTML = htmlInvSlots();
     } else {
-      // 集合不变 → 仅在原地更新各格数量角标与搜索过滤
+      // 集合不变 → 仅在原地更新各格数量角标与搜索过滤（按视觉格堆叠量逐格刷新）
       const grid = body.querySelector('#inv-items');
       const q = (G.invItemQ || '').trim().toLowerCase();
-      if (grid) grid.querySelectorAll('.inv-slot[data-itemid]').forEach(el => {
-        const id = el.dataset.itemid;
-        // 蓝图物品可反复使用，角标恒 ∞
-        const isBp = (typeof isBlueprintItem === 'function') ? isBlueprintItem(id) : false;
-        const n = isBp ? '∞' : invCount(id);
-        const c = el.querySelector('.cnt[data-cnt]');
-        if (c && c.textContent !== String(n)) c.textContent = n;
-        const hit = !q || (el.dataset.itemsearch || '').includes(q);
-        el.classList.toggle('hidden', !hit);
-      });
+      if (grid) {
+        const slots = invStackSlots();
+        const els = grid.querySelectorAll('.inv-slot');
+        for (let i = 0; i < els.length; i++) {
+          const el = els[i];
+          const s = slots[i];
+          if (!s || s.id == null) continue;
+          const isBp = (typeof isBlueprintItem === 'function') ? isBlueprintItem(s.id) : false;
+          const n = isBp ? '∞' : s.count;
+          const c = el.querySelector('.cnt[data-cnt]');
+          if (c && c.textContent !== String(n)) c.textContent = n;
+          const hit = !q || (el.dataset.itemsearch || '').includes(q);
+          el.classList.toggle('hidden', !hit);
+        }
+      }
     }
   }
   // 手搓配方格子：实时刷新右下角可制作次数角标(.cnt)与未解锁状态。
@@ -771,67 +777,120 @@ function chip(id, n, iconOnly) {
 // 背包是有限的 INV_SLOT_COUNT 个固定格子。每格对应一种物品：格内显示物品图标，
 // 物品数量以右下角角标(.cnt)显示。空格显示为空槽。格子数来自官方数据 inventory_size=80。
 // 手雷/集束手雷与生鱼在对应格子上提供快捷使用角标。
-// 排列规则（需求：背包物品不要自动排序）：
-//   - 用户手动摆放的物品：放在哪格就显示在哪格（G.invSlots 记录 槽位->物品，允许空位间隔）。
+// 排列规则（需求：背包物品不要自动排序，每格物品相互独立）：
+//   - 用户手动摆放的物品：放在哪格就显示在哪格（G.invSlots 记录 槽位->{物品,数量}，允许空位间隔，
+//     同一物品可占多格且各格独立，移动其中一格不会将其它同物品格子集中）。
 //   - 自动放入的物品（挖矿/拾取/制作产出/取出设备等）：自动排到所有手动槽之后。
 // 手动槽优先占满前面的格子，自动物品跟在后面；格子不足时自动物品被挤出（背包满）。
 
-// 背包格子布局：返回 { manual: 手动槽数组（含 null 空位）, auto: 自动物品数组, total: 总格数 }
-function invSlotLayout() {
-  let manual = (G.invSlots && Array.isArray(G.invSlots)) ? G.invSlots.slice() : [];
-  // 手动槽里的非法物品（不在 ITEMS 且非蓝图）直接释放为空位，避免渲染崩溃
-  for (let i = 0; i < manual.length; i++) {
-    if (manual[i] != null && !isInvOwnedItem(manual[i])) manual[i] = null;
+// 背包格子布局：返回 { manual: 手动槽视觉堆叠数组（含 null 空位）, auto: 自动物品视觉堆叠数组, total: 总格数 }
+// 手动槽 G.invSlots：下标即格子下标，元素为 {id, count} 或 null（兼容旧档纯 id 字符串）。
+// 同一物品允许占多个相互独立的手动槽（每槽一组），移动/摆放只影响被点的格子，其余格子不动。
+// 自动放入的物品（挖矿/拾取/制作产出/取出设备等）= 总量减去手动槽已占数量后的余量，排在手动区之后。
+
+// 把 (id,count) 展开为若干视觉堆叠（蓝图恒一格；其余每格 ≤ 一组堆叠上限）
+function invExpandStacks(id, count) {
+  const out = [];
+  if (!(count > 0)) return out;
+  if (typeof isBlueprintItem === 'function' && isBlueprintItem(id)) { out.push({ id, count }); return out; }
+  const cap = (typeof stackSize === 'function') ? stackSize(id) : 100;
+  let rem = count;
+  while (rem > 0) { const c = Math.min(cap, rem); out.push({ id, count: c }); rem -= c; }
+  return out;
+}
+
+// 手动槽中每种物品已占用的数量合计（id -> Σcount）。供容量计算使用：
+// 同一物品拆成多格独立摆放时，自动余量 = 总量 - 手动合计，占用格数按实际布局计。
+function invManualCnt() {
+  const m = new Map();
+  const raw = (G.invSlots && Array.isArray(G.invSlots)) ? G.invSlots : [];
+  for (let e of raw) {
+    if (typeof e === 'string') e = { id: e, count: invCount(e) };
+    if (!e || e.id == null) continue;
+    let cnt = (typeof e.count === 'number' && e.count > 0) ? e.count : invCount(e.id);
+    if (!(typeof isBlueprintItem === 'function' && isBlueprintItem(e.id))) cnt = Math.min(cnt, invCount(e.id));
+    if (cnt > 0) m.set(e.id, (m.get(e.id) || 0) + cnt);
   }
-  const manualSet = new Set();
-  for (const id of manual) if (id != null) manualSet.add(id);
+  return m;
+}
+
+function invSlotLayout() {
+  const raw = (G.invSlots && Array.isArray(G.invSlots)) ? G.invSlots : [];
+  const manual = [];
+  const manualCnt = new Map();
+  for (let e of raw) {
+    if (typeof e === 'string') e = { id: e, count: invCount(e) };   // 旧档：整物品视为一槽（渲染时自动展开多格）
+    if (!e || e.id == null || !isInvOwnedItem(e.id)) { manual.push(null); continue; }
+    let cnt = (typeof e.count === 'number' && e.count > 0) ? e.count : invCount(e.id);
+    if (!(typeof isBlueprintItem === 'function' && isBlueprintItem(e.id))) cnt = Math.min(cnt, invCount(e.id));
+    const stacks = invExpandStacks(e.id, cnt);
+    if (!stacks.length) { manual.push(null); continue; }
+    for (const st of stacks) manual.push(st);
+    manualCnt.set(e.id, (manualCnt.get(e.id) || 0) + cnt);
+  }
+  while (manual.length && manual[manual.length - 1] == null) manual.pop();
   const auto = [];
   G.inv.forEach((n, id) => {
-    if (n > 0 && isInvOwnedItem(id) && !manualSet.has(id)) auto.push(id);
+    if (!isInvOwnedItem(id)) return;
+    const rem = n - (manualCnt.get(id) || 0);
+    if (rem > 0) for (const st of invExpandStacks(id, rem)) auto.push(st);
   });
   const total = invSlotCount();
-  // 格子不足：优先保证手动槽，自动物品从尾部挤出（与旧版“超过格子数无法放入”一致）
-  while (manual.length + auto.length > total && auto.length > 0) auto.pop();
-  return { manual, auto, total };
+  // 自动物品默认排在手动区之后的「尾部空格」；只有尾部格子不够时，
+  // 溢出的堆叠才回头按从前往后的顺序填入手动区留下的「中间空格」。
+  const tailCap = Math.max(0, total - manual.length);   // 尾部可容纳的自动堆叠数
+  const tailAuto = auto.slice(0, tailCap);
+  const overflow = auto.slice(tailCap);
+  const filled = manual.slice();
+  let oi = 0;
+  for (let i = 0; i < filled.length && oi < overflow.length; i++) {
+    if (filled[i] == null) filled[i] = overflow[oi++];
+  }
+  // 中间空格也不够（理论上 invAdd 已保证不会发生）：剩余自动堆叠从尾部挤出
+  const restAuto = overflow.slice(oi);
+  return { manual: filled, auto: tailAuto.concat(restAuto), total };
 }
 
-// 指定格子的物品 id（越界/空槽返回 null）
+// 指定格子的物品 id（越界/空槽返回 null）。idx 为「视觉格」下标。
 function invSlotIdAt(idx, L) {
-  if (!L) L = invSlotLayout();
-  if (idx < L.manual.length) return L.manual[idx];
-  const ai = idx - L.manual.length;
-  return (ai >= 0 && ai < L.auto.length) ? L.auto[ai] : null;
+  const s = invStackSlots(L)[idx];
+  return (s && s.id != null) ? s.id : null;
 }
 
-// 背包格布局签名：手动槽位或自动物品集合任一变化都会触发格子重建
+// 视觉格展开：手动槽（每槽一组，超上限自动展开）+ 自动余量堆叠，返回长度恒为 total 的 {id,count} 数组。
+function invStackSlots(L) {
+  if (!L) L = invSlotLayout();
+  const total = L.total;
+  const out = L.manual.concat(L.auto).map(s => (s && s.id != null) ? s : { id: null, count: 0 });
+  if (out.length > total) out.length = total;
+  while (out.length < total) out.push({ id: null, count: 0 });
+  return out;
+}
+
+// 背包格布局签名：以「视觉格 → 物品」序列为签名。堆叠跨组增减（多占/少占一格）
+// 或物品集合/顺序变化都会改变签名，触发格子重建；同一组内的数量变化不重建。
 function invSlotSig() {
   const L = invSlotLayout();
-  const enc = id => {
+  const enc = s => {
+    const id = s.id;
     if (id == null) return '';
     // 蓝图（blueprint#n）或未知物品不在 ITEMS 展示表，加前缀区分，避免与普通 id 歧义
     return (ITEMS[id] ? '' : '?') + id;
   };
-  return L.manual.map(enc).join('|') + '#' + L.auto.map(enc).join(',');
+  return invStackSlots(L).map(enc).join('|');
 }
 
 function htmlInvSlots(withActionId) {
-  const q = (G.invItemQ || '').trim().toLowerCase();
-  const L = invSlotLayout();
-  const manual = L.manual, auto = L.auto, total = L.total;
+  const slots = invStackSlots();
   const sig = invSlotSig();
   let h = '<div id="inv-items-wrap" data-ownedsig="' + sig + '">';
   h += '<div class="inv-slots" id="inv-items">';
-  for (let i = 0; i < total; i++) {
-    let id = null;
-    if (i < manual.length) id = manual[i];
-    else {
-      const ai = i - manual.length;
-      if (ai < auto.length) id = auto[ai];
-    }
-    h += invSlotHtml(id, i, withActionId);
+  for (let i = 0; i < slots.length; i++) {
+    h += invSlotHtml(slots[i].id, i, withActionId, slots[i].count);
   }
   h += '</div>';
-  const ownedLen = manual.length + auto.length;
+  let ownedLen = 0;
+  for (const s of slots) if (s.id != null) ownedLen++;
   if (ownedLen === 0) {
     h += '<div class="dim" style="margin-top:6px">空空如也，去地图上按住右键挖矿吧（铁矿/铜矿/煤/石头）</div>';
   }
@@ -839,8 +898,9 @@ function htmlInvSlots(withActionId) {
   return h;
 }
 
-// 渲染单个背包格子：id 为 null 时空槽；每个有物品的格子标记 data-slotidx 并支持拖拽摆放
-function invSlotHtml(id, idx, withActionId) {
+// 渲染单个背包格子：id 为 null 时空槽；每个有物品的格子标记 data-slotidx 并支持拖拽摆放。
+// slotCount 为该视觉格显示的堆叠数量（多组物品每格最多一组）。
+function invSlotHtml(id, idx, withActionId, slotCount) {
   const q = (G.invItemQ || '').trim().toLowerCase();
   if (id == null) {
     return '<div class="inv-slot empty" data-slotidx="' + idx + '"></div>';
@@ -848,7 +908,7 @@ function invSlotHtml(id, idx, withActionId) {
   // 蓝图物品（blueprint#n）不在 ITEMS 表里：图标/tooltip/搜索名都按基础 id 'blueprint' 处理。
   // 其余未知物品（旧档残留/废弃物品等）也按原 id 渲染占位，避免 ITEMS[id] 为 undefined 崩溃。
   const isBp = (typeof isBlueprintItem === 'function') ? isBlueprintItem(id) : false;
-  const n = invCount(id);
+  const n = (slotCount != null) ? slotCount : invCount(id);
   const dispName = isBp ? bpItemName(id) : (ITEMS[id] ? ITEMS[id].name : id);
   const search = (dispName + ' ' + (isBp ? 'blueprint' : id)).toLowerCase().replace(/"/g, '');
   const hit = !q || search.includes(q);
@@ -964,12 +1024,14 @@ function craftMaxCount(rid) {
   for (const k in rec.inp) {
     if (rec.inp[k] > 0) max = Math.min(max, Math.floor(invCount(k) / rec.inp[k]));
   }
-  // 受背包空位（堆叠上限）限制
+  // 受背包空间限制（每格一组、满组溢出到新格，受总格数约束）
   for (const k in rec.out) {
     if (FLUIDS.indexOf(k) >= 0) continue;
     const outN = rec.out[k] || 1;
     if (outN > 0) {
-      const room = Math.max(0, stackSize(k) - invCount(k));
+      const room = (typeof invRoomFor === 'function')
+        ? invRoomFor(k, 0, invUsedSlots(), invSlotCount())
+        : Math.max(0, stackSize(k) - invCount(k));
       max = Math.min(max, Math.floor(room / outN));
     }
   }
@@ -1303,16 +1365,28 @@ function bluebookLayoutHtml() {
     '<input id="bb-search" class="inv-search" type="text" placeholder="搜索蓝图…" autocomplete="off" value="' + qEsc + '">' +
     '<button data-bbview="1">' + (G.bbGridView === false ? '🔲 格子视图' : '📋 列表视图') + '</button>' +
     '</div>' +
-    '<div class="dim" style="margin-bottom:4px">悬停看名字 · <b>左键</b>选中：点击地图铺建 / 点左侧背包放入 · <b>右键</b>详情</div>';
-  if (!list.length) {
+    '<div class="dim" style="margin-bottom:4px">悬停看名字 · <b>左键</b>选中：点击地图铺建 / 点左侧背包空格放入 · <b>右键</b>详情</div>';
+  const BB_COLS = 10;   // 蓝图库列数：与背包 10 列一致，行数可精确计算（预留空格用）
+  if (!list.some(Boolean)) {
     grid += '<div class="dim">蓝图库为空。请在地图上按 <b>Alt+B</b>（或 Ctrl+C）拖拽框选一片建筑创建蓝图。</div>';
-  } else if (G.bbGridView === false) {
+  }
+  if (G.bbGridView === false) {
     // 列表视图：保留旧版条目式布局
     grid += htmlBlueBookList();
   } else {
     grid += '<div id="bb-grid-wrap"><div class="bb-grid">';
-    for (let i = 0; i < list.length; i++) {
+    // 槽位管理（对齐背包）：下标即格子位置，蓝图移走后原槽位留空不前移；
+    // 规则：底部始终预留一行空格（蓝图铺到第 N 行则渲染到第 N+1 行）
+    let maxFilled = -1;
+    for (let i = 0; i < list.length; i++) if (list[i]) maxFilled = i;
+    const rowsUsed = maxFilled < 0 ? 0 : Math.floor(maxFilled / BB_COLS) + 1;
+    const totalCells = (rowsUsed + 1) * BB_COLS;
+    for (let i = 0; i < totalCells; i++) {
       const b = list[i];
+      if (!b) {
+        grid += '<div class="bb-cell empty" data-bbcell="' + i + '" data-tip="空格|背包里选中蓝图物品后点击此格 = 移入蓝图库"></div>';
+        continue;
+      }
       const bb = (typeof blueprintBounds === 'function') ? blueprintBounds(b.ents) : { W: 0, H: 0 };
       const types = {};
       for (const e of b.ents) types[e.type] = (types[e.type] || 0) + 1;
@@ -1324,14 +1398,14 @@ function bluebookLayoutHtml() {
         ' data-tip="' + name + '|' + b.ents.length + ' 个建筑 · 尺寸 ' + bb.W + '×' + bb.H + ' 格' +
         (Array.isArray(b.tiles) && b.tiles.length ? ' · 含地砖' : '') +
         '（左键选中，右键详情）">' +
-        '<canvas width="44" height="44" data-bbthumb="' + i + '"></canvas>' +
-        (keys.length > 1 ? '<span class="bb-cell-more">+' + (keys.length - 1) + '</span>' : '') +
+        // 统一蓝图图标：与背包里的蓝图物品图标一致（iconDataURL('blueprint')），不再画内容缩略图
+        '<img src="' + iconDataURL('blueprint', 16) + '">' +
       '</div>';
       b._typeNames = keys.map(t => (ITEMS[t] ? ITEMS[t].name : t)).join('、');
     }
     grid += '</div>';
     grid += '<div id="bb-empty" class="dim" style="display:none;margin-top:8px"></div>';
-    grid += '<div class="dim" style="margin-top:8px">选中蓝图后：点击地图直接铺建；点击左侧背包格子 = 放入背包。按 E/Q 关闭面板。</div>';
+    grid += '<div class="dim" style="margin-top:8px">选中蓝图后：点击地图直接铺建；点击左侧背包空格 = 移入背包（蓝图库中留空位）。背包里选中蓝图后点击蓝图库空格 = 移入该格。按 E/Q 关闭面板。</div>';
     grid += '</div>';
   }
   // 玩家背包（格子可点击，放入快捷栏/选中物品），带 id 供「点格子入包」寻址
@@ -1353,6 +1427,7 @@ function htmlBlueBookList() {
     '<button data-bbimport="1">📥 导入</button></div>';
   for (let i = 0; i < list.length; i++) {
     const b = list[i];
+    if (!b) continue;   // 空槽（蓝图已移走）：列表视图不显示
     const types = {};
     for (const e of b.ents) types[e.type] = (types[e.type] || 0) + 1;
     const typeNames = Object.keys(types).slice(0, 4).map(t => ITEMS[t] ? ITEMS[t].name : t).join('、') +
@@ -1417,18 +1492,6 @@ function drawBlueprintThumb(ctx, bp, W, H) {
     }
   }
 }
-
-// 把面板里所有蓝图缩略图画布（data-bbthumb=blueBook 索引）画上蓝图内容缩略图。
-// 首帧缩略图较高开销：实测多蓝图时绘制调用有限（每格几十次），可接受；
-// 若后续出现性能问题，可在此加脏标记只在面板打开时绘制一次。
-function renderBlueprintThumbs(root) {
-  (root || document).querySelectorAll('canvas[data-bbthumb]').forEach(cv => {
-    const b = (G.blueBook || [])[+cv.dataset.bbthumb];
-    if (!b) return;
-    drawBlueprintThumb(cv.getContext('2d'), b, cv.width, cv.height);
-  });
-}
-
 
 // 详情页/编辑界面的单个大缩略图：bb-detail-thumb 读 G.bbDetail，bp-edit-thumb 读 G.blueprint
 function renderBlueprintDetailThumb() {

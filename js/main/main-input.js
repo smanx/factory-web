@@ -110,6 +110,7 @@ function bindInput() {
         G.sel = -1;
         G.quickSel = null;
         G._clickMoveFrom = null;
+        if (typeof heldReturn === 'function') heldReturn();
         refreshHotbar();
       } else {
         const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
@@ -247,6 +248,16 @@ function bindInput() {
     if (G.blueMode) return;   // 蓝图/红图模式下不触发面板
     updateCursorTile(ev.clientX, ev.clientY);
     if (!G.cursorTile) return;
+    // 持握来自箱子/设备的物品时点击地图：点可交互设备 → 打开其面板以便放入；点空地 → 取消放回原处。
+    // （背包拿起的物品 src=inv 走下方正常建造/交互流程）
+    if (G.held && G.held.src && G.held.src.kind !== 'inv') {
+      const he = entAt(G.cursorTile.tx, G.cursorTile.ty);
+      if (he && typeof DEVICE_PANEL !== 'undefined' && DEVICE_PANEL[he.type]) { openPanel('machine', he); return; }
+      if (typeof heldReturn === 'function') heldReturn();
+      uiDirty = true;
+      if (typeof toast === 'function') toast('已取消持握，物品放回原处');
+      return;
+    }
     // 手持修理包点击受损建筑 → 修复（优先于打开面板）
     if (hasRepairPackSelected() && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
       const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
@@ -281,6 +292,8 @@ function bindInput() {
 }
 
 function handleLeftDown() {
+  // 持握来自箱子/设备的物品时按住左键不触发建造/采集；背包拿起的物品(src inv)仍可建造
+  if (G.held && G.held.src && G.held.src.kind !== 'inv') return;
   // 手持蜘蛛遥控器点击地面 → 命令蜘蛛机器人移动到目标点（对齐《异星工厂》Spidertron remote）
   if (typeof selItem === 'function' && selItem() === 'spidertron-remote' && G.cursorTile) {
     commandSpidertron(G.cursorTile.tx, G.cursorTile.ty);
@@ -380,6 +393,7 @@ function updateCursorTile(cx, cy) {
 }
 
 function updateHeldMouse(dt) {
+  if (G.held && G.held.src && G.held.src.kind !== 'inv') return;   // 持握箱子/设备物品时不连续采集/建造
   // 拆除模式：按住左键拖动可连续拆除目标格上的建筑
   if (G.deconstructHeld && G.cursorTile) {
     if (G.blueMode) { G.deconstructHeld = false; return; }

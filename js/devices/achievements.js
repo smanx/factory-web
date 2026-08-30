@@ -118,7 +118,7 @@ const ACHIEVEMENTS = [
   {
     id: 'blueprint', name: '蓝图规划师', icon: '📐',
     desc: '保存第一份蓝图到蓝图库',
-    check() { return (G.blueBook && G.blueBook.length) >= 1; }
+    check() { return !!(G.blueBook && G.blueBook.some(Boolean)); }
   },
   {
     id: 'train-schedule', name: '铁路调度', icon: '🚂',

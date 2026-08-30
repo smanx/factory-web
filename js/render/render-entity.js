@@ -61,17 +61,11 @@ function drawEntity(ctx, e, gx, gy, dir, alpha) {
 
 // 无环形显示的加工设备运行信息：返回 { pct(0-1), total(秒) } 表示设备当前这一轮
 // 加工的完成比例与总耗时；返回 null 表示不在运行（不绘制环形计时器）。
-// 已有自身环形进度显示（组装机/化工厂/离心机/钻机）的设备不在此表内，不重复叠加。
+// 已有自身环形进度显示（组装机/化工厂/离心机/钻机/炼油厂）的设备不在此表内，不重复叠加。
 const DEVICE_RUN_INFO = {
   'stone-furnace': e => (e.lit && e.cur && e.prog > 0) ? { pct: e.prog, total: e.cur.time } : null,
   'steel-furnace': e => (e.lit && e.cur && e.prog > 0) ? { pct: e.prog, total: e.cur.time } : null,
   'electric-furnace': e => (e.lit && e.cur && e.prog > 0) ? { pct: e.prog, total: e.cur.time } : null,
-  'oil-refinery': e => {
-    if (!e.crafting || !e.recipe) return null;
-    const rec = REFINERY_RECIPES[e.recipe];
-    if (!rec || !rec.time) return null;
-    return { pct: Math.min(1, Math.max(0, (e.prog || 0) / rec.time)), total: rec.time };
-  },
   'lab': e => e.active ? { pct: Math.min(1, Math.max(0, (e.t || 0) / LAB_TIME)), total: LAB_TIME } : null,
 };
 
@@ -379,6 +373,47 @@ function ghostWorldTransform(g) {
   return false;
 }
 
+// 幽灵角标数量：蓝图恒 ∞；从背包拿起的物品（src inv）显示手持那一叠的数量，而非背包剩余总量。
+function ghostCount(type) {
+  if (typeof isBlueprintItem === 'function' && isBlueprintItem(type)) return '∞';
+  if (G.held && G.held.src && G.held.src.kind === 'inv' && G.held.id === type) return G.held.count;
+  return (typeof invCount === 'function') ? invCount(type) : 0;
+}
+
+// 通用持握物品幽灵：从箱子/组装机拿出的物品悬浮跟随鼠标（右下角显示持握数量）。
+// 返回 true 表示已绘制持握物品，drawGhost 不再绘制建造幽灵。
+function drawHeldGhost(g) {
+  const h = G.held;
+  if (!h || !h.id) return false;
+  // 背包拿起的物品（src inv）沿用 quickSel 建造幽灵（可在地图建造/拖铺），不另绘持握幽灵
+  if (h.src && h.src.kind === 'inv') return false;
+  if (typeof heldValid === 'function' && !heldValid()) return false;
+  const slot = ghostSlotSize();
+  const ms = G.mouseScreen || { x: W / 2, y: H / 2 };
+  g.save();
+  g.globalAlpha = 0.92;
+  if (typeof iconCanvas === 'function') {
+    const ic = iconCanvas(h.id, Math.round(slot));
+    g.drawImage(ic, ms.x - slot / 2, ms.y - slot / 2, slot, slot);
+  } else {
+    g.fillStyle = 'rgba(10,14,18,.72)';
+    if (g.roundRect) g.roundRect(ms.x - slot / 2, ms.y - slot / 2, slot, slot, 6);
+    else g.rect(ms.x - slot / 2, ms.y - slot / 2, slot, slot);
+    g.fill();
+    drawItemGlyph(g, h.id, ms.x, ms.y, slot * 0.72);
+  }
+  if (h.count > 0) {
+    g.globalAlpha = 1;
+    g.fillStyle = '#fff';
+    g.font = 'bold ' + Math.max(10, Math.round(slot * 0.22)) + 'px sans-serif';
+    g.textAlign = 'right';
+    g.textBaseline = 'alphabetic';
+    g.fillText(String(h.count), ms.x + slot / 2 - 2, ms.y + slot / 2 - 2);
+  }
+  g.restore();
+  return true;
+}
+
 // 放置幽灵绘制在专用顶层画布（#ghost-layer）上，层级高于所有界面（含背包面板）。
 // 每帧先清空顶层画布，再按选中物品与鼠标位置绘制。显示逻辑分三种：
 // 1. 放置幽灵：鼠标在地图上且物品为可建造设备 → 按占地格绘制实体幽灵；
@@ -389,6 +424,7 @@ function ghostWorldTransform(g) {
 function drawGhost(ctx) {
   const g = (G && G.ghostCtx) || ctx;   // 顶层画布优先，回退到主画布
   if (g !== ctx) g.clearRect(0, 0, W, H); // 仅清空顶层画布，不清主画布
+  if (typeof drawHeldGhost === 'function' && drawHeldGhost(g)) return;
   // 幽灵需显示在背包面板/底部工具栏等所有界面上方：仅需存在选中物品与鼠标所在格，不再要求 cursorTile 落在主画布上（面板/工具栏上由 window 级 mousemove 持续更新）。
   if (!buildActive() || !G.cursorTile) return;
   const type = selItem();
@@ -491,9 +527,8 @@ function drawGhost(ctx) {
       drawItemGlyph(g, iconId, ms.x, ms.y, slot * 0.72);
     }
     // 图标右下角数量角标：与背包格子的 .cnt 显示一致
-    // 蓝图物品可反复使用，角标显示 ∞
-    const cnt = (typeof isBlueprintItem === 'function' && isBlueprintItem(type)) ? '∞'
-      : ((typeof invCount === 'function') ? invCount(type) : 0);
+    // 蓝图物品显示 ∞；背包拿起的物品显示手持那一叠的数量（而非背包剩余总量）
+    const cnt = ghostCount(type);
     if (cnt > 0) {
       g.globalAlpha = 1;
       g.fillStyle = '#fff';
@@ -512,9 +547,8 @@ function drawGhost(ctx) {
 function drawGhostCount(g, wx, wy) {
   const type = selItem();
   if (!type) return;
-  // 蓝图物品可反复使用，数量角标恒显示 ∞
-  const isBp = (typeof isBlueprintItem === 'function') ? isBlueprintItem(type) : false;
-  const cnt = isBp ? '∞' : ((typeof invCount === 'function') ? invCount(type) : 0);
+  // 蓝图物品恒 ∞；背包拿起的物品显示手持那一叠数量
+  const cnt = ghostCount(type);
   if (cnt === 0 || cnt === '0' || cnt === null || cnt === undefined || cnt === '') return;
   const sx = (wx - G.cam.px) * G.cam.z + W / 2;
   const sy = (wy - G.cam.py) * G.cam.z + H / 2;

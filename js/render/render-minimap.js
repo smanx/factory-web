@@ -482,7 +482,8 @@ function _hoverRuntimeSections(e) {
 }
 
 // ===== 设备信息面板（小地图下方长条） =====
-// 鼠标悬停到设备上时，在小地图正下方绘制详情面板。
+// 鼠标悬停到设备/矿脉/树木/敌人/地形上时，在小地图正下方绘制详情面板
+// （地图上不显示鼠标附近的悬浮框，详情统一在此展示）。
 // 宽度与小地图完全一致并紧贴其下方/屏幕边缘；内容与排版对齐《异星工厂》官方 tooltip：
 // 金色名称标题 + 物品图标 + 描述 + 分隔线 + 官方字段行
 // （采矿速度/制造速度/研究速度/运载速度/存储容量/消耗量/污染/插件槽位/生命值），
@@ -491,11 +492,16 @@ function _hoverRuntimeSections(e) {
 function drawDeviceInfoBar(ctx) {
   // 仅在小地图开启时展示（面板锚定在小地图正下方）
   if (!(G.settings && G.settings.minimap !== false)) return;
-  const hovered = G.cursorTile ? entAt(G.cursorTile.tx, G.cursorTile.ty) : null;
-  if (!hovered || hovered._dead || !hovered.type) return;
+  if (!G.cursorTile) return;
+  const { tx, ty } = G.cursorTile;
+  const hovered = entAt(tx, ty);
+  if (!hovered || hovered._dead || !hovered.type || !ITEMS[hovered.type]) {
+    // 非设备瓦片（矿脉/树木/峭壁/水域/敌人）：同样在小地图下方显示详情
+    if (!hovered) _drawMapTileInfoBar(ctx, tx, ty);
+    return;
+  }
   const e = hovered;
   const it = ITEMS[e.type];
-  if (!it) return;
 
   const name = localizedName(e.type, it.name || e.type);
   const desc = it.desc || '';
@@ -542,6 +548,19 @@ function drawDeviceInfoBar(ctx) {
   if (hp) {
     const cur = (e.hp !== undefined && e.maxhp) ? Math.min(hp, Math.max(0, Math.round(e.hp))) : hp;
     add('生命值', cur >= hp ? String(hp) : cur + '/' + hp);
+  }
+
+  // 「显示详情」模式下悬停流体出入口图标：在面板中补显该口流体（替代原鼠标旁悬浮框）
+  if (G.showDetails) {
+    const fn = DEVICE_FLUID_ICONS[e.type];
+    if (fn) {
+      for (const ic of fn(e)) {
+        if (ic.x === tx && ic.y === ty && ITEMS[ic.fluid]) {
+          add('流体', ITEMS[ic.fluid].name + (ITEMS[ic.fluid].desc ? '（' + ITEMS[ic.fluid].desc + '）' : ''));
+          break;
+        }
+      }
+    }
   }
 
   // ---- 布局：宽度与小地图一致，紧贴其下方、紧贴屏幕右边缘 ----
@@ -664,5 +683,53 @@ function drawDeviceInfoBar(ctx) {
       if (r.value) { ctx.fillStyle = r.color || 'rgba(240,242,236,0.95)'; ctx.fillText(r.value, r.vx, y); }
       y += fieldLh;
     }
+  }
+}
+
+// ===== 非设备瓦片详情面板（小地图下方长条） =====
+// 矿脉/树木/峭壁/水域/敌人等无实体官方字段，复用 mapTipAt 的「名称|描述」文案，
+// 以与设备面板相同样式（金色标题 + 描述折行）绘制在小地图正下方。
+function _drawMapTileInfoBar(ctx, tx, ty) {
+  if (typeof mapTipAt !== 'function') return;
+  const tip = mapTipAt(tx, ty);
+  if (!tip) return;
+  const p = tip.split('|');
+  const name = p[0] || '';
+  const desc = p.slice(1).join('|');
+  let emoji = '';
+  const ti = getOreType(tx, ty);
+  if (ti >= 0 && getOreAmt(tx, ty) > 0) {
+    const oi = ITEMS[oreItemId(ti)];
+    if (oi && oi.emoji) emoji = oi.emoji;
+  }
+  const bw = MINIMAP_SIZE;
+  const bx = W - MINIMAP_SIZE;
+  const top = MINIMAP_SIZE;
+  const pad = 9, padR = 14;
+  const iconW = emoji ? 19 : 0;
+  const innerW = bw - pad - padR;
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 12.5px system-ui';
+  const titleLines = _wrapTooltipText(ctx, name, innerW - iconW);
+  ctx.font = '10.5px system-ui';
+  const descLines = desc ? _wrapTooltipText(ctx, desc, innerW - iconW) : [];
+  const titleLh = 16, descLh = 13, padTop = 8, padBottom = 8;
+  const bh = padTop + titleLines.length * titleLh + descLines.length * descLh + padBottom;
+  ctx.fillStyle = 'rgba(15,16,14,0.92)';
+  ctx.strokeStyle = 'rgba(150,150,140,0.45)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(bx, top, bw, bh, 4) : ctx.rect(bx, top, bw, bh);
+  ctx.fill(); ctx.stroke();
+  let y = top + padTop;
+  let nx = bx + pad;
+  if (emoji) { ctx.font = '13px system-ui'; ctx.fillText(emoji, nx, y); nx += iconW; ctx.font = 'bold 12.5px system-ui'; }
+  ctx.fillStyle = '#ffd43b';
+  for (const tl of titleLines) { ctx.fillText(tl, nx, y); y += titleLh; }
+  if (descLines.length) {
+    ctx.font = '10.5px system-ui';
+    ctx.fillStyle = 'rgba(226,228,222,0.9)';
+    for (const dl of descLines) { ctx.fillText(dl, bx + pad + iconW, y); y += descLh; }
   }
 }

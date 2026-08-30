@@ -820,7 +820,7 @@ function logiChestPanelHtml(e) {
   const kind = LOGI_CHEST_KINDS[e.type];
   let total = 0;
   for (const k in agg) total += agg[k];
-  let right = '<div class="sec">箱子内容（' + e.slotCap() + ' 格，点击物品格取出 1 件，点击空格放入选中的背包物品）</div>';
+  let right = '<div class="sec">箱子内容（' + e.slotCap() + ' 格，点击拿起物品，再点另一格移动/交换，点左栏背包格取出；拿起背包物品后点箱格存入）</div>';
   right += '<div class="status"></div>';
   right += '<div class="chest-items" id="chest-items">';
   right += chestSlotGridHtml(e);
@@ -865,8 +865,7 @@ function logiChestPanelLive(e, api) {
   let total = 0;
   for (const s of e.slots) if (s) { agg[s.item] = (agg[s.item] || 0) + s.count; total += s.count; }
   const kinds = Object.keys(agg).length;
-  const box = document.getElementById('chest-items');
-  if (box) box.innerHTML = chestSlotGridHtml(e);
+  refreshChestGrid(e);
   api.toggle('#btn-chest-takeout', total > 0, '取出全部 (' + total + ')');
   const kind = LOGI_CHEST_KINDS[e.type];
   if (kind === 'requester' || kind === 'buffer') {

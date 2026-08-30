@@ -300,24 +300,29 @@ function drawChestBox(ctx, e, gx, gy, dir, alpha, tier, extra) {
 
 // ===== 面板 =====
 // 所有储物箱采用「双栏」布局：左栏=玩家背包，右栏=箱子格子，可双向移动物品。
-// 左栏复用 htmlInventory()（与背包/配方设备一致：点击物品即选中，选中后可存入箱子）。
-// 右栏为箱子固定格子网格（与背包一致：空槽可见、一格一种物品）：
-//   - 点击空格：把当前选中的背包物品放入 1 件（未选中时提示）
-//   - 点击有物品的格：取出 1 件回背包
+// 左栏复用 htmlInventory()（与背包/配方设备一致：点击物品即拿起，拿起后可存入箱子）。
+// 右栏为箱子固定格子网格（与背包一致：空槽可见、一格一种物品），交互与背包点击式移动一致：
+//   - 点击物品格：拿起该格物品（高亮），再点另一箱格整叠移动/合并/交换，点同格放回，点左栏背包格整叠取出
+//   - 拿起背包物品后点击箱格：把该物品整叠存入箱子（优先落入点击格）
+//   - 未拿起任何物品点击空格：若已选中（幽灵持握）背包物品则放入 1 件
 // 兼容物流箱/接驳站/扩展舱等所有带 slots 的存储容器（共用 chestRightHtml）。
 
 // 右栏：箱子固定格子 + 操作
 function chestSlotGridHtml(e) {
+  // 持握来源格（物品已移出悬浮于鼠标）高亮，点击可放回
+  const heldSlot = (G.held && G.held.src && G.held.src.kind === 'chest' && G.held.src.ent === e) ? G.held.src.slot : -1;
   let h = '';
   for (let i = 0; i < e.slots.length; i++) {
     const s = e.slots[i];
     if (!s) {
-      h += '<div class="inv-slot empty" data-chestslot="' + i + '" data-tip="空槽|点击把选中的背包物品放入 1 件"></div>';
+      const sel = (heldSlot === i) ? ' slot-sel' : '';
+      h += '<div class="inv-slot empty' + sel + '" data-chestslot="' + i + '" data-tip="' +
+        (heldSlot === i ? '放回原格|点击把手持物品放回此处' : '空槽|拿起物品后点击此格放入') + '"></div>';
     } else {
       const id = s.item, n = s.count;
       const icon = (ITEMS[id] && typeof iconDataURL === 'function') ? iconDataURL(id, 16) : '';
       h += '<div class="inv-slot" data-chestslot="' + i + '" data-itemid="' + id + '" data-tip="' +
-        (ITEMS[id] ? ITEMS[id].name : id) + '|点击取出 1 件回背包（当前 ' + n + '）">' +
+        (ITEMS[id] ? ITEMS[id].name : id) + '|点击拿起该物品悬浮于鼠标：可放入背包/箱格/设备原料或产品格（当前 ' + n + '）">' +
         (icon ? '<img src="' + icon + '">' : '') +
         '<span class="cnt">' + n + '</span></div>';
     }
@@ -325,37 +330,29 @@ function chestSlotGridHtml(e) {
   return h;
 }
 
-// 右栏：箱子内容 + 操作
+// 右栏：仅箱子格子网格（面板只展示箱子名称 + 格子，文本描述与操作按钮已移除）
 function chestRightHtml(e, typeName, capDesc) {
-  let total = 0;
-  for (const s of e.slots) if (s) total += s.count;
-  let h = '<div class="sec">箱子内容（' + e.slotCap() + ' 格，点击物品格取出 1 件，点击空格放入选中的背包物品）</div>';
-  h += '<div class="status"></div>';
-  h += '<div class="chest-items" id="chest-items" data-live="chest-items">';
+  let h = '<div class="chest-items" id="chest-items" data-live="chest-items">';
   h += chestSlotGridHtml(e);
   h += '</div>';
-  // 存入选中物品
-  h += '<div class="sec">存入</div>';
-  h += '<button data-action="chest-put" class="btn sm" id="btn-chest-put" title="把当前选中的背包物品全部存入箱子（未选中时不可用）">⬆ 存入选中物品</button>';
-  // 存量上限（每种物品）
-  const agg = {};
-  for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
-  h += '<div class="sec">存量上限（每种物品）</div>';
-  const ids = Object.keys(agg);
-  for (const id in e.limits) if (!(id in agg)) ids.push(id);
-  if (!ids.length) {
-    h += '<div class="dim">空箱。放入物品后可为每种物品设置最大存量，达到上限后机械臂/手动均无法再存入。</div>';
-  } else {
-    for (const id of ids) {
-      h += '<div class="limitrow">' + chip(id, agg[id]) +
-        '<input class="limit-in" type="number" min="0" step="10" placeholder="不限" data-limit="' + id + '"' +
-        ' value="' + (e.limits[id] || '') + '" data-tip="上限|该物品最大存量；留空或 0 表示不限制"></div>';
-    }
-    h += '<button data-action="limits-clear">清除所有上限</button>';
-  }
-  if (total > 0) h += '<button data-action="takeout" id="btn-chest-takeout">取出全部 (' + total + ')</button>';
-  h += '<div class="dim">' + capDesc + '</div>';
   return h;
+}
+
+// 箱子网格内容签名：格内物品/数量或持握高亮格变化时才重建，避免每帧 innerHTML 重建导致虚线闪烁、点击丢失
+function chestGridSig(e) {
+  const heldSlot = (G.held && G.held.src && G.held.src.kind === 'chest' && G.held.src.ent === e) ? G.held.src.slot : -1;
+  let s = heldSlot + '|';
+  for (let i = 0; i < e.slots.length; i++) { const st = e.slots[i]; s += (st ? st.item + ':' + st.count : '') + ','; }
+  return s;
+}
+// 实时刷新箱子网格：仅在签名变化时重建 innerHTML
+function refreshChestGrid(e) {
+  const box = document.getElementById('chest-items');
+  if (!box) return;
+  const sig = chestGridSig(e);
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  box.innerHTML = chestSlotGridHtml(e);
 }
 
 // 双栏布局：左=玩家背包，右=箱子
@@ -382,19 +379,8 @@ function chestTip(e) {
   return k ? ('存货 ' + n + ' 个（' + k + ' 种）') : '空箱';
 }
 function chestDualPaneLive(e, api) {
-  let total = 0, kinds = 0;
-  const agg = {};
-  for (const s of e.slots) if (s) { agg[s.item] = (agg[s.item] || 0) + s.count; total += s.count; }
-  kinds = Object.keys(agg).length;
-  // 更新右栏箱子固定格子网格（空槽/物品格一致渲染，与背包相同语义）
-  const box = document.getElementById('chest-items');
-  if (box) box.innerHTML = chestSlotGridHtml(e);
-  api.toggle('#btn-chest-takeout', total > 0, '取出全部 (' + total + ')');
-  const full = Object.keys(agg).filter(id => e.limits[id] !== undefined && agg[id] >= e.limits[id]);
-  if (full.length) api.status('已满：' + full.map(id => ITEMS[id].name).join('、') + ' 达到上限，暂停收纳', 'warn');
-  else if (total >= e.slotCap()) api.status('箱子已满：' + e.slotCap() + ' 格全部占满', 'warn');
-  else if (total > 0) api.status('收纳中：' + kinds + ' 种，共 ' + total + ' 件 / ' + e.slotCap() + ' 格', 'ok');
-  else api.status('空箱：等待存入物品', 'ok');
+  // 面板仅展示格子：实时刷新箱子网格（签名变化才重建，避免闪烁）
+  refreshChestGrid(e);
 }
 function chestOnAction(act) {
   if (act === 'limits-clear') {

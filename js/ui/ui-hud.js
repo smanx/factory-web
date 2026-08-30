@@ -320,6 +320,7 @@ function enemyDesc(en) {
   return kindTxt + '；生命 ' + (en.maxhp || d.hp) + '，攻击 ' + (en.dmg || d.dmg) + '。可点击攻击或建造炮塔防御。';
 }
 
+// 地图悬停详情文案（名称|描述）：供小地图下方信息面板（drawDeviceInfoBar）在非设备瓦片时使用。
 function mapTipAt(tx, ty) {
   // 显示详情时：鼠标移到某流体出入口图标上，优先显示该流体的具体名称
   if (G.showDetails) {
@@ -418,8 +419,8 @@ function initTooltips() {
       }
     }
     if (el) text = el.dataset.tip;
-    if (!text && ev.target === G.canvas && G.cursorTile)
-      text = mapTipAt(G.cursorTile.tx, G.cursorTile.ty);
+    // 地图画布上不再显示鼠标附近的详情悬浮框（需求：地图详情只在小地图下方显示，见 drawDeviceInfoBar）；
+    // 非地图界面（背包/设备面板等 data-tip 元素）的鼠标旁悬浮框保持不变。
     // 不在配方槽上：隐藏配方卡，回退到普通 tooltip
     rcp.style.display = 'none';
     if (text) {

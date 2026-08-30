@@ -552,17 +552,28 @@ function pasteBlueprint() {
 
 // ===== 蓝图库（对齐《异星工厂》Blueprint book）：保存多个蓝图供随时调用 =====
 // 复制蓝图时自动加入蓝图库；也可在蓝图库面板中加载任一蓝图进行粘贴。
-function blueBookAdd(bp) {
-  if (!bp || !bp.ents || !bp.ents.length) return;
+// 槽位管理与背包一致：G.blueBook 为稀疏数组，下标即格子位置；
+// 蓝图被移走/删除后原槽位留空（null），其它蓝图不前移补位。
+// at 指定放入的空槽下标（点哪个空格进哪个格）；未指定则放第一个空槽。
+// 返回实际槽位下标；内容重复或数据无效返回 null。
+function blueBookAdd(bp, at) {
+  if (!bp || !bp.ents || !bp.ents.length) return null;
   if (!Array.isArray(G.blueBook)) G.blueBook = [];
   // 去重：内容（类型+相对位置）与已有蓝图相同则不重复添加
   const key = bp.ents.map(e => e.type + '@' + (e.x - bp.minX) + ',' + (e.y - bp.minY)).join('|');
   for (const b of G.blueBook) {
+    if (!b) continue;   // 空槽跳过
     const bk = b.ents.map(e => e.type + '@' + (e.x - b.minX) + ',' + (e.y - b.minY)).join('|');
-    if (bk === key) return;   // 已存在相同蓝图
+    if (bk === key) return null;   // 已存在相同蓝图
   }
-  G.blueBook.push({ name: '蓝图 ' + (G.blueBook.length + 1), minX: bp.minX, minY: bp.minY, ents: bp.ents.slice(), tiles: Array.isArray(bp.tiles) ? bp.tiles.slice() : [] });
+  let idx = (typeof at === 'number' && at >= 0 && !G.blueBook[at]) ? at : -1;
+  if (idx < 0) {
+    idx = 0;
+    while (idx < G.blueBook.length && G.blueBook[idx]) idx++;
+  }
+  G.blueBook[idx] = { name: '蓝图 ' + (G.blueBook.filter(Boolean).length + 1), minX: bp.minX, minY: bp.minY, ents: bp.ents.slice(), tiles: Array.isArray(bp.tiles) ? bp.tiles.slice() : [] };
   uiDirty = true;
+  return idx;
 }
 
 // 从蓝图库加载指定蓝图，进入粘贴模式
@@ -577,18 +588,18 @@ function blueBookLoad(i) {
   toast('已加载蓝图「' + b.name + '」，点击空白处粘贴（R旋转，右键取消）');
 }
 
-// 删除蓝图库中指定项
+// 删除蓝图库中指定项（槽位管理对齐背包：留空位不前移，其它蓝图不上补）
 function blueBookRemove(i) {
-  if (!Array.isArray(G.blueBook) || i < 0 || i >= G.blueBook.length) return;
+  if (!Array.isArray(G.blueBook) || i < 0 || i >= G.blueBook.length || !G.blueBook[i]) return;
   const name = G.blueBook[i].name;
-  G.blueBook.splice(i, 1);
+  G.blueBook[i] = null;
   toast('已从蓝图库删除「' + name + '」');
   uiDirty = true;
 }
 
 // 重命名蓝图库中指定项（对齐《异星工厂》：蓝图库中可自由为蓝图命名）
 function blueBookRename(i, newName) {
-  if (!Array.isArray(G.blueBook) || i < 0 || i >= G.blueBook.length) return;
+  if (!Array.isArray(G.blueBook) || i < 0 || i >= G.blueBook.length || !G.blueBook[i]) return;
   const old = G.blueBook[i].name;
   const name = String(newName || '').trim();
   if (!name) { toast('蓝图名称不能为空'); return; }
