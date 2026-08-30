@@ -341,8 +341,20 @@ function commandSpidertron(tx, ty) {
 }
 
 function updateCursorTile(cx, cy) {
+  // 放置幽灵的光标定位：以鼠标为「整个物品的中心区域」，而非物品左上角所在格。
+  // 选中的是多格建筑（如锅炉 2×3）时，按其当前朝向的占地尺寸（旋转后宽高互换）
+  // 将中心锚定到鼠标位置，再反推左上角格子；1×1 物品与原行为一致。
+  let ox = 0, oy = 0;
+  const st = (typeof selItem === 'function') ? selItem() : null;
+  const bdef = (st && typeof BUILD_DEFS !== 'undefined') ? BUILD_DEFS[st] : null;
+  if (bdef) {
+    let ew = bdef.w, eh = bdef.h;
+    if (bdef.rotSwap && (G.ghostDir % 2 === 1)) { ew = bdef.h; eh = bdef.w; }
+    ox = (ew - 1) / 2;
+    oy = (eh - 1) / 2;
+  }
   const [wx, wy] = screenToWorld(cx, cy);
-  const tx = Math.floor(wx / TILE), ty = Math.floor(wy / TILE);
+  const tx = Math.floor(wx / TILE - ox), ty = Math.floor(wy / TILE - oy);
   G.cursorTile = { tx, ty };
   // 记录最近一次鼠标屏幕坐标，供放置幽灵逻辑判断鼠标是否位于地图画布上
   G.mouseScreen = { x: cx, y: cy };
