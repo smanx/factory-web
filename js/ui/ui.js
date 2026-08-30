@@ -441,6 +441,8 @@ function renderPanel(full) {
     // 配方设备的配方选择面板：先选配方，点右下角「确认」后进入交互面板
     title.textContent = ITEMS[G.panelEnt.type].name + ' · 选择配方';
     body.innerHTML = recipeSelectPanelHtml(G.panelEnt);
+    // 恢复搜索过滤（面板重建会还原 Tab 原始数量，需按已存搜索词重算）
+    applyRcpFilter(G.rcpQ || '');
   } else if (G.panelMode === 'machine' && G.panelEnt) {
     title.textContent = ITEMS[G.panelEnt.type].name;
     // 所有设备的交互面板统一采用组装机设计稿风格（左=玩家背包，右=设备操作面板）
@@ -948,33 +950,76 @@ function applyInvRecipeFilter(q) {
   if (!body) return;
   const ql = (q || '').trim().toLowerCase();
   const activeTab = G.invRecipeTab && CRAFT_TABS.indexOf(G.invRecipeTab) >= 0 ? G.invRecipeTab : 'logistics';
-  // 只统计当前 Tab 内的可见槽
-  let shown = 0;
-  const activeGrid = body.querySelector('#inv-recipes-' + activeTab);
-  if (activeGrid) {
-    activeGrid.querySelectorAll('.craft-slot').forEach(el => {
+  // 过滤所有 Tab 的配方槽（搜索词命中 rsearch 关键字），并隐藏无可见槽的二级分组
+  for (const t of CRAFT_TABS) {
+    const grid = body.querySelector('#inv-recipes-' + t);
+    if (!grid) continue;
+    grid.querySelectorAll('.craft-slot').forEach(el => {
       const hit = !ql || el.dataset.rsearch.includes(ql);
       el.style.display = hit ? '' : 'none';
-      if (hit) shown++;
     });
     // 搜索时隐藏没有任何可见槽位的二级分组（空分组留白不显示）
-    activeGrid.querySelectorAll('.craft-subgroup').forEach(g => {
+    grid.querySelectorAll('.craft-subgroup').forEach(g => {
       g.style.display = g.querySelectorAll('.craft-slot').length &&
-        Array.from(g.querySelectorAll('.craft-slot')).some(el => el.style.display !== 'none') ? '' : 'none';
+        (!ql || Array.from(g.querySelectorAll('.craft-slot')).some(el => el.style.display !== 'none')) ? '' : 'none';
     });
   }
-  // 隐藏其它 Tab 的槽（保持干净），避免跨 Tab 误判
-  for (const t of CRAFT_TABS) {
-    if (t === activeTab) continue;
-    const grid = body.querySelector('#inv-recipes-' + t);
-    if (grid) grid.querySelectorAll('.craft-slot').forEach(el => { el.style.display = ''; });
-    if (grid) grid.querySelectorAll('.craft-subgroup').forEach(g => { g.style.display = ''; });
-  }
+  // 搜索时同步更新 Tab 角标为「当前搜索命中的数量」，并隐藏命中为 0 的 Tab；
+  // 当前激活 Tab 命中 0 时自动切换到第一个仍有结果的 Tab
+  const newActive = updateCraftTabCounts(body, '#inv-recipe-tabs .craft-tab',
+    tab => body.querySelector('#inv-recipes-' + tab), '.craft-slot', ql, activeTab);
+  if (newActive !== activeTab) G.invRecipeTab = newActive;
+  // 空态统计以（可能已切换的）当前激活 Tab 为准
+  const activeGrid = body.querySelector('#inv-recipes-' + newActive);
+  const shown = activeGrid ? Array.from(activeGrid.querySelectorAll('.craft-slot')).filter(el => el.style.display !== 'none').length : 0;
   const emp = document.getElementById('inv-recipe-empty');
   if (emp) {
     emp.textContent = ql ? '没有匹配「' + q.trim() + '」的配方' : '没有匹配的配方';
     emp.style.display = shown ? 'none' : '';
   }
+}
+
+// 搜索后同步分组 Tab 角标：把每个 Tab 的 .cnt 从「该组全部数量」更新为「搜索命中的数量」，
+// 命中为 0 的组整个 Tab 不显示（清空搜索时恢复全部显示与原始数量）。
+// 若当前激活 Tab 命中 0，自动切换到第一个仍有结果的 Tab，并同步按钮高亮与网格显隐。
+// 返回（可能更新后的）激活 Tab。
+// container：Tab 所在容器；tabsSel：Tab 按钮选择器；gridFor(tab)：取该 Tab 的网格容器；
+// slotSel：槽位选择器；ql：小写搜索词；activeTab：当前激活 Tab。
+function updateCraftTabCounts(container, tabsSel, gridFor, slotSel, ql, activeTab) {
+  const btns = Array.from(container.querySelectorAll(tabsSel));
+  btns.forEach(btn => {
+    const grid = gridFor(btn.dataset.tab);
+    if (!grid) return;
+    const c = btn.querySelector('.cnt');
+    if (!ql) {
+      // 无搜索词：完全恢复默认——显示全部 Tab，角标还原为该组全部数量
+      btn.style.display = '';
+      if (c) c.textContent = grid.querySelectorAll(slotSel).length;
+      return;
+    }
+    // 有搜索词：按槽位的 rsearch 关键字统计命中数（各 Tab 统一口径）
+    let hit = 0;
+    grid.querySelectorAll(slotSel).forEach(el => {
+      if ((el.dataset.rsearch || '').includes(ql)) hit++;
+    });
+    // 数量为 0 的组：整个 Tab 不显示
+    btn.style.display = hit ? '' : 'none';
+    if (c) c.textContent = hit;
+  });
+  // 当前激活 Tab 若命中 0 被隐藏，自动切到第一个仍有结果的 Tab
+  let active = activeTab;
+  const activeBtn = btns.find(b => b.dataset.tab === active);
+  if (ql && (!activeBtn || activeBtn.style.display === 'none')) {
+    const next = btns.find(b => b.style.display !== 'none');
+    if (next) active = next.dataset.tab;
+  }
+  // 同步按钮高亮与网格显隐
+  btns.forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === active);
+    const g = gridFor(b.dataset.tab);
+    if (g) g.style.display = (b.dataset.tab === active) ? '' : 'none';
+  });
+  return active;
 }
 
 // 背包「建造设备」列表：按关键字过滤建造设备按钮
@@ -1615,26 +1660,28 @@ function applyRcpFilter(q) {
   if (!body) return;
   const ql = (q || '').trim().toLowerCase();
   const activeTab = G.rcpTab && CRAFT_TABS.indexOf(G.rcpTab) >= 0 ? G.rcpTab : 'logistics';
-  let shown = 0;
-  const activeGrid = body.querySelector('#rcp-grid-' + activeTab);
-  if (activeGrid) {
-    activeGrid.querySelectorAll('.rcp-slot').forEach(el => {
+  // 过滤所有 Tab 的配方槽（搜索词命中 rsearch 关键字），并隐藏无可见槽的二级分组
+  for (const t of CRAFT_TABS) {
+    const grid = body.querySelector('#rcp-grid-' + t);
+    if (!grid) continue;
+    grid.querySelectorAll('.rcp-slot').forEach(el => {
       const hit = !ql || (el.dataset.rsearch || '').includes(ql);
       el.style.display = hit ? '' : 'none';
-      if (hit) shown++;
     });
     // 搜索时隐藏没有任何可见槽位的二级分组（空分组留白不显示）
-    activeGrid.querySelectorAll('.craft-subgroup').forEach(g => {
+    grid.querySelectorAll('.craft-subgroup').forEach(g => {
       g.style.display = g.querySelectorAll('.rcp-slot').length &&
-        Array.from(g.querySelectorAll('.rcp-slot')).some(el => el.style.display !== 'none') ? '' : 'none';
+        (!ql || Array.from(g.querySelectorAll('.rcp-slot')).some(el => el.style.display !== 'none')) ? '' : 'none';
     });
   }
-  for (const t of CRAFT_TABS) {
-    if (t === activeTab) continue;
-    const grid = body.querySelector('#rcp-grid-' + t);
-    if (grid) grid.querySelectorAll('.rcp-slot').forEach(el => { el.style.display = ''; });
-    if (grid) grid.querySelectorAll('.craft-subgroup').forEach(g => { g.style.display = ''; });
-  }
+  // 搜索时同步更新 Tab 角标为「当前搜索命中的数量」，并隐藏命中为 0 的 Tab；
+  // 当前激活 Tab 命中 0 时自动切换到第一个仍有结果的 Tab
+  const newRcpTab = updateCraftTabCounts(body, '#rcp-tabs .craft-tab',
+    tab => body.querySelector('#rcp-grid-' + tab), '.rcp-slot', ql, activeTab);
+  if (newRcpTab !== activeTab) G.rcpTab = newRcpTab;
+  // 空态统计以（可能已切换的）当前激活 Tab 为准
+  const activeGrid = body.querySelector('#rcp-grid-' + newRcpTab);
+  const shown = activeGrid ? Array.from(activeGrid.querySelectorAll('.rcp-slot')).filter(el => el.style.display !== 'none').length : 0;
   // 空状态提示：当前 Tab 无匹配配方时显示
   const emp = body.querySelector('#rcp-empty');
   if (emp) {

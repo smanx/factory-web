@@ -1256,6 +1256,16 @@ function applyFltSearch(q) {
     }
     shown = cnt;
   }
+  // 搜索时同步更新 Tab 角标为「当前搜索命中的数量」，并隐藏命中为 0 的 Tab
+  // （若当前激活 Tab 命中 0，updateCraftTabCounts 会自动切换到第一个仍有结果的 Tab）
+  const modalBody = document.getElementById('hud-modal-body');
+  if (modalBody) {
+    _fltTab = updateCraftTabCounts(modalBody, '#flt-tabs .craft-tab',
+      tab => modalBody.querySelector('.flt-grid[data-tab="' + tab + '"]'), '.flt-item', ql, _fltTab);
+    // 空态统计以（可能已切换的）当前激活 Tab 为准
+    const activeGrid = modalBody.querySelector('.flt-grid[data-tab="' + _fltTab + '"]');
+    shown = activeGrid ? Array.from(activeGrid.querySelectorAll('.flt-item')).filter(el => el.style.display !== 'none').length : 0;
+  }
   const emp = document.getElementById('flt-empty');
   if (emp) {
     emp.textContent = ql ? '没有匹配「' + q.trim() + '」的物品' : '该分类暂无物品';
