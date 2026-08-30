@@ -14,6 +14,7 @@ var G = {
   buckets: new Map(),   // 区块（桶）空间索引：bucketKey -> Set<Entity>（见 core/entity.js）
   inv: new Map(),
   invSlots: [],          // 玩家手动摆放的背包槽位：数组元素为物品 id（数组下标即格子下标）；自动放入的物品不在此数组，排列时自动排到手动槽之后
+  _clickMoveFrom: null,  // 背包点击式移动：当前“拿起”的背包格下标（null=未拿起）；点空格落位/点物品格交换后清空
   logiRequest: {},   // 个人物流请求：item -> 目标数量（由物流机器人送达）
   trashSlots: {},    // 个人垃圾桶（对齐《异星工厂》Trash slots）：item -> true（标记后由物流机器人带走存回网络）
   logiEnabled: true,      // 「背包物流」总开关：关闭后机器人不再送达个人请求物品

@@ -109,6 +109,7 @@ function bindInput() {
         // 修复材料放置幽灵按 Q 无反应（此前材料会被“丢弃到地面”而非取消幽灵）。
         G.sel = -1;
         G.quickSel = null;
+        G._clickMoveFrom = null;
         refreshHotbar();
       } else {
         const e = entAt(G.cursorTile.tx, G.cursorTile.ty);

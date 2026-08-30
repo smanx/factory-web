@@ -395,6 +395,7 @@ function closePanel(hide = true) {
   G.invRecipeQ = '';
   G.bbDetail = null;
   G.recipeSel = null;
+  G._clickMoveFrom = null;
   G.rcpTab = null;
   G.rcpQ = '';
   if (hide) document.getElementById('panel').style.display = 'none';
