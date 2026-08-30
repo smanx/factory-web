@@ -891,7 +891,7 @@ class SteamTurbine extends Entity {
 //   ③ 汽缸外壳（银灰渐变 + 焊接筋板）+ 观察窗（3 级叶轮旋转 + 青色蒸汽流）
 //   ④ 下法兰 + 联轴器  ⑤ 发电机（深青蓝 + 铜绕组 + LCD 功率读数 + 状态 LED）
 //   ⑥ 排汽短管（对接南向汽口）  ⑦ 右侧旁通蒸汽管（连通进汽室与排汽口，解释双汽口串接）
-//   ⑧ 基座（防振垫）  ⑨ 外框 + 顶部高光弧
+//   ⑧ 基座（防振垫）  ⑨ 外框
 function drawSteamTurbine(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const w = TILE * e.w, h = TILE * e.h;
@@ -994,8 +994,6 @@ function drawSteamTurbine(ctx, e, gx, gy, dir, alpha) {
   rr(ctx, px + 16, py + 10, 64, 30, 7); ctx.fill();
   ctx.strokeStyle = '#26313c'; ctx.lineWidth = 2;
   rr(ctx, px + 16, py + 10, 64, 30, 7); ctx.stroke();
-  ctx.strokeStyle = 'rgba(230,240,248,.35)'; ctx.lineWidth = 1.5;   // 顶部圆弧高光
-  ctx.beginPath(); ctx.arc(cx, py + 12, 26, Math.PI * 1.08, Math.PI * 1.92); ctx.stroke();
   // 压力表（指针随汽压摆动，运行中轻微抖动）
   const gx0 = px + 30, gy0 = py + 24, gr = 6.5;
   ctx.fillStyle = '#e9eef2';
@@ -1195,14 +1193,10 @@ function drawSteamTurbine(ctx, e, gx, gy, dir, alpha) {
     }
   }
 
-  // 角螺栓 + ⑨ 外框 + 顶部高光弧
+  // 角螺栓 + ⑨ 外框
   bolt(px + 21, py + 15); bolt(px + 75, py + 15);
   ctx.strokeStyle = '#26313c'; ctx.lineWidth = 2.4;
   rr(ctx, px + 3, py + 3, vw - 6, vh - 6, 9); ctx.stroke();
-  ctx.strokeStyle = 'rgba(230,240,248,.2)'; ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.arc(cx, py + 5, vw * 0.34, Math.PI * 1.06, Math.PI * 1.94);
-  ctx.stroke();
 
   ctx.restore();
 
