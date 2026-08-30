@@ -34,7 +34,9 @@ const probe = src + "\n;globalThis.__GD=GAME_DATA;globalThis.__ppe=POWER_PER_ENG
   "globalThis.__ppt=POWER_PER_TURBINE;globalThis.__esr=ENGINE_STEAM_RATE;" +
   "globalThis.__tsr=TURBINE_STEAM_RATE;globalThis.__pr=PUMP_RATE;" +
   "globalThis.__cp=CENTRIFUGE_POWER;globalThis.__btm=BOILER_TEMP_MAX;globalThis.__bwr=BOILER_WATER_RATE;" +
-  "globalThis.__hxsh=HEAT_EXCHANGER_SPECIFIC_HEAT;globalThis.__hxmt=HEAT_EXCHANGER_MAX_TRANSFER;globalThis.__hxmwt=HEAT_EXCHANGER_MIN_WORK_TEMP;";
+  "globalThis.__esr=ENGINE_STEAM_RATE;globalThis.__fus=FLUID_UNIT_SCALE;" +
+  "globalThis.__hxsh=HEAT_EXCHANGER_SPECIFIC_HEAT;globalThis.__hxmt=HEAT_EXCHANGER_MAX_TRANSFER;globalThis.__hxmwt=HEAT_EXCHANGER_MIN_WORK_TEMP;" +
+  "globalThis.__hxeps=HEAT_EXCHANGER_ENERGY_PER_STEAM;";
 vm.runInContext(probe, sandbox, { filename: 'data.js' });
 const GAME_DATA = sandbox.__GD;
 
@@ -68,9 +70,31 @@ console.log('\n【锅炉→蒸汽机 产能配比】');
 const ENGINE_STEAM_RATE = sandbox.__esr;
 const BOILER_WATER_RATE = sandbox.__bwr;
 check('锅炉:蒸汽机 配比 1:2（1.2/0.6）', Math.round(BOILER_WATER_RATE / ENGINE_STEAM_RATE * 10) / 10, 2, 0.01);
-// 汽轮机耗汽率（核能简化模型，游戏以整数/s 计量，官方 60/s 为抽象单位）
+// 汽轮机耗汽率：官方 steam-turbine fluid_usage_per_tick=1 → 60 官方单位/s ÷ 项目刻度 50 = 1.2 项目单位/s。
+// 单源推导（GAME_DATA.steamPower.turbineRate ÷ FLUID_UNIT_SCALE），与锅炉/蒸汽机同刻度。
 const TURBINE_STEAM_RATE = sandbox.__tsr;
-console.log('  ℹ 汽轮机耗汽率（简化模型）=' + TURBINE_STEAM_RATE + '/s（官方抽象 60/s，核能链路独立标定，不硬比数值）');
+const FLUID_UNIT_SCALE = sandbox.__fus;
+check('汽轮机耗汽率(项目单位/s)=官方60÷刻度50', Math.round(TURBINE_STEAM_RATE * 100) / 100,
+  Math.round((GAME_DATA.steamPower?.turbineRate ?? 60) / FLUID_UNIT_SCALE * 100) / 100, 0.001);
+check('汽轮机耗汽率(项目单位/s)=官方1.2', Math.round(TURBINE_STEAM_RATE * 100) / 100, 1.2, 0.001);
+
+console.log('\n【热交换器→汽轮机 产能配比】');
+// 官方：热交换器满负荷 10MW，每官方单位蒸汽热值 (500-15)°C×0.2kJ=0.097MJ → 产汽 ≈103.09 官方单位/s；
+// 汽轮机耗汽 60 官方单位/s → 配比 1.718（约 1 台热交换器带 1.72 台汽轮机）。
+// 项目刻度统一：热交换器产汽 = 10MW ÷ 4.85MJ/项目单位 ≈ 2.062 项目单位/s；汽轮机耗汽 1.2/s。
+const HX_ENERGY_PER_STEAM = sandbox.__hxeps;
+check('每单位蒸汽热值(MJ/项目单位)=官方0.097×50', Math.round(HX_ENERGY_PER_STEAM * 100) / 100, 4.85, 0.001);
+const hxSteamRate = (GAME_DATA.steamPower?.heatExchangerSteamRate ?? 103.09) / FLUID_UNIT_SCALE; // 项目单位/s
+check('热交换器产汽率(项目单位/s)=官方103.09÷50', Math.round(hxSteamRate * 100) / 100, Math.round(103.09 / 50 * 100) / 100, 0.001);
+check('热交换器:汽轮机 配比=官方1.718', Math.round(hxSteamRate / TURBINE_STEAM_RATE * 1000) / 1000, 1.718, 0.001);
+// 能量守恒：汽轮机耗汽热功率 = 输出电功率（官方 effectivity=1，输入输出严格相等）
+const TURBINE_POWER = sandbox.__ppt;
+check('汽轮机能量守恒: 耗汽热功率=输出功率(MW)', Math.round(TURBINE_STEAM_RATE * HX_ENERGY_PER_STEAM * 100) / 100,
+  Math.round(TURBINE_POWER / 1000 * 100) / 100, 0.001);
+// 反应堆→热交换器→汽轮机 整链官方配比
+const REACTOR_HEAT_RATE = (sandbox.__GD && sandbox.__GD.heat && sandbox.__GD.heat.reactorHeatRate) || 40;
+check('反应堆:热交换器 配比=官方1:4', Math.round(REACTOR_HEAT_RATE / (GAME_DATA.heat?.heatExchangerPower ?? 10) * 100) / 100, 4, 0.001);
+check('1 反应堆可带汽轮机=官方6.87台', Math.round(REACTOR_HEAT_RATE / (TURBINE_STEAM_RATE * HX_ENERGY_PER_STEAM) * 100) / 100, 6.87, 0.001);
 
 console.log('\n【抽水机产水率】');
 const PUMP_RATE = sandbox.__pr;

@@ -1286,7 +1286,7 @@ function drawSteamTurbine(ctx, e, gx, gy, dir, alpha) {
 function turbinePanelHtml(e) {
   return row('功率输出', '<span class="dim"></span>', 'power') +
     row('蒸汽缓存', '<span class="dim"></span>', 'steam') +
-    '<div class="dim">汽轮机：上/下两端中部汽口接入高温蒸汽（来自热交换器上边(北)出汽口/蒸汽管道），以远高于蒸汽机的功率发电。核能技术解锁。</div>';
+    '<div class="dim">汽轮机：上/下两端中部汽口接入高温蒸汽（来自热交换器上边(北)出汽口/蒸汽管道），以远高于蒸汽机的功率发电。满功率耗汽 ' + TURBINE_STEAM_RATE + ' 单位/s（官方 60/s÷50 刻度），1 台热交换器约带 ' + Math.round((GAME_DATA.steamPower?.heatExchangerSteamRate ?? 103.09) / (GAME_DATA.steamPower?.turbineRate ?? 60) * 100) / 100 + ' 台汽轮机（官方 1.718）。核能技术解锁。</div>';
 }
 function turbinePanelLive(e, api) {
   api.set('power', '+' + (e.powerOut || 0).toFixed(0) + ' kW');
@@ -1899,7 +1899,7 @@ function heatExchangerPanelHtml(e) {
   return row('温度', '<span class="dim"></span>', 'heat') +
     row('水', '<span class="dim"></span>', 'water') +
     row('蒸汽缓存', '<span class="dim"></span>', 'steam') +
-    '<div class="dim">热交换器：下边(南)黄色热交换口接收导热管热量（导热管/反应堆须对准该接口格，接在其他位置不传热），左右两侧两个蓝口接水管进水（互通，多台水口可直接对口串接），上边(北)中间白口送出高温蒸汽到汽轮机。满负荷耗热 10MW（官方 energy_consumption），1 反应堆可带 4 台。核能技术解锁。</div>' +
+    '<div class="dim">热交换器：下边(南)黄色热交换口接收导热管热量（导热管/反应堆须对准该接口格，接在其他位置不传热），左右两侧两个蓝口接水管进水（互通，多台水口可直接对口串接），上边(北)中间白口送出高温蒸汽到汽轮机。满负荷耗热 ' + HEAT_EXCHANGER_POWER + 'MW（官方 energy_consumption），产汽约 ' + Math.round((GAME_DATA.steamPower?.heatExchangerSteamRate ?? 103.09) / FLUID_UNIT_SCALE * 100) / 100 + ' 单位/s；1 台热交换器约带 ' + Math.round((GAME_DATA.steamPower?.heatExchangerSteamRate ?? 103.09) / (GAME_DATA.steamPower?.turbineRate ?? 60) * 100) / 100 + ' 台汽轮机（官方 1.718），1 反应堆可带 4 台。核能技术解锁。</div>' +
     '<div class="dim">🔗 标准接法：反应堆→(导热管对准热交换口)→热交换器（接水管）→(蒸汽管)→汽轮机</div>';
 }
 function heatExchangerPanelLive(e, api) {
