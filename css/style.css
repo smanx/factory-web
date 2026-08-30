@@ -1106,6 +1106,32 @@ html, body {
   transform: translateY(0);
   box-shadow: 0 1px 0 rgba(0, 0, 0, .3);
 }
+/* 背景地图未加载完成前：主菜单按钮置灰、禁用点击（见 menu.js 背景就绪后恢复） */
+.start-btn:disabled {
+  color: #8a9a8e;
+  cursor: not-allowed;
+  opacity: .55;
+  border-color: rgba(90, 120, 102, .35);
+  background: linear-gradient(180deg, rgba(40, 52, 44, .7), rgba(28, 36, 30, .7));
+  box-shadow: 0 2px 0 rgba(0, 0, 0, .25), inset 0 1px 0 rgba(255, 255, 255, .04);
+  transform: none;
+}
+.start-btn:disabled:hover {
+  background: linear-gradient(180deg, rgba(40, 52, 44, .7), rgba(28, 36, 30, .7));
+  border-color: rgba(90, 120, 102, .35);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, .25);
+  transform: none;
+}
+.start-btn.primary:disabled {
+  background: linear-gradient(180deg, rgba(46, 74, 52, .7), rgba(30, 52, 36, .7));
+  border-color: rgba(111, 209, 126, .35);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, .25);
+}
+.start-btn.continue:disabled {
+  background: linear-gradient(180deg, rgba(120, 96, 38, .7), rgba(92, 70, 26, .7));
+  border-color: rgba(255, 214, 128, .35);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, .25);
+}
 .start-btn.primary {
   background: linear-gradient(180deg, rgba(58, 116, 69, .95), rgba(35, 83, 48, .95));
   border-color: rgba(111, 209, 126, .9);
