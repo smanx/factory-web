@@ -35,6 +35,8 @@
       G.world = prevWorld;
       G.worldConfig = prevWC;
     }
+    // 背景地图绘制成功：解除开始菜单按钮的禁用（此前置灰、不可点击）
+    enableStartButtons();
     return true;
   }
 
@@ -70,6 +72,23 @@
 
   // 暴露给外部（main.js 返回菜单时）刷新背景，进入主菜单后每次随机生成新地图
   window.refreshStartBackground = generateStartBackground;
+
+  // 背景地图是否已加载完成（首次成功绘制开始菜单背景地图后置为 true）
+  let backgroundReady = false;
+  // 开始菜单按钮 id 列表：背景地图加载完成前全部置灰禁用
+  const START_BUTTON_IDS = ['btn-continue-game', 'btn-new-game', 'btn-continue', 'btn-start-ach', 'btn-start-vers'];
+  function setStartButtonsDisabled(disabled) {
+    for (const id of START_BUTTON_IDS) {
+      const btn = document.getElementById(id);
+      if (btn) btn.disabled = disabled;
+    }
+  }
+  // 背景地图加载完成：启用所有开始菜单按钮（幂等）
+  function enableStartButtons() {
+    if (backgroundReady) return;
+    backgroundReady = true;
+    setStartButtonsDisabled(false);
+  }
 
   function initStartMenu() {
     const screen = document.getElementById('start-screen');
@@ -242,10 +261,17 @@
     let bgReady = false;
     try { bgReady = generateStartBackground(); } catch (e) { bgReady = false; }
     if (!bgReady) {
+      // 关键脚本未就绪时背景暂不可绘制：按钮保持置灰禁用，
+      // 延迟到 window load（全部脚本就绪）后补渲染并解除禁用。
       window.addEventListener('load', function () {
         try { generateStartBackground(); } catch (e) { /* 忽略 */ }
       });
     }
+    // 兜底：若 window load 后背景仍未绘制成功（如地图数据异常），
+    // 不应让用户永远卡在不可点击的菜单，故强制解除禁用。
+    window.addEventListener('load', function () {
+      setTimeout(function () { enableStartButtons(); }, 0);
+    });
     // 窗口尺寸变化时重绘背景，保持铺满
     window.addEventListener('resize', function () { generateStartBackground(); });
   }
