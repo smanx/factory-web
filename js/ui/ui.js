@@ -857,7 +857,7 @@ function htmlCraft() {
   const q = (G.invRecipeQ || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   h += '<input id="inv-recipe-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off" value="' + q + '">';
   // 制作栏 5 个 Tab（数据单源归类，见 GAME_DATA.itemGroup）
-  const activeTab = G.invRecipeTab && CRAFT_TABS.indexOf(G.invRecipeTab) >= 0 ? G.invRecipeTab : 'logistics';
+  let activeTab = G.invRecipeTab && CRAFT_TABS.indexOf(G.invRecipeTab) >= 0 ? G.invRecipeTab : 'logistics';
   const perTab = { logistics: [], production: [], 'intermediate-products': [], space: [], combat: [] };
   // 组装机配方（含化工厂/炼油厂以外的普通配方）
   for (const rid in RECIPES) {
@@ -880,10 +880,16 @@ function htmlCraft() {
     perTab[tab] = perTab[tab] || [];
     perTab[tab].push({ rid, outId });
   }
+  // 激活分类没有任何配方时回退到第一个非空分类（空分类 Tab 不显示）
+  if (!(perTab[activeTab] && perTab[activeTab].length)) {
+    activeTab = CRAFT_TABS.find(t => perTab[t] && perTab[t].length) || 'logistics';
+    G.invRecipeTab = activeTab;
+  }
   // Tab 栏
   h += '<div class="craft-tabs" id="inv-recipe-tabs">';
   for (const tab of CRAFT_TABS) {
     const n = (perTab[tab] || []).length;
+    if (!n) continue; // 该分类没有任何配方的 Tab 不显示
     const on = tab === activeTab ? ' active' : '';
     const label = CRAFT_TAB_LABEL[tab];
     h += '<button type="button" class="craft-tab' + on + '" data-tab="' + tab + '">' +
@@ -992,9 +998,10 @@ function updateCraftTabCounts(container, tabsSel, gridFor, slotSel, ql, activeTa
     if (!grid) return;
     const c = btn.querySelector('.cnt');
     if (!ql) {
-      // 无搜索词：完全恢复默认——显示全部 Tab，角标还原为该组全部数量
-      btn.style.display = '';
-      if (c) c.textContent = grid.querySelectorAll(slotSel).length;
+      // 无搜索词：角标还原为该组全部数量；数量为 0 的分类 Tab 保持不显示
+      const total = grid.querySelectorAll(slotSel).length;
+      btn.style.display = total ? '' : 'none';
+      if (c) c.textContent = total;
       return;
     }
     // 有搜索词：按槽位的 rsearch 关键字统计命中数（各 Tab 统一口径）
@@ -1009,7 +1016,7 @@ function updateCraftTabCounts(container, tabsSel, gridFor, slotSel, ql, activeTa
   // 当前激活 Tab 若命中 0 被隐藏，自动切到第一个仍有结果的 Tab
   let active = activeTab;
   const activeBtn = btns.find(b => b.dataset.tab === active);
-  if (ql && (!activeBtn || activeBtn.style.display === 'none')) {
+  if (!activeBtn || activeBtn.style.display === 'none') {
     const next = btns.find(b => b.style.display !== 'none');
     if (next) active = next.dataset.tab;
   }
@@ -1456,7 +1463,7 @@ function recipeMainIcon(rec, info, rid) {
 // 配方选择面板：5 个 Tab 分类（参考背包「制作」面板）+ 右下角确认按钮
 function recipeSelectPanelHtml(e) {
   const info = recipeDeviceInfo(e);
-  const activeTab = G.rcpTab && CRAFT_TABS.indexOf(G.rcpTab) >= 0 ? G.rcpTab : 'logistics';
+  let activeTab = G.rcpTab && CRAFT_TABS.indexOf(G.rcpTab) >= 0 ? G.rcpTab : 'logistics';
   const perTab = { logistics: [], production: [], 'intermediate-products': [], space: [], combat: [] };
   for (const rid of info.list) {
     const r = info.getRec(rid);
@@ -1467,6 +1474,11 @@ function recipeSelectPanelHtml(e) {
     perTab[tab] = perTab[tab] || [];
     perTab[tab].push({ rid, r, outId });
   }
+  // 激活分类没有任何配方时回退到第一个非空分类（空分类 Tab 不显示）
+  if (!(perTab[activeTab] && perTab[activeTab].length)) {
+    activeTab = CRAFT_TABS.find(t => perTab[t] && perTab[t].length) || 'logistics';
+    G.rcpTab = activeTab;
+  }
   let h = '<div class="rcp-scroll">';
   h += '<div class="sec">点击选择配方（勾选后点右下角「确认」设置）</div>';
   h += '<input id="rcp-search" class="inv-search" type="text" placeholder="搜索配方（输入物品名称）" autocomplete="off" value="' + (G.rcpQ || '') + '">';
@@ -1474,6 +1486,7 @@ function recipeSelectPanelHtml(e) {
   h += '<div class="craft-tabs" id="rcp-tabs">';
   for (const tab of CRAFT_TABS) {
     const n = (perTab[tab] || []).length;
+    if (!n) continue; // 该分类没有任何配方的 Tab 不显示
     const on = tab === activeTab ? ' active' : '';
     const label = CRAFT_TAB_LABEL[tab];
     h += '<button type="button" class="craft-tab' + on + '" data-tab="' + tab + '">' +

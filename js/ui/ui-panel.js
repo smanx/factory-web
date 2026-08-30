@@ -1150,6 +1150,10 @@ function filterChooserGroups() {
 
 function filterChooserPanelHtml() {
   const perTab = filterChooserGroups();
+  // 当前分类没有任何可选物品时，回退到第一个非空分类（空分类 Tab 不显示）
+  if (!(_fltTab && perTab[_fltTab] && perTab[_fltTab].length)) {
+    _fltTab = CRAFT_TABS.find(t => perTab[t] && perTab[t].length) || 'logistics';
+  }
   const e = _fltCtx ? _fltCtx.e : null;
   let h = '<div class="flt-modal">';
   h += '<input id="flt-search" class="inv-search" type="text" placeholder="搜索物品（输入名称）" autocomplete="off" value="' + _fltQ + '">';
@@ -1157,6 +1161,7 @@ function filterChooserPanelHtml() {
   h += '<div class="craft-tabs" id="flt-tabs">';
   for (const tab of CRAFT_TABS) {
     const n = (perTab[tab] || []).length;
+    if (!n) continue; // 该分类没有可筛选物品的 Tab 不显示
     const on = tab === _fltTab ? ' active' : '';
     const label = CRAFT_TAB_LABEL[tab];
     h += '<button type="button" class="craft-tab' + on + '" data-act="flt-tab" data-tab="' + tab + '">' +
