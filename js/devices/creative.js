@@ -255,14 +255,11 @@ function drawVoidPipe(ctx, e, gx, gy, dir, alpha) {
 }
 
 // ===== 创造箱面板：选择要生成的物品 =====
-// 物品选择复用创造设备通用分组选择器（openCreativeItemPicker）：5 大分类 Tab + 二级分组 + 搜索 + 图标 tooltip
+// 物品选择列表内嵌于面板右侧（creativePickerHtml）：5 大分类 Tab + 二级分组 + 搜索 + 图标 tooltip
 function creativeChestPanelHtml(e) {
   let h = '<div class="dim">创造箱（测试）：无限生成选中的物品，机械臂/玩家可无限取走。当前：' +
     (e.selected ? chip(e.selected) : '<span class="dim">未选择</span>') + '</div>';
-  h += '<div class="sec">选择要生成的物品</div>';
-  h += '<button data-action="csel-open" class="rcbtn">' + (e.selected
-    ? '<img src="' + iconDataURL(e.selected) + '">' + ITEMS[e.selected].name + '（点击重新选择）'
-    : '📎 打开物品选择列表') + '</button>';
+  h += creativePickerHtml(e, 'item');
   if (e.selected) h += '<button data-action="csel-clear">停止生成</button>';
   return h;
 }
@@ -271,8 +268,6 @@ function creativeChestPanelLive(e, api) {
   else api.status('未选择生成物，等待选择', 'warn');
 }
 function creativeChestOnAction(act, btn) {
-  if (act === 'csel-open') { if (typeof openCreativeItemPicker === 'function') openCreativeItemPicker(G.panelEnt, 'item'); return true; }
-  if (act === 'csel') { if (G.panelEnt instanceof CreativeChest) G.panelEnt.selected = btn.dataset.id; return true; }
   if (act === 'csel-clear') { if (G.panelEnt instanceof CreativeChest) G.panelEnt.selected = null; return true; }
   return false;
 }
@@ -289,14 +284,11 @@ function voidChestPanelLive(e, api) {
 }
 function voidChestTip() { return '虚空箱：无限销毁物品'; }
 
-// ===== 创造管道面板：选择要生成的流体（复用通用分组选择器，流体按 5 大分类分组）=====
+// ===== 创造管道面板：选择要生成的流体（内嵌分组选择器，流体按 5 大分类分组）=====
 function creativePipePanelHtml(e) {
   let h = '<div class="dim">创造管道（测试）：无限生成选中的流体，源源不断灌入相邻管道/储液罐。当前：' +
     (e.selected ? chip(e.selected) : '<span class="dim">未选择</span>') + '</div>';
-  h += '<div class="sec">选择要生成的流体</div>';
-  h += '<button data-action="psel-open" class="rcbtn">' + (e.selected
-    ? '<img src="' + iconDataURL(e.selected) + '">' + ITEMS[e.selected].name + '（点击重新选择）'
-    : '📎 打开流体选择列表') + '</button>';
+  h += creativePickerHtml(e, 'fluid');
   if (e.selected) h += '<button data-action="psel-clear">停止生成</button>';
   return h;
 }
@@ -305,8 +297,6 @@ function creativePipePanelLive(e, api) {
   else api.status('未选择流体，等待选择', 'warn');
 }
 function creativePipeOnAction(act, btn) {
-  if (act === 'psel-open') { if (typeof openCreativeItemPicker === 'function') openCreativeItemPicker(G.panelEnt, 'fluid'); return true; }
-  if (act === 'psel') { if (G.panelEnt instanceof CreativePipe) G.panelEnt.selected = btn.dataset.id; return true; }
   if (act === 'psel-clear') { if (G.panelEnt instanceof CreativePipe) G.panelEnt.selected = null; return true; }
   return false;
 }
@@ -420,14 +410,11 @@ class VoidBelt extends Belt {
   contents() { return [[this.type, 1]]; }
 }
 
-// ===== 创造传送带面板：选择要生成的物品（复用通用分组选择器）=====
+// ===== 创造传送带面板：选择要生成的物品（内嵌分组选择器）=====
 function creativeBeltPanelHtml(e) {
   let h = '<div class="dim">创造传送带（测试）：无限生成选中的物品，随带向前流动，机械臂/玩家可无限取走。当前：' +
     (e.selected ? chip(e.selected) : '<span class="dim">未选择</span>') + '</div>';
-  h += '<div class="sec">选择要生成的物品</div>';
-  h += '<button data-action="cbsel-open" class="rcbtn">' + (e.selected
-    ? '<img src="' + iconDataURL(e.selected) + '">' + ITEMS[e.selected].name + '（点击重新选择）'
-    : '📎 打开物品选择列表') + '</button>';
+  h += creativePickerHtml(e, 'item');
   if (e.selected) h += '<button data-action="cbsel-clear">停止生成</button>';
   return h;
 }
@@ -436,8 +423,6 @@ function creativeBeltPanelLive(e, api) {
   else api.status('未选择生成物，等待选择', 'warn');
 }
 function creativeBeltOnAction(act, btn) {
-  if (act === 'cbsel-open') { if (typeof openCreativeItemPicker === 'function') openCreativeItemPicker(G.panelEnt, 'item'); return true; }
-  if (act === 'cbsel') { if (G.panelEnt instanceof CreativeBelt) G.panelEnt.selected = btn.dataset.id; return true; }
   if (act === 'cbsel-clear') { if (G.panelEnt instanceof CreativeBelt) G.panelEnt.selected = null; return true; }
   return false;
 }

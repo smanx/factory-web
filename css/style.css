@@ -3176,3 +3176,10 @@ html, body {
    外壳中的进度条是面板直接子元素（非 asm3-flow 内的 flex 行），需限制不纵向拉伸。 */
 .asm3-panel > .asm3-prog { flex: 0 0 auto; align-self: stretch; }
 .asm3-panel > .asm3-prog .bar { width: 100%; }
+
+/* ===== 创造设备内嵌物品/流体选择器（设备面板右侧）=====
+   结构与机械臂筛选弹窗同款（flt-subgroup/flt-item 固定 10 列网格），但内嵌于
+   设备面板右栏而非弹窗：右栏默认 430px 宽恰好容纳 10 列网格（376px），无需加宽。 */
+.cip-embed { min-width: 0; }
+.cip-embed #cip-tabs .craft-tab { flex: 0 0 auto; }
+.cip-embed #cip-empty { padding: 6px 0; }

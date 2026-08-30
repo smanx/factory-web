@@ -87,7 +87,7 @@ function initPanelEvents() {
         if (nm) blueBookRename(G.bbDetail, nm);
       }
     } else if (id === 'cip-search') {
-      // 创造设备通用选择器（#hud-modal 内输入框不在 panel-body，正常不会走到这里，兜底）
+      // 创造设备内嵌物品/流体选择器：面板右栏内搜索过滤
       if (typeof applyCipSearch === 'function') applyCipSearch(v);
     } else if (target && target.matches && target.matches('[data-stat-hist-filter]')) {
       applyStatsHistFilter(v);
