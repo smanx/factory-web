@@ -322,9 +322,14 @@ function drawGhost(ctx) {
   // 幽灵需显示在背包面板/底部工具栏等所有界面上方：仅需存在选中物品与鼠标所在格，不再要求 cursorTile 落在主画布上（面板/工具栏上由 window 级 mousemove 持续更新）。
   if (!buildActive() || !G.cursorTile) return;
   const type = selItem();
-  // 蓝图物品（blueprint#n）：预览由 drawBlueprintOverlay 的 paste 分支渲染，
-  // 但 empty（空蓝图）仍走下方图标幽灵兜底，故这里解析基础 id 保证不提前 return。
+  // 蓝图物品（blueprint / blueprint#n）：鼠标在地图上时直接渲染蓝图内容放置幽灵
+  // （变换后的建筑半透明实体 + 可放置性覆盖框，与粘贴预览一致），
+  // 不再只显示一个蓝图图标。drawBlueprintItemGhost 返回 true 表示已处理。
   const bpItemId = (typeof isBlueprintItem === 'function') ? isBlueprintItem(type) : null;
+  if (bpItemId && typeof drawBlueprintItemGhost === 'function') {
+    drawBlueprintItemGhost(g);
+    return;
+  }
   const iconId = bpItemId ? 'blueprint' : type;
   if (!type || (!ITEMS[type] && !bpItemId)) return;
   const def = BUILD_DEFS[iconId];

@@ -308,6 +308,30 @@ function captureBlueprint() {
   toast('蓝图已复制 ' + ents.length + ' 个建筑，点击空白处粘贴（R旋转，V/H翻转，右键取消）');
 }
 
+// ===== 手持蓝图物品的地图放置幽灵 =====
+// 选中蓝图物品（blueprint / blueprint#n）且鼠标悬停在地图上时，实时预览蓝图内容：
+// 与粘贴模式（drawBlueprintOverlay）同款渲染——变换后的每个建筑绘制半透明实体幽灵，
+// 附带绿/红可放置性覆盖框。返回 true 表示本帧已处理幽灵绘制（调用方跳过默认图标幽灵）。
+function drawBlueprintItemGhost(g) {
+  if (!G || !G.cursorTile || typeof selItem !== 'function') return false;
+  const type = selItem();
+  if (!isBlueprintItem(type)) return false;
+  if (!mouseOverMap()) return true;   // 手持蓝图但鼠标在 UI 上：不绘制，避免与图标幽灵叠加
+  const bp = bpDataOfItem(type);
+  if (!bp || !bp.ents || !bp.ents.length) return true;   // 空蓝图：不显示预览
+  // 以背包蓝图数据构造临时粘贴缓冲（不改动 G.blueprint，避免影响当前粘贴状态）
+  const tmpBp = { name: bp.name, minX: bp.minX, minY: bp.minY, ents: bp.ents, tiles: bp.tiles };
+  const savedBp = G.blueprint, savedMode = G.blueMode;
+  G.blueprint = tmpBp;
+  try {
+    drawBlueprintGhostAt(g, G.cursorTile.tx, G.cursorTile.ty);
+  } finally {
+    G.blueprint = savedBp;
+    G.blueMode = savedMode;
+  }
+  return true;
+}
+
 // ===== 蓝图变换（粘贴时 R 旋转 / V、H 翻转，对齐《异星工厂》）=====
 // 计算实体在蓝图中占用的宽高（rotSwap 设备随朝向交换宽高）
 function blueprintFootprint(s) {
@@ -396,6 +420,35 @@ function applyBlueprintTransform() {
   }
   const bb = blueprintBounds(ents);
   return { ents, tiles, minX: bb.minX, minY: bb.minY };
+}
+
+// 在指定瓦片位置绘制蓝图放置幽灵（供粘贴预览与手持蓝图物品预览共用）。
+// 以「变换后蓝图包围盒中心」对准 (tx,ty)（与 updateCursorTile 的蓝图锚点一致）：
+// 绘制每个建筑的半透明实体幽灵 + 绿/红可放置性覆盖框。
+function drawBlueprintGhostAt(g, tx, ty) {
+  if (!g || tx === undefined || ty === undefined) return;
+  const bp = applyBlueprintTransform();
+  const ox = tx - bp.minX;
+  const oy = ty - bp.minY;
+  for (const s of bp.ents) {
+    const cls = ENT_CLASSES[s.type];
+    if (!cls) continue;
+    const nx = s.x + ox, ny = s.y + oy;
+    const tmp = cls.restore(Object.assign({}, s, { x: nx, y: ny }));
+    tmp.dir = s.dir | 0; tmp.applyDir();
+    const ok = canPlaceAt(s.type, nx, ny, tmp.dir).ok;
+    g.globalAlpha = 0.55;
+    // 完整建筑幽灵预览：复用各设备的 DEVICE_RENDER 绘制（对齐《异星工厂》蓝图幽灵），
+    // 让复制预览与实际建筑外观一致，而非只显示一个色块框。
+    drawEntity(g, tmp, nx, ny, tmp.dir, 0.55);
+    // 可放置性提示覆盖框（绿/红），与实体幽灵叠加显示
+    g.fillStyle = ok ? 'rgba(120,220,120,.14)' : 'rgba(230,80,80,.26)';
+    g.fillRect(nx * TILE, ny * TILE, tmp.w * TILE, tmp.h * TILE);
+    g.strokeStyle = ok ? 'rgba(140,255,140,.65)' : 'rgba(255,110,110,.9)';
+    g.lineWidth = 1.5 / G.cam.z;
+    g.strokeRect(nx * TILE + 0.5, ny * TILE + 0.5, tmp.w * TILE - 1, tmp.h * TILE - 1);
+    g.globalAlpha = 1;
+  }
 }
 
 // 粘贴蓝图到鼠标所指位置

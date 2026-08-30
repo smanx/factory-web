@@ -741,10 +741,13 @@ html, body {
 .bb2-left { flex: 0 0 auto; }
 .bb2-right {
   flex: 0 0 auto;
-  width: 430px;
-  min-width: 360px;
   border: 2px solid #444;
   background: var(--panel-bg);
+}
+/* 左列 = 蓝图库：固定宽度（列表/格子视图容器） */
+.bb2-col.bb2-left {
+  width: 430px;
+  min-width: 360px;
 }
 .bb2-col-head {
   padding: 8px 10px;
@@ -773,13 +776,13 @@ html, body {
 .bb-grid-bar button:hover { background: rgba(90,138,208,.35); }
 .bb-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 36px);
+  grid-template-columns: repeat(auto-fill, 44px);
   gap: 4px;
   margin-top: 8px;
 }
 .bb-cell {
   position: relative;
-  width: 36px; height: 36px;
+  width: 44px; height: 44px;
   border-radius: 4px;
   border: 1px solid #37424f;
   background: #222b35;
@@ -3187,3 +3190,16 @@ html, body {
 /* 设备面板配方头部（图标+名称）：悬停弹出配方卡的高亮反馈 */
 .asm3-recipe-item[data-rec-id] { cursor: help; padding: 2px 6px; margin: -2px -6px; border-radius: 6px; }
 .asm3-recipe-item[data-rec-id]:hover { background: rgba(255, 210, 60, .12); }
+/* ===== 蓝图内容缩略图（蓝图库格子 / 详情页 / 蓝图编辑界面）===== */
+.bb-cell canvas[data-bbthumb] { width: 100%; height: 100%; display: block; border-radius: 3px; }
+.bb-detail-thumb-wrap,
+.bp-edit-thumb-wrap {
+  width: 220px; height: 220px;
+  margin: 4px 0 8px;
+  border: 1px solid #37424f;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #222b35;
+}
+.bb-detail-thumb-wrap canvas,
+.bp-edit-thumb-wrap canvas { width: 100%; height: 100%; display: block; }

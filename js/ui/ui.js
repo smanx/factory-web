@@ -447,15 +447,17 @@ function renderPanel(full) {
   } else if (G.panelMode === 'bluebook') {
     title.textContent = '蓝图库（Blueprint book）';
     body.innerHTML = bluebookLayoutHtml();
-    renderBbGridIcons();
+    renderBlueprintThumbs(body);
     applyBbSearch(G.bbQ || '');
   } else if (G.panelMode === 'bluebook-detail') {
     title.textContent = '蓝图详情';
     body.innerHTML = bbDetailLayoutHtml();
+    renderBlueprintDetailThumb();
   } else if (G.panelMode === 'blueprint-edit') {
     title.textContent = '蓝图编辑';
     body.innerHTML = blueprintEditLayoutHtml();
     renderBpEditHotbar();
+    renderBlueprintDetailThumb();
   } else if (G.panelMode === 'stats') {
     title.textContent = '统计面板';
     body.innerHTML = htmlStats();
@@ -1146,24 +1148,6 @@ function applyBbSearch(q) {
   }
 }
 
-// 蓝图库格子图标绘制：把 data-bbicon 画布绘制对应蓝图的主物品图标（悬停显示名称由 data-tip 提供）
-function renderBbGridIcons() {
-  document.querySelectorAll('#panel-body canvas[data-bbicon]').forEach(cv => {
-    const b = (G.blueBook || [])[+cv.dataset.bbicon];
-    if (!b || !Array.isArray(b.ents) || !b.ents.length) return;
-    const types = {};
-    for (const e of b.ents) types[e.type] = (types[e.type] || 0) + 1;
-    const keys = Object.keys(types).sort((a, b2) => types[b2] - types[a]);
-    const t = keys[0];
-    if (t && ITEMS[t] && typeof iconCanvas === 'function') {
-      const src = iconCanvas(t, 32);
-      cv.getContext('2d').drawImage(src, 0, 0, 32, 32);
-    } else if (typeof drawItemGlyph === 'function') {
-      drawItemGlyph(cv.getContext('2d'), 'blueprint', 16, 16, 30);
-    }
-  });
-}
-
 // 蓝图详情页（右键格子打开）：展示蓝图全部信息与操作按钮
 function bbDetailLayoutHtml() {
   const i = G.bbDetail;
@@ -1197,6 +1181,7 @@ function bbDetailLayoutHtml() {
   const nameVal = String(b.name || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   return '<div class="bb-detail-layout">' +
     '<div class="bb-detail-info">' +
+      '<div class="bb-detail-thumb-wrap" data-tip="' + nameVal + '|蓝图内容缩略图（加载铺建后，鼠标在地图上会显示完整放置幽灵）"><canvas id="bb-detail-thumb" width="220" height="220"></canvas></div>' +
       '<div class="sec">蓝图名称</div>' +
       '<input id="bb-detail-name" class="inv-search" type="text" maxlength="40" placeholder="输入蓝图名称…" autocomplete="off" value="' + nameVal + '">' +
       '<div class="sec">基本信息</div>' +
@@ -1252,7 +1237,7 @@ function bluebookLayoutHtml() {
         ' data-tip="' + name + '|' + b.ents.length + ' 个建筑 · 尺寸 ' + bb.W + '×' + bb.H + ' 格' +
         (Array.isArray(b.tiles) && b.tiles.length ? ' · 含地砖' : '') +
         '（左键选中，右键详情）">' +
-        '<canvas width="32" height="32" data-bbicon="' + i + '"></canvas>' +
+        '<canvas width="44" height="44" data-bbthumb="' + i + '"></canvas>' +
         (keys.length > 1 ? '<span class="bb-cell-more">+' + (keys.length - 1) + '</span>' : '') +
       '</div>';
       b._typeNames = keys.map(t => (ITEMS[t] ? ITEMS[t].name : t)).join('、');
@@ -1264,10 +1249,11 @@ function bluebookLayoutHtml() {
   }
   // 下方玩家背包（格子可点击，放入快捷栏/选中物品），带 id 供「点格子入包」寻址
   const left = htmlInventory('bb-inv');
+  // 布局：左侧 = 蓝图库列表，右侧 = 玩家背包（bb2-left 蓝图库 / bb2-right 背包，样式见 style.css）
   return '<div class="bb2-layout">' +
-    '<div class="bb2-col bb2-right"><div class="bb2-col-head">📑 蓝图库</div>' +
+    '<div class="bb2-col bb2-left"><div class="bb2-col-head">📑 蓝图库</div>' +
     '<div class="bb2-col-body">' + grid + '</div></div>' +
-    '<div class="bb2-col bb2-left"><div class="bb2-col-head">🎒 玩家</div>' +
+    '<div class="bb2-col bb2-right"><div class="bb2-col-head">🎒 玩家</div>' +
     '<div class="bb2-col-body">' + left + '</div></div>' +
   '</div>';
 }
@@ -1297,6 +1283,77 @@ function htmlBlueBookList() {
   return h;
 }
 
+
+// 把一份蓝图数据渲染为静态小缩略图（画进指定 2D 上下文）：世界底色 + 各建筑小图标。
+// 供蓝图库格子/详情页/蓝图编辑界面复用，展示蓝图内容而非单一图标。
+function drawBlueprintThumb(ctx, bp, W, H) {
+  if (!ctx) return;
+  ctx.clearRect(0, 0, W, H);
+  // 世界底色（对齐地图草地色，弱化与真实地图的差异感）
+  ctx.fillStyle = '#2c3e2a';
+  ctx.fillRect(0, 0, W, H);
+  const ents = (bp && Array.isArray(bp.ents)) ? bp.ents : [];
+  if (!ents.length) return;
+  const bb = (typeof blueprintBounds === 'function') ? blueprintBounds(ents) : null;
+  if (!bb) return;
+  const cell = Math.max(4, Math.min(W, H) / Math.max(bb.W, bb.H) * 0.86);
+  const ox = (W - cell * bb.W) / 2, oy = (H - cell * bb.H) / 2;
+  // 地砖层（若有）
+  if (Array.isArray(bp.tiles)) {
+    for (const t of bp.tiles) {
+      ctx.fillStyle = 'rgba(150,150,150,.5)';
+      ctx.fillRect(ox + (t.x - bb.minX) * cell, oy + (t.y - bb.minY) * cell, cell, cell);
+    }
+  }
+  // 建筑层：优先真实设备渲染（DEVICE_RENDER），回退到物品图标
+  for (const s of ents) {
+    const px = ox + (s.x - bb.minX) * cell, py = oy + (s.y - bb.minY) * cell;
+    const def = (typeof BUILD_DEFS !== 'undefined') ? BUILD_DEFS[s.type] : null;
+    const w = (def ? def.w : 1) * cell, h = (def ? def.h : 1) * cell;
+    const cls = (typeof ENT_CLASSES !== 'undefined') ? ENT_CLASSES[s.type] : null;
+    if (cls && typeof DEVICE_RENDER !== 'undefined' && DEVICE_RENDER[s.type]) {
+      let e = null;
+      try { e = cls.restore(Object.assign({}, s)); } catch (err) { e = null; }
+      if (e) {
+        e.dir = s.dir | 0;
+        if (typeof e.applyDir === 'function') e.applyDir();
+        e.w = w; e.h = h;
+        try { DEVICE_RENDER[s.type](ctx, e, px, py, e.dir, 1); } catch (err) {}
+        continue;
+      }
+    }
+    if (typeof drawItemGlyph === 'function' && ITEMS[s.type]) {
+      drawItemGlyph(ctx, s.type, px + w / 2, py + h / 2, Math.min(w, h) * 0.9);
+    } else {
+      ctx.fillStyle = '#888';
+      ctx.fillRect(px, py, w, h);
+    }
+  }
+}
+
+// 把面板里所有蓝图缩略图画布（data-bbthumb=blueBook 索引）画上蓝图内容缩略图。
+// 首帧缩略图较高开销：实测多蓝图时绘制调用有限（每格几十次），可接受；
+// 若后续出现性能问题，可在此加脏标记只在面板打开时绘制一次。
+function renderBlueprintThumbs(root) {
+  (root || document).querySelectorAll('canvas[data-bbthumb]').forEach(cv => {
+    const b = (G.blueBook || [])[+cv.dataset.bbthumb];
+    if (!b) return;
+    drawBlueprintThumb(cv.getContext('2d'), b, cv.width, cv.height);
+  });
+}
+
+
+// 详情页/编辑界面的单个大缩略图：bb-detail-thumb 读 G.bbDetail，bp-edit-thumb 读 G.blueprint
+function renderBlueprintDetailThumb() {
+  const cv = document.getElementById('bb-detail-thumb');
+  if (cv) {
+    const b = (G.blueBook || [])[G.bbDetail];
+    if (b) drawBlueprintThumb(cv.getContext('2d'), b, cv.width, cv.height);
+  }
+  const cv2 = document.getElementById('bp-edit-thumb');
+  if (cv2 && G.blueprint) drawBlueprintThumb(cv2.getContext('2d'), G.blueprint, cv2.width, cv2.height);
+}
+
 // ===== 蓝图编辑界面（Alt+B 框选后弹出）=====
 // 展示框选得到的蓝图摘要（建筑构成/尺寸/地砖），底部操作：
 // 「创建蓝图」= 放到地图（进入粘贴模式）/ 放入背包 / 放入快捷栏。
@@ -1321,6 +1378,7 @@ function blueprintEditLayoutHtml() {
   const nameVal = String(bp.name || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   return '<div class="bp-edit-layout">' +
     '<div class="bp-edit-info">' +
+      '<div class="bp-edit-thumb-wrap" data-tip="' + nameVal + '|蓝图内容缩略图（进入粘贴模式后，鼠标在地图上会显示完整放置幽灵）"><canvas id="bp-edit-thumb" width="220" height="220"></canvas></div>' +
       '<div class="sec">蓝图名称</div>' +
       '<input id="bp-edit-name" class="inv-search" type="text" maxlength="40" placeholder="输入蓝图名称…" autocomplete="off" value="' + nameVal + '">' +
       '<div class="sec">蓝图内容</div>' +

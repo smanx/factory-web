@@ -164,6 +164,16 @@ function render() {
   }
   drawGhost(ctx);
   drawBlueprintOverlay(ctx);
+  // 手持蓝图物品的地图放置幽灵：与主画布同一世界变换绘制（drawGhost 的蓝图分支
+  // 绘制在顶层幽灵画布上，若其不可用则回退到主画布、此处调用会自动跳过避免重复）
+  if (typeof drawBlueprintItemGhost === 'function' && !G.ghostCtx) {
+    ctx.save();
+    ctx.translate(W / 2, H / 2);
+    ctx.scale(G.cam.z, G.cam.z);
+    ctx.translate(-G.cam.px, -G.cam.py);
+    drawBlueprintItemGhost(ctx);
+    ctx.restore();
+  }
   drawHoverAndMining(ctx);
   drawPlayer(ctx);
   drawReachCircle(ctx);
@@ -1286,30 +1296,9 @@ function drawBlueprintOverlay(ctx) {
       (x1 - x0 + 1) + '×' + (y1 - y0 + 1), x0 * TILE + 4, y0 * TILE - 14);
     return;
   }
-  // 蓝图粘贴预览
+  // 蓝图粘贴预览（核心绘制复用 drawBlueprintGhostAt，与手持蓝图物品预览共用）
   if (G.blueMode === 'paste' && G.blueprint && G.cursorTile) {
-    const bp = applyBlueprintTransform();
-    const ox = G.cursorTile.tx - bp.minX;
-    const oy = G.cursorTile.ty - bp.minY;
-    for (const s of bp.ents) {
-      const cls = ENT_CLASSES[s.type];
-      if (!cls) continue;
-      const nx = s.x + ox, ny = s.y + oy;
-      const tmp = cls.restore(Object.assign({}, s, { x: nx, y: ny }));
-      tmp.dir = s.dir | 0; tmp.applyDir();
-      const ok = canPlaceAt(s.type, nx, ny, tmp.dir).ok;
-      ctx.globalAlpha = 0.55;
-      // 完整建筑幽灵预览：复用各设备的 DEVICE_RENDER 绘制（对齐《异星工厂》蓝图幽灵），
-      // 让复制预览与实际建筑外观一致，而非只显示一个色块框。
-      drawEntity(ctx, tmp, nx, ny, tmp.dir, 0.55);
-      // 可放置性提示覆盖框（绿/红），与实体幽灵叠加显示
-      ctx.fillStyle = ok ? 'rgba(120,220,120,.14)' : 'rgba(230,80,80,.26)';
-      ctx.fillRect(nx * TILE, ny * TILE, tmp.w * TILE, tmp.h * TILE);
-      ctx.strokeStyle = ok ? 'rgba(140,255,140,.65)' : 'rgba(255,110,110,.9)';
-      ctx.lineWidth = 1.5 / G.cam.z;
-      ctx.strokeRect(nx * TILE + 0.5, ny * TILE + 0.5, tmp.w * TILE - 1, tmp.h * TILE - 1);
-      ctx.globalAlpha = 1;
-    }
+    drawBlueprintGhostAt(ctx, G.cursorTile.tx, G.cursorTile.ty);
     ctx.fillStyle = '#8fd0ff';
     ctx.font = 'bold 13px system-ui';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
