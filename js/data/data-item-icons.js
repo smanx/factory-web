@@ -157,6 +157,150 @@ function _moduleGem(x, r, s) {
   x.fill();
 }
 
+
+
+// ===== 第 30 批：中间产品收尾（Gleba 生物 / 核燃料 / 科学包 / 桶装流体上半） =====
+
+// 共享工具：金属桶身（桶装流体家族共用骨架），fluidC 为色带颜色，传 null 表示空桶
+function _barrelShell(x, r, s, fluidC) {
+  const bodyC = '#a8b0b8', rimC = '#767e86';
+  // 桶身（竖圆桶，顶部微收）
+  const g = x.createLinearGradient(-r * 0.7, 0, r * 0.7, 0);
+  g.addColorStop(0, lightenColor(bodyC, 0.18));
+  g.addColorStop(0.45, bodyC);
+  g.addColorStop(1, darkenColor(bodyC, 0.32));
+  x.fillStyle = g;
+  x.beginPath();
+  x.moveTo(-r * 0.66, -r * 0.68);
+  x.lineTo(r * 0.66, -r * 0.68);
+  x.lineTo(r * 0.72, r * 0.55);
+  x.quadraticCurveTo(0, r * 0.72, -r * 0.72, r * 0.55);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(15,20,26,.55)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 上沿 + 下沿卷边
+  x.fillStyle = rimC;
+  rrPath(x, -r * 0.7, -r * 0.78, r * 1.4, r * 0.16, r * 0.08);
+  x.fill();
+  rrPath(x, -r * 0.74, r * 0.46, r * 1.48, r * 0.16, r * 0.08);
+  x.fill();
+  // 中部双箍纹
+  x.strokeStyle = 'rgba(60,66,74,.7)';
+  x.lineWidth = Math.max(1, s * 0.04);
+  x.beginPath();
+  x.moveTo(-r * 0.7, -r * 0.18); x.quadraticCurveTo(0, -r * 0.1, r * 0.7, -r * 0.18);
+  x.moveTo(-r * 0.71, r * 0.1); x.quadraticCurveTo(0, r * 0.18, r * 0.71, r * 0.1);
+  x.stroke();
+  // 流体色带（盛装物标识）
+  if (fluidC) {
+    const fg = x.createLinearGradient(-r * 0.6, 0, r * 0.6, 0);
+    fg.addColorStop(0, lightenColor(fluidC, 0.25));
+    fg.addColorStop(0.5, fluidC);
+    fg.addColorStop(1, darkenColor(fluidC, 0.3));
+    x.fillStyle = fg;
+    rrPath(x, -r * 0.62, -r * 0.52, r * 1.24, r * 0.24, r * 0.08);
+    x.fill();
+    x.fillStyle = 'rgba(255,255,255,.3)';
+    rrPath(x, -r * 0.62, -r * 0.52, r * 1.24, r * 0.08, r * 0.04);
+    x.fill();
+    // 滴液（暗示内盛液体）
+    x.fillStyle = fluidC;
+    x.beginPath();
+    x.moveTo(0, r * 0.62);
+    x.quadraticCurveTo(r * 0.07, r * 0.5, 0, r * 0.42);
+    x.quadraticCurveTo(-r * 0.07, r * 0.5, 0, r * 0.62);
+    x.closePath();
+    x.fill();
+  } else {
+    // 空桶：顶部开口椭圆
+    x.fillStyle = '#5a626a';
+    x.beginPath(); x.ellipse(0, -r * 0.7, r * 0.5, r * 0.16, 0, 0, 7); x.fill();
+    x.fillStyle = '#3a4046';
+    x.beginPath(); x.ellipse(0, -r * 0.7, r * 0.34, r * 0.1, 0, 0, 7); x.fill();
+  }
+  // 桶身高光
+  x.fillStyle = 'rgba(255,255,255,.22)';
+  rrPath(x, -r * 0.5, -r * 0.6, r * 0.18, r * 1.1, r * 0.09);
+  x.fill();
+}
+
+// 共享工具：辐射微光背景（铀系物品）
+function _radGlow(x, r, c1, c2) {
+  const glow = x.createRadialGradient(0, 0, r * 0.1, 0, 0, r * 0.95);
+  glow.addColorStop(0, c1);
+  glow.addColorStop(1, c2);
+  x.fillStyle = glow;
+  x.beginPath(); x.arc(0, 0, r * 0.95, 0, 7); x.fill();
+}
+
+// 共享工具：三叶辐射符号
+function _radTrefoil(x, r, col) {
+  x.fillStyle = col;
+  for (let i = 0; i < 3; i++) {
+    const a0 = -Math.PI / 2 + i * 2.094 - 0.52;
+    const a1 = -Math.PI / 2 + i * 2.094 + 0.52;
+    x.beginPath();
+    x.moveTo(0, 0);
+    x.arc(0, 0, r * 0.42, a0, a1);
+    x.closePath();
+    x.fill();
+  }
+  x.beginPath(); x.arc(0, 0, r * 0.12, 0, 7); x.fill();
+  x.strokeStyle = col; x.lineWidth = r * 0.09;
+  x.beginPath(); x.arc(0, 0, r * 0.19, 0, 7); x.stroke();
+}
+
+// 共享工具：科研瓶（三档太空科学包共用骨架），drawInner 在瓶身剪裁内绘制内容物
+function _spaceFlask(x, r, s, col, drawInner) {
+  // 瓶身（圆润圆底瓶）
+  const g = x.createLinearGradient(-r * 0.4, -r * 0.7, r * 0.4, r * 0.7);
+  g.addColorStop(0, lightenColor(col, 0.45));
+  g.addColorStop(0.55, col);
+  g.addColorStop(1, darkenColor(col, 0.42));
+  x.fillStyle = g;
+  x.beginPath();
+  x.moveTo(-r * 0.24, -r * 0.6);
+  x.lineTo(-r * 0.24, -r * 0.2);
+  x.quadraticCurveTo(-r * 0.8, r * 0.05, -r * 0.8, r * 0.42);
+  x.arc(0, r * 0.42, r * 0.8, Math.PI, 0);
+  x.quadraticCurveTo(r * 0.8, r * 0.05, r * 0.24, -r * 0.2);
+  x.lineTo(r * 0.24, -r * 0.6);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(25,28,40,.65)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 内容物（剪裁进瓶身）
+  x.save();
+  x.beginPath();
+  x.moveTo(-r * 0.24, -r * 0.6);
+  x.lineTo(-r * 0.24, -r * 0.2);
+  x.quadraticCurveTo(-r * 0.8, r * 0.05, -r * 0.8, r * 0.42);
+  x.arc(0, r * 0.42, r * 0.8, Math.PI, 0);
+  x.quadraticCurveTo(r * 0.8, r * 0.05, r * 0.24, -r * 0.2);
+  x.lineTo(r * 0.24, -r * 0.6);
+  x.closePath();
+  x.clip();
+  drawInner(x, r);
+  // 瓶身左侧高光
+  x.fillStyle = 'rgba(255,255,255,.3)';
+  x.beginPath();
+  x.ellipse(-r * 0.5, r * 0.15, r * 0.12, r * 0.4, -0.2, 0, 7);
+  x.fill();
+  x.restore();
+  // 瓶口金属盖
+  x.fillStyle = '#c9cfe0';
+  rrPath(x, -r * 0.32, -r * 0.9, r * 0.64, r * 0.32, r * 0.08);
+  x.fill();
+  x.strokeStyle = 'rgba(25,28,40,.6)';
+  x.lineWidth = Math.max(0.8, s * 0.035);
+  x.stroke();
+  x.fillStyle = 'rgba(255,255,255,.5)';
+  x.fillRect(-r * 0.32, -r * 0.86, r * 0.64, r * 0.08);
+}
+
 const ITEM_CUSTOM_ICONS = {
 
   // 石砖：错缝双排砖块，立体渐变 + 砖缝描边
@@ -8026,4 +8170,1028 @@ const ITEM_CUSTOM_ICONS = {
       x.beginPath(); x.arc(px * r, py * r, pr * r, 0, 7); x.stroke();
     }
   },
+
+// 超级电容：黄色储能圆柱电芯 + 顶端正负极 + 电解液能量窗口
+'supercapacitor': (x, r, s, col) => {
+  // 电芯筒身（竖圆柱）
+  const g = x.createLinearGradient(-r * 0.55, 0, r * 0.55, 0);
+  g.addColorStop(0, lightenColor(col, 0.42));
+  g.addColorStop(0.45, col);
+  g.addColorStop(1, darkenColor(col, 0.4));
+  x.fillStyle = g;
+  rrPath(x, -r * 0.55, -r * 0.72, r * 1.1, r * 1.44, r * 0.16);
+  x.fill();
+  x.strokeStyle = 'rgba(70,62,8,.65)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 顶部封装盖
+  x.fillStyle = '#b8bcc4';
+  rrPath(x, -r * 0.55, -r * 0.86, r * 1.1, r * 0.26, r * 0.1);
+  x.fill();
+  x.strokeStyle = 'rgba(50,54,60,.6)';
+  x.stroke();
+  // 正负极帽
+  x.fillStyle = '#d84848';
+  x.beginPath(); x.arc(-r * 0.24, -r * 0.73, r * 0.1, 0, 7); x.fill();
+  x.fillStyle = '#4848d8';
+  x.beginPath(); x.arc(r * 0.24, -r * 0.73, r * 0.1, 0, 7); x.fill();
+  // 能量窗口（闪电）
+  x.fillStyle = 'rgba(255,255,240,.9)';
+  x.beginPath();
+  x.moveTo(r * 0.08, -r * 0.3);
+  x.lineTo(-r * 0.22, r * 0.1);
+  x.lineTo(-r * 0.02, r * 0.1);
+  x.lineTo(-r * 0.1, r * 0.44);
+  x.lineTo(r * 0.22, -r * 0.02);
+  x.lineTo(r * 0.02, -r * 0.02);
+  x.closePath();
+  x.fill();
+  // 筒身环纹
+  x.strokeStyle = 'rgba(70,62,8,.4)';
+  x.lineWidth = Math.max(0.7, s * 0.03);
+  x.beginPath();
+  x.moveTo(-r * 0.55, r * 0.52); x.lineTo(r * 0.55, r * 0.52);
+  x.stroke();
+},
+
+// 农业科技包：黄绿科学瓶 + 瓶内幼苗（农业科研意象）
+'agricultural-science-pack': (x, r, s, col) => {
+  _spaceFlask(x, r, s, col, (x, r) => {
+    // 培养土层
+    x.fillStyle = '#6a4a2a';
+    x.beginPath();
+    x.ellipse(0, r * 0.75, r * 0.85, r * 0.3, 0, 0, 7);
+    x.fill();
+    // 幼苗：茎 + 两片子叶
+    x.strokeStyle = '#3f7e34';
+    x.lineWidth = Math.max(1.2, s * 0.05);
+    x.lineCap = 'round';
+    x.beginPath();
+    x.moveTo(0, r * 0.6);
+    x.quadraticCurveTo(r * 0.04, r * 0.2, 0, -r * 0.3);
+    x.stroke();
+    x.fillStyle = '#6ab84a';
+    x.beginPath();
+    x.ellipse(-r * 0.22, -r * 0.18, r * 0.2, r * 0.1, -0.5, 0, 7);
+    x.fill();
+    x.beginPath();
+    x.ellipse(r * 0.22, -r * 0.18, r * 0.2, r * 0.1, 0.5, 0, 7);
+    x.fill();
+    // 顶部新芽
+    x.fillStyle = '#a8d84a';
+    x.beginPath();
+    x.ellipse(0, -r * 0.38, r * 0.09, r * 0.14, 0, 0, 7);
+    x.fill();
+  });
+},
+
+// 果冻果：紫红圆果 + 顶部果脐 + 汁液高光（Gleba 作物）
+'jellynut': (x, r, s, col) => {
+  // 果体（圆中略扁）
+  const g = x.createRadialGradient(-r * 0.2, -r * 0.3, r * 0.1, 0, r * 0.1, r * 0.85);
+  g.addColorStop(0, lightenColor(col, 0.45));
+  g.addColorStop(0.55, col);
+  g.addColorStop(1, darkenColor(col, 0.42));
+  x.fillStyle = g;
+  x.beginPath();
+  x.ellipse(0, r * 0.1, r * 0.68, r * 0.62, 0, 0, 7);
+  x.fill();
+  x.strokeStyle = 'rgba(90,25,45,.65)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 果蒂
+  x.fillStyle = '#5a7a3a';
+  rrPath(x, -r * 0.06, -r * 0.66, r * 0.12, r * 0.2, r * 0.05);
+  x.fill();
+  // 果脐凹点
+  x.fillStyle = 'rgba(90,25,45,.55)';
+  x.beginPath(); x.arc(0, -r * 0.5, r * 0.1, 0, 7); x.fill();
+  // 汁液高光
+  x.fillStyle = 'rgba(255,220,235,.55)';
+  x.beginPath();
+  x.ellipse(-r * 0.24, -r * 0.14, r * 0.16, r * 0.24, -0.5, 0, 7);
+  x.fill();
+  x.beginPath();
+  x.arc(r * 0.05, -r * 0.4, r * 0.07, 0, 7);
+  x.fill();
+},
+
+// 果冻果种子：紫红种体 + 芽点 + 种脐纹（呼应玉玛果种子家族造型）
+'jellynut-seed': (x, r, s, col) => {
+  const g = x.createLinearGradient(-r * 0.4, -r * 0.6, r * 0.4, r * 0.6);
+  g.addColorStop(0, lightenColor(col, 0.38));
+  g.addColorStop(0.55, col);
+  g.addColorStop(1, darkenColor(col, 0.42));
+  x.fillStyle = g;
+  x.beginPath();
+  x.ellipse(0, r * 0.08, r * 0.42, r * 0.56, 0.15, 0, 7);
+  x.fill();
+  x.strokeStyle = 'rgba(80,15,45,.65)';
+  x.lineWidth = Math.max(1, s * 0.04);
+  x.stroke();
+  // 种脐弧线
+  x.strokeStyle = 'rgba(80,15,45,.45)';
+  x.lineWidth = Math.max(0.7, s * 0.028);
+  x.beginPath();
+  x.ellipse(0, r * 0.08, r * 0.26, r * 0.4, 0.15, 0.6, Math.PI - 0.6);
+  x.stroke();
+  // 顶部芽点
+  x.fillStyle = '#7ab050';
+  x.beginPath();
+  x.moveTo(r * 0.02, -r * 0.5);
+  x.quadraticCurveTo(r * 0.22, -r * 0.78, r * 0.34, -r * 0.62);
+  x.quadraticCurveTo(r * 0.2, -r * 0.52, r * 0.1, -r * 0.44);
+  x.closePath();
+  x.fill();
+  // 高光
+  x.fillStyle = 'rgba(255,210,230,.4)';
+  x.beginPath();
+  x.ellipse(-r * 0.16, -r * 0.18, r * 0.1, r * 0.18, -0.4, 0, 7);
+  x.fill();
+},
+
+// 果冻：粉红半透明颤动果冻 + 顶面高光 + 底部碟影
+'jelly': (x, r, s, col) => {
+  // 底碟阴影
+  x.fillStyle = 'rgba(120,30,80,.25)';
+  x.beginPath();
+  x.ellipse(0, r * 0.66, r * 0.7, r * 0.14, 0, 0, 7);
+  x.fill();
+  // 果冻主体（圆顶扁平塔，边缘内收）
+  const g = x.createLinearGradient(-r * 0.5, -r * 0.5, r * 0.4, r * 0.6);
+  g.addColorStop(0, lightenColor(col, 0.4));
+  g.addColorStop(0.6, col);
+  g.addColorStop(1, darkenColor(col, 0.28));
+  x.fillStyle = g;
+  x.beginPath();
+  x.moveTo(-r * 0.62, r * 0.6);
+  x.quadraticCurveTo(-r * 0.72, r * 0.2, -r * 0.3, r * 0.05);
+  x.quadraticCurveTo(-r * 0.3, -r * 0.62, 0, -r * 0.62);
+  x.quadraticCurveTo(r * 0.3, -r * 0.62, r * 0.3, r * 0.05);
+  x.quadraticCurveTo(r * 0.72, r * 0.2, r * 0.62, r * 0.6);
+  x.quadraticCurveTo(0, r * 0.74, -r * 0.62, r * 0.6);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(140,25,85,.55)';
+  x.lineWidth = Math.max(1, s * 0.04);
+  x.stroke();
+  // 果冻波浪底边
+  x.strokeStyle = 'rgba(255,255,255,.4)';
+  x.lineWidth = Math.max(0.8, s * 0.03);
+  x.beginPath();
+  x.moveTo(-r * 0.5, r * 0.5);
+  x.quadraticCurveTo(-r * 0.25, r * 0.42, 0, r * 0.5);
+  x.quadraticCurveTo(r * 0.25, r * 0.58, r * 0.5, r * 0.5);
+  x.stroke();
+  // 玻璃质感高光
+  x.fillStyle = 'rgba(255,255,255,.55)';
+  x.beginPath();
+  x.ellipse(-r * 0.16, -r * 0.28, r * 0.1, r * 0.2, -0.3, 0, 7);
+  x.fill();
+  x.beginPath();
+  x.arc(r * 0.1, -r * 0.42, r * 0.06, 0, 7);
+  x.fill();
+},
+
+// 异虫卵：褐色卵体 + 深色斑点 + 顶部裂纹（孵化暗示）
+'biter-egg': (x, r, s, col) => {
+  const g = x.createRadialGradient(-r * 0.18, -r * 0.3, r * 0.08, 0, r * 0.1, r * 0.85);
+  g.addColorStop(0, lightenColor(col, 0.42));
+  g.addColorStop(0.55, col);
+  g.addColorStop(1, darkenColor(col, 0.45));
+  x.fillStyle = g;
+  x.beginPath();
+  x.ellipse(0, r * 0.14, r * 0.52, r * 0.68, 0, 0, 7);
+  x.fill();
+  x.strokeStyle = 'rgba(60,42,12,.7)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 斑点
+  x.fillStyle = 'rgba(70,50,15,.5)';
+  for (const [px, py, pr] of [[-0.2, 0.1, 0.09], [0.16, 0.3, 0.07], [0.1, -0.15, 0.06], [-0.12, 0.42, 0.05]]) {
+    x.beginPath(); x.arc(px * r, py * r, pr * r, 0, 7); x.fill();
+  }
+  // 顶部裂纹（之字形）
+  x.strokeStyle = 'rgba(40,28,6,.8)';
+  x.lineWidth = Math.max(0.9, s * 0.035);
+  x.lineJoin = 'round';
+  x.beginPath();
+  x.moveTo(-r * 0.12, -r * 0.66);
+  x.lineTo(-r * 0.02, -r * 0.52);
+  x.lineTo(-r * 0.14, -r * 0.42);
+  x.lineTo(0, -r * 0.3);
+  x.stroke();
+  // 裂纹透光
+  x.fillStyle = 'rgba(255,240,200,.5)';
+  x.beginPath(); x.arc(-r * 0.02, -r * 0.52, r * 0.05, 0, 7); x.fill();
+},
+
+// 五足虫卵：红褐卵体 + 内部五条卷曲足影（半透明胚胎感）
+'pentapod-egg': (x, r, s, col) => {
+  const g = x.createRadialGradient(-r * 0.18, -r * 0.28, r * 0.08, 0, r * 0.1, r * 0.85);
+  g.addColorStop(0, lightenColor(col, 0.4));
+  g.addColorStop(0.55, col);
+  g.addColorStop(1, darkenColor(col, 0.45));
+  x.fillStyle = g;
+  x.beginPath();
+  x.ellipse(0, r * 0.12, r * 0.52, r * 0.66, 0, 0, 7);
+  x.fill();
+  x.strokeStyle = 'rgba(70,32,22,.7)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 内部胚胎足影（五条卷须，半透明）
+  x.save();
+  x.beginPath();
+  x.ellipse(0, r * 0.12, r * 0.52, r * 0.66, 0, 0, 7);
+  x.clip();
+  x.strokeStyle = 'rgba(90,35,25,.55)';
+  x.lineWidth = Math.max(1, s * 0.04);
+  x.lineCap = 'round';
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI / 2 + i * (Math.PI * 2 / 5);
+    const px = Math.cos(a) * r * 0.22, py = r * 0.12 + Math.sin(a) * r * 0.22;
+    x.beginPath();
+    x.arc(px, py, r * 0.12, a + Math.PI * 0.3, a + Math.PI * 1.4);
+    x.stroke();
+  }
+  // 中央胚胎核
+  x.fillStyle = 'rgba(255,220,200,.4)';
+  x.beginPath(); x.arc(0, r * 0.12, r * 0.12, 0, 7); x.fill();
+  x.restore();
+  // 表面高光
+  x.fillStyle = 'rgba(255,235,220,.35)';
+  x.beginPath();
+  x.ellipse(-r * 0.2, -r * 0.2, r * 0.12, r * 0.2, -0.4, 0, 7);
+  x.fill();
+},
+
+// 树种子：褐色坚果 + 顶部双叶新芽（绿化造林意象）
+'tree-seed': (x, r, s, col) => {
+  // 种体（圆润坚果）
+  const g = x.createLinearGradient(-r * 0.35, -r * 0.4, r * 0.35, r * 0.6);
+  g.addColorStop(0, lightenColor(col, 0.42));
+  g.addColorStop(0.55, col);
+  g.addColorStop(1, darkenColor(col, 0.4));
+  x.fillStyle = g;
+  x.beginPath();
+  x.ellipse(0, r * 0.22, r * 0.44, r * 0.5, 0, 0, 7);
+  x.fill();
+  x.strokeStyle = 'rgba(40,58,32,.7)';
+  x.lineWidth = Math.max(1, s * 0.04);
+  x.stroke();
+  // 壳纹
+  x.strokeStyle = 'rgba(40,58,32,.4)';
+  x.lineWidth = Math.max(0.7, s * 0.028);
+  x.beginPath();
+  x.moveTo(-r * 0.3, r * 0.05);
+  x.quadraticCurveTo(0, r * 0.16, r * 0.3, r * 0.05);
+  x.stroke();
+  // 双叶新芽
+  x.fillStyle = '#5a9e42';
+  for (const sgn of [-1, 1]) {
+    x.save();
+    x.translate(sgn * r * 0.08, -r * 0.34);
+    x.rotate(sgn * 0.6);
+    x.beginPath();
+    x.moveTo(0, 0);
+    x.quadraticCurveTo(sgn * r * 0.22, -r * 0.1, sgn * r * 0.3, -r * 0.34);
+    x.quadraticCurveTo(sgn * r * 0.06, -r * 0.3, 0, 0);
+    x.closePath();
+    x.fill();
+    x.restore();
+  }
+  // 芽茎
+  x.strokeStyle = '#4a7e36';
+  x.lineWidth = Math.max(1, s * 0.04);
+  x.beginPath();
+  x.moveTo(0, r * 0.0 - r * 0.14);
+  x.lineTo(0, -r * 0.3);
+  x.stroke();
+  // 高光
+  x.fillStyle = 'rgba(255,240,200,.35)';
+  x.beginPath();
+  x.ellipse(-r * 0.16, r * 0.1, r * 0.1, r * 0.18, -0.4, 0, 7);
+  x.fill();
+},
+
+// 铁细菌：银灰菌团 + 鞭毛 + 铁锈斑点（生物炼铁意象）
+'iron-bacteria': (x, r, s, col) => {
+  // 菌体（肾形团块）
+  const g = x.createRadialGradient(-r * 0.15, -r * 0.2, r * 0.06, 0, r * 0.08, r * 0.8);
+  g.addColorStop(0, lightenColor(col, 0.5));
+  g.addColorStop(0.6, col);
+  g.addColorStop(1, darkenColor(col, 0.4));
+  x.fillStyle = g;
+  x.beginPath();
+  x.moveTo(-r * 0.6, r * 0.15);
+  x.quadraticCurveTo(-r * 0.7, -r * 0.45, -r * 0.1, -r * 0.45);
+  x.quadraticCurveTo(r * 0.55, -r * 0.5, r * 0.62, r * 0.02);
+  x.quadraticCurveTo(r * 0.66, r * 0.5, 0, r * 0.5);
+  x.quadraticCurveTo(-r * 0.55, r * 0.52, -r * 0.6, r * 0.15);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(50,55,64,.7)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 细胞核
+  x.fillStyle = 'rgba(90,98,110,.6)';
+  x.beginPath(); x.arc(r * 0.12, r * 0.0, r * 0.16, 0, 7); x.fill();
+  // 铁锈斑点
+  x.fillStyle = 'rgba(150,96,60,.65)';
+  for (const [px, py, pr] of [[-0.3, -0.1, 0.08], [0.32, 0.22, 0.06], [-0.1, 0.28, 0.05]]) {
+    x.beginPath(); x.arc(px * r, py * r, pr * r, 0, 7); x.fill();
+  }
+  // 鞭毛（两侧摆动纤毛）
+  x.strokeStyle = 'rgba(90,98,110,.75)';
+  x.lineWidth = Math.max(0.8, s * 0.032);
+  x.lineCap = 'round';
+  for (const sgn of [-1, 1]) {
+    x.beginPath();
+    x.moveTo(sgn * r * 0.58, r * 0.1);
+    x.quadraticCurveTo(sgn * r * 0.85, r * 0.2, sgn * r * 0.8, -r * 0.15);
+    x.stroke();
+  }
+  // 表面高光
+  x.fillStyle = 'rgba(255,255,255,.4)';
+  x.beginPath();
+  x.ellipse(-r * 0.22, -r * 0.25, r * 0.14, r * 0.08, -0.4, 0, 7);
+  x.fill();
+},
+
+// 铜细菌：铜橙菌团 + 鞭毛 + 铜绿斑点（生物炼铜意象，与铁细菌同构换色）
+'copper-bacteria': (x, r, s, col) => {
+  const g = x.createRadialGradient(-r * 0.15, -r * 0.2, r * 0.06, 0, r * 0.08, r * 0.8);
+  g.addColorStop(0, lightenColor(col, 0.42));
+  g.addColorStop(0.6, col);
+  g.addColorStop(1, darkenColor(col, 0.42));
+  x.fillStyle = g;
+  x.beginPath();
+  x.moveTo(-r * 0.6, r * 0.15);
+  x.quadraticCurveTo(-r * 0.7, -r * 0.45, -r * 0.1, -r * 0.45);
+  x.quadraticCurveTo(r * 0.55, -r * 0.5, r * 0.62, r * 0.02);
+  x.quadraticCurveTo(r * 0.66, r * 0.5, 0, r * 0.5);
+  x.quadraticCurveTo(-r * 0.55, r * 0.52, -r * 0.6, r * 0.15);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(78,42,22,.7)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 细胞核
+  x.fillStyle = 'rgba(110,64,38,.55)';
+  x.beginPath(); x.arc(r * 0.12, r * 0.0, r * 0.16, 0, 7); x.fill();
+  // 铜绿斑点
+  x.fillStyle = 'rgba(70,150,120,.6)';
+  for (const [px, py, pr] of [[-0.3, -0.1, 0.08], [0.32, 0.22, 0.06], [-0.1, 0.28, 0.05]]) {
+    x.beginPath(); x.arc(px * r, py * r, pr * r, 0, 7); x.fill();
+  }
+  // 鞭毛
+  x.strokeStyle = 'rgba(110,64,38,.75)';
+  x.lineWidth = Math.max(0.8, s * 0.032);
+  x.lineCap = 'round';
+  for (const sgn of [-1, 1]) {
+    x.beginPath();
+    x.moveTo(sgn * r * 0.58, r * 0.1);
+    x.quadraticCurveTo(sgn * r * 0.85, r * 0.2, sgn * r * 0.8, -r * 0.15);
+    x.stroke();
+  }
+  // 高光
+  x.fillStyle = 'rgba(255,240,220,.4)';
+  x.beginPath();
+  x.ellipse(-r * 0.22, -r * 0.25, r * 0.14, r * 0.08, -0.4, 0, 7);
+  x.fill();
+},
+
+// 冰：半透明冰晶体簇（多面棱柱 + 高光折射线）
+'ice': (x, r, s, col) => {
+  // 主晶体（竖立六棱柱正面）
+  const g = x.createLinearGradient(-r * 0.4, -r * 0.7, r * 0.4, r * 0.7);
+  g.addColorStop(0, lightenColor(col, 0.45));
+  g.addColorStop(0.55, col);
+  g.addColorStop(1, darkenColor(col, 0.28));
+  x.fillStyle = g;
+  x.beginPath();
+  x.moveTo(-r * 0.34, -r * 0.3);
+  x.lineTo(0, -r * 0.62);
+  x.lineTo(r * 0.34, -r * 0.3);
+  x.lineTo(r * 0.34, r * 0.5);
+  x.lineTo(0, r * 0.72);
+  x.lineTo(-r * 0.34, r * 0.5);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(40,80,100,.6)';
+  x.lineWidth = Math.max(1, s * 0.04);
+  x.stroke();
+  // 侧面小晶体
+  x.fillStyle = 'rgba(200,235,248,.8)';
+  x.beginPath();
+  x.moveTo(r * 0.34, -r * 0.1);
+  x.lineTo(r * 0.62, -r * 0.32);
+  x.lineTo(r * 0.62, r * 0.34);
+  x.lineTo(r * 0.34, r * 0.5);
+  x.closePath();
+  x.fill();
+  x.stroke();
+  // 晶面折射高光线
+  x.strokeStyle = 'rgba(255,255,255,.65)';
+  x.lineWidth = Math.max(0.8, s * 0.03);
+  x.beginPath();
+  x.moveTo(-r * 0.18, -r * 0.2);
+  x.lineTo(-r * 0.18, r * 0.4);
+  x.moveTo(r * 0.05, -r * 0.4);
+  x.lineTo(r * 0.05, r * 0.2);
+  x.stroke();
+  // 顶部雪晶闪光
+  x.fillStyle = 'rgba(255,255,255,.9)';
+  for (const [px, py, pr] of [[0.55, -0.55, 0.07], [-0.55, -0.45, 0.05]]) {
+    x.save();
+    x.translate(px * r, py * r);
+    x.beginPath();
+    for (let i = 0; i < 4; i++) {
+      x.rotate(Math.PI / 2);
+      x.moveTo(0, 0); x.lineTo(0, -pr * r * 2.2);
+    }
+    x.strokeStyle = 'rgba(255,255,255,.85)';
+    x.lineWidth = Math.max(0.6, s * 0.022);
+    x.stroke();
+    x.restore();
+  }
+},
+
+// 生鱼：蓝灰鱼形（流线鱼身 + 尾鳍 + 眼睛）
+'raw-fish': (x, r, s, col) => {
+  // 鱼身（左头右尾的流线体）
+  const g = x.createLinearGradient(0, -r * 0.4, 0, r * 0.5);
+  g.addColorStop(0, lightenColor(col, 0.35));
+  g.addColorStop(0.6, col);
+  g.addColorStop(1, darkenColor(col, 0.35));
+  x.fillStyle = g;
+  x.beginPath();
+  x.moveTo(-r * 0.78, r * 0.02);
+  x.quadraticCurveTo(-r * 0.4, -r * 0.5, r * 0.15, -r * 0.42);
+  x.quadraticCurveTo(r * 0.55, -r * 0.32, r * 0.62, r * 0.02);
+  x.quadraticCurveTo(r * 0.55, r * 0.36, r * 0.15, r * 0.44);
+  x.quadraticCurveTo(-r * 0.4, r * 0.52, -r * 0.78, r * 0.02);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(35,55,66,.65)';
+  x.lineWidth = Math.max(1, s * 0.04);
+  x.stroke();
+  // 尾鳍（分叉）
+  x.fillStyle = darkenColor(col, 0.15);
+  x.beginPath();
+  x.moveTo(r * 0.55, r * 0.0);
+  x.lineTo(r * 0.88, -r * 0.34);
+  x.quadraticCurveTo(r * 0.74, r * 0.0, r * 0.88, r * 0.34);
+  x.closePath();
+  x.fill();
+  x.stroke();
+  // 背鳍
+  x.fillStyle = darkenColor(col, 0.1);
+  x.beginPath();
+  x.moveTo(-r * 0.05, -r * 0.42);
+  x.quadraticCurveTo(r * 0.12, -r * 0.66, r * 0.3, -r * 0.36);
+  x.closePath();
+  x.fill();
+  x.stroke();
+  // 鳞片纹理
+  x.strokeStyle = 'rgba(35,55,66,.35)';
+  x.lineWidth = Math.max(0.6, s * 0.025);
+  for (const ox of [-0.3, -0.05, 0.2]) {
+    x.beginPath();
+    x.arc(ox * r, r * 0.05, r * 0.14, -0.7, 0.7);
+    x.stroke();
+  }
+  // 眼睛
+  x.fillStyle = '#f2f5f7';
+  x.beginPath(); x.arc(-r * 0.55, -r * 0.06, r * 0.11, 0, 7); x.fill();
+  x.fillStyle = '#1c2830';
+  x.beginPath(); x.arc(-r * 0.57, -r * 0.06, r * 0.055, 0, 7); x.fill();
+  // 鳃线
+  x.strokeStyle = 'rgba(35,55,66,.5)';
+  x.lineWidth = Math.max(0.8, s * 0.03);
+  x.beginPath();
+  x.moveTo(-r * 0.38, -r * 0.22);
+  x.quadraticCurveTo(-r * 0.3, r * 0.0, -r * 0.38, r * 0.2);
+  x.stroke();
+},
+
+// 铀矿石：放射绿矿粒簇 + 辐射微光（沿用矿石三粒家族造型）
+'uranium-ore': (x, r, s, col) => {
+  _radGlow(x, r, 'rgba(120,230,90,.28)', 'rgba(120,230,90,0)');
+  // 三颗矿粒（呼应 iron-ore / copper-ore 立体矿石造型）
+  for (let i = 0; i < 3; i++) {
+    const a = i * 2.09 - Math.PI / 2;
+    const cx = Math.cos(a) * r * 0.36, cy = Math.sin(a) * r * 0.36;
+    const rr = s * 0.17;
+    const g = x.createLinearGradient(cx - rr, cy - rr, cx + rr, cy + rr);
+    g.addColorStop(0, lightenColor(col, 0.5));
+    g.addColorStop(1, darkenColor(col, 0.3));
+    x.fillStyle = g;
+    x.beginPath();
+    x.arc(cx, cy, rr, 0, 7);
+    x.fill();
+    // 高光
+    x.fillStyle = 'rgba(255,255,255,.35)';
+    x.beginPath();
+    x.arc(cx - rr * 0.28, cy - rr * 0.32, rr * 0.32, 0, 7);
+    x.fill();
+  }
+  // 辐射符号（中央小三叶）
+  _radTrefoil(x, r * 0.5, 'rgba(20,60,10,.75)');
+},
+
+// 铀-235：亮绿发光同位素芯块（高亮 + 放射线 + 235 标记）
+'uranium-235': (x, r, s, col) => {
+  _radGlow(x, r, 'rgba(150,255,110,.45)', 'rgba(150,255,110,0)');
+  // 圆柱芯块
+  const g = x.createRadialGradient(-r * 0.15, -r * 0.2, r * 0.05, 0, 0, r * 0.62);
+  g.addColorStop(0, lightenColor(col, 0.55));
+  g.addColorStop(0.6, col);
+  g.addColorStop(1, darkenColor(col, 0.32));
+  x.fillStyle = g;
+  x.beginPath(); x.arc(0, 0, r * 0.56, 0, 7); x.fill();
+  x.strokeStyle = 'rgba(30,70,20,.7)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 放射短射线
+  x.strokeStyle = 'rgba(170,255,130,.9)';
+  x.lineWidth = Math.max(1, s * 0.04);
+  x.lineCap = 'round';
+  for (let i = 0; i < 8; i++) {
+    const a = i * Math.PI / 4;
+    x.beginPath();
+    x.moveTo(Math.cos(a) * r * 0.72, Math.sin(a) * r * 0.72);
+    x.lineTo(Math.cos(a) * r * 0.9, Math.sin(a) * r * 0.9);
+    x.stroke();
+  }
+  // "235" 标记
+  x.fillStyle = 'rgba(15,45,10,.85)';
+  x.font = 'bold ' + Math.round(r * 0.42) + 'px sans-serif';
+  x.textAlign = 'center';
+  x.textBaseline = 'middle';
+  x.fillText('235', 0, r * 0.04);
+},
+
+// 铀-238：暗绿丰度同位素芯块（低亮度 + 238 标记，与 U-235 形成对比）
+'uranium-238': (x, r, s, col) => {
+  _radGlow(x, r, 'rgba(110,180,70,.2)', 'rgba(110,180,70,0)');
+  const g = x.createRadialGradient(-r * 0.15, -r * 0.2, r * 0.05, 0, 0, r * 0.62);
+  g.addColorStop(0, lightenColor(col, 0.38));
+  g.addColorStop(0.6, col);
+  g.addColorStop(1, darkenColor(col, 0.36));
+  x.fillStyle = g;
+  x.beginPath(); x.arc(0, 0, r * 0.56, 0, 7); x.fill();
+  x.strokeStyle = 'rgba(24,52,14,.75)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 内圈约束环（稳定同位素意象：闭合环）
+  x.strokeStyle = 'rgba(220,245,200,.55)';
+  x.lineWidth = Math.max(0.9, s * 0.035);
+  x.beginPath(); x.arc(0, 0, r * 0.4, 0, 7); x.stroke();
+  // "238" 标记
+  x.fillStyle = 'rgba(18,42,10,.85)';
+  x.font = 'bold ' + Math.round(r * 0.42) + 'px sans-serif';
+  x.textAlign = 'center';
+  x.textBaseline = 'middle';
+  x.fillText('238', 0, r * 0.04);
+},
+
+// 核燃料：高能燃料压块（亮绿菱形压块 + 放射光芒 + 三叶符号）
+'nuclear-fuel': (x, r, s, col) => {
+  _radGlow(x, r, 'rgba(150,240,100,.4)', 'rgba(150,240,100,0)');
+  // 菱形压块（能量密度意象）
+  x.save();
+  x.rotate(Math.PI / 4);
+  const g = x.createLinearGradient(-r * 0.45, -r * 0.45, r * 0.45, r * 0.45);
+  g.addColorStop(0, lightenColor(col, 0.5));
+  g.addColorStop(0.55, col);
+  g.addColorStop(1, darkenColor(col, 0.35));
+  x.fillStyle = g;
+  rrPath(x, -r * 0.44, -r * 0.44, r * 0.88, r * 0.88, r * 0.1);
+  x.fill();
+  x.strokeStyle = 'rgba(24,64,14,.75)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  x.restore();
+  // 三叶符号
+  _radTrefoil(x, r * 0.34, 'rgba(18,52,10,.8)');
+  // 角落光芒
+  x.strokeStyle = 'rgba(190,255,150,.9)';
+  x.lineWidth = Math.max(1, s * 0.035);
+  x.lineCap = 'round';
+  for (const [px, py] of [[-0.72, -0.72], [0.72, -0.72], [-0.72, 0.72], [0.72, 0.72]]) {
+    x.beginPath();
+    x.moveTo(px * r * 0.82, py * r * 0.82);
+    x.lineTo(px * r * 0.98, py * r * 0.98);
+    x.stroke();
+  }
+},
+
+// 铀燃料棒：竖置燃料棒（金属包壳 + 绿色活性窗口 + 端盖）
+'uranium-fuel-cell': (x, r, s, col) => {
+  _radGlow(x, r, 'rgba(120,230,120,.25)', 'rgba(120,230,120,0)');
+  // 棒体（竖圆管）
+  const g = x.createLinearGradient(-r * 0.3, 0, r * 0.3, 0);
+  g.addColorStop(0, lightenColor('#b8c0c8', 0.3));
+  g.addColorStop(0.5, '#b8c0c8');
+  g.addColorStop(1, darkenColor('#b8c0c8', 0.4));
+  x.fillStyle = g;
+  rrPath(x, -r * 0.3, -r * 0.85, r * 0.6, r * 1.7, r * 0.14);
+  x.fill();
+  x.strokeStyle = 'rgba(40,50,58,.7)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 端盖
+  x.fillStyle = '#8a949e';
+  rrPath(x, -r * 0.34, -r * 0.95, r * 0.68, r * 0.2, r * 0.08);
+  x.fill();
+  rrPath(x, -r * 0.34, r * 0.75, r * 0.68, r * 0.2, r * 0.08);
+  x.fill();
+  // 活性窗口（绿色燃料芯块）
+  x.fillStyle = col;
+  rrPath(x, -r * 0.18, -r * 0.6, r * 0.36, r * 1.2, r * 0.1);
+  x.fill();
+  // 芯块分节线
+  x.strokeStyle = 'rgba(20,60,26,.5)';
+  x.lineWidth = Math.max(0.7, s * 0.03);
+  for (let i = 0; i < 4; i++) {
+    const py = -r * 0.6 + (i + 1) * r * 0.24;
+    x.beginPath(); x.moveTo(-r * 0.18, py); x.lineTo(r * 0.18, py); x.stroke();
+  }
+  // 窗口高光
+  x.fillStyle = 'rgba(255,255,255,.4)';
+  rrPath(x, -r * 0.13, -r * 0.56, r * 0.08, r * 1.1, r * 0.04);
+  x.fill();
+},
+
+// 贫化铀燃料棒：暗哑残棒（灰绿包壳 + 褪色窗口 + 燃尽裂纹）
+'depleted-uranium-fuel-cell': (x, r, s, col) => {
+  // 棒体（竖圆管，做旧灰绿）
+  const g = x.createLinearGradient(-r * 0.3, 0, r * 0.3, 0);
+  g.addColorStop(0, lightenColor(col, 0.3));
+  g.addColorStop(0.5, col);
+  g.addColorStop(1, darkenColor(col, 0.4));
+  x.fillStyle = g;
+  rrPath(x, -r * 0.3, -r * 0.85, r * 0.6, r * 1.7, r * 0.14);
+  x.fill();
+  x.strokeStyle = 'rgba(30,36,24,.75)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 端盖
+  x.fillStyle = '#6e7664';
+  rrPath(x, -r * 0.34, -r * 0.95, r * 0.68, r * 0.2, r * 0.08);
+  x.fill();
+  rrPath(x, -r * 0.34, r * 0.75, r * 0.68, r * 0.2, r * 0.08);
+  x.fill();
+  // 褪色空窗口（燃尽后残留暗芯）
+  x.fillStyle = darkenColor(col, 0.5);
+  rrPath(x, -r * 0.18, -r * 0.6, r * 0.36, r * 1.2, r * 0.1);
+  x.fill();
+  // 燃尽裂纹
+  x.strokeStyle = 'rgba(18,22,14,.8)';
+  x.lineWidth = Math.max(0.8, s * 0.032);
+  x.beginPath();
+  x.moveTo(-r * 0.06, -r * 0.4);
+  x.lineTo(r * 0.05, -r * 0.28);
+  x.lineTo(-r * 0.04, -r * 0.14);
+  x.moveTo(r * 0.02, r * 0.18);
+  x.lineTo(-r * 0.06, r * 0.32);
+  x.stroke();
+  // 灰尘蒙层
+  x.fillStyle = 'rgba(40,44,34,.3)';
+  rrPath(x, -r * 0.18, -r * 0.6, r * 0.36, r * 0.4, r * 0.1);
+  x.fill();
+},
+
+// 聚变燃料棒：青绿等离子胶囊（玻璃壳 + 内部旋涡能量）
+'fusion-power-cell': (x, r, s, col) => {
+  _radGlow(x, r, 'rgba(130,240,200,.4)', 'rgba(130,240,200,0)');
+  // 竖置胶囊玻璃壳
+  const g = x.createLinearGradient(-r * 0.42, -r * 0.8, r * 0.42, r * 0.8);
+  g.addColorStop(0, 'rgba(220,255,245,.9)');
+  g.addColorStop(0.5, lightenColor(col, 0.3));
+  g.addColorStop(1, darkenColor(col, 0.25));
+  x.fillStyle = g;
+  x.beginPath();
+  x.arc(0, -r * 0.45, r * 0.42, Math.PI, 0);
+  x.lineTo(r * 0.42, r * 0.45);
+  x.arc(0, r * 0.45, r * 0.42, 0, Math.PI);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(20,70,55,.65)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 内部等离子旋涡
+  x.save();
+  x.beginPath();
+  x.arc(0, -r * 0.45, r * 0.42, Math.PI, 0);
+  x.lineTo(r * 0.42, r * 0.45);
+  x.arc(0, r * 0.45, r * 0.42, 0, Math.PI);
+  x.closePath();
+  x.clip();
+  x.strokeStyle = 'rgba(255,255,255,.75)';
+  x.lineWidth = Math.max(1, s * 0.04);
+  x.lineCap = 'round';
+  x.beginPath();
+  x.arc(0, 0, r * 0.28, 0.4, 2.6);
+  x.stroke();
+  x.beginPath();
+  x.arc(-r * 0.06, r * 0.06, r * 0.14, 2.8, 5.2);
+  x.stroke();
+  // 核心亮点
+  const cg = x.createRadialGradient(0, -r * 0.05, r * 0.02, 0, -r * 0.05, r * 0.2);
+  cg.addColorStop(0, 'rgba(255,255,255,.95)');
+  cg.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = cg;
+  x.beginPath(); x.arc(0, -r * 0.05, r * 0.2, 0, 7); x.fill();
+  x.restore();
+  // 上下金属箍
+  x.fillStyle = '#9aa4ac';
+  rrPath(x, -r * 0.46, -r * 0.88, r * 0.92, r * 0.18, r * 0.07);
+  x.fill();
+  rrPath(x, -r * 0.46, r * 0.7, r * 0.92, r * 0.18, r * 0.07);
+  x.fill();
+},
+
+// 木材：两根圆木交叠（年轮端面 + 树皮纹理）
+'wood': (x, r, s, col) => {
+  const barkC = darkenColor(col, 0.25);
+  const cutC = lightenColor(col, 0.45);
+  // 后面圆木（横置，右上）
+  x.save();
+  x.translate(r * 0.12, -r * 0.28);
+  x.rotate(-0.12);
+  const g1 = x.createLinearGradient(0, -r * 0.3, 0, r * 0.3);
+  g1.addColorStop(0, lightenColor(col, 0.32));
+  g1.addColorStop(0.6, col);
+  g1.addColorStop(1, barkC);
+  x.fillStyle = g1;
+  rrPath(x, -r * 0.8, -r * 0.28, r * 1.6, r * 0.56, r * 0.26);
+  x.fill();
+  x.strokeStyle = 'rgba(58,40,16,.7)';
+  x.lineWidth = Math.max(1, s * 0.04);
+  x.stroke();
+  // 树皮纹理
+  x.strokeStyle = 'rgba(58,40,16,.4)';
+  x.lineWidth = Math.max(0.6, s * 0.025);
+  x.beginPath(); x.moveTo(-r * 0.5, -r * 0.08); x.lineTo(r * 0.4, -r * 0.08);
+  x.moveTo(-r * 0.4, r * 0.1); x.lineTo(r * 0.5, r * 0.1);
+  x.stroke();
+  // 端面年轮
+  x.fillStyle = cutC;
+  x.beginPath(); x.ellipse(-r * 0.8, 0, r * 0.14, r * 0.28, 0, 0, 7); x.fill();
+  x.strokeStyle = 'rgba(120,85,40,.7)';
+  x.lineWidth = Math.max(0.6, s * 0.025);
+  x.beginPath(); x.ellipse(-r * 0.8, 0, r * 0.08, r * 0.17, 0, 0, 7); x.stroke();
+  x.beginPath(); x.arc(-r * 0.8, 0, r * 0.03, 0, 7); x.stroke();
+  x.restore();
+  // 前面圆木（横置，左下）
+  x.save();
+  x.translate(-r * 0.1, r * 0.3);
+  x.rotate(0.1);
+  const g2 = x.createLinearGradient(0, -r * 0.3, 0, r * 0.3);
+  g2.addColorStop(0, lightenColor(col, 0.36));
+  g2.addColorStop(0.6, col);
+  g2.addColorStop(1, barkC);
+  x.fillStyle = g2;
+  rrPath(x, -r * 0.8, -r * 0.28, r * 1.6, r * 0.56, r * 0.26);
+  x.fill();
+  x.strokeStyle = 'rgba(58,40,16,.7)';
+  x.lineWidth = Math.max(1, s * 0.04);
+  x.stroke();
+  x.strokeStyle = 'rgba(58,40,16,.4)';
+  x.lineWidth = Math.max(0.6, s * 0.025);
+  x.beginPath(); x.moveTo(-r * 0.5, -r * 0.08); x.lineTo(r * 0.4, -r * 0.08);
+  x.moveTo(-r * 0.4, r * 0.1); x.lineTo(r * 0.5, r * 0.1);
+  x.stroke();
+  x.fillStyle = cutC;
+  x.beginPath(); x.ellipse(r * 0.8, 0, r * 0.14, r * 0.28, 0, 0, 7); x.fill();
+  x.strokeStyle = 'rgba(120,85,40,.7)';
+  x.lineWidth = Math.max(0.6, s * 0.025);
+  x.beginPath(); x.ellipse(r * 0.8, 0, r * 0.08, r * 0.17, 0, 0, 7); x.stroke();
+  x.beginPath(); x.arc(r * 0.8, 0, r * 0.03, 0, 7); x.stroke();
+  x.restore();
+},
+
+// 空间科学包：银白科学瓶 + 瓶内火箭升空轨迹
+'space-science-pack': (x, r, s, col) => {
+  _spaceFlask(x, r, s, col, (x, r) => {
+    // 深空底色
+    x.fillStyle = 'rgba(30,36,60,.85)';
+    x.fillRect(-r * 0.9, -r * 0.7, r * 1.8, r * 1.6);
+    // 星点
+    x.fillStyle = 'rgba(255,255,255,.8)';
+    for (const [px, py, pr] of [[-0.45, -0.3, 0.03], [0.4, -0.4, 0.025], [0.5, 0.1, 0.03], [-0.5, 0.25, 0.02]]) {
+      x.beginPath(); x.arc(px * r, py * r, pr * r, 0, 7); x.fill();
+    }
+    // 小火箭（瓶内向上）
+    x.save();
+    x.translate(0, r * 0.2);
+    x.fillStyle = '#e8ecf4';
+    x.beginPath();
+    x.moveTo(0, -r * 0.5);
+    x.quadraticCurveTo(r * 0.16, -r * 0.18, r * 0.13, r * 0.12);
+    x.lineTo(-r * 0.13, r * 0.12);
+    x.quadraticCurveTo(-r * 0.16, -r * 0.18, 0, -r * 0.5);
+    x.closePath();
+    x.fill();
+    // 尾焰
+    x.fillStyle = '#f0a03a';
+    x.beginPath();
+    x.moveTo(-r * 0.08, r * 0.14);
+    x.lineTo(0, r * 0.42);
+    x.lineTo(r * 0.08, r * 0.14);
+    x.closePath();
+    x.fill();
+    x.restore();
+  });
+},
+
+// 钷素科研包：深紫终极科学瓶 + 瓶内星云漩涡 + 神秘辉光
+'promethium-science-pack': (x, r, s, col) => {
+  // 紫色辉光背景
+  const glow = x.createRadialGradient(0, 0, r * 0.1, 0, 0, r * 0.95);
+  glow.addColorStop(0, 'rgba(130,110,255,.4)');
+  glow.addColorStop(1, 'rgba(130,110,255,0)');
+  x.fillStyle = glow;
+  x.beginPath(); x.arc(0, 0, r * 0.95, 0, 7); x.fill();
+  _spaceFlask(x, r, s, col, (x, r) => {
+    // 深紫星云底
+    x.fillStyle = 'rgba(28,18,70,.9)';
+    x.fillRect(-r * 0.9, -r * 0.7, r * 1.8, r * 1.6);
+    // 星云漩涡（两条螺旋臂）
+    x.strokeStyle = 'rgba(180,150,255,.85)';
+    x.lineWidth = Math.max(1.2, s * 0.045);
+    x.lineCap = 'round';
+    x.beginPath();
+    x.arc(0, r * 0.1, r * 0.34, 0.5, 2.8);
+    x.stroke();
+    x.strokeStyle = 'rgba(220,190,255,.6)';
+    x.beginPath();
+    x.arc(r * 0.04, r * 0.16, r * 0.2, 3.2, 5.6);
+    x.stroke();
+    // 核心亮星
+    const cg = x.createRadialGradient(0, r * 0.1, r * 0.02, 0, r * 0.1, r * 0.16);
+    cg.addColorStop(0, 'rgba(255,255,255,.95)');
+    cg.addColorStop(1, 'rgba(200,170,255,0)');
+    x.fillStyle = cg;
+    x.beginPath(); x.arc(0, r * 0.1, r * 0.16, 0, 7); x.fill();
+    // 散落星点
+    x.fillStyle = 'rgba(255,255,255,.85)';
+    for (const [px, py] of [[-0.4, -0.25], [0.42, -0.35], [0.5, 0.2], [-0.5, 0.3]]) {
+      x.beginPath(); x.arc(px * r, py * r, r * 0.028, 0, 7); x.fill();
+    }
+  });
+},
+
+// 低温科研包：冰蓝科学瓶 + 瓶内雪花晶体 + 寒气
+'cryogenic-science-pack': (x, r, s, col) => {
+  // 寒气辉光
+  const glow = x.createRadialGradient(0, 0, r * 0.1, 0, 0, r * 0.95);
+  glow.addColorStop(0, 'rgba(120,220,250,.35)');
+  glow.addColorStop(1, 'rgba(120,220,250,0)');
+  x.fillStyle = glow;
+  x.beginPath(); x.arc(0, 0, r * 0.95, 0, 7); x.fill();
+  _spaceFlask(x, r, s, col, (x, r) => {
+    // 冰蓝液体
+    const g = x.createLinearGradient(0, -r * 0.2, 0, r * 0.8);
+    g.addColorStop(0, 'rgba(220,250,255,.95)');
+    g.addColorStop(1, 'rgba(90,190,230,.95)');
+    x.fillStyle = g;
+    x.fillRect(-r * 0.9, -r * 0.1, r * 1.8, r * 1.0);
+    // 液面
+    x.fillStyle = 'rgba(255,255,255,.6)';
+    x.fillRect(-r * 0.9, -r * 0.1, r * 1.8, r * 0.06);
+    // 雪花晶体（六轴）
+    x.save();
+    x.translate(0, r * 0.3);
+    x.strokeStyle = 'rgba(255,255,255,.95)';
+    x.lineWidth = Math.max(1, s * 0.04);
+    x.lineCap = 'round';
+    for (let i = 0; i < 6; i++) {
+      x.rotate(Math.PI / 3);
+      x.beginPath();
+      x.moveTo(0, 0); x.lineTo(0, -r * 0.34);
+      // 分叉
+      x.moveTo(0, -r * 0.2); x.lineTo(-r * 0.09, -r * 0.28);
+      x.moveTo(0, -r * 0.2); x.lineTo(r * 0.09, -r * 0.28);
+      x.stroke();
+    }
+    x.restore();
+    // 上浮寒气泡
+    x.strokeStyle = 'rgba(255,255,255,.55)';
+    x.lineWidth = Math.max(0.6, s * 0.024);
+    for (const [px, py, pr] of [[-0.3, -0.32, 0.05], [0.28, -0.42, 0.04]]) {
+      x.beginPath(); x.arc(px * r, py * r, pr * r, 0, 7); x.stroke();
+    }
+  });
+},
+
+// 量子处理器：紫色量子芯片 + 叠加量子位环 + 金色引脚
+'quantum-processor': (x, r, s, col) => {
+  _moduleBase(x, r, s, col);
+  // 量子位环（两个交叠椭圆环，叠加态意象）
+  x.lineWidth = Math.max(1.4, s * 0.05);
+  x.strokeStyle = 'rgba(255,255,255,.9)';
+  x.beginPath(); x.ellipse(-r * 0.14, -r * 0.04, r * 0.3, r * 0.2, -0.4, 0, 7); x.stroke();
+  x.strokeStyle = 'rgba(255,230,140,.95)';
+  x.beginPath(); x.ellipse(r * 0.14, -r * 0.04, r * 0.3, r * 0.2, 0.4, 0, 7); x.stroke();
+  // 中心量子核
+  const cg = x.createRadialGradient(0, -r * 0.04, r * 0.02, 0, -r * 0.04, r * 0.14);
+  cg.addColorStop(0, 'rgba(255,255,255,1)');
+  cg.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = cg;
+  x.beginPath(); x.arc(0, -r * 0.04, r * 0.14, 0, 7); x.fill();
+  // 纠缠连线（环间小连线）
+  x.strokeStyle = 'rgba(255,255,255,.5)';
+  x.lineWidth = Math.max(0.6, s * 0.02);
+  x.beginPath(); x.moveTo(-r * 0.28, r * 0.22); x.lineTo(r * 0.28, r * 0.22); x.stroke();
+},
+
+// 废料：灰褐金属碎块堆（齿轮残片 + 板材碎块 + 铆钉）
+'scrap': (x, r, s, col) => {
+  // 底层碎板
+  const g = x.createLinearGradient(-r * 0.6, -r * 0.4, r * 0.6, r * 0.6);
+  g.addColorStop(0, lightenColor(col, 0.3));
+  g.addColorStop(0.6, col);
+  g.addColorStop(1, darkenColor(col, 0.4));
+  x.fillStyle = g;
+  x.beginPath();
+  x.moveTo(-r * 0.72, r * 0.28);
+  x.lineTo(-r * 0.5, -r * 0.18);
+  x.lineTo(r * 0.05, -r * 0.34);
+  x.lineTo(r * 0.62, -r * 0.1);
+  x.lineTo(r * 0.7, r * 0.3);
+  x.lineTo(r * 0.1, r * 0.6);
+  x.lineTo(-r * 0.55, r * 0.55);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(30,30,24,.7)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.lineJoin = 'round';
+  x.stroke();
+  // 齿轮残片（半齿轮露出）
+  x.save();
+  x.translate(r * 0.28, -r * 0.1);
+  x.rotate(0.4);
+  x.fillStyle = lightenColor(col, 0.18);
+  x.beginPath();
+  x.arc(0, 0, r * 0.26, 0, Math.PI);
+  for (let i = 0; i <= 3; i++) {
+    const a = Math.PI + i * (Math.PI / 3);
+    const rr = i % 2 ? r * 0.26 : r * 0.34;
+    x.arc(0, 0, rr, a, Math.min(a + Math.PI / 6, Math.PI * 2));
+  }
+  x.closePath();
+  x.fill();
+  x.stroke();
+  x.restore();
+  // 板材碎片（斜插小板）
+  x.save();
+  x.translate(-r * 0.28, r * 0.08);
+  x.rotate(-0.5);
+  x.fillStyle = lightenColor(col, 0.12);
+  rrPath(x, -r * 0.22, -r * 0.3, r * 0.44, r * 0.6, r * 0.05);
+  x.fill();
+  x.strokeStyle = 'rgba(30,30,24,.7)';
+  x.lineWidth = Math.max(1, s * 0.04);
+  x.stroke();
+  // 铆钉
+  x.fillStyle = 'rgba(220,225,230,.7)';
+  x.beginPath(); x.arc(0, -r * 0.18, r * 0.05, 0, 7); x.fill();
+  x.beginPath(); x.arc(0, r * 0.16, r * 0.05, 0, 7); x.fill();
+  x.restore();
+  // 碎块高光边
+  x.strokeStyle = 'rgba(255,255,255,.3)';
+  x.lineWidth = Math.max(0.8, s * 0.03);
+  x.beginPath();
+  x.moveTo(-r * 0.5, -r * 0.16);
+  x.lineTo(r * 0.03, -r * 0.32);
+  x.stroke();
+},
+
+// 空桶：空钢桶（顶部开口 + 箍纹，无色带）
+'barrel': (x, r, s, col) => {
+  _barrelShell(x, r, s, null);
+},
+
+// 桶装水：钢桶 + 蓝色水带
+'water-barrel': (x, r, s, col) => {
+  _barrelShell(x, r, s, col);
+},
+
+// 桶装原油：钢桶 + 黑褐色油带 + 油滴
+'crude-oil-barrel': (x, r, s, col) => {
+  _barrelShell(x, r, s, '#2e2818');
+},
+
+// 桶装重油：钢桶 + 深褐油带
+'heavy-oil-barrel': (x, r, s, col) => {
+  _barrelShell(x, r, s, '#6a4626');
+},
+
+// 桶装轻油：钢桶 + 琥珀色油带
+'light-oil-barrel': (x, r, s, col) => {
+  _barrelShell(x, r, s, '#a8752c');
+},
 };

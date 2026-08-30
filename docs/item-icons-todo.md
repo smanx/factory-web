@@ -193,7 +193,7 @@
 - [x] `holmium-solution` 钬溶液
 - [x] `holmium-plate` 钬板
 - [x] `electrolyte` 电解液
-- [ ] `supercapacitor` 超级电容
+- [x] `supercapacitor` 超级电容
 - [x] `tungsten-ore` 钨矿石
 - [x] `tungsten-plate` 钨板
 - [x] `tungsten-carbide` 碳化钨
@@ -204,35 +204,35 @@
 - [x] `bioflux` 生物结晶
 - [x] `nutrients` 营养素
 - [x] `spoilage` 变质物
-- [ ] `agricultural-science-pack` 农业科技包
-- [ ] `jellynut` 果冻果
-- [ ] `jellynut-seed` 果冻果种子
-- [ ] `jelly` 果冻
-- [ ] `biter-egg` 异虫卵
-- [ ] `pentapod-egg` 五足虫卵
-- [ ] `tree-seed` 树种子
-- [ ] `iron-bacteria` 铁细菌
-- [ ] `copper-bacteria` 铜细菌
-- [ ] `ice` 冰
-- [ ] `raw-fish` 生鱼
-- [ ] `uranium-ore` 铀矿石
-- [ ] `uranium-235` 铀-235
-- [ ] `uranium-238` 铀-238
-- [ ] `nuclear-fuel` 核燃料
-- [ ] `uranium-fuel-cell` 铀燃料棒
-- [ ] `depleted-uranium-fuel-cell` 贫化铀燃料棒
-- [ ] `fusion-power-cell` 聚变燃料棒
-- [ ] `wood` 木材
-- [ ] `space-science-pack` 空间科学包
-- [ ] `promethium-science-pack` 钷素科研包
-- [ ] `cryogenic-science-pack` 低温科研包
-- [ ] `quantum-processor` 量子处理器
-- [ ] `scrap` 废料
-- [ ] `barrel` 空桶
-- [ ] `water-barrel` 桶装水
-- [ ] `crude-oil-barrel` 桶装原油
-- [ ] `heavy-oil-barrel` 桶装重油
-- [ ] `light-oil-barrel` 桶装轻油
+- [x] `agricultural-science-pack` 农业科技包
+- [x] `jellynut` 果冻果
+- [x] `jellynut-seed` 果冻果种子
+- [x] `jelly` 果冻
+- [x] `biter-egg` 异虫卵
+- [x] `pentapod-egg` 五足虫卵
+- [x] `tree-seed` 树种子
+- [x] `iron-bacteria` 铁细菌
+- [x] `copper-bacteria` 铜细菌
+- [x] `ice` 冰
+- [x] `raw-fish` 生鱼
+- [x] `uranium-ore` 铀矿石
+- [x] `uranium-235` 铀-235
+- [x] `uranium-238` 铀-238
+- [x] `nuclear-fuel` 核燃料
+- [x] `uranium-fuel-cell` 铀燃料棒
+- [x] `depleted-uranium-fuel-cell` 贫化铀燃料棒
+- [x] `fusion-power-cell` 聚变燃料棒
+- [x] `wood` 木材
+- [x] `space-science-pack` 空间科学包
+- [x] `promethium-science-pack` 钷素科研包
+- [x] `cryogenic-science-pack` 低温科研包
+- [x] `quantum-processor` 量子处理器
+- [x] `scrap` 废料
+- [x] `barrel` 空桶
+- [x] `water-barrel` 桶装水
+- [x] `crude-oil-barrel` 桶装原油
+- [x] `heavy-oil-barrel` 桶装重油
+- [x] `light-oil-barrel` 桶装轻油
 - [ ] `petroleum-gas-barrel` 桶装石油气
 - [ ] `lubricant-barrel` 桶装润滑油
 - [ ] `sulfuric-acid-barrel` 桶装硫酸
