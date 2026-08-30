@@ -872,7 +872,9 @@ function reactorPanelLive(e, api) {
   const _temp = e.temperature();
   api.set('heat', _temp >= 1 ? chip('heat-pipe', Math.round(_temp) + '°C') : dimSpan('空'));
   api.set('temp', Math.round(_temp) + ' / ' + HEAT_MAX_TEMP + ' °C');
-  api.prog(Math.min(100, _temp / HEAT_MAX_TEMP * 100));
+  // 进度条显示当前燃料棒消耗进度（剩余燃烧时间占比），对齐《异星工厂》反应堆燃料槽显示
+  const fuelPct = e.burning && e.burnLeft > 0 ? Math.max(0, Math.min(100, (e.burnLeft || 0) / REACTOR_FUEL_ENERGY * 100)) : 0;
+  api.prog(fuelPct, REACTOR_FUEL_ENERGY);
   if (e.burning) api.status('运行中：产热 ' + REACTOR_HEAT_RATE + 'MW' + (_temp >= HEAT_MAX_TEMP - 1 ? '（已达最高温，多余热量流失）' : ''), 'ok');
   else if (e.fuel <= 0 && e.burnLeft <= 0) api.status('已暂停：无铀燃料棒', 'bad');
   else api.status('已暂停：待机', 'warn');
