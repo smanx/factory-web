@@ -299,39 +299,39 @@
 - [x] `land-mine` 地雷
 - [x] `artillery-turret` 炮兵连
 - [x] `artillery-shell` 炮弹（炮兵）
-- [ ] `teslagun` 特斯拉电枪
-- [ ] `tesla-turret` 特斯拉炮塔
-- [ ] `tesla-ammo` 特斯拉弹药
-- [ ] `rocket-turret` 火箭炮塔
-- [ ] `railgun-turret` 磁轨炮塔
-- [ ] `railgun-ammo` 磁轨炮弹
-- [ ] `capture-robot-rocket` 捕获者火箭弹
-- [ ] `personal-roboport-equipment` 个人机器人港
-- [ ] `personal-roboport-mk2-equipment` 个人机器人港 II
-- [ ] `modular-armor` 模块化护甲
-- [ ] `power-armor` 强力装甲
-- [ ] `power-armor-mk2` 强力装甲 II
-- [ ] `solar-panel-equipment` 个人太阳能板
-- [ ] `fusion-reactor-equipment` 便携聚变反应堆
-- [ ] `battery-equipment` 个人电池
-- [ ] `battery-mk2-equipment` 个人电池 II
-- [ ] `exoskeleton-equipment` 外骨骼
-- [ ] `night-vision-equipment` 夜视仪
-- [ ] `personal-laser-defense-equipment` 个人激光防御
-- [ ] `energy-shield-equipment` 能量护盾
-- [ ] `energy-shield-mk2-equipment` 能量护盾 II
-- [ ] `belt-immunity-equipment` 传送带免疫
-- [ ] `discharge-defense-equipment` 放电防御
-- [ ] `battery-mk3-equipment` 个人电池 III
-- [ ] `fission-reactor-equipment` 便携裂变反应堆
-- [ ] `toolbelt-equipment` 工具腰带
-- [ ] `mech-armor` 机械装甲
-- [ ] `railgun` 轨道炮
+- [x] `teslagun` 特斯拉电枪
+- [x] `tesla-turret` 特斯拉炮塔
+- [x] `tesla-ammo` 特斯拉弹药
+- [x] `rocket-turret` 火箭炮塔
+- [x] `railgun-turret` 磁轨炮塔
+- [x] `railgun-ammo` 磁轨炮弹
+- [x] `capture-robot-rocket` 捕获者火箭弹
+- [x] `personal-roboport-equipment` 个人机器人港
+- [x] `personal-roboport-mk2-equipment` 个人机器人港 II
+- [x] `modular-armor` 模块化护甲
+- [x] `power-armor` 强力装甲
+- [x] `power-armor-mk2` 强力装甲 II
+- [x] `solar-panel-equipment` 个人太阳能板
+- [x] `fusion-reactor-equipment` 便携聚变反应堆
+- [x] `battery-equipment` 个人电池
+- [x] `battery-mk2-equipment` 个人电池 II
+- [x] `exoskeleton-equipment` 外骨骼
+- [x] `night-vision-equipment` 夜视仪
+- [x] `personal-laser-defense-equipment` 个人激光防御
+- [x] `energy-shield-equipment` 能量护盾
+- [x] `energy-shield-mk2-equipment` 能量护盾 II
+- [x] `belt-immunity-equipment` 传送带免疫
+- [x] `discharge-defense-equipment` 放电防御
+- [x] `battery-mk3-equipment` 个人电池 III
+- [x] `fission-reactor-equipment` 便携裂变反应堆
+- [x] `toolbelt-equipment` 工具腰带
+- [x] `mech-armor` 机械装甲
+- [x] `railgun` 轨道炮
 
 ## 💧 流体（16）
 
-- [ ] `water` 水
-- [ ] `steam` 蒸汽
+- [x] `water` 水
+- [x] `steam` 蒸汽
 - [ ] `crude-oil` 原油
 - [ ] `heavy-oil` 重油
 - [ ] `light-oil` 轻油
