@@ -82,6 +82,9 @@ const REACTOR_HEAT_RATE = GAME_DATA.heat?.reactorHeatRate ?? 40;  // 反应堆�
 const HEAT_EXCHANGER_MIN_WORK_TEMP = GAME_DATA.heat?.heatExchangerMinWorkTemp ?? 500;  // 热交换器最低工作温度 500°C（官方 energy_source min_working_temperature，GAME_DATA 单源）
 const HEAT_PIPE_MIN_GLOW_TEMP = GAME_DATA.heat?.heatPipeMinGlowTemp ?? 350; // 导热管/热设备最低发光温度 350°C（官方 minimum_glow_temperature）
 const HEAT_EXCHANGER_POWER = GAME_DATA.heat?.heatExchangerPower ?? 10;   // 热交换器满负荷耗热 10MW（官方 energy_consumption，1 反应堆 40MW 可带 4 台）
+// 断开热源后的降温参数（项目自定：官方 heat-exchanger 原型无自然散热字段，取保守值）：
+const HEAT_EXCHANGER_COOL_RATE = 1;   // 断开热源后热量散失速率 1MW（远低于运转耗热 10MW，缓慢降温）
+const AMBIENT_TEMP = 15;              // 环境温度 15°C（官方默认流体/设备起始温度）
 const HEAT_EXCHANGER_ENERGY_PER_STEAM = 20;// 热交换器每产 1 单位蒸汽需消耗热量(MJ)：10MW → 0.5 单位/s，4 台满产 2 单位/s 供 1 台汽轮机
 // 太空时代供热塔（heating-tower，Aquilo）：官方 reactor 原型，燃烧化学燃料产热，数据来自 GAME_DATA.heat。
 // 产热 = 燃料消耗率 × 效比（官方 consumption=40MW、effectivity=2.5 → 100MW，高于核反应堆 40MW）。

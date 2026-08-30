@@ -390,8 +390,11 @@ function _hoverRuntimeSections(e) {
       rows.push({ label: '燃料燃尽', value: '剩 ' + fmt(e.burnLeft || 0) + ' 秒' });
       rows.push({ label: '当前温度', value: Math.round(e.temperature()) + ' °C / 最高 ' + HEAT_MAX_TEMP + ' °C' });
     } else if (e instanceof HeatExchanger) {
-      rows.push({ label: '耗热速率', value: e.active ? '−' + fmt(HEAT_EXCHANGER_POWER) + ' MJ/秒' : '−0 MJ/秒', color: '#ff9a3a' });
+      // 热交换器满负荷耗热 10MW（官方 energy_consumption，HEAT_EXCHANGER_POWER 单源），
+      // 产汽速率 = 耗热 / 每单位蒸汽热值（此前引用已不存在的 HEAT_EXCHANGER_STEAM_RATE 导致 ReferenceError 崩渲染）
+      rows.push({ label: '耗热速率', value: e.active ? '−' + fmt(HEAT_EXCHANGER_POWER) + ' MW' : '−0 MW', color: '#ff9a3a' });
       rows.push({ label: '产汽速率', value: e.active ? '+' + fmt(HEAT_EXCHANGER_POWER / HEAT_EXCHANGER_ENERGY_PER_STEAM) + '/秒 蒸汽' : '+0/秒', color: '#8fe08f' });
+      rows.push({ label: '热量接入', value: e.hasHeatSourceNeighbor && e.hasHeatSourceNeighbor() ? '已接热源' : '未接热源（缓慢降温中）', color: e.hasHeatSourceNeighbor && e.hasHeatSourceNeighbor() ? '#8fe08f' : '#ff9a3a' });
       rows.push({ label: '当前温度', value: Math.round(e.temperature()) + ' °C' });
       rows.push({ label: '启动温度', value: HEAT_EXCHANGER_MIN_WORK_TEMP + ' °C' + (e.temperature() >= HEAT_EXCHANGER_MIN_WORK_TEMP ? '（已达标）' : '（未达标）'), color: e.temperature() >= HEAT_EXCHANGER_MIN_WORK_TEMP ? '#8fe08f' : '#ff5b5b' });
       rows.push({ label: '最高温度', value: HEAT_MAX_TEMP + ' °C' });

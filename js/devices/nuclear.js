@@ -1358,8 +1358,9 @@ function heatPipeConnect(e, dx, dy) {
   if (!nb || nb._dead) return false;
   if (nb instanceof HeatPipe) return true;
   if (nb instanceof HeatExchanger || nb instanceof FusionGenerator) {
-    const p = rotCell(nb, nb.def.w >> 1, nb.def.h);   // 热交换接口：默认下边(南)中间
-    return p.x === nx && p.y === ny;
+    // 与传热逻辑（heatDevicesConnectedViaPort）完全一致：接口外侧相邻格被本导热管占据即连通，
+    // 该格必与本导热管正交相邻，等价于 nx/ny 落在接口外侧格。
+    return heatDevicesConnectedViaPort(nb, e);
   }
   if (nb instanceof NuclearReactor || nb instanceof HeatingTower) {
     // 反应堆：5 格边仅第 1/3/5 格（-2/0/+2）有接口；供热塔：四边中心各 1 格
@@ -1582,6 +1583,13 @@ class HeatExchanger extends Entity {
     this.heatFlow(dt);
     this.portFlow(dt);
   }
+  // 热交换接口是否接了热源（导热管/反应堆/供热塔）——重新连接后立即恢复受热判定
+  hasHeatSourceNeighbor() {
+    const pHT = rotCell(this, this.def.w >> 1, this.def.h); // 热交换接口外侧：默认下边(南)中间
+    const t = entAt(pHT.x, pHT.y);
+    return !!t && !t._dead &&
+      ((t instanceof HeatPipe) || (t instanceof NuclearReactor) || (t instanceof HeatingTower));
+  }
   // 从相邻导热管/反应堆吸热（导热管/反应堆会主动送热，这里也做被动吸收兜底）
   // 仅经热交换接口（官方 connections：默认下边(南)中间，随 dir 旋转）吸热，接口未对上不传热。
   heatFlow(dt) {
@@ -1624,6 +1632,15 @@ class HeatExchanger extends Entity {
         if (sPort && this.steamBuf >= 1 && n.steamBuf < TURBINE_STEAM_CAP - 0.01) { this.steamBuf--; n.steamBuf++; }
       }
     });
+    // 降温（项目自定补充，官方原型无自然散热字段，对齐官方保守表现）：
+    // 热交换接口未接热源（热管/反应堆断开或未对准）后，热量不再自动清零，
+    // 而是以 HEAT_EXCHANGER_COOL_RATE 恒定速率缓慢散失（无官方数值可取，取远低于运转能耗的保守值），
+    // 温度平滑回落至环境温度 15°C（AMBIENT_TEMP）。接回热源后立即恢复受热，无状态锁定。
+    if (!this.hasHeatSourceNeighbor() && this.heatEnergy > 0) {
+      const loss = Math.min(this.heatEnergy, HEAT_EXCHANGER_COOL_RATE * dt);
+      this.heatEnergy -= loss;
+      if (this.heatEnergy <= AMBIENT_TEMP * this.specificHeat() + 1e-9) this.heatEnergy = AMBIENT_TEMP * this.specificHeat();
+    }
     // 产汽：温度 >= 500°C（官方 min_working_temperature）才开始工作，耗热 + 耗水 → 蒸汽
     // 满负荷固定耗热 HEAT_EXCHANGER_POWER(官方 energy_consumption 10MW，1 反应堆 40MW 可带 4 台)：
     // 耗热恒定不随温度升高而增大，多余热量使全链温度继续升向 1000°C（对齐官方核能表现）。
