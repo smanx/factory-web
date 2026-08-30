@@ -1219,7 +1219,7 @@ function bluebookLayoutHtml() {
     '<input id="bb-search" class="inv-search" type="text" placeholder="搜索蓝图…" autocomplete="off" value="' + qEsc + '">' +
     '<button data-bbview="1">' + (G.bbGridView === false ? '🔲 格子视图' : '📋 列表视图') + '</button>' +
     '</div>' +
-    '<div class="dim" style="margin-bottom:4px">悬停看名字 · <b>左键</b>选中：点击地图铺建 / 点下方背包放入 · <b>右键</b>详情</div>';
+    '<div class="dim" style="margin-bottom:4px">悬停看名字 · <b>左键</b>选中：点击地图铺建 / 点左侧背包放入 · <b>右键</b>详情</div>';
   if (!list.length) {
     grid += '<div class="dim">蓝图库为空。请在地图上按 <b>Alt+B</b>（或 Ctrl+C）拖拽框选一片建筑创建蓝图。</div>';
   } else if (G.bbGridView === false) {
@@ -1247,17 +1247,17 @@ function bluebookLayoutHtml() {
     }
     grid += '</div>';
     grid += '<div id="bb-empty" class="dim" style="display:none;margin-top:8px"></div>';
-    grid += '<div class="dim" style="margin-top:8px">选中蓝图后：点击地图直接铺建；点击下方背包格子 = 放入背包。按 E/Q 关闭面板。</div>';
+    grid += '<div class="dim" style="margin-top:8px">选中蓝图后：点击地图直接铺建；点击左侧背包格子 = 放入背包。按 E/Q 关闭面板。</div>';
     grid += '</div>';
   }
-  // 下方玩家背包（格子可点击，放入快捷栏/选中物品），带 id 供「点格子入包」寻址
-  const left = htmlInventory('bb-inv');
-  // 布局：左侧 = 蓝图库列表，右侧 = 玩家背包（bb2-left 蓝图库 / bb2-right 背包，样式见 style.css）
+  // 玩家背包（格子可点击，放入快捷栏/选中物品），带 id 供「点格子入包」寻址
+  const inv = htmlInventory('bb-inv');
+  // 布局：左侧 = 玩家背包，右侧 = 蓝图库列表（bb2-left 背包 / bb2-right 蓝图库，样式见 style.css）
   return '<div class="bb2-layout">' +
-    '<div class="bb2-col bb2-left"><div class="bb2-col-head">📑 蓝图库</div>' +
+    '<div class="bb2-col bb2-left"><div class="bb2-col-head">🎒 玩家</div>' +
+    '<div class="bb2-col-body">' + inv + '</div></div>' +
+    '<div class="bb2-col bb2-right"><div class="bb2-col-head">📑 蓝图库</div>' +
     '<div class="bb2-col-body">' + grid + '</div></div>' +
-    '<div class="bb2-col bb2-right"><div class="bb2-col-head">🎒 玩家</div>' +
-    '<div class="bb2-col-body">' + left + '</div></div>' +
   '</div>';
 }
 

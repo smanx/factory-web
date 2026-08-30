@@ -744,8 +744,8 @@ html, body {
   border: 2px solid #444;
   background: var(--panel-bg);
 }
-/* 左列 = 蓝图库：固定宽度（列表/格子视图容器） */
-.bb2-col.bb2-left {
+/* 右列 = 蓝图库：固定宽度（列表/格子视图容器） */
+.bb2-col.bb2-right {
   width: 430px;
   min-width: 360px;
 }
