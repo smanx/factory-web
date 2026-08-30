@@ -199,9 +199,23 @@ const BUILDING_HP = {
 };
 function buildingMaxHp(type) { return BUILDING_HP[type] || 100; }
 
-// 所有建筑统一支持旋转与翻转（含锅炉/蒸汽机/汽轮机/热交换器等固定管道口建筑）。
-// 旋转时设备本身与管道口随方向一起转动。
-function postPlaceRotatable(type) { return true; }
+// 放置后（本体已建在地图上）仍允许直接旋转/翻转的设备白名单：
+//   传送带（各等级）、机械臂（各类型）、地下传送带（各等级）、地下管道（pipe-to-ground）。
+// 其余设备一旦放置即固定朝向，不可直接旋转——R/V/H 仅在放置幽灵（预览）阶段调整朝向
+// （对齐《异星工厂》：已建成建筑方向固定，只有传送带/机械臂/地下带等物流件可放置后旋转）。
+const POST_PLACE_ROTATE_OK = {
+  // 传送带（含创造/虚空带）
+  'transport-belt': 1, 'fast-transport-belt': 1, 'express-transport-belt': 1, 'turbo-transport-belt': 1,
+  'creative-belt': 1, 'void-belt': 1,
+  // 机械臂（各类型）
+  'inserter': 1, 'burner-inserter': 1, 'long-handed-inserter': 1, 'fast-inserter': 1,
+  'bulk-inserter': 1, 'stack-inserter': 1,
+  // 地下传送带（各等级）
+  'underground-belt': 1, 'fast-underground-belt': 1, 'express-underground-belt': 1, 'turbo-underground-belt': 1,
+  // 地下管道
+  'pipe-to-ground': 1
+};
+function postPlaceRotatable(type) { return !!POST_PLACE_ROTATE_OK[type]; }
 
 // ===== 官方建筑血量数据桥接（GAME_DATA 由 factorio-data 现场生成，见 tools/generate-game-data.js）=====
 // 与《异星工厂》官方完全一致：官方 max_health 覆盖手工值。
