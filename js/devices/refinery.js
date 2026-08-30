@@ -96,7 +96,7 @@ class Refinery extends Entity {
       if (!(rec.inp[k] > 0)) continue;
       const n = neighborOnSideCell(this, inSide, cell);
       // 普通管道与地下管道（管口朝本设备）均可吸入流体原料
-      if (!pipeConnAt(n.x, n.y, sideFromEntity(this, n))) continue;
+      if (!n || !pipeConnAt(n.x, n.y, sideFromEntity(this, n))) continue;
       if (!(n.fluid[k] > 0)) continue;
       // 只按原料缓冲上限吸入流体原料：产物不做计数（煤液化等配方产物即原料）
       if ((this.inp[k] || 0) < REFINERY_BUF_CAP && n.takeItemOf(k)) this.inp[k] = (this.inp[k] || 0) + 1;

@@ -22,7 +22,7 @@ class FluidPump extends Entity {
     const back = entAt(this.x - DX[this.dir], this.y - DY[this.dir]);
     const front = entAt(this.x + DX[this.dir], this.y + DY[this.dir]);
     // 吸入：从背侧管道/地下管道（管口朝泵背侧）
-    if (pipeConnAt(back.x, back.y, (this.dir + 2) % 4) && this.total() < PUMP_BUF_CAP) {
+    if (back && pipeConnAt(back.x, back.y, (this.dir + 2) % 4) && this.total() < PUMP_BUF_CAP) {
       for (const k of Object.keys(back.fluid)) {
         if (!(back.fluid[k] > 0)) continue;
         if (this.total() >= PUMP_BUF_CAP) break;
@@ -260,7 +260,7 @@ function fluidPumpPanelLive(e, api) {
   const front = entAt(e.x + DX[e.dir], e.y + DY[e.dir]);
   if (!e.circuitEnabled()) { api.status('已停止：电路条件不满足', 'warn'); return; }
   if (e.total() > 0 && front) api.status('泵送中：背侧→前侧', 'ok');
-  else if (pipeConnAt(back.x, back.y, (e.dir + 2) % 4) && back.total() > 0) api.status('待泵：背侧有流体可吸入', 'ok');
+  else if (back && pipeConnAt(back.x, back.y, (e.dir + 2) % 4) && back.total() > 0) api.status('待泵：背侧有流体可吸入', 'ok');
   else api.status('待机：背侧无流体', 'ok');
 }
 function fluidPumpPanelAction(action, el) {

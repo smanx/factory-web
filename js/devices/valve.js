@@ -30,12 +30,12 @@ class FluidValve extends Entity {
     if (this.mode() === 'one-way') return true;  // 单向阀始终放行（方向由进出位置保证）
     if (this.mode() === 'overflow') {
       // 溢出阀：入口侧压力（含本缓冲）超过阈值才外溢
-      const inPress = (pipeConnAt(back.x, back.y, (this.dir + 2) % 4) ? back.total() : 0) + this.total();
+      const inPress = (back && pipeConnAt(back.x, back.y, (this.dir + 2) % 4) ? back.total() : 0) + this.total();
       return inPress >= VALVE_VOLUME * this.threshold();
     }
     if (this.mode() === 'top-up') {
       // 补给阀：出口侧压力低于阈值才补给
-      const outPress = pipeConnAt(front.x, front.y, this.dir) ? front.total() : 0;
+      const outPress = front && pipeConnAt(front.x, front.y, this.dir) ? front.total() : 0;
       return outPress < VALVE_VOLUME * this.threshold();
     }
     return true;
@@ -45,7 +45,7 @@ class FluidValve extends Entity {
     // 从背侧管道吸入
     const back = entAt(this.x - DX[this.dir], this.y - DY[this.dir]);
     const front = entAt(this.x + DX[this.dir], this.y + DY[this.dir]);
-    if (pipeConnAt(back.x, back.y, (this.dir + 2) % 4) && this.total() < VALVE_VOLUME) {
+    if (back && pipeConnAt(back.x, back.y, (this.dir + 2) % 4) && this.total() < VALVE_VOLUME) {
       for (const k of Object.keys(back.fluid)) {
         if (!(back.fluid[k] > 0)) continue;
         if (this.total() >= VALVE_VOLUME) break;
@@ -179,8 +179,8 @@ function valvePanelLive(e, api) {
   api.toggle('#btn-valve-takeout', e.total() > 0, '取出全部 (' + e.total() + ')');
   const back = entAt(e.x - DX[e.dir], e.y - DY[e.dir]);
   const front = entAt(e.x + DX[e.dir], e.y + DY[e.dir]);
-  const inPress = (pipeConnAt(back.x, back.y, (e.dir + 2) % 4) ? back.total() : 0) + e.total();
-  const outPress = pipeConnAt(front.x, front.y, e.dir) ? front.total() : 0;
+  const inPress = (back && pipeConnAt(back.x, back.y, (e.dir + 2) % 4) ? back.total() : 0) + e.total();
+  const outPress = front && pipeConnAt(front.x, front.y, e.dir) ? front.total() : 0;
   if (e.mode() === 'overflow') {
     if (inPress >= VALVE_VOLUME * e.threshold()) api.status('开阀：入口压力达阈值，流体外溢', 'ok');
     else api.status('闭阀：入口压力未达阈值（' + inPress.toFixed(0) + ' / ' + (VALVE_VOLUME * e.threshold()) + '）', 'warn');
@@ -188,7 +188,7 @@ function valvePanelLive(e, api) {
     if (outPress < VALVE_VOLUME * e.threshold()) api.status('开阀：出口压力低，正在补给', 'ok');
     else api.status('闭阀：出口压力充足，停止补给', 'warn');
   } else {
-    api.status(pipeConnAt(back.x, back.y, (e.dir + 2) % 4) && back.total() > 0 ? '单向流通：背侧→前侧' : '待机', 'ok');
+    api.status(back && pipeConnAt(back.x, back.y, (e.dir + 2) % 4) && back.total() > 0 ? '单向流通：背侧→前侧' : '待机', 'ok');
   }
 }
 function valveTip(e) {
