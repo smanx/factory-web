@@ -87,7 +87,7 @@ function drawFoundry(ctx, e, gx, gy, dir, alpha) {
 
 // ===== 面板：复用组装机面板，仅列出铸造配方 =====
 function foundryPanelHtml(e) {
-  let h = row('当前配方', e.recipe ? ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name : '<span class="dim">未设置</span>');
+  let h = row('当前配方', recipeValueHtml(e.recipe));
   h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? asmMult() * ((GAME_DATA.deviceStats?.[e.type]?.craftingSpeed ?? 2.0) / 0.5) * elecMachMult() : 1);
   h += row('电力', powerStatusLiveHtml(e), 'power');
   h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');

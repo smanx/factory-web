@@ -2602,6 +2602,18 @@ html, body {
 /* 配方选择网格：每行最多 10 个配方图标（固定 10 列） */
 #panel.recipe-wide .rcp-scroll .inv-slots { grid-template-columns: repeat(10, 32px); }
 /* 配方弹框内的分类 tab 靠左排布，不等分拉伸占满宽度 */
+/* ——— 设备面板「当前配方」值：图标+名称，悬停弹出配方卡（与配方选择一致）——— */
+.rec-val {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 2px 6px; margin-left: -6px;
+  border: 1px solid transparent; border-radius: 5px;
+  cursor: help; max-width: 100%;
+}
+.rec-val:hover { background: rgba(255, 210, 60, .12); border-color: #ffd23c; }
+.rec-val-icon { width: 18px; height: 18px; display: block; flex: 0 0 auto; }
+.rec-val-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rec-val-hint { font-size: 10px; color: #8fa0b5; flex: 0 0 auto; line-height: 1; }
+.rec-val:hover .rec-val-hint { color: #ffd23c; }
 #panel.recipe-wide .craft-tabs { justify-content: flex-start; }
 #panel.recipe-wide .craft-tabs .craft-tab { flex: 0 0 auto; }
 

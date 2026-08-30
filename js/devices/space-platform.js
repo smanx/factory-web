@@ -400,7 +400,7 @@ function drawAsteroidCollector(ctx, e, gx, gy, dir, alpha) {
 
 // ===== 面板：空间平台中枢（复用组装机面板）=====
 function hubPanelHtml(e) {
-  let h = row('当前配方', e.recipe ? ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name : '<span class="dim">未设置</span>');
+  let h = row('当前配方', recipeValueHtml(e.recipe));
   h += row('电力', powerStatusLiveHtml(e), 'power');
   h += row('输入', Object.keys(e.inp).length ? countStr(e.inp) : '<span class="dim">空</span>', 'input');
   if (e.recipe)

@@ -396,6 +396,17 @@ function initTooltips() {
     let text = null;
     const el = (ev.target && ev.target.closest) ? ev.target.closest('[data-tip]') : null;
     const slot = (ev.target && ev.target.closest) ? ev.target.closest('.rcp-slot[data-id], .craft-slot[data-id]') : null;
+    // 设备面板「当前配方」值（图标+名称）：悬停弹出与配方选择一致的配方卡
+    const recVal = (ev.target && ev.target.closest) ? ev.target.closest('[data-rec-id]') : null;
+    if (recVal && recVal.dataset.recId) {
+      const html = (typeof recipeCardHtml === 'function') ? recipeCardHtml(recVal.dataset.recId) : '';
+      if (html) {
+        tip.style.display = 'none';
+        rcp.innerHTML = html;
+        placeNear(rcp, ev.clientX, ev.clientY);
+        return;
+      }
+    }
     if (slot && slot.dataset.id) {
       // 悬停配方槽：优先显示“配方卡”
       const html = (typeof recipeCardHtml === 'function') ? recipeCardHtml(slot.dataset.id) : '';

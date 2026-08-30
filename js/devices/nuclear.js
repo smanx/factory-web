@@ -269,7 +269,7 @@ function centrifugePanelLive(e, api) {
   const curRec = e.recipeObj && e.recipeObj();
   if (curRec) {
     const curNm = CENTRIFUGE_RECIPES[e.recipe] ? localizedName(e.recipe, CENTRIFUGE_RECIPES[e.recipe].name) : (e.recipe === 'kovarex' ? localizedName('kovarex', '铀增殖处理') : '');
-    let info = '<div class="sec">当前配方 · ' + curNm + '</div>';
+    let info = '<div class="sec">当前配方 · ' + recipeValueHtml(e.recipe, curNm) + '</div>';
     info += '<div class="dim">每周期耗时 ' + curRec.time + ' 秒</div>';
     info += '<div class="dim">所需原料：</div>';
     for (const k in curRec.inp) info += '<div class="mach-rate">' + chip(k, curRec.inp[k]) + '</div>';

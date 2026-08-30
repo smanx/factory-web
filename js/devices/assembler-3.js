@@ -59,7 +59,7 @@ function drawAssembler3(ctx, e, gx, gy, dir, alpha) {
 
 // ===== 面板：复用组装机面板（配方选择/输入/输出/进度）=====
 function assembler3PanelHtml(e) {
-  let h = row('当前配方', e.recipe ? ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name : '<span class="dim">未设置</span>');
+  let h = row('当前配方', recipeValueHtml(e.recipe));
   // 消耗/产出速率显示在面板靠前位置（当前配方之后）：组装机 III 速度为 I 的 2.5 倍（官方 crafting_speed 1.25/0.5），并受电学科技加成
   h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? asmMult() * ((GAME_DATA.deviceStats?.[e.type]?.craftingSpeed ?? 1.25) / 0.5) * elecMachMult() : 1);
   h += row('电力', powerStatusLiveHtml(e), 'power');

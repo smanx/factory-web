@@ -532,7 +532,7 @@ function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
 
 // ===== 面板 =====
 function chemicalPlantPanelHtml(e) {
-  let h = row('当前配方', e.recipe ? ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name : '<span class="dim">未设置</span>');
+  let h = row('当前配方', recipeValueHtml(e.recipe));
   // 消耗/产出速率显示在面板靠前位置（当前配方之后）
   h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? chemMult() * oilMult() * e.moduleSpeedMult() : 1);
   h += row('电力', powerStatusLiveHtml(e), 'power');

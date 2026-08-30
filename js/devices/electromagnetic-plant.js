@@ -90,7 +90,7 @@ function drawElectromagneticPlant(ctx, e, gx, gy, dir, alpha) {
 
 // ===== 面板：复用组装机面板，仅列出电磁配方 =====
 function electroPanelHtml(e) {
-  let h = row('当前配方', e.recipe ? ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name : '<span class="dim">未设置</span>');
+  let h = row('当前配方', recipeValueHtml(e.recipe));
   // 消耗/产出速率：电磁工厂速度为组装机 I 的 4 倍（官方 crafting_speed 2.0/0.5）
   h += machRateHtml(e.recipe ? RECIPES[e.recipe] : null, e.recipe ? asmMult() * ((GAME_DATA.deviceStats?.[e.type]?.craftingSpeed ?? 2.0) / 0.5) * elecMachMult() : 1);
   h += row('电力', powerStatusLiveHtml(e), 'power');

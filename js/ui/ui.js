@@ -1823,7 +1823,8 @@ function recipeSelectGridHtmlForTab(e, info, items, q) {
 // 与普通「名称|描述」tooltip 不同，配方槽悬停单独展示一张信息更完整的配方卡
 //（标题/分类/原料/制造时间/产品/制造于/物品属性），样式参考《异星工厂》配方卡。
 function recipeCardHtml(rid) {
-  const r = RECIPES[rid];
+  // 兼容炼油厂/离心机等手工配方表（REFINERY_RECIPES / CENTRIFUGE_RECIPES，含 kovarex 在 RECIPES 内）
+  const r = RECIPES[rid] || REFINERY_RECIPES[rid] || CENTRIFUGE_RECIPES[rid];
   if (!r) return '';
   const outId = (r.out ? Object.keys(r.out)[0] : null) || (r.prob ? Object.keys(r.prob)[0] : null);
   const name = (outId && ITEMS[outId]) ? ITEMS[outId].name : rid;
@@ -1868,6 +1869,21 @@ function recipeCardHtml(rid) {
   h += stat;
   h += '</div>';
   return h;
+}
+
+// —— 设备面板「当前配方」行的展示值：图标 + 名称，悬停弹出配方卡悬浮框 ——
+// 与配方选择面板悬停配方槽（.rcp-slot）的「配方卡」效果一致（见 ui-hud.js 的 mousemove
+// 全局委托：只要元素带 data-rec-id 且能取到配方卡 HTML，就会在鼠标旁展示配方卡）。
+// rid: 配方 id；nameFallback: 可选的手工名称（炼油厂/离心机等手工配方表用）。
+function recipeValueHtml(rid, nameFallback) {
+  if (!rid || !(RECIPES[rid] || REFINERY_RECIPES[rid] || CENTRIFUGE_RECIPES[rid])) return '<span class="dim">未设置</span>';
+  const r = RECIPES[rid] || REFINERY_RECIPES[rid] || CENTRIFUGE_RECIPES[rid];
+  const outId = (r.out ? Object.keys(r.out)[0] : null) || (r.prob ? Object.keys(r.prob)[0] : null);
+  const name = nameFallback || ((outId && ITEMS[outId]) ? ITEMS[outId].name : rid);
+  const icon = outId ? '<img class="rec-val-icon" src="' + iconDataURL(outId, 16) + '" alt="">' : '';
+  return '<span class="rec-val" data-rec-id="' + rid + '" data-itemid="' + (outId || '') + '">' +
+    icon + '<span class="rec-val-name">' + name + '</span>' +
+    '<span class="rec-val-hint">ℹ</span></span>';
 }
 
 // 配方可由哪些建筑制造（由配方生产设备推导；组装类配方默认组装机 I/II/III）
