@@ -199,17 +199,20 @@ function invCount(id) { return G.inv.get(id) || 0; }
 // 新档（false）则维持现有手动槽不变，未手动摆放过的物品仍全部按自动物品排到后面。
 function normalizeInvSlots(fillFromEmpty) {
   if (!G.invSlots || !Array.isArray(G.invSlots)) G.invSlots = [];
-  // 数量归零的物品（物品已从背包移除）释放对应槽位
+  // 数量归零的物品（物品已从背包移除）释放对应槽位；非法物品（不在 ITEMS 且非蓝图）一并释放，
+  // 避免读档/迁移后残留占位导致背包渲染崩溃
   for (let i = 0; i < G.invSlots.length; i++) {
-    if (G.invSlots[i] != null && invCount(G.invSlots[i]) <= 0) G.invSlots[i] = null;
+    const sid = G.invSlots[i];
+    if (sid != null && (invCount(sid) <= 0 || !isInvOwnedItem(sid))) G.invSlots[i] = null;
   }
   // 清理尾部多余的空槽（保持数组紧凑，长度即手动物品占用槽数）
   while (G.invSlots.length && G.invSlots[G.invSlots.length - 1] == null) G.invSlots.pop();
   // 旧档：按旧版 ID 排序填充手动槽，保持读档前后展示完全一致
   if (fillFromEmpty && G.invSlots.length === 0) {
     const ids = [];
-    G.inv.forEach((n, id) => { if (n > 0) ids.push(id); });
-    ids.sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
+    G.inv.forEach((n, id) => { if (n > 0 && isInvOwnedItem(id)) ids.push(id); });
+    // 旧版排序为字符串字典序（item id 全为小写字母/数字/中划线），localeCompare 保持同语义
+    ids.sort((a, b) => String(a).localeCompare(String(b)));
     G.invSlots = ids;
   }
 }

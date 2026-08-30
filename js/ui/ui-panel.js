@@ -1312,7 +1312,11 @@ function moveInvItemToSlot(from, to) {
   // 重新切分：手动槽长度扩展覆盖 to（若 to 在自动区）；自动区为剩余非空物品
   const mlen = Math.max(L.manual.length, to + 1);
   const newManual = seq.slice(0, mlen);
-  const newAuto = seq.slice(mlen).filter(id => id != null);
+  // 仅放行 ITEMS 已有或蓝图物品进手动槽：未知/废弃物品直接释放为空格，避免渲染崩溃
+  for (let i = 0; i < newManual.length; i++) {
+    if (newManual[i] != null && !isInvOwnedItem(newManual[i])) newManual[i] = null;
+  }
+  const newAuto = seq.slice(mlen).filter(id => id != null && isInvOwnedItem(id));
   // 手动槽去重（同物品不应占两格，保留靠前位置）
   const seen = new Set();
   for (let i = 0; i < newManual.length; i++) {

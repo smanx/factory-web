@@ -133,7 +133,7 @@ function bpItemName(id) {
 // 地方都要额外放行蓝图，否则「蓝图入包后背包里看不到、也不显示」。
 function isInvOwnedItem(id) {
   if (!id) return false;
-  if (ITEMS[id]) return true;
+  if (ITEMS[id]) return invCount(id) > 0;
   return (typeof isBlueprintItem === 'function') ? !!isBlueprintItem(id) : false;
 }
 
@@ -766,7 +766,11 @@ function chip(id, n, iconOnly) {
 
 // 背包格子布局：返回 { manual: 手动槽数组（含 null 空位）, auto: 自动物品数组, total: 总格数 }
 function invSlotLayout() {
-  const manual = (G.invSlots && Array.isArray(G.invSlots)) ? G.invSlots.slice() : [];
+  let manual = (G.invSlots && Array.isArray(G.invSlots)) ? G.invSlots.slice() : [];
+  // 手动槽里的非法物品（不在 ITEMS 且非蓝图）直接释放为空位，避免渲染崩溃
+  for (let i = 0; i < manual.length; i++) {
+    if (manual[i] != null && !isInvOwnedItem(manual[i])) manual[i] = null;
+  }
   const manualSet = new Set();
   for (const id of manual) if (id != null) manualSet.add(id);
   const auto = [];
@@ -790,7 +794,12 @@ function invSlotIdAt(idx, L) {
 // 背包格布局签名：手动槽位或自动物品集合任一变化都会触发格子重建
 function invSlotSig() {
   const L = invSlotLayout();
-  return L.manual.map(id => (id == null ? '' : id)).join('|') + '#' + L.auto.join(',');
+  const enc = id => {
+    if (id == null) return '';
+    // 蓝图（blueprint#n）或未知物品不在 ITEMS 展示表，加前缀区分，避免与普通 id 歧义
+    return (ITEMS[id] ? '' : '?') + id;
+  };
+  return L.manual.map(enc).join('|') + '#' + L.auto.map(enc).join(',');
 }
 
 function htmlInvSlots(withActionId) {
@@ -824,19 +833,21 @@ function invSlotHtml(id, idx, withActionId) {
   if (id == null) {
     return '<div class="inv-slot empty" data-slotidx="' + idx + '"></div>';
   }
-  const n = invCount(id);
-  // 蓝图物品（blueprint#n）不在 ITEMS 表里：图标/tooltip/搜索名都按基础 id 'blueprint' 处理
+  // 蓝图物品（blueprint#n）不在 ITEMS 表里：图标/tooltip/搜索名都按基础 id 'blueprint' 处理。
+  // 其余未知物品（旧档残留/废弃物品等）也按原 id 渲染占位，避免 ITEMS[id] 为 undefined 崩溃。
   const isBp = (typeof isBlueprintItem === 'function') ? isBlueprintItem(id) : false;
-  const search = ((isBp ? bpItemName(id) : ITEMS[id].name) + ' ' + (isBp ? 'blueprint' : id)).toLowerCase().replace(/"/g, '');
+  const n = invCount(id);
+  const dispName = isBp ? bpItemName(id) : (ITEMS[id] ? ITEMS[id].name : id);
+  const search = (dispName + ' ' + (isBp ? 'blueprint' : id)).toLowerCase().replace(/"/g, '');
   const hit = !q || search.includes(q);
   let use = '';
   // 手雷/集束手雷：可在背包中直接投掷（对齐《异星工厂》投掷物）
   if (id === 'grenade' || id === 'cluster-grenade') {
-    use = '<button class="slot-use" data-action="use-grenade" data-type="' + id + '" title="投掷' + ITEMS[id].name + '（向当前朝向投掷，造成范围爆炸）">💣</button>';
+    use = '<button class="slot-use" data-action="use-grenade" data-type="' + id + '" title="投掷' + dispName + '（向当前朝向投掷，造成范围爆炸）">💣</button>';
   }
   // 生鱼：可在背包中直接食用回血（对齐《异星工厂》：吃鱼治疗）
   if (id === 'raw-fish') {
-    use = '<button class="slot-use" data-action="eat-fish" data-type="' + id + '" title="食用' + ITEMS[id].name + '（恢复 20 生命值）">🐟</button>';
+    use = '<button class="slot-use" data-action="eat-fish" data-type="' + id + '" title="食用' + dispName + '（恢复 20 生命值）">🐟</button>';
   }
   // 蓝图物品（blueprint#n）：按基础 id 渲染图标，tooltip 显示蓝图内容摘要
   const iconId = isBp ? 'blueprint' : id;
