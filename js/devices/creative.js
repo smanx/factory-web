@@ -9,9 +9,18 @@
 //   4. void-pipe       虚空管道：无限销毁流经的流体（相邻管道会持续把流体排进来销毁）
 
 // ===== 可选择的物品/流体 =====
-// 创造箱可选：全部非流体物品（含原料、建材、科学包等）
+// 创造箱可选：全部固体物品（含原料、建材、科学包、设备等，对齐需求「游戏中所有固体物品都要显示」）。
+// 排除项：流体（走创造管道选择器）、品质变体（item~quality，运行时生成的展示条目，
+// 无官方 itemGroup/itemOrder 分组数据，混入会打乱分组与排序）、蓝图物品（blueprint/blueprint#n，
+// 非可生成实体物品）。
 function creativeItemChoices() {
-  return Object.keys(ITEMS).filter(id => FLUIDS.indexOf(id) < 0);
+  return Object.keys(ITEMS).filter(id => {
+    if (FLUIDS.indexOf(id) >= 0) return false;
+    if (ITEMS[id] && ITEMS[id]._qualityVariant) return false;
+    if (id.indexOf('~') >= 0) return false;
+    if (id === 'blueprint' || id.indexOf('blueprint#') === 0) return false;
+    return true;
+  });
 }
 
 // ===== 创造箱：无限生成选定物品 =====

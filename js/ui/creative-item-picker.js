@@ -12,9 +12,15 @@
 
 let _cipCtx = null;   // { e, kind:'item'|'fluid', ids, tab, q }
 
-// 可选集合：item=全部非流体物品（创造箱/创造传送带）；fluid=全部流体（创造管道）
+// 可选集合：item=全部固体物品（创造箱/创造传送带）；fluid=全部流体（创造管道）。
+// 分类与排序与背包制作栏/筛选弹窗完全同源：官方 itemGroup → Tab、itemSubgroup → 二级分组、
+// subgroupOrder/itemOrder（officialSubgroupCompare/officialItemCompare）→ 组序与组内排序。
+// 品质变体（item~quality，运行时生成条目）与蓝图物品无官方分组数据，不进入选择列表，
+// 避免全部堆进「物流」Tab 末尾的无名分组，导致图标/内容错乱。
 function creativePickerIds(kind) {
-  return kind === 'fluid' ? FLUIDS.filter(f => ITEMS[f]) : creativeItemChoices();
+  const ids = kind === 'fluid' ? FLUIDS.filter(f => ITEMS[f]) : creativeItemChoices();
+  return ids.filter(id => ITEMS[id] && !ITEMS[id]._qualityVariant &&
+    id.indexOf('~') < 0 && id !== 'blueprint' && id.indexOf('blueprint#') !== 0);
 }
 
 // 内嵌选择器 HTML：搜索框 + 5 大分类 Tab + 各 Tab 分组网格（仅图标、悬停 tooltip）。
