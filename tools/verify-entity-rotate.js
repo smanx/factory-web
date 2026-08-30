@@ -6,7 +6,7 @@
  * 验证《异星工厂》建筑旋转/翻转规则：
  *   - 所有建筑在建造时（选择后、放下前，即幽灵预览阶段）均可按住 R 旋转、
  *     V/H 翻转（通过 ghostDir 生效，包括放置后不可旋转的建筑如箱子）。
- *   - 传送带、机械臂、地下传送带等物流设备在放置之后仍可按 R 旋转、V/H 翻转。
+ *   - 所有建筑放置后均可按 R 旋转、V/H 翻转（含非方形 rotSwap 设备，占地与端口随 dir 交换）。
  *   - 非方形设备（rotSwap，如分流器）旋转/翻转后占地宽高正确交换。
  *
  * 运行：node tools/verify-entity-rotate.js （退出码 0 = 通过）
@@ -108,6 +108,7 @@ function fresh() {
 }
 
 function addEnt(e) { G.ents.push(e); G.grid.set(entKey(e.x, e.y), e); }
+function removeEnt(e) { /* 模拟环境：占地交换后仍占同一格，无需真正摘挂 */ }
 
 // 加载游戏核心逻辑
 vm.runInContext(
@@ -265,26 +266,28 @@ for (const t in rotateDefs) {
   ok(re.test(bdSrc), `${t} 已标记 rotSwap（建造时可旋转/翻转）`);
 }
 
-// ===== 五、固定管道口建筑放置后不可直接旋转（仅幽灵阶段可旋转） =====
-// 锅炉/蒸汽机/汽轮机/热交换器放置后按 R/V/H 不应旋转本体，而是作用于幽灵；
-// 而非固定管道口的 rotSwap 设备（分流器）放置后仍可旋转。
-console.log('\n【固定管道口建筑放置后不可旋转】');
-const fixedPipeDefs = { 'boiler': [3, 2], 'steam-engine': [3, 5], 'steam-turbine': [3, 5], 'heat-exchanger': [3, 2] };
-for (const t in fixedPipeDefs) {
+// ===== 五、非方形 rotSwap 设备放置后仍可直接旋转（占地正确交换） =====
+// 全部设备放置后均可 R/V/H 调整朝向；rotSwap 类（锅炉/蒸汽机/汽轮机/热交换器/分流器）
+// 旋转后占地宽高交换、端口随 dir 旋转。
+console.log('\n【rotSwap 设备放置后直接旋转】');
+const rotSwapDefs = { 'boiler': [3, 2], 'steam-engine': [3, 5], 'steam-turbine': [3, 5], 'heat-exchanger': [3, 2] };
+for (const t in rotSwapDefs) {
   fresh();
   vm.runInContext(`(function(){
-    const e = { type: '${t}', x: 5, y: 5, dir: 0, w: ${fixedPipeDefs[t][0]}, h: ${fixedPipeDefs[t][1]},
-                def: { w: ${fixedPipeDefs[t][0]}, h: ${fixedPipeDefs[t][1]}, rotSwap: true } };
+    const e = { type: '${t}', x: 5, y: 5, dir: 0, w: ${rotSwapDefs[t][0]}, h: ${rotSwapDefs[t][1]},
+                def: { w: ${rotSwapDefs[t][0]}, h: ${rotSwapDefs[t][1]}, rotSwap: true },
+                applyDir() { if (this.dir % 2 === 1) { this.w = this.def.h; this.h = this.def.w; } else { this.w = this.def.w; this.h = this.def.h; } } };
     G.grid.set(entKey(5,5), e); G.ents.push(e);
     G.cursorTile = {tx:5, ty:5};
     G.ghostDir = 0;
-    rotateAction(); // 指向已放置的固定管道口建筑，R 应作用于幽灵而非本体
-    __d = e.dir; __gw = G.ghostDir;
+    rotateAction(); // 指向已放置的 rotSwap 设备，R 直接旋转本体并交换占地
+    __d = e.dir; __w = e.w; __h = e.h; __gw = G.ghostDir;
   })()`, sandbox);
-  ok(sandbox.__d === 0 && sandbox.__gw === 1,
-    `${t} 放置后按 R 不旋转本体(dir=${sandbox.__d})，而旋转幽灵(dir=${sandbox.__gw})`);
+  const [dw, dh] = rotSwapDefs[t];
+  ok(sandbox.__d === 1 && sandbox.__w === dh && sandbox.__h === dw && sandbox.__gw === 0,
+    `${t} 放置后按 R 直接旋转本体 dir=${sandbox.__d} w=${sandbox.__w} h=${sandbox.__h}（期望 dir=1 w=${dh} h=${dw}），幽灵不变(${sandbox.__gw})`);
 }
-// 分流器（非固定管道口 rotSwap）放置后仍可直接旋转
+// 分流器放置后仍可直接旋转
 fresh();
 vm.runInContext(`(function(){
   const sp = new Splitter('splitter', 5, 5);
@@ -295,7 +298,7 @@ vm.runInContext(`(function(){
   __d = sp.dir; __w = sp.w; __h = sp.h;
 })()`, sandbox);
 ok(sandbox.__d === 1 && sandbox.__w === 2 && sandbox.__h === 1,
-  `分流器（非固定管道口）放置后按 R 仍可旋转 dir=${sandbox.__d} w=${sandbox.__w} h=${sandbox.__h}`);
+  `分流器放置后按 R 仍可旋转 dir=${sandbox.__d} w=${sandbox.__w} h=${sandbox.__h}`);
 
 console.log('\n----------------------------------------');
 console.log(`通过 ${pass} 项，失败 ${fail} 项`);

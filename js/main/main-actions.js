@@ -129,8 +129,6 @@ function pasteSettings(e) {
   const c = G.clipboard;
   if (e.type !== c.type) { toast('类型不匹配：剪贴板是' + ITEMS[c.type].name); return; }
   if (c.dir === undefined) return;
-  // 固定管道口建筑放置后不可旋转：不粘贴方向（仅粘贴其他配置）
-  if (!postPlaceRotatable(e.type)) { toast('该建筑放置后不可旋转，已跳过方向粘贴'); return; }
   if (BUILD_DEFS[e.type] && BUILD_DEFS[e.type].rotSwap) {
     // 抽水机旋转后脚印变化，需重新校验仍压水面
     if (e.type === 'offshore-pump' && !pumpCanFace(e, c.dir)) { toast('无法粘贴：抽水机必须仍压在水面上'); return; }
@@ -160,11 +158,8 @@ function rotateAction() {
   if (G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
     const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
     if (e && BUILD_DEFS[e.type]) {
-      // 固定管道口建筑（锅炉/蒸汽机/汽轮机/热交换器）放置后不可直接旋转，
-      // 仅可在放置前（幽灵预览阶段）旋转，按 R 改为作用于当前幽灵。
-      const rotOk = postPlaceRotatable(e.type);
-      // 非方形设备（分流器类）：旋转后脚印变化，需重挂网格
-      if (rotOk && BUILD_DEFS[e.type].rotSwap) {
+      // 所有已放置设备均可直接旋转；非方形设备（分流器类）旋转后脚印变化，需重挂网格
+      if (BUILD_DEFS[e.type].rotSwap) {
         const nd = (e.dir + 1) % 4;
         // 抽水机必须始终压在水面上，旋转后脚印变化需重新校验
         if (e.type === 'offshore-pump' && !pumpCanFace(e, nd)) { toast('抽水机无法朝该方向旋转：必须仍压在水面上'); return; }
@@ -176,7 +171,7 @@ function rotateAction() {
         return;
       }
       // 有朝向的设备：直接旋转（采矿机转完立即尝试朝新方向输出）
-      if (rotOk && DEVICE_DIR_ROTATE[e.type]) {
+      if (DEVICE_DIR_ROTATE[e.type]) {
         e.dir = (e.dir + 1) % 4;
         // 传送带方向变化会改变其输入侧判定，失效附近缓存
         invalidateBeltInputNear(e.x, e.y, e.w, e.h);
@@ -208,10 +203,8 @@ function flipAction(axis) {
   if (G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
     const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
     if (e && BUILD_DEFS[e.type]) {
-      // 固定管道口建筑放置后不可直接翻转，仅可在放置前（幽灵预览阶段）翻转
-      const rotOk = postPlaceRotatable(e.type);
-      // 非方形设备（分流器类）：翻转后脚印变化，需重挂网格
-      if (rotOk && BUILD_DEFS[e.type].rotSwap) {
+      // 所有已放置设备均可直接翻转；非方形设备（分流器类）翻转后脚印变化，需重挂网格
+      if (BUILD_DEFS[e.type].rotSwap) {
         const nd = flipDir(e.dir, axis);
         // 抽水机必须始终压在水面上，翻转后脚印变化需重新校验
         if (e.type === 'offshore-pump' && !pumpCanFace(e, nd)) { toast('抽水机无法朝该方向翻转：必须仍压在水面上'); return; }
@@ -226,7 +219,7 @@ function flipAction(axis) {
       // 把配对的那一座也一起翻转，保持两者仍同向、整对继续有效。
       // 仅当翻转在当前轴真正改变了方向时才生效：
       //   横带(0/2)按 H → 方向互换；竖带(1/3)按 V → 方向互换；其它组合不改向。
-      if (rotOk && (e instanceof Underground)) {
+      if (e instanceof Underground) {
         const nd = flipDir(e.dir, axis);
         if (nd !== e.dir) {
           const mate = e.findMate() || e.findBackMate();
@@ -241,7 +234,7 @@ function flipAction(axis) {
         return;
       }
       // 有朝向的设备：直接翻转
-      if (rotOk && DEVICE_DIR_ROTATE[e.type]) {
+      if (DEVICE_DIR_ROTATE[e.type]) {
         e.dir = flipDir(e.dir, axis);
         if (typeof e.onRotate === 'function') e.onRotate();
         uiDirty = true;
