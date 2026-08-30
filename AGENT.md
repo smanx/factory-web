@@ -67,7 +67,7 @@ js/data/data.generated.js    定义全局常量 GAME_DATA（数值唯一源 + �
 `data.generated.js` 不是被手工表整体替换，而是把它变成运行时数值样本，**在手工表各自文件末尾以「官方覆盖手工同名键」的方式合入**。加载顺序（见 `index.html`）：
 
 ```
-data.generated.js  →  data-items.js → data-recipes.js → data-buildings.js
+data.generated.js  →  data-items.js → data-item-icons.js → data-recipes.js → data-buildings.js
                    →  data-tech.js → data-tech-tree.js → data-util.js
         （GAME_DATA 最先就位；其余全部 defer）
 ```
@@ -132,6 +132,7 @@ factory-web/
 - `data.generated.js`：`GAME_DATA`，生成产物，**只读**（见 §1、§2）。
 - `data.js`：主常量与工具。加载最早（非 defer，紧跟 `data.generated.js`）。定义 `TILE/CHUNK`、`BELT_SPEED` 等常量、`POWER_USE`、`FLUIDS`、燃料能量、发电链、核能热量、矿石索引，以及核心工具函数与 `drawItemGlyph` 图标绘制。它是所有业务代码的公共底座。
 - `data-items.js`：`ITEMS`（物品展示：中文名/emoji/颜色/描述/堆叠）+ `STACK_SIZES`。
+- `data-item-icons.js`：`ITEM_CUSTOM_ICONS` 手绘专属物品图标（canvas 绘制函数，按物品 ID 索引），在 `drawItemGlyph`（`data-util.js`）中优先渲染；设计进度见 `docs/item-icons-todo.md`（全部 329 项已完成）。
 - `data-recipes.js`：`RECIPES`、`REFINERY_RECIPES`、`CENTRIFUGE_RECIPES`、`DEVICE_NAMES`。
 - `data-buildings.js`：`BUILD_DEFS`（占地/放置属性）、`BUILDING_HP`。
 - `data-tech.js` / `data-tech-tree.js`：科技 `TECH` 与科技树 `TECH_TREE`（展示层）。
