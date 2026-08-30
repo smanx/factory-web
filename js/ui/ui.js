@@ -121,6 +121,22 @@ function itemTip(id, extra) {
   return extra ? (base + (extra[0] === '|' ? '' : '|') + extra) : base;
 }
 
+// 背包条目的显示名：蓝图物品（blueprint#n）用其自身蓝图名，其余走 ITEMS 展示名。
+function bpItemName(id) {
+  const d = (typeof bpDataOfItem === 'function') ? bpDataOfItem(id) : null;
+  return (d && d.name) ? d.name : ((ITEMS['blueprint'] && ITEMS['blueprint'].name) || '蓝图');
+}
+
+// 背包条目是否应作为一个格子显示出来。
+// 蓝图物品（blueprint / blueprint#n）是项目自定的虚拟物品，不在 ITEMS 展示表里
+// （图标/tooltip 都按基础 id 'blueprint' 渲染），因此凡是用 ITEMS[id] 过滤背包内容的
+// 地方都要额外放行蓝图，否则「蓝图入包后背包里看不到、也不显示」。
+function isInvOwnedItem(id) {
+  if (!id) return false;
+  if (ITEMS[id]) return true;
+  return (typeof isBlueprintItem === 'function') ? !!isBlueprintItem(id) : false;
+}
+
 // 蓝图物品 tooltip：显示蓝图名/建筑数/尺寸（blueprint#n 的专属提示）
 function bpItemTip(id) {
   const d = (typeof bpDataOfItem === 'function') ? bpDataOfItem(id) : null;
@@ -500,7 +516,12 @@ function isPanelTyping() {
 // 解决“打开背包掉帧”与“搜索框无法正常输入中文/被清空”两个问题。
 function updateInvLive() {
   const body = document.getElementById('panel-body');
-  if (!body || G.panelMode !== 'inv') return;
+  if (!body) return;
+  // 蓝图面板（bluebook）左栏同样是玩家背包（htmlInventory('bb-inv')）：
+  // 手持蓝图点左栏格子「入包」后需即时显示新蓝图，否则要关掉面板重开才看得见。
+  // 制造面板（machine）左栏也是背包，物品进出同样需要跟随刷新。
+  const invPanelModes = ['inv', 'bluebook', 'machine'];
+  if (invPanelModes.indexOf(G.panelMode) < 0) return;
   // 背包固定格（#inv-items）：每格一种物品，数量以右下角角标(.cnt)显示。
   // 物品集合变化时（新增/消失/清空）需重建格子以保证排列稳定；集合不变则仅在原地
   // 更新数量角标与搜索过滤，避免整块重建带来的掉帧。
@@ -508,7 +529,7 @@ function updateInvLive() {
   if (wrap) {
     // 计算当前已拥有物品的稳定签名（排序后的 ID 串）
     const ownedIds = [];
-    G.inv.forEach((n, id) => { if (n > 0 && ITEMS[id]) ownedIds.push(id); });
+    G.inv.forEach((n, id) => { if (n > 0 && isInvOwnedItem(id)) ownedIds.push(id); });
     ownedIds.sort();
     const sig = ownedIds.join(',');
     if (wrap.dataset.ownedsig !== sig) {
@@ -746,7 +767,7 @@ function htmlInvSlots(withActionId) {
   const q = (G.invItemQ || '').trim().toLowerCase();
   // 稳定排序的已拥有物品列表（仅数量>0 的）
   const owned = [];
-  G.inv.forEach((n, id) => { if (n > 0 && ITEMS[id]) owned.push(id); });
+  G.inv.forEach((n, id) => { if (n > 0 && isInvOwnedItem(id)) owned.push(id); });
   owned.sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
   const sig = owned.join(',');
   let h = '<div id="inv-items-wrap" data-ownedsig="' + sig + '">';
@@ -755,7 +776,9 @@ function htmlInvSlots(withActionId) {
     const id = owned[i];
     if (id) {
       const n = invCount(id);
-      const search = (ITEMS[id].name + ' ' + id).toLowerCase().replace(/"/g, '');
+      // 蓝图物品（blueprint#n）不在 ITEMS 表里：图标/tooltip/搜索名都按基础 id 'blueprint' 处理
+      const isBp = (typeof isBlueprintItem === 'function') ? isBlueprintItem(id) : false;
+      const search = ((isBp ? bpItemName(id) : ITEMS[id].name) + ' ' + (isBp ? 'blueprint' : id)).toLowerCase().replace(/"/g, '');
       const hit = !q || search.includes(q);
       let use = '';
       // 手雷/集束手雷：可在背包中直接投掷（对齐《异星工厂》投掷物）
@@ -767,7 +790,6 @@ function htmlInvSlots(withActionId) {
         use = '<button class="slot-use" data-action="eat-fish" data-type="' + id + '" title="食用' + ITEMS[id].name + '（恢复 20 生命值）">🐟</button>';
       }
       // 蓝图物品（blueprint#n）：按基础 id 渲染图标，tooltip 显示蓝图内容摘要
-      const isBp = (typeof isBlueprintItem === 'function') ? isBlueprintItem(id) : false;
       const iconId = isBp ? 'blueprint' : id;
       const tipHtml = isBp ? bpItemTip(id) : itemTip(id);
       h += '<div class="inv-slot' + (hit ? '' : ' hidden') + '" data-itemid="' + id + '"' +

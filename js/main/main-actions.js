@@ -148,6 +148,15 @@ function rotateAction() {
     if (tr) reverseTrain(tr);
     return;
   }
+  // 蓝图旋转（对齐《异星工厂》R 键旋转蓝图）：粘贴中、或手持蓝图物品尚未放置时都生效。
+  // 手持蓝图物品（blueprint#n）在未点击地图前还不在 paste 模式，此前按 R 无反应，
+  // 与界面提示「R 旋转，V/H 翻转」不符；这里一并处理，预览幽灵立即跟着旋转。
+  if (typeof isBlueprintHeld === 'function' && isBlueprintHeld()) {
+    G.blueRot = (G.blueRot + 1) % 4;
+    uiDirty = true;
+    toast('蓝图已旋转 90°（R 继续旋转，V/H 翻转）');
+    return;
+  }
   // 蓝图粘贴中：旋转整个蓝图（对齐《异星工厂》R 键旋转蓝图）
   if (G.blueMode === 'paste' && G.blueprint) {
     G.blueRot = (G.blueRot + 1) % 4;
@@ -195,6 +204,14 @@ function flipDir(dir, axis) {
 }
 
 function flipAction(axis) {
+  // 蓝图翻转（对齐《异星工厂》V/H 键翻转蓝图）：与旋转同理，手持蓝图物品未放置时也生效
+  if (typeof isBlueprintHeld === 'function' && isBlueprintHeld()) {
+    if (axis === 'h') G.blueFlipH = !G.blueFlipH;
+    else G.blueFlipV = !G.blueFlipV;
+    uiDirty = true;
+    toast('蓝图已' + (axis === 'h' ? '水平翻转' : '垂直翻转') + '（R 旋转，V/H 翻转）');
+    return;
+  }
   // 蓝图粘贴中：翻转整个蓝图（V 垂直翻转 / H 水平翻转，对齐《异星工厂》）
   if (G.blueMode === 'paste' && G.blueprint) {
     if (axis === 'h') G.blueFlipH = !G.blueFlipH;

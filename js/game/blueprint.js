@@ -325,6 +325,17 @@ function captureBlueprint() {
   toast('蓝图已复制 ' + ents.length + ' 个建筑，点击空白处粘贴（R旋转，V/H翻转，右键取消）');
 }
 
+// 当前是否「手持蓝图物品」：选中的是蓝图物品（blueprint / blueprint#n）且蓝图内容非空。
+// 用于把 R/V/H 变换、放置幽灵等交互覆盖到「已选中蓝图但还没点击地图」这一阶段
+// （此时尚未进入 paste 模式，G.blueMode 仍是 null）。
+function isBlueprintHeld() {
+  if (typeof selItem !== 'function') return false;
+  const t = selItem();
+  if (!t || !isBlueprintItem(t)) return false;
+  const bp = bpDataOfItem(t);
+  return !!(bp && bp.ents && bp.ents.length);
+}
+
 // ===== 手持蓝图物品的地图放置幽灵 =====
 // 选中蓝图物品（blueprint / blueprint#n）且鼠标悬停在地图上时，实时预览蓝图内容：
 // 与粘贴模式（drawBlueprintOverlay）同款渲染——变换后的每个建筑绘制半透明实体幽灵，
@@ -333,6 +344,9 @@ function drawBlueprintItemGhost(g) {
   if (!G || !G.cursorTile || typeof selItem !== 'function') return false;
   const type = selItem();
   if (!isBlueprintItem(type)) return false;
+  // 已进入粘贴模式时，蓝图预览由 drawBlueprintOverlay 在主画布上绘制；
+  // 这里再画一份会与它重复叠加（两份半透明幽灵叠加显得更实、且颜色加重）。
+  if (G.blueMode === 'paste' && G.blueprint) return true;
   if (!mouseOverMap()) return true;   // 手持蓝图但鼠标在 UI 上：不绘制，避免与图标幽灵叠加
   const bp = bpDataOfItem(type);
   if (!bp || !bp.ents || !bp.ents.length) return true;   // 空蓝图：不显示预览
@@ -340,9 +354,14 @@ function drawBlueprintItemGhost(g) {
   const tmpBp = { name: bp.name, minX: bp.minX, minY: bp.minY, ents: bp.ents, tiles: bp.tiles };
   const savedBp = G.blueprint, savedMode = G.blueMode;
   G.blueprint = tmpBp;
+  // 绘制目标为顶层幽灵画布（#ghost-layer）时它是屏幕坐标系，必须先叠加与主画布一致的
+  // 相机变换再画世界坐标，否则蓝图会被画到画布左上角/视口外——表现就是「手持蓝图移到
+  // 地图上什么幽灵都看不到」。主画布分支（render.js 里已 save+translate/scale）不要重复变换。
+  const worlded = (typeof ghostWorldTransform === 'function') ? ghostWorldTransform(g) : false;
   try {
     drawBlueprintGhostAt(g, G.cursorTile.tx, G.cursorTile.ty);
   } finally {
+    if (worlded) g.restore();
     G.blueprint = savedBp;
     G.blueMode = savedMode;
   }

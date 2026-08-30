@@ -606,7 +606,8 @@ function loop(ts) {
       // 节点（base64 图标、tooltip 等），打开背包后明显掉帧；且重建会销毁正在聚焦
       // 的输入框，打断中文输入法并清空已输入内容。改用轻量计数刷新（不改 DOM 结构）。
       // 整面板的重建只发生在打开面板或用户在面板内交互时（renderPanel）。
-      if (G.panelMode === 'inv' && !isPanelTyping()) updateInvLive();
+      // 蓝图面板（bluebook）与设备面板（machine）左栏也是玩家背包，物品变化同样需即时刷新
+      if ((G.panelMode === 'inv' || G.panelMode === 'bluebook' || G.panelMode === 'machine') && !isPanelTyping()) updateInvLive();
       else if (G.panelMode === 'tech' && !isPanelTyping()) updateTechLive();
       uiDirty = false;
     }
