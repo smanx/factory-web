@@ -269,36 +269,36 @@
 - [x] `piercing-rounds-magazine` 穿甲弹
 - [x] `pistol` 手枪
 - [x] `submachine-gun` 冲锋枪
-- [ ] `shotgun` 散弹枪
-- [ ] `combat-shotgun` 战斗散弹枪
-- [ ] `shotgun-shell` 散弹枪弹
-- [ ] `piercing-shotgun-shell` 穿甲散弹枪弹
-- [ ] `cluster-grenade` 集束手雷
-- [ ] `rocket-launcher` 火箭筒
-- [ ] `grenade` 手雷
-- [ ] `rocket` 火箭弹
-- [ ] `explosive-rocket` 爆炸火箭弹
-- [ ] `flamethrower` 火焰喷射器
-- [ ] `flamethrower-ammo` 火焰弹药
-- [ ] `uranium-rounds-magazine` 铀弹
-- [ ] `atomic-bomb` 原子弹
-- [ ] `uranium-cannon-shell` 铀炮弹
-- [ ] `poison-capsule` 毒胶囊
-- [ ] `slowdown-capsule` 减速胶囊
-- [ ] `laser-turret` 激光炮塔
-- [ ] `flamethrower-turret` 火焰炮塔
-- [ ] `radar` 雷达
-- [ ] `defender-capsule` 防御机器人胶囊
-- [ ] `distractor-capsule` 干扰机器人胶囊
-- [ ] `destroyer-capsule` 破坏机器人胶囊
-- [ ] `cannon-shell` 炮弹
-- [ ] `explosive-cannon-shell` 爆炸炮弹
-- [ ] `explosive-uranium-cannon-shell` 铀爆炸炮弹
-- [ ] `light-armor` 轻型护甲
-- [ ] `heavy-armor` 重型护甲
-- [ ] `land-mine` 地雷
-- [ ] `artillery-turret` 炮兵连
-- [ ] `artillery-shell` 炮弹（炮兵）
+- [x] `shotgun` 散弹枪
+- [x] `combat-shotgun` 战斗散弹枪
+- [x] `shotgun-shell` 散弹枪弹
+- [x] `piercing-shotgun-shell` 穿甲散弹枪弹
+- [x] `cluster-grenade` 集束手雷
+- [x] `rocket-launcher` 火箭筒
+- [x] `grenade` 手雷
+- [x] `rocket` 火箭弹
+- [x] `explosive-rocket` 爆炸火箭弹
+- [x] `flamethrower` 火焰喷射器
+- [x] `flamethrower-ammo` 火焰弹药
+- [x] `uranium-rounds-magazine` 铀弹
+- [x] `atomic-bomb` 原子弹
+- [x] `uranium-cannon-shell` 铀炮弹
+- [x] `poison-capsule` 毒胶囊
+- [x] `slowdown-capsule` 减速胶囊
+- [x] `laser-turret` 激光炮塔
+- [x] `flamethrower-turret` 火焰炮塔
+- [x] `radar` 雷达
+- [x] `defender-capsule` 防御机器人胶囊
+- [x] `distractor-capsule` 干扰机器人胶囊
+- [x] `destroyer-capsule` 破坏机器人胶囊
+- [x] `cannon-shell` 炮弹
+- [x] `explosive-cannon-shell` 爆炸炮弹
+- [x] `explosive-uranium-cannon-shell` 铀爆炸炮弹
+- [x] `light-armor` 轻型护甲
+- [x] `heavy-armor` 重型护甲
+- [x] `land-mine` 地雷
+- [x] `artillery-turret` 炮兵连
+- [x] `artillery-shell` 炮弹（炮兵）
 - [ ] `teslagun` 特斯拉电枪
 - [ ] `tesla-turret` 特斯拉炮塔
 - [ ] `tesla-ammo` 特斯拉弹药
