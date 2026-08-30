@@ -686,6 +686,19 @@ function updateRecipeMachineLive(e, body, api) {
     const nm = rec ? info.name(e.recipe) : '未设置配方';
     if (rnameEl.textContent !== nm) rnameEl.textContent = nm;
   }
+  // 同步配方头部的 data-rec-id（悬停配方卡委托用）：配方切换/清除后属性需跟着变
+  const recHead = body.querySelector('.asm3-recipe-item');
+  if (recHead) {
+    if (rec) {
+      const outId = recipeMainIcon(rec, info, e.recipe);
+      if (recHead.dataset.recId !== e.recipe) recHead.dataset.recId = e.recipe;
+      const wantItem = outId || '';
+      if (recHead.dataset.itemid !== wantItem) recHead.dataset.itemid = wantItem;
+    } else {
+      if (recHead.dataset.recId) delete recHead.dataset.recId;
+      if (recHead.dataset.itemid) delete recHead.dataset.itemid;
+    }
+  }
   const riconEl = body.querySelector('[data-live="mch-ricon"]');
   if (riconEl) {
     const outId = rec ? recipeMainIcon(rec, info, e.recipe) : null;
@@ -2022,7 +2035,9 @@ function assemblerLayoutHtml(e) {
     const outId = recipeMainIcon(rec, info, e.recipe);
     if (outId) ric = '<img src="' + iconDataURL(outId) + '">';
   }
-  h += '<div class="asm3-recipe-head"><div class="asm3-recipe-item">' +
+  // 悬停配方图标/名称弹出配方卡：容器带 data-rec-id，由 ui-hud.js 的 mousemove 全局委托命中
+  h += '<div class="asm3-recipe-head"><div class="asm3-recipe-item"' +
+       (rec ? ' data-rec-id="' + e.recipe + '" data-itemid="' + (recipeMainIcon(rec, info, e.recipe) || '') + '"' : '') + '>' +
        '<div class="asm3-recipe-icon" data-live="asm3-ricon">' + ric + '</div>' +
        '<span class="asm3-recipe-name" data-live="asm3-rname">' + (rec ? info.name(e.recipe) : '未设置配方') + '</span>' +
        '</div><button class="asm3-config-btn" data-action="recipe-clear" title="清除配方并重新选择">⚙</button></div>';
@@ -2107,6 +2122,19 @@ function updateAssemblerLive(e, body, api) {
   } else {
     if (nameEl && nameEl.textContent !== '未设置配方') nameEl.textContent = '未设置配方';
     if (iconEl) iconEl.innerHTML = '';
+  }
+  // 同步配方头部的 data-rec-id（悬停配方卡委托用）：配方切换/清除后属性需跟着变
+  const asmHead = body.querySelector('.asm3-recipe-item');
+  if (asmHead) {
+    if (rec) {
+      const outId = recipeMainIcon(rec, info, e.recipe);
+      if (asmHead.dataset.recId !== e.recipe) asmHead.dataset.recId = e.recipe;
+      const wantItem = outId || '';
+      if (asmHead.dataset.itemid !== wantItem) asmHead.dataset.itemid = wantItem;
+    } else {
+      if (asmHead.dataset.recId) delete asmHead.dataset.recId;
+      if (asmHead.dataset.itemid) delete asmHead.dataset.itemid;
+    }
   }
   // 原料/产品/进度/状态：复用通用配方设备逻辑
   updateRecipeMachineLive(e, body, api);
@@ -2209,7 +2237,9 @@ function recipeMachineRightHtml(e, info, rec) {
     const mchOutId = recipeMainIcon(rec, info, e.recipe);
     if (mchOutId) ric = '<img src="' + iconDataURL(mchOutId) + '">';
   }
-  h += '<div class="asm3-recipe-head"><div class="asm3-recipe-item">' +
+  // 悬停配方图标/名称弹出配方卡：容器带 data-rec-id，由 ui-hud.js 的 mousemove 全局委托命中
+  h += '<div class="asm3-recipe-head"><div class="asm3-recipe-item"' +
+    (rec ? ' data-rec-id="' + e.recipe + '" data-itemid="' + (recipeMainIcon(rec, info, e.recipe) || '') + '"' : '') + '>' +
     '<div class="asm3-recipe-icon" data-live="mch-ricon">' + ric + '</div>' +
     '<span class="asm3-recipe-name" data-live="mch-rname">' + (rec ? info.name(e.recipe) : '未设置配方') + '</span>' +
     '</div><button class="asm3-config-btn" data-action="recipe-clear" title="清除配方并重新选择">⚙</button></div>';

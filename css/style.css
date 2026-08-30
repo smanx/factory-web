@@ -3183,3 +3183,7 @@ html, body {
 .cip-embed { min-width: 0; }
 .cip-embed #cip-tabs .craft-tab { flex: 0 0 auto; }
 .cip-embed #cip-empty { padding: 6px 0; }
+
+/* 设备面板配方头部（图标+名称）：悬停弹出配方卡的高亮反馈 */
+.asm3-recipe-item[data-rec-id] { cursor: help; padding: 2px 6px; margin: -2px -6px; border-radius: 6px; }
+.asm3-recipe-item[data-rec-id]:hover { background: rgba(255, 210, 60, .12); }
