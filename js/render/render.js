@@ -1293,11 +1293,15 @@ function drawBlueprintOverlay(ctx) {
       tmp.dir = s.dir | 0; tmp.applyDir();
       const ok = canPlaceAt(s.type, nx, ny, tmp.dir).ok;
       ctx.globalAlpha = 0.55;
-      ctx.fillStyle = ok ? 'rgba(120,220,120,.18)' : 'rgba(230,80,80,.22)';
+      // 完整建筑幽灵预览：复用各设备的 DEVICE_RENDER 绘制（对齐《异星工厂》蓝图幽灵），
+      // 让复制预览与实际建筑外观一致，而非只显示一个色块框。
+      drawEntity(ctx, tmp, nx, ny, tmp.dir, 0.55);
+      // 可放置性提示覆盖框（绿/红），与实体幽灵叠加显示
+      ctx.fillStyle = ok ? 'rgba(120,220,120,.14)' : 'rgba(230,80,80,.26)';
       ctx.fillRect(nx * TILE, ny * TILE, tmp.w * TILE, tmp.h * TILE);
-      ctx.strokeStyle = ok ? 'rgba(140,255,140,.9)' : 'rgba(255,110,110,.9)';
+      ctx.strokeStyle = ok ? 'rgba(140,255,140,.65)' : 'rgba(255,110,110,.9)';
       ctx.lineWidth = 1.5 / G.cam.z;
-      ctx.strokeRect(nx * TILE + 1, ny * TILE + 1, tmp.w * TILE - 2, tmp.h * TILE - 2);
+      ctx.strokeRect(nx * TILE + 0.5, ny * TILE + 0.5, tmp.w * TILE - 1, tmp.h * TILE - 1);
       ctx.globalAlpha = 1;
     }
     ctx.fillStyle = '#8fd0ff';

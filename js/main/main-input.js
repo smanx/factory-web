@@ -353,6 +353,17 @@ function updateCursorTile(cx, cy) {
     ox = (ew - 1) / 2;
     oy = (eh - 1) / 2;
   }
+  // 蓝图粘贴：以「变换后蓝图包围盒的中心」为锚点（对齐《异星工厂》），
+  // 使蓝图中间对准鼠标，而非蓝图左上角贴着鼠标格。
+  if (G.blueMode === 'paste' && G.blueprint) {
+    const tbb = (typeof blueprintBounds === 'function')
+      ? blueprintBounds((typeof applyBlueprintTransform === 'function') ? applyBlueprintTransform().ents : G.blueprint.ents)
+      : null;
+    if (tbb) {
+      ox = (tbb.W - 1) / 2;
+      oy = (tbb.H - 1) / 2;
+    }
+  }
   const [wx, wy] = screenToWorld(cx, cy);
   const tx = Math.floor(wx / TILE - ox), ty = Math.floor(wy / TILE - oy);
   G.cursorTile = { tx, ty };
