@@ -78,12 +78,9 @@ function initPanelEvents() {
       applySplitterFilterSearch(v);
     } else if (id === 'flt-search') {
       applyInserterFilterSearch(v);
-    } else if (id === 'ccsel-search') {
-      applyCreativeChestSearch(v);
-    } else if (id === 'cpsel-search') {
-      applyCreativePipeSearch(v);
-    } else if (id === 'cbsel-search') {
-      applyCreativeBeltSearch(v);
+    } else if (id === 'cip-search') {
+      // 创造设备通用选择器（#hud-modal 内输入框不在 panel-body，正常不会走到这里，兜底）
+      if (typeof applyCipSearch === 'function') applyCipSearch(v);
     } else if (target && target.matches && target.matches('[data-stat-hist-filter]')) {
       applyStatsHistFilter(v);
     }
