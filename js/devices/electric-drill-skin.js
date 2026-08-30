@@ -1,9 +1,9 @@
 'use strict';
 
 // ===== 电力采矿机：全新外观皮肤（纯渲染覆盖，不改任何数值/逻辑）=====
-// 设计语言（对齐《异星工厂》电采矿机的工业黄黑风格，与热能采矿机的棕色、大型采矿机的深蓝拉开档位差异）：
-//   ① 深钢框架 + 工业黄机身（纵向渐变/顶部光泽）+ 四角螺栓，厚重工业感；
-//   ② 顶部旋转工作台：深钢圆盘 + 黄黑警示环 + 三幅旋翼，随主轴 e.spin 旋转；
+// 设计语言（电力采矿机以工业蓝为主配色，呼应“电”的语义，与热能采矿机的棕色、大型采矿机的深蓝拉开档位差异）：
+//   ① 深钢框架 + 工业蓝机身（纵向渐变/顶部光泽）+ 四角螺栓，厚重工业感；
+//   ② 顶部旋转工作台：深钢圆盘 + 蓝白警示环 + 三幅旋翼，随主轴 e.spin 旋转；
 //      工作时外圈叠加绿色采矿进度环（与原绘制语义一致）；
 //   ③ 产出方向（dir 侧）：深色输出滑槽 + 螺旋钻杆——工作时钻杆上下浮动、
 //      螺旋纹向前滚动，直观表达"正在钻进/产出"；滑槽两侧保留方向指示三角；
@@ -26,7 +26,7 @@ function drawElectricDrillSkin(ctx, e, gx, gy, dir, alpha) {
   if (simple) {
     ctx.fillStyle = '#2b2f37';
     rr(ctx, px + 3 * k, py + 3 * k, s - 6 * k, s - 6 * k, 8 * k); ctx.fill();
-    ctx.fillStyle = '#efb61a';
+    ctx.fillStyle = '#5b8fd6';
     rr(ctx, px + 7 * k, py + 7 * k, s - 14 * k, s - 14 * k, 6 * k); ctx.fill();
     ctx.fillStyle = '#232830';
     ctx.beginPath(); ctx.arc(cx, cy, 14 * k, 0, Math.PI * 2); ctx.fill();
@@ -41,14 +41,14 @@ function drawElectricDrillSkin(ctx, e, gx, gy, dir, alpha) {
   ctx.lineWidth = 3 * k;
   rr(ctx, px + 2.5 * k, py + 2.5 * k, s - 5 * k, s - 5 * k, 10 * k); ctx.stroke();
 
-  // ===== ② 工业黄机身（纵向渐变 + 顶部光泽）=====
+  // ===== ② 工业蓝机身（纵向渐变 + 顶部光泽）=====
   const bodyGrad = ctx.createLinearGradient(0, py, 0, py + s);
-  bodyGrad.addColorStop(0, '#ffd94a');
-  bodyGrad.addColorStop(0.55, '#f6c22a');
-  bodyGrad.addColorStop(1, '#e2a411');
+  bodyGrad.addColorStop(0, '#a9cdf5');
+  bodyGrad.addColorStop(0.55, '#5b8fd6');
+  bodyGrad.addColorStop(1, '#3a6bb0');
   ctx.fillStyle = bodyGrad;
   rr(ctx, px + 6 * k, py + 6 * k, s - 12 * k, s - 12 * k, 7 * k); ctx.fill();
-  ctx.strokeStyle = 'rgba(96,66,8,.6)';
+  ctx.strokeStyle = 'rgba(20,46,86,.6)';
   ctx.lineWidth = 1.5 * k;
   rr(ctx, px + 6 * k, py + 6 * k, s - 12 * k, s - 12 * k, 7 * k); ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,.16)';
@@ -97,9 +97,9 @@ function drawElectricDrillSkin(ctx, e, gx, gy, dir, alpha) {
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(spin);
-  // 黄黑警示环：8 道黄色楔形块随主轴旋转
+  // 蓝白警示环：8 道蓝色楔形块随主轴旋转
   const rOut = 23.5 * k, rIn = 16.5 * k;
-  ctx.fillStyle = '#f7c71d';
+  ctx.fillStyle = '#2f5596';
   for (let i = 0; i < 8; i++) {
     const a0 = (i / 8) * Math.PI * 2;
     const a1 = a0 + Math.PI * 2 / 8 * 0.55;

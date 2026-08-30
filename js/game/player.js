@@ -56,6 +56,18 @@ function boxBlocked(cx, cy, r) {
          solidAtPx(cx - r, cy + r) || solidAtPx(cx + r, cy + r);
 }
 
+// 建造校验用：type 对应的建筑是否与主角存在碰撞体积（对齐移动碰撞 solidAtPx）。
+// 仅当建筑会与主角碰撞时，主角站在其占地内才禁止建造；
+// 无碰撞体积的建筑（传送带/机械臂/箱子等，主角可穿行）即便主角站在原地也能正常建造。
+function buildCollidesPlayer(type) {
+  const def = BUILD_DEFS[type];
+  if (!def || !def.solid) return false;          // 非实心建筑（传送带/地下带/分流器/铁路等）无碰撞体积
+  if (type.indexOf('belt') >= 0 || type.indexOf('splitter') >= 0) return false;  // 传送带系：可站上去被推动
+  if (type.indexOf('inserter') >= 0) return false;        // 机械臂不占行走格
+  if (type.endsWith('-chest')) return false;              // 箱子不与主角碰撞，可穿行
+  return true;
+}
+
 function updatePlayer(dt) {
   const p = G.player;
   // 自动回血（对齐《异星工厂》）：受伤后延迟几秒，之后每秒回复 6 点生命值，直到回满

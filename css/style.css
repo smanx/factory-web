@@ -863,12 +863,14 @@ html, body {
 .toast.aged-2 { opacity: .25; }
 .toast.fade { opacity: 0; }
 
-/* 绿图操作栏：框选后选择升级/降级 */
+/* 绿图操作栏：框选后选择升级/降级（含按物品类型的筛选勾选） */
 #greenbar {
   position: absolute;
   top: 58px; left: 50%;
   transform: translateX(-50%);
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+  gap: 8px; row-gap: 6px;
+  max-width: min(96vw, 900px);
   background: rgba(16, 24, 18, .92);
   border: 1px solid #3f6f50;
   color: #e8f6ec;
@@ -879,6 +881,24 @@ html, body {
   box-shadow: 0 2px 10px rgba(0,0,0,.4);
 }
 #greenbar .gb-t { color: #9fe0b2; margin-right: 4px; }
+#greenbar .gb-flt { color: #7fbf92; margin-right: 2px; }
+#greenbar .gb-sep {
+  width: 1px; align-self: stretch;
+  background: #3f6f50;
+  margin: 0 2px;
+}
+#greenbar .gb-item {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: #1a2a20;
+  border: 1px solid #2f5a3c;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#greenbar .gb-item:hover { background: #23402c; }
+#greenbar .gb-item input { margin: 0; accent-color: #3f8a5a; cursor: pointer; }
 #greenbar button {
   background: #235036;
   color: #d9f5e2;
@@ -889,6 +909,8 @@ html, body {
   cursor: pointer;
 }
 #greenbar button:hover { background: #2e6b43; }
+#greenbar button:disabled { opacity: .45; cursor: default; }
+#greenbar button:disabled:hover { background: #235036; }
 
 #tooltip {
   position: fixed;

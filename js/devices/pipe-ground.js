@@ -32,19 +32,20 @@ function pipeToGroundSwap(a, b, k) {
   const aF = a.fluid[k] || 0;
   const bF = b.fluid[k] || 0;
   // 防混合：任一端含有其它流体则不交换
-  if (a.total() - aF > 0 || b.total() - bF > 0) return;
+  if (a.total() - aF > 0 || b.total() - bF > 0) return 0;
   const diff = Math.abs(aF - bF);
   // 差 1 以内视作已均衡：否则两端会反复互推这 1 单位，液面永远在 2/3 之间抖动。
-  if (diff < 2) return;
+  if (diff < 2) return 0;
   let from, to, avail, cap;
   if (aF > bF) { from = a; to = b; avail = aF; cap = PIPE_CAP - b.total(); }
   else { from = b; to = a; avail = bF; cap = PIPE_CAP - a.total(); }
   let move = Math.floor(diff / 2);
   move = Math.min(move, avail, cap);
-  if (move <= 0) return;
+  if (move <= 0) return 0;
   from.fluid[k] -= move;
   if (from.fluid[k] <= 0) delete from.fluid[k];
   to.fluid[k] = (to.fluid[k] || 0) + move;
+  return move;
 }
 class PipeToGround extends Entity {
   constructor(type, x, y) {
@@ -142,9 +143,17 @@ class PipeToGround extends Entity {
     // 收集所有可能出现的流体种类（本方 + 各邻居），避免只扫本方导致“只进不出”
     const fluids = new Set(Object.keys(this.fluid));
     for (const t of conns) for (const k of Object.keys(t.fluid)) fluids.add(k);
+    // 官方基础管道流速 = 200 流体/秒/节（PIPE_FLOW）：每节流周期(0.05s) 单节地下管道
+    // 最多传输 200×0.05 = 10 单位，用 budget 限制其互换量，与普通 Pipe 一致。
+    let budget = PIPE_FLOW * 0.05;
     for (const k of fluids) {
+      if (budget <= 0) break;
       for (const t of conns) {
-        if ((this.fluid[k] > 0) || ((t.fluid[k] || 0) > 0)) pipeToGroundSwap(this, t, k);
+        if (budget <= 0) break;
+        if ((this.fluid[k] > 0) || ((t.fluid[k] || 0) > 0)) {
+          const moved = pipeToGroundSwap(this, t, k);
+          budget -= moved;
+        }
       }
     }
     // 管口直接对接带管道口的设备时，把流体注入其流体输入口。
@@ -196,7 +205,7 @@ class PipeToGround extends Entity {
         const port = neighborOnSideCell(dev, (1 + (dev.dir | 0)) % 4, 0);
         atPort = !!(port && port.x === this.x && port.y === this.y);
       }
-      // 装配机族无格级接口（任一侧均可按配方收流体），跳过格判定
+      // 装配机族：已有 isFluidInlet（顶部唯一流体口，随 dir 旋转），上面已按格判定 atPort
       if (atPort) {
         for (const k of Object.keys(this.fluid)) {
           if (!(this.fluid[k] > 0)) continue;
@@ -273,10 +282,10 @@ function drawPipeGround(ctx, e, gx, gy, dir, alpha) {
   // ② 泥土坑（圆 + 沙土纹理）
   // 外圈（深色泥土边）
   ctx.fillStyle = paired ? '#5b543f' : '#4c4c46';
-  ctx.beginPath(); ctx.arc(cx, cy + 2, 12.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, cy, 11, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = paired ? '#39342a' : '#2f2f2a';
   ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.arc(cx, cy + 2, 12.5, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, 11, 0, Math.PI * 2); ctx.stroke();
   // 沙土小颗粒（随机暗点）
   ctx.fillStyle = 'rgba(0,0,0,0.25)';
   const dots = [[-7, 3], [-3, 7], [4, 6], [7, 1], [-5, -2], [3, -3], [8, 6], [-8, -3]];
@@ -389,7 +398,7 @@ function drawPipeGround(ctx, e, gx, gy, dir, alpha) {
     ctx.lineWidth = 1;
     ctx.setLineDash([2, 2]);
     ctx.beginPath();
-    ctx.arc(cx, cy + 2, 12.5, 0, Math.PI * 2);
+    ctx.arc(cx, cy, 11, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
   }

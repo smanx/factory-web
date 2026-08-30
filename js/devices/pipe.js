@@ -19,10 +19,16 @@ class Pipe extends Entity {
     this._balT = (this._balT || 0) - dt;
     if (this._balT > 0) return;
     this._balT = 0.05;
+    // 官方基础管道流速 = 200 流体/秒/节（PIPE_FLOW，Factorio Wiki 引擎常量）。
+    // 每节流周期（0.05s）单节管道最多向下游传输 200×0.05 = 10 单位，
+    // 用 budget 限制「管道→管道」的均压推送，模拟官方压力流动而非瞬时均平。
+    let budget = PIPE_FLOW * 0.05;
     for (const k of Object.keys(this.fluid)) {
       if (!(this.fluid[k] > 0)) continue;
+      if (budget <= 0) break;
       for (const [dx, dy] of PIPE_DIRS) {
         if (!(this.fluid[k] > 0)) break;
+        if (budget <= 0) break;
         const t = entAt(this.x + dx, this.y + dy);
         if (!t || t === this) continue;
         if (t instanceof Pipe) {
@@ -30,12 +36,14 @@ class Pipe extends Entity {
           const tOther = t.total() - (t.fluid[k] || 0);
           const theirs = t.fluid[k] || 0;
           if (tOther === 0 && t.total() < PIPE_CAP && this.fluid[k] > theirs) {
-            // 自动平衡：把两管之间的差量匀一半过去，让整条管网的流体快速趋平，
-            // 而不像原来每帧只推 1 单位（长距离管道远端要很久才见液）。
+            // 自动平衡：把两管差量匀一部分过去；单节每周期最多推 budget（=官方 200/s），
+            // 不再每帧把差量对半全推（否则长距离管道远端瞬间见液，远超官方流速）。
             const diff = this.fluid[k] - theirs;
-            const move = Math.max(1, Math.ceil(diff / 2));
+            let move = Math.max(1, Math.ceil(diff / 2));
+            if (move > budget) move = budget;
             this.fluid[k] -= move;
             t.fluid[k] = theirs + move;
+            budget -= move;
           }
         } else if (t instanceof StorageTank) {
           // 管道把流体灌入储液罐（罐空或同种流体且未满时才能灌入）
@@ -141,8 +149,9 @@ function drainFluidNetwork(start) {
       const t = entAt(cur.x + DX[i], cur.y + DY[i]);
       if (!t || visited.has(t)) continue;
       const connected = t instanceof Pipe || t instanceof PipeToGround || t instanceof StorageTank ||
-                        t instanceof Refinery || t instanceof ChemicalPlant ||
-                        (t instanceof Assembler && t.acceptsFluid) || t instanceof ElectricDrill;
+                         t instanceof Refinery || t instanceof ChemicalPlant ||
+                         (t instanceof Assembler && t.isFluidInlet && t.isFluidInlet(cur.x, cur.y)) ||
+                         (t instanceof ElectricDrill && (!t.isFluidInlet || t.isFluidInlet(cur.x, cur.y)));
       if (connected) { visited.add(t); queue.push(t); }
     }
   }
@@ -173,9 +182,9 @@ function drawPipe(ctx, e, gx, gy, dir, alpha) {
       if (!ok) continue;
     }
     let connect = nb instanceof Pipe || nb instanceof Refinery || nb instanceof Pumpjack ||
-        nb instanceof ElectricDrill ||
+        (nb instanceof ElectricDrill && (!nb.isFluidInlet || nb.isFluidInlet(gx, gy))) ||
         nb instanceof Boiler || nb instanceof Pump || nb instanceof SteamEngine ||
-        nb instanceof ChemicalPlant || nb instanceof Assembler || nb instanceof HeatExchanger ||
+        nb instanceof ChemicalPlant || (nb instanceof Assembler && (!nb.isFluidInlet || nb.isFluidInlet(gx, gy))) || nb instanceof HeatExchanger ||
         (nb instanceof StorageTank && (!nb.isPortCell || nb.isPortCell(gx, gy))) ||
         nb instanceof PipeToGround || nb instanceof FluidPump ||
         (nb && (nb.type === 'one-way-valve' || nb.type === 'overflow-valve' || nb.type === 'top-up-valve'));

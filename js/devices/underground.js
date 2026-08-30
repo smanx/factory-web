@@ -6,6 +6,10 @@ class Underground extends Entity {
     super(type || 'underground-belt', x, y);
     this.items = [];
     this.outItems = [];
+    // 流向反转标记：false=按几何默认（西端钻入、东端钻出），true=流向反转
+    // （西端钻出、东端钻入）。它只改变“物品在固定洞口处的上/下”，不改变洞口所在侧，
+    // 因此 V/H 切换时井口位置(朝向)不变，仅传送带流向反转。
+    this.ugFlip = false;
     // 隧道在途物品：{ item, lane, rem }，rem = 距出口剩余格数（格），随流速递减。
     // 用来把「过洞」改造成真实耗时：物品以地上带单列流速穿过 D 格隧道后才冒出地面，
     // 而不是上一版“入口瞬时塞进出口缓存”造成的瞬间传送 + 变速。
@@ -15,9 +19,9 @@ class Underground extends Entity {
     this.ejectT = [0, 0]; // 出口 → 地面 喷射计时器（lane0 / lane1）
     this._blockL = [false, false]; // 出口各车道是否被下游卡住（lane0 / lane1），驱动动画冻结
   }
-  // 与配对地下带之间的跨度（格）：入口→前方出口、出口→后方入口。未配对按 1 格计。
+  // 与配对地下带之间的跨度（格）：入口↔出口（任意前后方向）。未配对按 1 格计。
   ugDist() {
-    const m = this.isEntrance() ? this.findMate() : this.findBackMate();
+    const m = this.mateOf();
     if (!m) return 1;
     return Math.max(Math.abs(m.x - this.x), Math.abs(m.y - this.y));
   }
@@ -39,12 +43,11 @@ class Underground extends Entity {
     return null;
   }
   // 配对关系（对齐《异星工厂》：中间不能隔着同方向的地下带，已配对的不能再与下一座配对）：
-  //   入口 → 只与前方最近的一座配对（背侧不配对）；
-  //   出口 → 只与背侧最近的一座配对（前方不配对）。
-  // 于是一条线上 1-2、3-4 各自成对：2 号不会再去配 3 号，3 号也不会回头配 2 号或 1 号；
-  // 落单的第 3 座（前方没有可配对的）判定为未配对，不参与传输，也不再牵动 1/2 号（旋转联动同理）。
-  findMate() { return this.isEntrance() ? this._scanAlong(1) : null; }
-  findBackMate() { return this.isExit() ? this._scanAlong(-1) : null; }
+  //   入口 → 优先与前方最近的出口配对、无则退而求其后方出口；
+  //   出口 → 优先与后方最近的入口配对、无则退而求其前方入口。
+  // 于是一条线上 1-2、3-4 各自成对：2 号不会去配 3 号，3 号也不会回头配 2 号或 1 号；
+  // 落单的第 3 座（两端都没有异角色）判定为未配对，不参与传输。
+  // findMate/findBackMate 的旧语义已被通用的 mateOf() 取代（见下方）。
   speedMult() { return this.type === 'fast-underground-belt' ? FAST_BELT_MULT : 1; }
   // 与同档传送带完全一致的双车道合计吞吐：面板/数值以「双车道总速度」计（基础带=15 件/秒）。
   // 隧道内两条车道（lane0/lane1）各自独立推进，每车道吞吐 = 双车道合计的一半。
@@ -72,7 +75,7 @@ class Underground extends Entity {
     // 贪心交替配对：链上第1座是入口，第2座是出口，第3座是入口，第4座是出口……
     // 通过 isEntrance()/isExit() 递归判定，确保每座出口的后方入口尚未被占用。
     if (this.isEntrance()) {
-      const mate = this.findMate();
+      const mate = this.mateOf();
       // 入口：把本格收进 items 的货按间隔 iv 逐件放入隧道（rem = 距出口格数），
       // 在途物品由出口侧的 _tickTunnel 按地上带同等流速推进，穿越整条隧道后才冒出地面。
       // 双列：两条车道（lane0/lane1）各自独立进洞，互不混合。
@@ -95,7 +98,7 @@ class Underground extends Entity {
     this._flow = this._flow || [0, 0];
     this._blockL = this._blockL || [false, false];
     const isIn = this.isEntrance(), isOut = this.isExit();
-    const mate = isIn ? this.findMate() : null;
+    const mate = isIn ? this.mateOf() : null;
     for (let l = 0; l < 2; l++) {
       let moving = false;
       if (isIn && mate) {
@@ -143,23 +146,30 @@ class Underground extends Entity {
     }
     this.tunnel = keep;
   }
-  // 出口喷射单条车道：把隧道出口缓存 outItems 里对应车道的货投向地面带同车道。
+  // 出口喷射单条车道：把隧道出口缓存 outItems 里对应车道的货投向「地面侧」（远离配对端的一侧）。
   // 两列独立计时器，各自按单列间隔 iv 喷射，互不占用对方队列。
+  // 地面侧方向 surfaceDir = 配对端在背侧时为 this.dir、在正面时为相反方向（this.dir+2）。
+  // 这样无论入口/出口位于前还是后（即 V/H 切换后的流向反转），出口都朝正确的一侧喷出。
   _ejectLane(lane, iv) {
+    const mate = this.mateOf();
+    let sign = -1; // 配对端默认在背侧（正常布置：入口在前、出口在后）
+    if (mate && mate.x === this.x + DX[this.dir] && mate.y === this.y + DY[this.dir]) sign = 1;
+    const sdx = -sign * DX[this.dir], sdy = -sign * DY[this.dir];
+    const surfaceDir = (sign < 0) ? this.dir : (this.dir + 2) % 4;
     while (this.ejectT[lane] >= iv) {
       // 找出本车道待喷的一件（先进先出）
       let idx = -1;
       for (let i = 0; i < this.outItems.length; i++) if (this.outItems[i].lane === lane) { idx = i; break; }
       if (idx < 0) break;
-      const nx = this.x + DX[this.dir], ny = this.y + DY[this.dir];
+      const nx = this.x + sdx, ny = this.y + sdy;
       let sent = false;
       const t = entAt(nx, ny);
       if (t instanceof Belt) {
-        if (!(t instanceof Splitter) && t.dir === ((this.dir + 2) % 4)) sent = false;
-        else if (t.dir === this.dir || t instanceof Splitter) {
+        if (!(t instanceof Splitter) && t.dir === ((surfaceDir + 2) % 4)) sent = false;
+        else if (t.dir === surfaceDir || t instanceof Splitter) {
           // 直通/分流器：把隧道内物品的 lane 作为 laneHint 传给下游传送带，
           // 保证左线进从左线出、右线进从右线出（左进左出/右进右出，与地上直通一致）。
-          sent = t.acceptItem(this.outItems[idx].item, this.dir, undefined, undefined, lane);
+          sent = t.acceptItem(this.outItems[idx].item, surfaceDir, undefined, undefined, lane);
         } else {
           // 出口接到垂直传送带上 → T 型交叉口（对齐地上传送带的 T 型交叉/转角逻辑）：
           // 1) 可直接转弯（下游带是纯 90° 转角：仅此一个侧面输入、背面无同向直行带）→
@@ -167,15 +177,15 @@ class Underground extends Entity {
           // 2) 不能直接转弯（下游带背面有同向直行带，属一般侧面搭接）→
           //    只能流向最靠近地下带的近侧车道（不带 laneHint，交由下游按 sideOfLane 判定）。
           const isCorner = typeof beltCornerDir === 'function' && beltCornerDir(t) !== null;
-          sent = t.acceptItem(this.outItems[idx].item, this.dir, undefined, undefined, isCorner ? lane : undefined);
+          sent = t.acceptItem(this.outItems[idx].item, surfaceDir, undefined, undefined, isCorner ? lane : undefined);
         }
       } else if (t instanceof Underground) {
         // 出口可直接接入「下一组地下带的入口」（背靠背链式拼接，对齐《异星工厂》）：
-        // 出口把货喷到地面后，若紧邻的下一格是同向同档、且当前作为入口的地下带
+        // 出口把货喷到地面后，若紧邻的地面侧是同向同档、且当前作为入口的地下带
         // （它会把货送向自己的出口），则按车道直接入洞，保持左进左出/右进右出。
-        // 前方是出口 / 未配对 / 异档则拒收，避免把货穿进别人的出口造成错乱。
-        if (t.dir === this.dir && t.type === this.type && t.isEntrance()) {
-          sent = t.acceptItem(this.outItems[idx].item, this.dir, undefined, undefined, lane);
+        // 该侧是出口 / 未配对 / 异档则拒收，避免把货穿进别人的出口造成错乱。
+        if (t.dir === surfaceDir && t.type === this.type && t.isEntrance()) {
+          sent = t.acceptItem(this.outItems[idx].item, surfaceDir, undefined, undefined, lane);
         }
       } else if (t) {
         sent = t.giveItem(this.outItems[idx].item);
@@ -184,16 +194,37 @@ class Underground extends Entity {
       else { this.ejectT[lane] = 0; if (this._blockL) this._blockL[lane] = true; break; }  // 下游无空位：置位阻塞冻结动画，等待下一帧重试
     }
   }
-  // 是否作为“出口”：后方已有同向同档地下带配对（无论前方是否还有更远的带）。
-  // 出口把收到的货投向地面，不再向更前方的地下带转送（只与最近者配对）。
-  // 注意：这里必须用原始几何扫描 _scanAlong，不能用 findBackMate（后者依赖本判定，会相互递归）。
-  isExit() { const back = this._scanAlong(-1); return back ? back.isEntrance() : false; }
-  // 是否作为“入口”：前方有同向同档地下带配对，且后方没有配对（是链的起点）。
-  // 入口把货送向最近的前方出口。
-  isEntrance() { if (!this._scanAlong(1)) return false; const back = this._scanAlong(-1); return !back || !back.isEntrance(); }
-  // 是否已配对（前方或后方有同向同档地下带）。
+  // ── 几何角色（永远由位置决定，与流向 ugFlip 无关）──
+  // 用于“井口画在格子哪一端”以及配对判定，二者都不随 V/H 切换而移动/改变。
+  // 沿用原版《异星工厂》式链式判定：入口=前方有出口且后方无入口；出口=后方有入口。
+  isExitRaw() {
+    const back = this._scanAlong(-1);
+    return back ? back.isEntranceRaw() : false;
+  }
+  isEntranceRaw() {
+    if (!this._scanAlong(1)) return false;
+    const back = this._scanAlong(-1);
+    return !back || !back.isEntranceRaw();
+  }
+  // 配对（几何、与流向无关）：入口优先前方、出口优先后方，沿用原版 findMate/findBackMate。
+  // 关键：必须基于“几何角色”判定，不能基于 ugFlip 翻转后的角色——否则翻转后配对失效，
+  // 导致 isPaired() 为 false 而拒绝地面带喂入（本次回归源于此）。
+  findMate() { return this.isEntranceRaw() ? this._scanAlong(1) : null; }
+  findBackMate() { return this.isExitRaw() ? this._scanAlong(-1) : null; }
+  // 配对的另一端（几何，maxDist 内最近的同向同档地下带）。
+  mateOf() { return this.findMate() || this.findBackMate(); }
+  // 是否已配对（异角色的另一端在 maxDist 内）。
   // 未配对的地下带仅作静态显示，不参与任何物品传输（对齐《异星工厂》）。
-  isPaired() { return !!(this.findMate() || this.findBackMate()); }
+  isPaired() { return !!this.mateOf(); }
+  // 洞口所在侧（几何，永远固定）：true=前(+X)、false=后(-X)。V/H 不移动井口。
+  holeFront() { return this.isEntranceRaw(); }
+  // ── 流向角色（受 ugFlip 影响）──
+  // 默认(ugFlip=false)：几何入口(前坑)→钻入、几何出口(后坑)→钻出；
+  // 反转(ugFlip=true)：几何入口(前坑)→钻出、几何出口(后坑)→钻入。
+  // 即 ugFlip 仅把“钻入/钻出”对调，洞口位置不变 → 流向反转、井口朝向不变。
+  isExit() { return this.ugFlip ? !this.isExitRaw() : this.isExitRaw(); }
+  // 是否作为“入口”：物品从本带洞口“钻入地下”。
+  isEntrance() { return this.ugFlip ? !this.isEntranceRaw() : this.isEntranceRaw(); }
   // 与地上传送带一致的双线逻辑：接收带 laneHint 的物品，进入地下时保留其所在车道
   // （lane 0/1），隧道内两条线路各自独立、互不混合，出口按同一 lane 送出（左进左出/右进右出）。
   // 容量按双列：每列至多 UG_CAP 件，两列共 2×UG_CAP 件。
@@ -246,6 +277,7 @@ class Underground extends Entity {
     const s = super.serialize();
     s.items = this.items.map(o => ({ item: o.item, lane: o.lane }));
     s.outItems = this.outItems.map(o => ({ item: o.item, lane: o.lane }));
+    if (this.ugFlip) s.ugFlip = true;
     return s;
   }
   static restore(s) {
@@ -254,6 +286,7 @@ class Underground extends Entity {
     const norm = a => (a || []).map(o => (typeof o === 'string' ? { item: o, lane: 0 } : { item: o.item, lane: o.lane }));
     u.items = norm(s.items);
     u.outItems = norm(s.outItems);
+    u.ugFlip = !!(s.ugFlip);
     u.cd = [0, 0];
     u.ejectT = [0, 0];
     return u;
@@ -324,9 +357,14 @@ function ugShade(hex, amt) {
 function drawUnderground(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const cx = px + TILE / 2, cy = py + TILE / 2;
-  const st = e.isEntrance() ? 'in' : (e.isExit() ? 'out' : 'idle');
+  // gst：井口“画在哪一侧”的状态，永远由几何决定（西端前坑/东端后坑），不随流向切换而移动。
+  // st：物品“钻入/钻出”的流向状态，随 V/H 切换（ugFlip）反转。
+  // 两者解耦：V/H 只反转 st（流向），gst（井口位置/朝向）保持不变。
+  const paired = e.isPaired();
+  const gst = !paired ? 'idle' : (e.holeFront() ? 'in' : 'out');
+  const st = !paired ? 'idle' : (e.isEntrance() ? 'in' : (e.isExit() ? 'out' : 'idle'));
   const uc = undergroundColors(e);
-  const body = uc[st].body, acc = uc[st].acc;
+  const body = uc[gst].body, acc = uc[gst].acc;
   const light = ugShade(body, 30), dark = ugShade(body, -28);
   const pitDark = 'rgba(8,10,12,.96)';   // 井下深处
   const busy = st !== 'idle';
@@ -354,17 +392,18 @@ function drawUnderground(ctx, e, gx, gy, dir, alpha) {
   ctx.fill();
 
   // 井口(深坑) x 范围 —— 每端恰好覆盖格子的 1/2（格心到格边）：
-  // 入口=前坑(+X) 占 [0, +半格]，出口=后坑(-X) 占 [-半格, 0]，未配对=后坑但用虚线示孤井。
+  // 前坑(+X) 占 [0, +半格]，后坑(-X) 占 [-半格, 0]，未配对=后坑但用虚线示孤井。
   // 半格正好与物品/箭头的可见半格分界(x=0)对齐，格栅齿铺满半格，视觉上盖住 1/2 的位置。
+  // 注意：井口位置只由几何(gst)决定，V/H 切换流向时井口不移动。
   const HALF = TILE / 2;
   let m0 = -HALF, m1 = 0;
-  if (st === 'in') { m0 = 0; m1 = HALF; }
+  if (gst === 'in') { m0 = 0; m1 = HALF; }
 
   // ---- 4) 传送带表面（从无井口一侧延伸至井口边缘，未配对不画带面）----
   let bx0, bx1;
-  if (st === 'in')      { bx0 = -12; bx1 = m0; }
-  else if (st === 'out'){ bx0 = m1;  bx1 = 12; }
-  else                  { bx0 = -12; bx1 = 12; }
+  if (gst === 'in')      { bx0 = -12; bx1 = m0; }
+  else if (gst === 'out'){ bx0 = m1;  bx1 = 12; }
+  else                   { bx0 = -12; bx1 = 12; }
   // 带面始终绘制（即使未配对/空载也保留完整带面，方向箭头才能一直可见、一直流动）
   ctx.fillStyle = light;
   ctx.fillRect(bx0, -8, bx1 - bx0, 16);
@@ -428,12 +467,14 @@ function drawUnderground(ctx, e, gx, gy, dir, alpha) {
   {
     const step = TILE / 2;   // 箭头间距与地上传送带完全一致
     const arrSpeed = beltSpeed() * (e.speedMult ? e.speedMult() : 1) * (TILE / 2);
-    const off = ((G.time * arrSpeed) % step + step) % step;
-    // 遮罩：入口只显示前半格、出口只显示后半格；未配对井口在后方，只在前半格显示
+    // 流向反转(ugFlip)时，箭头动画与指向也反转（与传送带实际流向一致）。
+    const dirSign = e.ugFlip ? -1 : 1;
+    const off = (((G.time * arrSpeed * dirSign) % step) + step) % step;
+    // 遮罩：井口在“前坑”时只显示后半格、在“后坑”时只显示前半格（由几何 gst 决定，与流向无关）。
     let a0 = bx0, a1 = bx1;
-    if (st === 'in')       a1 = 0;
-    else if (st === 'out') a0 = 0;
-    else                   a0 = 0;
+    if (gst === 'in')       a1 = 0;
+    else if (gst === 'out') a0 = 0;
+    else                    a0 = 0;
     // 箭头与地上传送带逐档一一对应：尺寸（底边跨带面垂直方向 ±5px、尖端 +3px）与颜色（ugChevColor）都一致。
     // 边缘处理：整体 clip 到可见半带，箭头在带面边缘不再硬切，而是按头部/尾部越界量渐隐渐显——
     // 当箭头头部触到边缘时，从头部开始慢慢淡出（正是“从前面开始消失”的效果），完全移出后才彻底消失。
@@ -449,13 +490,17 @@ function drawUnderground(ctx, e, gx, gy, dir, alpha) {
       const ax = bx0 + k * step + off;    // 箭头中心（局部坐标，沿行进方向）
       const tail = ax - 3, head = ax + 3; // 尾部（后方）与头部（前方）
       if (head <= a0 || tail >= a1) continue;   // 整体已超出可见区 → 跳过
-      // 头部越过出口边缘：从头开始渐隐；尾部未进入入口边缘：从尾渐显
+      // 两端边缘均做渐隐（兼容流向反转），任一端越过可见区即淡出。
       let fade = 1;
       if (head > a1) fade = Math.min(fade, Math.max(0, 1 - (head - a1) / FADE));
       if (tail < a0) fade = Math.min(fade, Math.max(0, 1 - (a0 - tail) / FADE));
+      if (head < a0) fade = Math.min(fade, Math.max(0, 1 - (a0 - head) / FADE));
+      if (tail > a1) fade = Math.min(fade, Math.max(0, 1 - (tail - a1) / FADE));
       if (fade <= 0) continue;
       ctx.globalAlpha = alpha * fade;
-      tri(ctx, ax - 3, -5, ax - 3, 5, ax + 3, 0);   // 底边 ±5px、尖端 +3px
+      // 正常流向：尖端朝 +x(dir)；反转流向：尖端朝 -x（指向与实际流向一致）。
+      if (dirSign >= 0) tri(ctx, ax - 3, -5, ax - 3, 5, ax + 3, 0);
+      else              tri(ctx, ax + 3, -5, ax + 3, 5, ax - 3, 0);
       ctx.fill();
     }
     ctx.restore();
@@ -484,9 +529,16 @@ function drawUnderground(ctx, e, gx, gy, dir, alpha) {
       //     出口（out）只显示后半格 [0, bx1]：从遮罩中冒出的物品前半格被盖住，
       //       到中分线 x=0 后方才开始显示，并继续滑向出口缘 → 模拟“从井下冒出地面”。
       let v0 = bx0, v1 = bx1;
-      if (st === 'in')       v1 = 0;                     // 入口：格心往前的 1/2 被遮住
-      else if (st === 'out') v0 = 0;                     // 出口：格心往后的 1/2 被遮住
+      if (gst === 'in')       v1 = 0;                    // 前坑：格心往前(井口侧)的 1/2 被遮住
+      else if (gst === 'out') v0 = 0;                    // 后坑：格心往后(井口侧)的 1/2 被遮住
       const vSeg = Math.max(4, v1 - v0);                 // 可见半格长度（沿行进方向）
+      // 物品在可见半格内的实际行进方向：入口→井口、出口→远离井口。
+      // 井口恒在中分线(x=0)，另一端(outX)在格边；据此决定从哪端进、哪端出，
+      // 从而流向反转(ugFlip)时物品也反向流动，与箭头一致。
+      const pitX = 0;
+      const outX = (gst === 'in') ? v0 : v1;
+      const entryX = (st === 'in') ? outX : pitX;
+      const exitX  = (st === 'in') ? pitX : outX;
       // 换算为“横跨可见半格的相位 0..1”：按与地面带同速（单车道 beltSpeed/2 格/秒）折算像素后对 vSeg 取模。
       // 物品在可见半格内以 spdPx px/s 推进（遮罩的另一半计时仍算入流动钟，保证速度一致）。
       let clk = ((flow * spdPx) / vSeg) % 1;
@@ -548,12 +600,13 @@ function drawUnderground(ctx, e, gx, gy, dir, alpha) {
       const ph = clk;
       for (let j = 0; j < dens; j++) {
         const slot = (j / dens + ph) % 1;                // 槽位 j 基准 + 整体前移；模 1 环绕=连续流
-        const xl = v0 + vSeg * slot;
+        const u = slot;                                  // 0=进入端，1=出口端
+        const xl = entryX + (exitX - entryX) * u;
         const ix = cx + fx * xl + ofsX, iy = cy + fy * xl + ofsY;
-        const p = (xl - v0) / vSeg;                      // 0=进入端，1=遮罩端
+        const p = u;                                     // 0=进入端，1=出口端
         let a = alpha;
-        if (st === 'in')       a = alpha * (1 - p * 0.75);          // 走向遮罩(井口)渐隐 = 钻入
-        else if (st === 'out') a = alpha * (0.25 + p * 0.75);       // 从遮罩冒出渐显 = 冒出
+        if (st === 'in')       a = alpha * (1 - p * 0.75);          // 走向井口渐隐 = 钻入
+        else if (st === 'out') a = alpha * (0.25 + p * 0.75);       // 从井口冒出渐显 = 冒出
         ctx.globalAlpha = a;
         itemFn(ctx, ix, iy, vis[j % vis.length]);
       }
@@ -573,7 +626,7 @@ function undergroundPanelHtml(e) {
   if (e.isEntrance()) txt = '【入口】货物钻入地下送往最近的前方出口（双列，每列 ' + UG_CAP + ' 件）。缓存 ' + e.items.length + '/' + cap + '，待发 ' + e.outItems.length;
   else if (e.isExit()) txt = '【出口】接收后方隧道来货并向前输出（只与最近者配对，不再向更前方转送）。待发 ' + e.outItems.length;
   else txt = '【未配对】同向' + e.maxDist() + '格内没有另一座。仅作显示，不接收/不传送物品。缓存 ' + e.items.length + '/' + cap;
-  return '<div class="dim">地下带' + txt + '。R 旋转方向。</div>' +
+  return '<div class="dim">地下带' + txt + '。R 旋转方向，V/H 反转流向（井口位置不变，只切钻入/钻出）。</div>' +
     '<div class="dim">当前吞吐：<span data-live="speed">-</span>（件/秒，双车道合计）</div>';
 }
 function undergroundPanelLive(e, api) {

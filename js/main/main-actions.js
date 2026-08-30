@@ -118,8 +118,14 @@ function cliffBlastAt(tx, ty) {
 
 function copySettings(e) {
   if (!e) return;
-  const s = { type: e.type, dir: e.dir };
+  const s = { type: e.type };
   if (typeof e.setRecipe === 'function') s.recipe = e.recipe;
+  // 机械臂：复制配方时一并复制筛选条件（白/黑名单 + 5 个筛选格）
+  if (typeof Inserter !== 'undefined' && e instanceof Inserter) {
+    s.filterOn = e.filterOn;
+    s.filterMode = e.filterMode;
+    s.filters = e.filters ? e.filters.slice(0, 5) : [];
+  }
   G.clipboard = s;
   toast('已复制 ' + ITEMS[e.type].name + ' 配置（Shift+左键粘贴到同类）');
 }
@@ -128,16 +134,16 @@ function pasteSettings(e) {
   if (!e || !G.clipboard) return;
   const c = G.clipboard;
   if (e.type !== c.type) { toast('类型不匹配：剪贴板是' + ITEMS[c.type].name); return; }
-  if (c.dir === undefined) return;
-  // 固定管道口建筑放置后不可旋转：不粘贴方向（仅粘贴其他配置）
-  if (!postPlaceRotatable(e.type)) { toast('该建筑放置后不可旋转，已跳过方向粘贴'); return; }
-  if (BUILD_DEFS[e.type] && BUILD_DEFS[e.type].rotSwap) {
-    // 抽水机旋转后脚印变化，需重新校验仍压水面
-    if (e.type === 'offshore-pump' && !pumpCanFace(e, c.dir)) { toast('无法粘贴：抽水机必须仍压在水面上'); return; }
-    removeEnt(e); e.dir = c.dir; e.applyDir(); addEnt(e);
-  }
-  else { e.dir = c.dir; }
+  // 复制粘贴配方时不复制旋转方向（保留目标自身朝向）
   if (c.recipe && typeof e.setRecipe === 'function') e.setRecipe(c.recipe);
+  // 机械臂：粘贴时覆盖/清空筛选条件
+  //  - 复制源带筛选：覆盖目标的筛选（白/黑名单 + 5 个筛选格）
+  //  - 复制源筛选为空：直接把目标的筛选清空
+  if (typeof Inserter !== 'undefined' && e instanceof Inserter && c.filters) {
+    e.filterOn = !!c.filterOn;
+    e.filterMode = c.filterMode === 'black' ? 'black' : 'white';
+    e.filters = Array.isArray(c.filters) ? c.filters.slice(0, 5) : [];
+  }
   uiDirty = true;
   toast('配置已粘贴');
 }
@@ -222,22 +228,23 @@ function flipAction(axis) {
         uiDirty = true;
         return;
       }
-      // 地下传送带：翻转会交换整对的入/出口。若它已与另一座配对（同向），
-      // 把配对的那一座也一起翻转，保持两者仍同向、整对继续有效。
-      // 仅当翻转在当前轴真正改变了方向时才生效：
-      //   横带(0/2)按 H → 方向互换；竖带(1/3)按 V → 方向互换；其它组合不改向。
+      // 地下传送带：V/H 翻转不改变朝向，只切换「入口/出口」（流入/流出的切换）。
+      // 切换后它与配对另一端会自动互换角色，使整条地下带的流向反转；
+      // 为保持整对始终一进一出（避免双入口/双出口死锁），连同配对端一起翻转角色。
       if (rotOk && (e instanceof Underground)) {
-        const nd = flipDir(e.dir, axis);
-        if (nd !== e.dir) {
-          const mate = e.findMate() || e.findBackMate();
-          if (mate) {
-            mate.dir = flipDir(mate.dir, axis);
-            if (typeof mate.onRotate === 'function') mate.onRotate();
-          }
-          e.dir = nd;
-          if (typeof e.onRotate === 'function') e.onRotate();
-          uiDirty = true;
-        }
+        // V/H 翻转地下带：不改变朝向(dir)，也不移动井口位置（洞口朝向不变），
+        // 只把“钻入/钻出”对调，从而反转整条地下带的流向。
+        // 用显式 ugFlip 标记：西端钻入↔钻出、东端钻出↔钻入，井口始终在原侧。
+        // 与配对端一起翻转，保证整对仍是“一进一出”、流向一致反转。
+        const mate = e.mateOf();   // 取配对端
+        e.ugFlip = !e.ugFlip;
+        if (mate) mate.ugFlip = !mate.ugFlip;
+        invalidateBeltInputNear(e.x, e.y, e.w, e.h);
+        if (mate) invalidateBeltInputNear(mate.x, mate.y, mate.w, mate.h);
+        if (typeof e.onRotate === 'function') e.onRotate();
+        if (mate && typeof mate.onRotate === 'function') mate.onRotate();
+        uiDirty = true;
+        toast('地下带流向已反转（井口位置不变，与配对端一起切换）');
         return;
       }
       // 有朝向的设备：直接翻转

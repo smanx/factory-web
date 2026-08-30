@@ -151,6 +151,21 @@ function initTopButtons() {
     if (act === 'cancel') { hideGreenBar(); G.greenRect = null; return; }
     greenAreaAction(act);
   });
+  // 绿图筛选勾选：切换勾选时实时更新可升级/可降级统计，并在全部取消勾选时禁用升级/降级按钮
+  if (greenbar) greenbar.addEventListener('change', ev => {
+    const box = ev.target.closest('input[data-gtype]');
+    if (!box || !G.greenFilter) return;
+    G.greenFilter[box.dataset.gtype] = box.checked;
+    const r = G.greenRect;
+    if (!r) return;
+    const stats = greenAreaStats(r, G.greenFilter);
+    const t = greenbar.querySelector('.gb-t');
+    if (t) t.textContent = '绿图 ' + (r.x1 - r.x0 + 1) + '×' + (r.y1 - r.y0 + 1) + '：可升级 ' + stats.up + ' · 可降级 ' + stats.down;
+    const any = Object.keys(G.greenFilter).some(k => G.greenFilter[k]);
+    greenbar.querySelectorAll('button[data-gact]').forEach(btn => {
+      if (btn.dataset.gact !== 'cancel') btn.disabled = !any;
+    });
+  });
 }
 
 function updateHUD(dt, fps, ups) {

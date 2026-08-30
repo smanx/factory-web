@@ -171,7 +171,7 @@ function asteroidChunkFor(tx, ty) {
   return 'oxide-asteroid-chunk';
 }
 const PIPE_CAP = GAME_DATA.fluidCapacity?.pipeVolume ?? 100;   // 管道容量（官方 pipe fluid_box.volume=100，由 GAME_DATA 桥接）
-const PIPE_FLOW = 3;
+const PIPE_FLOW = 200;   // 管道流速（流体单位/秒/节）：对齐《异星工厂》基础管道官方上限 = 200/s（Factorio Wiki 引擎常量，子模块 prototype 无此字段）；pipe.js / pipe-ground.js 据此限速
 // 储液罐（对齐《异星工厂》Storage Tank）：占地 3×3、容量大、只存单一流体，东西两侧各一个通用流体口
 const STORAGE_TANK_CAP = GAME_DATA.fluidCapacity?.storageTank ?? 2500; // 储液罐容量（官方 25000）
 const FLUID_WAGON_CAP = GAME_DATA.fluidCapacity?.fluidWagon ?? 2500;   // 流体车厢容量（官方 50000）

@@ -534,3 +534,15 @@ function refreshDebugPanel() {
     else if (G.dbg[key] !== undefined) box.checked = !!G.dbg[key];
   });
 }
+
+// 调试面板展开时按 ESC 退出并关闭面板。
+// 在模块级（脚本加载时，早于 bindInput 注册的全局 ESC 处理）注册监听器，
+// 用 stopImmediatePropagation 阻止全局 ESC 链继续触发打开游戏菜单等后续逻辑。
+window.addEventListener('keydown', ev => {
+  if (ev.key !== 'Escape' || ev.repeat) return;
+  const panel = document.getElementById('dbg-panel');
+  if (panel && panel.style.display === 'block') {
+    panel.style.display = 'none';
+    ev.stopImmediatePropagation();
+  }
+});

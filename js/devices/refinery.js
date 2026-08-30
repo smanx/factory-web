@@ -299,6 +299,13 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
   const cx = px + s / 2, cy = py + sh / 2;
   ctx.globalAlpha = alpha;
 
+  // 本体随 dir 旋转（R 旋转 / V·H 翻转均改 dir），管道口随本体一起转。
+  // ⑦ 的端口标注用 fluidIconCell/drawPort 内部已按 dir 旋转，故在变换外（世界坐标）绘制，避免双重旋转。
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate((dir | 0) * Math.PI / 2);
+  ctx.translate(-cx, -cy);
+
   const rec = e.recipe ? REFINERY_RECIPES[e.recipe] : null;
   const working = e.working || e.crafting;
   const fl = 0.5 + Math.sin((G.time || 0) * 10 + px) * 0.25;     // 炉火闪烁系数
@@ -496,15 +503,15 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
     bx += pipeW + gap;
   }
 
-  // ⑥b 缺原料警示：顶部居中显示感叹号
-  if (!working && rec && refineryMissingInput(e) && !(LOD && LOD.simple)) {
-    ctx.fillStyle = '#ffb04a';
-    ctx.font = 'bold 14px system-ui';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('!', cx, py + sh * 0.86);
-  }
+  // ⑧ 罐体外框描边（最上层，随本体一起旋转）
+  ctx.strokeStyle = '#2a1a10';
+  ctx.lineWidth = 2.4;
+  rr(ctx, px + 3, py + 3, s - 6, sh - 6, 10); ctx.stroke();
 
-  // ⑦ 流体出入口标注（沿用旧 REFINERY_PORTS 约定）
+  // 退出本体旋转变换，以下在世界坐标绘制（端口与文字不随本体翻转，保证可读）
+  ctx.restore();
+
+  // ⑦ 流体出入口标注（沿用旧 REFINERY_PORTS 约定，端口按 fluidIconCell 精确定位，内部按 dir 旋转）
   if (!(LOD && LOD.simple)) {
     for (const p of REFINERY_PORTS) {
       const g = fluidIconCell(e, p.side, p.cells[0]);
@@ -515,10 +522,13 @@ function drawRefinery(ctx, e, gx, gy, dir, alpha) {
     }
   }
 
-  // ⑧ 罐体外框描边（最上层）
-  ctx.strokeStyle = '#2a1a10';
-  ctx.lineWidth = 2.4;
-  rr(ctx, px + 3, py + 3, s - 6, sh - 6, 10); ctx.stroke();
+  // ⑥b 缺原料警示：居中显示感叹号（世界坐标，始终正立可读）
+  if (!working && rec && refineryMissingInput(e) && !(LOD && LOD.simple)) {
+    ctx.fillStyle = '#ffb04a';
+    ctx.font = 'bold 14px system-ui';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('!', cx, cy);
+  }
 
   ctx.globalAlpha = 1;
 }

@@ -66,13 +66,6 @@ const DEVICE_RUN_INFO = {
   'stone-furnace': e => (e.lit && e.cur && e.prog > 0) ? { pct: e.prog, total: e.cur.time } : null,
   'steel-furnace': e => (e.lit && e.cur && e.prog > 0) ? { pct: e.prog, total: e.cur.time } : null,
   'electric-furnace': e => (e.lit && e.cur && e.prog > 0) ? { pct: e.prog, total: e.cur.time } : null,
-  'oil-refinery': e => {
-    if (!e.crafting || !e.recipe) return null;
-    const rec = REFINERY_RECIPES[e.recipe];
-    if (!rec || !rec.time) return null;
-    return { pct: Math.min(1, Math.max(0, (e.prog || 0) / rec.time)), total: rec.time };
-  },
-  'lab': e => e.active ? { pct: Math.min(1, Math.max(0, (e.t || 0) / LAB_TIME)), total: LAB_TIME } : null,
 };
 
 // 在设备上方绘制环形 loading 计时器：背景圆 + 当前进度弧。
@@ -340,7 +333,7 @@ function drawGhost(ctx) {
     }
     // 地下传送带铺设时：若与已有地下带能配对（同向同档，isPaired），同样用绿色虚线框住这一对（含幽灵格）
     if (tmp instanceof Underground && typeof tmp.isPaired === 'function') {
-      const mt = tmp.findMate() || tmp.findBackMate();
+      const mt = tmp.mateOf();
       if (mt) {
         g.strokeStyle = 'rgba(90,220,120,.95)';
         g.lineWidth = 2 / G.cam.z;
@@ -448,9 +441,9 @@ function canPlaceAt(type, tx, ty, dir) {
   const def = BUILD_DEFS[type];
   let ew = def.w, eh = def.h;
   if (def.rotSwap && (dir % 2 === 1)) { ew = def.h; eh = def.w; }
-  // 玩家占位校验：建筑占地覆盖玩家所在格时禁止建造（对齐《异星工厂》：
-  // 角色站立格本身是障碍，不能把建筑盖在角色身上，否则角色会被卡住走不出来）
-  if (G.player) {
+  // 玩家占位校验：只有与主角有碰撞体积的建筑，主角站其占地内才禁止建造；
+  // 与主角无碰撞体积的建筑（传送带/机械臂/箱子等）即便主角站在原地也能正常建造。
+  if (G.player && buildCollidesPlayer(type)) {
     const px = Math.floor(G.player.x / TILE), py = Math.floor(G.player.y / TILE);
     if (px >= tx && px < tx + ew && py >= ty && py < ty + eh) {
       return { ok: false, reason: 'player' };
@@ -470,10 +463,12 @@ function canPlaceAt(type, tx, ty, dir) {
       if (getTerrain(tx + dx, ty + dy) === T_TREE) return { ok: false, reason: 'tree' };
       if (entAt(tx + dx, ty + dy)) {
         // 传送带升级/降级覆盖：用带系/地下带/分流器的同类覆盖现有同族带（对齐《异星工厂》覆盖升级）
-        // 但反向传送带视为障碍（不参与覆盖），交由自动地下带逻辑跨越处理
+        // 但「方向不同」的传送带（反向或垂直交叉）一律视为障碍、不参与覆盖，
+        // 交由自动地下带逻辑下穿跨越（对齐《异星工厂》：传送带不能平面交叉，必须用地下带钻过去）。
+        // 仅「方向完全相同」的传送带才允许直接覆盖衔接。
         const e = entAt(tx + dx, ty + dy);
-        const reversed = e instanceof Belt && Math.abs(((e.dir - dir) % 4 + 4) % 4) === 2;
-        if (!reversed && canOverwriteWithBelt(type, e)) continue;
+        const dd = e instanceof Belt ? Math.abs(((e.dir - dir) % 4 + 4) % 4) : 0;
+        if (dd === 0 && canOverwriteWithBelt(type, e)) continue;
         return { ok: false, reason: 'occupied' };
       }
       if (!withinReach(tx + dx, ty + dy)) return { ok: false, reason: 'reach' };
@@ -542,10 +537,7 @@ function drawHoverAndMining(ctx) {
   // 而不能一律优先取前方（findMate）。否则一条线上多对（如 1-2、3-4）时，
   // 鼠标移到某一对的出口（格2/格4）会误框到前方那一座（格3/格5之后的配对）。
   if (e instanceof Underground && e.isPaired()) {
-    let m = null;
-    if (e.isEntrance()) m = e.findMate();        // 入口 → 最近前方同向同档
-    else if (e.isExit()) m = e.findBackMate();   // 出口 → 后方入口
-    else m = e.findMate() || e.findBackMate();   // 未配对兜底：任取一座做显示
+    const m = e.mateOf();                        // 与运送逻辑一致的配对判定
     if (m) {
       const x0 = Math.min(e.x, m.x) * TILE, y0 = Math.min(e.y, m.y) * TILE;
       const x1 = (Math.max(e.x, m.x) + 1) * TILE, y1 = (Math.max(e.y, m.y) + 1) * TILE;

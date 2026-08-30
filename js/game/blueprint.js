@@ -42,7 +42,8 @@ function blueRect() {
   };
 }
 
-// 红图：删除矩形区域内所有实体（含内部物资返还，跨区域不重复）
+// 红图：删除矩形区域内所有实体（含内部物资返还，跨区域不重复）。
+// 删除前弹框确认，避免误删整片建筑；确认后才真正执行删除。
 function applyRedBlueprint() {
   const r = blueRect();
   if (!r) return;
@@ -55,6 +56,35 @@ function applyRedBlueprint() {
     uiDirty = true;
     return;
   }
+  const n = redAreaCount(r);
+  if (!n) {
+    G.blueStart = null; G.blueEnd = null;
+    toast('区域内没有可拆除的建筑');
+    uiDirty = true;
+    return;
+  }
+  // 保留框选范围，待确认后由 doRedBlueprintDelete 删除
+  openConfirm('红图删除确认', '将删除框选区域内的 ' + n + ' 个建筑（内部物资会返还背包），确定继续？', '删除', () => doRedBlueprintDelete(r));
+}
+
+// 统计矩形区域内可被红图删除的建筑数量（实体中心在区域内，与删除判定一致）
+function redAreaCount(r) {
+  const seen = new Set();
+  let count = 0;
+  for (let ty = r.y0; ty <= r.y1; ty++) {
+    for (let tx = r.x0; tx <= r.x1; tx++) {
+      const e = entAt(tx, ty);
+      if (!e || seen.has(e)) continue;
+      seen.add(e);
+      const cx = e.x + Math.floor(e.w / 2), cy = e.y + Math.floor(e.h / 2);
+      if (cx >= r.x0 && cx <= r.x1 && cy >= r.y0 && cy <= r.y1) count++;
+    }
+  }
+  return count;
+}
+
+// 执行红图删除（确认后调用）：删除矩形区域内所有实体（含内部物资返还，跨区域不重复）
+function doRedBlueprintDelete(r) {
   const seen = new Set();
   let count = 0;
   for (let ty = r.y0; ty <= r.y1; ty++) {
@@ -95,8 +125,9 @@ function applyGreenBlueprint() {
   showGreenBar(r, stats);
 }
 
-// 统计矩形区域内可升级（有更高阶）/可降级（有更低阶）的传送带与组装机数量
-function greenAreaStats(r) {
+// 统计矩形区域内可升级（有更高阶）/可降级（有更低阶）的传送带与组装机数量。
+// filter 可选：传入勾选集合 { type: true } 时仅统计勾选的物品类型（未传统计全部）。
+function greenAreaStats(r, filter) {
   const seen = new Set();
   let up = 0, down = 0, total = 0;
   for (let ty = r.y0; ty <= r.y1; ty++) {
@@ -107,6 +138,7 @@ function greenAreaStats(r) {
       const cx = e.x + Math.floor(e.w / 2), cy = e.y + Math.floor(e.h / 2);
       if (cx < r.x0 || cx > r.x1 || cy < r.y0 || cy > r.y1) continue;
       if (!tierFamily(e.type)) continue;
+      if (filter && !filter[e.type]) continue;
       total++;
       if (tierNext(e.type)) up++;
       if (tierPrev(e.type)) down++;
@@ -115,13 +147,60 @@ function greenAreaStats(r) {
   return { up, down, total };
 }
 
-// 显示绿图操作栏（升级/降级/取消）
+// 收集矩形区域内可升级/降级物品的类型及其数量（用于绿图筛选勾选）。
+// 返回 { type: { count, up, down } }，up/down 表示该类型是否可升/可降。
+function greenAreaTypes(r) {
+  const seen = new Set();
+  const map = {};
+  for (let ty = r.y0; ty <= r.y1; ty++) {
+    for (let tx = r.x0; tx <= r.x1; tx++) {
+      const e = entAt(tx, ty);
+      if (!e || seen.has(e)) continue;
+      seen.add(e);
+      const cx = e.x + Math.floor(e.w / 2), cy = e.y + Math.floor(e.h / 2);
+      if (cx < r.x0 || cx > r.x1 || cy < r.y0 || cy > r.y1) continue;
+      if (!tierFamily(e.type)) continue;
+      if (!map[e.type]) map[e.type] = { count: 0, up: 0, down: 0 };
+      map[e.type].count++;
+      if (tierNext(e.type)) map[e.type].up++;
+      if (tierPrev(e.type)) map[e.type].down++;
+    }
+  }
+  return map;
+}
+
+// 升级链排列顺序（对齐数据定义顺序）：传送带 → 地下传送带 → 分流器 → 组装机，链内按阶级排序
+const GREEN_CHAIN_ORDER = [BELT_TIERS, UNDERGROUND_TIERS, SPLITTER_TIERS, ASSEMBLER_TIERS];
+function greenTypeOrder(a, b) {
+  const fa = TIER_FAMILY[a], fb = TIER_FAMILY[b];
+  const oa = fa ? GREEN_CHAIN_ORDER.indexOf(fa) : 99, ob = fb ? GREEN_CHAIN_ORDER.indexOf(fb) : 99;
+  if (oa !== ob) return oa - ob;
+  return fa.indexOf(a) - fb.indexOf(b);
+}
+
+// 显示绿图操作栏（升级/降级/取消）。
+// 区域内可能出现多种物品类型，提供筛选勾选：仅处理勾选的类型，默认全选。
 function showGreenBar(r, stats) {
   const bar = document.getElementById('greenbar');
   if (!bar) return;
   const w = (r.x1 - r.x0 + 1), h = (r.y1 - r.y0 + 1);
+  const types = greenAreaTypes(r);
+  // 筛选集合：记录每个勾选的物品类型（默认全选，仅处理勾选类型）
+  G.greenFilter = {};
+  for (const t in types) G.greenFilter[t] = true;
+  let flt = '';
+  const order = Object.keys(types).sort(greenTypeOrder);
+  if (order.length) {
+    flt = '<span class="gb-flt">仅处理：</span>';
+    for (const t of order) {
+      const it = ITEMS[t];
+      flt += '<label class="gb-item"><input type="checkbox" data-gtype="' + t + '" checked><span>' +
+             (it ? it.name : t) + ' ×' + types[t].count + '</span></label>';
+    }
+  }
   bar.innerHTML =
     '<span class="gb-t">绿图 ' + w + '×' + h + '：可升级 ' + stats.up + ' · 可降级 ' + stats.down + '</span>' +
+    (flt ? '<span class="gb-sep"></span>' + flt : '') +
     '<button data-gact="upgrade">⬆ 一键升级</button>' +
     '<button data-gact="downgrade">⬇ 一键降级</button>' +
     '<button data-gact="cancel">取消</button>';
@@ -133,11 +212,12 @@ function hideGreenBar() {
   if (bar) bar.style.display = 'none';
 }
 
-// 执行绿图升级/降级：作用于上次框选的 greenRect 内所有同族带子
+// 执行绿图升级/降级：作用于上次框选的 greenRect 内勾选（greenFilter）的同族带子
 function greenAreaAction(action) {
   const r = G.greenRect;
   if (!r) return;
   const infinite = !!(G.dbg && G.dbg.infinite);
+  const filter = G.greenFilter;
   let changed = 0;
   const seen = new Set();
   for (let ty = r.y0; ty <= r.y1; ty++) {
@@ -148,6 +228,7 @@ function greenAreaAction(action) {
       const cx = e.x + Math.floor(e.w / 2), cy = e.y + Math.floor(e.h / 2);
       if (cx < r.x0 || cx > r.x1 || cy < r.y0 || cy > r.y1) continue;
       if (!tierFamily(e.type)) continue;
+      if (filter && !filter[e.type]) continue;   // 仅处理筛选勾选的物品类型
       const target = action === 'upgrade' ? tierNext(e.type) : tierPrev(e.type);
       if (!target) continue;
       if (!infinite && action === 'upgrade' && invCount(target) < 1) continue;   // 升级需有对应新带

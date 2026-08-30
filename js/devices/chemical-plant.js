@@ -285,6 +285,13 @@ function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
   const cx = px + s / 2, cy = py + s / 2;
   ctx.globalAlpha = alpha;
 
+  // 本体随 dir 旋转（R 旋转 / V·H 翻转均改 dir），管道口随本体一起转。
+  // drawRotatablePorts 内部已按 dir 旋转，故在变换外（世界坐标）绘制，避免双重旋转。
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate((dir | 0) * Math.PI / 2);
+  ctx.translate(-cx, -cy);
+
   const rec = e.recipe ? RECIPES[e.recipe] : null;
   const working = e.working || e.crafting;
   const fl = 0.5 + Math.sin((G.time || 0) * 9 + px) * 0.25;
@@ -492,7 +499,18 @@ function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
     bx += pipeW + gap;
   }
 
-  // ⑥b 缺料警示：顶部居中显示感叹号
+  // ⑧ 罐体外框描边（最上层，随本体一起旋转）
+  ctx.strokeStyle = '#1a2418';
+  ctx.lineWidth = 2.4;
+  rr(ctx, px + 3, py + 3, s - 6, s - 6, 10); ctx.stroke();
+
+  // 退出本体旋转变换，以下在世界坐标绘制（端口与文字不随本体翻转，保证可读）
+  ctx.restore();
+
+  // ⑦ 流体出入口凸缘（沿用 CHEM_PORTS + drawRotatablePorts，内部按 dir 旋转）
+  drawRotatablePorts(ctx, e, px, py, s, CHEM_PORTS);
+
+  // ⑥b 缺料警示：居中显示感叹号（世界坐标，始终正立可读）
   if (!working && rec) {
     let missing = false;
     for (const k in rec.inp) if ((e.inp[k] || 0) < rec.inp[k]) { missing = true; break; }
@@ -500,17 +518,9 @@ function drawChemicalPlant(ctx, e, gx, gy, dir, alpha) {
       ctx.fillStyle = '#ffb04a';
       ctx.font = 'bold 14px system-ui';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('!', cx, py + s * 0.86);
+      ctx.fillText('!', cx, cy);
     }
   }
-
-  // ⑦ 流体出入口凸缘（沿用 CHEM_PORTS + drawRotatablePorts）
-  drawRotatablePorts(ctx, e, px, py, s, CHEM_PORTS);
-
-  // ⑧ 罐体外框描边（最上层）
-  ctx.strokeStyle = '#1a2418';
-  ctx.lineWidth = 2.4;
-  rr(ctx, px + 3, py + 3, s - 6, s - 6, 10); ctx.stroke();
 
   ctx.globalAlpha = 1;
 }

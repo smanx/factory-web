@@ -1,6 +1,6 @@
 # 物品图标设计 · 待办清单
 
-> 用途：为游戏中**全部物品**逐一设计专属图标。
+> 用途：为游戏中**全部物品**逐一设计专属图标，风格要统一，设计要优雅。
 > 数据源：`js/data/data-items.js` 的 `ITEMS`（共 **329** 项），分类依据 `GAME_DATA.itemGroup`（制作栏 5 大 Tab）。
 > 用法：每设计完一个图标，把对应项的 `- [ ]` 勾选为 `- [x]`。
 > 已设计图标由 `js/data/data-item-icons.js` 的 `ITEM_CUSTOM_ICONS` 手绘实现，在 `drawItemGlyph` 中优先渲染。

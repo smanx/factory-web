@@ -57,6 +57,7 @@ var G = {
   blueFlipV: false,       // 蓝图粘贴垂直翻转
   greenAction: null,      // 绿图框选后的动作：'upgrade' | 'downgrade' | null
   greenRect: null,        // 绿图最近一次框选区域
+  greenFilter: null,      // 绿图升级/降级时勾选的物品类型集合 { type: true }（仅处理勾选类型）
   statsTab: 'items',      // 统计面板当前页：items | power | perf
   statsItemTab: 'hist',   // 统计面板-物品速率页：hist(历史,默认在前) | live(实时)
   statsLiveSub: 'prod',   // 统计面板-实时页子 tab：prod(生产) | cons(消耗)
@@ -743,9 +744,13 @@ function tryPlaceAt(tx, ty) {
   }
   const chk = canPlaceAt(type, tx, ty, G.ghostDir);
   if (!chk.ok) {
-    // 传送带特殊逻辑优先：同向衔接铺设、或自动改用地下带跨越障碍
-    if (tryPlaceOntoSameDirBelt(type, tx, ty)) { uiDirty = true; return; }
-    if (tryAutoUnderground(type, tx, ty)) { uiDirty = true; return; }
+    // 主角站位不是障碍物：拖带遇到「玩家站在格上」不应自动改用地下带（主角会移动、不属于障碍），
+    // 直接按 player 原因提示即可，跳过传送带特殊逻辑。
+    if (chk.reason !== 'player') {
+      // 传送带特殊逻辑优先：同向衔接铺设、或自动改用地下带跨越障碍（含反向/垂直交叉的传送带）
+      if (tryPlaceOntoSameDirBelt(type, tx, ty)) { uiDirty = true; return; }
+      if (tryAutoUnderground(type, tx, ty)) { uiDirty = true; return; }
+    }
     // 行星专属生产建筑：只能在对应星球建造（对齐《异星工厂》Space Age 星球专属建筑）
     if (chk.planet) {
       const pOpt = (typeof planetOption === 'function') ? planetOption(chk.planet) : null;

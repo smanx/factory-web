@@ -33,11 +33,29 @@ class Assembler extends Entity {
     const r = this.recipe ? RECIPES[this.recipe] : null;
     return !!(r && r.inp[k]);
   }
+  // 唯一通用流体口所在世界侧（基准北=3，随 dir 旋转；与 drawAssembler 顶部端口一致）
+  portSide() { return (3 + (this.dir | 0)) % 4; }
+  // 流体口外侧相邻格（管道只能接在这一格；随 dir 旋转）
+  portCell() {
+    const sd = this.portSide();
+    if (sd === 3) return [this.x + (this.w >> 1), this.y - 1];        // 北：顶边中间格上方
+    if (sd === 1) return [this.x + (this.w >> 1), this.y + this.h];   // 南
+    if (sd === 0) return [this.x + this.w, this.y + (this.h >> 1)];   // 东
+    return [this.x - 1, this.y + (this.h >> 1)];                       // 西
+  }
+  // 供管道/地下管道/泵/阀判定传入格是否为本机流体口外侧格（组装机仅此一格可接管道）
+  isFluidInlet(x, y) {
+    const c = this.portCell();
+    return c[0] === x && c[1] === y;
+  }
   portFlow() {
     const fr = this.fluidRecipe();
     if (!fr) return;
+    const pc = this.portCell();
     forEachNeighborEnt(this, n => {
       if (!(n instanceof Pipe)) return;
+      // 只有流体口外侧那一格的管道才能与本机互通
+      if (n.x !== pc[0] || n.y !== pc[1]) return;
       for (const k of fr.fin)
         if ((this.inp[k] || 0) < 50 && (n.fluid[k] || 0) >= 1) {
           n.takeItemOf(k);
@@ -254,7 +272,12 @@ function _asmTierOf(e) {
 function drawAssembler(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const s = TILE * e.w, sh = TILE * e.h;
-  const cx = px + s / 2;
+  const cx = px + s / 2, cy = py + sh / 2;
+  // 本体随 dir 旋转（R 旋转 / V·H 翻转均改 dir），流体口随本体一起转到背部（顶部）。
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate((dir | 0) * Math.PI / 2);
+  ctx.translate(-cx, -cy);
   ctx.globalAlpha = alpha;
   const tier = _asmTierOf(e);
   const working = e.crafting;
@@ -414,19 +437,22 @@ function drawAssembler(ctx, e, gx, gy, dir, alpha) {
   drawBolt(px + 9,        py + sh - 9);
   drawBolt(px + s - 9,     py + sh - 9);
 
-  // ⑩ 流体端口（沿用旧约定：北=入口，南=出口；颜色按配方流体变）
+  // ⑩ 流体端口：组装机只有 1 个通用流体口，固定在顶部中间（设备本体不随 dir 旋转），
+  //    同时承担流体入口/出口（取决于当前配方：含流体原料=入口，含流体产物=出口）。
+  //    端口贴设备外缘（dist = s/2），对齐炼油厂等流体设备的背部接口放置方式。
   const fr = e.fluidRecipe ? e.fluidRecipe() : null;
   const pcx = px + s / 2, pcy = py + s / 2;
   const fin = (fr && fr.fin.length) ? fr.fin[0] : null;
   const fout = (fr && fr.fout.length) ? fr.fout[0] : null;
-  drawPort(ctx, pcx, pcy, (dir + 2) % 4, fin ? ITEMS[fin].color : PORT_FLUID, false, 0, TILE, fin || null, 'in');
-  drawPort(ctx, pcx, pcy, dir, fout ? ITEMS[fout].color : PORT_FLUID, true, 0, TILE, fout || null, 'out');
+  const fPort = fin || fout;
+  drawPort(ctx, pcx, pcy, 3, fPort ? ITEMS[fPort].color : PORT_FLUID, !fin, 0, s / 2, fPort, fin ? 'in' : (fout ? 'out' : 'both'));
 
   // ⑪ 罐体外框描边（最上层）
   ctx.strokeStyle = tier.line;
   ctx.lineWidth = 2.4;
   rr(ctx, px + 3, py + 3, s - 6, sh - 6, 9); ctx.stroke();
 
+  ctx.restore();
   ctx.globalAlpha = 1;
 }
 
@@ -552,7 +578,16 @@ DEVICE_PANEL['assembling-machine-2'] = assemblerPanel;
 DEVICE_DIR_ROTATE['assembling-machine-1'] = true;
 DEVICE_DIR_ROTATE['assembling-machine-2'] = true;
 // 显示详情时，各接口图标所在世界格 + 对应流体名（用于鼠标悬停显示流体名称）
-const assemblerFluidIcons = e => fluidIconFinFout(e, e.x * TILE + TILE * e.w / 2, e.y * TILE + TILE * e.h / 2);
+// 组装机只有 1 个通用流体口（固定在顶部中间），流体取 fin[0] 或 fout[0]（二者互斥）。
+function assemblerFluidIcons(e) {
+  const fr = e.fluidRecipe ? e.fluidRecipe() : null;
+  const fin = (fr && fr.fin.length) ? fr.fin[0] : null;
+  const fout = (fr && fr.fout.length) ? fr.fout[0] : null;
+  const fluid = fin || fout;
+  if (!fluid) return [];
+  const c = portCenterCell(e, e.x * TILE + TILE * e.w / 2, e.y * TILE + TILE * e.h / 2, 3, 0, TILE * e.w / 2);
+  return [{ x: c[0], y: c[1], fluid }];
+}
 DEVICE_FLUID_ICONS['assembling-machine-1'] = assemblerFluidIcons;
 DEVICE_FLUID_ICONS['assembling-machine-2'] = assemblerFluidIcons;
 
