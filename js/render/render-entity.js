@@ -96,17 +96,25 @@ function drawRunRing(ctx, e, gx, gy) {
 // 机械臂类型集合：绘制时置顶，永远显示在传送带/其他设备之上，不被遮挡。
 const IS_INSERTER = { inserter: true, 'long-handed-inserter': true, 'bulk-inserter': true, 'fast-inserter': true, 'stack-inserter': true, 'burner-inserter': true };
 
-// 机械臂层级判定：爪尖（按当前臂角与臂长推算）伸出自身格并落到「另一个机械臂」所在格时返回 true。
+// 机械臂层级判定：臂身（按当前臂角与臂长，从转台中心到爪尖）压到「另一个机械臂」所在格时返回 true。
 // 此时该臂压在相邻机械臂之上，render() 里把它提升到最后一遍绘制，保证盖在重叠的机械臂上面。
 // 注意：机械臂臂长本身大于半格（臂/爪始终探出自身格），所以只对「压到别的机械臂」提升层级，
 // 伸到传送带/机器上方的臂维持普通机械臂层级，避免整批机械臂无差别置顶。
+// 采样沿臂身逐点判定而非只看爪尖：长臂臂长可达 2 格以上，臂身中段可能压到相邻机械臂，
+// 而爪尖已越过该机械臂落到更远一格（那格未必是机械臂），只查爪尖会漏判导致臂身被原地机械臂遮挡。
 function inserterArmRaised(e) {
   const len = inserterArmLen(e);
   const ang = e.armAng !== undefined ? e.armAng : ((e.dir + 2) % 4) * Math.PI / 2;
-  const tipx = (e.x + 0.5) * TILE + Math.cos(ang) * len;
-  const tipy = (e.y + 0.5) * TILE + Math.sin(ang) * len;
-  const t = entAt(Math.floor(tipx / TILE), Math.floor(tipy / TILE));
-  return !!t && t !== e && !!IS_INSERTER[t.type];
+  const cx = (e.x + 0.5) * TILE, cy = (e.y + 0.5) * TILE;
+  const cax = Math.cos(ang), say = Math.sin(ang);
+  // 步长取半格（TILE/2）：保证臂身跨过的每个格子都会被至少一个采样点覆盖
+  const steps = Math.max(1, Math.ceil(len / (TILE / 2)));
+  for (let i = 1; i <= steps; i++) {
+    const d = len * i / steps;
+    const t = entAt(Math.floor((cx + cax * d) / TILE), Math.floor((cy + say * d) / TILE));
+    if (t && t !== e && IS_INSERTER[t.type]) return true;
+  }
+  return false;
 }
 
 const ghostCache = { type: null, ent: null };
