@@ -721,6 +721,9 @@ function updateRecipeMachineLive(e, body, api) {
   if (e.crafting) { api.status('生产中：' + info.name(e.recipe), 'ok'); return; }
   const needsPower = typeof e.powerDemand === 'function' && e.powerDemand() > 0;
   if (needsPower && G.power.sat <= 0) { api.status('已暂停：缺电', 'bad'); return; }
+  // 产物堆积停机提示：设备有 outputBufferFull/实际因堆积暂停时，如实显示而非「已就绪」
+  const backlogState = (typeof machineBacklogPaused === 'function') ? machineBacklogPaused(e, rec) : false;
+  if (backlogState) { api.status('已暂停：产物堆积（取走产物后继续）', 'warn'); return; }
   // 检查原料是否满足
   let missing = null;
   for (const k in rec.inp) if ((e.inp[k] || 0) < rec.inp[k]) { missing = k; break; }
@@ -1698,6 +1701,16 @@ function barHtml(pct) {
 // 是否为“需选择配方”的设备：具备 setRecipe 的配方设备
 function isRecipeDevice(e) {
   return !!(e && typeof e.setRecipe === 'function');
+}
+
+// 通用判定：设备当前是否处于「产物堆积/缓冲满」导致的暂停状态（非 crafting 且原料充足时）。
+// 优先使用设备自己的 outputBufferFull（离心机自循环配方按固定缓冲容量等定制规则），
+// 否则回落到共享的 outputBacklogged（存量够再产 2 次即视为堆积）。
+function machineBacklogPaused(e, rec) {
+  if (!e || !rec || e.crafting) return false;
+  if (typeof e.outputBufferFull === 'function') return !!e.outputBufferFull(rec);
+  if (typeof outputBacklogged === 'function' && rec.out) return outputBacklogged(e.outp, rec.out);
+  return false;
 }
 
 // 非配方设备中会驱动 api.prog 进度条的类型（这些设备外壳才显示进度条，其余不显示避免空进度条）
