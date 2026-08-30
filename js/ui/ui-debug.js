@@ -226,23 +226,28 @@ function buildDebug() {
   body.appendChild(opSubSec);
   const grid2 = document.createElement('div');
   grid2.className = 'dgrid';
-  const acts = [
-    ['一键重置所有功能', () => {
+  // 动作按钮按功能分组：[组名, [[按钮文本, 处理函数], ...]]
+  // 相近功能放在一起：重置 / 研究 / 传送 / 地形清理 / 玩家状态 / 敌人战斗 / 世界
+  const actGroups = [
+    ['重置·恢复默认', [
+    ['恢复全部默认设置', () => {
       Object.assign(G.dbg, { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1, infinite: false, farReach: false, noclip: false });
       G.settings.combat = false;
       if (!G.settings.combat) { G.enemies = []; G.bullets = []; G.enemyProjectiles = []; }
       buildDebug();
       panel.style.display = 'block';
       refreshHotbar();
-      toast('所有调试功能已重置为默认值');
+      toast('已恢复全部默认设置');
     }],
-    ['重置速度', () => {
+    ['恢复默认速度', () => {
       Object.assign(G.dbg, { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1 });
       buildDebug();
       panel.style.display = 'block';
-      toast('所有速度已重置为 1x');
-    }],
-    ['完成研究', () => {
+      toast('速度已恢复默认（1x）');
+    }]
+    ]],
+    ['研究·进度', [
+    ['立即完成当前研究', () => {
       const t = G.activeTech;
       if (!t) { toast('没有进行中的研究'); return; }
       if (isInfiniteTech(t)) {
@@ -259,7 +264,7 @@ function buildDebug() {
       G.activeTech = null;
       renderPanel(false);
     }],
-    ['一键回退所有研究', () => {
+    ['清空全部研究进度', () => {
       // 一键回退所有研究：遍历整个科技/研究树，将每项标记为未完成并清空研究进度
       let cnt = 0;
       for (const t in TECHS) {
@@ -269,19 +274,41 @@ function buildDebug() {
         cnt++;
       }
       G.activeTech = null; G.techQueue = [];
-      toast('已一键回退全部 ' + cnt + ' 项研究');
+      toast('已清空全部 ' + cnt + ' 项研究进度');
       renderPanel(false);
     }],
-    ['回出生点', () => {
+    ['解锁全部科技', () => {
+      let doneCnt = 0;
+      for (const t in TECHS) {
+        if (isInfiniteTech(t)) {
+          // 无限科技永不完成：不标记 techDone，仅确保其“已解锁（techProg>0）”，
+          // 保留可继续无限研究（否则后续会被当已完成而无法再研究）。
+          if ((G.techProg[t] || 0) === 0) G.techProg[t] = 1;
+          delete G.techDone[t];
+          continue;
+        }
+        G.techDone[t] = true;
+        if (G.techProg[t] === undefined) G.techProg[t] = techCostTotal(t);
+        doneCnt++;
+      }
+      G.activeTech = null; G.techQueue = [];
+      toast('已解锁全部 ' + doneCnt + ' 项科技（无限科技可继续研究）');
+      renderPanel(false);
+    }]
+    ]],
+    ['传送', [
+    ['传送回出生点', () => {
       G.player.x = G.spawn.x * TILE + TILE / 2;
       G.player.y = G.spawn.y * TILE + TILE / 2;
-    }],
-    ['清空建筑', () => {
+    }]
+    ]],
+    ['地形·清理', [
+    ['清除地图上全部建筑', () => {
       for (const e of G.ents.slice()) removeEnt(e);
       closePanel();
-      toast('建筑已清空');
+      toast('已清除地图上全部建筑');
     }],
-    ['移除当前区域峭壁', () => {
+    ['清除视野内峭壁', () => {
       // 一键移除当前显示区域内的悬崖峭壁（对齐《异星工厂》峭壁清除，变回草地）
       const b = (typeof viewBounds === 'function') ? viewBounds() : null;
       if (!b) { toast('无法获取视口范围'); return; }
@@ -302,7 +329,7 @@ function buildDebug() {
       if (typeof uiDirty !== 'undefined') uiDirty = true;
       toast(cnt ? ('已移除 ' + cnt + ' 格峭壁') : '当前显示区域没有峭壁');
     }],
-    ['移除当前视野内所有树木', () => {
+    ['清除视野内树木', () => {
       // 一键移除当前显示区域内的所有树木（变回草地），对齐《异星工厂》树木清除
       const b = (typeof viewBounds === 'function') ? viewBounds() : null;
       if (!b) { toast('无法获取视口范围'); return; }
@@ -322,40 +349,25 @@ function buildDebug() {
       }
       if (typeof uiDirty !== 'undefined') uiDirty = true;
       toast(cnt ? ('已移除 ' + cnt + ' 棵树木') : '当前显示区域没有树木');
-    }],
-    ['新地图', () => { newGame(); closePanel(); toast('新地图已生成'); }],
-    ['一键完成全部科技', () => {
-      let doneCnt = 0;
-      for (const t in TECHS) {
-        if (isInfiniteTech(t)) {
-          // 无限科技永不完成：不标记 techDone，仅确保其“已解锁（techProg>0）”，
-          // 保留可继续无限研究（否则后续会被当已完成而无法再研究）。
-          if ((G.techProg[t] || 0) === 0) G.techProg[t] = 1;
-          delete G.techDone[t];
-          continue;
-        }
-        G.techDone[t] = true;
-        if (G.techProg[t] === undefined) G.techProg[t] = techCostTotal(t);
-        doneCnt++;
-      }
-      G.activeTech = null; G.techQueue = [];
-      toast('已解锁全部 ' + doneCnt + ' 项科技（无限科技可继续研究）');
-      renderPanel(false);
-    }],
-    ['回满血', () => {
+    }]
+    ]],
+    ['玩家·状态', [
+    ['恢复满生命值', () => {
       G.playerHP = G.playerHPmax;
-      toast('生命值已恢复满');
+      toast('生命值已回满');
     }],
-    ['清除污染', () => {
+    ['清除全部污染', () => {
       if (typeof pollutionRestore === 'function') pollutionRestore({ pollution: 0 });
       else G.pollution = 0;
-      toast('污染已清零');
-    }],
-    ['清空敌人', () => {
+      toast('污染已全部清除');
+    }]
+    ]],
+    ['敌人·战斗', [
+    ['清除全部敌人', () => {
       G.enemies = []; G.bullets = []; G.enemyProjectiles = [];
-      toast('已清空全部敌人与弹幕');
+      toast('已清除全部敌人与弹幕');
     }],
-    ['在面前刷一批敌人', () => {
+    ['在附近生成一批敌人', () => {
       if (!G.settings.combat) { toast('请先开启战斗模式'); return; }
       if (typeof pickEnemyType === 'function' && typeof scaledDef === 'function' && ENEMY_TYPES) {
         for (let i = 0; i < 8; i++) {
@@ -373,22 +385,32 @@ function buildDebug() {
             color: def.color, attackT: 0, fireT: 0
           });
         }
-        toast('已在周围生成 8 只敌人');
+        toast('已在附近生成 8 只敌人');
       } else { toast('战斗系统不可用'); }
-    }],
-    ['日夜切换', () => {
+    }]
+    ]],
+    ['世界·其他', [
+    ['生成新地图', () => { newGame(); closePanel(); toast('新地图已生成'); }],
+    ['切换昼夜', () => {
       const cycle = (typeof DAY_CYCLE === 'number') ? DAY_CYCLE : 60;
       const ph = ((G.time / cycle) % 1 + 1) % 1;
       G.time = Math.floor(G.time / cycle) * cycle + cycle * (ph > 0.5 ? 0.02 : 0.5);
-      toast('时间已切换');
+      toast('昼夜已切换');
     }]
+    ]]
   ];
-  for (const [txt, fn] of acts) {
-    const b = document.createElement('button');
-    b.textContent = txt;
-    b.dataset.dbgact = txt;
-    b.addEventListener('click', fn);
-    grid2.appendChild(b);
+  for (const [gname, list] of actGroups) {
+    const head = document.createElement('div');
+    head.className = 'dgroup';
+    head.textContent = gname;
+    grid2.appendChild(head);
+    for (const [txt, fn] of list) {
+      const b = document.createElement('button');
+      b.textContent = txt;
+      b.dataset.dbgact = txt;
+      b.addEventListener('click', fn);
+      grid2.appendChild(b);
+    }
   }
   body.appendChild(grid2);
 

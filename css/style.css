@@ -1752,14 +1752,14 @@ html, body {
 .dsw { display: flex; align-items: center; gap: 6px; padding: 3px 6px; background: #2a3340; border: 1px solid #46536a; border-radius: 5px; cursor: pointer; color: #dfe6ee; }
 .dsw input[type=checkbox] { accent-color: #b06ccf; margin: 0; }
 .dsw:hover { background: #3a4657; }
-/* 面板变宽后按钮自适应多列：每列至少 150px，能放几列放几列 */
-.dgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 5px; }
+/* 按钮紧凑排布：flex 换行 + 按内容自适应宽度，不留列尾空白 */
+.dgrid { display: flex; flex-wrap: wrap; gap: 5px; }
 .dgrid button {
+  flex: 0 0 auto;
+  max-width: 100%;
   font-size: 11px;
-  padding: 5px 4px;
+  padding: 5px 8px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   background: #2a3340;
   border: 1px solid #46536a;
   color: #dfe6ee;
@@ -1774,8 +1774,7 @@ html, body {
   align-items: center;
   gap: 5px;
   text-align: left;
-  padding: 4px 6px;
-  min-width: 0;
+  padding: 4px 8px;
 }
 .dgrid button.ditem span {
   overflow: hidden;
@@ -1805,7 +1804,7 @@ html, body {
 .dsearch input:focus { border-color: #b06ccf; }
 .dsearch input::placeholder { color: #6a7686; }
 .dgroup {
-  grid-column: 1 / -1;
+  flex: 1 0 100%;
   margin: 6px 0 2px;
   padding: 2px 0;
   color: #8fe08f;
@@ -1814,7 +1813,7 @@ html, body {
   border-bottom: 1px dashed #3a4657;
 }
 .dnone {
-  grid-column: 1 / -1;
+  flex: 1 0 100%;
   color: #98a5b5;
   text-align: center;
   padding: 8px 0;
