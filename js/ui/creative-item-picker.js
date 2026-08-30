@@ -73,7 +73,7 @@ function creativePickerHtml(e, kind) {
         grid += '<button type="button" class="flt-item cip-item' + (sel ? ' sel' : '') + '" data-act="cip-choose" data-id="' + id + '"' +
           ' data-rsearch="' + (ITEMS[id].name + ' ' + id).toLowerCase().replace(/"/g, '') + '"' +
           ' data-tip="' + itemTip(id) + '">' +
-          '<img src="' + iconDataURL(id) + '"></button>';
+          '<img src="' + iconDataURL(id, 16) + '"></button>';
       }
       grid += '</div>';
     }
