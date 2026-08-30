@@ -96,6 +96,19 @@ function drawRunRing(ctx, e, gx, gy) {
 // 机械臂类型集合：绘制时置顶，永远显示在传送带/其他设备之上，不被遮挡。
 const IS_INSERTER = { inserter: true, 'long-handed-inserter': true, 'bulk-inserter': true, 'fast-inserter': true, 'stack-inserter': true, 'burner-inserter': true };
 
+// 机械臂层级判定：爪尖（按当前臂角与臂长推算）伸出自身格并落到「另一个机械臂」所在格时返回 true。
+// 此时该臂压在相邻机械臂之上，render() 里把它提升到最后一遍绘制，保证盖在重叠的机械臂上面。
+// 注意：机械臂臂长本身大于半格（臂/爪始终探出自身格），所以只对「压到别的机械臂」提升层级，
+// 伸到传送带/机器上方的臂维持普通机械臂层级，避免整批机械臂无差别置顶。
+function inserterArmRaised(e) {
+  const len = inserterArmLen(e);
+  const ang = e.armAng !== undefined ? e.armAng : ((e.dir + 2) % 4) * Math.PI / 2;
+  const tipx = (e.x + 0.5) * TILE + Math.cos(ang) * len;
+  const tipy = (e.y + 0.5) * TILE + Math.sin(ang) * len;
+  const t = entAt(Math.floor(tipx / TILE), Math.floor(tipy / TILE));
+  return !!t && t !== e && !!IS_INSERTER[t.type];
+}
+
 const ghostCache = { type: null, ent: null };
 
 // ===== ALT 模式（对齐《异星工厂》ALT 模式）=====

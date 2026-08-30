@@ -116,9 +116,13 @@ function render() {
       _rtri.type[type] = (_rtri.type[type] || 0) + (endT - _rSegStart);
     }
   };
-  const drawPass = (e, drawInserter) => {
+  // 绘制层级：0=普通设备（含传送带）；1=机械臂（置顶）；2=伸出自身格子的机械臂（最顶层，
+  // 盖在与之重叠的其他机械臂之上，判定见 inserterArmRaised）。
+  const drawPass = (e, tier) => {
     if (e._dead || !onScreen(e)) return;
-    if (drawInserter !== !!IS_INSERTER[e.type]) return;
+    if (!IS_INSERTER[e.type]) {
+      if (tier !== 0) return;
+    } else if (tier !== (inserterArmRaised(e) ? 2 : 1)) return;
     if (_rtri) {
       if (e.type !== _rLast) {
         if (_rLast !== null) _rSegFlush(_rLast, performance.now());
@@ -131,13 +135,15 @@ function render() {
   // 每帧先清空管道口箭头队列，再让各设备在 drawPort 里重新排队（丢弃幽灵等后置绘制的残留）
   if (typeof clearPortArrowQueue === 'function') clearPortArrowQueue();
   if (keys) {
-    forEachEntInBuckets(keys, e => drawPass(e, false), _bucketSeenBuf);   // 普通设备（含传送带等）
+    forEachEntInBuckets(keys, e => drawPass(e, 0), _bucketSeenBuf);   // 普通设备（含传送带等）
     if (typeof drawBeltItemsAll === 'function') drawBeltItemsAll(ctx);    // 传送带物品第二遍：盖在所有带面之上
-    forEachEntInBuckets(keys, e => drawPass(e, true), _bucketSeenBuf);    // 机械臂置顶
+    forEachEntInBuckets(keys, e => drawPass(e, 1), _bucketSeenBuf);    // 机械臂置顶
+    forEachEntInBuckets(keys, e => drawPass(e, 2), _bucketSeenBuf);    // 伸出格子的机械臂：最顶层
   } else {
-    for (const e of G.ents) drawPass(e, false);
+    for (const e of G.ents) drawPass(e, 0);
     if (typeof drawBeltItemsAll === 'function') drawBeltItemsAll(ctx);    // 传送带物品第二遍
-    for (const e of G.ents) drawPass(e, true);
+    for (const e of G.ents) drawPass(e, 1);
+    for (const e of G.ents) drawPass(e, 2);
   }
   if (_rtri) {
     if (_rLast !== null) _rSegFlush(_rLast, performance.now());

@@ -484,13 +484,20 @@ function inserterSpec(e) {
 //   ⑥ 状态 LED（基座右上）：绿=工作中 / 黄=放货堵塞 / 红=缺燃料闪 / 暗=待机
 //   ⑦ 陷口 / 物流方向箭头 / 投放车道指示（原有物流标记，保持不变）
 // 臂长仍按「持物伸长 / 空手收缩」伸缩，由两节臂分摊（肘随 len 同步移动）。
+// 机械臂当前臂长（像素）：持物伸长 / 空手收缩。
+// 抽成独立函数供 drawInserter 与渲染分层判定（render.js 的 inserterArmRaised）共用，避免两处数值漂移。
+function inserterArmLen(e) {
+  const long = e.type === 'long-handed-inserter';
+  return e.holding ? (long ? TILE * 2.02 : TILE * 1.06) : (long ? TILE * 1.55 : TILE * 0.82);
+}
+
 function drawInserter(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const cx = px + TILE / 2, cy = py + TILE / 2;
   ctx.globalAlpha = alpha;
   const col = inserterArmColor(e);
-  const long = e.type === 'long-handed-inserter';
-  const len = e.holding ? (long ? TILE * 2.02 : TILE * 1.06) : (long ? TILE * 1.55 : TILE * 0.82);
+  const long = e.type === 'long-handed-inserter';   // 低 LOD 线宽等仍按长臂区分
+  const len = inserterArmLen(e);
   const ang = e.armAng !== undefined ? e.armAng : ((dir + 2) % 4) * Math.PI / 2;
   const tipx = cx + Math.cos(ang) * len;
   const tipy = cy + Math.sin(ang) * len;
