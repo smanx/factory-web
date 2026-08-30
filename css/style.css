@@ -38,7 +38,7 @@ html, body {
 /* Firefox：细滚动条 + 工业风配色 */
 * { scrollbar-width: thin; scrollbar-color: #4a5868 rgba(16, 21, 28, .75); }
 
-#game { display: block; position: absolute; inset: 0; cursor: crosshair; }
+#game { display: block; position: absolute; inset: 0; cursor: default; }
 
 /* 放置幽灵专用顶层画布：绘制在所有界面（含背包面板）的最上方，且不拦截鼠标事件 */
 #ghost-layer {

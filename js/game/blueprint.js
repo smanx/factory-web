@@ -5,7 +5,7 @@
 // 把地图画布的十字光标换成白色（系统默认 crosshair 为黑色，深色地面/夜间不明显）；
 // 退出框选或转入蓝图粘贴模式时还原默认光标。
 // 用内联 SVG 画十字：白色主线条 + 半透明深色描边衬底，亮色地面（混凝土等）上也可见。
-const BP_CURSOR_WHITE = 'url("data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724%27 height=%2724%27%3E%3Cg fill=%27none%27 stroke-linecap=%27round%27%3E%3Cg stroke=%27rgba(0,0,0,0.55)%27 stroke-width=%273.2%27%3E%3Cline x1=%2712%27 y1=%272%27 x2=%2712%27 y2=%279%27/%3E%3Cline x1=%2712%27 y1=%2715%27 x2=%2712%27 y2=%2722%27/%3E%3Cline x1=%272%27 y1=%2712%27 x2=%279%27 y2=%2712%27/%3E%3Cline x1=%2715%27 y1=%2712%27 x2=%2722%27 y2=%2712%27/%3E%3C/g%3E%3Cg stroke=%27white%27 stroke-width=%271.8%27%3E%3Cline x1=%2712%27 y1=%272%27 x2=%2712%27 y2=%279%27/%3E%3Cline x1=%2712%27 y1=%2715%27 x2=%2712%27 y2=%2722%27/%3E%3Cline x1=%272%27 y1=%2712%27 x2=%279%27 y2=%2712%27/%3E%3Cline x1=%2715%27 y1=%2712%27 x2=%2722%27 y2=%2712%27/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") 12 12, crosshair';
+const BP_CURSOR_WHITE = 'url("data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724%27 height=%2724%27%3E%3Cg opacity=%270.6%27%3E%3Cpath d=%27M9.5 1.5h5v8h8v5h-8v8h-5v-8h-8v-5h8z%27 fill=%27black%27/%3E%3C/g%3E%3Cpath d=%27M10.25 2.25h3.5v8h8v3.5h-8v8h-3.5v-8h-8v-3.5h8z%27 fill=%27white%27/%3E%3C/svg%3E") 12 12, crosshair';
 
 // 按当前框选状态同步地图画布光标：框选类模式用白色十字，其余还原 CSS 默认。
 function syncBlueprintCursor() {
