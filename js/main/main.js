@@ -807,6 +807,52 @@ function tryPlaceAt(tx, ty) {
       }
     }
   }
+  // 同类型设备直接替换建造（对齐《异星工厂》：同类设备放置在旧设备上时替换之，
+  // 旧设备移除并返还背包，避免新旧设备重叠）。传送带/地下带/分流器/组装机
+  // 已在上面按升级链覆盖处理，这里兜底处理其余同类型设备（如炉子、箱子、机械臂等）。
+  // 多格实体要求旧设备占地与新设备占地完全一致才允许替换，避免部分重叠造成格子索引错乱。
+  const targetEnt = entAt(tx, ty);
+  if (targetEnt) {
+    const tDef = BUILD_DEFS[targetEnt.type];
+    const nDef = BUILD_DEFS[type];
+    let tW = tDef.w, tH = tDef.h;
+    if (tDef.rotSwap && (targetEnt.dir % 2 === 1)) { tW = tDef.h; tH = tDef.w; }
+    let nW = nDef.w, nH = nDef.h;
+    if (nDef.rotSwap && (G.ghostDir % 2 === 1)) { nW = nDef.h; nH = nDef.w; }
+    const sameFootprint = tW === nW && tH === nH && targetEnt.x === tx && targetEnt.y === ty;
+    if (sameFootprint) {
+      const oldQ = targetEnt.quality;
+      const sameQuality = (oldQ || 'normal') === (placeQuality || 'normal');
+      const sameType = targetEnt.type === type;
+      // 受损的旧设备不允许直接替换（对齐《异星工厂》：需先用修理包修复或手动拆除），
+      // 避免用一次替换就「免费修复」了受损设备。
+      const notDamaged = !(targetEnt.maxhp > 0 && targetEnt.hp !== undefined && targetEnt.hp < targetEnt.maxhp * 0.999);
+      if (sameType && sameQuality && targetEnt.dir === G.ghostDir && notDamaged) {
+        // 完全相同（类型/品质/朝向/占地）且未受损：视为未改变，不消耗不替换
+        return;
+      }
+      // 返还旧设备（品质物品返还对应品质变体），移除并放置新设备
+      if (typeof invAdd === 'function') {
+        invAdd((oldQ && oldQ !== 'normal') ? targetEnt.type + '~' + oldQ : targetEnt.type, 1);
+      }
+      if (targetEnt.items && targetEnt.items.length) {
+        for (const o of targetEnt.items) invAdd(o.item, 1);   // 传送带携带物品返还
+      }
+      removeEnt(targetEnt);
+      const cls = ENT_CLASSES[type];
+      const e = new cls(type, tx, ty);
+      e.dir = G.ghostDir;
+      e.applyDir();
+      if (placeQuality && placeQuality !== 'normal') e.quality = placeQuality;
+      addEnt(e);
+      if (!infinite) invTake(needId, 1);
+      if (typeof achEnsureStats === 'function') { achEnsureStats(); G.achStats.builds++; checkAchievements(); }
+      if (typeof playSfx === 'function') playSfx('build');
+      refreshHotbar();
+      uiDirty = true;
+      return;
+    }
+  }
   const cls = ENT_CLASSES[type];
   const e = new cls(type, tx, ty);
   e.dir = G.ghostDir;
@@ -938,6 +984,8 @@ function tryPlaceOntoSameDirBelt(type, tx, ty) {
   // 必须是普通传送带（含快速/极速带，非分流器/地下带），且方向与当前铺设方向一致
   if (!(t instanceof Belt) || t instanceof Splitter || t instanceof Underground) return false;
   if (t.dir !== G.ghostDir) return false;
+  // 同类型传送带：已在 tryPlaceAt 的同类型替换分支处理，这里跳过避免重复消耗/替换
+  if (t.type === type) return false;
   const infinite = !!(G.dbg && G.dbg.infinite);
   if (!infinite && invCount(type) < 1) return false;
   // 同向传送带衔接：用当前传送带替换掉已有传送带，无需消耗地下带

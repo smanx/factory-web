@@ -131,13 +131,17 @@ function pasteBlueprintAsGhosts(bp) {
     if (!cls) continue;
     const nx = s.x + ox, ny = s.y + oy;
     const ndir = s.dir | 0;
-    // 已占用则跳过（原地已有真实实体或已有同格幽灵）
-    if (entAt(nx, ny)) continue;
+    // 已占用则跳过（原地已有真实实体或已有同格幽灵）；
+    // 同类型设备例外：登记为「替换建造」幽灵，机器人施工落地时移除旧设备并返还（对齐《异星工厂》蓝图覆盖升级）
+    const oldEnt = entAt(nx, ny);
+    const isReplace = !!oldEnt && oldEnt.type === s.type;
+    if (oldEnt && !isReplace) continue;
     if (ghostAt(nx, ny, BUILD_DEFS[s.type].w, BUILD_DEFS[s.type].h)) continue;
     // 校验放置合法性（水面/可放置规则），不合法跳过
     if (!canPlaceAt(s.type, nx, ny, ndir).ok) continue;
     const g = new ConstrGhost(s.type, nx, ny, ndir);
     if (s.recipe) g.recipe = s.recipe;
+    if (isReplace) g.replaceEnt = oldEnt;   // 标记替换建造：落地时移除旧设备并返还
     G.constrGhosts.push(g);
     count++;
   }
@@ -269,6 +273,12 @@ function repairByRobot(e) {
 function completeBuild(g) {
   const cls = ENT_CLASSES[g.type];
   if (!cls) { g._dead = true; return; }
+  // 替换建造：移除旧设备并返还背包（蓝图粘贴覆盖同类型设备，对齐《异星工厂》）
+  if (g.replaceEnt && !g.replaceEnt._dead && g.replaceEnt.type === g.type) {
+    if (typeof invAdd === 'function') invAdd(g.replaceEnt.type, 1);
+    removeEnt(g.replaceEnt);
+    g.replaceEnt = null;
+  }
   // 格仍被占用则放弃
   if (entAt(g.x, g.y)) { g._dead = true; return; }
   const e = cls.restore({ type: g.type, x: g.x, y: g.y, dir: g.dir });

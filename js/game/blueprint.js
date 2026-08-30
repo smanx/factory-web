@@ -424,6 +424,13 @@ function pasteBlueprint() {
     placements.push({ cls, s, nx, ny });
   }
   for (const p of placements) {
+    // 同类型设备替换：目标格已有同类型设备（canPlaceAt 放行的同类型替换）时，
+    // 先移除旧设备并返还背包（对齐《异星工厂》：蓝图粘贴覆盖同类型设备）
+    const oldEnt = entAt(p.nx, p.ny);
+    if (oldEnt && oldEnt.type === p.s.type) {
+      if (typeof invAdd === 'function') invAdd(oldEnt.type, 1);   // 返还旧设备
+      removeEnt(oldEnt);
+    }
     const e = p.cls.restore(Object.assign({}, p.s, { x: p.nx, y: p.ny }));
     e.dir = p.s.dir | 0; e.applyDir();
     addEnt(e);

@@ -475,6 +475,17 @@ function canPlaceAt(type, tx, ty, dir) {
         const e = entAt(tx + dx, ty + dy);
         const reversed = e instanceof Belt && Math.abs(((e.dir - dir) % 4 + 4) % 4) === 2;
         if (!reversed && canOverwriteWithBelt(type, e)) continue;
+        // 同类型设备替换建造（对齐《异星工厂》：同类设备可直接替换，旧设备返还背包）。
+        // 要求：占地完全重合（同尺寸同锚点）才允许；传送带替换需同向（反向带是障碍，
+        // 交由自动地下带逻辑跨越处理）；且旧设备已受损时不允许直接替换（避免意外覆盖拆除）。
+        if (!reversed && e.type === type) {
+          const oldDef = BUILD_DEFS[e.type];
+          let oW = oldDef.w, oH = oldDef.h;
+          if (oldDef.rotSwap && (e.dir % 2 === 1)) { oW = oldDef.h; oH = oldDef.w; }
+          const sameFootprint = oW === ew && oH === eh && e.x === tx && e.y === ty;
+          const notDamaged = !(e.maxhp > 0 && e.hp !== undefined && e.hp < e.maxhp * 0.999);
+          if (sameFootprint && notDamaged) continue;
+        }
         return { ok: false, reason: 'occupied' };
       }
       if (!withinReach(tx + dx, ty + dy)) return { ok: false, reason: 'reach' };
