@@ -116,6 +116,43 @@ function initPanelEvents() {
       statsHistPickFiltered();
     }
   });
+  // ===== 背包物品手动摆放（需求：背包不自动排序，用户手动摆放的物品放在哪格就显示在哪格）=====
+  // 拖拽背包格子到另一格（有物品/空格均可）：把物品手动安置到目标格，腾出的原格变为空格。
+  // 实现：用 dataTransfer 记录来源格 data-slotidx；drop 时按目标格 data-slotidx 落位。
+  // 自动物品（排在手动槽之后、无 data-slotidx 归属到 manual 的物品）也可被拖拽：落位后
+  // 即成为手动摆放物品；拖拽目标格仅限玩家背包网格（#inv-items 内）。
+  let _dragFromSlot = null;
+  document.getElementById('panel-body').addEventListener('dragstart', ev => {
+    const slot = ev.target.closest && ev.target.closest('#inv-items .inv-slot[data-itemid][data-slotidx]');
+    if (!slot) return;
+    _dragFromSlot = +slot.dataset.slotidx;
+    ev.dataTransfer.effectAllowed = 'move';
+    try { ev.dataTransfer.setData('text/plain', 'inv-slot:' + _dragFromSlot); } catch (e) {}
+  });
+  document.getElementById('panel-body').addEventListener('dragover', ev => {
+    const slot = ev.target.closest && ev.target.closest('#inv-items .inv-slot[data-slotidx]');
+    if (!slot || _dragFromSlot == null) return;
+    ev.preventDefault();
+    ev.dataTransfer.dropEffect = 'move';
+  });
+  document.getElementById('panel-body').addEventListener('drop', ev => {
+    if (_dragFromSlot == null) return;
+    const tgt = ev.target.closest && ev.target.closest('#inv-items .inv-slot[data-slotidx]');
+    if (tgt) {
+      ev.preventDefault();
+      const to = +tgt.dataset.slotidx;
+      // 同一格内放下：不产生任何变化
+      if (to !== _dragFromSlot && typeof moveInvItemToSlot === 'function') {
+        moveInvItemToSlot(_dragFromSlot, to);
+        uiDirty = true;
+        if (typeof renderPanel === 'function') renderPanel(false);
+      }
+    }
+    _dragFromSlot = null;
+  });
+  document.getElementById('panel-body').addEventListener('dragend', ev => {
+    _dragFromSlot = null;
+  });
   document.getElementById('panel-body').addEventListener('click', async ev => {
     // 供“从文件导入存档”使用：打开原生文件选择框后若立刻 renderPanel 重建
     // innerHTML，会销毁与选择框绑定的 #imp-file 元素，导致选完文件后 change 事件
@@ -1249,6 +1286,53 @@ async function renderSaveManage() {
   if (document.getElementById('save-manage-overlay') && !document.getElementById('save-manage-overlay').classList.contains('hidden')) {
     body.innerHTML = h;
   }
+}
+
+// ===== 背包手动摆放：把 from 格物品移到 to 格（需求：背包不自动排序）=====
+// 展示模型：手动摆放的物品记录在 G.invSlots（下标即格子下标，可含 null 空位），
+// 自动物品按 G.inv 获取顺序排在所有手动槽之后。拖拽落位规则：
+//   - 目标格有物品：目标格及其后物品整体后移一格，腾出目标格给拖拽物品（目标格原物品顺延）；
+//   - 目标格为空：直接落位。
+// 落位后该物品即成为「手动摆放」物品，固定在该格；被挤出的物品回到自动区（排到最后）。
+function moveInvItemToSlot(from, to) {
+  if (from === to) return;
+  const L = (typeof invSlotLayout === 'function') ? invSlotLayout() : null;
+  if (!L) return;
+  const fromId = (typeof invSlotIdAt === 'function') ? invSlotIdAt(from, L) : null;
+  if (!fromId) return;
+  const total = L.total;
+  // 一维展示序列（null=空格）
+  const seq = [];
+  for (let i = 0; i < total; i++) seq.push((typeof invSlotIdAt === 'function') ? invSlotIdAt(i, L) : null);
+  // 从来源移除
+  seq[from] = null;
+  // 目标格及之后整体右移一格，腾出 to 格
+  for (let i = total - 1; i > to; i--) seq[i] = seq[i - 1];
+  seq[to] = fromId;
+  // 重新切分：手动槽长度扩展覆盖 to（若 to 在自动区）；自动区为剩余非空物品
+  const mlen = Math.max(L.manual.length, to + 1);
+  const newManual = seq.slice(0, mlen);
+  const newAuto = seq.slice(mlen).filter(id => id != null);
+  // 手动槽去重（同物品不应占两格，保留靠前位置）
+  const seen = new Set();
+  for (let i = 0; i < newManual.length; i++) {
+    if (newManual[i] != null) {
+      if (seen.has(newManual[i])) newManual[i] = null;
+      else seen.add(newManual[i]);
+    }
+  }
+  // 尾部空位压缩：末尾连续空槽收掉，避免手动槽无限增长
+  while (newManual.length && newManual[newManual.length - 1] == null) newManual.pop();
+  G.invSlots = newManual;
+  // 重建 G.inv 顺序：手动槽顺序优先，自动物品按 newAuto 顺序在后（含被挤出物品，排到最后）
+  const seen2 = new Set();
+  const ordered = [];
+  for (const id of newManual) if (id != null && !seen2.has(id)) { seen2.add(id); ordered.push(id); }
+  for (const id of newAuto) if (!seen2.has(id)) { seen2.add(id); ordered.push(id); }
+  for (const [id, n] of G.inv) if (!seen2.has(id)) { seen2.add(id); ordered.push(id); }
+  const newInv = new Map();
+  for (const id of ordered) if (G.inv.has(id)) newInv.set(id, G.inv.get(id));
+  G.inv = newInv;
 }
 
 // 背包物品点击：把任意物品（设备/材料/工具）放入鼠标选中状态。

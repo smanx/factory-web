@@ -527,11 +527,8 @@ function updateInvLive() {
   // 更新数量角标与搜索过滤，避免整块重建带来的掉帧。
   const wrap = body.querySelector('#inv-items-wrap');
   if (wrap) {
-    // 计算当前已拥有物品的稳定签名（排序后的 ID 串）
-    const ownedIds = [];
-    G.inv.forEach((n, id) => { if (n > 0 && isInvOwnedItem(id)) ownedIds.push(id); });
-    ownedIds.sort();
-    const sig = ownedIds.join(',');
+    // 计算当前背包格布局的稳定签名（手动槽位 + 自动物品集合）
+    const sig = invSlotSig();
     if (wrap.dataset.ownedsig !== sig) {
       // 物品集合变化 → 整块重建格子（保持排列稳定）
       wrap.outerHTML = htmlInvSlots();
@@ -761,53 +758,95 @@ function chip(id, n, iconOnly) {
 // ===== 玩家背包固定格渲染（对齐《异星工厂》有限背包）=====
 // 背包是有限的 INV_SLOT_COUNT 个固定格子。每格对应一种物品：格内显示物品图标，
 // 物品数量以右下角角标(.cnt)显示。空格显示为空槽。格子数来自官方数据 inventory_size=80。
-// 物品在格子中的排列按物品 ID 排序，保证稳定；超过格子数的物品无法放入（背包已满）。
 // 手雷/集束手雷与生鱼在对应格子上提供快捷使用角标。
+// 排列规则（需求：背包物品不要自动排序）：
+//   - 用户手动摆放的物品：放在哪格就显示在哪格（G.invSlots 记录 槽位->物品，允许空位间隔）。
+//   - 自动放入的物品（挖矿/拾取/制作产出/取出设备等）：自动排到所有手动槽之后。
+// 手动槽优先占满前面的格子，自动物品跟在后面；格子不足时自动物品被挤出（背包满）。
+
+// 背包格子布局：返回 { manual: 手动槽数组（含 null 空位）, auto: 自动物品数组, total: 总格数 }
+function invSlotLayout() {
+  const manual = (G.invSlots && Array.isArray(G.invSlots)) ? G.invSlots.slice() : [];
+  const manualSet = new Set();
+  for (const id of manual) if (id != null) manualSet.add(id);
+  const auto = [];
+  G.inv.forEach((n, id) => {
+    if (n > 0 && isInvOwnedItem(id) && !manualSet.has(id)) auto.push(id);
+  });
+  const total = invSlotCount();
+  // 格子不足：优先保证手动槽，自动物品从尾部挤出（与旧版“超过格子数无法放入”一致）
+  while (manual.length + auto.length > total && auto.length > 0) auto.pop();
+  return { manual, auto, total };
+}
+
+// 指定格子的物品 id（越界/空槽返回 null）
+function invSlotIdAt(idx, L) {
+  if (!L) L = invSlotLayout();
+  if (idx < L.manual.length) return L.manual[idx];
+  const ai = idx - L.manual.length;
+  return (ai >= 0 && ai < L.auto.length) ? L.auto[ai] : null;
+}
+
+// 背包格布局签名：手动槽位或自动物品集合任一变化都会触发格子重建
+function invSlotSig() {
+  const L = invSlotLayout();
+  return L.manual.map(id => (id == null ? '' : id)).join('|') + '#' + L.auto.join(',');
+}
+
 function htmlInvSlots(withActionId) {
   const q = (G.invItemQ || '').trim().toLowerCase();
-  // 稳定排序的已拥有物品列表（仅数量>0 的）
-  const owned = [];
-  G.inv.forEach((n, id) => { if (n > 0 && isInvOwnedItem(id)) owned.push(id); });
-  owned.sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
-  const sig = owned.join(',');
+  const L = invSlotLayout();
+  const manual = L.manual, auto = L.auto, total = L.total;
+  const sig = invSlotSig();
   let h = '<div id="inv-items-wrap" data-ownedsig="' + sig + '">';
   h += '<div class="inv-slots" id="inv-items">';
-  for (let i = 0; i < invSlotCount(); i++) {
-    const id = owned[i];
-    if (id) {
-      const n = invCount(id);
-      // 蓝图物品（blueprint#n）不在 ITEMS 表里：图标/tooltip/搜索名都按基础 id 'blueprint' 处理
-      const isBp = (typeof isBlueprintItem === 'function') ? isBlueprintItem(id) : false;
-      const search = ((isBp ? bpItemName(id) : ITEMS[id].name) + ' ' + (isBp ? 'blueprint' : id)).toLowerCase().replace(/"/g, '');
-      const hit = !q || search.includes(q);
-      let use = '';
-      // 手雷/集束手雷：可在背包中直接投掷（对齐《异星工厂》投掷物）
-      if (id === 'grenade' || id === 'cluster-grenade') {
-        use = '<button class="slot-use" data-action="use-grenade" data-type="' + id + '" title="投掷' + ITEMS[id].name + '（向当前朝向投掷，造成范围爆炸）">💣</button>';
-      }
-      // 生鱼：可在背包中直接食用回血（对齐《异星工厂》：吃鱼治疗）
-      if (id === 'raw-fish') {
-        use = '<button class="slot-use" data-action="eat-fish" data-type="' + id + '" title="食用' + ITEMS[id].name + '（恢复 20 生命值）">🐟</button>';
-      }
-      // 蓝图物品（blueprint#n）：按基础 id 渲染图标，tooltip 显示蓝图内容摘要
-      const iconId = isBp ? 'blueprint' : id;
-      const tipHtml = isBp ? bpItemTip(id) : itemTip(id);
-      h += '<div class="inv-slot' + (hit ? '' : ' hidden') + '" data-itemid="' + id + '"' +
-        (withActionId ? ' id="' + withActionId + '-' + encodeURIComponent(id) + '"' : '') +
-        ' data-tip="' + tipHtml + '" data-itemsearch="' + search + '">' +
-        '<img src="' + iconDataURL(iconId, 16) + '">' +
-        '<span class="cnt" data-cnt="' + id + '">' + (isBp ? '∞' : n) + '</span>' +
-        use + '</div>';
-    } else {
-      h += '<div class="inv-slot empty"></div>';
+  for (let i = 0; i < total; i++) {
+    let id = null;
+    if (i < manual.length) id = manual[i];
+    else {
+      const ai = i - manual.length;
+      if (ai < auto.length) id = auto[ai];
     }
+    h += invSlotHtml(id, i, withActionId);
   }
   h += '</div>';
-  if (owned.length === 0) {
+  const ownedLen = manual.length + auto.length;
+  if (ownedLen === 0) {
     h += '<div class="dim" style="margin-top:6px">空空如也，去地图上按住右键挖矿吧（铁矿/铜矿/煤/石头）</div>';
   }
   h += '</div>';
   return h;
+}
+
+// 渲染单个背包格子：id 为 null 时空槽；每个有物品的格子标记 data-slotidx 并支持拖拽摆放
+function invSlotHtml(id, idx, withActionId) {
+  const q = (G.invItemQ || '').trim().toLowerCase();
+  if (id == null) {
+    return '<div class="inv-slot empty" data-slotidx="' + idx + '"></div>';
+  }
+  const n = invCount(id);
+  // 蓝图物品（blueprint#n）不在 ITEMS 表里：图标/tooltip/搜索名都按基础 id 'blueprint' 处理
+  const isBp = (typeof isBlueprintItem === 'function') ? isBlueprintItem(id) : false;
+  const search = ((isBp ? bpItemName(id) : ITEMS[id].name) + ' ' + (isBp ? 'blueprint' : id)).toLowerCase().replace(/"/g, '');
+  const hit = !q || search.includes(q);
+  let use = '';
+  // 手雷/集束手雷：可在背包中直接投掷（对齐《异星工厂》投掷物）
+  if (id === 'grenade' || id === 'cluster-grenade') {
+    use = '<button class="slot-use" data-action="use-grenade" data-type="' + id + '" title="投掷' + ITEMS[id].name + '（向当前朝向投掷，造成范围爆炸）">💣</button>';
+  }
+  // 生鱼：可在背包中直接食用回血（对齐《异星工厂》：吃鱼治疗）
+  if (id === 'raw-fish') {
+    use = '<button class="slot-use" data-action="eat-fish" data-type="' + id + '" title="食用' + ITEMS[id].name + '（恢复 20 生命值）">🐟</button>';
+  }
+  // 蓝图物品（blueprint#n）：按基础 id 渲染图标，tooltip 显示蓝图内容摘要
+  const iconId = isBp ? 'blueprint' : id;
+  const tipHtml = isBp ? bpItemTip(id) : itemTip(id);
+  return '<div class="inv-slot' + (hit ? '' : ' hidden') + '" data-itemid="' + id + '" data-slotidx="' + idx + '"' +
+    (withActionId ? ' id="' + withActionId + '-' + encodeURIComponent(id) + '"' : '') +
+    ' data-tip="' + tipHtml + '" data-itemsearch="' + search + '" draggable="true">' +
+    '<img src="' + iconDataURL(iconId, 16) + '">' +
+    '<span class="cnt" data-cnt="' + id + '">' + (isBp ? '∞' : n) + '</span>' +
+    use + '</div>';
 }
 
 function htmlInventory(withActionId) {

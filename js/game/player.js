@@ -193,6 +193,27 @@ function invAdd(id, n = 1) {
 
 function invCount(id) { return G.inv.get(id) || 0; }
 
+// 背包手动槽位归一化：清除槽数组中已不存在/数量为 0 的物品（保留用户摆放的空位）。
+// fillFromEmpty 为 true（旧档无 invSlots 字段）时，把当前背包物品按物品 ID 排序
+// 依次放入手动槽，与旧版按 ID 排序的展示完全一致，读档后格子位置稳定；
+// 新档（false）则维持现有手动槽不变，未手动摆放过的物品仍全部按自动物品排到后面。
+function normalizeInvSlots(fillFromEmpty) {
+  if (!G.invSlots || !Array.isArray(G.invSlots)) G.invSlots = [];
+  // 数量归零的物品（物品已从背包移除）释放对应槽位
+  for (let i = 0; i < G.invSlots.length; i++) {
+    if (G.invSlots[i] != null && invCount(G.invSlots[i]) <= 0) G.invSlots[i] = null;
+  }
+  // 清理尾部多余的空槽（保持数组紧凑，长度即手动物品占用槽数）
+  while (G.invSlots.length && G.invSlots[G.invSlots.length - 1] == null) G.invSlots.pop();
+  // 旧档：按旧版 ID 排序填充手动槽，保持读档前后展示完全一致
+  if (fillFromEmpty && G.invSlots.length === 0) {
+    const ids = [];
+    G.inv.forEach((n, id) => { if (n > 0) ids.push(id); });
+    ids.sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
+    G.invSlots = ids;
+  }
+}
+
 function selItem() { return G.sel >= 0 ? (HOTBAR[G.sel] || null) : (G.quickSel || null); }
 function buildActive() { return G.sel >= 0 || !!G.quickSel; }
 
@@ -207,6 +228,10 @@ function invTake(id, n = 1) {
   const c = invCount(id);
   if (c < n) return false;
   if (c - n <= 0) G.inv.delete(id); else G.inv.set(id, c - n);
+  // 该物品数量清零后，释放其手动摆放的背包槽位（槽位随物品消失，避免空占位）
+  if (c - n <= 0 && Array.isArray(G.invSlots)) {
+    for (let i = 0; i < G.invSlots.length; i++) if (G.invSlots[i] === id) { G.invSlots[i] = null; }
+  }
   if (typeof trackProd === 'function') trackProd(id, -n);
   uiDirty = true;
   return true;

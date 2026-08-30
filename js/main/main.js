@@ -13,6 +13,7 @@ var G = {
   grid: new Map(),
   buckets: new Map(),   // 区块（桶）空间索引：bucketKey -> Set<Entity>（见 core/entity.js）
   inv: new Map(),
+  invSlots: [],          // 玩家手动摆放的背包槽位：数组元素为物品 id（数组下标即格子下标）；自动放入的物品不在此数组，排列时自动排到手动槽之后
   logiRequest: {},   // 个人物流请求：item -> 目标数量（由物流机器人送达）
   trashSlots: {},    // 个人垃圾桶（对齐《异星工厂》Trash slots）：item -> true（标记后由物流机器人带走存回网络）
   logiEnabled: true,      // 「背包物流」总开关：关闭后机器人不再送达个人请求物品
@@ -137,6 +138,7 @@ function newGame() {
   G.buckets = new Map();
   G.ents = [];
   G.inv = new Map();
+  G.invSlots = [];
   G.techDone = {};
   G.techProg = {};
   G.activeTech = null;
@@ -225,6 +227,7 @@ function travelToPlanet(planet, opts) {
 
   // 存档背包/科技/装备/玩家状态
   const inv = new Map(G.inv);
+  const invSlots = (G.invSlots || []).slice();
   const techDone = Object.assign({}, G.techDone);
   const techProg = Object.assign({}, G.techProg || {});
   const activeTech = G.activeTech;
@@ -269,6 +272,7 @@ function travelToPlanet(planet, opts) {
 
   // 恢复背包/科技/物流请求/蓝图库
   G.inv = inv;
+  G.invSlots = invSlots;
   G.techDone = techDone; G.techProg = techProg; G.activeTech = activeTech; G.techQueue = techQueue;
   // 交付已送达本星球的行星间货物（火箭发射送往目标星球，抵达后降落）
   if (typeof deliverOrbitalCargo === 'function') deliverOrbitalCargo(planet);
@@ -295,6 +299,7 @@ function serializeAll() {
     },
     ents: G.ents.filter(e => !e._dead).map(e => e.serialize()),
     inv: Array.from(G.inv),
+    invSlots: (G.invSlots || []).slice(),
     logiRequest: Object.assign({}, G.logiRequest || {}),
     trashSlots: Object.assign({}, G.trashSlots || {}),
     logiEnabled: G.logiEnabled !== false,
@@ -536,6 +541,7 @@ function applySave(d) {
     addEnt(e);
   }
   G.inv = new Map(d.inv);
+  G.invSlots = Array.isArray(d.invSlots) ? d.invSlots.slice() : [];
   // 物品 ID 重命名迁移：官方命名贫化铀燃料棒（depleted-uranium-fuel-cell），旧档用废燃料棒（used-up-uranium-fuel-cell）
   if (G.inv.has('used-up-uranium-fuel-cell')) {
     G.inv.set('depleted-uranium-fuel-cell', (G.inv.get('depleted-uranium-fuel-cell') || 0) + G.inv.get('used-up-uranium-fuel-cell'));
@@ -543,6 +549,9 @@ function applySave(d) {
   }
   // 移除已废弃物品（对齐《异星工厂》2.0：铁斧/钢斧/钓鱼竿/钢杆/桶装蒸汽已被官方移除）
   for (const ob of OBSOLETE_ITEMS) if (G.inv.has(ob)) G.inv.delete(ob);
+  // 手动槽位同步：移除已废弃/不存在的物品占用；旧档（无 invSlots 字段）把物品
+  // 按原展示顺序放入手动槽，保持读档前后格子位置稳定，且不自动排序
+  if (typeof normalizeInvSlots === 'function') normalizeInvSlots(!Array.isArray(d.invSlots));
   // 恢复个人物流请求（旧档无该字段则置空）
   G.logiRequest = {};
   if (d.logiRequest && typeof d.logiRequest === 'object') {
