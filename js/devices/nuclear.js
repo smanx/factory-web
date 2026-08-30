@@ -80,6 +80,31 @@ class Centrifuge extends Entity {
     if (this.recipe === 'kovarex') return RECIPES['kovarex'];
     return CENTRIFUGE_RECIPES[this.recipe];
   }
+  // 产物缓冲容量：自循环配方（Kovarex 等）单轮产出量大且产物即下一轮原料，
+  // 不适用「够用 2 次生产」的堆积判定（否则单轮产出本身就会触发停工），
+  // 改按输出栏总存量到达固定容量时停工，玩家抓出后自动恢复——对齐官方持续运转设定。
+  outputBufferCap() {
+    return 80;
+  }
+  outputBufferFull(rec) {
+    if (!rec) return false;
+    if (rec.prob) {                       // 概率配方：每周期 1 件，总存量 >= 2 即停
+      let total = 0;
+      for (const k in this.outp) total += this.outp[k];
+      return total >= 2;
+    }
+    if (this.isSelfFeeding(rec)) {        // 自循环配方：按固定缓冲容量
+      let total = 0;
+      for (const k in this.outp) total += this.outp[k];
+      return total >= this.outputBufferCap();
+    }
+    return outputBacklogged(this.outp, rec.out);
+  }
+  // 自循环配方：产物包含本配方原料（如 Kovarex 产出的铀-235 同时是输入）
+  isSelfFeeding(rec) {
+    for (const k in rec.out) if (rec.inp[k]) return true;
+    return false;
+  }
   update(dt) {
     if (!this.recipe) { this.crafting = false; return; }
     if (G.power.sat <= 0) { this.crafting = false; return; }
@@ -116,15 +141,12 @@ class Centrifuge extends Entity {
     }
     // 原料不足则等
     for (const k in rec.inp) if ((this.inp[k] || 0) < rec.inp[k]) return;
-    // 产出容量检查（产物堆积即停工，动态「够用」）：普通配方按「存量够再产 2 次」停；
-    // 概率配方（每周期只产 1 件）按总存量 >= 2 停，防止原料积压在前端机器
-    if (rec.prob) {
-      let total = 0;
-      for (const k in this.outp) total += this.outp[k];
-      if (total >= 2) return;
-    } else {
-      if (outputBacklogged(this.outp, rec.out)) return;
-    }
+    // 产出容量检查（产物堆积即停工，动态「够用」）：
+    // - 概率配方（每周期只产 1 件）按总存量 >= 2 停，防止原料积压在前端机器；
+    // - 自循环配方（如 Kovarex：单轮产出 41+2 已超「够用 2 次」与硬上限，属正常形态，
+    //   且产物即下一轮原料，官方设定持续运转）：改按固定缓冲容量 outputBufferCap() 判定；
+    // - 其余普通配方按「存量够再产 2 次」停。
+    if (this.outputBufferFull(rec)) return;
     for (const k in rec.inp) {
       this.inp[k] -= rec.inp[k];
       if (typeof trackProd === 'function') trackProd(k, -rec.inp[k]);
@@ -149,12 +171,8 @@ class Centrifuge extends Entity {
     if (this.recipe) {
       const rec = this.recipeObj();
       if (rec && rec.inp[item]) {
-        // 产物堆积（够用 2 次生产）时停止送料；概率配方按总存量 >= 2 判定
-        if (rec.prob) {
-          let total = 0;
-          for (const k in this.outp) total += this.outp[k];
-          if (total >= 2) return false;
-        } else if (outputBacklogged(this.outp, rec.out)) return false;
+        // 产物堆积（够用 2 次生产）时停止送料（自循环配方按固定缓冲容量判定）
+        if (this.outputBufferFull(rec)) return false;
         if ((this.inp[item] || 0) >= rec.inp[item] * 2) return false;
         this.inp[item] = (this.inp[item] || 0) + 1;
         return true;
@@ -293,7 +311,9 @@ function centrifugePanelLive(e, api) {
   const rec = e.recipeObj();
   if (!rec) api.status('未选择配方', 'warn');
   else if (e.crafting) api.status('处理中', 'ok');
-  else {
+  else if (e.outputBufferFull && e.outputBufferFull(rec)) {
+    api.status('已暂停：产物缓冲已满（取走产物后继续）', 'warn');
+  } else {
     let missing = null;
     for (const k in rec.inp) if ((e.inp[k] || 0) < rec.inp[k]) { missing = ITEMS[k].name; break; }
     api.status(missing ? ('原料不足：' + missing) : '已就绪', missing ? 'warn' : 'ok');

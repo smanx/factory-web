@@ -266,12 +266,8 @@ class Inserter extends Entity {
       case 'centrifuge': {
         if (!t.recipe) return false;
         const rec = t.recipeObj();
-        // 产物堆积（够用 2 次生产）时停止送料；概率配方按总存量 >= 2 判定
-        if (rec.prob) {
-          let total = 0;
-          for (const k in t.outp) total += t.outp[k];
-          if (total >= 2) return false;
-        } else if (outputBacklogged(t.outp, rec.out)) return false;
+        // 产物堆积时停止送料（判定统一走离心机 outputBufferFull：概率/自循环/普通配方各自规则）
+        if (t.outputBufferFull(rec)) return false;
         return !!rec.inp[item] && (t.inp[item] || 0) < rec.inp[item] * 2;
       }
       case 'burner-mining-drill':
