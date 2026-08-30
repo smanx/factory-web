@@ -340,12 +340,15 @@ class Inserter extends Entity {
       case 'cargo-landing-pad':
       case 'cargo-bay':
       case 'landing-pad-unloading-bay': {
-        // 只要箱子里有空位（槽位未满/已有该物品未堆满）就继续往里放，直到箱子装满为止。
+        // 箱子为固定格子数组（一格一种物品、堆叠满占格、空槽可见）：
+        // 只要还有空槽、或已有该物品的格子未堆满，就继续往里放，直到箱子占满为止。
         // 尊重存量上限（limits）：达到上限的该物品不再送入，避免机械臂空抓后放不进去而卡爪。
         const _cap = t.limits && t.limits[item];
         if (_cap !== undefined && t.countOf(item) >= _cap) return false;
-        return (t.slots.length < (t.slotCap ? t.slotCap() : t.slots.length + 1)) ||
-          t.slots.some(s => s && s.item === item && s.count < stackSize(item));
+        const cap = (typeof t.slotCap === 'function') ? t.slotCap() : (t.slots || []).length;
+        let hasFree = false;
+        for (let i = 0; i < cap; i++) if (!t.slots[i]) { hasFree = true; break; }
+        return hasFree || t.slots.some(s => s && s.item === item && s.count < stackSize(item));
       }
       case 'void-chest':
         return true;   // 虚空箱：来者不拒，全部销毁

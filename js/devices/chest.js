@@ -4,23 +4,42 @@
 // 继承 CircuitNode（CircuitNode 亦是 Entity 子类）：储物箱可接入电路网络，
 // 把箱内每种物品的数量作为信号输出到所连网络，供组合器/机械臂/传送带等做逻辑控制
 // （对齐《异星工厂》：储物箱可通过电路网络读取物品数量，实现按库存自动化）。
+// 箱子与背包一致：固定 N 个格子（槽位数组固定长度，空位为 null），一格一种物品、
+// 堆叠满后占住该格；格子占满后机械臂/手动均无法再放入。
+// 槽位容量统一走 GAME_DATA.containerSizes（官方 inventory_size，单源），不再在业务里写死。
 class Chest extends CircuitNode {
   constructor(type, x, y) {
     // 传入的 type 需透传给父类（Entity 用它设置 this.type）；不能写死 iron-chest，
     // 否则木箱/钢箱构造后 type 全变成铁箱，导致放置后渲染成铁箱。
     super(type, x, y);
-    this.slots = [];
     this.limits = {};
+    this.slots = new Array(this.slotCap()).fill(null);
   }
-  // 槽位容量（木箱 16 / 铁箱 32 / 钢箱 24 等，各子类覆盖）
-  slotCap() { return 12; }
+  // 槽位容量（官方 inventory_size：木箱 16 / 铁箱 32 / 钢箱 48，各子类覆盖）
+  slotCap() {
+    return GAME_DATA.containerSizes?.[this.type] ?? 12;
+  }
+  // 空闲槽位下标（栈序：从后往前找，取出/放入的槽位语义与旧版“末尾优先”一致）
+  freeSlotIndex() {
+    for (let i = this.slots.length - 1; i >= 0; i--) if (!this.slots[i]) return i;
+    return -1;
+  }
+  // 某物品是否还能堆叠进已有格子（只要有一个格子放得下即可）
+  canStackInto(item) {
+    for (const s of this.slots) if (s && s.item === item && s.count < stackSize(item)) return true;
+    return false;
+  }
   giveItem(item) {
     const cap = this.limits[item];
     if (cap !== undefined && this.countOf(item) >= cap) return false;
-    for (const s of this.slots)
+    // 先堆叠进已有同种物品格子（格内未堆满）
+    for (const s of this.slots) {
       if (s && s.item === item && s.count < stackSize(item)) { s.count++; return true; }
-    if (this.slots.length >= this.slotCap()) return false;
-    this.slots.push({ item, count: 1 });
+    }
+    // 再放进空闲格子
+    const i = this.freeSlotIndex();
+    if (i < 0) return false;
+    this.slots[i] = { item, count: 1 };
     return true;
   }
   peekItem() {
@@ -36,7 +55,7 @@ class Chest extends CircuitNode {
       if (s) {
         const it = s.item;
         s.count--;
-        if (s.count <= 0) this.slots.splice(i, 1);
+        if (s.count <= 0) this.slots[i] = null;
         return it;
       }
     }
@@ -52,7 +71,7 @@ class Chest extends CircuitNode {
       const st = this.slots[i];
       if (st && st.item === item) {
         st.count--;
-        if (st.count <= 0) this.slots.splice(i, 1);
+        if (st.count <= 0) this.slots[i] = null;
         return item;
       }
     }
@@ -67,7 +86,7 @@ class Chest extends CircuitNode {
   takeAll() {
     const rows = [];
     for (const s of this.slots) if (s) rows.push([s.item, s.count]);
-    this.slots = [];
+    this.slots = new Array(this.slotCap()).fill(null);
     return rows;
   }
   serialize() {
@@ -84,9 +103,16 @@ class Chest extends CircuitNode {
   }
   static restore(s) {
     const c = super.restore(s);
-    c.slots = (s.slots || []).map(v => v ? { item: v[0], count: v[1] } : null);
     c.limits = {};
     for (const k in (s.limits || {})) if (s.limits[k] > 0) c.limits[k] = s.limits[k];
+    // 槽位固定长度：旧档为动态数组/压缩数组 → 展开成固定长度格子，越界内容丢弃
+    const raw = s.slots || [];
+    const cap = c.slotCap();
+    c.slots = new Array(cap).fill(null);
+    for (let i = 0; i < Math.min(cap, raw.length); i++) {
+      const v = raw[i];
+      if (v) c.slots[i] = { item: v[0] ?? v.item, count: v[1] ?? v.count };
+    }
     return c;
   }
 }
@@ -273,30 +299,47 @@ function drawChestBox(ctx, e, gx, gy, dir, alpha, tier, extra) {
 }
 
 // ===== 面板 =====
-// 所有储物箱采用「双栏」布局：左栏=玩家背包，右栏=箱子物品，可双向移动物品。
+// 所有储物箱采用「双栏」布局：左栏=玩家背包，右栏=箱子格子，可双向移动物品。
 // 左栏复用 htmlInventory()（与背包/配方设备一致：点击物品即选中，选中后可存入箱子）。
-// 右栏为箱子内容：点击物品取出 1 件回背包；「存入选中物品」把当前选中的背包物品放入箱子。
+// 右栏为箱子固定格子网格（与背包一致：空槽可见、一格一种物品）：
+//   - 点击空格：把当前选中的背包物品放入 1 件（未选中时提示）
+//   - 点击有物品的格：取出 1 件回背包
+// 兼容物流箱/接驳站/扩展舱等所有带 slots 的存储容器（共用 chestRightHtml）。
+
+// 右栏：箱子固定格子 + 操作
+function chestSlotGridHtml(e) {
+  let h = '';
+  for (let i = 0; i < e.slots.length; i++) {
+    const s = e.slots[i];
+    if (!s) {
+      h += '<div class="inv-slot empty" data-chestslot="' + i + '" data-tip="空槽|点击把选中的背包物品放入 1 件"></div>';
+    } else {
+      const id = s.item, n = s.count;
+      const icon = (ITEMS[id] && typeof iconDataURL === 'function') ? iconDataURL(id, 16) : '';
+      h += '<div class="inv-slot" data-chestslot="' + i + '" data-itemid="' + id + '" data-tip="' +
+        (ITEMS[id] ? ITEMS[id].name : id) + '|点击取出 1 件回背包（当前 ' + n + '）">' +
+        (icon ? '<img src="' + icon + '">' : '') +
+        '<span class="cnt">' + n + '</span></div>';
+    }
+  }
+  return h;
+}
 
 // 右栏：箱子内容 + 操作
 function chestRightHtml(e, typeName, capDesc) {
-  const agg = {};
-  for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
-  let h = '<div class="sec">箱子内容（点击物品取出 1 件回背包）</div>';
+  let total = 0;
+  for (const s of e.slots) if (s) total += s.count;
+  let h = '<div class="sec">箱子内容（' + e.slotCap() + ' 格，点击物品格取出 1 件，点击空格放入选中的背包物品）</div>';
   h += '<div class="status"></div>';
   h += '<div class="chest-items" id="chest-items" data-live="chest-items">';
-  const keys = Object.keys(agg);
-  if (!keys.length) {
-    h += '<div class="dim">空箱。先在左栏选中背包物品，再点下方「存入选中物品」，即可放入。</div>';
-  } else {
-    for (const id of keys) {
-      h += itemSlotsHtml({ [id]: agg[id] }, { action: 'chest-take', tip: (k, n) => ITEMS[k].name + '|点击取出 1 件回背包（当前 ' + n + '）' });
-    }
-  }
+  h += chestSlotGridHtml(e);
   h += '</div>';
   // 存入选中物品
   h += '<div class="sec">存入</div>';
   h += '<button data-action="chest-put" class="btn sm" id="btn-chest-put" title="把当前选中的背包物品全部存入箱子（未选中时不可用）">⬆ 存入选中物品</button>';
   // 存量上限（每种物品）
+  const agg = {};
+  for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
   h += '<div class="sec">存量上限（每种物品）</div>';
   const ids = Object.keys(agg);
   for (const id in e.limits) if (!(id in agg)) ids.push(id);
@@ -310,8 +353,6 @@ function chestRightHtml(e, typeName, capDesc) {
     }
     h += '<button data-action="limits-clear">清除所有上限</button>';
   }
-  let total = 0;
-  for (const k in agg) total += agg[k];
   if (total > 0) h += '<button data-action="takeout" id="btn-chest-takeout">取出全部 (' + total + ')</button>';
   h += '<div class="dim">' + capDesc + '</div>';
   return h;
@@ -341,27 +382,18 @@ function chestTip(e) {
   return k ? ('存货 ' + n + ' 个（' + k + ' 种）') : '空箱';
 }
 function chestDualPaneLive(e, api) {
+  let total = 0, kinds = 0;
   const agg = {};
-  let total = 0;
   for (const s of e.slots) if (s) { agg[s.item] = (agg[s.item] || 0) + s.count; total += s.count; }
-  const kinds = Object.keys(agg).length;
-  // 更新右栏箱子内容网格
+  kinds = Object.keys(agg).length;
+  // 更新右栏箱子固定格子网格（空槽/物品格一致渲染，与背包相同语义）
   const box = document.getElementById('chest-items');
-  if (box) {
-    if (!kinds) {
-      box.innerHTML = '<div class="dim">空箱。先在左栏选中背包物品，再点下方「存入选中物品」，即可放入。</div>';
-    } else {
-      let h = '';
-      for (const id of Object.keys(agg)) {
-        h += itemSlotsHtml({ [id]: agg[id] }, { action: 'chest-take', tip: (k, n) => ITEMS[k].name + '|点击取出 1 件回背包（当前 ' + n + '）' });
-      }
-      box.innerHTML = h;
-    }
-  }
+  if (box) box.innerHTML = chestSlotGridHtml(e);
   api.toggle('#btn-chest-takeout', total > 0, '取出全部 (' + total + ')');
   const full = Object.keys(agg).filter(id => e.limits[id] !== undefined && agg[id] >= e.limits[id]);
   if (full.length) api.status('已满：' + full.map(id => ITEMS[id].name).join('、') + ' 达到上限，暂停收纳', 'warn');
-  else if (total > 0) api.status('收纳中：' + kinds + ' 种，共 ' + total + ' 件', 'ok');
+  else if (total >= e.slotCap()) api.status('箱子已满：' + e.slotCap() + ' 格全部占满', 'warn');
+  else if (total > 0) api.status('收纳中：' + kinds + ' 种，共 ' + total + ' 件 / ' + e.slotCap() + ' 格', 'ok');
   else api.status('空箱：等待存入物品', 'ok');
 }
 function chestOnAction(act) {
@@ -389,16 +421,7 @@ function chestOnChange(ev) {
 // ===== 木箱（对齐《异星工厂》Wooden chest，占地 1×1，容量较小 16 格）=====
 class WoodenChest extends Chest {
   constructor(type, x, y) { super('wooden-chest', x, y); }
-  slotCap() { return 16; }
-  giveItem(item) {
-    const cap = this.limits[item];
-    if (cap !== undefined && this.countOf(item) >= cap) return false;
-    for (const s of this.slots)
-      if (s && s.item === item && s.count < stackSize(item)) { s.count++; return true; }
-    if (this.slots.length >= this.slotCap()) return false;
-    this.slots.push({ item, count: 1 });
-    return true;
-  }
+  slotCap() { return GAME_DATA.containerSizes?.['wooden-chest'] ?? 16; }
 }
 function drawWoodenChest(ctx, e, gx, gy, dir, alpha) {
   drawChestBox(ctx, e, gx, gy, dir, alpha, CHEST_TIERS.wood, null);
@@ -422,16 +445,7 @@ DEVICE_PANEL['wooden-chest'] = { html: woodenChestPanelHtml, live: woodenChestPa
 // ===== 铁箱（对齐《异星工厂》Iron chest，占地 1×1，容量 32 格，比木箱大、比钢箱小）=====
 class IronChest extends Chest {
   constructor(type, x, y) { super('iron-chest', x, y); }
-  slotCap() { return 32; }
-  giveItem(item) {
-    const cap = this.limits[item];
-    if (cap !== undefined && this.countOf(item) >= cap) return false;
-    for (const s of this.slots)
-      if (s && s.item === item && s.count < stackSize(item)) { s.count++; return true; }
-    if (this.slots.length >= this.slotCap()) return false;
-    this.slots.push({ item, count: 1 });
-    return true;
-  }
+  slotCap() { return GAME_DATA.containerSizes?.['iron-chest'] ?? 32; }
 }
 function drawIronChest(ctx, e, gx, gy, dir, alpha) {
   drawChestBox(ctx, e, gx, gy, dir, alpha, CHEST_TIERS.iron, null);

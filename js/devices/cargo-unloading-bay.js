@@ -15,17 +15,23 @@ const UNLOADING_BAY_DIST   = GAME_DATA.cargoUnloadingBay?.unloadingDistance ?? 5
 class CargoUnloadingBay extends CircuitNode {
   constructor(type, x, y) {
     super('landing-pad-unloading-bay', x, y);
-    this.slots = [];
     this.limits = {};
+    this.slots = new Array(this.slotCap()).fill(null);
   }
-  // ===== 存储：20 格（官方 inventory_size_bonus=20）=====
+  // ===== 存储：20 格（官方 inventory_size_bonus=20，固定格子数组）=====
+  slotCap() { return UNLOADING_BAY_SLOTS; }
+  freeSlotIndex() {
+    for (let i = this.slots.length - 1; i >= 0; i--) if (!this.slots[i]) return i;
+    return -1;
+  }
   giveItem(item) {
     const cap = this.limits[item];
     if (cap !== undefined && this.countOf(item) >= cap) return false;
     for (const s of this.slots)
       if (s && s.item === item && s.count < stackSize(item)) { s.count++; return true; }
-    if (this.slots.length >= UNLOADING_BAY_SLOTS) return false;
-    this.slots.push({ item, count: 1 });
+    const i = this.freeSlotIndex();
+    if (i < 0) return false;
+    this.slots[i] = { item, count: 1 };
     return true;
   }
   peekItem() {
@@ -35,14 +41,14 @@ class CargoUnloadingBay extends CircuitNode {
   takeItem() {
     for (let i = this.slots.length - 1; i >= 0; i--) {
       const s = this.slots[i];
-      if (s) { const it = s.item; s.count--; if (s.count <= 0) this.slots.splice(i, 1); return it; }
+      if (s) { const it = s.item; s.count--; if (s.count <= 0) this.slots[i] = null; return it; }
     }
     return null;
   }
   takeItemOf(item) {
     for (let i = this.slots.length - 1; i >= 0; i--) {
       const st = this.slots[i];
-      if (st && st.item === item) { st.count--; if (st.count <= 0) this.slots.splice(i, 1); return item; }
+      if (st && st.item === item) { st.count--; if (st.count <= 0) this.slots[i] = null; return item; }
     }
     return null;
   }
@@ -59,7 +65,7 @@ class CargoUnloadingBay extends CircuitNode {
   takeAll() {
     const rows = [];
     for (const s of this.slots) if (s) rows.push([s.item, s.count]);
-    this.slots = [];
+    this.slots = new Array(this.slotCap()).fill(null);
     return rows;
   }
   // ===== 电路网络信号：把舱内每种物品数量作为信号输出 =====
@@ -78,7 +84,17 @@ class CargoUnloadingBay extends CircuitNode {
     s.limits = this.limits;
     return s;
   }
-  static restore(s) { return super.restore(s); }
+  static restore(s) {
+    const c = super.restore(s);
+    const raw = (s.slots || []);
+    const cap = c.slotCap();
+    c.slots = new Array(cap).fill(null);
+    for (let i = 0; i < Math.min(cap, raw.length); i++) {
+      const v = raw[i];
+      if (v) c.slots[i] = { item: v[0] ?? v.item, count: v[1] ?? v.count };
+    }
+    return c;
+  }
 }
 
 // ===== 渲染：4×5 卸载舱（比扩展舱更高的绯红货舱）=====
@@ -107,13 +123,12 @@ function drawCargoUnloadingBay(ctx, e, gx, gy, dir, alpha) {
 
 // ===== 面板 =====
 function cargoUnloadingBayPanelHtml(e) {
-  const agg = {};
-  for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
-  let h = row('货物', Object.keys(agg).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(agg, { action: 'take-slot' }) + '</div>' : '<span class="dim">空</span>', 'contents');
+  let h = '<div class="sec">货物（' + e.slotCap() + ' 格，点击物品格取出 1 件，点击空格放入选中的背包物品）</div>';
+  h += '<div class="chest-items" id="chest-items">' + chestSlotGridHtml(e) + '</div>';
   h += row('扩展存储', '+' + UNLOADING_BAY_SLOTS + ' 格', 'bonus');
   h += row('卸载距离', UNLOADING_BAY_DIST + ' 格', 'range');
   let total = 0;
-  for (const k in agg) total += agg[k];
+  for (const s of e.slots) if (s) total += s.count;
   if (total > 0) h += '<button data-action="takeout" id="btn-ub-takeout">取出全部 (' + total + ')</button>';
   h += '<div class="dim">物流卸载舱：为物流接驳站提供扩展存储（4×5，+20 格）并作为货物卸载点（官方 Cargo unloading bay，卸载距离 ' + UNLOADING_BAY_DIST + ' 格）。可接入电路网络输出货物信号。</div>';
   return h;
@@ -121,9 +136,8 @@ function cargoUnloadingBayPanelHtml(e) {
 function cargoUnloadingBayPanelLive(e, api) {
   let total = 0, k = 0;
   for (const s of e.slots) if (s) { total += s.count; k++; }
-  const agg = {};
-  for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
-  api.set('contents', total ? '<div class="asm3-inp-row">' + itemSlotsHtml(agg, { action: 'take-slot' }) + '</div>' : dimSpan('空'));
+  const box = document.getElementById('chest-items');
+  if (box) box.innerHTML = chestSlotGridHtml(e);
   api.set('bonus', '+' + UNLOADING_BAY_SLOTS + ' 格');
   api.set('range', UNLOADING_BAY_DIST + ' 格');
   api.toggle('#btn-ub-takeout', total > 0, '取出全部 (' + total + ')');

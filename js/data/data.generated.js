@@ -5736,6 +5736,16 @@ const GAME_DATA = {
   "allowUnloading": true,
   "unloadingDistance": 59
  },
+ "containerSizes": {
+  "wooden-chest": 16,
+  "iron-chest": 32,
+  "steel-chest": 48,
+  "passive-provider-chest": 48,
+  "active-provider-chest": 48,
+  "storage-chest": 48,
+  "requester-chest": 48,
+  "buffer-chest": 48
+ },
  "equipment": {
   "solar-panel-equipment": {
    "powerOut": 30

@@ -90,19 +90,28 @@ class Roboport extends CircuitNode {
   }
 }
 
-// ===== 物流箱基类（四类共用槽位逻辑，容量与储物箱一致）=====
+// ===== 物流箱基类（四类共用槽位逻辑，容量官方 48 格）=====
+// 与储物箱一致采用固定格子数组：一格一种物品、堆叠满占格、空槽可见。
+// 容量统一走 GAME_DATA.containerSizes（官方 inventory_size=48）。
 class LogisticChest extends Entity {
   constructor(type, x, y) {
     super(type, x, y);
-    this.slots = [];
+    this.slots = new Array(this.slotCap()).fill(null);
   }
-  // 槽位容量：与储物箱一致（12 格），可被需求/缓冲等子类覆盖
-  slotCap() { return 12; }
+  // 槽位容量：官方 logistic-container inventory_size=48
+  slotCap() {
+    return GAME_DATA.containerSizes?.[this.type] ?? 48;
+  }
+  freeSlotIndex() {
+    for (let i = this.slots.length - 1; i >= 0; i--) if (!this.slots[i]) return i;
+    return -1;
+  }
   giveItem(item) {
     for (const s of this.slots)
       if (s && s.item === item && s.count < stackSize(item)) { s.count++; return true; }
-    if (this.slots.length >= this.slotCap()) return false;
-    this.slots.push({ item, count: 1 });
+    const i = this.freeSlotIndex();
+    if (i < 0) return false;
+    this.slots[i] = { item, count: 1 };
     return true;
   }
   peekItem() {
@@ -118,7 +127,7 @@ class LogisticChest extends Entity {
       if (s) {
         const it = s.item;
         s.count--;
-        if (s.count <= 0) this.slots.splice(i, 1);
+        if (s.count <= 0) this.slots[i] = null;
         return it;
       }
     }
@@ -134,7 +143,7 @@ class LogisticChest extends Entity {
       const st = this.slots[i];
       if (st && st.item === item) {
         st.count--;
-        if (st.count <= 0) this.slots.splice(i, 1);
+        if (st.count <= 0) this.slots[i] = null;
         return item;
       }
     }
@@ -148,7 +157,7 @@ class LogisticChest extends Entity {
   takeAll() {
     const rows = [];
     for (const s of this.slots) if (s) rows.push([s.item, s.count]);
-    this.slots = [];
+    this.slots = new Array(this.slotCap()).fill(null);
     return rows;
   }
   serialize() {
@@ -163,7 +172,13 @@ class LogisticChest extends Entity {
   }
   static restore(s) {
     const c = super.restore(s);
-    c.slots = (s.slots || []).map(v => v ? { item: v[0], count: v[1] } : null);
+    const raw = s.slots || [];
+    const cap = c.slotCap();
+    c.slots = new Array(cap).fill(null);
+    for (let i = 0; i < Math.min(cap, raw.length); i++) {
+      const v = raw[i];
+      if (v) c.slots[i] = { item: v[0] ?? v.item, count: v[1] ?? v.count };
+    }
     return c;
   }
 }
@@ -803,16 +818,12 @@ function logiChestPanelHtml(e) {
   const agg = {};
   for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
   const kind = LOGI_CHEST_KINDS[e.type];
-  let right = '<div class="sec">箱子内容（点击物品取出 1 件回背包）</div>';
+  let total = 0;
+  for (const k in agg) total += agg[k];
+  let right = '<div class="sec">箱子内容（' + e.slotCap() + ' 格，点击物品格取出 1 件，点击空格放入选中的背包物品）</div>';
   right += '<div class="status"></div>';
   right += '<div class="chest-items" id="chest-items">';
-  const keys = Object.keys(agg);
-  if (!keys.length) right += '<div class="dim">空箱。先在左栏选中背包物品，再点下方「存入选中物品」，即可放入。</div>';
-  else {
-    for (const id of keys) {
-      right += itemSlotsHtml({ [id]: agg[id] }, { action: 'chest-take', tip: (k, n) => ITEMS[k].name + '|点击取出 1 件回背包（当前 ' + n + '）' });
-    }
-  }
+  right += chestSlotGridHtml(e);
   right += '</div>';
   right += '<div class="sec">存入</div>';
   right += '<button data-action="chest-put" class="btn sm" id="btn-chest-put" title="把当前选中的背包物品全部存入箱子（未选中时不可用）">⬆ 存入选中物品</button>';
@@ -838,7 +849,7 @@ function logiChestPanelHtml(e) {
     right += '<button data-action="logi-req-clear">清空全部需求</button>';
   } else {
     right += '<div class="dim">' + ITEMS[e.type].desc + '</div>';
-    if (Object.keys(agg).length) right += '<button data-action="takeout" id="btn-chest-takeout">取出全部 (' + Object.values(agg).reduce((a, b) => a + b, 0) + ')</button>';
+    if (total > 0) right += '<button data-action="takeout" id="btn-chest-takeout">取出全部 (' + total + ')</button>';
   }
   const left = htmlInventory();
   return '<div class="inv-layout machine-layout chest-layout">' +
@@ -855,17 +866,7 @@ function logiChestPanelLive(e, api) {
   for (const s of e.slots) if (s) { agg[s.item] = (agg[s.item] || 0) + s.count; total += s.count; }
   const kinds = Object.keys(agg).length;
   const box = document.getElementById('chest-items');
-  if (box) {
-    if (!kinds) {
-      box.innerHTML = '<div class="dim">空箱。先在左栏选中背包物品，再点下方「存入选中物品」，即可放入。</div>';
-    } else {
-      let h = '';
-      for (const id of Object.keys(agg)) {
-        h += itemSlotsHtml({ [id]: agg[id] }, { action: 'chest-take', tip: (k, n) => ITEMS[k].name + '|点击取出 1 件回背包（当前 ' + n + '）' });
-      }
-      box.innerHTML = h;
-    }
-  }
+  if (box) box.innerHTML = chestSlotGridHtml(e);
   api.toggle('#btn-chest-takeout', total > 0, '取出全部 (' + total + ')');
   const kind = LOGI_CHEST_KINDS[e.type];
   if (kind === 'requester' || kind === 'buffer') {

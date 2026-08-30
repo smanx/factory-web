@@ -556,7 +556,8 @@ function initPanelEvents() {
     // 在背包面板、蓝图面板、或任意设备交互面板（组装机/机械臂/储物箱等）左栏背包中，
     // 点击物品可选中并显示放置幽灵：设备可点击地图直接建造，材料/工具跟随鼠标（储物箱中选中后可存入箱子）。
     // 右栏设备操作区的可交互控件都带 data-action，故用 !itEl.dataset.action 排除。
-    if (itEl && (G.panelMode === 'inv' || G.panelMode === 'bluebook' || (G.panelMode === 'machine' && G.panelEnt)) && !itEl.dataset.action) {
+    // 箱子右栏格子（data-chestslot）不是左栏背包物品：排除，交由下方 chestSlot 分支处理
+    if (itEl && (G.panelMode === 'inv' || G.panelMode === 'bluebook' || (G.panelMode === 'machine' && G.panelEnt)) && !itEl.dataset.action && !itEl.closest('[data-chestslot]')) {
       const iid = itEl.dataset.itemid;
       // 背包物品点击移动（需求：点击一个物品 → 再点空格处即可放到空格；也可点有物品的格交换）：
       // 左栏背包格子带 data-slotidx。若当前已“持握/选中”另一个背包格物品，再点背包格即把
@@ -714,6 +715,40 @@ function initPanelEvents() {
       G.sel = -1;
       if (typeof refreshHotbar === 'function') refreshHotbar();
       renderPanel(false);
+      return;
+    }
+    // 箱子固定格子：点击物品格取出 1 件回背包，点击空格把选中的背包物品放入 1 件。
+    // 需放在 data-action 分发之前——箱子格子本身无 data-action，会被上面的 if(!btn) 提前 return。
+    const chestSlot = ev.target.closest && ev.target.closest('[data-chestslot]');
+    if (chestSlot && G.panelMode === 'machine' && G.panelEnt && typeof G.panelEnt.slots === 'object') {
+      const chest = G.panelEnt;
+      const idx = +chestSlot.dataset.chestslot;
+      const slot = chest.slots[idx];
+      if (slot) {
+        // 点击物品格：取出 1 件回背包（受背包堆叠上限约束）
+        const id = slot.item;
+        if (chest.takeItemOf(id)) {
+          if (invAdd(id, 1) > 0) {
+            if (typeof playSfx === 'function') playSfx('pick');
+          } else {
+            chest.giveItem(id);   // 背包已满，放回箱子
+            toast('背包已满，无法放入' + (ITEMS[id] ? ITEMS[id].name : id));
+          }
+        }
+      } else {
+        // 点击空格：把当前选中的背包物品放入 1 件（未选中时提示）
+        const held = (typeof selItem === 'function') ? selItem() : null;
+        if (!held) { toast('请先在左栏背包中选中要存入的物品'); return; }
+        if (invCount(held) <= 0) { toast('背包中没有' + (ITEMS[held] ? ITEMS[held].name : held)); return; }
+        if (chest.giveItem(held)) {
+          invTake(held, 1);
+          if (typeof playSfx === 'function') playSfx('click');
+        } else {
+          toast('箱子已满，放不进去了');
+        }
+      }
+      if (typeof updateMachineLive === 'function') updateMachineLive();
+      else renderPanel(false);
       return;
     }
     const btn = ev.target.closest('[data-action], [data-act]');

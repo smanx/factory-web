@@ -13,8 +13,8 @@ const CARGO_PAD_SWEEP = 2.5;  // 雷达扫描间隔（秒，与官方雷达同�
 class CargoLandingPad extends CircuitNode {
   constructor(type, x, y) {
     super('cargo-landing-pad', x, y);
-    this.slots = [];
     this.limits = {};
+    this.slots = new Array(this.slotCap()).fill(null);
     this.t = 0;       // 雷达扫描计时
     this.cargoIn = 0; // 累计接收的火箭货物量（显示用）
   }
@@ -41,9 +41,14 @@ class CargoLandingPad extends CircuitNode {
     if (cap !== undefined && this.countOf(item) >= cap) return false;
     for (const s of this.slots)
       if (s && s.item === item && s.count < stackSize(item)) { s.count++; return true; }
-    if (this.slots.length >= this.slotCap()) return false;
-    this.slots.push({ item, count: 1 });
+    const i = this.freeSlotIndex();
+    if (i < 0) return false;
+    this.slots[i] = { item, count: 1 };
     return true;
+  }
+  freeSlotIndex() {
+    for (let i = this.slots.length - 1; i >= 0; i--) if (!this.slots[i]) return i;
+    return -1;
   }
   peekItem() {
     for (let i = this.slots.length - 1; i >= 0; i--) { const s = this.slots[i]; if (s) return s.item; }
@@ -52,14 +57,14 @@ class CargoLandingPad extends CircuitNode {
   takeItem() {
     for (let i = this.slots.length - 1; i >= 0; i--) {
       const s = this.slots[i];
-      if (s) { const it = s.item; s.count--; if (s.count <= 0) this.slots.splice(i, 1); return it; }
+      if (s) { const it = s.item; s.count--; if (s.count <= 0) this.slots[i] = null; return it; }
     }
     return null;
   }
   takeItemOf(item) {
     for (let i = this.slots.length - 1; i >= 0; i--) {
       const st = this.slots[i];
-      if (st && st.item === item) { st.count--; if (st.count <= 0) this.slots.splice(i, 1); return item; }
+      if (st && st.item === item) { st.count--; if (st.count <= 0) this.slots[i] = null; return item; }
     }
     return null;
   }
@@ -76,7 +81,7 @@ class CargoLandingPad extends CircuitNode {
   takeAll() {
     const rows = [];
     for (const s of this.slots) if (s) rows.push([s.item, s.count]);
-    this.slots = [];
+    this.slots = new Array(this.slotCap()).fill(null);
     return rows;
   }
   // ===== 电路网络信号：把箱内每种物品数量作为信号输出（对齐官方：接驳站可接入电路）=====
@@ -111,7 +116,17 @@ class CargoLandingPad extends CircuitNode {
     s.cargoIn = this.cargoIn || 0;
     return s;
   }
-  static restore(s) { return super.restore(s); }
+  static restore(s) {
+    const c = super.restore(s);
+    const raw = (s.slots || []);
+    const cap = c.slotCap();
+    c.slots = new Array(cap).fill(null);
+    for (let i = 0; i < Math.min(cap, raw.length); i++) {
+      const v = raw[i];
+      if (v) c.slots[i] = { item: v[0] ?? v.item, count: v[1] ?? v.count };
+    }
+    return c;
+  }
 }
 
 // ===== 渲染：8×8 大型接驳平台 =====
@@ -145,14 +160,13 @@ function drawCargoLandingPad(ctx, e, gx, gy, dir, alpha) {
 
 // ===== 面板 =====
 function cargoLandingPadPanelHtml(e) {
-  const agg = {};
-  for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
-  let h = row('货物', Object.keys(agg).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(agg, { action: 'take-slot' }) + '</div>' : '<span class="dim">空</span>', 'contents');
+  let h = '<div class="sec">货物（' + e.slotCap() + ' 格，点击物品格取出 1 件，点击空格放入选中的背包物品）</div>';
+  h += '<div class="chest-items" id="chest-items">' + chestSlotGridHtml(e) + '</div>';
   h += row('雷达', '扫描范围 ' + CARGO_PAD_RADAR + ' 格', 'radar');
   h += row('存储', e.slotCap() + ' 格', 'slots');
   h += row('累计接收', (e.cargoIn || 0) + ' 件', 'cargo');
   let total = 0;
-  for (const k in agg) total += agg[k];
+  for (const s of e.slots) if (s) total += s.count;
   if (total > 0) h += '<button data-action="takeout" id="btn-clp-takeout">取出全部 (' + total + ')</button>';
   h += '<div class="dim">物流接驳站：火箭发射后货物降落于此（8×8，' + e.slotCap() + ' 格存储）。可接入电路网络输出货物信号。</div>';
   return h;
@@ -160,9 +174,8 @@ function cargoLandingPadPanelHtml(e) {
 function cargoLandingPadPanelLive(e, api) {
   let total = 0, k = 0;
   for (const s of e.slots) if (s) { total += s.count; k++; }
-  const agg = {};
-  for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
-  api.set('contents', total ? '<div class="asm3-inp-row">' + itemSlotsHtml(agg, { action: 'take-slot' }) + '</div>' : dimSpan('空'));
+  const box = document.getElementById('chest-items');
+  if (box) box.innerHTML = chestSlotGridHtml(e);
   api.set('radar', '扫描范围 ' + CARGO_PAD_RADAR + ' 格');
   api.set('slots', e.slotCap() + ' 格');
   api.set('cargo', (e.cargoIn || 0) + ' 件');

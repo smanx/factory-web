@@ -120,7 +120,7 @@ const ITEMS = {
   'bulk-inserter':    {emoji: '🦾',  name: '集装箱机械臂', color: '#7ec850', desc: '同电力机械臂，但可一次性抓取多达 3 个同种物品（对齐《异星工厂》Stack inserter）' },
   'stack-inserter':  {emoji: '🦾',  name: '堆叠机械臂', color: '#8ae05a', desc: '太空时代高级机械臂（对齐《异星工厂》Stack inserter）：一次抓取 4 个同种物品并分层叠放传送带，带 5 个过滤槽，由集装箱机械臂升级而来（官方配方 1 集装箱机械臂+1 处理器+2 碳纤维+10 果冻→1，0.5s）' },
   'fast-inserter':     {emoji: '🦾',  name: '高速机械臂', color: '#4f9fe8', desc: '比普通机械臂抓取更快（旋转速度约为其 2 倍）（对齐《异星工厂》Fast inserter）' },
-  'steel-chest':       {emoji: '🗄️',  name: '钢箱', color: '#9aa4b0', desc: '比储物箱容量更大的钢铁储物箱（24 格）。可接入电路网络输出箱内物品数量信号（对齐《异星工厂》）' },
+  'steel-chest':       {emoji: '🗄️',  name: '钢箱', color: '#9aa4b0', desc: '比储物箱容量更大的钢铁储物箱（48 格，官方 Steel chest）。可接入电路网络输出箱内物品数量信号（对齐《异星工厂》）' },
   'creative-chest':    {emoji: '♾️',  name: '创造箱', color: '#3e8f4a', mark: '∞', desc: '测试设备：无限生成选定物品（可多选），箱内可同时放多种物品，机械臂/玩家可无限取走其中任意一种' },
   'void-chest':        {emoji: '❌',  name: '虚空箱', color: '#4a3430', mark: '×', desc: '测试设备：无限销毁任何存入的物品，放进去即刻消失' },
   'logistic-science-pack':     {emoji: '🟢',  name: '物流科学包', color: '#6fd06f', mark: 'GS', desc: '绿色科学包，解锁二级科技（物流/石油等的钥匙）' },
@@ -337,7 +337,7 @@ const ITEMS = {
   'personal-roboport-mk2-equipment':{emoji: '🤖',  name: '个人机器人港 II', color: '#5a8ac0', desc: '进阶个人装备：装备后提供更大施工机器人工作范围（20 格、最多 8 台在场），蓝图粘贴自动由施工机器人建造（对齐《异星工厂》Personal roboport Mk2）' },
   'passive-provider-chest': {emoji: '📦',  name: '被动供应箱', color: '#e04a3a', desc: '物流箱（红箱）：可手动/机械臂存入货物，物流机器人会从箱中取货送往需求箱；也能接收机器人返还的货物' },
   'active-provider-chest':  {emoji: '📦',  name: '主动供应箱', color: '#a868d8', desc: '物流箱（紫箱）：机器人优先从此取货供应网络；多出的货物机器人会收纳到这里，适合作为原料集散点' },
-  'storage-chest': {emoji: '📦',  name: '仓储箱', color: '#e8c83a', desc: '物流箱（黄箱）：机器人把返还/多余货物收纳到这里，也可作为备用取货源。所有仓储箱共享存放' },
+  'storage-chest': {emoji: '📦',  name: '仓储箱', color: '#e8c83a', desc: '物流箱（黄箱）：机器人把返还/多余货物收纳到这里，也可作为备用取货源（48 格）。所有仓储箱共享存放' },
   'buffer-chest': {emoji: '📦',  name: '缓冲箱', color: '#68b04e', desc: '物流箱（绿箱）：介于需求箱与仓储箱之间——既按设定请求货物，又可向网络供应，作为中转缓冲（对齐《异星工厂》Buffer chest）' },
   'requester-chest': {emoji: '📦',  name: '需求箱', color: '#5a8ad0', desc: '物流箱（蓝箱）：在面板设置每种物品的需求量，物流机器人会自动从供应箱/仓储箱送货过来补足到目标数量' },
   // ===== 钓鱼与生鱼（对齐《异星工厂》：需手持鱼竿在水域钓鱼，钓到生鱼） =====

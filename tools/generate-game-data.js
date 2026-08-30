@@ -707,6 +707,29 @@ const cargoUnloadingBay = {};
   }
 }
 
+// ---- 储物容器槽位容量（官方 inventory_size / inventory_size_bonus）----
+// 箱子/物流箱/接驳站等存储容器按官方槽位数运行：木箱 16、铁箱 32、钢箱 48、
+// 物流箱 48、接驳站 80、扩展舱/卸载舱 20（inventory_size_bonus）。
+// 业务代码统一走 GAME_DATA.containerSizes?.[type] ?? 兜底，禁止在设备文件里硬编码第二套容量。
+const containerSizes = {};
+{
+  const defs = {
+    'wooden-chest': ['container', 'wooden-chest'],
+    'iron-chest': ['container', 'iron-chest'],
+    'steel-chest': ['container', 'steel-chest'],
+    'passive-provider-chest': ['logistic-container', 'passive-provider-chest'],
+    'active-provider-chest': ['logistic-container', 'active-provider-chest'],
+    'storage-chest': ['logistic-container', 'storage-chest'],
+    'requester-chest': ['logistic-container', 'requester-chest'],
+    'buffer-chest': ['logistic-container', 'buffer-chest'],
+  };
+  for (const pid of Object.keys(defs)) {
+    const [type, name] = defs[pid];
+    const r = raw[type] && raw[type][name];
+    if (r && typeof r.inventory_size === 'number') containerSizes[pid] = r.inventory_size;
+  }
+}
+
 // ---- 个人装备（装备网格） ----
 // 官方类型：solar-panel-equipment / generator-equipment / battery-equipment /
 // energy-shield-equipment / movement-bonus-equipment / active-defense-equipment。
@@ -1363,6 +1386,7 @@ Object.assign(GAME_DATA, {
   cargoLandingPad,
   cargoBay,
   cargoUnloadingBay,
+  containerSizes,
   equipment,
   heat,
   lightning,
