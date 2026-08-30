@@ -16,6 +16,7 @@ declare -a scripts=(
   "tools/verify-inserter-lane-priority.js"
   "tools/verify-inserter-multi-input.js"
   "tools/verify-underground-belt-dual-lane.js"
+  "tools/verify-auto-underground-cross.js"
   "tools/verify-pipe-to-ground-passthrough.js"
   "tools/verify-inserter-side-flip.js"
   "tools/verify-splitter-input-priority.js"

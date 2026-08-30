@@ -741,6 +741,18 @@ function tryPlaceAt(tx, ty) {
     refreshHotbar();
     return;
   }
+  // 传送带拖到「同族带子（非同向、非地下带）」上时：
+  // canPlaceAt 会因同族覆盖放行，但覆盖升级对同阶带是空操作（oldType === type 直接 return），
+  // 表现为拖动铺设遇横向/反向传送带毫无反应。这种交叉场景应改用地下传送带跨越：
+  // 先于 chk.ok 判定拦截，交由 tryAutoUnderground 生成一对地下带（保留障碍带不动）。
+  {
+    const _cross = entAt(tx, ty);
+    if (BELT_TO_UG[type]
+        && _cross instanceof Belt && !(_cross instanceof Splitter) && !(_cross instanceof Underground)
+        && _cross.dir !== G.ghostDir) {
+      if (tryAutoUnderground(type, tx, ty)) { uiDirty = true; return; }
+    }
+  }
   const chk = canPlaceAt(type, tx, ty, G.ghostDir);
   if (!chk.ok) {
     // 传送带特殊逻辑优先：同向衔接铺设、或自动改用地下带跨越障碍
