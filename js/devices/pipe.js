@@ -1,5 +1,35 @@
 'use strict';
 
+// ===== 统一管道判定：设备 ↔ 管道 / 地下管道 的流体接口 =====
+// 历史原因：设备代码大量用 `instanceof Pipe` 判定相邻流体接口，导致只认普通管道、
+// 不认地下管道（PipeToGround）。地下管道只有「管口」（this.dir 反向侧）能接设备与管道
+// （背向是地下管段侧，不接任何管道）。因此设备侧判定一律走本函数：
+//   · 普通管道 / 创造管道 / 虚空管道（Pipe 子类）→ 任意方向可接；
+//   · 地下管道 → 仅当其「管口」（dir 反向格）正好落在此世界格 (gx,gy) 时视为可接。
+// 这样设备可以把地下管道当作普通管道一样进/出流体，且不破坏地下管道自身的配对规则。
+// 判断实体 n 相对设备 dev 位于哪一侧（世界方向 0东 1南 2西 3北），
+// 用于给地下管道判定“管口朝向接入者”时反推接入者所在格。
+function sideFromEntity(dev, n) {
+  if (n.y < dev.y) return 3;                 // 北
+  if (n.y >= dev.y + dev.h) return 1;        // 南
+  if (n.x >= dev.x + dev.w) return 0;        // 东
+  return 2;                                  // 西
+}
+// 判定 (gx,gy) 格上是否有可互通流体的管道/地下管道。
+// side：该外部格相对接入者（设备/管道）所在侧的“世界方向”——接入者站在 side 的反方向，
+// 因此接入者所在格 = (gx - DX[side], gy - DY[side])。
+// 普通管道（含创造/虚空管道，Pipe 子类）任意方向可接；地下管道仅当其“管口”
+// （this.dir 反向侧）正好对着接入者所在格时才视为可接（背向是地下管段侧，不接任何管道）。
+function pipeConnAt(gx, gy, side) {
+  const t = entAt(gx, gy);
+  if (!t) return null;
+  if (t instanceof Pipe) return t;
+  if (typeof PipeToGround !== 'undefined' && t instanceof PipeToGround) {
+    const ix = gx - DX[side], iy = gy - DY[side];
+    return (t.x - DX[t.dir] === ix && t.y - DY[t.dir] === iy) ? t : null;
+  }
+  return null;
+}
 // ===== 管道：输送流体，相邻互连均压 =====
 class Pipe extends Entity {
   constructor(type, x, y) {
@@ -31,7 +61,10 @@ class Pipe extends Entity {
         if (budget <= 0) break;
         const t = entAt(this.x + dx, this.y + dy);
         if (!t || t === this) continue;
-        if (t instanceof Pipe) {
+        // 普通管道 ↔ 普通管道 / 地下管道（管口朝本管）均压互通
+        // side：邻居 (dx,dy) 相对本管的方向（本管在反方向）
+        const sideNb = (dx === 1 ? 0 : dx === -1 ? 2 : (dy === 1 ? 1 : 3));
+        if (pipeConnAt(this.x + dx, this.y + dy, sideNb)) {
           // 防止流体混合：仅当目标管为空或只含同种流体 k 时，才允许流动
           const tOther = t.total() - (t.fluid[k] || 0);
           const theirs = t.fluid[k] || 0;

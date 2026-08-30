@@ -45,7 +45,8 @@ class Pump extends Entity {
       else if (this.dir === 2) { cx = this.x - 1; cy = this.y; }       // 西（左）
       else { cx = this.x; cy = this.y - 1; }                            // 北（上）
       const t = entAt(cx, cy);
-      if (t instanceof Pipe) {
+      // 抽水机出水可排入普通管道或地下管道（管口朝抽水机）
+      if (pipeConnAt(cx, cy, this.dir)) {
         if (!t.giveItem('water')) break;
       } else if (t instanceof Boiler) {
         if (!t.acceptsPumpFeed(cx, cy, this.dir) || !t.giveItem('water')) break;

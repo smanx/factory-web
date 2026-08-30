@@ -33,7 +33,7 @@ class SteamEngine extends Entity {
     const pS = rotCell(this, this.def.w >> 1, this.def.h);
     forEachNeighborEnt(this, n => {
       const endPort = covers(n, pN.x, pN.y) || covers(n, pS.x, pS.y);
-      if (n instanceof Pipe) {
+      if (pipeConnAt(n.x, n.y, sideFromEntity(this, n))) {
         if (!endPort) return;   // 只经两端汽口交换
         if (this.steamBuf < ENGINE_STEAM_CAP - 0.01 && (n.fluid['steam'] || 0) >= 1) {
           n.takeItemOf('steam'); this.steamBuf++;

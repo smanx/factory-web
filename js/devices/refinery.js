@@ -95,7 +95,8 @@ class Refinery extends Entity {
       const k = fluidIns[idx];
       if (!(rec.inp[k] > 0)) continue;
       const n = neighborOnSideCell(this, inSide, cell);
-      if (!(n instanceof Pipe)) continue;
+      // 普通管道与地下管道（管口朝本设备）均可吸入流体原料
+      if (!pipeConnAt(n.x, n.y, sideFromEntity(this, n))) continue;
       if (!(n.fluid[k] > 0)) continue;
       // 只按原料缓冲上限吸入流体原料：产物不做计数（煤液化等配方产物即原料）
       if ((this.inp[k] || 0) < REFINERY_BUF_CAP && n.takeItemOf(k)) this.inp[k] = (this.inp[k] || 0) + 1;
@@ -113,7 +114,8 @@ class Refinery extends Entity {
       if (!(this.outp[k] > 0)) continue;
       const t = neighborOnSideCell(this, outSide, cell);
       if (!t || t === this) continue;
-      if ((t instanceof Pipe || t instanceof Chest) && !(t instanceof Splitter) && t.giveItem(k)) {
+      // 流体产物排入普通管道或地下管道（管口朝本设备）；箱子仅用于兼容旧存档玩法
+      if ((pipeConnAt(t.x, t.y, sideFromEntity(this, t)) || t instanceof Chest) && !(t instanceof Splitter) && t.giveItem(k)) {
         this.outp[k]--;
         if (this.outp[k] <= 0) delete this.outp[k];
       }

@@ -920,7 +920,7 @@ class SteamTurbine extends Entity {
       const topPort = covers(n, pN.x, pN.y);
       const bottomPort = covers(n, pS.x, pS.y);
       const port = topPort || bottomPort;
-      if (n instanceof Pipe) {
+      if (pipeConnAt(n.x, n.y, sideFromEntity(this, n))) {
         if (!port) return;
         if (this.steamBuf < TURBINE_STEAM_CAP - 0.01 && (n.fluid['steam'] || 0) >= 1) {
           n.takeItemOf('steam'); this.steamBuf++;
@@ -1613,7 +1613,7 @@ class HeatExchanger extends Entity {
       const wPort = covers(n, pWL.x, pWL.y) || covers(n, pWR.x, pWR.y);
       // 出汽口：上边中间（接蒸汽管道，送汽轮机/其他热交换器）
       const sPort = covers(n, pS.x, pS.y);
-      if (n instanceof Pipe) {
+      if (pipeConnAt(n.x, n.y, sideFromEntity(this, n))) {
         if (wPort) {
           const pw = n.fluid['water'] || 0;
           if (pw >= 1 && this.water < WATER_CAP - 0.01) { n.takeItemOf('water'); this.water++; }

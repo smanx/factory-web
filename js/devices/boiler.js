@@ -92,7 +92,8 @@ class Boiler extends Entity {
             n.water--; this.water = Math.min(WATER_CAP, this.water + 1);
           }
         }
-      } else if (n instanceof Pipe) {
+      } else if (pipeConnAt(n.x, n.y, sideFromEntity(this, n))) {
+        // 普通管道 / 地下管道（管口朝锅炉）：两端水口与出汽口均按管道协议互通
         if (wPort) {
           const pw = n.fluid['water'] || 0;
           if (pw >= this.water + 1 && this.water < WATER_CAP - 0.01) {

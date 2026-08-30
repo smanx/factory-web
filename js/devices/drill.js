@@ -155,6 +155,10 @@ class Drill extends Entity {
         if (!t) continue;
         if (t instanceof Belt && !(t instanceof Splitter)) {
           if (t.acceptItem(this.bufItem, this.dir)) { this.buf--; sent = true; break; }
+        } else if (typeof PipeToGround !== 'undefined' && t instanceof PipeToGround) {
+          // 地下管道：仅当矿机/油井位于其管口（dir 反向）侧才可把流体排入
+          const mx = t.x - DX[t.dir], my = t.y - DY[t.dir];
+          if ((mx === fx && my === fy) && t.giveItem(this.bufItem)) { this.buf--; sent = true; break; }
         } else if (!(t instanceof Underground) && !(t instanceof Inserter) && !(t instanceof Splitter) && !(t instanceof Drill) && t.giveItem(this.bufItem)) {
           this.buf--; sent = true; break;
         }

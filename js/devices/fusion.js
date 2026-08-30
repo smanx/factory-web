@@ -62,7 +62,7 @@ class FusionReactor extends Entity {
     if (this.coolantBuf >= FUSION_REACTOR_FLUID_USAGE * 2 + 1) return;  // 冷却剂已足，稍后再取
     forEachNeighborEnt(this, n => {
       if (this.coolantBuf >= FUSION_REACTOR_FLUID_USAGE * 2 + 1) return;
-      if (!(n instanceof Pipe)) return;
+      if (!pipeConnAt(n.x, n.y, sideFromEntity(this, n))) return;
       if ((n.fluid['fluoroketone-cold'] || 0) >= 1) n.takeItemOf('fluoroketone-cold'), this.coolantBuf++;
     });
   }
@@ -71,7 +71,7 @@ class FusionReactor extends Entity {
     if (this.plasmaBuf < 1) return;
     forEachNeighborEnt(this, n => {
       if (this.plasmaBuf < 1) return;
-      if (!(n instanceof Pipe)) return;
+      if (!pipeConnAt(n.x, n.y, sideFromEntity(this, n))) return;
       if (n.total() < PIPE_CAP && n.giveItem('fusion-plasma')) this.plasmaBuf--;
     });
   }
@@ -143,7 +143,7 @@ class FusionGenerator extends Entity {
     if (this.temperature() >= HEAT_MAX_TEMP) return;  // 热量已满，不再吸热
     forEachNeighborEnt(this, n => {
       if (n._dead || this.temperature() >= HEAT_MAX_TEMP) return;
-      if (!(n instanceof Pipe)) return;
+      if (!pipeConnAt(n.x, n.y, sideFromEntity(this, n))) return;
       if ((n.fluid['fusion-plasma'] || 0) >= 1) {
         n.takeItemOf('fusion-plasma');
         // 每 1 单位等离子体折算 1MJ 热量（相对刻度，对齐聚变热功率 200MW→2000 单位/s 的换算）

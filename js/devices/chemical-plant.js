@@ -93,7 +93,7 @@ class ChemicalPlant extends Entity {
       const k = fluidInps[fluidIdx];
       if (!this.needsFluid(k)) return;
       const n = neighborOnSideCell(this, inSide, cell);
-      if (!(n instanceof Pipe)) return;
+      if (!pipeConnAt(n.x, n.y, sideFromEntity(this, n))) return;
       if (!(n.fluid[k] > 0)) return;
       // 只按原料缓冲上限吸入流体原料：产物不做计数（自循环配方产物即原料）
       if ((this.inp[k] || 0) < 50 && n.takeItemOf(k)) this.inp[k] = (this.inp[k] || 0) + 1;
@@ -103,7 +103,7 @@ class ChemicalPlant extends Entity {
     // 排出：流体产物仅从输出侧(北)的两个输出格子排入管道
     for (const cell of CHEM_OUTPUT_CELLS) {
       const n = neighborOnSideCell(this, outSide, cell);
-      if (!(n instanceof Pipe)) continue;
+      if (!pipeConnAt(n.x, n.y, sideFromEntity(this, n))) continue;
       for (const k of Object.keys(this.outp)) {
         if (!(this.outp[k] > 0) || FLUIDS.indexOf(k) < 0) continue;
         if (n.total() < PIPE_CAP && n.giveItem(k)) {

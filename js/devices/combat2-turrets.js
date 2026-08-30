@@ -186,7 +186,7 @@ class FlamethrowerTurret extends CircuitNode {
   fluidPort() {
     // 底部(南)一格接轻油（对齐《异星工厂》：火焰炮塔以轻油为燃料）
     const n = neighborOnSideCell(this, (1 + (this.dir | 0)) % 4, 0);
-    if (n instanceof Pipe && n.fluid['light-oil'] > 0 && (this.fluid['light-oil'] || 0) < FT_FLUID_CAP && n.takeItemOf('light-oil')) {
+    if (pipeConnAt(n.x, n.y, sideFromEntity(this, n)) && n.fluid['light-oil'] > 0 && (this.fluid['light-oil'] || 0) < FT_FLUID_CAP && n.takeItemOf('light-oil')) {
       this.fluid['light-oil'] = (this.fluid['light-oil'] || 0) + 1;
     }
   }

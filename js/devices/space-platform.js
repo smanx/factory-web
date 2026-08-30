@@ -36,7 +36,7 @@ class Thruster extends Entity {
     const pN = rotCell(this, this.def.w >> 1, -1);
     const pS = rotCell(this, this.def.w >> 1, this.def.h);
     forEachNeighborEnt(this, n => {
-      if (!(n instanceof Pipe)) return;
+      if (!pipeConnAt(n.x, n.y, sideFromEntity(this, n))) return;
       if (this.fuelBuf < THRUSTER_FUEL_BUF && (n.fluid['thruster-fuel'] || 0) >= 1 && covers(n, pN.x, pN.y)) {
         n.takeItemOf('thruster-fuel'); this.fuelBuf++;
       }

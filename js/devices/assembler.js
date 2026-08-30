@@ -53,8 +53,8 @@ class Assembler extends Entity {
     if (!fr) return;
     const pc = this.portCell();
     forEachNeighborEnt(this, n => {
-      if (!(n instanceof Pipe)) return;
-      // 只有流体口外侧那一格的管道才能与本机互通
+      // 只有流体口外侧那一格的管道/地下管道（管口朝本机）才能与本机互通
+      if (!pipeConnAt(n.x, n.y, sideFromEntity(this, n))) return;
       if (n.x !== pc[0] || n.y !== pc[1]) return;
       // 只按原料缓冲上限吸入流体原料：产物不做计数（自循环配方产物即原料）
       for (const k of fr.fin)
