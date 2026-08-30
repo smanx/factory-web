@@ -301,6 +301,95 @@ function _spaceFlask(x, r, s, col, drawInner) {
   x.fillRect(-r * 0.32, -r * 0.86, r * 0.64, r * 0.08);
 }
 
+
+// 共享工具：小行星碎块（四种星块共用岩块骨架），variant 决定矿脉颜色与纹理
+function _asteroidChunk(x, r, s, col, variant) {
+  // 岩块主体（不规则多边形）
+  const g = x.createLinearGradient(-r * 0.7, -r * 0.8, r * 0.7, r * 0.8);
+  g.addColorStop(0, lightenColor(col, 0.38));
+  g.addColorStop(0.55, col);
+  g.addColorStop(1, darkenColor(col, 0.45));
+  x.fillStyle = g;
+  x.beginPath();
+  x.moveTo(-r * 0.74, -r * 0.18);
+  x.lineTo(-r * 0.42, -r * 0.62);
+  x.lineTo(r * 0.08, -r * 0.8);
+  x.lineTo(r * 0.6, -r * 0.5);
+  x.lineTo(r * 0.78, r * 0.02);
+  x.lineTo(r * 0.46, r * 0.6);
+  x.lineTo(-r * 0.12, r * 0.78);
+  x.lineTo(-r * 0.62, r * 0.42);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(18,16,20,.65)';
+  x.lineWidth = Math.max(1, s * 0.05);
+  x.lineJoin = 'round';
+  x.stroke();
+  // 陨石坑（两个凹坑）
+  x.fillStyle = 'rgba(0,0,0,.28)';
+  x.beginPath(); x.ellipse(-r * 0.28, -r * 0.3, r * 0.16, r * 0.1, -0.4, 0, 7); x.fill();
+  x.beginPath(); x.ellipse(r * 0.3, r * 0.22, r * 0.11, r * 0.08, 0.3, 0, 7); x.fill();
+  // 矿脉（variant 决定颜色与形态）
+  const vein = {
+    metal:      { c1: '#e8f0f8', c2: '#9ab2c8', glow: null },
+    carbon:     { c1: '#3a3632', c2: '#181614', glow: null },
+    oxide:      { c1: '#bfe8ff', c2: '#5a9ac8', glow: null },
+    promethium: { c1: '#c8b0ff', c2: '#6a4ac8', glow: 'rgba(150,110,255,.5)' }
+  }[variant] || { c1: '#e8f0f8', c2: '#9ab2c8' };
+  if (vein.glow) {
+    // 钷素：紫色辉光
+    const gl = x.createRadialGradient(0, 0, r * 0.1, 0, 0, r * 0.9);
+    gl.addColorStop(0, vein.glow);
+    gl.addColorStop(1, 'rgba(150,110,255,0)');
+    x.fillStyle = gl;
+    x.beginPath(); x.arc(0, 0, r * 0.9, 0, 7); x.fill();
+  }
+  // 两条贯穿矿脉
+  x.strokeStyle = vein.c1;
+  x.lineWidth = Math.max(1.4, s * 0.05);
+  x.lineCap = 'round';
+  x.beginPath();
+  x.moveTo(-r * 0.5, -r * 0.05);
+  x.quadraticCurveTo(-r * 0.1, -r * 0.25, r * 0.45, -r * 0.1);
+  x.stroke();
+  x.beginPath();
+  x.moveTo(-r * 0.3, r * 0.4);
+  x.quadraticCurveTo(r * 0.05, r * 0.1, r * 0.4, r * 0.3);
+  x.stroke();
+  // 矿脉内芯（更亮细线）
+  x.strokeStyle = vein.c2;
+  x.lineWidth = Math.max(0.7, s * 0.025);
+  x.beginPath();
+  x.moveTo(-r * 0.5, -r * 0.05);
+  x.quadraticCurveTo(-r * 0.1, -r * 0.25, r * 0.45, -r * 0.1);
+  x.stroke();
+  // 金属星块：额外露出银亮矿斑
+  if (variant === 'metal') {
+    const mg = x.createLinearGradient(r * 0.1, -r * 0.5, r * 0.5, -r * 0.15);
+    mg.addColorStop(0, '#f4f8fc');
+    mg.addColorStop(1, '#8fa4b8');
+    x.fillStyle = mg;
+    x.beginPath();
+    x.moveTo(r * 0.14, -r * 0.52);
+    x.lineTo(r * 0.46, -r * 0.4);
+    x.lineTo(r * 0.36, -r * 0.14);
+    x.lineTo(r * 0.06, -r * 0.26);
+    x.closePath();
+    x.fill();
+    x.strokeStyle = 'rgba(30,36,44,.5)';
+    x.lineWidth = Math.max(0.7, s * 0.03);
+    x.stroke();
+  }
+  // 岩块顶缘高光
+  x.strokeStyle = 'rgba(255,255,255,.4)';
+  x.lineWidth = Math.max(0.8, s * 0.03);
+  x.beginPath();
+  x.moveTo(-r * 0.42, -r * 0.62);
+  x.lineTo(r * 0.08, -r * 0.8);
+  x.lineTo(r * 0.6, -r * 0.5);
+  x.stroke();
+}
+
 const ITEM_CUSTOM_ICONS = {
 
   // 石砖：错缝双排砖块，立体渐变 + 砖缝描边
@@ -9193,5 +9282,931 @@ const ITEM_CUSTOM_ICONS = {
 // 桶装轻油：钢桶 + 琥珀色油带
 'light-oil-barrel': (x, r, s, col) => {
   _barrelShell(x, r, s, '#a8752c');
+},
+// ===== 批次：桶装流体收尾（5）+ 太空（18）+ 武器（7） =====
+
+// 桶装石油气：钢桶 + 金黄色气带 + 上浮气泡
+'petroleum-gas-barrel': (x, r, s, col) => {
+  _barrelShell(x, r, s, col);
+  // 气泡（暗示气态）
+  x.strokeStyle = 'rgba(255,255,255,.7)';
+  x.lineWidth = Math.max(0.8, s * 0.03);
+  for (const [px, py, pr] of [[-0.22, -0.32, 0.06], [0.2, -0.44, 0.045], [0.05, -0.24, 0.035]]) {
+    x.beginPath(); x.arc(px * r, py * r, pr * r, 0, 7); x.stroke();
+  }
+},
+
+// 桶装润滑油：钢桶 + 亮黄色油带 + 油滴
+'lubricant-barrel': (x, r, s, col) => {
+  _barrelShell(x, r, s, col);
+},
+
+// 桶装硫酸：钢桶 + 酸性黄绿液带 + 腐蚀气泡
+'sulfuric-acid-barrel': (x, r, s, col) => {
+  _barrelShell(x, r, s, col);
+  // 腐蚀气泡（酸液特征）
+  x.fillStyle = 'rgba(255,255,255,.55)';
+  for (const [px, py, pr] of [[-0.2, -0.34, 0.05], [0.22, -0.42, 0.04], [0, -0.26, 0.03]]) {
+    x.beginPath(); x.arc(px * r, py * r, pr * r, 0, 7); x.fill();
+  }
+  // 危险警示小滴
+  x.fillStyle = '#3a3a10';
+  x.beginPath();
+  x.moveTo(r * 0.34, r * 0.62);
+  x.quadraticCurveTo(r * 0.41, r * 0.5, r * 0.34, r * 0.42);
+  x.quadraticCurveTo(r * 0.27, r * 0.5, r * 0.34, r * 0.62);
+  x.fill();
+},
+
+// 桶装氟酮（冷）：钢桶 + 冰蓝液带 + 雪花标记
+'fluoroketone-cold-barrel': (x, r, s, col) => {
+  _barrelShell(x, r, s, col);
+  // 迷你雪花（六轴）
+  x.save();
+  x.translate(r * 0.3, -r * 0.4);
+  x.strokeStyle = 'rgba(255,255,255,.95)';
+  x.lineWidth = Math.max(0.9, s * 0.035);
+  x.lineCap = 'round';
+  for (let i = 0; i < 3; i++) {
+    x.rotate(Math.PI / 3);
+    x.beginPath(); x.moveTo(0, -r * 0.12); x.lineTo(0, r * 0.12); x.stroke();
+  }
+  x.restore();
+},
+
+// 桶装氟酮（热）：钢桶 + 橙红液带 + 热浪波纹
+'fluoroketone-hot-barrel': (x, r, s, col) => {
+  _barrelShell(x, r, s, col);
+  // 热浪波纹（三条竖向波浪）
+  x.strokeStyle = 'rgba(255,120,40,.9)';
+  x.lineWidth = Math.max(0.9, s * 0.035);
+  x.lineCap = 'round';
+  for (let i = 0; i < 3; i++) {
+    const px = r * 0.18 + i * r * 0.14;
+    x.beginPath();
+    x.moveTo(px, -r * 0.52);
+    x.quadraticCurveTo(px - r * 0.07, -r * 0.44, px, -r * 0.36);
+    x.stroke();
+  }
+},
+
+// 火箭部件：灰白圆形部件环 + 中央舱段截面 + 铆钉
+'rocket-part': (x, r, s, col) => {
+  // 环形外壳（火箭筒段截面）
+  const g = x.createLinearGradient(-r * 0.7, -r * 0.7, r * 0.7, r * 0.7);
+  g.addColorStop(0, lightenColor(col, 0.5));
+  g.addColorStop(0.55, col);
+  g.addColorStop(1, darkenColor(col, 0.38));
+  x.fillStyle = g;
+  x.beginPath(); x.arc(0, 0, r * 0.78, 0, 7); x.fill();
+  x.strokeStyle = 'rgba(30,34,44,.6)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 中孔
+  x.fillStyle = 'rgba(40,46,58,.9)';
+  x.beginPath(); x.arc(0, 0, r * 0.34, 0, 7); x.fill();
+  // 内壁高光
+  x.fillStyle = 'rgba(255,255,255,.4)';
+  x.beginPath(); x.ellipse(-r * 0.3, -r * 0.3, r * 0.14, r * 0.3, -0.8, 0, 7); x.fill();
+  // 四向铆钉
+  x.fillStyle = '#e8ecf2';
+  for (let i = 0; i < 4; i++) {
+    const a = i * Math.PI / 2 + Math.PI / 4;
+    x.beginPath(); x.arc(Math.cos(a) * r * 0.56, Math.sin(a) * r * 0.56, r * 0.07, 0, 7); x.fill();
+  }
+  // 拼装缺口（右上楔形，示意待拼装）
+  x.fillStyle = '#6a7484';
+  x.beginPath();
+  x.moveTo(r * 0.78, 0);
+  x.arc(0, 0, r * 0.78, -0.35, 0.15);
+  x.closePath();
+  x.fill();
+},
+
+// 火箭：完整火箭本体（锥头 + 舱身 + 尾翼 + 喷口）
+'rocket-body': (x, r, s, col) => {
+  x.save();
+  x.rotate(-0.12); // 微倾斜更动感
+  // 尾翼（左右）
+  x.fillStyle = darkenColor(col, 0.42);
+  x.beginPath();
+  x.moveTo(-r * 0.34, r * 0.28); x.lineTo(-r * 0.68, r * 0.82); x.lineTo(-r * 0.3, r * 0.62);
+  x.closePath(); x.fill();
+  x.beginPath();
+  x.moveTo(r * 0.34, r * 0.28); x.lineTo(r * 0.68, r * 0.82); x.lineTo(r * 0.3, r * 0.62);
+  x.closePath(); x.fill();
+  // 舱身
+  const g = x.createLinearGradient(-r * 0.3, 0, r * 0.3, 0);
+  g.addColorStop(0, darkenColor(col, 0.22));
+  g.addColorStop(0.4, lightenColor(col, 0.42));
+  g.addColorStop(1, darkenColor(col, 0.35));
+  x.fillStyle = g;
+  x.beginPath();
+  x.moveTo(-r * 0.3, r * 0.66);
+  x.lineTo(-r * 0.3, -r * 0.34);
+  x.quadraticCurveTo(0, -r * 0.92, r * 0.3, -r * 0.34);
+  x.lineTo(r * 0.3, r * 0.66);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(30,34,44,.55)';
+  x.lineWidth = Math.max(1, s * 0.04);
+  x.stroke();
+  // 舷窗
+  x.fillStyle = '#3a7ab8';
+  x.beginPath(); x.arc(0, -r * 0.05, r * 0.16, 0, 7); x.fill();
+  x.strokeStyle = 'rgba(255,255,255,.7)';
+  x.lineWidth = Math.max(1, s * 0.03);
+  x.stroke();
+  // 环箍
+  x.strokeStyle = 'rgba(60,66,78,.5)';
+  x.lineWidth = Math.max(1, s * 0.035);
+  x.beginPath(); x.moveTo(-r * 0.28, r * 0.3); x.lineTo(r * 0.28, r * 0.3); x.stroke();
+  // 喷口
+  x.fillStyle = '#5a4632';
+  x.beginPath();
+  x.moveTo(-r * 0.2, r * 0.66); x.lineTo(-r * 0.14, r * 0.86); x.lineTo(r * 0.14, r * 0.86); x.lineTo(r * 0.2, r * 0.66);
+  x.closePath(); x.fill();
+  x.restore();
+},
+
+// 卫星：立方星体 + 两侧太阳能板翼 + 顶部天线
+'satellite': (x, r, s, col) => {
+  // 太阳能板翼（左右，深蓝电池板）
+  const pg = x.createLinearGradient(0, -r * 0.3, 0, r * 0.3);
+  pg.addColorStop(0, '#3a5aa0');
+  pg.addColorStop(1, '#25407c');
+  x.fillStyle = pg;
+  rrPath(x, -r * 0.96, -r * 0.22, r * 0.62, r * 0.44, r * 0.05);
+  x.fill();
+  rrPath(x, r * 0.34, -r * 0.22, r * 0.62, r * 0.44, r * 0.05);
+  x.fill();
+  x.strokeStyle = 'rgba(180,210,255,.6)';
+  x.lineWidth = Math.max(0.6, s * 0.022);
+  // 板上电池网格
+  for (const bx of [-r * 0.96, r * 0.34]) {
+    for (let i = 1; i < 3; i++) {
+      x.beginPath(); x.moveTo(bx + i * r * 0.206, -r * 0.22); x.lineTo(bx + i * r * 0.206, r * 0.22); x.stroke();
+    }
+    x.beginPath(); x.moveTo(bx, 0); x.lineTo(bx + r * 0.62, 0); x.stroke();
+  }
+  // 板支柱
+  x.strokeStyle = '#8a92a0';
+  x.lineWidth = Math.max(1.2, s * 0.04);
+  x.beginPath(); x.moveTo(-r * 0.34, 0); x.lineTo(-r * 0.5, 0); x.stroke();
+  x.beginPath(); x.moveTo(r * 0.34, 0); x.lineTo(r * 0.5, 0); x.stroke();
+  // 星体（立方体感）
+  const g = x.createLinearGradient(-r * 0.3, -r * 0.3, r * 0.3, r * 0.3);
+  g.addColorStop(0, lightenColor(col, 0.42));
+  g.addColorStop(0.6, col);
+  g.addColorStop(1, darkenColor(col, 0.32));
+  x.fillStyle = g;
+  rrPath(x, -r * 0.3, -r * 0.34, r * 0.6, r * 0.68, r * 0.1);
+  x.fill();
+  x.strokeStyle = 'rgba(30,34,44,.6)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 天线（顶部锅形）
+  x.fillStyle = '#e8ecf2';
+  x.beginPath(); x.ellipse(0, -r * 0.46, r * 0.2, r * 0.12, 0, 0, 7); x.fill();
+  x.strokeStyle = '#c8ced8';
+  x.lineWidth = Math.max(0.8, s * 0.03);
+  x.beginPath(); x.moveTo(0, -r * 0.5); x.lineTo(0, -r * 0.72); x.stroke();
+  x.fillStyle = '#e05a4a';
+  x.beginPath(); x.arc(0, -r * 0.76, r * 0.05, 0, 7); x.fill();
+  // 星体舷窗灯
+  x.fillStyle = '#4ac8e0';
+  x.beginPath(); x.arc(0, r * 0.02, r * 0.1, 0, 7); x.fill();
+},
+
+// 火箭发射井：混凝土井口环 + 内部竖直火箭 + 支撑塔架
+'rocket-silo': (x, r, s, col) => {
+  // 井口外环（混凝土）
+  const og = x.createLinearGradient(-r * 0.9, -r * 0.9, r * 0.9, r * 0.9);
+  og.addColorStop(0, lightenColor(col, 0.4));
+  og.addColorStop(1, darkenColor(col, 0.42));
+  x.fillStyle = og;
+  x.beginPath(); x.arc(0, 0, r * 0.9, 0, 7); x.fill();
+  x.strokeStyle = 'rgba(25,22,18,.6)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 井内（深色竖井）
+  x.fillStyle = '#181a20';
+  x.beginPath(); x.arc(0, 0, r * 0.62, 0, 7); x.fill();
+  // 竖直小火箭（井内）
+  x.save();
+  x.scale(0.72, 0.72);
+  const bg = x.createLinearGradient(-r * 0.2, 0, r * 0.2, 0);
+  bg.addColorStop(0, '#a8b0bc');
+  bg.addColorStop(0.45, '#eef2f8');
+  bg.addColorStop(1, '#8a92a0');
+  x.fillStyle = bg;
+  x.beginPath();
+  x.moveTo(0, -r * 0.72);
+  x.quadraticCurveTo(r * 0.18, -r * 0.3, r * 0.16, r * 0.36);
+  x.lineTo(-r * 0.16, r * 0.36);
+  x.quadraticCurveTo(-r * 0.18, -r * 0.3, 0, -r * 0.72);
+  x.closePath();
+  x.fill();
+  // 尾焰（发射预兆）
+  const fg = x.createLinearGradient(0, r * 0.36, 0, r * 0.78);
+  fg.addColorStop(0, 'rgba(255,220,90,.95)');
+  fg.addColorStop(1, 'rgba(255,110,30,0)');
+  x.fillStyle = fg;
+  x.beginPath();
+  x.moveTo(-r * 0.1, r * 0.38); x.lineTo(0, r * 0.78); x.lineTo(r * 0.1, r * 0.38);
+  x.closePath(); x.fill();
+  x.restore();
+  // 井口闸门轨道（两侧斜杠）
+  x.strokeStyle = 'rgba(230,225,210,.5)';
+  x.lineWidth = Math.max(1.4, s * 0.05);
+  for (const sgn of [-1, 1]) {
+    x.beginPath();
+    x.moveTo(sgn * r * 0.78, -r * 0.5);
+    x.lineTo(sgn * r * 0.62, -r * 0.66);
+    x.stroke();
+  }
+},
+
+// 物流接驳站：紫色大型停机坪 + 着陆圈标记 + 雷达天线
+'cargo-landing-pad': (x, r, s, col) => {
+  // 坪体（俯视平台）
+  const g = x.createLinearGradient(-r * 0.9, -r * 0.9, r * 0.9, r * 0.9);
+  g.addColorStop(0, lightenColor(col, 0.4));
+  g.addColorStop(1, darkenColor(col, 0.45));
+  x.fillStyle = g;
+  rrPath(x, -r * 0.9, -r * 0.9, r * 1.8, r * 1.8, r * 0.18);
+  x.fill();
+  x.strokeStyle = 'rgba(22,16,34,.65)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 着陆圈（中心圆环 + 四角标）
+  x.strokeStyle = 'rgba(255,235,120,.85)';
+  x.lineWidth = Math.max(1.4, s * 0.05);
+  x.beginPath(); x.arc(0, 0, r * 0.44, 0, 7); x.stroke();
+  x.lineWidth = Math.max(1, s * 0.04);
+  for (let i = 0; i < 4; i++) {
+    const a = i * Math.PI / 2 + Math.PI / 4;
+    const cx = Math.cos(a) * r * 0.62, cy = Math.sin(a) * r * 0.62;
+    x.beginPath();
+    x.moveTo(cx - r * 0.08, cy); x.lineTo(cx + r * 0.08, cy);
+    x.moveTo(cx, cy - r * 0.08); x.lineTo(cx, cy + r * 0.08);
+    x.stroke();
+  }
+  // 角落雷达天线
+  x.fillStyle = '#c8ced8';
+  x.beginPath(); x.arc(-r * 0.66, -r * 0.66, r * 0.1, 0, 7); x.fill();
+  x.strokeStyle = '#c8ced8';
+  x.lineWidth = Math.max(0.8, s * 0.03);
+  x.beginPath(); x.moveTo(-r * 0.66, -r * 0.66); x.lineTo(-r * 0.5, -r * 0.82); x.stroke();
+  x.fillStyle = '#e05a4a';
+  x.beginPath(); x.arc(-r * 0.5, -r * 0.84, r * 0.045, 0, 7); x.fill();
+},
+
+// 物流扩展舱：紫色舱体 + 十字加强筋 + 货舱口
+'cargo-bay': (x, r, s, col) => {
+  const g = x.createLinearGradient(-r * 0.8, -r * 0.8, r * 0.8, r * 0.8);
+  g.addColorStop(0, lightenColor(col, 0.42));
+  g.addColorStop(0.55, col);
+  g.addColorStop(1, darkenColor(col, 0.45));
+  x.fillStyle = g;
+  rrPath(x, -r * 0.82, -r * 0.82, r * 1.64, r * 1.64, r * 0.16);
+  x.fill();
+  x.strokeStyle = 'rgba(24,18,40,.65)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 十字加强筋
+  x.strokeStyle = 'rgba(255,255,255,.28)';
+  x.lineWidth = Math.max(1.2, s * 0.05);
+  x.beginPath();
+  x.moveTo(0, -r * 0.82); x.lineTo(0, r * 0.82);
+  x.moveTo(-r * 0.82, 0); x.lineTo(r * 0.82, 0);
+  x.stroke();
+  // 中央货舱口（方形舱门 + 四角螺栓）
+  x.fillStyle = '#3a3054';
+  rrPath(x, -r * 0.34, -r * 0.34, r * 0.68, r * 0.68, r * 0.08);
+  x.fill();
+  x.strokeStyle = 'rgba(220,210,255,.55)';
+  x.lineWidth = Math.max(0.8, s * 0.03);
+  x.stroke();
+  x.fillStyle = 'rgba(230,225,250,.8)';
+  for (const [px, py] of [[-0.26, -0.26], [0.26, -0.26], [-0.26, 0.26], [0.26, 0.26]]) {
+    x.beginPath(); x.arc(px * r, py * r, r * 0.045, 0, 7); x.fill();
+  }
+},
+
+// 物流卸载舱：紫红舱体 + 向下卸货箭头 + 传送带口
+'landing-pad-unloading-bay': (x, r, s, col) => {
+  const g = x.createLinearGradient(-r * 0.8, -r * 0.8, r * 0.8, r * 0.8);
+  g.addColorStop(0, lightenColor(col, 0.42));
+  g.addColorStop(0.55, col);
+  g.addColorStop(1, darkenColor(col, 0.45));
+  x.fillStyle = g;
+  rrPath(x, -r * 0.82, -r * 0.82, r * 1.64, r * 1.64, r * 0.16);
+  x.fill();
+  x.strokeStyle = 'rgba(40,16,30,.65)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 卸货口（底部横槽）
+  x.fillStyle = '#2a1420';
+  rrPath(x, -r * 0.56, r * 0.42, r * 1.12, r * 0.26, r * 0.06);
+  x.fill();
+  // 向下卸货箭头
+  x.fillStyle = 'rgba(255,235,150,.95)';
+  x.beginPath();
+  x.moveTo(-r * 0.2, -r * 0.5);
+  x.lineTo(r * 0.2, -r * 0.5);
+  x.lineTo(r * 0.2, -r * 0.1);
+  x.lineTo(r * 0.4, -r * 0.1);
+  x.lineTo(0, r * 0.32);
+  x.lineTo(-r * 0.4, -r * 0.1);
+  x.lineTo(-r * 0.2, -r * 0.1);
+  x.closePath();
+  x.fill();
+},
+
+// 推进器燃料：红色流体罐 + 火焰图标 + 危险色带
+'thruster-fuel': (x, r, s, col) => {
+  // 流体滴形（大液滴）
+  const g = x.createLinearGradient(-r * 0.5, -r * 0.7, r * 0.5, r * 0.7);
+  g.addColorStop(0, lightenColor(col, 0.45));
+  g.addColorStop(0.55, col);
+  g.addColorStop(1, darkenColor(col, 0.4));
+  x.fillStyle = g;
+  x.beginPath();
+  x.moveTo(0, -r * 0.85);
+  x.quadraticCurveTo(r * 0.62, -r * 0.1, r * 0.62, r * 0.3);
+  x.arc(0, r * 0.3, r * 0.62, 0, Math.PI);
+  x.quadraticCurveTo(-r * 0.62, -r * 0.1, 0, -r * 0.85);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(60,8,4,.6)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 内部火焰
+  x.fillStyle = '#ffd84a';
+  x.beginPath();
+  x.moveTo(0, r * 0.62);
+  x.quadraticCurveTo(-r * 0.3, r * 0.34, -r * 0.1, r * 0.12);
+  x.quadraticCurveTo(0, r * 0.3, r * 0.1, r * 0.08);
+  x.quadraticCurveTo(r * 0.3, r * 0.32, 0, r * 0.62);
+  x.closePath();
+  x.fill();
+  // 高光
+  x.fillStyle = 'rgba(255,255,255,.35)';
+  x.beginPath(); x.ellipse(-r * 0.24, r * 0.05, r * 0.1, r * 0.3, -0.3, 0, 7); x.fill();
+},
+
+// 推进器氧化剂：蓝色流体罐 + 氧分子双球图标
+'thruster-oxidizer': (x, r, s, col) => {
+  const g = x.createLinearGradient(-r * 0.5, -r * 0.7, r * 0.5, r * 0.7);
+  g.addColorStop(0, lightenColor(col, 0.45));
+  g.addColorStop(0.55, col);
+  g.addColorStop(1, darkenColor(col, 0.4));
+  x.fillStyle = g;
+  x.beginPath();
+  x.moveTo(0, -r * 0.85);
+  x.quadraticCurveTo(r * 0.62, -r * 0.1, r * 0.62, r * 0.3);
+  x.arc(0, r * 0.3, r * 0.62, 0, Math.PI);
+  x.quadraticCurveTo(-r * 0.62, -r * 0.1, 0, -r * 0.85);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(4,30,70,.6)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 氧分子 O2（两交叠圆）
+  x.fillStyle = 'rgba(255,255,255,.9)';
+  x.beginPath(); x.arc(-r * 0.14, r * 0.16, r * 0.17, 0, 7); x.fill();
+  x.fillStyle = 'rgba(190,225,255,.9)';
+  x.beginPath(); x.arc(r * 0.14, r * 0.16, r * 0.17, 0, 7); x.fill();
+  // 高光
+  x.fillStyle = 'rgba(255,255,255,.35)';
+  x.beginPath(); x.ellipse(-r * 0.24, r * 0.02, r * 0.1, r * 0.3, -0.3, 0, 7); x.fill();
+},
+
+// 破碎机：钢制破碎腔 + 入口大口 + 碎屑飞溅
+'crusher': (x, r, s, col) => {
+  // 机体（梯形漏斗）
+  const g = x.createLinearGradient(-r * 0.8, -r * 0.6, r * 0.8, r * 0.8);
+  g.addColorStop(0, lightenColor(col, 0.4));
+  g.addColorStop(0.55, col);
+  g.addColorStop(1, darkenColor(col, 0.45));
+  x.fillStyle = g;
+  x.beginPath();
+  x.moveTo(-r * 0.8, -r * 0.6);
+  x.lineTo(r * 0.8, -r * 0.6);
+  x.lineTo(r * 0.42, r * 0.72);
+  x.lineTo(-r * 0.42, r * 0.72);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(30,26,20,.65)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.lineJoin = 'round';
+  x.stroke();
+  // 入料口（顶部开口）
+  x.fillStyle = '#241f18';
+  rrPath(x, -r * 0.6, -r * 0.56, r * 1.2, r * 0.2, r * 0.05);
+  x.fill();
+  // 齿辊纹（腔体两条斜齿）
+  x.strokeStyle = 'rgba(255,255,255,.35)';
+  x.lineWidth = Math.max(1, s * 0.04);
+  x.beginPath();
+  x.moveTo(-r * 0.3, -r * 0.2); x.lineTo(-r * 0.14, r * 0.5);
+  x.moveTo(r * 0.3, -r * 0.2); x.lineTo(r * 0.14, r * 0.5);
+  x.stroke();
+  // 飞溅碎屑
+  x.fillStyle = '#d8c8a8';
+  for (const [px, py, pr] of [[-0.62, -0.78, 0.06], [0.58, -0.84, 0.05], [0, -0.9, 0.045]]) {
+    x.beginPath(); x.arc(px * r, py * r, pr * r, 0, 7); x.fill();
+  }
+  // 出料口
+  x.fillStyle = '#3a3028';
+  rrPath(x, -r * 0.32, r * 0.66, r * 0.64, r * 0.16, r * 0.04);
+  x.fill();
+},
+
+// 金属星块：不规则岩块 + 露出金属矿脉光泽
+'metallic-asteroid-chunk': (x, r, s, col) => {
+  _asteroidChunk(x, r, s, col, 'metal');
+},
+
+// 碳质星块：暗褐岩块 + 碳黑矿脉纹理
+'carbonic-asteroid-chunk': (x, r, s, col) => {
+  _asteroidChunk(x, r, s, col, 'carbon');
+},
+
+// 氧化星块：蓝灰岩块 + 冰晶氧化斑
+'oxide-asteroid-chunk': (x, r, s, col) => {
+  _asteroidChunk(x, r, s, col, 'oxide');
+},
+
+// 钷素星块：深紫岩块 + 神秘紫色辉光矿脉
+'promethium-asteroid-chunk': (x, r, s, col) => {
+  _asteroidChunk(x, r, s, col, 'promethium');
+},
+
+// 太空平台地基：金属六边形地砖 + 铆钉边框
+'space-platform-foundation': (x, r, s, col) => {
+  const g = x.createLinearGradient(-r * 0.8, -r * 0.8, r * 0.8, r * 0.8);
+  g.addColorStop(0, lightenColor(col, 0.4));
+  g.addColorStop(0.55, col);
+  g.addColorStop(1, darkenColor(col, 0.42));
+  x.fillStyle = g;
+  // 六边形
+  x.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = i * Math.PI / 3 - Math.PI / 6;
+    const px = Math.cos(a) * r * 0.86, py = Math.sin(a) * r * 0.86;
+    i === 0 ? x.moveTo(px, py) : x.lineTo(px, py);
+  }
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(20,22,30,.65)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 内六边框走线
+  x.strokeStyle = 'rgba(255,255,255,.3)';
+  x.lineWidth = Math.max(0.8, s * 0.03);
+  x.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = i * Math.PI / 3 - Math.PI / 6;
+    const px = Math.cos(a) * r * 0.62, py = Math.sin(a) * r * 0.62;
+    i === 0 ? x.moveTo(px, py) : x.lineTo(px, py);
+  }
+  x.closePath();
+  x.stroke();
+  // 六角铆钉
+  x.fillStyle = 'rgba(225,232,240,.85)';
+  for (let i = 0; i < 6; i++) {
+    const a = i * Math.PI / 3 - Math.PI / 6;
+    x.beginPath(); x.arc(Math.cos(a) * r * 0.72, Math.sin(a) * r * 0.72, r * 0.055, 0, 7); x.fill();
+  }
+  // 中心网格板
+  x.strokeStyle = 'rgba(0,0,0,.25)';
+  x.lineWidth = Math.max(0.7, s * 0.025);
+  x.beginPath();
+  x.moveTo(-r * 0.3, 0); x.lineTo(r * 0.3, 0);
+  x.moveTo(0, -r * 0.3); x.lineTo(0, r * 0.3);
+  x.stroke();
+},
+
+// 推进器：橙铜色喷管锥体 + 内部等离子喷焰
+'thruster': (x, r, s, col) => {
+  // 喷管（钟形喷嘴）
+  const g = x.createLinearGradient(-r * 0.7, -r * 0.7, r * 0.7, r * 0.4);
+  g.addColorStop(0, lightenColor(col, 0.42));
+  g.addColorStop(0.55, col);
+  g.addColorStop(1, darkenColor(col, 0.45));
+  x.fillStyle = g;
+  x.beginPath();
+  x.moveTo(-r * 0.34, -r * 0.82);
+  x.lineTo(r * 0.34, -r * 0.82);
+  x.quadraticCurveTo(r * 0.8, r * 0.1, r * 0.6, r * 0.52);
+  x.lineTo(-r * 0.6, r * 0.52);
+  x.quadraticCurveTo(-r * 0.8, r * 0.1, -r * 0.34, -r * 0.82);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(40,22,8,.65)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.lineJoin = 'round';
+  x.stroke();
+  // 顶部法兰
+  x.fillStyle = darkenColor(col, 0.3);
+  rrPath(x, -r * 0.44, -r * 0.94, r * 0.88, r * 0.18, r * 0.05);
+  x.fill();
+  // 管身环箍
+  x.strokeStyle = 'rgba(255,255,255,.25)';
+  x.lineWidth = Math.max(0.8, s * 0.03);
+  x.beginPath();
+  x.moveTo(-r * 0.55, -r * 0.1); x.quadraticCurveTo(0, r * 0.04, r * 0.55, -r * 0.1);
+  x.stroke();
+  // 喷口等离子焰
+  const fg = x.createLinearGradient(0, r * 0.5, 0, r * 0.92);
+  fg.addColorStop(0, 'rgba(160,220,255,.95)');
+  fg.addColorStop(0.6, 'rgba(90,150,240,.7)');
+  fg.addColorStop(1, 'rgba(90,150,240,0)');
+  x.fillStyle = fg;
+  x.beginPath();
+  x.moveTo(-r * 0.4, r * 0.52);
+  x.quadraticCurveTo(0, r * 0.7, r * 0.4, r * 0.52);
+  x.quadraticCurveTo(0, r * 0.98, -r * 0.4, r * 0.52);
+  x.closePath();
+  x.fill();
+  // 内口暗缘
+  x.strokeStyle = 'rgba(20,10,4,.5)';
+  x.lineWidth = Math.max(1, s * 0.04);
+  x.beginPath();
+  x.moveTo(-r * 0.6, r * 0.52); x.quadraticCurveTo(0, r * 0.66, r * 0.6, r * 0.52);
+  x.stroke();
+},
+
+// 小行星收集器：碟形收集器 + 磁场弧线 + 捕获星块
+'asteroid-collector': (x, r, s, col) => {
+  // 磁场弧线（上方两条同心弧）
+  x.strokeStyle = 'rgba(140,220,255,.75)';
+  x.lineWidth = Math.max(1.2, s * 0.045);
+  x.beginPath(); x.arc(0, r * 0.3, r * 0.7, Math.PI * 1.15, Math.PI * 1.85); x.stroke();
+  x.strokeStyle = 'rgba(140,220,255,.4)';
+  x.beginPath(); x.arc(0, r * 0.3, r * 0.5, Math.PI * 1.2, Math.PI * 1.8); x.stroke();
+  // 被磁吸的小星块
+  x.fillStyle = '#9a8a76';
+  x.beginPath();
+  x.moveTo(r * 0.12, -r * 0.52); x.lineTo(r * 0.3, -r * 0.4); x.lineTo(r * 0.22, -r * 0.22); x.lineTo(r * 0.04, -r * 0.32);
+  x.closePath(); x.fill();
+  x.strokeStyle = 'rgba(30,26,18,.5)';
+  x.lineWidth = Math.max(0.7, s * 0.03);
+  x.stroke();
+  // 碟形机体
+  const g = x.createLinearGradient(-r * 0.8, -r * 0.2, r * 0.8, r * 0.5);
+  g.addColorStop(0, lightenColor(col, 0.42));
+  g.addColorStop(0.55, col);
+  g.addColorStop(1, darkenColor(col, 0.45));
+  x.fillStyle = g;
+  x.beginPath();
+  x.ellipse(0, r * 0.28, r * 0.82, r * 0.34, 0, Math.PI, 0);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(18,24,38,.65)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 碟面收集口
+  x.fillStyle = '#141a28';
+  x.beginPath(); x.ellipse(0, r * 0.1, r * 0.3, r * 0.12, 0, 0, 7); x.fill();
+  // 碟身边缘灯
+  x.fillStyle = '#4ac8e0';
+  x.beginPath(); x.arc(-r * 0.5, r * 0.34, r * 0.05, 0, 7); x.fill();
+  x.beginPath(); x.arc(r * 0.5, r * 0.34, r * 0.05, 0, 7); x.fill();
+  // 底座
+  x.fillStyle = darkenColor(col, 0.4);
+  rrPath(x, -r * 0.24, r * 0.56, r * 0.48, r * 0.24, r * 0.05);
+  x.fill();
+},
+
+// 空间平台起始包：压缩舱段包 + 捆扎带 + 平台骨架示意
+'space-platform-starter-pack': (x, r, s, col) => {
+  // 包体（横置圆角矩形舱段）
+  const g = x.createLinearGradient(0, -r * 0.6, 0, r * 0.6);
+  g.addColorStop(0, lightenColor(col, 0.42));
+  g.addColorStop(0.55, col);
+  g.addColorStop(1, darkenColor(col, 0.42));
+  x.fillStyle = g;
+  rrPath(x, -r * 0.86, -r * 0.5, r * 1.72, r * 1.0, r * 0.2);
+  x.fill();
+  x.strokeStyle = 'rgba(24,26,36,.65)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.stroke();
+  // 两条竖向捆扎带
+  x.fillStyle = '#c8933a';
+  x.fillRect(-r * 0.4, -r * 0.52, r * 0.14, r * 1.04);
+  x.fillRect(r * 0.26, -r * 0.52, r * 0.14, r * 1.04);
+  x.fillStyle = 'rgba(255,255,255,.3)';
+  x.fillRect(-r * 0.4, -r * 0.52, r * 0.05, r * 1.04);
+  x.fillRect(r * 0.26, -r * 0.52, r * 0.05, r * 1.04);
+  // 面板骨架示意（横线纹）
+  x.strokeStyle = 'rgba(0,0,0,.22)';
+  x.lineWidth = Math.max(0.8, s * 0.028);
+  for (let i = 1; i < 3; i++) {
+    x.beginPath(); x.moveTo(-r * 0.8, -r * 0.5 + i * r * 0.33); x.lineTo(-r * 0.44, -r * 0.5 + i * r * 0.33); x.stroke();
+    x.beginPath(); x.moveTo(-r * 0.22, -r * 0.5 + i * r * 0.33); x.lineTo(r * 0.22, -r * 0.5 + i * r * 0.33); x.stroke();
+    x.beginPath(); x.moveTo(r * 0.44, -r * 0.5 + i * r * 0.33); x.lineTo(r * 0.8, -r * 0.5 + i * r * 0.33); x.stroke();
+  }
+  // 打包标签
+  x.fillStyle = '#e8ecf2';
+  rrPath(x, r * 0.4, -r * 0.3, r * 0.34, r * 0.44, r * 0.04);
+  x.fill();
+  x.fillStyle = '#3a6ac0';
+  x.fillRect(r * 0.45, -r * 0.22, r * 0.24, r * 0.06);
+  x.fillRect(r * 0.45, -r * 0.1, r * 0.24, r * 0.06);
+},
+
+// 机枪炮塔：深灰棱形塔体 + 四联枪管 + 弹药口
+'gun-turret': (x, r, s, col) => {
+  // 基座
+  const bg = x.createLinearGradient(-r * 0.8, -r * 0.4, r * 0.8, r * 0.8);
+  bg.addColorStop(0, lightenColor(col, 0.35));
+  bg.addColorStop(1, darkenColor(col, 0.45));
+  x.fillStyle = bg;
+  x.beginPath();
+  x.moveTo(-r * 0.82, r * 0.2);
+  x.lineTo(-r * 0.5, -r * 0.28);
+  x.lineTo(r * 0.5, -r * 0.28);
+  x.lineTo(r * 0.82, r * 0.2);
+  x.lineTo(r * 0.5, r * 0.78);
+  x.lineTo(-r * 0.5, r * 0.78);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(12,12,16,.6)';
+  x.lineWidth = Math.max(1, s * 0.045);
+  x.lineJoin = 'round';
+  x.stroke();
+  // 塔体（梯形炮座）
+  x.fillStyle = lightenColor(col, 0.22);
+  rrPath(x, -r * 0.42, -r * 0.56, r * 0.84, r * 0.9, r * 0.1);
+  x.fill();
+  x.strokeStyle = 'rgba(12,12,16,.55)';
+  x.stroke();
+  // 四联枪管（朝右上）
+  x.strokeStyle = '#1e222a';
+  x.lineCap = 'round';
+  x.lineWidth = r * 0.1;
+  for (let i = 0; i < 4; i++) {
+    const oy = -r * 0.34 + i * r * 0.13;
+    x.beginPath();
+    x.moveTo(r * 0.06, oy + r * 0.06);
+    x.lineTo(r * 0.7, oy - r * 0.32);
+    x.stroke();
+  }
+  // 枪口高光
+  x.fillStyle = '#e8ecf2';
+  x.beginPath(); x.arc(r * 0.7, -r * 0.36, r * 0.05, 0, 7); x.fill();
+  // 塔体观察窗
+  x.fillStyle = '#d04848';
+  rrPath(x, -r * 0.24, -r * 0.36, r * 0.34, r * 0.14, r * 0.04);
+  x.fill();
+},
+
+// 石墙：三块错缝石块墙体 + 顶部圆石
+'stone-wall': (x, r, s, col) => {
+  const stone = (px, py, w, h, rad) => {
+    const g = x.createLinearGradient(px, py, px, py + h);
+    g.addColorStop(0, lightenColor(col, 0.32));
+    g.addColorStop(1, darkenColor(col, 0.35));
+    x.fillStyle = g;
+    rrPath(x, px, py, w, h, rad);
+    x.fill();
+    x.strokeStyle = 'rgba(40,36,28,.5)';
+    x.lineWidth = Math.max(0.7, s * 0.03);
+    x.stroke();
+  };
+  // 顶部圆石
+  stone(-r * 0.5, -r * 0.84, r * 1.0, r * 0.36, r * 0.18);
+  // 中层两块
+  stone(-r * 0.88, -r * 0.38, r * 0.84, r * 0.42, r * 0.08);
+  stone(r * 0.06, -r * 0.38, r * 0.84, r * 0.42, r * 0.08);
+  // 底层错缝
+  stone(-r * 0.88, r * 0.14, r * 0.5, r * 0.42, r * 0.08);
+  stone(-r * 0.28, r * 0.14, r * 0.62, r * 0.42, r * 0.08);
+  stone(r * 0.44, r * 0.14, r * 0.46, r * 0.42, r * 0.08);
+},
+
+// 门：墙体门框 + 半开双开滑门 + 警示条纹
+'gate': (x, r, s, col) => {
+  // 门框墙体（左右柱 + 顶梁）
+  const wg = x.createLinearGradient(-r * 0.9, -r * 0.9, r * 0.9, r * 0.9);
+  wg.addColorStop(0, lightenColor(col, 0.35));
+  wg.addColorStop(1, darkenColor(col, 0.4));
+  x.fillStyle = wg;
+  rrPath(x, -r * 0.92, -r * 0.6, r * 0.26, r * 1.5, r * 0.05);
+  x.fill();
+  rrPath(x, r * 0.66, -r * 0.6, r * 0.26, r * 1.5, r * 0.05);
+  x.fill();
+  rrPath(x, -r * 0.92, -r * 0.88, r * 1.84, r * 0.26, r * 0.05);
+  x.fill();
+  x.strokeStyle = 'rgba(30,28,22,.55)';
+  x.lineWidth = Math.max(0.8, s * 0.035);
+  for (const [px, py, w, h] of [[-r * 0.92, -r * 0.6, r * 0.26, r * 1.5], [r * 0.66, -r * 0.6, r * 0.26, r * 1.5], [-r * 0.92, -r * 0.88, r * 1.84, r * 0.26]]) {
+    rrPath(x, px, py, w, h, r * 0.05);
+    x.stroke();
+  }
+  // 左滑门（半开，带警示斜纹）
+  const dg = x.createLinearGradient(-r * 0.66, 0, -r * 0.1, 0);
+  dg.addColorStop(0, lightenColor('#9aa4a8', 0.3));
+  dg.addColorStop(1, darkenColor('#9aa4a8', 0.3));
+  x.fillStyle = dg;
+  rrPath(x, -r * 0.66, -r * 0.34, r * 0.56, r * 1.24, r * 0.05);
+  x.fill();
+  x.strokeStyle = 'rgba(30,28,22,.5)';
+  x.lineWidth = Math.max(0.8, s * 0.035);
+  x.stroke();
+  // 警示斜纹
+  x.strokeStyle = '#c8a02a';
+  x.lineWidth = Math.max(1.2, s * 0.05);
+  for (let i = 0; i < 3; i++) {
+    const yy = -r * 0.24 + i * r * 0.4;
+    x.beginPath();
+    x.moveTo(-r * 0.62, yy + r * 0.18); x.lineTo(-r * 0.44, yy);
+    x.stroke();
+  }
+  // 右门缝阴影（暗示另一扇滑走）
+  x.fillStyle = 'rgba(0,0,0,.3)';
+  x.fillRect(r * 0.12, -r * 0.34, r * 0.5, r * 1.24);
+  x.fillStyle = 'rgba(0,0,0,.45)';
+  x.fillRect(r * 0.12, -r * 0.34, r * 0.1, r * 1.24);
+},
+
+// 弹药匣：黄铜弹匣 + 三发子弹头 + 弹壳底缘
+'firearm-magazine': (x, r, s, col) => {
+  // 弹匣体（圆角矩形微收）
+  const g = x.createLinearGradient(-r * 0.5, 0, r * 0.5, 0);
+  g.addColorStop(0, darkenColor(col, 0.28));
+  g.addColorStop(0.45, lightenColor(col, 0.35));
+  g.addColorStop(1, darkenColor(col, 0.38));
+  x.fillStyle = g;
+  x.beginPath();
+  x.moveTo(-r * 0.5, -r * 0.1);
+  x.lineTo(-r * 0.42, -r * 0.66);
+  x.lineTo(r * 0.42, -r * 0.66);
+  x.lineTo(r * 0.5, -r * 0.1);
+  x.quadraticCurveTo(0, r * 0.06, -r * 0.5, -r * 0.1);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(50,34,10,.6)';
+  x.lineWidth = Math.max(1, s * 0.04);
+  x.stroke();
+  // 三发露出弹头（铜色圆头）
+  for (let i = -1; i <= 1; i++) {
+    const px = i * r * 0.28;
+    x.fillStyle = '#d8a83a';
+    x.beginPath(); x.arc(px, -r * 0.74, r * 0.11, Math.PI, 0); x.fill();
+    x.fillStyle = '#b8802a';
+    x.fillRect(px - r * 0.11, -r * 0.74, r * 0.22, r * 0.12);
+  }
+  // 匣体弹带纹
+  x.strokeStyle = 'rgba(90,60,14,.5)';
+  x.lineWidth = Math.max(0.8, s * 0.03);
+  x.beginPath(); x.moveTo(-r * 0.44, -r * 0.28); x.lineTo(r * 0.44, -r * 0.28); x.stroke();
+  x.beginPath(); x.moveTo(-r * 0.46, -r * 0.02); x.lineTo(r * 0.46, -r * 0.02); x.stroke();
+  // 底缘托板
+  x.fillStyle = '#5a4a2a';
+  rrPath(x, -r * 0.56, r * 0.04, r * 1.12, r * 0.16, r * 0.04);
+  x.fill();
+},
+
+// 穿甲弹：红铜弹匣 + 尖头穿甲弹芯 + 高速线
+'piercing-rounds-magazine': (x, r, s, col) => {
+  const g = x.createLinearGradient(-r * 0.5, 0, r * 0.5, 0);
+  g.addColorStop(0, darkenColor(col, 0.28));
+  g.addColorStop(0.45, lightenColor(col, 0.3));
+  g.addColorStop(1, darkenColor(col, 0.38));
+  x.fillStyle = g;
+  x.beginPath();
+  x.moveTo(-r * 0.5, -r * 0.1);
+  x.lineTo(-r * 0.42, -r * 0.66);
+  x.lineTo(r * 0.42, -r * 0.66);
+  x.lineTo(r * 0.5, -r * 0.1);
+  x.quadraticCurveTo(0, r * 0.06, -r * 0.5, -r * 0.1);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(60,16,10,.6)';
+  x.lineWidth = Math.max(1, s * 0.04);
+  x.stroke();
+  // 三发穿甲尖头弹（钢芯尖锥）
+  for (let i = -1; i <= 1; i++) {
+    const px = i * r * 0.28;
+    x.fillStyle = '#c8ced8';
+    x.beginPath();
+    x.moveTo(px, -r * 0.94);
+    x.lineTo(px + r * 0.09, -r * 0.7);
+    x.lineTo(px - r * 0.09, -r * 0.7);
+    x.closePath();
+    x.fill();
+    x.fillStyle = '#8a929c';
+    x.fillRect(px - r * 0.09, -r * 0.7, r * 0.18, r * 0.08);
+  }
+  // 弹带纹
+  x.strokeStyle = 'rgba(90,24,14,.5)';
+  x.lineWidth = Math.max(0.8, s * 0.03);
+  x.beginPath(); x.moveTo(-r * 0.44, -r * 0.28); x.lineTo(r * 0.44, -r * 0.28); x.stroke();
+  // 底缘托板
+  x.fillStyle = '#4a2a22';
+  rrPath(x, -r * 0.56, r * 0.04, r * 1.12, r * 0.16, r * 0.04);
+  x.fill();
+},
+
+// 手枪：紧凑手枪侧影（握把 + 套筒 + 短枪管）
+'pistol': (x, r, s, col) => {
+  x.save();
+  x.rotate(-0.08);
+  // 套筒（上滑部）
+  const g = x.createLinearGradient(0, -r * 0.5, 0, -r * 0.1);
+  g.addColorStop(0, lightenColor(col, 0.42));
+  g.addColorStop(1, darkenColor(col, 0.35));
+  x.fillStyle = g;
+  rrPath(x, -r * 0.72, -r * 0.42, r * 1.58, r * 0.32, r * 0.06);
+  x.fill();
+  x.strokeStyle = 'rgba(20,22,28,.6)';
+  x.lineWidth = Math.max(1, s * 0.04);
+  x.stroke();
+  // 枪管口
+  x.fillStyle = '#14161c';
+  x.fillRect(r * 0.78, -r * 0.36, r * 0.1, r * 0.16);
+  // 握把（后倾）
+  x.fillStyle = darkenColor(col, 0.15);
+  x.beginPath();
+  x.moveTo(-r * 0.68, -r * 0.12);
+  x.lineTo(-r * 0.28, -r * 0.12);
+  x.lineTo(-r * 0.18, r * 0.72);
+  x.lineTo(-r * 0.6, r * 0.72);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(20,22,28,.6)';
+  x.stroke();
+  // 握把防滑纹
+  x.strokeStyle = 'rgba(255,255,255,.25)';
+  x.lineWidth = Math.max(0.7, s * 0.025);
+  for (let i = 0; i < 4; i++) {
+    x.beginPath();
+    x.moveTo(-r * 0.62, -r * 0.02 + i * r * 0.18);
+    x.lineTo(-r * 0.28, r * 0.04 + i * r * 0.18);
+    x.stroke();
+  }
+  // 扳机护圈
+  x.strokeStyle = darkenColor(col, 0.4);
+  x.lineWidth = Math.max(1.2, s * 0.05);
+  x.beginPath();
+  x.arc(-r * 0.22, r * 0.06, r * 0.16, 0.2, Math.PI - 0.4);
+  x.stroke();
+  x.restore();
+},
+
+// 冲锋枪：长套筒 + 弹匣下插 + 折叠枪托
+'submachine-gun': (x, r, s, col) => {
+  x.save();
+  x.rotate(-0.06);
+  // 长套筒
+  const g = x.createLinearGradient(0, -r * 0.5, 0, -r * 0.08);
+  g.addColorStop(0, lightenColor(col, 0.4));
+  g.addColorStop(1, darkenColor(col, 0.32));
+  x.fillStyle = g;
+  rrPath(x, -r * 0.5, -r * 0.44, r * 1.5, r * 0.34, r * 0.06);
+  x.fill();
+  x.strokeStyle = 'rgba(16,20,28,.6)';
+  x.lineWidth = Math.max(1, s * 0.04);
+  x.stroke();
+  // 散热孔
+  x.fillStyle = 'rgba(10,14,20,.55)';
+  for (let i = 0; i < 3; i++) {
+    x.beginPath(); x.arc(-r * 0.1 + i * r * 0.18, -r * 0.27, r * 0.05, 0, 7); x.fill();
+  }
+  // 枪管 + 准星
+  x.fillStyle = '#14161c';
+  x.fillRect(r * 0.98, -r * 0.34, r * 0.16, r * 0.14);
+  x.fillRect(r * 0.6, -r * 0.56, r * 0.06, r * 0.14);
+  // 下插弹匣
+  x.fillStyle = darkenColor(col, 0.2);
+  x.beginPath();
+  x.moveTo(-r * 0.16, -r * 0.1);
+  x.lineTo(r * 0.16, -r * 0.1);
+  x.lineTo(r * 0.1, r * 0.78);
+  x.lineTo(-r * 0.1, r * 0.78);
+  x.closePath();
+  x.fill();
+  x.strokeStyle = 'rgba(16,20,28,.6)';
+  x.stroke();
+  // 握把（后部）
+  x.fillStyle = darkenColor(col, 0.3);
+  x.beginPath();
+  x.moveTo(-r * 0.5, -r * 0.1);
+  x.lineTo(-r * 0.18, -r * 0.1);
+  x.lineTo(-r * 0.3, r * 0.5);
+  x.lineTo(-r * 0.64, r * 0.42);
+  x.closePath();
+  x.fill();
+  // 折叠枪托（后伸杆）
+  x.strokeStyle = darkenColor(col, 0.25);
+  x.lineWidth = r * 0.11;
+  x.lineCap = 'round';
+  x.beginPath(); x.moveTo(-r * 0.5, -r * 0.24); x.lineTo(-r * 0.9, -r * 0.3); x.stroke();
+  x.beginPath(); x.moveTo(-r * 0.9, -r * 0.44); x.lineTo(-r * 0.9, -r * 0.12); x.stroke();
+  x.restore();
 },
 };

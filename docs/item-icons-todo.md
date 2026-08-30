@@ -233,42 +233,42 @@
 - [x] `crude-oil-barrel` 桶装原油
 - [x] `heavy-oil-barrel` 桶装重油
 - [x] `light-oil-barrel` 桶装轻油
-- [ ] `petroleum-gas-barrel` 桶装石油气
-- [ ] `lubricant-barrel` 桶装润滑油
-- [ ] `sulfuric-acid-barrel` 桶装硫酸
-- [ ] `fluoroketone-cold-barrel` 桶装氟酮（冷）
-- [ ] `fluoroketone-hot-barrel` 桶装氟酮（热）
+- [x] `petroleum-gas-barrel` 桶装石油气
+- [x] `lubricant-barrel` 桶装润滑油
+- [x] `sulfuric-acid-barrel` 桶装硫酸
+- [x] `fluoroketone-cold-barrel` 桶装氟酮（冷）
+- [x] `fluoroketone-hot-barrel` 桶装氟酮（热）
 
 ## 🚀 太空（18）
 
-- [ ] `rocket-part` 火箭部件
-- [ ] `rocket-body` 火箭
-- [ ] `satellite` 卫星
-- [ ] `rocket-silo` 火箭发射井
-- [ ] `cargo-landing-pad` 物流接驳站
-- [ ] `cargo-bay` 物流扩展舱
-- [ ] `landing-pad-unloading-bay` 物流卸载舱
-- [ ] `thruster-fuel` 推进器燃料
-- [ ] `thruster-oxidizer` 推进器氧化剂
-- [ ] `crusher` 破碎机
-- [ ] `metallic-asteroid-chunk` 金属星块
-- [ ] `carbonic-asteroid-chunk` 碳质星块
-- [ ] `oxide-asteroid-chunk` 氧化星块
-- [ ] `promethium-asteroid-chunk` 钷素星块
-- [ ] `space-platform-foundation` 太空平台地基
-- [ ] `thruster` 推进器
-- [ ] `asteroid-collector` 小行星收集器
-- [ ] `space-platform-starter-pack` 空间平台起始包
+- [x] `rocket-part` 火箭部件
+- [x] `rocket-body` 火箭
+- [x] `satellite` 卫星
+- [x] `rocket-silo` 火箭发射井
+- [x] `cargo-landing-pad` 物流接驳站
+- [x] `cargo-bay` 物流扩展舱
+- [x] `landing-pad-unloading-bay` 物流卸载舱
+- [x] `thruster-fuel` 推进器燃料
+- [x] `thruster-oxidizer` 推进器氧化剂
+- [x] `crusher` 破碎机
+- [x] `metallic-asteroid-chunk` 金属星块
+- [x] `carbonic-asteroid-chunk` 碳质星块
+- [x] `oxide-asteroid-chunk` 氧化星块
+- [x] `promethium-asteroid-chunk` 钷素星块
+- [x] `space-platform-foundation` 太空平台地基
+- [x] `thruster` 推进器
+- [x] `asteroid-collector` 小行星收集器
+- [x] `space-platform-starter-pack` 空间平台起始包
 
 ## 🔫 武器（65）
 
-- [ ] `gun-turret` 机枪炮塔
-- [ ] `stone-wall` 石墙
-- [ ] `gate` 门
-- [ ] `firearm-magazine` 弹药匣
-- [ ] `piercing-rounds-magazine` 穿甲弹
-- [ ] `pistol` 手枪
-- [ ] `submachine-gun` 冲锋枪
+- [x] `gun-turret` 机枪炮塔
+- [x] `stone-wall` 石墙
+- [x] `gate` 门
+- [x] `firearm-magazine` 弹药匣
+- [x] `piercing-rounds-magazine` 穿甲弹
+- [x] `pistol` 手枪
+- [x] `submachine-gun` 冲锋枪
 - [ ] `shotgun` 散弹枪
 - [ ] `combat-shotgun` 战斗散弹枪
 - [ ] `shotgun-shell` 散弹枪弹
