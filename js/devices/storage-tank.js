@@ -150,10 +150,15 @@ class StorageTank extends CircuitNode {
 
 // ===== 渲染 =====
 // 接口布局见类头注释：4 个口集中在两个对角角落（对齐官方 factorio-data）。
-// 渲染上每个活跃角落画两只独立端口法兰：一只贴横边（北/南面口）、一只贴竖边（西/东面口），
-// 均精确对齐所在格的中心线（沿边 16k/48k）并贴近包围盒边界——与相邻管道画到瓦片边的
-// 连接段严丝合缝对接（管道口显示在格子中间，视觉上刚好连接）。
-// 当前罐内流体（若有）：用于"显示详情"时在接口处画流体图标
+// 储液罐为圆柱罐俯视图，整个罐顶（含管道口法兰）绘制在随 dir 旋转的局部坐标系里：
+//   dir 0 基线 → 活跃角落为北西角(-1,-1) + 南东角(+1,+1)，与 portCells() 一一对应；
+//   R 旋转 = dir 顺时针 +1（每档转 90°）；V/H 翻转 = flipDir 镜像 dir，
+//   罐顶与管道口随之同步旋转/翻转（管口在局部坐标里的位置不变，观感随方向整体转动）。
+// 视觉分层（自下而上）：
+//   ① 地面阴影  ② 混凝土基座圆盘  ③ 罐体外壳圆盘（径向渐变 + 铆钉圈 + 环箍焊缝）
+//   ④ 内腔（环形腔带：液色随液位加深，运转涟漪高光弧）
+//   ⑤ 罐顶定向构件（随 dir 旋转）：检修走桥 / 液位刻度弧 / 呼吸阀 / 六角毂盖
+//   ⑥ 对角角落管道口法兰（对齐格中心线，随 dir 同步旋转/翻转）+ ALT 流体图标
 function tankFluid(e) { return e.storedFluid ? e.storedFluid() : null; }
 // 轻量色彩工具（仅在储液罐渲染中用到）：把 #rrggbb 与 0~1 比例混合到当前 canvas 状态
 // 返回形如 'rgba(r,g,b,a)' 的字符串，便于在已有 fillStyle 之外快速派生阴影/高光色。
@@ -162,17 +167,11 @@ function _tankMix(hex, t) {
   const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
   return 'rgba(' + r + ',' + g + ',' + b + ',' + t.toFixed(3) + ')';
 }
-// 储液罐渲染：俯视「圆形储罐」（2×2 占地保持不变）——正圆金属罐体 + 同心环带 +
-// 圆周均匀液面指示点 + 中心毂盖，接口仍在对角角落（对齐官方 factorio-data）。
-// 设备可 R 旋转、V/H 翻转（dir 0/2↔1/3 切换接口对角，翻转仅镜像 dir 不改端口逻辑），
-// 因此视觉元素全部使用圆对称结构：液量以「圆周刻度点 + 中心液色辉光」表现——
-// 任意 dir 旋转/水平垂直翻转后观感完全一致；罐内液量多寡只改变亮度/点亮数，不产生方向性形变。
-// 视觉分层（自下而上）：
-//   ① 地面阴影  ② 混凝土基座圆盘  ③ 罐体外壳圆盘（径向渐变 + 铆钉圈 + 环箍焊缝）
-//   ④ 内腔（环形腔带：液色随液位加深，运转涟漪高光弧）
-//   ⑤ 圆周液面刻度（16 点均匀分布，按液位比例从缺口起顺时针点亮）
-//   ⑥ 中心毂盖（六角螺栓盖 + 液色小圆窗）
-//   ⑦ 顶部呼吸阀小点（液满时闪烁警示）⑧ 对角角落接口（对齐格中心线）+ ALT 流体图标
+// 储液罐渲染：俯视「圆柱储罐」（2×2 占地保持不变）——正圆金属罐体 + 同心环带 +
+// 随 dir 旋转的罐顶定向构件 + 对角角落管道口（对齐官方 factorio-data）。
+// 设备可 R 旋转、V/H 翻转：罐顶整体（走桥/刻度弧/呼吸阀/毂盖/管道口）在随 dir 旋转的
+// 局部坐标系里绘制，dir 0 基线管口落在北西角+南东角（与 portCells() 严格一致），
+// 每按一次 R 顺时针转 90°，V/H 翻转镜像方向，管道口始终跟着罐体一起转。
 function drawStorageTank(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE;
   const s = TILE * e.w;
@@ -186,16 +185,20 @@ function drawStorageTank(ctx, e, gx, gy, dir, alpha) {
   const fluidColor = f ? ITEMS[f].color : '#8a97a6';
   const simple = (typeof LOD !== 'undefined' && LOD && LOD.simple);
   const t = G.time || 0;
+  const rot = (dir & 3) * Math.PI / 2;  // 顺时针旋转角：R 每按一次 +90°，V/H 镜像后同样生效
 
-  // ===== 俯视圆罐几何（正圆，与 dir 无关；dir 仅切换接口对角）=====
+  // ===== 俯视圆柱罐几何（罐体正圆与方向无关；定向构件与管口随 dir 旋转）=====
   const R = 28 * k;               // 罐体外接半径（略小于 32k 半格宽，留基座边）
 
   // 罐体路径（正圆）
   const tankPath = () => {
     ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
   };
+  // 局部坐标（罐顶基线朝向）→ 世界坐标：把罐顶定向构件与管道口画进随 dir 旋转的坐标系。
+  // （局部 +x 朝"东"，rot 为顺时针角，与 canvas y 轴向下的屏幕观感一致）
+  const lp = (lx, ly) => [cx + lx * Math.cos(rot) - ly * Math.sin(rot), cy + lx * Math.sin(rot) + ly * Math.cos(rot)];
 
-  // ===== 低 LOD（缩远）：圆罐剪影 + 液色填充 + 角落接口点，省掉全部细节 =====
+  // ===== 低 LOD（缩远）：圆罐剪影 + 液色填充 + 角落接口点（随 dir 旋转），省掉细节 =====
   if (simple) {
     ctx.fillStyle = 'rgba(0,0,0,0.30)';
     ctx.beginPath(); ctx.arc(cx + 1.5 * k, cy + 1.5 * k, R, 0, Math.PI * 2); ctx.fill();
@@ -205,15 +208,14 @@ function drawStorageTank(ctx, e, gx, gy, dir, alpha) {
       ctx.fillStyle = _tankMix(fluidColor, 0.5 + level * 0.4);
       ctx.beginPath(); ctx.arc(cx, cy, R * 0.82, 0, Math.PI * 2); ctx.fill();
     }
-    // 活跃对角角落的接口点（低 LOD 下每角落两枚小点，对齐格中心线，与法兰位置一致）
+    // 活跃对角角落的接口点（低 LOD：dir 0 基线为北西+南东，随 rot 同步旋转，
+    // 与法兰一致落在角落格中心线：局部 ±16k/±27k）
     ctx.fillStyle = '#636c78';
-    const _cs = (dir % 2 === 0) ? [[-1, -1], [1, 1]] : [[1, -1], [-1, 1]];
-    for (const [sx, sy] of _cs) {
-      const _colX = px + (sx > 0 ? 48 * k : 16 * k);
-      const _rowY = py + (sy > 0 ? 48 * k : 16 * k);
-      const _edge = 5 * k;
-      ctx.fillRect(_colX - 1.25 * k, py + (sy < 0 ? _edge : s - _edge) - 1.25 * k, 2.5 * k, 2.5 * k);
-      ctx.fillRect(px + (sx < 0 ? _edge : s - _edge) - 1.25 * k, _rowY - 1.25 * k, 2.5 * k, 2.5 * k);
+    for (const [sx, sy] of [[-1, -1], [1, 1]]) {
+      for (const [lx, ly] of [[sx * 16 * k, sy * 27 * k], [sx * 27 * k, sy * 16 * k]]) {
+        const [wx, wy] = lp(lx, ly);
+        ctx.beginPath(); ctx.arc(wx, wy, 1.6 * k, 0, Math.PI * 2); ctx.fill();
+      }
     }
     ctx.globalAlpha = 1;
     return;
@@ -243,7 +245,7 @@ function drawStorageTank(ctx, e, gx, gy, dir, alpha) {
   bodyGrad.addColorStop(1, '#232b36');
   ctx.fillStyle = bodyGrad;
   tankPath(); ctx.fill();
-  // 铆钉圈（12 颗，圆周均匀——旋转/翻转后依旧均匀）
+  // 铆钉圈（12 颗，圆周均匀）
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
   for (let i = 0; i < 12; i++) {
     const a = i * Math.PI / 6;
@@ -261,18 +263,18 @@ function drawStorageTank(ctx, e, gx, gy, dir, alpha) {
     ctx.beginPath(); ctx.arc(cx, cy, wr + lw, 0, Math.PI * 2); ctx.stroke();
   }
 
-  // ===== ④ 内腔（环形腔带：液色随液位加深；运转时涟漪高光弧流动——圆对称无方向性）=====
+  // ===== ④ 内腔（环形腔带：液色随液位加深；运转涟漪高光弧流动）=====
   const inR = R * 0.34;
   ctx.fillStyle = '#0c1118';
   ctx.beginPath(); ctx.arc(cx, cy, R * 0.78, 0, Math.PI * 2); ctx.fill();
   if (level > 0) {
-    // 液色辉光：液位越高越亮（径向渐变，圆对称）
+    // 液色辉光：液位越高越亮（径向渐变）
     const fg = ctx.createRadialGradient(cx, cy, inR * 0.3, cx, cy, R * 0.76);
     fg.addColorStop(0, _tankMix(fluidColor, 0.35 + level * 0.6));
     fg.addColorStop(1, _tankMix(fluidColor, 0.18 + level * 0.42));
     ctx.fillStyle = fg;
     ctx.beginPath(); ctx.arc(cx, cy, R * 0.76, 0, Math.PI * 2); ctx.fill();
-    // 运转涟漪（有进液/存液时的高光弧流动；角度随时间推进，任意方向观感一致）
+    // 运转涟漪（高光弧流动；角度随时间推进）
     if (level > 0.02) {
       ctx.strokeStyle = _tankMix('#ffffff', 0.18 + Math.sin(t * 2.4) * 0.06);
       ctx.lineWidth = 1.4 * k;
@@ -288,28 +290,63 @@ function drawStorageTank(ctx, e, gx, gy, dir, alpha) {
   ctx.lineWidth = 1.6 * k;
   ctx.beginPath(); ctx.arc(cx, cy, R * 0.78, 0, Math.PI * 2); ctx.stroke();
 
-  // ===== ⑤ 圆周液面刻度（16 点均匀分布，按液位从缺口起顺时针点亮——液量指示无方向性）=====
-  const tickN = 16, litN = Math.round(level * tickN);
-  for (let i = 0; i < tickN; i++) {
-    const a = -Math.PI / 2 + i * Math.PI * 2 / tickN;   // 起点缺口在正上（仅起点，旋转后刻度环依旧均匀）
-    const tx = cx + Math.cos(a) * (R * 0.90), ty = cy + Math.sin(a) * (R * 0.90);
-    if (i < litN) {
-      ctx.fillStyle = _tankMix(fluidColor, 0.85);
-      ctx.beginPath(); ctx.arc(tx, ty, 1.7 * k, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.25)';
-      ctx.beginPath(); ctx.arc(tx - 0.5 * k, ty - 0.5 * k, 0.6 * k, 0, Math.PI * 2); ctx.fill();
-    } else {
-      ctx.fillStyle = 'rgba(255,255,255,0.14)';
-      ctx.beginPath(); ctx.arc(tx, ty, 1.1 * k, 0, Math.PI * 2); ctx.fill();
+  // ===== ⑤ 罐顶定向构件（随 dir 旋转：R 顺时针 +90°/档，V/H 翻转镜像方向）=====
+  // 全部画在局部坐标里再经 lp() 变换，保证与管道口一致地跟着罐顶转动。
+  // —— ⑤a 检修走桥（跨罐顶直线步道：两侧栏杆 + 横档，罐顶方向感的主要来源）——
+  ctx.strokeStyle = 'rgba(21,27,35,0.55)';   // 走桥阴影层
+  ctx.lineWidth = 7.5 * k;
+  ctx.beginPath();
+  let _bp = lp(-R * 0.94, 0), _bq = lp(R * 0.94, 0);
+  ctx.moveTo(_bp[0], _bp[1] + 1.2 * k); ctx.lineTo(_bq[0], _bq[1] + 1.2 * k); ctx.stroke();
+  ctx.strokeStyle = '#6c798a';               // 走桥面
+  ctx.lineWidth = 6 * k;
+  ctx.beginPath(); ctx.moveTo(_bp[0], _bp[1]); ctx.lineTo(_bq[0], _bq[1]); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.30)'; // 走桥顶面高光
+  ctx.lineWidth = 1.2 * k;
+  ctx.beginPath(); ctx.moveTo(_bp[0], _bp[1] - 1.8 * k); ctx.lineTo(_bq[0], _bq[1] - 1.8 * k); ctx.stroke();
+  // 走桥栏杆立柱（两端 + 中间，局部 x 轴均匀分布）
+  ctx.fillStyle = '#3d4652';
+  for (let i = -3; i <= 3; i++) {
+    const [sx, sy] = lp(i * R * 0.30, -R * 0.16);
+    const [nx, ny] = lp(i * R * 0.30, R * 0.16);
+    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(nx, ny); ctx.strokeStyle = 'rgba(20,26,34,0.5)'; ctx.lineWidth = 1.1 * k; ctx.stroke();
+  }
+  // —— ⑤b 液位刻度弧（14 格刻度，从走桥一端起顺时针按液位点亮；起点随 rot 旋转）——
+  {
+    const tickN = 14, litN = Math.round(level * tickN);
+    const trR = R * 0.90;
+    for (let i = 0; i < tickN; i++) {
+      const a = rot + Math.PI * 0.75 + i * Math.PI * 2 / tickN;   // 缺口起点在走桥左端一侧（随 rot 旋转）
+      const tx = cx + Math.cos(a) * trR, ty = cy + Math.sin(a) * trR;
+      if (i < litN) {
+        ctx.fillStyle = _tankMix(fluidColor, 0.85);
+        ctx.beginPath(); ctx.arc(tx, ty, 1.7 * k, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+        ctx.beginPath(); ctx.arc(tx - 0.5 * k, ty - 0.5 * k, 0.6 * k, 0, Math.PI * 2); ctx.fill();
+      } else {
+        ctx.fillStyle = 'rgba(255,255,255,0.14)';
+        ctx.beginPath(); ctx.arc(tx, ty, 1.1 * k, 0, Math.PI * 2); ctx.fill();
+      }
     }
   }
-
-  // ===== ⑥ 中心毂盖（六角螺栓盖 + 液色小圆窗——液位联动亮度）=====
-  // 六角盖（6 边正多边形，旋转对称）
+  // —— ⑤c 呼吸阀（位于走桥旁侧的罐缘；液满时闪烁警示）——
+  {
+    const [vx, vy] = lp(-R * 0.62, -R * 0.60);
+    ctx.fillStyle = '#2a323e';
+    ctx.beginPath(); ctx.arc(vx, vy, 2.2 * k, 0, Math.PI * 2); ctx.fill();
+    if (level >= 0.999) {
+      ctx.fillStyle = _tankMix('#ff7848', 0.5 + Math.sin(t * 6) * 0.4);
+      ctx.beginPath(); ctx.arc(vx, vy, 1.3 * k, 0, Math.PI * 2); ctx.fill();
+    } else if (level > 0) {
+      ctx.fillStyle = _tankMix(fluidColor, 0.6);
+      ctx.beginPath(); ctx.arc(vx, vy, 1.1 * k, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  // —— ⑤d 中心毂盖（六角螺栓盖 + 液色小圆窗；六角随 rot 一起转动）——
   ctx.fillStyle = '#333c48';
   ctx.beginPath();
   for (let i = 0; i < 6; i++) {
-    const a = i * Math.PI / 3 + Math.PI / 6;
+    const a = rot + i * Math.PI / 3 + Math.PI / 6;
     const hx = cx + Math.cos(a) * inR * 1.05, hy = cy + Math.sin(a) * inR * 1.05;
     i === 0 ? ctx.moveTo(hx, hy) : ctx.lineTo(hx, hy);
   }
@@ -326,28 +363,13 @@ function drawStorageTank(ctx, e, gx, gy, dir, alpha) {
     ctx.fillStyle = 'rgba(255,255,255,0.22)';
     ctx.beginPath(); ctx.arc(cx - inR * 0.12, cy - inR * 0.12, inR * 0.14, 0, Math.PI * 2); ctx.fill();
   }
-  // 六颗盖面螺栓（圆周均匀）
+  // 六颗盖面螺栓（沿六角方向分布，随 rot 转动）
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   for (let i = 0; i < 6; i++) {
-    const a = i * Math.PI / 3;
+    const a = rot + i * Math.PI / 3;
     ctx.beginPath();
     ctx.arc(cx + Math.cos(a) * inR * 0.78, cy + Math.sin(a) * inR * 0.78, 0.7 * k, 0, Math.PI * 2);
     ctx.fill();
-  }
-
-  // ===== ⑦ 呼吸阀小点（顶部边缘一点；液满时闪烁警示——圆对称单点，方向无关）=====
-  {
-    const va = -Math.PI / 2;
-    const vx = cx + Math.cos(va) * (R - 2 * k), vy = cy + Math.sin(va) * (R - 2 * k);
-    ctx.fillStyle = '#2a323e';
-    ctx.beginPath(); ctx.arc(vx, vy, 2.2 * k, 0, Math.PI * 2); ctx.fill();
-    if (level >= 0.999) {
-      ctx.fillStyle = _tankMix('#ff7848', 0.5 + Math.sin(t * 6) * 0.4);
-      ctx.beginPath(); ctx.arc(vx, vy, 1.3 * k, 0, Math.PI * 2); ctx.fill();
-    } else if (level > 0) {
-      ctx.fillStyle = _tankMix(fluidColor, 0.6);
-      ctx.beginPath(); ctx.arc(vx, vy, 1.1 * k, 0, Math.PI * 2); ctx.fill();
-    }
   }
 
   // ===== 罐体外框描边 + 顶盖弧高光 =====
@@ -358,12 +380,10 @@ function drawStorageTank(ctx, e, gx, gy, dir, alpha) {
   ctx.lineWidth = 1 * k;
   ctx.beginPath(); ctx.arc(cx, cy, R - 2.5 * k, Math.PI * 1.1, Math.PI * 1.5); ctx.stroke();
 
-  // ===== ⑧ 对角角落接口（对齐官方 factorio-data：每个角落两只口，互不合并）=====
-  // 活跃角落：dir 0/2 → 北西角+南东角；dir 1/3 → 北东角+南西角。
-  // 每个角落两只独立端口法兰，均精确对齐接口所在格的中心线（沿边 16k/48k）：
-  //   横边口（北/南面口）中心落在该列格中心线上、距横边 5k；竖边口（西/东面口）落在该行格中心线上、距竖边 5k。
-  // 法兰外缘跨过包围盒边界约 1.5px：与相邻管道的连接段严丝合缝对接。
-  const corners = (dir % 2 === 0) ? [[-1, -1], [1, 1]] : [[1, -1], [-1, 1]];
+  // ===== ⑥ 对角角落管道口（对齐官方 factorio-data；随 dir 旋转/翻转同步转动）=====
+  // dir 0 基线：北西角（北面口 + 西面口）+ 南东角（东面口 + 南面口），与 portCells() 一致。
+  // 每个角落两只独立法兰，全部画在局部坐标（跨过包围盒边界的角点 + 两正交边点），
+  // 经 lp() 变换后天然跟随 R 旋转与 V/H 翻转，与相邻管道连接段严丝合缝。
   const drawPortDisc = (x, y) => {
     ctx.fillStyle = '#454b54';                                    // ① 法兰底座
     ctx.beginPath(); ctx.arc(x, y, 6.5 * k, 0, Math.PI * 2); ctx.fill();
@@ -378,16 +398,20 @@ function drawStorageTank(ctx, e, gx, gy, dir, alpha) {
     ctx.strokeStyle = 'rgba(255,255,255,.38)'; ctx.lineWidth = 1 * k;    // ⑤ 顶部高光弧
     ctx.beginPath(); ctx.arc(x, y, 4.6 * k, -Math.PI * 1.05, -Math.PI * 0.62); ctx.stroke();
   };
-  for (const [sx, sy] of corners) {
-    const colX = px + (sx > 0 ? 48 * k : 16 * k);   // 角落所在列的格中心线
-    const rowY = py + (sy > 0 ? 48 * k : 16 * k);   // 角落所在行的格中心线
-    drawPortDisc(colX, py + (sy < 0 ? 5 * k : s - 5 * k));   // 横边口（北/南面口）
-    drawPortDisc(px + (sx < 0 ? 5 * k : s - 5 * k), rowY);   // 竖边口（西/东面口）
+  for (const [sx, sy] of [[-1, -1], [1, 1]]) {
+    // dir 0 基线：横边口（北/南面口）落在角落列的中心线、距横边 5k → 局部 (±16k, ±27k)；
+    // 竖边口（西/东面口）落在角落行的中心线、距竖边 5k → 局部 (±27k, ±16k)。
+    // 经 lp() 变换后天然跟随 R 旋转与 V/H 翻转，法兰外缘略跨包围盒边界与管道严丝合缝。
+    const [ax, ay] = lp(sx * 16 * k, sy * 27 * k);
+    const [bx, by] = lp(sx * 27 * k, sy * 16 * k);
+    drawPortDisc(ax, ay);
+    drawPortDisc(bx, by);
   }
   // ALT 详情：在每个活跃角落两只法兰之间画当前流体图标（悬停角落格同样显示流体名）
   if (portDetailsVisible() && f && ITEMS[f]) {
-    for (const [sx, sy] of corners) {
-      drawItemGlyph(ctx, f, cx + sx * 12 * k, cy + sy * 12 * k, 18 * k);
+    for (const [sx, sy] of [[-1, -1], [1, 1]]) {
+      const [ix, iy] = lp(sx * 12 * k, sy * 12 * k);
+      drawItemGlyph(ctx, f, ix, iy, 18 * k);
     }
   }
 
