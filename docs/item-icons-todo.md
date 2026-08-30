@@ -332,28 +332,28 @@
 
 - [x] `water` 水
 - [x] `steam` 蒸汽
-- [ ] `crude-oil` 原油
-- [ ] `heavy-oil` 重油
-- [ ] `light-oil` 轻油
-- [ ] `petroleum-gas` 石油气
-- [ ] `ammonia` 氨
-- [ ] `fluorine` 氟
-- [ ] `fluoroketone-cold` 氟酮（冷）
-- [ ] `fluoroketone-hot` 氟酮（热）
-- [ ] `ammoniacal-solution` 氨溶液
-- [ ] `lithium-brine` 锂盐水
-- [ ] `lava` 岩浆
-- [ ] `fusion-plasma` 等离子体
-- [ ] `molten-iron` 熔融铁
-- [ ] `molten-copper` 熔融铜
+- [x] `crude-oil` 原油
+- [x] `heavy-oil` 重油
+- [x] `light-oil` 轻油
+- [x] `petroleum-gas` 石油气
+- [x] `ammonia` 氨
+- [x] `fluorine` 氟
+- [x] `fluoroketone-cold` 氟酮（冷）
+- [x] `fluoroketone-hot` 氟酮（热）
+- [x] `ammoniacal-solution` 氨溶液
+- [x] `lithium-brine` 锂盐水
+- [x] `lava` 岩浆
+- [x] `fusion-plasma` 等离子体
+- [x] `molten-iron` 熔融铁
+- [x] `molten-copper` 熔融铜
 
 ## 🧩 其他（5）
 
-- [ ] `one-way-valve` 单向阀
-- [ ] `overflow-valve` 溢出阀
-- [ ] `top-up-valve` 补给阀
-- [ ] `artillery-targeting-remote` 重炮瞄准遥控器
-- [ ] `discharge-defense-remote` 放电防御遥控器
+- [x] `one-way-valve` 单向阀
+- [x] `overflow-valve` 溢出阀
+- [x] `top-up-valve` 补给阀
+- [x] `artillery-targeting-remote` 重炮瞄准遥控器
+- [x] `discharge-defense-remote` 放电防御遥控器
 
 ---
 
