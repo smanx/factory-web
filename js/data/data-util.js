@@ -3,11 +3,20 @@
 const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: true, combat: false, capDPR: true, lowRes: false, minimap: true, sound: true, soundVol: 0.8, altMode: true, weather: false, daylight: false, music: true, language: 'zh', showReach: false };  // sound:音效开关 soundVol:音量0~1  altMode:ALT模式(建筑配方/内容叠加显示)  language:界面数据语言('zh'中文/'en'English)  showReach:显示角色建造范围圆圈(默认关闭)
 const SETTINGS_KEY = 'factory-settings-v1';
 
-// ===== 多语言名称（官方 locale 数据，见 GAME_DATA.names / GAME_DATA.recipeNames）=====
+// ===== 多语言名称（官方 locale 数据，单源 = locale.generated.js 的 GAME_LOCALE）=====
 // 按设置 G.settings.language 返回物品/建筑/流体/配方的官方中文或英文名；
+// 优先读 GAME_LOCALE（由 data/ 官方文本经 tools/generate-locale.js 打包，名称不再维护第二份列表）；
+// GAME_LOCALE 未生成时降级读 GAME_DATA.names / GAME_DATA.recipeNames（生成器兜底，同源）；
 // 未收录官方名的项目自定物品回到手工中文名 manual。所有显示点经 ITEMS[id].name 读取，自动生效。
+const LOCALE_SECTIONS = ['item-name', 'entity-name', 'recipe-name', 'fluid-name', 'equipment-name', 'tile-name', 'autoplace-control-names', 'map-gen-preset-name', 'map-gen-preset-description'];
 function localizedName(id, manual) {
   const lang = (typeof G !== 'undefined' && G.settings && G.settings.language === 'en') ? 'en' : 'zh';
+  if (typeof GAME_LOCALE !== 'undefined' && GAME_LOCALE && GAME_LOCALE.entries) {
+    for (const sec of GAME_LOCALE.sections || LOCALE_SECTIONS) {
+      const t = GAME_LOCALE.entries[sec] && GAME_LOCALE.entries[sec][id];
+      if (t && t[lang]) return t[lang];
+    }
+  }
   const n = (GAME_DATA.names && GAME_DATA.names[id]) || (GAME_DATA.recipeNames && GAME_DATA.recipeNames[id]);
   if (n && n[lang]) return n[lang];
   return manual || id;
