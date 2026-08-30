@@ -429,7 +429,19 @@ function buildDebug() {
       for (const [id, n] of matched) {
         const it = ITEMS[id];
         const b = document.createElement('button');
-        b.textContent = (it ? it.name : id) + ' +' + n;
+        // 图标 + 文本：复用 iconCanvas（ui.js）绘制物品专属图标，与背包/快捷栏视觉一致
+        if (it && typeof iconCanvas === 'function') {
+          b.classList.add('ditem');
+          const ic = iconCanvas(id, 16).cloneNode();
+          ic.getContext('2d').drawImage(iconCanvas(id, 16), 0, 0);
+          ic.className = 'ditem-ic';
+          b.appendChild(ic);
+          const txt = document.createElement('span');
+          txt.textContent = it.name + ' +' + n;
+          b.appendChild(txt);
+        } else {
+          b.textContent = (it ? it.name : id) + ' +' + n;
+        }
         b.title = (it && it.desc) ? it.desc : id;
         b.addEventListener('click', () => { invAdd(id, n); toast('+ ' + n + ' ' + (it ? it.name : id)); refreshHotbar(); });
         grid1.appendChild(b);

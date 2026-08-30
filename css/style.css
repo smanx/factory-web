@@ -1714,7 +1714,9 @@ html, body {
 #dbg-panel {
   position: fixed;
   display: none;
-  width: 258px;
+  /* 自适应宽度：固定最小可用宽度，最大不超过屏幕一半 */
+  width: min(420px, 50vw);
+  min-width: 258px;
   background: rgba(18, 23, 31, .97);
   border: 1px solid #5a4a7a;
   border-radius: 10px;
@@ -1761,6 +1763,21 @@ html, body {
   cursor: pointer;
 }
 .dgrid button:hover { background: #3a4657; }
+
+/* 调试面板-发放资源：带物品图标的按钮（图标 + 文本布局，与背包/快捷栏视觉一致） */
+.dgrid button.ditem {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  text-align: left;
+  padding: 4px 6px;
+}
+.dgrid button.ditem .ditem-ic {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  image-rendering: auto;
+}
 
 /* 调试面板-资源发放：搜索框、分组标题、无结果提示、一键发放 */
 .dsearch { margin: 4px 0 8px; }
