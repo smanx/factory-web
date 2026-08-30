@@ -776,13 +776,14 @@ html, body {
 .bb-grid-bar button:hover { background: rgba(90,138,208,.35); }
 .bb-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 44px);
+  /* 与左栏背包格子(.inv-slot 32px)保持一致：蓝图图标尺寸对齐背包图标 */
+  grid-template-columns: repeat(auto-fill, 32px);
   gap: 4px;
   margin-top: 8px;
 }
 .bb-cell {
   position: relative;
-  width: 44px; height: 44px;
+  width: 32px; height: 32px;
   border-radius: 4px;
   border: 1px solid #37424f;
   background: #222b35;
@@ -790,7 +791,8 @@ html, body {
   overflow: visible;
 }
 .bb-cell:hover { border-color: #7aa5e0; background: #2a3542; }
-.bb-cell.sel { border-color: #ffd88a; box-shadow: 0 0 0 1px #ffd88a; }
+/* 蓝图选中交互：点击后图标跟随鼠标（放置幽灵），不再用边框高亮选中 */
+.bb-cell.sel { opacity: .55; }
 .bb-cell canvas { width: 100%; height: 100%; display: block; border-radius: 3px; }
 .bb-cell-more {
   position: absolute; right: 1px; bottom: 0;

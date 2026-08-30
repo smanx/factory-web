@@ -499,6 +499,18 @@ function initPanelEvents() {
       renderPanel(false);
       return;
     }
+    // 手持蓝图物品（放置幽灵跟随鼠标）时点击左栏背包任意格子 = 蓝图入包：
+    // 空格/已有物品格都算「背包」落点（蓝图不消耗材料，入包只加 1 个蓝图物品，不吞目标物品）
+    const heldBp = (typeof isBlueprintItem === 'function') ? isBlueprintItem(G.quickSel) : false;
+    if (heldBp && ev.target.closest && ev.target.closest('.inv-slots') && !ev.target.closest('[data-action]')) {
+      const bpId = G.quickSel;
+      const bpData = (typeof bpDataOfItem === 'function') ? bpDataOfItem(bpId) : null;
+      if (bpData && typeof bpItemToInv === 'function') {
+        if (bpItemToInv(bpData)) toast('蓝图「' + (bpData.name || '未命名') + '」已放入背包（可从背包重新选中放置）');
+        uiDirty = true;
+      }
+      return;
+    }
     // 蓝图面板（bluebook 双栏布局）左栏背包：与背包面板一致可选中物品
     const itEl = ev.target.closest('[data-itemid]');
     // 在背包面板、蓝图面板、或任意设备交互面板（组装机/机械臂/储物箱等）左栏背包中，
