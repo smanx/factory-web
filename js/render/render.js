@@ -1265,13 +1265,13 @@ function tileCenterPx(tx, ty) { return [tx * TILE + TILE / 2, ty * TILE + TILE /
 function drawBlueprintOverlay(ctx) {
   if (!G.blueMode) return;
   // 红图 / 蓝图 / 绿图框选区域（拖拽中）
-  if ((G.blueMode === 'blue' || G.blueMode === 'red' || G.blueMode === 'green') && G.blueStart && G.blueEnd) {
+  if ((G.blueMode === 'blue' || G.blueMode === 'bluecreate' || G.blueMode === 'cut' || G.blueMode === 'red' || G.blueMode === 'green') && G.blueStart && G.blueEnd) {
     const x0 = Math.min(G.blueStart.tx, G.blueEnd.tx);
     const y0 = Math.min(G.blueStart.ty, G.blueEnd.ty);
     const x1 = Math.max(G.blueStart.tx, G.blueEnd.tx);
     const y1 = Math.max(G.blueStart.ty, G.blueEnd.ty);
     const mode = G.blueMode;
-    const col = mode === 'red' ? [230, 70, 70] : mode === 'green' ? [80, 200, 110] : [90, 160, 255];
+    const col = mode === 'red' ? [230, 70, 70] : mode === 'green' ? [80, 200, 110] : mode === 'cut' ? [220, 160, 60] : [90, 160, 255];
     ctx.fillStyle = 'rgba(' + col[0] + ',' + col[1] + ',' + col[2] + ',.16)';
     ctx.fillRect(x0 * TILE, y0 * TILE, (x1 - x0 + 1) * TILE, (y1 - y0 + 1) * TILE);
     ctx.strokeStyle = 'rgba(' + col[0] + ',' + col[1] + ',' + col[2] + ',.95)';
@@ -1282,7 +1282,7 @@ function drawBlueprintOverlay(ctx) {
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 12px system-ui';
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText((mode === 'red' ? '红图：删除整块' : mode === 'green' ? '绿图：升级/降级整块' : '蓝图：复制整块') + ' ' +
+    ctx.fillText((mode === 'red' ? '红图：删除整块' : mode === 'green' ? '绿图：升级/降级整块' : mode === 'cut' ? '剪切：复制为蓝图并拆除' : mode === 'bluecreate' ? '创建蓝图：框选一片建筑' : '蓝图：复制整块') + ' ' +
       (x1 - x0 + 1) + '×' + (y1 - y0 + 1), x0 * TILE + 4, y0 * TILE - 14);
     return;
   }

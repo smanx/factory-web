@@ -705,6 +705,124 @@ html, body {
 .recycle-cell.empty { border-color: #d06a3a; background: rgba(208,106,58,.05); }
 .recycle-x { font-size: 8px; }
 
+/* ===== 蓝图面板（blue-wide：左=玩家背包，右=蓝图库，与设备面板布局一致）===== */
+#panel.blue-wide {
+  width: fit-content;
+  max-width: calc(100vw - 32px);
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-height: calc(100vh - 48px);
+  background: var(--panel-bg);
+}
+#panel.blue-wide #panel-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.bb2-layout {
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+  width: fit-content;
+  overflow: hidden;
+}
+.bb2-col {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-bg);
+  border: 1px solid rgba(255, 255, 255, .06);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.bb2-left { flex: 0 0 auto; }
+.bb2-right {
+  flex: 0 0 auto;
+  width: 430px;
+  min-width: 360px;
+  border: 2px solid #444;
+  background: var(--panel-bg);
+}
+.bb2-col-head {
+  padding: 8px 10px;
+  font-weight: bold;
+  color: #ffe08a;
+  background: var(--panel-bg);
+  border-bottom: 1px solid #3a4550;
+  font-size: 14px;
+}
+.bb2-col-body { overflow-y: auto; padding: 10px 12px; min-height: 0; overscroll-behavior: contain; }
+/* 左栏背包固定 10 列（与设备面板一致） */
+.bb2-left .inv-slots { grid-template-columns: repeat(10, 32px); }
+/* 右栏蓝图列表窄屏适配 */
+.bb2-right .bluebook-item { flex-wrap: wrap; }
+
+/* ===== 蓝图编辑界面（Alt+B 框选后弹出）===== */
+.bp-edit-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 380px;
+}
+.bp-edit-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.bp-edit-slot {
+  position: relative;
+  width: 32px; height: 32px;
+  border-radius: 3px;
+  border: 1px solid #37424f;
+  background: #222b35;
+  overflow: visible;
+}
+.bp-edit-slot img { width: 100%; height: 100%; display: block; border-radius: 0; object-fit: cover; }
+.bp-edit-slot .cnt {
+  position: absolute;
+  right: 0; bottom: 0;
+  font-size: 7px; font-weight: bold;
+  color: #fff;
+  text-shadow: 0 1px 2px #000;
+  pointer-events: none;
+  line-height: 1;
+}
+.bp-edit-more {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: #9ab;
+}
+.bp-edit-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #2c3846;
+}
+.bp-edit-primary {
+  font-size: 14px;
+  padding: 9px 14px;
+  background: rgba(74, 122, 208, .3);
+  border: 1px solid #5a8ad0;
+  color: #cfe0ff;
+  font-weight: bold;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.bp-edit-primary:hover { background: rgba(74, 122, 208, .5); }
+.bp-edit-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.bp-edit-hotbar {
+  display: grid;
+  grid-template-columns: repeat(10, 32px);
+  gap: 4px;
+  margin-top: 4px;
+}
+.bp-edit-hotbar .slot { cursor: pointer; }
+
 /* 蓝图库 */
 .bluebook-item {
   display: flex; align-items: center; gap: 8px;

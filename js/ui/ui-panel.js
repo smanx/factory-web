@@ -281,10 +281,57 @@ function initPanelEvents() {
       renderPanel(false);
       return;
     }
+    // 蓝图编辑界面（Alt+B 框选后弹出）：创建蓝图放置/入背包/入快捷栏
+    if (G.panelMode === 'blueprint-edit') {
+      // 放到地图：关闭面板进入粘贴模式
+      const bpPlace = ev.target.closest('#bp-edit-place');
+      if (bpPlace) {
+        const nameInput = document.getElementById('bp-edit-name');
+        if (nameInput && G.blueprint) {
+          const nm = nameInput.value.trim();
+          if (nm) G.blueprint.name = nm;
+        }
+        // 同步重命名蓝图库中同内容蓝图（blueBookAdd 去重依据内容一致）
+        if (G.blueprint && typeof blueBookAdd === 'function') blueBookAdd(G.blueprint);
+        closePanel();
+        if (G.blueprint && G.blueprint.ents && G.blueprint.ents.length) {
+          G.blueMode = 'paste';
+          G.blueRot = 0; G.blueFlipH = false; G.blueFlipV = false;
+          toast('蓝图已创建（' + G.blueprint.ents.length + ' 个建筑），点击空白处放置（R旋转，V/H翻转，右键取消）');
+          if (typeof playSfx === 'function') playSfx('blueprint');
+        } else {
+          toast('蓝图数据为空，无法放置');
+        }
+        return;
+      }
+      // 放入背包
+      const bpInv = ev.target.closest('#bp-edit-inv');
+      if (bpInv) {
+        if (G.blueprint && G.blueprint.ents && G.blueprint.ents.length) {
+          const nameInput = document.getElementById('bp-edit-name');
+          if (nameInput) { const nm = nameInput.value.trim(); if (nm) G.blueprint.name = nm; }
+          if (bpItemToInv(G.blueprint)) toast('蓝图「' + (G.blueprint.name || '未命名') + '」已放入背包（选中后点击地图放置）');
+        } else {
+          toast('蓝图数据为空');
+        }
+        renderPanel(false);
+        return;
+      }
+      return;
+    }
     // 蓝图库：加载蓝图粘贴
     const bbUse = ev.target.closest('[data-bbuse]');
     if (bbUse && G.panelMode === 'bluebook') {
       if (typeof blueBookLoad === 'function') blueBookLoad(+bbUse.dataset.bbuse);
+      return;
+    }
+    // 蓝图库：把蓝图作为物品放入背包
+    const bbInv = ev.target.closest('[data-bbinv]');
+    if (bbInv && G.panelMode === 'bluebook') {
+      const b = (G.blueBook || [])[+bbInv.dataset.bbinv];
+      if (b && typeof bpItemToInv === 'function') {
+        if (bpItemToInv(b)) toast('蓝图「' + b.name + '」已放入背包（选中后点击地图放置）');
+      }
       return;
     }
     // 蓝图库：删除蓝图
@@ -354,11 +401,12 @@ function initPanelEvents() {
       renderPanel(false);
       return;
     }
+    // 蓝图面板（bluebook 双栏布局）左栏背包：与背包面板一致可选中物品
     const itEl = ev.target.closest('[data-itemid]');
-    // 在背包面板、或任意设备交互面板（组装机/机械臂/储物箱等）左栏背包中，
+    // 在背包面板、蓝图面板、或任意设备交互面板（组装机/机械臂/储物箱等）左栏背包中，
     // 点击物品可选中并显示放置幽灵：设备可点击地图直接建造，材料/工具跟随鼠标（储物箱中选中后可存入箱子）。
     // 右栏设备操作区的可交互控件都带 data-action，故用 !itEl.dataset.action 排除。
-    if (itEl && (G.panelMode === 'inv' || (G.panelMode === 'machine' && G.panelEnt)) && !itEl.dataset.action) {
+    if (itEl && (G.panelMode === 'inv' || G.panelMode === 'bluebook' || (G.panelMode === 'machine' && G.panelEnt)) && !itEl.dataset.action) {
       const iid = itEl.dataset.itemid;
       // 任意物品（设备/材料/工具）均可被鼠标选中，选中后不关闭背包：
       // 设备点击地图可直接建造；材料/工具点击地图无法建造。
@@ -1080,7 +1128,11 @@ async function renderSaveManage() {
 // 设备点击地图可直接建造；材料/工具点击地图无法建造（由 tryPlaceAt 内部拦截）。
 // 选中后不关闭背包，用户通过快捷键(E/Q)或右上角“X”关闭后选中状态保留。
 function selectInventoryItem(iid) {
-  if (!ITEMS[iid]) return;
+  // 蓝图物品（blueprint#n）：先解析基础 id 再查 ITEMS（blueprint#3 不在 ITEMS 表里）
+  const isBp = (typeof isBlueprintItem === 'function') && isBlueprintItem(iid);
+  if (!ITEMS[iid] && !isBp) return;
+  if (isBp && !ITEMS['blueprint']) return;
+  const dispId = isBp ? 'blueprint' : iid;
   // 选中任意物品（设备/材料/工具）都让鼠标显示放置幽灵：
   // 统一用 quickSel 临时持握，不占用/不高亮快捷栏槽位（快捷栏无选中效果）。
   G.sel = -1;
@@ -1090,8 +1142,10 @@ function selectInventoryItem(iid) {
   uiDirty = true;
   if (typeof setWeapon === 'function') setWeapon(iid);
   if (typeof playSfx === 'function') playSfx('select');
-  const buildable = !!BUILD_DEFS[iid];
-  toast('已选中 ' + ITEMS[iid].name + (buildable ? '，点击地图直接建造（Q 取消）' : '，鼠标显示物品幽灵，可放入快捷栏或按 Q 取消'));
+  const buildable = isBp || !!BUILD_DEFS[iid];
+  toast('已选中 ' + (ITEMS[dispId] ? ITEMS[dispId].name : '蓝图') +
+    (isBp ? '（蓝图物品）：点击地图放置蓝图内容，R 旋转，V/H 翻转，Q 取消' :
+      (buildable ? '，点击地图直接建造（Q 取消）' : '，鼠标显示物品幽灵，可放入快捷栏或按 Q 取消')));
 }
 
 // 恢复面板默认位置：清除拖动期间写入的内联 left/top/transform，

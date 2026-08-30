@@ -121,6 +121,15 @@ function itemTip(id, extra) {
   return extra ? (base + (extra[0] === '|' ? '' : '|') + extra) : base;
 }
 
+// 蓝图物品 tooltip：显示蓝图名/建筑数/尺寸（blueprint#n 的专属提示）
+function bpItemTip(id) {
+  const d = (typeof bpDataOfItem === 'function') ? bpDataOfItem(id) : null;
+  if (!d) return '蓝图|空蓝图（数据缺失），可丢弃';
+  const bb = blueprintBounds(d.ents);
+  return (d.name || '蓝图') + '|蓝图物品：选中后点击地图放置（R 旋转，V/H 翻转，Q 取消）。不消耗材料，可反复使用。尺寸 ' +
+    bb.W + '×' + bb.H + ' · ' + d.ents.length + ' 个建筑';
+}
+
 function iconCanvas(id, size = 34) {
   // 无边框版本：内容直接铺满整个图标。
   // 高清渲染：内部按「设备像素比 + 最小分辨率」绘制，再由 CSS 缩放显示，保证底部快捷栏/背包显示清晰不糊。
@@ -154,11 +163,14 @@ function buildHotbar() {
     const slot = document.createElement('div');
     slot.className = 'slot' + (id ? '' : ' nilslot');
     slot.dataset.idx = i;
-    if (id) slot.dataset.tip = itemTip(id);
+    // 蓝图物品（blueprint#n）：按基础 id 渲染图标，tooltip 换成蓝图专属说明
+    const bpId = (typeof isBlueprintItem === 'function') ? isBlueprintItem(id) : null;
+    const iconId = bpId ? 'blueprint' : id;
+    if (id) slot.dataset.tip = bpId ? bpItemTip(id) : itemTip(id);
     else slot.dataset.tip = '空槽位|打开背包(E)，选中任意物品后点击空槽位或鼠标中键即可把该物品放入，放置幽灵继续选中';
     if (id) {
-      const ic = iconCanvas(id, 16).cloneNode();
-      ic.getContext('2d').drawImage(iconCanvas(id, 16), 0, 0);
+      const ic = iconCanvas(iconId, 16).cloneNode();
+      ic.getContext('2d').drawImage(iconCanvas(iconId, 16), 0, 0);
       slot.appendChild(ic);
     } else {
       const emp = document.createElement('span');
@@ -191,11 +203,13 @@ function refreshHotbar() {
   HOTBAR.forEach((id, i) => {
     const el = document.getElementById('hb-cnt-' + i);
     if (!el) return;
-    el.textContent = id ? (infinite ? '∞' : invCount(id)) : '';
+    // 蓝图物品可反复使用（不消耗），数量角标恒显示 ∞
+    const isBp = (typeof isBlueprintItem === 'function') ? isBlueprintItem(id) : false;
+    el.textContent = id ? (infinite || isBp ? '∞' : invCount(id)) : '';
     // 快捷栏无选中效果：点击只切换鼠标放置幽灵，不显示高亮/选中态
     const slot = document.getElementById('hotbar').children[i];
     slot.classList.remove('active');
-    slot.classList.toggle('empty', !!id && !infinite && invCount(id) <= 0);
+    slot.classList.toggle('empty', !!id && !isBp && !infinite && invCount(id) <= 0);
   });
 }
 
@@ -204,10 +218,12 @@ function refreshHotbar() {
 // 快捷栏无选中效果：点击只让鼠标幽灵显示该物品，不高亮/不选中快捷栏槽位。
 function onHotbarClick(i) {
   const held = G.quickSel;
-  if (held && ITEMS[held] && !HOTBAR[i]) {
+  const heldOk = held && (ITEMS[held] || (typeof isBlueprintItem === 'function' && isBlueprintItem(held)));
+  if (held && heldOk && !HOTBAR[i]) {
     // 空槽位：把鼠标持握的放置幽灵物品直接放入，且幽灵不消失、继续选中
     HOTBAR[i] = held;
-    toast('已放入快捷栏槽位 ' + (i === 9 ? 0 : i + 1) + '：' + ITEMS[held].name + '（放置幽灵继续选中，可继续放入其他空槽位）');
+    const heldName = (ITEMS[held] || ITEMS['blueprint'] || { name: '蓝图' }).name;
+    toast('已放入快捷栏槽位 ' + (i === 9 ? 0 : i + 1) + '：' + heldName + '（放置幽灵继续选中，可继续放入其他空槽位）');
     if (typeof playSfx === 'function') playSfx('select');
     buildHotbar();
     uiDirty = true;
@@ -220,10 +236,11 @@ function onHotbarClick(i) {
 // 直接把它设为该槽位；否则清空该快捷栏槽位。
 function onHotbarMidClick(i) {
   const held = G.quickSel || (G.sel >= 0 ? (HOTBAR[G.sel] || null) : null);
-  if (held && ITEMS[held]) {
+  if (held && (ITEMS[held] || (typeof isBlueprintItem === 'function' && isBlueprintItem(held)))) {
     // 鼠标持握幽灵物品：设为该快捷栏槽位
     HOTBAR[i] = held;
-    toast('已设置快捷栏槽位 ' + (i === 9 ? 0 : i + 1) + '：' + ITEMS[held].name);
+    const heldName2 = (ITEMS[held] || ITEMS['blueprint'] || { name: '蓝图' }).name;
+    toast('已设置快捷栏槽位 ' + (i === 9 ? 0 : i + 1) + '：' + heldName2);
     if (typeof playSfx === 'function') playSfx('select');
   } else {
     // 无幽灵：清空该快捷栏槽位
@@ -247,7 +264,9 @@ function selectSlot(i) {
   if (G.deconstructMode) toggleDeconstructMode(false);
   const prev = G.quickSel || (G.sel >= 0 ? (HOTBAR[G.sel] || null) : null);
   const id = HOTBAR[i];
-  if (id && ITEMS[id]) {
+  // 蓝图物品（blueprint#n）不在 ITEMS 表里，按基础 id 判定可选中
+  const idOk = id && (ITEMS[id] || (typeof isBlueprintItem === 'function' && isBlueprintItem(id)));
+  if (id && idOk) {
     // 快捷栏有物品：直接让鼠标放置幽灵显示该物品（不选中/不高亮快捷栏槽位）
     G.sel = -1;
     G.quickSel = id;
@@ -335,6 +354,8 @@ function openPanel(mode, ent) {
   document.getElementById('panel').classList.toggle('recipe-wide', mode === 'machinerecipe');
   // 设置面板：宽度自适应内容（不再固定 400px）
   document.getElementById('panel').classList.toggle('set-wide', mode === 'set');
+  // 蓝图面板/蓝图编辑界面：居中加宽双栏布局（左=背包，右=蓝图库/编辑区）
+  document.getElementById('panel').classList.toggle('blue-wide', mode === 'bluebook' || mode === 'blueprint-edit');
   // 再次打开时恢复面板默认位置（不保留上次拖动的位置）
   if (typeof resetPanelPos === 'function') resetPanelPos();
   document.getElementById('panel').style.display = 'flex';
@@ -424,7 +445,11 @@ function renderPanel(full) {
     if (newTree && treeScrollTop) newTree.scrollTop = treeScrollTop;
   } else if (G.panelMode === 'bluebook') {
     title.textContent = '蓝图库（Blueprint book）';
-    body.innerHTML = htmlBlueBook();
+    body.innerHTML = bluebookLayoutHtml();
+  } else if (G.panelMode === 'blueprint-edit') {
+    title.textContent = '蓝图编辑';
+    body.innerHTML = blueprintEditLayoutHtml();
+    renderBpEditHotbar();
   } else if (G.panelMode === 'stats') {
     title.textContent = '统计面板';
     body.innerHTML = htmlStats();
@@ -487,7 +512,9 @@ function updateInvLive() {
       const q = (G.invItemQ || '').trim().toLowerCase();
       if (grid) grid.querySelectorAll('.inv-slot[data-itemid]').forEach(el => {
         const id = el.dataset.itemid;
-        const n = invCount(id);
+        // 蓝图物品可反复使用，角标恒 ∞
+        const isBp = (typeof isBlueprintItem === 'function') ? isBlueprintItem(id) : false;
+        const n = isBp ? '∞' : invCount(id);
         const c = el.querySelector('.cnt[data-cnt]');
         if (c && c.textContent !== String(n)) c.textContent = n;
         const hit = !q || (el.dataset.itemsearch || '').includes(q);
@@ -715,9 +742,13 @@ function htmlInvSlots() {
       if (id === 'raw-fish') {
         use = '<button class="slot-use" data-action="eat-fish" data-type="' + id + '" title="食用' + ITEMS[id].name + '（恢复 20 生命值）">🐟</button>';
       }
-      h += '<div class="inv-slot' + (hit ? '' : ' hidden') + '" data-itemid="' + id + '" data-tip="' + itemTip(id) + '" data-itemsearch="' + search + '">' +
-        '<img src="' + iconDataURL(id, 16) + '">' +
-        '<span class="cnt" data-cnt="' + id + '">' + n + '</span>' +
+      // 蓝图物品（blueprint#n）：按基础 id 渲染图标，tooltip 显示蓝图内容摘要
+      const isBp = (typeof isBlueprintItem === 'function') ? isBlueprintItem(id) : false;
+      const iconId = isBp ? 'blueprint' : id;
+      const tipHtml = isBp ? bpItemTip(id) : itemTip(id);
+      h += '<div class="inv-slot' + (hit ? '' : ' hidden') + '" data-itemid="' + id + '" data-tip="' + tipHtml + '" data-itemsearch="' + search + '">' +
+        '<img src="' + iconDataURL(iconId, 16) + '">' +
+        '<span class="cnt" data-cnt="' + id + '">' + (isBp ? '∞' : n) + '</span>' +
         use + '</div>';
     } else {
       h += '<div class="inv-slot empty"></div>';
@@ -1079,12 +1110,12 @@ function applyInserterFilterSearch(q) {
 // 蓝图库面板：列出所有保存的蓝图，可加载粘贴或删除
 function htmlBlueBook() {
   const list = Array.isArray(G.blueBook) ? G.blueBook : [];
-  let h = '<div class="dim">按 <b>B</b> 框选复制蓝图会自动存入蓝图库；也可复制后点这里加载复用。点击“粘贴”后回到地图点击空白处放置（R旋转，右键取消）。</div>';
+  let h = '<div class="dim">按 <b>Alt+B</b> 框选建筑创建蓝图；<b>Ctrl+C</b> 复制、<b>Ctrl+X</b> 剪切（复制后拆除原建筑）。蓝图可放地图、也可存入背包/快捷栏（对齐《异星工厂》蓝图物品化）。</div>';
   h += '<div class="sec">导入蓝图 <span class="dim">（对齐《异星工厂》Blueprint string）</span></div>' +
     '<div class="bb-import-row"><input id="bb-import-input" type="text" placeholder="粘贴蓝图字符串后点导入…" autocomplete="off">' +
     '<button data-bbimport="1">📥 导入</button></div>';
   if (!list.length) {
-    h += '<div class="dim">蓝图库为空。请先在地图上按 <b>B</b> 拖拽框选一片建筑进行复制，蓝图会自动保存到这里。</div>';
+    h += '<div class="dim">蓝图库为空。请在地图上按 <b>Alt+B</b>（或 Ctrl+C）拖拽框选一片建筑创建蓝图。</div>';
     return h;
   }
   for (let i = 0; i < list.length; i++) {
@@ -1100,12 +1131,115 @@ function htmlBlueBook() {
       '<div class="bb-main"><div class="bb-name">' + b.name + '</div>' +
       '<div class="dim">' + b.ents.length + ' 个建筑 · ' + typeNames + '</div></div>' +
       '<button data-bbuse="' + i + '">📋 粘贴</button>' +
+      '<button data-bbinv="' + i + '" title="把该蓝图作为物品放入背包（选中后点击地图放置）">🎒 入包</button>' +
       '<button data-bbexport="' + i + '" title="导出为蓝图字符串（复制分享/导入）">📤 导出</button>' +
       '<button data-bbrename="' + i + '">✏️ 重命名</button>' +
       '<button data-bbdel="' + i + '" class="bb-del">🗑 删除</button>' +
       '</div>';
   }
   return h;
+}
+
+// ===== 蓝图面板（对齐设备面板布局：左=玩家背包，右=蓝图库）=====
+// 按 B 打开：左侧显示玩家背包（与设备面板一致，可选中物品建造/放入快捷栏），
+// 右侧显示蓝图库（蓝图列表 + 导入/导出 + 当前复制的蓝图操作）。
+function bluebookLayoutHtml() {
+  const left = htmlInventory();
+  return '<div class="bb2-layout">' +
+    '<div class="bb2-col bb2-left"><div class="bb2-col-head">🎒 玩家</div>' +
+    '<div class="bb2-col-body">' + left + '</div></div>' +
+    '<div class="bb2-col bb2-right"><div class="bb2-col-head">📑 蓝图库</div>' +
+    '<div class="bb2-col-body">' + htmlBlueBook() + '</div></div>' +
+  '</div>';
+}
+
+// ===== 蓝图编辑界面（Alt+B 框选后弹出）=====
+// 展示框选得到的蓝图摘要（建筑构成/尺寸/地砖），底部操作：
+// 「创建蓝图」= 放到地图（进入粘贴模式）/ 放入背包 / 放入快捷栏。
+function blueprintEditLayoutHtml() {
+  const bp = G.blueprint;
+  if (!bp || !bp.ents || !bp.ents.length) {
+    return '<div class="dim">没有待编辑的蓝图。请先按 Alt+B 框选一片建筑。</div>';
+  }
+  const bb = blueprintBounds(bp.ents);
+  // 统计建筑构成
+  const types = {};
+  for (const e of bp.ents) types[e.type] = (types[e.type] || 0) + 1;
+  const keys = Object.keys(types).sort((a, b) => types[b] - types[a]);
+  // 图标网格展示建筑构成
+  let icons = '';
+  for (const t of keys.slice(0, 24)) {
+    const name = ITEMS[t] ? ITEMS[t].name : t;
+    icons += '<div class="bp-edit-slot" data-tip="' + name + '|蓝图内 ' + types[t] + ' 个">' +
+      '<img src="' + iconDataURL(t, 16) + '"><span class="cnt">' + types[t] + '</span></div>';
+  }
+  if (keys.length > 24) icons += '<div class="bp-edit-more">+' + (keys.length - 24) + '</div>';
+  const nameVal = String(bp.name || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  return '<div class="bp-edit-layout">' +
+    '<div class="bp-edit-info">' +
+      '<div class="sec">蓝图名称</div>' +
+      '<input id="bp-edit-name" class="inv-search" type="text" maxlength="40" placeholder="输入蓝图名称…" autocomplete="off" value="' + nameVal + '">' +
+      '<div class="sec">蓝图内容</div>' +
+      '<div class="dim">尺寸 ' + bb.W + '×' + bb.H + ' 格 · 共 ' + bp.ents.length + ' 个建筑' +
+        (Array.isArray(bp.tiles) && bp.tiles.length ? ' · 含 ' + bp.tiles.length + ' 格地砖' : '') + '</div>' +
+      '<div class="bp-edit-slots">' + icons + '</div>' +
+      '<div class="dim" style="margin-top:8px">提示：放置蓝图不消耗材料，可反复使用；放置时可按 R 旋转、V/H 翻转、Q 取消。</div>' +
+    '</div>' +
+    '<div class="bp-edit-actions">' +
+      '<button id="bp-edit-place" class="btn bp-edit-primary">🏗 创建蓝图（放到地图）</button>' +
+      '<div class="bp-edit-row">' +
+        '<button id="bp-edit-inv" class="btn sm">🎒 放入背包</button>' +
+        '<button id="bp-edit-hotbar" class="btn sm">快捷栏放置：先点下方格子</button>' +
+      '</div>' +
+      '<div class="dim" style="margin-top:6px">「放入快捷栏」：先点击下方快捷栏空格，蓝图会放入该格。</div>' +
+      '<div class="bp-edit-hotbar" id="bp-edit-hotbar-grid"></div>' +
+    '</div>' +
+  '</div>';
+}
+
+// 蓝图编辑界面的迷你快捷栏（10 格）：点击空格把蓝图物品放入快捷栏
+function renderBpEditHotbar() {
+  const grid = document.getElementById('bp-edit-hotbar-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  for (let i = 0; i < HOTBAR.length; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'slot' + (HOTBAR[i] ? '' : ' nilslot');
+    slot.dataset.idx = i;
+    if (HOTBAR[i]) {
+      const ic = iconCanvas(HOTBAR[i], 16).cloneNode();
+      ic.getContext('2d').drawImage(iconCanvas(HOTBAR[i], 16), 0, 0);
+      slot.appendChild(ic);
+    } else {
+      const emp = document.createElement('span');
+      emp.className = 'nilmark';
+      emp.textContent = '空';
+      slot.appendChild(emp);
+    }
+    const key = document.createElement('span');
+    key.className = 'key';
+    key.textContent = i === 9 ? '0' : (i + 1);
+    slot.appendChild(key);
+    slot.addEventListener('click', () => {
+      const bp = G.blueprint;
+      if (!bp || !bp.ents || !bp.ents.length) { toast('没有待放置的蓝图'); return; }
+      const id = bpItemCreate(bp);
+      if (!id) { toast('蓝图数据无效'); return; }
+      if (HOTBAR[i]) {
+        // 占用槽位：尝试替换（蓝图物品可直接覆盖普通物品槽，对齐设备物品交互）
+        HOTBAR[i] = id;
+        toast('已把蓝图放入快捷栏槽位 ' + (i === 9 ? 0 : i + 1) + '（原物品已替换）');
+      } else {
+        HOTBAR[i] = id;
+        toast('已把蓝图放入快捷栏槽位 ' + (i === 9 ? 0 : i + 1));
+      }
+      if (typeof playSfx === 'function') playSfx('select');
+      buildHotbar();
+      renderBpEditHotbar();
+      uiDirty = true;
+    });
+    grid.appendChild(slot);
+  }
 }
 
 // 组装机面板：按关键字过滤「选择配方」网格中的配方按钮

@@ -322,8 +322,12 @@ function drawGhost(ctx) {
   // 幽灵需显示在背包面板/底部工具栏等所有界面上方：仅需存在选中物品与鼠标所在格，不再要求 cursorTile 落在主画布上（面板/工具栏上由 window 级 mousemove 持续更新）。
   if (!buildActive() || !G.cursorTile) return;
   const type = selItem();
-  if (!type || !ITEMS[type]) return;
-  const def = BUILD_DEFS[type];
+  // 蓝图物品（blueprint#n）：预览由 drawBlueprintOverlay 的 paste 分支渲染，
+  // 但 empty（空蓝图）仍走下方图标幽灵兜底，故这里解析基础 id 保证不提前 return。
+  const bpItemId = (typeof isBlueprintItem === 'function') ? isBlueprintItem(type) : null;
+  const iconId = bpItemId ? 'blueprint' : type;
+  if (!type || (!ITEMS[type] && !bpItemId)) return;
+  const def = BUILD_DEFS[iconId];
   const overMap = mouseOverMap();
   const showPlaceGhost = def && overMap;
   if (showPlaceGhost) {
@@ -380,7 +384,7 @@ function drawGhost(ctx) {
     const cx = (G.cursorTile.tx + 0.5) * TILE;
     const cy = (G.cursorTile.ty + 0.5) * TILE;
     g.globalAlpha = 0.6;
-    drawItemGlyph(g, type, cx, cy, TILE * 0.7);
+    drawItemGlyph(g, iconId, cx, cy, TILE * 0.7);
     g.globalAlpha = 1;
     g.strokeStyle = 'rgba(255,255,255,.45)';
     g.lineWidth = 2 / G.cam.z;
@@ -397,17 +401,19 @@ function drawGhost(ctx) {
     g.save();
     g.globalAlpha = 0.92;
     if (typeof iconCanvas === 'function') {
-      const ic = iconCanvas(type, Math.round(slot));
+      const ic = iconCanvas(iconId, Math.round(slot));
       g.drawImage(ic, ms.x - slot / 2, ms.y - slot / 2, slot, slot);
     } else {
       g.fillStyle = 'rgba(10,14,18,.72)';
       if (g.roundRect) g.roundRect(ms.x - slot / 2, ms.y - slot / 2, slot, slot, 6);
       else g.rect(ms.x - slot / 2, ms.y - slot / 2, slot, slot);
       g.fill();
-      drawItemGlyph(g, type, ms.x, ms.y, slot * 0.72);
+      drawItemGlyph(g, iconId, ms.x, ms.y, slot * 0.72);
     }
     // 图标右下角数量角标：与背包格子的 .cnt 显示一致
-    const cnt = (typeof invCount === 'function') ? invCount(type) : 0;
+    // 蓝图物品可反复使用，角标显示 ∞
+    const cnt = (typeof isBlueprintItem === 'function' && isBlueprintItem(type)) ? '∞'
+      : ((typeof invCount === 'function') ? invCount(type) : 0);
     if (cnt > 0) {
       g.globalAlpha = 1;
       g.fillStyle = '#fff';
@@ -426,8 +432,10 @@ function drawGhost(ctx) {
 function drawGhostCount(g, wx, wy) {
   const type = selItem();
   if (!type) return;
-  const cnt = (typeof invCount === 'function') ? invCount(type) : 0;
-  if (cnt <= 0) return;
+  // 蓝图物品可反复使用，数量角标恒显示 ∞
+  const isBp = (typeof isBlueprintItem === 'function') ? isBlueprintItem(type) : false;
+  const cnt = isBp ? '∞' : ((typeof invCount === 'function') ? invCount(type) : 0);
+  if (cnt === 0 || cnt === '0' || cnt === null || cnt === undefined || cnt === '') return;
   const sx = (wx - G.cam.px) * G.cam.z + W / 2;
   const sy = (wy - G.cam.py) * G.cam.z + H / 2;
   g.save();

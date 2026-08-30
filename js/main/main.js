@@ -47,6 +47,7 @@ var G = {
   clipboard: null,
   blueprint: null,        // 蓝图数据：{ minX, minY, w, h, ents: [序列化实体...] }
   blueBook: [],           // 蓝图库：保存的多个蓝图 { name, minX, minY, ents }（对齐《异星工厂》蓝图库）
+  blueprintItems: {},     // 蓝图物品化数据：blueprint#n → { name, minX, minY, ents, tiles }（蓝图是可入背包/快捷栏的物品）
   blueMode: null,         // 'blue' | 'red' | 'paste'（框选/删除/粘贴蓝图）
   orbitalCargo: {},       // 行星间货物调度：目标星球 -> { 物品 -> 数量 }（火箭发射送往目标星球，抵达后交付）
   blueStart: null,        // 框选起点瓦片
@@ -165,6 +166,7 @@ function newGame() {
   G.logiEnabled = true;   // 新游戏开启「背包物流」总开关
   G.recycleUnrequested = false; // 新游戏默认关闭「回收未请求物品」
   G.blueBook = [];      // 新游戏清空蓝图库
+  G.blueprintItems = {};  // 新游戏清空蓝图物品
   G.orbitalCargo = {}; // 行星间货物调度：目标星球 -> { 物品 -> 数量 }（火箭发射送往目标星球，抵达后交付）
   G.mapTags = [];       // 新游戏清空地图标记
   if (typeof achInitStats === 'function') achInitStats();   // 新游戏清空成就状态
@@ -233,6 +235,7 @@ function travelToPlanet(planet, opts) {
   const logiEnabled = G.logiEnabled !== false;
   const recycleUnrequested = !!G.recycleUnrequested;
   const blueBook = (G.blueBook || []).slice();
+  const blueprintItems = G.blueprintItems || {};
 
   // 更新世界配置的星球
   if (!G.worldConfig) G.worldConfig = {};
@@ -267,6 +270,7 @@ function travelToPlanet(planet, opts) {
   // 交付已送达本星球的行星间货物（火箭发射送往目标星球，抵达后降落）
   if (typeof deliverOrbitalCargo === 'function') deliverOrbitalCargo(planet);
   G.logiRequest = logiRequest; G.trashSlots = trashSlots; G.blueBook = blueBook;
+  G.blueprintItems = blueprintItems;
   G.logiEnabled = logiEnabled; G.recycleUnrequested = recycleUnrequested;
   if (typeof constrRestore === 'function') constrRestore(null);
   if (typeof equipmentRestore === 'function') equipmentRestore(null);
@@ -316,6 +320,7 @@ function serializeAll() {
     equipment: (typeof equipmentSerialize === 'function') ? equipmentSerialize() : null,
     orbitalCargo: Object.assign({}, G.orbitalCargo || {}),
     blueBook: (G.blueBook || []).map(b => ({ name: b.name, minX: b.minX | 0, minY: b.minY | 0, ents: b.ents, tiles: Array.isArray(b.tiles) ? b.tiles : [] })),
+    blueprintItems: (typeof bpItemsSerialize === 'function') ? bpItemsSerialize() : [],
     mapTags: (typeof mapTagsSerialize === 'function') ? mapTagsSerialize() : (G.mapTags || []).slice(),
     achievements: (typeof achievementsSerialize === 'function') ? achievementsSerialize() : null
   };
@@ -567,6 +572,7 @@ function applySave(d) {
   G.gameWon = !!d.gameWon;
   // 恢复蓝图库（旧档无该字段则置空）
   G.blueBook = [];
+  if (typeof bpItemsDeserialize === 'function') bpItemsDeserialize(d.blueprintItems);
   if (Array.isArray(d.blueBook)) {
     for (const b of d.blueBook) {
       if (b && Array.isArray(b.ents) && b.ents.length && b.name) {
@@ -709,6 +715,11 @@ function plantTree(tx, ty, infinite) {
 function tryPlaceAt(tx, ty) {
   const rawSel = selItem();
   if (!rawSel) return;
+  // 蓝图物品（blueprint / blueprint#n）：点击地图放置蓝图内容（不消耗材料，可反复放置）
+  if (typeof isBlueprintItem === 'function' && isBlueprintItem(rawSel)) {
+    tryPlaceBlueprintItem(tx, ty);
+    return;
+  }
   const infinite = !!(G.dbg && G.dbg.infinite);
   // 品质物品：`item~quality` 由品质模块产出。放置时剥离品质后缀取基础类型，并把品质写入实体
   const sq = (typeof splitQuality === 'function') ? splitQuality(rawSel) : { base: rawSel, quality: 'normal' };

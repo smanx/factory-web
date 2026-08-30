@@ -33,8 +33,12 @@ function bindInput() {
     else if (k === 'tab') { ev.preventDefault(); G.panelMode === 'inv' ? closePanel() : openPanel('inv'); }
     // 统计/蓝图/红图/绿图快捷键（对齐《异星工厂》：P 统计、B 蓝图、Alt+D 红图、Alt+U 绿图）
     else if (k === 'p') G.panelMode === 'stats' ? closePanel() : openPanel('stats');
-    else if (!ev.altKey && k === 'b') { closePanel(); toggleBlueprint('blue'); }
-    else if (ev.altKey && k === 'b') { ev.preventDefault(); if (G.blueMode) cancelBlueprint(); G.panelMode === 'bluebook' ? closePanel() : openPanel('bluebook'); }
+    else if (!ev.altKey && k === 'b') { G.panelMode === 'bluebook' ? closePanel() : openPanel('bluebook'); }
+    else if (ev.altKey && k === 'b') { ev.preventDefault(); if (G.blueMode) cancelBlueprint(); closePanel(); toggleBlueprint('bluecreate'); }
+    // Ctrl+C 快速复制：进入蓝图模式并提示框选（框选松开鼠标后自动复制为蓝图粘贴）
+    else if (ev.ctrlKey && k === 'c') { ev.preventDefault(); closePanel(); toggleBlueprint('blue'); toast('快速复制：拖拽框选一片建筑，松开鼠标即复制为蓝图'); }
+    // Ctrl+X 快速剪切：框选后复制为蓝图并删除原建筑（物资返还背包）
+    else if (ev.ctrlKey && k === 'x') { ev.preventDefault(); closePanel(); toggleBlueprint('cut'); toast('快速剪切：拖拽框选一片建筑，松开鼠标后复制为蓝图并拆除原建筑'); }
     else if (ev.altKey && k === 'd') { ev.preventDefault(); closePanel(); toggleBlueprint('red'); }
     else if (ev.altKey && k === 'u') { ev.preventDefault(); closePanel(); toggleBlueprint('green'); }
     else if ((k === 'delete' || k === 'backspace') && G.panelMode === 'machine' &&
@@ -220,6 +224,8 @@ function bindInput() {
       G.blueSelecting = false;
       if (!G.blueStart || !G.blueEnd) { cancelBlueprint(); return; }
       if (G.blueMode === 'blue') captureBlueprint();
+      else if (G.blueMode === 'bluecreate') captureBlueprintAsItem();
+      else if (G.blueMode === 'cut') quickCopyBlueprint(true);
       else if (G.blueMode === 'red') applyRedBlueprint();
       else if (G.blueMode === 'green') applyGreenBlueprint();
     }

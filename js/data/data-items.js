@@ -412,6 +412,9 @@ const ITEMS = {
   'repair-pack': {emoji: '🔧',  name: '修理包', color: '#5aa0d0', desc: '选中后点击受损建筑可修复其耐久度。每个修理包有多次使用次数，损坏建筑恢复 HP' },
   // ===== 开采工具（对齐《异星工厂》Iron axe / Steel axe：手持加速手挖） =====
   // ===== 规划器（对齐《异星工厂》Deconstruction planner / Upgrade planner） =====
+  // ===== 蓝图（对齐《异星工厂》蓝图物品化：蓝图是可入背包/快捷栏的物品）=====
+  'blueprint': {emoji: '📑', name: '蓝图', color: '#4a7ad0', mark: '蓝', desc: '手持蓝图：点击地图任意位置放置蓝图内容（R 旋转，V/H 翻转，Q 取消）。蓝图不消耗材料，可反复放置。'},
+
   'deconstruction-planner': {emoji: '🟥',  name: '拆除规划器', color: '#d04848', mark: '拆', desc: '手持规划器：选中后进入红图框选模式，框选一块区域即可批量拆除其中的建筑（装备个人机器人港后改由施工机器人拆除）。对齐《异星工厂》Deconstruction planner' },
   'upgrade-planner': {emoji: '🟩',  name: '升级规划器', color: '#57b95c', mark: '升', desc: '手持规划器：选中后进入绿图框选模式，框选一块区域后可批量升级/降级其中的建筑。对齐《异星工厂》Upgrade planner' },
   // ===== 空间科学包（对齐《异星工厂》Space science pack，火箭发射产出） =====

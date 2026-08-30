@@ -6,7 +6,7 @@ function toggleBlueprint(mode) {
   if (!G.blueMode && G.deconstructMode) toggleDeconstructMode(false);
   // 再次点击同按钮取消框选
   if (G.blueMode === mode) { cancelBlueprint(); return; }
-  if (G.blueMode === 'paste' && mode === 'blue') {
+  if (G.blueMode === 'paste' && (mode === 'blue' || mode === 'bluecreate')) {
     // 蓝图粘贴中再点蓝图：退出蓝图模式（保留已复制的蓝图数据可再次粘贴）
     cancelBlueprint();
     return;
@@ -17,9 +17,13 @@ function toggleBlueprint(mode) {
   G.sel = -1; G.quickSel = null; refreshHotbar();
   toast(mode === 'blue'
     ? '蓝图模式：拖拽框选要复制的区域，松开后点击空白处粘贴'
-    : mode === 'red'
-      ? '红图模式：拖拽框选要删除的区域，松开即删除整块'
-      : '绿图模式：拖拽框选要升级/降级的区域，松开后选择升级或降级');
+    : mode === 'bluecreate'
+      ? '创建蓝图：拖拽框选一片建筑，松开后弹出蓝图编辑界面'
+      : mode === 'cut'
+        ? '剪切模式：拖拽框选要剪切的区域，松开后复制为蓝图并拆除原建筑'
+        : mode === 'red'
+          ? '红图模式：拖拽框选要删除的区域，松开即删除整块'
+          : '绿图模式：拖拽框选要升级/降级的区域，松开后选择升级或降级');
 }
 
 function cancelBlueprint() {
@@ -584,3 +588,223 @@ function blueBookExport(i) {
   }
 }
 
+
+// ===== 蓝图物品化（对齐《异星工厂》：蓝图是可放入背包/快捷栏的物品）=====
+// 蓝图作为虚拟物品 `blueprint` 存在于背包/快捷栏，本体数据（ents/tiles/name）
+// 挂在 G.blueprintItems（id → 蓝图数据）上；背包/快捷栏里的 `blueprint#<n>` 引用它。
+// 放置不消耗任何材料，与《异星工厂》蓝图一致可反复使用。
+
+// 下一个可用蓝图 id（自增，读档时保证不冲突）
+let _bpNextId = 1;
+
+// 初始化蓝图物品容器（G 对象创建时为空，首次使用时懒初始化）
+function bpItems() {
+  if (!G.blueprintItems) G.blueprintItems = {};
+  return G.blueprintItems;
+}
+
+// 解析物品 id：`blueprint#3` → { isBp: true, bpId: 3 }；普通 `blueprint` → { isBp: true, bpId: 0 }（手持空蓝图/直接粘贴模式）
+function bpParseItemId(id) {
+  if (typeof id !== 'string') return null;
+  const m = id.match(/^blueprint(?:#(\d+))?$/);
+  if (!m) return null;
+  return { isBp: true, bpId: m[1] ? +m[1] : 0 };
+}
+
+// 物品 id 是否为蓝图（含 `blueprint#n` 引用）
+function isBlueprintItem(id) { return !!bpParseItemId(id); }
+
+// 由 id 取蓝图数据；bpId=0 返回当前复制缓冲（无则 null）
+function bpDataById(bpId) {
+  if (!bpId) return G.blueprint;
+  return bpItems()[bpId] || null;
+}
+
+// 物品 id → 蓝图数据（供放置/预览使用）
+function bpDataOfItem(id) {
+  const p = bpParseItemId(id);
+  if (!p) return null;
+  return bpDataById(p.bpId);
+}
+
+// 把一份蓝图数据注册为背包物品（`blueprint#n`），返回物品 id。
+// 若背包/快捷栏中已有内容完全相同的蓝图物品，则直接复用其 id（避免无限增殖）。
+function bpItemCreate(bp) {
+  if (!bp || !Array.isArray(bp.ents) || !bp.ents.length) return null;
+  const key = bp.ents.map(e => e.type + '@' + e.x + ',' + e.y).join('|');
+  const items = bpItems();
+  for (const n in items) {
+    const b = items[n];
+    const bk = b.ents.map(e => e.type + '@' + e.x + ',' + e.y).join('|');
+    if (bk === key) return 'blueprint#' + n;
+  }
+  const n = _bpNextId++;
+  items[n] = { name: bp.name || ('蓝图 ' + n), minX: bp.minX, minY: bp.minY, ents: bp.ents.slice(), tiles: Array.isArray(bp.tiles) ? bp.tiles.slice() : [] };
+  uiDirty = true;
+  return 'blueprint#' + n;
+}
+
+// 重命名蓝图物品（面板用）
+function bpItemRename(itemId, newName) {
+  const p = bpParseItemId(itemId);
+  if (!p || !p.bpId) return false;
+  const b = bpItems()[p.bpId];
+  if (!b) return false;
+  const name = String(newName || '').trim();
+  if (!name) { toast('蓝图名称不能为空'); return false; }
+  b.name = name;
+  uiDirty = true;
+  return true;
+}
+
+// 删除蓝图物品数据（背包/快捷栏中不再存在该 id 时由 gc 调用）
+function bpItemDelete(bpId) {
+  if (!bpId) return;
+  delete bpItems()[bpId];
+  uiDirty = true;
+}
+
+// 读取存档：还原蓝图物品表（对齐 G.blueBook 的兼容处理）
+function bpItemsDeserialize(arr) {
+  G.blueprintItems = {};
+  _bpNextId = 1;
+  if (!Array.isArray(arr)) return;
+  for (const it of arr) {
+    if (!it || !Array.isArray(it.ents) || !it.ents.length) continue;
+    const n = it.id | 0;
+    if (n <= 0) continue;
+    G.blueprintItems[n] = { name: String(it.name || ('蓝图 ' + n)), minX: it.minX | 0, minY: it.minY | 0, ents: it.ents, tiles: Array.isArray(it.tiles) ? it.tiles : [] };
+    if (n >= _bpNextId) _bpNextId = n + 1;
+  }
+}
+
+// 写入存档：把背包/快捷栏中实际引用到的蓝图物品序列化（未引用的自动丢弃）
+function bpItemsSerialize() {
+  const used = new Set();
+  G.inv.forEach((n, id) => { if (bpParseItemId(id) && bpParseItemId(id).bpId) used.add(bpParseItemId(id).bpId); });
+  if (Array.isArray(HOTBAR)) for (const id of HOTBAR) { const p = id && bpParseItemId(id); if (p && p.bpId) used.add(p.bpId); }
+  const items = bpItems();
+  const out = [];
+  for (const n of used) {
+    const b = items[n];
+    if (!b) continue;
+    out.push({ id: +n, name: b.name, minX: b.minX | 0, minY: b.minY | 0, ents: b.ents, tiles: Array.isArray(b.tiles) ? b.tiles : [] });
+  }
+  return out;
+}
+
+// 背包中放入一个蓝图物品（n=1）
+function bpItemToInv(bp) {
+  const id = bpItemCreate(bp);
+  if (!id) return false;
+  const cap = (typeof stackSize === 'function') ? stackSize(id) : 100;
+  const cur = invCount(id);
+  if (cur >= cap) { toast('背包里已经有相同蓝图，无需重复存放'); return false; }
+  invAdd(id, 1);
+  return true;
+}
+
+// ===== 手持蓝图物品放置（对齐设备放置：buildActive + tryPlaceAt 分发）=====
+// 手持蓝图物品点击地图：进入粘贴模式放置蓝图内容（不消耗材料，可反复放置）
+function tryPlaceBlueprintItem(tx, ty) {
+  const raw = selItem();
+  const p = bpParseItemId(raw);
+  if (!p) return false;
+  const bp = bpDataById(p.bpId);
+  if (!bp || !bp.ents || !bp.ents.length) { toast('这是空蓝图，请先按 Alt+B 框选创建蓝图'); return true; }
+  // 载入粘贴缓冲并直接在鼠标位置放置
+  G.blueprint = { name: bp.name, minX: bp.minX, minY: bp.minY, ents: bp.ents.slice(), tiles: Array.isArray(bp.tiles) ? bp.tiles.slice() : [] };
+  G.blueMode = 'paste';
+  G.blueRot = 0; G.blueFlipH = false; G.blueFlipV = false;
+  pasteBlueprint();
+  return true;
+}
+
+// 把当前复制缓冲（G.blueprint）保存为蓝图物品放入背包
+function captureBlueprintToInv() {
+  if (!G.blueprint || !G.blueprint.ents || !G.blueprint.ents.length) { toast('没有已复制的蓝图'); return; }
+  if (bpItemToInv(G.blueprint)) toast('蓝图「' + (G.blueprint.name || '未命名') + '」已放入背包（选中后点击地图放置）');
+}
+
+// 框选创建蓝图（Alt+B）：不自动进入粘贴模式，改为弹出蓝图编辑界面，
+// 由用户选择「放到地图 / 放入背包 / 放入快捷栏」。
+function captureBlueprintAsItem() {
+  const r = blueRect();
+  if (!r) return;
+  const ents = [];
+  const seen = new Set();
+  for (let ty = r.y0; ty <= r.y1; ty++) {
+    for (let tx = r.x0; tx <= r.x1; tx++) {
+      const e = entAt(tx, ty);
+      if (!e || seen.has(e)) continue;
+      seen.add(e);
+      const cx = e.x + Math.floor(e.w / 2), cy = e.y + Math.floor(e.h / 2);
+      if (cx < r.x0 || cx > r.x1 || cy < r.y0 || cy > r.y1) continue;
+      ents.push(e.blueprint());
+    }
+  }
+  if (!ents.length) { toast('框选区域没有可复制的建筑'); return; }
+  // 蓝图含地面铺装（与 captureBlueprint 同款记录逻辑）
+  const TILE_IDS = { '2': 'concrete', '3': 'stone-path', '5': 'refined-concrete', '6': 'hazard-concrete', '8': 'refined-hazard-concrete', '12': 'ice-platform', '13': 'foundation', '14': 'space-platform-foundation' };
+  const tiles = [];
+  for (let ty = r.y0; ty <= r.y1; ty++) {
+    for (let tx = r.x0; tx <= r.x1; tx++) {
+      const t = getTerrain(tx, ty);
+      const tid = TILE_IDS[t];
+      if (!tid) continue;
+      tiles.push({ type: tid, x: tx, y: ty });
+    }
+  }
+  const bb = blueprintBounds(ents);
+  G.blueprint = { name: '蓝图 ' + (_bpNextId), minX: bb.minX, minY: bb.minY, ents, tiles: tiles.length ? tiles : [] };
+  // 自动存入蓝图库（保持原有去重逻辑）
+  if (typeof blueBookAdd === 'function') blueBookAdd(G.blueprint);
+  if (typeof playSfx === 'function') playSfx('blueprint');
+  cancelBlueprint();
+  // 弹出蓝图编辑界面
+  openPanel('blueprint-edit');
+}
+
+// ===== 快速复制/剪切（Ctrl+C / Ctrl+X，对齐《异星工厂》常用操作习惯）=====
+// Ctrl+C：框选区域 → 复制为蓝图并进入粘贴模式
+function quickCopyBlueprint(cut) {
+  const r = blueRect();
+  if (!r) return;
+  const ents = [];
+  const seen = new Set();
+  for (let ty = r.y0; ty <= r.y1; ty++) {
+    for (let tx = r.x0; tx <= r.x1; tx++) {
+      const e = entAt(tx, ty);
+      if (!e || seen.has(e)) continue;
+      seen.add(e);
+      const cx = e.x + Math.floor(e.w / 2), cy = e.y + Math.floor(e.h / 2);
+      if (cx < r.x0 || cx > r.x1 || cy < r.y0 || cy > r.y1) continue;
+      ents.push(e.blueprint());
+    }
+  }
+  if (!ents.length) { toast('框选区域没有可复制的建筑'); return; }
+  const TILE_IDS = { '2': 'concrete', '3': 'stone-path', '5': 'refined-concrete', '6': 'hazard-concrete', '8': 'refined-hazard-concrete', '12': 'ice-platform', '13': 'foundation', '14': 'space-platform-foundation' };
+  const tiles = [];
+  for (let ty = r.y0; ty <= r.y1; ty++) {
+    for (let tx = r.x0; tx <= r.x1; tx++) {
+      const t = getTerrain(tx, ty);
+      const tid = TILE_IDS[t];
+      if (!tid) continue;
+      tiles.push({ type: tid, x: tx, y: ty });
+    }
+  }
+  G.blueprint = { name: '蓝图', minX: r.x0, minY: r.y0, ents, tiles: tiles.length ? tiles : [] };
+  if (typeof blueBookAdd === 'function') blueBookAdd(G.blueprint);
+  if (typeof playSfx === 'function') playSfx('blueprint');
+  G.blueMode = 'paste';
+  G.blueStart = null; G.blueEnd = null;
+  G.blueRot = 0; G.blueFlipH = false; G.blueFlipV = false;
+  if (cut) {
+    // 剪切：复制后删除框选区域内全部建筑（物资返还背包），再进入粘贴模式
+    doRedBlueprintDelete(r);
+    toast('已剪切 ' + ents.length + ' 个建筑为蓝图，点击空白处粘贴（R旋转，右键取消）');
+  } else {
+    toast('已复制 ' + ents.length + ' 个建筑为蓝图，点击空白处粘贴（R旋转，右键取消）');
+  }
+  uiDirty = true;
+}
