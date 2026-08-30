@@ -221,7 +221,26 @@ class Inserter extends Entity {
       for (const o of cand) if (this.canDropAt(t, o.item)) return o.item;
       return null;
     }
-    // 非传送带源：沿用原有探测，再校验目标是否接收
+    // 非传送带源：不再只探测 peekSource 返回的“一个”物品，而是枚举源内全部候选
+    //（contents 逐项 / 白名单直接按名单探测），逐个结合放货格接收能力（canDropAt）选品。
+    // 避免创造箱多选、储物箱/组装机/车厢多物时——peek 到目标已满/不需要的那一种就空手
+    // 而归，导致其它可取的原料长期不被抓取（对齐传送带源的“遍历候选+目标接收”语义）。
+    // 选品顺序：白名单按名单顺序优先；其余按 contents 的“后进先出”顺序（与 peek 一致）；
+    // 列表抓取不到时兜底用 peekSource 探测（兼容无 contents/仅 peekItem 的源）。
+    if (this.filterActive() && this.filterMode === 'white' && s.countOf) {
+      for (const f of this.filters) if (s.countOf(f) > 0 && this.canDropAt(t, f)) return f;
+    }
+    if (s.contents && s.contents !== Entity.prototype.contents) {
+      const rows = s.contents();
+      for (let i = rows.length - 1; i >= 1; i--) {   // 下标 0 恒为设备自身行，跳过
+        const row = rows[i];
+        if (!row) continue;
+        const id = row[0];
+        if (!this.wantsItem(id)) continue;
+        if (this.countSourceOf(s, id) <= 0) continue;
+        if (this.canDropAt(t, id)) return id;
+      }
+    }
     const it = this.peekSource(s);
     return (it && this.canDropAt(t, it)) ? it : null;
   }

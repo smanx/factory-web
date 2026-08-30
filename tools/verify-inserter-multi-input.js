@@ -7,11 +7,14 @@
  * 一个物品，而会结合放货格的接收能力选品。
  *
  * 回归目标（修复前 bug）：
- *   传送带两条 lane 各有一种原料，组装机需要两种。若最靠前的物品目标已满/不需要
- *   （canDropAt=false），旧逻辑 peekSource 只探测最靠前那一个 → 机械臂卡死，另一种
- *   原料永远不被抓取，组装机断料停产。
- *   修复后 pickSourceForDrop 会遍历传送带上所有可取物品，按“近侧优先、靠前优先”
- *   排序，返回第一个目标能收的物品，保证组装机需要的多种原料都能补齐。
+ *   1) 传送带两条 lane 各有一种原料，组装机需要两种。若最靠前的物品目标已满/不需要
+ *      （canDropAt=false），旧逻辑 peekSource 只探测最靠前那一个 → 机械臂卡死，另一种
+ *      原料永远不被抓取，组装机断料停产。
+ *   2) 非传送带源（创造箱多选/储物箱多物）同样只探测 peekSource 的一个物品：创造箱
+ *      选了两种原料、目标组装机只要其一或其已满时，机械臂空手而归，另一种永不被抓取。
+ *   修复后 pickSourceForDrop 会遍历源内全部可取物品（传送带按“近侧优先、靠前优先”
+ *   排序；非传送带按 contents 逐项 / 白名单顺序），返回第一个目标能收的物品，
+ *   保证组装机需要的多种原料都能补齐。
  *
  * 运行：node tools/verify-inserter-multi-input.js （退出码 0 = 通过）
  */
@@ -125,6 +128,48 @@ function setup() {
   ins.update(0.016);
   ok(ins.holding === 'copper-plate' && ins.holdingCount === 1,
     'update 闭环：跳过已满的铁板，实际抓到铜板（holding=' + ins.holding + '）');
+}
+
+// —— 用例 6：非传送带源（创造箱多选）—— peek 到目标已满的一种时，改抓另一种 ——
+{
+  const { belt, ins } = setup();
+  // 创造箱：多选铁板、铜板两种原料（contents 逐项列出，与真实 CreativeChest 一致）
+  const src = {
+    type: 'creative-chest',
+    contents: () => [['creative-chest', 1], ['iron-plate', 1], ['copper-plate', 1]],
+    countOf: (id) => (id === 'iron-plate' || id === 'copper-plate') ? 0x3fffffff : 0,
+    peekItem: () => 'copper-plate',   // 后选先出：peek 到铜板（与 CreativeChest.peekItem 一致）
+    takeItemOf: (id) => (id === 'iron-plate' || id === 'copper-plate') ? id : null,
+    takeItem: () => 'copper-plate',
+    takeAll: () => [['iron-plate', 1], ['copper-plate', 1]],
+  };
+  // 目标组装机：铁板已满不收，只收铜板（peek 恰好就是铜板 → 旧逻辑也能过）
+  ins.canDropAt = (tt, item) => item === 'copper-plate';
+  let it = ins.pickSourceForDrop(src, { type: 'assembling-machine-1', recipe: 'x' });
+  ok(it === 'copper-plate', '创造箱多选：peek 即目标能收的铜板 → 抓到铜板');
+  // 目标只收铁板（peek 的铜板不收）：必须遍历 contents 改抓铁板
+  ins.canDropAt = (tt, item) => item === 'iron-plate';
+  it = ins.pickSourceForDrop(src, { type: 'assembling-machine-1', recipe: 'x' });
+  ok(it === 'iron-plate', '创造箱多选：peek(铜板)目标不收时，遍历 contents 改抓铁板');
+}
+
+// —— 用例 7：非传送带源（白名单过滤）—— 过滤臂从多选源中按名单选品 ——
+{
+  const { belt, ins } = setup();
+  const src = {
+    type: 'creative-chest',
+    contents: () => [['creative-chest', 1], ['iron-plate', 1], ['copper-plate', 1]],
+    countOf: (id) => (id === 'iron-plate' || id === 'copper-plate') ? 0x3fffffff : 0,
+    peekItem: () => 'copper-plate',
+    takeItemOf: (id) => (id === 'iron-plate' || id === 'copper-plate') ? id : null,
+    takeItem: () => 'copper-plate',
+    takeAll: () => [['iron-plate', 1], ['copper-plate', 1]],
+  };
+  // 白名单只勾选铜板，目标只收铁板 → 无候选可抓（不误取铁板）
+  ins.filterOn = true; ins.filterMode = 'white'; ins.filters = ['copper-plate'];
+  ins.canDropAt = (tt, item) => item === 'iron-plate';
+  const it = ins.pickSourceForDrop(src, { type: 'assembling-machine-1', recipe: 'x' });
+  ok(it === null, '白名单过滤臂：名单外物品不抓（目标只收名单外的铁板 → 返回 null）');
 }
 
 console.log('\n----------------------------------------');
