@@ -299,79 +299,146 @@ function _spaceFlask(x, r, s, col, drawInner) {
   x.fillRect(-r * 0.32, -r * 0.86, r * 0.64, r * 0.08);
 }
 
-// ===== 科技包共享「彩色药瓶」绘制（12 种科技包统一造型：对应颜色 = 瓶身液体色）=====
-// 设计：圆底玻璃瓶 + 银灰瓶盖 + 瓶内高饱和对应色液体（液面/高光/气泡），
-// 颜色完全由 ITEMS[id].color 驱动，保证各种科技包一眼可辨（红/绿/蓝/灰/紫/黄/白/紫电/橙/黄绿/深紫/冰蓝）。
+// ===== 科技包共享「实验玻璃瓶」绘制（12 种科技包统一造型：对应颜色 = 瓶内液体色）=====
+// 设计：完整实验用玻璃瓶——圆肩平底瓶身 + 细长瓶颈 + 口沿翻边 + 银灰瓶盖，
+// 瓶内装对应颜色液体（液面/竖向高光/气泡/玻璃质感），整体完整落于图标圆内不被裁剪。
 function _scienceBottle(x, r, s, col) {
-  // 瓶身轮廓路径（复用两次：填充 + 裁剪内液）
+  // 整体缩放包裹：保证完整瓶形在小尺寸圆角矩形裁剪（r*0.82）与大图标画布内均完整可见
+  x.save();
+  x.scale(0.88, 0.88);
+  const lidTop = -r * 0.92;   // 瓶盖顶
+  const neckTop = -r * 0.66;  // 颈根
+  const neckW = r * 0.34;     // 颈半宽
+  const shoulder = -r * 0.34; // 肩部转折点
+  const bottom = r * 0.86;    // 瓶底
+
+  // 瓶身完整轮廓（单一路径：盖下口沿 → 颈 → 圆肩 → 直腹 → 圆角瓶底）
   const bodyPath = () => {
     x.beginPath();
-    x.moveTo(-r * 0.24, -r * 0.62);
-    x.lineTo(-r * 0.24, -r * 0.2);
-    x.quadraticCurveTo(-r * 0.8, r * 0.05, -r * 0.8, r * 0.42);
-    x.arc(0, r * 0.42, r * 0.8, Math.PI, 0);
-    x.quadraticCurveTo(r * 0.8, r * 0.05, r * 0.24, -r * 0.2);
-    x.lineTo(r * 0.24, -r * 0.62);
+    x.moveTo(-neckW, neckTop);
+    x.lineTo(-neckW, shoulder);
+    x.quadraticCurveTo(-r * 0.78, -r * 0.22, -r * 0.78, r * 0.18);
+    x.lineTo(-r * 0.78, bottom - r * 0.2);
+    x.quadraticCurveTo(-r * 0.78, bottom, -r * 0.56, bottom);
+    x.lineTo(r * 0.56, bottom);
+    x.quadraticCurveTo(r * 0.78, bottom, r * 0.78, bottom - r * 0.2);
+    x.lineTo(r * 0.78, r * 0.18);
+    x.quadraticCurveTo(r * 0.78, -r * 0.22, neckW, shoulder);
+    x.lineTo(neckW, neckTop);
     x.closePath();
   };
-  // 瓶内液体（先画在裁剪区内）
+
+  // 玻璃底色（空瓶部分也呈淡玻璃感）
   bodyPath();
-  x.save();
-  x.clip();
-  // 液体渐变（对应色）
-  const g = x.createLinearGradient(-r * 0.3, -r * 0.35, r * 0.4, r * 0.9);
-  g.addColorStop(0, lightenColor(col, 0.35));
-  g.addColorStop(0.5, col);
-  g.addColorStop(1, darkenColor(col, 0.45));
-  x.fillStyle = g;
-  x.fillRect(-r, -r, r * 2, r * 2.2);
-  // 液面（浅色带）
-  x.fillStyle = 'rgba(255,255,255,.35)';
-  rrPath(x, -r, -r * 0.52, r * 2, r * 0.14, r * 0.06);
+  const bg = x.createLinearGradient(-r * 0.7, 0, r * 0.7, 0);
+  bg.addColorStop(0, 'rgba(210,228,240,.5)');
+  bg.addColorStop(0.5, 'rgba(240,248,255,.3)');
+  bg.addColorStop(1, 'rgba(170,192,210,.5)');
+  x.fillStyle = bg;
   x.fill();
-  // 瓶身左侧竖向高光
-  x.strokeStyle = 'rgba(255,255,255,.5)';
-  x.lineWidth = r * 0.14;
+
+  // 液体（裁剪进瓶身，液面位于肩部下方，保留一段可见空气）
+  x.save();
+  bodyPath();
+  x.clip();
+  const liquidTop = -r * 0.06;
+  const lg = x.createLinearGradient(-r * 0.4, liquidTop, r * 0.5, bottom);
+  lg.addColorStop(0, lightenColor(col, 0.42));
+  lg.addColorStop(0.45, col);
+  lg.addColorStop(1, darkenColor(col, 0.45));
+  x.fillStyle = lg;
+  x.fillRect(-r, liquidTop, r * 2, bottom - liquidTop + r);
+  // 液面：上亮下暗的双层液面线
+  x.fillStyle = 'rgba(255,255,255,.55)';
+  x.fillRect(-r, liquidTop, r * 2, r * 0.09);
+  x.fillStyle = darkenColor(col, 0.55);
+  x.fillRect(-r, liquidTop + r * 0.09, r * 2, r * 0.05);
+  // 液面微弧高光（左侧亮斑）
+  x.fillStyle = 'rgba(255,255,255,.3)';
+  x.beginPath();
+  x.ellipse(-r * 0.3, liquidTop + r * 0.1, r * 0.22, r * 0.05, 0, 0, 7);
+  x.fill();
+  // 瓶身左侧竖向高光（玻璃反光）
+  x.strokeStyle = 'rgba(255,255,255,.55)';
+  x.lineWidth = r * 0.11;
   x.lineCap = 'round';
   x.beginPath();
-  x.moveTo(-r * 0.45, r * 0.02);
-  x.quadraticCurveTo(-r * 0.6, r * 0.3, -r * 0.42, r * 0.6);
+  x.moveTo(-r * 0.52, r * 0.12);
+  x.quadraticCurveTo(-r * 0.6, r * 0.4, -r * 0.46, r * 0.64);
+  x.stroke();
+  // 右侧细高光
+  x.strokeStyle = 'rgba(255,255,255,.3)';
+  x.lineWidth = r * 0.05;
+  x.beginPath();
+  x.moveTo(r * 0.56, r * 0.16);
+  x.quadraticCurveTo(r * 0.62, r * 0.4, r * 0.52, r * 0.62);
   x.stroke();
   // 液内小气泡
-  x.fillStyle = 'rgba(255,255,255,.4)';
-  x.beginPath(); x.arc(r * 0.2, r * 0.4, r * 0.07, 0, 7); x.fill();
-  x.beginPath(); x.arc(r * 0.4, r * 0.18, r * 0.05, 0, 7); x.fill();
-  x.beginPath(); x.arc(-r * 0.05, r * 0.62, r * 0.045, 0, 7); x.fill();
+  x.fillStyle = 'rgba(255,255,255,.45)';
+  x.beginPath(); x.arc(r * 0.26, r * 0.42, r * 0.06, 0, 7); x.fill();
+  x.beginPath(); x.arc(r * 0.44, r * 0.2, r * 0.04, 0, 7); x.fill();
+  x.beginPath(); x.arc(-r * 0.02, r * 0.6, r * 0.05, 0, 7); x.fill();
+  x.beginPath(); x.arc(r * 0.1, r * 0.28, r * 0.028, 0, 7); x.fill();
   x.restore();
-  // 瓶身玻璃描边（半透明玻璃质感）
-  const gl = x.createLinearGradient(-r * 0.3, -r * 0.62, r * 0.3, r * 0.62);
-  gl.addColorStop(0, 'rgba(255,255,255,.55)');
-  gl.addColorStop(0.5, 'rgba(255,255,255,.12)');
-  gl.addColorStop(1, 'rgba(20,24,34,.5)');
+
+  // 玻璃瓶身描边（贯穿瓶底，完整闭合轮廓）
+  const gl = x.createLinearGradient(-r * 0.6, neckTop, r * 0.6, bottom);
+  gl.addColorStop(0, 'rgba(255,255,255,.6)');
+  gl.addColorStop(0.5, 'rgba(255,255,255,.15)');
+  gl.addColorStop(1, 'rgba(22,26,36,.55)');
   x.strokeStyle = gl;
-  x.lineWidth = Math.max(1, s * 0.05);
+  x.lineWidth = Math.max(1, s * 0.045);
   bodyPath();
   x.stroke();
-  // 瓶颈高光
-  x.strokeStyle = 'rgba(255,255,255,.45)';
-  x.lineWidth = Math.max(0.8, s * 0.03);
+  // 瓶底加粗暗线（体现厚度）
+  x.strokeStyle = 'rgba(22,26,36,.4)';
+  x.lineWidth = Math.max(1, s * 0.055);
   x.beginPath();
-  x.moveTo(-r * 0.16, -r * 0.56); x.lineTo(-r * 0.16, -r * 0.26);
-  x.moveTo(r * 0.16, -r * 0.56); x.lineTo(r * 0.16, -r * 0.26);
+  x.moveTo(-r * 0.56, bottom - s * 0.02);
+  x.lineTo(r * 0.56, bottom - s * 0.02);
   x.stroke();
-  // 瓶盖（银灰金属）
-  x.fillStyle = '#9aa0a8';
-  rrPath(x, -r * 0.3, -r * 0.95, r * 0.6, r * 0.36, r * 0.08);
+
+  // 瓶口翻边（口沿外扩的一圈玻璃）
+  x.fillStyle = 'rgba(225,238,248,.85)';
+  rrPath(x, -neckW - r * 0.1, neckTop - r * 0.08, (neckW + r * 0.1) * 2, r * 0.14, r * 0.06);
   x.fill();
-  x.strokeStyle = 'rgba(30,35,45,.6)';
+  x.strokeStyle = 'rgba(30,36,50,.55)';
+  x.lineWidth = Math.max(0.8, s * 0.03);
+  x.stroke();
+
+  // 瓶颈高光（两侧竖线）
+  x.strokeStyle = 'rgba(255,255,255,.5)';
+  x.lineWidth = Math.max(0.8, s * 0.028);
+  x.beginPath();
+  x.moveTo(-neckW + r * 0.09, neckTop + r * 0.06); x.lineTo(-neckW + r * 0.09, shoulder);
+  x.moveTo(neckW - r * 0.09, neckTop + r * 0.06); x.lineTo(neckW - r * 0.09, shoulder);
+  x.stroke();
+
+  // 瓶盖（银灰金属，盖住瓶口上方）
+  x.fillStyle = '#9aa0a8';
+  rrPath(x, -r * 0.3, lidTop, r * 0.6, neckTop - lidTop + r * 0.02, r * 0.09);
+  x.fill();
+  x.strokeStyle = 'rgba(28,32,42,.6)';
   x.lineWidth = Math.max(1, s * 0.04);
   x.stroke();
-  // 瓶盖高光
-  x.fillStyle = 'rgba(255,255,255,.4)';
-  rrPath(x, -r * 0.24, -r * 0.9, r * 0.48, r * 0.1, r * 0.05);
+  // 瓶盖竖纹（旋盖防滑纹理）
+  x.strokeStyle = 'rgba(60,66,78,.5)';
+  x.lineWidth = Math.max(0.6, s * 0.02);
+  for (let i = -2; i <= 2; i++) {
+    const gx = i * r * 0.11;
+    if (Math.abs(gx) < r * 0.22) {
+      x.beginPath();
+      x.moveTo(gx, lidTop + r * 0.06);
+      x.lineTo(gx, neckTop - r * 0.02);
+      x.stroke();
+    }
+  }
+  // 瓶盖顶面高光
+  x.fillStyle = 'rgba(255,255,255,.42)';
+  rrPath(x, -r * 0.24, lidTop + r * 0.03, r * 0.48, r * 0.08, r * 0.04);
   x.fill();
+  x.restore();
 }
-
 // 共享工具：小行星碎块（四种星块共用岩块骨架），variant 决定矿脉颜色与纹理
 function _asteroidChunk(x, r, s, col, variant) {
   // 岩块主体（不规则多边形）
