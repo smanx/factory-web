@@ -295,8 +295,8 @@ function drawAltMode(ctx, keys, seenBuf) {
 }
 
 // ALT 模式：箱子/存储容器内容图标布局（需求规则）
-//   1 种物品：显示该物品图标，大小 = 一个格子（与 1 格箱子同大），居中盖在箱子顶部
-//   2~4 种物品：每个图标宽度 = 格子的 1/2
+//   1 种物品：显示该物品图标，大小 = 半个格子，居中盖在箱子顶部
+//   2~4 种物品：每个图标宽度 = 格子的 1/4
 //     - 2 个 / 3 个：横向按顺序排列
 //     - 4 个：呈 2×2 方形
 // 图标按槽位顺序（去重）排列；超过 4 种只显示前 4 种（规则未定义更多）。
@@ -309,12 +309,12 @@ function drawChestAltIcons(ctx, e, icons) {
   const cy = (e.y + e.h / 2) * TILE;
   ctx.save();
   if (n === 1) {
-    // 单个物品：图标与箱子一样大，盖在箱子上面
-    drawItemGlyph(ctx, ids[0], cx, cy, tilePx);
+    // 单个物品：图标为格子的 1/2（原来同大缩小一半），盖在箱子上面
+    drawItemGlyph(ctx, ids[0], cx, cy, tilePx / 2);
     ctx.restore();
     return;
   }
-  const iconSize = tilePx / 2;                   // 每个图标宽度 = 格子的 1/2
+  const iconSize = tilePx / 4;                   // 每个图标宽度 = 格子的 1/4（原来 1/2 缩小一半）
   const gap = Math.max(1, iconSize * 0.08);      // 图标间极小间隔（避免图标边缘粘连）
   if (n === 4) {
     // 4 个：2×2 方形
