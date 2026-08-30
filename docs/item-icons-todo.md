@@ -194,16 +194,16 @@
 - [x] `holmium-plate` 钬板
 - [x] `electrolyte` 电解液
 - [ ] `supercapacitor` 超级电容
-- [ ] `tungsten-ore` 钨矿石
-- [ ] `tungsten-plate` 钨板
-- [ ] `tungsten-carbide` 碳化钨
-- [ ] `metallurgic-science-pack` 冶金科研包
-- [ ] `yumako` 玉玛果
-- [ ] `yumako-seed` 玉玛果种子
-- [ ] `yumako-mash` 玉玛果泥
-- [ ] `bioflux` 生物结晶
-- [ ] `nutrients` 营养素
-- [ ] `spoilage` 变质物
+- [x] `tungsten-ore` 钨矿石
+- [x] `tungsten-plate` 钨板
+- [x] `tungsten-carbide` 碳化钨
+- [x] `metallurgic-science-pack` 冶金科研包
+- [x] `yumako` 玉玛果
+- [x] `yumako-seed` 玉玛果种子
+- [x] `yumako-mash` 玉玛果泥
+- [x] `bioflux` 生物结晶
+- [x] `nutrients` 营养素
+- [x] `spoilage` 变质物
 - [ ] `agricultural-science-pack` 农业科技包
 - [ ] `jellynut` 果冻果
 - [ ] `jellynut-seed` 果冻果种子
