@@ -23,42 +23,75 @@ function creativeItemChoices() {
   });
 }
 
-// ===== 创造箱：无限生成选定物品 =====
+// ===== 创造箱：无限生成选定物品（支持多选，箱内可放多种物品）=====
 class CreativeChest extends Entity {
   constructor(type, x, y) {
     super('creative-chest', x, y);
-    this.selected = null;   // 当前生成的物品
+    this.selected = null;      // 兼容旧字段：主生成物（= slots[0]）
+    this.slots = [];           // 已选生成物列表（可多选，机械臂/玩家可无限取走其中任意一种）
   }
-  // 取物：始终返回选定物品（无限）
-  peekItem() { return this.selected; }
-  takeItem() { return this.selected; }
-  takeItemOf(item) { return this.selected === item ? item : null; }
-  countOf(item) { return this.selected === item ? 0x3fffffff : 0; }
+  // 兼容旧存档：仅存 selected 时迁移到 slots
+  _ensureSlots() {
+    if (!this.slots) this.slots = [];
+    if (this.selected && this.slots.indexOf(this.selected) < 0) this.slots.unshift(this.selected);
+  }
+  // 取物：多选时按「后选先出」（与储物箱一致的栈式取出），单选用 selected
+  peekItem() {
+    this._ensureSlots();
+    if (this.slots.length) return this.slots[this.slots.length - 1];
+    return this.selected;
+  }
+  takeItem() {
+    this._ensureSlots();
+    if (this.slots.length) return this.slots[this.slots.length - 1];
+    return this.selected;
+  }
+  takeItemOf(item) {
+    this._ensureSlots();
+    if (this.slots.indexOf(item) >= 0) return item;
+    return this.selected === item ? item : null;
+  }
+  countOf(item) {
+    this._ensureSlots();
+    if (this.slots.indexOf(item) >= 0) return 0x3fffffff;
+    return this.selected === item ? 0x3fffffff : 0;
+  }
   giveItem() { return false; }   // 只产不收
-  takeAll() { return this.selected ? [[this.selected, 1]] : []; }
+  takeAll() {
+    this._ensureSlots();
+    if (this.slots.length) return this.slots.map(id => [id, 1]);
+    return this.selected ? [[this.selected, 1]] : [];
+  }
   contents() {
     const list = [[this.type, 1]];
-    if (this.selected) list.push([this.selected, '∞']);
+    this._ensureSlots();
+    if (this.slots.length) for (const id of this.slots) list.push([id, '∞']);
+    else if (this.selected) list.push([this.selected, '∞']);
     return list;
   }
   serialize() {
     const s = super.serialize();
+    this._ensureSlots();
     s.selected = this.selected;
+    s.slots = this.slots.slice();
     return s;
   }
-  // 蓝图保留选定物品配置
+  // 蓝图保留生成物配置（多选全保留）
   blueprint() {
     const s = super.blueprint();
+    this._ensureSlots();
     s.selected = this.selected;
+    s.slots = this.slots.slice();
     return s;
   }
   static restore(s) {
     const c = super.restore(s);
     c.selected = s.selected || null;
+    c.slots = Array.isArray(s.slots) ? s.slots.filter(id => ITEMS[id]) : [];
+    if (!c.slots.length && c.selected) c.slots.push(c.selected);
     return c;
   }
 }
-
 // ===== 虚空箱：无限销毁物品 =====
 class VoidChest extends Entity {
   constructor(type, x, y) {
@@ -155,8 +188,24 @@ function drawCreativeChest(ctx, e, gx, gy, dir, alpha) {
   ctx.beginPath();
   ctx.ellipse(cx + R * 0.7, cy, R, R * 0.55, 0, 0, 7);
   ctx.stroke();
-  // 选中物品图标
-  if (e.selected) drawItemDot(ctx, px + TILE / 2, py + TILE - 5, e.selected, 5);
+  // 已选物品图标：单个居中，多个横向并排（最多 4 个）
+  if (e._ensureSlots) e._ensureSlots();
+  const ids = (e.slots && e.slots.length) ? e.slots : (e.selected ? [e.selected] : []);
+  if (ids.length === 1) {
+    drawItemDot(ctx, px + TILE / 2, py + TILE - 5, ids[0], 5);
+  } else if (ids.length > 1) {
+    const n = Math.min(4, ids.length);
+    for (let i = 0; i < n; i++) {
+      const dx = px + TILE / 2 + (i - (n - 1) / 2) * 6;
+      drawItemDot(ctx, dx, py + TILE - 5, ids[i], 4);
+    }
+    if (ids.length > 4) {
+      ctx.fillStyle = '#d8ffe0';
+      ctx.font = 'bold 5px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('+' + (ids.length - 4), px + TILE / 2, py + TILE - 1);
+    }
+  }
   ctx.globalAlpha = 1;
 }
 
@@ -263,25 +312,36 @@ function drawVoidPipe(ctx, e, gx, gy, dir, alpha) {
   ctx.globalAlpha = 1;
 }
 
-// ===== 创造箱面板：选择要生成的物品 =====
-// 物品选择列表内嵌于面板右侧（creativePickerHtml）：5 大分类 Tab + 二级分组 + 搜索 + 图标 tooltip
+// ===== 创造箱面板：选择要生成的物品（可多选，箱内可同时放多种物品）=====
+// 物品选择列表内嵌于面板右侧（creativePickerHtml）：5 大分类 Tab + 二级分组 + 搜索 + 图标 tooltip。
+// 点选即「加选」该物品；已选物品再点一次「取消选」。
 function creativeChestPanelHtml(e) {
-  let h = '<div class="dim">创造箱（测试）：无限生成选中的物品，机械臂/玩家可无限取走。当前：' +
-    (e.selected ? chip(e.selected) : '<span class="dim">未选择</span>') + '</div>';
+  if (e._ensureSlots) e._ensureSlots();
+  const ids = (e.slots && e.slots.length) ? e.slots : (e.selected ? [e.selected] : []);
+  let h = '<div class="dim">创造箱（测试）：无限生成选中的物品（可多选），机械臂/玩家可无限取走任意一种。已选 ' +
+    ids.length + ' 种：' +
+    (ids.length ? ids.map(id => chip(id)).join(' ') : '<span class="dim">未选择</span>') + '</div>';
   h += creativePickerHtml(e, 'item');
-  if (e.selected) h += '<button data-action="csel-clear">停止生成</button>';
+  if (ids.length) h += '<button data-action="csel-clear">清空生成物</button>';
   return h;
 }
 function creativeChestPanelLive(e, api) {
-  if (e.selected) api.status('生成中：无限产出 ' + ITEMS[e.selected].name, 'ok');
+  if (e._ensureSlots) e._ensureSlots();
+  const ids = (e.slots && e.slots.length) ? e.slots : (e.selected ? [e.selected] : []);
+  if (ids.length) api.status('生成中：无限产出 ' + ids.map(id => ITEMS[id].name).join('、'), 'ok');
   else api.status('未选择生成物，等待选择', 'warn');
 }
 function creativeChestOnAction(act, btn) {
-  if (act === 'csel-clear') { if (G.panelEnt instanceof CreativeChest) G.panelEnt.selected = null; return true; }
+  if (act === 'csel-clear') {
+    if (G.panelEnt instanceof CreativeChest) { G.panelEnt.selected = null; G.panelEnt.slots = []; }
+    return true;
+  }
   return false;
 }
 function creativeChestTip(e) {
-  return e.selected ? ('无限产出 ' + ITEMS[e.selected].name) : '创造箱（未选择生成物）';
+  if (e._ensureSlots) e._ensureSlots();
+  const ids = (e.slots && e.slots.length) ? e.slots : (e.selected ? [e.selected] : []);
+  return ids.length ? ('无限产出 ' + ids.map(id => ITEMS[id].name).join('、')) : '创造箱（未选择生成物）';
 }
 
 // ===== 虚空箱面板 =====
@@ -323,7 +383,11 @@ function voidPipePanelLive(e, api) {
 function voidPipeTip() { return '虚空管道：无限销毁流体'; }
 
 // ===== 状态灯 =====
-function creativeChestStatus(e) { return e.selected ? 'g' : 'r'; }
+function creativeChestStatus(e) {
+  if (e._ensureSlots) e._ensureSlots();
+  const ids = (e.slots && e.slots.length) ? e.slots : (e.selected ? [e.selected] : []);
+  return ids.length ? 'g' : 'r';
+}
 function creativePipeStatus(e) { return e.selected ? 'g' : 'r'; }
 
 // ===== 注册 =====

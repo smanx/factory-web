@@ -75,7 +75,8 @@ function creativePickerHtml(e, kind) {
       grid += '<div class="flt-subgroup">' +
         (sg ? '<div class="flt-sg-label">' + fltSubgroupLabel(sg) + '</div>' : '');
       for (const id of list) {
-        const sel = e.selected === id;
+        // 选中态：创造箱多选（slots 数组命中即高亮），其它设备单选
+        const sel = (Array.isArray(e.slots) && e.slots.indexOf(id) >= 0) || e.selected === id;
         grid += '<button type="button" class="flt-item cip-item' + (sel ? ' sel' : '') + '" data-act="cip-choose" data-id="' + id + '"' +
           ' data-rsearch="' + (ITEMS[id].name + ' ' + id).toLowerCase().replace(/"/g, '') + '"' +
           ' data-tip="' + itemTip(id) + '">' +
@@ -139,11 +140,22 @@ function creativePickerSwitchTab(tab) {
   applyCipSearch(_cipCtx.q || '');
 }
 
-// 点击物品：写入设备 selected 并重建面板（刷新当前生成物 chip、选中高亮与状态文字）
+// 点击物品：选择要生成的物品并重建面板（刷新当前生成物 chip、选中高亮与状态文字）。
+// 创造箱支持多选：点选加选、再点取消选（以 e.slots 数组维护）；其它创造设备（传送带/管道）
+// 保持单选（写入 e.selected 并同步 slots）。
 function creativePickerPick(id) {
   const e = _cipCtx ? _cipCtx.e : null;
   if (!e) return;
-  e.selected = id;
+  if (e instanceof CreativeChest) {
+    if (!Array.isArray(e.slots)) e.slots = [];
+    if (e.selected && e.slots.indexOf(e.selected) < 0) e.slots.unshift(e.selected);
+    e.selected = null;   // 创造箱以 slots 为准（单选旧字段仅作迁移/展示回退）
+    const i = e.slots.indexOf(id);
+    if (i >= 0) e.slots.splice(i, 1);   // 再点一次取消选
+    else e.slots.push(id);
+  } else {
+    e.selected = id;
+  }
   uiDirty = true;
   renderPanel(false);
 }
