@@ -75,12 +75,14 @@ class Inserter extends Entity {
     return cap;
   }
   // ===== 筛选功能辅助 =====
-  // 筛选是否生效：启用开关 + 至少填了一个格子
-  filterActive() { return !!(this.filterOn && this.filters && this.filters.length); }
-  // 某物品是否应被抓取（按白/黑名单判断；筛选关闭时一律抓取）
+  // 筛选是否生效：勾选启用即生效（无需填满格子）。
+  // 白名单未填任何物品时视为「不抓取任何物品」（对齐《异星工厂》：过滤器开启但名单为空 → 机械臂停止搬运）。
+  filterActive() { return !!this.filterOn; }
+  // 某物品是否应被抓取（按白/黑名单判断；筛选关闭时一律抓取）。
+  // 白名单：只在名单内；名单为空 → 一律不抓。黑名单：不在名单内；名单为空 → 一律抓。
   wantsItem(item) {
     if (!this.filterActive()) return true;
-    const inList = this.filters.indexOf(item) >= 0;
+    const inList = (this.filters || []).indexOf(item) >= 0;
     return this.filterMode === 'white' ? inList : !inList;
   }
   // 一次抓取多少个：由「设置抓取堆叠」决定，范围 1 ~ 当前最大抓取数量（capacity）
