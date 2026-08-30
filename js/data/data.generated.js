@@ -22,6 +22,8 @@
 //           heatPipeSpecificHeat, heatPipeMaxTransfer, reactorHeatRate(MW), heatExchangerPower(MW),
 //           heatingTowerRate(MW), heatingTowerEffectivity, heatingTowerMaxTemp,
 //           heatingTowerSpecificHeat, heatingTowerMaxTransfer }, roboportPower(kW)
+//   steamPower = { boilerPower, boilerTargetTemp, engineRate, enginePower, effectivity, turbineRate, turbinePower,
+//                   steamHeatCapacity, steamDefaultTemp, steamMaxTemp, steamEnergyPerUnit, heatExchangerSteamRate, boilerSteamRate }
 //   cargoLandingPad = { inventorySize, radarRange }, cargoBay = { inventorySizeBonus }（物流接驳站/扩展舱）
 //   cargoUnloadingBay = { inventorySizeBonus, allowUnloading, unloadingDistance }（物流卸载舱）
 //   footprint[building] = { w, h }（占地面积格数，官方 selection_box）
@@ -6228,11 +6230,17 @@ const GAME_DATA = {
  "steamPower": {
   "boilerPower": 1.8,
   "boilerTargetTemp": 165,
+  "steamHeatCapacity": 0.2,
+  "steamDefaultTemp": 15,
+  "steamMaxTemp": 500,
+  "steamEnergyPerUnit": 0.097,
   "engineRate": 30,
   "enginePower": 900,
   "effectivity": 1,
   "turbineRate": 60,
-  "turbinePower": 5820
+  "turbinePower": 5820,
+  "heatExchangerSteamRate": 103.09,
+  "boilerSteamRate": 60
  },
  "robotSpeed": {
   "logistic": 3,

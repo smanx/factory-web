@@ -962,17 +962,34 @@ const INSERTER_BASE_STACK = {
 // effectivity：能量转换效率（官方 1）；
 // enginePower / turbinePower：满功率输出（kW，官方 = rate × (max_temp-15) × effectivity × 200J/°C/单位，
 //   蒸汽机 = 30×(165-15)×1×200 = 900kW；汽轮机 = 60×(500-15)×1×200 = 5820kW）。
+// steamEnergyPerUnit：每单位（官方单位）蒸汽从 15°C 加热到 max_temp 所需热量（MJ，官方 steam heat_capacity=0.2kJ/°C）
+//   = (max_temp - default_temperature) × heat_capacity。热交换器 target_temperature=500 → (500-15)×0.2kJ=97kJ=0.097MJ。
+// heatExchangerSteamRate：热交换器满负荷产汽率（官方单位/秒）= energy_consumption ÷ steamEnergyPerUnit
+//   = 10MW ÷ 0.097MJ ≈ 103.09 单位/秒（官方抽象单位，与锅炉产汽 60/s 同一口径）。
+// boilerSteamRate：锅炉产汽率（官方单位/秒）= energy_consumption ÷ steamEnergyPerUnit
+//   = 1.8MW ÷ (165-15)×0.2kJ = 60 单位/秒（官方 boiler target_temperature=165）。
 const steamPower = {};
 {
   const b = raw.boiler && raw.boiler.boiler;
   const bc = b && parsePowerMW(b.energy_consumption);
   if (bc !== null) steamPower.boilerPower = bc;
   if (b && typeof b.target_temperature === 'number') steamPower.boilerTargetTemp = b.target_temperature;
+  const steam = raw.fluid && raw.fluid['steam'];
+  if (steam && typeof steam.heat_capacity === 'string') {
+    const hcKJ = parseEnergyKJ(steam.heat_capacity);           // 0.2kJ/°C/单位
+    const defT = (typeof steam.default_temperature === 'number') ? steam.default_temperature : 15;
+    const maxT = (typeof steam.max_temperature === 'number') ? steam.max_temperature : 500;
+    if (hcKJ !== null) {
+      steamPower.steamHeatCapacity = hcKJ;                     // 每 °C·单位 热量（kJ）
+      steamPower.steamDefaultTemp = defT;                      // 基准温度 15°C
+      steamPower.steamMaxTemp = maxT;                          // 最高温度 500°C
+      steamPower.steamEnergyPerUnit = hcKJ * (maxT - defT) / 1000; // MJ/官方单位（0.097）
+    }
+  }
   const e = raw.generator && raw.generator['steam-engine'];
   if (e) {
     if (typeof e.fluid_usage_per_tick === 'number') {
       steamPower.engineRate = e.fluid_usage_per_tick * 60;
-      // 官方：最大温度 165°C，基准温度 15°C，每单位蒸汽 200J/°C
       const eff = typeof e.effectivity === 'number' ? e.effectivity : 1;
       const maxT = (e.maximum_temperature != null) ? e.maximum_temperature : 165;
       steamPower.enginePower = Math.round(e.fluid_usage_per_tick * 60 * (maxT - 15) * eff * 200 / 1000);
@@ -987,6 +1004,21 @@ const steamPower = {};
       const maxT = (t.maximum_temperature != null) ? t.maximum_temperature : 500;
       steamPower.turbinePower = Math.round(t.fluid_usage_per_tick * 60 * (maxT - 15) * eff * 200 / 1000);
     }
+  }
+  // 锅炉/热交换器满负荷产汽率（官方单位/秒），由官方 energy_consumption ÷ 每单位蒸汽热值 现场推导，
+  // 单一数值源（steamEnergyPerUnit），不另起第二套数字。官方抽象单位口径：
+  //   锅炉 = 1.8MW ÷ 0.03MJ = 60/s（boiler target_temperature=165，蒸汽 165°C）
+  //   热交换器 = 10MW ÷ 0.097MJ ≈ 103.09/s（heat-exchanger target_temperature=500，蒸汽 500°C）
+  const hx = raw.boiler && raw.boiler['heat-exchanger'];
+  const hxP = hx && parsePowerMW(hx.energy_consumption);
+  if (hxP !== null && typeof steamPower.steamEnergyPerUnit === 'number' && steamPower.steamEnergyPerUnit > 0) {
+    steamPower.heatExchangerSteamRate = Math.round(hxP / steamPower.steamEnergyPerUnit * 100) / 100;
+  }
+  if (bc !== null && typeof steamPower.steamEnergyPerUnit === 'number' && steamPower.steamEnergyPerUnit > 0) {
+    const bMaxT = (b && typeof b.target_temperature === 'number') ? b.target_temperature : 165;
+    // 锅炉产汽按自身 target_temperature 的蒸汽热值（(165-15)×0.2kJ=0.03MJ）计算
+    const unitMJ = steamPower.steamHeatCapacity * (bMaxT - steamPower.steamDefaultTemp) / 1000;
+    if (unitMJ > 0) steamPower.boilerSteamRate = Math.round(bc / unitMJ * 100) / 100;
   }
 }
 
@@ -1671,6 +1703,8 @@ const header = [
   '//           heatPipeSpecificHeat, heatPipeMaxTransfer, reactorHeatRate(MW), heatExchangerPower(MW),',
   '//           heatingTowerRate(MW), heatingTowerEffectivity, heatingTowerMaxTemp,',
   '//           heatingTowerSpecificHeat, heatingTowerMaxTransfer }, roboportPower(kW)',
+  '//   steamPower = { boilerPower, boilerTargetTemp, engineRate, enginePower, effectivity, turbineRate, turbinePower,',
+  '//                   steamHeatCapacity, steamDefaultTemp, steamMaxTemp, steamEnergyPerUnit, heatExchangerSteamRate, boilerSteamRate }',
   '//   cargoLandingPad = { inventorySize, radarRange }, cargoBay = { inventorySizeBonus }（物流接驳站/扩展舱）',
   '//   cargoUnloadingBay = { inventorySizeBonus, allowUnloading, unloadingDistance }（物流卸载舱）',
   '//   footprint[building] = { w, h }（占地面积格数，官方 selection_box）',

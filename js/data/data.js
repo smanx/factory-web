@@ -58,7 +58,12 @@ const REACTOR_POWER = 40000;    // 反应堆热功率 40MW（对齐官方）；�
 const REACTOR_FUEL_ENERGY = 200;  // 每组核燃料可持续燃烧秒数
 const REACTOR_WATER_RATE = 4.0;   // 反应堆每秒耗水量（远超锅炉，产汽量更高）
 const REACTOR_STEAM_CAP = 40;     // 反应堆内部蒸汽缓冲
-const TURBINE_STEAM_RATE = 1.5;   // 汽轮机满功率耗汽（单位/秒）
+const FLUID_UNIT_SCALE = 50;   // 项目流体刻度：1 项目单位 = 50 官方单位（由锅炉 1.2/s、蒸汽机 0.6/s 反推确立，
+                                 //   = 官方 60/s ÷ 50；全蒸汽链共用同一刻度，避免多套口径）
+// 汽轮机满功率耗汽（项目单位/秒）：官方 steam-turbine fluid_usage_per_tick=1 → 60 官方单位/s ÷ 50 = 1.2。
+// 单源推导（GAME_DATA.steamPower.turbineRate ÷ FLUID_UNIT_SCALE），不再硬编码 1.5（原值仅为 60/s 的 40 刻度折算，与锅炉/蒸汽机刻度不一致，
+// 造成热交换器产汽只有汽轮机需求的 1/3 → 汽轮机转转停停，详见 ISSUE #258）。
+const TURBINE_STEAM_RATE = (GAME_DATA.steamPower?.turbineRate ?? 60) / FLUID_UNIT_SCALE;
 const TURBINE_STEAM_CAP = 12;     // 汽轮机内部储汽上限
 const CENTRIFUGE_TIME = 12;       // 离心机处理一批铀矿耗时（秒）
 const URANIUM_CENTRIFUGE_KOVAREX_TIME = 60; // Kovarex 富集耗时（秒）
@@ -85,7 +90,10 @@ const HEAT_EXCHANGER_POWER = GAME_DATA.heat?.heatExchangerPower ?? 10;   // 热�
 // 断开热源后的降温参数（项目自定：官方 heat-exchanger 原型无自然散热字段，取保守值）：
 const HEAT_EXCHANGER_COOL_RATE = 1;   // 断开热源后热量散失速率 1MW（远低于运转耗热 10MW，缓慢降温）
 const AMBIENT_TEMP = 15;              // 环境温度 15°C（官方默认流体/设备起始温度）
-const HEAT_EXCHANGER_ENERGY_PER_STEAM = 20;// 热交换器每产 1 单位蒸汽需消耗热量(MJ)：10MW → 0.5 单位/s，4 台满产 2 单位/s 供 1 台汽轮机
+// 热交换器每产 1 项目单位蒸汽需消耗热量(MJ)：官方每官方单位蒸汽热值 (500-15)°C×0.2kJ=0.097MJ × 50 刻度 = 4.85MJ。
+// 单源推导（GAME_DATA.steamPower.steamEnergyPerUnit × FLUID_UNIT_SCALE），不再硬编码 20MJ（原值无官方依据，系按
+// 「4 台热交换器带 1 台汽轮机」反推，导致产汽 0.5/s 只有汽轮机需求 1.5/s 的 1/3）。
+const HEAT_EXCHANGER_ENERGY_PER_STEAM = (GAME_DATA.steamPower?.steamEnergyPerUnit ?? 0.097) * FLUID_UNIT_SCALE;
 // 太空时代供热塔（heating-tower，Aquilo）：官方 reactor 原型，燃烧化学燃料产热，数据来自 GAME_DATA.heat。
 // 产热 = 燃料消耗率 × 效比（官方 consumption=40MW、effectivity=2.5 → 100MW，高于核反应堆 40MW）。
 const HEATING_TOWER_RATE = GAME_DATA.heat?.heatingTowerRate ?? 40;             // 燃料消耗率 40MW（官方 consumption）
@@ -128,12 +136,16 @@ const POWER_USE = {
 
 // ===== 发电链（抽水机 → 水 → 锅炉烧出蒸汽 → 蒸汽口送汽 → 蒸汽机发电）=====
 const WATER_CAP = 20;            // 锅炉/抽水机内部储水上限（兼作锅炉蒸汽缓冲上限）
-const BOILER_WATER_RATE = 1.2;   // 锅炉每秒耗水（1:1 转为蒸汽输出）
+// 锅炉每秒耗水（1:1 转为蒸汽输出）：官方 boiler 满负荷产汽 = 1.8MW ÷ 0.03MJ = 60 官方单位/s ÷ 50 刻度 = 1.2。
+// 单源推导（GAME_DATA.steamPower.boilerSteamRate ÷ FLUID_UNIT_SCALE），不再硬编码。
+const BOILER_WATER_RATE = (GAME_DATA.steamPower?.boilerSteamRate ?? 60) / FLUID_UNIT_SCALE;
 const BOILER_HEAT_RATE = 30;     // 锅炉每秒升温（°C，耗煤+水时）
 const BOILER_COOL_RATE = 2;      // 锅炉每秒自然降温（°C）
 const BOILER_TEMP_MAX = GAME_DATA.steamPower?.boilerTargetTemp ?? 165;  // 锅炉目标温度（官方 boiler target_temperature=165°C）
 const PUMP_RATE = GAME_DATA.fluidCapacity?.pumpRate ?? 20;  // 抽水机每秒产水（官方 offshore-pump pumping_speed=20）
-const ENGINE_STEAM_RATE = 0.6;   // 蒸汽机满功率耗汽（单位/秒）：1 台锅炉可带 2 台蒸汽机
+// 蒸汽机满功率耗汽（项目单位/秒）：官方 steam-engine fluid_usage_per_tick=0.5 → 30 官方单位/s ÷ 50 刻度 = 0.6。
+// 单源推导（GAME_DATA.steamPower.engineRate ÷ FLUID_UNIT_SCALE）：1 台锅炉产汽 1.2/s 可带 2 台蒸汽机（与官方 1:2 一致）。
+const ENGINE_STEAM_RATE = (GAME_DATA.steamPower?.engineRate ?? 30) / FLUID_UNIT_SCALE;
 const ENGINE_STEAM_CAP = 10;     // 蒸汽机内部储汽上限
 
 const FLUIDS = ['water', 'steam', 'crude-oil', 'heavy-oil', 'light-oil', 'petroleum-gas', 'lubricant', 'sulfuric-acid', 'thruster-fuel', 'thruster-oxidizer', 'ammonia', 'ammoniacal-solution', 'fluorine', 'fluoroketone-cold', 'fluoroketone-hot', 'lithium-brine', 'lava', 'molten-iron', 'molten-copper', 'holmium-solution', 'electrolyte', 'fusion-plasma'];
