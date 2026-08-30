@@ -575,10 +575,10 @@ function chemMult() { return (G.techDone.plastic ? 1.5 : 1) * ((G.dbg && G.dbg.a
 // 煤液化：10 煤 + 25 重油 + 50 蒸汽 → 90 重油 + 20 轻油 + 10 石油气（5s）
 // 简易煤液化（太空时代）：10 煤 + 2 硫酸 + 25 方解石 → 50 重油（只产出重油，5s）
 const REFINERY_RECIPES = {
-  'basic-oil':      { name: '基础原油加工', time: 5, inp: { 'crude-oil': 100 },  out: { 'petroleum-gas': 45 } },
-  'advanced-oil':   { name: '进阶原油加工', time: 5, inp: { 'crude-oil': 100, 'water': 50 },  out: { 'heavy-oil': 25, 'light-oil': 45, 'petroleum-gas': 55 } },
-  'coal-liquefaction': { name: '煤液化', time: 5, inp: { 'coal': 10, 'heavy-oil': 25, 'steam': 50 }, out: { 'heavy-oil': 90, 'light-oil': 20, 'petroleum-gas': 10 } },
-  'simple-coal':    { name: '简易煤液化', time: 5, inp: { 'coal': 10, 'calcite': 2, 'sulfuric-acid': 25 }, out: { 'heavy-oil': 50 } }  // 对齐官方 simple-coal-liquefaction：10煤+2方解石+25硫酸→50重油
+  'basic-oil':      { name: '基础原油处理', time: 5, inp: { 'crude-oil': 100 },  out: { 'petroleum-gas': 45 } },
+  'advanced-oil':   { name: '高等原油处理', time: 5, inp: { 'crude-oil': 100, 'water': 50 },  out: { 'heavy-oil': 25, 'light-oil': 45, 'petroleum-gas': 55 } },
+  'coal-liquefaction': { name: '煤炭液化', time: 5, inp: { 'coal': 10, 'heavy-oil': 25, 'steam': 50 }, out: { 'heavy-oil': 90, 'light-oil': 20, 'petroleum-gas': 10 } },
+  'simple-coal':    { name: '简易煤炭液化', time: 5, inp: { 'coal': 10, 'calcite': 2, 'sulfuric-acid': 25 }, out: { 'heavy-oil': 50 } }  // 对齐官方 simple-coal-liquefaction：10煤+2方解石+25硫酸→50重油
 };
 const REFINERY_RECIPE_IDS = Object.keys(REFINERY_RECIPES);
 function isRefineryRecipe(id) { return REFINERY_RECIPES[id] !== undefined; }

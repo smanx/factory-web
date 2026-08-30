@@ -567,8 +567,8 @@ function refineryPanelHtml(e) {
     const disabled = unlocked ? '' : ' disabled';
     const lockNote = unlocked ? '' : ('🔒 需' + (lockTech ? TECHS[lockTech].name : '研究'));
     h += '<button class="rcbtn ' + selCls + lockCls + '" ' + disabled + ' data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-tip="' +
-      r.name + '|' + (unlocked ? (r.out[outId] + '个/次，耗时' + r.time + '秒') : (lockNote + '')) + '">' +
-      '<img src="' + iconDataURL(outId) + '">' + r.name + (unlocked ? '' : ' 🔒') + '</button>';
+      localizedName(rid, r.name) + '|' + (unlocked ? (r.out[outId] + '个/次，耗时' + r.time + '秒') : (lockNote + '')) + '">' +
+      '<img src="' + iconDataURL(outId) + '">' + localizedName(rid, r.name) + (unlocked ? '' : ' 🔒') + '</button>';
   }
   h += '</div>';
   if (e.recipe) h += '<button data-action="recipe-clear">清除配方</button>';
