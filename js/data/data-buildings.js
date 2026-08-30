@@ -200,9 +200,9 @@ const BUILDING_HP = {
 function buildingMaxHp(type) { return BUILDING_HP[type] || 100; }
 
 // 放置后（本体已建在地图上）仍允许直接旋转的设备白名单：
-//   传送带（各等级）、机械臂（各类型）、地下传送带（各等级）、地下管道（pipe-to-ground）。
-// 其余设备一旦放置即固定朝向，不可直接旋转——按 R 仅在放置幽灵（预览）阶段调整朝向
-// （对齐《异星工厂》：已建成建筑方向固定，只有传送带/机械臂/地下带/地下管道等物流件可旋转）。
+//   传送带（各等级）、机械臂（各类型）、地下传送带（各等级）、地下管道（pipe-to-ground），
+//   以及加工建筑：炼油厂 / 化工厂 / 低温工厂（本体方形对称，端口随 dir 旋转，无需重挂网格）。
+// 白名单外设备放置后朝向固定，按 R 仅在放置幽灵（预览）阶段调整朝向。
 // 注意：V/H 翻转不受此白名单限制，所有已放置设备均可翻转（见 flipAction）。
 const POST_PLACE_ROTATE_OK = {
   // 传送带（含创造/虚空带）
@@ -214,7 +214,9 @@ const POST_PLACE_ROTATE_OK = {
   // 地下传送带（各等级）
   'underground-belt': 1, 'fast-underground-belt': 1, 'express-underground-belt': 1, 'turbo-underground-belt': 1,
   // 地下管道
-  'pipe-to-ground': 1
+  'pipe-to-ground': 1,
+  // 加工建筑（本体方形对称、端口随 dir 旋转）：炼油厂 / 化工厂（含低温工厂，复用化工厂注册）
+  'oil-refinery': 1, 'chemical-plant': 1, 'cryogenic-plant': 1
 };
 function postPlaceRotatable(type) { return !!POST_PLACE_ROTATE_OK[type]; }
 
