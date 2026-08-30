@@ -30,10 +30,8 @@ class Recycler extends Entity {
     if (this.crafting && this.recycleItem) {
       const out = this.recycleResults(this.recycleItem);
       if (!out) { this.crafting = false; this.prog = 0; return; }
-      // 产出满则暂停（对齐《异星工厂》：回收机输出缓存满时停止回收）
-      let outFull = false;
-      for (const k in out) if ((this.outp[k] || 0) + out[k] > 50) { outFull = true; break; }
-      if (outFull) return;
+      // 产物堆积即停工（动态「够用」：存量足够再产 2 次即停，防止原料积压在前端机器）
+      if (outputBacklogged(this.outp, out)) return;
       this.prog += dt * this.moduleSpeedMult() * powerFactor();
       if (typeof spawnSpark === 'function' && Math.random() < dt * 2) {
         spawnSpark((this.x + 0.5 + (Math.random() - 0.5) * 0.8) * TILE, (this.y + 0.4) * TILE, { size: 1.5, life: 0.5, speed: 2.5, color: '#ff9a3a' });

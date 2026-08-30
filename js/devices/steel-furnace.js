@@ -46,6 +46,9 @@ class SteelFurnace extends Furnace {
     if (item === 'coal' && this.fuelCoal < fuelLimitFor5s(COAL_ENERGY)) { this.fuelCoal++; return true; }
     if (item === 'wood' && this.fuelWood < fuelLimitFor5s(WOOD_FUEL_ENERGY)) { this.fuelWood++; return true; }
     if (item === 'solid-fuel' && this.fuelSolid < fuelLimitFor5s(SOLID_FUEL_ENERGY)) { this.fuelSolid++; return true; }
+    // 产物已满一整组（Stack）时不再接收矿石：继续送只会白白堆积在熔炉里
+    for (const r of SMELTS)
+      if (r.inp === item && (this.outp[r.id] || 0) >= stackSize(r.id)) return false;
     for (const r of SMELTS)
       if (r.inp === item && (this.inp[item] || 0) < (r.inCount || 1) * 2) { this.inp[item] = (this.inp[item] || 0) + 1; return true; }
     return false;

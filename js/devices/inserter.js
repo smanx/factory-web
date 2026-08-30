@@ -243,10 +243,11 @@ class Inserter extends Entity {
         if (item === 'wood') return (t.fuelWood || 0) < fuelLimitFor5s(WOOD_FUEL_ENERGY);
         if (item === 'solid-fuel') return (t.fuelSolid || 0) < fuelLimitFor5s(SOLID_FUEL_ENERGY);
         if (item === 'rocket-fuel') return (t.fuelRocket || 0) < fuelLimitFor5s(ROCKET_FUEL_ENERGY);
-        return SMELTS.some(r => r.inp === item) && (t.inp[item] || 0) < smeltNeed(item) * 2;
+        // 熔炉例外：持续吃矿直到产物堆满一整组 Stack，满组后才停送
+        return SMELTS.some(r => r.inp === item && (t.outp[r.id] || 0) < stackSize(r.id)) && (t.inp[item] || 0) < smeltNeed(item) * 2;
       case 'electric-furnace':
         if (item === 'coal') return false;
-        return SMELTS.some(r => r.inp === item) && (t.inp[item] || 0) < smeltNeed(item) * 2;
+        return SMELTS.some(r => r.inp === item && (t.outp[r.id] || 0) < stackSize(r.id)) && (t.inp[item] || 0) < smeltNeed(item) * 2;
       case 'assembling-machine-1':
       case 'assembling-machine-2':
       case 'assembling-machine-3':
@@ -258,11 +259,19 @@ class Inserter extends Entity {
       case 'electromagnetic-plant': {
         if (!t.recipe) return false;
         const rec = RECIPES[t.recipe];
+        // 产物堆积（够用 2 次生产）时停止送料，防止原料过度积压在前端机器
+        if (outputBacklogged(t.outp, rec.out)) return false;
         return !!rec.inp[item] && (t.inp[item] || 0) < rec.inp[item] * 2;
       }
       case 'centrifuge': {
         if (!t.recipe) return false;
         const rec = t.recipeObj();
+        // 产物堆积（够用 2 次生产）时停止送料；概率配方按总存量 >= 2 判定
+        if (rec.prob) {
+          let total = 0;
+          for (const k in t.outp) total += t.outp[k];
+          if (total >= 2) return false;
+        } else if (outputBacklogged(t.outp, rec.out)) return false;
         return !!rec.inp[item] && (t.inp[item] || 0) < rec.inp[item] * 2;
       }
       case 'burner-mining-drill':

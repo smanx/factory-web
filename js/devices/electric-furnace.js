@@ -63,6 +63,9 @@ class ElectricFurnace extends Furnace {
   }
   giveItem(item) {
     // 冶炼原料优先：若该物品是当前可冶炼原料则入原料区，而非插件槽
+    // 产物已满一整组（Stack）时不再接收矿石：继续送只会白白堆积在熔炉里
+    for (const r of SMELTS)
+      if (r.inp === item && (this.outp[r.id] || 0) >= stackSize(r.id)) return false;
     for (const r of SMELTS)
       if (r.inp === item && (this.inp[item] || 0) < (r.inCount || 1) * 2) { this.inp[item] = (this.inp[item] || 0) + 1; return true; }
     if (item === 'coal') return false;

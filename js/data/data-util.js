@@ -701,3 +701,21 @@ function smeltNeed(item) {
 function fuelLimitFor5s(fuelEnergy) {
   return Math.max(1, Math.ceil(5 * fuelConsumptionMult() / fuelEnergy));
 }
+
+// ===== 产物「堆积即停工」判定（动态「够用」状态） =====
+// 规则（除熔炉外所有生产设备统一遵循）：产物输出栏里某产物的存量一旦
+// 「足够再进行 2 次生产」（存量 + 一次产出量 > 2 × 一次产出量，即存量 > 一次产出量），
+// 设备即视为产物堆积：本机停止生产，输入机械臂/管道也停止送料，防止原料
+// 过度积压在前端机器上；存量低于两次生产所需时恢复正常运行。
+// 熔炉（Furnace）是例外：持续工作直到产品栏堆满一整组（Stack，stackSize()）为止。
+// cap：产物缓冲硬上限（默认 50），任何情况下不得超过。
+function outputBacklogged(outp, recOut, cap) {
+  const hardCap = (typeof cap === 'number' && cap > 0) ? cap : 50;
+  for (const k in recOut) {
+    const per = recOut[k] || 1;
+    const have = outp[k] || 0;
+    if (have + per > hardCap) return true;            // 超硬上限：必然停
+    if (have >= per * 2) return true;                 // 存量足够再生产 2 次：堆积停工
+  }
+  return false;
+}

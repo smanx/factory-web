@@ -116,13 +116,14 @@ class Centrifuge extends Entity {
     }
     // 原料不足则等
     for (const k in rec.inp) if ((this.inp[k] || 0) < rec.inp[k]) return;
-    // 产出容量检查：普通配方按各项独立容量；概率配方（每周期只产 1 件）按总容量
+    // 产出容量检查（产物堆积即停工，动态「够用」）：普通配方按「存量够再产 2 次」停；
+    // 概率配方（每周期只产 1 件）按总存量 >= 2 停，防止原料积压在前端机器
     if (rec.prob) {
       let total = 0;
       for (const k in this.outp) total += this.outp[k];
-      if (total >= 50) return;
+      if (total >= 2) return;
     } else {
-      for (const k in rec.out) if ((this.outp[k] || 0) + rec.out[k] > 50) return;
+      if (outputBacklogged(this.outp, rec.out)) return;
     }
     for (const k in rec.inp) {
       this.inp[k] -= rec.inp[k];
@@ -148,6 +149,12 @@ class Centrifuge extends Entity {
     if (this.recipe) {
       const rec = this.recipeObj();
       if (rec && rec.inp[item]) {
+        // 产物堆积（够用 2 次生产）时停止送料；概率配方按总存量 >= 2 判定
+        if (rec.prob) {
+          let total = 0;
+          for (const k in this.outp) total += this.outp[k];
+          if (total >= 2) return false;
+        } else if (outputBacklogged(this.outp, rec.out)) return false;
         if ((this.inp[item] || 0) >= rec.inp[item] * 2) return false;
         this.inp[item] = (this.inp[item] || 0) + 1;
         return true;

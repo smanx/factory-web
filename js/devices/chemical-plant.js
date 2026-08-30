@@ -95,6 +95,8 @@ class ChemicalPlant extends Entity {
       const n = neighborOnSideCell(this, inSide, cell);
       if (!(n instanceof Pipe)) return;
       if (!(n.fluid[k] > 0)) return;
+      // 产物堆积（够用 2 次生产）时停止吸入流体原料，防止原料积压在前端管道
+      if (outputBacklogged(this.outp, rec.out)) return;
       if ((this.inp[k] || 0) < 50 && n.takeItemOf(k)) this.inp[k] = (this.inp[k] || 0) + 1;
     };
     pull(0, 0); // 左侧输入口(格0) ← 第1种流体
@@ -156,7 +158,8 @@ class ChemicalPlant extends Entity {
       return;
     }
     for (const k in rec.inp) if ((this.inp[k] || 0) < rec.inp[k]) return;
-    for (const k in rec.out) if ((this.outp[k] || 0) + rec.out[k] > 50) { this.portFlow(); return; }
+    // 产物堆积即停工（动态「够用」：存量足够再产 2 次即停，防止原料积压在前端机器）
+    if (outputBacklogged(this.outp, rec.out)) { this.portFlow(); return; }
     for (const k in rec.inp) {
       this.inp[k] -= rec.inp[k];
       if (typeof trackProd === 'function') trackProd(k, -rec.inp[k]);
@@ -170,6 +173,8 @@ class ChemicalPlant extends Entity {
     if (this.recipe) {
       const rec = RECIPES[this.recipe];
       if (rec.inp[item]) {
+        // 产物堆积（够用 2 次生产）时停止送料，防止原料过度积压在前端机器
+        if (outputBacklogged(this.outp, rec.out)) return false;
         if ((this.inp[item] || 0) >= rec.inp[item] * 2) return false;
         this.inp[item] = (this.inp[item] || 0) + 1;
         return true;
