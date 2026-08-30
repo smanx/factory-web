@@ -405,6 +405,11 @@ function closePanel(hide = true) {
 }
 
 function panelScrollTop() {
+  // 配方选择面板：滚动发生在中间内容区 .rcp-scroll（确认行固定底部），读取其滚动位置
+  if (G.panelMode === 'machinerecipe') {
+    const rcp = document.querySelector('#panel.recipe-wide .rcp-scroll');
+    return rcp ? rcp.scrollTop : 0;
+  }
   const p = document.getElementById('panel-body');
   return p ? p.scrollTop : 0;
 }
@@ -498,7 +503,13 @@ function renderPanel(full) {
     // 所有设备的交互面板统一采用组装机设计稿风格（左=玩家背包，右=设备操作面板）
     body.innerHTML = unifiedMachineLayoutHtml(G.panelEnt);
   }
-  if (G.panelMode !== 'set') body.scrollTop = st;
+  if (G.panelMode === 'machinerecipe') {
+    // 配方选择面板：滚动容器是中间内容区 .rcp-scroll，恢复其滚动位置
+    const rcp = body.querySelector('.rcp-scroll');
+    if (rcp) rcp.scrollTop = st;
+  } else if (G.panelMode !== 'set') {
+    body.scrollTop = st;
+  }
 }
 
 // 判断用户是否正在面板内的输入框输入（聚焦的文本输入框，或中文输入法组合中）。

@@ -2619,17 +2619,20 @@ html, body {
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  /* 内部不设独立滚动区：由整块面板统一滚动，避免窄面板内出现内嵌滚动条 */
-  overflow-y: auto;
+  /* 面板整体不滚动：中间配方内容区（.rcp-scroll）滚动，
+     底部确认行（清除/确认按钮）固定显示在面板下方 */
+  overflow: hidden;
 }
 #panel.recipe-wide .rcp-scroll {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: visible;
+  /* 配方内容区：可滚动，确认行不随其滚动 */
+  overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
 }
 #panel.recipe-wide .rcp-scroll .inv-search { position: sticky; top: 0; z-index: 2; background: #10151c; }
-#panel.recipe-wide .rcp-confirm-row { flex: 0 0 auto; }
+#panel.recipe-wide .rcp-confirm-row { flex: 0 0 auto; margin-top: 8px; }
 /* 配方选择网格：每行最多 10 个配方图标（固定 10 列） */
 #panel.recipe-wide .rcp-scroll .inv-slots { grid-template-columns: repeat(10, 32px); }
 /* 配方弹框内的分类 tab 靠左排布，不等分拉伸占满宽度 */
