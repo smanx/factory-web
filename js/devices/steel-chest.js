@@ -3,12 +3,13 @@
 // ===== 钢箱：比储物箱容量更大的钢铁储物箱（对齐《异星工厂》Steel chest，占地 1×1）=====
 class SteelChest extends Chest {
   constructor(type, x, y) { super('steel-chest', x, y); }
+  slotCap() { return 24; }
   giveItem(item) {
     const cap = this.limits[item];
     if (cap !== undefined && this.countOf(item) >= cap) return false;
     for (const s of this.slots)
       if (s && s.item === item && s.count < stackSize(item)) { s.count++; return true; }
-    if (this.slots.length >= 24) return false;
+    if (this.slots.length >= this.slotCap()) return false;
     this.slots.push({ item, count: 1 });
     return true;
   }

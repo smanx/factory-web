@@ -329,10 +329,24 @@ class Inserter extends Entity {
         return false;  // 创造管道：只产不收
       case 'oil-refinery':
         return item === 'crude-oil' && (t.inp['crude-oil'] || 0) < 50;
-      case 'storage-chest':
-        return t.slots.length < 12 || t.slots.some(s => s && s.item === item && s.count < stackSize(item));
+      case 'wooden-chest':
+      case 'iron-chest':
       case 'steel-chest':
-        return t.slots.length < 24 || t.slots.some(s => s && s.item === item && s.count < stackSize(item));
+      case 'storage-chest':
+      case 'passive-provider-chest':
+      case 'active-provider-chest':
+      case 'requester-chest':
+      case 'buffer-chest':
+      case 'cargo-landing-pad':
+      case 'cargo-bay':
+      case 'landing-pad-unloading-bay': {
+        // 只要箱子里有空位（槽位未满/已有该物品未堆满）就继续往里放，直到箱子装满为止。
+        // 尊重存量上限（limits）：达到上限的该物品不再送入，避免机械臂空抓后放不进去而卡爪。
+        const _cap = t.limits && t.limits[item];
+        if (_cap !== undefined && t.countOf(item) >= _cap) return false;
+        return (t.slots.length < (t.slotCap ? t.slotCap() : t.slots.length + 1)) ||
+          t.slots.some(s => s && s.item === item && s.count < stackSize(item));
+      }
       case 'void-chest':
         return true;   // 虚空箱：来者不拒，全部销毁
       case 'creative-chest':

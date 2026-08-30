@@ -96,10 +96,12 @@ class LogisticChest extends Entity {
     super(type, x, y);
     this.slots = [];
   }
+  // 槽位容量：与储物箱一致（12 格），可被需求/缓冲等子类覆盖
+  slotCap() { return 12; }
   giveItem(item) {
     for (const s of this.slots)
       if (s && s.item === item && s.count < stackSize(item)) { s.count++; return true; }
-    if (this.slots.length >= 12) return false;
+    if (this.slots.length >= this.slotCap()) return false;
     this.slots.push({ item, count: 1 });
     return true;
   }

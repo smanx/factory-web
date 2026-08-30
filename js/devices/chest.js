@@ -12,12 +12,14 @@ class Chest extends CircuitNode {
     this.slots = [];
     this.limits = {};
   }
+  // 槽位容量（木箱 16 / 铁箱 32 / 钢箱 24 等，各子类覆盖）
+  slotCap() { return 12; }
   giveItem(item) {
     const cap = this.limits[item];
     if (cap !== undefined && this.countOf(item) >= cap) return false;
     for (const s of this.slots)
       if (s && s.item === item && s.count < stackSize(item)) { s.count++; return true; }
-    if (this.slots.length >= 12) return false;
+    if (this.slots.length >= this.slotCap()) return false;
     this.slots.push({ item, count: 1 });
     return true;
   }
@@ -387,12 +389,13 @@ function chestOnChange(ev) {
 // ===== 木箱（对齐《异星工厂》Wooden chest，占地 1×1，容量较小 16 格）=====
 class WoodenChest extends Chest {
   constructor(type, x, y) { super('wooden-chest', x, y); }
+  slotCap() { return 16; }
   giveItem(item) {
     const cap = this.limits[item];
     if (cap !== undefined && this.countOf(item) >= cap) return false;
     for (const s of this.slots)
       if (s && s.item === item && s.count < stackSize(item)) { s.count++; return true; }
-    if (this.slots.length >= 16) return false;
+    if (this.slots.length >= this.slotCap()) return false;
     this.slots.push({ item, count: 1 });
     return true;
   }
@@ -419,12 +422,13 @@ DEVICE_PANEL['wooden-chest'] = { html: woodenChestPanelHtml, live: woodenChestPa
 // ===== 铁箱（对齐《异星工厂》Iron chest，占地 1×1，容量 32 格，比木箱大、比钢箱小）=====
 class IronChest extends Chest {
   constructor(type, x, y) { super('iron-chest', x, y); }
+  slotCap() { return 32; }
   giveItem(item) {
     const cap = this.limits[item];
     if (cap !== undefined && this.countOf(item) >= cap) return false;
     for (const s of this.slots)
       if (s && s.item === item && s.count < stackSize(item)) { s.count++; return true; }
-    if (this.slots.length >= 32) return false;
+    if (this.slots.length >= this.slotCap()) return false;
     this.slots.push({ item, count: 1 });
     return true;
   }
