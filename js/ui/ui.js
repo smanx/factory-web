@@ -1933,7 +1933,10 @@ function recipeCardHtml(rid) {
   const r = RECIPES[rid] || REFINERY_RECIPES[rid] || CENTRIFUGE_RECIPES[rid];
   if (!r) return '';
   const outId = (r.out ? Object.keys(r.out)[0] : null) || (r.prob ? Object.keys(r.prob)[0] : null);
-  const name = (outId && ITEMS[outId]) ? ITEMS[outId].name : rid;
+  // 配方卡标题：官方配方名优先（炼油/离心等专用配方有官方 recipeNames，如「基础原油处理」），
+  // 其次手工配方表自带 name，最后回退产物名（组装机等普通配方惯例）。
+  const rName = (GAME_DATA.recipeNames && GAME_DATA.recipeNames[rid]) ? localizedName(rid, '') : (r.name ? localizedName(rid, r.name) : '');
+  const name = rName || ((outId && ITEMS[outId]) ? ITEMS[outId].name : rid);
   const cat = outId ? (GAME_DATA.itemGroup && GAME_DATA.itemGroup[outId]) : null;
   const catLabel = (cat && CRAFT_TAB_LABEL[cat]) ? CRAFT_TAB_LABEL[cat].text : '基础';
   const icn = k => (ITEMS[k] ? '<img class="rcp-card-img" src="' + iconDataURL(k, 28) + '" alt="">' : '');
@@ -1985,7 +1988,9 @@ function recipeValueHtml(rid, nameFallback) {
   if (!rid || !(RECIPES[rid] || REFINERY_RECIPES[rid] || CENTRIFUGE_RECIPES[rid])) return '<span class="dim">未设置</span>';
   const r = RECIPES[rid] || REFINERY_RECIPES[rid] || CENTRIFUGE_RECIPES[rid];
   const outId = (r.out ? Object.keys(r.out)[0] : null) || (r.prob ? Object.keys(r.prob)[0] : null);
-  const name = nameFallback || ((outId && ITEMS[outId]) ? ITEMS[outId].name : rid);
+  // 配方名：官方配方名 > 手工表 name > 产物名（与配方卡标题一致，修复炼油/离心悬停名称错误）
+  const rName = (GAME_DATA.recipeNames && GAME_DATA.recipeNames[rid]) ? localizedName(rid, '') : (r.name ? localizedName(rid, r.name) : '');
+  const name = nameFallback || rName || ((outId && ITEMS[outId]) ? ITEMS[outId].name : rid);
   const icon = outId ? '<img class="rec-val-icon" src="' + iconDataURL(outId, 16) + '" alt="">' : '';
   return '<span class="rec-val" data-rec-id="' + rid + '" data-itemid="' + (outId || '') + '">' +
     icon + '<span class="rec-val-name">' + name + '</span>' +
