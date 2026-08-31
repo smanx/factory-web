@@ -152,6 +152,8 @@ function render() {
   }
   // ALT 模式（对齐《异星工厂》）：在建筑上叠加显示当前配方/内容标签
   if (G.settings.altMode) drawAltMode(ctx, keys, _bucketSeenBuf);
+  // 电线杆供电范围可视化（悬停杆 / 放置杆幽灵时）
+  if (typeof drawPoleCoverage === 'function') drawPoleCoverage(ctx);
   // 管道口流向箭头置顶：在实体/管道绘制之后统一画出，保证不被相邻管道遮挡
   if (typeof flushPortArrowOverlay === 'function') flushPortArrowOverlay(ctx);
   // 兜底清空放置幽灵顶层画布：确保每帧 ghost-layer 都被清空，

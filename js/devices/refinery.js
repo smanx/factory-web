@@ -37,7 +37,7 @@ class Refinery extends Entity {
   // 当前每秒 prog 增量（制作速度倍率）：与 update() 累加公式同源，供面板换算真实剩余秒数
   craftProgRate() {
     const qMult = (typeof qualityMult === 'function' && this.quality) ? qualityMult(this.quality) : 1;
-    return oilMult() * this.moduleSpeedMult() * powerFactor() * qMult;
+    return oilMult() * this.moduleSpeedMult() * powerFactor(this) * qMult;
   }
   applyProductivity(rec) {
     const mc = moduleCounts(this.modules);
@@ -134,7 +134,7 @@ class Refinery extends Entity {
     // 电路条件不满足时暂停生产（对齐《异星工厂》：电路控制配方启停）
     if (!this.circuitEnabled()) { this.crafting = false; return; }
     if (this.crafting) {
-      if (G.power.sat <= 0) return;
+      if (powerSatOf(this) <= 0) return;
       this.working = true;
       this.prog += dt * this.craftProgRate();
       // 炼油厂运转：顶部低频排放蒸汽（画面优化）
@@ -646,7 +646,7 @@ function refineryPanelLive(e, api) {
   api.prog(e.recipe && e.crafting ? e.prog / REFINERY_RECIPES[e.recipe].time * 100 : 0, e.recipe ? REFINERY_RECIPES[e.recipe].time : 0);
   if (!e.recipe) api.status('已暂停：未设置配方，点击下方选择', 'warn');
   else if (e.crafting) api.status('精炼中', 'ok');
-  else if (G.power.sat <= 0) api.status('已暂停：缺电', 'bad');
+  else if (powerSatOf(e) <= 0) api.status('已暂停：缺电', 'bad');
   else if (refineryOutputFull(e)) api.status('已暂停：产物堆积（够用 2 次生产）', 'warn');
   else api.status('已暂停：等待原料', 'warn');
 }
@@ -668,7 +668,7 @@ DEVICE_RENDER['oil-refinery'] = drawRefinery;
 DEVICE_STATUS['oil-refinery'] = e => {
   const s = powerStatusOf(e);
   if (s.consuming) return s.color;
-  return e.recipe ? (e.crafting ? 'g' : (G.power.sat <= 0 && Object.keys(e.inp).length ? 'r' : 'y')) : 'r';
+  return e.recipe ? (e.crafting ? 'g' : (powerSatOf(e) <= 0 && Object.keys(e.inp).length ? 'r' : 'y')) : 'r';
 };
 DEVICE_PANEL['oil-refinery'] = { html: refineryPanelHtml, live: refineryPanelLive, tip: refineryTip, onAction: (a) => circuitPanelAction('rf', a) };
 // 炼油厂四边均布流体口、本体对称，旋转仅记录朝向；选中/悬停后按 R 可直接旋转

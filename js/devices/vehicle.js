@@ -31,6 +31,7 @@ function vehicleFuelDisplay(e, cap) {
 class Car extends Entity {
   constructor(type, x, y) {
     super(type, x, y);
+    this.noGridPower = true;    // 载具靠燃料/装备电网驱动，不接入世界电网 → 不显示电线杆缺电警告
     this.fuelCoal = 0;          // 内置煤量
     this.fuelSolid = 0;         // 内置固体燃料量
     this.fuelRocket = 0;        // 内置火箭燃料量（最高级燃料，优先烧）

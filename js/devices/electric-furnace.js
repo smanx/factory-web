@@ -43,10 +43,10 @@ class ElectricFurnace extends Furnace {
     const r = this.pickRecipe();
     this.cur = r;
     if (!r) { this.prog = 0; this.lit = false; return; }
-    if (G.power.sat <= 0) { this.lit = false; return; }
+    if (powerSatOf(this) <= 0) { this.lit = false; return; }
     this.lit = true;
     furnaceEmit(this, dt);
-    this.prog += dt / r.time * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 2) * this.moduleSpeedMult() * powerFactor() * (this.quality ? qualityMult(this.quality) : 1);
+    this.prog += dt / r.time * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 2) * this.moduleSpeedMult() * powerFactor(this) * (this.quality ? qualityMult(this.quality) : 1);
     if (this.prog >= 1) {
       this.prog -= 1;
       this.inp[r.inp] = (this.inp[r.inp] || 0) - (r.inCount || 1);

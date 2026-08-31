@@ -73,12 +73,12 @@ class Assembler extends Entity {
   // 供面板把「工作量剩余」换算成真实剩余秒数（装速度插件后倒计时才与墙钟一致）。
   craftProgRate() {
     const qMult = (typeof qualityMult === 'function' && this.quality) ? qualityMult(this.quality) : 1;
-    return asmMult() * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 0.5) * this.moduleSpeedMult() * powerFactor() * qMult;
+    return asmMult() * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 0.5) * this.moduleSpeedMult() * powerFactor(this) * qMult;
   }
   update(dt) {
     this.portFlow();
     if (!this.recipe) { this.crafting = false; return; }
-    if (G.power.sat <= 0) { this.crafting = false; return; }
+    if (powerSatOf(this) <= 0) { this.crafting = false; return; }
     // 电路条件不满足时暂停生产（对齐《异星工厂》：电路控制配方启停）
     if (!this.circuitEnabled()) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
@@ -546,7 +546,7 @@ function assemblerPanelLive(e, api) {
   const rec = RECIPES[e.recipe];
   // 仅吃电的机型（组装机 II）在缺电时暂停；组装机 I 不吃电
   const needsPower = typeof e.powerDemand === 'function' && e.powerDemand() > 0;
-  if (needsPower && G.power.sat <= 0) { api.status('已暂停：缺电', 'bad'); return; }
+  if (needsPower && powerSatOf(e) <= 0) { api.status('已暂停：缺电', 'bad'); return; }
   if (outputBacklogged(e.outp, rec.out)) { api.status('已暂停：产物堆积（够用 2 次生产）', 'warn'); return; }
   const missing = Object.keys(rec.inp).filter(k => (e.inp[k] || 0) < rec.inp[k]);
   if (missing.length) {

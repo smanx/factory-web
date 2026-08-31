@@ -474,7 +474,7 @@ function furnacePanelLive(e, api) {
   if (eFurn) {
     if (e.lit) api.status('冶炼中', 'ok');
     else if (e.cur && outFullStack) api.status('已暂停：产物已满一整组', 'warn');
-    else if (e.cur && G.power.sat <= 0) api.status('已暂停：缺电', 'bad');
+    else if (e.cur && powerSatOf(e) <= 0) api.status('已暂停：缺电', 'bad');
     else api.status('已暂停：待料（放入矿石）', 'warn');
   } else {
     if (e.lit) api.status('冶炼中', 'ok');

@@ -13,15 +13,18 @@ class SteamEngine extends Entity {
   applyDir() { if (this.dir % 2 === 1) { this.w = this.def.h; this.h = this.def.w; } }
   update(dt) {
     this.portFlow();
-    const want = ENGINE_STEAM_RATE * dt;
-    const took = Math.min(want, this.steamBuf);
-    this.steamBuf -= took;
-    const inst = want > 1e-9 ? Math.min(1, took / want) : 0;
+    // 发电机随负载动态调整：按所属电网的 throttle（=需求/产能）只消耗当前需要的蒸汽，
+    // 不满功率空转省燃料；powerOut 仍报告「可用产能」（供并查集计算电网产能，避免反馈振荡）。
+    const thr = (this._grid && this._grid.throttle != null) ? this._grid.throttle : 1;
+    const fullWant = ENGINE_STEAM_RATE * dt;
+    const couldTake = Math.min(fullWant, this.steamBuf);   // 满功率下本 tick 可用蒸汽
+    const inst = fullWant > 1e-9 ? couldTake / fullWant : 0;
+    this.steamBuf -= couldTake * thr;                       // 实际耗汽随负载节流
     this.outMult += (inst - this.outMult) * Math.min(1, dt * 6);
     if (this.outMult < 0.005) this.outMult = 0;
     this.powerOut = POWER_PER_ENGINE * this.outMult;
     this.on = this.powerOut > 0.05;
-    if (this.on) this.spin += dt * 8 * (0.35 + 0.65 * this.outMult);
+    if (this.on) this.spin += dt * 8 * (0.35 + 0.65 * this.outMult * thr);
     // 电力增量注册表同步：powerOut 变化后重新注册，确保被 updatePower 扫描到（发电设备正确计入 prod）
     if (typeof regPowerEnt === 'function') regPowerEnt(this);
   }
@@ -270,7 +273,8 @@ function drawSteamEngine(ctx, e, gx, gy, dir, alpha) {
   ctx.textBaseline = 'middle';
   ctx.strokeStyle = 'rgba(0,0,0,0.7)';
   ctx.lineWidth = 2.5;
-  const powerStr = e.on ? ('+' + Math.round(e.powerOut || 0) + ' kW') : '+0 kW';
+  const thr = (e._grid && e._grid.throttle != null) ? e._grid.throttle : 1;
+  const powerStr = e.on ? ('+' + Math.round((e.powerOut || 0) * thr) + ' kW' + (thr < 0.999 ? '↓' : '')) : '+0 kW';
   ctx.strokeText(powerStr, cx, genY + genH / 2);
   ctx.fillText(powerStr, cx, genY + genH / 2);
   // 状态 LED（左下角，根据运行/待机/供汽不足变色）
@@ -323,19 +327,23 @@ function steamEnginePanelHtml(e) {
   let h = row('输出功率', '<span class="dim"></span>', 'power');
   h += row('蒸汽存量', '<span class="dim"></span>', 'steam');
   h += '<div class="dim">上下两端各一只通用汽口，功能相同：蒸汽可从任意一端进入发电，多余蒸汽也可从另一端送出——可与相邻蒸汽机首尾串联或接入蒸汽管道。满功率耗汽 ' + ENGINE_STEAM_RATE +
-    '/s（1 台锅炉约带 2 台），输出 +' + POWER_PER_ENGINE + ' kW 并入全图电网。</div>';
+    '/s（1 台锅炉约带 2 台），输出 +' + POWER_PER_ENGINE + ' kW 并入所在电网（出力随耗电量动态调整，需求低时少烧蒸汽）。</div>';
   return h;
 }
 function steamEnginePanelLive(e, api) {
-  api.set('power', e.on ? '+' + e.powerOut.toFixed(1) : dimSpan('+0'));
+  const thr = (e._grid && e._grid.throttle != null) ? e._grid.throttle : 1;
+  const actual = (e.powerOut || 0) * thr;
+  api.set('power', e.on ? '+' + actual.toFixed(1) + (thr < 0.999 ? '（满 ' + (e.powerOut || 0).toFixed(0) + '，随负载调节）' : '') : dimSpan('+0'));
   api.set('steam', e.steamBuf >= 1 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ steam: Math.floor(e.steamBuf) }, { action: 'display' }) + '</div>' : dimSpan('空'));
   api.prog((e.outMult || 0) * 100);
-  if (e.on) api.status('发电中：供汽越足功率越高', 'ok');
+  if (e.on && thr < 0.999) api.status('发电中：随电网负载调节出力（' + Math.round(thr * 100) + '%）', 'ok');
+  else if (e.on) api.status('发电中：供汽越足功率越高', 'ok');
   else if (e.steamBuf > 0) api.status('已暂停：蒸汽不足，功率随供汽量下降', 'warn');
   else api.status('已暂停：未接蒸汽（从任一端汽口接入）', 'bad');
 }
 function steamEngineTip(e) {
-  return e.on ? '发电中 +' + Math.round(e.powerOut || 0) + ' kW（存汽' + Math.floor(e.steamBuf || 0) + '）'
+  const thr = (e._grid && e._grid.throttle != null) ? e._grid.throttle : 1;
+  return e.on ? '发电中 +' + Math.round((e.powerOut || 0) * thr) + ' kW（存汽' + Math.floor(e.steamBuf || 0) + '）'
     : (e.steamBuf > 0 ? '供汽不足，功率受限'
     : '未接蒸汽：从任一端汽口接入（紧邻锅炉出汽口或经管道）');
 }

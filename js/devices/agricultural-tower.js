@@ -26,14 +26,14 @@ class AgriculturalTower extends Assembler {
     if (!this.recipe) { this.crafting = false; return; }
     // 须种植在雅玛果土壤上（人工/茂盛均可），否则停止生长
     if (!this.onSoil()) { this.crafting = false; return; }
-    if (G.power.sat <= 0) { this.crafting = false; return; }
+    if (powerSatOf(this) <= 0) { this.crafting = false; return; }
     // 电路条件不满足时暂停（对齐《异星工厂》：电路控制配方启停）
     if (!this.circuitEnabled()) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
       // 生长速度：农业塔无官方 crafting_speed（种植建筑），固定按配方 time 生长；
       // 仍受速度模块/信号塔/品质加成影响（对齐生产建筑加成体系）
-      this.prog += dt * asmMult() * this.moduleSpeedMult() * powerFactor() * (this.quality ? qualityMult(this.quality) : 1);
+      this.prog += dt * asmMult() * this.moduleSpeedMult() * powerFactor(this) * (this.quality ? qualityMult(this.quality) : 1);
       this.spin += dt * 4;
       if (typeof onScreen === 'function' && onScreen(this) && typeof playSfx === 'function' && G.settings.sound) {
         this._runSfxT = (this._runSfxT || 0) - dt;
@@ -182,7 +182,7 @@ function agriPanelLive(e, api) {
   if (!e.recipe) { api.status('未设置作物，点击下方选择', 'warn'); return; }
   if (!e.onSoil()) { api.status(e.recipe === 'jellynut-growing' ? '已暂停：须种植在果冻果人造土/沃土上' : '已暂停：须种植在玉玛果人造土/沃土上', 'warn'); return; }
   if (e.crafting) { api.status('生长中：' + ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name, 'ok'); return; }
-  if (G.power.sat <= 0) { api.status('已暂停：缺电', 'bad'); return; }
+  if (powerSatOf(e) <= 0) { api.status('已暂停：缺电', 'bad'); return; }
   for (const k in RECIPES[e.recipe].out)
     if (outputBacklogged(e.outp, RECIPES[e.recipe].out)) { api.status('已暂停：产物堆积（够用 2 次生产）', 'warn'); return; }
   const missing = Object.keys(RECIPES[e.recipe].inp).filter(k => (e.inp[k] || 0) < RECIPES[e.recipe].inp[k]);

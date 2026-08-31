@@ -756,7 +756,7 @@ function updateRecipeMachineLive(e, body, api) {
   if (!rec) { api.status('未设置配方，点击「清除配方」选择', 'warn'); return; }
   if (e.crafting) { api.status('生产中：' + info.name(e.recipe), 'ok'); return; }
   const needsPower = typeof e.powerDemand === 'function' && e.powerDemand() > 0;
-  if (needsPower && G.power.sat <= 0) { api.status('已暂停：缺电', 'bad'); return; }
+  if (needsPower && powerSatOf(e) <= 0) { api.status('已暂停：缺电', 'bad'); return; }
   // 产物堆积停机提示：设备有 outputBufferFull/实际因堆积暂停时，如实显示而非「已就绪」
   const backlogState = (typeof machineBacklogPaused === 'function') ? machineBacklogPaused(e, rec) : false;
   if (backlogState) { api.status('已暂停：产物堆积（取走产物后继续）', 'warn'); return; }
@@ -2568,7 +2568,7 @@ function updateAssemblerLive(e, body, api) {
   if (rec && e.crafting) dotCls = 'on';
   else {
     const needsPower = typeof e.powerDemand === 'function' && e.powerDemand() > 0;
-    if (rec && needsPower && G.power.sat <= 0) dotCls = 'bad';
+    if (rec && needsPower && powerSatOf(this) <= 0) dotCls = 'bad';
     else if (rec) {
       let miss = null;
       for (const k in rec.inp) if ((e.inp[k] || 0) < rec.inp[k]) { miss = k; break; }

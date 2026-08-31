@@ -38,18 +38,23 @@ class Accumulator extends CircuitNode {
   // 蓄电器作为电路节点：连接范围取蓄电器自身范围（与附近的电线杆/组合器互联）
   get range() { return ACCUM_CIRCUIT_RANGE; }
   update(dt) {
-    // 电网盈余时充电；电网缺口时放电（受速率限制）
-    if (G.power.prod > G.power.demand && this.stored < ACCUM_CAP) {
-      const gain = Math.min(ACCUM_CHARGE_RATE * dt, G.power.prod - G.power.demand, ACCUM_CAP - this.stored);
-      this.stored += gain;
-    } else if (G.power.prod < G.power.demand && this.stored > 0) {
-      const loss = Math.min(ACCUM_CHARGE_RATE * dt, G.power.demand - G.power.prod, this.stored);
-      this.stored -= loss;
-    }
-    // 蓄电器放电时以 powerOut 形式向电网注入
+    // 蓄电器按「所属电网」充放电：电网有闲置产能（capacity>需求）时充电，产能不足时放电补差。
+    // 未接入电网（附近无电线杆覆盖）时既不充也不放。
+    const g = this._grid;
     this.powerOut = 0;
-    if (G.power.prod < G.power.demand && this.stored > 0) {
-      this.powerOut = Math.min(ACCUM_CHARGE_RATE, this.stored * 20);
+    if (g) {
+      const spare = g.capacity - g.demand;   // 闲置产能（正=可充电，负=缺口需放电）
+      if (spare > 0 && this.stored < ACCUM_CAP) {
+        const gain = Math.min(ACCUM_CHARGE_RATE * dt, spare, ACCUM_CAP - this.stored);
+        this.stored += gain;
+      } else if (spare < 0 && this.stored > 0) {
+        const loss = Math.min(ACCUM_CHARGE_RATE * dt, -spare, this.stored);
+        this.stored -= loss;
+      }
+      // 电网缺口时以 powerOut 形式向本电网注入放电功率（计入电网产能）
+      if (spare < 0 && this.stored > 0) {
+        this.powerOut = Math.min(ACCUM_CHARGE_RATE, this.stored * 20);
+      }
     }
     // 电力增量注册表同步：powerOut 变化后重新注册，确保被 updatePower 扫描到
     if (typeof regPowerEnt === 'function') regPowerEnt(this);
@@ -123,24 +128,29 @@ function solarPanelPanelHtml() {
 }
 function solarPanelPanelLive(e, api) {
   api.set('power', '+' + (e.powerOut || 0).toFixed(1));
-  if (solarFactor() > 0.02) api.status('发电中：白天 ' + (e.powerOut || 0).toFixed(1), 'ok');
+  if (e._grid === null) api.status('未接入电网：需位于电线杆供电范围内', 'bad');
+  else if (solarFactor() > 0.02) api.status('发电中：白天 ' + (e.powerOut || 0).toFixed(1), 'ok');
   else api.status('已暂停：夜晚，等待天亮', 'warn');
 }
 function solarPanelTip(e) {
+  if (e._grid === null) return '未接入电网（需电线杆）';
   return solarFactor() > 0.02 ? ('发电中 +' + (e.powerOut || 0).toFixed(1)) : '夜晚停发';
 }
 function accumulatorPanelHtml() {
   return row('储电量', '<span class="dim"></span>', 'stored') +
-    '<div class="dim">蓄电器：储存电力，白天电网有盈余时充电，夜间/缺口时放电补充，平滑电网波动（2×2）。</div>';
+    '<div class="dim">蓄电器：储存电力，所在电网有盈余时充电，夜间/缺口时放电补充，平滑本电网波动（2×2，需电线杆覆盖接入电网）。</div>';
 }
 function accumulatorPanelLive(e, api) {
   api.set('stored', Math.round(e.stored || 0) + ' / ' + ACCUM_CAP);
   const pct = (e.stored || 0) / ACCUM_CAP;
-  if (G.power.prod > G.power.demand && pct < 1) api.status('充电中：白天电网盈余', 'ok');
-  else if (G.power.prod < G.power.demand && (e.stored || 0) > 0) api.status('放电中：补充电网缺口', 'ok');
+  const g = e._grid;
+  if (g === null) api.status('未接入电网：需位于电线杆供电范围内', 'bad');
+  else if (g && g.capacity > g.demand && pct < 1) api.status('充电中：本电网有闲置产能', 'ok');
+  else if (g && g.capacity < g.demand && (e.stored || 0) > 0) api.status('放电中：补充本电网缺口', 'ok');
   else api.status('待机', 'ok');
 }
 function accumulatorTip(e) {
+  if (e._grid === null) return '储能 ' + Math.round(e.stored || 0) + '/' + ACCUM_CAP + '（未接入电网）';
   return '储能 ' + Math.round(e.stored || 0) + '/' + ACCUM_CAP;
 }
 
@@ -151,7 +161,7 @@ DEVICE_RENDER['solar-panel'] = drawSolarPanel;
 DEVICE_DIR_ROTATE['solar-panel'] = true; // 支持旋转
 DEVICE_RENDER['accumulator'] = drawAccumulator;
 DEVICE_DIR_ROTATE['accumulator'] = true; // 支持旋转
-DEVICE_STATUS['solar-panel'] = e => solarFactor() > 0.02 ? 'g' : 'r';
-DEVICE_STATUS['accumulator'] = e => (e.stored || 0) > 0 ? 'g' : 'r';
+DEVICE_STATUS['solar-panel'] = e => e._grid === null ? 'r' : (solarFactor() > 0.02 ? 'g' : 'r');
+DEVICE_STATUS['accumulator'] = e => e._grid === null ? 'r' : ((e.stored || 0) > 0 ? 'g' : 'y');
 DEVICE_PANEL['solar-panel'] = { html: solarPanelPanelHtml, live: solarPanelPanelLive, tip: solarPanelTip };
 DEVICE_PANEL['accumulator'] = { html: accumulatorPanelHtml, live: accumulatorPanelLive, tip: accumulatorTip };

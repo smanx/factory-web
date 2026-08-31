@@ -90,7 +90,7 @@ const ITEMS = {
   'lab':               {emoji: '🔬',  name: '研究中心', color: '#4aa8a0', desc: '消耗科学包推进所选科技（3×3）' },
   'biolab':            {emoji: '🧬',  name: '生物实验室', color: '#4aa8a0', desc: '太空时代生物实验室（5×5，吃电力）：比普通研究中心快 2 倍、模块槽更多，可研究全部太空时代科技（对齐《异星工厂》Space Age 生物实验室，数据来自 GAME_DATA）' },
   'small-lamp':              {emoji: '💡',  name: '电灯', color: '#e8e4a0', desc: '耗电照明设备（1×1）：通电后在夜间照亮周围区域，让基地在黑暗中清晰可见。夜晚无电时熄灭' },
-  'substation':        {emoji: '🔋',  name: '变电站', color: '#b0802a', desc: '超大型电线杆（4×4）：连接电力与电路网络，覆盖范围远大于普通电线杆（连接距离约 18 格），用于跨区域组网（对齐《异星工厂》Substation）' },
+  'substation':        {emoji: '🔋',  name: '广域配电站', color: '#b0802a', desc: '广域配电站（2×2）：超大型电线杆，同时接入电力与电路网络；供电覆盖 18×18、杆间连线距离 18 格，远超普通电线杆，用于跨区域组网与大片基地统一供电（对齐《异星工厂》Substation）' },
   'programmable-speaker': {emoji: '📢',  name: '可编程音箱', color: '#a05ad0', desc: '电路网络设备（1×1）：读取所连网络的信号，可在面板设置告警条件与输出信号，满足条件时发光提示，用于信号监控与告警（对齐《异星工厂》Programmable speaker）' },
   'splitter':          {emoji: '🔀',  name: '基础分流器', color: '#e0b23c', desc: '两入两出：物品轮流流向两个出口（A/B 车道各自保持不混合）；一边堵了自动走另一边。面板可设输入/输出优先级，并自带筛选功能（指定只放行某物品）' },
   'underground-belt':       {emoji: '⬇️',  name: '基础地下传送带', color: '#e0b23c', desc: '同向摆两座（最远6格）自动配对：入口收货钻入地下，出口送回地面向前输出' },
@@ -360,10 +360,10 @@ const ITEMS = {
   'fusion-power-cell': {emoji: '🔆',  name: '聚变燃料棒', color: '#8ae0c0', desc: '太空时代聚变燃料棒（Aquilo）：聚变反应堆的专属燃料，燃烧后释放等离子体能量（官方 fusion-power-cell，数据来自 GAME_DATA）' },
   'lightning-rod': {emoji: '⚡',  name: '避雷针', color: '#e8d848', desc: '太空时代避雷针（1×1，Fulgora）：雷电季节保护小片区域免受雷击，并吸收雷电能量转化为电网电力（官方 efficiency 0.2，数据来自 GAME_DATA.lightning）' },
   'lightning-collector': {emoji: '⚡',  name: '避雷收集器', color: '#c0c020', desc: '太空时代避雷收集器（2×2，Fulgora）：保护大片区域免受雷击，收集雷电能量效率更高并转化为电网电力（官方 efficiency 0.4，数据来自 GAME_DATA.lightning）' },
-  // ===== 电路网络（对齐《异星工厂》Circuit Network）=====
-  'small-electric-pole': {emoji: '⚡',  name: '小型电线杆', color: '#8a5a2a', desc: '电线杆：铺设后与附近电线杆自动连线，构成电路网络（1×1，连接距离 7 格）。红/绿线可独立传输信号' },
-  'medium-electric-pole': {emoji: '⚡',  name: '中型电线杆', color: '#a06a2a', desc: '电线杆：连接距离更远（9 格），构成更大范围的电路网络（2×2）' },
-  'big-electric-pole': {emoji: '⚡',  name: '大型电线杆', color: '#b0802a', desc: '电线杆：超远连接距离（15 格），用于跨区域组网（2×2）' },
+  // ===== 电线杆电网 + 电路网络（对齐《异星工厂》Electric pole / Circuit Network）=====
+  'small-electric-pole': {emoji: '⚡',  name: '小型电线杆', color: '#8a5a2a', desc: '电线杆（1×1）：为周围 5×5 范围内的发电/耗电设备供电并接入电网，杆间自动连线距离 7.5 格；同时构成电路网络（红/绿线独立传信号）。开局即可建造，是电力基础设施的起点' },
+  'medium-electric-pole': {emoji: '⚡',  name: '中型电线杆', color: '#a06a2a', desc: '电线杆（1×1）：供电覆盖 7×7，杆间连线距离 9 格，比小型杆覆盖更大、组网更灵活（需「电力传输 I」）' },
+  'big-electric-pole': {emoji: '⚡',  name: '远程输电塔', color: '#b0802a', desc: '远程输电塔（2×2）：杆间连线距离高达 32 格，专用于远距离跨区域输电；供电覆盖 4×4（需「电力传输 I」）' },
   'constant-combinator': {emoji: '🔢',  name: '常量组合器', color: '#4a7ac0', desc: '电路设备：面板设置若干常量信号，持续输出到所连网络（1×1）。可指定输出到红线或绿线' },
   'arithmetic-combinator': {emoji: '➕',  name: '运算组合器', color: '#4a9ac0', desc: '电路设备：读取网络输入信号，做加减乘除运算后输出结果信号（1×1）' },
   'decider-combinator': {emoji: '❓',  name: '判断组合器', color: '#4ac0a0', desc: '电路设备：按条件（如 信号 > 10）判断，满足时输出指定信号；可做“非”逻辑（1×1）' },

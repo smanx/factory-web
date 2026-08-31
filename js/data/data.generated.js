@@ -16,6 +16,7 @@
 //   其余设备行为参数（官方接入，见对应设备文件 GAME_DATA.xxx?.[..] ?? 兜底）：
 //   undergroundDist[带] = 地下带最大距离(格), pipeGroundDist = 地下管道最大跨距(格), renewable = { solarPower, accumCap, accumChargeRate }
 //   fluidCapacity = { storageTank, fluidWagon, pumpRate, pipeVolume, pipeToGroundVolume }, beaconRange = 信号塔半径(格)
+//   pole[杆] = { wire(杆间自动连线最大距离/格), supply(供电覆盖半径/格) }（电网模型：设备进入 supply 范围才接入该杆电网）
 //   turret[塔] = { range, fireRate(秒) }, ammoDamage[弹药] = 伤害, radar = { range, power(kW) }
 //   equipment[装备] = { powerOut | powerCap(kJ) | shield | speed | laser | dischargeRange/Cooldown }
 //   heat = { reactorMaxTemp, reactorSpecificHeat, reactorMaxTransfer, heatPipeMaxTemp, heatPipeMinGlowTemp,
@@ -5674,6 +5675,24 @@ const GAME_DATA = {
   "pipeToGroundVolume": 100
  },
  "beaconRange": 3,
+ "pole": {
+  "small-electric-pole": {
+   "wire": 7.5,
+   "supply": 2.5
+  },
+  "big-electric-pole": {
+   "wire": 32,
+   "supply": 2
+  },
+  "medium-electric-pole": {
+   "wire": 9,
+   "supply": 3.5
+  },
+  "substation": {
+   "wire": 18,
+   "supply": 9
+  }
+ },
  "turret": {
   "gun-turret": {
    "range": 18,
@@ -6263,32 +6282,49 @@ const GAME_DATA = {
    "inserter": {
     "rotationSpeed": 0.014,
     "extensionSpeed": 0.035,
-    "stack": 1
+    "stack": 1,
+    "energyPerMovement": 5,
+    "energyPerRotation": 5,
+    "drain": 0.4
    },
    "long-handed-inserter": {
     "rotationSpeed": 0.02,
     "extensionSpeed": 0.05,
-    "stack": 1
+    "stack": 1,
+    "energyPerMovement": 5,
+    "energyPerRotation": 5,
+    "drain": 0.4
    },
    "fast-inserter": {
     "rotationSpeed": 0.04,
     "extensionSpeed": 0.1,
-    "stack": 1
+    "stack": 1,
+    "energyPerMovement": 7,
+    "energyPerRotation": 7,
+    "drain": 0.5
    },
    "bulk-inserter": {
     "rotationSpeed": 0.04,
     "extensionSpeed": 0.1,
-    "stack": 3
+    "stack": 3,
+    "energyPerMovement": 20,
+    "energyPerRotation": 20,
+    "drain": 1
    },
    "stack-inserter": {
     "rotationSpeed": 0.04,
     "extensionSpeed": 0.1,
-    "stack": 4
+    "stack": 4,
+    "energyPerMovement": 40,
+    "energyPerRotation": 40,
+    "drain": 1
    },
    "burner-inserter": {
     "rotationSpeed": 0.013,
     "extensionSpeed": 0.035,
-    "stack": 1
+    "stack": 1,
+    "energyPerMovement": 50,
+    "energyPerRotation": 50
    }
   }
  },

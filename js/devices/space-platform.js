@@ -174,12 +174,12 @@ class SpacePlatformHub extends Assembler {
   update(dt) {
     this.portFlow();
     if (!this.recipe) { this.crafting = false; return; }
-    if (G.power.sat <= 0) { this.crafting = false; return; }
+    if (powerSatOf(this) <= 0) { this.crafting = false; return; }
     if (!this.circuitEnabled()) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
       // 中枢制造速度 1.0（官方 space-platform-hub 无 crafting_speed，默认 1）
-      this.prog += dt * asmMult() * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 1.0) * this.moduleSpeedMult() * powerFactor() * (this.quality ? qualityMult(this.quality) : 1);
+      this.prog += dt * asmMult() * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 1.0) * this.moduleSpeedMult() * powerFactor(this) * (this.quality ? qualityMult(this.quality) : 1);
       this.spin += dt * 4;
       if (typeof onScreen === 'function' && onScreen(this) && typeof playSfx === 'function' && G.settings.sound) {
         this._runSfxT = (this._runSfxT || 0) - dt;
@@ -488,7 +488,7 @@ function hubPanelLive(e, api) {
   api.prog(e.recipe && e.crafting ? e.prog / RECIPES[e.recipe].time * 100 : 0, e.recipe ? RECIPES[e.recipe].time : 0);
   if (!e.recipe) { api.status('未设置配方，点击下方选择', 'warn'); return; }
   if (e.crafting) { api.status('生产中：' + ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name, 'ok'); return; }
-  if (G.power.sat <= 0) { api.status('已暂停：缺电', 'bad'); return; }
+  if (powerSatOf(e) <= 0) { api.status('已暂停：缺电', 'bad'); return; }
   if (outputBacklogged(e.outp, RECIPES[e.recipe].out)) { api.status('已暂停：产物堆积（够用 2 次生产）', 'warn'); return; }
   const missing = Object.keys(RECIPES[e.recipe].inp).filter(k => (e.inp[k] || 0) < RECIPES[e.recipe].inp[k]);
   if (missing.length) { api.status('已暂停：缺少原料 ' + missing.map(k => ITEMS[k].name).join('、'), 'warn'); return; }

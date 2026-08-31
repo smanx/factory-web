@@ -57,6 +57,8 @@ function drawEntity(ctx, e, gx, gy, dir, alpha) {
   // 运行 loading 环（抽油机同款绿色进度环）：设备运行中且 ALT 详情模式开启时，
   // 环绕设备中心绘制，实时显示当前这一轮生产的完成进度。
   if (alpha === 1 && !LOD.simple) drawRunRing(ctx, e, gx, gy);
+  // 缺电警告图标（发电/耗电设备共用）：未接入电网=黄插头，已接入但电网无电=红闪电，慢闪。
+  if (alpha === 1) drawPowerWarning(ctx, e, gx, gy);
 }
 
 // 已有自身进度环的设备（在各自皮肤/绘制中显式绘制，同样仅 ALT 详情模式显示），
@@ -656,6 +658,140 @@ function canOverwriteWithBelt(type, e) {
   // 1×1 且属于同一条升级链（传送带覆盖传送带、地下带覆盖地下带、分流器覆盖分流器）
   if (!sameTierFamily(type, e.type)) return false;
   return true;
+}
+
+// ===== 缺电警告图标（发电/耗电设备共用逻辑，见 power.js powerWarnState）=====
+// 未接入任何电网 → 黄色三角插头；已接入但电网无电 → 红色三角闪电。
+// 硬闪：显示 1 秒、消失 1 秒（无渐变）；图标固定为一格大小，居中于设备。
+function drawPowerWarning(ctx, e, gx, gy) {
+  const st = (typeof powerWarnState === 'function') ? powerWarnState(e) : null;
+  if (!st) return;
+  if ((G.time % 2) >= 1) return;   // 消失相位：整秒隐藏，不做渐变
+  const px = gx * TILE, py = gy * TILE;
+  const w = e.w * TILE, h = e.h * TILE;
+  const cx = px + w / 2, cy = py + h / 2;
+  const r = TILE * 0.45;           // 固定一格大小（不随设备占地缩放）
+  ctx.save();
+  ctx.globalAlpha = 1;
+  const col = st === 'plug' ? '#ffcf3a' : '#ff4a3a';
+  // 三角警告牌
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r);
+  ctx.lineTo(cx + r * 0.92, cy + r * 0.7);
+  ctx.lineTo(cx - r * 0.92, cy + r * 0.7);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(18,14,8,.85)';
+  ctx.fill();
+  ctx.strokeStyle = col;
+  ctx.lineWidth = Math.max(1.4, r * 0.13);
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+  // 内部符号（略下移至三角重心）
+  const sy = cy + r * 0.12;
+  ctx.strokeStyle = col; ctx.fillStyle = col;
+  ctx.lineWidth = Math.max(1.2, r * 0.11);
+  ctx.lineCap = 'round';
+  if (st === 'plug') {
+    const pr = r * 0.32;
+    ctx.beginPath();
+    ctx.moveTo(cx - pr * 0.55, sy - pr * 1.1); ctx.lineTo(cx - pr * 0.55, sy - pr * 0.35);
+    ctx.moveTo(cx + pr * 0.55, sy - pr * 1.1); ctx.lineTo(cx + pr * 0.55, sy - pr * 0.35);
+    ctx.stroke();
+    ctx.fillRect(cx - pr, sy - pr * 0.35, pr * 2, pr * 0.95);
+    ctx.beginPath();
+    ctx.moveTo(cx, sy + pr * 0.6); ctx.lineTo(cx, sy + pr * 1.35);
+    ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(cx + r * 0.14, sy - r * 0.4);
+    ctx.lineTo(cx - r * 0.22, sy + r * 0.06);
+    ctx.lineTo(cx + r * 0.01, sy + r * 0.06);
+    ctx.lineTo(cx - r * 0.14, sy + r * 0.44);
+    ctx.lineTo(cx + r * 0.26, sy - r * 0.04);
+    ctx.lineTo(cx + r * 0.04, sy - r * 0.04);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+// ===== 电线杆供电范围可视化 =====
+// 悬停电线杆：浅蓝覆盖区 + 被覆盖的发电/耗电设备四角黄色线框。
+// 放置电线杆幽灵：屏幕内所有杆浅蓝范围 + 当前幽灵深蓝范围 + 幽灵覆盖设备金色角框。
+function _coverageRectsOverlap(b, rc) {
+  return b.x < rc.x1 && b.x + (b.w || 1) > rc.x0 && b.y < rc.y1 && b.y + (b.h || 1) > rc.y0;
+}
+function _drawCoverageFill(ctx, rc, fill, stroke) {
+  ctx.fillStyle = fill;
+  ctx.fillRect(rc.x0 * TILE, rc.y0 * TILE, (rc.x1 - rc.x0) * TILE, (rc.y1 - rc.y0) * TILE);
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = 1.5 / G.cam.z;
+  ctx.strokeRect(rc.x0 * TILE, rc.y0 * TILE, (rc.x1 - rc.x0) * TILE, (rc.y1 - rc.y0) * TILE);
+}
+function _drawCornerBrackets(ctx, b, col) {
+  const x0 = b.x * TILE, y0 = b.y * TILE, x1 = (b.x + (b.w || 1)) * TILE, y1 = (b.y + (b.h || 1)) * TILE;
+  const L = Math.min(x1 - x0, y1 - y0) * 0.3;
+  ctx.strokeStyle = col;
+  ctx.lineWidth = 2.5 / G.cam.z;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x0, y0 + L); ctx.lineTo(x0, y0); ctx.lineTo(x0 + L, y0);
+  ctx.moveTo(x1 - L, y0); ctx.lineTo(x1, y0); ctx.lineTo(x1, y0 + L);
+  ctx.moveTo(x1, y1 - L); ctx.lineTo(x1, y1); ctx.lineTo(x1 - L, y1);
+  ctx.moveTo(x0 + L, y1); ctx.lineTo(x0, y1); ctx.lineTo(x0, y1 - L);
+  ctx.stroke();
+}
+function _isPoleType(type) { return !!(GAME_DATA.pole && GAME_DATA.pole[type]); }
+function drawPoleCoverage(ctx) {
+  if (typeof poleSupplyRect !== 'function' || !G.cursorTile) return;
+  // —— 放置电线杆幽灵态 ——
+  const sel = (typeof buildActive === 'function' && buildActive() && typeof selItem === 'function') ? selItem() : null;
+  if (sel && _isPoleType(sel) && typeof mouseOverMap === 'function' && mouseOverMap()) {
+    const def = BUILD_DEFS[sel];
+    let ew = def.w, eh = def.h;
+    if (def.rotSwap && (G.ghostDir % 2 === 1)) { ew = def.h; eh = def.w; }
+    const tx = G.cursorTile.tx, ty = G.cursorTile.ty;
+    const grc = poleSupplyRect(sel, tx, ty, ew, eh);
+    // 屏幕内所有已有电线杆：浅蓝范围
+    for (const p of G.ents) {
+      if (p._dead || !_isPoleType(p.type) || !onScreen(p)) continue;
+      _drawCoverageFill(ctx, poleSupplyRect(p.type, p.x, p.y, p.w, p.h), 'rgba(96,170,255,.14)', 'rgba(120,190,255,.4)');
+    }
+    // 当前幽灵：深蓝范围
+    _drawCoverageFill(ctx, grc, 'rgba(40,92,210,.34)', 'rgba(110,170,255,.95)');
+    // 幽灵与「连得上」的已有杆之间搭黄色电力线（超出连线距离则不连）
+    const gw = (GAME_DATA.pole[sel] && GAME_DATA.pole[sel].wire !== undefined) ? GAME_DATA.pole[sel].wire : 7.5;
+    const gcx = tx + ew / 2, gcy = ty + eh / 2;
+    ctx.strokeStyle = '#d8c24a';
+    ctx.lineWidth = 2 / Math.max(0.5, G.cam.z);
+    ctx.globalAlpha = 0.9;
+    for (const p of G.ents) {
+      if (p._dead || !_isPoleType(p.type) || !onScreen(p)) continue;
+      const d = Math.max(Math.abs(gcx - (p.x + p.w / 2)), Math.abs(gcy - (p.y + p.h / 2)));
+      if (d > Math.min(gw, poleWireOf(p))) continue;   // 双方连线距离都够才搭线
+      ctx.beginPath();
+      ctx.moveTo(gcx * TILE, gcy * TILE);
+      ctx.lineTo((p.x + p.w / 2) * TILE, (p.y + p.h / 2) * TILE);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    // 被幽灵覆盖的发电/耗电设备：金色角框
+    for (const b of G.ents) {
+      if (b._dead || !isGridPowerDevice(b) || !onScreen(b)) continue;
+      if (_coverageRectsOverlap(b, grc)) _drawCornerBrackets(ctx, b, '#ffc23a');
+    }
+    return;
+  }
+  // —— 悬停已有电线杆 ——
+  const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
+  if (e && _isPoleType(e.type)) {
+    const rc = poleSupplyRect(e.type, e.x, e.y, e.w, e.h);
+    _drawCoverageFill(ctx, rc, 'rgba(96,170,255,.18)', 'rgba(130,200,255,.7)');
+    for (const b of G.ents) {
+      if (b._dead || b === e || !isGridPowerDevice(b) || !onScreen(b)) continue;
+      if (_coverageRectsOverlap(b, rc)) _drawCornerBrackets(ctx, b, '#ffe14a');
+    }
+  }
 }
 
 function drawHoverAndMining(ctx) {

@@ -67,6 +67,21 @@ class Inserter extends Entity {
     const sig = circuitSignalNear(this);
     return circuitCondOk(sig, this.circuitCond);
   }
+  // ===== 电力消耗（对齐《异星工厂》：除热能机械臂外，机械臂须由电线杆供电才能运转）=====
+  // 官方参数：energy_source.drain（待机空载 kW）+ energy_per_movement（每次伸缩 kJ），见 GAME_DATA.inserterStats。
+  insPower() {
+    const t = (typeof GAME_DATA !== 'undefined' && GAME_DATA.inserterStats && GAME_DATA.inserterStats.perType)
+      ? GAME_DATA.inserterStats.perType[this.type] : null;
+    return t || {};
+  }
+  powerDemand() {
+    const st = this.insPower();
+    const drain = st.drain != null ? st.drain : 0.4;
+    if (!(this.rotating || this.holdingCount > 0)) return drain;   // 待机仅空载 drain
+    const epm = st.energyPerMovement != null ? st.energyPerMovement : 5;
+    // 运转功率 ≈ 每次伸缩能耗(kJ) × 每秒动作次数（基线 2 次/秒 × 官方转速倍率）
+    return drain + epm * 2 * (this.rotSpeed || 1);
+  }
   // 单次抓取容量（对齐《异星工厂》：堆叠臂随「机械臂容量」无限科技提升抓取数量）
   capacity() {
     let cap = this.stackMax || 1;
@@ -381,10 +396,16 @@ class Inserter extends Entity {
     return !!this.pickSourceForDrop(this.entAtPick(), this.entAtDrop());
   }
   update(dt) {
+    // 无电停转：电动机械臂未被电线杆覆盖、或所在电网缺电时不工作（热能臂 noGridPower 不受此限）。
+    // typeof 守卫：电力模块未加载的测试/边缘环境下默认视为有电，不误伤。
+    const _pf = (typeof powerFactor === 'function') ? powerFactor(this) : 1;
+    if (!this.noGridPower && _pf <= 0) { this.rotating = false; return; }
     // 电路条件不满足时机械臂停转（保持当前姿态，不取放）
     if (!this.circuitEnabled()) { this.rotating = false; return; }
     if (this.armAng === undefined) this.armAng = this.pickAng();
-    const step = Math.PI * 4.4 * (this.rotSpeed || 1) * dt;
+    // 供电不足时机械臂随饱和度降速运转（对齐《异星工厂》低效运转）
+    const pf = this.noGridPower ? 1 : _pf;
+    const step = Math.PI * 4.4 * (this.rotSpeed || 1) * pf * dt;
     // 统一状态机：
     //  空手 -> 转向取物格 -> 到达后原子地“预览+校验+取走（可堆叠抓 N 个）”
     //  持物 -> 转向放物格 -> 到达后循环放入直到放空或目标拒收

@@ -258,8 +258,18 @@ const LOGISTIC_ITEMS = ['roboport', 'logistic-robot', 'passive-provider-chest', 
 // 物流箱科技门控：所有物流设备需先研究「物流网络」
 for (const id of LOGISTIC_ITEMS) if (!TECH_REQ[id]) TECH_REQ[id] = 'logistics-network';
 // ===== 电路网络科技门控 =====
-const CIRCUIT_ITEMS = ['small-electric-pole', 'medium-electric-pole', 'big-electric-pole', 'constant-combinator', 'arithmetic-combinator', 'decider-combinator', 'selector-combinator', 'display-panel', 'substation', 'programmable-speaker', 'power-switch', 'red-wire', 'green-wire'];
+// 电线杆不再由「电路网络」解锁：电网改为电线杆供电模型后，电线杆是电力基础设施（对齐《异星工厂》：
+// 小型电线杆随基础电子早期可得，中/大型杆与变电站由「电力传输」科技逐级解锁）。
+// 组合器/音箱/功率开关/线缆/显示屏仍属电路网络（信号逻辑），保留在 circuit-network 门控下。
+const CIRCUIT_ITEMS = ['constant-combinator', 'arithmetic-combinator', 'decider-combinator', 'selector-combinator', 'display-panel', 'programmable-speaker', 'power-switch', 'red-wire', 'green-wire'];
 for (const id of CIRCUIT_ITEMS) if (!TECH_REQ[id]) TECH_REQ[id] = 'circuit-network';
+// ===== 电线杆电网科技门控（对齐《异星工厂》Electric energy distribution 科技链）=====
+// 小型电线杆：无科技门槛，开局即可建造（本项目的早期电力链——锅炉/蒸汽机/电采矿机/铜线——本就无门控，
+// 电线杆作为电力基础设施须同步可用，否则早期电力无法运转；对齐官方小型杆随最早期电子科技可得）。
+// 中型/大型电线杆：需「电力传输 I」（绿瓶）；变电站：需「电力传输 II」（蓝瓶）。
+TECH_REQ['medium-electric-pole'] = 'electric-energy-distribution-1';
+TECH_REQ['big-electric-pole'] = 'electric-energy-distribution-1';
+TECH_REQ['substation'] = 'electric-energy-distribution-2';
 // 电灯：需电力工程科技解锁（对齐《异星工厂》灯由电力工程解锁）
 TECH_REQ['small-lamp'] = 'electric';
 // 玩家武器所需科技（用于选择武器时拦截）

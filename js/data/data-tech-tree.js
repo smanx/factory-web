@@ -10,6 +10,8 @@ const TECHS = {
   landfill: { name: '填海', cost: { 'logistic-science-pack': 20 }, desc: '解锁填海料：用石头填充水面，把水域填成可建造陆地（对齐《异星工厂》Landfill）', req: ['logistics'] },
   logistics3: { name: '物流 III', cost: { 'logistic-science-pack': 40, 'chemical-science-pack': 30 }, desc: '解锁集装箱机械臂，可一次抓取多达 3 个同种物品，装卸效率极高（对齐《异星工厂》Logistics 3）', req: ['logistics2'] },
   electric:   { name: '电力工程', cost: { 'logistic-science-pack': 15 }, desc: '电炉 / 电采矿机速度 ×1.2', req: ['automation'] },
+  'electric-energy-distribution-1': { name: '电力传输 I', cost: { 'logistic-science-pack': 25 }, desc: '解锁中型与大型电线杆：更大供电覆盖与更远连线距离，扩展电网规模（对齐《异星工厂》Electric energy distribution 1）', req: ['electric'] },
+  'electric-energy-distribution-2': { name: '电力传输 II', cost: { 'chemical-science-pack': 30 }, desc: '解锁变电站：超大型电线杆，供电覆盖与连线距离远超普通电线杆，用于跨区域组网（对齐《异星工厂》Electric energy distribution 2）', req: ['electric-energy-distribution-1'] },
   oil:        { name: '石油冶金', cost: { 'logistic-science-pack': 30 }, desc: '炼油厂 / 抽油机速度 ×1.5', req: [] },
   railways:    { name: '铁路技术', cost: { 'logistic-science-pack': 30 }, desc: '解锁铁轨、火车头、货运车厢与车站，构建铁路物流', req: ['logistics'] },
   'rail-signals': { name: '铁路信号', cost: { 'chemical-science-pack': 30 }, desc: '解锁铁路信号灯，允许多列火车安全同网行驶', req: ['railways'] },
@@ -62,7 +64,7 @@ const TECHS = {
   'logistics-network': { name: '物流网络', cost: { 'chemical-science-pack': 50 }, desc: '解锁机器人港、四类物流箱与物流机器人，构建自动化物流网络', req: ['logistics2', 'electronics'] },
   nuclear:    { name: '核能技术', cost: { 'chemical-science-pack': 60, 'military-science-pack': 40 }, desc: '解锁离心机（铀浓缩处理）、核反应堆与汽轮机，构建核能发电体系', req: ['electronics', 'advanced-combat'] },
   'atomic-bomb': { name: '原子弹科技', cost: { 'chemical-science-pack': 80, 'military-science-pack': 80 }, desc: '解锁终极核武器原子弹：由铀-235+火箭+爆炸物制成，落地引发超大范围核爆（对齐《异星工厂》Atomic bomb 独立科技）', req: ['nuclear', 'rocket-science'] },
-  'circuit-network': { name: '电路网络', cost: { 'chemical-science-pack': 40 }, desc: '解锁电线杆与组合器（常量/运算/判断），构建电路网络，实现信号逻辑控制；含超大型变电站与可编程音箱（告警）', req: ['electronics'] },
+  'circuit-network': { name: '电路网络', cost: { 'chemical-science-pack': 40 }, desc: '解锁组合器（常量/运算/判断/选择）与显示屏、可编程音箱、功率开关、红/绿线缆，构建电路网络实现信号逻辑控制（电线杆属电力基础设施，改由电力传输科技解锁）', req: ['electronics'] },
   deep:       { name: '重工蓝图', cost: { 'chemical-science-pack': 50 }, desc: '蓝包终技：科研总进度获取 +20%', req: ['automation2', 'express'] },
   // ==== 四级科技（紫瓶：产能科学） ====
   production: { name: '产能科技', cost: { 'production-science-pack': 50 }, desc: '解锁信号塔（Beacon）与产能科学链，让产能模块覆盖范围翻倍', req: ['modules', 'deep'] },
@@ -197,6 +199,9 @@ function migrateNewTechs(techDone) {
     techDone['steel-processing'] = true;
   }
   if (techDone['oil']) techDone['fluid-handling'] = true;
+  // 兼容旧档：电线杆此前由「电路网络」解锁，现改由「电力传输 I/II」分级解锁（电网改为电线杆供电模型）。
+  // 旧档已研究电路网络者补完电力传输科技，避免已拥有的中/大型杆与变电站被重新锁死。
+  if (techDone['circuit-network']) { techDone['electric-energy-distribution-1'] = true; techDone['electric-energy-distribution-2'] = true; }
   if (techDone['advanced-combat']) { techDone['combat-robotics'] = true; techDone['military3'] = true; techDone['military4'] = true; }
   // 兼容旧档：集装箱机械臂此前无科技门控，组装机 III 此前开局可用；
   // 拆分后分别由「物流 III」与「自动化 III」门控，老玩家补完对应科技避免产线被锁死（对齐《异星工厂》Logistics 3 / Automation 3）。

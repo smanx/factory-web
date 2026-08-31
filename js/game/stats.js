@@ -325,7 +325,8 @@ function prodActiveItems() {
 }
 
 // ---- 电力统计 ----
-// 汇总发电设备（powerOut>0）与耗电设备（powerDemand()>0）明细。
+// 汇总各电网的发电/耗电设备明细（仅统计已接入电网的设备；未被电线杆覆盖的设备不发电不耗电）。
+// 设备列表按类型聚合，显示该类型设备数量、总功率与每个实例坐标明细。
 function powerSummary() {
   const producers = [];
   const consumers = [];
@@ -337,6 +338,7 @@ function powerSummary() {
   for (const e of iter) {
     if (e._dead || seen.has(e)) continue;
     seen.add(e);
+    if (e._grid === null) continue;   // 未接入任何电网（无电线杆覆盖）：不计入供需
     const po = e.powerOut || 0;
     if (po > 0) { producers.push({ e, v: po }); prod += po; }
     if (typeof e.powerDemand === 'function') {
@@ -344,7 +346,8 @@ function powerSummary() {
       if (d > 0) { consumers.push({ e, v: d }); demand += d; }
     }
   }
-  return { prod, demand, net: prod - demand, sat: G.power.sat, producers, consumers };
+  const grids = (typeof G !== 'undefined' && G.grids) ? G.grids.length : 0;
+  return { prod, demand, net: prod - demand, sat: G.power.sat, producers, consumers, grids };
 }
 
 // ---- 性能数据 ----
@@ -871,6 +874,7 @@ function htmlStatsPower() {
   h += row2('消耗', '<span data-live="pdem" style="color:#ff8a7a;font-weight:bold">−' + s.demand.toFixed(1) + '</span>');
   h += row2('净额', '<span data-live="pnet">' + (s.net >= 0 ? '+' : '') + s.net.toFixed(1) + '</span>');
   h += row2('供电饱和度', '<span data-live="psat"><span class="satbar"><i style="width:' + satPct + '%"></i></span> <b>' + satPct + '%</b></span>');
+  h += row2('独立电网数', '<span data-live="pgrids">' + (s.grids || 0) + ' 张</span>');
   h += '</div>';
 
   h += '<div class="sec">设备明细</div>';
@@ -1191,6 +1195,7 @@ function updateStatsLive() {
     set('pdem', '−' + s.demand.toFixed(1));
     set('pnet', (s.net >= 0 ? '+' : '') + s.net.toFixed(1));
     set('psat', '<span class="satbar"><i style="width:' + satPct + '%"></i></span> <b>' + satPct + '%</b>');
+    set('pgrids', (s.grids || 0) + ' 张');
   } else {
     refreshPerf();
     const budget = PERF.budgetMs || (1000 / 60);

@@ -45,7 +45,7 @@ class ChemicalPlant extends Entity {
   // 当前每秒 prog 增量（制作速度倍率）：与 update() 累加公式同源，供面板换算真实剩余秒数
   craftProgRate() {
     const qMult = (typeof qualityMult === 'function' && this.quality) ? qualityMult(this.quality) : 1;
-    return chemMult() * oilMult() * this.moduleSpeedMult() * powerFactor() * qMult;
+    return chemMult() * oilMult() * this.moduleSpeedMult() * powerFactor(this) * qMult;
   }
   applyProductivity(rec) {
     const mc = moduleCounts(this.modules);
@@ -153,7 +153,7 @@ class ChemicalPlant extends Entity {
     // 电路条件不满足时暂停生产（对齐《异星工厂》：电路控制配方启停）
     if (!this.circuitEnabled()) { this.crafting = false; return; }
     if (this.crafting) {
-      if (G.power.sat <= 0) return;
+      if (powerSatOf(this) <= 0) return;
       this.working = true;
       chemPlantEmit(this, dt);
       this.prog += dt * this.craftProgRate();
@@ -523,9 +523,9 @@ function chemicalPlantPanelLive(e, api) {
   api.prog(e.recipe && e.crafting ? e.prog / RECIPES[e.recipe].time * 100 : 0, e.recipe ? RECIPES[e.recipe].time : 0);
   api.status(!e.recipe ? '已暂停：未设置配方，点击下方选择'
     : e.crafting ? '加工中（流体产物自动排入相邻管道）'
-    : G.power.sat <= 0 ? '已暂停：缺电'
+    : powerSatOf(e) <= 0 ? '已暂停：缺电'
     : '已暂停：等待原料（流体经管道自动吸入）',
-    !e.recipe || G.power.sat <= 0 ? 'warn' : (e.crafting ? 'ok' : 'warn'));
+    !e.recipe || powerSatOf(e) <= 0 ? 'warn' : (e.crafting ? 'ok' : 'warn'));
 }
 function chemicalPlantTip(e) {
   let base = e.crafting ? ('加工 ' + ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name)
@@ -542,7 +542,7 @@ DEVICE_RENDER['chemical-plant'] = drawChemicalPlant;
 DEVICE_STATUS['chemical-plant'] = e => {
   const s = powerStatusOf(e);
   if (s.consuming) return s.color;
-  return e.recipe ? (e.crafting ? 'g' : (G.power.sat <= 0 && Object.keys(e.inp).length ? 'r' : 'y')) : 'r';
+  return e.recipe ? (e.crafting ? 'g' : (powerSatOf(e) <= 0 && Object.keys(e.inp).length ? 'r' : 'y')) : 'r';
 };
 DEVICE_PANEL['chemical-plant'] = { html: chemicalPlantPanelHtml, live: chemicalPlantPanelLive, tip: chemicalPlantTip, onAction: (a) => circuitPanelAction('cp', a) };
 // 化工厂四边均布流体口、本体对称，旋转仅记录朝向；选中/悬停后按 R 可直接旋转

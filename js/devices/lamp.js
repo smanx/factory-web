@@ -16,7 +16,7 @@ class Lamp extends Entity {
   }
   // 是否应点亮：夜间且电网供电充足，且（未设置电路条件 || 电路条件满足）
   shouldLight() {
-    return nightPhase() && G.power && G.power.sat > 0 && this.circuitOk();
+    return nightPhase() && G.power && powerSatOf(this) > 0 && this.circuitOk();
   }
   powerDemand() { return this.shouldLight() ? LAMP_POWER : 0; }
   serialize() {
@@ -81,7 +81,7 @@ function lampPanelHtml(e) {
 function lampPanelLive(e, api) {
   if (!e.circuitOk()) { api.set('st', '电路关断'); api.status('已熄灭：电路条件不满足', 'warn'); return; }
   if (nightPhase()) {
-    if (G.power && G.power.sat > 0) { api.set('st', '点亮（夜间）'); api.status('点亮：夜间供电正常', 'ok'); }
+    if (G.power && powerSatOf(e) > 0) { api.set('st', '点亮（夜间）'); api.status('点亮：夜间供电正常', 'ok'); }
     else { api.set('st', '断电熄灭'); api.status('已熄灭：电网断电，等待供电', 'warn'); }
   } else {
     api.set('st', '待机（白天）');

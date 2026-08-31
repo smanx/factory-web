@@ -77,7 +77,7 @@ class ElectricDrill extends Drill {
     const o = this.oreTile();
     if (!o) { this.status = '无矿'; this.spin = 0; return; }
     if (this.buf >= DRILL_BUFFER_CAP) { this.status = '缓存已满'; this.spin = 0; return; }
-    if (G.power.sat <= 0) { this.status = '缺电'; this.spin = 0; return; }
+    if (powerSatOf(this) <= 0) { this.status = '缺电'; this.spin = 0; return; }
     // 铀矿需硫酸作为原料：未接入硫酸（缓冲为空）时无法开采铀矿
     if (this.needAcid(o) && (this.acid || 0) <= 0) { this.status = '缺硫酸'; this.spin = 0; return; }
     this.status = '';
@@ -85,7 +85,7 @@ class ElectricDrill extends Drill {
     drillEmit(this, dt);
     this.spin += dt * 6;
     // 采矿速度 = 采矿科技 × 机型倍率 × 模块倍率（对齐《异星工厂》：电采矿机模块影响采矿速度）；每采 1 个矿需累计到该矿石的采矿时间
-    this.prog += dt * drillMult() * this.machMult() * this.moduleSpeedMult() * powerFactor() * (this.quality ? qualityMult(this.quality) : 1);
+    this.prog += dt * drillMult() * this.machMult() * this.moduleSpeedMult() * powerFactor(this) * (this.quality ? qualityMult(this.quality) : 1);
     const mt = this.oreTime(); // 当前矿石的采矿时间（铁/铜/煤/石 2s、铀矿 4s，对齐《异星工厂》mining_time）
     if (this.prog >= mt) {
       this.prog -= mt;

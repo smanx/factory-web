@@ -118,8 +118,9 @@ const BUILD_DEFS = {
   'requester-chest': { w: 1, h: 1, solid: true },
   'buffer-chest': { w: 1, h: 1, solid: true },
   // ===== 电路网络 =====
-  'small-electric-pole': { w: 1, h: 1, solid: true },
-  'medium-electric-pole': { w: 1, h: 1, solid: true },  // 官方 collision_box ±0.15 → 1×1
+  // 小型/中型电线杆：主角可直接走过（walkOver），但仍占建造格、仍可被敌人攻击（保留 solid）。
+  'small-electric-pole': { w: 1, h: 1, solid: true, walkOver: true },
+  'medium-electric-pole': { w: 1, h: 1, solid: true, walkOver: true },  // 官方 collision_box ±0.15 → 1×1
   'big-electric-pole': { w: 2, h: 2, solid: true },
   'constant-combinator': { w: 1, h: 1, solid: true },
   'arithmetic-combinator': { w: 1, h: 1, solid: true },

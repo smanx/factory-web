@@ -53,7 +53,7 @@ class Centrifuge extends Entity {
   // 当前每秒 prog 增量（制作速度倍率）：与 update() 累加公式同源，供面板换算真实剩余秒数
   craftProgRate() {
     const qMult = (typeof qualityMult === 'function' && this.quality) ? qualityMult(this.quality) : 1;
-    return this.moduleSpeedMult() * powerFactor() * qMult;
+    return this.moduleSpeedMult() * powerFactor(this) * qMult;
   }
   applyProductivity(rec) {
     const mc = moduleCounts(this.modules);
@@ -112,13 +112,13 @@ class Centrifuge extends Entity {
   }
   update(dt) {
     if (!this.recipe) { this.crafting = false; return; }
-    if (G.power.sat <= 0) { this.crafting = false; return; }
+    if (powerSatOf(this) <= 0) { this.crafting = false; return; }
     // 电路条件不满足时暂停生产（对齐《异星工厂》：电路控制配方启停）
     if (!this.circuitEnabled()) { this.crafting = false; return; }
     const rec = this.recipeObj();
     if (!rec) { this.crafting = false; return; }
     if (this.crafting) {
-      this.prog += dt * 1 * this.moduleSpeedMult() * powerFactor() * (this.quality ? qualityMult(this.quality) : 1);
+      this.prog += dt * 1 * this.moduleSpeedMult() * powerFactor(this) * (this.quality ? qualityMult(this.quality) : 1);
       this.spin += dt * 10;
       if (this.prog >= rec.time) {
         if (rec.prob) {
@@ -904,15 +904,17 @@ class SteamTurbine extends Entity {
   applyDir() { if (this.dir % 2 === 1) { this.w = this.def.h; this.h = this.def.w; } }
   update(dt) {
     this.portFlow();
-    const want = TURBINE_STEAM_RATE * dt;
-    const took = Math.min(want, this.steamBuf);
-    this.steamBuf -= took;
-    const inst = want > 1e-9 ? Math.min(1, took / want) : 0;
+    // 发电机随电网负载动态调整出力：按 throttle 只消耗当前需要的蒸汽（省核燃料），powerOut 仍报可用产能
+    const thr = (this._grid && this._grid.throttle != null) ? this._grid.throttle : 1;
+    const fullWant = TURBINE_STEAM_RATE * dt;
+    const couldTake = Math.min(fullWant, this.steamBuf);
+    const inst = fullWant > 1e-9 ? couldTake / fullWant : 0;
+    this.steamBuf -= couldTake * thr;
     this.outMult += (inst - this.outMult) * Math.min(1, dt * 6);
     if (this.outMult < 0.005) this.outMult = 0;
     this.powerOut = POWER_PER_TURBINE * this.outMult;
     this.on = this.powerOut > 0.05;
-    if (this.on) this.spin += dt * 10 * (0.35 + 0.65 * this.outMult);
+    if (this.on) this.spin += dt * 10 * (0.35 + 0.65 * this.outMult * thr);
     if (typeof regPowerEnt === 'function') regPowerEnt(this);
   }
   // 窄边(3)中部汽口：上/下两端中部各一只通用汽口，蒸汽可从任一端进入发电（对齐官方：蒸汽入口在南北两侧，随 dir 旋转）

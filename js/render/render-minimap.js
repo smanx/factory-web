@@ -187,7 +187,7 @@ function _hoverAggText(agg, maxN) {
 // 配方机器当前的生产倍率（对齐各设备 update() 的 prog 累加公式，仅用于速率展示）。
 function _hoverCraftMult(e) {
   const q = (typeof qualityMult === 'function' && e.quality) ? qualityMult(e.quality) : 1;
-  const pf = (typeof powerFactor === 'function') ? powerFactor() : 1;
+  const pf = (typeof powerFactor === 'function') ? powerFactor(e) : 1;
   const ms = (typeof e.moduleSpeedMult === 'function') ? e.moduleSpeedMult() : 1;
   const ds = GAME_DATA.deviceStats && GAME_DATA.deviceStats[e.type];
   const cs = ds && ds.craftingSpeed;
@@ -217,7 +217,7 @@ function _hoverRuntimeSections(e) {
       const done = G.techProg[tech] || 0;
       const need = list ? list[done] : null;
       if (!need) return;
-      const m = (typeof powerFactor === 'function' ? powerFactor() : 1) * labSpeedMult() *
+      const m = (typeof powerFactor === 'function' ? powerFactor(e) : 1) * labSpeedMult() *
         (typeof e.moduleSpeedMult === 'function' ? e.moduleSpeedMult() : 1) *
         (typeof e.researchSpeedMult === 'function' ? e.researchSpeedMult() : 1) *
         ((typeof qualityMult === 'function' && e.quality) ? qualityMult(e.quality) : 1);
@@ -232,7 +232,7 @@ function _hoverRuntimeSections(e) {
     if (e instanceof Recycler) {
       if (!e.recycleItem) return;
       const out = e.recycleResults(e.recycleItem);
-      const m = (typeof e.moduleSpeedMult === 'function' ? e.moduleSpeedMult() : 1) * (typeof powerFactor === 'function' ? powerFactor() : 1);
+      const m = (typeof e.moduleSpeedMult === 'function' ? e.moduleSpeedMult() : 1) * (typeof powerFactor === 'function' ? powerFactor(e) : 1);
       const bt = Math.max(0.01, e.batchTime() / m);
       const rows = [{ label: '当前回收', value: (ITEMS[e.recycleItem] ? ITEMS[e.recycleItem].name : e.recycleItem) + (e.crafting ? '' : '（待机）') }];
       rows.push({ label: '消耗速率', value: '−' + fmt(1 / bt) + '/秒 ' + (ITEMS[e.recycleItem] ? ITEMS[e.recycleItem].name : e.recycleItem), color: '#ff8a7a' });
@@ -258,7 +258,7 @@ function _hoverRuntimeSections(e) {
       const cs = (ds && ds.craftingSpeed) || (e.type === 'stone-furnace' ? 1 : 2);
       const q = (typeof qualityMult === 'function' && e.quality) ? qualityMult(e.quality) : 1;
       const ms = (typeof e.moduleSpeedMult === 'function') ? e.moduleSpeedMult() : 1;
-      const pf = (e instanceof ElectricFurnace && typeof powerFactor === 'function') ? powerFactor() : 1;
+      const pf = (e instanceof ElectricFurnace && typeof powerFactor === 'function') ? powerFactor(e) : 1;
       inAgg = {}; inAgg[rec.inp] = (rec.inCount || 1);
       outAgg = {}; outAgg[rec.id] = 1;
       const M = cs * ms * pf * q;
@@ -279,7 +279,7 @@ function _hoverRuntimeSections(e) {
       const mt = e.oreTime();
       const q = (typeof qualityMult === 'function' && e.quality) ? qualityMult(e.quality) : 1;
       const ms = (typeof e.moduleSpeedMult === 'function') ? e.moduleSpeedMult() : 1;
-      const pf = (e instanceof ElectricDrill && typeof powerFactor === 'function') ? powerFactor() : 1;
+      const pf = (e instanceof ElectricDrill && typeof powerFactor === 'function') ? powerFactor(e) : 1;
       const ds = GAME_DATA.deviceStats && GAME_DATA.deviceStats[e.type];
       const speed = drillMult() * (e.machMult ? e.machMult() : ((ds && ds.miningSpeed) || 0.5)) * ms * pf * q;
       const rate = speed / mt;
@@ -329,9 +329,9 @@ function _hoverRuntimeSections(e) {
     if (typeof e.powerDemand !== 'function') return;
     const maxW = e.powerDemand() || 0;
     if (maxW <= 0) return;
-    const pf = (typeof powerFactor === 'function') ? powerFactor() : 1;
+    const pf = (typeof powerFactor === 'function') ? powerFactor(e) : 1;
     const curW = maxW * pf;
-    const sat = G.power ? G.power.sat : 1;
+    const sat = (typeof powerSatOf === 'function') ? powerSatOf(e) : (G.power ? G.power.sat : 1);
     const rows = [
       { label: '最高耗电', value: fmt(Math.round(maxW)) + ' kW' },
       { label: '最低耗电', value: fmt(Math.round(maxW * MIN_POWER_SAT)) + ' kW（低效运转下限）' },

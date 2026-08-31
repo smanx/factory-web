@@ -34,7 +34,7 @@ class CaptiveBiterSpawner extends Assembler {
       // 缓慢消耗食物（约 0.5 食物/秒，1 生物流=2 食物 → 每生物流维持 4 秒）
       this.food = Math.max(0, this.food - 0.5 * dt);
     }
-    if (G.power.sat <= 0) { this.crafting = false; return; }
+    if (powerSatOf(this) <= 0) { this.crafting = false; return; }
     if (!this.circuitEnabled()) { this.crafting = false; return; }
     // 持续繁育异虫卵：每 5 秒产 1 个异虫卵（官方 spawner 低频繁育节奏）
     this._spawnT = (this._spawnT || 0) + dt;

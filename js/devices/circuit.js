@@ -607,6 +607,7 @@ const POLE_COLORS = {
   'big-electric-pole': ['#b0802a', '#8a6220']
 };
 function drawCircuitPole(ctx, e, gx, gy, dir, alpha) {
+  if (e.type === 'medium-electric-pole') { drawMediumPole(ctx, e, gx, gy, alpha); return; }
   const px = gx * TILE, py = gy * TILE;
   const s = TILE * e.w;
   const col = POLE_COLORS[e.type] || ['#8a5a2a', '#6b4420'];
@@ -627,6 +628,59 @@ function drawCircuitPole(ctx, e, gx, gy, dir, alpha) {
   ctx.fillStyle = '#e05a4a'; ctx.beginPath(); ctx.arc(px + s / 2 - 5, py + 5, 2.2, 0, 7); ctx.fill();
   ctx.fillStyle = '#5ae06a'; ctx.beginPath(); ctx.arc(px + s / 2 + 5, py + 5, 2.2, 0, 7); ctx.fill();
   ctx.globalAlpha = 1;
+  if (typeof drawPowerWires === 'function') drawPowerWires(ctx, e);
+  drawCircuitWires(ctx, e);
+}
+
+// 中型电线杆：金属双横担杆塔（区别于小型木质单杆）——银灰杆身 + 上下两道横担 +
+// 三个瓷绝缘子 + 侧面变压器箱，剪影与小型杆明显不同。
+function drawMediumPole(ctx, e, gx, gy, alpha) {
+  const px = gx * TILE, py = gy * TILE;
+  const s = TILE * e.w;
+  const cx = px + s / 2;
+  ctx.globalAlpha = alpha;
+  // 混凝土底座
+  ctx.fillStyle = '#565b63';
+  rr(ctx, px + 5, py + s - 12, s - 10, 9, 3); ctx.fill();
+  ctx.strokeStyle = '#3c4046'; ctx.lineWidth = 1.5;
+  rr(ctx, px + 5, py + s - 12, s - 10, 9, 3); ctx.stroke();
+  // 金属杆身（上窄下宽的梯形桁架感）
+  ctx.fillStyle = '#9aa2ad';
+  ctx.beginPath();
+  ctx.moveTo(cx - 3, py + 6); ctx.lineTo(cx + 3, py + 6);
+  ctx.lineTo(cx + 5, py + s - 6); ctx.lineTo(cx - 5, py + s - 6);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#6c737d'; ctx.lineWidth = 1.5; ctx.stroke();
+  // 杆身横撑（两段，体现金属塔）
+  ctx.strokeStyle = '#7d858f'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx - 4, py + s * 0.45); ctx.lineTo(cx + 4, py + s * 0.45);
+  ctx.moveTo(cx - 4.5, py + s * 0.68); ctx.lineTo(cx + 4.5, py + s * 0.68);
+  ctx.stroke();
+  // 上横担（宽）+ 下横担（窄）
+  ctx.fillStyle = '#8b929c';
+  rr(ctx, cx - 12, py + 5, 24, 4, 2); ctx.fill();
+  rr(ctx, cx - 8, py + 12, 16, 3.5, 2); ctx.fill();
+  // 三个瓷绝缘子（上横担两端 + 中央）
+  ctx.fillStyle = '#d8dde3';
+  for (const ix of [cx - 10, cx, cx + 10]) { ctx.beginPath(); ctx.arc(ix, py + 5, 2, 0, 7); ctx.fill(); }
+  ctx.strokeStyle = '#9aa2ad'; ctx.lineWidth = 0.8;
+  for (const ix of [cx - 10, cx, cx + 10]) { ctx.beginPath(); ctx.arc(ix, py + 5, 2, 0, 7); ctx.stroke(); }
+  // 侧面变压器箱（金属灰 + 散热纹）
+  ctx.fillStyle = '#707883';
+  rr(ctx, cx + 4, py + s * 0.5, 7, 9, 1.5); ctx.fill();
+  ctx.strokeStyle = '#4c525b'; ctx.lineWidth = 1;
+  rr(ctx, cx + 4, py + s * 0.5, 7, 9, 1.5); ctx.stroke();
+  ctx.strokeStyle = '#5a616b'; ctx.lineWidth = 0.7;
+  ctx.beginPath();
+  ctx.moveTo(cx + 5.5, py + s * 0.5 + 3); ctx.lineTo(cx + 9.5, py + s * 0.5 + 3);
+  ctx.moveTo(cx + 5.5, py + s * 0.5 + 5.5); ctx.lineTo(cx + 9.5, py + s * 0.5 + 5.5);
+  ctx.stroke();
+  // 红/绿信号指示灯（顶部）
+  ctx.fillStyle = '#e05a4a'; ctx.beginPath(); ctx.arc(cx - 4, py + 2.5, 1.8, 0, 7); ctx.fill();
+  ctx.fillStyle = '#5ae06a'; ctx.beginPath(); ctx.arc(cx + 4, py + 2.5, 1.8, 0, 7); ctx.fill();
+  ctx.globalAlpha = 1;
+  if (typeof drawPowerWires === 'function') drawPowerWires(ctx, e);
   drawCircuitWires(ctx, e);
 }
 
@@ -686,13 +740,17 @@ function drawDisplayPanel(ctx, e, gx, gy, dir, alpha) {
 }
 
 // 绘制节点与相邻节点之间的连线（只画向“坐标更大”的节点，避免重复）
+// 电线杆之间只保留一根黄色电力线（见 power.js drawPowerWires），不再重复画红/绿信号线。
 function drawCircuitWires(ctx, e) {
   if (!e.red && !e.green) return;
   const selfKey = entKey(e.x, e.y);
   const cx = (e.x + e.w / 2) * TILE, cy = (e.y + e.h / 2) * TILE;
+  const isPole = (typeof isPowerPole === 'function') ? isPowerPole : (() => false);
+  const selfIsPole = isPole(e);
   const drawn = new Set();
   const drawWire = (o, color, off) => {
     if (entKey(o.x, o.y) <= selfKey) return;
+    if (selfIsPole && isPole(o)) return;   // 杆-杆：黄色电力线已表示，跳过红/绿信号线
     const id = o.x + ',' + o.y;
     if (drawn.has(id)) return; drawn.add(id);
     const ox = (o.x + o.w / 2) * TILE, oy = (o.y + o.h / 2) * TILE;
@@ -1003,6 +1061,31 @@ function resolveSignalName(text) {
   return null;
 }
 
+// ===== 面板：电线杆（电网统计 + 电路节点）=====
+function polePanelHtml(e) {
+  const wire = (typeof poleWireOf === 'function') ? poleWireOf(e) : e.range;
+  const supply = (typeof poleSupplyOf === 'function') ? poleSupplyOf(e) : 2.5;
+  const cov = Math.round(supply * 2);
+  return row('类型', localizedName(e.type, ITEMS[e.type] ? ITEMS[e.type].name : e.type), 'kind') +
+    '<div class="dim">电线杆：为周围 <b>' + cov + '×' + cov + '</b> 格内的发电/耗电设备供电并接入电网，杆间自动连线距离 <b>' + wire +
+    '</b> 格；同一电网内供需平衡，不同电网相互独立。未被任何杆覆盖的电力设备将缺电停摆。同时作为电路网络节点传输红/绿信号。</div><div class="status"></div>';
+}
+function polePanelLive(e, api) {
+  const conn = (e.red && e.red.size) || 0;
+  const g = (typeof powerGridOf === 'function') ? powerGridOf(e) : null;
+  let s = '电路节点 ' + conn;
+  if (g) s += ' ｜ 电网：发电 ' + (g.prod || 0).toFixed(0) + ' / 耗电 ' + (g.demand || 0).toFixed(0) +
+    ' kW · 供电 ' + Math.round((g.sat || 0) * 100) + '% · 杆 ' + (g.poles || 0);
+  api.status(s, g ? 'ok' : 'warn');
+}
+function polePanelTip(e) {
+  const g = (typeof powerGridOf === 'function') ? powerGridOf(e) : null;
+  const supply = (typeof poleSupplyOf === 'function') ? poleSupplyOf(e) : 2.5;
+  return '电线杆：供电覆盖 ' + Math.round(supply * 2) + '×' + Math.round(supply * 2) + ' 格，' +
+    (g ? ('电网供电 ' + Math.round((g.sat || 0) * 100) + '%') : '未接入电网');
+}
+const polePanel = { html: polePanelHtml, live: polePanelLive, tip: polePanelTip };
+
 // ===== 注册 =====
 ENT_CLASSES['small-electric-pole'] = CircuitNode;
 ENT_CLASSES['medium-electric-pole'] = CircuitNode;
@@ -1016,6 +1099,9 @@ DEVICE_DIR_ROTATE['big-electric-pole'] = true; // 支持旋转
 DEVICE_STATUS['small-electric-pole'] = e => (e.red && e.red.size) ? 'g' : 'y';
 DEVICE_STATUS['medium-electric-pole'] = e => (e.red && e.red.size) ? 'g' : 'y';
 DEVICE_STATUS['big-electric-pole'] = e => (e.red && e.red.size) ? 'g' : 'y';
+DEVICE_PANEL['small-electric-pole'] = polePanel;
+DEVICE_PANEL['medium-electric-pole'] = polePanel;
+DEVICE_PANEL['big-electric-pole'] = polePanel;
 
 ENT_CLASSES['constant-combinator'] = ConstantCombinator;
 ENT_CLASSES['arithmetic-combinator'] = ArithmeticCombinator;

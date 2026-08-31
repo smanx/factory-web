@@ -12,6 +12,7 @@ const scripts = [
   'tools/verify-belt-throughput.js',
   'tools/verify-data-integrity.js',
   'tools/verify-beacon-modules.js',
+  'tools/verify-power-grid.js',
   'tools/verify-nuclear.js',
   'tools/verify-inserter-lane-priority.js',
   'tools/verify-inserter-multi-input.js',

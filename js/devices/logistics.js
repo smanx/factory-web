@@ -591,8 +591,8 @@ function updateRobot(r, dt) {
       // 回到港内充电（需电网有电）
       const [px, py] = portCenter(r.home);
       r.x = px; r.y = py;
-      if (G.power.sat > 0) {
-        r.charge = Math.min(ROBOT_MAX_CHARGE, r.charge + ROBOT_CHARGE_RATE * dt * Math.max(G.power.sat, 0.2));
+      if (powerSatOf(this) > 0) {
+        r.charge = Math.min(ROBOT_MAX_CHARGE, r.charge + ROBOT_CHARGE_RATE * dt * Math.max(powerSatOf(this), 0.2));
       }
       if (r.charge >= ROBOT_MAX_CHARGE) { r.state = 'idle'; r.target = null; r.carry = null; }
       break;

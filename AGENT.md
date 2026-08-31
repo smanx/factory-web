@@ -63,7 +63,7 @@ tools/generate-locale.js     打包 data/ 全部官方中英文本，生成 js/d
   - `ITEM_MAP` / `RECIPE_MAP`：项目 ID ↔ 官方原型名的改名映射（未列出的视为同名）。
   - `KEEP_MANUAL_RECIPES`：**允许保留手工的一组配方**（项目自定、故意用旧版、或官方配方依赖星球专属资源而项目做了基础资源适配，例如 `storage-chest`、`chemical-science-pack`、`space-science-pack`、`yumako-growing` 等）。这些配方自动覆盖会跳过。
   - `extractObjectKeys()`：从手工表 `ITEMS`/`RECIPES`/`BUILD_DEFS`/`REFINERY_RECIPES`/`CENTRIFUGE_RECIPES` 读取项目侧 ID，再按映射去官方 `data.raw` 取数。
-  - 输出的 `GAME_DATA` 结构（键含义见 `data.generated.js` 顶部注释）：`stackSize`、`buildingHp`、`powerUse`、`deviceStats`、`recipe`、`recipeDevice`、`names`、`recipeNames`、`itemGroup`、`itemSubgroup`、`subgroupOrder`、`itemOrder`、`undergroundDist`、`renewable`、`fluidCapacity`、`beaconRange`、`turret`、`ammoDamage`、`radar`、`equipment`、`heat`、`roboportPower`、`cargoLandingPad`、`cargoBay`、`cargoUnloadingBay`、`footprint`、`pollution`、`recycling`、`fuelEnergy`、`qualityTiers`。
+  - 输出的 `GAME_DATA` 结构（键含义见 `data.generated.js` 顶部注释）：`stackSize`、`buildingHp`、`powerUse`、`deviceStats`、`recipe`、`recipeDevice`、`names`、`recipeNames`、`itemGroup`、`itemSubgroup`、`subgroupOrder`、`itemOrder`、`undergroundDist`、`renewable`、`fluidCapacity`、`beaconRange`、`pole`（电线杆电网参数 `{wire=maximum_wire_distance, supply=supply_area_distance}`，供 `core/power.js` 电网模型读取）、`turret`、`ammoDamage`、`radar`、`equipment`、`heat`、`roboportPower`、`cargoLandingPad`、`cargoBay`、`cargoUnloadingBay`、`footprint`、`pollution`、`recycling`、`fuelEnergy`、`qualityTiers`。
 - **`js/data/data.generated.js`（只读产物）**：浏览器直接加载的全局 `GAME_DATA`。**AI 不得直接编辑**。
 - **`tools/generate-locale.js`**：**官方文本（名称）的唯一生成器**。把 `data/` 各 mod 的 `locale/en` 与 `locale/zh-CN/*.cfg` 打包成 `js/data/locale.generated.js`（全局 `GAME_LOCALE`）；`--check` 校验产物是否过期（供 CI）。
 - **`js/data/locale.generated.js`（只读产物）**：全局 `GAME_LOCALE`，**游戏所有物品/建筑/流体/配方/装备等名称（中英文）的唯一来源**（见 §0 第 8 条）。**AI 不得直接编辑**；`data/` 文本变更后用 `npm run locale` 重新生成。
@@ -158,7 +158,7 @@ factory-web/
 - `registry.js`：设备注册表——`ENT_CLASSES`/`DEVICE_RENDER`/`DEVICE_STATUS`/`DEVICE_PANEL`/`DEVICE_PLACE`/`DEVICE_DIR_ROTATE`/`DEVICE_FLUID_ICONS`。每个 `devices/*.js` 末尾自注册；新增设备=新增一个设备文件。
 - `entity.js`：`Entity` 基类 + 分桶空间索引（`G.buckets`）。
 - `draw.js`：通用绘制工具。
-- `power.js`：电网增量计算（只扫发电/耗电子集）。
+- `power.js`：电网模型（电线杆供电）。杆按官方 `GAME_DATA.pole.wire` 自动连线成连通分量=独立电网，发电/耗电设备进入杆的 `supply` 覆盖范围才接入该电网；每电网独立供需平衡（`powerFactor(e)`/`powerSatOf(e)` 按设备所属电网取饱和度，未接入电网的电力设备缺电停摆），并把各电网汇总为全局 `G.power` 供 HUD/统计展示。
 
 **`js/game/`（世界与玩法状态）**
 - `world.js`：无限分块世界，确定性地形/矿脉生成、区块编解码持久化。

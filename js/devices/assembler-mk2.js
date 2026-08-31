@@ -6,12 +6,12 @@ class AssemblerMK2 extends Assembler {
   // 组装机 II 基础速度 0.75（覆盖基类 0.5 兜底）
   craftProgRate() {
     const qMult = (typeof qualityMult === 'function' && this.quality) ? qualityMult(this.quality) : 1;
-    return asmMult() * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 0.75) * this.moduleSpeedMult() * powerFactor() * qMult;
+    return asmMult() * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 0.75) * this.moduleSpeedMult() * powerFactor(this) * qMult;
   }
   update(dt) {
     this.portFlow();
     if (!this.recipe) { this.crafting = false; return; }
-    if (G.power.sat <= 0) { this.crafting = false; return; }
+    if (powerSatOf(this) <= 0) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
       this.prog += dt * this.craftProgRate();

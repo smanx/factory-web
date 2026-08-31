@@ -37,7 +37,7 @@ function solidAtPx(px, py) {
   // 建筑碰撞：可建造的实心建筑阻挡移动（传送带/机械臂/箱子除外，对齐《异星工厂》：玩家可站上传送带被推动，
   // 机械臂不占行走格；箱子也不与主角碰撞，可自由穿行，方便在密集仓库间移动）
   const e = entAt(tx, ty);
-  if (e && e.solid && !(e instanceof Belt) && !(e instanceof Inserter) &&
+  if (e && e.solid && !(e.def && e.def.walkOver) && !(e instanceof Belt) && !(e instanceof Inserter) &&
       !(typeof e.type === 'string' && e.type.endsWith('-chest'))) return true;
   return false;
 }
@@ -62,6 +62,7 @@ function boxBlocked(cx, cy, r) {
 function buildCollidesPlayer(type) {
   const def = BUILD_DEFS[type];
   if (!def || !def.solid) return false;          // 非实心建筑（传送带/地下带/分流器/铁路等）无碰撞体积
+  if (def.walkOver) return false;                // 小型/中型电线杆：主角可走过，站在原地也能建造
   if (type.indexOf('belt') >= 0 || type.indexOf('splitter') >= 0) return false;  // 传送带系：可站上去被推动
   if (type.indexOf('inserter') >= 0) return false;        // 机械臂不占行走格
   if (type.endsWith('-chest')) return false;              // 箱子不与主角碰撞，可穿行

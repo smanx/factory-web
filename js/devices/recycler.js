@@ -26,13 +26,13 @@ class Recycler extends Entity {
   }
   powerDemand() { return this.crafting ? POWER_USE['recycler'] : 0; }
   update(dt) {
-    if (G.power.sat <= 0) { this.crafting = false; return; }
+    if (powerSatOf(this) <= 0) { this.crafting = false; return; }
     if (this.crafting && this.recycleItem) {
       const out = this.recycleResults(this.recycleItem);
       if (!out) { this.crafting = false; this.prog = 0; return; }
       // 产物堆积即停工（动态「够用」：存量足够再产 2 次即停，防止原料积压在前端机器）
       if (outputBacklogged(this.outp, out)) return;
-      this.prog += dt * this.moduleSpeedMult() * powerFactor();
+      this.prog += dt * this.moduleSpeedMult() * powerFactor(this);
       if (typeof spawnSpark === 'function' && Math.random() < dt * 2) {
         spawnSpark((this.x + 0.5 + (Math.random() - 0.5) * 0.8) * TILE, (this.y + 0.4) * TILE, { size: 1.5, life: 0.5, speed: 2.5, color: '#ff9a3a' });
       }

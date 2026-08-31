@@ -1,9 +1,9 @@
 'use strict';
 
-// ===== 变电站 Substation（对齐《异星工厂》Substation，4×4）=====
-// 超大型电线杆：既是电力节点也是电路网络节点，覆盖范围远大于普通电线杆。
+// ===== 广域配电站 Substation（对齐《异星工厂》Substation，2×2）=====
+// 超大型电线杆：既是电力节点也是电路网络节点，供电覆盖与连线范围远大于普通电线杆。
 // 用于跨区域组网、为大片基地统一供电与电路信号。
-const SUBSTATION_RANGE = 18;   // 变电站连接距离（格，远大于大型电线杆 15）
+const SUBSTATION_RANGE = 18;   // 变电站杆间连线距离（格，官方 maximum_wire_distance=18）
 
 class Substation extends CircuitNode {
   constructor(type, x, y) {
@@ -37,21 +37,30 @@ function drawSubstation(ctx, e, gx, gy, dir, alpha) {
   ctx.fillStyle = '#e05a4a'; ctx.beginPath(); ctx.arc(px + s / 2 - 4, py + 9, 2.4, 0, 7); ctx.fill();
   ctx.fillStyle = '#5ae06a'; ctx.beginPath(); ctx.arc(px + s / 2 + 4, py + 9, 2.4, 0, 7); ctx.fill();
   ctx.globalAlpha = 1;
+  if (typeof drawPowerWires === 'function') drawPowerWires(ctx, e);
   drawCircuitWires(ctx, e);
 }
 
 // ===== 面板 =====
 function substationPanelHtml() {
-  return '<div class="dim">变电站：超大型电线杆，同时连接电力与电路网络，覆盖范围达 ' + SUBSTATION_RANGE +
-    ' 格，用于跨区域组网、为大片基地统一供电与信号（4×4，需电路网络科技）。</div><div class="status"></div>';
+  return '<div class="dim">广域配电站：超大型电线杆，同时接入电力与电路网络。供电覆盖 ' +
+    Math.round((GAME_DATA.pole?.substation?.supply ?? 9) * 2) + '×' + Math.round((GAME_DATA.pole?.substation?.supply ?? 9) * 2) +
+    ' 格（范围内发电/耗电设备自动接入本电网），杆间连线距离 ' + (GAME_DATA.pole?.substation?.wire ?? 18) +
+    ' 格，用于跨区域组网、为大片基地统一供电与信号（2×2，需「电力传输 II」）。</div><div class="status"></div>';
 }
 function substationPanelLive(e, api) {
   const conn = (e.red && e.red.size) || 0;
-  api.status(conn > 0 ? ('已组网：连接 ' + conn + ' 个节点') : '未连接其它节点', conn > 0 ? 'ok' : 'warn');
+  const g = (typeof powerGridOf === 'function') ? powerGridOf(e) : null;
+  let s = conn > 0 ? ('电路组网：连接 ' + conn + ' 个节点') : '未连接其它电路节点';
+  if (g) s += ' ｜ 电网 发电 ' + (g.prod || 0).toFixed(0) + ' / 耗电 ' + (g.demand || 0).toFixed(0) +
+    ' kW · 供电 ' + Math.round((g.sat || 0) * 100) + '%';
+  else s += ' ｜ 未接入电网（附近无电线杆供电范围）';
+  api.status(s, g ? 'ok' : 'warn');
 }
 function substationTip(e) {
-  const conn = (e.red && e.red.size) || 0;
-  return '变电站：连接范围 ' + SUBSTATION_RANGE + ' 格，' + (conn > 0 ? '已连接 ' + conn + ' 个节点' : '未连接节点');
+  const g = (typeof powerGridOf === 'function') ? powerGridOf(e) : null;
+  return '广域配电站：供电覆盖 ' + Math.round((GAME_DATA.pole?.substation?.supply ?? 9) * 2) + '×' + Math.round((GAME_DATA.pole?.substation?.supply ?? 9) * 2) +
+    ' 格，' + (g ? ('电网供电 ' + Math.round((g.sat || 0) * 100) + '%') : '未接入电网');
 }
 
 // ===== 注册 =====

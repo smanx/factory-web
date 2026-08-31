@@ -529,6 +529,20 @@ const fluidCapacity = {};
 const beaconRange = raw.beacon && raw.beacon.beacon && typeof raw.beacon.beacon.supply_area_distance === 'number'
   ? raw.beacon.beacon.supply_area_distance : undefined;
 
+// ---- 电线杆电网参数（官方 electric-pole：maximum_wire_distance / supply_area_distance）----
+// wire = 杆与杆自动连线的最大距离（格，切比雪夫）；supply = 供电覆盖半径（格），
+// 发电/耗电设备进入任一带电杆的 supply 范围即接入该杆所在电网（对齐《异星工厂》电网模型）。
+const pole = {};
+{
+  const pp = raw['electric-pole'] || {};
+  for (const name in pp) {
+    const p = pp[name];
+    const wire = typeof p.maximum_wire_distance === 'number' ? p.maximum_wire_distance : undefined;
+    const supply = typeof p.supply_area_distance === 'number' ? p.supply_area_distance : undefined;
+    if (wire !== undefined || supply !== undefined) pole[name] = { wire, supply };
+  }
+}
+
 // ---- 炮塔 / 弹药伤害 ----
 // 2.0 官方类型：gun-turret=ammo-turret、laser-turret=electric-turret、flamethrower-turret=fluid-turret。
 // attack_parameters.cooldown 单位为 tick，÷60 → 秒（两次射击间隔）。官方数据未提供伤害 → 保持手工。
@@ -927,6 +941,17 @@ const INSERTER_BASE_STACK = {
     // 抓取堆叠：优先官方 stack_size_bonus（stack-inserter=4），否则按官方基础档对齐
     row.stack = (typeof p.stack_size_bonus === 'number' && p.stack_size_bonus > 0)
       ? p.stack_size_bonus : (INSERTER_BASE_STACK[pid] || 1);
+    // 电力消耗（官方 energy_per_movement / energy_per_rotation / energy_source.drain）：
+    //   机械臂靠电线杆供电运转，待机空载 drain，每次伸缩/旋转消耗 energy_per_*（kJ）。
+    //   burner-inserter 为燃烧燃料（无 electric energy_source），此处不取电力参数。
+    const emp = parseEnergyKJ(p.energy_per_movement);
+    const erp = parseEnergyKJ(p.energy_per_rotation);
+    if (emp !== null) row.energyPerMovement = emp;
+    if (erp !== null) row.energyPerRotation = erp;
+    if (p.energy_source && p.energy_source.type === 'electric') {
+      const dr = parseKiloWatt(p.energy_source.drain);
+      if (dr !== null) row.drain = dr;
+    }
     if (Object.keys(row).length) perType[pid] = row;
   }
   if (Object.keys(perType).length) inserterStats.perType = perType;
@@ -1380,6 +1405,7 @@ Object.assign(GAME_DATA, {
   renewable,
   fluidCapacity,
   beaconRange,
+  pole,
   turret,
   ammoDamage,
   radar,
@@ -1500,6 +1526,7 @@ function report() {
   console.log('太阳能/蓄电器 renewable: ' + JSON.stringify(GAME_DATA.renewable));
   console.log('流体容量/抽水机 fluidCapacity: ' + JSON.stringify(GAME_DATA.fluidCapacity));
   console.log('信号塔半径 beaconRange: ' + JSON.stringify(GAME_DATA.beaconRange));
+  console.log('电线杆电网 pole: ' + JSON.stringify(GAME_DATA.pole));
   console.log('炮塔 turret: ' + JSON.stringify(GAME_DATA.turret));
   console.log('弹药伤害 ammoDamage: ' + JSON.stringify(GAME_DATA.ammoDamage));
   console.log('雷达 radar: ' + JSON.stringify(GAME_DATA.radar));
@@ -1674,6 +1701,7 @@ const header = [
   '//   其余设备行为参数（官方接入，见对应设备文件 GAME_DATA.xxx?.[..] ?? 兜底）：',
   '//   undergroundDist[带] = 地下带最大距离(格), pipeGroundDist = 地下管道最大跨距(格), renewable = { solarPower, accumCap, accumChargeRate }',
   '//   fluidCapacity = { storageTank, fluidWagon, pumpRate, pipeVolume, pipeToGroundVolume }, beaconRange = 信号塔半径(格)',
+  '//   pole[杆] = { wire(杆间自动连线最大距离/格), supply(供电覆盖半径/格) }（电网模型：设备进入 supply 范围才接入该杆电网）',
   '//   turret[塔] = { range, fireRate(秒) }, ammoDamage[弹药] = 伤害, radar = { range, power(kW) }',
   '//   equipment[装备] = { powerOut | powerCap(kJ) | shield | speed | laser | dischargeRange/Cooldown }',
   '//   heat = { reactorMaxTemp, reactorSpecificHeat, reactorMaxTransfer, heatPipeMaxTemp, heatPipeMinGlowTemp,',

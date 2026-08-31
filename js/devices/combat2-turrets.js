@@ -50,7 +50,7 @@ class LaserTurret extends CircuitNode {
     this.cooldown -= dt;
     this.beamT = Math.max(0, this.beamT - dt);
     this.target = null;
-    if (G.power.sat <= 0) return;
+    if (powerSatOf(this) <= 0) return;
     // 电路条件不满足时炮塔停火
     if (!this.circuitEnabled()) return;
     const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
@@ -121,12 +121,12 @@ function laserTurretPanelHtml(e) {
 function laserTurretPanelLive(e, api) {
   api.set('power', powerStatusLiveHtml(e));
   if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) { api.status('已停火：电路条件不满足', 'warn'); return; }
-  if (G.power.sat <= 0) api.status('已暂停：缺电', 'warn');
+  if (powerSatOf(e) <= 0) api.status('已暂停：缺电', 'warn');
   else if (e.target) api.status('开火中：激光攻击敌人', 'ok');
   else api.status('待机：射程内无敌人', 'ok');
 }
 function laserTurretTip(e) {
-  return e.target ? '开火中（激光）' : (G.power.sat <= 0 ? '缺电停摆' : '待机（无需弹药）');
+  return e.target ? '开火中（激光）' : (powerSatOf(e) <= 0 ? '缺电停摆' : '待机（无需弹药）');
 }
 
 // ===== 火焰炮塔 =====
@@ -194,7 +194,7 @@ class FlamethrowerTurret extends CircuitNode {
     this.cooldown -= dt;
     this.target = null;
     this.fluidPort();
-    if (G.power.sat <= 0) return;
+    if (powerSatOf(this) <= 0) return;
     if ((this.fluid['light-oil'] || 0) <= 0) return;
     // 电路条件不满足时炮塔停火
     if (!this.circuitEnabled()) return;
@@ -294,13 +294,13 @@ function flameTurretPanelLive(e, api) {
   api.set('fluid', (e.fluid['light-oil'] || 0) > 0 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'light-oil': e.fluid['light-oil'] || 0 }, { action: 'display' }) + '</div>' : dimSpan('空'));
   const fl = e.fluid['light-oil'] || 0;
   if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) { api.status('已停火：电路条件不满足', 'warn'); return; }
-  if (G.power.sat <= 0) api.status('已暂停：缺电', 'warn');
+  if (powerSatOf(e) <= 0) api.status('已暂停：缺电', 'warn');
   else if (fl <= 0) api.status('已暂停：缺轻油（管道或按钮放入）', 'warn');
   else if (e.target) api.status('喷射中：灼烧敌人', 'ok');
   else api.status('待机：射程内无敌人', 'ok');
 }
 function flameTurretTip(e) {
-  if (G.power.sat <= 0) return '缺电停摆';
+  if (powerSatOf(e) <= 0) return '缺电停摆';
   if ((e.fluid['light-oil'] || 0) <= 0) return '缺轻油';
   return e.target ? '喷射中（火焰）' : '待机';
 }
@@ -460,7 +460,7 @@ class TeslaTurret extends CircuitNode {
     this.cooldown -= dt;
     this.arcT = Math.max(0, this.arcT - dt);
     this.target = null;
-    if (G.power.sat <= 0) return;
+    if (powerSatOf(this) <= 0) return;
     if (!this.circuitEnabled()) return;
     const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
     let best = null, bestD = Infinity;
@@ -559,12 +559,12 @@ function teslaTurretPanelHtml(e) {
 function teslaTurretPanelLive(e, api) {
   api.set('power', powerStatusLiveHtml(e));
   if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) { api.status('已停火：电路条件不满足', 'warn'); return; }
-  if (G.power.sat <= 0) api.status('已暂停：缺电', 'warn');
+  if (powerSatOf(e) <= 0) api.status('已暂停：缺电', 'warn');
   else if (e.target) api.status('开火中：电弧连锁攻击敌人', 'ok');
   else api.status('待机：射程内无敌人', 'ok');
 }
 function teslaTurretTip(e) {
-  return e.target ? '开火中（特斯拉电弧）' : (G.power.sat <= 0 ? '缺电停摆' : '待机（无需弹药）');
+  return e.target ? '开火中（特斯拉电弧）' : (powerSatOf(e) <= 0 ? '缺电停摆' : '待机（无需弹药）');
 }
 
 // ===== 注册 =====
@@ -574,9 +574,9 @@ ENT_CLASSES['tesla-turret'] = TeslaTurret;
 DEVICE_RENDER['laser-turret'] = drawLaserTurret;
 DEVICE_RENDER['flamethrower-turret'] = drawFlamethrowerTurret;
 DEVICE_RENDER['tesla-turret'] = drawTeslaTurret;
-DEVICE_STATUS['laser-turret'] = e => (G.power.sat <= 0 ? 'r' : (e.target ? 'g' : 'y'));
-DEVICE_STATUS['flamethrower-turret'] = e => (G.power.sat <= 0 ? 'r' : ((e.fluid['light-oil'] || 0) <= 0 ? 'r' : (e.target ? 'g' : 'y')));
-DEVICE_STATUS['tesla-turret'] = e => (G.power.sat <= 0 ? 'r' : (e.target ? 'g' : 'y'));
+DEVICE_STATUS['laser-turret'] = e => (powerSatOf(e) <= 0 ? 'r' : (e.target ? 'g' : 'y'));
+DEVICE_STATUS['flamethrower-turret'] = e => (powerSatOf(e) <= 0 ? 'r' : ((e.fluid['light-oil'] || 0) <= 0 ? 'r' : (e.target ? 'g' : 'y')));
+DEVICE_STATUS['tesla-turret'] = e => (powerSatOf(e) <= 0 ? 'r' : (e.target ? 'g' : 'y'));
 DEVICE_PANEL['laser-turret'] = { html: laserTurretPanelHtml, live: laserTurretPanelLive, tip: laserTurretTip, onAction: (a) => circuitPanelAction('lt', a) };
 DEVICE_PANEL['flamethrower-turret'] = { html: flameTurretPanelHtml, live: flameTurretPanelLive, tip: flameTurretTip, onAction: (a) => circuitPanelAction('ft', a) };
 DEVICE_PANEL['tesla-turret'] = { html: teslaTurretPanelHtml, live: teslaTurretPanelLive, tip: teslaTurretTip, onAction: (a) => circuitPanelAction('tt', a) };
@@ -778,7 +778,7 @@ class RailgunTurret extends CircuitNode {
   update(dt) {
     this.cooldown -= dt;
     this.target = null;
-    if (G.power.sat <= 0) return;
+    if (powerSatOf(this) <= 0) return;
     if (!this.circuitEnabled()) return;
     const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
     let best = null, bestD = Infinity;
@@ -857,13 +857,13 @@ function railgunTurretPanelLive(e, api) {
   api.set('ammo', e.totalAmmo() > 0 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'railgun-ammo': e.ammo }, { action: 'take-slot' }) + '</div>' : dimSpan('空'));
   api.toggle('#btn-railgun-turret-takeout', e.totalAmmo() > 0, '取出全部弹药 (' + e.totalAmmo() + ')');
   if (e.circuitCond && e.circuitCond.enabled && !e.circuitEnabled()) { api.status('已停火：电路条件不满足', 'warn'); return; }
-  if (G.power.sat <= 0) api.status('已暂停：缺电', 'warn');
+  if (powerSatOf(e) <= 0) api.status('已暂停：缺电', 'warn');
   else if (e.ammo <= 0) api.status('无弹药', 'warn');
   else if (e.target) api.status('开火中：磁轨炮发射', 'ok');
   else api.status('待机：射程内无敌人', 'ok');
 }
 function railgunTurretTip(e) {
-  return e.target ? '开火中（磁轨炮）' : (G.power.sat <= 0 ? '缺电停摆' : (e.ammo <= 0 ? '无弹药' : '待机'));
+  return e.target ? '开火中（磁轨炮）' : (powerSatOf(e) <= 0 ? '缺电停摆' : (e.ammo <= 0 ? '无弹药' : '待机'));
 }
 
 // ===== 注册：火箭炮塔 / 磁轨炮塔 =====
@@ -872,7 +872,7 @@ ENT_CLASSES['railgun-turret'] = RailgunTurret;
 DEVICE_RENDER['rocket-turret'] = drawRocketTurret;
 DEVICE_RENDER['railgun-turret'] = drawRailgunTurret;
 DEVICE_STATUS['rocket-turret'] = e => (e.totalAmmo() <= 0 ? 'r' : (e.target ? 'g' : 'y'));
-DEVICE_STATUS['railgun-turret'] = e => (G.power.sat <= 0 || e.ammo <= 0 ? 'r' : (e.target ? 'g' : 'y'));
+DEVICE_STATUS['railgun-turret'] = e => (powerSatOf(e) <= 0 || e.ammo <= 0 ? 'r' : (e.target ? 'g' : 'y'));
 DEVICE_PANEL['rocket-turret'] = { html: rocketTurretPanelHtml, live: rocketTurretPanelLive, tip: rocketTurretTip, onAction: (a) => circuitPanelAction('rt', a) };
 DEVICE_PANEL['railgun-turret'] = { html: railgunTurretPanelHtml, live: railgunTurretPanelLive, tip: railgunTurretTip, onAction: (a) => circuitPanelAction('rg', a) };
 DEVICE_DIR_ROTATE['rocket-turret'] = true;

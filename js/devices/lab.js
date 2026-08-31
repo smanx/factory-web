@@ -101,7 +101,7 @@ class Lab extends Entity {
   update(dt) {
     this.active = false;
     const tech = G.activeTech;
-    if (G.power.sat <= 0) { this.t = 0; return; }
+    if (powerSatOf(this) <= 0) { this.t = 0; return; }
     if (!tech || (G.techDone[tech] && !isInfiniteTech(tech))) { this.t = 0; return; }
     // 前置科技未满足时暂停研究（旧档可能残留不合法的 activeTech）
     if (techLocked(tech)) { this.t = 0; return; }
@@ -110,7 +110,7 @@ class Lab extends Entity {
       const any = this.peekAnyPack();
       if (!any) { this.t = 0; return; }   // 没有任何科学包则暂停
       this.active = true;
-      this.t += dt * powerFactor() * labSpeedMult() * this.moduleSpeedMult() * this.researchSpeedMult() * (this.quality ? qualityMult(this.quality) : 1);
+      this.t += dt * powerFactor(this) * labSpeedMult() * this.moduleSpeedMult() * this.researchSpeedMult() * (this.quality ? qualityMult(this.quality) : 1);
       if (this.t >= LAB_TIME) {
         this.t -= LAB_TIME;
         // 产能模块：达到阈值时本次科研免费（不消耗科学包）
@@ -143,7 +143,7 @@ class Lab extends Entity {
     const need = list[done];
     if (!need || this.packCount(need) <= 0) { this.t = 0; return; }
     this.active = true;
-    this.t += dt * powerFactor() * labSpeedMult() * this.moduleSpeedMult() * this.researchSpeedMult() * (this.quality ? qualityMult(this.quality) : 1);
+    this.t += dt * powerFactor(this) * labSpeedMult() * this.moduleSpeedMult() * this.researchSpeedMult() * (this.quality ? qualityMult(this.quality) : 1);
     if (this.t >= LAB_TIME) {
       this.t -= LAB_TIME;
       // 产能模块：达到阈值时本次科研免费（不消耗科学包）

@@ -8,12 +8,12 @@ class Assembler3 extends Assembler {
   // 组装机 III 基础速度 1.25（覆盖基类 0.5 兜底）
   craftProgRate() {
     const qMult = (typeof qualityMult === 'function' && this.quality) ? qualityMult(this.quality) : 1;
-    return asmMult() * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 1.25) * this.moduleSpeedMult() * powerFactor() * qMult;
+    return asmMult() * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 1.25) * this.moduleSpeedMult() * powerFactor(this) * qMult;
   }
   update(dt) {
     this.portFlow();
     if (!this.recipe) { this.crafting = false; return; }
-    if (G.power.sat <= 0) { this.crafting = false; return; }
+    if (powerSatOf(this) <= 0) { this.crafting = false; return; }
     // 电路条件不满足时暂停生产（对齐《异星工厂》：电路控制配方启停）
     if (!this.circuitEnabled()) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
@@ -134,7 +134,7 @@ function assembler3PanelLive(e, api) {
   api.prog(e.recipe && e.crafting ? e.prog / RECIPES[e.recipe].time * 100 : 0, e.recipe ? RECIPES[e.recipe].time : 0);
   if (!e.recipe) { api.status('未设置配方，点击下方选择', 'warn'); return; }
   if (e.crafting) { api.status('生产中：' + ITEMS[Object.keys(RECIPES[e.recipe].out)[0]].name, 'ok'); return; }
-  if (G.power.sat <= 0) { api.status('已暂停：缺电', 'bad'); return; }
+  if (powerSatOf(e) <= 0) { api.status('已暂停：缺电', 'bad'); return; }
   if (outputBacklogged(e.outp, RECIPES[e.recipe].out)) { api.status('已暂停：产物堆积（够用 2 次生产）', 'warn'); return; }
   const missing = Object.keys(RECIPES[e.recipe].inp).filter(k => (e.inp[k] || 0) < RECIPES[e.recipe].inp[k]);
   if (missing.length) { api.status('已暂停：缺少原料 ' + missing.map(k => ITEMS[k].name).join('、'), 'warn'); return; }

@@ -14,6 +14,7 @@ const BURNER_SELF_FEED_MAX = 2;
 class BurnerInserter extends Inserter {
   constructor(type, x, y) {
     super(type || 'burner-inserter', x, y);
+    this.noGridPower = true;   // 热能机械臂靠燃料运转，不接入电网、不耗电、不显示缺电警告
     this.fuelCoal = 0;
     this.fuelSolid = 0;
     this.fuelRocket = 0;

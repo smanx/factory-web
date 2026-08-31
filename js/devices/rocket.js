@@ -196,7 +196,7 @@ class RocketSilo extends CircuitNode {
   }
   tryLaunch() {
     if (this.launching) return false;
-    if (G.power.sat <= 0) { if (typeof toast === 'function') toast('发射需要电力！'); return false; }
+    if (powerSatOf(this) <= 0) { if (typeof toast === 'function') toast('发射需要电力！'); return false; }
     if (!this.hasAllParts()) {
       if (typeof toast === 'function') toast('尚未就绪：需要完整火箭本体与卫星（或空间平台起始包）');
       return false;
@@ -214,7 +214,7 @@ class RocketSilo extends CircuitNode {
   }
   update(dt) {
     if (!this.launching) return;
-    if (G.power.sat <= 0) return;   // 发射需要持续供电
+    if (powerSatOf(this) <= 0) return;   // 发射需要持续供电
     this.launchT += dt;
     if (this.launchT >= 10) {
       this.launching = false;
@@ -445,7 +445,7 @@ function siloPanelLive(e, api) {
     launchBtn.textContent = e.launching ? '发射中…' : '🚀 发射火箭';
   }
   if (e.launching) api.status('🚀 发射倒计时 ' + Math.ceil(10 - e.launchT) + ' 秒（需供电）', 'ok');
-  else if (G.power.sat <= 0) api.status('已暂停：缺电', 'warn');
+  else if (powerSatOf(e) <= 0) api.status('已暂停：缺电', 'warn');
   else if (!e.hasRocket() && !e.hasAssembleParts()) api.status('待组装：缺少 ' + assemblePartsNeededStr(e), 'warn');
   else if (!e.hasRocket()) api.status('部件原料齐备，点击「🛠️ 组装 1 个火箭部件」！', 'ok');
   else if (!(e.inp['satellite'] || 0) && !(e.cargo['space-platform-starter-pack'] || 0)) api.status('火箭已就绪：放入卫星（得空间科研包）或装入空间平台起始包（建平台）后发射！', 'ok');
@@ -631,7 +631,7 @@ class Radar extends Entity {
   }
   update(dt) {
     this.t += dt;
-    if (G.power.sat <= 0) return;
+    if (powerSatOf(this) <= 0) return;
     if (this.t < RADAR_SWEEP) return;
     this.t = 0;
     // 雷达周期性扫描：扩展世界探索（预生成扫描范围内区块并标记已探索，便于规划基地扩张）
@@ -675,10 +675,10 @@ function radarPanelHtml(e) {
 }
 function radarPanelLive(e, api) {
   api.set('power', powerStatusLiveHtml(e));
-  api.status(G.power.sat <= 0 ? '已暂停：缺电' : '扫描中（每 ' + RADAR_SWEEP + ' 秒一轮）', G.power.sat <= 0 ? 'warn' : 'ok');
+  api.status(powerSatOf(e) <= 0 ? '已暂停：缺电' : '扫描中（每 ' + RADAR_SWEEP + ' 秒一轮）', powerSatOf(e) <= 0 ? 'warn' : 'ok');
 }
 function radarTip(e) {
-  return G.power.sat <= 0 ? '缺电停摆' : '扫描中（吃电力）';
+  return powerSatOf(e) <= 0 ? '缺电停摆' : '扫描中（吃电力）';
 }
 
 // ===== 注册 =====
@@ -687,7 +687,7 @@ ENT_CLASSES['radar'] = Radar;
 DEVICE_RENDER['rocket-silo'] = drawRocketSilo;
 DEVICE_RENDER['radar'] = drawRadar;
 DEVICE_STATUS['rocket-silo'] = e => (e.launched ? 'g' : (e.launching ? 'g' : (e.hasRocket() && (e.inp['satellite'] || 0) > 0 ? 'y' : (e.hasAssembleParts() || e.hasRocket() ? 'y' : 'r'))));
-DEVICE_STATUS['radar'] = () => (G.power.sat <= 0 ? 'r' : 'g');
+DEVICE_STATUS['radar'] = e => (powerSatOf(e) <= 0 ? 'r' : 'g');
 DEVICE_PANEL['rocket-silo'] = {
   html: siloPanelHtml, live: siloPanelLive, tip: siloTip,
   onAction: (act, btn) => {

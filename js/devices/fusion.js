@@ -159,10 +159,13 @@ class FusionGenerator extends Entity {
     const wantKw = FUSION_GENERATOR_MAX_POWER;        // 满功率 50000kW
     const heatPerKwSecond = FUSION_HEAT_PER_KW;       // 每 kW·s 需消耗的热量(MJ)
     const wantHeat = wantKw * heatPerKwSecond * dt;   // 满负荷每秒需热量(MJ)
-    const use = Math.min(wantHeat, this.heatEnergy);
+    // 发电机随电网负载动态调整：按 throttle 只消耗当前需要的热量（省聚变燃料），powerOut 仍报可用产能
+    const thr = (this._grid && this._grid.throttle != null) ? this._grid.throttle : 1;
+    const couldUse = Math.min(wantHeat, this.heatEnergy);
+    const use = couldUse * thr;
     if (use > 0) {
       this.heatEnergy -= use;
-      const inst = wantHeat > 1e-9 ? Math.min(1, use / wantHeat) : 0;
+      const inst = wantHeat > 1e-9 ? couldUse / wantHeat : 0;
       this.outMult += (inst - this.outMult) * Math.min(1, dt * 4);
       this.powerOut = wantKw * this.outMult;
     } else {
