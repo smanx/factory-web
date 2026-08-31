@@ -11,13 +11,14 @@
 1. **数值只能有一份。** 游戏所有**数值型数据**（堆叠数、配方成本/耗时、建筑血量、功耗、速度、距离、燃料能量、污染、回收配方……）的唯一来源是 `js/data/data.generated.js` 里的 **`GAME_DATA`**。
 2. **`GAME_DATA` 本身就是产物。** 它由 `npm run data` 从 `factorio-data/`（官方 Factorio 数据子模块）自动生成，**禁止手改** `data.generated.js`。
 3. **不要在业务代码里硬编码第二套数值。** 需要读某项官方数值时，一律走 `GAME_DATA.xxx?.key ?? 兜底值`（兜底仅用于旧档/未生成场景，不是新数据源）。
-4. **显示层可以手工，数值层不允许。** 中文名/emoji/颜色/描述/占地面积/科技树展示等「展示信息」由手工表维护；一旦某项被官方覆盖，以官方为准。
+4. **显示层可以手工，数值层不允许。** emoji/颜色/描述/占地面积/科技树展示等「展示信息」由手工表维护；**物品名称（中/英）不在此列**——名称一律用官方名称（见第 8 条）；一旦某项被官方覆盖，以官方为准。
 5. **数据获取优先级（任何数值，严格按此顺序）：**
    - **① 子模块优先**：凡 `factorio-data/`（官方原型数据子模块 `wube/factorio-data`）里有对应数据的，一律从子模块取（经 `npm run data` → `GAME_DATA`），不得绕过。
    - **② 查不到再查官方文档**：子模块没有、或需要核对数值时，查《异星工厂》官方百科，例如 [Uranium_fuel_cell/zh](https://wiki.factorio.com/Uranium_fuel_cell/zh)（wiki.factorio.com 即官方 Wiki，各物品/配方/建筑/科技名后接 `/zh` 即中文页）。
    - **③ 只信官方，不要信其它、更不要自造**：**绝不相信/采用**子模块与上述官方 Wiki 之外任何来源的数据（第三方资料站、博客、评论、个人测算），也**不得凭经验或想象自行编造数值**。若无官方来源，宁可保留手工并注明「项目自定/无官方」，也不要「凑一个合理值」。
 6. 当用户要求与官方数据存在冲突时，须暂停所有操作，优先向用户明确指出差异并请求确认。仅在用户已知悉该冲突且坚持按自身要求执行的前提下，方可予以修改。
 7. 本游戏对比官方新增了6个物品（创造/虚空物品），属于特殊物品，不要移除了。
+8. **名称只有一个来源：必须使用官方名称。** 使用物品/建筑/流体/配方/装备等名称时，**一定要使用官方名称，千万不要自己创造名称，也不要维护多套名称数据**。官方名称的唯一获取处是 `js/data/locale.generated.js`（全局 `GAME_LOCALE`），它由 `node tools/generate-locale.js`（或 `npm run locale`）从 `data/` 官方文本生成，**禁止手改**；游戏所有物品的名称都要从这里获取（统一经 `data-util.js` 的 `localizedName()` 读取）。`GAME_DATA.names` / `recipeNames` 仅为旧缓存兜底，不是第二名称源。
 
 ---
 
@@ -35,9 +36,12 @@ tools/convert-data.js        用 fengari（Lua 解释器）执行上述 Lua，�
    ▼
 tools/generate-game-data.js  从 data.raw 提取数值表，并结合 data/(locale) 的多语言文本，生成：
    │          └→  data/ 是原版游戏中英文文本数据（每 mod 一个目录，locale/en、locale/zh-CN/*.cfg，
-   │              解析成 GAME_DATA.names / recipeNames，供中英文切换）
+   │              解析成 GAME_DATA.names / recipeNames，仅作名称兜底）
    ▼
-js/data/data.generated.js    定义全局常量 GAME_DATA（数值唯一源 + 中英文名）
+js/data/data.generated.js    定义全局常量 GAME_DATA（数值唯一源；names/recipeNames 为名称兜底）
+   ▲
+tools/generate-locale.js     打包 data/ 全部官方中英文本，生成 js/data/locale.generated.js：
+   │                         定义全局常量 GAME_LOCALE —— 游戏所有物品名称的唯一来源（见 §0 第 8 条）
    ▼（加载期桥接，见 §2）
 各手工数据表（data-items / data-recipes / data-buildings …）   ← 展示层在浏览器内合并进来
 ```
@@ -48,6 +52,7 @@ js/data/data.generated.js    定义全局常量 GAME_DATA（数值唯一源 + �
 |---|---|
 | `node tools/generate-game-data.js`（或 `npm run data`） | 重新转换 factorio-data 并生成 `js/data/data.generated.js` |
 | `node tools/generate-game-data.js --report` | 报告模式：对照手工表、列出待覆盖/缺失项，**不写文件** |
+| `node tools/generate-locale.js`（或 `npm run locale`） | 重新打包 `data/` 官方文本，生成 `js/data/locale.generated.js`（`GAME_LOCALE`，**游戏所有物品名称的唯一来源**，见 §0 第 8 条） |
 | `node tools/run-verify.js` / `bash tools/run-verify.sh` | 全量数值回归校验（见 §5） |
 
 ### 1.3 各环节职责
@@ -60,6 +65,8 @@ js/data/data.generated.js    定义全局常量 GAME_DATA（数值唯一源 + �
   - `extractObjectKeys()`：从手工表 `ITEMS`/`RECIPES`/`BUILD_DEFS`/`REFINERY_RECIPES`/`CENTRIFUGE_RECIPES` 读取项目侧 ID，再按映射去官方 `data.raw` 取数。
   - 输出的 `GAME_DATA` 结构（键含义见 `data.generated.js` 顶部注释）：`stackSize`、`buildingHp`、`powerUse`、`deviceStats`、`recipe`、`recipeDevice`、`names`、`recipeNames`、`itemGroup`、`itemSubgroup`、`subgroupOrder`、`itemOrder`、`undergroundDist`、`renewable`、`fluidCapacity`、`beaconRange`、`turret`、`ammoDamage`、`radar`、`equipment`、`heat`、`roboportPower`、`cargoLandingPad`、`cargoBay`、`cargoUnloadingBay`、`footprint`、`pollution`、`recycling`、`fuelEnergy`、`qualityTiers`。
 - **`js/data/data.generated.js`（只读产物）**：浏览器直接加载的全局 `GAME_DATA`。**AI 不得直接编辑**。
+- **`tools/generate-locale.js`**：**官方文本（名称）的唯一生成器**。把 `data/` 各 mod 的 `locale/en` 与 `locale/zh-CN/*.cfg` 打包成 `js/data/locale.generated.js`（全局 `GAME_LOCALE`）；`--check` 校验产物是否过期（供 CI）。
+- **`js/data/locale.generated.js`（只读产物）**：全局 `GAME_LOCALE`，**游戏所有物品/建筑/流体/配方/装备等名称（中英文）的唯一来源**（见 §0 第 8 条）。**AI 不得直接编辑**；`data/` 文本变更后用 `npm run locale` 重新生成。
 
 ---
 
@@ -68,9 +75,10 @@ js/data/data.generated.js    定义全局常量 GAME_DATA（数值唯一源 + �
 `data.generated.js` 不是被手工表整体替换，而是把它变成运行时数值样本，**在手工表各自文件末尾以「官方覆盖手工同名键」的方式合入**。加载顺序（见 `index.html`）：
 
 ```
-data.generated.js  →  data-items.js → data-item-icons.js → data-recipes.js → data-buildings.js
-                   →  data-tech.js → data-tech-tree.js → data-util.js
-        （GAME_DATA 最先就位；其余全部 defer）
+data.generated.js → locale.generated.js → data.js
+                  →  data-items.js → data-item-icons.js → data-recipes.js → data-buildings.js
+                  →  data-tech.js → data-tech-tree.js → data-util.js
+        （GAME_DATA / GAME_LOCALE 最先就位；其余全部 defer）
 ```
 
 桥接点（改代码前务必定位）：
@@ -78,10 +86,10 @@ data.generated.js  →  data-items.js → data-item-icons.js → data-recipes.js
 - `js/data/data-items.js:478` — `STACK_SIZES[k] = GAME_DATA.stackSize[k]`（官方堆叠覆盖手工 `STACK_SIZES`）。
 - `js/data/data-recipes.js:715` — `RECIPES[k] = GAME_DATA.recipe[k]`（自动覆盖组装机配方同名键）；`:724` 把 `time/inp/out/prob` 写回 `REFINERY_RECIPES` / `CENTRIFUGE_RECIPES`（炼油/离心机面板表）。`:638` 用 `GAME_DATA.recipeDevice` 判定配方所属设备。
 - `js/data/data-buildings.js:208` — `BUILDING_HP[k] = GAME_DATA.buildingHp[k]`。
-- `js/data/data-util.js` — 多语名 `localizedName()` 读 `GAME_DATA.names` / `recipeNames`；`fuelEnergy()` 读 `GAME_DATA.fuelEnergy`；品质变体读 `GAME_DATA.qualityTiers`；`data.js` 顶部的燃料能量/蒸汽功率/核能热量等常量读 `GAME_DATA.fuelEnergy/steamPower/powerUse/heat/undergroundDist`。
+- `js/data/data-util.js` — 多语名 `localizedName()` **优先读 `GAME_LOCALE`（`locale.generated.js`，名称唯一源）**，未生成时降级读 `GAME_DATA.names` / `recipeNames`（旧缓存兜底），官方未收录的项目自定物品才回到手工名；`fuelEnergy()` 读 `GAME_DATA.fuelEnergy`；品质变体读 `GAME_DATA.qualityTiers`；`data.js` 顶部的燃料能量/蒸汽功率/核能热量等常量读 `GAME_DATA.fuelEnergy/steamPower/powerUse/heat/undergroundDist`。
 - 设备文件（`js/devices/*.js`）业务上需要官方数值时同样走 `GAME_DATA.xxx?.key ?? 兜底`（如 `recycler.js:75` 读 `GAME_DATA.recycling`）。
 
-**因此：** 「让游戏中所有数据都来自 `data.generated.js`」的实际语义是——**所有数值型数据以 `GAME_DATA`（← factorio-data）为唯一真源**；手工表承担：官方无同名物的项目自定物品、展示信息（中文名/emoji/颜色/描述）、占地面积 `BUILD_DEFS`、科技树展示，以及在浏览器加载期把 `GAME_DATA` 桥接进各运行时表。
+**因此：** 「让游戏中所有数据都来自 `data.generated.js`」的实际语义是——**所有数值型数据以 `GAME_DATA`（← factorio-data）为唯一真源**；**所有名称以 `GAME_LOCALE`（← `data/` 官方文本，见 §0 第 8 条）为唯一真源**；手工表承担：官方无同名物的项目自定物品、展示信息（emoji/颜色/描述）、占地面积 `BUILD_DEFS`、科技树展示，以及在浏览器加载期把 `GAME_DATA` 桥接进各运行时表。
 
 ---
 
@@ -96,8 +104,14 @@ data.generated.js  →  data-items.js → data-item-icons.js → data-recipes.js
 ### 3.2 想读某个官方数值时
 - 统一 `GAME_DATA.<section>?.<id> ?? <兜底常量>`，兜底常量与官方值一致（见 `data.js` 顶部既有模式）。**禁止**在业务文件里新起一套硬编码数值表。
 
-### 3.3 不要做的事
-- ❌ 手改 `js/data/data.generated.js`。
+### 3.3 想使用/显示物品名称时
+- **一定要使用官方名称，千万不要自己创造名称**（见 §0 第 8 条）。官方名称唯一来源 = `js/data/locale.generated.js` 的 `GAME_LOCALE`（由 `node tools/generate-locale.js` 从 `data/` 生成）。
+- 显示点统一经 `localizedName()` / `ITEMS[id].name` 读取，**禁止**在业务代码或手工表里另起一套名称映射/别名表（不要维护多套名称数据）。
+- 新增官方物品时只需登记项目侧 ID 与官方原型名的映射（`ITEM_MAP`/`RECIPE_MAP`），名称由 locale 生成器自动带出；仅官方确无此物（项目自定/创造模式物品）才允许手工名并注明原因。
+
+### 3.4 不要做的事
+- ❌ 手改 `js/data/data.generated.js`、`js/data/locale.generated.js`。
+- ❌ 自造物品名称或维护多套名称数据（名称一律取自 `GAME_LOCALE`）。
 - ❌ 在 `js/devices/*.js`、`js/ui/*.js` 等业务代码里散落魔法数值（如某熔炉耗时、某塔射程直接写死）——除非官方确实没有、纯项目实现。
 - ❌ 改动 `factorio-data/` 内部文件（子模块，改不动/不该改）。
 
@@ -112,7 +126,7 @@ factory-web/
 ├── index.html                入口：按依赖顺序加载全部脚本与样式（无打包器）
 ├── css/style.css             全部 UI/游戏界面样式
 ├── js/                       全部游戏代码（无模块化，共享全局作用域）
-│   ├── data/                 数据层：数值唯一源 GAME_DATA + 手工展示表 + 桥接
+│   ├── data/                 数据层：数值唯一源 GAME_DATA + 名称唯一源 GAME_LOCALE + 手工展示表 + 桥接
 │   ├── core/                 基础设施：设备注册表 / 实体基类 / 绘制 / 电网
 │   ├── game/                 世界、存档、角色、统计、音效、蓝图
 │   ├── main/                 启动、主循环、输入、开始菜单入口
@@ -121,7 +135,7 @@ factory-web/
 │   └── ui/                   界面（HUD、背包/设备面板、快捷栏、调试）
 ├── tools/                    构建/数据生成/校验脚本（Node，命令见 §1.2）
 ├── factorio-data/            官方 Factorio 数据（git 子模块，只读）
-├── data/                     原版游戏中英文文本数据（每 mod 一个目录，含 locale/en 与 locale/zh-CN/*.cfg，驱动 GAME_DATA.names/recipeNames）
+├── data/                     原版游戏中英文文本数据（每 mod 一个目录，含 locale/en 与 locale/zh-CN/*.cfg；名称唯一源，驱动 GAME_LOCALE 与 GAME_DATA.names/recipeNames）
 ├── docs/                     设计文档
 ├── build.js                  构建/版本注入（window.__BUILD_VERSION__）
 └── AGENT.md / README.md      本文件 / 项目说明
@@ -131,8 +145,9 @@ factory-web/
 
 **`js/data/`（数据层，改动游戏数值最先动这里）**
 - `data.generated.js`：`GAME_DATA`，生成产物，**只读**（见 §1、§2）。
+- `locale.generated.js`：`GAME_LOCALE`，官方中英文本（名称）打包产物，**游戏所有物品名称的唯一来源、只读**，由 `node tools/generate-locale.js` 生成（见 §0 第 8 条）。
 - `data.js`：主常量与工具。加载最早（非 defer，紧跟 `data.generated.js`）。定义 `TILE/CHUNK`、`BELT_SPEED` 等常量、`POWER_USE`、`FLUIDS`、燃料能量、发电链、核能热量、矿石索引，以及核心工具函数与 `drawItemGlyph` 图标绘制。它是所有业务代码的公共底座。
-- `data-items.js`：`ITEMS`（物品展示：中文名/emoji/颜色/描述/堆叠）+ `STACK_SIZES`。
+- `data-items.js`：`ITEMS`（物品展示：emoji/颜色/描述/堆叠；`name` 仅为官方未收录的项目自定物品兜底，官方物品名称一律走 `GAME_LOCALE`）+ `STACK_SIZES`。
 - `data-item-icons.js`：`ITEM_CUSTOM_ICONS` 手绘专属物品图标（canvas 绘制函数，按物品 ID 索引），在 `drawItemGlyph`（`data-util.js`）中优先渲染；设计进度见 `docs/item-icons-todo.md`（全部 329 项已完成）。
 - `data-recipes.js`：`RECIPES`、`REFINERY_RECIPES`、`CENTRIFUGE_RECIPES`、`DEVICE_NAMES`。
 - `data-buildings.js`：`BUILD_DEFS`（占地/放置属性）、`BUILDING_HP`。
@@ -166,7 +181,7 @@ factory-web/
 ### 4.3 关键关系
 
 - **全局共享作用域（无模块化/打包器）**：脚本按 `index.html` 文档顺序执行，所有 `const`全局/顶层 `var G` 互相可见。主依赖链已在 html 注释标为「非关键脚本 defer（保持文档顺序，依赖链不变）」。**因此加载顺序即依赖顺序**：
-  `data.generated → data → saves/world-config/开始菜单 → 数据表(data-*) → core → devices(a→z) → player/ui/render → main(main.js)`
+  `data.generated → locale.generated → data → saves/world-config/开始菜单 → 数据表(data-*) → core → devices(a→z) → player/ui/render → main(main.js)`
   新增/部署脚本时必须在 `index.html` 相应顺序位置引入，且 `?v=N` 递增。
 - **数据流（单向）**：`data.generated(GAME_DATA)` → 各 `data-*.js` 末尾桥接进运行时表（`ITEMS/STACK_SIZES/RECIPES/BUILDING_HP…`）→ 业务代码（`devices/ui/main`）只读这些表与 `GAME_DATA`，不在业务里再写第二套数值。
 - **插件式设备**：新增设备流程 = `js/devices/` 新建文件 → 向 `core/registry.js` 自注册（类/渲染/面板/放置/旋转/流体图标）→ 在 `index.html` 引入 → `data-*.js` + `tools/generate-game-data.js`（如官方有同名物）接入数值。
