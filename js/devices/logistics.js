@@ -193,27 +193,51 @@ class LogisticActive extends LogisticChest {
 }
 // 仓储箱：机器人收纳返还/多余货物，也可作备用取货源
 class LogisticStorage extends LogisticChest {
-  constructor(type, x, y) { super('storage-chest', x, y); }
+  constructor(type, x, y) { super('storage-chest', x, y); this.filter = null; }
+  acceptsLogi(item) { return !this.filter || this.filter === item; }
+  serialize() { const s = super.serialize(); if (this.filter) s.filter = this.filter; return s; }
+  blueprint() { const s = super.blueprint(); if (this.filter) s.filter = this.filter; return s; }
+  static restore(s) { const c = super.restore(s); c.filter = (s.filter && ITEMS[s.filter]) ? s.filter : null; return c; }
 }
 // 需求箱：设置每种物品需求量，机器人自动送货补足
 class LogisticRequester extends LogisticChest {
   constructor(type, x, y) {
     super('requester-chest', x, y);
     this.requests = {};   // item -> 目标数量
+    this.reqGrid = null;  // 物流请求区格位布局（50 格，每格 item 或 null），与 requests 同步
+    this.trashGrid = null; // 物流回收区格位（30 格，每格 {item,count} 实体堆叠或 null）
   }
   // 需求缺口：目标量 - 当前存量
   deficitOf(item) {
     return Math.max(0, (this.requests[item] || 0) - this.countOf(item));
   }
+  // 拆除时回收区内的实体物品一并退回（与箱子槽位一致）
+  contents() {
+    const list = super.contents();
+    for (const s of (this.trashGrid || [])) if (s && ITEMS[s.item]) list.push([s.item, s.count]);
+    return list;
+  }
   serialize() {
     const s = super.serialize();
     s.requests = this.requests;
+    s.reqGrid = this.reqGrid || null;
+    s.trashGrid = this.trashGrid ? this.trashGrid.map(v => v ? [v.item, v.count] : null) : null;
     return s;
   }
   static restore(s) {
     const c = super.restore(s);
     c.requests = {};
     for (const k in (s.requests || {})) if (s.requests[k] > 0) c.requests[k] = s.requests[k];
+    c.reqGrid = Array.isArray(s.reqGrid) ? s.reqGrid.slice() : null;
+    if (Array.isArray(s.trashGrid)) {
+      const cap = LOGI_RECYCLE_ROWS * LOGI_RECYCLE_PER_ROW;
+      c.trashGrid = new Array(cap).fill(null);
+      const raw = s.trashGrid;
+      for (let i = 0; i < Math.min(cap, raw.length); i++) {
+        const v = raw[i];
+        if (v) c.trashGrid[i] = { item: v[0] ?? v.item, count: v[1] ?? v.count };
+      }
+    } else c.trashGrid = null;
     return c;
   }
 }
@@ -224,20 +248,39 @@ class LogisticBuffer extends LogisticChest {
   constructor(type, x, y) {
     super('buffer-chest', x, y);
     this.requests = {};   // item -> 目标数量
+    this.reqGrid = null;  // 物流请求区格位布局（50 格）
+    this.trashGrid = null; // 物流回收区格位（30 格，每格 {item,count}）
   }
   // 需求缺口：目标量 - 当前存量
   deficitOf(item) {
     return Math.max(0, (this.requests[item] || 0) - this.countOf(item));
   }
+  contents() {
+    const list = super.contents();
+    for (const s of (this.trashGrid || [])) if (s && ITEMS[s.item]) list.push([s.item, s.count]);
+    return list;
+  }
   serialize() {
     const s = super.serialize();
     s.requests = this.requests;
+    s.reqGrid = this.reqGrid || null;
+    s.trashGrid = this.trashGrid ? this.trashGrid.map(v => v ? [v.item, v.count] : null) : null;
     return s;
   }
   static restore(s) {
     const c = super.restore(s);
     c.requests = {};
     for (const k in (s.requests || {})) if (s.requests[k] > 0) c.requests[k] = s.requests[k];
+    c.reqGrid = Array.isArray(s.reqGrid) ? s.reqGrid.slice() : null;
+    if (Array.isArray(s.trashGrid)) {
+      const cap = LOGI_RECYCLE_ROWS * LOGI_RECYCLE_PER_ROW;
+      c.trashGrid = new Array(cap).fill(null);
+      const raw = s.trashGrid;
+      for (let i = 0; i < Math.min(cap, raw.length); i++) {
+        const v = raw[i];
+        if (v) c.trashGrid[i] = { item: v[0] ?? v.item, count: v[1] ?? v.count };
+      }
+    } else c.trashGrid = null;
     return c;
   }
 }
@@ -349,7 +392,62 @@ function playerTrashTarget() {
   };
 }
 
+// ===== 物流箱（绿箱/蓝箱）回收区：机器人飞到箱子处，从 e.trashGrid 格子里取走物品运回网络 =====
+function chestTrashCount(e, item) {
+  let n = 0;
+  for (const s of (e && e.trashGrid) || []) if (s && s.item === item) n += s.count;
+  return n;
+}
+function chestTrashTake(e, item, n) {
+  let left = n;
+  const g = (e && e.trashGrid) || [];
+  for (let i = 0; i < g.length && left > 0; i++) {
+    const s = g[i];
+    if (s && s.item === item) {
+      const c = Math.min(s.count, left);
+      s.count -= c; left -= c;
+      if (s.count <= 0) g[i] = null;
+    }
+  }
+  return n - left;
+}
+function chestTrashTarget(e) {
+  return {
+    isChestTrash: true,
+    x: e.x + e.w / 2, y: e.y + e.h / 2,
+    w: e.w, h: e.h,
+    get _dead() { return !!e._dead; },
+    deficitOf() { return 0; },
+    giveItem() { return false; },
+    countOf(item) { return chestTrashCount(e, item); },
+    takeItemOf(item) { return chestTrashTake(e, item, 1) ? item : null; }
+  };
+}
+
 // ===== 网络调度：计算供应与需求缺口，指派空闲机器人 =====
+// 为机器人挑选一个可存放返还/多余货物的供应箱（对齐官方黄箱筛选语义）：
+// - 设置了筛选格的仓储箱（黄箱）只接受该物品：就算物品无处可放也不违反筛选规则；
+// - 存货优先级（对齐官方 2.0.7：筛选匹配优先于库存匹配）：
+//   筛选黄箱（已含该物品 > 空 > 含其它物品）> 未筛选箱（含该物品 > 空 > 含其它物品）。
+function logiDropTarget(item, exclude, exclude2) {
+  let best = null, bestScore = -1;
+  for (const e of G.ents || []) {
+    if (!e || e._dead || e === exclude || e === exclude2) continue;
+    if (!(e instanceof LogisticChest) || e instanceof LogisticRequester) continue;
+    if (typeof e.giveItem !== 'function' || typeof e.countOf !== 'function') continue;
+    const has = item ? e.countOf(item) > 0 : false;
+    const empty = e.slots.every(s => !s);
+    let score;
+    if (e instanceof LogisticStorage) {
+      if (item && !e.acceptsLogi(item)) continue;
+      score = e.filter ? (has ? 6 : empty ? 5 : 4) : (has ? 3 : empty ? 2 : 1);
+    } else {
+      score = has ? 3 : empty ? 2 : 1;
+    }
+    if (score > bestScore) { bestScore = score; best = e; }
+  }
+  return best;
+}
 function scanNetwork() {
   // 供应：按物品聚合 { item -> count }，区分主动/被动/仓储优先级
   const supply = {};     // item -> { total, active }  active=主动供应箱中可立即提供的量
@@ -509,15 +607,16 @@ function updateRobot(r, dt) {
             if (r.target.takeItemOf(r.carry.item) === r.carry.item) taken++;
           if (taken > 0) r.carry.count = taken;
         }
-        if (r.fromPlayer) {
-          // 回收场景：从玩家取货后送回一个可存放的供应箱（仓储/主动/被动箱）
-          const drop = (G.ents || []).find(e => !e._dead && e instanceof LogisticChest && !(e instanceof LogisticRequester) && e !== r.target && e.countOf && e.giveItem);
+        if (r.fromPlayer || r.recycleEnt) {
+          // 回收场景：从玩家/物流箱回收区取货后送回一个可存放的供应箱（仓储/主动/被动箱）
+          const drop = logiDropTarget(r.carry ? r.carry.item : null, r.target, r.recycleEnt);
           if (r.carry && r.carry.count > 0 && drop) {
             r.target = drop;
             r.tx = (drop.x + drop.w / 2) * TILE;
             r.ty = (drop.y + drop.h / 2) * TILE;
             r.state = 'delivering';
             r.fromPlayer = false;
+            r.recycleEnt = null;
           } else {
             r.carry = null; r.state = 'returning';
           }
@@ -612,6 +711,16 @@ function updateLogistics(dt) {
     if (!hasWork && G.logiTrashGrid) {
       for (const s of G.logiTrashGrid) if (s && s.count > 0) { hasWork = true; break; }
     }
+    // 物流箱（绿箱/蓝箱）回收区有物品待回收也算作有工作
+    if (!hasWork) {
+      for (const e of G.ents) {
+        if (e._dead) continue;
+        if (!(e instanceof LogisticRequester) && !(e instanceof LogisticBuffer)) continue;
+        const tg = e.trashGrid;
+        if (tg) for (const s of tg) if (s && s.count > 0) { hasWork = true; break; }
+        if (hasWork) break;
+      }
+    }
     // 「回收未请求物品」开启时，背包中存在未请求物品也算有工作
     if (!hasWork && G.recycleUnrequested) {
       G.inv.forEach((n, k) => { if (n > 0 && ITEMS[k] && !(G.logiRequest && G.logiRequest[k] > 0)) { hasWork = true; } });
@@ -625,6 +734,8 @@ function updateLogistics(dt) {
         if (r._dead || r.state !== 'idle' || r.charge < ROBOT_MAX_CHARGE) continue;
         // 优先回收玩家身上超出个人请求量的物品
         if (assignRecycleTask(r)) break;
+        // 其次回收物流箱（绿箱/蓝箱）回收区里存放的物品
+        if (assignChestRecycleTask(r)) break;
         assignTask(r);
         if (r.state !== 'idle') break;   // 每帧至多指派一个，避免瞬间把所有机器人派空
       }
@@ -692,6 +803,31 @@ function assignRecycleTask(r) {
       r.tx = (G.player ? G.player.x : 0);
       r.ty = (G.player ? G.player.y : 0);
       r.fromPlayer = true;
+      r.state = 'collecting';
+      return true;
+    }
+  }
+  return false;
+}
+
+// 回收物流箱（绿箱/蓝箱）「物流回收区」格子里存放的物品：机器人飞到箱子取走运回网络存储箱。
+// 与玩家回收区同款实体箱子模型：回收区格子里的堆叠被机器人逐格取走。
+function assignChestRecycleTask(r) {
+  for (const e of G.ents) {
+    if (e._dead) continue;
+    if (!(e instanceof LogisticRequester) && !(e instanceof LogisticBuffer)) continue;
+    const tg = e.trashGrid;
+    if (!tg) continue;
+    for (let i = 0; i < tg.length; i++) {
+      const s = tg[i];
+      if (!s || !ITEMS[s.item] || s.count <= 0) continue;
+      const takeN = Math.min(robotCarryCap(), s.count);
+      if (takeN <= 0) continue;
+      r.carry = { item: s.item, count: takeN };
+      r.target = chestTrashTarget(e);
+      r.tx = (e.x + e.w / 2) * TILE;
+      r.ty = (e.y + e.h / 2) * TILE;
+      r.recycleEnt = e;
       r.state = 'collecting';
       return true;
     }
@@ -829,6 +965,37 @@ function drawLogisticsRobots(ctx) {
 }
 
 // ===== 面板 =====
+// 黄箱筛选格（单格，样式复用机械臂筛选槽）：点击设置一种物品，
+// 设置后物流网络只向该箱存入此物品；箱内已有其它物品不受影响（仍可作货源被取走），
+// 玩家/机械臂手动存取不受筛选限制（对齐官方：筛选仅约束物流网络）。
+function logiStorageFilterHtml(e) {
+  let h = '<div class="logi-flt"><span class="logi-flt-label">筛选</span>';
+  if (e.filter) {
+    h += '<div class="ins-slot" data-action="chest-flt-slot" title="点击重新选择筛选物品">' +
+      '<img src="' + iconDataURL(e.filter) + '">' +
+      '<span class="ins-slot-x" data-action="chest-flt-clear" title="清除筛选物品">✕</span></div>';
+    h += '<span class="dim">物流网络只向此箱存入「' + (ITEMS[e.filter] ? ITEMS[e.filter].name : e.filter) + '」</span>';
+  } else {
+    h += '<div class="ins-slot empty" data-action="chest-flt-slot" title="点击选择筛选物品"><span class="ins-slot-plus">+</span></div>';
+    h += '<span class="dim">未设置筛选：任意多余货物都可存入。点击格子设置后，物流网络只存入该物品</span>';
+  }
+  h += '</div>';
+  return h;
+}
+// 箱子回收区实时刷新：机器人取走物品后格子变化时重建（签名比对，避免每帧闪烁）
+function chestLogiRecycleSig(e) {
+  let s = '';
+  for (const st of (e && e.trashGrid) || []) s += (st ? st.item + ':' + st.count : '') + ',';
+  return s;
+}
+function refreshChestLogiRecycle(e) {
+  const box = document.getElementById('chest-logi-recycle');
+  if (!box) return;
+  const sig = chestLogiRecycleSig(e);
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  box.innerHTML = chestLogiRecycleGridHtml(e);
+}
 function logiChestPanelHtml(e) {
   const agg = {};
   for (const s of e.slots) if (s) agg[s.item] = (agg[s.item] || 0) + s.count;
@@ -841,24 +1008,14 @@ function logiChestPanelHtml(e) {
   right += '</div>';
   right += '<button data-action="chest-put" class="btn sm" id="btn-chest-put" title="把当前选中的背包物品全部存入箱子（未选中时不可用）">⬆ 存入选中物品</button>';
   if (kind === 'requester' || kind === 'buffer') {
-    const ids = Object.keys(e.requests);
-    if (!ids.length) {
-      right += '<div class="dim">尚未设置需求。下方为每种物品设置目标数量，物流机器人会自动从供应箱/仓储箱搬运货物过来，直到达到目标数量。</div>';
-    } else {
-      for (const id of ids) {
-        right += '<div class="limitrow">' + chip(id, e.countOf(id)) +
-          '<input class="limit-in" type="number" min="0" step="10" data-req="' + id + '"' +
-          ' value="' + (e.requests[id] || 0) + '" data-tip="需求量|物流机器人会送货至此数量；0 表示不需求"></div>';
-      }
-    }
+    right += '<div class="dim">' + ITEMS[e.type].desc + '</div>';
     if (kind === 'buffer') {
       right += '<div class="dim">缓冲箱：请求货物后，也会向物流网络供应库存，作为中转缓冲。</div>';
     }
-    right += '<div class="dim">提示：在下方输入物品名后点击「应用需求」。</div>';
-    right += '<input id="logi-req-add" class="inv-search" type="text" placeholder="输入物品名…" autocomplete="off">';
-    right += '<button data-action="logi-req-apply">应用需求</button>';
-    right += '<button data-action="logi-req-clear">清空全部需求</button>';
+    right += '<div class="dim">下方「物流请求区」点击格子设置箱子需求（左键选择/修改数量，右键清除），物流机器人会自动送货入箱；把物品拖入「物流回收区」，机器人会从这里取走运回网络。</div>';
+    right += '<div class="chest-logi-area">' + chestLogiColHtml(e) + '</div>';
   } else {
+    if (kind === 'storage') right += logiStorageFilterHtml(e);
     right += '<div class="dim">' + ITEMS[e.type].desc + '</div>';
     if (total > 0) right += '<button data-action="takeout" id="btn-chest-takeout">取出全部 (' + total + ')</button>';
   }
@@ -880,6 +1037,7 @@ function logiChestPanelLive(e, api) {
   api.toggle('#btn-chest-takeout', total > 0, '取出全部 (' + total + ')');
   const kind = LOGI_CHEST_KINDS[e.type];
   if (kind === 'requester' || kind === 'buffer') {
+    refreshChestLogiRecycle(e);
     const short = Object.keys(e.requests).filter(k => e.deficitOf(k) > 0).length;
     if (short) api.status('需求待补：' + short + ' 种，物流机器人正在配送…', 'ok');
     else if (Object.keys(e.requests).length) api.status('需求已满足', 'ok');
@@ -907,6 +1065,14 @@ function logiRequesterOnChange(ev) {
 function logiChestOnAction(act) {
   const e = G.panelEnt;
   if (!(e instanceof LogisticChest)) return false;
+  if (e instanceof LogisticStorage && act === 'chest-flt-slot') {
+    if (typeof openChestFilterChooser === 'function') openChestFilterChooser(e);
+    return true;
+  }
+  if (e instanceof LogisticStorage && act === 'chest-flt-clear') {
+    e.filter = null; uiDirty = true; renderPanel(false);
+    return true;
+  }
   if (act === 'logi-req-clear' && (e instanceof LogisticRequester || e instanceof LogisticBuffer)) {
     e.requests = {};
     renderPanel(false);
@@ -938,7 +1104,8 @@ function logiChestTip(e) {
     const short = Object.keys(e.requests).filter(i => e.deficitOf(i) > 0).length;
     return (k ? '存货 ' + n + ' 个' : '空') + (short ? ' · 待补 ' + short + ' 种' : '');
   }
-  return (k ? '存货 ' + n + ' 个（' + k + ' 种）' : '空箱');
+  return (k ? '存货 ' + n + ' 个（' + k + ' 种）' : '空箱') +
+    (e instanceof LogisticStorage && e.filter ? ' · 筛选：' + (ITEMS[e.filter] ? ITEMS[e.filter].name : e.filter) : '');
 }
 function roboportTip(e) {
   return '机器人 ' + e.roboCap + ' 台' + (e.roboCap > 0 ? ' · 网络运行中' : '（把物流机器人放入）');

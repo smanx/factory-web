@@ -69,6 +69,12 @@ class Assembler extends Entity {
         }
     });
   }
+  // 当前每秒推进的 prog 增量（制作速度倍率）：与 update() 中 prog 累加公式同源，
+  // 供面板把「工作量剩余」换算成真实剩余秒数（装速度插件后倒计时才与墙钟一致）。
+  craftProgRate() {
+    const qMult = (typeof qualityMult === 'function' && this.quality) ? qualityMult(this.quality) : 1;
+    return asmMult() * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 0.5) * this.moduleSpeedMult() * powerFactor() * qMult;
+  }
   update(dt) {
     this.portFlow();
     if (!this.recipe) { this.crafting = false; return; }
@@ -77,8 +83,7 @@ class Assembler extends Entity {
     if (!this.circuitEnabled()) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
-      const qMult = (typeof qualityMult === 'function' && this.quality) ? qualityMult(this.quality) : 1;
-      this.prog += dt * asmMult() * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 0.5) * this.moduleSpeedMult() * powerFactor() * qMult;
+      this.prog += dt * this.craftProgRate();
       this.spin += dt * 4;
       // 工业氛围：组装机运转时低频迸出细碎火花（画面优化）
       if (typeof spawnSpark === 'function' && Math.random() < dt * 1.2) {

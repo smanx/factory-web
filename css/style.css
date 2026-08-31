@@ -679,6 +679,7 @@ html, body {
   display: grid;
   grid-template-columns: repeat(10, 32px);
   gap: 4px; margin-bottom: 4px;
+  width: max-content;   /* 按格子内容定宽（10×32+9×4=356px），与 .chest-items 一致，不随容器拉伸 */
 }
 .logi-cell {
   position: relative;
@@ -2551,6 +2552,22 @@ html, body {
 #panel.machine-wide .inv-layout.chest-layout { overflow-x: hidden; }
 #panel.machine-wide .chest-layout .inv-col-left  { flex: 0 0 auto; width: fit-content; min-width: 0; }
 #panel.machine-wide .chest-layout .inv-col-right { flex: 0 0 auto; width: fit-content; min-width: 0; }
+/* 物流箱（五色箱）/储物箱控制面板：.dim 说明文字按格子网格宽度（10 格 = 356px）自动换行，
+   避免长文本把 fit-content 列横向撑开导致面板样式错乱 */
+#panel.machine-wide .chest-layout .inv-col-right .dim {
+  max-width: 356px;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.5;
+}
+/* 物流区分区标题（物流请求区 / 物流回收区） */
+.logi-sec-label { font-size: 12px; font-weight: bold; color: #9fb2c4; margin: 6px 0 4px; }
+/* 绿箱/蓝箱：物流区显示在箱子物品格子下方，弹框高度自适应，最大 80% 屏高，超出滚动 */
+#panel.machine-wide:has(.chest-logi-area) { max-height: 80vh; }
+.chest-logi-area { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.10); }
+/* 右栏内容变高出现纵向滚动条时，预留滚动条槽位：列宽按「内容+槽位」撑开，
+   避免纵向滚动条挤占宽度导致 .logi-grid（固定 356px）溢出出现横向滚动条 */
+#panel.machine-wide .chest-layout .inv-col-body { scrollbar-gutter: stable; }
 
 /* 配方设备右侧交互信息 */
 .mch-recipe-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -2577,6 +2594,8 @@ html, body {
 }
 .mch-io-slot:hover { border-color: #ffd23c; background: rgba(255,210,60,.08); }
 .mch-io-slot.full { border-color: #57b95c; background: rgba(87,185,92,.08); }
+/* 原料槽装满（.full）时悬停也要与产品槽一致：黄色高亮盖过绿色「已备足」底色 */
+.mch-io-slot.full:hover { border-color: #ffd23c; background: rgba(255,210,60,.08); }
 .mch-io-slot { position: relative; }
 .mch-io-slot img { width: 30px; height: 30px; border-radius: 4px; }
 /* 纯展示插槽（流体/燃料等不可取回）：无点击交互，悬停不亮 */
@@ -2816,7 +2835,9 @@ html, body {
   border-color: #ffd23c !important;
   box-shadow: 0 0 0 2px #ffd23c, 0 0 8px 2px rgba(255, 210, 60, .55);
 }
-#btn-chest-put { margin-bottom: 10px; }
+/* 仓储箱（黄箱）筛选格：面板格子下方，单格 + 标签（复用机械臂 .ins-slot 样式） */
+.logi-flt { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.logi-flt-label { font-size: 12px; color: #9fb0c0; }
 /* 旧版聚合槽样式不再使用（箱子改为固定格子网格，见上方 .chest-items 网格规则） */
 
 /* 模块插槽：图形化展示设备模块槽位（组装机等） */

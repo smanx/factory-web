@@ -1103,6 +1103,106 @@ function htmlLogistics() {
   return h;
 }
 
+// ===== 物流箱（绿箱/蓝箱）物流区：与背包面板中间物流区同款布局与操作逻辑 =====
+// （物流请求区 10×5 + 物流回收区 10×3），区别在于数据挂在箱子实体上：
+//   请求区 → e.reqGrid（格位物品）+ e.requests（item→目标数量），机器人送货入箱；
+//   回收区 → e.trashGrid（每格 {item,count} 实体堆叠），机器人从箱子取走运回网络。
+
+// 当前面板是否为需求箱（蓝箱）/缓冲箱（绿箱）：是则返回该实体，否则 null
+function chestLogiEnt() {
+  const e = G.panelEnt;
+  return (G.panelMode === 'machine' && e && (e instanceof LogisticRequester || e instanceof LogisticBuffer)) ? e : null;
+}
+
+// 确保箱子物流格子布局就位：reqGrid 缺失/长度不符时按 requests 回填；trashGrid 校验每格堆叠
+function ensureChestLogiSlots(e) {
+  if (!e) return;
+  const reqCap = LOGI_REQ_ROWS * LOGI_REQ_PER_ROW;
+  if (!Array.isArray(e.reqGrid) || e.reqGrid.length !== reqCap) {
+    e.reqGrid = new Array(reqCap).fill(null);
+    const keys = Object.keys(e.requests || {}).filter(k => e.requests[k] > 0 && ITEMS[k]).sort();
+    for (let i = 0; i < keys.length && i < reqCap; i++) e.reqGrid[i] = keys[i];
+  }
+  const trashCap = LOGI_RECYCLE_ROWS * LOGI_RECYCLE_PER_ROW;
+  if (!Array.isArray(e.trashGrid) || e.trashGrid.length !== trashCap) {
+    e.trashGrid = new Array(trashCap).fill(null);
+  } else {
+    e.trashGrid = e.trashGrid.map(s => (s && s.item && ITEMS[s.item] && s.count > 0) ? { item: s.item, count: s.count | 0 } : null);
+  }
+}
+
+// 设置箱子第 idx 个请求格物品（同物品其它格让位），同步 e.requests（与玩家 logiReqSetSlot 一致）
+function chestLogiReqSetSlot(e, idx, item) {
+  ensureChestLogiSlots(e);
+  if (!e.requests) e.requests = {};
+  const g = e.reqGrid;
+  for (let i = 0; i < g.length; i++) if (g[i] === item && i !== idx) g[i] = null;
+  const old = g[idx];
+  g[idx] = item;
+  if (old && old !== item && g.indexOf(old) < 0) delete e.requests[old];
+  if (!(e.requests[item] > 0)) e.requests[item] = LOGI_REQ_DEFAULT;
+}
+// 清除箱子第 idx 个请求格（该物品不再占用任何格时同步删除请求量）
+function chestLogiReqClearSlot(e, idx) {
+  ensureChestLogiSlots(e);
+  const item = e.reqGrid[idx];
+  if (!item) return false;
+  e.reqGrid[idx] = null;
+  if (e.reqGrid.indexOf(item) < 0 && e.requests) delete e.requests[item];
+  return true;
+}
+
+// 渲染箱子物流请求区格子（10×5，与背包 logiReqGridHtml 同款）
+function chestLogiReqGridHtml(e) {
+  ensureChestLogiSlots(e);
+  const lreq = e.requests || {};
+  const cap = LOGI_REQ_ROWS * LOGI_REQ_PER_ROW;
+  let h = '<div class="logi-grid" id="chest-logi-req-grid">';
+  for (let i = 0; i < cap; i++) {
+    const k = e.reqGrid[i];
+    if (k && ITEMS[k]) {
+      const have = e.countOf(k);
+      const req = lreq[k] || 0;
+      h += '<div class="logi-cell req-cell" data-logireq="' + k + '" data-logireq-idx="' + i + '" data-tip="' + ITEMS[k].name + '|请求 ' + req + '，箱内 ' + have + '。左键修改数量，右键清除请求">' +
+        '<img src="' + iconDataURL(k, 16) + '">' +
+        '<span class="lreq-have cnt">' + req + '</span></div>';
+    } else {
+      h += '<div class="logi-cell req-cell empty" data-logireq="" data-logireq-idx="' + i + '" data-tip="物流请求|左键点击选择要请求的物品，物流机器人将送达该箱子">' +
+        '<span class="req-plus">+</span></div>';
+    }
+  }
+  h += '</div>';
+  return h;
+}
+
+// 渲染箱子物流回收区格子（10×3，与背包 logiRecycleGridHtml 同款）
+function chestLogiRecycleGridHtml(e) {
+  ensureChestLogiSlots(e);
+  const cap = LOGI_RECYCLE_ROWS * LOGI_RECYCLE_PER_ROW;
+  let h = '<div class="logi-grid" id="chest-logi-recycle-grid">';
+  for (let i = 0; i < cap; i++) {
+    const s = e.trashGrid[i];
+    if (s && s.item && ITEMS[s.item] && s.count > 0) {
+      h += '<div class="logi-cell recycle-cell" draggable="true" data-logirecycle="' + s.item + '" data-logirecycle-idx="' + i + '" data-tip="' + ITEMS[s.item].name + '|回收区物品 ×' + s.count + '。点击拿起后可放回背包；物流机器人会从这里取走运回网络">' +
+        '<img src="' + iconDataURL(s.item, 16) + '">' +
+        '<span class="cnt">' + s.count + '</span></div>';
+    } else {
+      h += '<div class="logi-cell recycle-cell empty" data-logirecycle="" data-logirecycle-idx="' + i + '" data-tip="物流回收区|把背包物品拖到这里（或拿起后点击）即存入该格，机器人会从这里运走">' +
+        '<span class="req-plus">+</span></div>';
+    }
+  }
+  h += '</div>';
+  return h;
+}
+
+// 箱子面板「物流」列内容：物流请求区 + 物流回收区（布局与背包中间物流区一致）
+function chestLogiColHtml(e) {
+  ensureChestLogiSlots(e);
+  return '<div class="logi-sec-label">物流请求区</div>' + chestLogiReqGridHtml(e) +
+    '<div class="logi-sec-label">物流回收区</div>' +
+    '<div id="chest-logi-recycle">' + chestLogiRecycleGridHtml(e) + '</div>';
+}
+
 // 背包「合成页面」tab：独立渲染全部手搓配方（对齐《异星工厂》手工制造）。
 // 与玩家背包一致的「格子 + 图标」网格展示：左键点击图标制作 1 个，右键点击制作 5 个。
 // 配方所需材料/可制作次数以右下角角标(.cnt)显示，未解锁配方显示 🔒 锁标。

@@ -5,6 +5,11 @@ class Assembler3 extends Assembler {
   constructor(type, x, y) {
     super('assembling-machine-3', x, y);
   }
+  // 组装机 III 基础速度 1.25（覆盖基类 0.5 兜底）
+  craftProgRate() {
+    const qMult = (typeof qualityMult === 'function' && this.quality) ? qualityMult(this.quality) : 1;
+    return asmMult() * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 1.25) * this.moduleSpeedMult() * powerFactor() * qMult;
+  }
   update(dt) {
     this.portFlow();
     if (!this.recipe) { this.crafting = false; return; }
@@ -14,7 +19,7 @@ class Assembler3 extends Assembler {
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
       // 速度：组装机 III 基础 1.25，远高于 I/II；叠加科技与电力饱和
-      this.prog += dt * asmMult() * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 1.25) * this.moduleSpeedMult() * powerFactor() * (this.quality ? qualityMult(this.quality) : 1);
+      this.prog += dt * this.craftProgRate();
       this.spin += dt * 4;
       if (this.prog >= rec.time) {
         for (const k in rec.out) {

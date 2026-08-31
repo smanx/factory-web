@@ -3,13 +3,18 @@
 // ===== 组装机 II：吃电力、速度更高的高级组装机 =====
 class AssemblerMK2 extends Assembler {
   constructor(type, x, y) { super('assembling-machine-2', x, y); }
+  // 组装机 II 基础速度 0.75（覆盖基类 0.5 兜底）
+  craftProgRate() {
+    const qMult = (typeof qualityMult === 'function' && this.quality) ? qualityMult(this.quality) : 1;
+    return asmMult() * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 0.75) * this.moduleSpeedMult() * powerFactor() * qMult;
+  }
   update(dt) {
     this.portFlow();
     if (!this.recipe) { this.crafting = false; return; }
     if (G.power.sat <= 0) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
-      this.prog += dt * asmMult() * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 0.75) * this.moduleSpeedMult() * powerFactor() * (this.quality ? qualityMult(this.quality) : 1);
+      this.prog += dt * this.craftProgRate();
       this.spin += dt * 4;
       if (this.prog >= rec.time) {
         for (const k in rec.out) {

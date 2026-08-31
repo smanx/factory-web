@@ -50,6 +50,11 @@ class Centrifuge extends Entity {
     if (bb) { mc.speed += bb.speed; mc.prod += bb.prod; mc.eff += bb.eff; }
     return 1 + 0.4 * mc.speed - 0.1 * mc.prod - 0.03 * mc.eff - mc.qualityPenalty;
   }
+  // 当前每秒 prog 增量（制作速度倍率）：与 update() 累加公式同源，供面板换算真实剩余秒数
+  craftProgRate() {
+    const qMult = (typeof qualityMult === 'function' && this.quality) ? qualityMult(this.quality) : 1;
+    return this.moduleSpeedMult() * powerFactor() * qMult;
+  }
   applyProductivity(rec) {
     const mc = moduleCounts(this.modules);
     const bb = (typeof beaconBonus === 'function') ? beaconBonus(this.x, this.y) : null;

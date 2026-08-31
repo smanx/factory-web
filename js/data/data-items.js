@@ -337,7 +337,7 @@ const ITEMS = {
   'personal-roboport-mk2-equipment':{emoji: '🤖',  name: '个人机器人港 II', color: '#5a8ac0', desc: '进阶个人装备：装备后提供更大施工机器人工作范围（20 格、最多 8 台在场），蓝图粘贴自动由施工机器人建造（对齐《异星工厂》Personal roboport Mk2）' },
   'passive-provider-chest': {emoji: '📦',  name: '被动供应箱', color: '#e04a3a', desc: '物流箱（红箱）：可手动/机械臂存入货物，物流机器人会从箱中取货送往需求箱；也能接收机器人返还的货物' },
   'active-provider-chest':  {emoji: '📦',  name: '主动供应箱', color: '#a868d8', desc: '物流箱（紫箱）：机器人优先从此取货供应网络；多出的货物机器人会收纳到这里，适合作为原料集散点' },
-  'storage-chest': {emoji: '📦',  name: '仓储箱', color: '#e8c83a', desc: '物流箱（黄箱）：机器人把返还/多余货物收纳到这里，也可作为备用取货源（48 格）。所有仓储箱共享存放' },
+  'storage-chest': {emoji: '📦',  name: '仓储箱', color: '#e8c83a', desc: '物流箱（黄箱）：机器人把返还/多余货物收纳到这里，也可作为备用取货源（48 格）。所有仓储箱共享存放。可在面板筛选格设置一种物品，设置后物流网络只向该箱存入此物品' },
   'buffer-chest': {emoji: '📦',  name: '缓冲箱', color: '#68b04e', desc: '物流箱（绿箱）：介于需求箱与仓储箱之间——既按设定请求货物，又可向网络供应，作为中转缓冲（对齐《异星工厂》Buffer chest）' },
   'requester-chest': {emoji: '📦',  name: '需求箱', color: '#5a8ad0', desc: '物流箱（蓝箱）：在面板设置每种物品的需求量，物流机器人会自动从供应箱/仓储箱送货过来补足到目标数量' },
   // ===== 钓鱼与生鱼（对齐《异星工厂》：需手持鱼竿在水域钓鱼，钓到生鱼） =====
