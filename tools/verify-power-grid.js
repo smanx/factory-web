@@ -194,6 +194,17 @@ console.log('\n【缺电警告状态与覆盖判定】');
   check('poleSupplyRect 小型杆 x1=3', Math.abs(rc.x1 - 3) < 1e-9);
 }
 
+// ---- 10. 电网蓄电统计（供悬停详情展示）----
+console.log('\n【电网蓄电统计】');
+{
+  const p = pole('small-electric-pole', 300, 300);
+  const acc = { _id: ++uid, type: 'accumulator', x: 301, y: 300, w: 2, h: 2, stored: 1234, powerOut: 0 };
+  addAll([p, acc]);
+  updatePower();
+  check('电网统计蓄电器储能 stored=1234', p._grid.stored === 1234);
+  check('电网统计蓄电上限 storedCap=5000', p._grid.storedCap === 5000);
+}
+
 console.log('\n----------------------------------------');
 console.log('通过 ' + passCount + ' 项，失败 ' + failCount + ' 项');
 process.exit(failCount > 0 ? 1 : 0);

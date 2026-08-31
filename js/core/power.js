@@ -192,7 +192,7 @@ function rebuildPowerGrids() {
   for (let i = 0; i < NP; i++) {
     const root = find(i);
     let g = gridByRoot.get(root);
-    if (!g) { g = { prod: 0, capacity: 0, throttle: 1, demand: 0, sat: 1, poles: 0, switches: 0, tripped: false }; gridByRoot.set(root, g); grids.push(g); }
+    if (!g) { g = { prod: 0, capacity: 0, throttle: 1, demand: 0, sat: 1, poles: 0, switches: 0, tripped: false, stored: 0, storedCap: 0 }; gridByRoot.set(root, g); grids.push(g); }
     g.poles++;
     poles[i]._grid = g;
   }
@@ -204,6 +204,11 @@ function rebuildPowerGrids() {
     if (e.powerOut !== undefined) g.capacity += e.powerOut || 0;   // 产能（发电机当前可发上限）
     if (typeof e.powerDemand === 'function') g.demand += e.powerDemand() || 0;
     if (e.type === 'power-switch') { g.switches++; if (typeof e.isTripped === 'function' && e.isTripped()) g.tripped = true; }
+    // 蓄电器：统计本电网储能与上限（供电线杆悬停详情展示）
+    if (e.type === 'accumulator') {
+      g.stored += e.stored || 0;
+      g.storedCap += (typeof ACCUM_CAP !== 'undefined' ? ACCUM_CAP : 5000);
+    }
   }
   for (const g of grids) {
     // 发电机不满功率运行：实际出力按当前耗电量动态调整（delivered = min(产能, 需求)），

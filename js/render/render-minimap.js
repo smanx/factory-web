@@ -199,10 +199,43 @@ function _hoverCraftMult(e) {
   return ms * pf * q;
 }
 
+// 功率格式化（内部单位 kW → W / kW / MW / GW，对齐《异星工厂》显示习惯）
+function fmtPower(kW) {
+  const w = (kW || 0) * 1000;
+  const a = Math.abs(w);
+  if (a >= 1e9) return (Math.round(w / 1e8) / 10) + ' GW';
+  if (a >= 1e6) return (Math.round(w / 1e5) / 10) + ' MW';
+  if (a >= 1e3) return (Math.round(w / 1e2) / 10) + ' kW';
+  return Math.round(w) + ' W';
+}
+// 能量格式化（内部单位 kJ → J / kJ / MJ / GJ）
+function fmtEnergy(kJ) {
+  const j = (kJ || 0) * 1000;
+  const a = Math.abs(j);
+  if (a >= 1e9) return (Math.round(j / 1e8) / 10) + ' GJ';
+  if (a >= 1e6) return (Math.round(j / 1e5) / 10) + ' MJ';
+  if (a >= 1e3) return (Math.round(j / 1e2) / 10) + ' kJ';
+  return Math.round(j) + ' J';
+}
+
 // 收集某设备的动态信息段。返回段数组；每段 { title, rows:[{label, value, color}] }。
 function _hoverRuntimeSections(e) {
   const secs = [];
   const fmt = n => (Math.round(n * 100) / 100).toString();
+
+  // ---- 电线杆：所属电网的供电情况（保障 / 发电 / 蓄电）----
+  (function poleGridSec() {
+    if (!(GAME_DATA.pole && GAME_DATA.pole[e.type])) return;
+    const g = (typeof powerGridOf === 'function') ? powerGridOf(e) : e._grid;
+    if (!g) return;
+    const rows = [
+      { label: '保障', value: fmtPower(g.prod) + ' / ' + fmtPower(g.demand),
+        color: (g.demand <= 0 || g.prod >= g.demand - 1e-6) ? '#8fe08f' : '#ff5b5b' },
+      { label: '发电', value: fmtPower(g.prod) + ' / ' + fmtPower(g.capacity), color: '#8fe08f' },
+      { label: '蓄电', value: fmtEnergy(g.stored) + ' / ' + fmtEnergy(g.storedCap) },
+    ];
+    secs.push({ title: '⚡️电力网络', rows });
+  })();
 
   // ---- 当前配方 + 每秒消耗/产出速率 ----
   (function recipeSec() {
