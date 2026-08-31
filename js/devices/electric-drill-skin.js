@@ -4,7 +4,7 @@
 // 设计语言（电力采矿机以工业蓝为主配色，呼应“电”的语义，与热能采矿机的棕色、大型采矿机的深蓝拉开档位差异）：
 //   ① 深钢框架 + 工业蓝机身（纵向渐变/顶部光泽）+ 四角螺栓，厚重工业感；
 //   ② 顶部旋转工作台：深钢圆盘 + 蓝白警示环 + 三幅旋翼，随主轴 e.spin 旋转；
-//      工作时外圈叠加绿色采矿进度环（与原绘制语义一致）；
+//      工作时外圈叠加绿色采矿进度环（与原绘制语义一致，仅 ALT 详情模式显示）；
 //   ③ 产出方向（dir 侧）：深色输出滑槽 + 螺旋钻杆——工作时钻杆上下浮动、
 //      螺旋纹向前滚动，直观表达"正在钻进/产出"；滑槽两侧保留方向指示三角；
 //   ④ 背侧散热格栅；顶部中央电源指示灯（青=工作中 / 红=缺电 / 黄=其他停摆告警）；
@@ -126,9 +126,9 @@ function drawElectricDrillSkin(ctx, e, gx, gy, dir, alpha) {
   ctx.beginPath(); ctx.arc(0, 0, 2.4 * k, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 
-  // ===== ⑥ 采矿进度环（工作时绿色弧，与原绘制语义一致）=====
+  // ===== ⑥ 采矿进度环（工作时绿色弧，与原绘制语义一致；仅 ALT 详情模式显示）=====
   const pct = working ? Math.min(1, (e.prog || 0) / e.oreTime()) : 0;
-  if (pct > 0) {
+  if (pct > 0 && portDetailsVisible()) {
     ctx.strokeStyle = 'rgba(8,12,18,.35)';
     ctx.lineWidth = 2.5 * k;
     ctx.beginPath(); ctx.arc(cx, cy, R + 3.2 * k, 0, Math.PI * 2); ctx.stroke();

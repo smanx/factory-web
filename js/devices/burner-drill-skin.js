@@ -10,7 +10,7 @@
 //   ④ 传动：锅炉→飞轮（辐条随主轴 e.spin 旋转）→皮带→钻塔顶滑轮；
 //   ⑤ 前塔（+x 产出侧）：桁架井架（双 X 交叉撑）+ 中央竖直钻杆 + 三刃钻头
 //      （工作时随 e.spin 旋转 + 轻微冲击进给），钻头正对产出方向；
-//      外圈绿色采矿进度环（与电采矿机/抽油机皮肤语义一致）；
+//      外圈绿色采矿进度环（与电采矿机/抽油机皮肤语义一致，仅 ALT 详情模式显示）；
 //   ⑥ 交互语义原样保留：燃料条（顶部橙条）、状态 LED（绿=工作/橙=告警/暗=待机）、
 //      产出方向双色指示三角、扬尘粒子（逻辑层 drillEmit 自动保留）。
 // 本文件只覆盖 DEVICE_RENDER['burner-mining-drill']：删除本文件并移除 index.html 中
@@ -271,9 +271,9 @@ function drawBurnerDrillSkin(ctx, e, gx, gy, dir, alpha) {
 
   ctx.restore();                      // 结束朝向坐标系
 
-  // ===== ⑩ 采矿进度环（工作时绿色弧，与电采矿机/抽油机皮肤语义一致）=====
+  // ===== ⑩ 采矿进度环（工作时绿色弧，与电采矿机/抽油机皮肤语义一致；仅 ALT 详情模式显示）=====
   const pct = working ? Math.min(1, (e.prog || 0) / e.oreTime()) : 0;
-  if (pct > 0) {
+  if (pct > 0 && portDetailsVisible()) {
     const rx = px + s / 2 + s * 0.09, ry = cy;    // 环心对准钻头（+x 侧偏移）
     ctx.strokeStyle = 'rgba(8,12,18,.35)';
     ctx.lineWidth = 2.2;

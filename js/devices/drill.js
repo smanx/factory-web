@@ -482,7 +482,7 @@ function drawDrill(ctx, e, gx, gy, dir, alpha) {
   ctx.fill();
   ctx.restore();
   const pct = Math.min(1, (e.prog || 0) / e.oreTime());
-  if (pct > 0 && e.working) {
+  if (pct > 0 && e.working && portDetailsVisible()) {
     ctx.strokeStyle = 'rgba(143,224,143,.9)';
     ctx.lineWidth = 3;
     ctx.beginPath();

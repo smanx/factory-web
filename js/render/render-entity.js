@@ -54,35 +54,51 @@ function drawEntity(ctx, e, gx, gy, dir, alpha) {
       ctx.fillRect(bx, by, barW * ratio, barH);
     }
   }
-  // 运行计时器（环形 loading）：为「没有自身环形进度显示」但存在运行时长的设备，
-  // 在设备上方绘制一个环形计时圈，实时显示当前这一轮生产的剩余进度。
+  // 运行 loading 环（抽油机同款绿色进度环）：设备运行中且 ALT 详情模式开启时，
+  // 环绕设备中心绘制，实时显示当前这一轮生产的完成进度。
   if (alpha === 1 && !LOD.simple) drawRunRing(ctx, e, gx, gy);
 }
 
-// 无环形显示的加工设备运行信息：返回 { pct(0-1), total(秒) } 表示设备当前这一轮
-// 加工的完成比例与总耗时；返回 null 表示不在运行（不绘制环形计时器）。
-// 已有自身环形进度显示（组装机/化工厂/离心机/钻机/炼油厂/研究中心）的设备不在此表内，不重复叠加。
-const DEVICE_RUN_INFO = {
-  'stone-furnace': e => (e.lit && e.cur && e.prog > 0) ? { pct: e.prog, total: e.cur.time } : null,
-  'steel-furnace': e => (e.lit && e.cur && e.prog > 0) ? { pct: e.prog, total: e.cur.time } : null,
+// 已有自身进度环的设备（在各自皮肤/绘制中显式绘制，同样仅 ALT 详情模式显示），
+// 通用 loading 环跳过它们，避免叠加双环。
+const SELF_RING_TYPES = {
+  'pumpjack': true, 'electric-mining-drill': true, 'burner-mining-drill': true,
+  'centrifuge': true, 'lab': true,
 };
 
-// 在设备上方绘制环形 loading 计时器：背景圆 + 当前进度弧。
+// 设备当前这一轮运行的完成比例（0-1）：0 表示未在运行 / 无轮次进度概念。
+// 覆盖：配方加工机（组装机/化工厂/炼油厂/破碎机/回收机…）、采矿机族、熔炉族、水泵等。
+function deviceRunProgress(e) {
+  if (e.crafting && e.recipe) {
+    const rec = RECIPES[e.recipe] || REFINERY_RECIPES[e.recipe] || CENTRIFUGE_RECIPES[e.recipe];
+    if (rec && rec.time > 0) return Math.min(1, (e.prog || 0) / rec.time);
+  }
+  if (e.working && typeof e.oreTime === 'function') return Math.min(1, (e.prog || 0) / e.oreTime());
+  if (e.lit && e.cur && e.prog > 0) return Math.min(1, e.prog);
+  if (e.crafting && typeof e.batchTime === 'function') return Math.min(1, (e.prog || 0) / e.batchTime());
+  if (e.working && typeof e.pulse === 'number') return Math.min(1, e.pulse);
+  return 0;
+}
+
+// 通用运行 loading 环（抽油机同款样式：暗底轨道圆 + 绿色进度弧）：
+// 仅 ALT 详情模式开启且设备运行中绘制；半径随设备占地缩放，环心在设备中心。
 function drawRunRing(ctx, e, gx, gy) {
-  const info = DEVICE_RUN_INFO[e.type];
-  if (!info) return;
-  const r = info(e);
-  if (!r || !(r.pct > 0)) return;
+  if (SELF_RING_TYPES[e.type] || !portDetailsVisible()) return;
+  const pct = deviceRunProgress(e);
+  if (!(pct > 0)) return;
   const px = gx * TILE, py = gy * TILE;
-  const cx = px + (e.w * TILE) / 2;
-  const cy = py - 9;                       // 设备上方
-  const rad = 7;
-  ctx.strokeStyle = 'rgba(15,20,26,.55)';
-  ctx.lineWidth = 3;
+  const s = TILE * e.w, sh = TILE * e.h;
+  const k = Math.min(s, sh) / 96;
+  const cx = px + s / 2, cy = py + sh / 2;
+  const rad = 27 * k;
+  ctx.strokeStyle = 'rgba(8,12,18,.35)';
+  ctx.lineWidth = 2.5 * k;
   ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2); ctx.stroke();
   ctx.strokeStyle = '#8fe08f';
-  ctx.lineWidth = 2.6;
-  ctx.beginPath(); ctx.arc(cx, cy, rad, -Math.PI / 2, -Math.PI / 2 + r.pct * Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = 3 * k;
+  ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(cx, cy, rad, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2); ctx.stroke();
+  ctx.lineCap = 'butt';
 }
 
 // 机械臂类型集合：绘制时置顶，永远显示在传送带/其他设备之上，不被遮挡。

@@ -5,7 +5,7 @@
 //   ① 深钢底座 + 四角螺栓 + 安全腔（环形腔壁 + 径向渐变腔底 + 腔沿高光弧 + 腔沿螺栓 ×8）；
 //   ② 转子（随主轴 e.spin 高速旋转，运转时整组轻微振动）：黄铜轮毂 → 6 根辐条臂
 //      → 6 只铀料杯（杯座 + 铀芯），运转时铀芯绿辉脉动——铀浓缩过程一览无余；
-//   ③ 腔底蚀刻处理进度环（绿色弧，在转子下方，像仪表刻度；与其它机器皮肤进度语义一致）；
+//   ③ 腔底蚀刻处理进度环（绿色弧，在转子下方，像仪表刻度；与其它机器皮肤进度语义一致，仅 ALT 详情模式显示）；
 //   ④ ALT 模式中央显示当前配方大图标（与原绘制语义完全一致）；
 //   ⑤ 腔顶嵌入状态灯（青=运转 / 黄=待料或暂停 / 暗=未选配方）；
 //   ⑥ 辐射警示三叶标（右上角，黄底黑叶）+ 左下 2 格模块槽指示灯。
@@ -89,10 +89,10 @@ function drawCentrifugeSkin(ctx, e, gx, gy, dir, alpha) {
     ctx.fill();
   }
 
-  // ===== ③ 腔底蚀刻处理进度环（绿色弧，转子之下；像刻度仪表）=====
+  // ===== ③ 腔底蚀刻处理进度环（绿色弧，转子之下；像刻度仪表；仅 ALT 详情模式显示）=====
   const rec = (typeof e.recipeObj === 'function') ? e.recipeObj() : null;
   const pct = (crafting && rec) ? Math.min(1, (e.prog || 0) / rec.time) : 0;
-  if (pct > 0) {
+  if (pct > 0 && portDetailsVisible()) {
     ctx.strokeStyle = 'rgba(8,12,18,.4)';
     ctx.lineWidth = 2.6 * k;
     ctx.beginPath(); ctx.arc(cx, cy, 34.5 * k, 0, Math.PI * 2); ctx.stroke();

@@ -438,8 +438,8 @@ function drawLab(ctx, e, gx, gy, dir, alpha) {
   ctx.arc(cx, cy, R - 5 * k, Math.PI * 1.05, Math.PI * 1.45);
   ctx.stroke();
 
-  // ===== ⑤ 研究进度环（亮弧随 e.t/LAB_TIME 增长；满一圈 = 消耗一瓶科学包）=====
-  if (prog > 0.005) {
+  // ===== ⑤ 研究进度环（亮弧随 e.t/LAB_TIME 增长；满一圈 = 消耗一瓶科学包；仅 ALT 详情模式显示）=====
+  if (prog > 0.005 && portDetailsVisible()) {
     ctx.strokeStyle = _labMix(coreColor, 0.95);
     ctx.lineWidth = 2.6 * k;
     ctx.lineCap = 'round';
