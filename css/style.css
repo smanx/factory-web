@@ -316,13 +316,13 @@ html, body {
   position: relative;
   width: 32px; height: 32px;
   border-radius: 3px;
-  border: 1px solid #37424f;
-  background: #222b35;
+  border: 1px solid #5d6f83;
+  background: #1a222c;
   cursor: pointer;
   overflow: visible;
 }
-.inv-slot:hover { border-color: #7f93ad; }
-.inv-slot.empty { background: rgba(34, 43, 53, .45); border-style: dashed; cursor: default; }
+.inv-slot:hover { border-color: #9fb4cc; }
+.inv-slot.empty { background: #131a22; border-color: #46566a; border-style: dashed; cursor: default; }
 .inv-slot.hidden { display: none; }
 .inv-slot:has(img) { border: 0; }
 .inv-slot img { width: 100%; height: 100%; display: block; border-radius: 0; object-fit: cover; }
@@ -685,13 +685,13 @@ html, body {
   position: relative;
   width: 32px; height: 32px;
   border-radius: 3px;
-  border: 1px solid #37424f;
-  background: #222b35;
+  border: 1px solid #5d6f83;
+  background: #1a222c;
   cursor: pointer;
   overflow: visible;
 }
-.logi-cell:hover { border-color: #7f93ad; }
-.logi-cell.empty { background: rgba(34,43,53,.45); border-style: dashed; cursor: pointer; }
+.logi-cell:hover { border-color: #9fb4cc; }
+.logi-cell.empty { background: #131a22; border-color: #46566a; border-style: dashed; cursor: pointer; }
 .logi-cell img { width: 100%; height: 100%; display: block; object-fit: cover; border-radius: 0; }
 .logi-cell .cnt {
   position: absolute; right: 0; bottom: 0;
@@ -700,10 +700,10 @@ html, body {
 }
 /* 请求格：绿色边框（物品将被机器人送达） */
 .req-cell { border-color: #3a9a4a; background: rgba(58,154,74,.10); }
-.req-cell.empty { border-color: #3a9a4a; background: rgba(58,154,74,.05); }
+.req-cell.empty { border-color: #3a9a4a; background: #152019; }
 /* 回收格：橙红边框（物品将被机器人运走回收） */
 .recycle-cell { border-color: #d06a3a; background: rgba(208,106,58,.10); }
-.recycle-cell.empty { border-color: #d06a3a; background: rgba(208,106,58,.05); }
+.recycle-cell.empty { border-color: #d06a3a; background: #221812; }
 .recycle-x { font-size: 8px; }
 /* 空格子的「+」提示符 */
 .logi-cell .req-plus {
@@ -794,17 +794,17 @@ html, body {
   position: relative;
   width: 32px; height: 32px;
   border-radius: 4px;
-  border: 1px solid #37424f;
-  background: #222b35;
+  border: 1px solid #5d6f83;
+  background: #1a222c;
   cursor: pointer;
   overflow: visible;
 }
-.bb-cell:hover { border-color: #7aa5e0; background: #2a3542; }
+.bb-cell:hover { border-color: #9fc0e8; background: #232e3b; }
 /* 蓝图选中交互：点击后图标跟随鼠标（放置幽灵），不再用边框高亮选中 */
 .bb-cell.sel { opacity: .55; }
 .bb-cell canvas, .bb-cell img { width: 100%; height: 100%; display: block; border-radius: 3px; object-fit: cover; }
 /* 蓝图库空槽：蓝图移走后留位不前移；背包选中蓝图点此格 = 移入该格 */
-.bb-cell.empty { background: rgba(34, 43, 53, .45); border-style: dashed; }
+.bb-cell.empty { background: #131a22; border-color: #46566a; border-style: dashed; }
 
 /* 蓝图详情页（右键格子打开） */
 .bb-detail-layout {
@@ -832,8 +832,8 @@ html, body {
   position: relative;
   width: 32px; height: 32px;
   border-radius: 3px;
-  border: 1px solid #37424f;
-  background: #222b35;
+  border: 1px solid #5d6f83;
+  background: #1a222c;
   overflow: visible;
 }
 .bp-edit-slot img { width: 100%; height: 100%; display: block; border-radius: 0; object-fit: cover; }
@@ -2602,15 +2602,11 @@ html, body {
 .mch-io-slot.display { cursor: default; }
 .mch-io-slot.display:hover { border-color: rgba(255,255,255,.1); background: rgba(0,0,0,.25); }
 .mch-io-slot.display .mch-io-n { cursor: default; }
-.mch-takein {
-  position: absolute; top: 2px; right: 2px;
-  width: 16px; height: 16px; line-height: 14px;
-  padding: 0; margin: 0; border: none; border-radius: 3px;
-  background: rgba(255,90,90,.85); color: #fff; font-size: 12px; font-weight: bold;
-  cursor: pointer; opacity: 0; transition: opacity .15s;
+/* 悬停背景（原料/产品槽统一）：图标铺满插槽时底色会被遮住，叠加一层金色半透明背景确保悬停可见 */
+.mch-io-slot:not(.display):hover::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  background: rgba(255,210,60,.18); pointer-events: none;
 }
-.mch-io-slot:hover .mch-takein { opacity: 1; }
-.mch-takein:hover { background: #ff4d4d; }
 .mch-io-n { font-size: 11px; color: #cdd6df; margin-top: 2px; white-space: nowrap; }
 .mch-prog { flex: 1; display: flex; align-items: center; min-width: 180px; }
 .mch-prog .bar {
@@ -2745,8 +2741,8 @@ html, body {
    选中项金色描边，未解锁显示 🔒 锁标 */
 #panel.recipe-wide .rcp-scroll .rcp-slot {
   cursor: pointer;
-  border: 1px solid #37424f;
-  background: #222b35;
+  border: 1px solid #5d6f83;
+  background: #1a222c;
 }
 #panel.recipe-wide .rcp-scroll .rcp-slot.sel {
   border-color: #ffd23c;
@@ -2812,14 +2808,14 @@ html, body {
 .chest-items .inv-slot {
   width: 32px; height: 32px;
   border-radius: 3px;
-  border: 1px solid #37424f;
-  background: #222b35;
+  border: 1px solid #5d6f83;
+  background: #1a222c;
   cursor: pointer;
   position: relative;
   overflow: visible;
 }
-.chest-items .inv-slot:hover { border-color: #7f93ad; }
-.chest-items .inv-slot.empty { background: rgba(34, 43, 53, .45); border-style: dashed; cursor: pointer; }
+.chest-items .inv-slot:hover { border-color: #9fb4cc; }
+.chest-items .inv-slot.empty { background: #131a22; border-color: #46566a; border-style: dashed; cursor: pointer; }
 .chest-items .inv-slot img { width: 100%; height: 100%; display: block; border-radius: 0; object-fit: cover; }
 .chest-items .inv-slot .cnt {
   position: absolute;
@@ -3180,7 +3176,7 @@ html, body {
 /* 机械臂筛选槽：与组装机插槽统一（32px、图标铺满、悬停金色高亮） */
 .ins-slot {
   width: 32px; height: 32px; position: relative;
-  background: rgba(0,0,0,.25); border: 1px solid rgba(255,255,255,.1); border-radius: 6px;
+  background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.28); border-radius: 6px;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
   overflow: visible; padding: 0; transition: all .15s;
 }
@@ -3246,7 +3242,7 @@ html, body {
 }
 .flt-item {
   width: 32px; height: 32px; padding: 0;
-  background: #1f2730; border: 1px solid #3a4550; border-radius: 3px;
+  background: #1a222c; border: 1px solid #5d6f83; border-radius: 3px;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
   position: relative;
 }
@@ -3275,7 +3271,7 @@ html, body {
 .cip-embed .flt-item,
 #panel .cip-embed .flt-item {
   padding: 0;
-  background: #1f2730;
+  background: #1a222c;
   border-radius: 3px;
   font-size: inherit;
   /* 图标铺满整格：与背包合成页 .inv-slot:has(img){border:0} 一致，去掉 1px 边框，
@@ -3283,7 +3279,7 @@ html, body {
      选中态仍靠 .flt-item.sel 的 inset 绿色内环高亮，不依赖边框。 */
   border: 0;
 }
-.cip-embed .flt-item:hover { background: #1f2730; }
+.cip-embed .flt-item:hover { background: #232e3b; }
 
 /* 设备面板配方头部（图标+名称）：悬停弹出配方卡的高亮反馈 */
 .asm3-recipe-item[data-rec-id] { cursor: help; padding: 2px 6px; margin: -2px -6px; border-radius: 6px; }

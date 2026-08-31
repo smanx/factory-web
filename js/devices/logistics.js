@@ -1006,9 +1006,7 @@ function logiChestPanelHtml(e) {
   right += '<div class="chest-items" id="chest-items">';
   right += chestSlotGridHtml(e);
   right += '</div>';
-  right += '<button data-action="chest-put" class="btn sm" id="btn-chest-put" title="把当前选中的背包物品全部存入箱子（未选中时不可用）">⬆ 存入选中物品</button>';
   if (kind === 'requester' || kind === 'buffer') {
-    right += '<div class="dim">' + ITEMS[e.type].desc + '</div>';
     if (kind === 'buffer') {
       right += '<div class="dim">缓冲箱：请求货物后，也会向物流网络供应库存，作为中转缓冲。</div>';
     }
@@ -1016,9 +1014,9 @@ function logiChestPanelHtml(e) {
     right += '<div class="chest-logi-area">' + chestLogiColHtml(e) + '</div>';
   } else {
     if (kind === 'storage') right += logiStorageFilterHtml(e);
-    right += '<div class="dim">' + ITEMS[e.type].desc + '</div>';
     if (total > 0) right += '<button data-action="takeout" id="btn-chest-takeout">取出全部 (' + total + ')</button>';
   }
+  right += '<div class="dim">' + ITEMS[e.type].desc + '</div>';
   const left = htmlInventory();
   return '<div class="inv-layout machine-layout chest-layout">' +
     '<div class="inv-col inv-col-left" id="inv-col-left"><div class="inv-col-head">🎒 玩家</div>' +

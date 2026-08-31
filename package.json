@@ -5,9 +5,9 @@
   "description": "工厂原型 - Factorio clone in browser",
   "scripts": {
     "data": "node tools/generate-game-data.js && node tools/generate-locale.js --check",
-    "serve": "npx http-server -p 8094 -c-1",
+    "serve": "http-server -p 8094 -c-1",
     "dev": "node build.js --dev --port 8095",
-    "serve:dist": "cd dist & npx http-server -p 8094 -c-1",
+    "serve:dist": "cd dist & http-server -p 8094 -c-1",
     "watch": "node build.js --watch",
     "build": "node build.js",
     "build:minify": "node build.js --minify",
@@ -15,7 +15,8 @@
   },
   "devDependencies": {
     "esbuild": "^0.25.0",
-    "fengari": "^0.1.5"
+    "fengari": "^0.1.5",
+    "http-server": "^14.1.1"
   },
   "allowScripts": {
     "esbuild@0.25.12": true

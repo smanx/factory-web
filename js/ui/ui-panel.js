@@ -1060,7 +1060,11 @@ function initPanelEvents() {
           openPanel('machinerecipe', mch);
         }
       } else if (act === 'feed-slot') {
-        // 点击右侧「原料/放入」槽：从背包放入该物品
+        // 点击「原料」槽：
+        //   持握物品 → 放入设备原料缓存；
+        //   左栏选中背包物品且为当前配方原料 → 放入该物品；
+        //   否则本格有原料 → 拿起整叠悬浮于鼠标（移到背包点击即取回）；
+        //   否则（空格）→ 从背包放入该物品。
         const mch = G.panelEnt;
         if (!mch || typeof mch.giveItem !== 'function') return;
         // 已持握物品（来自箱子/设备）→ 放入该设备原料缓存
@@ -1074,13 +1078,26 @@ function initPanelEvents() {
         const info = recipeDeviceInfo(mch);
         const rec = mch.recipe ? info.getRec(mch.recipe) : null;
         const isRecipeDev = !!(rec && Object.keys(rec.inp).length);
-        let target = id;
+        let sel = null;
         // 配方设备：若左栏已选中某个背包物品且是当前配方原料，优先放入该选中物品（对齐组装机原交互）
-        if (isRecipeDev) {
-          const heldItem = (typeof selItem === 'function') ? selItem() : null;
-          if (heldItem && rec.inp[heldItem]) target = heldItem;
+        if (isRecipeDev && typeof selItem === 'function') {
+          const heldItem = selItem();
+          if (heldItem && rec.inp[heldItem]) sel = heldItem;
+        }
+        if (!sel) {
+          // 未持握且未选中：本格有原料 → 拿起整叠悬浮于鼠标，移到背包/箱格点击即取回
+          const have = (mch.inp && mch.inp[id]) || 0;
+          if (have > 0) {
+            const lift = Math.min(have, stackSize(id));
+            pickupHeld(id, lift, { kind: 'min', ent: mch, sid: id });
+            toast('已拿起 ' + (ITEMS[id] ? ITEMS[id].name : id) + ' ×' + lift + '（悬浮于鼠标）：点击背包/箱格/设备格放入，再点本格放回，Q 取消');
+            if (typeof updateMachineLive === 'function') updateMachineLive();
+            else renderPanel(false);
+            return;
+          }
         }
         // 放入（流体走管道，仅处理可手动放入的固体）
+        const target = sel || id;
         if (FLUIDS.indexOf(target) >= 0) { toast(ITEMS[target].name + ' 为流体，请通过管道接入'); return; }
         if (isRecipeDev && !rec.inp[target]) { toast('该物品不是当前配方原料'); return; }
         const have = invCount(target);
@@ -1108,23 +1125,6 @@ function initPanelEvents() {
         if (have <= 0) { toast('暂无' + (ITEMS[id] ? ITEMS[id].name : id) + '可取出'); return; }
         const lift = Math.min(have, stackSize(id));
         pickupHeld(id, lift, { kind: 'mout', ent: mch, sid: id });
-        toast('已拿起 ' + (ITEMS[id] ? ITEMS[id].name : id) + ' ×' + lift + '（悬浮于鼠标）：点击背包/箱格/设备格放入，再点本格放回，Q 取消');
-        if (typeof updateMachineLive === 'function') updateMachineLive();
-        else renderPanel(false);
-      } else if (act === 'takein-slot') {
-        // 点击「原料」槽 − 按钮：未持握时拿起该原料整叠悬浮于鼠标；已持握时放入
-        const mch = G.panelEnt;
-        if (!mch) return;
-        if (G.held) {
-          placeHeld({ kind: 'min', ent: mch });
-          if (typeof updateMachineLive === 'function') updateMachineLive();
-          else renderPanel(false);
-          return;
-        }
-        const have = (mch.inp && mch.inp[id]) || 0;
-        if (have <= 0) { toast('设备中没有' + (ITEMS[id] ? ITEMS[id].name : id) + '可取出'); return; }
-        const lift = Math.min(have, stackSize(id));
-        pickupHeld(id, lift, { kind: 'min', ent: mch, sid: id });
         toast('已拿起 ' + (ITEMS[id] ? ITEMS[id].name : id) + ' ×' + lift + '（悬浮于鼠标）：点击背包/箱格/设备格放入，再点本格放回，Q 取消');
         if (typeof updateMachineLive === 'function') updateMachineLive();
         else renderPanel(false);
@@ -1452,7 +1452,7 @@ function initPanelEvents() {
   }
 }
 
-// 设备面板「原料」槽取出：从设备输入缓存取 1 件指定原料回背包（供右键/左上角 − 按钮调用）
+// 设备面板「原料」槽取出：从设备输入缓存取 1 件指定原料回背包（供右键调用）
 function takeInSlot(id) {
   const mch = G.panelEnt;
   if (!mch || typeof mch.takeInputItemOf !== 'function') return;

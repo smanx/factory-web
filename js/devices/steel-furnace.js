@@ -245,7 +245,7 @@ function steelFurnacePanelHtml(e) {
     h += '<button data-action="fuel" data-id="rocket-fuel">加入 5 火箭燃料 (' + invCount('rocket-fuel') + ')</button>';
   // 消耗/产出速率显示在面板靠前位置（燃料行之后）
   h += '<div id="mach-rate-block"></div>';
-  h += row('输入', Object.keys(e.inp).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(e.inp, { action: 'display' }) + '</div>' : '<span class="dim">空</span>', 'input');
+  h += row('输入', Object.keys(e.inp).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(e.inp, { action: 'feed-slot' }) + '</div>' : '<span class="dim">空</span>', 'input');
   for (const r of SMELTS) {
     const n = Math.min(invCount(r.inp), 25 - (e.inp[r.inp] || 0));
     if (n > 0) h += '<button data-action="feed" data-id="' + r.inp + '">放入' +
@@ -259,7 +259,7 @@ function steelFurnacePanelHtml(e) {
 }
 function steelFurnacePanelLive(e, api) {
   api.set('fuel', (e.fuelRocket > 0 || e.fuelSolid > 0 || e.fuelCoal > 0 || e.fuelWood > 0) ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'rocket-fuel': e.fuelRocket, 'solid-fuel': e.fuelSolid, 'coal': e.fuelCoal, 'wood': e.fuelWood }, { action: 'display' }) + '</div>' : dimSpan('无'));
-  api.set('input', Object.keys(e.inp).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(e.inp, { action: 'display' }) + '</div>' : dimSpan('空'));
+  api.set('input', Object.keys(e.inp).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(e.inp, { action: 'feed-slot' }) + '</div>' : dimSpan('空'));
   api.set('output', Object.keys(e.outp).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(e.outp, { action: 'take-slot' }) + '</div>' : dimSpan('空'));
   const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
   api.toggle('#btn-takeout', n > 0, '取回全部输出 (' + n + ')');

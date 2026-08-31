@@ -702,8 +702,8 @@ function updateRecipeMachineLive(e, body, api) {
     for (const k in rec.inp) {
       const cur = e.inp[k] || 0;
       const need = rec.inp[k];
-      inp += '<div class="mch-io-slot' + (cur >= need ? ' full' : '') + '" data-action="feed-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|配方需 ' + need + '，当前 ' + cur + '。左键放入，右键取出（或先选左侧物品再点击此槽放入该物品）">' +
-        '<img src="' + iconDataURL(k) + '">' + (cur > 0 ? '<button class="mch-takein" data-action="takein-slot" data-id="' + k + '" title="取回 1 件 ' + ITEMS[k].name + ' 到背包">−</button>' : '') + '<span class="mch-io-n">' + cur + '/' + need + '</span></div>';
+      inp += '<div class="mch-io-slot' + (cur >= need ? ' full' : '') + '" data-action="feed-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|配方需 ' + need + '，当前 ' + cur + '。点击拿起（移到背包点击即取回），右键取回 1 件；先选中左侧背包物品再点击此槽放入">' +
+        '<img src="' + iconDataURL(k) + '"><span class="mch-io-n">' + cur + '/' + need + '</span></div>';
     }
     api.set('mch-inp', inp);
     // 产品数量
@@ -1975,7 +1975,8 @@ function countStr(o) {
 // 所有设备面板中的「物品槽」统一渲染为组装机风格：32px 图标 + 右下角数量角标。
 // 支持三种交互动作：
 //   take-slot   —— 点击取回 1 件（设备实现 takeItemOf/takeItem 时可用）
-//   feed-slot   —— 点击放入 1 件（设备实现 giveItem 时可用，从背包取 1 件放入）
+//   feed-slot   —— 原料槽：未持握/未选中时点击拿起整叠悬浮于鼠标（移到背包点击即取回）；
+//                  持握物品或已选中背包原料时点击则放入设备（设备实现 giveItem 时可用）
 //   chest-take  —— 储物箱专用：点击取出 1 件回背包
 // 传参：
 //   o       —— { itemId: count } 物品与数量（已装填内容，非可放入清单）
@@ -1987,7 +1988,7 @@ function itemSlotsHtml(o, opts) {
     const n = o[k];
     if (!n) continue;
     const act = opts.action || 'take-slot';
-    let tip = ITEMS[k].name + '|当前 ' + n + (act === 'take-slot' ? '，点击取回 1 件' : (act === 'feed-slot' ? '，点击放入 1 件' : ''));
+    let tip = ITEMS[k].name + '|当前 ' + n + (act === 'take-slot' ? '，点击取回 1 件' : (act === 'feed-slot' ? '，点击拿起（移到背包点击即取回）' : ''));
     if (opts.tip) tip = opts.tip(k, n) || tip;
     const icon = iconDataURL(k);
     let inner = '<img src="' + icon + '">';
@@ -2670,8 +2671,8 @@ function recipeMachineRightHtml(e, info, rec) {
   h += '<div class="asm3-side asm3-inp"><div class="asm3-inp-row" data-live="mch-inp">';
   for (const k in rec.inp) {
     const cur = e.inp[k] || 0;
-    h += '<div class="mch-io-slot' + (cur >= rec.inp[k] ? ' full' : '') + '" data-action="feed-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|配方需 ' + rec.inp[k] + '，当前 ' + cur + '。左键放入，右键取出（或先选左侧物品再点击此槽放入该物品）">' +
-      '<img src="' + iconDataURL(k) + '">' + (cur > 0 ? '<button class="mch-takein" data-action="takein-slot" data-id="' + k + '" title="取回 1 件 ' + ITEMS[k].name + ' 到背包">−</button>' : '') + '<span class="mch-io-n">' + cur + '/' + rec.inp[k] + '</span></div>';
+    h += '<div class="mch-io-slot' + (cur >= rec.inp[k] ? ' full' : '') + '" data-action="feed-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|配方需 ' + rec.inp[k] + '，当前 ' + cur + '。点击拿起（移到背包点击即取回），右键取回 1 件；先选中左侧背包物品再点击此槽放入">' +
+      '<img src="' + iconDataURL(k) + '"><span class="mch-io-n">' + cur + '/' + rec.inp[k] + '</span></div>';
   }
   h += '</div></div>';
   // 进度条（组装机风格：内部显示百分比 + 剩余时间）
