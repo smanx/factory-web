@@ -82,7 +82,7 @@ function enterGame() {
   if (qb) qb.style.display = 'flex';
   const cq = document.getElementById('craft-queue');
   if (cq) cq.style.display = 'flex';
-  toast('WASD 移动 · 左键放建筑(覆盖建造) · 按住右键挖矿/砍树 · 右键拆除 · R 旋转 · F 拿取 · Q 取消/拾取朝向 · 中键/E 面板 · T 科技 · P 统计 · B 蓝图库 · Alt+B 创建蓝图 · Ctrl+C/X 复制/剪切 · Alt+D 红图 · Alt+U 绿图 · K/L 存读档');
+  toast('WASD 移动 · 左键放建筑(覆盖建造) · 按住右键挖矿/砍树 · 右键拆除 · R 旋转 · F 拾取地面物品 · Z 丢弃手持物品 · Q 清理光标/取消 · 面板内 Shift/Ctrl+点击快捷转移 · 中键/E 面板 · T 科技 · P 统计 · Shift+P 性能模式 · B 蓝图库 · Alt+B 创建蓝图 · Ctrl+C/X 复制/剪切 · Alt+D 红图 · Alt+U 绿图 · K/L 存读档');
 }
 
 // 退出到开始菜单（主页面）：隐藏游戏界面、显示开始菜单，并暂停游戏循环。

@@ -943,53 +943,143 @@ function htmlInventory(withActionId) {
 // ===== 个人物流区（对齐《异星工厂》Personal logistic request + Trash slots）=====
 // 中间物流区自上而下分为：
 //   顶部：两个开关 —— 「背包物流」总开关 + 「回收未请求物品」开关
-//   中部物流区：请求物品格子（每行 10 格，共 5 行 = 50 格）。格子中设置的物品会被物流机器人运到背包。
-//   底部物流回收区：回收物品格子（每行 10 格，共 3 行 = 30 格）。格子中设置的物品会被物流机器人从背包运走回收。
-// 数据源仍为 G.logiRequest（item->请求数量）与 G.trashSlots（item->true），
-// 格子按物品键顺序填充到固定数量的槽位中，语义与原有物流引擎一致。
+//   中部物流需求区（绿色虚线格）：请求物品格子（每行 10 格，共 5 行 = 50 格）。
+//     左键点击空格 → 弹出物品选择框（与机械臂筛选选择物品弹框同款样式，可选物品
+//     取子模块数据全集 filterChoices()），选中即设为该格请求物品；若该物品已在
+//     其它格请求，选择后切换到当前格。左键点击已有物品格 → 修改请求数量；
+//     右键点击已有物品格 → 清除该格请求。格子中设置的物品会被物流机器人运到背包。
+//   底部物流回收区（红色虚线格）：相当于一个实体箱子（每行 10 格，共 3 行 = 30 格）。
+//     与背包直接交互：把背包某格物品拖到回收格（或拿起该格物品后点击回收格）= 该格
+//     多少数量就整体移入回收区多少；点击回收区内物品 = 拿起于鼠标，再点击背包格放回
+//     背包（或拖回背包）。回收区内的物品会被物流机器人从这里取走运回网络。
+// 物流引擎数据源：请求区为 G.logiRequest（item->请求数量）+ G.logiReqGrid（格位物品）；
+// 回收区为 G.logiTrashGrid（每格 {item, count} 实体物品堆叠，格位稳定）。
 
 // 物流区（请求）格子数：每行 10 格，共 5 行
 const LOGI_REQ_ROWS = 5, LOGI_REQ_PER_ROW = 10;
 // 物流回收区格子数：每行 10 格，共 3 行
 const LOGI_RECYCLE_ROWS = 3, LOGI_RECYCLE_PER_ROW = 10;
+// 通过选择弹框新设请求时的默认请求数量
+const LOGI_REQ_DEFAULT = 10;
 
-// 渲染物流区请求格子（10x5）。已请求的物品按键序填充到前面的槽位。
+// 确保两个格子布局数组就位（旧档只有 item->数量 映射：按键序回填到前面的槽位）
+function ensureLogiSlots() {
+  const reqCap = LOGI_REQ_ROWS * LOGI_REQ_PER_ROW;
+  if (!Array.isArray(G.logiReqGrid) || G.logiReqGrid.length !== reqCap) {
+    G.logiReqGrid = new Array(reqCap).fill(null);
+    const keys = Object.keys(G.logiRequest || {}).filter(k => G.logiRequest[k] > 0 && ITEMS[k]).sort();
+    for (let i = 0; i < keys.length && i < reqCap; i++) G.logiReqGrid[i] = keys[i];
+  }
+  const trashCap = LOGI_RECYCLE_ROWS * LOGI_RECYCLE_PER_ROW;
+  let gt = G.logiTrashGrid;
+  const oldMarks = [];
+  if (!Array.isArray(gt) || gt.length !== trashCap) {
+    if (Array.isArray(gt)) for (const k of gt) if (typeof k === 'string' && ITEMS[k] && oldMarks.indexOf(k) < 0) oldMarks.push(k);
+    gt = null;
+  } else if (gt.some(s => typeof s === 'string')) {
+    for (const k of gt) if (typeof k === 'string' && ITEMS[k] && oldMarks.indexOf(k) < 0) oldMarks.push(k);
+    gt = null;
+  } else {
+    // 新格式：校验每格堆叠合法性（物品存在、数量为正），非法格位置空
+    gt = gt.map(s => (s && s.item && ITEMS[s.item] && s.count > 0) ? { item: s.item, count: s.count | 0 } : null);
+  }
+  if (G.trashSlots) for (const k in G.trashSlots) if (G.trashSlots[k] && ITEMS[k] && oldMarks.indexOf(k) < 0) oldMarks.push(k);
+  if (!gt) {
+    gt = new Array(trashCap).fill(null);
+    // 旧档「标记回收」迁移：把背包中该物品的全部数量搬入回收格（原本机器人也会全部运走）
+    let ci = 0;
+    for (const item of oldMarks) {
+      let left = invCount(item);
+      if (left <= 0) continue;
+      invTake(item, left);
+      const cap = stackSize(item);
+      while (left > 0 && ci < trashCap) { const n = Math.min(cap, left); gt[ci++] = { item, count: n }; left -= n; }
+      if (left > 0) invAdd(item, left);   // 回收格不够放时剩余退回背包
+    }
+  }
+  G.logiTrashGrid = gt;
+  G.trashSlots = null;
+}
+
+// 设置第 idx 个请求格的物品为 item：若该物品已在其它格 → 切换到本格；本格原物品被替换掉
+function logiReqSetSlot(idx, item) {
+  ensureLogiSlots();
+  if (!G.logiRequest) G.logiRequest = {};
+  const g = G.logiReqGrid;
+  for (let i = 0; i < g.length; i++) if (g[i] === item && i !== idx) g[i] = null;
+  const old = g[idx];
+  g[idx] = item;
+  if (old && old !== item && g.indexOf(old) < 0) delete G.logiRequest[old];
+  if (!(G.logiRequest[item] > 0)) G.logiRequest[item] = LOGI_REQ_DEFAULT;
+}
+// 清除第 idx 个请求格（该物品不再占用任何格时同步删除请求量）
+function logiReqClearSlot(idx) {
+  ensureLogiSlots();
+  const item = G.logiReqGrid[idx];
+  if (!item) return false;
+  G.logiReqGrid[idx] = null;
+  if (G.logiReqGrid.indexOf(item) < 0 && G.logiRequest) delete G.logiRequest[item];
+  return true;
+}
+// ===== 物流回收区（实体箱子模型）：G.logiTrashGrid 每格 {item, count} 或 null =====
+// 回收区内某物品的总数量
+function trashGridCount(item) {
+  let n = 0;
+  for (const s of G.logiTrashGrid || []) if (s && s.item === item) n += s.count;
+  return n;
+}
+// 从回收区取出 n 件指定物品（逐格扣减），返回实际取出件数
+function trashGridTake(item, n) {
+  let left = n;
+  const g = G.logiTrashGrid || [];
+  for (let i = 0; i < g.length && left > 0; i++) {
+    const s = g[i];
+    if (s && s.item === item) {
+      const c = Math.min(s.count, left);
+      s.count -= c; left -= c;
+      if (s.count <= 0) g[i] = null;
+    }
+  }
+  return n - left;
+}
+
+// 渲染物流需求区格子（10x5）。每格显示 G.logiReqGrid 中登记的物品（格位固定）。
 function logiReqGridHtml() {
+  ensureLogiSlots();
   const lreq = G.logiRequest || {};
-  const keys = Object.keys(lreq).filter(k => lreq[k] > 0).sort();
   const cap = LOGI_REQ_ROWS * LOGI_REQ_PER_ROW;
   let h = '<div class="logi-grid" id="logi-req-grid">';
   for (let i = 0; i < cap; i++) {
-    const k = keys[i];
-    if (k) {
+    const k = G.logiReqGrid[i];
+    if (k && ITEMS[k]) {
       const have = invCount(k);
       const req = lreq[k] || 0;
-      h += '<div class="logi-cell req-cell" data-logireq="' + k + '" data-tip="' + ITEMS[k].name + '|请求 ' + req + '，已持有 ' + have + '。点击设置/清除请求">' +
+      h += '<div class="logi-cell req-cell" data-logireq="' + k + '" data-logireq-idx="' + i + '" data-tip="' + ITEMS[k].name + '|请求 ' + req + '，已持有 ' + have + '。左键修改数量，右键清除请求">' +
         '<img src="' + iconDataURL(k, 16) + '">' +
         '<span class="lreq-have cnt">' + req + '</span></div>';
     } else {
-      h += '<div class="logi-cell req-cell empty" data-logireq=""></div>';
+      h += '<div class="logi-cell req-cell empty" data-logireq="" data-logireq-idx="' + i + '" data-tip="物流需求|左键点击选择要请求的物品，物流机器人将送达背包">' +
+        '<span class="req-plus">+</span></div>';
     }
   }
   h += '</div>';
   return h;
 }
 
-// 渲染物流回收区格子（10x3）。已标记回收的物品按键序填充到前面的槽位。
+// 渲染物流回收区格子（10x3）。回收区相当于一个箱子：每格存放 {item, count} 实体物品堆叠。
 function logiRecycleGridHtml() {
-  const trash = G.trashSlots || {};
-  const keys = Object.keys(trash).filter(k => trash[k]).sort();
+  ensureLogiSlots();
   const cap = LOGI_RECYCLE_ROWS * LOGI_RECYCLE_PER_ROW;
   let h = '<div class="logi-grid" id="logi-recycle-grid">';
   for (let i = 0; i < cap; i++) {
-    const k = keys[i];
-    if (k) {
-      const have = invCount(k);
-      h += '<div class="logi-cell recycle-cell" data-logirecycle="' + k + '" data-tip="' + ITEMS[k].name + '|标记回收，持有 ' + have + '。点击取消回收">' +
-        '<img src="' + iconDataURL(k, 16) + '">' +
-        '<span class="recycle-x cnt">🗑</span></div>';
+    const s = G.logiTrashGrid[i];
+    if (s && s.item && ITEMS[s.item] && s.count > 0) {
+      h += '<div class="logi-cell recycle-cell" draggable="true" data-logirecycle="' + s.item + '" data-logirecycle-idx="' + i + '" data-tip="' + ITEMS[s.item].name + '|回收区物品 ×' + s.count + '。点击拿起后可放回背包；物流机器人会从这里取走运回网络">' +
+        '<img src="' + iconDataURL(s.item, 16) + '">' +
+        '<span class="cnt">' + s.count + '</span></div>';
     } else {
-      h += '<div class="logi-cell recycle-cell empty" data-logirecycle=""></div>';
+      h += '<div class="logi-cell recycle-cell empty" data-logirecycle="" data-logirecycle-idx="' + i + '" data-tip="物流回收区|把背包物品拖到这里（或拿起后点击）即存入该格，机器人会从这里运走">' +
+        '<span class="req-plus">+</span></div>';
     }
   }
   h += '</div>';

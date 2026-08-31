@@ -498,7 +498,7 @@ function refreshPerf() {
   PERF.devices = dev.arr;
   PERF.activeEnts = dev.active;
   PERF.staticEnts = dev.staticN;
-  PERF.lodState = (typeof LOD === 'object' && LOD) ? (LOD.simple ? '简化（瓦片 ' + LOD.tilePx.toFixed(1) + 'px < ' + LOD_SIMPLE_PX + 'px）' : '完整') : '—';
+  PERF.lodState = (typeof LOD === 'object' && LOD) ? (LOD.simple ? ((G.settings && G.settings.perfMode && LOD.tilePx >= LOD_SIMPLE_PX) ? '简化（性能模式）' : '简化（瓦片 ' + LOD.tilePx.toFixed(1) + 'px < ' + LOD_SIMPLE_PX + 'px）') : '完整') : '—';
   if (typeof terrainCacheStats === 'object') {
     PERF.cacheState = terrainCacheStats.state || '—';
     PERF.cacheRebuildMs = terrainCacheStats.rebuildMs || 0;

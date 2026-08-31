@@ -1,6 +1,6 @@
 'use strict';
 
-const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: true, combat: false, capDPR: true, lowRes: false, minimap: true, sound: true, soundVol: 0.8, altMode: true, weather: false, daylight: false, music: true, language: 'zh', showReach: false };  // sound:音效开关 soundVol:音量0~1  altMode:ALT模式(建筑配方/内容叠加显示)  language:界面数据语言('zh'中文/'en'English)  showReach:显示角色建造范围圆圈(默认关闭)
+const DEFAULT_SETTINGS = { infiniteOre: true, autoSave: true, combat: false, capDPR: true, lowRes: false, perfMode: false, minimap: true, sound: true, soundVol: 0.8, altMode: true, weather: false, daylight: false, music: true, language: 'zh', showReach: false };  // sound:音效开关 soundVol:音量0~1  altMode:ALT模式(建筑配方/内容叠加显示)  language:界面数据语言('zh'中文/'en'English)  showReach:显示角色建造范围圆圈(默认关闭)  perfMode:性能模式(强制简化渲染+抑制追帧,默认关闭)
 const SETTINGS_KEY = 'factory-settings-v1';
 
 // ===== 多语言名称（官方 locale 数据，单源 = locale.generated.js 的 GAME_LOCALE）=====

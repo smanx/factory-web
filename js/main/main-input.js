@@ -32,7 +32,20 @@ function bindInput() {
     }
     else if (k === 'tab') { ev.preventDefault(); G.panelMode === 'inv' ? closePanel() : openPanel('inv'); }
     // 统计/蓝图/红图/绿图快捷键（对齐《异星工厂》：P 统计、B 蓝图、Alt+D 红图、Alt+U 绿图）
-    else if (k === 'p') G.panelMode === 'stats' ? closePanel() : openPanel('stats');
+    // 性能模式（Shift+P）：一键开关简化渲染。原版 P=生产统计、Shift+P 未占用，故不冲突。
+    else if (k === 'p' && ev.shiftKey && !ev.ctrlKey && !ev.altKey) {
+      if (!ev.repeat) {
+        G.settings.perfMode = !G.settings.perfMode;
+        saveSettings();
+        toast(G.settings.perfMode ? '性能模式：开（简化渲染提升帧率，Shift+P 切回）' : '性能模式：关（完整渲染）');
+        // 设置面板开着时同步刷新复选框状态
+        if (G.panelMode === 'set' && typeof renderSettingsAsync === 'function') {
+          const _sb = document.getElementById('panel-body');
+          if (_sb) renderSettingsAsync(_sb, 0);
+        }
+      }
+    }
+    else if (k === 'p' && !ev.shiftKey) G.panelMode === 'stats' ? closePanel() : openPanel('stats');
     else if (!ev.altKey && k === 'b') { G.panelMode === 'bluebook' ? closePanel() : openPanel('bluebook'); }
     else if (ev.altKey && k === 'b') { ev.preventDefault(); if (G.blueMode) cancelBlueprint(); closePanel(); toggleBlueprint('bluecreate'); }
     // Ctrl+C 快速复制：进入蓝图模式并提示框选（框选松开鼠标后自动复制为蓝图粘贴）
@@ -51,8 +64,14 @@ function bindInput() {
     else if (!ev.altKey && k === 'h') flipAction('h');
     else if (k === 'v') flipAction('v');
     else if (k === 'f') { if (!tryEnterNearbyCar()) pickupAction(); }
-    // 全部拾取（对齐《异星工厂》：按住 Z 拾取范围内所有地面物品）
-    else if (k === 'z') { if (typeof pickupAllAction === 'function') pickupAllAction(); }
+    // Z：丢弃物品（对齐《异星工厂》）——鼠标持握时丢 1 个手持物品到地面；
+    // 否则丢弃当前选中的普通物品；两者皆无时回退为「拾取范围内全部地面物品」
+    else if (k === 'z') {
+      if (G.held) { if (typeof dropHeldToGround === 'function') dropHeldToGround(); }
+      else if (!(typeof dropHeldItemToGround === 'function' && dropHeldItemToGround())) {
+        if (typeof pickupAllAction === 'function') pickupAllAction();
+      }
+    }
     else if (k === 'e') {
       if (G.driving) { if (typeof exitCar === 'function') exitCar(); }
       else if (G.panelMode === 'inv') closePanel();
@@ -95,8 +114,14 @@ function bindInput() {
       }
     }
     else if (k === 'q') {
-      // Q 键：保留原快速取/取消选择逻辑（对齐《异星工厂》Q 取消选择）
-      if (G.driving) { if (typeof exitCar === 'function') exitCar(); }
+      // Q 键：优先「清理光标」——鼠标持握物品时把物品收回背包（对齐《异星工厂》）
+      if (G.held && !G.driving) {
+        if (typeof heldToBackpack === 'function') heldToBackpack();
+        if (G.panelMode) renderPanel(false);
+        uiDirty = true;
+      }
+      // 否则保留原快速取/取消选择逻辑（对齐《异星工厂》Q 取消选择）
+      else if (G.driving) { if (typeof exitCar === 'function') exitCar(); }
       else if (G.blueMode) {
         cancelBlueprint();
       } else if (G.deconstructMode) {
@@ -181,6 +206,16 @@ function bindInput() {
       return;
     }
     const hovered = G.cursorTile ? entAt(G.cursorTile.tx, G.cursorTile.ty) : null;
+    // Ctrl+左/右键：与实体快速转移（对齐《异星工厂》：不打开面板直接存取物品）。
+    // 左键整组、右键一半；空手取出、手持/选中物品放入（设备只收其需要的物品）。
+    if (ev.ctrlKey && !ev.altKey && !ev.shiftKey && hovered && G.cursorTile &&
+        (ev.button === 0 || ev.button === 2) && withinReach(G.cursorTile.tx, G.cursorTile.ty) &&
+        typeof quickTransferEntity === 'function' && quickTransferEntity(hovered, ev.button === 2)) {
+      if (G.panelMode === 'machine' && G.panelEnt === hovered) {
+        if (typeof updateMachineLive === 'function') updateMachineLive(); else renderPanel(false);
+      }
+      return;
+    }
     if (ev.button === 0) {
       // Shift+左键“粘贴设置”，与普通左键建造（默认支持覆盖）区分开
       if (ev.shiftKey && !ev.ctrlKey && hovered) { pasteSettings(hovered); return; }
@@ -244,7 +279,7 @@ function bindInput() {
 
   window.addEventListener('resize', resize);
   document.getElementById('game').addEventListener('click', ev => {
-    if (ev.button !== 0 || ev.shiftKey) return;
+    if (ev.button !== 0 || ev.shiftKey || ev.ctrlKey) return;   // Ctrl+左键为快速转移（见 mousedown），不打开面板
     if (G.blueMode) return;   // 蓝图/红图模式下不触发面板
     updateCursorTile(ev.clientX, ev.clientY);
     if (!G.cursorTile) return;
@@ -562,9 +597,11 @@ function loop(ts) {
   let _swMs = 0;
   if (!paused) {
     // 累积器模式：把本帧真实流逝时间（乘时间缩放）累加，按固定步长 TICK 补跑世界更新。
+    // 性能模式：单帧补跑上限 5→2，抑制“渲染慢→掉帧→补更多逻辑步→更慢”的追帧螺旋，帧率优先。
+    const maxSteps = (G.settings && G.settings.perfMode) ? 2 : MAX_TICK_STEPS;
     loop.acc += raw * ((G.dbg && G.dbg.timeScale) || 1);
     let steps = 0;
-    while (loop.acc >= TICK && steps < MAX_TICK_STEPS) {
+    while (loop.acc >= TICK && steps < maxSteps) {
       G.time += TICK;      // 世界时间以固定步长推进
       const _tw0 = _perfOn ? performance.now() : 0;
       stepWorld(TICK);
@@ -574,7 +611,7 @@ function loop(ts) {
       loop.upsSteps++;     // 实测：累计一次逻辑步
     }
     // 若累计滞后过多（远超单帧可补跑上限），丢弃多余累积，避免螺旋式死亡。
-    if (loop.acc > MAX_TICK_STEPS * TICK) loop.acc = 0;
+    if (loop.acc > maxSteps * TICK) loop.acc = 0;
     // 实测 UPS：以真实流逝时间按 0.5 秒短窗口累计步数，平滑回写目标。
     // 窗口越短、系数越大 → 上升响应越快；短窗口可消除高刷新率下空帧（0 步）带来的抖动。
     // （总体跟随 timeScale，且如实反映 MAX_TICK_STEPS 与渲染 FPS 封顶。）

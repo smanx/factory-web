@@ -498,6 +498,27 @@ function dropHeldItemToGround() {
   return true;
 }
 
+// 玩家按 Z 丢弃物品（对齐需求）：把鼠标持握（光标）的物品丢 1 个到前方地面，
+// 前方不可放则放脚下；持握数量减到 0 时清空光标。
+function dropHeldToGround() {
+  const h = G.held; if (!h) return false;
+  let tx = Math.floor(G.player.x / TILE) + DX[G.player.dir];
+  let ty = Math.floor(G.player.y / TILE) + DY[G.player.dir];
+  if (groundTileBlocked(tx, ty)) { tx = Math.floor(G.player.x / TILE); ty = Math.floor(G.player.y / TILE); }
+  if (groundTileBlocked(tx, ty)) return false;
+  addGroundItem(tx, ty, h.id, 1);
+  h.count--;
+  if (h.count <= 0) {
+    G.held = null;
+    G.quickSel = null;
+    G.sel = -1;
+    if (typeof refreshHotbar === 'function') refreshHotbar();
+  }
+  if (typeof playSfx === 'function') playSfx('loot');
+  uiDirty = true;
+  return true;
+}
+
 // ===== 设备切换配方时返还已投入原料（对齐《异星工厂》：切换配方返还残留物料） =====
 // 组装机/化工/炼油/离心机在切换或清除配方时，把已投入但未消耗的原料与已产出的
 // 成品返还到机器旁：固体掉落到旁边地面（addGroundItem，同格同种自动合并），

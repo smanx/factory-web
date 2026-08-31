@@ -75,6 +75,8 @@ function spawnSteam(wx, wy, opts) {
 // 每帧更新粒子
 function updateParticles(dt) {
   const arr = G.particles;
+  // 性能模式：不再更新/保留粒子，直接清空（关闭性能模式后设备工作会重新自然生成）
+  if (G.settings && G.settings.perfMode) { if (arr) arr.length = 0; return; }
   if (!arr || !arr.length) return;
   // 原地压缩：避免对已消亡粒子反复 splice 造成元素移动（对齐分支 compactFilter 优化方向）
   let j = 0;

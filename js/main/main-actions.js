@@ -18,6 +18,8 @@ function tryEnterNearbyCar() {
 }
 
 function pickupAction() {
+  // 优先拾取地面上的物品（对齐需求：F 捡起角色附近地面上的物品）
+  if (pickupGroundNearby()) return;
   let t = null;
   if (G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) t = G.cursorTile;
   else {
@@ -36,6 +38,37 @@ function pickupAction() {
   invAdd(got);
   if (typeof playSfx === 'function') playSfx('pickup');
   uiDirty = true;
+}
+
+// F 拾取地面物品：优先光标格（可及范围内），其次角色附近可及范围内最近的一堆；
+// 受背包堆叠上限约束，放不下的留在原地。拾取到任意数量返回 true。
+function pickupGroundNearby() {
+  if (!G.groundItems || G.groundItems.length === 0) return false;
+  let target = null;
+  if (G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
+    target = G.groundItems.find(g => !g.taken && g.tx === G.cursorTile.tx && g.ty === G.cursorTile.ty) || null;
+  }
+  if (!target) {
+    const p = G.player, r2 = REACH_PX * REACH_PX;
+    let bd = Infinity;
+    for (const g of G.groundItems) {
+      if (g.taken) continue;
+      const dx = g.tx * TILE + TILE / 2 - p.x, dy = g.ty * TILE + TILE / 2 - p.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 <= r2 && d2 < bd) { bd = d2; target = g; }
+    }
+  }
+  if (!target) return false;
+  const got = invAdd(target.item, target.n);
+  if (got <= 0) { toast('背包已满，捡不起来'); return true; }
+  target.n -= got;
+  if (target.n <= 0) target.taken = true;
+  G.groundItems = compactFilter(G.groundItems, g => !g.taken);
+  if (G.groundItems.length === 0) G.groundItems = undefined;
+  if (typeof playSfx === 'function') playSfx('pickup');
+  toast('拾取 ' + (ITEMS[target.item] ? ITEMS[target.item].name : target.item) + ' ×' + got);
+  uiDirty = true;
+  return true;
 }
 
 // ===== 全部拾取（对齐《异星工厂》：按住 Z 拾取范围内所有地面物品）=====

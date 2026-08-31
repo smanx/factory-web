@@ -121,22 +121,68 @@ function initPanelEvents() {
   // 实现：用 dataTransfer 记录来源格 data-slotidx；drop 时按目标格 data-slotidx 落位。
   // 自动物品（排在手动槽之后、无 data-slotidx 归属到 manual 的物品）也可被拖拽：落位后
   // 即成为手动摆放物品；拖拽目标格仅限玩家背包网格（#inv-items 内）。
-  let _dragFromSlot = null;
+  let _dragFromSlot = null;    // 背包来源格（从背包拖出）
+  let _dragFromItem = null;    // 背包来源格的物品 ID
+  let _dragFromTrash = null;   // 回收区来源格（从物流回收区拖出）
   document.getElementById('panel-body').addEventListener('dragstart', ev => {
     const slot = ev.target.closest && ev.target.closest('#inv-items .inv-slot[data-itemid][data-slotidx]');
-    if (!slot) return;
-    _dragFromSlot = +slot.dataset.slotidx;
-    ev.dataTransfer.effectAllowed = 'move';
-    try { ev.dataTransfer.setData('text/plain', 'inv-slot:' + _dragFromSlot); } catch (e) {}
+    if (slot) {
+      _dragFromTrash = null;
+      _dragFromSlot = +slot.dataset.slotidx;
+      _dragFromItem = slot.dataset.itemid || null;
+      ev.dataTransfer.effectAllowed = 'move';
+      try { ev.dataTransfer.setData('text/plain', 'inv-slot:' + _dragFromSlot); } catch (e) {}
+      return;
+    }
+    const rc = ev.target.closest && ev.target.closest('.logi-cell[data-logirecycle]');
+    if (rc && rc.dataset.logirecycle) {
+      _dragFromSlot = null; _dragFromItem = null;
+      _dragFromTrash = +rc.dataset.logirecycleIdx;
+      ev.dataTransfer.effectAllowed = 'move';
+      try { ev.dataTransfer.setData('text/plain', 'trash-slot:' + _dragFromTrash); } catch (e) {}
+    }
   });
   document.getElementById('panel-body').addEventListener('dragover', ev => {
-    const slot = ev.target.closest && ev.target.closest('#inv-items .inv-slot[data-slotidx]');
-    if (!slot || _dragFromSlot == null) return;
-    ev.preventDefault();
-    ev.dataTransfer.dropEffect = 'move';
+    const invTgt = ev.target.closest && ev.target.closest('#inv-items .inv-slot[data-slotidx]');
+    const trashTgt = ev.target.closest && ev.target.closest('.logi-cell[data-logirecycle]');
+    if ((invTgt || trashTgt) && (_dragFromSlot != null || _dragFromTrash != null)) {
+      ev.preventDefault();
+      ev.dataTransfer.dropEffect = 'move';
+    }
   });
   document.getElementById('panel-body').addEventListener('drop', ev => {
+    // 回收区格 → 背包格：把该格整叠物品移回背包
+    if (_dragFromTrash != null) {
+      const tgt = ev.target.closest && ev.target.closest('#inv-items .inv-slot[data-slotidx]');
+      if (tgt) {
+        ev.preventDefault();
+        const pre = (G.logiTrashGrid || [])[_dragFromTrash];
+        const preName = pre && ITEMS[pre.item] ? ITEMS[pre.item].name : pre && pre.item;
+        const moved = dragTrashToInv(+tgt.dataset.slotidx, _dragFromTrash);
+        if (moved > 0) {
+          toast('已将 ' + preName + ' ×' + moved + ' 放回背包');
+          uiDirty = true;
+          if (typeof renderPanel === 'function') renderPanel(false);
+        } else if (moved === 0) {
+          toast('背包放不下');
+        }
+      }
+      _dragFromTrash = null;
+      return;
+    }
     if (_dragFromSlot == null) return;
+    // 背包物品 → 回收区格：该格有多少数量就整体移入回收区多少
+    const rc = ev.target.closest && ev.target.closest('.logi-cell[data-logirecycle]');
+    if (rc) {
+      ev.preventDefault();
+      if (dragInvToTrash(_dragFromSlot, +rc.dataset.logirecycleIdx)) {
+        toast('已放入回收区，物流机器人将把它运走');
+        uiDirty = true;
+        if (typeof renderPanel === 'function') renderPanel(false);
+      }
+      _dragFromSlot = null; _dragFromItem = null;
+      return;
+    }
     const tgt = ev.target.closest && ev.target.closest('#inv-items .inv-slot[data-slotidx]');
     if (tgt) {
       ev.preventDefault();
@@ -148,10 +194,10 @@ function initPanelEvents() {
         if (typeof renderPanel === 'function') renderPanel(false);
       }
     }
-    _dragFromSlot = null;
+    _dragFromSlot = null; _dragFromItem = null;
   });
   document.getElementById('panel-body').addEventListener('dragend', ev => {
-    _dragFromSlot = null;
+    _dragFromSlot = null; _dragFromItem = null; _dragFromTrash = null;
   });
   document.getElementById('panel-body').addEventListener('click', async ev => {
     // 供“从文件导入存档”使用：打开原生文件选择框后若立刻 renderPanel 重建
@@ -273,11 +319,14 @@ function initPanelEvents() {
       renderPanel(false);
       return;
     }
-    // 物流区请求格子（10x5）：点击已有物品设置/清除请求；点击空槽放入当前选中物品
+    // 物流需求区格子（10x5）：左键点击空格 → 弹出物品选择框设置该格请求物品；
+    // 左键点击已有物品格 → 修改请求数量；右键点击已有物品格 → 清除该格请求（见 contextmenu）
     const reqCell = ev.target.closest('.logi-cell[data-logireq]');
     if (reqCell && G.panelMode === 'inv') {
+      const idx = +reqCell.dataset.logireqIdx;
       const item = reqCell.dataset.logireq;
       if (!G.logiRequest) G.logiRequest = {};
+      if (!item) { openLogiReqChooser(idx); return; }
       if (item) {
         // 已有物品：输入请求数量（0 清除）
         const cur = G.logiRequest[item] || 0;
@@ -286,44 +335,33 @@ function initPanelEvents() {
         if (inp === null) return;
         const v = parseInt(inp, 10);
         if (isNaN(v) || v <= 0) {
-          delete G.logiRequest[item];
+          logiReqClearSlot(idx);
           toast('已清除对 ' + ITEMS[item].name + ' 的请求');
         } else {
           G.logiRequest[item] = Math.min(v, 10000);
           toast('已请求 ' + ITEMS[item].name + ' ×' + G.logiRequest[item] + '，物流机器人将自动送达');
         }
-      } else {
-        // 空槽：放入当前选中物品
-        const held = (typeof selItem === 'function') ? selItem() : null;
-        if (!held || !ITEMS[held]) { toast('请先在左栏背包中选中要请求的物品'); return; }
-        if (G.logiRequest[held] != null) { toast(ITEMS[held].name + ' 已在物流区中'); return; }
-        const have = invCount(held);
-        const inp = window.prompt('设置「' + ITEMS[held].name + '」的请求数量（持有 ' + have + '）：', '10');
-        if (inp === null) return;
-        const v = parseInt(inp, 10);
-        if (isNaN(v) || v <= 0) { return; }
-        G.logiRequest[held] = Math.min(v, 10000);
-        toast('已请求 ' + ITEMS[held].name + ' ×' + G.logiRequest[held] + '，物流机器人将自动送达');
       }
       renderPanel(false);
       return;
     }
-    // 物流回收区格子（10x3）：点击已有物品取消回收；点击空槽放入当前选中物品标记回收
+    // 物流回收区格子（10x3）：相当于一个箱子，与背包直接交换实体物品。
+    //   持握物品时点击回收格 = 把手上这一叠放入该格（空格/同种合并，不同种整叠交换）
+    //   点击已有物品的回收格 = 把该格整叠拿起悬浮于鼠标，可点击背包格放回背包
+    //   拖拽背包格→回收格 / 回收格→背包格 同样直接移动整叠（见拖拽处理）
     const recycleCell = ev.target.closest('.logi-cell[data-logirecycle]');
     if (recycleCell && G.panelMode === 'inv') {
-      const item = recycleCell.dataset.logirecycle;
-      if (!G.trashSlots) G.trashSlots = {};
-      if (item) {
-        delete G.trashSlots[item];
-        toast('已取消对 ' + ITEMS[item].name + ' 的回收');
-      } else {
-        const held = (typeof selItem === 'function') ? selItem() : null;
-        if (!held || !ITEMS[held]) { toast('请先在左栏背包中选中要回收的物品'); return; }
-        if (G.trashSlots[held]) { toast(ITEMS[held].name + ' 已在回收区中'); return; }
-        G.trashSlots[held] = true;
-        toast('已设置 ' + ITEMS[held].name + ' 回收，物流机器人将把它从背包运走');
+      const idx = +recycleCell.dataset.logirecycleIdx;
+      if (G.held && G.held.src && ITEMS[G.held.id]) {
+        placeHeldToTrash(idx);
+        renderPanel(false);
+        return;
       }
-      renderPanel(false);
+      const st = (G.logiTrashGrid || [])[idx];
+      if (st && st.item && ITEMS[st.item] && st.count > 0) {
+        heldTrashPickup(idx);
+        renderPanel(false);
+      }
       return;
     }
     // 蓝图编辑界面（Alt+B 框选后弹出）：创建蓝图放置/入背包/入快捷栏
@@ -606,6 +644,58 @@ function initPanelEvents() {
     // 装甲车/坦克装备网格点击
     if (typeof vehEquipPanelClick === 'function' && vehEquipPanelClick(ev.target)) {
       return;
+    }
+    // ===== 快捷转移（对齐《异星工厂》）：Shift+左键 移动一整组 / Ctrl+左键 移动全部同类 =====
+    // 仅在设备/箱子交互面板中生效：点击背包格 → 转入当前容器；点击容器格 → 转入背包。
+    // 设备（如组装机）只接收其需要的物品：giveItem 自带配方校验，不需要的物品放不进去。
+    if (!ev.altKey && (ev.shiftKey || ev.ctrlKey) && !G.held && G.panelMode === 'machine' && G.panelEnt) {
+      const qmAll = ev.ctrlKey && !ev.shiftKey;
+      const invEl = ev.target.closest && ev.target.closest('#inv-items .inv-slot[data-slotidx]');
+      const chestEl = ev.target.closest && ev.target.closest('[data-chestslot]');
+      const feedEl = ev.target.closest && ev.target.closest('.mch-io-slot[data-action="feed-slot"]');
+      const takeEl = ev.target.closest && ev.target.closest('.mch-io-slot[data-action="take-slot"]');
+      let moved = 0, qmId = null;
+      if (invEl && !invEl.closest('[data-action]')) {
+        const st = invStackSlots()[+invEl.dataset.slotidx];
+        if (st && st.id != null) {
+          qmId = st.id;
+          moved = quickMoveInvToEnt(G.panelEnt, st.id, qmAll ? invCount(st.id) : st.count);
+        }
+      } else if (chestEl) {
+        const chest = G.panelEnt;
+        const slot = chest.slots && chest.slots[+chestEl.dataset.chestslot];
+        if (slot) {
+          qmId = slot.item;
+          moved = quickMoveEntToInv(chest, slot.item, qmAll ? chest.countOf(slot.item) : slot.count);
+        }
+      } else if (feedEl) {
+        const mch = G.panelEnt;
+        const have = (mch.inp && mch.inp[feedEl.dataset.id]) || 0;
+        if (have > 0) {
+          qmId = feedEl.dataset.id;
+          moved = quickMoveEntToInv(mch, qmId, qmAll ? have : Math.min(have, stackSize(qmId)), 'in');
+        }
+      } else if (takeEl) {
+        const mch = G.panelEnt;
+        const have = (mch.outp && mch.outp[takeEl.dataset.id]) || 0;
+        if (have > 0) {
+          qmId = takeEl.dataset.id;
+          moved = quickMoveEntToInv(mch, qmId, qmAll ? have : Math.min(have, stackSize(qmId)), 'out');
+        }
+      }
+      if (invEl || chestEl || feedEl || takeEl) {
+        if (moved > 0) {
+          if (typeof playSfx === 'function') playSfx('click');
+          toast((qmAll ? '已转移全部 ' : '已转移一整组 ') + (ITEMS[qmId] ? ITEMS[qmId].name : qmId) + ' ×' + moved);
+        } else if (qmId != null) {
+          toast(qmAll ? '已全部转移或放不下' : '放不进去：目标已满或该设备不接收此物品');
+        }
+        if (typeof updateMachineLive === 'function') updateMachineLive();
+        else renderPanel(false);
+        refreshHotbar();
+        uiDirty = true;
+        return;
+      }
     }
     // 机械臂爪上取下的物品（G.armGrab 抓取状态）→ 点击背包空格放入背包
     // （点击移动进行中时优先执行移动，避免冲突）
@@ -1225,6 +1315,55 @@ function initPanelEvents() {
       openPanel('bluebook');
       return;
     }
+    // 物流需求区格子：右键清除该格的请求物品
+    const reqCellRC = ev.target.closest && ev.target.closest('.logi-cell[data-logireq]');
+    if (reqCellRC && G.panelMode === 'inv' && reqCellRC.dataset.logireq) {
+      ev.preventDefault();
+      const itRC = reqCellRC.dataset.logireq;
+      logiReqClearSlot(+reqCellRC.dataset.logireqIdx);
+      toast('已清除 ' + (ITEMS[itRC] ? ITEMS[itRC].name : itRC) + ' 的请求');
+      renderPanel(false);
+      return;
+    }
+    // ===== Shift+右键：拿取/移动一半（对齐《异星工厂》：堆叠一分为二 / 只移一半）=====
+    // 空手点击某格 → 把该格物品的一半拿到鼠标；已持握物品点击目标格 → 把持握物品的一半放入。
+    if (ev.shiftKey && !ev.ctrlKey && !ev.altKey && G.panelMode === 'machine' && G.panelEnt) {
+      const ent = G.panelEnt;
+      const invEl = ev.target.closest && ev.target.closest('#inv-items .inv-slot[data-slotidx]');
+      const chestEl = ev.target.closest && ev.target.closest('[data-chestslot]');
+      const feedEl = ev.target.closest && ev.target.closest('.mch-io-slot[data-action="feed-slot"]');
+      const takeEl = ev.target.closest && ev.target.closest('.mch-io-slot[data-action="take-slot"]');
+      if (invEl || chestEl || feedEl || takeEl) {
+        ev.preventDefault();
+        if (G.held) {
+          const halfId = G.held.id;
+          let target = null;
+          if (invEl) target = { kind: 'inv', slot: +invEl.dataset.slotidx };
+          else if (chestEl) target = { kind: 'chest', ent, slot: +chestEl.dataset.chestslot };
+          else if (feedEl) target = { kind: 'min', ent };
+          else target = { kind: 'mout', ent, sid: takeEl.dataset.id };
+          const moved = placeHeldHalf(target);
+          if (moved > 0) {
+            if (typeof playSfx === 'function') playSfx('click');
+            toast('已放入一半 ' + (ITEMS[halfId] ? ITEMS[halfId].name : halfId) + ' ×' + moved);
+          } else {
+            toast('放不进去：目标已满或该设备不接收此物品');
+          }
+        } else if (invEl) {
+          pickupHalfToCursorInv(+invEl.dataset.slotidx);
+        } else if (chestEl) {
+          pickupHalfToCursorChest(ent, +chestEl.dataset.chestslot);
+        } else if (feedEl) {
+          pickupHalfToCursorMachine(ent, feedEl.dataset.id, 'in');
+        } else {
+          pickupHalfToCursorMachine(ent, takeEl.dataset.id, 'out');
+        }
+        if (typeof updateMachineLive === 'function') updateMachineLive();
+        else renderPanel(false);
+        uiDirty = true;
+        return;
+      }
+    }
     // 设备面板「原料」槽：右键取回 1 件原料到背包
     if (G.panelMode === 'machine' && G.panelEnt) {
       const islot = ev.target.closest && ev.target.closest('.mch-io-slot[data-action="feed-slot"]');
@@ -1357,6 +1496,7 @@ async function htmlSettings() {
   h += '<div class="sec">性能优化</div>';
   h += '<label class="setrow"><input type="checkbox" data-set="capDPR"' + (G.settings.capDPR ? ' checked' : '') + '> 限制高清缩放（DPR ≤ 1.5，降载高分屏）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="lowRes"' + (G.settings.lowRes ? ' checked' : '') + '> 省电模式（降至半分辨率，显著降 GPU 负载）</label>';
+  h += '<label class="setrow"><input type="checkbox" data-set="perfMode"' + (G.settings.perfMode ? ' checked' : '') + '> 性能模式（强制简化渲染：传送带/机械臂去动画、关阴影/水波/粒子等细节，显著提升帧率，Shift+P 切换）</label>';
   // 星际旅行（Space Age 行星切换）：研究「空间平台」科技后解锁星际旅行
   h += '<div class="sec">星际旅行（Space Age）</div>';
   if (typeof planetId !== 'function' || typeof PLANET_OPTIONS === 'undefined') {
@@ -1583,6 +1723,7 @@ function heldValid() {
 function heldSrcRemove(n) {
   const h = G.held; const s = h.src;
   if (s.kind === 'chest') { const st = s.ent.slots[s.slot]; if (st) { st.count -= n; if (st.count <= 0) s.ent.slots[s.slot] = null; } }
+  else if (s.kind === 'trash') { const st = (G.logiTrashGrid || [])[s.slot]; if (st) { st.count -= n; if (st.count <= 0) G.logiTrashGrid[s.slot] = null; } }
   else if (s.kind === 'mout') { s.ent.outp[s.sid] = (s.ent.outp[s.sid] || 0) - n; if (s.ent.outp[s.sid] <= 0) delete s.ent.outp[s.sid]; }
   else if (s.kind === 'min') { s.ent.inp[s.sid] = (s.ent.inp[s.sid] || 0) - n; if (s.ent.inp[s.sid] <= 0) delete s.ent.inp[s.sid]; }
 }
@@ -1626,12 +1767,126 @@ function heldReturn() {
     if (!st) s.ent.slots[s.slot] = { item: h.id, count: h.count };
     else if (st.item === h.id) st.count += h.count;
     else ok = false;
+  } else if (s.kind === 'trash') {
+    ensureLogiSlots();
+    const st = G.logiTrashGrid[s.slot];
+    if (!st) G.logiTrashGrid[s.slot] = { item: h.id, count: h.count };
+    else if (st.item === h.id) st.count += h.count;
+    else ok = false;
   } else if (s.kind === 'mout') { s.ent.outp[s.sid] = (s.ent.outp[s.sid] || 0) + h.count; }
   else if (s.kind === 'min') { s.ent.inp[s.sid] = (s.ent.inp[s.sid] || 0) + h.count; }
   else ok = false;
   if (!ok) invAdd(h.id, h.count);   // 原格已被占：退回背包
   G.held = null;
   uiDirty = true;
+}
+
+// ===== 物流回收区（实体箱子）与背包/鼠标的整叠移动 =====
+// 点击回收格：把该格整叠物品拿起悬浮于鼠标（src.kind='trash'），可点击背包格放回背包
+function heldTrashPickup(idx) {
+  ensureLogiSlots();
+  const st = G.logiTrashGrid[idx];
+  if (!st || !ITEMS[st.item] || st.count <= 0) return;
+  G.logiTrashGrid[idx] = null;
+  G.held = { id: st.item, count: st.count, src: { kind: 'trash', slot: idx } };
+  G._clickMoveFrom = null;
+  G.quickSel = st.item;
+  G.sel = -1;
+  if (typeof refreshHotbar === 'function') refreshHotbar();
+  if (typeof playSfx === 'function') playSfx('select');
+  uiDirty = true;
+}
+// 把持握物品放入回收格 idx：空格/同种 → 整叠放入；不同种 → 整叠交换；点回原格 → 放回
+function placeHeldToTrash(idx) {
+  const h = G.held; if (!h) return false;
+  ensureLogiSlots();
+  const g = G.logiTrashGrid;
+  const s = h.src;
+  if (s.kind === 'trash' && s.slot === idx) { heldReturn(); return true; }
+  const tgt = g[idx];
+  if (tgt && tgt.item !== h.id) {
+    // 交换：手持放入该格，该格原堆叠拿起（来源记为本格，取消时放回背包/原处）
+    g[idx] = { item: h.id, count: h.count };
+    G.held = { id: tgt.item, count: tgt.count, src: { kind: 'trash', slot: idx } };
+    G.quickSel = tgt.item;
+    if (typeof playSfx === 'function') playSfx('click');
+    toast('已交换：手持 ' + (ITEMS[tgt.item] ? ITEMS[tgt.item].name : tgt.item) + ' ×' + tgt.count);
+    uiDirty = true;
+    return true;
+  }
+  if (tgt) tgt.count += h.count; else g[idx] = { item: h.id, count: h.count };
+  const nm = ITEMS[h.id] ? ITEMS[h.id].name : h.id;
+  G.held = null;
+  G.quickSel = null; G.sel = -1;
+  if (typeof refreshHotbar === 'function') refreshHotbar();
+  if (typeof playSfx === 'function') playSfx('click');
+  toast('已将 ' + nm + ' 放入回收区，物流机器人将把它运走');
+  uiDirty = true;
+  return true;
+}
+// 拖拽：把背包第 from 格的整叠物品移入回收格 to（空格/同种合并；不同种整叠交换）
+function dragInvToTrash(from, to) {
+  const st = (G.invSlots || [])[from];
+  if (!st || st.id == null || !(st.count > 0) || !ITEMS[st.id]) return false;
+  ensureLogiSlots();
+  const g = G.logiTrashGrid;
+  const tgt = g[to];
+  if (tgt && tgt.item !== st.id && !ITEMS[tgt.item]) return false;
+  invFreezeStacks();
+  const id = st.id, count = st.count;
+  G.invSlots[from] = null;
+  invTake(id, count);
+  if (tgt) {
+    // 不同种交换：回收格原堆叠换回背包来源格（先确认背包放得下）
+    const room = invRoomFor(tgt.item, tgt.count, invUsedSlots(), invSlotCount());
+    if (room < tgt.count) {
+      invAdd(id, count); G.invSlots[from] = { id, count };
+      trimInvSlotsTail();
+      toast('背包放不下换回的 ' + (ITEMS[tgt.item] ? ITEMS[tgt.item].name : tgt.item) + ' ×' + tgt.count);
+      return false;
+    }
+    const zId = tgt.item, zCount = tgt.count;
+    g[to] = { item: id, count };
+    const a = invAdd(zId, zCount);
+    if (a > 0) G.invSlots[from] = { id: zId, count: a };
+  } else {
+    g[to] = { item: id, count };
+  }
+  trimInvSlotsTail();
+  return true;
+}
+// 拖拽：把回收格 from 的整叠物品移入背包第 to 格（空格/同种合并；不同种整叠交换）
+function dragTrashToInv(to, from) {
+  ensureLogiSlots();
+  const g = G.logiTrashGrid;
+  const st = g[from];
+  if (!st || !ITEMS[st.item] || !(st.count > 0)) return 0;
+  const tgt = (G.invSlots || [])[to];
+  if (tgt && tgt.id != null && tgt.id !== st.item) {
+    // 不同种交换：先确认双方都放得下
+    invFreezeStacks();
+    const tId = st.item, tCount = st.count;
+    G.invSlots[to] = null;
+    invTake(tgt.id, tgt.count);
+    const room = invRoomFor(tId, tCount, invUsedSlots(), invSlotCount());
+    if (room < tCount) {
+      invAdd(tgt.id, tgt.count); G.invSlots[to] = { id: tgt.id, count: tgt.count };
+      trimInvSlotsTail();
+      toast('背包放不下 ' + (ITEMS[tId] ? ITEMS[tId].name : tId) + ' ×' + tCount);
+      return -1;
+    }
+    g[from] = { item: tgt.id, count: tgt.count };
+    const a = invAdd(tId, tCount);
+    if (a > 0) G.invSlots[to] = { id: tId, count: a };
+    trimInvSlotsTail();
+    return a;
+  }
+  const moved = depositToInvSlot(to, st.item, st.count);
+  if (moved > 0) { st.count -= moved; if (st.count <= 0) g[from] = null; }
+  return moved;
+}
+function trimInvSlotsTail() {
+  while (G.invSlots.length && G.invSlots[G.invSlots.length - 1] == null) G.invSlots.pop();
 }
 // 持握数量减少 n 件（已移出来源，仅更新光标计数）
 function heldTake(n) { const h = G.held; if (!h) return; h.count -= n; if (h.count <= 0) G.held = null; }
@@ -1748,7 +2003,214 @@ function placeHeld(target) {
   return true;
 }
 
-// 背包物品点击：把任意物品（设备/材料/工具）放入鼠标选中状态。
+// ===== 快捷转移辅助（Shift/Ctrl + 鼠标，对齐《异星工厂》）=====
+// 从容器移出 1 件指定物品（箱子格 / 设备产品缓存 / 设备原料缓存），成功返回 true。
+// prefer：'in' 优先原料缓存 / 'out' 优先产品缓存（点击哪侧就从哪侧取）。
+function entTakeOne(ent, id, prefer) {
+  if (typeof ent.slots === 'object' && ent.slots) {
+    for (let i = ent.slots.length - 1; i >= 0; i--) {
+      const st = ent.slots[i];
+      if (st && st.item === id) { st.count--; if (st.count <= 0) ent.slots[i] = null; return true; }
+    }
+    return false;
+  }
+  const order = prefer === 'in' ? ['inp', 'outp'] : ['outp', 'inp'];
+  for (const key of order) {
+    const buf = ent[key];
+    if (buf && (buf[id] || 0) > 0) { buf[id]--; if (buf[id] <= 0) delete buf[id]; return true; }
+  }
+  // 传送带/地下带等逐件取出的实体：走 takeItem（取出的不是目标物品则放回）
+  if (typeof ent.takeItem === 'function') {
+    const it = ent.takeItem();
+    if (it === id) return true;
+    if (it && typeof ent.giveItem === 'function') ent.giveItem(it);
+  }
+  return false;
+}
+// 背包 → 当前面板容器（箱子/设备）：逐件 giveItem，设备只收其需要的物品（配方校验在 giveItem 内）
+function quickMoveInvToEnt(ent, id, count) {
+  if (!ent || typeof ent.giveItem !== 'function') return 0;
+  let moved = 0;
+  while (moved < count && ent.giveItem(id)) moved++;
+  if (moved > 0) invTake(id, moved);
+  return moved;
+}
+// 当前面板容器（箱子/设备）→ 背包：逐件取出，背包放不下即止
+function quickMoveEntToInv(ent, id, count, prefer) {
+  if (!ent) return 0;
+  let moved = 0;
+  while (moved < count) {
+    if (invAdd(id, 1) <= 0) break;                    // 背包已满
+    if (!entTakeOne(ent, id, prefer)) { invTake(id, 1); break; }
+    moved++;
+  }
+  return moved;
+}
+// Shift+右键：把持握物品的一半放入目标格（只放入、不交换；剩余继续持握）
+function placeHeldHalf(target) {
+  const h = G.held; if (!h) return 0;
+  const half = Math.ceil(h.count / 2);
+  let moved = 0;
+  if (target.kind === 'inv') moved = depositToInvSlot(target.slot, h.id, half);
+  else if (target.kind === 'chest') moved = depositToChestSlot(target.ent, target.slot, h.id, half);
+  else if (target.kind === 'min') moved = depositToMachineInput(target.ent, h.id, half);
+  else if (target.kind === 'mout') moved = depositToMachineOutput(target.ent, h.id, half);
+  if (moved > 0) {
+    heldTake(moved);
+    if (!G.held) { G.quickSel = null; G.sel = -1; if (typeof refreshHotbar === 'function') refreshHotbar(); }
+  }
+  uiDirty = true;
+  return moved;
+}
+// Shift+右键（空手）：把背包某格物品的一半拿到鼠标（一分为二，原格留另一半）
+function pickupHalfToCursorInv(slotIdx) {
+  invFreezeStacks();
+  const st = G.invSlots[slotIdx];
+  if (!st || st.id == null) return false;
+  const id = st.id;
+  const half = Math.ceil(st.count / 2);
+  st.count -= half;
+  if (st.count <= 0) G.invSlots[slotIdx] = null;
+  invTake(id, half);
+  G.held = { id, count: half, src: { kind: 'inv', slot: slotIdx } };
+  G._clickMoveFrom = null;
+  G.quickSel = id;
+  G.sel = -1;
+  if (typeof refreshHotbar === 'function') refreshHotbar();
+  if (typeof playSfx === 'function') playSfx('select');
+  uiDirty = true;
+  return true;
+}
+// Shift+右键（空手）：把箱子某格物品的一半拿到鼠标
+function pickupHalfToCursorChest(chest, idx) {
+  const st = chest.slots[idx];
+  if (!st) return false;
+  const half = Math.ceil(st.count / 2);
+  st.count -= half;
+  if (st.count <= 0) chest.slots[idx] = null;
+  G.held = { id: st.item, count: half, src: { kind: 'chest', ent: chest, slot: idx } };
+  G._clickMoveFrom = null;
+  G.quickSel = null;
+  G.sel = -1;
+  if (typeof refreshHotbar === 'function') refreshHotbar();
+  if (typeof playSfx === 'function') playSfx('select');
+  uiDirty = true;
+  return true;
+}
+// Shift+右键（空手）：把设备原料/产品缓存里某物品的一半拿到鼠标
+function pickupHalfToCursorMachine(ent, id, kind) {
+  const buf = kind === 'in' ? ent.inp : ent.outp;
+  const have = (buf && buf[id]) || 0;
+  if (have <= 0) return false;
+  const half = Math.ceil(Math.min(have, stackSize(id)) / 2);
+  buf[id] -= half;
+  if (buf[id] <= 0) delete buf[id];
+  G.held = { id, count: half, src: kind === 'in' ? { kind: 'min', ent, sid: id } : { kind: 'mout', ent, sid: id } };
+  G._clickMoveFrom = null;
+  G.quickSel = null;
+  G.sel = -1;
+  if (typeof refreshHotbar === 'function') refreshHotbar();
+  if (typeof playSfx === 'function') playSfx('select');
+  uiDirty = true;
+  return true;
+}
+// Q 清理光标：把鼠标持握的物品收回背包（来自背包的放回原格；来自箱子/设备的存入背包，放不下的继续持握）
+function heldToBackpack() {
+  const h = G.held; if (!h) return false;
+  if (h.src && h.src.kind === 'inv') { heldReturn(); return true; }
+  const added = invAdd(h.id, h.count);
+  if (added >= h.count) {
+    G.held = null;
+    G.quickSel = null;
+    G.sel = -1;
+    if (typeof refreshHotbar === 'function') refreshHotbar();
+  } else {
+    h.count -= added;
+  }
+  uiDirty = true;
+  return true;
+}
+
+// ===== 地图上的快速转移（Ctrl+左键 整组 / Ctrl+右键 一半，不打开实体面板）=====
+// 手持/选中物品时放入实体（设备只接收其需要的物品，由 giveItem 配方校验把关）；空手时从实体取出一组到背包。
+function quickTransferEntity(ent, half) {
+  if (!ent || ent._dead) return false;
+  const canPut = typeof ent.giveItem === 'function';
+  const isChest = typeof ent.slots === 'object' && ent.slots;
+  const canTake = isChest || (ent.outp && Object.keys(ent.outp).some(k => ent.outp[k] > 0)) ||
+                  (ent.inp && Object.keys(ent.inp).some(k => ent.inp[k] > 0)) ||
+                  typeof ent.takeItem === 'function';
+  if (!canPut && !canTake) return false;
+  const nm = (id) => (ITEMS[id] ? ITEMS[id].name : id);
+  // 1) 鼠标持握物品 → 放入实体
+  if (G.held && canPut) {
+    const want = half ? Math.ceil(G.held.count / 2) : G.held.count;
+    let moved = 0;
+    while (moved < want && ent.giveItem(G.held.id)) moved++;
+    if (moved > 0) {
+      const id = G.held.id;
+      heldTake(moved);
+      if (!G.held) { G.quickSel = null; G.sel = -1; if (typeof refreshHotbar === 'function') refreshHotbar(); }
+      if (typeof playSfx === 'function') playSfx('click');
+      toast('已快速放入 ' + nm(id) + ' ×' + moved);
+      uiDirty = true;
+      return true;
+    }
+    toast('该设备不接收此物品或已满');
+    return true;
+  }
+  // 2) 快捷栏/背包选中物品（非建筑）→ 放入一组
+  const sel = (typeof selItem === 'function') ? selItem() : null;
+  if (!G.held && sel && ITEMS[sel] && !BUILD_DEFS[sel] && invCount(sel) > 0 && canPut) {
+    const cap = stackSize(sel);
+    const want = Math.min(invCount(sel), half ? Math.ceil(cap / 2) : cap);
+    let moved = 0;
+    while (moved < want && ent.giveItem(sel)) moved++;
+    if (moved > 0) {
+      invTake(sel, moved);
+      if (typeof playSfx === 'function') playSfx('click');
+      toast('已快速放入 ' + nm(sel) + ' ×' + moved);
+      uiDirty = true;
+      return true;
+    }
+    toast('该设备不接收此物品或已满');
+    return true;
+  }
+  // 3) 空手 → 从实体取出一组到背包（箱子取最后一格；设备优先产品缓存）
+  if (!G.held) {
+    let id = null, avail = 0;
+    if (isChest) {
+      for (let i = ent.slots.length - 1; i >= 0; i--) {
+        const st = ent.slots[i];
+        if (st) { id = st.item; avail = (typeof ent.countOf === 'function') ? ent.countOf(id) : st.count; break; }
+      }
+    } else if (ent.outp) {
+      for (const k in ent.outp) if (ent.outp[k] > 0) { id = k; avail = ent.outp[k]; break; }
+    }
+    if (!id && ent.inp) {
+      for (const k in ent.inp) if (ent.inp[k] > 0) { id = k; avail = ent.inp[k]; break; }
+    }
+    if (!id && typeof ent.peekItem === 'function') { id = ent.peekItem(); avail = id ? stackSize(id) : 0; }
+    if (!id || avail <= 0) return false;
+    const want = Math.min(avail, stackSize(id));
+    const n = half ? Math.ceil(want / 2) : want;
+    let got = 0;
+    while (got < n) {
+      if (invAdd(id, 1) <= 0) break;
+      if (!entTakeOne(ent, id)) { invTake(id, 1); break; }
+      got++;
+    }
+    if (got > 0) {
+      if (typeof playSfx === 'function') playSfx('pick');
+      toast('已快速取出 ' + nm(id) + ' ×' + got);
+      uiDirty = true;
+      return true;
+    }
+    return false;
+  }
+  return false;
+}
+
 // 设备点击地图可直接建造；材料/工具点击地图无法建造（由 tryPlaceAt 内部拦截）。
 // 选中后不关闭背包，用户通过快捷键(E/Q)或右上角“X”关闭后选中状态保留。
 function selectInventoryItem(iid) {
@@ -1784,10 +2246,11 @@ function resetPanelPos() {
   panel.style.bottom = '';
 }
 
-// ===== 机械臂筛选物品选择弹窗（复用 #hud-modal 弹框）=====
+// ===== 机械臂筛选物品选择弹窗（复用 #hud-modal 弹框；背包物流需求区选择请求物品同款复用）=====
 // 启动筛选后点击某个筛选格子（+ 或物品图标）弹出本弹窗，在 5 大分组里浏览物品；
 // 点击某个物品即回填到对应的筛选格（对齐组装机选择配方弹框的分组样式）。
-let _fltCtx = null;   // { e: 机械臂实体, idx: 第几格(0..4) }
+// _fltCtx.mode='logireq' 时同一弹窗用于设置背包物流需求区格子的请求物品。
+let _fltCtx = null;   // { e: 机械臂实体, idx: 第几格(0..4) } 或 { mode:'logireq', idx: 请求格下标 }
 let _fltTab = 'logistics';
 let _fltQ = '';
 let _fltComposing = false;
@@ -1830,7 +2293,8 @@ function filterChooserPanelHtml() {
   if (!(_fltTab && perTab[_fltTab] && perTab[_fltTab].length)) {
     _fltTab = CRAFT_TABS.find(t => perTab[t] && perTab[t].length) || 'logistics';
   }
-  const e = _fltCtx ? _fltCtx.e : null;
+  const isReq = !!(_fltCtx && _fltCtx.mode === 'logireq');
+  const e = (!isReq && _fltCtx) ? _fltCtx.e : null;
   let h = '<div class="flt-modal">';
   h += '<input id="flt-search" class="inv-search" type="text" placeholder="搜索物品（输入名称）" autocomplete="off" value="' + _fltQ + '">';
   // 5 个分组 Tab
@@ -1863,11 +2327,12 @@ function filterChooserPanelHtml() {
         (sg ? '<div class="flt-sg-label">' + fltSubgroupLabel(sg) + '</div>' : '');
       for (const id of list) {
         const name = (ITEMS[id] && ITEMS[id].name) ? ITEMS[id].name : id;
-        const already = (e && e.filters && e.filters.indexOf(id) >= 0);
+        const already = isReq ? !!(G.logiRequest && G.logiRequest[id] > 0)
+          : (e && e.filters && e.filters.indexOf(id) >= 0);
         grid += '<button type="button" class="flt-item' + (already ? ' sel' : '') + '" data-act="flt-choose" data-id="' + id + '" data-idx="' + (_fltCtx ? _fltCtx.idx : 0) + '"' +
           ' data-rsearch="' + (name + ' ' + id).toLowerCase() + '"' +
           ' data-tip="' + itemTip(id) + '"' +
-          (already ? ' title="已在筛选列表中"' : '') + '>' +
+          (already ? ' title="' + (isReq ? '已在请求列表中' : '已在筛选列表中') + '"' : '') + '>' +
           '<img src="' + iconDataURL(id) + '"><span>' + name + '</span></button>';
       }
       grid += '</div>';
@@ -1875,18 +2340,35 @@ function filterChooserPanelHtml() {
     h += '<div class="flt-grid" data-tab="' + tab + '"' + on + '>' + grid + '</div>';
   }
   h += '<div class="dim" id="flt-empty" style="display:none"></div>';
-  h += '<div class="dim">点击物品即设置到该筛选格。已选中的物品高亮显示。</div>';
+  h += '<div class="dim">' + (isReq
+    ? '点击物品即设置为该格的请求物品；若该物品已在其它格请求，选择后会切换到当前格。已请求的物品高亮显示。'
+    : '点击物品即设置到该筛选格。已选中的物品高亮显示。') + '</div>';
   h += '</div>';
   return h;
 }
 
 function openFilterChooser(e, idx) {
   if (!e) return;
-  _fltCtx = { e, idx };
+  _fltCtx = { e, idx, mode: 'filter' };
   _fltTab = 'logistics';
   _fltQ = '';
   const title = document.getElementById('hud-modal-title');
   if (title) title.textContent = (e.type === 'burner-inserter' ? '热能机械臂' : '机械臂') + ' · 选择筛选物品';
+  const body = document.getElementById('hud-modal-body');
+  if (body) body.innerHTML = filterChooserPanelHtml();
+  applyFltSearch('');
+  const hm = document.getElementById('hud-modal');
+  hm.classList.add('flt-wide');
+  hm.classList.remove('hidden');
+}
+
+// 背包物流需求区：左键点击空格打开同款物品选择弹框（选中即设为该格请求物品）
+function openLogiReqChooser(idx) {
+  _fltCtx = { idx, mode: 'logireq' };
+  _fltTab = 'logistics';
+  _fltQ = '';
+  const title = document.getElementById('hud-modal-title');
+  if (title) title.textContent = '背包物流 · 选择请求物品';
   const body = document.getElementById('hud-modal-body');
   if (body) body.innerHTML = filterChooserPanelHtml();
   applyFltSearch('');
@@ -1955,6 +2437,13 @@ function applyFltSearch(q) {
 }
 
 function filterChooserPick(id, idx) {
+  if (_fltCtx && _fltCtx.mode === 'logireq') {
+    logiReqSetSlot(idx, id);
+    closeFilterChooser();
+    renderPanel(false);
+    toast('已请求 ' + (ITEMS[id] ? ITEMS[id].name : id) + ' ×' + ((G.logiRequest && G.logiRequest[id]) || 0) + '，物流机器人将自动送达');
+    return;
+  }
   const e = _fltCtx ? _fltCtx.e : null;
   if (!e) { closeFilterChooser(); return; }
   if (!e.filters) e.filters = [];

@@ -63,7 +63,8 @@ const LOD_SIMPLE_PX = 20;
 
 function updateLOD() {
   LOD.tilePx = TILE * G.cam.z;
-  LOD.simple = LOD.tilePx < LOD_SIMPLE_PX;
+  // 性能模式：无视缩放强制简化绘制（所有 !LOD.simple 门控的细节路径统一走廉价分支）
+  LOD.simple = LOD.tilePx < LOD_SIMPLE_PX || !!(G.settings && G.settings.perfMode);
   LOD.level = LOD.simple ? 0 : 2;
 }
 

@@ -18,7 +18,9 @@ var G = {
   held: null,            // 通用“持握于鼠标”的物品：{id, count, src}；src={kind:'chest'|'mout'|'min', ent, slot/sid}
                          // 从箱子/组装机等拿出物品时悬浮于鼠标，可放入背包/箱子/其它设备的原料或产品格
   logiRequest: {},   // 个人物流请求：item -> 目标数量（由物流机器人送达）
-  trashSlots: {},    // 个人垃圾桶（对齐《异星工厂》Trash slots）：item -> true（标记后由物流机器人带走存回网络）
+  trashSlots: {},    // （旧档兼容）个人垃圾桶标记 item -> true；读档时由 ensureLogiSlots 迁移为 logiTrashGrid 实体格子
+  logiReqGrid: null,    // 物流需求区格子布局：50 元素数组，每格为物品 ID 或 null（仅决定显示格位；数据源仍是 logiRequest）
+  logiTrashGrid: null,  // 物流回收区格子（相当于一个箱子）：30 元素数组，每格 {item, count} 实体堆叠或 null
   logiEnabled: true,      // 「背包物流」总开关：关闭后机器人不再送达个人请求物品
   recycleUnrequested: false, // 「回收未请求物品」开关：开启后机器人回收背包中所有未请求的物品
   logiReqSlots: 50,       // 物流区（请求）格子数：每行 10 格，共 5 行
@@ -172,6 +174,8 @@ function newGame() {
   G.logiNetT = 0;
   G.logiRequest = {};   // 新游戏清空个人物流请求
   G.trashSlots = {};     // 新游戏清空个人垃圾桶标记
+  G.logiReqGrid = null;  // 新游戏清空物流需求区格子布局
+  G.logiTrashGrid = null; // 新游戏清空物流回收区格子布局
   G.logiEnabled = true;   // 新游戏开启「背包物流」总开关
   G.recycleUnrequested = false; // 新游戏默认关闭「回收未请求物品」
   G.blueBook = [];      // 新游戏清空蓝图库
@@ -241,7 +245,8 @@ function travelToPlanet(planet, opts) {
   const hp = G.playerHP, hpMax = G.playerHPmax;
   const repairUses = G.repairPackUses || 0;
   const logiRequest = Object.assign({}, G.logiRequest || {});
-  const trashSlots = Object.assign({}, G.trashSlots || {});
+  const logiReqGrid = (G.logiReqGrid || []).slice();
+  const logiTrashGrid = (G.logiTrashGrid || []).map(s => s ? { item: s.item, count: s.count } : null);
   const logiEnabled = G.logiEnabled !== false;
   const recycleUnrequested = !!G.recycleUnrequested;
   const blueBook = (G.blueBook || []).slice();
@@ -259,7 +264,8 @@ function travelToPlanet(planet, opts) {
   G.enemies = []; G.bullets = []; G.enemyProjectiles = []; G.groundFires = [];
   G.acidPools = []; G.combatRobots = []; G.aoeZones = [];
   G.railTiles = new Set(); G.elevatedSupports = new Set(); G.trains = [];
-  G.logiNet = null; G.logiRequest = {}; G.trashSlots = {};
+  G.logiNet = null; G.logiRequest = {}; G.trashSlots = null;
+  G.logiReqGrid = null; G.logiTrashGrid = null;
   if (typeof initWeather === 'function') initWeather();
   if (typeof pollutionReset === 'function') pollutionReset();
   if (typeof resetPowerReg === 'function') resetPowerReg();
@@ -280,7 +286,9 @@ function travelToPlanet(planet, opts) {
   G.techDone = techDone; G.techProg = techProg; G.activeTech = activeTech; G.techQueue = techQueue;
   // 交付已送达本星球的行星间货物（火箭发射送往目标星球，抵达后降落）
   if (typeof deliverOrbitalCargo === 'function') deliverOrbitalCargo(planet);
-  G.logiRequest = logiRequest; G.trashSlots = trashSlots; G.blueBook = blueBook;
+  G.logiRequest = logiRequest; G.blueBook = blueBook;
+  G.logiReqGrid = logiReqGrid.length ? logiReqGrid : null;
+  G.logiTrashGrid = logiTrashGrid.some(s => s) ? logiTrashGrid : null;
   G.blueprintItems = blueprintItems;
   G.logiEnabled = logiEnabled; G.recycleUnrequested = recycleUnrequested;
   if (typeof constrRestore === 'function') constrRestore(null);
@@ -305,7 +313,8 @@ function serializeAll() {
     inv: Array.from(G.inv),
     invSlots: (G.invSlots || []).slice(),
     logiRequest: Object.assign({}, G.logiRequest || {}),
-    trashSlots: Object.assign({}, G.trashSlots || {}),
+    logiReqGrid: (G.logiReqGrid || []).slice(),
+    logiTrashGrid: (G.logiTrashGrid || []).map(s => s ? { item: s.item, count: s.count } : null),
     logiEnabled: G.logiEnabled !== false,
     recycleUnrequested: !!G.recycleUnrequested,
     player: { x: G.player.x, y: G.player.y, hp: G.playerHP, weapon: G.weapon, armor: G.armor },
@@ -562,11 +571,16 @@ function applySave(d) {
   if (d.logiRequest && typeof d.logiRequest === 'object') {
     for (const k in d.logiRequest) if (ITEMS[k] && d.logiRequest[k] > 0) G.logiRequest[k] = d.logiRequest[k] | 0;
   }
-  // 恢复个人垃圾桶标记（旧档无该字段则置空）
+  // 恢复个人垃圾桶标记（旧档兼容：仅标记、无数量；由 ensureLogiSlots 迁移为回收区实体格子）
   G.trashSlots = {};
   if (d.trashSlots && typeof d.trashSlots === 'object') {
     for (const k in d.trashSlots) if (ITEMS[k] && d.trashSlots[k]) G.trashSlots[k] = true;
   }
+  // 恢复物流需求区/回收区格子布局（旧档无该字段则置 null，渲染时回填/迁移）
+  G.logiReqGrid = Array.isArray(d.logiReqGrid) && d.logiReqGrid.length === 50
+    ? d.logiReqGrid.map(k => (k && ITEMS[k]) ? k : null) : null;
+  G.logiTrashGrid = Array.isArray(d.logiTrashGrid) && d.logiTrashGrid.length === 30
+    ? d.logiTrashGrid : null;
   // 恢复「背包物流」总开关与「回收未请求物品」开关（旧档默认背包物流开启、不回收未请求物品）
   G.logiEnabled = d.logiEnabled !== false;
   G.recycleUnrequested = !!d.recycleUnrequested;

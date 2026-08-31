@@ -334,6 +334,21 @@ function playerLogiTarget() {
   };
 }
 
+// 物流回收区（实体箱子）作为机器人取货端：机器人飞到玩家处，从 G.logiTrashGrid 格子里取走物品
+function playerTrashTarget() {
+  return {
+    isPlayer: true,
+    x: (G.player ? G.player.x : 0) / TILE,
+    y: (G.player ? G.player.y : 0) / TILE,
+    w: 1, h: 1,
+    _dead: false,
+    deficitOf() { return 0; },
+    giveItem() { return false; },
+    countOf(item) { return trashGridCount(item); },
+    takeItemOf(item) { return trashGridTake(item, 1) ? item : null; }
+  };
+}
+
 // ===== 网络调度：计算供应与需求缺口，指派空闲机器人 =====
 function scanNetwork() {
   // 供应：按物品聚合 { item -> count }，区分主动/被动/仓储优先级
@@ -593,9 +608,9 @@ function updateLogistics(dt) {
     if (G.logiEnabled !== false && G.logiRequest) {
       for (const k in G.logiRequest) if (G.logiRequest[k] > 0) { hasWork = true; break; }
     }
-    // 回收区标记有物品待回收也算作有工作
-    if (!hasWork && G.trashSlots) {
-      for (const k in G.trashSlots) if (G.trashSlots[k] && invCount(k) > 0) { hasWork = true; break; }
+    // 回收区格子里存放有物品待回收也算作有工作
+    if (!hasWork && G.logiTrashGrid) {
+      for (const s of G.logiTrashGrid) if (s && s.count > 0) { hasWork = true; break; }
     }
     // 「回收未请求物品」开启时，背包中存在未请求物品也算有工作
     if (!hasWork && G.recycleUnrequested) {
@@ -619,23 +634,23 @@ function updateLogistics(dt) {
 
 // 回收玩家身上的多余物资（对齐《异星工厂》：机器人带走多余物资存回网络）。
 // 顺序：
-//   1) 物流回收区（trashSlots）：玩家在回收区格子中标记的物品，全部带走；
+//   1) 物流回收区（logiTrashGrid，相当于一个箱子）：格子里存放的物品，全部取走；
 //   2) 「回收未请求物品」开启：背包中所有未设置请求的物品全部带走；
 //   3) 个人物流请求超出部分：超出请求量的部分被机器人带走。
 // 「背包物流」总开关关闭时不做任何玩家回收（回收也属于背包物流范畴）。
 function assignRecycleTask(r) {
   if (G.logiEnabled === false) return false;
   const pt = playerLogiTarget();
-  // 1) 优先回收「物流回收区」中标记的物品
-  if (G.trashSlots) {
-    for (const item in G.trashSlots) {
-      if (!G.trashSlots[item]) continue;
-      const have = invCount(item);
-      if (have <= 0) continue;
-      const takeN = Math.min(robotCarryCap(), have);
+  // 1) 优先回收「物流回收区」格子里存放的物品（回收区相当于一个箱子，机器人直接从中取走）
+  const tg = G.logiTrashGrid;
+  if (tg) {
+    for (let i = 0; i < tg.length; i++) {
+      const s = tg[i];
+      if (!s || !ITEMS[s.item] || s.count <= 0) continue;
+      const takeN = Math.min(robotCarryCap(), s.count);
       if (takeN <= 0) continue;
-      r.carry = { item, count: takeN };
-      r.target = pt;
+      r.carry = { item: s.item, count: takeN };
+      r.target = playerTrashTarget();
       r.tx = (G.player ? G.player.x : 0);
       r.ty = (G.player ? G.player.y : 0);
       r.fromPlayer = true;
@@ -820,15 +835,12 @@ function logiChestPanelHtml(e) {
   const kind = LOGI_CHEST_KINDS[e.type];
   let total = 0;
   for (const k in agg) total += agg[k];
-  let right = '<div class="sec">箱子内容（' + e.slotCap() + ' 格，点击拿起物品，再点另一格移动/交换，点左栏背包格取出；拿起背包物品后点箱格存入）</div>';
-  right += '<div class="status"></div>';
+  let right = '<div class="status"></div>';
   right += '<div class="chest-items" id="chest-items">';
   right += chestSlotGridHtml(e);
   right += '</div>';
-  right += '<div class="sec">存入</div>';
   right += '<button data-action="chest-put" class="btn sm" id="btn-chest-put" title="把当前选中的背包物品全部存入箱子（未选中时不可用）">⬆ 存入选中物品</button>';
   if (kind === 'requester' || kind === 'buffer') {
-    right += '<div class="sec">需求量（机器人自动送货补足）</div>';
     const ids = Object.keys(e.requests);
     if (!ids.length) {
       right += '<div class="dim">尚未设置需求。下方为每种物品设置目标数量，物流机器人会自动从供应箱/仓储箱搬运货物过来，直到达到目标数量。</div>';
@@ -843,7 +855,6 @@ function logiChestPanelHtml(e) {
       right += '<div class="dim">缓冲箱：请求货物后，也会向物流网络供应库存，作为中转缓冲。</div>';
     }
     right += '<div class="dim">提示：在下方输入物品名后点击「应用需求」。</div>';
-    right += '<div class="sec">添加需求物品</div>';
     right += '<input id="logi-req-add" class="inv-search" type="text" placeholder="输入物品名…" autocomplete="off">';
     right += '<button data-action="logi-req-apply">应用需求</button>';
     right += '<button data-action="logi-req-clear">清空全部需求</button>';
