@@ -355,14 +355,15 @@ function refreshChestGrid(e) {
   box.innerHTML = chestSlotGridHtml(e);
 }
 
-// 双栏布局：左=玩家背包，右=箱子
-function chestDualPaneHtml(e, typeName, capDesc) {
+// 双栏布局：左=玩家背包，右=箱子（headSuffix 可覆盖右栏标题后缀，默认「（箱子）」；
+// 虚空箱/虚空带等「放入即销毁」容器传入自定义后缀以贴合语义）
+function chestDualPaneHtml(e, typeName, capDesc, headSuffix) {
   const left = htmlInventory();
   const right = chestRightHtml(e, typeName, capDesc);
   return '<div class="inv-layout machine-layout chest-layout">' +
     '<div class="inv-col inv-col-left" id="inv-col-left"><div class="inv-col-head">🎒 玩家</div>' +
     '<div class="inv-col-body" id="inv-mat">' + left + '</div></div>' +
-    '<div class="inv-col inv-col-right" id="inv-col-right"><div class="inv-col-head">📦 ' + typeName + '（箱子）</div>' +
+    '<div class="inv-col inv-col-right" id="inv-col-right"><div class="inv-col-head">📦 ' + typeName + (headSuffix || '（箱子）') + '</div>' +
     '<div class="inv-col-body">' + right + '</div></div>' +
   '</div>';
 }

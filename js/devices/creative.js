@@ -93,10 +93,15 @@ class CreativeChest extends Entity {
   }
 }
 // ===== 虚空箱：无限销毁物品 =====
+// 面板与普通储物箱一致（左=玩家背包，右=固定空格子网格），可点击式双向移动；
+// 区别仅在于：任何放入的物品即刻被销毁、永不落格（格子恒为空），也取不出来。
 class VoidChest extends Entity {
   constructor(type, x, y) {
     super('void-chest', x, y);
+    this.voidsItems = true;   // 标记：放入即销毁（面板据此吞没持握物品而非落格）
+    this.slots = new Array(this.slotCap()).fill(null);  // 固定空格子（恒为空，仅作展示与投放目标）
   }
+  slotCap() { return 40; }   // 虚空箱展示格子数（纯视觉，物品永不留存）
   giveItem() { return true; }    // 来者不拒，全部销毁
   peekItem() { return null; }    // 存进去的东西取不出来
   takeItem() { return null; }
@@ -366,14 +371,14 @@ function creativeChestTip(e) {
   return ids.length ? ('无限产出 ' + ids.map(id => ITEMS[id].name).join('、')) : '创造箱（未选择生成物）';
 }
 
-// ===== 虚空箱面板 =====
+// ===== 虚空箱面板：与普通储物箱一致的双栏布局（左=背包，右=空格子网格），放入即销毁 =====
 function voidChestPanelHtml(e) {
-  return '<div class="dim">虚空箱（测试）：无限销毁任何存入的物品，机械臂/玩家放进去的东西都会被抹除，无法取出。</div><div class="status"></div>';
+  return chestDualPaneHtml(e, '虚空箱', '虚空箱（测试）：放入的物品即刻被销毁，无法取出。');
 }
 function voidChestPanelLive(e, api) {
-  api.status('销毁中：放入的物品即刻消失', 'ok');
+  chestDualPaneLive(e, api);
 }
-function voidChestTip() { return '虚空箱：无限销毁物品'; }
+function voidChestTip() { return '虚空箱：放入即销毁物品'; }
 
 // ===== 创造管道面板：选择要生成的流体（内嵌分组选择器，流体按 5 大分类分组）=====
 function creativePipePanelHtml(e) {
@@ -488,10 +493,15 @@ class CreativeBelt extends Belt {
 }
 
 // ===== 虚空传送带：任何物品流转到带上即刻销毁 =====
+// 面板与虚空箱一致（左=玩家背包，右=固定空格子网格），可点击式放入；
+// 区别仅在于：任何放入/流转的物品即刻被销毁、永不落格（格子恒为空），也取不出来。
 class VoidBelt extends Belt {
   constructor(type, x, y) {
     super('void-belt', x, y);
+    this.voidsItems = true;   // 标记：放入即销毁（面板据此吞没持握物品而非落格）
+    this.slots = new Array(this.slotCap()).fill(null);  // 固定空格子（恒为空，仅作展示与投放目标）
   }
+  slotCap() { return 40; }   // 虚空带展示格子数（纯视觉，物品永不留存）
   // 每帧清空带上物品，实现“来即销毁”。
   update(dt) {
     this.items = [];
@@ -499,9 +509,11 @@ class VoidBelt extends Belt {
   }
   // 来者不拒：接受任何物品后立即销毁（清空），作为物流汇点。
   acceptItem() { return true; }
+  giveItem() { return true; }    // 面板放入即销毁，不落格
   countOf() { return 0; }
   peekItem() { return null; }
   takeItem() { return null; }
+  takeItemOf() { return null; }
   contents() { return [[this.type, 1]]; }
 }
 
@@ -525,14 +537,14 @@ function creativeBeltTip(e) {
   return e.selected ? ('无限产出 ' + ITEMS[e.selected].name) : '创造传送带（未选择生成物）';
 }
 
-// ===== 虚空传送带面板 =====
-function voidBeltPanelHtml() {
-  return '<div class="dim">虚空传送带（测试）：任何流转到这条带上的物品都会被即刻销毁，无法取出，作为物流销毁汇点。</div><div class="status"></div>';
+// ===== 虚空传送带面板：与虚空箱一致的双栏布局（左=背包，右=空格子网格），放入即销毁 =====
+function voidBeltPanelHtml(e) {
+  return chestDualPaneHtml(e, '虚空传送带', '虚空传送带（测试）：放入的物品即刻被销毁，无法取出。', '（销毁格）');
 }
 function voidBeltPanelLive(e, api) {
-  api.status('销毁中：流转到带上的物品即刻消失', 'ok');
+  chestDualPaneLive(e, api);
 }
-function voidBeltTip() { return '虚空传送带：无限销毁流转物品'; }
+function voidBeltTip() { return '虚空传送带：放入即销毁物品'; }
 
 // ===== 状态灯 =====
 function creativeBeltStatus(e) { return e.selected ? 'g' : 'r'; }

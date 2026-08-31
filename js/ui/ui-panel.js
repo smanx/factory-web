@@ -769,6 +769,20 @@ function initPanelEvents() {
       const idx = +chestSlot.dataset.chestslot;
       // 1) 已持握物品（来自背包/箱子/设备）→ 放入点击的箱格（同箱=移动/合并/交换，跨容器=存入）
       if (G.held) {
+        // 虚空箱：放入即销毁——整叠手持物品被抹除，不落格（与普通箱子交互一致，仅结果不同）
+        if (chest.voidsItems) {
+          const nm = ITEMS[G.held.id] ? ITEMS[G.held.id].name : G.held.id;
+          const n = G.held.count;
+          G.held = null;
+          G.quickSel = null; G.sel = -1;
+          if (typeof refreshHotbar === 'function') refreshHotbar();
+          if (typeof playSfx === 'function') playSfx('click');
+          toast('虚空箱已销毁 ' + nm + ' ×' + n);
+          uiDirty = true;
+          if (typeof updateMachineLive === 'function') updateMachineLive();
+          else renderPanel(false);
+          return;
+        }
         placeHeld({ kind: 'chest', ent: chest, slot: idx });
         if (typeof updateMachineLive === 'function') updateMachineLive();
         else renderPanel(false);

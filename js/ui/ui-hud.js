@@ -372,6 +372,25 @@ function mapTipAt(tx, ty) {
   return null;
 }
 
+// ALT 详情：鼠标移到设备管道口的流体图标格上时，返回该流体「名称|描述」文案（用于鼠标旁悬浮框）。
+// 流体图标仅在 ALT 模式（portDetailsVisible）下绘制，故悬浮框同样只在 ALT 模式出现；
+// 图标格即 DEVICE_FLUID_ICONS 报告的世界格（设备占地边缘的接口格）。
+function fluidIconTipAt(tx, ty) {
+  if (typeof portDetailsVisible === 'function' && !portDetailsVisible()) return null;
+  const e = entAt(tx, ty);
+  if (!e || e._dead) return null;
+  const fn = DEVICE_FLUID_ICONS[e.type];
+  if (!fn) return null;
+  for (const ic of fn(e)) {
+    if (ic.x === tx && ic.y === ty && ITEMS[ic.fluid]) {
+      const it = ITEMS[ic.fluid];
+      const nm = (typeof localizedName === 'function') ? localizedName(ic.fluid, it.name) : it.name;
+      return nm + '|' + (it.desc || '');
+    }
+  }
+  return null;
+}
+
 function initTooltips() {
   const tip = document.getElementById('tooltip');
   // 配方卡悬浮层：悬停配方槽时在鼠标旁展示完整的「配方卡」（与普通 tooltip 互斥）
@@ -419,6 +438,12 @@ function initTooltips() {
       }
     }
     if (el) text = el.dataset.tip;
+    // ALT 详情：鼠标移到地图上设备的管道口流体图标时，在鼠标旁弹出该流体名称悬浮框。
+    // （地图其余瓦片仍不在鼠标旁显示详情，详情只在小地图下方信息栏显示，见 drawDeviceInfoBar。）
+    if (!el && typeof fluidIconTipAt === 'function' && G.cursorTile &&
+        typeof mouseOverMap === 'function' && mouseOverMap()) {
+      text = fluidIconTipAt(G.cursorTile.tx, G.cursorTile.ty);
+    }
     // 地图画布上不再显示鼠标附近的详情悬浮框（需求：地图详情只在小地图下方显示，见 drawDeviceInfoBar）；
     // 非地图界面（背包/设备面板等 data-tip 元素）的鼠标旁悬浮框保持不变。
     // 不在配方槽上：隐藏配方卡，回退到普通 tooltip

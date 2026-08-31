@@ -171,6 +171,11 @@ function drawSteelFurnace(ctx, e, gx, gy, dir, alpha) {
   ctx.arc(wcX + 4, wcY + 4, Math.min(wcW, wcH) * 0.35, Math.PI * 1.1, Math.PI * 1.55);
   ctx.stroke();
 
+  // ALT 模式：炉膛中央显示当前冶炼产品图标（熔炉无固定配方，直接显示当前产物）
+  if (portDetailsVisible() && e.cur) {
+    drawRecipeIconCell(ctx, wcX + wcW / 2, wcY + wcH / 2, e.cur.id);
+  }
+
   // ⑤b 进度文字（与石炉一致：白字 + 黑色描边）
   if (e.cur && e.prog > 0) {
     ctx.fillStyle = '#fff';

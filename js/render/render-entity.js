@@ -61,12 +61,10 @@ function drawEntity(ctx, e, gx, gy, dir, alpha) {
 
 // 无环形显示的加工设备运行信息：返回 { pct(0-1), total(秒) } 表示设备当前这一轮
 // 加工的完成比例与总耗时；返回 null 表示不在运行（不绘制环形计时器）。
-// 已有自身环形进度显示（组装机/化工厂/离心机/钻机/炼油厂）的设备不在此表内，不重复叠加。
+// 已有自身环形进度显示（组装机/化工厂/离心机/钻机/炼油厂/研究中心）的设备不在此表内，不重复叠加。
 const DEVICE_RUN_INFO = {
   'stone-furnace': e => (e.lit && e.cur && e.prog > 0) ? { pct: e.prog, total: e.cur.time } : null,
   'steel-furnace': e => (e.lit && e.cur && e.prog > 0) ? { pct: e.prog, total: e.cur.time } : null,
-  'electric-furnace': e => (e.lit && e.cur && e.prog > 0) ? { pct: e.prog, total: e.cur.time } : null,
-  'lab': e => e.active ? { pct: Math.min(1, Math.max(0, (e.t || 0) / LAB_TIME)), total: LAB_TIME } : null,
 };
 
 // 在设备上方绘制环形 loading 计时器：背景圆 + 当前进度弧。

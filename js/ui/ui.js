@@ -1877,13 +1877,14 @@ function isAssemblerStyleDevice(e) {
     e.type === 'fast-inserter' || e.type === 'stack-inserter' || e.type === 'burner-inserter';
 }
 
-// 是否为储物箱（木箱/铁箱/钢箱等标准储物箱 + 物流箱）：
-// 面板采用「左=玩家背包，右=箱子」双栏布局，可双向移动物品
+// 是否为储物箱（木箱/铁箱/钢箱等标准储物箱 + 物流箱 + 虚空箱）：
+// 面板采用「左=玩家背包，右=箱子」双栏布局，可双向移动物品（虚空箱放入即销毁，格子恒空）。
 function isChestEntity(e) {
   if (!e) return false;
   return e.type === 'wooden-chest' || e.type === 'iron-chest' || e.type === 'steel-chest' ||
     e.type === 'passive-provider-chest' || e.type === 'active-provider-chest' ||
-    e.type === 'storage-chest' || e.type === 'requester-chest' || e.type === 'buffer-chest';
+    e.type === 'storage-chest' || e.type === 'requester-chest' || e.type === 'buffer-chest' ||
+    e.type === 'void-chest';
 }
 
 
@@ -2288,8 +2289,9 @@ function unifiedMachineLayoutHtml(e) {
     const info = recipeDeviceInfo(e);
     const rec = e.recipe ? info.getRec(e.recipe) : null;
     right = recipeMachineRightHtml(e, info, rec);
-  } else if (isChestEntity(e)) {
-    // 储物箱（含物流箱）：直接使用设备自身的面板（自带左背包+右箱子双栏布局）
+  } else if (isChestEntity(e) || e.voidsItems) {
+    // 储物箱（含物流箱/虚空箱）与虚空带等「放入即销毁」容器：
+    // 直接使用设备自身的面板（自带左背包+右格子双栏布局）
     const panel = DEVICE_PANEL[e.type];
     right = (panel && panel.html) ? panel.html(e) : '<div class="dim">无信息</div>';
     return right;

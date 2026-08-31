@@ -11,7 +11,7 @@
 //      西端配重块；一个 e.spin 周期 = 一个完整冲次；
 //   ⑤ 工作时井筒原油面随冲次脉动 + 油花涟漪交替扩散；
 //   ⑥ 顶部电源指示灯（青=工作 / 红=缺电 / 黄=其他告警）；左下模块槽指示灯（槽位数读实体）；
-//      底部青色电力条（工作时点亮）；外圈绿色抽取进度环（与原绘制语义一致）；
+//      底部青色电力条（工作时点亮）；外圈绿色抽取进度环（与原绘制语义一致，仅 ALT 详情模式显示）；
 //   ⑦ 原油输出口完全沿用 drawPort 原绘制（产出方向角落一接口，off=1 对齐 frontTargets），
 //      管道接法/悬停提示/ALT 图标不变。
 // 本文件只覆盖 DEVICE_RENDER['pumpjack']：删除本文件并移除 index.html 中
@@ -283,9 +283,9 @@ function drawPumpjackSkin(ctx, e, gx, gy, dir, alpha) {
 
   ctx.restore();                      // 结束朝向坐标系
 
-  // ===== ⑨ 抽取进度环（工作时绿色弧，与原绘制语义一致）=====
+  // ===== ⑨ 抽取进度环（工作时绿色弧，与原绘制语义一致；仅 ALT 详情模式显示）=====
   const pct = working ? Math.min(1, (e.prog || 0) / e.oreTime()) : 0;
-  if (pct > 0) {
+  if (pct > 0 && portDetailsVisible()) {
     ctx.strokeStyle = 'rgba(8,12,18,.35)';
     ctx.lineWidth = 2.5 * k;
     ctx.beginPath(); ctx.arc(cx, cy, 27 * k, 0, Math.PI * 2); ctx.stroke();
