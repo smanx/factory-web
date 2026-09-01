@@ -411,14 +411,6 @@ function drawFurnace(ctx, e, gx, gy, dir, alpha) {
   ctx.strokeStyle = tier.line;
   ctx.lineWidth = 2.2;
   rr(ctx, px + 3, py + 3, s - 6, sh - 6, bodyR); ctx.stroke();
-  // 顶部圆弧高光（电炉不绘制：其弧形高光在顶部形似 loading 半环，按要求移除）
-  if (e.type !== 'electric-furnace') {
-    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(cx, py + 4, s * 0.32, Math.PI * 1.05, Math.PI * 1.95);
-    ctx.stroke();
-  }
 
   ctx.globalAlpha = 1;
 }
