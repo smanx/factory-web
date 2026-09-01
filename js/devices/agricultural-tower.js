@@ -26,7 +26,7 @@ class AgriculturalTower extends Assembler {
     if (!this.recipe) { this.crafting = false; return; }
     // 须种植在雅玛果土壤上（人工/茂盛均可），否则停止生长
     if (!this.onSoil()) { this.crafting = false; return; }
-    if (powerSatOf(this) <= 0) { this.crafting = false; return; }
+    if (powerSatOf(this) <= 0) return;
     // 电路条件不满足时暂停（对齐《异星工厂》：电路控制配方启停）
     if (!this.circuitEnabled()) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];

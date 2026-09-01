@@ -352,6 +352,7 @@ const log = {
   skippedRecipe: [],       // 官方配方引用了项目没有的物品（跳过）
   noHp: [],                // 项目建筑无官方 max_health
   noStack: [],             // 项目物品无官方 stack_size
+  noFuel: [],              // 项目燃料在官方 item 无 fuel_value 且无项目兜底
 };
 
 // ---- stackSize ----
@@ -786,6 +787,28 @@ const equipment = {};
   if (tb && typeof tb.inventory_size_bonus === 'number') {
     equipment['toolbelt-equipment'] = { extraSlots: tb.inventory_size_bonus };
   }
+  // 个人机器人港（官方 roboport-equipment）：roboport 子对象承载机器人港专属数值。
+  // robotLimit=robot_limit（可控机器人上限）、constructionRadius=construction_radius（施工覆盖半径/格，
+  // 面板“建设区域”显示为直径 2× 半径）、chargingStations=charging_station_count（同时充电站数）、
+  // chargingEnergy=charging_energy(kW，每站对应 1 台机器人的充电功率)、capE=能源缓冲 buffer_capacity(→kJ)。
+  const rbEquip = raw['roboport-equipment'] || {};
+  for (const rpn of ['personal-roboport-equipment', 'personal-roboport-mk2-equipment']) {
+    const rp = rbEquip[rpn];
+    if (!rp) continue;
+    const chg = parseKiloWatt(rp.charging_energy);
+    const st = equipment[rpn] || {};
+    st.roboport = {
+      robotLimit: (typeof rp.robot_limit === 'number') ? rp.robot_limit : undefined,
+      constructionRadius: (typeof rp.construction_radius === 'number') ? rp.construction_radius : undefined,
+      chargingStations: (typeof rp.charging_station_count === 'number') ? rp.charging_station_count : undefined,
+      chargingEnergy: (chg !== null) ? chg : undefined,
+    };
+    if (rp.energy_source && typeof rp.energy_source.buffer_capacity === 'string') {
+      const cap = parseEnergyKJ(rp.energy_source.buffer_capacity);
+      if (cap !== null) st.capE = cap;
+    }
+    equipment[rpn] = st;
+  }
 }
 
 // ---- 核能热量链路（反应堆 / 导热管） ----
@@ -889,6 +912,19 @@ const roboportPower = (() => {
   const rp = raw.roboport && raw.roboport.roboport;
   const kw = rp && parseKiloWatt(rp.energy_usage);
   return kw;
+})();
+
+// ---- 机器人港范围与槽位（官方 roboport：logistics_radius/construction_radius/robot_slots_count/material_slots_count）----
+// logistics=物流网络覆盖半径(格)，construction=施工机器人覆盖半径(格)，robotSlots/materialSlots=面板两排格子数
+const roboportRange = (() => {
+  const rp = raw.roboport && raw.roboport.roboport;
+  if (!rp) return null;
+  const o = {};
+  if (typeof rp.logistics_radius === 'number') o.logistics = rp.logistics_radius;
+  if (typeof rp.construction_radius === 'number') o.construction = rp.construction_radius;
+  if (typeof rp.robot_slots_count === 'number') o.robotSlots = rp.robot_slots_count;
+  if (typeof rp.material_slots_count === 'number') o.materialSlots = rp.material_slots_count;
+  return Object.keys(o).length ? o : null;
 })();
 
 
@@ -1382,21 +1418,23 @@ const enemy = {};
   }
 }
 
-// ---- 燃料能量密度（burner 设备用，项目相对刻度）----
+// ---- 燃料能量密度（burner 设备用，官方 MJ 单源）----
 // 各可燃烧燃料的能量密度，供锅炉/熔炉/热能采矿机/火车头/热能机械臂等 burner 设备读取。
-// 官方 data.raw 的 fuel_value 为 MJ 绝对值（如煤 4MJ、固体燃料 12MJ、火箭燃料 100MJ、
-// 核燃料 1.21GJ），本项目采用简化的「相对刻度」燃料值（煤=12 为基准），故此处保持项目相对
-// 值（见 data.js COAL_ENERGY 等），统一经 data.generated.js 单源下发，避免在设备文件里
-// 单独维护第二套数值。核燃料 2500 约 = 官方 1.21GJ 折算；五足虫卵 5 / 生鱼 4 为弱效生物质燃料。
-const fuelEnergy = {
-  'coal': 12,             // 煤（基准，官方 4MJ）
-  'wood': 3,              // 木材（约煤 1/4，官方 2MJ）
-  'solid-fuel': 50,       // 固体燃料（约 4× 煤，官方 12MJ）
-  'rocket-fuel': 500,     // 火箭燃料（约 40× 煤，官方 100MJ）
-  'nuclear-fuel': 2500,   // 核燃料（官方 1.21GJ，约 300× 煤）
-  'raw-fish': 4,          // 生鱼（弱效生物质燃料）
-  'pentapod-egg': 5,      // 五足虫卵（官方 5MJ）
-};
+// 逐项从官方 raw.item.<燃料>.fuel_value 现场换算为 MJ 绝对值：煤 4MJ、木材 2MJ、
+// 固体燃料 12MJ、火箭燃料 100MJ、核燃料 1.21GJ、五足虫卵 5MJ（data.raw 的 fuel_value）。
+// 燃烧时长 = 热值(MJ) ÷ 设备功率(MW)，与《异星工厂》原版一致（见 data-util.js burnPowerMW()）。
+// 个别项目自定燃料（如生鱼 raw-fish，官方 item 无 fuel_value，不可燃）用下方项目兜底值，其余缺失则记录。
+const fuelEnergy = {};
+const PROJECT_FUEL_FALLBACK = { 'raw-fish': 4 };  // 生鱼：官方不可燃，项目自定弱效燃料
+for (const fid of ['coal', 'wood', 'solid-fuel', 'rocket-fuel', 'nuclear-fuel', 'raw-fish', 'pentapod-egg']) {
+  const proto = raw.item && raw.item[fid];
+  if (proto) {
+    const mj = parseEnergyMJ(proto.fuel_value);
+    if (mj !== null && mj > 0) { fuelEnergy[fid] = mj; continue; }
+  }
+  if (PROJECT_FUEL_FALLBACK[fid] !== undefined) { fuelEnergy[fid] = PROJECT_FUEL_FALLBACK[fid]; continue; }
+  log.noFuel.push(fid);
+}
 
 // ---- 汇总新增字段进 GAME_DATA（undefined 字段由 JSON 序列化自动剔除）----
 Object.assign(GAME_DATA, {
@@ -1417,6 +1455,7 @@ Object.assign(GAME_DATA, {
   heat,
   lightning,
   roboportPower,
+  roboportRange,
   footprint,
   steamPower,
   robotSpeed,
@@ -1535,6 +1574,7 @@ function report() {
   console.log('避雷系统 lightning: ' + JSON.stringify(GAME_DATA.lightning));
   console.log('污染排放 pollution: ' + JSON.stringify(GAME_DATA.pollution));
   console.log('机器人港功耗 roboportPower: ' + JSON.stringify(GAME_DATA.roboportPower));
+  console.log('机器人港范围/槽位 roboportRange: ' + JSON.stringify(GAME_DATA.roboportRange));
   console.log('Gleba 五足虫敌人 enemy: ' + Object.keys(GAME_DATA.enemy||{}).length + ' 种');
   console.log('扩展参数手工保留（官方无此字段/项目简化模型）：蒸汽机/汽轮机产汽模型、机器人速度与电量刻度、机器人港容量、',
     '武器/装甲战斗平衡表、燃料能量(项目相对刻度)、载具装备网格、热交换器热量参数、雷达扫描节奏');
@@ -1708,6 +1748,7 @@ const header = [
   '//           heatPipeSpecificHeat, heatPipeMaxTransfer, reactorHeatRate(MW), heatExchangerPower(MW),',
   '//           heatingTowerRate(MW), heatingTowerEffectivity, heatingTowerMaxTemp,',
   '//           heatingTowerSpecificHeat, heatingTowerMaxTransfer }, roboportPower(kW)',
+  '//   roboportRange = { logistics(物流覆盖半径/格), construction(施工覆盖半径/格), robotSlots(机器人槽位数), materialSlots(材料槽位数) }',
   '//   steamPower = { boilerPower, boilerTargetTemp, engineRate, enginePower, effectivity, turbineRate, turbinePower,',
   '//                   steamHeatCapacity, steamDefaultTemp, steamMaxTemp, steamEnergyPerUnit, heatExchangerSteamRate, boilerSteamRate }',
   '//   cargoLandingPad = { inventorySize, radarRange }, cargoBay = { inventorySizeBonus }（物流接驳站/扩展舱）',
@@ -1715,7 +1756,7 @@ const header = [
   '//   footprint[building] = { w, h }（占地面积格数，官方 selection_box）',
   '//   pollution[building] = 官方每分排放（emissions_per_minute.pollution，污染/分），供污染系统单源读取',
   '//   recycling[item] = { time, out:{outItem:每批期望产出} }（官方 *-recycling 回收配方，供回收机单源读取）',
-  '//   fuelEnergy[item] = 燃料能量密度（项目相对刻度，供 burner 设备单源读取：煤=12 基准）',
+  '//   fuelEnergy[item] = 燃料能量密度（MJ 绝对值，官方 fuel_value 单源：煤=4MJ），供 burner 设备单源读取',
   'const GAME_DATA = ' + JSON.stringify(GAME_DATA, null, 1) + ';',
   '',
 ].join('\n');

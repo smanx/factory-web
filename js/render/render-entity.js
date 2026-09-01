@@ -794,6 +794,170 @@ function drawPoleCoverage(ctx) {
   }
 }
 
+// ===== 机器人港范围可视化（对齐《异星工厂》：物流覆盖 25 格 / 建造覆盖 55 格）=====
+// 范围以正方形框显示（与电线杆供电范围一致：以港中心为圆心向四周外扩成方框）：
+//   橙色框 = 供应（物流）范围，绿色框 = 建设（建造）范围。
+// 鼠标悬停机器人港时：显示两个范围框，并对与它相连的其他机器人港画出黄色虚线连接。
+// 相连判定对齐官方：横向/纵向中心距 ≤ 2×物流半径（切比雪夫距离，任一轴超过 50 格即断开），
+// 即两个橙色方形物流区域（50×50）相切/相交视为同一网络；并非计算斜向欧氏距离。
+// 手持机器人港放置时：除当前幽灵的两个范围框外，屏幕内所有既有机器人港的两个范围框
+// 也一并画出（淡色），且既有港口之间、以及与当前幽灵之间均画黄色虚线连接，便于直观
+// 判断新港与既有网络的覆盖衔接。
+// 悬停检测与电线杆对齐：电线杆占地 1 格、直接读光标格即可；机器人港占地 4×4，且放置时
+// 光标按建筑中心锚定（偏移约 1.5 格），因此必须用「鼠标原始屏幕坐标 → 世界格」判定，并对
+// 光标周围 4×4 补扫，保证鼠标停在港上任意位置都能命中。
+function drawRoboportCoverage(ctx) {
+  if (!G.cursorTile) return;
+  const z = Math.max(0.5, G.cam.z);
+  // 范围（与电线杆的 GAME_DATA 单源同款，兜底为官方值）
+  const R_L = (typeof ROBOPORT_LOGI_RANGE === 'number') ? ROBOPORT_LOGI_RANGE : 25;
+  const R_C = (typeof ROBOPORT_CONSTR_RANGE === 'number') ? ROBOPORT_CONSTR_RANGE : 55;
+  // 与 _isPoleType 一致：仅按 type 数据表判定（不依赖实例方法/原型链）
+  const isPort = (v) => !!v && v.type === 'roboport';
+  // 港中心 (ctX, ctY)（格）→ 两个正方形覆盖框（格坐标，半边长=半径，语义同 poleSupplyRect）
+  const rcOf = (ctX, ctY) => [
+    { x0: ctX - R_L, y0: ctY - R_L, x1: ctX + R_L, y1: ctY + R_L },   // [0] 供应/物流（橙框）
+    { x0: ctX - R_C, y0: ctY - R_C, x1: ctX + R_C, y1: ctY + R_C }    // [1] 建设/建造（绿框）
+  ];
+  // 视口剔除 + 绘制单个范围框（复用电线杆范围的填充/描边画法）
+  // 注意：rc 为格坐标、FRAME_BOUNDS 为世界像素坐标，比较前须 ×TILE 统一单位，
+  // 否则单位不一致会导致范围框几乎总被判为「视口外」而永不绘制。
+  const drawBox = (rc, fill, stroke) => {
+    if (rc.x1 * TILE < FRAME_BOUNDS.x1 || rc.x0 * TILE > FRAME_BOUNDS.x0 ||
+        rc.y1 * TILE < FRAME_BOUNDS.y1 || rc.y0 * TILE > FRAME_BOUNDS.y0) return;
+    _drawCoverageFill(ctx, rc, fill, stroke);
+  };
+  // 幽灵色（放置时更醒目）与悬停/既有港口色：橙色=供应(物流)、绿色=建设(建造)
+  const G_FILL = ['rgba(255,150,48,.22)', 'rgba(92,225,134,.16)'];
+  const G_STROKE = ['rgba(255,184,94,.95)', 'rgba(148,255,178,.9)'];
+  const H_FILL = ['rgba(255,160,60,.16)', 'rgba(96,215,130,.12)'];
+  const H_STROKE = ['rgba(255,178,80,.8)', 'rgba(120,230,150,.75)'];
+  // 放置模式下屏幕内既有港口用的淡色（弱于悬停色，与亮色幽灵框形成对比）
+  const A_FILL = ['rgba(255,160,60,.08)', 'rgba(96,215,130,.07)'];
+  const A_STROKE = ['rgba(255,178,80,.4)', 'rgba(120,230,150,.38)'];
+  const CONN = R_L * 2;   // 相连判定距离（格）：官方以横向/纵向（各轴）中心距 ≤ 2×物流半径判定网络连通，
+                          // 即切比雪夫距离 max(|dx|,|dy|) ≤ 50 格（橙色方形物流区相切/相交视为相连）；
+                          // 斜向两港同样只看两轴距离，不取斜向欧氏距离
+  // 从像素中心 (cx,cy) 向范围内现有机器人港画黄色虚线连接；返回相连港数
+  const drawLinks = (cx, cy, excludeEnt) => {
+    let n = 0;
+    ctx.strokeStyle = '#ffd23c';
+    ctx.lineWidth = 2.2 / z;
+    ctx.setLineDash([9 / z, 6 / z]);
+    for (const o of G.ents) {
+      if (o === excludeEnt || o._dead || !isPort(o) || !onScreen(o)) continue;
+      const ox = (o.x + o.w / 2) * TILE, oy = (o.y + o.h / 2) * TILE;
+      // 切比雪夫判定：横向/纵向任一轴中心距超过 2×物流半径（50 格）即断开（官方逻辑）
+      if (Math.max(Math.abs(ox - cx), Math.abs(oy - cy)) > CONN * TILE) continue;
+      n++;
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ox, oy); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    return n;
+  };
+  // —— 悬停已有机器人港（优先于放置幽灵，保证悬停效果始终可见）——
+  // 鼠标原始世界格：不受「选中建筑居中锚定」影响（机器人港占地 4×4，锚定后 cursorTile 常落在港外）
+  let hoverTx = G.cursorTile.tx, hoverTy = G.cursorTile.ty;
+  if (G.mouseScreen && typeof screenToWorld === 'function') {
+    const [wx, wy] = screenToWorld(G.mouseScreen.x, G.mouseScreen.y);
+    hoverTx = Math.floor(wx / TILE);
+    hoverTy = Math.floor(wy / TILE);
+  }
+  let hovered = entAt(hoverTx, hoverTy);
+  // 补扫：光标落在港内任意一格的场景（占 4×4，覆盖锚定偏移与边缘格）
+  if (!(hovered && isPort(hovered))) {
+    for (let dy = 0; dy < 4; dy++) {
+      for (let dx = 0; dx < 4; dx++) {
+        const c = entAt(hoverTx - dx, hoverTy - dy);
+        if (c && c.type === 'roboport' && !c._dead &&
+            hoverTx >= c.x && hoverTx < c.x + c.w &&
+            hoverTy >= c.y && hoverTy < c.y + c.h) { hovered = c; break; }
+      }
+      if (hovered && isPort(hovered)) break;
+    }
+  }
+  if (hovered && !hovered._dead && isPort(hovered)) {
+    const ctX = hovered.x + hovered.w / 2, ctY = hovered.y + hovered.h / 2;
+    const cx = ctX * TILE, cy = ctY * TILE;
+    const rcs = rcOf(ctX, ctY);
+    drawBox(rcs[0], H_FILL[0], H_STROKE[0]);
+    drawBox(rcs[1], H_FILL[1], H_STROKE[1]);
+    const connected = drawLinks(cx, cy, hovered);
+    // 范围图例（平台正下方）：注明两个范围框的含义与相连数量
+    ctx.save();
+    ctx.fillStyle = 'rgba(10,14,18,.72)';
+    const label = connected > 0
+      ? ('供应 ' + R_L + ' 格 · 建造 ' + R_C + ' 格 · 相连 ' + connected + ' 港')
+      : ('供应 ' + R_L + ' 格 · 建造 ' + R_C + ' 格');
+    ctx.font = 'bold ' + Math.max(9, 11 / z) + 'px system-ui';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const lw = ctx.measureText(label).width, lh = Math.max(9, 11 / z);
+    const lx = cx, ly = cy + (hovered.h / 2) * TILE + lh + 6;
+    rr(ctx, lx - lw / 2 - 7, ly - lh, lw + 14, lh * 2 + 5, 4); ctx.fill();
+    ctx.fillStyle = '#ffb258';   // 供应（橙）
+    ctx.fillRect(lx - lw / 2 + 1, ly - lh / 2 + 1, 9, lh / 2);
+    ctx.fillStyle = '#78e6a0';   // 建造（绿）
+    ctx.fillRect(lx + lw / 2 - 9, ly - lh / 2 + 1, 9, lh / 2);
+    ctx.fillStyle = '#f3f6f5';
+    ctx.fillText(label, lx, ly + 2);
+    ctx.restore();
+    return;
+  }
+  // —— 放置机器人港幽灵：屏幕内所有既有港口范围 + 当前幽灵范围 + 港口间/与幽灵的连接虚线 ——
+  const sel = (typeof buildActive === 'function' && buildActive() && typeof selItem === 'function') ? selItem() : null;
+  if (sel === 'roboport') {
+    // 屏幕内所有既有机器人港：以淡色画出各自的两个范围框，方便对比放置后的覆盖衔接
+    const ports = [];
+    for (const o of G.ents) {
+      if (o._dead || !isPort(o) || !onScreen(o)) continue;
+      ports.push(o);
+      const pctX = o.x + o.w / 2, pctY = o.y + o.h / 2;
+      const prcs = rcOf(pctX, pctY);
+      drawBox(prcs[0], A_FILL[0], A_STROKE[0]);
+      drawBox(prcs[1], A_FILL[1], A_STROKE[1]);
+    }
+    // 既有港口之间：两两连黄色虚线（每对只描一次，避免重复描边使虚线重叠抵消）；
+    // 判定与 drawLinks 一致：横向/纵向任一轴中心距超 2×物流半径（50 格）即断开（官方切比雪夫规则）。
+    // 优化：按 CONN 尺寸粗分桶，只查相邻桶内的港口对（O(k) 量级），港口密集时避免 O(k²) 全两两判定。
+    ctx.strokeStyle = '#ffd23c';
+    ctx.lineWidth = 2.2 / z;
+    ctx.setLineDash([9 / z, 6 / z]);
+    const pcell = new Map();
+    for (let i = 0; i < ports.length; i++) {
+      const k = Math.floor((ports[i].x + ports[i].w / 2) / CONN) + ',' + Math.floor((ports[i].y + ports[i].h / 2) / CONN);
+      let a = pcell.get(k); if (!a) { a = []; pcell.set(k, a); }
+      a.push(i);
+    }
+    for (let i = 0; i < ports.length; i++) {
+      const pi = ports[i];
+      const ax = (pi.x + pi.w / 2) * TILE, ay = (pi.y + pi.h / 2) * TILE;
+      const gx = Math.floor((pi.x + pi.w / 2) / CONN), gy = Math.floor((pi.y + pi.h / 2) / CONN);
+      for (let ox = gx - 1; ox <= gx + 1; ox++)
+        for (let oy = gy - 1; oy <= gy + 1; oy++) {
+          const a = pcell.get(ox + ',' + oy);
+          if (!a) continue;
+          for (let t = 0; t < a.length; t++) {
+            const j = a[t]; if (j <= i) continue;
+            const pj = ports[j];
+            const bx = (pj.x + pj.w / 2) * TILE, by = (pj.y + pj.h / 2) * TILE;
+            if (Math.max(Math.abs(bx - ax), Math.abs(by - ay)) > CONN * TILE) continue;
+            ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+          }
+        }
+    }
+    ctx.setLineDash([]);
+    // 当前放置幽灵（鼠标在地图上时）：亮色画两个范围框 + 与屏幕内既有港口的连接虚线
+    if (typeof mouseOverMap === 'function' && mouseOverMap()) {
+      const def = BUILD_DEFS['roboport'];
+      const ctX = G.cursorTile.tx + def.w / 2, ctY = G.cursorTile.ty + def.h / 2;
+      const rcs = rcOf(ctX, ctY);
+      drawBox(rcs[0], G_FILL[0], G_STROKE[0]);
+      drawBox(rcs[1], G_FILL[1], G_STROKE[1]);
+      drawLinks(ctX * TILE, ctY * TILE, null);
+    }
+  }
+}
+
 function drawHoverAndMining(ctx) {
   if (!G.cursorTile) return;
   const { tx, ty } = G.cursorTile;

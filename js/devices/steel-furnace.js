@@ -29,7 +29,8 @@ class SteelFurnace extends Furnace {
       else { this.lit = false; return; }
     }
     this.lit = true;
-    this.burnLeft -= dt * fuelConsumptionMult();
+    // 燃烧速率 = 设备官方功率（钢炉 90kW），一块燃料燃烧时长 = 热值÷功率，对齐官方
+    this.burnLeft -= dt * fuelConsumptionMult() * burnPowerMW(this.type);
     furnaceEmit(this, dt);
     this.prog += dt / r.time * (GAME_DATA.deviceStats?.[this.type]?.craftingSpeed ?? 2) * (this.quality ? qualityMult(this.quality) : 1);
     if (this.prog >= 1) {
@@ -42,10 +43,11 @@ class SteelFurnace extends Furnace {
     }
   }
   giveItem(item) {
-    if (item === 'rocket-fuel' && this.fuelRocket < fuelLimitFor5s(ROCKET_FUEL_ENERGY)) { this.fuelRocket++; return true; }
-    if (item === 'coal' && this.fuelCoal < fuelLimitFor5s(COAL_ENERGY)) { this.fuelCoal++; return true; }
-    if (item === 'wood' && this.fuelWood < fuelLimitFor5s(WOOD_FUEL_ENERGY)) { this.fuelWood++; return true; }
-    if (item === 'solid-fuel' && this.fuelSolid < fuelLimitFor5s(SOLID_FUEL_ENERGY)) { this.fuelSolid++; return true; }
+    // 燃料槽上限 = 物品堆叠上限（对齐《异星工厂》：煤50/木材100/固体燃料50/火箭燃料20）
+    if (item === 'rocket-fuel' && this.fuelRocket < stackSize('rocket-fuel')) { this.fuelRocket++; return true; }
+    if (item === 'coal' && this.fuelCoal < stackSize('coal')) { this.fuelCoal++; return true; }
+    if (item === 'wood' && this.fuelWood < stackSize('wood')) { this.fuelWood++; return true; }
+    if (item === 'solid-fuel' && this.fuelSolid < stackSize('solid-fuel')) { this.fuelSolid++; return true; }
     // 产物已满一整组（Stack）时不再接收矿石：继续送只会白白堆积在熔炉里
     for (const r of SMELTS)
       if (r.inp === item && (this.outp[r.id] || 0) >= stackSize(r.id)) return false;
@@ -232,47 +234,32 @@ function _steelFurnMix(hex, t) {
   return 'rgba(' + r + ',' + g + ',' + b + ',' + t.toFixed(3) + ')';
 }
 
-// ===== 面板：复用石炉面板（燃料/输入/输出/进度），但状态文案标注钢铁炉=====
+// ===== 面板：组装机式布局 =====
+//  ① 冶炼行：原料（左·单格） → 冶炼进度条 → 产品（右·单格）；
+//  ② 下方燃料行：单格燃料格 + 独立燃料燃烧进度条（与冶炼进度条相互独立）；
+//  ③ 底部留空，不再显示其他内容。
 function steelFurnacePanelHtml(e) {
-  let h = row('燃料', (e.fuelRocket > 0 || e.fuelSolid > 0 || e.fuelCoal > 0 || e.fuelWood > 0) ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'rocket-fuel': e.fuelRocket, 'solid-fuel': e.fuelSolid, 'coal': e.fuelCoal, 'wood': e.fuelWood }, { action: 'display' }) + '</div>' : '<span class="dim">无</span>', 'fuel');
-  if (invCount('coal') > 0)
-    h += '<button data-action="fuel" data-id="coal">加入 5 煤 (' + invCount('coal') + ')</button>';
-  if (invCount('wood') > 0)
-    h += '<button data-action="fuel" data-id="wood">加入 5 木材 (' + invCount('wood') + ')</button>';
-  if (invCount('solid-fuel') > 0)
-    h += '<button data-action="fuel" data-id="solid-fuel">加入 5 固体燃料 (' + invCount('solid-fuel') + ')</button>';
-  if (invCount('rocket-fuel') > 0)
-    h += '<button data-action="fuel" data-id="rocket-fuel">加入 5 火箭燃料 (' + invCount('rocket-fuel') + ')</button>';
-  // 消耗/产出速率显示在面板靠前位置（燃料行之后）
-  h += '<div id="mach-rate-block"></div>';
-  h += row('输入', Object.keys(e.inp).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(e.inp, { action: 'feed-slot' }) + '</div>' : '<span class="dim">空</span>', 'input');
-  for (const r of SMELTS) {
-    const n = Math.min(invCount(r.inp), 25 - (e.inp[r.inp] || 0));
-    if (n > 0) h += '<button data-action="feed" data-id="' + r.inp + '">放入' +
-      ITEMS[r.inp].name + ' ×' + n + '</button>';
-  }
-  if (Object.keys(e.inp).length) h += '<button data-action="takein">取回全部输入</button>';
-  h += row('输出', Object.keys(e.outp).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(e.outp, { action: 'take-slot' }) + '</div>' : '<span class="dim">空</span>', 'output');
-  h += '<button data-action="takeout" id="btn-takeout" style="display:none"></button>';
-  h += '<div class="dim">钢铁炉：烧煤冶炼，速度约为石炉的 2 倍，可高效产铁板/铜板/钢板（2×2）。</div>';
+  let h = '';
+  h += '<div class="asm3-flow">';
+  h += '<div class="asm3-side asm3-inp"><div data-live="mch-feed-inp">' + _furnInpCellHtml(e) + '</div></div>';
+  h += '<div class="asm3-prog"><div class="bar"><i></i><span class="bar-txt" data-live="mch-pct">0%</span></div></div>';
+  h += '<div class="asm3-side asm3-out"><div data-live="mch-feed-out">' + _furnOutCellHtml(e) + '</div></div>';
+  h += '</div>';
+  // 燃料行（燃料格 + 燃料燃烧进度条），实时刷新
+  h += '<div class="fuel-row" data-live="mch-fuel">' + _furnFuelRowHtml(e) + '</div>';
+  // ③ 底部留空
   return h;
 }
 function steelFurnacePanelLive(e, api) {
-  api.set('fuel', (e.fuelRocket > 0 || e.fuelSolid > 0 || e.fuelCoal > 0 || e.fuelWood > 0) ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'rocket-fuel': e.fuelRocket, 'solid-fuel': e.fuelSolid, 'coal': e.fuelCoal, 'wood': e.fuelWood }, { action: 'display' }) + '</div>' : dimSpan('无'));
-  api.set('input', Object.keys(e.inp).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(e.inp, { action: 'feed-slot' }) + '</div>' : dimSpan('空'));
-  api.set('output', Object.keys(e.outp).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(e.outp, { action: 'take-slot' }) + '</div>' : dimSpan('空'));
-  const n = Object.values(e.outp).reduce((a, b) => a + b, 0);
-  api.toggle('#btn-takeout', n > 0, '取回全部输出 (' + n + ')');
+  api.set('mch-feed-inp', _furnInpCellHtml(e));
+  api.set('mch-feed-out', _furnOutCellHtml(e));
+  api.set('mch-fuel', _furnFuelRowHtml(e));
   api.prog(e.prog * 100, e.cur ? e.cur.time : 0);
-  // 当前冶炼项的消耗/产出速率（钢铁炉×官方 crafting_speed=2）
-  const rateEl = document.getElementById('mach-rate-block');
-  if (rateEl) {
-    const rec = e.cur ? { time: e.cur.time, inp: { [e.cur.inp]: e.cur.inCount || 1 }, out: { [e.cur.id]: 1 } } : null;
-    const html = rec ? machRateHtml(rec, GAME_DATA.deviceStats?.[e.type]?.craftingSpeed ?? 2) : '';
-    if (rateEl.innerHTML !== html) rateEl.innerHTML = html;
-  }
+  // 熔炉例外：持续工作直到产物堆满一整组（Stack）为止，满组即待料
+  const outFullStack = Object.keys(e.outp).some(k => (e.outp[k] || 0) >= stackSize(k));
   if (e.lit) api.status('冶炼中（钢铁炉·高速）', 'ok');
-  else if (e.cur) api.status('已暂停：等待燃料（加入煤/固体燃料/火箭燃料）', 'warn');
+  else if (e.cur && outFullStack) api.status('已暂停：产物已满一整组', 'warn');
+  else if (e.cur) api.status('已暂停：等待燃料（点击下方燃料格加煤等）', 'warn');
   else api.status('已暂停：待料（放入燃料和矿石）', 'warn');
 }
 function steelFurnaceTip(e) {

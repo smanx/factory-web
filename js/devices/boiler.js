@@ -70,7 +70,8 @@ class Boiler extends Entity {
       }
     }
     boilerEmit(this, dt);
-    this.burnLeft -= dt * fuelConsumptionMult();
+    // 燃烧速率 = 锅炉官方功率 1.8MW，使一块燃料燃烧时长 = 热值÷功率，对齐官方
+    this.burnLeft -= dt * fuelConsumptionMult() * burnPowerMW('boiler');
     this.water = Math.max(0, this.water - BOILER_WATER_RATE * dt);
     this.steamBuf = Math.min(WATER_CAP, this.steamBuf + BOILER_WATER_RATE * dt);
     this.temp = Math.min(BOILER_TEMP_MAX, this.temp + BOILER_HEAT_RATE * dt);

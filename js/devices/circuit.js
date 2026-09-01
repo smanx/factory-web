@@ -94,6 +94,9 @@ function refreshNodeWires(node, nodes) {
   if (!nodes) nodes = collectCircuitNodes();
   for (const o of nodes) {
     if (o === node || o._dead) continue;
+    // 机器人港不自动接入电路网络（与 UI 面板一致：机器人港无电路接线通道），
+    // 避免其靠近电线杆时自动搭出红/绿信号线（对齐官方：机器人港需手动接线才连电路）。
+    if (node.type === 'roboport' || o.type === 'roboport') continue;
     const d = node.distTo(o);
     if (d <= node.range && d <= o.range) {
       // 双向互连：每个节点都把范围内的连通邻居加入自己的 red/green，
@@ -184,30 +187,7 @@ function recomputeCircuit() {
       const pct = Math.round(Math.max(0, Math.min(1, (n.stored || 0) / ACCUM_CAP)) * 100);
       if (pct > 0) { addSignal(aggRed, 'signal-charge', pct); addSignal(aggGreen, 'signal-charge', pct); }
     }
-    // 1b2) 储液罐（StorageTank）：把罐内当前流体的存量以该流体为信号名输出到网络
-    //       （对齐《异星工厂》：储液罐可接入电路网络读取流体存量，实现按液位自动化的流量/产线调度）。
-    //       信号同时写入红线与绿线，便于任意通道读取；空罐输出 0 不产生信号。
-    for (const n of group) {
-      if (!(n instanceof StorageTank)) continue;
-      if (typeof n.storedFluid !== 'function') continue;
-      const f = n.storedFluid();
-      if (!f) continue;
-      const qty = n.countOf ? n.countOf(f) : 0;
-      if (qty > 0) { addSignal(aggRed, f, qty); addSignal(aggGreen, f, qty); }
-    }
-    // 1c) 储物箱（Chest 家族：木箱/铁箱/钢箱）：把箱内每种物品的数量以该物品为信号名
-    //     输出到网络（对齐《异星工厂》：箱子接入电路后可读取物品数量，实现按库存自动化）。
-    //     信号同时写入红线与绿线，便于任意通道读取。
-    for (const n of group) {
-      if (!(n instanceof Chest)) continue;
-      if (!n.slots || !n.slots.length) continue;
-      for (const st of n.slots) {
-        if (!st || !st.item || !st.count) continue;
-        addSignal(aggRed, st.item, st.count);
-        addSignal(aggGreen, st.item, st.count);
-      }
-    }
-    // 1d) 通用电路信号输出（对齐《异星工厂》：炮塔等设备可输出传感器信号到网络）。
+    // 1c) 通用电路信号输出（对齐《异星工厂》：炮塔等设备可输出传感器信号到网络）。
     //     任何实现 outputCircuitSignals() 方法的电路节点（如机枪/激光/火焰炮塔把射程内
     //     敌人数量输出为信号）都会在此被收集并写入红/绿通道，供组合器/功率开关/告警音箱读取，
     //     实现“敌人靠近自动切换电力 / 触发告警 / 调度防御”等自动化。

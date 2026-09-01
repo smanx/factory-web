@@ -17,25 +17,31 @@
 // ===== 常量 =====
 const CONSTR_ROBOT_SPEED = GAME_DATA.robotSpeed?.construction ?? 3.6;  // 施工机器人飞行速度（格/秒，官方 construction-robot speed 0.06×60=3.6）
 const CONSTR_BUILD_TIME = 1.0;       // 单格建造耗时（秒）
-const CONSTR_RANGE = 12;             // 个人机器人港 Mk1 工作范围（格，含玩家所在格）
-const CONSTR_MAX_ACTIVE = 4;         // 个人机器人港 Mk1 同时最多在场施工的机器人数量
-const CONSTR_RANGE_MK2 = 20;         // 个人机器人港 II 工作范围（格）
-const CONSTR_MAX_ACTIVE_MK2 = 8;     // 个人机器人港 II 同时最多在场施工的机器人数量
 // 施工机器人修复受损建筑（对齐《异星工厂》：施工机器人自动修复基地建筑）
 const CONSTR_REPAIR_INTERVAL = 0.6;  // 每次修复动作的间隔（秒）
 const CONSTR_REPAIR_AMOUNT = 60;     // 每次修复动作恢复的 HP
 const CONSTR_REPAIR_USES = 5;        // 每个修理包可修复次数（与手动修理包一致）
 const CONSTR_REPAIR_SCAN_T = 0.5;    // 受损建筑扫描间隔（秒）
 
-// 根据已装备的个人机器人港版本返回 { range, maxActive }（对齐《异星工厂》Personal roboport Mk2：更大范围、更多机器人）
+// 根据已装备的个人机器人港版本返回 { range, maxActive }。
+// 数值来自数据层（GAME_DATA.equipment[].roboport，由官方 roboport-equipment 原型生成）：
+// 施工范围=construction_radius、可控机器人上限=robot_limit。缺失时回退到旧常量。
+const CONSTR_RANGE = 12;             // 回退：个人机器人港 Mk1 工作范围（格，含玩家所在格）
+const CONSTR_MAX_ACTIVE = 4;         // 回退：个人机器人港 Mk1 同时最多在场施工的机器人数量
 function constrRoboportInfo() {
-  if (G.personalRoboport === 'mk2') return { range: CONSTR_RANGE_MK2, maxActive: CONSTR_MAX_ACTIVE_MK2 };
-  return { range: CONSTR_RANGE, maxActive: CONSTR_MAX_ACTIVE };
+  const eid = (G.personalRoboport === 'mk2') ? 'personal-roboport-mk2-equipment' : 'personal-roboport-equipment';
+  const cfg = (typeof roboportConfig === 'function') ? roboportConfig(eid) : null;
+  if (!cfg) {
+    if (G.personalRoboport === 'mk2') return { range: 20, maxActive: 8 };
+    return { range: CONSTR_RANGE, maxActive: CONSTR_MAX_ACTIVE };
+  }
+  return { range: cfg.radius, maxActive: cfg.robotLimit };
 }
 
 // ===== 个人机器人港装备 =====
 function ensureConstr() {
   if (G.personalRoboport === undefined) G.personalRoboport = false;
+  if (G.roboportActive === undefined) G.roboportActive = true;   // 机器人港启用状态（Alt+F 切换）
   if (!G.constrGhosts) G.constrGhosts = [];
   if (!G.deconMarks) G.deconMarks = [];
   if (!G.constrRobots) G.constrRobots = [];
@@ -43,13 +49,26 @@ function ensureConstr() {
 }
 // 是否拥有个人机器人港（装备中）
 function hasPersonalRoboport() { return !!G.personalRoboport; }
+// 机器人港是否启用（Alt+F 切换；未初始化视为启用）。复用装备层 roboportActive（读取 G.roboportActive）。
+function roboportOn() { return (typeof roboportActive === 'function') ? roboportActive() : !(G.roboportActive === false); }
+// Alt+F 切换机器人港启用/停用
+function toggleRoboportActive() {
+  ensureConstr();
+  if (!hasPersonalRoboport()) {
+    if (typeof toast === 'function') toast('需要先装备个人机器人港');
+    return;
+  }
+  G.roboportActive = !roboportOn();
+  if (typeof toast === 'function') toast('机器人港' + (roboportOn() ? '启用' : '已停用' + '（Alt+F 再次启用）'));
+  if (typeof uiDirty !== 'undefined' && uiDirty !== undefined) uiDirty = true;
+}
 // 背包中可用施工机器人数量
 function constrRobotCount() {
   return invCount('construction-robot');
 }
-// 是否具备施工能力：装备个人机器人港且背包有施工机器人
+// 是否具备施工能力：装备个人机器人港、已启用且背包有施工机器人
 function canUseConstruction() {
-  return hasPersonalRoboport() && constrRobotCount() > 0;
+  return hasPersonalRoboport() && roboportOn() && constrRobotCount() > 0;
 }
 // 装备/卸下个人机器人港（背包“使用”触发，或面板按钮）。
 // wantMk2：点击 Mk2 按钮时强制装备 Mk2；否则若持有 Mk2 优先装备 Mk2（对齐《异星工厂》：机器人港可升级换代）
@@ -322,6 +341,9 @@ function updateConstruction(dt) {
   G.deconMarks = compactFilter(G.deconMarks, m => !m._dead);
   G.constrRobots = compactFilter(G.constrRobots, r => !r._dead);
 
+  // 机器人港被 Alt+F 停用：不再派发新机器人、已进场机器人暂停原地（保留幽灵与在场机器人）
+  if (!roboportOn()) return;
+
   // 更新现有机器人
   for (const r of G.constrRobots) updateConstrRobot(r, dt);
 
@@ -496,13 +518,14 @@ function drawConstruction(ctx) {
   }
 }
 
-// 序列化个人机器人港状态（随存档保存）
+// 序列化个人机器人港状态（随存档保存，含启用状态）
 function constrSerialize() {
-  return { personalRoboport: G.personalRoboport === 'mk2' ? 'mk2' : !!G.personalRoboport };
+  return { personalRoboport: G.personalRoboport === 'mk2' ? 'mk2' : !!G.personalRoboport, roboportActive: G.roboportActive === false ? false : true };
 }
 function constrRestore(s) {
   const v = s && s.personalRoboport;
   G.personalRoboport = (v === 'mk2' || v === true) ? (v === 'mk2' ? 'mk2' : true) : false;
+  G.roboportActive = (s && s.roboportActive === false) ? false : true;
   G.constrGhosts = [];
   G.deconMarks = [];
   G.constrRobots = [];

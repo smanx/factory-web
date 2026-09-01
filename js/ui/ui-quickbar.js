@@ -110,17 +110,87 @@ function qbOnWeaponClick(i) {
   uiDirty = true;
 }
 
-// 装甲槽（第2行第1格）：显示当前穿戴护甲
+// 装甲槽（第2行第1格）：显示当前穿戴护甲。
+// 交互与普通物品/背包一致（鼠标 G.held 拿起-放置模型）：
+//   1) 装备替换：持有护甲点击装甲槽 → 直接交换（旧护甲回到鼠标），不放放置幽灵。
+//   2) 拾取与放置：点击装甲槽里已穿戴的护甲 → 拿在手上（G.held），再点击背包空格即可放回。
+//   右键：打开该护甲的装备网格面板（若有）。
 function qbArmorSlot() {
-  const el = qbMakeSlot('装甲|显示当前穿戴的护甲，点击脱卸');
+  const el = qbMakeSlot('装甲|持有护甲点击直接穿戴/替换；点击护甲拿起，再点背包空格放回；右键打开装备网格');
   el.dataset.qb = 'armor';
   el.addEventListener('click', () => {
-    if (G.armor && typeof unequipArmor === 'function') {
-      unequipArmor();
-      if (typeof playSfx === 'function') playSfx('select');
+    // 清空鼠标“放置幽灵/选中”状态（从背包拿起护甲时 G.held 与 G.quickSel 同时被置位，
+    // 装备后若不一起清掉，鼠标仍会显示该护甲跟随）
+    const clearSel = () => { G.quickSel = null; G.sel = -1; if (typeof refreshHotbar === 'function') refreshHotbar(); };
+    // —— 持有护甲（鼠标拿起）→ 放入/替换护甲槽（直接交换）——
+    if (G.held && G.held.count > 0) {
+      if (!isArmor(G.held.id)) {
+        toast('只能将护甲放入装甲槽');
+        if (typeof playSfx === 'function') playSfx('error');
+        buildQuickbar(); uiDirty = true;
+        return;
+      }
+      const id = G.held.id;
+      if (!canEquipArmor(id)) {
+        toast('需要先研究「' + TECHS[TECH_REQ[id]].name + '」才能装备');
+        buildQuickbar(); uiDirty = true;
+        return;
+      }
+      const old = G.armor;
+      if (old && old !== id) {
+        // 直接交换：新护甲穿上，旧护甲回到鼠标（角色拿在手上），可点背包空格放回
+        G.armor = id;
+        G.held = { id: old, count: 1, src: { kind: 'armor' } };
+        clearSel(); // 放置幽灵已换为旧护甲，由 drawHeldGhost 绘制（src 非 inv），不再用 quickSel
+        if (typeof playSfx === 'function') playSfx('equip');
+        toast('已换上 ' + ARMORS[id].name + '（旧护甲在鼠标，点背包空格放回）');
+      } else if (old === id) {
+        // 已穿同款：把持有件放回背包即可，穿戴不变
+        if (G.held && G.held.id === id) { invAdd(id, G.held.count); G.held = null; }
+        clearSel();
+        toast('已穿戴「' + ITEMS[id].name + '」');
+      } else {
+        // 当前未穿戴 → 装备持握件
+        G.armor = id;
+        G.held = null;
+        clearSel();
+        if (typeof playSfx === 'function') playSfx('equip');
+        toast('已装备 ' + ARMORS[id].name);
+      }
+    }
+    // —— 未持有护甲但装甲槽有护甲 → 拿起（拿在手上）——
+    else if (G.armor) {
+      const old = G.armor;
+      G.armor = null;
+      G.held = { id: old, count: 1, src: { kind: 'armor' } };
+      clearSel(); // 拿起后由 drawHeldGhost 绘制护甲跟随，清除旧的放置幽灵
+      if (typeof playSfx === 'function') playSfx('unequip');
+      toast('已拿起 ' + ARMORS[old].name + '（点击背包空格可放回）');
+    }
+    // —— 未持有护甲且未穿戴：兼容从背包/快捷栏选中的护甲直接穿戴 ——
+    else {
+      const sel = qbHeld();
+      if (sel && isArmor(sel) && invCount(sel) >= 1) {
+        if (!canEquipArmor(sel)) {
+          toast('需要先研究「' + TECHS[TECH_REQ[sel]].name + '」才能装备');
+        } else {
+          invTake(sel, 1); G.armor = sel;
+          clearSel();
+          if (typeof playSfx === 'function') playSfx('equip');
+          toast('已装备 ' + ARMORS[sel].name);
+        }
+      } else {
+        toast('请先拿起一件护甲，或从背包选中护甲穿戴');
+      }
     }
     buildQuickbar();
     uiDirty = true;
+  });
+  el.addEventListener('contextmenu', ev => {
+    ev.preventDefault();
+    if (G.armor && typeof openArmorPanel === 'function') {
+      openArmorPanel(G.armor);
+    }
   });
   return el;
 }

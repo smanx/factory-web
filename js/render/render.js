@@ -154,6 +154,8 @@ function render() {
   if (G.settings.altMode) drawAltMode(ctx, keys, _bucketSeenBuf);
   // 电线杆供电范围可视化（悬停杆 / 放置杆幽灵时）
   if (typeof drawPoleCoverage === 'function') drawPoleCoverage(ctx);
+  // 机器人港范围可视化（悬停机器人港 / 放置机器人港幽灵时：物流+建造范围圆 + 相连黄色虚线）
+  if (typeof drawRoboportCoverage === 'function') drawRoboportCoverage(ctx);
   // 管道口流向箭头置顶：在实体/管道绘制之后统一画出，保证不被相邻管道遮挡
   if (typeof flushPortArrowOverlay === 'function') flushPortArrowOverlay(ctx);
   // 兜底清空放置幽灵顶层画布：确保每帧 ghost-layer 都被清空，

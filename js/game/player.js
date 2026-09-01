@@ -207,6 +207,8 @@ function invRoomFor(id, n, used, total) {
 }
 
 function invAdd(id, n = 1) {
+  // 流体不入背包：流体只能由管道/储罐/设备缓存承载，经管道系统运输（对齐《异星工厂》）
+  if (FLUIDS.indexOf(id) >= 0) return 0;
   // 物品堆叠上限（对齐《异星工厂》）：每格一组，满一组自动溢出到下一空格，直到背包格全部占满
   const cap = invStackCap(id);
   const cur = G.inv.get(id) || 0;
@@ -255,6 +257,37 @@ function normalizeInvSlots(fillFromEmpty) {
     ids.sort((a, b) => String(a).localeCompare(String(b)));
     G.invSlots = ids.map(id => ({ id, count: invCount(id) }));
   }
+}
+
+// 背包中不应出现流体：清除 G.inv 与手动槽中的流体残留（读档兜底 + 主循环周期清理）。
+// 正常路径已由 invAdd 拦截流体进入，此函数只处理旧档/历史数据遗留的流体。
+function purgeFluidsFromInv() {
+  if (!G || !G.inv) return 0;
+  let removed = 0;
+  G.inv.forEach((n, id) => {
+    if (FLUIDS.indexOf(id) >= 0) { G.inv.delete(id); removed += n; }
+  });
+  if (Array.isArray(G.invSlots)) {
+    let changed = false;
+    for (let i = 0; i < G.invSlots.length; i++) {
+      const s = G.invSlots[i];
+      if (s && s.id != null && FLUIDS.indexOf(s.id) >= 0) { G.invSlots[i] = null; changed = true; }
+    }
+    if (changed) while (G.invSlots.length && G.invSlots[G.invSlots.length - 1] == null) G.invSlots.pop();
+  }
+  // 光标上遗留的流体（旧档/历史状态）：移除，避免悬在手上无法处置
+  if (G.held && FLUIDS.indexOf(G.held.id) >= 0) {
+    G.held = null;
+    G.quickSel = null;
+    G.sel = -1;
+    if (typeof refreshHotbar === 'function') refreshHotbar();
+  }
+  if (removed > 0) {
+    uiDirty = true;
+    if (typeof refreshHotbar === 'function') refreshHotbar();
+    if (typeof toast === 'function') toast('已从背包移除流体（流体不能进入背包）');
+  }
+  return removed;
 }
 
 function selItem() { return G.sel >= 0 ? (HOTBAR[G.sel] || null) : (G.quickSel || null); }

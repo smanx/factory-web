@@ -1,5 +1,9 @@
 'use strict';
 
+// 电线杆拖建锚点：按住左键拖拽铺设电线杆时，记录上一根杆的放置格，
+// 拖动超过其最远连线距离才落下一根（对齐《异星工厂》拖建电线杆按最远距离间隔铺设）。
+let poleAnchor = null;
+
 function bindInput() {
   window.addEventListener('keydown', ev => {
     const k = ev.key.toLowerCase();
@@ -67,6 +71,9 @@ function bindInput() {
     // Z：丢弃物品（对齐《异星工厂》）——鼠标持握时丢 1 个手持物品到地面；
     // 否则丢弃当前选中的普通物品；两者皆无时回退为「拾取范围内全部地面物品」
     else if (k === 'z') {
+      // Z：上下文放入优先（设备控制面板当前鼠标指向的槽位 / 地图设备原料·燃料），
+      // 已由 zPlaceHeldAtContext 处理（放入成功或判定「不放入」）则不再落到地面/拾取。
+      if (typeof zPlaceHeldAtContext === 'function' && zPlaceHeldAtContext()) return;
       if (G.held) { if (typeof dropHeldToGround === 'function') dropHeldToGround(); }
       else if (!(typeof dropHeldItemToGround === 'function' && dropHeldItemToGround())) {
         if (typeof pickupAllAction === 'function') pickupAllAction();
@@ -88,6 +95,7 @@ function bindInput() {
     else if (k === 'n') { if (typeof placeMapTag === 'function') placeMapTag(); }
     // 操作说明（Alt+H）：随时查看完整快捷键指南
     else if (ev.altKey && k === 'h') { ev.preventDefault(); if (typeof showTutorial === 'function') showTutorial(); }
+    else if (ev.altKey && k === 'f') { ev.preventDefault(); if (typeof toggleRoboportActive === 'function') toggleRoboportActive(); }
     // C 键：在左下角快捷栏武器槽中从左到右循环切换当前武器（无武器则不切换）
     else if (k === 'c') { if (typeof cycleQuickbarWeapon === 'function') cycleQuickbarWeapon(); }
     else if (k === 'escape') {
@@ -185,10 +193,13 @@ function bindInput() {
     G.canvasActive = false;
     G.cursorTile = null;
     G.mouseDown = false;
+    poleAnchor = null;
   });
   G.canvas.addEventListener('mousedown', ev => {
     ev.preventDefault();
     updateCursorTile(ev.clientX, ev.clientY);
+    // 记录本次点击刚放置的实体（标记上一轮点击的历史），用于 click 区分「放置」与「点击已有设备」
+    G._lastPlacedEnt = null;
     // 蓝图/红图交互：左键开始框选或粘贴，右键取消
     if (G.blueMode) {
       if (ev.button === 2) { cancelBlueprint(); return; }
@@ -256,6 +267,7 @@ function bindInput() {
     if (ev.button === 2) { G.mouseRightDown = false; return; }
     if (ev.button !== 0) return;
     G.mouseDown = false;
+    poleAnchor = null;
     G.deconstructHeld = false;
     // 蓝图/红图：松开鼠标完成框选
     if (G.blueSelecting) {
@@ -274,7 +286,7 @@ function bindInput() {
     ev.preventDefault();
     // 鼠标滚轮直接放大/缩小画面视野（默认交互，不切换快捷栏选择图标）。
     G.cam.z *= ev.deltaY < 0 ? 1.12 : 0.89;
-    G.cam.z = Math.max(0.5, Math.min(2.2, G.cam.z));
+    G.cam.z = Math.max(0.3, Math.min(2.2, G.cam.z));
   }, { passive: false });
 
   window.addEventListener('resize', resize);
@@ -310,6 +322,14 @@ function bindInput() {
     if (typeof wireToolSelected === 'function' && wireToolSelected() && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
       const we = entAt(G.cursorTile.tx, G.cursorTile.ty);
       if (we && applyWireToNode(we, wireToolSelected())) { toast((we.wireChan === 'both' ? '已恢复双通道接入' : '仅接入' + (we.wireChan === 'red' ? '红线' : '绿线') + '网络') + '（' + ITEMS[we.type].name + '）'); return; }
+    }
+    // 鼠标选中了物品时点击地图上的设备：也应展开设备面板（对齐《异星工厂》，
+    // 手持物品点击可交互设备仍打开其界面，而非被选中物品的建造/幽灵流程拦截）。
+    if (buildActive()) {
+      const bse = entAt(G.cursorTile.tx, G.cursorTile.ty);
+      // 排除「放置物品」场景：刚通过 this 次点击放置下的实体（=本次 mousedown 新建、非点击已有设备）
+      // 不会把它自己当作可交互设备打开面板；只有点击已放置的设备才展开面板。
+      if (bse && bse !== G._lastPlacedEnt && typeof DEVICE_PANEL !== 'undefined' && DEVICE_PANEL[bse.type]) { openPanel('machine', bse); return; }
     }
     if (buildActive()) return;
     const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
@@ -362,6 +382,12 @@ function handleLeftDown() {
   if (buildActive() && G.cursorTile) {
     tryPlaceAt(G.cursorTile.tx, G.cursorTile.ty);
     lastPlaceKey = G.cursorTile.tx + ',' + G.cursorTile.ty;
+    // 电线杆：记录本次按下放置的杆位作为拖建锚点，拖动时按最远连线距离间隔铺设
+    const _raw = (typeof selItem === 'function') ? selItem() : null;
+    const _base = (typeof splitQuality === 'function' && _raw) ? splitQuality(_raw).base : _raw;
+    poleAnchor = (GAME_DATA && GAME_DATA.pole && _base && GAME_DATA.pole[_base])
+      ? { tx: G.cursorTile.tx, ty: G.cursorTile.ty }
+      : null;
   } else if (G.cursorTile && typeof tryFishAt === 'function' && isWater(G.cursorTile.tx, G.cursorTile.ty)) {
     // 点击水域 → 钓鱼（对齐《异星工厂》钓鱼玩法）
     tryFishAt(G.cursorTile.tx, G.cursorTile.ty);
@@ -437,6 +463,34 @@ function updateHeldMouse(dt) {
   }
   if (!G.mouseDown || !G.cursorTile) return;
   if (buildActive()) {
+    const _raw = (typeof selItem === 'function') ? selItem() : null;
+    const _bsel = (typeof splitQuality === 'function' && _raw) ? splitQuality(_raw).base : _raw;
+    // 电线杆拖建：不是逐格铺设，而是按最远连线距离为间隔落杆。
+    // 从上一根杆向鼠标方向，先按间隔填充中间杆，最后一根落到鼠标所在格，
+    // 相邻杆间隔取 floor(连线距离)（电网按切比雪夫距离判连，整数间隔必然接上线）。
+    if (_bsel && GAME_DATA && GAME_DATA.pole && GAME_DATA.pole[_bsel] && poleAnchor) {
+      const reach = GAME_DATA.pole[_bsel].wire;
+      const S = Math.max(1, Math.floor(reach));
+      const dx = G.cursorTile.tx - poleAnchor.tx;
+      const dy = G.cursorTile.ty - poleAnchor.ty;
+      const total = Math.hypot(dx, dy);
+      if (total < S) return;   // 尚未拖出上一根杆的连线距离，不落新杆
+      const placed = new Set();
+      const putPole = (px, py) => {
+        const k = px + ',' + py;
+        if (placed.has(k)) return;   // 同一批内已尝试过的格不重复放置
+        placed.add(k);
+        tryPlaceAt(px, py);
+      };
+      const n = Math.floor(total / S);
+      for (let i = 1; i <= n; i++) {
+        const t = (i * S) / total;
+        putPole(Math.round(poleAnchor.tx + dx * t), Math.round(poleAnchor.ty + dy * t));
+      }
+      putPole(G.cursorTile.tx, G.cursorTile.ty);
+      poleAnchor = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
+      return;
+    }
     const key = G.cursorTile.tx + ',' + G.cursorTile.ty;
     if (key !== lastPlaceKey) {
       tryPlaceAt(G.cursorTile.tx, G.cursorTile.ty);
@@ -478,6 +532,9 @@ function stepWorld(dt) {
   // 每逻辑步失效信号塔模块加成缓存（P0 优化：同一步内同坐标只查询一次）
   if (typeof clearBeaconBonusCache === 'function') clearBeaconBonusCache();
   updatePlayer(dt);
+  // 背包中不应出现流体：周期性自动清理（正常路径已由 invAdd 拦截流体进入，此为兜底）
+  G.purgeT = (G.purgeT || 0) + dt;
+  if (G.purgeT >= 1) { G.purgeT = 0; if (typeof purgeFluidsFromInv === 'function') purgeFluidsFromInv(); }
   updateHeldMouse(dt);
   updateMining(dt);
   if (typeof updateGroundItems === 'function') updateGroundItems(dt);   // 地面物品（手动上料）拾取
@@ -660,7 +717,7 @@ function loop(ts) {
       // 的输入框，打断中文输入法并清空已输入内容。改用轻量计数刷新（不改 DOM 结构）。
       // 整面板的重建只发生在打开面板或用户在面板内交互时（renderPanel）。
       // 蓝图面板（bluebook）与设备面板（machine）左栏也是玩家背包，物品变化同样需即时刷新
-      if ((G.panelMode === 'inv' || G.panelMode === 'bluebook' || G.panelMode === 'machine') && !isPanelTyping()) updateInvLive();
+      if ((G.panelMode === 'inv' || G.panelMode === 'bluebook' || G.panelMode === 'machine' || G.panelMode === 'armor') && !isPanelTyping()) updateInvLive();
       else if (G.panelMode === 'tech' && !isPanelTyping()) updateTechLive();
       uiDirty = false;
     }

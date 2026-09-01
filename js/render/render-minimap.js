@@ -353,13 +353,14 @@ function _hoverRuntimeSections(e) {
     if (outAgg) for (const k in outAgg)
       rows.push({ label: '产出速率', value: '+' + fmt(outAgg[k] / rec.time * M) + '/秒 ' + (ITEMS[k] ? ITEMS[k].name : k), color: '#8fe08f' });
     if (rec.prob) for (const k in rec.prob)   // 概率产出配方（如铀浓缩）：按概率折算期望速率
-      rows.push({ label: '期望产出', value: '+' + fmt(rec.prob[k] / rec.time * M) + '/秒 ' + (ITEMS[k] ? ITEMS[k].name : k) + '（' + Math.round(rec.prob[k] * 100) + '% 概率）', color: '#8fe08f' });
+      rows.push({ label: '期望产出', value: '+' + fmt(rec.prob[k] / rec.time * M) + '/秒 ' + (ITEMS[k] ? ITEMS[k].name : k) + '（' + (Math.round(rec.prob[k] * 1000) / 10) + '% 概率）', color: '#8fe08f' });
     secs.push({ title: '🏭 生产', rows });
   })();
 
   // ---- 电力：当前/最低/最高耗电 + 供电比例 ----
   (function powerSec() {
     if (typeof e.powerDemand !== 'function') return;
+    if (e instanceof Roboport) return;   // 机器人港电力信息由 roboportSec 统一展示（对齐官方 tooltip）
     const maxW = e.powerDemand() || 0;
     if (maxW <= 0) return;
     const pf = (typeof powerFactor === 'function') ? powerFactor(e) : 1;
@@ -511,6 +512,99 @@ function _hoverRuntimeSections(e) {
     secs.push({ title: '🎯 武器', rows });
   })();
 
+  // ---- 机器人港：对齐《异星工厂》2.0 官方 tooltip 完整字段 ----
+  // 官方数据源（factorio-data/base/prototypes/entity/entities.lua + wiki Roboport）：
+  //   max_health=500, energy_usage=50kW（最小能耗/drain）, charging_energy=500kW（每充电桩）,
+  //   charging_offsets=4 桩, logistics_radius=25（50×50 供应区域）, construction_radius=55（110×110 建设区域）,
+  //   robot_slots_count=7, radar_range=2（区块，wiki 默认值）,
+  //   surface_conditions=pressure>=10hPa（space-age/base-data-updates.lua ten_pressure_condition）,
+  //   最大能耗（内部缓冲充电速率）=4×500+50=2050kW≈2.1MW（wiki Internal buffer recharge rate）
+  (function roboportSec() {
+    if (!(e instanceof Roboport)) return;
+    const range = GAME_DATA.roboportRange || {};
+    const logiR = range.logistics ?? 25;            // 官方 logistics_radius=25
+    const constrR = range.construction ?? 55;       // 官方 construction_radius=55
+    const radarRange = range.radarRange ?? 2;        // 官方 radar_range 默认 2 区块（wiki）
+    const chargePorts = range.chargingPorts ?? 4;    // 官方 charging_offsets 4 桩
+    const chargeKW = range.chargingEnergy ?? 500;   // 官方 charging_energy 500kW/桩
+    const drainKW = GAME_DATA.roboportPower ?? 50;   // 官方 energy_usage 50kW
+    const maxKW = chargePorts * chargeKW + drainKW;  // 4×500+50=2050kW≈2.1MW
+    const hp = (GAME_DATA.buildingHp && GAME_DATA.buildingHp[e.type]) || 500;
+    const cur = (e.hp !== undefined && e.maxhp) ? Math.min(hp, Math.max(0, Math.round(e.hp))) : hp;
+
+    // 可用机器人数量 = 整个物流网络（G.logiNet.ports 全部机器人港）中的机器人数量，而非仅当前设备：
+    //   物流机器人 = 全网络闲置且满电的归港实体 / 全网络港内物流机器人总量
+    //   建设机器人 = 全网络建设机器人总量（暂为纯存储、未派生飞行实体，全部视为可用待命）
+    // 存储 = 当前设备内放置的机器人数量及修理包数量（可用数量的设备侧子集）。
+    const netPorts = (G.logiNet && G.logiNet.ports) || null;
+    const inNet = netPorts ? (p => netPorts.indexOf(p) >= 0) : (p => p === e);
+    let logiAvail = 0, logiNetTotal = 0, constrNetTotal = 0;
+    if (G.logiRobots) {
+      for (const r of G.logiRobots) {
+        if (r._dead || !inNet(r.home)) continue;
+        if (r.state === 'idle' && r.charge >= ROBOT_MAX_CHARGE) logiAvail++;
+      }
+    }
+    for (const p of (netPorts || [e])) {
+      if (p._dead) continue;
+      logiNetTotal += (typeof p.countOf === 'function') ? p.countOf('logistic-robot') : 0;
+      constrNetTotal += (typeof p.countOf === 'function') ? p.countOf('construction-robot') : 0;
+    }
+    // 存储（当前设备）：港内两种机器人台数 + 修理包数量
+    const logiStored = (typeof e.countOf === 'function') ? e.countOf('logistic-robot') : 0;
+    const constrStored = (typeof e.countOf === 'function') ? e.countOf('construction-robot') : 0;
+    const matStored = (typeof e.matCount === 'function') ? e.matCount('repair-pack') : 0;
+
+    // 运行状态：有电即「正常运转」，断电则「断电停摆」（对齐官方 tooltip 顶部状态行）
+    const sat = (typeof powerSatOf === 'function') ? powerSatOf(e) : (G.power ? G.power.sat : 1);
+    const statusText = sat > 0 ? '正常运转' : '断电停摆';
+    const statusColor = sat > 0 ? '#8fe08f' : '#ff5b5b';
+
+    // 功率格式化（1 位小数，对齐官方 50.0 kW / 2.1 MW 显示）
+    const fmtP1 = k => k >= 1000 ? (Math.round(k / 100) / 10).toFixed(1) + ' MW' : k.toFixed(1) + ' kW';
+
+    // 段 1：可用机器人数量（网络整体；含运行状态行）
+    secs.push({
+      title: '可用机器人数量', rows: [
+        { label: null, value: statusText, color: statusColor },
+        { label: '·物流机器人', value: logiAvail + '/' + logiNetTotal },
+        { label: '·建设机器人', value: constrNetTotal + '/' + constrNetTotal },
+      ]
+    });
+    // 段 2：存储（当前设备内放置的机器人 + 修理包）——以物品图标显示，数量用右上角标展示
+    secs.push({
+      title: '存储', icons: [
+        { id: 'logistic-robot', count: logiStored, badge: true },
+        { id: 'construction-robot', count: constrStored, badge: true },
+        { id: 'repair-pack', count: matStored, badge: true },
+      ]
+    });
+    // 段 3：设备参数（范围/雷达/生命值）
+    secs.push({
+      title: '设备参数', rows: [
+        { label: '供应区域', value: (logiR * 2) + '×' + (logiR * 2) },
+        { label: '建设区域', value: (constrR * 2) + '×' + (constrR * 2) },
+        { label: '雷达覆盖距离', value: String(radarRange) },
+        { label: '生命值', value: cur + '/' + hp },
+      ]
+    });
+    // 段 4：消耗电力
+    secs.push({
+      title: '⚡ 消耗电力', rows: [
+        { label: '机器人充电速度', value: chargePorts + '×' + chargeKW + 'kW' },
+        { label: '最大能耗', value: fmtP1(maxKW) },
+        { label: '最小能耗', value: fmtP1(drainKW) },
+        { label: '供电', value: Math.round(sat * 100) + ' %' + (sat >= 1 ? '（充足）' : (sat > 0 ? '（不足）' : '（断电）')), color: sat >= 1 ? '#8fe08f' : (sat > 0 ? '#ffd23c' : '#ff5b5b') },
+      ]
+    });
+    // 段 5：建造表面条件
+    secs.push({
+      title: '建造表面条件', rows: [
+        { label: '气压', value: '≥ 10 hPa' },
+      ]
+    });
+  })();
+
   return secs;
 }
 
@@ -566,8 +660,9 @@ function drawDeviceInfoBar(ctx) {
   }
 
   // 消耗量（官方 core.cfg energy-consumption=消耗量；燃烧器设备显示“(燃烧器)”，其余“(电能)”）
+  // 机器人港的能耗信息由 roboportSec 统一展示（对齐官方 tooltip 消耗电力段），此处跳过避免重复
   const pw = GAME_DATA.powerUse && GAME_DATA.powerUse[e.type];
-  if (pw) add('消耗量', pw + ' kW（' + (_BURNER_DEVICES.has(e.type) ? '燃烧器' : '电能') + '）');
+  if (pw && !(e instanceof Roboport)) add('消耗量', pw + ' kW（' + (_BURNER_DEVICES.has(e.type) ? '燃烧器' : '电能') + '）');
 
   // 污染
   const poll = GAME_DATA.pollution && GAME_DATA.pollution[e.type];
@@ -577,8 +672,9 @@ function drawDeviceInfoBar(ctx) {
   if (ds && ds.moduleSlots) add('插件槽位', String(ds.moduleSlots));
 
   // 生命值（官方 tooltip 中位于最末；受损时显示当前/最大）
+  // 机器人港的生命值由 roboportSec 统一展示（对齐官方 tooltip 排版），此处跳过避免重复
   const hp = GAME_DATA.buildingHp && GAME_DATA.buildingHp[e.type];
-  if (hp) {
+  if (hp && !(e instanceof Roboport)) {
     const cur = (e.hp !== undefined && e.maxhp) ? Math.min(hp, Math.max(0, Math.round(e.hp))) : hp;
     add('生命值', cur >= hp ? String(hp) : cur + '/' + hp);
   }
@@ -637,14 +733,16 @@ function drawDeviceInfoBar(ctx) {
   const titleLh = 16;                    // 标题行高
   const descLh = 13;                     // 描述行高
   const fieldLh = 14;                    // 字段行高
+  const iconRowLh = 20;                  // 图标行高（存储段：一行图标 + 角标）
   const sepBefore = 3;                   // 描述→分隔线间距
   const sepAfter = 5;                    // 分隔线→字段间距
   const padTop = 8, padBottom = 8;
-  // 预排版动态段（标签灰 + 值白，值超宽折行），同时累计行数
+  // 预排版动态段（标签灰 + 值白，值超宽折行；带 icons 的段为图标行，直接透传），同时累计行数
   const secBlocks = [];
   const secTitleLh = 15;
   ctx.font = '10.5px system-ui';
   for (const s of secs) {
+    if (s.icons) { secBlocks.push({ title: s.title, icons: s.icons }); continue; }
     const secRows = [];
     for (const f of s.rows) {
       const labelFull = f.label ? (f.label + '：') : '';
@@ -661,7 +759,7 @@ function drawDeviceInfoBar(ctx) {
     + descLines.length * descLh
     + sepBefore + 1 + sepAfter
     + rows.length * fieldLh
-    + (secBlocks.length ? (3 + secBlocks.reduce((n, s) => n + secTitleLh + s.rows.length * fieldLh, 0)) : 0)
+    + (secBlocks.length ? (3 + secBlocks.reduce((n, s) => n + secTitleLh + (s.icons ? iconRowLh : s.rows.length * fieldLh), 0)) : 0)
     + padBottom;
 
   // ---- 背景（官方 tooltip 深色半透明底 + 细边框）----
@@ -703,13 +801,42 @@ function drawDeviceInfoBar(ctx) {
     y += fieldLh;
   }
 
-  // ---- 动态运行时段（小节标题 + 字段行，随实时状态逐帧刷新）----
+  // ---- 动态运行时段（小节标题 + 字段行 / 图标行，随实时状态逐帧刷新）----
   for (const s of secBlocks) {
     y += 3;
     ctx.font = 'bold 11px system-ui';
     ctx.fillStyle = 'rgba(255,212,59,0.75)';
     ctx.fillText(s.title, bx + pad, y);
     y += secTitleLh;
+    // 图标行（存储段）：物品以图标显示，数量以右上角标展示
+    if (s.icons) {
+      const ISZ = 16, ISP = 23;   // 图标边长 / 图标间距
+      let ix = bx + pad;
+      for (const ic of s.icons) {
+        drawItemGlyph(ctx, ic.id, ix + ISZ / 2, y + ISZ / 2, ISZ);
+        if (ic.badge) {
+          const bx0 = ix + ISZ - 6, by0 = y + ISZ - 9, bw = 12, bh = 10;  // 角标：图标右下角
+          ctx.fillStyle = 'rgba(18,20,16,0.9)';
+          ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(bx0, by0, bw, bh, 3);
+          else ctx.rect(bx0, by0, bw, bh);
+          ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#fff';
+          ctx.font = 'bold 8px system-ui';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(String(ic.count), bx0 + bw / 2, by0 + bh / 2 + 0.5);
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+        }
+        ix += ISP;
+      }
+      ctx.font = '10.5px system-ui';
+      y += iconRowLh;
+      continue;
+    }
     ctx.font = '10.5px system-ui';
     for (const r of s.rows) {
       if (r.label) { ctx.fillStyle = 'rgba(160,164,155,0.85)'; ctx.fillText(r.label, bx + pad, y); }

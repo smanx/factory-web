@@ -20,111 +20,43 @@ function dbgSlider(body, label, key, min, max, step) {
   body.appendChild(row);
 }
 
-// ===== 调试面板可发放的资源清单（按类别分组，覆盖全部可获取材料/流体/弹药/科技包/建筑实体等）=====
-// 每组：[类别名, [[物品id, 发放数量], ...]]
-const DBG_GIVE_GROUPS = [
-  ['矿石', [
-    ['iron-ore', 100], ['copper-ore', 100], ['coal', 100], ['stone', 100],
-    ['uranium-ore', 100], ['calcite', 100], ['raw-fish', 20]
-  ]],
-  ['板材·材料', [
-    ['iron-plate', 200], ['copper-plate', 200], ['steel-plate', 100], ['stone-brick', 100],
-    ['iron-gear-wheel', 100], ['iron-stick', 100], ['copper-cable', 100],
-    ['plastic-bar', 100], ['wood', 100], ['concrete', 100], ['refined-concrete', 100],
-    ['hazard-concrete', 100], ['refined-hazard-concrete', 100], ['stone-path', 100], ['landfill', 100], ['artificial-yumako-soil', 100], ['overgrowth-yumako-soil', 100], ['artificial-jellynut-soil', 100], ['overgrowth-jellynut-soil', 100]
-  ]],
-  ['电路·元件', [
-    ['electronic-circuit', 100], ['red-wire', 100], ['green-wire', 100],
-    ['advanced-circuit', 100], ['processing-unit', 100], ['engine-unit', 50], ['electric-engine-unit', 50]
-  ]],
-  ['燃料', [
-    ['solid-fuel', 100], ['battery', 100], ['nuclear-fuel', 20], ['depleted-uranium-fuel-cell', 20]
-  ]],
-  ['科学包', [
-    ['automation-science-pack', 50], ['logistic-science-pack', 50], ['chemical-science-pack', 50],
-    ['military-science-pack', 50], ['production-science-pack', 50], ['utility-science-pack', 50],
-    ['space-science-pack', 50]
-  ]],
-  ['流体', [
-    ['water', 500], ['steam', 500], ['crude-oil', 500], ['heavy-oil', 500],
-    ['light-oil', 500], ['petroleum-gas', 500], ['lubricant', 500], ['sulfuric-acid', 500],
-    ['sulfur', 100]
-  ]],
-  ['弹药·武器', [
-    ['firearm-magazine', 100], ['piercing-rounds-magazine', 100], ['uranium-rounds-magazine', 100],
-    ['shotgun-shell', 100], ['piercing-shotgun-shell', 100], ['flamethrower-ammo', 100],
-    ['rocket', 50], ['explosive-rocket', 50], ['cannon-shell', 50], ['explosive-cannon-shell', 50],
-    ['explosive-uranium-cannon-shell', 50], ['artillery-shell', 20], ['uranium-cannon-shell', 50],
-    ['grenade', 50], ['cluster-grenade', 50], ['poison-capsule', 50], ['slowdown-capsule', 50],
-    ['land-mine', 50], ['explosives', 100], ['cliff-explosives', 50]
-  ]],
-  ['模块', [
-    ['speed-module', 50], ['speed-module-2', 50], ['speed-module-3', 50],
-    ['productivity-module', 50], ['productivity-module-2', 50], ['productivity-module-3', 50],
-    ['efficiency-module', 50], ['efficiency-module-2', 50], ['efficiency-module-3', 50]
-  ]],
-  ['核能', [
-    ['uranium-235', 20], ['uranium-238', 100], ['uranium-cannon-shell', 50],
-    ['atomic-bomb', 5], ['nuclear-fuel', 20]
-  ]],
-  ['装备·机器人', [
-    ['repair-pack', 50], ['light-armor', 5], ['heavy-armor', 5],
-    ['logistic-robot', 20], ['construction-robot', 20], ['flying-robot-frame', 20],
-    ['defender-capsule', 20], ['distractor-capsule', 20], ['destroyer-capsule', 20]
-  ]],
-  ['桶装流体', [
-    ['water-barrel', 50], ['crude-oil-barrel', 50], ['heavy-oil-barrel', 50],
-    ['light-oil-barrel', 50], ['petroleum-gas-barrel', 50], ['lubricant-barrel', 50], ['sulfuric-acid-barrel', 50]
-  ]],
-  ['载具·建筑', [
-    ['car', 5], ['tank', 5], ['spidertron', 5], ['locomotive', 5], ['cargo-wagon', 5],
-    ['fluid-wagon', 5], ['artillery-wagon', 5], ['train-stop', 5], ['rail', 100], ['rail-signal', 50], ['rail-chain-signal', 50]
-  ]],
-  ['物流·传送带', [
-    ['transport-belt', 100], ['fast-transport-belt', 100], ['express-transport-belt', 100],
-    ['splitter', 50], ['fast-splitter', 50], ['express-splitter', 50],
-    ['underground-belt', 50], ['fast-underground-belt', 50], ['express-underground-belt', 50]
-  ]],
-  ['机械臂', [
-    ['burner-inserter', 50], ['inserter', 50], ['long-handed-inserter', 50], ['fast-inserter', 50],
-    ['bulk-inserter', 50], ['stack-inserter', 50]
-  ]],
-  ['生产·建筑', [
-    ['burner-mining-drill', 20], ['electric-mining-drill', 20], ['big-mining-drill', 20], ['pumpjack', 20],
-    ['stone-furnace', 20], ['steel-furnace', 20], ['electric-furnace', 20],
-    ['assembling-machine-1', 20], ['assembling-machine-2', 20], ['assembling-machine-3', 20],
-    ['chemical-plant', 20], ['oil-refinery', 10], ['lab', 20], ['beacon', 10], ['radar', 10], ['rocket-silo', 5],
-    ['foundry', 20], ['electromagnetic-plant', 20], ['biochamber', 20], ['crusher', 20]
-  ]],
-  ['储物·物流', [
-    ['wooden-chest', 20], ['iron-chest', 20], ['steel-chest', 20],
-    ['passive-provider-chest', 20], ['active-provider-chest', 20], ['storage-chest', 20],
-    ['requester-chest', 20], ['buffer-chest', 20], ['roboport', 10]
-  ]],
-  ['电力·能源', [
-    ['boiler', 20], ['steam-engine', 20], ['offshore-pump', 20],
-    ['small-electric-pole', 50], ['medium-electric-pole', 50], ['big-electric-pole', 50], ['substation', 20]
-  ]],
-  ['流体·管道', [
-    ['pipe', 100], ['pipe-to-ground', 50], ['pump', 20], ['storage-tank', 20]
-  ]],
-  ['防御·军事', [
-    ['stone-wall', 100], ['gate', 50], ['gun-turret', 20], ['laser-turret', 20],
-    ['tesla-turret', 20], ['flamethrower-turret', 20], ['artillery-turret', 10], ['rocket-turret', 10], ['railgun-turret', 10], ['railgun-ammo', 20], ['land-mine', 50]
-  ]],
-  ['电路·信号', [
-    ['constant-combinator', 20], ['arithmetic-combinator', 20], ['decider-combinator', 20],
-    ['power-switch', 20], ['programmable-speaker', 20], ['small-lamp', 50]
-  ]],
-  ['核能·建筑', [
-    ['centrifuge', 10], ['nuclear-reactor', 5], ['steam-turbine', 20],
-    ['heat-pipe', 50], ['heat-exchanger', 20]
-  ]],
-  ['测试设备', [
-    ['creative-chest', 10], ['void-chest', 10], ['creative-belt', 10], ['void-belt', 10],
-    ['creative-pipe', 10], ['void-pipe', 10]
-  ]]
-];
+// ===== 调试面板可发放的资源（自动来自官方数据，不手写清单）=====
+// 物品集合与创造箱同源（creativeItemChoices：官方同名固体物品全量，排除流体/品质变体/蓝图），
+// 分类按官方 item-group 归为 5 大 Tab（与背包制作栏一致），同组内按官方 itemOrder 排序；
+// 另把无官方分组数据的测试设备（创造/虚空箱/带/管）单独归入「测试设备」组。
+// 这样官方数据新增物品（如装甲各型号）时，发放清单会自动同步，无需维护。
+function dbgGiveCount(id) {
+  const s = GAME_DATA.stackSize && GAME_DATA.stackSize[id];
+  return s ? Math.min(s, 200) : 50;   // 默认发一组（小物件整组，大物件截断到 200）
+}
+function dbgGiveGroups() {
+  const TEST_SET = new Set(['creative-chest', 'void-chest', 'creative-belt', 'void-belt', 'creative-pipe', 'void-pipe']);
+  const buckets = new Map(CRAFT_TABS.map(t => [t, []]));   // 官方 5 大 Tab 桶
+  const orphan = [], test = [];
+  for (const id of creativeItemChoices()) {
+    if (TEST_SET.has(id)) { test.push(id); continue; }
+    const tab = GAME_DATA.itemGroup && GAME_DATA.itemGroup[id];
+    const bucket = buckets.get(tab);
+    if (bucket) bucket.push(id);
+    else orphan.push(id);   // 无官方分组的兜底到「其它」
+  }
+  const out = [];
+  for (const t of CRAFT_TABS) {
+    const list = buckets.get(t);
+    if (!list.length) continue;
+    list.sort(officialItemCompare);
+    out.push([CRAFT_TAB_LABEL[t].text, list.map(id => [id, dbgGiveCount(id)])]);
+  }
+  if (orphan.length) {
+    orphan.sort(officialItemCompare);
+    out.push(['其它', orphan.map(id => [id, dbgGiveCount(id)])]);
+  }
+  if (test.length) {
+    test.sort();
+    out.push(['测试设备', test.map(id => [id, dbgGiveCount(id)])]);
+  }
+  return out;
+}
 
 const DBG_BTN_POS_KEY = 'factory_dbg_btn_pos';
 
@@ -437,7 +369,7 @@ function buildDebug() {
     grid1.innerHTML = '';
     const q = (kw || '').trim().toLowerCase();
     let any = false;
-    for (const [cat, list] of DBG_GIVE_GROUPS) {
+    for (const [cat, list] of dbgGiveGroups()) {
       const matched = q ? list.filter(([id]) => {
         const it = ITEMS[id];
         return (it && it.name && it.name.toLowerCase().indexOf(q) >= 0) || id.indexOf(q) >= 0;
@@ -485,7 +417,7 @@ function buildDebug() {
   giveAllBtn.className = 'dgiveall';
   giveAllBtn.addEventListener('click', () => {
     let cnt = 0;
-    for (const [, list] of DBG_GIVE_GROUPS) for (const [id, n] of list) { invAdd(id, n); cnt++; }
+    for (const [, list] of dbgGiveGroups()) for (const [id, n] of list) { invAdd(id, n); cnt++; }
     toast('已发放 ' + cnt + ' 种资源');
     refreshHotbar();
   });

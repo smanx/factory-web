@@ -65,11 +65,6 @@ class Drill extends Entity {
   update(dt) {
     this.working = false;
     if (this.bufN === undefined) { this.bufN = 0; }
-    if (this.bufItem === 'coal' && this.buf > 0 && this.fuelCoal < SELF_FUEL_MAX) {
-      this.buf--;
-      this.fuelCoal++;
-      if (this.buf <= 0) this.bufItem = null;
-    }
     if (this.buf > 0) this.tryOutput();
     const o = this.oreTile();
     if (!o) { this.status = '无矿'; this.spin = 0; return; }
@@ -106,7 +101,8 @@ class Drill extends Entity {
       this._runSfxT = (this._runSfxT || 0) - dt;
       if (this._runSfxT <= 0) { this._runSfxT = 2.2; playSfx('machine-run'); }
     }
-    this.burnLeft -= dt * fuelConsumptionMult();
+    // 燃烧速率 = 热能采矿机官方功率 150kW，使一块燃料燃烧时长 = 热值÷功率，对齐官方
+    this.burnLeft -= dt * fuelConsumptionMult() * burnPowerMW('burner-mining-drill');
     this.spin += dt * 6;
     // 热能采矿机 mining-speed 0.25（对齐《异星工厂》官方 mining_speed）；每采 1 个矿需累计到该矿石的采矿时间
     this.prog += dt * drillMult() * (GAME_DATA.deviceStats?.[this.type]?.miningSpeed ?? 0.25) * (this.quality ? qualityMult(this.quality) : 1);
@@ -115,34 +111,25 @@ class Drill extends Entity {
       this.prog -= mt;
       if (!G.settings.infiniteOre) this.consumeOreDrain(o[0], o[1]);
       const mined = this.mineItem(o);
-      // 采矿产能科技：按比例累积免费额外产出（对齐《异星工厂》Mining productivity）
+      // 采矿产物统一进入「产物缓冲」（煤炭也按普通产物处理），与「燃料槽」完全分离：
+      // 燃料是玩家/机械臂单独放入的，二者互不混取——取燃料不会带走产物，取产物也不影响燃料。
       if (this.prodAccum === undefined) this.prodAccum = 0;
       this.prodAccum += (miningProdMult() - 1);
       const bonus = Math.floor(this.prodAccum);
       if (bonus > 0) this.prodAccum -= bonus;
-      if (mined === 'coal' && this.fuelCoal < SELF_FUEL_MAX) {
-        this.fuelCoal++;   // 采到的煤直接进燃料仓自用
-        if (bonus > 0) {
-          // 免费额外产出受缓冲容量限制：放得下的入缓冲，放不下的回存 prodAccum 后续再产出
-          const bonusAdd = Math.min(bonus, Math.max(0, DRILL_BUFFER_CAP - this.buf));
-          this.prodAccum += (bonus - bonusAdd);
-          if (bonusAdd > 0) { this.bufItem = mined; this.buf += bonusAdd; if (typeof trackProd === 'function') trackProd(mined, bonusAdd); }
-        }
+      this.bufItem = mined;
+      // 实采的 1 个矿必定入缓冲（到此处 buf < 上限，必有空位）；免费额外产出受缓冲容量限制
+      let added = 1;
+      if (bonus > 0) {
+        const space = DRILL_BUFFER_CAP - this.buf - 1;
+        const bonusAdd = Math.min(bonus, Math.max(0, space));
+        this.prodAccum += (bonus - bonusAdd);
+        this.buf += 1 + bonusAdd;
+        added += bonusAdd;
       } else {
-        this.bufItem = mined;
-        // 实采的 1 个矿必定入缓冲（到此处 buf < 上限，必有空位）；免费额外产出受缓冲容量限制
-        let added = 1;
-        if (bonus > 0) {
-          const space = DRILL_BUFFER_CAP - this.buf - 1;
-          const bonusAdd = Math.min(bonus, Math.max(0, space));
-          this.prodAccum += (bonus - bonusAdd);
-          this.buf += 1 + bonusAdd;
-          added += bonusAdd;
-        } else {
-          this.buf += 1;
-        }
-        if (typeof trackProd === 'function') trackProd(mined, added);
+        this.buf += 1;
       }
+      if (typeof trackProd === 'function') trackProd(mined, added);
       this.tryOutput();
     }
   }
@@ -167,10 +154,12 @@ class Drill extends Entity {
     }
   }
   giveItem(item) {
-    if (item === 'rocket-fuel' && this.fuelRocket < 10) { this.fuelRocket++; return true; }
-    if (item === 'coal' && this.fuelCoal < SELF_FUEL_MAX) { this.fuelCoal++; return true; }
-    if (item === 'wood' && this.fuelWood < 10) { this.fuelWood++; return true; }
-    if (item === 'solid-fuel' && this.fuelSolid < 10) { this.fuelSolid++; return true; }
+    // 燃料槽容量 = 该燃料一整组的上限（对齐堆叠上限）：玩家可手动放进一整组；
+    // 机械臂则受 inserter.js 中「补到 5 个即停」限制，故手动可加满、机械臂只补 5。
+    if (item === 'rocket-fuel' && this.fuelRocket < stackSize('rocket-fuel')) { this.fuelRocket++; return true; }
+    if (item === 'coal' && this.fuelCoal < stackSize('coal')) { this.fuelCoal++; return true; }
+    if (item === 'wood' && this.fuelWood < stackSize('wood')) { this.fuelWood++; return true; }
+    if (item === 'solid-fuel' && this.fuelSolid < stackSize('solid-fuel')) { this.fuelSolid++; return true; }
     return false;
   }
   peekItem() {
@@ -540,155 +529,118 @@ function drillNeedsOre(type, tx, ty, dir, ew, eh) {
   return hasOre ? null : { ok: false };
 }
 
-// ===== 热能采矿机专属面板（对齐设计：信息透明、操作直接）=====
-// 面板分四块，直击“自给自足、简单实用”：
-//   ① 燃料槽    —— 显示当前燃料数量（煤/木材/固体/火箭），手动放入即可启动；
-//   ② 燃料消耗指示 —— 进度条展示当前正在燃烧的那一单位燃料剩余能量，一眼看清还能撑多久；
-//   ③ 采矿进度条 —— 当前一个矿石的开采进度（由 api.prog 驱动渲染）；
-//   ④ 产品槽    —— 已开采矿石缓存，支持一键取回。
+// ===== 采矿机面板（对齐组装机/熔炉样式；外壳的「状态点 + 机器图标 + 采矿进度条」由通用外壳提供）=====
+// 面板内容自上而下（装备类型不同，第三行各异）：
+//   ① 燃料行（热能采矿机）：单格燃料槽（选择燃料）+ 当前燃烧燃料的燃烧进度条；
+//      电力采矿机则显示模块插槽（含槽位数量）。
+//   ② 矿业品缓存：已开采产物，可一键取回。
+function _drillCurrentFuel(e) {
+  if (e.fuelRocket > 0) return 'rocket-fuel';
+  if (e.fuelSolid > 0) return 'solid-fuel';
+  if (e.fuelCoal > 0) return 'coal';
+  if (e.fuelWood > 0) return 'wood';
+  return null;
+}
+// ===== 燃料行：单格燃料槽 + 独立燃料燃烧进度条（蓝色，区分于冶炼进度）=====
+// 返回供 .fuel-row 使用的内部内容（左侧燃料格 + 右侧蓝色燃料进度条），燃料槽可点选/拖放燃料。
+function _drillFuelRowHtml(e) {
+  const FIELD = { coal: 'fuelCoal', wood: 'fuelWood', 'solid-fuel': 'fuelSolid', 'rocket-fuel': 'fuelRocket' };
+  const fid = _drillCurrentFuel(e);
+  let cell;
+  if (fid) {
+    const n = e[FIELD[fid]] || 0;
+    const tip = ITEMS[fid].name + '（燃料，当前 ' + n + '）|点击可拿起放到背包/其他格；只能放入煤/木材/固体燃料/火箭燃料';
+    cell = '<div class="mch-io-slot" data-action="feed-fuel" data-id="' + fid + '" data-tip="' + tip + '">' +
+      '<img src="' + iconDataURL(fid) + '"><span class="mch-io-n">' + n + '</span></div>';
+  } else {
+    cell = '<div class="mch-io-slot" data-action="feed-fuel" data-tip="燃料槽（空）|只能放入燃料：把煤/木材/固体燃料/火箭燃料拖入此格燃烧，点击左栏燃料可加入"></div>';
+  }
+  // 燃料燃烧进度：按当前正在燃烧的那一份燃料热值计算剩余能量（蓝色进度条，走完即消耗掉该份燃料）
+  const cap = e.burnCap > 0 ? e.burnCap : (fid ? fuelEnergy(fid) : COAL_ENERGY);
+  const fuelPct = Math.max(0, Math.min(100, e.burnLeft / cap * 100));
+  const bar = '<div class="fuel-bar drill-fuel-bar"><i style="width:' + fuelPct.toFixed(1) + '%;background:linear-gradient(90deg,#3a9ef5,#6cc0ff)"></i></div>';
+  return '<div class="fuel-row">' + cell + bar + '</div>';
+}
+// ===== 产物格（流程行最右侧：空格也显示槽位；有产物时点击拿起，可放入背包）=====
+function _drillProductCellHtml(e) {
+  if (e.buf > 0 && e.bufItem) {
+    return '<div class="mch-io-slot" data-action="drill-take" data-id="' + e.bufItem + '" data-tip="' + ITEMS[e.bufItem].name + '|已开采缓存 ' + e.buf + '，点击拿起（可放入背包）">' +
+      '<img src="' + iconDataURL(e.bufItem) + '"><span class="mch-io-n">' + e.buf + '</span></div>';
+  }
+  return '<div class="mch-io-slot" data-tip="产物格（空）|开采出的产物将显示于此，有产物时点击拿起（可放入背包）"></div>';
+}
+
+// ===== 热能采矿机面板（精简版）=====
+// 只保留进度条与格子：① 第一行 = 采矿进度条（左）+ 产物格（右）；
+//          ② 第二行 = 燃料格（左）+ 蓝色燃料燃烧进度条（右）。其余文字/按钮全部移除。
 function burnerDrillPanelHtml(e) {
   let h = '';
-  // ① 燃料槽
-  h += row('燃料槽', (e.fuelRocket > 0 || e.fuelSolid > 0 || e.fuelCoal > 0 || e.fuelWood > 0) ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'rocket-fuel': e.fuelRocket, 'solid-fuel': e.fuelSolid, 'coal': e.fuelCoal, 'wood': e.fuelWood }, { action: 'display' }) + '</div>' : '<span class="dim">空 — 放入燃料启动</span>', 'fuel');
-  // ② 燃料消耗指示：当前燃烧燃料的剩余能量条
-  h += row('燃料消耗', '<span id="drill-burnbar"></span>', 'burn');
-  // 加料按钮（操作直接：点一下即放入 5 个）
-  if (invCount('coal') > 0)
-    h += '<button data-action="fuel" data-id="coal">加 5 煤 (' + invCount('coal') + ')</button>';
-  if (invCount('wood') > 0)
-    h += '<button data-action="fuel" data-id="wood">加 5 木材 (' + invCount('wood') + ')</button>';
-  if (invCount('solid-fuel') > 0)
-    h += '<button data-action="fuel" data-id="solid-fuel">加 5 固体燃料 (' + invCount('solid-fuel') + ')</button>';
-  if (invCount('rocket-fuel') > 0)
-    h += '<button data-action="fuel" data-id="rocket-fuel">加 5 火箭燃料 (' + invCount('rocket-fuel') + ')</button>';
-  // 采矿速率
-  h += '<div id="mach-rate-block"></div>';
-  // ④ 产品槽（矿物缓存）
-  h += row('产品槽', '<span class="dim"></span>', 'buffer');
-  h += '<button data-action="takeout" id="btn-drill-takeout" style="display:none"></button>';
-  // ③ 采矿进度条
-  h += '<div id="drill-ore-remain" class="dim"></div>';
-  h += '<div class="dim">产出方向朝' + ['东', '南', '西', '北'][e.dir] + '，选中后按 R 旋转（需先关闭本面板或按 Q 取消选择）</div>';
+  // 第一行：左侧采矿进度条 + 右侧产物格（产物可点击取回）
+  h += '<div class="asm3-flow">';
+  h += '<div class="asm3-prog"><div class="bar"><i></i><span class="bar-txt" data-live="mch-pct">0%</span></div></div>';
+  h += '<div class="asm3-side asm3-out"><div data-live="drill-buffer">' + _drillProductCellHtml(e) + '</div></div>';
+  h += '</div>';
+  // 第二行：左侧燃料格 + 右侧蓝色燃料燃烧进度条
+  h += '<div class="fuel-row" data-live="drill-fuel">' + _drillFuelRowHtml(e) + '</div>';
   return h;
 }
 function burnerDrillPanelLive(e, api) {
-  api.set('fuel', (e.fuelRocket > 0 || e.fuelSolid > 0 || e.fuelCoal > 0 || e.fuelWood > 0) ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'rocket-fuel': e.fuelRocket, 'solid-fuel': e.fuelSolid, 'coal': e.fuelCoal, 'wood': e.fuelWood }, { action: 'display' }) + '</div>' : dimSpan('空 — 放入燃料启动'));
-  // ② 燃料消耗指示
-  const burnEl = document.getElementById('drill-burnbar');
-  if (burnEl) {
-    const cap = e.burnCap > 0 ? e.burnCap : COAL_ENERGY;
-    const pct = Math.max(0, Math.min(100, e.burnLeft / cap * 100));
-    let txt;
-    if (e.burnLeft > 0) {
-      const name = e.burnType && ITEMS[e.burnType] ? ITEMS[e.burnType].name : '燃料';
-      txt = name + ' 燃烧中 · 剩余能量 ' + e.burnLeft.toFixed(1) + 'MJ（' + Math.round(pct) + '%）';
-    } else if (e.fuelRocket > 0 || e.fuelSolid > 0 || e.fuelCoal > 0 || e.fuelWood > 0) {
-      txt = '燃料已就绪，即将燃烧';
-    } else {
-      txt = '缺燃料 · 已停摆';
-    }
-    const html = '<div class="mini-bar' + (e.burnLeft > 0 ? '' : ' empty') + '"><i style="width:' + pct + '%"></i></div>'
-      + '<div class="dim" style="margin-top:2px">' + txt + '</div>';
-    if (burnEl.innerHTML !== html) burnEl.innerHTML = html;
-  }
-  // ④ 产品槽
-  api.set('buffer', e.buf > 0 && e.bufItem ? '<div class="asm3-inp-row">' + itemSlotsHtml({ [e.bufItem]: e.buf }, { action: 'take-slot' }) + '</div>' : dimSpan('空'));
-  api.toggle('#btn-drill-takeout', e.buf > 0, '取回产品 (' + e.buf + ')');
-  // ③ 采矿进度条
+  // 第一行采矿进度条
   api.prog(e.working ? e.prog / e.oreTime() * 100 : 0, e.oreTime());
-  // 开采速率：每秒产矿量 = 1 / 该矿石采矿时间 × 采矿科技 × 机型倍率
-  const rateEl = document.getElementById('mach-rate-block');
-  if (rateEl) {
-    const o = e.oreTile();
-    const item = o ? e.mineItem(o) : (e.bufItem || null);
-    const mult = drillMult() * (GAME_DATA.deviceStats?.[e.type]?.miningSpeed ?? 0.25);
-    const rec = item ? { time: oreMiningTime(item), inp: {}, out: { [item]: 1 } } : null;
-    const html = rec ? machRateHtml(rec, mult) : '';
-    if (rateEl.innerHTML !== html) rateEl.innerHTML = html;
-  }
-  // 状态：工作中或暂停原因
+  // 产物格（可点击取回）+ 燃料行
+  api.set('drill-buffer', _drillProductCellHtml(e));
+  api.set('drill-fuel', _drillFuelRowHtml(e));
+  // 状态：工作中或暂停原因（保留顶部状态图标）
   if (e.status) api.status('已暂停：' + e.status, 'warn');
-  else if (!e.working) api.status('待机：产出朝' + ['东', '南', '西', '北'][e.dir], 'ok');
-  else api.status('开采中：产出朝' + ['东', '南', '西', '北'][e.dir], 'ok');
-  // 矿脉剩余储量显示
-  const oreRemainEl = document.getElementById('drill-ore-remain');
-  if (oreRemainEl) {
-    let oreRemain = 0, oreFound = false;
-    for (let dy = 0; dy < e.h; dy++)
-      for (let dx = 0; dx < e.w; dx++) {
-        const tx = e.x + dx, ty = e.y + dy;
-        if (!e.minableOreType(getOreType(tx, ty))) continue;
-        const amt = getOreAmt(tx, ty);
-        if (amt <= 0) continue;
-        oreRemain += amt; oreFound = true;
-      }
-    const txt = oreFound
-      ? ('矿脉剩余：' + Math.round(oreRemain) + (oreRemain <= 100 ? '（⚠ 即将采空）' : ''))
-      : '矿脉剩余：—';
-    if (oreRemainEl.textContent !== txt) oreRemainEl.textContent = txt;
-  }
+  else if (!e.working) api.status('待机', 'ok');
+  else api.status('开采中', 'ok');
 }
 
-// ===== 电采矿机/抽油机面板（保持原设计，按是否吃电分支）=====
+// ===== 电采矿机/抽油机面板（精简版）=====
+// 只保留：顶部机器图标（外壳）+ 采矿进度条（左）+ 产物格（右）+ 模块插槽（格）。去掉所有多余文字与按钮。
 function electricDrillPanelHtml(e) {
   let h = '';
-  h += row('电力', powerStatusLiveHtml(e), 'power');
-  h += '<div id="mach-rate-block"></div>';
-  const mc = moduleCounts(e.modules);
-  const hasMod = (Object.keys(e.modules).length > 0);
-  h += row('模块', hasMod ?
-    '速度+' + mc.speed.toFixed(1) + ' 产能+' + mc.prod.toFixed(1) + ' 效率-' + mc.eff.toFixed(1) + ' 品质+' + (mc.quality*100).toFixed(1) + '%' : '<span class="dim">无</span>', 'mod');
-  for (const mid of Object.keys(e.modules)) {
-    if ((e.modules[mid] || 0) > 0) h += '<span class="dim">' + ITEMS[mid].name + ' ×' + e.modules[mid] + '</span> ';
-  }
-  const order = ['speed-module', 'speed-module-2', 'speed-module-3', 'productivity-module', 'productivity-module-2', 'productivity-module-3', 'efficiency-module', 'efficiency-module-2', 'efficiency-module-3', 'quality-module', 'quality-module-2', 'quality-module-3'];
-  for (const mid of order) {
-    if (!itemUnlocked(mid)) continue;
-    const n = Math.min(invCount(mid), e.moduleSlotCount() - (e.modules[mid] || 0));
-    if (n > 0) h += '<button data-action="feed" data-id="' + mid + '">装入' + ITEMS[mid].name + ' ×' + n + '</button>';
-  }
-  if (hasMod) h += '<button data-action="takein" data-modules="1">取出全部模块</button>';
-  h += row('硫酸', '<span class="dim"></span>', 'acid');
-  h += row('矿物缓存', '<span class="dim"></span>', 'buffer');
-  h += '<button data-action="takeout" id="btn-drill-takeout" style="display:none"></button>';
-  h += '<div id="drill-ore-remain" class="dim"></div>';
-  h += '<div class="dim">产出方向朝' + ['东', '南', '西', '北'][e.dir] + '，选中后按 R 旋转（需先关闭本面板或按 Q 取消选择）</div>';
+  // 采矿进度条形（组装机式流程行：左侧采矿进度 + 右侧产物格，可点击取回）
+  h += '<div class="asm3-flow">';
+  h += '<div class="asm3-prog"><div class="bar"><i></i><span class="bar-txt" data-live="mch-pct">0%</span></div></div>';
+  h += '<div class="asm3-side asm3-out"><div data-live="drill-buffer">' + _drillProductCellHtml(e) + '</div></div>';
+  h += '</div>';
+  // 模块插槽（仅格子，无标题/状态文字/装入按钮）
+  h += _drillModuleSlotsHtml(e);
   return h;
 }
 function electricDrillPanelLive(e, api) {
-  api.set('power', powerStatusLiveHtml(e));
-  api.set('acid', (e.acid || 0) > 0 ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'sulfuric-acid': e.acid }, { action: 'display' }) + '</div>' : dimSpan('无'));
-  api.set('buffer', e.buf > 0 && e.bufItem ? '<div class="asm3-inp-row">' + itemSlotsHtml({ [e.bufItem]: e.buf }, { action: 'take-slot' }) + '</div>' : dimSpan('空'));
-  api.toggle('#btn-drill-takeout', e.buf > 0, '取回缓存 (' + e.buf + ')');
+  // 采矿进度条
   api.prog(e.working ? e.prog / e.oreTime() * 100 : 0, e.oreTime());
-  const rateEl = document.getElementById('mach-rate-block');
-  if (rateEl) {
-    const o = e.oreTile();
-    const item = o ? e.mineItem(o) : (e.bufItem || null);
-    const mult = drillMult() * e.machMult() * e.moduleSpeedMult();
-    const rec = item ? { time: oreMiningTime(item), inp: {}, out: { [item]: 1 } } : null;
-    const html = rec ? machRateHtml(rec, mult) : '';
-    if (rateEl.innerHTML !== html) rateEl.innerHTML = html;
-  }
+  // 产物格（可点击拿起）
+  api.set('drill-buffer', _drillProductCellHtml(e));
+  // 状态：工作中或暂停原因（保留顶部状态图标）
   if (e.status) api.status('已暂停：' + e.status, 'warn');
-  else if (!e.working) api.status('待机：产出朝' + ['东', '南', '西', '北'][e.dir], 'ok');
-  else api.status('开采中：产出朝' + ['东', '南', '西', '北'][e.dir], 'ok');
-  const oreRemainEl = document.getElementById('drill-ore-remain');
-  if (oreRemainEl) {
-    let oreRemain = 0, oreFound = false;
-    for (let dy = 0; dy < e.h; dy++)
-      for (let dx = 0; dx < e.w; dx++) {
-        const tx = e.x + dx, ty = e.y + dy;
-        if (!e.minableOreType(getOreType(tx, ty))) continue;
-        const amt = getOreAmt(tx, ty);
-        if (amt <= 0) continue;
-        oreRemain += amt; oreFound = true;
-      }
-    const txt = oreFound
-      ? ('矿脉剩余：' + Math.round(oreRemain) + (oreRemain <= 100 ? '（⚠ 即将采空）' : ''))
-      : '矿脉剩余：—';
-    if (oreRemainEl.textContent !== txt) oreRemainEl.textContent = txt;
+  else if (!e.working) api.status('待机', 'ok');
+  else api.status('开采中', 'ok');
+}
+// ===== 模块插槽（精简版）：只渲染格子，不含标题/状态文字/装入按钮 =====
+// 空格可「选中插件后点击放入」，已装格子点击取出到背包；面板整体重建时同步刷新。
+function _drillModuleSlotsHtml(e) {
+  const slotN = (typeof e.moduleSlotCount === 'function') ? e.moduleSlotCount() : 4;
+  if (slotN <= 0) return '';
+  const mods = e.modules || {};
+  const items = [];
+  for (const mid in mods) if ((mods[mid] || 0) > 0) for (let i = 0; i < mods[mid]; i++) items.push(mid);
+  let h = '<div class="mod-slots">';
+  for (let i = 0; i < slotN; i++) {
+    const mid = items[i];
+    if (mid) {
+      h += '<div class="mod-slot filled" data-action="mod-take" data-id="' + mid + '" data-tip="' + ITEMS[mid].name + '|点击取出到背包">' +
+        '<img src="' + iconDataURL(mid, 16) + '">' +
+        '<span class="mod-slot-n">' + ITEMS[mid].name + '</span></div>';
+    } else {
+      h += '<div class="mod-slot empty" data-action="mod-put" data-index="' + i + '" data-tip="选中插件后点击放入">' +
+        '<span class="mod-slot-plus">+</span></div>';
+    }
   }
+  h += '</div>';
+  return h;
 }
 
 

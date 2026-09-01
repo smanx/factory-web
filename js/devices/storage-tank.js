@@ -9,10 +9,8 @@
 // two_direction_only：旋转 90° 后切换为另一对对角（北东角 ↔ 南西角）。
 // 相邻管道/地下管道（管口侧）会自动把流体灌入罐内，罐也会按液位比例向它们及
 // 相邻下游设备的输入口供流，作为缓冲库容（任一接口进、可从其他接口出）。
-// 继承 CircuitNode（CircuitNode 亦是 Entity 子类）：储液罐可接入电路网络，
-// 把罐内当前流体的存量以该流体为信号名输出到所连网络，供组合器/机械臂/功率开关等做逻辑控制
-// （对齐《异星工厂》：储液罐可接入电路网络读取流体存量，实现按液位自动化）。
-class StorageTank extends CircuitNode {
+// 继承 Entity：储液罐仅作流体缓冲容器，不入电路网络（已移除自动红线/电线杆连线）。
+class StorageTank extends Entity {
   constructor(type, x, y) {
     super('storage-tank', x, y);
     this.fluid = {};
@@ -432,9 +430,8 @@ function storageTankPanelHtml(e) {
   for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
   let h = row('流体', Object.keys(agg).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(agg, { action: 'display' }) + '</div>' : '<span class="dim">空</span>', 'contents');
   h += row('容量', e.total() + ' / ' + STORAGE_TANK_CAP, 'cap');
-  if (Object.keys(agg).length) h += '<button data-action="takeout" id="btn-tank-takeout">取出全部 (' + e.total() + ')</button>';
+  if (Object.keys(agg).length) h += '<button data-action="drain" id="btn-tank-takeout">直接清空</button>';
   h += '<div class="dim">储液罐大容量缓冲（' + STORAGE_TANK_CAP + ' 单位），罐内只容纳单一液体/气体。罐像管道一样互联互通：接口集中在一对对角角落（北西角：北面+西面两口；南东角：东面+南面两口，对齐官方布局；旋转 90° 或按 V/H 翻转均切换为另一对对角），可进可出，与相邻管道/地下管道（管口侧）/储液罐按液位自动平衡，任一接口进、可从其他接口出，也能接其他管道或其他储液罐；同时向相邻炼油厂/化工厂等输入口供料。出入口处会显示当前流体图标。</div>';
-  h += '<div class="dim">已接入电路网络：罐内流体存量以流体名（如水→water）作为信号输出到所连网络，供组合器/功率开关/机械臂等做按液位自动化（对齐《异星工厂》储液罐电路信号）。</div>';
   return h;
 }
 function storageTankPanelLive(e, api) {
@@ -442,7 +439,7 @@ function storageTankPanelLive(e, api) {
   for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
   api.set('contents', Object.keys(agg).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(agg, { action: 'display' }) + '</div>' : dimSpan('空'));
   api.set('cap', e.total() + ' / ' + STORAGE_TANK_CAP);
-  api.toggle('#btn-tank-takeout', e.total() > 0, '取出全部 (' + e.total() + ')');
+  api.toggle('#btn-tank-takeout', e.total() > 0, '直接清空');
   if (e.total() >= STORAGE_TANK_CAP) api.status('已满：储罐达到容量上限', 'warn');
   else if (e.total() > 0) api.status('储存中：' + Object.keys(agg).map(k => ITEMS[k].name + '×' + agg[k]).join('、'), 'ok');
   else api.status('空罐：等待流体从管道灌入', 'ok');
@@ -451,7 +448,7 @@ function storageTankTip(e) {
   const agg = {};
   for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
   return Object.keys(agg).length
-    ? ('储罐 ' + Object.keys(agg).map(k => ITEMS[k].name + '×' + agg[k]).join('、') + '，按F拿取')
+    ? ('储罐 ' + Object.keys(agg).map(k => ITEMS[k].name + '×' + agg[k]).join('、') + '（流体只能通过管道排出）')
     : '空储罐';
 }
 

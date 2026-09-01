@@ -112,7 +112,7 @@ class Centrifuge extends Entity {
   }
   update(dt) {
     if (!this.recipe) { this.crafting = false; return; }
-    if (powerSatOf(this) <= 0) { this.crafting = false; return; }
+    if (powerSatOf(this) <= 0) return;
     // 电路条件不满足时暂停生产（对齐《异星工厂》：电路控制配方启停）
     if (!this.circuitEnabled()) { this.crafting = false; return; }
     const rec = this.recipeObj();
@@ -171,14 +171,15 @@ class Centrifuge extends Entity {
     this.inp = {}; this.outp = {};
     this.crafting = false; this.prog = 0;
   }
-  giveItem(item) {
+  giveItem(item, manual) {
     // 配方原料优先：插件若为当前配方原料则入原料区，而非插件槽
     if (this.recipe) {
       const rec = this.recipeObj();
       if (rec && rec.inp[item]) {
-        // 只按原料判定是否超过 2 倍：产物不做计数（Kovarex 等自循环配方产物即原料，
-        // 把产物算进总量会让离心机被自己上一轮产出「喂饱」而拒收下一轮原料）
-        if ((this.inp[item] || 0) >= rec.inp[item] * 2) return false;
+        // 机械臂/机器人自动送入按原料 2 倍上限；玩家手动放入则放满一整组（物品堆叠上限）。
+        // 只按原料判定上限：产物不做计数（Kovarex 等自循环配方产物即原料，把产物算进
+        // 总量会让离心机被自己上一轮产出「喂饱」而拒收下一轮原料）
+        if ((this.inp[item] || 0) >= (manual ? stackSize(item) : rec.inp[item] * 2)) return false;
         this.inp[item] = (this.inp[item] || 0) + 1;
         return true;
       }
@@ -203,6 +204,7 @@ class Centrifuge extends Entity {
   contents() {
     const list = [[this.type, 1]];
     for (const k in this.outp) if (this.outp[k] > 0) list.push([k, this.outp[k]]);
+    for (const k in this.inp) if (this.inp[k] > 0) list.push([k, this.inp[k]]);
     for (const k in this.modules) if (this.modules[k] > 0) list.push([k, this.modules[k]]);
     return list;
   }
@@ -214,6 +216,7 @@ class Centrifuge extends Entity {
   serialize() {
     const s = super.serialize();
     s.recipe = this.recipe; s.inp = this.inp; s.outp = this.outp; s.prog = this.prog;
+    s.crafting = this.crafting;
     s.modules = this.modules; s.prodBuf = this.prodBuf;
     if (this.circuitCond) s.circuitCond = this.circuitCond;
     return s;
@@ -227,6 +230,7 @@ class Centrifuge extends Entity {
   static restore(s) {
     const c = super.restore(s);
     c.recipe = s.recipe || null; c.inp = s.inp || {}; c.outp = s.outp || {}; c.prog = s.prog || 0;
+    c.crafting = !!s.crafting;
     c.modules = s.modules || {}; c.prodBuf = s.prodBuf || 0;
     c.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1 };
     return c;

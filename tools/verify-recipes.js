@@ -140,10 +140,10 @@ check('POWER_PER_TURBINE 汽轮机功率(kW)', _sp.turbinePower === 5820, true);
 check('蒸汽机功率单源化(data.js 从 GAME_DATA.steamPower 读取)', /POWER_PER_ENGINE\s*=\s*GAME_DATA\.steamPower/.test(src), true);
 check('汽轮机功率单源化(data.js 从 GAME_DATA.steamPower 读取)', /POWER_PER_TURBINE\s*=\s*GAME_DATA\.steamPower/.test(src), true);
 check('离心机功耗单源化(data.js 从 GAME_DATA.powerUse 读取)', /CENTRIFUGE_POWER\s*=\s*GAME_DATA\.powerUse/.test(src), true);
-// 煤能量（基准）——数据单源：GAME_DATA.fuelEnergy.coal=12（data.generated.js 统一下发），
+// 煤能量（基准）——数据单源：GAME_DATA.fuelEnergy.coal=4MJ（data.generated.js 统一下发，官方 fuel_value），
 // data.js 常量 COAL_ENERGY 从 GAME_DATA.fuelEnergy 读取，不再硬编码字面量。
 const _fe = (_ctx.GAME_DATA && _ctx.GAME_DATA.fuelEnergy) || {};
-check('COAL_ENERGY 煤能量', _fe['coal'] === 12, true);
+check('COAL_ENERGY 煤能量(官方 4MJ)', _fe['coal'] === 4, true);
 check('燃料能量单源化(data.js 从 GAME_DATA.fuelEnergy 读取)', /COAL_ENERGY\s*=\s*GAME_DATA\.fuelEnergy/.test(src), true);
 
 // ---- 建筑配方（对齐《异星工厂》官方 Wiki：锅炉/蒸汽机/抽水机/机枪炮塔/雷达）----

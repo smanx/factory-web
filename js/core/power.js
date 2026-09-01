@@ -173,16 +173,44 @@ function rebuildPowerGrids() {
   }
 
   // 2) 设备-杆：设备进入某杆供电覆盖即并入该杆电网（同时覆盖多电网时经设备合并）
-  let maxSupply = 0;
-  for (let i = 0; i < NP; i++) { const s = poleSupplyOf(poles[i]); if (s > maxSupply) maxSupply = s; }
-  if (NP > 0) {
+  // 反转为「杆→设备」遍历：设备按占地注册进粗格子（DCELL）空间哈希，每根杆只在
+  // 其供电正方形覆盖的格子内查设备做矩形相交判定（O(杆×局部设备密度)）。
+  // 相比原「设备→全图杆候选」：既避免全图存在大覆盖杆（如变电站 supply=9）时对所有
+  // 设备搜索半径虚增，也避免杆密度高时单设备命中过多候选（性能热点 43ms → 约 2ms）。
+  if (NP > 0 && devs.length > 0) {
+    const DCELL = 4;
+    const dmap = new Map();
     for (let di = 0; di < devs.length; di++) {
-      const e = devs[di]; const idx = NP + di;
-      const cand = nearPoles(e.x, e.y, maxSupply + (e.w || 1) + (e.h || 1));
-      for (let t = 0; t < cand.length; t++) {
-        const p = poles[cand[t]];
-        if (poleCovers(p, e)) uni(idx, cand[t]);
-      }
+      const e = devs[di];
+      // 设备格子范围右边界 +0.001：对齐旧 poleCovers 闭区间判定（设备边缘恰好贴住供电区边缘也算覆盖），
+      // 保证相贴的“边界对”仍共享至少一个 DCELL 格子，避免漏判。
+      const gx0 = Math.floor(e.x / DCELL), gy0 = Math.floor(e.y / DCELL);
+      const gx1 = Math.floor((e.x + (e.w || 1) + 0.001) / DCELL);
+      const gy1 = Math.floor((e.y + (e.h || 1) + 0.001) / DCELL);
+      for (let gy = gy0; gy <= gy1; gy++)
+        for (let gx = gx0; gx <= gx1; gx++) {
+          const k = gx + ',' + gy;
+          let a = dmap.get(k); if (!a) { a = []; dmap.set(k, a); }
+          a.push(di);
+        }
+    }
+    for (let i = 0; i < NP; i++) {
+      const p = poles[i];
+      const s = poleSupplyOf(p);
+      const cx = pcx(p), cy = pcy(p);
+      const qx0 = cx - s, qy0 = cy - s, qx1 = cx + s, qy1 = cy + s;
+      const gx0 = Math.floor((qx0 - 0.001) / DCELL), gy0 = Math.floor((qy0 - 0.001) / DCELL);
+      const gx1 = Math.floor((qx1 + 0.001) / DCELL), gy1 = Math.floor((qy1 + 0.001) / DCELL);
+      for (let gy = gy0; gy <= gy1; gy++)
+        for (let gx = gx0; gx <= gx1; gx++) {
+          const a = dmap.get(gx + ',' + gy);
+          if (!a) continue;
+          for (let t = 0; t < a.length; t++) {
+            const di = a[t], e = devs[di];
+            const ex0 = e.x, ey0 = e.y, ex1 = e.x + (e.w || 1), ey1 = e.y + (e.h || 1);
+            if (ex0 <= qx1 && ex1 >= qx0 && ey0 <= qy1 && ey1 >= qy0) uni(NP + di, i);
+          }
+        }
     }
   }
 

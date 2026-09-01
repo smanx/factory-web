@@ -10,7 +10,7 @@ class ElectromagneticPlant extends Assembler {
   update(dt) {
     this.portFlow();
     if (!this.recipe) { this.crafting = false; return; }
-    if (powerSatOf(this) <= 0) { this.crafting = false; return; }
+    if (powerSatOf(this) <= 0) return;
     // 电路条件不满足时暂停生产（对齐《异星工厂》：电路控制配方启停）
     if (!this.circuitEnabled()) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];

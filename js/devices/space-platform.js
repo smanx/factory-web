@@ -174,7 +174,7 @@ class SpacePlatformHub extends Assembler {
   update(dt) {
     this.portFlow();
     if (!this.recipe) { this.crafting = false; return; }
-    if (powerSatOf(this) <= 0) { this.crafting = false; return; }
+    if (powerSatOf(this) <= 0) return;
     if (!this.circuitEnabled()) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
@@ -212,12 +212,13 @@ class SpacePlatformHub extends Assembler {
   // 平台货舱（轨道货运）：物品 → 数量，最大容量对齐官方 Cargo 语义（此处适配 50 槽）
   hubCargoCap() { return 50; }
   // 往平台货舱装货（物品若非当前配方原料/模块，则入货舱；机械臂/传送带可自动送入）
-  giveItem(item) {
+  giveItem(item, manual) {
     // 配方原料优先：插件若为当前配方原料则入原料区，而非插件槽
     if (this.recipe && RECIPES[this.recipe] && RECIPES[this.recipe].inp[item]) {
       const rec = RECIPES[this.recipe];
-      // 只按原料判定是否超过 2 倍：产物不做计数（自循环配方产物即原料）
-      if ((this.inp[item] || 0) >= rec.inp[item] * 2) return false;
+      // 机械臂/机器人自动送入按原料 2 倍上限；玩家手动放入则放满一整组（物品堆叠上限）。
+      // 只按原料判定上限：产物不做计数（自循环配方产物即原料）
+      if ((this.inp[item] || 0) >= (manual ? stackSize(item) : rec.inp[item] * 2)) return false;
       this.inp[item] = (this.inp[item] || 0) + 1;
       return true;
     }

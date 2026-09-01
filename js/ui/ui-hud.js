@@ -171,41 +171,8 @@ function initTopButtons() {
 function updateHUD(dt, fps, ups) {
   const el = document.getElementById('hud-info');
   const p = G.player;
-  // HUD 信息项改为可点击：点击弹出详情弹框（替代原先的悬停 title 提示）
-  // 帧率/更新率：FPS 后紧跟斜杠显示 UPS（更新次数/秒）
-  let hud = '<span class="hud-item" data-hud="fps">' + fps + ' / ' + ups + '</span>';
-  if (G.settings.combat) {
-    const hp = Math.max(0, Math.round(G.playerHP));
-    const hpPct = G.playerHPmax > 0 ? hp / G.playerHPmax : 0;
-    hud += '   <span class="hud-item" data-hud="hp" style="color:' + (hpPct > 0.5 ? '#57e389' : hpPct > 0.25 ? '#ffd23c' : '#ff5b5b') + '">♥ ' + hp + '/' + G.playerHPmax + '</span>';
-    // 敌人进化度显示（对齐《异星工厂》Evolution factor）
-    const evo = Math.round((G.evolution || 0) * 100);
-    const evoColor = evo < 30 ? '#57e389' : evo < 60 ? '#ffd23c' : '#ff5b5b';
-    hud += '   <span class="hud-item" data-hud="evo" style="color:' + evoColor + '">⬆ ' + evo + '%</span>';
-  }
-  if (G.weapon && isWeapon(G.weapon)) {
-    hud += '   🔫 ' + WEAPONS[G.weapon].name;
-  }
-  if (G.armor && isArmor(G.armor)) {
-    hud += '   🛡 ' + ARMORS[G.armor].name;
-    // 模块化护甲：显示个人电网状态（含装备件数量）
-    if (ARMORS[G.armor].grid && typeof equipCount === 'function' && typeof equipmentSerialize === 'function') {
-      const eqN = (G.equipGrid || []).length;
-      let pp = '';
-      if (typeof G.personalPowerMax === 'number' && G.personalPowerMax > 0) {
-        pp = ' · ⚡' + Math.round((G.personalPower || 0) / 1000) + '/' + Math.round(G.personalPowerMax / 1000) + 'MJ';
-      }
-      hud += ' <span style="opacity:.75">(' + eqN + ' 装备' + pp + ')</span>';
-    }
-  }
-  if (G.driving && G.driving.ent) {
-    const de = G.driving.ent;
-    if (typeof Locomotive !== 'undefined' && (de instanceof Locomotive || de instanceof CargoWagon)) {
-      hud += '   🚂 ' + (de instanceof Locomotive ? '火车驾驶' : '乘坐车厢') + '（E 下车' + (de instanceof Locomotive && G.driving.mode === 'drive' ? '，W 前进 / S 后退 / R 反转' : '') + '）';
-    } else {
-      hud += '   🚗 ' + (de instanceof Tank ? '坦克' : '装甲车') + '（E 下车）';
-    }
-  }
+  // HUD 信息项：右上角仅显示 FPS / UPS（更新次数/秒），不显示玩家状态数据
+  const hud = '<span class="hud-item" data-hud="fps">' + fps + ' / ' + ups + '</span>';
   el.innerHTML = hud;
   // 手搓合成队列：显示在左下角快捷栏右侧，仅显示图标
   renderCraftQueue();

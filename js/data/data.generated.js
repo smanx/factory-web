@@ -23,6 +23,7 @@
 //           heatPipeSpecificHeat, heatPipeMaxTransfer, reactorHeatRate(MW), heatExchangerPower(MW),
 //           heatingTowerRate(MW), heatingTowerEffectivity, heatingTowerMaxTemp,
 //           heatingTowerSpecificHeat, heatingTowerMaxTransfer }, roboportPower(kW)
+//   roboportRange = { logistics(物流覆盖半径/格), construction(施工覆盖半径/格), robotSlots(机器人槽位数), materialSlots(材料槽位数) }
 //   steamPower = { boilerPower, boilerTargetTemp, engineRate, enginePower, effectivity, turbineRate, turbinePower,
 //                   steamHeatCapacity, steamDefaultTemp, steamMaxTemp, steamEnergyPerUnit, heatExchangerSteamRate, boilerSteamRate }
 //   cargoLandingPad = { inventorySize, radarRange }, cargoBay = { inventorySizeBonus }（物流接驳站/扩展舱）
@@ -30,7 +31,7 @@
 //   footprint[building] = { w, h }（占地面积格数，官方 selection_box）
 //   pollution[building] = 官方每分排放（emissions_per_minute.pollution，污染/分），供污染系统单源读取
 //   recycling[item] = { time, out:{outItem:每批期望产出} }（官方 *-recycling 回收配方，供回收机单源读取）
-//   fuelEnergy[item] = 燃料能量密度（项目相对刻度，供 burner 设备单源读取：煤=12 基准）
+//   fuelEnergy[item] = 燃料能量密度（MJ 绝对值，官方 fuel_value 单源：煤=4MJ），供 burner 设备单源读取
 const GAME_DATA = {
  "stackSize": {
   "iron-ore": 50,
@@ -5803,6 +5804,24 @@ const GAME_DATA = {
   },
   "toolbelt-equipment": {
    "extraSlots": 10
+  },
+  "personal-roboport-equipment": {
+   "roboport": {
+    "robotLimit": 10,
+    "constructionRadius": 15,
+    "chargingStations": 2,
+    "chargingEnergy": 1000
+   },
+   "capE": 35000
+  },
+  "personal-roboport-mk2-equipment": {
+   "roboport": {
+    "robotLimit": 25,
+    "constructionRadius": 20,
+    "chargingStations": 4,
+    "chargingEnergy": 1000
+   },
+   "capE": 35000
   }
  },
  "heat": {
@@ -5834,6 +5853,12 @@ const GAME_DATA = {
   "collectorBufferMJ": 1000
  },
  "roboportPower": 50,
+ "roboportRange": {
+  "logistics": 25,
+  "construction": 55,
+  "robotSlots": 7,
+  "materialSlots": 7
+ },
  "footprint": {
   "transport-belt": {
    "w": 1,
@@ -7892,11 +7917,11 @@ const GAME_DATA = {
   }
  },
  "fuelEnergy": {
-  "coal": 12,
-  "wood": 3,
-  "solid-fuel": 50,
-  "rocket-fuel": 500,
-  "nuclear-fuel": 2500,
+  "coal": 4,
+  "wood": 2,
+  "solid-fuel": 12,
+  "rocket-fuel": 100,
+  "nuclear-fuel": 1210,
   "raw-fish": 4,
   "pentapod-egg": 5
  },

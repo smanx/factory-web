@@ -19,7 +19,7 @@ class Crusher extends Assembler {
   update(dt) {
     this.portFlow();
     if (!this.recipe) { this.crafting = false; return; }
-    if (powerSatOf(this) <= 0) { this.crafting = false; return; }
+    if (powerSatOf(this) <= 0) return;
     if (!this.circuitEnabled()) { this.crafting = false; return; }
     const rec = RECIPES[this.recipe];
     if (this.crafting) {

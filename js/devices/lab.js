@@ -101,7 +101,7 @@ class Lab extends Entity {
   update(dt) {
     this.active = false;
     const tech = G.activeTech;
-    if (powerSatOf(this) <= 0) { this.t = 0; return; }
+    if (powerSatOf(this) <= 0) return;
     if (!tech || (G.techDone[tech] && !isInfiniteTech(tech))) { this.t = 0; return; }
     // 前置科技未满足时暂停研究（旧档可能残留不合法的 activeTech）
     if (techLocked(tech)) { this.t = 0; return; }

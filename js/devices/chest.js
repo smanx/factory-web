@@ -1,13 +1,11 @@
 'use strict';
 
 // ===== 储物箱：存物资，可设每种物品的存量上限 =====
-// 继承 CircuitNode（CircuitNode 亦是 Entity 子类）：储物箱可接入电路网络，
-// 把箱内每种物品的数量作为信号输出到所连网络，供组合器/机械臂/传送带等做逻辑控制
-// （对齐《异星工厂》：储物箱可通过电路网络读取物品数量，实现按库存自动化）。
+// 继承 Entity：储物箱仅作存储容器，不入电路网络（已移除自动红线/电线杆连线）。
 // 箱子与背包一致：固定 N 个格子（槽位数组固定长度，空位为 null），一格一种物品、
 // 堆叠满后占住该格；格子占满后机械臂/手动均无法再放入。
 // 槽位容量统一走 GAME_DATA.containerSizes（官方 inventory_size，单源），不再在业务里写死。
-class Chest extends CircuitNode {
+class Chest extends Entity {
   constructor(type, x, y) {
     // 传入的 type 需透传给父类（Entity 用它设置 this.type）；不能写死 iron-chest，
     // 否则木箱/钢箱构造后 type 全变成铁箱，导致放置后渲染成铁箱。
@@ -369,7 +367,7 @@ function chestDualPaneHtml(e, typeName, capDesc, headSuffix) {
 }
 
 function chestPanelHtml(e) {
-  return chestDualPaneHtml(e, ITEMS[e.type].name, '可接入电路网络输出箱内物品数量信号。');
+  return chestDualPaneHtml(e, ITEMS[e.type].name, '储物箱：存物资，可设每种物品的存量上限。');
 }
 function chestPanelLive(e, api) {
   chestDualPaneLive(e, api);

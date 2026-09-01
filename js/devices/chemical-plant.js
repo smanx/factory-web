@@ -186,14 +186,15 @@ class ChemicalPlant extends Entity {
     this.crafting = true;
     this.prog = 0;
   }
-  giveItem(item) {
+  giveItem(item, manual) {
     // 配方原料优先：插件若为当前配方原料则入原料区，而非插件槽
     if (this.recipe) {
       const rec = RECIPES[this.recipe];
       if (rec.inp[item]) {
-        // 只按原料判定是否超过 2 倍：产物不做计数（自循环配方产物即原料，
-        // 把产物算进总量会让设备被自己上一轮产出「喂饱」而拒收下一轮原料）
-        if ((this.inp[item] || 0) >= rec.inp[item] * 2) return false;
+        // 机械臂/机器人自动送入按原料 2 倍上限；玩家手动放入则放满一整组（物品堆叠上限）。
+        // 只按原料判定上限：产物不做计数（自循环配方产物即原料，把产物算进总量会让
+        // 设备被自己上一轮产出「喂饱」而拒收下一轮原料）
+        if ((this.inp[item] || 0) >= (manual ? stackSize(item) : rec.inp[item] * 2)) return false;
         this.inp[item] = (this.inp[item] || 0) + 1;
         return true;
       }

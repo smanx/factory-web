@@ -351,9 +351,10 @@ function pipeTip(e) {
   const agg = {};
   for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
   const allowed = FLUIDS.map(k => ITEMS[k].name).join('、');
-  const cur = Object.keys(agg).length
-    ? '当前含 ' + Object.keys(agg).map(k => ITEMS[k].name + '×' + agg[k]).join('、') + '，按F拿取'
-    : '空管';
+  let cur = '空管';
+  if (Object.keys(agg).length) {
+    cur = '当前含 ' + Object.keys(agg).map(k => ITEMS[k].name + '×' + agg[k]).join('、') + '（流体只能通过管道排出）';
+  }
   return '可输送流体：' + allowed + '。' + cur;
 }
 

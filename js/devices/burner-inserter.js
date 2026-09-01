@@ -20,37 +20,47 @@ class BurnerInserter extends Inserter {
     this.fuelRocket = 0;
     this.fuelWood = 0;
     this.burnLeft = 0;
+    this.burnCap = 0;      // 当前燃烧燃料的满能量（燃料消耗指示用）
+    this.burnType = '';    // 当前燃烧燃料类型（coal/wood/solid-fuel/rocket-fuel）
     this._fuelT = 0;
   }
   // 有燃料才工作；缺煤时停摆
   hasFuel() { return this.burnLeft > 0 || this.fuelRocket > 0 || this.fuelSolid > 0 || this.fuelCoal > 0 || this.fuelWood > 0; }
   // 燃料消耗：与普通臂同步率，仅在真正搬运时扣煤，闲置不耗煤
   consumeFuel(dt) {
-    if (this.burnLeft > 0) { this.burnLeft -= dt * fuelConsumptionMult(); return; }
+    // 燃烧速率 = 热能机械臂官方功率 144kW，使一块燃料燃烧时长 = 热值÷功率，对齐官方
+    // 燃料入炉时记录 burnCap/burnType（当前燃烧燃料的满能量与类型），供面板燃料燃烧进度条显示
+    if (this.burnLeft > 0) { this.burnLeft -= dt * fuelConsumptionMult() * burnPowerMW('burner-inserter'); return; }
     if (this.fuelRocket > 0) {
       this.fuelRocket--;
       if (typeof trackProd === 'function') trackProd('rocket-fuel', -1);
       this.burnLeft = ROCKET_FUEL_ENERGY;
+      this.burnCap = ROCKET_FUEL_ENERGY; this.burnType = 'rocket-fuel';
     } else if (this.fuelSolid > 0) {
       this.fuelSolid--;
       if (typeof trackProd === 'function') trackProd('solid-fuel', -1);
       this.burnLeft = SOLID_FUEL_ENERGY;
+      this.burnCap = SOLID_FUEL_ENERGY; this.burnType = 'solid-fuel';
     } else if (this.fuelCoal > 0) {
       this.fuelCoal--;
       if (typeof trackProd === 'function') trackProd('coal', -1);
       this.burnLeft = COAL_ENERGY;
+      this.burnCap = COAL_ENERGY; this.burnType = 'coal';
     } else if (this.fuelWood > 0) {
       this.fuelWood--;
       if (typeof trackProd === 'function') trackProd('wood', -1);
       this.burnLeft = WOOD_FUEL_ENERGY;
+      this.burnCap = WOOD_FUEL_ENERGY; this.burnType = 'wood';
     }
   }
   // 允许机械臂/玩家向它加煤
   giveItem(item) {
-    if (item === 'rocket-fuel' && this.fuelRocket < 5) { this.fuelRocket++; return true; }
-    if (item === 'solid-fuel' && this.fuelSolid < 5) { this.fuelSolid++; return true; }
-    if (item === 'coal' && this.fuelCoal < 5) { this.fuelCoal++; return true; }
-    if (item === 'wood' && this.fuelWood < 5) { this.fuelWood++; return true; }
+    // 燃料槽容量 = 该燃料一整组的上限（对齐堆叠上限，参考热能采矿机）：玩家可手动放进一整组；
+    // 机械臂则受 inserter.js 中「补到 5 个即停」限制，故手动可加满、机械臂只补 5。
+    if (item === 'rocket-fuel' && this.fuelRocket < stackSize('rocket-fuel')) { this.fuelRocket++; return true; }
+    if (item === 'solid-fuel' && this.fuelSolid < stackSize('solid-fuel')) { this.fuelSolid++; return true; }
+    if (item === 'coal' && this.fuelCoal < stackSize('coal')) { this.fuelCoal++; return true; }
+    if (item === 'wood' && this.fuelWood < stackSize('wood')) { this.fuelWood++; return true; }
     return false;
   }
   countOf(item) { return item === 'coal' ? this.fuelCoal : (item === 'solid-fuel' ? this.fuelSolid : (item === 'rocket-fuel' ? this.fuelRocket : (item === 'wood' ? this.fuelWood : 0))); }
@@ -145,6 +155,8 @@ class BurnerInserter extends Inserter {
     s.fuelRocket = this.fuelRocket;
     s.fuelWood = this.fuelWood;
     s.burnLeft = this.burnLeft;
+    s.burnCap = this.burnCap;
+    s.burnType = this.burnType;
     return s;
   }
   static restore(s) {
@@ -154,6 +166,8 @@ class BurnerInserter extends Inserter {
     i.fuelRocket = s.fuelRocket || 0;
     i.fuelWood = s.fuelWood || 0;
     i.burnLeft = s.burnLeft || 0;
+    i.burnCap = s.burnCap || 0;
+    i.burnType = s.burnType || '';
     return i;
   }
 }
@@ -174,23 +188,19 @@ function drawBurnerInserter(ctx, e, gx, gy, dir, alpha) {
   ctx.restore();
 }
 
-// ===== 面板 =====
+// ===== 面板（燃料行参考热能采矿机）=====
+// 布局：燃料行置于「当前抓取」行之下（inserterMachineRowsHtml 的 afterHeld 参数）；
+// 左侧单格燃料槽（点击拿起/放入煤、木材、固体燃料、火箭燃料），右侧蓝色燃料燃烧进度条。
 function burnerInserterPanelHtml(e) {
-  return row('燃料', (e.fuelRocket > 0 || e.fuelSolid > 0 || e.fuelCoal > 0 || e.fuelWood > 0) ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'rocket-fuel': e.fuelRocket, 'solid-fuel': e.fuelSolid, 'coal': e.fuelCoal, 'wood': e.fuelWood }, { action: 'display' }) + '</div>' : '<span class="dim">无</span>', 'fuel') +
-    (invCount('coal') > 0 ? '<button data-action="fuel" data-id="coal">加 5 煤 (' + invCount('coal') + ')</button>' : '') +
-    (invCount('wood') > 0 ? '<button data-action="fuel" data-id="wood">加 5 木材 (' + invCount('wood') + ')</button>' : '') +
-    (invCount('solid-fuel') > 0 ? '<button data-action="fuel" data-id="solid-fuel">加 5 固体燃料 (' + invCount('solid-fuel') + ')</button>' : '') +
-    (invCount('rocket-fuel') > 0 ? '<button data-action="fuel" data-id="rocket-fuel">加 5 火箭燃料 (' + invCount('rocket-fuel') + ')</button>' : '') +
-    inserterMachineRowsHtml(e);
+  return inserterMachineRowsHtml(e, '<div data-live="burner-fuel">' + _drillFuelRowHtml(e) + '</div>');
 }
 // 燃料以外的面板操作（筛选/堆叠/变质/电路）与普通机械臂一致
 function burnerInserterOnAction(act, btn) {
-  if (act === 'fuel') return false; // 交给全局分发
   return inserterFilterOnAction(act, btn);
 }
 function burnerInserterPanelLive(e, api, body) {
-  api.set('fuel', (e.fuelRocket > 0 || e.fuelSolid > 0 || e.fuelCoal > 0 || e.fuelWood > 0) ? '<div class="asm3-inp-row">' + itemSlotsHtml({ 'rocket-fuel': e.fuelRocket, 'solid-fuel': e.fuelSolid, 'coal': e.fuelCoal, 'wood': e.fuelWood }, { action: 'display' }) + '</div>' : dimSpan('无'));
-  if (!e.hasFuel()) { api.status('已暂停：缺燃料，加入煤/固体燃料/火箭燃料', 'warn'); return; }
+  api.set('burner-fuel', _drillFuelRowHtml(e));
+  if (!e.hasFuel()) { api.status('已暂停：缺燃料，加入煤/木材/固体燃料/火箭燃料', 'warn'); return; }
   inserterPanelLive(e, api, body);   // 复用普通机械臂的状态/图标/抓取刷新
 }
 function burnerInserterTip(e) {

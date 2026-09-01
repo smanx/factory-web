@@ -35,6 +35,13 @@ function pickupAction() {
     if (e instanceof Belt) toast('这条传送带上没有物品');
     return;
   }
+  // 流体不能取进背包：F 键从管道/设备取出的流体放回原处（只能通过管道运输）
+  if (FLUIDS.indexOf(got) >= 0) {
+    if (typeof e.giveItem === 'function' && e.giveItem(got)) {
+      toast((ITEMS[got] ? ITEMS[got].name : got) + ' 是流体，只能通过管道运输，不能拾取');
+    }
+    return;
+  }
   invAdd(got);
   if (typeof playSfx === 'function') playSfx('pickup');
   uiDirty = true;

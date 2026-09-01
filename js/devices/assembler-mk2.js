@@ -11,7 +11,7 @@ class AssemblerMK2 extends Assembler {
   update(dt) {
     this.portFlow();
     if (!this.recipe) { this.crafting = false; return; }
-    if (powerSatOf(this) <= 0) { this.crafting = false; return; }
+    if (powerSatOf(this) <= 0) return;
     const rec = RECIPES[this.recipe];
     if (this.crafting) {
       this.prog += dt * this.craftProgRate();

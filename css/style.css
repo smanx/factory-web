@@ -1102,6 +1102,7 @@ html, body {
 }
 
 #tooltip b { display: block; color: #ffd23c; font-size: 12.5px; margin-bottom: 2px; }
+#tooltip span { white-space: pre-line; }  /* 保留 describe 中的换行（机器人港等多行描述） */
 #tooltip-recipe {
   display: none;
   margin-top: 4px;
@@ -2368,18 +2369,98 @@ html, body {
 
 /* ===== 装备网格（个人装备件） ===== */
 .eqgrid { position: relative; margin: 4px 0; background: rgba(20,26,22,.6); border: 1px solid #3a4a3a; border-radius: 6px; }
+/* 放置幽灵：从背包拿起模块移到网格上时，高亮该模块将占据的格子（绿=可放，红=重叠/越界） */
+.eqghost {
+  position: absolute; z-index: 3; pointer-events: none;
+  border-radius: 4px; border: 2px dashed #7fe08a;
+  background: rgba(60, 200, 110, .18);
+  box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center;
+}
+.eqghost b { font-size: 10px; color: #d8ffd8; text-shadow: 0 0 3px #000; }
+.eqghost.bad { border-color: #e07070; background: rgba(220, 90, 90, .20); }
+.eqghost.bad b { color: #ffc4c4; }
 .eqcell {
   position: absolute; box-sizing: border-box; border: 1px dashed #3a4a3a;
   background: rgba(40,52,44,.4); border-radius: 3px;
 }
 .eqitem {
   position: absolute; box-sizing: border-box; border: 1px solid #7aa0c0;
-  background: rgba(45,60,55,.9); border-radius: 5px; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 2px; cursor: pointer;
-  box-shadow: 0 0 6px rgba(90,140,180,.4);
+  background: rgba(45,60,55,.92); border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; box-shadow: 0 0 6px rgba(90,140,180,.4);
 }
-.eqitem img { width: 24px; height: 24px; border-radius: 4px; }
-.eqitem b { font-size: 9px; color: #cfe0f0; text-align: center; line-height: 1.1; }
+.eqitem img { width: 82%; height: 82%; border-radius: 4px; object-fit: contain; }
+/* 充电信息：装备件底部浮动层（深色半透背景），进度条 + 当前/容量 + 状态 */
+.eqcharge {
+  position: absolute;
+  left: 2px; right: 2px; bottom: 2px;
+  background: rgba(0, 0, 0, .75);
+  border-radius: 3px;
+  padding: 1px 3px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.eqbar {
+  height: 4px;
+  background: rgba(80, 80, 80, .6);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.eqbar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #44dd77, #77eebb);
+  width: 0;
+  transition: width .1s linear;
+}
+.eqchg {
+  font-size: 8px;
+  color: #c0e8d0;
+  text-align: center;
+  line-height: 1;
+}
+.eqsta {
+  font-size: 7px;
+  color: #aac0b0;
+  text-align: center;
+  line-height: 1;
+}
+/* 电量不足警告：红色三角箭头 + 电池图标，中心闪烁（显示1秒/消失1秒） */
+.eqwarn {
+  position: absolute; inset: 0;
+  display: none;
+  align-items: center; justify-content: center;
+  pointer-events: none; z-index: 2;
+}
+.eqwarn.on {
+  display: flex;
+  animation: eqwarnblink 2s step-end infinite;
+}
+.eqwarn-in {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 2px;
+  filter: drop-shadow(0 0 3px #000);
+}
+.wtri {
+  width: 26px; height: 24px;
+  background: #ff3b30;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding-bottom: 1px; box-sizing: border-box;
+  font-weight: bold; color: #fff; font-size: 13px;
+}
+.wtxt {
+  font-size: 7px; color: #ff5a4d;
+  text-align: center; white-space: nowrap;
+  text-shadow: 0 0 3px #000;
+}
+@keyframes eqwarnblink {
+  0%, 49.9% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
 .eqlist { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
 .eqlist .rcbtn { display: inline-flex; align-items: center; gap: 5px; }
 .eqlist .rcbtn img { width: 18px; height: 18px; border-radius: 4px; }
@@ -2568,6 +2649,18 @@ html, body {
 /* 右栏内容变高出现纵向滚动条时，预留滚动条槽位：列宽按「内容+槽位」撑开，
    避免纵向滚动条挤占宽度导致 .logi-grid（固定 356px）溢出出现横向滚动条 */
 #panel.machine-wide .chest-layout .inv-col-body { scrollbar-gutter: stable; }
+
+/* 装甲面板（右=模块化护甲装备网格）：网格宽可达 10 列（>380px），右栏按内容自适应撑开；
+   左栏背包固定 10 格宽，两栏整体超宽时随面板横向滚动 */
+#panel.inv-wide .inv-layout.armor-layout { overflow-x: auto; align-items: flex-start; }
+#panel.inv-wide .armor-layout .inv-col-left  { flex: 0 0 auto; width: fit-content; min-width: 0; max-width: 382px; }
+#panel.inv-wide .armor-layout .inv-col-right { flex: 0 0 auto; width: fit-content; min-width: 0; max-width: none; }
+#panel.inv-wide .armor-layout .inv-col-right .dim {
+  max-width: 500px;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.5;
+}
 
 /* 配方设备右侧交互信息 */
 .mch-recipe-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -2836,6 +2929,47 @@ html, body {
 .logi-flt-label { font-size: 12px; color: #9fb0c0; }
 /* 旧版聚合槽样式不再使用（箱子改为固定格子网格，见上方 .chest-items 网格规则） */
 
+/* ===== 机器人港面板：两排槽位（第一排=物流机器人 7 格 / 第二排=修理包 7 格）===== */
+.robo-slots { display: flex; flex-direction: column; gap: 10px; margin: 12px 0 4px; }
+.robo-row { display: flex; flex-direction: column; gap: 5px; }
+.robo-row-label { font-size: 12px; color: #9fb0c0; display: flex; align-items: center; gap: 6px; }
+.robo-row-label b { color: #ffd23c; font-weight: 600; font-size: 12px; }
+.robo-slot-row { display: grid; grid-template-columns: repeat(7, 32px); gap: 4px; width: max-content; }
+/* 槽位格子：复用 .inv-slot 基础样式（32×32），空槽虚线 + "+" 提示 */
+.robo-slot-row .inv-slot { overflow: visible; }
+.robo-slot-row .inv-slot.empty { background: #131a22; border-color: #46566a; border-style: dashed; }
+.robo-slot-row .inv-slot.empty::after {
+  content: '+';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #5a6b7d;
+  font-size: 14px;
+  pointer-events: none;
+}
+.robo-slot-row .inv-slot img { width: 100%; height: 100%; display: block; border-radius: 0; object-fit: cover; }
+.robo-slot-row .inv-slot .cnt {
+  position: absolute;
+  right: 0; bottom: 0;
+  font-size: 7px; font-weight: bold;
+  color: #fff;
+  text-shadow: 0 1px 2px #000;
+  pointer-events: none;
+  line-height: 1;
+}
+/* 机器人港面板右栏：说明文字按槽位网格宽度换行，操作按钮一行排开 */
+#panel.machine-wide .roboport-layout .inv-col-right { width: fit-content; }
+#panel.machine-wide .roboport-layout .inv-col-right .dim {
+  max-width: 356px;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.5;
+}
+.robo-desc { margin-top: 8px; }
+.robo-btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px; }
+
 /* 模块插槽：图形化展示设备模块槽位（组装机等） */
 .mod-slots {
   display: flex;
@@ -3017,6 +3151,14 @@ html, body {
   background: rgba(0,0,0,.75); color: #fff;
   padding: 1px 2px; border-radius: 3px 0 0 0;
   white-space: nowrap;
+}
+/* ===== 熔炉燃料行：单格燃料格 + 独立的燃料燃烧进度条（与冶炼进度条相互独立）===== */
+.asm3-panel .fuel-row { display: flex; align-items: center; gap: 10px; }
+.asm3-panel .fuel-row .fuel-bar { flex: 1; height: 22px; position: relative; background: rgba(255,255,255,.1); border-radius: 11px; overflow: hidden; }
+.asm3-panel .fuel-row .fuel-bar i { display: block; height: 100%; background: linear-gradient(90deg, #e8762c, #f0a050); transition: width .2s; }
+.asm3-panel .fuel-row .fuel-bar .fuel-bar-txt {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: #fff; text-shadow: 1px 1px 2px #000; pointer-events: none; white-space: nowrap;
 }
 .asm3-panel .mod-slot { width: 32px; height: 32px; padding: 0; }
 .asm3-panel .mod-slot:has(img) { border: 0; }

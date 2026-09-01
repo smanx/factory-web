@@ -533,6 +533,15 @@ function fuelConsumptionMult() {
   if (!lvl) return 1;
   return 1 / Math.pow(1.1, lvl);
 }
+// 燃烧设备的官方功率（MW）——对齐《异星工厂》「燃烧时长/块燃料 = 热值(MJ) ÷ 功率(MW)」：
+// 石炉/钢炉 90kW、热能采矿机 150kW、锅炉 1.8MW、热能机械臂 144kW、供热塔 40MW；电炉用电不在此列。
+// 数据单源：GAME_DATA.powerUse（kW，来自官方 energy_usage）；未收录时按官方兜底值。
+function burnPowerMW(type) {
+  const kw = GAME_DATA && GAME_DATA.powerUse && GAME_DATA.powerUse[type];
+  if (typeof kw === 'number' && kw > 0) return kw / 1000;
+  const fb = { 'stone-furnace': 0.09, 'steel-furnace': 0.09, 'boiler': 1.8, 'burner-mining-drill': 0.15, 'burner-inserter': 0.144, 'heating-tower': 40 };
+  return fb[type] !== undefined ? fb[type] : 0.09;
+}
 // 物品生产产能无限科技（对齐《异星工厂》各 *-productivity 无限科技）：每级让指定物品产出额外 +10%。
 // 通过累积分数进度，在整数产物上追加额外产出（与产能模块 prodBuf 机制一致）。
 // 返回该物品的产能加成分数（每级 0.1）。

@@ -54,7 +54,8 @@ class HeatingTower extends Entity {
     // 产热 = 燃料消耗率 × 效比（官方 40MW × 2.5 = 100MW），存入 heat buffer（最高温后多余热量流失）
     const rate = HEATING_TOWER_RATE * HEATING_TOWER_EFFECTIVITY;
     this.heatEnergy = Math.min(this.maxEnergy(), this.heatEnergy + rate * dt);
-    this.burnLeft -= dt;
+    // 燃烧速率 = 供热塔官方功率 40MW，使一块燃料燃烧时长 = 热值÷功率，对齐官方
+    this.burnLeft -= dt * fuelConsumptionMult() * burnPowerMW('heating-tower');
     // 燃烧粒子（可选：供热塔燃烧火光/热浪）
     if (typeof heatingTowerEmit === 'function') heatingTowerEmit(this, dt);
   }

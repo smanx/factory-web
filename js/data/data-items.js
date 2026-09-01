@@ -120,7 +120,7 @@ const ITEMS = {
   'bulk-inserter':    {emoji: '🦾',  name: '集装箱机械臂', color: '#7ec850', desc: '同电力机械臂，但可一次性抓取多达 3 个同种物品（对齐《异星工厂》Stack inserter）' },
   'stack-inserter':  {emoji: '🦾',  name: '堆叠机械臂', color: '#8ae05a', desc: '太空时代高级机械臂（对齐《异星工厂》Stack inserter）：一次抓取 4 个同种物品并分层叠放传送带，带 5 个过滤槽，由集装箱机械臂升级而来（官方配方 1 集装箱机械臂+1 处理器+2 碳纤维+10 果冻→1，0.5s）' },
   'fast-inserter':     {emoji: '🦾',  name: '高速机械臂', color: '#4f9fe8', desc: '比普通机械臂抓取更快（旋转速度约为其 2 倍）（对齐《异星工厂》Fast inserter）' },
-  'steel-chest':       {emoji: '🗄️',  name: '钢箱', color: '#9aa4b0', desc: '比储物箱容量更大的钢铁储物箱（48 格，官方 Steel chest）。可接入电路网络输出箱内物品数量信号（对齐《异星工厂》）' },
+  'steel-chest':       {emoji: '🗄️',  name: '钢箱', color: '#9aa4b0', desc: '比储物箱容量更大的钢铁储物箱（48 格，官方 Steel chest）' },
   'creative-chest':    {emoji: '♾️',  name: '创造箱', color: '#3e8f4a', mark: '∞', desc: '测试设备：无限生成选定物品（可多选），箱内可同时放多种物品，机械臂/玩家可无限取走其中任意一种' },
   'void-chest':        {emoji: '❌',  name: '虚空箱', color: '#4a3430', mark: '×', desc: '测试设备：无限销毁任何存入的物品，放进去即刻消失' },
   'logistic-science-pack':     {emoji: '🟢',  name: '物流科学包', color: '#6fd06f', mark: 'GS', desc: '绿色科学包，解锁二级科技（物流/石油等的钥匙）' },
@@ -385,8 +385,8 @@ const ITEMS = {
   'ice-platform': {emoji: '🧊',  name: '冰面平台', color: '#b8d4e8', mark: 'IC', desc: '冰原地表（太空时代 Aquilo）：玄冥星冰层铺装，可走行（对齐官方 Ice platform，氨水+冰合成）' },
   // ===== 模块化护甲 + 个人装备（对齐《异星工厂》Modular armor & Equipment grid）=====
   'modular-armor':  {emoji: '🛡️',  name: '模块化护甲', color: '#6a8a9a', desc: '基础模块化护甲：减伤 30%，自带 5×5 装备网格，可安装太阳能板/电池/外骨骼等个人装备' },
-  'power-armor':    {emoji: '🛡️',  name: '强力装甲', color: '#5a7aa8', desc: '高级模块化护甲：减伤 45%，自带 7×7 装备网格，更多插槽安装个人装备' },
-  'power-armor-mk2':{emoji: '🛡️',  name: '强力装甲 II', color: '#5a5aa8', desc: '顶级模块化护甲：减伤 55%，自带 8×8 装备网格，容纳最强个人装备组合' },
+  'power-armor':    {emoji: '🛡️',  name: '强力装甲', color: '#5a7aa8', desc: '高级模块化护甲：减伤 45%，自带 6×8 装备网格，更多插槽安装个人装备' },
+  'power-armor-mk2':{emoji: '🛡️',  name: '强力装甲 II', color: '#5a5aa8', desc: '顶级模块化护甲：减伤 55%，自带 10×10 装备网格，容纳最强个人装备组合' },
   // ---- 个人装备件（装入护甲网格生效） ----
   'solar-panel-equipment': {emoji: '☀️',  name: '个人太阳能板', color: '#4aa0d0', desc: '装备件（1×1）：白天为个人电网发电，为外骨骼/激光防御等装备供能' },
   'fusion-reactor-equipment': {emoji: '🔆',  name: '便携聚变反应堆', color: '#8ae0a0', desc: '装备件（4×4）：无惧昼夜、持续大功率发电，个人电网的终极电源' },
@@ -406,8 +406,8 @@ const ITEMS = {
   // ===== 地形树木与木材（对齐《异星工厂》：树可砍伐获得木） =====
   'wood': {emoji: '🪵',  name: '木材', color: '#8a6a3a', mark: 'W', desc: '由砍伐树木获得，是木质家具与修理包的原料，也可作低效燃料' },
   // ===== 基础储物箱（对齐《异星工厂》：木箱/铁箱/钢箱递进） =====
-  'wooden-chest': {emoji: '📦',  name: '木箱', color: '#a08050', desc: '最基础的储物箱，容量较小（16 格），开局即可合成。可接入电路网络输出箱内物品数量信号（对齐《异星工厂》）' },
-  'iron-chest': {emoji: '📦',  name: '铁箱', color: '#b0b8c4', desc: '储物箱，容量比木箱更大（32 格）。可接入电路网络输出箱内物品数量信号（对齐《异星工厂》：8铁板→1铁箱）' },
+  'wooden-chest': {emoji: '📦',  name: '木箱', color: '#a08050', desc: '最基础的储物箱，容量较小（16 格），开局即可合成' },
+  'iron-chest': {emoji: '📦',  name: '铁箱', color: '#b0b8c4', desc: '储物箱，容量比木箱更大（32 格）（官方 8铁板→1铁箱）' },
   // ===== 修理包（对齐《异星工厂》Repair pack） =====
   'repair-pack': {emoji: '🔧',  name: '修理包', color: '#5aa0d0', desc: '选中后点击受损建筑可修复其耐久度。每个修理包有多次使用次数，损坏建筑恢复 HP' },
   // ===== 开采工具（对齐《异星工厂》Iron axe / Steel axe：手持加速手挖） =====
@@ -434,7 +434,7 @@ const ITEMS = {
   'battery-mk3-equipment': {emoji: '🔋',  name: '个人电池 III', color: '#4aa0d8', mark: '电', desc: '个人装备：更强大的储能电池，储电量远胜个人电池 II（官方 100MJ，数据来自 GAME_DATA.equipment）' },
   'fission-reactor-equipment': {emoji: '☢️',  name: '便携裂变反应堆', color: '#5a8a5a', mark: '核', desc: '个人装备：终极便携发电装置，全天候输出高达 4MW（官方 4MW，数据来自 GAME_DATA.equipment）' },
   'toolbelt-equipment': {emoji: '🧰',  name: '工具腰带', color: '#8a7a5a', mark: '带', desc: '个人装备：随身额外物品栏（官方 toolbelt，数据来自 GAME_DATA.equipment）' },
-  'mech-armor': {emoji: '🦿',  name: '机械装甲', color: '#5a6a8a', mark: '机', desc: '太空时代终极装甲：拥有最大装备网格，可安装最多强力装备件（官方 Mech armor，数据来自 GAME_DATA）' },
+  'mech-armor': {emoji: '🦿',  name: '机械装甲', color: '#5a6a8a', mark: '机', desc: '太空时代终极装甲：减伤 65%，自带 10×12 最大装备网格，可安装最多强力装备件（官方 Mech armor，数据来自 GAME_DATA）' },
   // ===== 太空时代 终局防御（数据来自 factorio-data 官方，见 GAME_DATA）=====
   'railgun': {emoji: '🔫',  name: '轨道炮', color: '#8a8ad0', desc: '太空时代终极单兵武器（官方 Railgun）：发射轨道炮弹，对线性路径上多个敌人造成巨额伤害（对齐《异星工厂》Space Age Railgun）' },
   // ===== 流体桶装系统（对齐《异星工厂》Barrel system） =====

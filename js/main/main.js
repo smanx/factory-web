@@ -566,6 +566,8 @@ function applySave(d) {
   // 手动槽位同步：移除已废弃/不存在的物品占用；旧档（无 invSlots 字段）把物品
   // 按原展示顺序放入手动槽，保持读档前后格子位置稳定，且不自动排序
   if (typeof normalizeInvSlots === 'function') normalizeInvSlots(!Array.isArray(d.invSlots));
+  // 背包中不应有流体：读档时清掉旧档残留的流体（流体只能存在于管道/储罐/设备缓存）
+  if (typeof purgeFluidsFromInv === 'function') purgeFluidsFromInv();
   // 恢复个人物流请求（旧档无该字段则置空）
   G.logiRequest = {};
   if (d.logiRequest && typeof d.logiRequest === 'object') {
@@ -913,6 +915,7 @@ function tryPlaceAt(tx, ty) {
       e.applyDir();
       if (placeQuality && placeQuality !== 'normal') e.quality = placeQuality;
       addEnt(e);
+      G._lastPlacedEnt = e;   // 记录本次点击刚放置的实体
       if (!infinite) takeForPlace(needId);
       if (typeof achEnsureStats === 'function') { achEnsureStats(); G.achStats.builds++; checkAchievements(); }
       if (typeof playSfx === 'function') playSfx('build');
@@ -929,6 +932,7 @@ function tryPlaceAt(tx, ty) {
   // 品质建筑：记录品质等级（normal 不记），后续设备速度/强度按品质加成
   if (placeQuality && placeQuality !== 'normal') e.quality = placeQuality;
   addEnt(e);
+  G._lastPlacedEnt = e;   // 记录本次点击刚放置的实体
   if (!infinite) takeForPlace(needId);
   // 成就：建造计数（对齐《异星工厂》建造成就）
   if (typeof achEnsureStats === 'function') { achEnsureStats(); G.achStats.builds++; checkAchievements(); }

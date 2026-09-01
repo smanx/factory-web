@@ -26,7 +26,7 @@ class Recycler extends Entity {
   }
   powerDemand() { return this.crafting ? POWER_USE['recycler'] : 0; }
   update(dt) {
-    if (powerSatOf(this) <= 0) { this.crafting = false; return; }
+    if (powerSatOf(this) <= 0) return;
     if (this.crafting && this.recycleItem) {
       const out = this.recycleResults(this.recycleItem);
       if (!out) { this.crafting = false; this.prog = 0; return; }

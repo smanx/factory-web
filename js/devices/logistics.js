@@ -28,42 +28,137 @@ const ROBOT_CHARGE_RATE = 40;   // 回港每秒充电量
 const ROBOT_LOW_CHARGE = 20;    // 低于此值回家充电
 const ROBOT_CARRY = 3;          // 单次最多搬运同类物品数量（基础值，可由「机器人容量」无限科技提升，见 robotCarryCap()）
 const ROBOT_NET_T = 0.5;        // 网络调度复算间隔
-const ROBOPORT_CAP = 50;        // 单机器人港最多容纳的机器人数量
 const ROBOPORT_POWER_IDLE = GAME_DATA.roboportPower ?? 40; // 机器人港基础耗电（kW，官方 energy_usage 50kW）
+// 机器人港范围与槽位（官方 roboport 原型，经 GAME_DATA 单源桥接）：
+//   logistics=物流网络覆盖半径（官方 logistics_radius=25 格），construction=施工机器人覆盖半径（官方 construction_radius=55 格）
+//   robotSlots=第一排机器人槽（官方 robot_slots_count=7，每槽最多 50 台同类型机器人，见官方 wiki Roboport#Storage），
+//   materialSlots=第二排修理包槽（官方 material_slots_count=7，每槽堆叠）
+const ROBOPORT_LOGI_RANGE = GAME_DATA.roboportRange?.logistics ?? 25;
+const ROBOPORT_CONSTR_RANGE = GAME_DATA.roboportRange?.construction ?? 55;
+const ROBOT_SLOT_COUNT = GAME_DATA.roboportRange?.robotSlots ?? 7;
+const MAT_SLOT_COUNT = GAME_DATA.roboportRange?.materialSlots ?? 7;
+const ROBOT_SLOT_MAX = 50;   // 每机器人槽堆叠上限（官方：每槽可容纳 50 台同类型机器人）
+const ROBOPORT_CAP = ROBOT_SLOT_COUNT * ROBOT_SLOT_MAX; // 单港机器人总容量 = 7×50=350 台
+// 修理包充电（对齐官方 2.0：机器人回港充电消耗「修理包」，充满 1 台耗 1 个）；
+// 项目兜底：网络内无修理包时退回纯电力慢充（旧存档兼容，项目自定倍率）。
+const ROBOT_NO_PACK_CHARGE_MULT = 0.25;
 
-// 机器人港实体
+// 机器人港实体：第一排 7 格机器人槽（物流机器人 / 建设机器人共用，每槽堆叠同型机器人、每槽最多 50 台）
+// + 第二排 7 格修理包槽。玩家/机械臂/面板均可投入取出；同星球上物流覆盖相交的机器人港互相连接，
+// 构成同一物流网络（连通分量），网络内机器人、修理包、物流箱库存全部共享。
 class Roboport extends CircuitNode {
   constructor(type, x, y) {
     super('roboport', x, y);
-    this.roboCap = 0;   // 已投入的物流机器人数量（往港里塞 logistic-robot 增加）
+    // 统一 slots 数组（长度 = 机器人槽 + 修理包槽），前 ROBOT_SLOT_COUNT 格为机器人槽
+    // （物流/建设机器人共用，一格一种、每格最多 ROBOT_SLOT_MAX 台），后 MAT_SLOT_COUNT 格为修理包槽。
+    // 统一成与箱子一致的 slots 接口，使面板槽位直接复用背包/箱子通用交互（拿起/放入/交换/Shift/Ctrl 快捷键）。
+    this.slots = new Array(ROBOT_SLOT_COUNT + MAT_SLOT_COUNT).fill(null);
+    this._netComp = null;   // 最近一次调度所属的连通网络（scanNetwork 重算）
   }
+  // 兼容视图：机器人槽 / 修理包槽。只读：既有的调度/绘制/序列化代码仍可读 robotSlots/matSlots；
+  // 写入一律走 this.slots（面板通用交互直接读写 slots，格子索引 = 机器人槽索引 / ROBOT_SLOT_COUNT + 修理包索引）。
+  get robotSlots() { return this.slots.slice(0, ROBOT_SLOT_COUNT); }
+  get matSlots() { return this.slots.slice(ROBOT_SLOT_COUNT); }
+  get roboCap() { let n = 0; for (const s of this.robotSlots) if (s) n += s.count; return n; }  // 港内机器人总台数（物流+建设求和）
+  hasFreeRobotSlot(item) {
+    if (item) {
+      // 指定类型：可放入同型未满槽，或占用空槽（7 槽两型共用，一格一种机器人）
+      for (const s of this.robotSlots) {
+        if (!s) return true;
+        if (s.item === item && s.count < ROBOT_SLOT_MAX) return true;
+      }
+      return false;
+    }
+    // 未指定类型：只要有可容纳机器人的槽即可
+    return this.robotSlots.some(s => !s || s.count < ROBOT_SLOT_MAX);
+  }
+  hasFreeMatSlot(item) {
+    const cap = stackSize(item);
+    for (const s of this.matSlots) { if (!s || (s.item === item && s.count < cap)) return true; }
+    return false;
+  }
+  // 槽位类型校验：第一排机器人槽只收两种机器人，第二排修理包槽只收修理包。
+  // 面板通用交互（data-chestslot 放入/交换/半放）先经 slotAccepts 把关，不符的物品放不进去（与 giveItem 的接收规则一致）。
+  slotAccepts(idx, id) {
+    if (idx < ROBOT_SLOT_COUNT) return (id === 'logistic-robot' || id === 'construction-robot');
+    return (id === 'repair-pack');
+  }
+  matCount(item) { let n = 0; for (const s of this.matSlots) if (s && s.item === item) n += s.count; return n; }
   // 电路网络信号输出（对齐《异星工厂》：机器人港可接入电路网络读取所在物流网络物资）。
-  // 把整个物流网络中供应箱/仓储箱内的每种物品总量以该物品为信号输出，
-  // 供组合器/功率开关/告警音箱读取，实现按网络库存的自动化调度。
+  // 输出本连通网络内供应箱/仓储箱每种物品总量（scanNetwork 预计算缓存）。
   outputCircuitSignals() {
-    const net = G.logiNet;
-    if (!net || !net.signals) return [];
-    return net.signals;   // 复用 scanNetwork 预计算好的信号缓存（性能优化）
+    const comp = this._netComp;
+    return (comp && comp.signals) || [];
   }
-  giveItem(item) {
-    if (item !== 'logistic-robot') return false;
-    if (this.roboCap >= ROBOPORT_CAP) return false;
-    this.roboCap++;
-    if (typeof playSfx === 'function') playSfx('robot');
-    return true;
+  giveItem(item, silent) {
+    // 机器人槽：物流/建设机器人共用。优先填入同类型未堆满的槽（堆满 50 台才轮到下一个槽），
+    // 无同型槽时占用第一个空槽（一格一种机器人，对齐官方 7 槽×每槽最多 50 台）。
+    if (item === 'logistic-robot' || item === 'construction-robot') {
+      for (let i = 0; i < ROBOT_SLOT_COUNT; i++) {
+        const s = this.slots[i];
+        if (s && s.item === item && s.count < ROBOT_SLOT_MAX) {
+          s.count++;
+          if (!silent && typeof playSfx === 'function') playSfx('robot');
+          return true;
+        }
+      }
+      const i = this.slots.findIndex(s => !s);
+      if (i < 0) return false;
+      this.slots[i] = { item, count: 1 };
+      if (!silent && typeof playSfx === 'function') playSfx('robot');
+      return true;
+    }
+    if (item === 'repair-pack') {
+      const cap = stackSize('repair-pack');
+      let i = this.slots.findIndex((s, j) => j >= ROBOT_SLOT_COUNT && s && s.item === 'repair-pack' && s.count < cap);
+      if (i < 0) i = this.slots.findIndex((s, j) => j >= ROBOT_SLOT_COUNT && !s);
+      if (i < 0) return false;
+      if (this.slots[i]) this.slots[i].count++;
+      else this.slots[i] = { item: 'repair-pack', count: 1 };
+      return true;
+    }
+    return false;
   }
-  takeItem() {
-    if (this.roboCap <= 0) return null;
-    this.roboCap--;
-    // 若已派生出超出新上限的机器人，回收多余空闲机器人
-    retireExcessRobots(this);
-    if (typeof playSfx === 'function') playSfx('robot');
-    return 'logistic-robot';
+  peekItem() {
+    for (const s of this.robotSlots) if (s) return s.item;
+    for (const s of this.matSlots) if (s) return s.item;
+    return null;
   }
-  countOf(item) { return item === 'logistic-robot' ? this.roboCap : 0; }
+  takeItem() { return this.takeItemOf(this.peekItem()); }
   takeItemOf(item) {
-    if (item !== 'logistic-robot' || this.roboCap <= 0) return null;
-    return this.takeItem();
+    if (item === 'logistic-robot' || item === 'construction-robot') {
+      // 从第一个含该类型机器人的槽取走 1 台（减到 0 即清空该槽）
+      for (let i = 0; i < ROBOT_SLOT_COUNT; i++) {
+        const s = this.slots[i];
+        if (s && s.item === item && s.count > 0) {
+          s.count--;
+          if (s.count <= 0) this.slots[i] = null;
+          // 若已派生出超出新上限的机器人，回收多余空闲机器人
+          retireExcessRobots(this);
+          if (typeof playSfx === 'function') playSfx('robot');
+          return item;
+        }
+      }
+      return null;
+    }
+    if (item === 'repair-pack') {
+      const i = this.slots.findIndex((s, j) => j >= ROBOT_SLOT_COUNT && s && s.item === 'repair-pack');
+      if (i < 0) return null;
+      const s = this.slots[i];
+      s.count--;
+      if (s.count <= 0) this.slots[i] = null;
+      return 'repair-pack';
+    }
+    return null;
+  }
+  countOf(item) {
+    if (item === 'logistic-robot' || item === 'construction-robot') {
+      let n = 0;
+      for (const s of this.robotSlots) if (s && s.item === item) n += s.count;
+      return n;
+    }
+    if (item === 'repair-pack') return this.matCount('repair-pack');
+    return 0;
   }
   powerDemand() {
     // 港内已有机器人或网络有需求时才耗电；否则闲置省电
@@ -71,21 +166,57 @@ class Roboport extends CircuitNode {
     return 0;
   }
   contents() {
-    return [[this.type, 1]].concat(this.roboCap > 0 ? [['logistic-robot', this.roboCap]] : []);
+    const list = [[this.type, 1]];
+    const logi = this.countOf('logistic-robot'), constr = this.countOf('construction-robot');
+    if (logi > 0) list.push(['logistic-robot', logi]);
+    if (constr > 0) list.push(['construction-robot', constr]);
+    const rp = this.matCount('repair-pack');
+    if (rp > 0) list.push(['repair-pack', rp]);
+    return list;
   }
   serialize() {
     const s = super.serialize();
-    s.roboCap = this.roboCap;
+    s.robotSlots = this.robotSlots.map(v => v ? [v.item, v.count] : null);
+    s.matSlots = this.matSlots.map(v => v ? [v.item, v.count] : null);
     return s;
   }
   blueprint() {
     const s = super.blueprint();
-    s.roboCap = this.roboCap;   // 蓝图保留机器人数量配置
+    // 蓝图保留机器人槽分布（类型 + 数量），恢复时经 restore 的 robotSlots 分支还原
+    s.robotSlots = this.robotSlots.map(v => v ? [v.item, v.count] : null);
     return s;
   }
   static restore(s) {
     const e = super.restore(s);
-    e.roboCap = s.roboCap | 0;
+    if (Array.isArray(s.robotSlots)) {
+      for (let i = 0; i < ROBOT_SLOT_COUNT; i++) {
+        const v = s.robotSlots[i];
+        if (v && Array.isArray(v)) {
+          // 新格式 [item, count]
+          const item = (v[0] === 'construction-robot') ? 'construction-robot' : 'logistic-robot';
+          const cnt = Math.max(1, Math.min(ROBOT_SLOT_MAX, v[1] | 0));
+          e.slots[i] = { item, count: cnt };
+        } else if (typeof v === 'number' && v > 0) {
+          // 旧格式（每槽台数 0/1，或上一版堆叠台数）→ 按物流机器人还原
+          e.slots[i] = { item: 'logistic-robot', count: Math.max(1, Math.min(ROBOT_SLOT_MAX, v)) };
+        }
+      }
+    } else if ((s.roboCap | 0) > 0) {
+      // 更旧存档迁移：roboCap（台数）→ 按顺序堆叠填入各槽（每槽满 50 才下一槽），超出总容量退回背包
+      let n = s.roboCap | 0;
+      for (let i = 0; i < ROBOT_SLOT_COUNT && n > 0; i++) {
+        const put = Math.min(ROBOT_SLOT_MAX, n);
+        e.slots[i] = { item: 'logistic-robot', count: put };
+        n -= put;
+      }
+      if (n > 0 && typeof invAdd === 'function') invAdd('logistic-robot', n);
+    }
+    if (Array.isArray(s.matSlots)) {
+      for (let i = 0; i < MAT_SLOT_COUNT; i++) {
+        const v = s.matSlots[i];
+        e.slots[ROBOT_SLOT_COUNT + i] = v ? { item: v[0] ?? v.item, count: v[1] ?? v.count } : null;
+      }
+    }
     return e;
   }
 }
@@ -302,7 +433,7 @@ function isLogiSupply(e) {
 function retireExcessRobots(port) {
   if (!G.logiRobots) return;
   const mine = G.logiRobots.filter(r => r.home === port && !r._dead);
-  let excess = mine.length - port.roboCap;
+  let excess = mine.length - port.countOf('logistic-robot');  // 仅按物流机器人台数回收实体（建设机器人暂为存储，不派生实体）
   if (excess > 0) {
     // 优先回收空闲机器人，其次回收正在返港/充电的
     const order = ['idle', 'returning', 'charging'];
@@ -336,23 +467,27 @@ function spawnRobotAt(port) {
 
 // 确保每个机器人港拥有 roboCap 个机器人。
 // 优先复用 scanNetwork 已收集的机器人港列表（G.logiNet.ports），避免对 G.ents 重复全量遍历（性能优化）。
+// 玩家/机械臂/面板用通用交互取出机器人后，槽位台数减少但飞行实体可能仍有盈余，
+// 故先调用 retireExcessRobots 回收多余空闲实体，再按缺口补充（集中兜底，覆盖所有取出路径）。
 function ensurePortRobots() {
   const ports = (G.logiNet && G.logiNet.ports) || null;
   if (ports) {
     for (const e of ports) {
       if (e._dead) continue;
+      retireExcessRobots(e);
       let mine = 0;
       for (const r of G.logiRobots) if (r.home === e && !r._dead) mine++;
-      for (let i = mine; i < e.roboCap; i++) spawnRobotAt(e);
+      for (let i = mine; i < e.countOf('logistic-robot'); i++) spawnRobotAt(e);
     }
     return;
   }
   // 兜底：尚无缓存时（如物流网络刚解锁、首次调度）再全量遍历一次
   for (const e of G.ents) {
     if (!(e instanceof Roboport) || e._dead) continue;
+    retireExcessRobots(e);
     let mine = 0;
     for (const r of G.logiRobots) if (r.home === e && !r._dead) mine++;
-    for (let i = mine; i < e.roboCap; i++) spawnRobotAt(e);
+    for (let i = mine; i < e.countOf('logistic-robot'); i++) spawnRobotAt(e);
   }
 }
 
@@ -895,39 +1030,75 @@ function drawLogiBuffer(ctx, e, gx, gy, dir, alpha) {
   drawLogiChest(ctx, e, gx, gy, dir, alpha, 'buffer');
 }
 
+// 机器人港实体渲染（对齐《异星工厂》Roboport 视觉语言：深青灰平台 + 四角停机坪 +
+// 中央基塔 + 环绕跑道）。自下而上：地面投影 → 底座平台（面板收光、内嵌凹槽）→
+// 四角机器人停机坪（停靠充电小圆台 + 呼吸信号灯）→ 双环跑道（外虚线环 = 机器人巡航
+// 轨道，内环 = 归港减速带）→ 中央基塔（塔体 + 顶部天线）→ 塔顶呼吸灯；港内机器人数量
+// 显示在塔顶下方。负责在地图上与机器人港面板图标（drawDeviceIcon 复用）呈现一致的样貌。
 function drawRoboport(ctx, e, gx, gy, dir, alpha) {
   const px = gx * TILE, py = gy * TILE, s = e.w * TILE;
+  const cx = px + s / 2, cy = py + s / 2;
   ctx.globalAlpha = alpha;
-  // 底板
-  ctx.fillStyle = '#23484c';
-  rr(ctx, px + 3, py + 3, s - 6, s - 6, 5); ctx.fill();
-  ctx.strokeStyle = '#0f2426';
+  const pulse = 0.5 + 0.35 * Math.sin((G.time || 0) * 4 + (gx * 7 + gy * 13));
+  // ① 地面投影：整座平台的大椭圆阴影，托起视觉重心
+  ctx.fillStyle = 'rgba(0,0,0,.34)';
+  ctx.beginPath(); ctx.ellipse(cx, py + s * 0.93, s * 0.48, s * 0.13, 0, 0, Math.PI * 2); ctx.fill();
+  // ② 底座平台：深青灰金属面板 + 外描边 + 顶面收光
+  ctx.fillStyle = '#22393d';
+  rr(ctx, px + 3, py + 3, s - 6, s - 6, 6); ctx.fill();
+  ctx.strokeStyle = '#0b1a1c';
   ctx.lineWidth = 2;
-  rr(ctx, px + 3, py + 3, s - 6, s - 6, 5); ctx.stroke();
-  // 跑道环
+  rr(ctx, px + 3, py + 3, s - 6, s - 6, 6); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.06)';
+  rr(ctx, px + 6.5, py + 6.5, s - 13, s - 13, 4); ctx.fill();
+  ctx.strokeStyle = 'rgba(150,220,208,.16)';
+  ctx.lineWidth = 1;
+  rr(ctx, px + 6.5, py + 6.5, s - 13, s - 13, 4); ctx.stroke();
+  // ③ 四角机器人停机坪：机器人在此起降/停靠充能，带呼吸信号灯
+  const padXY = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
+  for (const [ox, oy] of padXY) {
+    const pdx = cx + ox * s * 0.29, pdy = cy + oy * s * 0.29;
+    ctx.fillStyle = '#163238';
+    ctx.beginPath(); ctx.arc(pdx, pdy, s * 0.095, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,220,200,.4)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(pdx, pdy, s * 0.095, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = 'rgba(120,220,200,' + (0.3 + pulse * 0.25).toFixed(2) + ')';
+    ctx.beginPath(); ctx.arc(pdx, pdy, s * 0.028, 0, Math.PI * 2); ctx.fill();
+  }
+  // ④ 双环跑道：外虚线环（机器人巡航轨道）+ 内细环（归港减速带）
   ctx.strokeStyle = 'rgba(120,220,200,.5)';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.arc(px + s / 2, py + s / 2, s * 0.22, 0, 7);
-  ctx.stroke();
-  ctx.strokeStyle = 'rgba(120,220,200,.25)';
-  ctx.beginPath();
-  ctx.arc(px + s / 2, py + s / 2, s * 0.38, 0, 7);
-  ctx.stroke();
-  // 中央基站
-  ctx.fillStyle = '#3a8a8a';
-  ctx.beginPath();
-  ctx.arc(px + s / 2, py + s / 2, s * 0.13, 0, 7);
-  ctx.fill();
-  ctx.strokeStyle = '#1e5052';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  // 港内机器人数量
+  ctx.lineWidth = 2.6;
+  ctx.setLineDash([s * 0.09, s * 0.06]);
+  ctx.beginPath(); ctx.arc(cx, cy, s * 0.27, 0, Math.PI * 2); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle = 'rgba(120,220,200,.22)';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.arc(cx, cy, s * 0.18, 0, Math.PI * 2); ctx.stroke();
+  // ⑤ 中央基塔：塔座 + 塔身 + 顶部天线
+  ctx.fillStyle = '#103f44';
+  rr(ctx, cx - s * 0.115, cy - s * 0.16, s * 0.23, s * 0.32, 3); ctx.fill();
+  ctx.strokeStyle = '#0a2c2f';
+  ctx.lineWidth = 1.5;
+  rr(ctx, cx - s * 0.115, cy - s * 0.16, s * 0.23, s * 0.32, 3); ctx.stroke();
+  ctx.fillStyle = '#2e8f8f';
+  rr(ctx, cx - s * 0.085, cy - s * 0.30, s * 0.17, s * 0.14, 2); ctx.fill();
+  ctx.strokeStyle = '#0e383b';
+  ctx.lineWidth = 1.2;
+  rr(ctx, cx - s * 0.085, cy - s * 0.30, s * 0.17, s * 0.14, 2); ctx.stroke();
+  // 塔顶天线 + 呼吸通讯灯（活跃时更亮）
+  ctx.strokeStyle = '#8fdcd0';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.moveTo(cx, cy - s * 0.30); ctx.lineTo(cx, cy - s * 0.375); ctx.stroke();
+  const ant = (e.roboCap > 0) ? 1 : 0.75;
+  ctx.fillStyle = 'rgba(200,240,230,' + (0.55 + pulse * 0.45 * ant).toFixed(2) + ')';
+  ctx.beginPath(); ctx.arc(cx, cy - s * 0.39, Math.max(1.8, s * 0.022 + pulse * s * 0.008), 0, Math.PI * 2); ctx.fill();
+  // ⑥ 港内机器人数量（塔顶下方文字，有机器人才显示）
   if (e.roboCap > 0) {
     ctx.fillStyle = '#cfece8';
-    ctx.font = 'bold ' + Math.max(9, s * 0.09) + 'px system-ui';
+    ctx.font = 'bold ' + Math.max(9, s * 0.075) + 'px system-ui';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(e.roboCap, px + s / 2, py + s * 0.42);
+    ctx.fillText(e.roboCap, cx, py + s * 0.86);
   }
   ctx.globalAlpha = 1;
 }
@@ -1105,8 +1276,101 @@ function logiChestTip(e) {
   return (k ? '存货 ' + n + ' 个（' + k + ' 种）' : '空箱') +
     (e instanceof LogisticStorage && e.filter ? ' · 筛选：' + (ITEMS[e.filter] ? ITEMS[e.filter].name : e.filter) : '');
 }
-function roboportTip(e) {
-  return '机器人 ' + e.roboCap + ' 台' + (e.roboCap > 0 ? ' · 网络运行中' : '（把物流机器人放入）');
+// 机器人港建筑实体悬浮提示（注意：勿与 equipment.js 的 roboportTip(id 字符串) 重名，
+// 那个供背包/装备格 tooltip 读取 id 描述；本函数接收港实体 e，展示实时机器人数）
+function roboportEntTip(e) {
+  const rp = e.matCount('repair-pack');
+  const logi = e.countOf('logistic-robot'), constr = e.countOf('construction-robot');
+  let t = '物流机器人 ' + logi + ' 台';
+  if (constr > 0) t += ' · 建设机器人 ' + constr + ' 台';
+  if (rp > 0) t += ' · 修理包 ' + rp + ' 个';
+  t += (e.roboCap > 0 ? ' · 网络运行中' : '（把物流/建设机器人放入）');
+  return t;
+}
+
+// ===== 机器人港面板（对齐《异星工厂》Roboport GUI）=====
+// 双栏布局：左栏 = 玩家背包，右栏 = 机器人港操作面板。
+// 右栏结构（自上而下）：
+//   ① 状态行（状态点 + 状态文字，通用机器外壳）
+//   ② 机器人平台样式展示：与地图同款 drawRoboport 图标（机器画布）
+//   ③ 两排槽位（每排 7 格）：第一排 = 机器人槽（物流/建设机器人共用，每格可堆叠 50 台），第二排 = 修理包（每格堆叠）
+// 槽位交互完全复用背包/箱子通用的「持握于鼠标」机制（ui-panel.js 的 data-chestslot 分支）：
+//   - 点击有物品的格子：整叠拿起悬浮于鼠标（可放入背包/箱格/设备格，点同格放回，Q 取消）
+//   - 点击空槽：背包已选中（幽灵持握）对应物品时放入 1 件；鼠标正持握物品时尽量整叠放入（装满为止）
+//   - Shift+左键 移动一整组 / Ctrl+左键 移动全部同类 / Shift+右键 拿取或放入一半 —— 与其他物品完全一致
+// 机械臂也可直接向机器人港放入物流机器人/修理包（见 inserter.js canDropAt 的 roboport 分支）。
+// 格子使用全局索引：机器人槽 i → slots[i]；修理包槽 j → slots[ROBOT_SLOT_COUNT + j]。
+function roboportSlotsHtml(e) {
+  // 持握来源格（物品已移出悬浮于鼠标）高亮，点击可放回
+  const heldSlot = (G.held && G.held.src && G.held.src.kind === 'chest' && G.held.src.ent === e) ? G.held.src.slot : -1;
+  let h = '<div class="robo-row"><div class="robo-slot-row">';
+  for (let i = 0; i < ROBOT_SLOT_COUNT; i++) {
+    const s = e.slots[i];
+    const sel = (heldSlot === i) ? ' slot-sel' : '';
+    h += (s && s.count > 0)
+      ? '<div class="inv-slot robo-slot' + sel + '" data-chestslot="' + i + '" data-itemid="' + s.item + '" data-tip="' +
+        (ITEMS[s.item] ? ITEMS[s.item].name : s.item) +
+        '|点击拿起整叠悬浮于鼠标：可放入背包/箱格/设备格（当前 ' + s.count + ' 台，每格最多 ' + ROBOT_SLOT_MAX + ' 台）">' +
+        '<img src="' + iconDataURL(s.item) + '"><span class="cnt">' + s.count + '</span></div>'
+      : '<div class="inv-slot empty robo-slot' + sel + '" data-chestslot="' + i + '" data-tip="' +
+        (heldSlot === i ? '放回原格|点击把手持机器人放回此处' : '空槽|拿起物品后点击此格放入（物流/建设机器人，每格最多 ' + ROBOT_SLOT_MAX + ' 台）') + '"></div>';
+  }
+  h += '</div></div>';
+  h += '<div class="robo-row">' +
+    '<div class="robo-row-label">🧰 修理包 <b data-live="mat-cnt">' + e.matCount('repair-pack') + '</b></div>' +
+    '<div class="robo-slot-row">';
+  for (let j = 0; j < MAT_SLOT_COUNT; j++) {
+    const gi = ROBOT_SLOT_COUNT + j;
+    const s = e.slots[gi];
+    const sel = (heldSlot === gi) ? ' slot-sel' : '';
+    h += (s && s.count > 0)
+      ? '<div class="inv-slot robo-slot' + sel + '" data-chestslot="' + gi + '" data-itemid="repair-pack" data-tip="' +
+        (ITEMS['repair-pack'] ? ITEMS['repair-pack'].name : 'repair-pack') + '|点击拿起整叠悬浮于鼠标（当前 ' + s.count + ' 个）">' +
+        '<img src="' + iconDataURL('repair-pack') + '"><span class="cnt">' + s.count + '</span></div>'
+      : '<div class="inv-slot empty robo-slot' + sel + '" data-chestslot="' + gi + '" data-tip="' +
+        (heldSlot === gi ? '放回原格|点击把手持修理包放回此处' : '空槽|拿起物品后点击此格放入（修理包）') + '"></div>';
+  }
+  h += '</div></div>';
+  return h;
+}
+// 槽位内容签名：机器人/修理包槽、鼠标持握或持握来源高亮格变化时才重建，避免每帧 innerHTML 重建导致闪烁、点击丢失
+function roboportSlotSig(e) {
+  const heldSlot = (G.held && G.held.src && G.held.src.kind === 'chest' && G.held.src.ent === e) ? G.held.src.slot : -1;
+  let s = heldSlot + '|' + (G.held ? G.held.id + ':' + G.held.count : '') + '|';
+  for (const v of e.slots) s += (v && v.count > 0) ? v.item + ':' + v.count + ';' : '0;';
+  return s;
+}
+function refreshRoboportSlots(e) {
+  const box = document.getElementById('robo-slots');
+  if (!box) return;
+  const sig = roboportSlotSig(e);
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  box.innerHTML = roboportSlotsHtml(e);
+}
+function roboportRightHtml(e) {
+  // 仅渲染两排槽位：状态区与机器展示由统一操控面板外壳（asm3-status / asm3-machine）提供，
+  // 说明文字与批量按钮（投入/取出全部）不再展示（槽位点击交互已覆盖放入/取出）。
+  return '<div class="robo-slots" id="robo-slots">' + roboportSlotsHtml(e) + '</div>';
+}
+// 机器人港操作面板内容：直接输出右侧槽位区（无标题栏、无内嵌玩家栏），
+// 统一设备面板（unifiedMachineLayoutHtml）外层已提供「左侧玩家背包 + 操控面板外壳」，
+// 操控面板本身 overflow-y:auto，内容超高时随面板滚动。
+function roboportPanelHtml(e) {
+  return roboportRightHtml(e);
+}
+function roboportPanelLive(e, api, body) {
+  // 槽位实时刷新（签名比对，机械臂装入或机器人变化时即时更新，避免闪烁）
+  refreshRoboportSlots(e);
+  api.set('robo-cnt', e.roboCap + '/' + ROBOPORT_CAP);
+  api.set('mat-cnt', String(e.matCount('repair-pack')));
+  const mats = e.matCount('repair-pack');
+  const logi = e.countOf('logistic-robot'), constr = e.countOf('construction-robot');
+  if (e.roboCap > 0) {
+    api.status('网络运行中 · 物流机器人 ' + logi + ' 台' + (constr > 0 ? ' · 建设机器人 ' + constr + ' 台' : '') + (mats > 0 ? ' · 修理包 ' + mats + ' 个' : ''), 'ok');
+  } else {
+    api.status('无机器人 · 请点击空槽放入物流/建设机器人，或放机械臂从传送带/箱子抓取装入', 'warn');
+  }
 }
 
 // ===== 注册 =====
@@ -1114,38 +1378,9 @@ ENT_CLASSES['roboport'] = Roboport;
 DEVICE_RENDER['roboport'] = drawRoboport;
 DEVICE_DIR_ROTATE['roboport'] = true; // 支持旋转
 DEVICE_PANEL['roboport'] = {
-  html: e => {
-    let h = row('机器人', e.roboCap + ' 台', 'robo');
-    h += '<div class="dim">把「物流机器人」放入此港，机器人会自动在供应箱与需求箱之间搬运货物。电量不足时回港充电（消耗电力）。</div>';
-    if (e.roboCap > 0) h += '<div class="dim">已调度：物流网络覆盖全图。</div>';
-    else h += '<button data-action="robo-add">投入 1 台物流机器人</button>';
-    h += '<button data-action="robo-takeout">取出全部机器人</button>';
-    return h;
-  },
-  live: (e, api) => {
-    api.set('robo', e.roboCap + ' 台');
-    if (e.roboCap > 0) api.status('网络运行中 · 机器人 ' + e.roboCap + ' 台', 'ok');
-    else api.status('无机器人 · 请投入物流机器人', 'warn');
-  },
-  tip: roboportTip,
-  onAction: act => {
-    const e = G.panelEnt;
-    if (!(e instanceof Roboport)) return false;
-    if (act === 'robo-add') {
-      if (invCount('logistic-robot') < 1) { toast('背包里没有物流机器人'); return true; }
-      if (!invTake('logistic-robot', 1)) return true;
-      if (!e.giveItem('logistic-robot')) { invAdd('logistic-robot', 1); toast('机器人港已满'); }
-      uiDirty = true;
-      return true;
-    }
-    if (act === 'robo-takeout') {
-      const n = e.roboCap;
-      if (n > 0) { invAdd('logistic-robot', n); e.roboCap = 0; retireExcessRobots(e); toast('取回 ' + n + ' 台物流机器人'); }
-      uiDirty = true;
-      return true;
-    }
-    return false;
-  }
+  html: roboportPanelHtml,
+  live: roboportPanelLive,
+  tip: roboportTip
 };
 
 ENT_CLASSES['passive-provider-chest'] = LogisticPassive;

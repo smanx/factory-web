@@ -817,24 +817,14 @@ function drawBeltMark(ctx, e, gx, gy, alpha) {
 }
 
 // ===== 注册 =====
+// 传送带控制面板只显示该传送带的样式动画；带上物品直接绘制在带子动画上（对齐地图渲染），
+// 底部不显示任何文字或功能（描述、吞吐、电路接入一律移除）。
 function beltPanelHtml(e) {
-  return '<div class="dim">传送带：双列独立输送（对齐《异星工厂》左右两列），物品沿箭头方向流动。R 旋转方向。靠近后按 F 拿取带上物品。</div>' +
-    '<div class="dim">当前吞吐：<span data-live="speed">-</span>（件/秒，双车道合计）</div>' +
-    (typeof circuitPanelHtml === 'function' ? circuitPanelHtml(e, 'belt') : '');
+  return '';
 }
 
 function beltPanelLive(e, api) {
-  if (!e.circuitEnabled()) { api.status('已停止：电路条件不满足', 'warn'); return; }
-  const mult = e.speedMult ? e.speedMult() : 1;
-  // 面板显示的传送带速度为「双车道合计吞吐」（件/秒）：基础带=15 件/秒。
-  // 物体驱动已按带速/2 推进（单列 7.5 件/秒），双列合计即 beltSpeed/BELT_SPACING：
-  // 基础带 1.875/0.125=15 件/秒、快速带 30、极速带 45。
-  const speed = (1 / BELT_SPACING) * beltSpeed() * mult;
-  api.set('speed', (Math.round(speed * 10) / 10) + '');
-  const agg = {};
-  for (const o of e.items) agg[o.item] = (agg[o.item] || 0) + 1;
-  if (e.items.length) api.status('输送中：' + Object.keys(agg).map(k => ITEMS[k].name + '×' + agg[k]).join('、'), 'ok');
-  else api.status('空闲（无物品）', 'ok');
+  // 面板内容由顶部传动带动画直接呈现，无额外文字。
 }
 function beltTip(e) {
   if (e.items.length) {

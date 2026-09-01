@@ -108,15 +108,24 @@ function iconDataURL(id, size) {
 // 缓存基础部分，仅动态拼接额外说明（如请求量/已持有），避免每次打开背包都重算配方。
 const TIP_BASE_CACHE = {};
 function itemTip(id, extra) {
-  let base = TIP_BASE_CACHE[id];
-  if (!base) {
-    const it = ITEMS[id];
-    const stack = (typeof stackSize === 'function') ? stackSize(id) : 100;
-    base = it.name + '|' + it.desc + (stack ? '（最大堆叠 ' + stack + '）' : '');
-    // 可合成物品：在 tooltip 末尾追加合成配方（需求：建造物品悬停显示配方）
+  const it = ITEMS[id];
+  // 个人机器人港：描述由数据层生成（roboportDesc），未命中缓存以实时体现“状态:启用/已停用”
+  let base;
+  if (it && typeof EQUIPMENT !== 'undefined' && EQUIPMENT[id] && EQUIPMENT[id].roboport) {
+    base = roboportTip(id);
+    // 可合成物品：tooltip 末尾追加配方（保持与普通物品一致）
     const recipe = itemRecipeText(id);
     if (recipe) base += '||' + recipe;
-    TIP_BASE_CACHE[id] = base;
+  } else {
+    base = TIP_BASE_CACHE[id];
+    if (!base) {
+      const stack = (typeof stackSize === 'function') ? stackSize(id) : 100;
+      base = it.name + '|' + it.desc + (stack ? '（最大堆叠 ' + stack + '）' : '');
+      // 可合成物品：在 tooltip 末尾追加合成配方（需求：建造物品悬停显示配方）
+      const recipe = itemRecipeText(id);
+      if (recipe) base += '||' + recipe;
+      TIP_BASE_CACHE[id] = base;
+    }
   }
   return extra ? (base + (extra[0] === '|' ? '' : '|') + extra) : base;
 }
@@ -350,6 +359,21 @@ function refreshToastOpacity() {
   });
 }
 
+function openArmorPanel(armorId) {
+  if (!armorId || !isArmor(armorId)) return;
+  // 前 2 种护甲（轻型/重型）没有装备网格，仅数值减伤，无需打开装甲面板
+  if (!ARMORS[armorId].grid) {
+    if (typeof toast === 'function') toast('该护甲没有装备网格');
+    return;
+  }
+  // 记录装甲面板是否从背包发起（关闭时回到背包而非完全关闭）。
+  // 从背包打开 → true；在装甲面板内切换护甲 → 保持原值；其他入口（快捷栏等）→ false。
+  if (G.panelMode === 'inv') G.armorFromInv = true;
+  else if (G.panelMode !== 'armor') G.armorFromInv = false;
+  G.panelArmor = armorId;
+  openPanel('armor');
+}
+
 function openPanel(mode, ent) {
   // 配方设备：无配方时先弹出配方选择面板；已有配方则直接进入交互面板
   if (mode === 'machine' && ent && isRecipeDevice(ent) && !ent.recipe) {
@@ -362,7 +386,7 @@ function openPanel(mode, ent) {
   // 打开设置面板时自动暂停游戏（关闭时恢复，见 closePanel）
   if (mode === 'set') G.paused = true;
   // 背包弹框居中加宽显示（三列布局），其余面板保持右上角小窗
-  document.getElementById('panel').classList.toggle('inv-wide', mode === 'inv');
+  document.getElementById('panel').classList.toggle('inv-wide', mode === 'inv' || mode === 'armor');
   // 研究面板加宽双栏布局（左=研究列表，右=研究树图）
   document.getElementById('panel').classList.toggle('tech-wide', mode === 'tech');
   // 所有设备的交互面板：居中加宽双栏布局（左=背包，右=设备操作面板），与组装机一致
@@ -380,6 +404,12 @@ function openPanel(mode, ent) {
 }
 
 function closePanel(hide = true) {
+  // 从背包打开的装甲面板：关闭时回到背包面板（而非完全关闭），对齐「右键护甲 → 看模块 → 关闭后仍在背包」
+  if (G.panelMode === 'armor' && G.armorFromInv) {
+    G.panelArmor = null;
+    openPanel('inv');
+    return;
+  }
   const wasSettings = G.panelMode === 'set';
   G.panelMode = null;
   G.panelEnt = null;
@@ -397,6 +427,7 @@ function closePanel(hide = true) {
   G.bbDetail = null;
   G.recipeSel = null;
   G._clickMoveFrom = null;
+  G.panelArmor = null;
   // G.held 不在关闭面板时清空：持握物品跨面板保留（对齐《异星工厂》光标堆叠）
   G.rcpTab = null;
   G.rcpQ = '';
@@ -454,6 +485,16 @@ function renderPanel(full) {
       const inp = document.getElementById(keepFocusId);
       if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
     }
+  } else if (G.panelMode === 'armor') {
+    // 制作栏 Tab 保持静态缓存（护甲面板重开时快速显示）
+    if (!_invTabCache['craft']) _invTabCache['craft'] = htmlCraft();
+    const aid = G.panelArmor;
+    const def = ARMORS[aid];
+    title.textContent = (def ? def.name : '装甲') + ' · 装备网格';
+    // 只渲染护甲面板专用布局：内部使用 #inv-armor-body 作为背包列容器
+    body.innerHTML = htmlArmorPanel();
+    // 恢复背包搜索过滤
+    applyInvItemSearch(G.invItemQ);
   } else if (G.panelMode === 'tech') {
     title.textContent = '科技研究';
     // 科技面板每帧走轻量重建（主循环 renderPanel(false)），整块 innerHTML 重建会把
@@ -533,7 +574,7 @@ function updateInvLive() {
   // 蓝图面板（bluebook）左栏同样是玩家背包（htmlInventory('bb-inv')）：
   // 手持蓝图点左栏格子「入包」后需即时显示新蓝图，否则要关掉面板重开才看得见。
   // 制造面板（machine）左栏也是背包，物品进出同样需要跟随刷新。
-  const invPanelModes = ['inv', 'bluebook', 'machine'];
+  const invPanelModes = ['inv', 'bluebook', 'machine', 'armor'];
   if (invPanelModes.indexOf(G.panelMode) < 0) return;
   // 背包固定格（#inv-items）：每格一种物品，数量以右下角角标(.cnt)显示。
   // 物品集合变化时（新增/消失/清空）需重建格子以保证排列稳定；集合不变则仅在原地
@@ -702,7 +743,13 @@ function updateRecipeMachineLive(e, body, api) {
     for (const k in rec.inp) {
       const cur = e.inp[k] || 0;
       const need = rec.inp[k];
-      inp += '<div class="mch-io-slot' + (cur >= need ? ' full' : '') + '" data-action="feed-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|配方需 ' + need + '，当前 ' + cur + '。点击拿起（移到背包点击即取回），右键取回 1 件；先选中左侧背包物品再点击此槽放入">' +
+      const isFluid = FLUIDS.indexOf(k) >= 0;
+      // 流体原料槽不可点击（只读）：流体只能通过管道自动吸入，不能像普通物品一样拿起/放入
+      const tip = isFluid
+        ? ITEMS[k].name + '|流体：经相邻管道自动吸入，配方需 ' + need + '，当前 ' + cur
+        : ITEMS[k].name + '|配方需 ' + need + '，当前 ' + cur + '。点击拿起（移到背包点击即取回），右键取回 1 件；先选中左侧背包物品再点击此槽放入';
+      inp += '<div class="mch-io-slot' + (isFluid ? ' display' : '') + (cur >= need ? ' full' : '') + '"' +
+        (isFluid ? '' : ' data-action="feed-slot" data-id="' + k + '"') + ' data-tip="' + tip + '">' +
         '<img src="' + iconDataURL(k) + '"><span class="mch-io-n">' + cur + '/' + need + '</span></div>';
     }
     api.set('mch-inp', inp);
@@ -713,7 +760,13 @@ function updateRecipeMachineLive(e, body, api) {
     const outKeys = Object.keys(outMap).length ? Object.keys(outMap) : Object.keys(probMap);
     for (const k of outKeys) {
       const cur = e.outp[k] || 0;
-      out += '<div class="mch-io-slot" data-action="take-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|' + (outMap[k] ? ('每周期 ' + outMap[k] + ' 件，点击取回 1 件') : '概率产出，点击取回') + '（当前 ' + cur + '）">' +
+      const isFluid = FLUIDS.indexOf(k) >= 0;
+      // 流体产物槽不可点击（只读）：自动排入相邻管道，不能取出到背包
+      const tip = isFluid
+        ? ITEMS[k].name + '|流体产物，自动排入相邻管道（当前 ' + cur + '）'
+        : ITEMS[k].name + '|' + (outMap[k] ? ('每周期 ' + outMap[k] + ' 件，点击取回 1 件') : '概率产出，点击取回') + '（当前 ' + cur + '）';
+      out += '<div class="mch-io-slot' + (isFluid ? ' display' : '') + '"' +
+        (isFluid ? '' : ' data-action="take-slot" data-id="' + k + '"') + ' data-tip="' + tip + '">' +
         '<img src="' + iconDataURL(k) + '"><span class="mch-io-n">' + cur + '</span></div>';
     }
     api.set('mch-out', out);
@@ -938,6 +991,36 @@ function htmlInventory(withActionId) {
   h += '<input id="inv-item-search" class="inv-search" type="text" placeholder="搜索物品（输入名称）" autocomplete="off" value="' + iq + '">';
   h += htmlInvSlots(withActionId);
   return h;
+}
+
+// ===== 装甲面板（左=玩家背包，右=模块化护甲装备网格）=====
+// 对齐《异星工厂》：右键模块化护甲打开。右栏显示该护甲的装备网格（尺寸/可放装备类别
+// 取自官方 equipment-grid），网格中可安装个人装备件，点击装备件可卸下返还背包。
+function htmlArmorPanel() {
+  const aid = G.panelArmor;
+  const def = (aid && ARMORS[aid]) ? ARMORS[aid] : null;
+  const wh = def ? def.grid : 0;
+  const gridHtml = wh ? equipGridHtml(aid) : '<div class="dim">该护甲没有装备网格</div>';
+  // 网格下方仅两行：第一行网格尺寸，第二行当前护甲网格内的能量护盾承载量
+  let summary = wh
+    ? '<div class="dim armor-summary">装备网格：' + wh.w + '×' + wh.h + '</div>' +
+      '<div class="dim armor-summary">🛡 能量护盾承载：' + shieldCapacityOf(aid) + ' 点伤害</div>'
+    : '<div class="dim armor-summary">该护甲没有装备网格</div>';
+  // 放电防御为功能性按钮，保留（作用于当前穿戴装备）
+  if (wh && typeof hasDischargeDefense === 'function' && hasDischargeDefense()) {
+    const cd = Math.max(0, G.dischargeCd || 0);
+    summary += '<div class="dim armor-summary"><button class="rcbtn" data-discharge="1"' + (cd > 0 ? ' disabled' : '') + '>⚡ 放电防御（点击激活，冷却 ' + cd.toFixed(1) + 's）</button></div>';
+  }
+  return '<div class="inv-layout armor-layout">' +
+    '<div class="inv-col inv-col-left">' +
+      '<div class="inv-col-head">🎒 玩家背包</div>' +
+      '<div class="inv-col-body" id="inv-armor-body">' + htmlInventory() + '</div>' +
+    '</div>' +
+    '<div class="inv-col inv-col-right">' +
+      '<div class="inv-col-head">' + (def ? def.name : '装甲') + '</div>' +
+      '<div class="inv-col-body">' + gridHtml + summary + '</div>' +
+    '</div>' +
+  '</div>';
 }
 
 // ===== 个人物流区（对齐《异星工厂》Personal logistic request + Trash slots）=====
@@ -2007,7 +2090,8 @@ function htmlMachine(e) {
   const panel = DEVICE_PANEL[e.type];
   let h = (panel && panel.html) ? panel.html(e) : '<div class="dim">无信息</div>';
   // 电路节点设备：追加「接入通道」设置（对齐《异星工厂》红/绿线缆，实现红绿信号物理隔离）
-  if (typeof isCircuitNodeEntity === 'function' && isCircuitNodeEntity(e)) {
+  // 机器人港除外：港面板自带完整操作区与网络说明，不展示通道切换
+  if (typeof isCircuitNodeEntity === 'function' && isCircuitNodeEntity(e) && e.type !== 'roboport') {
     const ch = e.wireChan || 'both';
     h += '<div class="sec">电路接入通道</div>' +
       '<div class="mrow"><span class="mlabel">接入</span><span class="mval">' +
@@ -2055,8 +2139,7 @@ function machineBacklogPaused(e, rec) {
 const GENERIC_PROGRESS_TYPES = {
   'boiler': 1, 'steam-engine': 1, 'offshore-pump': 1,
   'lab': 1, 'biolab': 1,
-  'stone-furnace': 1, 'electric-furnace': 1, 'steel-furnace': 1,
-  'burner-mining-drill': 1, 'electric-mining-drill': 1, 'pumpjack': 1,
+  // 熔炉（石炉/钢炉/电炉）与热能采矿机不再用外壳进度条：面板自带「进度条 + 槽位」流程行
   'nuclear-reactor': 1, 'captive-biter-spawner': 1
 };
 
@@ -2271,7 +2354,7 @@ function recipeCardHtml(rid) {
       '<span class="rcp-card-name">' + (ITEMS[k] ? ITEMS[k].name : k) + '</span></div>';
   else if (r.prob) for (const k in r.prob)
     out += '<div class="rcp-card-row">' + icn(k) +
-      '<span class="rcp-card-cnt">' + Math.round(r.prob[k] * 100) + '%</span>' +
+      '<span class="rcp-card-cnt">' + (Math.round(r.prob[k] * 1000) / 10) + '%</span>' +
       '<span class="rcp-card-name">' + (ITEMS[k] ? ITEMS[k].name : k) + '</span></div>';
   // 制造于（由配方生产设备推导；可手搓时追加「工程师」）
   let bld = '';
@@ -2495,8 +2578,8 @@ function unifiedMachineLayoutHtml(e) {
     // 一律套用组装机风格外壳（状态点 + 机器图标 + 进度条 + 操作区），保证交互风格与组装机一致。
     const panel = DEVICE_PANEL[e.type];
     let inner = (panel && panel.html) ? panel.html(e) : '<div class="dim">无信息</div>';
-    // 电路节点设备：追加「接入通道」设置
-    if (typeof isCircuitNodeEntity === 'function' && isCircuitNodeEntity(e)) {
+    // 电路节点设备：追加「接入通道」设置（机器人港除外：港面板自带完整操作区，不展示通道切换）
+    if (typeof isCircuitNodeEntity === 'function' && isCircuitNodeEntity(e) && e.type !== 'roboport') {
       const ch = e.wireChan || 'both';
       inner += '<div class="sec">电路接入通道</div>' +
         '<div class="mrow"><span class="mlabel">接入</span><span class="mval">' +
@@ -2606,7 +2689,21 @@ function drawDeviceIcon(e, cv) {
   const oy = (cv.height - h * TILE * scale) / 2;
   ctx.translate(ox, oy);
   ctx.scale(scale, scale);
+  const queueStart = (typeof BELT_ITEM_QUEUE !== 'undefined') ? BELT_ITEM_QUEUE.length : 0;
   try { fn(ctx, e, 0, 0, e.dir || 0, 1); } catch (err) { /* 设备绘制异常不影响面板 */ }
+  // 传送带/地下带等在绘制时会把自己的带上物品推入全局 BELT_ITEM_QUEUE（供地图二次绘制）。
+  // 面板图标需直接在画布上补画这些物品（与地图渲染一致显示带上的当前物品），
+  // 并把它们从全局队列移除，避免残留污染下一次地图渲染。
+  if (typeof BELT_ITEM_QUEUE !== 'undefined' && BELT_ITEM_QUEUE.length > queueStart) {
+    for (let i = queueStart; i < BELT_ITEM_QUEUE.length; i++) {
+      const it = BELT_ITEM_QUEUE[i];
+      ctx.save();
+      if (it.corner) drawBeltCorner(ctx, it.e, it.gx, it.gy, it.dir, it.alpha, beltColors(it.e), true);
+      else drawBeltItems(ctx, it.e, it.gx, it.gy, it.dir, it.alpha, it.sideArc || null);
+      ctx.restore();
+    }
+    BELT_ITEM_QUEUE.length = queueStart;
+  }
   ctx.restore();
 }
 
@@ -2671,7 +2768,13 @@ function recipeMachineRightHtml(e, info, rec) {
   h += '<div class="asm3-side asm3-inp"><div class="asm3-inp-row" data-live="mch-inp">';
   for (const k in rec.inp) {
     const cur = e.inp[k] || 0;
-    h += '<div class="mch-io-slot' + (cur >= rec.inp[k] ? ' full' : '') + '" data-action="feed-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|配方需 ' + rec.inp[k] + '，当前 ' + cur + '。点击拿起（移到背包点击即取回），右键取回 1 件；先选中左侧背包物品再点击此槽放入">' +
+    const isFluid = FLUIDS.indexOf(k) >= 0;
+    // 流体原料槽不可点击（只读）：流体只能通过管道自动吸入
+    const tip = isFluid
+      ? ITEMS[k].name + '|流体：经相邻管道自动吸入，配方需 ' + rec.inp[k] + '，当前 ' + cur
+      : ITEMS[k].name + '|配方需 ' + rec.inp[k] + '，当前 ' + cur + '。点击拿起（移到背包点击即取回），右键取回 1 件；先选中左侧背包物品再点击此槽放入';
+    h += '<div class="mch-io-slot' + (isFluid ? ' display' : '') + (cur >= rec.inp[k] ? ' full' : '') + '"' +
+      (isFluid ? '' : ' data-action="feed-slot" data-id="' + k + '"') + ' data-tip="' + tip + '">' +
       '<img src="' + iconDataURL(k) + '"><span class="mch-io-n">' + cur + '/' + rec.inp[k] + '</span></div>';
   }
   h += '</div></div>';
@@ -2682,13 +2785,24 @@ function recipeMachineRightHtml(e, info, rec) {
   if (rec.out) {
     for (const k in rec.out) {
       const cur = e.outp[k] || 0;
-      h += '<div class="mch-io-slot" data-action="take-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|点击取回 1 件（当前 ' + cur + '）">' +
+      const isFluid = FLUIDS.indexOf(k) >= 0;
+      // 流体产物槽不可点击（只读）：自动排入相邻管道，不能取出到背包
+      const tip = isFluid
+        ? ITEMS[k].name + '|流体产物，自动排入相邻管道（当前 ' + cur + '）'
+        : ITEMS[k].name + '|点击取回 1 件（当前 ' + cur + '）';
+      h += '<div class="mch-io-slot' + (isFluid ? ' display' : '') + '"' +
+        (isFluid ? '' : ' data-action="take-slot" data-id="' + k + '"') + ' data-tip="' + tip + '">' +
         '<img src="' + iconDataURL(k) + '"><span class="mch-io-n">' + cur + '</span></div>';
     }
   } else if (rec.prob) {
     for (const k in rec.prob) {
       const cur = e.outp[k] || 0;
-      h += '<div class="mch-io-slot" data-action="take-slot" data-id="' + k + '" data-tip="' + ITEMS[k].name + '|概率产出（' + Math.round(rec.prob[k] * 10000) / 100 + '%），点击取回（当前 ' + cur + '）">' +
+      const isFluid = FLUIDS.indexOf(k) >= 0;
+      const tip = isFluid
+        ? ITEMS[k].name + '|流体产物，自动排入相邻管道（当前 ' + cur + '）'
+        : ITEMS[k].name + '|概率产出（' + Math.round(rec.prob[k] * 10000) / 100 + '%），点击取回（当前 ' + cur + '）';
+      h += '<div class="mch-io-slot' + (isFluid ? ' display' : '') + '"' +
+        (isFluid ? '' : ' data-action="take-slot" data-id="' + k + '"') + ' data-tip="' + tip + '">' +
         '<img src="' + iconDataURL(k) + '"><span class="mch-io-n">' + cur + '</span></div>';
     }
   }

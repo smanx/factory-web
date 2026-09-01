@@ -19,7 +19,6 @@ const WOOD_FUEL_ENERGY = GAME_DATA.fuelEnergy?.['wood'] ?? 3;   // 木材能量�
 const SOLID_FUEL_ENERGY = GAME_DATA.fuelEnergy?.['solid-fuel'] ?? 50;   // 约 4 倍于煤
 const ROCKET_FUEL_ENERGY = GAME_DATA.fuelEnergy?.['rocket-fuel'] ?? 500; // 约 40 倍于煤
 const NUCLEAR_FUEL_ENERGY = GAME_DATA.fuelEnergy?.['nuclear-fuel'] ?? 2500; // 核燃料（官方 1.21GJ）
-const SELF_FUEL_MAX = 4;   // 热能采矿机燃料槽容量（对齐《异星工厂》：burner mining drill 16MJ/4MJ=4 个煤）
 const DRILL_BUFFER_CAP = 20; // 采矿机矿物输出缓冲上限（对齐《异星工厂》：采矿机内置 20 格输出缓冲）
 const UNDERGROUND_MAX = GAME_DATA.undergroundDist?.['underground-belt'] ?? 6;
 const FAST_UNDERGROUND_MAX = GAME_DATA.undergroundDist?.['fast-underground-belt'] ?? 14;

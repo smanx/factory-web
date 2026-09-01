@@ -234,7 +234,7 @@ function fluidPumpPanelHtml(e) {
   for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
   let h = row('流体', Object.keys(agg).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(agg, { action: 'display' }) + '</div>' : '<span class="dim">空</span>', 'contents');
   h += row('缓冲', e.total() + ' / ' + PUMP_BUF_CAP, 'cap');
-  if (Object.keys(agg).length) h += '<button data-action="takeout" id="btn-pump-takeout">取出全部 (' + e.total() + ')</button>';
+  if (Object.keys(agg).length) h += '<button data-action="drain" id="btn-pump-takeout">直接清空</button>';
   h += '<div class="sec">电路控制</div>';
   h += '<div class="circ-add">' +
     '<select id="p-en" class="circ-btype">' +
@@ -255,7 +255,7 @@ function fluidPumpPanelLive(e, api) {
   for (const k in e.fluid) if (e.fluid[k] > 0) agg[k] = e.fluid[k];
   api.set('contents', Object.keys(agg).length ? '<div class="asm3-inp-row">' + itemSlotsHtml(agg, { action: 'display' }) + '</div>' : dimSpan('空'));
   api.set('cap', e.total() + ' / ' + PUMP_BUF_CAP);
-  api.toggle('#btn-pump-takeout', e.total() > 0, '取出全部 (' + e.total() + ')');
+  api.toggle('#btn-pump-takeout', e.total() > 0, '直接清空');
   const back = entAt(e.x - DX[e.dir], e.y - DY[e.dir]);
   const front = entAt(e.x + DX[e.dir], e.y + DY[e.dir]);
   if (!e.circuitEnabled()) { api.status('已停止：电路条件不满足', 'warn'); return; }

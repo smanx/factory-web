@@ -273,10 +273,13 @@ class Inserter extends Entity {
     switch (t.type) {
       case 'stone-furnace':
       case 'steel-furnace':
-        if (item === 'coal') return t.fuelCoal < fuelLimitFor5s(COAL_ENERGY);
-        if (item === 'wood') return (t.fuelWood || 0) < fuelLimitFor5s(WOOD_FUEL_ENERGY);
-        if (item === 'solid-fuel') return (t.fuelSolid || 0) < fuelLimitFor5s(SOLID_FUEL_ENERGY);
-        if (item === 'rocket-fuel') return (t.fuelRocket || 0) < fuelLimitFor5s(ROCKET_FUEL_ENERGY);
+        // 机械臂补燃料到 5 个即停（对齐《异星工厂》）：
+        // 官方机制是机械臂只补到一定数量（熔炉/锅炉见 wiki「5 个及以上不再加」），
+        // 玩家可手动继续加满一整组（燃料箱堆叠上限），机械臂等燃料烧到 5 以下再补。
+        if (item === 'coal') return t.fuelCoal < 5;
+        if (item === 'wood') return (t.fuelWood || 0) < 5;
+        if (item === 'solid-fuel') return (t.fuelSolid || 0) < 5;
+        if (item === 'rocket-fuel') return (t.fuelRocket || 0) < 5;
         // 熔炉例外：持续吃矿直到产物堆满一整组 Stack，满组后才停送
         return SMELTS.some(r => r.inp === item && (t.outp[r.id] || 0) < stackSize(r.id)) && (t.inp[item] || 0) < smeltNeed(item) * 2;
       case 'electric-furnace':
@@ -305,10 +308,11 @@ class Inserter extends Entity {
         return !!rec.inp[item] && (t.inp[item] || 0) < rec.inp[item] * 2;
       }
       case 'burner-mining-drill':
-        if (item === 'coal') return t.fuelCoal < 10;
-        if (item === 'wood') return (t.fuelWood || 0) < 10;
-        if (item === 'solid-fuel') return (t.fuelSolid || 0) < 10;
-        if (item === 'rocket-fuel') return (t.fuelRocket || 0) < 10;
+        // 机械臂补燃料到 5 个即停（对齐《异星工厂》熔炉/锅炉逻辑）；玩家可手动继续加满一整组
+        if (item === 'coal') return t.fuelCoal < 5;
+        if (item === 'wood') return (t.fuelWood || 0) < 5;
+        if (item === 'solid-fuel') return (t.fuelSolid || 0) < 5;
+        if (item === 'rocket-fuel') return (t.fuelRocket || 0) < 5;
         return false;
       case 'burner-inserter':
         if (item === 'coal') return t.fuelCoal < 5;
@@ -330,6 +334,12 @@ class Inserter extends Entity {
       case 'nuclear-reactor':
         // 核反应堆：仅接受铀燃料棒（对齐《异星工厂》：反应堆消耗 Uranium fuel cell 而非 Nuclear fuel），燃料槽最多 5 根
         return item === 'uranium-fuel-cell' && t.fuel < 5;
+      case 'roboport':
+        // 机器人港：机械臂可把「物流机器人 / 建设机器人 / 修理包」放入港内槽位（抓取机器人与修理包装入，装满为止）
+        // 对齐《异星工厂》：机械臂可以向机器人港补充机器人，第二排修理包槽供机器人回港充电时消耗。
+        if (item === 'logistic-robot' || item === 'construction-robot') return typeof t.hasFreeRobotSlot === 'function' && t.hasFreeRobotSlot(item);
+        if (item === 'repair-pack') return typeof t.hasFreeMatSlot === 'function' && t.hasFreeMatSlot('repair-pack');
+        return false;
       case 'lab':
         return isScience(item) && (t.packs[item] || 0) < 40;
       case 'underground-belt':
@@ -917,7 +927,8 @@ function insFilterSlotsHtml(e) {
   return h;
 }
 // 机械臂控制面板通用行（状态 / 机械臂图标 / 当前抓取 / 筛选 / 抓取堆叠 / 变质优先级）
-function inserterMachineRowsHtml(e) {
+// afterHeld：可选，插入到「当前抓取」行下方的额外内容（热能机械臂在此放燃料行）。
+function inserterMachineRowsHtml(e, afterHeld) {
   let h = '';
   // 第一行：状态（状态点 + 状态文字）
   h += '<div class="asm3-status">' +
@@ -927,6 +938,8 @@ function inserterMachineRowsHtml(e) {
   h += '<div class="ins-machine"><canvas class="ins-cv" width="96" height="96"></canvas></div>';
   // 第三行：当前抓取的物品（图标显示在标题旁边，可点击放入背包）
   h += '<div class="ins-held"><span class="ins-held-label">当前抓取</span><span class="ins-held-val" data-live="ins-held" data-action="ins-grab" title="点击将此物品放入背包">空手</span></div>';
+  // 燃料行（热能机械臂专用）：紧挨「当前抓取」下方，左侧燃料格 + 右侧燃烧进度条
+  if (afterHeld) h += afterHeld;
   // 第四行：筛选功能（未启用时开关与格子仍显示，仅不可交互）
   h += '<div class="ins-sec">' +
     '<div class="ins-check-row">' + insCheckBtn(e.filterOn, 'flt-on') + '<span class="ins-label">启用筛选</span></div>' +

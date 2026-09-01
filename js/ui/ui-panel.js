@@ -56,6 +56,10 @@ function initPanelEvents() {
     rd.readAsArrayBuffer(f);
   });
   document.getElementById('panel-close').addEventListener('click', () => closePanel());
+  // 装甲面板装备网格：跟随鼠标显示放置幽灵（从左侧背包拿起模块 → 移到网格预览占据格数）
+  if (typeof equipGridMouseMove === 'function') {
+    document.addEventListener('mousemove', ev => equipGridMouseMove(ev));
+  }
   // 中文输入法组合状态：组合拼音期间（composition）会触发 input 事件，
   // 此刻 value 还是未组合成汉字的拼音，若直接按它过滤会让结果变成拼音匹配并干扰输入法，
   // 因此组合期间跳过 input 过滤，仅在 compositionend（组合完成）后应用一次搜索。
@@ -763,7 +767,7 @@ function initPanelEvents() {
     // 点击物品可选中并显示放置幽灵：设备可点击地图直接建造，材料/工具跟随鼠标（储物箱中选中后可存入箱子）。
     // 右栏设备操作区的可交互控件都带 data-action，故用 !itEl.dataset.action 排除。
     // 箱子右栏格子（data-chestslot）不是左栏背包物品：排除，交由下方 chestSlot 分支处理
-    if (itEl && (G.panelMode === 'inv' || G.panelMode === 'bluebook' || (G.panelMode === 'machine' && G.panelEnt)) && !itEl.dataset.action && !itEl.closest('[data-chestslot]')) {
+    if (itEl && (G.panelMode === 'inv' || G.panelMode === 'bluebook' || G.panelMode === 'armor' || (G.panelMode === 'machine' && G.panelEnt)) && !itEl.dataset.action && !itEl.closest('[data-chestslot]')) {
       const tgtSlot = ev.target.closest && ev.target.closest('#inv-items .inv-slot[data-slotidx]');
       if (tgtSlot) {
         // 点击背包物品格 = 拿起该格整叠物品到鼠标（悬浮跟随，可放入任意格/取出/建造；再点同格放回）
@@ -906,7 +910,10 @@ function initPanelEvents() {
         // 空格且未拿起任何物品：兼容旧交互——已选中（幽灵持握）背包/快捷栏物品时放入 1 件；否则提示
         const held = (typeof selItem === 'function') ? selItem() : null;
         if (held && ITEMS[held] && invCount(held) > 0) {
-          if (chest.giveItem(held)) {
+          // 带槽位类型限制的设备（如机器人港）：先校验槽位类型，不符则提示而不是误报“已满”
+          if (typeof chest.slotAccepts === 'function' && !chest.slotAccepts(idx, held)) {
+            toast('该槽位不能放入此物品（上方只放机器人，下方只放修理包）');
+          } else if (chest.giveItem(held)) {
             invTake(held, 1);
             if (typeof playSfx === 'function') playSfx('click');
           } else toast('箱子已满或该物品已达上限，放不进去了');
@@ -1102,9 +1109,9 @@ function initPanelEvents() {
         if (isRecipeDev && !rec.inp[target]) { toast('该物品不是当前配方原料'); return; }
         const have = invCount(target);
         if (have <= 0) { toast('背包中没有' + ITEMS[target].name); return; }
-        // 逐个放入直至背包取完或设备缓存满（giveItem 满时返回 false）
+        // 逐个放入直至背包取完或设备缓存满（giveItem 满时返回 false；手动放入按堆叠上限）
         let moved = 0;
-        while (moved < have && mch.giveItem(target)) moved++;
+        while (moved < have && mch.giveItem(target, true)) moved++;
         if (moved > 0) {
           invTake(target, moved);
           if (typeof playSfx === 'function') playSfx('click');
@@ -1128,6 +1135,104 @@ function initPanelEvents() {
         toast('已拿起 ' + (ITEMS[id] ? ITEMS[id].name : id) + ' ×' + lift + '（悬浮于鼠标）：点击背包/箱格/设备格放入，再点本格放回，Q 取消');
         if (typeof updateMachineLive === 'function') updateMachineLive();
         else renderPanel(false);
+      } else if (act === 'drill-take') {
+        // 采矿机产物格：空格始终显示槽位；有产物时点击拿起整叠悬浮于鼠标（可放背包），
+        // 持握同类时点击放回缓冲（Q/Esc 取消可退回原缓冲格）。
+        const mch = G.panelEnt;
+        if (!mch || typeof mch.buf !== 'number') return;
+        if (G.held) {
+          // 同种合并「全放或全不放」：现有产物 + 手持数量不超过产物缓冲上限才全部放回；会超则一枚也不放。
+          if (mch.bufItem === G.held.id && (mch.buf || 0) + G.held.count <= DRILL_BUFFER_CAP) {
+            const add = G.held.count;
+            mch.buf += add;
+            if (typeof heldTake === 'function') heldTake(add);
+            if (!G.held) { G.quickSel = null; G.sel = -1; if (typeof refreshHotbar === 'function') refreshHotbar(); }
+            if (typeof playSfx === 'function') playSfx('click');
+          } else if (typeof toast === 'function') {
+            toast('此处只能放回同类采矿产物，或放满后超过缓冲上限');
+          }
+          if (typeof updateMachineLive === 'function') updateMachineLive(); else renderPanel(false);
+          return;
+        }
+        if (id && mch.bufItem === id && (mch.buf || 0) > 0) {
+          const lift = Math.min(mch.buf, stackSize(id));
+          pickupHeld(id, lift, { kind: 'dbuf', ent: mch });
+          if (typeof toast === 'function') toast('已拿起 ' + (ITEMS[id] ? ITEMS[id].name : id) + ' ×' + lift + '（悬浮于鼠标）：点击背包格放入，再点本格放回，Q 取消');
+          if (typeof updateMachineLive === 'function') updateMachineLive(); else renderPanel(false);
+          return;
+        }
+        if (typeof toast === 'function') toast('产物格空：正在开采，稍后产物将显示于此');
+      } else if (act === 'feed-ore') {
+        // 单格原料槽：拖动/点击放入冶炼原料，仅接受可冶炼矿石
+        const mch = G.panelEnt;
+        if (!mch || typeof mch.giveItem !== 'function') return;
+        const oreSet = new Set(SMELTS.map(r => r.inp));
+        if (G.held) {
+          if (!oreSet.has(G.held.id)) { if (typeof showFloatWarn === 'function') showFloatWarn('此处只能放入冶炼原料', ev.clientX, ev.clientY); return; }
+          placeHeld({ kind: 'min', ent: mch });
+          if (typeof updateMachineLive === 'function') updateMachineLive(); else renderPanel(false);
+          return;
+        }
+        // 本格有原料 → 拿起整叠悬浮于鼠标
+        const have = (mch.inp && mch.inp[id]) || 0;
+        if (have > 0) {
+          const lift = Math.min(have, stackSize(id));
+          pickupHeld(id, lift, { kind: 'min', ent: mch, sid: id });
+          toast('已拿起 ' + ITEMS[id].name + ' ×' + lift + '（悬浮于鼠标）：点击背包/箱格/设备格放入，再点本格放回，Q 取消');
+          if (typeof updateMachineLive === 'function') updateMachineLive(); else renderPanel(false);
+          return;
+        }
+        // 空槽：左栏选中的可冶炼矿石 → 放入
+        const sel = (typeof selItem === 'function') ? selItem() : null;
+        if (sel && oreSet.has(sel)) {
+          const n = invCount(sel); let moved = 0;
+          while (moved < n && mch.giveItem(sel, true)) moved++;
+          if (moved > 0) { invTake(sel, moved); if (typeof playSfx === 'function') playSfx('click'); if (typeof updateMachineLive === 'function') updateMachineLive(); else renderPanel(false); }
+          else toast('放不进去了');
+        } else {
+          toast(sel ? (ITEMS[sel].name + ' 不能在此冶炼，只能放入可冶炼矿石') : '原料槽（空）：点击左栏矿石放入，或把矿石拖入此格');
+        }
+      } else if (act === 'feed-fuel') {
+        // 单格燃料槽：只能放入燃料（煤/木材/固体燃料/火箭燃料）
+        const mch = G.panelEnt;
+        if (!mch || typeof mch.giveItem !== 'function') return;
+        const isFuel = x => ['coal', 'wood', 'solid-fuel', 'rocket-fuel'].indexOf(x) >= 0;
+        const FUEL_FIELD = { coal: 'fuelCoal', wood: 'fuelWood', 'solid-fuel': 'fuelSolid', 'rocket-fuel': 'fuelRocket' };
+        if (G.held) {
+          if (!isFuel(G.held.id)) { if (typeof showFloatWarn === 'function') showFloatWarn('此处只能放入燃料', ev.clientX, ev.clientY); return; }
+          // 同种合并「全放或全不放」：当前燃料 + 手持数量不超过一整组堆叠上限才全部放入；会超叠则一枚也不放。
+          const field = FUEL_FIELD[G.held.id];
+          const cur = mch[field] || 0;
+          if (cur + G.held.count > stackSize(G.held.id)) {
+            toast('放入后超过堆叠上限，无法放入');
+          } else {
+            mch[field] = cur + G.held.count;
+            if (typeof heldTake === 'function') heldTake(G.held.count);
+            if (!G.held) { G.sel = -1; G.quickSel = null; if (typeof refreshHotbar === 'function') refreshHotbar(); }
+            if (typeof playSfx === 'function') playSfx('click');
+          }
+          if (typeof updateMachineLive === 'function') updateMachineLive(); else renderPanel(false);
+          return;
+        }
+        // 本格已有燃料 → 拿起整叠悬浮于鼠标（可放回背包/其他格，Q 取消退回原格）
+        if (id && FUEL_FIELD[id]) {
+          const have = mch[FUEL_FIELD[id]] || 0;
+          if (have > 0) {
+            pickupHeld(id, have, { kind: 'fuel', ent: mch, field: FUEL_FIELD[id] });
+            if (typeof updateMachineLive === 'function') updateMachineLive(); else renderPanel(false);
+            return;
+          }
+        }
+        const sel = (typeof selItem === 'function') ? selItem() : null;
+        if (sel && isFuel(sel)) {
+          const n = invCount(sel); let moved = 0;
+          while (moved < n && mch.giveItem(sel, true)) moved++;
+          if (moved > 0) { invTake(sel, moved); if (typeof playSfx === 'function') playSfx('click'); if (typeof updateMachineLive === 'function') updateMachineLive(); else renderPanel(false); }
+          else toast('燃料已满');
+        } else {
+          if (sel && typeof showFloatWarn === 'function') showFloatWarn('此处只能放入燃料', ev.clientX, ev.clientY);
+          else toast('燃料槽：点击左栏燃料即可加入，或把煤/木材/固体燃料/火箭燃料拖入此格');
+        }
       } else if (act === 'mod-take') {
         // 点击模块插槽：取出该模块到背包
         const mch = G.panelEnt;
@@ -1197,14 +1302,14 @@ function initPanelEvents() {
           else if (fid === 'wood' && 'fuelWood' in G.panelEnt) G.panelEnt.fuelWood += n;
           else if (fid === 'solid-fuel' && 'fuelSolid' in G.panelEnt) G.panelEnt.fuelSolid += n;
           else if (fid === 'rocket-fuel' && 'fuelRocket' in G.panelEnt) G.panelEnt.fuelRocket += n;
-          else if ('giveItem' in G.panelEnt) { G.panelEnt.giveItem(fid); G.panelEnt.giveItem(fid); G.panelEnt.giveItem(fid); G.panelEnt.giveItem(fid); G.panelEnt.giveItem(fid); }
+          else if ('giveItem' in G.panelEnt) { G.panelEnt.giveItem(fid, true); G.panelEnt.giveItem(fid, true); G.panelEnt.giveItem(fid, true); G.panelEnt.giveItem(fid, true); G.panelEnt.giveItem(fid, true); }
         }
       } else if (act === 'feed') {
         const mch = G.panelEnt;
         const id = btn.dataset.id;
         let moved = 0;
         const have = invCount(id);
-        while (moved < have && mch.giveItem(id)) moved++;
+        while (moved < have && mch.giveItem(id, true)) moved++;
         if (moved > 0) invTake(id, moved);
         else toast('放不进去了');
         // 装入模块后整面板重渲染，刷新模块按钮数量与速率显示
@@ -1218,7 +1323,7 @@ function initPanelEvents() {
         if (invCount(held) <= 0) { toast('背包中没有' + (ITEMS[held] ? ITEMS[held].name : held)); return; }
         // 平台货舱不接受流体/模块（模块走模块槽、流体走管道）
         if ((typeof FLUIDS !== 'undefined' && FLUIDS.indexOf(held) >= 0) || (typeof isModule === 'function' && isModule(held))) { toast('货舱只存实体物品'); return; }
-        if (hub.giveItem(held)) { invTake(held, 1); if (typeof playSfx === 'function') playSfx('pick'); }
+        if (hub.giveItem(held, true)) { invTake(held, 1); if (typeof playSfx === 'function') playSfx('pick'); }
         else toast('货舱已满');
         if (typeof updateMachineLive === 'function') updateMachineLive();
         else renderPanel(false);
@@ -1255,6 +1360,7 @@ function initPanelEvents() {
           renderPanel(true); return;
         } else {
           for (const k of Object.keys(mch.inp || {})) {
+            if (FLUIDS.indexOf(k) >= 0) continue;   // 流体不入背包：留在设备缓存（由管道排走）
             invAdd(k, mch.inp[k]);
             delete mch.inp[k];
           }
@@ -1270,7 +1376,17 @@ function initPanelEvents() {
       } else if (act === 'takeout') {
         // "取出全部"：各设备在自己的文件里实现 takeAll()（默认清空 outp）
         const mch = G.panelEnt;
-        if (mch && mch.takeAll) for (const [k, n] of mch.takeAll()) invAdd(k, n);
+        if (mch && mch.takeAll) {
+          for (const [k, n] of mch.takeAll()) {
+            // 流体不能取出到背包：放回设备缓存，由相邻管道自动排出
+            if (FLUIDS.indexOf(k) >= 0) {
+              if (mch.outp && typeof mch.outp === 'object') mch.outp[k] = (mch.outp[k] || 0) + n;
+              else if (mch.fluid && typeof mch.fluid === 'object') mch.fluid[k] = (mch.fluid[k] || 0) + n;
+              continue;
+            }
+            invAdd(k, n);
+          }
+        }
         // 取出全部后：若正持握来自该容器的物品，退回背包（原格已清空，无法放回）
         if (G.held && G.held.src && G.held.src.ent === mch) { invAdd(G.held.id, G.held.count); G.held = null; }
       } else if (act === 'drain') {
@@ -1324,6 +1440,16 @@ function initPanelEvents() {
       G.bbDetail = null;
       openPanel('bluebook');
       return;
+    }
+    // 右键玩家背包中的模块化护甲 → 打开对应装甲面板（对齐《异星工厂》：右键护甲查看装备网格）
+    // 在背包面板与装甲面板左栏背包中都生效。
+    if (G.panelMode === 'inv' || G.panelMode === 'armor') {
+      const invArmor = ev.target.closest && ev.target.closest('#inv-items .inv-slot[data-itemid]');
+      if (invArmor && invArmor.dataset.itemid && isArmor(invArmor.dataset.itemid) && ARMORS[invArmor.dataset.itemid].grid) {
+        ev.preventDefault();
+        openArmorPanel(invArmor.dataset.itemid);
+        return;
+      }
     }
     // 物流需求区格子：右键清除该格的请求物品（玩家背包 / 物流箱绿箱蓝箱通用）
     const reqCellRC = ev.target.closest && ev.target.closest('.logi-cell[data-logireq]');
@@ -1456,6 +1582,10 @@ function initPanelEvents() {
 function takeInSlot(id) {
   const mch = G.panelEnt;
   if (!mch || typeof mch.takeInputItemOf !== 'function') return;
+  if (FLUIDS.indexOf(id) >= 0) {
+    if (typeof toast === 'function') toast((ITEMS[id] ? ITEMS[id].name : id) + ' 是流体，不能取回背包，只能通过管道运输');
+    return;
+  }
   let got = mch.takeInputItemOf(id);
   if (got) {
     invAdd(got, 1);
@@ -1660,6 +1790,7 @@ function heldInvPickup(slot) {
   invFreezeStacks();
   const st = G.invSlots[slot];
   if (!st || st.id == null) return;
+  if (FLUIDS.indexOf(st.id) >= 0) return;   // 流体不入背包，也不可拿起
   const id = st.id, count = st.count;
   if (count <= 0) return;
   G.invSlots[slot] = null;          // 先腾空该格，再按数量扣总量（避免 invTake 误扣其它同物品格）
@@ -1698,8 +1829,15 @@ function heldInvDropToSlot(to) {
     uiDirty = true;
     return;
   }
-  // 目标为同种物品：仅并入被点的目标那一叠（同物品其它格不受影响），清空持握
+  // 目标为同种物品：仅并入被点的目标那一叠（同物品其它格不受影响）——「全放或全不放」
   if (tgt && tgt.id === h.id) {
+    // 合并后总数超过目标格堆叠上限 → 放入失败：目标格维持原样、手上仍持握，不做任何操作。
+    if (h.count + tgt.count > stackSize(h.id)) {
+      if (typeof playSfx === 'function') playSfx('deny');
+      if (typeof toast === 'function') toast('放入后超过堆叠上限，无法放入');
+      uiDirty = true;
+      return;
+    }
     const a = invAdd(h.id, h.count);
     tgt.count += a;
     if (a >= h.count) { G.held = null; G.quickSel = null; G.sel = -1; if (typeof refreshHotbar === 'function') refreshHotbar(); }
@@ -1744,9 +1882,16 @@ function heldSrcRemove(n) {
   else if (s.kind === 'trash') { const g = s.ent ? s.ent.trashGrid : G.logiTrashGrid; const st = (g || [])[s.slot]; if (st) { st.count -= n; if (st.count <= 0) g[s.slot] = null; } }
   else if (s.kind === 'mout') { s.ent.outp[s.sid] = (s.ent.outp[s.sid] || 0) - n; if (s.ent.outp[s.sid] <= 0) delete s.ent.outp[s.sid]; }
   else if (s.kind === 'min') { s.ent.inp[s.sid] = (s.ent.inp[s.sid] || 0) - n; if (s.ent.inp[s.sid] <= 0) delete s.ent.inp[s.sid]; }
+  else if (s.kind === 'fuel') { s.ent[s.field] = Math.max(0, (s.ent[s.field] || 0) - n); }
+  else if (s.kind === 'dbuf') { s.ent.buf = Math.max(0, (s.ent.buf || 0) - n); if (s.ent.buf <= 0) s.ent.bufItem = null; }
 }
 // 拿起：整叠移出来源并悬浮于鼠标。一次只能持握一件，清除背包拿起/选中态。
 function pickupHeld(id, count, src) {
+  // 流体不能被点击拿起：流体只能通过管道接入/排出（对齐《异星工厂》）
+  if (FLUIDS.indexOf(id) >= 0) {
+    if (typeof toast === 'function') toast((ITEMS[id] ? ITEMS[id].name : id) + ' 是流体，只能通过管道运输，不能拿起');
+    return;
+  }
   G.held = { id, count, src };
   heldSrcRemove(count);
   G._clickMoveFrom = null;
@@ -1793,6 +1938,16 @@ function heldReturn() {
     else ok = false;
   } else if (s.kind === 'mout') { s.ent.outp[s.sid] = (s.ent.outp[s.sid] || 0) + h.count; }
   else if (s.kind === 'min') { s.ent.inp[s.sid] = (s.ent.inp[s.sid] || 0) + h.count; }
+  else if (s.kind === 'fuel') { s.ent[s.field] = (s.ent[s.field] || 0) + h.count; }
+  else if (s.kind === 'dbuf') { s.ent.buf = (s.ent.buf || 0) + h.count; s.ent.bufItem = h.id; }
+  else if (s.kind === 'eq') {
+    // 从装甲网格拿起的装备：Esc 放回原格（原格空闲则原位放下，否则退回背包）
+    const placeBack = (typeof canPlaceEquip === 'function' && typeof canPlaceEquip(h.id, s.r, s.c, s.armor));
+    if (placeBack && typeof armorGridOf === 'function') {
+      armorGridOf(s.armor).push({ id: h.id, r: s.r, c: s.c, e: h._e || 0 });
+      ok = true;
+    } else ok = false;
+  }
   else ok = false;
   if (!ok) invAdd(h.id, h.count);   // 原格已被占：退回背包
   G.held = null;
@@ -1806,6 +1961,7 @@ function heldTrashPickup(idx, ent) {
   const g = trashGridOf(ent);
   const st = g[idx];
   if (!st || !ITEMS[st.item] || st.count <= 0) return;
+  if (FLUIDS.indexOf(st.item) >= 0) return;   // 流体不可拿起
   g[idx] = null;
   G.held = { id: st.item, count: st.count, src: { kind: 'trash', slot: idx, ent: ent || null } };
   G._clickMoveFrom = null;
@@ -1906,8 +2062,176 @@ function trimInvSlotsTail() {
 }
 // 持握数量减少 n 件（已移出来源，仅更新光标计数）
 function heldTake(n) { const h = G.held; if (!h) return; h.count -= n; if (h.count <= 0) G.held = null; }
+
+// ===== Z 键上下文放入（对齐需求）=====
+// 持握物品时按 Z 的两种放入语义：
+//   1) 设备控制面板打开 → 把物品放入鼠标当前指向的槽位（空格/物品格）；
+//      能否放入取决于当前物品，能放则整组放入，不能放则按 Z 无任何反应。
+//   2) 地图上指向设备 → 仅当物品是设备的原料或燃料且整组放得下时才放入；
+//      其他情况（不指向设备 / 设备不接受该物）不放入、也不会落到地面。
+// 本入口返回 true 表示「已处理」（放入成功或明确判定不放入），调用方不再回退到
+// Z 的「丢弃到地面 / 拾取地面物品」默认行为；返回 false 才保留原默认行为。
+const Z_FUEL = ['coal', 'wood', 'solid-fuel', 'rocket-fuel'];
+const Z_FUEL_FIELD = { coal: 'fuelCoal', wood: 'fuelWood', 'solid-fuel': 'fuelSolid', 'rocket-fuel': 'fuelRocket' };
+function isFuelId(id) { return Z_FUEL.indexOf(id) >= 0; }
+
+// 判断设备对 id 当前还能接收多少件（-1=不接收该物）。只覆盖「燃料 + 配方/冶炼原料」，
+// 与各设备 giveItem 的手动放入语义一致，供 Z 整组「全放或全不放」预检。
+function machineFeedCapacity(ent, id) {
+  if (!ent) return -1;
+  if (isFuelId(id) && ent[Z_FUEL_FIELD[id]] !== undefined) return stackSize(id) - (ent[Z_FUEL_FIELD[id]] || 0);
+  if (ent.recipe && typeof RECIPES !== 'undefined' && RECIPES[ent.recipe]) {
+    const rec = RECIPES[ent.recipe];
+    if (rec.inp && rec.inp[id]) return stackSize(id) - ((ent.inp && ent.inp[id]) || 0);
+  }
+  if (typeof SMELTS !== 'undefined') {
+    for (const r of SMELTS) if (r.inp === id) return stackSize(id) - ((ent.inp && ent.inp[id]) || 0);
+  }
+  return -1;
+}
+
+// 整组放入设备原料/燃料：仅当整组都放得下才逐件 giveItem（全放或全不放）。返回实际放入件数。
+function zDepositMachine(ent, id, count) {
+  if (!ent || typeof ent.giveItem !== 'function') return 0;
+  const cap = machineFeedCapacity(ent, id);
+  if (cap < count) return 0;   // 放不下整组 → 一枚也不放
+  let moved = 0;
+  while (moved < count && ent.giveItem(id, true)) moved++;
+  return moved;
+}
+
+// 成功放入后统一收尾：递减光标并按需清空选中标记。
+function zConsumeHeld(moved) {
+  if (moved <= 0) return;
+  heldTake(moved);
+  if (!G.held) { G.quickSel = null; G.sel = -1; if (typeof refreshHotbar === 'function') refreshHotbar(); }
+  if (typeof playSfx === 'function') playSfx('click');
+  uiDirty = true;
+}
+
+// 失败提示音：整组放不下时的低沉拒绝声（保持物品持握在手）。
+function zFail() { if (typeof playSfx === 'function') playSfx('deny'); }
+
+// 严格「整组放进指定背包格」：只进鼠标指向的那一格，放得下才放，放不下返回 0，
+// 绝不自动溢到其他格/把别的物品挤走。合并超叠、空格装不满整叠、格子被异类占用均不放。
+function zPlaceToInvSlot(idx, id, count) {
+  if (FLUIDS.indexOf(id) >= 0) return 0;
+  const cap = stackSize(id);
+  if (count > cap) return 0;                 // 整组超一叠：这一格装不下
+  invFreezeStacks();
+  const manual = G.invSlots;
+  while (manual.length <= idx) manual.push(null);
+  const tgt = manual[idx];
+  if (tgt && tgt.id != null && tgt.id !== id) return 0;            // 异类占用：不放
+  if (tgt && tgt.id === id && count + tgt.count > cap) return 0;   // 合并超叠：不放
+  if (!tgt && ((typeof invUsedSlots === 'function' ? invUsedSlots() : 0) >= (typeof invSlotCount === 'function' ? invSlotCount() : 80))) return 0; // 无空格放整叠
+  const cur = G.inv.get(id) || 0;
+  G.inv.set(id, cur + count);
+  if (tgt) tgt.count += count; else manual[idx] = { id, count };
+  trimInvSlotsTail();
+  if (typeof trackProd === 'function') trackProd(id, count);
+  return count;
+}
+
+// 设备控制面板：把持握物品放入鼠标当前指向的槽位（整组全放或全不放）。
+// 指向了某个槽位但放不下（或物品类型不符）时播放拒绝音，保持物品持握在手、不做任何放入；
+// 未指向任何可放槽位则无反应。
+function zPlaceToPanelSlot() {
+  const h = G.held; if (!h) return;
+  const mch = G.panelEnt;
+  const el = (G.mouseScreen) ? document.elementFromPoint(G.mouseScreen.x, G.mouseScreen.y) : null;
+  if (!el || !el.closest) return;
+  const refresh = () => { if (typeof updateMachineLive === 'function') updateMachineLive(); else renderPanel(false); };
+  // 背包格：严格整叠放进该格
+  const invEl = el.closest('#inv-items .inv-slot[data-slotidx]');
+  if (invEl) {
+    const moved = zPlaceToInvSlot(+invEl.dataset.slotidx, h.id, h.count);
+    if (moved > 0) zConsumeHeld(moved); else zFail();
+    refresh();
+    return;
+  }
+  if (!mch) return;
+  // 燃料槽：整组全放或全不放（超叠/非燃料则拒绝）
+  const fuelEl = el.closest('[data-action="feed-fuel"]');
+  if (fuelEl) {
+    if (!isFuelId(h.id)) { zFail(); refresh(); return; }
+    const field = Z_FUEL_FIELD[h.id];
+    if ((mch[field] || 0) + h.count <= stackSize(h.id)) {
+      mch[field] = (mch[field] || 0) + h.count;
+      zConsumeHeld(h.count);
+    } else zFail();
+    refresh();
+    return;
+  }
+  // 采矿机产物缓冲格：仅同类且不超缓冲上限才放，否则拒绝
+  const drillEl = el.closest('[data-action="drill-take"]');
+  if (drillEl && typeof mch.buf === 'number') {
+    if (mch.bufItem === h.id && (mch.buf || 0) + h.count <= DRILL_BUFFER_CAP) {
+      mch.buf += h.count;
+      zConsumeHeld(h.count);
+    } else zFail();
+    refresh();
+    return;
+  }
+  // 设备原料/产品格（feed-slot / take-slot / feed-ore）：整组全放或全不放
+  const slotEl = el.closest('[data-action="feed-slot"], [data-action="take-slot"], [data-action="feed-ore"]');
+  if (slotEl) {
+    const act = slotEl.dataset.action;
+    if (act === 'take-slot') {
+      // 产品缓存格：直接并入（无额外容量判定，异类也允许手动放入）
+      if (mch.outp) { mch.outp[h.id] = (mch.outp[h.id] || 0) + h.count; zConsumeHeld(h.count); }
+    } else {
+      // 原料格：整组放得下才放（feed-ore 只收可冶炼原料，由 giveItem 二次把关）
+      const moved = zDepositMachine(mch, h.id, h.count);
+      if (moved > 0) zConsumeHeld(moved); else zFail();
+    }
+    refresh();
+    return;
+  }
+  // 设备自带容器格（机器人港等 data-chestslot）
+  const chestEl = el.closest('[data-chestslot]');
+  if (chestEl && typeof mch.slots === 'object') {
+    const moved = depositToChestSlot(mch, +chestEl.dataset.chestslot, h.id, h.count);
+    if (moved > 0) zConsumeHeld(moved); else zFail();
+    refresh();
+    return;
+  }
+}
+
+// 地图设备：仅当物品是其原料/燃料且整组放得下才放入；放不下时播拒绝音并保持持握。
+// 只要指向了设备即视为已处理（放入或拒绝），不再落到地面。
+function zPlaceToMapDevice() {
+  const h = G.held; if (!h) return false;
+  if (!G.cursorTile) return false;
+  if (typeof withinReach === 'function' && !withinReach(G.cursorTile.tx, G.cursorTile.ty)) return false;
+  const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
+  if (!e) return false;
+  const moved = zDepositMachine(e, h.id, h.count);
+  if (moved > 0) {
+    zConsumeHeld(moved);
+    const nm = ITEMS[h.id] ? ITEMS[h.id].name : h.id;
+    if (typeof toast === 'function') toast('已放入 ' + nm + ' ×' + moved);
+  } else {
+    zFail();   // 指向该设备但放不下/不支持：拒绝音，保持持握
+  }
+  return true;
+}
+
+// Z 键统一入口（供 main-input.js 调用）：返回是否已处理。
+function zPlaceHeldAtContext() {
+  const h = G.held; if (!h) return false;
+  if (FLUIDS.indexOf(h.id) >= 0) return true;   // 流体不可通过此方式放入
+  if ((G.panelMode === 'machine' && G.panelEnt) || G.panelMode === 'inv') {
+    zPlaceToPanelSlot();
+    return true;   // 已有设备控制面板/背包打开：只放入指向槽位，否则无反应
+  }
+  return zPlaceToMapDevice();
+}
 // 把 (id,count) 放入箱子指定格：空格/同种合并；返回实际放入件数
 function depositToChestSlot(chest, to, id, count) {
+  // 带槽位类型限制的设备（如机器人港：机器人槽只收两种机器人、修理包槽只收修理包）：
+  // 先经 slotAccepts 把关，不符的物品返回 0（由调用方提示“放不进去”）。
+  if (typeof chest.slotAccepts === 'function' && !chest.slotAccepts(to, id)) return 0;
   const lim = chest.limits ? chest.limits[id] : undefined;
   let room = Infinity; if (lim !== undefined) room = Math.max(0, lim - chest.countOf(id));
   const dst = chest.slots[to];
@@ -1917,17 +2241,19 @@ function depositToChestSlot(chest, to, id, count) {
     return n;
   }
   if (dst.item === id) {
-    const n = Math.min(count, stackSize(id) - dst.count, room);
-    if (n > 0) dst.count += n;
-    return n;
+    // 同种合并「全放或全不放」（对齐用户规则）：合并后不超过一叠堆叠上限（且不超物品限总量）才全部并入；
+    // 会超叠/超限则一枚也不放，也不交换。
+    if (count + dst.count > stackSize(id) || count > room) return 0;
+    dst.count += count;
+    return count;
   }
   return 0;   // 不同物品：由 placeHeld 走交换
 }
-// 把 (id,count) 放入设备原料缓存（giveItem 逐个，满/非法即止）
+// 把 (id,count) 放入设备原料缓存（giveItem 逐个，满/非法即止；手动放入按堆叠上限）
 function depositToMachineInput(ent, id, count) {
   if (typeof ent.giveItem !== 'function') return 0;
   let moved = 0;
-  while (moved < count && ent.giveItem(id)) moved++;
+  while (moved < count && ent.giveItem(id, true)) moved++;
   return moved;
 }
 // 把 (id,count) 放入设备产品缓存
@@ -1945,6 +2271,8 @@ function depositToInvSlot(slot, id, count) {
   while (manual.length <= slot) manual.push(null);
   const tgt = manual[slot];
   if (tgt && tgt.id != null && tgt.id !== id) return 0;
+  // 同种合并「全放或全不放」（对齐用户规则）：合并后不超过一叠堆叠上限才全部并入；会超叠则一枚也不放，也不交换。
+  if (tgt && tgt.id === id && count + tgt.count > stackSize(id)) return 0;
   const a = invAdd(id, count);
   if (a > 0) {
     if (tgt && tgt.id === id) tgt.count += a;
@@ -1958,6 +2286,11 @@ function depositToInvSlot(slot, id, count) {
 // 返回 true 表示已处理（成功或明确拒绝），调用后应刷新面板。
 function placeHeld(target) {
   const h = G.held; if (!h) return false;
+  // 流体不能被放入背包/设备卡槽/箱子：流体只能通过管道运输（对齐《异星工厂》）
+  if (FLUIDS.indexOf(h.id) >= 0) {
+    if (typeof toast === 'function') toast((ITEMS[h.id] ? ITEMS[h.id].name : h.id) + ' 是流体，不能放入此处，只能通过管道运输');
+    return true;
+  }
   const s = h.src;
   // 点回原来源格 = 放回（取消）
   if (s.kind === 'chest' && target.kind === 'chest' && target.ent === s.ent && target.slot === s.slot) { heldReturn(); return true; }
@@ -1967,14 +2300,19 @@ function placeHeld(target) {
   if (s.kind === 'chest' && target.kind === 'chest') {
     const dst = target.ent.slots[target.slot];
     if (dst && dst.item !== h.id) {
-      const swapId = dst.item, swapCount = dst.count;
-      target.ent.slots[target.slot] = { item: h.id, count: h.count };
-      // 新持握=被换出的目标物品，来源记为「原持握格」(s.slot，现已空)，取消时可换回
-      G.held = { id: swapId, count: swapCount, src: { kind: 'chest', ent: s.ent, slot: s.slot } };
-      if (typeof playSfx === 'function') playSfx('click');
-      toast('已交换：手持 ' + (ITEMS[swapId] ? ITEMS[swapId].name : swapId) + ' ×' + swapCount);
-      uiDirty = true;
-      return true;
+      // 带槽位类型限制的设备（如机器人港：机器人槽只收两种机器人、修理包槽只收修理包）：
+      // 目标槽不接受手持物品时不做整叠交换，交给下方 depositToChestSlot 兜底提示“放不进去”。
+      const slotOk = !(typeof target.ent.slotAccepts === 'function' && !target.ent.slotAccepts(target.slot, h.id));
+      if (slotOk) {
+        const swapId = dst.item, swapCount = dst.count;
+        target.ent.slots[target.slot] = { item: h.id, count: h.count };
+        // 新持握=被换出的目标物品，来源记为「原持握格」(s.slot，现已空)，取消时可换回
+        G.held = { id: swapId, count: swapCount, src: { kind: 'chest', ent: s.ent, slot: s.slot } };
+        if (typeof playSfx === 'function') playSfx('click');
+        toast('已交换：手持 ' + (ITEMS[swapId] ? ITEMS[swapId].name : swapId) + ' ×' + swapCount);
+        uiDirty = true;
+        return true;
+      }
     }
   }
   let moved = 0;
@@ -2023,6 +2361,8 @@ function placeHeld(target) {
 // 从容器移出 1 件指定物品（箱子格 / 设备产品缓存 / 设备原料缓存），成功返回 true。
 // prefer：'in' 优先原料缓存 / 'out' 优先产品缓存（点击哪侧就从哪侧取）。
 function entTakeOne(ent, id, prefer) {
+  // 流体不能通过手动方式从设备取出回背包（只能通过管道运输）
+  if (FLUIDS.indexOf(id) >= 0) return false;
   if (typeof ent.slots === 'object' && ent.slots) {
     for (let i = ent.slots.length - 1; i >= 0; i--) {
       const st = ent.slots[i];
@@ -2043,11 +2383,11 @@ function entTakeOne(ent, id, prefer) {
   }
   return false;
 }
-// 背包 → 当前面板容器（箱子/设备）：逐件 giveItem，设备只收其需要的物品（配方校验在 giveItem 内）
+// 背包 → 当前面板容器（箱子/设备）：逐件 giveItem，设备只收其需要的物品（配方校验在 giveItem 内；手动放入按堆叠上限）
 function quickMoveInvToEnt(ent, id, count) {
   if (!ent || typeof ent.giveItem !== 'function') return 0;
   let moved = 0;
-  while (moved < count && ent.giveItem(id)) moved++;
+  while (moved < count && ent.giveItem(id, true)) moved++;
   if (moved > 0) invTake(id, moved);
   return moved;
 }
@@ -2083,6 +2423,7 @@ function pickupHalfToCursorInv(slotIdx) {
   invFreezeStacks();
   const st = G.invSlots[slotIdx];
   if (!st || st.id == null) return false;
+  if (FLUIDS.indexOf(st.id) >= 0) return false;   // 流体不可拿起
   const id = st.id;
   const half = Math.ceil(st.count / 2);
   st.count -= half;
@@ -2101,6 +2442,7 @@ function pickupHalfToCursorInv(slotIdx) {
 function pickupHalfToCursorChest(chest, idx) {
   const st = chest.slots[idx];
   if (!st) return false;
+  if (FLUIDS.indexOf(st.item) >= 0) return false;   // 流体不可拿起
   const half = Math.ceil(st.count / 2);
   st.count -= half;
   if (st.count <= 0) chest.slots[idx] = null;
@@ -2118,6 +2460,10 @@ function pickupHalfToCursorMachine(ent, id, kind) {
   const buf = kind === 'in' ? ent.inp : ent.outp;
   const have = (buf && buf[id]) || 0;
   if (have <= 0) return false;
+  if (FLUIDS.indexOf(id) >= 0) {
+    if (typeof toast === 'function') toast((ITEMS[id] ? ITEMS[id].name : id) + ' 是流体，只能通过管道运输，不能拿起');
+    return false;
+  }
   const half = Math.ceil(Math.min(have, stackSize(id)) / 2);
   buf[id] -= half;
   if (buf[id] <= 0) delete buf[id];
@@ -2133,6 +2479,10 @@ function pickupHalfToCursorMachine(ent, id, kind) {
 // Q 清理光标：把鼠标持握的物品收回背包（来自背包的放回原格；来自箱子/设备的存入背包，放不下的继续持握）
 function heldToBackpack() {
   const h = G.held; if (!h) return false;
+  if (FLUIDS.indexOf(h.id) >= 0) {
+    if (typeof toast === 'function') toast((ITEMS[h.id] ? ITEMS[h.id].name : h.id) + ' 是流体，不能放入背包');
+    return false;
+  }
   if (h.src && h.src.kind === 'inv') { heldReturn(); return true; }
   const added = invAdd(h.id, h.count);
   if (added >= h.count) {
@@ -2162,7 +2512,7 @@ function quickTransferEntity(ent, half) {
   if (G.held && canPut) {
     const want = half ? Math.ceil(G.held.count / 2) : G.held.count;
     let moved = 0;
-    while (moved < want && ent.giveItem(G.held.id)) moved++;
+    while (moved < want && ent.giveItem(G.held.id, true)) moved++;
     if (moved > 0) {
       const id = G.held.id;
       heldTake(moved);
@@ -2181,7 +2531,7 @@ function quickTransferEntity(ent, half) {
     const cap = stackSize(sel);
     const want = Math.min(invCount(sel), half ? Math.ceil(cap / 2) : cap);
     let moved = 0;
-    while (moved < want && ent.giveItem(sel)) moved++;
+    while (moved < want && ent.giveItem(sel, true)) moved++;
     if (moved > 0) {
       invTake(sel, moved);
       if (typeof playSfx === 'function') playSfx('click');
