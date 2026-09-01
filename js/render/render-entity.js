@@ -599,6 +599,10 @@ function drawGhostCount(g, wx, wy) {
   const bx = sx - bw / 2;
   const by = sy - 16 * G.cam.z - bh;
   g.fillStyle = 'rgba(10,14,18,.72)';
+  // 必须先 beginPath()：Canvas 的 roundRect/rect 会追加到当前路径而非覆盖，
+  // 若不清空，光环层上一帧及之前所有经过格子的方框路径会被保留，fill() 每帧
+  // 重填全部旧路径→鼠标移动越多，累积的“数量方框半透明阴影”越多（残影））。
+  g.beginPath();
   if (g.roundRect) g.roundRect(bx, by, bw, bh, 5);
   else g.rect(bx, by, bw, bh);
   g.fill();
