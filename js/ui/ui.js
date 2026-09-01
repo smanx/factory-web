@@ -397,6 +397,8 @@ function openPanel(mode, ent) {
   document.getElementById('panel').classList.toggle('set-wide', mode === 'set');
   // 蓝图面板/蓝图编辑界面/蓝图详情页：居中加宽双栏布局（左=背包，右=蓝图库/编辑区/详情）
   document.getElementById('panel').classList.toggle('blue-wide', mode === 'bluebook' || mode === 'blueprint-edit' || mode === 'bluebook-detail');
+  // 物流网络面板：加宽两栏布局（左=网络列表，右=设备与物品）
+  document.getElementById('panel').classList.toggle('logi-wide', mode === 'logi');
   // 再次打开时恢复面板默认位置（不保留上次拖动的位置）
   if (typeof resetPanelPos === 'function') resetPanelPos();
   document.getElementById('panel').style.display = 'flex';
@@ -527,6 +529,9 @@ function renderPanel(full) {
   } else if (G.panelMode === 'stats') {
     title.textContent = '统计面板';
     body.innerHTML = htmlStats();
+  } else if (G.panelMode === 'logi') {
+    title.textContent = '物流网络';
+    body.innerHTML = (typeof logiNetPanelHtml === 'function') ? logiNetPanelHtml() : '<div class="dim">物流模块未加载</div>';
   } else if (G.panelMode === 'ach') {
     title.textContent = '成就（Achievements）';
     body.innerHTML = (typeof htmlAchievements === 'function') ? htmlAchievements() : '<div class="dim">成就系统未加载</div>';

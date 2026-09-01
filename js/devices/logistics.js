@@ -22,10 +22,25 @@ const LOGI_CHEST_KINDS = {
   'buffer-chest': 'buffer'
 };
 const ROBOT_SPEED = GAME_DATA.robotSpeed?.logistic ?? 3.0;  // 物流机器人飞行速度（格/秒，官方 logistic-robot speed 0.05×60=3.0）
-const ROBOT_MAX_CHARGE = 100;   // 满电
-const ROBOT_CHARGE_DRAIN = 2.2; // 每秒飞行耗电
-const ROBOT_CHARGE_RATE = 40;   // 回港每秒充电量
-const ROBOT_LOW_CHARGE = 20;    // 低于此值回家充电
+// 物流机器人电量模型（官方 logistic-robot 原型，经 GAME_DATA.robotData.logistic 单源桥接）：
+//   maxEnergyKJ=最大携带能量（官方 1.5MJ）；moveEnergyKJ=每移动一格耗能（官方 energy_per_move 5kJ）；
+//   idleEnergyKJS=待机/工作基底能耗（官方 energy_per_tick 0.05kJ/tick → 3kJ/s）；
+//   minToCharge / maxToCharge=回港充电与再出发阈值（官方 min_to_charge 0.2 / max_to_charge 0.95）。
+const ROBOT_DATA_L = (GAME_DATA && GAME_DATA.robotData && GAME_DATA.robotData.logistic) || {};
+const LOG_ROBOT_MAX_E = ROBOT_DATA_L.maxEnergyKJ ?? 1500;   // 机器人最大携带能量（kJ，官方 1.5MJ）
+const LOG_ROBOT_MOVE_E = ROBOT_DATA_L.moveEnergyKJ ?? 5;    // 每移动一格耗能（kJ/格，官方 5kJ）
+const LOG_ROBOT_IDLE_E = ROBOT_DATA_L.idleEnergyKJS ?? 3;   // 待机/工作基底能耗（kJ/s）
+const ROBOT_MIN_CHARGE = ROBOT_DATA_L.minToCharge ?? 0.2;  // 电量低于该比例视为「耗尽」→ 回港充电
+const ROBOT_MAX_CHARGE = ROBOT_DATA_L.maxToCharge ?? 0.95; // 充到该比例 → 再次出发
+const ROBOT_CHARGE_FULL = LOG_ROBOT_MAX_E * ROBOT_MAX_CHARGE;  // 满电出发阈值（kJ）
+const ROBOT_LOW_CHARGE = LOG_ROBOT_MAX_E * ROBOT_MIN_CHARGE;   // 低电返航阈值（kJ）
+// 机器人港充电接口与功率（官方 roboport 原型，经 GAME_DATA.roboportCharging 单源桥接）：
+//   stations=充电站数量（充电接口数，官方 charging_offsets 4 处）；energy=每站充电功率（charging_energy，官方 500kW）；
+//   offsets=充电站位相对港中心的偏移（格）；approach=充电接近距离（格）。
+//   多台机器人同港充电，占用充电站数达到接口上限后其余机器人排队等待空位（waiting 态）。
+const CHARGING_STATIONS = (GAME_DATA && GAME_DATA.roboportCharging && GAME_DATA.roboportCharging.stations) || 4;
+const CHARGING_ENERGY_KW = (GAME_DATA && GAME_DATA.roboportCharging && GAME_DATA.roboportCharging.energy) || 500;  // kW = kJ/s
+const CHARGING_OFFSETS = (GAME_DATA && GAME_DATA.roboportCharging && GAME_DATA.roboportCharging.offsets) || [[-1.5, -1], [1.5, -1], [1.5, 1], [-1.5, 1]];
 const ROBOT_CARRY = 3;          // 单次最多搬运同类物品数量（基础值，可由「机器人容量」无限科技提升，见 robotCarryCap()）
 const ROBOT_NET_T = 0.5;        // 网络调度复算间隔
 const ROBOPORT_POWER_IDLE = GAME_DATA.roboportPower ?? 40; // 机器人港基础耗电（kW，官方 energy_usage 50kW）
@@ -60,6 +75,18 @@ class Roboport extends CircuitNode {
   get robotSlots() { return this.slots.slice(0, ROBOT_SLOT_COUNT); }
   get matSlots() { return this.slots.slice(ROBOT_SLOT_COUNT); }
   get roboCap() { let n = 0; for (const s of this.robotSlots) if (s) n += s.count; return n; }  // 港内机器人总台数（物流+建设求和）
+  // 港内「当前停靠」台数（供界面显示）：港槽总台数 - 本港正在飞行的物流机器人。
+  // 机器人起飞后该数减少、飞回停靠后恢复（对齐用户需求：飞出减少、飞回增加）。
+  get roboDocked() {
+    let fly = 0;
+    if (G.logiRobots) {
+      for (const r of G.logiRobots) {
+        if (r._dead || r.home !== this || r.state === 'idle') continue;
+        fly++;
+      }
+    }
+    return Math.max(0, this.roboCap - fly);
+  }
   hasFreeRobotSlot(item) {
     if (item) {
       // 指定类型：可放入同型未满槽，或占用空槽（7 槽两型共用，一格一种机器人）
@@ -436,7 +463,7 @@ function retireExcessRobots(port) {
   let excess = mine.length - port.countOf('logistic-robot');  // 仅按物流机器人台数回收实体（建设机器人暂为存储，不派生实体）
   if (excess > 0) {
     // 优先回收空闲机器人，其次回收正在返港/充电的
-    const order = ['idle', 'returning', 'charging'];
+    const order = ['idle', 'returning', 'charging', 'waiting'];
     for (const st of order) {
       for (const r of mine) {
         if (excess <= 0) break;
@@ -455,10 +482,11 @@ function spawnRobotAt(port) {
     x: (port.x + port.w / 2) * TILE,
     y: (port.y + port.h / 2) * TILE,
     tx: 0, ty: 0,
-    charge: ROBOT_MAX_CHARGE,
-    carry: null,        // { item, count }
-    state: 'idle',      // idle | collecting | delivering | returning | charging
-    target: null,       // 目标实体
+    charge: LOG_ROBOT_MAX_E,  // 满电（kJ）
+    carry: null,              // { item, count }
+    state: 'idle',            // idle | collecting | delivering | returning | charging | waiting
+    target: null,             // 目标实体
+    chargePort: null,         // 最近一次前往充电的机器人港（可不同于 home）
     _dead: false
   };
   G.logiRobots.push(r);
@@ -560,96 +588,192 @@ function chestTrashTarget(e) {
 }
 
 // ===== 网络调度：计算供应与需求缺口，指派空闲机器人 =====
-// 为机器人挑选一个可存放返还/多余货物的供应箱（对齐官方黄箱筛选语义）：
-// - 设置了筛选格的仓储箱（黄箱）只接受该物品：就算物品无处可放也不违反筛选规则；
-// - 存货优先级（对齐官方 2.0.7：筛选匹配优先于库存匹配）：
-//   筛选黄箱（已含该物品 > 空 > 含其它物品）> 未筛选箱（含该物品 > 空 > 含其它物品）。
-function logiDropTarget(item, exclude, exclude2) {
+// 某机器人港所属的物流网络（scanNetwork 连通分量结果）。港不存在或未联网返回 null。
+function netOfPort(p) {
+  if (!p) return null;
+  const nets = (G.logiNet && G.logiNet.nets) || null;
+  if (!nets) return null;
+  for (const net of nets) if (net.ports.includes(p)) return net;
+  return null;
+}
+
+// 判断物流箱是否落在某网络的供应范围内（中心切比雪夫距离 ≤ 物流半径）。
+// 用于“同物流网络才运输”校验：目标箱必须处于该港所在网络的覆盖范围内。
+// 供应网络范围取「已通电」机器人港的物流供应区（与未联网警告 logiChestCovered 同口径）：
+// 只被断电港覆盖的箱不算“在供应网络范围内”，避免把货物放进断电区的箱子；
+// 网络无已通电港时退回按所有港中心判定（兜底，断电场景机器人本就无法起飞搬运）。
+function netCoversChest(net, e) {
+  const R = ROBOPORT_LOGI_RANGE;
+  const cx = e.x + (e.w || 1) / 2, cy = e.y + (e.h || 1) / 2;
+  const centers = (net.poweredCenters && net.poweredCenters.length) ? net.poweredCenters : (net.portCenters || []);
+  for (const pc of centers)
+    if (Math.max(Math.abs(pc[0] - cx), Math.abs(pc[1] - cy)) <= R) return true;
+  return false;
+}
+
+// 为机器人挑选一个可存放返还/多余货物的箱（对齐官方仓储箱收纳语义 + 用户回收规则）：
+// - 只收黄箱（被动存货箱 storage）与绿箱（主动存货箱 buffer），红/紫/蓝箱一律不收；
+// - 优先级：① 已存入该物品的黄箱 → ② 未存入该物品的黄箱 → ③ 绿箱；
+// - 设置了筛选格的黄箱只接受该物品（acceptsLogi），不符即跳过。
+// home：可选，机器人港/机器人。传入后仅在其所属物流网络（且网络供应范围内）挑选存放箱，
+// 确保“运往某箱的物品一定与该箱处于同一物流网络、且该箱在供应网络范围内”（对齐用户需求）。
+function logiDropTarget(item, exclude, exclude2, home) {
+  const net = home ? netOfPort(home instanceof Roboport ? home : home.home) : null;
   let best = null, bestScore = -1;
   for (const e of G.ents || []) {
     if (!e || e._dead || e === exclude || e === exclude2) continue;
-    if (!(e instanceof LogisticChest) || e instanceof LogisticRequester) continue;
+    if (!(e instanceof LogisticChest)) continue;
+    if (!(e instanceof LogisticStorage) && !(e instanceof LogisticBuffer)) continue;   // 仅黄箱/绿箱
     if (typeof e.giveItem !== 'function' || typeof e.countOf !== 'function') continue;
+    if (net && !netCoversChest(net, e)) continue;   // 同物流网络限制：仅放该港网络范围内（且同网络）的箱
+    if (e instanceof LogisticStorage && item && !e.acceptsLogi(item)) continue;   // 筛选黄箱不符跳过
     const has = item ? e.countOf(item) > 0 : false;
-    const empty = e.slots.every(s => !s);
-    let score;
-    if (e instanceof LogisticStorage) {
-      if (item && !e.acceptsLogi(item)) continue;
-      score = e.filter ? (has ? 6 : empty ? 5 : 4) : (has ? 3 : empty ? 2 : 1);
-    } else {
-      score = has ? 3 : empty ? 2 : 1;
-    }
+    // 优先级：黄箱已含该物品 > 黄箱未含该物品 > 绿箱
+    const score = (e instanceof LogisticStorage) ? (has ? 3 : 2) : 1;
     if (score > bestScore) { bestScore = score; best = e; }
   }
   return best;
 }
 function scanNetwork() {
-  // 供应：按物品聚合 { item -> count }，区分主动/被动/仓储优先级
-  const supply = {};     // item -> { total, active }  active=主动供应箱中可立即提供的量
-  const supplies = [];   // 所有可作为取货源的箱子 [{e, item, count}]
-  const demand = {};     // item -> 总缺口
-  const requesters = []; // 需求箱列表
-  const ports = [];      // 机器人港列表
-  const recycleChests = []; // 需求箱/缓冲箱（带回收区）列表：供每帧回收任务与工作探测复用，避免每帧全图遍历 G.ents
+  // —— 第一步：机器人港连通分量分组（中心切比雪夫距离 ≤ 2×物流半径 → 同一物流网络）——
+  // 与面板 computeLogiNetworks 同口径：相互覆盖相连的港归为同一网络，网络之间互不影响，
+  // 保证“同物流网络才运输”的隔离语义（原物品所在网络与目标箱网络必须一致）。
+  const ports = [];
+  for (const e of G.ents) if (e && !e._dead && e instanceof Roboport) ports.push(e);
+  const n = ports.length;
+  const parent = new Array(n);
+  for (let i = 0; i < n; i++) parent[i] = i;
+  const find = x => { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+  const R2 = ROBOPORT_LOGI_RANGE * 2;
+  for (let i = 0; i < n; i++) {
+    const xi = ports[i].x + ports[i].w / 2, yi = ports[i].y + ports[i].h / 2;
+    for (let j = i + 1; j < n; j++) {
+      const pj = ports[j];
+      if (Math.max(Math.abs(xi - (pj.x + pj.w / 2)), Math.abs(yi - (pj.y + pj.h / 2))) <= R2) {
+        const ri = find(i), rj = find(j);
+        if (ri !== rj) parent[rj] = ri;
+      }
+    }
+  }
+  // 分组（保持插入顺序，与后续归属扫描顺序一致）
+  const groups = new Map();
+  for (let i = 0; i < n; i++) {
+    const r = find(i);
+    if (!groups.has(r)) groups.set(r, { ports: [], portCenters: [] });
+    groups.get(r).ports.push(ports[i]);
+    groups.get(r).portCenters.push([ports[i].x + ports[i].w / 2, ports[i].y + ports[i].h / 2]);
+  }
+  const nets = [];
+  for (const g of groups.values()) {
+    nets.push({ ports: g.ports, portCenters: g.portCenters, poweredCenters: [], supply: {}, supplies: [], demand: {}, requesters: [], recycleChests: [], poweredPorts: [] });
+  }
 
+  // —— 第二步：物流箱归属到覆盖它的首个网络（中心距某港中心切比雪夫 ≤ 物流半径）——
+  // 未被任何网络覆盖的物流箱视为「未联网」：不参与任何网络的供应/需求，机器人不为其搬运。
+  // 这同时满足“目标箱一定在供应网络范围内”的要求。
+  const R = ROBOPORT_LOGI_RANGE;
   for (const e of G.ents) {
     if (e._dead) continue;
-    if (e instanceof Roboport) { ports.push(e); continue; }
     if (!(e instanceof LogisticChest)) continue;
+    const cx = e.x + e.w / 2, cy = e.y + e.h / 2;
+    let owner = -1;
+    for (let ni = 0; ni < nets.length && owner < 0; ni++)
+      for (const pc of nets[ni].portCenters)
+        if (Math.max(Math.abs(pc[0] - cx), Math.abs(pc[1] - cy)) <= R) { owner = ni; break; }
+    if (owner < 0) continue;
+    const net = nets[owner];
     // 需求类：需求箱与缓冲箱都会按设定请求货物（缓冲箱同时是供应源，不 continue）
     if (e instanceof LogisticRequester || e instanceof LogisticBuffer) {
-      if (e.trashGrid) recycleChests.push(e);
-      requesters.push(e);
+      if (e.trashGrid) net.recycleChests.push(e);
+      net.requesters.push(e);
       for (const k in e.requests) {
         const d = e.deficitOf(k);
-        if (d > 0) demand[k] = (demand[k] || 0) + d;
+        if (d > 0) net.demand[k] = (net.demand[k] || 0) + d;
       }
       if (e instanceof LogisticRequester) continue;
     }
-    // 供应类箱：汇总每种物品可用量
+    // 供应类箱：汇总每种物品可用量（仅同网络内可被机器人取货）
     for (const s of e.slots) {
       if (!s) continue;
-      supply[s.item] = supply[s.item] || { total: 0, active: 0 };
-      supply[s.item].total += s.count;
-      if (e instanceof LogisticActive) supply[s.item].active += s.count;
-      supplies.push({ e, item: s.item, count: s.count, active: e instanceof LogisticActive });
+      net.supply[s.item] = net.supply[s.item] || { total: 0, active: 0 };
+      net.supply[s.item].total += s.count;
+      if (e instanceof LogisticActive) net.supply[s.item].active += s.count;
+      net.supplies.push({ e, item: s.item, count: s.count, active: e instanceof LogisticActive });
     }
   }
 
-  // 玩家个人物流请求：作为额外的需求端（仅当「背包物流」开关开启、有个人请求且背包缺货时）
+  // —— 第三步：玩家个人物流请求作为额外的需求端 ——
+  // 对齐《异星工厂》：玩家须处于某物流网络供应范围内，该网络的机器人才会为其送货；
+  // 玩家被多个网络覆盖时由这些网络共同响应（与“同物流网络才运输”口径一致）。
   if (G.logiRequest && G.logiEnabled !== false) {
     const pt = playerLogiTarget();
-    let anyReq = false;
-    for (const k in G.logiRequest) {
-      const d = pt.deficitOf(k);
-      if (d > 0) { demand[k] = (demand[k] || 0) + d; anyReq = true; }
+    const pcx = pt.x + pt.w / 2, pcy = pt.y + pt.h / 2;
+    for (let ni = 0; ni < nets.length; ni++) {
+      let covered = false;
+      for (const pc of nets[ni].portCenters)
+        if (Math.max(Math.abs(pc[0] - pcx), Math.abs(pc[1] - pcy)) <= R) { covered = true; break; }
+      if (!covered) continue;
+      let anyReq = false;
+      for (const k in G.logiRequest) {
+        const d = pt.deficitOf(k);
+        if (d > 0) { nets[ni].demand[k] = (nets[ni].demand[k] || 0) + d; anyReq = true; }
+      }
+      if (anyReq) nets[ni].requesters.push(pt);
     }
-    if (anyReq) requesters.push(pt);
   }
 
+  // —— 第四步：每个网络的已通电机器人港列表及其中心（有电才构成有效供应范围；供未联网警告/施工复用）——
+  for (const net of nets) {
+    for (const p of net.ports) {
+      if (p._dead || powerSatOf(p) <= 0) continue;
+      net.poweredPorts.push(p);
+      net.poweredCenters.push([p.x + p.w / 2, p.y + p.h / 2]);
+    }
+  }
+
+  // —— 第五步：聚合数据（全图口径，供 hasWork 探测 / 电路信号 / 施工 netSupplyChest 等复用）——
+  const allSupply = {};
+  const allDemand = {};
+  const allSupplies = [];
+  const allRequesters = [];
+  const allRecycle = [];
+  for (const net of nets) {
+    for (const item in net.supply) {
+      const c = net.supply[item];
+      const a = allSupply[item] || (allSupply[item] = { total: 0, active: 0 });
+      a.total += c.total; a.active += c.active;
+    }
+    for (const item in net.demand) allDemand[item] = (allDemand[item] || 0) + net.demand[item];
+    allSupplies.push(...net.supplies);
+    allRequesters.push(...net.requesters);
+    allRecycle.push(...net.recycleChests);
+  }
+  const poweredPorts = [];
+  for (const net of nets) for (const p of net.poweredPorts) poweredPorts.push(p);
+
   // 赋值给全局供调度使用
-  G.logiNet = { supply, supplies, demand, requesters, ports, recycleChests };
+  G.logiNet = { nets, ports, poweredPorts, supply: allSupply, supplies: allSupplies, demand: allDemand, requesters: allRequesters, recycleChests: allRecycle };
   // 预计算物流网络电路信号缓存（性能优化）：把网络各物品库存总量转成
   // [{sig,count},...] 信号列表，供所有机器人港的 outputCircuitSignals 复用，
   // 避免每个机器人港在电路重算时各自重复遍历 supply。
   const sigList = [];
-  for (const item in supply) {
-    const c = supply[item];
+  for (const item in allSupply) {
+    const c = allSupply[item];
     if (c && c.total > 0) sigList.push({ sig: item, count: c.total });
   }
   G.logiNet.signals = sigList;
   return G.logiNet;
 }
 
-// 指派一个空闲满电机器人的搬运任务
+// 指派一个空闲满电机器人的搬运任务（仅在本机器人所属物流网络内调度，跨网络不运输）
 function assignTask(r) {
-  const net = G.logiNet;
+  const net = netOfPort(r.home);
   if (!net) return;
-  // 有需求才值得搬
+  // 有需求才值得搬（仅本网络内需求）
   const wantedItems = Object.keys(net.demand).filter(k => net.demand[k] > 0);
   if (!wantedItems.length) return;
 
-  // 找供应：优先主动供应箱，其次任意供应箱（含仓储）
+  // 找供应：优先主动供应箱，其次任意供应箱（含仓储）—— 仅本网络内的供应箱
   let best = null;
   outer:
   for (const item of wantedItems) {
@@ -670,7 +794,7 @@ function assignTask(r) {
   }
   if (!best) return;
 
-  // 找到一个匹配的需求箱来送货
+  // 找到一个匹配的需求箱来送货（仅本网络内的需求箱，且该箱必然处于网络供应范围内）
   const req = net.requesters.find(q => q.deficitOf(best.item) > 0);
   if (!req) return;
 
@@ -688,26 +812,125 @@ function assignTask(r) {
 }
 
 // ===== 机器人飞行更新 =====
+// 按「每移动一格耗能 + 待机基底能耗」消耗电量（官方 logistic-robot：energy_per_move 5kJ/格 + energy_per_tick 3kJ/s）。
 function moveToward(r, dt) {
   const dx = r.tx - r.x, dy = r.ty - r.y;
   const dist = Math.hypot(dx, dy);
-  if (dist < 2) { r.x = r.tx; r.y = r.ty; return true; }
+  if (dist < 2) {
+    // 已到位（悬停仍耗待机基底电）
+    r.x = r.tx; r.y = r.ty;
+    r.charge = Math.max(0, r.charge - LOG_ROBOT_IDLE_E * dt);
+    return true;
+  }
   const step = ROBOT_SPEED * robotSpeedMult() * TILE * dt;
   const m = Math.min(step, dist);
   r.x += dx / dist * m;
   r.y += dy / dist * m;
+  r.charge = Math.max(0, r.charge - (m / TILE) * LOG_ROBOT_MOVE_E - LOG_ROBOT_IDLE_E * dt);
   return dist <= step;
 }
 
-function nearestPort(r) {
-  let best = null, bd = Infinity;
-  for (const e of G.ents) {
-    if (!(e instanceof Roboport) || e._dead) continue;
+// 机器人所属物流网络内、距离最近且「有停靠位置」的机器人港（任务结束后的停靠目标）。
+// 按距离由近到远挑选：① 最近且可停靠且通电的港 → ② 最近通电的港（站满则排队等位）→ ③ 最近港兜底。
+// 回自己港总是有位置（其台数已计入该港槽位，只是返回停靠）。与用户需求一致：
+// 最近的港没位置就飞第二个近的港停靠。
+function nearestDockPort(r) {
+  const net = netOfPort(r.home);
+  const ports = (net && net.ports) || (G.logiNet && G.logiNet.ports) || null;
+  if (!ports || !ports.length) return r.home;
+  const px = r.x, py = r.y;
+  const list = [];
+  for (const e of ports) {
+    if (e._dead) continue;
     const cx = (e.x + e.w / 2) * TILE, cy = (e.y + e.h / 2) * TILE;
-    const d = (cx - r.x) * (cx - r.x) + (cy - r.y) * (cy - r.y);
-    if (d < bd) { bd = d; best = e; }
+    list.push({ e, d: (cx - px) * (cx - px) + (cy - py) * (cy - py) });
   }
-  return best || r.home;
+  list.sort((a, b) => a.d - b.d);
+  for (const it of list) if (powerSatOf(it.e) > 0 && canDockAt(r, it.e)) return it.e;
+  for (const it of list) if (powerSatOf(it.e) > 0) return it.e;
+  return list[0].e;
+}
+// 该机器人能否停靠在此港：回自己港总是可以（台数已计入该港）；其它港需有空闲机器人槽。
+function canDockAt(r, port) {
+  if (port === r.home) return true;
+  return port.hasFreeRobotSlot('logistic-robot');
+}
+
+// 从港槽取出一台物流机器人（机器人改停其他港时移出原港）。起飞不调用（起飞只改变显示，不移槽）。
+function takeDockedLogi(port) {
+  for (let i = 0; i < ROBOT_SLOT_COUNT; i++) {
+    const s = port.slots[i];
+    if (s && s.item === 'logistic-robot' && s.count > 0) {
+      s.count--; if (s.count <= 0) port.slots[i] = null;
+      return true;
+    }
+  }
+  return false;
+}
+// 向港槽放入一台物流机器人（机器人改停该港时移入）。港已满则失败。
+function giveDockedLogi(port) {
+  for (let i = 0; i < ROBOT_SLOT_COUNT; i++) {
+    const s = port.slots[i];
+    if (s && s.item === 'logistic-robot' && s.count < ROBOT_SLOT_MAX) { s.count++; return true; }
+  }
+  const i = port.slots.findIndex(s => !s);
+  if (i < 0) return false;
+  port.slots[i] = { item: 'logistic-robot', count: 1 };
+  return true;
+}
+// 机器人充满电后停靠：若停靠港与原港不同，把机器人从原港槽位移入新港（网络内总数守恒），
+// 并更新归属港（home）；随后转入 idle —— 该港「停靠数」随之 +1。
+function dockRobot(r) {
+  const cp = r.chargePort || r.home;
+  if (cp && cp !== r.home && !cp._dead && r.home && !r.home._dead) {
+    const g = giveDockedLogi(cp);
+    const t = g && takeDockedLogi(r.home);
+    if (g && !t) takeDockedLogi(cp);   // 新港已占位但原港无可移（理论不发生）→ 回滚占位
+    if (g && t) r.home = cp;           // 移槽成功才更新归属港
+  }
+  r.chargePort = null;
+  r.stationIdx = null;
+  r.target = null;
+  r.carry = null;
+  r.state = 'idle';
+}
+
+// 某机器人港当前正在充电（占用充电站）的物流机器人数量。
+function chargingCountAt(port) {
+  let n = 0;
+  for (const r of G.logiRobots) {
+    if (r._dead || r.state !== 'charging') continue;
+    if ((r.chargePort || r.home) === port) n++;
+  }
+  return n;
+}
+
+// 给返回充电的机器人分配充电站位（按已占用顺序取空位），返回世界坐标 [x, y]。
+function chargeStationPos(port, idx) {
+  const cx = (port.x + port.w / 2) * TILE, cy = (port.y + port.h / 2) * TILE;
+  const off = CHARGING_OFFSETS[idx % CHARGING_OFFSETS.length];
+  return [cx + off[0] * TILE, cy + off[1] * TILE];
+}
+
+// 送达/回收完成后尝试直接接续下一任务（不返回平台）。优先级同 updateLogistics：
+// 玩家回收 → 物流箱回收区 → 网络供需搬运。仅当确实接上（进入 collecting）才返回 true。
+function chainNextTask(r) {
+  if (G.logiEnabled !== false && assignRecycleTask(r)) return true;
+  if (assignChestRecycleTask(r)) return true;
+  assignTask(r);
+  return r.state === 'collecting';
+}
+
+// 返回充电时挑选空充电站索引（跳过已被占用的站，避免多台机器人叠在同一个充电站上）
+function freeStationIdx(port) {
+  const used = new Set();
+  for (const r of G.logiRobots) {
+    if (r._dead || r.state !== 'charging') continue;
+    if ((r.chargePort || r.home) !== port) continue;
+    if (r.stationIdx != null) used.add(r.stationIdx);
+  }
+  for (let i = 0; i < CHARGING_STATIONS; i++) if (!used.has(i)) return i;
+  return used.size % CHARGING_STATIONS;
 }
 
 function updateRobot(r, dt) {
@@ -715,9 +938,10 @@ function updateRobot(r, dt) {
   // 机器人港被拆除则回收该机器人
   if (!r.home || r.home._dead) { r._dead = true; return; }
 
-  // 飞行耗电（idle/charging 不耗电）
-  if (r.state === 'collecting' || r.state === 'delivering' || r.state === 'returning') {
-    r.charge -= ROBOT_CHARGE_DRAIN * dt;
+  // 目标为玩家（送货/回收）时实时追踪玩家当前位置：玩家移动则机器人始终飞向当前位置
+  if (r.target && r.target.isPlayer && (r.state === 'collecting' || r.state === 'delivering')) {
+    r.tx = (G.player ? G.player.x : r.tx);
+    r.ty = (G.player ? G.player.y : r.ty);
   }
 
   switch (r.state) {
@@ -725,17 +949,20 @@ function updateRobot(r, dt) {
       // 等待在港内，满电即可被调度
       break;
     case 'charging': {
-      // 回到港内充电（需电网有电）
-      const [px, py] = portCenter(r.home);
-      r.x = px; r.y = py;
-      if (powerSatOf(this) > 0) {
-        r.charge = Math.min(ROBOT_MAX_CHARGE, r.charge + ROBOT_CHARGE_RATE * dt * Math.max(powerSatOf(this), 0.2));
+      // 在充电站充电（每站充电功率 CHARGING_ENERGY_KW，受电网饱和度影响）
+      const cp = r.chargePort || r.home;
+      if (cp._dead) { r.state = 'returning'; r.chargePort = null; break; }
+      const sat = powerSatOf(cp);
+      if (sat > 0) {
+        r.charge = Math.min(LOG_ROBOT_MAX_E, r.charge + CHARGING_ENERGY_KW * dt * Math.max(sat, 0.2));
       }
-      if (r.charge >= ROBOT_MAX_CHARGE) { r.state = 'idle'; r.target = null; r.carry = null; }
+      if (r.charge >= ROBOT_CHARGE_FULL) {
+        dockRobot(r);
+      }
       break;
     }
     case 'collecting': {
-      if (!r.target || r.target._dead) { r.state = 'returning'; break; }
+      if (!r.target || r.target._dead) { r.state = 'returning'; r.chargePort = null; break; }
       if (moveToward(r, dt)) {
         // 到达供应箱：取货
         if (r.carry && r.target.countOf(r.carry.item) >= r.carry.count) {
@@ -746,7 +973,8 @@ function updateRobot(r, dt) {
         }
         if (r.fromPlayer || r.recycleEnt) {
           // 回收场景：从玩家/物流箱回收区取货后送回一个可存放的供应箱（仓储/主动/被动箱）
-          const drop = logiDropTarget(r.carry ? r.carry.item : null, r.target, r.recycleEnt);
+          // 仅放本机器人所属物流网络内（且网络供应范围内）的箱
+          const drop = logiDropTarget(r.carry ? r.carry.item : null, r.target, r.recycleEnt, r.home);
           if (r.carry && r.carry.count > 0 && drop) {
             r.target = drop;
             r.tx = (drop.x + drop.w / 2) * TILE;
@@ -755,13 +983,13 @@ function updateRobot(r, dt) {
             r.fromPlayer = false;
             r.recycleEnt = null;
           } else {
-            r.carry = null; r.state = 'returning';
+            r.carry = null; r.state = 'returning'; r.chargePort = null;
           }
           break;
         }
-        // 找需求箱送货
-        const net = G.logiNet || scanNetwork();
-        const req = (net.requesters || []).find(q => q.deficitOf(r.carry ? r.carry.item : '') > 0);
+        // 找需求箱送货（仅本机器人所属物流网络内的需求箱，跨网络不运输）
+        const net = netOfPort(r.home);
+        const req = net && (net.requesters || []).find(q => q.deficitOf(r.carry ? r.carry.item : '') > 0);
         if (req && r.carry && r.carry.count > 0) {
           r.target = req;
           r.tx = (req.x + req.w / 2) * TILE;
@@ -770,12 +998,13 @@ function updateRobot(r, dt) {
         } else {
           r.carry = null;
           r.state = 'returning';
+          r.chargePort = null;
         }
       }
       break;
     }
     case 'delivering': {
-      if (!r.target || r.target._dead) { r.carry = null; r.state = 'returning'; break; }
+      if (!r.target || r.target._dead) { r.carry = null; r.state = 'returning'; r.chargePort = null; break; }
       if (moveToward(r, dt)) {
         // 到达需求箱：放货（不超过需求缺口）
         if (r.carry) {
@@ -791,27 +1020,52 @@ function updateRobot(r, dt) {
           if (typeof achEnsureStats === 'function') { achEnsureStats(); G.achStats.robotDeliveries++; checkAchievements(); }
         }
         r.carry = null;
+        // 任务链：电量仍充足且网络还有其他任务时，直接接续下一任务（不返回平台）
+        if (r.charge >= ROBOT_LOW_CHARGE && chainNextTask(r)) break;
         r.state = 'returning';
+        r.chargePort = null;
       }
       break;
     }
     case 'returning': {
-      // 若电量不足，回港充电；否则回港等待
-      const [px, py] = portCenter(r.home);
+      // 飞向最近且有停靠位置的港；到港后充满电即停靠，否则有充电站空位则充电、占满则排队（waiting）
+      if (!r.chargePort || r.chargePort._dead) r.chargePort = nearestDockPort(r);
+      const cp = r.chargePort || r.home;
+      const [px, py] = portCenter(cp);
       r.tx = px; r.ty = py;
       if (moveToward(r, dt)) {
-        // 回到港后总是充满电再重新可用（对齐异星工厂：机器人在港内充电）
-        if (r.charge < ROBOT_MAX_CHARGE) r.state = 'charging';
-        else { r.state = 'idle'; r.target = null; }
+        if (r.charge >= ROBOT_CHARGE_FULL) { dockRobot(r); }
+        else if (chargingCountAt(cp) < CHARGING_STATIONS) { r.state = 'charging'; r.stationIdx = freeStationIdx(cp); }
+        else r.state = 'waiting';  // 充电站占满 → 排队等待空位
       }
+      break;
+    }
+    case 'waiting': {
+      // 排队：悬停在港内充电区附近，不耗飞行电；充电站空出后接入充电
+      const cp = r.chargePort || r.home;
+      if (cp._dead) { r.state = 'returning'; r.chargePort = null; break; }
+      if (r.charge >= ROBOT_CHARGE_FULL) { dockRobot(r); break; }
+      if (chargingCountAt(cp) < CHARGING_STATIONS) { r.state = 'charging'; r.stationIdx = freeStationIdx(cp); break; }
       break;
     }
   }
 
-  // 电量过低且正在搬运 → 先回港充电，保存任务（简化：丢弃当前任务）
+  // 工作途中电量耗尽（低于返航阈值）→ 飞向最近充电港充电（丢弃当前任务）
   if ((r.state === 'collecting' || r.state === 'delivering') && r.charge < ROBOT_LOW_CHARGE) {
     r.carry = null;
+    r.target = null;
+    r.chargePort = null;
+    r.stationIdx = null;
     r.state = 'returning';
+  }
+
+  // 充电/排队时按站位坐标停靠（充电机器人分布在各充电站，排队机器人停在港心，不叠成一团）
+  if (r.state === 'charging' || r.state === 'waiting') {
+    const cp = r.chargePort || r.home;
+    if (cp && !cp._dead) {
+      const [px, py] = (r.state === 'charging' && r.stationIdx != null) ? chargeStationPos(cp, r.stationIdx) : portCenter(cp);
+      r.x = px; r.y = py; r.tx = px; r.ty = py;
+    }
   }
 }
 
@@ -868,7 +1122,7 @@ function updateLogistics(dt) {
     }
     if (hasWork) {
       for (const r of G.logiRobots) {
-        if (r._dead || r.state !== 'idle' || r.charge < ROBOT_MAX_CHARGE) continue;
+        if (r._dead || r.state !== 'idle' || r.charge < ROBOT_CHARGE_FULL) continue;
         // 优先回收玩家身上超出个人请求量的物品
         if (assignRecycleTask(r)) break;
         // 其次回收物流箱（绿箱/蓝箱）回收区里存放的物品
@@ -897,6 +1151,7 @@ function assignRecycleTask(r) {
       if (!s || !ITEMS[s.item] || s.count <= 0) continue;
       const takeN = Math.min(robotCarryCap(), s.count);
       if (takeN <= 0) continue;
+      if (!logiDropTarget(s.item, null, null, r.home)) continue;   // 本网络无存放箱则跳过（同网络才运输）
       r.carry = { item: s.item, count: takeN };
       r.target = playerTrashTarget();
       r.tx = (G.player ? G.player.x : 0);
@@ -917,6 +1172,7 @@ function assignRecycleTask(r) {
       carried.add(k);
       const takeN = Math.min(robotCarryCap(), n);
       if (takeN <= 0) return;
+      if (!logiDropTarget(k, null, null, r.home)) return;   // 本网络无存放箱则跳过（同网络才运输）
       r.carry = { item: k, count: takeN };
       r.target = pt;
       r.tx = (G.player ? G.player.x : 0);
@@ -935,6 +1191,7 @@ function assignRecycleTask(r) {
       if (excess <= 0) continue;
       const takeN = Math.min(robotCarryCap(), excess);
       if (takeN <= 0) continue;
+      if (!logiDropTarget(item, null, null, r.home)) continue;   // 本网络无存放箱则跳过（同网络才运输）
       r.carry = { item, count: takeN };
       r.target = pt;
       r.tx = (G.player ? G.player.x : 0);
@@ -951,7 +1208,9 @@ function assignRecycleTask(r) {
 // 与玩家回收区同款实体箱子模型：回收区格子里的堆叠被机器人逐格取走。
 // 只遍历 scanNetwork 缓存的需求箱/缓冲箱列表（G.logiNet.recycleChests），避免每帧全图扫描 G.ents。
 function assignChestRecycleTask(r) {
-  const rc = (G.logiNet && G.logiNet.recycleChests) || [];
+  // 仅回收本机器人所属物流网络内的物流箱回收区（同物流网络才运输）
+  const net = netOfPort(r.home);
+  const rc = (net && net.recycleChests) || [];
   for (const e of rc) {
     if (e._dead) continue;
     const tg = e.trashGrid;
@@ -961,6 +1220,7 @@ function assignChestRecycleTask(r) {
       if (!s || !ITEMS[s.item] || s.count <= 0) continue;
       const takeN = Math.min(robotCarryCap(), s.count);
       if (takeN <= 0) continue;
+      if (!logiDropTarget(s.item, null, null, r.home)) continue;   // 本网络无存放箱则跳过（同网络才运输）
       r.carry = { item: s.item, count: takeN };
       r.target = chestTrashTarget(e);
       r.tx = (e.x + e.w / 2) * TILE;
@@ -1033,6 +1293,203 @@ function drawLogiBuffer(ctx, e, gx, gy, dir, alpha) {
   drawLogiChest(ctx, e, gx, gy, dir, alpha, 'buffer');
 }
 
+// ===== 五色物流箱「未接入物流网络」警告 =====
+// 物流箱只有被「已通电」机器人港的物流供应区覆盖（切比雪夫距离 ≤ 物流半径 25 格）才算联网；
+// 否则（旁边没有通电的港、或港无电）该箱不在任何物流网络中，需以黄色三角警告提示玩家。
+// 判定复用 scanNetwork 缓存的历史连通分量（0.5s 刷新），避免每个可见物流箱每帧全图遍历机器人港。
+function logiChestCovered(e) {
+  const cx = e.x + (e.w || 1) / 2, cy = e.y + (e.h || 1) / 2;
+  const R = ROBOPORT_LOGI_RANGE;
+  const powered = (G.logiNet && Array.isArray(G.logiNet.poweredPorts)) ? G.logiNet.poweredPorts : null;
+  if (powered) {
+    for (const p of powered) {
+      if (p._dead) continue;
+      const pcx = p.x + (p.w || 1) / 2, pcy = p.y + (p.h || 1) / 2;
+      if (Math.max(Math.abs(pcx - cx), Math.abs(pcy - cy)) <= R) return true;
+    }
+    return false;
+  }
+  // 兜底：尚未扫描（如放置后首次渲染瞬间）直接按需遍历机器人港，同样只认「已通电」港
+  for (const q of G.ents) {
+    if (!q || q._dead || q.type !== 'roboport') continue;
+    if (powerSatOf(q) <= 0) continue;
+    const pcx = q.x + (q.w || 1) / 2, pcy = q.y + (q.h || 1) / 2;
+    if (Math.max(Math.abs(pcx - cx), Math.abs(pcy - cy)) <= R) return true;
+  }
+  return false;
+}
+
+// 画「未接入物流网络」警告：黄色三角感叹号（信号警示样式）。
+// 闪烁频率与设备缺电警告一致（硬闪：亮 1 秒 / 灭 1 秒，无渐变）。
+function drawLogiCoverWarn(ctx, e, gx, gy) {
+  if (!(e instanceof LogisticChest) || e._dead) return;   // 仅五色物流箱
+  if (logiChestCovered(e)) return;                        // 已联网，不提示
+  if ((G.time % 2) >= 1) return;                          // 同缺电警告的消失相位：整秒隐藏
+  const px = gx * TILE, py = gy * TILE;
+  const cx = px + (e.w * TILE) / 2, cy = py + (e.h * TILE) / 2;
+  const r = TILE * 0.45;                                  // 固定一格大小，居中于物流箱
+  ctx.save();
+  ctx.globalAlpha = 1;
+  // 黄色三角警告牌（信号样式）：黄底 + 深棕描边 + 中央感叹号
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r);
+  ctx.lineTo(cx + r * 0.92, cy + r * 0.7);
+  ctx.lineTo(cx - r * 0.92, cy + r * 0.7);
+  ctx.closePath();
+  ctx.fillStyle = '#ffcf3a';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(120,70,0,.95)';
+  ctx.lineWidth = Math.max(1.4, r * 0.13);
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+  // 黑色 WiFi 信号图标（黄色底+黑色内标，样式贴合警示牌内部符号）
+  ctx.strokeStyle = '#000'; ctx.fillStyle = '#000';
+  ctx.lineCap = 'round';
+  ctx.lineWidth = Math.max(1.3, r * 0.13);
+  const bx = cx, by = cy + r * 0.32;   // 信号源点（底部圆点）
+  ctx.beginPath(); ctx.arc(bx, by, Math.max(1.3, r * 0.12), 0, Math.PI * 2); ctx.fill();
+  // 三道信号波（以上半弧呈现，由内而外递增半径，直观表达「未联网」）
+  for (let i = 0; i < 3; i++) {
+    const rad = r * 0.15 + i * r * 0.19;
+    ctx.beginPath(); ctx.arc(bx, by, rad, Math.PI * 1.08, Math.PI * 1.92); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ===== 物流网络（L 键面板）=====
+// 便于查看「连通分量」口径下的物流网络：把相互覆盖相连（切比雪夫距离 ≤ 2×物流半径，
+// 与绘图阶段的机器人港覆盖判定一致）的机器人港归为同一物流网络；每个物流箱归属到
+// 覆盖它的首个机器人港所在网络（箱中心距某港中心切比雪夫 ≤ 物流半径）。
+// 用于面板展示数据，与 scanNetwork 的全图整体调度互不影响。
+let _logiNets = [];        // 最近一次计算得到的网络列表
+let _logiNetsSig = '';      // 网络构成+物资快照，用于判断是否需要重建面板
+function logiNetsSig(nets) {
+  return nets.map(net =>
+    net.ports.length + ':' + net.chests.length + ':' +
+    Object.keys(net.items).map(k => k + '=' + net.items[k]).join(',')
+  ).join('|');
+}
+function computeLogiNetworks() {
+  const ports = [];
+  for (const e of G.ents) if (e && !e._dead && e instanceof Roboport) ports.push(e);
+  const n = ports.length;
+  const parent = new Array(n);
+  for (let i = 0; i < n; i++) parent[i] = i;
+  const find = x => { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+  // 两港相连：覆盖区相交（中心切比雪夫距离 ≤ 2×物流半径）
+  const R2 = ROBOPORT_LOGI_RANGE * 2;
+  for (let i = 0; i < n; i++) {
+    const xi = ports[i].x + ports[i].w / 2, yi = ports[i].y + ports[i].h / 2;
+    for (let j = i + 1; j < n; j++) {
+      const pj = ports[j];
+      if (Math.max(Math.abs(xi - (pj.x + pj.w / 2)), Math.abs(yi - (pj.y + pj.h / 2))) <= R2) {
+        const ri = find(i), rj = find(j);
+        if (ri !== rj) parent[rj] = ri;
+      }
+    }
+  }
+  // 分组（保持插入顺序，与后续归属扫描顺序一致）
+  const groups = new Map();
+  for (let i = 0; i < n; i++) {
+    const r = find(i);
+    if (!groups.has(r)) groups.set(r, { ports: [], portCenters: [] });
+    groups.get(r).ports.push(ports[i]);
+    groups.get(r).portCenters.push([ports[i].x + ports[i].w / 2, ports[i].y + ports[i].h / 2]);
+  }
+  const nets = [];
+  for (const g of groups.values()) nets.push({ ports: g.ports, chests: [], items: {} });
+  // 物流箱归属与箱内物品汇总
+  const R = ROBOPORT_LOGI_RANGE;
+  const netArr = nets, groupArr = [...groups.values()];
+  for (const e of G.ents) {
+    if (!e || e._dead || !(e instanceof LogisticChest)) continue;
+    const cx = e.x + e.w / 2, cy = e.y + e.h / 2;
+    let owner = -1;
+    for (let gi = 0; gi < groupArr.length && owner < 0; gi++)
+      for (const pc of groupArr[gi].portCenters)
+        if (Math.max(Math.abs(pc[0] - cx), Math.abs(pc[1] - cy)) <= R) { owner = gi; break; }
+    if (owner < 0) continue;                                  // 未被覆盖的物流箱：未联网，不归入任何网络
+    const net = netArr[owner];
+    net.chests.push(e);
+    const slots = e.slots || [];
+    for (const s of slots) if (s && s.item) net.items[s.item] = (net.items[s.item] || 0) + s.count;
+    if (e.trashGrid) for (const s of e.trashGrid) if (s && s.item) net.items[s.item] = (net.items[s.item] || 0) + s.count;
+  }
+  // 港内物资汇总：机器人（物流/建设）+ 修理包
+  for (const net of nets)
+    for (const p of net.ports) {
+      const sl = p.slots || [];
+      for (const s of sl) if (s && s.item) net.items[s.item] = (net.items[s.item] || 0) + s.count;
+    }
+  _logiNets = nets;
+  _logiNetsSig = logiNetsSig(nets);
+  return nets;
+}
+function getLogiNets() {
+  const nets = computeLogiNetworks();
+  G._logiNetSig = _logiNetsSig;
+  return nets;
+}
+
+// 物流网络面板：HTML 渲染。左栏 = 网络列表（可点击切换），右栏 = 选中网络的设备与物品。
+function logiNetPanelHtml() {
+  const nets = getLogiNets();
+  G._lastLogiNetSig = _logiNetsSig;   // 本次渲染结果作为 live 刷新基准，避免首次多余重建
+  if (!nets.length) {
+    G.logiSelNet = -1;
+    return '<div class="logi-panel">'
+      + '<div class="logi-status">当前共有 <b>0</b> 个物流网络。</div>'
+      + '<div class="dim">尚未放置任何物流网络设备（机器人指令平台）。</div>'
+      + '</div>';
+  }
+  if (!(G.logiSelNet >= 0) || G.logiSelNet >= nets.length) G.logiSelNet = 0;
+  const sel = nets[G.logiSelNet];
+  const listHtml = nets.map((net, i) =>
+    '<button class="logi-net-item' + (i === G.logiSelNet ? ' sel' : '') + '" data-loginet="' + i + '">'
+    + '<span class="logi-net-name">物流网络 #' + (i + 1) + '</span>'
+    + '<span class="logi-net-meta">设备 ' + (net.ports.length + net.chests.length) + ' · 物品 ' + Object.keys(net.items).length + ' 种</span>'
+    + '</button>'
+  ).join('');
+  return '<div class="logi-status">当前共有 <b>' + nets.length + '</b> 个物流网络</div>'
+    + '<div class="logi-layout">'
+    +   '<div class="logi-col logi-list">' + listHtml + '</div>'
+    +   '<div class="logi-col logi-detail">'
+    +     '<div class="logi-detail-title">物流网络 #' + (G.logiSelNet + 1) + '</div>'
+    +     logiDevicesHtml(sel) + logiItemsHtml(sel)
+    +   '</div>'
+    + '</div>';
+}
+function logiDevicesHtml(net) {
+  const rows = [];
+  if (net.ports.length) rows.push(logiRowHtml(ITEMS['roboport'].name, net.ports.length));
+  const order = ['passive-provider-chest', 'active-provider-chest', 'storage-chest', 'requester-chest', 'buffer-chest'];
+  const cnt = { 'passive-provider-chest': 0, 'active-provider-chest': 0, 'storage-chest': 0, 'requester-chest': 0, 'buffer-chest': 0 };
+  for (const c of net.chests) if (cnt[c.type] != null) cnt[c.type]++;
+  for (const t of order) if (cnt[t]) rows.push(logiRowHtml(ITEMS[t].name, cnt[t]));
+  return '<div class="logi-block"><div class="logi-block-title">设备</div>'
+    + (rows.length ? rows.join('') : '<div class="dim">无设备</div>') + '</div>';
+}
+function logiItemsHtml(net) {
+  const keys = Object.keys(net.items);
+  if (!keys.length) return '<div class="logi-block"><div class="logi-block-title">物品</div><div class="dim">空网络（无货物）</div></div>';
+  keys.sort((a, b) => (net.items[b] - net.items[a]) || a.localeCompare(b));
+  const rows = keys.map(k => logiRowHtml(ITEMS[k] ? ITEMS[k].name : k, net.items[k])).join('');
+  return '<div class="logi-block"><div class="logi-block-title">物品（' + keys.length + ' 种）</div>' + rows + '</div>';
+}
+function logiRowHtml(name, count) {
+  return '<div class="logi-row"><span class="logi-row-name">' + name + '</span><span class="logi-row-val">×' + count + '</span></div>';
+}
+// 物流网络面板实时刷新：网络构成或物资变化时才重建面板（由主循环按 0.25s 周期调用）
+function updateLogiNetLive() {
+  if (G.panelMode !== 'logi') return;
+  const nets = computeLogiNetworks();
+  if (_logiNetsSig !== G._lastLogiNetSig) {
+    G._lastLogiNetSig = _logiNetsSig;
+    if (typeof renderPanel === 'function') renderPanel(false);
+  }
+  G._logiNets = nets;
+}
+
 // 机器人港实体渲染（对齐《异星工厂》Roboport 视觉语言：深青灰平台 + 四角停机坪 +
 // 中央基塔 + 环绕跑道）。自下而上：地面投影 → 底座平台（面板收光、内嵌凹槽）→
 // 四角机器人停机坪（停靠充电小圆台 + 呼吸信号灯）→ 双环跑道（外虚线环 = 机器人巡航
@@ -1093,15 +1550,15 @@ function drawRoboport(ctx, e, gx, gy, dir, alpha) {
   ctx.strokeStyle = '#8fdcd0';
   ctx.lineWidth = 1.4;
   ctx.beginPath(); ctx.moveTo(cx, cy - s * 0.30); ctx.lineTo(cx, cy - s * 0.375); ctx.stroke();
-  const ant = (e.roboCap > 0) ? 1 : 0.75;
+  const ant = (e.roboDocked > 0) ? 1 : 0.75;
   ctx.fillStyle = 'rgba(200,240,230,' + (0.55 + pulse * 0.45 * ant).toFixed(2) + ')';
   ctx.beginPath(); ctx.arc(cx, cy - s * 0.39, Math.max(1.8, s * 0.022 + pulse * s * 0.008), 0, Math.PI * 2); ctx.fill();
-  // ⑥ 港内机器人数量（塔顶下方文字，有机器人才显示）
-  if (e.roboCap > 0) {
+  // ⑥ 港内「停靠」机器人数量（塔顶下方文字，有停靠才显示；机器人起飞减少、飞回增加）
+  if (e.roboDocked > 0) {
     ctx.fillStyle = '#cfece8';
     ctx.font = 'bold ' + Math.max(9, s * 0.075) + 'px system-ui';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(e.roboCap, cx, py + s * 0.86);
+    ctx.fillText(e.roboDocked, cx, py + s * 0.86);
   }
   ctx.globalAlpha = 1;
 }
@@ -1365,7 +1822,7 @@ function roboportPanelHtml(e) {
 function roboportPanelLive(e, api, body) {
   // 槽位实时刷新（签名比对，机械臂装入或机器人变化时即时更新，避免闪烁）
   refreshRoboportSlots(e);
-  api.set('robo-cnt', e.roboCap + '/' + ROBOPORT_CAP);
+  api.set('robo-cnt', e.roboDocked + '/' + ROBOPORT_CAP);
   api.set('mat-cnt', String(e.matCount('repair-pack')));
   const mats = e.matCount('repair-pack');
   const logi = e.countOf('logistic-robot'), constr = e.countOf('construction-robot');

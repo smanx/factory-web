@@ -72,6 +72,7 @@ function ensureConstr() {
   if (!G.constrGhosts) G.constrGhosts = [];
   if (!G.deconMarks) G.deconMarks = [];
   if (!G.constrRobots) G.constrRobots = [];
+  if (!G.netRobots) G.netRobots = [];   // 网络施工机器人（由机器人港派发，取网内物流箱物品施工）
   if (G._constrRepairScanT === undefined) G._constrRepairScanT = 0;
 }
 // 是否拥有个人机器人港：G.personalRoboport 标志（背包“使用”装备）或当前穿戴护甲的装备网格中
@@ -159,6 +160,19 @@ class DeconMark {
   }
 }
 
+// 树木拆除标记（无实体，指向地形瓦片 T_TREE）：红图可标记树木，由施工机器人砍伐获得木材。
+function treeDeconMark(x, y) {
+  return { ent: null, tree: true, x, y, building: false, _dead: false };
+}
+
+// 拆除标记是否仍有效：树木标记以该格仍为 T_TREE 判定（树被建筑覆盖/手动砍掉则失效）；
+// 实体标记以实体仍存在判定。
+function deconMarkValid(m) {
+  if (!m || m._dead) return false;
+  if (m.tree) return getTerrain(m.x, m.y) === T_TREE;
+  return !!m.ent && !m.ent._dead;
+}
+
 // 判断某格是否已有建造幽灵占用（避免重复放置同一格）
 function ghostAt(x, y, w, h) {
   for (const g of G.constrGhosts) {
@@ -231,6 +245,7 @@ function pasteBlueprintAsGhosts(bp) {
 }
 
 // 把红图框选区域内的实体登记为拆除标记（由施工机器人执行）
+// 同时登记区域内的树木（T_TREE 地形）：机器人砍树获得木材（对齐《异星工厂》红图可标记树木）。
 function markAreaForDecon(r) {
   ensureConstr();
   const seen = new Set();
@@ -249,6 +264,43 @@ function markAreaForDecon(r) {
       }
     }
   }
+  // 树木：T_TREE 地形瓦片（无实体）。同一格只登记一次。
+  for (let ty = r.y0; ty <= r.y1; ty++) {
+    for (let tx = r.x0; tx <= r.x1; tx++) {
+      if (getTerrain(tx, ty) !== T_TREE) continue;
+      if (G.deconMarks.some(m => !m._dead && m.tree && m.x === tx && m.y === ty)) continue;
+      G.deconMarks.push(treeDeconMark(tx, ty));
+      count++;
+    }
+  }
+  return count;
+}
+
+// 红图模式 + Shift 框选：取消框选区域内已登记的拆除标记（红叉），建筑恢复不被拆除。
+// 与 markAreaForDecon 同口径：以实体中心/树木瓦片是否落在区域内判定。返回取消数量。
+function unmarkAreaForDecon(r) {
+  ensureConstr();
+  if (!G.deconMarks || !G.deconMarks.length) return 0;
+  let count = 0;
+  for (const m of G.deconMarks) {
+    if (m._dead) continue;
+    if (m.tree) {
+      // 树木标记：瓦片坐标落在区域内即取消
+      if (m.x >= r.x0 && m.x <= r.x1 && m.y >= r.y0 && m.y <= r.y1) {
+        m._dead = true;
+        count++;
+      }
+      continue;
+    }
+    const e = m.ent;
+    if (!e || e._dead) continue;
+    const cx = e.x + Math.floor(e.w / 2), cy = e.y + Math.floor(e.h / 2);
+    if (cx >= r.x0 && cx <= r.x1 && cy >= r.y0 && cy <= r.y1) {
+      m._dead = true;
+      count++;
+    }
+  }
+  if (count && typeof uiDirty !== 'undefined') uiDirty = true;
   return count;
 }
 
@@ -391,6 +443,9 @@ function updateConstrRobot(r, dt) {
   }
 
   if (r.state === 'toghost' || r.state === 'returning') {
+    // 任务被取消（如 Shift 框选取消拆除标记）：正在飞过去的机器人不突然消失，
+    // 直接掉头返航回玩家身边（个人机器人平台的充电点），回到玩家后停靠充电并回收。
+    if (r.state === 'toghost' && !constrJobValid(r.job)) { r.state = 'returning'; }
     const target = (r.state === 'toghost') ? constrJobCenter(r) : [px, py];
     const tx = target[0], ty = target[1];
     const dx = tx - r.x, dy = ty - r.y;
@@ -430,7 +485,8 @@ function updateConstrRobot(r, dt) {
   // 施工中：到达后立即消耗背包材料并落地（建造无耗时，立刻落地并马上返航，无需等待建造时间）
   if (r.state === 'building') {
     const job = r.job;
-    if (!constrJobValid(job)) { r._dead = true; return; }
+    // 任务已被取消（标记被 Shift 框选取消/虚影被清除）：不突然消失，返航回玩家身边充电后回收
+    if (!constrJobValid(job)) { r.state = 'returning'; return; }
     if (job.kind === 'build') completeBuild(job.ghost); else completeDecon(job.mark, r);
     r.state = 'returning';
     r.job = null;
@@ -502,6 +558,19 @@ function completeBuild(g) {
 // 完成一个拆除标记：移除实体，拆除物交由施工机器人携带（对齐《异星工厂》：机器人拿着拆除物
 // 飞回玩家身边盘旋，背包腾出空位才逐一放入；不原地丢进背包，避免背包装满时物品静默丢失）。
 function completeDecon(m, r) {
+  // 树木拆除标记：无实体，直接清除地形瓦片并获得木材。
+  if (m.tree) {
+    if (getTerrain(m.x, m.y) !== T_TREE) { m._dead = true; return; }
+    setTerrain(m.x, m.y, T_GRASS);
+    if (typeof invalidateTerrainChunk === 'function') invalidateTerrainChunk(m.x, m.y);
+    m._dead = true;
+    // 木材与其他拆除物一致：随机器人携带（个人机器人返航入玩家背包；
+    // 网络机器人回港后统一放入物流网络中的黄箱/绿箱，见 netDropCargo）。
+    const wood = [['wood', 1]];
+    if (r) r.cargo = mergeItemList(r.cargo || [], wood);
+    else if (typeof invAdd === 'function') invAdd('wood');
+    return;
+  }
   const e = m.ent;
   if (!e || e._dead) { m._dead = true; return; }
   // 拆除时瞬间返还实体内容（含传送带上携带的物品），对齐手动拆除/红图批量删除：
@@ -543,6 +612,9 @@ function returnCargoToPlayer(r) {
 // ===== 全局施工调度 =====
 function updateConstruction(dt) {
   ensureConstr();
+  // 物流网络施工机器人（机器人港派发的“网内建造”）独立于个人机器人港运行：
+  // 只要「物流网络」已解锁且有已通电机器人港覆盖虚影，就由网络机器人施工。
+  updateNetConstruction(dt);
   // 没有个人机器人港：清空在途机器人/拆除标记，但【保留建造幽灵】。
   // 手动 Shift+左键放置的“建造虚影”是规划标记（虚影只投影到该处），即使当前未装备机器人港
   // 也应一直保留；装配个人机器人港+背包有施工机器人后，再由机器人自动施工落地。
@@ -577,6 +649,9 @@ function updateConstruction(dt) {
   let targetGhost = null;
   for (const g of G.constrGhosts) {
     if (g._dead || g.building) continue;
+    // 物流网络优先级：若机器人港物流网络可（且将）施工该虚影，则让给网络机器人，
+    // 个人机器人港不再重复施工（对齐《异星工厂》：网络机器人优先，个人在网内无该物品时才接手）。
+    if (netCanBuildGhost(g)) continue;
     // 建造范围（距离）判定：虚影无距离限制可任意放置，但施工机器人只在个人机器人港建造范围内自动施工。
     // 超出范围的虚影保留显示（不消失），角色靠近进入范围后机器人自动续建。
     if (Math.abs((g.x + g.w / 2) - G.player.x / TILE) > rInfo.range) continue;
@@ -622,6 +697,11 @@ function updateConstruction(dt) {
   let targetMark = null;
   for (const m of G.deconMarks) {
     if (m._dead || m.building) continue;
+    // 标记已失效（树木被覆盖/实体被移除）：直接清理，不再派机器人
+    if (!deconMarkValid(m)) { m._dead = true; continue; }
+    // 物流网络优先级：若机器人港物流网络可（且将）拆除该标记，则让给网络机器人，
+    // 个人机器人港不再重复拆除（对齐《异星工厂》：网络机器人优先执行拆除）。
+    if (netCanDeconMark(m)) continue;
     if (Math.abs(m.x - G.player.x / TILE) > rInfo.range) continue;
     if (Math.abs(m.y - G.player.y / TILE) > rInfo.range) continue;
     targetMark = m;
@@ -672,6 +752,316 @@ function updateConstruction(dt) {
   }
 }
 
+// ===== 物流网络施工机器人（对齐《异星工厂》）=====
+// 机器人港（Roboport）内的建设机器人会对“物流网络建造范围”内的建造虚影自动施工：
+//   (a) 飞到网络内某物流箱取走该建筑的物品；
+//   (b) 飞到虚影所在位置建造落地；
+//   (c) 飞回机器人港充电。
+// 物流网络优先级高于个人机器人港：当网络机器人可施工该虚影时，个人机器人港不重复施工，
+// 仅当网络内没有该物品（或网络未覆盖/无机器人）时，才由个人机器人港接手（见 updateConstruction 的 netCanBuildGhost 判断）。
+// 网络施工机器人独立于个人机器人港实体（G.netRobots），其电量模型与建设机器人一致（kJ），充电点为所属机器人港。
+const NET_CONSTR_CHARGE_RATE = 800;   // 网络建设机器人回港充电速率（kJ/s，约 2~3 秒充满，呈现“飞回充电”）
+
+class NetConstrRobot {
+  constructor(port, job) {
+    const [px, py] = portCenter(port);
+    this.x = px; this.y = py;
+    this.tx = px; this.ty = py;
+    this.home = port;                 // 所属/返航充电的机器人港
+    this.job = job;                   // { kind:'build'|'decon', ghost?/mark?, item?, chest? }
+    this.target = job.chest || null;  // 取货物流箱（仅建造任务）
+    this.state = job.kind === 'decon' ? 'toghost' : 'collecting';  // 拆除直接飞向标记；建造先取货
+    this.maxE = ROBOT_MAX_E;
+    this.e = ROBOT_MAX_E * CONSTR_MAX_CHARGE;
+    this.carry = null;                // 已从箱中取的建筑物品（建造任务）
+    this.cargo = null;                // 随身携带的拆除物 [[item,count],...]（拆除任务）
+    this._picked = false;             // 是否已取货（低电返充后再据此续飞建造成缔处）
+    this._didBuild = false;           // 是否已建成（充电后据此回收）
+    this._cancelReturn = false;       // 任务被取消后的返航标志（Shift 框选取消拆除标记等）
+    this._dropChest = null;           // 拆除物（含树木木材）交付的物流箱（先飞往箱子交付再返航）
+    this._returnPort = null;          // 返航充电的机器人港（就近选择，不一定是原派发港）
+    this._dead = false;
+  }
+}
+
+// 网络内可作为取货源的物流箱（被动/主动供应、仓储、缓冲箱均可）。
+// home：可选，机器人港/机器人。传入后仅在其所属物流网络内查找取货箱（同物流网络才运输，
+// 与物流机器人 assignTask 同口径）；不传则在全图聚合供应里查找（供优先级探测复用）。
+function netSupplyChest(item, home) {
+  const nets = (G.logiNet && G.logiNet.nets) || null;
+  if (!nets) return null;
+  const net = home ? (netOfPort(home instanceof Roboport ? home : home.home) || null) : null;
+  const supplies = net ? net.supplies : (G.logiNet && G.logiNet.supplies);
+  if (!supplies) return null;
+  for (const c of supplies) {
+    if (c.item !== item || c.count <= 0) continue;
+    if (c.e._dead || typeof c.e.takeItemOf !== 'function') continue;
+    return c.e;
+  }
+  return null;
+}
+
+// 某机器人港当前在途的网络建设机器人数量（与该港内建设机器人台数比对，限制并发）
+function countNetRobotsOf(port) {
+  let n = 0;
+  for (const r of G.netRobots) if (!r._dead && r.home === port) n++;
+  return n;
+}
+
+// 该虚影是否应由物流网络施工（网络优先级判定）。
+// 严格对齐需求：只要网络内存在该物品，且虚影落在已通电机器人港的建造范围内，
+// 就优先交给网络（即便港内暂无建设机器人，也等待网络后续施工）；仅当网络的物品中
+// 没有该物品时，才由个人机器人港接手。里层 dispatch 另按机器人台数并发控制实际派发。
+function netCanBuildGhost(g) {
+  if (!g || g.consumes !== 'item') return false;
+  const powered = (G.logiNet && G.logiNet.poweredPorts) || [];
+  if (!powered.length) return false;
+  if (!netSupplyChest(g.needId || g.type)) return false;   // 网内物品不含该建筑 → 交由个人机器人
+  const gx = g.x + g.w / 2, gy = g.y + g.h / 2;
+  for (const p of powered) {
+    if (Math.abs(gx - (p.x + p.w / 2)) > ROBOPORT_CONSTR_RANGE) continue;
+    if (Math.abs(gy - (p.y + p.h / 2)) > ROBOPORT_CONSTR_RANGE) continue;
+    return true;   // 已通电网络建造范围覆盖该虚影 + 网内有该物品 → 网络优先
+  }
+  return false;
+}
+
+// 该拆除标记是否应由物流网络施工（网络优先级判定，对齐《异星工厂》：网络机器人优先执行拆除）。
+// 只要拆除标记落在已通电机器人港的建造范围内且港内有建设机器人，就优先交给网络，
+// 个人机器人港不再接手。
+function netCanDeconMark(m) {
+  if (!m || m._dead) return false;
+  const powered = (G.logiNet && G.logiNet.poweredPorts) || [];
+  if (!powered.length) return false;
+  const ex = m.x + 0.5, ey = m.y + 0.5;
+  for (const p of powered) {
+    if (Math.abs(ex - (p.x + p.w / 2)) > ROBOPORT_CONSTR_RANGE) continue;
+    if (Math.abs(ey - (p.y + p.h / 2)) > ROBOPORT_CONSTR_RANGE) continue;
+    if (p.countOf('construction-robot') <= 0) continue;   // 港内须有建设机器人才能拆除
+    return true;   // 已通电网络建造范围覆盖该拆除标记 → 网络优先
+  }
+  return false;
+}
+
+// 返回离指定世界坐标最近的已通电机器人港（供网络建设机器人就近返航充电/回收）。
+// 优先在已通电港中找最近者；无已通电港时退回任意机器人港。
+function nearestRoboport(px, py) {
+  const powered = (G.logiNet && G.logiNet.poweredPorts) || [];
+  let best = null, bestD = Infinity;
+  const scan = powered.length ? powered : (G.ents || []);
+  for (const p of scan) {
+    if (!p || p._dead || !(p instanceof Roboport)) continue;
+    if (powered.length && powerSatOf(p) <= 0) continue;   // 已通电港集合中只认通电港
+    const [cx, cy] = portCenter(p);
+    const d = (cx - px) * (cx - px) + (cy - py) * (cy - py);
+    if (d < bestD) { bestD = d; best = p; }
+  }
+  return best;
+}
+
+// 网络建设机器人飞行移动（沿目标逼近，速度随科技倍率；飞行按格耗电 + 工作基底耗电）
+function moveNetToward(r, tx, ty, dt) {
+  const dx = tx - r.x, dy = ty - r.y;
+  const dist = Math.hypot(dx, dy);
+  const spd = Math.min(CONSTR_ROBOT_SPEED * robotSpeedMult() * TILE * dt, 2 * TILE);
+  if (dist < 2 || spd >= dist) {
+    r.x = tx; r.y = ty;
+    r.e = Math.max(0, r.e - ROBOT_MOVE_E - ROBOT_IDLE_E * dt);
+    return true;
+  }
+  const m = spd;
+  r.x += dx / dist * m; r.y += dy / dist * m;
+  r.e = Math.max(0, r.e - (m / TILE) * ROBOT_MOVE_E - ROBOT_IDLE_E * dt);
+  return false;
+}
+
+// 单个网络建设机器人状态机更新
+function updateNetConstrRobot(r, dt) {
+  if (r._dead) return;
+  const home = r.home;
+  if (!home || home._dead) { r._dead = true; return; }   // 港被拆除 → 回收
+  const [hx, hy] = portCenter(home);
+  const job = r.job;
+  const g = job ? job.ghost : null;
+  const m = job ? job.mark : null;
+  const isDecon = job && job.kind === 'decon';
+
+  // —— 回港充电 ——
+  if (r.state === 'charging') {
+    // 充电点：就近返航的机器人港（_returnPort），未选择时用原派发港
+    const cp = r._returnPort || home;
+    const [cpx, cpy] = portCenter(cp);
+    r.x = cpx; r.y = cpy; r.tx = cpx; r.ty = cpy;
+    if (powerSatOf(cp) > 0) r.e = Math.min(r.maxE * CONSTR_MAX_CHARGE, r.e + NET_CONSTR_CHARGE_RATE * dt);
+    if (r.e >= r.maxE * CONSTR_MAX_CHARGE) {
+      // 已建成/已拆除 → 把拆除物放入网络后回收；低电中断的未完成任务 → 充满后继续。
+      // 拆除物须放入与港同一物流网络的箱；网络内暂无存放箱时机器人滞留等待（不丢失拆除物）。
+      if (r._didBuild) {
+        netDropCargo(r);
+        if (!r.cargo) r._dead = true;
+      }
+      else if (constrJobValid(job)) { r._returnPort = null; r.state = r._picked || isDecon ? 'toghost' : 'collecting'; }
+      else {
+        netDropCargo(r);
+        if (!r.cargo) r._dead = true;
+      }
+    }
+    return;
+  }
+
+  // —— 任务失效（虚影被清除 / 拆除标记被取消）——
+  // 已建成（_didBuild）的机器人不受虚影消失影响，继续返航回港充电；
+  // 未建成且任务消失（如 Shift 框选取消拆除标记）：不突然消失，直接返航回所属机器人港充电后回收。
+  const taskGone = isDecon ? (!m || m._dead) : (!g || g._dead);
+  if (taskGone && !r._didBuild && !r._cancelReturn) {
+    r._cancelReturn = true;
+    r.job = null;
+    r.state = 'returning';
+    return;
+  }
+  const cx = isDecon ? (m ? (m.x + 0.5) * TILE : hx) : (g ? (g.x + g.w / 2) * TILE : hx);
+  const cy = isDecon ? (m ? (m.y + 0.5) * TILE : hy) : (g ? (g.y + g.h / 2) * TILE : hy);
+
+  if (r.state === 'collecting') {
+    // 目标箱已空/被拆 → 换一个网络供应箱；网内已无该物品则回收
+    if (!r.target || r.target._dead || r.target.countOf(job.item) <= 0) {
+      const c = netSupplyChest(job.item, r.home);
+      if (!c) { r._dead = true; return; }
+      r.target = c;
+    }
+    const t = r.target;
+    if (moveNetToward(r, (t.x + t.w / 2) * TILE, (t.y + t.h / 2) * TILE, dt)) {
+      if (t.takeItemOf(job.item)) {   // (a) 飞抵物流箱取走物品
+        r.carry = { item: job.item, count: 1 };
+        r._picked = true;
+        r.state = 'toghost';
+      } else { r._dead = true; return; }
+    }
+  } else if (r.state === 'toghost') {
+    if (moveNetToward(r, cx, cy, dt)) r.state = 'building';   // (b) 飞抵虚影/拆除标记处
+  } else if (r.state === 'building') {
+    if (isDecon) {
+      completeDecon(m, r);   // 拆除：拆除物（含树木木材）进 r.cargo
+      r._didBuild = true;
+      // 拆除物优先交付到物流箱：先飞往箱子把木材等放下，再就近返航充电
+      if (r.cargo && r.cargo.length) {
+        const drop = logiDropTarget(r.cargo[0][0], null, null, r.home);
+        if (drop && typeof drop.giveItem === 'function') {
+          r._dropChest = drop;
+          r.state = 'dropoff';
+        } else {
+          r.state = 'returning';
+        }
+      } else {
+        r.state = 'returning';
+      }
+    } else {
+      completeBuild(g);   // 落地成真实建筑
+      r._didBuild = true;
+      r.carry = null;
+      r.state = 'returning';
+    }
+  } else if (r.state === 'dropoff') {
+    // 先飞往物流箱交付拆除物（木材等），交付完再就近返航充电
+    const chest = r._dropChest;
+    if (!chest || chest._dead) { r._dropChest = null; r.state = 'returning'; }
+    else if (moveNetToward(r, (chest.x + chest.w / 2) * TILE, (chest.y + chest.h / 2) * TILE, dt)) {
+      if (r.cargo) {
+        for (let i = r.cargo.length - 1; i >= 0; i--) {
+          const [id, n] = r.cargo[i];
+          let left = n;
+          while (left > 0 && chest.giveItem(id)) {
+            left--;
+            if (typeof trackProd === 'function') trackProd(id, -1);
+          }
+          if (left <= 0) r.cargo.splice(i, 1);
+          else r.cargo[i] = [id, left];
+        }
+        if (!r.cargo.length) r.cargo = null;
+      }
+      r._dropChest = null;
+      r.state = 'returning';
+    }
+  } else if (r.state === 'returning') {
+    // 就近返航：飞往离当前位置最近的机器人港充电（任务取消/完成后不一定回原派发港）
+    if (!r._returnPort || r._returnPort._dead) r._returnPort = nearestRoboport(r.x, r.y) || home;
+    const [rpx, rpy] = portCenter(r._returnPort);
+    if (moveNetToward(r, rpx, rpy, dt)) r.state = 'charging';
+  }
+
+  // 工作途中低电 → 回港充电（已取货/未取货任务在充满后继续）
+  if ((r.state === 'collecting' || r.state === 'toghost') && r.e < CONSTR_MIN_CHARGE * r.maxE) {
+    r.state = 'returning';
+  }
+}
+
+// 网络机器人把随身携带的拆除物放入物流网络中的可存放箱（仅黄箱/绿箱）。
+// 与物流机器人 logiDropTarget 同口径：优先级 黄箱已含该物品 > 黄箱未含该物品 > 绿箱。
+// 树木拆除的木材与其它拆除物一致：统一放入物流网络箱子（不对玩家做特殊交付）。
+function netDropCargo(r) {
+  if (!r.cargo || !r.cargo.length) return;
+  for (let i = r.cargo.length - 1; i >= 0; i--) {
+    const [id, n] = r.cargo[i];
+    let left = n;
+    while (left > 0) {
+      const drop = logiDropTarget(id, null, null, r.home);   // 仅放与机器人港同一物流网络（且网络范围内）的箱
+      if (!drop || typeof drop.giveItem !== 'function' || !drop.giveItem(id)) break;
+      left--;
+      if (typeof trackProd === 'function') trackProd(id, -1);
+    }
+    if (left <= 0) r.cargo.splice(i, 1);
+    else r.cargo[i] = [id, left];
+  }
+  if (!r.cargo.length) r.cargo = null;
+}
+
+// 全局网络施工调度：更新在途机器人 + 扫描网内虚影/拆除标记派发任务
+function updateNetConstruction(dt) {
+  if (!G.netRobots) G.netRobots = [];
+  for (const r of G.netRobots) updateNetConstrRobot(r, dt);
+  G.netRobots = compactFilter(G.netRobots, r => !r._dead);
+  // 前置条件：物流网络已解锁 + 存在已通电机器人港
+  if (!G.techDone || !G.techDone['logistics-network']) return;
+  const powered = (G.logiNet && G.logiNet.poweredPorts) || [];
+  if (!powered.length) return;
+  // 扫描网内虚影，派发网络建设机器人（建造优先于拆除派发）
+  for (const g of G.constrGhosts) {
+    if (g._dead || g.building) continue;
+    if (g.consumes !== 'item') continue;                 // 网络机器人只负责“建筑物品”虚影
+    const item = g.needId || g.type;
+    const gx = g.x + g.w / 2, gy = g.y + g.h / 2;
+    for (const p of powered) {
+      if (Math.abs(gx - (p.x + p.w / 2)) > ROBOPORT_CONSTR_RANGE) continue;   // 建造覆盖范围
+      if (Math.abs(gy - (p.y + p.h / 2)) > ROBOPORT_CONSTR_RANGE) continue;
+      if (p.countOf('construction-robot') <= 0) continue;                       // 港内须有建设机器人
+      if (countNetRobotsOf(p) >= p.countOf('construction-robot')) continue;     // 港内机器人未全部在途
+      const chest = netSupplyChest(item, p);                // 网络内必须有该物品（且与港同物流网络）
+      if (!chest) continue;
+      g.building = true;
+      G.netRobots.push(new NetConstrRobot(p, { kind: 'build', ghost: g, item, chest }));
+      if (typeof playSfx === 'function') playSfx('robot');
+      return;                                             // 每帧至多派发一个
+    }
+  }
+  // 扫描网内拆除标记，派发网络建设机器人（对齐《异星工厂》：网络机器人优先执行拆除）
+  for (const m of G.deconMarks) {
+    if (m._dead || m.building) continue;
+    // 标记已失效（树木被覆盖/实体被移除）：直接清理，不再派机器人
+    if (!deconMarkValid(m)) { m._dead = true; continue; }
+    const ex = m.x + 0.5, ey = m.y + 0.5;
+    for (const p of powered) {
+      if (Math.abs(ex - (p.x + p.w / 2)) > ROBOPORT_CONSTR_RANGE) continue;   // 建造覆盖范围
+      if (Math.abs(ey - (p.y + p.h / 2)) > ROBOPORT_CONSTR_RANGE) continue;
+      if (p.countOf('construction-robot') <= 0) continue;                       // 港内须有建设机器人
+      if (countNetRobotsOf(p) >= p.countOf('construction-robot')) continue;     // 港内机器人未全部在途
+      m.building = true;
+      G.netRobots.push(new NetConstrRobot(p, { kind: 'decon', mark: m }));
+      if (typeof playSfx === 'function') playSfx('robot');
+      return;                                             // 每帧至多派发一个
+    }
+  }
+}
+
 // 供 UI 查询：当前待施工幽灵数 / 待拆除数
 function constrPending() {
   return {
@@ -717,8 +1107,16 @@ function drawConstrGhosts(ctx) {
   }
   // 拆除标记：红色斜叉
   for (const m of G.deconMarks) {
-    if (m._dead || !m.ent) continue;
-    const px = (m.x + (m.ent.w || 1) / 2) * TILE, py = (m.y + (m.ent.h || 1) / 2) * TILE;
+    if (m._dead) continue;
+    // 树木标记：瓦片中心；实体标记：实体中心
+    let px, py;
+    if (m.tree) {
+      if (getTerrain(m.x, m.y) !== T_TREE) continue;
+      px = (m.x + 0.5) * TILE; py = (m.y + 0.5) * TILE;
+    } else {
+      if (!m.ent) continue;
+      px = (m.x + (m.ent.w || 1) / 2) * TILE, py = (m.y + (m.ent.h || 1) / 2) * TILE;
+    }
     ctx.strokeStyle = '#e05a4a';
     ctx.lineWidth = 3;
     const s = Math.max(6, TILE / 3);
@@ -732,78 +1130,87 @@ function drawConstrGhosts(ctx) {
 // 施工机器人（飞行动画等）：放在玩家之后（最上层）
 function drawConstruction(ctx) {
   ensureConstr();
-  // 施工机器人
-  for (const r of G.constrRobots) {
-    if (r._dead || r.state === 'idle') continue;
-    if (typeof onScreen === 'function' && !onScreen({ x: r.x / TILE, y: r.y / TILE, w: 1, h: 1 })) continue;
-    // 朝向目标的角度
-    let targetX = r.tx || r.x, targetY = r.ty || r.y;
-    if (r.job && r.job.kind !== 'returning') {
+  // 个人机器人港的施工机器人 / 物流网络的建设机器人统一绘制
+  for (const r of G.constrRobots) drawOneConstrRobot(ctx, r);
+  for (const r of G.netRobots) drawOneConstrRobot(ctx, r);
+}
+
+// 绘制单个施工（/建设）机器人造型：朝向、拖尾、电量条与携物图标
+function drawOneConstrRobot(ctx, r) {
+  if (!r || r._dead || r.state === 'idle') return;
+  if (typeof onScreen === 'function' && !onScreen({ x: r.x / TILE, y: r.y / TILE, w: 1, h: 1 })) return;
+  // 朝向目标的角度：个人机器人港 → 任务中心；物流网络机器人取货 → 目标箱、建造 → 虚影
+  let targetX = r.tx || r.x, targetY = r.ty || r.y;
+  if (r.job && r.state !== 'returning') {
+    if (r.job.kind === 'build' && r.state === 'collecting' && r.target && !r.target._dead) {
+      targetX = (r.target.x + r.target.w / 2) * TILE;
+      targetY = (r.target.y + r.target.h / 2) * TILE;
+    } else {
       const [cjx, cjy] = constrJobCenter(r);
       if (cjx !== G.player.x || cjy !== G.player.y) { targetX = cjx; targetY = cjy; }
     }
-    const robAng = Math.atan2(targetY - r.y, targetX - r.x);
-    const flying = (r.state === 'toghost' || r.state === 'returning');
-    // 飞行拖尾：沿运动反方向拉伸的渐隐色带，让“飞出去/飞回来”轨迹一眼可见
-    if (flying) {
-      ctx.strokeStyle = 'rgba(240,170,60,.28)';
-      ctx.lineWidth = 4;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(r.x - Math.cos(robAng) * 16, r.y - Math.sin(robAng) * 16);
-      ctx.lineTo(r.x - Math.cos(robAng) * 34, r.y - Math.sin(robAng) * 34);
-      ctx.stroke();
-    }
-    // 阴影
-    ctx.fillStyle = 'rgba(0,0,0,.25)';
+  }
+  const robAng = Math.atan2(targetY - r.y, targetX - r.x);
+  const flying = (r.state === 'toghost' || r.state === 'returning');
+  // 飞行拖尾：沿运动反方向拉伸的渐隐色带，让“飞出去/飞回来”轨迹一眼可见
+  if (flying) {
+    ctx.strokeStyle = 'rgba(240,170,60,.28)';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.ellipse(r.x, r.y + 11, 7, 3, 0, 0, 7);
-    ctx.fill();
-    // 施工/充电光效（绿色脉冲）
-    if (r.state === 'building' || r.state === 'charging' || r.state === 'repairing') {
-      ctx.fillStyle = 'rgba(120,230,120,.5)';
-      ctx.beginPath();
-      ctx.arc(r.x, r.y, 10 + (performance.now() % 300) / 300 * 5, 0, 7);
-      ctx.fill();
-    }
-    ctx.save();
-    ctx.translate(r.x, r.y);
-    ctx.rotate(robAng);
-    ctx.fillStyle = (r.state === 'repairing') ? '#8ac0e0' : '#e0a63a';
+    ctx.moveTo(r.x - Math.cos(robAng) * 16, r.y - Math.sin(robAng) * 16);
+    ctx.lineTo(r.x - Math.cos(robAng) * 34, r.y - Math.sin(robAng) * 34);
+    ctx.stroke();
+  }
+  // 阴影
+  ctx.fillStyle = 'rgba(0,0,0,.25)';
+  ctx.beginPath();
+  ctx.ellipse(r.x, r.y + 11, 7, 3, 0, 0, 7);
+  ctx.fill();
+  // 施工/充电光效（绿色脉冲）
+  if (r.state === 'building' || r.state === 'charging' || r.state === 'repairing') {
+    ctx.fillStyle = 'rgba(120,230,120,.5)';
     ctx.beginPath();
-    ctx.moveTo(13, 0); ctx.lineTo(-8, -8); ctx.lineTo(-4, 0); ctx.lineTo(-8, 8);
-    ctx.closePath();
+    ctx.arc(r.x, r.y, 10 + (performance.now() % 300) / 300 * 5, 0, 7);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = 1.2; ctx.stroke();
-    ctx.restore();
-    // 施工工具小图标
-    ctx.fillStyle = '#e0e0a0';
-    ctx.font = 'bold 10px system-ui';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText((r.state === 'repairing') ? '🛠' : '🔧', r.x + 8, r.y - 8);
-    // 头顶电量条：黄(>50%)→橙(≤50%)→红(≤25%)；充电/回港停靠时偏绿闪烁，直观反映“飞回来充电”
-    const Ew = 16, Eh = 4;
-    const bx = r.x - Ew / 2, by = r.y - 15;
-    const frac = Math.max(0, Math.min(1, r.e / r.maxE));
-    ctx.fillStyle = 'rgba(0,0,0,.55)';
-    ctx.fillRect(bx - 1, by - 1, Ew + 2, Eh + 2);
-    ctx.fillStyle = (r.state === 'charging')
-      ? ((Math.floor(performance.now() / 120) % 2 === 0) ? '#5ad06a' : '#7de58a')
-      : (frac > 0.5 ? '#d8b84a' : (frac > 0.25 ? '#e08a3a' : '#d04a3a'));
-    ctx.fillRect(bx, by, Ew * frac, Eh);
-    ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1; ctx.strokeRect(bx, by, Ew, Eh);
-    // 头顶携带图标：去建造 → 显示所送建筑；拆除返回 → 显示随身携带的拆除物（对齐《异星工厂》机器人携物飞行）
-    const carry = constrRobotCarryIcon(r);
-    if (carry) {
-      drawItemDot(ctx, r.x, r.y - 26, carry.id, 8);
-      if (carry.n > 1 && typeof carry.id === 'string') {
-        ctx.font = 'bold 9px system-ui';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        const cn = String(carry.n);
-        ctx.fillStyle = 'rgba(0,0,0,.6)';
-        rr(ctx, r.x + 8, r.y - 30, 12 + cn.length * 5, 10, 3); ctx.fill();
-        ctx.fillStyle = '#fff'; ctx.fillText(cn, r.x + 14 + cn.length * 2.5, r.y - 25);
-      }
+  }
+  ctx.save();
+  ctx.translate(r.x, r.y);
+  ctx.rotate(robAng);
+  ctx.fillStyle = (r.state === 'repairing') ? '#8ac0e0' : '#e0a63a';
+  ctx.beginPath();
+  ctx.moveTo(13, 0); ctx.lineTo(-8, -8); ctx.lineTo(-4, 0); ctx.lineTo(-8, 8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.restore();
+  // 施工工具小图标
+  ctx.fillStyle = '#e0e0a0';
+  ctx.font = 'bold 10px system-ui';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText((r.state === 'repairing') ? '🛠' : '🔧', r.x + 8, r.y - 8);
+  // 头顶电量条：黄(>50%)→橙(≤50%)→红(≤25%)；充电/回港停靠时偏绿闪烁，直观反映“飞回来充电”
+  const Ew = 16, Eh = 4;
+  const bx = r.x - Ew / 2, by = r.y - 15;
+  const frac = Math.max(0, Math.min(1, (r.e || 0) / (r.maxE || 1)));
+  ctx.fillStyle = 'rgba(0,0,0,.55)';
+  ctx.fillRect(bx - 1, by - 1, Ew + 2, Eh + 2);
+  ctx.fillStyle = (r.state === 'charging')
+    ? ((Math.floor(performance.now() / 120) % 2 === 0) ? '#5ad06a' : '#7de58a')
+    : (frac > 0.5 ? '#d8b84a' : (frac > 0.25 ? '#e08a3a' : '#d04a3a'));
+  ctx.fillRect(bx, by, Ew * frac, Eh);
+  ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1; ctx.strokeRect(bx, by, Ew, Eh);
+  // 头顶携带图标：去建造 → 显示所送建筑；拆除返回 → 显示随身携带的拆除物（对齐《异星工厂》机器人携物飞行）
+  const carry = constrRobotCarryIcon(r);
+  if (carry) {
+    drawItemDot(ctx, r.x, r.y - 26, carry.id, 8);
+    if (carry.n > 1 && typeof carry.id === 'string') {
+      ctx.font = 'bold 9px system-ui';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const cn = String(carry.n);
+      ctx.fillStyle = 'rgba(0,0,0,.6)';
+      rr(ctx, r.x + 8, r.y - 30, 12 + cn.length * 5, 10, 3); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.fillText(cn, r.x + 14 + cn.length * 2.5, r.y - 25);
     }
   }
 }
@@ -811,6 +1218,12 @@ function drawConstruction(ctx) {
 // 计算机器人头顶应显示的携带物品图标与数量：拆除归途取 cargo 首项；
 // 去建造（toghost 且任务为 build）显示所送建筑类型。无携带返回 null。
 function constrRobotCarryIcon(r) {
+  // 网络建设机器人（机器人港派发）：仅在「拿到物品去建造」阶段（toghost）显示携物图标，
+  // 取物阶段（collecting，去箱途中）显示；拆除完携带拆除物返航（returning）时显示随身拆除物。
+  if (r.home) {
+    if (r.cargo && r.cargo.length) return { id: r.cargo[0][0], n: r.cargo[0][1] };  // 拆除物
+    return (r.state === 'toghost' && r._picked && r.carry) ? { id: r.carry.item, n: r.carry.count } : null;
+  }
   if (r.cargo && r.cargo.length) return { id: r.cargo[0][0], n: r.cargo[0][1] };
   if (r.job && r.job.kind === 'build' && r.job.ghost) return { id: r.job.ghost.type, n: 1 };
   return null;
@@ -824,10 +1237,11 @@ function constrSerialize() {
         w: g.w, h: g.h, quality: g.quality, needId: g.needId, recipe: g.recipe, consumes: g.consumes
       }))
     : [];
-  // 拆除标记随存档持久化：仅记录其指向实体的左上角瓦片坐标（x/y），
-  // 读档时（实体已恢复）按坐标重新关联回对应实体，实体已不存在则跳过。
+  // 拆除标记随存档持久化：记录其指向实体的左上角瓦片坐标（x/y）或树木瓦片坐标，
+  // 读档时（实体已恢复）按坐标重新关联回对应实体；树木标记按瓦片判定地形仍为树；均不存在则跳过。
   const deconMarks = (G.deconMarks && G.deconMarks.length)
-    ? G.deconMarks.filter(m => !m._dead && m.ent && !m.ent._dead).map(m => ({ x: m.x, y: m.y }))
+    ? G.deconMarks.filter(m => !m._dead && deconMarkValid(m)).map(m =>
+        m.tree ? { x: m.x, y: m.y, tree: true } : { x: m.x, y: m.y })
     : [];
   return {
     personalRoboport: G.personalRoboport === 'mk2' ? 'mk2' : !!G.personalRoboport,
@@ -861,11 +1275,16 @@ function constrRestore(s) {
   }
   // 恢复存档中的“拆除标记”（红图框选生成，由施工机器人拆除），按左上角瓦片坐标重新关联到已恢复的实体。
   // 读档时实体已先于此处恢复（applySave 先重建 d.ents），故可经 entAt 直接定位；
-  // 实体已不存在（保存后/读档前被拆除）则跳过该标记。
+  // 实体已不存在（保存后/读档前被拆除）则跳过该标记。树木标记按瓦片判定地形仍为 T_TREE。
   const mdefs = (s && Array.isArray(s.deconMarks)) ? s.deconMarks : [];
   for (const md of mdefs) {
     if (!md || typeof md.x !== 'number' || typeof md.y !== 'number') continue;
     try {
+      if (md.tree) {
+        if (getTerrain(md.x | 0, md.y | 0) !== T_TREE) continue;
+        G.deconMarks.push(treeDeconMark(md.x | 0, md.y | 0));
+        continue;
+      }
       const e = entAt(md.x | 0, md.y | 0);
       if (!e || e._dead) continue;
       G.deconMarks.push(new DeconMark(e));

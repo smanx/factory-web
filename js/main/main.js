@@ -63,6 +63,7 @@ var G = {
   blueStart: null,        // 框选起点瓦片
   blueEnd: null,          // 框选终点瓦片
   blueSelecting: false,   // 正在拖拽框选
+  blueUnmark: false,      // 红图框选为「取消拆除标记」（Shift 按住时置位）
   blueRot: 0,             // 蓝图粘贴旋转次数（0-3，顺时针90°）
   blueFlipH: false,       // 蓝图粘贴水平翻转
   blueFlipV: false,       // 蓝图粘贴垂直翻转
@@ -172,6 +173,7 @@ function newGame() {
   G.logiRobots = [];
   G.logiNet = null;
   G.logiNetT = 0;
+  G.netRobots = [];   // 新游戏清空物流网络建设机器人
   G.logiRequest = {};   // 新游戏清空个人物流请求
   G.trashSlots = {};     // 新游戏清空个人垃圾桶标记
   G.logiReqGrid = null;  // 新游戏清空物流需求区格子布局
@@ -622,6 +624,7 @@ function applySave(d) {
   G.logiRobots = [];
   G.logiNet = null;
   G.logiNetT = 0;
+  G.netRobots = [];   // 读档清空物流网络建设机器人
   if (typeof constrRestore === 'function') constrRestore(d.constr);
   if (typeof equipmentRestore === 'function') equipmentRestore(d.equipment);
   if (typeof rebuildTrains === 'function') rebuildTrains();

@@ -248,10 +248,10 @@ function render() {
   // 天气系统：动态云影覆盖层（低开销，不影响分块缓存）
   if (typeof drawWeatherOverlay === 'function') drawWeatherOverlay(ctx, W, H);
 
-  // 小地图（位于画布右下角）；远程视图下隐藏，避免遮挡全景
-  if (G.settings && G.settings.minimap !== false && !G.remoteView) drawMinimap(ctx);
-  // 设备信息面板：鼠标悬停设备时在小地图下方显示长条详情（远程视图下同样隐藏）
-  if (typeof drawDeviceInfoBar === 'function' && !G.remoteView) drawDeviceInfoBar(ctx);
+  // 小地图（位于画布右下角）；远程视图下同样显示（镜头中心跟随远程镜头）
+  if (G.settings && G.settings.minimap !== false) drawMinimap(ctx);
+  // 设备信息面板：鼠标悬停设备时在小地图下方显示长条详情（远程视图下同样显示）
+  if (typeof drawDeviceInfoBar === 'function') drawDeviceInfoBar(ctx);
   // 远程视图顶栏由 DOM 元素渲染（#remote-bar / #remote-close），不再绘制于画布
 }
 

@@ -59,6 +59,8 @@ function drawEntity(ctx, e, gx, gy, dir, alpha) {
   if (alpha === 1 && !LOD.simple) drawRunRing(ctx, e, gx, gy);
   // 缺电警告图标（发电/耗电设备共用）：未接入电网=黄插头，已接入但电网无电=红闪电，慢闪。
   if (alpha === 1) drawPowerWarning(ctx, e, gx, gy);
+  // 五色物流箱「未接入物流网络」警告：未被通电机器人港供应区覆盖时黄三角闪烁（同缺电警告频率）。
+  if (alpha === 1 && typeof drawLogiCoverWarn === 'function') drawLogiCoverWarn(ctx, e, gx, gy);
 }
 
 // 已有自身进度环的设备（在各自皮肤/绘制中显式绘制，同样仅 ALT 详情模式显示），
@@ -321,13 +323,10 @@ function drawChestAltIcons(ctx, e, icons) {
   if (n === 1) {
     // 单个物品：图标为格子的 1/2（原来同大缩小一半），盖在箱子上面
     drawItemGlyph(ctx, ids[0], cx, cy, tilePx / 2);
-    ctx.restore();
-    return;
-  }
-  const iconSize = tilePx / 4;                   // 每个图标宽度 = 格子的 1/4（原来 1/2 缩小一半）
-  const gap = Math.max(1, iconSize * 0.08);      // 图标间极小间隔（避免图标边缘粘连）
-  if (n === 4) {
+  } else if (n === 4) {
     // 4 个：2×2 方形
+    const iconSize = tilePx / 4;                 // 每个图标宽度 = 格子的 1/4（原来 1/2 缩小一半）
+    const gap = Math.max(1, iconSize * 0.08);    // 图标间极小间隔（避免图标边缘粘连）
     const x0 = cx - iconSize - gap / 2;
     const y0 = cy - iconSize - gap / 2;
     for (let i = 0; i < 4; i++) {
@@ -335,17 +334,21 @@ function drawChestAltIcons(ctx, e, icons) {
       const iy = y0 + Math.floor(i / 2) * (iconSize + gap);
       drawItemGlyph(ctx, ids[i], ix + iconSize / 2, iy + iconSize / 2, iconSize);
     }
-    ctx.restore();
-    return;
-  }
-  // 2 / 3 个：横向按顺序排列
-  const totalW = n * iconSize + (n - 1) * gap;
-  const x0 = cx - totalW / 2;
-  for (let i = 0; i < n; i++) {
-    const ix = x0 + i * (iconSize + gap);
-    drawItemGlyph(ctx, ids[i], ix + iconSize / 2, cy, iconSize);
+  } else {
+    // 2 / 3 个：横向按顺序排列
+    const iconSize = tilePx / 4;
+    const gap = Math.max(1, iconSize * 0.08);
+    const totalW = n * iconSize + (n - 1) * gap;
+    const x0 = cx - totalW / 2;
+    for (let i = 0; i < n; i++) {
+      const ix = x0 + i * (iconSize + gap);
+      drawItemGlyph(ctx, ids[i], ix + iconSize / 2, cy, iconSize);
+    }
   }
   ctx.restore();
+  // 五色物流箱「未接入物流网络」警告：ALT 物品图标是后绘制覆盖其上的，
+  // 这里在图标之后再画一遍，确保警告三角位于物品图标上层、不被遮挡。
+  if (typeof drawLogiCoverWarn === 'function') drawLogiCoverWarn(ctx, e, e.x, e.y);
 }
 
 function getGhostEnt(type) {
@@ -745,6 +748,24 @@ function drawPowerWarning(ctx, e, gx, gy) {
 function _coverageRectsOverlap(b, rc) {
   return b.x < rc.x1 && b.x + (b.w || 1) > rc.x0 && b.y < rc.y1 && b.y + (b.h || 1) > rc.y0;
 }
+// 矩形求交（返回交集矩形；不相交返回 null）。rc 为 {x0,y0,x1,y1} 格坐标。
+function _rectISect(a, b) {
+  const x0 = Math.max(a.x0, b.x0), y0 = Math.max(a.y0, b.y0);
+  const x1 = Math.min(a.x1, b.x1), y1 = Math.min(a.y1, b.y1);
+  if (x1 <= x0 || y1 <= y0) return null;
+  return { x0, y0, x1, y1 };
+}
+// 矩形减法 a \ b：把矩形 a 减去与 b 的相交区，拆成最多 4 个互不相交的矩形（简化多边形布尔减）。
+function _subtractRect(a, b) {
+  const I = _rectISect(a, b);
+  if (!I) return [a];
+  const out = [];
+  if (I.y0 > a.y0) out.push({ x0: a.x0, y0: a.y0, x1: a.x1, y1: I.y0 });   // 上
+  if (I.y1 < a.y1) out.push({ x0: a.x0, y0: I.y1, x1: a.x1, y1: a.y1 });   // 下
+  if (I.x0 > a.x0) out.push({ x0: a.x0, y0: Math.max(a.y0, I.y0), x1: I.x0, y1: Math.min(a.y1, I.y1) }); // 左
+  if (I.x1 < a.x1) out.push({ x0: I.x1, y0: Math.max(a.y0, I.y0), x1: a.x1, y1: Math.min(a.y1, I.y1) }); // 右
+  return out;
+}
 function _drawCoverageFill(ctx, rc, fill, stroke) {
   ctx.fillStyle = fill;
   ctx.fillRect(rc.x0 * TILE, rc.y0 * TILE, (rc.x1 - rc.x0) * TILE, (rc.y1 - rc.y0) * TILE);
@@ -766,6 +787,12 @@ function _drawCornerBrackets(ctx, b, col) {
   ctx.stroke();
 }
 function _isPoleType(type) { return !!(GAME_DATA.pole && GAME_DATA.pole[type]); }
+// 五色物流箱（官方五种物流容器）：被动供应(红)/主动供应(紫)/仓储(黄)/需求(蓝)/缓冲(绿)。
+// 放置它们时需显示机器人港的物流网络覆盖，用于判断新箱是否接入网络。
+function _isLogiChest(type) {
+  return type === 'passive-provider-chest' || type === 'active-provider-chest' ||
+         type === 'storage-chest' || type === 'requester-chest' || type === 'buffer-chest';
+}
 function drawPoleCoverage(ctx) {
   if (typeof poleSupplyRect !== 'function' || !G.cursorTile) return;
   // —— 放置电线杆幽灵态 ——
@@ -980,13 +1007,25 @@ function drawRoboportCoverage(ctx) {
       drawLinks(ctX * TILE, ctY * TILE, null);
     }
   }
+  // —— 放置物流箱（五色物流箱）幽灵：显示所有机器人在网物流网覆盖范围 ——
+  // 对齐《异星工厂》：拿起物流箱放置时会显示机器人港的物流覆盖，方便判断新箱落在哪个网络内。
+  else if (sel && _isLogiChest(sel)) {
+    for (const o of G.ents) {
+      if (o._dead || !isPort(o) || !onScreen(o)) continue;
+      const prcs = rcOf(o.x + o.w / 2, o.y + o.h / 2);
+      drawBox(prcs[0], H_FILL[0], H_STROKE[0]);   // 供应(物流)范围：橙框 —— 网络覆盖面积
+      drawBox(prcs[1], H_FILL[1], H_STROKE[1]);   // 建设(建造)范围：绿框 —— 施工活动面积
+    }
+  }
 }
 
-// ===== 个人机器人港建造范围可视化（对齐《异星工厂》：Personal roboport 建造范围方框）=====
-// 按住 Shift（虚影放置模式，对齐《异星工厂》ghost 放置）时，在角色周围画出个人机器人港的
-// 施工范围方框：绿色方框半边长 = constrRoboportInfo().range（格），与 updateConstruction 中
-// 施工机器人的施工范围判定一致（切比雪夫距离 max(|dx|,|dy|) ≤ range）。
-// 仅按住 Shift 且处于放置建筑上下文时显示；未装备个人机器人港则不显示。
+// ===== 机器人港/个人建造范围可视化（对齐《异星工厂》roboport 覆盖面积）=====
+// 按住 Shift（虚影放置模式，对齐《异星工厂》ghost 放置）时，在角色周围画出：
+//   ① 物流/供应范围（橙框）：机器人港物流覆盖（半边长 R_L=25），物流机器人取送物的活动区；
+//   ② 建设范围（绿框）：机器人港建造覆盖（半边长 R_C=55），建设机器人施工的活动区；
+//   ③ 个人机器人港建造范围（绿色小框，半边长 = constrRoboportInfo().range）。
+// 三类范围全部显示；其中个人范围与网络建设覆盖重合处只显示网络，个人仅画“超出网络”的部分
+// （橙色描边强调），与网络覆盖本身形成区分（对齐此前“网络优先”规则）。
 function drawPersonalRoboportRange(ctx) {
   if (typeof hasPersonalRoboport !== 'function' || !hasPersonalRoboport()) return;
   // 仅“按住 Shift 放置虚影”时显示（正常放置/平时不显示），且须处于可建造/蓝图上下文
@@ -994,14 +1033,67 @@ function drawPersonalRoboportRange(ctx) {
   if (typeof constrRoboportInfo !== 'function') return;
   const range = constrRoboportInfo().range || 15;
   const pcx = G.player.x / TILE, pcy = G.player.y / TILE;
-  const rc = {
+  const prc = {
     x0: Math.floor(pcx - range), y0: Math.floor(pcy - range),
     x1: Math.ceil(pcx + range), y1: Math.ceil(pcy + range)
   };
   // 视口剔除（与机器人港范围框一致：rc 为格坐标，须 ×TILE 统一单位再与 FRAME_BOUNDS 比较）
-  if (rc.x1 * TILE < FRAME_BOUNDS.x1 || rc.x0 * TILE > FRAME_BOUNDS.x0 ||
-      rc.y1 * TILE < FRAME_BOUNDS.y1 || rc.y0 * TILE > FRAME_BOUNDS.y0) return;
-  _drawCoverageFill(ctx, rc, 'rgba(92,225,134,.10)', 'rgba(148,255,178,.75)');
+  if (prc.x1 * TILE < FRAME_BOUNDS.x1 || prc.x0 * TILE > FRAME_BOUNDS.x0 ||
+      prc.y1 * TILE < FRAME_BOUNDS.y1 || prc.y0 * TILE > FRAME_BOUNDS.y0) return;
+  // 个人范围样式（绿色）
+  const P_FILL = 'rgba(92,225,134,.10)', P_STROKE = 'rgba(148,255,178,.75)';
+  // 网络覆盖样式：物流/供应（橙）、建设（绿）
+  const N_FILL_L = 'rgba(255,150,48,.18)', N_STROKE_L = 'rgba(255,184,94,.9)';
+  const N_FILL_C = 'rgba(92,225,134,.12)', N_STROKE_C = 'rgba(148,255,178,.8)';
+  const inView = (rc) => !(rc.x1 * TILE < FRAME_BOUNDS.x1 || rc.x0 * TILE > FRAME_BOUNDS.x0 ||
+                           rc.y1 * TILE < FRAME_BOUNDS.y1 || rc.y0 * TILE > FRAME_BOUNDS.y0);
+
+  // —— 收集机器人港（物流网络）覆盖 ——
+  // 只统计「已通电」的港（未接入电网/停电的港不提供覆盖），以港中心向四周外扩成方框；
+  // 物流/供应半边长 R_L、建设半边长 R_C（与 drawRoboportCoverage / updateNetConstruction 一致）。
+  const R_L = (typeof ROBOPORT_LOGI_RANGE === 'number') ? ROBOPORT_LOGI_RANGE : 25;
+  const R_C = (typeof ROBOPORT_CONSTR_RANGE === 'number') ? ROBOPORT_CONSTR_RANGE : 55;
+  const isPort = (v) => !!v && v.type === 'roboport';
+  const ports = [];
+  for (const e of G.ents) {
+    if (e._dead || !isPort(e)) continue;
+    if (typeof powerSatOf === 'function' && powerSatOf(e) <= 0) continue;
+    const ctX = e.x + e.w / 2, ctY = e.y + e.h / 2;
+    // 只收集可能与个人范围相关的港，减少逐帧计算；相关区近似为 建设半边长+个人半径 的方框
+    if (Math.abs(ctX - pcx) > R_C + range || Math.abs(ctY - pcy) > R_C + range) continue;
+    ports.push({ x: ctX, y: ctY });
+  }
+  // 无任一已通电港 → 照原样只画个人范围
+  if (!ports.length) { _drawCoverageFill(ctx, prc, P_FILL, P_STROKE); return; }
+
+  // —— 已通电港：物流/供应范围（橙框 R_L）与建设范围（绿框 R_C）全部显示 ——
+  const netCRects = [];
+  for (const p of ports) {
+    const rcL = { x0: p.x - R_L, y0: p.y - R_L, x1: p.x + R_L, y1: p.y + R_L };
+    const rcC = { x0: p.x - R_C, y0: p.y - R_C, x1: p.x + R_C, y1: p.y + R_C };
+    if (inView(rcL)) _drawCoverageFill(ctx, rcL, N_FILL_L, N_STROKE_L);   // ① 物流/供应范围
+    if (inView(rcC)) _drawCoverageFill(ctx, rcC, N_FILL_C, N_STROKE_C);   // ② 建设范围
+    netCRects.push(rcC);
+  }
+
+  // —— ③ 个人建造范围：与网络建设覆盖重合处只显示网络，个人仅画“超出网络”部分 ——
+  const overlaps = netCRects.some(rc => !!_rectISect(prc, rc));
+  if (!overlaps) { _drawCoverageFill(ctx, prc, P_FILL, P_STROKE); return; }
+  // 个人范围减「网络建设覆盖并集」→ 得到个人的超出部分；仅对有交集的港矩形做减法，控制碎块数量
+  let pieces = [prc];
+  for (const rc of netCRects) {
+    if (!pieces.length) break;
+    const next = [];
+    for (const p of pieces) {
+      if (!_rectISect(p, rc)) { next.push(p); continue; }
+      for (const s of _subtractRect(p, rc)) if (s.x1 > s.x0 && s.y1 > s.y0) next.push(s);
+    }
+    pieces = next;
+  }
+  for (const p of pieces) {
+    if (!inView(p)) continue;
+    _drawCoverageFill(ctx, p, 'rgba(92,225,134,.16)', 'rgba(255,178,80,.9)');  // 超出部分：橙描边强调
+  }
 }
 // 是否处于“放置建筑”上下文：手持可建造建筑（含品质后缀）或蓝图物品/蓝图粘贴中。
 function _placingBuildableOrBlueprint() {
@@ -1045,15 +1137,17 @@ function drawHoverAndMining(ctx) {
     return;
   }
   // 鼠标移到“建造虚影”上同样框选住（与实体高亮一致；虚影只落在空格上，故 e 为空时判定）
+  // 远程视图下不做距离限制（可框住任意远处的虚影）
   if (!e && typeof ghostAt === 'function') {
     const g = ghostAt(tx, ty, 1, 1);
-    if (g && withinReach(tx, ty)) {
+    if (g && (G.remoteView || withinReach(tx, ty))) {
       ctx.strokeStyle = 'rgba(255,255,255,.8)';
       ctx.lineWidth = 2 / G.cam.z;
       ctx.strokeRect(g.x * TILE + 1, g.y * TILE + 1, g.w * TILE - 2, g.h * TILE - 2);
     }
   }
-  if (e && withinReach(tx, ty)) {
+  // 远程视图下不做距离限制：鼠标移到任意远处的设备上也框选住（对齐《异星工厂》地图视图悬停高亮）
+  if (e && (G.remoteView || withinReach(tx, ty))) {
     ctx.strokeStyle = 'rgba(255,255,255,.8)';
     ctx.lineWidth = 2 / G.cam.z;
     ctx.strokeRect(e.x * TILE + 1, e.y * TILE + 1, e.w * TILE - 2, e.h * TILE - 2);

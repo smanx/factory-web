@@ -1,18 +1,86 @@
 'use strict';
 
-// ===== 框选模式的白色十字光标 =====
+// ===== 框选模式的白色十字光标（右下角叠加模式图标） =====
 // 按下 Ctrl+C / Ctrl+X / Alt+B（以及 Alt+D 红图 / Alt+U 绿图）进入框选时，
 // 把地图画布的十字光标换成白色（系统默认 crosshair 为黑色，深色地面/夜间不明显）；
 // 退出框选或转入蓝图粘贴模式时还原默认光标。
 // 用内联 SVG 画十字：横竖细线贯穿到中心相交（中间不留空且不额外加粗），
 // 白色主线条 + 半透明深色描边衬底，亮色地面（混凝土等）上也可见。
-const BP_CURSOR_WHITE = 'url("data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724%27 height=%2724%27%3E%3Cg fill=%27none%27 stroke=%27rgba(0,0,0,0.55)%27 stroke-width=%273.2%27 stroke-linecap=%27round%27%3E%3Cline x1=%2712%27 y1=%272%27 x2=%2712%27 y2=%2722%27/%3E%3Cline x1=%272%27 y1=%2712%27 x2=%2722%27 y2=%2712%27/%3E%3C/g%3E%3Cg fill=%27none%27 stroke=%27white%27 stroke-width=%271.8%27 stroke-linecap=%27round%27%3E%3Cline x1=%2712%27 y1=%272%27 x2=%2712%27 y2=%2722%27/%3E%3Cline x1=%272%27 y1=%2712%27 x2=%2722%27 y2=%2712%27/%3E%3C/g%3E%3C/svg%3E") 12 12, crosshair';
+// 十字右下角叠加对应模式的小图标：Ctrl+C 复制 / Ctrl+X 剪切 / Alt+D 红图 / Alt+B 蓝图。
+// 光标 SVG 骨架：十字中心对齐鼠标热点 (12,12)，图标放在右下角 (18,18) 起的空白区。
+const _BP_CURSOR_SVG = (icon) =>
+  '<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'32\' height=\'32\'>' +
+    '<g fill=\'none\' stroke=\'rgba(0,0,0,0.55)\' stroke-width=\'3.2\' stroke-linecap=\'round\'>' +
+      '<line x1=\'12\' y1=\'1\' x2=\'12\' y2=\'23\'/>' +
+      '<line x1=\'1\' y1=\'12\' x2=\'23\' y2=\'12\'/>' +
+    '</g>' +
+    '<g fill=\'none\' stroke=\'white\' stroke-width=\'1.8\' stroke-linecap=\'round\'>' +
+      '<line x1=\'12\' y1=\'1\' x2=\'12\' y2=\'23\'/>' +
+      '<line x1=\'1\' y1=\'12\' x2=\'23\' y2=\'12\'/>' +
+    '</g>' +
+    (icon ? '<g transform=\'translate(18,18)\'>' + icon + '</g>' : '') +
+  '</svg>';
 
-// 按当前框选状态同步地图画布光标：框选类模式用白色十字，其余还原 CSS 默认。
+// 复制（Ctrl+C）：两张重叠纸张（前页白底后页露出）
+const _BP_ICON_COPY =
+  '<g fill=\'none\' stroke=\'rgba(0,0,0,0.55)\' stroke-width=\'2.6\'>' +
+    '<rect x=\'1\' y=\'1\' width=\'9\' height=\'9\' rx=\'1.5\'/>' +
+    '<rect x=\'4\' y=\'4\' width=\'9\' height=\'9\' rx=\'1.5\' fill=\'white\'/>' +
+  '</g>' +
+  '<g fill=\'none\' stroke=\'white\' stroke-width=\'1.6\'>' +
+    '<rect x=\'1\' y=\'1\' width=\'9\' height=\'9\' rx=\'1.5\'/>' +
+    '<rect x=\'4\' y=\'4\' width=\'9\' height=\'9\' rx=\'1.5\'/>' +
+  '</g>';
+
+// 剪切（Ctrl+X）：剪刀（两枚指圈 + 交叉刀身）
+const _BP_ICON_CUT =
+  '<g fill=\'none\' stroke=\'rgba(0,0,0,0.55)\' stroke-width=\'2.6\'>' +
+    '<circle cx=\'3\' cy=\'3\' r=\'2.4\'/>' +
+    '<circle cx=\'3\' cy=\'10.5\' r=\'2.4\'/>' +
+    '<line x1=\'5.4\' y1=\'5.4\' x2=\'13\' y2=\'8.2\'/>' +
+    '<line x1=\'5.4\' y1=\'8\' x2=\'13\' y2=\'5.2\'/>' +
+  '</g>' +
+  '<g fill=\'none\' stroke=\'white\' stroke-width=\'1.5\'>' +
+    '<circle cx=\'3\' cy=\'3\' r=\'2.4\'/>' +
+    '<circle cx=\'3\' cy=\'10.5\' r=\'2.4\'/>' +
+    '<line x1=\'5.4\' y1=\'5.4\' x2=\'13\' y2=\'8.2\'/>' +
+    '<line x1=\'5.4\' y1=\'8\' x2=\'13\' y2=\'5.2\'/>' +
+  '</g>';
+
+// 红图（Alt+D）：红色虚线框 + 内部红底小屋
+const _BP_ICON_RED =
+  '<g fill=\'none\' stroke=\'#ff6b4a\' stroke-width=\'2\' stroke-dasharray=\'3 2\'>' +
+    '<rect x=\'1\' y=\'1\' width=\'12\' height=\'12\' rx=\'2\'/>' +
+  '</g>' +
+  '<g fill=\'rgba(255,107,74,0.35)\' stroke=\'#ff6b4a\' stroke-width=\'1.4\'>' +
+    '<path d=\'M6.5 3 L10 6.2 L10 12 L3 12 L3 6.2 Z\'/>' +
+  '</g>';
+
+// 蓝图（Alt+B）：蓝色虚线框 + 内部蓝底小屋
+const _BP_ICON_BLUE =
+  '<g fill=\'none\' stroke=\'#59b0ff\' stroke-width=\'2\' stroke-dasharray=\'3 2\'>' +
+    '<rect x=\'1\' y=\'1\' width=\'12\' height=\'12\' rx=\'2\'/>' +
+  '</g>' +
+  '<g fill=\'rgba(89,176,255,0.35)\' stroke=\'#59b0ff\' stroke-width=\'1.4\'>' +
+    '<path d=\'M6.5 3 L10 6.2 L10 12 L3 12 L3 6.2 Z\'/>' +
+  '</g>';
+
+const _BP_CURSOR_ICON = { blue: _BP_ICON_COPY, cut: _BP_ICON_CUT, red: _BP_ICON_RED, bluecreate: _BP_ICON_BLUE };
+
+// 按模式生成十字光标 data URI；未匹配的框选模式（如绿图）只显示纯十字。
+const _BP_CURSOR_URL = (mode) => {
+  const icon = _BP_CURSOR_ICON[mode] || '';
+  const svg = _BP_CURSOR_SVG(icon)
+    .replace(/</g, '%3C').replace(/>/g, '%3E')
+    .replace(/'/g, '%27').replace(/#/g, '%23');
+  return 'url("data:image/svg+xml;utf8,' + svg + '") 12 12, crosshair';
+};
+
+// 按当前框选状态同步地图画布光标：框选类模式用白色十字（按模式带图标），其余还原 CSS 默认。
 function syncBlueprintCursor() {
   const c = document.getElementById('game');
   if (!c) return;
-  c.style.cursor = (G.blueMode && G.blueMode !== 'paste') ? BP_CURSOR_WHITE : '';
+  c.style.cursor = (G.blueMode && G.blueMode !== 'paste') ? _BP_CURSOR_URL(G.blueMode) : '';
 }
 
 // ===== 蓝图 / 红图：框选一整块进行复制粘贴或删除 =====
@@ -45,11 +113,19 @@ function toggleBlueprint(mode) {
 function cancelBlueprint() {
   G.blueMode = null;
   G.blueStart = null; G.blueEnd = null;
+  G.blueUnmark = false;
   G.blueRot = 0; G.blueFlipH = false; G.blueFlipV = false;
   G.greenRect = null; G.greenAction = null;
   hideGreenBar();
   syncBlueprintCursor();
   refreshHotbar();
+}
+
+// 四种快捷框选模式（Ctrl+C 复制 / Ctrl+X 剪切 / Alt+D 红图 / Alt+B 蓝图）：
+// 用户点击拿起任意物品（背包/设备/护甲）时退出当前模式。
+function cancelQuickBoxOnPickup() {
+  const m = G.blueMode;
+  if (m === 'blue' || m === 'cut' || m === 'red' || m === 'bluecreate') cancelBlueprint();
 }
 
 // 框选矩形（瓦片坐标，规范化左上/右下）
@@ -76,9 +152,21 @@ function applyRedBlueprint() {
   const ng = (typeof removeGhostsInRect === 'function') ? removeGhostsInRect(r) : 0;
   G.blueStart = null; G.blueEnd = null;
   const msg = [];
-  if (n > 0) msg.push('已标记 ' + n + ' 个建筑待拆除' + (constrPending().decon > 0 ? '（剩 ' + constrPending().decon + ' 个待拆）' : ''));
+  if (n > 0) msg.push('已标记 ' + n + ' 个建筑/树木待拆除' + (constrPending().decon > 0 ? '（剩 ' + constrPending().decon + ' 个待拆）' : ''));
   if (ng > 0) msg.push('已清除 ' + ng + ' 个建造虚影');
   toast(msg.length ? msg.join('；') : '区域内没有可拆除的建筑或虚影');
+  uiDirty = true;
+}
+
+// 红图 + Shift 框选：取消框选区域内已登记的拆除标记（红叉），建筑恢复不被拆除。
+// 与 applyRedBlueprint 同口径：以实体中心判定；只清除拆除标记，不影响建造虚影。
+function applyUnmarkRedBlueprint() {
+  const r = blueRect();
+  if (!r) return;
+  const n = (typeof unmarkAreaForDecon === 'function') ? unmarkAreaForDecon(r) : 0;
+  G.blueStart = null; G.blueEnd = null;
+  if (n > 0) toast('已取消 ' + n + ' 个建筑的拆除标记');
+  else toast('框选区域内没有拆除标记');
   uiDirty = true;
 }
 

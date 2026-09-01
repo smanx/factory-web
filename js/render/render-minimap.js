@@ -84,7 +84,9 @@ function drawMinimap(ctx) {
   const size = MINIMAP_SIZE;
   const pad = 0;
   const x0 = W - size - pad, y0 = pad; // 小地图移至上（右）角显示
-  const pcx = G.player.x / TILE, pcy = G.player.y / TILE;
+  // 正常视角以玩家为中心；远程视图以镜头位置为中心（镜头可远离玩家），玩家另行标出
+  const pcx = (G.remoteView ? G.cam.px : G.player.x) / TILE;
+  const pcy = (G.remoteView ? G.cam.py : G.player.y) / TILE;
   const z = MINIMAP_ZOOM;
   const cx = x0 + size / 2, cy = y0 + size / 2;
   // 背景框
@@ -119,15 +121,36 @@ function drawMinimap(ctx) {
   ctx.strokeStyle = 'rgba(140,200,160,0.4)';
   ctx.lineWidth = 1;
   ctx.strokeRect(x0, y0, size, size);
-  // 玩家位置亮点
+  // 位置亮点：正常视角下为玩家（位于中心）；远程视图下中心为镜头位置（淡色标记），
+  // 玩家若在小地图视野内则单独以亮黄色标出，方便远程览图时定位玩家
   const ppx = x0 + size / 2, ppy = y0 + size / 2;
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath();
-  ctx.arc(ppx, ppy, 2.6, 0, 7);
-  ctx.fill();
-  ctx.strokeStyle = '#ffd23c';
-  ctx.lineWidth = 1.2;
-  ctx.stroke();
+  if (G.remoteView) {
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.beginPath();
+    ctx.arc(ppx, ppy, 2, 0, 7);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    const plx = x0 + (G.player.x / TILE - pcx) * z, ply = y0 + (G.player.y / TILE - pcy) * z;
+    if (plx >= x0 - 3 && plx <= x0 + size + 3 && ply >= y0 - 3 && ply <= y0 + size + 3) {
+      ctx.fillStyle = '#ffd23c';
+      ctx.beginPath();
+      ctx.arc(plx, ply, 2.6, 0, 7);
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    }
+  } else {
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(ppx, ppy, 2.6, 0, 7);
+    ctx.fill();
+    ctx.strokeStyle = '#ffd23c';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+  }
   // 标题
   ctx.fillStyle = 'rgba(200,230,210,0.8)';
   ctx.font = '10px system-ui';

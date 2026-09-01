@@ -927,6 +927,27 @@ const roboportRange = (() => {
   return Object.keys(o).length ? o : null;
 })();
 
+// ---- 机器人港充电接口与功率（官方 roboport：charging_offsets / charging_energy / charge_approach_distance）----
+// stations=充电站数量（充电接口数，官方 charging_offsets 4 处）；energy=每站充电功率（charging_energy，官方 "500kW"=500kJ/s）；
+// offsets=充电站位相对港中心的偏移（格，供机器人停靠显示）；approach=充电接近距离（格，官方 charge_approach_distance）。
+const roboportCharging = (() => {
+  const rp = raw.roboport && raw.roboport.roboport;
+  if (!rp) return null;
+  const o = {};
+  if (rp.charging_offsets) {
+    const list = [];
+    for (const k in rp.charging_offsets) {
+      const v = rp.charging_offsets[k];
+      if (v && typeof v['1'] === 'number' && typeof v['2'] === 'number') list.push([v['1'], v['2']]);
+    }
+    if (list.length) { o.stations = list.length; o.offsets = list; }
+  }
+  const kw = rp.charging_energy && parseKiloWatt(rp.charging_energy);
+  if (kw !== null && kw !== undefined) o.energy = kw;
+  if (typeof rp.charge_approach_distance === 'number') o.approach = rp.charge_approach_distance;
+  return Object.keys(o).length ? o : null;
+})();
+
 
 
 
@@ -945,6 +966,7 @@ const robotSpeed = {};
 //   maxEnergyKJ=max_energy（最大携带能量 →kJ，官方 "3MJ"）；moveEnergyKJ=energy_per_move(每移动一格耗能，"5kJ")；
 //   idleEnergyKJS=energy_per_tick × 60（待机/工作基底能耗，官方 "0.05kJ"/tick → 每秒 3kJ）；
 //   minToCharge / maxToCharge = 官方 min_to_charge / max_to_charge（低于 20% 回港充电、充到 95% 出发）。
+// 物流机器人同款模型（官方 logistic-robot：max_energy "1.5MJ"、energy_per_move "5kJ"、energy_per_tick "0.05kJ"）。
 const robotData = {};
 {
   const rd = raw['construction-robot'] && raw['construction-robot']['construction-robot'];
@@ -958,6 +980,19 @@ const robotData = {};
       idleEnergyKJS: (tickE !== null) ? Math.round(tickE * 60 * 1000) / 1000 : 3,
       minToCharge: (typeof rd.min_to_charge === 'number') ? rd.min_to_charge : 0.2,
       maxToCharge: (typeof rd.max_to_charge === 'number') ? rd.max_to_charge : 0.95,
+    };
+  }
+  const ld = raw['logistic-robot'] && raw['logistic-robot']['logistic-robot'];
+  if (ld) {
+    const maxE = parseEnergyKJ(ld.max_energy);
+    const moveE = parseEnergyKJ(ld.energy_per_move);
+    const tickE = parseEnergyKJ(ld.energy_per_tick);
+    robotData.logistic = {
+      maxEnergyKJ: (maxE !== null) ? maxE : 1500,
+      moveEnergyKJ: (moveE !== null) ? moveE : 5,
+      idleEnergyKJS: (tickE !== null) ? Math.round(tickE * 60 * 1000) / 1000 : 3,
+      minToCharge: (typeof ld.min_to_charge === 'number') ? ld.min_to_charge : 0.2,
+      maxToCharge: (typeof ld.max_to_charge === 'number') ? ld.max_to_charge : 0.95,
     };
   }
 }
@@ -1476,6 +1511,7 @@ Object.assign(GAME_DATA, {
   lightning,
   roboportPower,
   roboportRange,
+  roboportCharging,
   footprint,
   steamPower,
   robotSpeed,
@@ -1771,6 +1807,7 @@ const header = [
   '//           heatingTowerRate(MW), heatingTowerEffectivity, heatingTowerMaxTemp,',
   '//           heatingTowerSpecificHeat, heatingTowerMaxTransfer }, roboportPower(kW)',
   '//   roboportRange = { logistics(物流覆盖半径/格), construction(施工覆盖半径/格), robotSlots(机器人槽位数), materialSlots(材料槽位数) }',
+  '//   roboportCharging = { stations(充电站数/接口), energy(每站充电功率 kW), offsets(充电站位偏移/格), approach(接近距离/格) }',
   '//   steamPower = { boilerPower, boilerTargetTemp, engineRate, enginePower, effectivity, turbineRate, turbinePower,',
   '//                   steamHeatCapacity, steamDefaultTemp, steamMaxTemp, steamEnergyPerUnit, heatExchangerSteamRate, boilerSteamRate }',
   '//   cargoLandingPad = { inventorySize, radarRange }, cargoBay = { inventorySizeBonus }（物流接驳站/扩展舱）',

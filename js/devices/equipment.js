@@ -611,6 +611,7 @@ function installEquipAt(eid, r, c, armorId) {
 
 // 从网格拿起一件装备到鼠标（G.held，src.kind='eq'），可再放回网格或点背包格放入背包（与物品移动一致）。
 function equipPickup(r, c) {
+  if (typeof cancelQuickBoxOnPickup === 'function') cancelQuickBoxOnPickup();
   const aid = activeArmorId();
   const grid = armorGridOf(aid);
   if (!grid) return false;

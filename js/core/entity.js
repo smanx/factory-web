@@ -87,6 +87,13 @@ function addEnt(e) {
   invalidateBeltInputNear(e.x, e.y, e.w, e.h);
   // 电力增量注册表同步维护（P1 优化）
   if (typeof regPowerEnt === 'function') regPowerEnt(e);
+  // 新入场景的电力设备立即标记为「未接入」并把电网重算提前到下一帧：
+  // 否则在 0.25s 重建周期内 _grid 未计算，powerFactor 回退全局 sat（电网为空时为 1），
+  // 会让放到没电区域的机械臂等先误动一下、0.25s 后才停摆。有电区域也在 1 帧内恢复接入。
+  if (!e.noGridPower && (e.powerOut !== undefined || typeof e.powerDemand === 'function')) {
+    e._grid = null;
+    if (typeof G !== 'undefined' && typeof G.powerT === 'number') G.powerT = 0.25;
+  }
 }
 
 function removeEnt(e) {

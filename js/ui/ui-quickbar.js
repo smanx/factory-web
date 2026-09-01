@@ -160,6 +160,7 @@ function qbArmorSlot() {
     }
     // —— 未持有护甲但装甲槽有护甲 → 拿起（拿在手上）——
     else if (G.armor) {
+      if (typeof cancelQuickBoxOnPickup === 'function') cancelQuickBoxOnPickup();
       const old = G.armor;
       G.armor = null;
       G.held = { id: old, count: 1, src: { kind: 'armor' } };

@@ -3503,3 +3503,48 @@ html, body {
   user-select: none;
 }
 #remote-close:hover { background: #3a4657; border-color: rgba(220,120,120,.9); color: #ff9c9c; }
+
+/* ===== 物流网络面板（L 键）：左栏网络列表 + 右栏设备与物品 ===== */
+#panel.logi-wide {
+  width: 640px;
+  max-width: 92vw;
+  max-height: calc(100vh - 48px);
+}
+#panel.logi-wide #panel-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.logi-panel { display: flex; flex-direction: column; gap: 10px; }
+.logi-status { font-size: 14px; font-weight: bold; color: #ffd23c; padding-bottom: 6px; }
+.logi-status b { color: #fff; }
+.logi-layout {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  min-height: 0;
+}
+.logi-col { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.logi-list { flex: 0 0 220px; max-height: 52vh; overflow-y: auto; border-right: 1px solid rgba(255,255,255,.1); padding-right: 8px; }
+.logi-detail { flex: 1 1 auto; min-width: 0; max-height: 52vh; overflow-y: auto; }
+.logi-net-item {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  width: 100%; text-align: left;
+  padding: 6px 8px;
+  background: #222b35;
+  border: 1px solid #37424f; border-radius: 6px;
+  cursor: pointer;
+}
+.logi-net-item.sel { border-color: #ffd23c; box-shadow: 0 0 0 1px rgba(255,210,60,.35); background: #2a3442; }
+.logi-net-name { font-weight: bold; color: #eaf1f8; font-size: 13px; }
+.logi-net-meta { font-size: 11px; color: #98a5b5; }
+.logi-detail-title { font-size: 14px; font-weight: bold; color: #ffe08a; padding: 2px 0 6px; }
+.logi-block { margin-bottom: 12px; }
+.logi-block-title { font-size: 12px; font-weight: bold; color: #ffd23c; margin: 2px 0 4px; }
+.logi-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 4px 6px; border-radius: 4px; font-size: 13px;
+}
+.logi-row:nth-child(odd) { background: rgba(255,255,255,.03); }
+.logi-row-name { color: #cdd6df; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.logi-row-val { color: #ffe08a; font-variant-numeric: tabular-nums; flex: 0 0 auto; }

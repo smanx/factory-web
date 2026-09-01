@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 // 电线杆拖建锚点：按住左键拖拽铺设电线杆时，记录上一根杆的放置格，
 // 拖动超过其最远连线距离才落下一根（对齐《异星工厂》拖建电线杆按最远距离间隔铺设）。
@@ -88,6 +88,8 @@ function bindInput() {
     }
     else if (k === 't') G.panelMode === 'tech' ? closePanel() : openPanel('tech');
     else if (k === 'o') G.panelMode === 'set' ? closePanel() : openPanel('set');
+    // L：打开/关闭物流网络面板（查看各物流网络的设备与物资）
+    else if (k === 'l') G.panelMode === 'logi' ? closePanel() : openPanel('logi');
     // M：打开/关闭远程视图（对齐《异星工厂》M 打开地图视图）。不再是切换小地图开关。
     else if (k === 'm') { if (typeof toggleRemoteView === 'function') toggleRemoteView(); }
     // 地图标记（对齐《异星工厂》：N 放置地图标记，Alt+N 管理）
@@ -234,6 +236,8 @@ function bindInput() {
           G.blueStart = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
           G.blueEnd = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
           G.blueSelecting = true;
+          // 红图模式下按住 Shift 框选 = 取消拆除标记（松开鼠标时由 mouseup 按此标志分发）
+          G.blueUnmark = (G.blueMode === 'red' && ev.shiftKey && !ev.ctrlKey && !ev.altKey);
         }
         return;
       }
@@ -295,11 +299,13 @@ function bindInput() {
     // 蓝图/红图：松开鼠标完成框选
     if (G.blueSelecting) {
       G.blueSelecting = false;
+      const unmark = G.blueUnmark;
+      G.blueUnmark = false;
       if (!G.blueStart || !G.blueEnd) { cancelBlueprint(); return; }
       if (G.blueMode === 'blue') captureBlueprint();
       else if (G.blueMode === 'bluecreate') captureBlueprintAsItem();
       else if (G.blueMode === 'cut') quickCopyBlueprint(true);
-      else if (G.blueMode === 'red') applyRedBlueprint();
+      else if (G.blueMode === 'red') (unmark ? applyUnmarkRedBlueprint() : applyRedBlueprint());
       else if (G.blueMode === 'green') applyGreenBlueprint();
     }
   });
@@ -318,7 +324,16 @@ function bindInput() {
     if (ev.button !== 0 || ev.shiftKey || ev.ctrlKey) return;   // Ctrl+左键为快速转移（见 mousedown），不打开面板
     if (G.blueMode) return;   // 蓝图/红图模式下不触发面板
     if (G.remoteView) {
-      // 远程视图：点击其他区域不打开设备面板，仅用于视角/放虚影（右上角关闭由 DOM 按钮处理）
+      // 远程视图：点击设备打开其面板（远程查看/操作）；点击其他区域不打开面板，仅用于视角/放虚影，
+      // 遥控器（蜘蛛/炮兵/放电）等物品的远程指令仍由 mousedown 的 handleLeftDown 处理，此处不重复触发。
+      updateCursorTile(ev.clientX, ev.clientY);
+      if (G.cursorTile) {
+        const re = entAt(G.cursorTile.tx, G.cursorTile.ty);
+        if (re && !re._dead && re.type && typeof DEVICE_PANEL !== 'undefined' && DEVICE_PANEL[re.type]) {
+          openPanel('machine', re);
+          uiDirty = true;
+        }
+      }
       return;
     }
     updateCursorTile(ev.clientX, ev.clientY);
@@ -740,6 +755,7 @@ function loop(ts) {
       refreshHotbar();
       if (G.panelMode === 'machine') updateMachineLive();
       if (G.panelMode === 'stats') updateStatsLive();
+      if (G.panelMode === 'logi') updateLogiNetLive();
       // 背包/科技面板：不做整面板 innerHTML 重建。整面板重建每帧生成上百个 DOM
       // 节点（base64 图标、tooltip 等），打开背包后明显掉帧；且重建会销毁正在聚焦
       // 的输入框，打断中文输入法并清空已输入内容。改用轻量计数刷新（不改 DOM 结构）。

@@ -305,6 +305,13 @@ function initPanelEvents() {
       renderPanel(false);
       return;
     }
+    // 物流网络面板：点击左侧列表切换查看的网络
+    const logiNetBtn = ev.target.closest && ev.target.closest('[data-loginet]');
+    if (logiNetBtn && G.panelMode === 'logi') {
+      G.logiSelNet = +logiNetBtn.dataset.loginet;
+      renderPanel(false);
+      return;
+    }
     // 性能页导出：下载 JSON / 复制到剪贴板
     const perfExport = ev.target.closest && ev.target.closest('[data-perf-export]');
     if (perfExport && typeof exportPerf === 'function') {
@@ -1868,6 +1875,7 @@ function swapInvSlots(a, b) {
 // 拿起背包某格：把「该格这一叠」移出背包、悬浮于鼠标，并在原格留一个空位占位（其后格子不动）。
 // 同一物品可能占多格（每格一组，如 100+50），只拿起被点那一组的数量，其余组保持不动。
 function heldInvPickup(slot) {
+  if (typeof cancelQuickBoxOnPickup === 'function') cancelQuickBoxOnPickup();
   invFreezeStacks();
   const st = G.invSlots[slot];
   if (!st || st.id == null) return;
@@ -1968,6 +1976,7 @@ function pickupHeld(id, count, src) {
     if (typeof toast === 'function') toast((ITEMS[id] ? ITEMS[id].name : id) + ' 是流体，只能通过管道运输，不能拿起');
     return;
   }
+  if (typeof cancelQuickBoxOnPickup === 'function') cancelQuickBoxOnPickup();
   G.held = { id, count, src };
   heldSrcRemove(count);
   G._clickMoveFrom = null;
@@ -2496,6 +2505,7 @@ function placeHeldHalf(target) {
 }
 // Shift+右键（空手）：把背包某格物品的一半拿到鼠标（一分为二，原格留另一半）
 function pickupHalfToCursorInv(slotIdx) {
+  if (typeof cancelQuickBoxOnPickup === 'function') cancelQuickBoxOnPickup();
   invFreezeStacks();
   const st = G.invSlots[slotIdx];
   if (!st || st.id == null) return false;
@@ -2533,6 +2543,7 @@ function pickupHalfToCursorChest(chest, idx) {
 }
 // Shift+右键（空手）：把设备原料/产品缓存里某物品的一半拿到鼠标
 function pickupHalfToCursorMachine(ent, id, kind) {
+  if (typeof cancelQuickBoxOnPickup === 'function') cancelQuickBoxOnPickup();
   const buf = kind === 'in' ? ent.inp : ent.outp;
   const have = (buf && buf[id]) || 0;
   if (have <= 0) return false;

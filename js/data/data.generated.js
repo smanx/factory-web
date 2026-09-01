@@ -24,6 +24,7 @@
 //           heatingTowerRate(MW), heatingTowerEffectivity, heatingTowerMaxTemp,
 //           heatingTowerSpecificHeat, heatingTowerMaxTransfer }, roboportPower(kW)
 //   roboportRange = { logistics(物流覆盖半径/格), construction(施工覆盖半径/格), robotSlots(机器人槽位数), materialSlots(材料槽位数) }
+//   roboportCharging = { stations(充电站数/接口), energy(每站充电功率 kW), offsets(充电站位偏移/格), approach(接近距离/格) }
 //   steamPower = { boilerPower, boilerTargetTemp, engineRate, enginePower, effectivity, turbineRate, turbinePower,
 //                   steamHeatCapacity, steamDefaultTemp, steamMaxTemp, steamEnergyPerUnit, heatExchangerSteamRate, boilerSteamRate }
 //   cargoLandingPad = { inventorySize, radarRange }, cargoBay = { inventorySizeBonus }（物流接驳站/扩展舱）
@@ -5859,6 +5860,29 @@ const GAME_DATA = {
   "robotSlots": 7,
   "materialSlots": 7
  },
+ "roboportCharging": {
+  "stations": 4,
+  "offsets": [
+   [
+    -1.5,
+    -1
+   ],
+   [
+    1.5,
+    -1
+   ],
+   [
+    1.5,
+    1
+   ],
+   [
+    -1.5,
+    1
+   ]
+  ],
+  "energy": 500,
+  "approach": 5
+ },
  "footprint": {
   "transport-belt": {
    "w": 1,
@@ -6303,6 +6327,13 @@ const GAME_DATA = {
  "robotData": {
   "construction": {
    "maxEnergyKJ": 3000,
+   "moveEnergyKJ": 5,
+   "idleEnergyKJS": 3,
+   "minToCharge": 0.2,
+   "maxToCharge": 0.95
+  },
+  "logistic": {
+   "maxEnergyKJ": 1500,
    "moveEnergyKJ": 5,
    "idleEnergyKJS": 3,
    "minToCharge": 0.2,
