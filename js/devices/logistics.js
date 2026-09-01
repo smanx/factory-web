@@ -590,6 +590,7 @@ function scanNetwork() {
   const demand = {};     // item -> 总缺口
   const requesters = []; // 需求箱列表
   const ports = [];      // 机器人港列表
+  const recycleChests = []; // 需求箱/缓冲箱（带回收区）列表：供每帧回收任务与工作探测复用，避免每帧全图遍历 G.ents
 
   for (const e of G.ents) {
     if (e._dead) continue;
@@ -597,6 +598,7 @@ function scanNetwork() {
     if (!(e instanceof LogisticChest)) continue;
     // 需求类：需求箱与缓冲箱都会按设定请求货物（缓冲箱同时是供应源，不 continue）
     if (e instanceof LogisticRequester || e instanceof LogisticBuffer) {
+      if (e.trashGrid) recycleChests.push(e);
       requesters.push(e);
       for (const k in e.requests) {
         const d = e.deficitOf(k);
@@ -626,7 +628,7 @@ function scanNetwork() {
   }
 
   // 赋值给全局供调度使用
-  G.logiNet = { supply, supplies, demand, requesters, ports };
+  G.logiNet = { supply, supplies, demand, requesters, ports, recycleChests };
   // 预计算物流网络电路信号缓存（性能优化）：把网络各物品库存总量转成
   // [{sig,count},...] 信号列表，供所有机器人港的 outputCircuitSignals 复用，
   // 避免每个机器人港在电路重算时各自重复遍历 supply。
@@ -848,9 +850,9 @@ function updateLogistics(dt) {
     }
     // 物流箱（绿箱/蓝箱）回收区有物品待回收也算作有工作
     if (!hasWork) {
-      for (const e of G.ents) {
+      const rc = (G.logiNet && G.logiNet.recycleChests) || [];
+      for (const e of rc) {
         if (e._dead) continue;
-        if (!(e instanceof LogisticRequester) && !(e instanceof LogisticBuffer)) continue;
         const tg = e.trashGrid;
         if (tg) for (const s of tg) if (s && s.count > 0) { hasWork = true; break; }
         if (hasWork) break;
@@ -947,10 +949,11 @@ function assignRecycleTask(r) {
 
 // 回收物流箱（绿箱/蓝箱）「物流回收区」格子里存放的物品：机器人飞到箱子取走运回网络存储箱。
 // 与玩家回收区同款实体箱子模型：回收区格子里的堆叠被机器人逐格取走。
+// 只遍历 scanNetwork 缓存的需求箱/缓冲箱列表（G.logiNet.recycleChests），避免每帧全图扫描 G.ents。
 function assignChestRecycleTask(r) {
-  for (const e of G.ents) {
+  const rc = (G.logiNet && G.logiNet.recycleChests) || [];
+  for (const e of rc) {
     if (e._dead) continue;
-    if (!(e instanceof LogisticRequester) && !(e instanceof LogisticBuffer)) continue;
     const tg = e.trashGrid;
     if (!tg) continue;
     for (let i = 0; i < tg.length; i++) {
