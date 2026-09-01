@@ -1829,15 +1829,10 @@ function heldInvDropToSlot(to) {
     uiDirty = true;
     return;
   }
-  // 目标为同种物品：仅并入被点的目标那一叠（同物品其它格不受影响）——「全放或全不放」
+  // 目标为同种物品：仅并入被点的目标那一叠（同物品其它格不受影响）——「全放或全不放」。
+  // 注意：背包手动槽是「虚拟分组」（渲染时由 invExpandStacks 自动拆成 ≤ 堆叠上限的格子），
+  // 故合并允许超过单格堆叠上限（如 50 并 20 = 70），与放入箱子等物理格（上限=堆叠）不同。
   if (tgt && tgt.id === h.id) {
-    // 合并后总数超过目标格堆叠上限 → 放入失败：目标格维持原样、手上仍持握，不做任何操作。
-    if (h.count + tgt.count > stackSize(h.id)) {
-      if (typeof playSfx === 'function') playSfx('deny');
-      if (typeof toast === 'function') toast('放入后超过堆叠上限，无法放入');
-      uiDirty = true;
-      return;
-    }
     const a = invAdd(h.id, h.count);
     tgt.count += a;
     if (a >= h.count) { G.held = null; G.quickSel = null; G.sel = -1; if (typeof refreshHotbar === 'function') refreshHotbar(); }
