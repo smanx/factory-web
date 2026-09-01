@@ -24,6 +24,8 @@ function bindInput() {
     // G.keys 驱动“按住即生效”的单键行为（人物移动/连续开火等），组合键要么走事件标志直接
     // 处理（如 Alt+D 红图），要么根本无意触发的单键功能（如 Alt+D 不应让人物向右走）。
     if (!ev.altKey && !ev.ctrlKey && !ev.shiftKey) G.keys[k] = true;
+    // Shift+左键放置“建造虚影”（对齐《异星工厂》Shift+点击放置建造幽灵）：全局记录 Shift 是否按住。
+    if (k === 'shift') G.shiftHeld = true;
     // 组合键识别：按下其他按键时若 Alt 处于按住状态，标记本次 Alt 被用于组合键。
     // 松开 Alt 时据此跳过 ALT 模式切换，避免 Alt+D/B/U/H/N 等组合键误触发“单按 ALT”的功能。
     if (ev.altKey && k !== 'alt') G._altCombo = true;
@@ -128,6 +130,21 @@ function bindInput() {
         if (G.panelMode) renderPanel(false);
         uiDirty = true;
       }
+      // Q：鼠标悬停在建造虚影上时，快速选中该虚影对应的建筑（对齐《异星工厂》在幽灵上按 Q 选取建筑）。
+      // 优先于「取消当前选中」，保证手一悬在虚影上按 Q 即可取用该建筑。
+      else if (G.cursorTile && typeof ghostAt === 'function' && ghostAt(G.cursorTile.tx, G.cursorTile.ty, 1, 1)) {
+        const gg = ghostAt(G.cursorTile.tx, G.cursorTile.ty, 1, 1);
+        G.sel = -1;
+        G._clickMoveFrom = null;
+        if (gg.type && BUILD_DEFS[gg.type]) {
+          G.quickSel = gg.type;
+          G.ghostDir = gg.dir;
+          G.ghostMirror = gg.mirror | 0;
+          toast('已直接选中 ' + ITEMS[gg.type].name + '（Q 取消）');
+        }
+        uiDirty = true;
+        refreshHotbar();
+      }
       // 否则保留原快速取/取消选择逻辑（对齐《异星工厂》Q 取消选择）
       else if (G.driving) { if (typeof exitCar === 'function') exitCar(); }
       else if (G.blueMode) {
@@ -173,6 +190,8 @@ function bindInput() {
       toast(G.settings.altMode ? 'ALT 模式：开（显示建筑配方/内容叠加）' : 'ALT 模式：关');
       return;
     }
+    // Shift+左键放置“建造虚影”：松开 Shift 复位，避免拖建时误判仍处于虚影模式。
+    if (k === 'shift') G.shiftHeld = false;
     G.keys[k] = false;
   });
 

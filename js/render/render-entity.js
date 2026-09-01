@@ -507,6 +507,14 @@ function drawGhost(ctx) {
         g.setLineDash([]);
       }
     }
+    // 按住 Shift 时绘制为“建造虚影”放置：叠加黄色虚边框提示（松开 Shift 即变回正常实体放置）
+    if (G.shiftHeld) {
+      g.strokeStyle = 'rgba(230,210,110,.95)';
+      g.lineWidth = 2.5 / G.cam.z;
+      g.setLineDash([6 / G.cam.z, 4 / G.cam.z]);
+      g.strokeRect(G.cursorTile.tx * TILE + 2, G.cursorTile.ty * TILE + 2, ew * TILE - 4, eh * TILE - 4);
+      g.setLineDash([]);
+    }
     if (worlded) g.restore();
     // 建筑幽灵上方显示数量
     drawGhostCount(g, (G.cursorTile.tx + ew / 2) * TILE, G.cursorTile.ty * TILE);
@@ -595,7 +603,8 @@ function drawGhostCount(g, wx, wy) {
 // （DEVICE_PLACE[type] 返回 {ok} 则短路，返回 null 则继续默认校验）
 // 不允许覆盖建造：目标格已有实体时返回 {ok:false, reason:'occupied'}，由调用方按具体原因提示。
 // reason 取值：water 水面 / cliff 峭壁 / tree 树木 / occupied 已有建筑 / reach 超出建造范围 / player 玩家正站在目标格。
-function canPlaceAt(type, tx, ty, dir) {
+// noReach=true 时不校验“超出建造范围”（供 Shift+左键建造虚影使用：规划幽灵不受距离限制）。
+function canPlaceAt(type, tx, ty, dir, noReach) {
   // 行星专属生产建筑：只能在对应星球建造（对齐《异星工厂》Space Age 星球专属建筑）
   const planetReq = (typeof buildingRequiredPlanet === 'function') ? buildingRequiredPlanet(type) : null;
   if (planetReq) {
@@ -647,7 +656,7 @@ function canPlaceAt(type, tx, ty, dir) {
         }
         return { ok: false, reason: 'occupied' };
       }
-      if (!withinReach(tx + dx, ty + dy)) return { ok: false, reason: 'reach' };
+      if (!noReach && !withinReach(tx + dx, ty + dy)) return { ok: false, reason: 'reach' };
     }
   return { ok: true };
 }
@@ -986,6 +995,15 @@ function drawHoverAndMining(ctx) {
       ctx.strokeRect(tx * TILE + 1, ty * TILE + 1, TILE - 2, TILE - 2);
     }
     return;
+  }
+  // 鼠标移到“建造虚影”上同样框选住（与实体高亮一致；虚影只落在空格上，故 e 为空时判定）
+  if (!e && typeof ghostAt === 'function') {
+    const g = ghostAt(tx, ty, 1, 1);
+    if (g && withinReach(tx, ty)) {
+      ctx.strokeStyle = 'rgba(255,255,255,.8)';
+      ctx.lineWidth = 2 / G.cam.z;
+      ctx.strokeRect(g.x * TILE + 1, g.y * TILE + 1, g.w * TILE - 2, g.h * TILE - 2);
+    }
   }
   if (e && withinReach(tx, ty)) {
     ctx.strokeStyle = 'rgba(255,255,255,.8)';

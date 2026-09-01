@@ -71,21 +71,26 @@ function applyRedBlueprint() {
   // 装备个人机器人港且有施工机器人：生成拆除标记，由施工机器人拆除
   if (typeof canUseConstruction === 'function' && canUseConstruction() && typeof markAreaForDecon === 'function') {
     const n = markAreaForDecon(r);
+    // 红图同时抹除区域内所有“建造虚影”（虚影是规划标记，无需机器人，直接清除）
+    const ng = (typeof removeGhostsInRect === 'function') ? removeGhostsInRect(r) : 0;
     G.blueStart = null; G.blueEnd = null;
-    toast(n > 0 ? ('已标记 ' + n + ' 个建筑待拆除，施工机器人正在拆除' + (constrPending().decon > 0 ? '（剩 ' + constrPending().decon + ' 个待拆）' : ''))
-      : '区域内没有可拆除的建筑');
+    const msg = [];
+    if (n > 0) msg.push('已标记 ' + n + ' 个建筑待拆除，施工机器人正在拆除' + (constrPending().decon > 0 ? '（剩 ' + constrPending().decon + ' 个待拆）' : ''));
+    if (ng > 0) msg.push('已清除 ' + ng + ' 个建造虚影');
+    toast(msg.length ? msg.join('；') : '区域内没有可拆除的建筑或虚影');
     uiDirty = true;
     return;
   }
   const n = redAreaCount(r);
-  if (!n) {
+  const ng = (typeof countGhostsInRect === 'function') ? countGhostsInRect(r) : 0;
+  if (!n && !ng) {
     G.blueStart = null; G.blueEnd = null;
-    toast('区域内没有可拆除的建筑');
+    toast('区域内没有可拆除的建筑或虚影');
     uiDirty = true;
     return;
   }
   // 保留框选范围，待确认后由 doRedBlueprintDelete 删除
-  openConfirm('红图删除确认', '将删除框选区域内的 ' + n + ' 个建筑（内部物资会返还背包），确定继续？', '删除', () => doRedBlueprintDelete(r));
+  openConfirm('红图删除确认', '将删除框选区域内的 ' + n + ' 个建筑' + (ng ? '、并清除 ' + ng + ' 个建造虚影' : '') + '（建筑内部物资会返还背包），确定继续？', '删除', () => doRedBlueprintDelete(r));
 }
 
 // 统计矩形区域内可被红图删除的建筑数量（实体中心在区域内，与删除判定一致）
@@ -123,9 +128,11 @@ function doRedBlueprintDelete(r) {
       }
     }
   }
+  // 同时抹除区域内所有“建造虚影”（虚影是规划标记，无需机器人，直接清除）
+  const ng = (typeof removeGhostsInRect === 'function') ? removeGhostsInRect(r) : 0;
   // 保持红图模式，仅重置框选范围，便于继续框选删除
   G.blueStart = null; G.blueEnd = null;
-  toast('红图：已删除 ' + count + ' 个建筑（物资已返还背包），可继续框选');
+  toast('红图：已删除 ' + count + ' 个建筑' + (ng ? '、清除 ' + ng + ' 个建造虚影' : '') + '（物资已返还背包），可继续框选');
   uiDirty = true;
 }
 
@@ -286,6 +293,25 @@ function greenAreaAction(action) {
   uiDirty = true;
 }
 
+// 收集矩形区域内的“建造虚影”为蓝图实体（复制/剪切/Alt+B 均含虚影，使虚影可随蓝图再粘贴）。
+// 以虚影中心是否落在区域内判定（与实体复制同口径）；记录绝对瓦片坐标，供 blueprintBounds 统一归一。
+function collectGhostEnts(r, ents) {
+  if (!Array.isArray(G.constrGhosts)) return 0;
+  let count = 0;
+  for (const g of G.constrGhosts) {
+    if (g._dead) continue;
+    const fp = blueprintFootprint(g);
+    const cx = g.x + fp.w / 2, cy = g.y + fp.h / 2;
+    if (cx < r.x0 || cx > r.x1 || cy < r.y0 || cy > r.y1) continue;
+    const s = { type: g.type, x: g.x, y: g.y, dir: g.dir | 0, mirror: g.mirror | 0 };
+    if (g.quality) s.quality = g.quality;
+    if (g.recipe) s.recipe = g.recipe;   // 保留组装机配方等配置，粘贴后的虚影/实体沿用
+    ents.push(s);
+    count++;
+  }
+  return count;
+}
+
 // 蓝图：复制矩形区域内实体（相对坐标 + 完整配置）
 function captureBlueprint() {
   const r = blueRect();
@@ -303,6 +329,7 @@ function captureBlueprint() {
       ents.push(e.blueprint());
     }
   }
+  collectGhostEnts(r, ents);   // 复制时一并纳入区域内的建造虚影
   if (!ents.length) { toast('框选区域没有可复制的建筑'); return; }
   // 蓝图含地面铺装（混凝土/石砖路/填海料等，对齐《异星工厂》：蓝图会记录地砖）
   const TILE_IDS = { '2': 'concrete', '3': 'stone-path', '5': 'refined-concrete', '6': 'hazard-concrete', '8': 'refined-hazard-concrete', '12': 'ice-platform', '13': 'foundation', '14': 'space-platform-foundation' };
@@ -492,43 +519,12 @@ function drawBlueprintGhostAt(g, tx, ty) {
 function pasteBlueprint() {
   if (!G.blueprint || !G.cursorTile) return;
   const bp = applyBlueprintTransform();
-  // 装备个人机器人港且有施工机器人：生成建造幽灵，由施工机器人自动施工
-  if (typeof canUseConstruction === 'function' && canUseConstruction()) {
-    const n = pasteBlueprintAsGhosts(bp);
-    toast(n > 0 ? ('已排布 ' + n + ' 个建造幽灵，施工机器人正在建造' + (constrPending().build > 0 ? '（剩 ' + constrPending().build + ' 个待建）' : ''))
-      : '无可建造的位置（区域内已有建筑或超出机器人范围）');
-    if (typeof playSfx === 'function') playSfx('blueprint');
-    uiDirty = true;
-    return;
-  }
   const ox = G.cursorTile.tx - bp.minX;
   const oy = G.cursorTile.ty - bp.minY;
-  // 先校验所有目标位置是否可放置，再一次性放置
-  const placements = [];
-  for (const s of bp.ents) {
-    const cls = ENT_CLASSES[s.type];
-    if (!cls) continue;
-    const nx = s.x + ox, ny = s.y + oy;
-    const tmp = cls.restore(Object.assign({}, s, { x: nx, y: ny }));
-    tmp.dir = s.dir | 0; tmp.applyDir();
-    if (!canPlaceAt(s.type, nx, ny, tmp.dir).ok) {
-      toast('粘贴失败：区域被占用或不可放置');
-      return;
-    }
-    placements.push({ cls, s, nx, ny });
-  }
-  for (const p of placements) {
-    // 同类型设备替换：目标格已有同类型设备（canPlaceAt 放行的同类型替换）时，
-    // 先移除旧设备并返还背包（对齐《异星工厂》：蓝图粘贴覆盖同类型设备）
-    const oldEnt = entAt(p.nx, p.ny);
-    if (oldEnt && oldEnt.type === p.s.type) {
-      if (typeof invAdd === 'function') invAdd(oldEnt.type, 1);   // 返还旧设备
-      removeEnt(oldEnt);
-    }
-    const e = p.cls.restore(Object.assign({}, p.s, { x: p.nx, y: p.ny }));
-    e.dir = p.s.dir | 0; e.applyDir();
-    addEnt(e);
-  }
+  // 放下去一律排布“建造虚影”（Ctrl+C/X、Alt+B、蓝图物品、蓝图库粘贴均如此）：
+  // 只有装备个人机器人港 + 背包有施工机器人 + 有对应材料时（见 updateConstruction），
+  // 施工机器人才会自动落地；否则虚影作为可持久化的规划标记保留在图上（随存档保存），而非直接落地真实建筑。
+  const n = pasteBlueprintAsGhosts(bp);
   // 恢复蓝图地砖（混凝土/石砖路/填海料等，对齐《异星工厂》：蓝图粘贴含地砖）
   let tileCount = 0;
   if (Array.isArray(bp.tiles) && bp.tiles.length) {
@@ -546,7 +542,9 @@ function pasteBlueprint() {
     }
   }
   if (typeof playSfx === 'function') playSfx('blueprint');
-  toast('蓝图已粘贴 ' + placements.length + ' 个建筑' + (tileCount ? '（含 ' + tileCount + ' 格地砖）' : '') + '（可继续点击空白处粘贴，R旋转/V翻转，右键取消）');
+  toast(n > 0
+    ? ('已排布 ' + n + ' 个建造虚影' + (tileCount ? '（含 ' + tileCount + ' 格地砖）' : '') + (typeof constrPending === 'function' && constrPending().build > 0 ? '，施工机器人正在建造' : '（装备个人机器人港+施工机器人后自动建造）'))
+    : '无可建造的位置（区域内已有建筑或超出机器人范围）');
   uiDirty = true;
 }
 
@@ -845,6 +843,7 @@ function captureBlueprintAsItem() {
       ents.push(e.blueprint());
     }
   }
+  collectGhostEnts(r, ents);   // 复制时一并纳入区域内的建造虚影
   if (!ents.length) { toast('框选区域没有可复制的建筑'); return; }
   // 蓝图含地面铺装（与 captureBlueprint 同款记录逻辑）
   const TILE_IDS = { '2': 'concrete', '3': 'stone-path', '5': 'refined-concrete', '6': 'hazard-concrete', '8': 'refined-hazard-concrete', '12': 'ice-platform', '13': 'foundation', '14': 'space-platform-foundation' };
@@ -884,6 +883,7 @@ function quickCopyBlueprint(cut) {
       ents.push(e.blueprint());
     }
   }
+  collectGhostEnts(r, ents);   // 复制时一并纳入区域内的建造虚影
   if (!ents.length) { toast('框选区域没有可复制的建筑'); return; }
   const TILE_IDS = { '2': 'concrete', '3': 'stone-path', '5': 'refined-concrete', '6': 'hazard-concrete', '8': 'refined-hazard-concrete', '12': 'ice-platform', '13': 'foundation', '14': 'space-platform-foundation' };
   const tiles = [];

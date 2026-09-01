@@ -180,6 +180,8 @@ function render() {
     ctx.restore();
   }
   drawHoverAndMining(ctx);
+  // 建造虚影/拆除标记绘制在玩家之前（下层），保证主角移到虚影上时在最上层不被遮挡
+  if (typeof drawConstrGhosts === 'function') drawConstrGhosts(ctx);
   drawPlayer(ctx);
   drawReachCircle(ctx);
   drawEnemies(ctx);

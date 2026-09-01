@@ -6300,6 +6300,15 @@ const GAME_DATA = {
   "logistic": 3,
   "construction": 3.6
  },
+ "robotData": {
+  "construction": {
+   "maxEnergyKJ": 3000,
+   "moveEnergyKJ": 5,
+   "idleEnergyKJS": 3,
+   "minToCharge": 0.2,
+   "maxToCharge": 0.95
+  }
+ },
  "inserterStats": {
   "rotationSpeed": 0.014,
   "extensionSpeed": 0.035,

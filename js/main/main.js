@@ -788,6 +788,12 @@ function tryPlaceAt(tx, ty) {
     toast('需要先研究「' + TECHS[TECH_REQ[type]].name + '」才能建造 ' + ITEMS[type].name);
     return;
   }
+  // Shift+左键放置“建造虚影”：不直接落地，生成施工幽灵，由施工机器人按触发条件自动建造。
+  // 仅在可建造建筑时生效（地面/树种/蓝图等已在前面分支处理）。放置本身不消耗背包物品。
+  if (G.shiftHeld && typeof tryPlaceGhost === 'function') {
+    tryPlaceGhost(type, tx, ty, rawSel);
+    return;
+  }
   // 无限资源模式：建造不消耗原料，且可直接放置测试用创造/虚空箱与管道（无需背包里拥有）
   // 品质物品须检查实际持有的带品质物品（背包里是 `item~quality`），基础类型未必有库存
   const needId = (placeQuality && placeQuality !== 'normal') ? rawSel : type;
@@ -1119,8 +1125,22 @@ function tryAutoUnderground(type, tx, ty) {
 }
 
 function deconstructAt(tx, ty) {
+  if (!withinReach(tx, ty)) return;
+  // 右键/拆除模式下移除“建造虚影”：虚影是规划标记，右键直接抹除，无需施工机器人。
+  // 注意须在 entAt 之前判定（虚影只会落在空格上，故此处 e 为空即可能是虚影）。
   const e = entAt(tx, ty);
-  if (!e || !withinReach(tx, ty)) return;
+  if (!e) {
+    if (typeof ghostAt === 'function') {
+      const g = ghostAt(tx, ty, 1, 1);
+      if (g) {
+        g._dead = true;
+        if (typeof playSfx === 'function') playSfx('demolish');
+        uiDirty = true;
+      }
+    }
+    return;
+  }
+  if (!withinReach(tx, ty)) return;
   // 拆除的是正在驾驶的载具：先下车再拆除
   if (G.driving && G.driving.ent === e && typeof exitCar === 'function') exitCar();
   // 拆除时瞬间返还实体内容（含传送带上携带的物品），对齐红图批量删除行为：

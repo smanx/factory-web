@@ -941,6 +941,26 @@ const robotSpeed = {};
   const cr = raw['construction-robot'] && raw['construction-robot']['construction-robot'];
   if (cr && typeof cr.speed === 'number') robotSpeed.construction = Math.round(cr.speed * 60 * 1000) / 1000;
 }
+// robotData：施工机器人电量模型（官方 construction-robot 原型）。
+//   maxEnergyKJ=max_energy（最大携带能量 →kJ，官方 "3MJ"）；moveEnergyKJ=energy_per_move(每移动一格耗能，"5kJ")；
+//   idleEnergyKJS=energy_per_tick × 60（待机/工作基底能耗，官方 "0.05kJ"/tick → 每秒 3kJ）；
+//   minToCharge / maxToCharge = 官方 min_to_charge / max_to_charge（低于 20% 回港充电、充到 95% 出发）。
+const robotData = {};
+{
+  const rd = raw['construction-robot'] && raw['construction-robot']['construction-robot'];
+  if (rd) {
+    const maxE = parseEnergyKJ(rd.max_energy);
+    const moveE = parseEnergyKJ(rd.energy_per_move);
+    const tickE = parseEnergyKJ(rd.energy_per_tick);
+    robotData.construction = {
+      maxEnergyKJ: (maxE !== null) ? maxE : 3000,
+      moveEnergyKJ: (moveE !== null) ? moveE : 5,
+      idleEnergyKJS: (tickE !== null) ? Math.round(tickE * 60 * 1000) / 1000 : 3,
+      minToCharge: (typeof rd.min_to_charge === 'number') ? rd.min_to_charge : 0.2,
+      maxToCharge: (typeof rd.max_to_charge === 'number') ? rd.max_to_charge : 0.95,
+    };
+  }
+}
 const inserterStats = {};
 // 官方机械臂 rotation_speed / extension_speed（rad/tick）与抓取堆叠（inserter_stack_size_override）。
 // 项目各臂类型 → 官方原型名：普通=inserter、长臂=long-handed-inserter、快速=fast-inserter、
@@ -1459,6 +1479,7 @@ Object.assign(GAME_DATA, {
   footprint,
   steamPower,
   robotSpeed,
+  robotData,
   inserterStats,
   dlc,
   qualityModules,
@@ -1575,6 +1596,7 @@ function report() {
   console.log('污染排放 pollution: ' + JSON.stringify(GAME_DATA.pollution));
   console.log('机器人港功耗 roboportPower: ' + JSON.stringify(GAME_DATA.roboportPower));
   console.log('机器人港范围/槽位 roboportRange: ' + JSON.stringify(GAME_DATA.roboportRange));
+  console.log('施工机器人电量模型 robotData: ' + JSON.stringify(GAME_DATA.robotData));
   console.log('Gleba 五足虫敌人 enemy: ' + Object.keys(GAME_DATA.enemy||{}).length + ' 种');
   console.log('扩展参数手工保留（官方无此字段/项目简化模型）：蒸汽机/汽轮机产汽模型、机器人速度与电量刻度、机器人港容量、',
     '武器/装甲战斗平衡表、燃料能量(项目相对刻度)、载具装备网格、热交换器热量参数、雷达扫描节奏');
