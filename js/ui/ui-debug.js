@@ -124,6 +124,11 @@ function buildDebug() {
       key: 'combat', label: '切换战斗', dataKey: 'dbgSwitch', source: 'settings',
       on() { toast('战斗模式：开启'); },
       off() { G.enemies = []; G.bullets = []; G.enemyProjectiles = []; toast('战斗模式：关闭'); }
+    },
+    {
+      key: 'techControl', label: '科技控制', dataKey: 'dbgSwitch',
+      on() { toast('科技控制已开启：可在科技面板中任意完成 / 关闭科技、自由调整无限科技等级（遵循前置与依赖顺序）'); if (typeof renderPanel === 'function') renderPanel(false); },
+      off() { toast('科技控制已关闭'); if (typeof renderPanel === 'function') renderPanel(false); }
     }
   ];
   for (const sw of switches) {
@@ -163,7 +168,7 @@ function buildDebug() {
   const actGroups = [
     ['重置·恢复默认', [
     ['恢复全部默认设置', () => {
-      Object.assign(G.dbg, { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1, infinite: false, farReach: false, noclip: false });
+      Object.assign(G.dbg, { timeScale: 1, moveSpeed: 1, mineMult: 1, beltMult: 1, drillMult: 1, asmMult: 1, infinite: false, farReach: false, noclip: false, techControl: false });
       G.settings.combat = false;
       if (!G.settings.combat) { G.enemies = []; G.bullets = []; G.enemyProjectiles = []; }
       buildDebug();
@@ -213,9 +218,10 @@ function buildDebug() {
       let doneCnt = 0;
       for (const t in TECHS) {
         if (isInfiniteTech(t)) {
-          // 无限科技永不完成：不标记 techDone，仅确保其“已解锁（techProg>0）”，
-          // 保留可继续无限研究（否则后续会被当已完成而无法再研究）。
-          if ((G.techProg[t] || 0) === 0) G.techProg[t] = 1;
+          // 无限科技永不完成：不标记 techDone，仅完成到“被前置依赖所需的最低等级”即可，
+          // 无需升级到满级（官方：满足前置的最低要求等级即可）——保证仍可继续无限研究。
+          const need = techMinRequiredLevel(t);
+          if ((G.techProg[t] || 0) < need) G.techProg[t] = need;
           delete G.techDone[t];
           continue;
         }

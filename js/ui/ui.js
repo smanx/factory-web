@@ -505,6 +505,8 @@ function renderPanel(full) {
     const listScrollTop = oldList ? oldList.scrollTop : 0;
     const treeScrollTop = oldTree ? oldTree.scrollTop : 0;
     body.innerHTML = htmlTech();
+    // 重建后恢复搜索过滤（科技列表按当前关键词重新显隐）
+    if (G.techQ) applyTechFilter(G.techQ);
     const newList = body.querySelector('#tech-col-list');
     const newTree = body.querySelector('#tech-col-tree');
     if (newList && listScrollTop) newList.scrollTop = listScrollTop;
@@ -1885,6 +1887,30 @@ function applyAssemblerRecipeFilter(q) {
   }
 }
 
+// 科技面板：按关键字过滤「研究列表」中的科技条目（名称/描述/ID，匹配即显示）；
+// 只原地切换显隐，不重建 DOM，保证输入框焦点不丢、不打断中文输入法。
+function applyTechFilter(q) {
+  const body = document.getElementById('panel-body');
+  if (!body) return;
+  const ql = (q || '').trim().toLowerCase();
+  let shown = 0;
+  const visByCat = {};
+  body.querySelectorAll('.recipe.tech[data-techid]').forEach(el => {
+    const hit = !ql || (el.dataset.techsearch || '').includes(ql);
+    el.style.display = hit ? '' : 'none';
+    if (hit) { shown++; visByCat[el.dataset.techcat] = (visByCat[el.dataset.techcat] || 0) + 1; }
+  });
+  // 分组表头：该分组下无可见科技时一并隐藏
+  body.querySelectorAll('.tech-cat-head[data-techcathead]').forEach(head => {
+    head.style.display = visByCat[head.dataset.techcathead] ? '' : 'none';
+  });
+  const emp = document.getElementById('tech-search-empty');
+  if (emp) {
+    emp.textContent = ql && !shown ? '没有匹配「' + q.trim() + '」的科技' : '';
+    emp.style.display = (ql && !shown) ? '' : 'none';
+  }
+}
+
 // ===== 研究面板：左=研究列表，右=研究树图 =====
 // 依据 tech-report.md（官方 277 科技清单）重新设计研究面板：
 //   · 左边栏：按模块分组的研究列表（触发式 / 研究中心式科技一目了然），支持分类筛选
@@ -1964,6 +1990,7 @@ function htmlTechTree() {
 }
 // 生成左边栏研究列表
 function htmlTechList() {
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   // 分类筛选 tab
   const cats = ['all', 'base', 'quality', 'space-age'];
   const catName = { all: '全部', base: TECH_CAT.base.name, quality: TECH_CAT.quality.name, 'space-age': TECH_CAT['space-age'].name };
@@ -1971,6 +1998,9 @@ function htmlTechList() {
   let h = '<div class="tech-tabs">';
   for (const c of cats) h += '<button data-techcat="' + c + '" class="tech-tab' + (cur===c?' active':'') + '">' + catName[c] + '</button>';
   h += '</div>';
+  // 科技搜索：按名称/描述/ID 关键词过滤（科技过多，便于快速定位）
+  h += '<input class="inv-search" id="tech-search" placeholder="搜索科技（名称/描述/ID）…" value="' + esc(G.techQ || '') + '">';
+  h += '<div id="tech-search-empty" class="dim" style="display:none"></div>';
 
   // 研究队列（对齐官方 Research queue）
   if (G.techQueue && G.techQueue.length) {
@@ -1987,7 +2017,7 @@ function htmlTechList() {
   for (const catKey of ['base', 'quality', 'space-age']) {
     if (cur !== 'all' && cur !== catKey) continue;
     const cmeta = TECH_CAT[catKey];
-    h += '<div class="tech-cat-head">' + cmeta.icon + ' ' + cmeta.name + '</div>';
+    h += '<div class="tech-cat-head" data-techcathead="' + catKey + '">' + cmeta.icon + ' ' + cmeta.name + '</div>';
     for (const tid in TECHS) {
       const t = TECHS[tid];
       if (t.cat !== catKey) continue;
@@ -1998,7 +2028,7 @@ function htmlTechList() {
       const total = techCostTotal(tid);
       const costChips = [];
       for (const pk in t.cost) costChips.push(ITEMS[pk].name + '×' + t.cost[pk]);
-      h += '<div class="recipe tech ' + (done ? 'done' : '') + (locked ? ' locked' : '') + (t.trigger ? ' trigger' : '') + '" data-techcat="' + catKey + '" data-techid="' + tid + '">';
+      h += '<div class="recipe tech ' + (done ? 'done' : '') + (locked ? ' locked' : '') + (t.trigger ? ' trigger' : '') + '" data-techcat="' + catKey + '" data-techid="' + tid + '" data-techsearch="' + esc((t.name + ' ' + (t.desc || '') + ' ' + tid).toLowerCase()) + '">';
       h += '<div class="rmain"><div class="rname">' + t.name +
         (t.trigger ? ' <span class="trig-badge" title="触发式：' + t.triggerDesc + '">⚡ 触发式</span>' : '') +
         (locked ? ' <span class="lock-tag">🔒</span>' : '') +
@@ -2015,6 +2045,30 @@ function htmlTechList() {
       }
       h += '</div>';
       // 操作按钮
+      // —— 调试科技控制开关（G.dbg.techControl）：任意完成 / 关闭 / 调整无限科技等级，遵循前置与依赖顺序 ——
+      if (G.dbg.techControl) {
+        if (isInfiniteTech(tid)) {
+          const lvl = G.techProg[tid] || 0;
+          h += '<span class="tech-lvl">' +
+            '<span class="tech-lvl-stepper">' +
+            '<button data-action="tech-level" data-id="' + tid + '" data-lvl="' + (lvl - 1) + '" title="降低等级">−</button>' +
+            '<b>Lv ' + lvl + '</b>' +
+            '<button data-action="tech-level" data-id="' + tid + '" data-lvl="' + (lvl + 1) + '" title="提升等级">＋</button>' +
+            '</span>' +
+            '<input type="range" class="tech-lvl-slide" data-action="tech-lvl-slide" data-id="' + tid +
+            '" min="0" max="' + Math.max(25, lvl) + '" step="1" value="' + lvl + '" title="拖动滑块快速设置等级">' +
+            '</span>';
+        } else if (done) {
+          const tdeps = debugTechDependents(tid);
+          h += tdeps.length
+            ? '<button data-action="tech-disable" data-id="' + tid + '" disabled title="需先按顺序关闭依赖它的科技：' + tdeps.map(d => TECHS[d].name).join('、') + '">关闭</button>'
+            : '<button data-action="tech-disable" data-id="' + tid + '">关闭</button>';
+        } else {
+          h += locked
+            ? '<button data-action="tech-complete" data-id="' + tid + '" disabled title="需先完成前置：' + missing.map(m => TECHS[m].name).join('、') + '">完成</button>'
+            : '<button data-action="tech-complete" data-id="' + tid + '">完成</button>';
+        }
+      }
       if (!done && !isInfiniteTech(tid)) {
         if (locked) {
           h += '<button disabled title="需先研究：' + missing.map(m => TECHS[m].name).join('、') + '">🔒</button>';

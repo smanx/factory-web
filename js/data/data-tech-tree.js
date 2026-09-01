@@ -148,6 +148,22 @@ function techResearched(tid) {
 }
 // 无限科技当前研究等级（未研究返回 0）
 function techLevel(tid) { return (G.techProg[tid] || 0); }
+// 无限科技在「一键解锁」时所需完成的最低等级：取所有把它作为前置的科技中要求的最高下限。
+// 当前 req 均以 id 字符串表示（只需 ≥1 即可满足，即“研究过”即满足前置），因此返回其最大要求；
+// 若某无限科技不被任何科技依赖，也至少按 1 处理，保证全部科技处于“已解锁、可继续无限研究”状态，
+// 且绝不无谓地升级到高等级（满足官方“完成到最低要求等级即可，无需满级”的语义）。
+// 若未来 req 出现 {id, level} 对象形式，则按其中 level 取下限。
+function techMinRequiredLevel(tid) {
+  let need = 0;
+  for (const d in TECHS) {
+    if (d === tid || !TECHS[d]) continue;
+    for (const r of (TECHS[d].req || [])) {
+      if (typeof r === 'object' && r && r.id === tid) need = Math.max(need, r.level || 1);
+      else if (r === tid) need = Math.max(need, 1);
+    }
+  }
+  return need > 0 ? need : 1;
+}
 // 研究队列：完成当前科技后顺延到队列下一项。返回下一个 activeTech（或 null）。
 function advanceTechQueue() {
   if (!G.techQueue) G.techQueue = [];

@@ -6,6 +6,62 @@
   if (el) el.textContent = window.__BUILD_VERSION__ || 'dev';
 })();
 
+// ===== 调试科技控制（G.dbg.techControl 开启后，科技面板支持任意完成/关闭/调级，遵循逻辑顺序）=====
+// 已研究且以 tid 为前置的科技 id 列表（用于「有关联则不能直接关闭」的依赖校验）
+function debugTechDependents(tid) {
+  const out = [];
+  for (const d in TECHS) {
+    if (d === tid || !TECHS[d]) continue;
+    if ((TECHS[d].req || []).indexOf(tid) >= 0 && techResearched(d)) out.push(d);
+  }
+  return out;
+}
+// 强制完成一项科技：有未满足前置则不能开启
+function debugCompleteTech(tid) {
+  if (isInfiniteTech(tid)) return debugSetTechLevel(tid, (G.techProg[tid] || 0) + 1);
+  if (techResearched(tid)) { toast('该科技已完成'); return; }
+  if (techLocked(tid)) { toast('有前置不能直接完成，需先研究：' + techMissingPrereqs(tid).map(m => TECHS[m].name).join('、')); return; }
+  G.techProg[tid] = techCostTotal(tid);
+  G.techDone[tid] = true;
+  if (G.activeTech === tid) G.activeTech = null;
+  if (G.techQueue) G.techQueue = G.techQueue.filter(q => q !== tid);
+  toast('已强制完成：' + TECHS[tid].name);
+  afterDebugTechChange();
+}
+// 关闭一项科技：若它是其它已研究科技的前置，则不能直接关，需先按顺序关闭下游
+function debugDisableTech(tid) {
+  if (isInfiniteTech(tid)) return debugSetTechLevel(tid, 0);
+  if (!G.techDone[tid]) { toast('该科技未完成'); return; }
+  const deps = debugTechDependents(tid);
+  if (deps.length) { toast('它仍作为前置，请先关依赖它的科技：' + deps.map(d => TECHS[d].name).join('、')); return; }
+  delete G.techDone[tid];
+  delete G.techProg[tid];
+  if (G.activeTech === tid) G.activeTech = null;
+  if (G.techQueue) G.techQueue = G.techQueue.filter(q => q !== tid);
+  toast('已关闭科技：' + TECHS[tid].name);
+  afterDebugTechChange();
+}
+// 无限科技：任意调整等级（从 0 提升需满足前置、降回 0 需先关闭下游；中间等级自由调整）
+function debugSetTechLevel(tid, lvl) {
+  lvl = Math.max(0, Math.floor(lvl) || 0);
+  const cur = G.techProg[tid] || 0;
+  if (lvl === cur) return;
+  if (cur === 0 && lvl > 0 && techLocked(tid)) {
+    toast('有前置不能直接开启，需先研究：' + techMissingPrereqs(tid).map(m => TECHS[m].name).join('、')); return;
+  }
+  if (lvl === 0 && cur > 0) {
+    const deps = debugTechDependents(tid);
+    if (deps.length) { toast('它仍作为前置，请先关依赖它的科技：' + deps.map(d => TECHS[d].name).join('、')); return; }
+  }
+  G.techProg[tid] = lvl;
+  if (lvl > 0) delete G.techDone[tid];
+  toast('已设置 ' + TECHS[tid].name + ' 等级：' + lvl);
+  afterDebugTechChange();
+}
+function afterDebugTechChange() {
+  if (typeof _invalidateInvCache === 'function') _invalidateInvCache();
+}
+
 function initPanelEvents() {
   // 弹框支持点中标题栏拖动
   makeTitleDraggable(document.getElementById('panel'), document.getElementById('panel-head'));
@@ -32,6 +88,13 @@ function initPanelEvents() {
       panel.onAction('flt-stack', stackCtrl);
       return;
     }
+    // 调试无限科技等级滑块（拖到底松开后按校验规则设置等级并刷新面板）
+    const techSlide = ev.target.closest && ev.target.closest('.tech-lvl-slide[data-action="tech-lvl-slide"]');
+    if (techSlide) {
+      debugSetTechLevel(techSlide.dataset.id, +techSlide.value);
+      renderPanel(false);
+      return;
+    }
     // 历史页物品选择（datalist 下拉选中）
     const histFilter = ev.target.closest('[data-stat-hist-filter]');
     if (histFilter) {
@@ -56,6 +119,14 @@ function initPanelEvents() {
     rd.readAsArrayBuffer(f);
   });
   document.getElementById('panel-close').addEventListener('click', () => closePanel());
+  // 调试无限科技等级滑块：拖拽过程中实时更新「Lv N」标签（不重建 DOM，避免打断拖动），
+  // 具体等级落盘与校验放在 change（松开）时完成。
+  document.getElementById('panel-body').addEventListener('input', ev => {
+    const slide = ev.target.closest && ev.target.closest('.tech-lvl-slide[data-action="tech-lvl-slide"]');
+    if (!slide) return;
+    const b = slide.closest('.tech-lvl') && slide.closest('.tech-lvl').querySelector('.tech-lvl-stepper b');
+    if (b) b.textContent = 'Lv ' + slide.value;
+  });
   // 装甲面板装备网格：跟随鼠标显示放置幽灵（从左侧背包拿起模块 → 移到网格预览占据格数）
   if (typeof equipGridMouseMove === 'function') {
     document.addEventListener('mousemove', ev => equipGridMouseMove(ev));
@@ -74,6 +145,10 @@ function initPanelEvents() {
       applyInvItemSearch(G.invItemQ);
     } else if (id === 'asm-recipe-search') {
       applyAssemblerRecipeFilter(v);
+    } else if (id === 'tech-search') {
+      // 科技列表搜索：仅记录关键词并原地切换显隐，不重建面板
+      G.techQ = v;
+      if (typeof applyTechFilter === 'function') applyTechFilter(G.techQ);
     } else if (id === 'rcp-search') {
       // 配方选择面板：记录搜索词，按关键词过滤当前 Tab 的配方网格
       G.rcpQ = v;
@@ -1415,6 +1490,12 @@ function initPanelEvents() {
         // 取消研究：移除当前项（若队列还有下一项则顺延）
         if (G.techQueue && G.techQueue.length) G.techQueue.shift();
         G.activeTech = (G.techQueue && G.techQueue.length) ? G.techQueue[0] : null;
+      } else if (act === 'tech-complete') {
+        debugCompleteTech(id);
+      } else if (act === 'tech-disable') {
+        debugDisableTech(id);
+      } else if (act === 'tech-level') {
+        debugSetTechLevel(id, +btn.dataset.lvl);
       }
     }
     if (!skipPanelRender) {

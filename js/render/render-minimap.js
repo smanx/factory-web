@@ -614,12 +614,135 @@ function _hoverRuntimeSections(e) {
 // 宽度与小地图完全一致并紧贴其下方/屏幕边缘；内容与排版对齐《异星工厂》官方 tooltip：
 // 金色名称标题 + 物品图标 + 描述 + 分隔线 + 官方字段行
 // （采矿速度/制造速度/研究速度/运载速度/存储容量/消耗量/污染/插件槽位/生命值），
+
+// ── 机器人悬停信息（对齐原版 tooltip：携带物品 + 基本状态）──
+function _robotUnderCursor() {
+  if (!G.cursorTile) return null;
+  const cx = (G.cursorTile.tx + 0.5) * TILE, cy = (G.cursorTile.ty + 0.5) * TILE;
+  const cand = [];
+  for (const r of (G.constrRobots || [])) if (!r._dead && r.state !== 'idle') cand.push({ kind: 'constr', r });
+  for (const r of (G.logiRobots || [])) if (!r._dead && r.state !== 'idle') cand.push({ kind: 'logi', r });
+  let best = null, bestD = 1e9;
+  for (const c of cand) {
+    const dx = c.r.x - cx, dy = c.r.y - cy;
+    const d = dx * dx + dy * dy;
+    if (d < 14 * 14 && d < bestD) { bestD = d; best = c; }
+  }
+  return best;
+}
+
+// 小地图下方信息面板：绘制机器人 tooltip（对齐原版：名称标题 + 携带物品图标行 + 基本状态字段）
+function _drawRobotInfoBar(ctx, kind, r) {
+  const bw = MINIMAP_SIZE, bx = W - MINIMAP_SIZE, top = MINIMAP_SIZE;
+  const pad = 9, padR = 14, innerW = bw - pad - padR;
+  ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+
+  const isLogi = (kind === 'logi');
+  const name = isLogi ? '物流机器人' : '施工机器人';
+
+  // 携带物品 [[id, n]]
+  let items = [];
+  if (isLogi) { if (r.carry && r.carry.item) items = [[r.carry.item, r.carry.count]]; }
+  else if (r.cargo && r.cargo.length) items = r.cargo.slice();
+  else if (r.job && r.job.kind === 'build') items = [[(r.job.ghost && r.job.ghost.type) || '', 1]];
+  items = items.filter(x => x && x[0]);
+
+  const stateName = ({ toghost: '执行任务', returning: '返回', building: '施工中',
+    repairing: '修复中', charging: '充电中', idle: '待命', collecting: '取货中',
+    delivering: '配送中', outgoing: '前往', incoming: '返回' })[r.state] || r.state || '待命';
+
+  // 电量
+  let frac;
+  if (isLogi) {
+    const max = (typeof ROBOT_MAX_CHARGE !== 'undefined') ? ROBOT_MAX_CHARGE : 3000;
+    frac = Math.max(0, Math.min(1, (r.charge || 0) / max));
+  } else {
+    frac = Math.max(0, Math.min(1, (r.e || 0) / (r.maxE || 1)));
+  }
+
+  const lines = [{ label: '状态', value: stateName }];
+  lines.push({ label: '电量', value: Math.round(frac * 100) + ' %' });
+  if (!isLogi && typeof CONSTR_ROBOT_SPEED !== 'undefined')
+    lines.push({ label: '速度', value: (CONSTR_ROBOT_SPEED * 3.6).toFixed(1) + ' km/h' });
+
+  ctx.font = 'bold 12.5px system-ui';
+  const titleLines = _wrapTooltipText(ctx, name, innerW);
+  ctx.font = '10.5px system-ui';
+  const rows = [];
+  for (const f of lines) {
+    const labelFull = f.label + '：';
+    const labelW = ctx.measureText(labelFull).width;
+    const vx = bx + pad + labelW + 6;
+    const valueMaxW = (bx + bw - padR) - vx;
+    if (valueMaxW < 24) {
+      rows.push({ label: labelFull, value: null, vx });
+      for (const vl of _wrapTooltipText(ctx, f.value, innerW)) rows.push({ label: null, value: vl, vx: bx + pad });
+    } else {
+      const vL = _wrapTooltipText(ctx, f.value, valueMaxW);
+      rows.push({ label: labelFull, value: vL[0], vx });
+      for (let i = 1; i < vL.length; i++) rows.push({ label: null, value: vL[i], vx });
+    }
+  }
+
+  const titleLh = 16, fieldLh = 14, iconRowLh = 24, sep = 4, padTop = 8, padBottom = 8;
+  const height = padTop + titleLh * titleLines.length +
+    (items.length ? iconRowLh + sep : 0) + fieldLh * rows.length + padBottom;
+  const x0 = bx + pad;
+  ctx.fillStyle = 'rgba(16,22,30,.92)';
+  rr(ctx, x0 - pad, top, bw - pad, height, 6); ctx.fill();
+  ctx.strokeStyle = 'rgba(90,140,210,.35)'; ctx.lineWidth = 1;
+  rr(ctx, x0 - pad, top, bw - pad, height, 6); ctx.stroke();
+
+  let y = top + padTop;
+  ctx.font = 'bold 12.5px system-ui'; ctx.fillStyle = '#ffd88a';
+  ctx.fillText(name, x0, y);
+  y += titleLh * titleLines.length;
+
+  // 携带物品行（图标 + 数量角标）
+  if (items.length) {
+    y += sep;
+    ctx.font = '10.5px system-ui'; ctx.fillStyle = '#98a5b5';
+    ctx.fillText('携带：', x0, y);
+    let ix = x0 + ctx.measureText('携带：').width;
+    for (const [id, n] of items) {
+      if (ITEMS[id] && typeof drawItemGlyph === 'function') {
+        const isz = 16;
+        ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.fillRect(ix, y, isz, isz);
+        drawItemGlyph(ctx, id, ix + isz / 2, y + isz / 2, isz * 0.9);
+        ctx.font = 'bold 8px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#fff'; ctx.fillText(String(n), ix + isz / 2, y + isz + 7);
+        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        ix += isz + 3;
+      } else {
+        const nm = (ITEMS[id] && ITEMS[id].name) || id;
+        ctx.font = '10.5px system-ui'; ctx.fillStyle = '#cfe0ff';
+        ctx.fillText(nm + '×' + n, ix, y);
+        ix += ctx.measureText(nm + '×' + n).width + 8;
+      }
+    }
+    y += iconRowLh + 2;
+  }
+
+  // 字段行
+  ctx.font = '10.5px system-ui';
+  for (const row of rows) {
+    if (row.label) { ctx.fillStyle = '#98a5b5'; ctx.fillText(row.label, x0, y); }
+    if (row.value) { ctx.fillStyle = '#e8eef4'; ctx.fillText(row.value, row.vx, y); }
+    y += fieldLh;
+  }
+}
+
 // 字段标签取自官方 core.cfg [description]，数值全部来自 GAME_DATA 单源。
 // 文本超宽时自动换行（标题/描述/字段值均可折行），不做省略号截断。
 function drawDeviceInfoBar(ctx) {
   // 仅在小地图开启时展示（面板锚定在小地图正下方）
   if (!(G.settings && G.settings.minimap !== false)) return;
   if (!G.cursorTile) return;
+  // 悬停施工/物流机器人：优先显示机器人状态（对齐原版：携带物品 + 基本状态，两行标题/字段布局）
+  {
+    const rob = _robotUnderCursor();
+    if (rob) { _drawRobotInfoBar(ctx, rob.kind, rob.r); return; }
+  }
   const { tx, ty } = G.cursorTile;
   const hovered = entAt(tx, ty);
   if (!hovered || hovered._dead || !hovered.type || !ITEMS[hovered.type]) {

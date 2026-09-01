@@ -500,7 +500,7 @@ function drawBlueprintGhostAt(g, tx, ty) {
     const nx = s.x + ox, ny = s.y + oy;
     const tmp = cls.restore(Object.assign({}, s, { x: nx, y: ny }));
     tmp.dir = s.dir | 0; tmp.applyDir();
-    const ok = canPlaceAt(s.type, nx, ny, tmp.dir).ok;
+    const ok = canPlaceAt(s.type, nx, ny, tmp.dir, true).ok;   // 虚影预览不受建造范围限制（noReach）
     g.globalAlpha = 0.55;
     // 完整建筑幽灵预览：复用各设备的 DEVICE_RENDER 绘制（对齐《异星工厂》蓝图幽灵），
     // 让复制预览与实际建筑外观一致，而非只显示一个色块框。

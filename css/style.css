@@ -922,6 +922,28 @@ html, body {
   align-self: flex-end;
   margin-top: 4px;
 }
+.tech-lvl {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+.tech-lvl-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-end;
+}
+.tech-lvl-stepper button { padding: 1px 8px; }
+.tech-lvl-stepper b {
+  font-size: 11px;
+  font-weight: bold;
+  min-width: 44px;
+  text-align: center;
+  color: #c9a6ff;
+  white-space: nowrap;
+}
+.tech-lvl-slide { width: 100%; }
 .recipe.done { opacity: .6; }
 .recipe.tech.locked { opacity: .55; }
 .recipe.tech.locked .rname { color: #9aa;

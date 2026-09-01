@@ -221,10 +221,11 @@ function pasteBlueprintAsGhosts(bp) {
     const isReplace = !!oldEnt && oldEnt.type === s.type;
     if (oldEnt && !isReplace) continue;
     if (ghostAt(nx, ny, BUILD_DEFS[s.type].w, BUILD_DEFS[s.type].h)) continue;
-    // 校验放置合法性（水面/可放置规则），不合法跳过
-    if (!canPlaceAt(s.type, nx, ny, ndir).ok) continue;
+    // 校验放置合法性（水面/可放置规则），不合法跳过；虚影不受建造范围限制（noReach=true），可任意远处排布
+    if (!canPlaceAt(s.type, nx, ny, ndir, true).ok) continue;
     const g = new ConstrGhost(s.type, nx, ny, ndir);
     g.mirror = s.mirror | 0;
+    g.consumes = 'item';   // 蓝图/复制粘贴虚影：施工时直接消耗背包中的建筑成品本身（对齐《异星工厂》：蓝图建造消耗建筑物品，而非其配方原料）
     if (s.recipe) g.recipe = s.recipe;
     if (isReplace) g.replaceEnt = oldEnt;   // 标记替换建造：落地时移除旧设备并返还
     G.constrGhosts.push(g);
@@ -386,6 +387,9 @@ function updateConstrRobot(r, dt) {
     }
     if (r.dockT > 0) r.dockT = Math.max(0, r.dockT - dt);
     if (r.dockT > 0) return;                          // 仍在停靠，暂不回收/出发
+    // 拆除物归位：随身携带拆除物的机器人在玩家身边盘旋，背包腾出空位才逐一放入；
+    // 只要还有未放下的物品就继续等待，不回收、不出发（对齐《异星工厂》）。
+    if (returnCargoToPlayer(r)) { if (typeof uiDirty !== 'undefined') uiDirty = true; return; }
     if (r.e >= r.maxE * CONSTR_MAX_CHARGE) {
       if (constrJobValid(r.job)) r.state = 'toghost';   // 还有任务 → 继续
       else r._dead = true;                              // 任务完成 → 回收
@@ -430,18 +434,14 @@ function updateConstrRobot(r, dt) {
     return;
   }
 
-  // 施工中：逐步完成，到达后消耗背包材料并落地（工作阶段仅耗基底 idle 电能，几乎不耗电）
+  // 施工中：到达后立即消耗背包材料并落地（建造无耗时，立刻落地并马上返航，无需等待建造时间）
   if (r.state === 'building') {
     const job = r.job;
     if (!constrJobValid(job)) { r._dead = true; return; }
-    r.buildT += dt;
-    constrDrain(r, 0, dt);
-    if (r.buildT >= CONSTR_BUILD_TIME) {
-      if (job.kind === 'build') completeBuild(job.ghost); else completeDecon(job.mark);
-      r.state = 'returning';
-      r.job = null;
-      r.buildT = 0;
-    }
+    if (job.kind === 'build') completeBuild(job.ghost); else completeDecon(job.mark, r);
+    r.state = 'returning';
+    r.job = null;
+    r.buildT = 0;
     return;
   }
 
@@ -506,17 +506,45 @@ function completeBuild(g) {
   if (typeof playSfx === 'function') playSfx('robot-build');
 }
 
-// 完成一个拆除标记：返还物资并移除实体
-function completeDecon(m) {
+// 完成一个拆除标记：移除实体，拆除物交由施工机器人携带（对齐《异星工厂》：机器人拿着拆除物
+// 飞回玩家身边盘旋，背包腾出空位才逐一放入；不原地丢进背包，避免背包装满时物品静默丢失）。
+function completeDecon(m, r) {
   const e = m.ent;
   if (!e || e._dead) { m._dead = true; return; }
   // 拆除时瞬间返还实体内容（含传送带上携带的物品），对齐手动拆除/红图批量删除：
   // 传送带是流动的，若逐件先取物品，移动中的传送带会不断补充导致无法清空，
   // 因此需一次性移除整条带上的所有物品并全部返还，再移除实体本身。
-  for (const [id, n] of e.contents()) if (typeof invAdd === 'function') invAdd(id, n);
+  const items = e.contents();
   removeEnt(e);
   if (G.panelEnt === e && typeof closePanel === 'function') closePanel();
   m._dead = true;
+  if (r && items && items.length) r.cargo = mergeItemList(r.cargo || [], items);
+  else for (const [id, n] of items) if (typeof invAdd === 'function') invAdd(id, n);
+}
+
+// 合并物品列表（相同 ID 累加），用于拆除物缓存到机器人身上
+function mergeItemList(a, b) {
+  const map = new Map();
+  for (const [id, n] of a) if (n > 0) map.set(id, (map.get(id) || 0) + n);
+  for (const [id, n] of b) if (n > 0) map.set(id, (map.get(id) || 0) + n);
+  return [...map].map(([id, n]) => [id, n]);
+}
+
+// 把机器人随身携带的拆除物逐件放进玩家背包（有空间才放，放不下的继续随身携带等待）。
+// 返回 true 表示仍持有未放入的拆除物（需继续盘旋等待），false 表示已全部放入/无携带。
+function returnCargoToPlayer(r) {
+  if (!r.cargo || !r.cargo.length) return false;
+  let stillHolding = false;
+  for (let i = r.cargo.length - 1; i >= 0; i--) {
+    const [id, n] = r.cargo[i];
+    if (n <= 0) { r.cargo.splice(i, 1); continue; }
+    const added = invAdd(id, n);
+    const rest = n - added;
+    if (rest <= 0) r.cargo.splice(i, 1);
+    else { r.cargo[i] = [id, rest]; stillHolding = true; }
+  }
+  if (!r.cargo.length) r.cargo = null;
+  return stillHolding;
 }
 
 // ===== 全局施工调度 =====
@@ -556,7 +584,8 @@ function updateConstruction(dt) {
   let targetGhost = null;
   for (const g of G.constrGhosts) {
     if (g._dead || g.building) continue;
-    // 范围内判断
+    // 建造范围（距离）判定：虚影无距离限制可任意放置，但施工机器人只在个人机器人港建造范围内自动施工。
+    // 超出范围的虚影保留显示（不消失），角色靠近进入范围后机器人自动续建。
     if (Math.abs((g.x + g.w / 2) - G.player.x / TILE) > rInfo.range) continue;
     if (Math.abs((g.y + g.h / 2) - G.player.y / TILE) > rInfo.range) continue;
     // 需要材料：只有全部材料齐备时才施工（材料不足的幽灵原地等待，下次材料备齐自动续建，不会丢失）。
@@ -770,7 +799,28 @@ function drawConstruction(ctx) {
       : (frac > 0.5 ? '#d8b84a' : (frac > 0.25 ? '#e08a3a' : '#d04a3a'));
     ctx.fillRect(bx, by, Ew * frac, Eh);
     ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1; ctx.strokeRect(bx, by, Ew, Eh);
+    // 头顶携带图标：去建造 → 显示所送建筑；拆除返回 → 显示随身携带的拆除物（对齐《异星工厂》机器人携物飞行）
+    const carry = constrRobotCarryIcon(r);
+    if (carry) {
+      drawItemDot(ctx, r.x, r.y - 26, carry.id, 8);
+      if (carry.n > 1 && typeof carry.id === 'string') {
+        ctx.font = 'bold 9px system-ui';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        const cn = String(carry.n);
+        ctx.fillStyle = 'rgba(0,0,0,.6)';
+        rr(ctx, r.x + 8, r.y - 30, 12 + cn.length * 5, 10, 3); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.fillText(cn, r.x + 14 + cn.length * 2.5, r.y - 25);
+      }
+    }
   }
+}
+
+// 计算机器人头顶应显示的携带物品图标与数量：拆除归途取 cargo 首项；
+// 去建造（toghost 且任务为 build）显示所送建筑类型。无携带返回 null。
+function constrRobotCarryIcon(r) {
+  if (r.cargo && r.cargo.length) return { id: r.cargo[0][0], n: r.cargo[0][1] };
+  if (r.job && r.job.kind === 'build' && r.job.ghost) return { id: r.job.ghost.type, n: 1 };
+  return null;
 }
 
 // 序列化个人机器人港状态（随存档保存，含启用状态与所有“建造虚影”）
