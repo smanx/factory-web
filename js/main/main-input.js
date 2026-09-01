@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 // 电线杆拖建锚点：按住左键拖拽铺设电线杆时，记录上一根杆的放置格，
 // 拖动超过其最远连线距离才落下一根（对齐《异星工厂》拖建电线杆按最远距离间隔铺设）。
@@ -88,7 +88,8 @@ function bindInput() {
     }
     else if (k === 't') G.panelMode === 'tech' ? closePanel() : openPanel('tech');
     else if (k === 'o') G.panelMode === 'set' ? closePanel() : openPanel('set');
-    else if (k === 'm') { G.settings.minimap = !(G.settings.minimap !== false); toast(G.settings.minimap ? '小地图：开启' : '小地图：关闭'); }
+    // M：打开/关闭远程视图（对齐《异星工厂》M 打开地图视图）。不再是切换小地图开关。
+    else if (k === 'm') { if (typeof toggleRemoteView === 'function') toggleRemoteView(); }
     // 地图标记（对齐《异星工厂》：N 放置地图标记，Alt+N 管理）
     else if (ev.altKey && k === 'n') {
       ev.preventDefault();
@@ -117,6 +118,9 @@ function bindInput() {
         cancelBlueprint();
       } else if (G.deconstructMode) {
         toggleDeconstructMode(false);
+      } else if (G.remoteView) {
+        // 远程视图：ESC 退出远程视图（对齐《异星工厂》关闭地图视图）
+        if (typeof exitRemoteView === 'function') exitRemoteView();
       }
       // 游戏界面无任何弹框：直接展开游戏菜单并暂停
       else {
@@ -304,14 +308,19 @@ function bindInput() {
   G.canvas.addEventListener('wheel', ev => {
     ev.preventDefault();
     // 鼠标滚轮直接放大/缩小画面视野（默认交互，不切换快捷栏选择图标）。
+    // 远程视图下允许缩小到更远的距离（下限更低，可全景览图），正常视角保持原样。
     G.cam.z *= ev.deltaY < 0 ? 1.12 : 0.89;
-    G.cam.z = Math.max(0.3, Math.min(2.2, G.cam.z));
+    G.cam.z = (typeof remoteClampZoom === 'function') ? remoteClampZoom(G.cam.z) : Math.max(0.3, Math.min(2.2, G.cam.z));
   }, { passive: false });
 
   window.addEventListener('resize', resize);
   document.getElementById('game').addEventListener('click', ev => {
     if (ev.button !== 0 || ev.shiftKey || ev.ctrlKey) return;   // Ctrl+左键为快速转移（见 mousedown），不打开面板
     if (G.blueMode) return;   // 蓝图/红图模式下不触发面板
+    if (G.remoteView) {
+      // 远程视图：点击其他区域不打开设备面板，仅用于视角/放虚影（右上角关闭由 DOM 按钮处理）
+      return;
+    }
     updateCursorTile(ev.clientX, ev.clientY);
     if (!G.cursorTile) return;
     // 持握来自箱子/设备的物品时点击地图：点可交互设备 → 打开其面板以便放入；点空地 → 取消放回原处。
@@ -767,7 +776,8 @@ function boot() {
     ['debug', () => buildDebug()],
     ['deathmenu', () => initDeathMenu()],
     ['pausemenu', () => initPauseMenu()],
-    ['input', () => bindInput()]
+    ['input', () => bindInput()],
+    ['remote', () => { if (typeof bindRemoteClose === 'function') bindRemoteClose(); }]
   ];
   for (const [name, fn] of steps) {
     try { fn(); } catch (err) {

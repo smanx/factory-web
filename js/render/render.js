@@ -28,6 +28,12 @@ function resize() {
 
 function updateCamera(dt) {
   const cam = G.cam;
+  if (G.remoteView) {
+    // 远程视图：镜头不跟随玩家，由 WASD 平移（远端可自由查看地图）
+    if (typeof remoteCamUpdate === 'function') remoteCamUpdate(dt);
+    else { cam.px += 0; cam.py += 0; }
+    return;
+  }
   const pan = cam.pan || { x: 0, y: 0 };
   // 相机跟随玩家，但在玩家基础上附加 pan 偏移；
   // 玩家移动后偏移仍保持（视角相对玩家位置固定）。
@@ -180,6 +186,9 @@ function render() {
     ctx.restore();
   }
   drawHoverAndMining(ctx);
+  // 个人机器人港建造范围方框：仅按住 Shift（虚影放置模式）且已装备机器人港时显示，
+  // 地面层绘制在建造虚影/玩家之下（先于两者），未装备机器人港不画（函数内部判定）。
+  if (typeof drawPersonalRoboportRange === 'function') drawPersonalRoboportRange(ctx);
   // 建造虚影/拆除标记绘制在玩家之前（下层），保证主角移到虚影上时在最上层不被遮挡
   if (typeof drawConstrGhosts === 'function') drawConstrGhosts(ctx);
   drawPlayer(ctx);
@@ -239,10 +248,11 @@ function render() {
   // 天气系统：动态云影覆盖层（低开销，不影响分块缓存）
   if (typeof drawWeatherOverlay === 'function') drawWeatherOverlay(ctx, W, H);
 
-  // 小地图（位于画布右下角）
-  if (G.settings && G.settings.minimap !== false) drawMinimap(ctx);
-  // 设备信息面板：鼠标悬停设备时在小地图下方显示长条详情
-  if (typeof drawDeviceInfoBar === 'function') drawDeviceInfoBar(ctx);
+  // 小地图（位于画布右下角）；远程视图下隐藏，避免遮挡全景
+  if (G.settings && G.settings.minimap !== false && !G.remoteView) drawMinimap(ctx);
+  // 设备信息面板：鼠标悬停设备时在小地图下方显示长条详情（远程视图下同样隐藏）
+  if (typeof drawDeviceInfoBar === 'function' && !G.remoteView) drawDeviceInfoBar(ctx);
+  // 远程视图顶栏由 DOM 元素渲染（#remote-bar / #remote-close），不再绘制于画布
 }
 
 // ===== 显示角色建造范围圆圈（设置「显示建造范围」开启时绘制）=====
@@ -366,6 +376,13 @@ function onScreen(e) {
 const terrainCacheStats = { state: '未启用', rebuildMs: 0, lastRebuild: 0, hits: 0, misses: 0, cached: 0 };
 const TERRAIN_CHUNK_LRU_MAX = 16;   // 分块离屏缓存上限（张）
 const ORE_CHUNK_LRU_MAX = 64;        // 矿点离屏缓存上限（张）：矿点重建较贵，留更大缓存降低平移时重建频率
+// 远程视图（M）可缩小到 0.12，视野覆盖数十个 chunk；临时调高 LRU 上限，
+// 避免大幅缩小时逐帧重建 chunk 造成卡顿（退出远程视图后恢复原上限）。
+const TERRAIN_CHUNK_LRU_REMOTE = 256;
+const ORE_CHUNK_LRU_REMOTE = 512;
+const _remoteChunkCap = () => (G && G.remoteView);
+function _terrainCap() { return _remoteChunkCap() ? TERRAIN_CHUNK_LRU_REMOTE : TERRAIN_CHUNK_LRU_MAX; }
+function _oreCap() { return _remoteChunkCap() ? ORE_CHUNK_LRU_REMOTE : ORE_CHUNK_LRU_MAX; }
 const TERRAIN_CHUNK_PX = CHUNK * TILE;   // 1024
 const terrainChunkCache = new Map();   // 'cx,cy' -> { canvas, last }
 terrainChunkCache._seq = 0;   // LRU 时钟序号
@@ -1046,7 +1063,7 @@ function terrainChunkCanvas(cx, cy) {
   terrainCacheStats.misses++;
   terrainCacheStats.cached = terrainChunkCache.size;
   // LRU 淘汰：超出上限时移除最久未用的 chunk
-  if (terrainChunkCache.size > TERRAIN_CHUNK_LRU_MAX) {
+  if (terrainChunkCache.size > _terrainCap()) {
     let oldestKey = null, oldest = Infinity;
     for (const [k, v] of terrainChunkCache) {
       if (v.last < oldest) { oldest = v.last; oldestKey = k; }
@@ -1107,7 +1124,7 @@ function oreChunkCanvas(cx, cy) {
   const cv = buildOreChunk(cx, cy);
   oreChunkCache.set(key, { canvas: cv, dirty: false, last: ++oreChunkCache._seq });
   // LRU 淘汰：与地形缓存同理，避免探索地图增大时缓存无限膨胀（上限可配，默认同地形缓存上限）
-  if (oreChunkCache.size > ORE_CHUNK_LRU_MAX) {
+  if (oreChunkCache.size > _oreCap()) {
     let oldestKey = null, oldest = Infinity;
     for (const [k, v] of oreChunkCache) {
       if (v.last < oldest) { oldest = v.last; oldestKey = k; }

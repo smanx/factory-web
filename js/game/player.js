@@ -90,6 +90,8 @@ function updatePlayer(dt) {
     if (typeof updateDriving === 'function') updateDriving(dt);
     return;
   }
+  // 远程视图：人物不随之移动（镜头由 remoteCamUpdate 接管），WASD 用于平移镜头
+  if (G.remoteView) return;
   let mx = 0, my = 0;
   if (G.keys['w'] || G.keys['arrowup']) my -= 1;
   if (G.keys['s'] || G.keys['arrowdown']) my += 1;

@@ -439,7 +439,16 @@ function drawHeldGhost(g) {
 // 同时选中设备时在屏幕右下角显示其数量徽标。
 function drawGhost(ctx) {
   const g = (G && G.ghostCtx) || ctx;   // 顶层画布优先，回退到主画布
-  if (g !== ctx) g.clearRect(0, 0, W, H); // 仅清空顶层画布，不清主画布
+  // 仅清空顶层画布，不清主画布。清空必须「自包含」：先把变换复位成与画布一致的 dpr 变换再清，
+  // 这样即便上一帧某个分支在幽灵 ctx 上残留了世界缩放/平移（缩放到最小时尤其容易因平移量巨大
+  // 而让 clearRect(0,0,W,H) 只清到一小片），本清空也能覆盖整块画布，杜绝旧位置方块的残影累积。
+  if (g !== ctx) {
+    const _dpr = window.devicePixelRatio || 1;
+    g.save();
+    g.setTransform(_dpr, 0, 0, _dpr, 0, 0);
+    g.clearRect(0, 0, W, H);
+    g.restore();
+  }
   if (typeof drawHeldGhost === 'function' && drawHeldGhost(g)) return;
   // 幽灵需显示在背包面板/底部工具栏等所有界面上方：仅需存在选中物品与鼠标所在格，不再要求 cursorTile 落在主画布上（面板/工具栏上由 window 级 mousemove 持续更新）。
   if (!buildActive() || !G.cursorTile) return;
@@ -467,7 +476,8 @@ function drawGhost(ctx) {
     let ew = def.w, eh = def.h;
     if (def.rotSwap && (G.ghostDir % 2 === 1)) { ew = def.h; eh = def.w; }
     // 不允许覆盖建造：目标格已有实体时判定为红色不可放置，与建造行为一致。
-    const chk = canPlaceAt(type, G.cursorTile.tx, G.cursorTile.ty, G.ghostDir);
+    // 远程视图下放置的是「建造幽灵」（tryPlaceGhost 无视距离），故跳过距离判定以保持绿色提示一致。
+    const chk = canPlaceAt(type, G.cursorTile.tx, G.cursorTile.ty, G.ghostDir, !!G.remoteView);
     const tmp = getGhostEnt(type);
     tmp.dir = G.ghostDir;
     tmp.mirror = G.ghostMirror | 0;
@@ -507,8 +517,9 @@ function drawGhost(ctx) {
         g.setLineDash([]);
       }
     }
-    // 按住 Shift 时绘制为“建造虚影”放置：叠加黄色虚边框提示（松开 Shift 即变回正常实体放置）
-    if (G.shiftHeld) {
+    // 按住 Shift 时绘制为“建造虚影”放置：叠加黄色虚边框提示（松开 Shift 即变回正常实体放置）。
+    // 远程视图下所有放置皆为建造幽灵，固定显示此黄色虚边框以提示「仅规划不落地」。
+    if (G.shiftHeld || G.remoteView) {
       g.strokeStyle = 'rgba(230,210,110,.95)';
       g.lineWidth = 2.5 / G.cam.z;
       g.setLineDash([6 / G.cam.z, 4 / G.cam.z]);
@@ -965,6 +976,39 @@ function drawRoboportCoverage(ctx) {
       drawLinks(ctX * TILE, ctY * TILE, null);
     }
   }
+}
+
+// ===== 个人机器人港建造范围可视化（对齐《异星工厂》：Personal roboport 建造范围方框）=====
+// 按住 Shift（虚影放置模式，对齐《异星工厂》ghost 放置）时，在角色周围画出个人机器人港的
+// 施工范围方框：绿色方框半边长 = constrRoboportInfo().range（格），与 updateConstruction 中
+// 施工机器人的施工范围判定一致（切比雪夫距离 max(|dx|,|dy|) ≤ range）。
+// 仅按住 Shift 且处于放置建筑上下文时显示；未装备个人机器人港则不显示。
+function drawPersonalRoboportRange(ctx) {
+  if (typeof hasPersonalRoboport !== 'function' || !hasPersonalRoboport()) return;
+  // 仅“按住 Shift 放置虚影”时显示（正常放置/平时不显示），且须处于可建造/蓝图上下文
+  if (!G.shiftHeld || !_placingBuildableOrBlueprint()) return;
+  if (typeof constrRoboportInfo !== 'function') return;
+  const range = constrRoboportInfo().range || 15;
+  const pcx = G.player.x / TILE, pcy = G.player.y / TILE;
+  const rc = {
+    x0: Math.floor(pcx - range), y0: Math.floor(pcy - range),
+    x1: Math.ceil(pcx + range), y1: Math.ceil(pcy + range)
+  };
+  // 视口剔除（与机器人港范围框一致：rc 为格坐标，须 ×TILE 统一单位再与 FRAME_BOUNDS 比较）
+  if (rc.x1 * TILE < FRAME_BOUNDS.x1 || rc.x0 * TILE > FRAME_BOUNDS.x0 ||
+      rc.y1 * TILE < FRAME_BOUNDS.y1 || rc.y0 * TILE > FRAME_BOUNDS.y0) return;
+  _drawCoverageFill(ctx, rc, 'rgba(92,225,134,.10)', 'rgba(148,255,178,.75)');
+}
+// 是否处于“放置建筑”上下文：手持可建造建筑（含品质后缀）或蓝图物品/蓝图粘贴中。
+function _placingBuildableOrBlueprint() {
+  if (typeof selItem !== 'function') return false;
+  const it = selItem();
+  if (!it) return false;
+  if (typeof isBlueprintItem === 'function' && isBlueprintItem(it)) return true;
+  if (G.blueMode === 'paste' && G.blueprint) return true;   // 蓝图粘贴中
+  let base = it;
+  if (typeof splitQuality === 'function') base = splitQuality(it).base;
+  return !!BUILD_DEFS[base];
 }
 
 function drawHoverAndMining(ctx) {

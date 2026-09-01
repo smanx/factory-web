@@ -63,50 +63,23 @@ function blueRect() {
   };
 }
 
-// 红图：删除矩形区域内所有实体（含内部物资返还，跨区域不重复）。
-// 删除前弹框确认，避免误删整片建筑；确认后才真正执行删除。
+// 红图：把框选区域内所有实体登记为“拆除标记”（红叉），由施工机器人自动拆除。
+// 与是否装备机器人无关：未装备个人机器人港时标记作为规划标记保留在图上，
+// 装备机器人港 + 背包有施工机器人后，机器人进入范围即自动处理（见 updateConstruction）。
+// 不再提供“直接删除”确认弹窗（对齐《异星工厂》：红图只打拆除标记，不直接拆）。
 function applyRedBlueprint() {
   const r = blueRect();
   if (!r) return;
-  // 装备个人机器人港且有施工机器人：生成拆除标记，由施工机器人拆除
-  if (typeof canUseConstruction === 'function' && canUseConstruction() && typeof markAreaForDecon === 'function') {
-    const n = markAreaForDecon(r);
-    // 红图同时抹除区域内所有“建造虚影”（虚影是规划标记，无需机器人，直接清除）
-    const ng = (typeof removeGhostsInRect === 'function') ? removeGhostsInRect(r) : 0;
-    G.blueStart = null; G.blueEnd = null;
-    const msg = [];
-    if (n > 0) msg.push('已标记 ' + n + ' 个建筑待拆除，施工机器人正在拆除' + (constrPending().decon > 0 ? '（剩 ' + constrPending().decon + ' 个待拆）' : ''));
-    if (ng > 0) msg.push('已清除 ' + ng + ' 个建造虚影');
-    toast(msg.length ? msg.join('；') : '区域内没有可拆除的建筑或虚影');
-    uiDirty = true;
-    return;
-  }
-  const n = redAreaCount(r);
-  const ng = (typeof countGhostsInRect === 'function') ? countGhostsInRect(r) : 0;
-  if (!n && !ng) {
-    G.blueStart = null; G.blueEnd = null;
-    toast('区域内没有可拆除的建筑或虚影');
-    uiDirty = true;
-    return;
-  }
-  // 保留框选范围，待确认后由 doRedBlueprintDelete 删除
-  openConfirm('红图删除确认', '将删除框选区域内的 ' + n + ' 个建筑' + (ng ? '、并清除 ' + ng + ' 个建造虚影' : '') + '（建筑内部物资会返还背包），确定继续？', '删除', () => doRedBlueprintDelete(r));
-}
-
-// 统计矩形区域内可被红图删除的建筑数量（实体中心在区域内，与删除判定一致）
-function redAreaCount(r) {
-  const seen = new Set();
-  let count = 0;
-  for (let ty = r.y0; ty <= r.y1; ty++) {
-    for (let tx = r.x0; tx <= r.x1; tx++) {
-      const e = entAt(tx, ty);
-      if (!e || seen.has(e)) continue;
-      seen.add(e);
-      const cx = e.x + Math.floor(e.w / 2), cy = e.y + Math.floor(e.h / 2);
-      if (cx >= r.x0 && cx <= r.x1 && cy >= r.y0 && cy <= r.y1) count++;
-    }
-  }
-  return count;
+  // 一律登记为拆除标记（红叉）
+  const n = (typeof markAreaForDecon === 'function') ? markAreaForDecon(r) : 0;
+  // 红图同时抹除区域内所有“建造虚影”（虚影是规划标记，无需机器人，直接清除）
+  const ng = (typeof removeGhostsInRect === 'function') ? removeGhostsInRect(r) : 0;
+  G.blueStart = null; G.blueEnd = null;
+  const msg = [];
+  if (n > 0) msg.push('已标记 ' + n + ' 个建筑待拆除' + (constrPending().decon > 0 ? '（剩 ' + constrPending().decon + ' 个待拆）' : ''));
+  if (ng > 0) msg.push('已清除 ' + ng + ' 个建造虚影');
+  toast(msg.length ? msg.join('；') : '区域内没有可拆除的建筑或虚影');
+  uiDirty = true;
 }
 
 // 执行红图删除（确认后调用）：删除矩形区域内所有实体（含内部物资返还，跨区域不重复）

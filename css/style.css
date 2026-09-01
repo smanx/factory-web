@@ -1,4 +1,4 @@
-* { margin: 0; padding: 0; box-sizing: border-box; }
+﻿* { margin: 0; padding: 0; box-sizing: border-box; }
 
 /* 公共面板背景色：背包面板、设备面板等所有交互面板的背景/标题统一使用此变量，
    以后想整体换色只需修改这一处。 */
@@ -3460,3 +3460,46 @@ html, body {
 }
 .bb-detail-thumb-wrap canvas,
 .bp-edit-thumb-wrap canvas { width: 100%; height: 100%; display: block; }
+
+/* ===== 远程视图顶部标题条与关闭按钮（DOM 实现，对齐背包栏标题 .inv-col-head）===== */
+#remote-bar.hidden { display: none; }
+#remote-bar {
+  position: fixed;
+  top: 10px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 2px;
+  padding: 8px 18px;
+  background: #232c38;            /* 深蓝灰背景，对齐背包栏标题 .inv-col-head */
+  border: 1px solid #3a4550;
+  border-radius: 8px;
+  z-index: 9995;
+  pointer-events: none;
+  user-select: none;
+}
+#remote-bar-title {
+  font-size: 16px; font-weight: bold;
+  color: #ffe08a;                 /* 金色标题文字，对齐背包栏标题 .inv-col-head */
+}
+#remote-bar-hint {
+  font-size: 11px;
+  color: #a9b6c4;
+}
+
+#remote-close.hidden { display: none; }
+#remote-close {
+  position: fixed;
+  top: 15px; right: 15px;
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; line-height: 1;
+  color: #e08a8a;
+  background: #232c38;
+  border: 1.5px solid rgba(220,120,120,.55);
+  border-radius: 8px;
+  cursor: pointer;
+  z-index: 9995;
+  user-select: none;
+}
+#remote-close:hover { background: #3a4657; border-color: rgba(220,120,120,.9); color: #ff9c9c; }

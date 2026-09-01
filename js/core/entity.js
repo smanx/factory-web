@@ -105,6 +105,8 @@ function removeEnt(e) {
   invalidateBeltInputNear(e.x, e.y, e.w, e.h);
   // 电力增量注册表同步移除
   if (typeof unregPowerEnt === 'function') unregPowerEnt(e);
+  // 实体被移除（手动拆除/摧毁/替换等）时，其上的“拆除标记”（红叉）一并失效清除
+  if (typeof clearDeconMarkFor === 'function') clearDeconMarkFor(e);
 }
 
 // ===== 流体端口方向表：管道/流体设备共用 =====

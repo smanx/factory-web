@@ -97,10 +97,6 @@ function toggleRoboportActive() {
 function constrRobotCount() {
   return invCount('construction-robot');
 }
-// 是否具备施工能力：装备个人机器人港、已启用且背包有施工机器人
-function canUseConstruction() {
-  return hasPersonalRoboport() && roboportOn() && constrRobotCount() > 0;
-}
 // 装备/卸下个人机器人港（背包“使用”触发，或面板按钮）。
 // wantMk2：点击 Mk2 按钮时强制装备 Mk2；否则若持有 Mk2 优先装备 Mk2（对齐《异星工厂》：机器人港可升级换代）
 function togglePersonalRoboport(wantMk2) {
@@ -256,16 +252,13 @@ function markAreaForDecon(r) {
   return count;
 }
 
-// 统计矩形区域内的“建造虚影”数量（供红图删除确认弹窗，与 removeGhostsInRect 同口径）
-function countGhostsInRect(r) {
-  ensureConstr();
-  let count = 0;
-  for (const g of G.constrGhosts) {
-    if (g._dead) continue;
-    const cx = g.x + g.w / 2, cy = g.y + g.h / 2;
-    if (cx >= r.x0 && cx <= r.x1 && cy >= r.y0 && cy <= r.y1) count++;
+// 手动处理/移除实体时同步清掉其上的“拆除标记”（红叉）：标记指向的实体已不存在即失效。
+// 由 removeEnt（entity.js）调用，覆盖拆除模式/右键拆除/绿图升级替换/摧毁等所有实体移除路径。
+function clearDeconMarkFor(e) {
+  if (!e || !G.deconMarks || !G.deconMarks.length) return;
+  for (const m of G.deconMarks) {
+    if (!m._dead && m.ent === e) m._dead = true;
   }
-  return count;
 }
 
 // 移除矩形区域内的“建造虚影”（红图 ALT+D / 批量清空规划标记）。
@@ -831,10 +824,16 @@ function constrSerialize() {
         w: g.w, h: g.h, quality: g.quality, needId: g.needId, recipe: g.recipe, consumes: g.consumes
       }))
     : [];
+  // 拆除标记随存档持久化：仅记录其指向实体的左上角瓦片坐标（x/y），
+  // 读档时（实体已恢复）按坐标重新关联回对应实体，实体已不存在则跳过。
+  const deconMarks = (G.deconMarks && G.deconMarks.length)
+    ? G.deconMarks.filter(m => !m._dead && m.ent && !m.ent._dead).map(m => ({ x: m.x, y: m.y }))
+    : [];
   return {
     personalRoboport: G.personalRoboport === 'mk2' ? 'mk2' : !!G.personalRoboport,
     roboportActive: G.roboportActive === false ? false : true,
-    ghosts
+    ghosts,
+    deconMarks
   };
 }
 function constrRestore(s) {
@@ -859,5 +858,17 @@ function constrRestore(s) {
       if (gd.consumes) g.consumes = gd.consumes;
       G.constrGhosts.push(g);
     } catch (e) { /* 忽略无法重建的虚影条目 */ }
+  }
+  // 恢复存档中的“拆除标记”（红图框选生成，由施工机器人拆除），按左上角瓦片坐标重新关联到已恢复的实体。
+  // 读档时实体已先于此处恢复（applySave 先重建 d.ents），故可经 entAt 直接定位；
+  // 实体已不存在（保存后/读档前被拆除）则跳过该标记。
+  const mdefs = (s && Array.isArray(s.deconMarks)) ? s.deconMarks : [];
+  for (const md of mdefs) {
+    if (!md || typeof md.x !== 'number' || typeof md.y !== 'number') continue;
+    try {
+      const e = entAt(md.x | 0, md.y | 0);
+      if (!e || e._dead) continue;
+      G.deconMarks.push(new DeconMark(e));
+    } catch (err) { /* 忽略无法重建的拆除标记条目 */ }
   }
 }

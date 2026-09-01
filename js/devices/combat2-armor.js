@@ -339,6 +339,8 @@ function playerFire(tx, ty) {
 // 玩家角色本身不具备自动攻击能力——“自动攻击”仅由炮塔、蜘蛛机甲等设备/载具执行。
 function updatePlayerFire(dt) {
   if (!G.weapon || !G.settings.combat) return;
+  // 远程视图：仅查看/放虚影，不开火（避免按住左键放置幽灵时误射击）
+  if (G.remoteView) return;
   // 驾驶装甲车/坦克时：按住空格由车载机枪/主炮开火，不再用手持武器（对齐《异星工厂》：驾驶载具用载具武器）
   if (G.driving && G.driving.ent && (G.driving.ent instanceof Car)) return;
   G.playerFireT -= dt;

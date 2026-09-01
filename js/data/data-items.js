@@ -415,7 +415,7 @@ const ITEMS = {
   // ===== 蓝图（对齐《异星工厂》蓝图物品化：蓝图是可入背包/快捷栏的物品）=====
   'blueprint': {emoji: '📑', name: '蓝图', color: '#4a7ad0', mark: '蓝', desc: '手持蓝图：点击地图任意位置放置蓝图内容（R 旋转，V/H 翻转，Q 取消）。蓝图不消耗材料，可反复放置。'},
 
-  'deconstruction-planner': {emoji: '🟥',  name: '拆除规划器', color: '#d04848', mark: '拆', desc: '手持规划器：选中后进入红图框选模式，框选一块区域即可批量拆除其中的建筑（装备个人机器人港后改由施工机器人拆除）。对齐《异星工厂》Deconstruction planner' },
+  'deconstruction-planner': {emoji: '🟥',  name: '拆除规划器', color: '#d04848', mark: '拆', desc: '手持规划器：选中后进入红图框选模式，框选一片区域即为其中的建筑登记“拆除标记”（红叉）。未装备机器人港时标记保留在图上，装备个人机器人港并背包有施工机器人后，机器人进入范围即自动拆除。对齐《异星工厂》Deconstruction planner' },
   'upgrade-planner': {emoji: '🟩',  name: '升级规划器', color: '#57b95c', mark: '升', desc: '手持规划器：选中后进入绿图框选模式，框选一块区域后可批量升级/降级其中的建筑。对齐《异星工厂》Upgrade planner' },
   // ===== 空间科学包（对齐《异星工厂》Space science pack，火箭发射产出） =====
   'space-science-pack': {emoji: '⚪',  name: '空间科学包', color: '#d0d0e0', mark: 'SC', desc: '高级科学包：由卫星成功发射（火箭发射井）或空间平台中枢合成获得（2铁板+1碳+1冰→5），用于终局无限科研（科研速度/采矿产能等）' },

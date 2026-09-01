@@ -771,6 +771,14 @@ function tryPlaceAt(tx, ty) {
   const sq = (typeof splitQuality === 'function') ? splitQuality(rawSel) : { base: rawSel, quality: 'normal' };
   const type = sq.base;
   const placeQuality = sq.quality;
+  // 远程视图：只能放置「虚拟建筑」（建造幽灵，对齐《异星工厂》地图视图远程规划）。
+  // 不消耗资源、不真实落地，由施工机器人进入范围后自动施工；地形铺设等不在远程视图生效。
+  if (G.remoteView) {
+    if (BUILD_DEFS[type] && typeof tryPlaceGhost === 'function') {
+      return tryPlaceGhost(type, tx, ty, rawSel);
+    }
+    return;
+  }
   // 地面铺设（混凝土/石砖路/填海等）：不创建实体，直接修改地形（需优先于 BUILD_DEFS 守卫判定）
   if (type === 'concrete' || type === 'refined-concrete' || type === 'hazard-concrete' || type === 'stone-path' || type === 'landfill' || type === 'foundation' || type === 'ice-platform' || type === 'space-platform-foundation' || SOIL_TILE[type] !== undefined || SEED_TILE[type] !== undefined) {
     placeGround(type, tx, ty, infinite);

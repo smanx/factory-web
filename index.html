@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -37,6 +37,11 @@
   </div>
   <div id="panel-body"></div>
 </div>
+<div id="remote-bar" class="hidden">
+  <span id="remote-bar-title">远程视图</span>
+  <span id="remote-bar-hint">WASD 平移 · 滚轮缩放 · 左键放置虚拟建筑（建造幽灵）</span>
+</div>
+<button id="remote-close" class="hidden" title="关闭远程视图">✕</button>
 <div id="toasts"></div>
 <div id="greenbar" style="display:none"></div>
 <div id="tooltip"><b></b><span></span><div id="tooltip-recipe"></div></div>
@@ -300,5 +305,6 @@
 <script src="js/main/main.js" defer></script>
 <script src="js/main/main-actions.js" defer></script>
 <script src="js/main/main-input.js" defer></script>
+<script src="js/main/remote-view.js" defer></script>
 </body>
 </html>
