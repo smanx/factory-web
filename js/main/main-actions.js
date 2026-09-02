@@ -158,8 +158,35 @@ function cliffBlastAt(tx, ty) {
 
 function copySettings(e) {
   if (!e) return;
-  const s = { type: e.type, dir: e.dir };
-  if (typeof e.setRecipe === 'function') s.recipe = e.recipe;
+  const s = { type: e.type };
+  // 组装机等配方设备：复制当前配方
+  if (typeof e.setRecipe === 'function' && e.recipe) s.recipe = e.recipe;
+  // 储物箱（含物流箱底座）：设过「存量上限」筛选时一并复制
+  if (e instanceof Chest && e.limits && Object.keys(e.limits).length) s.limits = { ...e.limits };
+  // 物流仓储箱：复制筛选物品
+  if (e instanceof LogisticStorage && e.filter) s.filter = e.filter;
+  // 需求/缓冲物流箱：复制请求清单
+  if ((e instanceof LogisticRequester || e instanceof LogisticBuffer) && e.requests && Object.keys(e.requests).length)
+    s.requests = { ...e.requests };
+  // 机械臂：复制全部配置（筛选/抓取堆叠/变质/电路），仅不复制朝向与翻转
+  if (e instanceof Inserter) {
+    s.ins = {
+      filterOn: e.filterOn,
+      filterMode: e.filterMode,
+      filters: (e.filters || []).slice(),
+      pickStack: e.pickStack,
+      spoilPrio: e.spoilPrio,
+      spoilMode: e.spoilMode,
+      circuitCond: e.circuitCond ? { ...e.circuitCond } : undefined,
+    };
+  }
+  // 创造设备（创造箱/创造传送带/创造管道）：复制“选择生成物”配置
+  if (e instanceof CreativeChest) {
+    if (typeof e._ensureSlots === 'function') e._ensureSlots();
+    s.creative = { selected: e.selected, slots: (e.slots || []).slice() };
+  } else if (e instanceof CreativePipe || e instanceof CreativeBelt) {
+    if (e.selected) s.creative = { selected: e.selected };
+  }
   G.clipboard = s;
   toast('已复制 ' + ITEMS[e.type].name + ' 配置（Shift+左键粘贴到同类）');
 }
@@ -168,14 +195,29 @@ function pasteSettings(e) {
   if (!e || !G.clipboard) return;
   const c = G.clipboard;
   if (e.type !== c.type) { toast('类型不匹配：剪贴板是' + ITEMS[c.type].name); return; }
-  if (c.dir === undefined) return;
-  if (BUILD_DEFS[e.type] && BUILD_DEFS[e.type].rotSwap) {
-    // 抽水机旋转后脚印变化，需重新校验仍压水面
-    if (e.type === 'offshore-pump' && !pumpCanFace(e, c.dir)) { toast('无法粘贴：抽水机必须仍压在水面上'); return; }
-    removeEnt(e); e.dir = c.dir; e.applyDir(); addEnt(e);
-  }
-  else { e.dir = c.dir; }
+  // 仅复制配置（配方/筛选），不复制朝向、旋转方向
   if (c.recipe && typeof e.setRecipe === 'function') e.setRecipe(c.recipe);
+  if (c.limits && e instanceof Chest) e.limits = { ...c.limits };
+  if (c.filter && e instanceof LogisticStorage) e.filter = c.filter;
+  if (c.requests && (e instanceof LogisticRequester || e instanceof LogisticBuffer)) e.requests = { ...c.requests };
+  if (c.ins && e instanceof Inserter) {
+    e.filterOn = c.ins.filterOn;
+    e.filterMode = c.ins.filterMode;
+    e.filters = (c.ins.filters || []).slice();
+    e.pickStack = c.ins.pickStack;
+    e.spoilPrio = c.ins.spoilPrio;
+    e.spoilMode = c.ins.spoilMode;
+    if (c.ins.circuitCond) e.circuitCond = { ...c.ins.circuitCond };
+  }
+  // 创造设备：粘贴“选择生成物”配置（类型门禁已保证目标同类）
+  if (c.creative && (e instanceof CreativeChest || e instanceof CreativePipe || e instanceof CreativeBelt)) {
+    if (e instanceof CreativeChest) {
+      e.selected = c.creative.selected;
+      e.slots = (c.creative.slots || []).slice();
+    } else {
+      e.selected = c.creative.selected;
+    }
+  }
   uiDirty = true;
   toast('配置已粘贴');
 }

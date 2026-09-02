@@ -385,6 +385,12 @@ class Inserter extends Entity {
         return (item === 'rocket' || item === 'explosive-rocket') && t.ammoCount(item) < 10;
       case 'railgun-turret':
         return item === 'railgun-ammo' && t.ammo < 20;
+      case 'rocket-silo':
+        // 火箭发射井：接受卫星（1 枚即可）与火箭部件原料（火箭燃料/处理单元/低密度结构）。
+        // 井内自动组装持续消耗原料，机械臂按组装机惯例补到 2 倍本次需量即停。
+        if (item === 'satellite') return (t.inp['satellite'] || 0) < 1;
+        if (!SILO_ASSEMBLE[item]) return false;
+        return (t.inp[item] || 0) < siloPartNeed(item) * 2;
       default:
         return false;
     }
@@ -448,7 +454,6 @@ class Inserter extends Entity {
       if (!got.length) return;
       this.holding = it;
       this.holdingCount = got.length;
-      if (typeof onScreen === 'function' && onScreen(this) && typeof playSfx === 'function') playSfx('inserter');
     } else {
       // 到达放物位：循环放入；失败保持持物、标记堵塞，下帧继续重试
       const t = this.entAtDrop();

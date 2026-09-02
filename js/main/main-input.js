@@ -226,6 +226,7 @@ function bindInput() {
     G.mouseDown = false;
     G.mouseRightDown = false;
     G.remoteDeconPress = null;
+    G.deconHold = null;
     poleAnchor = null;
   });
   G.canvas.addEventListener('mousedown', ev => {
@@ -308,6 +309,17 @@ function bindInput() {
         const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
         if (!(e instanceof Belt) && !(e instanceof Underground) && !(e instanceof Inserter) && rightClickPickupAt(G.cursorTile.tx, G.cursorTile.ty)) return;
       }
+      // 拆除需长按蓄力（对齐需求：右键不是立刻移除，而是一段时长后移除，且不同建筑时长不同）。
+      // 仅在目标为实体时蓄力；空格/建造虚影仍按下即抹除（虚影是规划标记，无需蓄力）。
+      // 按住期间于目标上绘制进度条（见 render-entity 的 drawHoverAndMining）；松开或移开则取消。
+      if (G.cursorTile && withinReach(G.cursorTile.tx, G.cursorTile.ty)) {
+        const e = entAt(G.cursorTile.tx, G.cursorTile.ty);
+        if (e) {
+          if (typeof deconHoldTime !== 'function') { deconstructAt(G.cursorTile.tx, G.cursorTile.ty); return; }
+          G.deconHold = { tx: G.cursorTile.tx, ty: G.cursorTile.ty, t: 0, hold: deconHoldTime(e) };
+          return;
+        }
+      }
       if (G.cursorTile) deconstructAt(G.cursorTile.tx, G.cursorTile.ty);
     } else if (ev.button === 1) {
       if (G.cursorTile) {
@@ -317,7 +329,7 @@ function bindInput() {
     }
   });
   window.addEventListener('mouseup', ev => {
-    if (ev.button === 2) { G.mouseRightDown = false; G.remoteDeconPress = null; return; }
+    if (ev.button === 2) { G.mouseRightDown = false; G.remoteDeconPress = null; G.deconHold = null; return; }
     if (ev.button !== 0) return;
     G.mouseDown = false;
     poleAnchor = null;
@@ -559,6 +571,21 @@ function updateHeldMouse(dt) {
   if (G.deconstructHeld && G.cursorTile) {
     if (G.blueMode) { G.deconstructHeld = false; return; }
     deconstructAt(G.cursorTile.tx, G.cursorTile.ty);
+    return;
+  }
+  // 右键长按拆除蓄力：按住不松并停留在同一目标上，蓄满 hold 即拆除；
+  // 提前松开（mouseup 清空）或鼠标移离目标/离开画布则取消，快速点按不误触。
+  if (G.deconHold) {
+    const d = G.deconHold;
+    if (!G.mouseRightDown || !G.cursorTile || G.cursorTile.tx !== d.tx || G.cursorTile.ty !== d.ty) {
+      G.deconHold = null;
+    } else {
+      d.t += dt;
+      if (d.t >= d.hold) {
+        G.deconHold = null;
+        deconstructAt(d.tx, d.ty);
+      }
+    }
     return;
   }
   if (!G.mouseDown || !G.cursorTile) return;

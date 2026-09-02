@@ -106,6 +106,7 @@ var G = {
   paused: false,      // 游戏暂停：由顶部“暂停/继续”按钮控制，暂停时世界/设备/玩家停摆
   deconstructMode: false,  // 拆除模式：开启后点触建筑即可拆除（右键拆除不受影响）
   deconstructHeld: false,  // 拆除模式：左键是否处于按住连续拆除状态
+  deconHold: null,         // 右键长按拆除蓄力：{ tx, ty, t, hold }，t 累积按住时长，满 hold 即拆除
   craftQueue: [],     // 手搓合成队列：见 player.js 的 queueCraft / updateCraftQueue
 };
 
@@ -1139,8 +1140,16 @@ function tryAutoUnderground(type, tx, ty) {
   return true;
 }
 
+// 不同建筑类型拆除所需蓄力时长（秒），由 tools/generate-game-data.js 依据官方
+// minable.mining_time 脚本生成进 GAME_DATA.deconTime（不做代码内手工维护）。
+// 建筑运行实例据此返回目标实体的拆除蓄力时长；官方无数据则兜底 0.5s。
+function deconHoldTime(e) {
+  const id = e && e.type;
+  if (id && GAME_DATA && GAME_DATA.deconTime && GAME_DATA.deconTime[id] > 0) return GAME_DATA.deconTime[id];
+  return 0.5;
+}
+
 function deconstructAt(tx, ty) {
-  if (!withinReach(tx, ty)) return;
   // 右键/拆除模式下移除“建造虚影”：虚影是规划标记，右键直接抹除，无需施工机器人。
   // 注意须在 entAt 之前判定（虚影只会落在空格上，故此处 e 为空即可能是虚影）。
   const e = entAt(tx, ty);

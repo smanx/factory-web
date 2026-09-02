@@ -435,8 +435,7 @@ function hubPanelHtml(e) {
     if (!ITEMS[outId]) continue;
     const selCls = e.recipe === rid ? 'sel' : '';
     const inpStr = Object.keys(rcp.inp).map(k => ITEMS[k].name + '×' + rcp.inp[k]).join('、');
-    const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
-      Object.keys(rcp.inp).map(k => ITEMS[k].name).join(' ')).toLowerCase();
+    const searchKey = ITEMS[outId].name.toLowerCase();
     const tipMain = ITEMS[outId].name + '|' + rcp.out[outId] + '个/次，耗时' + rcp.time + '秒';
     const tipRecipe = '所需原料：' + inpStr;
     h += '<button class="rcbtn ' + selCls + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-rsearch="' + searchKey.replace(/"/g, '') + '" data-tip="' + tipMain + '||' + tipRecipe + '">' +

@@ -324,7 +324,7 @@ function drawVoidPipe(ctx, e, gx, gy, dir, alpha) {
 // 由 creative-item-picker.js 的 document 捕获监听器优先拦截，避免被背包选中逻辑吃掉）。
 function creativeChestChip(id) {
   return '<span class="chip" data-itemid="' + id + '" data-tip="' + itemTip(id) + '" data-itemsearch="' +
-    (ITEMS[id].name + ' ' + id).toLowerCase().replace(/"/g, '') + '">' +
+    ITEMS[id].name.toLowerCase().replace(/"/g, '') + '">' +
     '<img src="' + iconDataURL(id) + '">' + ITEMS[id].name +
     '<button type="button" class="chip-x" data-action="csel-rm" data-id="' + id + '" title="移除 ' + ITEMS[id].name + '">✕</button></span>';
 }

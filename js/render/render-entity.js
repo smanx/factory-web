@@ -142,6 +142,8 @@ const ghostCache = { type: null, ent: null };
 function _altLabelKey(e) {
   const t = e.type;
   if (e.recipe) return 'r:' + e.recipe;
+  // 机械臂：筛选配置指纹（启用状态 + 筛选物品列表，变化才重算图标缓存）
+  if (IS_INSERTER[t]) return 'i:' + (e.filterOn ? '1' : '0') + ':' + (e.filters || []).join(',');
   if (t === 'train-stop') {
     // 车站：以站名 + 装卸清单为指纹（对齐《异星工厂》ALT 模式显示车站装卸内容）
     return 'st:' + (e.name || '') + ':' + (e.load || []).join(',') + ':' + (e.unload || []).join(',');
@@ -193,6 +195,10 @@ const CHEST_ALT_TYPES = new Set([
 // 供 drawAltMode 在建筑顶部叠加绘制图标，取代原来的文本标签（需求：切换详情只显示图标）。
 function _altLabelIcons(e) {
   const t = e.type;
+  // 机械臂：启用筛选后，ALT 模式在臂上方显示筛选物品图标（效果与箱子内容图标一致）
+  if (IS_INSERTER[t] && e.filterOn && e.filters && e.filters.length) {
+    return e.filters.filter(id => ITEMS[id]);
+  }
   // 带配方机器：配方产出物图标
   if (e.recipe) {
     const rec = RECIPES[e.recipe] || REFINERY_RECIPES[e.recipe] || CENTRIFUGE_RECIPES[e.recipe];
@@ -273,9 +279,9 @@ function drawAltMode(ctx, keys, seenBuf) {
       e._altIcons = icons;
     }
     if (!icons || !icons.length) return;
-    // 箱子类存储容器：内容图标直接盖在容器上，按需求规则布局
+    // 箱子类存储容器 / 机械臂筛选物品：内容图标直接盖在建筑上，按需求规则布局
     // （1 种=与箱子同大的图标；2~4 种=每个半格宽，2/3 个横向排列、4 个 2×2 方形）
-    if (e.slots && CHEST_ALT_TYPES.has(e.type)) {
+    if ((e.slots && CHEST_ALT_TYPES.has(e.type)) || IS_INSERTER[e.type]) {
       drawChestAltIcons(ctx, e, icons);
       return;
     }
@@ -620,6 +626,20 @@ function drawGhostCount(g, wx, wy) {
   g.restore();
 }
 
+// 建筑整体是否在玩家建造范围内（对齐《异星工厂》：建造只要求玩家够得着建筑，
+// 不要求建筑最远一格也在范围内，避免大型建筑如 9×9 火箭发射井在正常站位下永远放不下）。
+// 以玩家中心到建筑外接矩形最近点的距离判定，≤ REACH_PX（10 格）即可。
+function withinReachFoot(tx, ty, ew, eh) {
+  // 调试开关“无限交互距离”开启时，可对任意远的格子交互/建造
+  if (G.dbg && G.dbg.farReach) return true;
+  const p = G.player;
+  const minX = tx * TILE, maxX = (tx + ew) * TILE;
+  const minY = ty * TILE, maxY = (ty + eh) * TILE;
+  const cx = Math.max(minX, Math.min(p.x, maxX));   // 玩家中心在建筑占地内的最近点 x
+  const cy = Math.max(minY, Math.min(p.y, maxY));   // 玩家中心在建筑占地内的最近点 y
+  return Math.hypot(cx - p.x, cy - p.y) <= REACH_PX;
+}
+
 // 放置校验：默认规则（不能压水/已有实体/超出触及范围）+ 设备自定义规则
 // （DEVICE_PLACE[type] 返回 {ok} 则短路，返回 null 则继续默认校验）
 // 不允许覆盖建造：目标格已有实体时返回 {ok:false, reason:'occupied'}，由调用方按具体原因提示。
@@ -677,8 +697,10 @@ function canPlaceAt(type, tx, ty, dir, noReach) {
         }
         return { ok: false, reason: 'occupied' };
       }
-      if (!noReach && !withinReach(tx + dx, ty + dy)) return { ok: false, reason: 'reach' };
     }
+  // 超出建造范围判定按建筑整体计算（对齐《异星工厂》：只要求玩家够得着建筑即可，
+  // 不逐格要求最远一格也在范围内；放在地形/占用检查之后，保持原优先级）。
+  if (!noReach && !withinReachFoot(tx, ty, ew, eh)) return { ok: false, reason: 'reach' };
   return { ok: true };
 }
 
@@ -1112,6 +1134,26 @@ function _placingBuildableOrBlueprint() {
 
 function drawHoverAndMining(ctx) {
   if (!G.cursorTile) return;
+  // 右键长按拆除蓄力：在目标建筑中心绘制与采矿/砍树一致的圆形蓄力圈（满圈即拆除），
+  // 样式对齐采集进度圈（白底半透明圆圈 + 白实线进度弧）。置于函数最前，保证拆除模式下也显示。
+  if (G.deconHold) {
+    const d = G.deconHold;
+    const e = entAt(d.tx, d.ty);
+    if (e) {
+      const frac = Math.max(0, Math.min(1, d.t / (d.hold || 1)));
+      const cx = (e.x + e.w / 2) * TILE, cy = (e.y + e.h / 2) * TILE;
+      const r = Math.max(10, Math.min(e.w, e.h) * TILE * 0.3);   // 圈径随建筑占地缩放，保证可见
+      ctx.strokeStyle = 'rgba(255,255,255,.35)';                 // 底圈（同采矿 loading）
+      ctx.lineWidth = 3 / Math.max(1, G.cam.z);
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = '#fff';                                   // 进度弧（蓄满即拆除）
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+      ctx.stroke();
+    }
+  }
   const { tx, ty } = G.cursorTile;
   const e = entAt(tx, ty);
   // 拆除模式：红色高亮光标所在建筑，提示将被拆除

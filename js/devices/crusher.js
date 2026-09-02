@@ -168,8 +168,7 @@ function crusherPanelHtml(e) {
     const outId = crusherMainOut(RECIPES[rid]);
     const selCls = e.recipe === rid ? 'sel' : '';
     const inpStr = Object.keys(RECIPES[rid].inp).map(k => ITEMS[k].name + '×' + RECIPES[rid].inp[k]).join('、');
-    const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
-      Object.keys(RECIPES[rid].inp).map(k => ITEMS[k].name).join(' ')).toLowerCase();
+    const searchKey = ITEMS[outId].name.toLowerCase();
     const outAmt = RECIPES[rid].prob ? ('概率 ' + (RECIPES[rid].prob[outId] * 100) + '%') : (RECIPES[rid].out[outId] + '个/次');
     const tipMain = ITEMS[outId].name + '|' + outAmt + '，耗时' + RECIPES[rid].time + '秒';
     const tipRecipe = '所需原料：' + inpStr;

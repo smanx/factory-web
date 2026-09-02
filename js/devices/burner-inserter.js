@@ -126,7 +126,6 @@ class BurnerInserter extends Inserter {
     if (this._sfProbeT > 0) return true;
     this._sfProbeT = 0.15;
     if (this.trySelfFeed()) {
-      if (typeof onScreen === 'function' && onScreen(this) && typeof playSfx === 'function') playSfx('inserter');
       return true;
     }
     // 没抓到燃料：清零标准状态机的探测节流再交还控制权，让父级本帧立即探测正常取物

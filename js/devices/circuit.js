@@ -731,6 +731,8 @@ function drawCircuitWires(ctx, e) {
   const drawWire = (o, color, off) => {
     if (entKey(o.x, o.y) <= selfKey) return;
     if (selfIsPole && isPole(o)) return;   // 杆-杆：黄色电力线已表示，跳过红/绿信号线
+    // 火箭发射井：不绘制与电线杆间的红/绿信号线（电路信号功能保留，仅隐藏视觉连线）
+    if (e.type === 'rocket-silo' || o.type === 'rocket-silo') return;
     const id = o.x + ',' + o.y;
     if (drawn.has(id)) return; drawn.add(id);
     const ox = (o.x + o.w / 2) * TILE, oy = (o.y + o.h / 2) * TILE;

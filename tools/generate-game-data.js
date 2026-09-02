@@ -115,6 +115,7 @@ const officialNames = new Map();
 const officialStack = new Map();   // 官方名 → stack_size
 const officialHp = new Map();      // 官方名 → max_health
 const officialPower = new Map();   // 官方名 → energy_usage(原始字符串)
+const officialMine = new Map();    // 官方名 → minable.mining_time（拆除/采集时长基底）
 for (const [type, tbl] of Object.entries(raw)) {
   if (typeof tbl !== 'object' || !tbl) continue;
   for (const [name, proto] of Object.entries(tbl)) {
@@ -122,6 +123,7 @@ for (const [type, tbl] of Object.entries(raw)) {
     officialNames.set(name, proto);
     if (typeof proto.stack_size === 'number') officialStack.set(name, proto.stack_size);
     if (typeof proto.max_health === 'number') officialHp.set(name, proto.max_health);
+    if (proto.minable && typeof proto.minable.mining_time === 'number') officialMine.set(name, proto.minable.mining_time);
     if (typeof proto.energy_usage === 'string') officialPower.set(name, proto.energy_usage);
     // 燃烧器设备无 energy_usage，仅有 energy_consumption（如锅炉 1.8MW）——同样计入官方功耗
     else if (typeof proto.energy_consumption === 'string'
@@ -337,6 +339,7 @@ for (const rid of new Set([...projectRecipes, ...projectRefRecipes, ...projectCe
 const GAME_DATA = {
   stackSize: {},
   buildingHp: {},
+  deconTime: {},
   powerUse: {},
   deviceStats: {},
   recipe: {},
@@ -369,6 +372,16 @@ for (const id of projectBuildings) {
   const hp = officialHp.get(oid);
   if (hp !== undefined) GAME_DATA.buildingHp[id] = hp;
   else log.noHp.push(id);
+}
+
+// ---- deconTime（右键长按拆除蓄力时长，秒）----
+// 以官方 minable.mining_time 为基底脚本生成，不在游戏逻辑里手工维护。
+// 为保证拆除表现为可感知的「长按」，统一映射为 0.5 + mining_time：
+// 越难拆（官方 mining_time 越大）的建筑蓄力越久；官方无该数据则运行时兜底 0.5s。
+for (const id of projectBuildings) {
+  const oid = toOfficialName(id);
+  const mt = officialMine.get(oid);
+  if (typeof mt === 'number' && mt > 0) GAME_DATA.deconTime[id] = 0.5 + mt;
 }
 
 // ---- powerUse（仅生成官方有 energy_usage 的建筑）----
@@ -1650,6 +1663,7 @@ function report() {
   if (!log.skippedRecipe.length) console.log('（无）');
   console.log('\n-- 项目建筑无官方 max_health（保持手工/默认）--');
   console.log(log.noHp.length ? log.noHp.join(', ') : '（无）');
+  console.log('\n-- 拆除蓄力时长 deconTime（官方 mining_time 生成，共 ' + Object.keys(GAME_DATA.deconTime).length + ' 项）--');
   console.log('\n-- 设备行为参数 deviceStats（官方已接入）--');
   console.log(Object.keys(GAME_DATA.deviceStats).length ? Object.keys(GAME_DATA.deviceStats).join(', ') : '（无）');
   console.log('deviceStats 手工保留（项目自定/模型不同，未接入）：信号塔效果系数、机械臂简化模型、地下带距离、分流器、创意/虚空带');

@@ -131,8 +131,7 @@ function cryoPanelHtml(e) {
     const outId = Object.keys(RECIPES[rid].out)[0];
     const selCls = e.recipe === rid ? 'sel' : '';
     const inpStr = Object.keys(RECIPES[rid].inp).map(k => ITEMS[k].name + '×' + RECIPES[rid].inp[k]).join('、');
-    const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
-      Object.keys(RECIPES[rid].inp).map(k => ITEMS[k].name).join(' ')).toLowerCase();
+    const searchKey = ITEMS[outId].name.toLowerCase();
     const tipMain = ITEMS[outId].name + '|' + RECIPES[rid].out[outId] + '个/次，耗时' + RECIPES[rid].time + '秒';
     const tipRecipe = '所需原料：' + inpStr;
     h += '<button class="rcbtn ' + selCls + '" data-action="recipe" data-id="' + rid + '" data-itemid="' + outId + '" data-rsearch="' + searchKey.replace(/"/g, '') + '" data-tip="' + tipMain + '||' + tipRecipe + '">' +

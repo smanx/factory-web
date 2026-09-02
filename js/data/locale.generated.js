@@ -9,13 +9,13 @@
 // 生成时间指纹（data/ 各 .cfg 文件字节数，供 --check 过期检测）：data/base/locale/en/base.cfg:76848|data/base/locale/zh-CN/base.cfg:72169|data/core/locale/en/core.cfg:263617|data/core/locale/zh-CN/core.cfg:249261|data/elevated-rails/locale/en/elevated-rails.cfg:1405|data/elevated-rails/locale/zh-CN/elevated-rails.cfg:1311|data/quality/locale/en/quality.cfg:2600|data/quality/locale/zh-CN/quality.cfg:2524|data/recycler/locale/en/recycler.cfg:1270|data/recycler/locale/zh-CN/recycler.cfg:1180|data/space-age/locale/en/space-age.cfg:52342|data/space-age/locale/zh-CN/space-age.cfg:49091
 const GAME_LOCALE = {
  "sections": [
-  "autoplace-control-names",
   "item-name",
   "entity-name",
   "recipe-name",
   "fluid-name",
   "equipment-name",
   "tile-name",
+  "autoplace-control-names",
   "map-gen-preset-name",
   "map-gen-preset-description"
  ],

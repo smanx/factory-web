@@ -829,7 +829,7 @@ function updateRecipeMachineLive(e, body, api) {
 
 function chip(id, n, iconOnly) {
   return '<span class="chip" data-itemid="' + id + '" data-tip="' + itemTip(id) + '" data-itemsearch="' +
-    (ITEMS[id].name + ' ' + id).toLowerCase().replace(/"/g, '') + '"><img src="' + iconDataURL(id) + '">' +
+    ITEMS[id].name.toLowerCase().replace(/"/g, '') + '"><img src="' + iconDataURL(id) + '">' +
     (iconOnly ? (n !== undefined ? ' ×' + n : '') : ITEMS[id].name + (n !== undefined ? ' ×' + n : '')) + '</span>';
 }
 
@@ -970,7 +970,7 @@ function invSlotHtml(id, idx, withActionId, slotCount) {
   const isBp = (typeof isBlueprintItem === 'function') ? isBlueprintItem(id) : false;
   const n = (slotCount != null) ? slotCount : invCount(id);
   const dispName = isBp ? bpItemName(id) : (ITEMS[id] ? ITEMS[id].name : id);
-  const search = (dispName + ' ' + (isBp ? 'blueprint' : id)).toLowerCase().replace(/"/g, '');
+  const search = dispName.toLowerCase().replace(/"/g, '');
   const hit = !q || search.includes(q);
   let use = '';
   // 手雷/集束手雷：可在背包中直接投掷（对齐《异星工厂》投掷物）
@@ -1403,8 +1403,7 @@ function htmlCraft() {
         const lockTech = recipeLockingTech(rid);
         const rec = RECIPES[rid];
         const cnt = unlocked ? craftMaxCount(rid) : 0;
-        const searchKey = (ITEMS[outId].name + ' ' + outId + ' ' +
-          Object.keys(rec.inp).map(k => ITEMS[k].name).join(' ') + ' ' + recipeDeviceName(rid)).toLowerCase();
+        const searchKey = ITEMS[outId].name.toLowerCase();
         h += '<div class="inv-slot craft-slot' + (unlocked ? '' : ' locked') + '" data-action="craft" data-id="' + rid + '" data-mult="1" data-craftable="' + cnt + '" data-rsearch="' + searchKey.replace(/"/g, '') + '" data-tip="' + itemTip(outId) + '">' +
           '<img src="' + iconDataURL(outId, 16) + '">' +
           '<span class="cnt" data-cnt>' + cnt + '</span>' +
@@ -2371,7 +2370,7 @@ function recipeSelectGridHtmlForTab(e, info, items, q) {
     let outStr = '';
     if (r.out) outStr = Object.keys(r.out).map(k => ITEMS[k].name + '×' + r.out[k]).join('、');
     else if (r.prob) outStr = Object.keys(r.prob).map(k => ITEMS[k].name + '（' + Math.round(r.prob[k] * 10000) / 100 + '%）').join('、');
-    const searchKey = (name + ' ' + rid + ' ' + (inpStr || '') + ' ' + (outStr || '')).toLowerCase();
+    const searchKey = Object.keys(r.out || r.prob || {}).map(k => (ITEMS[k] ? ITEMS[k].name : k)).join(' ').toLowerCase();
     if (q && searchKey.indexOf(q) < 0) continue;
     const tipMain = name + '|每周期耗时 ' + r.time + ' 秒' + (unlocked ? '' : '。未解锁：需先研究「' + (lockTech ? TECHS[lockTech].name : '对应科技') + '」');
     const tipRecipe = (inpStr ? '所需原料：' + inpStr : '') + (outStr ? '（产出：' + outStr + '）' : '');
@@ -2616,6 +2615,11 @@ function assemblerLayoutHtml(e) {
 function unifiedMachineLayoutHtml(e) {
   // 组装机保持原有设计稿风格面板
   if (isAssemblerMachine(e)) return assemblerLayoutHtml(e);
+  // 火箭发射井：三栏布局（左=背包，中=火箭装配，右=运载/物流），面板自带完整布局，不再套用外壳
+  if (e.type === 'rocket-silo') {
+    const panel = DEVICE_PANEL[e.type];
+    return (panel && panel.html) ? panel.html(e) : '<div class="dim">无信息</div>';
+  }
   const left = htmlInventory();
   let right = '';
   if (isRecipeDevice(e)) {

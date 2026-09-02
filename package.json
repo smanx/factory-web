@@ -5,8 +5,8 @@
   "description": "工厂原型 - Factorio clone in browser",
   "scripts": {
     "data": "node tools/generate-game-data.js && node tools/generate-locale.js --check",
-    "serve": "http-server -p 8094 -c-1",
-    "dev": "node build.js --dev --port 8095",
+    "dev": "http-server -p 8094 -c-1",
+    "serve": "node build.js --dev --port 8095",
     "serve:dist": "cd dist & http-server -p 8094 -c-1",
     "watch": "node build.js --watch",
     "build": "node build.js",
