@@ -3560,10 +3560,14 @@ html, body {
 #panel.machine-wide .rocket-layout .inv-col-left  { flex: 0 0 auto; width: fit-content; min-width: 0; max-width: 382px; }
 #panel.machine-wide .rocket-layout .rocket-mid    { flex: 0 0 auto; width: 318px; min-width: 0; }
 #panel.machine-wide .rocket-layout .rocket-right  { flex: 0 0 auto; width: 380px; min-width: 0; }
-/* 列体占满列剩余高度并各自独立纵向滚动（列头固定不滚） */
-#panel.machine-wide .rocket-layout .inv-col-body  { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; }
+/* 列体占满列剩余高度并各自独立纵向滚动（列头固定不滚）；列内不出现横向滚动 */
+#panel.machine-wide .rocket-layout .inv-col-body  { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; }
+/* 中/右栏内所有文字在固定列宽内自然换行（任意字符强制断行），
+   避免长文本（装填说明、自动请求条、载荷行等）把固定列宽横向撑开导致面板横向滚动 */
+#panel.machine-wide .rocket-layout .rocket-mid,
+#panel.machine-wide .rocket-layout .rocket-right { min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
 #panel.machine-wide .rocket-layout .rocket-mid .dim,
-#panel.machine-wide .rocket-layout .rocket-right .dim { white-space: normal; word-break: break-word; line-height: 1.5; }
+#panel.machine-wide .rocket-layout .rocket-right .dim { max-width: 100%; white-space: normal; line-height: 1.5; }
 
 /* 分区标题（段落标题 + 右侧说明） */
 .rocket-area-title { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 13px; color: #e8eef4; margin: 8px 0 4px; }
@@ -3610,7 +3614,7 @@ html, body {
 
 /* 两枚火箭制造进度条（当前 + 下一枚）：进度条占满整行（无文字标签） */
 .rocket-progress { margin: 8px 0 2px; }
-.rc-pbar-row { display: flex; align-items: center; gap: 8px; margin: 5px 0; font-size: 12px; color: #cfcfcf; white-space: nowrap; }
+.rc-pbar-row { display: flex; align-items: center; gap: 8px; margin: 5px 0; font-size: 12px; color: #cfcfcf; overflow-wrap: anywhere; }
 .rc-pbar-row .rc-flowbar { margin: 0; }
 /* 下一枚火箭进度条用橙色渐变，与当前（绿色）区分 */
 .rc-pbar-row + .rc-pbar-row .rc-flowbar i { background: linear-gradient(90deg, #e0a51c, #b07f14); }
@@ -3633,9 +3637,9 @@ html, body {
 
 /* 右栏：自动请求条 / 载荷行 / 格子区 */
 .rocket-autobar { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12); border-radius: 4px; padding: 5px 8px; color: #cfcfcf; margin: 6px 0; font-size: 12px; }
-.rocket-autobar .lbl { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.rocket-autobar .lbl { flex: 1; min-width: 0; white-space: normal; overflow-wrap: anywhere; word-break: break-word; line-height: 1.4; }
 .rocket-autobar .ico { color: #5fb0e8; cursor: default; }
-.rc-loadrow { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 12px; color: #cfcfcf; white-space: nowrap; }
+.rc-loadrow { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 12px; color: #cfcfcf; overflow-wrap: anywhere; }
 .rc-loadrow .rc-flowbar { margin: 0; }
 .rc-cargogrid, .rc-orbital, .rc-trash { display: grid; grid-template-columns: repeat(10, 32px); gap: 4px; width: fit-content; margin: 4px 0; }
 #rc-loadlist { margin-top: 4px; }

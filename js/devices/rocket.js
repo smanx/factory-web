@@ -15,8 +15,8 @@ const SILO_ASSEMBLE = {
   'low-density-structure': 10
 };
 const SILO_CAP = 100;
-// 火箭货舱容量（太空货运）：单种货物最多可装的件数（对齐《异星工厂》：火箭货舱按堆叠装载，这里以件计数）。
-const CARGO_CAP = 200;
+// 火箭货舱每格容量（太空货运）：单种货物占一格，每格最多 = 该物品的堆叠上限（对齐《异星工厂》：货舱按堆叠装载，一格 ≤ 一堆）。
+function cargoCap(id) { return (typeof stackSize === 'function') ? stackSize(id) : 100; }
 
 // 组装出完整火箭所需火箭部件数（对齐《异星工厂》：发射井逐件组装火箭部件，集齐后拼装成完整火箭本体）。
 // 每件部件配方 = SILO_ASSEMBLE（火箭燃料×10 + 处理单元×10 + 低密度结构×10）。
@@ -106,7 +106,7 @@ class RocketSilo extends CircuitNode {
     if (item !== 'satellite' && !SILO_ASSEMBLE[item]) {
       // 火箭已组装完成（阶段②）：允许把任意物品装入火箭货舱（太空货运）
       if (!this.hasRocket()) return false;
-      if ((this.cargo[item] || 0) >= CARGO_CAP) return false;
+      if ((this.cargo[item] || 0) >= cargoCap(item)) return false;
       this.cargo[item] = (this.cargo[item] || 0) + 1;
       return true;
     }
@@ -856,33 +856,51 @@ function rocketRightHtml(e) {
       (cur ? '🛰️ ' : '🌍 ') + po.name + (cur ? '（本地降落）' : '') + '</option>';
   }
   h += '</select>';
-  // 物流回收区：装填区（点击把左侧选中物品装入货舱）
+  // 物流回收区：装填区（点击把背包拿起/持握的物品放入货舱）
   h += '<div class="rocket-area-title top"><span>物流回收区</span><span class="dim">装填</span></div>';
-  h += '<div class="dim">点击回收箱把左侧选中的背包物品装入火箭货舱一堆（装入后显示在「火箭运载舱」，点运载舱格子可取出）。</div>';
+  h += '<div class="dim">先在左侧背包点击物品拿起，再点击下方装填区把它放入火箭货舱（放多少由手持数量决定，每格上限 = 堆叠上限；点「火箭运载舱」格子可拿起，点背包格放回）。</div>';
   h += '<div class="rc-trash" id="rc-trash">';
   for (let i = 0; i < 40; i++) {
-    h += '<div class="rocket-slot trash" data-action="cargo-slot" data-tip="装填区|点击把左侧选中的背包物品装入火箭货舱一堆">🗑️</div>';
+    h += '<div class="rocket-slot trash" data-action="cargo-slot" data-tip="装填区|先点击背包物品拿起，再点此把物品放入火箭货舱">🗑️</div>';
   }
   h += '</div>';
   return h;
 }
 
-// 货舱格子：20 格（2×10），有货点击取出全部，空格点击装入左侧选中物品
+// 货舱格子：20 格（2×10），点击拿起（悬浮鼠标，可点背包格放回背包）/ 放入持握物品
 function rocketCargoGridHtml(e) {
   const keys = Object.keys(e.cargo || {}).filter(k => (e.cargo[k] || 0) > 0);
   let h = '';
   for (let i = 0; i < 20; i++) {
     const k = keys[i];
     if (k) {
-      const tip = ITEMS[k].name + ' ×' + e.cargo[k] + '|火箭货舱：点击整件取回背包（随火箭发射降落到物流接驳站/目标星球轨道）';
+      const tip = ITEMS[k].name + ' ×' + e.cargo[k] + '|火箭货舱：点击拿起悬浮于鼠标，可点背包格放回背包（随火箭发射降落到物流接驳站/目标星球轨道）';
       h += '<div class="rocket-slot" data-action="cargo-slot" data-id="' + k + '" data-itemid="' + k + '" data-tip="' + tip + '">' +
         '<img src="' + iconDataURL(k) + '"><span class="cnt">' + e.cargo[k] + '</span></div>';
     } else {
-      const tip = '货舱空位|点击装入左侧选中的背包物品一堆（装入后「发射火箭」按钮点亮，即可发射）';
+      const tip = '货舱空位|先点击背包物品拿起，再点此格放入货舱（每格上限 = 该物品堆叠上限；装入后「发射火箭」按钮点亮）';
       h += '<div class="rocket-slot empty" data-action="cargo-slot" data-tip="' + tip + '"></div>';
     }
   }
   return h;
+}
+
+// 把持握物品放入火箭货舱：每格（每种物品）上限 = 该物品堆叠上限，只放入手持数量（非背包全部），放满则剩余继续持握
+function cargoPlaceHeld(mch, h) {
+  if (FLUIDS.indexOf(h.id) >= 0) { if (typeof toast === 'function') toast((ITEMS[h.id] ? ITEMS[h.id].name : h.id) + ' 是流体，不能装入火箭货舱'); return; }
+  if (typeof isModule === 'function' && isModule(h.id)) { if (typeof toast === 'function') toast('模块请放入发射井模块槽'); return; }
+  const cap = cargoCap(h.id);
+  const cur = mch.cargo[h.id] || 0;
+  const put = Math.max(0, Math.min(h.count, cap - cur));
+  if (put <= 0) {
+    if (typeof toast === 'function') toast('货舱该格已满：' + (ITEMS[h.id] ? ITEMS[h.id].name : h.id) + ' 已达堆叠上限 ' + cap);
+    return;
+  }
+  mch.cargo[h.id] = cur + put;
+  if (typeof heldTake === 'function') heldTake(put);
+  if (!G.held) { G.quickSel = null; G.sel = -1; if (typeof refreshHotbar === 'function') refreshHotbar(); }
+  if (typeof playSfx === 'function') playSfx('click');
+  if (typeof toast === 'function') toast('已装入火箭货舱 ' + (ITEMS[h.id] ? ITEMS[h.id].name : h.id) + ' ×' + put + (G.held ? '（手持还剩 ×' + G.held.count + '）' : ''));
 }
 
 // 目标星球在途轨道货物（20 格）
@@ -1172,16 +1190,22 @@ function showVictory() {
   victoryEl = document.createElement('div');
   victoryEl.id = 'victory-overlay';
   victoryEl.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;background:rgba(10,12,16,.7);color:#fff;font-family:system-ui;';
-  victoryEl.innerHTML = '<div style="font-size:64px">🚀</div>' +
-    '<div style="font-size:32px;font-weight:bold;margin:10px 0;color:#ffd23c">火箭发射成功！</div>' +
-    '<div style="font-size:18px;color:#cfe8ff">恭喜，通关！！！</div>' +
-    '<div style="margin-top:6px;font-size:14px;color:#8aa">您可以继续经营您的工厂</div>' +
-    '<div style="margin-top:14px;font-size:14px;color:#8aa">敬请期待后续更新</div>' +
-    '<div style="margin-top:16px;font-size:14px;color:#8aa">如果喜欢，欢迎给作者点一个 ⭐ Star</div>' +
-    '<a href="https://github.com/smanx/factory-web" target="_blank" rel="noopener" title="给作者点个 Star" style="margin-top:12px;text-decoration:none;display:inline-block;border-radius:50%;">' +
-      '<img src="https://github.com/smanx.png" alt="作者 GitHub 头像" width="64" height="64" style="border-radius:50%;border:2px solid #ffd23c;display:block;">' +
-    '</a>' +
-    '<button id="victory-close" style="margin-top:22px;padding:8px 40px;font-size:16px;color:#111;background:#ffd23c;border:none;border-radius:6px;cursor:pointer;font-family:system-ui;">关闭</button>';
+  victoryEl.innerHTML = '<div style="max-width:540px;width:90%;background:rgba(20,26,34,.92);border:1px solid rgba(111,209,126,.25);border-radius:18px;padding:34px 42px 28px;text-align:center;box-shadow:0 18px 60px rgba(0,0,0,.5);">' +
+    '<div style="font-size:56px;line-height:1">🚀</div>' +
+    '<div style="font-size:28px;font-weight:bold;margin:14px 0 4px;color:#ffd23c;letter-spacing:2px">火箭发射成功！</div>' +
+    '<div style="font-size:20px;font-weight:bold;color:#cfe8ff;margin:10px 0 20px">恭喜，通关</div>' +
+    '<div style="border-top:1px solid rgba(255,255,255,.08);padding-top:18px;">' +
+      '<div style="font-size:15px;color:#aab;">您可以继续经营您的工厂</div>' +
+      '<div style="display:inline-block;margin-top:14px;padding:6px 18px;font-size:14px;color:#9ab;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:20px;">敬请期待后续更新 ✨</div>' +
+    '</div>' +
+    '<div style="border-top:1px solid rgba(255,255,255,.08);margin-top:20px;padding-top:18px;">' +
+      '<div style="font-size:14px;color:#9ab;">如果喜欢，欢迎给作者点一个 ⭐</div>' +
+      '<a href="https://github.com/smanx/factory-web" target="_blank" rel="noopener" title="给作者点个 Star" style="margin-top:14px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.08);border:2px solid #ffd23c;transition:transform .15s,box-shadow .15s;">' +
+        '<svg viewBox="0 0 16 16" width="36" height="36" fill="#e6e6e6" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>' +
+      '</a>' +
+    '</div>' +
+    '<button id="victory-close" style="margin-top:24px;padding:9px 48px;font-size:15px;font-weight:bold;color:#111;background:#ffd23c;border:none;border-radius:8px;cursor:pointer;font-family:system-ui;letter-spacing:2px;">关闭</button>' +
+  '</div>';
   document.body.appendChild(victoryEl);
   // 需用户点击「关闭」按钮才关闭（不再自动消失）
   const closeBtn = document.getElementById('victory-close');
@@ -1268,7 +1292,7 @@ DEVICE_PANEL['rocket-silo'] = {
       if (act === 'launch') { mch.tryLaunch(); renderPanel(false); return true; }
       if (act === 'cargo-feed') {
         const id = btn.dataset.id;
-        const avail = Math.min(invCount(id), CARGO_CAP - (mch.cargo[id] || 0));
+        const avail = Math.min(invCount(id), cargoCap(id) - (mch.cargo[id] || 0));
         if (avail > 0) { invTake(id, avail); mch.cargo[id] = (mch.cargo[id] || 0) + avail; if (typeof toast === 'function') toast('📦 已装入火箭货舱 ' + (ITEMS[id] ? ITEMS[id].name : id) + ' ×' + avail); }
         else if (typeof toast === 'function') toast('没有可装入的' + (ITEMS[id] ? ITEMS[id].name : id));
         renderPanel(false); return true;
@@ -1289,23 +1313,31 @@ DEVICE_PANEL['rocket-silo'] = {
         return true;
       }
       if (act === 'cargo-slot') {
-        // 货舱/装填格：有货→取出全部；空位→装入左侧选中物品一堆
+        // 火箭运载舱 / 装填区：与箱子一致的「持握于鼠标」交互——
+        // 已持握物品 → 点此格放入货舱（每格上限 = 该物品堆叠上限，放多少由手持数量决定，不是全部装入）；
+        // 格内有货且未持握 → 拿起悬浮鼠标，可点背包格放回背包。
         const id = btn.dataset.itemid;
-        if (id && (mch.cargo[id] || 0) > 0) {
-          const n = mch.cargo[id];
-          invAdd(id, n); delete mch.cargo[id];
-          if (typeof toast === 'function') toast('已取出' + (ITEMS[id] ? ITEMS[id].name : id) + ' ×' + n);
+        const h = G.held;
+        // 1) 已持握物品 → 放入货舱（点回原来源格 = 放回）
+        if (h && h.id && h.count > 0) {
+          if (h.src && h.src.kind === 'cargo' && h.src.ent === mch && h.src.id === id) {
+            if (typeof heldReturn === 'function') heldReturn();
+            else { mch.cargo[h.id] = (mch.cargo[h.id] || 0) + h.count; G.held = null; }
+            renderPanel(false); return true;
+          }
+          cargoPlaceHeld(mch, h);
           renderPanel(false); return true;
         }
-        const sel = (typeof selItem === 'function') ? selItem() : null;
-        if (!sel) { if (typeof toast === 'function') toast('请先在左侧背包选中要装入的物品'); return true; }
-        if (FLUIDS.indexOf(sel) >= 0) { if (typeof toast === 'function') toast(ITEMS[sel].name + ' 是流体，不能装入火箭货舱'); return true; }
-        if (typeof isModule === 'function' && isModule(sel)) { if (typeof toast === 'function') toast('模块请放入发射井模块槽'); return true; }
-        const avail = Math.min(invCount(sel), CARGO_CAP - (mch.cargo[sel] || 0));
-        if (avail <= 0) { if (typeof toast === 'function') toast('没有可装入的' + (ITEMS[sel] ? ITEMS[sel].name : sel)); return true; }
-        invTake(sel, avail); mch.cargo[sel] = (mch.cargo[sel] || 0) + avail;
-        if (typeof toast === 'function') toast('📦 已装入火箭货舱 ' + (ITEMS[sel] ? ITEMS[sel].name : sel) + ' ×' + avail);
-        renderPanel(false); return true;
+        // 2) 未持握：格内有货 → 拿起
+        if (id && (mch.cargo[id] || 0) > 0) {
+          const n = mch.cargo[id];
+          if (typeof pickupHeld === 'function') pickupHeld(id, n, { kind: 'cargo', ent: mch, id });
+          if (typeof toast === 'function') toast('已拿起 ' + (ITEMS[id] ? ITEMS[id].name : id) + ' ×' + n + '（悬浮于鼠标）：点击背包格放回背包，再点本格放回，Q 取消');
+          renderPanel(false); return true;
+        }
+        // 3) 空位未持握 → 提示
+        if (typeof toast === 'function') toast('请先在左侧背包点击物品拿起，再点击此处放入火箭货舱');
+        return true;
       }
       if (act === 'mod-take') {
         // 模块槽：点击取回 1 个到背包

@@ -1968,6 +1968,7 @@ function heldSrcRemove(n) {
   else if (s.kind === 'min') { s.ent.inp[s.sid] = (s.ent.inp[s.sid] || 0) - n; if (s.ent.inp[s.sid] <= 0) delete s.ent.inp[s.sid]; }
   else if (s.kind === 'fuel') { s.ent[s.field] = Math.max(0, (s.ent[s.field] || 0) - n); }
   else if (s.kind === 'dbuf') { s.ent.buf = Math.max(0, (s.ent.buf || 0) - n); if (s.ent.buf <= 0) s.ent.bufItem = null; }
+  else if (s.kind === 'cargo') { s.ent.cargo[s.id] = (s.ent.cargo[s.id] || 0) - n; if (s.ent.cargo[s.id] <= 0) delete s.ent.cargo[s.id]; }
 }
 // 拿起：整叠移出来源并悬浮于鼠标。一次只能持握一件，清除背包拿起/选中态。
 function pickupHeld(id, count, src) {
@@ -2025,6 +2026,7 @@ function heldReturn() {
   else if (s.kind === 'min') { s.ent.inp[s.sid] = (s.ent.inp[s.sid] || 0) + h.count; }
   else if (s.kind === 'fuel') { s.ent[s.field] = (s.ent[s.field] || 0) + h.count; }
   else if (s.kind === 'dbuf') { s.ent.buf = (s.ent.buf || 0) + h.count; s.ent.bufItem = h.id; }
+  else if (s.kind === 'cargo') { s.ent.cargo[s.id] = (s.ent.cargo[s.id] || 0) + h.count; }
   else if (s.kind === 'eq') {
     // 从装甲网格拿起的装备：Esc 放回原格（原格空闲则原位放下，否则退回背包）
     const placeBack = (typeof canPlaceEquip === 'function' && typeof canPlaceEquip(h.id, s.r, s.c, s.armor));
