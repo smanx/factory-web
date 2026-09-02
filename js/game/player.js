@@ -1,6 +1,7 @@
 'use strict';
 
 let mineToastAcc = 0;   // 手动挖矿提示去抖计数
+let mineBlockToastT = 0; // 采集受阻提示节流（超距离「够不到」/不可手挖资源），秒
 
 // ===== 主角自动回血（对齐《异星工厂》：受伤后延迟几秒，之后每秒回复 6 点生命）=====
 const PLAYER_REGEN_DELAY = 3;   // 受伤后延迟秒数，之后才开始自动回血
@@ -180,6 +181,15 @@ function withinReach(tx, ty) {
   if (G.dbg && G.dbg.farReach) return true;
   const p = G.player;
   return Math.hypot(tx * TILE + TILE / 2 - p.x, ty * TILE + TILE / 2 - p.y) <= REACH_PX;
+}
+
+// 徒手砍树/采集矿物的独立距离判定（2.7 格，对齐官方 reach_resource_distance），
+// 与建造/交互距离（10 格）分开，避免隔着老远也能挖矿。
+function withinMineReach(tx, ty) {
+  // 调试开关“无限交互距离”开启时，可对任意远的格子交互/建造
+  if (G.dbg && G.dbg.farReach) return true;
+  const p = G.player;
+  return Math.hypot(tx * TILE + TILE / 2 - p.x, ty * TILE + TILE / 2 - p.y) <= MINE_REACH_PX;
 }
 
 // 单组堆叠上限（对齐官方 stackSize，未知物品兜底 100）
@@ -453,11 +463,37 @@ function updateMining(dt) {
   const t = G.cursorTile;
   if (!t) { p.mining = null; p.mineProg = 0; return; }
   const key = t.tx + ',' + t.ty;
-  if (p.mining !== key) { p.mining = key; p.mineProg = 0; mineToastAcc = 0; } // 新一次手动采集从零计数
-  if (!withinReach(t.tx, t.ty)) { p.mineProg = 0; return; }
+  if (p.mining !== key) { p.mining = key; p.mineProg = 0; mineToastAcc = 0; mineBlockToastT = 0; } // 新一次手动采集从零计数
   const ti = getOreType(t.tx, t.ty);
+  const isTree = getTerrain(t.tx, t.ty) === T_TREE;
+  const oreContent = (isOreType(ti) || ti === ORE_OIL) && getOreAmt(t.tx, t.ty) > 0;
+  // 不可徒手采集的资源（官方：角色只能挖 basic-solid；铀矿需硫酸、原油 basic-fluid、钨 hard-solid 均不行）：
+  // 给出提示而不静默。原油需抽油机，铀需采矿机+硫酸，硬质矿（钨）需大型采矿机。
+  if (oreContent && !handMineableItem(oreItemId(ti))) {
+    p.mineProg = 0;
+    if (typeof toast === 'function') {
+      mineBlockToastT -= dt;
+      if (mineBlockToastT <= 0) {
+        toast(ti === ORE_OIL ? '原油无法手动采集，需要抽油机'
+          : ti === ORE_URANIUM ? '铀矿无法手动采集，需要采矿机（需硫酸）'
+          : '该资源无法手动采集，需要采矿机');
+        mineBlockToastT = 1.0;
+      }
+    }
+    return;
+  }
+  if (!withinMineReach(t.tx, t.ty)) {
+    // 超采集距离（2.7 格）：仅当光标落在可采集目标（树/矿）上时提示「够不到」，
+    // 节流每秒至多一次，避免按住右键持续刷屏；空地点不提示。
+    p.mineProg = 0;
+    if ((isTree || oreContent) && typeof toast === 'function') {
+      mineBlockToastT -= dt;
+      if (mineBlockToastT <= 0) { toast('够不到'); mineBlockToastT = 1.0; }
+    }
+    return;
+  }
   // 砍树：T_TREE 地形，按住可连续砍伐获得木材（对齐《异星工厂》）
-  if (getTerrain(t.tx, t.ty) === T_TREE) {
+  if (isTree) {
     p.mineProg += dt * ((G.dbg && G.dbg.mineMult) || 1) / (HAND_MINE_TIME * 1.5);
     if (p.mineProg >= 1) {
       p.mineProg -= 1;
@@ -468,7 +504,7 @@ function updateMining(dt) {
       if (typeof playSfx === 'function') playSfx('mine');
       if (typeof toast === 'function') toast('+1 木材');
     }
-  } else if (isOreType(ti) && getOreAmt(t.tx, t.ty) > 0) {
+  } else if (oreContent) {
     p.mineProg += dt * ((G.dbg && G.dbg.mineMult) || 1) / HAND_MINE_TIME;
     if (p.mineProg >= 1) {
       p.mineProg -= 1;

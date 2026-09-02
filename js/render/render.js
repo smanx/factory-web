@@ -1297,7 +1297,26 @@ function tileCenterPx(tx, ty) { return [tx * TILE + TILE / 2, ty * TILE + TILE /
 
 // ===== 蓝图/红图叠加层 =====
 function drawBlueprintOverlay(ctx) {
-  if (!G.blueMode) return;
+  if (!G.blueMode && !G.remoteUnmark) return;
+  // 远程视图 Shift 框选取消拆除标记：红色虚线框（对齐红图框选外观）
+  if (G.remoteUnmark && G.blueStart && G.blueEnd) {
+    const x0 = Math.min(G.blueStart.tx, G.blueEnd.tx);
+    const y0 = Math.min(G.blueStart.ty, G.blueEnd.ty);
+    const x1 = Math.max(G.blueStart.tx, G.blueEnd.tx);
+    const y1 = Math.max(G.blueStart.ty, G.blueEnd.ty);
+    ctx.fillStyle = 'rgba(230,70,70,.14)';
+    ctx.fillRect(x0 * TILE, y0 * TILE, (x1 - x0 + 1) * TILE, (y1 - y0 + 1) * TILE);
+    ctx.strokeStyle = 'rgba(230,70,70,.95)';
+    ctx.lineWidth = 2 / G.cam.z;
+    ctx.setLineDash([6 / G.cam.z, 4 / G.cam.z]);
+    ctx.strokeRect(x0 * TILE, y0 * TILE, (x1 - x0 + 1) * TILE, (y1 - y0 + 1) * TILE);
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 12px system-ui';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText('取消拆除标记：松开鼠标完成' + ' ' + (x1 - x0 + 1) + '×' + (y1 - y0 + 1), x0 * TILE + 4, y0 * TILE - 14);
+    return;
+  }
   // 红图 / 蓝图 / 绿图框选区域（拖拽中）
   if ((G.blueMode === 'blue' || G.blueMode === 'bluecreate' || G.blueMode === 'cut' || G.blueMode === 'red' || G.blueMode === 'green') && G.blueStart && G.blueEnd) {
     const x0 = Math.min(G.blueStart.tx, G.blueEnd.tx);

@@ -33,6 +33,10 @@
 //   pollution[building] = 官方每分排放（emissions_per_minute.pollution，污染/分），供污染系统单源读取
 //   recycling[item] = { time, out:{outItem:每批期望产出} }（官方 *-recycling 回收配方，供回收机单源读取）
 //   fuelEnergy[item] = 燃料能量密度（MJ 绝对值，官方 fuel_value 单源：煤=4MJ），供 burner 设备单源读取
+//   character = { buildDistance, reachDistance, reachResourceDistance(徒手砍树/采集), itemPickupDistance,
+//                 lootPickupDistance, enterVehicleDistance }（官方 character 原型操作距离/格，单源读取）
+//   resourceHandMine[id] = 资源可徒手采集（官方 resource 原型 category ∩ 角色 mining_categories：
+//                        铁/铜/煤/石=true；铀(需硫酸)/钨(hard-solid)/原油(basic-fluid)=false，需采矿机+硫酸/大型采矿机/抽油机）
 const GAME_DATA = {
  "stackSize": {
   "iron-ore": 50,
@@ -7974,6 +7978,23 @@ const GAME_DATA = {
   "reactorPowerInput": 10,
   "reactorFluidUsage": 4,
   "generatorMaxPower": 50000
+ },
+ "character": {
+  "buildDistance": 10,
+  "reachDistance": 10,
+  "reachResourceDistance": 2.7,
+  "itemPickupDistance": 1,
+  "lootPickupDistance": 2,
+  "enterVehicleDistance": 3
+ },
+ "resourceHandMine": {
+  "iron-ore": true,
+  "copper-ore": true,
+  "coal": true,
+  "stone": true,
+  "uranium-ore": false,
+  "tungsten-ore": false,
+  "crude-oil": false
  },
  "recycling": {
   "scrap": {

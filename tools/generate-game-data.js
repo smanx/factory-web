@@ -1491,6 +1491,41 @@ for (const fid of ['coal', 'wood', 'solid-fuel', 'rocket-fuel', 'nuclear-fuel', 
   log.noFuel.push(fid);
 }
 
+// ---- 角色操作距离（单源：官方 character 原型）----
+// build_distance=10（建造）、reach_distance=10（交互/拆除）、reach_resource_distance=2.7（徒手砍树/采集矿物）。
+// 前端 withinReach / withinMineReach 直接读取 GAME_DATA.character，不再在 js/data/data.js 维护第二套数值。
+const character = {};
+const chr = raw.character && raw.character.character;
+if (chr) {
+  if (typeof chr.build_distance === 'number') character.buildDistance = chr.build_distance;
+  if (typeof chr.reach_distance === 'number') character.reachDistance = chr.reach_distance;
+  if (typeof chr.reach_resource_distance === 'number') character.reachResourceDistance = chr.reach_resource_distance;
+  if (typeof chr.item_pickup_distance === 'number') character.itemPickupDistance = chr.item_pickup_distance;
+  if (typeof chr.loot_pickup_distance === 'number') character.lootPickupDistance = chr.loot_pickup_distance;
+  if (typeof chr.enter_vehicle_distance === 'number') character.enterVehicleDistance = chr.enter_vehicle_distance;
+}
+
+// ---- 资源可徒手采集（官方 resource 原型 category ∩ 角色 mining_categories，供手挖判定单源）----
+// 官方 character 原型 mining_categories = {"basic-solid"}：铁/铜/煤/石未声明 category（官方默认 basic-solid）可手挖；
+// 铀矿（uranium-ore）minable 带 required_fluid="sulfuric-acid"，角色/热能采矿机无流体输入端 → 不可徒手挖（官方 Wiki）；
+// hard-solid（tungsten-ore，需大型采矿机 big-mining-drill）与 basic-fluid（crude-oil，需抽油机）同样不可徒手采集。
+// 小行星/钬等非官方 resource 原型不写入，前端兜底可手挖。
+const resourceHandMine = {};
+{
+  // convert-data 转出的 Lua 数组是「数字键对象」（{"1":"basic-solid"}），用 Object.values 归一化；
+  // 无 mining_categories 时按官方默认 basic-solid 处理。
+  const handCats = new Set(Object.values((chr && chr.mining_categories) || {}).filter((c) => typeof c === 'string'));
+  if (!handCats.size) handCats.add('basic-solid');
+  for (const pid of ['iron-ore', 'copper-ore', 'coal', 'stone', 'uranium-ore', 'tungsten-ore', 'holmium-ore', 'crude-oil']) {
+    const rp = raw.resource && raw.resource[pid];
+    if (!rp) continue;
+    // 挖掘需注入流体（如铀矿需硫酸 10/10）：角色无流体输入端，徒手不可挖（官方行为）
+    if (rp.minable && rp.minable.required_fluid) { resourceHandMine[pid] = false; continue; }
+    const cats = rp.category === undefined ? ['basic-solid'] : (Array.isArray(rp.category) ? rp.category : [rp.category]);
+    resourceHandMine[pid] = cats.some((c) => handCats.has(c));
+  }
+}
+
 // ---- 汇总新增字段进 GAME_DATA（undefined 字段由 JSON 序列化自动剔除）----
 Object.assign(GAME_DATA, {
   undergroundDist,
@@ -1529,6 +1564,8 @@ Object.assign(GAME_DATA, {
   fuelEnergy,
   thruster,
   fusion,
+  character,
+  resourceHandMine,
 });
 
 // ---- recipe ----
@@ -1816,6 +1853,10 @@ const header = [
   '//   pollution[building] = 官方每分排放（emissions_per_minute.pollution，污染/分），供污染系统单源读取',
   '//   recycling[item] = { time, out:{outItem:每批期望产出} }（官方 *-recycling 回收配方，供回收机单源读取）',
   '//   fuelEnergy[item] = 燃料能量密度（MJ 绝对值，官方 fuel_value 单源：煤=4MJ），供 burner 设备单源读取',
+  '//   character = { buildDistance, reachDistance, reachResourceDistance(徒手砍树/采集), itemPickupDistance,',
+  '//                 lootPickupDistance, enterVehicleDistance }（官方 character 原型操作距离/格，单源读取）',
+  '//   resourceHandMine[id] = 资源可徒手采集（官方 resource 原型 category ∩ 角色 mining_categories：',
+  '//                        铁/铜/煤/石=true；铀(需硫酸)/钨(hard-solid)/原油(basic-fluid)=false，需采矿机+硫酸/大型采矿机/抽油机）',
   'const GAME_DATA = ' + JSON.stringify(GAME_DATA, null, 1) + ';',
   '',
 ].join('\n');

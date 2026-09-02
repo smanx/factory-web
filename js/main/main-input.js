@@ -4,6 +4,9 @@
 // 拖动超过其最远连线距离才落下一根（对齐《异星工厂》拖建电线杆按最远距离间隔铺设）。
 let poleAnchor = null;
 
+// 远程视图右键长按标记拆除：按住目标超过该时长（秒）才登记拆除标记，避免误触。
+const REMOTE_DECON_HOLD = 0.4;
+
 function bindInput() {
   window.addEventListener('keydown', ev => {
     const k = ev.key.toLowerCase();
@@ -26,6 +29,8 @@ function bindInput() {
     if (!ev.altKey && !ev.ctrlKey && !ev.shiftKey) G.keys[k] = true;
     // Shift+左键放置“建造虚影”（对齐《异星工厂》Shift+点击放置建造幽灵）：全局记录 Shift 是否按住。
     if (k === 'shift') G.shiftHeld = true;
+    // Ctrl 按住状态：供强建判定（Shift+Ctrl 放置蓝图 = 超级强制建造）。
+    else if (k === 'control') G.ctrlHeld = true;
     // 组合键识别：按下其他按键时若 Alt 处于按住状态，标记本次 Alt 被用于组合键。
     // 松开 Alt 时据此跳过 ALT 模式切换，避免 Alt+D/B/U/H/N 等组合键误触发“单按 ALT”的功能。
     if (ev.altKey && k !== 'alt') G._altCombo = true;
@@ -116,7 +121,7 @@ function bindInput() {
         closePauseMenu();                        // 游戏菜单
       } else if (G.driving) {
         if (typeof exitCar === 'function') exitCar();
-      } else if (G.blueMode) {
+      } else if (G.blueMode || G.remoteUnmark) {
         cancelBlueprint();
       } else if (G.deconstructMode) {
         toggleDeconstructMode(false);
@@ -198,6 +203,7 @@ function bindInput() {
     }
     // Shift+左键放置“建造虚影”：松开 Shift 复位，避免拖建时误判仍处于虚影模式。
     if (k === 'shift') G.shiftHeld = false;
+    else if (k === 'control') G.ctrlHeld = false;
     G.keys[k] = false;
   });
 
@@ -218,6 +224,8 @@ function bindInput() {
     G.canvasActive = false;
     G.cursorTile = null;
     G.mouseDown = false;
+    G.mouseRightDown = false;
+    G.remoteDeconPress = null;
     poleAnchor = null;
   });
   G.canvas.addEventListener('mousedown', ev => {
@@ -230,7 +238,9 @@ function bindInput() {
       if (ev.button === 2) { cancelBlueprint(); return; }
       if (ev.button === 0) {
         if (G.blueMode === 'paste') {
-          pasteBlueprint();
+          // Shift=强制建造（无视树/峭壁，跳过建筑冲突）；Shift+Ctrl=超级强制建造（连同建筑一并标记拆除后重建）
+          const force = (ev.shiftKey && ev.ctrlKey) ? 2 : (ev.shiftKey ? 1 : 0);
+          pasteBlueprint(force);
           // 粘贴后保持粘贴模式，可继续在别处粘贴（右键或按 Q/Esc 取消）
         } else {
           G.blueStart = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
@@ -255,6 +265,15 @@ function bindInput() {
       return;
     }
     if (ev.button === 0) {
+      // 远程视图：Shift+左键框选 = 取消范围内拆除标记（对齐红图 Shift 框选取消，无需进入红图模式）。
+      // 按住 Shift 拖拽出红色虚线框，松开后取消框内设备/树木/峭壁的拆除标记。
+      if (G.remoteView && ev.shiftKey && !ev.ctrlKey && !ev.altKey && G.cursorTile) {
+        G.remoteUnmark = true;
+        G.blueStart = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
+        G.blueEnd = { tx: G.cursorTile.tx, ty: G.cursorTile.ty };
+        G.blueSelecting = true;
+        return;
+      }
       // Shift+左键“粘贴设置”，与普通左键建造（默认支持覆盖）区分开
       if (ev.shiftKey && !ev.ctrlKey && hovered) { pasteSettings(hovered); return; }
       // 拆除模式：左键用于拆除建筑，而非建造/挖矿
@@ -269,6 +288,13 @@ function bindInput() {
     } else if (ev.button === 2) {
       // 按住右键挖矿/砍树（对齐新控制方案：右键采集）
       G.mouseRightDown = true;
+      // 远程视图：右键长按目标才标记拆除（对齐《异星工厂》地图视图）。
+      // 按下仅开始计时，不立即标记；按住超过 REMOTE_DECON_HOLD 秒后在按下位置标记一次
+      // （由 updateHeldMouse 计时分发）；长按期间鼠标移开则取消，快速点按不误触。
+      if (G.remoteView) {
+        G.remoteDeconPress = G.cursorTile ? { tx: G.cursorTile.tx, ty: G.cursorTile.ty, t: 0, hold: REMOTE_DECON_HOLD } : null;
+        return;
+      }
       if (ev.shiftKey && hovered) { copySettings(hovered); return; }
       // 右键取物优先：地下带/部分可逐个取物的设备（对齐《异星工厂》）。
       // 注意：传送带是流动的，若右键优先取物，移动中的传送带会不断补充导致永远取不完、
@@ -291,11 +317,27 @@ function bindInput() {
     }
   });
   window.addEventListener('mouseup', ev => {
-    if (ev.button === 2) { G.mouseRightDown = false; return; }
+    if (ev.button === 2) { G.mouseRightDown = false; G.remoteDeconPress = null; return; }
     if (ev.button !== 0) return;
     G.mouseDown = false;
     poleAnchor = null;
     G.deconstructHeld = false;
+    // 远程视图 Shift 框选：取消框选范围内全部拆除标记（设备/树木/峭壁）
+    if (G.remoteUnmark) {
+      G.remoteUnmark = false;
+      G.blueSelecting = false;
+      if (G.blueStart && G.blueEnd && typeof unmarkAreaForDecon === 'function') {
+        const r = {
+          x0: Math.min(G.blueStart.tx, G.blueEnd.tx), y0: Math.min(G.blueStart.ty, G.blueEnd.ty),
+          x1: Math.max(G.blueStart.tx, G.blueEnd.tx), y1: Math.max(G.blueStart.ty, G.blueEnd.ty)
+        };
+        const n = unmarkAreaForDecon(r);
+        if (typeof toast === 'function') toast(n > 0 ? ('已取消 ' + n + ' 个拆除标记') : '框选区域内没有拆除标记');
+        uiDirty = true;
+      }
+      G.blueStart = null; G.blueEnd = null;
+      return;
+    }
     // 蓝图/红图：松开鼠标完成框选
     if (G.blueSelecting) {
       G.blueSelecting = false;
@@ -498,6 +540,21 @@ function updateCursorTile(cx, cy) {
 
 function updateHeldMouse(dt) {
   if (G.held && G.held.src && G.held.src.kind !== 'inv') return;   // 持握箱子/设备物品时不连续采集/建造
+  // 远程视图右键长按标记拆除：按住目标超过阈值才登记一次拆除标记；
+  // 长按期间鼠标离开按下格（移开/拖动）则取消，避免误触与误框选。
+  if (G.remoteDeconPress) {
+    const p = G.remoteDeconPress;
+    if (G.cursorTile && (Math.abs(G.cursorTile.tx - p.tx) + Math.abs(G.cursorTile.ty - p.ty) > 2)) {
+      G.remoteDeconPress = null;
+    } else {
+      p.t += dt;
+      if (p.t >= REMOTE_DECON_HOLD) {
+        G.remoteDeconPress = null;
+        if (typeof markRemoteDeconAt === 'function') markRemoteDeconAt(p.tx, p.ty);
+      }
+    }
+    return;
+  }
   // 拆除模式：按住左键拖动可连续拆除目标格上的建筑
   if (G.deconstructHeld && G.cursorTile) {
     if (G.blueMode) { G.deconstructHeld = false; return; }

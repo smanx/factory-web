@@ -116,6 +116,7 @@ function cancelBlueprint() {
   G.blueUnmark = false;
   G.blueRot = 0; G.blueFlipH = false; G.blueFlipV = false;
   G.greenRect = null; G.greenAction = null;
+  G.remoteUnmark = false; G.blueSelecting = false;   // 远程视图 Shift 取消框选：一并复位
   hideGreenBar();
   syncBlueprintCursor();
   refreshHotbar();
@@ -152,7 +153,7 @@ function applyRedBlueprint() {
   const ng = (typeof removeGhostsInRect === 'function') ? removeGhostsInRect(r) : 0;
   G.blueStart = null; G.blueEnd = null;
   const msg = [];
-  if (n > 0) msg.push('已标记 ' + n + ' 个建筑/树木待拆除' + (constrPending().decon > 0 ? '（剩 ' + constrPending().decon + ' 个待拆）' : ''));
+  if (n > 0) msg.push('已标记 ' + n + ' 处建筑/树木/峭壁待拆除' + (constrPending().decon > 0 ? '（剩 ' + constrPending().decon + ' 个待拆）' : ''));
   if (ng > 0) msg.push('已清除 ' + ng + ' 个建造虚影');
   toast(msg.length ? msg.join('；') : '区域内没有可拆除的建筑或虚影');
   uiDirty = true;
@@ -561,7 +562,9 @@ function drawBlueprintGhostAt(g, tx, ty) {
     const nx = s.x + ox, ny = s.y + oy;
     const tmp = cls.restore(Object.assign({}, s, { x: nx, y: ny }));
     tmp.dir = s.dir | 0; tmp.applyDir();
-    const ok = canPlaceAt(s.type, nx, ny, tmp.dir, true).ok;   // 虚影预览不受建造范围限制（noReach）
+    let chk = canPlaceAt(s.type, nx, ny, tmp.dir, true);   // 虚影预览不受建造范围限制（noReach）
+    // Shift 强建（强制/超级强制建造）时：树/峭壁会被标记清除后再施工，视为可放置（绿色提示与实际放置逻辑一致）
+    const ok = chk.ok || (G.shiftHeld && (chk.reason === 'tree' || chk.reason === 'cliff'));
     g.globalAlpha = 0.55;
     // 完整建筑幽灵预览：复用各设备的 DEVICE_RENDER 绘制（对齐《异星工厂》蓝图幽灵），
     // 让复制预览与实际建筑外观一致，而非只显示一个色块框。
@@ -577,7 +580,9 @@ function drawBlueprintGhostAt(g, tx, ty) {
 }
 
 // 粘贴蓝图到鼠标所指位置
-function pasteBlueprint() {
+// forceMode：0=普通粘贴；1=强制建造（Shift，无视树/峭壁，跳过玩家建筑冲突，标记清理天然障碍）；
+//            2=超级强制建造（Shift+Ctrl，树/峭壁与玩家建筑全部标记拆除，实现一键替换）。
+function pasteBlueprint(forceMode) {
   if (!G.blueprint || !G.cursorTile) return;
   const bp = applyBlueprintTransform();
   const ox = G.cursorTile.tx - bp.minX;
@@ -585,7 +590,9 @@ function pasteBlueprint() {
   // 放下去一律排布“建造虚影”（Ctrl+C/X、Alt+B、蓝图物品、蓝图库粘贴均如此）：
   // 只有装备个人机器人港 + 背包有施工机器人 + 有对应材料时（见 updateConstruction），
   // 施工机器人才会自动落地；否则虚影作为可持久化的规划标记保留在图上（随存档保存），而非直接落地真实建筑。
-  const n = pasteBlueprintAsGhosts(bp);
+  const res = pasteBlueprintAsGhosts(bp, forceMode || 0);
+  const n = res ? res.placed : 0;
+  const marked = res ? res.marked || 0 : 0;
   // 恢复蓝图地砖（混凝土/石砖路/填海料等，对齐《异星工厂》：蓝图粘贴含地砖）
   let tileCount = 0;
   if (Array.isArray(bp.tiles) && bp.tiles.length) {
@@ -603,9 +610,10 @@ function pasteBlueprint() {
     }
   }
   if (typeof playSfx === 'function') playSfx('blueprint');
+  const label = forceMode === 2 ? '超级强制建造：' : (forceMode === 1 ? '强制建造：' : '');
   toast(n > 0
-    ? ('已排布 ' + n + ' 个建造虚影' + (tileCount ? '（含 ' + tileCount + ' 格地砖）' : '') + (typeof constrPending === 'function' && constrPending().build > 0 ? '，施工机器人正在建造' : '（装备个人机器人港+施工机器人后自动建造）'))
-    : '无可建造的位置（区域内已有建筑或超出机器人范围）');
+    ? (label + '已排布 ' + n + ' 个建造虚影' + (marked ? '，并标记 ' + marked + ' 处障碍待拆除（由施工机器人清理）' : '') + (tileCount ? '（含 ' + tileCount + ' 格地砖）' : '') + (typeof constrPending === 'function' && constrPending().build > 0 ? '，施工机器人正在建造' : '（装备个人机器人港+施工机器人后自动建造）'))
+    : (label + '无可建造的位置（区域内已有建筑或超出机器人范围）'));
   uiDirty = true;
 }
 
@@ -866,8 +874,9 @@ function bpItemToInv(bp) {
 }
 
 // ===== 手持蓝图物品放置（对齐设备放置：buildActive + tryPlaceAt 分发）=====
-// 手持蓝图物品点击地图：进入粘贴模式放置蓝图内容（不消耗材料，可反复放置）
-function tryPlaceBlueprintItem(tx, ty) {
+// 手持蓝图物品点击地图：进入粘贴模式放置蓝图内容（不消耗材料，可反复放置）。
+// forceMode：0=普通放置；1=强制建造（Shift）；2=超级强制建造（Shift+Ctrl）。
+function tryPlaceBlueprintItem(tx, ty, forceMode) {
   const raw = selItem();
   const p = bpParseItemId(raw);
   if (!p) return false;
@@ -877,7 +886,7 @@ function tryPlaceBlueprintItem(tx, ty) {
   G.blueprint = { name: bp.name, minX: bp.minX, minY: bp.minY, ents: bp.ents.slice(), tiles: Array.isArray(bp.tiles) ? bp.tiles.slice() : [] };
   G.blueMode = 'paste';
   G.blueRot = 0; G.blueFlipH = false; G.blueFlipV = false;
-  pasteBlueprint();
+  pasteBlueprint(forceMode);
   return true;
 }
 

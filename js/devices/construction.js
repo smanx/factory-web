@@ -165,12 +165,82 @@ function treeDeconMark(x, y) {
   return { ent: null, tree: true, x, y, building: false, _dead: false };
 }
 
-// 拆除标记是否仍有效：树木标记以该格仍为 T_TREE 判定（树被建筑覆盖/手动砍掉则失效）；
+// 峭壁拆除标记（无实体，指向地形瓦片 T_CLIFF）：强建（Shift/Ctrl+Shift 放置蓝图）会自动标记
+// 蓝图范围内的峭壁，由施工机器人携带“峭壁炸药”炸毁清除（对齐《异星工厂》Cliff：
+// 机器人不能空手拆悬崖，需从背包/物流网络取峭壁炸药；无炸药时标记保留等待）。
+function cliffDeconMark(x, y) {
+  return { ent: null, cliff: true, x, y, building: false, _dead: false };
+}
+
+// 拆除标记是否仍有效：树木/峭壁标记以该格仍为对应地形判定（被建筑覆盖/手动清除则失效）；
 // 实体标记以实体仍存在判定。
 function deconMarkValid(m) {
   if (!m || m._dead) return false;
   if (m.tree) return getTerrain(m.x, m.y) === T_TREE;
+  if (m.cliff) return getTerrain(m.x, m.y) === T_CLIFF;
   return !!m.ent && !m.ent._dead;
+}
+
+// ===== 强建（Shift 强制建造 / Ctrl+Shift 超级强制建造）辅助 =====
+// 为单格天然障碍（树木/峭壁）登记拆除标记；已有同格同类型标记则跳过。返回是否新增。
+function markObstacleDecon(x, y) {
+  const t = getTerrain(x, y);
+  if (t === T_TREE) {
+    if (G.deconMarks.some(m => !m._dead && m.tree && m.x === x && m.y === y)) return false;
+    G.deconMarks.push(treeDeconMark(x, y));
+    return true;
+  }
+  if (t === T_CLIFF) {
+    if (G.deconMarks.some(m => !m._dead && m.cliff && m.x === x && m.y === y)) return false;
+    G.deconMarks.push(cliffDeconMark(x, y));
+    return true;
+  }
+  return false;
+}
+
+// 为实体登记拆除标记；已有同实体标记则跳过。返回是否新增。
+function markEntDecon(e) {
+  if (!e || e._dead) return false;
+  if (G.deconMarks.some(m => !m._dead && m.ent === e)) return false;
+  G.deconMarks.push(new DeconMark(e));
+  return true;
+}
+
+// 远程视图右键标记拆除（对齐《异星工厂》地图视图：右键长按设备/障碍物即登记拆除标记，
+// 由施工机器人处理；未在机器人覆盖范围的标记保留为可持久化规划标记，靠近后自动续拆）。
+// 目标：设备实体 / 树木 / 峭壁。已登记/不存在则跳过。
+function markRemoteDeconAt(tx, ty) {
+  ensureConstr();
+  const e = entAt(tx, ty);
+  if (e) {
+    if (markEntDecon(e)) {
+      if (typeof playSfx === 'function') playSfx('click');
+      uiDirty = true;
+    }
+    return;
+  }
+  const t = getTerrain(tx, ty);
+  if (t === T_TREE || t === T_CLIFF) {
+    if (markObstacleDecon(tx, ty)) {
+      if (typeof playSfx === 'function') playSfx('click');
+      uiDirty = true;
+    }
+  }
+}
+
+// 虚影占地内是否仍有阻挡建造的障碍（实体/树木/峭壁/水面）。
+// 强建会把虚影派在障碍之上（等机器人清理后再施工），施工派发前用此判定障碍是否已清除，
+// 避免“先扣材料、落地时却被阻挡而白白浪费建筑材料”（对齐《异星工厂》：先清障后建造）。
+function ghostFootprintBlocked(g) {
+  for (let dy = 0; dy < g.h; dy++)
+    for (let dx = 0; dx < g.w; dx++) {
+      const x = g.x + dx, y = g.y + dy;
+      const e = entAt(x, y);
+      if (e && e !== g.replaceEnt) return true;
+      const t = getTerrain(x, y);
+      if (t === T_TREE || t === T_CLIFF || t === T_WATER) return true;
+    }
+  return false;
 }
 
 // 判断某格是否已有建造幽灵占用（避免重复放置同一格）
@@ -187,25 +257,63 @@ function ghostAt(x, y, w, h) {
 // 由施工机器人按触发条件（装备个人机器人港 + 背包有施工机器人 + 背包有该建筑成品）自动施工落地。
 // 与蓝图粘贴生成的幽灵不同：本幽灵施工时直接消耗背包中的建筑成品本身（等价于手动建造 takeForPlace），
 // 而非合成配方原料。返回是否成功放置。放置本身不消耗背包物品，可规划尚未拥有的建筑。
-function tryPlaceGhost(type, tx, ty, rawSel) {
+// forceMode：0=普通虚影；1=强制建造（Shift，无视树/峭壁并标记拆除，跳过建筑冲突）；
+//            2=超级强制建造（Shift+Ctrl，树/峭壁与玩家建筑全部标记拆除，先拆后建）。
+function tryPlaceGhost(type, tx, ty, rawSel, forceMode) {
   ensureConstr();
   const def = BUILD_DEFS[type];
   if (!def) return false;
+  forceMode = forceMode || 0;
   const dir = G.ghostDir | 0;
   let ew = def.w, eh = def.h;
   if (def.rotSwap && (dir % 2 === 1)) { ew = def.h; eh = def.w; }
-  // 与手动建造一致：目标格已有真实实体不可建虚影；已有同格幽灵则跳过
-  if (entAt(tx, ty)) { if (typeof playSfx === 'function') playSfx('deny'); return false; }
+  // 强建：先扫描占地（水面跳过 / 天然障碍待标记 / 玩家建筑按档处理）
+  let water = false;
+  const obstTiles = [];            // 占地内的天然障碍格（树/峭壁）
+  const blockEnts = new Set();     // 占地内已有的玩家实体
+  if (forceMode) {
+    for (let dy = 0; dy < eh; dy++)
+      for (let dx = 0; dx < ew; dx++) {
+        const t = getTerrain(tx + dx, ty + dy);
+        if (t === T_WATER) water = true;
+        else if (t === T_TREE || t === T_CLIFF) obstTiles.push([tx + dx, ty + dy]);
+        const e = entAt(tx + dx, ty + dy);
+        if (e) blockEnts.add(e);
+      }
+    if (water) { if (typeof playSfx === 'function') playSfx('deny'); return false; }
+    if (forceMode === 2) {
+      // 超级强制建造：占地内玩家建筑全部登记“待拆除”，由施工机器人先拆后建（一键替换）
+      for (const e of blockEnts) markEntDecon(e);
+    } else if (blockEnts.size) {
+      // 强制建造：不拆除玩家建筑；仅同类型同占地实体保留“替换建造”，其余冲突一律拒绝
+      const oldEnt = entAt(tx, ty);
+      if (!(oldEnt && oldEnt.type === type && canPlaceAt(type, tx, ty, dir, true).ok)) {
+        if (typeof playSfx === 'function') playSfx('deny');
+        return false;
+      }
+    }
+    // 天然障碍（树/峭壁）：两档强建均登记拆除标记，由施工机器人清理（对齐《异星工厂》）
+    for (const [ox, oy] of obstTiles) markObstacleDecon(ox, oy);
+  } else {
+    // 普通虚影：目标格已有真实实体不可建
+    if (entAt(tx, ty)) { if (typeof playSfx === 'function') playSfx('deny'); return false; }
+    // 建造虚影不受建造范围（距离）限制：与官方一致，规划幽灵可放置在任意远处（含水/峭壁/占用等其他规则仍生效）
+    const chk = canPlaceAt(type, tx, ty, dir, true);
+    if (!chk.ok) { if (typeof playSfx === 'function') playSfx('deny'); return false; }
+  }
   if (ghostAt(tx, ty, ew, eh)) return false;
-  // 建造虚影不受建造范围（距离）限制：与官方一致，规划幽灵可放置在任意远处（含水/峭壁/占用等其他规则仍生效）
-  const chk = canPlaceAt(type, tx, ty, dir, true);
-  if (!chk.ok) { if (typeof playSfx === 'function') playSfx('deny'); return false; }
   const sq = (typeof splitQuality === 'function') ? splitQuality(rawSel) : { base: type, quality: 'normal' };
   const g = new ConstrGhost(type, tx, ty, dir);
   g.mirror = G.ghostMirror | 0;
   g.w = ew; g.h = eh;   // 按旋转后的实际占地记录
   if (sq.quality && sq.quality !== 'normal') { g.quality = sq.quality; g.needId = rawSel; }
   g.consumes = 'item';   // 手工虚影：施工时直接消耗建筑成品（见 updateConstruction / 调度）
+  if (forceMode) {
+    // 虚影派在障碍（树/峭壁/待拆建筑）之上：等障碍清除后再派施工（见 ghostFootprintBlocked / updateConstruction）
+    if (obstTiles.length || (forceMode === 2 && blockEnts.size)) g.waitClear = true;
+    // 强制建造（非超级）下的同类型实体：保留“替换建造”覆盖（对齐《异星工厂》覆盖升级）
+    if (forceMode === 1 && blockEnts.size && entAt(tx, ty) && entAt(tx, ty).type === type) g.replaceEnt = entAt(tx, ty);
+  }
   G.constrGhosts.push(g);
   if (typeof playSfx === 'function') playSfx('click');
   uiDirty = true;
@@ -214,38 +322,83 @@ function tryPlaceGhost(type, tx, ty, rawSel) {
 
 // ===== 由蓝图生成建造幽灵（替代直接落地）=====
 // bp 为 applyBlueprintTransform() 后的 { ents:[{type,x,y,dir,...}], minX, minY }
-// 返回实际生成的幽灵数量。被占用/不可放置的格跳过。
-function pasteBlueprintAsGhosts(bp) {
+// forceMode：0=普通粘贴；1=强制建造（Shift，无视树/峭壁，跳过玩家建筑冲突）；
+//            2=超级强制建造（Shift+Ctrl，树/峭壁与玩家建筑全部标记拆除，实现一键替换）。
+// 返回 { placed: 实际生成的幽灵数量, marked: 为强建新登记的拆除标记数量 }。
+function pasteBlueprintAsGhosts(bp, forceMode) {
   ensureConstr();
   const ox = G.cursorTile.tx - bp.minX;
   const oy = G.cursorTile.ty - bp.minY;
   let count = 0;
+  let marked = 0;
   for (const s of bp.ents) {
     const cls = ENT_CLASSES[s.type];
     if (!cls) continue;
+    const def = BUILD_DEFS[s.type];
     const nx = s.x + ox, ny = s.y + oy;
     const ndir = s.dir | 0;
-    // 已占用则跳过（原地已有真实实体或已有同格幽灵）；
-    // 同类型设备例外：登记为「替换建造」幽灵，机器人施工落地时移除旧设备并返还（对齐《异星工厂》蓝图覆盖升级）
-    const oldEnt = entAt(nx, ny);
-    const isReplace = !!oldEnt && oldEnt.type === s.type;
-    if (oldEnt && !isReplace) continue;
-    if (ghostAt(nx, ny, BUILD_DEFS[s.type].w, BUILD_DEFS[s.type].h)) continue;
-    // 校验放置合法性（水面/可放置规则），不合法跳过；虚影不受建造范围限制（noReach=true），可任意远处排布
-    if (!canPlaceAt(s.type, nx, ny, ndir, true).ok) continue;
+    let ew = def.w, eh = def.h;
+    if (def.rotSwap && (ndir % 2 === 1)) { ew = def.h; eh = def.w; }
+    if (ghostAt(nx, ny, ew, eh)) continue;   // 已有同格幽灵则跳过
+    // —— 普通粘贴：沿用原逻辑（水面/树木/峭壁/已占用各自跳过；同类型设备替换建造）——
+    if (!forceMode) {
+      const oldEnt = entAt(nx, ny);
+      const isReplace = !!oldEnt && oldEnt.type === s.type;
+      if (oldEnt && !isReplace) continue;
+      if (!canPlaceAt(s.type, nx, ny, ndir, true).ok) continue;
+      const g = new ConstrGhost(s.type, nx, ny, ndir);
+      g.w = ew; g.h = eh;
+      g.mirror = s.mirror | 0;
+      g.consumes = 'item';   // 蓝图虚影：施工时直接消耗背包中的建筑成品本身
+      if (s.recipe) g.recipe = s.recipe;
+      if (isReplace) g.replaceEnt = oldEnt;   // 标记替换建造：落地时移除旧设备并返还
+      G.constrGhosts.push(g);
+      count++;
+      continue;
+    }
+    // —— 强建（Shift / Shift+Ctrl）——
+    // 扫描占地：水面不可建也不可拆 → 跳过；实体（玩家建筑）与天然障碍（树/峭壁）另有处理。
+    let water = false;
+    const blockEnts = new Set();   // 占地内的玩家实体（去重）
+    const obstTiles = [];          // 占地内的天然障碍格（树/峭壁）
+    for (let dy = 0; dy < eh; dy++)
+      for (let dx = 0; dx < ew; dx++) {
+        const x = nx + dx, y = ny + dy;
+        const t = getTerrain(x, y);
+        if (t === T_WATER) water = true;
+        else if (t === T_TREE || t === T_CLIFF) obstTiles.push({ x, y, t });
+        const e = entAt(x, y);
+        if (e) blockEnts.add(e);
+      }
+    if (water) continue;
+    if (forceMode === 2) {
+      // 超级强制建造：蓝图范围内的玩家建筑全部登记“待拆除”，由施工机器人先拆后建（一键替换）。
+      for (const e of blockEnts) if (markEntDecon(e)) marked++;
+    } else {
+      // 强制建造（Shift）：不拆除玩家建筑；有建筑冲突则跳过该位置，只放能放下的建筑。
+      if (blockEnts.size && !canPlaceAt(s.type, nx, ny, ndir, true).ok) continue;
+    }
+    // 天然障碍（树木/峭壁）：两档强建均登记拆除标记，由施工机器人清理（对齐《异星工厂》）。
+    for (const t of obstTiles) if (markObstacleDecon(t.x, t.y)) marked++;
     const g = new ConstrGhost(s.type, nx, ny, ndir);
+    g.w = ew; g.h = eh;
     g.mirror = s.mirror | 0;
-    g.consumes = 'item';   // 蓝图/复制粘贴虚影：施工时直接消耗背包中的建筑成品本身（对齐《异星工厂》：蓝图建造消耗建筑物品，而非其配方原料）
+    g.consumes = 'item';
     if (s.recipe) g.recipe = s.recipe;
-    if (isReplace) g.replaceEnt = oldEnt;   // 标记替换建造：落地时移除旧设备并返还
+    // 虚影派在障碍（树/峭壁/待拆建筑）之上：等障碍清除后再派施工（见 ghostFootprintBlocked）。
+    if (obstTiles.length || (forceMode === 2 && blockEnts.size)) g.waitClear = true;
+    // 强制建造（非超级）下的同类型设备：保留“替换建造”覆盖（对齐《异星工厂》蓝图覆盖升级）。
+    const oldEnt = entAt(nx, ny);
+    if (forceMode === 1 && oldEnt && oldEnt.type === s.type) g.replaceEnt = oldEnt;
     G.constrGhosts.push(g);
     count++;
   }
-  return count;
+  return { placed: count, marked };
 }
 
 // 把红图框选区域内的实体登记为拆除标记（由施工机器人执行）
-// 同时登记区域内的树木（T_TREE 地形）：机器人砍树获得木材（对齐《异星工厂》红图可标记树木）。
+// 同时登记区域内的天然障碍（树木 T_TREE / 峭壁 T_CLIFF 地形）：机器人砍树获得木材，
+// 峭壁需消耗峭壁炸药炸毁（对齐《异星工厂》红图/拆除规划可包含悬崖）。
 function markAreaForDecon(r) {
   ensureConstr();
   const seen = new Set();
@@ -264,20 +417,17 @@ function markAreaForDecon(r) {
       }
     }
   }
-  // 树木：T_TREE 地形瓦片（无实体）。同一格只登记一次。
+  // 天然障碍（树木/峭壁）：无实体地形瓦片，同一格只登记一次（markObstacleDecon 已去重）
   for (let ty = r.y0; ty <= r.y1; ty++) {
     for (let tx = r.x0; tx <= r.x1; tx++) {
-      if (getTerrain(tx, ty) !== T_TREE) continue;
-      if (G.deconMarks.some(m => !m._dead && m.tree && m.x === tx && m.y === ty)) continue;
-      G.deconMarks.push(treeDeconMark(tx, ty));
-      count++;
+      if (markObstacleDecon(tx, ty)) count++;
     }
   }
   return count;
 }
 
-// 红图模式 + Shift 框选：取消框选区域内已登记的拆除标记（红叉），建筑恢复不被拆除。
-// 与 markAreaForDecon 同口径：以实体中心/树木瓦片是否落在区域内判定。返回取消数量。
+// 红图/远程视图 + Shift 框选：取消框选区域内已登记的拆除标记（红叉），建筑恢复不被拆除。
+// 与 markAreaForDecon 同口径：以实体中心/树木/峭壁瓦片是否落在区域内判定。返回取消数量。
 function unmarkAreaForDecon(r) {
   ensureConstr();
   if (!G.deconMarks || !G.deconMarks.length) return 0;
@@ -286,6 +436,14 @@ function unmarkAreaForDecon(r) {
     if (m._dead) continue;
     if (m.tree) {
       // 树木标记：瓦片坐标落在区域内即取消
+      if (m.x >= r.x0 && m.x <= r.x1 && m.y >= r.y0 && m.y <= r.y1) {
+        m._dead = true;
+        count++;
+      }
+      continue;
+    }
+    if (m.cliff) {
+      // 峭壁标记：瓦片坐标落在区域内即取消（对齐树木标记；强建/右键产生的峭壁标记同样可取消）
       if (m.x >= r.x0 && m.x <= r.x1 && m.y >= r.y0 && m.y <= r.y1) {
         m._dead = true;
         count++;
@@ -571,6 +729,28 @@ function completeDecon(m, r) {
     else if (typeof invAdd === 'function') invAdd('wood');
     return;
   }
+  // 峭壁拆除：需消耗“峭壁炸药”才能炸毁（对齐《异星工厂》：机器人不能空手拆悬崖）。
+  // 个人机器人从玩家背包扣炸药；网络机器人使用先取货携带的炸药（r.carry）。
+  // 炸药缺失时本格不拆除、标记保留等待——派发前已做炸药判定，此分支仅作安全兜底。
+  if (m.cliff) {
+    if (getTerrain(m.x, m.y) !== T_CLIFF) { m._dead = true; return; }
+    if (r && r.home) {
+      if (!r.carry || r.carry.item !== 'cliff-explosives' || r.carry.count < 1) return;
+      r.carry = null;   // 消耗网络机器人携带来的炸药
+    } else if (typeof invTake === 'function') {
+      if (invCount('cliff-explosives') < 1) return;
+      invTake('cliff-explosives', 1);   // 消耗玩家背包中的炸药
+    }
+    setTerrain(m.x, m.y, T_GRASS);
+    if (typeof invalidateTerrainChunk === 'function') invalidateTerrainChunk(m.x, m.y);
+    m._dead = true;
+    // 爆炸视觉 + 音效（与手动峭壁炸药 cliffBlastAt 一致）
+    if (typeof spawnSmoke === 'function') {
+      for (let i = 0; i < 6; i++) spawnSmoke(m.x * TILE + TILE / 2 + (Math.random() - 0.5) * 22, m.y * TILE + TILE / 2 + (Math.random() - 0.5) * 22, { life: 1.2, size: 8, color: '#b0a898' });
+    }
+    if (typeof playSfx === 'function') playSfx('explosion');
+    return;
+  }
   const e = m.ent;
   if (!e || e._dead) { m._dead = true; return; }
   // 拆除时瞬间返还实体内容（含传送带上携带的物品），对齐手动拆除/红图批量删除：
@@ -652,6 +832,8 @@ function updateConstruction(dt) {
     // 物流网络优先级：若机器人港物流网络可（且将）施工该虚影，则让给网络机器人，
     // 个人机器人港不再重复施工（对齐《异星工厂》：网络机器人优先，个人在网内无该物品时才接手）。
     if (netCanBuildGhost(g)) continue;
+    // 强建虚影（派在树/峭壁/待拆建筑上）：占地内障碍尚未清除时等待，避免材料被白白扣掉。
+    if (g.waitClear && ghostFootprintBlocked(g)) continue;
     // 建造范围（距离）判定：虚影无距离限制可任意放置，但施工机器人只在个人机器人港建造范围内自动施工。
     // 超出范围的虚影保留显示（不消失），角色靠近进入范围后机器人自动续建。
     if (Math.abs((g.x + g.w / 2) - G.player.x / TILE) > rInfo.range) continue;
@@ -699,6 +881,9 @@ function updateConstruction(dt) {
     if (m._dead || m.building) continue;
     // 标记已失效（树木被覆盖/实体被移除）：直接清理，不再派机器人
     if (!deconMarkValid(m)) { m._dead = true; continue; }
+    // 峭壁拆除需消耗“峭壁炸药”（对齐《异星工厂》：机器人不能空手拆悬崖）：
+    // 背包无炸药则不派机器人，标记保留等待（炸药到位后自动续拆）。
+    if (m.cliff && invCount('cliff-explosives') < 1) continue;
     // 物流网络优先级：若机器人港物流网络可（且将）拆除该标记，则让给网络机器人，
     // 个人机器人港不再重复拆除（对齐《异星工厂》：网络机器人优先执行拆除）。
     if (netCanDeconMark(m)) continue;
@@ -769,8 +954,8 @@ class NetConstrRobot {
     this.tx = px; this.ty = py;
     this.home = port;                 // 所属/返航充电的机器人港
     this.job = job;                   // { kind:'build'|'decon', ghost?/mark?, item?, chest? }
-    this.target = job.chest || null;  // 取货物流箱（仅建造任务）
-    this.state = job.kind === 'decon' ? 'toghost' : 'collecting';  // 拆除直接飞向标记；建造先取货
+    this.target = job.chest || null;  // 取货物流箱（建造任务；峭壁拆除任务为取峭壁炸药）
+    this.state = (job.kind === 'decon' && !job.item) ? 'toghost' : 'collecting';  // 普通拆除直接飞向标记；建造/峭壁拆除先取货
     this.maxE = ROBOT_MAX_E;
     this.e = ROBOT_MAX_E * CONSTR_MAX_CHARGE;
     this.carry = null;                // 已从箱中取的建筑物品（建造任务）
@@ -828,7 +1013,8 @@ function netCanBuildGhost(g) {
 
 // 该拆除标记是否应由物流网络施工（网络优先级判定，对齐《异星工厂》：网络机器人优先执行拆除）。
 // 只要拆除标记落在已通电机器人港的建造范围内且港内有建设机器人，就优先交给网络，
-// 个人机器人港不再接手。
+// 个人机器人港不再接手。峭壁例外：网内必须备有“峭壁炸药”（机器人需取炸药才能炸毁悬崖），
+// 网内无炸药则交给个人机器人（从背包扣炸药）接手，避免拆不掉卡死。
 function netCanDeconMark(m) {
   if (!m || m._dead) return false;
   const powered = (G.logiNet && G.logiNet.poweredPorts) || [];
@@ -838,6 +1024,7 @@ function netCanDeconMark(m) {
     if (Math.abs(ex - (p.x + p.w / 2)) > ROBOPORT_CONSTR_RANGE) continue;
     if (Math.abs(ey - (p.y + p.h / 2)) > ROBOPORT_CONSTR_RANGE) continue;
     if (p.countOf('construction-robot') <= 0) continue;   // 港内须有建设机器人才能拆除
+    if (m.cliff && !netSupplyChest('cliff-explosives', p)) continue;   // 峭壁需网内有炸药
     return true;   // 已通电网络建造范围覆盖该拆除标记 → 网络优先
   }
   return false;
@@ -1028,6 +1215,8 @@ function updateNetConstruction(dt) {
   for (const g of G.constrGhosts) {
     if (g._dead || g.building) continue;
     if (g.consumes !== 'item') continue;                 // 网络机器人只负责“建筑物品”虚影
+    // 强建虚影（派在树/峭壁/待拆建筑上）：占地内障碍未清除时等待，先清障后建造。
+    if (g.waitClear && ghostFootprintBlocked(g)) continue;
     const item = g.needId || g.type;
     const gx = g.x + g.w / 2, gy = g.y + g.h / 2;
     for (const p of powered) {
@@ -1054,8 +1243,18 @@ function updateNetConstruction(dt) {
       if (Math.abs(ey - (p.y + p.h / 2)) > ROBOPORT_CONSTR_RANGE) continue;
       if (p.countOf('construction-robot') <= 0) continue;                       // 港内须有建设机器人
       if (countNetRobotsOf(p) >= p.countOf('construction-robot')) continue;     // 港内机器人未全部在途
+      // 峭壁拆除需炸药（对齐《异星工厂》：机器人须从物流网络取峭壁炸药才能炸毁悬崖）：
+      // 网内无炸药则不派发（标记等待，交由个人机器人用背包炸药接手）。
+      let job;
+      if (m.cliff) {
+        const chest = netSupplyChest('cliff-explosives', p);
+        if (!chest) continue;
+        job = { kind: 'decon', mark: m, item: 'cliff-explosives', chest };
+      } else {
+        job = { kind: 'decon', mark: m };
+      }
       m.building = true;
-      G.netRobots.push(new NetConstrRobot(p, { kind: 'decon', mark: m }));
+      G.netRobots.push(new NetConstrRobot(p, job));
       if (typeof playSfx === 'function') playSfx('robot');
       return;                                             // 每帧至多派发一个
     }
@@ -1108,10 +1307,10 @@ function drawConstrGhosts(ctx) {
   // 拆除标记：红色斜叉
   for (const m of G.deconMarks) {
     if (m._dead) continue;
-    // 树木标记：瓦片中心；实体标记：实体中心
+    // 树木/峭壁标记：瓦片中心；实体标记：实体中心
     let px, py;
-    if (m.tree) {
-      if (getTerrain(m.x, m.y) !== T_TREE) continue;
+    if (m.tree || m.cliff) {
+      if (m.tree ? getTerrain(m.x, m.y) !== T_TREE : getTerrain(m.x, m.y) !== T_CLIFF) continue;
       px = (m.x + 0.5) * TILE; py = (m.y + 0.5) * TILE;
     } else {
       if (!m.ent) continue;
@@ -1234,14 +1433,17 @@ function constrSerialize() {
   const ghosts = (G.constrGhosts && G.constrGhosts.length)
     ? G.constrGhosts.filter(g => !g._dead).map(g => ({
         type: g.type, x: g.x, y: g.y, dir: g.dir | 0, mirror: g.mirror | 0,
-        w: g.w, h: g.h, quality: g.quality, needId: g.needId, recipe: g.recipe, consumes: g.consumes
+        w: g.w, h: g.h, quality: g.quality, needId: g.needId, recipe: g.recipe, consumes: g.consumes,
+        waitClear: g.waitClear ? true : undefined   // 强建虚影：等占地障碍清除后再施工（随存档持久化）
       }))
     : [];
-  // 拆除标记随存档持久化：记录其指向实体的左上角瓦片坐标（x/y）或树木瓦片坐标，
-  // 读档时（实体已恢复）按坐标重新关联回对应实体；树木标记按瓦片判定地形仍为树；均不存在则跳过。
+  // 拆除标记随存档持久化：记录其指向实体的左上角瓦片坐标（x/y）或树木/峭壁瓦片坐标，
+  // 读档时（实体已恢复）按坐标重新关联回对应实体；树木/峭壁标记按瓦片判定地形；均不存在则跳过。
   const deconMarks = (G.deconMarks && G.deconMarks.length)
     ? G.deconMarks.filter(m => !m._dead && deconMarkValid(m)).map(m =>
-        m.tree ? { x: m.x, y: m.y, tree: true } : { x: m.x, y: m.y })
+        m.tree ? { x: m.x, y: m.y, tree: true }
+               : m.cliff ? { x: m.x, y: m.y, cliff: true }
+                         : { x: m.x, y: m.y })
     : [];
   return {
     personalRoboport: G.personalRoboport === 'mk2' ? 'mk2' : !!G.personalRoboport,
@@ -1270,12 +1472,13 @@ function constrRestore(s) {
       if (gd.needId) g.needId = gd.needId;
       if (gd.recipe) g.recipe = gd.recipe;
       if (gd.consumes) g.consumes = gd.consumes;
+      if (gd.waitClear) g.waitClear = true;
       G.constrGhosts.push(g);
     } catch (e) { /* 忽略无法重建的虚影条目 */ }
   }
-  // 恢复存档中的“拆除标记”（红图框选生成，由施工机器人拆除），按左上角瓦片坐标重新关联到已恢复的实体。
+  // 恢复存档中的“拆除标记”（红图框选/强建生成，由施工机器人拆除），按左上角瓦片坐标重新关联到已恢复的实体。
   // 读档时实体已先于此处恢复（applySave 先重建 d.ents），故可经 entAt 直接定位；
-  // 实体已不存在（保存后/读档前被拆除）则跳过该标记。树木标记按瓦片判定地形仍为 T_TREE。
+  // 实体已不存在（保存后/读档前被拆除）则跳过该标记。树木/峭壁标记按瓦片判定地形。
   const mdefs = (s && Array.isArray(s.deconMarks)) ? s.deconMarks : [];
   for (const md of mdefs) {
     if (!md || typeof md.x !== 'number' || typeof md.y !== 'number') continue;
@@ -1283,6 +1486,11 @@ function constrRestore(s) {
       if (md.tree) {
         if (getTerrain(md.x | 0, md.y | 0) !== T_TREE) continue;
         G.deconMarks.push(treeDeconMark(md.x | 0, md.y | 0));
+        continue;
+      }
+      if (md.cliff) {
+        if (getTerrain(md.x | 0, md.y | 0) !== T_CLIFF) continue;
+        G.deconMarks.push(cliffDeconMark(md.x | 0, md.y | 0));
         continue;
       }
       const e = entAt(md.x | 0, md.y | 0);

@@ -481,6 +481,9 @@ function drawGhost(ctx) {
     // 不允许覆盖建造：目标格已有实体时判定为红色不可放置，与建造行为一致。
     // 远程视图下放置的是「建造幽灵」（tryPlaceGhost 无视距离），故跳过距离判定以保持绿色提示一致。
     const chk = canPlaceAt(type, G.cursorTile.tx, G.cursorTile.ty, G.ghostDir, !!G.remoteView);
+    // Shift 强建（强制/超级强制建造）时：树/峭壁会被标记清除后再施工，视为可放置（绿色提示与实际放置逻辑一致）。
+    let placeOk = chk.ok;
+    if (!placeOk && G.shiftHeld && (chk.reason === 'tree' || chk.reason === 'cliff')) placeOk = true;
     const tmp = getGhostEnt(type);
     tmp.dir = G.ghostDir;
     tmp.mirror = G.ghostMirror | 0;
@@ -491,9 +494,9 @@ function drawGhost(ctx) {
     // 配对显示会与真实摆放不一致（放置后恢复正常，正是该 bug 的现象）。
     tmp.x = G.cursorTile.tx; tmp.y = G.cursorTile.ty;
     drawEntity(g, tmp, G.cursorTile.tx, G.cursorTile.ty, G.ghostDir, 0.55);
-    g.fillStyle = chk.ok ? 'rgba(120,220,120,.18)' : 'rgba(230,80,80,.22)';
+    g.fillStyle = placeOk ? 'rgba(120,220,120,.18)' : 'rgba(230,80,80,.22)';
     g.fillRect(G.cursorTile.tx * TILE, G.cursorTile.ty * TILE, ew * TILE, eh * TILE);
-    g.strokeStyle = chk.ok ? 'rgba(140,255,140,.9)' : 'rgba(255,110,110,.9)';
+    g.strokeStyle = placeOk ? 'rgba(140,255,140,.9)' : 'rgba(255,110,110,.9)';
     g.lineWidth = 2 / G.cam.z;
     g.strokeRect(G.cursorTile.tx * TILE, G.cursorTile.ty * TILE, ew * TILE, eh * TILE);
     // 地下管道铺设时：若与已有管道能背向配对，用绿色虚线框住这一对（含幽灵格）提示可配对
@@ -1198,6 +1201,21 @@ function drawHoverAndMining(ctx) {
       ctx.arc(mx * TILE + TILE / 2, my * TILE + TILE / 2, 12, -Math.PI / 2, -Math.PI / 2 + p.mineProg * Math.PI * 2);
       ctx.stroke();
     }
+  }
+  // 远程视图右键长按标记拆除：在按下位置绘制与采矿一致的蓄力圈（满圈即完成标记）
+  if (G.remoteDeconPress) {
+    const rp = G.remoteDeconPress;
+    const frac = Math.max(0, Math.min(1, rp.t / (rp.hold || 0.4)));
+    const cx = rp.tx * TILE + TILE / 2, cy = rp.ty * TILE + TILE / 2;
+    ctx.strokeStyle = 'rgba(255,255,255,.35)';   // 底圈
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 12, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#fff';                     // 进度圈（同采矿 loading）
+    ctx.beginPath();
+    ctx.arc(cx, cy, 12, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+    ctx.stroke();
   }
 }
 

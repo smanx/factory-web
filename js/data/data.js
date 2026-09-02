@@ -38,9 +38,12 @@ function oreMiningTime(item) {
   return (typeof t === 'number' && t > 0) ? t : DRILL_TIME;
 }
 const HAND_MINE_TIME = 0.45;
-// 角色建造/交互范围半径（格）：对齐《异星工厂》官方 character 原型 reach_distance = 10（build_distance 同为 10）
-const REACH_TILES = 10;
+// 角色操作距离（格）：单源自 GAME_DATA.character（data.generated.js 由官方 character 原型生成），
+// 建造/交互 reach/build = 10 格；徒手砍树/采集矿物 reach_resource_distance = 2.7 格（区别于建造/交互距离）。
+const REACH_TILES = (GAME_DATA.character && GAME_DATA.character.reachDistance) || 10;
 const REACH_PX = REACH_TILES * TILE;
+const MINE_REACH_TILES = (GAME_DATA.character && GAME_DATA.character.reachResourceDistance) || 2.7;
+const MINE_REACH_PX = MINE_REACH_TILES * TILE;
 const LAB_TIME = 1; // 研究中心每瓶科学包耗时（秒）
 // 功率数值对齐《异星工厂》(Factorio) 官方 Wiki（单位 kW）
 // 数据单源化：全部来自 GAME_DATA.steamPower / GAME_DATA.powerUse（data.generated.js，
@@ -53,7 +56,6 @@ const POWER_PER_TURBINE = GAME_DATA.steamPower?.turbinePower ?? 5820; // 汽轮�
 const CENTRIFUGE_POWER = GAME_DATA.powerUse?.['centrifuge'] ?? 350;   // 离心机功耗 kW
 // ===== 核能（对齐《异星工厂》核动力）=====
 // 核反应堆：消耗核燃料 + 水 → 产出高温蒸汽；汽轮机以远高于蒸汽机的功率发电。
-const REACTOR_POWER = 40000;    // 反应堆热功率 40MW（对齐官方）；简化：直接折算成产汽能力
 const REACTOR_FUEL_ENERGY = 200;  // 每组核燃料可持续燃烧秒数
 const REACTOR_WATER_RATE = 4.0;   // 反应堆每秒耗水量（远超锅炉，产汽量更高）
 const REACTOR_STEAM_CAP = 40;     // 反应堆内部蒸汽缓冲
@@ -64,8 +66,6 @@ const FLUID_UNIT_SCALE = 50;   // 项目流体刻度：1 项目单位 = 50 官�
 // 造成热交换器产汽只有汽轮机需求的 1/3 → 汽轮机转转停停，详见 ISSUE #258）。
 const TURBINE_STEAM_RATE = (GAME_DATA.steamPower?.turbineRate ?? 60) / FLUID_UNIT_SCALE;
 const TURBINE_STEAM_CAP = 12;     // 汽轮机内部储汽上限
-const CENTRIFUGE_TIME = 12;       // 离心机处理一批铀矿耗时（秒）
-const URANIUM_CENTRIFUGE_KOVAREX_TIME = 60; // Kovarex 富集耗时（秒）
 // ===== 核能热量链路（反应堆 → 导热管 → 热交换器 → 高温蒸汽 → 汽轮机）=====
 // 引入“热量(heat)”概念：反应堆不直接产蒸汽，而是产热量；热量经导热管传导，
 // 在热交换器处把水烧成高温蒸汽，再供汽轮机发电（对齐《异星工厂》核能标准链路）。
@@ -104,14 +104,14 @@ const HEATING_TOWER_MAX_TRANSFER = GAME_DATA.heat?.heatingTowerMaxTransfer ?? 10
 // 数据单源化：发电功率/反应堆耗电/氟酮冷液消耗均来自 GAME_DATA.fusion（data.generated.js，
 // 由 tools/generate-game-data.js 从 factorio-data 现场提取官方 power_input / max_fluid_usage /
 // output_flow_limit），不在本文件另行维护第二套数值表。
-const FUSION_REACTOR_SPECIFIC_HEAT = 10;   // 聚变反应堆比热 10MJ/°C（官方 heat_buffer）
-const FUSION_REACTOR_MAX_TRANSFER = 10000; // 聚变反应堆最大传热 10GW（官方 max_transfer）
+const FUSION_REACTOR_SPECIFIC_HEAT = 10;   // 聚变反应堆比热 10MJ/°C（项目简化热模型：官方 fusion-reactor 为电动+燃料+等离子体模型，无 heat_buffer）
+const FUSION_REACTOR_MAX_TRANSFER = 10000; // 聚变反应堆最大传热 10GW（项目简化热模型，同上）
 const FUSION_REACTOR_HEAT_RATE = 200;      // 聚变反应堆热功率 200MW（终极发电，高于核反应堆 40MW/供热塔 100MW）
 const FUSION_REACTOR_POWER_INPUT = GAME_DATA.fusion?.reactorPowerInput ?? 10;  // 聚变反应堆耗电 MW（官方 power_input=10MW）
 const FUSION_REACTOR_FLUID_USAGE = GAME_DATA.fusion?.reactorFluidUsage ?? 4;   // 聚变反应堆每秒耗氟酮冷液单位（官方 max_fluid_usage 4/s）
 const FUSION_FUEL_ENERGY = 200;            // 每根聚变燃料棒可持续燃烧秒数
 const FUSION_GENERATOR_SPECIFIC_HEAT = 1;  // 聚变发电机比热 1MJ/°C
-const FUSION_GENERATOR_MAX_TRANSFER = 2000;// 聚变发电机最大传热 2GW（官方 max_transfer）
+const FUSION_GENERATOR_MAX_TRANSFER = 2000;// 聚变发电机最大传热 2GW（项目简化热模型：官方 fusion-generator 为流体→电模型，无 heat_buffer）
 const FUSION_GENERATOR_MAX_POWER = GAME_DATA.fusion?.generatorMaxPower ?? 50000;  // 聚变发电机满功率 50MW（官方 output_flow_limit=50MW，GAME_DATA 单源）
 const FUSION_HEAT_PER_KW = 0.004;          // 每 kW·s 发电需消耗热量(MJ)：50MW 满功率每秒需 200MJ
 // 聚变等离子体（官方 fusion-plasma）工作介质常数：反应堆产 Plasma → 管道 → 发电机吸 Plasma 发电。
@@ -167,6 +167,16 @@ function oreItemId(ti) {
 // 集中判断，供采矿机/手挖/渲染复用，避免各文件分散维护矿石清单。
 function isOreType(ti) {
   return (ti >= 0 && ti < ORES.length) || ti === ORE_URANIUM || ti === ORE_ASTEROID || ti === ORE_TUNGSTEN || ti === ORE_HOLMIUM;
+}
+// 资源是否可徒手采集：单源自 GAME_DATA.resourceHandMine（data.generated.js 由官方 resource 原型生成）。
+// 官方 character 只会挖 mining_categories={"basic-solid"}：铁/铜/煤/石可手挖；
+// 铀矿（minable 需硫酸 fluid）、fluid（原油，需抽油机）与 hard-solid（钨，需大型采矿机）不可手挖。
+// 官方无此 resource 原型的（小行星碎块/钬矿等）兜底为可手挖，维持既有玩法。
+function handMineableItem(itemId) {
+  const map = GAME_DATA.resourceHandMine;
+  if (map && typeof map[itemId] === 'boolean') return map[itemId];
+  // 兜底（不依赖生成表）：流体资源（原油等在 FLUIDS 表）官方从不可徒手采集，其余未知物品可手挖。
+  return FLUIDS.indexOf(itemId) < 0;
 }
 // 随机返回一种小行星碎块（金属/碳质/氧化），破碎机可粉碎加工
 function randomAsteroidChunk() {

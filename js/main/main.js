@@ -764,9 +764,12 @@ function takeForPlace(id) {
 function tryPlaceAt(tx, ty) {
   const rawSel = selItem();
   if (!rawSel) return;
+  // 强建模式：Shift=强制建造（无视树/峭壁并标记拆除，跳过建筑冲突）；
+  // Shift+Ctrl=超级强制建造（树/峭壁与玩家建筑全部标记拆除，实现一键替换）。
+  const force = (G.shiftHeld && G.ctrlHeld) ? 2 : (G.shiftHeld ? 1 : 0);
   // 蓝图物品（blueprint / blueprint#n）：点击地图放置蓝图内容（不消耗材料，可反复放置）
   if (typeof isBlueprintItem === 'function' && isBlueprintItem(rawSel)) {
-    tryPlaceBlueprintItem(tx, ty);
+    tryPlaceBlueprintItem(tx, ty, force);
     return;
   }
   const infinite = !!(G.dbg && G.dbg.infinite);
@@ -776,9 +779,10 @@ function tryPlaceAt(tx, ty) {
   const placeQuality = sq.quality;
   // 远程视图：只能放置「虚拟建筑」（建造幽灵，对齐《异星工厂》地图视图远程规划）。
   // 不消耗资源、不真实落地，由施工机器人进入范围后自动施工；地形铺设等不在远程视图生效。
+  // 按住 Shift / Shift+Ctrl 时为强制/超级强制建造：无视树/峭壁并标记清理，见 tryPlaceGhost。
   if (G.remoteView) {
     if (BUILD_DEFS[type] && typeof tryPlaceGhost === 'function') {
-      return tryPlaceGhost(type, tx, ty, rawSel);
+      return tryPlaceGhost(type, tx, ty, rawSel, force);
     }
     return;
   }
@@ -802,7 +806,7 @@ function tryPlaceAt(tx, ty) {
   // Shift+左键放置“建造虚影”：不直接落地，生成施工幽灵，由施工机器人按触发条件自动建造。
   // 仅在可建造建筑时生效（地面/树种/蓝图等已在前面分支处理）。放置本身不消耗背包物品。
   if (G.shiftHeld && typeof tryPlaceGhost === 'function') {
-    tryPlaceGhost(type, tx, ty, rawSel);
+    tryPlaceGhost(type, tx, ty, rawSel, force);
     return;
   }
   // 无限资源模式：建造不消耗原料，且可直接放置测试用创造/虚空箱与管道（无需背包里拥有）
