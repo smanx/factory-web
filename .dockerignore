@@ -1,0 +1,27 @@
+# 依赖与构建产物
+node_modules/
+dist/
+
+# 版本控制
+.git
+.gitmodules
+
+# 数据源子模块（data.generated.js 已生成在 js/data/，容器内无需原始因子数据）
+factorio-data/
+
+# 调试 / 临时
+.chrome-tmp
+.chrome-tmp-dpr2
+.repro
+__pycache__/
+*.pyc
+
+# 日志
+*.log
+err.log
+out.log
+
+# 系统文件
+Thumbs.db
+.DS_Store
+**/.DS_Store
