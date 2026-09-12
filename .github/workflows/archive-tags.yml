@@ -69,21 +69,6 @@ jobs:
           fi
           echo "打包失败 tag: $(wc -l < failed_tags.txt 2>/dev/null || echo 0) 个"
 
-      - name: 在 history 目录生成版本列表 JSON
-        if: steps.tags.outputs.count != '0'
-        run: |
-          node -e '
-            const fs = require("fs");
-            const dir = "export/history";
-            const versions = fs.readdirSync(dir)
-              .filter(n => fs.statSync(dir + "/" + n).isDirectory())
-              .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-            const out = { versions, updated: new Date().toISOString(), count: versions.length };
-            fs.writeFileSync(dir + "/versions.json", JSON.stringify(out, null, 2) + "\n");
-            console.log("已生成 history/versions.json:", versions.length, "个版本");
-            console.log(versions.map(v => "  " + v).join("\n"));
-          '
-
       - name: 构建当前分支最新内容到根目录
         if: steps.tags.outputs.count != '0'
         run: |
@@ -96,6 +81,32 @@ jobs:
           npm install --no-audit --no-fund
           TAG_NAME="${latest}-dev" npm run build:minify
           cp -a dist/. export/
+
+      - name: 生成 DEV 版本目录（DEV 目录 = 最新代码版本）
+        if: steps.tags.outputs.count != '0'
+        run: |
+          set -e
+          # 复用根目录刚构建好的最新代码产物，复制一份到 history/DEV 作为独立版本，
+          # 使版本选择列表里能显示出 DEV（最新代码）这一版本
+          mkdir -p export/history/DEV
+          cp -a dist/. export/history/DEV/
+          echo "已生成 history/DEV（最新代码版本）"
+
+      - name: 在 history 目录生成版本列表 JSON
+        if: steps.tags.outputs.count != '0'
+        # 注意：必须放在 DEV 目录生成之后，readdirSync 才能把 DEV 一并列入版本列表
+        run: |
+          node -e '
+            const fs = require("fs");
+            const dir = "export/history";
+            const versions = fs.readdirSync(dir)
+              .filter(n => fs.statSync(dir + "/" + n).isDirectory())
+              .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+            const out = { versions, updated: new Date().toISOString(), count: versions.length };
+            fs.writeFileSync(dir + "/versions.json", JSON.stringify(out, null, 2) + "\n");
+            console.log("已生成 history/versions.json:", versions.length, "个版本");
+            console.log(versions.map(v => "  " + v).join("\n"));
+          '
 
       - name: 强制推送到 history 分支（覆盖重建）
         if: steps.tags.outputs.count != '0'
