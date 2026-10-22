@@ -1,0 +1,185 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工厂原型 Factory Proto</title>
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="stylesheet" href="css/style.css">
+<!-- 关键路径脚本预加载：提前发起请求，压缩首屏瀑布间距（菜单 → 读档最小依赖集） -->
+</head>
+<body>
+<canvas id="game"></canvas>
+<canvas id="ghost-layer"></canvas>
+<div id="hud-info"></div>
+<div id="hud-modal" class="hidden">
+  <div id="hud-modal-head">
+    <span id="hud-modal-title"></span>
+    <button id="hud-modal-close" title="关闭">✕</button>
+  </div>
+  <div id="hud-modal-body"></div>
+</div>
+<div id="hotbar"></div>
+<div id="quickbar">
+  <div class="qb-row" id="qb-row1"></div>
+  <div class="qb-row" id="qb-row2"></div>
+</div>
+<div id="craft-queue"></div>
+<div id="panel">
+  <div id="panel-head">
+    <span id="panel-title"></span>
+    <button id="panel-close">✕</button>
+  </div>
+  <div id="panel-body"></div>
+</div>
+<div id="remote-bar" class="hidden">
+  <span id="remote-bar-title">远程视图</span>
+  <span id="remote-bar-hint">WASD 平移 · 滚轮缩放 · 左键放置虚拟建筑（建造幽灵）</span>
+</div>
+<button id="remote-close" class="hidden" title="关闭远程视图">✕</button>
+<div id="toasts"></div>
+<div id="greenbar" style="display:none"></div>
+<div id="tooltip"><b></b><span></span><div id="tooltip-recipe"></div></div>
+<div id="dbg-btn" style="display:none">DBG</div>
+<div id="dbg-panel"></div>
+<div id="ver-corner" style="position:fixed;bottom:0;right:0;z-index:9999;opacity:0.3;display:flex;align-items:center;padding:2px 4px">
+  <img src="https://visitor-badge.laobi.icu/badge?page_id=smanx/factory-web&format=true&left_text=v&left_color=%23000000&right_color=%23000000"
+       alt="visitor badge">
+  <div id="ver-corner-text" style="height:20px;line-height:20px;font-size:11px;color:#eee;background:#000;padding:0 5px;border-radius:3px;margin-left:3px"></div>
+</div>
+
+<!-- 开始菜单：新游戏 / 读取存档 -->
+<div id="start-screen">
+  <a class="gh-link" href="https://github.com/smanx/factory-web" target="_blank" rel="noopener noreferrer" title="GitHub 开源地址" aria-label="GitHub 开源地址">
+    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z" /></svg>
+  </a>
+  <div class="start-bg"><canvas id="start-bg-canvas" class="start-bg-canvas"></canvas></div>
+  <div class="start-box">
+    <div class="start-box-head">
+      <div class="start-emblem" aria-hidden="true">⚙</div>
+      <div class="start-logo">
+        <div class="start-title">工厂原型</div>
+        <div class="start-sub">FACTORY PROTO</div>
+      </div>
+    </div>
+    <div class="start-menu">
+      <button id="btn-continue-game" class="start-btn continue hidden" disabled>▶ 继续游戏</button>
+      <button id="btn-new-game" class="start-btn primary" disabled>▶ 开始新游戏</button>
+      <button id="btn-continue" class="start-btn" disabled>📂 读取存档</button>
+      <button id="btn-start-ach" class="start-btn" disabled>🏆 成就</button>
+      <button id="btn-start-vers" class="start-btn" disabled>🕘 切换版本</button>
+      <div id="start-save-info" class="start-save-info"></div>
+    </div>
+
+    <div class="start-hint">
+      WASD 移动 · 左键建造 · 右键挖矿/拆除 · R 旋转 · F 拿取 ·
+      中键/E 面板 · T 科技 · P 统计 · ESC 游戏菜单
+    </div>
+  </div>
+
+  <!-- 切换版本：从 history/versions.json 读取历史版本列表，点击某版本后在新窗口打开对应历史页面 -->
+  <div id="version-overlay" class="load-save-overlay hidden">
+    <div class="load-save-panel">
+      <div class="load-save-head">
+        <span class="load-save-title">🕘 切换版本</span>
+        <button id="version-close" class="load-save-close" title="关闭">✕</button>
+      </div>
+      <div id="version-list" class="load-save-list"></div>
+    </div>
+  </div>
+
+  <!-- 地图设置：开始新游戏前配置世界参数（对齐《异星工厂》地图生成器） -->
+  <div id="world-config-overlay" class="world-config-overlay hidden">
+    <div class="world-config-panel">
+      <div class="world-config-head">
+        <span class="world-config-title">🗺️ 地图设置</span>
+        <button id="world-config-close" class="world-config-close" title="关闭">✕</button>
+      </div>
+      <div class="world-config-body"></div>
+      <div class="world-config-foot">
+        <button id="world-config-ok" class="world-config-ok primary">▶ 开始游戏</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- 新手引导面板：首次新游戏时显示基本操作说明 -->
+<div id="tutorial-overlay" class="tutorial-overlay hidden">
+  <div class="tutorial-panel">
+    <div class="tutorial-title">🚀 欢迎来到工厂原型</div>
+    <div class="tutorial-sub">FACTORY PROTO — 复刻《异星工厂》</div>
+    <div class="tutorial-body">
+      <div class="tutorial-sec">目标</div>
+      <div>采集资源 → 建造工厂 → 自动化生产 → 发射火箭赢得游戏。</div>
+      <div class="tutorial-sec">基本操作</div>
+      <div>· <b>WASD</b> 移动 · <b>鼠标左键</b> 建造 / 挖矿 · <b>右键</b> 拆除</div>
+      <div>· <b>E</b> 背包 / 手搓 · <b>T</b> 科技研究 · <b>P</b> 统计 · <b>O</b> 设置 · <b>Esc</b> 关闭面板 / 无面板时展开游戏菜单</div>
+      <div>· <b>数字键 1-0</b> 选择快捷栏 · <b>滚轮</b> 循环切换快捷栏（<b>Ctrl+滚轮</b> 缩放视野） · <b>R</b> 旋转 · <b>H/V</b> 翻转 · <b>F</b> 拾取地面物品 · <b>Z</b> 丢弃手中物品到地面 · <b>Q</b> 清理光标（手持物品收回背包）/ 取消</div>
+      <div>· 面板内快捷操作：<b>Shift+左键</b> 移动一整组 · <b>Ctrl+左键</b> 移动全部同类 · <b>Shift+右键</b> 拿取/移动一半（设备只接收其需要的物品）</div>
+      <div>· 地图上快捷转移：<b>Ctrl+左键</b> 点击设备/箱子快速存入或取出（空手取出，手持/选中放入） · <b>Ctrl+右键</b> 每次只转移一半</div>
+      <div class="tutorial-sec">物流与建造</div>
+      <div>· <b>B</b> 蓝图库 · <b>Alt+B</b> 框选创建蓝图 · <b>Ctrl+C</b> 快速复制 · <b>Ctrl+X</b> 快速剪切 · <b>Alt+D</b> 红图拆除 · <b>Alt+U</b> 绿图升级</div>
+      <div>· <b>Alt</b> 切换 ALT 模式（建筑配方/内容叠加） · <b>M</b> 小地图 · <b>N</b> 地图标记 · <b>Alt+N</b> 管理 · <b>Alt+H</b> 本说明</div>
+      <div class="tutorial-sec">上手流程</div>
+      <div>1. 手挖石头，合成<b>石炉</b>与<b>热能采矿机</b>，冶炼铁板/铜板</div>
+      <div>2. 铺设<b>采矿机 + 传送带 + 机械臂 + 组装机</b>自动化生产</div>
+      <div>3. <b>研究中心</b>放红瓶推进科技 → 抽水机+锅炉+蒸汽机发电</div>
+      <div>4. 石油 → 塑料 → 高级科技，一路冲向火箭发射</div>
+    </div>
+    <button id="btn-tutorial-close" class="tutorial-close">开始游戏 ▶</button>
+  </div>
+</div>
+<!-- 死亡结算菜单：玩家阵亡后选择 出生点复活 / 读取存档 / 重新开始（对齐《异星工厂》阵亡处理） -->
+<div id="death-overlay" class="death-overlay hidden">
+  <div class="death-panel">
+    <div class="death-title">💀 你阵亡了</div>
+    <div class="death-sub">你被虫群击败了……</div>
+    <div class="death-menu">
+      <button id="btn-death-respawn" class="death-btn primary">🔄 出生点复活</button>
+      <button id="btn-death-load" class="death-btn">📂 读取存档</button>
+      <button id="btn-death-restart" class="death-btn danger">↻ 重新开始游戏</button>
+    </div>
+  </div>
+</div>
+<!-- 游戏菜单（按 Esc 展开/合上）：暂停世界并居中显示菜单，再按 Esc 或点“继续游戏”恢复 -->
+<div id="pause-overlay" class="pause-overlay hidden">
+  <div class="pause-panel">
+    <div class="pause-title">⏸ 游戏已暂停</div>
+    <div class="pause-sub">按 ESC 或点击“继续游戏”返回</div>
+    <div class="pause-menu">
+      <button id="btn-pause-resume" class="pause-btn primary">▶ 继续游戏</button>
+      <button id="btn-pause-restart" class="pause-btn">↻ 重开游戏</button>
+      <button id="btn-pause-load" class="pause-btn">💾 存档管理</button>
+      <button id="btn-pause-settings" class="pause-btn">⚙ 设置</button>
+      <button id="btn-pause-quit" class="pause-btn danger">🏠 返回主菜单</button>
+    </div>
+  </div>
+</div>
+<!-- 存档管理面板：点击“保存游戏/载入存档”打开，复用原设置面板的存档管理功能 -->
+<div id="save-manage-overlay" class="load-save-overlay hidden">
+  <div class="load-save-panel">
+    <div class="load-save-head">
+      <span class="load-save-title">💾 存档管理</span>
+      <button id="save-manage-close" class="load-save-close" title="关闭">✕</button>
+    </div>
+    <div class="save-manage-body" id="save-manage-body"></div>
+  </div>
+</div>
+<!-- 二级确认弹框：用于“重开游戏/返回主菜单”前的操作确认（提醒先保存存档） -->
+<div id="confirm-overlay" class="pause-overlay hidden">
+  <div class="pause-panel">
+    <div class="confirm-title" id="confirm-title">⚠ 确认操作</div>
+    <div class="confirm-desc" id="confirm-desc"></div>
+    <div class="confirm-actions">
+      <button id="btn-confirm-cancel" class="pause-btn">取消</button>
+      <button id="btn-confirm-ok" class="pause-btn danger">确认</button>
+    </div>
+  </div>
+</div>
+<!-- ===== 关键路径：开始菜单 → 读档 最小依赖集（同步加载，尽早可交互）=====
+     这里仅含菜单渲染/读档列表直接依赖的脚本；其余 88 个脚本以 defer 方式
+     在菜单渲染后并行加载，点“开始游戏”前全部就绪。 -->
+
+<!-- ===== 非关键脚本：defer 并行加载（保持文档顺序，依赖链不变）===== -->
+  <script src="bundle.8b7475cc-v0.2.2.js"></script>
+</body>
+</html>
