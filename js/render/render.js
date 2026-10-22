@@ -687,6 +687,21 @@ function drawChunkTerrainInto(ctx, cx, cy) {
         cliffTiles.push(dy * CHUNK + dx);
         continue;
       }
+      if (t === T_LAVA) {
+        // 熔岩湖（对齐《异星工厂》Vulcanus lava）：炽热橙红熔浆 + 暗色结壳边缘 + 流纹高光
+        drawLavaTile(ctx, px, py, tx, ty, ext, dy, dx);
+        continue;
+      }
+      if (t === T_SCRAP) {
+        // 碎石高地（对齐《异星工厂》Fulgora dry scrub）：干燥碎石地表，金属碎屑散布
+        drawScrapTile(ctx, px, py, tx, ty, ext, dy, dx, pid);
+        continue;
+      }
+      if (t === T_ICE_SHEET) {
+        // 冰海（对齐《异星工厂》Aquilo ice ocean）：深冰蓝海面 + 冰裂纹
+        drawIceSheetTile(ctx, px, py, tx, ty, ext, dy, dx);
+        continue;
+      }
       drawGrassTile(ctx, px, py, tx, ty, ext, dy, dx, pgrass, sand, pid);
       if (t === T_TREE) drawTreeInto(ctx, px, py, tx, ty);
     }
@@ -767,6 +782,123 @@ function drawWaterTile(ctx, px, py, tx, ty, ext, dy, dx, wcol, sand) {
 // 覆盖度用双频值噪声在「泥土 ↔ 草色」间插值：贫瘠处露黄褐泥土、
 // 肥沃处草色浓密，草稀/草密成片交错（而非满屏纯绿）；细节按覆盖度
 // 分层点缀——密草区画草丛/野花，稀草区画枯黄短草，露土区画土粒/干裂纹。
+// ===== 熔岩湖瓦片（祝融星 Vulcanus）=====
+// 炽热熔浆：中心亮橙/边缘暗红结壳，流纹高光；邻接陆地处画冷却结壳带（黑褐色岩边）。
+function drawLavaTile(ctx, px, py, tx, ty, ext, dy, dx) {
+  const EW = CHUNK + 2;
+  const r0 = (dy + 1) * EW + (dx + 1);
+  const nN = ext[r0 - EW], nS = ext[r0 + EW], nW = ext[r0 - 1], nE = ext[r0 + 1];
+  // 基底：深红到暗橙（位置噪声让湖面有温度差）
+  const n = hash2(tx * 0.13, ty * 0.17);
+  ctx.fillStyle = n > 0.5 ? '#8a2f10' : '#7a2810';
+  ctx.fillRect(px, py, TILE, TILE);
+  // 炽热流纹：2~3 条波状亮橙纹（确定性）
+  ctx.strokeStyle = 'rgba(255,140,40,.5)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  const fy1 = py + 6 + hash2(tx, ty * 3) * 8;
+  ctx.moveTo(px, fy1);
+  ctx.bezierCurveTo(px + TILE / 3, fy1 - 4, px + TILE * 2 / 3, fy1 + 5, px + TILE, fy1 + (hash2(tx * 2, ty) - 0.5) * 6);
+  const fy2 = py + TILE - 8 - hash2(tx * 5, ty) * 6;
+  ctx.moveTo(px, fy2);
+  ctx.bezierCurveTo(px + TILE / 3, fy2 + 4, px + TILE * 2 / 3, fy2 - 5, px + TILE, fy2 + (hash2(tx, ty * 7) - 0.5) * 6);
+  ctx.stroke();
+  // 高光热点（约 1/3 格）：炽白亮斑
+  if (hash2(tx * 1.7, ty * 2.9) > 0.64) {
+    ctx.fillStyle = 'rgba(255,220,120,.7)';
+    ctx.beginPath();
+    ctx.arc(px + 8 + hash2(tx * 3, ty) * (TILE - 16), py + 8 + hash2(tx, ty * 3) * (TILE - 16), 2.2, 0, 7);
+    ctx.fill();
+  }
+  // 冷却结壳带：邻接陆地的边画黑褐岩壳（熔岩湖边缘的凝固岩）
+  const SB = 7;
+  const crust = 'rgba(30,20,14,.85)';
+  if (nN !== T_LAVA) { ctx.fillStyle = crust; ctx.fillRect(px, py, TILE, SB); }
+  if (nS !== T_LAVA) { ctx.fillStyle = crust; ctx.fillRect(px, py + TILE - SB, TILE, SB); }
+  if (nW !== T_LAVA) { ctx.fillStyle = crust; ctx.fillRect(px, py, SB, TILE); }
+  if (nE !== T_LAVA) { ctx.fillStyle = crust; ctx.fillRect(px + TILE - SB, py, SB, TILE); }
+  // 结壳裂纹（边缘泛橙光的缝）：仅在结壳带上画短橙线
+  if (nN !== T_LAVA || nS !== T_LAVA || nW !== T_LAVA || nE !== T_LAVA) {
+    ctx.strokeStyle = 'rgba(255,120,30,.6)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    if (nN !== T_LAVA) { ctx.moveTo(px + 5, py + 2); ctx.lineTo(px + 11, py + SB - 1); }
+    if (nS !== T_LAVA) { ctx.moveTo(px + TILE - 8, py + TILE - SB + 1); ctx.lineTo(px + TILE - 3, py + TILE - 2); }
+    ctx.stroke();
+  }
+}
+
+// ===== 碎石高地瓦片（雷神星 Fulgora）=====
+// 干燥碎石地表：灰紫底色 + 碎石颗粒 + 金属碎屑闪光；邻接沟壑（水格）处画塌缘暗带。
+function drawScrapTile(ctx, px, py, tx, ty, ext, dy, dx, pid) {
+  const EW = CHUNK + 2;
+  const r0 = (dy + 1) * EW + (dx + 1);
+  const nN = ext[r0 - EW], nS = ext[r0 + EW], nW = ext[r0 - 1], nE = ext[r0 + 1];
+  // 基底：干裂灰紫（比 Fulgora 泥土色略深，与露土草地区分）
+  const v = hash2(tx, ty);
+  ctx.fillStyle = v > 0.5 ? '#7d7488' : '#756c80';
+  ctx.fillRect(px, py, TILE, TILE);
+  // 干裂纹（碎石岛的干裂地表）
+  ctx.strokeStyle = 'rgba(45,40,55,.4)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  const cy1 = py + 8 + hash2(tx * 3, ty) * 10;
+  ctx.moveTo(px, cy1);
+  ctx.lineTo(px + TILE, cy1 + (hash2(tx, ty * 5) - 0.5) * 5);
+  ctx.stroke();
+  // 碎石颗粒：3~5 颗小石子（深浅二色）
+  const pebbles = 3 + (hash2(tx * 7.7, ty * 3.3) * 3) | 0;
+  for (let i = 0; i < pebbles; i++) {
+    const rx = px + 3 + hash2(tx * 11.1 + i, ty * 5.7) * (TILE - 7);
+    const ry = py + 3 + hash2(tx * 4.3, ty * 13.7 + i) * (TILE - 7);
+    ctx.fillStyle = (i % 2) ? 'rgba(58,52,68,.7)' : 'rgba(150,142,158,.65)';
+    ctx.fillRect(rx, ry, 2.5, 2);
+  }
+  // 金属碎屑闪光（约 1/5 格）：Fulgora 满地废料遗迹的金属反光
+  if (hash2(tx * 2.9, ty * 8.1) > 0.8) {
+    ctx.fillStyle = 'rgba(220,225,240,.5)';
+    ctx.fillRect(px + 6 + hash2(tx, ty * 2) * (TILE - 12), py + 6 + hash2(tx * 2, ty) * (TILE - 12), 2, 1.4);
+  }
+  // 塌缘暗带：邻接沟壑的边画深色塌落阴影（碎石岛边缘的断层）
+  const SB = 5;
+  ctx.fillStyle = 'rgba(20,16,28,.4)';
+  if (nN === T_WATER) ctx.fillRect(px, py, TILE, SB);
+  if (nS === T_WATER) ctx.fillRect(px, py + TILE - SB, TILE, SB);
+  if (nW === T_WATER) ctx.fillRect(px, py, SB, TILE);
+  if (nE === T_WATER) ctx.fillRect(px + TILE - SB, py, SB, TILE);
+}
+
+// ===== 冰海瓦片（玄冥星 Aquilo）=====
+// 深冰蓝海面：比普通水更冷更亮，叠加冰裂纹（白色细裂缝）；邻接雪原处画冰缘白边。
+function drawIceSheetTile(ctx, px, py, tx, ty, ext, dy, dx) {
+  const EW = CHUNK + 2;
+  const r0 = (dy + 1) * EW + (dx + 1);
+  const nN = ext[r0 - EW], nS = ext[r0 + EW], nW = ext[r0 - 1], nE = ext[r0 + 1];
+  // 基底：深冰蓝（青蓝渐变，比水色更亮）
+  const n = hash2(tx * 0.11, ty * 0.19);
+  ctx.fillStyle = n > 0.5 ? '#3d6f96' : '#38688e';
+  ctx.fillRect(px, py, TILE, TILE);
+  // 冰面反光：淡青高光斑
+  ctx.fillStyle = 'rgba(180,215,235,.14)';
+  ctx.fillRect(px + 2, py + 2, TILE / 2, TILE / 2);
+  // 冰裂纹：1~2 条白色细裂缝（折线）
+  ctx.strokeStyle = 'rgba(220,240,250,.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  const cx1 = px + 4 + hash2(tx, ty * 3) * (TILE - 8);
+  ctx.moveTo(cx1, py);
+  ctx.lineTo(cx1 + (hash2(tx * 2, ty) - 0.5) * 8, py + TILE / 2);
+  ctx.lineTo(cx1 + (hash2(tx * 3, ty) - 0.5) * 8, py + TILE);
+  ctx.stroke();
+  // 冰缘白边：邻接雪原（草地）的边画亮白冰棱
+  const SB = 4;
+  ctx.fillStyle = 'rgba(225,242,250,.55)';
+  if (nN !== T_ICE_SHEET && nN !== T_WATER) ctx.fillRect(px, py, TILE, SB);
+  if (nS !== T_ICE_SHEET && nS !== T_WATER) ctx.fillRect(px, py + TILE - SB, TILE, SB);
+  if (nW !== T_ICE_SHEET && nW !== T_WATER) ctx.fillRect(px, py, SB, TILE);
+  if (nE !== T_ICE_SHEET && nE !== T_WATER) ctx.fillRect(px + TILE - SB, py, SB, TILE);
+}
+
 function drawGrassTile(ctx, px, py, tx, ty, ext, dy, dx, pgrass, sand, pid) {
   const EW = CHUNK + 2;
   const r0 = (dy + 1) * EW + (dx + 1);

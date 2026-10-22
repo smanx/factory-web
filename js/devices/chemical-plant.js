@@ -194,7 +194,9 @@ class ChemicalPlant extends Entity {
         // 机械臂/机器人自动送入按原料 2 倍上限；玩家手动放入则放满一整组（物品堆叠上限）。
         // 只按原料判定上限：产物不做计数（自循环配方产物即原料，把产物算进总量会让
         // 设备被自己上一轮产出「喂饱」而拒收下一轮原料）
+        // Gleba 新鲜度：可腐坏原料入缓存即计时（侧表 _spoilInp，见 game/spoilage.js）
         if ((this.inp[item] || 0) >= (manual ? stackSize(item) : rec.inp[item] * 2)) return false;
+        if (typeof spoilStockStamp === 'function') spoilStockStamp(this, '_spoilInp', item);
         this.inp[item] = (this.inp[item] || 0) + 1;
         return true;
       }

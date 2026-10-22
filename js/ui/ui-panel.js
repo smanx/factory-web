@@ -1718,6 +1718,7 @@ async function htmlSettings() {
   h += '<label class="setrow"><input type="checkbox" data-set="weather"' + (G.settings.weather !== false ? ' checked' : '') + '> 天气（阴云氛围，阴天时整体略暗）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="daylight"' + (G.settings.daylight !== false ? ' checked' : '') + '> 日照光照（昼夜明暗随时间变化）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="altMode"' + (G.settings.altMode ? ' checked' : '') + '> ALT 模式（建筑上显示配方/内容，Alt 键切换）</label>';
+  h += '<label class="setrow"><input type="checkbox" data-set="wiresVision"' + (G.settings.wiresVision ? ' checked' : '') + '> 导线可视化（显示全部电路红/绿信号连线，Alt+W 切换）</label>';
   h += '<label class="setrow"><input type="checkbox" data-set="showReach"' + (G.settings.showReach ? ' checked' : '') + '> 显示建造范围（角色周围画出可建造/交互范围圆圈）</label>';
   h += '<div class="sec">音效</div>';
   h += '<label class="setrow"><input type="checkbox" data-set="music"' + (G.settings.music !== false ? ' checked' : '') + '> 背景音乐（可单独开关）</label>';

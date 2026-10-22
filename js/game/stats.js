@@ -517,7 +517,7 @@ function refreshPerf() {
 }
 
 // ---- 统计面板 HTML ----
-const STAT_TABS = [['items', '物品速率'], ['power', '电量'], ['perf', '性能']];
+const STAT_TABS = [['items', '物品速率'], ['power', '电量'], ['platform', '平台遥测'], ['perf', '性能']];
 
 function htmlStats() {
   let h = '<div class="stat-tabs">';
@@ -527,7 +527,88 @@ function htmlStats() {
   h += '</div>';
   if (G.statsTab === 'items') h += htmlStatsItems();
   else if (G.statsTab === 'power') h += htmlStatsPower();
+  else if (G.statsTab === 'platform') h += htmlStatsPlatform();
   else h += htmlStatsPerf();
+  return h;
+}
+
+// ---- 平台遥测页（太空时代空间平台远程状态汇总，对齐官方 Space hub 遥测面板语义）----
+// 远程只读汇总三类平台设备：推进器（燃料/氧化剂缓冲 + 功率）、小行星收集器（星块缓存）、
+// 平台中枢（货舱余量 + 派发目标），并给出告警（燃料不足 / 收集器满 / 货舱满）。
+// 遥测数据 0.5s 节流刷新（与面板 renderPanel 的节流节奏一致，避免逐帧扫描）。
+function platformTelemetry() {
+  const t = { thrusters: [], collectors: [], hubs: [], alerts: [] };
+  for (const e of G.ents) {
+    if (e._dead) continue;
+    if (typeof Thruster !== 'undefined' && e instanceof Thruster) {
+      const rec = { x: e.x, y: e.y, fuel: e.fuelBuf, oxid: e.oxidBuf, on: e.on, power: e.powerOut };
+      t.thrusters.push(rec);
+      if (rec.fuel < 1 && rec.oxid < 1) t.alerts.push({ x: e.x, y: e.y, msg: '推进器缺燃料与氧化剂（断电）', lvl: 'bad' });
+      else if (rec.fuel < 1) t.alerts.push({ x: e.x, y: e.y, msg: '推进器缺推进器燃料', lvl: 'warn' });
+      else if (rec.oxid < 1) t.alerts.push({ x: e.x, y: e.y, msg: '推进器缺推进器氧化剂', lvl: 'warn' });
+    } else if (typeof AsteroidCollector !== 'undefined' && e instanceof AsteroidCollector) {
+      let total = 0;
+      for (const k in e.buf) total += e.buf[k];
+      t.collectors.push({ x: e.x, y: e.y, buf: Object.assign({}, e.buf), total });
+      if (total >= (typeof ASTEROID_COLLECT_CAP !== 'undefined' ? ASTEROID_COLLECT_CAP : 10))
+        t.alerts.push({ x: e.x, y: e.y, msg: '收集器已满，停止收集（请及时取走星块）', lvl: 'warn' });
+    } else if (typeof SpacePlatformHub !== 'undefined' && e instanceof SpacePlatformHub) {
+      const total = e.cargoTotal ? e.cargoTotal() : 0;
+      const cap = e.hubCargoCap ? e.hubCargoCap() : 50;
+      t.hubs.push({ x: e.x, y: e.y, cargo: Object.assign({}, e.cargo), total, cap, target: e.cargoTarget || null });
+      if (total >= cap) t.alerts.push({ x: e.x, y: e.y, msg: '平台货舱已满（无法继续装货/派发）', lvl: 'warn' });
+    }
+  }
+  return t;
+}
+
+function htmlStatsPlatform() {
+  const t = platformTelemetry();
+  const koord = (e) => '(' + e.x + ',' + e.y + ')';
+  let h = '<div class="sec">推进器（燃料 / 氧化剂 / 功率）</div>';
+  h += '<div class="stat-table">';
+  if (!t.thrusters.length) h += '<div class="dim">未建造推进器（space-platform 设备：thruster 4×8，双流体输入发电）。</div>';
+  for (const e of t.thrusters) {
+    const k = e.x + ',' + e.y;
+    const st = e.on ? '<b style="color:#8fe08f">运行</b>' : '<b style="color:#ff8a7a">停机</b>';
+    h += row2('推进器 ' + koord(e), st + ' · 燃料 <span data-live="tf-' + k + '">' + Math.floor(e.fuel) + '</span>' +
+      ' · 氧化剂 <span data-live="to-' + k + '">' + Math.floor(e.oxid) + '</span>' +
+      ' · <span data-live="tp-' + k + '">' + (e.power / 1000).toFixed(1) + ' MW</span>');
+  }
+  h += '</div>';
+
+  h += '<div class="sec">小行星收集器</div>';
+  h += '<div class="stat-table">';
+  if (!t.collectors.length) h += '<div class="dim">未建造小行星收集器（asteroid-collector 3×3，轨道收集星块）。</div>';
+  for (const e of t.collectors) {
+    const k = e.x + ',' + e.y;
+    const parts = Object.keys(e.buf).filter(bk => e.buf[bk] > 0)
+      .map(bk => (ITEMS[bk] ? ITEMS[bk].name : bk) + '×' + e.buf[bk]);
+    h += row2('收集器 ' + koord(e), '<span data-live="ac-' + k + '">' + e.total + ' / 10</span> · ' +
+      (parts.length ? parts.join('、') : '<span class="dim">空</span>'));
+  }
+  h += '</div>';
+
+  h += '<div class="sec">平台中枢货舱</div>';
+  h += '<div class="stat-table">';
+  if (!t.hubs.length) h += '<div class="dim">未建造空间平台中枢（space-platform-hub 8×8，平台货舱轨道货运）。</div>';
+  for (const e of t.hubs) {
+    const k = e.x + ',' + e.y;
+    const parts = Object.keys(e.cargo).filter(ck => e.cargo[ck] > 0)
+      .map(ck => (ITEMS[ck] ? ITEMS[ck].name : ck) + '×' + e.cargo[ck]);
+    const tgt = e.target ? ((typeof planetOption === 'function' && planetOption(e.target)) ? planetOption(e.target).name : e.target) : '未选';
+    h += row2('平台中枢 ' + koord(e), '货舱 <span data-live="hb-' + k + '">' + e.total + '/' + e.cap + '</span> · 目标：' + tgt +
+      (parts.length ? ' · ' + parts.join('、') : ''));
+  }
+  h += '</div>';
+
+  h += '<div class="sec">告警（<span data-live="alertn">' + t.alerts.length + '</span>）</div>';
+  if (!t.alerts.length) h += '<div class="dim">全部平台设备状态正常。</div>';
+  for (const a of t.alerts) {
+    const col = a.lvl === 'bad' ? '#ff8a7a' : '#e8c860';
+    h += '<div class="row" style="color:' + col + '">⚠ ' + a.msg + ' ' + koord(a) + '</div>';
+  }
+  h += '<div class="dim">遥测为远程只读汇总（随面板 0.25s 节奏增量刷新）。推进器燃料/氧化剂缓冲与电路信号输出已接入组合器自动化；中枢货舱支持派发到目标星球轨道。</div>';
   return h;
 }
 
@@ -1140,6 +1221,14 @@ function statsListSig(tab) {
       s.consumers.map(c => c.e.type + '@' + c.e.x + ',' + c.e.y).join('|');
     return 'p:' + (G.statsPowerTab || 'prod') + ':' + sig;
   }
+  if (tab === 'platform') {
+    // 平台遥测：结构随设备集合与告警条目变化（缓冲数值走增量 data-live 更新）
+    const t = platformTelemetry();
+    const sig = t.thrusters.map(e => e.x + ',' + e.y + (e.on ? '*' : '')).join('|') + '#' +
+      t.collectors.map(e => e.x + ',' + e.y).join('|') + '#' +
+      t.hubs.map(e => e.x + ',' + e.y).join('|') + '#al' + t.alerts.length;
+    return 'pl:' + sig;
+  }
   // 性能页：结构随设备类型集合变化（新增/移除某类设备时重建列表），否则仅增量更新数值
   const devs = PERF.devices || [];
   const devSig = devs.map(d => d.type + (d.active > 0 ? '*' : '')).join(',');
@@ -1196,6 +1285,18 @@ function updateStatsLive() {
     set('pnet', (s.net >= 0 ? '+' : '') + s.net.toFixed(1));
     set('psat', '<span class="satbar"><i style="width:' + satPct + '%"></i></span> <b>' + satPct + '%</b>');
     set('pgrids', (s.grids || 0) + ' 张');
+  } else if (G.statsTab === 'platform') {
+    // 平台遥测：增量更新推进器/收集器/中枢数值（结构变化由 sig 触发整段重建）
+    const t = platformTelemetry();
+    for (const e of t.thrusters) {
+      const k = e.x + ',' + e.y;
+      set('tf-' + k, String(Math.floor(e.fuel)));
+      set('to-' + k, String(Math.floor(e.oxid)));
+      set('tp-' + k, (e.power / 1000).toFixed(1) + ' MW');
+    }
+    for (const e of t.collectors) set('ac-' + e.x + ',' + e.y, e.total + ' / 10');
+    for (const e of t.hubs) set('hb-' + e.x + ',' + e.y, e.total + '/' + e.cap);
+    set('alertn', String(t.alerts.length));
   } else {
     refreshPerf();
     const budget = PERF.budgetMs || (1000 / 60);

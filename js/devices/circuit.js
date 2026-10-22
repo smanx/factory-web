@@ -721,7 +721,10 @@ function drawDisplayPanel(ctx, e, gx, gy, dir, alpha) {
 
 // 绘制节点与相邻节点之间的连线（只画向“坐标更大”的节点，避免重复）
 // 电线杆之间只保留一根黄色电力线（见 power.js drawPowerWires），不再重复画红/绿信号线。
+// 导线可视化（对齐官方 2.0 wires vision，Alt+W 切换 G.settings.wiresVision）：
+// 开启后全局强制显示红/绿信号连线（平时杆-杆之间隐藏的信号线也显示），并加亮不透明度。
 function drawCircuitWires(ctx, e) {
+  const wiresOn = !!(G.settings && G.settings.wiresVision);
   if (!e.red && !e.green) return;
   const selfKey = entKey(e.x, e.y);
   const cx = (e.x + e.w / 2) * TILE, cy = (e.y + e.h / 2) * TILE;
@@ -730,7 +733,7 @@ function drawCircuitWires(ctx, e) {
   const drawn = new Set();
   const drawWire = (o, color, off) => {
     if (entKey(o.x, o.y) <= selfKey) return;
-    if (selfIsPole && isPole(o)) return;   // 杆-杆：黄色电力线已表示，跳过红/绿信号线
+    if (!wiresOn && selfIsPole && isPole(o)) return;   // 杆-杆：黄色电力线已表示，跳过红/绿信号线（导线可视化模式下仍显示）
     // 火箭发射井：不绘制与电线杆间的红/绿信号线（电路信号功能保留，仅隐藏视觉连线）
     if (e.type === 'rocket-silo' || o.type === 'rocket-silo') return;
     const id = o.x + ',' + o.y;
@@ -738,8 +741,8 @@ function drawCircuitWires(ctx, e) {
     const ox = (o.x + o.w / 2) * TILE, oy = (o.y + o.h / 2) * TILE;
     // 红/绿线各偏移一点，避免完全重叠
     ctx.strokeStyle = color;
-    ctx.lineWidth = 2 / Math.max(0.5, G.cam.z);
-    ctx.globalAlpha = 0.7;
+    ctx.lineWidth = (wiresOn ? 3 : 2) / Math.max(0.5, G.cam.z);
+    ctx.globalAlpha = wiresOn ? 0.95 : 0.7;
     ctx.beginPath();
     ctx.moveTo(cx + off, cy);
     ctx.quadraticCurveTo((cx + ox) / 2 + off, cy, ox + off, oy);

@@ -86,12 +86,18 @@ class Furnace extends Entity {
     if (item === 'coal' && this.fuelCoal < stackSize('coal')) { this.fuelCoal++; return true; }
     if (item === 'wood' && this.fuelWood < stackSize('wood')) { this.fuelWood++; return true; }
     if (item === 'solid-fuel' && this.fuelSolid < stackSize('solid-fuel')) { this.fuelSolid++; return true; }
+    // 品质变体（`item~quality`）矿石按基础物品收料（对齐《异星工厂》：品质只是同物品变体）
+    const base = (typeof splitQuality === 'function') ? splitQuality(item).base : item;
     // 产物已满一整组（Stack）时不再接收矿石：继续送只会白白堆积在熔炉里
     for (const r of SMELTS)
-      if (r.inp === item && (this.outp[r.id] || 0) >= stackSize(r.id)) return false;
+      if (r.inp === base && (this.outp[r.id] || 0) >= stackSize(r.id)) return false;
     // 机械臂/机器人自动送入按单次所需 2 倍上限；玩家手动放入则放满一整组（物品堆叠上限）
+    // Gleba 新鲜度：可腐坏矿石入缓存即计时（侧表 _spoilInp，见 game/spoilage.js）
     for (const r of SMELTS)
-      if (r.inp === item && (this.inp[item] || 0) < (manual ? stackSize(item) : (r.inCount || 1) * 2)) { this.inp[item] = (this.inp[item] || 0) + 1; return true; }
+      if (r.inp === base && (this.inp[base] || 0) < (manual ? stackSize(base) : (r.inCount || 1) * 2)) {
+        if (typeof spoilStockStamp === 'function') spoilStockStamp(this, '_spoilInp', base);
+        this.inp[base] = (this.inp[base] || 0) + 1; return true;
+      }
     return false;
   }
   peekItem() {

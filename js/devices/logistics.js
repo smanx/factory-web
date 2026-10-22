@@ -804,6 +804,8 @@ function assignTask(r) {
 
   // 指派
   r.carry = { item: best.item, count: takeN };
+  // Gleba 新鲜度：携带途中计时（进度随物品走，见 game/spoilage.js）
+  if (typeof spoilStamp === 'function') spoilStamp(r.carry, best.item);
   r.target = best.e;
   r.tx = (best.e.x + best.e.w / 2) * TILE;
   r.ty = (best.e.y + best.e.h / 2) * TILE;
@@ -1011,6 +1013,8 @@ function updateRobot(r, dt) {
           const can = (r.target instanceof LogisticRequester || r.target instanceof LogisticBuffer || (r.target && r.target.isPlayer)) ? r.target.deficitOf(r.carry.item) : r.carry.count;
           const give = Math.max(0, Math.min(r.carry.count, can));
           for (let i = 0; i < give; i++) {
+            // Gleba 新鲜度：机器人放货也走在途登记→入场消费（进度随物品走）
+            if (typeof spoilPutCarried === 'function') spoilPutCarried(r.carry.item, r.carry.fresh);
             if (!r.target.giveItem(r.carry.item)) break;
             if (typeof trackProd === 'function') trackProd(r.carry.item, 1);
           }
@@ -1860,4 +1864,25 @@ DEVICE_RENDER['buffer-chest'] = drawLogiBuffer;
 DEVICE_DIR_ROTATE['buffer-chest'] = true; // 支持旋转
 for (const t of Object.keys(LOGI_CHEST_KINDS)) {
   DEVICE_PANEL[t] = { html: logiChestPanelHtml, live: logiChestPanelLive, tip: logiChestTip, onAction: logiChestOnAction, onChange: logiRequesterOnChange };
+}
+
+// ===== Gleba 新鲜度：物流机器人携带的存档持久化 =====
+// 机器人本体不随档保存（读档后由机器人港按存量重新派生），仅携带中的物品短暂在途；
+// 为避免「在途可腐坏物品凭空不掉新鲜度」，保存携带快照、读档时按序回填到新派生的机器人。
+function robotsSerialize() {
+  const carry = (G.logiRobots || []).filter(r => !r._dead && r.carry && r.carry.item).map(r => ({
+    item: r.carry.item, count: r.carry.count, fresh: r.carry.fresh
+  }));
+  return carry.length ? { logiCarry: carry } : null;
+}
+function restoreLogiCarry(d) {
+  const carry = (d && Array.isArray(d.logiCarry)) ? d.logiCarry : [];
+  const alive = (G.logiRobots || []).filter(r => !r._dead);
+  for (let i = 0; i < Math.min(carry.length, alive.length); i++) {
+    const c = carry[i], r = alive[i];
+    if (c && c.item) {
+      r.carry = { item: c.item, count: c.count || 1 };
+      if (typeof c.fresh === 'number') r.carry.fresh = c.fresh;
+    }
+  }
 }

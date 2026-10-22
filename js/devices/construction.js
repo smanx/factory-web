@@ -1120,6 +1120,8 @@ function updateNetConstrRobot(r, dt) {
     if (moveNetToward(r, (t.x + t.w / 2) * TILE, (t.y + t.h / 2) * TILE, dt)) {
       if (t.takeItemOf(job.item)) {   // (a) 飞抵物流箱取走物品
         r.carry = { item: job.item, count: 1 };
+        // Gleba 新鲜度：携带途中计时（进度随物品走，见 game/spoilage.js）
+        if (typeof spoilStamp === 'function') spoilStamp(r.carry, job.item);
         r._picked = true;
         r.state = 'toghost';
       } else { r._dead = true; return; }
@@ -1449,7 +1451,11 @@ function constrSerialize() {
     personalRoboport: G.personalRoboport === 'mk2' ? 'mk2' : !!G.personalRoboport,
     roboportActive: G.roboportActive === false ? false : true,
     ghosts,
-    deconMarks
+    deconMarks,
+    // Gleba 新鲜度：施工机器人携带中的可腐坏物品（剩余秒数随档持久化）
+    robotCarry: (G.constrRobots || []).filter(r => !r._dead && r.carry && r.carry.item).map(r => ({
+      item: r.carry.item, count: r.carry.count, fresh: r.carry.fresh
+    }))
   };
 }
 function constrRestore(s) {
@@ -1497,5 +1503,14 @@ function constrRestore(s) {
       if (!e || e._dead) continue;
       G.deconMarks.push(new DeconMark(e));
     } catch (err) { /* 忽略无法重建的拆除标记条目 */ }
+  }
+  // 恢复施工机器人携带（含 Gleba 新鲜度剩余秒数）
+  const carries = (s && Array.isArray(s.robotCarry)) ? s.robotCarry : [];
+  for (let i = 0; i < Math.min(carries.length, G.constrRobots.length); i++) {
+    const c = carries[i], r = G.constrRobots[i];
+    if (c && c.item && r && !r._dead) {
+      r.carry = { item: c.item, count: c.count || 1 };
+      if (typeof c.fresh === 'number') r.carry.fresh = c.fresh;
+    }
   }
 }

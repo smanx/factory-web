@@ -336,6 +336,20 @@ html, body {
   pointer-events: none;
   line-height: 1;
 }
+/* Gleba 变质感官：箱子/背包格子按新鲜度档位着色（spoil-mid 橙 / spoil-low 红）
+   + 左上角小圆点（spoil-dot）提示可腐坏物品正在计时 */
+.inv-slot.spoil-mid { border-color: #d99a3c; box-shadow: inset 0 0 0 1px rgba(217,154,60,.45); }
+.inv-slot.spoil-low { border-color: #e05a4a; box-shadow: inset 0 0 0 1px rgba(224,90,74,.55); }
+.inv-slot .spoil-dot {
+  position: absolute;
+  left: 1px; top: 1px;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.inv-slot.spoil-mid .spoil-dot { background: #e8b25a; }
+.inv-slot.spoil-low .spoil-dot { background: #ff6a56; animation: spoil-blink 1s steps(2) infinite; }
+@keyframes spoil-blink { 50% { opacity: 0.25; } }
 /* 手雷/生鱼快捷使用角标 */
 .inv-slot .slot-use {
   position: absolute;

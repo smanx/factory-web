@@ -30,7 +30,11 @@ const T_OVERGROWTH_JELLYNUT_SOIL = 11; // 茂盛果仁土壤（太空时代 Gleb
 const T_ICE_PLATFORM = 12;   // 冰面平台（太空时代 Aquilo）：玄冥星冰原地表，可走行
 const T_FOUNDATION = 13;    // 平台基座（太空时代 Space platform）：空间平台走行地板，可走行
 const T_SPACE_PLATFORM = 14; // 太空平台地基（太空时代 Space platform foundation 地面瓦片）：灰色栅格合金地板，铺设成太空平台地板，行走加速（对齐官方 Space platform foundation）
-function isWalkableTerrain(t) { return t !== T_WATER && t !== T_CLIFF; }
+// ===== 行星标志性地形（太空时代，对齐《异星工厂》各星球地貌）=====
+const T_LAVA = 15;          // 熔岩湖（祝融星 Vulcanus）：不可通行/不可建造，可用地基（foundation）覆盖
+const T_SCRAP = 16;         // 碎石高地（雷神星 Fulgora）：可走行，干燥沟壑地貌中的碎石岛
+const T_ICE_SHEET = 17;     // 冰面（玄冥星 Aquilo）：天然冰海地表，可走行，不可填海（官方 Aquilo 冰面海面）
+function isWalkableTerrain(t) { return t !== T_WATER && t !== T_CLIFF && t !== T_LAVA; }
 // 地形是否“硬化”（混凝土/石砖路等铺装地）：玩家行走速度提升
 function isPaved(t) { return t === T_CONCRETE || t === T_PATH || t === T_REF_CONCRETE || t === T_HAZARD || t === T_REF_HAZARD || t === T_FOUNDATION || t === T_ICE_PLATFORM || t === T_SPACE_PLATFORM; }
 
@@ -70,13 +74,19 @@ function tileExplored(tx, ty) {
 // 这样已探索区域与生成算法完全解耦——今后算法再怎么改，
 // 也只会影响从未到访过的新区块，老地图永不变化。
 function encodeChunkData(c) {
+  // 地形逐格编码为单字符（chr(48+v)）：瓦片值 0..31 → '0'..'O'。
+  // 修复：此前 t += c.terrain[i] 是十进制拼接，瓦片值 ≥10（果仁土壤10/11、冰面平台12、
+  // 地基13、平台地板14、熔岩15、碎石16、冰海17）会写成两个字符，而 decodeChunkData
+  // 逐字符解码（c-48）导致这些瓦片存读档后损坏且后续瓦片全部错位（P0 存档 bug）。
+  // 解码端本就按「每字符=每格」处理，新编码与其天然兼容；旧档中仅含 0..9 瓦片的
+  // 区块两种编码结果一致，读档不受影响。
   let t = '', o = '';
   const a = [];
   const or = [];
   for (let i = 0; i < CHUNK * CHUNK; i++) {
-    t += c.terrain[i];
+    t += String.fromCharCode(48 + c.terrain[i]);
     const ti = c.oreType[i];
-    o += ti < 0 ? '.' : String(ti);
+    o += ti < 0 ? '.' : String.fromCharCode(48 + ti);
     if (ti >= 0) a.push(Math.round(c.oreAmt[i]));
     // 原油井出产率：仅 ORE_OIL 格子有值，其余不存（读档默认 1）
     if (ti === ORE_OIL && c.oilRate) {
@@ -264,6 +274,45 @@ function isLake(tx, ty) {
   return false;
 }
 
+// ===== 行星标志性地形（太空时代，确定性生成，随世界种子）=====
+// 祝融星熔岩湖（对齐官方 Vulcanus lava lakes）：低频噪声团块，出生点附近不生成；
+// 不可通行/不可建造，可用地基（foundation）覆盖成硬地（官方 place_as_tile 允许覆盖熔岩）。
+function isLavaTile(gx, gy) {
+  const d = Math.hypot(gx, gy);
+  if (d < 20) return false;                 // 出生点附近不生成
+  // 团块：以 19 格为单元的椭圆噪声湖（与 isLake 同构，阈值独立控制密度）
+  const cell = 19;
+  const gx2 = Math.floor(gx / cell), gy2 = Math.floor(gy / cell);
+  for (let ogx = gx2 - 1; ogx <= gx2 + 1; ogx++) {
+    for (let ogy = gy2 - 1; ogy <= gy2 + 1; ogy++) {
+      if (hash2(ogx * 17.31, ogy * 43.7) > 0.06) continue;   // 密度：约 6% 单元有熔岩湖
+      const px = (ogx + (hash2(ogx * 3.7, ogy * 9.1) * 0.6 + 0.2)) * cell;
+      const py = (ogy + (hash2(ogx * 7.9, ogy * 1.3) * 0.6 + 0.2)) * cell;
+      const r = 4.5 + hash2(ogx * 5.5, ogy * 8.2) * 5.0;     // 半径 4.5~9.5
+      const wob = (hash2(gx * 6.1, gy * 4.3) - 0.5) * 2.0;
+      if (Math.hypot(gx - px, gy - py) < r + wob) return true;
+    }
+  }
+  return false;
+}
+// 雷神星碎石岛（对齐官方 Fulgora dry-scrub islands）：干燥碎石高地被沟壑（scrap chasm）
+// 分割成岛屿——低频噪声「正值团块 = 岛，负值带 = 沟壑」，沟壑不可通行（以 T_WATER 表现干裂沟壑）。
+// 返回 0=沟壑（表现为主地形），1=碎石岛（T_SCRAP）。
+function fulgoraIsland(gx, gy) {
+  const d = Math.hypot(gx, gy);
+  if (d < 14) return 1;                      // 出生点附近整片碎石岛（保证可开局）
+  // 岛屿轮廓：中频噪声阈值 + 大尺度斑块密度
+  const n = valueNoise(gx / 9, gy / 9) * 0.65 + valueNoise(gx / 23 + 31.7, gy / 23 + 17.3) * 0.35;
+  return n > 0.52 ? 1 : 0;
+}
+// 玄冥星冰面（对齐官方 Aquilo ice ocean）：整片冰海地表——「水面」均为天然冰面（可走行），
+// 深水区域以更暗的冰面表现；不可填海（官方 Aquilo 海面 landfill 禁用）。
+// 返回 0=普通冰面（T_GRASS 底色表现雪原），1=冰海（T_ICE_SHEET，不可填海）。
+function aquiloIceOcean(gx, gy) {
+  const n = valueNoise(gx / 11, gy / 11) * 0.6 + valueNoise(gx / 27 + 7.7, gy / 27 + 41.1) * 0.4;
+  return n > 0.46 ? 1 : 0;
+}
+
 // 按行星资源画像加权随机选取一种普通矿石（iron/copper/coal/stone）。
 // 权重来自 PLANET_RESOURCES[当前星球]（0=该星无此矿，不生成），
 // 再叠加该资源「频率」Autoplace 控件倍率（none=0 → 完全不生成，high 更常见）。
@@ -436,9 +485,27 @@ function genChunk(cx, cy) {
   const oilRate = new Float32Array(CHUNK * CHUNK);
 
   const ox = cx * CHUNK, oy = cy * CHUNK;
+  // 行星地表生成：按星球分派标志性地形（对齐《异星工厂》Space Age 星球地貌）
+  const pidGen = (typeof planetId === 'function') ? planetId() : 'nauvis';
   for (let ly = 0; ly < CHUNK; ly++)
-    for (let lx = 0; lx < CHUNK; lx++)
-      terrain[ly * CHUNK + lx] = isLake(ox + lx, oy + ly) ? T_WATER : T_GRASS;
+    for (let lx = 0; lx < CHUNK; lx++) {
+      const gx = ox + lx, gy = oy + ly;
+      let t;
+      if (pidGen === 'vulcanus') {
+        // 祝融星：无水（官方 Vulcanus 无海洋），熔岩湖取代水体
+        t = isLavaTile(gx, gy) ? T_LAVA : T_GRASS;
+      } else if (pidGen === 'fulgora') {
+        // 雷神星：碎石岛被沟壑分割——沟壑以水格表现（不可通行），岛上为碎石高地
+        t = fulgoraIsland(gx, gy) ? T_SCRAP : T_WATER;
+      } else if (pidGen === 'aquilo') {
+        // 玄冥星：整片冰海——冰面可走行；冰海（T_ICE_SHEET）不可填海
+        const ice = aquiloIceOcean(gx, gy);
+        t = ice ? T_ICE_SHEET : T_GRASS;
+      } else {
+        t = isLake(gx, gy) ? T_WATER : T_GRASS;
+      }
+      terrain[ly * CHUNK + lx] = t;
+    }
 
   const cxn = cx * CHUNK + CHUNK / 2, cyn = cy * CHUNK + CHUNK / 2;
   const dist = Math.hypot(cxn, cyn);

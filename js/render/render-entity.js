@@ -674,6 +674,8 @@ function canPlaceAt(type, tx, ty, dir, noReach) {
   for (let dy = 0; dy < eh; dy++)
     for (let dx = 0; dx < ew; dx++) {
       if (isWater(tx + dx, ty + dy)) return { ok: false, reason: 'water' };
+      // 熔岩湖阻挡建造（对齐《异星工厂》Vulcanus 熔岩不可建造；地基可覆盖，见 placeGround）
+      if (getTerrain(tx + dx, ty + dy) === T_LAVA) return { ok: false, reason: 'lava' };
       // 峭壁阻挡建造（对齐《异星工厂》：峭壁需先用峭壁炸药清除）
       if (getTerrain(tx + dx, ty + dy) === T_CLIFF) return { ok: false, reason: 'cliff' };
       // 树木阻挡建造（对齐《异星工厂》：需先砍树清空场地）

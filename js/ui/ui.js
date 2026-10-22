@@ -109,6 +109,16 @@ function iconDataURL(id, size) {
 const TIP_BASE_CACHE = {};
 function itemTip(id, extra) {
   const it = ITEMS[id];
+  // 未知物品 id（旧档迁移残留 / 测试注入 / 数据裁剪）：降级显示原始 id，不崩溃整个面板
+  //（对齐健壮性原则：统计/箱格等处出现未知 id 时 tooltip 显示 id 本身，其余功能不受影响）
+  if (!it) {
+    if (id == null) return extra || '';
+    if (!TIP_BASE_CACHE['\x00' + id]) {
+      TIP_BASE_CACHE['\x00' + id] = id + '|未知物品（可能来自旧存档）';
+    }
+    const unknownBase = TIP_BASE_CACHE['\x00' + id];
+    return extra ? (unknownBase + (extra[0] === '|' ? '' : '|') + extra) : unknownBase;
+  }
   // 个人机器人港：描述由数据层生成（roboportDesc），未命中缓存以实时体现“状态:启用/已停用”
   let base;
   if (it && typeof EQUIPMENT !== 'undefined' && EQUIPMENT[id] && EQUIPMENT[id].roboport) {
@@ -610,6 +620,15 @@ function updateInvLive() {
           if (c && c.textContent !== String(n)) c.textContent = n;
           const hit = !q || (el.dataset.itemsearch || '').includes(q);
           el.classList.toggle('hidden', !hit);
+          // Gleba 变质感官：新鲜度档位着色/小圆点跟随计时更新（集合不变也逐秒推进）
+          if (!isBp && typeof spoilFreshCls === 'function') {
+            const rec = G._invFresh && G._invFresh[s.id];
+            const cls = (rec && rec.fresh !== undefined) ? spoilFreshCls(s.id, rec.fresh) : '';
+            el.classList.toggle('spoil-mid', cls.indexOf('spoil-mid') >= 0);
+            el.classList.toggle('spoil-low', cls.indexOf('spoil-low') >= 0);
+            if (cls && !el.querySelector('.spoil-dot')) el.insertAdjacentHTML('beforeend', '<i class="spoil-dot"></i>');
+            else if (!cls) { const d = el.querySelector('.spoil-dot'); if (d) d.remove(); }
+          }
         }
       }
     }
@@ -983,13 +1002,20 @@ function invSlotHtml(id, idx, withActionId, slotCount) {
   }
   // 蓝图物品（blueprint#n）：按基础 id 渲染图标，tooltip 显示蓝图内容摘要
   const iconId = isBp ? 'blueprint' : id;
-  const tipHtml = isBp ? bpItemTip(id) : itemTip(id);
-  return '<div class="inv-slot' + (hit ? '' : ' hidden') + '" data-itemid="' + id + '" data-slotidx="' + idx + '"' +
+  // Gleba 变质感官：可腐坏物品 tooltip 追加新鲜度百分比（背包侧表 _invFresh 计时），格子按档位着色
+  let freshTxt = '', spoilCls = '', spoilDot = '';
+  if (!isBp && G._invFresh && G._invFresh[id] && typeof spoilFreshPctText === 'function') {
+    freshTxt = spoilFreshPctText(id, G._invFresh[id].fresh);
+    spoilCls = (typeof spoilFreshCls === 'function') ? spoilFreshCls(id, G._invFresh[id].fresh) : '';
+    if (spoilCls) spoilDot = '<i class="spoil-dot"></i>';
+  }
+  const tipHtml = isBp ? bpItemTip(id) : itemTip(id, freshTxt ? freshTxt : null);
+  return '<div class="inv-slot' + (hit ? '' : ' hidden') + spoilCls + '" data-itemid="' + id + '" data-slotidx="' + idx + '"' +
     (withActionId ? ' id="' + withActionId + '-' + encodeURIComponent(id) + '"' : '') +
     ' data-tip="' + tipHtml + '" data-itemsearch="' + search + '" draggable="true">' +
     '<img src="' + iconDataURL(iconId, 16) + '">' +
     '<span class="cnt" data-cnt="' + id + '">' + (isBp ? '∞' : n) + '</span>' +
-    use + '</div>';
+    spoilDot + use + '</div>';
 }
 
 function htmlInventory(withActionId) {

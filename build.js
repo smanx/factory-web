@@ -1,7 +1,46 @@
-const esbuild = require('esbuild');
 const fs = require('fs');
 const path = require('path');
+
+// ── 0. 构建环境自愈：esbuild 二进制在 noexec 挂载（如 Android sdcard FUSE）上无法执行 ──
+// 检测方式：尝试执行 esbuild --version；失败（EACCES/EPERM）时把平台二进制复制到
+// 项目外可执行目录（~/.cache/factory-web/esbuild/<版本>/）并设 ESBUILD_BINARY_PATH。
+// 注意：必须在 require('esbuild') **之前**执行——esbuild 的 lib/main.js 在模块加载时
+// 就缓存 process.env.ESBUILD_BINARY_PATH，晚了设置无效。
+// 幂等：目标存在且可执行则跳过复制。不修改 node_modules 内文件。
+(function ensureExecEsbuild() {
+  const { spawnSync } = require('child_process');
+  try {
+    const probe = spawnSync(process.execPath, [path.join(__dirname, 'node_modules', 'esbuild', 'bin', 'esbuild'), '--version'], { stdio: 'pipe' });
+    const errText = String(probe.stderr || '');
+    // status 0 = 可正常执行；status 非 0 但 stderr 不含 EACCES/EPERM = esbuild 自身的其它错误，交回 esbuild 处理
+    if (probe.status === 0 || !/EACCES|EPERM/.test(errText)) return;
+  } catch (e) { /* 继续走自愈 */ }
+  // 真正执行的是平台二进制（@esbuild/<platform>），定位它
+  const candidates = [
+    path.join(__dirname, 'node_modules', 'esbuild', 'node_modules', '@esbuild', 'linux-arm64', 'bin', 'esbuild'),
+    path.join(__dirname, 'node_modules', '@esbuild', 'linux-arm64', 'bin', 'esbuild'),
+  ];
+  let src = candidates.find(c => fs.existsSync(c));
+  if (!src) return;   // 找不到平台二进制，交给 esbuild 自己报错
+  // 版本一致性：平台二进制必须与 esbuild JS API 同版本，否则服务握手失败
+  let ver = '';
+  try { ver = require(path.join(__dirname, 'node_modules', 'esbuild', 'package.json')).version; } catch (e) { /* ignore */ }
+  const targetDir = path.join(process.env.HOME || '/tmp', '.cache', 'factory-web', 'esbuild', ver || 'default');
+  const target = path.join(targetDir, 'esbuild');
+  try {
+    const probe = spawnSync(target, ['--version'], { stdio: 'pipe' });
+    if (probe.status !== 0) {
+      fs.mkdirSync(targetDir, { recursive: true });
+      fs.copyFileSync(src, target);
+      fs.chmodSync(target, 0o755);
+    }
+    process.env.ESBUILD_BINARY_PATH = target;
+  } catch (e) { /* 自愈失败则维持原状，由 esbuild 报原始错误 */ }
+})();
+
+const esbuild = require('esbuild');
 const crypto = require('crypto');
+
 
 const ROOT = __dirname;
 const DIST = path.join(ROOT, 'dist');

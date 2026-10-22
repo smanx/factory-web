@@ -65,6 +65,13 @@ function bindInput() {
     else if (ev.ctrlKey && k === 'x') { ev.preventDefault(); closePanel(); toggleBlueprint('cut'); toast('快速剪切：拖拽框选一片建筑，松开鼠标后复制为蓝图并拆除原建筑'); }
     else if (ev.altKey && k === 'd') { ev.preventDefault(); closePanel(); toggleBlueprint('red'); }
     else if (ev.altKey && k === 'u') { ev.preventDefault(); closePanel(); toggleBlueprint('green'); }
+    // Alt+W 导线可视化（对齐官方 2.0 wires vision）：全局显示/隐藏电路红绿信号连线
+    else if (ev.altKey && k === 'w') {
+      ev.preventDefault();
+      G.settings.wiresVision = !G.settings.wiresVision;
+      saveSettings();
+      toast(G.settings.wiresVision ? '导线可视化：开（显示全部电路红/绿信号连线，Alt+W 切回）' : '导线可视化：关');
+    }
     else if ((k === 'delete' || k === 'backspace') && G.panelMode === 'machine' &&
              G.panelEnt && typeof G.panelEnt.setRecipe === 'function' && G.panelEnt.recipe) {
       G.panelEnt.setRecipe(null);
@@ -656,6 +663,9 @@ function stepWorld(dt) {
   // 成就周期性判定（每 3s 覆盖污染等连续增长条件；事件触发点另有即时判定）
   G.achT = (G.achT || 0) + dt;
   if (G.achT >= 3) { G.achT = 0; if (typeof checkAchievements === 'function') checkAchievements(); }
+  // Gleba 新鲜度：1s 节流扫描（带上/箱内/机器缓存/机器人携带/背包腐坏计时，见 game/spoilage.js）
+  G.spoilT = (G.spoilT || 0) + dt;
+  if (G.spoilT >= 1) { const _sd = G.spoilT; G.spoilT = 0; if (typeof updateSpoilage === 'function') updateSpoilage(_sd); }
   // 每逻辑步失效信号塔模块加成缓存（P0 优化：同一步内同坐标只查询一次）
   if (typeof clearBeaconBonusCache === 'function') clearBeaconBonusCache();
   updatePlayer(dt);

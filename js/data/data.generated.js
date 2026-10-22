@@ -637,6 +637,7 @@ const GAME_DATA = {
    "miningSpeed": 0.5
   },
   "burner-mining-drill": {
+   "moduleSlots": 0,
    "miningSpeed": 0.25
   },
   "pumpjack": {
@@ -734,6 +735,9 @@ const GAME_DATA = {
   "biolab": {
    "moduleSlots": 4,
    "researchingSpeed": 2
+  },
+  "rocket-silo": {
+   "moduleSlots": 4
   }
  },
  "recipe": {
@@ -4392,7 +4396,7 @@ const GAME_DATA = {
    "en": "Offshore pump"
   },
   "water": {
-   "zh": "水",
+   "zh": "水域",
    "en": "Water"
   },
   "steam": {
@@ -6801,6 +6805,58 @@ const GAME_DATA = {
    "rollingStockSpeedMult": 1.15
   }
  ],
+ "spoilItems": {
+  "agricultural-science-pack": {
+   "ticks": 216000,
+   "result": "spoilage",
+   "seconds": 3600
+  },
+  "copper-bacteria": {
+   "ticks": 3600,
+   "result": "copper-ore",
+   "seconds": 60
+  },
+  "iron-bacteria": {
+   "ticks": 3600,
+   "result": "iron-ore",
+   "seconds": 60
+  },
+  "nutrients": {
+   "ticks": 18000,
+   "result": "spoilage",
+   "seconds": 300
+  },
+  "raw-fish": {
+   "ticks": 453000,
+   "result": "spoilage",
+   "seconds": 7550
+  },
+  "yumako": {
+   "ticks": 216000,
+   "result": "spoilage",
+   "seconds": 3600
+  },
+  "jellynut": {
+   "ticks": 216000,
+   "result": "spoilage",
+   "seconds": 3600
+  },
+  "yumako-mash": {
+   "ticks": 10800,
+   "result": "spoilage",
+   "seconds": 180
+  },
+  "jelly": {
+   "ticks": 14400,
+   "result": "spoilage",
+   "seconds": 240
+  },
+  "bioflux": {
+   "ticks": 432000,
+   "result": "spoilage",
+   "seconds": 7200
+  }
+ },
  "itemGroup": {
   "iron-ore": "intermediate-products",
   "copper-ore": "intermediate-products",
@@ -7855,10 +7911,22 @@ const GAME_DATA = {
   "stone-furnace": 2,
   "steel-furnace": 4,
   "electric-furnace": 1,
+  "recycler": 2,
   "boiler": 30,
+  "assembling-machine-1": 4,
+  "assembling-machine-2": 3,
+  "assembling-machine-3": 2,
   "oil-refinery": 6,
   "chemical-plant": 4,
   "centrifuge": 4,
+  "electromagnetic-plant": 4,
+  "foundry": 6,
+  "cryogenic-plant": 6,
+  "crusher": 1,
+  "biochamber": -1,
+  "captive-biter-spawner": -1,
+  "biolab": 8,
+  "heating-tower": 100,
   "nuclear-reactor": 7,
   "burner-inserter": 0.3,
   "locomotive": 3
@@ -8118,18 +8186,18 @@ const GAME_DATA = {
   "scrap": {
    "time": 0.2,
    "out": {
-    "iron-gear-wheel": 1,
-    "solid-fuel": 1,
-    "concrete": 1,
-    "ice": 1,
-    "steel-plate": 1,
-    "battery": 1,
-    "stone": 1,
-    "advanced-circuit": 1,
-    "copper-cable": 1,
-    "processing-unit": 1,
-    "low-density-structure": 1,
-    "holmium-ore": 1
+    "iron-gear-wheel": 0.2,
+    "solid-fuel": 0.07,
+    "concrete": 0.06,
+    "ice": 0.05,
+    "steel-plate": 0.04,
+    "battery": 0.04,
+    "stone": 0.04,
+    "advanced-circuit": 0.03,
+    "copper-cable": 0.03,
+    "processing-unit": 0.02,
+    "low-density-structure": 0.01,
+    "holmium-ore": 0.01
    }
   },
   "speed-module": {

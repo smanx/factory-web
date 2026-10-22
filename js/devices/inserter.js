@@ -97,7 +97,10 @@ class Inserter extends Entity {
   // 白名单：只在名单内；名单为空 → 一律不抓。黑名单：不在名单内；名单为空 → 一律抓。
   wantsItem(item) {
     if (!this.filterActive()) return true;
-    const inList = (this.filters || []).indexOf(item) >= 0;
+    // 品质变体（`item~quality`）按基础物品参与筛选：筛选「组装机1」时 `组装机1~传说` 同样命中
+    //（对齐《异星工厂》：筛选器按物品匹配，品质只是同物品的变体）。
+    const inList = (this.filters || []).indexOf(item) >= 0 ||
+      (this.filters || []).indexOf((typeof splitQuality === 'function' ? splitQuality(item).base : item)) >= 0;
     return this.filterMode === 'white' ? inList : !inList;
   }
   // 一次抓取多少个：由「设置抓取堆叠」决定，范围 1 ~ 当前最大抓取数量（capacity）
@@ -116,6 +119,12 @@ class Inserter extends Entity {
   }
   pickAng() { const o = this.pickOffset(); return Math.atan2(o.dy, o.dx); }
   dropAng() { const o = this.dropOffset(); return Math.atan2(o.dy, o.dx); }
+  // 变质优先级抓取参数（对齐《异星工厂》2.0 Inserter spoil priority）：
+  // spoilPrio 开启时返回 'spoil'（先腐坏先消耗）或 'fresh'（最新鲜优先），否则 undefined。
+  spoilPref() {
+    if (!this.spoilPrio) return undefined;
+    return this.spoilMode === 'fresh' ? 'fresh' : 'spoil';
+  }
   entAtPick() {
     const o = this.pickOffset();
     const x = this.x + o.dx, y = this.y + o.dy;
@@ -158,12 +167,13 @@ class Inserter extends Entity {
   // ===== 取物 =====
   peekSource(s) {
     if (!s) return null;
+    const sp = this.spoilPref();
     let it = null;
     if (s instanceof Belt) {
       // 优先抓取靠近机械臂一侧的 lane；近侧无货时回退到任意 lane（远侧仍可取到）。
-      // 按筛选规则（白/黑名单）在带上挑选可抓的物品。
-      let z = s.grabZone(o => this.wantsItem(o), this.pickBeltLane(s));
-      if (!z) z = s.grabZone(o => this.wantsItem(o));
+      // 按筛选规则（白/黑名单）在带上挑选可抓的物品；变质优先级传入 grabZone 挑选。
+      let z = s.grabZone(o => this.wantsItem(o), this.pickBeltLane(s), sp);
+      if (!z) z = s.grabZone(o => this.wantsItem(o), undefined, sp);
       it = z ? z.item : null;
     } else if (this.filterActive() && s.countOf) {
       // 白名单：直接探测名单内是否有货；黑名单：取源的首个物品再校验
@@ -186,17 +196,18 @@ class Inserter extends Entity {
   }
   takeNFrom(s, item, n) {
     const got = [];
+    const sp = this.spoilPref();
     for (let i = 0; i < n; i++) {
       let it = null;
       if (s instanceof Belt) {
         // 优先抓取近侧 lane；近侧无货时回退到任意 lane，跨越左右两线凑足所需数量
-        let z = s.grabZone(item, this.pickBeltLane(s));
-        if (!z) z = s.grabZone(item);
+        let z = s.grabZone(item, this.pickBeltLane(s), sp);
+        if (!z) z = s.grabZone(item, undefined, sp);
         if (!z) break;
         s.items.splice(s.items.indexOf(z), 1);
         it = z.item;
       } else if (s.takeItemOf) {
-        it = s.takeItemOf(item);
+        it = s.takeItemOf(item, sp);
       } else break;
       if (it !== item) break;
       got.push(it);
@@ -204,10 +215,11 @@ class Inserter extends Entity {
     return got;
   }
   takeSource(s) {
+    const sp = this.spoilPref();
     if (s instanceof Belt) {
       // 优先抓取近侧 lane；近侧无货时回退到任意 lane
-      let z = s.grabZone(undefined, this.pickBeltLane(s));
-      if (!z) z = s.grabZone(undefined);
+      let z = s.grabZone(undefined, this.pickBeltLane(s), sp);
+      if (!z) z = s.grabZone(undefined, undefined, sp);
       if (!z) return null;
       s.items.splice(s.items.indexOf(z), 1);
       return z.item;
@@ -221,8 +233,11 @@ class Inserter extends Entity {
   // 物品目标已满/不需要，则继续在传送带上探测其他可取物品，保证组装机需要的多种
   // 原料都能被补齐，而不是只盯着一种导致另一种长期缺失）。
   // 选品优先级：近侧 lane 优先、同 lane 内靠前（pos 大）优先；仍遵守过滤设置。
+  // 机械臂变质优先级（spoilPrio）开启时：同 lane 内先按新鲜度排（'spoil'=最不新鲜优先 /
+  // 'fresh'=最新鲜优先），再按 pos 靠前（对齐《异星工厂》2.0 spoil priority）。
   pickSourceForDrop(s, t) {
     if (!s) return null;
+    const sp = this.spoilPref();
     if (s instanceof Belt) {
       const near = this.pickBeltLane(s);
       const cand = s.items
@@ -231,6 +246,10 @@ class Inserter extends Entity {
           const na = a.lane === near ? 1 : 0;
           const nb = b.lane === near ? 1 : 0;
           if (na !== nb) return nb - na;      // 近侧 lane 优先
+          if (sp && a.fresh !== undefined && b.fresh !== undefined) {
+            const df = sp === 'spoil' ? (a.fresh - b.fresh) : (b.fresh - a.fresh);
+            if (df !== 0) return df;           // 变质/新鲜优先
+          }
           return b.pos - a.pos;                // 同 lane 靠前优先
         });
       for (const o of cand) if (this.canDropAt(t, o.item)) return o.item;
@@ -262,6 +281,9 @@ class Inserter extends Entity {
   // ===== 放物 =====
   canDropAt(t, item) {
     if (!t) return false;
+    // 品质变体（`item~quality`）：设备进料按基础物品判定（对齐《异星工厂》，
+    // 品质只是同物品变体；giveItem 侧同样按基础物品收料）
+    const base = (typeof splitQuality === 'function') ? splitQuality(item).base : item;
     if (t instanceof Belt && !(t instanceof Splitter)) {
       // 机械臂放传送带统一“只在一边放置”：投放侧由机械臂朝向（翻转）决定，
       // 侧放/尾放一致，只检查该投放车道的尾端空位（不再两条车道轮流装载）。
@@ -276,15 +298,15 @@ class Inserter extends Entity {
         // 机械臂补燃料到 5 个即停（对齐《异星工厂》）：
         // 官方机制是机械臂只补到一定数量（熔炉/锅炉见 wiki「5 个及以上不再加」），
         // 玩家可手动继续加满一整组（燃料箱堆叠上限），机械臂等燃料烧到 5 以下再补。
-        if (item === 'coal') return t.fuelCoal < 5;
-        if (item === 'wood') return (t.fuelWood || 0) < 5;
-        if (item === 'solid-fuel') return (t.fuelSolid || 0) < 5;
-        if (item === 'rocket-fuel') return (t.fuelRocket || 0) < 5;
+        if (base === 'coal') return t.fuelCoal < 5;
+        if (base === 'wood') return (t.fuelWood || 0) < 5;
+        if (base === 'solid-fuel') return (t.fuelSolid || 0) < 5;
+        if (base === 'rocket-fuel') return (t.fuelRocket || 0) < 5;
         // 熔炉例外：持续吃矿直到产物堆满一整组 Stack，满组后才停送
-        return SMELTS.some(r => r.inp === item && (t.outp[r.id] || 0) < stackSize(r.id)) && (t.inp[item] || 0) < smeltNeed(item) * 2;
+        return SMELTS.some(r => r.inp === base && (t.outp[r.id] || 0) < stackSize(r.id)) && (t.inp[base] || 0) < smeltNeed(base) * 2;
       case 'electric-furnace':
-        if (item === 'coal') return false;
-        return SMELTS.some(r => r.inp === item && (t.outp[r.id] || 0) < stackSize(r.id)) && (t.inp[item] || 0) < smeltNeed(item) * 2;
+        if (base === 'coal') return false;
+        return SMELTS.some(r => r.inp === base && (t.outp[r.id] || 0) < stackSize(r.id)) && (t.inp[base] || 0) < smeltNeed(base) * 2;
       case 'assembling-machine-1':
       case 'assembling-machine-2':
       case 'assembling-machine-3':
@@ -298,27 +320,27 @@ class Inserter extends Entity {
         const rec = RECIPES[t.recipe];
         // 只按原料判定是否超过 2 倍：产物不做计数（自循环配方产物即原料，
         // 若把产物算进总量会导致设备被自己上一轮的产出提前「喂饱」而停止送料）
-        return !!rec.inp[item] && (t.inp[item] || 0) < rec.inp[item] * 2;
+        return !!rec.inp[base] && (t.inp[base] || 0) < rec.inp[base] * 2;
       }
       case 'centrifuge': {
         if (!t.recipe) return false;
         const rec = t.recipeObj();
         // 只按原料判定是否超过 2 倍：产物不做计数（Kovarex 等自循环配方产物即原料，
         // 把产物算进总量会让离心机被自己上一轮产出「喂饱」而停止送料）
-        return !!rec.inp[item] && (t.inp[item] || 0) < rec.inp[item] * 2;
+        return !!rec.inp[base] && (t.inp[base] || 0) < rec.inp[base] * 2;
       }
       case 'burner-mining-drill':
         // 机械臂补燃料到 5 个即停（对齐《异星工厂》熔炉/锅炉逻辑）；玩家可手动继续加满一整组
-        if (item === 'coal') return t.fuelCoal < 5;
-        if (item === 'wood') return (t.fuelWood || 0) < 5;
-        if (item === 'solid-fuel') return (t.fuelSolid || 0) < 5;
-        if (item === 'rocket-fuel') return (t.fuelRocket || 0) < 5;
+        if (base === 'coal') return t.fuelCoal < 5;
+        if (base === 'wood') return (t.fuelWood || 0) < 5;
+        if (base === 'solid-fuel') return (t.fuelSolid || 0) < 5;
+        if (base === 'rocket-fuel') return (t.fuelRocket || 0) < 5;
         return false;
       case 'burner-inserter':
-        if (item === 'coal') return t.fuelCoal < 5;
-        if (item === 'wood') return (t.fuelWood || 0) < 5;
-        if (item === 'solid-fuel') return (t.fuelSolid || 0) < 5;
-        if (item === 'rocket-fuel') return (t.fuelRocket || 0) < 5;
+        if (base === 'coal') return t.fuelCoal < 5;
+        if (base === 'wood') return (t.fuelWood || 0) < 5;
+        if (base === 'solid-fuel') return (t.fuelSolid || 0) < 5;
+        if (base === 'rocket-fuel') return (t.fuelRocket || 0) < 5;
         return false;
       case 'electric-mining-drill':
       case 'big-mining-drill':
@@ -326,10 +348,10 @@ class Inserter extends Entity {
       case 'offshore-pump':
         return false;
       case 'boiler':
-        if (item === 'coal') return t.fuelCoal < 20;
-        if (item === 'wood') return (t.fuelWood || 0) < 20;
-        if (item === 'solid-fuel') return (t.fuelSolid || 0) < 20;
-        if (item === 'rocket-fuel') return (t.fuelRocket || 0) < 20;
+        if (base === 'coal') return t.fuelCoal < 20;
+        if (base === 'wood') return (t.fuelWood || 0) < 20;
+        if (base === 'solid-fuel') return (t.fuelSolid || 0) < 20;
+        if (base === 'rocket-fuel') return (t.fuelRocket || 0) < 20;
         return item === 'water' && t.water < WATER_CAP - 0.01;
       case 'nuclear-reactor':
         // 核反应堆：仅接受铀燃料棒（对齐《异星工厂》：反应堆消耗 Uranium fuel cell 而非 Nuclear fuel），燃料槽最多 5 根
@@ -390,7 +412,7 @@ class Inserter extends Entity {
         // 井内自动组装持续消耗原料，机械臂按组装机惯例补到 2 倍本次需量即停。
         if (item === 'satellite') return (t.inp['satellite'] || 0) < 1;
         if (!SILO_ASSEMBLE[item]) return false;
-        return (t.inp[item] || 0) < siloPartNeed(item) * 2;
+        return (t.inp[base] || 0) < siloPartNeed(item) * 2;
       default:
         return false;
     }
@@ -911,7 +933,7 @@ function insToggle(cur, act) {
     '<span class="ins-toggle-label' + (isWhite ? '' : ' on') + '">黑名单</span>' +
   '</div>';
 }
-// 单选按钮（品质优先/新鲜优先）
+// 单选按钮（变质优先/新鲜优先）
 function insRadio(label, act, mode, cur) {
   return '<div class="ins-radio' + (mode === cur ? ' selected' : '') + '" data-action="' + act + '" data-mode="' + mode + '">' +
     '<span class="ins-radio-dot"></span><span class="ins-radio-label">' + label + '</span></div>';
@@ -968,7 +990,7 @@ function inserterMachineRowsHtml(e, afterHeld) {
   h += '<div class="ins-sec ins-spoil">' +
     '<div class="ins-check-row">' + insCheckBtn(e.spoilPrio, 'spoil-on') + '<span class="ins-label">变质优先级</span></div>' +
     '<div class="ins-spoil-opts' + (e.spoilPrio ? '' : ' off') + '">' +
-      insRadio('品质优先', 'spoil-mode', 'spoil', e.spoilPrio ? e.spoilMode : '') +
+      insRadio('变质优先', 'spoil-mode', 'spoil', e.spoilPrio ? e.spoilMode : '') +
       insRadio('新鲜优先', 'spoil-mode', 'fresh', e.spoilPrio ? e.spoilMode : '') +
     '</div>' +
   '</div>';
@@ -1032,7 +1054,9 @@ function inserterTip(e) {
   if (e.holding) return '搬运 ' + ITEMS[e.holding].name + (e.holdingCount > 1 ? ' ×' + e.holdingCount : '');
   let flt = '';
   if (e.filterActive()) flt = (e.filterMode === 'white' ? '白名单 ' : '黑名单 ') + e.filters.map(f => ITEMS[f]?.name || f).join('、');
-  return '待机' + (flt ? '；' + flt : '') + '（取背面放正面）';
+  // 变质优先级开启时提示当前偏好（对齐《异星工厂》2.0 spoil priority）
+  const sp = e.spoilPrio ? ('；' + (e.spoilMode === 'fresh' ? '新鲜优先' : '变质优先')) : '';
+  return '待机' + (flt ? '；' + flt : '') + sp + '（取背面放正面）';
 }
 // 面板实时状态：工作中或暂停原因 + 机械臂图标/当前抓取物品刷新
 function inserterPanelLive(e, api, body) {

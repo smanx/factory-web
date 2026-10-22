@@ -109,6 +109,12 @@ const projectBuildings = extractObjectKeys(path.join(ROOT, 'js', 'data', 'data-b
 // 独立配方表（炼油厂/离心机面板专用，不在 RECIPES 中）
 const projectRefRecipes = extractObjectKeys(path.join(ROOT, 'js', 'data', 'data-recipes.js'), 'REFINERY_RECIPES');
 const projectCentRecipes = extractObjectKeys(path.join(ROOT, 'js', 'data', 'data-recipes.js'), 'CENTRIFUGE_RECIPES');
+// 项目全部物品引用（物品 + 各配方输入/输出），供官方数据筛选时对齐项目物品集
+const ITEMS_REFERENCED_BY_PROJECT = new Set([...projectItems]);
+{
+  const recipeSrc = fs.readFileSync(path.join(ROOT, 'js', 'data', 'data-recipes.js'), 'utf8');
+  for (const m of recipeSrc.matchAll(/'([a-z0-9-]+)'\s*:\s*\d+/g)) ITEMS_REFERENCED_BY_PROJECT.add(m[1]);
+}
 
 // 官方全部原型名 → 原型（用于查找物品/实体）
 const officialNames = new Map();
@@ -116,6 +122,7 @@ const officialStack = new Map();   // 官方名 → stack_size
 const officialHp = new Map();      // 官方名 → max_health
 const officialPower = new Map();   // 官方名 → energy_usage(原始字符串)
 const officialMine = new Map();    // 官方名 → minable.mining_time（拆除/采集时长基底）
+const officialSpoil = new Map();   // 官方名 → { ticks, result }（spoil_ticks / spoil_result，Gleba 新鲜度单源）
 for (const [type, tbl] of Object.entries(raw)) {
   if (typeof tbl !== 'object' || !tbl) continue;
   for (const [name, proto] of Object.entries(tbl)) {
@@ -124,6 +131,11 @@ for (const [type, tbl] of Object.entries(raw)) {
     if (typeof proto.stack_size === 'number') officialStack.set(name, proto.stack_size);
     if (typeof proto.max_health === 'number') officialHp.set(name, proto.max_health);
     if (proto.minable && typeof proto.minable.mining_time === 'number') officialMine.set(name, proto.minable.mining_time);
+    // 腐坏（太空时代 Gleba）：spoil_ticks 为变质时长（tick，60/s），spoil_result 为变质产物。
+    // 仅收录简单 spoil_result（字符串）；spoil_to_trigger_result（虫卵孵化等触发式）不在本项目范围。
+    if (typeof proto.spoil_ticks === 'number' && typeof proto.spoil_result === 'string') {
+      officialSpoil.set(name, { ticks: proto.spoil_ticks, result: proto.spoil_result });
+    }
     if (typeof proto.energy_usage === 'string') officialPower.set(name, proto.energy_usage);
     // 燃烧器设备无 energy_usage，仅有 energy_consumption（如锅炉 1.8MW）——同样计入官方功耗
     else if (typeof proto.energy_consumption === 'string'
@@ -434,6 +446,7 @@ const DEVICE_STATS_SOURCES = {
   'captive-biter-spawner': ['assembling-machine', 'captive-biter-spawner'],  // 太空时代虫巢孵化器（Captive biter spawner）：官方 assembling-machine 原型，100kW
   'agricultural-tower': ['agricultural-tower', 'agricultural-tower'],  // 太空时代农业塔（Gleba）：种植建筑，energy_usage=100kW
   'biolab': ['lab', 'biolab'],  // 太空时代生物实验室（Gleba）：官方 researching_speed=2、module_slots=4
+  'rocket-silo': ['rocket-silo', 'rocket-silo'],  // 火箭发射井：官方 module_slots=4（crafting_speed=1 固定配方）
 };
 for (const [pid, [rtype, oname]] of Object.entries(DEVICE_STATS_SOURCES)) {
   const proto = raw[rtype] && raw[rtype][oname];
@@ -443,10 +456,15 @@ for (const [pid, [rtype, oname]] of Object.entries(DEVICE_STATS_SOURCES)) {
   if (typeof proto.module_slots === 'number') ds.moduleSlots = proto.module_slots;
   // 官方组装机未写 module_slots 时默认 0 槽（如组装机 I 无插件槽，而不应回退到旧默认 4）
   else if (rtype === 'assembling-machine') ds.moduleSlots = 0;
+  // 官方采矿机未写 module_slots 时默认 0 槽（如热能采矿机官方无插件槽，电力采矿机才有 3 槽）
+  else if (rtype === 'mining-drill') ds.moduleSlots = 0;
   if (typeof proto.mining_speed === 'number') ds.miningSpeed = proto.mining_speed;
   if (typeof proto.speed === 'number') ds.beltSpeed = Math.round(proto.speed * 60 * 1000) / 1000; // 官方 speed 单位=格/tick，×60 → 格/秒
   if (typeof proto.distribution_effectivity === 'number') ds.beaconEffectivity = proto.distribution_effectivity;
   if (typeof proto.researching_speed === 'number') ds.researchingSpeed = proto.researching_speed; // 生物实验室 biolab：官方 researching_speed=2（2 倍科研速度）
+  // 火箭发射井：module_slots=4 有效，但 crafting_speed=1 来自固定配方 rocket-part，不代表可加速制造——
+  // 项目发射井不走通用制造流程，剔除 craftingSpeed 防误导。
+  if (pid === 'rocket-silo') delete ds.craftingSpeed;
   if (Object.keys(ds).length) GAME_DATA.deviceStats[pid] = ds;
 }
 
@@ -630,9 +648,19 @@ const pollution = {};
     ['mining-drill', 'burner-mining-drill'], ['mining-drill', 'electric-mining-drill'],
     ['mining-drill', 'big-mining-drill'],    ['mining-drill', 'pumpjack'],
     ['furnace', 'stone-furnace'],            ['furnace', 'steel-furnace'],
-    ['furnace', 'electric-furnace'],         ['boiler', 'boiler'],
+    ['furnace', 'electric-furnace'],         ['furnace', 'recycler'],
+    ['boiler', 'boiler'],
+    ['assembling-machine', 'assembling-machine-1'], ['assembling-machine', 'assembling-machine-2'],
+    ['assembling-machine', 'assembling-machine-3'],
     ['assembling-machine', 'oil-refinery'],  ['assembling-machine', 'chemical-plant'],
     ['assembling-machine', 'centrifuge'],
+    // 太空时代 DLC 设备（官方 emissions_per_minute.pollution）：电磁工厂 4 / 铸造厂 6 /
+    // 低温工厂 6 / 破碎机 1 / 生化炉 -1（负值=工作时吸收污染）/ 虫巢孵化器 -1
+    ['assembling-machine', 'electromagnetic-plant'], ['assembling-machine', 'foundry'],
+    ['assembling-machine', 'cryogenic-plant'],       ['assembling-machine', 'crusher'],
+    ['assembling-machine', 'biochamber'],            ['assembling-machine', 'captive-biter-spawner'],
+    ['lab', 'biolab'],                       // 生物实验室：官方 8/分
+    ['reactor', 'heating-tower'],            // 供热塔：官方 100/分（烧化学燃料产热，排放大）
   ];
   for (const [rtype, name] of POLLUTION_SOURCES_OFFICIAL) {
     const proto = raw[rtype] && raw[rtype][name];
@@ -642,6 +670,8 @@ const pollution = {};
   }
   // 官方无直接 emissions_per_minute 的设备（核堆官方零排放、火车头/热能机械臂无数值型排放）：
   // 项目保留的微量兜底值，一并单源进 GAME_DATA.pollution（单位仍为「污染/分」）。
+  // 注：agricultural-tower 官方排放是 { spores = 4 }（孢子维度，用于 Gleba 惹虫），项目
+  //     无孢子污染维度，有意不接入（verify-device-stats-audit 记录该决策）。
   const POLLUTION_MANUAL = {
     'nuclear-reactor': 7,   // 核反应堆：官方零排放，项目保留微量（燃料处理/热量管理）
     'burner-inserter': 0.3, // 热能机械臂：烧煤微量
@@ -1361,6 +1391,15 @@ const qualityTiers = [];
   }
 }
 
+// ---- Gleba 新鲜度（官方 spoil_ticks / spoil_result 单源）----
+// 只保留「项目已有物品」的腐坏数据：tick → 秒（60/s），限定简单 spoil_result。
+const spoilItems = {};
+for (const [name, sp] of officialSpoil) {
+  if (ITEMS_REFERENCED_BY_PROJECT.has(name)) {
+    spoilItems[name] = { ticks: sp.ticks, result: sp.result, seconds: sp.ticks / 60 };
+  }
+}
+
 // ---- 制作栏 5 Tab 单源归类（物品 → 官方 item-group）----
 // 解析 factorio-data 所有 item-groups.lua，得到 subgroup → group 归属；
 // 再为每个项目物品按其官方原型 subgroup 反查 group，写入 GAME_DATA.itemGroup[id]。
@@ -1568,6 +1607,8 @@ Object.assign(GAME_DATA, {
   dlc,
   qualityModules,
   qualityTiers,
+  // Gleba 新鲜度（官方 spoil_ticks / spoil_result 单源）：id → { ticks(官方 tick, 60/s), result }
+  spoilItems,
   itemGroup,
   itemSubgroup,
   subgroupOrder,
@@ -1632,7 +1673,12 @@ for (const orid of Object.keys(raw.recipe || {})) {
     if (!pid) { ok = false; break; }
     const amount = e.amount !== undefined ? e.amount : (e.amount_min !== undefined ? e.amount_min : 1);
     let frac = e.extra_count_fraction !== undefined ? e.extra_count_fraction : 0;
-    let prob = (typeof e.probability === 'number') ? e.probability : (e.independent_probability || 0);
+    // 概率输出三态（对齐官方 util.product_amount 期望口径）：
+    //   independent_probability：独立概率 → 期望 = amount × prob
+    //   shared_probability {min,max}：共享概率区间 → 期望 = amount × (max-min)（官方 scrap-recycling 用法）
+    //   probability：旧版独立概率 → 同 independent
+    let prob = (typeof e.probability === 'number') ? e.probability
+      : (e.independent_probability || (e.shared_probability ? (e.shared_probability.max - e.shared_probability.min) : 0));
     let v = amount + frac;
     if (prob > 0) v = amount * prob;             // 概率输出：期望 = amount × probability
     if (v > 0) out[pid] = Math.round(v * 1000000) / 1000000;

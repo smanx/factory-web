@@ -315,6 +315,9 @@ function serializeAll() {
     ents: G.ents.filter(e => !e._dead).map(e => e.serialize()),
     inv: Array.from(G.inv),
     invSlots: (G.invSlots || []).slice(),
+    // Gleba 新鲜度：背包侧表 + 机器人携带（带上/箱内/机器侧表随各自容器序列化）
+    spoilage: (typeof exportSpoilageState === 'function') ? exportSpoilageState() : null,
+    robots: (typeof robotsSerialize === 'function') ? robotsSerialize() : null,
     logiRequest: Object.assign({}, G.logiRequest || {}),
     logiReqGrid: (G.logiReqGrid || []).slice(),
     logiTrashGrid: (G.logiTrashGrid || []).map(s => s ? { item: s.item, count: s.count } : null),
@@ -628,6 +631,9 @@ function applySave(d) {
   G.netRobots = [];   // 读档清空物流网络建设机器人
   if (typeof constrRestore === 'function') constrRestore(d.constr);
   if (typeof equipmentRestore === 'function') equipmentRestore(d.equipment);
+  // Gleba 新鲜度：恢复背包侧表与物流机器人携带（施工机器人由 constrRestore 恢复）
+  if (typeof importSpoilageState === 'function') importSpoilageState(d.spoilage);
+  if (typeof restoreLogiCarry === 'function') restoreLogiCarry(d.robots);
   if (typeof rebuildTrains === 'function') rebuildTrains();
   const [sx, sy] = findSpawn();
   G.spawn = { x: sx, y: sy };
@@ -688,6 +694,8 @@ const SEED_TILE = { 'tree-seed': T_TREE };
 function placeGround(type, tx, ty, infinite) {
   const t = getTerrain(tx, ty);
   if (type === 'landfill') {
+    // 玄冥星冰海不可填海（对齐官方 Aquilo：海面冰层无法用填海料填充）
+    if (t === T_ICE_SHEET) { toast('冰面海层无法填海（可用冰面平台铺设）'); return; }
     if (t !== T_WATER) { toast('填海料只能铺在水面上'); return; }
     if (entAt(tx, ty)) { toast('水面有建筑，无法填海'); return; }
     setTerrain(tx, ty, T_GRASS);
@@ -696,11 +704,13 @@ function placeGround(type, tx, ty, infinite) {
     if (entAt(tx, ty)) { toast('地面有建筑，先拆除'); return; }
     if (t === T_FOUNDATION) return;
     setTerrain(tx, ty, T_FOUNDATION);
-  } else if (type === 'space-platform-foundation') {
-    // 太空平台地基（官方 Space platform foundation）：灰色栅格合金地板，铺成太空平台地板（对齐官方 place_as_tile），可铺在地面/地基/混凝土等硬面上
+  } else if (type === 'ice-platform') {
+    // 冰面平台（官方 Ice platform）：Aquilo 专属铺设物——在冰海（液态海洋）上造出可行走冰面
+    //（对齐官方 place_as_tile：只能铺在水/冰海上），也允许铺在冰面上加厚
+    if (t !== T_WATER && t !== T_ICE_SHEET && t !== T_ICE_PLATFORM) { toast('冰面平台只能铺在冰海上'); return; }
     if (entAt(tx, ty)) { toast('地面有建筑，先拆除'); return; }
-    if (t === T_SPACE_PLATFORM) return;
-    setTerrain(tx, ty, T_SPACE_PLATFORM);
+    if (t === T_ICE_PLATFORM) return;
+    setTerrain(tx, ty, T_ICE_PLATFORM);
   } else if (SOIL_TILE[type] !== undefined) {
     const to = SOIL_TILE[type];
     // 铺设在树木上：先砍掉树（对齐《异星工厂》：铺设前自动清理树木）
@@ -857,6 +867,7 @@ function tryPlaceAt(tx, ty) {
     const REASON_TXT = {
       reach: '距离太远，超出建造范围',
       water: '此处是水面，无法建造',
+      lava: '熔岩阻挡，可铺地基（Foundation）覆盖后建造',
       cliff: '峭壁阻挡，需先用峭壁炸药清除',
       tree: '树木阻挡，需先砍掉树木',
       occupied: '此处已有建筑，无法覆盖放置',

@@ -26,6 +26,17 @@ declare -a scripts=(
   "tools/verify-oil-rate.js"
   "tools/verify-data-alignment.js"
   "tools/verify-dlc.js"
+  "tools/verify-quality-logistics.js"
+  "tools/verify-spoilage.js"
+  "tools/verify-planet-terrain.js"
+  "tools/verify-recycling.js"
+  "tools/verify-platform-telemetry.js"
+  "tools/verify-save-dlc-fields.js"
+  "tools/verify-perf-baseline.js"
+  "tools/verify-wires-vision.js"
+  "tools/verify-device-stats-audit.js"
+  "tools/verify-spoil-priority.js"
+  "tools/verify-world-tiles-save.js"
 )
 
 fail=0

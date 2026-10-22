@@ -28,7 +28,10 @@ function makePlayer(tx, ty) {
 // 仅地形碰撞（水/峭壁/树木），不含建筑——供蜘蛛机器人等可跨越建筑/石墙的单位使用
 function terrainSolidAtPx(px, py) {
   const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE);
-  return isWater(tx, ty) || isCliff(tx, ty) || isTree(tx, ty);
+  const t = getTerrain(tx, ty);
+  // 玩家/载具碰撞：水、熔岩、峭壁与树木均不可通行（对齐《异星工厂》：
+  // Vulcanus 熔岩湖不可通行；Fulgora 沟壑以水格表现同样阻隔）
+  return t === T_WATER || t === T_LAVA || isCliff(tx, ty) || isTree(tx, ty);
 }
 
 function solidAtPx(px, py) {
@@ -229,6 +232,8 @@ function invAdd(id, n = 1) {
   const addable = Math.max(0, Math.min(n, maxAdd));
   if (addable <= 0) return 0;
   G.inv.set(id, cur + addable);
+  // Gleba 新鲜度：背包获得可腐坏物品即计时（侧表 _invFresh，见 game/spoilage.js）
+  if (typeof spoilInvAdd === 'function') spoilInvAdd(id);
   if (typeof trackProd === 'function') trackProd(id, addable);
   uiDirty = true;
   return addable;
@@ -537,10 +542,10 @@ function addGroundItem(tx, ty, item, n) {
   G.groundItems.push({ tx, ty, item, n, taken: false });
 }
 
-// 格子是否不可放置地面物品（水/峭壁/树/占用实体；传送带可承载故不视为阻挡）
+// 格子是否不可放置地面物品（水/熔岩/峭壁/树/占用实体；传送带可承载故不视为阻挡）
 function groundTileBlocked(tx, ty) {
   const t = getTerrain(tx, ty);
-  if (t === T_WATER || t === T_CLIFF || t === T_TREE) return true;
+  if (t === T_WATER || t === T_CLIFF || t === T_LAVA || t === T_TREE) return true;
   const e = entAt(tx, ty);
   if (e && !(e instanceof Belt)) return true;   // 非传送带实体阻挡（传送带可承载物品）
   return false;
@@ -671,14 +676,15 @@ function groundItemForBelt(tx, ty) {
   return null;
 }
 
-// 判断坐标是否可安全出生：必须是可通行的草地，且四邻中至少有一个可通行的邻格，
+// 判断坐标是否可安全出生：必须是可通行的地面，且四邻中至少有一个可通行的邻格，
 // 避免出生即被水/峭壁团团围住而无法移动（修复“生成在水中央”bug）。
 function isSafeSpawn(tx, ty) {
-  if (getTerrain(tx, ty) !== T_GRASS) return false;
+  const t = getTerrain(tx, ty);
+  if (t !== T_GRASS && t !== T_SCRAP && t !== T_ICE_SHEET) return false;
   if (isWater(tx, ty) || isCliff(tx, ty)) return false;
   for (let k = 0; k < 4; k++) {
     const nt = getTerrain(tx + DX[k], ty + DY[k]);
-    if (nt !== T_WATER && nt !== T_CLIFF) return true;
+    if (nt !== T_WATER && nt !== T_CLIFF && nt !== T_LAVA) return true;
   }
   return false;
 }

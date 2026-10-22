@@ -175,14 +175,19 @@ class Assembler extends Entity {
   giveItem(item, manual) {
     // 配方原料优先：凡属于当前配方输入的物品一律放入原料区。插件若本身是配方
     // 原料（如用低级插件合成高级插件），也必须进入原料区而非插件槽。
+    // 品质变体（`item~quality`）按基础物品收料：品质只是同物品变体，进料时并入
+    // 基础原料计数（对齐《异星工厂》：机械消耗带品质原料按普通原料计）。
     if (this.recipe) {
       const rec = RECIPES[this.recipe];
-      if (rec.inp[item]) {
+      const base = rec.inp[item] ? item : (typeof splitQuality === 'function' ? splitQuality(item).base : item);
+      if (rec.inp[base]) {
         // 机械臂/机器人自动送入按原料 2 倍上限；玩家手动放入则放满一整组（物品堆叠上限）。
         // 只按原料判定上限：产物不做计数（自循环配方产物即原料，把产物算进总量会让
         // 设备被自己上一轮产出「喂饱」而拒收下一轮原料）
-        if ((this.inp[item] || 0) >= (manual ? stackSize(item) : rec.inp[item] * 2)) return false;
-        this.inp[item] = (this.inp[item] || 0) + 1;
+        if ((this.inp[base] || 0) >= (manual ? stackSize(base) : rec.inp[base] * 2)) return false;
+        // Gleba 新鲜度：可腐坏原料入缓存即计时（侧表 _spoilInp 按基础 id 记录）
+        if (typeof spoilStockStamp === 'function') spoilStockStamp(this, '_spoilInp', base);
+        this.inp[base] = (this.inp[base] || 0) + 1;
         return true;
       }
     }

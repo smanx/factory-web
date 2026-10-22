@@ -252,11 +252,14 @@ class Belt extends Entity {
         if (ok) {
           // srcLane：侧面汇入时记录源带车道号（渲染汇入过渡曲线用）；
           // e0：本格进格落点（0.45 或 0），渲染时据此让物品恰在接缝处开始过渡。
-          this.items.push({
+          const entry = {
             item, pos: p, lane: l, side: isSide ? side : -1,
             srcLane: (isSide && srcLane !== undefined && srcLane !== null) ? (srcLane === 1 ? 1 : 0) : undefined,
             e0: isSide ? p : undefined,
-          });
+          };
+          // Gleba 新鲜度：可腐坏物品上带即开始计时（进度随物品走，见 game/spoilage.js）
+          if (typeof spoilStamp === 'function') spoilStamp(entry, item);
+          this.items.push(entry);
           if (isTail && l === lane) this._nextTailLane = 1 - (this._nextTailLane || 0);
           return true;
         }
@@ -264,13 +267,28 @@ class Belt extends Entity {
     }
     return false;
   }
-  // matcher 传物品 id 按精确匹配；传函数则作为“是否可取”谓词（机械臂筛选白/黑名单用）
-  grabZone(matcher, lane) {
+  // matcher 传物品 id 按精确匹配；传函数则作为“是否可取”谓词（机械臂筛选白/黑名单用）。
+  // spoilPref（机械臂变质优先级，对齐《异星工厂》2.0 Inserter「Spoil priority」）：
+  //   'spoil' = 优先抓取最不新鲜（先腐坏先消耗）；'fresh' = 优先抓取最新鲜。
+  //   同新鲜度时仍按 pos 靠前（下游方向）优先；未传参保持原「pos 最大」语义。
+  grabZone(matcher, lane, spoilPref) {
     const test = (typeof matcher === 'function') ? matcher : (item => !matcher || item === matcher);
     let best = null;
-    for (const o of this.items)
+    for (const o of this.items) {
       if ((lane === undefined || lane === null || this.laneOf(o) === lane)
-        && o.pos >= 0.2 && test(o.item) && (!best || o.pos > best.pos)) best = o;
+        && o.pos >= 0.2 && test(o.item)) {
+        if (!best) { best = o; continue; }
+        if (spoilPref && o.fresh !== undefined && best.fresh !== undefined) {
+          // 'spoil' = 取更不新鲜（fresh 更小）；'fresh' = 取更新鲜（fresh 更大）
+          const df = spoilPref === 'spoil' ? (best.fresh - o.fresh) : (o.fresh - best.fresh);
+          if (df > 0) { best = o; continue; }          // 更偏向的选择
+          if (df < 0) continue;                        // 现有 best 更优
+        }
+        if (o.pos > best.pos) best = o;                // 同新鲜度：pos 靠前优先
+      }
+    }
+    // Gleba 新鲜度：带上物品被取走前登记在途新鲜度（进度随物品走，见 game/spoilage.js）
+    if (best && typeof spoilPutCarried === 'function') spoilPutCarried(best.item, best.fresh);
     return best;
   }
   countOf(item) {
@@ -290,9 +308,10 @@ class Belt extends Entity {
   }
   // 手动拿取（F 键）：取带上最前端的物品
   takeItem() {
-    if (!this.items.length) return null;
-    let best = this.items[0];
+    if (!this.items.length) return null;    let best = this.items[0];
     for (const o of this.items) if (o.pos > best.pos) best = o;
+    // Gleba 新鲜度：取走前登记在途新鲜度（进度随物品走）
+    if (typeof spoilPutCarried === 'function') spoilPutCarried(best.item, best.fresh);
     this.items.splice(this.items.indexOf(best), 1);
     return best.item;
   }
@@ -315,6 +334,7 @@ class Belt extends Entity {
       o.lane === 1 ? 1 : 0,
       o.srcLane === undefined || o.srcLane === null ? -1 : o.srcLane,
       o.e0 === undefined || o.e0 === null ? -1 : +o.e0.toFixed(3),
+      o.fresh === undefined ? -1 : +o.fresh.toFixed(1),   // Gleba 新鲜度（剩余秒，-1=无）
     ]);
     if (this.circuitCond) s.circuitCond = this.circuitCond;
     return s;
@@ -327,6 +347,7 @@ class Belt extends Entity {
       lane: a.length > 3 ? (a[3] === 1 ? 1 : 0) : 0,
       srcLane: a.length > 4 && a[4] >= 0 ? a[4] : undefined,
       e0: a.length > 5 && a[5] >= 0 ? a[5] : undefined,
+      fresh: a.length > 6 && a[6] >= 0 ? a[6] : undefined,   // Gleba 新鲜度
     }));
     b.circuitCond = s.circuitCond || { enabled: false, channel: 'red', sig: 'iron-plate', op: '>', count: 1, circuitRead: false };
     return b;

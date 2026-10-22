@@ -193,6 +193,7 @@ function moveTrainToward(tr, tx, ty) {
   head.x += DX[nd]; head.y += DY[nd]; head.dir = nd;
   removeEntFromGrid(head); addEntToGrid(head);
   head.fuel -= LOCO_COAL_PER * fuelConsumptionMult();
+  head._movingUntil = (G.time || 0) + trainMoveTime(head) + 0.1;   // 行驶 timestamp：污染扫描判定「正在行驶」用
   for (let i = 1; i < tr.cars.length; i++) {
     const car = tr.cars[i];
     removeEntFromGrid(car);
@@ -230,6 +231,7 @@ function moveTrain(tr) {
   head.x += DX[nd]; head.y += DY[nd]; head.dir = nd;
   removeEntFromGrid(head); addEntToGrid(head);
   head.fuel -= LOCO_COAL_PER * fuelConsumptionMult();
+  head._movingUntil = (G.time || 0) + trainMoveTime(head) + 0.1;   // 行驶 timestamp：污染扫描判定「正在行驶」用
   // 车厢依次占据前一节车的旧位置
   for (let i = 1; i < tr.cars.length; i++) {
     const car = tr.cars[i];
@@ -270,6 +272,7 @@ function moveTrainBack(tr) {
     addEntToGrid(c);
   }
   if (head.fuel != null) head.fuel -= LOCO_COAL_PER * fuelConsumptionMult();
+  head._movingUntil = (G.time || 0) + trainMoveTime(head) + 0.1;   // 行驶 timestamp：污染扫描判定「正在行驶」用
   if (typeof playSfx === 'function') playSfx('train');
   return true;
 }

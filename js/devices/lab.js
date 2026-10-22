@@ -167,7 +167,11 @@ class Lab extends Entity {
   }
   giveItem(item) {
     // 科研包优先进入研究中心（科研包作为配方输入时走此路，而非插件/物品槽）
-    if (isScience(item) && this.packCount(item) < 40) { this.packs[item] = this.packCount(item) + 1; return true; }
+    // Gleba 新鲜度：农业科研包可腐坏，入包即计时（侧表 _spoilPacks，见 game/spoilage.js）
+    if (isScience(item) && this.packCount(item) < 40) {
+      if (typeof spoilStockStamp === 'function') spoilStockStamp(this, '_spoilPacks', item);
+      this.packs[item] = this.packCount(item) + 1; return true;
+    }
     if (isModule(item)) {
       if ((this.modules[item] || 0) >= this.moduleSlotCount()) return false;
       this.modules[item] = (this.modules[item] || 0) + 1;

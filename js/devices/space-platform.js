@@ -49,8 +49,11 @@ class Thruster extends Entity {
     this.portFlow();
     const fuelAvail = Math.min(this.fuelBuf, THRUSTER_FUEL_RATE * dt);
     const oxidAvail = Math.min(this.oxidBuf, THRUSTER_OXID_RATE * dt);
-    // 需同时有燃料与氧化剂才发电（对齐官方：燃料与氧化剂双输入）
-    if (fuelAvail > 0.1 && oxidAvail > 0.1) {
+    // 需同时有燃料与氧化剂才发电（对齐官方：燃料与氧化剂双输入）。
+    // 判定用「缓冲为正」而非「本帧可耗量 > 0.1」：本帧可耗量 = 速率×dt，真实帧
+    // dt≈16.7ms 时仅 0.033，恒低于 0.1 → 正常游玩推进器永远无法点火（E2E 发现）。
+    // 缓冲各含 1 单位（portFlow 以 1 为步进装填）即可燃烧，比例仍按速率×dt 归一。
+    if (this.fuelBuf > 0.01 && this.oxidBuf > 0.01) {
       this.fuelBuf -= fuelAvail;
       this.oxidBuf -= oxidAvail;
       const ratio = Math.min(fuelAvail / (THRUSTER_FUEL_RATE * dt), oxidAvail / (THRUSTER_OXID_RATE * dt));

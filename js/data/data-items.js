@@ -60,8 +60,15 @@ const STACK_SIZES = {
   'tree-seed': 10  // 树种官方 stack=10（由 GAME_DATA 桥接）
 };
 // 返回某物品的最大堆叠数（未特别指定则默认 100，对齐原版多数物品）
+// 品质变体（`item~quality`）：变体不单列堆叠表，继承基础物品的堆叠上限
+//（对齐《异星工厂》：品质只改倍率不改堆叠；如传说品质建筑同样 50/组）。
 function stackSize(id) {
-  const v = STACK_SIZES[id];
+  let v = STACK_SIZES[id];
+  if (typeof v !== 'number' || v <= 0) {
+    const sep = (typeof QUALITY_SEP === 'string' && QUALITY_SEP) || '~';
+    const qi = id ? id.lastIndexOf(sep) : -1;
+    if (qi > 0) v = STACK_SIZES[id.slice(0, qi)];
+  }
   return (typeof v === 'number' && v > 0) ? v : 100;
 }
 

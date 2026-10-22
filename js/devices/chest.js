@@ -37,7 +37,10 @@ class Chest extends Entity {
     // 再放进空闲格子
     const i = this.freeSlotIndex();
     if (i < 0) return false;
-    this.slots[i] = { item, count: 1 };
+    const slot = { item, count: 1 };
+    // Gleba 新鲜度：入箱即计时（进度随物品走，见 game/spoilage.js）
+    if (typeof spoilStamp === 'function') spoilStamp(slot, item);
+    this.slots[i] = slot;
     return true;
   }
   peekItem() {
@@ -52,6 +55,8 @@ class Chest extends Entity {
       const s = this.slots[i];
       if (s) {
         const it = s.item;
+        // Gleba 新鲜度：取走前登记在途新鲜度（进度随物品走，见 game/spoilage.js）
+        if (typeof spoilPutCarried === 'function') spoilPutCarried(it, s.fresh);
         s.count--;
         if (s.count <= 0) this.slots[i] = null;
         return it;
@@ -64,16 +69,46 @@ class Chest extends Entity {
     for (const st of this.slots) if (st && st.item === item) n += st.count;
     return n;
   }
-  takeItemOf(item) {
-    for (let i = this.slots.length - 1; i >= 0; i--) {
-      const st = this.slots[i];
-      if (st && st.item === item) {
-        st.count--;
-        if (st.count <= 0) this.slots[i] = null;
-        return item;
+  // item 传物品 id 精确取；spoilPref 传 'spoil'/'fresh' 时在同 id 多槽中按新鲜度挑槽
+  //（对齐《异星工厂》2.0 机械臂 spoil priority：'spoil'=先取最不新鲜的槽，'fresh'=最新鲜）。
+  // 未传保持原「后槽先出」语义。
+  takeItemOf(item, spoilPref) {
+    if (!spoilPref) {
+      for (let i = this.slots.length - 1; i >= 0; i--) {
+        const st = this.slots[i];
+        if (st && st.item === item) {
+          // Gleba 新鲜度：取走前登记在途新鲜度（进度随物品走，见 game/spoilage.js）
+          if (typeof spoilPutCarried === 'function') spoilPutCarried(item, st.fresh);
+          st.count--;
+          if (st.count <= 0) this.slots[i] = null;
+          return item;
+        }
+      }
+      return null;
+    }
+    let best = null;
+    for (const st of this.slots) {
+      if (st && st.item === item && st.fresh !== undefined) {
+        if (!best
+          || (spoilPref === 'spoil' ? st.fresh < best.fresh : st.fresh > best.fresh)) best = st;
       }
     }
-    return null;
+    if (!best) {   // 同 id 槽均无新鲜度字段（不可腐坏/未计时）→ 回退默认
+      for (let i = this.slots.length - 1; i >= 0; i--) {
+        const st = this.slots[i];
+        if (st && st.item === item) {
+          if (typeof spoilPutCarried === 'function') spoilPutCarried(item, st.fresh);
+          st.count--;
+          if (st.count <= 0) this.slots[i] = null;
+          return item;
+        }
+      }
+      return null;
+    }
+    if (typeof spoilPutCarried === 'function') spoilPutCarried(item, best.fresh);
+    best.count--;
+    if (best.count <= 0) this.slots[this.slots.indexOf(best)] = null;
+    return item;
   }
   contents() {
     const list = [[this.type, 1]];
@@ -89,7 +124,8 @@ class Chest extends Entity {
   }
   serialize() {
     const s = super.serialize();
-    s.slots = this.slots.map(v => v ? [v.item, v.count] : null);
+    // 槽位：数组式 [item, count]（旧档兼容）；可腐坏物品带剩余新鲜度秒数 → 三元组 [item, count, fresh]
+    s.slots = this.slots.map(v => v ? (v.fresh !== undefined ? [v.item, v.count, +v.fresh.toFixed(1)] : [v.item, v.count]) : null);
     s.limits = this.limits;
     return s;
   }
@@ -109,7 +145,12 @@ class Chest extends Entity {
     c.slots = new Array(cap).fill(null);
     for (let i = 0; i < Math.min(cap, raw.length); i++) {
       const v = raw[i];
-      if (v) c.slots[i] = { item: v[0] ?? v.item, count: v[1] ?? v.count };
+      if (!v) continue;
+      const slot = { item: v[0] ?? v.item, count: v[1] ?? v.count };
+      // Gleba 新鲜度：数组式 [item, count, fresh]（剩余秒数）或对象式 {fresh}
+      if (Array.isArray(v) && v.length > 2 && typeof v[2] === 'number') slot.fresh = v[2];
+      else if (typeof v === 'object' && !Array.isArray(v) && typeof v.fresh === 'number') slot.fresh = v.fresh;
+      c.slots[i] = slot;
     }
     return c;
   }
@@ -319,10 +360,17 @@ function chestSlotGridHtml(e) {
     } else {
       const id = s.item, n = s.count;
       const icon = (ITEMS[id] && typeof iconDataURL === 'function') ? iconDataURL(id, 16) : '';
-      h += '<div class="inv-slot" data-chestslot="' + i + '" data-itemid="' + id + '" data-tip="' +
-        (ITEMS[id] ? ITEMS[id].name : id) + '|点击拿起该物品悬浮于鼠标：可放入背包/箱格/设备原料或产品格（当前 ' + n + '）">' +
+      // Gleba 变质感官：可腐坏物品 tooltip 追加新鲜度百分比，格子按新鲜度档位着色
+      const freshTxt = (typeof spoilFreshPctText === 'function') ? spoilFreshPctText(id, s.fresh) : '';
+      const spoilCls = (typeof spoilFreshRatio === 'function' && s.fresh !== undefined)
+        ? spoilFreshCls(id, s.fresh) : '';
+      h += '<div class="inv-slot' + spoilCls + '" data-chestslot="' + i + '" data-itemid="' + id + '" data-tip="' +
+        (ITEMS[id] ? ITEMS[id].name : id) + '|点击拿起该物品悬浮于鼠标：可放入背包/箱格/设备原料或产品格（当前 ' + n + '）' +
+        (freshTxt ? '|' + freshTxt : '') + '">' +
         (icon ? '<img src="' + icon + '">' : '') +
-        '<span class="cnt">' + n + '</span></div>';
+        '<span class="cnt">' + n + '</span>' +
+        (spoilCls ? '<i class="spoil-dot"></i>' : '') +
+        '</div>';
     }
   }
   return h;
@@ -340,7 +388,12 @@ function chestRightHtml(e, typeName, capDesc) {
 function chestGridSig(e) {
   const heldSlot = (G.held && G.held.src && G.held.src.kind === 'chest' && G.held.src.ent === e) ? G.held.src.slot : -1;
   let s = heldSlot + '|';
-  for (let i = 0; i < e.slots.length; i++) { const st = e.slots[i]; s += (st ? st.item + ':' + st.count : '') + ','; }
+  // Gleba 变质感官：新鲜度档位变化（跨档/过期）也要触发网格重建（着色与 tooltip 百分比）
+  for (let i = 0; i < e.slots.length; i++) {
+    const st = e.slots[i];
+    s += (st ? st.item + ':' + st.count : '') + ',';
+    if (st && st.fresh !== undefined && typeof spoilFreshCls === 'function') s += spoilFreshCls(st.item, st.fresh) + ',';
+  }
   return s;
 }
 // 实时刷新箱子网格：仅在签名变化时重建 innerHTML

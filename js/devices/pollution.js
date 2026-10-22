@@ -239,6 +239,27 @@ function modulePollutionMult(e) {
 }
 
 // 扫描一次 G.ents 中所有正在工作的污染源，累加污染值，并向逐格污染场排放
+// 工作态字段各设备不同（对齐全项目现状）：采矿机/泵/炼油厂/化工厂 working、
+// 组装机系（含电磁/铸造/低温/破碎/生化/孵化器/回收机/离心机）crafting、
+// 熔炉/锅炉/核堆/供热塔 lit 或 burning（lit=有燃料在烧，含产汽间隙）、实验室 active。
+// 任一字段为真即视为正在运行。
+function deviceIsWorking(e) {
+  if (e.working || e.crafting || e.burning || e.active || e.lit) return true;
+  // 热能机械臂：旋转中/持物中即在工作（对齐 burner-inserter 自身 isWorking 口径）
+  if (e.rotating || (e.holdingCount > 0)) return true;
+  // 火车头：行驶中烧燃料（移动时由 railway.js 盖 _movingUntil 时间戳，含格间节拍间隙）
+  if (e._movingUntil !== undefined && e._movingUntil > (G.time || 0)) return true;
+  return false;
+}
+
+// 负排放设备（官方 emissions_per_minute.pollution = -1）：工作时吸收污染而非排放。
+// 官方口径：biochamber（生化炉）/ captive-biter-spawner（虫巢孵化器）为负排放——
+// 生化炉以营养素驱动、孵化器圈养虫子，均消化周围污染。实现：工作时按 |rate| 吸收全局污染。
+function deviceAbsorbsPollution(e) {
+  const perMin = (GAME_DATA && GAME_DATA.pollution && GAME_DATA.pollution[e.type]);
+  return typeof perMin === 'number' && perMin < 0;
+}
+
 function scanPollutionSources(dt) {
   if (!G.ents) return;
   let total = 0;
@@ -246,8 +267,14 @@ function scanPollutionSources(dt) {
     if (e._dead || !e.type) continue;
     const rate = pollutionRateFor(e.type);
     if (!rate) continue;
-    // 仅当设备处于工作/运行状态才排放（利用各设备统一的 working 字段）
-    if (e.working) {
+    // 仅当设备处于工作/运行状态才排放（各设备统一走 deviceIsWorking 判定）
+    if (deviceIsWorking(e)) {
+      // 负排放设备（生化炉/孵化器）：工作时吸收污染（对齐官方 -1），不减逐格污染场
+      if (deviceAbsorbsPollution(e)) {
+        const absorb = -rate * dt;
+        G.pollution = Math.max(0, (G.pollution || 0) - absorb);
+        continue;
+      }
       const m = modulePollutionMult(e);
       total += rate * m;
       // 向逐格污染场排放（对齐《异星工厂》：污染从污染源向外扩散）

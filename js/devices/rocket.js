@@ -55,7 +55,7 @@ class RocketSilo extends CircuitNode {
     if (this.launching) out.push({ sig: 'signal-rocket-launch', count: 1 });
     return out;
   }
-  moduleSlotCount() { return 4; } // 对齐《异星工厂》：火箭发射井 4 个模块槽
+  moduleSlotCount() { return GAME_DATA.deviceStats?.['rocket-silo']?.moduleSlots ?? 4; } // 对齐《异星工厂》官方 module_slots=4（GAME_DATA.deviceStats 单源）
   // 当前每秒推进的部件组装进度（受全局制造速度倍率 × 模块速度 × 电力倍率影响；与组装机 craftProgRate 同源）
   rocketPartRate() {
     const qMult = (typeof qualityMult === 'function' && this.quality) ? qualityMult(this.quality) : 1;
